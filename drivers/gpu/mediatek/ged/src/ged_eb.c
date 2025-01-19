@@ -27,6 +27,7 @@
 #endif
 
 #include "ged_eb.h"
+
 #include "ged_base.h"
 #include "ged_dvfs.h"
 #include "ged_kpi.h"
@@ -900,7 +901,6 @@ unsigned int is_fdvfs_enable(void)
 	return eb_policy_mode;
 }
 
-
 unsigned int mtk_gpueb_dvfs_get_cur_freq(void)
 {
 	int ret = 0;
@@ -1370,7 +1370,6 @@ static int fastdvfs_proc_show(struct seq_file *m, void *v)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_FRAME_DONE_INTERVAL));
 		seq_puts(m, show_string);
 		seq_puts(m, "\n\n\n");
-
 	}
 */
 

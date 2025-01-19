@@ -270,7 +270,7 @@ static void scp_init_work_done(struct work_struct *work)
 				ID_MAGNETIC, CUST_ACTION_GET_SENSOR_INFO);
 			return;
 		}
-		strlcpy(mag_libinfo.libname,
+		strscpy(mag_libinfo.libname,
 			obj->mag_info.mag_dev_info.libname,
 			sizeof(mag_libinfo.libname));
 		mag_libinfo.layout = obj->mag_info.mag_dev_info.layout;

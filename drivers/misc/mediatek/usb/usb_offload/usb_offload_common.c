@@ -11,6 +11,7 @@
 #include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/of_platform.h>
 #include <linux/of_device.h>
 #include <linux/io.h>
 #include <linux/types.h>

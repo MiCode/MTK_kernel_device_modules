@@ -1058,7 +1058,7 @@ int fpga_phy_set_pclk(struct phy *phy, int pclk)
 }
 
 static struct phy *fpga_phy_xlate(struct device *dev,
-		struct of_phandle_args *args)
+		const struct of_phandle_args *args)
 {
 	struct fpga_u3phy *u3phy = dev_get_drvdata(dev);
 	struct fpga_phy_instance *instance = NULL;

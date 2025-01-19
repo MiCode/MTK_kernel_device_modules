@@ -1,4 +1,4 @@
-load("//kernel_device_modules-6.6:kernel/kleaf/mgk_modules.bzl",
+load("//kernel_device_modules-mainline:kernel/kleaf/mgk_modules.bzl",
      "mgk_module_outs",
      "mgk_module_eng_outs",
      "mgk_module_userdebug_outs",
@@ -9,7 +9,7 @@ load("@mgk_info//:dict.bzl",
     "DEFCONFIG_OVERLAYS",
 )
 
-mgk_64_defconfig = "mgk_64_k66_defconfig"
+mgk_64_defconfig = "mgk_64_kmainline_defconfig"
 
 mgk_64_kleaf_modules = [
     # keep sorted
@@ -100,8 +100,8 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
     "//vendor/mediatek/kernel_modules/sched_int:sched_int",
     "//vendor/mediatek/kernel_modules/mtkcam/img_frm_sync:mtk-img-frm-sync",
-    "//vendor/mediatek/kernel_modules/task_turbo_cus:task_turbo_cus",
-    "//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
+    #"//vendor/mediatek/kernel_modules/task_turbo_cus:task_turbo_cus",
+    #"//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
 ]
 
 mgk_64_kleaf_eng_modules = [
@@ -136,16 +136,16 @@ mgk_64_device_modules = [
     #"drivers/clk/mediatek/clk-common-dummy.ko",
     "drivers/clk/mediatek/clk-disable-unused.ko",
     "drivers/clk/mediatek/fhctl.ko",
-    "drivers/clocksource/timer-mediatek.ko",
+    #"drivers/clocksource/timer-mediatek.ko",
     "drivers/cpufreq/mediatek-cpufreq-hw.ko",
     "drivers/devfreq/mtk-dvfsrc-devfreq.ko",
-    #"drivers/dma-buf/heaps/deferred-free-helper.ko",
+    "drivers/dma-buf/heaps/deferred-free-helper.ko",
     "drivers/dma-buf/heaps/mtk_heap_debug.ko",
     "drivers/dma-buf/heaps/mtk_heap_refill.ko",
     "drivers/dma-buf/heaps/mtk_sec_heap.ko",
-    #"drivers/dma-buf/heaps/page_pool.ko",
+    "drivers/dma-buf/heaps/page_pool.ko",
     "drivers/dma-buf/heaps/system_heap.ko",
-    "drivers/misc/mediatek/pkvm_smmu/pkvm_smmu.ko",
+    #"drivers/misc/mediatek/pkvm_smmu/pkvm_smmu.ko",
     "drivers/dma/mediatek/mtk-cqdma.ko",
     "drivers/dma/mediatek/mtk-uart-apdma.ko",
     "drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_dpc_v1.ko",
@@ -468,11 +468,10 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/performance/powerhal_cpu_ctrl/powerhal_cpu_ctrl.ko",
     "drivers/misc/mediatek/performance/touch_boost/touch_boost.ko",
     "drivers/misc/mediatek/performance/uload_ind/uload_ind.ko",
-    "drivers/misc/mediatek/pgboost/pgboost.ko",
     "drivers/misc/mediatek/pidmap/pidmap.ko",
-    "drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
-    "drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
-    "drivers/misc/mediatek/pkvm_mkp/pkvm_mkp.ko",
+    #"drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
+    #"drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
+    #"drivers/misc/mediatek/pkvm_mkp/pkvm_mkp.ko",
     "drivers/misc/mediatek/pmic_protect/mtk-pmic-oc-debug.ko",
     "drivers/misc/mediatek/pmsr/pmsr.ko",
     "drivers/misc/mediatek/pmsr/twam/spmtwam.ko",
@@ -555,7 +554,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-isp-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/mtk-swpm.ko",
     "drivers/misc/mediatek/swpm/mtk-swpm-perf-arm-pmu.ko",
-    "drivers/misc/mediatek/task_turbo/task_turbo.ko",
+    #"drivers/misc/mediatek/task_turbo/task_turbo.ko",
     "drivers/misc/mediatek/tinysys_scmi/tinysys-scmi.ko",
     "drivers/misc/mediatek/trusted_mem/ffa_v11.ko",
     "drivers/misc/mediatek/trusted_mem/tmem_ffa.ko",
@@ -607,7 +606,7 @@ mgk_64_device_modules = [
     "drivers/mmc/host/mtk-mmc-dbg.ko",
     "drivers/mmc/host/mtk-mmc.ko",
     "drivers/mmc/host/mtk-sd.ko",
-    "drivers/mmc/host/mtk-mmc-wp.ko",
+    #"drivers/mmc/host/mtk-mmc-wp.ko",
     "drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.ko",
     "drivers/net/ethernet/stmicro/stmmac/mtk_sgmii_pwr.ko",
     "drivers/net/ethernet/stmicro/stmmac/stmmac-platform.ko",
@@ -940,6 +939,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6897.ko": "mt6897",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6989.ko": "mt6989",
+    "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6878.ko": "mt6878",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6761.ko": "mt6761",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6765.ko": "mt6765",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6878.ko": "mt6878",
@@ -1052,9 +1052,10 @@ mgk_64_platform_device_modules = {
 
 
 mgk_64_device_eng_modules = [
+    "arch/arm64/geniezone/gzvm.ko",
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/locking/locking_aee.ko",
-    "drivers/misc/mediatek/mtprof/irq_monitor.ko",
+    #"drivers/misc/mediatek/mtprof/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
 ]
 
@@ -1063,8 +1064,9 @@ mgk_64_platform_device_eng_modules = {
 
 
 mgk_64_device_userdebug_modules = [
+    "arch/arm64/geniezone/gzvm.ko",
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
-    "drivers/misc/mediatek/mtprof/irq_monitor.ko",
+    #"drivers/misc/mediatek/mtprof/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
 ]
 
@@ -1550,7 +1552,7 @@ def get_overlay_modules_list():
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
+        #mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")

@@ -8,6 +8,7 @@
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/proc_fs.h>
 

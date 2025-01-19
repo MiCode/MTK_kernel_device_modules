@@ -35,7 +35,6 @@
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
-#include "mtk-io-pgtable-arm.h"
 
 #define LINK_WITH_APU			BIT(0)
 /* For SMMU EP/bring up phase: smi not ready */
@@ -1661,35 +1660,30 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 }
 
 static void mtk_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt,
-				struct iommu_fault_event *fault_evt)
+				struct iopf_fault *fault_evt)
 {
 	struct iommu_fault *flt = &fault_evt->fault;
 	char evt_str[SMMU_EVT_DUMP_LEN_MAX] = {};
 	bool ssid_valid = (evt[0] & EVTQ_0_SSV) > 0;
 	bool stall = (evt[1] & EVTQ_1_STALL) > 0;
 	u32 sid = FIELD_GET(EVTQ_0_SID, evt[0]);
-	u32 reason = 0, perm = 0;
+	u32 perm = 0;
 	char *ptr = evt_str;
 
 	switch (FIELD_GET(EVTQ_0_ID, evt[0])) {
 	case EVT_ID_TRANSLATION_FAULT:
-		reason = IOMMU_FAULT_REASON_PTE_FETCH;
 		ptr += sprintf(ptr, "EVT_ID_TRANSLATION_FAULT");
 		break;
 	case EVT_ID_ADDR_SIZE_FAULT:
-		reason = IOMMU_FAULT_REASON_OOR_ADDRESS;
 		ptr += sprintf(ptr, "EVT_ID_ADDR_SIZE_FAULT");
 		break;
 	case EVT_ID_ACCESS_FAULT:
-		reason = IOMMU_FAULT_REASON_ACCESS;
 		ptr += sprintf(ptr, "EVT_ID_ACCESS_FAULT");
 		break;
 	case EVT_ID_PERMISSION_FAULT:
-		reason = IOMMU_FAULT_REASON_PERMISSION;
 		ptr += sprintf(ptr, "EVT_ID_PERMISSION_FAULT");
 		break;
 	default:
-		reason = IOMMU_FAULT_REASON_UNKNOWN;
 		ptr += sprintf(ptr, "EVT OTHER FAULT");
 		break;
 	}
@@ -1745,6 +1739,8 @@ static void mtk_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt,
 			flt->prm.flags |= IOMMU_FAULT_PAGE_REQUEST_PASID_VALID;
 			flt->prm.pasid = FIELD_GET(EVTQ_0_SSID, evt[0]);
 		}
+	}
+#if 0
 	} else {
 		flt->type = IOMMU_FAULT_DMA_UNRECOV;
 		flt->event = (struct iommu_fault_unrecoverable) {
@@ -1759,6 +1755,7 @@ static void mtk_smmu_handle_evt(struct arm_smmu_device *smmu, u64 *evt,
 			flt->event.pasid = FIELD_GET(EVTQ_0_SSID, evt[0]);
 		}
 	}
+#endif
 
 	dev_info(smmu->dev, "EVTQ_INFO: %s\n", evt_str);
 }
@@ -2145,12 +2142,10 @@ static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 	u32 smmu_type = data->plat_data->smmu_type;
 	struct mtk_smmu_fault_param *fault_param;
 	struct arm_smmu_master *master;
-	struct dev_iommu *param;
 	u64 fault_iova, fault_ipa, s2_trans;
 	u64 fault_pa = 0;
 	u32 id, sid, ssid;
 	bool ssid_valid;
-	int ret = 0;
 
 	if (!mtk_fault_evt)
 		return -EINVAL;
@@ -2203,17 +2198,8 @@ static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 	mtk_smmu_sid_dump(smmu, sid);
 
 	/* Report fault event to master device driver */
-	if (master) {
-		ret = iommu_report_device_fault(master->dev, &mtk_fault_evt->fault_evt);
-		if (ret) {
-			param = master->dev->iommu;
-			if (!param || !param->fault_param || !param->fault_param->handler) {
-				dev_dbg(smmu->dev,
-					"[%s] ret:%d, dev:%s not register device fault handler\n",
-					__func__, ret, dev_name(master->dev));
-			}
-		}
-	}
+	if (master)
+		iommu_report_device_fault(master->dev, &mtk_fault_evt->fault_evt);
 
 #ifdef MTK_SMMU_DEBUG
 	if (fault_param) {

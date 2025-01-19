@@ -164,7 +164,6 @@ void mtk_common_debug(enum mtk_common_debug_types type, int pid, u64 hook_point)
 #endif /* CONFIG_MALI_MTK_DIAGNOSIS_MODE */
 	}
 
-	lockdep_off();
 	do {
 		if (!mutex_trylock(&common_debug_lock)) {
 			pr_info("[%s]lock held, bypass debug dump", __func__);
@@ -218,7 +217,6 @@ void mtk_common_debug(enum mtk_common_debug_types type, int pid, u64 hook_point)
 		}
 		mutex_unlock(&common_debug_lock);
 	} while (false);
-	lockdep_on();
 }
 
 int mtk_common_gpufreq_bringup(void)

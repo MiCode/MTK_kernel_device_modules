@@ -1608,7 +1608,7 @@ static int mdpsys_con_probe(struct platform_device *pdev)
 		mdpsys_con_ctx.mmu_dev_sec = mdp_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
 	} else {
 		mdpsys_con_ctx.mmu_dev = dev;
-		ret = of_property_read_u32(dev->of_node, "dma_mask_bit",
+		ret = of_property_read_u32(dev->of_node, "dma-mask-bit",
 			&dma_mask_bit);
 		/* if not assign from dts, give default */
 		if (ret != 0 || !dma_mask_bit)

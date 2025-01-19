@@ -1201,7 +1201,7 @@ struct hf_client *hf_client_create(void)
 		goto err_out;
 
 	/* record process id and thread id for debug */
-	strlcpy(client->proc_comm, current->comm, sizeof(client->proc_comm));
+	strscpy(client->proc_comm, current->comm, sizeof(client->proc_comm));
 	client->leader_pid = current->group_leader->pid;
 	client->pid = current->pid;
 	client->core = &hfcore;

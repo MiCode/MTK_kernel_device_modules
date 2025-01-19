@@ -3,7 +3,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/memory/mediatek/
 
 obj-$(CONFIG_MTK_EMI_LEGACY) += emi-dummy.o
-
 ifeq ($(CONFIG_MTK_EMI_LEGACY_VERSION), 1)
 obj-$(CONFIG_MTK_EMI_LEGACY) += emi_legacy_v1/
 endif

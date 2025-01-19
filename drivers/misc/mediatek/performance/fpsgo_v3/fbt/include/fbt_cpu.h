@@ -149,6 +149,14 @@ void fpsgo_set_expected_l2q_us(int vsync_multiple, unsigned long long user_expec
 int fpsgo_get_rl_l2q_enable(void);
 void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts);
 
+void fpsgo_comp2fbt_jank_thread_boost(int boost, int pid);
+void fpsgo_base2fbt_jank_thread_deboost(int pid);
+
+void fpsgo_set_rl_l2q_enable(int enable);
+void fpsgo_set_expected_l2q_us(int vsync_multiple, unsigned long long user_expected_l2q_us);
+int fpsgo_get_rl_l2q_enable(void);
+void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts);
+
 #else
 static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
 static inline void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap) { }

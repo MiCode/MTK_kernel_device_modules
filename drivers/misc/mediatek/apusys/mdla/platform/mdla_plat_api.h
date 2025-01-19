@@ -7,6 +7,7 @@
 
 #include <linux/types.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 
 u32 mdla_plat_get_core_num(void);
 

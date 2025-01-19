@@ -24,6 +24,7 @@
 #include "kd_camera_feature.h"
 #include "kd_imgsensor_define.h"
 #include "kd_imgsensor_api.h"
+#include "thermal_core.h"
 
 /*=============================================================
  * Macro

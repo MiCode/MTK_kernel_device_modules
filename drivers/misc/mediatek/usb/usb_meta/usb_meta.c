@@ -19,7 +19,9 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
 
 #include "u_fs.h"
 #include "f_mass_storage.h"

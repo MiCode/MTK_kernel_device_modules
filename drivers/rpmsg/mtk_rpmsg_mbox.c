@@ -130,7 +130,7 @@ mtk_rpmsg_create_channel(struct mtk_rpmsg_device *mdev, u32 chan_id, char *name)
 	mbdev = mdev->mbdev;
 	spin_lock_init(&mchan->channel_lock);
 	mchan->info.src = chan_id;
-	strlcpy(mchan->info.name, name, RPMSG_NAME_SIZE);
+	strscpy(mchan->info.name, name, RPMSG_NAME_SIZE);
 
 	count = mbdev->recv_count;
 	for (i = 0; i < count; ++i) {

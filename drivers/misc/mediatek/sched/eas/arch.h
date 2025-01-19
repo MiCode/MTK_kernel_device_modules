@@ -54,8 +54,7 @@ unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 
 	sum_util = data[0];
 	i = em_pd_get_efficient_state(pd->em_table->state, pd->nr_perf_states,
-				      max_util, pd->flags, pd->min_ps,
-				      pd->max_ps);
+				      max_util, pd->flags);
 	ps = &pd->em_table->state[i];
 	return ps->cost * sum_util;
 }

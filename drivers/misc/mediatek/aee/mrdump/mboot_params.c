@@ -601,10 +601,10 @@ console_initcall(mboot_params_early_init);
 	(mboot_params_buffer ? RR_LINUX->rr_item : 0)
 
 #define LAST_RR_MEMCPY(rr_item, str, len)				\
-	(strlcpy(RR_LINUX->rr_item, str, len))
+	(strscpy(RR_LINUX->rr_item, str, len))
 
 #define LAST_RR_MEMCPY_WITH_ID(rr_item, id, str, len)			\
-	(strlcpy(RR_LINUX->rr_item[id], str, len))
+	(strscpy(RR_LINUX->rr_item[id], str, len))
 
 static void mboot_params_init_val(void)
 {

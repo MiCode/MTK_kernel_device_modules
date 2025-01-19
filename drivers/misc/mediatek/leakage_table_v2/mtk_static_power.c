@@ -11,7 +11,9 @@
 #include <linux/math64.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/proc_fs.h>
 #include "mtk_spower_data.h"

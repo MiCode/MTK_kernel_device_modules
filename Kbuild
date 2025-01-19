@@ -108,6 +108,8 @@ obj-y += sound/virtio/
 
 obj-y += drivers/pci/controller/
 
+obj-y += arch/arm64/geniezone/
+
 obj-y += drivers/media/virtio/
 
 obj-y += drivers/video/backlight/

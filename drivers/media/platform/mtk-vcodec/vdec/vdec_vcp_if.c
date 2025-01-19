@@ -433,7 +433,8 @@ static struct device *get_dev_by_mem_type(struct vdec_inst *inst, struct vcodec_
 	if (inst->ctx->dec_params.svp_mode) {
 		if (mem->type == MEM_TYPE_FOR_SW)
 			mem->type = MEM_TYPE_FOR_SEC_SW;
-		else if (mem->type == MEM_TYPE_FOR_HW)
+		else if (mem->type == MEM_TYPE_FOR_HW ||
+			 mem->type == MEM_TYPE_FOR_HW_CACHE)
 			mem->type = MEM_TYPE_FOR_SEC_HW;
 		else if (mem->type == MEM_TYPE_FOR_UBE_HW)
 			mem->type = MEM_TYPE_FOR_SEC_UBE_HW;
@@ -446,7 +447,9 @@ static struct device *get_dev_by_mem_type(struct vdec_inst *inst, struct vcodec_
 			return vcp_get_io_device_ex(VCP_IOMMU_WORK);
 	} else if (mem->type == MEM_TYPE_FOR_SEC_SW)
 		return vcp_get_io_device_ex(VCP_IOMMU_SEC);
-	else if (mem->type == MEM_TYPE_FOR_HW || mem->type == MEM_TYPE_FOR_SEC_HW)
+	else if (mem->type == MEM_TYPE_FOR_HW ||
+		 mem->type == MEM_TYPE_FOR_HW_CACHE ||
+		 mem->type == MEM_TYPE_FOR_SEC_HW)
 		return inst->vcu.ctx->dev->smmu_dev;
 	else if (mem->type == MEM_TYPE_FOR_UBE_HW || mem->type == MEM_TYPE_FOR_SEC_UBE_HW) {
 		if (vcp_get_io_device_ex(VCP_IOMMU_UBE_LAT) != NULL)
@@ -557,6 +560,9 @@ void vdec_dump_mem_buf(unsigned long h_vdec)
 	struct list_head *list_ptr, *tmp;
 	struct vcp_dec_mem_list *mem_list = NULL;
 	unsigned int bs_fourcc;
+
+	if (inst == NULL || inst->ctx == inst->ctx->dev_ctx)
+		return;
 
 	if (inst == NULL || inst->ctx == inst->ctx->dev_ctx)
 		return;
@@ -771,6 +777,7 @@ int vcp_dec_ipi_handler(void *arg)
 				break;
 			}
 		}
+		mutex_unlock(&dev->ctx_mutex);
 		if (!msg_valid) {
 			if (vcu) {
 				inst = container_of(vcu, struct vdec_inst, vcu);

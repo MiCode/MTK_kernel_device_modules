@@ -60,7 +60,7 @@ static void aee_exception_reboot(int reboot_reason)
 #if defined(CONFIG_RANDOMIZE_BASE) && defined(CONFIG_ARM64)
 static inline void show_kaslr(void)
 {
-	u64 const kaslr_off = kaslr_offset();
+	u64 const kaslr_off = 0;//kaslr_offset();
 
 	pr_notice("Kernel Offset: 0x%llx from 0x%lx\n",
 			kaslr_off, KIMAGE_VADDR);
@@ -331,7 +331,7 @@ static __init int mrdump_parse_chosen(struct mrdump_params *mparams)
 		}
 
 		if (of_property_read_string(node, "mrdump,lk", &lkver) == 0) {
-			strlcpy(mparams->lk_version, lkver,
+			strscpy(mparams->lk_version, lkver,
 				sizeof(mparams->lk_version));
 			pr_notice("%s: lk version %s\n", __func__, lkver);
 		}

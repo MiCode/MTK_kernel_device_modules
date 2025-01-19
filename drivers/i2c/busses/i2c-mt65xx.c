@@ -2626,7 +2626,7 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 		clk = i2c->clk_pmic;
 	}
 
-	strlcpy(i2c->adap.name, I2C_DRV_NAME, sizeof(i2c->adap.name));
+	strscpy(i2c->adap.name, I2C_DRV_NAME, sizeof(i2c->adap.name));
 
 	if (i2c->ch_offset_i2c == i2c->i2c_offset_scp) {
 		if (i2c->clk_src_in_hz)

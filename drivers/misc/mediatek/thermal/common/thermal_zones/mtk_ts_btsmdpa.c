@@ -25,6 +25,7 @@
 #include <linux/uidgid.h>
 #include <tmp_bts.h>
 #include <linux/slab.h>
+#include "thermal_core.h"
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC)
 #include <linux/iio/consumer.h>
 #endif

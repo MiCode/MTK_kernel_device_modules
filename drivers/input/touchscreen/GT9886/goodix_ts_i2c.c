@@ -2415,9 +2415,9 @@ static int goodix_i2c_probe(struct i2c_client *client)
 			if (strcmp("r66451_fhdp_dphy_cmd_tianma_120hz", gt9886_lcm_buf) == 0) {
 				if (ts_bdata->panel_max_x == 1080
 					&& ts_bdata->panel_max_y == 2340) {
-					strlcpy(panel_config_buf,
+					strscpy(panel_config_buf,
 						"gt9886_cfg_90hz6885", 20);
-					strlcpy(panel_firmware_buf,
+					strscpy(panel_firmware_buf,
 						"gt9886_firmware_6885af", 23);
 				} else {
 					ts_info("%s, fault firmware!", gt9886_lcm_buf);
@@ -2428,9 +2428,9 @@ static int goodix_i2c_probe(struct i2c_client *client)
 					gt9886_lcm_buf) == 0)) {
 				if (ts_bdata->panel_max_x == 1080
 					&& ts_bdata->panel_max_y == 2280) {
-					strlcpy(panel_config_buf,
+					strscpy(panel_config_buf,
 						"gt9886_cfg_6877v01", 19);
-					strlcpy(panel_firmware_buf,
+					strscpy(panel_firmware_buf,
 						"gt9886_firmware_6877v01", 24);
 				} else {
 					ts_info("%s, fault firmware!", gt9886_lcm_buf);

@@ -143,6 +143,8 @@ static DEFINE_SPINLOCK(hwv_infra_lock);
 #define hwccf_lock(flags)   spin_lock_irqsave(&hwv_infra_lock, flags)
 #define hwccf_unlock(flags) spin_unlock_irqrestore(&hwv_infra_lock, flags)
 
+static bool mmproc_sspm_vote_sync_bits_support;
+
 int register_scpsys_notifier(struct notifier_block *nb)
 {
 	return blocking_notifier_chain_register(&scpsys_notifier_list, nb);
@@ -1642,41 +1644,6 @@ static int init_basic_clks(struct platform_device *pdev, struct clk **clk,
 	return 0;
 }
 
-static int mtk_pd_set_performance(struct generic_pm_domain *genpd,
-				  unsigned int state)
-{
-	int i;
-	struct scp_domain *scpd =
-		container_of(genpd, struct scp_domain, genpd);
-	struct scp_event_data scpe;
-	struct scp *scp = scpd->scp;
-	struct genpd_onecell_data *pd_data = &scp->pd_data;
-
-	for (i = 0; i < pd_data->num_domains; i++) {
-		if (genpd == pd_data->domains[i]) {
-			dev_dbg(scp->dev, "%d. %s = %d\n",
-				i, genpd->name, state);
-			break;
-		}
-	}
-
-	if (i == pd_data->num_domains)
-		return 0;
-
-	scpe.event_type = MTK_SCPSYS_PSTATE;
-	scpe.genpd = genpd;
-	scpe.domain_id = i;
-	blocking_notifier_call_chain(&scpsys_notifier_list, state, &scpe);
-
-	return 0;
-}
-
-static unsigned int mtk_pd_get_performance(struct generic_pm_domain *genpd,
-					   struct dev_pm_opp *opp)
-{
-	return dev_pm_opp_get_level(opp);
-}
-
 static int mtk_pd_get_regmap(struct platform_device *pdev, struct regmap **regmap,
 			const char *name)
 {
@@ -1756,6 +1723,22 @@ struct scp *init_scp(struct platform_device *pdev,
 	struct resource *res;
 	int i, ret;
 	struct scp *scp;
+	struct device_node *vcp_node;
+	int support = 0;
+
+	vcp_node = of_find_node_by_name(NULL, "vcp");
+	if (vcp_node == NULL)
+		pr_info("failed to find vcp_node @ %s\n", __func__);
+	else {
+		ret = of_property_read_u32(vcp_node, "warmboot-support", &support);
+
+		if (ret || support == 0) {
+			pr_info("%s mmproc_sspm_vote_sync_bits_support is disabled: %d\n",
+				__func__, ret);
+			mmproc_sspm_vote_sync_bits_support = false;
+		} else
+			mmproc_sspm_vote_sync_bits_support = true;
+	}
 
 	scp = devm_kzalloc(&pdev->dev, sizeof(*scp), GFP_KERNEL);
 	if (!scp)
@@ -1905,14 +1888,6 @@ struct scp *init_scp(struct platform_device *pdev,
 			genpd->flags |= GENPD_FLAG_ALWAYS_ON;
 		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_IRQ_SAVE))
 			genpd->flags |= GENPD_FLAG_IRQ_SAFE;
-
-		/* Add opp table check first to avoid OF runtime parse failed */
-		if (of_count_phandle_with_args(pdev->dev.of_node,
-		    "operating-points-v2", NULL) > 0) {
-			genpd->set_performance_state = mtk_pd_set_performance;
-			genpd->opp_to_performance_state =
-				mtk_pd_get_performance;
-		}
 	}
 
 	if (hwvdbg_infra_base == NULL)

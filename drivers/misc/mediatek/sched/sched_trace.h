@@ -113,7 +113,7 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__field(unsigned long,   uclamp_min)
 		__field(unsigned long,   uclamp_max)
 		__field(unsigned long,   cap)
-		__field(unsigned long,   thermal_pressure)
+		__field(unsigned long,   hw_pressure)
 		__field(unsigned long,   ceiling)
 		__field(unsigned int,   sugov_margin)
 		__field(unsigned int,   capacity_dn_margin)
@@ -130,12 +130,12 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__entry->uclamp_min			= uclamp_min;
 		__entry->uclamp_max			= uclamp_max;
 		__entry->cap				= cap;
-		__entry->thermal_pressure	= arch_scale_thermal_pressure(cpu);
+		__entry->hw_pressure	= arch_scale_hw_pressure(cpu);
 		__entry->ceiling			= ceiling;
 		__entry->sugov_margin	= sugov_margin;
 		__entry->capacity_dn_margin	= capacity_dn_margin;
 		__entry->capacity_up_margin	= capacity_up_margin;
-		__entry->capacity_orig		= capacity_orig_of(cpu);
+		__entry->capacity_orig		= arch_scale_cpu_capacity(cpu);
 		__entry->AM_enabled			= AM_enabled;
 		__entry->uclamp_involve			= uclamp_involve;
 		),
@@ -148,7 +148,7 @@ TRACE_EVENT(sched_fits_cap_ceiling,
 		__entry->uclamp_min,
 		__entry->uclamp_max,
 		__entry->cap,
-		__entry->thermal_pressure,
+		__entry->hw_pressure,
 		__entry->ceiling,
 		__entry->capacity_dn_margin,
 		__entry->capacity_up_margin,
@@ -364,11 +364,7 @@ TRACE_EVENT(sched_select_task_rq,
 
 	TP_fast_assign(
 		__entry->pid        = tsk->pid;
-#if IS_ENABLED(CONFIG_ARM64)
 		__entry->compat_thread = is_compat_thread(task_thread_info(tsk));
-#else
-		__entry->compat_thread = 0;
-#endif
 		__entry->in_irq     = in_irq;
 		__entry->policy     = policy;
 		__entry->backup_reason     = backup_reason;

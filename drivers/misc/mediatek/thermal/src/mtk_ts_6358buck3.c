@@ -23,6 +23,7 @@
 #include <tspmic_settings.h>
 #include <linux/uidgid.h>
 #include <linux/slab.h>
+#include "thermal_core.h"
 
 /*=============================================================
  *Local variable definition

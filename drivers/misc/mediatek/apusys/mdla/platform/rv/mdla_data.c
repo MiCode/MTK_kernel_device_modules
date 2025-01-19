@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/dma-mapping.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
 
 #include "mdla_cfg_data.h"

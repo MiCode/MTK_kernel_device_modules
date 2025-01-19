@@ -3117,8 +3117,7 @@ int tfa98xx_i2c_probe(struct i2c_client *i2c)
 		"tfa98xx_cache", /* Cache name /proc/slabinfo */
 		PAGE_SIZE, /* Structure size, we should fit in single page */
 		0, /* Structure alignment */
-		(SLAB_HWCACHE_ALIGN | SLAB_RECLAIM_ACCOUNT |
-		SLAB_MEM_SPREAD), /* Cache property */
+		(SLAB_HWCACHE_ALIGN | SLAB_RECLAIM_ACCOUNT), /* Cache property */
 		NULL);/* Object constructor */
 
 	pr_info("tfa create cache.......%p\n", tfa98xx_cache);

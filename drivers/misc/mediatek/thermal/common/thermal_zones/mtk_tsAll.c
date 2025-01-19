@@ -21,6 +21,7 @@
 #include "mtk_thermal_timer.h"
 #include <linux/uidgid.h>
 #include <linux/slab.h>
+#include "thermal_core.h"
 
 #define RESERVED_TZS (21)
 #define AUTO_GEN_COOLERS (1)

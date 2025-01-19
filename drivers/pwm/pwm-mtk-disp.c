@@ -351,7 +351,6 @@ static int mtk_disp_pwm_get_state(struct pwm_chip *chip,
 static const struct pwm_ops mtk_disp_pwm_ops = {
 	.apply = mtk_disp_pwm_apply,
 	.get_state = mtk_disp_pwm_get_state,
-	.owner = THIS_MODULE,
 };
 
 static int mtk_disp_pwm_probe(struct platform_device *pdev)
@@ -393,23 +392,23 @@ static int mtk_disp_pwm_probe(struct platform_device *pdev)
 			if (get_pwm_src_base(&pdev->dev, mdp) >= 0) {
 				ret = clk_prepare_enable(mdp->clk_mm);
 				if (ret < 0) {
-					dev_info(mdp->chip.dev, "clk prepare enable failed!\n");
+					dev_info(&mdp->chip.dev, "clk prepare enable failed!\n");
 					return ret;
 				}
 				ret = clk_set_parent(mdp->clk_mm, mdp->clk_source);
 				if (ret < 0) {
-					dev_info(mdp->chip.dev, "no pwm_src\n");
+					dev_info(&mdp->chip.dev, "no pwm_src\n");
 					return ret;
 				}
 				clk_disable_unprepare(mdp->clk_mm);
 				// mdp->pwm_src_set = true;
-				dev_info(mdp->chip.dev, "select clk_mm with pwm_src\n");
+				dev_info(&mdp->chip.dev, "select clk_mm with pwm_src\n");
 			}
 		} else
 			dev_info(&pdev->dev, "get pwm_src failed\n");
 	}
 
-	mdp->chip.dev = &pdev->dev;
+	mdp->chip.dev = pdev->dev;
 	mdp->chip.ops = &mtk_disp_pwm_ops;
 	mdp->chip.npwm = 1;
 

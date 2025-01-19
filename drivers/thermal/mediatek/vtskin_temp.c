@@ -9,12 +9,14 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
 #include "vtskin_temp.h"
 #include <linux/math64.h>
 #include <linux/timer.h>
+#include "thermal_core.h"
 
 static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 {
@@ -42,14 +44,14 @@ static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 		}
 
 		tzd = skin_param[skin_tz->id].tzd[i];
-		if (IS_ERR_OR_NULL(tzd) || !tzd->ops || !tzd->ops->get_temp) {
+		if (IS_ERR_OR_NULL(tzd) || !tzd->ops.get_temp) {
 			dev_err(skin_data->dev, "get %s temp fail\n", sensor_name);
 			*temp = THERMAL_TEMP_INVALID;
 			return -EINVAL;
 		}
 
 		if (skin_param[skin_tz->id].operation != OP_COEF) {
-			ret = tzd->ops->get_temp(tzd, &tz_temp);
+			ret = tzd->ops.get_temp(tzd, &tz_temp);
 			if (ret < 0) {
 				dev_err(skin_data->dev, "%s get_temp fail %d\n", sensor_name, ret);
 				*temp = THERMAL_TEMP_INVALID;
@@ -72,7 +74,7 @@ static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 				((unsigned long long)ktime_us_delta(now_time, last_time) < 200000) )
 				tz_temp = last_temp;
 			else {
-				ret = tzd->ops->get_temp(tzd, &tz_temp);
+				ret = tzd->ops.get_temp(tzd, &tz_temp);
 				if (ret < 0) {
 					dev_err(skin_data->dev, "%s get_temp fail %d\n", sensor_name, ret);
 					*temp = THERMAL_TEMP_INVALID;

@@ -107,7 +107,7 @@ static void init_sensorlist_info(void)
 	int handle = -1;
 
 	for (handle = accel; handle < maxhandle; ++handle)
-		strlcpy(sensorlist_info[handle].name,
+		strscpy(sensorlist_info[handle].name,
 			"NULL",
 			sizeof(sensorlist_info[handle].name));
 }
@@ -130,7 +130,7 @@ static void sensorlist_get_deviceinfo(struct work_struct *work)
 			continue;
 		}
 		spin_lock(&sensorlist_info_lock);
-		strlcpy(sensorlist_info[handle].name,
+		strscpy(sensorlist_info[handle].name,
 			devinfo.name,
 			sizeof(sensorlist_info[handle].name));
 		spin_unlock(&sensorlist_info_lock);
@@ -166,7 +166,7 @@ int sensorlist_register_deviceinfo(int sensor,
 	if (handle < 0)
 		return -1;
 	spin_lock(&sensorlist_info_lock);
-	strlcpy(sensorlist_info[handle].name,
+	strscpy(sensorlist_info[handle].name,
 		devinfo->name,
 		sizeof(sensorlist_info[handle].name));
 	spin_unlock(&sensorlist_info_lock);

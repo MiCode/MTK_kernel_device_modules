@@ -157,9 +157,9 @@ int32_t mddp_on_activate(enum mddp_app_type_e type,
 	/*
 	 * MDDP ACTIVATE command.
 	 */
-	strlcpy(app->ap_cfg.ul_dev_name, ul_dev_name,
+	strscpy(app->ap_cfg.ul_dev_name, ul_dev_name,
 			sizeof(app->ap_cfg.ul_dev_name));
-	strlcpy(app->ap_cfg.dl_dev_name, dl_dev_name,
+	strscpy(app->ap_cfg.dl_dev_name, dl_dev_name,
 			sizeof(app->ap_cfg.dl_dev_name));
 	MDDP_C_LOG(MDDP_LL_INFO,
 			"%s: type(%d), app(%p), ul(%s), dl(%s).\n",

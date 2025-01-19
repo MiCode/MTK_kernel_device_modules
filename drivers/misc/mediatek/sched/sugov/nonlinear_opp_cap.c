@@ -14,7 +14,9 @@
 #include <sched/pelt.h>
 #include <linux/sched/clock.h>
 #include <linux/energy_model.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/cpuset.h>
 #include "common.h"
 #include "cpufreq.h"
@@ -253,6 +255,8 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 	int i, cpu, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
 	unsigned int wl = get_wl_dsu();
 	struct cpufreq_mtk *c = policy->driver_data;
+	unsigned int gov_cpu = policy->cpu;
+	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int freq_thermal = 0;
 	struct sugov_rq_data *sugov_data_ptr;
 	bool dsu_idle_ctrl = is_dsu_idle_enable();
@@ -298,6 +302,11 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		freq_state.dsu_freq_vote[i]
 			= dsu_freq_agg(cpu, cpu_freq_with_thermal, false, wl, &dsu_target_freq);
 
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+		freq_thermal = get_cpu_ceiling_freq(gearid);
+		if(dsu_target_freq > freq_thermal)
+			dsu_target_freq = freq_thermal;
+#endif
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
 			trace_sugov_ext_dsu_freq_vote(wl, i, dsu_idle_ctrl,
@@ -468,7 +477,7 @@ static unsigned long mtk_scale_rt_capacity(int cpu)
 
 	used = READ_ONCE(rq->avg_rt.util_avg);
 	used += READ_ONCE(rq->avg_dl.util_avg);
-	used += thermal_load_avg(rq);
+	used += hw_load_avg(rq);
 
 	if (unlikely(used >= max))
 		return 1;
@@ -484,7 +493,6 @@ void mtk_update_cpu_capacity(int cpu, unsigned long cap_orig, int wl, int caller
 	unsigned long capacity = mtk_scale_rt_capacity(cpu);
 
 	WRITE_ONCE(per_cpu(cpu_scale, cpu), cap_orig);
-	cpu_rq(cpu)->cpu_capacity_orig = arch_scale_cpu_capacity(cpu);
 
 	if (!capacity)
 		capacity = 1;
@@ -500,12 +508,12 @@ void mtk_update_cpu_capacity(int cpu, unsigned long cap_orig, int wl, int caller
 /* hooked from k66 update_cpu_capacity() */
 void hook_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 {
-	unsigned long cap_ceiling, capacity_orig = capacity_orig_of(cpu);
+	unsigned long cap_ceiling, capacity_orig = arch_scale_cpu_capacity(cpu);
 
 	cap_ceiling = min_t(unsigned long, *capacity, get_cpu_gear_uclamp_max_capacity(cpu));
 	*capacity = clamp_t(unsigned long, cap_ceiling,
 		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
-	*capacity = min_t(unsigned long, *capacity, capacity_orig - READ_ONCE(per_cpu(thermal_pressure, cpu)));
+	*capacity = min_t(unsigned long, *capacity, capacity_orig - READ_ONCE(per_cpu(hw_pressure, cpu)));
 }
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
@@ -674,8 +682,8 @@ void init_sys_max_cap_cpu(void)
 	unsigned int cpu, sys_max_cap = 0;
 
 	for_each_possible_cpu(cpu)
-		if (capacity_orig_of(cpu) > sys_max_cap) {
-			sys_max_cap = capacity_orig_of(cpu);
+		if (arch_scale_cpu_capacity(cpu) > sys_max_cap) {
+			sys_max_cap = arch_scale_cpu_capacity(cpu);
 			sys_max_cap_cluster = topology_cluster_id(cpu);
 		}
 }
@@ -734,8 +742,8 @@ void update_curr_collab_state(bool *is_cpu_to_update_thermal)
 
 				mtk_update_cpu_capacity(cpu, cap, wl, CAP_UPDATED_BY_DPT);
 
-				if (capacity_orig_of(cpu) > sys_max_cap) {
-					sys_max_cap = capacity_orig_of(cpu);
+				if (arch_scale_cpu_capacity(cpu) > sys_max_cap) {
+					sys_max_cap = arch_scale_cpu_capacity(cpu);
 					__sys_max_cap_cluster = topology_cluster_id(cpu);
 				}
 			}
@@ -2414,6 +2422,7 @@ EXPORT_SYMBOL(get_group_hint_hook);
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 int group_aware_dvfs_util(struct cpumask *cpumask)
 {
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	unsigned long cpu_util = 0;
 	unsigned long ret_util = 0;
 	unsigned long max_ret_util = 0;
@@ -2445,6 +2454,8 @@ skip_idle:
 			trace_sugov_ext_tar(cpu, ret_util, cpu_util, umax, am);
 	}
 	return max_ret_util;
+#endif
+	return -1;
 }
 #endif
 
@@ -2750,7 +2761,7 @@ unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int
 		trace_sched_runnable_boost(is_runnable_boost_enable(), boost, cfs_rq->avg.util_avg,
 				cfs_rq->avg.util_est, runnable, util);
 
-	return min(util, capacity_orig_of(cpu) + 1);
+	return min(util, arch_scale_cpu_capacity(cpu) + 1);
 }
 EXPORT_SYMBOL_GPL(mtk_cpu_util_next);
 

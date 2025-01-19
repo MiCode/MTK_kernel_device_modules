@@ -15,6 +15,7 @@
 #include <linux/mfd/mt6363/registers.h>
 #include <linux/mfd/mt6377/registers.h>
 #include <linux/mfd/mt6397/core.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/pm_wakeup.h>

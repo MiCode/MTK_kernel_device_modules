@@ -332,7 +332,7 @@ static void update_irq_count(void)
 			continue;
 
 		for_each_online_cpu(cpu) {
-			if (data_race(*per_cpu_ptr(desc->kstat_irqs, cpu))) {
+			if (data_race(per_cpu(desc->kstat_irqs->cnt, cpu))) {
 				irq_mon_desc_alloc(irq);
 				break;
 			}
@@ -362,7 +362,7 @@ static void update_irq_count(void)
 
 		for_each_online_cpu(cpu)
 			IMDESC_IRQ(imdesc, cpu, stat->index) =
-				data_race(*per_cpu_ptr(desc->kstat_irqs, cpu));
+				data_race(per_cpu(desc->kstat_irqs->cnt, cpu));
 	}
 	xas_unlock_irqrestore(&xas, flags);
 	stat->t_diff = stat->t_end - stat->t_start;

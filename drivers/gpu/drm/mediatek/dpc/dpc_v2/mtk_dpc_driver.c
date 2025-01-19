@@ -10,6 +10,8 @@
 #include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>

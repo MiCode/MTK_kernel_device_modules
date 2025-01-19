@@ -12,6 +12,7 @@
 #include <linux/clk.h>
 #include <linux/cpumask.h>
 #include <linux/delay.h>
+#include <linux/of_platform.h>
 #include <linux/of_address.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
@@ -414,7 +415,7 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 	mb();
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	ufshcd_vops_check_bus_status(hba);
+	//ufshcd_vops_check_bus_status(hba);
 #endif
 
 	/* Wait for ack */
@@ -1780,19 +1781,19 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 				  struct ufs_pa_layer_attr *dev_req_params)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	struct ufs_dev_params host_cap;
+	struct ufs_host_params host_params;
 	int ret;
 
-	ufshcd_init_pwr_dev_param(&host_cap);
-	host_cap.hs_rx_gear = UFS_HS_G5;
-	host_cap.hs_tx_gear = UFS_HS_G5;
+	ufshcd_init_host_params(&host_params);
+	host_params.hs_rx_gear = UFS_HS_G5;
+	host_params.hs_tx_gear = UFS_HS_G5;
 
 	if ((dev_max_params->pwr_rx == SLOW_MODE) ||
 		(dev_max_params->pwr_tx == SLOW_MODE)) {
-		host_cap.desired_working_mode = UFS_PWM_MODE;
+		host_params.desired_working_mode = UFS_PWM_MODE;
 	}
 
-	ret = ufshcd_get_pwr_dev_param(&host_cap,
+	ret = ufshcd_negotiate_pwr_params(&host_params,
 				       dev_max_params,
 				       dev_req_params);
 	if (ret) {
@@ -2310,15 +2311,7 @@ static void _ufshcd_enable_intr(struct ufs_hba *hba, u32 intrs)
 {
 	u32 set = ufshcd_readl(hba, REG_INTERRUPT_ENABLE);
 
-	if (hba->ufs_version == ufshci_version(1, 0)) {
-		u32 rw;
-
-		rw = set & INTERRUPT_MASK_RW_VER_10;
-		set = rw | ((set ^ intrs) & intrs);
-	} else {
-		set |= intrs;
-	}
-
+	set |= intrs;
 	ufshcd_writel(hba, set, REG_INTERRUPT_ENABLE);
 }
 
@@ -3137,6 +3130,7 @@ static int ufs_mtk_config_esi(struct ufs_hba *hba)
 	return ufs_mtk_config_mcq(hba, true);
 }
 
+#if 0
 static void ufs_mtk_config_scsi_dev(struct scsi_device *sdev)
 {
 	struct ufs_hba *hba = shost_priv(sdev->host);
@@ -3151,6 +3145,7 @@ static void ufs_mtk_config_scsi_dev(struct scsi_device *sdev)
 		complete(&host->luns_added);
 	}
 }
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
@@ -3196,9 +3191,9 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.op_runtime_config   = ufs_mtk_op_runtime_config,
 	.mcq_config_resource = ufs_mtk_mcq_config_resource,
 	.config_esi          = ufs_mtk_config_esi,
-	.config_scsi_dev     = ufs_mtk_config_scsi_dev,
+	//.config_scsi_dev     = ufs_mtk_config_scsi_dev,
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	.check_bus_status    = ufs_mtk_check_bus_status,
+	//.check_bus_status    = ufs_mtk_check_bus_status,
 	//.dbg_dump            = _ufs_mtk_dbg_dump,
 #endif
 };
@@ -3301,7 +3296,7 @@ out:
  *
  * Always return 0
  */
-static int ufs_mtk_remove(struct platform_device *pdev)
+static void ufs_mtk_remove(struct platform_device *pdev)
 {
 	struct ufs_hba *hba = platform_get_drvdata(pdev);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
@@ -3318,8 +3313,6 @@ static int ufs_mtk_remove(struct platform_device *pdev)
 	ufshcd_remove(hba);
 
 	ufs_mtk_uninstall_tracepoints();
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -3440,7 +3433,7 @@ static const struct dev_pm_ops ufs_mtk_pm_ops = {
 
 static struct platform_driver ufs_mtk_pltform = {
 	.probe      = ufs_mtk_probe,
-	.remove     = ufs_mtk_remove,
+	.remove_new = ufs_mtk_remove,
 	.driver = {
 		.name   = "ufshcd-mtk",
 		.pm     = &ufs_mtk_pm_ops,

@@ -40,7 +40,7 @@ void mrdump_arch_fill_machdesc(struct mrdump_machdesc *machdesc_p)
 #if defined(KIMAGE_VADDR)
 	machdesc_p->kimage_vaddr = KIMAGE_VADDR;
 #endif
-	machdesc_p->kimage_offset = kaslr_offset();
+	machdesc_p->kimage_offset = 0;//kaslr_offset();
 	machdesc_p->kimage_voffset = (unsigned long)kimage_voffset;
 	machdesc_p->page_size = (unsigned long)PAGE_SIZE;
 }

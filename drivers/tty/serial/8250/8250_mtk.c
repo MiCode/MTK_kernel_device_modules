@@ -740,15 +740,6 @@ int mtk8250_uart_hub_inband_is_support(void)
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_inband_is_support);
 
-int mtk8250_uart_hub_bt_on_count_inc(void)
-{
-	if (uarthub_drv_cbs.bt_on_count_inc)
-		return uarthub_drv_cbs.bt_on_count_inc();
-	else
-		return -1;
-}
-EXPORT_SYMBOL(mtk8250_uart_hub_bt_on_count_inc);
-
 int mtk8250_uart_hub_is_txrx_idle(int rx)
 {
 	if (uarthub_drv_cbs.dev0_is_txrx_idle)
@@ -958,6 +949,15 @@ int mtk8250_uart_hub_get_cmm_bt_awake_sta(void)
 		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_get_cmm_bt_awake_sta);
+
+int mtk8250_uart_hub_bt_on_count_inc(void)
+{
+	if (uarthub_drv_cbs.bt_on_count_inc)
+		return uarthub_drv_cbs.bt_on_count_inc();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_bt_on_count_inc);
 
 int mtk8250_uart_hub_get_bt_awake_sta(void)
 {

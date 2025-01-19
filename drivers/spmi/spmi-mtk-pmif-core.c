@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/mm.h>
 #include <linux/spmi.h>

@@ -226,6 +226,19 @@ static int audio_dsp_version_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int audio_dsp_type_set(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static int audio_dsp_type_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = get_adsp_type();
+	return 0;
+}
+
 static int smartpa_swdsp_process_enable_set(struct snd_kcontrol *kcontrol,
 					    struct snd_ctl_elem_value *ucontrol)
 {
@@ -711,6 +724,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       a2dp_clear_irq_set),
 	SOC_SINGLE_EXT("ktv_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       ktv_status_get, ktv_status_set),
+	SOC_SINGLE_EXT("audio_dsp_type", SND_SOC_NOPM, 0, 0xff, 0,
+		       audio_dsp_type_get, audio_dsp_type_set),
 	SOC_SINGLE_EXT("audio_dsp_wakelock", SND_SOC_NOPM, 0, 0xffff, 0,
 		       dsp_wakelock_get, dsp_wakelock_set),
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
@@ -736,7 +751,7 @@ static snd_pcm_uframes_t mtk_dsphw_pcm_pointer_ul
 {
 
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct snd_soc_component *component =
 		snd_soc_rtdcom_lookup(rtd, AFE_DSP_NAME);
@@ -778,7 +793,7 @@ static snd_pcm_uframes_t mtk_dsphw_pcm_pointer_dl
 {
 
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct snd_soc_component *component =
 			snd_soc_rtdcom_lookup(rtd, AFE_DSP_NAME);
@@ -1192,7 +1207,7 @@ static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mtk_base_dsp *dsp = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 
 	int id = cpu_dai->id;
 	int dsp_feature_id = get_featureid_by_dsp_daiid(id);
@@ -1250,7 +1265,7 @@ static int mtk_dsp_pcm_close(struct snd_soc_component *component,
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct mtk_base_dsp *dsp = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	int dsp_feature_id = get_featureid_by_dsp_daiid(id);
 	const char *task_name = get_str_by_dsp_dai_id(id);
@@ -1316,7 +1331,7 @@ static int mtk_dsp_pcm_hw_params(struct snd_soc_component *component,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct mtk_base_dsp *dsp = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
 	int ret = 0;
@@ -1405,7 +1420,7 @@ static int mtk_dsp_pcm_hw_free(struct snd_soc_component *component,
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct mtk_base_dsp *dsp = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
 
@@ -1437,7 +1452,7 @@ static int mtk_dsp_pcm_hw_prepare(struct snd_soc_component *component,
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct mtk_base_dsp *dsp = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
 	struct audio_hw_buffer *adsp_buf = &dsp_mem->adsp_buf;
@@ -1486,7 +1501,7 @@ static int mtk_dsp_start(struct snd_pcm_substream *substream,
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
 	const char *task_name = get_str_by_dsp_dai_id(id);
@@ -1510,7 +1525,7 @@ static int mtk_dsp_stop(struct snd_pcm_substream *substream,
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 
 	trace_mtk_dsp_stop(id);
@@ -1551,7 +1566,7 @@ static int mtk_dsp_pcm_copy_dl(struct snd_pcm_substream *substream,
 	int ack_type;
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct RingBuf *ringbuf = &dsp_mem->ring_buf;
 	struct ringbuf_bridge *buf_bridge =
@@ -1639,7 +1654,7 @@ static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 	int ret = 0, availsize = 0;
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct RingBuf *ringbuf = &(dsp_mem->ring_buf);
 	unsigned long flags = 0;
@@ -1697,7 +1712,7 @@ static int mtk_dsp_pcm_copy(struct snd_soc_component *component,
 		unsigned long bytes)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct mtk_base_dsp *dsp = snd_soc_component_get_drvdata(component);
 	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];

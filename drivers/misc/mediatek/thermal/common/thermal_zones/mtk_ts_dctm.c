@@ -26,6 +26,7 @@
 #include <linux/slab.h>
 #include <linux/math64.h>
 #include "mt-plat/mtk_thermal_platform.h"
+#include "thermal_core.h"
 
 #if IS_ENABLED(CONFIG_PM)
 #include <linux/suspend.h>

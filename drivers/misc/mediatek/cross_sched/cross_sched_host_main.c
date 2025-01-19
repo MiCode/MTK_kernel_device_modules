@@ -147,8 +147,8 @@ static void vm_init_cpu_capacity(void)
 	unsigned long capacity_l = 0;
 	unsigned long capacity_b = 0;
 
-	capacity_l = READ_ONCE(cpu_rq(0)->cpu_capacity_orig);
-	capacity_b = READ_ONCE(cpu_rq(4)->cpu_capacity_orig);
+	capacity_l = arch_scale_cpu_capacity(0);
+	capacity_b = arch_scale_cpu_capacity(4);
 
 
 	vm_cpu_cap_watermark[0] = capacity_l; //one little core
@@ -177,7 +177,7 @@ static void vm_get_host_cpu_util(void)
 				if (sched_feat(UTIL_EST))
 					util_org = max_t(unsigned long, util_org,
 						READ_ONCE(cpu_rq(cpu)->cfs.avg.util_est));
-				host_cpu[cpu].util = min(util_org, READ_ONCE(cpu_rq(cpu)->cpu_capacity_orig));
+				host_cpu[cpu].util = min(util_org, arch_scale_cpu_capacity(cpu));
 			}
 			host_cpu_util_sum += host_cpu[cpu].util;
 		}

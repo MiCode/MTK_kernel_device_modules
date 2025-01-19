@@ -20,7 +20,7 @@
 #include <linux/uidgid.h>
 #include <linux/slab.h>
 #include <linux/power_supply.h>
-
+#include "thermal_core.h"
 
 
 

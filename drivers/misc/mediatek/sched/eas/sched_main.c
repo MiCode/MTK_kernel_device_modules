@@ -295,8 +295,8 @@ void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
 		trace_sched_set_uclamp(tsk->pid,
 		task_cpu(tsk), task_on_rq_queued(tsk), clamp_id, value);
 }
-
-static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
+//static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
+void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 				      unsigned int new_pelt, int *ret)
 {
 	int pelt_weight __maybe_unused = 0, pelt_sum __maybe_unused = 0;
@@ -329,7 +329,8 @@ static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 #endif
 }
 
-static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
+//static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
+void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 {
 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
 	struct sched_avg *sa = &se->avg;
@@ -382,6 +383,7 @@ static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 	}
 }
 
+#if 0
 static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 	struct affinity_context *ctx, bool *skip_user_ptr)
 {
@@ -401,6 +403,7 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 		}
 
 }
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 static void sched_irq_mon_init(void)
@@ -878,9 +881,7 @@ static long eas_ioctl(struct file *filp,
 
 static const struct proc_ops eas_Fops = {
 	.proc_ioctl = eas_ioctl,
-#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = eas_ioctl,
-#endif
 	.proc_open = eas_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
@@ -1076,8 +1077,8 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register android_rvh_can_migrate_task failed\n");
 
-	ret = register_trace_android_rvh_find_energy_efficient_cpu(
-			mtk_find_energy_efficient_cpu, NULL);
+	//ret = register_trace_android_rvh_find_energy_efficient_cpu(
+	//		mtk_find_energy_efficient_cpu, NULL);
 	if (ret)
 		pr_info("register android_rvh_find_energy_efficient_cpu failed\n");
 
@@ -1087,14 +1088,14 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register trace_android_rvh_cpu_overutilized failed\n");
 
 
-	ret = register_trace_android_rvh_tick_entry(
-			mtk_tick_entry, NULL);
+	//ret = register_trace_android_rvh_tick_entry(
+	//		mtk_tick_entry, NULL);
 	if (ret)
 		pr_info("register android_rvh_tick_entry failed\n");
 
 
-	ret = register_trace_android_vh_set_wake_flags(
-			mtk_set_wake_flags, NULL);
+	//ret = register_trace_android_vh_set_wake_flags(
+	//		mtk_set_wake_flags, NULL);
 	if (ret)
 		pr_info("register android_vh_set_wake_flags failed\n");
 
@@ -1102,11 +1103,11 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_pelt_rt_tp hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
+	//ret = register_trace_android_rvh_schedule(mtk_sched_switch, NULL);
 	if (ret)
 		pr_info("register mtk_sched_switch hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_update_misfit_status(mtk_update_misfit_status, NULL);
+	//ret = register_trace_android_rvh_update_misfit_status(mtk_update_misfit_status, NULL);
 	if (ret)
 		pr_info("register mtk_update_misfit_status hooks failed, returned %d\n", ret);
 
@@ -1130,7 +1131,7 @@ static int __init mtk_scheduler_init(void)
 
 #endif
 
-	ret = register_trace_android_rvh_cpu_util_cfs_boost(mtk_cpu_util_cfs_boost_hook, NULL);
+	//ret = register_trace_android_rvh_cpu_util_cfs_boost(mtk_cpu_util_cfs_boost_hook, NULL);
 	if (ret)
 		pr_info("register mtk_cpu_util_cfs_boost_hook hooks failed, returned %d\n", ret);
 
@@ -1143,7 +1144,7 @@ static int __init mtk_scheduler_init(void)
 		pr_info("register android_rvh_after_enqueue_task failed, returned %d\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)
-	ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
+	//ret = register_trace_android_rvh_new_task_stats(rotat_task_stats, NULL);
 	if (ret)
 		pr_info("register android_rvh_new_task_stats failed, returned %d\n", ret);
 
@@ -1160,7 +1161,7 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register find_lowest_rq hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
+	//ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
 	if (ret)
 		pr_info("register mtk_sched_pelt_multiplier hooks failed, returned %d\n", ret);
 
@@ -1168,8 +1169,8 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register dump_throttled_rt_tasks hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_post_init_entity_util_avg(
-		mtk_post_init_entity_util_avg, NULL);
+	//ret = register_trace_android_rvh_post_init_entity_util_avg(
+	//	mtk_post_init_entity_util_avg, NULL);
 	if (ret)
 		pr_info("register mtk_post_init_entity_util_avg hooks failed, returned %d\n", ret);
 
@@ -1182,7 +1183,7 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_setscheduler_uclamp hooks failed, returned %d\n", ret);
 
-	ret = register_trace_android_rvh_set_cpus_allowed_ptr(mtk_set_cpus_allowed_ptr, NULL);
+	//ret = register_trace_android_rvh_set_cpus_allowed_ptr(mtk_set_cpus_allowed_ptr, NULL);
 	if (ret)
 		pr_info("register mtk_set_cpus_allowed_ptr hooks failed, returned %d\n", ret);
 

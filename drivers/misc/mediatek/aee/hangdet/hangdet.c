@@ -628,7 +628,7 @@ static void show_irq_info(char *addr)
 				 * read desc->kstat_irqs maybe encounter data race.
 				 * use data_race bypass iterator_category
 				 */
-					data_race(*per_cpu_ptr(desc->kstat_irqs, j)));
+					data_race(per_cpu(desc->kstat_irqs->cnt, j)));
 				index += len;
 				if (index >= SZ_256 - 2) {
 					index = SZ_256 - 2;
@@ -726,7 +726,7 @@ static void show_irq_count(void)
 			  * read desc->kstat_irqs maybe encounter data race.
 			  * use data_race bypass iterator_category
 			  */
-			irq_counts[irq] = data_race(*per_cpu_ptr(desc->kstat_irqs, unkick_cpu));
+			irq_counts[irq] = data_race(per_cpu(desc->kstat_irqs->cnt, unkick_cpu));
 		}
 	}
 	mdelay(2000);
@@ -739,7 +739,7 @@ static void show_irq_count(void)
 		 * read desc->kstat_irqs maybe encounter data race.
 		 * use data_race bypass iterator_category
 		 */
-		count = data_race(*per_cpu_ptr(desc->kstat_irqs, unkick_cpu));
+		count = data_race(per_cpu(desc->kstat_irqs->cnt, unkick_cpu));
 		if (count == irq_counts[irq])
 			continue;
 
@@ -769,7 +769,7 @@ static void show_irq_count(void)
 }
 
 #if IS_ENABLED(CONFIG_SMP)
-static struct __call_single_data wdt_csd[MAX_CPUNR];
+static call_single_data_t wdt_csd[MAX_CPUNR];
 #endif
 static void kwdt_dump_func(void)
 {

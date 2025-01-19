@@ -3,6 +3,7 @@
  * Copyright (C) 2021 MediaTek Inc.
  */
 #ifdef __aarch64__
+#include <linux/sched.h>
 #include <asm/pointer_auth.h>
 #include <asm/stacktrace/common.h>
 #endif

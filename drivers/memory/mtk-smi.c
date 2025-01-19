@@ -5211,6 +5211,9 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "skip-rpm-cb"))
 		common->skip_rpm_cb = true;
 
+	if (of_property_read_bool(dev->of_node, "skip-rpm-cb"))
+		common->skip_rpm_cb = true;
+
 	if (of_property_read_bool(dev->of_node, "init-power-on")) {
 		dev_notice(dev, "%s: init power on\n", __func__);
 		ret = pm_runtime_get_sync(dev);

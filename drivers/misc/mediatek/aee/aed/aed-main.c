@@ -320,10 +320,10 @@ static struct aee_oops *aee_oops_create(enum AE_DEFECT_ATTR attr,
 	oops->attr = attr;
 	oops->clazz = clazz;
 	if (module)
-		strlcpy(oops->module, module, sizeof(oops->module));
+		strscpy(oops->module, module, sizeof(oops->module));
 	else
-		strlcpy(oops->module, "N/A", sizeof(oops->module));
-	strlcpy(oops->backtrace, "N/A", sizeof(oops->backtrace));
+		strscpy(oops->module, "N/A", sizeof(oops->module));
+	strscpy(oops->backtrace, "N/A", sizeof(oops->backtrace));
 
 	return oops;
 }
@@ -399,7 +399,7 @@ static void ke_gen_module_msg(void)
 	rep_msg->cmdType = AE_RSP;
 	rep_msg->cmdId = AE_REQ_MODULE;
 	rep_msg->len = strlen(aed_dev.kerec.lastlog->module) + 1;
-	strlcpy(data, aed_dev.kerec.lastlog->module,
+	strscpy(data, aed_dev.kerec.lastlog->module,
 			sizeof(aed_dev.kerec.lastlog->module));
 }
 
@@ -418,7 +418,7 @@ static void ke_gen_detail_msg(const struct AE_Msg *req_msg)
 	rep_msg->cmdId = AE_REQ_DETAIL;
 	rep_msg->len = aed_dev.kerec.lastlog->detail_len + 1;
 	if (aed_dev.kerec.lastlog->detail)
-		strlcpy(data, aed_dev.kerec.lastlog->detail,
+		strscpy(data, aed_dev.kerec.lastlog->detail,
 				aed_dev.kerec.lastlog->detail_len);
 	data[aed_dev.kerec.lastlog->detail_len] = 0;
 
@@ -437,7 +437,7 @@ static void ke_gen_backtrace_msg(void)
 	rep_msg->cmdType = AE_RSP;
 	rep_msg->cmdId = AE_REQ_BACKTRACE;
 
-	strlcpy(data, aed_dev.kerec.lastlog->backtrace, AEE_BACKTRACE_LENGTH);
+	strscpy(data, aed_dev.kerec.lastlog->backtrace, AEE_BACKTRACE_LENGTH);
 	/* Count into the NUL byte at end of string */
 	rep_msg->len = strlen(data) + 1;
 }

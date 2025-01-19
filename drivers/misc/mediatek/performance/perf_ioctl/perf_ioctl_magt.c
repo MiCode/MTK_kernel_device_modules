@@ -50,7 +50,7 @@ static int *num_cpus;
 
 unsigned long capacity_curr_of(int cpu)
 {
-	unsigned long max_cap = cpu_rq(cpu)->cpu_capacity_orig;
+	unsigned long max_cap = arch_scale_cpu_capacity(cpu);
 	unsigned long scale_freq = arch_scale_freq_capacity(cpu);
 
 	return cap_scale(max_cap, scale_freq);

@@ -1461,7 +1461,6 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 	tz = thermal_zone_device_register_with_trips(type,
 			trips,
 			num_trip, /* /< total number of trip points */
-			0,	/* /< mask */
 			/* (void*)ops,     ///< invoker's ops pass to devdata */
 			(void *)tzdata,
 			&mtk_thermal_wrapper_dev_ops, /* /< use wrapper ops. */

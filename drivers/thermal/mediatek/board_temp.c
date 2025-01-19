@@ -9,10 +9,12 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
 #include <linux/math64.h>
+#include "thermal_core.h"
 
 #define READ_TIA_REG_COUNT_MAX 3
 

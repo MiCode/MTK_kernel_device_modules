@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/mfd/mt6397/core.h>/* PMIC MFD core header */
 #include <linux/regmap.h>
+#include "thermal_core.h"
 
 /*=============================================================
  *Local variable definition

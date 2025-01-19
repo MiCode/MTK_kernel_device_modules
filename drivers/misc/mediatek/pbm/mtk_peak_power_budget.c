@@ -89,6 +89,10 @@ struct ppb ppb = {
 	.cg_budget_cnt = 0,
 };
 
+struct hpt hpt_data = {
+	.vsys_budget = 0,
+};
+
 struct ppb ppb_manual = {
 	.loading_flash = 0,
 	.loading_audio = 0,

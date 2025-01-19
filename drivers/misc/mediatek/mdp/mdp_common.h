@@ -148,6 +148,8 @@ typedef void (*CmdqMdpComposeReadback) (struct cmdqRecStruct *handle,
 typedef void (*CmdqMdpReadbackEngine) (struct cmdqRecStruct *handle,
 	u16 engine, phys_addr_t base, dma_addr_t pa, u32 param, u32 pipe);
 
+typedef s32 (*MdpGetHdrHistData) (void);
+
 typedef s32 (*MdpGetRDMAIndex) (u32);
 
 typedef u16 (*MdpGetRegMSBOffset) (u32, u16);
@@ -235,6 +237,7 @@ struct cmdqMDPFuncStruct {
 	CmdqMdpComposeReadback mdpComposeReadback;
 	CmdqMdpReadbackEngine mdpReadbackAal;
 	CmdqMdpReadbackEngine mdpReadbackHdr;
+	MdpGetHdrHistData getHdrHistData;
 	MdpGetRDMAIndex getRDMAIndex;
 	MdpGetRegMSBOffset getRegMSBOffset;
 	MdpCheckIsCaminSupport mdpIsCaminSupport;
@@ -271,6 +274,9 @@ struct mdp_pmqos_record {
 #define MDP_THREAD_START CMDQ_DYNAMIC_THREAD_ID_START
 #endif
 
+/* MDP hdr hist data addr offset */
+#define MDP_HDR_HIST_DATA 0x0E0
+#define MDP_HDR_HIST_DATA_LEGACY 0x0D8
 /* MDP common kernel logic */
 
 void cmdq_mdp_fix_command_scenario_for_user_space(

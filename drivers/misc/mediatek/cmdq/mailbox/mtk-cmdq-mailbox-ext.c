@@ -124,6 +124,13 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define GCE_VM_ID_MAP2		0x5020
 #define GCE_VM_ID_MAP3		0x5024
 
+#define GCE_HOST_VM_IRQ_STATUS			0x3014
+#define GCE_CPR_GSIZE		0x50C4
+#define GCE_VM_ID_MAP0		0x5018
+#define GCE_VM_ID_MAP1		0x501C
+#define GCE_VM_ID_MAP2		0x5020
+#define GCE_VM_ID_MAP3		0x5024
+
 #define CMDQ_JUMP_BY_OFFSET		0x10000000
 #define CMDQ_JUMP_BY_PA			0x10000001
 

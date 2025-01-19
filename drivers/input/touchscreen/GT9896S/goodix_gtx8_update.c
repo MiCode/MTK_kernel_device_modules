@@ -1511,7 +1511,7 @@ static int gt9896s_fw_update_init(struct gt9896s_ts_core *core_data,
 	gt9896s_fw_update_ctrl.mode = 0;
 	/* find a valid firmware image name */
 	if (ts_bdata && ts_bdata->fw_name)
-		strlcpy(gt9896s_fw_update_ctrl.fw_name, ts_bdata->fw_name,
+		strscpy(gt9896s_fw_update_ctrl.fw_name, ts_bdata->fw_name,
 			sizeof(gt9896s_fw_update_ctrl.fw_name));
 	else {
 		if (gt9896s_find_touch_node == 1) {

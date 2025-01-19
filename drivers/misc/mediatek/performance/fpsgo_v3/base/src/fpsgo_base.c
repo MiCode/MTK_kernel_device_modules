@@ -3127,6 +3127,9 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" powerRL_enable, powerRL_FPS_margin, powerRL_cap_limit_range\n");
 	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" powerRL_enable, powerRL_FPS_margin\n");
+	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
 
@@ -3356,6 +3359,9 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" powerRL_enable, powerRL_FPS_margin, powerRL_cap_limit_range\n");
 	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" powerRL_enable, powerRL_FPS_margin\n");
+	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
 
@@ -3477,6 +3483,12 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 			attr_item.powerRL_enable_by_pid,
 			attr_item.powerRL_FPS_margin_by_pid,
 			attr_item.powerRL_cap_limit_range_by_pid);
+		pos += length;
+
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d\n",
+			attr_item.powerRL_enable_by_pid,
+			attr_item.powerRL_FPS_margin_by_pid);
 		pos += length;
 	}
 

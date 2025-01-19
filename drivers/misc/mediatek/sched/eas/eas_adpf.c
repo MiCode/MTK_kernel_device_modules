@@ -40,7 +40,6 @@ int sched_adpf_callback(struct _SESSION *session)
 
 	if (unlikely(grp_mode == GP_MODE_0) && !vip_enable)
 		return -1;
-
 	if(!eas_adpf_enable)
 		return 0;
 

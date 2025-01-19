@@ -199,9 +199,9 @@ void exception_header_init(void *oldbufp, enum scp_core_id id)
 	prpsinfo.pr_sname = 'R';
 	prpsinfo.pr_zomb = 0;
 	prpsinfo.pr_gid = prpsinfo.pr_uid = 0x0;
-	strlcpy(prpsinfo.pr_fname, "freertos8",
+	strscpy(prpsinfo.pr_fname, "freertos8",
 		sizeof(prpsinfo.pr_fname));
-	strlcpy(prpsinfo.pr_psargs, "freertos8", ELF_PRARGSZ);
+	strscpy(prpsinfo.pr_psargs, "freertos8", ELF_PRARGSZ);
 
 	nhdr->p_filesz += notesize(&notes);
 	bufp = storenote(&notes, bufp);

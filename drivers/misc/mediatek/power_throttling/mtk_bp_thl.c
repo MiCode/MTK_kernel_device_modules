@@ -10,6 +10,7 @@
 #include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include "mtk_bp_thl.h"
 #define BAT_PERCENT_LIMIT 15

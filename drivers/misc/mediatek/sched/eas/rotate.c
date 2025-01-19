@@ -133,9 +133,9 @@ void task_rotate_init(void)
 
 	/* find min_cap cpu */
 	for_each_possible_cpu(i) {
-		if (capacity_orig_of(i) >= min_orig_cap)
+		if (arch_scale_cpu_capacity(i) >= min_orig_cap)
 			continue;
-		min_orig_cap = capacity_orig_of(i);
+		min_orig_cap = arch_scale_cpu_capacity(i);
 		min_cap_orig_cpu = i;
 	}
 
@@ -182,7 +182,7 @@ void task_check_for_rotation(struct rq *src_rq)
 	int i, src_cpu = cpu_of(src_rq);
 	struct rq *dst_rq;
 	struct task_rotate_work *wr = NULL;
-	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
+	struct root_domain *rd __maybe_unused = cpu_rq(smp_processor_id())->rd;
 	int force = 0;
 	struct cpumask src_eff;
 	struct cpumask dst_eff;
@@ -205,11 +205,12 @@ void task_check_for_rotation(struct rq *src_rq)
 		irq_log_store();
 		return;
 	}
-
-	if (!(rd->android_vendor_data1)) {
-		irq_log_store();
-		return;
-	}
+	rd = NULL;
+	// need upstream, add vendor data
+	//if (!(rd->android_vendor_data1[0])) {
+	//	irq_log_store();
+	//	return;
+	//}
 
 	irq_log_store();
 	wc = ktime_get_raw_ns();
@@ -257,7 +258,7 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (cpu_paused(i))
 			continue;
 
-		if (capacity_orig_of(i) <= capacity_orig_of(src_cpu))
+		if (arch_scale_cpu_capacity(i) <= arch_scale_cpu_capacity(src_cpu))
 			continue;
 
 		if (READ_ONCE(rq->curr->policy) != SCHED_NORMAL)

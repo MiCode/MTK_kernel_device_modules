@@ -3,6 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
 
 #include "edma_cmd_hnd.h"

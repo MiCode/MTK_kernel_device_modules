@@ -817,6 +817,7 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 			f_render->tgid, f_render->queue_SF, f_render->api,
 			f_render->hwui, f_render->sbe_control_flag,
 			f_render->control_pid_flag);
+	f_render->t_enqueue_start = enqueue_start_time;
 
 	if (f_render->frame_type == MFRC_FRAME) {
 		if (f_render->frame_count % mfrc_by_pass_frame_num == 1)
@@ -830,7 +831,6 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 		fpsgo_com_notify_fpsgo_is_boost(1);
 		break;
 	case BY_PASS_TYPE:
-		f_render->t_enqueue_start = enqueue_start_time;
 		fpsgo_systrace_c_fbt(pid, f_render->buffer_id,
 			f_render->queue_SF, "bypass_sf");
 		fpsgo_systrace_c_fbt(pid, f_render->buffer_id,
@@ -904,6 +904,12 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			f_render->tgid, f_render->queue_SF, f_render->api,
 			f_render->hwui, f_render->sbe_control_flag,
 			f_render->control_pid_flag);
+	if (f_render->t_enqueue_end)
+		f_render->Q2Q_time = enqueue_end_time - f_render->t_enqueue_end;
+	f_render->prev_t_enqueue_end = f_render->t_enqueue_end;
+	f_render->t_enqueue_end = enqueue_end_time;
+	f_render->enqueue_length = enqueue_end_time - f_render->t_enqueue_start;
+	f_render->enqueue_length_real = f_render->enqueue_length;
 
 	fpsgo_com_determine_cam_object(f_render);
 
@@ -1061,6 +1067,7 @@ void fpsgo_ctrl2comp_dequeue_start(int pid,
 			f_render->tgid, f_render->queue_SF, f_render->api,
 			f_render->hwui, f_render->sbe_control_flag,
 			f_render->control_pid_flag);
+	f_render->t_dequeue_start = dequeue_start_time;
 
 	if (f_render->frame_type == MFRC_FRAME) {
 		if (f_render->frame_count % mfrc_by_pass_frame_num == 1)
@@ -1115,6 +1122,8 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 			f_render->tgid, f_render->queue_SF, f_render->api,
 			f_render->hwui, f_render->sbe_control_flag,
 			f_render->control_pid_flag);
+	f_render->t_dequeue_end = dequeue_end_time;
+	f_render->dequeue_length = dequeue_end_time - f_render->t_dequeue_start;
 
 	if (f_render->frame_type == MFRC_FRAME) {
 		if (f_render->frame_count % mfrc_by_pass_frame_num == 1)

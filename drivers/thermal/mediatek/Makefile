@@ -8,6 +8,9 @@ ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/leds
 CFLAGS_md_cooling.o := -I$(srctree)/drivers/thermal
 CFLAGS_soc_temp_lvts.o := -I$(srctree)/drivers/thermal
+CFLAGS_pmic_temp.o := -I$(srctree)/drivers/thermal
+CFLAGS_board_temp.o := -I$(srctree)/drivers/thermal
+CFLAGS_vtskin_temp.o := -I$(srctree)/drivers/thermal
 CFLAGS_thermal_trace.o := -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
 
 ifneq ($(CONFIG_MTK_GPU_LEGACY),y)

@@ -27,6 +27,7 @@
 #include <linux/uidgid.h>
 #include <linux/slab.h>
 #include <mtk_ts_setting.h>
+#include "thermal_core.h"
 
 #if Feature_Thro_update
 /* For using net dev + */
@@ -104,7 +105,7 @@ static unsigned long get_tx_bytes(void)
 	struct net *net;
 	unsigned long tx_bytes = 0;
 
-	read_lock(&dev_base_lock);
+	rcu_read_lock();
 	for_each_net(net) {
 		for_each_netdev(net, dev) {
 			if (!strncmp(dev->name, "ccmni", 5)) {
@@ -119,7 +120,7 @@ static unsigned long get_tx_bytes(void)
 			}
 		}
 	}
-	read_unlock(&dev_base_lock);
+	rcu_read_unlock();
 	return tx_bytes;
 }
 

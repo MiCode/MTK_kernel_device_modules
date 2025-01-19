@@ -109,7 +109,7 @@ int scmi_tinysys_event_notify(u32 feature_id, u32 notify_enable)
 
 	} else {
 		ret = sdev->handle->notify_ops->devm_event_notifier_unregister(sdev,
-			 SCMI_PROTOCOL_TINYSYS, SCMI_EVENT_TINYSYS_NOTIFIER, &f_id, &tinysys_nb);
+			&tinysys_nb);
 		if (ret)
 			pr_notice("scmi unregister_event_notifier f_id:%d ret:%d\n", f_id, ret);
 	}

@@ -149,6 +149,8 @@ static int g_apo_force_hint;
 static int g_apo_autosuspend_delay_ref_count;
 static int g_apo_autosuspend_delay_ctrl;
 static int g_apo_autosuspend_delay_target_ref_count;
+static enum ged_apo_legacy g_apo_legacy;
+
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
 static int g_whitebox_support_flag;
@@ -906,17 +908,24 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time)
 {
 	/* autosuspend_delay setting */
 	if (g_apo_autosuspend_delay_ctrl == 0) {
-		if ((g_gpu_frame_time_ns >= g_ged_gpu_frame_time[2].target) &&
-			(g_gpu_frame_time_ns <= g_ged_gpu_frame_time[3].target)) {
-			if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
-				g_apo_autosuspend_delay_ms = 0;
-			else
+		if (g_apo_legacy == GED_APO_LEGACY_VER1) {
+			if (g_gpu_frame_time_ns >= g_ged_gpu_frame_time[2].target)
 				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
+			else
+				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MAX_MS;
 		} else {
-			if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
-				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
-			else
-				g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_HFR_MS;
+			if ((g_gpu_frame_time_ns >= g_ged_gpu_frame_time[2].target) &&
+				(g_gpu_frame_time_ns <= g_ged_gpu_frame_time[3].target)) {
+				if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
+					g_apo_autosuspend_delay_ms = 0;
+				else
+					g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
+			} else {
+				if (idle_time > (long long)(div_u64(g_gpu_frame_time_ns, 2) + 1000000))
+					g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
+				else
+					g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_HFR_MS;
+			}
 		}
 	}
 }
@@ -979,6 +988,24 @@ void ged_set_apo_status(int apo_status)
 	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
 EXPORT_SYMBOL(ged_set_apo_status);
+
+void ged_set_apo_legacy(enum ged_apo_legacy apo_legacy)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_apo_legacy = apo_legacy;
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_set_apo_legacy);
+
+enum ged_apo_legacy ged_get_apo_legacy(void)
+{
+	return g_apo_legacy;
+}
+EXPORT_SYMBOL(ged_get_apo_legacy);
 
 void ged_get_active_time(void)
 {
@@ -1554,6 +1581,8 @@ GED_ERROR ged_notify_sw_vsync_system_init(void)
 	g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
 
 	g_apo_lp_thr_ns = GED_APO_LP_THR_NS;
+
+	g_apo_legacy = GED_APO_LEGACY_INVALID;
 
 	spin_lock_init(&g_sApoLock);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */

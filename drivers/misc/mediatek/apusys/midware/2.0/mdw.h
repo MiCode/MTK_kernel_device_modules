@@ -10,7 +10,9 @@
 #include <linux/iopoll.h>
 #include <linux/irqreturn.h>
 #include <linux/dma-fence.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/dma-direction.h>
 #include <linux/scatterlist.h>
 #include <linux/hashtable.h>

@@ -85,7 +85,6 @@ Retry_ON:
 						pr_debug_ratelimited(
 							"fail to bringup cpu(%d) rc: %d\n"
 							, i, rc);
-						trigger_all_cpu_backtrace();
 						continue;
 					}
 					retry++;
@@ -112,7 +111,6 @@ Retry_OFF:
 						pr_debug_ratelimited(
 							"fail to shutdown cpu(%d) rc: %d\n"
 							, i, rc);
-						trigger_all_cpu_backtrace();
 						continue;
 					}
 					retry++;

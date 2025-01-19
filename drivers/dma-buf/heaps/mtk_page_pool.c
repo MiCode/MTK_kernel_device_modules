@@ -271,16 +271,19 @@ static unsigned long mtk_dmabuf_page_pool_shrink_scan(struct shrinker *shrinker,
 	return mtk_dmabuf_page_pool_shrink(sc->gfp_mask, sc->nr_to_scan);
 }
 
-static struct shrinker mtk_pool_shrinker = {
-	.count_objects = mtk_dmabuf_page_pool_shrink_count,
-	.scan_objects = mtk_dmabuf_page_pool_shrink_scan,
-	.seeks = 16,
-	.batch = 0,
-};
+static struct shrinker *mtk_pool_shrinker;
 
 int mtk_dmabuf_page_pool_init_shrinker(void)
 {
-	return register_shrinker(&mtk_pool_shrinker, "");
+	mtk_pool_shrinker = shrinker_alloc(0, "");
+	if (!mtk_pool_shrinker)
+		return -ENOMEM;
+
+	mtk_pool_shrinker->count_objects = mtk_dmabuf_page_pool_shrink_count;
+	mtk_pool_shrinker->scan_objects = mtk_dmabuf_page_pool_shrink_scan;
+	mtk_pool_shrinker->seeks = DEFAULT_SEEKS;
+	shrinker_register(mtk_pool_shrinker);
+	return 0;
 }
 
 struct mtk_dmabuf_page_pool **dynamic_page_pools_create(unsigned int *orders,

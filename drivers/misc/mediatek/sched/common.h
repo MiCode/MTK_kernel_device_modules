@@ -189,6 +189,12 @@ extern void mtk_map_util_freq(void *data, unsigned long util,
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 DECLARE_PER_CPU(int, cpufreq_idle_cpu);
 DECLARE_PER_CPU(spinlock_t, cpufreq_idle_cpu_lock);
+
+enum cpu_util_type {
+	FREQUENCY_UTIL,
+	ENERGY_UTIL,
+};
+
 unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_rq,
 				enum cpu_util_type type,
 				struct task_struct *p,

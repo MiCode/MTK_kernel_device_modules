@@ -325,7 +325,6 @@ struct GED_KPI_MEOW_DVFS_FREQ_PRED {
 static struct GED_KPI_MEOW_DVFS_FREQ_PRED *g_psGIFT;
 static unsigned int fb_timer_set_count;
 
-
 int g_target_fps = GED_KPI_MAX_FPS;
 int g_target_fps_default = GED_KPI_MAX_FPS;
 int g_gpu_target_default = 16666666;
@@ -1294,7 +1293,7 @@ static void set_lb_timeout(int t_gpu_target)
 		lb_timeout = (u64)g_loading_stride_size * 1000000; //ms to ns
 		break;
 	case 1:
-		lb_timeout = div_u64((u64)t_gpu_target * g_loading_stride_size, 10);
+		lb_timeout = (u64)t_gpu_target * g_loading_stride_size / 10;
 		break;
 	case 2:
 		lb_timeout = (u64)g_loading_stride_size * 1000000;
@@ -1306,6 +1305,7 @@ static void set_lb_timeout(int t_gpu_target)
 		lb_timeout = (u64)g_loading_stride_size * 1000000;
 		break;
 	}
+
 }
 
 void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size)
@@ -1542,6 +1542,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 	int gpu_freq_pre, t_gpu, t_gpu_target, target_fps_margin;
 	unsigned int force_fallback;
+	unsigned long long soc_timer = 0;
 
 	GED_LOGD("ts type = %d, pid = %d, wnd = %llu, frame = %lu",
 		psTimeStamp->eTimeStampType,
@@ -2601,7 +2602,10 @@ static GED_BOOL ged_kpi_update_sysram_uncompleted_fcn(void *pvoid, void *pvParam
 	struct list_head *psListEntry, *psListEntryTemp;
 	struct list_head *psList = &psHead->sList;
 	long long t_gpu_uncomplete = 0;
+	unsigned long long current_timestamp __maybe_unused;
 	int i = 0;
+
+	current_timestamp = ged_get_time();
 
 	spin_lock(&psHead->sListLock);
 	list_for_each_prev_safe(psListEntry, psListEntryTemp, psList) {

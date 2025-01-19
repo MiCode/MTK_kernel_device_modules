@@ -10,7 +10,8 @@ IMGSENSOR_DRIVER_PATH := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/
 COMMON_VERSION := v1_1
 subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION) \
 	-I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/seninf/ \
-	-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses/
+	-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses/ \
+	-I$(srctree)/drivers/thermal
 
 obj-$(CONFIG_MTK_IMGSENSOR) += imgsensor_isp6s.o
 imgsensor_isp6s-objs :=

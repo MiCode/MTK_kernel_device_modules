@@ -14,6 +14,7 @@
 #include <linux/sched/clock.h>
 #include <linux/timer.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
 
 #include "cmdq-sec.h"
 #include "cmdq-sec-mailbox.h"
@@ -252,7 +253,7 @@ static inline void cmdq_mmp_init(struct cmdq_sec *cmdq)
 
 	len = snprintf(name, sizeof(name), "cmdq_sec_%hhu", cmdq->hwid);
 	if (len >= sizeof(name))
-		cmdq_log("len:%d over name size:%lu", len, (unsigned long)(sizeof(name)));
+		cmdq_log("len:%d over name size:%lu", len, sizeof(name));
 
 	cmdq->mmp.cmdq_root = mmprofile_register_event(MMP_ROOT_EVENT, "CMDQ");
 	cmdq->mmp.cmdq = mmprofile_register_event(cmdq->mmp.cmdq_root, name);
@@ -1751,7 +1752,7 @@ static int cmdq_sec_mbox_startup(struct mbox_chan *chan)
 	INIT_WORK(&thread->timeout_work, cmdq_sec_task_timeout_work);
 	len = snprintf(name, sizeof(name), "task_exec_wq_%u", thread->idx);
 	if (len >= sizeof(name))
-		cmdq_log("len:%d over name size:%lu", len, (unsigned long)(sizeof(name)));
+		cmdq_log("len:%d over name size:%lu", len, sizeof(name));
 
 	thread->task_exec_wq = create_singlethread_workqueue(name);
 	thread->occupied = true;

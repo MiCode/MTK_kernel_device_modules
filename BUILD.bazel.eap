@@ -20,7 +20,7 @@ load(
 )
 load("//build/bazel_mgk_rules:mgk.bzl", "mgk_build_config")
 
-name = "mgk_64_k66"
+name = "mgk_64_kmainline"
 build = "no_device_ko"
 mgk_defconfig = "mtk_defconfig"
 kleaf_modules = [
@@ -66,7 +66,7 @@ kernel_build(
 
 kernel_modules_install(
     name = "{}_modules_install.{}".format(name, build),
-    kernel_modules = ["{}.{}.{}.{}".format(m, name, "6.6", build) for m in kleaf_modules],
+    kernel_modules = ["{}.{}.{}.{}".format(m, name, "mainline", build) for m in kleaf_modules],
     kernel_build = ":{}.{}".format(name, build),
 )
 

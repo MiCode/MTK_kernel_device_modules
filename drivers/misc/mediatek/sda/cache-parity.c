@@ -379,10 +379,15 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 
 		cpu = raw_smp_processor_id();
 		if ((cache_parity.record[idx].v3.cpu != nr_cpu_ids) &&
-		    (cpu != cache_parity.record[idx].v3.cpu))
+		    (cpu != cache_parity.record[idx].v3.cpu)) {
 			ECC_LOG("Cache ECC error, cpu%d serviced irq%d(%s%d)\n",
 				cpu, irq, "expected cpu",
 				cache_parity.record[idx].v3.cpu);
+			if (!misc0 && !status) {
+				ECC_LOG("%s", "bypass due to misc0_el1 and status_el1 invalid\n");
+				goto check_nr_err;
+			}
+		}
 
 #if IS_ENABLED(CONFIG_ARM64)
 		/* Skip the error, may be caused by externel slave error
@@ -422,9 +427,7 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 	ECC_LOG("Cache ECC error, %s %d, %s: 0x%016llx, %s: 0x%016llx\n",
 	       "irq", irq, "misc0_el1", misc0, "status_el1", status);
 
-#if IS_ENABLED(CONFIG_ARM64)
 check_nr_err:
-#endif
 
 	if (atomic_read(&cache_parity.nr_err) > ECC_IRQ_TRIGGER_THRESHOLD) {
 		disable_irq_nosync(irq);

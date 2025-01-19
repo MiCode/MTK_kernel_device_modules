@@ -29,6 +29,7 @@
 #include <linux/ipv6.h>
 #include <net/ipv6.h>
 #include <net/sch_generic.h>
+#include <net/rps.h>
 #include <linux/skbuff.h>
 #include <linux/module.h>
 #include <linux/debugfs.h>

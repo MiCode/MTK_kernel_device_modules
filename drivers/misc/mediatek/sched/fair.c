@@ -364,8 +364,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		pd_idx = cpu = cpumask_first(cpus);
 		eenv->gear_idx = topology_cluster_id(pd_idx);
 		cpu_thermal_cap = arch_scale_cpu_capacity(cpu);
-		/* copy arch_scale_thermal_pressure() code and add read_once to avoid data-racing */
-		cpu_thermal_cap -= READ_ONCE(per_cpu(thermal_pressure, cpu));
+		/* copy arch_scale_hw_pressure() code and add read_once to avoid data-racing */
+		cpu_thermal_cap -= READ_ONCE(per_cpu(hw_pressure, cpu));
 
 		eenv->pds_cpu_cap[pd_idx] = cpu_thermal_cap;
 		eenv->pds_cap[pd_idx] = 0;
@@ -699,6 +699,21 @@ unsigned int get_uclamp_min_ls(void)
 }
 EXPORT_SYMBOL_GPL(get_uclamp_min_ls);
 
+static void wakeup_preempt_clone(struct rq *rq, struct task_struct *p, int flags)
+{
+	if (p->sched_class == rq->curr->sched_class)
+		rq->curr->sched_class->wakeup_preempt(rq, p, flags);
+	else if (sched_class_above(p->sched_class, rq->curr->sched_class))
+		resched_curr(rq);
+
+	/*
+	 * A queue event has occurred, and we're going to schedule.  In
+	 * this case, we can save a useless back to back clock update.
+	 */
+	if (task_on_rq_queued(rq->curr) && test_tsk_need_resched(rq->curr))
+		rq_clock_skip_update(rq);
+}
+
 /*
  * attach_task() -- attach the task detached by detach_task() to its new rq.
  */
@@ -708,7 +723,7 @@ static void attach_task(struct rq *rq, struct task_struct *p)
 
 	BUG_ON(task_rq(p) != rq);
 	activate_task(rq, p, ENQUEUE_NOCLOCK);
-	check_preempt_curr(rq, p, 0);
+	wakeup_preempt_clone(rq, p, 0);
 }
 
 /*
@@ -1092,7 +1107,7 @@ void mtk_can_migrate_task(void *data, struct task_struct *p,
 			*can_migrate = 0;
 			return;
 		} else if ((num_vip_src-1 == num_vip_dst) &&
-			(capacity_orig_of(src_cpu) > capacity_orig_of(dst_cpu))) {
+			(arch_scale_cpu_capacity(src_cpu) > arch_scale_cpu_capacity(dst_cpu))) {
 			*can_migrate = 0;
 			return;
 		}
@@ -1666,8 +1681,8 @@ static inline bool task_demand_fits(struct task_struct *p, int dst_cpu)
 	unsigned int margin;
 	bool AM_enabled;
 	unsigned int sugov_margin;
-	unsigned long dst_capacity = capacity_orig_of(dst_cpu);
-	unsigned long src_capacity = capacity_orig_of(src_cpu);
+	unsigned long dst_capacity = arch_scale_cpu_capacity(dst_cpu);
+	unsigned long src_capacity = arch_scale_cpu_capacity(src_cpu);
 
 	if (dst_capacity == SCHED_CAPACITY_SCALE)
 		return true;
@@ -1708,7 +1723,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	unsigned long ceiling, cap_after_ceiling;
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
-	unsigned long capacity_orig_thermal, capacity_orig = capacity_orig_of(cpu);
+	unsigned long capacity_orig_thermal, capacity_orig = arch_scale_cpu_capacity(cpu);
 	int fit, uclamp_max_fits, uclamp_involve;
 
 
@@ -1725,7 +1740,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	if (!updown_migration_enable)
 		ceiling = SCHED_CAPACITY_SCALE;
 	else
-		ceiling = SCHED_CAPACITY_SCALE * capacity_orig_of(cpu) / sched_capacity_up_margin[cpu];
+		ceiling = SCHED_CAPACITY_SCALE * arch_scale_cpu_capacity(cpu) / sched_capacity_up_margin[cpu];
 
 	/* Whether PELT fit after considering up-down migration ? */
 	cap_after_ceiling = min(ceiling, capacity);
@@ -1738,7 +1753,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 
 	/* Change fit status from 1 to -1 only if uclamp min raise util. */
 	uclamp_min = min(uclamp_min, uclamp_max);
-	capacity_orig_thermal = min(cap_after_ceiling, (capacity_orig - arch_scale_thermal_pressure(cpu)));
+	capacity_orig_thermal = min(cap_after_ceiling, (capacity_orig - arch_scale_hw_pressure(cpu)));
 	if (fit && (util < uclamp_min) && (uclamp_min > capacity_orig_thermal))
 		fit = -1;
 
@@ -1752,7 +1767,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 #else
 static inline bool task_demand_fits(struct task_struct *p, int cpu)
 {
-	unsigned long capacity = capacity_orig_of(cpu);
+	unsigned long capacity = arch_scale_cpu_capacity(cpu);
 
 	if (capacity == SCHED_CAPACITY_SCALE)
 		return true;
@@ -1765,7 +1780,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 {
 	bool AM_enabled = adaptive_margin_enabled[cpu];
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
-	unsigned long capacity_orig_thermal, capacity_orig = capacity_orig_of(cpu);
+	unsigned long capacity_orig_thermal, capacity_orig = arch_scale_cpu_capacity(cpu);
 	int fit, uclamp_max_fits, uclamp_involve;
 
 	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
@@ -1780,7 +1795,7 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	fit = fits_capacity(util, capacity, sugov_margin);
 
 	/* Change fit status from 0 to 1 only if uclamp max restrict util. */
-	capacity_orig_thermal = (capacity_orig - arch_scale_thermal_pressure(cpu));
+	capacity_orig_thermal = (capacity_orig - arch_scale_hw_pressure(cpu));
 	uclamp_max_fits = (capacity_orig == SCHED_CAPACITY_SCALE) && (uclamp_max == SCHED_CAPACITY_SCALE);
 	uclamp_max_fits = !uclamp_max_fits && (uclamp_max <= capacity_orig);
 	fit = fit || uclamp_max_fits;
@@ -2062,7 +2077,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 				continue;
 
 			if (available_idle_cpu(cpu)) {
-				cpu_cap = capacity_orig_of(cpu);
+				cpu_cap = arch_scale_cpu_capacity(cpu);
 				idle = idle_get_state(cpu_rq(cpu));
 				if (idle && idle->exit_latency > pd_min_exit_lat &&
 						cpu_cap == target_cap)
@@ -2152,6 +2167,9 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 		vts->faster_compute_eng = false;
 	}
 #endif
+
+	if (!get_eas_hook())
+		return;
 
 	if (!get_eas_hook())
 		return;
@@ -2497,13 +2515,14 @@ static struct task_struct *detach_a_hint_task(struct rq *src_rq, int dst_cpu)
 	unsigned int task_util;
 	bool latency_sensitive = false, in_many_heavy_tasks;
 	struct cpumask effective_softmask;
-	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
+	struct root_domain *rd __maybe_unused = cpu_rq(smp_processor_id())->rd;
 
 	lockdep_assert_rq_held(src_rq);
 
 	rcu_read_lock();
-	in_many_heavy_tasks = rd->android_vendor_data1;
-	src_capacity = capacity_orig_of(src_rq->cpu);
+	rd= NULL;
+	in_many_heavy_tasks = NULL;//rd->android_vendor_data1[0];
+	src_capacity = arch_scale_cpu_capacity(src_rq->cpu);
 	dst_capacity = cpu_cap_ceiling(dst_cpu);
 	list_for_each_entry_reverse(p,
 			&src_rq->cfs_tasks, se.group_node) {

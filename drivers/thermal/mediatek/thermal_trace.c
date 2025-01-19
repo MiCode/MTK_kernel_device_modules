@@ -106,7 +106,7 @@ static void get_tx_bytes(struct thermal_info *data)
 	for_each_tput_instance(i)
 		data->stats[i].cur_tx_bytes = 0;
 
-	read_lock(&dev_base_lock);
+	rcu_read_lock();
 	for_each_net(net) {
 		for_each_netdev(net, dev) {
 			struct rtnl_link_stats64 temp;
@@ -134,7 +134,7 @@ static void get_tx_bytes(struct thermal_info *data)
 			}
 		}
 	}
-	read_unlock(&dev_base_lock);
+	rcu_read_unlock();
 }
 
 static void thermal_trace_timer_cancel(void)

@@ -1111,11 +1111,41 @@ static int mtk_btag_install_tracepoints(void)
 static void mtk_btag_init_memory(void)
 {
 	phys_addr_t start, end;
+	struct device_node *memory_node;
+	struct property *prop;
+	int len, ret;
+	__u64 *reg;
 
-	dram_start_addr = start = 0;
-	dram_end_addr = end = memblock_end_of_DRAM();
-	mtk_btag_system_dram_size = (unsigned long long)(end - start);
-	pr_debug("dram: %pa - %pa, size: 0x%llx\n", &start, &end,
+	memory_node = of_find_node_by_type(NULL, "memory");
+	if (!memory_node) {
+		pr_err("No memory node\n");
+		return;
+	}
+
+	prop = of_find_property(memory_node, "reg", &len);
+	if (!prop) {
+		pr_err("No reg from memory node\n");
+		return;
+	}
+
+	reg = kzalloc(len, GFP_KERNEL);
+	if (!reg)
+		return;
+
+	ret = of_property_read_u64_array(memory_node,
+			"reg", reg, len / sizeof(__u64));
+	if (ret) {
+		pr_err("Could not read reg from memory node\n");
+		kfree(reg);
+		return;
+	}
+
+	dram_start_addr = start = reg[0];
+	dram_end_addr = end = reg[0] + reg[1];
+	mtk_btag_system_dram_size = reg[1];
+	kfree(reg);
+
+	pr_info("dram: %pa - %pa, size: 0x%llx\n", &start, &end,
 		 (unsigned long long)(end - start));
 	blockio_aee_buffer = kzalloc(BLOCKIO_AEE_BUFFER_SIZE,
 			     GFP_KERNEL);

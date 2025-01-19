@@ -48,8 +48,6 @@ static int mtk_gpu_memory_show(struct seq_file *m, void *v)
 	if (IS_ERR_OR_NULL(kbdev))
 		return -1;
 
-	lockdep_off();
-
 	mutex_lock(&memtrack_lock);
 
 	while (!mutex_trylock(&kbdev->kctx_list_lock)) {
@@ -85,8 +83,6 @@ static int mtk_gpu_memory_show(struct seq_file *m, void *v)
 
 out_lock_held:
 	mutex_unlock(&memtrack_lock);
-
-	lockdep_on();
 
 	return 0;
 }

@@ -748,6 +748,8 @@ EXPORT_SYMBOL(unset_task_priority_based_vip);
 /* TGID */
 void set_tgid_basic_vip(int tgid)
 {
+	// FIXME: thread_group is removed from task_struct
+#if 0
 	struct task_struct *group_leader, *p;
 	struct vip_task_struct *vts;
 
@@ -762,11 +764,14 @@ void set_tgid_basic_vip(int tgid)
 		}
 	}
 	rcu_read_unlock();
+#endif
 }
 EXPORT_SYMBOL_GPL(set_tgid_basic_vip);
 
 void unset_tgid_basic_vip(int tgid)
 {
+	// FIXME: thread_group is removed from task_struct
+#if 0
 	struct task_struct *group_leader, *p;
 	struct vip_task_struct *vts;
 
@@ -781,6 +786,7 @@ void unset_tgid_basic_vip(int tgid)
 		}
 	}
 	rcu_read_unlock();
+#endif
 }
 EXPORT_SYMBOL_GPL(unset_tgid_basic_vip);
 
@@ -1078,7 +1084,7 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p,
 				bool *preempt, bool *nopreempt, int wake_flags,
 				struct sched_entity *se, struct sched_entity *pse,
-				int next_buddy_marked)
+				int next_buddy_marked, unsigned int granularity)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
 	struct vip_task_struct *vts_p = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
@@ -1180,7 +1186,6 @@ void vip_scheduler_tick(void *unused, struct rq *rq)
 	for (; se; se = NULL)
 #endif
 
-extern void set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se);
 void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct **p,
 				struct sched_entity **se, bool *repick, bool simple,
 				struct task_struct *prev)
@@ -1207,10 +1212,11 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	*se = &vip->se;
 	*repick = true;
 
-	if (simple) {
-		for_each_sched_entity((*se))
-			set_next_entity(cfs_rq_of(*se), *se);
-	}
+	/* commented out becasue kmainline remove the export symbol for set_next_entity() */
+	/*if (simple) {*/
+	/*        for_each_sched_entity((*se))*/
+	/*                set_next_entity(cfs_rq_of(*se), *se);*/
+	/*}*/
 }
 
 __no_kcsan
@@ -1264,7 +1270,8 @@ void init_task_gear_hints(struct task_struct *p)
 	ghts->reverse    = 0;
 }
 
-static void vip_new_tasks(void *unused, struct task_struct *new)
+//static void vip_new_tasks(void *unused, struct task_struct *new)
+void vip_new_tasks(void *unused, struct task_struct *new)
 {
 	init_vip_task_struct(new);
 	init_task_gear_hints(new);
@@ -1345,7 +1352,7 @@ void vip_push_runnable(struct rq *src_rq)
 	update_rq_clock(dst_rq);
 	lockdep_assert_rq_held(dst_rq);
 	activate_task(dst_rq, task_to_pushed, ENQUEUE_NOCLOCK);
-	check_preempt_curr(dst_rq, task_to_pushed, 0);
+	wakeup_preempt(dst_rq, task_to_pushed, 0);
 
 	trace_sched_force_migrate(task_to_pushed, new_cpu, MIGR_SWITCH_PUSH_VIP);
 
@@ -1413,7 +1420,7 @@ void vip_init(void)
 	/* init vip related value to group*/
 	init_vip_group();
 
-	ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
+	//ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
 	if (ret)
 		pr_info("register wake_up_new_task hooks failed, returned %d\n", ret);
 

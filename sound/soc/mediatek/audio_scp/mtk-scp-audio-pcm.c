@@ -669,7 +669,7 @@ static int mtk_scp_audio_pcm_open(struct snd_soc_component *component,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mtk_scp_audio_base *scp_aud = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	int feature_id = get_feature_by_daiid(id);
@@ -713,7 +713,7 @@ static int mtk_scp_audio_pcm_close(struct snd_soc_component *component,
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	int feature_id = get_feature_by_daiid(id);
@@ -747,7 +747,7 @@ static int mtk_scp_audio_pcm_hw_params(struct snd_soc_component *component,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct mtk_scp_audio_base *scp_audio = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	void *ipi_audio_buf; /* dsp <-> audio data struct*/
@@ -844,7 +844,7 @@ static int mtk_scp_audio_pcm_hw_free(struct snd_soc_component *component,
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct mtk_scp_audio_base *scp_audio = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	const char *task_name = get_taskname_by_daiid(id);
@@ -885,7 +885,7 @@ static int mtk_scp_audio_pcm_hw_prepare(struct snd_soc_component *component,
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
@@ -943,7 +943,7 @@ static int mtk_scp_audio_start(struct snd_pcm_substream *substream,
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	const char *task_name = get_taskname_by_daiid(id);
@@ -969,7 +969,7 @@ static int mtk_scp_audio_stop(struct snd_pcm_substream *substream,
 {
 	int ret = 0;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 
 	/* Avoid print log in alsa stop. If underflow happens,
@@ -1013,7 +1013,7 @@ static int mtk_scp_audio_pcm_copy_dl(struct snd_pcm_substream *substream,
 	int ack_type;
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct RingBuf *ringbuf = &task_base->ring_buf;
 	struct ringbuf_bridge *buf_bridge =
@@ -1084,7 +1084,7 @@ static int mtk_scp_audio_pcm_copy_ul(struct snd_pcm_substream *substream,
 	int ret = 0, availsize = 0;
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct RingBuf *ringbuf = &(task_base->ring_buf);
 	unsigned long flags = 0;
@@ -1140,7 +1140,7 @@ static int mtk_scp_audio_pcm_copy(struct snd_soc_component *component,
 		unsigned long bytes)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	int ret = 0;
@@ -1447,7 +1447,7 @@ static snd_pcm_uframes_t mtk_scp_audio_pcm_pointer_ul
 			 (struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	int ptr_bytes;
@@ -1466,7 +1466,7 @@ static snd_pcm_uframes_t mtk_scp_audio_pcm_pointer_dl
 {
 
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int id = cpu_dai->id;
 	struct scp_aud_task_base *task_base = get_taskbase_by_daiid(id);
 	int pcm_ptr_bytes, pcm_remap_ptr_bytes;

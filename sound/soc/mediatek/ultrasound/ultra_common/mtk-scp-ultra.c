@@ -41,7 +41,7 @@ int mtk_scp_ultra_allocate_mem(struct snd_pcm_substream *substream,
 {
 	struct snd_dma_buffer *dma_buf = &substream->dma_buffer;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	int id = asoc_rtd_to_cpu(rtd, 0)->id;
+	int id = snd_soc_rtd_to_cpu(rtd, 0)->id;
 	struct mtk_base_scp_ultra *scp_ultra = get_scp_ultra_base();
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	struct audio_ultra_dram *ultra_resv_mem = &scp_ultra->ultra_reserve_dram;

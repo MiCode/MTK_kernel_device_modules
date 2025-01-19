@@ -2861,6 +2861,39 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		ctx->use_slbc_extra, ctx->slbc_addr_extra, (unsigned long)ctx->sram_data_extra.paddr,
 		ctx->sram_data_extra.ref);
 	}
+	else if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_request_extra == 1)) {
+		ctx->sram_data_extra.uid = UID_MM_VENC_8K;
+		ctx->sram_data_extra.type = TP_BUFFER;
+		ctx->sram_data_extra.size = 0;
+		ctx->sram_data_extra.flag = FG_POWER;
+		if (slbc_request(&ctx->sram_data_extra) >= 0) {
+			ctx->use_slbc_extra = 1;
+			ctx->slbc_addr_extra = (unsigned int)(unsigned long)ctx->sram_data_extra.paddr;
+		} else {
+			pr_info("slbc_request_extra fail\n");
+			ctx->use_slbc_extra = 0;
+		}
+		if (ctx->slbc_addr_extra % 256 != 0 || ctx->slbc_addr_extra == 0) {
+			pr_info("slbc_addr_extra error 0x%x\n", ctx->slbc_addr_extra);
+			ctx->use_slbc_extra = 0;
+		}
+
+		if (ctx->use_slbc_extra) {
+			// use extra slbc address as slbc start address
+			ctx->slbc_addr = ctx->slbc_addr_extra;
+		}
+		else {
+			mtk_v4l2_debug(0, "request extra slbc fail and release all slbc, %p\n", &ctx->sram_data);
+			slbc_release(&ctx->sram_data);
+			ctx->use_slbc = 0;
+			ctx->slbc_addr = 0;
+			mtk_v4l2_debug(0, "request extra slbc fail and release all slbc ref %d\n", ctx->sram_data.ref);
+			if (ctx->sram_data.ref <= 0)
+				atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
+		}
+		pr_info("slbc_request_extra %d, 0x%x, 0x%lx, ref %d\n",
+		ctx->use_slbc_extra, ctx->slbc_addr_extra, (unsigned long)ctx->sram_data_extra.paddr, ctx->sram_data_extra.ref);
+	}
 
 	memset(&param, 0, sizeof(param));
 	mtk_venc_set_param(ctx, &param);

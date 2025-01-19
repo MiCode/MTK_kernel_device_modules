@@ -12,11 +12,13 @@
 #include <linux/nvmem-consumer.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
 #include <linux/thermal.h>
 #include <linux/types.h>
+#include "thermal_core.h"
 /*=============================================================
  *Local variable definition
  *=============================================================

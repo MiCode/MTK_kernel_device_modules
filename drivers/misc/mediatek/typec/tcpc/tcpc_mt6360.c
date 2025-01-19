@@ -515,8 +515,8 @@ static int mt6360_regmap_init(struct mt6360_chip *chip)
 	props->aliases = devm_kzalloc(chip->dev, len + 1, GFP_KERNEL);
 	if (!props->name || !props->aliases)
 		return -ENOMEM;
-	strlcpy((char *)props->name, name, len + 1);
-	strlcpy((char *)props->aliases, name, len + 1);
+	strscpy((char *)props->name, name, len + 1);
+	strscpy((char *)props->aliases, name, len + 1);
 	props->io_log_en = 0;
 	chip->m_dev = rt_regmap_device_register(props, &mt6360_regmap_fops,
 						chip->dev, chip->client, chip);
@@ -2126,7 +2126,7 @@ static int mt6360_tcpcdev_init(struct mt6360_chip *chip, struct device *dev)
 	desc->name = devm_kzalloc(dev, len + 1, GFP_KERNEL);
 	if (!desc->name)
 		return -ENOMEM;
-	strlcpy((char *)desc->name, name, len + 1);
+	strscpy((char *)desc->name, name, len + 1);
 
 	chip->tcpc_desc = desc;
 	tcpc = tcpc_device_register(dev, desc, &mt6360_tcpc_ops, chip);

@@ -4,6 +4,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
 #include "reviser_cmn.h"
 #include "reviser_plat.h"

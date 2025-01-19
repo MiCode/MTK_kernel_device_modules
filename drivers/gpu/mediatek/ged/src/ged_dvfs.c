@@ -458,8 +458,8 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 {
 	unsigned int current_idx = g_util_hs.current_idx + 1;
 	unsigned long long max_workload =
-		div_u64(util_ex->freq * util_ex->delta_time, 1000000);   // unit: cycle
-	unsigned long long max_t_gpu = div_u64(util_ex->delta_time, 1000);   // unit: us
+		util_ex->freq * util_ex->delta_time / 1000000;   // unit: cycle
+	unsigned long long max_t_gpu = util_ex->delta_time / 1000;   // unit: us
 	unsigned int workload_mode = 0;
 	//MBrain: loading
 	unsigned long long loading = 0;
@@ -479,14 +479,14 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 	workload_mode = ged_get_dvfs_workload_mode();
 	if (workload_mode == WORKLOAD_3D) {
 		g_util_hs.gpu_frame_property.workload +=
-			div_u64(max_workload * util_ex->util_3d, 100);
+			max_workload * util_ex->util_3d / 100;
 		g_util_hs.gpu_frame_property.t_gpu +=
 			div_u64(max_t_gpu * util_ex->util_3d, 100);
 		//MBrain: loading
 		loading = util_ex->util_3d;
 	} else if (workload_mode == WORKLOAD_ITER) {
 		g_util_hs.gpu_frame_property.workload +=
-			div_u64(max_workload * util_ex->util_iter, 100);
+			max_workload * util_ex->util_iter / 100;
 		g_util_hs.gpu_frame_property.t_gpu +=
 			div_u64(max_t_gpu * util_ex->util_iter, 100);
 		//MBrain: loading
@@ -495,7 +495,7 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 		unsigned int util_temp = MAX(util_ex->util_iter, util_ex->util_mcu);
 
 		g_util_hs.gpu_frame_property.workload +=
-			div_u64(max_workload * util_temp, 100);
+			max_workload * util_temp / 100;
 		g_util_hs.gpu_frame_property.t_gpu +=
 			div_u64(max_t_gpu * util_temp, 100);
 		//MBrain: loading
@@ -509,7 +509,7 @@ static void gpu_util_history_update(struct GpuUtilization_Ex *util_ex)
 		loading = util_ex->util_iter_u_mcu;
 	} else {   // WORKLOAD_ACTIVE or unknown mode
 		g_util_hs.gpu_frame_property.workload +=
-			div_u64(max_workload * util_ex->util_active, 100);
+			max_workload * util_ex->util_active / 100;
 		g_util_hs.gpu_frame_property.t_gpu +=
 			div_u64(max_t_gpu * util_ex->util_active, 100);
 		//MBrain: loading
@@ -729,7 +729,7 @@ static void gpu_util_history_query_specific_loading(
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_loading = div64_u64(sum_loading, sum_delta_time);
+		window_avg_loading = sum_loading / sum_delta_time;
 
 	if (window_avg_loading > 100)
 		window_avg_loading = 100;
@@ -768,7 +768,7 @@ static unsigned int gpu_util_history_query_frequency(
 
 		// accumulate data
 		remaining_time = window_size_us - sum_delta_time;
-		delta_time = div_u64(util_ex->delta_time, 1000);
+		delta_time = util_ex->delta_time / 1000;
 		if (delta_time > remaining_time)
 			delta_time = remaining_time;   // clip delta_time
 		sum_freq += his_freq * delta_time;
@@ -780,7 +780,7 @@ static unsigned int gpu_util_history_query_frequency(
 	}
 
 	if (sum_delta_time != 0)
-		window_avg_freq = div64_u64(sum_freq, sum_delta_time);
+		window_avg_freq = sum_freq / sum_delta_time;
 
 	return window_avg_freq;
 }
@@ -1833,10 +1833,10 @@ static void set_fb_timeout(int t_gpu_target_ori, int t_gpu_target_margin)
 {
 	switch (g_frame_target_mode) {
 	case 1:
-		fb_timeout = div_u64((u64)t_gpu_target_ori * g_frame_target_time, 10);
+		fb_timeout = (u64)t_gpu_target_ori * g_frame_target_time  / 10;
 		break;
 	case 2:
-		fb_timeout = div_u64((u64)t_gpu_target_margin * g_frame_target_time, 10);
+		fb_timeout = (u64)t_gpu_target_margin * g_frame_target_time / 10;
 		break;
 	default:
 		fb_timeout = (u64)g_frame_target_time * 1000000; //ms to ns
@@ -2253,7 +2253,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 	gpu_util_history_query_frame_property(&frame_workload, &frame_t_gpu);
 	t_gpu_pipe = t_gpu;
-	t_gpu_real = (int) div_u64(frame_t_gpu, 100);   // change unit from us to 100*us
+	t_gpu_real = (int) (frame_t_gpu / 100);   // change unit from us to 100*us
 	// define t_gpu = max(t_gpu_completion, t_gpu_real) for FB policy
 	if (t_gpu_real > t_gpu)
 		t_gpu = t_gpu_real;
@@ -4104,6 +4104,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	struct device_node *async_dvfs_node = NULL;
 	struct device_node *reduce_mips_dvfs_node = NULL;
 	struct device_node *dvfs_loading_mode_node = NULL;
+	struct device_node *gpu_mewtwo_node = NULL;
 
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);
@@ -4189,7 +4190,6 @@ GED_ERROR ged_dvfs_system_init(void)
 	mtk_get_dvfs_workload_mode_fp = ged_get_dvfs_workload_mode;
 
 	mtk_set_fastdvfs_mode_fp = ged_set_fastdvfs_mode;
-	mtk_get_fastdvfs_mode_fp = ged_get_fastdvfs_mode;
 	ged_kpi_fastdvfs_update_dcs_fp = ged_fastdvfs_update_dcs;
 
 	ged_get_last_commit_idx_fp = ged_dvfs_get_last_commit_idx;

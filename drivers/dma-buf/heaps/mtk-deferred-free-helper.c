@@ -99,12 +99,7 @@ static unsigned long freelist_shrink_scan(struct shrinker *shrinker,
 	return total_freed;
 }
 
-static struct shrinker mtk_freelist_shrinker = {
-	.count_objects = freelist_shrink_count,
-	.scan_objects = freelist_shrink_scan,
-	.seeks = DEFAULT_SEEKS,
-	.batch = 0,
-};
+static struct shrinker *mtk_freelist_shrinker;
 
 static int mtk_deferred_free_thread(void *data)
 {
@@ -131,5 +126,13 @@ int mtk_deferred_freelist_init(void)
 	}
 	sched_set_normal(mtk_freelist_task, 19);
 
-	return register_shrinker(&mtk_freelist_shrinker, "");
+	mtk_freelist_shrinker = shrinker_alloc(0, "");
+	if (!mtk_freelist_shrinker)
+		return -ENOMEM;
+
+	mtk_freelist_shrinker->count_objects = freelist_shrink_count;
+	mtk_freelist_shrinker->scan_objects = freelist_shrink_scan;
+	mtk_freelist_shrinker->seeks = DEFAULT_SEEKS;
+	shrinker_register(mtk_freelist_shrinker);
+	return 0;
 }

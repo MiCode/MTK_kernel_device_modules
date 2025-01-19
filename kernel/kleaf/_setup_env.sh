@@ -56,7 +56,3 @@ export PATH="${ROOT_DIR}/prebuilts/jdk/jdk11/linux-x86/bin:${PATH}"
 export BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
 export DEFCONFIG_OVERLAYS="${DEFCONFIG_OVERLAYS}"
 export KERNEL_VERSION=${KERNEL_VERSION}
-
-KLEAF_GKI_CHECKER_COMMANDS=("python3 ${DEVICE_MODULES_DIR}/scripts/gki_checker.py -k ${KERNEL_VERSION} \
-          -g ${ROOT_DIR}/../vendor/aosp_gki/${KERNEL_VERSION}/aarch64/vmlinux-userdebug \
-          -w ${DEVICE_MODULES_DIR}/scripts/gki_checker_white_list.txt -O ${OUT_DIR}/check_gki")

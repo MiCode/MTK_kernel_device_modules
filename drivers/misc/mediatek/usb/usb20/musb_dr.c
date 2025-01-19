@@ -8,6 +8,7 @@
  */
 
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 
 #include <usb20.h>
 #include <musb_dr.h>

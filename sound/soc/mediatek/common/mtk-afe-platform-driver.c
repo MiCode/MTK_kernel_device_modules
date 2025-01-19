@@ -101,9 +101,9 @@ EXPORT_SYMBOL_GPL(mtk_afe_pcm_open);
 snd_pcm_uframes_t mtk_afe_pcm_pointer(struct snd_soc_component *component,
 				      struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_pcm_runtime *rtd = snd_soc_substream_to_rtd(substream);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
-	struct mtk_base_afe_memif *memif = &afe->memif[asoc_rtd_to_cpu(rtd, 0)->id];
+	struct mtk_base_afe_memif *memif = &afe->memif[snd_soc_rtd_to_cpu(rtd, 0)->id];
 	const struct mtk_base_memif_data *memif_data = memif->data;
 	struct regmap *regmap = afe->regmap;
 	struct device *dev = afe->dev;
@@ -184,6 +184,7 @@ static int default_read_copy(struct snd_pcm_substream *substream,
 			 bytes, iter) != bytes)
 		return -EFAULT;
 	return 0;
+
 }
 
 int mtk_afe_pcm_copy_user(struct snd_soc_component *component,
@@ -197,7 +198,7 @@ int mtk_afe_pcm_copy_user(struct snd_soc_component *component,
 	int ret;
 
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	int memif_num = cpu_dai->id;
 	struct mtk_base_afe_memif *memif = &afe->memif[memif_num];
 
@@ -223,7 +224,7 @@ int mtk_afe_pcm_ack(struct snd_pcm_substream *substream)
 	struct snd_soc_component *component =
 		snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
 	struct mtk_base_afe_memif *memif = &afe->memif[cpu_dai->id];
 
 	if (!memif->ack_enable)

@@ -21,6 +21,7 @@
 #include <linux/swap.h>
 #include <linux/vmalloc.h>
 #include <linux/kernel.h>
+#include <linux/platform_device.h>
 
 #include "mtk_page_pool.h"
 #include "mtk-deferred-free-helper.h"
@@ -1148,8 +1149,8 @@ static struct page *alloc_largest_available(unsigned long size,
 
 static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 					       unsigned long len,
-					       u32 fd_flags,
-					       u64 heap_flags,
+					       unsigned long fd_flags,
+					       unsigned long heap_flags,
 					       bool uncached,
 					       const struct dma_buf_ops *ops)
 {
@@ -1322,8 +1323,8 @@ free_buffer:
 
 static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    u32 fd_flags,
-					    u64 heap_flags)
+					    unsigned long fd_flags,
+					    unsigned long heap_flags)
 {
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
@@ -1334,8 +1335,8 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 
 static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    u32 fd_flags,
-					    u64 heap_flags)
+					    unsigned long fd_flags,
+					    unsigned long heap_flags)
 {
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
@@ -1346,13 +1347,14 @@ static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 
 static struct dma_buf *mtk_slc_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    u32 fd_flags,
-					    u64 heap_flags)
+					    unsigned long fd_flags,
+					    unsigned long heap_flags)
 {
 	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, false,
 				       &mtk_slc_heap_buf_ops);
 }
 
+#if 0
 static long mtk_get_pool_size(struct dma_heap *heap)
 {
 	struct mtk_heap_priv_info *heap_priv;
@@ -1363,15 +1365,16 @@ static long mtk_get_pool_size(struct dma_heap *heap)
 
 	return 0;
 }
+#endif
 
 static const struct dma_heap_ops system_heap_ops = {
 	.allocate = system_heap_allocate,
-	.get_pool_size = mtk_get_pool_size,
+	//.get_pool_size = mtk_get_pool_size,
 };
 
 static const struct dma_heap_ops mtk_mm_heap_ops = {
 	.allocate = mtk_mm_heap_allocate,
-	.get_pool_size = mtk_get_pool_size,
+	//.get_pool_size = mtk_get_pool_size,
 };
 
 static const struct dma_heap_ops mtk_slc_heap_ops = {

@@ -9,6 +9,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include "mtk_pbm.h"

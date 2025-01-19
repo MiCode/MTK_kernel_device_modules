@@ -203,7 +203,6 @@ static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_typ
 			sizeof(u32) * CORE_NUM);
 	}
 }
-
 static int __used parse_cpu_limit_table(struct device *dev)
 {
 	struct device_node *np = dev->of_node;

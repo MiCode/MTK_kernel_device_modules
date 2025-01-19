@@ -1022,41 +1022,6 @@ static int init_basic_clks(struct platform_device *pdev, struct clk **clk,
 	return 0;
 }
 
-static int mtk_pd_set_performance(struct generic_pm_domain *genpd,
-				  unsigned int state)
-{
-	int i;
-	struct scp_domain *scpd =
-		container_of(genpd, struct scp_domain, genpd);
-	struct scp_event_data scpe;
-	struct scp *scp = scpd->scp;
-	struct genpd_onecell_data *pd_data = &scp->pd_data;
-
-	for (i = 0; i < pd_data->num_domains; i++) {
-		if (genpd == pd_data->domains[i]) {
-			dev_dbg(scp->dev, "%d. %s = %d\n",
-				i, genpd->name, state);
-			break;
-		}
-	}
-
-	if (i == pd_data->num_domains)
-		return 0;
-
-	scpe.event_type = MTK_SCPSYS_PSTATE;
-	scpe.genpd = genpd;
-	scpe.domain_id = i;
-	blocking_notifier_call_chain(&scpsys_notifier_list, state, &scpe);
-
-	return 0;
-}
-
-static unsigned int mtk_pd_get_performance(struct generic_pm_domain *genpd,
-					   struct dev_pm_opp *opp)
-{
-	return dev_pm_opp_get_level(opp);
-}
-
 static int mtk_pd_get_regmap(struct platform_device *pdev, struct regmap **regmap,
 			const char *name)
 {
@@ -1221,14 +1186,6 @@ struct scp *init_scp(struct platform_device *pdev,
 			genpd->flags |= GENPD_FLAG_ACTIVE_WAKEUP;
 		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_ALWAYS_ON))
 			genpd->flags |= GENPD_FLAG_ALWAYS_ON;
-
-		/* Add opp table check first to avoid OF runtime parse failed */
-		if (of_count_phandle_with_args(pdev->dev.of_node,
-		    "operating-points-v2", NULL) > 0) {
-			genpd->set_performance_state = mtk_pd_set_performance;
-			genpd->opp_to_performance_state =
-				mtk_pd_get_performance;
-		}
 	}
 
 	return scp;

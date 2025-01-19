@@ -25,6 +25,7 @@
 #include <linux/slab.h>
 #include "tzbatt_initcfg.h"
 #include <linux/power_supply.h>
+#include "thermal_core.h"
 
 
 static kuid_t uid = KUIDT_INIT(0);

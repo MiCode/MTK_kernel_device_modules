@@ -6920,7 +6920,7 @@ static int ISP_probe(struct platform_device *pDev)
 		}
 
 		isr_log_wq = alloc_ordered_workqueue("ISP_BH_Workqueue",
-			WQ_UNBOUND | __WQ_ORDERED | __WQ_ORDERED_EXPLICIT);
+			WQ_UNBOUND | __WQ_ORDERED);
 		if (!isr_log_wq)
 			LOG_NOTICE("Error: allocate workqueue failed!\n");
 #endif

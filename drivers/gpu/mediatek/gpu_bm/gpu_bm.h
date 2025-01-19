@@ -23,6 +23,8 @@
 
 #define GPU_BM_PEAK_INDEX_TOP_LIMIT      (1)
 
+#define GPU_BM_PEAK_INDEX_TOP_LIMIT      (1)
+
 struct v1_data {
 	unsigned int version;
 	unsigned int ctx;

@@ -16,6 +16,8 @@
 #include "ufshpb.h"
 #endif
 
+atomic_t btag_init_done;
+
 static bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 {
 	char cmd_op = cmd->cmnd[0];

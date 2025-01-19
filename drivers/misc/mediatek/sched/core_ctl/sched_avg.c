@@ -118,7 +118,7 @@ unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 		util = max_t(unsigned long, util,
 			READ_ONCE(cfs_rq->avg.util_est));
 
-	capacity = (orig == true) ? capacity_orig_of(cpu) : _capacity_of(cpu);
+	capacity = (orig == true) ? arch_scale_cpu_capacity(cpu) : _capacity_of(cpu);
 	util = min_t(unsigned long, util, capacity);
 	util_pct = (unsigned int)div64_ul((util * 100), capacity);
 	return util_pct;
@@ -129,12 +129,11 @@ EXPORT_SYMBOL(get_cpu_util_pct);
  * sched_update_nr_prod
  * @cpu: The core id of the nr running driver.
  * @nr: Updated nr running value for cpu.
- * @inc: Whether we are increasing or decreasing the count
  * @return: N/A
  *
  * Update average with latest nr_running value for CPU
  */
-void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
+void sched_update_nr_prod(int cpu, unsigned long nr_running)
 {
 	s64 diff;
 	u64 curr_time;
@@ -160,11 +159,6 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
 	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 	cpu_over_thres->nr_running_diff = nr_running - cpu_over_thres->nr_over_dn_thres;
 	spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
-}
-
-void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
-{
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, count);
 }
 
 static inline unsigned long task_util(struct task_struct *p)
@@ -285,11 +279,7 @@ static void sched_avg_deferred_func(struct work_struct *work)
 }
 static DECLARE_WORK(sched_avg_deferred_work, sched_avg_deferred_func);
 
-#if IS_ENABLED(CONFIG_ARM64)
 #define DEFERRED_WORK_DEBOUNCE_TIME	(5 * NSEC_PER_SEC)
-#else
-#define DEFERRED_WORK_DEBOUNCE_TIME	(5LL * NSEC_PER_SEC)
-#endif
 static void reset_over_thre_deferred(u64 curr_time)
 {
 	static s64 deferred_work_last_update;
@@ -715,6 +705,7 @@ void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), 1);
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running);
 }
 
 void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p, int flags)
@@ -731,6 +722,7 @@ void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), -1);
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running);
 }
 
 /*
@@ -792,7 +784,7 @@ static int init_thres_table(void)
 		arch_get_cluster_cpus(&cls_cpus, i);
 		cpu = cpumask_first(&cls_cpus);
 		cluster_over_thres_table[i].max_capacity =
-			capacity_orig_of(cpu);
+			arch_scale_cpu_capacity(cpu);
 	}
 
 	for_each_possible_cpu(cpu) {
@@ -852,7 +844,7 @@ int get_over_thres_stats(char *buf, int buf_size)
 
 		len += snprintf(buf+len, buf_size-len,
 			"cpu=%d capacity=%lu dn_thres=%d up_thres=%d\n",
-			cpu, cpu_rq(cpu)->cpu_capacity_orig,
+			cpu, arch_scale_cpu_capacity(cpu),
 			cpu_over_thres->dn_thres,
 			cpu_over_thres->up_thres);
 	}
@@ -950,18 +942,10 @@ int init_sched_avg(void)
 		goto failed_deprobe_enqueue_task_fair;
 	}
 
-
 	ret = register_trace_pelt_se_tp(pelt_se_tp, NULL);
 	if (ret) {
 		ret_error_line = __LINE__;
 		goto failed_deprobe_dequeue_task_fair;
-	}
-
-	ret = register_trace_sched_update_nr_running_tp(
-			sched_update_nr_running_cb, NULL);
-	if (ret) {
-		ret_error_line = __LINE__;
-		goto failed_deprobe_pelt_se_tp;
 	}
 
 	/*
@@ -972,8 +956,6 @@ int init_sched_avg(void)
 	pr_info("%s: init finish! ", TAG);
 	return 0;
 
-failed_deprobe_pelt_se_tp:
-	unregister_trace_pelt_se_tp(pelt_se_tp, NULL);
 failed_deprobe_dequeue_task_fair:
 failed_deprobe_enqueue_task_fair:
 	/* restrict vendor hook can't unregister */
@@ -987,5 +969,4 @@ failed:
 void exit_sched_avg(void)
 {
 	unregister_trace_pelt_se_tp(pelt_se_tp, NULL);
-	unregister_trace_sched_update_nr_running_tp(sched_update_nr_running_cb, NULL);
 }

@@ -111,8 +111,10 @@ static struct device *get_dev_by_mem_type(struct venc_inst *inst, struct vcodec_
 			return vcp_get_io_device_ex(VCP_IOMMU_VCP);
 	} else if (mem->type == MEM_TYPE_FOR_SEC_SW)
 		return vcp_get_io_device_ex(VCP_IOMMU_SEC);
-	else if (mem->type == MEM_TYPE_FOR_HW || mem->type == MEM_TYPE_FOR_SEC_HW
-			|| mem->type == MEM_TYPE_FOR_SEC_WFD_HW)
+	else if (mem->type == MEM_TYPE_FOR_HW ||
+		 mem->type == MEM_TYPE_FOR_HW_CACHE ||
+		 mem->type == MEM_TYPE_FOR_SEC_HW ||
+		 mem->type == MEM_TYPE_FOR_SEC_WFD_HW)
 		return inst->vcu_inst.ctx->dev->smmu_dev;
 	else
 		return NULL;
@@ -586,6 +588,7 @@ int vcp_enc_ipi_handler(void *arg)
 				break;
 			}
 		}
+		mutex_unlock(&dev->ctx_mutex);
 		if (!msg_valid) {
 			if (vcu) {
 				inst = container_of(vcu, struct venc_inst, vcu_inst);
@@ -2071,7 +2074,6 @@ static int venc_vcp_set_param(unsigned long handle,
 	case VENC_SET_PARAM_CONFIG:
 		if (enc_prm->config_data) {
 			struct venc_common_vsi *venc_com_vsi;
-
 			venc_com_vsi = (struct venc_common_vsi *)inst->ctx->dev->com_vsi;
 			memcpy(venc_com_vsi->config_data, enc_prm->config_data,
 			sizeof(__u8)*VENC_CONFIG_LENGTH);

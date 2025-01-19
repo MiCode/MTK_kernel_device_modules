@@ -7,6 +7,7 @@
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/of_platform.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>

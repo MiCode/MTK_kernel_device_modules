@@ -29,6 +29,7 @@
 #include "flt_cal.h"
 #include <sugov/cpufreq.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v3/energy_model.h"
 #else

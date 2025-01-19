@@ -1340,7 +1340,7 @@ static void mtk_vcodec_sync_log(struct mtk_vcodec_dev *dev,
 			mtk_v4l2_debug(8, "remove deprecated key: %s, value: %s\n",
 				pram->param_key, pram->param_val);
 			list_del_init(&pram->list);
-			vfree(pram);
+			kfree(pram);
 		}
 	}
 	mutex_unlock(plist_mutex);
@@ -1441,12 +1441,12 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 
 	mtk_v4l2_debug(0, "val: %s, log_index: %d", val, log_index);
 
-	argv = vzalloc(MAX_SUPPORTED_LOG_PARAMS_COUNT * 2 * LOG_PARAM_INFO_SIZE);
+	argv = kzalloc(MAX_SUPPORTED_LOG_PARAMS_COUNT * 2 * LOG_PARAM_INFO_SIZE, GFP_KERNEL);
 	if (!argv)
 		return;
-	log = vzalloc(LOG_PROPERTY_SIZE);
+	log = kzalloc(LOG_PROPERTY_SIZE, GFP_KERNEL);
 	if (!log) {
-		vfree(argv);
+		kfree(argv);
 		return;
 	}
 
@@ -1511,8 +1511,8 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) || mtk_vcodec_is_vcp(MTK_INST_ENCODER))
 		mtk_vcodec_build_log_string(dev, log_index);
 
-	vfree(argv);
-	vfree(log);
+	kfree(argv);
+	kfree(log);
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_log);
 

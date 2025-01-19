@@ -7,6 +7,8 @@
 #ifndef __APUSYS_REVISER_PLAT_H__
 #define __APUSYS_REVISER_PLAT_H__
 
+#include <linux/platform_device.h>
+
 struct reviser_plat {
 	int (*init)(struct platform_device *pdev, void *rplat);
 	int (*uninit)(struct platform_device *pdev);

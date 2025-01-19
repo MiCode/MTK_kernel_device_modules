@@ -5,6 +5,7 @@
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/pm_wakeup.h>
 #include <linux/sched/clock.h>
 

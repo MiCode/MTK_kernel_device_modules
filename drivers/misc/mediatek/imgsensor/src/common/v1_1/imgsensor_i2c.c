@@ -8,6 +8,7 @@
 #include "kd_imgsensor_api.h"
 #include <linux/ratelimit.h>
 #include <linux/thermal.h>
+#include "thermal_core.h"
 
 struct IMGSENSOR_I2C gi2c;
 #ifdef SENSOR_PARALLEISM

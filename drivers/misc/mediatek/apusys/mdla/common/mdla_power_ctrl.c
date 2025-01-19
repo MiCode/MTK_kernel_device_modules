@@ -6,7 +6,9 @@
 #include <linux/mutex.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 #include <linux/pm_wakeup.h>
 #include <linux/sched/clock.h>
 #include <linux/slab.h>

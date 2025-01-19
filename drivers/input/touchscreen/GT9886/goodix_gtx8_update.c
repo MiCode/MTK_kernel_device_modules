@@ -1414,7 +1414,7 @@ static int goodix_fw_update_init(struct goodix_ts_core *core_data,
 
 	/* find a valid firmware image name */
 	if (ts_bdata && ts_bdata->fw_name)
-		strlcpy(fwu_ctrl->fw_name, ts_bdata->fw_name,
+		strscpy(fwu_ctrl->fw_name, ts_bdata->fw_name,
 				sizeof(fwu_ctrl->fw_name));
 	else {
 		if (gt9886_find_touch_node == 1) {

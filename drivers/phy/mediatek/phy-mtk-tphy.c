@@ -2481,7 +2481,7 @@ static int mtk_phy_jtag_exit(struct phy *phy)
 }
 
 static struct phy *mtk_phy_xlate(struct device *dev,
-					struct of_phandle_args *args)
+					const struct of_phandle_args *args)
 {
 	struct mtk_tphy *tphy = dev_get_drvdata(dev);
 	struct mtk_phy_instance *instance = NULL;

@@ -21,6 +21,7 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/pm_wakeup.h>
 #include <gz-trusty/smcall.h>

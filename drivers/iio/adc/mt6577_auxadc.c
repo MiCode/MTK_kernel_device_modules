@@ -20,6 +20,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/nvmem-consumer.h>
+#include <linux/of.h>
 
 /* Register definitions */
 #define MT6577_AUXADC_CON0                    0x00

@@ -27,14 +27,12 @@
 #include <trace/events/power.h>
 #include <trace/hooks/sched.h>
 #include <linux/sched/topology.h>
-#include <trace/hooks/topology.h>
+//#include <trace/hooks/topology.h>
 #include <trace/hooks/cpufreq.h>
 #include <linux/sched/cpufreq.h>
 #include <linux/kthread.h>
 #include <uapi/linux/sched/types.h>
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
-#endif
 #include <mt-plat/mtk_irq_mon.h>
 #include "sched_version_ctrl.h"
 
@@ -459,10 +457,12 @@ skip_rq_uclamp:
 	 *   U' = irq + --------- * U
 	 *                 max
 	 */
+#if 0
 	if (trace_sugov_ext_util_debug_enabled())
 		trace_sugov_ext_util_debug(cpu, util_cfs, cpu_util_rt(rq), dl_util,
 				irq, util, scale_irq_capacity(util, irq, max),
 				cpu_bw_dl(rq));
+#endif
 	util = scale_irq_capacity(util, irq, max);
 	util += irq;
 
@@ -623,7 +623,8 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	 * into the same scale so we can compare.
 	 */
 	boost = (sg_cpu->iowait_boost * max_cap) >> SCHED_CAPACITY_SHIFT;
-	boost = uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL);
+	boost = mtk_uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL, 0, max_cap,
+		NULL, NULL, false);
 	if (sg_cpu->util < boost)
 		sg_cpu->util = boost;
 }
@@ -1231,8 +1232,10 @@ static void sugov_limits(struct cpufreq_policy *policy)
 	}
 
 	WRITE_ONCE(sg_policy->limits_changed, true);
+#if 0
 	if (trace_sugov_ext_limits_changed_enabled())
 		trace_sugov_ext_limits_changed(policy->cpu, policy->cur, policy->min, policy->max);
+#endif
 }
 
 struct cpufreq_governor mtk_gov = {
@@ -1462,22 +1465,22 @@ static int __init cpufreq_mtk_init(void)
 	if (ret)
 		pr_info("init_opp_cap_info failed\n");
 
-	ret = register_trace_android_rvh_update_cpu_capacity(
-			hook_update_cpu_capacity, NULL);
+	//ret = register_trace_android_rvh_update_cpu_capacity(
+	//		hook_update_cpu_capacity, NULL);
 	if (ret)
 		pr_info("register android_rvh_update_cpu_capacity failed\n");
 
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
-	ret = register_trace_android_vh_cpufreq_fast_switch(mtk_cpufreq_fast_switch, NULL);
+	//ret = register_trace_android_vh_cpufreq_fast_switch(mtk_cpufreq_fast_switch, NULL);
 	if (ret)
 		pr_info("register android_vh_cpufreq_fast_switch failed\n");
 
-	ret = register_trace_android_vh_cpufreq_target(mtk_cpufreq_target, NULL);
+	//ret = register_trace_android_vh_cpufreq_target(mtk_cpufreq_target, NULL);
 	if (ret)
 		pr_info("register android_vh_cpufreq_target failed\n");
 
-	ret = register_trace_android_vh_arch_set_freq_scale(
-			mtk_arch_set_freq_scale, NULL);
+	//ret = register_trace_android_vh_arch_set_freq_scale(
+	//		mtk_arch_set_freq_scale, NULL);
 	if (ret)
 		pr_info("register android_vh_arch_set_freq_scale failed\n");
 	else

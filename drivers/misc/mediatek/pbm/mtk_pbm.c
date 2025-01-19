@@ -18,6 +18,7 @@
 #include <linux/kallsyms.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/platform_device.h>
 
 #include "mtk_dynamic_loading_throttling.h"
 #include "mtk_pbm.h"

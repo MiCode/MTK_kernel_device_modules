@@ -2823,7 +2823,7 @@ static int mtk_phy_jtag_exit(struct phy *phy)
 }
 
 static struct phy *mtk_phy_xlate(struct device *dev,
-				 struct of_phandle_args *args)
+				 const struct of_phandle_args *args)
 {
 	struct mtk_xsphy *xsphy = dev_get_drvdata(dev);
 	struct xsphy_instance *inst = NULL;

@@ -7,6 +7,7 @@
 #define TOUCH_TIMEOUT_MS 100
 #define TOUCH_UP 0
 #define TOUCH_DOWN 1
+#define TA_GRP_AWARE_BOOST_THRESHOLD 5
 
 extern int (*fpsgo_get_fstb_active_fp)(long long time_diff);
 extern void (*touch_boost_get_cmd_fp)(int *cmd, int *enable,
@@ -33,4 +34,5 @@ struct boost {
 enum {
 	TOUCH_BOOST_UNKNOWN = -1,
 	TOUCH_BOOST_CPU = 0,
+	TOUCH_BOOST_GRP = 1,
 };

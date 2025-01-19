@@ -149,7 +149,7 @@ const char *name, void (*start_timer) (void), void (*cancel_timer) (void))
 	spin_lock(&tTimer_lock);
 	index = tTimerArray.count;
 
-	strlcpy(tTimerArray.tFuncs[index].name, name,
+	strscpy(tTimerArray.tFuncs[index].name, name,
 			sizeof(tTimerArray.tFuncs[index].name));
 
 	tTimerArray.tFuncs[index].start_timer = start_timer;
@@ -189,7 +189,7 @@ int mtkTTimer_unregister(const char *name)
 
 	spin_lock(&tTimer_lock);
 	for (; index < (tTimerArray.count - 1); index++) {
-		strlcpy(tTimerArray.tFuncs[index].name,
+		strscpy(tTimerArray.tFuncs[index].name,
 				tTimerArray.tFuncs[index + 1].name,
 				sizeof(tTimerArray.tFuncs[index].name));
 

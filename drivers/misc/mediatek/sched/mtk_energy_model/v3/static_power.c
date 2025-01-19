@@ -16,7 +16,9 @@
 #include <linux/init.h>
 #include <linux/kobject.h>
 #include <linux/of_address.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pm_opp.h>
 #include <linux/slab.h>

@@ -8,6 +8,7 @@
 
 #include <linux/bitops.h>
 #include <linux/cdev.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/pm_qos.h>
 #include <linux/spinlock_types.h>

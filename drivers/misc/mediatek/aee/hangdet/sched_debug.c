@@ -513,9 +513,6 @@ void print_rt_rq_at_AEE(struct seq_file *m, int cpu, struct rt_rq *rt_rq)
 	SEQ_printf_at_AEE(m, "  .%-30s: %lld.%06ld\n", #x, SPLIT_NS(rt_rq->x))
 
 	P(rt_nr_running);
-#if IS_ENABLED(CONFIG_SMP)
-	PU(rt_nr_migratory);
-#endif
 
 	P(rt_throttled);
 	PN(rt_time);
@@ -578,7 +575,6 @@ void print_dl_rq_at_AEE(struct seq_file *m, int cpu, struct dl_rq *dl_rq)
 
 	PU(dl_nr_running);
 #if IS_ENABLED(CONFIG_SMP)
-	PU(dl_nr_migratory);
 	dl_bw = &cpu_rq(cpu)->rd->dl_bw;
 #else
 	dl_bw = &dl_rq->dl_bw;

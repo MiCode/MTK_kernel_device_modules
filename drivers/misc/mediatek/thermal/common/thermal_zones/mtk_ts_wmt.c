@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/sched/task.h>
 #include <linux/sched/signal.h>
+#include "thermal_core.h"
 /*=============================================================
  *Weak functions
  *=============================================================
@@ -442,7 +443,7 @@ static unsigned long get_tx_bytes(void)
 	struct net *net;
 	unsigned long tx_bytes = 0;
 
-	read_lock(&dev_base_lock);
+	rcu_read_lock();
 	for_each_net(net) {
 		for_each_netdev(net, dev) {
 			if (!strncmp(dev->name, "wlan", 4)
@@ -457,7 +458,7 @@ static unsigned long get_tx_bytes(void)
 			}
 		}
 	}
-	read_unlock(&dev_base_lock);
+	rcu_read_unlock();
 	return tx_bytes;
 }
 

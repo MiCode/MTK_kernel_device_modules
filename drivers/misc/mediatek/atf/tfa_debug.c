@@ -10,6 +10,7 @@
 #include <linux/of_device.h>
 #include <linux/of_fdt.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/poll.h>
 #include <linux/proc_fs.h>

@@ -1499,6 +1499,10 @@ static int __init fpsgo_init(void)
 	fpsgo_set_rl_l2q_enable_fp = fpsgo_set_rl_l2q_enable;
 	fpsgo_set_rl_expected_l2q_us_fp = fpsgo_set_expected_l2q_us;
 
+	fpsgo_get_lr_pair_fp = fpsgo_get_lr_pair;
+	fpsgo_set_rl_l2q_enable_fp = fpsgo_set_rl_l2q_enable;
+	fpsgo_set_rl_expected_l2q_us_fp = fpsgo_set_expected_l2q_us;
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(dfrc_fps_limit_cb);
 #endif

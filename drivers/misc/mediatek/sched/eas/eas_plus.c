@@ -5,7 +5,9 @@
 #include <linux/math64.h>
 #include <linux/module.h>
 #include <linux/sched/cputime.h>
+#include <linux/of.h>
 #include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <sched/sched.h>
 #include <sugov/cpufreq.h>
 #include "common.h"
@@ -37,6 +39,10 @@ MODULE_LICENSE("GPL");
 #define IB_ASYM_MISFIT		(0x02)
 #define IB_SAME_CLUSTER		(0x01)
 #define IB_OVERUTILIZATION	(0x04)
+
+#ifndef CONFIG_RT_SOFTIRQ_AWARE_SCHED
+DEFINE_PER_CPU(__u32, active_softirqs);
+#endif
 
 struct cpumask __cpu_pause_mask;
 EXPORT_SYMBOL(__cpu_pause_mask);
@@ -255,15 +261,16 @@ unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 		struct cpumask *pd_cpus, unsigned long max_util,
 		unsigned long allowed_cpu_cap, unsigned long scale_cpu)
 {
-	unsigned long freq;
+	unsigned long freq, arch_max_freq __maybe_unused = 0;
 
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 	mtk_map_util_freq(NULL, max_util, pd_cpus,
 		&freq);
 #else
+	arch_max_freq = pd_get_opp_freq(cpumask_first(pd_cpus), 0);
 	max_util = map_util_perf(max_util);
 	max_util = min(max_util, allowed_cpu_cap);
-	freq = map_util_freq(max_util, pd_get_opp_freq(cpumask_first(pd_cpus), 0), scale_cpu);
+	freq = map_util_freq(max_util, arch_max_freq, scale_cpu);
 #endif
 
 	/* final freq aware outside min_freq ctrl*/
@@ -541,7 +548,7 @@ inline void update_thermal_pressure_capacity(bool update_all, int this_cpu)
 		thermal_max_capacity = pd_freq2util(first_cpu, freq_thermal, true, wl, NULL, 0);
 		max_capacity = arch_scale_cpu_capacity(first_cpu);
 		th_pressure = max_capacity - thermal_max_capacity;
-		last_th_pressure = READ_ONCE(per_cpu(thermal_pressure, first_cpu));
+		last_th_pressure = READ_ONCE(per_cpu(hw_pressure, first_cpu));
 
 		if (trace_sched_update_thermal_pressure_capacity_enabled())
 			trace_sched_update_thermal_pressure_capacity(first_cpu,
@@ -551,7 +558,7 @@ inline void update_thermal_pressure_capacity(bool update_all, int this_cpu)
 			continue;
 
 		for_each_cpu(cpu, cpus)
-			WRITE_ONCE(per_cpu(thermal_pressure, cpu), th_pressure);
+			WRITE_ONCE(per_cpu(hw_pressure, cpu), th_pressure);
 	}
 }
 #endif
@@ -562,6 +569,9 @@ void mtk_tick_entry(void *data, struct rq *rq)
 	bool sbb_trigger, is_cpu_to_update_thermal = false, update_all __maybe_unused = true;
 	u64 idle_time, wall_time, cpu_utilize;
 	struct sbb_cpu_data *sbb_data = per_cpu(sbb, rq->cpu);
+	if (!get_eas_hook())
+		return;
+
 	if (!get_eas_hook())
 		return;
 
@@ -587,8 +597,9 @@ void mtk_tick_entry(void *data, struct rq *rq)
 		if (sbb_data->tick_start) {
 			idle_time = get_cpu_idle_time(rq->cpu, &wall_time, 1);
 
-			cpu_utilize = 100 - div_u64((100 * (idle_time - sbb_data->idle_time)),
-				wall_time - sbb_data->wall_time);
+			cpu_utilize = 100 - (100 * (idle_time -
+				sbb_data->idle_time)) /
+				(wall_time - sbb_data->wall_time);
 
 			sbb_data->idle_time = idle_time;
 			sbb_data->wall_time = wall_time;
@@ -846,12 +857,13 @@ void hook_scheduler_tick(void *data, struct rq *rq)
 	if (!get_eas_hook())
 		return;
 
+	/* need upstream, add vendor data
 	struct root_domain *rd = rq->rd;
 
 	rcu_read_lock();
 	rd->android_vendor_data1 = system_has_many_heavy_task();
 	rcu_read_unlock();
-
+	*/
 	if (rq->curr->policy == SCHED_NORMAL)
 		check_for_migration(rq->curr);
 }
@@ -1108,7 +1120,6 @@ void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, 
 
 	if (!p || p->nr_cpus_allowed == 1) {
 		rq->misfit_task_load = 0;
-		rq->misfit_reason = -1;
 		return;
 	}
 
@@ -1119,7 +1130,6 @@ void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, 
 	fits = util_fits_capacity(util, uclamp_min, uclamp_max, capacity, cpu_of(rq));
 	if (fits > 0) {
 		rq->misfit_task_load = 0;
-		rq->misfit_reason = -1;
 		goto out;
 	}
 
@@ -1129,7 +1139,6 @@ void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, 
 	 */
 	misfit_task_load = task_h_load(p);
 	rq->misfit_task_load = max_t(unsigned long, misfit_task_load, 1);
-	rq->misfit_reason = MISFIT_PERF;
 
 out:
 	if (trace_sched_mtk_update_misfit_status_enabled())

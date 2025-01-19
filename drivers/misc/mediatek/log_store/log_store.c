@@ -86,12 +86,14 @@ static inline void logstore_wait_on_buffer(struct buffer_head *bh)
 
 static int get_partition_info(void)
 {
-	struct block_device *bdev;
+	//struct block_device *bdev;
 	dev_t dev_num = 0;
 
 	if (lookup_bdev(EXPDB_PATH, &dev_num) != 0 || dev_num == 0)
 		return -EIO;
 
+#if 0
+	// FIXME: blkdev_get_by_dev is replaced by bdev_open_by_dev
 	bdev = blkdev_get_by_dev(dev_num, FMODE_WRITE | FMODE_READ, NULL, NULL);
 	if (IS_ERR(bdev))
 		return -EIO;
@@ -99,6 +101,7 @@ static int get_partition_info(void)
 	expdb_logstore->bdev = bdev;
 	expdb_logstore->block_size = block_size(bdev);
 	expdb_logstore->part_size = bdev_nr_bytes(bdev);
+#endif
 	expdb_logstore->bootlog_offset = (expdb_logstore->part_size - expdb_logstore->logstore_size
 			- expdb_logstore->bootlog_size) / expdb_logstore->block_size;
 	expdb_logstore->logstore_offset = (expdb_logstore->part_size - expdb_logstore->logstore_size)
@@ -127,7 +130,7 @@ static int partition_block_rw(struct block_device *bdev, int write, sector_t ind
 		return -EINVAL;
 
 	if (bdev)
-		bh = __getblk_gfp(bdev, index, expdb_logstore->block_size, __GFP_MOVABLE);
+		bh = __getblk(bdev, index, expdb_logstore->block_size);
 	if (bh) {
 		clear_bit(BH_Uptodate, &bh->b_state);
 		get_bh(bh);

@@ -280,12 +280,16 @@ static int scmi_tinysys_protocol_init(const struct scmi_protocol_handle *ph)
 	return ph->set_priv(ph, pinfo, version);
 }
 
+static char tinysys_vendor_id[SCMI_SHORT_NAME_MAX_SIZE] = "mtk";
+static char tinysys_sub_vendor_id[SCMI_SHORT_NAME_MAX_SIZE] = "mtk";
 const struct scmi_protocol scmi_tinysys_protocol = {
 	.id = SCMI_PROTOCOL_TINYSYS,
 	.owner = THIS_MODULE,
 	.instance_init = &scmi_tinysys_protocol_init,
 	.ops = &tinysys_proto_ops,
 	.events = &tinysys_protocol_events,
+	.vendor_id = tinysys_vendor_id,
+	.sub_vendor_id = tinysys_sub_vendor_id,
 };
 
 int scmi_tinysys_register(void)

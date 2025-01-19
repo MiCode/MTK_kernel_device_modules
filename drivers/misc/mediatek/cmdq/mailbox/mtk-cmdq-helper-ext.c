@@ -1640,7 +1640,7 @@ s32 cmdq_pkt_append_command(struct cmdq_pkt *pkt, u16 arg_c, u16 arg_b,
 
 		cmdq_util_err(
 			"%s: pkt:%p avail:%lu va:%p iova:%pa pa:%pa alloc_time:%llu va:%p inst:%#llx",
-			__func__, pkt, (unsigned long)pkt->avail_buf_size, buf->va_base,
+			__func__, pkt, pkt->avail_buf_size, buf->va_base,
 			&buf->iova_base, &buf->pa_base, buf->alloc_time,
 			va, *((u64 *)va));
 
