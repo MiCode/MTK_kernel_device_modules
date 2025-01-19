@@ -696,6 +696,38 @@ void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 		mtk_disp_clear_channel_srt_bw_MT6991(mtk_crtc);
 }
 
+void mtk_disp_total_srt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
+{
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	unsigned int crtc_idx = 0;
+	unsigned int total_srt_sum = 0;
+
+	if(!mtk_crtc) {
+		DDPPR_ERR("%s:mtk_crtc is NULL\n", __func__);
+		return;
+	}
+
+	crtc = &mtk_crtc->base;
+	crtc_idx = drm_crtc_index(crtc);
+	priv = crtc->dev->dev_private;
+
+	if(!priv) {
+		DDPPR_ERR("%s:priv is NULL\n", __func__);
+		return;
+	}
+
+	if (priv->total_srt[crtc_idx] == bw)
+		return;
+
+	priv->total_srt[crtc_idx] = bw;
+	for (int i = 0; i < MAX_CRTC; i++)
+		total_srt_sum += priv->total_srt[i];
+
+	DDPINFO("%s crtc%d=%d total=%d\n", __func__, crtc_idx, bw, total_srt_sum);
+	mtk_vidle_srt_bw_set(total_srt_sum);
+}
+
 void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base)
 {
 	static u32 pre_rpo_lye;
