@@ -8024,6 +8024,13 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 	unsigned int pipe = crtc->index;
 	static struct bwm_plane_info plane_info[OVL_LAYER_NR];
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) &&
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_REPAINT) &&
+		mtk_drm_idlemgr_wb_is_using(mtk_crtc)) {
+		DDPDBG_BWM("%s wb layer cannot get ratio\n", __func__);
+		return;
+	}
+
 	plane_mask = old_crtc_state->plane_mask;
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 

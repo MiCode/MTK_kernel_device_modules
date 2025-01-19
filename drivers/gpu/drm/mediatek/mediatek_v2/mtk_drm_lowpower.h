@@ -205,6 +205,7 @@ int32_t _acquire_wrot_resource(enum CMDQ_EVENT_ENUM resourceEvent);
 #endif
 
 bool mtk_drm_idlemgr_wb_is_entered(struct mtk_drm_crtc *mtk_crtc);
+bool mtk_drm_idlemgr_wb_is_using(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_idlemgr_wb_enter(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_drm_idlemgr_wb_leave(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_drm_idlemgr_wb_leave_post(struct mtk_drm_crtc *mtk_crtc);
