@@ -793,7 +793,7 @@ static ssize_t driver_flag_set(struct device_driver *drv,
 	else
 		z = 0;
 
-	BTIF_INFO_FUNC("x(0x%08lx), y(0x%08lx), z(0x%08lx)\n\r", x, y, z);
+	BTIF_INFO_FUNC("x(0x%08lx), y(0x%08lx), z(0x%08lx), ret(%d)\n\r", x, y, z, result);
 
 	switch (x) {
 #ifdef BTIF_FLAG_SET_ENABLE_ALL_FUNC
@@ -3080,7 +3080,6 @@ static void btif_log_buf_dmp_out_work(struct work_struct *work)
 	struct _btif_log_queue_t_ *p_log_que = container_of(work,
 		struct _btif_log_queue_t_, dump_work);
 	struct _btif_log_buf_t_ *p_log_buf = NULL;
-	unsigned char *p_buf;
 	unsigned int len = 0;
 	unsigned int pkt_count = 0;
 	unsigned char *p_dir = NULL;
@@ -3099,7 +3098,6 @@ static void btif_log_buf_dmp_out_work(struct work_struct *work)
 	for (i = 0; i < p_log_que->dump_size; i++) {
 		p_log_buf = p_log_que->p_dump_queue + i;
 		len = p_log_buf->len;
-		p_buf = p_log_buf->buffer;
 		p_timer = &p_log_buf->timer;
 		p_ts = &p_log_buf->ts;
 		len = len > BTIF_LOG_SZ ? BTIF_LOG_SZ : len;
