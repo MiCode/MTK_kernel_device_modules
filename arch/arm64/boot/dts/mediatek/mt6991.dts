@@ -11414,6 +11414,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			jpeg-set-axdomain-base-idx = <3>;
 			jpeg-set-axdomain = <0xd>;
+			larb-port = <MTK_M4U_TO_PORT(SMMU_L7_P17_JPGDEC_W)>,
+				 <MTK_M4U_TO_PORT(SMMU_L7_P18_JPGDEC_BS)>,
+				 <MTK_M4U_TO_PORT(SMMU_L7_P30_JPGDEC_HUF)>,
+				 <MTK_M4U_TO_PORT(SMMU_L7_P27_JPGDEC_W_1)>,
+				 <MTK_M4U_TO_PORT(SMMU_L7_P28_JPGDEC_BS_1)>,
+				 <MTK_M4U_TO_PORT(SMMU_L7_P29_JPGDEC_HUF_1)>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L7_P17_JPGDEC_W)
 							&mmqos SLAVE_COMMON(0)>,
 						<&mmqos MASTER_LARB_PORT(SMMU_L7_P18_JPGDEC_BS)
@@ -11441,14 +11447,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x388b0000 0 0x10000>;
 			interrupts = <GIC_SPI 494 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb8>;
-			operating-points-v2 = <&opp_table_venc>;
-			clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC_JPGDEC>,
-				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
-			clock-names = "MT_CG_VENC_JPGDEC_C2", "mmdvfs_clk";
+			clocks = <&venc_gcon_core1_clk CLK_VEN2_CKE3_JPGDEC_JPGDEC>;
+			clock-names = "MT_CG_VENC_JPGDEC_C2";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			jpeg-set-axdomain-base-idx = <1>;
 			jpeg-set-axdomain = <0xf>;
+			larb-port = <MTK_M4U_TO_PORT(SMMU_L8_P17_JPGDEC_W)>,
+				 <MTK_M4U_TO_PORT(SMMU_L8_P18_JPGDEC_BS)>,
+				 <MTK_M4U_TO_PORT(SMMU_L8_P30_JPGDEC_HUF)>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L8_P17_JPGDEC_W)
 							&mmqos SLAVE_COMMON(1)>,
 						<&mmqos MASTER_LARB_PORT(SMMU_L8_P18_JPGDEC_BS)
@@ -11458,6 +11465,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnect-names = "path_jpegdec2_wdma",
 						"path_jpegdec2_bsdma",
 						"path_jpegdec2_huff_offset";
+			jpgdec0-supply = <&jpgdec0>;
 		};
 
 		seninf_top: seninf-top@3a300000 {
