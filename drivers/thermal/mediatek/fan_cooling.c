@@ -3,10 +3,12 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 #include <linux/err.h>
+#include <linux/gpio.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -19,6 +21,10 @@
 struct mtk_pwm_fan {
 	unsigned int pwm_ch;
 };
+
+static struct pinctrl *pinctrl;
+static struct pinctrl_state *gpio_active;
+static struct pinctrl_state *gpio_inactive;
 
 static struct pwm_spec_config fan_pwm_config = {
 	.pwm_no = 0,
@@ -43,9 +49,21 @@ static int fan_throttle(struct fan_cooling_device *fan_cdev, unsigned long state
 	struct device *dev = fan_cdev->dev;
 	int ret;
 
-	if (state == FAN_COOLING_UNLIMITED_STATE)
+	if (state == FAN_COOLING_UNLIMITED_STATE) {
 		mt_pwm_disable(fan_pwm_config.pwm_no, fan_pwm_config.pmic_pad);
-	else {
+		ret = pinctrl_select_state(pinctrl, gpio_inactive);
+		if (ret) {
+			dev_info(dev, "%s(), error, can not set gpio type inactive\n",
+				__func__);
+			return ret;
+		}
+	} else {
+		ret = pinctrl_select_state(pinctrl, gpio_active);
+		if (ret) {
+			dev_info(dev, "%s(), error, can not set gpio type active\n",
+				__func__);
+			return ret;
+		}
 		fan_pwm_config.PWM_MODE_OLD_REGS.THRESH = (fan_pwm_config.PWM_MODE_OLD_REGS.DATA_WIDTH)
 			/(fan_cdev->max_state)*state;
 		ret = pwm_set_spec_config(&fan_pwm_config);
@@ -116,47 +134,64 @@ static int fan_cooling_probe(struct platform_device *pdev)
 	struct fan_cooling_device *fan_cdev;
 	struct mtk_pwm_fan *pwm_fan;
 	int len, offset;
-
+	int ret = 0;
 	fan_cdev = devm_kzalloc(dev, sizeof(*fan_cdev), GFP_KERNEL);
 	if (!fan_cdev)
 		return -ENOMEM;
 	pwm_fan = devm_kmalloc(&pdev->dev, sizeof(*pwm_fan), GFP_KERNEL);
-	if (!pwm_fan) {
-		kfree(fan_cdev);
+	if (!pwm_fan)
 		return -ENOMEM;
-	};
 
 	of_property_read_u32(pdev->dev.of_node, "pwm-ch",
 		&pwm_fan->pwm_ch);
 	len = (strlen(np->name) > (MAX_FAN_COOLER_NAME_LEN - 1)) ?
 		(MAX_FAN_COOLER_NAME_LEN - 1) : strlen(np->name);
-	offset = snprintf(fan_cdev->name, len, np->name);
-	if (offset < 0)
-		goto init_fail;
-	if (offset >= len)
-		goto init_fail;
+	offset = strscpy(fan_cdev->name, np->name, len + 1);
+	if (offset < 0 ) {
+		dev_info(dev, "%s: offset=%d, len=%d fail\n", fan_cdev->name, offset, len);
+		return -EINVAL;
+	}
 	fan_cdev->target_state = FAN_COOLING_UNLIMITED_STATE;
 	fan_cdev->dev = dev;
 	fan_cdev->max_state = FAN_STATE_NUM - 1;
 	fan_cdev->throttle = fan_throttle;
+	fan_pwm_config.pwm_no = (unsigned int)pwm_fan->pwm_ch;
+	mt_pwm_disable(fan_pwm_config.pwm_no, fan_pwm_config.pmic_pad);
+
+	pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR(pinctrl)) {
+		ret = PTR_ERR(pinctrl);
+		dev_info(dev, "%s(), ret %d, cannot get pinctrl!\n",
+			__func__, ret);
+		return ret;
+	}
+
+	gpio_inactive = pinctrl_lookup_state(pinctrl, "default");
+	if (IS_ERR(gpio_inactive)) {
+		ret = PTR_ERR(gpio_inactive);
+		dev_info(dev, "%s(), pinctrl_lookup_state %s fail, ret %d\n",
+			__func__, "default", ret);
+		return ret;
+	}
+
+	gpio_active = pinctrl_lookup_state(pinctrl, "active");
+	if (IS_ERR(gpio_active)) {
+		ret = PTR_ERR(gpio_active);
+		dev_info(dev, "%s(), pinctrl_lookup_state %s fail, ret %d\n",
+			__func__, "active", ret);
+		return ret;
+	}
 
 	cdev = thermal_of_cooling_device_register(np, fan_cdev->name,
 		fan_cdev, &fan_cooling_ops);
 	if (IS_ERR(cdev))
-		goto init_fail;
+		return -EINVAL;
 	fan_cdev->cdev = cdev;
 
-	fan_pwm_config.pwm_no = (unsigned int)pwm_fan->pwm_ch;
 	platform_set_drvdata(pdev, fan_cdev);
-	mt_pwm_disable(fan_pwm_config.pwm_no, fan_pwm_config.pmic_pad);
 	dev_info(dev, "register %s done\n", fan_cdev->name);
 
 	return 0;
-
-init_fail:
-	kfree(fan_cdev);
-	kfree(pwm_fan);
-	return -EINVAL;
 }
 
 static int fan_cooling_remove(struct platform_device *pdev)
