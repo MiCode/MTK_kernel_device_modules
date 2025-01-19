@@ -2147,6 +2147,7 @@ int init_dpt_io(void)
 					&coef2_sratio_addr,
 					&coef1_sratio_addr,
 					&cpu_sratio_addr};
+	int ret = 0, support;
 
 	/* init dpt io*/
 	dev_node = of_find_node_by_name(NULL, "dpt-info");
@@ -2160,6 +2161,12 @@ int init_dpt_io(void)
 		pr_info("failed to find dpt-info pdev @ %s\n", __func__);
 		return -EINVAL;
 	}
+
+	ret = of_property_read_u32(dev_node, "dpt_v2_support", &support);
+	if (ret)
+		support = 0;
+
+	sched_dpt_v2_enable_set(support);
 
 	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
 	if (sram_res) {

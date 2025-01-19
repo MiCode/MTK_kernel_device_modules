@@ -433,21 +433,17 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 	if (trace_sched_max_util_enabled())
 		trace_sched_max_util("pd", pd_idx, dst_cpu, dst_idx, max_util, pd_cpu, -1, -1);
 
-	/* Double check with Peter for patch:9622215 */
-	// trace_printk("pd_idx=%d dst_cpu=%d dst_idx=%d pd_cpu=%d\n", pd_idx, dst_cpu, dst_idx, pd_cpu);
-	if (pd_cpu != -1) {
+    /* Double check with Peter for patch:9622215 */
+    if (pd_cpu != -1) {
 		eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx] = pd_cpu;
-		// trace_printk("pd_cpu=%d pd_idx=%d dst_idx=%d dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx]=%d\n", pd_cpu, pd_idx,
-		// 	dst_idx, eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx]);
-		if (dst_idx) {
+		if (dst_idx)
 			eenv->dpt_v2_sratio[pd_cpu][dst_idx] = eenv->dpt_v2_sratio[pd_cpu][0];
-			// trace_printk("dst_cpu=%d pd_idx=%d sratio_before=%u sratio_after=%u\n", dst_cpu, pd_idx,
-			// 	eenv->dpt_v2_sratio[pd_cpu][dst_idx], eenv->dpt_v2_sratio[pd_cpu][0]);
-		}
+
 		if (trace_sched_max_util_dpt_v2_sratio_enabled())
 			trace_sched_max_util_dpt_v2_sratio(dst_cpu, dst_idx, pd_idx, pd_cpu, eenv->dpt_v2_sratio[pd_cpu][dst_idx], eenv->dpt_v2_sratio[pd_cpu][0],
 				0, 0, 0);
 	}
+
 
 	eenv->gear_max_util[eenv->gear_idx][dst_idx] = min(gear_max_util,
 					eenv->pds_cpu_cap[pd_idx]);
@@ -504,8 +500,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	struct perf_domain *pd_ptr = pd;
 
 	eenv->dpt_v2_support = is_dpt_v2_support();
-	if (eenv->dpt_v2_support)
-		eenv->dpt_v2_swpm_support = sched_dpt_v2_swpm_mode_get();
+	eenv->dpt_v2_swpm_support = sched_dpt_v2_swpm_mode_get();
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 

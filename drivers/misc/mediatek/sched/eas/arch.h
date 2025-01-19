@@ -28,22 +28,6 @@ unsigned long pd_get_freq_volt(int cpu, unsigned long freq, int quant, int wl)
 	return 0;
 }
 
-unsigned long (*get_pwr_scale_hook)(void __iomem *base, unsigned int cpu);
-EXPORT_SYMBOL(get_pwr_scale_hook);
-
-int get_pwr_scale(int cpu)
-{
-	int power_scaling_factor = -1;
-
-	if (get_cpu_power_scaling_factor_hook) {
-		get_cpu_power_scaling_factor_hook(cpu, &power_scaling_factor);
-		// trace_printk("cpu=%d power_scaling_factor=0x%x\n", cpu, power_scaling_factor);
-		return power_scaling_factor;
-	}
-
-	return -1;
-}
-
 unsigned long (*get_cpu_power_hook)(unsigned int mtk_em, unsigned int get_lkg,
 	int quant, int wl, int *dpt_pwr_eff_val, int *val_s, int val_m, int r_o,
 	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
@@ -65,30 +49,19 @@ unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 	if (get_cpu_power_hook) {
 		unsigned long result;
 		int dpt_pwr_eff_val[6];
-		int swpm_vars[10];
+		int swpm_vars[11] = {0};
 
 		swpm_vars[7] = dpt_v2_swpm_support;
 		swpm_vars[8] = dpt_v2_sratio;
-		if (sched_dpt_v2_swpm_mode_get() == 2)
-			swpm_vars[2] = get_pwr_scale(this_cpu);
+		swpm_vars[10] = data[4];
 
 		result = get_cpu_power_hook(mtk_em, get_lkg, quant, wl,
 				dpt_pwr_eff_val, val_s, val_m, r_o,
 				this_cpu, cpu_temp, opp, cpumask_val, data, output, swpm_vars,
 				dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local, dpt_v2_cap_params.IPC_scaling_factor);
 
-		// TODO
-		// if (trace_sched_dptv2_swpm_enabled()) { 
-		// 	if (sched_dpt_v2_swpm_mode_get() == 1)
-		// 		trace_sched_dptv2_swpm(this_cpu, swpm_vars, "act_pwr", "idle_pwr", "dc_term");
-		// 	else if (sched_dpt_v2_swpm_mode_get() == 2)
-		// 		trace_sched_dptv2_swpm(this_cpu, swpm_vars, "dhrystone_pwr", "cache_miss_pwr", "pwr_scale");
-		// 	else
-		// 		trace_sched_dptv2_swpm(this_cpu, swpm_vars, "undefined", "undefined", "undefined");
-		// }
-
-		// trace_printk("dpt_v2_swpm_support=%lu act_pwr=%d idle_pwr=%d dc_term=%d freq=%d volt=%d capacity=%d dyn_pwr=%d pwr_eff=%d orig_pwr_eff=%d\n",
-		// 	data[5], swpm_vars[0], swpm_vars[1], swpm_vars[2], swpm_vars[3], swpm_vars[4], swpm_vars[5], swpm_vars[6], swpm_vars[6]/swpm_vars[5], swpm_vars[9]);
+		if (trace_sched_dptv2_swpm_enabled())
+			trace_sched_dptv2_swpm(this_cpu, swpm_vars);
 
 		record_sched_pd_opp2pwr_eff(this_cpu, opp, quant, wl,
 			dpt_pwr_eff_val[0], dpt_pwr_eff_val[1], dpt_pwr_eff_val[2],

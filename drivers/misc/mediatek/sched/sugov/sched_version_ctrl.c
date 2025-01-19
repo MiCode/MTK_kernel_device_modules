@@ -109,7 +109,7 @@ int init_sched_ctrl(void)
 		_percore_l3_bw = true;
 		_dsu_pwr_enable = true;
 		_dpt_v2_enable = false;
-		_dpt_v2_swpm_mode = 2;
+		_dpt_v2_swpm_mode = 0;
 		break;
 	case EAS_6_12:
 		am_support = 1;
@@ -123,6 +123,8 @@ int init_sched_ctrl(void)
 		_post_init_util_ctl = true;
 		_percore_l3_bw = true;
 		_dsu_pwr_enable = true;
+		_dpt_v2_enable = false;
+		_dpt_v2_swpm_mode = 2;
 		break;
 	default:
 		am_support = 0;
@@ -159,6 +161,12 @@ bool sched_dpt_v2_enable_get(void)
 	return _dpt_v2_enable;
 }
 EXPORT_SYMBOL_GPL(sched_dpt_v2_enable_get);
+
+void sched_dpt_v2_enable_set(unsigned int status)
+{
+       _dpt_v2_enable = status;
+}
+EXPORT_SYMBOL_GPL(sched_dpt_v2_enable_set);
 
 bool legacy_api_support_get(void)
 {

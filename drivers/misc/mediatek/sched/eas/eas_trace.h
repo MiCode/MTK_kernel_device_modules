@@ -104,12 +104,12 @@ TRACE_EVENT(sched_leakage,
 
 TRACE_EVENT(sched_dptv2_swpm,
 
-	TP_PROTO(int cpu, int *swpm_vars,
-		const char *param_name1, const char *param_name2, const char *param_name3),
+	TP_PROTO(int cpu, int *swpm_vars),
 
-	TP_ARGS(cpu, swpm_vars, param_name1, param_name2, param_name3),
+	TP_ARGS(cpu, swpm_vars),
 
 	TP_STRUCT__entry(
+		__field(int, dpt_v2_support)
 		__field(int, dpt_v2_swpm_support)
 		__field(int, cpu)
 		__field(int, param1)
@@ -122,12 +122,10 @@ TRACE_EVENT(sched_dptv2_swpm,
 		__field(int, dyn_pwr)
 		__field(int, pwr_eff)
 		__field(int, orig_pwr_eff)
-		__string(param_name1, param_name1)
-		__string(param_name2, param_name2)
-		__string(param_name3, param_name3)
 		),
 
 	TP_fast_assign(
+		__entry->dpt_v2_support    = swpm_vars[10];
 		__entry->dpt_v2_swpm_support    = swpm_vars[7];
 		__entry->cpu    = cpu;
 		__entry->param1    = swpm_vars[0];
@@ -140,19 +138,14 @@ TRACE_EVENT(sched_dptv2_swpm,
 		__entry->dyn_pwr  = swpm_vars[6];
 		__entry->pwr_eff  = swpm_vars[6]/swpm_vars[5];
 		__entry->orig_pwr_eff  = swpm_vars[9];
-		__assign_str(param_name1);
-		__assign_str(param_name2);
-		__assign_str(param_name3);
 		),
 
-	TP_printk("dpt_v2_swpm_support=%d cpu=%d %s=%d %s=%d %s=%d sratio=%d freq=%d volt=%d capacity=%d dyn_pwr=%d pwr_eff=%d orig_pwr_eff=%d",
+	TP_printk("dpt_v2_support=%d dpt_v2_swpm_support=%d cpu=%d pm_coef1=%d pm_coef2=%d pm_coef3=%d sratio=%d freq=%d volt=%d capacity=%d dyn_pwr=%d pwr_eff=%d orig_pwr_eff=%d",
+		__entry->dpt_v2_support,
 		__entry->dpt_v2_swpm_support,
 		__entry->cpu,
-		__get_str(param_name1),
 		__entry->param1,
-		__get_str(param_name2),
 		__entry->param2,
-		__get_str(param_name3),
 		__entry->param3,
 		__entry->sratio,
 		__entry->freq,
@@ -211,13 +204,13 @@ TRACE_EVENT(sched_dsu_freq,
 TRACE_EVENT(dsu_pwr_cal,
 
 	TP_PROTO(int dst_cpu, unsigned long task_util, unsigned long total_util,
-		unsigned int dsu_bw, unsigned int emi_bw,
+		unsigned int dsu_bw, unsigned int mem_bw,
 		int dsu_temp, unsigned int dsu_freq, unsigned int dsu_volt,
 		unsigned int extern_volt,
 		unsigned int dsu_dyn_pwr, unsigned int dsu_lkg_pwr,
 		unsigned int mcusys_dyn_pwr),
 
-	TP_ARGS(dst_cpu, task_util, total_util, dsu_bw, emi_bw, dsu_temp, dsu_freq, dsu_volt,
+	TP_ARGS(dst_cpu, task_util, total_util, dsu_bw, mem_bw, dsu_temp, dsu_freq, dsu_volt,
 		extern_volt, dsu_dyn_pwr, dsu_lkg_pwr, mcusys_dyn_pwr),
 
 	TP_STRUCT__entry(
@@ -225,7 +218,7 @@ TRACE_EVENT(dsu_pwr_cal,
 		__field(unsigned long, task_util)
 		__field(unsigned long, total_util)
 		__field(unsigned int, dsu_bw)
-		__field(unsigned int, emi_bw)
+		__field(unsigned int, mem_bw)
 		__field(int, temp)
 		__field(unsigned int, dsu_freq)
 		__field(unsigned int, dsu_volt)
@@ -240,7 +233,7 @@ TRACE_EVENT(dsu_pwr_cal,
 		__entry->task_util   = task_util;
 		__entry->total_util     = total_util;
 		__entry->dsu_bw   = dsu_bw;
-		__entry->emi_bw   = emi_bw;
+		__entry->mem_bw   = mem_bw;
 		__entry->temp    = dsu_temp;
 		__entry->dsu_freq   = dsu_freq;
 		__entry->dsu_volt     = dsu_volt;
@@ -250,12 +243,12 @@ TRACE_EVENT(dsu_pwr_cal,
 		__entry->mcusys_dyn_pwr   = mcusys_dyn_pwr;
 	),
 
-	TP_printk("dst_cpu=%d task_util=%lu total_util=%lu dsu_bw=%u emi_bw=%u temp=%d dsu_freq=%u dsu_volt=%u extern_volt=%u dsu_dyn_pwr=%u dsu_lkg_pwr=%u mcusys_dyn_pwr=%u",
+	TP_printk("dst_cpu=%d task_util=%lu total_util=%lu dsu_bw=%u mem_bw=%u temp=%d dsu_freq=%u dsu_volt=%u extern_volt=%u dsu_dyn_pwr=%u dsu_lkg_pwr=%u mcusys_dyn_pwr=%u",
 		__entry->dst_cpu,
 		__entry->task_util,
 		__entry->total_util,
 		__entry->dsu_bw,
-		__entry->emi_bw,
+		__entry->mem_bw,
 		__entry->temp,
 		__entry->dsu_freq,
 		__entry->dsu_volt,
