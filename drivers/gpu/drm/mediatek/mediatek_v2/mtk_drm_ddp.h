@@ -16,6 +16,7 @@
 #endif
 
 #define DISP_MUTEX_TOTAL (16)
+#define DISP_MUTEX_TOTAL_v2 (8)
 #define DISP_MUTEX_DDP_FIRST (0)
 #define DISP_MUTEX_DDP_LAST (6)
 #define DISP_MUTEX_DDP_COUNT (DISP_MUTEX_DDP_LAST - DISP_MUTEX_DDP_FIRST + 1)
@@ -229,6 +230,7 @@ struct mtk_disp_ddp_data {
 	const unsigned int *dispsys_map;
 	bool wakeup_pf_wq;
 	bool wakeup_esd_wq;
+	const unsigned int disp_mutex_total;
 };
 
 struct mtk_ddp {

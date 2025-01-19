@@ -9297,6 +9297,7 @@ static const struct mtk_disp_ddp_data mt2701_ddp_driver_data = {
 	.mutex_mod_reg = {MT2701_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT2701_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt2712_ddp_driver_data = {
@@ -9305,6 +9306,7 @@ static const struct mtk_disp_ddp_data mt2712_ddp_driver_data = {
 	.mutex_mod_reg = {MT2712_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT2712_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt8173_ddp_driver_data = {
@@ -9313,6 +9315,7 @@ static const struct mtk_disp_ddp_data mt8173_ddp_driver_data = {
 	.mutex_mod_reg = {MT8173_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT8173_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6779_ddp_driver_data = {
@@ -9321,6 +9324,7 @@ static const struct mtk_disp_ddp_data mt6779_ddp_driver_data = {
 	.mutex_mod_reg = {MT6779_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6779_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 const struct mtk_disp_ddp_data mt6768_ddp_driver_data = {
@@ -9328,6 +9332,7 @@ const struct mtk_disp_ddp_data mt6768_ddp_driver_data = {
 	.mutex_sof = mt6768_mutex_sof,
 	.mutex_mod_reg = {MT6768_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6768_DISP_MUTEX0_SOF,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 const struct mtk_disp_ddp_data mt6761_ddp_driver_data = {
@@ -9335,6 +9340,7 @@ const struct mtk_disp_ddp_data mt6761_ddp_driver_data = {
 	.mutex_sof = mt6761_mutex_sof,
 	.mutex_mod_reg = MT6761_DISP_MUTEX0_MOD0,
 	.mutex_sof_reg = MT6761_DISP_MUTEX0_SOF,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 const struct mtk_disp_ddp_data mt6765_ddp_driver_data = {
@@ -9342,6 +9348,7 @@ const struct mtk_disp_ddp_data mt6765_ddp_driver_data = {
 	.mutex_sof = mt6765_mutex_sof,
 	.mutex_mod_reg = MT6765_DISP_MUTEX0_MOD0,
 	.mutex_sof_reg = MT6765_DISP_MUTEX0_SOF,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6885_ddp_driver_data = {
@@ -9350,6 +9357,7 @@ static const struct mtk_disp_ddp_data mt6885_ddp_driver_data = {
 	.mutex_mod_reg = {MT6885_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6885_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6983_ddp_driver_data = {
@@ -9359,6 +9367,7 @@ static const struct mtk_disp_ddp_data mt6983_ddp_driver_data = {
 	.mutex_sof_reg = MT6983_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
 	.dispsys_map = mt6983_dispsys_map,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6985_ddp_driver_data = {
@@ -9372,6 +9381,7 @@ static const struct mtk_disp_ddp_data mt6985_ddp_driver_data = {
 	.dispsys_map = mt6985_dispsys_map,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6989_ddp_driver_data = {
@@ -9385,6 +9395,7 @@ static const struct mtk_disp_ddp_data mt6989_ddp_driver_data = {
 	.dispsys_map = mt6989_dispsys_map,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6991_ddp_driver_data = {
@@ -9398,6 +9409,7 @@ static const struct mtk_disp_ddp_data mt6991_ddp_driver_data = {
 	.dispsys_map = mt6991_dispsys_map,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6993_ddp_driver_data = {
@@ -9411,6 +9423,7 @@ static const struct mtk_disp_ddp_data mt6993_ddp_driver_data = {
 	.dispsys_map = mt6993_dispsys_map,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
+	.disp_mutex_total = DISP_MUTEX_TOTAL_v2,
 };
 
 static const struct mtk_disp_ddp_data mt6897_ddp_driver_data = {
@@ -9424,6 +9437,7 @@ static const struct mtk_disp_ddp_data mt6897_ddp_driver_data = {
 	.dispsys_map = mt6897_dispsys_map,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6895_ddp_driver_data = {
@@ -9433,6 +9447,7 @@ static const struct mtk_disp_ddp_data mt6895_ddp_driver_data = {
 	.mutex_sof_reg = MT6895_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
 	.dispsys_map = mt6895_dispsys_map,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6886_ddp_driver_data = {
@@ -9441,6 +9456,7 @@ static const struct mtk_disp_ddp_data mt6886_ddp_driver_data = {
 	.mutex_mod_reg = {MT6895_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6895_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6873_ddp_driver_data = {
@@ -9449,6 +9465,7 @@ static const struct mtk_disp_ddp_data mt6873_ddp_driver_data = {
 	.mutex_mod_reg = {MT6873_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6873_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6853_ddp_driver_data = {
@@ -9457,6 +9474,7 @@ static const struct mtk_disp_ddp_data mt6853_ddp_driver_data = {
 	.mutex_mod_reg = {MT6853_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6853_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6833_ddp_driver_data = {
@@ -9465,6 +9483,7 @@ static const struct mtk_disp_ddp_data mt6833_ddp_driver_data = {
 	.mutex_mod_reg = {MT6833_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6833_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6877_ddp_driver_data = {
@@ -9473,6 +9492,7 @@ static const struct mtk_disp_ddp_data mt6877_ddp_driver_data = {
 	.mutex_mod_reg = {MT6877_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6877_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6781_ddp_driver_data = {
@@ -9480,6 +9500,7 @@ static const struct mtk_disp_ddp_data mt6781_ddp_driver_data = {
 	.mutex_sof = mt6781_mutex_sof,
 	.mutex_mod_reg = MT6781_DISP_MUTEX0_MOD0,
 	.mutex_sof_reg = MT6781_DISP_MUTEX0_SOF,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 static const struct mtk_disp_ddp_data mt6879_ddp_driver_data = {
@@ -9496,6 +9517,7 @@ static const struct mtk_disp_ddp_data mt6855_ddp_driver_data = {
 	.mutex_mod_reg = {MT6855_DISP_MUTEX0_MOD0, DISP_REG_MUTEX_MOD2},
 	.mutex_sof_reg = MT6855_DISP_MUTEX0_SOF,
 	.mutex_rst_reg = DISP_REG_MUTEX_RST_REG,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 const struct mtk_mmsys_reg_data mt2701_mmsys_reg_data = {
@@ -31290,7 +31312,7 @@ void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_base *cmdq_base = mtk_crtc->gce_obj.base;
 
 	val |= (0x1 << (unsigned int)mutex_id);
-	val |= (0x1 << (unsigned int)(mutex_id + DISP_MUTEX_TOTAL));
+	val |= (0x1 << (unsigned int)(mutex_id + ddp->data->disp_mutex_total));
 
 	cmdq_pkt_write(handle, cmdq_base,
 		ddp->regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
@@ -36712,13 +36734,13 @@ void mtk_disp_mutex_inten_enable(struct mtk_disp_mutex *mutex)
 
 	val = readl_relaxed(ddp->regs + DISP_REG_MUTEX_INTEN);
 	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	writel_relaxed(val, ddp->regs + DISP_REG_MUTEX_INTEN);
 
 	if (ddp->ovlsys0_regs) {
 		val = readl_relaxed(ddp->ovlsys0_regs + DISP_REG_MUTEX_INTEN);
 		val |= (0x1 << (unsigned int)mutex->id);
-		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->ovlsys0_regs + DISP_REG_MUTEX_INTEN);
 	}
 	if (!(ddp->data->dispsys_map && ddp->side_regs))
@@ -36726,13 +36748,13 @@ void mtk_disp_mutex_inten_enable(struct mtk_disp_mutex *mutex)
 
 	val = readl_relaxed(ddp->side_regs + DISP_REG_MUTEX_INTEN);
 	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	writel_relaxed(val, ddp->side_regs + DISP_REG_MUTEX_INTEN);
 
 	if (ddp->ovlsys1_regs) {
 		val = readl_relaxed(ddp->ovlsys1_regs + DISP_REG_MUTEX_INTEN);
 		val |= (0x1 << (unsigned int)mutex->id);
-		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->ovlsys1_regs + DISP_REG_MUTEX_INTEN);
 	}
 }
@@ -36745,7 +36767,7 @@ void mtk_disp_mutex_inten_enable_cmdq(struct mtk_disp_mutex *mutex,
 	unsigned int val = 0;
 
 	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	cmdq_pkt_write(handle, ddp->cmdq_base,
 		       ddp->regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	if (ddp->ovlsys0_regs_pa)
@@ -36756,7 +36778,7 @@ void mtk_disp_mutex_inten_enable_cmdq(struct mtk_disp_mutex *mutex,
 		return;
 
 	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	cmdq_pkt_write(handle, ddp->cmdq_base,
 		       ddp->side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	if (ddp->ovlsys1_regs_pa)
@@ -36772,7 +36794,7 @@ void mtk_disp_mutex_inten_disable_cmdq(struct mtk_disp_mutex *mutex,
 	unsigned int mask = 0;
 
 	mask |= (0x1 << (unsigned int)mutex->id);
-	mask |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+	mask |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	cmdq_pkt_write(handle, ddp->cmdq_base,
 		       ddp->regs_pa + DISP_REG_MUTEX_INTEN, 0, mask);
 	if (ddp->ovlsys0_regs_pa)
@@ -36783,7 +36805,7 @@ void mtk_disp_mutex_inten_disable_cmdq(struct mtk_disp_mutex *mutex,
 		return;
 
 	mask |= (0x1 << (unsigned int)mutex->id);
-	mask |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+	mask |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	cmdq_pkt_write(handle, ddp->cmdq_base,
 			   ddp->side_regs_pa + DISP_REG_MUTEX_INTEN, 0, mask);
 	if (ddp->ovlsys1_regs_pa)
@@ -37033,22 +37055,23 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		priv->data->mmsys_id != MMSYS_MT6993)
 		val = readl(ddp->regs + DISP_REG_MUTEX_INTSTA) & DISP_MUTEX_INT_MSK;
 	else
-		val = readl(ddp->side_regs + DISP_REG_MUTEX_INTSTA) & DISP_MUTEX_INT_MSK;
+		val = readl(ddp->side_regs + DISP_REG_MUTEX_INTSTA);
 
 	if (!val) {
 		ret = IRQ_NONE;
 		goto out;
 	}
 
-	DRM_MMP_MARK(IRQ, ddp->regs_pa, val);
 	DDPIRQ("MM_MUTEX irq, val:0x%x\n", val);
 
 	if (priv->data->mmsys_id != MMSYS_MT6991 &&
 		priv->data->mmsys_id != MMSYS_MT6993) {
+		DRM_MMP_MARK(IRQ, ddp->regs_pa, val);
 		writel(~val, ddp->regs + DISP_REG_MUTEX_INTSTA);
 		if (likely(ddp->side_regs))
 			writel(0, ddp->side_regs + DISP_REG_MUTEX_INTSTA);
 	} else {
+		DRM_MMP_MARK(IRQ, ddp->side_regs_pa, val);
 		writel(~val, ddp->side_regs + DISP_REG_MUTEX_INTSTA);
 		if (likely(ddp->regs))
 			writel(0, ddp->regs + DISP_REG_MUTEX_INTSTA);
@@ -37063,7 +37086,7 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		writel(0, ddp->ovlsys2_regs + DISP_REG_MUTEX_INTSTA);
 
 	for (m_id = 0; m_id < DISP_MUTEX_DDP_COUNT; m_id++) {
-		if (val & (0x1 << (m_id + DISP_MUTEX_TOTAL))) {
+		if (val & (0x1 << (m_id + ddp->data->disp_mutex_total))) {
 			DDPIRQ("[IRQ] mutex%d eof!\n", m_id);
 			DRM_MMP_MARK(mutex[m_id], val, 1);
 			if (m_id == 0)
