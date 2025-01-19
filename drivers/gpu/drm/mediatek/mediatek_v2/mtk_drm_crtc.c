@@ -2424,6 +2424,7 @@ static void mtk_drm_spr_switch_cb(struct cmdq_cb_data data)
 int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_crtc_state *mtk_state;
 	struct cmdq_pkt *cmdq_handle;
 	int ret = 0;
 	struct mtk_panel_params *params =
@@ -2433,6 +2434,22 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	drm_trace_tag_mark("start_switch_spr");
+
+	if (!crtc->state) {
+		DDPMSG("%s, crtc->state is NULL\n", __func__);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	mtk_state = to_mtk_crtc_state(crtc->state);
+	if (!crtc->state->active &&
+		mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+		DDPMSG("%s: crtc state=%d, doze state=%lld\n", __func__,
+			crtc->state->active,
+			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
 
 	if (!(mtk_crtc->enabled)) {
 		mtk_crtc->spr_is_on = en;
