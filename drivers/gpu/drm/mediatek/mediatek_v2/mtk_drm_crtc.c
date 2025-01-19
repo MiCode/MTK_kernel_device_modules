@@ -5689,6 +5689,10 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 	prop_fence_idx = crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 	old_prop_fence_idx = old_mtk_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 	lye_state = &crtc_state->lye_state;
+
+	if(prop_fence_idx != old_prop_fence_idx)
+		atomic_set(&mtk_crtc->fence_change, 1);
+
 	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
 		struct mtk_plane_state *plane_state;
@@ -12271,6 +12275,54 @@ static int _mtk_crtc_check_trigger_delay(void *data)
 	return 0;
 }
 
+static int _mtk_crtc_mml_repaint(void *data)
+{
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct sched_param param = {.sched_priority = 94 };
+	struct mtk_ddp_comp *output_comp = NULL;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	int ret,i;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	sched_setscheduler(current, SCHED_RR, &param);
+	priv = mtk_crtc->base.dev->dev_private;
+
+	atomic_set(&mtk_crtc->repaint_act, 0);
+
+	while (1) {
+		ret = wait_event_interruptible(mtk_crtc->repaint_event,
+			atomic_read(&mtk_crtc->repaint_act));
+
+		if (ret < 0)
+			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+
+		atomic_set(&mtk_crtc->repaint_act, 0);
+		//wait 35ms
+		for(i = 0; i < 7; i++) {
+			//if has new mml check trigger, refresh
+			if (atomic_read(&mtk_crtc->mml_trigger) == 1) {
+				atomic_set(&mtk_crtc->mml_trigger, 0);
+				i = 0;
+			}
+			//if new fence change, break
+			if (atomic_read(&mtk_crtc->fence_change) == 1)
+				break;
+			usleep_range(5000,5500);
+		}
+		//if no fence change ,repaint
+		if (atomic_read(&mtk_crtc->fence_change) == 0) {
+			CRTC_MMP_MARK(0, kick_trigger, 0, 0xf);
+			drm_trigger_repaint(DRM_REPAINT_FOR_MML, crtc->dev);
+		}
+
+		if (kthread_should_stop())
+			break;
+	}
+
+	return 0;
+}
+
 static void _mtk_crtc_1tnp_setting(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -12391,6 +12443,12 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger) {
 		DDPINFO("%s:%d, skip check trigger when MML IR\n", __func__, __LINE__);
 		CRTC_MMP_MARK(index, kick_trigger, 0, 4);
+		if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+			atomic_set(&mtk_crtc->repaint_act, 1);
+			atomic_set(&mtk_crtc->fence_change, 0);
+			atomic_set(&mtk_crtc->mml_trigger, 1);
+			wake_up_interruptible(&mtk_crtc->repaint_event);
+		}
 		goto err;
 	}
 
@@ -20851,6 +20909,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			kthread_create(_mtk_crtc_check_trigger_delay,
 						mtk_crtc, "ddp_trig_d");
 		wake_up_process(mtk_crtc->trigger_delay_task);
+
+		init_waitqueue_head(&mtk_crtc->repaint_event);
+		mtk_crtc->repaint_task =
+			kthread_create(_mtk_crtc_mml_repaint,
+						mtk_crtc, "ddp_repaint");
+		wake_up_process(mtk_crtc->repaint_task);
 
 		init_waitqueue_head(&mtk_crtc->spr_switch_wait_queue);
 
