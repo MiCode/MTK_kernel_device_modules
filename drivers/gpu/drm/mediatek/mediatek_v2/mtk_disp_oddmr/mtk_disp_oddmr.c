@@ -9629,6 +9629,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		break;
 	case PQ_DBI_GET_SCP_LIFECYCLE:
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+		ret = 0;
 		DDPMSG("%s, %llx\n", __func__, (unsigned long)(g_oddmr_priv->dbi_data.spm_base));
 		DDPMSG("%s, %llx\n", __func__, (unsigned long)(g_oddmr_priv->dbi_data.scp_lifecycle));
 		DDPMSG("%s, %llx\n", __func__, (unsigned long)(g_oddmr_priv->dbi_data.scp_lifecycle_size));
