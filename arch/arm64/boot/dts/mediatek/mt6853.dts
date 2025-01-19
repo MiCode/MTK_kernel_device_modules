@@ -698,6 +698,112 @@
 		};
 	};
 
+	dvfsp: dvfsp@0011bc00 {
+		compatible = "mediatek,mt6853-dvfsp";
+		reg = <0 0x0011bc00 0 0x1400>,
+		      <0 0x0011bc00 0 0x1400>;
+		state = <1>;
+		imax_state = <2>;
+		change_flag = <0>;
+		little-rise-time = <1000>;
+		little-down-time = <750>;
+		big-rise-time = <1000>;
+		big-down-time = <750>;
+		L-table = <2000 96 1 1
+			   1916 91 1 1
+			   1812	86 1 1
+			   1750 83 1 1
+			   1645 77 2 1
+			   1500 69 2 1
+			   1393 64 2 1
+			   1287 60 2 1
+			   1128 53 2 1
+			   1048 49 2 1
+			    968 46 2 1
+			    862 41 2 1
+			    756 37 4 1
+			    703 34 4 1
+			    650 32 4 1
+			    500 32 4 1 >;
+
+		B-table = <2210 96 1 1
+			   2093 90 1 1
+			   2000	86 1 1
+			   1906 81 1 1
+			   1790 76 1 1
+			   1720 72 1 1
+			   1650 69 2 1
+			   1534 64 2 1
+			   1418 60 2 1
+			   1274 54 2 1
+			   1129 48 2 1
+			   1042 45 2 1
+			    985 42 2 1
+			    898 39 2 1
+			    840 37 2 1
+			    725 32 2 1 >;
+
+		CCI-table = <1400 96 2 1
+			     1356 93 2 1
+			     1254 85 2 1
+			     1152 77 2 1
+			     1108 73 2 1
+			     1050 69 2 1
+			      975 64 2 1
+			      900 60 2 1
+			      825 55 2 1
+			      768 52 2 1
+			      675 46 4 1
+			      600 41 4 1
+			      562 39 4 1
+			      525 37 4 1
+			      487 34 4 1
+			      450 32 4 1 >;
+
+	};
+
+	mt_cpufreq: mt_cpufreq {
+		compatible = "mediatek,mt-cpufreq";
+		proc1-supply = <&mt6359p_vgpu11_reg>;
+		proc2-supply = <&mt6359p_vmodem_reg>;
+		sram_proc1-supply = <&mt6359p_vsram_proc1_reg>;
+		sram_proc2-supply = <&mt6359p_vsram_proc2_reg>;
+	};
+
+	mcucfg1: mcucfg1@0c530000 {
+		compatible = "mediatek,mcucfg-dvfs";
+		reg = <0 0x0c530000 0 0x10000>;
+	};
+
+	eem_fsm: eem-fsm@11278000 {
+		compatible = "mediatek,eem_fsm";
+		reg = <0 0x11278000 0 0x1000>;
+		interrupts = <GIC_SPI 168 IRQ_TYPE_LEVEL_HIGH 0>;
+		nvmem = <&efuse>;
+		nvmem-names = "mtk_efuse";
+		eem-status = <1>;
+		sn-status = <1>;
+		eem-initmon-little = <0xff>;
+		eem-initmon-big = <0xff>;
+		eem-initmon-cci = <0xff>;
+		eem-initmon-gpu = <0xff>;
+		eem-clamp-little = <0>;
+		eem-clamp-big = <0>;
+		eem-clamp-cci = <0>;
+		eem-clamp-gpu = <0>;
+		eem-offset-little = <0xff>;
+		eem-offset-big = <0xff>;
+		eem-offset-cci = <0xff>;
+		eem-offset-gpu = <0xff>;
+		proc1-supply = <&mt6359p_vgpu11_reg>;
+		proc2-supply = <&mt6359p_vmodem_reg>;
+	};
+
+	pbm: pbm {
+		compatible = "mediatek,pbm";
+	};
+
+
 	power_throttling: power_throttling {
 		compatible = "mediatek,power_throttling";
 		lbat_cpu_limit = <900000 900000 900000>;
