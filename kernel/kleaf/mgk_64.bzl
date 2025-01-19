@@ -214,6 +214,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_meta:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply/ufcs:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_kconfigs".format(kernel_version),
@@ -325,6 +326,12 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-pcie".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-tphy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-xsphy".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6363".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6373".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6661".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6667".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_mt6379".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:adapter_class".format(kernel_version),
@@ -392,6 +399,14 @@ mgk_64_kleaf_device_modules = [
 
 mgk_64_kleaf_platform_device_modules = {
     # keep sorted
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6886".format(kernel_version): "mt6886",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6897".format(kernel_version): "mt6897",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6899".format(kernel_version): "mt6899",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6983".format(kernel_version): "mt6983",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6985".format(kernel_version): "mt6985",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6989".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6991".format(kernel_version): "mt6991",
+    "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6993".format(kernel_version): "mt6993",
 }
 
 mgk_64_kleaf_eng_device_modules = [
@@ -822,12 +837,6 @@ mgk_64_device_modules = [
     "drivers/nvmem/nvmem-mt6681-efuse.ko",
     "drivers/pci/controller/pcie-mediatek-gen3.ko",
     "drivers/phy/mediatek/phy-mtk-ufs.ko",
-    "drivers/pinctrl/mediatek/pinctrl-mt6363.ko",
-    "drivers/pinctrl/mediatek/pinctrl-mt6373.ko",
-    "drivers/pinctrl/mediatek/pinctrl-mt6661.ko",
-    "drivers/pinctrl/mediatek/pinctrl-mt6667.ko",
-    "drivers/pinctrl/mediatek/pinctrl-mtk-common-v2_debug.ko",
-    "drivers/pinctrl/mediatek/pinctrl-mtk-v2.ko",
     "drivers/power/supply/mtk_2p_charger.ko",
     "drivers/power/supply/mtk_hvbpc.ko",
     "drivers/power/supply/mtk_pep.ko",
@@ -1168,15 +1177,6 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/slbc/slbc_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/slbc/slbc_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/slbc/slbc_mt6991.ko": "mt6991",
-    "drivers/pinctrl/mediatek/pinctrl-mt6789.ko": "mt6789",
-    "drivers/pinctrl/mediatek/pinctrl-mt6886.ko": "mt6886",
-    "drivers/pinctrl/mediatek/pinctrl-mt6897.ko": "mt6897",
-    "drivers/pinctrl/mediatek/pinctrl-mt6899.ko": "mt6899",
-    "drivers/pinctrl/mediatek/pinctrl-mt6983.ko": "mt6983",
-    "drivers/pinctrl/mediatek/pinctrl-mt6985.ko": "mt6985",
-    "drivers/pinctrl/mediatek/pinctrl-mt6989.ko": "mt6989",
-    "drivers/pinctrl/mediatek/pinctrl-mt6991.ko": "mt6991",
-    "drivers/pinctrl/mediatek/pinctrl-mt6993.ko": "mt6993",
     "drivers/soc/mediatek/devapc/device-apc-mt6761.ko": "mt6761",
     "drivers/soc/mediatek/devapc/device-apc-mt6765.ko": "mt6765",
     "drivers/soc/mediatek/devapc/device-apc-mt6768.ko": "mt6768",
@@ -1338,7 +1338,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched/c2ps_ioctl:c2ps_perf_ioctl")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/isp_pspm:isp_pspm")
-        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6877.ko":"mt6877"})
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6877".format(kernel_version): "mt6877"})
         mgk_64_device_modules.remove("drivers/misc/mediatek/performance/mtk_perf_ioctl_magt.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-fake-eng.ko")
@@ -1611,7 +1611,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6781/mt6781-mt6366.ko":"mt6781"})
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6781/snd-soc-mt6781-afe.ko":"mt6781"})
         mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6781.ko":"mt6781"})
-        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6781.ko":"mt6781"})
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6781".format(kernel_version): "mt6781"})
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
@@ -2014,7 +2014,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6768.ko":"mt6768"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6893.ko":"mt6893"})
 
-        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6768.ko":"mt6768"})
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6768".format(kernel_version): "mt6768"})
 
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/mt6886-mt6368.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko")
@@ -2106,7 +2106,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_userdebug_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_k61")
 
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6761"})
-        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6761.ko":"mt6761"})
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6761".format(kernel_version): "mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6761.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-audio.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-cam.ko":"mt6761"})
@@ -2460,7 +2460,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/isp_pspm:isp_pspm")
 
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6893.ko":"mt6893"})
-        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6885.ko":"mt6893"})
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6893".format(kernel_version): "mt6893"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6893.ko":"mt6893"})
 
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
@@ -2727,7 +2727,7 @@ def get_overlay_modules_list():
 
     if "mt6765_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_platform_device_modules.update({"drivers/regulator/mt6357-regulator.ko":"mt6765"})
-        mgk_64_platform_device_modules.update({"drivers/pinctrl/mediatek/pinctrl-mt6765.ko":"mt6765"})
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6765".format(kernel_version): "mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6765.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6765-pg.ko":"mt6765"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkchk-mt6765.ko":"mt6765"})
@@ -3132,7 +3132,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-dbg-mt6833.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/pd-chk-mt6833.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-fmeter-mt6833.ko")
-        mgk_64_device_modules.append("drivers/pinctrl/mediatek/pinctrl-mt6833.ko")
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6833".format(kernel_version): "mt6833"})
         mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6833_dcm.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-v2.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-fake-eng.ko")
@@ -3362,7 +3362,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched/c2ps_ioctl:c2ps_perf_ioctl")
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6853.ko":"mt6853"})
         #mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6853.ko")
-        mgk_64_device_modules.append("drivers/pinctrl/mediatek/pinctrl-mt6853.ko")
+        mgk_64_kleaf_platform_device_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6853".format(kernel_version): "mt6853"})
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6853.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6853-apu0.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6853-apu1.ko")

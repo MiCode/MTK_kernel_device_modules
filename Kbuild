@@ -38,8 +38,6 @@ obj-y += drivers/regulator/
 
 obj-y += drivers/leds/
 
-obj-y += drivers/pinctrl/mediatek/
-
 obj-y += drivers/power/supply/
 
 obj-y += drivers/rtc/
