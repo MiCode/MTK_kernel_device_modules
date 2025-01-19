@@ -387,7 +387,7 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 
 		cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
-		if ((s64) (curr_time - cpu_over_thres->dn_last_update_time < 0)) {
+		if (curr_time < cpu_over_thres->dn_last_update_time) {
 			clk_faulty = 1;
 			spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 			break;
