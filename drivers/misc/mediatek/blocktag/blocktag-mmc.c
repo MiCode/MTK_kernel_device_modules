@@ -187,10 +187,10 @@ void mmc_mtk_biolog_send_command(__u16 task_id, struct mmc_request *mrq)
 
 	if (is_sd && mrq->cmd->data) {
 		tsk->len = mrq->cmd->data->blksz * mrq->cmd->data->blocks;
-		tsk->dir = MMC_DATA_DIR(!!(mrq->cmd->data->flags & MMC_DATA_READ));
+		tsk->dir = MMC_DATA_DIR(!(mrq->cmd->data->flags & MMC_DATA_READ));
 	} else if (!is_sd && mrq->data) {
 		tsk->len = mrq->data->blksz * mrq->data->blocks;
-		tsk->dir = MMC_DATA_DIR(!!(mrq->data->flags & MMC_DATA_READ));
+		tsk->dir = MMC_DATA_DIR(!(mrq->data->flags & MMC_DATA_READ));
 	}
 
 	spin_lock_irqsave(&ctx->lock, flags);
