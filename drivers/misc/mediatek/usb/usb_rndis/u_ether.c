@@ -1728,5 +1728,5 @@ static void __exit gether_exit(void)
 }
 module_exit(gether_exit);
 MODULE_AUTHOR("David Brownell");
-MODULE_DESCRIPTION("ethernet over USB driver");
+MODULE_DESCRIPTION("Ethernet-over-USB link layer utilities for Gadget stack");
 MODULE_LICENSE("GPL v2");
