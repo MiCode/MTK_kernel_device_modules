@@ -512,8 +512,14 @@ static void  init_regbase(void)
 {
 	size_t i;
 
-	for (i = 0; i < ARRAY_SIZE(rb); i++)
+
+
+	for (i = 0; i < ARRAY_SIZE(rb); i++) {
+		if (!rb[i].phys)
+			continue;
+
 		rb[i].virt = ioremap(rb[i].phys, PAGE_SIZE);
+	}
 }
 
 static const char * const off_pll_names[] = {
