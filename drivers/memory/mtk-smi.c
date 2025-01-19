@@ -3765,7 +3765,8 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 		}
 	}
 
-	if (of_property_read_bool(dev->of_node, "power-domains"))
+	if (of_property_read_bool(dev->of_node, "power-domains") &&
+		!of_property_read_bool(dev->of_node, "no-pm-runtime"))
 		pm_runtime_enable(dev);
 	else {
 		no_pm_runtime = true;
@@ -5433,7 +5434,8 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "mediatek,common-id", &common->commid);
 	of_property_read_u32(dev->of_node, "mediatek,pd-id", &common->pd_id);
 
-	if (of_property_read_bool(dev->of_node, "power-domains"))
+	if (of_property_read_bool(dev->of_node, "power-domains") &&
+		!of_property_read_bool(dev->of_node, "no-pm-runtime"))
 		pm_runtime_enable(dev);
 	else {
 		no_pm_runtime = true;
