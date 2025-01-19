@@ -2649,6 +2649,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c1: i2c@11d00000 {
@@ -2660,6 +2661,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c2: i2c@11d01000 {
@@ -2671,6 +2673,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c3: i2c@11d02000 {
@@ -2682,6 +2685,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c4: i2c@11d03000 {
@@ -2693,6 +2697,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c5: i2c@11280000 {
@@ -2704,6 +2709,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c6: i2c@11281000 {
@@ -2715,6 +2721,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c7: i2c@11d04000 {
@@ -2726,6 +2733,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c8: i2c@11d05000 {
@@ -2737,6 +2745,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		i2c9: i2c@11d06000 {
@@ -2748,6 +2757,7 @@
 				   <&pericfg_ao_clk CLK_PERAOP_1_DMA_BCLK>;
 			clock-names = "main", "dma";
 			clock-div = <1>;
+			mediatek,control-rs-stop;
 		};
 
 		regulator_vibrator: regulator_vibrator {
