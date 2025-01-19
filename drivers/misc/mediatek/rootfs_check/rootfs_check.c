@@ -71,8 +71,6 @@ struct ubi_ec_hdr {
 #define RSA_LEN 256
 #define RSA_GAP 0x10
 
-static char saved_root_name[64] __initdata = "/dev/sdcxx";
-
 #define HASH_LEN 32
 #define CHECK_FAIL -1
 #define CHECK_PASS 0
@@ -332,6 +330,9 @@ static void hexdump(char *note, unsigned char *buf, unsigned int len)
 			buf, len, false);
 }
 
+static char saved_root_name[64] = { 0 };
+static const char key_name[] = "root=";
+
 int __init bdev_verity(dev_t rootfs_dev)
 {
 	struct file *root_file;
@@ -369,8 +370,9 @@ int __init bdev_verity(dev_t rootfs_dev)
 
 	real_offset = 0;
 	kernel_read(root_file, buf, PAGE_SIZE, &real_offset);
-	ubi_image_len = (*(unsigned int *)(buf + 0x400 + 0x4)) *
-			(1 << (10 + *(unsigned int *)(buf + 0x400 + 0x18)));
+	ubi_image_len = (*(unsigned long *)(buf + 0x400 + 0x4) &
+					0xffffffff) *
+					(1 << (10 + *(unsigned long *)(buf + 0x400 + 0x18)));
 
 	real_offset = ubi_image_len;
 	kernel_read(root_file, buf, PAGE_SIZE, &real_offset);
@@ -453,11 +455,59 @@ fail0:
 	return ret;
 }
 
+static int get_key_node(char *node, struct device_node *of_chosen)
+{
+	char *bootargs = NULL;
+	char *name_start = NULL;
+	char *name_end = NULL;
+
+	bootargs = (char *)of_get_property(
+				of_chosen, node, NULL);
+	if (!bootargs)
+		pr_info("%s: failed to get bootargs\n", __func__);
+	else {
+		pr_info("%s: bootargs: %s\n", __func__, bootargs);
+		name_start = strstr(bootargs, key_name);
+		if (name_start) {
+			name_start = name_start + sizeof(key_name) - 1;
+			name_end = strchr(name_start, ' ');
+			if (name_end)
+				memcpy(saved_root_name, name_start, name_end - name_start);
+			else
+				memcpy(saved_root_name, name_start, strlen(name_start));
+			pr_info("%s: saved_root_name: %s\n", __func__, saved_root_name);
+			if (strstr(saved_root_name, "sdc"))
+				return 0;
+			else
+				return -1;
+		} else {
+			return -1;
+		}
+	}
+}
+
+static int get_root_name(void)
+{
+	struct device_node *of_chosen = NULL;
+
+	of_chosen = of_find_node_by_path("/chosen");
+	if (of_chosen) {
+		if (get_key_node("bootargs_ext", of_chosen))
+			get_key_node("bootargs", of_chosen);
+	} else {
+		pr_info("%s: failed to get /chosen\n", __func__);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int __init rootfs_check_init(void)
 {
 #if IS_ENABLED(CONFIG_MTD)
 	int rootfs_mtd_num;
 #endif
+
 	pr_info("[rootfs_check]checking rootfs integrity...\n");
 #if IS_ENABLED(CONFIG_MTD)
 	rootfs_mtd_num = get_rootfs_mtd_num();
@@ -471,14 +521,16 @@ static int __init rootfs_check_init(void)
 		int error;
 		struct block_device *rootfs_blk;
 
+		if (get_root_name())
+			return -1;
+		pr_info("[rootfs_check] wait for %s...\n",
+				saved_root_name);
+
 		error = lookup_bdev(saved_root_name, &rootfs_dev);
 		if (error) {
 			pr_info("[rootfs_check]lookup_bdev failed %d\n", error);
 			return ERR_PTR(error);
 		}
-
-		pr_info("[rootfs_check] wait for %s...\n",
-				saved_root_name);
 
 		rootfs_blk = blkdev_get_by_dev(rootfs_dev,
 			FMODE_READ|FMODE_WRITE,
