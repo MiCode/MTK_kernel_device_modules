@@ -315,6 +315,7 @@ struct mtk_dp {
 	u32 bUeventToHwc;
 	int disp_status;  //for DDP
 	bool bPowerOn;
+	bool shutdown;
 	bool audio_enable;
 	bool video_enable;
 	bool dp_ready;

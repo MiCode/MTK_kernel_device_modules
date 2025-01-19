@@ -297,4 +297,5 @@ void mtk_dp_vsvoter_set(struct mtk_dp *mtk_dp);
 void mtk_dp_vsvoter_clr(struct mtk_dp *mtk_dp);
 void dptx_dump_reg(void);
 void dptx_write_reg(u32 offset, u32 val);
+void dptx_shutdown(void);
 #endif //__MTK_DP__H__
