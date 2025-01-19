@@ -5315,6 +5315,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		ktf-emislc-test {
 			compatible = "mediatek,ktf-emislc-test";
+			way-num = <10>;
 		};
 
 		nsmpu: nsmpu@1046f000 {
