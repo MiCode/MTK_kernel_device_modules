@@ -24528,6 +24528,12 @@ void mtk_crtc_tui_ovl_status(struct drm_crtc *crtc)
 		mtk_crtc->tui_ovl_stat.cb_reg = 0xE80;
 		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
 		mtk_crtc->tui_ovl_stat.blender_id = DDP_COMPONENT_OVL0_BLENDER2;
+	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+		/* EXDMA5 */
+		mtk_crtc->tui_ovl_stat.aid_setting = 0xE5C;
+		mtk_crtc->tui_ovl_stat.cb_reg = 0xEF8;
+		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
+		mtk_crtc->tui_ovl_stat.blender_id = DDP_COMPONENT_OVL0_BLENDER2;
 	}
 }
 
@@ -24539,7 +24545,8 @@ void mtk_crtc_tui_ovl_bw(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *comp;
 
 	if (mtk_crtc->crtc_blank) {
-		if (priv->data->mmsys_id == MMSYS_MT6991) {
+		if (priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6993) {
 			comp = priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA5];
 
 			__mtk_disp_set_module_srt(comp->qos_req, comp->id, qos_bw, 0,
@@ -24634,6 +24641,7 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 			priv->ddp_comp[DDP_COMPONENT_OVL5_2L]->blank_mode = true;
 		break;
 	case MMSYS_MT6991:
+	case MMSYS_MT6993:
 		priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA5]->blank_mode = true;
 		mtk_crtc_axuser_control(crtc, true);
 		mtk_crtc_tui_ovl_status(crtc);
@@ -24719,6 +24727,7 @@ int mtk_crtc_exit_tui(struct drm_crtc *crtc)
 			priv->ddp_comp[DDP_COMPONENT_OVL5_2L]->blank_mode = false;
 		break;
 	case MMSYS_MT6991:
+	case MMSYS_MT6993:
 		priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA5]->blank_mode = false;
 		mtk_crtc_axuser_control(crtc, false);
 		break;
