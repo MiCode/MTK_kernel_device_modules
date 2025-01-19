@@ -4357,6 +4357,15 @@
 				compatible = "mtk6853,apucon";
 				operating-points-v2 = <&conn_opp_table>;
 				vvpu-supply = <&mt6359p_vproc2_reg>;
+				nvmem-cells = <&efuse_segment &apu_pod26 &efuse_fabinfo4>;
+				nvmem-cell-names = "efuse_seg","efuse_bin","efuse_raise";
+				bin = <0xdeadbeef 0xdeadbeef 750000 737500 725000>;
+				bin-offset = <8>;
+				bin-mask = <7>;
+				raise = <0xdeadbeef 600000 625000>;
+				raise-offset = <0>;
+				raise-mask = <3>;
+				vb_mtd = "vb_ub_lb";
 				vsram-supply = <&mt6359p_vsram_others_reg>;
 				sys-mux = <&topckgen_clk CLK_TOP_DSP_SEL>;
 				sys-mux-parent = <&topckgen_clk CLK_TOP_TCK_26M_MX9>,
@@ -4408,6 +4417,9 @@
 					gov = "apupassive";
 					depth =<0>;
 				};
+			};
+			misc: APUVB {
+				compatible = "mtk6853,vb";
 			};
 		};
 
