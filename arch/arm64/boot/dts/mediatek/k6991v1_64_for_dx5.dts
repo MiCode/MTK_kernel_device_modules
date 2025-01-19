@@ -8,7 +8,9 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/pinctrl/mt6991-pinfunc.h>
+#include <dt-bindings/clock/mt6991-clk.h>
 #include <dt-bindings/power/mt6991-power.h>
+#include <dt-bindings/memory/mt6991-smi-pd.h>
 
 &chosen {
 bootargs_ext = "rcu_nocbs=0-7";
@@ -128,6 +130,592 @@ bootargs_ext = "rcu_nocbs=0-7";
 	pinctrl-9 = <&mtkfb_pins_lcm_dsi1_te>;
 
 	status = "okay";
+};
+
+&disp_ssc0_smi_2x1_sub_comm {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&disp_ssc1_smi_2x1_sub_comm {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&mdp_ssc4_smi_2x1_sub_comm {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&mdp_ssc5_smi_2x1_sub_comm {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&mmsram_smi_2x1_sub_comm3 {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&mmsram_smi_2x1_sub_comm4 {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&smi_disp_common {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&smi_mdp_common {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&smi_sysram_common {
+	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
+};
+
+&smi_disp_dram_sub_comm0 {
+	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
+		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DISP_VCORE>;
+};
+
+&smi_disp_dram_sub_comm1 {
+	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
+		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DISP_VCORE>;
+};
+
+&smi_mdp_dram_sub_comm2 {
+	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
+		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DISP_VCORE>;
+};
+
+&smi_mdp_dram_sub_comm3 {
+	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
+		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DISP_VCORE>;
+};
+
+&smi_sram_disp_sub_comm0 {
+	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
+		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DISP_VCORE>;
+};
+
+&smi_sram_disp_sub_comm1 {
+	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
+		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DISP_VCORE>;
+};
+
+&smi_larb0 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
+		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL0>;
+};
+
+&smi_larb1 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
+		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL0>;
+};
+
+&smi_larb20 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
+		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL0>;
+};
+
+&smi_larb21 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
+		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL0>;
+};
+
+&smi_larb32 {
+	clocks = <&mm_pd_clk MT6991_PD_DIS0_SMI>,
+		<&dispsys_config_clk CLK_MM_SMI_SUB_COMM0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DIS0>;
+};
+
+&smi_larb33 {
+	clocks = <&mm_pd_clk MT6991_PD_DIS1_SMI>,
+		<&dispsys1_config_clk CLK_MM1_SMI_LARB0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_DIS1>;
+};
+
+&smi_larb34 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
+		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL1>;
+};
+
+&smi_larb35 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
+		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL1>;
+};
+
+&smi_larb36 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
+		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL1>;
+};
+
+&smi_larb37 {
+	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
+		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_OVL1>;
+};
+
+&smi_larb2 {
+	clocks = <&mm_pd_clk MT6991_PD_MML0_SMI>,
+		<&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_MML0>;
+};
+
+&smi_larb3 {
+	clocks = <&mm_pd_clk MT6991_PD_MML1_SMI>,
+		<&mdpsys1_config_clk CLK_MDP1_SMI0_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_MML1>;
+};
+
+&smi_larb4 {
+	mediatek,pd-id = <MT6991_SMI_PD_VDE1>;
+};
+
+&smi_larb5 {
+	mediatek,pd-id = <MT6991_SMI_PD_VDE0>;
+};
+
+&smi_larb6 {
+	mediatek,pd-id = <MT6991_SMI_PD_VDE0>;
+};
+
+&smi_disp_venc_sub_comm0 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN0_SMI>,
+		<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
+		<&venc_gcon_clk CLK_VEN1_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN0>;
+};
+
+&smi_mdp_venc_sub_comm1 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN1_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN1>;
+};
+
+&smi_sram_venc_sub_comm {
+	clocks = <&mm_pd_clk MT6991_PD_VEN1_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN1>;
+};
+
+&smi_mdp_venc_sub_comm2 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN2_SMI>,
+		<&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB_SMI>,
+		<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN2>;
+};
+
+&smi_larb7 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN0_SMI>,
+		<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
+		<&venc_gcon_clk CLK_VEN1_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN0>;
+};
+
+&smi_larb8 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN1_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN1>;
+};
+
+&smi_larb24 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN2_SMI>,
+		<&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB_SMI>,
+		<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN2>;
+};
+
+&smi_larb41 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN0_SMI>,
+		<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
+		<&venc_gcon_clk CLK_VEN1_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN0>;
+};
+
+&smi_larb42 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN1_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE0_LARB_SMI>,
+		<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN1>;
+};
+
+&smi_larb47 {
+	clocks = <&mm_pd_clk MT6991_PD_VEN2_SMI>,
+		<&venc_gcon_core2_clk CLK_VEN_C2_CKE0_LARB_SMI>,
+		<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_VEN2>;
+};
+
+&smi_img_vcore_sub_comm0 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_VCORE_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_VCORE>;
+};
+
+&smi_img_vcore_sub_comm1 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_VCORE_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_VCORE>;
+};
+
+&smi_img_sub_comm0 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
+		<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_img_sub_comm3 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
+		<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_img_sub_comm2 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_SUB_COMMON2_SMI>,
+		<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_img_sub_comm1 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>,
+		<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_img_sub_comm4 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>,
+		<&imgsys_main_clk CLK_IMG_GALS_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_larb9 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&imgsys_main_clk CLK_IMG_TRAW1_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_LARB9_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_larb10 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
+		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS0_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB10_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_DIP>;
+};
+
+&smi_larb11 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_WPE_EIS_SMI>,
+		<&imgsys_main_clk CLK_IMG_WPE0_CAMERA_P2>,
+		<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE_CAMERA_P2>,
+		<&wpe1_dip1_clk CLK_WPE1_DIP1_GALS0_CAMERA_P2>,
+		<&wpe1_dip1_clk CLK_WPE1_DIP1_LARB11_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_WPE_EIS>;
+};
+
+&smi_larb22 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_WPE_TNR_SMI>,
+		<&imgsys_main_clk CLK_IMG_WPE1_CAMERA_P2>,
+		<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE_CAMERA_P2>,
+		<&wpe2_dip1_clk CLK_WPE2_DIP1_GALS0_CAMERA_P2>,
+		<&wpe2_dip1_clk CLK_WPE2_DIP1_LARB11_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_WPE_TNR>;
+};
+
+&smi_larb23 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_WPE_LITE_SMI>,
+		<&imgsys_main_clk CLK_IMG_WPE2_CAMERA_P2>,
+		<&wpe3_dip1_clk CLK_WPE3_DIP1_WPE_CAMERA_P2>,
+		<&wpe3_dip1_clk CLK_WPE3_DIP1_GALS0_CAMERA_P2>,
+		<&wpe3_dip1_clk CLK_WPE3_DIP1_LARB11_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_WPE_LITE>;
+};
+
+&smi_larb12 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&imgsys_main_clk CLK_IMG_IPE_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_FDVT_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_LARB12_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_larb15 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
+		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS1_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>,
+		<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR_CAMERA_P2>,
+		<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1", "gals2", "gals3";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_DIP>;
+};
+
+&smi_larb18 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
+		<&imgsys_main_clk CLK_IMG_TRAW1_CAMERA_P2>,
+		<&imgsys_main_clk CLK_IMG_ADL_LARB_SMI>;
+	clock-names = "smi_pd", "apb", "smi";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_MAIN>;
+};
+
+&smi_larb28 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_TRAW_SMI>,
+		<&imgsys_main_clk CLK_IMG_TRAW0_CAMERA_P2>,
+		<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
+		<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
+		<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_TRAW>;
+};
+
+&smi_larb38 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
+		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS2_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_DIP>;
+};
+
+&smi_larb39 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
+		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_GALS3_CAMERA_P2>,
+		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB39_SMI>,
+		<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_DIP_NR_CAMERA_P2>,
+		<&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB39_CAMERA_P2>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1", "gals2", "gals3";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_DIP>;
+};
+
+&smi_larb40 {
+	clocks = <&mm_pd_clk MT6991_PD_ISP_TRAW_SMI>,
+		<&imgsys_main_clk CLK_IMG_TRAW0_CAMERA_P2>,
+		<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
+		<&traw_dip1_clk CLK_TRAW_DIP1_GALS_CAMERA_P2>,
+		<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>,
+		<&traw_dip1_clk CLK_TRAW_DIP1_LARB40_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_ISP_TRAW>;
+};
+
+&smi_cam_vcore_sub_comm {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_VCORE_SMI>,
+		<&cam_vcore_r1a_clk CLK_VCORE_CAMRAW>,
+		<&cam_vcore_r1a_clk CLK_2MM0_SUBCOMMON_DCM_DIS_CAMRAW>,
+		<&cam_vcore_r1a_clk CLK_CAM_V_MM0_SUBCOMM_CAMRAW>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_VCORE>;
+};
+
+&smi_cam_sub_comm0 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_DPE>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0", "gals1";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MAIN>;
+};
+
+&smi_cam_sub_comm2 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MAIN>;
+};
+
+&smi_ccu_sub_comm1 {
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
+};
+
+&smi_ccu_sub_comm0 {
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
+};
+
+&smi_larb13 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MAIN>;
+};
+
+&smi_larb14 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MAIN>;
+};
+
+&smi_larb16 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWA_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBA>,
+		<&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>,
+		<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_RAWA>;
+};
+
+&smi_larb43 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWB_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBB>,
+		<&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>,
+		<&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_RAWB>;
+};
+
+&smi_larb44 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWC_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBC>,
+		<&camsys_rawc_clk CLK_CAM_RC_LARBX_SMI>,
+		<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_RAWC>;
+};
+
+&smi_larb17 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWA_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBA>,
+		<&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
+		<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_RAWA>;
+};
+
+&smi_larb45 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWB_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBB>,
+		<&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
+		<&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_RAWB>;
+};
+
+&smi_larb46 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWC_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBC>,
+		<&camsys_yuvc_clk CLK_CAM_YC_LARBX_SMI>,
+		<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>;
+	clock-names = "smi_pd", "apb", "smi", "gals0";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_RAWC>;
+};
+
+&smi_larb19 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_SMI>,
+		<&camsys_ipe_clk CLK_CAMSYS_IPE_LARB19_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MRAW>;
+};
+
+&smi_larb25 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_SMI>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MRAW>;
+};
+
+&smi_larb26 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_SMI>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MRAW>;
+};
+
+&smi_larb27 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB27_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MAIN>;
+};
+
+&smi_larb29 {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_SMI>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_SMI>;
+	clock-names = "smi_pd", "apb";
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_MAIN>;
+};
+
+&smi_larb30 {
+	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
+};
+
+&smi_pd_cam_mraw {
+	compatible = "mediatek,smi-skip-probe";
+};
+
+&smi_hwccf {
+	compatible = "mediatek,smi-hwccf";
 };
 
 &dispsys_config {
