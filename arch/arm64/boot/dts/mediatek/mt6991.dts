@@ -7,7 +7,7 @@
 #include <dt-bindings/clock/mt6991-clk.h>
 #include <dt-bindings/clock/mt6991-ivi-clk.h>
 #include <dt-bindings/clock/mmdvfs-clk.h>
-#include <dt-bindings/mmdvfs/mmdvfs-clk-mt6993.h>
+#include <dt-bindings/mmdvfs/mmdvfs-clk-mt6991.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/iio/adc/mediatek,mt6379_auxadc.h>
