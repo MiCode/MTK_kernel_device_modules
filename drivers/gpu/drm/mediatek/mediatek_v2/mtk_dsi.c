@@ -35,7 +35,7 @@
 #include <linux/ratelimit.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+#if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 #include <uapi/linux/sched/types.h>
 #endif
 
@@ -12912,7 +12912,7 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+#if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 static int mtk_dsi_hotplug_kthread(void *data)
 {
 	struct sched_param param = {.sched_priority = 87};
@@ -13808,7 +13808,7 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 
 		goto error;
 	}
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+#if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 	dsi->hotplug_task = kthread_create(mtk_dsi_hotplug_kthread, dsi, "hotplug");
 	//wake_up_process(dsi->hotplug_task);
 #endif
@@ -13825,7 +13825,7 @@ static int mtk_dsi_remove(struct platform_device *pdev)
 {
 	struct mtk_dsi *dsi = platform_get_drvdata(pdev);
 
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+#if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 	kthread_stop(dsi->hotplug_task);
 #endif
 	mtk_output_dsi_disable(dsi, NULL, false);
