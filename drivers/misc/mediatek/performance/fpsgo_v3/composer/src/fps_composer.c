@@ -904,12 +904,6 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			f_render->tgid, f_render->queue_SF, f_render->api,
 			f_render->hwui, f_render->sbe_control_flag,
 			f_render->control_pid_flag);
-	if (f_render->t_enqueue_end)
-		f_render->Q2Q_time = enqueue_end_time - f_render->t_enqueue_end;
-	f_render->prev_t_enqueue_end = f_render->t_enqueue_end;
-	f_render->t_enqueue_end = enqueue_end_time;
-	f_render->enqueue_length = enqueue_end_time - f_render->t_enqueue_start;
-	f_render->enqueue_length_real = f_render->enqueue_length;
 
 	fpsgo_com_determine_cam_object(f_render);
 
