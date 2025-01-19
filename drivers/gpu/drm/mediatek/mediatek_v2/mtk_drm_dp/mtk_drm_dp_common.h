@@ -183,6 +183,7 @@ enum dp_return_status {
 	DP_RET_EDID_FAIL = 4,
 	DP_RET_TRANING_FAIL = 5,
 	DP_RET_RETRANING = 6,
+	DP_RET_WAIT_TRIGGER = 7,
 };
 
 enum dp_state {
@@ -895,8 +896,6 @@ struct mtk_dp {
 	struct dp_training_info training_info;
 	int training_state;
 	int training_state_pre;
-	wait_queue_head_t control_wq;
-	struct task_struct *control_task;
 
 	struct workqueue_struct *dp_wq;
 	struct work_struct dp_work;

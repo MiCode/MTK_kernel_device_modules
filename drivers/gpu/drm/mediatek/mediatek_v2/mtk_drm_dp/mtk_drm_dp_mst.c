@@ -485,7 +485,7 @@ static void mtk_dp_mst_drv_init_variable(struct mtk_dp *mtk_dp)
 #if (DP_ENCODER_NUM >= 2)
 	mtk_dp->stream_info[DP_STREAM_ID_1].pg_type = DP_PG_HORIZONTAL_COLOR_BAR;
 #endif
-	void mtk_drm_dp_mst_init(void);
+	mtk_drm_dp_mst_init();
 }
 
 static void mtk_dp_mst_drv_fec_enable(struct mtk_dp *mtk_dp, const u8 enable)

@@ -491,7 +491,6 @@ static void mtk_dpi_power_off(struct mtk_dpi *dpi)
 
 	mtk_dpi_disable(dpi);
 
-	clk_disable_unprepare(dpi->pclk);
 	clk_disable_unprepare(dpi->pclk_src[TVDPLL_PLL]);
 	clk_disable_unprepare(dpi->hf_fdp_ck);
 	clk_disable_unprepare(dpi->hf_fmm_ck);
@@ -519,12 +518,6 @@ static int mtk_dpi_power_on(struct mtk_dpi *dpi)
 	ret = clk_prepare_enable(dpi->pclk_src[TVDPLL_PLL]);
 	if (ret) {
 		dev_info(dpi->dev, "Failed to enable pclk_src: %d\n", ret);
-		goto err_pixel;
-	}
-
-	ret = clk_prepare_enable(dpi->pclk);
-	if (ret) {
-		dev_info(dpi->dev, "Failed to enable pixel clock: %d\n", ret);
 		goto err_pixel;
 	}
 
@@ -607,32 +600,11 @@ static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
 			 __func__, ret);
 	}
 
-	ret = clk_prepare_enable(dpi->pclk_src[TVDPLL_PLL]);
-	if (ret) {
-		dev_info(dpi->dev, "%s clk_prepare_enable pclk_src[TVDPLL_PLL]: err=%d\n",
-			 __func__, ret);
-	}
-
-	ret = clk_prepare_enable(dpi->pclk);
-	if (ret) {
-		dev_info(dpi->dev, "%s clk_prepare_enable dp_intf->pclk: err=%d\n",
-			 __func__, ret);
-	}
-
 	ret = clk_set_parent(dpi->pclk, dpi->pclk_src[clksrc]);
 	if (ret) {
 		dev_info(dpi->dev, "%s clk_set_parent dp_intf->pclk: err=%d\n",
 			 __func__, ret);
 	}
-
-	ret = clk_prepare_enable(dpi->hf_fmm_ck);
-	if (ret < 0)
-		dev_info(dpi->dev, "%s Failed to enable hf_fmm_ck clock: %d\n",
-			 __func__, ret);
-	ret = clk_prepare_enable(dpi->hf_fdp_ck);
-	if (ret < 0)
-		dev_info(dpi->dev, "%s Failed to enable hf_fdp_ck clock: %d\n",
-			 __func__, ret);
 
 	dev_info(dpi->dev, "%s dpintf->pclk_src[TVDPLL_PLL] =  %ld\n",
 		 __func__, clk_get_rate(dpi->pclk_src[TVDPLL_PLL]));
@@ -873,20 +845,6 @@ static const struct drm_bridge_funcs mtk_dpi_bridge_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
 	.atomic_reset = drm_atomic_helper_bridge_reset,
 };
-
-void mtk_dpi_start(struct device *dev)
-{
-	struct mtk_dpi *dpi = dev_get_drvdata(dev);
-
-	mtk_dpi_power_on(dpi);
-}
-
-void mtk_dpi_stop(struct device *dev)
-{
-	struct mtk_dpi *dpi = dev_get_drvdata(dev);
-
-	mtk_dpi_power_off(dpi);
-}
 
 unsigned int mtk_dpi_encoder_index(struct device *dev)
 {
@@ -1442,11 +1400,57 @@ static const struct of_device_id mtk_dpi_of_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, mtk_dpi_of_ids);
 
+#ifdef CONFIG_PM_SLEEP
+static int mtk_dpi_suspend(struct device *dev)
+{
+	struct mtk_dpi *mtk_dpi = dev_get_drvdata(dev);
+
+	if (!mtk_dpi) {
+		pr_info("[DPI] suspend, dpi not initial\n");
+		return 0;
+	}
+
+	dev_info(mtk_dpi->dev, "[DPI] suspend +\n");
+
+	clk_disable_unprepare(mtk_dpi->pclk);
+
+	dev_info(mtk_dpi->dev, "[DPI] suspend -\n");
+
+	return 0;
+}
+
+static int mtk_dpi_resume(struct device *dev)
+{
+	struct mtk_dpi *mtk_dpi = dev_get_drvdata(dev);
+	int ret;
+
+	if (!mtk_dpi) {
+		pr_info("[DPI] resume, dpi not initial\n");
+		return 0;
+	}
+
+	dev_info(mtk_dpi->dev, "[DPI] resume +\n");
+
+	ret = clk_prepare_enable(mtk_dpi->pclk);
+	if (ret < 0)
+		dev_info(mtk_dpi->dev, "%s Failed to enable pclk:%d\n",
+			 __func__, ret);
+
+	dev_info(mtk_dpi->dev, "[DPI] resume -\n");
+
+	return 0;
+}
+#endif
+
+static SIMPLE_DEV_PM_OPS(mtk_dpi_pm_ops,
+		mtk_dpi_suspend, mtk_dpi_resume);
+
 struct platform_driver mtk_dp_intf_driver = {
 	.probe = mtk_dpi_probe,
 	.remove_new = mtk_dpi_remove,
 	.driver = {
 		.name = "mediatek-dpi",
 		.of_match_table = mtk_dpi_of_ids,
+		.pm = &mtk_dpi_pm_ops,
 	},
 };
