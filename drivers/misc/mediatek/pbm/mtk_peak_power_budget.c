@@ -1855,7 +1855,9 @@ static void bat_handler(struct work_struct *work)
 			cb_func();
 
 		if (pb.version == 3 && pb.is_evb == 0)
-			spbm_scmi_to_sspm_command(SPBM_SCMI_SOC, soc, 0, 0, SPBM_SCMI_SET);
+			spbm_scmi_to_sspm_command(SPBM_SCMI_SOC_BAT_PWR,
+		soc, pb.sys_power, pb.sys_power_noerr, SPBM_SCMI_SET);
+
 
 		last_temp = temp;
 		last_soc = soc;
