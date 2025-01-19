@@ -10,6 +10,7 @@
 #include <linux/timerqueue.h>
 #include <linux/rbtree.h>
 #include <linux/kernel.h>
+#include <linux/kprobes.h>
 #include <linux/slab.h>
 #include <linux/sizes.h>
 #include <linux/stdarg.h>
@@ -23,6 +24,29 @@ static DEFINE_PER_CPU(int, debug_hrtimer_ready) = -1;
 #define MAX_TIMER_LIST_FILE_SIZE SZ_128K
 static char *timer_list_info;
 static int write_timer_list_buf_index;
+static struct kprobe tmp_kp;
+void *hrtimer_wakeup_addr;
+
+static void *lookup_function_address(const char *name)
+{
+	int ret;
+	void *addr = NULL;
+
+	memset(&tmp_kp, 0, sizeof(struct kprobe));
+	tmp_kp.symbol_name = name;
+
+	ret = register_kprobe(&tmp_kp);
+	if (ret < 0) {
+		pr_info("register_kprobe failed for %s, returned %d\n", name, ret);
+		return 0;
+	}
+
+	addr = tmp_kp.addr;
+
+	unregister_kprobe(&tmp_kp);
+
+	return addr;
+}
 
 struct timerqueue_node *timerqueue_iterate_next_mtk(struct timerqueue_node *node)
 {
@@ -67,6 +91,7 @@ void timer_list_debug_init(void)
 			timer_list_info = NULL;
 			pr_info("SYS_TIMER_LIST_RAW file add fail...\n");
 		}
+		hrtimer_wakeup_addr = lookup_function_address("hrtimer_wakeup");
 #endif
 	}
 #endif
@@ -90,9 +115,11 @@ void percpu_debug_timer_init(void)
 
 static void
 print_timer(char *m, struct hrtimer *taddr, struct hrtimer *timer,
-	    int idx, u64 now)
+	    int idx, u64 now, char *wakeup_comm)
 {
 	SEQ_printf_timer(m, " #%d: <%pK>, %ps", idx, taddr, timer->function);
+	if (strcmp(wakeup_comm, "N/A") != 0)
+		SEQ_printf_timer(m, " [%s]", wakeup_comm);
 	SEQ_printf_timer(m, ", S:%02x", timer->state);
 	SEQ_printf_timer(m, "\n");
 	SEQ_printf_timer(m, " # expires at %llu-%llu nsecs [in %lld to %lld nsecs]\n",
@@ -110,6 +137,8 @@ print_active_timers(char *m, struct hrtimer_clock_base *base,
 	unsigned long next = 0, i;
 	struct timerqueue_node *curr;
 	unsigned long flags;
+	char wakeup_comm[TASK_COMM_LEN];
+	struct hrtimer_sleeper *sl;
 
 next_one:
 	i = 0;
@@ -132,9 +161,15 @@ next_one:
 
 		timer = container_of(curr, struct hrtimer, node);
 		tmp = *timer;
+		strscpy(wakeup_comm, "N/A", TASK_COMM_LEN);
+		if (timer->function == hrtimer_wakeup_addr) {
+			sl = container_of(timer, struct hrtimer_sleeper, timer);
+			if (sl->task)
+				strscpy(wakeup_comm, sl->task->comm, TASK_COMM_LEN);
+		}
 		raw_spin_unlock_irqrestore(&base->cpu_base->lock, flags);
 
-		print_timer(m, timer, &tmp, i, now);
+		print_timer(m, timer, &tmp, i, now, wakeup_comm);
 		next++;
 		goto next_one;
 	}
