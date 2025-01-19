@@ -1,0 +1,65 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+ddk_headers(
+	name = "headers",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+	linux_includes = [
+		"include",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "rpmb",
+	out = "rpmb.ko",
+	srcs = [
+		"core.c",
+	],
+	header_deps = [
+	],
+	hdrs = [
+		"rpmb-cdev.h"
+	],
+	ko_deps = [
+	],
+	includes = [
+		".",
+		"drrpmb_gp/public",
+	],
+	conditional_srcs = {
+		"CONFIG_RPMB_INTF_DEV": {
+			True: [
+				"cdev.c",
+			],
+		},
+	},
+	local_defines = [
+		"__CHECK_ENDIAN",
+	],
+	copts = [
+	],
+)
