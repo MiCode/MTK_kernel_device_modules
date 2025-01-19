@@ -1331,7 +1331,7 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 			mtk_crtc_vblank_irq(&mtk_crtc->base);
 
 		if (status & INT_UNDERFLOW_STA)
-			DDPMSG("[E]%s dpintf underflow!\n", __func__);
+			DDPDBG("[E]%s dpintf underflow!\n", __func__);
 	}
 
 	return IRQ_HANDLED;
