@@ -21,10 +21,10 @@ platform = $(subst $\",,$(CONFIG_MTK_CAMERA_ISP_PLATFORM))
 # folder_name = isp6s
 # obj-$(CONFIG_MTK_CCU) += $(subst ",,$(folder_name))/
 
-ifeq ($(CONFIG_MTK_CCU),m)
-obj-$(CONFIG_MTK_CCU) += isp4/
+#ifeq ($(CONFIG_MTK_CCU),m)
+#obj-$(CONFIG_MTK_CCU) += isp4/
 #obj-$(CONFIG_MTK_CCU) += isp6s/
-else
-obj-$(CONFIG_MTK_CCU_ISP4) += isp4/
+#else
+#obj-$(CONFIG_MTK_CCU_ISP4) += isp4/
 #obj-$(CONFIG_MTK_CCU_ISP6S) += isp6s/
-endif
+#endif
