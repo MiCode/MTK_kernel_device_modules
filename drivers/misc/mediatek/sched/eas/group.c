@@ -148,7 +148,6 @@ static void remove_task_from_group(struct task_struct *p)
 {
 	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
 	struct grp *grp = gts->grp;
-	int empty_group = 1;
 	struct rq *rq;
 	struct rq_flags rf;
 	struct flt_rq *fsrq;
@@ -164,9 +163,6 @@ static void remove_task_from_group(struct task_struct *p)
 	if (queued && fsrq->group_nr_running[flt_groupid] > 0)
 		fsrq->group_nr_running[flt_groupid]--;
 	__task_rq_unlock(rq, &rf);
-
-	if (!list_empty(&grp->tasks))
-		empty_group = 0;
 
 	raw_spin_unlock(&grp->lock);
 }

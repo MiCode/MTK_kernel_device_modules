@@ -675,8 +675,8 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	u32 *util_sum_hist = &fts->util_sum_history[0];
 	u32 *util_avg_hist = &fts->util_avg_history[0];
 	int ridx, widx;
-	u32 max = 0, util_sum_max = 0, avg, util_avg_max = 0;
-	u64 sum = 0, util_avg_sum = 0;
+	u32 max = 0, util_sum_max = 0, util_avg_max = 0;
+	u64 util_avg_sum = 0;
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
 
 	if (!runtime || is_idle_task(p) || !samples)
@@ -686,21 +686,18 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	ridx = widx - samples;
 	for (; ridx >= 0; --widx, --ridx) {
 		hist[widx] = hist[ridx];
-		sum += hist[widx];
 		if (hist[widx] > max)
 			max = hist[widx];
 	}
 
 	for (widx = 0; widx < samples && widx < sched_ravg_hist_size; widx++) {
 		hist[widx] = runtime;
-		sum += hist[widx];
 		if (hist[widx] > max)
 			max = hist[widx];
 	}
 
 	fts->sum = 0;
 
-	sum = 0;
 	widx = sched_ravg_hist_size - 1;
 	ridx = widx - samples;
 	for (; ridx >= 0; --widx, --ridx) {
@@ -726,7 +723,6 @@ static void update_history(struct rq *rq, struct task_struct *p,
 			util_avg_max = util_avg_hist[widx];
 		util_avg_sum += util_avg_hist[widx];
 	}
-	avg = div64_u64(util_avg_sum, sched_ravg_hist_size);
 	fts->util_sum = 0;
 done:
 	if (trace_sched_update_history_enabled())
@@ -891,7 +887,6 @@ static void flt_init_new_task_load(struct task_struct *p)
 	int i;
 	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
 	u32 init_load_windows = sched_init_task_load_windows;
-	u32 init_load_windows_scaled = sched_init_task_load_windows_scaled;
 	u32 init_load_pct = sysctl_sched_init_task_load_pct;
 
 	fts->init_load_pct = 0;
@@ -913,7 +908,6 @@ static void flt_init_new_task_load(struct task_struct *p)
 	if (init_load_pct) {
 		init_load_windows = div64_u64((u64)init_load_pct *
 			  (u64)sched_ravg_window, 100);
-		init_load_windows_scaled = scale_demand(init_load_windows);
 	}
 
 	fts->demand = init_load_windows;
