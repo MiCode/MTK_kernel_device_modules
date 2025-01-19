@@ -42,6 +42,7 @@
 #include "mtk_drm_drv.h"
 #include "mtk_dp_api.h"
 #include "mtk_dp_reg.h"
+#include "mtk-mminfra-util.h"
 #ifdef DPTX_HDCP_ENABLE
 #include "mtk_dp_hdcp1x.h"
 #include "mtk_dp_hdcp2.h"
@@ -238,7 +239,12 @@ void dptx_shutdown(void)
 
 	g_mtk_dp->shutdown = 1;
 	DPTXMSG("unprepare dptx shutdown\n");
-	ret = pm_runtime_put_sync(g_mtk_dp->dev);
+	if (g_mtk_dp->priv->pwr_node) {
+		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+	}
+	else
+		ret = pm_runtime_put_sync(g_mtk_dp->dev);
 	if (ret < 0)
 		DRM_ERROR("Failed to disable power domain: %d\n", ret);
 }
@@ -1658,7 +1664,12 @@ void mdrv_DPTx_put_device(void)
 		iounmap(base);
 	}
 	if(g_mtk_dp->shutdown == 0) {
-		pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
+		if (g_mtk_dp->priv->pwr_node) {
+			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+		}
+		else
+			pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
 		if (pm_ret < 0)
 			DRM_ERROR("Failed to disable power domain: %d\n", pm_ret);
 		else
@@ -1667,7 +1678,11 @@ void mdrv_DPTx_put_device(void)
 		DPTXMSG("thread dptx_shutdown\n");
 	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 		if (g_mtk_dp->priv->dpc_dev) {
-			pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
+			if (g_mtk_dp->priv->pwr_node)
+				mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
+			else
+				pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
+
 			DPTXMSG("%s successfully disable dpc\n", __func__);
 		}
 	} else {
@@ -4339,13 +4354,21 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 				if (g_mtk_dp->priv->dpc_dev) {
 					/* get mminfra before DPTX on */
-					ret = pm_runtime_resume_and_get(g_mtk_dp->priv->dpc_dev);
+					if (g_mtk_dp->priv->pwr_node)
+						mtk_mminfra_on_off(true, MM_PWR_MM_1, MM_TYPE_DISP);
+					else
+						ret = pm_runtime_resume_and_get(g_mtk_dp->priv->dpc_dev);
 					if (unlikely(ret)) {
 						DPTXMSG("request mminfra power failed\n");
 						return;
 					}
 				}
-				pm_runtime_get_sync(g_mtk_dp->dev);
+				if (g_mtk_dp->priv->pwr_node) {
+					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+				}
+				else
+					pm_runtime_get_sync(g_mtk_dp->dev);
 				// control slice(mac->phy)
 				base = ioremap(0x31b50000, 0x100);
 				writel(readl(base + 0x78) | (1 << 0), base + 0x78); // Set bit 0 to 1 (reset)
