@@ -34,4 +34,6 @@ else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6893)),)
 mediatek_static_power-y += mtk_static_power_6893.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6781)),)
 mediatek_static_power-y += mtk_static_power_6781.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_6853)),)
+mediatek_static_power-y += mtk_static_power_6853.o
 endif
