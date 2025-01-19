@@ -558,7 +558,7 @@ inline void update_thermal_pressure_capacity(bool update_all, int this_cpu)
 void mtk_tick_entry(void *data, struct rq *rq)
 {
 	unsigned int this_cpu = cpu_of(rq);
-	bool sbb_trigger, is_cpu_to_update_thermal, update_all = true;
+	bool sbb_trigger, is_cpu_to_update_thermal = false, update_all = true;
 	u64 idle_time, wall_time, cpu_utilize;
 	struct sbb_cpu_data *sbb_data = per_cpu(sbb, rq->cpu);
 	if (!get_eas_hook())
