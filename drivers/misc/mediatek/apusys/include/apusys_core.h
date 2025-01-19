@@ -46,6 +46,8 @@ int apu_pbm_drv_init(struct apusys_core_info *info);
 void apu_pbm_drv_exit(void);
 int apu_sysmem_init(struct apusys_core_info *info);
 void apu_sysmem_exit(void);
+int apu_hds_init(struct apusys_core_info *info);
+void apu_hds_exit(void);
 
 /*
  * init function at other modulses
@@ -62,6 +64,7 @@ static int (*apusys_init_func[])(struct apusys_core_info *) = {
 	apummu_init,
 	apu_sysmem_init,
 	mdw_init,
+	apu_hds_init,
 	edma_init,
 	aps_init,
 	mdla_init,
@@ -95,6 +98,7 @@ static void (*apusys_exit_func[])(void) = {
 	mdla_exit,
 	edma_exit,
 	aps_exit,
+	apu_hds_exit,
 	mdw_exit,
 	apu_sysmem_exit,
 	reviser_exit,

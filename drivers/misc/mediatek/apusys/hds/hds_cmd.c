@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+
+#include <linux/rpmsg.h>
+#include "hds.h"
+#include "apusys_device.h"
+
+static uint32_t hds_cmd_appendix_cb_size(uint32_t num_subcmds)
+{
+	uint32_t appendix_size = 0;
+
+	if (!g_hdev->pmu_lv)
+		return 0;
+
+	if (check_mul_overflow(num_subcmds, g_hdev->pmu_per_subcmd_size, &appendix_size)) {
+		apu_hds_warn("check appendix subcmd overflow(%u/%u/%u)\n",
+			g_hdev->pmu_per_cmd_size, g_hdev->pmu_per_subcmd_size, num_subcmds);
+		return 0;
+	}
+
+	if (check_add_overflow(appendix_size, g_hdev->pmu_per_cmd_size, &appendix_size)) {
+		apu_hds_warn("check appendix cmd overflow(%u/%u/%u)\n",
+			g_hdev->pmu_per_cmd_size, g_hdev->pmu_per_subcmd_size, num_subcmds);
+		return 0;
+	}
+
+	return appendix_size;
+}
+
+static int hds_cmd_appendix_cb_process(enum apu_appendix_cb_type type, uint64_t session_id,
+	uint64_t cmd_uid, uint32_t num_subcmds, void *va, uint32_t size)
+{
+	int ret = 0;
+
+	/* check argument */
+	if (!size || va == NULL || !num_subcmds)
+		return -EINVAL;
+
+	/* check size */
+	if (size != g_hdev->pmu_per_cmd_size + num_subcmds * g_hdev->pmu_per_subcmd_size) {
+		apu_hds_err("size not matched(%u/%u)\n",
+			size, g_hdev->pmu_per_cmd_size + num_subcmds * g_hdev->pmu_per_subcmd_size);
+		return -EINVAL;
+	}
+
+	apu_hds_debug("type(%u) id(0x%llx/0x%llx) appendix(%pK/%u)\n", type, session_id, cmd_uid, va, size);
+
+	switch (type) {
+	case APU_APPENDIX_CB_CREATE:
+		break;
+	case APU_APPENDIX_CB_PREPROCESS:
+		break;
+	case APU_APPENDIX_CB_POSTPROCESS:
+		break;
+	case APU_APPENDIX_CB_POSTPROCESS_LATE:
+		break;
+	case APU_APPENDIX_CB_DELETE:
+		break;
+	default:
+		break;
+	};
+
+	return ret;
+}
+
+int hds_cmd_init(void)
+{
+	int ret = 0;
+
+	ret = apusys_request_cmdbuf_appendix(APU_APPENDIX_CB_OWNER_HDS, hds_cmd_appendix_cb_size, hds_cmd_appendix_cb_process);
+	if (ret)
+		apu_hds_err("request appendix cmdbuf failed(%d)\n", ret);
+
+	return ret;
+}
