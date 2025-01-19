@@ -794,6 +794,16 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 				ipi_data->u.set_para.arg[4]);
 	}
 
+	/* 0:loading mode, 1:workload mode*/
+	ipi_data->cmd = GPUFDVFS_IPI_GET_LOADING_MODE;
+	ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+	if (ret) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"laoding mode: %u\n", ipi_data->u.set_para.arg[0]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"workload mode: %u\n",ipi_data->u.set_para.arg[1]);
+	}
+
 	/* 0:avg loading, 1:uhigh bound, 2:ulow bound, 3:high bound, 4:low bound*/
 	ipi_data->cmd = GPUFDVFS_IPI_GET_BOUND;
 	ret = mtk_get_fastdvfs_mode((void *)ipi_data);

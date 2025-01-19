@@ -669,6 +669,7 @@ enum {
 	GPUFDVFS_IPI_SET_FB_RSF_POLICY      = 21,
 	GPUFDVFS_IPI_SET_CONFIG             = 22,
 	GPUFDVFS_IPI_SET_FB_MFRC_POLICY     = 23,
+	GPUFDVFS_IPI_GET_LOADING_MODE    	= 24,
 
 	NR_GPUFDVFS_IPI,
 };
@@ -695,9 +696,10 @@ enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_SET_GPU_FPS_ENABLE = 4,
 	GPUFDVFS_IPI_SET_USE_DEFAULT_MAGIN_ENABLE = 5,
 	GPUFDVFS_IPI_SET_MAJOR_MIN_CORE = 6,
-	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
 	GPUFDVFS_IPI_SET_LOADING_SELECT,
 	GPUFDVFS_IPI_GET_LOADING_SELECT,
+	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
+
 };
 
 /* IPI data structure */
@@ -985,9 +987,10 @@ typedef struct {
  GEN("Gpu_kpi_fps_freq", GPU_KPI_FPS_FREQ, 2, "kpi_fps_freq") \
  GEN("Gpu_kpi_cpu_time", GPU_KPI_CPU_TIME, 1, "kpi_cpu_time") \
  GEN("Gpu_kpi_gpu_time", GPU_KPI_GPU_TIME, 1, "kpi_gpu_time") \
- GEN("Gpu_loading", GPU_LOADING, 1, "gpu_loading") \
+ GEN("Gpu_normalize_loading", GPU_LOADING, 2, "gpu_loading-cnt") \
  GEN("MCU_ITER_normalize_loading", MCU_ITER_LOADING, 2, "MCU_ITER_LOADING") \
- GEN("MCU_ITER_UNION_normalize_loading", MCU_ITER_UNION_LOADING, 1, "MCU_ITER_UNION_LOADING") \
+ GEN("MCU_ITER_UNION_FRAG_normalize_loading", MCU_ITER_UNION_FRAG_LOADING, 2, "MCU_ITER_UNION_FRAG_LOADING") \
+ GEN("COMP_TILE_normalize_loading", COMP_TILE_LOADING, 2, "COMP_TILE_LOADING") \
  GEN("mbrain_sum_loading1", GPU_SUM_LOADING1, 1, "g_sum_loading") \
  GEN("mbrain_sum_loading2", GPU_SUM_LOADING2, 1, "g_sum_loading")\
  GEN("mbrain_sum_time1", GPU_SUM_TIME1, 1, "g_sum_delta_time") \

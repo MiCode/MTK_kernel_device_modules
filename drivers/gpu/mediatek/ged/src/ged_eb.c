@@ -664,6 +664,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_GET_FB_TUNE_PARAM:
 	case GPUFDVFS_IPI_GET_LB_TUNE_PARAM:
 	case GPUFDVFS_IPI_GET_DEFAULT_POLICY_MODE:
+	case GPUFDVFS_IPI_GET_LOADING_MODE:
 		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,

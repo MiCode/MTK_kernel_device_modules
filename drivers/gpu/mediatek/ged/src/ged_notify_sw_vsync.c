@@ -237,6 +237,9 @@ static void ged_eb_dump_norm_loading(void) {
 	unsigned int gpu_loading = 0;
 	unsigned int iter_loading = 0;
 	unsigned int mcu_loading = 0;
+	unsigned int tile_loading = 0;
+	unsigned int comp_loading = 0;
+	unsigned int frag_loading = 0;
 	unsigned int itet_mcu_union_loading = 0;
 
 	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_LOADING);
@@ -244,10 +247,15 @@ static void ged_eb_dump_norm_loading(void) {
 	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_MCU_ITER_LOADING);
 	iter_loading = tmp_multi.twoVar.var1;
 	mcu_loading = tmp_multi.twoVar.var2;
-	itet_mcu_union_loading = mtk_gpueb_sysram_read(SYSRAM_MCU_ITER_UNION_LOADING);
+	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_MCU_ITER_UNION_FRAG_LOADING);
+	itet_mcu_union_loading = tmp_multi.twoVar.var1;
+	frag_loading = tmp_multi.twoVar.var2;
+	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_COMP_TILE_LOADING);
+	tile_loading = tmp_multi.twoVar.var1;
+	comp_loading = tmp_multi.twoVar.var2;
 
-	trace_GPU_DVFS__Loading(gpu_loading, 0,
-		0, 0, iter_loading, mcu_loading, itet_mcu_union_loading);
+	trace_GPU_DVFS__Loading(gpu_loading, tile_loading,
+		frag_loading, comp_loading, iter_loading, mcu_loading, itet_mcu_union_loading);
 }
 
 void ged_eb_dvfs_trace_dump(void)
