@@ -1342,7 +1342,7 @@ static int dpmaif_rxq_push_thread(void *arg)
 
 	while (1) {
 		if ((pkg_count == 1) || ((pkg_count & 0x7FF) == 0x7FF))  //2048 pkgs for 0.5s
-			__pm_wakeup_event(g_dpmaif_ctrl->wakelock, jiffies_to_msecs(HZ));
+			__pm_wakeup_event(g_dpmaif_ctrl->wakelock, jiffies_to_msecs(HZ/2));
 
 		if (ccci_dl_queue_len(qno) == 0) {
 #ifdef DPMAIF_REDUCE_RX_FLUSH
