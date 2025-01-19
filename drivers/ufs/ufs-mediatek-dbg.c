@@ -277,6 +277,18 @@ static void ufs_mtk_dbg_print_err_hist(struct ufs_hba *hba, char **buff,
 		SPREAD_PRINTF(buff, size, m, "No record of %s\n", err_name);
 }
 
+/* Convert microseconds to Auto-Hibernate Idle Timer register value */
+static u32 ufs_mtk_ahit_to_us(u32 ahit)
+{
+	int timer = FIELD_GET(UFSHCI_AHIBERN8_TIMER_MASK, ahit);
+	int scale = FIELD_GET(UFSHCI_AHIBERN8_SCALE_MASK, ahit);
+
+	for (; scale > 0; --scale)
+		timer *= UFSHCI_AHIBERN8_SCALE_FACTOR;
+
+	return timer;
+}
+
 static void ufs_mtk_dbg_print_info(struct ufs_hba *hba, char **buff,
 				unsigned long *size, struct seq_file *m)
 {
@@ -306,6 +318,8 @@ static void ufs_mtk_dbg_print_info(struct ufs_hba *hba, char **buff,
 		      "Auto BKOPS=%d, Host self-block=%d\n",
 		      hba->auto_bkops_enabled,
 		      hba->host->host_self_blocked);
+	SPREAD_PRINTF(buff, size, m, "AHIT=0x%x, %dus\n", hba->ahit,
+		      ufs_mtk_ahit_to_us(hba->ahit));
 	SPREAD_PRINTF(buff, size, m,
 		      "Clk scale sup./en.=%d/%d, suspend sts/cnt=%d/%d, active_reqs=%d, min/max g.=G%d/G%d, polling_ms=%d, upthr=%d, downthr=%d\n",
 		    !!ufshcd_is_clkscaling_supported(hba),
@@ -1507,7 +1521,6 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 	int ptr;
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	struct ufs_mtk_host *host;
-	u32 val;
 #endif
 	struct cmd_hist_struct *cmd_hist;
 	struct ufs_mtk_dbg *mdbg = data;
@@ -1527,45 +1540,13 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	host = mdbg->host;
 
-	if (state == CLKS_ON && host->mphy_base) {
+	if (host->mphy_base) {
 		writel(0xC1000200, host->mphy_base + 0x20C0);
 		cmd_hist[ptr].cmd.clk_gating.arg1 =
 			readl(host->mphy_base + 0xA09C);
 		cmd_hist[ptr].cmd.clk_gating.arg2 =
 			readl(host->mphy_base + 0xA19C);
 		writel(0, host->mphy_base + 0x20C0);
-	} else if (state == REQ_CLKS_OFF && host->mphy_base) {
-		writel(0xC1000200, host->mphy_base + 0x20C0);
-		cmd_hist[ptr].cmd.clk_gating.arg1 =
-			readl(host->mphy_base + 0xA09C);
-		cmd_hist[ptr].cmd.clk_gating.arg2 =
-			readl(host->mphy_base + 0xA19C);
-		writel(0, host->mphy_base + 0x20C0);
-
-		/* when req clk off, clear 2 line hw status */
-		val = readl(host->mphy_base + 0xA800) | 0x02;
-		writel(val, host->mphy_base + 0xA800);
-		writel(val, host->mphy_base + 0xA800);
-		val = val & (~0x02);
-		writel(val, host->mphy_base + 0xA800);
-
-		val = readl(host->mphy_base + 0xA900) | 0x02;
-		writel(val, host->mphy_base + 0xA900);
-		writel(val, host->mphy_base + 0xA900);
-		val = val & (~0x02);
-		writel(val, host->mphy_base + 0xA900);
-
-		val = readl(host->mphy_base + 0xA804) | 0x02;
-		writel(val, host->mphy_base + 0xA804);
-		writel(val, host->mphy_base + 0xA804);
-		val = val & (~0x02);
-		writel(val, host->mphy_base + 0xA804);
-
-		val = readl(host->mphy_base + 0xA904) | 0x02;
-		writel(val, host->mphy_base + 0xA904);
-		writel(val, host->mphy_base + 0xA904);
-		val = val & (~0x02);
-		writel(val, host->mphy_base + 0xA904);
 	} else {
 		cmd_hist[ptr].cmd.clk_gating.arg1 = 0;
 		cmd_hist[ptr].cmd.clk_gating.arg2 = 0;

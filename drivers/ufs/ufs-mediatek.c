@@ -888,6 +888,12 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 			ufs_mtk_boost_crypt(hba, on);
 			ufs_mtk_setup_ref_clk(hba, on);
 			phy_power_off(host->mphy);
+		} else {
+			dev_warn(hba->dev, "Warning: Link state is not HIBERN8. Clock is not turned off.\n");
+			dev_warn(hba->dev, "hba->ahit = 0x%x, AHIT reg = 0x%x\n",
+				hba->ahit,
+				ufshcd_readl(hba,
+					REG_AUTO_HIBERNATE_IDLE_TIMER));
 		}
 		ufs_mtk_mcq_disable_irq(hba);
 	} else if (on && status == POST_CHANGE) {
