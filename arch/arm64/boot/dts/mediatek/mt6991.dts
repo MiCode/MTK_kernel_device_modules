@@ -5282,6 +5282,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				dbg-info-mux-sel = <0x50c>;
 				dbg-info-mux-vals = <18 19 20 21 22 23 24 25 26 27>;
 				dbg-data = <0xd48 0xd4c>;
+				dfd {
+					data-err-status = <0x554 0x558>;
+					tag-err-status = <0x55c 0x560>;
+					data-num = <20>;
+					tag-num = <20>;
+					latch-data = <0x564 0x568>;
+					sram-sel = <0x56c 0x570>;
+				};
 			};
 		};
 
