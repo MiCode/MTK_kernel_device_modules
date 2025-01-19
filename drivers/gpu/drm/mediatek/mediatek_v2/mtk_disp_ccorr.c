@@ -765,10 +765,16 @@ int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 	struct DISP_COLOR_TRANSFORM *color_transform = data;
 	struct mtk_drm_private *private = dev->dev_private;
 	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_disp_ccorr *ccorr_data;
+	struct mtk_disp_ccorr_primary *primary_data;
+
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 		to_mtk_crtc(crtc), MTK_DISP_CCORR, 0);
-	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
-	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
+	if(!comp) {
+		ret = -EFAULT;
+		DDPINFO("%s comp is NULL ", __func__);
+		return ret;
+	}
 
 	if (color_transform == NULL) {
 		support_matrix = false;
@@ -776,6 +782,9 @@ int mtk_drm_ioctl_ccorr_support_color_matrix(struct drm_device *dev, void *data,
 		DDPINFO("unsupported matrix");
 		return ret;
 	}
+
+	ccorr_data = comp_to_ccorr(comp);
+	primary_data = ccorr_data->primary_data;
 
 	// Support matrix:
 	// AOSP is 4x3 matrix. Offset is located at 4th row (not zero)
