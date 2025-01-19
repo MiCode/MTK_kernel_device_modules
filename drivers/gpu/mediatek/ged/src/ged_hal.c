@@ -34,10 +34,16 @@
 #if defined(MTK_GPU_SLC_POLICY)
 #include "ged_gpu_slc.h"
 #endif /* MTK_GPU_SLC_POLICY */
-
+#if defined(MTK_GPU_MEMSYS_UTIL)
+#include "ged_gpu_memsys.h"
+#endif /* MTK_GPU_MEMSYS_UTIL */
 
 static struct kobject *hal_kobj;
 extern int stat_mcu_store[][30];
+#if defined(MTK_GPU_MEMSYS_UTIL)
+static struct kobject *memsys_kobj;
+#endif /* MTK_GPU_MEMSYS_UTIL */
+
 
 int tokenizer(char *pcSrc, int i32len, int *pi32IndexArray, int i32NumToken)
 {
@@ -2705,6 +2711,49 @@ static KOBJ_ATTR_RW(gpu_slc_policy);
 #endif /* MTK_GPU_SLC_POLICY */
 
 //-----------------------------------------------------------------------------
+#if defined(MTK_GPU_MEMSYS_UTIL)
+static ssize_t gpu_memsys_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+	struct gpu_memsys_stat *memsys_stat = NULL;
+
+	memsys_stat = get_gpu_memsys_stat();
+
+	if (memsys_stat != NULL) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"features: 0x%x\n", memsys_stat->features);
+	} else {
+		pos = scnprintf(buf + pos, PAGE_SIZE - pos,
+					"GPU MEMSYS sysFS not supports\n");
+	}
+
+	return pos;
+}
+
+static ssize_t gpu_memsys_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_gpu_memsys_feature_enable(i32Value);
+		}
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(gpu_memsys);
+
+#endif
+
+//-----------------------------------------------------------------------------
 
 GED_ERROR ged_hal_init(void)
 {
@@ -3082,6 +3131,18 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 	/* MBrain end */
+#if defined(MTK_GPU_MEMSYS_UTIL)
+	err = ged_sysfs_create_dir(hal_kobj, "memsys" , &memsys_kobj);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create memsys dir!\n");
+		goto ERROR;
+	}
+	err = ged_sysfs_create_file(memsys_kobj, &kobj_attr_gpu_memsys);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create gpu_memsys entry!\n");
+		goto ERROR;
+	}
+#endif /* MTK_GPU_MEMSYS_UTIL */
 
 	return err;
 
@@ -3167,6 +3228,10 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_power_state);
 	/* MBrain end */
 
+#if defined(MTK_GPU_MEMSYS_UTIL)
+	ged_sysfs_remove_file(memsys_kobj, &kobj_attr_gpu_memsys);
+	ged_sysfs_remove_dir(&memsys_kobj);
+#endif
 	ged_sysfs_remove_dir(&hal_kobj);
 }
 //-----------------------------------------------------------------------------

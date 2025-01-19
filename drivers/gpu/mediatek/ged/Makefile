@@ -31,6 +31,7 @@ ccflags-y += -DCONFIG_MTK_GPU_FW_IDLE
 ccflags-y += -DCONFIG_MTK_GPU_APO_SUPPORT
 ccflags-y += -DCONFIG_MTK_GPU_POWER_ON_OFF_TEST
 ccflags-y += -DMTK_GPU_SLC_POLICY
+ccflags-y += -DMTK_GPU_MEMSYS_UTIL
 ifndef CONFIG_MTK_GPU_MT6768_SUPPORT
 ccflags-y += -DMTK_GPU_EB_SUPPORT
 endif
@@ -117,7 +118,8 @@ ged-y += \
 	src/ged_eb.o \
 	src/ged_gpu_bm.o \
 	src/ged_gpu_slc.o \
-	src/ged_mali_event.o
+	src/ged_mali_event.o \
+	src/ged_gpu_memsys.o
 endif
 
 ged-$(CONFIG_SYNC_FILE) += src/ged_sync.o

@@ -55,6 +55,9 @@
 #if defined(MTK_GPU_SLC_POLICY)
 #include "ged_gpu_slc.h"
 #endif /* MTK_GPU_SLC_POLICY */
+#if defined(MTK_GPU_MEMSYS_UTIL)
+#include "ged_gpu_memsys.h"
+#endif /* MTK_GPU_MEMSYS_UTIL */
 
 /**
  * ===============================================
@@ -836,6 +839,12 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	}
 #endif /*MTK_GPU_SLC_POLICY */
 
+#if defined(MTK_GPU_MEMSYS_UTIL)
+	if (unlikely(ged_gpu_memsys_init() != GED_OK)) {
+		GED_LOGE("Failed to init GPU MEMSYS!\n");
+	}
+#endif /* MTK_GPU_MEMSYS_UTIL */
+
 #ifndef GED_BUFFER_LOG_DISABLE
 	ghLogBuf_GPU = ged_log_buf_alloc(512, 128 * 512,
 		GED_LOG_BUF_TYPE_RINGBUFFER, "GPU_FENCE", NULL);
@@ -935,6 +944,10 @@ static void ged_pdrv_remove(struct platform_device *pdev)
 #if defined(MTK_GPU_SLC_POLICY)
 	ged_gpu_slc_exit();
 #endif /*MTK_GPU_SLC_POLICY */
+
+#if defined(MTK_GPU_MEMSYS_UTIL)
+	ged_gpu_memsys_exit();
+#endif /*MTK_GPU_MEMSYS_UTIL */
 
 	ged_gpufreq_exit();
 
