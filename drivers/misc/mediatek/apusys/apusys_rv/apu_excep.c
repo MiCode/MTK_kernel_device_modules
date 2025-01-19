@@ -331,13 +331,15 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 
 			apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_RV_COREDUMP_SHADOW_COPY, 0);
+
 			/* gating md32 cg for cache dump */
 			apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_GATING, 0);
 			apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CACHEDUMP, 0);
-			apusys_rv_smc_call(dev,
-				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
+			if ((apu->platdata->flags & F_COREDUMP_RV55) == 0)
+				apusys_rv_smc_call(dev,
+					MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
 		}
 
 		if ((apu->platdata->flags & F_BRINGUP) == 0) {
@@ -369,9 +371,12 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 	}
 
 	if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
-
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0);
+
+		if (apu->platdata->flags & F_COREDUMP_RV55)
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_UNGATING, 0);
 
 		if ((apu->platdata->flags & F_TCM_WA) == 0)
 			apusys_rv_smc_call(dev,
@@ -383,18 +388,22 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_TBUFDUMP, 0);
 
-		if ((apu->platdata->flags & F_TCM_WA) == 0) {
-			/* ungate md32 cg for debug apb connection */
+		if ((apu->platdata->flags & F_COREDUMP_RV55) == 0) {
+			if ((apu->platdata->flags & F_TCM_WA) == 0) {
+				/* ungate md32 cg for debug apb connection */
+				apusys_rv_smc_call(dev,
+					MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_UNGATING, 0);
+				status = apusys_rv_smc_call(dev,
+					MTK_APUSYS_KERNEL_OP_APUSYS_RV_DBG_APB_ATTACH, 0);
+				apusys_rv_smc_call(dev,
+					MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, (status & 0x1));
+			} else
+				apusys_rv_smc_call(dev,
+					MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, 0);
+		} else {
 			apusys_rv_smc_call(dev,
-				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_UNGATING, 0);
-			status = apusys_rv_smc_call(dev,
-				MTK_APUSYS_KERNEL_OP_APUSYS_RV_DBG_APB_ATTACH, 0);
-
-			apusys_rv_smc_call(dev,
-				MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, (status & 0x1));
-		} else
-			apusys_rv_smc_call(dev,
-				MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, 0);
+					MTK_APUSYS_KERNEL_OP_APUSYS_RV_REGDUMP, 0);
+		}
 
 		/* gating md32 cg for cache dump */
 		apusys_rv_smc_call(dev,
@@ -405,9 +414,9 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 		if (apu->platdata->flags & F_TCM_WA)
 			apusys_rv_smc_call(dev,
 				MTK_APUSYS_KERNEL_OP_APUSYS_RV_TCMDUMP_WA, 0);
-
-		apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
+		if ((apu->platdata->flags & F_COREDUMP_RV55) == 0)
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
 
 	} else {
 		if ((apu->platdata->flags & F_COREDUMP_RV55) == 0) { // RV33
@@ -678,7 +687,6 @@ static irqreturn_t apu_wdt_isr(int irq, void *private_data)
 	if ((apu->platdata->flags & F_SECURE_COREDUMP)) {
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CG_GATING, 0);
-
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_DISABLE_WDT_ISR, 0);
 	} else {
