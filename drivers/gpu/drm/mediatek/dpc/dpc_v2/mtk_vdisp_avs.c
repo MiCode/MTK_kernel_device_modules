@@ -32,7 +32,7 @@ struct mtk_vdisp_avs_ipi_data {
 };
 static bool fast_en;
 static bool vcp_is_alive = true;
-static bool aging_force_disable = true;
+static bool aging_force_disable;
 
 #define vdisp_avs_ipi_send_slot(id, value) \
 	mtk_vdisp_avs_ipi_send((struct mtk_vdisp_avs_ipi_data) \
