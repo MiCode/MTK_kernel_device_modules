@@ -398,7 +398,10 @@ struct cb_params {
 	struct regmap *regmap;
 	int onoff;
 	const char *name;
-	uint32_t setclr_ofs;
+	uint32_t setclr_ofs; /* hwv */
+	uint32_t set_ofs; /* dma */
+	uint32_t clr_ofs; /* dma */
+	uint32_t sta_ofs; /* dma */
 	uint32_t done_ofs;
 	uint32_t vote_bit;
 	uint32_t vote_val;

@@ -560,6 +560,116 @@ static void mtk_cg_disable_unused_null(struct clk_hw *hw)
 {
 }
 
+static int mtk_cg_prepare_mm_dma(struct clk_hw *hw)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+	struct cb_params params;
+
+	params.regmap = cg->regmap;
+	params.onoff = CTRL_ON;
+	params.name = c_n;
+	params.set_ofs = cg->set_ofs;
+	params.clr_ofs = cg->clr_ofs;
+	params.sta_ofs = cg->sta_ofs;
+	params.vote_bit = cg->bit;
+
+	if (cg->flags & RES_FRAMEWORK_MMINFRA) {
+		if (!callback[CLK_REQUEST_MMINFRA_CB]) {
+			pr_cg_err("mminfra_ctrl is NULL\n");
+			return -EINVAL;
+		}
+		ret = callback[CLK_REQUEST_MMINFRA_CB](&params);
+		if (ret) {
+			pr_cg_err("mminfra_enable failed - %s\n", c_n);
+			goto CG_PREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_VMM) {
+		if (!callback[CLK_REQUEST_VMM_CB]) {
+			pr_cg_err("vmm_ctrl is NULL\n");
+			return -EINVAL;
+		}
+		ret = callback[CLK_REQUEST_VMM_CB](&params);
+		if (ret) {
+			pr_cg_err("vmm_enable failed - %s\n", c_n);
+			goto CG_PREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_VDISP) {
+		if (!callback[CLK_REQUEST_VDISP_CB]) {
+			pr_cg_err("vdisp_ctrl is NULL\n");
+			return -EINVAL;
+		}
+		ret = callback[CLK_REQUEST_VDISP_CB](&params);
+		if (ret) {
+			pr_cg_err("vdisp_enable failed - %s\n", c_n);
+			goto CG_PREPARE_FAIL;
+		}
+	}
+	return ret;
+
+CG_PREPARE_FAIL:
+	pr_cg_err("mtk_cg_prepare_mm_dma - %s, ret: %x\n", c_n, -ret);
+	return ret;
+}
+
+static void mtk_cg_unprepare_mm_dma(struct clk_hw *hw)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+	struct cb_params params;
+
+	params.regmap = cg->regmap;
+	params.onoff = CTRL_OFF;
+	params.name = c_n;
+	params.set_ofs = cg->set_ofs;
+	params.clr_ofs = cg->clr_ofs;
+	params.sta_ofs = cg->sta_ofs;
+	params.vote_bit = cg->bit;
+
+	if (cg->flags & RES_FRAMEWORK_VDISP) {
+		if (!callback[CLK_REQUEST_VDISP_CB]) {
+			pr_cg_err("vdisp_ctrl is NULL\n");
+			return;
+		}
+		ret = callback[CLK_REQUEST_VDISP_CB](&params);
+		if (ret) {
+			pr_cg_err("vdisp_disable failed - %s\n", c_n);
+			goto CG_UNPREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_VMM) {
+		if (!callback[CLK_REQUEST_VMM_CB]) {
+			pr_cg_err("vmm_ctrl is NULL\n");
+			return;
+		}
+		ret = callback[CLK_REQUEST_VMM_CB](&params);
+		if (ret) {
+			pr_cg_err("vmm_disable failed - %s\n", c_n);
+			goto CG_UNPREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_MMINFRA) {
+		if (!callback[CLK_REQUEST_MMINFRA_CB]) {
+			pr_cg_err("mminfra_ctrl is NULL\n");
+			return;
+		}
+		ret = callback[CLK_REQUEST_MMINFRA_CB](&params);
+		if (ret) {
+			pr_cg_err("mminfra_disable failed - %s\n", c_n);
+			goto CG_UNPREPARE_FAIL;
+		}
+	}
+	return;
+
+CG_UNPREPARE_FAIL:
+	pr_cg_err("mtk_cg_unprepare_mm_dma - %s, ret: %x\n", c_n, -ret);
+	return;
+}
+
 static int mtk_cg_prepare_mm_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -635,7 +745,7 @@ static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 		}
 		ret = callback[CLK_REQUEST_VDISP_CB](&params);
 		if (ret) {
-			pr_cg_err("vdisp_enable failed - %s\n", c_n);
+			pr_cg_err("vdisp_disable failed - %s\n", c_n);
 			goto CG_UNPREPARE_FAIL;
 		}
 	}
@@ -646,7 +756,7 @@ static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 		}
 		ret = callback[CLK_REQUEST_VMM_CB](&params);
 		if (ret) {
-			pr_cg_err("vmm_enable failed - %s\n", c_n);
+			pr_cg_err("vmm_disable failed - %s\n", c_n);
 			goto CG_UNPREPARE_FAIL;
 		}
 	}
@@ -657,7 +767,7 @@ static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 		}
 		ret = callback[CLK_REQUEST_MMINFRA_CB](&params);
 		if (ret) {
-			pr_cg_err("mminfra_enable failed - %s\n", c_n);
+			pr_cg_err("mminfra_disable failed - %s\n", c_n);
 			goto CG_UNPREPARE_FAIL;
 		}
 	}
@@ -714,7 +824,26 @@ const struct clk_ops mtk_clk_gate_ops_setclr_inv = {
 	.disable_unused = mtk_cg_disable_unused_inv,
 };
 EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_setclr_inv);
-
+/*6993 MM dma gate res*/
+const struct clk_ops mtk_clk_mm_gate_ops_setclr = {
+	.is_prepared	= mtk_cg_bit_is_cleared,
+	.prepare	= mtk_cg_prepare_mm_dma,
+	.unprepare	= mtk_cg_unprepare_mm_dma,
+	.enable		= mtk_cg_enable,
+	.disable	= mtk_cg_disable,
+	.disable_unused = mtk_cg_disable_unused,
+};
+EXPORT_SYMBOL_GPL(mtk_clk_mm_gate_ops_setclr);
+/*6993 MM dma gate res*/
+const struct clk_ops mtk_clk_mm_gate_ops_setclr_inv = {
+	.is_prepared	= mtk_cg_bit_is_set,
+	.prepare	= mtk_cg_prepare_mm_dma,
+	.unprepare	= mtk_cg_unprepare_mm_dma,
+	.enable		= mtk_cg_enable_inv,
+	.disable	= mtk_cg_disable_inv,
+	.disable_unused = mtk_cg_disable_unused_inv,
+};
+EXPORT_SYMBOL_GPL(mtk_clk_mm_gate_ops_setclr_inv);
 const struct clk_ops mtk_clk_gate_ops_hwv = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
 	.enable		= mtk_cg_enable_hwv,
@@ -746,6 +875,16 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv = {
 	.disable_unused = mtk_cg_disable_unused_inv_no_setclr,
 };
 EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_no_setclr_inv);
+/*6993 MM res with inv CG*/
+const struct clk_ops mtk_clk_mm_gate_ops_no_setclr_inv = {
+	.is_prepared	= mtk_cg_bit_is_set,
+	.prepare	= mtk_cg_prepare_mm_dma,
+	.unprepare	= mtk_cg_unprepare_mm_dma,
+	.enable		= mtk_cg_enable_inv_no_setclr,
+	.disable	= mtk_cg_disable_inv_no_setclr,
+	.disable_unused = mtk_cg_disable_unused_inv_no_setclr,
+};
+EXPORT_SYMBOL_GPL(mtk_clk_mm_gate_ops_no_setclr_inv);
 /*6993 SOC Generic HWV*/
 const struct clk_ops mtk_clk_gate_generic_ap_hwv_ops = {
 	.is_prepared	= mtk_cg_bit_is_cleared, /*if read back need consider inverse cg*/

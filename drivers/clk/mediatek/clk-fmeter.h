@@ -13,12 +13,15 @@
 enum FMETER_TYPE {
 	FT_NULL,
 	ABIST,
-	CKGEN,
 	ABIST_2,
+	CKGEN,
 	ABIST_CK2,
+	ABIST_2_CK2,
 	CKGEN_CK2,
 	SUBSYS,
 	VLPCK,
+	CLKSQ,
+	ABIST32K,
 };
 
 enum FMETER_ID {
@@ -29,14 +32,44 @@ enum FMETER_ID {
 	FID_NUM,
 };
 
+enum DOMAIN_BASE {
+    CKSYS_DB,
+    CKSYS2_DB,
+    VLPCK_DB,
+    CKMTR_TOP_DB,
+    CKMTR_MM_DB,
+    CKMTR_VLP_DB,
+    CLKSQR_DB,
+    MAINPLL_DB,
+    UNIVPLL_DB,
+    MSDCPLL_DB,
+    EMIPLL_DB,
+    MAINPLL2_DB,
+    UNIVPLL2_DB,
+    MMPLL_DB,
+    IMGPLL_DB,
+    TVDPLL_DB,
+    APLL1_DB,
+    APLL2_DB,
+    CCIPLL_DB,
+    PTPPLL_DB,
+    DOMAIN_MAX
+};
+
 struct fmeter_clk {
 	enum FMETER_TYPE type;
-	u32 id;
+	enum DOMAIN_BASE domain;
+	uint32_t id;
 	const char *name;
 	u32 ofs;
+	u32 fenc_ofs;
+	u32 fenc_bit;
 	u32 pdn;
 	u32 grp;
 	u32 ck_div;
+	u32 need_check;
+	u32 target_freq;
+	u32 is_pll;
 };
 
 struct fmeter_pll {

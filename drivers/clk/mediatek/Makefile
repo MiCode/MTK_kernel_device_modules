@@ -189,6 +189,13 @@ obj-$(CONFIG_COMMON_CLK_MT6991_IVI) += clk-mt6991-ivi.o
 obj-$(CONFIG_COMMON_CLK_MT6991_PD) += clk-mt6991-pd.o
 endif
 ifneq ($(wildcard $(src)/clk-mt6993.c),)
+obj-$(CONFIG_COMMON_CLK_MT6993) += clk-mt6993.o clk-bringup.o
+obj-$(CONFIG_COMMON_CLK_MT6993_ADSP) += clk-mt6993-adsp.o
+obj-$(CONFIG_COMMON_CLK_MT6993_CAM) += clk-mt6993-cam.o
+obj-$(CONFIG_COMMON_CLK_MT6993_IMG) += clk-mt6993-img.o
+obj-$(CONFIG_COMMON_CLK_MT6993_MMSYS) += clk-mt6993-mmsys.o
+obj-$(CONFIG_COMMON_CLK_MT6993_PERI) += clk-mt6993-peri.o
+obj-$(CONFIG_COMMON_CLK_MT6993_VCODEC) += clk-mt6993-vcodec.o
 endif
 ifneq ($(wildcard $(src)/clk-mt6899.c),)
 obj-$(CONFIG_COMMON_CLK_MT6899) += clk-mt6899.o clk-bringup.o
@@ -433,6 +440,15 @@ obj-$(CONFIG_COMMON_CLK_MT6991) += clk-fmeter-mt6991.o
 ifeq ($(CONFIG_DEBUG_FS), y)
 obj-$(CONFIG_COMMON_CLK_MT6991) += clk-dbg-mt6991.o
 clk-dbg-mt6991-$(CONFIG_COMMON_CLK_MT6991) += clkdbg-mt6991.o
+endif
+endif
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6993.c),)
+obj-$(CONFIG_COMMON_CLK_MT6993) += clk-chk-mt6993.o
+clk-chk-mt6993-$(CONFIG_COMMON_CLK_MT6993) += clkchk-mt6993.o
+obj-$(CONFIG_COMMON_CLK_MT6993) += clk-fmeter-mt6993.o
+ifeq ($(CONFIG_DEBUG_FS), y)
+obj-$(CONFIG_COMMON_CLK_MT6993) += clk-dbg-mt6993.o
+clk-dbg-mt6993-$(CONFIG_COMMON_CLK_MT6993) += clkdbg-mt6993.o
 endif
 endif
 ifneq ($(wildcard $(src)/clk-mt6899.c),)

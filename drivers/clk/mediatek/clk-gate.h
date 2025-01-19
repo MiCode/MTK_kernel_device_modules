@@ -70,6 +70,10 @@ extern const struct clk_ops mtk_clk_gate_generic_ap_hwv_ops;
 extern const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops;
 extern const struct clk_ops mtk_clk_gate_generic_ap_hwv_ops_inv;
 extern const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops_inv;
+extern const struct clk_ops mtk_clk_mm_gate_ops_setclr_inv;
+extern const struct clk_ops mtk_clk_mm_gate_ops_setclr;
+extern const struct clk_ops mtk_clk_mm_gate_ops_no_setclr_inv;
+
 
 struct clk *mtk_clk_register_gate_hwv(
 		const struct mtk_gate *gate,
