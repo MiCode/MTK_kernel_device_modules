@@ -1418,6 +1418,7 @@ enum mtk_ddp_io_cmd {
 	MTK_IO_CMD_BWM_TRIG,
 	MTK_IO_CMD_BWM_CALC_RATIO,
 	MTK_IO_CMD_BWM_ENABLE,
+	DUMP_CONNECTOR_PROP,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

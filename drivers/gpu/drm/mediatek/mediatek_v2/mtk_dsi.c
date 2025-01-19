@@ -6221,6 +6221,10 @@ mtk_dsi_connector_duplicate_state(struct drm_connector *connector)
 	struct mtk_connector_state *old_state;
 	struct mtk_connector_state *state;
 	unsigned int index;
+	struct mtk_dsi *dsi = connector_to_dsi(connector);
+	struct mtk_drm_private *priv = dsi->is_slave ?
+		dsi->master_dsi->ddp_comp.mtk_crtc->base.dev->dev_private
+		: dsi->ddp_comp.mtk_crtc->base.dev->dev_private;
 
 	if (WARN_ON(!connector->state))
 		return NULL;
@@ -6246,10 +6250,31 @@ mtk_dsi_connector_duplicate_state(struct drm_connector *connector)
 	}
 
 	index = connector->index;
-	state->prop_val[index][CONNECTOR_PROP_CSC_BL] =
-		old_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
-	state->prop_val[index][CONNECTOR_PROP_PANEL_NITS] =
-		old_state->prop_val[index][CONNECTOR_PROP_PANEL_NITS];
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PROP_INHERITANCE) &&
+		!debug_drm_prop_force_reset) {
+		memcpy(&state->prop_val[index][0], &old_state->prop_val[index][0],
+			sizeof(state->prop_val[index]));
+	} else {
+		state->prop_val[index][CONNECTOR_PROP_CSC_BL] =
+			old_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
+		state->prop_val[index][CONNECTOR_PROP_PANEL_NITS] =
+			old_state->prop_val[index][CONNECTOR_PROP_PANEL_NITS];
+	}
+
+	if (mtk_disp_get_dump_prop_enable()) {
+		int i = 0;
+		int written = 0;
+		char dbg_msg[1024] = {0};
+
+		written = scnprintf(dbg_msg, 1024,
+			"[DUMP_PROP]prev_conn%d_mtk_prop_val: ", index);
+		for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
+			written += scnprintf(dbg_msg + written, 1024 - written,
+				"[%d]%d ", i, state->prop_val[index][i]);
+		}
+		DDP_DUMP_PROP("%s\n", dbg_msg);
+	}
 
 	return &state->base;
 }
@@ -14286,6 +14311,25 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (panel_ext->params)
 				mtk_dsi_lpc_update_panel_params(crtc, comp, handle, panel_ext->params);
 		}
+	}
+		break;
+	case DUMP_CONNECTOR_PROP:
+	{
+		struct mtk_connector_state *mtk_conn_state = NULL;
+		unsigned int conn_index = 0;
+		int i = 0;
+		int written = 0;
+		char dbg_msg[1024] = {0};
+
+		mtk_conn_state = to_mtk_connector_state(dsi->conn.state);
+		conn_index = dsi->conn.index;
+		written = scnprintf(dbg_msg, 1024,
+			"[DUMP_PROP]curr_conn%d_mtk_prop_val: ", conn_index);
+		for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
+			written += scnprintf(dbg_msg + written, 1024 - written,
+				"[%d]%d ", i, mtk_conn_state->prop_val[conn_index][i]);
+		}
+		DDP_DUMP_PROP("%s\n", dbg_msg);
 	}
 		break;
 	default:

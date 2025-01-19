@@ -1417,6 +1417,7 @@ struct mtk_cmdq_cb_data {
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;
+extern int debug_drm_prop_force_reset;
 
 int mtk_drm_crtc_enable_vblank(struct drm_crtc *crtc);
 void mtk_drm_crtc_disable_vblank(struct drm_crtc *crtc);

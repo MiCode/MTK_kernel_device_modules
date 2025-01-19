@@ -207,6 +207,7 @@ mtk_plane_duplicate_state(struct drm_plane *plane)
 {
 	struct mtk_plane_state *old_state = to_mtk_plane_state(plane->state);
 	struct mtk_plane_state *state = NULL;
+	struct mtk_drm_private *priv = plane->dev->dev_private;
 
 	state = kzalloc(sizeof(*state), GFP_KERNEL);
 	if (!state)
@@ -236,13 +237,45 @@ mtk_plane_duplicate_state(struct drm_plane *plane)
 
 	state->base.alpha = old_state->base.alpha;
 
-	state->prop_val[PLANE_PROP_OVL_CSC_SET_BRIGHTNESS] =
-		old_state->prop_val[PLANE_PROP_OVL_CSC_SET_BRIGHTNESS];
-	state->prop_val[PLANE_PROP_OVL_CSC_SET_COLORTRANSFORM] =
-		old_state->prop_val[PLANE_PROP_OVL_CSC_SET_COLORTRANSFORM];
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PROP_INHERITANCE) &&
+		!debug_drm_prop_force_reset) {
+		memcpy(&state->prop_val[0], &old_state->prop_val[0],
+			sizeof(state->prop_val));
+	} else {
+		state->prop_val[PLANE_PROP_OVL_CSC_SET_BRIGHTNESS] =
+			old_state->prop_val[PLANE_PROP_OVL_CSC_SET_BRIGHTNESS];
+		state->prop_val[PLANE_PROP_OVL_CSC_SET_COLORTRANSFORM] =
+			old_state->prop_val[PLANE_PROP_OVL_CSC_SET_COLORTRANSFORM];
+	}
+
 	state->pending = old_state->pending;
 	state->comp_state = old_state->comp_state;
 	state->crtc = old_state->crtc;
+
+	if (mtk_disp_get_dump_prop_enable()) {
+		int i = 0;
+		int written = 0;
+		char dbg_msg[1024] = {0};
+		unsigned int plane_idx = drm_plane_index(plane);
+
+		written = scnprintf(dbg_msg, 1024,
+			"[DUMP_PROP]prev_plane%d_mtk_prop_val: ", plane_idx);
+		for (i = 0; i < PLANE_PROP_MAX; i++) {
+			written += scnprintf(dbg_msg + written, 1024 - written,
+				"[%d]%d ", i, state->prop_val[i]);
+		}
+		DDP_DUMP_PROP("%s\n", dbg_msg);
+#define _DUMP_PREV_PROP \
+	"[DUMP_PROP]prev_plane%d_drm_prop_val: src(x%u y%u w%u h%u) " \
+	"crtc(x%d y%d w%u h%u) fb_id%d crtc_id%d\n"
+		DDP_DUMP_PROP(_DUMP_PREV_PROP,
+			plane_idx, state->base.src_x >> 16, state->base.src_y >> 16,
+			state->base.src_w >> 16, state->base.src_h >> 16,
+			state->base.crtc_x, state->base.crtc_y,
+			state->base.crtc_w, state->base.crtc_h,
+			!state->base.fb ? -1 : state->base.fb->base.id,
+			!state->base.crtc ? -1 : state->base.crtc->base.id);
+	}
 
 	return &state->base;
 }
@@ -482,6 +515,30 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		return;
 	}
 
+	if (mtk_disp_get_dump_prop_enable()) {
+		int i = 0;
+		int written = 0;
+		char dbg_msg[1024] = {0};
+
+		written = scnprintf(dbg_msg, 1024,
+			"[DUMP_PROP]curr_plane%d_mtk_prop_val: ", plane_index);
+		for (i = 0; i < PLANE_PROP_MAX; i++) {
+			written += scnprintf(dbg_msg + written, 1024 - written,
+				"[%d]%d ", i, mtk_plane_state->prop_val[i]);
+		}
+		DDP_DUMP_PROP("%s\n", dbg_msg);
+#define _DUMP_CUR_PROP \
+	"[DUMP_PROP]curr_plane%d_drm_prop_val: src(x%u y%u w%u h%u) " \
+	"crtc(x%d y%d w%u h%u) fb_id%d crtc_id%d\n"
+		DDP_DUMP_PROP(_DUMP_CUR_PROP,
+			plane_index, mtk_plane_state->base.src_x >> 16,
+			mtk_plane_state->base.src_y >> 16, mtk_plane_state->base.src_w >> 16,
+			mtk_plane_state->base.src_h >> 16, mtk_plane_state->base.crtc_x,
+			mtk_plane_state->base.crtc_y, mtk_plane_state->base.crtc_w,
+			mtk_plane_state->base.crtc_h,
+			!mtk_plane_state->base.fb ? -1 : mtk_plane_state->base.fb->base.id,
+			!mtk_plane_state->base.crtc ? -1 : mtk_plane_state->base.crtc->base.id);
+	}
 
 	src_x = (plane->state->src.x1 >> 16);
 	src_y = (plane->state->src.y1 >> 16);

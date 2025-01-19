@@ -8364,6 +8364,10 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_RETRIGGER;
 
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_PROP_INHERITANCE))
+		caps_info->disp_feature_flag |=
+				DRM_DISP_FEATURE_PROP_INHERITANCE;
+
 #ifndef DRM_BYPASS_PQ
 	{
 		struct mtk_ddp_comp *ddp_comp;

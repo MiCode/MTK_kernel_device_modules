@@ -99,6 +99,9 @@ module_param(debug_pu_skip, int, 0644);
 int debug_pu_wait = 1;
 module_param(debug_pu_wait, int, 0644);
 
+int debug_drm_prop_force_reset;
+module_param(debug_drm_prop_force_reset, int, 0644);
+
 static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "OVERLAP_LAYER_NUM", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "LAYERING_IDX", 0, ULONG_MAX, 0},
@@ -2704,6 +2707,7 @@ static struct drm_crtc_state *
 mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 {
 	struct mtk_crtc_state *state, *old_state;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	state = kzalloc(sizeof(*state), GFP_KERNEL);
 	if (!state)
@@ -2731,16 +2735,41 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 		state->rsz_dst_roi = old_state->rsz_dst_roi;
 		state->ovl_partial_dirty= old_state->ovl_partial_dirty;
 		state->ovl_partial_roi = old_state->ovl_partial_roi;
-		state->prop_val[CRTC_PROP_DOZE_ACTIVE] =
-			old_state->prop_val[CRTC_PROP_DOZE_ACTIVE];
-		state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
-			old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
-		state->prop_val[CRTC_PROP_PRES_FENCE_IDX] =
-			old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
-		state->prop_val[CRTC_PROP_LYE_IDX] =
-			old_state->prop_val[CRTC_PROP_LYE_IDX];
-		state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] =
-			old_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
+
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PROP_INHERITANCE) &&
+			!debug_drm_prop_force_reset) {
+			memcpy(&state->prop_val[0], &old_state->prop_val[0],
+				sizeof(state->prop_val));
+		} else {
+			state->prop_val[CRTC_PROP_DOZE_ACTIVE] =
+				old_state->prop_val[CRTC_PROP_DOZE_ACTIVE];
+			state->prop_val[CRTC_PROP_DISP_MODE_IDX] =
+				old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+			state->prop_val[CRTC_PROP_PRES_FENCE_IDX] =
+				old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
+			state->prop_val[CRTC_PROP_LYE_IDX] =
+				old_state->prop_val[CRTC_PROP_LYE_IDX];
+			state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] =
+				old_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
+		}
+	}
+
+	if (mtk_disp_get_dump_prop_enable()) {
+		int i = 0;
+		int written = 0;
+		char dbg_msg[1024] = {0};
+		unsigned int crtc_idx = drm_crtc_index(crtc);
+
+		written = scnprintf(dbg_msg, 1024,
+			"[DUMP_PROP]prev_crtc%d_mtk_prop_val: ", crtc_idx);
+		for (i = 0; i < CRTC_PROP_MAX; i++) {
+			written += scnprintf(dbg_msg + written, 1024 - written,
+				"[%d]%d ", i, state->prop_val[i]);
+		}
+		DDP_DUMP_PROP("%s\n", dbg_msg);
+		DDP_DUMP_PROP("[DUMP_PROP]prev_crtc%d_drm_prop_val: act%d mode_id%d\n",
+			crtc_idx, state->base.active,
+			!state->base.mode_blob ? -1 : state->base.mode_blob->base.id);
 	}
 
 	return &state->base;
@@ -17946,6 +17975,30 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		return;
 	}
 
+	if (mtk_disp_get_dump_prop_enable()) {
+		int i = 0;
+		int written = 0;
+		char dbg_msg[1024] = {0};
+
+		written = scnprintf(dbg_msg, 1024,
+			"[DUMP_PROP]curr_crtc%d_mtk_prop_val: ", crtc_idx);
+		for (i = 0; i < CRTC_PROP_MAX; i++) {
+			written += scnprintf(dbg_msg + written, 1024 - written,
+				"[%d]%d ", i, mtk_crtc_state->prop_val[i]);
+		}
+		DDP_DUMP_PROP("%s\n", dbg_msg);
+		DDP_DUMP_PROP("[DUMP_PROP]curr_crtc%d_drm_prop_val: act%d mode_id%d\n",
+			crtc_idx, mtk_crtc_state->base.active,
+			!mtk_crtc_state->base.mode_blob ? -1 :
+			mtk_crtc_state->base.mode_blob->base.id);
+
+		struct mtk_ddp_comp *comp;
+
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DSI, 0);
+		if (comp)
+			mtk_ddp_comp_io_cmd(comp, NULL, DUMP_CONNECTOR_PROP, NULL);
+	}
+
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 	/* When open VDS path switch feature, we will resume VDS crtc
@@ -20318,6 +20371,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	if (mtk_crtc->recovery_flg == true) {
 		DDPINFO("esd recovery need one full frame\n");
 		mtk_crtc->recovery_flg = false;
+		partial_enable = 0;
+	}
+
+	if (old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX] ==
+		state->prop_val[CRTC_PROP_PRES_FENCE_IDX]) {
+		DDPDBG("skip because pres fence idx is equal to old\n");
 		partial_enable = 0;
 	}
 

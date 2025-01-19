@@ -330,6 +330,13 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		DDPINFO("M_ULOCK_NST[%d]:%s[%d] -\n", i, name, line);	\
 	} while (0)
 
+#define DDP_DUMP_PROP(fmt, arg...)                                                  \
+	do {                                                                   \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
+		if (g_dump_prop_log)                                               \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define DDPAEE(string, args...)							\
 	do {									\
@@ -396,4 +403,5 @@ extern bool g_profile_log;
 extern bool g_qos_log;
 extern bool g_y2r_en;
 extern unsigned long long g_pf_time;
+extern bool g_dump_prop_log;
 #endif

@@ -128,6 +128,7 @@ bool g_y2r_en;
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 struct wr_online_dbg g_wr_reg;
 #endif
+bool g_dump_prop_log;
 
 int gCaptureOVLEn;
 int gCaptureWDMAEn;
@@ -5394,6 +5395,11 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("new_write_ddic ++\n");
 		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
 		DDPMSG("new_write_ddic --\n");
+	} else if (strncmp(opt, "dump_prop:", 10) == 0) {
+		if (strncmp(opt + 10, "on", 2) == 0)
+			g_dump_prop_log = 1;
+		else if (strncmp(opt + 10, "off", 3) == 0)
+			g_dump_prop_log = 0;
 	}
 }
 
@@ -6319,4 +6325,9 @@ int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 bool mtk_disp_get_logger_enable(void)
 {
 	return logger_enable;
+}
+
+bool mtk_disp_get_dump_prop_enable(void)
+{
+	return g_dump_prop_log;
 }
