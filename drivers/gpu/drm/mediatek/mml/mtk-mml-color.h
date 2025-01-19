@@ -53,6 +53,7 @@
 #define MML_FMT_ALPHA(c)		(MML_FMT_HW_FORMAT(c) == 2 || \
 					 MML_FMT_HW_FORMAT(c) == 3)
 #define MML_FMT_IS_ARGB(c)		(MML_FMT_ALPHA(c))
+#define MML_FMT_IS_AYUV(c)		(MML_FMT_ALPHA(c) && MML_FMT_IS_YUV(c))
 #define MML_FMT_AFBC_ARGB(c)		(MML_FMT_AFBC(c) && MML_FMT_IS_ARGB(c))
 #define MML_FMT_AFBC_YUV(c)		(MML_FMT_AFBC(c) && MML_FMT_IS_YUV(c))
 
