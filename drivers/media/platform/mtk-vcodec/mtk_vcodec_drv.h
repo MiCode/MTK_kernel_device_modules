@@ -815,6 +815,7 @@ struct mtk_vcodec_ctx {
 #if ENABLE_FENCE
 	struct sync_timeline *p_timeline_obj;
 #endif
+	bool is_worker_set_rt;
 	bool use_fence;
 	int fence_idx;
 	struct dma_gen_buf dma_buf_list[MAX_GEN_BUF_CNT];

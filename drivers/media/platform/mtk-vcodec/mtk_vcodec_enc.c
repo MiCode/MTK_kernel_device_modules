@@ -3065,6 +3065,13 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	vcodec_trace_end();
 	vcodec_trace_end();
 
+	if (ctx->enc_params.operationrate >= 960) {
+		int ret = set_task_priority(ctx->dev->worker_thread, 50);
+		ctx->is_worker_set_rt = true;
+		mtk_v4l2_debug(0, "set_task_priority() ret %d, is_worker_set_rt %d", ret, ctx->is_worker_set_rt);
+	}
+
+
 	return 0;
 
 err_set_param:
@@ -3189,6 +3196,13 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 			mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 		}
 		vcodec_trace_end();
+
+		if (ctx->is_worker_set_rt) {
+			int ret = set_task_priority(ctx->dev->worker_thread, 120 + MIN_NICE + 2);
+			ctx->is_worker_set_rt = false;
+			mtk_v4l2_debug(0, "set_task_priority() ret %d, is_worker_set_rt %d", ret, ctx->is_worker_set_rt);
+		}
+
 		ctx->has_first_input = false;
 	}
 
