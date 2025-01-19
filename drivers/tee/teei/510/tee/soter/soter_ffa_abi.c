@@ -5,7 +5,11 @@
  *
  */
 
+#ifdef MTK_ADAPTED
+#include "ffa_v11/arm_ffa.h"
+#else
 #include <linux/arm_ffa.h>
+#endif
 #include <linux/errno.h>
 #include <linux/scatterlist.h>
 #include <linux/sched.h>

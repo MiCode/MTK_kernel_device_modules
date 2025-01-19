@@ -12,10 +12,12 @@
 
 subdir-ccflags-y  += -I$(src)/common/include
 #ccflags-y  += -I$(src)/common/include
+ccflags-y += -DMTK_ADAPTED
 subdir-ccflags-y  += \
 	-I$(src)/tz_dcih \
 	-I$(src)/public \
-	-I$(src)/tz_driver/include
+	-I$(src)/tz_driver/include \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem
 
 ifneq ($(filter y m, $(CONFIG_MTPROF)),)
 subdir-ccflags-y += -I$(src)/../../../drivers/misc/mediatek/mtprof/
