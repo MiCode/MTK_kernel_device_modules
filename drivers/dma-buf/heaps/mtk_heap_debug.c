@@ -734,6 +734,57 @@ static void kp_dump_pid_egl(struct seq_file *s, int pid)
 	dmabuf_dump(s, "%-5d   %-7llu   %-7llu\n", pid, pss >> 10, rss >> 10);
 	dmabuf_dump(s, "-----EGL memtrack data end.\n");
 }
+
+static unsigned int kp_cal_stats(struct dump_fd_data *fd_data, unsigned long *krn_rss)
+{
+	struct rb_root *rbroot = &kprobe_pid_ino_root;
+	struct dmabuf_debug_node *dmabuf_dbg;
+	struct kprobe_pid_info *pid_info;
+	u64 total_pss = 0, total_size = 0;
+	unsigned int pid_count = 0;
+	struct rb_node *tmp_rb;
+	struct task_struct *p;
+	unsigned long flags;
+	struct pid *pid_s;
+	int i;
+
+	spin_lock_irqsave(&kprobe_pid_ino_lock, flags);
+	for (tmp_rb = rb_last(rbroot); tmp_rb; tmp_rb = rb_prev(tmp_rb)) {
+		pid_info = rb_entry(tmp_rb, struct kprobe_pid_info, node);
+		kp_pid_pss_calc(pid_info);
+		if (pid_info->pss == 0)
+			continue;
+
+		total_pss += pid_info->pss;
+		fd_data->pid_map[pid_count].id = pid_info->pid;
+		fd_data->pid_map[pid_count].PSS = pid_info->pss;
+		fd_data->pid_map[pid_count].RSS = pid_info->rss;
+		if (++pid_count >= TOTAL_PID_CNT)
+			break;
+	}
+	spin_unlock_irqrestore(&kprobe_pid_ino_lock, flags);
+
+	for (i = 0; i < pid_count; i++) {
+		pid_s = find_get_pid(fd_data->pid_map[i].id);
+		if (!pid_s)
+			continue;
+
+		p = get_pid_task(pid_s, PIDTYPE_PID);
+		if (p) {
+			get_task_comm(fd_data->pid_map[i].name, p);
+			put_task_struct(p);
+		}
+		put_pid(pid_s);
+	}
+
+	rbroot = &fd_data->dmabuf_root;
+	for (tmp_rb = rb_first(rbroot); tmp_rb; tmp_rb = rb_next(tmp_rb)) {
+		dmabuf_dbg = rb_entry(tmp_rb, struct dmabuf_debug_node, dmabuf_node);
+		total_size += dmabuf_dbg->dmabuf->size;
+	}
+	*krn_rss = (total_size > total_pss) ? (total_size - total_pss) : 0;
+	return pid_count;
+}
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_HANG_DETECT) && \
@@ -1790,6 +1841,14 @@ struct dump_fd_data *dmabuf_rbtree_add_all(struct dma_heap *heap,
 	fddata->dmabuf_root = RB_ROOT;
 	spin_lock_init(&fddata->splock);
 
+#ifdef EGL_MTRACK_BY_KPROBE
+	if (flag & HEAP_DUMP_STATS) {
+		mtk_dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
+		INIT_LIST_HEAD(&fddata->count_list_head);
+		return fddata;
+	}
+#endif
+
 	if (pid > 0) {
 		mtk_dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
 		dmabuf_rbtree_add_all_pid(fddata, heap, s, pid, flag);
@@ -1846,6 +1905,13 @@ unsigned int dmabuf_rbtree_cal_stats(struct dump_fd_data *fd_data,
 	struct rb_root *rbroot = &fd_data->dmabuf_root;
 	unsigned long pss, rss;
 	unsigned int i;
+
+#ifdef EGL_MTRACK_BY_KPROBE
+	if (flag & HEAP_DUMP_STATS) {
+		i = kp_cal_stats(fd_data, krn_rss);
+		return i;
+	}
+#endif
 
 	for (i = 0; i < TOTAL_PID_CNT; i++) {
 		int pid = fd_data->pid_map[i].id;
@@ -2118,7 +2184,7 @@ void dmabuf_rbtree_dump_domain(u64 tab_id, u32 dom_id)
 	struct dump_fd_data *fddata;
 	struct rb_root *rbroot = NULL;
 
-	fddata = dmabuf_rbtree_add_all(NULL, NULL, -1, 0);
+	fddata = dmabuf_rbtree_add_all(NULL, NULL, -1, HEAP_DUMP_STATS);
 	if (IS_ERR_OR_NULL(fddata)) {
 		dmabuf_dump(NULL, "[%s]err: no memory fddata\n", __func__);
 		return;
