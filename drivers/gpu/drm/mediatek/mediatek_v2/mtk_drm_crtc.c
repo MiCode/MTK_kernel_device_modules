@@ -67,6 +67,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_disp_ovl.h"
 #include "mtk_disp_spr.h"
+#include "mtk_dp.h"
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -14493,6 +14494,10 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 			mtk_crtc->enabled, 0);
 
 	mtk_drm_crtc_wait_blank(mtk_crtc);
+
+	if (drm_crtc_index(crtc) == 1 && mtk_dp_ready()) {
+		mdelay(60);
+	}
 
 	/* disable engine secure state */
 	if (index == 2 && mtk_crtc->sec_on) {

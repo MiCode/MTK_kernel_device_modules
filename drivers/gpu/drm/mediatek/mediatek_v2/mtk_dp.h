@@ -239,6 +239,7 @@ enum DPTX_VIDEO_MODE {
 void mtk_dp_poweroff(void);
 void mtk_dp_poweron(void);
 void mtk_dp_video_trigger(int res);
+bool mtk_dp_ready(void);
 struct edid *mtk_dp_handle_edid(struct mtk_dp *mtk_dp);
 int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp);
 void mdrv_DPTx_CheckMaxLinkRate(struct mtk_dp *mtk_dp);
