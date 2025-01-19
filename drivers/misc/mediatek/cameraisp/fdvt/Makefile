@@ -41,7 +41,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion \
 	     -I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/mtk
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
-ifeq ($(strip $(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)),y)
+ifneq (, $(filter $(strip $(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)),m y))
 ccflags-y += -DCMDQ_MTEE
 endif
 

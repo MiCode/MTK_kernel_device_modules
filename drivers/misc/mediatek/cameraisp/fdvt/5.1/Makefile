@@ -15,6 +15,7 @@
 # Makefile for misc devices that really don't fit anywhere else.
 #
 
-ifeq ($(strip $(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)),y)
+ifneq (, $(filter $(strip $(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)),m y))
 ccflags-y += -DCMDQ_MTEE
 endif
+
