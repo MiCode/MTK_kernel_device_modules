@@ -10493,39 +10493,21 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 				if ((plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] ==
 					all_layer_compress_ratio_table[i].key_value) &&
 					all_layer_compress_ratio_table[i].valid) {
-					unsigned int avg = all_layer_compress_ratio_table[i].peak_ratio;
-					unsigned int peak = all_layer_compress_ratio_table[i].average_ratio;
+					unsigned int peak = all_layer_compress_ratio_table[i].peak_ratio;
+					unsigned int avg = all_layer_compress_ratio_table[i].average_ratio;
 					int index;
 
-					if ((avg > 1024 || avg == 0 || peak > 1024 || peak == 0) &&
-						aee_trigger) {
-						DDPMSG("bwm20 layer%d ratio error,avg%d peak%d\n", i,
-							avg, peak);
-						aee_trigger = false;
-						DDPMSG("BWMT===== all_layer_compress_ratio_tb =====\n");
-						DDPMSG("BWMT===== Item Frame Key avg peak valid active=====\n");
-						for (j = 0; j < MAX_LAYER_RATIO_NUMBER; j++) {
-							DDPMSG("BWMT===== %4d %u %llu %u %u %u  %u =====\n", i,
-								all_layer_compress_ratio_table[j].frame_idx,
-								all_layer_compress_ratio_table[j].key_value,
-								all_layer_compress_ratio_table[j].average_ratio,
-								all_layer_compress_ratio_table[j].peak_ratio,
-								all_layer_compress_ratio_table[j].valid,
-								all_layer_compress_ratio_table[j].active);
-						}
+					weight *= peak;
+					do_div(weight, 1000);
+					index = (peak * 256) / (1000 * 16);
+					if (index) {
+						weight = div_u64(weight*10000, emi_eff_tb[index-1]);
+						DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
+							__LINE__, index, emi_eff_tb[index-1], weight);
 					} else {
-						weight *= peak;
-						do_div(weight, 1000);
-						index = (peak * 256) / (1000 * 16);
-						if (index) {
-							weight = div_u64(weight*10000, emi_eff_tb[index-1]);
-							DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
-								__LINE__, index, emi_eff_tb[index-1], weight);
-						} else {
-							weight = div_u64(weight*10000, emi_eff_tb[0]);
-							DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
-								__LINE__, index, emi_eff_tb[0], weight);
-						}
+						weight = div_u64(weight*10000, emi_eff_tb[0]);
+						DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
+							__LINE__, index, emi_eff_tb[0], weight);
 					}
 					break;
 				}

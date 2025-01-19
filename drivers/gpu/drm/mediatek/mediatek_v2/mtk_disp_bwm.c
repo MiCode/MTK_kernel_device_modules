@@ -251,6 +251,7 @@ void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 {
 	unsigned int avail_layer, i, j = 0;
+	static bool aee_trigger = true;
 	s32 avg_val, peak_val, int_val;
 	int_val = readl(comp->regs + DISP_REG_BWM_INTSTA);
 	avail_layer = __builtin_popcount(REG_FLD_VAL_GET(FLD_BWM_ROI_TIMING_INTSTA, int_val));
@@ -270,6 +271,25 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 				if ((all_layer_compress_ratio_table[i].peak_ratio != 0) &&
 					(all_layer_compress_ratio_table[i].average_ratio == 0))
 					all_layer_compress_ratio_table[i].average_ratio = 10;
+				if (all_layer_compress_ratio_table[i].average_ratio == 0 ||
+					all_layer_compress_ratio_table[i].average_ratio > 1024 ||
+					all_layer_compress_ratio_table[i].peak_ratio == 0 ||
+					all_layer_compress_ratio_table[i].peak_ratio > 1024) {
+					all_layer_compress_ratio_table[i].average_ratio = 1000;
+					all_layer_compress_ratio_table[i].peak_ratio = 1000;
+					if (aee_trigger) {
+						DDPAEE("bwm20 layer%d ratio error,avg%d peak%d\n", i,
+								all_layer_compress_ratio_table[i].average_ratio,
+								all_layer_compress_ratio_table[i].peak_ratio);
+						aee_trigger = false;
+						mtk_bwm_dump(comp);
+						DDPINFO("i %d j %d avl %d avg %d peak %d ar %d pr %d key %d\n",
+							i, j, avail_layer, avg_val, peak_val,
+							all_layer_compress_ratio_table[i].average_ratio,
+							all_layer_compress_ratio_table[i].peak_ratio,
+							all_layer_compress_ratio_table[i].key_value);
+					}
+				}
 				DDPINFO("%s i:%d j%d avl%d avg %d peak %d ar %d pr %d int 0x%x\n",
 					__func__, i, j, avail_layer, avg_val, peak_val,
 					all_layer_compress_ratio_table[i].average_ratio,
