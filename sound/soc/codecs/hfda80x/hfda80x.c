@@ -79,8 +79,13 @@ static int hfda80x_init_registers(struct hfda80x_priv *hfda80x)
 		}
 
 		// init regs
-		for (i = 0; i < ARRAY_SIZE(hfda801_regs); i++)
+		for (i = 0; i < ARRAY_SIZE(hfda801_regs); i++) {
 			ret = regmap_write(hfda80x->regmap, hfda801_regs[i].reg, hfda801_regs[i].def);
+			if (ret) {
+				dev_info(hfda80x->dev, "%s, write register failed, ret:%d\n", __func__, ret);
+				return ret;
+			}
+		}
 
 		// first setup programmed - read to work, IB23[0]=1
 		ret = regmap_update_bits(hfda80x->regmap, HFDA801_IB23, 0x01, 0x01);
@@ -92,9 +97,13 @@ static int hfda80x_init_registers(struct hfda80x_priv *hfda80x)
 		break;
 	case HFDA803:
 		// init regs
-		for (i = 0; i < ARRAY_SIZE(hfda803_regs); i++)
+		for (i = 0; i < ARRAY_SIZE(hfda803_regs); i++) {
 			ret = regmap_write(hfda80x->regmap, hfda803_regs[i].reg, hfda803_regs[i].def);
-
+			if (ret) {
+				dev_info(hfda80x->dev, "%s, write register failed, ret:%d\n", __func__, ret);
+				return ret;
+			}
+		}
 		// first setup programmed - read to work, IB14[0]=1
 		ret = regmap_update_bits(hfda80x->regmap, HFDA803_IB14, 0x01, 0x01);
 		if (ret) {
@@ -201,7 +210,6 @@ static const struct i2c_device_id hfda80x_i2c_id[] = {
 	{ "hfda803", HFDA803 },
 	{ }
 };
-MODULE_DEVICE_TABLE(i2c, hfda80x_i2c_id);
 
 #if defined(CONFIG_OF)
 static const struct of_device_id hfda80x_of_match[] = {
@@ -209,7 +217,6 @@ static const struct of_device_id hfda80x_of_match[] = {
 	{ .compatible = "st,hfda803", },
 	{},
 };
-MODULE_DEVICE_TABLE(of, hfda80x_of_match);
 #endif
 
 static struct i2c_driver hfda80x_i2c_driver = {
