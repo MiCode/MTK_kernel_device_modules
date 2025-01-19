@@ -6251,6 +6251,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ranges;
 			dr_mode = "otg";
 			maximum-speed = "high-speed";
+			maximum-speed-host = <5>;
 			mediatek,gen1-txdeemph;
 			mediatek,ux-exit-lfps = <0x1e>;
 			mediatek,polling-scdlfps-time = <0x21>;
