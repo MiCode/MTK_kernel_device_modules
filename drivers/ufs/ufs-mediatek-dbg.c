@@ -25,7 +25,6 @@
 #include <linux/spinlock.h>
 #include <linux/sysfs.h>
 #include <linux/tracepoint.h>
-#include <linux/vmalloc.h>
 #include <linux/phy/phy.h>
 #include <sched/sched.h>
 #include "governor.h"
