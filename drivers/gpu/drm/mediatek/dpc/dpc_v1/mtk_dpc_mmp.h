@@ -59,6 +59,8 @@ struct dpc_v1_mmp_events_t {
 	mmp_event dvfs_off;
 	mmp_event vdisp_off;
 	mmp_event vdisp_level;
+	mmp_event vdisp_disp;
+	mmp_event vdisp_mml;
 	mmp_event hrt_bw;
 	mmp_event srt_bw;
 	mmp_event mmdvfs_dead;

@@ -60,6 +60,8 @@ void dpc_v1_mmp_init(void)
 	dpc_v1_mmp_events.dvfs_off = mmprofile_register_event(folder, "dvfs_off");
 	dpc_v1_mmp_events.vdisp_off = mmprofile_register_event(folder, "vdisp_off");
 	dpc_v1_mmp_events.vdisp_level = mmprofile_register_event(dpc_v1_mmp_events.vdisp_off, "vdisp_level");
+	dpc_v1_mmp_events.vdisp_disp = mmprofile_register_event(dpc_v1_mmp_events.vdisp_off, "vdisp_disp");
+	dpc_v1_mmp_events.vdisp_mml = mmprofile_register_event(dpc_v1_mmp_events.vdisp_off, "vdisp_mml");
 	dpc_v1_mmp_events.hrt_bw = mmprofile_register_event(dpc_v1_mmp_events.dvfs_off, "hrt_bw");
 	dpc_v1_mmp_events.srt_bw = mmprofile_register_event(dpc_v1_mmp_events.dvfs_off, "srt_bw");
 
