@@ -3286,7 +3286,7 @@ EXIT:
 /*******************************************************************************
  * Called when the device is being detached from the driver
  ******************************************************************************/
-static signed int RSC_remove(struct platform_device *pDev)
+static void RSC_remove(struct platform_device *pDev)
 {
 	/*struct resource *pRes;*/
 	signed int IrqNum;
@@ -3349,8 +3349,6 @@ static signed int RSC_remove(struct platform_device *pDev)
 #if defined(RSC_PMQOS_EN) && defined(CONFIG_MTK_QOS_SUPPORT)
 	pm_qos_remove_request(&rsc_pm_qos_request);
 #endif
-
-	return 0;
 }
 
 /*******************************************************************************
