@@ -326,7 +326,7 @@ static void disp_gamma_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SHADOW_SRAM,
-			primary_data->table_config_sel << 1 | primary_data->table_out_sel, ~0);
+			primary_data->table_config_sel << 1 | primary_data->table_out_sel, 0x3);
 }
 
 static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,

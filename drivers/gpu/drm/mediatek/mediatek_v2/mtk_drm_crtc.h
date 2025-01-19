@@ -1001,6 +1001,11 @@ struct pixel_type_map {
 	unsigned int head;
 };
 
+struct c3d_data {
+	int bin_num;
+	int lut_bit;
+};
+
 struct pq_common_data {
 	atomic_t pq_get_irq;
 	atomic_t pq_irq_trig_src;
@@ -1013,7 +1018,7 @@ struct pq_common_data {
 	atomic_t pq_hw_relay_cfg_done;
 	wait_queue_head_t pq_hw_relay_cb_wq;
 	atomic_t pipe_info_filled;
-	int c3d_per_crtc;
+	struct c3d_data c3d_data_per_crtc;
 	bool opt_bypass_pq;
 	wait_queue_head_t cfg_done_wq;
 	atomic_t cfg_done;
