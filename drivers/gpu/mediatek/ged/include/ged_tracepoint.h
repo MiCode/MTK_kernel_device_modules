@@ -929,6 +929,30 @@ TRACE_EVENT(GPU_DVFS__EB_Loading,
 		__entry->iter, __entry->mcu , __entry->iter_u_mcu, __entry->diff)
 );
 
+TRACE_EVENT(GPU_DVFS__EB_Loading_dump,
+
+	TP_PROTO(unsigned int active, unsigned int mcu, unsigned int iter, unsigned int iter_u_mcu),
+
+	TP_ARGS(active, mcu, iter, iter_u_mcu),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, active)
+		__field(unsigned int, mcu)
+		__field(unsigned int, iter)
+		__field(unsigned int, iter_u_mcu)
+	),
+
+	TP_fast_assign(
+		__entry->active = active;
+		__entry->mcu = mcu;
+		__entry->iter = iter;
+		__entry->iter_u_mcu = iter_u_mcu;
+	),
+
+	TP_printk("active=%u mcu=%u iter=%u iter_u_mcu=%u",
+		__entry->active, __entry->mcu, __entry->iter, __entry->iter_u_mcu)
+);
+
 TRACE_EVENT(GPU_DVFS__Policy__EB_Common,
 
 	TP_PROTO(unsigned int eb_commit_type, unsigned int ap_commit_type,
@@ -1279,15 +1303,15 @@ TRACE_EVENT(GPU_DVFS__EBRB_FREQ,
 		__entry->r6 = arg2[6];
 		__entry->r7 = arg2[7];
 	),
-	TP_printk("u0=%u|%u|%u u1=%u|%u|%u u2=%u|%u|%u u3=%u|%u|%u u4=%u|%u|%u u5=%u|%u|%u u6=%u|%u|%u u7=%u|%u|%u",
-		__entry->r0 & 0xFFFF, (__entry->r0 >> 16) & 0xFFFF, __entry->u0 & 0xFFFF,
-		__entry->r1 & 0xFFFF, (__entry->r1 >> 16) & 0xFFFF, __entry->u1 & 0xFFFF,
-		__entry->r2 & 0xFFFF, (__entry->r2 >> 16) & 0xFFFF, __entry->u2 & 0xFFFF,
-		__entry->r3 & 0xFFFF, (__entry->r3 >> 16) & 0xFFFF, __entry->u3 & 0xFFFF,
-		__entry->r4 & 0xFFFF, (__entry->r4 >> 16) & 0xFFFF, __entry->u4 & 0xFFFF,
-		__entry->r5 & 0xFFFF, (__entry->r5 >> 16) & 0xFFFF, __entry->u5 & 0xFFFF,
-		__entry->r6 & 0xFFFF, (__entry->r6 >> 16) & 0xFFFF, __entry->u6 & 0xFFFF,
-		__entry->r7 & 0xFFFF, (__entry->r6 >> 16) & 0xFFFF, __entry->u7 & 0xFFFF)
+	TP_printk("u0=%u|%u|%u|%u u1=%u|%u|%u|%u u2=%u|%u|%u|%u u3=%u|%u|%u|%u u4=%u|%u|%u|%u u5=%u|%u|%u|%u u6=%u|%u|%u|%u u7=%u|%u|%u|%u",
+		__entry->r0 & 0xFFFF, (__entry->r0 >> 16) & 0xFFFF, __entry->u0 & 0xFFFF, (__entry->u0 >> 16) & 0xFFFF,
+		__entry->r1 & 0xFFFF, (__entry->r1 >> 16) & 0xFFFF, __entry->u1 & 0xFFFF, (__entry->u1 >> 16) & 0xFFFF,
+		__entry->r2 & 0xFFFF, (__entry->r2 >> 16) & 0xFFFF, __entry->u2 & 0xFFFF, (__entry->u2 >> 16) & 0xFFFF,
+		__entry->r3 & 0xFFFF, (__entry->r3 >> 16) & 0xFFFF, __entry->u3 & 0xFFFF, (__entry->u3 >> 16) & 0xFFFF,
+		__entry->r4 & 0xFFFF, (__entry->r4 >> 16) & 0xFFFF, __entry->u4 & 0xFFFF, (__entry->u4 >> 16) & 0xFFFF,
+		__entry->r5 & 0xFFFF, (__entry->r5 >> 16) & 0xFFFF, __entry->u5 & 0xFFFF, (__entry->u5 >> 16) & 0xFFFF,
+		__entry->r6 & 0xFFFF, (__entry->r6 >> 16) & 0xFFFF, __entry->u6 & 0xFFFF, (__entry->u6 >> 16) & 0xFFFF,
+		__entry->r7 & 0xFFFF, (__entry->r6 >> 16) & 0xFFFF, __entry->u7 & 0xFFFF, (__entry->u7 >> 16) & 0xFFFF)
 );
 
 

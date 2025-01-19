@@ -308,11 +308,16 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_26M_REPLACE));
 	}
 
-	if (ged_policy_state != POLICY_STATE_FB) {
+	if (eb_policy_state != POLICY_STATE_FB) {
 		trace_tracing_mark_write(5566, "t_gpu",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU));
 		trace_tracing_mark_write(5566, "t_gpu_target",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU));
+		trace_GPU_DVFS__EB_Loading_dump(
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_GPU_LOADING),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MCU_LOADING),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_LOADING),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_LOADING));
 	}
 
 	// LB async ratio on EB
