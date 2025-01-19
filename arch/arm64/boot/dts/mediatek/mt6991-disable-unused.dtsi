@@ -388,12 +388,6 @@
 		power-domains = <&scpsys MT6991_POWER_DOMAIN_ADSP_AO>;
 	};
 
-	disable-unused-pd-mm-proc-dormant@ae {
-		compatible = "mediatek,scpsys-disable-unused";
-		reg = <0xae>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_MM_PROC_DORMANT>;
-	};
-
 	disable-unused-pd-ssrsys@af {
 		compatible = "mediatek,scpsys-disable-unused";
 		reg = <0xaf>;

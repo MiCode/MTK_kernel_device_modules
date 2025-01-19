@@ -15611,7 +15611,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	vcp: vcp@31800000 {
 		compatible = "mediatek,vcp";
 		vcp-support = <1>;
-		power-domains = <&scpsys MT6991_POWER_DOMAIN_MM_PROC_DORMANT>;
 		status = "okay";
 		reg = <0 0x31800000 0 0x60000>, /* tcm */
 			<0 0x31900000 0 0x1000>, /* bus tracker */
