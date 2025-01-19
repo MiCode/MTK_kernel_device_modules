@@ -232,7 +232,7 @@ int ged_mali_event_unregister_fence_timeout_callback(fence_timeout_notify_callba
 	}
 
 	mutex_unlock(&ged_mali_event_callback_lock);
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(ged_mali_event_unregister_fence_timeout_callback);
 
@@ -303,6 +303,6 @@ int ged_mali_event_unregister_gpu_reset_done_callback(gpu_reset_done_notify_call
 	}
 
 	mutex_unlock(&ged_mali_event_callback_lock);
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL(ged_mali_event_unregister_gpu_reset_done_callback);

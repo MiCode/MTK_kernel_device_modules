@@ -855,7 +855,7 @@ GED_ERROR ged_log_buf_print(GED_LOG_BUF_HANDLE hLogBuf, const char *fmt, ...)
 		err = __ged_log_buf_vprint(psGEDLogBuf,
 			fmt, args, psGEDLogBuf->attrs);
 		if (err != GED_OK)
-			GED_LOGD("@%s err:%d\n", err, __func__);
+			GED_LOGD("@%s err:%d\n", __func__, err);
 		va_end(args);
 	}
 
@@ -878,7 +878,7 @@ GED_ERROR ged_log_buf_print2(GED_LOG_BUF_HANDLE hLogBuf,
 		err = __ged_log_buf_vprint(psGEDLogBuf, fmt,
 			args, psGEDLogBuf->attrs | i32LogAttrs);
 		if (err != GED_OK)
-			GED_LOGD("@%s err:%d\n", err, __func__);
+			GED_LOGD("@%s err:%d\n", __func__, err);
 		va_end(args);
 	}
 
