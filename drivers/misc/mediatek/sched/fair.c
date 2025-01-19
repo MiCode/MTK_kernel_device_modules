@@ -1893,11 +1893,6 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	unsigned long capacity_orig = arch_scale_cpu_capacity(cpu);
 	int fit, uclamp_max_fits;
 
-	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
-		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
-	uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
-		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
-
 	/* ceiling shouldn't affect capacity since updown_migration is not enabled,  */
 	if (!updown_migration_enable)
 		ceiling = SCHED_CAPACITY_SCALE;
@@ -1943,11 +1938,6 @@ inline int util_fits_capacity(unsigned long util, unsigned long uclamp_min,
 	unsigned int sugov_margin = AM_enabled ? get_adaptive_margin(cpu) : SCHED_CAPACITY_SCALE;
 	unsigned long capacity_orig = arch_scale_cpu_capacity(cpu);
 	int fit, uclamp_max_fits;
-
-	uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
-		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
-	uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
-		0UL, (unsigned long) SCHED_CAPACITY_SCALE);
 
 	/* Whether PELT fit after considering up-down migration ? */
 	fit = fits_capacity(util, capacity, sugov_margin);
