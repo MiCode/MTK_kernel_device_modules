@@ -133,8 +133,10 @@ static void cpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 				ret = CPU_UP(i);
 				if (ret)
 					pr_notice("failed to bring up cpu:%d\n", i);
-				else
+				else {
 					cpu_off_by_soc[i] = 0;
+					pr_notice("PT bring up cpu:%d\n", i);
+				}
 			}
 		} else {
 			idx = (level - 1) * CORE_NUM + i;
@@ -142,15 +144,19 @@ static void cpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 				ret = CPU_DOWN(i);
 				if (ret)
 					pr_notice("failed to bring down cpu: %d\n", i);
-				else
+				else {
 					cpu_off_by_soc[i] = 1;
+					pr_notice("PT bring down cpu:%d\n", i);
+				}
 
 			} else if (pt_info_p->core_onoff[idx] == 1 && cpu_is_offline(i) && cpu_off_by_soc[i]) {
 				ret = CPU_UP(i);
 				if (ret)
 					pr_notice("failed to bring up cpu: %d\n", i);
-				else
+				else {
 					cpu_off_by_soc[i] = 0;
+					pr_notice("PT bring up cpu:%d\n", i);
+				}
 			}
 		}
 	}
