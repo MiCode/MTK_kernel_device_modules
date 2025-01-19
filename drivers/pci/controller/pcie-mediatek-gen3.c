@@ -16,6 +16,7 @@
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
 #include <linux/kernel.h>
+#include <linux/kmemleak.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/msi.h>
@@ -1621,6 +1622,25 @@ static void mtk_pcie_disable_host_bridge_rpm(struct mtk_pcie_port *port)
 	pm_runtime_dont_use_autosuspend(&host->dev);
 }
 
+static int __maybe_unused avoid_kmemleak_false_alarm(struct pci_dev *dev,
+						     void *data)
+{
+	kmemleak_not_leak(dev);
+	kmemleak_not_leak(&dev->dev);
+	return 0;
+}
+
+static void mtk_pcie_avoid_kmemleak_false_alarm(struct pci_host_bridge *host)
+{
+	kmemleak_not_leak(host);
+	kmemleak_not_leak(&host->dev);
+	kmemleak_not_leak(host->bus);
+	kmemleak_not_leak(&host->bus->dev);
+	kmemleak_not_leak(&host->bus->resources);
+
+	pci_walk_bus(host->bus, avoid_kmemleak_false_alarm, NULL);
+}
+
 static int mtk_pcie_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1651,6 +1671,8 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 		mtk_pcie_power_down(port);
 		goto err_probe;
 	}
+
+	mtk_pcie_avoid_kmemleak_false_alarm(host);
 
 	if (!port->pcidev)
 		port->pcidev = pci_get_slot(host->bus, 0);
