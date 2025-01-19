@@ -112,6 +112,18 @@
 #define RG_USB20_OSC_CALI_SHIFT		0
 #define RG_USB20_OSC_CALI_MASK		0x7F
 
+#define PHYA_U2_EXT_CR1_0		0x34
+#define RH_USB20_OSC_BUF_0		BIT(0)
+#define RH_USB20_OSC_BUF_0_SHIFT	0
+#define RH_USB20_OSC_BUF_0_MASK		0x1
+
+#define PHYA_U2_EXT_CR1_1		0x35
+#define RG_USB20_OSC_BIAS		GENMASK(7,0)
+#define RG_USB20_OSC_BIAS_SHIFT		0
+#define RG_USB20_OSC_BIAS_MASK		0xFF
+
+#define RG_USB20_OSC_BIAS_0		BIT(4)
+
 #define PHYD_COM_CR2_0			0x88
 #define RG_USB20_MANU_MODE		BIT(3)
 #define RG_USB20_PU_DP			BIT(6)
@@ -547,6 +559,56 @@ static int eusb2_repeater_exit(struct phy *phy)
 	return 0;
 }
 
+static void eusb2_default_prop_set(struct eusb2_repeater *rptr)
+{
+	/* The default value of HS disconnect threshold is too high, adjust HS DISC TH */
+	/* (default 0x0D18 [7:4]= 4b'1110 to 0x0D18 [7:4]= 4b'0110) */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0,
+			RG_USB20_DISCTH, 0x6 << RG_USB20_DISCTH_SHIFT);
+
+	/* RG_USB20_FS_SR */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_0, RG_USB20_FS_SR,
+			rptr->usb20_fs_sr << RG_USB20_FS_SR_SHIFT);
+
+	/* RG_EUSB20_FSRX_HYS_SEL */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_3, RG_EUSB20_FSRX_HYS_SEL,
+			rptr->eusb20_fsrx_hys_sel << RG_EUSB20_FSRX_HYS_SEL_SHIFT);
+
+	/* E3 patch */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR0_0,
+			RG_EUSB20_TXLDO_VREF_SEL, RG_EUSB20_TXLDO_VREF_SEL);
+	regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
+			RG_EUSB_DISC_INT_DIS, RG_EUSB_DISC_INT_DIS);
+	regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
+			RG_EUSB_WAKE_INT_DIS, RG_EUSB_WAKE_INT_DIS);
+	regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
+			RG_EUSB_FSM_INT_DIS, 0);
+
+}
+
+static void eusb2_default_e2_prop_set(struct eusb2_repeater *rptr)
+{
+	/* The default value of HS disconnect threshold is too high, adjust HS DISC TH */
+	/* (default 0x0D18 [7:4]= 4b'1110 to 0x0D18 [7:4]= 4b'0110) */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0,
+		RG_USB20_DISCTH, 0x6 << RG_USB20_DISCTH_SHIFT);
+
+	/* FS enumeration fail, change the decoupling cap value in bias circuit */
+	/* (default 0x0D18 [10:9]= 2b'10 to [10:9]= 2b'00 */
+	/* 0x0DA4 [15:12]= 4b'0000 to 0x0DA4 [15:12]= 4b'0001) */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_1, RG_USB20_HSRX_BIAS_EN_SEL, 0);
+	regmap_update_bits(rptr->regmap, rptr->base + PHYD_FM_CR0_1, RG_FM_DUMMY, RG_FM_DUMMY);
+
+
+	/* RG_USB20_FS_SR */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_0, RG_USB20_FS_SR,
+		rptr->usb20_fs_sr << RG_USB20_FS_SR_SHIFT);
+
+	/* RG_EUSB20_FSRX_HYS_SEL */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_3, RG_EUSB20_FSRX_HYS_SEL,
+		rptr->eusb20_fsrx_hys_sel << RG_EUSB20_FSRX_HYS_SEL_SHIFT);
+}
+
 static int eusb2_repeater_power_on(struct phy *phy)
 {
 	struct eusb2_repeater *rptr = phy_get_drvdata(phy);
@@ -560,62 +622,88 @@ static int eusb2_repeater_power_on(struct phy *phy)
 
 		/* off */
 		/* RG_USB_EN_SRC_SEL = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL, RG_USB_EN_SRC_SEL);
+		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3,
+			RG_USB_EN_SRC_SEL, RG_USB_EN_SRC_SEL);
 
 		/* RG_USB20_BC11_SW_EN = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN, RG_USB20_BC11_SW_EN);
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+			RG_USB20_BC11_SW_EN, RG_USB20_BC11_SW_EN);
 
-		/* RG_USB20_REV_A[5] = 0x0 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5, 0);
-
-		/* on */
-		/* RG_USB_EN_SRC_SEL = 0x0 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL, 0);
-
-		/* RG_INIT_SW_PHY_SEL = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1, RG_INIT_SW_PHY_SEL, RG_INIT_SW_PHY_SEL);
-
-		/* RG_USB20_BGR_EN = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, RG_USB20_BGR_EN);
+		/* RG_USB20_BGR_EN = 0x0 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, 0);
 
 		/* RG_USB20_ROSC_EN = 0x0 */
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_ROSC_EN, 0);
 
+		/* RG_USB20_REV_A[5] = 0x0 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5, 0);
+
+		udelay(300);
+
+		/* Apply sw/hw efuse tuning */
+		eusb2_efuse_prop_set(rptr);
+
+		/* modify default value */
+		eusb2_default_e2_prop_set(rptr);
+
+		/* Modify OSC_BIAS  OSC_BIAS<2:1>, LS_CR<0> */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_1, 0x6, 0x6);
+
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_USB20_OSC_BIAS_0,
+				RG_USB20_OSC_BIAS_0);
+
+		/* on */
+		/* RG_USB20_REV_A[5] = 0x1 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2,
+			RG_USB20_REV_A_5, RG_USB20_REV_A_5);
+
+		/* RG_INIT_SW_PHY_SEL = 0x1 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+			RG_INIT_SW_PHY_SEL, RG_INIT_SW_PHY_SEL);
+
+		/* RG_USB_EN_SRC_SEL = 0x0 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL, 0);
+
+		/* RG_USB20_BGR_EN = 0x1 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, RG_USB20_BGR_EN);
+
+		udelay(100);
+
 		/* RG_USB20_BC11_SW_EN = 0x0 */
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN, 0);
 
+		udelay(50);
+
+		/* RG_USB20_OSC_BUF[0] = 0x1 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+			RH_USB20_OSC_BUF_0, RH_USB20_OSC_BUF_0);
+
 		/* RG_USB20_ROSC_EN = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+			RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+
+		udelay(10);
+
+		/* RG_USB20_ROSC_EN = 0x0 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+			RG_USB20_ROSC_EN, 0);
+
+		udelay(30);
+
+		/* RG_USB20_OSC_BUF[0] = 0x0 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+			RH_USB20_OSC_BUF_0, 0);
+
+		/* RG_USB20_ROSC_EN = 0x1 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+			RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
 
 		udelay(100);
 
 		/* RG_INIT_SW_PHY_SEL = 0x0 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1, RG_INIT_SW_PHY_SEL, 0);
+		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+			RG_INIT_SW_PHY_SEL, 0);
 
-		/* RG_USB20_REV_A[5] = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5, RG_USB20_REV_A_5);
-
-		/* The default value of HS disconnect threshold is too high, adjust HS DISC TH */
-		/* (default 0x0D18 [7:4]= 4b'1110 to 0x0D18 [7:4]= 4b'0110) */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0,
-			RG_USB20_DISCTH, 0x6 << RG_USB20_DISCTH_SHIFT);
-
-		/* FS enumeration fail, change the decoupling cap value in bias circuit */
-		/* (default 0x0D18 [10:9]= 2b'10 to [10:9]= 2b'00 */
-		/* 0x0DA4 [15:12]= 4b'0000 to 0x0DA4 [15:12]= 4b'0001) */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_1, RG_USB20_HSRX_BIAS_EN_SEL, 0);
-		regmap_update_bits(rptr->regmap, rptr->base + PHYD_FM_CR0_1, RG_FM_DUMMY, RG_FM_DUMMY);
-
-		/* Set phy tuning */
-		eusb2_efuse_prop_set(rptr);
-
-		/* RG_USB20_FS_SR */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_0, RG_USB20_FS_SR,
-			rptr->usb20_fs_sr << RG_USB20_FS_SR_SHIFT);
-
-		/* RG_EUSB20_FSRX_HYS_SEL */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_3, RG_EUSB20_FSRX_HYS_SEL,
-			rptr->eusb20_fsrx_hys_sel << RG_EUSB20_FSRX_HYS_SEL_SHIFT);
 	} else if ((chip_rev & MT6379_CHIP_REV_MASK) >= 0x3) {
 		if (rptr->submode == PHY_MODE_SUSPEND_DEV) {
 			/* device connected */
@@ -651,40 +739,42 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, RG_USB20_BGR_EN);
 			udelay(30);
 
-			/* rg_usb20_rosc_en 1'b1 */
+			/* RG_USB20_OSC_BUF[0] = 0x1 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+				RH_USB20_OSC_BUF_0, RH_USB20_OSC_BUF_0);
+
+			/* RG_USB20_ROSC_EN = 0x1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
 				RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
-			udelay(60);
+
+			udelay(10);
+
+			/* RG_USB20_ROSC_EN = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+				RG_USB20_ROSC_EN, 0);
+
+			udelay(30);
+
+			/* RG_USB20_OSC_BUF[0] = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+				RH_USB20_OSC_BUF_0, 0);
+
+			/* RG_USB20_ROSC_EN = 0x1 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+				RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+
+			udelay(100);
 
 			/* RG_USB20_REV_A[5]	1'b1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2,
 				RG_USB20_REV_A_5, RG_USB20_REV_A_5);
 
-			/* off */
-			/* RG_USB_EN_SRC_SEL = 0x1 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3,
-				RG_USB_EN_SRC_SEL, RG_USB_EN_SRC_SEL);
-
-			/* RG_USB20_BC11_SW_EN = 0x1 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
-				RG_USB20_BC11_SW_EN, RG_USB20_BC11_SW_EN);
-
-			/* RG_USB20_REV_A[5] = 0x0 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5, 0);
-
-			/* on */
-			/* RG_USB_EN_SRC_SEL = 0x0 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL, 0);
-
-			/* RG_USB20_BC11_SW_EN = 0x0 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN, 0);
-
-			/* RG_USB20_REV_A[5] = 0x1 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5,
-				RG_USB20_REV_A_5);
-
 			/* RG_EUSB_LOGRST	1'b0 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_DBG_CR0_1, RG_EUSB_LOGRST, 0);
+
+			/* RG_INIT_SW_PHY_SEL = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+				RG_INIT_SW_PHY_SEL, 0);
 		} else {
 			regmap_update_bits(rptr->regmap, rptr->base + 0x92, 0x7, 0x7);
 			regmap_update_bits(rptr->regmap, rptr->base + 0x94, 0x2, 0x2);
@@ -698,25 +788,70 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
 				RG_USB20_BC11_SW_EN, RG_USB20_BC11_SW_EN);
 
+			/* RG_USB20_BGR_EN = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, 0);
+
+			/* RG_USB20_ROSC_EN = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_ROSC_EN, 0);
+
 			/* RG_USB20_REV_A[5] = 0x0 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5, 0);
 
+			udelay(300);
+
+			/* Apply sw/hw efuse tuning */
+			eusb2_efuse_prop_set(rptr);
+
+			/* modify default value */
+			eusb2_default_prop_set(rptr);
+
+			/* Modify OSC_BIAS  OSC_BIAS<2:1>, LS_CR<0> */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_1, 0x6, 0x6);
+
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_USB20_OSC_BIAS_0,
+				RG_USB20_OSC_BIAS_0);
+
 			/* on */
-			/* RG_USB_EN_SRC_SEL = 0x0 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL, 0);
+			/* RG_USB20_REV_A[5] = 0x1 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2,
+				RG_USB20_REV_A_5, RG_USB20_REV_A_5);
 
 			/* RG_INIT_SW_PHY_SEL = 0x1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
 				RG_INIT_SW_PHY_SEL, RG_INIT_SW_PHY_SEL);
 
+			/* RG_USB_EN_SRC_SEL = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL, 0);
+
 			/* RG_USB20_BGR_EN = 0x1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, RG_USB20_BGR_EN);
 
-			/* RG_USB20_ROSC_EN = 0x0 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_ROSC_EN, 0);
+			udelay(100);
 
 			/* RG_USB20_BC11_SW_EN = 0x0 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN, 0);
+
+			udelay(50);
+
+			/* RG_USB20_OSC_BUF[0] = 0x1 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+				RH_USB20_OSC_BUF_0, RH_USB20_OSC_BUF_0);
+
+			/* RG_USB20_ROSC_EN = 0x1 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+				RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+
+			udelay(10);
+
+			/* RG_USB20_ROSC_EN = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+				RG_USB20_ROSC_EN, 0);
+
+			udelay(30);
+
+			/* RG_USB20_OSC_BUF[0] = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+				RH_USB20_OSC_BUF_0, 0);
 
 			/* RG_USB20_ROSC_EN = 0x1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
@@ -725,37 +860,8 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			udelay(100);
 
 			/* RG_INIT_SW_PHY_SEL = 0x0 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1, RG_INIT_SW_PHY_SEL, 0);
-
-			/* RG_USB20_REV_A[5] = 0x1 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2,
-				RG_USB20_REV_A_5, RG_USB20_REV_A_5);
-
-			/* The default value of HS disconnect threshold is too high, adjust HS DISC TH */
-			/* (default 0x0D18 [7:4]= 4b'1110 to 0x0D18 [7:4]= 4b'0110) */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0,
-				RG_USB20_DISCTH, 0x6 << RG_USB20_DISCTH_SHIFT);
-
-			/* Set phy tuning */
-			eusb2_efuse_prop_set(rptr);
-
-			/* RG_USB20_FS_SR */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_0, RG_USB20_FS_SR,
-				rptr->usb20_fs_sr << RG_USB20_FS_SR_SHIFT);
-
-			/* RG_EUSB20_FSRX_HYS_SEL */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_3, RG_EUSB20_FSRX_HYS_SEL,
-				rptr->eusb20_fsrx_hys_sel << RG_EUSB20_FSRX_HYS_SEL_SHIFT);
-
-			/* E3 patch */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR0_0,
-				RG_EUSB20_TXLDO_VREF_SEL, RG_EUSB20_TXLDO_VREF_SEL);
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
-				RG_EUSB_DISC_INT_DIS, RG_EUSB_DISC_INT_DIS);
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
-				RG_EUSB_WAKE_INT_DIS, RG_EUSB_WAKE_INT_DIS);
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
-				RG_EUSB_FSM_INT_DIS, 0);
+			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+				RG_INIT_SW_PHY_SEL, 0);
 		}
 	}
 
@@ -773,11 +879,23 @@ static int eusb2_repeater_power_off(struct phy *phy)
 	if ((chip_rev & MT6379_CHIP_REV_MASK) <= 0x2) {
 		/* off */
 		/* RG_USB_EN_SRC_SEL = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL, RG_USB_EN_SRC_SEL);
+		regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3,
+			RG_USB_EN_SRC_SEL, RG_USB_EN_SRC_SEL);
+
 		/* RG_USB20_BC11_SW_EN = 0x1 */
-		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN, RG_USB20_BC11_SW_EN);
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+			RG_USB20_BC11_SW_EN, RG_USB20_BC11_SW_EN);
+
+		/* RG_USB20_BGR_EN = 0x0 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, 0);
+
+		/* RG_USB20_ROSC_EN = 0x0 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_ROSC_EN, 0);
+
 		/* RG_USB20_REV_A[5] = 0x0 */
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5, 0);
+
+		udelay(300);
 	} else if ((chip_rev & MT6379_CHIP_REV_MASK) >= 0x3) {
 		if (rptr->submode == PHY_MODE_SUSPEND_DEV) {
 			/* device connected */
@@ -826,13 +944,23 @@ static int eusb2_repeater_power_off(struct phy *phy)
 		} else {
 			/* off */
 			/* RG_USB_EN_SRC_SEL = 0x1 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3, RG_USB_EN_SRC_SEL,
-				RG_USB_EN_SRC_SEL);
+			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3,
+				RG_USB_EN_SRC_SEL, RG_USB_EN_SRC_SEL);
+
 			/* RG_USB20_BC11_SW_EN = 0x1 */
-			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN,
-				RG_USB20_BC11_SW_EN);
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+				RG_USB20_BC11_SW_EN, RG_USB20_BC11_SW_EN);
+
+			/* RG_USB20_BGR_EN = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, 0);
+
+			/* RG_USB20_ROSC_EN = 0x0 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_ROSC_EN, 0);
+
 			/* RG_USB20_REV_A[5] = 0x0 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2, RG_USB20_REV_A_5, 0);
+
+			udelay(300);
 		}
 	}
 
