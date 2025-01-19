@@ -24,20 +24,12 @@ filegroup(
 )
 
 define_mgk_ddk_ko(
-    name = "panel-aw37501-i2c",
+    name = "mtk_panel_ext",
     srcs = [
-        "panel-aw37501-i2c.c",
-    ],
-    includes = ["."],
-)
-
-define_mgk_ddk_ko(
-    name = "rt4831a",
-    srcs = [
-        "rt4831a.c",
+        "mtk_panel_ext.c",
     ],
     hdrs = [
-        "rt4831a.h",
+        "mtk_panel_ext.h",
     ],
     includes = ["."],
 )

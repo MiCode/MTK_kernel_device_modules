@@ -136,7 +136,9 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
+
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/nvmem:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:ddk_src".format(kernel_version),
@@ -154,6 +156,7 @@ mgk_64_kleaf_device_modules_srcs = [
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/keyboard:ddk_kconfigs".format(kernel_version),
@@ -174,6 +177,8 @@ mgk_64_kleaf_device_modules_kconfigs = [
 mgk_64_kleaf_device_modules = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:rt4831a".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:mt6360-adc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:mt6370-adc".format(kernel_version),
@@ -291,11 +296,9 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_disp_notify.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_disp_sec.ko",
-    "drivers/gpu/drm/mediatek/mediatek_v2/mtk_panel_ext.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_sync.ko",
     "drivers/gpu/drm/mediatek/mml/mtk-mml.ko",
     "drivers/gpu/drm/panel/bridge-serdes-max96789.ko",
-    "drivers/gpu/drm/panel/rt4831a.ko",
     "drivers/gpu/drm/panel/panel-ili7838e-dv3-alpha-cmd.ko",
     "drivers/gpu/drm/panel/panel-rm692h5-cmd.ko",
     "drivers/gpu/drm/panel/k6991v1_64_alpha/panel-rm692h5-alpha-cmd-spr.ko",
@@ -348,7 +351,6 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-hx83112b-auo-vdo-60hz-rt5081.ko",
     "drivers/gpu/drm/panel/panel-td4320-fhdp-dsi-vdo-auo-rt5081.ko",
     "drivers/gpu/drm/panel/panel-sc-nt36672c-vdo-90hz-6382.ko",
-    "drivers/gpu/drm/panel/panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe.ko",
     "drivers/gpu/drm/panel/panel-nt35521_hd_dsi_vdo_truly_rt5081.ko",
     "drivers/gpu/drm/panel/panel-nt35695_fhd_dsi_vdo_auo_rt5081_hdp.ko",
     "drivers/gpu/drm/panel/ocp2138_i2c.ko",
@@ -2491,7 +2493,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/gate_ic/rt4831a_drv.ko")
-        mgk_64_device_modules.remove("drivers/gpu/drm/panel/rt4831a.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-hfp.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/panel-alpha-jdi-nt36672e-vdo-120hz-threshold.ko")
