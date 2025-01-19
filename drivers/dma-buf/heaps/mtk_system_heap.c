@@ -1819,6 +1819,87 @@ int dma_buf_get_gid(struct dma_buf *dmabuf)
 }
 EXPORT_SYMBOL_GPL(dma_buf_get_gid);
 
+struct sg_table *dma_buf_map_attachment_ssid(struct dma_buf_attachment *attach,
+					     enum dma_data_direction dir,
+					     u32 ssid)
+{
+	struct dma_heap_attachment *a = attach->priv;
+	struct sg_table *table = a->table;
+	int attrs = attach->dma_map_attrs;
+	int ret;
+
+	if (a->mapped)
+		return ERR_PTR(-EBUSY);
+
+	if (a->uncached)
+		attrs |= DMA_ATTR_SKIP_CPU_SYNC;
+
+	ret = mtk_smmu_map_sgtable(attach->dev, table, dir, attrs, ssid);
+	if (ret)
+		return ERR_PTR(ret);
+
+	a->mapped = true;
+	attach->dir = dir;
+
+	return table;
+}
+
+void dma_buf_unmap_attachment_ssid(struct dma_buf_attachment *attach,
+				   struct sg_table *sg_table,
+				   enum dma_data_direction dir,
+				   u32 ssid)
+{
+	struct dma_heap_attachment *a = attach->priv;
+	int attrs = attach->dma_map_attrs;
+
+	if (a->uncached)
+		attrs |= DMA_ATTR_SKIP_CPU_SYNC;
+	a->mapped = false;
+
+	mtk_smmu_unmap_sgtable(attach->dev, sg_table, dir, attrs, ssid);
+}
+
+struct sg_table *mtk_smmu_map_dma_buf(struct dma_buf_attachment *attach,
+				      enum dma_data_direction direction,
+				      u32 ssid)
+{
+	struct sg_table *sg_table;
+
+	if (!smmu_v3_enable)
+		return NULL;
+
+	might_sleep();
+
+	if (WARN_ON(!attach || !attach->dmabuf || ssid == SMMU_NO_SSID))
+		return ERR_PTR(-EINVAL);
+
+	dma_resv_lock(attach->dmabuf->resv, NULL);
+	sg_table = dma_buf_map_attachment_ssid(attach, direction, ssid);
+	dma_resv_unlock(attach->dmabuf->resv);
+
+	return sg_table;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_map_dma_buf);
+
+void mtk_smmu_unmap_dma_buf(struct dma_buf_attachment *attach,
+			    struct sg_table *sg_table,
+			    enum dma_data_direction direction,
+			    u32 ssid)
+{
+	if (!smmu_v3_enable)
+		return;
+
+	might_sleep();
+
+	if (WARN_ON(!attach || !attach->dmabuf || !sg_table || ssid == SMMU_NO_SSID))
+		return;
+
+	dma_resv_lock(attach->dmabuf->resv, NULL);
+	dma_buf_unmap_attachment_ssid(attach, sg_table, direction, ssid);
+	dma_resv_unlock(attach->dmabuf->resv);
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_unmap_dma_buf);
+
 module_init(mtk_system_heap_create);
 module_exit(mtk_system_heap_exit);
 MODULE_LICENSE("GPL");
