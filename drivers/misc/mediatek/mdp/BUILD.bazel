@@ -1,0 +1,38 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+load("@mgk_info//:kernel_version.bzl","kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mdp_drv_dummy",
+
+    srcs = ["mdp_drv_dummy.c"],
+
+    hdrs = glob(["**/*.h"]),
+
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc"],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+        "drivers/misc/mediatek/mdp/Kconfig",
+        "drivers/misc/mediatek/mdp/Kconfig.*",
+    ])
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)

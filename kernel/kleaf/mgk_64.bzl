@@ -171,6 +171,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:srcs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:ddk_src".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -210,6 +211,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/trusty:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/usb/mtu3:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_kconfigs".format(kernel_version),
@@ -332,6 +334,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/usb/mtu3:mtu3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_touch_boost".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_powerhal".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:mdp_drv_dummy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_perf_ioctl_magt".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:mtk_wdt".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:bootprof".format(kernel_version),
@@ -649,7 +652,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mcupm/v2/mcupm.ko",
     "drivers/misc/mediatek/mddp/mddp.ko",
     "drivers/misc/mediatek/mdp/cmdq_helper_inf.ko",
-    "drivers/misc/mediatek/mdp/mdp_drv_dummy.ko",
+    #"drivers/misc/mediatek/mdp/mdp_drv_dummy.ko",
     #"drivers/misc/mediatek/mkp/mkp.ko",
     "drivers/misc/mediatek/mmdebug/mtk-mmdebug-vcp.ko",
     "drivers/misc/mediatek/memory-amms/memory-amms.ko",
