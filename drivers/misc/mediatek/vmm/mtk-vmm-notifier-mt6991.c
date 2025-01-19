@@ -184,6 +184,24 @@ static int vmm_locked_buck_ctrl(bool enable)
 	return ret;
 }
 
+int vmm_enable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs_sel_id)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(vmm_enable_cvfs);
+
+int vmm_disable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs_sel_id)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(vmm_disable_cvfs);
+
+int vmm_cvfs_dump(void)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(vmm_cvfs_dump);
+
 int mtk_vmm_ctrl(struct cb_params *cb_para)
 {
 	int ret = 0;
