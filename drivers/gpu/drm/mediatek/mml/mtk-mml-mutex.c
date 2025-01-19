@@ -292,7 +292,7 @@ static void mutex_debug_dump(struct mml_comp *comp)
 			if (mod[j])
 				used = true;
 		}
-		if (used) {
+		if (i == 1 || used || en || sof) {
 			mml_err("MDP_MUTEX%d_EN %#010x MDP_MUTEX%d_CTL %#010x shadow %#x",
 				i, en, i, sof, shadow);
 			for (j = 0; j < mutex->data->mod_cnt; j++)
