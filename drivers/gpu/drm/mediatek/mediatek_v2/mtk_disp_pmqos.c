@@ -638,12 +638,16 @@ static unsigned int mtk_disp_overlap_bw(struct mtk_drm_crtc *mtk_crtc,
 {
 	unsigned int bw_sum, bw1, bw2;
 	struct mtk_rect layer_roi = {0, 0, 0, 0};
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	bw1 = mtk_disp_cal_usage_bw(mtk_crtc, bw_base, idx1);
 	bw2 = mtk_disp_cal_usage_bw(mtk_crtc, bw_base, idx2);
 	bw_sum = bw1 + bw2;
 
 	if (!debug_channel_overlap)
+		return bw_sum;
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_EXT_LAYER))
 		return bw_sum;
 
 	if (bw1 == 0 || bw2 == 0) {

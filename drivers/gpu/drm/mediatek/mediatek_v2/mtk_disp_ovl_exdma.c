@@ -754,34 +754,39 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 			struct mtk_ddp_comp *comp, struct mtk_plane_state *plane_state)
 {
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct drm_plane_state *state = &plane_state->base;
-	unsigned int lye_id = plane_state->comp_state.lye_id;
 	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
 	struct drm_framebuffer *fb = state->fb;
 	unsigned int fmt = 0;
 	unsigned int phy_id = 0;
+	int ovl_fmt, ovl_compr;
 
 	//Don't use Pending.format here. At this time, Pending is still the previous old information.
 	if (IS_ERR_OR_NULL(fb) || IS_ERR_OR_NULL(fb->format))
 		return;
 
 	fmt = fb->format->format;
-	if (ovl->data->ovl_phy_mapping) {
-		phy_id = ovl->data->ovl_phy_mapping(comp);
-		if (ext_lye_id == 0) {
-			mtk_crtc->usage_ovl_fmt[(phy_id + lye_id)] = mtk_get_format_bpp(fmt);
-			mtk_crtc->usage_ovl_compr[(phy_id + lye_id)] =
-					plane_state->prop_val[PLANE_PROP_COMPRESS];
-			mtk_crtc->usage_ovl_roi[(phy_id + lye_id)].x =
-					state->dst.x1;
-			mtk_crtc->usage_ovl_roi[(phy_id + lye_id)].y =
-					state->dst.y1;
-			mtk_crtc->usage_ovl_roi[(phy_id + lye_id)].width =
-					drm_rect_width(&state->dst);
-			mtk_crtc->usage_ovl_roi[(phy_id + lye_id)].height =
-					drm_rect_height(&state->dst);
-		}
-	}
+	if (!ovl->data->ovl_phy_mapping)
+		return;
+
+	phy_id = ovl->data->ovl_phy_mapping(comp);
+	ovl_fmt = mtk_get_format_bpp(fmt);
+	ovl_compr = plane_state->prop_val[PLANE_PROP_COMPRESS];
+	if (ovl_fmt > mtk_crtc->usage_ovl_fmt[phy_id])
+		mtk_crtc->usage_ovl_fmt[phy_id] = ovl_fmt;
+	if (ovl_compr > mtk_crtc->usage_ovl_compr[phy_id])
+		mtk_crtc->usage_ovl_compr[phy_id] = ovl_compr;
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_EXT_LAYER))
+		return;
+
+	//If ext layer not enabled, it is necessary to determine non-overlapping or not.
+	//If non-overlapping in same channel we will calculate 1 layer bw avoid vcore increase.
+	mtk_crtc->usage_ovl_roi[phy_id].x = state->dst.x1;
+	mtk_crtc->usage_ovl_roi[phy_id].y = state->dst.y1;
+	mtk_crtc->usage_ovl_roi[phy_id].width =	drm_rect_width(&state->dst);
+	mtk_crtc->usage_ovl_roi[phy_id].height = drm_rect_height(&state->dst);
 }
 
 int mtk_ovl_exdma_aid_bit(struct mtk_ddp_comp *comp, bool is_ext, int id)

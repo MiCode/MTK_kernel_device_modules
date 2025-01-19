@@ -5453,33 +5453,35 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 			DDPINFO("%s\n", dbg_msg);
 		}
 
-		memset(dbg_msg, 0, sizeof(dbg_msg));
-		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_x = ", __func__);
-		for (int i = 0; i < MAX_LAYER_NR ; i++)
-			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
-				     mtk_crtc->usage_ovl_roi[i].x);
-		DDPQOS("%s\n", dbg_msg);
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_EXT_LAYER)) {
+			memset(dbg_msg, 0, sizeof(dbg_msg));
+			written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_x = ", __func__);
+			for (int i = 0; i < MAX_LAYER_NR ; i++)
+				written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+					     mtk_crtc->usage_ovl_roi[i].x);
+			DDPQOS("%s\n", dbg_msg);
 
-		memset(dbg_msg, 0, sizeof(dbg_msg));
-		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_y = ", __func__);
-		for (int i = 0; i < MAX_LAYER_NR ; i++)
-			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
-				     mtk_crtc->usage_ovl_roi[i].y);
-		DDPQOS("%s\n", dbg_msg);
+			memset(dbg_msg, 0, sizeof(dbg_msg));
+			written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_y = ", __func__);
+			for (int i = 0; i < MAX_LAYER_NR ; i++)
+				written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+					     mtk_crtc->usage_ovl_roi[i].y);
+			DDPQOS("%s\n", dbg_msg);
 
-		memset(dbg_msg, 0, sizeof(dbg_msg));
-		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_w = ", __func__);
-		for (int i = 0; i < MAX_LAYER_NR ; i++)
-			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
-				     mtk_crtc->usage_ovl_roi[i].width);
-		DDPQOS("%s\n", dbg_msg);
+			memset(dbg_msg, 0, sizeof(dbg_msg));
+			written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_w = ", __func__);
+			for (int i = 0; i < MAX_LAYER_NR ; i++)
+				written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+					     mtk_crtc->usage_ovl_roi[i].width);
+			DDPQOS("%s\n", dbg_msg);
 
-		memset(dbg_msg, 0, sizeof(dbg_msg));
-		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_h = ", __func__);
-		for (int i = 0; i < MAX_LAYER_NR ; i++)
-			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
-				     mtk_crtc->usage_ovl_roi[i].height);
-		DDPQOS("%s\n", dbg_msg);
+			memset(dbg_msg, 0, sizeof(dbg_msg));
+			written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_h = ", __func__);
+			for (int i = 0; i < MAX_LAYER_NR ; i++)
+				written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+					     mtk_crtc->usage_ovl_roi[i].height);
+			DDPQOS("%s\n", dbg_msg);
+		}
 	}
 }
 
