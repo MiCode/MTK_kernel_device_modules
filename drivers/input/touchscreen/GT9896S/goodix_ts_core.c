@@ -2511,6 +2511,11 @@ static int gt9896s_ts_probe(struct platform_device *pdev)
 						gt9896s_tpd_exit_tui);
 			}
 		}
+		core_data->tui_spi_auto_clk = of_property_read_bool(node, "spi-auto-clk-enabled");
+		if (core_data->tui_spi_auto_clk)
+			ts_info("touch tui spi auto clk enable");
+		else
+			ts_info("touch tui spi auto clk disable");
 	}
 #endif
 	return 0;

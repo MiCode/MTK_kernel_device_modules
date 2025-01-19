@@ -21,7 +21,8 @@ int tpd_gt9895_enter_tui(void)
 
 	ts_core_gt9895_tui->hw_ops->irq_enable(ts_core_gt9895_tui, false);
 
-	mt_spi_enable_master_clk(ts_core_gt9895_tui->bus->spi_dev);
+	if (!ts_core_gt9895_tui->tui_spi_auto_clk)
+		mt_spi_enable_master_clk(ts_core_gt9895_tui->bus->spi_dev);
 
 	goodix_ts_esd_off(ts_core_gt9895_tui);
 
@@ -36,8 +37,8 @@ int tpd_gt9895_exit_tui(void)
 	int ret = 0;
 
 	ts_info("[%s] exit TUI", __func__);
-
-	mt_spi_disable_master_clk(ts_core_gt9895_tui->bus->spi_dev);
+	if (!ts_core_gt9895_tui->tui_spi_auto_clk)
+		mt_spi_disable_master_clk(ts_core_gt9895_tui->bus->spi_dev);
 
 	ts_core_gt9895_tui->hw_ops->irq_enable(ts_core_gt9895_tui, false);
 	ts_core_gt9895_tui->hw_ops->irq_enable(ts_core_gt9895_tui, true);

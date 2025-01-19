@@ -2873,6 +2873,11 @@ static int goodix_ts_probe(struct platform_device *pdev)
 				ts_info("set tui function is not allowed");
 			}
 		}
+		core_data->tui_spi_auto_clk = of_property_read_bool(node, "spi-auto-clk-enabled");
+		if (core_data->tui_spi_auto_clk)
+			ts_info("touch tui spi auto clk enable");
+		else
+			ts_info("touch tui spi auto clk disable");
 	}
 #endif
 

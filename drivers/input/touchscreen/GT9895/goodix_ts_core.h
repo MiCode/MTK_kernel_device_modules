@@ -549,6 +549,7 @@ struct goodix_ts_core {
 	struct regulator *avdd;
 	struct regulator *iovdd;
 	unsigned char gesture_type;
+	bool tui_spi_auto_clk;
 
 #if IS_ENABLED(CONFIG_PINCTRL)
 	struct pinctrl *pinctrl;

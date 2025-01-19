@@ -496,6 +496,7 @@ struct gt9896s_ts_core {
 
 	struct notifier_block ts_notifier;
 	struct gt9896s_ts_esd ts_esd;
+	bool tui_spi_auto_clk;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	struct notifier_block disp_notifier;
