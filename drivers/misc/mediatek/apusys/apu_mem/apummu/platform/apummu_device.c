@@ -77,7 +77,7 @@ static struct apummu_plat mt6993_drv = {
 	.address_bits                    = 36,
 	.is_general_SLB_support          = false,
 	.alloc_DRAM_FB_in_session_create = false,
-	.is_ASE_support                  = false,
+	.is_ASE_support                  = true,
 	.hw_ops                          = &mt6993_ammudata.ops,
 	.reserved_session_num            = 2,
 };
