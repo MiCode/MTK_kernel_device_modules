@@ -574,17 +574,6 @@ static int mtk_cg_prepare_mm_hwv(struct clk_hw *hw)
 	params.done_ofs = cg->hwv_sta_ofs;
 	params.vote_bit = cg->bit;
 
-	if (cg->flags & RES_FRAMEWORK_VMM) {
-		if (!callback[CLK_REQUEST_VMM_CB]) {
-			pr_cg_err("vmm_ctrl is NULL\n");
-			return -EINVAL;
-		}
-		ret = callback[CLK_REQUEST_VMM_CB](&params);
-		if (ret) {
-			pr_cg_err("vmm_enable failed - %s\n", c_n);
-			goto CG_PREPARE_FAIL;
-		}
-	}
 	if (cg->flags & RES_FRAMEWORK_MMINFRA) {
 		if (!callback[CLK_REQUEST_MMINFRA_CB]) {
 			pr_cg_err("mminfra_ctrl is NULL\n");
@@ -593,6 +582,17 @@ static int mtk_cg_prepare_mm_hwv(struct clk_hw *hw)
 		ret = callback[CLK_REQUEST_MMINFRA_CB](&params);
 		if (ret) {
 			pr_cg_err("mminfra_enable failed - %s\n", c_n);
+			goto CG_PREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_VMM) {
+		if (!callback[CLK_REQUEST_VMM_CB]) {
+			pr_cg_err("vmm_ctrl is NULL\n");
+			return -EINVAL;
+		}
+		ret = callback[CLK_REQUEST_VMM_CB](&params);
+		if (ret) {
+			pr_cg_err("vmm_enable failed - %s\n", c_n);
 			goto CG_PREPARE_FAIL;
 		}
 	}
@@ -628,6 +628,17 @@ static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 	params.done_ofs = cg->hwv_sta_ofs;
 	params.vote_bit = cg->bit;
 
+	if (cg->flags & RES_FRAMEWORK_VDISP) {
+		if (!callback[CLK_REQUEST_VDISP_CB]) {
+			pr_cg_err("vdisp_ctrl is NULL\n");
+			return;
+		}
+		ret = callback[CLK_REQUEST_VDISP_CB](&params);
+		if (ret) {
+			pr_cg_err("vdisp_enable failed - %s\n", c_n);
+			goto CG_UNPREPARE_FAIL;
+		}
+	}
 	if (cg->flags & RES_FRAMEWORK_VMM) {
 		if (!callback[CLK_REQUEST_VMM_CB]) {
 			pr_cg_err("vmm_ctrl is NULL\n");
@@ -647,17 +658,6 @@ static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 		ret = callback[CLK_REQUEST_MMINFRA_CB](&params);
 		if (ret) {
 			pr_cg_err("mminfra_enable failed - %s\n", c_n);
-			goto CG_UNPREPARE_FAIL;
-		}
-	}
-	if (cg->flags & RES_FRAMEWORK_VDISP) {
-		if (!callback[CLK_REQUEST_VDISP_CB]) {
-			pr_cg_err("vdisp_ctrl is NULL\n");
-			return;
-		}
-		ret = callback[CLK_REQUEST_VDISP_CB](&params);
-		if (ret) {
-			pr_cg_err("vdisp_enable failed - %s\n", c_n);
 			goto CG_UNPREPARE_FAIL;
 		}
 	}
