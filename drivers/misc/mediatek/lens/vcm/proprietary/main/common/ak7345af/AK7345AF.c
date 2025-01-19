@@ -36,33 +36,6 @@ static unsigned long g_u4AF_INF;
 static unsigned long g_u4AF_MACRO = 1023;
 static unsigned long g_u4CurrPosition;
 
-static int s4AF_ReadReg(u16 a_u2Addr, u16 *a_pu2Result)
-{
-	int i4RetValue = 0;
-	char pBuff;
-
-	g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
-
-	g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
-
-	i4RetValue = i2c_master_send(g_pstAF_I2Cclient, &a_u2Addr, 1);
-
-	if (i4RetValue < 0) {
-		LOG_INF("I2C read - send failed!!\n");
-		return -1;
-	}
-
-	i4RetValue = i2c_master_recv(g_pstAF_I2Cclient, &pBuff, 1);
-
-	if (i4RetValue < 0) {
-		LOG_INF("I2C read - recv failed!!\n");
-		return -1;
-	}
-	*a_pu2Result = pBuff;
-
-	return 0;
-}
-
 static int s4AF_WriteReg(u16 a_u2Addr, u16 a_u2Data)
 {
 	int i4RetValue = 0;

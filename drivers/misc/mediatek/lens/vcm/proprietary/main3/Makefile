@@ -15,13 +15,13 @@
 # Makefile for misc devices that really don't fit anywhere else.
 #
 
-MTK_CUSTOM_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
+#MTK_CUSTOM_PATH  := $(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 
 
-subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/vcm/proprietary/main3/inc
+#subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/lens/vcm/proprietary/main3/inc
 
-obj-$(CONFIG_MTK_LENS)    += main3af.o
+#obj-$(CONFIG_MTK_LENS)    += main3af.o
 
-main3af-y  += main3_lens.o
-main3af-y  += common/bu24253af/BU24253AF.o
-main3af-y  += common/gt9772af/GT9772AF.o
+#main3af-y  += main3_lens.o
+#main3af-y  += common/bu24253af/BU24253AF.o
+#main3af-y  += common/gt9772af/GT9772AF.o
