@@ -21,7 +21,7 @@
 
 #define LINK_RETRAIN_TIMEOUT	HZ
 
-static const char *const linkspeed[] = {
+static const char *const linkspeed[MTK_SPEED_MAX] = {
 	"NULL", "2.5GT/s", "5.0GT/s", "8.0GT/s", "16GT/s",
 };
 
@@ -43,8 +43,10 @@ unsigned int mtk_get_value(char *str)
 		format = "%d";
 	}
 
-	sscanf(&str[index], format, &value);
-	return value;
+	if (sscanf(&str[index], format, &value) == 1)
+		return value;
+
+	return 0;
 }
 EXPORT_SYMBOL(mtk_get_value);
 
@@ -52,12 +54,11 @@ static int mtk_pcie_retrain(struct pci_dev *dev)
 {
 	struct pci_dev *parent;
 	unsigned long start_jiffies;
-	int pos = 0, ppos = 0, i = 0;
+	int ppos = 0, i = 0;
 	u16 reg16 = 0;
 
 	parent = dev->bus->self;
 	ppos = parent->pcie_cap;
-	pos = dev->pcie_cap;
 
 	/* Retrain link */
 	pci_read_config_word(parent, ppos + PCI_EXP_LNKCTL, &reg16);
@@ -138,6 +139,11 @@ static int mtk_pcie_change_speed(struct pci_dev *dev, int speed)
 	int pos = 0, ori_speed = 0, ret = 0;
 	u16 linksta = 0;
 
+	if (speed >= MTK_SPEED_MAX) {
+		pr_info("change speed %d exceeds maximum %d\n", speed, MTK_SPEED_MAX);
+		return -EINVAL;
+	}
+
 	pos = dev->pcie_cap;
 	pci_read_config_word(dev, pos + PCI_EXP_LNKSTA, &linksta);
 	ori_speed = linksta & PCI_EXP_LNKSTA_CLS;
@@ -149,7 +155,8 @@ static int mtk_pcie_change_speed(struct pci_dev *dev, int speed)
 	}
 
 	pr_info("[CLS] ori -> cur: %s->%s.\n",
-		 linkspeed[ori_speed], linkspeed[speed]);
+		 ori_speed < MTK_SPEED_MAX ? linkspeed[ori_speed] : "unknown",
+		 speed < MTK_SPEED_MAX ? linkspeed[speed] : "unknown");
 
 	return ret;
 }
@@ -442,11 +449,16 @@ static int mtk_pcie_lane_margin(struct mtk_pcie_info *pcie_smt, struct pci_dev *
 	pr_info("******* Test downstream port(%s) LM start *********\n", mode ? "EP" : "RC");
 
 	lm_pos = pci_find_ext_capability(dut, PCI_EXT_CAP_ID_LM);
+	if (!lm_pos) {
+		pr_info("LM capability not found on device\n");
+		return -ENODEV;
+	}
+
 	pci_read_config_word(dev, pos + PCI_EXP_LNKSTA, &reg);
 	width = (reg & PCI_EXP_LNKSTA_NLW) >> 4;
 
 	for (lane = 0; lane < width; lane++) {
-		mtk_pcie_lane_margin_voltage(pcie_smt, dut, lane, rcv_num, lm_pos);
+		ret = mtk_pcie_lane_margin_voltage(pcie_smt, dut, lane, rcv_num, lm_pos);
 		if (ret < 0) {
 			pr_info("[%s:%d], Voltage margin fail\n", __func__, __LINE__);
 			return ret;
