@@ -36,7 +36,7 @@ MODULE_VERSION("2.0");
 #define PRODUCT_ID		0x0001
 
 #if IS_ENABLED(CONFIG_MTPROF)
-extern void bootprof_log_boot(char *str);
+/* extern void bootprof_log_boot(char *str); */
 #endif
 
 #if !IS_BUILTIN(CONFIG_MTK_USB_META)
@@ -221,7 +221,7 @@ static void bootprof_log(char *str)
 	static int first_shot = 1;
 
 	if (first_shot) {
-		bootprof_log_boot(str);
+		/* bootprof_log_boot(str); */
 		first_shot = 0;
 	}
 }
