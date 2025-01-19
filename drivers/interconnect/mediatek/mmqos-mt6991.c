@@ -536,9 +536,9 @@ static const struct mtk_node_desc node_descs_mt6991[] = {
 		MASTER_LARB_PORT(SMMU_L30_P3_CCUO2),                       9, true,  0x0, SLAVE_LARB(30)),
 	/* LARB32 */
 	DEFINE_MNODE(disp_postmask0_larb32_4,
-		MASTER_LARB_PORT(SMMU_L32_P4_DISP_POSTMASK0),              8, false, 0x0, SLAVE_LARB(32)),
+		MASTER_LARB_PORT(SMMU_L32_P4_DISP_POSTMASK0),              7, false, 0x0, SLAVE_LARB(32)),
 	DEFINE_MNODE(disp_postmask1_larb32_5,
-		MASTER_LARB_PORT(SMMU_L32_P5_DISP_POSTMASK1),              8, false, 0x0, SLAVE_LARB(32)),
+		MASTER_LARB_PORT(SMMU_L32_P5_DISP_POSTMASK1),              7, false, 0x0, SLAVE_LARB(32)),
 	DEFINE_MNODE(disp_mdp_rdma0_larb32_6,
 		MASTER_LARB_PORT(SMMU_L32_P6_DISP_MDP_RDMA0),              8, false, 0x0, SLAVE_LARB(32)),
 	DEFINE_MNODE(disp_wdma0_larb32_7,
