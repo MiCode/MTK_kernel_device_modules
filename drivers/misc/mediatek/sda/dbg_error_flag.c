@@ -139,14 +139,26 @@ struct DBG_ERROR_FLAG_DESC dbg_error_flag_desc[DBG_ERROR_FLAG_TOTAL] = {
 	[DRAMC_ERROR_FLAG_CH_D] = {
 		.mask_name = "dramc-error-flag-ch-d-mask",
 	},
-	[SOC_DBG_ERR_FLAG_WDT_IRQ] = {
+	[VLP_SOC_DBG_ERR_FLAG_WDT_IRQ] = {
 		.mask_name = "soc-dbg-err-flag-wdt-irq-mask",
 	},
-	[MMU_TO_SOC_DFD_TRIGGER_EVENT] = {
-		.mask_name = "mmu-to-soc-dfd-trigger-event-mask",
+	[VLP_DFD_SOC_TRIGGER_EVENT] = {
+		.mask_name = "dfd-soc-trigger-event-mask",
 	},
-	[MFG2SOC_DFD_SMMU_TRIGGER_EVENT] = {
+	[VLP_MFG2SOC_DFD_SMMU_TRIGGER_EVENT] = {
 		.mask_name = "mfg2soc-dfd-smmu-trigger-event-mask",
+	},
+	[CHINFRA_A_ERROR_FLAG_MASK] = {
+		.mask_name = "chinfra-a-error-flag-mask",
+	},
+	[CHINFRA_B_ERROR_FLAG_MASK] = {
+		.mask_name = "chinfra-b-error-flag-mask",
+	},
+	[CHINFRA_C_ERROR_FLAG_MASK] = {
+		.mask_name = "chinfra-c-error-flag-mask",
+	},
+	[CHINFRA_D_ERROR_FLAG_MASK] = {
+		.mask_name = "chinfra-d-error-flag-mask",
 	},
 };
 
@@ -172,22 +184,21 @@ struct dbg_error_flag_elem {
 	unsigned int err_flag_systimer_h;
 	unsigned int err_flag_irq_status;
 
-
-		/* VLP ERROR FLAG INFO*/
-		unsigned int irq_status_0_offset;
-		unsigned int irq_status_1_offset;
-		unsigned int irq_systimer_l_offset;
-		unsigned int irq_systimer_h_offset;
-		unsigned int err_type_offset;
-		unsigned int drm_req_systimer_l_offset;
-		unsigned int drm_req_systimer_h_offset;
-		unsigned int drm_ack_systimer_l_offset;
-		unsigned int drm_ack_systimer_h_offset;
-		unsigned int err_flag_irq_status_0;
-		unsigned int err_flag_irq_status_1;
-		unsigned int err_flag_irq_systimer_l;
-		unsigned int err_flag_irq_systimer_h;
-		unsigned int err_flag_err_type;
+	/* VLP ERROR FLAG INFO*/
+	unsigned int irq_status_0_offset;
+	unsigned int irq_status_1_offset;
+	unsigned int irq_systimer_l_offset;
+	unsigned int irq_systimer_h_offset;
+	unsigned int err_type_offset;
+	unsigned int drm_req_systimer_l_offset;
+	unsigned int drm_req_systimer_h_offset;
+	unsigned int drm_ack_systimer_l_offset;
+	unsigned int drm_ack_systimer_h_offset;
+	unsigned int err_flag_irq_status_0;
+	unsigned int err_flag_irq_status_1;
+	unsigned int err_flag_irq_systimer_l;
+	unsigned int err_flag_irq_systimer_h;
+	unsigned int err_flag_err_type;
 };
 
 struct dbg_error_flag {
