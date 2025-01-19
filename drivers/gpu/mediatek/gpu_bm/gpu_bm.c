@@ -394,6 +394,9 @@ void MTKGPUQoS_mode_ratio(int mode)
 	 * 6010-6300 : apply a ratio for mid-low for gpu scernaio bw predict output
 	 */
 
+	if(gpu_bm_inited != 1)
+		return;
+
 	mutex_lock(&g_GPU_BM_lock);
 
 	pr_info("@%s: mode: %d\n", __func__, mode);
