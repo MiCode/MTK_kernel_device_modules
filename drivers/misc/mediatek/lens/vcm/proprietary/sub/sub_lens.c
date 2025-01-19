@@ -129,7 +129,7 @@ static void camaf_power_init(void)
 			if (IS_ERR(vcamaf_ldo)) {
 				ret = PTR_ERR(vcamaf_ldo);
 				vcamaf_ldo = NULL;
-				LOG_INF("cannot get regulator\n");
+				LOG_INF("cannot get regulator (%d)\n", ret);
 			}
 		}
 
@@ -138,7 +138,7 @@ static void camaf_power_init(void)
 			if (IS_ERR(vcamaf_pio)) {
 				ret = PTR_ERR(vcamaf_pio);
 				vcamaf_pio = NULL;
-				pr_info("cannot get pinctrl\n");
+				pr_info("cannot get pinctrl (%d)\n", ret);
 			} else {
 				vcamaf_pio_on = pinctrl_lookup_state(
 					vcamaf_pio, CAMAF_GPIO_ON);
@@ -146,7 +146,7 @@ static void camaf_power_init(void)
 				if (IS_ERR(vcamaf_pio_on)) {
 					ret = PTR_ERR(vcamaf_pio_on);
 					vcamaf_pio_on = NULL;
-					LOG_INF("cannot get vcamaf_pio_on\n");
+					LOG_INF("cannot get vcamaf_pio_on (%d)\n", ret);
 				}
 
 				vcamaf_pio_off = pinctrl_lookup_state(
@@ -155,7 +155,7 @@ static void camaf_power_init(void)
 				if (IS_ERR(vcamaf_pio_off)) {
 					ret = PTR_ERR(vcamaf_pio_off);
 					vcamaf_pio_off = NULL;
-					LOG_INF("cannot get vcamaf_pio_off\n");
+					LOG_INF("cannot get vcamaf_pio_off (%d)\n", ret);
 				}
 			}
 		}

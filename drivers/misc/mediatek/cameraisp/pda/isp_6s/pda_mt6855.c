@@ -238,8 +238,11 @@ void pda_init_larb(struct platform_device *pdev)
 	larbs = of_count_phandle_with_args(
 				pdev->dev.of_node, "mediatek,larbs", NULL);
 	LOG_INF("larb_num:%d\n", larbs);
-	for (i = 0; i < larbs; i++)
+	for (i = 0; i < larbs; i++) {
 		larb = init_larb(pdev, i);
+		if (larb == NULL)
+			LOG_INF("larb%d is NULL\n", i);
+	}
 }
 
 int pda_devm_clk_get(struct platform_device *pdev)

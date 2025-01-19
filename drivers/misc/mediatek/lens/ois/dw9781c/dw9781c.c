@@ -744,17 +744,6 @@ static int dw9781c_power_on(struct dw9781c_device *dw9781c)
 	return ret;
 }
 
-static int dw9781c_set_ctrl(struct v4l2_ctrl *ctrl)
-{
-	/* struct dw9781c_device *dw9781c = to_dw9781c_ois(ctrl); */
-
-	return 0;
-}
-
-static const struct v4l2_ctrl_ops dw9781c_ois_ctrl_ops = {
-	.s_ctrl = dw9781c_set_ctrl,
-};
-
 static int dw9781c_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	int ret;
@@ -1036,7 +1025,6 @@ static void dw9781c_subdev_cleanup(struct dw9781c_device *dw9781c)
 static int dw9781c_init_controls(struct dw9781c_device *dw9781c)
 {
 	struct v4l2_ctrl_handler *hdl = &dw9781c->ctrls;
-	/* const struct v4l2_ctrl_ops *ops = &dw9781c_ois_ctrl_ops; */
 
 	v4l2_ctrl_handler_init(hdl, 1);
 

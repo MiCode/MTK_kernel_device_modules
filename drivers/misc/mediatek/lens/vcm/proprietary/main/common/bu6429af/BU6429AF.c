@@ -91,20 +91,19 @@ static int initAF(void)
 	if (*g_pAF_Opened == 1) {
 
 #ifdef USE_ISRC_MODE_IMX386_SENSOR
-		int ret = 0;
 		char puSendCmd[2];
 
 		puSendCmd[0] = (char)(0xD0);
 		puSendCmd[1] = (char)(0xC8);
-		ret = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+		i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 
 		puSendCmd[0] = (char)(0xC8);
 		puSendCmd[1] = (char)(0x01);
-		ret = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+		i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 
 		puSendCmd[0] = (char)(0xC6);
 		puSendCmd[1] = (char)(0x00);
-		ret = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+		i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 #endif
 
 		spin_lock(g_pAF_SpinLock);

@@ -202,12 +202,11 @@ int DW9718AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	LOG_INF("Start\n");
 
 	if (*g_pAF_Opened == 2) {
-		int i4RetValue = 0;
 		char puSendCmd[2] = {0x00, 0x01};
 
 		LOG_INF("apply\n");
 
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+		i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 	}
 
 	if (*g_pAF_Opened) {

@@ -1315,6 +1315,10 @@ static irqreturn_t pda_irqhandle(signed int Irq, void *DeviceId)
 	++g_PDA0_IRQCount;
 	if (g_PDA0_IRQCount > g_reasonable_IRQCount) {
 		PDA_devs[0].HWstatus = -29;
+		LOG_INF("Irq abnormal, rsn: %d, pda0: %d, stat_rg: %d\n",
+			g_reasonable_IRQCount,
+			g_PDA0_IRQCount,
+			nPdaStatus);
 		pda_nontransaction_reset(0);
 	}
 #endif
@@ -1349,6 +1353,10 @@ static irqreturn_t pda2_irqhandle(signed int Irq, void *DeviceId)
 	++g_PDA1_IRQCount;
 	if (g_PDA1_IRQCount > g_reasonable_IRQCount) {
 		PDA_devs[1].HWstatus = -29;
+		LOG_INF("Irq abnormal, rsn: %d, pda1: %d, stat_rg: %d\n",
+			g_reasonable_IRQCount,
+			g_PDA1_IRQCount,
+			nPdaStatus);
 		pda_nontransaction_reset(1);
 	}
 #endif
