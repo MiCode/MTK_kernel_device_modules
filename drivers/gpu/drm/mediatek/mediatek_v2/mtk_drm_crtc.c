@@ -16243,7 +16243,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/*Need to move here to prevent cmdq time for first config*/
 	mtk_crtc_gce_event_config(crtc);
-	mtk_crtc_vdisp_ao_config(crtc);
 
 	/* 2. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
@@ -16280,6 +16279,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 				priv->data->sodi_config(crtc->dev, comp->id, NULL, &en);
 		}
 	}
+
+	mtk_crtc_vdisp_ao_config(crtc);
 
 	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
