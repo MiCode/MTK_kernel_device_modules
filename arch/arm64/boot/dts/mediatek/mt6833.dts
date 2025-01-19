@@ -3582,7 +3582,7 @@
 	};
 
 	cqdma-controller@10212000 {
-		compatible = "mediatek,mt6765-cqdma";
+		compatible = "mediatek,cqdma";
 		reg = <0 0x10212000 0 0x80>,
 			<0 0x10212100 0 0x80>,
 			<0 0x10212200 0 0x80>,
