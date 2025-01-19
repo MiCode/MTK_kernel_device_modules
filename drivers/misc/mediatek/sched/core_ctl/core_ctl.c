@@ -1615,7 +1615,7 @@ static void check_heaviest_util(void)
 	unsigned long flags;
 	struct cluster_data *big_cluster;
 	struct cluster_data *mid_cluster;
-	unsigned int max_capacity, big_cpu_ts;
+	unsigned int max_capacity, big_cpu_ts=0;
 	unsigned long heaviest_thres;
 	static unsigned int max_task_util;
 

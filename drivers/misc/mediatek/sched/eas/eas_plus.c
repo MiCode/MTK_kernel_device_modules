@@ -1032,7 +1032,7 @@ unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long ma
 }
 
 __always_inline
-unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
+unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu, struct task_struct *p,
 		unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered,
 		unsigned long min, unsigned long max)
 {
