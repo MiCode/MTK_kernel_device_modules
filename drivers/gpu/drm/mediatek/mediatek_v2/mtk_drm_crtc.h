@@ -1142,6 +1142,7 @@ struct mtk_drm_crtc {
 	struct task_struct *cwb_task;
 	wait_queue_head_t cwb_wq;
 	atomic_t cwb_task_active;
+	int last_wb_scn;
 
 	ktime_t pf_time;
 	ktime_t sof_time;

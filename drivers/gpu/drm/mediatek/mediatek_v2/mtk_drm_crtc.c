@@ -4449,6 +4449,7 @@ _mtk_crtc_wb_addon_module_connect(
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 
 	scn = mtk_crtc_wb_get_scn(state);
+	mtk_crtc->last_wb_scn = scn;
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
 	if (!addon_data)
@@ -12589,6 +12590,7 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 	struct drm_device *dev = NULL;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
+	unsigned long long bw_zero;
 
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -12742,8 +12744,13 @@ skip:
 			mtk_disp_set_channel_hrt_bw(mtk_crtc, 0, i);
 	}
 
-	if (priv->data->respective_ostdl)
+	if (priv->data->respective_ostdl) {
 		mtk_disp_set_module_hrt(mtk_crtc, 0, NULL, PMQOS_SET_HRT_BW);
+		// clear wb bandwidth
+		bw_zero = 0;
+		if (mtk_crtc->last_wb_scn != -1)
+			mtk_addon_path_io_cmd(crtc, mtk_crtc->last_wb_scn, PMQOS_SET_HRT_BW, &bw_zero);
+	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
@@ -16869,10 +16876,14 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc *crtc = cb_data->crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = NULL;
 	int session_id;
 	unsigned int fence_idx = cb_data->wb_fence_idx;
 	struct pixel_type_map *pixel_types;
 	unsigned int spr_mode_type, bw_zero;
+
+	if (mtk_crtc->base.dev && mtk_crtc->base.dev->dev_private)
+		priv = mtk_crtc->base.dev->dev_private;
 
 	if (mtk_crtc->pq_data) {
 		spr_mode_type = mtk_get_cur_spr_type(crtc);
@@ -16891,7 +16902,10 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
 
 	bw_zero = 0;
-	mtk_addon_path_io_cmd(crtc, cb_data->wb_scn, PMQOS_SET_HRT_BW, &bw_zero);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	if (priv && priv->power_state)
+		mtk_addon_path_io_cmd(crtc, cb_data->wb_scn, PMQOS_SET_HRT_BW, &bw_zero);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	CRTC_MMP_MARK(0, wbBmpDump, 1, fence_idx);
 	mtk_dprec_mmp_dump_wdma_layer(crtc, cb_data->wb_fb);
@@ -20238,6 +20252,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc_init_gce_obj(drm_dev, mtk_crtc);
 
 	mtk_crtc->vblank_en = 1;
+	mtk_crtc->last_wb_scn = -1;
 	drm_trace_tag_start("vblank_en");
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLE_MGR) &&
 		drm_crtc_index(&mtk_crtc->base) == 0 &&
