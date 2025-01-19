@@ -3082,9 +3082,6 @@ static int mtk_pcie_post_init_6991(struct mtk_pcie_port *port)
 		val = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
 		val |= PCIE_AER_EVT_EN;
 		writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
-
-		/* Adujst port1 completion timeout to 29ms */
-		mtk_pcie_adjust_cplto_scale(port, PCIE_CPLTO_SCALE_29MS);
 	}
 
 	return 0;
