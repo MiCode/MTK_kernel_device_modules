@@ -14,6 +14,7 @@
 #include <linux/sched/mm.h>
 #include <linux/spmi.h>
 #include <linux/irq.h>
+#include "mt-plat/mtk_ccci_common.h"
 #include "spmi-mtk.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
@@ -49,6 +50,8 @@
 
 #define MAX_MONITOR_LIST_SIZE	64
 #define MONITOR_PAIR_ITEM_NUM	2
+
+#define PMIF_CH_MD_DVFS_HW	1
 
 #define PMIF_IRQDESC(name) { #name, pmif_##name##_irq_handler, -1}
 
@@ -816,10 +819,24 @@ static struct pmif mt6989_pmif_arb[] = {
 	},
 };
 
+int (*register_spmi_md_force_assert)(unsigned int id, char *buf, unsigned int len) = NULL;
+EXPORT_SYMBOL(register_spmi_md_force_assert);
+
 static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
 {
+	u32 vio_chan = 0xFFFFFFFF;
 	spmi_dump_pmif_record_reg(0, 0);
-	spmi_dump_pmif_acc_vio_reg();
+	vio_chan = spmi_dump_pmif_acc_vio_reg();
+	if (vio_chan == PMIF_CH_MD_DVFS_HW) {
+		/* Trigger MDEE */
+		pr_notice("[PMIF] MD DVFS HW MPU violation!\n");
+		if (register_spmi_md_force_assert != NULL) {
+			pr_notice("[PMIF]:Trigger MD assert DONE\n");
+			register_spmi_md_force_assert(ID_SPMI_FORCE_MD_ASSERT, NULL, 0);
+		}
+	} else {
+		pr_notice("[PMIF] Other channel violation!\n");
+	}
 #if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
 	aee_kernel_warning("PMIF", "PMIF:pmif_acc_vio");
 #endif

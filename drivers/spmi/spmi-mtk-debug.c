@@ -1376,12 +1376,13 @@ void spmi_dump_wdt_reg(void)
 }
 EXPORT_SYMBOL_GPL(spmi_dump_wdt_reg);
 
-void spmi_dump_pmif_acc_vio_reg(void)
+u32 spmi_dump_pmif_acc_vio_reg(void)
 {
 	struct pmif *arb = spmi_controller_get_drvdata(dbg_ctrl);
 	unsigned int offset, tmp_dat;
 	unsigned int start, end, log_size = 0;
 	unsigned int chan, cmd, is_write, slvid, bytecnt, addr, wdata, rgn, type, has_vio;
+	u32 vio_chan = 0xFFFFFFFF;
 
 	if (arb->dbgver == 2) {
 		start = arb->dbgregs[PMIC_ALL_ACC_VIO_INFO_0];
@@ -1449,6 +1450,9 @@ void spmi_dump_pmif_acc_vio_reg(void)
 		else
 			log_size += sprintf(wp + log_size, "addr 0x%x]\n", addr);
 
+		if (has_vio)
+			vio_chan = chan;
+
 		/* Clear violation information */
 		writel(BIT(31), arb->pmif_base[0] + start);
 
@@ -1499,6 +1503,8 @@ void spmi_dump_pmif_acc_vio_reg(void)
 			else
 				log_size += sprintf(wp + log_size, "addr 0x%x]\n", addr);
 
+			if (has_vio)
+				vio_chan = chan;
 			/* Clear violation information */
 			writel(BIT(31), arb->pmif_base[1] + start);
 		}
@@ -1507,6 +1513,8 @@ void spmi_dump_pmif_acc_vio_reg(void)
 	if (log_size < 0)
 		pr_notice("sprintf failed\n");
 	pr_info("[PMIF] %s %s", __func__, wp);
+
+	return vio_chan;
 }
 EXPORT_SYMBOL_GPL(spmi_dump_pmif_acc_vio_reg);
 
