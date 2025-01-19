@@ -109,6 +109,7 @@ struct mml_dpc {
 	atomic_t task_cnt;
 	atomic_t exc_pw_cnt[mml_max_sys];
 	atomic_t dc_force_cnt[mml_max_sys];
+	struct mutex dpc_mutex[mml_max_sys];
 };
 
 struct mml_sys_state {
@@ -1105,36 +1106,48 @@ void mml_dpc_task_cnt_dec(struct mml_task *task)
 
 void mml_dpc_exc_keep(struct mml_dev *mml, u32 sysid)
 {
-	s32 cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt[sysid]);
+	s32 cur_exc_pw_cnt;
 
+	mutex_lock(&mml->dpc.dpc_mutex[sysid]);
+
+	cur_exc_pw_cnt = atomic_inc_return(&mml->dpc.exc_pw_cnt[sysid]);
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, 0x10000 | sysid, cur_exc_pw_cnt);
 
 	if (cur_exc_pw_cnt > 1)
-		return;
+		goto done;
 	if (cur_exc_pw_cnt <= 0) {
-		mml_err("%s  cnt %d", __func__, cur_exc_pw_cnt);
-		return;
+		mml_err("%s cnt %d", __func__, cur_exc_pw_cnt);
+		goto done;
 	}
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_START, 1, 0);
 	mml_dpc_power_keep(sysid);
+
+done:
+	mutex_unlock(&mml->dpc.dpc_mutex[sysid]);
 }
 
 void mml_dpc_exc_release(struct mml_dev *mml, u32 sysid)
 {
-	s32 cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt[sysid]);
+	s32 cur_exc_pw_cnt;
 
+	mutex_lock(&mml->dpc.dpc_mutex[sysid]);
+
+	cur_exc_pw_cnt = atomic_dec_return(&mml->dpc.exc_pw_cnt[sysid]);
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_PULSE, sysid, cur_exc_pw_cnt);
 
 	if (cur_exc_pw_cnt > 0)
-		return;
+		goto done;
 	if (cur_exc_pw_cnt < 0) {
-		mml_err("%s  cnt %d", __func__, cur_exc_pw_cnt);
-		return;
+		mml_err("%s cnt %d", __func__, cur_exc_pw_cnt);
+		goto done;
 	}
 
 	mml_mmp(dpc_exception_flow, MMPROFILE_FLAG_END, 0, 0);
 	mml_dpc_power_release(sysid);
+
+done:
+	mutex_unlock(&mml->dpc.dpc_mutex[sysid]);
 }
 
 void mml_dpc_exc_keep_task(struct mml_task *task, const struct mml_topology_path *path)
@@ -1183,7 +1196,7 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 		mml_mmp(dpc_dc, MMPROFILE_FLAG_END, sysid, 0);
 	}
 
-	mml_dpc_group_enable(!dcen);
+	mml_dpc_group_enable(sysid, !dcen);
 }
 
 void mml_pw_set_kick_cb(struct mml_dev *mml,
@@ -2090,6 +2103,8 @@ static int mml_probe(struct platform_device *pdev)
 	mutex_init(&mml->ctx_mutex);
 	mutex_init(&mml->clock_mutex);
 	mutex_init(&mml->wake_ref_mutex);
+	mutex_init(&mml->dpc.dpc_mutex[mml_sys_tile]);
+	mutex_init(&mml->dpc.dpc_mutex[mml_sys_frame]);
 
 	for (i = 0; i < ARRAY_SIZE(mml->sys_state); i++) {
 		mml->sys_state[i].sys_id = i;
