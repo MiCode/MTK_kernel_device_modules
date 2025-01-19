@@ -51,6 +51,7 @@ static struct wakeup_source *adsp_audio_wakelock;
 static int ktv_status;
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 static int hfp_client_rx_status;
+static int hfp_client_tx_status;
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 static int anc_status;
@@ -296,6 +297,22 @@ static int hfp_client_rx_status_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s() hfp_client_rx_status = %d\n", __func__, hfp_client_rx_status);
 	return 0;
 }
+
+static int hfp_client_tx_status_set(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	hfp_client_rx_status = ucontrol->value.integer.value[0];
+	pr_debug("%s() hfp_client_tx_status = %d\n", __func__, hfp_client_tx_status);
+	return 0;
+}
+
+static int hfp_client_tx_status_get(struct snd_kcontrol *kcontrol,
+			  struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = hfp_client_tx_status;
+	pr_debug("%s() hfp_client_tx_status = %d\n", __func__, hfp_client_tx_status);
+	return 0;
+}
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
@@ -505,6 +522,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	SOC_SINGLE_EXT("dsp_hfp_client_rx_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_hfp_client_tx_default_en", SND_SOC_NOPM, 0, 0xff, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	SOC_SINGLE_EXT("dsp_anc_default_en", SND_SOC_NOPM, 0, 0xff, 0,
@@ -623,6 +642,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	SOC_SINGLE_EXT("dsp_hfp_client_rx_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
+	SOC_SINGLE_EXT("dsp_hfp_client_tx_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
+		       dsp_task_attr_get, dsp_task_attr_set),
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	SOC_SINGLE_EXT("dsp_anc_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
@@ -691,6 +712,8 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	SOC_SINGLE_EXT("hfp_client_rx_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       hfp_client_rx_status_get, hfp_client_rx_status_set),
+	SOC_SINGLE_EXT("hfp_client_tx_status", SND_SOC_NOPM, 0, 0x1, 0,
+		       hfp_client_tx_status_get, hfp_client_tx_status_set),
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	SOC_SINGLE_EXT("anc_status", SND_SOC_NOPM, 0, 0x1, 0,

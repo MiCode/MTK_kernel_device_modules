@@ -90,6 +90,9 @@ uint32_t audio_get_dsp_id(const uint8_t task)
 	case TASK_SCENE_PLAYBACK13:
 	case TASK_SCENE_PLAYBACK14:
 	case TASK_SCENE_PLAYBACK15:
+#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+	case TASK_SCENE_HFP_CLIENT_TX:
+#endif
 #endif
 		dsp_id = AUDIO_OPENDSP_USE_HIFI3_A;
 		break;
