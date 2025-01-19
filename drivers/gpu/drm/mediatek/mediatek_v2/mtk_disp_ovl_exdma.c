@@ -372,7 +372,9 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 #define OVL_CON_MTX_BT601_TO_RGB		(0x6UL << 16)
 #define OVL_CON_MTX_BT709_TO_RGB		(0x7UL << 16)
 #define OVL_CON_MTX_BT2020_FULL_TO_RGB	(0x8UL << 16)
+#define OVL_CON_MTX_BT2020_TO_RGB		(0x9UL << 16)
 #define OVL_CON_MTX_P3_FULL_TO_RGB		(0xAUL << 16)
+#define OVL_CON_MTX_P3_TO_RGB			(0xBUL << 16)
 	#define OVL_CON_CLRFMT_RGB (1UL)
 	#define OVL_CON_CLRFMT_RGBA8888 (2)
 	#define OVL_CON_CLRFMT_ARGB8888 (3)
@@ -1835,6 +1837,7 @@ static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
 	case MTK_DRM_DATASPACE_STANDARD_BT601_625_UNADJUSTED:
 	case MTK_DRM_DATASPACE_STANDARD_BT601_525:
 	case MTK_DRM_DATASPACE_STANDARD_BT601_525_UNADJUSTED:
+	case MTK_DRM_DATASPACE_STANDARD_DCI_P3://P3 Must align AOSP use BT601 FULL to do Y2R convert
 		switch (plane_ds & MTK_DRM_DATASPACE_RANGE_MASK) {
 		case MTK_DRM_DATASPACE_RANGE_UNSPECIFIED:
 		case MTK_DRM_DATASPACE_RANGE_LIMITED:
@@ -1847,8 +1850,6 @@ static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
 		break;
 
 	case MTK_DRM_DATASPACE_STANDARD_BT709:
-	case MTK_DRM_DATASPACE_STANDARD_BT2020:
-	case MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
 		switch (plane_ds & MTK_DRM_DATASPACE_RANGE_MASK) {
 		case MTK_DRM_DATASPACE_RANGE_UNSPECIFIED:
 		case MTK_DRM_DATASPACE_RANGE_LIMITED:
@@ -1859,10 +1860,18 @@ static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
 			break;
 		}
 		break;
-	case MTK_DRM_DATASPACE_STANDARD_DCI_P3:
-		ret = OVL_CON_MTX_P3_FULL_TO_RGB;
+	case MTK_DRM_DATASPACE_STANDARD_BT2020:
+	case MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
+		switch (plane_ds & MTK_DRM_DATASPACE_RANGE_MASK) {
+		case MTK_DRM_DATASPACE_RANGE_UNSPECIFIED:
+		case MTK_DRM_DATASPACE_RANGE_LIMITED:
+			ret = OVL_CON_MTX_BT2020_TO_RGB;
+			break;
+		default:
+			ret = OVL_CON_MTX_BT2020_FULL_TO_RGB;
+			break;
+		}
 		break;
-
 	case 0:
 		switch (plane_ds & 0xffff) {
 		case MTK_DRM_DATASPACE_JFIF:
