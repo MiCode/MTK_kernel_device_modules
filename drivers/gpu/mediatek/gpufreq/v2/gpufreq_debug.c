@@ -813,8 +813,10 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 	}
 
 	seq_puts(m, "\n[GPU BModel]\n");
+	seq_printf(m, "VSYS_SEARCH_GPUTOP_DVFS_H1,%d\n", g_shared_status->slt2_bmodel.vgpu_h1);
 	seq_printf(m, "VSYS_SEARCH_GPUTOP_DVFS_H,%d\n", g_shared_status->slt2_bmodel.vgpu_h);
 	seq_printf(m, "VSYS_SEARCH_GPUTOP_DVFS_L,%d\n", g_shared_status->slt2_bmodel.vgpu_l);
+	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_H1,%d\n", g_shared_status->slt2_bmodel.vstack_h1);
 	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_H,%d\n", g_shared_status->slt2_bmodel.vstack_h);
 	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_L,%d\n", g_shared_status->slt2_bmodel.vstack_l);
 
