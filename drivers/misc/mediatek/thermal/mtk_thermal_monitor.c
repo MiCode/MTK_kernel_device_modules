@@ -1551,7 +1551,7 @@ void mtk_thermal_zone_device_unregister_wrapper(struct thermal_zone_device *tz)
 	/* delete the proc file entry from proc */
 	if (proc_tz_dir_entry != NULL)
 		remove_proc_entry((const char *)type, proc_tz_dir_entry);
-	mutex_lock(&MTM_TZ_PROC_DIR_LOCK);
+	mutex_unlock(&MTM_TZ_PROC_DIR_LOCK);
 
 	tzidx = mtk_thermal_get_tz_idx(tz->type);
 
