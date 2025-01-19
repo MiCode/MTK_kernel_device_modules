@@ -15934,6 +15934,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		bus-debug-num-ports = <25>;
 		vcp-pwr-status = <0x1c004e60>;
 		vcp-clk-sys = <0x1000c000>;
+		vcp-clk-sys-pdn = <0x60>;
+		vcp-clk-sys-fenc = <0x174>;
 		suspend-gipc-bit = <19>;
 		resume-gipc-bit = <19>;
 
