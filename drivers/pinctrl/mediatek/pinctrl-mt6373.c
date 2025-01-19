@@ -192,7 +192,7 @@ static const struct mtk_pin_soc mt6373_data = {
 	.ngrps = 14,
 	.nfuncs = 2,
 	.gpio_m = 0,
-	.capability_flags = FLAG_GPIO_START_IDX_1,
+	.capability_flags = FLAG_GPIO_START_IDX_1 | FLAG_MT63XX,
 };
 
 static int mt6373_pinctrl_probe(struct platform_device *pdev)
