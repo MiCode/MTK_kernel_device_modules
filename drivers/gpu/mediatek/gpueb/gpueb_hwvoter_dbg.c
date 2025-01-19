@@ -167,7 +167,7 @@ int gpueb_hw_voter_create_procfs(void)
 
 	for (i = 0; i < ARRAY_SIZE(entries); i++) {
 		if (!proc_create(entries[i].name,
-						0664,
+						0660,
 						dir,
 						entries[i].fops)) {
 			pr_notice("%s: create /proc/gpueb_hw_voter/%s failed\n",
