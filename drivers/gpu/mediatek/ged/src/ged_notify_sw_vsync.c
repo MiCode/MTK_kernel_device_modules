@@ -141,6 +141,7 @@ static unsigned long long g_ns_gpu_predict_A_to_I_duration;
 static unsigned long long g_ns_gpu_predict_I_to_A_duration;
 static unsigned long long g_ns_gpu_predict_A_to_A_duration;
 static unsigned long long g_ns_gpu_predict_prev_A_to_A_duration;
+static unsigned long long g_ns_gpu_predict_prev_I_to_A_duration;
 
 static bool g_bGPUAPO;
 static bool g_bGPUPredictAPO;
@@ -1280,6 +1281,7 @@ void ged_get_predict_active_time(void)
 	trace_GPU_Power__Policy__APO(0);
 	trace_GPU_Power__Policy__APO__IdleActive(0);
 
+	g_ns_gpu_predict_prev_I_to_A_duration = g_ns_gpu_predict_I_to_A_duration;
 	if (g_ns_gpu_predict_I_ts > 0) {
 		g_ns_gpu_predict_I_to_A_duration =
 			g_ns_gpu_predict_A_ts - g_ns_gpu_predict_I_ts;
@@ -1336,8 +1338,11 @@ bool ged_check_predict_power_autosuspend_nolock(void)
 				(g_ns_gpu_predict_A_to_A_duration < g_apo_wakeup_ns &&
 				g_ns_gpu_predict_prev_A_to_A_duration < g_apo_wakeup_ns))) {
 				// Calculate for autosuspend_delay setting
-				llDiff = (long long)(g_ns_gpu_predict_prev_A_to_A_duration -
-					g_ns_gpu_predict_A_to_I_duration);
+				if (g_apo_legacy == GED_APO_LEGACY_VER2)
+					llDiff = (long long)(g_ns_gpu_predict_I_to_A_duration);
+				else
+					llDiff = (long long)(g_ns_gpu_predict_prev_A_to_A_duration -
+						g_ns_gpu_predict_A_to_I_duration);
 
 				// Jobs in one frame or similar power-durations
 				if (((g_ns_gpu_predict_A_to_A_duration +
@@ -1408,8 +1413,13 @@ void ged_check_predict_power_duration(void)
 	bPredict_current_I_to_A = ged_check_predict_power_autosuspend_nolock();
 
 	/* Condition-3 */
-	bPredict_last_I_to_A = ((g_ns_gpu_predict_I_to_A_duration > 0) &&
+	if (g_apo_legacy == GED_APO_LEGACY_VER2) {
+		bPredict_last_I_to_A = ((g_ns_gpu_predict_prev_I_to_A_duration > 0) &&
+		(g_ns_gpu_predict_prev_I_to_A_duration < g_apo_thr_ns));
+	} else {
+		bPredict_last_I_to_A = ((g_ns_gpu_predict_I_to_A_duration > 0) &&
 		(g_ns_gpu_predict_I_to_A_duration < g_apo_thr_ns));
+	}
 	trace_GPU_Power__Policy__APO_cond_1(bPredict_current_I_to_A);
 	trace_GPU_Power__Policy__APO_cond_2(bPredict_last_I_to_A);
 
@@ -1455,6 +1465,7 @@ void ged_gpu_predict_apo_init_nolock(void)
 	g_ns_gpu_predict_I_to_A_duration = 0;
 	g_ns_gpu_predict_A_to_A_duration = 0;
 	g_ns_gpu_predict_prev_A_to_A_duration = 0;
+	g_ns_gpu_predict_prev_I_to_A_duration = 0;
 }
 EXPORT_SYMBOL(ged_gpu_predict_apo_init_nolock);
 
