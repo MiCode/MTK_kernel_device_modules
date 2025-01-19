@@ -1906,7 +1906,7 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 	u32 i;
 	u64 exec_cost;
 
-	CMDQ_TRACE_FORCE_BEGIN("%s %d %llx\n",
+	CMDQ_TRACE_FORCE_BEGIN("%s wait valid thread, thd:%d flag:%llx\n",
 		__func__, handle->thread, handle->engineFlag);
 
 	/* we have to wait handle has valid thread first */
@@ -1943,10 +1943,13 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 			mutex_unlock(&mdp_task_mutex);
 		}
 	}
+	CMDQ_TRACE_FORCE_END();
 
 	CMDQ_MSG("%s wait handle:0x%p thread:%d\n",
 		__func__, handle, handle->thread);
 
+	CMDQ_TRACE_FORCE_BEGIN("%s wait flush pkt, thd:%d flag:%llx\n",
+		__func__, handle->thread, handle->engineFlag);
 	/* wait handle flush done */
 	exec_cost = sched_clock();
 	status = cmdq_pkt_wait_flush_ex_result(handle);
