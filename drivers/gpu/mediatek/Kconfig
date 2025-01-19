@@ -264,11 +264,19 @@ config MTK_GPU_DIAGNOSIS_DEBUG
 	  dump level are available.
 	  This is a config to decide exported debug function.
 
-config MTK_GHPM_SUPPORT
-	tristate "Support MTK GHPM"
+config MTK_GHPM_MT6991_SUPPORT
+	tristate "Support MTK GHPM Platform is mt6991"
 	help
 	  Choose this option to enable GHPM.
-	  CONFIG_MTK_GHPM_SUPPORT defines the ghpm driver would be built as
+	  CONFIG_MTK_GHPM_MT6991_SUPPORT defines the ghpm driver would be built as
+	  kernel module or not.
+	  Set Y or M to build ghpm kernel driver and set N to disable.
+
+config MTK_GHPM_MT6993_SUPPORT
+	tristate "Support MTK GHPM Platform is mt6993"
+	help
+	  Choose this option to enable GHPM.
+	  CONFIG_MTK_GHPM_MT6993_SUPPORT defines the ghpm driver would be built as
 	  kernel module or not.
 	  Set Y or M to build ghpm kernel driver and set N to disable.
 

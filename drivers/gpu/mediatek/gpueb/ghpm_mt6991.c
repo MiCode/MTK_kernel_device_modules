@@ -29,7 +29,7 @@
 #include "gpueb_helper.h"
 #include "gpueb_ipi.h"
 #include "ghpm_wrapper.h"
-#include "ghpm.h"
+#include "ghpm_mt6991.h"
 #include "gpueb_debug.h"
 #include "gpueb_common.h"
 #include "gpueb_timesync.h"
