@@ -64,7 +64,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "mbox-count",
 			&gpueb_mboxdev.count);
 	if (!gpueb_mboxdev.count) {
-		gpueb_pr_debug(GPUEB_TAG, "mbox count not found");
+		gpueb_log_d(GPUEB_TAG, "mbox count not found");
 		return false;
 	}
 
@@ -72,7 +72,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "mbox-size",
 			&g_mbox_size);
 	if (g_mbox_size == 0) {
-		gpueb_pr_debug(GPUEB_TAG, "mbox size not found");
+		gpueb_log_d(GPUEB_TAG, "mbox size not found");
 		return false;
 	}
 
@@ -80,7 +80,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "slot-size",
 			&g_slot_size);
 	if (g_slot_size == 0) {
-		gpueb_pr_debug(GPUEB_TAG, "slot size not found");
+		gpueb_log_d(GPUEB_TAG, "slot size not found");
 		return false;
 	}
 
@@ -88,7 +88,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "ts-mbox",
 			&g_ts_mbox);
 	if (g_ts_mbox > gpueb_mboxdev.count) {
-		gpueb_pr_debug(GPUEB_TAG, "ts-mbox(%d) > mbox-count(%d)",
+		gpueb_log_d(GPUEB_TAG, "ts-mbox(%d) > mbox-count(%d)",
 			g_ts_mbox, gpueb_mboxdev.count);
 		return false;
 	}
@@ -97,7 +97,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	cnt_elems = of_property_count_u32_elems(
 			pdev->dev.of_node, "send-table");
 	if (cnt_elems <= 0) {
-		gpueb_pr_debug(GPUEB_TAG, "send table not found");
+		gpueb_log_d(GPUEB_TAG, "send table not found");
 		return false;
 	}
 	gpueb_mboxdev.send_count = cnt_elems / send_item_num;
@@ -106,7 +106,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 	cnt_elems = of_property_count_u32_elems(
 			pdev->dev.of_node, "recv-table");
 	if (cnt_elems <= 0) {
-		gpueb_pr_debug(GPUEB_TAG, "recv table not found");
+		gpueb_log_d(GPUEB_TAG, "recv table not found");
 		return false;
 	}
 	gpueb_mboxdev.recv_count = cnt_elems / recv_item_num;
@@ -117,20 +117,20 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 			gpueb_mbox_pin_send_name,
 			gpueb_mboxdev.send_count);
 	if (ret < 0) {
-		gpueb_pr_debug(GPUEB_TAG, "Could not find send-name-table in dts");
+		gpueb_log_d(GPUEB_TAG, "Could not find send-name-table in dts");
 		return false;
 	}
 
 	// Check if #element in gpueb_mbox_pin_send_name is enough or not
 	pin_name_size = ARRAY_SIZE(gpueb_mbox_pin_send_name);
 	if (pin_name_size < gpueb_mboxdev.send_count) {
-		gpueb_pr_debug(GPUEB_TAG, "gpueb_mbox_pin_send_name size(%d) smaller than send_count:%d",
+		gpueb_log_d(GPUEB_TAG, "gpueb_mbox_pin_send_name size(%d) smaller than send_count:%d",
 				pin_name_size, gpueb_mboxdev.send_count);
 		return false;
 	}
 
 	for (i = 0; i < gpueb_mboxdev.send_count; i++) {
-		gpueb_pr_debug(GPUEB_TAG, "send-name-table[%d] = %s",
+		gpueb_log_d(GPUEB_TAG, "send-name-table[%d] = %s",
 				i, gpueb_mbox_pin_send_name[i]);
 	}
 
@@ -140,20 +140,20 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 			gpueb_mbox_pin_recv_name,
 			gpueb_mboxdev.recv_count);
 	if (ret < 0) {
-		gpueb_pr_debug(GPUEB_TAG, "Could not find recv-name-table in dts");
+		gpueb_log_d(GPUEB_TAG, "Could not find recv-name-table in dts");
 		return false;
 	}
 
 	// Check if #element in gpueb_mbox_pin_send_name is enough or not
 	pin_name_size = ARRAY_SIZE(gpueb_mbox_pin_recv_name);
 	if (pin_name_size < gpueb_mboxdev.recv_count) {
-		gpueb_pr_debug(GPUEB_TAG, "gpueb_mbox_pin_recv_name size(%d) smaller than recv_count:%d",
+		gpueb_log_d(GPUEB_TAG, "gpueb_mbox_pin_recv_name size(%d) smaller than recv_count:%d",
 				pin_name_size, gpueb_mboxdev.recv_count);
 		return false;
 	}
 
 	for (i = 0; i < gpueb_mboxdev.recv_count; i++) {
-		gpueb_pr_debug(GPUEB_TAG, "recv-name-table[%d] = %s",
+		gpueb_log_d(GPUEB_TAG, "recv-name-table[%d] = %s",
 				i, gpueb_mbox_pin_recv_name[i]);
 	}
 
@@ -183,7 +183,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * send_item_num,
 				&gpueb_mbox_pin_send[i].chan_id);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get ipi id (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get ipi id (%d):%d", i, __LINE__);
 			return false;
 		}
 		gpueb_mbox_pin_send[i].pin_index = gpueb_mbox_pin_send[i].chan_id;
@@ -193,7 +193,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * send_item_num + 1,
 				&mbox_id);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get mbox id (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get mbox id (%d):%d", i, __LINE__);
 			return false;
 		}
 		/* Because mbox is a bit-field */
@@ -204,7 +204,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * send_item_num + 2,
 				&gpueb_mbox_pin_send[i].msg_size);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get pin size (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get pin size (%d):%d", i, __LINE__);
 			return false;
 		}
 	}
@@ -221,7 +221,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * recv_item_num,
 				&gpueb_mbox_pin_recv[i].chan_id);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get ipi id (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get ipi id (%d):%d", i, __LINE__);
 			return false;
 		}
 		gpueb_mbox_pin_recv[i].pin_index = gpueb_mbox_pin_recv[i].chan_id;
@@ -231,7 +231,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * recv_item_num + 1,
 				&mbox_id);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get mbox id (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get mbox id (%d):%d", i, __LINE__);
 			return false;
 		}
 		/* Because mbox is a bit-field */
@@ -242,7 +242,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * recv_item_num + 2,
 				&gpueb_mbox_pin_recv[i].msg_size);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get pin size (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get pin size (%d):%d", i, __LINE__);
 			return false;
 		}
 
@@ -251,7 +251,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * recv_item_num + 3,
 				&recv_opt);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get recv opt (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get recv opt (%d):%d", i, __LINE__);
 			return false;
 		}
 		/* because recv_opt(0:receive ,1: response) is a bit-field */
@@ -262,7 +262,7 @@ static int gpueb_ipi_table_init(struct platform_device *pdev)
 				i * recv_item_num + 4,
 				&cb_opt);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "Cannot get callback opt (%d):%d", i, __LINE__);
+			gpueb_log_d(GPUEB_TAG, "Cannot get callback opt (%d):%d", i, __LINE__);
 			return false;
 		}
 		/* because cb_ctx_opt(0:isr context, 1:process context) is a bit-field */
@@ -292,14 +292,14 @@ void gpueb_mbox_setup_pin_table(unsigned int mbox)
 	}
 
 	if (last_ofs > g_mbox_size)
-		gpueb_pr_debug(GPUEB_TAG, "mbox%d exceed the maximum size", mbox);
+		gpueb_log_d(GPUEB_TAG, "mbox%d exceed the maximum size", mbox);
 
 	return;
 }
 
 void gpueb_plat_ipi_timeout_cb(int ipi_id)
 {
-	gpueb_pr_debug(GPUEB_TAG, "Error: possible error IPI %d", ipi_id);
+	gpueb_log_d(GPUEB_TAG, "Error: possible error IPI %d", ipi_id);
 
 	ipi_monitor_dump(&gpueb_ipidev);
 	//mtk_emidbg_dump();
@@ -320,18 +320,18 @@ int gpueb_ipi_init(struct platform_device *pdev)
 		return -ENODEV;
 
 	// Create mbox dev
-	gpueb_pr_debug(GPUEB_TAG, "mbox probe start");
+	gpueb_log_d(GPUEB_TAG, "mbox probe start");
 	for (i = 0; i < gpueb_mboxdev.count; i++) {
 		gpueb_mbox_info[i].mbdev = &gpueb_mboxdev;
 		ret = mtk_mbox_probe(pdev, gpueb_mbox_info[i].mbdev, i);
 		if (ret < 0 || gpueb_mboxdev.info_table[i].irq_num < 0) {
-			gpueb_pr_debug(GPUEB_TAG, "mbox%d probe fail, ret = %d", i, ret);
+			gpueb_log_d(GPUEB_TAG, "mbox%d probe fail, ret = %d", i, ret);
 			continue;
 		}
 
 		ret = enable_irq_wake(gpueb_mboxdev.info_table[i].irq_num);
 		if (ret < 0) {
-			gpueb_pr_debug(GPUEB_TAG, "mbox%d enable irq fail, ret = %d", i, ret);
+			gpueb_log_d(GPUEB_TAG, "mbox%d enable irq fail, ret = %d", i, ret);
 			continue;
 		}
 		gpueb_mbox_setup_pin_table(i);
@@ -351,7 +351,7 @@ int gpueb_ipi_init(struct platform_device *pdev)
 			gpueb_mbox_info[i].mbdev->info_table[i].send_status_reg,
 			gpueb_mbox_info[i].mbdev->info_table[i].recv_status_reg);
 		if (ret) {
-			gpueb_pr_debug(GPUEB_TAG, "mbox%d smem init fali, ret = %d", i, ret);
+			gpueb_log_d(GPUEB_TAG, "mbox%d smem init fali, ret = %d", i, ret);
 			return ret;
 		}
 	}
@@ -370,15 +370,15 @@ int gpueb_ipi_init(struct platform_device *pdev)
 			&gpueb_mboxdev,
 			gpueb_mboxdev.send_count);
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_debug(GPUEB_TAG, "ipi devcie register fail!");
+		gpueb_log_d(GPUEB_TAG, "ipi devcie register fail!");
 		return ret;
 	}
-	gpueb_pr_debug(GPUEB_TAG, "mbox probe done");
+	gpueb_log_d(GPUEB_TAG, "mbox probe done");
 
 #if IPI_TEST
 	ret = gpueb_ipi_test_init();
 	if (ret) {
-		gpueb_pr_info(GPUEB_TAG, "fail to init ipi register (%d)", ret);
+		gpueb_log_i(GPUEB_TAG, "fail to init ipi register (%d)", ret);
 		WARN_ON(1);
 		return ret;
 	}
@@ -386,12 +386,12 @@ int gpueb_ipi_init(struct platform_device *pdev)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_send");
 	if (unlikely(!res)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to get resource MBOX0_SEND");
+		gpueb_log_i(GPUEB_TAG, "fail to get resource MBOX0_SEND");
 		return -1;
 	}
 	g_gpueb_mbox_ipi = devm_ioremap(gpueb_dev, res->start, resource_size(res));
 	if (unlikely(!g_gpueb_mbox_ipi)) {
-		gpueb_pr_info(GPUEB_TAG, "fail to ioremap MBOX0_SEND: 0x%llx", res->start);
+		gpueb_log_i(GPUEB_TAG, "fail to ioremap MBOX0_SEND: 0x%llx", res->start);
 		return -1;
 	}
 
@@ -413,22 +413,22 @@ int gpueb_ipi_test_init(void)
 				NULL,
 				(void *)&msg_rx[ipi]);
 		if (ret != IPI_ACTION_DONE) {
-			gpueb_pr_debug(GPUEB_TAG, "ipi:#%d register fail! ret = %d",
+			gpueb_log_d(GPUEB_TAG, "ipi:#%d register fail! ret = %d",
 					ipi, ret);
 			if (ret == IPI_DUPLEX) {
 				/* ipi already registered, unregister it and register again */
-				gpueb_pr_debug(GPUEB_TAG, "ipi:#%d register: IPI_DUPLEX",
+				gpueb_log_d(GPUEB_TAG, "ipi:#%d register: IPI_DUPLEX",
 					ipi);
 				ret = mtk_ipi_unregister(&gpueb_ipidev, ipi);
 				if (ret != IPI_ACTION_DONE) {
-					gpueb_pr_debug(GPUEB_TAG, "ipi:#%d unregister fail! ret = %d",
+					gpueb_log_d(GPUEB_TAG, "ipi:#%d unregister fail! ret = %d",
 						ipi, ret);
 					break;
 				}
 				ret = mtk_ipi_register(&gpueb_ipidev, ipi, NULL, NULL,
 					(void *)&msg_rx[ipi]);
 				if (ret != IPI_ACTION_DONE) {
-					gpueb_pr_debug(GPUEB_TAG, "ipi:#%d register fail again! ret = %d",
+					gpueb_log_d(GPUEB_TAG, "ipi:#%d register fail again! ret = %d",
 						ipi, ret);
 					break;
 				}
@@ -446,7 +446,7 @@ int gpueb_ipi_send_compl_test(int ipi, int msg)
 
 	/* Test mtk_ipi_send_compl */
 	msg_tx[ipi].msg = msg;
-	gpueb_pr_debug(GPUEB_TAG, "ipi:#%d mtk_ipi_send_compl data: %d",
+	gpueb_log_d(GPUEB_TAG, "ipi:#%d mtk_ipi_send_compl data: %d",
 			ipi, msg_tx[ipi].msg);
 	ret = mtk_ipi_send_compl(
 		&gpueb_ipidev, // GPUEB's IPI device
@@ -457,10 +457,10 @@ int gpueb_ipi_send_compl_test(int ipi, int msg)
 		IPI_TIMEOUT_MS); // Timeout value in milisecond
 
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_info(GPUEB_TAG, "IPI fail ret=%d", ret);
+		gpueb_log_i(GPUEB_TAG, "IPI fail ret=%d", ret);
 		return ret;
 	}
-	gpueb_pr_debug(GPUEB_TAG, "ipi:#%d ack data: %d",
+	gpueb_log_d(GPUEB_TAG, "ipi:#%d ack data: %d",
 			ipi, msg_rx[ipi].msg);
 
 	return msg_rx[ipi].msg;
@@ -533,7 +533,7 @@ unsigned int gpueb_get_mbox1_irq(void)
 		/* GPUEB to APMCU IRQ[1] SW INT Status (0x13C62088) */
 		val = readl(g_gpueb_mbox_ipi + 0x88);
 	} else
-		gpueb_pr_info(GPUEB_TAG, "null g_gpueb_mbox_ipi");
+		gpueb_log_i(GPUEB_TAG, "null g_gpueb_mbox_ipi");
 
 	return val;
 }
@@ -546,7 +546,7 @@ void gpueb_clr_mbox1_irq(unsigned int val)
 		/* GPUEB to APMCU IRQ[1] SW INT Clear (0x13C62084) */
 		writel(val, (g_gpueb_mbox_ipi + 0x84));
 	} else
-		gpueb_pr_info(GPUEB_TAG, "null g_gpueb_mbox_ipi");
+		gpueb_log_i(GPUEB_TAG, "null g_gpueb_mbox_ipi");
 }
 EXPORT_SYMBOL_GPL(gpueb_clr_mbox1_irq);
 
@@ -554,32 +554,32 @@ int mtk_ipi_send_compl_to_gpueb(int ipi_id, int opt, void *data, int len, unsign
 {
 	int ret;
 
-	gpueb_pr_debug(GHPM_TAG, "ENTRY, ipi_id=%d", ipi_id);
+	gpueb_log_d(GHPM_TAG, "ENTRY, ipi_id=%d", ipi_id);
 
 	/* On mfg0 and gpueb */
 	ret = gpueb_ctrl(GHPM_ON, MFG1_OFF, SUSPEND_POWER_ON);
 	if (ret) {
-		gpueb_pr_err(GHPM_TAG, "gpueb on fail, return value=%d\n", ret);
+		gpueb_log_e(GHPM_TAG, "gpueb on fail, return value=%d\n", ret);
 		return ret;
 	}
 
-	gpueb_pr_debug(GHPM_TAG, "gpueb ctrl on finish and ready to mtk_ipi_send_compl");
+	gpueb_log_d(GHPM_TAG, "gpueb ctrl on finish and ready to mtk_ipi_send_compl");
 
 	ret = mtk_ipi_send_compl(get_gpueb_ipidev(), ipi_id, opt, data, len, timeout);
 	if (unlikely(ret != IPI_ACTION_DONE)) {
-		gpueb_pr_err(GHPM_TAG, "[ABORT] fail to send IPI: ipi_id=%d ret=%d", ipi_id, ret);
+		gpueb_log_e(GHPM_TAG, "[ABORT] fail to send IPI: ipi_id=%d ret=%d", ipi_id, ret);
 		return ret;
 	}
-	gpueb_pr_debug(GHPM_TAG, "mtk_ipi_send_compl success\n");
+	gpueb_log_d(GHPM_TAG, "mtk_ipi_send_compl success\n");
 
 	/* Off mfg0 and gpueb */
 	ret = gpueb_ctrl(GHPM_OFF, MFG1_OFF, SUSPEND_POWER_OFF);
 	if (ret) {
-		gpueb_pr_err(GHPM_TAG, "gpueb off fail, return value=%d\n", ret);
+		gpueb_log_e(GHPM_TAG, "gpueb off fail, return value=%d\n", ret);
 		return ret;
 	}
 
-	gpueb_pr_debug(GHPM_TAG, "Exit, ipi_id=%d\n", ipi_id);
+	gpueb_log_d(GHPM_TAG, "Exit, ipi_id=%d\n", ipi_id);
 
 	return ret;
 }

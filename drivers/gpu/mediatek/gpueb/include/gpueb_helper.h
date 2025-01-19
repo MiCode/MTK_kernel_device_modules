@@ -20,15 +20,15 @@
 
 #define GPUEB_DEBUG_ENABLE  (0)
 
-#define gpueb_pr_err(tag, fmt, args...) \
+#define gpueb_log_e(tag, fmt, args...) \
 	pr_err(tag"[ERROR][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
-#define gpueb_pr_info(tag, fmt, args...) \
+#define gpueb_log_i(tag, fmt, args...) \
 	pr_info(tag"[INFO][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
 #if GPUEB_DEBUG_ENABLE
-#define gpueb_pr_debug(tag, fmt, args...) \
+#define gpueb_log_d(tag, fmt, args...) \
 	pr_info(tag"[DEBUG][%s:%d]: "fmt"\n", __func__, __LINE__, ##args)
 #else
-#define gpueb_pr_debug(tag, fmt, args...)
+#define gpueb_log_d(tag, fmt, args...)
 #endif
 
 #define gpueb_pr_logbuf(tag, buf, len, size, fmt, args...) \

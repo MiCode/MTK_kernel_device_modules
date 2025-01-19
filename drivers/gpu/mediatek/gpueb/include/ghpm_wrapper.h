@@ -11,6 +11,15 @@
 #define GHPM_TEST                          (0)       /* use proc node to test ghpm on/off */
 #define GPUEB_SLEEP_IPI_MAGIC_NUMBER       (0x55667788)
 
+#define GHPM_PROFILE_TYPE_STRING(type) \
+	( \
+		type == PROF_GHPM_CTRL_OFF ? __stringify(CTRL_OFF) : \
+		type == PROF_GHPM_CTRL_ON ? __stringify(CTRL_ON) : \
+		type == PROF_GHPM_WAIT_OFF ? __stringify(WAIT_OFF) : \
+		type == PROF_GHPM_WAIT_ON ? __stringify(WAIT_ON) : \
+		"UNKNOWN" \
+	)
+
 enum ghpm_init_ret {
 	GHPM_INIT_SUCCESS,
 	GHPM_INIT_ERR
@@ -66,6 +75,31 @@ enum gpu_ghpm_state {
 	GHPM_POWER_ON = 1,
 };
 
+enum ghpm_profile_type {
+	PROF_GHPM_CTRL_OFF  = 0,
+	PROF_GHPM_CTRL_ON   = 1,
+	PROF_GHPM_WAIT_OFF  = 2,
+	PROF_GHPM_WAIT_ON   = 3,
+	PROF_GHPM_TYPE_NUM  = 4
+};
+
+enum ghpm_profile_index {
+	PROF_GHPM_IDX_START = 0,
+	PROF_GHPM_IDX_END   = 1,
+	PROF_GHPM_IDX_COUNT = 2,
+	PROF_GHPM_IDX_LAST  = 3,
+	PROF_GHPM_IDX_TOTAL = 4,
+	PROF_GHPM_IDX_AVG   = 5,
+	PROF_GHPM_IDX_MAX   = 6,
+	PROF_GHPM_IDX_MIN   = 7,
+	PROF_GHPM_IDX_NUM   = 8,
+};
+
+enum ghpm_profile_op {
+	PROF_GHPM_OP_START  = 0,
+	PROF_GHPM_OP_END    = 1,
+};
+
 struct gpueb_slp_ipi_data {
 	enum gpueb_low_power_event event;
 	enum mfg0_off_state off_state;
@@ -78,11 +112,9 @@ struct ghpm_platform_fp {
 	void (*dump_ghpm_info)(void);
 };
 
-static atomic_t trigger_ghpm_state = ATOMIC_INIT(0);
-static atomic_t last_trigger_ghpm_state = ATOMIC_INIT(0);
-
 extern unsigned int g_ghpm_ready;
 extern unsigned int g_ghpm_support;
+extern unsigned long long g_ghpm_profile[PROF_GHPM_TYPE_NUM][PROF_GHPM_IDX_NUM];
 
 void ghpm_wrapper_init(struct platform_device *pdev);
 
@@ -92,5 +124,6 @@ int wait_gpueb(enum gpueb_low_power_event event);
 int gpueb_ctrl(enum ghpm_state power,
 	enum mfg0_off_state off_state, enum gpueb_low_power_event event);
 void dump_ghpm_info(void);
+void ghpm_profile(unsigned int type, unsigned int op);
 
 #endif /* __GHPM_WRAPPER_H__ */

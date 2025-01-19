@@ -8,6 +8,8 @@
 
 #include <linux/platform_device.h>
 
+#define GHPM_TIMESTAMP_MONITOR_EN          (1)
+
 #define GHPM_IPI_TIMEOUT                   (5000)
 #define GPUEB_WAIT_TIMEOUT                 (10000)
 
@@ -51,9 +53,42 @@
 #define MFG_MT6991_E1_ID                   (0)
 #define MFG_MT6991_E2_ID                   (0x101)
 
+#define GHPM_TS_MON_STRING(type) \
+	( \
+		type == TRIGGER_GHPM_ON ? __stringify(TRIGGER_GHPM_ON) : \
+		type == POLLING_GHPM_ON_START ? __stringify(POLLING_GHPM_ON_START) : \
+		type == POLLING_GHPM_ON_TIMEOUT ? __stringify(POLLING_GHPM_ON_TIMEOUT) : \
+		type == POLLING_GPUEB_RESUME_START ? __stringify(POLLING_GPUEB_RESUME_START) : \
+		type == POLLING_GPUEB_RESUME_TIMEOUT ? __stringify(POLLING_GPUEB_RESUME_TIMEOUT) : \
+		type == GPUEB_ON_DONE ? __stringify(GPUEB_ON_DONE) : \
+		type == IPI_SUSPEND_GPUEB ? __stringify(IPI_SUSPEND_GPUEB) : \
+		type == POLLING_GPUEB_OFF_START ? __stringify(POLLING_GPUEB_OFF_START) : \
+		type == POLLING_GPUEB_OFF_TIMEOUT ? __stringify(POLLING_GPUEB_OFF_TIMEOUT) : \
+		type == GPUEB_OFF_DONE ? __stringify(GPUEB_OFF_DONE) : \
+		"UNKNOWN" \
+	)
+
 enum mfg_mt6991_e2_con {
 	MFG_MT6991_A0,
 	MFG_MT6991_B0
 };
+
+#if GHPM_TIMESTAMP_MONITOR_EN
+enum ghpm_timestamp_monitor_point {
+	TRIGGER_GHPM_ON,
+	POLLING_GHPM_ON_START,
+	POLLING_GHPM_ON_TIMEOUT,
+	POLLING_GPUEB_ON_TIMEOUT_ERR,
+	POLLING_GPUEB_RESUME_START,
+	POLLING_GPUEB_RESUME_TIMEOUT,
+	GPUEB_ON_DONE,
+	IPI_SUSPEND_GPUEB,
+	POLLING_GPUEB_OFF_START,
+	POLLING_GHPM_OFF_TIMEOUT_ERR,
+	POLLING_GPUEB_OFF_TIMEOUT,
+	GPUEB_OFF_DONE,
+	GHPM_TS_MONITOR_NUM
+};
+#endif
 
 #endif /* __GHPM_H__ */

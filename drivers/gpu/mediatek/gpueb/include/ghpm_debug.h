@@ -53,6 +53,13 @@
 	}
 #endif /* CONFIG_PROC_FS */
 
+enum mfg0_a0_state {
+	MFG0_AO_DISABLE,
+	MFG0_AO_ENABLE
+};
+
+extern int g_ghpm_profile_enable;
+
 void ghpm_debug_init(struct platform_device *pdev);
 
 #endif /* __GHPM_DEBUG_H__ */

@@ -90,7 +90,7 @@ static struct ghpm_platform_fp platform_ghpmswwa_fp = {
 
 static void __dump_mfg_pwr_sta(void)
 {
-	gpueb_pr_err(GHPM_SWWA_TAG, "0:0x%08x, 1:0x%08x, 2:0x%08x, 37:0x%08x",
+	gpueb_log_e(GHPM_SWWA_TAG, "0:0x%08x, 1:0x%08x, 2:0x%08x, 37:0x%08x",
 		get_mfg0_pwr_con(), readl(g_mfg1_pwr_con),
 		readl(g_mfg2_pwr_con), readl(g_mfg37_pwr_con));
 }
@@ -101,36 +101,36 @@ static int __mfg0_on_if_not_duplicate(void)
 	int i;
 	struct arm_smccc_res res;
 
-	gpueb_pr_debug(GHPM_SWWA_TAG, "mfg0_pwr_con(0x%x), pwr cnt=%d, progress=%d",
+	gpueb_log_d(GHPM_SWWA_TAG, "mfg0_pwr_con(0x%x), pwr cnt=%d, progress=%d",
 		get_mfg0_pwr_con(), atomic_read(&g_power_count), atomic_read(&g_progress_status));
 
 	if (atomic_read(&g_progress_status) == POWER_OFF_IN_PROGRESS) {
-		gpueb_pr_debug(GHPM_SWWA_TAG, "power off in progress by others");
+		gpueb_log_d(GHPM_SWWA_TAG, "power off in progress by others");
 		/* another thread is already powering off */
 		i = 0;
 		while (mfg0_pwr_sta() != MFG0_PWR_OFF) {
 			udelay(1);
 			if (++i > GPUEB_WAIT_TIMEOUT) {
-				gpueb_pr_err(GHPM_SWWA_TAG, "wait mfg0 off finish timeout");
+				gpueb_log_e(GHPM_SWWA_TAG, "wait mfg0 off finish timeout");
 				ret = GHPM_DUPLICATE_ON_ERR;
 			}
 		}
-		gpueb_pr_debug(GHPM_SWWA_TAG, "mfg0_pwr_con(0x%x), pwr cnt=%d, progress=%d",
+		gpueb_log_d(GHPM_SWWA_TAG, "mfg0_pwr_con(0x%x), pwr cnt=%d, progress=%d",
 			get_mfg0_pwr_con(), atomic_read(&g_power_count),
 			atomic_read(&g_progress_status));
 
 		/* smc to power on mfg0 -> reset eb -> warm boot -> eb resume */
-		gpueb_pr_debug(GHPM_SWWA_TAG, "ghpm swwa on");
+		gpueb_log_d(GHPM_SWWA_TAG, "ghpm swwa on");
 		arm_smccc_smc(
 			MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
 			GHPM_SWWA_SMP_OP_MFG0_ON,      /* a1 */
 			0, 0, 0, 0, 0, 0, &res);
 		atomic_set(&g_progress_status, POWER_ON_IN_PROGRESS);
-		gpueb_pr_debug(GHPM_SWWA_TAG, "ghpm swwa on done");
+		gpueb_log_d(GHPM_SWWA_TAG, "ghpm swwa on done");
 		atomic_set(&g_progress_status, POWER_ON_IN_PROGRESS);
 		ret = GHPM_SUCCESS;
 	} else {
-		gpueb_pr_err(GHPM_SWWA_TAG, "power/power_cnt not aligned");
+		gpueb_log_e(GHPM_SWWA_TAG, "power/power_cnt not aligned");
 		ret = GHPM_DUPLICATE_ON_ERR;
 	}
 
@@ -146,7 +146,7 @@ static int __ghpm_swwa_ctrl(enum ghpm_state power, enum mfg0_off_state off_state
 
 	raw_spin_lock_irqsave(&ghpm_lock, g_pwr_irq_flags);
 
-	gpueb_pr_debug(GHPM_SWWA_TAG, "ENTRY, power=%d, g_progress_status=%d, g_power_count=%d",
+	gpueb_log_d(GHPM_SWWA_TAG, "ENTRY, power=%d, g_progress_status=%d, g_power_count=%d",
 		power, atomic_read(&g_progress_status), atomic_read(&g_power_count));
 
 	if (power == GHPM_ON) {
@@ -158,7 +158,7 @@ static int __ghpm_swwa_ctrl(enum ghpm_state power, enum mfg0_off_state off_state
 					 * MFG0 shutdown on from TFA after bootup, ghpm don't need
 					 * to power on mfg0 again when ghpm on first time coming
 					 */
-					gpueb_pr_debug(GHPM_SWWA_TAG, "ghpm on first been called");
+					gpueb_log_d(GHPM_SWWA_TAG, "ghpm on first been called");
 					first_on_after_bootup = true;
 					ret = GHPM_SUCCESS;
 				} else {
@@ -167,23 +167,23 @@ static int __ghpm_swwa_ctrl(enum ghpm_state power, enum mfg0_off_state off_state
 				}
 			} else {
 				/* smc to power on mfg0 -> reset eb -> warm boot -> eb resume */
-				gpueb_pr_debug(GHPM_SWWA_TAG, "ghpm swwa on");
+				gpueb_log_d(GHPM_SWWA_TAG, "ghpm swwa on");
 				arm_smccc_smc(
 					MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
 					GHPM_SWWA_SMP_OP_MFG0_ON,      /* a1 */
 					0, 0, 0, 0, 0, 0, &res);
 				atomic_set(&g_progress_status, POWER_ON_IN_PROGRESS);
-				gpueb_pr_debug(GHPM_SWWA_TAG, "ghpm swwa on done");
+				gpueb_log_d(GHPM_SWWA_TAG, "ghpm swwa on done");
 				ret = GHPM_SUCCESS;
 			}
 		} else {
-			gpueb_pr_debug(GHPM_SWWA_TAG, "no need to power on mfg0 again.");
+			gpueb_log_d(GHPM_SWWA_TAG, "no need to power on mfg0 again.");
 			ret = GHPM_SUCCESS;
 		}
 	} else if (power == GHPM_OFF) {
 		atomic_dec(&g_power_count);
 		if (atomic_read(&g_power_count) == 0) {
-			gpueb_pr_debug(GHPM_SWWA_TAG, "suspend gpueb");
+			gpueb_log_d(GHPM_SWWA_TAG, "suspend gpueb");
 
 			/* IPI to gpueb for suspend flow and then trigger ghpm off */
 			data.event = SUSPEND_POWER_OFF;
@@ -198,7 +198,7 @@ static int __ghpm_swwa_ctrl(enum ghpm_state power, enum mfg0_off_state off_state
 				GHPM_IPI_TIMEOUT);
 
 			if (unlikely(ret != IPI_ACTION_DONE)) {
-				gpueb_pr_err(GHPM_SWWA_TAG, "OFF IPI failed, ret=%d", ret);
+				gpueb_log_e(GHPM_SWWA_TAG, "OFF IPI failed, ret=%d", ret);
 				gpueb_dump_status(NULL, NULL, 0);
 				ret = GHPM_OFF_EB_IPI_ERR;
 				goto done_unlock;
@@ -209,36 +209,36 @@ static int __ghpm_swwa_ctrl(enum ghpm_state power, enum mfg0_off_state off_state
 					!is_gpueb_wfi() ) {
 				udelay(1);
 				if (++i > GPUEB_WAIT_TIMEOUT) {
-					gpueb_pr_err(GHPM_SWWA_TAG, "Wait EB OFF failed");
-					gpueb_pr_err(GHPM_SWWA_TAG, "g_gpueb_lp_state_gpr: 0x%08x",
+					gpueb_log_e(GHPM_SWWA_TAG, "Wait EB OFF failed");
+					gpueb_log_e(GHPM_SWWA_TAG, "g_gpueb_lp_state_gpr: 0x%08x",
 						readl(g_gpueb_lp_state_gpr));
-					gpueb_pr_err(GHPM_SWWA_TAG, "is_gpueb_wfi: 0x%s",
+					gpueb_log_e(GHPM_SWWA_TAG, "is_gpueb_wfi: 0x%s",
 						is_gpueb_wfi()? "true": "false");
 					gpueb_dump_status(NULL, NULL, 0);
 					goto done_unlock;
 				}
 			}
-			gpueb_pr_debug(GHPM_SWWA_TAG, "suspend gpueb done");
+			gpueb_log_d(GHPM_SWWA_TAG, "suspend gpueb done");
 
 			/* smc to power off mfg0 */
-			gpueb_pr_debug(GHPM_SWWA_TAG, "mfg0 off smc");
+			gpueb_log_d(GHPM_SWWA_TAG, "mfg0 off smc");
 			arm_smccc_smc(
 				MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
 				GHPM_SWWA_SMP_OP_MFG0_OFF,     /* a1 */
 				0, 0, 0, 0, 0, 0, &res);
 			atomic_set(&g_progress_status, POWER_OFF_IN_PROGRESS);
-			gpueb_pr_debug(GHPM_SWWA_TAG, "mfg0 off smc done");
+			gpueb_log_d(GHPM_SWWA_TAG, "mfg0 off smc done");
 		} else {
-			gpueb_pr_debug(GHPM_SWWA_TAG, "no need to ghpm ctrl off");
+			gpueb_log_d(GHPM_SWWA_TAG, "no need to ghpm ctrl off");
 		}
 		ret = GHPM_SUCCESS;
 	} else {
-		gpueb_pr_err(GHPM_SWWA_TAG, "Invalid power=%d", power);
+		gpueb_log_e(GHPM_SWWA_TAG, "Invalid power=%d", power);
 		ret = GHPM_INPUT_ERR;
 	}
 
 done_unlock:
-	gpueb_pr_debug(GHPM_SWWA_TAG, "EXIT, power=%d, g_progress_status=%d, g_power_count=%d",
+	gpueb_log_d(GHPM_SWWA_TAG, "EXIT, power=%d, g_progress_status=%d, g_power_count=%d",
 		power, atomic_read(&g_progress_status), atomic_read(&g_power_count));
 
 	raw_spin_unlock_irqrestore(&ghpm_lock, g_pwr_irq_flags);
@@ -258,7 +258,7 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 	unsigned int i;
 
 	raw_spin_lock_irqsave(&ghpm_lock, g_pwr_irq_flags);
-	gpueb_pr_debug(GHPM_SWWA_TAG, "Entry, event=%d, g_progress_status=%d, g_power_count=%d",
+	gpueb_log_d(GHPM_SWWA_TAG, "Entry, event=%d, g_progress_status=%d, g_power_count=%d",
 		event, atomic_read(&g_progress_status), atomic_read(&g_power_count));
 
 	if (event == SUSPEND_POWER_ON) {
@@ -267,21 +267,21 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			while ((readl(g_gpueb_lp_state_gpr) != GPUEB_ON_RESUME)) {
 				udelay(1);
 				if (++i > GPUEB_WAIT_TIMEOUT) {
-					gpueb_pr_err(GHPM_SWWA_TAG, "g_gpueb_lp_state_gpr: 0x%08x",
+					gpueb_log_e(GHPM_SWWA_TAG, "g_gpueb_lp_state_gpr: 0x%08x",
 						readl(g_gpueb_lp_state_gpr));
 					goto wait_err;
 				}
 			}
 			gpueb_timesync_update();
 			atomic_set(&g_progress_status, NOT_IN_PROGRESS);
-			gpueb_pr_debug(GHPM_SWWA_TAG, "GPUEB resume done, i=%u", i);
+			gpueb_log_d(GHPM_SWWA_TAG, "GPUEB resume done, i=%u", i);
 		} else if (atomic_read(&g_progress_status) == POWER_OFF_IN_PROGRESS) {
-			gpueb_pr_err(GHPM_SWWA_TAG, "wrong call order by user, no on before off");
+			gpueb_log_e(GHPM_SWWA_TAG, "wrong call order by user, no on before off");
 			goto wait_err;
 		} else if (atomic_read(&g_progress_status) == NOT_IN_PROGRESS) {
-			gpueb_pr_debug(GHPM_SWWA_TAG, "no need to wait");
+			gpueb_log_d(GHPM_SWWA_TAG, "no need to wait");
 		} else {
-			gpueb_pr_err(GHPM_SWWA_TAG, "g_progress_status=%d unexpected!",
+			gpueb_log_e(GHPM_SWWA_TAG, "g_progress_status=%d unexpected!",
 				atomic_read(&g_progress_status));
 			goto wait_err;
 		}
@@ -291,25 +291,25 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 			while (mfg0_pwr_sta() == MFG0_PWR_ON) {
 				udelay(1);
 				if (++i > GPUEB_WAIT_TIMEOUT) {
-					gpueb_pr_err(GHPM_SWWA_TAG, "MFG0_PWR_CON: 0x%08x",
+					gpueb_log_e(GHPM_SWWA_TAG, "MFG0_PWR_CON: 0x%08x",
 						get_mfg0_pwr_con());
 					goto wait_err;
 				}
 			}
 			atomic_set(&g_progress_status, NOT_IN_PROGRESS);
-			gpueb_pr_debug(GHPM_SWWA_TAG, "GPUEB suspend done, i=%u", i);
+			gpueb_log_d(GHPM_SWWA_TAG, "GPUEB suspend done, i=%u", i);
 		} else if (atomic_read(&g_progress_status) == POWER_ON_IN_PROGRESS) {
-			gpueb_pr_debug(GHPM_SWWA_TAG, "on after off at once, no need to wait");
+			gpueb_log_d(GHPM_SWWA_TAG, "on after off at once, no need to wait");
 		} else if (atomic_read(&g_progress_status) == NOT_IN_PROGRESS) {
-			gpueb_pr_debug(GHPM_SWWA_TAG, "no need to wait");
+			gpueb_log_d(GHPM_SWWA_TAG, "no need to wait");
 		} else {
-			gpueb_pr_err(GHPM_SWWA_TAG, "g_progress_status=%d unexpected!",
+			gpueb_log_e(GHPM_SWWA_TAG, "g_progress_status=%d unexpected!",
 				atomic_read(&g_progress_status));
 			goto wait_err;
 		}
 	}
 
-	gpueb_pr_debug(GHPM_SWWA_TAG, "Exit, event=%d, g_progress_status=%d, g_power_count=%d",
+	gpueb_log_d(GHPM_SWWA_TAG, "Exit, event=%d, g_progress_status=%d, g_power_count=%d",
 		event, atomic_read(&g_progress_status), atomic_read(&g_power_count));
 	raw_spin_unlock_irqrestore(&ghpm_lock, g_pwr_irq_flags);
 
@@ -318,7 +318,7 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 wait_err:
 	atomic_set(&g_progress_status, NOT_IN_PROGRESS);
 	raw_spin_unlock_irqrestore(&ghpm_lock, g_pwr_irq_flags);
-	gpueb_pr_err(GHPM_SWWA_TAG, "Wait GPUEB timeout, event=%d", event);
+	gpueb_log_e(GHPM_SWWA_TAG, "Wait GPUEB timeout, event=%d", event);
 	__dump_ghpm_info();
 	__dump_mfg_pwr_sta();
 	gpueb_dump_status(NULL, NULL, 0);
@@ -328,9 +328,9 @@ wait_err:
 
 static void __dump_ghpm_info(void)
 {
-	gpueb_pr_debug(GHPM_SWWA_TAG, "g_progress_status=%d, g_power_count=%d",
+	gpueb_log_d(GHPM_SWWA_TAG, "g_progress_status=%d, g_power_count=%d",
 		atomic_read(&g_progress_status), atomic_read(&g_power_count));
-	gpueb_pr_debug(GHPM_SWWA_TAG, "No need to dump ghpm hw info");
+	gpueb_log_d(GHPM_SWWA_TAG, "No need to dump ghpm hw info");
 }
 
 static bool __is_gpueb_exist(void)
@@ -339,7 +339,7 @@ static bool __is_gpueb_exist(void)
 
 	of_gpueb = of_find_compatible_node(NULL, NULL, "mediatek,gpueb");
 	if (!of_gpueb) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "fail to find gpueb of_node");
+		gpueb_log_e(GHPM_SWWA_TAG, "fail to find gpueb of_node");
 		return false;
 	}
 
@@ -352,33 +352,33 @@ static int __ghpm_swwa_pdrv_probe(struct platform_device *pdev)
 	struct resource *res = NULL;
 	int ret = -ENOENT;
 
-	gpueb_pr_info(GHPM_SWWA_TAG, "start to probe ghpm swwa driver");
+	gpueb_log_i(GHPM_SWWA_TAG, "start to probe ghpm swwa driver");
 
 	if (!__is_gpueb_exist()) {
-		gpueb_pr_info(GHPM_TAG, "no gpueb node, skip probe");
+		gpueb_log_i(GHPM_TAG, "no gpueb node, skip probe");
 		goto done;
 	}
 
 	if (!g_ghpm_support) {
-		gpueb_pr_info(GHPM_TAG, "ghpm not support, skip probe");
+		gpueb_log_i(GHPM_TAG, "ghpm not support, skip probe");
 		ret = 0;
 		goto done;
 	}
 
 	if (unlikely(!ghpm_dev)) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "fail to find ghpm device");
+		gpueb_log_e(GHPM_SWWA_TAG, "fail to find ghpm device");
 		goto done;
 	}
 
 	/* get mfg1_pwr_con */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg1_pwr_con");
 	if (unlikely(!res)) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "fail to get resource mfg1_pwr_con");
+		gpueb_log_e(GHPM_SWWA_TAG, "fail to get resource mfg1_pwr_con");
 		goto done;
 	}
 	g_mfg1_pwr_con = devm_ioremap(ghpm_dev, res->start, resource_size(res));
 	if (unlikely(!g_mfg1_pwr_con)) {
-		gpueb_pr_info(GHPM_SWWA_TAG, "fail to ioremap mfg1_pwr_con: 0x%llx",
+		gpueb_log_i(GHPM_SWWA_TAG, "fail to ioremap mfg1_pwr_con: 0x%llx",
 			(u64) res->start);
 		goto done;
 	}
@@ -386,12 +386,12 @@ static int __ghpm_swwa_pdrv_probe(struct platform_device *pdev)
 	/* get mfg2_pwr_con */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg2_pwr_con");
 	if (unlikely(!res)) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "fail to get resource mfg2_pwr_con");
+		gpueb_log_e(GHPM_SWWA_TAG, "fail to get resource mfg2_pwr_con");
 		goto done;
 	}
 	g_mfg2_pwr_con = devm_ioremap(ghpm_dev, res->start, resource_size(res));
 	if (unlikely(!g_mfg2_pwr_con)) {
-		gpueb_pr_info(GHPM_SWWA_TAG, "fail to ioremap mfg2_pwr_con: 0x%llx",
+		gpueb_log_i(GHPM_SWWA_TAG, "fail to ioremap mfg2_pwr_con: 0x%llx",
 			(u64) res->start);
 		goto done;
 	}
@@ -399,12 +399,12 @@ static int __ghpm_swwa_pdrv_probe(struct platform_device *pdev)
 	/* get mfg37_pwr_con */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mfg37_pwr_con");
 	if (unlikely(!res)) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "fail to get resource mfg37_pwr_con");
+		gpueb_log_e(GHPM_SWWA_TAG, "fail to get resource mfg37_pwr_con");
 		goto done;
 	}
 	g_mfg37_pwr_con = devm_ioremap(ghpm_dev, res->start, resource_size(res));
 	if (unlikely(!g_mfg37_pwr_con)) {
-		gpueb_pr_info(GHPM_SWWA_TAG, "fail to ioremap mfg37_pwr_con: 0x%llx",
+		gpueb_log_i(GHPM_SWWA_TAG, "fail to ioremap mfg37_pwr_con: 0x%llx",
 			(u64) res->start);
 		goto done;
 	}
@@ -412,25 +412,25 @@ static int __ghpm_swwa_pdrv_probe(struct platform_device *pdev)
 	/* get GPUEB_LP_STATE_GPR address */
 	g_gpueb_lp_state_gpr = gpueb_get_gpr_addr(GPUEB_SRAM_GPR10);
 	if (unlikely(!g_gpueb_lp_state_gpr)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to get GPUEB_LP_STATE_GPR (%d)", GPUEB_SRAM_GPR10);
+		gpueb_log_e(GPUEB_TAG, "fail to get GPUEB_LP_STATE_GPR (%d)", GPUEB_SRAM_GPR10);
 		goto done;
 	}
 
 	g_ipi_channel = gpueb_get_send_PIN_ID_by_name("IPI_ID_SLEEP");
 	if (unlikely(g_ipi_channel < 0)) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "fail to get IPI_ID_SLEEP id");
+		gpueb_log_e(GHPM_SWWA_TAG, "fail to get IPI_ID_SLEEP id");
 		goto done;
 	}
 
 	ret = mtk_ipi_register(get_gpueb_ipidev(), g_ipi_channel, NULL, NULL, &msgbuf);
 	if (ret != IPI_ACTION_DONE) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "ipi register fail: id=%d, ret=%d", g_ipi_channel, ret);
+		gpueb_log_e(GHPM_SWWA_TAG, "ipi register fail: id=%d, ret=%d", g_ipi_channel, ret);
 		goto done;
 	}
 
 	g_gpueb_slot_size = get_gpueb_slot_size();
 	if (unlikely(!g_gpueb_slot_size)) {
-		gpueb_pr_err(GPUEB_TAG, "fail to get gpueb slot size");
+		gpueb_log_e(GPUEB_TAG, "fail to get gpueb slot size");
 		goto done;
 	}
 
@@ -442,7 +442,7 @@ static int __ghpm_swwa_pdrv_probe(struct platform_device *pdev)
 	ghpm_register_ghpm_fp(&platform_ghpmswwa_fp);
 
 	ret = 0;
-	gpueb_pr_info(GHPM_SWWA_TAG, "ghpm swwa driver probe done");
+	gpueb_log_i(GHPM_SWWA_TAG, "ghpm swwa driver probe done");
 done:
 	g_ghpm_ready = 1;
 	return ret;
@@ -453,16 +453,16 @@ static int __init __ghpm_swwa_init(void)
 {
 	int ret = 0;
 
-	gpueb_pr_info(GHPM_SWWA_TAG, "start to init ghpm_swwa platform driver");
+	gpueb_log_i(GHPM_SWWA_TAG, "start to init ghpm_swwa platform driver");
 
 	/* register ghpm platform driver */
 	ret = platform_driver_register(&g_ghpm_swwa_pdrv);
 	if (ret) {
-		gpueb_pr_err(GHPM_SWWA_TAG, "fail to register ghpm_swwa platform driver: %d", ret);
+		gpueb_log_e(GHPM_SWWA_TAG, "fail to register ghpm_swwa platform driver: %d", ret);
 		goto done;
 	}
 
-	gpueb_pr_info(GHPM_SWWA_TAG, "ghpm swwa platform driver init done");
+	gpueb_log_i(GHPM_SWWA_TAG, "ghpm swwa platform driver init done");
 
 done:
 	return ret;
