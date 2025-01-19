@@ -139,6 +139,9 @@ static u32 slbc_pmu_4;
 static u32 slbc_pmu_5;
 static u32 slbc_pmu_6;
 static u32 slbc_total_ceil_n;
+static u32 slbc_sspm_major_ver;
+static u32 slbc_sspm_minor_ver;
+static u32 slbc_sspm_patch_ver;
 static int debug_level;
 static int uid_ref[UID_MAX];
 static int slbc_mic_num = 3;
@@ -1631,6 +1634,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	}
 #endif /* CONFIG_MTK_SLBC_IPI */
 
+	seq_printf(m, "slbc_version: v%u.%u.%u\n", slbc_sspm_major_ver, slbc_sspm_minor_ver, slbc_sspm_patch_ver);
 	seq_printf(m, "slbc_enable %x\n", slbc_enable);
 	seq_printf(m, "slb_disable %x\n", slb_disable);
 	seq_printf(m, "slc_disable %x\n", slc_disable);
@@ -2291,8 +2295,10 @@ static int slbc_probe(struct platform_device *pdev)
 		SLBC_TRACE_REC(LVL_NORM, TYPE_C, 0, ret, "mtk_dmaheap_register_slc_callback done");
 	}
 
-	if (slbc_enable)
+	if (slbc_enable) {
 		slbc_sspm_enable(slbc_enable);
+		slbc_get_sspm_ver(&slbc_sspm_major_ver, &slbc_sspm_minor_ver, &slbc_sspm_patch_ver);
+	}
 
 #ifdef SLBC_CB_TEST
 	user_cb_register();
