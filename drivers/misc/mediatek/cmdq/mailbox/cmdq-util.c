@@ -187,7 +187,7 @@ void cmdq_thrd_irq_history_record(u8 hwid ,u8 thread_idx)
 void cmdq_dump_thrd_irq_history(u8 hwid)
 {
 #define txt_sz 128
-	u16 arr_idx, thrd_irq_cnt[CMDQ_THR_MAX_COUNT], offset;
+	u16 arr_idx, thrd_irq_cnt[CMDQ_THR_MAX_COUNT] = {0}, offset;
 	u8 thrd_idx, i;
 	s16 len;
 	char text[txt_sz];
