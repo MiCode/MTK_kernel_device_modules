@@ -17,7 +17,7 @@
 #include "mt6789-afe-gpio.h"
 #include "../../codecs/mt6358.h"
 
-#if IS_ENABLED(CONFIG_SND_SOC_MT6366_ACCDET)
+#if IS_ENABLED(CONFIG_SND_SOC_MT6366_ACCDET) || IS_ENABLED(CONFIG_SND_SOC_MT6358_ACCDET)
 #include "../../codecs/mt6358-accdet.h"
 #endif
 
@@ -315,7 +315,7 @@ static int mt6789_mt6366_init(struct snd_soc_pcm_runtime *rtd)
 
 	/* disable ext amp connection */
 	snd_soc_dapm_disable_pin(dapm, EXT_SPK_AMP_W_NAME);
-#if IS_ENABLED(CONFIG_SND_SOC_MT6366_ACCDET)
+#if IS_ENABLED(CONFIG_SND_SOC_MT6366_ACCDET) || IS_ENABLED(CONFIG_SND_SOC_MT6358_ACCDET)
 	mt6358_accdet_init(codec_component, rtd->card);
 #endif
 	return 0;
