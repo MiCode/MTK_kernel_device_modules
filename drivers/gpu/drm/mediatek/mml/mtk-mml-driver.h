@@ -510,6 +510,15 @@ void mml_dump_input(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task 
 void mml_dump_output(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task);
 #endif
 
+/*
+ * mml_get_chip_swver - Get sw ver from chip id
+ *
+ * @mml:	The mml_dev instance
+ *
+ * Return:	sw ver
+ */
+u32 mml_get_chip_swver(struct mml_dev *mml);
+
 extern struct platform_driver mml_sys_driver;
 extern struct platform_driver mml_aal_driver;
 extern struct platform_driver mml_color_driver;

@@ -118,6 +118,7 @@ int mml_stash = 0x3;
 int mml_stash;
 #endif
 module_param(mml_stash, int, 0644);
+EXPORT_SYMBOL(mml_stash);
 
 int mml_urate = 110;
 module_param(mml_urate, int, 0644);

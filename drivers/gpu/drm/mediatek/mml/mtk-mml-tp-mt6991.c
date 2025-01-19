@@ -974,6 +974,9 @@ static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 		path->mux_group = grp_dispatch[i];
 	}
 
+	if (mml_get_chip_swver(mml) == 0)
+		mml_stash = 0;
+
 	return 0;
 }
 
