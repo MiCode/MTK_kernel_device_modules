@@ -73,6 +73,17 @@ struct _ccci_lk_info_v2 {
 	int                lk_info_tag_num;
 	unsigned int       lk_info_ld_flag;
 	int                lk_info_ld_md_errno;
+
+/* The following members are used in lk2 but unused in the kernel.
+ * To preserve compatibility between lk/lk2 and the Kernel, these
+ * unused members have been removed from the kernel.
+ *      unsigned int       lk_info_bl2_load_md;
+ *      unsigned long long lk_info_md_low_power_addr;
+ *      unsigned long long lk_info_md_dbm_addr;
+ *      unsigned long long scp_ap_base_addr;
+ *      unsigned int       scp_smem_size;
+ *      unsigned int       ccb_gear_id;
+ */
 };
 
 struct _ccci_tag {
@@ -504,7 +515,6 @@ static void md_mem_info_parsing(void)
 		s_g_lk_load_img_status |= LK_LOAD_MD_ERR_NO_MD_LOAD;
 		return;
 	}
-
 	if (mtk_ccci_find_args_val("hdr_tbl_inf", (unsigned char *)&md_inf,
 				sizeof(struct _modem_info)) < 0)
 		CCCI_UTIL_INF_MSG("[hdr_tbl_inf] get fail, will pasing invalid data\n");
