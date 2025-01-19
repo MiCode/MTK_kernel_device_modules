@@ -14,8 +14,8 @@ int mtk_drm_dp_audio_config(struct drm_device *dev,
 			    void *data, struct drm_file *file_priv);
 int mtk_drm_dp_get_cap(struct drm_device *dev,
 		       void *data, struct drm_file *file_priv);
-int mtk_drm_dp_get_info(struct drm_device *dev,
-			struct drm_mtk_session_info *info);
+int mtk_drm_dp_get_info_by_id(struct drm_device *dev,
+			struct drm_mtk_session_info *info, int dp_encoder_id);
 void mtk_dp_get_dsc_capability(u8 *dsc_cap);
 #endif
 
