@@ -26,7 +26,7 @@
 /* #define FPGA_INTERRUPT_API_DISABLE */
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-//#define MTK_SCHED_SUPPORT
+#define MTK_SCHED_SUPPORT
 #endif
 
 #define mem_slot_range (100*1024ULL) //100KB
