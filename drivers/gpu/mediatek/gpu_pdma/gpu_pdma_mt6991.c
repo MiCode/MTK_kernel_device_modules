@@ -171,8 +171,10 @@ static void ccmd_reset_hw(void)
 	int *ringbuf_pa0_setting_l;
 	unsigned int pdma_status;
 
-	if (g_sw_ver == 0)
+	if (g_sw_ver == 0) {
+		writel(0x3, (g_pdma_reg_base_kva + CCMD_RING_BUFFER_CONTROL));
 		return;
+	}
 
 	ringbuf_pa0_setting_l = g_pdma_reg_base_kva + CCMD_RING_BUFFER_PA_0_L;
 
