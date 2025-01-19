@@ -9,6 +9,7 @@
 #define pr_fmt(fmt) "dma_heap: system "fmt
 
 #include <linux/dma-buf.h>
+#include <linux/dma-direct.h>
 #include <linux/dma-mapping.h>
 #include <linux/dma-map-ops.h>
 #include <linux/dma-heap.h>
@@ -19,6 +20,7 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/swap.h>
+#include <linux/swiotlb.h>
 #include <linux/vmalloc.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
@@ -87,6 +89,27 @@ static struct iova_cache_data *get_iova_cache(struct system_heap_buffer *buffer,
 	return NULL;
 }
 
+static bool needs_swiotlb_bounce(struct device *dev, struct sg_table *table)
+{
+	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
+	struct scatterlist *sg;
+	int i;
+
+	for_each_sgtable_dma_sg(table, sg, i) {
+		// SG_DMA_SWIOTLB is set only for dma-iommu, not for dma-direct
+		if (domain && IS_ENABLED(CONFIG_NEED_SG_DMA_FLAGS)) {
+			if (sg_dma_is_swiotlb(table->sgl))
+				return true;
+		} else {
+			phys_addr_t paddr = domain ?
+					    iommu_iova_to_phys(domain, sg_dma_address(sg)) :
+					    dma_to_phys(dev, sg_dma_address(sg));
+			if (is_swiotlb_buffer(dev, paddr))
+				return true;
+		}
+	}
+	return false;
+}
 
 /* function declare */
 static int system_buf_priv_dump(const struct dma_buf *dmabuf,
@@ -480,6 +503,13 @@ static struct sg_table *system_heap_map_dma_buf(struct dma_buf_attachment *attac
 	ret = dma_map_sgtable(attachment->dev, table, direction, attr);
 	if (ret)
 		return ERR_PTR(ret);
+
+	if (a->uncached && needs_swiotlb_bounce(attachment->dev, table)) {
+		pr_err("Cannot map uncached system heap buffer for %s, as it requires SWIOTLB",
+			dev_name(attachment->dev));
+		dma_unmap_sgtable(attachment->dev, table, direction, attr);
+		return ERR_PTR(-EINVAL);
+	}
 
 	a->mapped = true;
 	return table;
