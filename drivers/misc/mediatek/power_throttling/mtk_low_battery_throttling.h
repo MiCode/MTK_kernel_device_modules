@@ -38,6 +38,7 @@ enum LOW_BATTERY_USER_TAG {
 	PPB = 2,
 	UT = 3,
 	LBAT_INTR_2 = 4,
+	HPT = 5,
 	LOW_BATTERY_USER_NUM
 };
 
@@ -81,6 +82,7 @@ int register_low_battery_notify(low_battery_callback lb_cb,
 				enum LOW_BATTERY_PRIO_TAG prio_val, void *data);
 int register_low_battery_mbrain_cb(low_battery_mbrain_callback lb_mbrain_cb);
 int lbat_set_ppb_mode(unsigned int mode);
+int lbat_set_hpt_mode(unsigned int enable);
 #endif
 
 #endif /* __MTK_LOW_BATTERY_THROTTLING_H__ */

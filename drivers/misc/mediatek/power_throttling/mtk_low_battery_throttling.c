@@ -73,6 +73,7 @@ struct lbat_thl_priv {
 	unsigned int lvsys_thd_volt_l;
 	unsigned int lvsys_thd_volt_h;
 	unsigned int ppb_mode;
+	unsigned int hpt_mode;
 	unsigned int pt_shutdown_en;
 	struct work_struct psy_work;
 	struct power_supply *psy;
@@ -93,6 +94,7 @@ struct lbat_thl_priv {
 	unsigned int l_pmic_lv;                /* largest pmic level for charger and main pmic */
 	unsigned int *thl_lv;                  /* pmic notify level to throttle level mapping table */
 	unsigned int cur_thl_lv;               /* current throttle level to each module */
+	unsigned int cur_cg_thl_lv;            /* current cpu/gpu throttle level to each module */
 	unsigned int thl_cnt[LOW_BATTERY_USER_NUM][LOW_BATTERY_LEVEL_NUM];
 	struct lbat_mbrain lbat_mbrain_info;
 	struct lbat_user *lbat_pt[INTR_MAX_NUM];
@@ -242,8 +244,20 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 		return;
 	}
 
-	if (lbat_data->cur_thl_lv == thl_level) {
-		pr_info("[%s] same throttle thl_level\n", __func__);
+	if (user == HPT && thl_level != lbat_data->cur_thl_lv) {
+		for (i = 0; i <= LOW_BATTERY_PRIO_GPU; i++) {
+			if (lbcb_tb[i].lbcb)
+				lbcb_tb[i].lbcb(thl_level, lbcb_tb[i].data);
+		}
+		lbat_data->cur_cg_thl_lv = thl_level;
+		trace_low_battery_cg_throttling_level(lbat_data->cur_cg_thl_lv);
+		pr_info("[%s] [decide_and_throttle] user=%d input=%d thl_lv=%d, volt=%d cur_thl_lv/cg_thl_lv=%d, %d\n",
+			__func__, user, input, thl_level, thd_volt, lbat_data->cur_thl_lv, lbat_data->cur_cg_thl_lv);
+		return;
+	}
+
+	if (lbat_data->cur_thl_lv == thl_level && lbat_data->cur_cg_thl_lv == thl_level) {
+		pr_info("[%s] same throttle thl_level=%d\n", __func__, thl_level);
 		return;
 	}
 
@@ -253,18 +267,24 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 	lbat_data->cur_thl_lv = thl_level;
 
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {
-		if (lbcb_tb[i].lbcb)
-			lbcb_tb[i].lbcb(lbat_data->cur_thl_lv, lbcb_tb[i].data);
+		if (lbcb_tb[i].lbcb) {
+			if ((lbat_data->hpt_mode > 0 && i > LOW_BATTERY_PRIO_GPU) || !lbat_data->hpt_mode)
+				lbcb_tb[i].lbcb(lbat_data->cur_thl_lv, lbcb_tb[i].data);
+		}
 	}
 	trace_low_battery_throttling_level(lbat_data->cur_thl_lv);
+	if (!lbat_data->hpt_mode && lbat_data->cur_cg_thl_lv != thl_level) {
+		lbat_data->cur_cg_thl_lv = thl_level;
+		trace_low_battery_cg_throttling_level(lbat_data->cur_cg_thl_lv);
+	}
 
 	if (lb_mbrain_cb)
 		lb_mbrain_cb(lbat_data->lbat_mbrain_info);
 
 	lbat_data->thl_cnt[user][thl_level] += 1;
 
-	pr_info("[%s] [decide_and_throttle] user=%d input=%d thl_level=%d, volt=%d\n",
-		__func__, user, input, thl_level, thd_volt);
+	pr_info("[%s] [decide_and_throttle] user=%d input=%d thl_lv=%d, volt=%d cur_thl_lv/cg_thl_lv=%d, %d\n",
+		__func__, user, input, thl_level, thd_volt, lbat_data->cur_thl_lv, lbat_data->cur_cg_thl_lv);
 }
 
 static unsigned int convert_to_thl_lv(enum LOW_BATTERY_USER_TAG intr_type, unsigned int temp_stage,
@@ -330,7 +350,7 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 		lbat_data->l_lbat_lv = MAX(lbat_data->lbat_lv[INTR_1], lbat_data->lbat_lv[INTR_2]);
 
 		if (lbat_data->lbat_thl_stop > 0 || lbat_data->ppb_mode == 1) {
-			pr_info("[%s] user=%d input=%d not apply, stop=%d, ppb_mode=%d\n", __func__,
+			pr_info("[%s] user=%d input=%d not apply, stop/ppb=%d/%d\n", __func__,
 				user, input, lbat_data->lbat_thl_stop, lbat_data->ppb_mode);
 		} else {
 			lbat_thl_lv = convert_to_thl_lv(LBAT_INTR_1, lbat_data->temp_cur_stage, lbat_data->l_lbat_lv);
@@ -390,6 +410,21 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 				dump_thd_volts_ext(thd_info[INTR_2]->ag_thd_volts, thd_info[INTR_2]->thd_volts_size);
 			}
 #endif
+		}
+	} else if (user == HPT) {
+		lbat_data->hpt_mode = input;
+		if (lbat_data->lbat_thl_stop > 0) {
+			pr_info("[%s] user=%d input=%d not apply, stop=%d\n", __func__, user, input,
+				lbat_data->lbat_thl_stop);
+			mutex_unlock(&exe_thr_lock);
+		} else if (lbat_data->hpt_mode > 0) {
+			exec_throttle(LOW_BATTERY_LEVEL_0, user, thd_volt, input);
+			mutex_unlock(&exe_thr_lock);
+		} else {
+			lbat_thl_lv = convert_to_thl_lv(LBAT_INTR_1, lbat_data->temp_cur_stage, lbat_data->l_lbat_lv);
+			lvsys_thl_lv = convert_to_thl_lv(LVSYS_INTR, lbat_data->temp_cur_stage, lbat_data->lvsys_lv);
+			exec_throttle(MAX(lbat_thl_lv, lvsys_thl_lv), user, thd_volt, input);
+			mutex_unlock(&exe_thr_lock);
 		}
 	} else if (user == UT) {
 		lbat_data->lbat_thl_stop = 1;
@@ -477,6 +512,13 @@ int lbat_set_ppb_mode(unsigned int mode)
 	return 0;
 }
 EXPORT_SYMBOL(lbat_set_ppb_mode);
+
+int lbat_set_hpt_mode(unsigned int enable)
+{
+	decide_and_throttle(HPT, enable, 0);
+	return 0;
+}
+EXPORT_SYMBOL(lbat_set_hpt_mode);
 
 /*****************************************************************************
  * low battery throttle cnt
@@ -585,15 +627,15 @@ static DEVICE_ATTR_RW(low_battery_protect_stop);
 static ssize_t low_battery_protect_level_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	dev_dbg(dev, "cur_thl_lv=%d\n", lbat_data->cur_thl_lv);
-	return sprintf(buf, "%u\n", lbat_data->cur_thl_lv);
+	dev_dbg(dev, "cur_thl_lv=%d cur_cg_thl_lv=%d\n", lbat_data->cur_thl_lv, lbat_data->cur_cg_thl_lv);
+	return sprintf(buf, "%u, %u\n", lbat_data->cur_thl_lv,lbat_data->cur_cg_thl_lv);
 }
 
 static ssize_t low_battery_protect_level_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
 {
-	dev_dbg(dev, "cur_thl_lv = %d\n", lbat_data->cur_thl_lv);
+	dev_dbg(dev, "cur_thl_lv=%d\n", lbat_data->cur_thl_lv);
 	return size;
 }
 

@@ -21,6 +21,18 @@ TRACE_EVENT(low_battery_throttling_level,
 	TP_printk("exec_throttle=%d\n", __entry->low_bat_thl_level)
 );
 
+TRACE_EVENT(low_battery_cg_throttling_level,
+	TP_PROTO(int low_bat_cg_thl_level),
+	TP_ARGS(low_bat_cg_thl_level),
+	TP_STRUCT__entry(
+		__field(int, low_bat_cg_thl_level)
+	),
+	TP_fast_assign(
+		__entry->low_bat_cg_thl_level = low_bat_cg_thl_level;
+	),
+	TP_printk("exec_throttle_cg=%d\n", __entry->low_bat_cg_thl_level)
+);
+
 TRACE_EVENT(low_battery_throttling_cpu_freq,
 	TP_PROTO(int cpu, int lbat_limit_freq),
 	TP_ARGS(cpu, lbat_limit_freq),
