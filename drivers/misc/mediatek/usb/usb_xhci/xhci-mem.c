@@ -2498,7 +2498,7 @@ xhci_add_interrupter(struct xhci_hcd *xhci, struct xhci_interrupter *ir,
 }
 
 struct xhci_interrupter *
-xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg)
+xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg, int intr_num)
 {
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	struct xhci_interrupter *ir;
@@ -2517,14 +2517,19 @@ xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg)
 
 	spin_lock_irq(&xhci->lock);
 
-	/* Find available secondary interrupter, interrupter 0 is reserved for primary */
+	/* Find available secondary interrupter, interrupter 0 is reserverd for primary */
 	for (i = 1; i < xhci->max_interrupters; i++) {
-		if (xhci->interrupters[i] == NULL) {
-			err = xhci_add_interrupter(xhci, ir, i);
-			break;
+		if ((intr_num > 0 && i == intr_num) || intr_num <= 0) {
+			if (xhci->interrupters[i] == NULL) {
+				err = xhci_add_interrupter(xhci, ir, i);
+				if (err) {
+					spin_unlock_irq(&xhci->lock);
+					goto free_ir;
+				}
+				break;
+			}
 		}
 	}
-
 	spin_unlock_irq(&xhci->lock);
 
 	if (err) {
@@ -2541,6 +2546,14 @@ xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg)
 		 i, xhci->max_interrupters);
 
 	return ir;
+
+free_ir:
+	if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0))
+		xhci_vendor_free_interrupter(xhci, ir);
+	else
+		xhci_free_interrupter_(xhci, ir);
+
+	return NULL;
 }
 EXPORT_SYMBOL_GPL(xhci_create_secondary_interrupter_);
 

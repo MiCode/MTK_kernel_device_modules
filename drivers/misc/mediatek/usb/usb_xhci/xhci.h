@@ -2158,7 +2158,7 @@ void xhci_free_container_ctx(struct xhci_hcd *xhci,
 void
 xhci_free_interrupter_(struct xhci_hcd *xhci, struct xhci_interrupter *ir);
 struct xhci_interrupter *
-xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg);
+xhci_create_secondary_interrupter_(struct usb_hcd *hcd, int num_seg, int intr_num);
 void xhci_remove_secondary_interrupter_(struct usb_hcd
 				*hcd, struct xhci_interrupter *ir);
 void xhci_skip_sec_intr_events(struct xhci_hcd *xhci,
