@@ -238,8 +238,6 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 	int i, cpu, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
 	unsigned int wl = get_wl_dsu();
 	struct cpufreq_mtk *c = policy->driver_data;
-	unsigned int gov_cpu = policy->cpu;
-	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int freq_thermal = 0;
 	struct sugov_rq_data *sugov_data_ptr;
 	bool dsu_idle_ctrl = is_dsu_idle_enable();
@@ -278,7 +276,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		cpu_freq_with_thermal = max_freq_in_gear;
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-		freq_thermal = get_cpu_ceiling_freq(gearid);
+		freq_thermal = get_cpu_ceiling_freq(i);
 		if(max_freq_in_gear > freq_thermal)
 			cpu_freq_with_thermal = freq_thermal;
 #endif
