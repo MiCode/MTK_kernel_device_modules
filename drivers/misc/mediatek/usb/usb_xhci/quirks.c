@@ -152,7 +152,7 @@ static void xhci_mtk_usb_update_sample_rate(struct audioformat *fp,
 			new_nr_rates++;
 	}
 
-	if (!new_nr_rates)
+	if (!new_nr_rates || fp->nr_rates == new_nr_rates)
 		return;
 
 	new_rate_table = kmalloc_array(new_nr_rates, sizeof(int), GFP_KERNEL);
@@ -190,6 +190,7 @@ static void xhci_mtk_usb_update_format(struct snd_usb_substream *subs,
 				unsigned int rate_max, unsigned int rate_min)
 {
 	struct audioformat *fp, *n;
+	unsigned int fmt_bits;
 
 	/* check if the stream is initialized */
 	if (!subs->num_formats)
@@ -197,7 +198,8 @@ static void xhci_mtk_usb_update_format(struct snd_usb_substream *subs,
 
 	/* check and remove the unsupported format from the list */
 	list_for_each_entry_safe(fp, n, &subs->fmt_list, list) {
-		if ((bit_max && (fp->fmt_bits > bit_max)) || fp->fmt_bits < bit_min) {
+		fmt_bits = snd_pcm_format_width((__force snd_pcm_format_t)__ffs64(fp->formats));
+		if ((bit_max && (fmt_bits > bit_max)) || fmt_bits < bit_min) {
 			/* update subs format information */
 			subs->num_formats--;
 			subs->formats &= ~(fp->formats);
