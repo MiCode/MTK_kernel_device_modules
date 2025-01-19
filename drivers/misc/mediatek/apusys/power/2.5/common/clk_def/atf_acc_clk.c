@@ -314,17 +314,14 @@ static struct apu_clk_ops mt6877_clk_ops = {
 };
 
 struct apu_clk mt6877_core_topmux = {
-	.keep_enable = 1,
 	.fix_rate = 1,
 };
 
 struct apu_clk mt6877_conn_topmux = {
-	.keep_enable = 1,
 	.fix_rate = 1,
 };
 
 struct apu_clk mt6877_iommu_topmux = {
-	.keep_enable = 1,
 	.fix_rate = 1,
 };
 
@@ -349,12 +346,10 @@ static struct apu_cgs mt6877_conn_cgs = {
 };
 
 struct apu_clk mt6877_mdla_topmux = {
-	.keep_enable = 1,
 	.fix_rate = 1,
 };
 
 struct apu_clk mt6877_mdla0_topmux = {
-	.always_on = 1,
 	.fix_rate = 1,
 };
 
@@ -371,17 +366,14 @@ static struct apu_cgs mt6877_mdla0_cgs = {
 };
 
 struct apu_clk mt6877_vpu_topmux = {
-	.keep_enable = 1,
 	.fix_rate = 1,
 };
 
 struct apu_clk mt6877_vpu0_topmux = {
-	.always_on = 1,
 	.fix_rate = 1,
 };
 
 struct apu_clk mt6877_vpu1_topmux = {
-	.always_on = 1,
 	.fix_rate = 1,
 };
 
