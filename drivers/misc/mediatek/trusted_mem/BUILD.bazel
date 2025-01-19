@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2024 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+# TODO: remove this compatibility label
+filegroup(
+	name = "ddk_makefile",
+	srcs = glob([
+		"**/*.c",
+		"**/*.h",
+		"**/Kbuild",
+		"**/Kbuild.*",
+		"**/Makefile",
+		"**/Makefile.*",
+	]),
+)
+
+# ARM FFA driver
+ffa_module = "ffa_v11"
+
+filegroup(
+	name = "ffa_srcs",
+	srcs = [
+		"{}/bus.c".format(ffa_module),
+		"{}/driver.c".format(ffa_module),
+		"{}/smccc.c".format(ffa_module),
+	],
+)
+
+ddk_headers(
+	name = "ffa_hdrs",
+	hdrs = glob([
+		"{}/*.h".format(ffa_module),
+	]),
+	includes = [
+		".",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "ffa",
+	srcs = [
+		"{}/bus.c".format(ffa_module),
+		"{}/driver.c".format(ffa_module),
+		"{}/smccc.c".format(ffa_module),
+	],
+	out = "{}.ko".format(ffa_module),
+	header_deps = [
+		":ffa_hdrs",
+	],
+	includes = [
+		"{}".format(ffa_module),
+	],
+)
+
