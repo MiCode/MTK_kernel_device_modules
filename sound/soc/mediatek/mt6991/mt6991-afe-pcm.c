@@ -1842,7 +1842,7 @@ static int mt6991_audio_vip_set(struct snd_kcontrol *kcontrol,
 	int pid = ucontrol->value.integer.value[0];
 
 	dev_info(afe->dev, "%s(), set VIP, thread %d\n", __func__, pid);
-#if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	// API has no return value
 	set_task_basic_vip(pid);
 #endif
@@ -1879,7 +1879,7 @@ static void set_swcodec_vip(const struct mtk_base_afe *afe,
 		for_each_thread(task, thread) {
 			if (strcmp(thread->comm, name) != 0)
 				continue;
-#if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 			if (enable == 1)
 				set_task_basic_vip(thread->pid);
 			else
