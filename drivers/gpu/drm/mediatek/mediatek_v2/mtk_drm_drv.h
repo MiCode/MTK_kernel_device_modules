@@ -96,6 +96,9 @@ struct mtk_mmsys_driver_data {
 	bool ovl_exdma_rule;
 	bool real_srt_ostdl;
 	bool skip_trans;
+	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
+			unsigned int bw_base, unsigned int channel_bw[]);
+	unsigned int (*get_channel_idx)(enum CHANNEL_TYPE type, unsigned int i);
 };
 
 struct mtk_drm_lyeblob_ids {
@@ -174,6 +177,7 @@ struct mtk_drm_private {
 	unsigned int ovl_usage[MAX_CRTC]; //describe each CRTC OVL comp usage state
 	unsigned int ovlsys_usage[MAX_CRTC]; //describe each CRTC OVLSYS connect state
 	unsigned int req_hrt[MAX_CRTC];
+	unsigned int req_hrt_channel_bw[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int num_pipes;
 
 	unsigned int session_id[MAX_SESSION_COUNT];
@@ -281,8 +285,6 @@ struct mtk_drm_private {
 
 	unsigned int seg_id;
 
-	unsigned int hrt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
-	unsigned int last_hrt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int srt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
 };
 

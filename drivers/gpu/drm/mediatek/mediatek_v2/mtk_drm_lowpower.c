@@ -2266,10 +2266,15 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			mtk_crtc->qos_ctx->last_hrt_req);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
-		(priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991)) {
+		priv->data->mmsys_id == MMSYS_MT6989) {
 		mtk_disp_set_per_larb_hrt_bw(mtk_crtc,
 				mtk_crtc->qos_ctx->last_larb_hrt_req);
+	}
+
+	if (priv->data->update_channel_hrt) {
+		for (i = 0; i < BW_CHANNEL_NR; i++)
+			mtk_disp_set_channel_hrt_bw(mtk_crtc,
+				mtk_crtc->qos_ctx->last_channel_req[i], i);
 	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,

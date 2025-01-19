@@ -59,6 +59,7 @@ struct DRM_MMP_Events {
 	mmp_event iova_tf;
 	mmp_event pmqos;
 	mmp_event ostdl;
+	mmp_event channel_bw;
 	mmp_event hrt_bw;
 	mmp_event mutex_lock;
 	mmp_event layering;

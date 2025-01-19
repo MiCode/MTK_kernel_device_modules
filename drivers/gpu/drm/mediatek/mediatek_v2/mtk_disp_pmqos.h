@@ -18,11 +18,20 @@ enum DISP_QOS_BW_MODE {
 	DISP_BW_UPDATE_PENDING,
 };
 
+enum CHANNEL_TYPE {
+	CHANNEL_SRT_READ,
+	CHANNEL_SRT_WRITE,
+	CHANNEL_HRT_READ,
+	CHANNEL_HRT_WRITE,
+};
+
 #define NO_PENDING_HRT (0xFFFF)
 #define OVL_REQ_HRT (0x1)
 #define RDMA_REQ_HRT (0x2)
 #define MDP_RDMA_REQ_HRT (0x3)
 #define WDMA_REQ_HRT (0x4)
+
+#define BW_CHANNEL_NR 4
 
 #define MAX_MMCLK (7000)
 struct drm_crtc;
@@ -33,6 +42,7 @@ struct mtk_drm_qos_ctx {
 	unsigned int last_hrt_req;
 	unsigned int last_mmclk_req_idx;
 	unsigned int last_larb_hrt_req;
+	unsigned int last_channel_req[BW_CHANNEL_NR];
 	atomic_t last_hrt_idx;
 	atomic_t hrt_cond_sig;
 	wait_queue_head_t hrt_cond_wq;
@@ -62,6 +72,10 @@ void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc, unsigned int pixclk,
 unsigned long mtk_drm_get_freq(struct drm_crtc *crtc, const char *caller);
 unsigned long mtk_drm_get_mmclk(struct drm_crtc *crtc, const char *caller);
 unsigned int mtk_disp_get_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc);
+void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
+						unsigned int bw_base, unsigned int channel_bw[]);
+unsigned int mtk_disp_get_channel_idx_MT6991(enum CHANNEL_TYPE type, unsigned int i);
+void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);
 int mtk_disp_set_per_larb_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw);
 bool mtk_disp_check_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc);
 
