@@ -86,19 +86,19 @@
  * UART_HUB_SRCCLKENA = SPM_REQ_STA_15 [22]
  * UART_HUB_PMIC_REQ  = SPM_REQ_STA_15 [21] */
 #define SPM_REQ_STA_15                            (0x8A4)
-#define SPM_REQ_STA_15_UARTHUB_REQ_MASK           (0x1F << 20)
+#define SPM_REQ_STA_15_UARTHUB_REQ_FIELD          (0x1F)
 #define SPM_REQ_STA_15_UARTHUB_REQ_SHIFT          (20)
-/* spm_pmic_internal_ack = SPM_INTERNAL_ACK_STA  [1]
- * spm_vcore_internal_ack = SPM_INTERNAL_ACK_STA [0]
+#define SPM_REQ_STA_15_UARTHUB_REQ_MASK    (SPM_REQ_STA_15_UARTHUB_REQ_FIELD << SPM_REQ_STA_15_UARTHUB_REQ_SHIFT)
+/* spm_vcore_internal_ack = SPM_INTERNAL_ACK_STA [0]
+ * spm_pmic_internal_ack = SPM_INTERNAL_ACK_STA  [1]
+ * spm_srcclkena_internal_ack = SPM_INTERNAL_ACK_STA[2]  //  ~MD26M_CK_OFF
  * spm_vrf18_internal_ack = SPM_INTERNAL_ACK_STA [4]
  * spm_infra_internal_ack = SPM_INTERNAL_ACK_STA [3] */
-#define SPM_INTERNAL_ACK_STA                      (0x9A4C)
+#define SPM_BASE_ADDR_0x9000                      (SPM_BASE_ADDR + 0x9000) // for near mapping
+#define SPM_INTERNAL_ACK_STA                      (0xA4C) // SPM_BASE_ADDR + 0x9A4C
+#define SPM_INTERNAL_ACK_STA_UARTHUB_FIELD        (0x1F)
 #define SPM_INTERNAL_ACK_STA_UARTHUB_SHIFT        (0)
-#define SPM_INTERNAL_ACK_STA_UARTHUB_MASK         (0x1B << SPM_INTERNAL_ACK_STA_UARTHUB_SHIFT)
-
-/* MD26M_CK_OFF = spm_srcclkena_internal_ack = SPM_INTERNAL_ACK_STA[2] */
-#define SPM_INTERNAL_ACK_STA_SRCCLKENA_SHIFT      (2)
-#define SPM_INTERNAL_ACK_STA_SRCCLKENA_MASK       (0x1 << SPM_INTERNAL_ACK_STA_SRCCLKENA_SHIFT)
+#define SPM_INTERNAL_ACK_STA_UARTHUB_MASK  (SPM_INTERNAL_ACK_STA_UARTHUB_FIELD << SPM_INTERNAL_ACK_STA_UARTHUB_SHIFT)
 
 /* uart*/
 #define UART1_BASE_ADDR                           (0x16010000)
