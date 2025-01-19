@@ -638,6 +638,7 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 	}
 		break;
 	case PMQOS_SET_HRT_BW:
+	case PMQOS_SET_HRT_BW_DELAY:
 	{
 		u32 bw_val = *(unsigned int *)params;
 		u32 stash_bw_val  = 0;
