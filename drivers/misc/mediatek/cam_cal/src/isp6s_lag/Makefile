@@ -8,10 +8,12 @@ COMMON_VERSION := v2
 
 MTK_PLATFORM_KO := camera_eeprom_$(MTK_PLATFORM)
 
+# Note: EEPROM_PLATFORM_DEFINE
 subdir-ccflags-y += -I$(MTK_CUSTOM_PATH)/imgsensor/inc \
                     -I$(MTK_CUSTOM_PATH)/cam_cal/inc \
                     -I$(CAM_CAL_PLATFORM_SRC_PATH) \
                     -I$(CAM_CAL_SRC_PATH)/common/$(COMMON_VERSION) \
+                    -DEEPROM_PLATFORM_DEFINE \
 
 # Common code
 ifeq ($(filter $(CONFIG_MTK_CAM_CAL_ISP6S_LAG), m), $(CONFIG_MTK_CAM_CAL_ISP6S_LAG))

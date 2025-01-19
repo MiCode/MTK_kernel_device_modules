@@ -129,6 +129,7 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 	struct IMGSENSOR_HW_POWER_INFO   *ppwr_info;
 	struct IMGSENSOR_HW_DEVICE       *pdev;
 	int                               pin_cnt = 0;
+	unsigned int                      pwr_id_index_uint = 0;
 
 	while (ppwr_seq < ppower_sequence + IMGSENSOR_HW_SENSOR_MAX_NUM &&
 		ppwr_seq->name != NULL) {
@@ -151,15 +152,13 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 		ppwr_info < ppwr_seq->pwr_info + IMGSENSOR_HW_POWER_INFO_MAX) {
 
 		if (pwr_status == IMGSENSOR_HW_POWER_STATUS_ON &&
-		   ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {
-			pdev = phw->pdev[psensor_pwr->id[ppwr_info->pin]];
-		/*pr_debug(
-		 *  "sensor_idx = %d, pin=%d, pin_state_on=%d, hw_id =%d\n",
-		 *  sensor_idx,
-		 *  ppwr_info->pin,
-		 *  ppwr_info->pin_state_on,
-		 * psensor_pwr->id[ppwr_info->pin]);
-		 */
+		    ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {
+			   
+			pwr_id_index_uint = (psensor_pwr->id[ppwr_info->pin] < 0)
+			? 0
+			: psensor_pwr->id[ppwr_info->pin];
+
+			pdev = phw->pdev[pwr_id_index_uint];
 
 			if (pdev->set != NULL)
 				pdev->set(
@@ -180,9 +179,12 @@ static enum IMGSENSOR_RETURN imgsensor_hw_power_sequence(
 			ppwr_info--;
 			pin_cnt--;
 
-			if (ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {
-				pdev =
-				    phw->pdev[psensor_pwr->id[ppwr_info->pin]];
+			if (ppwr_info->pin != IMGSENSOR_HW_PIN_UNDEF) {	
+				pwr_id_index_uint = (psensor_pwr->id[ppwr_info->pin] < 0)
+				? 0
+				: psensor_pwr->id[ppwr_info->pin];
+
+				pdev = phw->pdev[pwr_id_index_uint];
 				mdelay(ppwr_info->pin_on_delay);
 
 				if (pdev->set != NULL)
