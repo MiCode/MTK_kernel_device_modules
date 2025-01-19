@@ -670,3 +670,13 @@ config DRM_PANEL_NT37707_C2V_ARP
 	  and uses 24-bits RGB per pixel. It provides a MIPI DSI
 	  interface to host. It support ARP_TE.
 
+config DRM_PANEL_NT37707_BOE_FHDPLUS_CMD
+	tristate "mt6991 nt37707 boe fhdplus cmd panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for mt6991
+	  nt37707 boe fhdplus cmd panel. The panel has a 1260x2800
+	  resolution and uses 24-bits RGB per pixel. It provides a
+	  MIPI DSI interface to host.
