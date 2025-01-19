@@ -95,8 +95,12 @@ struct cpuqos_task_struct {
 	int rank;
 };
 
-/* for dynamic task vendor data*/
+struct mig_task_struct {
+	unsigned long pending_rec;
+};
+
 struct mtk_task {
+	struct vip_task_struct	vip_task;
 	struct soft_affinity_task sa_task;
 	struct gp_task_struct	gp_task;
 	struct task_gear_hints  gear_hints;
@@ -107,12 +111,8 @@ struct mtk_task {
 	struct task_turbo_t turbo_data;
 	struct flt_task_struct flt_task;
 	struct cpuqos_task_struct cpuqos_task;
+	struct mig_task_struct mig_task;
 	struct cpumask kernel_allowed_mask;
-};
-
-/* for static task vendor data*/
-struct mtk_static_vendor_task {
-	struct vip_task_struct	vip_task;
 };
 
 struct soft_affinity_tg {
