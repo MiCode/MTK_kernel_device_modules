@@ -102,3 +102,10 @@ config UFS_MEDIATEK_MCQ
 	help
 	  Enable on platform that implemented MediaTek non-standard MCQ.
 	  This require Kernel support on mcq vendor hook like in kernel 5.15.
+
+config UFS_MEDIATEK_MT6893
+	bool "Mediatek Proprietary platform 6893 Support"
+	depends on SCSI_UFSHCD && DEVICE_MODULES_SCSI_UFS_MEDIATEK
+	help
+	  Enable on MT6893 where implemented UFS related platform changes.
+          This is to be in sync with the perf related changes into it
