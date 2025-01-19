@@ -29,7 +29,7 @@
 #define CLATM_USE_MIN_CPU_OPP			(0)
 #endif
 #ifdef ATM_USES_PPM
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 #include "mtk_ppm_api.h"
 #include "mtk_ppm_platform.h"
 #endif
@@ -85,7 +85,7 @@
  *Local variable definition
  *=============================================================
  */
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 static int print_cunt;
 static int adaptive_limit[5][2];
 static unsigned int prv_adp_cpu_pwr_lim;
@@ -93,6 +93,11 @@ static unsigned int prv_adp_gpu_pwr_lim;
 #endif
 static struct apthermolmt_user ap_atm;
 static char *ap_atm_log = "ap_atm";
+
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
+#define NR_PPM_CLUSTERS 2
+
+#endif
 
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
@@ -237,12 +242,12 @@ struct atm_cpu_min_opp {
 	int min_CPU_power[MAX_CPT_ADAPTIVE_COOLERS];
 	/* To keep min CPU power budgets calculated from a set of CPU OPP */
 	int min_CPU_power_from_opp[MAX_CPT_ADAPTIVE_COOLERS];
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 	struct ppm_cluster_status
 		cpu_opp_set[MAX_CPT_ADAPTIVE_COOLERS][NR_PPM_CLUSTERS];
 #endif
 };
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 static struct atm_cpu_min_opp g_c_min_opp;
 #endif
 #endif
@@ -742,7 +747,7 @@ static void atm_profile_gpu_power_limit(s64 latest_latency)
 		, latest_latency);
 }
 #endif
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 static void set_adaptive_cpu_power_limit(unsigned int limit)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
@@ -1088,7 +1093,7 @@ static int _get_current_gpu_power(void)
  *Pass ATM total power budget to EARA for C/G/... allocation
  *ATM follow up if ERAR bypass
  */
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 static int EARA_handled(int total_power)
 {
 #if defined(EARA_THERMAL_SUPPORT)
@@ -1136,7 +1141,7 @@ static int P_adaptive(int total_power, unsigned int gpu_loading)
 	 * But the ground rule is real gpu power should always
 	 * under gpu_power for the same time interval
 	 */
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 	static int cpu_power = 0, gpu_power;
 	static int last_cpu_power = 0, last_gpu_power;
 #if defined(THERMAL_VPU_SUPPORT)
@@ -1270,6 +1275,7 @@ static int P_adaptive(int total_power, unsigned int gpu_loading)
 
 #if defined(DDR_STRESS_WORKAROUND)
 	if (tscpu_g_curr_temp > 70000) {
+#if IS_ENABLED(CONFIG_MTK_PPM_V3)
 #if defined(CATM_TPCB_EXTEND)
 		if ((mt_ppm_thermal_get_cur_power() >=
 			mt_ppm_thermal_get_max_power()) ||
@@ -1279,6 +1285,7 @@ static int P_adaptive(int total_power, unsigned int gpu_loading)
 #else
 		if (mt_ppm_thermal_get_cur_power() >=
 			mt_ppm_thermal_get_max_power())
+#endif
 #endif
 			opp0_cool = 1;
 	} else if (tscpu_g_curr_temp < 65000)
@@ -2959,7 +2966,7 @@ static const struct proc_ops mtktscpu_atm_setting_fops = {
 #if CLATM_USE_MIN_CPU_OPP
 static int tscpu_atm_cpu_min_opp_read(struct seq_file *m, void *v)
 {
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 	int i, j;
 	for (i = 0; i < MAX_CPT_ADAPTIVE_COOLERS; i++) {
 		seq_printf(m, "%s%02d\n", adaptive_cooler_name, i);
@@ -3003,7 +3010,7 @@ static int tscpu_atm_cpu_min_opp_read(struct seq_file *m, void *v)
 static ssize_t tscpu_atm_cpu_min_opp_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
-#if IS_ENABLED(CONFIG_MTK_PPM_V3)
+#if IS_ENABLED(CONFIG_MTK_PPM_V3) || IS_ENABLED(CONFIG_MTK_PLAT_POWER_6853)
 	char desc[128], cmd[20];
 	int i, len = 0, arg;
 	int atm_id, num_cluster, core[3],

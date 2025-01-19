@@ -1049,9 +1049,7 @@ static ssize_t tscpu_write_sspm_thermal_throttle
 
 		tscpu_warn("%s , %d\n", __func__,
 			tscpu_sspm_thermal_throttle);
-
 		lvts_ipi_send_sspm_thermal_thtottle();
-
 		return count;
 	}
 
@@ -1545,6 +1543,7 @@ static void tscpu_thermal_shutdown(struct platform_device *dev)
 #if defined(THERMAL_KERNEL_SUSPEND_RESUME_NOTIFY)
 	lvts_ipi_send_sspm_thermal_suspend_resume(1);
 #endif
+
 }
 
 
@@ -2046,9 +2045,12 @@ static int tscpu_read_ttpct(struct seq_file *m, void *v)
 	unsigned int cpu_power, gpu_power, max_cpu_pwr, max_gpu_pwr;
 
 #ifdef ATM_USES_PPM
+#if IS_ENABLED(CONFIG_MTK_PPM_V3)
 	max_cpu_pwr = mt_ppm_thermal_get_max_power() + 1;
+
 #else
 	max_cpu_pwr = 3000;
+#endif
 #endif
 	max_gpu_pwr = gpufreq_get_max_power(TARGET_DEFAULT) + 1;
 	cpu_power = apthermolmt_get_cpu_power_limit();
@@ -2429,8 +2431,10 @@ static void init_thermal(struct platform_device *dev)
 	lvts_enable_all_sensing_points();
 
 	read_all_tc_temperature();
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 #if THERMAL_ENABLE_TINYSYS_SSPM || THERMAL_ENABLE_ONLY_TZ_SSPM
+
 	lvts_ipi_send_efuse_data();
 #endif
 #endif
