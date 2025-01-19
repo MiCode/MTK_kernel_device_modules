@@ -2365,7 +2365,9 @@ static int PDA_Open(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	//Enable clock
 	EnableClock(MTRUE);
+	spin_lock(&g_PDA_SpinLock);
 	LOG_INF("PDA open g_u4EnableClockCount: %d", g_u4EnableClockCount);
+	spin_unlock(&g_PDA_SpinLock);
 
 #ifdef CHECK_IRQ_COUNT
 	g_reasonable_IRQCount = 0;
@@ -2388,7 +2390,9 @@ static int PDA_Release(struct inode *a_pstInode, struct file *a_pstFile)
 
 	//Disable clock
 	EnableClock(MFALSE);
+	spin_lock(&g_PDA_SpinLock);
 	LOG_INF("PDA release g_u4EnableClockCount: %d", g_u4EnableClockCount);
+	spin_unlock(&g_PDA_SpinLock);
 	return 0;
 }
 
@@ -2627,7 +2631,9 @@ static void PDA_shutdown(struct platform_device *pdev)
 {
 	//Disable clock
 	EnableClock(MFALSE);
+	spin_lock(&g_PDA_SpinLock);
 	LOG_INF("PDA shutdown g_u4EnableClockCount: %d", g_u4EnableClockCount);
+	spin_unlock(&g_PDA_SpinLock);
 	pm_runtime_disable(&pdev->dev);
 }
 
