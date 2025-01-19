@@ -210,6 +210,52 @@ static bool smmu_init_done(smmu_device_t *smmu_dev)
 }
 
 /*
+ * Dump DVM MI register for debug purpose.
+ * 1. FIFO register: Number of pending dvm messages,
+ * 2. OSTD register: Number of waiting response dvm messages,
+ */
+static void dvm_mi_reg_debug_dump(void)
+{
+	if (!dvm_mi_va_base) {
+		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm mi va is NULL");
+		return;
+	}
+
+	/* FIFO register dump */
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AC_FIFO");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AC_FIFO)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] CR_FIFO");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + CR_FIFO)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AR_FIFO");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AR_FIFO)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AW_R_FIFO");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AW_R_FIFO)));
+	/* OSTD register dump */
+	pkvm_smmu_ops->puts("[pKVM_SMMU] ACP_OSTD_CNT_0");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + ACP_OSTD_CNT_0)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] ACP_OSTD_CNT_1");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + ACP_OSTD_CNT_1)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AC_OSTD_CNT");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AC_OSTD_CNT)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AR_OSTD_CNT");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AR_OSTD_CNT)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] SYNC_OSTD_CNT_0");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + SYNC_OSTD_CNT_0)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] SYNC_OSTD_CNT_1");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + SYNC_OSTD_CNT_1)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] COMP_OSTD_CNT");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + COMP_OSTD_CNT)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AW_OSTD_CNT");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AW_OSTD_CNT)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] W_OSTD_CNT");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + W_OSTD_CNT)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AOL_OSTD_CNT_0");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AOL_OSTD_CNT_0)));
+	pkvm_smmu_ops->puts("[pKVM_SMMU] AOL_OSTD_CNT_1");
+	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AOL_OSTD_CNT_1)));
+}
+
+/*
  * Issuie HW DVM Requirements:
  * 1. DVM MI register should be mapped to Hypervisor,
  * 2. All subsys SMMU can use DVM methods,
@@ -223,7 +269,7 @@ static unsigned int hw_dvm_check(void)
 	smmu_device_t *smmu_dev = NULL;
 
 	if (!dvm_mi_va_base) {
-		pkvm_smmu_ops->puts("dvm_mi register does not mapping");
+		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm_mi register does not mapping");
 		return HW_DVM_DISABLE;
 	}
 
@@ -239,7 +285,7 @@ static unsigned int hw_dvm_check(void)
 			 * PTM set to 1 means SMMU does not participate in broadcast
 			 * TLB maintenance.
 			 */
-			pkvm_smmu_ops->puts("hw dvm: PTM is set");
+			pkvm_smmu_ops->puts("[pKVM_SMMU] PTM is set");
 			return HW_DVM_DISABLE;
 		}
 
@@ -249,7 +295,7 @@ static unsigned int hw_dvm_check(void)
 		 * the function pctrl_enable, which is in the pkvm_smmu_host.c
 		 */
 	}
-	pkvm_smmu_ops->puts("hw dvm: good to go");
+	pkvm_smmu_ops->puts("[pKVM_SMMU] hw dvm good to go");
 	return HW_DVM_ENABLE;
 }
 
@@ -260,7 +306,7 @@ bool dvm_mi_cpu_connect(void)
 	uint32_t polling_times = 0;
 
 	if (!dvm_mi_va_base) {
-		pkvm_smmu_ops->puts("dvm_mi_cpu_connect: dvm mi va is NULL");
+		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm mi va is NULL");
 		return false;
 	}
 
@@ -271,7 +317,7 @@ bool dvm_mi_cpu_connect(void)
 		if ((readl(reg_address_va) & 0x3) == 0x3)
 			return true;
 	}
-	pkvm_smmu_ops->puts("dvm connect timeout");
+	pkvm_smmu_ops->puts("[pKVM_SMMU] dvm connect timeout");
 
 	return false;
 }
@@ -283,7 +329,7 @@ void dvm_mi_cpu_disconnect(void)
 	uint32_t polling_times = 0;
 
 	if (!dvm_mi_va_base) {
-		pkvm_smmu_ops->puts("dvm_mi_cpu_disconnect: dvm mi va is NULL");
+		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm mi va is NULL");
 		return;
 	}
 
@@ -295,8 +341,8 @@ void dvm_mi_cpu_disconnect(void)
 			return;
 	}
 
-	pkvm_smmu_ops->puts("dvm disconnect fail");
-	WARN_ON(1);
+	pkvm_smmu_ops->puts("[pKVM_SMMU] dvm disconnect fail");
+	dvm_mi_reg_debug_dump();
 }
 
 static void issue_sw_dvm(void)
@@ -347,11 +393,11 @@ static bool connect_infra_smmu_and_dvm_mi(void)
 
 	smmu_dev = get_smmu_dev_from_id(SMMU_SOC);
 	if (!smmu_dev) {
-		pkvm_smmu_ops->puts("get smmu device failed");
+		pkvm_smmu_ops->puts("[pKVM_SMMU] get smmu device failed");
 		return false;
 	}
 	if (!smmu_dev->reg_base_va_addr) {
-		pkvm_smmu_ops->puts("reg_base_va_addr is NULL, skip disconnect");
+		pkvm_smmu_ops->puts("[pKVM_SMMU] reg base va is NULL, skip disconnect");
 		return false;
 	}
 
@@ -361,7 +407,7 @@ static bool connect_infra_smmu_and_dvm_mi(void)
 		if ((readl(reg_address_va) & 0x3) == 0x3)
 			return true;
 	}
-	pkvm_smmu_ops->puts("dvm mi and smmu connect timeout");
+	pkvm_smmu_ops->puts("[pKVM_SMMU] dvm mi and smmu connect timeout");
 
 	return false;
 }
@@ -378,11 +424,11 @@ static void disconnect_infra_smmu_and_dvm_mi(void)
 
 	smmu_dev = get_smmu_dev_from_id(SMMU_SOC);
 	if (!smmu_dev) {
-		pkvm_smmu_ops->puts("get smmu device failed");
+		pkvm_smmu_ops->puts("[pKVM_SMMU] get smmu device failed");
 		return;
 	}
 	if (!smmu_dev->reg_base_va_addr) {
-		pkvm_smmu_ops->puts("reg_base_va_addr is NULL, skip disconnect");
+		pkvm_smmu_ops->puts("[pKVM_SMMU] reg base va is NULL, skip disconnect");
 		return;
 	}
 
@@ -392,9 +438,8 @@ static void disconnect_infra_smmu_and_dvm_mi(void)
 		if ((readl(reg_address_va) & 0x3) == 0x0)
 			return;
 	}
-	pkvm_smmu_ops->puts("dvm mi and smmu disconnect timeout");
-	WARN_ON(1);
-
+	pkvm_smmu_ops->puts("[pKVM_SMMU] dvm mi and smmu disconnect timeout");
+	dvm_mi_reg_debug_dump();
 }
 
 static void issue_hw_dvm(void)

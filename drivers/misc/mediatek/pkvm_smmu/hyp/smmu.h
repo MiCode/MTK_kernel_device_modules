@@ -225,15 +225,22 @@ enum MPU_REQ_ORIGIN_ZONE_ID {
 /*******************************************************************************
  * DVM
  ******************************************************************************/
-#define DVM_MI_DVM_CTRL			(0x4)
-#define AC_FIFO				(0x40)
-#define CR_FIFO				(0x44)
-#define AR_FIFO				(0x48)
-#define AW_R_FIFO			(0x4c)
-#define ACP_OSTD_CNT_0			(0x50) //Oustanding counter for ACP side
-#define ACP_OSTD_CNT_1			(0x54) //Oustanding counter for ACP side
-#define AC_OSTD_CNT			(0x58) //Oustanding counter for AC of TCU side
-#define AR_OSTD_CNT			(0x5c) //Oustanding counter for AR of TCU side
+#define DVM_MI_DVM_CTRL		(0x4)
+#define AC_FIFO				(0x30)
+#define CR_FIFO				(0x34)
+#define AR_FIFO				(0x38)
+#define AW_R_FIFO			(0x3c)
+#define ACP_OSTD_CNT_0		(0x40) //Outstanding counter for ACP side
+#define ACP_OSTD_CNT_1		(0x44) //Outstanding counter for ACP side
+#define AC_OSTD_CNT			(0x48) //Outstanding counter for AC of TCU side
+#define AR_OSTD_CNT			(0x4c) //Outstanding counter for AR of TCU side
+#define SYNC_OSTD_CNT_0		(0x50) //Outstanding counter for SYNC of TCU side
+#define SYNC_OSTD_CNT_1		(0x54) //Outstanding counter for SYNC of TCU side
+#define COMP_OSTD_CNT		(0x58) //Outstanding counter for COMP of TCU side
+#define AW_OSTD_CNT			(0x5c) //Outstanding counter for AW of TCU side
+#define W_OSTD_CNT			(0x60) //Outstanding counter for W of TCU side
+#define AOL_OSTD_CNT_0		(0x64) //Outstanding counter for AOL
+#define AOL_OSTD_CNT_1		(0x68) //Outstanding counter for AOL
 /* HW DVM status */
 #define HW_DVM_DISABLE	0
 #define HW_DVM_ENABLE	1
