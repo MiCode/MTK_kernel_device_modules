@@ -1557,6 +1557,7 @@ static struct kobj_type ktype_core_ctl = {
 /* ==================== algorithm of core control ======================== */
 
 #define MAX_NR_RUNNING_THRESHOLD   4
+#define MAX_RT_NR_RUNNING_THRESHOLD 2
 /*
  * Get number of the busy CPU cores
  */
@@ -1566,7 +1567,7 @@ static void get_busy_cpus(void)
 	struct cluster_data *cluster;
 	struct cpu_data *cpu_stat;
 	int cpu = 0, cid = 0, i = 0, cpu_count = 0, idx = 0;
-	unsigned int busy_state[MAX_NR_CPUS], max_nr_state[MAX_NR_CPUS];
+	unsigned int busy_state[MAX_NR_CPUS], max_nr_state[MAX_NR_CPUS], max_rt_nr_state[MAX_NR_CPUS];
 
 	/* check CPU is busy or not */
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
@@ -1586,6 +1587,7 @@ static void get_busy_cpus(void)
 		if (cpu < MAX_NR_CPUS) {
 			busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
 			max_nr_state[cpu] = get_max_nr_running(cpu);
+			max_rt_nr_state[cpu] = get_max_rt_nr_running(cpu);
 		}
 	}
 
@@ -1602,12 +1604,14 @@ static void get_busy_cpus(void)
 			else if (busy_state[i] > cluster->cpu_busy_up_thres &&
 				cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres)
 				cpu_count++;
+			else if (max_rt_nr_state[i] > MAX_RT_NR_RUNNING_THRESHOLD)
+				cpu_count++;
 		}
 		cluster->need_spread_cpus = cpu_count;
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
-	trace_core_ctl_busy_cpus(busy_state, max_nr_state);
+	trace_core_ctl_busy_cpus(busy_state, max_nr_state, max_rt_nr_state);
 }
 
 #define BIG_TASK_AVG_THRESHOLD 25

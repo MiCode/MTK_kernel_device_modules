@@ -44,6 +44,8 @@ struct cluster_over_thres_stats {
 static DEFINE_PER_CPU(struct over_thres_stats, cpu_over_thres_state);
 static DEFINE_PER_CPU(u64, nr);
 static DEFINE_PER_CPU(u64, nr_max);
+static DEFINE_PER_CPU(u64, rt_nr);
+static DEFINE_PER_CPU(u64, rt_nr_max);
 static DEFINE_PER_CPU(u64, last_time);
 static DEFINE_PER_CPU(spinlock_t, nr_lock) = __SPIN_LOCK_UNLOCKED(nr_lock);
 static DEFINE_PER_CPU(spinlock_t, nr_over_thres_lock) = __SPIN_LOCK_UNLOCKED(nr_over_thres_lock);
@@ -138,7 +140,7 @@ EXPORT_SYMBOL(get_cpu_util_pct);
  *
  * Update average with latest nr_running value for CPU
  */
-void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
+void sched_update_nr_prod(int cpu, unsigned long nr_running, unsigned long rt_nr_running, int inc)
 {
 	s64 diff;
 	u64 curr_time;
@@ -155,19 +157,30 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
 	per_cpu(last_time, cpu) = curr_time;
 	/* To prevent to add count, because already do outside */
 	per_cpu(nr, cpu) = nr_running;
+	per_cpu(rt_nr, cpu) = rt_nr_running;
 
 	if (per_cpu(nr, cpu) > per_cpu(nr_max, cpu))
 		per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
+	if (per_cpu(rt_nr, cpu) > per_cpu(rt_nr_max, cpu))
+		per_cpu(rt_nr_max, cpu) = per_cpu(rt_nr, cpu);
 	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
-	spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
-	spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 }
 
 void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
 {
+	unsigned long rq_rt_nrruning = 0;
+	struct rt_rq *rt_rq = NULL;
+
 	if (!core_ctl_get_policy())
 		return;
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, count);
+
+	if (rq)
+		rt_rq = &rq->rt;
+
+	if (rt_rq && rt_rq->rt_nr_running)
+		rq_rt_nrruning = rt_rq->rt_nr_running;
+
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running, rq_rt_nrruning, count);
 }
 
 int arch_get_nr_clusters(void)
@@ -276,15 +289,30 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 int get_max_nr_running(int cpu)
 {
 	int max_nr = 0;
+	unsigned long flags;
 
-	spin_lock(&per_cpu(nr_lock, cpu));
+	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
 	max_nr = per_cpu(nr_max, cpu);
 	/* reset max_nr value */
 	per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
-	spin_unlock(&per_cpu(nr_lock, cpu));
+	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
 	return max_nr;
 }
 EXPORT_SYMBOL(get_max_nr_running);
+
+int get_max_rt_nr_running(int cpu)
+{
+	int max_rt_nr = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
+	max_rt_nr = per_cpu(rt_nr_max, cpu);
+	/* reset max_nr value */
+	per_cpu(rt_nr_max, cpu) = per_cpu(rt_nr, cpu);
+	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	return max_rt_nr;
+}
+EXPORT_SYMBOL(get_max_rt_nr_running);
 
 int sched_get_nr_over_thres_avg(int cluster_id,
 				int *dn_avg,

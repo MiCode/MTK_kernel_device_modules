@@ -258,27 +258,32 @@ TRACE_EVENT(core_ctl_busy_cpus,
 
 	TP_PROTO(
 		unsigned int *busy_state,
-		unsigned int *max_nr_state),
+		unsigned int *max_nr_state,
+		unsigned int *max_rt_nr_state),
 
-	TP_ARGS(busy_state, max_nr_state),
+	TP_ARGS(busy_state, max_nr_state, max_rt_nr_state),
 
 	TP_STRUCT__entry(
 		__array(unsigned int, busy_state, 8)
 		__array(unsigned int, max_nr_state, 8)
+		__array(unsigned int, max_rt_nr_state, 8)
 	),
 
 	TP_fast_assign(
 		memcpy(__entry->busy_state, busy_state, sizeof(unsigned int) * 8);
 		memcpy(__entry->max_nr_state, max_nr_state, sizeof(unsigned int) * 8);
+		memcpy(__entry->max_rt_nr_state, max_rt_nr_state, sizeof(unsigned int) * 8);
 	),
 
-	TP_printk("busy=%d|%d|%d|%d|%d|%d|%d|%d max_nr=%d|%d|%d|%d|%d|%d|%d|%d",
+	TP_printk("busy=%d|%d|%d|%d|%d|%d|%d|%d max_nr=%d|%d|%d|%d|%d|%d|%d|%d max_rt_nr=%d|%d|%d|%d|%d|%d|%d|%d",
 		__entry->busy_state[0], __entry->busy_state[1], __entry->busy_state[2],
 		__entry->busy_state[3], __entry->busy_state[4], __entry->busy_state[5],
 		__entry->busy_state[6], __entry->busy_state[7], __entry->max_nr_state[0],
 		__entry->max_nr_state[1], __entry->max_nr_state[2], __entry->max_nr_state[3],
 		__entry->max_nr_state[4], __entry->max_nr_state[5], __entry->max_nr_state[6],
-		__entry->max_nr_state[7])
+		__entry->max_nr_state[7], __entry->max_rt_nr_state[0], __entry->max_rt_nr_state[1],
+		__entry->max_rt_nr_state[2], __entry->max_rt_nr_state[3], __entry->max_rt_nr_state[4],
+		__entry->max_rt_nr_state[5], __entry->max_rt_nr_state[6], __entry->max_rt_nr_state[7])
 );
 
 
