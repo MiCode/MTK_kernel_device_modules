@@ -1224,6 +1224,34 @@ static long handle_power_dvfsrc_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_wifi_pcie_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_pcie_data *wifi_pcie_buf =
+		(struct mbraink_wifi2mbr_pcie_data *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(wifi_pcie_buf,
+			   (struct mbraink_wifi2mbr_pcie_data *) arg,
+			   sizeof(struct mbraink_wifi2mbr_pcie_data))) {
+		pr_notice("copy mbraink_wifi2mbr_pcie_data data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (wifi_pcie_buf->idx > 2147483647) {
+		pr_notice("wifi pcie info: Invalid idx %u\n", wifi_pcie_buf->idx);
+		return -EINVAL;
+	}
+
+	mbraink_get_wifi_pcie_data(wifi_pcie_buf->idx, wifi_pcie_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_pcie_data *) arg,
+			 wifi_pcie_buf,
+			 sizeof(struct mbraink_wifi2mbr_pcie_data))) {
+		pr_notice("Copy wifi_pcie_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1673,6 +1701,17 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_power_dvfsrc_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_WIFI_PCIE_INFO:
+	{
+		mbraink_data =
+			kmalloc(sizeof(struct mbraink_wifi2mbr_pcie_data),
+				GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_pcie_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

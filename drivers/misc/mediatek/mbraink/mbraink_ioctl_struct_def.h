@@ -35,6 +35,7 @@
 #define MAX_CPU_CORE_NUM			8
 #define MAX_PMIC_SPMI_GLITCH_SZ		96
 #define MAX_DVFSRC_INFO_SZ		64
+#define MAX_WIFI_PCIE_SZ				32
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -588,4 +589,18 @@ struct mbraink_dvfsrc_struct_data {
 	unsigned int dvfsrc_info[MAX_DVFSRC_INFO_SZ];
 };
 
+struct mbraink_wifi2mbr_pcie_struct {
+	u64 timestamp;
+	unsigned int update_time;
+	unsigned int req_recovery_count;
+	unsigned int l0_time;
+	unsigned int l1_time;
+	unsigned int l1p2_time;
+};
+
+struct mbraink_wifi2mbr_pcie_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wifi2mbr_pcie_struct pcie_data[MAX_WIFI_PCIE_SZ];
+};
 #endif

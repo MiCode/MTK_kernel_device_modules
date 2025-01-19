@@ -17,6 +17,7 @@ enum mbr2wifi_reason {
 	MBR2WIFI_TRX_BIG_DATA,
 	MBR2WIFI_TEST_LP_RATIO,
 	MBR2WIFI_TX_TIMEOUT,
+	MBR2WIFI_PCIE_DATA,
 };
 
 struct wifi2mbr_hdr {
@@ -32,6 +33,7 @@ enum wifi2mbr_tag {
 	WIFI2MBR_TAG_LLS_AC,
 	WIFI2MBR_TAG_LP_RATIO,
 	WIFI2MBR_TAG_TXTIMEOUT,
+	WIFI2MBR_TAG_PCIE,
 	WIFI2MBR_TAG_MAX
 };
 
@@ -112,6 +114,17 @@ struct wifi2mbr_TxTimeoutInfo {
 	unsigned int timeout_duration;
 	unsigned int operation_mode;
 	unsigned int idle_slot_diff_cnt;
+};
+
+/* struct for WIFI2MBR_TAG_PCIE */
+struct wifi2mbr_PcieInfo {
+	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
+	unsigned int update_time;
+	unsigned int req_recovery_count;
+	unsigned int l0_time;
+	unsigned int l1_time;
+	unsigned int l1p2_time;
 };
 
 struct mbraink2wifi_ops {

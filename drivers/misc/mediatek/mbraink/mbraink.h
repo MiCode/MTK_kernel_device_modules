@@ -69,6 +69,7 @@
 #define NETLINK_TRIGGER_RECV	'O'
 #define POWER_SPMI_GLITCH_INFO  'P'
 #define POWER_DVFSRC_INFO		'Q'
+#define WIFI_PCIE_INFO			'R'
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -184,6 +185,8 @@
 #define RO_POWER_DVFSRC_INFO	_IOR(IOC_MAGIC, POWER_DVFSRC_INFO, \
 					struct mbraink_dvfsrc_struct_data*)
 
+#define RO_WIFI_PCIE_INFO       _IOR(IOC_MAGIC, WIFI_PCIE_INFO, \
+					struct mbraink_wifi2mbr_pcie_data*)
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
 #define CURRENT_DATA	2

@@ -267,12 +267,67 @@ void mbraink_v6993_get_wifi_txtimeout_data(int current_idx,
 		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
 }
 
+void mbraink_v6993_get_wifi_pcie_data(int current_idx,
+		struct mbraink_wifi2mbr_pcie_data *pcie_buffer)
+{
+	unsigned short len = 0;
+	enum wifi2mbr_status ret = WIFI2MBR_FAILURE;
+	struct wifi2mbr_PcieInfo pcie_info;
+	int loop = 0;
+	int cnt = 0;
+
+	memset(pcie_buffer, 0, sizeof(struct mbraink_wifi2mbr_pcie_data));
+
+	do {
+		ret = mbraink_bridge_wifi_get_data(MBR2WIFI_PCIE_DATA,
+						WIFI2MBR_TAG_PCIE,
+						(void *)(&pcie_info), &len);
+		loop++;
+
+		if (ret == WIFI2MBR_NO_OPS)
+			break;
+		else if (ret == WIFI2MBR_FAILURE)
+			continue;
+		else if (ret == WIFI2MBR_SUCCESS) {
+			cnt = pcie_buffer->count;
+
+			if (cnt < MAX_WIFI_TXTIMEOUT_SZ) {
+				pcie_buffer->pcie_data[cnt].timestamp =
+								pcie_info.timestamp;
+				pcie_buffer->pcie_data[cnt].update_time =
+								pcie_info.update_time;
+				pcie_buffer->pcie_data[cnt].req_recovery_count =
+								pcie_info.req_recovery_count;
+				pcie_buffer->pcie_data[cnt].l0_time =
+								pcie_info.l0_time;
+				pcie_buffer->pcie_data[cnt].l1_time =
+								pcie_info.l1_time;
+				pcie_buffer->pcie_data[cnt].l1p2_time =
+								pcie_info.l1p2_time;
+				pcie_buffer->count++;
+
+				if (cnt == MAX_WIFI_TXTIMEOUT_SZ - 1) {
+					pcie_buffer->idx = current_idx + pcie_buffer->count;
+					break;
+				}
+			}
+		} else if (ret ==  WIFI2MBR_END) {
+			pcie_buffer->idx = 0;
+			break;
+		}
+	} while (loop < MAX_WIFI_DATA_CNT);
+
+	if (loop == MAX_WIFI_DATA_CNT)
+		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
+}
+
 static struct mbraink_wifi_ops mbraink_v6993_wifi_ops = {
 	.get_wifi_rate_data = mbraink_v6993_get_wifi_rate_data,
 	.get_wifi_radio_data = mbraink_v6993_get_wifi_radio_data,
 	.get_wifi_ac_data = mbraink_v6993_get_wifi_ac_data,
 	.get_wifi_lp_data = mbraink_v6993_get_wifi_lp_data,
 	.get_wifi_txtimeout_data = mbraink_v6993_get_wifi_txtimeout_data,
+	.get_wifi_pcie_data = mbraink_v6993_get_wifi_pcie_data,
 };
 
 int mbraink_v6993_wifi_init(void)
