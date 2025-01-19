@@ -192,11 +192,8 @@ static u64 total_unlink_cnt, prev_total_unlink_cnt;
 #endif
 static DEFINE_SPINLOCK(stat_lock);
 
-static void btag_fuse_queue_request_and_unlock(void *data,
-		struct wait_queue_head *wq, bool sync)
+static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 {
-	struct fuse_iqueue *fiq = container_of(wq, struct fuse_iqueue, waitq);
-	struct fuse_req *rq = (struct fuse_req *)fiq->pending.prev;
 	u32 opcode = rq->in.h.opcode;
 	u32 filter = 0;
 //	u32 opcode = rq->in.h.opcode & FUSE_OPCODE_FILTER;
@@ -374,8 +371,8 @@ struct tracepoints_table {
 
 static struct tracepoints_table interests[] = {
 	{
-		.name = "android_vh_queue_request_and_unlock",
-		.func = btag_fuse_queue_request_and_unlock
+		.name = "fuse_request_send",
+		.func = btag_fuse_request_send
 	},
 };
 
