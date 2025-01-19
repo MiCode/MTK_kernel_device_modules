@@ -405,6 +405,9 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	struct list_head *pos;
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
 
+	if (vts_to_ts(vts)->se.sched_delayed)
+		return;
+
 	/* change vip_prio inside lock to prevent NOT_VIP inserted.
 	 * it could happened if we set vip_prio outside lock, and user unset,
 	 * then insert VIP.
@@ -1132,18 +1135,9 @@ void vip_scheduler_tick(void *unused, struct rq *rq)
 
 	vip_lb_tick(rq);
 }
-#if IS_ENABLED(CONFIG_FAIR_GROUP_SCHED)
-/* Walk up scheduling entities hierarchy */
-#define for_each_sched_entity(se) \
-	for (; se; se = se->parent)
-#else
-#define for_each_sched_entity(se) \
-	for (; se; se = NULL)
-#endif
 
 extern void set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se);
 void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct **p,
-				struct sched_entity **se, bool *repick, bool simple,
 				struct task_struct *prev)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
@@ -1164,14 +1158,12 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	vts = list_first_entry(&vrq->vip_tasks, struct vip_task_struct, vip_list);
 	vip = vts_to_ts(vts);
 
-	*p = vip;
-	*se = &vip->se;
-	*repick = true;
-
-	if (simple) {
-		for_each_sched_entity((*se))
-			set_next_entity(cfs_rq_of(*se), *se);
+	if (task_cpu(vip) != cpu_of(rq)) {
+		pr_info("pick task not in rq, vip=%d in cpu=%d but picked at cpu=%d\n", vip->pid, task_cpu(vip), cpu_of(rq));
+		return;
 	}
+
+	*p = vip;
 }
 
 __no_kcsan
@@ -1354,9 +1346,9 @@ void register_vip_hooks(void)
 	if (ret)
 		pr_info("register scheduler_tick failed\n");
 
-//	ret = register_trace_android_rvh_replace_next_task_fair(vip_replace_next_task_fair, NULL);
-//	if (ret)
-//		pr_info("register replace_next_task_fair hooks failed, returned %d\n", ret);
+	ret = register_trace_android_rvh_replace_next_task_fair(vip_replace_next_task_fair, NULL);
+	if (ret)
+		pr_info("register replace_next_task_fair hooks failed, returned %d\n", ret);
 
 	ret = register_trace_android_rvh_after_dequeue_task(vip_dequeue_task, NULL);
 	if (ret)
