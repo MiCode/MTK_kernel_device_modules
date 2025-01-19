@@ -1,0 +1,102 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_iommu_util",
+    srcs = [
+        "mtk-iommu-util.c",
+    ],
+    hdrs = glob(["mtk-iommu-util.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+    ],
+    out = "mtk_iommu_util.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "smmu_secure",
+    srcs = [
+        "smmu_secure.c",
+    ],
+    hdrs = glob([
+        "iommu_debug.h",
+        "mtk-iommu-util.h",
+        "smmu_secure.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+    ],
+    out = "smmu_secure.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_secure",
+    srcs = [
+        "iommu_secure.c",
+    ],
+    hdrs = glob([
+        "iommu_debug.h",
+        "iommu_secure.h",
+        "mtk-iommu-util.h"
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+    ],
+    out = "iommu_secure.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_engine",
+    srcs = [
+        "iommu_engine.h",
+        "iommu_engine.c",
+    ],
+    includes = ["."],
+    out = "iommu_engine.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_test",
+    srcs = [
+        "iommu_test.c",
+    ],
+    hdrs = glob([
+        "iommu_debug.h",
+        "mtk-iommu-util.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+    ],
+    out = "iommu_test.ko",
+)
