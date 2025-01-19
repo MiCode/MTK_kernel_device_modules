@@ -116,6 +116,8 @@ struct mml_mmp_events_t {
 	/* events for clock */
 	mmp_event wake_lock;
 	mmp_event wake_unlock;
+	mmp_event mminfra_enable;
+	mmp_event mminfra_disable;
 	mmp_event pw_get;
 	mmp_event pw_put;
 	mmp_event clk_enable;
