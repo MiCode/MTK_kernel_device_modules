@@ -38,8 +38,8 @@
  * @fs_bus_bw_in: save bandwidth used by FS/LS IN eps in each uframes
  * @ls_bus_bw: save bandwidth used by LS eps in each uframes
  * @fs_frame_bw: save bandwidth used by FS/LS eps in each FS frames
- * @ep_list: Endpoints using this TT
  * @in_ss_cnt: the count of Start-Split for IN eps
+ * @ep_list: Endpoints using this TT
  */
 struct mu3h_sch_tt {
 	u16 fs_bus_bw_out[XHCI_MTK_MAX_ESIT];

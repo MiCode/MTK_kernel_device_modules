@@ -122,10 +122,6 @@ static u32 get_bw_boundary(enum usb_device_speed speed)
 * each HS root port is treated as a single bandwidth domain,
 * but each SS root port is treated as two bandwidth domains, one for IN eps,
 * one for OUT eps.
-* @real_port value is defined as follow according to xHCI spec:
-* 1 for SSport0, ..., N+1 for SSportN, N+2 for HSport0, N+3 for HSport1, etc
-* so the bandwidth domain array is organized as follow for simplification:
-* SSport0-OUT, SSport0-IN, ..., SSportX-OUT, SSportX-IN, HSport0, ..., HSportY
 */
 static struct mu3h_sch_bw_info *
 get_bw_info(struct xhci_hcd_mtk *mtk, struct usb_device *udev,
@@ -136,19 +132,19 @@ get_bw_info(struct xhci_hcd_mtk *mtk, struct usb_device *udev,
 	int bw_index;
 
 	virt_dev = xhci->devs[udev->slot_id];
-	if (!virt_dev->real_port) {
-		WARN_ONCE(1, "%s invalid real_port\n", dev_name(&udev->dev));
+	if (!virt_dev->rhub_port) {
+		WARN_ONCE(1, "%s invalid rhub port\n", dev_name(&udev->dev));
 		return NULL;
 	}
 
 	if (udev->speed >= USB_SPEED_SUPER) {
 		if (usb_endpoint_dir_out(&ep->desc))
-			bw_index = (virt_dev->real_port - 1) * 2;
+			bw_index = (virt_dev->rhub_port->hw_portnum) * 2;
 		else
-			bw_index = (virt_dev->real_port - 1) * 2 + 1;
+			bw_index = (virt_dev->rhub_port->hw_portnum) * 2 + 1;
 	} else {
 		/* add one more for each SS port */
-		bw_index = virt_dev->real_port + xhci->usb3_rhub.num_ports - 1;
+		bw_index = virt_dev->rhub_port->hw_portnum + xhci->usb3_rhub.num_ports;
 	}
 
 	return &mtk->sch_array[bw_index];
@@ -707,8 +703,10 @@ static int alloc_sch_portion_of_frame(struct mu3h_sch_ep_info *sch_ep)
 
 			/* check hs bw domain */
 			bw_max = get_max_bw(sch_bw, sch_ep, offset);
-			if (bw_max > bw_boundary)
+			if (bw_max > bw_boundary) {
+				ret = -ESCH_BW_OVERFLOW;
 				continue;
+			}
 
 			/* use best-fit between frames */
 			fs_bw = get_fs_bw(sch_ep, offset);
@@ -768,10 +766,11 @@ static void update_sch_tt(struct mu3h_sch_ep_info *sch_ep, bool used)
 		}
 
 		if (sch_ep->ep_type == ISOC_IN_EP || sch_ep->ep_type == INT_IN_EP) {
+			k = XHCI_MTK_BW_INDEX(base);
 			if (used)
-				tt->in_ss_cnt[XHCI_MTK_BW_INDEX(base)]++;
+				tt->in_ss_cnt[k]++;
 			else
-				tt->in_ss_cnt[XHCI_MTK_BW_INDEX(base)]--;
+				tt->in_ss_cnt[k]--;
 		}
 	}
 
