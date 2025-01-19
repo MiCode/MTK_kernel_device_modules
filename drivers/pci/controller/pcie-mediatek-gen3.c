@@ -1713,6 +1713,11 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 	pci_unlock_rescan_remove();
 
 	mtk_pcie_irq_teardown(port);
+
+	err = pinctrl_pm_select_sleep_state(&pdev->dev);
+	if (err)
+		dev_info(&pdev->dev, "Failed to set PCIe pins sleep state\n");
+
 	mtk_pcie_power_down(port);
 
 	if (port->pextpcfg)
@@ -1724,16 +1729,10 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 	if (port->pmrc)
 		iounmap(port->pmrc);
 
-	err = pinctrl_pm_select_sleep_state(&pdev->dev);
-	if (err) {
-		dev_info(&pdev->dev, "Failed to set PCIe pins sleep state\n");
-		return err;
-	}
-
 	if (port->pcidev)
 		pci_dev_put(port->pcidev);
 
-	return 0;
+	return err;
 }
 
 static struct platform_device *mtk_pcie_find_pdev_by_port(int port)
@@ -2705,6 +2704,10 @@ int mtk_pcie_soft_off(struct pci_bus *bus)
 	mtk_pcie_save_restore_cfg(port, true);
 	mtk_pcie_irq_save(port);
 	port->soft_off = true;
+
+	if (port->port_num == PCIE_PORT_NUM_1)
+		mtk_pcie_pinmux_select(PCIE_PORT_NUM_1, PCIE_PINMUX_HIZ);
+
 	mtk_pcie_power_down(port);
 
 	dev_info(port->dev, "mtk pcie soft off done\n");
