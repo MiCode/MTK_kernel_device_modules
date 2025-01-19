@@ -4282,6 +4282,10 @@
 			interrupts = <GIC_SPI 408 IRQ_TYPE_LEVEL_HIGH 0>;
 		};
 
+		apusys_debug: apusys_debug {
+			compatible = "mediatek,mt6853-debug";
+		};
+
 		vcore_opp_table: opp_table0 {
 			compatible = "operating-points-v2";
 
