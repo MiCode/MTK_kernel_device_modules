@@ -149,7 +149,9 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_gpueb_support ? "On" : "Off",
 		g_shared_status->stress_test == STRESS_RANDOM ? "Random" :
 		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
-		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Off");
+		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" :
+		g_shared_status->stress_test == STRESS_ASCENDING ? "Ascending" :
+		g_shared_status->stress_test == STRESS_DESCENDING ? "Descending" : "Off");
 	seq_printf(m,
 		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s, DFD: %s\n",
 		"[MFGSYS Config]",
@@ -780,7 +782,9 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 		"[Misc]",
 		g_shared_status->stress_test == STRESS_RANDOM ? "Random" :
 		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
-		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" : "Disable",
+		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" :
+		g_shared_status->stress_test == STRESS_ASCENDING ? "Ascending" :
+		g_shared_status->stress_test == STRESS_DESCENDING ? "Descending" : "Disable",
 		g_shared_status->test_mode == TEST_PRIVILEGE ? "Privilege" :
 		g_shared_status->test_mode == TEST_ADVANCED ? "Advanced" : "Normal");
 
@@ -862,6 +866,10 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = STRESS_TRAVERSE;
 			else if (sysfs_streq(input_val, "maxmin"))
 				val = STRESS_MAX_MIN;
+			else if (sysfs_streq(input_val, "ascending"))
+				val = STRESS_ASCENDING;
+			else if (sysfs_streq(input_val, "descending"))
+				val = STRESS_DESCENDING;
 		} else if (sysfs_streq(input_target, "margin")) {
 			target = CONFIG_MARGIN;
 			if (sysfs_streq(input_val, "enable"))
