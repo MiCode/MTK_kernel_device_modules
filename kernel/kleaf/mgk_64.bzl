@@ -348,6 +348,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr.ko",
     "drivers/misc/mediatek/connectivity/connadp.ko",
     "drivers/misc/mediatek/conn_scp/connscp.ko",
+    "drivers/misc/mediatek/cci_lite/ccidvfs.ko",
     "drivers/misc/mediatek/cpufreq_lite/cpudvfs.ko",
     "drivers/misc/mediatek/cross_sched/cross_sched.ko",
     "drivers/misc/mediatek/dcm/mtk_dcm.ko",
