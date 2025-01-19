@@ -309,6 +309,8 @@ int init_ktch(void)
 		return -EINVAL;
 
 	handle = input_register_handler(&dbs_input_handler);
+	if (handle)
+		pr_info("Failed to register input handler, handle %d", handle);
 
 	return 0;
 }
