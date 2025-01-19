@@ -284,6 +284,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		/* register host driver */
 		ssusb_host_init_v2(ssusb);
 		ssusb->is_host = true;
+		mtu3_set_speed(mtu, mtu->max_speed_host);
 		break;
 	case USB_ROLE_DEVICE:
 		/* avoid suspend when works as device */
@@ -657,6 +658,42 @@ static ssize_t max_speed_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(max_speed);
 
+static ssize_t max_speed_host_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+	struct mtu3 *mtu = ssusb->u3d;
+	int speed;
+
+	if (!strncmp(buf, "super-speed-plus", 16))
+		speed = USB_SPEED_SUPER_PLUS;
+	else if (!strncmp(buf, "super-speed", 11))
+		speed = USB_SPEED_SUPER;
+	else if (!strncmp(buf, "high-speed", 10))
+		speed = USB_SPEED_HIGH;
+	else if (!strncmp(buf, "full-speed", 10))
+		speed = USB_SPEED_FULL;
+	else
+		return -EFAULT;
+
+	dev_info(dev, "store host max speed %s\n", buf);
+
+	mtu->max_speed_host = speed;
+	return count;
+}
+
+static ssize_t max_speed_host_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+	struct mtu3 *mtu = ssusb->u3d;
+
+	return sprintf(buf, "%s\n", usb_speed_string(mtu->max_speed_host));
+}
+static DEVICE_ATTR_RW(max_speed_host);
+
 static ssize_t saving_store(struct device *dev,
 				 struct device_attribute *attr,
 				 const char *buf, size_t count)
@@ -755,6 +792,7 @@ static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_mode.attr,
 	&dev_attr_role_mode.attr,
 	&dev_attr_max_speed.attr,
+	&dev_attr_max_speed_host.attr,
 	&dev_attr_saving.attr,
 	&dev_attr_u3_lpm.attr,
 	&dev_attr_host_dev.attr,

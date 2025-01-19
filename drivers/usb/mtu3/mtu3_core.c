@@ -428,7 +428,9 @@ void mtu3_set_speed(struct mtu3 *mtu, enum usb_device_speed speed)
 		return;
 	}
 
-	mtu->speed = speed;
+	if (!mtu->ssusb->is_host)
+		mtu->speed = speed;
+
 	dev_info(mtu->dev, "set speed: %s\n", usb_speed_string(speed));
 }
 

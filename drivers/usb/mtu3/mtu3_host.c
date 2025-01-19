@@ -222,6 +222,7 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 	void __iomem *ibase = ssusb->ippc_base;
 	int num_u3p = ssusb->u3_ports;
 	int num_u2p = ssusb->u2_ports;
+	enum usb_device_speed max_speed = ssusb->u3d->max_speed_host;
 	int u3_ports_disabled;
 	u32 check_clk;
 	u32 value;
@@ -229,7 +230,7 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 	int ret;
 
 	/* if dp 4-lane, set u3_ports = 0 */
-	if (get_dp_switch_status(ssusb))
+	if (get_dp_switch_status(ssusb) || max_speed < USB_SPEED_SUPER)
 		num_u3p = 0;
 
 	/* power on host ip */
@@ -247,7 +248,7 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 		value &= ~(SSUSB_U3_PORT_PDN | SSUSB_U3_PORT_DIS);
 		value |= SSUSB_U3_PORT_HOST_SEL;
 		/* update host speed setting */
-		if (ssusb->u3d->max_speed_host == USB_SPEED_SUPER_PLUS)
+		if (max_speed == USB_SPEED_SUPER_PLUS)
 			value |= SSUSB_U3_PORT_SSP_SPEED;
 		else
 			value &= ~SSUSB_U3_PORT_SSP_SPEED;
@@ -466,10 +467,9 @@ static void ssusb_get_host_rscs(struct ssusb_mtk *ssusb)
 		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1") ||
 		    of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
 			pdev = of_find_device_by_node(child);
-			if (pdev)
+			if (pdev) {
 				ssusb->xhci_pdrv = to_platform_driver(pdev->dev.driver);
 
-			if (pdev && ssusb->ls_slp_quirk) {
 				res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
 				if (res)
 					ssusb->host_base = devm_ioremap(ssusb->dev, res->start,
