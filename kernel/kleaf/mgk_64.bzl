@@ -1428,6 +1428,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/clkdbg-mt6781.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-chk-mt6781.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6781-pg.ko")
+        mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-fake-eng.ko")
         mgk_64_device_modules.remove("drivers/memory/mediatek/emi-mpu.ko")
