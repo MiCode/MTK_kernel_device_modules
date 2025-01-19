@@ -483,7 +483,7 @@ int msg_thread_init(struct msg_thread_ctx *ctx, const char *name,
 	ctx->op_func_size = op_size;
 
 	p_thread = kthread_create(msg_evt_thread,
-				ctx, name);
+				ctx, "%s", name == NULL ? "" : name);
 
 	if (IS_ERR(p_thread)) {
 		pr_err("[%s] create thread fail", __func__);
