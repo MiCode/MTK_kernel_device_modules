@@ -1486,6 +1486,9 @@ static const struct of_device_id dvfsrc_helper_of_match[] = {
 		.compatible = "mediatek,mt6899-dvfsrc",
 		.data = &mt6899_data,
 	}, {
+		.compatible = "mediatek,mt6993-dvfsrc",
+		.data = &mt6991_data,
+	}, {
 		/* sentinel */
 	},
 };
