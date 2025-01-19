@@ -1352,14 +1352,14 @@ int cmdq_proc_create(void)
 	}
 
 	if (!cmdq_proc_debug_off) {
-		entry = proc_create("cmdq-status", 0444, debugDirEntry,
+		entry = proc_create("cmdq-status", 0440, debugDirEntry,
 			&cmdq_util_status_fops);
 		if (!entry) {
 			cmdq_err("proc_create_file cmdq-status failed");
 			return -ENOMEM;
 		}
 
-		entry = proc_create("cmdq-record", 0444, debugDirEntry,
+		entry = proc_create("cmdq-record", 0440, debugDirEntry,
 			&cmdq_util_record_fops);
 		if (!entry) {
 			cmdq_err("proc_create_file cmdq-record failed");
@@ -1368,7 +1368,7 @@ int cmdq_proc_create(void)
 	}
 
 	if (cmdq_dump_buf_size) {
-		entry = proc_create("cmdq_buffer_record", 0444, debugDirEntry,
+		entry = proc_create("cmdq_buffer_record", 0440, debugDirEntry,
 			&cmdq_proc_util_buf_record_fops);
 		if (!entry) {
 			cmdq_err("proc_create_file cmdq_buffer_record failed");
