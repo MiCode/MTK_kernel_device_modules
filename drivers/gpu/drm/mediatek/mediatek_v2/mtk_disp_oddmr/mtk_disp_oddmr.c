@@ -550,6 +550,8 @@
 #define MT6991_DISP_ODDMR_UDMA_DBI_CTRL30				0xE6C
 	#define MT6991_REG_DBI_REQ_STASH_LEAD_CNT			REG_FLD_MSB_LSB(3, 0)
 	#define MT6991_REG_DBI_REQ_STASH_EN					REG_FLD_MSB_LSB(8, 8)
+#define MT6991_DISP_ODDMR_UDMA_DBI_CTRL70				0xF00
+	#define MT6991_REG_PRTCL_PROT_OFF					REG_FLD_MSB_LSB(7, 7)
 #define MT6991_DISP_ODDMR_UDMA_DBI_CTRL88				0xFC0
 	#define MT6991_REG_RB_EN							REG_FLD_MSB_LSB(0, 0)
 
@@ -6274,6 +6276,11 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
 				mtk_oddmr_write(comp, 4,
 					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_PRTCL_PROT_OFF);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_UDMA_DBI_CTRL70, mask, handle);
 				value = 0;
 				mask = 0;
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_RB_EN);
