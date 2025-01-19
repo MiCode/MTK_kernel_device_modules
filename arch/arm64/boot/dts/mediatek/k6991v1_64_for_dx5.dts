@@ -132,6 +132,15 @@ bootargs_ext = "rcu_nocbs=0-7";
 	status = "okay";
 };
 
+&hfrpsys {
+	compatible = "mediatek,mt6991-hfrpsys-hwv-swrgo", "syscon";
+	clocks =
+		/* CCU */
+		<&cksys_gp2_clk CLK_CK2_CCUSYS_SEL>,
+		<&mm_pd_clk MT6991_PD_CAM_VCORE_CCU>;
+	clock-names = "ccusys", "cam_vcore_ccu";
+};
+
 &disp_ssc0_smi_2x1_sub_comm {
 	mediatek,pd-id = <MT6991_SMI_PD_MMINFRA1>;
 };
