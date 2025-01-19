@@ -49,6 +49,7 @@ obj-$(CONFIG_MTK_LOW_POWER_MODULE) += lpm/
 obj-$(CONFIG_MTK_LPM_LEGACY) += lpm_legacy/
 obj-$(CONFIG_MTK_SSC_MODULE) += ssc/
 obj-$(CONFIG_MTK_SWPM_MODULE) += swpm/
+obj-$(CONFIG_MTK_SWPM_MODULE_LEGACY) += swpm_legacy/
 obj-$(CONFIG_MTK_PMSR) += pmsr/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP3_Z) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP3_M) += imgsensor/src/
