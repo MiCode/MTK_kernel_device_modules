@@ -670,7 +670,6 @@ static int gt1x_ts_power_init(void)
 	tpd->reg = devm_regulator_get(tpd->tpd_dev, "vtouch");
 	if (IS_ERR(tpd->reg)) {
 		GTP_ERROR("regulator_get() failed!\n");
-		tpd->reg = NULL;
 		return PTR_ERR(tpd->reg);
 	}
 
