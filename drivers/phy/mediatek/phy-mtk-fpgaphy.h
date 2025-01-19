@@ -51,6 +51,7 @@ enum i2c_pin {
 };
 #else
 void __iomem *i2c_base;
+void __iomem *i2c_clock_base;
 u32 i2c_physical_base;
 
 #define U3_PHY_I2C_DEV			0x60

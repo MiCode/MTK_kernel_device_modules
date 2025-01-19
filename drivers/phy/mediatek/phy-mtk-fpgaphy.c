@@ -1249,6 +1249,7 @@ static int fpga_u3phy_probe(struct platform_device *pdev)
 	struct phy_provider *provider;
 	struct fpga_u3phy *u3phy;
 	u32 ippc;
+	u32 addr, mask;
 	int index;
 	int ret;
 
@@ -1287,6 +1288,10 @@ static int fpga_u3phy_probe(struct platform_device *pdev)
 			(u32 *) &i2c_physical_base))
 		dev_info(dev, "%s, i2c_physical_base:%x (dtsi)\n"
 			,  __func__, i2c_physical_base);
+	else if (!of_property_read_u32(np, "fpga-i2c-physical-base",
+			(u32 *) &i2c_physical_base))
+		dev_info(dev, "%s, i2c_physical_base:%x (dtsi)\n"
+			,  __func__, i2c_physical_base);
 	else {
 		dev_info(dev, "no fpga_i2c_physical_base defined in dts.\n");
 		return -ENODEV;
@@ -1296,6 +1301,23 @@ static int fpga_u3phy_probe(struct platform_device *pdev)
 		dev_info(dev, "Can't remap I2C BASE\n");
 
 	dev_info(dev, "I2C BASE=0x%lx, %x\n", (uintptr_t) (i2c_base), i2c_physical_base);
+
+	if (of_property_read_u32_index(np, "fpga-i2c-clock", 0, &addr))
+		goto no_clock;
+
+	if (of_property_read_u32_index(np, "fpga-i2c-clock", 1, &mask))
+		goto no_clock;
+
+	i2c_clock_base = ioremap(addr, 0x10);
+	if (i2c_clock_base) {
+		if (readl(i2c_clock_base) & mask)
+			writel(mask, i2c_clock_base + 0x4);
+		iounmap(i2c_clock_base);
+		dev_info(dev, "enable I2C clock\n");
+	} else {
+no_clock:
+		dev_info(dev, "no I2C clock\n");
+	}
 #endif
 
 	index = 0;
