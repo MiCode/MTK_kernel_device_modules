@@ -1169,7 +1169,7 @@ bool dp_parse_svid_data(
 	const char *connection;
 	uint32_t ufp_d_pin_cap = 0, dfp_d_pin_cap = 0;
 	uint32_t ufp_d_pin = 0, dfp_d_pin = 0;
-	uint32_t sig = DP_SIG_HBR3, receptacle = 1, usb2 = 0;
+	uint32_t sig = DP_SIG_HBR3, receptacle = 0, usb2 = 0;
 	int i = 0;
 
 	np = of_find_node_by_name(
@@ -1214,8 +1214,9 @@ bool dp_parse_svid_data(
 	if (of_property_read_bool(np, "usbr20-not-used") ||
 	    of_property_read_bool(np, "usbr20_not_used"))
 		usb2 = 1;
-	if (of_property_read_bool(np, "typec,receptacle"))
-		receptacle = 1;
+
+	receptacle = of_property_read_bool(np, "typec,receptacle");
+
 	svid_data->local_mode.mode_cnt = 1;
 	if (receptacle) {
 		ufp_d_pin = ufp_d_pin_cap;

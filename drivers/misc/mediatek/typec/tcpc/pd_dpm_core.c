@@ -128,17 +128,16 @@ void pd_dpm_inform_cable_id(struct pd_port *pd_port, bool ack, bool src_startup)
 	uint32_t *payload = pd_get_msg_vdm_data_payload(pd_port);
 	uint8_t cnt = pd_get_msg_vdm_data_count(pd_port);
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
-	int i = 0;
-	char buf[100];
+	int i = 0, offset = 0;
+	char buf[100] = "\0";
+	size_t buf_size = sizeof(buf);
 
 	if (ack && payload) {
-		buf[0] = '\0';
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-			 "InformCableID");
+		offset += snprintf(buf + offset, buf_size - offset, "InformCableID");
 		for (i = 0; i < cnt; i++)
-			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-				 ", 0x%08x", payload[i]);
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "\n");
+			offset += snprintf(buf + offset, buf_size - offset, ", 0x%08x", payload[i]);
+
+		offset += snprintf(buf + offset, buf_size - offset, "\n");
 		DPM_DBG("%s", buf);
 
 		memcpy(pe_data->cable_vdos, payload, sizeof(uint32_t) * cnt);
@@ -159,17 +158,16 @@ void pd_dpm_inform_cable_svids(struct pd_port *pd_port, bool ack)
 	uint32_t *payload = pd_get_msg_vdm_data_payload(pd_port);
 	uint8_t cnt = pd_get_msg_vdm_data_count(pd_port);
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
-	int i = 0;
-	char buf[100];
+	int i = 0, offset = 0;
+	char buf[100] = "\0";
+	size_t buf_size = sizeof(buf);
 
 	if (ack && payload) {
-		buf[0] = '\0';
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-			 "InformCableSVIDs");
+		offset += snprintf(buf + offset, buf_size - offset, "InformCableSVIDs");
 		for (i = 0; i < cnt; i++)
-			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-				 ", 0x%08x", payload[i]);
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "\n");
+			offset += snprintf(buf + offset, buf_size - offset, ", 0x%08x", payload[i]);
+
+		offset += snprintf(buf + offset, buf_size - offset, "\n");
 		DPM_DBG("%s", buf);
 
 		if (cnt < VDO_MAX_NR ||
@@ -192,21 +190,20 @@ void pd_dpm_inform_cable_modes(struct pd_port *pd_port, bool ack)
 	uint16_t svid = dpm_vdm_get_svid(pd_port);
 	uint16_t expected_svid = pd_port->cable_mode_svid;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
-	int i = 0;
-	char buf[100];
+	int i = 0, offset = 0;
+	char buf[100] = "\0";
+	size_t buf_size = sizeof(buf);
 
 	if (svid != expected_svid)
 		DPM_INFO("Not expected SVID (0x%04x, 0x%04x)\n",
 			 svid, expected_svid);
 
 	if (ack && payload) {
-		buf[0] = '\0';
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-			 "InformCableModes");
+		offset += snprintf(buf + offset, buf_size - offset, "InformCableModes");
 		for (i = 0; i < cnt; i++)
-			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-				 ", 0x%08x", payload[i]);
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "\n");
+			offset += snprintf(buf + offset, buf_size - offset, ", 0x%08x", payload[i]);
+
+		offset += snprintf(buf + offset, buf_size - offset, "\n");
 		DPM_DBG("%s", buf);
 
 		if (svid == expected_svid)
@@ -1131,19 +1128,18 @@ void pd_dpm_dfp_inform_id(struct pd_port *pd_port, bool ack)
 	uint32_t *payload = pd_get_msg_vdm_data_payload(pd_port);
 	uint8_t cnt = pd_get_msg_vdm_data_count(pd_port);
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
-	int i = 0;
-	char buf[100];
+	int i = 0, offset = 0;
+	char buf[100] = "\0";
+	size_t buf_size = sizeof(buf);
 
 	VDM_STATE_DPM_INFORMED(pd_port);
 
 	if (ack && payload) {
-		buf[0] = '\0';
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-			 "InformID");
+		offset += snprintf(buf + offset, buf_size - offset, "InformID");
 		for (i = 0; i < cnt; i++)
-			snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
-				 ", 0x%08x", payload[i]);
-		snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), "\n");
+			offset += snprintf(buf + offset, buf_size - offset, ", 0x%08x", payload[i]);
+
+		offset += snprintf(buf + offset, buf_size - offset, "\n");
 		DPM_DBG("%s", buf);
 
 		dpm_dfp_update_partner_id(pd_port, payload);
