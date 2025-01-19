@@ -17,6 +17,8 @@
 #define MFG_RPC_MFG0_PWR_CON               (g_mfg_rpc_base + 0x0504)          /* 0x4B800504 */
 #define MFG_RPC_MFG2_PWR_CON               (g_mfg_rpc_base + 0x0508)          /* 0x4B800508 */
 #define MFG_RPC_MFG37_PWR_CON              (g_mfg_rpc_base + 0x0594)          /* 0x4B800594 */
+#define MFG_RPCTOP_DUMMY_REG_2             (g_mfg_rpc_base + 0x0658)          /* 0x4B800658 */
+#define GHPM_EN_FOR_MT6991_B0              (BIT(0))
 #define MFG_GHPM_CFG0_CON                  (g_mfg_rpc_base + 0x0800)          /* 0x4B800800 */
 #define APB_WDT_RST_EN                     (BIT(24))
 #define POLL_WDT_RST_EN                    (BIT(23))
@@ -38,6 +40,7 @@
 #define SRC_ACK_TIMEOUT_RECORD             (BIT(28))
 #define MAINPLL_ACK_SKIP_RECORD            (BIT(27))
 #define STATE_RECORD                       (GENMASK(7,0))
+#define MFG_GHPM_RO2_CON                   (g_mfg_rpc_base + 0x09AC)          /* 0x4B8009AC */
 
 #define CLK_CKFG_6                         (g_clk_cfg_6)
 #define CLK_CKFG_6_SET                     (g_clk_cfg_6_set)
