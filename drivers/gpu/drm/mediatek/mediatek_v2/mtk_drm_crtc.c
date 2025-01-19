@@ -6434,10 +6434,24 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 2);
 
-	mtk_crtc->old_mode_switch_state = old_state;
-	atomic_set(&mtk_crtc->singal_for_mode_switch, 1);
-	wake_up_interruptible(&mtk_crtc->mode_switch_wq);
+	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 3);
+
+	/* adjust trigger loop in different display mode */
+	if (mtk_crtc_with_trigger_loop(crtc) &&
+			mtk_crtc_with_event_loop(crtc) &&
+			mtk_crtc_is_frame_trigger_mode(crtc)) {
+		mtk_crtc_stop_trig_loop(crtc);
+		mtk_crtc_stop_event_loop(crtc);
+
+		mtk_crtc_start_event_loop(crtc);
+		mtk_crtc_start_trig_loop(crtc);
+	}
+	if (drm_crtc_index(crtc) == 0)
+		mtk_vidle_update_dt_by_type(crtc,
+			mtk_dsi_is_cmd_mode(output_comp) ? PANEL_TYPE_CMD : PANEL_TYPE_VDO);
 
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 		/* set frame done */
@@ -6615,10 +6629,24 @@ void mtk_crtc_mode_switch_config(struct mtk_drm_crtc *mtk_crtc,
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 2);
 
-	mtk_crtc->old_mode_switch_state = old_state;
-	atomic_set(&mtk_crtc->singal_for_mode_switch, 1);
-	wake_up_interruptible(&mtk_crtc->mode_switch_wq);
+	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
+	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 3);
+
+	/* adjust trigger loop in different display mode */
+	if (mtk_crtc_with_trigger_loop(crtc) &&
+			mtk_crtc_with_event_loop(crtc) &&
+			mtk_crtc_is_frame_trigger_mode(crtc)) {
+		mtk_crtc_stop_trig_loop(crtc);
+		mtk_crtc_stop_event_loop(crtc);
+
+		mtk_crtc_start_event_loop(crtc);
+		mtk_crtc_start_trig_loop(crtc);
+	}
+	if (drm_crtc_index(crtc) == 0)
+		mtk_vidle_update_dt_by_type(crtc,
+			mtk_dsi_is_cmd_mode(output_comp) ? PANEL_TYPE_CMD : PANEL_TYPE_VDO);
 
 	/* set frame done */
 	mtk_crtc_pkt_create(&sevent_cmdq_handle, &mtk_crtc->base,
