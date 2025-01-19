@@ -12990,7 +12990,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		clocks =
 			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_VDISP_AO_CONFIG_DISP>,
 			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_DPC_DISP>,
-			<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
+			<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>,
+			<&mmdvfs_mux MMDVFS_USER_DISP>;
+		clock-names = "mm_v_disp_vdisp_ao_config_disp",
+				"mm_v_disp_dpc_disp",
+				"mm_v_smi_sub_somm0_smi",
+				"mmdvfs_clk";
+		vdisp-clock-names = "mm_v_disp_vdisp_ao_config_disp",
+				"mm_v_disp_dpc_disp",
+				"mm_v_smi_sub_somm0_smi";
+		mmdvfs-clock-names = "mmdvfs_clk";
 		#clock-cells = <1>;
 		reg =
 			<0 0x3e800000 0 0x4>,             /* DISP_REG_VDISP_AO_INTEN */
@@ -12998,14 +13007,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<0 0x31b00000 0 0x2000>,          /* HWCCF_BASE_ADDR */
 			<0 0x31b50180 0 0x4>,             /* MMPC_BUS_PROTECT_CG_GP1 */
 			<0 0x31bd0070 0 0x4>,             /* hfrp DISP_SW_VOTE_SET */
-			<0 0x31bd0074 0 0x4>;             /* hfrp DISP_SW_VOTE_CLR */
+			<0 0x31bd0074 0 0x4>,             /* hfrp DISP_SW_VOTE_CLR */
+			<0 0x3ea00000 0 0x114>;           /* AGING_BASE */
 		reg-names =
 			"vdisp_ao_inten",
 			"vdisp_ao_cg_con",
 			"hwccf_base",
 			"mmpc_bus_prot_gp1",
 			"disp_sw_vote_set",
-			"disp_sw_vote_clr";
+			"disp_sw_vote_clr",
+			"aging_base";
 		disp-pd-id = <0>;
 	};
 
@@ -15706,6 +15717,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		send-table =
 			<33 0  2>,/* IPI_OUT_MMDVFS_MMUP */
 			<13 0  2>,/* IPI_OUT_MMDEBUG */
+			<35 0  1>,/* IPI_OUT_VDISP */
 			<30 1  6>,/* IPI_OUT_LOGGER_CTRL_1 */
 			<20 1  2>,/* IPI_OUT_C_SLEEP_1 */
 			<21 1  3>,/* IPI_OUT_TEST_1 */
