@@ -1114,7 +1114,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 	int timeout = 0;
 	struct vdec_inst *inst = NULL;
 	int val, wait_cnt, i;
-	bool need_ipi;
+	bool need_backup;
 
 	if (!mtk_vcodec_is_vcp(MTK_INST_DECODER))
 		return 0;
@@ -1196,11 +1196,11 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		// send backup ipi to vcp by dev_ctx if vcp has inst
 		mutex_lock(&dev->ctx_mutex);
 		mtk_vcodec_alive_checker_suspend(dev);
-		need_ipi = has_valid_vcp_inst(dev);
+		need_backup = has_valid_vcp_inst(dev);
 		mutex_unlock(&dev->ctx_mutex);
 
 		mtk_v4l2_debug(0, "%sbackup (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
-			need_ipi ? "" : "no need ",
+			need_backup ? "" : "no need ",
 			dev->vdec_dvfs_params.target_freq,
 			atomic_read(&dev->larb_ref_cnt),
 			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
@@ -1208,8 +1208,10 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 
-		if (need_ipi)
+		if (need_backup) {
 			vdec_vcp_backup((struct vdec_inst *)dev->dev_ctx.drv_handle);
+			dev->has_backup = true;
+		}
 
 		// check all hw lock is released
 		for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
@@ -1237,10 +1239,9 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 	case VCP_EVENT_RESUME:
 		mutex_lock(&dev->ctx_mutex);
 		mtk_vcodec_alive_checker_resume(dev);
-		need_ipi = has_valid_vcp_inst(dev);
 		mutex_unlock(&dev->ctx_mutex);
 
-		if (need_ipi) {
+		if (dev->has_backup) {
 			mtk_v4l2_debug(0, "restore (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
 				dev->vdec_dvfs_params.target_freq,
 				atomic_read(&dev->larb_ref_cnt),
@@ -1249,6 +1250,7 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 				atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 				atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 			vdec_vcp_resume((struct vdec_inst *)dev->dev_ctx.drv_handle);
+			dev->has_backup = false;
 		}
 
 		dev->is_codec_suspending = 0;
