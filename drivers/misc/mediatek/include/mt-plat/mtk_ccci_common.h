@@ -335,6 +335,7 @@ enum KERN_FUNC_ID {
 	ID_AP2MD_LOWPWR,	/* for AP2MD LOWPWR*/
 	ID_GET_MD_BOOT_CNT,	/* for thermal */
 	ID_SPMI_FORCE_MD_ASSERT,	/* for SPMI */
+	ID_PMIF_FORCE_MD_ASSERT,	/* for PMIF: let MD call MD MMRF API to assert*/
 };
 
 /* AP<->MD messages on control or system channel */
