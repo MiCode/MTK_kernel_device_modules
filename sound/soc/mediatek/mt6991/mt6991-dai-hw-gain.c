@@ -17,6 +17,7 @@
 #define HW_GAIN_2_EN_W_NAME "HW GAIN 2 Enable"
 #define HW_GAIN_3_EN_W_NAME "HW GAIN 3 Enable"
 
+static	unsigned int hw_gain_default = 0x200000;
 
 /* dai component */
 static const struct snd_kcontrol_new mtk_hw_gain0_in_ch1_mix[] = {
@@ -121,20 +122,20 @@ static int mtk_hw_gain_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(afe->regmap,
 				   gain_cur_l,
 				   AFE_GAIN_CUR_L_MASK_SFT,
-				   0x200000);
+				   hw_gain_default);
 		regmap_update_bits(afe->regmap,
 				   gain_cur_r,
 				   AFE_GAIN_CUR_R_MASK_SFT,
-				   0x200000);
+				   hw_gain_default);
 		/* set target gain to 0db */
 		regmap_update_bits(afe->regmap,
 				   gain_con1_l,
 				   GAIN_TARGET_L_MASK_SFT,
-				   0x200000);
+				   hw_gain_default);
 		regmap_update_bits(afe->regmap,
 				   gain_con1_r,
 				   GAIN_TARGET_R_MASK_SFT,
-				   0x200000);
+				   hw_gain_default);
 #else
 		/* let hw gain ramp up, set cur gain to 0 */
 		regmap_update_bits(afe->regmap,
@@ -169,9 +170,19 @@ static int mt6991_gain0_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	unsigned int value = 0x0;
-	mt6991_afe_enable_clock(afe);
+	int ret = 0;
+
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_read(afe->regmap, AFE_GAIN0_CUR_L, &value);
-	mt6991_afe_disable_clock(afe);
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
 	ucontrol->value.integer.value[0] = value;
 
 	return 0;
@@ -185,6 +196,7 @@ static int mt6991_gain0_set(struct snd_kcontrol *kcontrol,
 
 	unsigned int hw_gain_target = 0x0;
 	int i = 0, index = 0;
+	int ret = 0;
 
 	hw_gain_target = ucontrol->value.integer.value[0];
 	dev_info(afe->dev, "%s(), hw_gain_target %d, value = %ld\n",
@@ -196,7 +208,12 @@ static int mt6991_gain0_set(struct snd_kcontrol *kcontrol,
 			break;
 		}
 	}
-	mt6991_afe_enable_clock(afe);
+
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN0_CON1_L,
 			   GAIN_TARGET_L_MASK_SFT,
@@ -205,7 +222,12 @@ static int mt6991_gain0_set(struct snd_kcontrol *kcontrol,
 			   AFE_GAIN0_CON1_R,
 			   GAIN_TARGET_R_MASK_SFT,
 			   kHWGainMap_IPM2P[index] << GAIN_TARGET_R_SFT);
-	mt6991_afe_disable_clock(afe);
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
+	hw_gain_default = kHWGainMap_IPM2P[index] << GAIN_TARGET_L_SFT;
 
 	return 0;
 }
@@ -216,9 +238,19 @@ static int mt6991_gain1_get(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	unsigned int value = 0x0;
-	mt6991_afe_enable_clock(afe);
+	int ret = 0;
+
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_read(afe->regmap, AFE_GAIN1_CUR_L, &value);
-	mt6991_afe_disable_clock(afe);
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
 	ucontrol->value.integer.value[0] = value;
 
 	return 0;
@@ -232,6 +264,7 @@ static int mt6991_gain1_set(struct snd_kcontrol *kcontrol,
 
 	unsigned int hw_gain_target = 0x0;
 	int i = 0, index = 0;
+	int ret = 0;
 
 	hw_gain_target = ucontrol->value.integer.value[0];
 	for (i = 0; i < ARRAY_SIZE(kHWGainMap); i++) {
@@ -240,7 +273,12 @@ static int mt6991_gain1_set(struct snd_kcontrol *kcontrol,
 			break;
 		}
 	}
-	mt6991_afe_enable_clock(afe);
+
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN1_CON1_L,
 			   GAIN_TARGET_L_MASK_SFT,
@@ -249,7 +287,13 @@ static int mt6991_gain1_set(struct snd_kcontrol *kcontrol,
 			   AFE_GAIN1_CON1_R,
 			   GAIN_TARGET_R_MASK_SFT,
 			   kHWGainMap_IPM2P[index] << GAIN_TARGET_R_SFT);
-	mt6991_afe_disable_clock(afe);
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
+	hw_gain_default = kHWGainMap_IPM2P[index] << GAIN_TARGET_L_SFT;
+
 	return 0;
 }
 
@@ -263,14 +307,27 @@ static int mt6991_gain_l_set(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int max = mc->max;
 	unsigned int val = ucontrol->value.integer.value[0];
+	int ret = 0;
 
 	dev_dbg(afe->dev,
 		"%s(), ucontrol string = %s, val = %d, max = 0x%x\n",
 		__func__, ucontrol->id.name, val, max);
 	if (val > max)
 		return 0;
+
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_update_bits(afe->regmap, reg,
 			   GAIN_TARGET_L_MASK_SFT, val << GAIN_TARGET_L_SFT);
+
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
 	return 0;
 }
 
@@ -283,8 +340,19 @@ static int mt6991_gain_l_get(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int val = 0x0;
 	unsigned int reg = mc->reg;
+	int ret = 0;
 
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_read(afe->regmap, reg, &val);
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
 
 	dev_dbg(afe->dev,
 		"%s(), ucontrol string = %s, val = %d\n",
@@ -304,14 +372,26 @@ static int mt6991_gain_r_set(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	unsigned int max = mc->max;
 	unsigned int val = ucontrol->value.integer.value[0];
+	int ret = 0;
 
 	dev_dbg(afe->dev, "%s(), ucontrol string = %s, val = %d, max = 0x%x\n",
 		__func__, ucontrol->id.name, val, max);
 	if (val > max)
 		return 0;
 
+
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_update_bits(afe->regmap, reg,
 			   GAIN_TARGET_R_MASK_SFT, val << GAIN_TARGET_R_SFT);
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
 
 	return 0;
 }
@@ -325,8 +405,19 @@ static int mt6991_gain_r_get(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int val = 0x0;
 	unsigned int reg = mc->reg;
+	int ret = 0;
 
+	ret = pm_runtime_get_sync(afe->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(afe->dev);
+		return ret;
+	}
 	regmap_read(afe->regmap, reg, &val);
+	ret = pm_runtime_put(afe->dev);
+	if (ret < 0) {
+		dev_dbg(afe->dev, "%s(), fail\n", __func__);
+		return ret;
+	}
 	dev_dbg(afe->dev, "%s(), ucontrol string = %s, val = %d\n",
 		__func__, ucontrol->id.name, val);
 	ucontrol->value.integer.value[0] = val & GAIN_TARGET_R_MASK_SFT;
