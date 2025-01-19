@@ -253,6 +253,9 @@
 #define SYS_CLK_RDY_TIME_TO_10US	0xa
 #define PCIE_APSRC_ACK			BIT(10)
 
+#define PCIE_CONF_DEV_CAP_REG		0x1084
+#define PCIE_CONF_DEV_CTL_STS_REG	0x1088
+
 /* pcie read completion timeout */
 #define PCIE_CONF_DEV2_CTL_STS		0x10a8
 #define PCIE_DCR2_CPL_TO		GENMASK(3, 0)
@@ -3409,7 +3412,18 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 
 static int mtk_pcie_post_init_6993(struct mtk_pcie_port *port)
 {
-	u32 val;
+	u32 val, max_payload_sup;
+
+	/* Adjust max payload size to maximum */
+	max_payload_sup = readl_relaxed(port->base + PCIE_CONF_DEV_CAP_REG);
+	max_payload_sup &= PCI_EXP_DEVCAP_PAYLOAD;
+	val = readl_relaxed(port->base + PCIE_CONF_DEV_CTL_STS_REG);
+	val &= ~PCI_EXP_DEVCTL_PAYLOAD;
+	val |= FIELD_PREP(PCI_EXP_DEVCTL_PAYLOAD, max_payload_sup);
+	writel_relaxed(val, port->base + PCIE_CONF_DEV_CTL_STS_REG);
+
+	dev_info(port->dev, "max payload size register, DEV_CTL=%#x",
+		 readl_relaxed(port->base + PCIE_CONF_DEV_CTL_STS_REG));
 
 	if (port->port_num == 1) {
 		/*
