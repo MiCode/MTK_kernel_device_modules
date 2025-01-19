@@ -1488,6 +1488,7 @@ mgk_64_device_modules = [
     #"sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
     "sound/soc/mediatek/common/mtk-sp-spk-amp.ko",
     "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
+    "drivers/misc/mediatek/cameraisp/rsc/camera_rsc_isp6s.ko",
     "sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko",
     "sound/soc/mediatek/vow/mtk-scp-vow.ko",
     "sound/soc/codecs/snd-soc-mt6366.ko",
