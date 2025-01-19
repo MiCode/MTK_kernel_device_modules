@@ -295,7 +295,8 @@ static void ged_eb_sysram_debug_data_write(void)
 					dbg_data[i] =
 						mtk_gpueb_sysram_read(
 							gpueb_dbg_data[dbg_cnt].sysram_base + cur_read_p);
-					if (dbg_data[i] != GED_DVFS_FRAME_BASE_COMMIT)
+					// EB_COMMIT_TYPE at [16:23]
+					if (((dbg_data[i] >> 16) & 0xFF) != GED_DVFS_FRAME_BASE_COMMIT)
 						is_fb = 0;
 					break;
 				case EB_DEBUG_COUNT:
@@ -364,8 +365,8 @@ static void ged_eb_sysram_debug_data_write(void)
 			}
 		}
 
-		if (is_fb) {
-			switch (dbg_cnt) {
+		// common part
+		switch (dbg_cnt) {
 			case EB_LOADING:
 				trace_GPU_DVFS__EBRB_LOADING(dbg_data, dbg_data2);
 				break;
@@ -385,26 +386,17 @@ static void ged_eb_sysram_debug_data_write(void)
 				trace_GPU_DVFS__EBRB_PREOC(dbg_data);
 				break;
 			default:
-				trace_GPU_DVFS__Policy__EB_RINBUFFER(
-					gpueb_dbg_data[dbg_cnt].name, dbg_data, diff_data);
 				break;
-			}
-		} else {
+		}
+
+		// LB related trace
+		if (!is_fb) {
 			switch (dbg_cnt) {
 			case EB_FREQ:
 				trace_GPU_DVFS__EBRB_FREQ(dbg_data, dbg_data2);
 				break;
-			case EB_LOADING:
-				trace_GPU_DVFS__EBRB_LOADING(dbg_data, dbg_data2);
-				break;
 			case EB_AVG_LOADING:
 				trace_GPU_DVFS__EBRB_AVG_LOADING(dbg_data, dbg_data2);
-				break;
-			case EB_COMMIT_TYPE:
-				trace_GPU_DVFS__EBRB_COMMON(dbg_data);
-				break;
-			case EB_POWER_STATE:
-				trace_GPU_DVFS__EBRB_POWER_STATE(dbg_data);
 				break;
 			case EB_PRESERV:
 				trace_GPU_DVFS__EBRB_PRESERVE(dbg_data);
@@ -418,9 +410,6 @@ static void ged_eb_sysram_debug_data_write(void)
 			case EB_MARGIN:
 				trace_GPU_DVFS__EBRB_MARGIN(dbg_data);
 				break;
-			case EB_FB_MONITOR:
-				trace_GPU_DVFS__EBRB_FB_MONITOR(dbg_data, dbg_data2);
-			break;
 			case EB_GPU_TIME:
 				trace_GPU_DVFS__EBRB_GPU_TIME(
 					dbg_data, dbg_data2, dbg_data3, dbg_data4, dbg_data5, dbg_data6);
@@ -435,20 +424,16 @@ static void ged_eb_sysram_debug_data_write(void)
 			case EB_ASYNC_POLICY:
 				trace_GPU_DVFS__EBRB_ASYNC_POLICY(dbg_data, dbg_data2);
 				break;
-			case EB_DEBUG_COUNT:
-				trace_GPU_DVFS__EBRB_DEBUG(dbg_data);
-				break;
-			case EB_PREOC:
-				trace_GPU_DVFS__EBRB_PREOC(dbg_data);
-				break;
 			default:
-				trace_GPU_DVFS__Policy__EB_RINBUFFER(
-					gpueb_dbg_data[dbg_cnt].name, dbg_data, diff_data);
 				break;
 			}
 		}
 		mtk_gpueb_sysram_write(SYSRAM_GPU_EB_GPU_EB_DEBUG_READ_POINTER, tmp_head);
 	}
+
+	// remaining trace is for policy_v2
+	if (!(is_fdvfs_enable() & POLICY_MODE_V2))
+		return;
 
 	// RB for EB_DVFS_V2
 	for (dbg_cnt = 0; dbg_cnt < GPU_FDVFS_V2_RB_LOG_MAX; dbg_cnt++) {
@@ -512,7 +497,6 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 		}
 	}
-
 }
 
 /*
