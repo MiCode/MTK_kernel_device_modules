@@ -102,6 +102,7 @@ unsigned long _capacity_of(int cpu)
 {
 	return cpu_rq(cpu)->cpu_capacity;
 }
+EXPORT_SYMBOL(_capacity_of);
 
 unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 {

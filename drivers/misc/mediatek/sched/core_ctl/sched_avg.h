@@ -36,5 +36,6 @@ extern int get_max_nr_running(int cpu);
 extern int get_max_rt_nr_running(int cpu);
 extern void policy_chg_notify(void);
 extern unsigned int core_ctl_get_policy(void);
+extern unsigned long _capacity_of(int cpu);
 
 #endif /* _SCHED_AVG_H */

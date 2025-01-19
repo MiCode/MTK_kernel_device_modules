@@ -39,6 +39,12 @@ enum{
 	MAX_FORCE_PAUSE_TYPE	= 32,
 };
 
+enum {
+	SYSNODE = 0,
+	POWERHAL,
+	CAMERA
+};
+
 #define CORE_CTL_FORCE_RESUME_CPU               _IOW('g', 1,  struct _CORE_CTL_PACKAGE)
 #define CORE_CTL_FORCE_PAUSE_CPU                _IOW('g', 2,  struct _CORE_CTL_PACKAGE)
 #define CORE_CTL_SET_OFFLINE_THROTTLE_MS        _IOW('g', 3,  struct _CORE_CTL_PACKAGE)
@@ -55,11 +61,6 @@ extern int core_ctl_get_min_cpus(unsigned int cid);
 extern int core_ctl_set_min_cpus(unsigned int cid, unsigned int min, int requester, unsigned int have_demand);
 extern int core_ctl_get_max_cpus(unsigned int cid);
 extern int core_ctl_set_max_cpus(unsigned int cid, unsigned int max, int requester, unsigned int have_demand);
-
-enum {
-	SYSNODE = 0,
-	POWERHAL,
-	CAMERA
-};
+extern int pd_freq2opp(int cpu, int opp, int quant, int wl);
 
 #endif /* _CORE_CTL_H */
