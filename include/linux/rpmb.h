@@ -10,6 +10,9 @@
 #include <linux/device.h>
 #include <linux/kref.h>
 
+#define RPMB_KEY_LEN 32
+#define RPMB_HMAC_LEN RPMB_KEY_LEN
+
 /**
  * struct rpmb_frame - rpmb frame as defined by specs
  *
@@ -34,7 +37,7 @@
  */
 struct rpmb_frame {
 	u8     stuff[196];
-	u8     key_mac[32];
+	u8     key_mac[RPMB_KEY_LEN];
 	u8     data[256];
 	u8     nonce[16];
 	__be32 write_counter;

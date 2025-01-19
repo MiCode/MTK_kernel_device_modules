@@ -4,6 +4,7 @@
  */
 
 #include <crypto/hash.h>
+#include <linux/arm-smccc.h>
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -41,6 +42,7 @@
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 #include <linux/platform_device.h>
+#include "ufs-mediatek-sip.h"
 #include "ufs-mediatek.h"
 #endif
 
@@ -136,9 +138,13 @@ static struct nl_rpmb_send_req nl_rpmb_req;
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
-#define RPMB_IOCTL_PROGRAM_KEY  1
-#define RPMB_IOCTL_WRITE_DATA   3
-#define RPMB_IOCTL_READ_DATA    4
+
+enum ufs_ioctl {
+	RPMB_IOCTL_PROGRAM_KEY_REGION0 = 1,
+	RPMB_IOCTL_WRITE_DATA = 3,
+	RPMB_IOCTL_READ_DATA = 4,
+	RPMB_IOCTL_PROGRAM_KEY_REGION3 = 5,
+};
 
 enum rpmb_region {
 	RPMB_REGION0 = 0,
@@ -146,6 +152,16 @@ enum rpmb_region {
 	RPMB_REGION2,
 	RPMB_REGION3,
 	RPMB_MAX_REGION_CNT
+};
+
+/* RPMB KEYS */
+enum ufs_key_type {
+	RPMB_AUTH_KEY_REGION0 = 0,
+	RPMB_AUTH_KEY_REGION1,
+	RPMB_AUTH_KEY_REGION2,
+	RPMB_AUTH_KEY_REGION3,
+	MTEE_ENC_KEY,  /* MTEE RPMB key */
+	UFS_KEY_COUNT
 };
 
 struct rpmb_ioc_param {
@@ -369,29 +385,19 @@ static int rpmb_cal_hmac(struct rpmb_frame *frame, int blk_cnt,
 }
 #endif
 
-static void rpmb_dump_frame(u8 *data_frame)
+static void rpmb_dump_frame(struct rpmb_frame *frame)
 {
-	MSG(DBG_INFO, "mac, frame[196] = 0x%x\n", data_frame[196]);
-	MSG(DBG_INFO, "mac, frame[197] = 0x%x\n", data_frame[197]);
-	MSG(DBG_INFO, "mac, frame[198] = 0x%x\n", data_frame[198]);
-	MSG(DBG_INFO, "data,frame[228] = 0x%x\n", data_frame[228]);
-	MSG(DBG_INFO, "data,frame[229] = 0x%x\n", data_frame[229]);
-	MSG(DBG_INFO, "nonce, frame[484] = 0x%x\n", data_frame[484]);
-	MSG(DBG_INFO, "nonce, frame[485] = 0x%x\n", data_frame[485]);
-	MSG(DBG_INFO, "nonce, frame[486] = 0x%x\n", data_frame[486]);
-	MSG(DBG_INFO, "nonce, frame[487] = 0x%x\n", data_frame[487]);
-	MSG(DBG_INFO, "wc, frame[500] = 0x%x\n", data_frame[500]);
-	MSG(DBG_INFO, "wc, frame[501] = 0x%x\n", data_frame[501]);
-	MSG(DBG_INFO, "wc, frame[502] = 0x%x\n", data_frame[502]);
-	MSG(DBG_INFO, "wc, frame[503] = 0x%x\n", data_frame[503]);
-	MSG(DBG_INFO, "addr, frame[504] = 0x%x\n", data_frame[504]);
-	MSG(DBG_INFO, "addr, frame[505] = 0x%x\n", data_frame[505]);
-	MSG(DBG_INFO, "blkcnt,frame[506] = 0x%x\n", data_frame[506]);
-	MSG(DBG_INFO, "blkcnt,frame[507] = 0x%x\n", data_frame[507]);
-	MSG(DBG_INFO, "result, frame[508] = 0x%x\n", data_frame[508]);
-	MSG(DBG_INFO, "result, frame[509] = 0x%x\n", data_frame[509]);
-	MSG(DBG_INFO, "type, frame[510] = 0x%x\n", data_frame[510]);
-	MSG(DBG_INFO, "type, frame[511] = 0x%x\n", data_frame[511]);
+	print_hex_dump(KERN_DEBUG, "rpmb key/mac ", DUMP_PREFIX_OFFSET, 16, 8,
+		frame->key_mac, RPMB_KEY_LEN, false);
+	print_hex_dump(KERN_DEBUG, "rpmb data ", DUMP_PREFIX_OFFSET, 16, 8,
+		frame->data, 32, false);
+	print_hex_dump(KERN_DEBUG, "rpmb nonce ", DUMP_PREFIX_OFFSET, 16, 8,
+		frame->nonce, sizeof(frame->nonce), false);
+	pr_debug("rpmb wc=0x%x",	be32_to_cpu(frame->write_counter));
+	pr_debug("rpmb addr=0x%x",	be16_to_cpu(frame->addr));
+	pr_debug("rpmb blkcnt=0x%x",	be16_to_cpu(frame->block_count));
+	pr_debug("rpmb result=0x%x",	be16_to_cpu(frame->result));
+	pr_debug("rpmb type=0x%x",	be16_to_cpu(frame->req_resp));
 }
 
 static struct rpmb_frame *rpmb_alloc_frames(unsigned int cnt)
@@ -638,7 +644,7 @@ static int rpmb_req_get_wc_ufs(u8 region, u8 *keybytes, u32 *wc, u8 *frame)
 				RPMB_SZ_NONCE) != 0) {
 				MSG(ERR, "%s, nonce compare error!!!\n",
 					__func__);
-				rpmb_dump_frame((u8 *)rpmbdata.ocmd.frames);
+				rpmb_dump_frame(rpmbdata.ocmd.frames);
 				ret = RPMB_NONCE_ERROR;
 				break;
 			}
@@ -665,6 +671,64 @@ static int rpmb_req_get_wc_ufs(u8 region, u8 *keybytes, u32 *wc, u8 *frame)
 		kfree(rpmbdata.icmd.frames);
 		kfree(rpmbdata.ocmd.frames);
 	}
+
+	return ret;
+}
+
+static int _rpmb_req_program_key(u8 region, u8 *key)
+{
+	struct rpmb_data data;
+	struct rpmb_dev *rawdev_ufs_rpmb;
+	struct rpmb_frame *key_frame;
+	int ret;
+
+	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
+
+	/*
+	 * Alloc output frame to avoid overwriting input frame
+	 * buffer provided by TEE
+	 */
+	data.ocmd.frames = rpmb_alloc_frames(1);
+	data.icmd.frames = rpmb_alloc_frames(1);
+
+	if (data.ocmd.frames == NULL || data.icmd.frames == NULL) {
+		ret = RPMB_ALLOC_ERROR;
+		goto out;
+	}
+
+	key_frame = &data.icmd.frames[0];
+
+	/* Fill program key frame */
+	memcpy(key_frame->key_mac, key, RPMB_KEY_LEN);
+	key_frame->req_resp = cpu_to_be16(RPMB_REQ_PROGRAM_KEY);
+
+	data.ocmd.nframes = 1;
+	data.icmd.nframes = 1;
+	data.req_type = RPMB_PROGRAM_KEY;
+
+	rpmb_dump_frame(&data.icmd.frames[0]);
+
+	/* Send to kernel driver instead of netlink */
+	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &data, region);
+	if (ret)
+		MSG(ERR, "%s: rpmb_cmd_req IO error, ret %d (0x%x)\n",
+			__func__, ret, ret);
+
+	rpmb_dump_frame(&data.ocmd.frames[0]);
+
+	if (data.ocmd.frames->result) {
+		MSG(ERR, "%s, result error!!! (%x)\n", __func__,
+			cpu_to_be16(data.ocmd.frames->result));
+		ret = RPMB_RESULT_ERROR;
+	}
+
+	/* Clean sensitive key data */
+	memset(key_frame, 0, sizeof(*key_frame));
+out:
+	kfree(data.ocmd.frames);
+	kfree(data.icmd.frames);
+
+	MSG(DBG_INFO, "%s: ret 0x%x\n", __func__, ret);
 
 	return ret;
 }
@@ -867,16 +931,13 @@ static int rpmb_req_read_purge_status(u8 region, u8 *frame)
 	return ret;
 }
 
-
-static int rpmb_req_program_key_ufs(u8 region, u8 *frame, u32 blk_cnt)
+static int rpmb_req_program_key_ufs(u8 region, u8 *frame)
 {
 	struct rpmb_data data;
 	struct rpmb_dev *rawdev_ufs_rpmb;
 	int ret;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
-
-	MSG(DBG_INFO, "%s: blk_cnt: %d\n", __func__, blk_cnt);
 
 	/*
 	 * Alloc output frame to avoid overwriting input frame
@@ -1418,19 +1479,15 @@ static enum mc_result rpmb_gp_execute_ufs(u32 cmdId)
 		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_PURGE_STATUS\n", __func__);
 		rpmb_req_read_purge_status(rpmb_gp_dci->request.region, rpmb_gp_dci->request.frame);
 		break;
-
 	case DCI_RPMB_CMD_PROGRAM_KEY:
 		MSG(INFO, "%s: DCI_RPMB_CMD_PROGRAM_KEY.\n", __func__);
-		rpmb_dump_frame(rpmb_gp_dci->request.frame);
+		rpmb_dump_frame((struct rpmb_frame *)rpmb_gp_dci->request.frame);
 
 		/* program both region 0 and region 1 key */
-		ret = rpmb_req_program_key_ufs(RPMB_REGION1, rpmb_gp_dci->request.frame,
-			1);
-		ret = rpmb_req_program_key_ufs(RPMB_REGION0, rpmb_gp_dci->request.frame,
-			1);
+		ret = rpmb_req_program_key_ufs(RPMB_REGION1, rpmb_gp_dci->request.frame);
+		ret = rpmb_req_program_key_ufs(RPMB_REGION0, rpmb_gp_dci->request.frame);
 
 		break;
-
 	default:
 		MSG(ERR, "%s: receive an unknown command id(%d).\n",
 			__func__, cmdId);
@@ -1740,7 +1797,7 @@ error:
 	return ret;
 }
 
-int emmc_rpmb_req_set_key(struct mmc_card *card, u8 *key)
+int rpmb_req_ioctl_set_key(struct mmc_card *card, u8 *key)
 {
 	struct emmc_rpmb_req rpmb_req;
 	struct s_rpmb *rpmb_frame;
@@ -2594,11 +2651,44 @@ static int rpmb_open(struct inode *pinode, struct file *pfile)
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
+static int rpmb_get_key(enum ufs_key_type type, u8 *key)
+{
+	u16 i;
+	struct arm_smccc_res res;
+	int batch_size = sizeof(ulong) * 2;
+	unsigned long ret;
+
+	/* Get key from TFA */
+	for (i = 0; i < RPMB_KEY_LEN; i += batch_size) {
+		ufs_mtk_rpmb_key(type, i, res);
+		ret = res.a0;
+		if (ret) {
+			MSG(ERR, "%s: smc call failed (%lu)\n", __func__, ret);
+			return -1;
+		}
+		*((ulong *)&key[i]) = res.a1;
+		*((ulong *)&key[i + sizeof(ulong)]) = res.a2;
+	}
+
+	pr_debug("%s: Dump region %d key", __func__, type);
+	print_hex_dump(KERN_DEBUG, "key", DUMP_PREFIX_OFFSET, 16, 8, key, RPMB_KEY_LEN, false);
+
+	return 0;
+}
+
 static long rpmb_ioctl_ufs(struct file *pfile, unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
 	unsigned long n;
+	u8 key[RPMB_KEY_LEN];
 	struct rpmb_ioc_param param;
+	struct rpmb_dev *rawdev_ufs_rpmb;
+	struct ufs_hba *hba;
+	struct ufs_mtk_host *host;
+
+	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
+	hba = dev_get_drvdata(rawdev_ufs_rpmb->dev.parent);
+	host = ufshcd_get_variant(hba);
 
 	n = copy_from_user(&param, (void *)arg, sizeof(param));
 
@@ -2606,22 +2696,17 @@ static long rpmb_ioctl_ufs(struct file *pfile, unsigned int cmd, unsigned long a
 		MSG(ERR, "%s, copy from user failed: %x\n", __func__, err);
 		return -EFAULT;
 	}
+	MSG(DBG_INFO, "%s: cmd=%d", __func__, cmd);
 
 	switch (cmd) {
-
-	case RPMB_IOCTL_PROGRAM_KEY:
-
+	case RPMB_IOCTL_PROGRAM_KEY_REGION0:
 		MSG(DBG_INFO, "%s, cmd = RPMB_IOCTL_PROGRAM_KEY not support\n",
 		    __func__);
 
 		break;
-
 	case RPMB_IOCTL_READ_DATA:
-
 		MSG(DBG_INFO, "%s, cmd = RPMB_IOCTL_READ_DATA!!!!\n", __func__);
-
 		err = rpmb_req_ioctl_read_data_ufs(&param);
-
 		if (err != 0) {
 			MSG(ERR, "%s, rpmb_req_ioctl_read_data_ufs() error!(%x)\n",
 			    __func__, err);
@@ -2629,26 +2714,47 @@ static long rpmb_ioctl_ufs(struct file *pfile, unsigned int cmd, unsigned long a
 		}
 
 		n = copy_to_user((void *)arg, &param, sizeof(param));
-
 		if (n != 0UL) {
 			MSG(ERR, "%s, copy to user failed: %x\n",
 			    __func__, err);
 			err = -EFAULT;
 			break;
 		}
-
 		break;
-
 	case RPMB_IOCTL_WRITE_DATA:
-
 		MSG(DBG_INFO, "%s, cmd = RPMB_IOCTL_WRITE_DATA!!!\n", __func__);
-
 		err = rpmb_req_ioctl_write_data_ufs(&param);
-
 		if (err != 0)
 			MSG(ERR, "%s, rpmb_req_ioctl_write_data_ufs() error!(%x)\n",
 			    __func__, err);
+		break;
+	case RPMB_IOCTL_PROGRAM_KEY_REGION3:
+		if (!host->atag) {
+			MSG(ERR, "%s: invalid atag", __func__);
+			err = -EINVAL;
+			break;
+		}
 
+		if (host->atag->rpmb_r3_kst != RPMB_KEY_ST_NOT_PROGRAMMED) {
+			MSG(ERR, "%s: MTEE RPMB key state(%d). Program key not allowed.\n",
+			    __func__, host->atag->rpmb_r3_kst);
+			break;
+		}
+
+		err = rpmb_get_key(RPMB_AUTH_KEY_REGION3, key);
+		if (err) {
+			MSG(ERR, "Get RPMB key %d failed(%d)", RPMB_REGION3, err);
+			err = -EFAULT;
+		} else {
+			err = _rpmb_req_program_key(RPMB_REGION3, key);
+			if (err) {
+				MSG(ERR, "MTEE program RPMB key %d failed (%d)", RPMB_REGION3, err);
+				err = -EIO;
+			}
+		}
+
+		/* Clean buffer after use */
+		memset(key, 0, sizeof(key));
 		break;
 
 	default:
@@ -2660,6 +2766,7 @@ static long rpmb_ioctl_ufs(struct file *pfile, unsigned int cmd, unsigned long a
 	return err;
 }
 #endif
+
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)
 long rpmb_ioctl_emmc(struct file *file, unsigned int cmd, unsigned long arg)
@@ -2730,12 +2837,12 @@ long rpmb_ioctl_emmc(struct file *file, unsigned int cmd, unsigned long arg)
 	}
 
 	switch (cmd) {
-	case RPMB_IOCTL_PROGRAM_KEY:
+	case RPMB_IOCTL_PROGRAM_KEY_REGION0:
 
 		MSG(INFO, "%s, cmd = RPMB_IOCTL_PROGRAM_KEY!!!!!!!!!!!!!!\n",
 			__func__);
 
-		ret = emmc_rpmb_req_set_key(card, param.keybytes);
+		ret = rpmb_req_ioctl_set_key(card, param.keybytes);
 
 		break;
 
