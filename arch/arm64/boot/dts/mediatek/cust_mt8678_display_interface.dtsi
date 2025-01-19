@@ -309,7 +309,6 @@
 	use-hpd = <1>;
 	use-edid = <0>;
 	external-monitor = <0>;
-	color-depth-10bit = <0>;
 
 	ports {
 		port@0 {
