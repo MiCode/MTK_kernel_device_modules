@@ -256,6 +256,7 @@ struct mml_frame_info {
 	int8_t dl_pos;
 	uint16_t disp_done_event;
 	uint8_t ovlsys_id;
+	int32_t mutex_src;	/* ddp source component id */
 	bool alpha;	/* alpha channel preserve */
 };
 

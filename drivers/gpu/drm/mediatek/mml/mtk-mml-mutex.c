@@ -178,6 +178,7 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	u32 mutex_src = 0;
 	bool sof_en = true;
 	s32 ret;
 
@@ -192,6 +193,14 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_clear_event(pkt, mutex->event_prete);
 				cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
 			}
+
+			if (cfg->info.mutex_src > 0) {
+				struct mml_mutex_ctl ctrl = {
+					.eof_src = cfg->info.mutex_src,
+				};
+
+				mutex_src = mutex->data->get_mutex_sof(&ctrl);
+			}
 		}
 
 		if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
@@ -199,7 +208,7 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* DL mode config sof only, other modes enable to trigger directly */
-	ret = mutex_enable(mutex, pkt, path, 0x0, cfg->info.mode, true, sof_en);
+	ret = mutex_enable(mutex, pkt, path, mutex_src, cfg->info.mode, true, sof_en);
 
 	/* asume path->mmlsys2, which is mmlsys0 always put after mmlsys1,
 	 * do disp/mml event sync after both mutex called mutex_enable
@@ -497,6 +506,44 @@ static u32 get_mutex_sof_mt6991(struct mml_mutex_ctl *ctl)
 	return sof;
 }
 
+static u32 get_mutex_sof_mt6993(struct mml_mutex_ctl *ctl)
+{
+	u32 sof = 0;
+
+	switch (ctl->sof_src) {
+	case DDP_COMPONENT_DSI0:
+		sof |= 1;
+		break;
+	case DDP_COMPONENT_DSI1:
+		sof |= 2;
+		break;
+	case DDP_COMPONENT_DSI2:
+		sof |= 4;
+		break;
+	case DDP_COMPONENT_DISP_DVO:
+		sof |= 5;
+		break;
+	}
+
+	switch (ctl->eof_src) {
+	case DDP_COMPONENT_DSI0:
+		sof |= 1 << 7;
+		break;
+	case DDP_COMPONENT_DSI1:
+		sof |= 2 << 7;
+		break;
+	case DDP_COMPONENT_DSI2:
+		sof |= 4 << 7;
+		break;
+	case DDP_COMPONENT_DISP_DVO:
+		sof |= 5 << 7;
+		break;
+	}
+	if (!sof)
+		mml_err("no sof/eof source %u/%u provide",
+			ctl->sof_src, ctl->eof_src);
+	return sof;
+}
 
 static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 				  enum mtk_ddp_comp_id prev,
@@ -815,7 +862,7 @@ static const struct mutex_data mt6993_mmlf_mutex_data = {
 	.mod_offsets = {0x34, 0x38},
 	.sof_offset = 0x30,
 	.mod_cnt = 2,
-	.get_mutex_sof = get_mutex_sof_mt6991,
+	.get_mutex_sof = get_mutex_sof_mt6993,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.handler = mml_mutex_irq_handler_mt6993,
 };

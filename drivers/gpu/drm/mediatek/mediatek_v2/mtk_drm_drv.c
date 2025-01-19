@@ -1530,6 +1530,13 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 			submit_kernel->info.ovlsys_id = ret;
 		else
 			DDPMSG("%s, %d GET_OVL_SYS_NUM fail\n", __func__, __LINE__);
+
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (comp) {
+			submit_kernel->info.mutex_src = comp->id;
+			DDPINFO("%s mml dl mutex src %s\n", __func__, mtk_dump_comp_str(comp));
+		} else
+			DDPMSG("%s, %d output comp fail\n", __func__, __LINE__);
 	}
 
 	ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
