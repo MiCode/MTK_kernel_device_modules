@@ -9,6 +9,10 @@ load("@mgk_info//:dict.bzl",
     "DEFCONFIG_OVERLAYS",
 )
 
+load("@mgk_info//:kernel_version.bzl",
+     "kernel_version",
+)
+
 mgk_64_defconfig = "mgk_64_kmainline_defconfig"
 
 mgk_64_kleaf_modules = [
@@ -126,6 +130,37 @@ mgk_64_common_eng_modules = mgk_module_outs + mgk_module_eng_outs + mgk_64_modul
 mgk_64_common_userdebug_modules = mgk_module_outs + mgk_module_userdebug_outs + mgk_64_module_outs
 mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_module_outs
 
+mgk_64_kleaf_device_modules = [
+    # keep sorted
+]
+
+mgk_64_kleaf_platform_device_modules = {
+    # keep sorted
+}
+
+mgk_64_kleaf_eng_device_modules = [
+    # keep sorted
+]
+
+mgk_64_kleaf_platform_eng_device_modules = {
+    # keep sorted
+}
+
+mgk_64_kleaf_userdebug_device_modules = [
+    # keep sorted
+]
+
+mgk_64_kleaf_platform_userdebug_device_modules = {
+    # keep sorted
+}
+
+mgk_64_kleaf_user_device_modules = [
+    # keep sorted
+]
+
+mgk_64_kleaf_platform_user_device_modules = {
+    # keep sorted
+}
 
 mgk_64_device_modules = [
     # keep sorted

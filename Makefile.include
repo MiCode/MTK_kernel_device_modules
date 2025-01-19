@@ -9,3 +9,5 @@ EXTRA_SYMBOLS += $(DEVICE_MODULES_SYMBOL)
 else
 EXTRA_SYMBOLS += $(OUT_DIR)/$(subst kernel/,,$(DEVICE_MODULES_REL_DIR))/Module.symvers
 endif
+
+include $(wildcard $(KERNEL_SRC)/$(DEVICE_MODULES_REL_DIR)/Makefile.include.ddk)
