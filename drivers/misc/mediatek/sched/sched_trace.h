@@ -41,7 +41,6 @@ struct trace_info_sched_select_task_rq {
 	int cpuctl_grp_id;
 	int cpuset_grp_id;
 	int nr_candidates;
-	unsigned int time_ns;
 };
 #endif
 
@@ -404,7 +403,6 @@ TRACE_EVENT(sched_select_task_rq,
 		__field(int, cpuctl_grp_id)
 		__field(int, cpuset_grp_id)
 		__field(int, nr_candidates)
-		__field(unsigned int, time_ns)
 	),
 
 	TP_fast_assign(
@@ -433,11 +431,10 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->cpuctl_grp_id       = info->cpuctl_grp_id;
 		__entry->cpuset_grp_id       = info->cpuset_grp_id;
 		__entry->nr_candidates       = info->nr_candidates;
-		__entry->time_ns             = info->time_ns;
 	),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d cpu_util=%lu cpu_util_est=%lu coef1_util=%lu coef1_util_est=%lu coef2_util=%lu coef2_util_est=%lu vip_prio=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d runnable_boost=%d cpuctl=%d cpuset=%d nr_candidates=%d time_ns=%u",
+		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d cpu_util=%lu cpu_util_est=%lu coef1_util=%lu coef1_util_est=%lu coef2_util=%lu coef2_util_est=%lu vip_prio=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d runnable_boost=%d cpuctl=%d cpuset=%d nr_candidates=%d",
 		__entry->pid,
 		__entry->compat_thread,
 		__entry->in_irq,
@@ -462,8 +459,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->runnable_boost,
 		__entry->cpuctl_grp_id,
 		__entry->cpuset_grp_id,
-		__entry->nr_candidates,
-		__entry->time_ns)
+		__entry->nr_candidates)
 );
 
 TRACE_EVENT(sched_effective_mask,

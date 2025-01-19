@@ -2401,7 +2401,6 @@ static DEFINE_PER_CPU(cpumask_t, energy_cpus);
 void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_cpu, int sync,
 					int *new_cpu)
 {
-	u64 start_time_ns = trace_sched_select_task_rq_enabled() ? ktime_get_ns() : 0;
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned long best_delta = ULONG_MAX;
 	int this_cpu = smp_processor_id();
@@ -2784,7 +2783,6 @@ done:
 			.cpuctl_grp_id         = sched_cgroup_state(p, cpu_cgrp_id),
 			.cpuset_grp_id         = sched_cgroup_state(p, cpuset_cgrp_id),
 			.nr_candidates         = weight,
-			.time_ns               = (unsigned int) (ktime_get_ns() - start_time_ns),
 		};
 
 		if (eenv.dpt_v2_support) {
