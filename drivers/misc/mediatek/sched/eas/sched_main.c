@@ -819,17 +819,26 @@ static long eas_ioctl_impl(struct file *filp,
 	case EAS_TURN_POINT_UTIL_C0:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_turn_point_freq(0, val);
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 0)
+				set_turn_point_freq(i, val);
+		}
 		break;
 	case EAS_TURN_POINT_UTIL_C1:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_turn_point_freq(1, val);
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 1)
+				set_turn_point_freq(i, val);
+		}
 		break;
 	case EAS_TURN_POINT_UTIL_C2:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
-		set_turn_point_freq(2, val);
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 2)
+				set_turn_point_freq(i, val);
+		}
 		break;
 	case EAS_TARGET_MARGIN_C0:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
