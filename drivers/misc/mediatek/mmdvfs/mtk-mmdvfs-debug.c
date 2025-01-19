@@ -885,6 +885,9 @@ static struct mmdvfs_res_mbrain_debug_ops mmdvfs_mbrain_ops = {
 
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void)
 {
+	if (!MEM_BASE)
+		return NULL;
+
 	return &mmdvfs_mbrain_ops;
 }
 EXPORT_SYMBOL_GPL(get_mmdvfs_mbrain_dbg_ops);
