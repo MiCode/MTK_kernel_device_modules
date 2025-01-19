@@ -73,7 +73,6 @@ unsigned long long g_ns_gpu_on_ts;
 static u64 g_sum_loading;
 static u64 g_sum_delta_time;
 static unsigned int gpu_opp_logs_enable;
-static unsigned int g_ui32CurFreqID;
 //MBrain: unit: ms
 static uint64_t g_last_opp_cost_cal_ts;
 static uint64_t g_last_opp_cost_update_ts_ms;
@@ -611,7 +610,6 @@ static void gpu_util_history_query_lb_counter(unsigned int window_size_us,
 	unsigned long long sum_delta_time = 0;   // unit: us
 	unsigned long long remaining_time, delta_time;   // unit: us
 	unsigned int cidx = g_util_hs.current_idx;
-	unsigned int his_loading = 0;
 	int pre_idx = cidx - MAX_SLIDE_WINDOW_SIZE;
 	int his_idx = 0;
 	int i = 0;
@@ -661,7 +659,6 @@ static void gpu_util_history_query_specific_loading(
 		unsigned int *max_is_mcu)
 {
 	struct GpuUtilization_Ex *util_ex;
-	unsigned int loading_mode = 0;
 	unsigned long long sum_loading = 0;   // unit: % * us
 	unsigned long long sum_delta_time = 0;   // unit: us
 	unsigned long long remaining_time, delta_time;   // unit: us
@@ -807,7 +804,7 @@ unsigned long ged_query_info(GED_INFO eType)
 		mtk_get_gpu_block(&gpu_block);
 		return gpu_block;
 	case GED_PRE_FREQ:
-		ged_get_freq_by_idx(g_ui32PreFreqID);
+		return ged_get_freq_by_idx(g_ui32PreFreqID);
 	case GED_PRE_FREQ_IDX:
 		return g_ui32PreFreqID;
 	case GED_CUR_FREQ:
@@ -892,7 +889,6 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 	unsigned int *pui32Block, unsigned int *pui32Idle,
 	struct GpuUtilization_Ex *Util_Ex)
 {
-	unsigned long ui32IRQFlags = 0;
 	unsigned int cur_opp_idx = 0;
 	u32 opp_loading = 0;
 
@@ -1198,7 +1194,6 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	int bCommited = false;
 
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID, ui32MinWorkingFreqID;
-	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
 	int is_fix_dvfs = 0;
 	int top_freq_diff = 0, sc_freq_diff = 0;
@@ -1311,7 +1306,6 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	int bCommited = false;
 
 	int ui32CurFreqID, ui32CeilingID, ui32FloorID, newTopFreq, ui32MinWorkingFreqID;
-	unsigned int cur_freq = 0;
 	enum gpu_dvfs_policy_state policy_state;
 	int ret = GED_OK;
 	int is_fix_dvfs = 0;
@@ -1377,7 +1371,7 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		if (FORCE_OPP < 0 && FORCE_TOP_OPP < 0 &&
 			!g_enable_lb_async &&
 			topNewFreqID != stackNewFreqID) {
-			GED_LOGE("[DVFS_ASYNC] topFreqID(%d) != stackFreqID(%d), force top = stack",
+			GED_LOGE("[DVFS_ASYNC] topFreqID(%lu) != stackFreqID(%lu), force top = stack",
 					topNewFreqID, stackNewFreqID);
 			topNewFreqID = stackNewFreqID;
 		}
@@ -1634,15 +1628,11 @@ GED_ERROR ged_dvfs_um_commit(unsigned long gpu_tar_freq, bool bFallback)
 {
 #ifdef ENABLE_COMMON_DVFS
 	int i;
-	int ui32CurFreqID;
 	int minfreq_idx;
 	unsigned int ui32NewFreqID = 0;
 	unsigned long gpu_freq;
 	unsigned int sentinalLoading = 0;
 
-	unsigned long ui32IRQFlags;
-
-	ui32CurFreqID = ged_get_cur_oppidx();
 	minfreq_idx = ged_get_min_oppidx();
 
 	if (g_gpu_timer_based_emu)
@@ -2133,14 +2123,12 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	int minfreq_idx = ged_get_min_oppidx();
 	static int num_pre_frames;
 	static int cur_frame_idx;
-	static int pre_frame_idx;
 	static int busy_cycle[GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM];
 	int gpu_busy_cycle = 0;
 	int busy_cycle_cur;
 	unsigned long ui32IRQFlags;
 	static unsigned int force_fallback_pre;
 	static int margin_low_bound;
-	int ultra_high_step_size = (dvfs_step_mode & 0xff);
 	int cur_opp_id = ged_get_cur_oppidx();
 
 	gpu_freq_pre = ged_get_cur_freq();
@@ -2370,7 +2358,6 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	if (gpu_freq_tar < gpu_freq_floor)
 		gpu_freq_tar = gpu_freq_floor;
 
-	pre_frame_idx = cur_frame_idx;
 	cur_frame_idx = (cur_frame_idx + 1) %
 		GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM;
 
@@ -2582,11 +2569,9 @@ static bool ged_dvfs_policy(
 	int i32NewFreqID = (int)ui32GPUFreq;
 	int gpu_freq_pre, gpu_freq_overdue_max;	// unit: KHZ
 	int prev_async_opp_diff = g_async_opp_diff;
-	unsigned long ui32IRQFlags;
 
 	int loading_mode;
 	int minfreq_idx;
-	int idx_diff = 0;
 
 	if (ui32GPUFreq < 0 || ui32GPUFreq > ged_get_min_oppidx())
 		return GED_FALSE;
@@ -3727,9 +3712,6 @@ void ged_dvfs_reset_opp_cost(int oppsize)
 int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
 		int i32NumOpp, bool bStript, u64 *last_ts)
 {
-	int i = 0;
-	u64 pwr_on_ts = g_ns_gpu_on_ts / 1000000;
-
 	if (ged_kpi_enabled() && g_aOppStat != NULL && psReport &&
 		i32NumOpp > 0 && i32NumOpp <= g_real_oppfreq_num &&
 		gpu_opp_logs_enable == 1) {
@@ -3988,7 +3970,6 @@ GED_ERROR ged_dvfs_system_init(void)
 	struct device_node *async_dvfs_node = NULL;
 	struct device_node *reduce_mips_dvfs_node = NULL;
 	struct device_node *dvfs_loading_mode_node = NULL;
-	struct device_node *gpu_mewtwo_node = NULL;
 
 	mutex_init(&gsDVFSLock);
 	mutex_init(&gsPolicyLock);

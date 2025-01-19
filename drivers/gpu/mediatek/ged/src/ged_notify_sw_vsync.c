@@ -233,11 +233,6 @@ void ged_eb_dvfs_trace_dump(void)
 	static int pre_eb_policy_state;
 	static int pre_ged_policy_state;
 	static int pre_freq_id;
-	u64 soc_timer = 0;
-	u32 soc_timer_eb_hi = 0;
-	u64 soc_timer_eb_lo = 0;
-	u64 soc_timer_eb = 0;
-	u32 time_diff = 0;
 	GED_DVFS_COMMIT_TYPE eCommitType;
 	static int apply_lb_async;
 	int top_freq_diff = 0, sc_freq_diff = 0;
@@ -486,11 +481,6 @@ GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 	{
 #ifdef ENABLE_COMMON_DVFS
 
-	long phase = 0;
-	unsigned long t;
-	bool bHWEventKick = false;
-	long long llDiff = 0;
-
 	unsigned long long temp;
 	unsigned long ul3DFenceDoneTime;
 
@@ -513,6 +503,10 @@ GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 #ifdef ENABLE_COMMON_DVFS
 	return GED_ERROR_INTENTIONAL_BLOCK;
 #else
+	long phase = 0;
+	unsigned long t;
+	bool bHWEventKick = false;
+	long long llDiff = 0;
 
 	/*critical session begin*/
 	mutex_lock(&gsVsyncStampLock);

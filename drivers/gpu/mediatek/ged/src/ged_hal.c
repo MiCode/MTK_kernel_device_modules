@@ -72,7 +72,7 @@ int tokenizer(char *pcSrc, int i32len, int *pi32IndexArray, int i32NumToken)
 static ssize_t opp_logs_show(struct kobject *kobj,
 		struct kobj_attribute *attr, char *buf)
 {
-	int len = 0, i = 0, j = 0, cur_idx = 0;
+	int len = 0, i = 0, cur_idx = 0;
 	unsigned int ui32FqCount = g_real_oppfreq_num;
 	struct GED_DVFS_OPP_STAT *report = NULL;
 	u64 last_ts = 0;
@@ -578,8 +578,9 @@ static ssize_t target_fps_vsync_show(struct kobject *kobj,
 
 	ged_kpi_hint_frame_info(&infoOut);
 	length = scnprintf(buf + pos, PAGE_SIZE - pos,
-			"main_head BQ_ID:%ld FPS_V:%d FPS_gpu:%d\n",
-			infoOut.mainHead_BQ_ID, infoOut.mainHead_fps_v, infoOut.mainHead_fps_gpu);
+			"main_head BQ_ID:%llu FPS_V:%d FPS_gpu:%d\n",
+			(unsigned long long)infoOut.mainHead_BQ_ID,
+			infoOut.mainHead_fps_v, infoOut.mainHead_fps_gpu);
 	pos += length;
 
 	return pos;
@@ -621,7 +622,6 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 {
 	unsigned int eb_policy_mode;
 	int pos = 0;
-	int length;
 	bool ret = true;
 	struct fdvfs_ipi_data *ipi_data;
 
@@ -761,7 +761,6 @@ static ssize_t frame_base_optimize_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	unsigned int ui32FastDVFSMode;
 	int pos = 0;
 	int length;
 
@@ -798,7 +797,6 @@ static ssize_t pre_fence_chk_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	unsigned int ui32FastDVFSMode;
 	int pos = 0;
 	int length;
 
@@ -1250,8 +1248,6 @@ static ssize_t fw_idle_store(struct kobject *kobj,
 {
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
 	u32 i32Value;
-	int mode = 0;
-	int enable = 0;
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
@@ -2116,7 +2112,7 @@ static ssize_t gpu_slc_policy_show(struct kobject *kobj,
 					"Final HitRate:		%d\n", slc_stat->hit_rate_r);
 		if(slc_stat->isoverflow == 1)
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-					"(bw overflow)\n", slc_stat->hit_rate_r);
+					"(bw overflow)\n");
 	} else {
 		pos = scnprintf(buf + pos, PAGE_SIZE - pos,
 					"GPU SLC sysFS not supports\n");
