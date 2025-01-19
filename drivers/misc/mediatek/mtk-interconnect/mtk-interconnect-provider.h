@@ -101,6 +101,9 @@ struct icc_node {
 	u32			v2_peak_w_bw;
 	bool			v2_max_ostd;
 	void			*data;
+	u32			axi_mux_id;
+	u32			axi_mon_id;
+	u32			is_mapping;
 };
 
 #if IS_ENABLED(CONFIG_INTERCONNECT_MTK_EXTENSION)

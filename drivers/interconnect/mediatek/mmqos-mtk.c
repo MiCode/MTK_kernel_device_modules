@@ -29,6 +29,7 @@
 #include "mmqos-vcp.h"
 #include "mmqos-vcp-memory.h"
 #include <linux/delay.h>
+#include "mtk-mm-monitor-controller.h"
 
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
@@ -200,6 +201,10 @@ struct mtk_mmqos {
 	u32 mmpc_total_slb_bw;
 	u32 vmmrc_level_hex;
 	struct mutex bw_lock;
+	u32 bwl_hrt_r_margin;
+	u32 bwl_hrt_w_margin;
+	u32 bwl_srt_r_margin;
+	u32 bwl_srt_w_margin;
 };
 
 u32 mmqos_state;
@@ -1058,6 +1063,27 @@ static inline bool is_max_bw_to_max_ostdl_policy(struct icc_node *src)
 		return (!(mmqos_state & DPC_ENABLE) && !(mmqos_state & CAM_NO_MAX_OSTDL)) || (g_hrt->cam_occu_bw == 0);
 }
 
+typedef struct {
+	uint32_t r_bwl;
+	uint32_t w_bwl;
+} bwl_result;
+
+bwl_result calculate_bwl(u32 avg_r_bw, u32 avg_w_bw, u32 peak_r_bw, u32 peak_w_bw)
+{
+	bwl_result result;
+
+	if (peak_r_bw)
+		result.r_bwl = peak_r_bw * gmmqos->bwl_hrt_r_margin / 100;
+	else
+		result.r_bwl = avg_r_bw * gmmqos->bwl_srt_r_margin / 100;
+	if  (peak_w_bw)
+		result.w_bwl = peak_w_bw * gmmqos->bwl_hrt_w_margin / 100;
+	else
+		result.w_bwl = avg_w_bw * gmmqos->bwl_srt_w_margin / 100;
+
+	return result;
+}
+
 static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 {
 	struct larb_node *larb_node;
@@ -1069,6 +1095,9 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 	u32 value = 1;
 	u32 comm_id, chnn_id, port_id, trace_comm_id, trace_chnn_id;
 	const char *r_w_type = "w";
+	mux_axi_mon_pair *pair;
+	u32 axi_mon_id, mux_id;
+	u32 min_freq, axi_mon_state = 0;
 
 	MMQOS_SYSTRACE_BEGIN("%s %s->%s\n", __func__, src->name, dst->name);
 	switch (NODE_TYPE(dst->id)) {
@@ -1190,6 +1219,37 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		}
 
 		comm_id = COMM_PORT_COMM_ID(dst->id);
+		if ((mmqos_state & AXI_MON_OSTDBL_ENABLE) || (mmqos_state & AXI_MON_BWL_ENABLE)) {
+			if (comm_port_node->base->icc_node->is_mapping == AXI_NOT_REMAP) {
+				pair = get_mux_axi_pair_by_comm_port(comm_id, port_id);
+				if (pair) {
+					comm_port_node->base->icc_node->axi_mux_id = pair->mux_id;
+					comm_port_node->base->icc_node->axi_mon_id = pair->axi_mon_id;
+					comm_port_node->base->icc_node->is_mapping = AXI_REMAP_DONE;
+				} else
+					comm_port_node->base->icc_node->is_mapping = AXI_REMAP_NO_FOUND;
+			}
+			if (comm_port_node->base->icc_node->is_mapping == AXI_REMAP_DONE) {
+				mux_id = comm_port_node->base->icc_node->axi_mux_id = pair->mux_id;
+				axi_mon_id = comm_port_node->base->icc_node->axi_mon_id = pair->axi_mon_id;
+				pr_info("[mmqos]mux_id: %d, axi_mon_id: %d\n", mux_id, axi_mon_id);
+				min_freq = get_min_freq_from_axi_mon(mux_id);
+				pr_info("[mmqos]min_freq: %d\n", min_freq);
+				if (mmqos_state & AXI_MON_OSTDBL_ENABLE) {
+					mtk_mmmc_set_ostdbl(axi_mon_id,	min_freq);
+					axi_mon_state |= 1 << AXI_MON_OSTDBL;
+				}
+				if (mmqos_state & AXI_MON_BWL_ENABLE) {
+					bwl_result result = calculate_bwl(comm_port_node->base->icc_node->v2_avg_r_bw,
+											comm_port_node->base->icc_node->v2_avg_w_bw,
+											comm_port_node->base->icc_node->v2_peak_r_bw,
+											comm_port_node->base->icc_node->v2_peak_w_bw);
+					mtk_mmmc_set_bw_limiter(axi_mon_id, result.r_bwl, result.w_bwl, min_freq);
+					axi_mon_state |= 1 << AXI_MON_BWL;
+				}
+				mtk_mmmc_eanble_axi_limiter(axi_mon_id, axi_mon_state);
+			}
+		}
 		if (port_id != VIRT_COMM_PORT_ID)
 			chnn_id = comm_port_node->channel - 1;
 		record_comm_port_bw(comm_id, port_id, LARB_ID(src->id),
@@ -1264,6 +1324,40 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			mtk_smi_larb_bw_set(
 				larb_node->larb_dev,
 				MTK_M4U_TO_PORT(src->id), value);
+		}
+
+		if ((mmqos_state & AXI_MON_OSTDBL_ENABLE) || (mmqos_state & AXI_MON_BWL_ENABLE)) {
+			if (larb_node->base->icc_node->is_mapping == AXI_NOT_REMAP) {
+				pair = get_mux_axi_pair_by_larb(MTK_M4U_TO_LARB(src->id));
+				if (pair) {
+					larb_node->base->icc_node->axi_mux_id = pair->mux_id;
+					larb_node->base->icc_node->axi_mon_id = pair->axi_mon_id;
+					larb_node->base->icc_node->is_mapping = AXI_REMAP_DONE;
+				} else
+					larb_node->base->icc_node->is_mapping = AXI_REMAP_NO_FOUND;
+			}
+			if (larb_node->base->icc_node->is_mapping == AXI_REMAP_DONE) {
+				mux_id = larb_node->base->icc_node->axi_mux_id;
+				axi_mon_id = larb_node->base->icc_node->axi_mon_id = pair->axi_mon_id;
+				pr_info("[mmqos]mux_id: %d, axi_mon_id: %d\n", mux_id, axi_mon_id);
+				min_freq = get_min_freq_from_axi_mon(mux_id);
+				pr_info("[mmqos]min_freq: %d\n", min_freq);
+				if (mmqos_state & AXI_MON_OSTDBL_ENABLE) {
+					mtk_mmmc_set_ostdbl_by_larb(axi_mon_id,
+						larb_node->base->icc_node->v2_avg_r_bw,
+						larb_node->base->icc_node->v2_avg_w_bw,
+						larb_node->base->icc_node->v2_peak_r_bw,
+						larb_node->base->icc_node->v2_peak_w_bw,
+						min_freq);
+				}
+				if (mmqos_state & AXI_MON_BWL_ENABLE) {
+					bwl_result result = calculate_bwl(larb_node->base->icc_node->v2_avg_r_bw,
+											larb_node->base->icc_node->v2_avg_w_bw,
+											larb_node->base->icc_node->v2_peak_r_bw,
+											larb_node->base->icc_node->v2_peak_w_bw);
+					mtk_mmmc_set_bw_limiter(axi_mon_id, result.r_bwl, result.w_bwl, min_freq);
+				}
+			}
 		}
 
 		if (log_level & 1 << log_bw)
@@ -2417,6 +2511,20 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 			MMQOS_ERR("Failed to start mmqos-vcp thread\n");
 	} else
 		MMQOS_DBG("VCP not enable");
+
+	if (mmqos_state & AXI_MON_BWL_ENABLE) {
+		of_property_read_u32(pdev->dev.of_node,
+			"bwl-hrt-r-margin", &gmmqos->bwl_hrt_r_margin);
+		of_property_read_u32(pdev->dev.of_node,
+			"bwl-hrt-w-margin", &gmmqos->bwl_hrt_w_margin);
+		of_property_read_u32(pdev->dev.of_node,
+			"bwl-srt-r-margin", &gmmqos->bwl_srt_r_margin);
+		of_property_read_u32(pdev->dev.of_node,
+			"bwl-srt-w-margin", &gmmqos->bwl_srt_w_margin);
+		MMQOS_DBG("bwl_hrt_r_margin:%u, bwl_hrt_w_margin:%u, bwl_srt_r_margin:%u, bwl_srt_w_margin:%u",
+			gmmqos->bwl_hrt_r_margin, gmmqos->bwl_hrt_w_margin,
+			gmmqos->bwl_srt_r_margin, gmmqos->bwl_srt_w_margin);
+	}
 
 	return probe_ret;
 }
