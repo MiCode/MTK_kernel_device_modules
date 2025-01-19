@@ -691,7 +691,7 @@ static int __init audio_ipi_init(void)
 
 static void __exit audio_ipi_exit(void)
 {
-
+	ipi_queue_deinit();
 	audio_task_manager_deinit();
 	deinit_audio_ipi_dma();
 

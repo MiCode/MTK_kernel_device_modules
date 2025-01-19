@@ -21,6 +21,10 @@
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
 
+#include <linux/kernel.h>
+#include <linux/workqueue.h>
+#include <linux/ratelimit.h>
+
 #include <audio_log.h>
 #include <audio_assert.h>
 #include <audio_ipi_platform.h>
@@ -99,6 +103,11 @@ enum { /* dsp_path_t */
 	DSP_NUM_PATH
 };
 
+struct dump_ipi_worker_t {
+	struct work_struct work;
+	uint32_t dsp_id;
+	uint32_t dsp_path;
+};
 
 struct dsp_msg_queue_t {
 	uint32_t dsp_id;   /* enum dsp_id_t */
@@ -125,8 +134,9 @@ struct dsp_msg_queue_t {
 
 	bool init;
 	bool enable;
-};
 
+	struct dump_ipi_worker_t dump_worker;
+};
 
 
 /*
@@ -138,6 +148,8 @@ struct dsp_msg_queue_t {
 /* TODO: CM4 */
 static struct dsp_msg_queue_t g_dsp_msg_queue[NUM_OPENDSP_TYPE][DSP_NUM_PATH];
 
+static DEFINE_RATELIMIT_STATE(dump_limit, 30 * HZ, 1);
+static struct workqueue_struct *dump_workqueue;
 
 /*
  * =============================================================================
@@ -327,27 +339,69 @@ int dsp_send_msg_to_queue_wrap(
 	uint32_t len,
 	uint32_t wait_ms)
 {
+	int ret = 0;
 	uint32_t dsp_id = adsp_cid_to_ipi_dsp_id(core_id);
+	struct dump_ipi_worker_t *worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_A2D].dump_worker;
 
 	if (dsp_id >= NUM_OPENDSP_TYPE)
 		return -1;
 
-	return dsp_send_msg_to_queue(dsp_id, ipi_id, buf, len, wait_ms);
+	ret = dsp_send_msg_to_queue(dsp_id, ipi_id, buf, len, wait_ms);
+	if (ret == -EOVERFLOW && dump_workqueue)
+		queue_work(dump_workqueue, &worker->work);
+
+	return ret;
 }
 
-int dsp_dispatch_ipi_hanlder_to_queue_wrap(
+int dsp_dispatch_ipi_handler_to_queue_wrap(
 	uint32_t core_id, /* enum adsp_core_id */
 	uint32_t ipi_id,
 	void *buf,
 	uint32_t len,
 	void (*ipi_handler)(int ipi_id, void *buf, unsigned int len))
 {
+	int ret = 0;
 	uint32_t dsp_id = adsp_cid_to_ipi_dsp_id(core_id);
+	struct dump_ipi_worker_t *worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_D2A].dump_worker;
 
 	if (dsp_id >= NUM_OPENDSP_TYPE)
 		return -1;
 
-	return dsp_dispatch_ipi_hanlder_to_queue(dsp_id, ipi_id, buf, len, ipi_handler);
+	ret = dsp_dispatch_ipi_handler_to_queue(dsp_id, ipi_id, buf, len, ipi_handler);
+	if (ret == -EOVERFLOW && dump_workqueue)
+		queue_work(dump_workqueue, &worker->work);
+
+	return ret;
+}
+
+void audio_ipi_queue_dump_worker(struct work_struct *work)
+{
+	struct dump_ipi_worker_t *wk = container_of(work, struct dump_ipi_worker_t, work);
+	struct dsp_msg_queue_t *msg_queue = &g_dsp_msg_queue[wk->dsp_id][wk->dsp_path];
+	uint32_t index = msg_queue->idx_r;
+
+	int n = 0;
+	struct dsp_msg_t *msg = NULL;
+	char dump_str[32] = {0};
+
+	if (__ratelimit(&dump_limit)) {
+		pr_info("perform queue dump, dsp_id: %u, dsp_path: %u", wk->dsp_id, wk->dsp_path);
+		do {
+			msg = &msg_queue->element[index].msg;
+
+			if (msg->ipi_id == ADSP_IPI_AUDIO)
+				n = snprintf(dump_str, sizeof(dump_str), "index:%u, ipi_id:%u", index, msg->ipi_id);
+			else
+				n = snprintf(dump_str, sizeof(dump_str), "index:%u", index);
+
+			if (n < 0 || n > sizeof(dump_str))
+				pr_info("index: %u, error to get string dump_str", index);
+			else
+				DUMP_IPC_MSG(dump_str, msg);
+
+			index = ((index + 1) >= MAX_DSP_MSG_NUM_IN_QUEUE) ? 0 : index + 1;
+		} while (index != msg_queue->idx_w);
+	}
 }
 #endif
 
@@ -359,18 +413,26 @@ int scp_dispatch_ipi_hanlder_to_queue_wrap(
 	uint32_t len,
 	void (*ipi_handler)(int ipi_id, void *buf, unsigned int len))
 {
+	int ret = 0;
 	uint32_t dsp_id = scp_cid_to_ipi_dsp_id(core_id);
+	struct dump_ipi_worker_t *worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_D2A].dump_worker;
 
 	if (dsp_id >= NUM_OPENDSP_TYPE)
 		return -1;
 
-	return dsp_dispatch_ipi_hanlder_to_queue(dsp_id, ipi_id, buf, len, ipi_handler);
+	ret = dsp_dispatch_ipi_handler_to_queue(dsp_id, ipi_id, buf, len, ipi_handler);
+	if (ret == -EOVERFLOW && dump_workqueue)
+		queue_work(dump_workqueue, &worker->work);
+
+	return ret;
 }
 #endif
 
 void ipi_queue_init(void)
 {
 	uint32_t dsp_id = 0;
+	uint32_t dsp_path = 0;
+	struct dump_ipi_worker_t *worker = NULL;
 
 	for (dsp_id = 0; dsp_id < NUM_OPENDSP_TYPE; dsp_id++) {
 		if (is_audio_dsp_support(dsp_id))
@@ -379,7 +441,7 @@ void ipi_queue_init(void)
 
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 	hook_ipi_queue_send_msg_handler(dsp_send_msg_to_queue_wrap);
-	hook_ipi_queue_recv_msg_hanlder(dsp_dispatch_ipi_hanlder_to_queue_wrap);
+	hook_ipi_queue_recv_msg_hanlder(dsp_dispatch_ipi_handler_to_queue_wrap);
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
@@ -387,6 +449,33 @@ void ipi_queue_init(void)
 		hook_scp_ipi_queue_recv_msg_handler(scp_dispatch_ipi_hanlder_to_queue_wrap);
 #endif
 
+
+	dump_workqueue = create_workqueue("audio_ipi_dump_workqueue");
+	if (!dump_workqueue) {
+		pr_info("%s, create audio_ipi_dump_workqueue fail!", __func__);
+		return;
+	}
+
+	for (dsp_id = 0; dsp_id < NUM_OPENDSP_TYPE; dsp_id++) {
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
+		if (!is_audio_dsp_support(dsp_id))
+			continue;
+#endif
+		for (dsp_path = 0; dsp_path < DSP_NUM_PATH; dsp_path++) {
+			worker = &g_dsp_msg_queue[dsp_id][dsp_path].dump_worker;
+			worker->dsp_id = dsp_id;
+			worker->dsp_path = dsp_path;
+			INIT_WORK(&worker->work, audio_ipi_queue_dump_worker);
+		}
+	}
+}
+
+void ipi_queue_deinit(void)
+{
+	if (dump_workqueue) {
+		flush_workqueue(dump_workqueue);
+		destroy_workqueue(dump_workqueue);
+	}
 }
 
 int dsp_flush_msg_queue(uint32_t dsp_id)
@@ -565,7 +654,7 @@ int dsp_send_msg_to_queue(
 }
 EXPORT_SYMBOL(dsp_send_msg_to_queue);
 
-int dsp_dispatch_ipi_hanlder_to_queue(
+int dsp_dispatch_ipi_handler_to_queue(
 	uint32_t dsp_id, /* enum dsp_id_t */
 	uint32_t ipi_id,
 	void *buf,
@@ -612,7 +701,7 @@ int dsp_dispatch_ipi_hanlder_to_queue(
 
 	return 0;
 }
-EXPORT_SYMBOL(dsp_dispatch_ipi_hanlder_to_queue);
+EXPORT_SYMBOL(dsp_dispatch_ipi_handler_to_queue);
 
 
 /*
