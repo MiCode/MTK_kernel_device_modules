@@ -241,15 +241,15 @@ void user_cb_register(void)
 #endif /* SLBC_CB_TEST */
 
 static struct slbc_config p_config[] = {
-	/* SLBC_ENTRY(id,          sid, max, fix, p, extra, res,   cache) */
-	SLBC_ENTRY(UID_AOV_DC,     0,   0,   0,   0, 0x0,   0x07c, 0),
-	SLBC_ENTRY(UID_SH_P1,      1,   0,   0,   0, 0x0,   0x007, 0),
-	SLBC_ENTRY(UID_SH_APU,     2,   0,   0,   0, 0x0,   0x007, 0),
-	SLBC_ENTRY(UID_MM_VENC_8K, 3,   0,   0,   0, 0x0,   0x040, 0),
-	SLBC_ENTRY(UID_MM_VENC,    4,   0,   0,   0, 0x0,   0x380, 0),
-	SLBC_ENTRY(UID_AOV_APU,    5,   0,   0,   0, 0x0,   0x003, 0),
-	SLBC_ENTRY(UID_AINR,       6,   0,   0,   0, 0x0,   0x040, 0),
-	SLBC_ENTRY(UID_APU,        7,   0,   0,   0, 0x0,   0x038, 0),
+	/* SLBC_ENTRY(id,           sid, max, fix, p, extra, res,   cache) */
+	SLBC_ENTRY(UID_AOV_DC,      0,   0,   0,   0, 0x0,   0x07c, 0),
+	SLBC_ENTRY(UID_SH_P1,       1,   0,   0,   0, 0x0,   0x007, 0),
+	SLBC_ENTRY(UID_SH_APU,      2,   0,   0,   0, 0x0,   0x007, 0),
+	SLBC_ENTRY(UID_MM_VENC_EXT, 3,   0,   0,   0, 0x0,   0x040, 0),
+	SLBC_ENTRY(UID_MM_VENC,     4,   0,   0,   0, 0x0,   0x380, 0),
+	SLBC_ENTRY(UID_AOV_APU,     5,   0,   0,   0, 0x0,   0x003, 0),
+	SLBC_ENTRY(UID_AINR,        6,   0,   0,   0, 0x0,   0x040, 0),
+	SLBC_ENTRY(UID_APU,         7,   0,   0,   0, 0x0,   0x038, 0),
 };
 
 #ifdef SLBC_CB
@@ -615,7 +615,7 @@ int slbc_register_activate_ops(struct slbc_ops *ops)
 	if (!ops->data)
 		return -EFAULT;
 
-	if (ops->data->uid == UID_MM_VENC || ops->data->uid == UID_MM_VENC_SL) {
+	if (ops->data->uid == UID_MM_VENC || ops->data->uid == UID_MM_VENC_EXT) {
 		SLBC_TRACE_REC(LVL_QOS, TYPE_B, ops->data->uid, -EFAULT,
 				"register slbc ops fail: venc no need to register slb callback");
 		return -EFAULT;

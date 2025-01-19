@@ -81,7 +81,7 @@ enum slbc_uid {
 	UID_MM_VENC_SL,
 	UID_SENSOR,
 	UID_MM_VENC_FHD,
-	UID_MM_VENC_8K,
+	UID_MM_VENC_EXT,
 	UID_MAX,
 };
 
