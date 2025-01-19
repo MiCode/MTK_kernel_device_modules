@@ -11099,47 +11099,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,slc = <1>;
 			support-acp = <1>;
 			enable-acp-by-sw-ver = <1>;
-			reg = <0 0x36000000 0 0x1000>,	/* VDEC_BASE */
-				<0 0x3602f000 0 0x1000>,	/* VDEC_SYS */
-				<0 0x36020000 0 0x1000>,	/* VDEC_VLD */
-				<0 0x36021000 0 0x1000>,	/* VDEC_MC */
-				<0 0x36023000 0 0x1000>,	/* VDEC_MV */
-				<0 0x36025000 0 0x4000>,	/* VDEC_MISC */
-				<0 0x36010000 0 0x1000>,	/* VDEC_LAT_MISC */
-				<0 0x36011000 0 0x400>,		/* VDEC_LAT_VLD */
-				<0 0x3600f000 0 0x1000>,	/* VDEC_SOC_GCON */
-				<0 0x36004000 0 0x1000>,	/* VDEC_RACING_CTRL */
-				<0 0x36012000 0 0x1000>,	/* VDEC_LAT_AVC_VLD */
-				<0 0x36022000 0 0x1000>,	/* VDEC_AVC_VLD */
-				<0 0x36015800 0 0x1000>;	/* VDEC_AV1_VLD */
-			reg-names = "VDEC_BASE",
-				"VDEC_SYS",
-				"VDEC_VLD",
-				"VDEC_MC",
-				"VDEC_MV",
-				"VDEC_MISC",
-				"VDEC_LAT_MISC",
-				"VDEC_LAT_VLD",
-				"VDEC_SOC_GCON",
-				"VDEC_RACING_CTRL",
-				"VDEC_LAT_AVC_VLD",
-				"VDEC_AVC_VLD",
-				"VDEC_AV1_VLD";
 			mtk,smmu-shared = <&mm_smmu_codec>;
-			//mediatek,larbs = <&smi_larb4 &smi_larb5>;
-			interrupts = <GIC_SPI 673 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 676 IRQ_TYPE_LEVEL_HIGH 0>;
 
-			power-domains = <&scpsys MT6991_POWER_DOMAIN_VDE0>,
-				<&scpsys MT6991_POWER_DOMAIN_VDE1>;
-			//mediatek,vcu = <&vcu>;
-			clocks = <&vdec_soc_gcon_base_clk CLK_VDE1_VDEC_CKEN>,
-					<&vdec_soc_gcon_base_clk CLK_VDE1_LAT_CKEN>,
-					<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>;
-			clock-names = "SOC_MT_CG_SOC",
-					"LAT_MT_CG_VDEC1",
-					"CORE_MT_CG_VDEC0";
-			mediatek,clock-parents = <4 3>;
 			m4u-ports =
 				<SMMU_L4_P0_VDEC_MC_C>,
 				<SMMU_L4_P1_VDEC_UFO>,
@@ -11254,20 +11215,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"VENC_C1_SYS",
 				"VENC_C2_SYS";
 			mtk,smmu-shared = <&mm_smmu_codec>;
-			//mediatek,larbs = <&smi_larb7 &smi_larb8 &smi_larb24>;
-			interrupts = <GIC_SPI 487 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 492 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 497 IRQ_TYPE_LEVEL_HIGH 0>;
-			power-domains = <&scpsys  MT6991_POWER_DOMAIN_VEN0>,
-							<&scpsys MT6991_POWER_DOMAIN_VEN1>,
-							<&scpsys MT6991_POWER_DOMAIN_VEN2>;
-			//mediatek,vcu = <&vcu>;
-			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>,
-				<&venc_gcon_core1_clk CLK_VEN2_CKE1_VENC>,
-				<&venc_gcon_core2_clk CLK_VEN_C2_CKE1_VENC>;
-			clock-names = "MT_CG_VENC0",
-				"MT_CG_VENC1",
-				"MT_CG_VENC2";
 			venc-core-count = <3>;
 			venc-power-in-vcp = <1>;
 			venc-mmdvfs-in-vcp = <1>;
