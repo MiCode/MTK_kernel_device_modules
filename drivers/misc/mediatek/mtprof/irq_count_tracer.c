@@ -488,13 +488,79 @@ static bool in_plist(u64 t_avg, const char *name)
 	return false;
 }
 
+static void check_imdesc_cpu(struct irq_mon_desc *imdesc, int cpu)
+{
+	struct irq_count_stat *stat = &irq_count_stat;
+	struct seq_buf buf_msg, buf_mod;
+	char aee_msg[MAX_MSG_LEN] = {};
+	char module[100] = {};
+	struct irq_desc *desc;
+	unsigned long count;
+	unsigned int out;
+	u64 t_avg;
+
+	count = IMDESC_IRQ(imdesc, cpu, stat->index) -
+		IMDESC_IRQ(imdesc, cpu, !stat->index);
+	/* The irq is not triggered in this period */
+	if (count == 0)
+		return;
+	/* The irq count is decreased */
+	if (unlikely(count > UINT_MAX / 2))
+		return;
+	t_avg = stat->t_diff;
+	do_div(t_avg, count);
+	out = check_burst_irq(t_avg);
+	if (!out)
+		return;
+	if (out & TO_AEE && t_avg >= imdesc->aee_period_ns)
+		out &= ~TO_AEE;
+	desc = irq_to_desc(imdesc->irq);
+	if (!desc)
+		return;
+	scoped_guard(raw_spinlock_irqsave, &desc->lock) {
+		if (!desc->action || !desc->action->name
+		    || !desc->action->handler)
+			return;
+		if (out & TO_AEE && in_plist(t_avg, desc->action->name))
+			out &= ~TO_AEE;
+		seq_buf_init(&buf_msg, aee_msg, sizeof(aee_msg));
+		seq_buf_init(&buf_mod, module, sizeof(module));
+		seq_buf_printf(&buf_msg, "irq: %u [<%px>]%ps, %s",
+			       imdesc->irq, (void *)desc->action->handler,
+			       (void *)desc->action->handler,
+			       desc->action->name);
+		seq_buf_printf(&buf_mod, "BURST IRQ:%u, %ps %s",
+			       imdesc->irq, desc->action->handler,
+			       desc->action->name);
+
+		if (!strcmp(desc->action->name, "IPI")) {
+			int ipi_type = desc_to_ipi_type(desc);
+
+			seq_buf_printf(&buf_msg, "%d", ipi_type);
+			seq_buf_printf(&buf_mod, "%d", ipi_type);
+		}
+	}
+	seq_buf_printf(&buf_msg, " count +%lu in %lld ms, from %lld.%06lu to %lld.%06lu on CPU:%d",
+		       count, msec_high(stat->t_diff),
+		       sec_high(stat->t_start), sec_low(stat->t_start),
+		       sec_high(stat->t_end), sec_low(stat->t_end),
+		       cpu);
+
+	irq_mon_msg(out, aee_msg);
+	if (out & TO_AEE && irq_count_aee_limit &&
+	    irq_mon_aee_debounce_check(true)) {
+		irq_mon_aee_callback(imdesc->irq, IRQ_MON_AEE_TYPE_BURST_IRQ);
+		aee_kernel_warning_api(__FILE__, __LINE__,
+				       DB_OPT_DUMMY_DUMP | DB_OPT_FTRACE,
+				       module, aee_msg);
+	}
+}
+
 static void irq_count_core(void)
 {
 	XA_STATE(xas, &imdesc_xa, 0);
-	struct irq_count_stat *stat = &irq_count_stat;
-	unsigned long long t_diff_ms;
-	struct irq_desc *desc;
 	struct irq_mon_desc *imdesc;
+	unsigned long flags;
 	int cpu;
 
 	if (!irq_count_tracer)
@@ -503,19 +569,8 @@ static void irq_count_core(void)
 	update_irq_count();
 
 	/* check irq counts */
-	t_diff_ms = stat->t_diff;
-	do_div(t_diff_ms, NSEC_PER_MSEC);
-
-	xas_set(&xas, 0);
 	guard(rcu)();
 	xas_for_each(&xas, imdesc, ULONG_MAX) {
-		struct seq_buf buf_msg, buf_mod;
-		unsigned long count, flags;
-		char aee_msg[MAX_MSG_LEN] = {};
-		char module[100] = {};
-		unsigned int out;
-		u64 t_avg;
-
 		if (xas_retry(&xas, imdesc))
 			continue;
 		/* Skip the first time of checking. */
@@ -525,67 +580,8 @@ static void irq_count_core(void)
 			xas_unlock_irqrestore(&xas, flags);
 			continue;
 		}
-		for_each_online_cpu(cpu) {
-			count = IMDESC_IRQ(imdesc, cpu, stat->index) -
-				IMDESC_IRQ(imdesc, cpu, !stat->index);
-			/* The irq is not triggered in this period */
-			if (count == 0)
-				continue;
-
-			/* The irq count is decreased */
-			if (unlikely(count > UINT_MAX / 2))
-				continue;
-			t_avg = stat->t_diff;
-			do_div(t_avg, count);
-			out = check_burst_irq(t_avg);
-			if (!out)
-				continue;
-			if (out & TO_AEE && t_avg >= imdesc->aee_period_ns)
-				out &= ~TO_AEE;
-			desc = irq_to_desc(imdesc->irq);
-			if (!desc)
-				continue;
-			scoped_guard(raw_spinlock_irqsave, &desc->lock) {
-				if (!desc->action || !desc->action->name
-				    || !desc->action->handler)
-					continue;
-				if (out & TO_AEE
-				    && in_plist(t_avg, desc->action->name))
-					out &= ~TO_AEE;
-				seq_buf_init(&buf_msg, aee_msg, sizeof(aee_msg));
-				seq_buf_init(&buf_mod, module, sizeof(module));
-				seq_buf_printf(&buf_msg, "irq: %u [<%px>]%ps, %s",
-					imdesc->irq, (void *)desc->action->handler,
-					(void *)desc->action->handler,
-					desc->action->name);
-				seq_buf_printf(&buf_mod, "BURST IRQ:%u, %ps %s",
-					imdesc->irq, desc->action->handler,
-					desc->action->name);
-
-				if (!strcmp(desc->action->name, "IPI")) {
-					int ipi_type = desc_to_ipi_type(desc);
-
-					seq_buf_printf(&buf_msg, "%d", ipi_type);
-					seq_buf_printf(&buf_mod, "%d", ipi_type);
-				}
-			}
-			seq_buf_printf(&buf_msg, " count +%lu in %lld ms, from %lld.%06lu to %lld.%06lu on CPU:%d",
-				       count, t_diff_ms,
-				       sec_high(stat->t_start), sec_low(stat->t_start),
-				       sec_high(stat->t_end), sec_low(stat->t_end),
-				       cpu);
-
-			irq_mon_msg(out, aee_msg);
-			if (out & TO_AEE && irq_count_aee_limit &&
-	    		    irq_mon_aee_debounce_check(true)) {
-				irq_mon_aee_callback(imdesc->irq,
-						     IRQ_MON_AEE_TYPE_BURST_IRQ);
-				aee_kernel_warning_api(__FILE__, __LINE__,
-						       DB_OPT_DUMMY_DUMP
-						       | DB_OPT_FTRACE,
-						       module, aee_msg);
-			}
-		}
+		for_each_online_cpu(cpu)
+			check_imdesc_cpu(imdesc, cpu);
 	}
 }
 
