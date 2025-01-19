@@ -128,17 +128,20 @@ static inline void eenv_task_busy_time(struct energy_env *eenv,
 {
 	unsigned long busy_time, max_cap = arch_scale_cpu_capacity(prev_cpu);
 	unsigned long irq = cpu_util_irq(cpu_rq(prev_cpu));
-	unsigned long local_util_cpu_avg, local_util_coef1_avg, local_util_coef2_avg;
-	unsigned int local_util_cpu_est, local_util_coef1_est, local_util_coef2_est;
+	/* unsigned long local_util_cpu_avg, local_util_coef1_avg, local_util_coef2_avg;
+	 * unsigned int local_util_cpu_est, local_util_coef1_est, local_util_coef2_est;
+	 */
 
 	if (unlikely(irq >= max_cap))
 		busy_time = max_cap;
 	else {
+		/*
 		if (eenv->dpt_v2_support) {
 			task_global_to_local_dpt_v2(prev_cpu, p, &local_util_cpu_avg, &local_util_coef1_avg, &local_util_coef2_avg, &local_util_cpu_est, &local_util_coef1_est, &local_util_coef2_est);
 			busy_time = scale_irq_capacity(max(local_util_cpu_avg + local_util_coef1_avg + local_util_coef2_avg, local_util_cpu_est + local_util_coef1_est + local_util_coef2_est), irq, max_cap);
 		}
 		else
+		*/
 			busy_time = scale_irq_capacity(task_util_est(p), irq, max_cap);
 	}
 
@@ -173,6 +176,7 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 	unsigned long busy_time = 0;
 	int pd_idx = cpumask_first(pd_cpus);
 	int cpu;
+	/* unused = 0; */
 
 	if (eenv->pds_busy_time[pd_idx] != -1)
 		return;
@@ -181,6 +185,7 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 		unsigned long util = mtk_cpu_util_next(cpu, p, -1, 0);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
+		/*
 		if (eenv->dpt_v2_support) {
 			unsigned long dpt_v2_cpu_util = 0, dpt_v2_coef1_util = 0, dpt_v2_coef2_util = 0;
 
@@ -188,7 +193,8 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 			busy_time += mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util, &dpt_v2_coef1_util, &dpt_v2_coef2_util,
 				NULL, NULL, NULL);
 		} else
-			busy_time += mtk_effective_cpu_util(cpu, util, NULL, NULL, NULL);
+		*/
+		busy_time += mtk_effective_cpu_util(cpu, util, NULL, NULL, NULL);
 #else
 		busy_time += effective_cpu_util(cpu, util, NULL, NULL);
 #endif // CONFIG_MTK_CPUFREQ_SUGOV_EXT
