@@ -216,8 +216,8 @@
 
 #define _TYPE_OF_INT_POINTER(x) \
 	_Generic((x), \
-			u64 *: 1, \
-			u32 *: 2, \
+			u64 *: U64_POINTER, \
+			u32 *: U32_POINTER, \
 			default: \
 			0)
 

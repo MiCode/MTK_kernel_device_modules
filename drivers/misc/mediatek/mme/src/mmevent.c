@@ -202,7 +202,7 @@ EXPORT_SYMBOL(mme_globals);
 
 #if !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE)
 #define DBG_BUFFER_INIT_SIZE (2880*1024)
-#elif
+#else
 #define DBG_BUFFER_INIT_SIZE (4096+67*256)
 #endif
 
