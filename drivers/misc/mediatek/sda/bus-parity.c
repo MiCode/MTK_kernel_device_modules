@@ -23,9 +23,9 @@
 #include <linux/workqueue.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
-#include <mt-plat/aee.h>
+#include "mt-plat/aee.h"
 #include "sda.h"
-#include "dbg_error_flag.h"
+#include "include/dbg_error_flag.h"
 
 #define MCU_BP_IRQ_TRIGGER_THRESHOLD	(2)
 #define INFRA_BP_IRQ_TRIGGER_THRESHOLD	(2)

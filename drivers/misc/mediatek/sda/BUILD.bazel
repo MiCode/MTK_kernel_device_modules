@@ -74,3 +74,20 @@ ddk_headers(
 		"include",
 	],
 )
+
+define_mgk_ddk_ko(
+	name = "bus-parity",
+	srcs = [
+		"bus-parity.c",
+		"sda.h",
+		"include/dbg_error_flag.h"
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:dbg_error_flag".format(kernel_version),
+	],
+)
