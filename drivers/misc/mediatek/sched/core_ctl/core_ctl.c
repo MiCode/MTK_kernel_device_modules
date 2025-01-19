@@ -36,7 +36,25 @@
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 extern int get_immediate_tslvts1_1_wrap(void);
 #endif
-#define TAG "core_ctl"
+
+#define TAG	"core_ctl"
+#define L_CLUSTER_ID	0
+#define M_CLUSTER_ID	1
+#define B_CLUSTER_ID	2
+#define MAX_CLUSTERS	3
+#define MAX_CPUS_PER_CLUSTER	6
+#define MAX_BTASK_THRESH	100
+#define BIG_TASK_AVG_THRESHOLD	25
+
+#define for_each_cluster(cluster, idx) \
+	for ((cluster) = &cluster_state[idx]; (idx) < num_clusters;\
+		(idx)++, (cluster) = &cluster_state[idx])
+
+#define core_ctl_debug(x...)		\
+	do {				\
+		if (debug_enable)	\
+			pr_info(x);	\
+	} while (0)
 
 struct cluster_data {
 	bool inited;
@@ -82,40 +100,19 @@ struct cpu_data {
 	unsigned int force_pause_req;
 };
 
-#define ENABLE		1
-#define DISABLE		0
-#define L_CLUSTER_ID	0
-#define BL_CLUSTER_ID	1
-#define AB_CLUSTER_ID	2
-#define CORE_OFF	true
-#define CORE_ON		false
-#define MAX_CLUSTERS		3
-#define MAX_CPUS_PER_CLUSTER	6
-#define MAX_NR_DOWN_THRESHOLD	4
-#define MAX_BTASK_THRESH	100
-#define MAX_CPU_TJ_DEGREE	100000
-#define BIG_TASK_AVG_THRESHOLD	25
-
-#define for_each_cluster(cluster, idx) \
-	for ((cluster) = &cluster_state[idx]; (idx) < num_clusters;\
-		(idx)++, (cluster) = &cluster_state[idx])
-
-#define core_ctl_debug(x...)		\
-	do {				\
-		if (debug_enable)	\
-			pr_info(x);	\
-	} while (0)
-
+static unsigned int enable_policy;
 static DEFINE_PER_CPU(struct cpu_data, cpu_state);
 static struct cluster_data cluster_state[MAX_CLUSTERS];
 static unsigned int num_clusters;
 static DEFINE_SPINLOCK(core_ctl_state_lock);
 static DEFINE_SPINLOCK(core_ctl_window_check_lock);
 static DEFINE_SPINLOCK(core_ctl_pause_lock);
-static DEFINE_RWLOCK(core_ctl_policy_lock);
 static bool initialized;
 static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 2, 0};
 ATOMIC_NOTIFIER_HEAD(core_ctl_notifier);
+
+/* ==================== module parameter ======================== */
+
 static bool debug_enable;
 module_param_named(debug_enable, debug_enable, bool, 0600);
 
@@ -163,7 +160,27 @@ param_check_uint(periodic_debug_enable, &periodic_debug_enable);
 module_param_cb(periodic_debug_enable, &set_core_ctl_debug_param_ops, &periodic_debug_enable, 0600);
 MODULE_PARM_DESC(periodic_debug_enable, "echo periodic debug trace if needed");
 
-static unsigned int enable_policy;
+static void periodic_debug_handler(struct work_struct *work)
+{
+	struct cluster_data *cluster;
+	unsigned int index = 0;
+	unsigned int max_cpus[MAX_CLUSTERS];
+	unsigned int min_cpus[MAX_CLUSTERS];
+
+	if (periodic_debug_enable == DISABLE_DEBUG)
+		return;
+
+	for_each_cluster(cluster, index) {
+		max_cpus[index] = cluster->max_cpus;
+		min_cpus[index] = cluster->min_cpus;
+	}
+
+	trace_core_ctl_periodic_debug_handler(enable_policy, max_cpus, min_cpus,
+			cpumask_bits(cpu_online_mask)[0], cpumask_bits(cpu_pause_mask)[0]);
+	mod_delayed_work(system_power_efficient_wq,
+			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
+}
+
 /*
  *  core_ctl_enable_policy - enable policy of core control
  *  @enable: true if set, false if unset.
@@ -171,16 +188,14 @@ static unsigned int enable_policy;
 int core_ctl_enable_policy(unsigned int policy)
 {
 	unsigned int old_val;
-	unsigned long flags;
 	bool success = false;
 
-	write_lock_irqsave(&core_ctl_policy_lock, flags);
 	if (policy != enable_policy) {
 		old_val = enable_policy;
 		enable_policy = policy;
 		success = true;
 	}
-	write_unlock_irqrestore(&core_ctl_policy_lock, flags);
+
 	if (success)
 		pr_info("%s: Change policy from %d to %d successfully.",
 			TAG, old_val, policy);
@@ -211,6 +226,8 @@ static struct kernel_param_ops set_core_ctl_policy_param_ops = {
 param_check_uint(policy_enable, &enable_policy);
 module_param_cb(policy_enable, &set_core_ctl_policy_param_ops, &enable_policy, 0600);
 MODULE_PARM_DESC(policy_enable, "echo cpu pause policy if needed");
+
+/* ==================== support function ======================== */
 
 static unsigned int apply_limits(const struct cluster_data *cluster,
 				 unsigned int need_cpus)
@@ -300,12 +317,10 @@ static bool demand_eval(struct cluster_data *cluster)
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 
-	read_lock(&core_ctl_policy_lock);
 	if (cluster->boost || !cluster->enable || !enable_policy)
 		need_cpus = cluster->max_cpus;
 	else
 		need_cpus = cluster->new_need_cpus;
-	read_unlock(&core_ctl_policy_lock);
 
 	/* check again active cpus. */
 	cluster->active_cpus = get_active_cpu_count(cluster);
@@ -1461,12 +1476,8 @@ void core_ctl_tick(void *data, struct rq *rq)
 			c->is_busy = false;
 	}
 
-	read_lock(&core_ctl_policy_lock);
 	if (enable_policy) {
-		read_unlock(&core_ctl_policy_lock);
 		core_ctl_main_algo();
-	} else
-		read_unlock(&core_ctl_policy_lock);
 
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
@@ -1836,27 +1847,6 @@ static struct cluster_data *find_cluster_by_first_cpu(unsigned int first_cpu)
 	return NULL;
 }
 
-static void periodic_debug_handler(struct work_struct *work)
-{
-	struct cluster_data *cluster;
-	unsigned int index = 0;
-	unsigned int max_cpus[MAX_CLUSTERS];
-	unsigned int min_cpus[MAX_CLUSTERS];
-
-	if (periodic_debug_enable == DISABLE_DEBUG)
-		return;
-
-	for_each_cluster(cluster, index) {
-		max_cpus[index] = cluster->max_cpus;
-		min_cpus[index] = cluster->min_cpus;
-	}
-
-	trace_core_ctl_periodic_debug_handler(enable_policy, max_cpus, min_cpus,
-			cpumask_bits(cpu_online_mask)[0], cpumask_bits(cpu_pause_mask)[0]);
-	mod_delayed_work(system_power_efficient_wq,
-			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
-}
-
 static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause)
 {
 	struct core_ctl_notif_data ndata = {0};
@@ -1938,7 +1928,7 @@ static int cluster_init(const struct cpumask *mask)
 		cluster->down_thres =
 			get_over_threshold(cluster->cluster_id - 1);
 
-	if (cluster->cluster_id == AB_CLUSTER_ID) {
+	if (cluster->cluster_id == B_CLUSTER_ID) {
 		cluster->thermal_degree_thres = 65000;
 		cluster->thermal_up_thres = INT_MAX;
 	} else {
