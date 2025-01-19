@@ -4946,7 +4946,16 @@ static void _mtk_crtc_lye_addon_module_connect(
 			DDPMSG("%s:%d cannot get addon_module\n", __func__, __LINE__);
 			return;
 		}
-		mtk_addon_get_comp(crtc, lye_state->mml_dl_lye, &addon_config.config_type.tgt_comp, NULL);
+		mtk_addon_get_comp(crtc, lye_state->mml_dl_lye, &addon_config.config_type.tgt_comp,
+			&addon_config.config_type.tgt_layer);
+		if (!mtk_crtc->is_mml_submit) {
+			DDPMSG("comp:%d,layer:%d off\n",
+				addon_config.config_type.tgt_comp, addon_config.config_type.tgt_layer);
+			mtk_ddp_comp_layer_off(priv->ddp_comp[addon_config.config_type.tgt_comp],
+				addon_config.config_type.tgt_layer, 0,cmdq_handle);
+			lye_state->mml_dl_lye = 0;
+			return;
+		}
 		mml_addon_module_connect(crtc, ddp_mode, addon_module[0], addon_module[1],
 					 &addon_config, cmdq_handle);
 		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye, 0x4000000 | MMP_ADDON_CONNECT);
@@ -15891,7 +15900,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 #endif
 
 	mtk_crtc_state->cmdq_handle =
-		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, true);
+		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, mtk_crtc->is_mml_submit);
 	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, __LINE__);
 	drm_trace_tag_mark("atomic_begin");
 
@@ -18665,7 +18674,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* need to check mml is submit done */
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl)
+	if ((mtk_crtc->is_mml || mtk_crtc->is_mml_dl) && mtk_crtc->is_mml_submit)
 		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
 
 	mtk_vidle_dvfs_trigger(__func__);

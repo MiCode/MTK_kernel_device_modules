@@ -1593,6 +1593,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
 	if (ret)
 		goto err_submit;
+	mtk_crtc->is_mml_submit = true;
 
 	CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX], MMP_MML_SUBMIT);
 
@@ -1613,6 +1614,8 @@ err_src_fd:
 	mtk_free_mml_submit(submit_kernel);
 err_alloc_submit_pq:
 	mtk_free_mml_submit(submit_pq);
+
+	mtk_crtc->is_mml_submit = false;
 	return MML_MODE_UNKNOWN;
 }
 
@@ -1647,6 +1650,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 		return;
 
 	mtk_crtc = to_mtk_crtc(crtc);
+	mtk_crtc->is_mml_submit = false;
 
 	for_each_old_plane_in_state(state, plane, old_plane_state, i) {
 		plane_state = plane->state;
@@ -1666,6 +1670,18 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	if (!need_update_plane && (mtk_crtc_state->lye_state.mml_ir_lye ||
 			mtk_crtc_state->lye_state.mml_dl_lye)) {
 		DDPINFO("no plane_update with mml lye, skip %s\n", __func__);
+		for (i = 0; i < mtk_crtc->layer_nr; i++) {
+			struct drm_plane *plane = &mtk_crtc->planes[i].base;
+			struct mtk_plane_state *plane_state;
+
+			plane_state = to_mtk_plane_state(plane->state);
+			if (plane_state->comp_state.layer_caps & MTK_MML_DISP_DIRECT_LINK_LAYER) {
+				plane_state->comp_state.layer_caps &= ~MTK_MML_DISP_DIRECT_LINK_LAYER;
+				plane_state->pending.enable = 0;
+				plane_state->pending.mml_mode = 0;
+				break;
+			}
+		}
 		return;
 	}
 
