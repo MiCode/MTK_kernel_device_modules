@@ -195,6 +195,8 @@ struct mtk_dvo_conf {
 	bool has_commit;
 };
 
+static struct mtk_dvo *g_mtk_dvo;
+
 static int irq_intsa;
 static int irq_vdesa;
 static int irq_underflowsa;
@@ -1106,6 +1108,23 @@ static const struct mtk_dvo_conf mt6991_conf = {
 	.swap_input_support = false,
 };
 
+int mtk_drm_dvo_get_info(struct drm_device *dev,
+			struct drm_mtk_session_info *info)
+{
+	if (!g_mtk_dvo) {
+		pr_info("[eDPTX] %s dvo not initial\n", __func__);
+		return -EINVAL;
+	}
+
+	info->physical_width = g_mtk_dvo->mode.hdisplay;
+	info->physical_height = g_mtk_dvo->mode.vdisplay;
+	pr_info("[eDPTX] physical_width:%u physical_height:%u\n",
+			info->physical_width, info->physical_height);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_drm_dvo_get_info);
+
 static int mtk_dvo_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1118,6 +1137,7 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 	if (!dvo)
 		return -ENOMEM;
 
+	g_mtk_dvo = dvo;
 	dvo->dev = dev;
 	dvo->conf = (struct mtk_dvo_conf *)of_device_get_match_data(dev);
 	dvo->output_fmt = MEDIA_BUS_FMT_RGB888_1X24;
