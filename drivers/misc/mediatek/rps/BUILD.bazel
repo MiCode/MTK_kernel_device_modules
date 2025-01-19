@@ -31,10 +31,5 @@ define_mgk_ddk_ko(
 	name = "rps_perf",
 	hdrs = ["rps_perf.h"],
 	includes = ["."],
-	srcs = [],
-	conditional_srcs = {
-		"CONFIG_MTK_NET_RPS": {
-		True: ["rps_perf.c"],
-		},
-	},
+	srcs = ["rps_perf.c"],
 )
