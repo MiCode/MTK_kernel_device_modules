@@ -175,12 +175,11 @@ bool el1_smmu_cmdq_enable(smmu_device_t *smmu_dev)
 /* software DVM */
 static void broadcast_cmd_to_all_smmu(uint64_t *cmd0, uint64_t *cmd1)
 {
-	unsigned int subsys_smmu;
-	smmu_device_t *smmu_dev;
-	uint64_t cmd_sync[CMD_SIZE_DW];
+	unsigned int subsys_smmu = 0;
+	smmu_device_t *smmu_dev = NULL;
+	uint64_t cmd_sync[CMD_SIZE_DW] = { 0ULL };
 	int ret = 0;
 
-	smmu_dev = NULL;
 	construct_cmd_sync(cmd_sync);
 	for (subsys_smmu = 0; subsys_smmu < smmu_devices_count; subsys_smmu++) {
 		smmu_dev = smmu_devices[subsys_smmu];
@@ -541,7 +540,7 @@ static paddr_t get_smmu_contig_mpool_pa(smmu_device_t *dev, unsigned int type)
 
 static void *get_smmu_contig_mpool_va(smmu_device_t *dev, unsigned int type)
 {
-	unsigned int index = dev->smmu_id;
+	unsigned int index = dev ? dev->smmu_id : SMMU_ID_NUM;
 	void *va = NULL;
 
 	switch (type) {
@@ -549,7 +548,7 @@ static void *get_smmu_contig_mpool_va(smmu_device_t *dev, unsigned int type)
 		va = smmu_get_global_ste();
 		break;
 	case GET_CMDQ:
-		if (index >= 0 && index < SMMU_ID_NUM)
+		if (index < SMMU_ID_NUM)
 			va = smmu_get_cmdq_buf(index);
 		break;
 	default:
@@ -1246,13 +1245,13 @@ void setup_vm(struct user_pt_regs *regs)
 void mtk_iommu_init(struct user_pt_regs *regs)
 {
 	struct mpt in_mpt;
-	u64 *smpt;
-	unsigned long pa;
-	unsigned int i;
-	int ret;
-	void *pglist_pa;
-	uint64_t pglist_pfn;
-	void *pmm_page;
+	u64 *smpt = NULL;
+	unsigned long pa = 0UL;
+	unsigned int i = 0U;
+	int ret = 0;
+	void *pglist_pa = NULL;
+	uint64_t pglist_pfn = 0ULL;
+	void *pmm_page = NULL;
 
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 	pglist_pfn = regs->regs[1];
@@ -1283,6 +1282,10 @@ void mtk_iommu_init(struct user_pt_regs *regs)
 	}
 
 	ret = pkvm_smmu_ops->host_unshare_hyp(pglist_pfn);
+
+	if (ret)
+		pkvm_smmu_ops->puts("mtk_iommu_init : unshare fail");
+
 	/* mpool init */
 	smmu_map_mpool();
 	/* add memory into mpool */

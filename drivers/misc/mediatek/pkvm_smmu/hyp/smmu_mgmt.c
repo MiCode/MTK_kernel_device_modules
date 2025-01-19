@@ -767,13 +767,12 @@ void smmu_mem_init(uint level)
  */
 unsigned long smmu_s2_table_content_info(uint64_t ipa, uint32_t sid)
 {
-	uint64_t *step;
-	uint16_t vmid;
-	struct smmu_vm *vm;
+	uint64_t *step = NULL;
+	uint16_t vmid = 0;
+	struct smmu_vm *vm = NULL;
 	struct smmu_vm_locked locked;
-	uint64_t ipa_upper_bit, ipa_lower_bit, combine_ipa, ret_value;
-
-	ret_value = 0;
+	uint64_t ipa_upper_bit = 0ULL, ipa_lower_bit = 0ULL, combine_ipa = 0ULL,
+		 ret_value = 0ULL;
 
 	if (sid >= SID_CNT) {
 		pkvm_smmu_ops->puts("[ERROR]Invalid sid");
