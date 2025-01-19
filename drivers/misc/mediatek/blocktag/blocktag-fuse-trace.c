@@ -115,75 +115,57 @@ struct hrtimer pstat_timer;
 
 static void fuse_pstat_inc(void)
 {
-	unsigned long flags;
+	guard(spinlock_irqsave)(&pstat.lock);
 
-	spin_lock_irqsave(&pstat.lock, flags);
 	pstat.accumulator++;
-	spin_unlock_irqrestore(&pstat.lock, flags);
+	if (!hrtimer_active(&pstat_timer))
+		hrtimer_start(&pstat_timer,
+			      ms_to_ktime(PERIODIC_STAT_MS),
+			      HRTIMER_MODE_REL);
 }
 
 static void clean_up_pstat(void)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&pstat.lock, flags);
+	guard(spinlock_irqsave)(&pstat.lock);
 	memset(&pstat, 0, sizeof(pstat));
-	spin_unlock_irqrestore(&pstat.lock, flags);
 }
 
 u64 btag_fuse_pstat_get_last(void)
 {
-	unsigned long flags;
-	u64 ret;
-
-	spin_lock_irqsave(&pstat.lock, flags);
-	ret = pstat.last_cnt;
-	spin_unlock_irqrestore(&pstat.lock, flags);
-
-	return ret;
+	guard(spinlock_irqsave)(&pstat.lock);
+	return pstat.last_cnt;
 }
 
 u64 btag_fuse_pstat_get_max(void)
 {
-	unsigned long flags;
-	u64 ret;
-
-	spin_lock_irqsave(&pstat.lock, flags);
-	ret = pstat.max_cnt;
-	spin_unlock_irqrestore(&pstat.lock, flags);
-
-	return ret;
+	guard(spinlock_irqsave)(&pstat.lock);
+	return pstat.max_cnt;
 }
 
 u64 btag_fuse_pstat_get_distribution(u32 idx)
 {
-	unsigned long flags;
-	u64 ret;
-
 	if (idx >= ARRAY_SIZE(pstat.distribution))
 		return 0;
 
-	spin_lock_irqsave(&pstat.lock, flags);
-	ret = pstat.distribution[idx];
-	spin_unlock_irqrestore(&pstat.lock, flags);
-
-	return ret;
+	guard(spinlock_irqsave)(&pstat.lock);
+	return pstat.distribution[idx];
 }
 
 static enum hrtimer_restart pstat_timer_fn(struct hrtimer *timer)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&pstat.lock, flags);
-	pstat.last_cnt = pstat.accumulator;
-	pstat.accumulator = 0;
-	pstat.distribution[fls(pstat.last_cnt)]++;
-	if (pstat.last_cnt > pstat.max_cnt)
-		pstat.max_cnt = pstat.last_cnt;
-	spin_unlock_irqrestore(&pstat.lock, flags);
+	scoped_guard(spinlock_irqsave, &pstat.lock) {
+		pstat.last_cnt = pstat.accumulator;
+		pstat.distribution[fls(pstat.last_cnt)]++;
+		if (pstat.accumulator) {
+			pstat.accumulator = 0;
+			if (pstat.last_cnt > pstat.max_cnt)
+				pstat.max_cnt = pstat.last_cnt;
+		} else {
+			return HRTIMER_NORESTART;
+		}
+	}
 
 	hrtimer_forward_now(timer, ms_to_ktime(PERIODIC_STAT_MS));
-
 	return HRTIMER_RESTART;
 }
 
