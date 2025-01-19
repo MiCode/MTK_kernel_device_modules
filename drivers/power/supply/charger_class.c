@@ -975,7 +975,6 @@ struct charger_device *charger_device_register(const char *name,
 		const struct charger_properties *props)
 {
 	struct charger_device *chg_dev;
-	static struct lock_class_key key;
 	struct srcu_notifier_head *head;
 	int rc;
 
@@ -987,7 +986,7 @@ struct charger_device *charger_device_register(const char *name,
 	head = &chg_dev->evt_nh;
 	srcu_init_notifier_head(head);
 	/* Rename srcu's lock to avoid LockProve warning */
-	lockdep_init_map(&(&head->srcu)->dep_map, name, &key, 0);
+	lockdep_init_map(&(&head->srcu)->dep_map, name, &chg_dev->key, 0);
 	mutex_init(&chg_dev->ops_lock);
 	chg_dev->dev.class = charger_class;
 	chg_dev->dev.parent = parent;

@@ -55,6 +55,7 @@ struct charger_device {
 	struct charger_properties props;
 	struct chgdev_notify noti;
 	const struct charger_ops *ops;
+	struct lock_class_key key;
 	struct mutex ops_lock;
 	struct device dev;
 	struct srcu_notifier_head evt_nh;

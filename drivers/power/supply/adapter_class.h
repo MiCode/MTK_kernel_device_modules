@@ -109,6 +109,7 @@ struct adapter_properties {
 struct adapter_device {
 	struct adapter_properties props;
 	const struct adapter_ops *ops;
+	struct lock_class_key key;
 	struct mutex ops_lock;
 	struct device dev;
 	struct srcu_notifier_head evt_nh;

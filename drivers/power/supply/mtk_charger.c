@@ -3499,6 +3499,8 @@ static const enum power_supply_property charger_psy_properties[] = {
 	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT,
 	POWER_SUPPLY_PROP_VOLTAGE_BOOT,
 	POWER_SUPPLY_PROP_USB_TYPE,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
+	POWER_SUPPLY_PROP_POWER_NOW,
 };
 
 static int psy_charger_get_property(struct power_supply *psy,
@@ -3506,7 +3508,7 @@ static int psy_charger_get_property(struct power_supply *psy,
 {
 	struct mtk_charger *info;
 	struct charger_device *chg;
-	int ret = 0, chg_vbat = 0, vbat_max = 0, idx = 0;
+	int ret = 0, chg_vbat = 0, vbat_max = 0, vsys_min = 0, vsys_max = 0, idx = 0;
 	struct chg_alg_device *alg = NULL;
 
 	info = (struct mtk_charger *)power_supply_get_drvdata(psy);
@@ -3591,6 +3593,11 @@ static int psy_charger_get_property(struct power_supply *psy,
 		ret = charger_dev_get_adc(info->chg1_dev,
 			ADC_CHANNEL_VBAT, &chg_vbat, &vbat_max);
 		val->intval = chg_vbat;
+		break;
+	case POWER_SUPPLY_PROP_POWER_NOW:
+		ret = charger_dev_get_adc(info->chg1_dev,
+			ADC_CHANNEL_VSYS, &vsys_min, &vsys_max);
+		val->intval = vsys_min;
 		break;
 	default:
 		return -EINVAL;
