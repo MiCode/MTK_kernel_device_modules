@@ -29,7 +29,7 @@ struct xhci_mbrain {
 };
 
 struct xhci_mbrain_hash_node {
-	char dev_name[32];
+	char *dev_name;
 	struct xhci_mbrain mbrain_data;
 	unsigned long jiffies;
 	bool updated_db;

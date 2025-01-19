@@ -7,6 +7,7 @@
  */
 #include <linux/usb/audio.h>
 #include <linux/usb/quirks.h>
+#include <linux/stringhash.h>
 #include "quirks.h"
 #include "xhci-mtk.h"
 #include "xhci-trace.h"
@@ -50,7 +51,7 @@ static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
 
 
 static xhci_enum_mbrain_callback xhci_enum_mbrain_cb;
-DEFINE_HASHTABLE(mbrain_hash, 3);
+DEFINE_HASHTABLE(mbrain_hash_table, 3);
 
 static int usb_match_device(struct usb_device *dev, const struct usb_device_id *id)
 {
@@ -238,58 +239,43 @@ int unregister_xhci_enum_mbrain_cb(void)
 }
 EXPORT_SYMBOL(unregister_xhci_enum_mbrain_cb);
 
-static unsigned long hash_string(const char *str)
-{
-	unsigned long hash = 5381;
-	int c;
-
-	while ((c = *str++))
-		hash = ((hash << 5) + hash) + c;
-
-	return hash;
-}
-
-static struct xhci_mbrain_hash_node *add_to_hash_table(struct usb_device *udev)
+static struct xhci_mbrain_hash_node *xhci_mtk_mbrain_get_hash_node(struct usb_device *udev)
 {
 	struct xhci_mbrain_hash_node *item;
-	unsigned long hash = hash_string(dev_name(&udev->dev));
-	struct xhci_mbrain *mbrain_data;
+	const char *key = dev_name(&udev->dev);
+	unsigned int hash_key = full_name_hash(NULL, key, strlen(key));
+	char *dev_name_backup;
 
-	hash_for_each_possible(mbrain_hash, item, node, hash) {
-		if (strcmp(item->dev_name, dev_name(&udev->dev)) == 0) {
-			mbrain_data = &item->mbrain_data;
+	hash_for_each_possible(mbrain_hash_table, item, node, hash_key) {
+		if (strcmp(item->dev_name, key) == 0) {
+			dev_dbg(&udev->dev, "mbrain: use the exist node: mbrain_data=0x%p\n", &item->mbrain_data);
 
-			dev_info(&udev->dev, "mbrain: use the exist node: mbrain_data=0x%p\n", mbrain_data);
-			memset(item, 0x00, sizeof(struct xhci_mbrain_hash_node));
+			if (udev->state == USB_STATE_DEFAULT) {
+				dev_name_backup = item->dev_name;
+				memset(item, 0x00, sizeof(struct xhci_mbrain_hash_node));
+				item->dev_name = dev_name_backup;
+			}
 			return item;
 		}
 	}
 
 	item = kzalloc(sizeof(struct xhci_mbrain_hash_node), GFP_ATOMIC);
-	strncpy(item->dev_name, dev_name(&udev->dev), sizeof(item->dev_name));
+	item->dev_name = kstrdup(key, GFP_ATOMIC);
 	dev_info(&udev->dev, "mbrain: allocate new node: mbrain_data=0x%p\n", &item->mbrain_data);
-	hash_add(mbrain_hash, &item->node, hash);
+	hash_add(mbrain_hash_table, &item->node, hash_key);
 	return item;
 }
 
 static void xhci_mtk_mbrain_action(struct urb *urb)
 {
-	return;
-
 	if (urb->setup_packet) {
 		struct usb_device *udev = urb->dev;
 		u16 bcdDevice = le16_to_cpu(udev->descriptor.bcdDevice);
 		struct xhci_mbrain_hash_node *hash_node;
-		struct xhci_mbrain *mbrain_data = dev_get_drvdata(&udev->dev);
+		struct xhci_mbrain *mbrain_data;
 
-		if (!mbrain_data) {
-			hash_node = add_to_hash_table(udev);
-			mbrain_data = &hash_node->mbrain_data;
-			dev_set_drvdata(&udev->dev, mbrain_data);
-			dev_info(&udev->dev, "mbrain: dev_set_drvdata: mbrain_data=0x%p\n", mbrain_data);
-		}
-
-		hash_node = container_of(mbrain_data, struct xhci_mbrain_hash_node, mbrain_data);
+		hash_node = xhci_mtk_mbrain_get_hash_node(udev);
+		mbrain_data = &hash_node->mbrain_data;
 		if (hash_node->updated_db)
 			return;
 
@@ -302,10 +288,10 @@ static void xhci_mtk_mbrain_action(struct urb *urb)
 			mbrain_data->state = udev->state;
 			hash_node->jiffies = jiffies;
 			dev_info(&udev->dev,
-				"mbrain: idVendor=%04x, idProduct=%04x, bcdDevice=%2x.%02x, state=%d, speed=%d\n",
+				"mbrain: idVendor=%04x, idProduct=%04x, bcdDevice=%2x.%02x, speed=%d, state=%d\n",
 					mbrain_data->vid, mbrain_data->pid,
 					mbrain_data->bcd >> 8, mbrain_data->bcd & 0xff,
-					mbrain_data->state, mbrain_data->speed
+					mbrain_data->speed, mbrain_data->state
 				);
 		}
 
@@ -322,17 +308,21 @@ static void xhci_mtk_mbrain_action(struct urb *urb)
 
 }
 
+static void xhci_mtk_mbrain_init(struct device *dev)
+{
+	hash_init(mbrain_hash_table);
+}
+
 static void xhci_mtk_mbrain_cleanup(struct device *dev)
 {
 	struct xhci_mbrain_hash_node *item;
 	struct hlist_node *tmp;
 	int bkt;
 
-	return;
-
 	dev_info(dev, "mbrain: cleanup hash\n");
-	hash_for_each_safe(mbrain_hash, bkt, tmp, item, node) {
+	hash_for_each_safe(mbrain_hash_table, bkt, tmp, item, node) {
 		hash_del(&item->node);
+		kfree(item->dev_name);
 		kfree(item);
 	}
 }
@@ -367,6 +357,8 @@ void xhci_mtk_trace_init(struct device *dev)
 {
 	WARN_ON(register_trace_xhci_urb_enqueue_(xhci_trace_ep_urb_enqueue, dev));
 	WARN_ON(register_trace_xhci_urb_giveback_(xhci_trace_ep_urb_giveback, dev));
+
+	xhci_mtk_mbrain_init(dev);
 }
 
 void xhci_mtk_trace_deinit(struct device *dev)
