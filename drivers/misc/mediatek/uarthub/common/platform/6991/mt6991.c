@@ -2070,8 +2070,9 @@ int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 	UARTHUB_DEBUG_READ_DEBUG_REG(dev1, uartip, uartip_id_md);
 	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
 	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
-	if (apuart_base_map_mt6991[3] != NULL)
+	if (apuart_base_map_mt6991[3] != NULL) {
 		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
+	}
 
 	if ((uarthub_read_dbg_monitor(&debug_monitor_sel, tx_monitor, rx_monitor) == 0) &&
 			(debug_monitor_sel == 0x1)) {
@@ -2106,6 +2107,11 @@ int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 	feedback_host_awake_tx_done[1] = IRQ_STA_GET_feedback_host_awake_tx_done(IRQ_STA_ADDR);
 
 	/* should trigger UARTHUB HW sendt host awake sta to FW */
+	len = 0;
+	ret = snprintf(result + len, 128 - len, "%s", "null");
+	if (ret > 0)
+		len += ret;
+
 	if (cmm_bt_awake_sta[0] == 1 && dev_host_awake_sta[0] != set) {
 		retry = 20;
 		udelay(11);
@@ -2161,8 +2167,9 @@ int uarthub_host_awake_sta_ctrl_mt6991(int dev_index, int set, const char *tag)
 	UARTHUB_DEBUG_READ_DEBUG_REG(dev1, uartip, uartip_id_md);
 	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
 	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
-	if (apuart_base_map_mt6991[3] != NULL)
+	if (apuart_base_map_mt6991[3] != NULL) {
 		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
+	}
 
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",E=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");

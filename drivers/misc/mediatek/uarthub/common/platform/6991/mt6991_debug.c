@@ -1368,8 +1368,9 @@ int uarthub_dump_debug_byte_cnt_info_mt6991(const char *tag)
 	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
 	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
 
-	if (apuart_base_map_mt6991[3] != NULL)
+	if (apuart_base_map_mt6991[3] != NULL) {
 		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
+	}
 
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",bcnt=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
@@ -1568,8 +1569,9 @@ int uarthub_dump_debug_bus_status_info_mt6991(const char *tag)
 	UARTHUB_DEBUG_READ_DEBUG_REG(dev2, uartip, uartip_id_adsp);
 	UARTHUB_DEBUG_READ_DEBUG_REG(cmm, uartip, uartip_id_cmm);
 
-	if (apuart_base_map_mt6991[3] != NULL)
+	if (apuart_base_map_mt6991[3] != NULL) {
 		UARTHUB_DEBUG_READ_DEBUG_REG(ap, apuart, 3);
+	}
 
 	UARTHUB_DEBUG_READ_CODA_ID_REG(DMA_EN);
 	UARTHUB_DEBUG_READ_CODA_ID_REG(EFR);
