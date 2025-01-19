@@ -3414,6 +3414,7 @@ static void process_dbg_opt(const char *opt)
 		if (IS_ERR_OR_NULL(cust_data)) {
 			DDPMSG("%s, %d, failed to allocate buffer\n",
 				__func__, __LINE__);
+			kfree(cust_data);
 			return;
 		}
 
@@ -4832,7 +4833,7 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("g_y2r_en:%d", g_y2r_en);
 	} else if (strncmp(opt, "disp_plat_dbg:", 14) == 0) {
 		int err = 0;
-		struct disp_plat_dbg_scmi_data scmi_data;
+		struct disp_plat_dbg_scmi_data scmi_data = {0};
 
 		scmi_data.cmd = DISP_PLAT_DBG_ENABLE;
 

@@ -123,37 +123,6 @@ _get_session_sync_info(unsigned int session_id)
 			_mtk_fence_context[i].session_id = session_id;
 			session_info = &(_mtk_fence_context[i]);
 
-			sprintf(name, "%s%d_prepare",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_frame_cfg",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_wait_fence",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_setinput",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_setoutput",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_trigger",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_findidx",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_release",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_waitvsync",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_err",
-				mtk_fence_session_mode_spy(session_id),
-				MTK_SESSION_DEV(session_id));
-
 			for (j = 0;
 			     j < (sizeof(session_info->session_layer_info) /
 				  sizeof(session_info->session_layer_info[0]));
