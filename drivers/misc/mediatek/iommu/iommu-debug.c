@@ -3643,7 +3643,6 @@ static const struct mtk_m4u_plat_data mt6993_smmu_data = {
 	.mm_tf_is_gce_videoup = mt6993_tf_is_gce_videoup,
 	.smmu_common_id = default_smmu_common_id,
 	.smmu_port_name = mt6993_smmu_soc_port_name,
-	.bring_up_enable = true,
 };
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
