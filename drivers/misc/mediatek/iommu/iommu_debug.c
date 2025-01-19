@@ -1889,12 +1889,13 @@ static int m4u_debug_get(void *data, u64 *val)
 DEFINE_PROC_ATTRIBUTE(m4u_debug_fops, m4u_debug_get, m4u_debug_set, "%llu\n");
 
 /* Define proc_ops: *_proc_show function will be called when file is opened */
-#define DEFINE_PROC_FOPS_RO(name)				\
+#define DEFINE_PROC_FOPS_RO(name, file_size)			\
 	static int name ## _proc_open(struct inode *inode,	\
 		struct file *file)				\
 	{							\
-		return single_open(file, name ## _proc_show,	\
-			pde_data(inode));			\
+		return single_open_size(file,			\
+			name ## _proc_show,			\
+			pde_data(inode), file_size);		\
 	}							\
 	static const struct proc_ops name = {			\
 		.proc_open		= name ## _proc_open,	\
@@ -1990,12 +1991,12 @@ static int mtk_smmu_pgtable_fops_proc_show(struct seq_file *s, void *unused)
 }
 
 /* adb shell cat /proc/iommu_debug/xxx */
-DEFINE_PROC_FOPS_RO(mtk_iommu_help_fops);
-DEFINE_PROC_FOPS_RO(mtk_iommu_dump_fops);
-DEFINE_PROC_FOPS_RO(mtk_iommu_iova_alloc_fops);
-DEFINE_PROC_FOPS_RO(mtk_iommu_iova_map_fops);
-DEFINE_PROC_FOPS_RO(mtk_smmu_wp_fops);
-DEFINE_PROC_FOPS_RO(mtk_smmu_pgtable_fops);
+DEFINE_PROC_FOPS_RO(mtk_iommu_help_fops, SZ_4K);
+DEFINE_PROC_FOPS_RO(mtk_iommu_dump_fops, SZ_1M);
+DEFINE_PROC_FOPS_RO(mtk_iommu_iova_alloc_fops, SZ_512K);
+DEFINE_PROC_FOPS_RO(mtk_iommu_iova_map_fops, SZ_512K);
+DEFINE_PROC_FOPS_RO(mtk_smmu_wp_fops, SZ_32K);
+DEFINE_PROC_FOPS_RO(mtk_smmu_pgtable_fops, SZ_512K);
 
 static void mtk_iommu_trace_init(struct mtk_m4u_data *data)
 {
