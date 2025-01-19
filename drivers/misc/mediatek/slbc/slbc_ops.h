@@ -173,8 +173,7 @@ struct slbc_data {
 };
 
 struct slbc_gid_data {
-	bool slb_like;
-	unsigned int sign;
+	unsigned int sign;      // must be the first one
 	unsigned int buffer_fd;
 	unsigned int producer;
 	unsigned int consumer;
@@ -186,6 +185,7 @@ struct slbc_gid_data {
 	unsigned int bw;	//unit: MBps
 	unsigned int fps;	//unit: frames per sec
 	unsigned int flag;
+	bool slb_like;
 };
 
 #define ui_to_slbc_data(d, ui) \
