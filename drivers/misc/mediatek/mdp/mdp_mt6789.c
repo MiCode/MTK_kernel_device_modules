@@ -36,6 +36,7 @@
 
 /* iommu larbs */
 struct device *larb2;
+struct device *mdpdev;
 /* support RDMA prebuilt access */
 int gCmdqRdmaPrebuiltSupport;
 /* support register MSB */
@@ -1402,6 +1403,11 @@ struct device *mdp_init_larb(struct platform_device *pdev, u8 idx)
 	}
 	of_node_put(node);
 
+	if (!device_link_add(&pdev->dev, &larb_pdev->dev, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+		CMDQ_ERR("%s larb device link fail\n", __func__);
+		return NULL;
+	}
+
 	CMDQ_LOG("%s pdev %p idx %hhu\n", __func__, pdev, idx);
 
 	return &larb_pdev->dev;
@@ -1448,6 +1454,8 @@ void cmdqMdpInitialSetting(struct platform_device *pdev)
 
 	/* must porting in dts */
 	larb2 = mdp_init_larb(pdev, 0);
+	mdpdev = &pdev->dev;
+
 }
 
 uint32_t cmdq_mdp_rdma_get_reg_offset_src_addr(void)
@@ -1485,7 +1493,7 @@ const char *cmdq_mdp_parse_error_module(const struct cmdqRecStruct *task)
 
 		if (!task->secData.is_secure) {
 			/* normal path,
-			 * need parse current running instruciton
+			 * need parse current running instruction
 			 * for more detail
 			 */
 			break;
@@ -1534,6 +1542,11 @@ u64 cmdq_mdp_get_eng_larb(void)
 struct device *cmdq_mdp_get_larb_device(void)
 {
 	return larb2;
+}
+
+struct device *cmdq_mdp_get_mdp_device(void)
+{
+	return mdpdev;
 }
 
 static s32 mdp_enable_larb(bool enable, struct device *larb)
