@@ -1400,9 +1400,6 @@ err_hwv_prepare:
 err_lp_clk:
 	dev_err(scp->dev, "Failed to power off domain %s(%d)\n", genpd->name, ret);
 
-	if (!strcmp("mm-proc-dormant", genpd->name))
-		clkchk_external_dump();
-
 	return ret;
 }
 
