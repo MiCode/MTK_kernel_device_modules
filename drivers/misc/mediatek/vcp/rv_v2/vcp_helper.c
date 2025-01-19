@@ -1021,9 +1021,6 @@ static int vcp_pm_event(struct notifier_block *notifier
 		is_suspending = true;
 		mutex_unlock(&vcp_pw_clk_mutex);
 
-		// SMC call to TFA / DEVAPC
-		// arm_smccc_smc(MTK_SIP_KERNEL_VCP_CONTROL, MTK_TINYSYS_VCP_KERNEL_OP_XXX,
-		// 0, 0, 0, 0, 0, 0, &res);
 		pr_debug("[VCP] PM_SUSPEND_PREPARE ok, waitCnt=%u\n", waitCnt);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
@@ -1081,9 +1078,7 @@ static int vcp_pm_event(struct notifier_block *notifier
 		vcp_extern_notify(MMUP_ID, VCP_EVENT_RESUME);
 		vcp_extern_notify(VCP_ID, VCP_EVENT_RESUME);
 		mutex_unlock(&vcp_A_notify_mutex);
-		// SMC call to TFA / DEVAPC
-		// arm_smccc_smc(MTK_SIP_KERNEL_VCP_CONTROL, MTK_TINYSYS_VCP_KERNEL_OP_XXX,
-		// 0, 0, 0, 0, 0, 0, &res);
+
 		pr_debug("[VCP] PM_POST_SUSPEND ok, waitCnt=%u\n", waitCnt);
 		return NOTIFY_OK;
 	case PM_POST_HIBERNATION:
@@ -1411,6 +1406,7 @@ static ssize_t vcp_excep_mode_store(struct device *kobj
 	, struct device_attribute *attr, const char *buf, size_t n)
 {
 	unsigned int value = 0;
+	struct arm_smccc_res res;
 
 	if (kstrtouint(buf, 10, &value) == 0) {
 		if (value == VCP_NO_EXCEP)
@@ -1423,9 +1419,21 @@ static ssize_t vcp_excep_mode_store(struct device *kobj
 			vcp_dbg_log = 0;
 		else if (value == 101)
 			vcp_dbg_log = 1;
+		else if (value == 102) {
+			// Test SMC
+			arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
+					MTK_TINYSYS_VCP_KERNEL_OP_DUMP_POLLING,
+					0, 0, 0, 0, 0, 0, &res);
+		} else if (value == 103) {
+			// Test SMC
+			arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
+					MTK_TINYSYS_VCP_KERNEL_OP_DUMP_POLLING,
+					1, 0, 0, 0, 0, 0, &res);
 
-		pr_debug("[VCP] vcp_excep_mode = %d, vcp_dbg_log = %d (1:enable, 0:disable)\n"
-				, vcp_excep_mode, vcp_dbg_log);
+		}
+
+		pr_debug("[VCP] vcp_excep_mode = %d, vcp_dbg_log = %d (1:enable, 0:disable), res.a0 %lu\n"
+				, vcp_excep_mode, vcp_dbg_log, res.a0);
 	}
 	return n;
 }
