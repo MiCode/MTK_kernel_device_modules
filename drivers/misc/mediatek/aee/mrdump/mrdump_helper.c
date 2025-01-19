@@ -96,7 +96,7 @@ unsigned long aee_get_ka_off(void)
 	return (unsigned long)mrdump_ko - aee_get_kns_addr();
 }
 
-static int retry_nm = 100;
+// static int retry_nm = 100;
 
 static void *kinfo_vaddr;
 
@@ -138,10 +138,10 @@ static void mrdump_ka_work_func(struct work_struct *work)
 		mrdump_ka_done = MRDUMP_KA_MAGIC;
 	} else {
 		pr_info("%s: retry in 0.1 second", __func__);
-		if (--retry_nm >= 0)
-			schedule_delayed_work(&ka_work, HZ / 10);
-		else
-			pr_info("%s failed\n", __func__);
+		// if (--retry_nm >= 0)
+		// 	schedule_delayed_work(&ka_work, HZ / 10);
+		// else
+		// 	pr_info("%s failed\n", __func__);
 	}
 }
 
