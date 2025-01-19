@@ -42,7 +42,9 @@ static ssize_t qos_force_polling_store(struct device *dev,
 	if (kstrtoint(buf, 10, &val))
 		return -EINVAL;
 
+#ifdef MTK_SCMI
 	qos_force_polling_mode(val, TRI_SW_LTR);
+#endif
 
 	return count;
 }
