@@ -192,6 +192,7 @@ static int mt6877_clk_enable(struct apu_clk_gp *aclk)
 	}
 
 	if (ad->user == APUCONN) {
+		mutex_lock(&mt6877_clk_lock);
 		/* ACC only support some power domain */
 		for (usr = 0; usr < APUVB; usr++) {
 			dom = apu_dev2_domain(usr);
@@ -211,6 +212,7 @@ static int mt6877_clk_enable(struct apu_clk_gp *aclk)
 			}
 		}
 		mt6877_clk_en = 1;
+		mutex_unlock(&mt6877_clk_lock);
 	}
 out:
 	mutex_unlock(&aclk->clk_lock);
@@ -240,6 +242,7 @@ static void mt6877_clk_disable(struct apu_clk_gp *aclk)
 	}
 
 	if (ad->user == APUCONN) {
+		mutex_lock(&mt6877_clk_lock);
 		/* ACC only support some power domain */
 		for (usr = 0; usr < APUVB; usr++) {
 			dom = apu_dev2_domain(usr);
@@ -268,6 +271,7 @@ static void mt6877_clk_disable(struct apu_clk_gp *aclk)
 			}
 		}
 		mt6877_clk_en = 0;
+		mutex_unlock(&mt6877_clk_lock);
 	}
 out:
 	mutex_unlock(&aclk->clk_lock);
