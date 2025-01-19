@@ -322,14 +322,20 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb4 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_VDE1>;
 };
 
 &smi_larb5 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_VDE0>;
 };
 
 &smi_larb6 {
+	power-domains;
+	no-pm-runtime;
 	mediatek,pd-id = <MT6991_SMI_PD_VDE0>;
 };
 
