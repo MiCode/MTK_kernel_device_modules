@@ -14423,6 +14423,241 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_299>;
 				sw-sync-token-pool-300 =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_300>;
+
+				dpe-sw-sync-token-pool-1 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				dpe-sw-sync-token-pool-2 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_2>;
+				dpe-sw-sync-token-pool-3 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_3>;
+				dpe-sw-sync-token-pool-4 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_4>;
+				dpe-sw-sync-token-pool-5 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_5>;
+				dpe-sw-sync-token-pool-6 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_6>;
+				dpe-sw-sync-token-pool-7 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_7>;
+				dpe-sw-sync-token-pool-8 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_8>;
+				dpe-sw-sync-token-pool-9 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_9>;
+				dpe-sw-sync-token-pool-10 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_10>;
+				dpe-sw-sync-token-pool-11 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_11>;
+				dpe-sw-sync-token-pool-12 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_12>;
+				dpe-sw-sync-token-pool-13 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_13>;
+				dpe-sw-sync-token-pool-14 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_14>;
+				dpe-sw-sync-token-pool-15 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_15>;
+				dpe-sw-sync-token-pool-16 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_16>;
+
+				// TODO: Change to correct event after GCE driver porting
+				aiseg-sw-sync-token-pool-1 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-2 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-3 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-4 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-5 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-6 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-7 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-8 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-9 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-10 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-11 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-12 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-13 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-14 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-15 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-16 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-17 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-18 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-19 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-20 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-21 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-22 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-23 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-24 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-25 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-26 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-27 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-28 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-29 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-30 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-31 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-32 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-33 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-34 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-35 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-36 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-37 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-38 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-39 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-40 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-41 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-42 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-43 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-44 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-45 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-46 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-47 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-48 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-49 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-50 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-51 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-52 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-53 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-54 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-55 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-56 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-57 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-58 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-59 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-60 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-61 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-62 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-63 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-64 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-65 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-66 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-67 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-68 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-69 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-70 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-71 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-72 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-73 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-74 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-75 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-76 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-77 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-78 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-79 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-80 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-81 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-82 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-83 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-84 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-85 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-86 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-87 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-88 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-89 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-90 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-91 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-92 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-93 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-94 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-95 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-96 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-97 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-98 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-99 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+				aiseg-sw-sync-token-pool-100 =
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
 				sw-sync-token-tzmp-isp-wait =
 					/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISP_WAIT>;
 				sw-sync-token-tzmp-isp-set =
