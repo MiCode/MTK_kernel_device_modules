@@ -632,7 +632,12 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 		u32 bw_val = *(unsigned int *)params;
 		u32 stash_bw_val  = 0;
 
-		if (priv && !mtk_drm_helper_get_opt(priv->helper_opt,
+		if (!priv) {
+			DDPPR_ERR("%s priv is not assigned\n", __func__);
+			break;
+		}
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
 
