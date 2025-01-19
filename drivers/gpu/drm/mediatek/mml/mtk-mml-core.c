@@ -815,8 +815,8 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 	}
 
 	mml_clock_lock(cfg->mml);
-	mml_dpc_exc_keep_task(task, path);
 	call_hw_op(path->mmlsys, mminfra_pw_enable);
+	mml_dpc_exc_keep_task(task, path);
 	call_hw_op(path->mmlsys, pw_enable, cfg->info.mode);
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, pw_enable, cfg->info.mode);
@@ -834,8 +834,8 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 	if (path->mmlsys2)
 		call_hw_op(path->mmlsys2, pw_disable, cfg->info.mode);
 	call_hw_op(path->mmlsys, pw_disable, cfg->info.mode);
-	call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_dpc_exc_release_task(task, path);
+	call_hw_op(path->mmlsys, mminfra_pw_disable);
 	mml_clock_unlock(cfg->mml);
 }
 
@@ -864,13 +864,9 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 		mml_msg_dpc("%s dpc auto for DL", __func__);
 	} else if (mml_isdc(cfg->info.mode) || !cfg->dpc) {
 		mml_msg_dpc("%s dpc exception flow enable for mode %u", __func__, cfg->info.mode);
-		mml_dpc_exc_keep_task(task, path);
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, true);
 		if (path->mmlsys2)
 			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, true);
-	} else {
-		mml_msg_dpc("%s dpc exception flow enable", __func__);
-		mml_dpc_exc_keep_task(task, path);
 	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
@@ -960,10 +956,6 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 		if (path->mmlsys2)
 			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, false);
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, false);
-		mml_dpc_exc_release_task(task, path);
-	} else {
-		mml_msg_dpc("%s dpc exception flow disable", __func__);
-		mml_dpc_exc_release_task(task, path);
 	}
 
 	if (path->mmlsys2)
@@ -1665,10 +1657,11 @@ static void core_taskdone(struct work_struct *work)
 	mml_dump_output(cfg->mml, path->mmlsys->sysid, task);
 #endif
 
-	mml_core_mminfra_enable(cfg->mml, 0, path->mmlsys);
-
-	/* make sure whole dvfs, clock, power and dpc sw operation in except range */
-	mml_dpc_exc_keep_task(task, path);
+	/* dl mode fast on/off during hw run, so enable mminfra and except flow back */
+	if (mml_iscouple(cfg->info.mode)) {
+		mml_core_mminfra_enable(cfg->mml, 0, path->mmlsys);
+		mml_dpc_exc_keep_task(task, path);
+	}
 
 	/* remove task in qos list and setup next */
 	if (task->pkts[0])
@@ -1695,8 +1688,6 @@ static void core_taskdone(struct work_struct *work)
 		core_disable(task, 0);
 	if (task->pipe[1].en.clk)
 		core_disable(task, 1);
-	mml_dpc_exc_release_task(task, path);
-	mml_core_mminfra_disable(cfg->mml, 0, path->mmlsys);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (task->dump_queued[MMLDUMPT_SRC])
@@ -1712,8 +1703,12 @@ static void core_taskdone(struct work_struct *work)
 
 	core_buffer_unmap(task);
 
+	/* task life time dpc off */
 	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
 		mml_dpc_task_cnt_dec(task);
+
+	mml_dpc_exc_release_task(task, path);
+	mml_core_mminfra_disable(cfg->mml, 0, cfg->path[0]->mmlsys);
 
 	if (unlikely(cfg->task_ops->frame_err && !task->pkts[0] &&
 		(!cfg->dual || !task->pkts[1])))
@@ -1987,7 +1982,6 @@ static void mml_core_stop_racing_pipe(struct mml_frame_config *cfg, u32 pipe, bo
 static s32 core_flush(struct mml_task *task, u32 pipe)
 {
 	struct mml_frame_config *cfg = task->config;
-	const struct mml_topology_path *path = cfg->path[pipe];
 	int i, ret;
 	struct cmdq_pkt *pkt = task->pkts[pipe];
 
@@ -1995,10 +1989,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 		__func__, task, pipe, pkt, task->job.jobid);
 	mml_trace_ex_begin("%s", __func__);
 
-	mml_core_mminfra_enable(cfg->mml, pipe, path->mmlsys);
-	mml_dpc_exc_keep_task(task, path);
 	core_enable(task, pipe);
-	mml_dpc_exc_release_task(task, path);
 
 	/* before flush, wait buffer fence being signaled */
 	task->wait_fence_time[pipe] = sched_clock();
@@ -2043,7 +2034,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	mutex_unlock(&cfg->pipe_mutex);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	mml_dump_input(task->config->mml, path->mmlsys->sysid, task, false);
+	mml_dump_input(task->config->mml, cfg->path[pipe]->mmlsys->sysid, task, false);
 
 	if (pipe == 0 && mml_check_dumpsrv(DUMPOPT_SRC, &task->buf.src)) {
 		char fmt[24];
@@ -2079,10 +2070,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	}
 
 	/* do dvfs/bandwidth calc right before flush to cmdq */
-	mml_dpc_exc_keep_task(task, path);
 	mml_core_dvfs_begin(task, pipe);
-	mml_dpc_exc_release_task(task, path);
-	mml_core_mminfra_disable(cfg->mml, pipe, path->mmlsys);
 
 	mml_trace_ex_begin("%s_cmdq", __func__);
 	task->flush_time[pipe] = sched_clock();
@@ -2110,9 +2098,6 @@ static void core_config_pipe(struct mml_task *task, u32 pipe)
 
 	mml_trace_ex_begin("%s_%u_%u", __func__, pipe, task->job.jobid);
 	task->config_pipe_time[pipe] = sched_clock();
-
-	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
-		mml_dpc_task_cnt_inc(task);
 
 	if (cfg->dpc) {
 		cmdq_check_thread_complete(tp_clt->chan);
@@ -2243,6 +2228,12 @@ static void core_config_task(struct mml_task *task)
 	task->dump_queued[MMLDUMPT_DEST] = false;
 #endif
 
+	/* enable mminfra and except flow during config */
+	mml_core_mminfra_enable(cfg->mml, 0, cfg->path[0]->mmlsys);
+	mml_dpc_exc_keep_task(task, cfg->path[0]);
+	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
+		mml_dpc_task_cnt_inc(task);
+
 	/* create dual work_thread[1] */
 	if (cfg->dual) {
 		if (mode == MML_MODE_RACING) {
@@ -2270,6 +2261,12 @@ static void core_config_task(struct mml_task *task)
 	}
 
 	cfg->task_ops->submit_done(task);
+
+	/* dl mode fast on/off during hw run, so disable mminfra and except flow */
+	if (mml_iscouple(cfg->info.mode)) {
+		mml_dpc_exc_release_task(task, cfg->path[0]);
+		mml_core_mminfra_disable(cfg->mml, 0, cfg->path[0]->mmlsys);
+	}
 
 	cfg->cfg_ops->put(cfg);
 

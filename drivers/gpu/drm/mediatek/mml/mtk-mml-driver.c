@@ -1230,6 +1230,8 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 		mml_mmp(dpc_dc, MMPROFILE_FLAG_END, sysid, 0);
 	}
 
+	mml_msg_dpc("%s group en sys %u group %s",
+		__func__, sysid, dcen ? "false" : "true");
 	mml_dpc_group_enable(sysid, !dcen);
 }
 
