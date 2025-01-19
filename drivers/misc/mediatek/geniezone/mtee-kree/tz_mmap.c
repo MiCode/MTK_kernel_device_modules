@@ -34,6 +34,10 @@ long _map_user_pages(struct MTIOMMU_PIN_RANGE_T *pinRange, unsigned long uaddr,
 	int res, j;
 	uint32_t write;
 
+	int ret = 0x0;
+	pte_t *ptep = 0;
+	spinlock_t *ptl = NULL;
+
 	if ((!uaddr) || (!size))
 		return -EFAULT;
 
@@ -75,11 +79,14 @@ long _map_user_pages(struct MTIOMMU_PIN_RANGE_T *pinRange, unsigned long uaddr,
 
 			while (res < nr_pages
 			       && uaddr + PAGE_SIZE <= vma->vm_end) {
-				j = follow_pfn(vma, uaddr, &pfns[res]);
-				if (j) { /* error */
-					res = j;
+				ret = follow_pte(vma, uaddr, &ptep, &ptl);
+				if (ret != 0) { /* error */
+					res = ret;
 					goto out;
 				}
+				pfns[res] = pte_pfn(ptep_get(ptep));
+				pte_unmap_unlock(ptep, ptl);
+
 				uaddr += PAGE_SIZE;
 				res++;
 			}
