@@ -230,6 +230,54 @@ static ssize_t fb_rsf_policy_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(fb_rsf_policy);
 //-----------------------------------------------------------------------------
+extern unsigned int ged_npu_hint_enable;
+
+static ssize_t ged_npu_hint_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+
+	if (ged_npu_hint_enable){
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"ged_npu_hint_enable (%d)\n",ged_npu_hint_enable);
+	}else
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"ged_npu_hint is disabled\n");
+
+	return pos;
+}
+
+static ssize_t ged_npu_hint_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	unsigned int u32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
+				if (u32Value > 0) {
+					if (ged_npu_hint_enable != u32Value) {
+						ged_npu_hint_enable = u32Value;
+						mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr,u32Value);
+						pr_info("SR NPU enable");
+					}
+				} else {
+					ged_npu_hint_enable = 0;
+					mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr,0);
+					pr_info("SR NPU disable");
+				}
+			}
+		}
+	}
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(ged_npu_hint);
+//-----------------------------------------------------------------------------
 
 static ssize_t custom_upbound_gpu_freq_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2769,6 +2817,10 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create fb_rsf_policy entry!\n");
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_ged_npu_hint);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create ged_npu_hint entry!\n");
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_eb_dvfs_kpi);
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create eb_dvfs_kpi entry!\n");
@@ -3053,7 +3105,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_timer_base_dvfs_margin);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_loading_base_dvfs_step);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dvfs_margin_value);
-
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_npu_hint);
 #ifdef MTK_GED_KPI
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_kpi);
 #endif

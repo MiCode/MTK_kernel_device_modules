@@ -332,6 +332,8 @@ static int g_last_commit_api_flag;
 static unsigned long g_last_commit_before_api_boost;
 static unsigned int g_last_api_boost_counter;
 
+unsigned int ged_npu_hint_enable = 0;
+
 static void ged_dvfs_early_force_fallback(struct GpuUtilization_Ex *Util_Ex)
 {
 	unsigned int util_iter = Util_Ex->util_iter;
@@ -2291,6 +2293,8 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	static unsigned int force_fallback_pre;
 	static int margin_low_bound;
 	int cur_opp_id = ged_get_cur_oppidx();
+	unsigned int npu_hint_flag = 0;
+	unsigned int npu_t_gpu, npu_t_gpu_target, npu_t_gpu_target_hd, npu_ap_workload_pipe;
 
 	fb_mfrc_policy_enable = force_loading_based_enable >> 8;
 	fb_mfrc_policy_margin = force_loading_based_enable & 0xFF;
@@ -2364,7 +2368,17 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	t_gpu = div_u64(t_gpu, 100000);   // change unit from ns to 100*us
 	t_gpu_target = div_u64(t_gpu_target, 100000);   // change unit from ns to 100*us
 
-	if (fb_mfrc_policy_enable==2 && ged_kpi_get_main_bq_uncomplete_dequeue_count()){
+	if (ged_npu_hint_enable && (ged_kpi_get_FPSGO_ulID() == ged_kpi_get_Frame_done_ulID())
+		&& t_gpu > (ged_npu_hint_enable * 10))
+		npu_hint_flag = 1;
+
+	if (npu_hint_flag) {
+		npu_t_gpu = t_gpu - (ged_npu_hint_enable * 10);
+		npu_t_gpu_target = t_gpu_target - (ged_npu_hint_enable * 10);
+		trace_tracing_mark_write(5566, "gpu_npu_hint_ms", ged_npu_hint_enable);
+	}
+
+	if (fb_mfrc_policy_enable == 2 && ged_kpi_get_main_bq_uncomplete_dequeue_count()){
 		return gpu_freq_pre;
 	}
 
@@ -2381,6 +2395,13 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	ap_workload_pipe =
 		div_u64((u64)frame_freq * t_gpu_pipe, 1000);   // change unit from 0.1 to 100*cycle
 	ap_workload = ap_workload_pipe;
+
+	if (npu_hint_flag) {
+		npu_ap_workload_pipe =
+		div_u64((u64)frame_freq * npu_t_gpu, 1000);   // change unit from 0.1 to 100*cycle
+		ap_workload = npu_ap_workload_pipe;
+	}
+
 	// define workload = max(t_gpu_completion * avg_freq, freq * t_gpu_real)
 	if (ap_workload_real > ap_workload)
 		ap_workload = ap_workload_real;
@@ -2480,6 +2501,9 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 	t_gpu_target_hd = div_u64((u64)t_gpu_target * (1000 - gx_fb_dvfs_margin), 1000);
 
+	if (npu_hint_flag)
+		npu_t_gpu_target_hd = div_u64((u64)npu_t_gpu_target * (1000 - gx_fb_dvfs_margin), 1000);
+
 	//  * 100 to keep unit uniform
 	trace_GPU_DVFS__Policy__Frame_based__GPU_Time((t_gpu * 100),
 								  (t_gpu_target * 100),
@@ -2488,6 +2512,12 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 								  (t_gpu_pipe * 100));
 	trace_tracing_mark_write(5566, "t_gpu", (long long) t_gpu * 100);
 	trace_tracing_mark_write(5566, "t_gpu_target", (long long) t_gpu_target * 100);
+
+	if (npu_hint_flag) {
+		trace_tracing_mark_write(5566, "npu_t_gpu", (long long) npu_t_gpu * 100);
+		trace_tracing_mark_write(5566, "npu_t_gpu_target", (long long) npu_t_gpu_target * 100);
+		trace_tracing_mark_write(5566, "npu_t_gpu_target_hd", (long long) npu_t_gpu_target_hd * 100);
+	}
 
 	// Hint target frame time w/z headroom
 	if (ged_is_fdvfs_support())
@@ -2528,6 +2558,9 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		gpu_freq_tar = div_u64(gpu_busy_cycle, t_gpu_target_hd) * 1000;
 	else
 		gpu_freq_tar = gpu_freq_pre;
+
+	if (npu_hint_flag && npu_t_gpu_target_hd != 0)
+		gpu_freq_tar = div_u64(gpu_busy_cycle, npu_t_gpu_target_hd) * 1000;
 
 	gpu_freq_floor = div_u64(gpu_freq_pre * GED_FB_DVFS_FERQ_DROP_RATIO_LIMIT, 100);
 	/* overdue_counter : 4~1, limit gpu_freq_floor 95%~80% */
@@ -4445,6 +4478,7 @@ GED_ERROR ged_dvfs_system_init(void)
 							&gx_dvfs_workload_mode);
 	}
 	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_LOADING_MODE, gx_dvfs_loading_mode);
+	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr,0);
 
 	async_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_async_ratio");
 	if (unlikely(!async_dvfs_node)) {

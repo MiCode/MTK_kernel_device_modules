@@ -474,6 +474,8 @@ static int g_policy_his_idx;
 static bool g_stable_lb;
 
 static unsigned int uncompleted_queue_cnt;
+u64 FPSGO_ulID = 0;
+u64 Frame_done_ulID = 0;
 
 /* ------------------------------------------------------------------- */
 void (*ged_kpi_output_gfx_info2_fp)(long long t_gpu, unsigned int cur_freq
@@ -545,6 +547,20 @@ static inline void ged_kpi_clean_kpi_info(void)
 	g_GRemTimeAccu = 0;
 	g_CRemTimeAccu = 0;
 	g_gpu_freq_accum = 0;
+}
+
+/* ------------------------------------------------------------------- */
+
+u64 ged_kpi_get_FPSGO_ulID(void)
+{
+	return FPSGO_ulID;
+}
+
+/* ------------------------------------------------------------------- */
+
+u64 ged_kpi_get_Frame_done_ulID(void)
+{
+	return Frame_done_ulID;
 }
 
 /* ------------------------------------------------------------------- */
@@ -1785,6 +1801,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 				"[Exception] no hashtable head for ulID: %lu", ulID);
 			break;
 		}
+		Frame_done_ulID = ulID;
 
 		psList = &psHead->sList;
 		list_for_each_prev_safe(psListEntry, psListEntryTemp, psList) {
@@ -2163,6 +2180,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 
 			if (g_target_fps != psHead->target_fps)
 				g_target_fps = psHead->target_fps;
+			FPSGO_ulID = ulID;
 
 			trace_tracing_mark_write(5566, "target_fps_fpsgo",
 				(target_FPS&0x000000ff));

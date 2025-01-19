@@ -160,6 +160,7 @@ static int mcu_replace;
 int stat_mcu_store[30][30]={0};
 
 static int g_autosuspend_stress;
+extern unsigned int ged_npu_hint_enable;
 
 int (*ged_sw_vsync_event_fp)(bool bMode) = NULL;
 EXPORT_SYMBOL(ged_sw_vsync_event_fp);
@@ -510,6 +511,9 @@ void ged_eb_dvfs_frame_done_dump(void)
 	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Index(
 		tmp_multi_async.fourVar.var1, mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ADJUST_RATIO),	mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE), mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM2].addr), mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr)/ 1000, tmp_multi_async.fourVar.var3);
 	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Policy(tmp_multi_async.fourVar.var2, mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr), tmp_multi_async.fourVar.var3, tmp_multi_async.fourVar.var4, tmp_multi_async.fourVar.var1);
+
+	if (ged_npu_hint_enable)
+		trace_tracing_mark_write(5566, "gpu_npu_hint_ms", mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr));
 
 #endif
 }
