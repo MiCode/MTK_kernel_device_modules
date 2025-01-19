@@ -5377,37 +5377,39 @@ static void mtk_oddmr_dmr_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, s
 			if (is_bin_chg) {
 				oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 				mtk_oddmr_dmr_config(comp, handle);
-			} else
+			} else {
 				ODDMRFLOW_LOG("bin index dose not been changed\n");
+				if (cur_bin_idx != -1) {
+					dmr_cfg_info = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
+					mtk_oddmr_dmr_dbv_lookup(bl_level, dmr_cfg_info, &dbv_table_idx, &dbv_node);
+					fps_node = atomic_read(&oddmr_data->dmr_data.cur_fps_node);
+					fps_table_idx = atomic_read(&oddmr_data->dmr_data.cur_fps_table_idx);
+					if(dbv_node != atomic_read(&oddmr_data->dmr_data.cur_dbv_node)){
+						mtk_oddmr_dmr_gain_cfg(comp,
+								handle, dbv_node, fps_node, dmr_cfg_info);
+						atomic_set(&oddmr_data->dmr_data.cur_dbv_node, dbv_node);
+					}
+					if(dbv_table_idx != atomic_read(&oddmr_data->dmr_data.cur_dbv_table_idx)){
+						addr =
+						oddmr_data->dmr_data.mura_table[cur_bin_idx][dbv_table_idx][fps_table_idx]->dma_addr;
+						if (oddmr_data->data->dmr_version == MTK_DMR_V2) {
+							mtk_oddmr_write(comp, addr >> 4,
+								MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0, handle);
+							mtk_oddmr_write(comp, addr >> 20,
+								MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_1, handle);
+						} else {
+							mtk_oddmr_write(comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, handle);
+							mtk_oddmr_write(comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
+						}
+						atomic_set(&oddmr_data->dmr_data.cur_dbv_table_idx, dbv_table_idx);
+					}
+					ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
+					ODDMRFLOW_LOG("dmr table cfg: dbv_table:%d, fps_table:%d\n", dbv_table_idx, fps_table_idx);
+				}
+			}
 			remap_enable = atomic_read(&oddmr_data->dmr_data.remap_enable);
 			if (remap_enable == 1)
 				mtk_oddmr_dmr_change_remap_gain(comp, handle);
-		} else {
-			mtk_oddmr_dmr_dbv_lookup(bl_level, dmr_cfg_info, &dbv_table_idx, &dbv_node);
-			fps_node = atomic_read(&oddmr_data->dmr_data.cur_fps_node);
-			fps_table_idx = atomic_read(&oddmr_data->dmr_data.cur_fps_table_idx);
-
-			if(dbv_node != atomic_read(&oddmr_data->dmr_data.cur_dbv_node)){
-				mtk_oddmr_dmr_gain_cfg(comp,
-						handle, dbv_node, fps_node, dmr_cfg_info);
-				atomic_set(&oddmr_data->dmr_data.cur_dbv_node, dbv_node);
-			}
-			if(dbv_table_idx != atomic_read(&oddmr_data->dmr_data.cur_dbv_table_idx)){
-				addr =
-				oddmr_data->dmr_data.mura_table[cur_bin_idx][dbv_table_idx][fps_table_idx]->dma_addr;
-				if (oddmr_data->data->dmr_version == MTK_DMR_V2) {
-					mtk_oddmr_write(comp, addr >> 4,
-						MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0, handle);
-					mtk_oddmr_write(comp, addr >> 20,
-						MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_1, handle);
-				} else {
-					mtk_oddmr_write(comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, handle);
-					mtk_oddmr_write(comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
-				}
-				atomic_set(&oddmr_data->dmr_data.cur_dbv_table_idx, dbv_table_idx);
-			}
-			ODDMRFLOW_LOG("dmr gain config: dbv_node:%d, fps_node:%d\n", dbv_node, fps_node);
-			ODDMRFLOW_LOG("dmr table cfg: dbv_table:%d, fps_table:%d\n", dbv_table_idx, fps_table_idx);
 		}
 	}
 	reg_tuning_en = atomic_read(&oddmr_data->reg_tuning_en);
