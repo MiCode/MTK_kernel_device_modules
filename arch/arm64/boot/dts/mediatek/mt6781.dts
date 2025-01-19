@@ -3681,11 +3681,6 @@
 		compatible = "mediatek,goodix-fp";
 	};
 
-	accdet: accdet {
-		compatible = "mediatek,pmic-accdet";
-		mediatek,accdet-pmic = <0x66>;
-	};
-
 	irtx_pwm:irtx_pwm {
 		compatible = "mediatek,irtx-pwm";
 		pwm_ch = <1>;
