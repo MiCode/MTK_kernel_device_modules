@@ -17155,6 +17155,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		max-throttle-level = <2>;
 		soc-throttle-level = < 0 1 2>;
+		hpt-ctrl-val = <7 7 0>;
 
 		soc-max-stage = <2>;
 		soc-limit-threshold = <15 2>;
