@@ -167,6 +167,11 @@ struct mtk_spi_compatible {
 	bool enhance_packet_len;
 	/* some IC use slice enable for high speed timing*/
 	bool slice_en;
+	/* starting from mt6899, IP supports non-8-bit aligned dummy data.
+	 * however, since the kernel interface handles dummy data in bytes units,
+	 * the driver does not currently support this feature.
+	 */
+	bool dummy_cycle;
 	/* after a timeout occurs, a global reset is required*/
 	bool hw_reset;
 };
@@ -213,6 +218,20 @@ static const struct mtk_spi_compatible mt2712_compat = {
 	.must_tx = true,
 };
 
+static const struct mtk_spi_compatible mt6899_compat = {
+	.need_pad_sel = true,
+	.must_rx = false,
+	.must_tx = false,
+	.enhance_timing = true,
+	.dma_ext = true,
+	.ipm_design = true,
+	.support_quad = true,
+	.sw_cs = true,
+	.enhance_packet_len = true,
+	.slice_en = true,
+	.dummy_cycle = true,
+};
+
 static const struct mtk_spi_compatible mt6991_compat = {
 	.need_pad_sel = true,
 	.must_rx = false,
@@ -224,6 +243,7 @@ static const struct mtk_spi_compatible mt6991_compat = {
 	.sw_cs = true,
 	.enhance_packet_len = true,
 	.slice_en = true,
+	.dummy_cycle = false,
 	.hw_reset = true,
 };
 
@@ -346,6 +366,9 @@ static const struct of_device_id mtk_spi_of_match[] = {
 	},
 	{ .compatible = "mediatek,mt6893-spi",
 		.data = (void *)&mt6893_compat,
+	},
+	{ .compatible = "mediatek,mt6899-spi",
+		.data = (void *)&mt6899_compat,
 	},
 	{}
 };
@@ -1851,7 +1874,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 				pdev->dev.of_node, "mediatek,autosuspend-delay",
 				0, &mdata->auto_suspend_delay);
 	if (ret < 0)
-		mdata->auto_suspend_delay = 10;
+		mdata->auto_suspend_delay = 250;
 	pm_runtime_set_autosuspend_delay(&pdev->dev, mdata->auto_suspend_delay);
 	dev_info(&pdev->dev, "SPI probe, set auto_suspend delay = %dmS!\n",
 				mdata->auto_suspend_delay);
