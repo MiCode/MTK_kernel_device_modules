@@ -6193,10 +6193,12 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_oddmr_write(comp, 0,
 						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 				}
-				value = 0; mask = 0;
-				SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
-				mtk_oddmr_write_mask(comp, value,
-					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				if (oddmr_priv->od_update_sram == 0) {
+					value = 0; mask = 0;
+					SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				}
 			}
 			return;
 		}
@@ -6291,12 +6293,13 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 				}
-				value = 0;
-				mask = 0;
-				SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
-				if (!oddmr_priv->dmr_enable)
+				if (!oddmr_priv->dmr_enable && oddmr_priv->od_update_sram == 0) {
+					value = 0;
+					mask = 0;
+					SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
 					mtk_oddmr_write_mask(comp, value,
 						MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				}
 			} else {
 				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_DBI_EN);
 				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_DBI_OUT_CUP_EN);
