@@ -65,7 +65,7 @@
 	} while (0)
 
 #define for_each_vb_in_q(vq, index) \
-	for_each_set_bit(index, (vq)->bufs_bitmap, (vq)->max_num_buffers)
+	if (vb2_get_num_buffers(vq)) for_each_set_bit(index, (vq)->bufs_bitmap, (vq)->max_num_buffers)
 #define get_ctx_from_m2m(m2m_ctx) ((struct mtk_vcodec_ctx *)((m2m_ctx)->priv))
 #define to_video_dec_buf(vb2_v4l2) container_of(vb2_v4l2, struct mtk_video_dec_buf, vb)
 #define to_video_enc_buf(vb2_v4l2) container_of(vb2_v4l2, struct mtk_video_enc_buf, vb)
@@ -457,9 +457,11 @@ static inline unsigned int vb2_get_max_num_bufs(struct vb2_queue *q)
 }
 static inline u64 vb2_get_bufmap_u64(struct vb2_queue *q)
 {
-	u64 arr;
+	u64 arr = 0;
 
-	bitmap_to_arr64(&arr, q->bufs_bitmap, 64);
+	if (q->bufs_bitmap)
+		bitmap_to_arr64(&arr, q->bufs_bitmap, 64);
+
 	return arr;
 }
 
