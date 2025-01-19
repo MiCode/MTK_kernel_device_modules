@@ -137,12 +137,14 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/mfd:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/nvmem:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_makefile".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/nvmem:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_kconfigs".format(kernel_version),
 ]
 
@@ -154,6 +156,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/nvmem:nvmem_mtk-devinfo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
 ]
 
@@ -674,7 +677,6 @@ mgk_64_device_modules = [
     "drivers/nvmem/nvmem-mt6338-efuse.ko",
     "drivers/nvmem/nvmem-mt635x-efuse.ko",
     "drivers/nvmem/nvmem-mt6681-efuse.ko",
-    "drivers/nvmem/nvmem_mtk-devinfo.ko",
     "drivers/pci/controller/pcie-mediatek-gen3.ko",
     "drivers/phy/mediatek/phy-mtk-fpgaphy.ko",
     "drivers/phy/mediatek/phy-mtk-pcie.ko",
