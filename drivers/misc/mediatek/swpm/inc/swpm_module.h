@@ -84,6 +84,7 @@ enum swpm_ext_cmd_type {
 	SYNC_DATA,
 	SET_INTERVAL,
 	SET_PMU,
+	REQ_DATA,
 
 	NR_SWPM_EXT_CMD_TYPE,
 };
@@ -119,6 +120,8 @@ enum SWPM_SCMI_ACT {
 	SWPM_SCMI_GET_RES_GRP_INFO = 0,
 	SWPM_SCMI_GET_RES_GRP_ID,
 	SWPM_SCMI_GET_PROCFS,
+	SWPM_SCMI_REQ_DATA,
+
 	SWPM_SCMI_ACT_NUM,
 };
 
@@ -165,7 +168,7 @@ extern unsigned int swpm_set_and_get_cmd(unsigned int args_0,
 extern int swpm_register_event_notifier(struct notifier_block *nb);
 extern int swpm_unregister_event_notifier(struct notifier_block *nb);
 extern int swpm_call_event_notifier(unsigned long val, void *v);
-extern unsigned int swpm_set_cmd_v2(unsigned int uuid, unsigned int act,
+extern int swpm_set_cmd_v2(unsigned int uuid, unsigned int act,
 		unsigned int in1, unsigned int in2, unsigned int in3, unsigned int in4);
 extern unsigned int swpm_get_cmd_v2(unsigned int uuid, unsigned int act,
 		unsigned int *out1, unsigned int *out2, unsigned int *out3);

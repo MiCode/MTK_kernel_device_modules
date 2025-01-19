@@ -308,10 +308,10 @@ unsigned int swpm_set_and_get_cmd(unsigned int args_0,
 }
 EXPORT_SYMBOL(swpm_set_and_get_cmd);
 
-unsigned int swpm_set_cmd_v2(unsigned int uuid, unsigned int act,
+int swpm_set_cmd_v2(unsigned int uuid, unsigned int act,
 		unsigned int in1, unsigned int in2, unsigned int in3, unsigned int in4)
 {
-	unsigned int ret = 0;
+	int ret = 0;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && IS_ENABLED(CONFIG_MTK_PMSR)
 	unsigned int user_info = 0;
