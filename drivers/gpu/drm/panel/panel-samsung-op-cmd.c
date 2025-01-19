@@ -27,13 +27,12 @@
 
 #define CONFIG_MTK_PANEL_EXT
 #if defined(CONFIG_MTK_PANEL_EXT)
-#include "../mediatek/mediatek_v2/mtk_panel_ext.h"
-#include "../mediatek/mediatek_v2/mtk_log.h"
-#include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
+#include "mtk_panel_ext.h"
+#include "mtk_drm_graphics_base.h"
 #endif
 
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-#include "../mediatek/mediatek_v2/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
+#include "mtk_data_hw_roundedpattern.h"
 #endif
 #include "panel-samsung-op-cmd.h"
 
@@ -116,7 +115,7 @@ static int get_mode_enum(struct drm_display_mode *m)
 	int ret = 0, m_vrefresh = 0;
 
 	if (m == NULL) {
-		DDPMSG("%s display mode is null\n", __func__);
+		pr_info("%s display mode is null\n", __func__);
 		return -1;
 	}
 
@@ -129,7 +128,7 @@ static int get_mode_enum(struct drm_display_mode *m)
 		else if (m_vrefresh == 90 && m->hskew == SDC_MFR)
 			ret = WQHD_SDC90;
 		else
-			DDPMSG("Invalid display mode\n");
+			pr_info("Invalid display mode\n");
 	} else if (m->hdisplay == HAC_FHD && m->vdisplay == VAC_FHD) {
 		if (m_vrefresh == 60 && m->hskew == SDC_MFR)
 			ret = FHD_SDC60;
@@ -138,7 +137,7 @@ static int get_mode_enum(struct drm_display_mode *m)
 		else if (m_vrefresh == 90 && m->hskew == SDC_MFR)
 			ret = FHD_SDC90;
 		else
-			DDPMSG("Invalid display mode\n");
+			pr_info("Invalid display mode\n");
 	}
 
 	return ret;
@@ -292,7 +291,7 @@ static void lcm_panel_init(struct lcm *ctx)
 	struct drm_display_mode *m = ctx->m;
 
 	mode_id = get_mode_enum(m);
-	DDPMSG("%s mode_id = %d\n", __func__, mode_id);
+	dev_info(ctx->dev, "%s mode_id = %d\n", __func__, mode_id);
 
 	switch (mode_id) {
 	case WQHD_SDC60:
@@ -326,7 +325,7 @@ static void lcm_panel_init(struct lcm *ctx)
 		push_table(ctx, fhd_dsi_on_cmd_sdc90, count);
 		break;
 	default:
-		DDPMSG("%s: default mode_id\n", __func__);
+		dev_info(ctx->dev, "%s: default mode_id\n", __func__);
 		count = sizeof(wqhd_dsi_on_cmd_sdc120)
 			/ sizeof(struct LCM_setting_table);
 		push_table(ctx, wqhd_dsi_on_cmd_sdc120, count);
@@ -554,14 +553,14 @@ static int panel_ata_check(struct drm_panel *panel)
 	if (ret < 0)
 		pr_info("%s error\n", __func__);
 
-	DDPINFO("ATA read data %x %x %x\n", data[0], data[1], data[2]);
+	pr_info("ATA read data %x %x %x\n", data[0], data[1], data[2]);
 
 	if (data[0] == id[0] &&
 			data[1] == id[1] &&
 			data[2] == id[2])
 		return 1;
 
-	DDPINFO("ATA expect read data is %x %x %x\n",
+	pr_info("ATA expect read data is %x %x %x\n",
 			id[0], id[1], id[2]);
 
 	return 1;
@@ -984,10 +983,10 @@ static int mtk_panel_ext_param_get(struct drm_panel *panel,
 	*ext_param = &ext_params[mode_id];
 
 	if (*ext_param)
-		DDPMSG("%s mode_id=%d, data_rate:%d\n", __func__, mode_id,
+		pr_info("%s mode_id=%d, data_rate:%d\n", __func__, mode_id,
 			(*ext_param)->data_rate);
 	else
-		DDPMSG("%s mode_id=%d, ext_param is null\n", __func__, mode_id);
+		pr_info("%s mode_id=%d, ext_param is null\n", __func__, mode_id);
 
 	return 0;
 }
@@ -1004,7 +1003,7 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	}
 
 	mode_id = get_mode_enum(get_mode_by_id(connector, mode));
-	DDPMSG("%s mode_id=%d\n", __func__, mode_id);
+	pr_info("%s mode_id=%d\n", __func__, mode_id);
 
 	if (mode_id < 0) {
 		pr_info("%s, mode_id is less than 0\n", __func__);
@@ -1031,23 +1030,23 @@ static int mode_switch_hs(struct drm_panel *panel, struct drm_connector *connect
 		return ret;
 
 	if (!m || !src_m) {
-		DDPPR_ERR("%s:%d invalid display_mode\n", __func__, __LINE__);
+		pr_info("%s:%d invalid display_mode\n", __func__, __LINE__);
 		return -1;
 	}
 	if (stage == BEFORE_DSI_POWERDOWN) {
 		mode_id = get_mode_enum(m);
-		DDPMSG("%s mode_id:%d->%d\n", __func__, get_mode_enum(src_m),
+		pr_info("%s mode_id:%d->%d\n", __func__, get_mode_enum(src_m),
 			mode_id);
 
 		//if resolution changed, resend dsc params
 		if (m->hdisplay == HAC_WQHD && src_m->hdisplay == HAC_FHD) {
-			DDPMSG("wqhd dsc param\n");
+			pr_info("wqhd dsc param\n");
 			push_table(ctx, wqhd_dsc_cmd,
 				sizeof(wqhd_dsc_cmd)
 					/ sizeof(struct LCM_setting_table));
 		} else if (m->hdisplay == HAC_FHD
 				&& src_m->hdisplay == HAC_WQHD) {
-			DDPMSG("fhd dsc param\n");
+			pr_info("fhd dsc param\n");
 			push_table(ctx, fhd_dsc_cmd,
 				sizeof(fhd_dsc_cmd)
 					/ sizeof(struct LCM_setting_table));
@@ -1127,7 +1126,7 @@ static int mode_switch_hs(struct drm_panel *panel, struct drm_connector *connect
 				lcm_cmd_count, cb, NULL);
 			break;
 		default:
-			DDPMSG("%s: error mode_id %d\n", __func__, mode_id);
+			pr_info("%s: error mode_id %d\n", __func__, mode_id);
 			break;
 		}
 	} else if (stage == AFTER_DSI_POWERON) {

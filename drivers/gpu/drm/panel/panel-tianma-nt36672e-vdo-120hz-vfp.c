@@ -24,8 +24,8 @@
 
 #define CONFIG_MTK_PANEL_EXT
 #if defined(CONFIG_MTK_PANEL_EXT)
-#include "../mediatek/mediatek_v2/mtk_panel_ext.h"
-#include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
+#include "mtk_panel_ext.h"
+#include "mtk_drm_graphics_base.h"
 #include "include/panel-tianma-nt36672e-vdo-120hz-vfp.h"
 #endif
 
