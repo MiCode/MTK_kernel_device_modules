@@ -52,10 +52,14 @@ struct mtk_apu_hw_ops {
 	/* mbox counting hw semaphore related API */
 	int (*mbox_counting_hw_sem_reader_trylock)(struct mtk_apu *apu, uint32_t user);
 	int (*mbox_counting_hw_sem_reader_unlock)(struct mtk_apu *apu, uint32_t user);
+
+	/* get chip version */
+	void (*get_chip_ver)(struct mtk_apu *apu);
 };
 
 typedef enum {
 	MBOX_HW_SEMA_RD_KRN_USR_LOGGER = 0UL,
+	MBOX_HW_SEMA_RD_KRN_USR_MAX,
 } APU_MBOX_COUNTING_HW_SEM_READER_KERNEL_USER_ID;
 
 #define F_PRELOAD_FIRMWARE		BIT(0)
@@ -78,6 +82,7 @@ typedef enum {
 #define F_RV_BSP_RX_SUPPORT		BIT(17)
 #define F_COREDUMP_RV55			BIT(18)
 #define F_DEBUG_MEM_SUPPORT		BIT(19)
+#define F_CHIP_VER_SUPPORT		BIT(20)
 
 #define MAX_PWR_SUB_LATENCY (8)
 
@@ -266,6 +271,8 @@ struct mtk_apu {
 
 	bool disable_ke;
 	s8 fw_ver[APU_FW_VER_LEN];
+
+	struct tag_chipid chip_id;
 
 	dma_addr_t debug_memory_iova;
 	uint32_t debug_memory[PAGE_SIZE/4] __attribute__((aligned(PAGE_SIZE)));

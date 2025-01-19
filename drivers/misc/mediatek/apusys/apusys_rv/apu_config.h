@@ -76,6 +76,14 @@ struct config_v1_entry_table {
 	u32 user_entry[eUSER_CONFIG_MAX];
 } __packed;
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+ };
+
 struct config_v1 {
 	/* header begin */
 	u32 header_magic;
@@ -93,6 +101,7 @@ struct config_v1 {
 	u64 time_diff;
 	u64 time_diff_cycle;
 	u32 debug_memory_iova;
+	u32 chip_sw_ver;
 	/* system related config end */
 
 	/* entry table */

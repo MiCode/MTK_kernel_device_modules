@@ -98,6 +98,11 @@ int apu_config_setup(struct mtk_apu *apu)
 	if (apu->platdata->flags & F_DEBUG_MEM_SUPPORT)
 		apu->conf_buf->debug_memory_iova = apu->debug_memory_iova;
 
+	if (hw_ops->get_chip_ver) {
+		hw_ops->get_chip_ver(apu);
+		apu->conf_buf->chip_sw_ver = apu->chip_id.sw_ver;
+	}
+
 	ret = apu_ipi_config_init(apu);
 	if (ret) {
 		dev_info(dev, "apu ipi config init failed\n");
@@ -116,12 +121,10 @@ int apu_config_setup(struct mtk_apu *apu)
 		goto out;
 	}
 
-	if (APU_PRG_SUPPORT || (apu->platdata->flags & F_BRINGUP) == 0) {
-		ret = mvpu_config_init(apu);
-		if (ret) {
-			dev_info(apu->dev, "mvpu config init failed\n");
-			goto out;
-		}
+	ret = mvpu_config_init(apu);
+	if (ret) {
+		dev_info(apu->dev, "mvpu config init failed\n");
+		goto out;
 	}
 
 	return 0;
@@ -133,8 +136,7 @@ out:
 void apu_config_remove(struct mtk_apu *apu)
 {
 	apu_ipi_config_remove(apu);
-	if (APU_PRG_SUPPORT || (apu->platdata->flags & F_BRINGUP) == 0)
-		mvpu_config_remove(apu);
+	mvpu_config_remove(apu);
 
 	dma_free_coherent(apu->dev, CONFIG_SIZE,
 		apu->conf_buf, apu->conf_da);
