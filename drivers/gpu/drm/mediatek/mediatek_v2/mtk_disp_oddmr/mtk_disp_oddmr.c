@@ -5729,9 +5729,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 			/* OD outstanding */
 			if (oddmr_priv->data->od_version == MTK_OD_V2)
-				layer_num = mtk_oddmr_od_bpp_v(5);
+				layer_num = mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 			else
-				layer_num = mtk_oddmr_od_bpp(5);
+				layer_num = mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 			bw_val = (layer_num * bw_base / 400) * od_enable;
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
@@ -5834,9 +5834,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		/* OD outstanding */
 		if (oddmr_priv->data->od_version == MTK_OD_V2)
-			layer_num = mtk_oddmr_od_bpp_v(5);
+			layer_num = mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 		else
-			layer_num = mtk_oddmr_od_bpp(5);
+			layer_num = mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 		bw_val = (layer_num * bw_base / 400) * od_enable;
 		if (bw_val > oddmr_priv->last_hrt_odrw) {
 			ODDMRLOW_LOG("odrw bw_val fast up %u -> %u\n", oddmr_priv->last_hrt_odrw, bw_val);
