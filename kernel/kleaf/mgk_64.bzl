@@ -148,6 +148,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/rps:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_src".format(kernel_version),
@@ -155,6 +156,7 @@ mgk_64_kleaf_device_modules_srcs = [
 
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/misc/mediatek/rps:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:ddk_kconfigs".format(kernel_version),
@@ -217,6 +219,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1711h".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:xhci-mtk-hcd-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/rps:rps_perf".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-fpgaphy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-mt6379-eusb2-repeater".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-nxp-eusb2-repeater".format(kernel_version),
@@ -611,7 +614,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/power_throttling/pmic_dual_lbat_service.ko",
     "drivers/misc/mediatek/pwm/mtk-pwm.ko",
     "drivers/misc/mediatek/qos/mtk_qos.ko",
-    "drivers/misc/mediatek/rps/rps_perf.ko",
     "drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
     "drivers/misc/mediatek/sched/mtk_core_ctl.ko",
     "drivers/misc/mediatek/sched/scheduler.ko",
