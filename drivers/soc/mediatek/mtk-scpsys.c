@@ -1537,7 +1537,7 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 		i++;
 	} while (1);
 
-	udelay(1);
+	udelay(10);
 
 	if (onoff) {
 		tmp = 0;
