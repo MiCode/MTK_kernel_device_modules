@@ -58,8 +58,6 @@
 #define PAD_DS_DLY3		(0x1f << 0)	/* RW */
 #define PAD_DELAY_MAX	32 /* PAD delay cells */
 
-#define MSDC_RESET_HW_TIMEOUT 100000
-
 #define MSDC_GPIO_2 "msdc_gpio=2"
 
 static void msdc_request_done(struct msdc_host *host, struct mmc_request *mrq);
@@ -744,31 +742,18 @@ static void sdr_get_field(void __iomem *reg, u32 field, u32 *val)
 static void msdc_reset_hw(struct msdc_host *host)
 {
 	u32 val;
-	int ret;
 
 	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP, 1);
-	ret = readl_poll_timeout_atomic(host->base + MSDC_DMA_CTRL, val,
-			!(val & MSDC_DMA_CTRL_STOP), 1, MSDC_RESET_HW_TIMEOUT);
-	if (ret) {
-		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
-		msdc_dump_info(NULL, 0, NULL, host);
-	}
+	readl_poll_timeout(host->base + MSDC_DMA_CTRL, val, !(val & MSDC_DMA_CTRL_STOP), 0, 0);
 
 	sdr_set_bits(host->base + MSDC_CFG, MSDC_CFG_RST);
-	ret = readl_poll_timeout_atomic(host->base + MSDC_CFG, val,
-			!(val & MSDC_CFG_RST), 1, MSDC_RESET_HW_TIMEOUT);
-	if (ret) {
-		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
-		msdc_dump_info(NULL, 0, NULL, host);
-	}
+	readl_poll_timeout(host->base + MSDC_CFG, val, !(val & MSDC_CFG_RST), 0, 0);
+
+	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_STOP, 1);
+	readl_poll_timeout(host->base + MSDC_DMA_CTRL, val, !(val & MSDC_DMA_CTRL_STOP), 0, 0);
 
 	sdr_set_bits(host->base + MSDC_FIFOCS, MSDC_FIFOCS_CLR);
-	ret = readl_poll_timeout_atomic(host->base + MSDC_FIFOCS, val,
-			!(val & MSDC_FIFOCS_CLR), 1, MSDC_RESET_HW_TIMEOUT);
-	if (ret) {
-		dev_info(host->dev, "[%s %d]timeout dump\n", __func__, __LINE__);
-		msdc_dump_info(NULL, 0, NULL, host);
-	}
+	readl_poll_timeout(host->base + MSDC_FIFOCS, val, !(val & MSDC_FIFOCS_CLR), 0, 0);
 
 	val = readl(host->base + MSDC_INT);
 	writel(val, host->base + MSDC_INT);
@@ -1373,6 +1358,7 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 			    struct mmc_command *cmd, struct mmc_data *data)
 {
 	bool read;
+	int i = 10;
 
 	WARN_ON(host->data);
 	host->data = data;
@@ -1381,7 +1367,7 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 	mod_delayed_work(system_wq, &host->req_timeout, DAT_TIMEOUT);
 	msdc_dma_setup(host, &host->dma, data);
 	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_START, 1);
-	udelay(1);
+	while (i--) asm volatile ("nop");
 	sdr_set_bits(host->base + MSDC_INTEN, data_ints_mask);
 	dev_dbg(host->dev, "DMA start\n");
 	dev_dbg(host->dev, "%s: cmd=%d DMA data: %d blocks; read=%d\n",
