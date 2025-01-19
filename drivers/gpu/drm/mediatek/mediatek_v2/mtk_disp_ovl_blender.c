@@ -341,6 +341,25 @@ static void ovl_blender_printf_status(unsigned int status)
 			REG_FLD_VAL_GET(BLD2BLD_READY, status));
 }
 
+void mtk_ovl_blender_cur_pos_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr;
+	unsigned int reg_val;
+
+	if (!comp || comp->blank_mode)
+		return;
+
+	baddr = comp->regs;
+	if (!baddr) {
+		DDPINFO("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+
+	reg_val = readl(OVL_BLD_DBG_STATUS0 + baddr);
+	DDPMSG("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
+		reg_val & 0x1fff, (reg_val >> 16) & 0x1fff);
+}
+
 int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 {
 	int i = 0;
