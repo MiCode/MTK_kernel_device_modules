@@ -118,6 +118,41 @@ inline void mmdvfs_mmup_cb_mutex_unlock(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_mmup_cb_mutex_unlock);
 
+inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp)
+{
+	u8 mux, lvl;
+
+	if (unlikely(!mmdvfs_data || idx >= mmdvfs_data->user_num))
+		return 0;
+
+	mux = mmdvfs_data->user[idx].mux;
+	lvl = OPP2LEVEL(mmdvfs_data->mux[mux].rc, opp);
+
+	return mmdvfs_data->mux[mux].freq[lvl];
+}
+EXPORT_SYMBOL_GPL(mmdvfs_user_get_freq_by_opp);
+
+int mmdvfs_user_dfs_vote_by_opp(const u8 idx, const s8 opp, const bool force)
+{
+	u8 mux, lvl;
+
+	if (unlikely(!mmdvfs_data || idx >= mmdvfs_data->user_num))
+		return -EINVAL;
+
+	mux = mmdvfs_data->user[idx].mux;
+	lvl = OPP2LEVEL(mmdvfs_data->mux[mux].rc, opp);
+
+	mutex_lock(&mmdvfs_data->mux[mux].lock);
+	if(mmdvfs_data->ops->dfs_vote_by_xpu)
+		mmdvfs_data->ops->dfs_vote_by_xpu(mmdvfs_data->user[idx].id, lvl);
+		// TODO : + (force ? mmdvfs_data->rc[mmdvfs_data->mux[mux].rc].level_num : 0));
+	mutex_unlock(&mmdvfs_data->mux[mux].lock);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_user_dfs_vote_by_opp);
+
+
 int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 {
 	int ret = 0;
@@ -161,35 +196,6 @@ enable_vcp_end:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_enable_vcp);
-
-int mmdvfs_vote_step(const u8 pwr_idx, const s8 opp)
-{
-	u8 user_id, mux_id, level;
-
-	if (pwr_idx >= mmdvfs_data->rc_num) {
-		MMDVFS_ERR("rc_num:%hhu pwr_idx:%hhu invalid.", mmdvfs_data->rc_num, pwr_idx);
-		return -EINVAL;
-	}
-	if (opp >= mmdvfs_data->rc[pwr_idx].level_num) {
-		MMDVFS_ERR("level_num:%hhu opp:%hd invalid.",
-			mmdvfs_data->rc[pwr_idx].level_num, opp);
-		return -EINVAL;
-	}
-
-	user_id = mmdvfs_data->rc[pwr_idx].vote_user;
-	mux_id = mmdvfs_data->user[user_id].mux;
-	level = OPP2LEVEL(mmdvfs_data->rc[pwr_idx].level_num, opp);
-
-	mtk_mmdvfs_enable_vcp(true, user_id);
-	clk_set_rate(mmdvfs_data->user[user_id].clk, mmdvfs_data->mux[mux_id].freq[level]);
-	mtk_mmdvfs_enable_vcp(false, user_id);
-
-	MMDVFS_DBG("pwr_idx:%hhu opp:%hhd level:%hhu user_id:%hhu mux_id:%hhu freq:%llu",
-		pwr_idx, opp, level, user_id, mux_id, mmdvfs_data->mux[mux_id].freq[level]);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(mmdvfs_vote_step);
 
 static inline void mmdvfs_check_vcp_power(void)
 {
@@ -600,43 +606,6 @@ static int mmdvfs_parse_mmdvfs_clk(struct device_node *node, struct mmdvfs_data 
 	return 0;
 }
 
-static int mmdvfs_parse_mmdvfs_ap_user(struct device *dev, struct mmdvfs_data *mmdvfs_data)
-{
-	struct device_node *node = dev->of_node;
-	u8 mmdvfs_clk_num;
-	struct clk *clk;
-	int i, ret;
-
-	mmdvfs_clk_num = of_property_count_strings(node, "clock-names");
-	if (!mmdvfs_clk_num) {
-		MMDVFS_ERR("%s invalid:%d", "clock-names", mmdvfs_clk_num);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < mmdvfs_clk_num; i++) {
-		struct mmdvfs_user *user;
-		struct of_phandle_args spec;
-
-		ret = of_parse_phandle_with_args(
-			node, "clocks", "#clock-cells", i, &spec);
-		if (ret) {
-			MMDVFS_ERR("parse %s i:%d failed:%d",
-				"mediatek,mmdvfs-user", i, ret);
-			return ret;
-		}
-		user = &mmdvfs_data->user[spec.args[0]];
-
-		clk = devm_clk_get(dev, user->name);
-		if (IS_ERR_OR_NULL(clk)) {
-			MMDVFS_ERR("clk:%s get failed:%d", user->name, PTR_ERR_OR_ZERO(clk));
-			continue;
-		}
-		user->clk = clk;
-	}
-
-	return 0;
-}
-
 static int mmdvfs_get_rc_base(struct mmdvfs_data *mmdvfs_data)
 {
 	int i;
@@ -674,27 +643,6 @@ int mmdvfs_v5_mux_probe(struct platform_device *pdev)
 	return ret;
 }
 EXPORT_SYMBOL(mmdvfs_v5_mux_probe);
-
-int mmdvfs_v5_user_probe(struct platform_device *pdev)
-{
-	struct device *dev = &pdev->dev;
-	int ret;
-
-	MMDVFS_DBG("mmdvfs_v5_user_probe in");
-
-	ret = mmdvfs_parse_mmdvfs_ap_user(dev, mmdvfs_data);
-
-	//Test
-	mtk_mmdvfs_enable_vcp(true, 16);
-	mmdvfs_vote_step(0, 0);
-	mmdvfs_vote_step(0, 1);
-	mmdvfs_vote_step(0, -1);
-
-	MMDVFS_DBG("mmdvfs_v5_user_probe done");
-
-	return ret;
-}
-EXPORT_SYMBOL(mmdvfs_v5_user_probe);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek MMDVFS");

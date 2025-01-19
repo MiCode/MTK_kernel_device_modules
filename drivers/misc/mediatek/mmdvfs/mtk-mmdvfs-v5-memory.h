@@ -50,12 +50,15 @@ static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 #define SRAM_DEC_LVL(val)	((val >>  0) & 0xff)
 
 #define SRAM_IRQ_CNT		(5) // vcore dvs, vmm dvs, vdisp dvs, vmm dfs, vdisp dfs
-#define SRAM_PWR_CNT		(4) // vcore, vmm, vdisp, ceil
+#define SRAM_PWR_CNT		(3) // vcore, vmm, vdisp
 #define SRAM_CLK_CNT		(5) // vcore, vmm, vdisp, cam, hop
+#define SRAM_CEIL_CNT		(3) // vcore, vmm, vdisp
 
 #define SRAM_IRQ_IDX(x)		(SRAM_BASE + 4 * (0 + x))
 #define SRAM_PWR_IDX(x)		(SRAM_BASE + 4 * (5 + x))
-#define SRAM_CLK_IDX(x)		(SRAM_BASE + 4 * (9 + x))
+#define SRAM_CLK_IDX(x)		(SRAM_BASE + 4 * (8 + x))
+#define SRAM_CEIL_IDX(x)	(SRAM_BASE + 4 * (13 + x))
+// 16
 
 #define SRAM_IRQ_SEC(x, y)	(SRAM_BASE + 4 * (20 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
 #define SRAM_IRQ_VAL(x, y)	(SRAM_BASE + 4 * (20 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
@@ -63,10 +66,12 @@ static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 #define SRAM_PWR_SEC(x, y)	(SRAM_BASE + 4 * (100 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
 #define SRAM_PWR_VAL(x, y)	(SRAM_BASE + 4 * (100 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
 
-#define SRAM_CLK_SEC(x, y)	(SRAM_BASE + 4 * (170 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
-#define SRAM_CLK_VAL(x, y)	(SRAM_BASE + 4 * (170 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
+#define SRAM_CLK_SEC(x, y)	(SRAM_BASE + 4 * (150 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
+#define SRAM_CLK_VAL(x, y)	(SRAM_BASE + 4 * (150 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
 
-// 250
+#define SRAM_CEIL_SEC(x, y)	(SRAM_BASE + 4 * (230 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
+#define SRAM_CEIL_VAL(x, y)	(SRAM_BASE + 4 * (230 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
+// 280
 
 #endif
 

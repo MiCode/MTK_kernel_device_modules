@@ -17,8 +17,8 @@
 	pr_notice("[mmdvfs][dbg]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
 #define MMDVFS_ERR(fmt, args...) \
 	pr_notice("[mmdvfs][err]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
-#define OPP2LEVEL(level_num, opp) \
-	((opp) == -1 ? 0 : ((level_num) - (opp) - 1))
+
+#define OPP2LEVEL(idx, opp) ((opp) < 0 ? 0 : (mmdvfs_data->rc[idx].level_num - (opp) - 1))
 enum {
 	log_pwr,
 	log_ipi,
@@ -84,10 +84,11 @@ struct mmdvfs_data {
 };
 
 int mmdvfs_v5_mux_probe(struct platform_device *pdev);
-int mmdvfs_v5_user_probe(struct platform_device *pdev);
-int mmdvfs_vote_step(const u8 pwr_idx, const s8 opp);
 
 inline bool mmdvfs_mmup_cb_ready_get(void);
 inline void mmdvfs_mmup_cb_mutex_lock(void);
 inline void mmdvfs_mmup_cb_mutex_unlock(void);
+
+inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp);
+int mmdvfs_user_dfs_vote_by_opp(const u8 idx, const s8 opp, const bool force);
 #endif /* __DRV_CLK_MMDVFS_V5_H */

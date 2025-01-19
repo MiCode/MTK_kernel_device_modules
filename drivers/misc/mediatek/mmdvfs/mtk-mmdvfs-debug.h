@@ -45,8 +45,8 @@ inline void mmdvfs_vcp_cb_mutex_lock(void);
 inline void mmdvfs_vcp_cb_mutex_unlock(void);
 inline bool mmdvfs_vcp_cb_ready_get(void);
 
-int mmdvfs_debug_force_step(const u8 pwr_idx, const s8 opp);
-int mmdvfs_debug_vote_step(const u8 pwr_idx, const s8 opp);
+int mmdvfs_debug_force_step(const u8 idx, const s8 opp);
+int mmdvfs_debug_vote_step(const u8 idx, const s8 opp);
 
 struct mmdvfs_debug_ops {
 	int (*force_step_fp)(const char *val, const struct kernel_param *kp);

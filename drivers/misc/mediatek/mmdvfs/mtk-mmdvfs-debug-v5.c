@@ -3,6 +3,7 @@
  * Copyright (C) 2024 MediaTek Inc.
  */
 
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -48,19 +49,33 @@ static u8 *fmeter_type;
 
 static bool met_freerun;
 
-int mmdvfs_debug_force_step(const u8 pwr_idx, const s8 opp)
+static u8 user_count;
+struct mmdvfs_debug_user {
+	u8 idx;
+	const char *name;
+	struct clk *clk;
+};
+static struct mmdvfs_debug_user *user;
+
+int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
-	// TODO
-	MMDVFS_DBG("pwr_idx:%hhu opp:%hhd", pwr_idx, opp);
-	return 0;
+	if (idx >= user_count) {
+		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
+		return -EINVAL;
+	}
+
+	return mmdvfs_user_dfs_vote_by_opp(user[idx].idx, opp, false); // TODO
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_force_step);
 
-int mmdvfs_debug_vote_step(const u8 pwr_idx, const s8 opp)
+int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
 {
-	// TODO
-	MMDVFS_DBG("pwr_idx:%hhu opp:%hhd", pwr_idx, opp);
-	return 0;
+	if (idx >= user_count) {
+		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
+		return -EINVAL;
+	}
+
+	return clk_set_rate(user[idx].clk, mmdvfs_user_get_freq_by_opp(user[idx].idx, opp));
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_vote_step);
 
@@ -154,7 +169,7 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 		}
 	}
 
-	// vcore, vmm, vdisp, ceil
+	// vcore, vmm, vdisp
 	for (i = 0; i < SRAM_PWR_CNT; i++) {
 		k = readl(SRAM_PWR_IDX(i)) % SRAM_REC_CNT;
 		for (j = k; j < SRAM_REC_CNT; j++) {
@@ -180,6 +195,21 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 		for (j = 0; j < k; j++) {
 			val = readl(SRAM_CLK_VAL(i, j));
 			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) clk:%u lvl:%u", readl(SRAM_CLK_SEC(i, j)),
+				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
+		}
+	}
+
+	// vcore, vmm, vdisp
+	for (i = 0; i < SRAM_CEIL_CNT; i++) {
+		k = readl(SRAM_CEIL_IDX(i)) % SRAM_REC_CNT;
+		for (j = k; j < SRAM_REC_CNT; j++) {
+			val = readl(SRAM_CEIL_VAL(i, j));
+			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) idx:%u ceil:%u", readl(SRAM_CEIL_SEC(i, j)),
+				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
+		}
+		for (j = 0; j < k; j++) {
+			val = readl(SRAM_CEIL_VAL(i, j));
+			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) idx:%u ceil:%u", readl(SRAM_CEIL_SEC(i, j)),
 				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
 		}
 	}
@@ -326,6 +356,36 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 	mtk_mmdebug_status_dump_register_notifier(&mmdebug_nb);
 	mtk_smi_dbg_register_notifier(&smi_dbg_nb);
+
+	// user
+	user_count = of_property_count_strings(dev->of_node, "clock-names");
+	if (user_count > 0)
+		user = kcalloc(user_count, sizeof(*user), GFP_KERNEL);
+
+	if (user) {
+		struct property *prop;
+		const char *name;
+		struct clk *clk;
+		int i = 0;
+
+		of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
+			struct of_phandle_args spec;
+
+			ret = of_parse_phandle_with_args(dev->of_node, "clocks", "#clock-cells", i, &spec);
+			if (!ret)
+				user[i].idx = spec.args[0];
+
+			clk = devm_clk_get(dev, name);
+			if (!IS_ERR_OR_NULL(clk))
+				user[i].clk = clk;
+
+			user[i].name = name;
+			MMDVFS_DBG("user_count:%hhu idx:%hhu clk:%p name:%s",
+				user_count, user[i].idx, user[i].clk, user[i].name);
+
+			i += 1;
+		}
+	}
 
 	task = kthread_run(mmdvfs_debug_kthread, NULL, "mmdvfs-debug-kthread");
 	if (IS_ERR(task))

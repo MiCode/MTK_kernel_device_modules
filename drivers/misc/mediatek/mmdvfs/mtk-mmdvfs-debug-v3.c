@@ -109,15 +109,15 @@ void mtk_mmdvfs_debug_release_step0(void)
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
 
-int mmdvfs_debug_force_step(const u8 pwr_idx, const s8 opp)
+int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
-	return mtk_mmdvfs_v3_set_force_step(pwr_idx, opp, false);
+	return mtk_mmdvfs_v3_set_force_step(idx, opp, false);
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_force_step);
 
-int mmdvfs_debug_vote_step(const u8 pwr_idx, const s8 opp)
+int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
 {
-	return mtk_mmdvfs_v3_set_vote_step(pwr_idx, opp, false);
+	return mtk_mmdvfs_v3_set_vote_step(idx, opp, false);
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_vote_step);
 
