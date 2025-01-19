@@ -3076,8 +3076,10 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 			if ((atomic_read(&g_vidle_window) & DPC_VIDLE_MML_DC_WINDOW) &&
 				(status & MML_DPC_INT_DT33) == 0)
 				mtk_update_dpc_state(DPC_VIDLE_MML_DC_WINDOW, true);
-			atomic_set(&priv->dpc_state, DPC_STATE_OFF);
-			wake_up_interruptible(&priv->dpc_state_wq);
+			if ((status & MML_DPC_INT_DT33) == 0) {
+				atomic_set(&priv->dpc_state, DPC_STATE_OFF);
+				wake_up_interruptible(&priv->dpc_state_wq);
+			}
 		}
 
 		if (status & MML_DPC_INT_DT33) {
@@ -3126,22 +3128,10 @@ static int dpc_res_init(struct mtk_dpc *priv)
 			ret = -1;
 			continue;
 		}
-		priv->sys_va[i] = devm_ioremap_resource(priv->dev, res);
+		priv->sys_va[i] = ioremap(res->start, resource_size(res));
 		if (IS_ERR_OR_NULL(priv->sys_va[i])) {
-			if (IS_ERR_OR_NULL(res)) {
-				DPCERR("failed to get %s, i:%d invalid res", reg_names[i], i);
-				ret = -1;
-				continue;
-			}
-			priv->sys_va[i] = ioremap(res->start, (res->end - res->start + 1));
-			if (IS_ERR_OR_NULL(priv->sys_va[i])) {
-				DPCERR("failed to force map %s, pa:0x%pa~0x%pa",
-					reg_names[i], &res->start, &res->end);
-				priv->sys_va[i] = NULL;
-			} else
-				DPCDUMP("force map %s, va:0x%lx, pa:0x%pa~0x%pa",
-					reg_names[i], (unsigned long)priv->sys_va[i],
-					&res->start, &res->end);
+			DPCERR("failed to get %s, i:%d invalid res", reg_names[i], i);
+			continue;
 		}
 
 		if (!priv->dpc_pa && i == DPC_BASE && res)
@@ -3770,30 +3760,27 @@ static int mtk_dpc_state_monitor_thread(void *data)
 
 	while (!kthread_should_stop()) {
 		ret = wait_event_interruptible(
-			g_priv->dpc_state_wq,
+			g_priv->dpc_state_wq, dbg_mmp &&
 			atomic_read(&g_priv->dpc_state) != DPC_STATE_NULL);
 
 		off = atomic_read(&g_priv->dpc_state) == DPC_STATE_OFF ? true : false;
 		atomic_set(&g_priv->dpc_state, DPC_STATE_NULL);
-		if (dbg_mmp == 0)
-			continue;
 
 		if (!dbg_vdisp_level) {
 			mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
 				DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK, off);
-			continue;
+		} else {
+			if (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP) < 0) {
+				mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
+					DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK, off);
+				dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, off, 0xffffffff);
+			} else {
+				mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
+					DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK |
+					DPC_VIDLE_VDISP_MASK, off);
+				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
+			}
 		}
-
-		if (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP) < 0) {
-			mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
-				DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK, off);
-			dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, off, 0xffffffff);
-			continue;
-		}
-		mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
-				DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK |
-				DPC_VIDLE_VDISP_MASK, off);
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 	}
 
 	return 0;

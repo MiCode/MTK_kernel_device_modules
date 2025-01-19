@@ -2449,7 +2449,7 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 			mtk_ddp_comp_io_cmd(cb_data->comp, NULL, PMQOS_SET_HRT_BW, &wdma_bw);
 		}
 		if (cb_data->comp_dual) {
-			DDPINFO("%s,comp:%d clear BW request\n", __func__, cb_data->comp->id);
+			DDPINFO("%s,comp:%d clear BW request\n", __func__, cb_data->comp_dual->id);
 			mtk_ddp_comp_io_cmd(cb_data->comp_dual, NULL, PMQOS_UPDATE_BW, &flag);
 			mtk_ddp_comp_io_cmd(cb_data->comp_dual, NULL, PMQOS_SET_HRT_BW, &wdma_bw);
 		}
