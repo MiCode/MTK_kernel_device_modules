@@ -955,8 +955,12 @@ void xhci_free_virt_device(struct xhci_hcd *xhci, int slot_id)
 		old_active_eps = dev->tt_info->active_eps;
 
 	for (i = 0; i < 31; i++) {
-		if (dev->eps[i].ring)
-			xhci_ring_free_(xhci, dev->eps[i].ring);
+		if (dev->eps[i].ring) {
+			if (xhci_vendor_is_usb_offload_enabled(xhci, dev, i))
+				xhci_vendor_free_transfer_ring(xhci, dev->eps[i].ring, i);
+			else
+				xhci_ring_free_(xhci, dev->eps[i].ring);
+		}
 		if (dev->eps[i].stream_info)
 			xhci_free_stream_info(xhci,
 					dev->eps[i].stream_info);
