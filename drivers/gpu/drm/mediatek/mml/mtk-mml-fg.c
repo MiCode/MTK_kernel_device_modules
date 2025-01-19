@@ -396,6 +396,7 @@ static s32 fg_init(struct mml_comp *comp, struct mml_task *task,
 
 	/* Enable shadow */
 	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_SHADOW_CTRL],
+		0x1 << 3 | /* sr2wrk_cg_on */
 		(task->config->shadow ? 0 : 1) | 0x2, U32_MAX);
 
 	return 0;
@@ -438,7 +439,7 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (relay_mode) {
 		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], 1, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0x77, U32_MAX);
 		/* bit_depth & is yuv420 or yuv444 */
 		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_0],
 			!is_yuv_444 << 4 | bit_depth << 0, 1 << 4 | 0xF << 0);
@@ -476,15 +477,15 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			dev_buf, fg_table_pa[FG_BUF_NUM-1], 0, FG_BUF_SCALING_SIZE, DMA_TO_DEVICE);
 
 		/* enable filmGrain */
-		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0,
-			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
-		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0xF, 0xF,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0,
+			1 << 0, reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x7F, 0x7F,
 			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
 	} else {
 		/* relay filmGrain */
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0], 1, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
-		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, 0xF,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x77, 0x7F,
 			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
 	}
 
@@ -684,7 +685,7 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* enable filmGrain */
 	mml_update(comp->id, reuse, fg_frm->labels[FG_CTRL_0_LABEL], relay_mode << 0);
-	mml_update(comp->id, reuse, fg_frm->labels[FG_CK_EN_LABEL], 0xF);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CK_EN_LABEL], 0x7F);
 
 	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth, en_hw_ar);
 
@@ -776,7 +777,7 @@ exit:
 buf_err_exit:
 	/* relay filmGrain */
 	mml_update(comp->id, reuse, fg_frm->labels[FG_CTRL_0_LABEL], 0x1);
-	mml_update(comp->id, reuse, fg_frm->labels[FG_CK_EN_LABEL], 0x7);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CK_EN_LABEL], 0x77);
 	/* don't trigger FG load table */
 	mml_update(comp->id, reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x0);
 	mml_update(comp->id, reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
