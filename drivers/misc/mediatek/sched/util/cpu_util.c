@@ -112,7 +112,7 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 		struct cpumask *sg_cpumask, unsigned long cpu_util_iowait, int curr_task_uclamp)
 {
 	int cpu_util_cfs, cpu_util_eff, cpu_util_mgn, cpu_util_clp, cpu_util_tal;
-	struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
+	struct task_struct *tsk = NULL;
 	int source = -1;
 
 	if (trace_sched_cpu_util_enabled()) {
@@ -135,9 +135,11 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 		cpu_util_cfs = scx_cpuperf_target(cpu);
 
 		if (!scx_switched_all())
-			cpu_util_cfs += mtk_cpu_util_next(cpu, p, dst_cpu, runnable_boost);
-	} else /* normal, rt*/
+			cpu_util_cfs += mtk_cpu_util_next(cpu, NULL, -1, 1);
+	} else if (p && !rt_task(p)) /* normal */
 		cpu_util_cfs = mtk_cpu_util_next(cpu, p, dst_cpu, runnable_boost);
+	else /* rt */
+		cpu_util_cfs = mtk_cpu_util_next(cpu, NULL, -1, runnable_boost);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 	cpu_util_eff = mtk_effective_cpu_util(cpu, cpu_util_cfs, p, min, max);
@@ -147,6 +149,13 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 
 	if (sg_cpumask) /* sugov */
 		cpu_util_eff = max(cpu_util_eff, (int)cpu_util_iowait);
+
+	if (p) {
+		if (!rt_task(p)) /* normal */
+			tsk = (cpu == dst_cpu) ? p : NULL;
+		else /* rt */
+			tsk = p;
+	}
 
 	if (tsk && uclamp_is_used()) { /* normal rt */
 		*min = max(*min, uclamp_eff_value(p, UCLAMP_MIN));
