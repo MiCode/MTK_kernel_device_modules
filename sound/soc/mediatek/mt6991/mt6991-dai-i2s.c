@@ -271,6 +271,97 @@ static bool is_etdm_in_pad_top(unsigned int dai_num)
 	}
 }
 
+static bool is_etdm_in_lpbk(struct mtk_base_afe *afe, unsigned int dai_num)
+{
+
+	unsigned int value = 0;
+	unsigned int value_ipmode = 0;
+	unsigned int reg = 0;
+	unsigned int mask = 0;
+	unsigned int shift = 0;
+
+	if (dai_num >= DAI_I2S_NUM)
+		return false;
+
+	switch (dai_num) {
+	case DAI_I2SIN0:
+	case DAI_I2SOUT0:
+		reg = ETDM_0_3_COWORK_CON1;
+		mask = ETDM_IN0_SDATA0_SEL_MASK_SFT;
+		shift = ETDM_IN0_SDATA0_SEL_SFT;
+		break;
+	case DAI_I2SIN1:
+	case DAI_I2SOUT1:
+		reg = ETDM_0_3_COWORK_CON1;
+		mask = ETDM_IN1_SDATA0_SEL_MASK_SFT;
+		shift = ETDM_IN1_SDATA0_SEL_SFT;
+		break;
+	case DAI_I2SIN2:
+	case DAI_I2SOUT2:
+		reg = ETDM_0_3_COWORK_CON3;
+		mask = ETDM_IN2_SDATA0_SEL_MASK_SFT;
+		shift = ETDM_IN2_SDATA0_SEL_SFT;
+		break;
+	case DAI_I2SIN3:
+	case DAI_I2SOUT3:
+		reg = ETDM_0_3_COWORK_CON3;
+		mask = ETDM_IN3_SDATA0_SEL_MASK_SFT;
+		shift = ETDM_IN3_SDATA0_SEL_SFT;
+		break;
+	case DAI_I2SIN4:
+	case DAI_I2SOUT4:
+		reg = ETDM_4_7_COWORK_CON1;
+		// Get I2SIN4 multi-ip mode
+		regmap_read(afe->regmap, ETDM_IN4_CON2, &value_ipmode);
+		value_ipmode &= REG_MULTI_IP_MODE_MASK_SFT;
+		value_ipmode >>= REG_MULTI_IP_MODE_SFT;
+
+		if (value_ipmode) {
+			mask = ETDM_IN4_SDATA1_15_SEL_MASK_SFT;
+			shift = ETDM_IN4_SDATA1_15_SEL_SFT;
+		} else {
+			mask = ETDM_IN4_SDATA0_SEL_MASK_SFT;
+			shift = ETDM_IN4_SDATA0_SEL_SFT;
+		}
+		break;
+	case DAI_I2SIN5:
+	case DAI_I2SOUT5:
+		reg = ETDM_4_7_COWORK_CON1;
+		// Get I2SIN5 multi-ip mode
+		regmap_read(afe->regmap, ETDM_IN5_CON2, &value_ipmode);
+		value_ipmode &= REG_MULTI_IP_MODE_MASK_SFT;
+		value_ipmode >>= REG_MULTI_IP_MODE_SFT;
+
+		if (value_ipmode) {
+			mask = ETDM_IN5_SDATA1_15_SEL_MASK_SFT;
+			shift = ETDM_IN5_SDATA1_15_SEL_SFT;
+		} else {
+			mask = ETDM_IN5_SDATA0_SEL_MASK_SFT;
+			shift = ETDM_IN5_SDATA0_SEL_SFT;
+		}
+		break;
+	case DAI_I2SIN6:
+	case DAI_I2SOUT6:
+		reg = ETDM_4_7_COWORK_CON3;
+		mask = ETDM_IN6_SDATA0_SEL_MASK_SFT;
+		shift = ETDM_IN6_SDATA0_SEL_SFT;
+		break;
+	default:
+		break;
+	}
+
+	if (reg)
+		regmap_read(afe->regmap, reg, &value);
+
+	value &= mask;
+	value >>= shift;
+
+	if (value == 0x8 || value == 0xa || value == 0xc)
+		return true;
+	else
+		return false;
+}
+
 struct mtk_base_etdm_data {
 	int enable_reg;
 	int enable_mask;
@@ -4488,11 +4579,10 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 		return -EINVAL;
 	}
 
-	if (is_etdm_in_pad_top(id)) {
+	if (is_etdm_in_pad_top(id) && !is_etdm_in_lpbk(afe, id))
 		pad_top = 0x3;
-	} else {
+	else
 		pad_top = 0x5;
-	}
 
 	switch (id) {
 	case DAI_FMI2S_MASTER:
@@ -5201,7 +5291,7 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 	/* get etdm slave mode */
 	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-in-slave-mode", slave_mode_in, I2S_IN_NUM);
 	if (ret) {
-		dev_info(afe->dev, "%s() x failed to read etdm-in-slave-mode\n", __func__);
+		dev_info(afe->dev, "%s() failed to read etdm-in-slave-mode\n", __func__);
 		//return -EINVAL;
 	} else {
 		for (i = 0; i < I2S_IN_NUM; i++) {
@@ -5360,11 +5450,10 @@ static int mt6991_dai_i2s_config(struct mtk_base_afe *afe, int i2s_id,
 		return -EINVAL;
 	}
 
-	if (is_etdm_in_pad_top(id))
+	if (is_etdm_in_pad_top(id) && !is_etdm_in_lpbk(afe, id))
 		pad_top = 0x3;
 	else
 		pad_top = 0x5;
-
 
 	switch (id) {
 	case DAI_I2SIN0:

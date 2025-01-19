@@ -186,6 +186,12 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		if (id == MT6991_MEMIF_DL23)
 			mtk_memif_set_pbuf_size(afe, id, MT6991_MEMIF_PBUF_SIZE_32_BYTES);
 
+		if (!strcmp(memif->data->name, "VUL_CM0")
+			|| !strcmp(memif->data->name, "VUL_CM1")
+			|| !strcmp(memif->data->name, "VUL_CM2"))
+			mtk_memif_set_min_max_len(afe, id, MT6991_MEMIF_MAX_LEN_64_BYTES,
+						MT6991_MEMIF_MAX_LEN_64_BYTES);
+
 		if (is_afe_need_triggered(memif)) {
 			ret = mtk_memif_set_enable(afe, id);
 
@@ -5382,6 +5388,12 @@ static const struct mtk_base_memif_data memif_data[MT6991_MEMIF_NUM] = {
 		.agent_disable_shift = -1,
 		.msb_reg = -1,
 		.msb_shift = -1,
+		.minlen_reg = AFE_VUL_CM0_CON0,
+		.minlen_mask = VUL_CM0_AXI_REQ_MINLEN_MASK,
+		.minlen_shift = VUL_CM0_AXI_REQ_MINLEN_SFT,
+		.maxlen_reg = AFE_VUL_CM0_CON0,
+		.maxlen_mask = VUL_CM0_AXI_REQ_MAXLEN_MASK,
+		.maxlen_shift = VUL_CM0_AXI_REQ_MAXLEN_SFT,
 	},
 	[MT6991_MEMIF_VUL_CM1] = {
 		.name = "VUL_CM1",
@@ -5408,6 +5420,12 @@ static const struct mtk_base_memif_data memif_data[MT6991_MEMIF_NUM] = {
 		.agent_disable_shift = -1,
 		.msb_reg = -1,
 		.msb_shift = -1,
+		.minlen_reg = AFE_VUL_CM1_CON0,
+		.minlen_mask = VUL_CM1_AXI_REQ_MINLEN_MASK,
+		.minlen_shift = VUL_CM1_AXI_REQ_MINLEN_SFT,
+		.maxlen_reg = AFE_VUL_CM1_CON0,
+		.maxlen_mask = VUL_CM1_AXI_REQ_MAXLEN_MASK,
+		.maxlen_shift = VUL_CM1_AXI_REQ_MAXLEN_SFT,
 	},
 	[MT6991_MEMIF_VUL_CM2] = {
 		.name = "VUL_CM2",
@@ -5434,6 +5452,12 @@ static const struct mtk_base_memif_data memif_data[MT6991_MEMIF_NUM] = {
 		.agent_disable_shift = -1,
 		.msb_reg = -1,
 		.msb_shift = -1,
+		.minlen_reg = AFE_VUL_CM2_CON0,
+		.minlen_mask = VUL_CM2_AXI_REQ_MINLEN_MASK,
+		.minlen_shift = VUL_CM2_AXI_REQ_MINLEN_SFT,
+		.maxlen_reg = AFE_VUL_CM2_CON0,
+		.maxlen_mask = VUL_CM2_AXI_REQ_MAXLEN_MASK,
+		.maxlen_shift = VUL_CM2_AXI_REQ_MAXLEN_SFT,
 	},
 	[MT6991_MEMIF_ETDM_IN0] = {
 		.name = "ETDM_IN0",
