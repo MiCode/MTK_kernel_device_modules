@@ -123,6 +123,7 @@ struct mml_dev {
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
 	struct mml_sys_state sys_state[mml_max_sys];
 	struct mml_sys_qos qos[mml_max_sys];
+	u32 vcp_ref;
 	struct mutex sys_state_mutex;
 	struct mml_sys *sys;
 	struct cmdq_base *cmdq_base;
@@ -384,7 +385,25 @@ void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid)
 	}
 }
 
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid)
+static void mml_dvfs_vcp_enable(struct mml_dev *mml, enum mml_sys_id sysid)
+{
+	mml->vcp_ref++;
+	if (mml->vcp_ref == 1) {
+		mml_mmp(mmdvfs, MMPROFILE_FLAG_START, sysid, 0);
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
+	}
+}
+
+static void mml_dvfs_vcp_disable(struct mml_dev *mml, enum mml_sys_id sysid)
+{
+	mml->vcp_ref--;
+	if (mml->vcp_ref == 0) {
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
+		mml_mmp(mmdvfs, MMPROFILE_FLAG_END, sysid, 0);
+	}
+}
+
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bool enable)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	struct mml_sys_qos *sysqos;
@@ -415,6 +434,9 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid)
 	if (mml_freq_for_tppa)
 		mml_update_freq_status(sysqos->opp_speeds[i]);
 
+	if (!dpc && sysqos->dvfs_clk && enable)
+		mml_dvfs_vcp_enable(mml, sysid);
+
 	if (sysqos->current_volt == volt)	/* skip for better performance */
 		goto done;
 	sysqos->current_level = i;
@@ -425,37 +447,45 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid)
 	mml_trace_begin("mml_volt_%u", volt);
 
 #ifndef MML_FPGA
-	if (!dpc) {
-		int ret;
+	if (dpc)
+		goto no_dvfs;
 
-		if (sysqos->reg) {
-			ret = regulator_set_voltage(sysqos->reg, volt, INT_MAX);
-			if (ret)
-				mml_err("%s sys %u fail to set volt %d",
-					__func__, sysid, volt);
-			else
-				mml_msg("%s sys %u volt %d (%u) tput %u",
-					__func__, sysid, volt, i, tput);
-		} else if (sysqos->dvfs_clk) {
-			/* set dvfs clock rate by unit Hz */
-			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
-			ret = clk_set_rate(sysqos->dvfs_clk,
-				sysqos->opp_speeds[i] * 1000000);
-			if (ret)
-				mml_err("%s sys %u fail to set rate %uMHz error %d",
-					__func__, sysid, sysqos->opp_speeds[i], ret);
-			else
-				mml_msg("%s sys %u rate %uMHz (%u) tput %u",
-					__func__, sysid, sysqos->opp_speeds[i], i, tput);
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
-		}
+	if (sysqos->reg) {
+		int ret = regulator_set_voltage(sysqos->reg, volt, INT_MAX);
+
+		if (ret)
+			mml_err("%s sys %u fail to set volt %d",
+				__func__, sysid, volt);
+		else
+			mml_msg("%s sys %u volt %d (%u) tput %u",
+				__func__, sysid, volt, i, tput);
+	} else if (sysqos->dvfs_clk) {
+		/* set dvfs clock rate by unit Hz */
+		int ret = clk_set_rate(sysqos->dvfs_clk, sysqos->opp_speeds[i] * 1000000);
+
+		if (ret)
+			mml_err("%s sys %u %s fail to set rate %uMHz error %d cnt %u",
+				__func__, sysid, enable ? "on" : "off", sysqos->opp_speeds[i],
+				ret, mml->vcp_ref);
+		else
+			mml_msg("%s sys %u %s rate %uMHz (%u) tput %u cnt %u",
+				__func__, sysid, enable ? "on" : "off", sysqos->opp_speeds[i],
+				i, tput, mml->vcp_ref);
 	}
+
+no_dvfs:
 #endif
 	mml_trace_end();
 
 	mml_update_freq_status(sysqos->opp_speeds[i]);
 
 done:
+	if (!dpc && sysqos->dvfs_clk) {
+		if (!enable)
+			mml_dvfs_vcp_disable(mml, sysid);
+		mml_msg("%s vcp ref sys %u ref %u %s",
+			__func__, sysid, mml->vcp_ref, enable ? "on" : "off");
+	}
 	return volt;
 }
 
@@ -484,7 +514,7 @@ u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc,
 	for (sysid = 0; sysid < mml_max_sys; sysid++) {
 		if (!path->sys_en[sysid])
 			continue;
-		tput = max(tput, mml_qos_update_tput(mml, dpc, sysid));
+		tput = max(tput, mml_qos_update_tput(mml, dpc, sysid, enable));
 	}
 
 	return tput;

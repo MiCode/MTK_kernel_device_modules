@@ -16,7 +16,7 @@ struct mml_mmp_events_t *mml_mmp_get_event(void)
 
 void mml_mmp_init(void)
 {
-	mmp_event mml, command, addon, dle, dpc, clock;
+	mmp_event mml, command, dvfs, addon, dle, dpc, clock;
 
 	if (mml_mmp_events.mml)
 		return;
@@ -35,16 +35,11 @@ void mml_mmp_init(void)
 	mml_mmp_events.buf_map = mmprofile_register_event(mml, "buf_map");
 	mml_mmp_events.comp_prepare = mmprofile_register_event(mml, "comp_prepare");
 	mml_mmp_events.buf_prepare = mmprofile_register_event(mml, "buf_prepare");
-	mml_mmp_events.tile_alloc = mmprofile_register_event(mml, "tile_alloc");
-	mml_mmp_events.tile_calc = mmprofile_register_event(mml, "tile_calc");
-	mml_mmp_events.tile_calc_frame = mmprofile_register_event(mml, "tile_calc_frame");
-	mml_mmp_events.tile_prepare_tile = mmprofile_register_event(mml, "tile_prepare_tile");
 	mml_mmp_events.command = mmprofile_register_event(mml, "command");
 	mml_mmp_events.fence = mmprofile_register_event(mml, "fence");
 	mml_mmp_events.fence_timeout = mmprofile_register_event(mml, "fence_timeout");
 	mml_mmp_events.wait_ready = mmprofile_register_event(mml, "wait_ready");
-	mml_mmp_events.throughput = mmprofile_register_event(mml, "throughput");
-	mml_mmp_events.bandwidth = mmprofile_register_event(mml, "bandwidth");
+	mml_mmp_events.dvfs = mmprofile_register_event(mml, "dvfs");
 	mml_mmp_events.flush = mmprofile_register_event(mml, "flush");
 	mml_mmp_events.submit_cb = mmprofile_register_event(mml, "submit_cb");
 	mml_mmp_events.racing_enter = mmprofile_register_event(mml, "racing_enter");
@@ -62,9 +57,18 @@ void mml_mmp_init(void)
 	command = mml_mmp_events.command;
 	mml_mmp_events.command0 = mmprofile_register_event(command, "command0");
 	mml_mmp_events.command1 = mmprofile_register_event(command, "command1");
+	mml_mmp_events.tile_alloc = mmprofile_register_event(command, "tile_alloc");
+	mml_mmp_events.tile_calc = mmprofile_register_event(command, "tile_calc");
+	mml_mmp_events.tile_calc_frame = mmprofile_register_event(command, "tile_calc_frame");
+	mml_mmp_events.tile_prepare_tile = mmprofile_register_event(command, "tile_prepare_tile");
 	mml_mmp_events.mutex_mod = mmprofile_register_event(command, "mutex_mod");
 	mml_mmp_events.mutex_en = mmprofile_register_event(command, "mutex_enable");
 	mml_mmp_events.mutex_dis = mmprofile_register_event(command, "mutex_disable");
+
+	dvfs = mml_mmp_events.dvfs;
+	mml_mmp_events.throughput = mmprofile_register_event(dvfs, "throughput");
+	mml_mmp_events.bandwidth = mmprofile_register_event(dvfs, "bandwidth");
+	mml_mmp_events.mmdvfs = mmprofile_register_event(dvfs, "vcp_mmdvfs");
 
 	addon = mmprofile_register_event(mml, "addon");
 	mml_mmp_events.addon = addon;
