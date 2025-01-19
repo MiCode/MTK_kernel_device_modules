@@ -26,7 +26,7 @@ struct mtk_mminfra_pd {
 	u32 mminfra_mtcmos_num;
 	u32 mminfra_type_num;
 	u32 mminfra_type0_pwr;
-	struct mminfra_mtcmos mm_mtcmos[MM_PWR_NR];
+	struct mminfra_mtcmos mm_mtcmos[MM_PWR_NUM_NR];
 };
 
 static struct device *g_dev;
@@ -39,11 +39,11 @@ int mminfra0_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_0].voter,
-			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_0].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].voter,
+			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_0].voter,
-			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_0].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].voter,
+			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
 	}
 
 	return ret;
@@ -54,11 +54,11 @@ int mminfra1_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_1].voter,
-			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_1].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].voter,
+			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_1].voter,
-			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_1].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].voter,
+			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
 	}
 
 	return ret;
@@ -69,11 +69,11 @@ int mminfra_ao_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_AO].voter,
-			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_AO].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
+			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_AO].voter,
-			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_AO].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
+			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
 	}
 
 	return ret;
@@ -117,11 +117,11 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			return 0;
 		}
 		// power on mminfra
-		if (mm_pwr == MM_0)
+		if (mm_pwr == MM_PWR_MM_0)
 			ret = mminfra0_onoff(true);
-		else if (mm_pwr == MM_1)
+		else if (mm_pwr == MM_PWR_MM_1)
 			ret = mminfra1_onoff(true);
-		else if (mm_pwr == MM_AO)
+		else if (mm_pwr == MM_PWR_MM_AO)
 			ret = mminfra_ao_onoff(true);
 	} else {
 		// minus ref_cnt
@@ -133,11 +133,11 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			return 0;
 		}
 		// power off mminfra
-		if (mm_pwr == MM_0)
+		if (mm_pwr == MM_PWR_MM_0)
 			ret = mminfra0_onoff(false);
-		else if (mm_pwr == MM_1)
+		else if (mm_pwr == MM_PWR_MM_1)
 			ret = mminfra1_onoff(false);
-		else if (mm_pwr == MM_AO)
+		else if (mm_pwr == MM_PWR_MM_AO)
 			ret = mminfra_ao_onoff(false);
 	}
 
@@ -182,7 +182,7 @@ static int mminfra_util_probe(struct platform_device *pdev)
 		&g_mminfra_pd->mminfra_type_num);
 	of_property_read_u32(g_dev->of_node, "mminfra-type0-pwr",
 		&g_mminfra_pd->mminfra_type0_pwr);
-	for (i = 0; i < MM_PWR_NR; i++) {
+	for (i = 0; i < MM_PWR_NUM_NR; i++) {
 		if (i >= g_mminfra_pd->mminfra_mtcmos_num)
 			break;
 		if (!of_property_read_u32_index(g_dev->of_node, "mminfra-mtcmos-voter", i, &tmp)) {

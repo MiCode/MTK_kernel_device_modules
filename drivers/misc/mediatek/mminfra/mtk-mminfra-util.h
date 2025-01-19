@@ -11,14 +11,16 @@ enum mm_type {
 	MM_TYPE_CG_LINK = 0,
 	MM_TYPE_CMDQ,
 	MM_TYPE_DISP,
+	MM_TYPE_MML,
+	MM_TYPE_MMINFRA_DBG,
 	MM_TYPE_NR
 };
 
 enum mm_power_num {
-	MM_0 = 0,
-	MM_1,
-	MM_AO,
-	MM_PWR_NR,
+	MM_PWR_MM_0 = 0,
+	MM_PWR_MM_1,
+	MM_PWR_MM_AO,
+	MM_PWR_NUM_NR,
 };
 
 #if IS_ENABLED(CONFIG_MTK_MMINFRA)
