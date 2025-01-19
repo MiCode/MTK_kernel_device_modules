@@ -527,8 +527,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 	met_freerun = of_property_read_bool(dev->of_node, "mediatek,met-freerun");
 
-	MMDVFS_DBG("mux_base:%pa mux_count:%hu fmeter_count:%hhu user_count:%hhu met_freerun:%d",
-		&mux_base_pa, mux_count, fmeter_count, ap_user_count, met_freerun);
+	MMDVFS_DBG("mux_base:%#x mux_count:%hu fmeter_count:%hhu user_count:%hhu met_freerun:%d",
+		mux_base_pa, mux_count, fmeter_count, ap_user_count, met_freerun);
 
 	register_pm_notifier(&mmdvfs_debug_pm_notifier_block);
 	mmdvfs_debug_ops_set(&mmdvfs_debug_v5_ops);
