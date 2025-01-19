@@ -16,9 +16,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
 
 ccflags-y += -Wno-unused-but-set-variable
 
-ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-obj-$(CONFIG_MTK_TINYSYS_GPUEB_SUPPORT) += mtk_gpueb.o
-endif
+# ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+# obj-$(CONFIG_MTK_TINYSYS_GPUEB_SUPPORT) += mtk_gpueb.o
+# endif
 
 mtk_gpueb-y += \
     gpueb.o \
@@ -42,20 +42,20 @@ mtk_ghpm_mt6993-y := \
 mtk_ghpm_swwa-y := \
 	ghpm_swwa.o \
 
-ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-ifneq ($(wildcard $(src)/ghpm_mt6991.c),)
-obj-$(CONFIG_MTK_GHPM_MT6991_SUPPORT) += mtk_ghpm_mt6991.o
-endif
-endif
+# ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+# ifneq ($(wildcard $(src)/ghpm_mt6991.c),)
+# obj-$(CONFIG_MTK_GHPM_MT6991_SUPPORT) += mtk_ghpm_mt6991.o
+# endif
+# endif
 
-ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-ifneq ($(wildcard $(src)/ghpm_mt6993.c),)
-obj-$(CONFIG_MTK_GHPM_MT6993_SUPPORT) += mtk_ghpm_mt6993.o
-endif
-endif
+# ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+# ifneq ($(wildcard $(src)/ghpm_mt6993.c),)
+# obj-$(CONFIG_MTK_GHPM_MT6993_SUPPORT) += mtk_ghpm_mt6993.o
+# endif
+# endif
 
-ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-ifneq ($(wildcard $(src)/ghpm_swwa.c),)
-obj-$(CONFIG_MTK_GHPM_MT6991_SUPPORT) += mtk_ghpm_swwa.o
-endif
-endif
+# ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+# ifneq ($(wildcard $(src)/ghpm_swwa.c),)
+# obj-$(CONFIG_MTK_GHPM_MT6991_SUPPORT) += mtk_ghpm_swwa.o
+# endif
+# endif
