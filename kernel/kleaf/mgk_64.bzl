@@ -672,7 +672,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/extcon/extcon-mtk-usb.ko",
     "drivers/misc/mediatek/flashlight/flashlight.ko",
     "drivers/misc/mediatek/flashlight/mtk-composite.ko",
-    "drivers/misc/mediatek/flashlight/v4l2/k6983v1_64_alpha/sy7806.ko",
     "drivers/misc/mediatek/flashlight/v4l2/lm3643.ko",
     "drivers/misc/mediatek/flashlight/v4l2/lm3644.ko",
     "drivers/misc/mediatek/gate_ic/rt4831a_drv.ko",
