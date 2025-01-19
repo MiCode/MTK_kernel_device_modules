@@ -74,6 +74,7 @@ static int sbe_rescue_enable;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
 static int sbe_dy_max_enhance;
+static int sbe_dy_enhance_margin;
 static int sbe_dy_rescue_enable;
 static int sbe_dy_frame_threshold;
 static int scroll_cnt;
@@ -110,6 +111,7 @@ module_param(sbe_enhance_f, int, 0644);
 module_param(sbe_dy_frame_threshold, int, 0644);
 module_param(sbe_dy_rescue_enable, int, 0644);
 module_param(sbe_dy_max_enhance, int, 0644);
+module_param(sbe_dy_enhance_margin, int, 0644);
 module_param(scroll_cnt, int, 0644);
 module_param(set_deplist_vip, int, 0644);
 module_param(ux_general_policy, int, 0644);
@@ -1004,8 +1006,16 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 
 void fpsgo_ux_scrolling_end(struct render_info *thr)
 {
+	struct ux_scroll_info *scroll_info;
 	if (!thr || !sbe_dy_rescue_enable)
 		return;
+
+	//reset rescue affnity if needed
+	scroll_info = get_latest_ux_scroll_info(thr);
+	if (scroll_info && scroll_info->rescue_with_perf_mode > 0) {
+		fpsgo_set_affnity_on_rescue(thr->tgid, FPSGO_PREFER_NONE);
+		fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_NONE);
+	}
 
 	thr->sbe_dy_enhance_f = fpsgo_sbe_dy_enhance(thr);
 	if (thr->sbe_dy_enhance_f > 0
@@ -1103,8 +1113,8 @@ static void fpsgo_update_sbe_dy_rescue(struct render_info *thr, int sbe_dy_enhan
 
 		thr->rescue_start_time = ts;
 
-		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
 	}
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, rescue_type, "[ux]rescue_type");
 }
 
 static struct ux_scroll_info *get_latest_ux_scroll_info(struct render_info *thr)
@@ -1166,11 +1176,20 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			sbe_dy_enhance = sbe_dy_max_enhance;
 		else if (!sbe_dy_rescue_enable)
 			sbe_dy_enhance = sbe_enhance_f;
-		else if (thr->sbe_dy_enhance_f <= 0)
+		else if (thr->sbe_dy_enhance_f <= 0) {
 			//dy_rescue is enable, try use global_sbe_dy_enhance
-			sbe_dy_enhance = global_sbe_dy_enhance > 0 ? global_sbe_dy_enhance : sbe_enhance_f;
-		else
+			if (global_sbe_dy_enhance > 0)
+				sbe_dy_enhance = thr->sbe_dy_enhance_f = global_sbe_dy_enhance;
+			else
+				sbe_dy_enhance = sbe_enhance_f;
+		} else
 			sbe_dy_enhance = thr->sbe_dy_enhance_f;
+
+		if (sbe_dy_rescue_enable && sbe_dy_max_enhance > 0
+				&& (rescue_type & RESCUE_TYPE_ENABLE_MARGIN) != 0) {
+			sbe_dy_enhance += sbe_dy_enhance_margin;
+			sbe_dy_enhance = clamp(sbe_dy_enhance, 0, sbe_dy_max_enhance);
+		}
 
 		thr->sbe_enhance = enhance < 0 ?  sbe_dy_enhance : (enhance + sbe_dy_enhance);
 		thr->sbe_enhance = clamp(thr->sbe_enhance, 0, 100);
@@ -1185,10 +1204,23 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			goto leave;
 		thr->boost_info.sbe_rescue = 1;
 
-#if SBE_AFFNITY_TASK
-		fpsgo_set_affnity_on_rescue(thr->tgid, FPSGO_PREFER_M);
-		fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_M);
-#endif
+		if (sbe_dy_rescue_enable) {
+			struct ux_scroll_info *last_scroll = get_latest_ux_scroll_info(thr);
+
+			if (last_scroll && !last_scroll->rescue_with_perf_mode)
+				last_scroll->rescue_with_perf_mode = (rescue_type & RESCUE_TYPE_ENABLE_MARGIN);
+
+			if (last_scroll && last_scroll->rescue_with_perf_mode > 0) {
+				fpsgo_set_affnity_on_rescue(thr->tgid, FPSGO_PREFER_M);
+				fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_M);
+			}
+		} else {
+			#if SBE_AFFNITY_TASK
+			fpsgo_set_affnity_on_rescue(thr->tgid, FPSGO_PREFER_M);
+			fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_M);
+			#endif
+		}
+
 		fbt_ux_set_cap_with_sbe(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
 	} else {
@@ -1200,16 +1232,23 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 		thr->boost_info.sbe_rescue = 0;
 		thr->sbe_enhance = 0;
 
-#if SBE_AFFNITY_TASK
-		fpsgo_set_affnity_on_rescue(thr->tgid,FPSGO_PREFER_NONE);
-		fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_NONE);
-#endif
 		if (sbe_dy_rescue_enable ) {
 			struct hwui_frame_info *frame = get_hwui_frame_info_by_frameid(thr, frame_id);
+			struct ux_scroll_info *last_scroll = get_latest_ux_scroll_info(thr);
 			//update rescue end time
 			ts = fpsgo_get_time();
 			update_hwui_frame_info(thr, frame, frame_id, 0, 0, 0, ts, 0);
 			thr->rescue_start_time = 0;
+			//frame->rescue_reason is update in doframe end
+			if (last_scroll && last_scroll->rescue_with_perf_mode > 0) {
+				fpsgo_set_affnity_on_rescue(thr->tgid, FPSGO_PREFER_NONE);
+				fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_NONE);
+			}
+		} else {
+			#if SBE_AFFNITY_TASK
+			fpsgo_set_affnity_on_rescue(thr->tgid,FPSGO_PREFER_NONE);
+			fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_NONE);
+			#endif
 		}
 
 		fbt_ux_set_cap_with_sbe(thr);
@@ -1837,8 +1876,9 @@ int __init fbt_cpu_ux_init(void)
 	ux_general_policy_dpt_setwl = 0;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
-	sbe_dy_max_enhance = 80;
-	sbe_dy_frame_threshold = 2;
+	sbe_dy_max_enhance = 70;
+	sbe_dy_enhance_margin = 15;
+	sbe_dy_frame_threshold = 3;
 	sbe_dy_rescue_enable = 1;
 	scroll_cnt = 6;
 	set_deplist_vip = 1;
