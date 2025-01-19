@@ -2998,8 +2998,11 @@ out:
 static int ufs_mtk_clk_scale_notify(struct ufs_hba *hba, bool scale_up,
 				    enum ufs_notify_change_status status)
 {
-	if (!ufshcd_is_clkscaling_supported(hba) || !hba->clk_scaling.is_enabled)
+	if (!ufshcd_is_clkscaling_supported(hba)) {
+		if (status == PRE_CHANGE)
+			_ufs_mtk_clk_scale(hba, scale_up);
 		return 0;
+	}
 
 	if (status == PRE_CHANGE) {
 		ufs_mtk_pm_qos(hba, scale_up);
