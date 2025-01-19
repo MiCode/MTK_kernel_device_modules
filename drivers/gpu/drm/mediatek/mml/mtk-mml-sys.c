@@ -2694,12 +2694,13 @@ static const struct mml_data mt6899_mmlt_data = {
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
 	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.px_per_tick = 2,
 	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
 	.sysid = mml_sys_tile,
 	.pw_mminfra = true,
-	.ddren = 0x42,
+	.ddren = 0x22,
 };
 
 static const struct mml_data mt6989_mml_data = {
