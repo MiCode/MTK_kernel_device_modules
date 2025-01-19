@@ -44,11 +44,11 @@
 /* #define APU_IPI_USE_PROCFS */
 
 #define APUSYS_RV_IPI_HANDLE_PRINT \
-	"%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
+	"%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%llx, " \
 	"usg_cnt = %d, latency=%lld, elapse=%lld, t_hndlr=%llu," \
 	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 #define APUSYS_RV_IPI_HANDLE_PRINT_HANDLER_EXEC_LONG \
-	"%s long: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%x, " \
+	"%s long: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d, user_id=0x%llx, " \
 	"usg_cnt = %d, latency=%lld, elapse=%lld, t_hndlr=%llu," \
 	"t_mtx_lock=%llu, t_usage_cnt_update=%lld, t_wakup=%lld\n"
 
@@ -227,7 +227,7 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	struct apu_mbox_hdr hdr;
 	unsigned long timeout;
 	int ret = 0;
-	uint32_t user_id = 0;
+	uint64_t user_id = 0;
 
 	ktime_get_ts64(&ts);
 
@@ -369,8 +369,9 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 
 	if (curr_vm_id > 0)
 		user_id = 0;
-	else if (len >= 4)
-		user_id = ((uint32_t *) data)[len/4 - 1];
+	else if (len >= sizeof(uint64_t))
+		user_id = (((uint64_t)(((uint32_t *) (data))[len/sizeof(uint32_t) - 1])) << 32) +
+			(((uint32_t *) (data))[len/sizeof(uint32_t) - 2]);
 
 	/* only vm 0 need to do ipi_send_pre */
 	if ((hw_ops->ipi_send_pre) && (!hdr.vm_id)) {
@@ -381,8 +382,9 @@ int apu_ipi_send(struct mtk_apu *apu, u32 id, void *data, u32 len,
 	hdr.csum = calculate_csum(data, len);
 	hdr.serial_no = tx_serial_no++;
 
-	if (len >= 4)
-		user_id = ((uint32_t *) data)[len/4 - 1];
+	if (len >= sizeof(uint64_t))
+		user_id = (((uint64_t)(((uint32_t *) (data))[len/sizeof(uint32_t) - 1])) << 32) +
+			(((uint32_t *) (data))[len/sizeof(uint32_t) - 2]);
 
 	if (hw_ops->ipi_send_pre)
 		hw_ops->ipi_send_pre(apu, id,
@@ -431,7 +433,7 @@ unlock_mutex:
 			ipi->usage_cnt, timespec64_to_ns(&ts));
 
 	apu_info_ratelimited(dev,
-		"%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, user_id=0x%x, usg_cnt = %d, elapse=%lld\n",
+		"%s: ipi_id=%d, len=%d, csum=%x, serial_no=%d, user_id=0x%llx, usg_cnt = %d, elapse=%lld\n",
 		__func__, id, len, hdr.csum, hdr.serial_no, user_id, ipi->usage_cnt,
 		timespec64_to_ns(&ts));
 #if IS_ENABLED(CONFIG_VHOST_APU)
@@ -583,7 +585,7 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	u32 id, len;
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	struct apu_ipi_desc *ipi;
-	uint32_t user_id = 0;
+	uint64_t user_id = 0;
 #if IS_ENABLED(CONFIG_VHOST_APU)
 	uint32_t vm_id = 0;
 #endif
@@ -595,8 +597,9 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	len = apu->hdr.len;
 	ipi = &apu->ipi_desc[id];
 
-	if (len >= 4)
-		user_id = ((uint32_t *) temp_buf)[len/4 - 1];
+	if (len >= sizeof(uint64_t))
+		user_id = (((uint64_t)(((uint32_t *) (temp_buf))[len/sizeof(uint32_t) - 1])) << 32) +
+			(((uint32_t *) (temp_buf))[len/sizeof(uint32_t) - 2]);
 
 	/* get the latency of threaded irq */
 	ktime_get_ts64(&apu->ipi_bottom_ts_begin);

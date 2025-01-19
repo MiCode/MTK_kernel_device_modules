@@ -10,9 +10,9 @@
 #include <linux/tracepoint.h>
 
 #define APUSYS_RV_TAG_IPI_SEND_PRINT \
-	"ipi_send:id=%d,len=%d,serial_no=%d,csum=0x%x,user_id=0x%x,usage_cnt=%d,elapse=%llu"
+	"ipi_send:id=%d,len=%d,serial_no=%d,csum=0x%x,user_id=0x%llx,usage_cnt=%d,elapse=%llu"
 #define APUSYS_RV_TAG_IPI_HANDLE_PRINT \
-	"ipi_handle:id=%d,len=%d,serial_no=%d,csum=0x%x,user_id=0x%x,usage_cnt=%d," \
+	"ipi_handle:id=%d,len=%d,serial_no=%d,csum=0x%x,user_id=0x%llx,usage_cnt=%d," \
 	"top_start_time=%llu,bottom_start_time=%llu,latency=%llu,elapse=%llu,t_handler=%llu"
 #define APUSYS_RV_TAG_PWR_CTRL_PRINT \
 	"pwr_ctrl:id=%d,on=%d,off=%d,latency=%llu," \
@@ -25,7 +25,7 @@ TRACE_EVENT(apusys_rv_ipi_send,
 			unsigned int len,
 			unsigned int serial_no,
 			unsigned int csum,
-			unsigned int user_id,
+			uint64_t user_id,
 			int usage_cnt,
 			uint64_t elapse
 		),
@@ -36,7 +36,7 @@ TRACE_EVENT(apusys_rv_ipi_send,
 		__field(unsigned int, len)
 		__field(unsigned int, serial_no)
 		__field(unsigned int, csum)
-		__field(unsigned int, user_id)
+		__field(uint64_t, user_id)
 		__field(int, usage_cnt)
 		__field(uint64_t, elapse)
 	),
@@ -66,7 +66,7 @@ TRACE_EVENT(apusys_rv_ipi_handle,
 			unsigned int len,
 			unsigned int serial_no,
 			unsigned int csum,
-			unsigned int user_id,
+			uint64_t user_id,
 			int usage_cnt,
 			uint64_t top_start_time,
 			uint64_t bottom_start_time,
@@ -82,7 +82,7 @@ TRACE_EVENT(apusys_rv_ipi_handle,
 		__field(unsigned int, len)
 		__field(unsigned int, serial_no)
 		__field(unsigned int, csum)
-		__field(unsigned int, user_id)
+		__field(uint64_t, user_id)
 		__field(int, usage_cnt)
 		__field(uint64_t, top_start_time)
 		__field(uint64_t, bottom_start_time)

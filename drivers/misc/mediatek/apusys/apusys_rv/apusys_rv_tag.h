@@ -21,7 +21,7 @@ struct apusys_rv_tag {
 			unsigned int len;
 			unsigned int serial_no;
 			unsigned int csum;
-			unsigned int user_id;
+			uint64_t user_id;
 			int usage_cnt;
 			uint64_t elapse;
 		} ipi_send;
@@ -30,7 +30,7 @@ struct apusys_rv_tag {
 			unsigned int len;
 			unsigned int serial_no;
 			unsigned int csum;
-			unsigned int user_id;
+			uint64_t user_id;
 			int usage_cnt;
 			uint64_t top_start_time;
 			uint64_t bottom_start_time;
