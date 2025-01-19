@@ -1468,7 +1468,8 @@ void __gpufreq_set_timestamp(void)
 void __gpufreq_check_bus_idle(void)
 {
 	u32 val;
-
+	int i = 0;
+	int timeout = 200;
 	/* MFG_QCHANNEL_CON (0x130000b4) bit [1:0] = 0x1 */
 	writel(0x00000001, g_MFG_base + 0xb4);
 	GPUFREQ_LOGD("0x130000b4 val = 0x%x\n", readl(g_MFG_base + 0xb4));
@@ -1483,7 +1484,13 @@ void __gpufreq_check_bus_idle(void)
 	do {
 		val = readl(g_MFG_base + 0x178);
 		GPUFREQ_LOGD("0x13000178 val = 0x%x\n", val);
-	} while ((val & 0x4) != 0x4);
+		// wait for about 200ms then timeout, GPU can power off directly
+		if(i > 100)
+			udelay(1000); //1ms
+		if(i == timeout)
+			GPUFREQ_LOGE("timeout waiting for 0x13000178 val = 0x%x\n", val);
+		i++;
+	} while ((val & 0x4) != 0x4 && (i <= timeout));
 }
 
 void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
