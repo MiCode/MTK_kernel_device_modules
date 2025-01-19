@@ -1595,6 +1595,7 @@ static int __gpufreq_volt_scale_gpu(
 	unsigned int t_settle = 0;
 	int ret = GPUFREQ_SUCCESS;
 	vgpu_new = g_gpu.working_table[0].volt; //TODO: Need to remove this hardcoded maxvolt
+	vsram_new = g_gpu.working_table[0].vsram;
 
 	GPUFREQ_TRACE_START("vgpu_old=%d, vgpu_new=%d, vsram_old=%d, vsram_new=%d",
 		vgpu_old, vgpu_new, vsram_old, vsram_new);
