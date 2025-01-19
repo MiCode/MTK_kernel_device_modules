@@ -822,7 +822,7 @@ unsigned int is_vcp_suspending(void)
 
 unsigned int is_vcp_ao(void)
 {
-	return 1;
+	return vcp_ao;
 }
 
 /*

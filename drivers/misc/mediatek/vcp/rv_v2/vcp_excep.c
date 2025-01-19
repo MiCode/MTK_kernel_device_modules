@@ -86,7 +86,7 @@ void vcp_dump_last_regs(int mmup_enable)
 		return;
 	}
 
-	if (!IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
+	if (!is_vcp_ao() && !IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
 		pr_notice("[VCP] ready bit = %08x\n", readl(VLP_AO_RSVD7));
 	if (!IS_ERR((void const *) vcpreg.vcp_pwr_ack))
 		pr_notice("[VCP] pwr ack = %08x\n", readl(VCP_PWR_ACK));
