@@ -9373,7 +9373,7 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	disp_dbg_init(drm);
 	PanelMaster_Init(drm);
 
-	if (private->dpc_dev)
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_VIDLE_TOP_EN))
 		mtk_vidle_wait_init();
 
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_MMDVFS_SUPPORT))

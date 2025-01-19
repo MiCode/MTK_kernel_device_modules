@@ -32,7 +32,7 @@ struct mtk_disp_vidle_para {
 #define VIDLE_STOP_LCM_DISCONNECT   BIT(2)
 #define VIDLE_STOP_VDO_HIGH_FPS     BIT(3)
 
-#define VIDLE_MTCMOS_DEBOUNCE 3
+#define VIDLE_MTCMOS_DEBOUNCE 6	/* 6 for resync */
 #define VIDLE_MODE_SWITCH_DEBOUNCE 3
 #define VIDLE_DOZE_DEBOUNCE 3
 
