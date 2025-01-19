@@ -8,6 +8,7 @@
 
 #include <linux/types.h>
 #include <linux/fuse.h>
+#include <linux/sched/clock.h>
 #include "blocktag-internal.h"
 
 #define MAX_FUSE_REQ_HIST_CNT (512)
