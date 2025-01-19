@@ -3029,7 +3029,7 @@ static int vidioc_vdec_subscribe_evt(struct v4l2_fh *fh,
 	}
 }
 
-static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt)
+static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt, struct mtk_vcodec_ctx *ctx)
 {
 	struct v4l2_pix_format_mplane *pix_fmt_mp = NULL;
 	unsigned int i;
@@ -3088,20 +3088,25 @@ static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt)
 		else
 			pix_fmt_mp->num_planes = fmt->num_planes;
 
-		pix_fmt_mp->plane_fmt[0].sizeimage =
-				pix_fmt_mp->width * pix_fmt_mp->height;
 		pix_fmt_mp->plane_fmt[0].bytesperline = pix_fmt_mp->width;
+		if (pix_fmt_mp->num_planes == 2)
+			pix_fmt_mp->plane_fmt[1].bytesperline = pix_fmt_mp->width;
 
-		if (pix_fmt_mp->num_planes == 2) {
-			pix_fmt_mp->plane_fmt[1].sizeimage =
-				(pix_fmt_mp->width * pix_fmt_mp->height) / 2;
-			pix_fmt_mp->plane_fmt[1].bytesperline =
-				pix_fmt_mp->width;
-		} else if (pix_fmt_mp->num_planes == 1) {
-			pix_fmt_mp->plane_fmt[0].sizeimage +=
-				(pix_fmt_mp->width * pix_fmt_mp->height) / 2;
+		if (pix_fmt_mp->plane_fmt[0].sizeimage == 0 &&
+			mtk_vcodec_state_in_range(ctx, MTK_STATE_HEADER, MTK_STATE_NULL)) {
+			for (i = 0; i < pix_fmt_mp->num_planes; i++) {
+				pix_fmt_mp->plane_fmt[i].sizeimage = ctx->picinfo.fb_sz[i];
+				mtk_v4l2_debug(4, "plane %u sizeimage %u\n", i, ctx->picinfo.fb_sz[i]);
+			}
+		} else {
+			pix_fmt_mp->plane_fmt[0].sizeimage = pix_fmt_mp->width * pix_fmt_mp->height;
+			if (pix_fmt_mp->num_planes == 2)
+				pix_fmt_mp->plane_fmt[1].sizeimage =
+					(pix_fmt_mp->width * pix_fmt_mp->height) / 2;
+			else if (pix_fmt_mp->num_planes == 1)
+				pix_fmt_mp->plane_fmt[0].sizeimage +=
+					(pix_fmt_mp->width * pix_fmt_mp->height) / 2;
 		}
-
 	}
 
 	for (i = 0; i < pix_fmt_mp->num_planes; i++)
@@ -3133,7 +3138,7 @@ static int vidioc_try_fmt_vid_cap_mplane(struct file *file, void *priv,
 	if (!fmt)
 		return -EINVAL;
 
-	return vidioc_try_fmt(f, fmt);
+	return vidioc_try_fmt(f, fmt, ctx);
 }
 
 static int vidioc_try_fmt_vid_out_mplane(struct file *file, void *priv,
@@ -3162,7 +3167,7 @@ static int vidioc_try_fmt_vid_out_mplane(struct file *file, void *priv,
 	if (!fmt)
 		return -EINVAL;
 
-	return vidioc_try_fmt(f, fmt);
+	return vidioc_try_fmt(f, fmt, ctx);
 }
 
 static int vidioc_vdec_g_selection(struct file *file, void *priv,
@@ -3317,7 +3322,7 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 		return -EINVAL;
 
 	q_data->fmt = fmt;
-	vidioc_try_fmt(f, q_data->fmt);
+	vidioc_try_fmt(f, q_data->fmt, ctx);
 
 	if (f->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		q_data->sizeimage[0] = pix_mp->plane_fmt[0].sizeimage;
