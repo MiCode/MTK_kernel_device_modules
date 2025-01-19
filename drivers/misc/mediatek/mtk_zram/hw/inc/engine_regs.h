@@ -204,26 +204,39 @@ static inline bool engine_irq_off(struct engine_control_t *ctrl)
 	return (atomic_read(&ctrl->irq_status) == ENGINE_IRQ_OFF);
 }
 
-static inline void engine_set_irq_on(struct engine_control_t *ctrl)
+static inline void engine_set_irq_on(struct engine_control_t *ctrl, bool enc_on, bool dec_on)
 {
-	atomic_set(&ctrl->irq_status, ENGINE_IRQ_ON);
+	/* ISR is allowed to work */
+	if (enc_on || dec_on)
+		atomic_set(&ctrl->irq_status, ENGINE_IRQ_ON);
 
-	/* Enable engine interrupt */
-	writel(ctrl->enc_irq_setting, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
-	writel(ctrl->dec_irq_setting, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
+	/* Enable engine ENC interrupt */
+	if (enc_on)
+		writel(ctrl->enc_irq_setting, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
+
+	/* Enable engine DEC interrupt */
+	if (dec_on)
+		writel(ctrl->dec_irq_setting, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
 }
 
-static inline void engine_set_irq_off(struct engine_control_t *ctrl)
+static inline void engine_set_irq_off(struct engine_control_t *ctrl, bool enc_off, bool dec_off)
 {
-	/* disable engine interrupt */
-	writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
-	writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
+	/* Disable engine ENC interrupt */
+	if (enc_off)
+		writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
 
-	atomic_set(&ctrl->irq_status, ENGINE_IRQ_OFF);
+	/* Disable engine DEC interrupt */
+	if (dec_off)
+		writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
 
-	/* Clear avoid pending IRQs */
-	writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_STATUS);
-	writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_STATUS);
+	/* ISR is not allowed to work */
+	if (enc_off && dec_off) {
+		atomic_set(&ctrl->irq_status, ENGINE_IRQ_OFF);
+
+		/* Clear avoid pending IRQs */
+		writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_STATUS);
+		writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_STATUS);
+	}
 }
 
 /* ENC Interrupt Type */

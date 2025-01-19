@@ -135,7 +135,7 @@ int engine_control_init(struct platform_device *pdev, struct engine_control_t *c
 #endif
 
 	/* Set default IRQ as off */
-	engine_set_irq_off(ctrl);
+	engine_set_irq_off(ctrl, true, true);
 
 	dev_info(dev, "%s done\n", __func__);
 

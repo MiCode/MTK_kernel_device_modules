@@ -50,6 +50,9 @@ struct zram_engine_t {
 	struct hwfifo fifo_2;
 	spinlock_t fifo_2_lock;
 
+	/* The number of decompression requests */
+	atomic_t comp_cnt;
+
 	CACHELINE_PADDING(__pad__0);
 
 	/* Decompression per-cpu fifos */
@@ -71,7 +74,7 @@ struct zram_engine_t {
 
 	/* Compression post processing relatives */
 	wait_queue_head_t comp_wait;
-	struct task_struct *comp_pp_work, *comp_second_pp_work;
+	struct task_struct *comp_pp_work;
 
 	CACHELINE_PADDING(__pad__2);
 
@@ -162,13 +165,6 @@ DEFINE_STATIC_KEY_TRUE(engine_power_efficiency);
 
 /**************************************************/
 
-#define PENDING_REQ		(-1)
-#define PENDING_REQ_NOTIFIED	(0)
-
-static atomic_t comp_main_status = ATOMIC_INIT(0);
-static atomic_t comp_second_status = ATOMIC_INIT(0);
-static atomic_t dcomp_status = ATOMIC_INIT(0);
-
 static irqreturn_t comp_irq_handler(int irq, void *data)
 {
 	struct zram_engine_t *hwz = data;
@@ -191,11 +187,8 @@ static irqreturn_t comp_irq_handler(int irq, void *data)
 
 	status = engine_get_enc_irq_status(&hwz->ctrl);
 
-	if (status & (ZRAM_ENC_BATCH_INTR_MASK | ZRAM_ENC_IDLE_INTR_MASK)) {
-		atomic_set(&comp_main_status, PENDING_REQ);
-		atomic_set(&comp_second_status, PENDING_REQ);
+	if (status & (ZRAM_ENC_BATCH_INTR_MASK | ZRAM_ENC_IDLE_INTR_MASK))
 		wake_up(&hwz->comp_wait);
-	}
 
 	if (status & ZRAM_ENC_ERROR_INTR_MASK) {
 		err_status = engine_get_enc_error_status(&hwz->ctrl);
@@ -229,10 +222,8 @@ static irqreturn_t dcomp_irq_handler(int irq, void *data)
 
 	status = engine_get_dec_irq_status(&hwz->ctrl);
 
-	if (status & (ZRAM_DEC_BATCH_INTR_MASK | ZRAM_DEC_IDLE_INTR_MASK)) {
-		atomic_set(&dcomp_status, PENDING_REQ);
+	if (status & (ZRAM_DEC_BATCH_INTR_MASK | ZRAM_DEC_IDLE_INTR_MASK))
 		wake_up(&hwz->dcomp_wait);
-	}
 
 	if (status & ZRAM_DEC_ERROR_MASKS) {
 		err_status = engine_get_dec_error_status(&hwz->ctrl);
@@ -305,18 +296,11 @@ static int fake_isr_func(void *data)
 		if (engine_async_mode_disabled())
 			continue;
 
-		/* Pending requests waiting for processing */
-		atomic_set(&comp_main_status, PENDING_REQ);
-		atomic_set(&comp_second_status, PENDING_REQ);
-
 		/* Wake up pp work */
 		wake_up(&hwz->comp_wait);
 
 		if (engine_coherence_disabled())
 			continue;
-
-		/* Pending requests waiting for processing */
-		atomic_set(&dcomp_status, PENDING_REQ);
 
 		/* Wake up pp work */
 		wake_up(&hwz->dcomp_wait);
@@ -624,19 +608,39 @@ static void dcomp_process_completed_cmd(struct zram_engine_t *hwz,
 	}
 
 	hwz->ops->dcomp_process_completed_cmd(fifo, entry, true);
+}
 
-	/* Decrement the number of decompression request */
-	atomic_dec(&hwz->dcomp_cnt);
+/* Return the number of processed dcomp cmds */
+static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
+{
+	struct hwfifo *fifo;
+	int cpu;
+	uint32_t start, end, index, entry;
+	uint32_t processed = 0;
 
-	/*
-	 * Decrement the usage count and disable the gear clock
-	 * if possible after finishing the request.
-	 * It's safe trying to disable clock here because no more
-	 * HW register access per request now.
-	 */
-#ifndef FPGA_EMULATION
-	engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
-#endif
+	/* Post-processing cmds */
+	for (cpu = MAX_DCOMP_NR - 1; cpu >= 0; cpu--) {
+		fifo = &hwz->dcomp_fifo[cpu];
+
+		start = fifo->complete_idx;
+		end = dcomp_fifo_HtS_complete_index(fifo);
+
+		smp_rmb();
+
+		if (start != fifo->pp_prev_end)
+			pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
+
+		for (index = start; index != end; index = (index + 1) & ENGINE_DCOMP_FIFO_ENTRY_CARRY_MASK) {
+			entry = index & ENGINE_DCOMP_FIFO_ENTRY_MASK;
+			dcomp_process_completed_cmd(hwz, fifo, entry);
+			update_dcomp_fifo_complete_index(fifo);
+			processed++;
+		}
+
+		fifo->pp_prev_end = end;
+	}
+
+	return processed;
 }
 
 /*
@@ -645,297 +649,198 @@ static void dcomp_process_completed_cmd(struct zram_engine_t *hwz,
 static int dcomp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
-	struct hwfifo *fifo;
-	int cpu;
+	uint32_t processed;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
 
 	while (!kthread_should_stop()) {
 
-		uint32_t start;
-		uint32_t end;
-		uint32_t index, entry;
-
 		/* No pending cmds */
-		if (atomic_read(&hwz->dcomp_cnt) == 0) {
+		while (atomic_read(&hwz->dcomp_cnt) == 0) {
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info("%s: decompress fifos are empty.\n", __func__);
 #endif
 
+			/* Sleep for a while */
+			usleep_idle_range(5, 15);
+
 #ifndef FPGA_EMULATION
 			/* Demote frequency (may sleep) */
-			engine_try_to_gear_down(&hwz->gear_ctrl, false);
+			if (atomic_read(&hwz->dcomp_cnt) == 0)
+				engine_try_to_gear_down(&hwz->gear_ctrl, false);
 #endif
 
 			prepare_to_wait(&hwz->dcomp_wait, &wait, TASK_IDLE);
-			if ((atomic_add_return(1, &dcomp_status) != PENDING_REQ_NOTIFIED)
-				&& !kthread_should_stop()) {
+			if (atomic_read(&hwz->dcomp_cnt) == 0 && !kthread_should_stop()) {
 #ifdef ZRAM_ENGINE_DEBUG
 				pr_info("%s: No newly finished request.\n", __func__);
 #endif
 				schedule();
 			}
 			finish_wait(&hwz->dcomp_wait, &wait);
+
+			/* Should stop, just return. */
+			if (kthread_should_stop())
+				return 0;
 		}
 
 #ifndef FPGA_EMULATION
-		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, false) != 0);
 #endif
 
 		/* Processing cmds */
-		for (cpu = MAX_DCOMP_NR - 1; cpu >= 0; cpu--) {
-			fifo = &hwz->dcomp_fifo[cpu];
+		processed = dcomp_post_processing_cmds(hwz);
 
-			/* Post-processing cmds */
-			start = fifo->complete_idx;
-			end = dcomp_fifo_HtS_complete_index(fifo);
-
-			smp_rmb();
-
-			if (start != fifo->pp_prev_end)
-				pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
-
-			for (index = start; index != end; index = (index + 1) & ENGINE_DCOMP_FIFO_ENTRY_CARRY_MASK) {
-				entry = index & ENGINE_DCOMP_FIFO_ENTRY_MASK;
-				dcomp_process_completed_cmd(hwz, fifo, entry);
-				update_dcomp_fifo_complete_index(fifo);
-			}
-
-			fifo->pp_prev_end = end;
-		}
+		/* "processed" cmds are processed */
+		WARN_ON(atomic_sub_return(processed, &hwz->dcomp_cnt) < 0);
 
 #ifndef FPGA_EMULATION
 		/*
 		 * Disable clock for zram engine -
-		 * Paired with the one in dcomp_post_process.
+		 * Paired with the one in dcomp_post_process. (decrease the ref count by "processed + 1")
 		 */
-		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, processed + 1);
 #endif
+
+		/* HW is slow, just sleep for a while */
+		if (processed == 0)
+			usleep_idle_range(5, 10);
 	}
 
 	return 0;
 }
 
-/*
- * Compression post-process for the second fifo
- */
-static int comp_second_post_process(void *data)
+/* Return the number of processed comp second cmds */
+static inline uint32_t comp_second_post_processing_cmds(struct zram_engine_t *hwz, struct hwfifo *fifo)
 {
-	struct zram_engine_t *hwz = data;
-	struct hwfifo *fifo = &hwz->fifo_2;
-	DEFINE_WAIT(wait);
+	uint32_t start, end, index, entry;
+	uint32_t processed = 0;
 
-	current->flags |= PF_MEMALLOC;
+	/* Acquire the range for post-processing */
+	start = fifo->complete_idx;
+	end = comp_fifo_2_HtS_complete_index(fifo);
 
-	while (!kthread_should_stop()) {
+	smp_rmb();
 
-		uint32_t start;
-		uint32_t end;
-		uint32_t index, entry;
+	/* The wake up is premature */
+	if (start == end)
+		return 0;
 
-		/*
-		 * write_idx may be updated somewhere concurrently during post-process.
-		 * Call smp_rmb() to make sure we can perceive the update here.
-		 */
-		smp_rmb();
+	/* Start post-processing cmds */
+	if (start != fifo->pp_prev_end)
+		pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
 
-		if (comp_fifo_2_empty(fifo)) {
-#ifdef ZRAM_ENGINE_DEBUG
-			pr_info("%s: fifo is empty!!!!!\n", __func__);
-#endif
-
-#ifndef FPGA_EMULATION
-			/* Demote frequency (may sleep) */
-			engine_try_to_gear_down(&hwz->gear_ctrl, true);
-#endif
-
-			prepare_to_wait(&hwz->comp_wait, &wait, TASK_IDLE);
-			if (comp_fifo_2_empty(fifo) && !kthread_should_stop())
-				schedule();
-			finish_wait(&hwz->comp_wait, &wait);
-		}
-
-#ifndef FPGA_EMULATION
-		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
-#endif
-
-		/* Acquire the range for post-processing */
-		start = fifo->complete_idx;
-		end = comp_fifo_2_HtS_complete_index(fifo);
-
-		smp_rmb();
-
-		/* The wake up is premature */
-		if (start == end) {
-
-#ifndef FPGA_EMULATION
-			/*
-			 * Disable clock for zram engine -
-			 * Paired with the one in comp_second_post_process.
-			 */
-			engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
-#endif
-
-			prepare_to_wait(&hwz->comp_wait, &wait, TASK_IDLE);
-
-			if ((atomic_add_return(1, &comp_second_status) != PENDING_REQ_NOTIFIED)
-				&& !kthread_should_stop()) {
-#ifdef ZRAM_ENGINE_DEBUG
-				pr_info("%s: No newly finished request.\n", __func__);
-#endif
-				schedule();
-			}
-
-			finish_wait(&hwz->comp_wait, &wait);
-
-#ifndef FPGA_EMULATION
-			WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
-#endif
-
-			/* Update end for newly finished request. */
-			end = comp_fifo_2_HtS_complete_index(fifo);
-		}
-
-		/* Start post-processing cmds */
-		if (start != fifo->pp_prev_end)
-			pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
-
-		for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
-			entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
-			hwz->ops->comp_process_completed_cmd(fifo, entry);
-
-			/*
-			 * Decrement the usage count and disable the gear clock
-			 * if possible after finishing the request.
-			 * It's safe trying to disable clock here because no more
-			 * HW register access per request now.
-			 */
-#ifndef FPGA_EMULATION
-			engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
-#endif
-
-			update_comp_fifo_2_complete_index(fifo);
-		}
-
-		fifo->pp_prev_end = end;
-
-#ifndef FPGA_EMULATION
-		/*
-		 * Disable clock for zram engine -
-		 * Paired with the one in comp_second_post_process.
-		 */
-		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
-#endif
+	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
+		hwz->ops->comp_process_completed_cmd(fifo, entry);
+		update_comp_fifo_2_complete_index(fifo);
+		processed++;
 	}
 
-	return 0;
+	fifo->pp_prev_end = end;
+
+	return processed;
+}
+
+/* Return the number of processed comp main cmds */
+static inline uint32_t comp_main_post_processing_cmds(struct zram_engine_t *hwz, struct hwfifo *fifo)
+{
+	uint32_t start, end, index, entry;
+	uint32_t processed = 0;
+
+	/* Acquire the range for post-processing */
+	start = fifo->complete_idx;
+	end = comp_fifo_1_HtS_complete_index(fifo);
+
+	smp_rmb();
+
+	/* The wake up is premature */
+	if (start == end)
+		return 0;
+
+	/* Start post-processing cmds */
+	if (start != fifo->pp_prev_end)
+		pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
+
+	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
+		hwz->ops->comp_process_completed_cmd(fifo, entry);
+		update_comp_fifo_1_complete_index(fifo);
+		processed++;
+	}
+
+	fifo->pp_prev_end = end;
+
+	return processed;
 }
 
 /*
- * Compression post-process for the major fifo
+ * Compression post-process
  */
 static int comp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
-	struct hwfifo *fifo = &hwz->fifo_1;
+	uint32_t processed;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
 
 	while (!kthread_should_stop()) {
 
-		uint32_t start;
-		uint32_t end;
-		uint32_t index, entry;
-
-		prepare_to_wait(&hwz->comp_wait, &wait, TASK_IDLE);
-
-		/*
-		 * No need to add read memory barrier here because there is
-		 * an implicit barrier inside prepare_to_wait (set_current_state)
-		 */
-
-		if (comp_fifo_1_empty(fifo)) {
+		/* No pending cmds */
+		while (atomic_read(&hwz->comp_cnt) == 0) {
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info("%s: fifo is empty!!!!!\n", __func__);
 #endif
-			schedule();
-		}
 
-		finish_wait(&hwz->comp_wait, &wait);
-
-#ifndef FPGA_EMULATION
-		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
-#endif
-
-		/* Acquire the range for post-processing */
-		start = fifo->complete_idx;
-		end = comp_fifo_1_HtS_complete_index(fifo);
-
-		smp_rmb();
-
-		/* The wake up is premature */
-		if (start == end) {
+			/* Sleep for a while */
+			usleep_idle_range(5, 15);
 
 #ifndef FPGA_EMULATION
-			/*
-			 * Disable clock for zram engine -
-			 * Paired with the one in comp_post_process.
-			 */
-			engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+			/* Demote frequency (may sleep) */
+			if (atomic_read(&hwz->comp_cnt) == 0)
+				engine_try_to_gear_down(&hwz->gear_ctrl, true);
 #endif
 
 			prepare_to_wait(&hwz->comp_wait, &wait, TASK_IDLE);
-
-			if ((atomic_add_return(1, &comp_main_status) != PENDING_REQ_NOTIFIED)
-				&& !kthread_should_stop()) {
+			if (atomic_read(&hwz->comp_cnt) == 0 && !kthread_should_stop()) {
 #ifdef ZRAM_ENGINE_DEBUG
 				pr_info("%s: No newly finished request.\n", __func__);
 #endif
 				schedule();
 			}
-
 			finish_wait(&hwz->comp_wait, &wait);
 
-#ifndef FPGA_EMULATION
-			WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
-#endif
-
-			/* Update end for newly finished request. */
-			end = comp_fifo_1_HtS_complete_index(fifo);
+			/* Should stop, just return. */
+			if (kthread_should_stop())
+				return 0;
 		}
 
-		/* Start post-processing cmds */
-		if (start != fifo->pp_prev_end)
-			pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
-
-		for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
-			entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
-			hwz->ops->comp_process_completed_cmd(fifo, entry);
-
-			/*
-			 * Decrement the usage count and disable the gear clock
-			 * if possible after finishing the request.
-			 * It's safe trying to disable clock here because no more
-			 * HW register access per request now.
-			 */
 #ifndef FPGA_EMULATION
-			engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, true) != 0);
 #endif
 
-			update_comp_fifo_1_complete_index(fifo);
-		}
+		/* Processing main fifo cmds */
+		processed = comp_main_post_processing_cmds(hwz, &hwz->fifo_1);
 
-		fifo->pp_prev_end = end;
+		/* Processing second fifo cmds */
+		processed += comp_second_post_processing_cmds(hwz, &hwz->fifo_2);
+
+		/* "processed" cmds are processed */
+		WARN_ON(atomic_sub_return(processed, &hwz->comp_cnt) < 0);
 
 #ifndef FPGA_EMULATION
 		/*
 		 * Disable clock for zram engine -
-		 * Paired with the one in comp_second_post_process.
+		 * Paired with the one in comp_post_process. (decrease the ref count by "processed + 1")
 		 */
-		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, processed + 1);
 #endif
+
+		/* HW is slow, just sleep for a while */
+		if (processed == 0)
+			usleep_idle_range(5, 10);
 	}
 
 	return 0;
@@ -1032,25 +937,26 @@ next_dcmd:
 	/* Process the cmd after decompression */
 	hwz->ops->dcomp_process_completed_cmd(fifo, entry, from_async);
 
-	/* Decrement the number of decompression request */
-	atomic_dec(&hwz->dcomp_cnt);
-
-	/*
-	 * Decrement the usage count and disable the gear clock
-	 * if possible after finishing the request.
-	 * It's safe trying to disable clock here because no more
-	 * HW register access per request now.
-	 */
-#ifndef FPGA_EMULATION
-	engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
-#endif
-
 	/*
 	 * CMD finish or idle interrupts for decompression will be disabled when engine
 	 * is in this mode. So callers need to update complete index by themselves.
 	 */
-	if (engine_async_mode_disabled() || engine_coherence_disabled())
+	if (engine_async_mode_disabled() || engine_coherence_disabled()) {
 		update_dcomp_fifo_complete_index(fifo);
+
+		/* Decrement the number of decompression request */
+		atomic_dec(&hwz->dcomp_cnt);
+
+		/*
+		 * Decrement the usage count and disable the gear clock
+		 * if possible after finishing the request.
+		 * It's safe trying to disable clock here because no more
+		 * HW register access per request now.
+		 */
+#ifndef FPGA_EMULATION
+		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
+	}
 
 	put_cpu();
 	return 0;
@@ -1210,6 +1116,9 @@ next_cmd_fifo_1:
 		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
+		/* Increment the number of compression request */
+		atomic_inc(&hwz->comp_cnt);
+
 		update_comp_fifo_1_write_index(fifo);
 
 		/* Try next cmd if necessary */
@@ -1224,7 +1133,6 @@ next_cmd_fifo_1:
 		/* Using sync mode */
 		if (engine_async_mode_disabled()) {
 			hwcomp_poll_cmd_complete(fifo);
-			atomic_set(&comp_main_status, PENDING_REQ);
 			wake_up(&hwz->comp_wait);
 		}
 
@@ -1273,6 +1181,9 @@ next_cmd_fifo_2:
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
+	/* Increment the number of compression request */
+	atomic_inc(&hwz->comp_cnt);
+
 	update_comp_fifo_2_write_index(fifo);
 
 	/* Try next cmd if necessary */
@@ -1287,7 +1198,6 @@ next_cmd_fifo_2:
 	/* Using sync mode */
 	if (engine_async_mode_disabled()) {
 		hwcomp_poll_cmd_complete(fifo);
-		atomic_set(&comp_second_status, PENDING_REQ);
 		wake_up(&hwz->comp_wait);
 	}
 
@@ -1738,7 +1648,6 @@ static void zram_engine_sw_deinit(struct zram_engine_t *hwz)
 	kthread_stop(hwz->fake_hw);
 #endif
 	kthread_stop(hwz->dcomp_pp_work);
-	kthread_stop(hwz->comp_second_pp_work);
 	kthread_stop(hwz->comp_pp_work);
 
 	/* Destroy all fifos */
@@ -1771,7 +1680,6 @@ static int zram_engine_sw_init(struct zram_engine_t *hwz)
 	init_waitqueue_head(&hwz->comp_wait);
 	init_waitqueue_head(&hwz->dcomp_wait);
 	hwz->comp_pp_work = kthread_run(comp_post_process, hwz, "comp_pp_worker");
-	hwz->comp_second_pp_work = kthread_run(comp_second_post_process, hwz, "comp_second_pp_worker");
 	hwz->dcomp_pp_work = kthread_run(dcomp_post_process, hwz, "dcomp_pp_worker");
 
 #if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
@@ -1986,7 +1894,8 @@ static int mtk_hwzram_probe(struct platform_device *pdev)
 	/* Default is DST Copy */
 	hwz->ops = &engine_dc_ops;
 
-	/* Reset dcomp_cnt */
+	/* Reset comp_cnt & dcomp_cnt */
+	atomic_set(&hwz->comp_cnt, 0);
 	atomic_set(&hwz->dcomp_cnt, 0);
 
 #if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
@@ -2524,7 +2433,8 @@ static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset)
 			"[enc:second] - 0x%-4x:0x%-4x:0x%-4x\n",
 			fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
 	copied += snprintf(buf + copied, PAGE_SIZE - copied,
-			"Total dcomp cnts: %d\n", atomic_read(&hwz->dcomp_cnt));
+			"Total comp cnts: %d, dcomp cnts: %d\n",
+			atomic_read(&hwz->comp_cnt), atomic_read(&hwz->dcomp_cnt));
 	for (i = 0; i < MAX_DCOMP_NR; i++) {
 		fifo = &hwz->dcomp_fifo[i];
 		copied += snprintf(buf + copied, PAGE_SIZE - copied,

@@ -160,7 +160,55 @@ static inline int engine_gear_enable_clock(struct engine_control_t *ctrl,
 
 		/* IRQ is available now */
 		if (!ret)
-			engine_set_irq_on(ctrl);
+			engine_set_irq_on(ctrl, true, true);
+	}
+
+	spin_unlock(&gear_ctrl->lock);
+
+	return ret;
+}
+
+/*
+ * Enable clk mux for engine (can be called in atomic context)
+ * Used by post process to disable IRQ when it starts processing.
+ */
+static inline int engine_gear_enable_clock_disable_irq(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl, bool by_enc)
+{
+	int ret = 0;
+
+	spin_lock(&gear_ctrl->lock);
+
+	/* Sequence: enable clock -> power on */
+	if (gear_ctrl->clk_usage++ == 0) {
+
+		ret = clk_enable(gear_ctrl->clk_mux);
+
+		if (engine_power_efficiency_enabled() && !ret) {
+			ret = engine_power_on(ctrl);
+			if (!ret)
+				gear_ctrl->power_on = true;
+		}
+
+		/*
+		 * IRQ is available now by case (enc or dec) -
+		 * by_enc == true : engine_set_irq_on(ctrl, false, true);
+		 * 	(-> only enable DEC interrupt)
+		 * by_enc == false: engine_set_irq_on(ctrl, true, false);
+		 * 	(-> only enable ENC interrupt)
+		 */
+		if (!ret)
+			engine_set_irq_on(ctrl, !by_enc, by_enc);
+
+	} else {
+		/*
+		 * IRQ is not available now by case (enc or dec)
+		 * by_enc == true : engine_set_irq_off(ctrl, true, false);
+		 * 	(-> only disable ENC interrupt)
+		 * by_enc == false: engine_set_irq_off(ctrl, false, true);
+		 * 	(-> only disable DEC interrupt)
+		 */
+		engine_set_irq_off(ctrl, by_enc, !by_enc);
 	}
 
 	spin_unlock(&gear_ctrl->lock);

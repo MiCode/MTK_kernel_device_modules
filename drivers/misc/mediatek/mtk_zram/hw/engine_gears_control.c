@@ -41,7 +41,9 @@ static int engine_setup_gear(struct engine_gear_control_t *gear_ctrl, uint32_t l
 			goto exit;
 		}
 
-		ret = regulator_set_voltage(gear_ctrl->vcore, gear_ctrl->volt[level], INT_MAX);
+		/* Unbind vcore when indicating ENGINE_MIN_GEAR */
+		ret = regulator_set_voltage(gear_ctrl->vcore,
+				(level == ENGINE_MIN_GEAR)? 0 : gear_ctrl->volt[level], INT_MAX);
 		if (ret) {
 			pr_info("%s: failed to set voltage to %d: ret(%d).\n",
 					__func__, gear_ctrl->volt[level], ret);
@@ -146,7 +148,7 @@ void engine_gear_disable_clock(struct engine_control_t *ctrl,
 		engine_dec_wait_idle(ctrl);
 
 		/* IRQ is not available now */
-		engine_set_irq_off(ctrl);
+		engine_set_irq_off(ctrl, true, true);
 
 		/* Try to power off HW engine */
 		if (engine_power_efficiency_enabled()) {
@@ -161,7 +163,11 @@ void engine_gear_disable_clock(struct engine_control_t *ctrl,
 	spin_unlock(&gear_ctrl->lock);
 }
 
-/* Disable clk mux for engine by cnt (can be called in atomic context) */
+/*
+ * Disable clk mux for engine by cnt (can be called in atomic context)
+ * Used by post process batch counting and enable IRQ if necessary.
+ * Should be paired with engine_gear_enable_clock_disable_irq.
+ */
 void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 		struct engine_gear_control_t *gear_ctrl, uint32_t cnt)
 {
@@ -179,7 +185,7 @@ void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 		engine_dec_wait_idle(ctrl);
 
 		/* IRQ is not available now */
-		engine_set_irq_off(ctrl);
+		engine_set_irq_off(ctrl, true, true);
 
 		/* Try to power off HW engine */
 		if (engine_power_efficiency_enabled()) {
@@ -189,6 +195,9 @@ void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 
 		/* It's safe to disable clock now */
 		clk_disable(gear_ctrl->clk_mux);
+	} else {
+		/* IRQ is restored to be available now */
+		engine_set_irq_on(ctrl, true, true);
 	}
 
 	spin_unlock(&gear_ctrl->lock);
@@ -219,8 +228,8 @@ bool engine_try_to_gear_up(struct engine_gear_control_t *gear_ctrl, bool enc_wis
 		goto exit;
 	}
 
-	/* Query new gear level */
-	new_gear = gear_ctrl->curr_gear + 1;
+	/* Query new gear level (Use ENGINE_MAX_GEAR) */
+	new_gear = ENGINE_MAX_GEAR;
 
 	/* Gear is in change */
 	gear_ctrl->engine_gear_in_change = true;
@@ -230,8 +239,10 @@ bool engine_try_to_gear_up(struct engine_gear_control_t *gear_ctrl, bool enc_wis
 	ret = engine_setup_gear(gear_ctrl, new_gear, true);
 	if (ret)
 		pr_info("%s: failed to set new gear %u: ret(%d).\n", __func__, new_gear, ret);
+#ifdef ZRAM_ENGINE_DEBUG
 	else
 		pr_info("%s: new gear is %u.\n", __func__, new_gear);
+#endif
 
 	/* Gear change is finished */
 	spin_lock(&gear_ctrl->lock);
@@ -280,8 +291,8 @@ void engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_w
 		goto exit;
 	}
 
-	/* Query new gear level */
-	new_gear = gear_ctrl->curr_gear - 1;
+	/* Query new gear level (Use ENGINE_MIN_GEAR) */
+	new_gear = ENGINE_MIN_GEAR;
 	if (enc_wish) {
 		if (new_gear < gear_ctrl->dec_wish_gear) {
 #ifdef ZRAM_ENGINE_DEBUG
@@ -308,8 +319,10 @@ void engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_w
 	ret = engine_setup_gear(gear_ctrl, new_gear, false);
 	if (ret)
 		pr_info("%s: failed to set new gear %u: ret(%d).\n", __func__, new_gear, ret);
+#ifdef ZRAM_ENGINE_DEBUG
 	else
 		pr_info("%s: new gear is %u.\n", __func__, new_gear);
+#endif
 
 	/* Gear change is finished */
 	spin_lock(&gear_ctrl->lock);
