@@ -534,6 +534,51 @@ struct gpufreq_debug_opp_info __gpufreq_get_debug_opp_info_gpu(void)
 
 	return opp_info;
 }
+/* API: get working OPP index of GPU limited by BATTERY_OC via given level */
+int __gpufreq_get_batt_oc_idx(int batt_oc_level)
+{
+#if (GPUFREQ_BATT_OC_ENABLE && IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING))
+	if (batt_oc_level == BATTERY_OC_LEVEL_1)
+		return __gpufreq_get_idx_by_fgpu(GPUFREQ_BATT_OC_FREQ);
+	else
+		return GPUPPM_RESET_IDX;
+#else
+	GPUFREQ_UNREFERENCED(batt_oc_level);
+
+	return GPUPPM_KEEP_IDX;
+#endif /* GPUFREQ_BATT_OC_ENABLE && CONFIG_MTK_BATTERY_OC_POWER_THROTTLING */
+}
+
+/* API: get working OPP index of GPU limited by BATTERY_PERCENT via given level */
+int __gpufreq_get_batt_percent_idx(int batt_percent_level)
+{
+#if (GPUFREQ_BATT_PERCENT_ENABLE && IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING))
+	if (batt_percent_level == BATTERY_PERCENT_LEVEL_1)
+		return GPUFREQ_BATT_PERCENT_IDX - g_gpu.segment_upbound;
+	else
+		return GPUPPM_RESET_IDX;
+#else
+	GPUFREQ_UNREFERENCED(batt_percent_level);
+
+	return GPUPPM_KEEP_IDX;
+#endif /* GPUFREQ_BATT_PERCENT_ENABLE && CONFIG_MTK_BATTERY_PERCENT_THROTTLING */
+}
+
+/* API: get working OPP index of GPU limited by LOW_BATTERY via given level */
+int __gpufreq_get_low_batt_idx(int low_batt_level)
+{
+#if (GPUFREQ_LOW_BATT_ENABLE && IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING))
+	if (low_batt_level == LOW_BATTERY_LEVEL_2)
+		return __gpufreq_get_idx_by_fgpu(GPUFREQ_LOW_BATT_FREQ);
+	else
+		return GPUPPM_RESET_IDX;
+#else
+	GPUFREQ_UNREFERENCED(low_batt_level);
+
+	return GPUPPM_KEEP_IDX;
+#endif /* GPUFREQ_LOW_BATT_ENABLE && CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING */
+}
+
 /* API: get opp idx in original opp tables. */
 /* This is usually for ptpod use. */
 unsigned int __gpufreq_get_ptpod_opp_idx(unsigned int idx)
