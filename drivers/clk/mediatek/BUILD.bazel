@@ -1,6 +1,7 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl","kernel_version",)
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("clkmgr_ko.bzl", "define_platform_clkmgr_ko")
 
 package(
     default_visibility = [
@@ -67,367 +68,44 @@ define_mgk_ddk_ko(
     includes = ["."],
     hdrs = glob(["**/*.h"]),
 )
-define_mgk_ddk_ko(
-    name = "clk-chk-mt6893",
-    srcs = [
-        "clkchk-mt6893.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/"],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-dbg-mt6893",
-    srcs = [
-        "clkdbg-mt6893.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-fmeter-mt6893",
-    srcs = [
-        "clk-fmeter-mt6893.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "pd-chk-mt6893",
-    srcs = [
-        "mtk-pd-chk-mt6893.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-chk-mt6893".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893",
-    srcs = [
-        "clk-mt6893.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-pg",
-    srcs = [
-        "clk-mt6893-pg.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-apu0",
-    srcs = [
-        "clk-mt6893-apu0.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-apu1",
-    srcs = [
-        "clk-mt6893-apu1.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-apu2",
-    srcs = [
-        "clk-mt6893-apu2.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-apuv",
-    srcs = [
-        "clk-mt6893-apuv.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-apuc",
-    srcs = [
-        "clk-mt6893-apuc.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-apum0",
-    srcs = [
-        "clk-mt6893-apum0.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-apum1",
-    srcs = [
-        "clk-mt6893-apum1.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-audsys",
-    srcs = [
-        "clk-mt6893-audsys.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-cam_m",
-    srcs = [
-        "clk-mt6893-cam_m.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-cam_ra",
-    srcs = [
-        "clk-mt6893-cam_ra.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-cam_rb",
-    srcs = [
-        "clk-mt6893-cam_rb.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-cam_rc",
-    srcs = [
-        "clk-mt6893-cam_rc.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-imgsys1",
-    srcs = [
-        "clk-mt6893-imgsys1.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-imgsys2",
-    srcs = [
-        "clk-mt6893-imgsys2.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-impc",
-    srcs = [
-        "clk-mt6893-impc.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-impe",
-    srcs = [
-        "clk-mt6893-impe.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-impn",
-    srcs = [
-        "clk-mt6893-impn.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-imps",
-    srcs = [
-        "clk-mt6893-imps.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-ipe",
-    srcs = [
-        "clk-mt6893-ipe.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-mdp",
-    srcs = [
-        "clk-mt6893-mdp.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-mfgcfg",
-    srcs = [
-        "clk-mt6893-mfgcfg.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-mm",
-    srcs = [
-        "clk-mt6893-mm.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-scp_adsp",
-    srcs = [
-        "clk-mt6893-scp_adsp.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-vde2",
-    srcs = [
-        "clk-mt6893-vde2.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-vde1",
-    srcs = [
-        "clk-mt6893-vde1.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-ven2",
-    srcs = [
-        "clk-mt6893-ven2.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
-define_mgk_ddk_ko(
-    name = "clk-mt6893-ven1",
-    srcs = [
-        "clk-mt6893-ven1.c",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
-    ],
-    includes = ["."],
-    hdrs = glob(["**/*.h"]),
-)
+
+define_platform_clkmgr_ko("mt6789", None)
+define_platform_clkmgr_ko("mt6789", "vcodec")
+define_platform_clkmgr_ko("mt6789", "mfgcfg")
+define_platform_clkmgr_ko("mt6789", "bus")
+define_platform_clkmgr_ko("mt6789", "i2c")
+define_platform_clkmgr_ko("mt6789", "img")
+define_platform_clkmgr_ko("mt6789", "disp_dsc")
+define_platform_clkmgr_ko("mt6789", "mmsys")
+define_platform_clkmgr_ko("mt6789", "cam")
+define_platform_clkmgr_ko("mt6789", "audiosys")
+define_platform_clkmgr_ko("mt6789", "impen")
+define_platform_clkmgr_ko("mt6893", None)
+define_platform_clkmgr_ko("mt6893", "ven1")
+define_platform_clkmgr_ko("mt6893", "ven2")
+define_platform_clkmgr_ko("mt6893", "vde1")
+define_platform_clkmgr_ko("mt6893", "vde2")
+define_platform_clkmgr_ko("mt6893", "scp_adsp")
+define_platform_clkmgr_ko("mt6893", "mm")
+define_platform_clkmgr_ko("mt6893", "mfgcfg")
+define_platform_clkmgr_ko("mt6893", "mdp")
+define_platform_clkmgr_ko("mt6893", "ipe")
+define_platform_clkmgr_ko("mt6893", "imps")
+define_platform_clkmgr_ko("mt6893", "impn")
+define_platform_clkmgr_ko("mt6893", "impc")
+define_platform_clkmgr_ko("mt6893", "impe")
+define_platform_clkmgr_ko("mt6893", "imgsys2")
+define_platform_clkmgr_ko("mt6893", "imgsys1")
+define_platform_clkmgr_ko("mt6893", "cam_rc")
+define_platform_clkmgr_ko("mt6893", "cam_rb")
+define_platform_clkmgr_ko("mt6893", "cam_ra")
+define_platform_clkmgr_ko("mt6893", "cam_m")
+define_platform_clkmgr_ko("mt6893", "audsys")
+define_platform_clkmgr_ko("mt6893", "apum1")
+define_platform_clkmgr_ko("mt6893", "apum0")
+define_platform_clkmgr_ko("mt6893", "apuc")
+define_platform_clkmgr_ko("mt6893", "apuv")
+define_platform_clkmgr_ko("mt6893", "apu2")
+define_platform_clkmgr_ko("mt6893", "apu1")
+define_platform_clkmgr_ko("mt6893", "apu0")
+define_platform_clkmgr_ko("mt6893", "pg")
