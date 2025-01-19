@@ -15,7 +15,7 @@
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#include <leds-mtk.h>
+#include "leds-mtk.h"
 
 
 /****************************************************************************

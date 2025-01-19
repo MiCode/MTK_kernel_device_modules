@@ -10,7 +10,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <leds-mtk.h>
+#include "leds-mtk.h"
 #if IS_ENABLED(CONFIG_BACKLIGHT_SGM37604A)
 #include "sgm37604a.h"
 #endif

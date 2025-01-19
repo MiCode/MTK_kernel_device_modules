@@ -12,7 +12,7 @@
 #include <linux/pwm.h>
 #include <linux/slab.h>
 
-#include <leds-mtk.h>
+#include "leds-mtk.h"
 
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " %s(%d) :" fmt, __func__, __LINE__
