@@ -1677,6 +1677,8 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		return;
 
 	spr = comp_to_spr(comp);
+	if (spr == NULL || spr->data == NULL)
+		return;
 
 	//postalign base address
 	postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
@@ -1787,16 +1789,14 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		MT6989_DISP_REG_POSTALIGN0_EN, handle);
 	mtk_ddp_write_relaxed(postalign_comp, width << 16 | out_height,
 			MT6989_DISP_REG_POSTALIGN0_SIZE, handle);
-	if (spr->data) {
-		if (spr->data->need_bypass_shadow)
-			mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
-				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
-				MT6989_BYPASS_SHADOW, handle);
-		else
-			mtk_ddp_write_mask(postalign_comp, 0,
-				MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
-				MT6989_BYPASS_SHADOW, handle);
-	}
+	if (spr->data->need_bypass_shadow)
+		mtk_ddp_write_mask(postalign_comp, MT6989_BYPASS_SHADOW,
+			MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+			MT6989_BYPASS_SHADOW, handle);
+	else
+		mtk_ddp_write_mask(postalign_comp, 0,
+			MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL,
+			MT6989_BYPASS_SHADOW, handle);
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1) {
 		//postalign config
 		if (spr_params->postalign_en == 1) {
