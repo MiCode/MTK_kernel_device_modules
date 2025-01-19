@@ -1208,6 +1208,8 @@ static inline ssize_t scp_ipi_test_store(struct device *kobj
 		if (scp_ready[SCP_A_ID]) {
 			ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_TEST_0, 0, &value,
 					PIN_OUT_SIZE_TEST_0, 0);
+			if (ret)
+				pr_notice("[SCP] %s IPI_OUT_TEST_0 failed\n", __func__);
 		} else
 			return -EPERM;
 		break;
@@ -1382,9 +1384,8 @@ static ssize_t recovery_flag_show(struct device *dev
 static ssize_t recovery_flag_store(struct device *dev
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
-	int ret, tmp;
+	int tmp;
 
-	ret = kstrtoint(buf, 10, &tmp);
 	if (kstrtoint(buf, 10, &tmp) < 0) {
 		pr_debug("scp_recovery_flag error\n");
 		return count;

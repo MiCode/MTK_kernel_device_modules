@@ -38,7 +38,7 @@ static int scp_mbrain_get_sys_res_data(void *address, uint32_t size)
 	struct wlock_duration_t wlock[SCP_MAX_CORE_NUM];
 	struct res_duration_t res[SCP_MAX_CORE_NUM];
 	struct slp_ack_t *addr[SCP_MAX_CORE_NUM];
-	uint64_t suspend_time = 0;
+	/* uint64_t suspend_time = 0;*/
 	int i;
 
 	pr_notice("[SCP] %s start\n",__func__);
@@ -52,7 +52,7 @@ static int scp_mbrain_get_sys_res_data(void *address, uint32_t size)
 		} else {
 			wlock[i] = addr[i]->wlock;
 			res[i] = addr[i]->res;
-			suspend_time = addr[i]->suspend_time;
+			/* suspend_time = addr[i]->suspend_time;*/
 		}
 	}
 

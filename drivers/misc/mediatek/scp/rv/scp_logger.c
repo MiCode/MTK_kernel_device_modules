@@ -966,7 +966,7 @@ void scp_crash_log_move_to_buf(enum scp_core_id scp_id)
 	/* read log from scp buffer */
 	ret = 0;
 	if (scp_last_logger) {
-		ret += snprintf(scp_last_logger, strlen(crash_message),
+		ret += snprintf(scp_last_logger, strlen(crash_message),"%s",
 			crash_message);
 		ret--;
 		while ((log_start_idx != log_end_idx) &&
