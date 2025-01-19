@@ -177,15 +177,15 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 			swap(destw, desth);
 
-		if (crop_srcw / destw > 20 || crop_srch / desth > 24 ||
-			destw / crop_srcw > 32 || desth / crop_srch > 32) {
+		if (crop_srcw > destw * 20 || crop_srch > desth * 24 ||
+			destw > crop_srcw * 32 || desth > crop_srch * 32) {
 			mml_err("[drm]exceed HW limitation src %ux%u dest %ux%u",
 				crop_srcw, crop_srch, destw, desth);
 			goto not_support;
 		}
 
-		if ((crop_srcw * desth) / (destw * crop_srch) > 16 ||
-			(destw * crop_srch) / (crop_srcw * desth) > 16) {
+		if (crop_srcw * desth > destw * crop_srch * 16 ||
+			destw * crop_srch > crop_srcw * desth * 16) {
 			mml_err("[drm]exceed tile ratio limitation src %ux%u dest %ux%u",
 				crop_srcw, crop_srch, destw, desth);
 			goto not_support;
