@@ -181,7 +181,10 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
     ],
     includes = ["."],
-    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
+    ko_deps = [
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:rt4831a_drv".format(kernel_version),
+	],
 )
 
 define_mgk_ddk_ko(
@@ -196,7 +199,10 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
     ],
     includes = ["."],
-    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
+    ko_deps = [
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:rt4831a_drv".format(kernel_version),
+	],
 )
 
 define_mgk_ddk_ko(
@@ -270,3 +276,4 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
     ],
 )
+
