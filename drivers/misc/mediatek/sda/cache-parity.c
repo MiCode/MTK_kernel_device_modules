@@ -22,6 +22,7 @@
 #include <linux/sched/clock.h>
 #include <linux/workqueue.h>
 #include <mt-plat/aee.h>
+#include <aed.h>
 #include "cputype.h"
 
 #define ECC_UE_BIT			(0x1 << 29)
@@ -123,6 +124,24 @@ static ssize_t cache_status_show(struct device_driver *driver, char *buf)
 }
 
 static DRIVER_ATTR_RO(cache_status);
+
+static bool cache_parity_trigger_bug(bool force, int irq, u64 misc0, u64 status)
+{
+	bool trigger_bug = likely(force) || (aee_get_mode() < AEE_MODE_CUSTOMER_ENG);
+
+	if (trigger_bug && (status & (ECC_UE_BIT | ECC_DE_BIT))) {
+		const char *err_type = (status & ECC_UE_BIT) ? "UE" : "DE";
+
+		ECC_LOG("%s: %s(%s), %s %d, %s: 0x%016llx, %s: 0x%016llx\n",
+			"Cache Parity Issue",
+			"Cache ECC errors", err_type,
+			"irq", irq,
+			"misc0_el1", misc0,
+			"status_el1", status);
+		BUG();
+	}
+	return false;
+}
 
 static void cache_parity_irq_work(struct work_struct *w)
 {
@@ -420,8 +439,8 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 			}
 		}
 #endif
-
-		schedule_work(&cache_parity.work);
+		if (!cache_parity_trigger_bug(false, irq, misc0, status))
+			schedule_work(&cache_parity.work);
 	}
 
 	ECC_LOG("Cache ECC error, %s %d, %s: 0x%016llx, %s: 0x%016llx\n",
