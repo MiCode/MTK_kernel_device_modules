@@ -26,10 +26,10 @@ ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V2),y)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2
 endif
 
-obj-${CONFIG_MTK_CM_MGR} += mtk_cm_mgr.o
-mtk_cm_mgr-y = mtk_cm_mgr_common.o
+#obj-${CONFIG_MTK_CM_MGR} += mtk_cm_mgr.o
+#mtk_cm_mgr-y = mtk_cm_mgr_common.o
 
-obj-${CONFIG_MTK_CM_IPI} += mtk_cm_ipi.o
+#obj-${CONFIG_MTK_CM_IPI} += mtk_cm_ipi.o
 
 ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6853.c),)
 obj-${CONFIG_MTK_CM_MGR_MT6853} += mtk_cm_mgr_mt6853.o
