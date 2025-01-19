@@ -10729,6 +10729,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,ccif-hw-reset-ver = <2>;
 			/* ccif hw reset bit */
 			mediatek,ccif-hw-reset-bit = <0>;
+			/* ccif hw set reset addr offset */
+			mediatek,ccif-hw-reset-offset = <0xf40>;
 			/* no need control ccif0 clk when ccif_clk_free_run = 1 */
 			mediatek,ccif-clk-free-run = <1>;
 			/* DTS/GIC_ID: CCIF0 257/289; CCIF0 258/290 */
