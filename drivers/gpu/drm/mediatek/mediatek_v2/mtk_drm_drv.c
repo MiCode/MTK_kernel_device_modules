@@ -8991,7 +8991,7 @@ static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 	crtc = &mtk_crtc->base;
 	DDPMSG("%s crtc%d line%d\n", __func__, drm_crtc_index(crtc), __LINE__);
 
-	if (mtk_crtc->virtual_path)
+	if (mtk_crtc->virtual_path && mtk_crtc->phys_mtk_crtc)
 		mtk_drm_se_enable(dev, mtk_crtc->phys_mtk_crtc);
 
 	drm_modeset_acquire_init(&ctx, 0);
@@ -9046,6 +9046,38 @@ static int mtk_drm_se_enable(struct drm_device *dev, struct mtk_drm_crtc *mtk_cr
 	return ret;
 }
 
+static enum mtk_ddp_comp_id panel_crtc_map[] = {
+	[MTK_PANEL_DSI0] = DDP_COMPONENT_DSI0,
+	[MTK_PANEL_EDP] = DDP_COMPONENT_DISP_DVO,
+	[MTK_PANEL_DP0] = DDP_COMPONENT_DP_INTF0,
+	[MTK_PANEL_DP1] = DDP_COMPONENT_DP_INTF1,
+	[MTK_PANEL_DSI1_0] = DDP_COMPONENT_DSI1,
+	[MTK_PANEL_DSI1_1] = DDP_COMPONENT_DSI1,
+	[MTK_PANEL_DSI2] = DDP_COMPONENT_DSI2,
+};
+
+static int mtk_drm_get_crtc_id(enum MTK_PANEL_ID panel_id, struct mtk_drm_private *private)
+{
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_ddp_comp *comp;
+
+	for (int crtc_id = 0; crtc_id < MAX_CRTC; crtc_id++) {
+		mtk_crtc = to_mtk_crtc(private->crtc[crtc_id]);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (comp == NULL)
+			continue;
+		if (comp->id == panel_crtc_map[panel_id]) {
+			DDPINFO("panel_id:%d, output comp id:%d, crtc id:%d\n", panel_id, comp->id, crtc_id);
+			return crtc_id;
+		}
+	}
+
+	DDPMSG("%s %d get crtc id by panel id fail, return crtc id 0", __func__, __LINE__);
+
+	return 0;
+}
+
 static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 {
 	int index = drm_crtc_index(&mtk_crtc->base);
@@ -9061,13 +9093,13 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 
 	//disable panel layers
 	if (mtk_crtc->se_state == DISP_SE_START) {
-		if (mtk_crtc->se_panel & (1 << MTK_PANEL_DPI_1)) {
+		if (mtk_crtc->se_panel & (1 << MTK_PANEL_DP0)) {
 			t_s->comp_id = DDP_COMPONENT_OVL2_2L;
 			t_s->lye_id =  1;
 			t_s->ext_lye_id = 0;
 			comp = mtk_crtc_get_plane_comp(&mtk_crtc->base, &tmp_state);
 			mtk_ddp_comp_layer_off(comp, t_s->lye_id, 0, cmdq_handle);
-		} else if (mtk_crtc->se_panel & (1 << MTK_PANEL_DPI_0)) {
+		} else if (mtk_crtc->se_panel & (1 << MTK_PANEL_DP1)) {
 			//if (mtk_dpi_get_split_count() > 1) {
 			//	t_s->comp_id = DDP_COMPONENT_OVL2_2L;
 			//	t_s->lye_id =  0;
@@ -9138,7 +9170,6 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 	if (!ret) {
 		cmdq_pkt_wait_complete(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
-
 	} else {
 		DDPMSG("%s[%d] mtk_crtc_gce_flush failed!\n", __func__, __LINE__);
 		return -EINVAL;
@@ -9167,8 +9198,8 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	int index = 0, crtc_id = 0;
 	struct mtk_crtc_se_plane *se_plane;
 	u64 sys_time;
+	struct mtk_ddp_comp *comp = NULL;
 #ifdef CONFIG_MTK_ULTRARVC_SUPPORT
-		struct mtk_ddp_comp *comp = NULL;
 		static bool ultrarvc_start = true;
 #endif
 	sys_time = ktime_to_ns(ktime_get_boottime());
@@ -9176,7 +9207,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 		DDPINFO("LATENCY_TEST %s %lld sys_time %lld\n",
 			__func__, layer_info->pts, sys_time);
 
-	crtc_id = 0;//TODO mtk_drm_get_crtc_id(layer_info->panel_id);
+	crtc_id = mtk_drm_get_crtc_id(layer_info->panel_id, private);
 	if (crtc_id >= MAX_CRTC) {
 		DDPMSG("the crtc_id %d >= max %d\n", crtc_id, MAX_CRTC);
 		return -1;
@@ -9190,8 +9221,8 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	if ((layer_info->panel_id == MTK_PANEL_DPI_1 ||
-	    layer_info->panel_id == MTK_PANEL_DPI_0) &&
+	if ((layer_info->panel_id == MTK_PANEL_DP0 ||
+	    layer_info->panel_id == MTK_PANEL_DP1) &&
 	    layer_info->layer_id >= 1) {
 		DDPMSG("%s: panel:%d invalid layer id:%d\n", __func__,
 			layer_info->panel_id, layer_info->layer_id);
@@ -9223,15 +9254,6 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	}
 
 	params = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
-	if (params) {
-		if ((layer_info->panel_id == MTK_PANEL_DPI_1) ||
-			(layer_info->panel_id == MTK_PANEL_DSI0_1) ||
-			(layer_info->panel_id == MTK_PANEL_DSI1_1)) {
-			layer_info->tgt_x += params->crop_width[0];
-		} else if (layer_info->panel_id == MTK_PANEL_DPI_2) {
-			layer_info->tgt_x += (params->crop_width[0] + params->crop_width[1]);
-		}
-	}
 
 	if (layer_info->layer_en)
 		mtk_crtc->se_panel |= 1 << layer_info->panel_id;
@@ -9263,34 +9285,17 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 
 	state->pending.dirty = true;
 	state->comp_state.lye_id = layer_info->layer_id;
-	if (layer_info->panel_id == MTK_PANEL_DPI_1)
-		state->comp_state.lye_id += 1;
+
 	state->comp_state.ext_lye_id = LYE_NORMAL;
 	state->pending.pts = layer_info->pts;
 
-	switch (layer_info->panel_id) {
-	case MTK_PANEL_DSI0_0:
-		#if (CONFIG_MTK_MULTI_DSI_PATH == 2)
-		state->comp_state.comp_id = DDP_COMPONENT_OVL0;
-		#else
-		state->comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA3;
-		#endif
-		break;
-	case MTK_PANEL_DSI0_1:
-		state->comp_state.comp_id = DDP_COMPONENT_OVL0_2L;
-		break;
-	case MTK_PANEL_DPI_0:
-		//state->comp_state.comp_id = DDP_COMPONENT_OVL2_2L;
-		break;
-	case MTK_PANEL_DPI_1:
-	case MTK_PANEL_DPI_2:
-		//state->comp_state.comp_id = DDP_COMPONENT_OVL2_2L;
-		break;
-	default:
-		DDPMSG("error panel id %d\n", layer_info->panel_id);
-		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, index, __func__, __LINE__);
-		return -1;
-	}
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	comp = mtk_crtc_get_comp_with_index(mtk_crtc, state);
+	state->comp_state.comp_id = comp->id;
+#else
+	state->comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA3;
+#endif
+	DDPINFO("%s %d state->comp_state.comp_id:%d", __func__, __LINE__, state->comp_state.comp_id);
 
 #ifdef CONFIG_MTK_ULTRARVC_SUPPORT
 		/*{ultrarvc +*/

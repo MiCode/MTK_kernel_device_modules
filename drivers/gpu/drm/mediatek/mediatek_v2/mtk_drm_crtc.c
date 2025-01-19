@@ -3518,14 +3518,15 @@ struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp;
 
 	if (!plane) {
-		DDPMSG("[E]%s crtc invalid plane\n", __func__, drm_crtc_index(&mtk_crtc->base));
-		return NULL;
+		local_index = plane_state->comp_state.lye_id;
+	} else {
+
+		local_index = plane->index - base_plane->index;
+
+		DDPINFO("%s plane index %d base %d\n", __func__, plane->index, base_plane->index);
 	}
 
-	local_index = plane->index - base_plane->index;
-
-	DDPINFO("%s crtc %d plane index %d base %d local_index %d\n", __func__,
-		drm_crtc_index(&mtk_crtc->base), plane->index, base_plane->index, local_index);
+	DDPINFO("%s crtc %d local_index %d\n", __func__, drm_crtc_index(&mtk_crtc->base), local_index);
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_is_rdma(comp)) {
