@@ -34,6 +34,7 @@
 #define MTK_CCU_REG_CTRL     (0x0c)
 #define MTK_CCU_REG_AXI_REMAP  (0x24)
 #define MTK_CCU_REG_AXI_REMAP_ISP8  (0x3014)
+#define MTK_CCU_REG_AXI_REMAP_ISP8L (0x3020)
 #define MTK_CCU_REG_CORE_CTRL  (0x28)
 #define MTK_CCU_RUN_BIT      (0x00000010)
 #define MTK_CCU_REG_CORE_STATUS     (0x28)
@@ -50,6 +51,9 @@
 
 #define CCU_EXCH_OFFSET       (0x8000)
 #define CCU_EXCH_SIZE         (0x1000)
+#define CCU_EXCH_SIZE_IPC     (0x10000)
+#define CCU_IPC_SRAM_OFFSET   (0xC000)
+#define CCU_IPC_SRAM_SIZE     (0x1000)
 #define SPM_BASE              (0x1C001000)
 #define SPM_BASE_ISP8         (0x1C004000)
 #define SPM_SIZE              (0x1000)
@@ -99,6 +103,7 @@
 #define CCU_GO_TO_RUN                     0x17172ACE
 #define CCU_GO_TO_STOP                    0x8181DEAD
 #define CCU_DMA_DOMAIN                    0x30340C0C
+#define CCU_SRAM_PWR_ONOFF                0x246070FF
 
 #define STRESS_TEST    0xFFFFFF03
 
