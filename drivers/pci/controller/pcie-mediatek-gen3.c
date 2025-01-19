@@ -1802,10 +1802,18 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 {
 	struct mtk_pcie_port *port = platform_get_drvdata(pdev);
 	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
-	int err = 0;
+	struct resource *res;
+	char *name = "PCI Bus 0000:01";
+	int err = 0, i = 0;
 
 	if (port->rpm)
 		mtk_pcie_disable_host_bridge_rpm(port);
+
+	/* This for GKI timing issue, walkaround in driver */
+	for (i = 0; i < PCI_BRIDGE_RESOURCE_NUM; i++) {
+		res = port->pcidev->resource + PCI_BRIDGE_RESOURCES + i;
+		res->name = name;
+	}
 
 	pci_lock_rescan_remove();
 	pci_stop_root_bus(host->bus);
