@@ -138,6 +138,7 @@ enum {CMDQ_PREBUILT_MDP, CMDQ_PREBUILT_MML, CMDQ_PREBUILT_VFMT,
  */
 #define CMDQ_US_TO_TICK(_t)		(_t * 26)
 #define CMDQ_TICK_TO_US(_t)		(DO_COMMON_DIV_CMDQ(_t, 26))
+#define CMDQ_TICK_DIFF(_b, _e)		(_e > _b ? _e - _b : ~_b + 1 + _e)
 
 extern int gce_shift_bit;
 extern unsigned long long gce_mminfra;
@@ -265,6 +266,9 @@ struct cmdq_client {
 	struct mutex chan_mutex;
 	bool use_iommu;
 	struct device	*share_dev;
+	u32 *backup_va;
+	dma_addr_t backup_pa;
+	u16 backup_idx;
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 	bool is_virtio;
 	bool guest_only;
@@ -331,6 +335,13 @@ struct cmdq_reuse {
 	u32 val;
 	u32 offset;
 	u8 op;
+};
+
+#define CMDQ_BACKUP_CNT 1024
+
+struct cmdq_backup {
+	u32 inst_offset;
+	u32 val_idx;
 };
 
 struct cmdq_poll_reuse {
@@ -487,6 +498,45 @@ s32 cmdq_pkt_write_reg_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
 
 s32 cmdq_pkt_write_value_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
 	u32 value, u32 mask, struct cmdq_reuse *reuse);
+
+/**
+ * cmdq_pkt_backup() - read register/address to channel internal dram
+ * @pkt:	the CMDQ packet
+ * @addr:	register or dram physical address
+ * @backup:	store value index (use in cmdq_pkt_backup_get) and
+ *		instruction offset (use in cmdq_pkt_backup_update)
+ *
+ * Return: 0 if success, error code if fail
+ */
+s32 cmdq_pkt_backup(struct cmdq_pkt *pkt, dma_addr_t addr, struct cmdq_backup *backup);
+
+/**
+ * cmdq_pkt_backup_stamp() - store tpr count to channel internal dram, for performance estimate
+ * @pkt:	the CMDQ packet
+ * @backup:	store value index (use in cmdq_pkt_backup_get) and
+ *		instruction offset (use in cmdq_pkt_backup_update)
+ *
+ * Return: 0 if success, error code if fail
+ */
+s32 cmdq_pkt_backup_stamp(struct cmdq_pkt *pkt, struct cmdq_backup *backup);
+
+/**
+ * cmdq_pkt_backup_update() - update instruction after copy pkt
+ * @pkt:	the CMDQ packet
+ * @backup:	the value index will be update, and instruction in inst_offset will be update
+ *
+ * Return: 0 if success, error code if fail
+ */
+s32 cmdq_pkt_backup_update(struct cmdq_pkt *pkt, struct cmdq_backup *backup);
+
+/**
+ * cmdq_pkt_backup_get() - retrieve value in dram by value index in backup
+ * @pkt:	the CMDQ packet
+ * @backup:	the value index
+ *
+ * Return: dram value
+ */
+u32 cmdq_pkt_backup_get(struct cmdq_pkt *pkt, struct cmdq_backup *backup);
 
 void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
 	const u32 count);
