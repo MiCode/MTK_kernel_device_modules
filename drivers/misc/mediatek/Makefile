@@ -109,6 +109,7 @@ obj-$(CONFIG_MTK_MMINFRA) += mminfra/
 obj-$(CONFIG_MTK_HW_SEMAPHORE) += hw_sem/
 obj-$(CONFIG_DEVICE_MODULES_MTK_SMI) += smi/
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_COMMON) += mmqos/
+obj-$(CONFIG_MTK_MM_MONITOR) += mm_monitor/
 obj-$(CONFIG_MTK_GATE_IC) += gate_ic/
 obj-$(CONFIG_USB) += usb/
 obj-$(CONFIG_MTK_WIDEVINE_DRM) += widevine_drm/

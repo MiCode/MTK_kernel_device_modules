@@ -67,6 +67,8 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	case FUNC_SYNC_STATE:
 		// change mmqos_state by adb command, should trigger sync state
 		break;
+	case FUNC_SYNC_MMMC_STATE:
+		break;
 	}
 	val = readl(MEM_IPI_SYNC_FUNC);
 	mutex_unlock(&mmqos_vcp_ipi_mutex);
