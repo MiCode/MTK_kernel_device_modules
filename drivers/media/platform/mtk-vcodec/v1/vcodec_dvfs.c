@@ -736,3 +736,8 @@ void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 
 }
 
+void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
+{
+
+}
+

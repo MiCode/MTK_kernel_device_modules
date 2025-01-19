@@ -110,4 +110,5 @@ void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable);
 void mtk_vcodec_alive_checker_suspend(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable);
+void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off);
 #endif

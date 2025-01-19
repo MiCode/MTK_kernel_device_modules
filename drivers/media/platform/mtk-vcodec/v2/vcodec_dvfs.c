@@ -24,6 +24,7 @@
 #undef MS_TO_NS
 #endif
 #include "pf_ctrl.h"
+#include "slbc_sdk.h"
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -783,4 +784,13 @@ void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 		mtk_v4l2_debug(0, "%s [VDVFS] pf dynamic control %s\n", __func__, mtk_get_pf_ctrl_enable()?"enable":"disable");
 	}
 }
+
+void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
+{
+	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
+		slbc_disable_dcc((bool)off); // 1: disable WCE, 0: enable (default)
+		mtk_v4l2_debug(0, "%s [VDVFS] slc wce %s\n", __func__, off?"disable":"enable");
+	}
+}
+
 
