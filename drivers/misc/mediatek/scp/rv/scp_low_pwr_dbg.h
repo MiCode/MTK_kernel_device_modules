@@ -13,13 +13,6 @@
 #define configMAX_LOCK_NAME_LEN     7
 #define HEADER_SIZE					8
 
-struct scp_res_mbrain_header {
-	uint8_t mbrain_module;
-	uint8_t version;
-	uint16_t data_offset;
-	uint32_t index_data_length;
-};
-
 struct scp_res_info {
 	uint64_t user;          /* record the 1st user */
 	uint64_t duration;

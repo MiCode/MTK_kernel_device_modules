@@ -156,6 +156,7 @@ struct scp_regs {
 	unsigned int mbrain;
 	unsigned int recovery_wfi_detect;
 	unsigned int ipi_timeout_bugon;
+	unsigned int task_monitor_dbg;
 	struct scp_bus_tracker_status tracker_status;
 };
 

@@ -15,6 +15,7 @@ scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_hwvoter_dbg.o
 
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_low_pwr_dbg.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_mbrain_dbg.o
+scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_tmon_dbg.o
 
 scp-$(CONFIG_MTK_TINYSYS_SAP_SUPPORT) += sap.o
 

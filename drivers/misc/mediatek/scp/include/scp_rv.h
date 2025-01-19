@@ -200,6 +200,7 @@ enum scp_reserve_mem_id_t {
 	SCP_CHRE_TO_MEM_ID,
 	SCP_LOW_PWR_DBG_MEM_ID,
 	SCP_DBI_MEM_ID = 20,
+	SCP_TMON_DBG_MEM_ID,
 	NUMS_MEM_ID,
 };
 

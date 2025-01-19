@@ -8,6 +8,13 @@
 
 #include <linux/types.h>
 
+struct scp_res_mbrain_header {
+	uint8_t mbrain_module;
+	uint8_t version;
+	uint16_t data_offset;
+	uint32_t index_data_length;
+};
+
 struct scp_res_mbrain_dbg_ops {
 	unsigned int (*get_length)(void);
 	int (*get_data)(void *address, uint32_t size);
@@ -17,7 +24,10 @@ struct scp_res_mbrain_dbg_ops {
 };
 
 struct scp_res_mbrain_dbg_ops *get_scp_mbrain_dbg_ops(void);
+struct scp_res_mbrain_dbg_ops *get_scp_mbrain_tmon_ops(void);
 int register_scp_mbrain_dbg_ops(struct scp_res_mbrain_dbg_ops *ops);
 void unregister_scp_mbrain_dbg_ops(void);
+int register_scp_mbrain_tmon_ops(struct scp_res_mbrain_dbg_ops *ops);
+void unregister_scp_mbrain_tmon_ops(void);
 
 #endif

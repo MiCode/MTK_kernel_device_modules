@@ -11,11 +11,9 @@
 #include "scp.h"
 #include "scp_helper.h"
 
-struct scp_res_mbrain_header header;
-struct scp_res_info scp_res;
-struct sys_wlock_info scp_wlock;
+static struct scp_res_mbrain_header header;
 
-static void get_scp_res_header(void)
+static void get_scp_low_pwr_dbg_header(void)
 {
 	header.mbrain_module = SCP_RES_DATA_MODULE_ID;
 	header.version = SCP_RES_DATA_VERSION;
@@ -26,14 +24,14 @@ static void get_scp_res_header(void)
 			sizeof(struct res_duration_t), sizeof(struct wlock_duration_t));
 }
 
-static void *scp_res_data_copy(void *dest, void *src, uint64_t size)
+static void *get_scp_header(void *dest, void *src, uint64_t size)
 {
 	memcpy(dest, src, size);
 	dest += size;
 	return dest;
 }
 
-static int scp_mbrain_get_sys_res_data(void *address, uint32_t size)
+static int scp_mbrain_get_low_pwr_data(void *address, uint32_t size)
 {
 	struct wlock_duration_t wlock[SCP_MAX_CORE_NUM];
 	struct res_duration_t res[SCP_MAX_CORE_NUM];
@@ -58,30 +56,30 @@ static int scp_mbrain_get_sys_res_data(void *address, uint32_t size)
 
 	pr_notice("Prepare header\n");
 	/* cpy header */
-	get_scp_res_header();
-	address = scp_res_data_copy(address, &header, sizeof(struct scp_res_mbrain_header));
+	get_scp_low_pwr_dbg_header();
+	address = get_scp_header(address, &header, sizeof(struct scp_res_mbrain_header));
 	pr_notice("Prepare data\n");
 	/* cpy res data */
-	address = scp_res_data_copy(address, &res[SCP_CORE_0], sizeof(struct res_duration_t));
-	address = scp_res_data_copy(address, &res[SCP_CORE_1], sizeof(struct res_duration_t));
-	address = scp_res_data_copy(address, &res[SCP_CORE_2], sizeof(struct res_duration_t));
+	address = get_scp_header(address, &res[SCP_CORE_0], sizeof(struct res_duration_t));
+	address = get_scp_header(address, &res[SCP_CORE_1], sizeof(struct res_duration_t));
+	address = get_scp_header(address, &res[SCP_CORE_2], sizeof(struct res_duration_t));
 	/* cpy wakelock data */
-	address = scp_res_data_copy(address, &wlock[SCP_CORE_0], sizeof(struct wlock_duration_t));
-	address = scp_res_data_copy(address, &wlock[SCP_CORE_1], sizeof(struct wlock_duration_t));
-	address = scp_res_data_copy(address, &wlock[SCP_CORE_2], sizeof(struct wlock_duration_t));
+	address = get_scp_header(address, &wlock[SCP_CORE_0], sizeof(struct wlock_duration_t));
+	address = get_scp_header(address, &wlock[SCP_CORE_1], sizeof(struct wlock_duration_t));
+	address = get_scp_header(address, &wlock[SCP_CORE_2], sizeof(struct wlock_duration_t));
 	pr_notice("[SCP] %s end\n",__func__);
 	return 0;
 }
 
-static unsigned int scp_mbrain_get_sys_res_length(void)
+static unsigned int scp_mbrain_get_low_pwr_dbg_length(void)
 {
-	get_scp_res_header();
+	get_scp_low_pwr_dbg_header();
 	return header.index_data_length;
 }
 
 static struct scp_res_mbrain_dbg_ops scp_res_mbrain_ops = {
-	.get_length = scp_mbrain_get_sys_res_length,
-	.get_data = scp_mbrain_get_sys_res_data,
+	.get_length = scp_mbrain_get_low_pwr_dbg_length,
+	.get_data = scp_mbrain_get_low_pwr_data,
 };
 
 int scp_sys_res_mbrain_plat_init (void)

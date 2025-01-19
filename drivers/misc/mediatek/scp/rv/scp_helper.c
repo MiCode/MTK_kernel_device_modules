@@ -64,6 +64,7 @@
 #include "scp_chre_manager.h"
 
 #include "scp_low_pwr_dbg.h"
+#include "scp_tmon_dbg.h"
 
 /* scp semaphore timeout count definition */
 #define SEMAPHORE_TIMEOUT 5000
@@ -939,8 +940,6 @@ static int scp_check_kasan_handler(unsigned int id, void *prdata, void *data,
 
 	return 0;
 }
-
-
 
 /*
  * @return: 1 if scp is ready for running tasks
@@ -2859,6 +2858,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_thermal_wq = NULL;
 	const char *scp_recovery_wfi_detect = NULL;
 	const char *scp_ipi_timeout_bugon = NULL;
+	const char *scp_task_monitor_dbg = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -3106,6 +3106,16 @@ static int scp_device_probe(struct platform_device *pdev)
 	if(ret) {
 		pr_notice("[SCP] awake-timeout is not defined.\n");
 		scp_awake_timeout = 100000;
+	}
+
+	/* scp task monitor debug */
+	scpreg.task_monitor_dbg = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-task-monitor-dbg", &scp_task_monitor_dbg)){
+		if (!strncmp(scp_task_monitor_dbg, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_task_monitor_dbg enabled\n");
+			scpreg.task_monitor_dbg = 1;
+		}
 	}
 
 	pr_notice("[SCP] scp_awake_timeout = %d\n", scp_awake_timeout);
@@ -3496,9 +3506,13 @@ static int __init scp_init(void)
 
 	register_3way_semaphore_notifier(&scp_semaphore_init_notifier);
 
-	/* Enable mbrain profile*/
+	/* Enable mbrain profile for low power debug  */
 	if(scpreg.mbrain)
 		scp_sys_res_mbrain_plat_init();
+
+	/* Enable mbrain profile for task monitor */
+	if(scpreg.task_monitor_dbg)
+		scp_sys_tmon_mbrain_plat_init();
 
 	return ret;
 err:
