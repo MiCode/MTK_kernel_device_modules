@@ -1156,6 +1156,21 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-img".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp1".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-chk-mt6989".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:pd-chk-mt6989".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-dbg-mt6989".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-fmeter-mt6989".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-adsp".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-cam".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-img".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-mmsys".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-peri".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-bus".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-mdpsys".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-vlp".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-vcodec".format(kernel_version): "mt6989",
+
 
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6768".format(kernel_version): "mt6768",
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6895".format(kernel_version): "mt6895",
@@ -1489,19 +1504,19 @@ mgk_64_platform_device_modules = {
     #"drivers/clk/mediatek/clk-chk-mt6893.ko": "mt6893",
     #"drivers/clk/mediatek/clk-chk-mt6899.ko": "mt6899",
     #"drivers/clk/mediatek/clk-chk-mt6983.ko": "mt6983",
-    "drivers/clk/mediatek/clk-chk-mt6989.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-chk-mt6989.ko": "mt6989",
     #"drivers/clk/mediatek/clk-dbg-mt6893.ko": "mt6893",
     #"drivers/clk/mediatek/clk-dbg-mt6886.ko": "mt6886",
     #"drivers/clk/mediatek/clk-dbg-mt6897.ko": "mt6897",
     #"drivers/clk/mediatek/clk-dbg-mt6899.ko": "mt6899",
     #"drivers/clk/mediatek/clk-dbg-mt6983.ko": "mt6983",
-    "drivers/clk/mediatek/clk-dbg-mt6989.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-dbg-mt6989.ko": "mt6989",
     #"drivers/clk/mediatek/clk-fmeter-mt6886.ko": "mt6886",
     #"drivers/clk/mediatek/clk-fmeter-mt6897.ko": "mt6897",
     #"drivers/clk/mediatek/clk-fmeter-mt6899.ko": "mt6899",
     #"drivers/clk/mediatek/clk-fmeter-mt6983.ko": "mt6983",
     #"drivers/clk/mediatek/clk-fmeter-mt6893.ko": "mt6893",
-    "drivers/clk/mediatek/clk-fmeter-mt6989.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-fmeter-mt6989.ko": "mt6989",
     #"drivers/clk/mediatek/clk-mt6886.ko": "mt6886",
     #"drivers/clk/mediatek/clk-mt6886-adsp.ko": "mt6886",
     #"drivers/clk/mediatek/clk-mt6886-bus.ko": "mt6886",
@@ -1543,16 +1558,16 @@ mgk_64_platform_device_modules = {
     #"drivers/clk/mediatek/clk-mt6983-mfg_top_config.ko": "mt6983",
     #"drivers/clk/mediatek/clk-mt6983-mm.ko": "mt6983",
     #"drivers/clk/mediatek/clk-mt6983-vcodec.ko": "mt6983",
-    "drivers/clk/mediatek/clk-mt6989.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-adsp.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-bus.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-cam.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-img.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-mdpsys.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-mmsys.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-peri.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-vcodec.ko": "mt6989",
-    "drivers/clk/mediatek/clk-mt6989-vlp.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-adsp.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-bus.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-cam.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-img.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-mdpsys.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-mmsys.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-peri.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-vcodec.ko": "mt6989",
+    #"drivers/clk/mediatek/clk-mt6989-vlp.ko": "mt6989",
     #"drivers/clk/mediatek/clk-mt6993.ko" : "mt6993",
     #"drivers/clk/mediatek/clk-mt6993-vcodec.ko" : "mt6993",
     #"drivers/clk/mediatek/clk-mt6993-adsp.ko" : "mt6993",
@@ -1582,7 +1597,7 @@ mgk_64_platform_device_modules = {
     #"drivers/clk/mediatek/pd-chk-mt6897.ko": "mt6897",
     #"drivers/clk/mediatek/pd-chk-mt6899.ko": "mt6899",
     #"drivers/clk/mediatek/pd-chk-mt6983.ko": "mt6983",
-    "drivers/clk/mediatek/pd-chk-mt6989.ko": "mt6989",
+    #"drivers/clk/mediatek/pd-chk-mt6989.ko": "mt6989",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko": "mt6878",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko": "mt6886",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6897.ko": "mt6897",
@@ -1812,8 +1827,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-util.ko")
 
-        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
-        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
+        #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
+        #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
@@ -3185,8 +3200,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/mt6985-mt6338.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
 
-        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
-        mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
+        #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
+        #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
