@@ -109,7 +109,10 @@ static struct task_struct *pick_task_dl_clone(struct rq *rq)
 	dl_se = pick_next_dl_entity_clone(dl_rq);
 	WARN_ON_ONCE(!dl_se);
 
-	p = container_of(dl_se, struct task_struct, dl);
+	if (dl_se->dl_server)
+		return NULL;
+	else
+		p = container_of(dl_se, struct task_struct, dl);
 
 	return p;
 }
