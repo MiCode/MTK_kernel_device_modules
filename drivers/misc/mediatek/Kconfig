@@ -277,6 +277,7 @@ config MTK_WIFI_DEBUG
 	  If not, say N.
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/blocktag/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/irq_monitor/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mtprof/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/locking/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mmstat/Kconfig"

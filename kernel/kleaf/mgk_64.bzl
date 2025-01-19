@@ -1211,7 +1211,7 @@ mgk_64_platform_device_modules = {
 mgk_64_device_eng_modules = [
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
     "drivers/misc/mediatek/locking/locking_aee.ko",
-    "drivers/misc/mediatek/mtprof/irq_monitor.ko",
+    "drivers/misc/mediatek/irq_monitor/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
 ]
 
@@ -1221,7 +1221,7 @@ mgk_64_platform_device_eng_modules = {
 
 mgk_64_device_userdebug_modules = [
     "drivers/misc/mediatek/cpufreq_v1/cpuhvfs.ko",
-    "drivers/misc/mediatek/mtprof/irq_monitor.ko",
+    "drivers/misc/mediatek/irq_monitor/irq_monitor.ko",
     "drivers/misc/mediatek/selinux_warning/mtk_selinux_aee_warning.ko",
 ]
 

@@ -72,4 +72,3 @@ int irq_log_init(void);
 	})
 
 #endif
-
