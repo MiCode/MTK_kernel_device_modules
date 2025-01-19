@@ -35,6 +35,12 @@ struct vcp_feature_tb feature_table[NUM_FEATURE_ID] = {
 		.sys_id	= VCPSYS_CORE0,
 	},
 	{
+		.feature	= MMDVFS_MMUP_FEATURE_ID,
+		.freq		= 0,
+		.enable	= 0,
+		.sys_id	= VCPSYS_CORE0,
+	},
+	{
 		.feature	= MMDVFS_VCP_FEATURE_ID,
 		.freq		= 0,
 		.enable	= 0,
@@ -54,6 +60,12 @@ struct vcp_feature_tb feature_table[NUM_FEATURE_ID] = {
 	},
 	{
 		.feature	= HWCCF_FEATURE_ID,
+		.freq		= 0,
+		.enable	= 0,
+		.sys_id	= VCPSYS_CORE0,
+	},
+	{
+		.feature	= HWCCF_DEBUG_FEATURE_ID,
 		.freq		= 0,
 		.enable	= 0,
 		.sys_id	= VCPSYS_CORE0,

@@ -113,7 +113,6 @@ enum {
 struct vcp_regs {
 	void __iomem *sram;
 	void __iomem *cfg;
-	void __iomem *clkctrl;
 	void __iomem *l1cctrl;
 	void __iomem *cfg_core0;
 	void __iomem *cfg_intc;
@@ -124,6 +123,16 @@ struct vcp_regs {
 	void __iomem *bus_debug;
 	void __iomem *bus_tracker;
 	void __iomem *bus_prot;
+	void __iomem *infra_sram;
+	void __iomem *infra_cfg;
+	void __iomem *infra_cfg_core0;
+	void __iomem *infra_cfg_intc;
+	void __iomem *infra_cfg_pwr;
+	void __iomem *infra_cfg_core1;
+	void __iomem *infra_cfg_sec;
+	void __iomem *infra_bus_debug;
+	void __iomem *infra_bus_tracker;
+	void __iomem *infra_bus_prot;
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;
@@ -195,6 +204,7 @@ struct vcp_mminfra_on_off_st {
 /* vcp helper varriable */
 extern bool driver_init_done;
 extern bool is_suspending;
+extern unsigned int infra_vcp_support;
 
 extern struct vcp_regs vcpreg;
 extern const struct file_operations vcp_A_log_file_ops;

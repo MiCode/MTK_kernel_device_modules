@@ -120,177 +120,355 @@ void vcp_dump_last_regs(int mmup_enable)
 		return;
 	}
 
-	c0_m->status = readl(R_CORE0_STATUS);
-	c0_m->pc = readl(R_CORE0_MON_PC);
-	c0_m->lr = readl(R_CORE0_MON_LR);
-	c0_m->sp = readl(R_CORE0_MON_SP);
-	c0_m->pc_latch = readl(R_CORE0_MON_PC_LATCH);
-	c0_m->lr_latch = readl(R_CORE0_MON_LR_LATCH);
-	c0_m->sp_latch = readl(R_CORE0_MON_SP_LATCH);
-	if (vcpreg.twohart) {
-		c0_t1_m->pc = readl(R_CORE0_T1_MON_PC);
-		c0_t1_m->lr = readl(R_CORE0_T1_MON_LR);
-		c0_t1_m->sp = readl(R_CORE0_T1_MON_SP);
-		c0_t1_m->pc_latch = readl(R_CORE0_T1_MON_PC_LATCH);
-		c0_t1_m->lr_latch = readl(R_CORE0_T1_MON_LR_LATCH);
-		c0_t1_m->sp_latch = readl(R_CORE0_T1_MON_SP_LATCH);
-	}
-	if (vcpreg.core_nums == 2) {
-		c1_m->status = readl(R_CORE1_STATUS);
-		c1_m->pc = readl(R_CORE1_MON_PC);
-		c1_m->lr = readl(R_CORE1_MON_LR);
-		c1_m->sp = readl(R_CORE1_MON_SP);
-		c1_m->pc_latch = readl(R_CORE1_MON_PC_LATCH);
-		c1_m->lr_latch = readl(R_CORE1_MON_LR_LATCH);
-		c1_m->sp_latch = readl(R_CORE1_MON_SP_LATCH);
-	}
-
-	if (vcpreg.core_nums == 2 && vcpreg.twohart) {
-		c1_t1_m->pc = readl(R_CORE1_T1_MON_PC);
-		c1_t1_m->lr = readl(R_CORE1_T1_MON_LR);
-		c1_t1_m->sp = readl(R_CORE1_T1_MON_SP);
-		c1_t1_m->pc_latch = readl(R_CORE1_T1_MON_PC_LATCH);
-		c1_t1_m->lr_latch = readl(R_CORE1_T1_MON_LR_LATCH);
-		c1_t1_m->sp_latch = readl(R_CORE1_T1_MON_SP_LATCH);
-	}
-
-	pr_notice("[VCP] c0_status = %08x\n", c0_m->status);
-	pr_notice("[VCP] c0_pc = %08x\n", c0_m->pc);
-	pr_notice("[VCP] c0_pc2 = %08x\n", readl(R_CORE0_MON_PC));
-	pr_debug("[VCP] c0_lr = %08x\n", c0_m->lr);
-	pr_debug("[VCP] c0_sp = %08x\n", c0_m->sp);
-	pr_notice("[VCP] c0_pc_latch = %08x\n", c0_m->pc_latch);
-	pr_debug("[VCP] c0_lr_latch = %08x\n", c0_m->lr_latch);
-	pr_debug("[VCP] c0_sp_latch = %08x\n", c0_m->sp_latch);
-	pr_notice("[VCP] RSTN_CLR = %08x RSTN_CLR = %08x\n",
-		readl(R_CORE0_SW_RSTN_CLR), readl(R_CORE0_SW_RSTN_SET));
-	if (!IS_ERR((void const *) vcpreg.cfg_pwr))
-		pr_notice("[VCP] SLP_EN = %08x PWR_STATUS = %08x\n",
-			readl(VCP_R_SLP_EN), readl(VCP_POWER_STATUS));
-
-	pr_notice("[VCP] SRAM region: %08x,%08x,%08x,%08x\n",
-		readl(vcpreg.sram), readl(vcpreg.sram + 0x4),
-		readl(vcpreg.sram + 0x8), readl(vcpreg.sram + 0xc));
-
-	pr_notice("[VCP] SRAM loader: %08x,%08x,%08x,%08x\n",
-		readl(vcpreg.sram + 0x300), readl(vcpreg.sram + 0x304),
-		readl(vcpreg.sram + 0x308), readl(vcpreg.sram + 0x30c));
-
-	pr_notice("[VCP] SRAM image: %08x,%08x,%08x,%08x\n",
-		readl(vcpreg.sram + 0x2000), readl(vcpreg.sram + 0x2004),
-		readl(vcpreg.sram + 0x2008), readl(vcpreg.sram + 0x200c));
-
-	pr_notice("[VCP] irq sta: %08x,%08x,%08x\n", readl(VCP_IRQ_STA0),
-		readl(VCP_IRQ_STA1), readl(VCP_IRQ_STA2));
-
-	pr_notice("[VCP] irq en: %08x,%08x,%08x\n", readl(VCP_IRQ_EN0),
-		readl(VCP_IRQ_EN1), readl(VCP_IRQ_EN2));
-
-	pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_IRQ_SLP0),
-		readl(VCP_IRQ_SLP1), readl(VCP_IRQ_SLP2));
-
-	if (vcp_res_req_status_reg)
-		pr_notice("[VCP] resource request status: %08x\n",
-			readl(vcp_res_req_status_reg));
-
-	pr_notice("[VCP] CLK_SYS/BUS/APSRC/DDREN REQ: %08x,%08x,%08x,%08x\n",
-		readl(R_CORE0_CLK_SYS_REQ), readl(R_CORE0_BUS_REQ),
-		readl(R_CORE0_APSRC_REQ), readl(R_CORE0_DDREN_REQ));
-	pr_notice("[VCP] SYS_CTRL/SLP_PROT_EN: %08x,%08x\n",
-		readl(VCP_SYS_CTRL), readl(VCP_SLP_PROT_EN));
-	pr_notice("[VCP] DDREN_NEW_CTRL/DDREN_NEW_CTRL2/APSRC_CTRL2: %08x,%08x,%08x\n",
-		readl(VCP_DDREN_NEW_CTRL), readl(VCP_DDREN_NEW_CTRL2),
-		readl(VCP_APSRC_CTRL2));
-	if (vcpreg.bus_prot) {
-		pr_notice("[VCP] bus prot_en/ack\n");
-		for (i = 0; i < 2; i++) {
-			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
-				readl(VCP_BUS_PROT + i * 0x20),
-				readl(VCP_BUS_PROT + i * 0x20 + 0x4),
-				readl(VCP_BUS_PROT + i * 0x20 + 0x8),
-				readl(VCP_BUS_PROT + i * 0x20 + 0xC),
-				readl(VCP_BUS_PROT + i * 0x20 + 0x10),
-				readl(VCP_BUS_PROT + i * 0x20 + 0x14),
-				readl(VCP_BUS_PROT + i * 0x20 + 0x18),
-				readl(VCP_BUS_PROT + i * 0x20 + 0x1C));
+	if (!infra_vcp_support) {
+		c0_m->status = readl(R_CORE0_STATUS);
+		c0_m->pc = readl(R_CORE0_MON_PC);
+		c0_m->lr = readl(R_CORE0_MON_LR);
+		c0_m->sp = readl(R_CORE0_MON_SP);
+		c0_m->pc_latch = readl(R_CORE0_MON_PC_LATCH);
+		c0_m->lr_latch = readl(R_CORE0_MON_LR_LATCH);
+		c0_m->sp_latch = readl(R_CORE0_MON_SP_LATCH);
+		if (vcpreg.twohart) {
+			c0_t1_m->pc = readl(R_CORE0_T1_MON_PC);
+			c0_t1_m->lr = readl(R_CORE0_T1_MON_LR);
+			c0_t1_m->sp = readl(R_CORE0_T1_MON_SP);
+			c0_t1_m->pc_latch = readl(R_CORE0_T1_MON_PC_LATCH);
+			c0_t1_m->lr_latch = readl(R_CORE0_T1_MON_LR_LATCH);
+			c0_t1_m->sp_latch = readl(R_CORE0_T1_MON_SP_LATCH);
 		}
-	}
+		if (vcpreg.core_nums == 2) {
+			c1_m->status = readl(R_CORE1_STATUS);
+			c1_m->pc = readl(R_CORE1_MON_PC);
+			c1_m->lr = readl(R_CORE1_MON_LR);
+			c1_m->sp = readl(R_CORE1_MON_SP);
+			c1_m->pc_latch = readl(R_CORE1_MON_PC_LATCH);
+			c1_m->lr_latch = readl(R_CORE1_MON_LR_LATCH);
+			c1_m->sp_latch = readl(R_CORE1_MON_SP_LATCH);
+		}
 
-	if (vcpreg.twohart) {
-		pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
-		pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(R_CORE0_T1_MON_PC));
-		pr_debug("[VCP] c0_t1_lr = %08x\n", c0_t1_m->lr);
-		pr_debug("[VCP] c0_t1_sp = %08x\n", c0_t1_m->sp);
-		pr_notice("[VCP] c0_t1_pc_latch = %08x\n", c0_t1_m->pc_latch);
-		pr_debug("[VCP] c0_t1_lr_latch = %08x\n", c0_t1_m->lr_latch);
-		pr_debug("[VCP] c0_t1_sp_latch = %08x\n", c0_t1_m->sp_latch);
-	}
-	if (vcpreg.core_nums == 2) {
-		pr_notice("[VCP] c1_status = %08x\n", c1_m->status);
-		pr_notice("[VCP] c1_pc = %08x\n", c1_m->pc);
-		pr_notice("[VCP] c1_pc2 = %08x\n", readl(R_CORE1_MON_PC));
-		pr_debug("[VCP] c1_lr = %08x\n", c1_m->lr);
-		pr_debug("[VCP] c1_sp = %08x\n", c1_m->sp);
-		pr_notice("[VCP] c1_pc_latch = %08x\n", c1_m->pc_latch);
-		pr_debug("[VCP] c1_lr_latch = %08x\n", c1_m->lr_latch);
-		pr_debug("[VCP] c1_sp_latch = %08x\n", c1_m->sp_latch);
-	}
-	if (vcpreg.core_nums == 2 && vcpreg.twohart) {
-		pr_notice("[VCP] c1_t1_pc = %08x\n", c1_t1_m->pc);
-		pr_notice("[VCP] c1_t1_pc2 = %08x\n", readl(R_CORE1_T1_MON_PC));
-		pr_debug("[VCP] c1_t1_lr = %08x\n", c1_t1_m->lr);
-		pr_debug("[VCP] c1_t1_sp = %08x\n", c1_t1_m->sp);
-		pr_notice("[VCP] c1_t1_pc_latch = %08x\n", c1_t1_m->pc_latch);
-		pr_debug("[VCP] c1_t1_lr_latch = %08x\n", c1_t1_m->lr_latch);
-		pr_debug("[VCP] c1_t1_sp_latch = %08x\n", c1_t1_m->sp_latch);
-	}
+		if (vcpreg.core_nums == 2 && vcpreg.twohart) {
+			c1_t1_m->pc = readl(R_CORE1_T1_MON_PC);
+			c1_t1_m->lr = readl(R_CORE1_T1_MON_LR);
+			c1_t1_m->sp = readl(R_CORE1_T1_MON_SP);
+			c1_t1_m->pc_latch = readl(R_CORE1_T1_MON_PC_LATCH);
+			c1_t1_m->lr_latch = readl(R_CORE1_T1_MON_LR_LATCH);
+			c1_t1_m->sp_latch = readl(R_CORE1_T1_MON_SP_LATCH);
+		}
 
-	/* bus debug reg dump */
-	pr_notice("[VCP] BUS DBG CON %08x, port num = %d\n",
-		readl(VCP_BUS_DBG_CON), vcpreg.bus_debug_num_ports);
-	for (i = 0; i < vcpreg.bus_debug_num_ports; i++) {
-		pr_notice("[VCP] bus debug result%d = %08x\n",
-			i, readl(VCP_BUS_DBG_RESULT0 + i * 4));
-	}
+		pr_notice("[VCP] c0_status = %08x\n", c0_m->status);
+		pr_notice("[VCP] c0_pc = %08x\n", c0_m->pc);
+		pr_notice("[VCP] c0_pc2 = %08x\n", readl(R_CORE0_MON_PC));
+		pr_debug("[VCP] c0_lr = %08x\n", c0_m->lr);
+		pr_debug("[VCP] c0_sp = %08x\n", c0_m->sp);
+		pr_notice("[VCP] c0_pc_latch = %08x\n", c0_m->pc_latch);
+		pr_debug("[VCP] c0_lr_latch = %08x\n", c0_m->lr_latch);
+		pr_debug("[VCP] c0_sp_latch = %08x\n", c0_m->sp_latch);
+		pr_notice("[VCP] RSTN_CLR = %08x RSTN_CLR = %08x\n",
+			readl(R_CORE0_SW_RSTN_CLR), readl(R_CORE0_SW_RSTN_SET));
+		if (!IS_ERR((void const *) vcpreg.cfg_pwr))
+			pr_notice("[VCP] SLP_EN = %08x PWR_STATUS = %08x\n",
+				readl(VCP_R_SLP_EN), readl(VCP_POWER_STATUS));
 
-	/* bus tracker reg dump */
-	pr_notice("[VCP] BUS TRACKER CON\n");
-	for (i = 0; i < 3; i++) {
-		pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
-			readl(VCP_BUS_TRACKER_CON + i * 0x20),
-			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x4),
-			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x8),
-			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0xC),
-			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x10),
-			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x14),
-			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x18),
-			readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x1C));
-	}
-	pr_notice("[VCP] BUS TRACKER AR\n");
-	for (i = 0; i < 8; i++) {
-		pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20),
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x4),
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x8),
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0xC),
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x10),
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x14),
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x18),
-			readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x1C));
-	}
-	pr_notice("[VCP] BUS TRACKER AW\n");
-	for (i = 0; i < 8; i++) {
-		pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20),
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x4),
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x8),
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0xC),
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x10),
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x14),
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x18),
-			readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x1C));
-	}
+		pr_notice("[VCP] SRAM region: %08x,%08x,%08x,%08x\n",
+			readl(vcpreg.sram), readl(vcpreg.sram + 0x4),
+			readl(vcpreg.sram + 0x8), readl(vcpreg.sram + 0xc));
 
+		pr_notice("[VCP] SRAM loader: %08x,%08x,%08x,%08x\n",
+			readl(vcpreg.sram + 0x300), readl(vcpreg.sram + 0x304),
+			readl(vcpreg.sram + 0x308), readl(vcpreg.sram + 0x30c));
+
+		pr_notice("[VCP] SRAM image: %08x,%08x,%08x,%08x\n",
+			readl(vcpreg.sram + 0x2000), readl(vcpreg.sram + 0x2004),
+			readl(vcpreg.sram + 0x2008), readl(vcpreg.sram + 0x200c));
+
+		pr_notice("[VCP] irq sta: %08x,%08x,%08x\n", readl(VCP_IRQ_STA0),
+			readl(VCP_IRQ_STA1), readl(VCP_IRQ_STA2));
+
+		pr_notice("[VCP] irq en: %08x,%08x,%08x\n", readl(VCP_IRQ_EN0),
+			readl(VCP_IRQ_EN1), readl(VCP_IRQ_EN2));
+
+		pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_IRQ_SLP0),
+			readl(VCP_IRQ_SLP1), readl(VCP_IRQ_SLP2));
+
+		if (vcp_res_req_status_reg)
+			pr_notice("[VCP] resource request status: %08x\n",
+				readl(vcp_res_req_status_reg));
+
+		pr_notice("[VCP] CLK_SYS/BUS/APSRC/DDREN REQ: %08x,%08x,%08x,%08x\n",
+			readl(R_CORE0_CLK_SYS_REQ), readl(R_CORE0_BUS_REQ),
+			readl(R_CORE0_APSRC_REQ), readl(R_CORE0_DDREN_REQ));
+		pr_notice("[VCP] SYS_CTRL/SLP_PROT_EN: %08x,%08x\n",
+			readl(VCP_SYS_CTRL), readl(VCP_SLP_PROT_EN));
+		pr_notice("[VCP] DDREN_NEW_CTRL/DDREN_NEW_CTRL2/APSRC_CTRL2: %08x,%08x,%08x\n",
+			readl(VCP_DDREN_NEW_CTRL), readl(VCP_DDREN_NEW_CTRL2),
+			readl(VCP_APSRC_CTRL2));
+		if (vcpreg.bus_prot) {
+			pr_notice("[VCP] bus prot_en/ack\n");
+			for (i = 0; i < 2; i++) {
+				pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+					readl(VCP_BUS_PROT + i * 0x20),
+					readl(VCP_BUS_PROT + i * 0x20 + 0x4),
+					readl(VCP_BUS_PROT + i * 0x20 + 0x8),
+					readl(VCP_BUS_PROT + i * 0x20 + 0xC),
+					readl(VCP_BUS_PROT + i * 0x20 + 0x10),
+					readl(VCP_BUS_PROT + i * 0x20 + 0x14),
+					readl(VCP_BUS_PROT + i * 0x20 + 0x18),
+					readl(VCP_BUS_PROT + i * 0x20 + 0x1C));
+			}
+		}
+
+		if (vcpreg.twohart) {
+			pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
+			pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(R_CORE0_T1_MON_PC));
+			pr_debug("[VCP] c0_t1_lr = %08x\n", c0_t1_m->lr);
+			pr_debug("[VCP] c0_t1_sp = %08x\n", c0_t1_m->sp);
+			pr_notice("[VCP] c0_t1_pc_latch = %08x\n", c0_t1_m->pc_latch);
+			pr_debug("[VCP] c0_t1_lr_latch = %08x\n", c0_t1_m->lr_latch);
+			pr_debug("[VCP] c0_t1_sp_latch = %08x\n", c0_t1_m->sp_latch);
+		}
+		if (vcpreg.core_nums == 2) {
+			pr_notice("[VCP] c1_status = %08x\n", c1_m->status);
+			pr_notice("[VCP] c1_pc = %08x\n", c1_m->pc);
+			pr_notice("[VCP] c1_pc2 = %08x\n", readl(R_CORE1_MON_PC));
+			pr_debug("[VCP] c1_lr = %08x\n", c1_m->lr);
+			pr_debug("[VCP] c1_sp = %08x\n", c1_m->sp);
+			pr_notice("[VCP] c1_pc_latch = %08x\n", c1_m->pc_latch);
+			pr_debug("[VCP] c1_lr_latch = %08x\n", c1_m->lr_latch);
+			pr_debug("[VCP] c1_sp_latch = %08x\n", c1_m->sp_latch);
+		}
+		if (vcpreg.core_nums == 2 && vcpreg.twohart) {
+			pr_notice("[VCP] c1_t1_pc = %08x\n", c1_t1_m->pc);
+			pr_notice("[VCP] c1_t1_pc2 = %08x\n", readl(R_CORE1_T1_MON_PC));
+			pr_debug("[VCP] c1_t1_lr = %08x\n", c1_t1_m->lr);
+			pr_debug("[VCP] c1_t1_sp = %08x\n", c1_t1_m->sp);
+			pr_notice("[VCP] c1_t1_pc_latch = %08x\n", c1_t1_m->pc_latch);
+			pr_debug("[VCP] c1_t1_lr_latch = %08x\n", c1_t1_m->lr_latch);
+			pr_debug("[VCP] c1_t1_sp_latch = %08x\n", c1_t1_m->sp_latch);
+		}
+
+		/* bus debug reg dump */
+		pr_notice("[VCP] BUS DBG CON %08x, port num = %d\n",
+			readl(VCP_BUS_DBG_CON), vcpreg.bus_debug_num_ports);
+		for (i = 0; i < vcpreg.bus_debug_num_ports; i++) {
+			pr_notice("[VCP] bus debug result%d = %08x\n",
+				i, readl(VCP_BUS_DBG_RESULT0 + i * 4));
+		}
+
+		/* bus tracker reg dump */
+		pr_notice("[VCP] BUS TRACKER CON\n");
+		for (i = 0; i < 3; i++) {
+			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+				readl(VCP_BUS_TRACKER_CON + i * 0x20),
+				readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x4),
+				readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x8),
+				readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0xC),
+				readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x10),
+				readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x14),
+				readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x18),
+				readl(VCP_BUS_TRACKER_CON + i * 0x20 + 0x1C));
+		}
+		pr_notice("[VCP] BUS TRACKER AR\n");
+		for (i = 0; i < 8; i++) {
+			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20),
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x4),
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x8),
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0xC),
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x10),
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x14),
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x18),
+				readl(VCP_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x1C));
+		}
+		pr_notice("[VCP] BUS TRACKER AW\n");
+		for (i = 0; i < 8; i++) {
+			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20),
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x4),
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x8),
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0xC),
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x10),
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x14),
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x18),
+				readl(VCP_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x1C));
+		}
+
+		/* mmup2infra RX and TX reg dump */
+		pr_notice("[VCP] mmup2infra tx: %08x\n", readl(VCP_TO_INFRA_TX));
+	} else {
+		c0_m->status = readl(VCP_INFRA_CORE0_STATUS);
+		c0_m->pc = readl(VCP_INFRA_CORE0_MON_PC);
+		c0_m->lr = readl(VCP_INFRA_CORE0_MON_LR);
+		c0_m->sp = readl(VCP_INFRA_CORE0_MON_SP);
+		c0_m->pc_latch = readl(VCP_INFRA_CORE0_MON_PC_LATCH);
+		c0_m->lr_latch = readl(VCP_INFRA_CORE0_MON_LR_LATCH);
+		c0_m->sp_latch = readl(VCP_INFRA_CORE0_MON_SP_LATCH);
+		if (vcpreg.twohart) {
+			c0_t1_m->pc = readl(VCP_INFRA_CORE0_T1_MON_PC);
+			c0_t1_m->lr = readl(VCP_INFRA_CORE0_T1_MON_LR);
+			c0_t1_m->sp = readl(VCP_INFRA_CORE0_T1_MON_SP);
+			c0_t1_m->pc_latch = readl(VCP_INFRA_CORE0_T1_MON_PC_LATCH);
+			c0_t1_m->lr_latch = readl(VCP_INFRA_CORE0_T1_MON_LR_LATCH);
+			c0_t1_m->sp_latch = readl(VCP_INFRA_CORE0_T1_MON_SP_LATCH);
+		}
+		if (vcpreg.core_nums == 2) {
+			c1_m->status = readl(VCP_INFRA_CORE1_STATUS);
+			c1_m->pc = readl(VCP_INFRA_CORE1_MON_PC);
+			c1_m->lr = readl(VCP_INFRA_CORE1_MON_LR);
+			c1_m->sp = readl(VCP_INFRA_CORE1_MON_SP);
+			c1_m->pc_latch = readl(VCP_INFRA_CORE1_MON_PC_LATCH);
+			c1_m->lr_latch = readl(VCP_INFRA_CORE1_MON_LR_LATCH);
+			c1_m->sp_latch = readl(VCP_INFRA_CORE1_MON_SP_LATCH);
+		}
+
+		if (vcpreg.core_nums == 2 && vcpreg.twohart) {
+			c1_t1_m->pc = readl(VCP_INFRA_CORE1_T1_MON_PC);
+			c1_t1_m->lr = readl(VCP_INFRA_CORE1_T1_MON_LR);
+			c1_t1_m->sp = readl(VCP_INFRA_CORE1_T1_MON_SP);
+			c1_t1_m->pc_latch = readl(VCP_INFRA_CORE1_T1_MON_PC_LATCH);
+			c1_t1_m->lr_latch = readl(VCP_INFRA_CORE1_T1_MON_LR_LATCH);
+			c1_t1_m->sp_latch = readl(VCP_INFRA_CORE1_T1_MON_SP_LATCH);
+		}
+
+		pr_notice("[VCP] c0_status = %08x\n", c0_m->status);
+		pr_notice("[VCP] c0_pc = %08x\n", c0_m->pc);
+		pr_notice("[VCP] c0_pc2 = %08x\n", readl(VCP_INFRA_CORE0_MON_PC));
+		pr_debug("[VCP] c0_lr = %08x\n", c0_m->lr);
+		pr_debug("[VCP] c0_sp = %08x\n", c0_m->sp);
+		pr_notice("[VCP] c0_pc_latch = %08x\n", c0_m->pc_latch);
+		pr_debug("[VCP] c0_lr_latch = %08x\n", c0_m->lr_latch);
+		pr_debug("[VCP] c0_sp_latch = %08x\n", c0_m->sp_latch);
+		pr_notice("[VCP] RSTN_CLR = %08x RSTN_CLR = %08x\n",
+			readl(VCP_INFRA_CORE0_SW_RSTN_CLR), readl(VCP_INFRA_CORE0_SW_RSTN_SET));
+		if (!IS_ERR((void const *) vcpreg.infra_cfg_pwr))
+			pr_notice("[VCP] SLP_EN = %08x PWR_STATUS = %08x\n",
+				readl(VCP_INFRA_SLP_EN), readl(VCP_INFRA_POWER_STATUS));
+
+		pr_notice("[VCP] SRAM region: %08x,%08x,%08x,%08x\n",
+			readl(vcpreg.infra_sram), readl(vcpreg.infra_sram + 0x4),
+			readl(vcpreg.infra_sram + 0x8), readl(vcpreg.infra_sram + 0xc));
+
+		pr_notice("[VCP] SRAM loader: %08x,%08x,%08x,%08x\n",
+			readl(vcpreg.infra_sram + 0x300), readl(vcpreg.infra_sram + 0x304),
+			readl(vcpreg.infra_sram + 0x308), readl(vcpreg.infra_sram + 0x30c));
+
+		pr_notice("[VCP] SRAM image: %08x,%08x,%08x,%08x\n",
+			readl(vcpreg.infra_sram + 0x2000), readl(vcpreg.infra_sram + 0x2004),
+			readl(vcpreg.infra_sram + 0x2008), readl(vcpreg.infra_sram + 0x200c));
+
+		pr_notice("[VCP] irq sta: %08x,%08x,%08x\n", readl(VCP_INFRA_IRQ_STA0),
+			readl(VCP_INFRA_IRQ_STA1), readl(VCP_INFRA_IRQ_STA2));
+
+		pr_notice("[VCP] irq en: %08x,%08x,%08x\n", readl(VCP_INFRA_IRQ_EN0),
+			readl(VCP_INFRA_IRQ_EN1), readl(VCP_INFRA_IRQ_EN2));
+
+		pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x\n", readl(VCP_INFRA_IRQ_SLP0),
+			readl(VCP_INFRA_IRQ_SLP1), readl(VCP_INFRA_IRQ_SLP2));
+
+		if (vcp_res_req_status_reg)
+			pr_notice("[VCP] resource request status: %08x\n",
+				readl(vcp_res_req_status_reg));
+
+		pr_notice("[VCP] CLK_SYS/BUS/APSRC/DDREN REQ: %08x,%08x,%08x,%08x\n",
+			readl(VCP_INFRA_CORE0_CLK_SYS_REQ), readl(VCP_INFRA_CORE0_BUS_REQ),
+			readl(VCP_INFRA_CORE0_APSRC_REQ), readl(VCP_INFRA_CORE0_DDREN_REQ));
+		pr_notice("[VCP] SYS_CTRL/SLP_PROT_EN: %08x,%08x\n",
+			readl(VCP_INFRA_SYS_CTRL), readl(VCP_INFRA_SLP_PROT_EN));
+		pr_notice("[VCP] DDREN_NEW_CTRL/DDREN_NEW_CTRL2/APSRC_CTRL2: %08x,%08x,%08x\n",
+			readl(VCP_INFRA_DDREN_NEW_CTRL), readl(VCP_INFRA_DDREN_NEW_CTRL2),
+			readl(VCP_INFRA_APSRC_CTRL2));
+		if (vcpreg.infra_bus_prot) {
+			pr_notice("[VCP] bus prot_en/ack\n");
+			for (i = 0; i < 2; i++) {
+				pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+					readl(VCP_INFRA_BUS_PROT + i * 0x20),
+					readl(VCP_INFRA_BUS_PROT + i * 0x20 + 0x4),
+					readl(VCP_INFRA_BUS_PROT + i * 0x20 + 0x8),
+					readl(VCP_INFRA_BUS_PROT + i * 0x20 + 0xC),
+					readl(VCP_INFRA_BUS_PROT + i * 0x20 + 0x10),
+					readl(VCP_INFRA_BUS_PROT + i * 0x20 + 0x14),
+					readl(VCP_INFRA_BUS_PROT + i * 0x20 + 0x18),
+					readl(VCP_INFRA_BUS_PROT + i * 0x20 + 0x1C));
+			}
+		}
+
+		if (vcpreg.twohart) {
+			pr_notice("[VCP] c0_t1_pc = %08x\n", c0_t1_m->pc);
+			pr_notice("[VCP] c0_t1_pc2 = %08x\n", readl(VCP_INFRA_CORE0_T1_MON_PC));
+			pr_debug("[VCP] c0_t1_lr = %08x\n", c0_t1_m->lr);
+			pr_debug("[VCP] c0_t1_sp = %08x\n", c0_t1_m->sp);
+			pr_notice("[VCP] c0_t1_pc_latch = %08x\n", c0_t1_m->pc_latch);
+			pr_debug("[VCP] c0_t1_lr_latch = %08x\n", c0_t1_m->lr_latch);
+			pr_debug("[VCP] c0_t1_sp_latch = %08x\n", c0_t1_m->sp_latch);
+		}
+		if (vcpreg.core_nums == 2) {
+			pr_notice("[VCP] c1_status = %08x\n", c1_m->status);
+			pr_notice("[VCP] c1_pc = %08x\n", c1_m->pc);
+			pr_notice("[VCP] c1_pc2 = %08x\n", readl(VCP_INFRA_CORE1_MON_PC));
+			pr_debug("[VCP] c1_lr = %08x\n", c1_m->lr);
+			pr_debug("[VCP] c1_sp = %08x\n", c1_m->sp);
+			pr_notice("[VCP] c1_pc_latch = %08x\n", c1_m->pc_latch);
+			pr_debug("[VCP] c1_lr_latch = %08x\n", c1_m->lr_latch);
+			pr_debug("[VCP] c1_sp_latch = %08x\n", c1_m->sp_latch);
+		}
+		if (vcpreg.core_nums == 2 && vcpreg.twohart) {
+			pr_notice("[VCP] c1_t1_pc = %08x\n", c1_t1_m->pc);
+			pr_notice("[VCP] c1_t1_pc2 = %08x\n", readl(VCP_INFRA_CORE1_T1_MON_PC));
+			pr_debug("[VCP] c1_t1_lr = %08x\n", c1_t1_m->lr);
+			pr_debug("[VCP] c1_t1_sp = %08x\n", c1_t1_m->sp);
+			pr_notice("[VCP] c1_t1_pc_latch = %08x\n", c1_t1_m->pc_latch);
+			pr_debug("[VCP] c1_t1_lr_latch = %08x\n", c1_t1_m->lr_latch);
+			pr_debug("[VCP] c1_t1_sp_latch = %08x\n", c1_t1_m->sp_latch);
+		}
+
+		/* bus debug reg dump */
+		pr_notice("[VCP] BUS DBG CON %08x, port num = %d\n",
+			readl(VCP_INFRA_BUS_DBG_CON), vcpreg.bus_debug_num_ports);
+		for (i = 0; i < vcpreg.bus_debug_num_ports; i++) {
+			pr_notice("[VCP] bus debug result%d = %08x\n",
+				i, readl(VCP_INFRA_BUS_DBG_RESULT0 + i * 4));
+		}
+
+		/* bus tracker reg dump */
+		pr_notice("[VCP] BUS TRACKER CON\n");
+		for (i = 0; i < 3; i++) {
+			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20),
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20 + 0x4),
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20 + 0x8),
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20 + 0xC),
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20 + 0x10),
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20 + 0x14),
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20 + 0x18),
+				readl(VCP_INFRA_BUS_TRACKER_CON + i * 0x20 + 0x1C));
+		}
+		pr_notice("[VCP] BUS TRACKER AR\n");
+		for (i = 0; i < 8; i++) {
+			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20),
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x4),
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x8),
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0xC),
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x10),
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x14),
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x18),
+				readl(VCP_INFRA_BUS_TRACKER_AR_TRACK0 + i * 0x20 + 0x1C));
+		}
+		pr_notice("[VCP] BUS TRACKER AW\n");
+		for (i = 0; i < 8; i++) {
+			pr_notice("[VCP] %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20),
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x4),
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x8),
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0xC),
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x10),
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x14),
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x18),
+				readl(VCP_INFRA_BUS_TRACKER_AW_TRACK0 + i * 0x20 + 0x1C));
+		}
+
+		/* mmup2infra RX and TX reg dump */
+		pr_notice("[VCP] mmup2infra tx: %08x\n", readl(VCP_INFRA_TO_INFRA_TX));
+	}
 	out = kmalloc(0x400 * sizeof(uint32_t), GFP_DMA|GFP_ATOMIC);
 	if (!out)
 		return;
@@ -301,10 +479,6 @@ void vcp_dump_last_regs(int mmup_enable)
 	vcp_do_tbufdump(out, out_end);
 	kfree(out);
 
-	/* mmup2infra RX and TX reg dump */
-	pr_notice("[VCP] mmup2infra tx: %08x\n", readl(VCP_TO_INFRA_TX));
-	if (mminfra_debug_dump && vcp_ao)
-		mminfra_debug_dump();
 }
 
 void vcp_do_regdump(uint32_t *out, uint32_t *out_end)
@@ -396,69 +570,136 @@ void vcp_do_tbufdump_RV55(uint32_t *out, uint32_t *out_end)
 	uint32_t tmp, tmp1, index, offset, wbuf_ptr, wbuf1_ptr;
 	int i;
 
-	wbuf1_ptr = readl(R_CORE0_TBUF_WPTR);
-	wbuf_ptr = wbuf1_ptr & 0x1f;
-	wbuf1_ptr = wbuf1_ptr >> 8;
-	tmp = readl(R_CORE0_DBG_CTRL) & M_CORE_TBUF_DBG_SEL_RV55;
-	for (i = 0; i < 32; i++) {
-		index = ((wbuf_ptr + i) / 4) & 0x7;
-		offset = ((wbuf_ptr + i) % 4) * 0x8;
-		tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
-		writel(tmp | tmp1, R_CORE0_DBG_CTRL);
-		*(buf) = readl(R_CORE0_TBUF_DATA31_0 + offset);
-		*(buf + 1) = readl(R_CORE0_TBUF_DATA63_32 + offset);
-		buf += 2;
-	}
-	for (i = 0; i < 32; i++) {
-		pr_notice("[VCP] C0:H0:%02d:0x%08x::0x%08x\n",
-			i, *(out + i * 2), *(out + i * 2 + 1));
-	}
-	for (i = 0; i < 32; i++) {
-		index = (((wbuf1_ptr + i) / 4) & 0x7) | 0x8;
-		offset = ((wbuf1_ptr + i) % 4) * 0x8;
-		tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
-		writel(tmp | tmp1, R_CORE0_DBG_CTRL);
-		*(buf) = readl(R_CORE0_TBUF_DATA31_0 + offset);
-		*(buf + 1) = readl(R_CORE0_TBUF_DATA63_32 + offset);
-		buf += 2;
-	}
-	for (i = 0; i < 32; i++) {
-		pr_notice("[VCP] C0:H1:%02d:0x%08x::0x%08x\n",
-			i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
-	}
+	if (!infra_vcp_support) {
+		wbuf1_ptr = readl(R_CORE0_TBUF_WPTR);
+		wbuf_ptr = wbuf1_ptr & 0x1f;
+		wbuf1_ptr = wbuf1_ptr >> 8;
+		tmp = readl(R_CORE0_DBG_CTRL) & M_CORE_TBUF_DBG_SEL_RV55;
+		for (i = 0; i < 32; i++) {
+			index = ((wbuf_ptr + i) / 4) & 0x7;
+			offset = ((wbuf_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, R_CORE0_DBG_CTRL);
+			*(buf) = readl(R_CORE0_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(R_CORE0_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C0:H0:%02d:0x%08x::0x%08x\n",
+				i, *(out + i * 2), *(out + i * 2 + 1));
+		}
+		for (i = 0; i < 32; i++) {
+			index = (((wbuf1_ptr + i) / 4) & 0x7) | 0x8;
+			offset = ((wbuf1_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, R_CORE0_DBG_CTRL);
+			*(buf) = readl(R_CORE0_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(R_CORE0_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C0:H1:%02d:0x%08x::0x%08x\n",
+				i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
+		}
 
-	if (vcpreg.core_nums == 1)
-		return;
+		if (vcpreg.core_nums == 1)
+			return;
 
-	wbuf1_ptr = readl(R_CORE1_TBUF_WPTR);
-	wbuf_ptr = wbuf1_ptr & 0x1f;
-	wbuf1_ptr = wbuf1_ptr >> 8;
-	tmp = readl(R_CORE1_DBG_CTRL) & M_CORE_TBUF_DBG_SEL_RV55;
-	for (i = 0; i < 32; i++) {
-		index = ((wbuf_ptr + i) / 4) & 0x7;
-		offset = ((wbuf_ptr + i) % 4) * 0x8;
-		tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
-		writel(tmp | tmp1, R_CORE1_DBG_CTRL);
-		*(buf) = readl(R_CORE1_TBUF_DATA31_0 + offset);
-		*(buf + 1) = readl(R_CORE1_TBUF_DATA63_32 + offset);
-		buf += 2;
-	}
-	for (i = 0; i < 32; i++) {
-		pr_notice("[VCP] C1:H0:%02d:0x%08x::0x%08x\n",
-			i, *(out + i * 2), *(out + i * 2 + 1));
-	}
-	for (i = 0; i < 32; i++) {
-		index = (((wbuf1_ptr + i) / 4) & 0x7) | 0x8;
-		offset = ((wbuf1_ptr + i) % 4) * 0x8;
-		tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
-		writel(tmp | tmp1, R_CORE1_DBG_CTRL);
-		*(buf) = readl(R_CORE1_TBUF_DATA31_0 + offset);
-		*(buf + 1) = readl(R_CORE1_TBUF_DATA63_32 + offset);
-		buf += 2;
-	}
-	for (i = 0; i < 32; i++) {
-		pr_notice("[VCP] C1:H1:%02d:0x%08x::0x%08x\n",
-			i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
+		wbuf1_ptr = readl(R_CORE1_TBUF_WPTR);
+		wbuf_ptr = wbuf1_ptr & 0x1f;
+		wbuf1_ptr = wbuf1_ptr >> 8;
+		tmp = readl(R_CORE1_DBG_CTRL) & M_CORE_TBUF_DBG_SEL_RV55;
+		for (i = 0; i < 32; i++) {
+			index = ((wbuf_ptr + i) / 4) & 0x7;
+			offset = ((wbuf_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, R_CORE1_DBG_CTRL);
+			*(buf) = readl(R_CORE1_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(R_CORE1_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C1:H0:%02d:0x%08x::0x%08x\n",
+				i, *(out + i * 2), *(out + i * 2 + 1));
+		}
+		for (i = 0; i < 32; i++) {
+			index = (((wbuf1_ptr + i) / 4) & 0x7) | 0x8;
+			offset = ((wbuf1_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, R_CORE1_DBG_CTRL);
+			*(buf) = readl(R_CORE1_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(R_CORE1_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C1:H1:%02d:0x%08x::0x%08x\n",
+				i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
+		}
+	} else {
+		wbuf1_ptr = readl(VCP_INFRA_CORE0_TBUF_WPTR);
+		wbuf_ptr = wbuf1_ptr & 0x1f;
+		wbuf1_ptr = wbuf1_ptr >> 8;
+		tmp = readl(VCP_INFRA_CORE0_DBG_CTRL) & M_CORE_TBUF_DBG_SEL_RV55;
+		for (i = 0; i < 32; i++) {
+			index = ((wbuf_ptr + i) / 4) & 0x7;
+			offset = ((wbuf_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, VCP_INFRA_CORE0_DBG_CTRL);
+			*(buf) = readl(VCP_INFRA_CORE0_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(VCP_INFRA_CORE0_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C0:H0:%02d:0x%08x::0x%08x\n",
+				i, *(out + i * 2), *(out + i * 2 + 1));
+		}
+		for (i = 0; i < 32; i++) {
+			index = (((wbuf1_ptr + i) / 4) & 0x7) | 0x8;
+			offset = ((wbuf1_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, VCP_INFRA_CORE0_DBG_CTRL);
+			*(buf) = readl(VCP_INFRA_CORE0_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(VCP_INFRA_CORE0_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C0:H1:%02d:0x%08x::0x%08x\n",
+				i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
+		}
+
+		if (vcpreg.core_nums == 1)
+			return;
+
+		wbuf1_ptr = readl(VCP_INFRA_CORE1_TBUF_WPTR);
+		wbuf_ptr = wbuf1_ptr & 0x1f;
+		wbuf1_ptr = wbuf1_ptr >> 8;
+		tmp = readl(VCP_INFRA_CORE1_DBG_CTRL) & M_CORE_TBUF_DBG_SEL_RV55;
+		for (i = 0; i < 32; i++) {
+			index = ((wbuf_ptr + i) / 4) & 0x7;
+			offset = ((wbuf_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, VCP_INFRA_CORE1_DBG_CTRL);
+			*(buf) = readl(VCP_INFRA_CORE1_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(VCP_INFRA_CORE1_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C1:H0:%02d:0x%08x::0x%08x\n",
+				i, *(out + i * 2), *(out + i * 2 + 1));
+		}
+		for (i = 0; i < 32; i++) {
+			index = (((wbuf1_ptr + i) / 4) & 0x7) | 0x8;
+			offset = ((wbuf1_ptr + i) % 4) * 0x8;
+			tmp1 = (index << S_CORE_TBUF_S) | (index << S_CORE_TBUF1_S);
+			writel(tmp | tmp1, VCP_INFRA_CORE1_DBG_CTRL);
+			*(buf) = readl(VCP_INFRA_CORE1_TBUF_DATA31_0 + offset);
+			*(buf + 1) = readl(VCP_INFRA_CORE1_TBUF_DATA63_32 + offset);
+			buf += 2;
+		}
+		for (i = 0; i < 32; i++) {
+			pr_notice("[VCP] C1:H1:%02d:0x%08x::0x%08x\n",
+				i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
+		}
 	}
 }
 
