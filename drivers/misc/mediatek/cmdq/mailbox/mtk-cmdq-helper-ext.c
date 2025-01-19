@@ -2753,7 +2753,7 @@ static bool cmdq_pkt_hw_trace_event(struct cmdq_pkt *pkt, const u16 event)
 	struct cmdq_thread *thread;
 	u32 hwid;
 
-	if (!cmdq_hw_trace || !pkt->cl)
+	if (!pkt || !pkt->cl || !cmdq_hw_trace)
 		return false;
 
 	client = (struct cmdq_client *)pkt->cl;
