@@ -70,6 +70,7 @@ struct mtk_dsi_driver_data {
 	bool smi_dbg_disable;
 	bool require_phy_reset; /* reset phy before trigger DSI */
 	bool keep_hs_eotp; /* keep HS eotp */
+	bool support_rd_cmdq;
 	enum PREURGENT_MODE support_pre_urgent;
 	u32 max_vfp;
 	void (*mmclk_by_datarate)(struct mtk_dsi *dsi,
@@ -105,6 +106,8 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_rx_trig_sta;
 	const u32 dsi_rx_con;
 	const u32 con_offset;
+	const u32 dsi_cmdq_size;
+	const u32 dsi_cmdq_page;
 };
 
 struct mtk_dsi {
@@ -219,5 +222,6 @@ void mtk_dsi_porch_config(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 int mtk_drm_dummy_cmd_on_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
 unsigned long long mtk_get_cur_backlight(struct drm_crtc *crtc);
+int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt, const struct mtk_dsi_cmd_msg *cmd_msg);
 
 #endif

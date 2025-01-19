@@ -147,6 +147,8 @@ static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 
+int new_dsi = 0;
+
 struct logger_buffer {
 	char **buffer_ptr;
 	unsigned int len;
@@ -5163,9 +5165,132 @@ static void process_dbg_opt(const char *opt)
 
 		ret = mtk_drm_get_conn_obj_id_from_idx(value, 0);
 		DDPINFO("disp_idx %u, conn_obj_id %d\n", value, ret);
+	} else if (strncmp(opt, "new_send_ddic_test_v1:", 22) == 0) {
+		int flags = 0, rd = 0, slot = 0, package = 0, transmit_mode = 0;
+		int i, ret;
+		struct mipi_dsi_msg msg[3];
+		struct mtk_dsi_cmd_option cmd_opt;
+
+		struct test_struct {
+			u32 tx_len;
+			u8 tx_buf[10];
+		};
+
+		ret = sscanf(opt, "new_send_ddic_test_v1:%x,%d,%d,%d,%d\n", &flags, &rd, &slot, &package, &transmit_mode);
+		if (ret <= 0) {
+			DDPPR_ERR("new_send_ddic_test_v1 fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("hc1 in1 %d, flags=0x%x, rd=%d, slot=%d, package=%d, transmit_mode=%d, ret=%d\n", __LINE__,
+			flags, rd, slot, package, transmit_mode, ret);
+
+		struct test_struct test_cmd_w[3] = {
+			{
+				.tx_len = 2,
+				.tx_buf = {0x03, 0x00},
+			},
+			{
+				.tx_len = 6,
+				.tx_buf = {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07},
+			},
+			{
+				.tx_len = 2,
+				.tx_buf = {0xB0, 0x84},
+			}
+		};
+
+		for (i = 0; i < 3; i++) {
+			msg[i].tx_buf = test_cmd_w[i].tx_buf;
+			msg[i].tx_len = test_cmd_w[i].tx_len;
+		}
+
+		struct mtk_dsi_cmd_msg test_cmd = {
+			.transfer_mode = transmit_mode,
+			.is_package = package,
+			.is_rd = rd,
+			.rd_to_slot = slot,
+			.cmd_num = 3,
+			.cmd_msg = msg,
+		};
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("hc1 in1 new_send_ddic_test_v1\n");
+		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+	}  else if (strncmp(opt, "new_send_ddic_test_v3:", 22) == 0) { //hc0
+		int flags = 0, rd = 0, slot = 0, package = 0, transmit_mode = 0, cmd_num = 0;
+		int tx_len[5];
+		u8 *tx_buf[5];
+		int i, j, ret;
+		struct mtk_dsi_cmd_msg *test_cmd;
+		struct mtk_dsi_cmd_option cmd_opt;
+
+		ret = sscanf(opt, "new_send_ddic_test_v3:%x,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", &flags, &rd, &slot, &package, &cmd_num, &transmit_mode,
+			&tx_len[0], &tx_len[1], &tx_len[2], &tx_len[3], &tx_len[4]);
+		if (ret <= 0) {
+			DDPPR_ERR("new_send_ddic_test_v3 fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("hc1 in1 %d, flags=0x%x, rd=%d, rd_to_slot=%d, cmd_num=%d, package=%d, transmit_mode=%d, (%d,%d,%d,%d,%d), ret=%d\n", __LINE__,
+			flags, rd, slot, cmd_num, package, transmit_mode,
+			tx_len[0], tx_len[1], tx_len[2], tx_len[3], tx_len[4], ret);
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		test_cmd = vmalloc(sizeof(struct mtk_dsi_cmd_msg));
+		if (!test_cmd) {
+			DDPMSG("hc1 alloc mtk_dsi_cmd_msg fail\n");
+			return;
+		}
+		memset(test_cmd, 0, sizeof(struct mtk_dsi_cmd_msg));
+
+		test_cmd->cmd_msg = vmalloc(cmd_num *sizeof(struct mipi_dsi_msg));
+		if (!test_cmd->cmd_msg) {
+			DDPMSG("hc1 alloc mipi_dsi_msg fail\n");
+			return;
+		}
+
+		test_cmd->cmd_num = cmd_num;
+		test_cmd->is_package = package;
+		test_cmd->is_rd = rd;
+		test_cmd->rd_to_slot = slot;
+		test_cmd->transfer_mode = transmit_mode;
+
+		for (i = 0; i < cmd_num; i++) {
+			tx_buf[i] = vmalloc(tx_len[i] *sizeof(u8));
+			memset(tx_buf[i], 0, tx_len[i] *sizeof(u8));
+			for (j = 0; j < tx_len[i]; j++) {
+				if (j < 10)
+					tx_buf[i][j] = 0x15;
+				else if ((j > (tx_len[i] - 10)) && (j < tx_len[i]))
+					tx_buf[i][j] = 0xa1;
+				else
+					tx_buf[i][j] = 0x00;
+			}
+			test_cmd->cmd_msg[i].tx_buf = tx_buf[i];
+			test_cmd->cmd_msg[i].tx_len = tx_len[i];
+		}
+
+		DDPMSG("hc1 in2 new_send_ddic_test_v3 ++\n");
+		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, test_cmd);
+		DDPMSG("hc1 in2 new_send_ddic_test_v3 --\n");
+
+		for (i = 0; i < cmd_num; i++)
+			vfree(tx_buf[i]);
+
+		vfree(test_cmd->cmd_msg);
+		vfree(test_cmd);
+	} else if (strncmp(opt, "set_new_dsi:", 12) == 0) {
+		int ret = 0;
+
+		ret = sscanf(opt, "set_new_dsi:%d\n", &new_dsi);
+		if (ret <= 0) {
+			DDPPR_ERR("set_new_dsi fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("hc1 debug cmd %d, in1 set_new_dsi, new_dsi=%d, ret=%d\n", __LINE__, new_dsi, ret);
 	}
-
-
 }
 
 static void process_dbg_cmd(char *cmd)

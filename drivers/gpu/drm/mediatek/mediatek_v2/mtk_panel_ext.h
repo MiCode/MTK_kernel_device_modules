@@ -28,6 +28,44 @@
 
 struct mtk_dsi;
 struct cmdq_pkt;
+
+#define MTK_MIPI_DSI_CMD_EXTERNAL				BIT(0)
+#define MTK_MIPI_DSI_CMD_BY_CPU					BIT(1)
+#define MTK_MIPI_DSI_CMD_NEED_LOCK				BIT(2)
+#define MTK_MIPI_DSI_CMD_KICK_IDLE				BIT(3)
+#define MTK_MIPI_DSI_CRTC_ID					BIT(4)
+
+#define MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY		BIT(16)
+#define MTK_MIPI_DSI_GCE_CREATE_HANDLE			BIT(17)
+#define MTK_MIPI_DSI_GCE_BLOCKING_FLUSH			BIT(18)
+#define MTK_MIPI_DSI_GCE_NON_BLOCKING_FLUSH		BIT(19)
+#define MTK_MIPI_DSI_GCE_USE_CFG_THREAD			BIT(20)
+#define MTK_MIPI_DSI_GCE_USE_DSI_THREAD			BIT(21)
+#define MTK_MIPI_DSI_GCE_USE_DSI_CMD_EVENT		BIT(22)
+#define MTK_MIPI_DSI_GCE_BUSY_POLLING			BIT(23)
+
+struct mtk_dsi_cmd_option {
+	u32 flags;
+	u32 crtc_id;
+};
+
+enum packet_transfer_mode {
+	PACKET_NULL,
+	PACKET_LP_MODE,
+	PACKET_HS_MODE,
+	PACKET_MODE_NUM
+};
+
+struct mtk_dsi_cmd_msg {
+	bool is_rd; /* 0:write 1:read */
+	bool is_package;
+	bool rd_to_slot;
+	u32 slot_idx;
+	u32 cmd_num;
+	enum packet_transfer_mode transfer_mode;
+	struct mipi_dsi_msg *cmd_msg;
+};
+
 struct mtk_panel_para_table {
 	u8 count;
 	u8 para_list[64];
@@ -763,5 +801,5 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev,
 				struct cmdq_pkt *handle,
 				mtk_dsi_ddic_handler_cb handler_cb,
 				struct mtk_lcm_dsi_cmd_packet *packet);
-
+int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt, const struct mtk_dsi_cmd_msg *cmd_msg);
 #endif
