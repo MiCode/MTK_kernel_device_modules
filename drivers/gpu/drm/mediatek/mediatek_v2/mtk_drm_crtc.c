@@ -3856,6 +3856,33 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	}
 }
 
+static void mtk_addon_path_io_cmd(struct drm_crtc *crtc, const enum addon_scenario scn,
+	enum mtk_ddp_io_cmd io_cmd, void *params)
+{
+	int i, j;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	const struct mtk_addon_scenario_data *addon_data;
+	const struct mtk_addon_module_data *addon_module;
+	const struct mtk_addon_path_data *path_data;
+	struct mtk_ddp_comp *comp = NULL;
+
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
+	if (!addon_data)
+		return;
+
+	for (i = 0; i < addon_data->module_num; i++) {
+		addon_module = &addon_data->module_data[i];
+		path_data = mtk_addon_module_get_path(addon_module->module);
+		for (j = 0; j < path_data->path_len; j++) {
+			if (mtk_ddp_comp_get_type(path_data->path[j]) ==
+				MTK_DISP_VIRTUAL)
+				continue;
+			comp = priv->ddp_comp[path_data->path[j]];
+			mtk_ddp_comp_io_cmd(comp, NULL, io_cmd, params);
+		}
+	}
+}
+
 int get_addon_path_wait_event(struct drm_crtc *crtc,
 			const struct mtk_addon_path_data *path_data)
 {
@@ -16474,7 +16501,7 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	int session_id;
 	unsigned int fence_idx = cb_data->wb_fence_idx;
 	struct pixel_type_map *pixel_types;
-	unsigned int spr_mode_type;
+	unsigned int spr_mode_type, bw_zero;
 
 	if (mtk_crtc->pq_data) {
 		spr_mode_type = mtk_get_cur_spr_type(crtc);
@@ -16491,6 +16518,9 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	//	drm_framebuffer_put(cb_data->wb_fb);
 	session_id = mtk_get_session_id(crtc);
 	mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
+
+	bw_zero = 0;
+	mtk_addon_path_io_cmd(crtc, cb_data->wb_scn, PMQOS_SET_HRT_BW, &bw_zero);
 
 	CRTC_MMP_MARK(0, wbBmpDump, 1, fence_idx);
 	mtk_dprec_mmp_dump_wdma_layer(crtc, cb_data->wb_fb);
@@ -16996,6 +17026,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			mtk_drm_framebuffer_lookup(crtc->dev,
 			state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
 		wb_cb_data->wb_fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
+		wb_cb_data->wb_scn = mtk_crtc_wb_get_scn(state);
 		CRTC_MMP_MARK(crtc_index, wbBmpDump, (unsigned long)handle,
 							wb_cb_data->wb_fence_idx);
 		if (cmdq_pkt_flush_threaded(handle, mtk_drm_wb_cb, wb_cb_data) < 0)
