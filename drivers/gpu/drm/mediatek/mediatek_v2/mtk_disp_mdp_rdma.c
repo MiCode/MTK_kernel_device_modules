@@ -630,6 +630,7 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 	case PMQOS_SET_HRT_BW:
 	{
 		u32 bw_val = *(unsigned int *)params;
+		u32 stash_bw_val  = 0;
 
 		if (priv && !mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -639,7 +640,12 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 			priv->data->respective_ostdl);
 
 		if (!IS_ERR(comp->stash_qos_req)) {
-			__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, bw_val / 256,
+			if (bw_val) {
+				stash_bw_val = bw_val / 256;
+
+				stash_bw_val = stash_bw_val > 17 ? stash_bw_val : 17; //set low bound
+			}
+			__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
 				priv->data->respective_ostdl);
 		}
 		ret = MDP_RDMA_REQ_HRT;
