@@ -6460,6 +6460,13 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 				if (comp->id != comp_state->comp_id)
 					continue;
 
+				DDPINFO("%s layer off comp %s lye %d ext lye %d bind comp %s\n",
+					__func__,
+					mtk_dump_comp_str(comp),
+					comp_state->lye_id,
+					comp_state->ext_lye_id,
+					mtk_dump_comp_str(comp->bind_comp));
+
 				mtk_ddp_comp_layer_off(
 					comp,
 					comp_state->lye_id,
@@ -6487,6 +6494,14 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 				break;
 			}
 		}
+	}
+
+	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
+		struct drm_plane *plane = &mtk_crtc->planes[i].base;
+		struct mtk_plane_state *plane_state = to_mtk_plane_state(plane->state);
+		struct mtk_ddp_comp *comp;
+		struct mtk_ddp_comp *blender_comp;
+
 		/* Set the crtc to plane state for releasing fence purpose.*/
 		plane_state->crtc = crtc;
 
@@ -6495,6 +6510,11 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		if (plane_state->comp_state.blender_comp_id != 0) {
 			blender_comp = priv->ddp_comp[plane_state->comp_state.blender_comp_id];
 			comp = priv->ddp_comp[plane_state->comp_state.comp_id];
+
+			DDPINFO("%s new comp state %s blender %s\n",
+				__func__,
+				mtk_dump_comp_str(comp),
+				mtk_dump_comp_str(blender_comp));
 
 			if (plane_state->comp_state.ext_lye_id == 0)
 				comp->bind_comp = blender_comp;
