@@ -22712,12 +22712,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		wake_up_process(mtk_crtc->repaint_task);
 
 		init_waitqueue_head(&mtk_crtc->spr_switch_wait_queue);
-
-		init_waitqueue_head(&mtk_crtc->trigger_cmdq);
-		mtk_crtc->trig_cmdq_task =
-			kthread_run(_mtk_crtc_cmdq_retrig,
-					mtk_crtc, "ddp_cmdq_trig");
 	}
+
+	/* For crtc cmdq timeout recovery */
+	init_waitqueue_head(&mtk_crtc->trigger_cmdq);
+	mtk_crtc->trig_cmdq_task =
+		kthread_run(_mtk_crtc_cmdq_retrig,
+				mtk_crtc, "ddp_cmdq_trig");
 
 	/* For protect crtc blank state */
 	mutex_init(&mtk_crtc->blank_lock);
