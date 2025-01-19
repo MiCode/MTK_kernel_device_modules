@@ -28,8 +28,6 @@
 #define MTK_POLL_HWV_PREPARE_CNT	100
 #define MTK_POLL_HWV_PREPARE_US		2
 
-#define MTK_SCPD_CAPS(_scpd, _x)	((_scpd)->data->caps & (_x))
-
 #define PWR_RST_B_BIT			BIT(0)
 #define PWR_ISO_BIT			BIT(1)
 #define PWR_ON_BIT			BIT(2)

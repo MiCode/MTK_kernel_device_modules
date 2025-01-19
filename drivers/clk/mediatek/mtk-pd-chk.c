@@ -168,16 +168,18 @@ static bool __is_mtcmos_on(int *pd_id, bool dump_en)
 	int valid = 0;
 
 	for (; *pd_id != PD_NULL; pd_id++) {
-		if (!pdchk_pd_is_on(*pd_id))
-			continue;
-
 		if (dump_en) {
 			/* dump devicelist belongs to current power domain */
 			if (pdchk_suspend_is_in_usage(pds[*pd_id]) > 0 || pdchk_get_mtcmos_sw_state(pds[*pd_id])) {
-				pr_notice("suspend warning[0m: %s is on\n", pds[*pd_id]->name);
+				/* HW state is on */
+				if (pdchk_pd_is_on(*pd_id)) {
+					pr_notice("suspend warning[0m: %s is on\n", pds[*pd_id]->name);
+					valid++;
+				} else {
+					pr_notice("suspend warning: %s is SW enabled\n", pds[*pd_id]->name);
+				}
 
 				pdchk_dump_enabled_power_domain(pds[*pd_id]);
-				valid++;
 			}
 		}
 	}

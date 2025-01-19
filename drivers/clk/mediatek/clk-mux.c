@@ -251,8 +251,12 @@ static int mtk_clk_hwv_mux_enable(struct clk_hw *hw)
 	bool is_done = false;
 	int i = 0;
 
+	if (mux->flags & HWV_CHK_VCP_READY)
+		mtk_clk_polling_vcp_ready();
+
 	if (mux->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(true);
+
 	regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs,
 			BIT(mux->data->gate_shift));
 
@@ -314,6 +318,9 @@ static void mtk_clk_hwv_mux_disable(struct clk_hw *hw)
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	u32 val;
 	int i = 0;
+
+	if (mux->flags & HWV_CHK_VCP_READY)
+		mtk_clk_polling_vcp_ready();
 
 	if (mux->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(true);
@@ -553,6 +560,9 @@ static int mtk_clk_hwv_mux_set_parent(struct clk_hw *hw, u8 index)
 	u32 opp_mask;
 	u32 val = 0, val2 = 0, orig = 0, renew = 0;
 	int i = 0;
+
+	if (mux->flags & HWV_CHK_VCP_READY)
+		mtk_clk_polling_vcp_ready();
 
 	if (mux->flags & CLK_EN_MM_INFRA_PWR)
 		mtk_clk_mminfra_hwv_power_ctrl(true);

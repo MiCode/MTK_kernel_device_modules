@@ -208,6 +208,27 @@ err_hwv_prepare:
 	return ret;
 }
 
+void mtk_clk_polling_vcp_ready(void)
+{
+	u32 val = 0;
+	int ret = 0;
+	int tmp = 0;
+
+	/* wait until VCP_READY_ACK = 1 */
+	ret = readx_poll_timeout_atomic(mtk_vcp_is_ready, &mminfra_hwv_domain, tmp, tmp > 0,
+			MTK_POLL_DELAY_US, MTK_POLL_1S_TIMEOUT);
+	if (ret < 0) {
+		regmap_read(mminfra_hwv_domain.regmap, mminfra_hwv_domain.data->done_ofs, &val);
+		dev_err(mminfra_hwv_domain.dev, "Failed to vcp boot-up timeout %s(%x)\n",
+				mminfra_hwv_domain.data->name, val);
+
+		mtk_clk_notify(NULL, mminfra_hwv_domain.regmap, mminfra_hwv_domain.data->name,
+				mminfra_hwv_domain.data->en_ofs, 0,
+				0, CLK_EVT_MMINFRA_HWV_TIMEOUT);
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_clk_polling_vcp_ready);
+
 int mtk_clk_mminfra_hwv_power_ctrl(bool onoff)
 {
 	if (!mminfra_hwv_domain.data)

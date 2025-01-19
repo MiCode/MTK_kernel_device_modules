@@ -246,6 +246,7 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define CLK_NO_RES			BIT(24)
 #define CLK_FENC_ENABLE			BIT(25)
 #define QUICK_SWITCH_CHK		BIT(26)
+#define HWV_CHK_VCP_READY		BIT(27)
 
 struct mtk_pll_div_table {
 	u32 div;
@@ -389,6 +390,7 @@ extern bool mtk_hwv_pll_is_on(struct clk_hw *hw);
 /* enable/disable mminfra pwr for mm hw voter */
 extern int mtk_clk_mminfra_hwv_power_ctrl(bool onoff);
 extern int mtk_clk_mminfra_hwv_power_ctrl_optional(bool onoff, u8 bit);
+extern void mtk_clk_polling_vcp_ready(void);
 int mtk_clk_register_mminfra_hwv_data(const struct mtk_hwv_data *data,
 			struct regmap *regmap, struct device *dev);
 void set_sp_clk_ops(const struct sp_clk_ops *ops);
