@@ -31,6 +31,7 @@ struct mtk_mminfra_pd {
 
 static struct device *g_dev;
 static struct mtk_mminfra_pd *g_mminfra_pd;
+static bool g_is_skip_probe = true;
 spinlock_t mminfra_pd_lock;
 
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
@@ -83,6 +84,11 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 {
 	int ret = 0, ref_cnt;
 	unsigned long flags;
+
+	if (g_is_skip_probe) {
+		pr_notice("%s: not supported\n", __func__);
+		return 0;
+	}
 
 	spin_lock_irqsave(&mminfra_pd_lock, flags);
 
@@ -175,6 +181,7 @@ static int mminfra_util_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	g_dev = &pdev->dev;
+	g_is_skip_probe = false;
 
 	of_property_read_u32(g_dev->of_node, "mminfra-mtcmos-num",
 		&g_mminfra_pd->mminfra_mtcmos_num);
@@ -233,6 +240,9 @@ static int __init mtk_mminfra_util_init(void)
 		pr_notice("Failed to register MMInfra util driver(%d)\n", status);
 		return -ENODEV;
 	}
+
+	g_is_skip_probe = true;
+
 	return 0;
 }
 
