@@ -1118,6 +1118,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_img_vcore_sub_comm0 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_VCORE_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>;
@@ -1126,6 +1128,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_img_vcore_sub_comm1 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_VCORE_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>;
@@ -1134,6 +1138,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_img_sub_comm0 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
@@ -1143,6 +1149,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_img_sub_comm3 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
@@ -1152,6 +1160,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_img_sub_comm2 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_SUB_COMMON2_SMI>,
@@ -1161,6 +1171,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_img_sub_comm1 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>,
@@ -1170,6 +1182,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_img_sub_comm4 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_MAIN_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>,
@@ -1179,6 +1193,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb9 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&imgsys_main_clk CLK_IMG_TRAW1_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_LARB9_SMI>;
@@ -1187,6 +1203,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb10 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
 		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
 		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
@@ -1197,6 +1215,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb11 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_WPE_EIS_SMI>,
 		<&imgsys_main_clk CLK_IMG_WPE0_CAMERA_P2>,
 		<&wpe1_dip1_clk CLK_WPE1_DIP1_WPE_CAMERA_P2>,
@@ -1207,6 +1227,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb22 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_WPE_TNR_SMI>,
 		<&imgsys_main_clk CLK_IMG_WPE1_CAMERA_P2>,
 		<&wpe2_dip1_clk CLK_WPE2_DIP1_WPE_CAMERA_P2>,
@@ -1217,6 +1239,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb23 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_WPE_LITE_SMI>,
 		<&imgsys_main_clk CLK_IMG_WPE2_CAMERA_P2>,
 		<&wpe3_dip1_clk CLK_WPE3_DIP1_WPE_CAMERA_P2>,
@@ -1227,6 +1251,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb12 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&imgsys_main_clk CLK_IMG_IPE_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_FDVT_CAMERA_P2>,
@@ -1236,6 +1262,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb15 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
 		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
 		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
@@ -1248,6 +1276,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb18 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_SMI>,
 		<&imgsys_main_clk CLK_IMG_TRAW1_CAMERA_P2>,
 		<&imgsys_main_clk CLK_IMG_ADL_LARB_SMI>;
@@ -1256,6 +1286,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb28 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_TRAW_SMI>,
 		<&imgsys_main_clk CLK_IMG_TRAW0_CAMERA_P2>,
 		<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
@@ -1266,6 +1298,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb38 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
 		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
 		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
@@ -1276,6 +1310,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb39 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_DIP_SMI>,
 		<&imgsys_main_clk CLK_IMG_DIP0_CAMERA_P2>,
 		<&dip_top_dip1_clk CLK_DIP_TOP_DIP1_DIP_TOP_CAMERA_P2>,
@@ -1288,6 +1324,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb40 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_TRAW_SMI>,
 		<&imgsys_main_clk CLK_IMG_TRAW0_CAMERA_P2>,
 		<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
