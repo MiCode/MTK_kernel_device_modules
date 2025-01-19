@@ -19,8 +19,10 @@
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_dump.h"
 #include "mtk_drm_drv.h"
+#include "mtk_disp_vdisp_ao_mt6991_reg.h"
+#include "mtk_disp_vdisp_ao_mt6993_reg.h"
 
-/* mt6991 */
+/* VDISP_AO_COMMON */
 #define DISP_REG_VDISP_AO_INTEN				(0x000UL)
 	#define CPU_INTEN				BIT(0)
 	#define SCP_INTEN				BIT(1)
@@ -33,116 +35,6 @@
 	#define FORCE_COMMIT			BIT(0)
 	#define BYPASS_SHADOW			BIT(1)
 	#define READ_WRK_REG			BIT(2)
-#define DISP_REG_VDISP_AO_INT_SEL_G0_MT6991		(0x0020)
-	#define CPU_INTSEL_BIT_00		REG_FLD_MSB_LSB(7, 0)	//GIC:450
-	#define CPU_INTSEL_BIT_01		REG_FLD_MSB_LSB(15, 8)
-	#define CPU_INTSEL_BIT_02		REG_FLD_MSB_LSB(23, 16)
-	#define CPU_INTSEL_BIT_03		REG_FLD_MSB_LSB(31, 24)
-#define DISP_REG_VDISP_AO_INT_SEL_G1_MT6991		(0x0024)
-	#define CPU_INTSEL_BIT_04		REG_FLD_MSB_LSB(7, 0)	//GIC:454
-	#define CPU_INTSEL_BIT_05		REG_FLD_MSB_LSB(15, 8)
-	#define CPU_INTSEL_BIT_06		REG_FLD_MSB_LSB(23, 16)
-	#define CPU_INTSEL_BIT_07		REG_FLD_MSB_LSB(31, 24)
-#define DISP_REG_VDISP_AO_INT_SEL_G2_MT6991		(0x0028)
-	#define CPU_INTSEL_BIT_08		REG_FLD_MSB_LSB(7, 0)	//GIC:458
-	#define CPU_INTSEL_BIT_09		REG_FLD_MSB_LSB(15, 8)
-	#define CPU_INTSEL_BIT_10		REG_FLD_MSB_LSB(23, 16)
-	#define CPU_INTSEL_BIT_11		REG_FLD_MSB_LSB(31, 24)
-#define DISP_REG_VDISP_AO_INT_SEL_G3_MT6991		(0x002C)
-	#define CPU_INTSEL_BIT_12		REG_FLD_MSB_LSB(7, 0)	//GIC:462
-	#define CPU_INTSEL_BIT_13		REG_FLD_MSB_LSB(15, 8)
-	#define CPU_INTSEL_BIT_14		REG_FLD_MSB_LSB(23, 16)
-	#define CPU_INTSEL_BIT_15		REG_FLD_MSB_LSB(31, 24)
-#define DISP_REG_VDISP_AO_INT_SEL_G4_MT6991		(0x0030)
-	#define CPU_INTSEL_BIT_16		REG_FLD_MSB_LSB(7, 0)	//GIC:466
-	#define CPU_INTSEL_BIT_17		REG_FLD_MSB_LSB(15, 8)
-	#define CPU_INTSEL_BIT_18		REG_FLD_MSB_LSB(23, 16)
-	#define CPU_INTSEL_BIT_19		REG_FLD_MSB_LSB(31, 24)
-#define DISP_REG_VDISP_AO_INT_SEL_G5_MT6991		(0x0034)
-	#define CPU_INTSEL_BIT_20		REG_FLD_MSB_LSB(7, 0)	//GIC:470
-	#define CPU_INTSEL_BIT_21		REG_FLD_MSB_LSB(15, 8)
-	#define CPU_INTSEL_BIT_22		REG_FLD_MSB_LSB(23, 16)
-	#define CPU_INTSEL_BIT_23		REG_FLD_MSB_LSB(31, 24)
-#define DISP_REG_VDISP_AO_INT_SEL_G6_MT6991		(0x0038)
-	#define CPU_INTSEL_BIT_24		REG_FLD_MSB_LSB(7, 0)	//GIC:474
-	#define CPU_INTSEL_BIT_25		REG_FLD_MSB_LSB(15, 8)
-
-//#define VDISP_AO_SELECTED_DISP_DSI0				  BIT(0)	// 8'd53
-//#define VDISP_AO_SELECTED_DISP1_MUTEX0			  BIT(1)	// 8'd41
-//#define VDISP_AO_SELECTED_OVL0_EXDMA2			  BIT(2)	// 8'd148
-
-#define	IRQ_TABLE_DISP_DSI0_MT6991			(0x35)	//450
-#define	IRQ_TABLE_DISP_DISP1_MUTEX0_MT6991	(0x29)	//451
-#define	IRQ_TABLE_DISP_OVL0_BWM0_MT6991	(0x94)	//452
-#define IRQ_TABLE_DISP_DISP1_WDMA1_MT6991	(0x45)  //453
-#define IRQ_TABLE_DISP_OVL1_WDMA0_MT6991	(0xDE)  //454
-#define	IRQ_TABLE_DISP_DSI1_MT6991		(0x36)	//455
-#define	IRQ_TABLE_DISP_DSI2_MT6991		(0x37)	//456
-#define	IRQ_TABLE_DISP_Y2R_MT6991			(36)	//457
-
-#define	IRQ_TABLE_DISP_MDP_RDMA0			(27)	//458
-#define IRQ_TABLE_DISP_OVL_WDMA0_MT6991	    (0xAE)  //459
-#define	IRQ_TABLE_DISP_DP_INTF0_MT6991		(43)	//460
-#define	IRQ_TABLE_DISP_DVO0_MT6991		(56)	//461
-
-#define IRQ_TABLE_DISP_DISP1_WDMA4_MT6991	(72)  //462
-
-#define	IRQ_TABLE_DISP_DP_INTF1_MT6991		(44)	//464
-
-#define IRQ_TABLE_MDP0_MUTEX0_MT6991           (80)    //465
-#define IRQ_TABLE_MDP0_RROT0_MT6991            (94)    //466
-#define IRQ_TABLE_MDP1_MUTEX0_MT6991           (112)   //467
-#define IRQ_TABLE_MDP1_RROT0_MT6991            (126)   //468
-
-#define IRQ_TABLE_DISP_DITHER2_MT6991          (39)    //469
-#define IRQ_TABLE_DISP_DITHER1_MT6991          (22)    //470
-#define IRQ_TABLE_DISP_DITHER0_MT6991          (21)    //471
-#define IRQ_TABLE_DISP_CHIST1_MT6991           (18)    //472
-#define IRQ_TABLE_DISP_CHIST0_MT6991           (17)    //473
-#define IRQ_TABLE_DISP_AAL1_MT6991             (8)     //474
-#define IRQ_TABLE_DISP_AAL0_MT6991             (7)     //475
-
-/* mt6993 */
-#define DISP_REG_VDISP_AO_INT_SEL_G0_MT6993	0x014
-#define DISP_REG_VDISP_AO_INT_SEL_G1_MT6993	0x018
-#define DISP_REG_VDISP_AO_INT_SEL_G2_MT6993	0x01C
-#define DISP_REG_VDISP_AO_INT_SEL_G3_MT6993	0x020
-#define DISP_REG_VDISP_AO_INT_SEL_G4_MT6993	0x024
-#define DISP_REG_VDISP_AO_INT_SEL_G5_MT6993	0x028
-#define DISP_REG_VDISP_AO_INT_SEL_G6_MT6993	0x02C
-#define DISP_REG_VDISP_AO_INT_SEL_G7_MT6993	0x030
-#define DISP_REG_VDISP_AO_INT_SEL_G8_MT6993	0x034
-#define DISP_REG_VDISP_AO_INT_SEL_G9_MT6993	0x038
-#define DISP_REG_VDISP_AO_INT_SEL_G10_MT6993	0x03C
-
-#define CPU_INTSEL_BIT_MT6993_L		REG_FLD_MSB_LSB(8, 0)
-#define CPU_INTSEL_BIT_MT6993_H		REG_FLD_MSB_LSB(24, 16)
-
-#define IRQ_TABLE_DISP_DISP1_DSI0_MT6993	257
-#define IRQ_TABLE_DISP_DISP1_MUTEX_MT6993	256
-#define IRQ_TABLE_DISP_DISP1_WDMA1_MT6993	261
-
-#define DISP_REG_VDISP_AO_MMQOS_SUBCOM0_MT6993 0x700
-#define DISP_REG_VDISP_AO_MMQOS_SUBCOM1_MT6993 0x704
-#define DISP_REG_VDISP_AO_MMQOS_SUBCOM2_MT6993 0x708
-#define DISP_REG_VDISP_AO_MMQOS_SUBCOM3_MT6993 0x70C
-#define FLD_MMQOS_EN_W			REG_FLD_MSB_LSB(0, 0)
-#define FLD_MMQOS_EN_R			REG_FLD_MSB_LSB(4, 4)
-#define FLD_MMQOS_NORMAL_W		REG_FLD_MSB_LSB(11, 8)
-#define FLD_MMQOS_NORMAL_R		REG_FLD_MSB_LSB(15, 12)
-#define FLD_MMQOS_PREULTRA_W	REG_FLD_MSB_LSB(19, 16)
-#define FLD_MMQOS_PREULTRA_R	REG_FLD_MSB_LSB(23, 20)
-#define FLD_MMQOS_ULTRA_W		REG_FLD_MSB_LSB(27, 24)
-#define FLD_MMQOS_ULTRA_R		REG_FLD_MSB_LSB(31, 28)
-
-#define IRQ_TABLE_DISP0B_DITHER0_MT6993         (235)    //471 -> BIT14
-#define IRQ_TABLE_DISP0A_DITHER0_MT6993         (212)    //470 -> BIT13
-#define IRQ_TABLE_DISP0B_DITHER1_MT6993         (236)    //473 -> BIT16
-#define IRQ_TABLE_DISP0A_DITHER1_MT6993         (213)    //472 -> BIT15
-#define IRQ_TABLE_DISP1A_CHIST1_MT6993          (253)    //475 -> BIT18
-#define IRQ_TABLE_DISP1A_CHIST0_MT6993          (252)    //474 -> BIT17
-#define IRQ_TABLE_DISP0B_AAL0_MT6993            (229)    //477 -> BIT20
-#define IRQ_TABLE_DISP0A_AAL0_MT6993            (206)    //476 -> BIT19
 
 static void __iomem *vdisp_ao_base;
 
@@ -402,8 +294,8 @@ static void mtk_vdisp_ao_int_sel_g0_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_DSI0_MT6993, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_MUTEX_MT6993, CPU_INTSEL_BIT_MT6993_H);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT00, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT01, CPU_INTSEL_BIT_MT6993_H);
 
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G0_MT6993);
 
@@ -414,68 +306,84 @@ static void mtk_vdisp_ao_int_sel_g1_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_WDMA1_MT6993, CPU_INTSEL_BIT_MT6993_L);
-	//SET_VAL_MASK(value, mask, 0, CPU_INTSEL_BIT_MT6993_H);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT02, CPU_INTSEL_BIT_MT6993_L);
+	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT03, CPU_INTSEL_BIT_MT6993_H);
 
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G1_MT6993);
 
 	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
 }
-
-static void mtk_vdisp_ao_int_sel_g6_MT6993(void)
+static void mtk_vdisp_ao_int_sel_g2_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0A_DITHER0_MT6993, CPU_INTSEL_BIT_MT6993_H);
+	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT04, CPU_INTSEL_BIT_MT6993_L);
+	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT05, CPU_INTSEL_BIT_MT6993_H);
 
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G6_MT6993);
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G2_MT6993);
+
+	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
+}
+//static void mtk_vdisp_ao_int_sel_g3_MT6993(void)
+//static void mtk_vdisp_ao_int_sel_g4_MT6993(void)
+//static void mtk_vdisp_ao_int_sel_g5_MT6993(void)
+//static void mtk_vdisp_ao_int_sel_g6_MT6993(void)
+static void mtk_vdisp_ao_int_sel_g13_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT26, CPU_INTSEL_BIT_MT6993_L);
+	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT27, CPU_INTSEL_BIT_MT6993_H);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G13_MT6993);
 
 	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
 }
 
-static void mtk_vdisp_ao_int_sel_g7_MT6993(void)
+static void mtk_vdisp_ao_int_sel_g14_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0B_DITHER0_MT6993, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0A_DITHER1_MT6993, CPU_INTSEL_BIT_MT6993_H);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT28, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT29, CPU_INTSEL_BIT_MT6993_H);
 
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G7_MT6993);
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G14_MT6993);
 
 	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
 }
 
-static void mtk_vdisp_ao_int_sel_g8_MT6993(void)
+static void mtk_vdisp_ao_int_sel_g15_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0B_DITHER1_MT6993, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP1A_CHIST0_MT6993, CPU_INTSEL_BIT_MT6993_H);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT30, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT31, CPU_INTSEL_BIT_MT6993_H);
 
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G8_MT6993);
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G15_MT6993);
 
 	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
 }
 
-static void mtk_vdisp_ao_int_sel_g9_MT6993(void)
+static void mtk_vdisp_ao_int_sel_g16_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP1A_CHIST1_MT6993, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0A_AAL0_MT6993, CPU_INTSEL_BIT_MT6993_H);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT32, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT33, CPU_INTSEL_BIT_MT6993_H);
 
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G9_MT6993);
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G16_MT6993);
 
 	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
 }
 
-static void mtk_vdisp_ao_int_sel_g10_MT6993(void)
+static void mtk_vdisp_ao_int_sel_g17_MT6993(void)
 {
 	int value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0B_AAL0_MT6993, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT34, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT35, CPU_INTSEL_BIT_MT6993_H);
 
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G10_MT6993);
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G17_MT6993);
 
 	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
 }
@@ -486,11 +394,12 @@ void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 
 	mtk_vdisp_ao_int_sel_g0_MT6993();
 	mtk_vdisp_ao_int_sel_g1_MT6993();
-	mtk_vdisp_ao_int_sel_g6_MT6993();
-	mtk_vdisp_ao_int_sel_g7_MT6993();
-	mtk_vdisp_ao_int_sel_g8_MT6993();
-	mtk_vdisp_ao_int_sel_g9_MT6993();
-	mtk_vdisp_ao_int_sel_g10_MT6993();
+
+	mtk_vdisp_ao_int_sel_g13_MT6993();
+	mtk_vdisp_ao_int_sel_g14_MT6993();
+	mtk_vdisp_ao_int_sel_g15_MT6993();
+	mtk_vdisp_ao_int_sel_g16_MT6993();
+	mtk_vdisp_ao_int_sel_g17_MT6993();
 }
 
 static int __mtk_vdisp_ao_qos_config_MT6993(bool hrt_read, bool hrt_write)
@@ -580,8 +489,10 @@ static int mtk_vdisp_ao_probe(struct platform_device *pdev)
 		return comp_id;
 	}
 	ao_data = (const struct vdisp_ao_data *)of_device_get_match_data(dev);
-	if (!ao_data)
-		ao_data = &vdisp_ao_data_mt6991;
+	if (!ao_data) {
+		dev_err(dev, "please assign data\n");
+		return -ENOMEM;
+	}
 
 	priv->data = ao_data;
 
@@ -618,9 +529,10 @@ static void mtk_vdisp_ao_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id mtk_vdisp_ao_driver_dt_match[] = {
-	{.compatible = "mediatek,mt6991-vdisp-ao", },
+	{.compatible = "mediatek,mt6991-vdisp-ao",
+	.data = (void *)&vdisp_ao_data_mt6991,},
 	{.compatible = "mediatek,mt6993-vdisp-ao",
-	 .data = (void *)&vdisp_ao_data_mt6993,},
+	.data = (void *)&vdisp_ao_data_mt6993,},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_vdisp_ao_driver_dt_match);
