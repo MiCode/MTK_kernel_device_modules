@@ -167,6 +167,7 @@ struct irq_mon_desc {
 	unsigned int __percpu (*count)[2];
 	u64 __percpu *time;
 	unsigned int __percpu *long_count;
+	unsigned int aee_period_ns;
 	aee_callback_t fn;
 };
 
@@ -196,6 +197,7 @@ static struct irq_mon_desc *irq_mon_desc_alloc(unsigned int irq)
 	if (!desc->long_count)
 		goto out_free_time;
 	desc->irq = irq;
+	desc->aee_period_ns = UINT_MAX;
 	/*
 	 * This entry might be stored by concurrent irq_mon_desc_alloc()
 	 * Use xa_insert() to prevent override the entry.
@@ -263,6 +265,25 @@ static int irq_long_count_proc_show(struct seq_file *m, void *v)
 	}
 	return 0;
 }
+
+/**
+ * irq_mon_aee_period_set - Set burst irq aee period for specific irq
+ * @irq:	Interrupt number
+ * @period:	Period to set (ns), meaningless if it exceeds the default value
+ *
+ * Returns 0 if success, otherwise return negative error code.
+ */
+int irq_mon_aee_period_set(unsigned int irq, unsigned int period)
+{
+	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
+
+	desc = desc ?: irq_mon_desc_alloc(irq);
+	if (!desc)
+		return -ENOMEM;
+	WRITE_ONCE(desc->aee_period_ns, period);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(irq_mon_aee_period_set);
 
 int irq_mon_aee_callback_register(unsigned int irq, aee_callback_t fn)
 {
@@ -520,7 +541,8 @@ static void irq_count_core(void)
 			out = check_burst_irq(t_avg);
 			if (!out)
 				continue;
-
+			if (out & TO_AEE && t_avg >= imdesc->aee_period_ns)
+				out &= ~TO_AEE;
 			desc = irq_to_desc(imdesc->irq);
 			if (!desc)
 				continue;
