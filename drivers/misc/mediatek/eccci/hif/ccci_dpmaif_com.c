@@ -68,7 +68,6 @@
 unsigned int ccci_debug_enable = CCCI_LOG_LEVEL;
 #endif
 
-
 unsigned int            g_dpmf_ver;
 unsigned int            g_plat_inf;
 
@@ -388,11 +387,21 @@ static inline void dpmaif_rxq_push_all_skb(struct dpmaif_rx_queue *rxq)
 	struct dpmaif_rx_lro_info *lro_info = &rxq->lro_info;
 	struct sk_buff *skb;
 	int i;
+	struct debug_rx_done_skb_hdr hdr;
 
 	for (i = 0; i < lro_info->count; i++) {
 		skb = lro_info->data[i].skb;
 		((struct lhif_header *)skb->head)->pdcp_count = lro_info->data[i].bid;
 		skb->queue_mapping = rxq->cur_chn_idx;
+		if (g_debug_flags & DEBUG_RX_DONE_SKB) {
+			hdr.type = TYPE_RX_DONE_SKB_ID;
+			hdr.qidx = rxq->index;
+			hdr.time = (unsigned int)(local_clock() >> 16);
+			hdr.bid  = lro_info->data[i].bid;
+			hdr.len  = skb->len;
+			hdr.cidx = rxq->cur_chn_idx;
+			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+		}
 		ccci_dl_enqueue(rxq->index, skb);
 	}
 
@@ -485,6 +494,7 @@ static inline void dpmaif_rxq_lro_end(struct dpmaif_rx_queue *rxq)
 	unsigned int total_len = 0, lro_num = 0, bid = 0;
 	unsigned int hof, max_mss = 0, first_skb_len = 0, no_need_gro = 0;
 	struct dpmaif_rx_lro_info *lro_info = &rxq->lro_info;
+	struct debug_rx_done_skb_hdr hdr;
 #ifdef RX_PAGE_POOL
 	int pp_recycle_last = -1;
 #endif
@@ -546,7 +556,16 @@ lro_continue:
 		hof = lro_info->data[i].hof;
 		data_len = skb1->len - hof;
 		max_mss = first_skb_len - hof;
+		if (g_debug_flags & DEBUG_LRO_DONE_SKB) {
 
+			hdr.type = TYPE_LRO_DONE_SKB_ID;
+			hdr.qidx = rxq->index;
+			hdr.time = (unsigned int)(local_clock() >> 16);
+			hdr.bid  = (u16)lro_info->data[i].bid;
+			hdr.len  = skb1->len;
+			hdr.cidx = (u8)rxq->cur_chn_idx;
+			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+		}
 		NAPI_GRO_CB(skb1)->data_offset = hof;
 
 		if (unlikely(dpmaif_skb_gro_receive(skb0, skb1))) {
@@ -580,7 +599,6 @@ gro_too_much_skb:
 	}
 
 	if (g_debug_flags & DEBUG_RX_DONE_SKB) {
-		struct debug_rx_done_skb_hdr hdr;
 
 		hdr.type = TYPE_RX_DONE_SKB_ID;
 		hdr.qidx = rxq->index;
@@ -1087,7 +1105,6 @@ static int dpmaif_rxq_start_read_from_pit(struct dpmaif_rx_queue *rxq,
 		} else {  //is normal pit
 			if (g_dpmf_ver == 2 && nml_pit_v2->ig)
 				ccci_drv2_rxq_handle_ig(rxq, nml_pit_v2);
-
 			else {
 				ret = dpmaif_rxq_handle_normal_pit(rxq, nml_pit_v2);
 				if (ret)
@@ -1106,11 +1123,15 @@ static int dpmaif_rxq_start_read_from_pit(struct dpmaif_rx_queue *rxq,
 
 		pit_hw_update_cnt++;
 
-		if (pit_hw_update_cnt == 0x40)
-			ccci_dpmaif_bat_wakeup_thread(0x40);
-
 		if (pit_hw_update_cnt == 0x80) {
-			ccci_dpmaif_bat_wakeup_thread(0x40);
+			/* If bat_alloc thread is running & alloc skb is ongoing, don't wake up
+			 * It maybe has some race condition, when rxq tasklet has checked g_bat_alloc_running
+			 * is 1, meanwhile, bat_alloc will be set 0, next 0x80 or rxq exit will check
+			 * at worst bat_cnt_err will trigger. */
+			if (!atomic_read(&g_bat_alloc_running)) {
+				ccci_dpmaif_bat_wakeup_thread();
+				rxq->pit_pre_rd_idx = pit_rd_idx;
+			}
 			ret = dpmaifq_rxq_notify_hw_pit_cnt(rxq, pit_hw_update_cnt);
 			if (ret)
 				goto occur_err;
@@ -1129,9 +1150,12 @@ static int dpmaif_rxq_start_read_from_pit(struct dpmaif_rx_queue *rxq,
 #endif
 		NOTIFY_RX_PUSH(rxq);
 
+	if (ccci_dpmaif_pit_need_wake_up_bat(rxq, pit_rd_idx)) {
+		ccci_dpmaif_bat_wakeup_thread();
+		rxq->pit_pre_rd_idx = pit_rd_idx;
+	}
 	/* update to HW */
 	if (pit_hw_update_cnt) {
-		ccci_dpmaif_bat_wakeup_thread(0);
 		ret = dpmaifq_rxq_notify_hw_pit_cnt(rxq, pit_hw_update_cnt);
 		if (ret)
 			goto occur_err;
@@ -1171,8 +1195,10 @@ static inline void dpmaif_updata_max_bat_skb_cnt(struct dpmaif_rx_queue *rxq)
 				(g_max_bat_skb_cnt_for_md != max_bat_skb_cnt)) {
 			g_max_bat_skb_cnt_for_md = max_bat_skb_cnt;
 
-			if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max skb
-				ccci_dpmaif_bat_wakeup_thread(0);
+			if (g_max_bat_skb_cnt_for_md == 0xFFFF) { //need alloc max skb
+				ccci_dpmaif_bat_wakeup_thread();
+				ccci_dpmaif_skb_wakeup_thread();
+			}
 
 			if (g_debug_flags & DEBUG_MAX_SKB_CNT) {
 				struct debug_max_skb_cnt_hdr hdr = {0};
@@ -2820,7 +2846,7 @@ static void dpmaif_rxqs_sw_stop(void)
 
 		atomic_set(&rxq->pit_rd_idx, 0);
 		atomic_set(&rxq->pit_wr_idx, 0);
-
+		rxq->pit_pre_rd_idx = 0;
 		memset(rxq->pit_base, 0, (rxq->pit_cnt * g_dpmaif_ctrl->dl_pit_byte_size));
 	}
 }
@@ -2909,7 +2935,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 	}
 
 	if (total_dl_speed > 4000000000LL) {  // dl tput > 4G
-		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+		atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
@@ -2924,7 +2950,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_rx_flush_pkt_cnt = 100;
 #endif
 	} else if (total_dl_speed > 2000000000LL) {  // dl tput > 2G
-		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+		atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
@@ -2939,7 +2965,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_rx_flush_pkt_cnt = 60;
 #endif
 	} else if (total_dl_speed > 1000000000LL) {  // dl tput > 1G
-		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+		atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
@@ -2954,7 +2980,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_rx_flush_pkt_cnt = 30;
 #endif
 	} else if (total_dl_speed > 300000000LL) {  // dl tput > 300M
-		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+		atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
@@ -2969,7 +2995,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_rx_flush_pkt_cnt = 20;
 #endif
 	} else if (total_dl_speed > 150000000LL) {  // dl tput > 150M
-		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+		atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 		g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
@@ -2985,12 +3011,12 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 #endif
 	} else {  // dl tput < 150M
 		if (g_dpmaif_ctrl->capability & MODEM_CAP_USE_MAX_BAT) {
-			g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+			atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 			g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 			g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
 			g_alloc_frg_tbl_threshold = MAX_ALLOC_BAT_CNT;
 		} else {
-			g_alloc_skb_threshold = MIN_ALLOC_SKB_CNT;
+			atomic_set(&g_alloc_skb_threshold, MIN_ALLOC_SKB_CNT);
 			g_alloc_frg_threshold = MIN_ALLOC_FRG_CNT;
 #ifdef RX_PAGE_POOL
 			if (g_page_pool_is_on) {
@@ -3002,6 +3028,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 				g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
 			g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
 		}
+
 		if (g_dpmaif_ctrl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(1);
 
@@ -3037,7 +3064,7 @@ static int dpmaif_init_cap(struct device *dev)
 	}
 
 	if (g_dpmaif_ctrl->capability & MODEM_CAP_USE_MAX_BAT)
-		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+		atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 
 	if (of_property_read_u32(dev->of_node,
 			"dl_bat_entry_size", &g_dpmaif_ctrl->dl_bat_entry_size))

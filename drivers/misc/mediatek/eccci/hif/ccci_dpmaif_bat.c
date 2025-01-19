@@ -80,16 +80,16 @@ static struct temp_skb_info *g_skb_tbl;
 static atomic_t              g_skb_tbl_rdx;
 static atomic_t              g_skb_tbl_wdx;
 
-
 static unsigned int g_frg_tbl_cnt;
 static struct temp_page_info *g_page_tbl;
 static atomic_t               g_page_tbl_rdx;
 static atomic_t               g_page_tbl_wdx;
+atomic_t                      g_bat_alloc_running;
 
 #ifdef RX_PAGE_POOL
 atomic_t g_create_another_pp;
 #endif
-unsigned int g_alloc_skb_threshold     = MIN_ALLOC_SKB_CNT;
+atomic_t g_alloc_skb_threshold;
 unsigned int g_alloc_frg_threshold     = MIN_ALLOC_FRG_CNT;
 unsigned int g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
 unsigned int g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
@@ -100,13 +100,11 @@ static unsigned int g_use_page_tbl;
 static unsigned int g_alloc_bat_skb_flag;
 static unsigned int g_alloc_bat_frg_flag;
 
-static atomic_t g_bat_alloc_thread_wakeup_cnt;
-
 static unsigned long long g_alloc_bat_skb_retry_time;
 static unsigned long long g_alloc_bat_frg_retry_time;
 
 
-static inline void ccci_dpmaif_skb_wakeup_thread(void)
+inline void ccci_dpmaif_skb_wakeup_thread(void)
 {
 	if (g_dpmaif_ctrl->skb_alloc_thread &&
 			g_dpmaif_ctrl->skb_start_alloc == 0) {
@@ -438,142 +436,200 @@ static inline int alloc_bat_skb(
 	return 0;
 }
 
+static void dpmaif_debug_add_bat_alloc_skb(u16 count, u16 cwr, u16 *pre_hw_wr_idx, u16 thrd, u32 *pre_time)
+{
+	struct debug_bat_alc_skb_hdr hdr = {0};
+	struct dpmaif_bat_request *bat_req = g_dpmaif_ctrl->bat_skb;
+
+	hdr.type = TYPE_BAT_ALC_SKB_ID;
+	hdr.time = (unsigned int)(local_clock() >> 16);
+	hdr.cnt  = count;
+	hdr.crd  = atomic_read(&bat_req->bat_rd_idx);
+	hdr.cwr  = cwr;
+	hdr.pre_hw_wr = *pre_hw_wr_idx;
+	*pre_hw_wr_idx = hdr.cwr;
+	if (g_dpmf_ver >= 3)
+		hdr.hw_rd = ccci_drv3_dl_get_bat_ridx();
+	else
+		hdr.hw_rd = ccci_drv2_dl_get_bat_ridx();
+	atomic_set(&bat_req->bat_rd_idx, hdr.hw_rd);
+	hdr.spc  = get_ringbuf_used_cnt(bat_req->bat_cnt, hdr.hw_rd, cwr);
+	hdr.thrd = thrd;
+	hdr.pre_time = *pre_time;
+	*pre_time = hdr.time;
+	ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
+}
+
+/* Check if bat is enough, to decide if bat_alloc should continue allocing */
+static inline int dpmaif_bat_need_realloc(unsigned int * alloc_skb_threshold, int *request_cnt)
+{
+	struct dpmaif_bat_request *bat_req = g_dpmaif_ctrl->bat_skb;
+	unsigned int buf_space, buf_used;
+
+	if (g_dpmf_ver >= 3)
+		atomic_set(&bat_req->bat_rd_idx, ccci_drv3_dl_get_bat_ridx());
+	else  //version 1, 2
+		atomic_set(&bat_req->bat_rd_idx, ccci_drv2_dl_get_bat_ridx());
+
+	if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max skb to bat
+		*alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+	else
+		*alloc_skb_threshold = atomic_read(&g_alloc_skb_threshold);
+
+	buf_used = get_ringbuf_used_cnt(bat_req->bat_cnt,
+				atomic_read(&bat_req->bat_rd_idx),
+				atomic_read(&bat_req->bat_wr_idx));
+
+	*request_cnt = *alloc_skb_threshold - buf_used;
+	/* If usable buffer space has reached g_alloc_skb_threshold, don't wakeup */
+	if (*request_cnt <= 0)
+		return 0;
+
+	buf_space = bat_req->bat_cnt - buf_used - 1;
+	/* Sometimes g_alloc_skb_threshold is huge enough, request_cnt can't exceed bat_cnt */
+	if (*request_cnt > buf_space)
+		*request_cnt = buf_space;
+
+	/* If request_cnt is not critical, wait for next time alloc to avoid frequencily read
+	 * register & alloc */
+	if (*request_cnt == 0 || (*request_cnt < BAT_CONTINUE_THR))
+		return 0;
+
+	return 1;
+}
+
+inline int ccci_dpmaif_pit_need_wake_up_bat(struct dpmaif_rx_queue *rxq, unsigned short pit_rd_idx)
+{
+	//unsigned int alloc_skb_threshold = 0, ret;
+	/* From pit respective, how many bat packets should be needed */
+	int request_cnt = get_ringbuf_used_cnt(rxq->pit_cnt,
+		rxq->pit_pre_rd_idx, pit_rd_idx);
+
+	if ((g_max_bat_skb_cnt_for_md == 0xFFFF) ||
+		(atomic_read(&g_alloc_skb_threshold) == MAX_ALLOC_BAT_CNT))
+		return 1;
+
+	/* If recv packets have been processed less than (BAT_CONTINUE_THR * 2), which means, less bats
+         * have been consumed, don't wake up */
+	if (request_cnt < (BAT_CONTINUE_THR * 2))
+		return 0;
+
+	return 1;
+}
+
+static inline int dpmaif_alloc_one_bat_check_next(unsigned short bat_wr_idx, unsigned short *next_wr_idx,
+	int update_bat_cnt, atomic_t *paused, u32 total_cnt)
+{
+	int ret = 0;
+	struct dpmaif_bat_skb *bat_skb, *next_skb;
+	struct dpmaif_bat_base *cur_bat;
+	struct dpmaif_bat_request *bat_req = g_dpmaif_ctrl->bat_skb;
+
+	bat_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr + bat_wr_idx;
+	if (bat_skb->skb)
+		return BAT_SKB_STUCK;
+
+	*next_wr_idx = get_ringbuf_next_idx(bat_req->bat_cnt, bat_wr_idx, 1);
+
+	next_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr + *next_wr_idx;
+	if (next_skb->skb)
+		return BAT_SKB_STUCK;
+
+	cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base + bat_wr_idx;
+alloc_retry:
+	ret = alloc_bat_skb(bat_req->pkt_buf_sz, bat_skb, cur_bat);
+	if (unlikely(ret)) {
+		if (update_bat_cnt == 0) {  //from dpmaif start flow
+			if (total_cnt > MIN_SKB_ALLOC_CNT)
+				return ret;
+
+			if ((local_clock() - g_alloc_bat_skb_retry_time) >=
+				MAX_SKB_RETRY_TOTAL_TIME) {
+				CCCI_ERROR_LOG(0, TAG,
+					"[%s] error: retry alloc skb timeout: (%lldms).\n",
+					__func__, MAX_SKB_RETRY_TOTAL_TIME / 1000000);
+				return ret;
+			}
+
+			msleep(ALLOC_FAIL_MSLEEP_TIME);
+			goto alloc_retry;
+
+		} else {
+			if (paused && (atomic_read(paused) != BAT_ALLOC_NO_PAUSED))
+				return ret;
+
+			hrtimer_start(&g_dpmaif_ctrl->bat_alloc_done_timer,
+				ktime_set(0, ALLOC_FAIL_HRTIME_TIME),
+				HRTIMER_MODE_REL);
+		}
+	}
+	return ret;
+}
+
 static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
 {
 	struct dpmaif_bat_request *bat_req = g_dpmaif_ctrl->bat_skb;
-	struct dpmaif_bat_skb *bat_skb, *next_skb;
-	struct dpmaif_bat_base *cur_bat;
-	unsigned int buf_space, buf_used, alloc_skb_threshold = g_alloc_skb_threshold;
-	int count = 0, ret = 0, request_cnt;
-	unsigned short bat_wr_idx, next_wr_idx, pre_hw_wr_idx = 0;
-	u32 pre_time = 0, total_cnt = 0;
+	unsigned int alloc_skb_threshold;
+	int count = 0, request_cnt, ret = 0;
+	unsigned short bat_wr_idx = atomic_read(&bat_req->bat_wr_idx), next_wr_idx, pre_hw_wr_idx;
+	u32 pre_time = 0, total_cnt = 0, singleround_cnt;
 
-	if (g_dpmf_ver >= 3) {
-		atomic_set(&bat_req->bat_rd_idx, ccci_drv3_dl_get_bat_ridx());
-		if (g_debug_flags & DEBUG_BAT_ALC_SKB)
+	if (g_debug_flags & DEBUG_BAT_ALC_SKB) {
+		pre_time = (unsigned int)(local_clock() >> 16);
+		if (g_dpmf_ver >= 3)
 			pre_hw_wr_idx = ccci_drv3_dl_get_bat_widx();
-	} else  {//version 1, 2
-		atomic_set(&bat_req->bat_rd_idx, ccci_drv2_dl_get_bat_ridx());
-		if (g_debug_flags & DEBUG_BAT_ALC_SKB)
+		else
 			pre_hw_wr_idx = ccci_drv2_dl_get_bat_widx();
 	}
 
-	if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max skb to bat
-		alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
+	while ((!paused) || (!atomic_read(paused))) {
+		singleround_cnt = 0;
 
-	buf_used = get_ringbuf_used_cnt(bat_req->bat_cnt,
-					atomic_read(&bat_req->bat_rd_idx),
-					atomic_read(&bat_req->bat_wr_idx));
-	if (buf_used >= alloc_skb_threshold)
-		return 0;
-
-	request_cnt = (alloc_skb_threshold - buf_used);
-	buf_space = bat_req->bat_cnt - buf_used - 1;
-
-	if (request_cnt > buf_space)
-		request_cnt = buf_space;
-
-	if (request_cnt == 0)
-		return 0;
-
-	if (g_debug_flags & DEBUG_BAT_ALC_SKB)
-		pre_time = (unsigned int)(local_clock() >> 16);
-
-	bat_wr_idx = atomic_read(&bat_req->bat_wr_idx);
-
-	while (((!paused) || (!atomic_read(paused))) && (total_cnt < request_cnt)) {
-		bat_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr + bat_wr_idx;
-		if (bat_skb->skb)
+		if (!dpmaif_bat_need_realloc(&alloc_skb_threshold, &request_cnt)) {
 			break;
-
-		next_wr_idx = get_ringbuf_next_idx(bat_req->bat_cnt, bat_wr_idx, 1);
-
-		next_skb = (struct dpmaif_bat_skb *)bat_req->bat_pkt_addr + next_wr_idx;
-		if (next_skb->skb)
-			break;
-
-		cur_bat = (struct dpmaif_bat_base *)bat_req->bat_base + bat_wr_idx;
-alloc_retry:
-		ret = alloc_bat_skb(bat_req->pkt_buf_sz, bat_skb, cur_bat);
-		if (unlikely(ret)) {
-			if (update_bat_cnt == 0) {  //from dpmaif start flow
-				if (total_cnt > MIN_SKB_ALLOC_CNT)
-					goto alloc_end;
-
-				if ((local_clock() - g_alloc_bat_skb_retry_time) >=
-						MAX_SKB_RETRY_TOTAL_TIME) {
-					CCCI_ERROR_LOG(0, TAG,
-						"[%s] error: retry alloc skb timeout: (%lldms).\n",
-						__func__, MAX_SKB_RETRY_TOTAL_TIME / 1000000);
-					goto alloc_end;
-				}
-
-				msleep(ALLOC_FAIL_MSLEEP_TIME);
-				goto alloc_retry;
-
-			} else {
-				if (paused && (atomic_read(paused) != BAT_ALLOC_NO_PAUSED))
-					goto alloc_end;
-
-				hrtimer_start(&g_dpmaif_ctrl->bat_alloc_done_timer,
-						ktime_set(0, ALLOC_FAIL_HRTIME_TIME),
-						HRTIMER_MODE_REL);
+		}
+		while (((!paused) || (!atomic_read(paused))) && (singleround_cnt < request_cnt)) {
+			ret = dpmaif_alloc_one_bat_check_next(bat_wr_idx, &next_wr_idx, update_bat_cnt, paused, total_cnt);
+			if (ret < 0) {
 				goto alloc_end;
 			}
-		}
+			bat_wr_idx = next_wr_idx;
+			singleround_cnt++;
+			count++;
+			total_cnt ++;
 
-		bat_wr_idx = next_wr_idx;
-		count++;
-		total_cnt++;
-
-		if (update_bat_cnt) {
-			if (count == 500) {
-				wmb();  /* wait write done */
-
-				if (ccci_drv_dl_add_bat_cnt(count))
+			if (update_bat_cnt && (count == MIN_BAT_UPD_THR)) {
+				if (ccci_drv_dl_add_bat_cnt(MIN_BAT_UPD_THR))
 					ops.drv_dump_register(CCCI_DUMP_REGISTER);
+				else if (g_debug_flags & DEBUG_BAT_ALC_SKB)
+					dpmaif_debug_add_bat_alloc_skb(count, bat_wr_idx, &pre_hw_wr_idx,
+						(u16)alloc_skb_threshold, &pre_time);
 				count = 0;
 			}
-
 			if ((total_cnt & 0x7F) == 0)
 				ccci_dpmaif_skb_wakeup_thread();
 		}
+		/* update bat_wr_idx to check if we can continue allocing */
+		atomic_set(&bat_req->bat_wr_idx, bat_wr_idx);
 	}
 
 alloc_end:
 	if (total_cnt > 0)
 		atomic_set(&bat_req->bat_wr_idx, bat_wr_idx);
-
 	if (count > 0) {
 		wmb();  /* wait write done */
-
-		if (update_bat_cnt) {
+		if (update_bat_cnt) {   // not dpmaif start flow
 			if (ccci_drv_dl_add_bat_cnt(count))
 				ops.drv_dump_register(CCCI_DUMP_REGISTER);
 			ccci_dpmaif_skb_wakeup_thread();
 		}
+
+		if (g_debug_flags & DEBUG_BAT_ALC_SKB)
+			dpmaif_debug_add_bat_alloc_skb(count, bat_wr_idx, &pre_hw_wr_idx,
+				(u16)alloc_skb_threshold, &pre_time);
 	}
 
-	if (total_cnt > 0 && (g_debug_flags & DEBUG_BAT_ALC_SKB)) {
-		struct debug_bat_alc_skb_hdr hdr = {0};
-
-		hdr.type = TYPE_BAT_ALC_SKB_ID;
-		hdr.time = (unsigned int)(local_clock() >> 16);
-		hdr.spc  = buf_used;
-		hdr.cnt  = total_cnt;
-		hdr.crd  = atomic_read(&bat_req->bat_rd_idx);
-		hdr.cwr  = bat_wr_idx;
-		hdr.pre_hw_wr = pre_hw_wr_idx;
-		if (g_dpmf_ver >= 3)
-			hdr.hw_rd = ccci_drv3_dl_get_bat_ridx();
-		else  //version 1, 2
-			 hdr.hw_rd = ccci_drv2_dl_get_bat_ridx();
-		hdr.thrd = (u16)alloc_skb_threshold;
-		hdr.pre_time = pre_time;
-		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
-	}
-
-	return ((ret < 0) ? ret : total_cnt);
+	return ((ret < BAT_SKB_STUCK) ? ret : total_cnt);
 }
 
 static inline int alloc_bat_page(
@@ -847,8 +903,9 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 				__func__);
 			break;
 		}
-
+		atomic_set(&g_bat_alloc_running, 1);
 		ret_req = dpmaif_alloc_bat_req(1, &g_dpmaif_ctrl->bat_paused_alloc);
+		atomic_set(&g_bat_alloc_running, 0);
 		ret_frg = dpmaif_alloc_bat_frg(1, &g_dpmaif_ctrl->bat_paused_alloc);
 
 		if (g_debug_flags & DEBUG_BAT_TH_WAKE) {
@@ -867,6 +924,7 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 			atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 1);
 		else
 			atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 0);
+
 	}
 
 	g_dpmaif_ctrl->bat_alloc_running = 0;
@@ -883,6 +941,7 @@ static int ccci_dpmaif_create_bat_thread(void)
 	g_dpmaif_ctrl->bat_alloc_running = 0;
 	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
 	atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 0);
+	atomic_set(&g_alloc_skb_threshold, MIN_ALLOC_SKB_CNT);
 
 	g_dpmaif_ctrl->bat_alloc_thread = kthread_run(
 				dpmaif_rx_bat_alloc_thread,
@@ -903,7 +962,7 @@ static int ccci_dpmaif_create_bat_thread(void)
 
 static int dpmaif_rx_skb_alloc_thread(void *arg)
 {
-	int ret;
+	int ret, alloc_skb_tbl_threshold;
 
 	CCCI_NORMAL_LOG(-1, TAG, "[%s] run start.\n", __func__);
 
@@ -927,8 +986,12 @@ static int dpmaif_rx_skb_alloc_thread(void *arg)
 			ccci_dpmaif_create_page_pool(1);
 		}
 #endif
+ 		if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max skb to table
+ 			alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
+		else
+			alloc_skb_tbl_threshold = g_alloc_skb_tbl_threshold;
 
-		alloc_skb_to_tbl(g_alloc_skb_tbl_threshold);
+		alloc_skb_to_tbl(alloc_skb_tbl_threshold);
 
 		if (g_use_page_tbl)
 			alloc_page_to_tbl(g_alloc_frg_tbl_threshold);
@@ -973,18 +1036,10 @@ static int ccci_dpmaif_create_skb_thread(void)
 	return 0;
 }
 
-inline void ccci_dpmaif_bat_wakeup_thread(int wakeup_cnt)
+inline void ccci_dpmaif_bat_wakeup_thread(void)
 {
 	if (!g_dpmaif_ctrl->bat_alloc_thread)
 		return;
-
-	if (wakeup_cnt) {
-		if (atomic_add_return(wakeup_cnt, &g_bat_alloc_thread_wakeup_cnt) < 0x80)
-			return;
-		atomic_sub(0x80, &g_bat_alloc_thread_wakeup_cnt);
-
-	} else
-		atomic_set(&g_bat_alloc_thread_wakeup_cnt, 0);
 
 	atomic_inc(&g_dpmaif_ctrl->bat_need_alloc);
 	wake_up_all(&g_dpmaif_ctrl->bat_alloc_wq);
@@ -994,7 +1049,7 @@ static void dpmaif_bat_start_thread(void)
 {
 	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_NO_PAUSED);
 
-	ccci_dpmaif_bat_wakeup_thread(0);
+	ccci_dpmaif_bat_wakeup_thread();
 }
 
 static void ccci_dpmaif_bat_paused_thread(void)
@@ -1012,7 +1067,7 @@ static void ccci_dpmaif_bat_paused_thread(void)
 	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
 
 	do {
-		ccci_dpmaif_bat_wakeup_thread(0);
+		ccci_dpmaif_bat_wakeup_thread();
 		mdelay(1);
 
 		retry_cnt++;
@@ -1045,7 +1100,6 @@ void ccci_dpmaif_bat_stop(void)
 	g_use_page_tbl = 0;
 	g_max_bat_skb_cnt_for_md = MAX_ALLOC_BAT_CNT_FROM_MD;
 
-	atomic_set(&g_bat_alloc_thread_wakeup_cnt, 0);
 }
 
 static void dpmaif_bat_hw_init(void)
@@ -1222,8 +1276,6 @@ int ccci_dpmaif_bat_late_init(void)
 
 int ccci_dpmaif_bat_init(struct device *dev)
 {
-	atomic_set(&g_bat_alloc_thread_wakeup_cnt, 0);
-
 	if (of_property_read_u32(dev->of_node, "alloc_skb_tbl_cnt", &g_skb_tbl_cnt))
 		g_skb_tbl_cnt = MAX_SKB_TBL_CNT;
 

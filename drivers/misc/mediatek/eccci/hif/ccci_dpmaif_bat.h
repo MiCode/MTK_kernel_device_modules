@@ -25,6 +25,13 @@
 #define MIN_ALLOC_FRG_CNT (2000)
 #define MIN_ALLOC_SKB_TBL_CNT (100)
 #define MIN_ALLOC_FRG_TBL_CNT (100)
+/* In real life use, when bat_alloc thread exits, 90% of alloc cnt falls
+ * within the range [1,33], MD lhif driver thinks when bat alloc cnt is
+ * less than 61, bat-not-enough isr will pop; based on the two reason,
+ * choose 30 as threshold which bat_alloc should continue
+ */
+#define BAT_CONTINUE_THR  (30)
+#define MIN_BAT_UPD_THR  (100)
 
 
 int ccci_dpmaif_bat_init(struct device *dev);
@@ -35,9 +42,11 @@ int ccci_dpmaif_bat_start(void);
 
 void ccci_dpmaif_bat_stop(void);
 
-void ccci_dpmaif_bat_wakeup_thread(int wakeup_cnt);
-
-extern unsigned int g_alloc_skb_threshold;
+inline void ccci_dpmaif_bat_wakeup_thread(void);
+inline void ccci_dpmaif_skb_wakeup_thread(void);
+inline int ccci_dpmaif_pit_need_wake_up_bat(struct dpmaif_rx_queue *rxq, unsigned short pit_rd_idx);
+extern atomic_t g_bat_alloc_running;
+extern atomic_t g_alloc_skb_threshold;
 extern unsigned int g_alloc_frg_threshold;
 extern unsigned int g_alloc_skb_tbl_threshold;
 extern unsigned int g_alloc_frg_tbl_threshold;

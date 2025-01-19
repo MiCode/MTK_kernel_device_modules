@@ -39,6 +39,7 @@
 #define TYPE_TX_ERROR_ID     16
 #define TYPE_TX_START_ID     17
 #define TYPE_SUSPEND_ID      18
+#define TYPE_LRO_DONE_SKB_ID 19
 
 
 #define DEBUG_RX_DONE_SKB    (1 << TYPE_RX_DONE_SKB_ID)
@@ -60,6 +61,8 @@
 #define DEBUG_TX_ERROR       (1 << TYPE_TX_ERROR_ID)
 #define DEBUG_TX_START       (1 << TYPE_TX_START_ID)
 #define DEBUG_SUSPEND        (1 << TYPE_SUSPEND_ID)
+
+#define DEBUG_LRO_DONE_SKB   (1 << TYPE_LRO_DONE_SKB_ID)
 
 
 #define DROP_SKB_FROM_RX_TASKLET_LRO     0
@@ -273,7 +276,6 @@ void ccci_dpmaif_debug_init(void);
 void ccci_dpmaif_debug_add(void *data, int len);
 
 extern void ccci_set_dpmaif_debug_cb(void (*dpmaif_debug_cb)(void));
-
 
 #ifdef ENABLE_DPMAIF_ISR_LOG
 void ccci_dpmaif_show_irq_log(void);

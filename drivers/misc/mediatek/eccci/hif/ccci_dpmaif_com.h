@@ -5,7 +5,7 @@
 
 #ifndef __CCCI_MODEM_DPMA_COMM_H__
 #define __CCCI_MODEM_DPMA_COMM_H__
-
+#include <linux/sched/clock.h> /* local_clock() */
 #include <linux/device.h>
 #include <linux/pm_wakeup.h>
 #include <linux/dmapool.h>
@@ -25,6 +25,7 @@
 #include "ccci_dpmaif_reg_com.h"
 #include "ccci_dpmaif_drv_com.h"
 #include "ccci_dpmaif_debug.h"
+#include "ccci_dpmaif_bat.h"
 #include "ccmni.h"
 
 
@@ -54,6 +55,8 @@ enum error_num {
 	HW_REG_CHK_FAIL = -6, /* do not change the value, for assert para. with MD */
 	HW_REG_TIME_OUT = -5, /* do not change the value, for assert para. with MD */
 	ERROR_STOP_MAX, /* -4 */
+	BAT_SKB_STUCK,  /* -3 */
+
 };
 
 #define ASSERT_PARA_TX        (0x5458)   /* 0x5458 == TX ASCII */
@@ -365,6 +368,7 @@ struct dpmaif_rx_queue {
 
 	atomic_t        pit_rd_idx;
 	atomic_t        pit_wr_idx;
+	unsigned int    pit_pre_rd_idx;
 
 	unsigned int    pit_seq;
 
@@ -531,7 +535,6 @@ struct dpmaif_clk_node {
 
 extern unsigned int            g_plat_inf;
 extern struct dpmaif_plat_ops  g_plt_ops;
-
 
 int ccci_dpmaif_init_v1(struct device *dev);
 int ccci_dpmaif_init_v2(struct device *dev);
