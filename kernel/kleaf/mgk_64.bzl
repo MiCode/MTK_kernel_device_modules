@@ -2669,7 +2669,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/cmdq/mailbox/cmdq-sec-drv.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/cmdq/mailbox/cmdq-test.ko")
