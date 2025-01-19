@@ -2459,7 +2459,7 @@ static const char *rdma_state(u32 state)
 }
 
 static const u32 rdma_ufbdc_debug_sel[] = {
-	0x18, 0x27, 0x2d, 0x2e, 0x2f,
+	0x18, 0x19, 0x27, 0x2d, 0x2e, 0x2f,
 };
 
 static void rdma_debug_dump(struct mml_comp *comp)
@@ -2636,9 +2636,12 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[13] = readl(base + RDMA_MON_STA_27);
 		writel(rdma_ufbdc_debug_sel[4] << 13, base + RDMA_DEBUG_CON);
 		value[14] = readl(base + RDMA_MON_STA_27);
-		mml_err("ufbdc dbg sel %#04x %#010x  %#04x %#010x",
+		writel(rdma_ufbdc_debug_sel[5] << 13, base + RDMA_DEBUG_CON);
+		value[15] = readl(base + RDMA_MON_STA_27);
+		mml_err("ufbdc dbg sel %#04x %#010x  %#04x %#010x  %#04x %#010x",
 			rdma_ufbdc_debug_sel[3], value[13],
-			rdma_ufbdc_debug_sel[4], value[14]);
+			rdma_ufbdc_debug_sel[4], value[14],
+			rdma_ufbdc_debug_sel[5], value[15]);
 	}
 
 	/* parse state */
