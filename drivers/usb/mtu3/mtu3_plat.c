@@ -296,8 +296,10 @@ void ssusb_set_noise_still_tr(struct ssusb_mtk *ssusb)
 	/* set noise still transfer */
 	if (ssusb->noise_still_tr) {
 		mtu3_setbits(ssusb->mac_base, U3D_USB_BUS_PERFORMANCE,
-			NOISE_STILL_TRANSFER | SSUSB_SOF_KEEP);
+			NOISE_STILL_TRANSFER);
 	}
+
+	mtu3_setbits(ssusb->mac_base, U3D_USB_BUS_PERFORMANCE, SSUSB_SOF_KEEP);
 }
 
 void ssusb_vsvoter_set(struct ssusb_mtk *ssusb)
