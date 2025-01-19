@@ -341,14 +341,16 @@ int dsp_send_msg_to_queue_wrap(
 {
 	int ret = 0;
 	uint32_t dsp_id = adsp_cid_to_ipi_dsp_id(core_id);
-	struct dump_ipi_worker_t *worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_A2D].dump_worker;
+	struct dump_ipi_worker_t *worker = NULL;
 
 	if (dsp_id >= NUM_OPENDSP_TYPE)
 		return -1;
 
 	ret = dsp_send_msg_to_queue(dsp_id, ipi_id, buf, len, wait_ms);
-	if (ret == -EOVERFLOW && dump_workqueue)
+	if (ret == -EOVERFLOW && dump_workqueue) {
+		worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_A2D].dump_worker;
 		queue_work(dump_workqueue, &worker->work);
+	}
 
 	return ret;
 }
@@ -362,14 +364,16 @@ int dsp_dispatch_ipi_handler_to_queue_wrap(
 {
 	int ret = 0;
 	uint32_t dsp_id = adsp_cid_to_ipi_dsp_id(core_id);
-	struct dump_ipi_worker_t *worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_D2A].dump_worker;
+	struct dump_ipi_worker_t *worker = NULL;
 
 	if (dsp_id >= NUM_OPENDSP_TYPE)
 		return -1;
 
 	ret = dsp_dispatch_ipi_handler_to_queue(dsp_id, ipi_id, buf, len, ipi_handler);
-	if (ret == -EOVERFLOW && dump_workqueue)
+	if (ret == -EOVERFLOW && dump_workqueue) {
+		worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_D2A].dump_worker;
 		queue_work(dump_workqueue, &worker->work);
+	}
 
 	return ret;
 }
