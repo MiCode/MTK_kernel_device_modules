@@ -693,6 +693,78 @@ static int md_cd_dpsw_setting(struct ccci_modem *md)
 	return 0;
 }
 
+static int ccci_md_mtcmos_on(void)
+{
+	struct arm_smccc_res res;
+	unsigned int timeout = 50;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_ENABLE,
+		0, 0, 0, 0, 0, 0, &res);
+
+retry_wait_pwr_ack:
+	if (res.a0 == 0) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s success\n", __func__);
+		return 0;
+	} else if ((res.a0 & MTCMOS_ON_PWR_ACK_FAIL) == MTCMOS_ON_PWR_ACK_FAIL) {
+		/* waitting md pwr_ack timeout is 50ms */
+		mdelay(1);
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_ENABLE,
+			MTCMOS_PWR_ACK_FAIL_RETRY, 0, 0, 0, 0, 0, &res);
+		if (--timeout == 0) {
+			CCCI_NORMAL_LOG(0, TAG,
+				"[POWER ON] %s fail: wait pwr_ack timeout\n",
+				__func__);
+			return -1;
+		} else
+			goto retry_wait_pwr_ack;
+	} else
+		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s unknown return value: 0x%lx\n",
+			__func__, res.a0);
+
+	return 0;
+}
+
+static int ccci_md_mtcmos_off(void)
+{
+	struct arm_smccc_res res;
+	unsigned int timeout = 50;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_DISABLE,
+		0, 0, 0, 0, 0, 0, &res);
+
+retry_wait_pwr_ack:
+	if (res.a0 == 0) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] %s success\n", __func__);
+		return 0;
+	} else if ((res.a0 & MTCMOS_OFF_PWR_ACK_FAIL) == MTCMOS_OFF_PWR_ACK_FAIL) {
+		/* waitting md pwr_ack timeout is 50ms */
+		mdelay(1);
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_DISABLE,
+			MTCMOS_PWR_ACK_FAIL_RETRY, 0, 0, 0, 0, 0, &res);
+		if (--timeout == 0) {
+			CCCI_NORMAL_LOG(0, TAG,
+				"[POWER OFF] %s fail: wait pwr_ack timeout\n",
+				__func__);
+			return -1;
+		} else
+			goto retry_wait_pwr_ack;
+	} else if ((res.a0 & MTCMOS_OFF_SLPPRO_RDY_0_FAIL) == MTCMOS_OFF_SLPPRO_RDY_0_FAIL) {
+		CCCI_NORMAL_LOG(0, TAG,
+			"[POWER OFF] %s fail: polling slrpro_rdy_sta_0 timeout\n",
+			__func__);
+		return -1;
+	} else if ((res.a0 & MTCMOS_OFF_SLPPRO_RDY_1_FAIL) == MTCMOS_OFF_SLPPRO_RDY_1_FAIL) {
+		CCCI_NORMAL_LOG(0, TAG,
+			"[POWER OFF] %s fail: polling slrpro_rdy_sta_1 timeout\n",
+			__func__);
+		return -1;
+	} else
+		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] %s unknown return value: 0x%lx\n",
+			__func__, res.a0);
+
+	return 0;
+}
+
 static void flight_mode_set_by_atf(struct ccci_modem *md,
 		unsigned int flightMode)
 {
@@ -970,16 +1042,18 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 		"[POWER OFF] MD MTCMOS OFF start\n");
 	CCCI_NORMAL_LOG(0, TAG,
 		"[POWER OFF] MD MTCMOS OFF start\n");
+	if (md_cd_plat_val_ptr.ccci_ctrl_mtcmos)
+		ret = ccci_md_mtcmos_off();
+	else {
 #if IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
-	clk_disable_unprepare(clk_table[0].clk_ref);
+		clk_disable_unprepare(clk_table[0].clk_ref);
 #else
-	ret = pm_runtime_put_sync(&md->plat_dev->dev);
+		ret = pm_runtime_put_sync(&md->plat_dev->dev);
 #endif
+	}
+	CCCI_BOOTUP_LOG(0, TAG, "[POWER OFF] MD MTCMOS OFF end: ret = %d\n", ret);
+	CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] MD MTCMOS OFF end: ret = %d\n", ret);
 
-	CCCI_BOOTUP_LOG(0, TAG,
-		"[POWER OFF] MD MTCMOS OFF end: ret = %d\n", ret);
-	CCCI_NORMAL_LOG(0, TAG,
-		"[POWER OFF] MD MTCMOS OFF end: ret = %d\n", ret);
 	/* mtcmos off done, unblock md block io */
 	ccci_ufs_io_operate(0);
 
@@ -1844,15 +1918,18 @@ static int md_cd_power_on(struct ccci_modem *md)
 		"[POWER ON] MD MTCMOS ON start\n");
 	CCCI_NORMAL_LOG(0, TAG,
 		"[POWER ON] MD MTCMOS ON start\n");
+
+	if (md_cd_plat_val_ptr.ccci_ctrl_mtcmos)
+		ret = ccci_md_mtcmos_on();
+	else {
 #if IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
-	ret = clk_prepare_enable(clk_table[0].clk_ref);
+		ret = clk_prepare_enable(clk_table[0].clk_ref);
 #else
-	ret = pm_runtime_get_sync(&md->plat_dev->dev);
+		ret = pm_runtime_get_sync(&md->plat_dev->dev);
 #endif
-	CCCI_BOOTUP_LOG(0, TAG,
-		"[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
-	CCCI_NORMAL_LOG(0, TAG,
-		"[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
+	}
+	CCCI_BOOTUP_LOG(0, TAG, "[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] MD MTCMOS ON end: ret = %d\n", ret);
 
 	if (ap_plat_info == 6991) {
 		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] md emi bus protect clear\n");
@@ -2074,14 +2151,13 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	hw_info->plat_val = &md_cd_plat_val_ptr;
 	if ((hw_info->plat_ptr == NULL) || (hw_info->plat_val == NULL))
 		return -1;
-	hw_info->plat_val->offset_epof_md1 = 7*1024+0x234;
+	hw_info->plat_val->offset_epof_md1 = 7 * 1024 + 0x234;
 	for (idx = 0; idx < ARRAY_SIZE(clk_table); idx++) {
 		clk_table[idx].clk_ref = devm_clk_get(&dev_ptr->dev,
 			clk_table[idx].clk_name);
 		if (IS_ERR(clk_table[idx].clk_ref)) {
 			CCCI_ERROR_LOG(0, TAG,
-				 "md get %s failed\n",
-					clk_table[idx].clk_name);
+				 "md get %s failed\n", clk_table[idx].clk_name);
 			clk_table[idx].clk_ref = NULL;
 		}
 	}
@@ -2147,6 +2223,13 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	} else
 		CCCI_NORMAL_LOG(0, TAG, "mdsrc_settle_time:%d\n", md_cd_plat_val_ptr.mdsrc_settle_time);
 
+	ret = of_property_read_u32(dev_ptr->dev.of_node,
+		"mediatek,ccci-ctrl-mtcmos", &md_cd_plat_val_ptr.ccci_ctrl_mtcmos);
+	if (ret < 0) {
+		md_cd_plat_val_ptr.ccci_ctrl_mtcmos = 0;
+		CCCI_NORMAL_LOG(0, TAG, "%s: ccci no need to control mtcmos\n", __func__);
+	}
+
 	/* Get spm sleep base */
 	md_cd_plat_val_ptr.spm_sleep_base =
 			syscon_regmap_lookup_by_phandle(dev_ptr->dev.of_node,
@@ -2166,8 +2249,8 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	CCCI_DEBUG_LOG(0, TAG,
 		"md_wdt_irq:%d\n", hw_info->md_wdt_irq_id);
 
-	if (md_cd_plat_val_ptr.md_gen == 6293) {
-		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] skip dummy clk enable for md gen93\n");
+	if ((md_cd_plat_val_ptr.md_gen == 6293) || (md_cd_plat_val_ptr.ccci_ctrl_mtcmos)) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] skip dummy MD MTCMOS enable\n");
 		return 0;
 	}
 	/* used to match mtcmos ref count for symmetrical on-off */

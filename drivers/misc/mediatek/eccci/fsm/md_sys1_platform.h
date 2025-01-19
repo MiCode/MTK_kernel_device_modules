@@ -56,6 +56,7 @@ struct  ccci_plat_val {
 	unsigned int md_first_power_on;
 	unsigned int boot_status_value;
 	unsigned int mdsrc_settle_time;
+	unsigned int ccci_ctrl_mtcmos;
 };
 
 struct ccci_clk_node {
@@ -88,6 +89,12 @@ struct md_pll_reg {
 #define	INFRA_PERI2MD_PROT_CLR	(0x2A4)
 #define	INFRA_PERI2MD_PROT_BIT	7
 
+#define MTCMOS_PWR_ACK_FAIL_RETRY    1
+/* ccci control md mtcmos fail type */
+#define MTCMOS_ON_PWR_ACK_FAIL       0xfffffff1
+#define MTCMOS_OFF_PWR_ACK_FAIL      0xfffffff2
+#define MTCMOS_OFF_SLPPRO_RDY_0_FAIL 0xfffffff3
+#define MTCMOS_OFF_SLPPRO_RDY_1_FAIL 0xfffffff4
 
 struct ccci_plat_ops {
 	void (*md_dump_reg)(struct ccci_modem *md);
