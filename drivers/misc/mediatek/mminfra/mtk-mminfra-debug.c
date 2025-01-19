@@ -136,6 +136,8 @@ spinlock_t mm_dapc_lock;
 #define CLK_MMINFRA_PWR_VOTE_BIT_MMINFRA	(27)
 
 u32 mm_pwr_cnt[MM_PWR_NR];
+u32 mm_pwr_cnt_last[MM_PWR_NR];
+u32 mm_pwr_cnt_last_sample;
 u32 voter_cnt[32] = {0};
 
 static bool mminfra_check_scmi_status(void)
@@ -505,6 +507,11 @@ static int mminfra_power_mon(void *data)
 					mm_pwr_cnt[MM_0], MM_MON_CNT,
 					mm_pwr_cnt[MM_1], MM_MON_CNT,
 					mm_pwr_cnt[MM_AO], MM_MON_CNT);
+				mm_pwr_cnt_last[MM_0] = mm_pwr_cnt[MM_0];
+				mm_pwr_cnt_last[MM_1] = mm_pwr_cnt[MM_1];
+				mm_pwr_cnt_last[MM_AO] = mm_pwr_cnt[MM_AO];
+				mm_pwr_cnt_last_sample = cnt;
+
 				mm_pwr_cnt[MM_0] = 0;
 				mm_pwr_cnt[MM_1] = 0;
 				mm_pwr_cnt[MM_AO] = 0;
@@ -529,7 +536,7 @@ static int mminfra_power_mon(void *data)
 	} else
 		pr_notice("%s not supported\n", __func__);
 
-	return 0 ;
+	return 0;
 }
 #endif
 
@@ -649,6 +656,24 @@ static struct kernel_param_ops mminfra_ut_ops = {
 module_param_cb(mminfra_ut, &mminfra_ut_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_ut, "mminfra ut");
 
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
+static int mminfra_pwr_monitor(char *buffer, const struct kernel_param *kp)
+{
+	if (!mminfra_power_mon_thread)
+		return sprintf(buffer, "%s", "power monitor isn't enable\n");
+
+	return sprintf(buffer, "mminfra power_on ratio: MM_0[%u/%u], MM_1[%u/%u], MM_AO[%u/%u]\n",
+		mm_pwr_cnt_last[MM_0], mm_pwr_cnt_last_sample,
+		mm_pwr_cnt_last[MM_1], mm_pwr_cnt_last_sample,
+		mm_pwr_cnt_last[MM_AO], mm_pwr_cnt_last_sample);
+}
+
+static struct kernel_param_ops mminfra_pwr_mon_ops = {
+	.get = mminfra_pwr_monitor,
+};
+module_param_cb(mminfra_pwr_mon, &mminfra_pwr_mon_ops, NULL, 0644);
+MODULE_PARM_DESC(mminfra_pwr_mon, "mminfra power monitor");
+#endif
 
 int mminfra_log(const char *val, const struct kernel_param *kp)
 {
