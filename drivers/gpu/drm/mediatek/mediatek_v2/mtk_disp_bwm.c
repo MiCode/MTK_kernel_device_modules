@@ -277,7 +277,7 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 				if ((all_layer_compress_ratio_table[i].peak_ratio != 0) &&
 					(all_layer_compress_ratio_table[i].average_ratio == 0))
 					all_layer_compress_ratio_table[i].average_ratio = 10;
-				DDPDBG_BWM("%s i:%d j%d avl%d avg %d peak %d ar %d pr %d int 0x%x\n",
+				DDPINFO("%s i:%d j%d avl%d avg %d peak %d ar %d pr %d int 0x%x\n",
 					__func__, i, j, avail_layer, avg_val, peak_val,
 					all_layer_compress_ratio_table[i].average_ratio,
 					all_layer_compress_ratio_table[i].peak_ratio, int_val);
@@ -452,13 +452,9 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 				__func__, src_w_align, ovl_win_size);
 	}
 	record0 = ((0xFFFF & src_h_align) << 16) | (0xFFFF & src_w_align);
-	record1 = ((0xFF & idx) << 24) | ((0xFF & ovl_win_size) << 16) |
-			((0xFF & Bpp) << 8);
-	record2 = ((0xFFFF & src_w_align) << 16) | (0xFFFF & src_h_align);
-	record3 = ((0xFFFF & active_layer_avg_info[idx]) << 16) |
+	record1 = ((0xFFFF & active_layer_avg_info[idx]) << 16) |
 			(0xFFFF & active_layer_peak_info[idx]);
 	CRTC_MMP_MARK(0, bwm20, record0, record1);
-	CRTC_MMP_MARK(0, bwm20, record2, record3);
 
 	tmp_bw = src_h_align * src_w_align / 32 / 8 * 16 / 500;
 	if (tmp_bw == 0)
