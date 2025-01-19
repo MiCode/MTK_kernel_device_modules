@@ -28,7 +28,7 @@
 #endif
 #include "powerhal_trace_event.h"
 #include "powerhal_cpu_ctrl.h"
-#include "cpufreq-dbg-lite.h"
+#include "cci-dbg-lite.h"
 //#include "mtk_perfmgr_internal.h"
 /* PROCFS */
 #ifdef PROC_FOPS_RW
