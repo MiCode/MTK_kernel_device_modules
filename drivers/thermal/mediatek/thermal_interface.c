@@ -572,6 +572,30 @@ int get_gpu_pre_throttle_temp(void)
 }
 EXPORT_SYMBOL(get_gpu_pre_throttle_temp);
 
+int set_gpu_pre_throttle_opp(int opp)
+{
+	if (!tm_data.sw_ready)
+		return -ENODEV;
+
+	therm_intf_write_csram(opp, GPU_PRE_THROTTLE_OPP_OFFSET);
+
+	return 0;
+}
+EXPORT_SYMBOL(set_gpu_pre_throttle_opp);
+
+int get_gpu_pre_throttle_opp(void)
+{
+	int opp = 0;
+
+	if (!tm_data.sw_ready)
+		return opp;
+
+	opp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET);
+
+	return opp;
+}
+EXPORT_SYMBOL(get_gpu_pre_throttle_opp);
+
 static ssize_t headroom_info_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
