@@ -60,7 +60,7 @@ void ccci_dpmaif_resv_mem_init(void)
 
 	g_use_cache_mem_from_dts = 0;
 
-	if ((dpmaif_ctl->capability & MODEM_CAP_USE_RESV_MEM) != MODEM_CAP_USE_RESV_MEM)
+	if ((g_dpmaif_ctrl->capability & MODEM_CAP_USE_RESV_MEM) != MODEM_CAP_USE_RESV_MEM)
 		return;
 
 	/* for cacheable memory  */
@@ -88,10 +88,10 @@ void ccci_dpmaif_resv_mem_init(void)
 		return;
 	}
 
-	phy_addr = dma_map_single(dpmaif_ctl->dev,
+	phy_addr = dma_map_single(g_dpmaif_ctrl->dev,
 		g_resv_cache_vir_addr,
 		g_resv_cache_mem_size, DMA_FROM_DEVICE);
-	if (dma_mapping_error(dpmaif_ctl->dev, phy_addr)) {
+	if (dma_mapping_error(g_dpmaif_ctrl->dev, phy_addr)) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: dma_map_single() fail.(0x%llx/0x%llx/0x%llx);\n",
 			__func__, (unsigned long long)g_resv_cache_vir_addr,

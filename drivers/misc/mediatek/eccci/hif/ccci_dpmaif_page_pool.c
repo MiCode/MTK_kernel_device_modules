@@ -115,10 +115,10 @@ int skb_alloc_from_pool(
 	skb_reserve(*ppskb, NET_SKB_PAD);
 	skb_mark_for_recycle(*ppskb);
 	(*p_base_addr) = dma_map_single(
-		dpmaif_ctl->dev, (*ppskb)->data,
+		g_dpmaif_ctrl->dev, (*ppskb)->data,
 		1500, DMA_FROM_DEVICE);
 
-	if (dma_mapping_error(dpmaif_ctl->dev, (*p_base_addr))) {
+	if (dma_mapping_error(g_dpmaif_ctrl->dev, (*p_base_addr))) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] error: dma mapping fail: %ld!\n",
 			__func__, skb_data_size(*ppskb));
@@ -166,8 +166,8 @@ void ccci_dpmaif_create_page_pool(unsigned int index)
 		pp.max_len = PAGE_SIZE;
 		pp.flags = 0;
 		pp.pool_size = resv_skb_mem[index].pool_page_num;
-		pp.nid = dev_to_node(dpmaif_ctl->dev);
-		pp.dev = dpmaif_ctl->dev;
+		pp.nid = dev_to_node(g_dpmaif_ctrl->dev);
+		pp.dev = g_dpmaif_ctrl->dev;
 		pp.dma_dir = DMA_FROM_DEVICE;
 
 		g_page_pool = page_pool_create(&pp);
@@ -208,7 +208,7 @@ static int dpmaif_cma_mem_init(void)
 	int ret;
 
 	/*page pool for cma memory*/
-	rmem_node = of_parse_phandle(dpmaif_ctl->dev->of_node, "memory-region", 0);
+	rmem_node = of_parse_phandle(g_dpmaif_ctrl->dev->of_node, "memory-region", 0);
 	if (!rmem_node) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: no node for page pool.\n", __func__);
 		return -1;
@@ -221,7 +221,7 @@ static int dpmaif_cma_mem_init(void)
 			rmem_node->full_name, kbasename(rmem_node->full_name));
 		return -1;
 	}
-	ret = of_reserved_mem_device_init_by_idx(dpmaif_ctl->dev, dpmaif_ctl->dev->of_node, 0);
+	ret = of_reserved_mem_device_init_by_idx(g_dpmaif_ctrl->dev, g_dpmaif_ctrl->dev->of_node, 0);
 	if (ret) {
 		CCCI_ERROR_LOG(0, TAG, "%s: of_reserved_mem_device_init failed(%d).",
 			__func__, ret);
@@ -234,14 +234,14 @@ void ccci_dpmaif_cma_mem_alloc(unsigned int index)
 {
 	struct page *pages;
 
-	if (!dpmaif_ctl->dev->cma_area) {
+	if (!g_dpmaif_ctrl->dev->cma_area) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] cma_area == NULL\n", __func__);
 		return;
 	}
 
 	resv_skb_mem[index].pool_page_num = min(rmem->size/PAGE_SIZE/POOL_NUMBER,
 			(unsigned long long)MAX_POOL_SIZE);
-	pages = cma_alloc(dpmaif_ctl->dev->cma_area, resv_skb_mem[index].pool_page_num,
+	pages = cma_alloc(g_dpmaif_ctrl->dev->cma_area, resv_skb_mem[index].pool_page_num,
 			0, false);
 
 	if (pages) {
@@ -259,7 +259,7 @@ void ccci_dpmaif_cma_mem_alloc(unsigned int index)
 
 void ccci_dpmaif_page_pool_init(void)
 {
-	if (!dpmaif_ctl->dev->of_node) {
+	if (!g_dpmaif_ctrl->dev->of_node) {
 		CCCI_ERROR_LOG(0, TAG, "dpmaif page pool driver of_node is null, exit\n");
 		return;
 	}

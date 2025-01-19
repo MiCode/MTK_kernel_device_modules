@@ -99,8 +99,8 @@ void ccci_dpmaif_show_irq_log(void)
 	unsigned int i;
 	struct dpmaif_rx_queue *rxq;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 		ccci_dpmaif_print_irq_log(rxq->isr_cnt_each_rxq);
 	}
 }
@@ -395,14 +395,14 @@ void ccci_dpmaif_isr_record_init(void)
 	struct dpmaif_isr_count *isr_log;
 
 	isr_log = kzalloc(sizeof(struct dpmaif_isr_count) * ISR_LOG_DATA_LEN *
-			dpmaif_ctl->real_rxq_num, GFP_KERNEL);
+			g_dpmaif_ctrl->real_rxq_num, GFP_KERNEL);
 	if (!isr_log) {
 		CCCI_ERROR_LOG(-1, TAG, "[%s] error: alloc isr_log fail\n", __func__);
 		return;
 	}
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 		rxq->isr_cnt_each_rxq = isr_log + ISR_LOG_DATA_LEN * i;
 		CCCI_NORMAL_LOG(-1, TAG, "%s:rxq%d addr=%p\n",
 			__func__, i, rxq->isr_cnt_each_rxq);
@@ -411,7 +411,7 @@ void ccci_dpmaif_isr_record_init(void)
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	mrdump_mini_add_extra_file((unsigned long)isr_log, __pa_nodebug(isr_log),
 		(sizeof(struct dpmaif_isr_count) * ISR_LOG_DATA_LEN *
-			dpmaif_ctl->real_rxq_num), "DPMAIF_ISR");
+			g_dpmaif_ctrl->real_rxq_num), "DPMAIF_ISR");
 #endif
 
 #else

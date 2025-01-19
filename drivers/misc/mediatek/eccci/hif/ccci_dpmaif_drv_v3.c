@@ -469,7 +469,7 @@ static inline void drv3_irq_tx_done(unsigned int tx_done_isr)
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
 		intr_ul_que_done = tx_done_isr & (1 << (i + UL_INT_DONE_OFFSET));
 		if (intr_ul_que_done) {
-			txq = &dpmaif_ctl->txq[i];
+			txq = &g_dpmaif_ctrl->txq[i];
 
 			drv3_mask_ul_que_interrupt(i);
 
@@ -622,7 +622,7 @@ static inline void check_dl_mask_state_register(unsigned int L2RIMR0)
 {
 	unsigned int L2RISAR0;
 
-	if (!dpmaif_ctl->support_2rxq) {
+	if (!g_dpmaif_ctrl->support_2rxq) {
 	/* check UL&DL mask status register */
 		if ((L2RIMR0 & AP_DL_L2INTR_Msk_Check) != AP_DL_L2INTR_Msk_Check) {
 			/* if has error bit, set mask */
@@ -658,7 +658,7 @@ static irqreturn_t drv3_isr0(int irq, void *data)
 	/* clear IP busy register wake up cpu case */
 	ccci_drv_clear_ip_busy();
 
-	if (atomic_read(&dpmaif_ctl->wakeup_src) == 1)
+	if (atomic_read(&g_dpmaif_ctrl->wakeup_src) == 1)
 		CCCI_NOTICE_LOG(0, TAG, "[%s] wake up by MD0 HIF L2(%x/%x)(%x/%x)!\n",
 			__func__, L2TISAR0, L2TIMR0, L2RISAR0, L2RIMR0);
 
@@ -749,7 +749,7 @@ static irqreturn_t drv3_isr1(int irq, void *data)
 	/* clear IP busy register wake up cpu case */
 	ccci_drv_clear_ip_busy();
 
-	if (atomic_read(&dpmaif_ctl->wakeup_src) == 1)
+	if (atomic_read(&g_dpmaif_ctrl->wakeup_src) == 1)
 		CCCI_NOTICE_LOG(0, TAG, "[%s] wake up by MD0 HIF L2(%x/%x)!\n",
 			__func__, L2RISAR0, L2RIMR0);
 
@@ -802,7 +802,7 @@ static irqreturn_t drv3_isr(int irq, void *data)
 	/* clear IP busy register wake up cpu case */
 	ccci_drv_clear_ip_busy();
 
-	if (atomic_read(&dpmaif_ctl->wakeup_src) == 1)
+	if (atomic_read(&g_dpmaif_ctrl->wakeup_src) == 1)
 		CCCI_NOTICE_LOG(0, TAG, "[%s] wake up by MD0 HIF L2(%x/%x)(%x/%x)!\n",
 			__func__, L2TISAR0, L2TIMR0, L2RISAR0, L2RIMR0);
 
@@ -885,7 +885,7 @@ static void drv3_infra_ao_com_set(void)
 	unsigned int value = 0;
 	int ret;
 
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x0208, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x0208, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d error: read infra_ao_base ret=%d\n",
@@ -893,13 +893,13 @@ static void drv3_infra_ao_com_set(void)
 
 	value |= (1<<15);
 
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x0208, value);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x0208, value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d error: write infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
 
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x0208, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x0208, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d error: read infra_ao_base ret=%d\n",
@@ -935,7 +935,7 @@ static int drv3_intr_hw_init(void)
 		}
 	}
 
-	if (!dpmaif_ctl->support_2rxq) {
+	if (!g_dpmaif_ctrl->support_2rxq) {
 		/*Set DL/RX interrupt*/
 		/* 1. clear dummy sts*/
 		DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_APDL_L2TISAR0, 0xFFFFFFFF);
@@ -980,7 +980,7 @@ static int drv3_intr_hw_init(void)
 	DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_DL_UL_IP_BUSY_MASK, 0);
 
 	CCCI_NORMAL_LOG(0, TAG, "[%s] support LRO: %u; mask: dl=0x%x ul=0x%x\n",
-		__func__, dpmaif_ctl->support_2rxq,
+		__func__, g_dpmaif_ctrl->support_2rxq,
 		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMR0),
 		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0));
 
@@ -1321,7 +1321,7 @@ static int drv3_resume_noirq(struct device *dev)
 	/* use msk to clear dummy interrupt */
 	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0, ~(AP_UL_L2INTR_En_Msk));
 
-	if (!dpmaif_ctl->support_2rxq) {
+	if (!g_dpmaif_ctrl->support_2rxq) {
 		/* DL set mask */
 		DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0, ~(AP_DL_L2INTR_En_Msk));
 		/* use msk to clear dummy interrupt */
@@ -1335,7 +1335,7 @@ static int drv3_resume_noirq(struct device *dev)
 	}
 
 	CCCI_NORMAL_LOG(0, TAG, "[%s] support LRO: %u; mask: dl=0x%x ul=0x%x\n",
-		__func__, dpmaif_ctl->support_2rxq,
+		__func__, g_dpmaif_ctrl->support_2rxq,
 		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMR0),
 		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0));
 
@@ -1349,9 +1349,9 @@ static void drv3_dump_register(int buf_type)
 	len = DPMAIF_PD_UL_ADD_DESC_CH - DPMAIF_PD_UL_ADD_DESC + 4;
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF Tx pdn; pd_ul_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
+		(unsigned long long)g_dpmaif_ctrl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
+		g_dpmaif_ctrl->pd_ul_base + NRL2_DPMAIF_UL_ADD_DESC, len);
 
 	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
 		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991 ||
@@ -1359,86 +1359,86 @@ static void drv3_dump_register(int buf_type)
 		len = DPMAIF_AO_UL_CHNL3_STA_6985 - DPMAIF_AO_UL_CHNL0_STA_6985 + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
-			(unsigned long long)dpmaif_ctl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA_6985,
+			(unsigned long long)g_dpmaif_ctrl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA_6985,
 				len);
 		ccci_util_mem_dump(buf_type,
-			dpmaif_ctl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA_6985, len);
+			g_dpmaif_ctrl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA_6985, len);
 	} else {
 		len = DPMAIF_AO_UL_CHNL3_STA - DPMAIF_AO_UL_CHNL0_STA + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
-			(unsigned long long)dpmaif_ctl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA, len);
+			(unsigned long long)g_dpmaif_ctrl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA, len);
 		ccci_util_mem_dump(buf_type,
-			dpmaif_ctl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA, len);
+			g_dpmaif_ctrl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA, len);
 	}
 
 	len = DPMAIF_PD_DL_MISC_CON0 - DPMAIF_PD_DL_BAT_INIT + 4;
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF Rx pdn; pd_dl_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT, len);
+		(unsigned long long)g_dpmaif_ctrl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT, len);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT, len);
+		g_dpmaif_ctrl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT, len);
 
 	len = DPMAIF_PD_DL_DBG_STA14 - DPMAIF_PD_DL_STA0 + 4;
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF Rx pdn; pd_dl_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_dl_base + DPMAIF_PD_DL_STA0, len);
+		(unsigned long long)g_dpmaif_ctrl->pd_dl_base + DPMAIF_PD_DL_STA0, len);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_dl_base + DPMAIF_PD_DL_STA0, len);
+		g_dpmaif_ctrl->pd_dl_base + DPMAIF_PD_DL_STA0, len);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF dma_rd; pd_dl_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_dl_base + 0x100, 0xC8);
+		(unsigned long long)g_dpmaif_ctrl->pd_dl_base + 0x100, 0xC8);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_dl_base + 0x100, 0xC8);
+		g_dpmaif_ctrl->pd_dl_base + 0x100, 0xC8);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF dma_wr; pd_dl_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_dl_base + 0x200, 0x58 + 4);
+		(unsigned long long)g_dpmaif_ctrl->pd_dl_base + 0x200, 0x58 + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_dl_base + 0x200, 0x58 + 4);
+		g_dpmaif_ctrl->pd_dl_base + 0x200, 0x58 + 4);
 
 	len = DPMAIF_AO_DL_FRGBAT_STA2 - DPMAIF_AO_DL_PKTINFO_CONO + 4;
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF Rx ao; ao_dl_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO, len);
+		(unsigned long long)g_dpmaif_ctrl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO, len);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO, len);
+		g_dpmaif_ctrl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO, len);
 
 	len = DPMAIF_PD_AP_CODA_VER - DPMAIF_PD_AP_UL_L2TISAR0 + 4;
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF MISC pdn; pd_misc_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0, len);
+		(unsigned long long)g_dpmaif_ctrl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0, len);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0, len);
+		g_dpmaif_ctrl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0, len);
 
 	/* open sram clock for debug sram needs sram clock. */
 	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_CG_EN, 0x36);
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF SRAM pdn; pd_sram_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_sram_base + 0x00, 0x184);
+		(unsigned long long)g_dpmaif_ctrl->pd_sram_base + 0x00, 0x184);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_sram_base + 0x00, 0x184);
+		g_dpmaif_ctrl->pd_sram_base + 0x00, 0x184);
 
 	/* open sram clock for sram dump */
 	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_CG_EN, 0x7F);
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF AO MISC SRAM; ao_msic_sram_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->ao_msic_sram_base + 0x00, 0xFF);
+		(unsigned long long)g_dpmaif_ctrl->ao_msic_sram_base + 0x00, 0xFF);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->ao_msic_sram_base + 0x00, 0xFF);
+		g_dpmaif_ctrl->ao_msic_sram_base + 0x00, 0xFF);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF AO UL SRAM; ao_ul_sram_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->ao_ul_sram_base + 0x00, 0xFF);
+		(unsigned long long)g_dpmaif_ctrl->ao_ul_sram_base + 0x00, 0xFF);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->ao_ul_sram_base + 0x00, 0xFF);
+		g_dpmaif_ctrl->ao_ul_sram_base + 0x00, 0xFF);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF AO DL SRAM; ao_dl_sram_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->ao_dl_sram_base + 0x00, 0xFF);
+		(unsigned long long)g_dpmaif_ctrl->ao_dl_sram_base + 0x00, 0xFF);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->ao_dl_sram_base + 0x00, 0xFF);
+		g_dpmaif_ctrl->ao_dl_sram_base + 0x00, 0xFF);
 
 #ifdef ENABLE_DPMAIF_ISR_LOG
 	ccci_dpmaif_show_irq_log();
@@ -1450,19 +1450,19 @@ static void drv3_hw_reset(void)
 	unsigned int value = 0;
 	int ret;
 
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x0208, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x0208, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d read infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
 	value &= ~(1<<15);
 
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x0208, value);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x0208, value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d write infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x0208, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x0208, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d read infra_ao_base ret=%d\n",
@@ -1472,12 +1472,12 @@ static void drv3_hw_reset(void)
 	/* DPMAIF HW reset */
 	CCCI_BOOTUP_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: PD Domain */
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST0_REG_PD, DPMAIF_PD_RST_MASK);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_PD, DPMAIF_PD_RST_MASK);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d write infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, INFRA_RST0_REG_PD, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_PD, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d read infra_ao_base ret=%d\n",
@@ -1486,12 +1486,12 @@ static void drv3_hw_reset(void)
 
 	/* reset dpmaif hw: AO Domain */
 	CCCI_BOOTUP_LOG(0, TAG, "%s:clear reset\n", __func__);
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST0_REG_AO, DPMAIF_AO_RST_MASK);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_AO, DPMAIF_AO_RST_MASK);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d write infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, INFRA_RST0_REG_AO, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_AO, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d read infra_ao_base ret=%d\n",
@@ -1500,12 +1500,12 @@ static void drv3_hw_reset(void)
 
 	/* reset dpmaif clr */
 	CCCI_BOOTUP_LOG(0, TAG, "%s:clear reset\n", __func__);
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST1_REG_AO, DPMAIF_AO_RST_MASK);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_AO, DPMAIF_AO_RST_MASK);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d write infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, INFRA_RST1_REG_AO, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_AO, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d read infra_ao_base ret=%d\n",
@@ -1514,12 +1514,12 @@ static void drv3_hw_reset(void)
 
 	/* reset dpmaif clr */
 	CCCI_BOOTUP_LOG(0, TAG, "[%s]:done ret: %d\n", __func__, ret);
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST1_REG_PD, DPMAIF_PD_RST_MASK);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_PD, DPMAIF_PD_RST_MASK);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d write infra_ao_base ret=%d\n",
 		__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, INFRA_RST1_REG_PD, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_PD, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG,
 		"[%s]-%d read infra_ao_base ret=%d\n",
@@ -1531,17 +1531,17 @@ static void drv3_hw_reset_v1(void)
 	unsigned int value = 0;
 	int ret;
 
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x0208, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x0208, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d read infra_ao_base ret=%d\n",
 			__func__, __LINE__, ret);
 	value &= ~(1<<15);
 
-	ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x0208, value);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x0208, value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d write infra_ao_base ret=%d\n",
 			__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x0208, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x0208, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d read infra_ao_base ret=%d\n",
 			__func__, __LINE__, ret);
@@ -1555,15 +1555,15 @@ static void drv3_hw_reset_v1(void)
 	CCCI_DEBUG_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: PD Domain */
 	if (g_plat_inf == 6989 || g_plat_inf == 6899)
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<0);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF50, 1<<0);
 	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<14);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF50, 1<<14);
 	else if (g_plat_inf == 6991)
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF14, 1<<6);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF14, 1<<6);
 	else
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF50, 1<<22);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF50, 1<<22);
 
-	value = dpmaif_read32(dpmaif_ctl->infra_reset_pd_base, 0xF50);
+	value = dpmaif_read32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF50);
 	CCCI_NORMAL_LOG(0, TAG, "[%s]-%d read 0xF50 value=%d\n",
 			__func__, __LINE__, value);
 
@@ -1571,17 +1571,17 @@ static void drv3_hw_reset_v1(void)
 
 	/* reset dpmaif hw: AO Domain */
 	if (g_plat_inf == 6989 || g_plat_inf == 6899)
-		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<2);
+		ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x130, 1<<2);
 	else if (g_plat_inf == 6835)
-		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<11);
+		ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x130, 1<<11);
 	else if (g_plat_inf == 6991)
-		dpmaif_write32(dpmaif_ctl->infra_ao_mem_base, 0xF14, 1<<3);
+		dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF14, 1<<3);
 	else
-		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x130, 1<<0);
+		ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x130, 1<<0);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d write 0x130 ret=%d\n",
 			__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x130, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x130, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d read 0x130 ret=%d\n",
 			__func__, __LINE__, ret);
@@ -1590,17 +1590,17 @@ static void drv3_hw_reset_v1(void)
 
 	/* reset dpmaif clr */
 	if (g_plat_inf == 6989 || g_plat_inf == 6899)
-		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<2);
+		ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x134, 1<<2);
 	else if (g_plat_inf == 6835)
-		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<11);
+		ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x134, 1<<11);
 	else if (g_plat_inf == 6991)
-		dpmaif_write32(dpmaif_ctl->infra_ao_mem_base, 0xF18, 1<<3);
+		dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF18, 1<<3);
 	else
-		ret = regmap_write(dpmaif_ctl->infra_ao_base, 0x134, 1<<0);
+		ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, 0x134, 1<<0);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d write 0x134 ret=%d\n",
 			__func__, __LINE__, ret);
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, 0x134, &value);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, 0x134, &value);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "[%s]-%d read 0x134 ret=%d\n",
 			__func__, __LINE__, ret);
@@ -1610,15 +1610,15 @@ static void drv3_hw_reset_v1(void)
 
 	/* reset dpmaif clr */
 	if (g_plat_inf == 6989 || g_plat_inf == 6899)
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<0);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF54, 1<<0);
 	else if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897)
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<14);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF54, 1<<14);
 	else if (g_plat_inf == 6991)
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF18, 1<<6);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF18, 1<<6);
 	else
-		dpmaif_write32(dpmaif_ctl->infra_reset_pd_base, 0xF54, 1<<22);
+		dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF54, 1<<22);
 
-	value = dpmaif_read32(dpmaif_ctl->infra_reset_pd_base, 0xF54);
+	value = dpmaif_read32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF54);
 	CCCI_NORMAL_LOG(0, TAG, "[%s]-%d read 0xF54 value=%d\n",
 			__func__, __LINE__, value);
 }
@@ -1629,7 +1629,7 @@ static int drv3_setting_hw_reset_func(void)
 	int hw_reset_ver = 0;
 	struct device_node *node;
 
-	ret = of_property_read_u32(dpmaif_ctl->dev->of_node, "hw-reset-ver",
+	ret = of_property_read_u32(g_dpmaif_ctrl->dev->of_node, "hw-reset-ver",
 			&hw_reset_ver);
 	if (ret)
 		CCCI_ERROR_LOG(-1, TAG, "[%s] of_property_read_u32() fail: %d\n", __func__, ret);
@@ -1641,8 +1641,8 @@ static int drv3_setting_hw_reset_func(void)
 				"[%s] error: infracfg node is not exist.\n", __func__);
 			return -1;
 		}
-		dpmaif_ctl->infra_reset_pd_base = of_iomap(node, 0);
-		if (dpmaif_ctl->infra_reset_pd_base == NULL) {
+		g_dpmaif_ctrl->infra_reset_pd_base = of_iomap(node, 0);
+		if (g_dpmaif_ctrl->infra_reset_pd_base == NULL) {
 			CCCI_ERROR_LOG(-1, TAG,
 				"[%s] error: the reg value of infracfg is not exist.\n",
 				__func__);
@@ -1657,7 +1657,7 @@ static int drv3_setting_hw_reset_func(void)
 
 	CCCI_NORMAL_LOG(-1, TAG,
 		"[%s] hw_reset_ver: %d; infra_reset_pd_base: %p\n",
-		__func__, hw_reset_ver, dpmaif_ctl->infra_reset_pd_base);
+		__func__, hw_reset_ver, g_dpmaif_ctrl->infra_reset_pd_base);
 
 	return 0;
 }
@@ -1670,7 +1670,7 @@ static int drv3_dl_add_lro0_pit_remain_cnt(unsigned short pit_remain_cnt)
 
 	dl_update = ((pit_remain_cnt & 0x0003FFFF) | DPMAIF_DL_ADD_UPDATE);
 
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		spin_lock(&g_add_pit_cnt_lro_lock);
 
 	while (1) {
@@ -1700,7 +1700,7 @@ static int drv3_dl_add_lro0_pit_remain_cnt(unsigned short pit_remain_cnt)
 	}
 
 fun_exit:
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		spin_unlock(&g_add_pit_cnt_lro_lock);
 
 	return ret;
@@ -1714,7 +1714,7 @@ static int drv3_dl_add_lro1_pit_remain_cnt(unsigned short pit_remain_cnt)
 	dl_update = (pit_remain_cnt & 0x0003FFFF);
 	dl_update |= (DPMAIF_DL_ADD_UPDATE | DPMAIF_ADD_LRO_PIT_CHAN_OFS);
 
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		spin_lock(&g_add_pit_cnt_lro_lock);
 
 	while (1) {
@@ -1744,7 +1744,7 @@ static int drv3_dl_add_lro1_pit_remain_cnt(unsigned short pit_remain_cnt)
 	}
 
 fun_exit:
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		spin_unlock(&g_add_pit_cnt_lro_lock);
 
 	return ret;
@@ -1755,13 +1755,13 @@ static int drv3_init_rxq_cb(void)
 	int i;
 	struct dpmaif_rx_queue *rxq;
 
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		spin_lock_init(&g_add_pit_cnt_lro_lock);
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 
-		if (dpmaif_ctl->support_2rxq) {
+		if (g_dpmaif_ctrl->support_2rxq) {
 			if (i == 0) {
 				rxq->rxq_isr = drv3_isr0;
 				rxq->rxq_drv_unmask_dl_interrupt = &drv3_unmask_dl_lro0_interrupt;
@@ -1792,27 +1792,27 @@ int ccci_dpmaif_drv3_init(void)
 {
 	int ret;
 
-	dpmaif_ctl->clk_tbs = g_clk_tbs;
+	g_dpmaif_ctrl->clk_tbs = g_clk_tbs;
 
 	/* for 97 dpmaif new register */
-	dpmaif_ctl->ao_md_dl_base = dpmaif_ctl->ao_ul_base + 0x800;
-	dpmaif_ctl->pd_rdma_base  = dpmaif_ctl->pd_ul_base + 0x200;
-	dpmaif_ctl->pd_wdma_base  = dpmaif_ctl->pd_ul_base + 0x300;
+	g_dpmaif_ctrl->ao_md_dl_base = g_dpmaif_ctrl->ao_ul_base + 0x800;
+	g_dpmaif_ctrl->pd_rdma_base  = g_dpmaif_ctrl->pd_ul_base + 0x200;
+	g_dpmaif_ctrl->pd_wdma_base  = g_dpmaif_ctrl->pd_ul_base + 0x300;
 
-	if (dpmaif_ctl->support_2rxq) {
-		dpmaif_ctl->pd_mmw_hpc_base = dpmaif_ctl->pd_ul_base + 0x600;
-		dpmaif_ctl->pd_dl_lro_base  = dpmaif_ctl->pd_ul_base + 0x900;
+	if (g_dpmaif_ctrl->support_2rxq) {
+		g_dpmaif_ctrl->pd_mmw_hpc_base = g_dpmaif_ctrl->pd_ul_base + 0x600;
+		g_dpmaif_ctrl->pd_dl_lro_base  = g_dpmaif_ctrl->pd_ul_base + 0x900;
 	}
 
 	/* for 98 dpmaif new register */
-	dpmaif_ctl->ao_dl_sram_base   = dpmaif_ctl->pd_ul_base + 0xC00;
-	dpmaif_ctl->ao_ul_sram_base   = dpmaif_ctl->pd_ul_base + 0xD00;
-	dpmaif_ctl->ao_msic_sram_base = dpmaif_ctl->pd_ul_base + 0xE00;
+	g_dpmaif_ctrl->ao_dl_sram_base   = g_dpmaif_ctrl->pd_ul_base + 0xC00;
+	g_dpmaif_ctrl->ao_ul_sram_base   = g_dpmaif_ctrl->pd_ul_base + 0xD00;
+	g_dpmaif_ctrl->ao_msic_sram_base = g_dpmaif_ctrl->pd_ul_base + 0xE00;
 
-	if (dpmaif_ctl->dl_bat_entry_size == 0)
-		dpmaif_ctl->dl_bat_entry_size = DPMAIF_DL_BAT_ENTRY_SIZE;
-	dpmaif_ctl->dl_pit_entry_size = dpmaif_ctl->dl_bat_entry_size * 2;
-	dpmaif_ctl->dl_pit_byte_size  = DPMAIF_DL_PIT_BYTE_SIZE;
+	if (g_dpmaif_ctrl->dl_bat_entry_size == 0)
+		g_dpmaif_ctrl->dl_bat_entry_size = DPMAIF_DL_BAT_ENTRY_SIZE;
+	g_dpmaif_ctrl->dl_pit_entry_size = g_dpmaif_ctrl->dl_bat_entry_size * 2;
+	g_dpmaif_ctrl->dl_pit_byte_size  = DPMAIF_DL_PIT_BYTE_SIZE;
 
 	drv.pit_size_msk = DPMAIF_PIT_SIZE_MSK;
 	drv.dl_pit_wridx_msk = DPMAIF_DL_PIT_WRIDX_MSK;
@@ -1832,7 +1832,7 @@ int ccci_dpmaif_drv3_init(void)
 
 	ops.drv_unmask_ul_interrupt = &drv3_unmask_ul_interrupt;
 
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		ops.drv_dl_get_wridx = &drv3_dl_get_lro_wridx;
 	else
 		ops.drv_dl_get_wridx = &drv3_dl_get_wridx;

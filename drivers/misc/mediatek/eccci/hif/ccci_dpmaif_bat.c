@@ -108,10 +108,10 @@ static unsigned long long g_alloc_bat_frg_retry_time;
 
 static inline void ccci_dpmaif_skb_wakeup_thread(void)
 {
-	if (dpmaif_ctl->skb_alloc_thread &&
-			dpmaif_ctl->skb_start_alloc == 0) {
-		dpmaif_ctl->skb_start_alloc = 1;
-		wake_up(&dpmaif_ctl->skb_alloc_wq);
+	if (g_dpmaif_ctrl->skb_alloc_thread &&
+			g_dpmaif_ctrl->skb_start_alloc == 0) {
+		g_dpmaif_ctrl->skb_start_alloc = 1;
+		wake_up(&g_dpmaif_ctrl->skb_alloc_wq);
 	}
 }
 
@@ -143,10 +143,10 @@ static inline int skb_alloc(
 #endif
 
 	(*p_base_addr) = dma_map_single(
-			dpmaif_ctl->dev, (*ppskb)->data,
+			g_dpmaif_ctrl->dev, (*ppskb)->data,
 			skb_data_size((*ppskb)), DMA_FROM_DEVICE);
 
-	if (dma_mapping_error(dpmaif_ctl->dev, (*p_base_addr))) {
+	if (dma_mapping_error(g_dpmaif_ctrl->dev, (*p_base_addr))) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] error: dma mapping fail: %ld!\n",
 			__func__, skb_data_size(*ppskb));
@@ -165,7 +165,7 @@ static inline void alloc_skb_to_tbl(int skb_cnt)
 	int alloc_cnt, i;
 	unsigned int used_cnt, skb_tbl_wdx = atomic_read(&g_skb_tbl_wdx);
 	struct temp_skb_info *skb_info;
-	unsigned int pkt_buf_sz = dpmaif_ctl->bat_skb->pkt_buf_sz;
+	unsigned int pkt_buf_sz = g_dpmaif_ctrl->bat_skb->pkt_buf_sz;
 
 	if (!g_skb_tbl)
 		return;
@@ -253,10 +253,10 @@ static inline int page_alloc(
 
 	/* Get physical address of the RB */
 	(*p_base_addr) = dma_map_page(
-			dpmaif_ctl->dev, (*pp_page), *offset,
+			g_dpmaif_ctrl->dev, (*pp_page), *offset,
 			pkt_buf_sz, DMA_FROM_DEVICE);
 
-	if (dma_mapping_error(dpmaif_ctl->dev, (*p_base_addr))) {
+	if (dma_mapping_error(g_dpmaif_ctrl->dev, (*p_base_addr))) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] error: dma mapping: %d\n",
 			__func__, pkt_buf_sz);
@@ -296,7 +296,7 @@ static inline void alloc_page_to_tbl(int page_cnt)
 	int alloc_cnt, i;
 	unsigned int used_cnt, page_tbl_wdx = atomic_read(&g_page_tbl_wdx);
 	struct temp_page_info *page_info;
-	unsigned int pkt_buf_sz = dpmaif_ctl->bat_frg->pkt_buf_sz;
+	unsigned int pkt_buf_sz = g_dpmaif_ctrl->bat_frg->pkt_buf_sz;
 
 	if (!g_page_tbl)
 		return;
@@ -346,7 +346,7 @@ static int dpmaif_bat_init(struct dpmaif_bat_request *bat_req, int is_frag)
 	int sw_buf_size;
 	int cache_mem_from_dts = 0, nocache_mem_from_dts = 0;
 
-	bat_req->bat_cnt = dpmaif_ctl->dl_bat_entry_size;
+	bat_req->bat_cnt = g_dpmaif_ctrl->dl_bat_entry_size;
 	bat_req->bat_pkt_cnt = bat_req->bat_cnt;
 
 	if (is_frag) {
@@ -365,7 +365,7 @@ static int dpmaif_bat_init(struct dpmaif_bat_request *bat_req, int is_frag)
 
 	if (!nocache_mem_from_dts)
 		bat_req->bat_base = dma_alloc_coherent(
-			dpmaif_ctl->dev,
+			g_dpmaif_ctrl->dev,
 			bat_req->bat_cnt * sizeof(struct dpmaif_bat_base),
 			&bat_req->bat_phy_addr, GFP_KERNEL);
 
@@ -440,7 +440,7 @@ static inline int alloc_bat_skb(
 
 static int dpmaif_alloc_bat_req(int update_bat_cnt, atomic_t *paused)
 {
-	struct dpmaif_bat_request *bat_req = dpmaif_ctl->bat_skb;
+	struct dpmaif_bat_request *bat_req = g_dpmaif_ctrl->bat_skb;
 	struct dpmaif_bat_skb *bat_skb, *next_skb;
 	struct dpmaif_bat_base *cur_bat;
 	unsigned int buf_space, buf_used, alloc_skb_threshold = g_alloc_skb_threshold;
@@ -512,7 +512,7 @@ alloc_retry:
 				if (paused && (atomic_read(paused) != BAT_ALLOC_NO_PAUSED))
 					goto alloc_end;
 
-				hrtimer_start(&dpmaif_ctl->bat_alloc_done_timer,
+				hrtimer_start(&g_dpmaif_ctrl->bat_alloc_done_timer,
 						ktime_set(0, ALLOC_FAIL_HRTIME_TIME),
 						HRTIMER_MODE_REL);
 				goto alloc_end;
@@ -623,7 +623,7 @@ static inline int alloc_bat_page(
 
 static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
 {
-	struct dpmaif_bat_request *bat_req = dpmaif_ctl->bat_frg;
+	struct dpmaif_bat_request *bat_req = g_dpmaif_ctrl->bat_frg;
 	struct dpmaif_bat_page *bat_page, *next_page;
 	struct dpmaif_bat_base *cur_bat;
 	unsigned int buf_space, buf_used, alloc_frg_threshold = g_alloc_frg_threshold;
@@ -689,7 +689,7 @@ alloc_retry:
 				if (paused && (atomic_read(paused) != BAT_ALLOC_NO_PAUSED))
 					goto alloc_end;
 
-				hrtimer_start(&dpmaif_ctl->bat_alloc_done_timer,
+				hrtimer_start(&g_dpmaif_ctrl->bat_alloc_done_timer,
 						ktime_set(0, ALLOC_FAIL_HRTIME_TIME),
 						HRTIMER_MODE_REL);
 				goto alloc_end;
@@ -739,7 +739,7 @@ static void ccci_dpmaif_bat_free_req(void)
 {
 	int j;
 	struct dpmaif_bat_skb *bat_skb;
-	struct dpmaif_bat_request *bat_req = dpmaif_ctl->bat_skb;
+	struct dpmaif_bat_request *bat_req = g_dpmaif_ctrl->bat_skb;
 
 	if ((!bat_req) || (!bat_req->bat_base) || (!bat_req->bat_pkt_addr))
 		return;
@@ -750,7 +750,7 @@ static void ccci_dpmaif_bat_free_req(void)
 		if (bat_skb->skb) {
 			/* rx unmapping */
 			dma_unmap_single(
-				dpmaif_ctl->dev, bat_skb->data_phy_addr,
+				g_dpmaif_ctrl->dev, bat_skb->data_phy_addr,
 				bat_skb->data_len, DMA_FROM_DEVICE);
 
 			dev_kfree_skb_any(bat_skb->skb);
@@ -768,7 +768,7 @@ static void ccci_dpmaif_bat_free_frg(void)
 {
 	int j;
 	struct dpmaif_bat_page *bat_page;
-	struct dpmaif_bat_request *bat_frg = dpmaif_ctl->bat_frg;
+	struct dpmaif_bat_request *bat_frg = g_dpmaif_ctrl->bat_frg;
 
 	if ((!bat_frg) || (!bat_frg->bat_base) || (!bat_frg->bat_pkt_addr))
 		return;
@@ -779,7 +779,7 @@ static void ccci_dpmaif_bat_free_frg(void)
 		if (bat_page->page) {
 			/* rx unmapping */
 			dma_unmap_page(
-				dpmaif_ctl->dev, bat_page->data_phy_addr,
+				g_dpmaif_ctrl->dev, bat_page->data_phy_addr,
 				bat_page->data_len, DMA_FROM_DEVICE);
 
 			put_page(bat_page->page);
@@ -806,27 +806,27 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 	u8 need1 = 0, est_cnt = 0;
 	struct debug_bat_th_wake_hdr hdr = {0};
 
-	dpmaif_ctl->bat_alloc_running = 1;
+	g_dpmaif_ctrl->bat_alloc_running = 1;
 
 	CCCI_NORMAL_LOG(-1, TAG, "[%s] run start.\n", __func__);
 
 	while (1) {
-		ret = wait_event_interruptible(dpmaif_ctl->bat_alloc_wq,
-				atomic_read(&dpmaif_ctl->bat_need_alloc));
+		ret = wait_event_interruptible(g_dpmaif_ctrl->bat_alloc_wq,
+				atomic_read(&g_dpmaif_ctrl->bat_need_alloc));
 
 		if (g_debug_flags & DEBUG_BAT_TH_WAKE) {
-			need1 = (u8)atomic_read(&dpmaif_ctl->bat_need_alloc);
+			need1 = (u8)atomic_read(&g_dpmaif_ctrl->bat_need_alloc);
 		}
 
-		if (atomic_read(&dpmaif_ctl->bat_paused_alloc) != BAT_ALLOC_NO_PAUSED) {
+		if (atomic_read(&g_dpmaif_ctrl->bat_paused_alloc) != BAT_ALLOC_NO_PAUSED) {
 			CCCI_ERROR_LOG(-1, TAG,
 				"[%s] bat_paused_alloc: %d; bat_need_alloc: %d\n", __func__,
-				atomic_read(&dpmaif_ctl->bat_paused_alloc),
-				atomic_read(&dpmaif_ctl->bat_need_alloc));
+				atomic_read(&g_dpmaif_ctrl->bat_paused_alloc),
+				atomic_read(&g_dpmaif_ctrl->bat_need_alloc));
 
-			if (atomic_read(&dpmaif_ctl->bat_paused_alloc) == BAT_ALLOC_IS_PAUSED) {
-				atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_PAUSE_SUCC);
-				atomic_set(&dpmaif_ctl->bat_need_alloc, 0);
+			if (atomic_read(&g_dpmaif_ctrl->bat_paused_alloc) == BAT_ALLOC_IS_PAUSED) {
+				atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_PAUSE_SUCC);
+				atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 0);
 			}
 			continue;
 		}
@@ -843,14 +843,14 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 			break;
 		}
 
-		ret_req = dpmaif_alloc_bat_req(1, &dpmaif_ctl->bat_paused_alloc);
-		ret_frg = dpmaif_alloc_bat_frg(1, &dpmaif_ctl->bat_paused_alloc);
+		ret_req = dpmaif_alloc_bat_req(1, &g_dpmaif_ctrl->bat_paused_alloc);
+		ret_frg = dpmaif_alloc_bat_frg(1, &g_dpmaif_ctrl->bat_paused_alloc);
 
 		if (g_debug_flags & DEBUG_BAT_TH_WAKE) {
 			hdr.type  = TYPE_BAT_TH_WAKE_ID;
 			hdr.time  = (unsigned int)(local_clock() >> 16);
 			hdr.need1 = need1;
-			hdr.need2 = atomic_read(&dpmaif_ctl->bat_need_alloc);
+			hdr.need2 = atomic_read(&g_dpmaif_ctrl->bat_need_alloc);
 			hdr.req   = ((ret_req < 0) ? 0 : ret_req);
 			hdr.frg   = ((ret_frg < 0) ? 0 : ret_frg);
 			hdr.est   = est_cnt;
@@ -858,13 +858,13 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 			est_cnt = 0;
 		}
 
-		if (atomic_read(&dpmaif_ctl->bat_need_alloc) > 1)
-			atomic_set(&dpmaif_ctl->bat_need_alloc, 1);
+		if (atomic_read(&g_dpmaif_ctrl->bat_need_alloc) > 1)
+			atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 1);
 		else
-			atomic_set(&dpmaif_ctl->bat_need_alloc, 0);
+			atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 0);
 	}
 
-	dpmaif_ctl->bat_alloc_running = 0;
+	g_dpmaif_ctrl->bat_alloc_running = 0;
 
 	CCCI_NORMAL_LOG(-1, TAG, "[%s] run end.\n", __func__);
 
@@ -873,22 +873,22 @@ static int dpmaif_rx_bat_alloc_thread(void *arg)
 
 static int ccci_dpmaif_create_bat_thread(void)
 {
-	init_waitqueue_head(&dpmaif_ctl->bat_alloc_wq);
+	init_waitqueue_head(&g_dpmaif_ctrl->bat_alloc_wq);
 
-	dpmaif_ctl->bat_alloc_running = 0;
-	atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
-	atomic_set(&dpmaif_ctl->bat_need_alloc, 0);
+	g_dpmaif_ctrl->bat_alloc_running = 0;
+	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
+	atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 0);
 
-	dpmaif_ctl->bat_alloc_thread = kthread_run(
+	g_dpmaif_ctrl->bat_alloc_thread = kthread_run(
 				dpmaif_rx_bat_alloc_thread,
 				NULL, "bat_alloc_thread");
 
-	if (IS_ERR(dpmaif_ctl->bat_alloc_thread)) {
+	if (IS_ERR(g_dpmaif_ctrl->bat_alloc_thread)) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] kthread_run fail %ld\n",
-			__func__, (long)dpmaif_ctl->bat_alloc_thread);
+			__func__, (long)g_dpmaif_ctrl->bat_alloc_thread);
 
-		dpmaif_ctl->bat_alloc_thread = NULL;
+		g_dpmaif_ctrl->bat_alloc_thread = NULL;
 
 		return -1;
 	}
@@ -903,8 +903,8 @@ static int dpmaif_rx_skb_alloc_thread(void *arg)
 	CCCI_NORMAL_LOG(-1, TAG, "[%s] run start.\n", __func__);
 
 	while (1) {
-		ret = wait_event_interruptible(dpmaif_ctl->skb_alloc_wq,
-				dpmaif_ctl->skb_start_alloc);
+		ret = wait_event_interruptible(g_dpmaif_ctrl->skb_alloc_wq,
+				g_dpmaif_ctrl->skb_start_alloc);
 
 		if (ret == -ERESTARTSYS)
 			continue;
@@ -928,7 +928,7 @@ static int dpmaif_rx_skb_alloc_thread(void *arg)
 		if (g_use_page_tbl)
 			alloc_page_to_tbl(g_alloc_frg_tbl_threshold);
 
-		dpmaif_ctl->skb_start_alloc = 0;
+		g_dpmaif_ctrl->skb_start_alloc = 0;
 	}
 
 	CCCI_NORMAL_LOG(-1, TAG, "[%s] run end.\n", __func__);
@@ -944,23 +944,23 @@ static int ccci_dpmaif_create_skb_thread(void)
 	atomic_set(&g_page_tbl_wdx, 0);
 
 	if (g_skb_tbl_cnt == 0 && g_frg_tbl_cnt == 0) {
-		dpmaif_ctl->skb_alloc_thread = NULL;
+		g_dpmaif_ctrl->skb_alloc_thread = NULL;
 		return 0;
 	}
 
-	init_waitqueue_head(&dpmaif_ctl->skb_alloc_wq);
-	dpmaif_ctl->skb_start_alloc = 0;
+	init_waitqueue_head(&g_dpmaif_ctrl->skb_alloc_wq);
+	g_dpmaif_ctrl->skb_start_alloc = 0;
 
-	dpmaif_ctl->skb_alloc_thread = kthread_run(
+	g_dpmaif_ctrl->skb_alloc_thread = kthread_run(
 				dpmaif_rx_skb_alloc_thread,
 				NULL, "skb_alloc_thread");
 
-	if (IS_ERR(dpmaif_ctl->skb_alloc_thread)) {
+	if (IS_ERR(g_dpmaif_ctrl->skb_alloc_thread)) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] kthread_run fail %ld\n",
-			__func__, (long)dpmaif_ctl->skb_alloc_thread);
+			__func__, (long)g_dpmaif_ctrl->skb_alloc_thread);
 
-		dpmaif_ctl->skb_alloc_thread = NULL;
+		g_dpmaif_ctrl->skb_alloc_thread = NULL;
 
 		return -1;
 	}
@@ -970,7 +970,7 @@ static int ccci_dpmaif_create_skb_thread(void)
 
 inline void ccci_dpmaif_bat_wakeup_thread(int wakeup_cnt)
 {
-	if (!dpmaif_ctl->bat_alloc_thread)
+	if (!g_dpmaif_ctrl->bat_alloc_thread)
 		return;
 
 	if (wakeup_cnt) {
@@ -981,13 +981,13 @@ inline void ccci_dpmaif_bat_wakeup_thread(int wakeup_cnt)
 	} else
 		atomic_set(&g_bat_alloc_thread_wakeup_cnt, 0);
 
-	atomic_inc(&dpmaif_ctl->bat_need_alloc);
-	wake_up_all(&dpmaif_ctl->bat_alloc_wq);
+	atomic_inc(&g_dpmaif_ctrl->bat_need_alloc);
+	wake_up_all(&g_dpmaif_ctrl->bat_alloc_wq);
 }
 
 static void dpmaif_bat_start_thread(void)
 {
-	atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_NO_PAUSED);
+	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_NO_PAUSED);
 
 	ccci_dpmaif_bat_wakeup_thread(0);
 }
@@ -996,15 +996,15 @@ static void ccci_dpmaif_bat_paused_thread(void)
 {
 	unsigned int retry_cnt = 0;
 
-	if ((!dpmaif_ctl->bat_alloc_thread) ||
-		(!dpmaif_ctl->bat_alloc_running)) {
+	if ((!g_dpmaif_ctrl->bat_alloc_thread) ||
+		(!g_dpmaif_ctrl->bat_alloc_running)) {
 		CCCI_NORMAL_LOG(-1, TAG,
 			"[%s] thread no running: %d\n",
-			__func__, dpmaif_ctl->bat_alloc_running);
+			__func__, g_dpmaif_ctrl->bat_alloc_running);
 		return;
 	}
 
-	atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
+	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
 
 	do {
 		ccci_dpmaif_bat_wakeup_thread(0);
@@ -1017,10 +1017,10 @@ static void ccci_dpmaif_bat_paused_thread(void)
 				"[%s] error: pause bat thread fail\n",
 				__func__);
 
-	} while (atomic_read(&dpmaif_ctl->bat_paused_alloc)
+	} while (atomic_read(&g_dpmaif_ctrl->bat_paused_alloc)
 			== BAT_ALLOC_IS_PAUSED);
 
-	atomic_set(&dpmaif_ctl->bat_need_alloc, 0);
+	atomic_set(&g_dpmaif_ctrl->bat_need_alloc, 0);
 	CCCI_MEM_LOG_TAG(0, TAG, "[%s] succ.\n", __func__);
 }
 
@@ -1028,12 +1028,12 @@ void ccci_dpmaif_bat_stop(void)
 {
 	CCCI_NORMAL_LOG(0, TAG, "[%s] stop.\n", __func__);
 
-	hrtimer_cancel(&dpmaif_ctl->bat_alloc_done_timer);
+	hrtimer_cancel(&g_dpmaif_ctrl->bat_alloc_done_timer);
 	msleep(20); /* Make sure hrtimer finish */
 
 	ccci_dpmaif_bat_paused_thread();
 
-	hrtimer_cancel(&dpmaif_ctl->bat_alloc_done_timer);
+	hrtimer_cancel(&g_dpmaif_ctrl->bat_alloc_done_timer);
 
 	ccci_dpmaif_bat_free();
 
@@ -1060,8 +1060,8 @@ static void dpmaif_bat_hw_init(void)
 			ccci_drv1_dl_set_bat_chk_thres();
 	}
 
-	ccci_drv_dl_set_bat_base_addr(dpmaif_ctl->bat_skb->bat_phy_addr);
-	ccci_drv_dl_set_bat_size(dpmaif_ctl->bat_skb->bat_cnt);
+	ccci_drv_dl_set_bat_base_addr(g_dpmaif_ctrl->bat_skb->bat_phy_addr);
+	ccci_drv_dl_set_bat_size(g_dpmaif_ctrl->bat_skb->bat_cnt);
 	ccci_drv_dl_bat_en(false);
 	ccci_drv_dl_bat_init_done(false);
 
@@ -1080,8 +1080,8 @@ static void dpmaif_bat_hw_init(void)
 			ccci_drv1_dl_set_ao_frag_check_thres();
 	}
 
-	ccci_drv_dl_set_bat_base_addr(dpmaif_ctl->bat_frg->bat_phy_addr);
-	ccci_drv_dl_set_bat_size(dpmaif_ctl->bat_frg->bat_cnt);
+	ccci_drv_dl_set_bat_base_addr(g_dpmaif_ctrl->bat_frg->bat_phy_addr);
+	ccci_drv_dl_set_bat_size(g_dpmaif_ctrl->bat_frg->bat_cnt);
 	ccci_drv_dl_bat_en(false);
 	ccci_drv_dl_bat_init_done(true);
 
@@ -1097,12 +1097,12 @@ int ccci_dpmaif_bat_start(void)
 
 	CCCI_NORMAL_LOG(0, TAG, "[%s] start.\n", __func__);
 
-	if ((!dpmaif_ctl->bat_skb) ||
-		(!dpmaif_ctl->bat_skb->bat_base) ||
-		(!dpmaif_ctl->bat_skb->bat_pkt_addr) ||
-		(!dpmaif_ctl->bat_frg) ||
-		(!dpmaif_ctl->bat_frg->bat_base) ||
-		(!dpmaif_ctl->bat_frg->bat_pkt_addr)) {
+	if ((!g_dpmaif_ctrl->bat_skb) ||
+		(!g_dpmaif_ctrl->bat_skb->bat_base) ||
+		(!g_dpmaif_ctrl->bat_skb->bat_pkt_addr) ||
+		(!g_dpmaif_ctrl->bat_frg) ||
+		(!g_dpmaif_ctrl->bat_frg->bat_base) ||
+		(!g_dpmaif_ctrl->bat_frg->bat_pkt_addr)) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] bat_req or bat_frag is NULL.\n", __func__);
 		return -1;
 	}
@@ -1142,21 +1142,21 @@ int ccci_dpmaif_bat_start(void)
 	if (ccci_drv_dl_all_queue_en(true))
 		goto start_err;
 
-	atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_NO_PAUSED);
+	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_NO_PAUSED);
 	dpmaif_bat_start_thread();
 	return 0;
 
 start_err:
-	atomic_set(&dpmaif_ctl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
+	atomic_set(&g_dpmaif_ctrl->bat_paused_alloc, BAT_ALLOC_IS_PAUSED);
 
 	return ret;
 }
 
 static enum hrtimer_restart dpmaif_bat_alloc_timer_action(struct hrtimer *timer)
 {
-	if (atomic_read(&dpmaif_ctl->bat_paused_alloc) == BAT_ALLOC_NO_PAUSED) {
-		atomic_inc(&dpmaif_ctl->bat_need_alloc);
-		wake_up_all(&dpmaif_ctl->bat_alloc_wq);
+	if (atomic_read(&g_dpmaif_ctrl->bat_paused_alloc) == BAT_ALLOC_NO_PAUSED) {
+		atomic_inc(&g_dpmaif_ctrl->bat_need_alloc);
+		wake_up_all(&g_dpmaif_ctrl->bat_alloc_wq);
 	}
 
 	return HRTIMER_NORESTART;
@@ -1166,12 +1166,12 @@ int ccci_dpmaif_bat_late_init(void)
 {
 	int ret, len;
 
-	dpmaif_ctl->bat_skb = ccci_dpmaif_bat_create();
-	if (!dpmaif_ctl->bat_skb)
+	g_dpmaif_ctrl->bat_skb = ccci_dpmaif_bat_create();
+	if (!g_dpmaif_ctrl->bat_skb)
 		return LOW_MEMORY_BAT;
 
-	dpmaif_ctl->bat_frg = ccci_dpmaif_bat_create();
-	if (!dpmaif_ctl->bat_frg)
+	g_dpmaif_ctrl->bat_frg = ccci_dpmaif_bat_create();
+	if (!g_dpmaif_ctrl->bat_frg)
 		return LOW_MEMORY_BAT;
 
 	if (g_skb_tbl_cnt) {
@@ -1196,11 +1196,11 @@ int ccci_dpmaif_bat_late_init(void)
 				"[%s] error: alloc g_page_tbl fail.\n", __func__);
 	}
 
-	ret = dpmaif_bat_init(dpmaif_ctl->bat_skb, 0);
+	ret = dpmaif_bat_init(g_dpmaif_ctrl->bat_skb, 0);
 	if (ret)
 		return ret;
 
-	ret = dpmaif_bat_init(dpmaif_ctl->bat_frg, 1);
+	ret = dpmaif_bat_init(g_dpmaif_ctrl->bat_frg, 1);
 	if (ret)
 		return ret;
 
@@ -1229,8 +1229,8 @@ int ccci_dpmaif_bat_init(struct device *dev)
 		"[%s] g_skb_tbl_cnt: %u; g_frg_tbl_cnt: %u\n",
 		__func__, g_skb_tbl_cnt, g_frg_tbl_cnt);
 
-	hrtimer_init(&dpmaif_ctl->bat_alloc_done_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	dpmaif_ctl->bat_alloc_done_timer.function = dpmaif_bat_alloc_timer_action;
+	hrtimer_init(&g_dpmaif_ctrl->bat_alloc_done_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	g_dpmaif_ctrl->bat_alloc_done_timer.function = dpmaif_bat_alloc_timer_action;
 
 	return 0;
 }

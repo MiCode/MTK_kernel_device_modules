@@ -793,7 +793,7 @@ static inline void drv2_irq_tx_done(unsigned int tx_done_isr)
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
 		intr_ul_que_done = tx_done_isr & (1 << (i + UL_INT_DONE_OFFSET));
 		if (intr_ul_que_done) {
-			txq = &dpmaif_ctl->txq[i];
+			txq = &g_dpmaif_ctrl->txq[i];
 
 			if (atomic_read(&txq->txq_resume_done)) {
 				atomic_set(&txq->txq_resume_done, 0);
@@ -891,7 +891,7 @@ static irqreturn_t drv2_isr(int irq, void *data)
 	/* clear IP busy register wake up cpu case */
 	ccci_drv_clear_ip_busy();
 
-	if (atomic_read(&dpmaif_ctl->wakeup_src) == 1)
+	if (atomic_read(&g_dpmaif_ctrl->wakeup_src) == 1)
 		CCCI_NOTICE_LOG(0, TAG, "[%s] wake up by MD0 HIF L2(%x/%x)(%x/%x)!\n",
 			__func__, L2TISAR0, L2TIMR0, L2RISAR0, L2RIMR0);
 
@@ -928,7 +928,7 @@ static irqreturn_t drv2_isr(int irq, void *data)
 
 			/*always start work due to no napi*/
 			/*for (i = 0; i < DPMAIF_HW_MAX_DLQ_NUM; i++)*/
-			tasklet_hi_schedule(&dpmaif_ctl->rxq[0].rxq_task);
+			tasklet_hi_schedule(&g_dpmaif_ctrl->rxq[0].rxq_task);
 		}
 	}
 
@@ -974,7 +974,7 @@ static inline int drv2_dl_restore(unsigned int mask)
 
 	/*Restore MD idx*/
 	DPMA_WRITE_PD_UL(NRL2_DPMAIF_UL_RESERVE_RW,
-		((dpmaif_ctl->rxq[0].pit_dummy_idx)|DPMAIF_MD_DUMMYPIT_EN));
+		((g_dpmaif_ctrl->rxq[0].pit_dummy_idx)|DPMAIF_MD_DUMMYPIT_EN));
 
 	return 0;
 }
@@ -1027,7 +1027,7 @@ static int drv2_resume_noirq(struct device *dev)
 
 	/*flush and release UL descriptor*/
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
-		txq = &dpmaif_ctl->txq[i];
+		txq = &g_dpmaif_ctrl->txq[i];
 
 		if (atomic_read(&txq->drb_rd_idx) != atomic_read(&txq->drb_wr_idx)) {
 			CCCI_NORMAL_LOG(0, TAG,
@@ -1051,7 +1051,7 @@ static int drv2_resume_noirq(struct device *dev)
 
 	/* there are some inter for init para. check. */
 	/* maybe need changed to drv_dpmaif_intr_hw_init();*/
-	ret = drv2_dl_restore(dpmaif_ctl->suspend_reg_int_mask_bak);
+	ret = drv2_dl_restore(g_dpmaif_ctrl->suspend_reg_int_mask_bak);
 	if (ret)
 		return ret;
 
@@ -1059,7 +1059,7 @@ static int drv2_resume_noirq(struct device *dev)
 
 	/*flush and release UL descriptor*/
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
-		txq = &dpmaif_ctl->txq[i];
+		txq = &g_dpmaif_ctrl->txq[i];
 
 		drv2_txq_hw_init(txq);
 		atomic_set(&txq->txq_resume_done, 1);
@@ -1072,18 +1072,18 @@ static void drv2_write_infra_ao_mem_prot(void)
 {
 	unsigned int reg_value;
 
-	if (!dpmaif_ctl->infra_ao_mem_base) {
+	if (!g_dpmaif_ctrl->infra_ao_mem_base) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: iomap infracfg_ao_mem is NULL.\n",
 			__func__);
 		return;
 	}
 
-	reg_value = dpmaif_read32(dpmaif_ctl->infra_ao_mem_base, 0);
+	reg_value = dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0);
 
 	reg_value |= INFRA_PROT_DPMAIF_BIT;
 
-	dpmaif_write32(dpmaif_ctl->infra_ao_mem_base, 0, reg_value);
+	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0, reg_value);
 }
 
 static void drv2_ul_all_queue_en(bool enable)
@@ -1117,101 +1117,101 @@ static void drv2_dump_register(int buf_type)
 {
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF pd_ul_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_ul_base + DPMAIF_PD_UL_ADD_DESC,
+		(unsigned long long)g_dpmaif_ctrl->pd_ul_base + DPMAIF_PD_UL_ADD_DESC,
 		DPMAIF_PD_UL_ADD_DESC_CH4 - DPMAIF_PD_UL_ADD_DESC + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_ul_base + DPMAIF_PD_UL_ADD_DESC,
+		g_dpmaif_ctrl->pd_ul_base + DPMAIF_PD_UL_ADD_DESC,
 		DPMAIF_PD_UL_ADD_DESC_CH4 - DPMAIF_PD_UL_ADD_DESC + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF ao_ul_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA,
+		(unsigned long long)g_dpmaif_ctrl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA,
 		DPMAIF_AO_UL_CH_WEIGHT1 - DPMAIF_AO_UL_CHNL0_STA + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA,
+		g_dpmaif_ctrl->ao_ul_base + DPMAIF_AO_UL_CHNL0_STA,
 		DPMAIF_AO_UL_CH_WEIGHT1 - DPMAIF_AO_UL_CHNL0_STA + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF pd_dl_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT,
+		(unsigned long long)g_dpmaif_ctrl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT,
 		DPMAIF_PD_DL_DBG_STA14 - DPMAIF_PD_DL_BAT_INIT + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT,
+		g_dpmaif_ctrl->pd_dl_base + DPMAIF_PD_DL_BAT_INIT,
 		DPMAIF_PD_DL_DBG_STA14 - DPMAIF_PD_DL_BAT_INIT + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF ao_dl_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO,
+		(unsigned long long)g_dpmaif_ctrl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO,
 		DPMAIF_AO_DL_REORDER_THRES - DPMAIF_AO_DL_PKTINFO_CONO + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO,
+		g_dpmaif_ctrl->ao_dl_base + DPMAIF_AO_DL_PKTINFO_CONO,
 		DPMAIF_AO_DL_REORDER_THRES - DPMAIF_AO_DL_PKTINFO_CONO + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF pd_dl_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_dl_base + 0x100, 0xC4);
+		(unsigned long long)g_dpmaif_ctrl->pd_dl_base + 0x100, 0xC4);
 	ccci_util_mem_dump(buf_type,
-			dpmaif_ctl->pd_dl_base + 0x100, 0xC4);
+			g_dpmaif_ctrl->pd_dl_base + 0x100, 0xC4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF pd_dl_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_dl_base + 0x200, 0x58 + 4);
+		(unsigned long long)g_dpmaif_ctrl->pd_dl_base + 0x200, 0x58 + 4);
 	ccci_util_mem_dump(buf_type,
-			dpmaif_ctl->pd_dl_base + 0x200, 0x58 + 4);
+			g_dpmaif_ctrl->pd_dl_base + 0x200, 0x58 + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF pd_misc_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0,
+		(unsigned long long)g_dpmaif_ctrl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0,
 		DPMAIF_AP_MISC_APB_DBG_SRAM - DPMAIF_PD_AP_UL_L2TISAR0 + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0,
+		g_dpmaif_ctrl->pd_misc_base + DPMAIF_PD_AP_UL_L2TISAR0,
 		DPMAIF_AP_MISC_APB_DBG_SRAM - DPMAIF_PD_AP_UL_L2TISAR0 + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF ao_md_dl_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->ao_md_dl_base + DPMAIF_MISC_AO_CFG0,
+		(unsigned long long)g_dpmaif_ctrl->ao_md_dl_base + DPMAIF_MISC_AO_CFG0,
 		DPMAIF_AXI_MAS_SECURE - DPMAIF_MISC_AO_CFG0 + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->ao_md_dl_base + DPMAIF_MISC_AO_CFG0,
+		g_dpmaif_ctrl->ao_md_dl_base + DPMAIF_MISC_AO_CFG0,
 		DPMAIF_AXI_MAS_SECURE - DPMAIF_MISC_AO_CFG0 + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump MD DPMAIF pd_md_misc_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_md_misc_base + DPMAIF_PD_MD_IP_BUSY,
+		(unsigned long long)g_dpmaif_ctrl->pd_md_misc_base + DPMAIF_PD_MD_IP_BUSY,
 		DPMAIF_PD_MD_IP_BUSY_MASK - DPMAIF_PD_MD_IP_BUSY + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_md_misc_base + DPMAIF_PD_MD_IP_BUSY,
+		g_dpmaif_ctrl->pd_md_misc_base + DPMAIF_PD_MD_IP_BUSY,
 		DPMAIF_PD_MD_IP_BUSY_MASK - DPMAIF_PD_MD_IP_BUSY + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF pd_ul_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_ul_base + 0x540, 0xBC);
+		(unsigned long long)g_dpmaif_ctrl->pd_ul_base + 0x540, 0xBC);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_ul_base + 0x540, 0xBC);
+		g_dpmaif_ctrl->pd_ul_base + 0x540, 0xBC);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump MD DPMAIF pd_md_misc_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_md_misc_base + 0x100, 0xCC);
+		(unsigned long long)g_dpmaif_ctrl->pd_md_misc_base + 0x100, 0xCC);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_md_misc_base + 0x100, 0xCC);
+		g_dpmaif_ctrl->pd_md_misc_base + 0x100, 0xCC);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF pd_sram_base; register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->pd_sram_base + 0x00, 0x1FF + 4);
+		(unsigned long long)g_dpmaif_ctrl->pd_sram_base + 0x00, 0x1FF + 4);
 	ccci_util_mem_dump(buf_type,
-		dpmaif_ctl->pd_sram_base + 0x00, 0x1FF + 4);
+		g_dpmaif_ctrl->pd_sram_base + 0x00, 0x1FF + 4);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump SW CG infra_ao_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->infra_ao_base + SW_CG_2_STA, 0x0F);
+		(unsigned long long)g_dpmaif_ctrl->infra_ao_base + SW_CG_2_STA, 0x0F);
 	ccci_util_mem_dump(buf_type,
-		(void *)dpmaif_ctl->infra_ao_base + SW_CG_2_STA, 0x0F);
+		(void *)g_dpmaif_ctrl->infra_ao_base + SW_CG_2_STA, 0x0F);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump SW CG infra_ao_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)dpmaif_ctl->infra_ao_base + SW_CG_3_STA, 0x0F);
+		(unsigned long long)g_dpmaif_ctrl->infra_ao_base + SW_CG_3_STA, 0x0F);
 	ccci_util_mem_dump(buf_type,
-		(void *)dpmaif_ctl->infra_ao_base + SW_CG_3_STA, 0x0F);
+		(void *)g_dpmaif_ctrl->infra_ao_base + SW_CG_3_STA, 0x0F);
 
 }
 
@@ -1220,29 +1220,29 @@ static void drv2_hw_reset(void)
 	unsigned int reg_value;
 
 	/* pre- DPMAIF HW reset: bus-protect */
-	reg_value = dpmaif_read32(dpmaif_ctl->infra_ao_mem_base, 0);
+	reg_value = dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0);
 	reg_value &= ~INFRA_PROT_DPMAIF_BIT;
-	dpmaif_write32(dpmaif_ctl->infra_ao_mem_base, 0, reg_value);
+	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0, reg_value);
 	CCCI_BOOTUP_LOG(0, TAG, "%s:set prot:0x%x\n", __func__, reg_value);
 
 	/* DPMAIF HW reset */
 	CCCI_BOOTUP_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: AO Domain */
 	reg_value = DPMAIF_AO_RST_MASK;/* so only this bit effective */
-	regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST0_REG_AO, reg_value);
+	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_AO, reg_value);
 
 	CCCI_BOOTUP_LOG(0, TAG, "%s:clear reset\n", __func__);
 	/* reset dpmaif clr */
-	regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST1_REG_AO, reg_value);
+	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_AO, reg_value);
 	CCCI_BOOTUP_LOG(0, TAG, "%s:done. reg_value: %x\n", __func__, reg_value);
 
 	/* reset dpmaif hw: PD Domain */
 	reg_value = DPMAIF_PD_RST_MASK;
-	regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST0_REG_PD, reg_value);
+	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_PD, reg_value);
 	CCCI_BOOTUP_LOG(0, TAG, "%s:clear reset\n", __func__);
 
 	/* reset dpmaif clr */
-	regmap_write(dpmaif_ctl->infra_ao_base, INFRA_RST1_REG_PD, reg_value);
+	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_PD, reg_value);
 	CCCI_BOOTUP_LOG(0, TAG, "[%s]:done. reg_value: %x\n", __func__, reg_value);
 }
 
@@ -1255,17 +1255,17 @@ static int drv2_start(void)
 
 int ccci_dpmaif_drv2_init(void)
 {
-	dpmaif_ctl->clk_tbs = g_clk_tbs;
+	g_dpmaif_ctrl->clk_tbs = g_clk_tbs;
 
 	/* for 97 dpmaif new register */
-	dpmaif_ctl->ao_md_dl_base = dpmaif_ctl->ao_ul_base + 0x800;
-	dpmaif_ctl->pd_rdma_base  = dpmaif_ctl->pd_ul_base + 0x200;
-	dpmaif_ctl->pd_wdma_base  = dpmaif_ctl->pd_ul_base + 0x300;
+	g_dpmaif_ctrl->ao_md_dl_base = g_dpmaif_ctrl->ao_ul_base + 0x800;
+	g_dpmaif_ctrl->pd_rdma_base  = g_dpmaif_ctrl->pd_ul_base + 0x200;
+	g_dpmaif_ctrl->pd_wdma_base  = g_dpmaif_ctrl->pd_ul_base + 0x300;
 
-	if (dpmaif_ctl->dl_bat_entry_size == 0)
-		dpmaif_ctl->dl_bat_entry_size = DPMAIF_DL_BAT_ENTRY_SIZE;
-	dpmaif_ctl->dl_pit_entry_size = dpmaif_ctl->dl_bat_entry_size * 2;
-	dpmaif_ctl->dl_pit_byte_size  = DPMAIF_DL_PIT_BYTE_SIZE;
+	if (g_dpmaif_ctrl->dl_bat_entry_size == 0)
+		g_dpmaif_ctrl->dl_bat_entry_size = DPMAIF_DL_BAT_ENTRY_SIZE;
+	g_dpmaif_ctrl->dl_pit_entry_size = g_dpmaif_ctrl->dl_bat_entry_size * 2;
+	g_dpmaif_ctrl->dl_pit_byte_size  = DPMAIF_DL_PIT_BYTE_SIZE;
 
 	drv.pit_size_msk = DPMAIF_PIT_SIZE_MSK;
 	drv.dl_pit_wridx_msk = DPMAIF_DL_PIT_WRIDX_MSK;
@@ -1276,13 +1276,13 @@ int ccci_dpmaif_drv2_init(void)
 	drv.ul_int_qdone_msk = DPMAIF_UL_INT_QDONE_MSK;
 	drv.dl_idle_sts = DPMAIF_DL_IDLE_STS;
 
-	dpmaif_ctl->rxq[0].rxq_isr = &drv2_isr;
+	g_dpmaif_ctrl->rxq[0].rxq_isr = &drv2_isr;
 	ops.drv_start = &drv2_start;
 	ops.drv_suspend_noirq = drv2_suspend_noirq;
 	ops.drv_resume_noirq = drv2_resume_noirq;
 
-	dpmaif_ctl->rxq[0].rxq_drv_unmask_dl_interrupt = &drv2_unmask_dl_interrupt;
-	dpmaif_ctl->rxq[0].rxq_drv_dl_add_pit_remain_cnt = &ccci_drv_dl_add_pit_remain_cnt;
+	g_dpmaif_ctrl->rxq[0].rxq_drv_unmask_dl_interrupt = &drv2_unmask_dl_interrupt;
+	g_dpmaif_ctrl->rxq[0].rxq_drv_dl_add_pit_remain_cnt = &ccci_drv_dl_add_pit_remain_cnt;
 	ops.drv_unmask_ul_interrupt = &drv2_unmask_ul_interrupt;
 	ops.drv_dl_get_wridx = &drv2_dl_get_wridx;
 	ops.drv_ul_get_rwidx = &drv2_ul_get_rwidx;

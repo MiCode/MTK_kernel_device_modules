@@ -55,8 +55,7 @@
 
 
 extern unsigned int         g_dpmf_ver;
-extern struct dpmaif_ctrl  *g_dpmaif_ctl;
-#define dpmaif_ctl          g_dpmaif_ctl
+extern struct dpmaif_ctrl  *g_dpmaif_ctrl;
 
 
 #define dpmaif_write32(b, a, v)	\
@@ -85,68 +84,68 @@ do { \
 
 
 #define DPMA_READ_PD_MISC(a) \
-	dpmaif_read32(dpmaif_ctl->pd_misc_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->pd_misc_base, (a))
 #define DPMA_WRITE_PD_MISC(a, v) \
-	dpmaif_write32(dpmaif_ctl->pd_misc_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->pd_misc_base, (a), v)
 
 #define DPMA_READ_WDMA(a) \
-	dpmaif_read32(dpmaif_ctl->pd_wdma_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->pd_wdma_base, (a))
 #define DPMA_WRITE_WDMA(a, v) \
-	dpmaif_write32(dpmaif_ctl->pd_wdma_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->pd_wdma_base, (a), v)
 
 #define DPMA_READ_AO_UL(a) \
-	dpmaif_read32(dpmaif_ctl->ao_ul_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->ao_ul_base, (a))
 #define DPMA_WRITE_AO_UL(a, v) \
-	dpmaif_write32(dpmaif_ctl->ao_ul_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->ao_ul_base, (a), v)
 
 #define DPMA_READ_PD_DL(a) \
-	dpmaif_read32(dpmaif_ctl->pd_dl_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->pd_dl_base, (a))
 #define DPMA_WRITE_PD_DL(a, v) \
-	dpmaif_write32(dpmaif_ctl->pd_dl_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->pd_dl_base, (a), v)
 
 #define DPMA_WRITE_AO_MISC_SRAM(a, v) \
-	dpmaif_write32(dpmaif_ctl->ao_msic_sram_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->ao_msic_sram_base, (a), v)
 
 #define DPMA_READ_AO_MD_DL(a) \
-	dpmaif_read32(dpmaif_ctl->ao_md_dl_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->ao_md_dl_base, (a))
 #define DPMA_WRITE_AO_MD_DL(a, v) \
-	dpmaif_write32(dpmaif_ctl->ao_md_dl_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->ao_md_dl_base, (a), v)
 
 #define DPMA_READ_AO_DL(a) \
-	dpmaif_read32(dpmaif_ctl->ao_dl_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->ao_dl_base, (a))
 #define DPMA_WRITE_AO_DL(a, v) \
-	dpmaif_write32(dpmaif_ctl->ao_dl_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->ao_dl_base, (a), v)
 
 #define DPMA_READ_AO_DL_SRAM(a) \
-	dpmaif_read32(dpmaif_ctl->ao_dl_sram_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->ao_dl_sram_base, (a))
 #define DPMA_WRITE_AO_DL_SRAM(a, v) \
-	dpmaif_write32(dpmaif_ctl->ao_dl_sram_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->ao_dl_sram_base, (a), v)
 
 #define DPMA_READ_AO_UL_SRAM(a) \
-	dpmaif_read32(dpmaif_ctl->ao_ul_sram_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->ao_ul_sram_base, (a))
 #define DPMA_WRITE_AO_UL_SRAM(a, v) \
-	dpmaif_write32(dpmaif_ctl->ao_ul_sram_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->ao_ul_sram_base, (a), v)
 
 #define DPMA_READ_PD_UL(a) \
-	dpmaif_read32(dpmaif_ctl->pd_ul_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->pd_ul_base, (a))
 #define DPMA_WRITE_PD_UL(a, v) \
-	dpmaif_write32(dpmaif_ctl->pd_ul_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->pd_ul_base, (a), v)
 
 #define DPMA_READ_PD_MD_MISC(a) \
-	dpmaif_read32(dpmaif_ctl->pd_md_misc_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->pd_md_misc_base, (a))
 #define DPMA_WRITE_PD_MD_MISC(a, v) \
-	dpmaif_write32(dpmaif_ctl->pd_md_misc_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->pd_md_misc_base, (a), v)
 
 
 #define DPMA_READ_PD_DL_LRO(a) \
-	dpmaif_read32(dpmaif_ctl->pd_dl_lro_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->pd_dl_lro_base, (a))
 #define DPMA_WRITE_PD_DL_LRO(a, v) \
-	dpmaif_write32(dpmaif_ctl->pd_dl_lro_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->pd_dl_lro_base, (a), v)
 
 #define DPMA_READ_PD_MMW_HPC(a) \
-	dpmaif_read32(dpmaif_ctl->pd_mmw_hpc_base, (a))
+	dpmaif_read32(g_dpmaif_ctrl->pd_mmw_hpc_base, (a))
 #define DPMA_WRITE_PD_MMW_HPC(a, v) \
-	dpmaif_write32(dpmaif_ctl->pd_mmw_hpc_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->pd_mmw_hpc_base, (a), v)
 
 
 

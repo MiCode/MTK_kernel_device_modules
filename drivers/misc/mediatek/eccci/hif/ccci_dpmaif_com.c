@@ -72,7 +72,7 @@ unsigned int ccci_debug_enable = CCCI_LOG_LEVEL;
 unsigned int            g_dpmf_ver;
 unsigned int            g_plat_inf;
 
-struct dpmaif_ctrl     *g_dpmaif_ctl;
+struct dpmaif_ctrl     *g_dpmaif_ctrl;
 
 static atomic_t         g_tx_busy_assert_on;
 
@@ -373,7 +373,7 @@ static inline void dpmaif_rxq_lro_handle_bid(
 			dev_kfree_skb_any(lro_info->data[i].skb);
 		}
 		bat_skb = ((struct dpmaif_bat_skb *)
-				dpmaif_ctl->bat_skb->bat_pkt_addr +
+				g_dpmaif_ctrl->bat_skb->bat_pkt_addr +
 				lro_info->data[i].bid);
 		bat_skb->skb = NULL;
 	}
@@ -570,7 +570,7 @@ gro_too_much_skb:
 		dpmaif_lro_update_gro_info(skb0, total_len, lro_num, max_mss);
 	}
 
-	if (atomic_cmpxchg(&dpmaif_ctl->wakeup_src, 1, 0) == 1) {
+	if (atomic_cmpxchg(&g_dpmaif_ctrl->wakeup_src, 1, 0) == 1) {
 		CCCI_NOTICE_LOG(0, TAG,
 			"DPMA_MD wakeup source:(%d/%d)\n",
 			rxq->index, rxq->cur_chn_idx);
@@ -597,7 +597,7 @@ gro_too_much_skb:
 		goto lro_continue;
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
-	dpmaif_ctl->rx_tfc_pkgs[rxq->index] += lro_info->count;
+	g_dpmaif_ctrl->rx_tfc_pkgs[rxq->index] += lro_info->count;
 #endif
 
 	dpmaif_rxq_lro_handle_bid(rxq, 0);
@@ -617,8 +617,8 @@ static int dpmaif_read_infra_ao_mem_base(struct device *dev)
 		return -1;
 	}
 
-	dpmaif_ctl->infra_ao_mem_base = of_iomap(node, 0);
-	if (!dpmaif_ctl->infra_ao_mem_base) {
+	g_dpmaif_ctrl->infra_ao_mem_base = of_iomap(node, 0);
+	if (!g_dpmaif_ctrl->infra_ao_mem_base) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: iomap infracfg_ao_mem fail.\n",
 			__func__);
@@ -627,7 +627,7 @@ static int dpmaif_read_infra_ao_mem_base(struct device *dev)
 
 	CCCI_ERROR_LOG(0, TAG,
 		"[%s] infra_ao_mem_base: 0x%p\n",
-		__func__, dpmaif_ctl->infra_ao_mem_base);
+		__func__, g_dpmaif_ctrl->infra_ao_mem_base);
 
 	return 0;
 }
@@ -702,7 +702,7 @@ static void dpmaif_dump_txq_data(int qno)
 		if ((qno >= 0) && (i != qno))
 			continue;
 
-		txq = &dpmaif_ctl->txq[i];
+		txq = &g_dpmaif_ctrl->txq[i];
 
 		CCCI_MEM_LOG_TAG(0, TAG, "dpmaif: dump txq(%d): data ------->\n", i);
 
@@ -722,14 +722,14 @@ static void dpmaif_dump_rxq_data(int qno)
 	int i = 0;
 	struct dpmaif_rx_queue *rxq;
 
-	if ((qno < 0) || (qno >= dpmaif_ctl->real_rxq_num))  //dump all rxq
+	if ((qno < 0) || (qno >= g_dpmaif_ctrl->real_rxq_num))  //dump all rxq
 		qno = -1;
 
-	for (; i < dpmaif_ctl->real_rxq_num; i++) {
+	for (; i < g_dpmaif_ctrl->real_rxq_num; i++) {
 		if ((qno >= 0) && (i != qno))
 			continue;
 
-		rxq = &dpmaif_ctl->rxq[i];
+		rxq = &g_dpmaif_ctrl->rxq[i];
 
 		CCCI_BUF_LOG_TAG(0, CCCI_DUMP_DPMAIF, TAG,
 			"dpmaif: dump rxq(%d) data ------->\n", i);
@@ -746,17 +746,17 @@ static void dpmaif_dump_rxq_data(int qno)
 
 	CCCI_BUF_LOG_TAG(0, CCCI_DUMP_DPMAIF, TAG, "dpmaif: dump bat skb data ------->\n");
 
-	if (dpmaif_ctl->bat_skb) {
+	if (g_dpmaif_ctrl->bat_skb) {
 		CCCI_BUF_LOG_TAG(0, CCCI_DUMP_DPMAIF, TAG,
 			"dpmaif: bat skb base: 0x%p(%d*%d); bat skb pos: w/r=(%u,%u)\n",
-			dpmaif_ctl->bat_skb->bat_base,
-			(int)sizeof(struct dpmaif_bat_base), dpmaif_ctl->bat_skb->bat_cnt,
-			atomic_read(&dpmaif_ctl->bat_skb->bat_wr_idx),
-			atomic_read(&dpmaif_ctl->bat_skb->bat_rd_idx));
+			g_dpmaif_ctrl->bat_skb->bat_base,
+			(int)sizeof(struct dpmaif_bat_base), g_dpmaif_ctrl->bat_skb->bat_cnt,
+			atomic_read(&g_dpmaif_ctrl->bat_skb->bat_wr_idx),
+			atomic_read(&g_dpmaif_ctrl->bat_skb->bat_rd_idx));
 
 		ccci_util_mem_dump(CCCI_DUMP_DPMAIF,
-			dpmaif_ctl->bat_skb->bat_base,
-			dpmaif_ctl->bat_skb->bat_cnt * sizeof(struct dpmaif_bat_base));
+			g_dpmaif_ctrl->bat_skb->bat_base,
+			g_dpmaif_ctrl->bat_skb->bat_cnt * sizeof(struct dpmaif_bat_base));
 	}
 }
 
@@ -780,15 +780,15 @@ static inline void rxq_pit_cache_memory_flush(struct dpmaif_rx_queue *rxq,
 	cache_start_addr = rxq->pit_phy_addr + ((dma_addr_t)drv.normal_pit_size * cur_pit);
 
 	if ((cur_pit + read_cnt) <= rxq->pit_cnt) {
-		dma_sync_single_for_cpu(dpmaif_ctl->dev, cache_start_addr,
+		dma_sync_single_for_cpu(g_dpmaif_ctrl->dev, cache_start_addr,
 			drv.normal_pit_size * read_cnt, DMA_FROM_DEVICE);
 
 	} else {
-		dma_sync_single_for_cpu(dpmaif_ctl->dev, cache_start_addr,
+		dma_sync_single_for_cpu(g_dpmaif_ctrl->dev, cache_start_addr,
 			drv.normal_pit_size * (rxq->pit_cnt - cur_pit),
 			DMA_FROM_DEVICE);
 
-		dma_sync_single_for_cpu(dpmaif_ctl->dev, rxq->pit_phy_addr,
+		dma_sync_single_for_cpu(g_dpmaif_ctrl->dev, rxq->pit_phy_addr,
 			drv.normal_pit_size * (cur_pit + read_cnt - rxq->pit_cnt),
 			DMA_FROM_DEVICE);
 	}
@@ -809,7 +809,7 @@ static inline int dpmaif_rxq_set_data_to_skb(struct dpmaif_rx_queue *rxq,
 {
 	struct sk_buff *skb;
 	struct dpmaif_bat_skb *cur_skb_info =
-		((struct dpmaif_bat_skb *)(dpmaif_ctl->bat_skb->bat_pkt_addr) + buffer_id);
+		((struct dpmaif_bat_skb *)(g_dpmaif_ctrl->bat_skb->bat_pkt_addr) + buffer_id);
 	unsigned int header_offset = 0;
 
 	skb = cur_skb_info->skb;
@@ -824,7 +824,7 @@ static inline int dpmaif_rxq_set_data_to_skb(struct dpmaif_rx_queue *rxq,
 	}
 
 	/* rx current skb data unmapping */
-	dma_unmap_single(dpmaif_ctl->dev, cur_skb_info->data_phy_addr,
+	dma_unmap_single(g_dpmaif_ctrl->dev, cur_skb_info->data_phy_addr,
 		cur_skb_info->data_len, DMA_FROM_DEVICE);
 
 	skb->len = 0;
@@ -840,7 +840,7 @@ static inline int dpmaif_rxq_set_data_to_skb(struct dpmaif_rx_queue *rxq,
 		return DATA_CHECK_FAIL;
 	}
 
-	if (dpmaif_ctl->support_2rxq) {
+	if (g_dpmaif_ctrl->support_2rxq) {
 		header_offset = (((struct dpmaif_normal_pit_v3 *)nml_pit_v2)->header_offset << 2);
 		dpmaif_rxq_lro_join_skb(rxq, skb, buffer_id, header_offset);
 		skb_put(skb, nml_pit_v2->data_len + header_offset);
@@ -856,9 +856,9 @@ static inline int dpmaif_rxq_set_frg_to_skb(struct dpmaif_rx_queue *rxq,
 	unsigned int buffer_id, struct dpmaif_normal_pit_v2 *nml_pit_v2)
 {
 	struct dpmaif_bat_skb *cur_skb_info =
-		((struct dpmaif_bat_skb *)(dpmaif_ctl->bat_skb->bat_pkt_addr) + rxq->skb_idx);
+		((struct dpmaif_bat_skb *)(g_dpmaif_ctrl->bat_skb->bat_pkt_addr) + rxq->skb_idx);
 	struct dpmaif_bat_page *cur_page_info =
-		((struct dpmaif_bat_page *)(dpmaif_ctl->bat_frg->bat_pkt_addr) + buffer_id);
+		((struct dpmaif_bat_page *)(g_dpmaif_ctrl->bat_frg->bat_pkt_addr) + buffer_id);
 	struct sk_buff *skb = cur_skb_info->skb;
 	struct page *page = cur_page_info->page;
 
@@ -870,7 +870,7 @@ static inline int dpmaif_rxq_set_frg_to_skb(struct dpmaif_rx_queue *rxq,
 	}
 
 	/* rx current frag data unmapping */
-	dma_unmap_page(dpmaif_ctl->dev, cur_page_info->data_phy_addr,
+	dma_unmap_page(g_dpmaif_ctrl->dev, cur_page_info->data_phy_addr,
 		cur_page_info->data_len, DMA_FROM_DEVICE);
 
 	/* 3. record to skb for user: fragment data to nr_frags */
@@ -886,7 +886,7 @@ static inline int dpmaif_rxq_set_frg_to_skb(struct dpmaif_rx_queue *rxq,
 static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *rxq)
 {
 	struct dpmaif_bat_skb *cur_skb_info =
-		((struct dpmaif_bat_skb *)(dpmaif_ctl->bat_skb->bat_pkt_addr) + rxq->skb_idx);
+		((struct dpmaif_bat_skb *)(g_dpmaif_ctrl->bat_skb->bat_pkt_addr) + rxq->skb_idx);
 
 	if ((g_dpmf_ver > 1) && rxq->pit_dp) {
 		if (g_debug_flags & DEBUG_DROP_SKB) {
@@ -906,7 +906,7 @@ static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *
 		goto send_end;
 	}
 
-	if (atomic_cmpxchg(&dpmaif_ctl->wakeup_src, 1, 0) == 1) {
+	if (atomic_cmpxchg(&g_dpmaif_ctrl->wakeup_src, 1, 0) == 1) {
 		CCCI_NORMAL_LOG(0, TAG,
 			"[%s] DPMA_MD wakeup source:(%d/%d)\n",
 			__func__, rxq->index, rxq->cur_chn_idx);
@@ -934,7 +934,7 @@ static inline void dpmaif_rxq_add_skb_to_rx_push_thread(struct dpmaif_rx_queue *
 	ccci_dl_enqueue(rxq->index, cur_skb_info->skb);
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
-	dpmaif_ctl->rx_tfc_pkgs[rxq->index]++;
+	g_dpmaif_ctrl->rx_tfc_pkgs[rxq->index]++;
 #endif
 
 send_end:
@@ -977,7 +977,7 @@ static inline int dpmaif_rxq_handle_normal_pit(struct dpmaif_rx_queue *rxq,
 	}
 
 	if (nml_pit_v2->c_bit == 0) {  //is last one, push skb to rx push queue
-		if (dpmaif_ctl->support_lro)
+		if (g_dpmaif_ctrl->support_lro)
 			dpmaif_rxq_lro_end(rxq);
 		else
 			dpmaif_rxq_add_skb_to_rx_push_thread(rxq);
@@ -1025,7 +1025,7 @@ static inline int dpmaif_rxq_check_pit_seq(struct dpmaif_rx_queue *rxq, unsigned
 		return DATA_CHECK_FAIL;
 	}
 
-	if (rxq->pit_seq == dpmaif_ctl->max_pit_seq)
+	if (rxq->pit_seq == g_dpmaif_ctrl->max_pit_seq)
 		rxq->pit_seq = 0;
 	else
 		rxq->pit_seq++;
@@ -1193,7 +1193,7 @@ static int dpmaif_rxq_data_collect(struct dpmaif_rx_queue *rxq)
 		if (real_cnt >= 0) {
 			/* hw interrupt ack. */
 			L2RISAR0 = ccci_drv_get_dl_isr_event();
-			if (dpmaif_ctl->support_2rxq) {
+			if (g_dpmaif_ctrl->support_2rxq) {
 				if (rxq->index == 0)
 					L2RISAR0 &= DP_DL_INT_LRO0_QDONE_SET;
 				else
@@ -1336,7 +1336,7 @@ static int dpmaif_rxq_push_thread(void *arg)
 
 	while (1) {
 		if ((pkg_count == 1) || ((pkg_count & 0x7FF) == 0x7FF))  //2048 pkgs for 0.5s
-			__pm_wakeup_event(dpmaif_ctl->wakelock, jiffies_to_msecs(HZ));
+			__pm_wakeup_event(g_dpmaif_ctrl->wakelock, jiffies_to_msecs(HZ));
 
 		if (ccci_dl_queue_len(qno) == 0) {
 #ifdef DPMAIF_REDUCE_RX_FLUSH
@@ -1435,8 +1435,8 @@ static void dpmaif_disable_all_irq(void)
 {
 	int i;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++)
-		dpmaif_disable_rxq_irq(&dpmaif_ctl->rxq[i]);
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++)
+		dpmaif_disable_rxq_irq(&g_dpmaif_ctrl->rxq[i]);
 }
 
 static void dpmaif_enable_rxq_irq(struct dpmaif_rx_queue *rxq)
@@ -1449,8 +1449,8 @@ static void dpmaif_enable_all_irq(void)
 {
 	int i;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++)
-		dpmaif_enable_rxq_irq(&dpmaif_ctl->rxq[i]);
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++)
+		dpmaif_enable_rxq_irq(&g_dpmaif_ctrl->rxq[i]);
 }
 
 static int dpmaif_rxq_init_buf(struct dpmaif_rx_queue *rxq)
@@ -1458,14 +1458,14 @@ static int dpmaif_rxq_init_buf(struct dpmaif_rx_queue *rxq)
 	int ret = 0;
 
 	/* PIT buffer init */
-	rxq->pit_cnt = dpmaif_ctl->dl_pit_entry_size;
+	rxq->pit_cnt = g_dpmaif_ctrl->dl_pit_entry_size;
 	/* alloc buffer for HW && AP SW */
 
 	if (!ccci_dpmaif_get_resv_cache_mem(&rxq->pit_base, &rxq->pit_phy_addr,
-			(rxq->pit_cnt * dpmaif_ctl->dl_pit_byte_size)))
+			(rxq->pit_cnt * g_dpmaif_ctrl->dl_pit_byte_size)))
 		return 0;
 
-	rxq->pit_base = kzalloc((rxq->pit_cnt * dpmaif_ctl->dl_pit_byte_size), GFP_KERNEL);
+	rxq->pit_base = kzalloc((rxq->pit_cnt * g_dpmaif_ctrl->dl_pit_byte_size), GFP_KERNEL);
 	if (!rxq->pit_base) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] kmalloc PIT memory fail.\n", __func__);
@@ -1473,11 +1473,11 @@ static int dpmaif_rxq_init_buf(struct dpmaif_rx_queue *rxq)
 	}
 
 	rxq->pit_phy_addr = dma_map_single(
-			dpmaif_ctl->dev, rxq->pit_base,
-			(rxq->pit_cnt * dpmaif_ctl->dl_pit_byte_size),
+			g_dpmaif_ctrl->dev, rxq->pit_base,
+			(rxq->pit_cnt * g_dpmaif_ctrl->dl_pit_byte_size),
 			DMA_FROM_DEVICE);
 
-	if (dma_mapping_error(dpmaif_ctl->dev, rxq->pit_phy_addr)) {
+	if (dma_mapping_error(g_dpmaif_ctrl->dev, rxq->pit_phy_addr)) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: rxq%d pit_base[0x%llx] dma_map_single fail.\n",
 			__func__, rxq->index, (unsigned long long)rxq->pit_base);
@@ -1528,7 +1528,7 @@ static int dpmaif_rxq_sw_init(struct dpmaif_rx_queue *rxq)
 	if (ret)
 		return ret;
 
-	if (dpmaif_ctl->support_lro)
+	if (g_dpmaif_ctrl->support_lro)
 		dpmaif_rxq_lro_info_init(rxq);
 
 	ret = dpmaif_rxq_init_buf(rxq);
@@ -1552,8 +1552,8 @@ static int dpmaif_rxqs_sw_init(void)
 	struct dpmaif_rx_queue *rxq;
 	int i, ret;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 		rxq->index = i;
 		rxq->skb_idx = -1;
 
@@ -1591,7 +1591,7 @@ static int dpmaif_txq_init_buf(struct dpmaif_tx_queue *txq)
 
 	if (!nocache_mem_from_dts)
 		txq->drb_base = dma_alloc_coherent(
-			dpmaif_ctl->dev,
+			g_dpmaif_ctrl->dev,
 			(txq->drb_cnt * sizeof(struct dpmaif_drb_pd)),
 			&txq->drb_phy_addr, GFP_KERNEL);
 
@@ -1655,7 +1655,7 @@ static int dpmaif_txqs_sw_init(void)
 	int i, ret;
 
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
-		txq = &dpmaif_ctl->txq[i];
+		txq = &g_dpmaif_ctrl->txq[i];
 		txq->index = i;
 
 		ret = dpmaif_txq_sw_init(txq);
@@ -1672,7 +1672,7 @@ static int dpmaif_wakeup_source_init(void)
 	unsigned int reg_val;
 
 	/* wakeup source init */
-	ret = regmap_read(dpmaif_ctl->infra_ao_base, INFRA_DPMAIF_CTRL_REG, &reg_val);
+	ret = regmap_read(g_dpmaif_ctrl->infra_ao_base, INFRA_DPMAIF_CTRL_REG, &reg_val);
 	if (ret) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: read INFRA_DPMAIF_CTRL_REG fail, %d\n",
@@ -1682,7 +1682,7 @@ static int dpmaif_wakeup_source_init(void)
 
 	reg_val |= DPMAIF_IP_BUSY_MASK;
 	reg_val &= ~(1 << 13); /* MD to AP wakeup event */
-	regmap_write(dpmaif_ctl->infra_ao_base, INFRA_DPMAIF_CTRL_REG, reg_val);
+	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_DPMAIF_CTRL_REG, reg_val);
 
 	return 0;
 }
@@ -1707,12 +1707,12 @@ static int dpmaif_late_init(void)
 	if (ret)
 		return ret;
 
-	if (dpmaif_ctl->real_rxq_num > 0) {
+	if (g_dpmaif_ctrl->real_rxq_num > 0) {
 		mtk_ccci_spd_qos_set_task(
-			dpmaif_ctl->rxq[0].rxq_push_thread,
-			dpmaif_ctl->bat_alloc_thread,
-			dpmaif_ctl->skb_alloc_thread,
-			dpmaif_ctl->rxq[0].irq_id);
+			g_dpmaif_ctrl->rxq[0].rxq_push_thread,
+			g_dpmaif_ctrl->bat_alloc_thread,
+			g_dpmaif_ctrl->skb_alloc_thread,
+			g_dpmaif_ctrl->rxq[0].irq_id);
 	}
 
 	return 0;
@@ -1750,7 +1750,7 @@ static int dpmaif_rxq_hw_init(struct dpmaif_rx_queue *rxq)
 			ccci_drv1_dl_set_pit_chknum();
 	}
 
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		ccci_drv3_dl_config_lro_hw(rxq->pit_phy_addr,
 			rxq->pit_cnt, true, rxq->index);
 
@@ -1769,11 +1769,11 @@ static int dpmaif_rxqs_start(void)
 	struct dpmaif_rx_queue *rxq;
 	int i;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 		rxq->started = true;
 		rxq->pit_seq = 0;
-		rxq->budget  = dpmaif_ctl->dl_bat_entry_size - 1;
+		rxq->budget  = g_dpmaif_ctrl->dl_bat_entry_size - 1;
 
 		if (dpmaif_rxq_hw_init(rxq))
 			return -1;
@@ -1786,7 +1786,7 @@ static inline int dpmaif_wait_resume_done(void)
 {
 	int cnt = 0;
 
-	while (atomic_read(&dpmaif_ctl->suspend_flag) == 1) {
+	while (atomic_read(&g_dpmaif_ctrl->suspend_flag) == 1) {
 		cnt++;
 		if (cnt >= 1600000) {
 			CCCI_NORMAL_LOG(-1, TAG,
@@ -1960,12 +1960,12 @@ static inline unsigned int dpmaif_txq_release_buffer(struct dpmaif_tx_queue *txq
 				return DATA_CHECK_FAIL;
 			}
 
-			dma_unmap_single(dpmaif_ctl->dev, cur_drb_skb->phy_addr,
+			dma_unmap_single(g_dpmaif_ctrl->dev, cur_drb_skb->phy_addr,
 					cur_drb_skb->data_len, DMA_TO_DEVICE);
 
 			if (cur_drb->c_bit == 0) {
 				/* check wakeup source */
-				if (atomic_cmpxchg(&dpmaif_ctl->wakeup_src, 1, 0) == 1) {
+				if (atomic_cmpxchg(&g_dpmaif_ctrl->wakeup_src, 1, 0) == 1) {
 					CCCI_NORMAL_LOG(0, TAG,
 						"[%s] DPMA_MD wakeup source: txq%d.\n",
 						__func__, txq->index);
@@ -1988,7 +1988,7 @@ static inline unsigned int dpmaif_txq_release_buffer(struct dpmaif_tx_queue *txq
 			}
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
-			dpmaif_ctl->tx_tfc_pkgs[txq->index]++;
+			g_dpmaif_ctrl->tx_tfc_pkgs[txq->index]++;
 #endif
 		}
 
@@ -2028,7 +2028,7 @@ void ccci_dpmaif_txq_release_skb(struct dpmaif_tx_queue *txq, unsigned int relea
 			cur_drb_skb = ((struct dpmaif_drb_skb *)(txq->drb_skb_base) + cur_idx);
 
 			if (cur_drb_skb->skb) {
-				dma_unmap_single(dpmaif_ctl->dev, cur_drb_skb->phy_addr,
+				dma_unmap_single(g_dpmaif_ctrl->dev, cur_drb_skb->phy_addr,
 					cur_drb_skb->data_len, DMA_TO_DEVICE);
 
 				if (cur_drb->c_bit == 0)
@@ -2112,7 +2112,7 @@ static int dpmaif_txq_done_thread(void *arg)
 
 		atomic_set(&txq->txq_done, 0);
 
-		if (dpmaif_ctl->dpmaif_state != DPMAIF_STATE_PWRON)
+		if (g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_PWRON)
 			continue;
 
 		dpmaif_set_txq_thread_aff(&affinity_set, txq);
@@ -2141,7 +2141,7 @@ static int dpmaif_txq_done_thread(void *arg)
 		}
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
-		dpmaif_ctl->tx_done_last_start_time[txq->index] = local_clock();
+		g_dpmaif_ctrl->tx_done_last_start_time[txq->index] = local_clock();
 #endif
 
 		ret = dpmaif_txq_drb_release(txq);
@@ -2196,7 +2196,7 @@ static int dpmaif_txqs_start(void)
 	int i;
 
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
-		txq = &dpmaif_ctl->txq[i];
+		txq = &g_dpmaif_ctrl->txq[i];
 		txq->started = true;
 
 		ops.drv_txq_hw_init(txq);
@@ -2229,7 +2229,7 @@ static inline int dpmaif_tx_send_skb_check(struct ccmni_tx_para_info *tx_info)
 		return -EBUSY;
 
 	if (unlikely(atomic_read(&g_tx_busy_assert_on))) {
-		struct dpmaif_tx_queue *txq = &dpmaif_ctl->txq[tx_info->hw_qno];
+		struct dpmaif_tx_queue *txq = &g_dpmaif_ctrl->txq[tx_info->hw_qno];
 
 		if (likely(ccci_md_get_cap_by_id() & MODEM_CAP_TXBUSY_STOP))
 			dpmaif_stop_dev_queue(txq, tx_info->ccmni_idx,
@@ -2291,7 +2291,7 @@ static inline int dpmaif_txq_full_check(struct dpmaif_tx_queue *txq,
 	unsigned int remain_cnt = get_ringbuf_free_cnt(txq->drb_cnt,
 		atomic_read(&txq->drb_rel_rd_idx), atomic_read(&txq->drb_wr_idx));
 
-	if (dpmaif_ctl->dpmaif_state != DPMAIF_STATE_PWRON)
+	if (g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_PWRON)
 		return -CCCI_ERR_HIF_NOT_POWER_ON;
 
 	/* 2. buffer check */
@@ -2397,8 +2397,8 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 			c_bit = 1;
 
 		/* tx mapping */
-		phy_addr = dma_map_single(dpmaif_ctl->dev, data_addr, data_len, DMA_TO_DEVICE);
-		if (dma_mapping_error(dpmaif_ctl->dev, phy_addr)) {
+		phy_addr = dma_map_single(g_dpmaif_ctrl->dev, data_addr, data_len, DMA_TO_DEVICE);
+		if (dma_mapping_error(g_dpmaif_ctrl->dev, phy_addr)) {
 			CCCI_ERROR_LOG(0, TAG, "[%s] error: dma mapping fail.\n", __func__);
 			return -1;
 		}
@@ -2464,7 +2464,7 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 		mtk_ccci_add_ul_pkt_bytes(txq->index, total_size);
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
-	dpmaif_ctl->tx_pre_tfc_pkgs[txq->index]++;
+	g_dpmaif_ctrl->tx_pre_tfc_pkgs[txq->index]++;
 #endif
 
 	return ret;
@@ -2496,7 +2496,7 @@ static int dpmaif_tx_send_skb_to_md(struct ccmni_tx_para_info *tx_info)
 
 	send_cnt = shinfo->nr_frags + 2;
 
-	txq = &dpmaif_ctl->txq[txq_no];
+	txq = &g_dpmaif_ctrl->txq[txq_no];
 
 	spin_lock_irqsave(&txq->txq_lock, flags);
 
@@ -2529,7 +2529,7 @@ __EXIT_FUN_2:
 			hdr.ipid = ntohs(((struct iphdr *)tx_info->skb->data)->id);
 			hdr.len  = tx_info->skb->len;
 			hdr.bget = (txq_no < DPMAIF_TXQ_NUM) ?
-				atomic_read(&dpmaif_ctl->txq[txq_no].txq_budget) : 0;
+				atomic_read(&g_dpmaif_ctrl->txq[txq_no].txq_budget) : 0;
 			hdr.err  = ret;
 
 			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
@@ -2544,10 +2544,10 @@ __EXIT_FUN_2:
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
 static void dpmaif_clear_traffic_data(void)
 {
-	memset(dpmaif_ctl->tx_tfc_pkgs, 0, sizeof(dpmaif_ctl->tx_tfc_pkgs));
-	memset(dpmaif_ctl->rx_tfc_pkgs, 0, sizeof(unsigned int) * dpmaif_ctl->real_rxq_num);
-	memset(dpmaif_ctl->tx_pre_tfc_pkgs, 0, sizeof(dpmaif_ctl->tx_pre_tfc_pkgs));
-	memset(dpmaif_ctl->tx_done_last_start_time, 0, sizeof(dpmaif_ctl->tx_done_last_start_time));
+	memset(g_dpmaif_ctrl->tx_tfc_pkgs, 0, sizeof(g_dpmaif_ctrl->tx_tfc_pkgs));
+	memset(g_dpmaif_ctrl->rx_tfc_pkgs, 0, sizeof(unsigned int) * g_dpmaif_ctrl->real_rxq_num);
+	memset(g_dpmaif_ctrl->tx_pre_tfc_pkgs, 0, sizeof(g_dpmaif_ctrl->tx_pre_tfc_pkgs));
+	memset(g_dpmaif_ctrl->tx_done_last_start_time, 0, sizeof(g_dpmaif_ctrl->tx_done_last_start_time));
 }
 #endif
 
@@ -2555,21 +2555,21 @@ static int dpmaif_start(unsigned char hif_id)
 {
 	int ret = 0;
 
-	if (dpmaif_ctl->dpmaif_state == DPMAIF_STATE_PWRON)
+	if (g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_PWRON)
 		return 0;
-	else if (dpmaif_ctl->dpmaif_state == DPMAIF_STATE_MIN) {
+	else if (g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_MIN) {
 		ret = dpmaif_late_init();
 		if (ret < 0)
 			return ret;
 	}
 
-	dpmaif_set_clk(1, dpmaif_ctl->clk_tbs);
+	dpmaif_set_clk(1, g_dpmaif_ctrl->clk_tbs);
 
 	ret = ops.drv_start();
 	if (ret)
 		return -1;
 
-	if (dpmaif_ctl->support_2rxq)
+	if (g_dpmaif_ctrl->support_2rxq)
 		ccci_drv3_dl_lro_hpc_hw_init();
 
 	if (dpmaif_rxqs_start())
@@ -2588,12 +2588,12 @@ static int dpmaif_start(unsigned char hif_id)
 
 	dpmaif_enable_all_irq();
 
-	dpmaif_ctl->dpmaif_state = DPMAIF_STATE_PWRON;
+	g_dpmaif_ctrl->dpmaif_state = DPMAIF_STATE_PWRON;
 	atomic_set(&g_tx_busy_assert_on, 0);
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
 	dpmaif_clear_traffic_data();
-	mod_timer(&dpmaif_ctl->traffic_monitor, jiffies + DPMAIF_TRAFFIC_MONITOR_INTERVAL * HZ);
+	mod_timer(&g_dpmaif_ctrl->traffic_monitor, jiffies + DPMAIF_TRAFFIC_MONITOR_INTERVAL * HZ);
 #endif
 
 	return 0;
@@ -2606,7 +2606,7 @@ static int dpmaif_txqs_hw_stop(void)
 
 	/* ===Disable UL SW active=== */
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
-		txq = &dpmaif_ctl->txq[i];
+		txq = &g_dpmaif_ctrl->txq[i];
 
 		txq->started = false;
 
@@ -2653,8 +2653,8 @@ static int dpmaif_rxqs_hw_stop(void)
 	int i, count, ret;
 
 	/* ===Disable DL/RX SW active=== */
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 
 		rxq->started = false;
 
@@ -2726,7 +2726,7 @@ static void dpmaif_txqs_sw_stop(void)
 
 	/*flush and release UL descriptor*/
 	for (i = 0; i < DPMAIF_TXQ_NUM; i++) {
-		txq = &dpmaif_ctl->txq[i];
+		txq = &g_dpmaif_ctrl->txq[i];
 
 		if (!txq->drb_base)
 			continue;
@@ -2785,7 +2785,7 @@ static void dpmaif_rxq_stop_lro(struct dpmaif_rx_queue *rxq)
 		dev_kfree_skb_any(lro_info->data[i].skb);
 
 		bat_skb = ((struct dpmaif_bat_skb *)
-					dpmaif_ctl->bat_skb->bat_pkt_addr + lro_info->data[i].bid);
+					g_dpmaif_ctrl->bat_skb->bat_pkt_addr + lro_info->data[i].bid);
 		bat_skb->skb = NULL;
 	}
 
@@ -2798,10 +2798,10 @@ static void dpmaif_rxqs_sw_stop(void)
 	int i;
 
 	/* rx clear */
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 
-		if (dpmaif_ctl->support_lro)
+		if (g_dpmaif_ctrl->support_lro)
 			dpmaif_rxq_stop_lro(rxq);
 
 		if (!rxq->pit_base)
@@ -2810,7 +2810,7 @@ static void dpmaif_rxqs_sw_stop(void)
 		atomic_set(&rxq->pit_rd_idx, 0);
 		atomic_set(&rxq->pit_wr_idx, 0);
 
-		memset(rxq->pit_base, 0, (rxq->pit_cnt * dpmaif_ctl->dl_pit_byte_size));
+		memset(rxq->pit_base, 0, (rxq->pit_cnt * g_dpmaif_ctrl->dl_pit_byte_size));
 	}
 }
 
@@ -2819,8 +2819,8 @@ static int dpmaif_pre_stop(unsigned char hif_id)
 	if (hif_id != DPMAIF_HIF_ID)
 		return -1;
 
-	if (dpmaif_ctl->dpmaif_state == DPMAIF_STATE_PWROFF ||
-		dpmaif_ctl->dpmaif_state == DPMAIF_STATE_MIN)
+	if (g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_PWROFF ||
+		g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_MIN)
 		return 0;
 
 	if (dpmaif_txqs_hw_stop())
@@ -2836,15 +2836,15 @@ static int dpmaif_stop(unsigned char hif_id)
 {
 	int txq_err = 0, rxq_err = 0;
 
-	if (dpmaif_ctl->dpmaif_state == DPMAIF_STATE_PWROFF ||
-		dpmaif_ctl->dpmaif_state == DPMAIF_STATE_MIN)
+	if (g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_PWROFF ||
+		g_dpmaif_ctrl->dpmaif_state == DPMAIF_STATE_MIN)
 		return 0;
 
-	dpmaif_ctl->dpmaif_state = DPMAIF_STATE_PWROFF;
+	g_dpmaif_ctrl->dpmaif_state = DPMAIF_STATE_PWROFF;
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
 	/* stop debug mechnism */
-	del_timer(&dpmaif_ctl->traffic_monitor);
+	del_timer(&g_dpmaif_ctrl->traffic_monitor);
 #endif
 
 	dpmaif_disable_all_irq();
@@ -2861,11 +2861,11 @@ static int dpmaif_stop(unsigned char hif_id)
 	ccci_dpmaif_bat_stop();
 
 	if (g_dpmf_ver > 1) {
-		dpmaif_set_clk(0, dpmaif_ctl->clk_tbs);
+		dpmaif_set_clk(0, g_dpmaif_ctrl->clk_tbs);
 		ops.drv_hw_reset();
 	} else {
 		ops.drv_hw_reset();
-		dpmaif_set_clk(0, dpmaif_ctl->clk_tbs);
+		dpmaif_set_clk(0, g_dpmaif_ctrl->clk_tbs);
 	}
 
 	if (!txq_err && !rxq_err)
@@ -2878,7 +2878,7 @@ static int dpmaif_stop(unsigned char hif_id)
 
 static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 {
-	if (dpmaif_ctl->capability & MODEM_CAP_LIM_UDP_GRO)
+	if (g_dpmaif_ctrl->capability & MODEM_CAP_LIM_UDP_GRO)
 		ccmni_set_cur_speed(total_dl_speed);
 
 	if ((g_debug_flags & DEBUG_UL_DL_TPUT) &&
@@ -2901,7 +2901,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
+		if (g_dpmaif_ctrl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(0);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
@@ -2916,7 +2916,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
+		if (g_dpmaif_ctrl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(0);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
@@ -2931,7 +2931,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
+		if (g_dpmaif_ctrl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(0);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
@@ -2946,7 +2946,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
+		if (g_dpmaif_ctrl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(1);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
@@ -2961,14 +2961,14 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		if (g_page_pool_is_on)
 			atomic_set(&g_create_another_pp, 1);
 #endif
-		if (dpmaif_ctl->support_lro == 1)
+		if (g_dpmaif_ctrl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(1);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 		g_rx_flush_pkt_cnt = 0;
 #endif
 	} else {  // dl tput < 150M
-		if (dpmaif_ctl->capability & MODEM_CAP_USE_MAX_BAT) {
+		if (g_dpmaif_ctrl->capability & MODEM_CAP_USE_MAX_BAT) {
 			g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
 			g_alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 			g_alloc_skb_tbl_threshold = MAX_ALLOC_BAT_CNT;
@@ -2986,7 +2986,7 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 				g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
 			g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
 		}
-		if (dpmaif_ctl->support_lro == 1)
+		if (g_dpmaif_ctrl->support_lro == 1)
 			ccmni_set_tcp_is_need_gro(1);
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
@@ -3000,47 +3000,47 @@ static int dpmaif_init_cap(struct device *dev)
 	u32 len = 0;
 
 	if (of_property_read_u32(dev->of_node,
-			"mediatek,dpmaif-cap", &dpmaif_ctl->capability)) {
-		dpmaif_ctl->capability = 0;
+			"mediatek,dpmaif-cap", &g_dpmaif_ctrl->capability)) {
+		g_dpmaif_ctrl->capability = 0;
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] read mediatek,dpmaif-cap fail!\n",
 			__func__);
 	}
 
-	dpmaif_ctl->support_lro = dpmaif_ctl->capability & MODEM_CAP_LRO;
-	dpmaif_ctl->support_2rxq = (dpmaif_ctl->capability & MODEM_CAP_2RXQ);
-	if (dpmaif_ctl->support_2rxq || dpmaif_ctl->support_lro) {
-		dpmaif_ctl->real_rxq_num = DPMAIF_RXQ_NUM;
-		dpmaif_ctl->support_lro = 1;
-		dpmaif_ctl->support_2rxq = 1;
-		dpmaif_ctl->max_pit_seq = 0xFF;
+	g_dpmaif_ctrl->support_lro = g_dpmaif_ctrl->capability & MODEM_CAP_LRO;
+	g_dpmaif_ctrl->support_2rxq = (g_dpmaif_ctrl->capability & MODEM_CAP_2RXQ);
+	if (g_dpmaif_ctrl->support_2rxq || g_dpmaif_ctrl->support_lro) {
+		g_dpmaif_ctrl->real_rxq_num = DPMAIF_RXQ_NUM;
+		g_dpmaif_ctrl->support_lro = 1;
+		g_dpmaif_ctrl->support_2rxq = 1;
+		g_dpmaif_ctrl->max_pit_seq = 0xFF;
 		ccmni_set_tcp_is_need_gro(1);
 	} else {
-		dpmaif_ctl->real_rxq_num = 1;
-		dpmaif_ctl->max_pit_seq = 0xFE;
+		g_dpmaif_ctrl->real_rxq_num = 1;
+		g_dpmaif_ctrl->max_pit_seq = 0xFE;
 	}
 
-	if (dpmaif_ctl->capability & MODEM_CAP_USE_MAX_BAT)
+	if (g_dpmaif_ctrl->capability & MODEM_CAP_USE_MAX_BAT)
 		g_alloc_skb_threshold = MAX_ALLOC_BAT_CNT;
 
 	if (of_property_read_u32(dev->of_node,
-			"dl_bat_entry_size", &dpmaif_ctl->dl_bat_entry_size))
-		dpmaif_ctl->dl_bat_entry_size = 0;
+			"dl_bat_entry_size", &g_dpmaif_ctrl->dl_bat_entry_size))
+		g_dpmaif_ctrl->dl_bat_entry_size = 0;
 
 	CCCI_NORMAL_LOG(0, TAG,
 		"[%s] dpmaif capability: 0x%x; dl_bat_entry_size: %u\n",
-		__func__, dpmaif_ctl->capability, dpmaif_ctl->dl_bat_entry_size);
+		__func__, g_dpmaif_ctrl->capability, g_dpmaif_ctrl->dl_bat_entry_size);
 
-	len = sizeof(struct dpmaif_rx_queue) * dpmaif_ctl->real_rxq_num;
-	dpmaif_ctl->rxq = kzalloc(len, GFP_KERNEL);
-	if (!dpmaif_ctl->rxq) {
+	len = sizeof(struct dpmaif_rx_queue) * g_dpmaif_ctrl->real_rxq_num;
+	g_dpmaif_ctrl->rxq = kzalloc(len, GFP_KERNEL);
+	if (!g_dpmaif_ctrl->rxq) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: kzalloc() rxq fail\n", __func__);
 		return -1;
 	}
 
-	dpmaif_ctl->rx_tfc_pkgs = kzalloc(sizeof(unsigned int) * dpmaif_ctl->real_rxq_num,
+	g_dpmaif_ctrl->rx_tfc_pkgs = kzalloc(sizeof(unsigned int) * g_dpmaif_ctrl->real_rxq_num,
 			GFP_KERNEL);
-	if (!dpmaif_ctl->rx_tfc_pkgs) {
+	if (!g_dpmaif_ctrl->rx_tfc_pkgs) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: kzalloc() rx_tfc_pkgs fail\n", __func__);
 		return -1;
 	}
@@ -3055,8 +3055,8 @@ static int dpmaif_give_more(unsigned char hif_id, unsigned char qno)
 	struct dpmaif_rx_queue *rxq;
 	int i;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 		tasklet_hi_schedule(&rxq->rxq_task);
 	}
 
@@ -3068,7 +3068,7 @@ static int dpmaif_write_room(unsigned char hif_id, unsigned char qno)
 	if (qno >= DPMAIF_TXQ_NUM)
 		return -CCCI_ERR_INVALID_QUEUE_INDEX;
 
-	return atomic_read(&dpmaif_ctl->txq[qno].txq_budget);
+	return atomic_read(&g_dpmaif_ctrl->txq[qno].txq_budget);
 }
 
 static int dpmaif_debug(unsigned char hif_id,
@@ -3085,19 +3085,19 @@ static void dpmaif_dump_rx_data(void)
 	int i;
 	struct dpmaif_rx_queue *rxq = NULL;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 
 		/* skip dump rxq1 */
 		if (rxq->index == 1)
 			continue;
 
 		/* invalid cache to ensure try to dump DRAM data */
-		dma_sync_single_for_cpu(dpmaif_ctl->dev, rxq->pit_phy_addr,
+		dma_sync_single_for_cpu(g_dpmaif_ctrl->dev, rxq->pit_phy_addr,
 			drv.normal_pit_size * rxq->pit_cnt, DMA_FROM_DEVICE);
-		dma_sync_single_for_cpu(dpmaif_ctl->dev, rxq->pit_phy_addr,
+		dma_sync_single_for_cpu(g_dpmaif_ctrl->dev, rxq->pit_phy_addr,
 			drv.normal_pit_size * rxq->pit_cnt, DMA_FROM_DEVICE);
-		dma_sync_single_for_cpu(dpmaif_ctl->dev, rxq->pit_phy_addr,
+		dma_sync_single_for_cpu(g_dpmaif_ctrl->dev, rxq->pit_phy_addr,
 			drv.normal_pit_size * rxq->pit_cnt, DMA_FROM_DEVICE);
 
 		CCCI_BUF_LOG_TAG(0, CCCI_DUMP_DPMAIF, TAG,
@@ -3111,14 +3111,14 @@ static void dpmaif_dump_rx_data(void)
 
 	CCCI_BUF_LOG_TAG(0, CCCI_DUMP_DPMAIF, TAG,
 		"Current bat request base: 0x%p(%u*%zu); pos: w/r = %u,%u\n",
-		dpmaif_ctl->bat_skb->bat_base,
-		dpmaif_ctl->bat_skb->bat_cnt, sizeof(struct dpmaif_bat_base),
-		atomic_read(&dpmaif_ctl->bat_skb->bat_wr_idx),
-		atomic_read(&dpmaif_ctl->bat_skb->bat_rd_idx));
+		g_dpmaif_ctrl->bat_skb->bat_base,
+		g_dpmaif_ctrl->bat_skb->bat_cnt, sizeof(struct dpmaif_bat_base),
+		atomic_read(&g_dpmaif_ctrl->bat_skb->bat_wr_idx),
+		atomic_read(&g_dpmaif_ctrl->bat_skb->bat_rd_idx));
 
 	ccci_util_mem_dump(CCCI_DUMP_DPMAIF,
-		dpmaif_ctl->bat_skb->bat_base,
-		dpmaif_ctl->bat_skb->bat_cnt * sizeof(struct dpmaif_bat_base));
+		g_dpmaif_ctrl->bat_skb->bat_base,
+		g_dpmaif_ctrl->bat_skb->bat_cnt * sizeof(struct dpmaif_bat_base));
 }
 
 static int dpmaif_dump_status(unsigned char hif_id,
@@ -3134,17 +3134,17 @@ static int dpmaif_dump_status(unsigned char hif_id,
 		return mtk_ccci_net_spd_cfg(1);
 
 	if ((flag & DUMP_FLAG_REG) &&
-			(dpmaif_ctl->dpmaif_state != DPMAIF_STATE_PWROFF
-			&& dpmaif_ctl->dpmaif_state != DPMAIF_STATE_MIN)) {
+			(g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_PWROFF
+			&& g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_MIN)) {
 
 		ops.drv_dump_register(CCCI_DUMP_REGISTER);
 		dpmaif_dump_rx_data();
 	}
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_DBG)
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
 		CCCI_NORMAL_LOG(0, TAG, "Dump AP DPMAIF IRQ%d status:\n", i);
-		mt_irq_dump_status(dpmaif_ctl->rxq[i].irq_id);
+		mt_irq_dump_status(g_dpmaif_ctrl->rxq[i].irq_id);
 	}
 #endif
 
@@ -3166,8 +3166,8 @@ static int dpmaif_init_register(struct device *dev)
 {
 	struct device_node *node = dev->of_node;
 
-	dpmaif_ctl->infra_ao_base = syscon_regmap_lookup_by_phandle(node, "dpmaif-infracfg");
-	if (IS_ERR(dpmaif_ctl->infra_ao_base)) {
+	g_dpmaif_ctrl->infra_ao_base = syscon_regmap_lookup_by_phandle(node, "dpmaif-infracfg");
+	if (IS_ERR(g_dpmaif_ctrl->infra_ao_base)) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: No dpmaif-infracfg register in dtsi.\n", __func__);
 		return -1;
@@ -3178,37 +3178,37 @@ static int dpmaif_init_register(struct device *dev)
 			return -1;
 	}
 
-	dpmaif_ctl->ao_ul_base = of_iomap(node, 0);
-	if (dpmaif_ctl->ao_ul_base == NULL) {
+	g_dpmaif_ctrl->ao_ul_base = of_iomap(node, 0);
+	if (g_dpmaif_ctrl->ao_ul_base == NULL) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: ao_ul_base iomap fail\n", __func__);
 		return -1;
 	}
-	dpmaif_ctl->ao_dl_base = dpmaif_ctl->ao_ul_base + 0x400;
+	g_dpmaif_ctrl->ao_dl_base = g_dpmaif_ctrl->ao_ul_base + 0x400;
 
-	dpmaif_ctl->pd_ul_base = of_iomap(node, 1);
-	if (dpmaif_ctl->pd_ul_base == NULL) {
+	g_dpmaif_ctrl->pd_ul_base = of_iomap(node, 1);
+	if (g_dpmaif_ctrl->pd_ul_base == NULL) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: pd_ul_base iomap fail\n", __func__);
 		return -1;
 	}
-	dpmaif_ctl->pd_dl_base   = dpmaif_ctl->pd_ul_base + 0x100;
-	dpmaif_ctl->pd_misc_base = dpmaif_ctl->pd_ul_base + 0x400;
+	g_dpmaif_ctrl->pd_dl_base   = g_dpmaif_ctrl->pd_ul_base + 0x100;
+	g_dpmaif_ctrl->pd_misc_base = g_dpmaif_ctrl->pd_ul_base + 0x400;
 
-	dpmaif_ctl->pd_md_misc_base = of_iomap(node, 2);
-	if (dpmaif_ctl->pd_md_misc_base == NULL) {
+	g_dpmaif_ctrl->pd_md_misc_base = of_iomap(node, 2);
+	if (g_dpmaif_ctrl->pd_md_misc_base == NULL) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: pd_md_misc_base iomap fail\n", __func__);
 		return -1;
 	}
 
-	dpmaif_ctl->pd_sram_base = of_iomap(node, 3);
-	if (dpmaif_ctl->pd_sram_base == NULL) {
+	g_dpmaif_ctrl->pd_sram_base = of_iomap(node, 3);
+	if (g_dpmaif_ctrl->pd_sram_base == NULL) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: pd_sram_base iomap fail\n", __func__);
 		return -1;
 	}
 
 	CCCI_NORMAL_LOG(0, TAG,
 		"[%s] register: ao_ul=0x%p, pd_ul=0x%p, pd_md_misc=0x%p; pd_sram: %p\n",
-		__func__, dpmaif_ctl->ao_ul_base, dpmaif_ctl->pd_ul_base,
-		dpmaif_ctl->pd_md_misc_base, dpmaif_ctl->pd_sram_base);
+		__func__, g_dpmaif_ctrl->ao_ul_base, g_dpmaif_ctrl->pd_ul_base,
+		g_dpmaif_ctrl->pd_md_misc_base, g_dpmaif_ctrl->pd_sram_base);
 
 	return 0;
 }
@@ -3220,63 +3220,63 @@ static void dpmaif_traffic_monitor_func(struct timer_list *t)
 	uint64_t now = local_clock();
 
 	if (3 < DPMAIF_TXQ_NUM) {
-		q_state = (dpmaif_ctl->txq[0].started << 0) |
-			(dpmaif_ctl->txq[1].started << 1) |
-			(dpmaif_ctl->txq[2].started << 2) |
-			(dpmaif_ctl->txq[3].started << 3);
+		q_state = (g_dpmaif_ctrl->txq[0].started << 0) |
+			(g_dpmaif_ctrl->txq[1].started << 1) |
+			(g_dpmaif_ctrl->txq[2].started << 2) |
+			(g_dpmaif_ctrl->txq[3].started << 3);
 
 		CCCI_NORMAL_LOG(0, TAG,
 			"dpmaif-txq: 0-3(status=0x%x)[%d]: %d-%d-%d, %d-%d-%d, %d-%d-%d, %d-%d-%d\n",
-			q_state, dpmaif_ctl->txq[0].drb_cnt,
-			atomic_read(&dpmaif_ctl->txq[0].txq_budget),
-			dpmaif_ctl->tx_pre_tfc_pkgs[0],
-			dpmaif_ctl->tx_tfc_pkgs[0],
-			atomic_read(&dpmaif_ctl->txq[1].txq_budget),
-			dpmaif_ctl->tx_pre_tfc_pkgs[1],
-			dpmaif_ctl->tx_tfc_pkgs[1],
-			atomic_read(&dpmaif_ctl->txq[2].txq_budget),
-			dpmaif_ctl->tx_pre_tfc_pkgs[2],
-			dpmaif_ctl->tx_tfc_pkgs[2],
-			atomic_read(&dpmaif_ctl->txq[3].txq_budget),
-			dpmaif_ctl->tx_pre_tfc_pkgs[3],
-			dpmaif_ctl->tx_tfc_pkgs[3]);
+			q_state, g_dpmaif_ctrl->txq[0].drb_cnt,
+			atomic_read(&g_dpmaif_ctrl->txq[0].txq_budget),
+			g_dpmaif_ctrl->tx_pre_tfc_pkgs[0],
+			g_dpmaif_ctrl->tx_tfc_pkgs[0],
+			atomic_read(&g_dpmaif_ctrl->txq[1].txq_budget),
+			g_dpmaif_ctrl->tx_pre_tfc_pkgs[1],
+			g_dpmaif_ctrl->tx_tfc_pkgs[1],
+			atomic_read(&g_dpmaif_ctrl->txq[2].txq_budget),
+			g_dpmaif_ctrl->tx_pre_tfc_pkgs[2],
+			g_dpmaif_ctrl->tx_tfc_pkgs[2],
+			atomic_read(&g_dpmaif_ctrl->txq[3].txq_budget),
+			g_dpmaif_ctrl->tx_pre_tfc_pkgs[3],
+			g_dpmaif_ctrl->tx_tfc_pkgs[3]);
 
 		CCCI_NORMAL_LOG(0, TAG,
 			"dpmaif-txq pos: w/r/rel=(%d,%d,%d)(%d,%d,%d)(%d,%d,%d)(%d,%d,%d), tx_busy=%d,%d,%d,%d, last_isr=%llx,%llx,%llx,%llx, now=%06u.%04u\n",
-			atomic_read(&dpmaif_ctl->txq[0].drb_wr_idx),
-			atomic_read(&dpmaif_ctl->txq[0].drb_rd_idx),
-			atomic_read(&dpmaif_ctl->txq[0].drb_rel_rd_idx),
-			atomic_read(&dpmaif_ctl->txq[1].drb_wr_idx),
-			atomic_read(&dpmaif_ctl->txq[1].drb_rd_idx),
-			atomic_read(&dpmaif_ctl->txq[1].drb_rel_rd_idx),
-			atomic_read(&dpmaif_ctl->txq[2].drb_wr_idx),
-			atomic_read(&dpmaif_ctl->txq[2].drb_rd_idx),
-			atomic_read(&dpmaif_ctl->txq[2].drb_rel_rd_idx),
-			atomic_read(&dpmaif_ctl->txq[3].drb_wr_idx),
-			atomic_read(&dpmaif_ctl->txq[3].drb_rd_idx),
-			atomic_read(&dpmaif_ctl->txq[3].drb_rel_rd_idx),
-			dpmaif_ctl->txq[0].busy_count,
-			dpmaif_ctl->txq[1].busy_count,
-			dpmaif_ctl->txq[2].busy_count,
-			dpmaif_ctl->txq[3].busy_count,
-			dpmaif_ctl->tx_done_last_start_time[0],
-			dpmaif_ctl->tx_done_last_start_time[1],
-			dpmaif_ctl->tx_done_last_start_time[2],
-			dpmaif_ctl->tx_done_last_start_time[3],
+			atomic_read(&g_dpmaif_ctrl->txq[0].drb_wr_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[0].drb_rd_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[0].drb_rel_rd_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[1].drb_wr_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[1].drb_rd_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[1].drb_rel_rd_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[2].drb_wr_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[2].drb_rd_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[2].drb_rel_rd_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[3].drb_wr_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[3].drb_rd_idx),
+			atomic_read(&g_dpmaif_ctrl->txq[3].drb_rel_rd_idx),
+			g_dpmaif_ctrl->txq[0].busy_count,
+			g_dpmaif_ctrl->txq[1].busy_count,
+			g_dpmaif_ctrl->txq[2].busy_count,
+			g_dpmaif_ctrl->txq[3].busy_count,
+			g_dpmaif_ctrl->tx_done_last_start_time[0],
+			g_dpmaif_ctrl->tx_done_last_start_time[1],
+			g_dpmaif_ctrl->tx_done_last_start_time[2],
+			g_dpmaif_ctrl->tx_done_last_start_time[3],
 			(unsigned int)(now/1000000000), (unsigned int)((now%1000000000)/100000));
 	}
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
 		CCCI_NORMAL_LOG(0, TAG,
 			"dpmaif-rxq%d: received:%u; q_state=%u; budget:%u; w/r=(%u,%u)\n",
-			i, dpmaif_ctl->rx_tfc_pkgs[i],
-			dpmaif_ctl->rxq[i].started,
-			dpmaif_ctl->rxq[i].budget,
-			atomic_read(&dpmaif_ctl->rxq[i].pit_wr_idx),
-			atomic_read(&dpmaif_ctl->rxq[i].pit_rd_idx));
+			i, g_dpmaif_ctrl->rx_tfc_pkgs[i],
+			g_dpmaif_ctrl->rxq[i].started,
+			g_dpmaif_ctrl->rxq[i].budget,
+			atomic_read(&g_dpmaif_ctrl->rxq[i].pit_wr_idx),
+			atomic_read(&g_dpmaif_ctrl->rxq[i].pit_rd_idx));
 	}
 	ccmni_ops.dump();
-	mod_timer(&dpmaif_ctl->traffic_monitor,
+	mod_timer(&g_dpmaif_ctrl->traffic_monitor,
 			jiffies + DPMAIF_TRAFFIC_MONITOR_INTERVAL * HZ);
 }
 #endif
@@ -3286,8 +3286,8 @@ static int dpmaif_init_rx_irq_and_tasklet(struct device *dev)
 	int i;
 	struct dpmaif_rx_queue *rxq;
 
-	for (i = 0; i < dpmaif_ctl->real_rxq_num; i++) {
-		rxq = &dpmaif_ctl->rxq[i];
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
 
 		rxq->rxq_tasklet = dpmaif_rxq_tasklet;
 		rxq->irq_id = irq_of_parse_and_map(dev->of_node, i);
@@ -3311,28 +3311,28 @@ static u64 g_dpmaif_dmamask = DMA_BIT_MASK(40);
 static int dpmaif_init_com(struct device *dev)
 {
 	int ret;
-	struct dpmaif_ctrl *temp_dpmaif_ctl = NULL;
+	struct dpmaif_ctrl *temp_dpmaif_ctrl = NULL;
 
 	if ((!dev) || (!dev->of_node)) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: dev or dev->of_node is NULL.\n", __func__);
 		goto DPMAIF_INIT_FAIL;
 	}
 
-	temp_dpmaif_ctl = kzalloc(sizeof(struct dpmaif_ctrl), GFP_KERNEL);
-	if (!temp_dpmaif_ctl) {
+	temp_dpmaif_ctrl = kzalloc(sizeof(struct dpmaif_ctrl), GFP_KERNEL);
+	if (!temp_dpmaif_ctrl) {
 		CCCI_ERROR_LOG(0, TAG,
 			"[%s] error: alloc hif_ctrl fail\n", __func__);
 		goto DPMAIF_INIT_FAIL;
 	}
-	g_dpmaif_ctl = temp_dpmaif_ctl;
+	g_dpmaif_ctrl = temp_dpmaif_ctrl;
 
-	dpmaif_ctl->dev = dev;
-	dpmaif_ctl->hif_id = DPMAIF_HIF_ID;
-	dpmaif_ctl->dpmaif_state = DPMAIF_STATE_MIN;
-	atomic_set(&dpmaif_ctl->suspend_flag, -1);
+	g_dpmaif_ctrl->dev = dev;
+	g_dpmaif_ctrl->hif_id = DPMAIF_HIF_ID;
+	g_dpmaif_ctrl->dpmaif_state = DPMAIF_STATE_MIN;
+	atomic_set(&g_dpmaif_ctrl->suspend_flag, -1);
 
-	dpmaif_ctl->wakelock = wakeup_source_register(NULL, "dpmaif_wakelock");
-	if (!dpmaif_ctl->wakelock) {
+	g_dpmaif_ctrl->wakelock = wakeup_source_register(NULL, "dpmaif_wakelock");
+	if (!g_dpmaif_ctrl->wakelock) {
 		CCCI_ERROR_LOG(0, TAG, "[%s] error: init dpmaif wake lock fail\n", __func__);
 		goto DPMAIF_INIT_FAIL;
 	}
@@ -3340,7 +3340,7 @@ static int dpmaif_init_com(struct device *dev)
 	if (dpmaif_init_register(dev))
 		goto DPMAIF_INIT_FAIL;
 
-	arch_atomic_set(&dpmaif_ctl->wakeup_src, 0);
+	arch_atomic_set(&g_dpmaif_ctrl->wakeup_src, 0);
 	ret = dpmaif_init_cap(dev);
 	if (ret < 0)
 		goto DPMAIF_INIT_FAIL;
@@ -3349,7 +3349,7 @@ static int dpmaif_init_com(struct device *dev)
 	if (ret < 0)
 		goto DPMAIF_INIT_FAIL;
 
-	if (ccci_dl_pool_init(dpmaif_ctl->real_rxq_num))
+	if (ccci_dl_pool_init(g_dpmaif_ctrl->real_rxq_num))
 		goto DPMAIF_INIT_FAIL;
 
 	ret = ccci_dpmaif_bat_init(dev);
@@ -3374,7 +3374,7 @@ static int dpmaif_init_com(struct device *dev)
 	}
 
 	/* hook up to device */
-	dev->platform_data = dpmaif_ctl; /* maybe no need */
+	dev->platform_data = g_dpmaif_ctrl; /* maybe no need */
 
 	if (g_dpmf_ver >= 3)
 		ret = ccci_dpmaif_drv3_init();
@@ -3387,26 +3387,26 @@ static int dpmaif_init_com(struct device *dev)
 
 	ccci_dpmaif_resv_mem_init();
 
-	if (dpmaif_init_clk(dev, dpmaif_ctl->clk_tbs))
+	if (dpmaif_init_clk(dev, g_dpmaif_ctrl->clk_tbs))
 		goto DPMAIF_INIT_FAIL;
 
 	mtk_ccci_md_spd_qos_init(dev);
 	mtk_ccci_spd_qos_method_init();
 
-	ccci_hif_register(DPMAIF_HIF_ID, dpmaif_ctl, &g_dpmaif_ops);
+	ccci_hif_register(DPMAIF_HIF_ID, g_dpmaif_ctrl, &g_dpmaif_ops);
 	ccmni_ops.send_skb = &dpmaif_tx_send_skb_to_md;
-	atomic_set(&dpmaif_ctl->suspend_flag, 0);
+	atomic_set(&g_dpmaif_ctrl->suspend_flag, 0);
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
-	timer_setup(&dpmaif_ctl->traffic_monitor, dpmaif_traffic_monitor_func, 0);
+	timer_setup(&g_dpmaif_ctrl->traffic_monitor, dpmaif_traffic_monitor_func, 0);
 #endif
 	mtk_ccci_net_speed_init();
 
 	return 0;  /* dpmaif init succ. */
 
 DPMAIF_INIT_FAIL:
-	kfree(g_dpmaif_ctl);
-	g_dpmaif_ctl = NULL;
+	kfree(g_dpmaif_ctrl);
+	g_dpmaif_ctrl = NULL;
 
 	return -1;
 }
@@ -3450,17 +3450,17 @@ static int dpmaif_suspend_noirq(struct device *dev)
 {
 	CCCI_NORMAL_LOG(-1, TAG, "[%s] dev: %p\n", __func__, dev);
 
-	if ((!dpmaif_ctl) || (atomic_read(&dpmaif_ctl->suspend_flag) < 0))
+	if ((!g_dpmaif_ctrl) || (atomic_read(&g_dpmaif_ctrl->suspend_flag) < 0))
 		return 0;
 
-	atomic_set(&dpmaif_ctl->suspend_flag, 1);
+	atomic_set(&g_dpmaif_ctrl->suspend_flag, 1);
 
-	if (dpmaif_ctl->dpmaif_state != DPMAIF_STATE_PWRON &&
-		dpmaif_ctl->dpmaif_state != DPMAIF_STATE_EXCEPTION)
+	if (g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_PWRON &&
+		g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_EXCEPTION)
 		return 0;
 
 	/* dpmaif clock on: backup int mask. */
-	dpmaif_ctl->suspend_reg_int_mask_bak = ops.drv_get_dl_interrupt_mask();
+	g_dpmaif_ctrl->suspend_reg_int_mask_bak = ops.drv_get_dl_interrupt_mask();
 
 	return ops.drv_suspend_noirq(dev);
 }
@@ -3470,7 +3470,7 @@ static int dpmaif_resume_noirq(struct device *dev)
 	struct arm_smccc_res res;
 	int ret = 0;
 
-	if ((!dpmaif_ctl) || (atomic_read(&dpmaif_ctl->suspend_flag) < 0))
+	if ((!g_dpmaif_ctrl) || (atomic_read(&g_dpmaif_ctrl->suspend_flag) < 0))
 		return 0;
 
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL,
@@ -3482,10 +3482,10 @@ static int dpmaif_resume_noirq(struct device *dev)
 		__func__, res.a0, res.a1, res.a2, res.a3);
 
 	if ((!res.a0) && (res.a1 == WAKE_SRC_HIF_DPMAIF))
-		arch_atomic_set(&dpmaif_ctl->wakeup_src, 1);
+		arch_atomic_set(&g_dpmaif_ctrl->wakeup_src, 1);
 
-	if (dpmaif_ctl->dpmaif_state != DPMAIF_STATE_PWRON &&
-		dpmaif_ctl->dpmaif_state != DPMAIF_STATE_EXCEPTION)
+	if (g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_PWRON &&
+		g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_EXCEPTION)
 		goto EXIT_FUNC;
 
 	/*IP don't power down before*/
@@ -3497,7 +3497,7 @@ static int dpmaif_resume_noirq(struct device *dev)
 	ret = ops.drv_resume_noirq(dev);
 
 EXIT_FUNC:
-	atomic_set(&dpmaif_ctl->suspend_flag, 0);
+	atomic_set(&g_dpmaif_ctrl->suspend_flag, 0);
 
 	return ret;
 }
