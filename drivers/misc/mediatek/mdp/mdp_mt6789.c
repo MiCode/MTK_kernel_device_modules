@@ -1356,6 +1356,16 @@ static bool mdp_is_mtee(struct cmdqRecStruct *handle)
 #endif
 }
 
+/*
+ * Get the group flag for ISP engines.
+ * This flag represents all ISP related engines that are handled by CMDQ.
+ * @return The group flag for ISP engines.
+ */
+static u64 cmdq_mdp_get_isp_flag(void)
+{
+	return CMDQ_ENG_ISP_GROUP_ALL_BITS;
+}
+
 static bool mdp_is_isp_img(struct cmdqRecStruct *handle)
 {
 	return ((handle->engineFlag & (1LL << CMDQ_ENG_ISP_IMGI) &&
@@ -1905,6 +1915,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->mdpIsIspImg = mdp_is_isp_img;
 	pFunc->mdpIsIspCamin = mdp_is_isp_camin;
 	pFunc->mdpInitialSet = cmdqMdpInitialSetting;
+	pFunc->mdpGetIspFlag = cmdq_mdp_get_isp_flag;
 
 	pFunc->rdmaGetRegOffsetSrcAddr = cmdq_mdp_rdma_get_reg_offset_src_addr;
 	pFunc->wrotGetRegOffsetDstAddr = cmdq_mdp_wrot_get_reg_offset_dst_addr;
