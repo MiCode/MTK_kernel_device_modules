@@ -62,5 +62,6 @@ extern int (*sbe_notify_hwui_frame_hint_fp)(int qudeq,
 		int dep_mode, char *dep_name, int dep_num, long long frame_flags);
 extern void (*sbe_notify_rescue_fp)(int pid, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frameID);
+extern void (*sbe_consistency_policy_fp)(int start, int pid, int uclamp_min, int uclamp_max);
 
 #endif

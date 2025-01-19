@@ -38,6 +38,8 @@ struct _SBE_IOCTL_PACKAGE {
 	__u64 time;
 	__u8 name[16];
 	__u8 specific_name[1000];
+	__u32 uclamp_min;
+	__u32 uclamp_max;
 };
 
 struct _SMART_LAUNCH_PACKAGE {
@@ -51,6 +53,7 @@ struct _SMART_LAUNCH_PACKAGE {
 #define SBE_SET_WEBVIEW_POLICY     _IOW('g', 1, struct _SBE_IOCTL_PACKAGE)
 #define SBE_SET_HWUI_POLICY        _IOW('g', 2, struct _SBE_IOCTL_PACKAGE)
 #define SBE_SET_RESCUE             _IOW('g', 3, struct _SBE_IOCTL_PACKAGE)
+#define SBE_CONSISTENCY            _IOW('g', 4, struct _SBE_IOCTL_PACKAGE)
 #define SMART_LAUNCH_ALGORITHM     _IOW('g', 1, struct _SMART_LAUNCH_PACKAGE)
 
 #endif

@@ -37,6 +37,10 @@
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
+extern int set_tgid_vip(int tgid);
+extern int unset_tgid_vip(int tgid);
+extern void turn_on_tgid_vip(void);
+extern void turn_off_tgid_vip(void);
 
 void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid, unsigned long long ts);
 void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,

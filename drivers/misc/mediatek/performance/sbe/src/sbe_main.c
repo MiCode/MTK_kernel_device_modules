@@ -16,6 +16,16 @@
 #include "sbe_usedext.h"
 #include "sbe_sysfs.h"
 
+#include <linux/sched.h>
+#include <uapi/linux/sched/types.h>
+#include <linux/sched/cputime.h>
+#include <linux/sched/task.h>
+#include <sched/sched.h>
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+#include <eas/vip.h>
+#endif
+
 static int sbe_query_is_running;
 static int ux_general_policy;
 static int ux_scroll_count;
@@ -28,6 +38,18 @@ static LIST_HEAD(head);
 static DEFINE_MUTEX(notifier_wq_lock);
 static DEFINE_MUTEX(sbe_recycle_lock);
 static DECLARE_WAIT_QUEUE_HEAD(notifier_wq_queue);
+
+//ConsistencyEngine pointer interface for Taskturbo implement
+//We are using sbe when ConsistencyEngine API called.
+void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid,
+		int binder_uclamp_max, int binder_uclamp_min);
+EXPORT_SYMBOL_GPL(task_turbo_do_set_binder_uclamp_param);
+void (*task_turbo_do_unset_binder_uclamp_param)(pid_t pid);
+EXPORT_SYMBOL_GPL(task_turbo_do_unset_binder_uclamp_param);
+void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
+EXPORT_SYMBOL_GPL(task_turbo_do_binder_uclamp_stuff);
+void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
+EXPORT_SYMBOL_GPL(task_turbo_do_enable_binder_uclamp_inheritance);
 
 static void sbe_do_recycle(struct work_struct *work)
 {
@@ -861,6 +883,33 @@ void sbe_notify_rescue(int pid, int start, int enhance, int rescue_type,
 	sbe_queue_work(vpPush);
 }
 
+void sbe_consistency_policy(int enabled, int pid, int uclamp_min, int uclamp_max)
+{
+	sbe_trace("Consistency_policy, pid=%d enable=%d uclamp_min=%d uclamp_max=%d",
+			pid, enabled, uclamp_min, uclamp_max);
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	if (enabled == 1 && uclamp_min > 0) {
+		// turn_on_tgid_vip();
+		// set_tgid_vip(pid);
+		set_task_vvip(pid);
+	} else {
+		unset_task_vvip(pid);
+		// unset_tgid_vip(pid);
+		// turn_off_tgid_vip();
+	}
+#endif
+	if (task_turbo_do_enable_binder_uclamp_inheritance &&
+			task_turbo_do_set_binder_uclamp_param &&
+			task_turbo_do_unset_binder_uclamp_param) {
+		if(enabled == 1) {
+			task_turbo_do_enable_binder_uclamp_inheritance(enabled);
+			task_turbo_do_set_binder_uclamp_param(pid, uclamp_max, uclamp_min);
+		} else {
+			task_turbo_do_unset_binder_uclamp_param(pid);
+		}
+	}
+}
+
 void sbe_receive_display_rate(unsigned int fps_limit)
 {
 	unsigned int vTmp = TARGET_UNLIMITED_FPS;
@@ -911,6 +960,7 @@ static int __init sbe_init(void)
 	sbe_notify_rescue_fp = sbe_notify_rescue;
 	sbe_notify_hwui_frame_hint_fp = sbe_notify_hwui_frame_hint;
 	sbe_notify_webview_policy_fp = sbe_notify_webview_policy;
+	sbe_consistency_policy_fp = sbe_consistency_policy;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(sbe_receive_display_rate);
 #endif

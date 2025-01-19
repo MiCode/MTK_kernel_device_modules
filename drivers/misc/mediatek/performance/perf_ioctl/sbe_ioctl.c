@@ -17,6 +17,8 @@ EXPORT_SYMBOL_GPL(sbe_notify_hwui_frame_hint_fp);
 void (*sbe_notify_rescue_fp)(int pid, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frameID);
 EXPORT_SYMBOL_GPL(sbe_notify_rescue_fp);
+void (*sbe_consistency_policy_fp)(int start, int pid, int uclamp_min, int uclamp_max);
+EXPORT_SYMBOL_GPL(sbe_consistency_policy_fp);
 int (*sbe_notify_smart_launch_algorithm_fp)(int feedback_time,
 		int target_time, int pre_opp, int capabilty_ration);
 EXPORT_SYMBOL_GPL(sbe_notify_smart_launch_algorithm_fp);
@@ -105,6 +107,12 @@ static long device_ioctl(struct file *filp,
 		if (sbe_notify_rescue_fp)
 			sbe_notify_rescue_fp(msgKM_SBE->pid, msgKM_SBE->start, msgKM_SBE->floor,
 				msgKM_SBE->identifier, msgKM_SBE->time, msgKM_SBE->frame_id);
+		break;
+	case SBE_CONSISTENCY:
+		if (sbe_consistency_policy_fp) {
+			sbe_consistency_policy_fp(msgKM_SBE->start, msgKM_SBE->pid,
+				msgKM_SBE->uclamp_min, msgKM_SBE->uclamp_max);
+		}
 		break;
 	default:
 		pr_debug(TAG "%s %d: unknown SBE cmd %x\n",
