@@ -143,7 +143,7 @@ enum mt6375_chg_reg_field {
 	/* MT6375_REG_CHG_HD_TOP1 */
 	F_FORCE_VBUS_SINK,
 	/* MT6375_REG_BC12_FUNC */
-	F_DCDT_SEL, F_SPEC_TA_EN, F_BC12_EN,
+	F_BC12_VBUS_EN_OPT, F_DCDT_SEL, F_SPEC_TA_EN, F_BC12_EN,
 	/* MT6375_REG_BC12_STAT */
 	F_PORT_STAT,
 	/* MT6375_REG_DPDM_CTRL1 */
@@ -431,6 +431,7 @@ static const struct mt6375_chg_field mt6375_chg_fields[F_MAX] = {
 	MT6375_CHG_FIELD(F_IRCMP_R, MT6375_REG_BAT_COMP, 4, 6),
 	MT6375_CHG_FIELD_RANGE(F_IC_STAT, MT6375_REG_CHG_STAT, 0, 3, false),
 	MT6375_CHG_FIELD(F_FORCE_VBUS_SINK, MT6375_REG_CHG_HD_TOP1, 6, 6),
+	MT6375_CHG_FIELD(F_BC12_VBUS_EN_OPT, MT6375_REG_BC12_FUNC, 2, 2),
 	MT6375_CHG_FIELD(F_DCDT_SEL, MT6375_REG_BC12_FUNC, 4, 5),
 	MT6375_CHG_FIELD(F_SPEC_TA_EN, MT6375_REG_BC12_FUNC, 6, 6),
 	MT6375_CHG_FIELD(F_BC12_EN, MT6375_REG_BC12_FUNC, 7, 7),
@@ -1085,6 +1086,7 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 						     bc12_work);
 	struct mt6375_chg_platform_data *pdata = dev_get_platdata(ddata->dev);
 	bool bc12_ctrl = !(pdata->nr_port > 1), bc12_en = false, rpt_psy = true;
+	bool bc12_en_toggle = false;
 	int ret = 0, attach = ATTACH_TYPE_NONE, active_idx = 0;
 	const char *attach_name;
 	u32 val = 0;
@@ -1147,7 +1149,7 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 
 	switch (val) {
 	case PORT_STAT_NOINFO:
-		bc12_ctrl = false;
+		bc12_en_toggle = true;
 		rpt_psy = false;
 		dev_info_ratelimited(ddata->dev, "%s, No bc12 port info\n", __func__);
 		goto out;
@@ -1156,6 +1158,7 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	case PORT_STAT_APPLE_12W:
 	case PORT_STAT_SAMSUNG:
 	case PORT_STAT_DCP:
+		bc12_en = true;
 		ddata->psy_desc.type = POWER_SUPPLY_TYPE_USB_DCP;
 		ddata->psy_type[active_idx] = POWER_SUPPLY_TYPE_USB_DCP;
 		ddata->psy_usb_type[active_idx] = POWER_SUPPLY_USB_TYPE_DCP;
@@ -1183,11 +1186,17 @@ static void mt6375_chg_bc12_work_func(struct work_struct *work)
 	}
 out:
 	mutex_unlock(&ddata->attach_lock);
-	if (bc12_ctrl) {
-		mt6375_chg_check_dpdm_ov(ddata, attach);
-		if (mt6375_chg_enable_bc12(ddata, bc12_en) < 0)
-			dev_info(ddata->dev, "%s, Failed to set bc12 = %d\n", __func__, bc12_en);
-	}
+	if (!bc12_ctrl)
+		goto out_no_bc12_ctrl;
+	mt6375_chg_check_dpdm_ov(ddata, attach);
+	if (mt6375_chg_enable_bc12(ddata, bc12_en) < 0)
+		dev_info(ddata->dev, "%s, Failed to set bc12 = %d\n",
+				     __func__, bc12_en);
+	if (bc12_en_toggle)
+		if (mt6375_chg_enable_bc12(ddata, !bc12_en) < 0)
+			dev_info(ddata->dev, "%s, Failed to set bc12 = %d\n",
+					     __func__, !bc12_en);
+out_no_bc12_ctrl:
 	if (rpt_psy) {
 		dev_info_ratelimited(ddata->dev,
 				     "%s power_supply_changed, port stat: %d(%s), attach: %d(%s)\n",
@@ -2734,6 +2743,12 @@ static int mt6375_chg_init_setting(struct mt6375_chg_data *ddata)
 	ret = mt6375_chg_field_set(ddata, F_BC12_EN, 0);
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to disable bc12\n");
+		return ret;
+	}
+
+	ret = mt6375_chg_field_set(ddata, F_BC12_VBUS_EN_OPT, 1);
+	if (ret < 0) {
+		dev_notice(ddata->dev, "failed to enable bc12_vbus_en_opt\n");
 		return ret;
 	}
 
