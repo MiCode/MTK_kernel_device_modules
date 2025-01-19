@@ -1149,6 +1149,7 @@ int smi_larb_force_all_on(char *buf, const struct kernel_param *kp)
 	pr_notice("[smi] larb force all on\n");
 	return 0;
 }
+EXPORT_SYMBOL_GPL(smi_larb_force_all_on);
 
 static const struct kernel_param_ops smi_larb_force_all_on_ops = {
 	.get = smi_larb_force_all_on,
@@ -1180,6 +1181,7 @@ int smi_larb_force_all_put(char *buf, const struct kernel_param *kp)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(smi_larb_force_all_put);
 
 static const struct kernel_param_ops smi_larb_force_all_put_ops = {
 	.get = smi_larb_force_all_put,

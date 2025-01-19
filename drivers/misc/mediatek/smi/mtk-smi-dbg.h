@@ -72,6 +72,8 @@ int mtk_smi_dbg_register_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_unregister_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *nb);
 int mtk_smi_dbg_unregister_force_on_notifier(struct notifier_block *nb);
+int smi_larb_force_all_on(char *buf, const struct kernel_param *kp);
+int smi_larb_force_all_put(char *buf, const struct kernel_param *kp);
 s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_MON_REQ],
 			u32 flag[MAX_MON_REQ], enum smi_mon_id mon_id);
 s32 smi_monitor_stop(struct device *dev, u32 common_id,
@@ -107,6 +109,16 @@ static inline int mtk_smi_dbg_register_force_on_notifier(struct notifier_block *
 }
 
 static inline int mtk_smi_dbg_unregister_force_on_notifier(struct notifier_block *nb)
+{
+	return 0;
+}
+
+static inline int smi_larb_force_all_on(char *buf, const struct kernel_param *kp);
+{
+	return 0;
+}
+
+static inline int smi_larb_force_all_put(char *buf, const struct kernel_param *kp);
 {
 	return 0;
 }
