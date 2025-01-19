@@ -1,0 +1,94 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "fusb304",
+    srcs = [
+        "fusb304.c",
+        "mux_switch.h",
+    ],
+    includes = ["."],
+    ko_deps = [":mux_switch"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(srctree)/drivers/usb/typec",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mux_switch",
+    srcs = [
+        "mux_switch.c",
+        "mux_switch.h",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(srctree)/drivers/usb/typec",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ps5169",
+    srcs = [
+        "ps5169.c",
+        "mux_switch.h",
+    ],
+    includes = ["."],
+    ko_deps = [":mux_switch"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(srctree)/drivers/usb/typec",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ps5170",
+    srcs = [
+        "ps5170.c",
+        "mux_switch.h",
+    ],
+    includes = ["."],
+    ko_deps = [":mux_switch"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(srctree)/drivers/usb/typec",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ptn36241g",
+    srcs = [
+        "ptn36241g.c",
+        "mux_switch.h",
+    ],
+    includes = ["."],
+    ko_deps = [":mux_switch"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(srctree)/drivers/usb/typec",
+    ],
+)
+

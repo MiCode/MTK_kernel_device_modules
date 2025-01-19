@@ -15,7 +15,6 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 
-#include "bus.h"
 #include "mux.h"
 #include "mux_switch.h"
 
