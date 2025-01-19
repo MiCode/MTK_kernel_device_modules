@@ -1458,11 +1458,10 @@ malloc_fail:
 	if (is_boosting == BY_PASS_TYPE)
 		fpsgo_com_notify_fpsgo_is_boost(0);
 
-	cb_mask = 1 << GET_FPSGO_DELETE_INFO;
-	for (i = 0; i < delete_num; i++) {
-		fpsgo_notify_frame_info_callback(delete_pid[i], cb_mask, delete_bufID[i], NULL);
-		// TODO(CHI): need to remove, replace to fpsgo_notify_frame_info_callback() in Composer
-		fpsgo_fstb2other_info_update(delete_pid[i], delete_bufID[i], FPSGO_DELETE, 0, 0, 0, 0);
+	if (delete_pid && delete_bufID) {
+		cb_mask = 1 << GET_FPSGO_DELETE_INFO;
+		for (i = 0; i < delete_num; i++)
+			fpsgo_notify_frame_info_callback(delete_pid[i], cb_mask, delete_bufID[i], NULL);
 	}
 	kfree(delete_pid);
 	kfree(delete_bufID);
@@ -1531,11 +1530,10 @@ void fpsgo_clear(void)
 
 	fpsgo_render_tree_unlock(__func__);
 
-	cb_mask = 1 << GET_FPSGO_DELETE_INFO;
-	for (i = 0; i < delete_num; i++) {
-		fpsgo_notify_frame_info_callback(delete_pid[i], cb_mask, delete_bufID[i], NULL);
-		// TODO(CHI): need to remove, replace to fpsgo_notify_frame_info_callback() in Composer
-		fpsgo_fstb2other_info_update(delete_pid[i], delete_bufID[i], FPSGO_DELETE, 0, 0, 0, 0);
+	if (delete_pid && delete_bufID) {
+		cb_mask = 1 << GET_FPSGO_DELETE_INFO;
+		for (i = 0; i < delete_num; i++)
+			fpsgo_notify_frame_info_callback(delete_pid[i], cb_mask, delete_bufID[i], NULL);
 	}
 	kfree(delete_pid);
 	kfree(delete_bufID);

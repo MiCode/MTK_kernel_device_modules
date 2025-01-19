@@ -80,20 +80,12 @@ static DEFINE_MUTEX(fstb_ko_lock);
 static DEFINE_MUTEX(fstb_app_time_info_lock);
 static DEFINE_MUTEX(fstb_user_target_hint_lock);
 static DEFINE_MUTEX(fstb_policy_cmd_lock);
-static DEFINE_MUTEX(fstb_info_callback_lock);
 
 static struct kobject *fstb_kobj;
 static struct hrtimer fstb_hrt;
 static struct workqueue_struct *fstb_wq;
 static struct rb_root fstb_app_time_info_tree;
 struct fstb_powerfps_list powerfps_array[64];
-
-// TODO(CHI): need to remove, replace to fpsgo_frame_info_cb_list in Composer
-static time_notify_callback q2q_notify_callback_list[MAX_INFO_CALLBACK];
-static time_notify_callback qfps_notify_callback_list[MAX_INFO_CALLBACK];
-static time_notify_callback tfps_notify_callback_list[MAX_INFO_CALLBACK];
-static perf_notify_callback blc_notify_callback_list[MAX_INFO_CALLBACK];
-static perf_notify_callback delete_notify_callback_list[MAX_INFO_CALLBACK];
 
 int (*fstb_get_target_fps_fp)(int pid, unsigned long long bufID, int tgid,
 	int dfps_ceiling, int max_dep_path_num, int max_dep_task_num,
@@ -194,227 +186,6 @@ void fpsgo_ctrl2fstb_get_fps(int *pid, int *fps)
 	if (list_empty(&head))
 		condition_get_fps = 0;
 	mutex_unlock(&fpsgo2pwr_lock);
-}
-
-// TODO(CHI): need to remove, replace to fpsgo_frame_info_cb_list in Composer
-static time_notify_callback *fstb_get_target_info_cb_list(int mode)
-{
-	time_notify_callback *target_cb_list = NULL;
-
-	switch (mode) {
-	case FPSGO_Q2Q_TIME:
-		target_cb_list = q2q_notify_callback_list;
-		break;
-	case FPSGO_CPU_TIME:
-		break;
-	case FPSGO_QUEUE_FPS:
-		target_cb_list = qfps_notify_callback_list;
-		break;
-	case FPSGO_TARGET_FPS:
-		target_cb_list = tfps_notify_callback_list;
-		break;
-	default:
-		break;
-	}
-
-	return target_cb_list;
-}
-
-// TODO(CHI): need to remove, replace to fpsgo_register_frame_info_callback() in Composer
-int fpsgo_other2fstb_register_info_callback(int mode, time_notify_callback func_cb)
-{
-	int i;
-	int empty_idx = -1;
-	int ret = 0;
-	time_notify_callback *target_cb_list = NULL;
-
-	mutex_lock(&fstb_info_callback_lock);
-
-	target_cb_list = fstb_get_target_info_cb_list(mode);
-	if (!target_cb_list) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-		if (target_cb_list[i] == func_cb)
-			break;
-		if (target_cb_list[i] == NULL && empty_idx == -1)
-			empty_idx = i;
-	}
-	if (i >= MAX_INFO_CALLBACK) {
-		if (empty_idx < 0 || empty_idx >= MAX_INFO_CALLBACK)
-			ret = -ENOMEM;
-		else
-			target_cb_list[empty_idx] = func_cb;
-	}
-
-out:
-	mutex_unlock(&fstb_info_callback_lock);
-	return ret;
-}
-EXPORT_SYMBOL(fpsgo_other2fstb_register_info_callback);
-
-// TODO(CHI): need to remove, replace to fpsgo_unregister_frame_info_callback() in Composer
-int fpsgo_other2fstb_unregister_info_callback(int mode, time_notify_callback func_cb)
-{
-	int i;
-	int ret = 0;
-	time_notify_callback *target_cb_list = NULL;
-
-	mutex_lock(&fstb_info_callback_lock);
-
-	target_cb_list = fstb_get_target_info_cb_list(mode);
-	if (!target_cb_list) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-		if (target_cb_list[i] == func_cb) {
-			target_cb_list[i] = NULL;
-			break;
-		}
-	}
-
-out:
-	mutex_unlock(&fstb_info_callback_lock);
-	return ret;
-}
-EXPORT_SYMBOL(fpsgo_other2fstb_unregister_info_callback);
-
-// TODO(CHI): need to remove, replace to fpsgo_frame_info_cb_list in Composer
-static perf_notify_callback *fstb_get_target_perf_cb_list(int mode)
-{
-	perf_notify_callback *target_cb_list = NULL;
-
-	switch (mode) {
-	case FPSGO_PERF_IDX:
-		target_cb_list = blc_notify_callback_list;
-		break;
-	case FPSGO_DELETE:
-		target_cb_list = delete_notify_callback_list;
-		break;
-	default:
-		break;
-	}
-
-	return target_cb_list;
-}
-
-// TODO(CHI): need to remove, replace to fpsgo_register_frame_info_callback() in Composer
-int fpsgo_other2fstb_register_perf_callback(int mode, perf_notify_callback func_cb)
-{
-	int i;
-	int empty_idx = -1;
-	int ret = 0;
-	perf_notify_callback *target_cb_list = NULL;
-
-	mutex_lock(&fstb_info_callback_lock);
-
-	target_cb_list = fstb_get_target_perf_cb_list(mode);
-	if (!target_cb_list) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-		if (target_cb_list[i] == func_cb)
-			break;
-		if (target_cb_list[i] == NULL && empty_idx == -1)
-			empty_idx = i;
-	}
-	if (i >= MAX_INFO_CALLBACK) {
-		if (empty_idx < 0 || empty_idx >= MAX_INFO_CALLBACK)
-			ret = -ENOMEM;
-		else
-			target_cb_list[empty_idx] = func_cb;
-	}
-
-out:
-	mutex_unlock(&fstb_info_callback_lock);
-	return ret;
-}
-EXPORT_SYMBOL(fpsgo_other2fstb_register_perf_callback);
-
-// TODO(CHI): need to remove, replace to fpsgo_unregister_frame_info_callback() in Composer
-int fpsgo_other2fstb_unregister_perf_callback(int mode, perf_notify_callback func_cb)
-{
-	int i;
-	int ret = 0;
-	perf_notify_callback *target_cb_list = NULL;
-
-	mutex_lock(&fstb_info_callback_lock);
-
-	target_cb_list = fstb_get_target_perf_cb_list(mode);
-	if (!target_cb_list) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-		if (target_cb_list[i] == func_cb) {
-			target_cb_list[i] = NULL;
-			break;
-		}
-	}
-
-out:
-	mutex_unlock(&fstb_info_callback_lock);
-	return ret;
-}
-EXPORT_SYMBOL(fpsgo_other2fstb_unregister_perf_callback);
-
-// TODO(CHI): need to remove, replace to fpsgo_notify_frame_info_callback() in Composer
-int fpsgo_fstb2other_info_update(int pid, unsigned long long bufID,
-	int mode, int fps, unsigned long long time, int blc, int sbe_ctrl)
-{
-	int i;
-	int ret = 0;
-	unsigned long long ts;
-
-	mutex_lock(&fstb_info_callback_lock);
-
-	switch (mode) {
-	case FPSGO_Q2Q_TIME:
-		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-			if (q2q_notify_callback_list[i])
-				q2q_notify_callback_list[i](pid, bufID, fps, time);
-		}
-		break;
-	case FPSGO_QUEUE_FPS:
-		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-			if (qfps_notify_callback_list[i])
-				qfps_notify_callback_list[i](pid, bufID, fps, time);
-		}
-		break;
-	case FPSGO_TARGET_FPS:
-		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-			if (tfps_notify_callback_list[i])
-				tfps_notify_callback_list[i](pid, bufID, fps, time);
-		}
-		break;
-	case FPSGO_PERF_IDX:
-		ts = fpsgo_get_time();
-		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-			if (blc_notify_callback_list[i])
-				blc_notify_callback_list[i](pid, bufID, blc, sbe_ctrl, ts);
-		}
-		break;
-	case FPSGO_DELETE:
-		for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-			if (delete_notify_callback_list[i])
-				delete_notify_callback_list[i](pid, bufID, blc, sbe_ctrl, 0);
-		}
-		break;
-	default:
-		ret = -EINVAL;
-		goto out;
-	}
-
-out:
-	mutex_unlock(&fstb_info_callback_lock);
-	return ret;
 }
 
 static int fstb_enter_check_render_info_status(int clear, int *r_pid_arr,
@@ -1565,9 +1336,6 @@ void fpsgo_comp2fstb_notify_info(int pid, unsigned long long bufID,
 		fpsgo2msync_hint_frameinfo_fp(pid, bufID,
 			local_final_tfps, q2q_time, q2q_time - enq_length - deq_length);
 
-	// TODO(CHI): need to remove, replace to fpsgo_notify_frame_info_callback() in Composer
-	fpsgo_fstb2other_info_update(pid, bufID, FPSGO_Q2Q_TIME, 0, q2q_time, 0, 0);
-
 	mutex_unlock(&fstb_lock);
 }
 
@@ -1740,15 +1508,6 @@ static void fstb_fps_stats(struct work_struct *work)
 
 			fpsgo_systrace_c_fstb_man(iter->pid, 0,
 					dfps_ceiling, "dfrc");
-
-			// TODO(CHI): need to remove, replace to fpsgo_notify_frame_info_callback() in Composer
-			fpsgo_fstb2other_info_update(iter->pid, iter->bufid,
-				FPSGO_QUEUE_FPS, iter->queue_fps, 0, 0, 0);
-			fpsgo_fstb2other_info_update(iter->pid, iter->bufid,
-				FPSGO_TARGET_FPS,
-				iter->raw_target_fpks / 1000,
-				0, 0, 0);
-
 		}
 	}
 
@@ -2682,28 +2441,9 @@ out:
 }
 EXPORT_SYMBOL(fpsgo_ktf2fstb_fuzz_test_node);
 
-void init_fstb_callback(void)
-{
-	int i;
-
-	mutex_lock(&fstb_info_callback_lock);
-
-	for (i = 0; i < MAX_INFO_CALLBACK; i++) {
-		q2q_notify_callback_list[i] = NULL;
-		qfps_notify_callback_list[i] = NULL;
-		tfps_notify_callback_list[i] = NULL;
-		blc_notify_callback_list[i] = NULL;
-		delete_notify_callback_list[i] = NULL;
-	}
-
-	mutex_unlock(&fstb_info_callback_lock);
-}
-
 int mtk_fstb_init(void)
 {
 	fstb_app_time_info_tree = RB_ROOT;
-
-	init_fstb_callback();
 
 	if (!fpsgo_sysfs_create_dir(NULL, "fstb", &fstb_kobj)) {
 		fpsgo_sysfs_create_file(fstb_kobj,

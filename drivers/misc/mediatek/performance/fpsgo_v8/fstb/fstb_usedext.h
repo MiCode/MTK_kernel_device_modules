@@ -18,7 +18,6 @@
 #define DEFAULT_RESET_TOLERENCE 3
 #define FSTB_IDLE_DBNC 3
 #define MAX_FSTB_POLICY_CMD_NUM 10
-#define MAX_INFO_CALLBACK 5 /*TODO(CHI):  need to remove, replace to FPSGO_MAX_CALLBACK_NUM in Composer*/
 #define MAX_USER_TARGET_PRIO 5 /*small number low priority*/
 
 extern void (*ged_kpi_output_gfx_info2_fp)(long long t_gpu,

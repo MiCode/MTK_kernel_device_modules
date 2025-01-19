@@ -173,12 +173,11 @@ void fpsgo_notify_frame_info_callback(int pid, unsigned long cmd,
 		iter = &fpsgo_frame_info_cb_list[i];
 
 		if (iter->func_cb && cmd & iter->mask) {
+			if (r_iter)
+				memcpy(&iter->info_iter, r_iter, sizeof(struct render_frame_info));
 			iter->info_iter.tgid = fpsgo_get_tgid(pid);
 			iter->info_iter.pid = pid;
 			iter->info_iter.buffer_id = buffer_id;
-
-			if (r_iter)
-				memcpy(&iter->info_iter, r_iter, sizeof(struct render_frame_info));
 
 			iter->func_cb(cmd, &iter->info_iter);
 		}
@@ -731,8 +730,6 @@ exit:
 	if (info) {
 		cb_mask = 1 << GET_FPSGO_Q2Q_TIME | 1 << GET_FPSGO_PERF_IDX;
 		fpsgo_notify_frame_info_callback(pid, cb_mask, buffer_id, info);
-		// TODO(CHI): need to remove, replace to fpsgo_notify_frame_info_callback() in Composer
-		fpsgo_fstb2other_info_update(pid, buffer_id, FPSGO_PERF_IDX, 0, 0, info->blc, 0);
 		kfree(info);
 	}
 }
