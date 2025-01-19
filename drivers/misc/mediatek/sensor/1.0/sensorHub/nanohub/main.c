@@ -78,10 +78,10 @@ static const struct gpio_config gconf[] __maybe_unused = {
 	{ PLAT_GPIO_DEF(nreset, GPIOF_OUT_INIT_HIGH) },
 	{ PLAT_GPIO_DEF(wakeup, GPIOF_OUT_INIT_HIGH) },
 	{ PLAT_GPIO_DEF(boot0, GPIOF_OUT_INIT_LOW) },
-	{ PLAT_GPIO_DEF(irq1, GPIOF_DIR_IN),
+	{ PLAT_GPIO_DEF(irq1, GPIOF_IN),
 	  PLAT_GPIO_DEF_IRQ(irq1, 0)
 	},
-	{ PLAT_GPIO_DEF(irq2, GPIOF_DIR_IN),
+	{ PLAT_GPIO_DEF(irq2, GPIOF_IN),
 	  PLAT_GPIO_DEF_IRQ(irq2, GPIO_OPT_OPTIONAL)
 	},
 };
