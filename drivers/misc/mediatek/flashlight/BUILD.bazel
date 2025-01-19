@@ -1,0 +1,44 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-composite",
+    srcs = [
+        "mtk-composite.h",
+    ],
+    conditional_srcs = {
+      "CONFIG_MTK_V4L2_FLASHLIGHT": {
+        True: ["mtk-composite.c"],
+      },
+    },
+    copts = ["-I$(srctree)/drivers/misc/mediatek/flashlight"],
+)
+
+ddk_headers(
+     name = "flashlight_headers",
+     hdrs = glob(["*.h"]),
+     includes = ["."],
+)
