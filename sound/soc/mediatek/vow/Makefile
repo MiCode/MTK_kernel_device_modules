@@ -9,4 +9,4 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 endif
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vow/ver02
 
-obj-$(CONFIG_MTK_VOW_SUPPORT) += mtk-scp-vow.o
+#obj-$(CONFIG_MTK_VOW_SUPPORT) += mtk-scp-vow.o

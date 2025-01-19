@@ -386,6 +386,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/qos:ddk_src".format(kernel_version),
@@ -396,6 +397,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/vow:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_src".format(kernel_version),
@@ -495,6 +497,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mmc/host:ddk_kconfigs".format(kernel_version),
@@ -542,6 +545,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/vow:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:ddk_kconfigs".format(kernel_version),
@@ -817,6 +821,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla-v1-dbg".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mmc/host:mtk-mmc-dbg".format(kernel_version),
@@ -963,6 +968,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_hwz".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_zram".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:load_track".format(kernel_version),
@@ -1468,7 +1474,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/usb/usb_sram/usb_sram.ko",
     "drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko",
     "drivers/misc/mediatek/vmm/mtk-vmm-notifier.ko",
-    "drivers/misc/mediatek/vow/ver02/mtk-vow.ko",
     "drivers/misc/mediatek/widevine_drm/widevine_driver.ko",
     "drivers/mmc/host/mtk-mmc.ko",
     #"drivers/mmc/host/mtk-sd.ko",
@@ -1509,7 +1514,6 @@ mgk_64_device_modules = [
     "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
     "drivers/misc/mediatek/cameraisp/rsc/camera_rsc_isp6s.ko",
     "sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko",
-    "sound/soc/mediatek/vow/mtk-scp-vow.ko",
     "sound/soc/codecs/snd-soc-mt6366.ko",
 ]
 
@@ -1791,11 +1795,11 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/thermal/mediatek/fan_cooling.ko")
         mgk_64_device_modules.append("sound/soc/codecs/ak7709/snd-soc-ak7709.ko")
         mgk_64_device_modules.append("sound/soc/codecs/hfda80x/snd-soc-hfda80x.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
-        mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
 
     if "fpga.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus")
@@ -2215,8 +2219,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),)
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
-        mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/mt6985-mt6338.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6660.ko")
@@ -2561,7 +2565,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/power/supply/bq2589x_charger.ko")
 
@@ -2601,7 +2605,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),)
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
-        mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6660.ko")
         mgk_64_device_modules.append("sound/soc/codecs/fs18xx/snd-soc-fsm.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6358.ko")
@@ -2988,14 +2992,14 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),)
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
-        mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v1:adsp-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v2:adsp-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v3:adsp-v3".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/mt6886-mt6368.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6897/mt6897-mt6368.ko")
@@ -3660,14 +3664,14 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),)
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
-        mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v1:adsp-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v2:adsp-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v3:adsp-v3".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/mt6886-mt6368.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6897/mt6897-mt6368.ko")
@@ -4033,8 +4037,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),)
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
-        mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
 
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/mt6985-mt6338.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
@@ -4301,8 +4305,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
         mgk_64_device_modules.remove("sound/soc/mediatek/ultrasound/ultra_scp/snd-soc-mtk-scp-ultra.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
-        mgk_64_device_modules.remove("sound/soc/mediatek/vow/mtk-scp-vow.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/ppm_v3/mtk_ppm_v3.ko")
