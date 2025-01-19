@@ -123,6 +123,7 @@ GED_ERROR ged_dcs_init_platform_info(void)
 	_dcs_init_core_mask_table();
 
 	g_adjust_dcs_support = 1;
+	dcs_init_dts_with_eb();
 
 	return ret;
 }
@@ -166,6 +167,27 @@ struct gpufreq_core_mask_info *dcs_get_avail_mask_table(void)
 	}
 
 	return g_avail_mask_table;
+}
+
+void dcs_init_dts_with_eb(void)
+{
+	static bool has_init = false;
+
+	if (!has_init)
+	{
+		struct fdvfs_ipi_data ipi_data = {0};
+		int ret = 0;
+
+		ipi_data.u.set_para.arg[0] = GPUFDVFS_IPI_SET_DTS_INIT_DCS;
+		ipi_data.u.set_para.arg[1] = g_dcs_support;
+		ipi_data.u.set_para.arg[2] = g_dcs_opp_setting;
+		ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
+
+		if (ret)
+			GED_LOGD("%s err:%d\n", __func__, ret);
+
+		has_init = true;
+	}
 }
 
 int dcs_get_dcs_opp_setting(void)

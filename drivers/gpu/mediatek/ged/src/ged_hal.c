@@ -993,7 +993,7 @@ static ssize_t v_table_show(struct kobject *kobj,
 
 	if (s_num > 0) {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"\n%-5s %-8s %-8s %-8s %-5s %-5s %-8s %-8s %-8s %-8s %-8s\n",
+				"\n%-3s %-5s %-5s %-5s %-5s %-5s %-5s %-5s %-5s %-5s %-5s\n",
 				   "idx", "t_f", "vs_f", "rs_f", "r_opp", "c_num",
 				          "add_1", "add_2", "add_3", "add_4", "add_5");
 		for (i = 0; i < s_num; i++) {
@@ -1003,11 +1003,11 @@ static ssize_t v_table_show(struct kobject *kobj,
 			ret = mtk_get_fastdvfs_mode((void *)ipi_data);
 			if (ret) {
 				pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-						"%-5d %-8u %-8u %-8u %-5u %-5u",
+						"%-3d %-5u %-5u %-5u %-5u %-5u",
 							i,
-							ipi_data->u.set_para.arg[0],
-							ipi_data->u.set_para.arg[1],
-							ipi_data->u.set_para.arg[2],
+							ipi_data->u.set_para.arg[0] / 1000,
+							ipi_data->u.set_para.arg[1] / 1000,
+							ipi_data->u.set_para.arg[2] / 1000,
 							ipi_data->u.set_para.arg[3],
 							ipi_data->u.set_para.arg[4]);
 			}
@@ -1017,7 +1017,7 @@ static ssize_t v_table_show(struct kobject *kobj,
 			ret = mtk_get_fastdvfs_mode((void *)ipi_data);
 			if (ret) {
 				pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-						" %-8u %-8u %-8u %-8u %-8u\n",
+						" %-5u %-5u %-5u %-5u %-5u\n",
 							ipi_data->u.set_para.arg[0],
 							ipi_data->u.set_para.arg[1],
 							ipi_data->u.set_para.arg[2],
