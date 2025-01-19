@@ -1714,7 +1714,7 @@ static void mtk_vdec_queue_stop_enc_event(struct mtk_vcodec_ctx *ctx)
 
 void mtk_venc_queue_error_event(struct mtk_vcodec_ctx *ctx)
 {
-	static const struct v4l2_event ev_error = {
+	static struct v4l2_event ev_error = {
 		.type = V4L2_EVENT_MTK_VENC_ERROR,
 	};
 	if  (ctx->err_msg)
