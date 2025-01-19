@@ -1225,95 +1225,31 @@ CONFIG_REG:
 		| REG_FLD_VAL(FLD_TA_SURE, ta_sure)
 		| REG_FLD_VAL(FLD_TA_GET, ta_get)
 		| REG_FLD_VAL(FLD_DA_HS_EXIT, da_hs_exit);
-	if (handle)
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + DSI_PHY_TIMECON1(dsi->driver_data), value, ~0);
-	else
-		writel(value, dsi->regs + DSI_PHY_TIMECON1(dsi->driver_data));
-	if (handle)
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + DSI_CPHY_CON0(dsi->driver_data), 0x012c0003, ~0);
-	else
-		writel(0x012c0003, dsi->regs + DSI_CPHY_CON0(dsi->driver_data));
-}
 
-static void mtk_dsi_cphy_timconfig_v3(struct mtk_dsi *dsi, void *handle)
-{
-	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
-	u32 lpx;
-	u32 da_hs_prep, da_hs_zero, da_hs_trail, da_hs_exit;
-	u32 ta_go, ta_get, ta_sure;
-	u32 value = 0;
-	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
-	u32 cphy_progseq_cycle = 2;
+	if (dsi->driver_data->n_verion < VER_N3) {
+		if (handle)
+			cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+				comp->regs_pa + DSI_PHY_TIMECON1(dsi->driver_data), value, ~0);
+		else
+			writel(value, dsi->regs + DSI_PHY_TIMECON1(dsi->driver_data));
+		if (handle)
+			cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CPHY_CON0(dsi->driver_data), 0x012c0003, ~0);
+		else
+			writel(0x012c0003, dsi->regs + DSI_CPHY_CON0(dsi->driver_data));
+	} else {
+		if (handle)
+			cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CPHY_CON0(dsi->driver_data), 0x2, ~0);
+		else
+			writel(0x2, dsi->regs + DSI_CPHY_CON0(dsi->driver_data));
 
-	DDPINFO("%s data rate=%d\n", __func__, dsi->data_rate);
-
-	lpx = (dsi->data_rate * 80) / 7000 + 1;
-	lpx = (lpx % 2) ? lpx + 1 : lpx;  //lpx must be even
-	da_hs_prep = (dsi->data_rate * 50) / 7000 + 1;
-	da_hs_prep = (da_hs_prep % 2) ? da_hs_prep + 1 : da_hs_prep;  //da_hs_prep must be even
-	da_hs_zero = 48;
-	da_hs_trail = 32;
-	da_hs_exit = (dsi->data_rate * 118) / 7000 + 1;
-	da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;  //da_hs_exit must be odd
-
-	ta_go = 4 * lpx;
-	ta_get = 5 * lpx;
-	ta_sure = 3 * lpx / 2;
-
-	if (!(dsi->ext && dsi->ext->params))
-		goto CONFIG_REG;
-
-	phy_timcon = &dsi->ext->params->phy_timcon;
-
-	lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
-	da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
-	da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
-	da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
-
-	ta_get = CHK_SWITCH(phy_timcon->ta_get, ta_get);
-	ta_sure = CHK_SWITCH(phy_timcon->ta_sure, ta_sure);
-	ta_go = CHK_SWITCH(phy_timcon->ta_go, ta_go);
-	da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
-
-CONFIG_REG:
-
-	dsi->data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + 1 + lpx + cphy_progseq_cycle + 1;
-
-	value = REG_FLD_VAL(FLD_LPX, lpx)
-		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
-		| REG_FLD_VAL(FLD_HS_ZERO, da_hs_zero)
-		| REG_FLD_VAL(FLD_HS_TRAIL, da_hs_trail);
-
-	if (handle)
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + DSI_PHY_TIMECON0(dsi->driver_data), value, ~0);
-	else
-		writel(value, dsi->regs + DSI_PHY_TIMECON0(dsi->driver_data));
-
-	value = REG_FLD_VAL(FLD_TA_GO, ta_go)
-		| REG_FLD_VAL(FLD_TA_SURE, ta_sure)
-		| REG_FLD_VAL(FLD_TA_GET, ta_get)
-		| REG_FLD_VAL(FLD_DA_HS_EXIT, da_hs_exit);
-
-	if (handle)
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + DSI_PHY_TIMECON1(dsi->driver_data), value, ~0);
-	else
-		writel(value, dsi->regs + DSI_PHY_TIMECON1(dsi->driver_data));
-
-	if (handle)
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + DSI_CPHY_CON0(dsi->driver_data), 0x2, ~0);
-	else
-		writel(0x2, dsi->regs + DSI_CPHY_CON0(dsi->driver_data));
-
-	if (handle)
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + DSI_PHY_CON(dsi->driver_data), 0x3f3f0001, ~0);
-	else
-		writel(0x3f3f0001, dsi->regs + DSI_PHY_CON(dsi->driver_data));
+		if (handle)
+			cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+				comp->regs_pa + DSI_PHY_CON(dsi->driver_data), 0x3f3f0001, ~0);
+		else
+			writel(0x3f3f0001, dsi->regs + DSI_PHY_CON(dsi->driver_data));
+	}
 }
 
 static void mtk_dsi_cphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
@@ -1428,10 +1364,8 @@ static void mtk_dsi_cphy_timconfig(struct mtk_dsi *dsi, void *handle)
 	if (dsi && dsi->driver_data) {
 		if (dsi->driver_data->n_verion <= VER_N6)
 			mtk_dsi_cphy_timconfig_v1(dsi, handle);
-		else if (dsi->driver_data->n_verion <= VER_N4)
-			mtk_dsi_cphy_timconfig_v2(dsi, handle);
 		else
-			mtk_dsi_cphy_timconfig_v3(dsi, handle);
+			mtk_dsi_cphy_timconfig_v2(dsi, handle);
 	}
 }
 
@@ -11043,24 +10977,8 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 
 	if (panel_params->is_cphy) {
 		/* CPHY */
-		ui = (1000 / data_rate > 0) ? 1000 / data_rate : 1;
-		cycle_time = 7000 / data_rate;
-
-		lpx = NS_TO_CYCLE(75, cycle_time) + 1;
-		hs_prpr = NS_TO_CYCLE(64, cycle_time) + 1;
-		hs_zero = NS_TO_CYCLE((336 * ui), cycle_time);
-		hs_trail = NS_TO_CYCLE((203 * ui), cycle_time);
-		da_hs_exit = NS_TO_CYCLE(125, cycle_time) + 1;
-
 		phy_timcon = &panel_params->phy_timcon;
-
-		lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
-		hs_prpr = CHK_SWITCH(phy_timcon->hs_prpr, hs_prpr);
-		hs_zero = CHK_SWITCH(phy_timcon->hs_zero, hs_zero);
-		hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
-		da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
-
-		if (dsi->driver_data->n_verion >= VER_N3) {
+		if (dsi->driver_data->n_verion >= VER_N4) {
 			u32 cphy_progseq_cycle = 2;
 
 			lpx = (dsi->data_rate * 80) / 7000 + 1;
@@ -11072,27 +10990,47 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 			da_hs_exit = (dsi->data_rate * 118) / 7000 + 1;
 			da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;  //da_hs_exit must be odd
 
-			lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
-			da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
-			da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
-			da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
-			da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+			if (phy_timcon) {
+				lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+				da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+				da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+				da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+				da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+			}
 
 			data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + 1 + lpx + cphy_progseq_cycle + 1;
+		} else {
+			ui = (1000 / data_rate > 0) ? 1000 / data_rate : 1;
+			cycle_time = 7000 / data_rate;
+
+			lpx = NS_TO_CYCLE(75, cycle_time) + 1;
+			hs_prpr = NS_TO_CYCLE(64, cycle_time) + 1;
+			hs_zero = NS_TO_CYCLE((336 * ui), cycle_time);
+			hs_trail = NS_TO_CYCLE((203 * ui), cycle_time);
+			da_hs_exit = NS_TO_CYCLE(125, cycle_time) + 1;
+
+			if (phy_timcon) {
+				lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+				hs_prpr = CHK_SWITCH(phy_timcon->hs_prpr, hs_prpr);
+				hs_zero = CHK_SWITCH(phy_timcon->hs_zero, hs_zero);
+				hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
+				da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+			}
 		}
 
 		if (panel_params->lp_perline_en) {
 			/* LP per line */
-			line_time =
-				lpx + hs_prpr + hs_zero + 2 + 1 +
-				DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
-				(CEILING(1 + ps_wc + 2, 2) / 2)),
-				dsi->lanes) + hs_trail + 1 + da_hs_exit + 1;
-			if (dsi->driver_data->n_verion >= VER_N3)
+			if (dsi->driver_data->n_verion >= VER_N4)
 				line_time = data_phy_cycle +
 					DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
 					(CEILING(1 + ps_wc + 2, 2) / 2)),
 					dsi->lanes) + da_hs_trail + 1;
+			else
+				line_time =
+					lpx + hs_prpr + hs_zero + 2 + 1 +
+					DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
+					(CEILING(1 + ps_wc + 2, 2) / 2)),
+					dsi->lanes) + hs_trail + 1 + da_hs_exit + 1;
 		} else {
 			if (panel_params->cmd_null_pkt_en) {
 				/* Keep HS + Dummy cycle */
@@ -11468,24 +11406,9 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 
 			if (ext->params->is_cphy) {
 				/* CPHY */
-				ui = (1000 / data_rate > 0) ? 1000 / data_rate : 1;
-				cycle_time = 7000 / data_rate;
-
-				lpx = NS_TO_CYCLE(75, cycle_time) + 1;
-				hs_prpr = NS_TO_CYCLE(64, cycle_time) + 1;
-				hs_zero = NS_TO_CYCLE((336 * ui), cycle_time);
-				hs_trail = NS_TO_CYCLE((203 * ui), cycle_time);
-				da_hs_exit = NS_TO_CYCLE(125, cycle_time) + 1;
-
 				phy_timcon = &ext->params->phy_timcon;
 
-				lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
-				hs_prpr = CHK_SWITCH(phy_timcon->hs_prpr, hs_prpr);
-				hs_zero = CHK_SWITCH(phy_timcon->hs_zero, hs_zero);
-				hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
-				da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
-
-				if (dsi->driver_data->n_verion >= VER_N3) {
+				if (dsi->driver_data->n_verion >= VER_N4) {
 					u32 cphy_progseq_cycle = 2;
 
 					lpx = (dsi->data_rate * 80) / 7000 + 1;
@@ -11497,30 +11420,50 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 					da_hs_exit = (dsi->data_rate * 118) / 7000 + 1;
 					da_hs_exit = (da_hs_exit % 2) ? da_hs_exit + 2 : da_hs_exit + 1;  //da_hs_exit must be odd
 
-					lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
-					da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
-					da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
-					da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
-					da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+					if (phy_timcon) {
+						lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+						da_hs_prep = CHK_SWITCH(phy_timcon->hs_prpr, da_hs_prep);
+						da_hs_zero = CHK_SWITCH(phy_timcon->hs_zero, da_hs_zero);
+						da_hs_trail = CHK_SWITCH(phy_timcon->hs_trail, da_hs_trail);
+						da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+					}
 
 					data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + 1 + lpx + cphy_progseq_cycle + 1;
+				} else {
+					ui = (1000 / data_rate > 0) ? 1000 / data_rate : 1;
+					cycle_time = 7000 / data_rate;
+
+					lpx = NS_TO_CYCLE(75, cycle_time) + 1;
+					hs_prpr = NS_TO_CYCLE(64, cycle_time) + 1;
+					hs_zero = NS_TO_CYCLE((336 * ui), cycle_time);
+					hs_trail = NS_TO_CYCLE((203 * ui), cycle_time);
+					da_hs_exit = NS_TO_CYCLE(125, cycle_time) + 1;
+
+					if (phy_timcon) {
+						lpx = CHK_SWITCH(phy_timcon->lpx, lpx);
+						hs_prpr = CHK_SWITCH(phy_timcon->hs_prpr, hs_prpr);
+						hs_zero = CHK_SWITCH(phy_timcon->hs_zero, hs_zero);
+						hs_trail = CHK_SWITCH(phy_timcon->hs_trail, hs_trail);
+						da_hs_exit = CHK_SWITCH(phy_timcon->da_hs_exit, da_hs_exit);
+					}
 				}
 
 				image_time = DIV_ROUND_UP(DIV_ROUND_UP(ps_wc, 2), dsi->lanes);
 
 				if (ext->params->lp_perline_en) {
 					/* LP per line */
-					line_time =
-						lpx + hs_prpr + hs_zero + 2 + 1 +
-						DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
-							(CEILING(1 + ps_wc + 2, 2) / 2)),
-								dsi->lanes) +
-						hs_trail + 1 + da_hs_exit + 1;
-					if (dsi->driver_data->n_verion >= VER_N3)
+					if (dsi->driver_data->n_verion >= VER_N4)
 						line_time = data_phy_cycle +
 							DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
 							(CEILING(1 + ps_wc + 2, 2) / 2)),
 							dsi->lanes) + da_hs_trail + 1;
+					else
+						line_time =
+							lpx + hs_prpr + hs_zero + 2 + 1 +
+							DIV_ROUND_UP(((dsi->lanes * 3) + 3 + 3 +
+							(CEILING(1 + ps_wc + 2, 2) / 2)),
+							dsi->lanes) +
+							hs_trail + 1 + da_hs_exit + 1;
 				} else {
 					if (dsi->ext->params->cmd_null_pkt_en && dsi->dummy_cmd_en) {
 						/* Keep HS + Dummy cycle */
