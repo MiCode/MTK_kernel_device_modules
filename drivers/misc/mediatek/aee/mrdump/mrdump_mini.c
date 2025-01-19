@@ -427,14 +427,25 @@ static void mrdump_mini_build_task_info(struct pt_regs *regs)
 		}
 	}
 #endif
-	snprintf(cur_proc->ke_frame.pc_symbol, AEE_SZ_SYMBOL_S,
-		"[<%px>] %pS",
-		(void *)(unsigned long)cur_proc->ke_frame.pc,
-		(void *)(unsigned long)cur_proc->ke_frame.pc);
-	snprintf(cur_proc->ke_frame.lr_symbol, AEE_SZ_SYMBOL_L,
-		"[<%px>] %pS",
-		(void *)(unsigned long)cur_proc->ke_frame.lr,
-		(void *)(unsigned long)cur_proc->ke_frame.lr);
+	int ret = snprintf(cur_proc->ke_frame.pc_symbol, AEE_SZ_SYMBOL_S,
+			"[<%px>] %pS",
+			(void *)(unsigned long)cur_proc->ke_frame.pc,
+			(void *)(unsigned long)cur_proc->ke_frame.pc);
+
+	if (ret < 0)
+		pr_info("%s: pc_symbol snprintf failed\n", __func__);
+	else if (ret >= AEE_SZ_SYMBOL_S)
+		pr_info("%s: pc_symbol truncated to: %s\n", __func__, cur_proc->ke_frame.pc_symbol);
+
+	ret = snprintf(cur_proc->ke_frame.lr_symbol, AEE_SZ_SYMBOL_L,
+			"[<%px>] %pS",
+			(void *)(unsigned long)cur_proc->ke_frame.lr,
+			(void *)(unsigned long)cur_proc->ke_frame.lr);
+
+	if (ret < 0)
+		pr_info("%s: lr_symbol snprintf failed\n", __func__);
+	else if (ret >= AEE_SZ_SYMBOL_L)
+		pr_info("%s: lr_symbol truncated to: %s\n", __func__, cur_proc->ke_frame.lr_symbol);
 }
 
 /*
@@ -468,7 +479,13 @@ int mrdump_mini_add_extra_file(unsigned long vaddr, unsigned long paddr,
 		pr_warn("mrdump: file size of %s is too large 0x%lx\n",
 			name, size);
 
-	snprintf(name_buf, SZ_128, "_%s_", name);
+	int ret = snprintf(name_buf, SZ_128, "_%s_", name);
+
+	if (ret < 0)
+		pr_info ("%s: snprintf failed\n", __func__);
+	else if (ret >= SZ_128)
+		pr_info("%s: name truncated to %s\n", __func__, name_buf);
+
 	mrdump_mini_add_misc_pa(vaddr, paddr, size, 0, name_buf);
 	return 0;
 }
