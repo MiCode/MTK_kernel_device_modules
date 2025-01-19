@@ -154,6 +154,7 @@ enum gpufreq_config_target {
 	CONFIG_MFG2_BEFORE_OFF       = 18,
 	CONFIG_DEVAPC_HANDLE         = 19,
 	CONFIG_GPU_PROFILING         = 20,
+	CONFIG_DCS                   = 21,
 	CONFIG_AP_IMPL_BOUNDARY      = 100, /* implement on AP */
 	CONFIG_WB_TEST_ONCE          = 101,
 	CONFIG_WB_MFG1_SLAVE_STRESS  = 102,
