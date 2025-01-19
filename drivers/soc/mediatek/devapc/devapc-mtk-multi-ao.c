@@ -277,10 +277,12 @@ static void mask_module_irq(int slave_type, uint32_t module, bool mask)
 		reg = mtk_devapc_pd_get(slave_type, VIO_MASK,
 				apc_register_index);
 
-		if (mask)
-			writel(readl(reg) | (1 << apc_set_index), reg);
-		else
-			writel(readl(reg) & (~(1 << apc_set_index)), reg);
+		if (reg) {
+			if (mask)
+				writel(readl(reg) | (1 << apc_set_index), reg);
+			else
+				writel(readl(reg) & (~(1 << apc_set_index)), reg);
+		}
 
 	} else
 		pr_err(PFX "%s: %s, %s:0x%x, %s:0x%x, %s:%s\n",
