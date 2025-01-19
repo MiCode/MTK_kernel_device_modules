@@ -2300,6 +2300,8 @@ static int __init core_ctl_init(void)
 	ret = register_trace_android_vh_scheduler_tick(core_ctl_tick, NULL);
 	if (ret) {
 		ret_error_line = __LINE__;
+		pr_info("%s: vendor hook register failed ret %d line %d\n",
+			TAG, ret, ret_error_line);
 		goto failed_exit_sched_avg;
 	}
 
