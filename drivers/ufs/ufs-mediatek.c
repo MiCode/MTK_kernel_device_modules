@@ -1511,9 +1511,15 @@ static bool ufs_host_mcq_support(struct ufs_hba *hba)
 
 static int ufs_mtk_cpu_online_notify(unsigned int cpu, struct hlist_node *node)
 {
-	struct ufs_mtk_host *host = hlist_entry_safe(node, struct ufs_mtk_host, cpuhp_node);
-	struct ufs_hba *hba = host->hba;
+	struct ufs_mtk_host *host;
+	struct ufs_hba *hba;
 	int ret = 0;
+
+	if (!node)
+		return 0;
+
+	host = hlist_entry_safe(node, struct ufs_mtk_host, cpuhp_node);
+	hba = host->hba;
 
 	if (is_mcq_enabled(hba) && cpu != 0) {
 		ufs_mtk_mcq_set_irq_affinity(hba, cpu);
@@ -1534,11 +1540,17 @@ static int ufs_mtk_cpu_online_notify(unsigned int cpu, struct hlist_node *node)
 
 static int ufs_mtk_cpu_offline_notify(unsigned int cpu, struct hlist_node *node)
 {
-	struct ufs_mtk_host *host = hlist_entry_safe(node, struct ufs_mtk_host, cpuhp_node);
-	struct ufs_hba *hba = host->hba;
+	struct ufs_mtk_host *host;
+	struct ufs_hba *hba;
 	struct cpumask mask;
 	unsigned int irq;
 	int ret = 0;
+
+	if (!node)
+		return 0;
+
+	host = hlist_entry_safe(node, struct ufs_mtk_host, cpuhp_node);
+	hba = host->hba;
 
 	if (cpu == 3) {
 		/* Avoid binding irq affinity to CPU0 or CPU3 (off) */
