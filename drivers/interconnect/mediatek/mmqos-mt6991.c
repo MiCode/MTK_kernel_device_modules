@@ -144,6 +144,10 @@ static const struct mtk_node_desc node_descs_mt6991[] = {
 		MASTER_LARB_PORT(SMMU_L1_P10_OVL_RDMA6_STASH),             5, true,  0x0, SLAVE_LARB(1)),
 	DEFINE_MNODE(mdp_rdma1_stash_larb1_11,
 		MASTER_LARB_PORT(SMMU_L1_P11_MDP_RDMA1_STASH),             5, true,  0x0, SLAVE_LARB(1)),
+	DEFINE_MNODE(disp_bwm0_larb1_12,
+		MASTER_LARB_PORT(SMMU_L1_P12_DISP_BWM0),                   7, false, 0x0, SLAVE_LARB(1)),
+	DEFINE_MNODE(disp_bwm0_stash_larb1_13,
+		MASTER_LARB_PORT(SMMU_L1_P13_DISP_BWM0_STASH),             5, true,  0x0, SLAVE_LARB(1)),
 	DEFINE_MNODE(disp_fake1_larb1_15,
 		MASTER_LARB_PORT(SMMU_L1_P15_DISP_FAKE1),                  8, false, 0x0, SLAVE_LARB(1)),
 	/* LARB2 */
