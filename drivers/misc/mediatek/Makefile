@@ -140,7 +140,6 @@ obj-$(CONFIG_MTK_LEGACY_THERMAL) += thermal/
 obj-$(CONFIG_MTK_PPM_V3) += ppm_v3/
 obj-$(CONFIG_MTK_MT6382_BDG) += spi_slave_drv/
 obj-$(CONFIG_MTK_PKVM_TMEM) += pkvm_tmem/
-obj-$(CONFIG_MTK_WLA) += wla/
 obj-$(CONFIG_MTK_SPM_CAREVENT) += carevent/
 obj-$(CONFIG_ARM) += arm_div/
 obj-$(CONFIG_ROOTFS_CHECK) += rootfs_check/
