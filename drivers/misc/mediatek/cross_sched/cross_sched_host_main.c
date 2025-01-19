@@ -169,16 +169,18 @@ static void vm_get_host_cpu_util(void)
 
 	host_cpu_util_sum = 0;
 	for_each_possible_cpu(cpu) {
-		if (!cpu_online(cpu) || !cpu_active(cpu)) {
-			host_cpu[cpu].util = 0;
-		} else {
-			util_org = READ_ONCE(cpu_rq(cpu)->cfs.avg.util_avg);
-			if (sched_feat(UTIL_EST))
-				util_org = max_t(unsigned long, util_org,
-					READ_ONCE(cpu_rq(cpu)->cfs.avg.util_est.enqueued));
-			host_cpu[cpu].util = min(util_org, READ_ONCE(cpu_rq(cpu)->cpu_capacity_orig));
+		if (cpu >= 0 && cpu < VM_CPU_NUM) {
+			if (!cpu_online(cpu) || !cpu_active(cpu)) {
+				host_cpu[cpu].util = 0;
+			} else {
+				util_org = READ_ONCE(cpu_rq(cpu)->cfs.avg.util_avg);
+				if (sched_feat(UTIL_EST))
+					util_org = max_t(unsigned long, util_org,
+						READ_ONCE(cpu_rq(cpu)->cfs.avg.util_est.enqueued));
+				host_cpu[cpu].util = min(util_org, READ_ONCE(cpu_rq(cpu)->cpu_capacity_orig));
+			}
+			host_cpu_util_sum += host_cpu[cpu].util;
 		}
-		host_cpu_util_sum += host_cpu[cpu].util;
 	}
 }
 
@@ -385,6 +387,7 @@ static void select_offline_vm_cpu(unsigned long cpu_util_sum,
 	}
 }
 
+#define VIRTIO_VM_EVENT_DATA_SIZE 256
 /*vhost_trigger_sched_sync: trigger sched sync to client*/
 static void vhost_trigger_sched_sync(struct vhost_virtqueue *vq, const char *data)
 {
@@ -402,7 +405,8 @@ static void vhost_trigger_sched_sync(struct vhost_virtqueue *vq, const char *dat
 
 	evt = container_of(node, typeof(*evt), llnode);
 	evt->event.type = VIRTIO_VM_EVENT_TYPE_NORMAL;
-	strcpy(evt->event.data, data);
+	strscpy(evt->event.data, data, VIRTIO_VM_EVENT_DATA_SIZE - 1);
+	evt->event.data[VIRTIO_VM_EVENT_DATA_SIZE - 1] = '\0';
 
 	vhost_vq_work_queue(vq, &vm->work);
 }
@@ -509,9 +513,15 @@ static int vm_sched_host_thread(void *ptr)
 
 	struct trigger_arg *arg = kvzalloc(sizeof(*arg), GFP_KERNEL);
 
+	if (!arg)
+		return -ENOMEM;
+
 	arg->vm = ptr;
 
-	sched_setscheduler(current, SCHED_FIFO, &param);
+	if (sched_setscheduler(current, SCHED_FIFO, &param) != 0) {
+		kfree(arg);
+		return -EFAULT;
+	}
 
 	sched_host_thread = true;
 
@@ -600,10 +610,12 @@ static void vhost_vm_handle_guest_cmd_kick(struct vhost_work *work)
 
 	vq = container_of(work, struct vhost_virtqueue, poll.work);
 	vm = container_of(vq->dev, struct vhost_vm, dev);
+	memset(&req, 0, sizeof(req));
+	memset(&resp, 0, sizeof(resp));
 
 	vhost_disable_notify(&vm->dev, vq);
 	for (;;) {
-		int in, out, ret, used = 0;
+		int in = 0, out = 0, ret = 0, used = 0;
 		size_t out_size, in_size;
 		struct iovec *out_iov, *in_iov;
 		struct iov_iter out_iter, in_iter;
