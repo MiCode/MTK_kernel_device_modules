@@ -122,3 +122,18 @@ define_mgk_ddk_ko(
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
 	],
 )
+
+define_mgk_ddk_ko(
+	name = "irq-dbg",
+	srcs = [
+		"irq-dbg.c",
+	],
+	includes = ["include"],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(srctree)/kernel",
+	],
+)
