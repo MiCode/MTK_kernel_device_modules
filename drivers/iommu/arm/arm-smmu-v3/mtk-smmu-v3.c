@@ -2513,7 +2513,7 @@ static void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 
 	smmu_debug_dump(smmu, false, false);
 
-	if (data->plat_data->smmu_type == MM_SMMU) {
+	if (MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_HANG_DETECT)) {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 		mtk_smi_dbg_hang_detect("iommu");
 #endif
@@ -3006,7 +3006,7 @@ static const struct mtk_smmu_plat_data mt6993_data_mm = {
 	.smmu_plat		= SMMU_MT6993,
 	.smmu_type		= MM_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | /* SMMU_SEC_EN | SMMU_HYP_EN | */
-				  SMMU_EXTRA_DCM_EN | SMMU_HANG_DETECT | SMMU_CLK_AO_EN,
+				  SMMU_EXTRA_DCM_EN | /* SMMU_HANG_DETECT | */SMMU_CLK_AO_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6993_data_apu = {

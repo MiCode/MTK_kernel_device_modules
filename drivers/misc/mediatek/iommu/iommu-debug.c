@@ -61,6 +61,10 @@
 		char m4u_name[150];\
 		if (snprintf(m4u_name, 150, "[M4U]"string, ##args) < 0) \
 			break; \
+		if (iommu_bring_up_enable()) {\
+			pr_info("[M4U] error:"string, ##args);\
+			break;\
+		}\
 	aee_kernel_warning_api(__FILE__, __LINE__, \
 		DB_OPT_MMPROFILE_BUFFER | DB_OPT_DUMP_DISPLAY, \
 		m4u_name, "[M4U] error"string, ##args); \
@@ -145,6 +149,7 @@ struct mtk_m4u_plat_data {
 	char *(*peri_tf_analyse)(enum peri_iommu bus_id, u32 id);
 	int (*smmu_common_id)(u32 type, u32 tbu_id);
 	char *(*smmu_port_name)(u32 type, int id, int tf_id);
+	bool bring_up_enable;
 };
 
 struct peri_iommu_data {
@@ -302,6 +307,11 @@ static void mtk_iommu_iova_alloc_dump_top(struct seq_file *s);
 static int mtk_iommu_iova_alloc_dump(struct seq_file *s);
 static int mtk_iommu_iova_map_dump(struct seq_file *s, u64 iova, u64 tab_id);
 static int mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id);
+
+static inline bool __maybe_unused iommu_bring_up_enable(void)
+{
+	return IOMMU_BRING_UP || m4u_data->plat_data->bring_up_enable;
+}
 
 static inline void mtk_iova_count_inc(void)
 {
@@ -2454,10 +2464,12 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 	INIT_LIST_HEAD(&count_list.head);
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && !IOMMU_BRING_UP
-	iommu_mrdump_buffer = kzalloc(MAX_IOMMU_MRDUMP_SIZE, GFP_KERNEL);
-	if (iommu_mrdump_buffer) {
-		iommu_mrdump_proc = mtk_iommu_mrdump;
-		mrdump_set_extra_dump(AEE_EXTRA_FILE_IOMMU, get_iommu_mrdump_buffer);
+	if (!iommu_bring_up_enable()) {
+		iommu_mrdump_buffer = kzalloc(MAX_IOMMU_MRDUMP_SIZE, GFP_KERNEL);
+		if (iommu_mrdump_buffer) {
+			iommu_mrdump_proc = mtk_iommu_mrdump;
+			mrdump_set_extra_dump(AEE_EXTRA_FILE_IOMMU, get_iommu_mrdump_buffer);
+		}
 	}
 #endif
 
@@ -3631,6 +3643,7 @@ static const struct mtk_m4u_plat_data mt6993_smmu_data = {
 	.mm_tf_is_gce_videoup = mt6993_tf_is_gce_videoup,
 	.smmu_common_id = default_smmu_common_id,
 	.smmu_port_name = mt6993_smmu_soc_port_name,
+	.bring_up_enable = true,
 };
 
 static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
