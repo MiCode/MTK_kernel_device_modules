@@ -1492,7 +1492,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 0,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_DIP] = {
 		.name = "isp-dip",
@@ -1504,7 +1504,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 1,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_MAIN] = {
 		.name = "isp-main",
@@ -1520,7 +1520,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 			.hwv_debug_mux_ofs_opt = 0x174,
 			.hwv_debug_mux_shift_opt = 0x3000000,
 		},
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap | MTK_SCPD_HWV_CHK_MUX_OPT,
 	},
 	[MT6991_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
@@ -1532,7 +1532,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 3,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_EIS] = {
 		.name = "isp-wpe-eis",
@@ -1544,7 +1544,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 4,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_TNR] = {
 		.name = "isp-wpe-tnr",
@@ -1556,7 +1556,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 5,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_ISP_WPE_LITE] = {
 		.name = "isp-wpe-lite",
@@ -1568,7 +1568,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 6,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_BYPASS_INIT_ON | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VDE0] = {
 		.name = "vde0",
