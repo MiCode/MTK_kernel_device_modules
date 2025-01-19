@@ -261,7 +261,9 @@
 
 /* DPMAIF_UL_INT_EMPTY_MSK | */
 #define AP_UL_L2INTR_En_Msk    (AP_UL_L2INTR_ERR_En_Msk | DPMAIF_UL_INT_QDONE_MSK)
-
+/* dl&ul mask check */
+#define AP_DL_L2INTR_Msk_Check ((~AP_DL_L2INTR_En_Msk)&0x1FFF)
+#define AP_UL_L2INTR_Msk_Check ((~AP_UL_L2INTR_En_Msk)&0x7FFF)
 
 #define DPMAIF_PIT_SIZE_MSK            0xFFFF
 #define DPMAIF_DL_PIT_WRIDX_MSK        0xFFFF
