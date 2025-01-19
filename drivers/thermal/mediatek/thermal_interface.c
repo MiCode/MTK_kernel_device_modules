@@ -548,49 +548,71 @@ int set_cold_interrupt_enable_addr(int val)
 }
 EXPORT_SYMBOL(set_cold_interrupt_enable_addr);
 
-int set_gpu_pre_throttle(int temp)
+int set_gpu_pre_throttle(int temp, int index)
 {
+	int gpt_ctrl = 0;
+
 	if (!tm_data.sw_ready)
 		return -ENODEV;
 
-	therm_intf_write_csram(temp, GPU_PRE_THROTTLE_TEMP_OFFSET);
+	gpt_ctrl = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OFFSET);
+	if (gpt_ctrl == 0)
+		return 0;
+
+	if (index == 1)
+		therm_intf_write_csram(temp, GPU_PRE_THROTTLE_TEMP_OFFSET_1);
+	else if (index == 2)
+		therm_intf_write_csram(temp, GPU_PRE_THROTTLE_TEMP_OFFSET_2);
 
 	return 0;
 }
 EXPORT_SYMBOL(set_gpu_pre_throttle);
 
-int get_gpu_pre_throttle_temp(void)
+int get_gpu_pre_throttle_temp(int index)
 {
 	int temp = 0xFFFF;
 
 	if (!tm_data.sw_ready)
 		return temp;
-
-	temp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET);
+	if (index == 1)
+		temp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET_1);
+	else if (index == 2)
+		temp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET_2);
 
 	return temp;
 }
 EXPORT_SYMBOL(get_gpu_pre_throttle_temp);
 
-int set_gpu_pre_throttle_opp(int opp)
+int set_gpu_pre_throttle_opp(int opp, int index)
 {
+	int gpt_ctrl = 0;
+
 	if (!tm_data.sw_ready)
 		return -ENODEV;
 
-	therm_intf_write_csram(opp, GPU_PRE_THROTTLE_OPP_OFFSET);
+	gpt_ctrl = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OFFSET);
+	if (gpt_ctrl == 0)
+		return 0;
+
+	if (index == 1)
+		therm_intf_write_csram(opp, GPU_PRE_THROTTLE_OPP_OFFSET_1);
+	else if (index == 2)
+		therm_intf_write_csram(opp, GPU_PRE_THROTTLE_OPP_OFFSET_2);
 
 	return 0;
 }
 EXPORT_SYMBOL(set_gpu_pre_throttle_opp);
 
-int get_gpu_pre_throttle_opp(void)
+int get_gpu_pre_throttle_opp(int index)
 {
 	int opp = 0;
 
 	if (!tm_data.sw_ready)
 		return opp;
-
-	opp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET);
+	if (index == 1)
+		opp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET_1);
+	else if (index == 2)
+		opp = therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET_2);
 
 	return opp;
 }
@@ -1989,36 +2011,57 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
-static ssize_t gpu_pre_throttle_show(struct kobject *kobj,
+static ssize_t gpt_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d\n",
-		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET),
-		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET));
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d\n",
+		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET_1),
+		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET_1),
+		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_TEMP_OFFSET_2),
+		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OPP_OFFSET_2),
+		therm_intf_read_csram_s32(GPU_PRE_THROTTLE_OFFSET));
 
 	return len;
 }
 
-static ssize_t gpu_pre_throttle_store(struct kobject *kobj,
+static ssize_t gpt_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	char cmd[20];
-	int temp,opp;
+	int index,temp,opp;
 
-	if (sscanf(buf, "%16s %d %d ", cmd, &temp, &opp)
-		== 3) {
-		if (strncmp(cmd, "gpu_pre_throttle", 16) == 0) {
-			// therm_intf_write_csram(temp, GPU_PRE_THROTTLE_TEMP_OFFSET);
-			set_gpu_pre_throttle(temp);
-			therm_intf_write_csram(opp, GPU_PRE_THROTTLE_OPP_OFFSET);
+	if (sscanf(buf, "%3s %d %d %d ", cmd, &index, &temp, &opp)
+		== 4) {
+		if (strncmp(cmd, "gpt", 3) == 0) {
+			set_gpu_pre_throttle(temp, index);
+			set_gpu_pre_throttle_opp(opp, index);
 
 			return count;
 		}
 	}
 
-	pr_info("[gpu_pre_throttle] invalid input\n");
+	if (sscanf(buf, "%7s", cmd) == 1) {
+		if (strncmp(cmd, "disable", 7) == 0) {
+			set_gpu_pre_throttle(120000, 1);
+			set_gpu_pre_throttle(120000, 2);
+			therm_intf_write_csram(0, GPU_PRE_THROTTLE_OFFSET);
+			return count;
+		}
+	}
+
+	if (sscanf(buf, "%6s", cmd) == 1) {
+		if (strncmp(cmd, "enable", 6) == 0) {
+			therm_intf_write_csram(1, GPU_PRE_THROTTLE_OFFSET);
+			set_gpu_pre_throttle(0xFFFF, 1);
+			set_gpu_pre_throttle(0xFFFF, 2);
+
+			return count;
+		}
+	}
+
+	pr_info("[gpt] invalid input\n");
 
 	return -EINVAL;
 }
@@ -2062,7 +2105,7 @@ static struct kobj_attribute lvts_info1_attr = __ATTR_RO(lvts_info1);
 static struct kobj_attribute lvts_info2_attr = __ATTR_RO(lvts_info2);
 static struct kobj_attribute lvts_info3_attr = __ATTR_RO(lvts_info3);
 static struct kobj_attribute thermal_hint_attr = __ATTR_RW(thermal_hint);
-static struct kobj_attribute gpu_pre_throttle_attr = __ATTR_RW(gpu_pre_throttle);
+static struct kobj_attribute gpt_attr = __ATTR_RW(gpt);
 
 
 
@@ -2105,7 +2148,7 @@ static struct attribute *thermal_attrs[] = {
 	&lvts_info2_attr.attr,
 	&lvts_info3_attr.attr,
 	&thermal_hint_attr.attr,
-	&gpu_pre_throttle_attr.attr,
+	&gpt_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {
