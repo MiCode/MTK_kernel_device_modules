@@ -86,23 +86,26 @@ static inline void logstore_wait_on_buffer(struct buffer_head *bh)
 
 static int get_partition_info(void)
 {
-	struct file *bdev_file;
 	struct block_device *bdev;
 	dev_t dev_num = 0;
 
-	if (expdb_logstore->bdev)
+	if (expdb_logstore->bdev && expdb_logstore->bdev_file)
 		return 0;
+	if(expdb_logstore->bdev_file)
+		bdev_fput(expdb_logstore->bdev_file);
 
 	if (lookup_bdev(EXPDB_PATH, &dev_num) != 0 || dev_num == 0)
 		return -EIO;
 
-	bdev_file = bdev_file_open_by_dev(dev_num, FMODE_WRITE | FMODE_READ, NULL, NULL);
-	if (IS_ERR(bdev_file))
+	expdb_logstore->bdev_file = bdev_file_open_by_dev(dev_num, FMODE_WRITE | FMODE_READ, NULL, NULL);
+	if (IS_ERR(expdb_logstore->bdev_file)) {
+		expdb_logstore->bdev_file = NULL;
 		return -EIO;
+	}
 
-	bdev = file_bdev(bdev_file);
+	bdev = file_bdev(expdb_logstore->bdev_file);
 	if (!bdev) {
-		fput(bdev_file);
+		bdev_fput(expdb_logstore->bdev_file);
 		return -EIO;
 	}
 
@@ -118,7 +121,7 @@ static int get_partition_info(void)
 			EXPDB_PATH, (unsigned long)expdb_logstore->part_size, expdb_logstore->block_size,
 			(unsigned long)expdb_logstore->bootlog_offset, (unsigned long)expdb_logstore->logstore_offset,
 			(unsigned long)expdb_logstore->logindex_offset);
-	fput(bdev_file);
+
 	return 0;
 }
 
@@ -190,7 +193,7 @@ int set_emmc_config(int type, int value)
 		return -1;
 	}
 
-	if (expdb_logstore->bdev == NULL) {
+	if (expdb_logstore->bdev == NULL || expdb_logstore->bdev_file == NULL) {
 		ret = get_partition_info();
 		if (ret != 0)
 			return ret;
@@ -230,7 +233,7 @@ int read_emmc_config(struct log_emmc_header *log_header)
 {
 	int ret = 0;
 
-	if (expdb_logstore->bdev == NULL)
+	if (expdb_logstore->bdev == NULL || expdb_logstore->bdev_file == NULL)
 		if (get_partition_info() != 0)
 			return -EIO;
 
@@ -268,7 +271,7 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 	if (expdb_logstore == NULL)
 		return -1;
 
-	if (expdb_logstore->bdev == NULL)
+	if (expdb_logstore->bdev == NULL || expdb_logstore->bdev_file == NULL)
 		if (get_partition_info() != 0)
 			return -EIO;
 
@@ -389,7 +392,7 @@ static int boot_log_write_to_partition(char *buffer, size_t write_len)
 	u32 block_reserve_size = 0, block_offset = 0, write_pos = 0;
 	u32 remaining_write_len = 0, write_chunk_size = 0;
 
-	if (expdb_logstore->bdev == NULL)
+	if (expdb_logstore->bdev == NULL || expdb_logstore->bdev_file == NULL)
 		if (get_partition_info() != 0)
 			return -EIO;
 
@@ -456,7 +459,7 @@ static void bootlog_to_partition(void)
 {
 	u32 write_len = 0;
 
-	if (expdb_logstore->bdev == NULL)
+	if (expdb_logstore->bdev == NULL || expdb_logstore->bdev_file == NULL)
 		if (get_partition_info() != 0)
 			return;
 
@@ -724,7 +727,7 @@ void set_boot_phase(u32 step)
 	if (expdb_logstore == NULL)
 		return;
 
-	if (expdb_logstore->bdev == NULL)
+	if (expdb_logstore->bdev == NULL || expdb_logstore->bdev_file == NULL)
 		if (get_partition_info() != 0)
 			return;
 
@@ -980,7 +983,7 @@ int log_store_late_init(void)
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 	if (boot_mode == NORMAL_BOOT_MODE &&
-		sram_header->reserve[SRAM_EXPDB_VER] != FLAG_VERSION_0)	{
+		sram_header->reserve[SRAM_EXPDB_VER] == FLAG_VERSION_1)	{
 		expdb_logstore = kzalloc(sizeof(struct log_store_partition), GFP_KERNEL);
 		if (expdb_logstore != NULL) {
 			memset(expdb_logstore, 0, sizeof(struct log_store_partition));
@@ -1205,6 +1208,8 @@ static void __exit log_store_exit(void)
 
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 	close_monitor_thread();
+	if (expdb_logstore && expdb_logstore->bdev_file)
+		bdev_fput(expdb_logstore->bdev_file);
 #endif
 	logstore_pm_nb.notifier_call = logstore_pm_notify;
 	unregister_pm_notifier(&logstore_pm_nb);

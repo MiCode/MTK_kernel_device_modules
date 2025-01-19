@@ -173,6 +173,7 @@ void store_log_to_emmc_enable(bool value);
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 /* log store write partition info*/
 struct log_store_partition {
+	struct file *bdev_file;
 	struct block_device *bdev;
 	unsigned int block_size;
 	loff_t part_size;
