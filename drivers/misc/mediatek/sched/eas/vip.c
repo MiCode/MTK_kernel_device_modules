@@ -408,6 +408,9 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	if (vts_to_ts(vts)->se.sched_delayed)
 		return;
 
+	if (vts->vip_list.next == NULL || link_with_others(&vts->vip_list))
+		return;
+
 	/* change vip_prio inside lock to prevent NOT_VIP inserted.
 	 * it could happened if we set vip_prio outside lock, and user unset,
 	 * then insert VIP.
