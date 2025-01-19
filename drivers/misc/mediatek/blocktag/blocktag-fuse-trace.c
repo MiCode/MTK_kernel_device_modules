@@ -607,6 +607,8 @@ void mtk_btag_fuse_init(struct proc_dir_entry *btag_root)
 	fuse_log.enable = 1;
 #endif
 
+	pid_fuse_stats = kzalloc(sizeof(struct pid_fuse_stat_entry)*TEMP_PID_CNT, GFP_KERNEL);
+
 	ret = install_tracepoints();
 	if (ret) {
 		pr_err("install tracepoints failed %d\n", ret);
@@ -654,8 +656,6 @@ void mtk_btag_fuse_init(struct proc_dir_entry *btag_root)
 		goto free_pstat_e;
 	}
 
-	pid_fuse_stats = kzalloc(sizeof(struct pid_fuse_stat_entry)*TEMP_PID_CNT, GFP_KERNEL);
-
 	return;
 
 free_pstat_e:
@@ -679,6 +679,7 @@ void mtk_btag_fuse_exit(void)
 	proc_remove(req_hist_e);
 	proc_remove(fuse_root);
 	uninstall_tracepoints();
+	kfree(pid_fuse_stats);
 }
 
 void mtk_btag_fuse_get_req_cnt(int *total_cnt, int *unlink_cnt)
