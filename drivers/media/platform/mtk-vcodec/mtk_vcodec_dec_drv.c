@@ -492,6 +492,8 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 			reg_index = VDEC_BASE;
 		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_SYS, name)) {
 			reg_index = VDEC_SYS;
+		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_UFO, name)) {
+			reg_index = VDEC_UFO;
 		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_VLD, name)) {
 			reg_index = VDEC_VLD;
 		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_MC, name)) {
@@ -771,6 +773,7 @@ static const struct of_device_id mtk_vcodec_match[] = {
 	{.compatible = "mediatek,mt6768-vcodec-dec",},
 	{.compatible = "mediatek,mt6877-vcodec-dec",},
 	{.compatible = "mediatek,mt6833-vcodec-dec",},
+	{.compatible = "mediatek,mt6781-vcodec-dec",},
 	{.compatible = "mediatek,vdec_gcon",},
 	{},
 };
