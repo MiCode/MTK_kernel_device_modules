@@ -10,3 +10,11 @@ config DEVICE_MODULES_USB_XHCI_MTK
 	  Say 'Y' to enable the support for the xHCI host controller
 	  found in MediaTek SoCs.
 	  If unsure, say N.
+config DEVICE_MODULES_USB_XHCI_SIDEBAND_MTK
+	tristate "xHCI support for sideband on MediaTek SoCs"
+	help
+	  Say 'Y' to enable the support for the xHCI sideband capability.
+	  provide a mechanism for a sideband datapath for payload associated
+	  with audio class endpoints. This allows for an audio DSP to use
+	  xHCI USB endpoints directly, allowing CPU to sleep while playing
+	  audio
