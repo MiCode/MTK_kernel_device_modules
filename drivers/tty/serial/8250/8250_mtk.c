@@ -103,6 +103,7 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define TTY_BUF_POLLING_COUNT  10
 
 #define DMA_RX_POLLING_CNT	100
+#define UART_POLLING_RESUME_CNT  80
 
 #define FIFO_TX_STATUS_MASK  0x1F
 #define FIFO_TX_CNT_MASK 0x1F
@@ -113,6 +114,8 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define UART_DUMP_RECORE_NUM 10
 #define UART_DUMP_BUF_LEN PAGE_SIZE
 #define CONFIG_UART_DATA_RECORD
+
+#define UART_POLLING_FAIL 20
 
 #define UART_REG_READ(addr) \
 	(*((unsigned int *)(addr)))
@@ -129,6 +132,8 @@ enum dma_rx_status {
 	DMA_RX_SHUTDOWN = 2,
 };
 #endif
+
+typedef void (*UART_WAKEUP_CB)(void *);
 
 struct mtk8250_dump {
 	unsigned long long start_time;
@@ -188,6 +193,8 @@ struct mtk8250_data {
 	void __iomem *peri_wakeup_ctl;
 	void __iomem *peri_wakeup_sta;
 	atomic_t uart_clk_count;
+	UART_WAKEUP_CB mtk8250_wakeup_cb;
+	void *wakeup_param;
 };
 
 struct mtk8250_comp {
@@ -226,6 +233,20 @@ static struct mtk8250_data *hub_uart_data;
 #ifndef CONFIG_FPGA_EARLY_PORTING
 static u64 wakeup_irq_time;
 #endif
+
+int mtk8250_wakeup_callback_register(UART_WAKEUP_CB wakeup_cb, void *wakeup_param)
+{
+	if(hub_uart_data == NULL) {
+		pr_info("[%s]: data is null!\n", __func__);
+		return -ENODEV;
+	}
+
+	hub_uart_data->mtk8250_wakeup_cb = wakeup_cb;
+	hub_uart_data->wakeup_param = wakeup_param;
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk8250_wakeup_callback_register);
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cbs)
@@ -740,6 +761,15 @@ int mtk8250_uart_hub_inband_is_support(void)
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_inband_is_support);
 
+int mtk8250_uart_hub_bt_on_count_inc(void)
+{
+	if (uarthub_drv_cbs.bt_on_count_inc)
+		return uarthub_drv_cbs.bt_on_count_inc();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_bt_on_count_inc);
+
 int mtk8250_uart_hub_is_txrx_idle(int rx)
 {
 	if (uarthub_drv_cbs.dev0_is_txrx_idle)
@@ -949,15 +979,6 @@ int mtk8250_uart_hub_get_cmm_bt_awake_sta(void)
 		return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_get_cmm_bt_awake_sta);
-
-int mtk8250_uart_hub_bt_on_count_inc(void)
-{
-	if (uarthub_drv_cbs.bt_on_count_inc)
-		return uarthub_drv_cbs.bt_on_count_inc();
-	else
-		return -1;
-}
-EXPORT_SYMBOL(mtk8250_uart_hub_bt_on_count_inc);
 
 int mtk8250_uart_hub_get_bt_awake_sta(void)
 {
@@ -1200,6 +1221,29 @@ int mtk8250_uart_hub_get_host_wakeup_status(void)
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_get_host_wakeup_status);
 
+static int mtk8250_uart_polling_resume_state(void)
+{
+	int polling_cnt = UART_POLLING_RESUME_CNT;
+
+	if(hub_uart_data == NULL) {
+		pr_info("[%s] polling fail: mtk8250_data is null!\n",__func__);
+		return -EFAULT;
+	}
+
+	while(polling_cnt) {
+		if(atomic_read(&hub_uart_data->uart_state) != MTK_UART_SUSPENDING)
+			break;
+
+		usleep_range(1000,1500);
+		polling_cnt--;
+	}
+	if(polling_cnt == 0) {
+		pr_info("[%s] polling resume state timeout,cnt:%d\n",__func__,polling_cnt);
+		return -UART_POLLING_FAIL;
+	}
+	return 0;
+}
+
 int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 {
 	int ret  = 0;
@@ -1269,6 +1313,12 @@ int mtk8250_uart_hub_dev0_set_tx_request(struct tty_struct *tty)
 		ret = uarthub_drv_cbs.dev0_set_tx_request();
 		if (ret) {
 			pr_info("[%s]dev0_set_tx_request error. ret is %d\n",
+				__func__, ret);
+			goto exit;
+		}
+		ret = mtk8250_uart_polling_resume_state();
+		if(ret) {
+			pr_info("[%s]uart poling resume state error. ret is %d\n",
 				__func__, ret);
 			goto exit;
 		}
@@ -2307,8 +2357,8 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 	struct platform_device *pdev = NULL;
 	struct mtk8250_data *data = NULL;
 	struct uart_8250_port *up = NULL;
-	u64 wakeup_time[5] = {0};
-	int rx_state = 0;
+	u64 wakeup_time[7] = {0};
+	int rx_state,wakeup_cb_exists = 0;
 	unsigned int uart_fcr = 0;
 	unsigned int xoff;
 	struct mtk8250_uart_info reg_dump = {{0},{0}};
@@ -2326,6 +2376,12 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 	wakeup_time[0] = sched_clock();
 	mutex_lock(&data->clk_mutex);
 	if (atomic_read(&data->wakeup_state) == 0) {
+		wakeup_time[1] = sched_clock();
+		if(data->mtk8250_wakeup_cb != NULL) {
+			data->mtk8250_wakeup_cb(data->wakeup_param);
+			wakeup_cb_exists = 1;
+		}
+		wakeup_time[2] = sched_clock();
 		if (atomic_read(&data->uart_state) == MTK_UART_SUSPENDING) {
 			/*clear uart wakeup status and enable wakeup*/
 			mtk8250_set_wakeup_irq(hub_uart_data, true);
@@ -2360,9 +2416,9 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 			#endif
 			/* make sure clock ready */
 			mb();
-			wakeup_time[1] = sched_clock();
+			wakeup_time[3] = sched_clock();
 			udelay(80);
-			wakeup_time[2] = sched_clock();
+			wakeup_time[4] = sched_clock();
 			#if defined(KERNEL_mtk_uart_apdma_enable_vff)
 			KERNEL_mtk_uart_apdma_enable_vff(true);
 			#endif
@@ -2376,25 +2432,27 @@ static irqreturn_t wakeup_irq_handler_bottom_half(int irq, void *dev_id)
 				#endif
 			}
 		#endif
-		wakeup_time[3] = sched_clock();
+		wakeup_time[5] = sched_clock();
 		/* polling dma ready */
 		udelay(5);
 		if(!is_dma_ready(up, &reg_dump))
 			pr_info("[warning]%s: is_dma_ready up/reg_dump is null !!\n",__func__);
 
 		atomic_set(&data->wakeup_state, 1);
-		wakeup_time[4] = sched_clock();
-		pr_info("[%s]: time[%lld %lld %lld %lld]ns rx_state[%d]"
+		wakeup_time[6] = sched_clock();
+		pr_info("[%s]: time[%lld %lld %lld %lld %lld]ns rx_state[%d]"
 			"remain[0x%x 0x%x 0x%x 0x%x]"
-			"db5[0x%x 0x%x 0x%x 0x%x]\n"
-			, __func__, wakeup_time[4] - wakeup_irq_time,
+			"db5[0x%x 0x%x 0x%x 0x%x]"
+			" wakeup_callback_exists:%d\n"
+			, __func__, wakeup_time[6] - wakeup_irq_time,
 			wakeup_time[2] - wakeup_time[1],
-			wakeup_time[3] - wakeup_time[0],
 			wakeup_time[4] - wakeup_time[3],
+			wakeup_time[5] - wakeup_time[0],
+			wakeup_time[6] - wakeup_time[5],
 			rx_state, reg_dump.rx_remain[0],
 			reg_dump.rx_remain[1],reg_dump.rx_remain[2],
 			reg_dump.rx_remain[3], reg_dump.db5[0],
-			reg_dump.db5[1], reg_dump.db5[2], reg_dump.db5[3]);
+			reg_dump.db5[1], reg_dump.db5[2], reg_dump.db5[3],wakeup_cb_exists);
 	}
 	mutex_unlock(&data->clk_mutex);
 	return IRQ_HANDLED;
