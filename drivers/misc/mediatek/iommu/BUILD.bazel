@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
 
 package(
     default_visibility = [
@@ -50,7 +51,6 @@ define_mgk_ddk_ko(
     includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
     ],
     out = "smmu_secure.ko",
 )
@@ -68,7 +68,6 @@ define_mgk_ddk_ko(
     includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
     ],
     out = "iommu_secure.ko",
 )
@@ -96,7 +95,44 @@ define_mgk_ddk_ko(
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
         "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
     ],
     out = "iommu_test.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_debug",
+    srcs = [
+        "iommu_port.h",
+        "iommu_debug.c",
+        "smmu_reg.h",
+    ],
+    hdrs = glob([
+        "iommu_debug.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(srctree)/drivers/iommu/",
+    ],
+    ko_deps = [
+        ":mtk_iommu_util",
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+    out = "iommu_debug.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_smmu_qos",
+    srcs = [
+        "mtk_smmu_qos_events.h",
+        "mtk_smmu_qos.c",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+    ],
+    ko_deps = [":mtk_iommu_util"],
+    out = "mtk_smmu_qos.ko",
 )
