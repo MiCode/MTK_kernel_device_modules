@@ -3206,6 +3206,14 @@ static int mt6985_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 	       FIELD_GET(GENMASK(1, 0), vld_tf);
 }
 
+static int mt6993_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
+{
+	return F_MMU_INT_TF_LARB(port_tf) ==
+	       FIELD_GET(GENMASK(12, 8), vld_tf) &&
+	       F_MMU_INT_TF_PORT(port_tf) ==
+	       FIELD_GET(GENMASK(2, 0), vld_tf);
+}
+
 static int default_tf_is_gce_videoup(u32 port_tf, u32 vld_tf)
 {
 	return F_MMU_INT_TF_LARB(port_tf) ==
@@ -3467,9 +3475,8 @@ static const struct mtk_m4u_plat_data mt6993_smmu_data = {
 	.port_nr[MM_SMMU]   = ARRAY_SIZE(mm_port_mt6993),
 	.port_list[APU_SMMU] = apu_port_mt6993,
 	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6993),
-	.mm_tf_ccu_support = 1,
 	.get_valid_tf_id = mt6993_get_valid_tf_id,
-	.mm_tf_is_gce_videoup = default_tf_is_gce_videoup,
+	.mm_tf_is_gce_videoup = mt6993_tf_is_gce_videoup,
 	.smmu_common_id = default_smmu_common_id,
 	.smmu_port_name = mt6993_smmu_soc_port_name,
 };
