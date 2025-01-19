@@ -183,6 +183,9 @@ static void guest_adsp_ul_handler(struct mtk_base_dsp *dsp,
 	unsigned long flags;
 	int dsp_scene = get_dspscene_by_dspdaiid(id);
 
+	if (id < 0 || id >= AUDIO_TASK_DAI_NUM)
+		return;
+
 	if (!dsp->dsp_mem[id].substream) {
 		pr_info("%s substream NULL\n", __func__);
 		return;
@@ -234,6 +237,9 @@ static void guest_adsp_dl_consume_handler(struct mtk_base_dsp *dsp,
 	int dsp_scene = get_dspscene_by_dspdaiid(id);
 
 	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
+
+	if (id < 0 || id >= AUDIO_TASK_DAI_NUM)
+		return;
 
 	if (!dsp->dsp_mem[id].substream) {
 		pr_info_ratelimited("%s substream NULL id[%d]\n", __func__, id);
