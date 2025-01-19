@@ -65,5 +65,11 @@ void irq_log_dump(unsigned int out, u64 start, u64 end);
 void irq_log_exit(void);
 int irq_log_init(void);
 
+#define ALLOC_PERCPU_FOR_STAT(tracer, stat, type)	\
+	({						\
+		tracer.stat = alloc_percpu(type);	\
+		!tracer.stat;				\
+	})
+
 #endif
 

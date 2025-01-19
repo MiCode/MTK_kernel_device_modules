@@ -1205,36 +1205,14 @@ static int __init irq_monitor_init(void)
 {
 	int ret = 0;
 
-	irq_off_tracer.pi_stat = alloc_percpu(struct preemptirq_stat);
-	if (!irq_off_tracer.pi_stat) {
-		pr_info("Failed to alloc irq_off_tracer pi_stat\n");
+	ret |= ALLOC_PERCPU_FOR_STAT(irq_off_tracer, pi_stat, struct preemptirq_stat);
+	ret |= ALLOC_PERCPU_FOR_STAT(preempt_off_tracer, pi_stat, struct preemptirq_stat);
+	ret |= ALLOC_PERCPU_FOR_STAT(irq_handler_tracer, stat, struct trace_stat);
+	ret |= ALLOC_PERCPU_FOR_STAT(softirq_tracer, stat, struct trace_stat);
+	ret |= ALLOC_PERCPU_FOR_STAT(ipi_tracer, stat, struct trace_stat);
+	ret |= ALLOC_PERCPU_FOR_STAT(hrtimer_expire_tracer, stat, struct trace_stat);
+	if (ret)
 		return -ENOMEM;
-	}
-	preempt_off_tracer.pi_stat = alloc_percpu(struct preemptirq_stat);
-	if (!preempt_off_tracer.pi_stat) {
-		pr_info("Failed to alloc preempt_off_tracer pi_stat\n");
-		return -ENOMEM;
-	}
-	irq_handler_tracer.stat = alloc_percpu(struct trace_stat);
-	if (!irq_handler_tracer.stat) {
-		pr_info("Failed to alloc irq_handler_tracer stat\n");
-		return -ENOMEM;
-	}
-	softirq_tracer.stat = alloc_percpu(struct trace_stat);
-	if (!softirq_tracer.stat) {
-		pr_info("Failed to alloc softirq_tracer stat\n");
-		return -ENOMEM;
-	}
-	ipi_tracer.stat = alloc_percpu(struct trace_stat);
-	if (!ipi_tracer.stat) {
-		pr_info("Failed to alloc ipi_tracer stat\n");
-		return -ENOMEM;
-	}
-	hrtimer_expire_tracer.stat = alloc_percpu(struct trace_stat);
-	if (!hrtimer_expire_tracer.stat) {
-		pr_info("Failed to alloc hrtimer_expire_tracer stat\n");
-		return -ENOMEM;
-	}
 
 	pr_info("irq monitor init start!!\n");
 	ret = irq_log_init();
