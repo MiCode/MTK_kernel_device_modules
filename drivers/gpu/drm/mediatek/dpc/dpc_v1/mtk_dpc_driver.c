@@ -2958,8 +2958,8 @@ static void dpc_pause_v1(const enum mtk_dpc_subsys subsys, bool en)
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		if (en && atomic_read(&is_mminfra_ctrl_by_dpc) &&
 			mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF)) {
-			dpc_pm_ctrl(true, "dpc_pause_ctrl_dpc_0");
-			atomic_set(&is_mminfra_ctrl_by_dpc, 0);
+			if (dpc_pm_ctrl(true, "dpc_pause_ctrl_dpc_0") == 0)
+				atomic_set(&is_mminfra_ctrl_by_dpc, 0);
 			//DPCFUNC("en:%d, mminfra_ctrl_by_dpc:%d", en, atomic_read(&is_mminfra_ctrl_by_dpc));
 		}
 
@@ -3108,8 +3108,8 @@ static void dpc_config_v1(const enum mtk_dpc_subsys subsys, bool en)
 
 	if (!en && atomic_read(&is_mminfra_ctrl_by_dpc) &&
 		mtk_dpc_support_cap(DPC_VIDLE_MMINFRA_PLL_OFF)) {
-		dpc_pm_ctrl(true, "dpc_config_ctrl_dpc_0");
-		atomic_set(&is_mminfra_ctrl_by_dpc, 0);
+		if (dpc_pm_ctrl(true, "dpc_config_ctrl_dpc_0") == 0)
+			atomic_set(&is_mminfra_ctrl_by_dpc, 0);
 	}
 
 	spin_lock_irqsave(&dpc_lock, flags);
