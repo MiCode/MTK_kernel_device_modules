@@ -1083,6 +1083,39 @@ static int mml_m2m_querycap(struct file *file, void *fh,
 	return 0;
 }
 
+static void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
+{
+	const char *descr = NULL;
+
+	if (fmt == NULL) {
+		mml_err("error, fmt is NULL\n");
+		return;
+	}
+
+	switch (fmt->pixelformat) {
+	case V4L2_PIX_FMT_P010_HYFBC:
+		descr = "MTK 10-bit P010 LSB 6-bit hybryd"; break;
+	case V4L2_PIX_FMT_NV12_HYFBC:
+		descr = "MTK 10-bit NV12 hybryd"; break;
+	case V4L2_PIX_FMT_YVU420A:
+		descr = "YVU 4:2:0 16-pixel stride three planes - Y, Cb, Cr"; break;
+	case V4L2_PIX_FMT_RGB32_AFBC:
+		descr = "MTK 8-bit frame buffer compressed mode,single plane"; break;
+	case V4L2_PIX_FMT_RGBA1010102_AFBC:
+		descr = "MTK 10-bit frame buffer compressed mode, single plane"; break;
+	case V4L2_PIX_FMT_NV12_AFBC:
+		descr = "MTK 8-bit frame buffer compressed mode, two planes"; break;
+	case V4L2_PIX_FMT_NV12_10B_AFBC:
+		descr = "MTK 10-bit frame buffer compressed mode, two planes"; break;
+	default:
+		descr = "common"; break;
+		break;
+	}
+
+	if (descr)
+		strscpy(fmt->description, descr, sizeof(fmt->description));
+}
+
 static int mml_m2m_enum_fmt_mplane(struct file *file, void *fh,
 				   struct v4l2_fmtdesc *f)
 {
@@ -1099,6 +1132,11 @@ static int mml_m2m_enum_fmt_mplane(struct file *file, void *fh,
 		if (MML_FMT_IS_YUV(fmt->mml_color))
 			f->flags |= V4L2_FMT_FLAG_CSC_YCBCR_ENC | V4L2_FMT_FLAG_CSC_QUANTIZATION;
 	}
+
+	memset(f->reserved, 0, sizeof(f->reserved));
+	memset(f->description, 0, sizeof(f->description));
+	v4l_fill_mtk_fmtdesc(f);
+
 	return 0;
 }
 
