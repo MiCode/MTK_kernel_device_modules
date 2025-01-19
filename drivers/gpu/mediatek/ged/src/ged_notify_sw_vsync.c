@@ -210,7 +210,7 @@ u64 ged_get_fallback_time(void)
 enum gpu_dvfs_policy_state ged_get_policy_state(void)
 {
 	if (is_fdvfs_enable() & POLICY_MODE_V2)
-		g_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_POLICY_STATE);
+		g_policy_state = mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_EB_USE_POLICY_STATE_V2].addr);
 
 	return g_policy_state;
 }
@@ -264,7 +264,8 @@ void ged_eb_dvfs_trace_dump(void)
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
 	u64 eb_timeout_value = ged_get_fallback_time();
-	int eb_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_POLICY_STATE);
+	int eb_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_POLICY_STATE);// For EB
+	//policy V2, this actually gets "commit type"
 	int ged_policy_state =  ged_get_policy_state();
 	int freq_id = ged_get_cur_oppidx();
 	unsigned int is_offscreen = 0;
