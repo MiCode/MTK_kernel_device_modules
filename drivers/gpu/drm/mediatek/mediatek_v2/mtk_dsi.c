@@ -8426,7 +8426,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 			struct mtk_ddic_dsi_msg *cmd_msg)
 {
 	unsigned int i = 0, j = 0;
-	int dsi_mode = readl(dsi->regs + DSI_MODE_CTRL(dsi->driver_data)) & MODE;
+	int dsi_mode;
 	struct mipi_dsi_msg msg;
 	unsigned int use_lpm = cmd_msg->flags & MIPI_DSI_MSG_USE_LPM;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
@@ -8440,6 +8440,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 			__func__, cmd_msg->type, (int)cmd_msg->tx_cmd_num);
 		return -EINVAL;
 	}
+	dsi_mode = mtk_dsi_is_cmd_mode(&dsi->ddp_comp) ? 0 : 3;
 
 	for (i = 0; i < cmd_msg->tx_cmd_num; i++) {
 		if (cmd_msg->tx_buf[i] == 0 || cmd_msg->tx_len[i] == 0) {
@@ -9069,7 +9070,7 @@ int mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 			struct mtk_ddic_dsi_msg *cmd_msg)
 {
 	unsigned int i = 0, j = 0;
-	int dsi_mode = readl(dsi->regs + DSI_MODE_CTRL(dsi->driver_data)) & MODE;
+	int dsi_mode;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mipi_dsi_msg msg;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
@@ -9096,6 +9097,7 @@ int mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 			(int)cmd_msg->tx_cmd_num, (int)cmd_msg->rx_cmd_num);
 		return -EINVAL;
 	}
+	dsi_mode = mtk_dsi_is_cmd_mode(&dsi->ddp_comp) ? 0: 3;
 
 	if (cmd_msg->tx_cmd_num != cmd_msg->rx_cmd_num) {
 		DDPPR_ERR("%s: tx_cmd_num is %d, rx_cmd_num is %d\n",
@@ -10788,7 +10790,8 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 					to_info.is_support, to_info.left_in_width,
 					to_info.right_in_width);
 
-	if (dsi->ext->params->dsc_params.enable)
+	if ((dsi->ext != NULL) && (dsi->ext->params != NULL)
+		&& dsi->ext->params->dsc_params.enable)
 		bpp = dsi->ext->params->dsc_params.bit_per_channel * 3;
 
 	if (panel_ext && panel_ext->funcs && panel_ext->funcs->ext_param_get) {
@@ -14156,7 +14159,8 @@ u32 PanelMaster_get_dsi_timing(struct mtk_dsi *dsi, enum MIPI_SETTING_TYPE type)
 	}
 	case MIPI_SSC_EN:
 	{
-		if (dsi->ext->params->ssc_enable)
+		if ((dsi->ext != NULL) && (dsi->ext->params != NULL)
+			&& dsi->ext->params->ssc_enable)
 			dsi_val = 1;
 		else
 			dsi_val = 0;
@@ -14176,7 +14180,8 @@ u32 DSI_ssc_enable(struct mtk_dsi *dsi, u32 en)
 {
 	u32 enable = en ? 1 : 0;
 
-	dsi->ext->params->ssc_enable = enable;
+	if ((dsi->ext != NULL) && (dsi->ext->params != NULL))
+		dsi->ext->params->ssc_enable = enable;
 
 	return 0;
 }

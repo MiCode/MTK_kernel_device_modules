@@ -730,6 +730,33 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 		break;
 	}
 #endif
+	case PMQOS_GET_LARB_PORT_HRT_BW: {
+		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
+		unsigned int bpp = 1;
+		unsigned int tmp;
+
+		tmp = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
+
+		data->larb_id = -1;
+		data->bw = 0;
+		if (data->type != CHANNEL_HRT_RW)
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0)
+			break;
+
+		tmp = (tmp * bpp) >> 2;
+		if (debug_postmask_bw)
+			tmp = debug_postmask_bw;
+
+		data->bw = tmp;
+		break;
+	}
 	case PMQOS_SET_HRT_BW:
 	case PMQOS_SET_HRT_BW_DELAY:
 	{
@@ -749,6 +776,12 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 		bw_val = (bw_val * bpp) >> 2;
 		if (debug_postmask_bw)
 			bw_val = debug_postmask_bw;
+
+		if (comp->last_hrt_bw == bw_val)
+			break;
+		comp->last_hrt_bw = bw_val;
+		if (bw_val > 0)
+			DDPDBG("%s,PMQOS_SET_HRT_BW, postmask comp:%d,bw:%d\n",	__func__, comp->id, bw_val);
 
 		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 				priv->data->respective_ostdl);

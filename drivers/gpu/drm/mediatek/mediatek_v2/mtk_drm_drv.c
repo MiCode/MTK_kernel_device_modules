@@ -2199,10 +2199,14 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, pf);
 	DRM_MMP_EVENT_START(mutex_lock, 0, 0);
+	DDPINFO("%s step1,pm_status :%d\n", __func__,
+		atomic_read(&private->kernel_pm.status));
 
 	/* block atomic commit till kernel resume */
 	ret = wait_event_interruptible(private->kernel_pm.wq,
 			atomic_read(&private->kernel_pm.status) != KERNEL_PM_SUSPEND);
+	DDPINFO("%s step2,pm_status :%d\n", __func__,
+		atomic_read(&private->kernel_pm.status));
 	if (unlikely(ret != 0))
 		DDPMSG("%s kernel_pm wait queue woke up accidently\n", __func__);
 
@@ -2217,6 +2221,8 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	}
 
 	flush_work(&private->commit.work);
+	DDPINFO("%s step3,pm_status :%d\n", __func__,
+		atomic_read(&private->kernel_pm.status));
 
 	for (i = 0; i < MAX_CRTC; i++) {
 		if (!(crtc_mask >> i & 0x1))
@@ -2231,6 +2237,8 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		drm_trace_tag_mark_bycrtc("atomic_commit", drm_crtc_index(crtc));
 	}
 	mutex_nested_time_start = sched_clock();
+	DDPINFO("%s step4,pm_status :%d\n", __func__,
+		atomic_read(&private->kernel_pm.status));
 
 	ret = drm_atomic_helper_swap_state(state, 0);
 	if (ret) {
@@ -11411,6 +11419,7 @@ SKIP_OVLSYS_CONFIG:
 			dev_err(&pdev->dev, "Failed to create disp_plat_dbg buf file\n");
 			return ret;
 		}
+		disp_plat_dbg_init();
 	}
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 	private->hrt_bw_request =
@@ -11589,6 +11598,10 @@ SKIP_OVLSYS_CONFIG:
 		DDPINFO("CRTC %d available BW:%x OVL usage:%x\n", i,
 				private->pre_defined_bw[i], private->ovl_usage[i]);
 	}
+	ret = of_property_read_u32(dev->of_node, "no_hwc_layers", &private->no_hwc_layers);
+	ret = of_property_read_u32(dev->of_node, "no_hwc_overlap", &private->no_hwc_overlap);
+	DDPINFO("no_hwc_layers %d,no_hwc_overlap %d\n", private->no_hwc_layers,
+				private->no_hwc_overlap);
 
 	mtk_fence_init();
 

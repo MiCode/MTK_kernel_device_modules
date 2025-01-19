@@ -7478,6 +7478,17 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 #else
 	if ((index == 0 || mtk_crtc->path_data->is_discrete_path) && hrt_valid == false) {
 #endif
+		int layers_i;
+		//no_hwc_layers & no_hwc_overlap for customer modify in dts
+		if(mtk_drm->no_hwc_layers) {
+			for (layers_i = 0; layers_i < mtk_drm->no_hwc_layers; layers_i++)
+				mtk_crtc->usage_ovl_fmt[layers_i] = 4;
+		} else
+			mtk_crtc->usage_ovl_fmt[0] = 4;
+
+		if (mtk_drm->no_hwc_overlap)
+			pan_disp_frame_weight = pan_disp_frame_weight * mtk_drm->no_hwc_overlap;
+
 		if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_HRT))
 			DDPMSG("%s frame:%u correct invalid hrt to:%u, mode:%llu->%llu\n",
 				__func__, prop_lye_idx, pan_disp_frame_weight,
@@ -20478,12 +20489,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK_OVL))
 				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK))
-				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
 			/* HW support cwb dump */
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
 				priv->data->mmsys_id == MMSYS_MT6897)
-				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
 			if (priv->data->mmsys_id == MMSYS_MT6991) {
 				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;

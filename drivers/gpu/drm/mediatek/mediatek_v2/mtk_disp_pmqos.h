@@ -23,6 +23,8 @@ enum CHANNEL_TYPE {
 	CHANNEL_SRT_WRITE,
 	CHANNEL_HRT_READ,
 	CHANNEL_HRT_WRITE,
+	CHANNEL_SRT_RW,
+	CHANNEL_HRT_RW,
 };
 
 #define NO_PENDING_HRT (0xFFFF)
@@ -37,6 +39,12 @@ enum CHANNEL_TYPE {
 struct drm_crtc;
 struct mtk_drm_crtc;
 struct mtk_ddp_comp;
+
+struct mtk_larb_port_bw {
+	int larb_id;
+	unsigned int bw;
+	enum CHANNEL_TYPE type;
+};
 
 struct mtk_drm_qos_ctx {
 	unsigned int last_hrt_req;
