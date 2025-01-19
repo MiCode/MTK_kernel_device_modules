@@ -233,8 +233,8 @@ u32 on_bw_value[MAX_BW_VALUE_NUM];
 u32 old_on_bw_value[MAX_BW_VALUE_NUM];
 u32 off_bw_value[MAX_BW_VALUE_NUM];
 u32 old_off_bw_value[MAX_BW_VALUE_NUM];
-u32 on_reg_value[MAX_REG_VALUE_NUM];
-u32 off_reg_value[MAX_REG_VALUE_NUM];
+u32 on_reg_value[MAX_BW_VALUE_NUM];
+u32 off_reg_value[MAX_BW_VALUE_NUM];
 
 u32 freq_mode = BY_REGULATOR;
 
@@ -413,7 +413,7 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 			&& is_disp_comm_port(comm_port_node->hrt_type)) {
 			if (log_level & 1 << log_debug)
 				MMQOS_DBG("ignore disp comm port bw");
-		} else if (mmqos_state & MMPC_ENABLE) {
+		} else if (mmqos_state & MMPC_ENABLE || mmqos_state & MMPC_V2_ENABLE) {
 			if (is_srt_comm_port(comm_port_node->hrt_type))
 				avg_bw += comm_port_node->latest_avg_bw;
 		} else {
@@ -549,7 +549,7 @@ static void store_bw_value(const u32 comm_id, const u32 chnn_id,
 	if (mmqos_state & VMMRC_ENABLE)
 		bw_value_idx = (comm_id << 2) + (chnn_id << 1) + (is_srt ? 0 : 12)
 			+ (is_write ? 1 : 0);
-	else if (mmqos_state & MMPC_ENABLE)
+	else if (mmqos_state & MMPC_ENABLE || mmqos_state & MMPC_V2_ENABLE)
 		bw_value_idx = (comm_id << 3) + (chnn_id << 2) + (is_srt ? 0 : 2)
 			+ (is_write ? 1 : 0);
 	else {
@@ -598,7 +598,8 @@ void write_register(u32 offset, u32 value)
 		if (value != 0)
 			MMQOS_DBG("offset:0x%x, value:0x%x", offset, value);
 
-	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE) {
+	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE
+		|| mmqos_state & MMPC_V2_ENABLE) {
 		if (gmmqos->vmmrc_base == NULL)
 			MMQOS_ERR("write vmmrc fail, vmmrc_base is NULL");
 		else
@@ -608,7 +609,8 @@ void write_register(u32 offset, u32 value)
 
 u32 read_register(u32 offset)
 {
-	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE) {
+	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE
+		|| mmqos_state & MMPC_V2_ENABLE) {
 		if (gmmqos->vmmrc_base == NULL)
 			MMQOS_ERR("read vmmrc fail, vmmrc_base is NULL");
 		else
@@ -657,7 +659,7 @@ void clear_reg_value(bool is_on)
 {
 	int i;
 
-	for (i = 0; i < MAX_REG_VALUE_NUM; i++) {
+	for (i = 0; i < MAX_BW_VALUE_NUM; i++) {
 		if (is_on)
 			on_reg_value[i] = 0;
 		else
@@ -707,8 +709,15 @@ static void set_channel_bw_to_hw(void)
 	int i;
 
 	start_write_bw();
-	for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
-		write_register(APMCU_ON_BW_OFFSET(i), on_reg_value[i]);
+
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (i = 0 ; i < MAX_BW_VALUE_NUM; i++)
+			write_register(APMCU_ON_BW_OFFSET(i), on_reg_value[i]);
+	} else {
+		for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
+			write_register(APMCU_ON_BW_OFFSET(i), on_reg_value[i]);
+	}
+
 	if (mmqos_state & VMMRC_ENABLE) {
 		for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
 			write_register(APMCU_OFF_BW_OFFSET(i), off_reg_value[i]);
@@ -985,7 +994,8 @@ void update_channel_bw(const u32 comm_id, const u32 chnn_id,
 					src->id);
 		return;
 	}
-	if ((mmqos_state & MMPC_ENABLE) && !is_srt_comm_port(comm_port_node->hrt_type)) {
+	if (((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		&& !is_srt_comm_port(comm_port_node->hrt_type)) {
 		if (log_level & 1 << log_bw)
 			MMQOS_DBG("ignore not SW mode comm port:%#x", src->id);
 		return;
@@ -1997,7 +2007,7 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
 		larb_port_ostdl_full_dump(file, larb_id);
 
-	if (mmqos_state & MMPC_ENABLE)
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		mmpc_dvfsrc_full_dump(file);
 	return 0;
 }
@@ -2027,7 +2037,7 @@ void mmqos_hrt_dump(void)
 	}
 
 	//mmpc dvfsrc dump
-	if (mmqos_state & MMPC_ENABLE)
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		mmpc_dvfsrc_full_dump_line();
 
 	//larb port qos bw dump
@@ -2905,7 +2915,7 @@ static int mmqos_dbg_ftrace_thread(void *data)
 			dump_times = 0;
 		}
 
-		if (mmqos_state & MMPC_ENABLE)
+		if (mmqos_state & MMPC_ENABLE || mmqos_state & MMPC_V2_ENABLE)
 			mmpc_ftrace_dump();
 
 		dump_times++;
