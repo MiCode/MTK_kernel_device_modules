@@ -3003,6 +3003,7 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 
 	/* TODO: The component ID should be changed by ddp path and platforms */
+	/* need align with mtk_crtc_get_plane_comp_id */
 	if (disp_idx == 0) {
 		if (priv->data->mmsys_id == MMSYS_MT6991) {
 			int exdma_comp = 0;
@@ -3012,6 +3013,12 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 			else
 				exdma_comp = DDP_COMPONENT_OVL1_EXDMA3 + layer_idx
 									- DISP_EXDMA_LAYER_LIMIT - fun_lye;
+			/* WA: chaneg exdma6/7 order for balance channel bw */
+			if (exdma_comp == DDP_COMPONENT_OVL_EXDMA6)
+				exdma_comp = DDP_COMPONENT_OVL_EXDMA7;
+			else if (exdma_comp == DDP_COMPONENT_OVL_EXDMA7)
+				exdma_comp = DDP_COMPONENT_OVL_EXDMA6;
+
 			return exdma_comp;
 		}
 	} else if (disp_idx == 1) {

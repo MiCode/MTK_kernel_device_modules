@@ -3501,6 +3501,7 @@ unsigned int mtk_crtc_get_plane_comp_id(struct drm_crtc *crtc, struct mtk_crtc_s
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *comp = NULL;
 
+	/* need align with mtk_lye_get_exdma_comp_id */
 	if (crtc_idx != 0) {
 		DDPMSG("%s crtc[%u]", __func__, drm_crtc_index(crtc));
 		comp = mtk_crtc_get_comp(crtc, mtk_crtc->ddp_mode, 0, 0);
@@ -3525,6 +3526,12 @@ unsigned int mtk_crtc_get_plane_comp_id(struct drm_crtc *crtc, struct mtk_crtc_s
 		}
 		comp_id = (DDP_COMPONENT_OVL_EXDMA3 + plane_index - fun_lye);
 	}
+
+	/* WA: chaneg exdma6/7 order for balance channel bw */
+	if (comp_id == DDP_COMPONENT_OVL_EXDMA6)
+		comp_id = DDP_COMPONENT_OVL_EXDMA7;
+	else if (comp_id == DDP_COMPONENT_OVL_EXDMA7)
+		comp_id = DDP_COMPONENT_OVL_EXDMA6;
 
 	DDPINFO("%s comp[%d %s] plane_index[%u] lye info[%08x %08x %08x]\n", __func__,
 		comp_id, mtk_dump_comp_str_id(comp_id), plane_index,
