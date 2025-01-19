@@ -295,12 +295,12 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 			spm_read(SPM_POWER_ON_VAL1) & (1 << 17));
 	}
 
-/*
+
 #if IS_ENABLED(CONFIG_MTK_CCCI_DEVICES)
-		exec_ccci_kern_func_by_md_id(0, ID_DUMP_MD_SLEEP_MODE,
+		exec_ccci_kern_func(ID_DUMP_MD_SLEEP_MODE,
 			NULL, 0);
 #endif
-*/
+
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	if (wakesta->r12 & R12_SCP_SPM_IRQ_B) {
@@ -308,23 +308,23 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 			print_scp_ipi_id_callback();
 	}
 #endif
-/*
+
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	if (wakesta->r12 & WAKE_SRC_R12_CLDMA_EVENT_B)
-		exec_ccci_kern_func_by_md_id(0, ID_GET_MD_WAKEUP_SRC, NULL, 0);
+		exec_ccci_kern_func(ID_GET_MD_WAKEUP_SRC, NULL, 0);
 	if (wakesta->r12 & WAKE_SRC_R12_MD2AP_PEER_EVENT_B)
-		exec_ccci_kern_func_by_md_id(0, ID_GET_MD_WAKEUP_SRC,
+		exec_ccci_kern_func(ID_GET_MD_WAKEUP_SRC,
 		NULL, 0);
 	if (wakesta->r12 & WAKE_SRC_R12_CCIF0_EVENT_B)
-		exec_ccci_kern_func_by_md_id(0, ID_GET_MD_WAKEUP_SRC,
+		exec_ccci_kern_func(ID_GET_MD_WAKEUP_SRC,
 		NULL, 0);
 	if (wakesta->r12 & WAKE_SRC_R12_CCIF1_EVENT_B)
-		exec_ccci_kern_func_by_md_id(2, ID_GET_MD_WAKEUP_SRC,
+		exec_ccci_kern_func(ID_GET_MD_WAKEUP_SRC,
 		NULL, 0);
 #endif
 #endif
-*/
+
 	//log_irq_wakeup_reason(mtk_spm_get_irq_0());
 
 #if IS_ENABLED(CONFIG_MTK_GIC_V3_EXT)
