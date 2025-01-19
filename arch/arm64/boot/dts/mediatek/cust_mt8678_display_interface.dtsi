@@ -301,7 +301,7 @@
 		port@1 {
 			reg = <1>;
 			edptx_out: endpoint {
-				remote-endpoint = <&serdes_in>;
+				remote-endpoint = <&serdes_edp_in>;
 			};
 		};
 	};
@@ -357,6 +357,7 @@
 		reset-gpios = <&pio 70 0>;
 
 		panel-name = "YW-1080";
+		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
 		ser-dual-link = <0>;
 		ser-dp-mst = <1>;
@@ -390,6 +391,7 @@
 				des-i2c-addr = <0x4c>;
 				des-init-cmd = <
 					1 0x01ce 0x5e 2
+					1 0x06ff 0x22 0
 				>;
 				touch-init-cmd =<
 				>;
@@ -418,6 +420,7 @@
 						2 0x01ea 0x05 0
 						2 0x0042 0x36 0
 						2 0x0043 0x34 0
+						2 0x06ff 0x22 0
 					>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
@@ -432,6 +435,7 @@
 						3 0x0050 0x01 0
 						3 0x0042 0x38 0
 						3 0x0043 0x34 0
+						3 0x06ff 0x22 0
 					>;
 					ser-superframe-init-cmd = <
 						0 0x0028 0x88 0
@@ -600,6 +604,7 @@
 					2 0x01ea 0x05 0
 					2 0x0042 0x36 0
 					2 0x0043 0x34 0
+					2 0x06ff 0x22 0
 				>;
 				des-linkb-i2c-addr = <0x48>;
 				des-linkb-bl-i2c-addr = <0x1c>;
@@ -614,6 +619,7 @@
 					3 0x01ea 0x05 0
 					3 0x0042 0x38 0
 					3 0x0043 0x34 0
+					3 0x06ff 0x22 0
 				>;
 				ser-mst-init-cmd = <
 					0 0x0028 0x88 0
@@ -650,7 +656,8 @@
 					0 0x7b00 0x01 0
 					0 0x6420 0x13 0
 				>;
-				touch-init-cmd = <
+				dp-mst-touch-i2c-addr = <>;
+				dp-mst-touch-init-cmd = <
 				>;
 				bl-i2c-addr = <0x1a>;
 				bl-on-cmd = <
@@ -676,6 +683,7 @@
 				des-i2c-addr = <0x4c>;
 				des-init-cmd = <
 					1 0x01ce 0x4e 2
+					1 0x06ff 0x22 0
 				>;
 				touch-init-cmd =<
 				>;
@@ -704,6 +712,7 @@
 						2 0x01ea 0x05 0
 						2 0x0042 0x36 0
 						2 0x0043 0x34 0
+						2 0x06ff 0x22 0
 					>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
@@ -718,6 +727,7 @@
 						3 0x0050 0x01 0
 						3 0x0042 0x38 0
 						3 0x0043 0x34 0
+						3 0x06ff 0x22 0
 					>;
 					ser-superframe-init-cmd = <
 						0 0x0028 0x88 0
@@ -886,6 +896,7 @@
 					2 0x01ea 0x05 0
 					2 0x0042 0x36 0
 					2 0x0043 0x34 0
+					2 0x06ff 0x22 0
 				>;
 				des-linkb-i2c-addr = <0x48>;
 				des-linkb-bl-i2c-addr = <0x1c>;
@@ -900,6 +911,7 @@
 					3 0x01ea 0x05 0
 					3 0x0042 0x38 0
 					3 0x0043 0x34 0
+					3 0x06ff 0x22 0
 				>;
 				ser-mst-init-cmd = <
 					0 0x0028 0x88 0
@@ -936,7 +948,8 @@
 					0 0x7b00 0x01 0
 					0 0x6420 0x13 0
 				>;
-				touch-init-cmd = <
+				dp-mst-touch-i2c-addr = <>;
+				dp-mst-touch-init-cmd = <
 				>;
 				bl-i2c-addr = <0x1a>;
 				bl-on-cmd = <
@@ -992,6 +1005,7 @@
 					1 0x01c8 0x18 0
 					1 0x01c9 0x19 0
 					1 0x01ca 0x1a 0
+					1 0x06ff 0x22 0
 				>;
 				touch-init-cmd =<
 					1 0x0206 0x03 0
@@ -1089,6 +1103,7 @@
 					2 0x01c8 0x18 0
 					2 0x01c9 0x19 0
 					2 0x01ca 0x1a 0
+					2 0x06ff 0x22 0
 				>;
 				des-linkb-i2c-addr = <0x4d>;
 				des-linkb-bl-i2c-addr = <0x1c>;
@@ -1131,6 +1146,7 @@
 					3 0x01c8 0x18 0
 					3 0x01c9 0x19 0
 					3 0x01ca 0x1a 0
+					3 0x06ff 0x22 0
 				>;
 				ser-mst-init-cmd = <
 					0 0x0028 0x88 0
@@ -1167,7 +1183,8 @@
 					0 0x7b00 0x01 0
 					0 0x6420 0x13 0
 				>;
-				touch-init-cmd = <
+				dp-mst-touch-i2c-addr = <>;
+				dp-mst-touch-init-cmd = <
 				>;
 				bl-i2c-addr = <0x1a>;
 				bl-on-cmd = <
@@ -1281,7 +1298,8 @@
 		pinctrl-names = "default";
 		reset-gpios = <&pio 73 0>;
 
-		panel-name = "YW-720";
+		panel-name = "BoTai";
+		ser-support-hotplug = <1>;
 		ser-super-frame = <0>;
 		ser-dual-link = <0>;
 		ser-dp-mst = <0>;
@@ -1291,13 +1309,13 @@
 			feature-handle-num = <2>;
 			feature-handle0{
 				check-cmd = <0x01 0x01 0x1a 0xb 0x83 0x50 0x00 0x01 0x00 0x00 0x00 0x00 0x00 0x00 0xd4>;
-				verify-cmd = <0x01 0x00 0x1a 0x02 0xff 0xff>;
-				feature-setting = "HuaYang";
+				verify-cmd = <0x01 0x00 0x1a 0x02 0xf0 0x10>;
+				feature-setting = "BoTai";
 			};
 			feature-handle1{
 				check-cmd = <0x01 0x00 0x1a 0xb 0x83 0x50 0x00 0x01 0x00 0x00 0x00 0x00 0x00 0x00 0xd4>;
-				verify-cmd = <0x01 0x00 0x1a 0x02 0xf0 0x10>;
-				feature-setting = "BoTai";
+				verify-cmd = <0x01 0x00 0x1a 0x02 0xff 0xff>;
+				feature-setting = "HuaYang";
 			};
 		};
 
@@ -1315,6 +1333,7 @@
 				des-i2c-addr = <0x4c>;
 				des-init-cmd = <
 					1 0x01ce 0x5e 2
+					1 0x06ff 0x22 0
 				>;
 				touch-init-cmd =<
 				>;
@@ -1343,6 +1362,7 @@
 						2 0x01ea 0x05 0
 						2 0x0042 0x36 0
 						2 0x0043 0x34 0
+						2 0x06ff 0x22 0
 					>;
 					des-linkb-i2c-addr = <0x48>;
 					des-linkb-bl-i2c-addr = <0x1c>;
@@ -1357,6 +1377,7 @@
 						3 0x0050 0x01 0
 						3 0x0042 0x38 0
 						3 0x0043 0x34 0
+						3 0x06ff 0x22 0
 					>;
 					ser-superframe-init-cmd = <
 						0 0x0028 0x88 0
@@ -1528,6 +1549,7 @@
 				des-i2c-addr = <0x4c>;
 				des-init-cmd = <
 					1 0x01ce 0x4e 2
+					1 0x06ff 0x22 0
 				>;
 				touch-init-cmd =<
 				>;
@@ -1886,14 +1908,14 @@
 		ports {
 			port@0 {
 				reg = <0>;
-				serdes_in: endpoint {
+				serdes_edp_in: endpoint {
 					remote-endpoint = <&edptx_out>;
 				};
 			};
 
 			port@1 {
 				reg = <1>;
-				serdes_out: endpoint {
+				serdes_edp_out: endpoint {
 					remote-endpoint = <&panel_edp_in>;
 				};
 			};
@@ -2415,7 +2437,7 @@
 
 		port {
 			panel_edp_in: endpoint {
-				remote-endpoint = <&serdes_out>;
+				remote-endpoint = <&serdes_edp_out>;
 			};
 		};
 	};
