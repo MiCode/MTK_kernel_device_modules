@@ -116,8 +116,7 @@ static unsigned long long rec_data_len;
 /* for dual-speed hardware, use deeper queues at high/super speed */
 static inline int qlen(struct usb_gadget *gadget, unsigned int qmult)
 {
-	if (gadget_is_dualspeed(gadget) && (gadget->speed == USB_SPEED_HIGH ||
-					    gadget->speed >= USB_SPEED_SUPER))
+	if (gadget->speed == USB_SPEED_HIGH || gadget->speed >= USB_SPEED_SUPER)
 		return qmult * DEFAULT_QLEN;
 	else
 		return DEFAULT_QLEN;
