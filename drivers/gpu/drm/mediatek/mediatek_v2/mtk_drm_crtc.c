@@ -12776,6 +12776,8 @@ void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (only_output && !mtk_ddp_comp_is_output(comp))
 			continue;
+		if (drm_crtc_index(crtc) == 1 && mtk_ddp_comp_is_output(comp))
+			continue;
 		mtk_ddp_comp_stop(comp, cmdq_handle);
 	}
 
@@ -12868,6 +12870,20 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 	if (!need_wait)
 		goto skip;
 
+	if (crtc_id == 1) {
+		cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPINTF0_VDE_START]);
+		cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DPINTF0_VDE_START]);
+		for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
+			if (mtk_ddp_comp_is_output(comp)) {
+				mtk_ddp_comp_stop(comp, cmdq_handle);
+				break;
+			}
+		}
+		cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_VDO_EOF]);
+	}
 	if (crtc_id == 2) {
 		int gce_event;
 
@@ -14788,6 +14804,7 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	mtk_drm_crtc_wait_blank(mtk_crtc);
 
 	if (drm_crtc_index(crtc) == 1 && mtk_dp_ready()) {
+		mtk_dp_poweroff();
 		mdelay(60);
 	}
 
@@ -19492,6 +19509,9 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_MUTEX0_SOF:
 		len = snprintf(buf, buf_len, "disp_mutex0_sof%d",
 					drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_DPINTF0_VDE_START:
+		len = snprintf(buf, buf_len, "disp_dp_intf0_vde_start");
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);

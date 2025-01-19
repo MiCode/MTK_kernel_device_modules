@@ -731,7 +731,7 @@ static void mtk_dp_intf_start(struct mtk_ddp_comp *comp,
 		DP_RST, CON_FLD_DP_RST, handle);
 	mtk_ddp_write_mask(comp, 0,
 		DP_RST, CON_FLD_DP_RST, handle);
-#ifdef IF_ZERO
+#ifndef IF_ZERO
 	mtk_ddp_write_mask(comp,
 			(INT_UNDERFLOW_EN |
 			 INT_VDE_EN | INT_VSYNC_EN),
@@ -763,6 +763,7 @@ static void mtk_dp_intf_start(struct mtk_ddp_comp *comp,
 static void mtk_dp_intf_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	//mtk_dp_video_trigger(video_mute<<16 | 0);
+	mtk_ddp_write_mask(comp, 0x0, DP_EN, DP_CONTROLLER_EN, handle);
 	irq_intsa = 0;
 	irq_vdesa = 0;
 	irq_underflowsa = 0;
@@ -819,9 +820,6 @@ static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 	struct mtk_drm_private *priv;
 
 	DPTXFUNC();
-	mtk_dp_poweroff();
-	udelay(1000);
-	mtk_ddp_write_mask(comp, 0x0, DP_EN, DP_CONTROLLER_EN, NULL);
 	dp_intf = comp_to_dp_intf(comp);
 
 	/* disable dp intf clk */
@@ -1661,13 +1659,29 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 	u32 status = 0;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp = NULL;
 	int dpintf_opt = 0;
 	mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
 	priv = mtk_crtc->base.dev->dev_private;
+	irqreturn_t ret = IRQ_NONE;
 	dpintf_opt = mtk_drm_helper_get_opt(priv->helper_opt,
 		MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE);
 
+	comp = &dp_intf->ddp_comp;
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
 	status = readl(dp_intf->regs + DP_INTSTA);
+	if (!status)
+		goto out;
 
 	DRM_MMP_MARK(dp_intf0, status, 0);
 
@@ -1705,10 +1719,13 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 #endif
 		mtk_drm_crtc_analysis(&(mtk_crtc->base));
 		mtk_drm_crtc_dump(&(mtk_crtc->base));
-		mtk_smi_dbg_hang_detect("dpintf underflow");
+		//mtk_smi_dbg_hang_detect("dpintf underflow");
 	}
 
-	return IRQ_HANDLED;
+	ret = IRQ_HANDLED;
+out:
+	mtk_drm_top_clk_isr_put(comp);
+	return ret;
 }
 
 static const struct mtk_dp_intf_driver_data mt6885_dp_intf_driver_data = {
