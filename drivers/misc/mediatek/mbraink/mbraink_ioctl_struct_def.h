@@ -31,7 +31,7 @@
 #define MAX_WIFI_LP_SZ				5
 #define MAX_LPM_STATE_NUM				16
 #define MAX_UFS_INFO_NUM				64
-
+#define MAX_WIFI_TXTIMEOUT_SZ			32
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -555,5 +555,19 @@ struct mbraink_ufs_info {
 	unsigned char rev[MAX_UFS_INFO_NUM];
 };
 
+struct mbraink_wifi2mbr_txtimeout_struct {
+	u64 timestamp;
+	unsigned int token_id;
+	unsigned int wlan_index;
+	unsigned int bss_index;
+	unsigned int timeout_duration;
+	unsigned int operation_mode;
+	unsigned int idle_slot_diff_cnt;
+};
 
+struct mbraink_wifi2mbr_txtimeout_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wifi2mbr_txtimeout_struct txtimeout_data[MAX_WIFI_TXTIMEOUT_SZ];
+};
 #endif
