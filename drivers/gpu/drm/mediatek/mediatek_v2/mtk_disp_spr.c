@@ -1771,13 +1771,13 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 			mtk_ddp_write_relaxed(comp, spr_params->mtk_spr_ip_params[0],
 				MT6991_DISP_MTK_SPR_REG_SPR_OUT_OF_BOUNDARY_REPEAT_EN + offset, handle);
 		}
-		reg_val = (0x0 << 5) | (0x1 << 3) |
+		reg_val = (0x0 << 5) | (0x1 << 4) | (0x1 << 3) |
 			(spr->data->need_bypass_shadow << 2) |
 			(0x1 << 1) | 0x1;
 		mtk_ddp_write_relaxed(comp, reg_val,
 			MT6991_DISP_MTK_SPR_REG_SPR_EN + offset, handle);
 	} else {
-		reg_val = (0x1 << 5) | (0x1 << 3) |
+		reg_val = (0x1 << 5) | (0x1 << 4) | (0x1 << 3) |
 			(spr->data->need_bypass_shadow << 2) |
 			(0x1 << 1) | 0x1;
 		mtk_ddp_write_relaxed(comp, reg_val,
