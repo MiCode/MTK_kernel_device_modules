@@ -339,6 +339,8 @@
 #define DSI_TARGET_NL(data)	(data->dsi_target_nl ? data->dsi_target_nl : 0x300)
 #define TARGET_NL	REG_FLD_MSB_LSB(14, 0)
 #define TARGET_NL_EN BIT(16)
+#define MT6993_TARGET_NL REG_FLD_MSB_LSB(31, 12)
+#define MT6993_TARGET_NL_EN BIT(0)
 
 #define DSI_PU_CON0	0x350
 #define PU_EN	REG_FLD_MSB_LSB(0, 0)
@@ -3451,7 +3453,8 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 		if (!mtk_dsi_lpc_en())
 			inten |= TE_RDY_INT_FLAG;
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
-						priv->data->mmsys_id == MMSYS_MT6991))
+						priv->data->mmsys_id == MMSYS_MT6991 ||
+						priv->data->mmsys_id == MMSYS_MT6993))
 			inten |= TARGET_LINE_INT_FLAG;
 	}
 
@@ -12794,9 +12797,16 @@ static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 {
 	u32 val = 0;
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+	struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 
-	val = (hactive * 9) / 10;
-	val |= TARGET_NL_EN;
+	if (priv && priv->data->mmsys_id == MMSYS_MT6993) {
+		val = REG_FLD_VAL(MT6993_TARGET_NL, (hactive * 9) / 10);
+		val |= MT6993_TARGET_NL_EN;
+	} else {
+		val = (hactive * 9) / 10;
+		val |= TARGET_NL_EN;
+	}
 
 	DDPINFO("%s -> h:%u, val:0x%x\n", __func__, hactive, val);
 	if (handle) {
@@ -13393,13 +13403,11 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		} else {
 			inten = BUFFER_UNDERRUN_INT_FLAG;
 		}
-
 		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 			inten |= FRAME_DONE_INT_FLAG;
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 						priv->data->mmsys_id == MMSYS_MT6991 ||
 						priv->data->mmsys_id == MMSYS_MT6993))
-
 				inten |= TARGET_LINE_INT_FLAG;
 			if (mtk_dsi_is_LTPO_VM_Enable(dsi)) {
 				inten |= TE_RDY_INT_FLAG | LTPO_VSYNC_INT_FLAG | INTERNAL_SOF_INT_FLAG;
@@ -13412,6 +13420,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 
 		} else {
+			if (priv && priv->data->mmsys_id == MMSYS_MT6993)
+				inten |= TARGET_LINE_INT_FLAG;
 			if (!mtk_dsi_lpc_en())
 				inten |= TE_RDY_INT_FLAG;
 
@@ -14982,7 +14992,7 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.dsi_dbg_sel = 0x274,
 	.dsi_shadow_dbg = 0x0d0,
 	.dsi_scramble_con = 0xf8,
-	.dsi_target_nl = 0xf0,
+	.dsi_target_nl = 0xe0,
 	.dsi_buf_con_base = 0x300,
 	.dsi_phy_syncon = 0x1D8,
 	.dsi_ltpo_vdo_con = 0x1A8,

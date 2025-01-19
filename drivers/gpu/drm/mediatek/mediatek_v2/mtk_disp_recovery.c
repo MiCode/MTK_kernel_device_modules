@@ -87,8 +87,8 @@ long disp_dts_gpio_init(struct device *dev, struct mtk_drm_private *private)
 	/* retrieve */
 	pctrl = devm_pinctrl_get(dev);
 	if (IS_ERR(pctrl)) {
-		DDPPR_ERR("Cannot find disp pinctrl!\n");
 		ret = PTR_ERR(pctrl);
+		DDPPR_ERR("Cannot find disp pinctrl,err=%ld!\n", ret);
 		goto exit;
 	}
 
@@ -900,7 +900,8 @@ void mtk_disp_chk_recover_init(struct drm_crtc *crtc)
 	bool mode = true;
 
 	output_comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
-	if (priv->data->mmsys_id == MMSYS_MT6991 && output_comp)
+	if (priv && (priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6993) && output_comp)
 		mode = mtk_dsi_is_cmd_mode(output_comp);
 
 	/* only support ESD check for DSI output interface */
