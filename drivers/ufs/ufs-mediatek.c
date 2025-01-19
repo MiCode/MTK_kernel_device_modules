@@ -338,9 +338,12 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 				0x453000, REG_UFS_MMIO_OPT_CTRL_0);
 		}
 
-		/* Enable multi-rtt */
-		if (host->ip_ver >= IP_VER_MT6991)
+		if (host->ip_ver >= IP_VER_MT6991) {
+			/* Enable multi-rtt */
 			ufshcd_rmwl(hba, MRTT_EN, MRTT_EN, REG_UFS_MMIO_OPT_CTRL_0);
+			/* Enable random performance improvement */
+			ufshcd_rmwl(hba, RDN_PFM_IMPV_DIS, 0, REG_UFS_MMIO_OPT_CTRL_0);
+		}
 	}
 
 	return 0;
