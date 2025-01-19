@@ -506,7 +506,8 @@ int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid, int *ret)
 		FPSGO_LOGE("[comp] no memory to wait for tgid:%d pid:%d\n", tgid, current->pid);
 		goto out;
 	}
-	FPSGO_LOGE("[comp] from userspace request tgid:%d pid:%d enable:%d cond:%d\n",
+
+	fpsgo_main_trace("[comp] from userspace request tgid:%d pid:%d enable:%d cond:%d\n",
 		tgid, current->pid, receive_fw_info_enable, iter->wait_cond);
 	mutex_unlock(&wait_enable_lock);
 
@@ -520,7 +521,7 @@ int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid, int *ret)
 	 */
 	wait_event_interruptible(iter->wait_q, iter->wait_cond);
 
-	FPSGO_LOGE("[comp] wakeup tgid:%d pid:%d enable:%d cond:%d\n",
+	fpsgo_main_trace("[comp] wakeup tgid:%d pid:%d enable:%d cond:%d\n",
 		tgid, current->pid, receive_fw_info_enable, iter->wait_cond);
 
 	mutex_lock(&wait_enable_lock);
