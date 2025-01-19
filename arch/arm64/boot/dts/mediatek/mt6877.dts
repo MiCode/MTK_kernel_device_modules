@@ -9214,6 +9214,9 @@
 
 &mtk_gauge {
 	charger = <&mt6360_chg>;
+	vbat2-det-voltage1 = <(34500)>;
+	vbat2-det-voltage2 = <(32000)>;
+	vbat2-det-voltage3 = <(35000)>;
 };
 &mddriver {
 	/* for md pmic voltage setting*/
