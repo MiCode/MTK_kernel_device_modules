@@ -23,6 +23,7 @@
 struct v1_data *gpu_info_buf;
 static int gpu_bm_inited;
 static int g_mode_sport_flag;
+static int g_mode_hmlp_flag;
 static DEFINE_MUTEX(g_GPU_BM_lock);
 static unsigned int g_mode;
 static unsigned int g_value;
@@ -86,6 +87,7 @@ _mgq_proc_write(struct file *file, const char __user *buffer,
 	 * 2         : no bw prediction
 	 * 10-300    : apply a ratio for bw predict output
 	 * 2010-2300 : apply a ratio for no predict output
+	 * 6010-6300 : apply a ratio for mid-low for gpu scernaio bw predict output
 	 */
 
 	mutex_lock(&g_GPU_BM_lock);
@@ -96,6 +98,9 @@ _mgq_proc_write(struct file *file, const char __user *buffer,
 		if (mode == GPU_BW_SPORT_MODE) {
 			g_mode_sport_flag = GPU_BW_SPORT_MODE;
 			g_value = 0;
+		} else if (mode >= GPU_BW_MLP_RATIO_FLOOR && mode <= GPU_BW_MLP_RATIO_CEIL) {
+			g_mode_hmlp_flag = GPU_BW_MLP_MODE;
+			g_value = mode;
 		} else if (mode == GPU_BW_DEFAULT_MODE) {
 			g_mode = GPU_BW_DEFAULT_MODE;
 			g_value = 0;
@@ -113,6 +118,9 @@ _mgq_proc_write(struct file *file, const char __user *buffer,
 
 	if (mode != 1)
 		g_mode_sport_flag = 0;
+
+	if (mode < GPU_BW_MLP_RATIO_FLOOR || mode > GPU_BW_MLP_RATIO_CEIL)
+		g_mode_hmlp_flag = 0;
 
 	if (g_value != 0)
 		gpu_info_buf->freq = g_value;
@@ -312,6 +320,8 @@ void MTKGPUQoS_mode(int seg_flag)
 					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
 				else if (idx_freq >= high_freq)
 					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+				else if (g_mode_hmlp_flag && idx_freq < high_freq)
+					gpu_info_buf->freq = g_value;
 				else
 					gpu_info_buf->freq = 0;
 
@@ -329,6 +339,8 @@ void MTKGPUQoS_mode(int seg_flag)
 					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
 				else if (idx <= high_idx)
 					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+				else if (g_mode_hmlp_flag && idx > high_idx)
+					gpu_info_buf->freq = g_value;
 				else
 					gpu_info_buf->freq = 0;
 
@@ -347,6 +359,8 @@ void MTKGPUQoS_mode(int seg_flag)
 				gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
 			else if (idx <= high_idx)
 				gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+			else if (g_mode_hmlp_flag && idx > high_idx)
+				gpu_info_buf->freq = g_value;
 			else
 				gpu_info_buf->freq = 0;
 
@@ -369,6 +383,55 @@ void MTKGPUQoS_mode(int seg_flag)
 
 }
 EXPORT_SYMBOL(MTKGPUQoS_mode);
+
+void MTKGPUQoS_mode_ratio(int mode)
+{
+	/* 0         : default bw prediction.
+	 * 1         : sport mode specialized
+	 * 2         : no bw prediction
+	 * 10-300    : apply a ratio for bw predict output
+	 * 2010-2300 : apply a ratio for no predict output
+	 * 6010-6300 : apply a ratio for mid-low for gpu scernaio bw predict output
+	 */
+
+	mutex_lock(&g_GPU_BM_lock);
+
+	pr_info("@%s: mode: %d\n", __func__, mode);
+
+	if (mode == GPU_BW_SPORT_MODE) {
+		g_mode_sport_flag = GPU_BW_SPORT_MODE;
+		g_value = 0;
+	} else if (mode >= GPU_BW_MLP_RATIO_FLOOR && mode <= GPU_BW_MLP_RATIO_CEIL) {
+		g_mode_hmlp_flag = GPU_BW_MLP_MODE;
+		g_value = mode;
+	} else if (mode == GPU_BW_DEFAULT_MODE) {
+		g_mode = GPU_BW_DEFAULT_MODE;
+		g_value = 0;
+	} else if (mode >= GPU_BW_RATIO_FLOOR && mode <= GPU_BW_RATIO_CEIL) {
+		g_mode = GPU_BW_DEFAULT_MODE;
+		g_value = mode;
+	} else if (mode == GPU_BW_NO_PRED_MODE)
+		g_mode = GPU_BW_NO_PRED_MODE;
+	else if (mode >= GPU_BW_NO_PRED_RATIO_FLOOR && mode <= GPU_BW_NO_PRED_RATIO_CEIL) {
+		g_mode = GPU_BW_NO_PRED_MODE;
+		g_value = mode;
+	} else
+		pr_info("@%s: wrong input: %d\n", __func__, mode);
+
+	if (mode != 1)
+		g_mode_sport_flag = 0;
+
+	if (mode < GPU_BW_MLP_RATIO_FLOOR || mode > GPU_BW_MLP_RATIO_CEIL)
+		g_mode_hmlp_flag = 0;
+
+	if (g_value != 0)
+		gpu_info_buf->freq = g_value;
+	else
+		gpu_info_buf->freq = g_mode;
+
+	mutex_unlock(&g_GPU_BM_lock);
+}
+EXPORT_SYMBOL(MTKGPUQoS_mode_ratio);
 
 static void bw_v1_gpu_power_change_notify(int power_on)
 {
@@ -425,6 +488,8 @@ void MTKGPUQoS_setup(struct v1_data *v1, phys_addr_t phyaddr, size_t size)
 	gpu_info_buf = v1;
 	idx = min_idx = high_idx = low_idx = -1;
 	gpu_bm_idx_inited = 0;
+	g_mode_sport_flag = 0;
+	g_mode_hmlp_flag = 0;
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 	idx_freq = min_freq = high_freq = low_freq = peak_perf_limit_freq = -1;
 	gpu_bm_freq_inited = 0;

@@ -12,12 +12,14 @@
 #define GPU_BW_LP_MODE                  (3)
 #define GPU_BM_PEAK_PERF_MODE           (4)
 #define GPU_BM_PEAK_PERF_MODE_LIMIT     (5)
+#define GPU_BW_MLP_MODE                 (6)
 
 #define GPU_BW_RATIO_CEIL               (300)
 #define GPU_BW_RATIO_FLOOR              (10)
-
 #define GPU_BW_NO_PRED_RATIO_CEIL       (2300)
 #define GPU_BW_NO_PRED_RATIO_FLOOR      (2010)
+#define GPU_BW_MLP_RATIO_CEIL           (6300)
+#define GPU_BW_MLP_RATIO_FLOOR          (6010)
 
 #define GPU_BM_PEAK_INDEX_TOP_LIMIT      (1)
 
@@ -35,6 +37,7 @@ struct setupfw_t {
 };
 
 void MTKGPUQoS_mode(int seg_flag);
+void MTKGPUQoS_mode_ratio(int mode);
 void MTKGPUQoS_setup(struct v1_data *v1, phys_addr_t phyaddr, size_t size);
 int MTKGPUQoS_is_inited(void);
 
