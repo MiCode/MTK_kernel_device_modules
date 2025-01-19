@@ -986,6 +986,7 @@ struct charger_device *charger_device_register(const char *name,
 	head = &chg_dev->evt_nh;
 	srcu_init_notifier_head(head);
 	/* Rename srcu's lock to avoid LockProve warning */
+	lockdep_register_key(&chg_dev->key);
 	lockdep_init_map(&(&head->srcu)->dep_map, name, &chg_dev->key, 0);
 	mutex_init(&chg_dev->ops_lock);
 	chg_dev->dev.class = charger_class;

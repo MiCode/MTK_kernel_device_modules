@@ -228,6 +228,7 @@ struct adapter_device *adapter_device_register(const char *name,
 	head = &adapter_dev->evt_nh;
 	srcu_init_notifier_head(head);
 	/* Rename srcu's lock to avoid LockProve warning */
+	lockdep_register_key(&adapter_dev->key);
 	lockdep_init_map(&(&head->srcu)->dep_map, name, &adapter_dev->key, 0);
 	mutex_init(&adapter_dev->ops_lock);
 	adapter_dev->dev.class = adapter_class;
