@@ -75,8 +75,6 @@
 
 #define MAX_GPU_FENCE_RECORD_DATA 8
 
-#define MAX_VCPU_RECORD_LENGTH 1024
-
 enum mbraink_op_mode {
 	mbraink_op_mode_normal = 0,
 	mbraink_op_mode_sbe = 1,
@@ -544,7 +542,7 @@ struct nbl_trace_buf_trans {
 	u64 current_time;
 	u64 cntcvt;
 	u64 cntfrq;
-	struct trace_vcpu_rec vcpu_data[MAX_VCPU_RECORD_LENGTH];
+	void *vcpu_data;
 };
 
 #endif
