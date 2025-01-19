@@ -18,6 +18,8 @@ struct mtk_disp_bwm_data {
 	bool fmt_rgb565_is_0;
 	unsigned int fmt_uyvy;
 	unsigned int fmt_yuyv;
+	unsigned int (*aid_sel_mapping)(struct mtk_ddp_comp *comp);
+	void __iomem *(*aid_sel_baddr_mapping)(struct mtk_ddp_comp *comp);
 };
 
 struct compress_info {

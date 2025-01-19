@@ -10298,7 +10298,7 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		}
 		if (j >= MAX_LAYER_RATIO_NUMBER)
 			break;
-		if (!is_compress || (mtk_fb_get_dma(fb) == 0) || mtk_drm_fb_is_secure(fb)||
+		if (!is_compress || (mtk_fb_get_dma(fb) == 0) ||
 			plane_state->mml_mode == MML_MODE_DIRECT_LINK ||
 			plane_state->mml_mode == MML_MODE_RACING ||
 			((drm_rect_height(&plane->state->src) >> 16) < 8))

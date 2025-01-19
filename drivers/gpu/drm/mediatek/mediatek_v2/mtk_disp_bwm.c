@@ -74,6 +74,9 @@
 #define DISP_REG_BWM_L_BURST_ACC(n)			(0x0E0UL + 0x4 * (n))
 #define DISP_REG_BWM_L_BURST_ACC_WIN_MAX(n)	(0x100UL + 0x4 * (n))
 
+#define MT6991_OVL_BWM0_L0_AID_SETTING		(0xBB8UL)
+#define MT6991_BWM_LAYER_OFFEST (0x4)
+
 #define OVL_CON_CLRFMT_RGB (1UL)
 #define OVL_CON_CLRFMT_RGBA8888 (2)
 #define OVL_CON_CLRFMT_ARGB8888 (3)
@@ -93,6 +96,30 @@ struct mtk_disp_bwm {
 
 int active_layer_avg_info[OVL_LAYER_NR];
 int active_layer_peak_info[OVL_LAYER_NR];
+
+void __iomem *mtk_bwm_mmsys_mapping_MT6991(struct mtk_ddp_comp *comp)
+{
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
+	switch (comp->id) {
+	case DDP_COMPONENT_BWM0:
+		return priv->ovlsys0_regs;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
+unsigned int mtk_ovl_bwm_aid_sel_MT6991(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_BWM0:
+		return MT6991_OVL_BWM0_L0_AID_SETTING;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
 
 static unsigned int ovl_fmt_convert(struct mtk_disp_bwm *bwm, unsigned int fmt,
 				    uint64_t modifier, unsigned int compress)
@@ -368,6 +395,8 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	unsigned long record2 = 0;
 	unsigned long record3 = 0;
 	s32 reg_val;
+	void __iomem *aid_sel_baddr = 0;
+	unsigned int aid_sel_offset = 0;
 
 	if (comp->mtk_crtc)
 		params = mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
@@ -484,6 +513,24 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		AFBC_V1_2_HEADER_SIZE_PER_TILE_BYTES;
 
 	writel(lx_hdr_pitch, comp->regs + DISP_REG_BWM_L_HDR_PITCH(idx));
+
+	if (bwm->data->aid_sel_baddr_mapping )
+		aid_sel_baddr = bwm->data->aid_sel_baddr_mapping (comp);
+
+	if (bwm->data->aid_sel_mapping)
+		aid_sel_offset = bwm->data->aid_sel_mapping(comp);
+
+	if (aid_sel_baddr && aid_sel_offset) {
+		bool is_sec = mtk_drm_fb_is_secure(fb);
+
+		if (is_sec && addr) {
+			writel(BIT(0), aid_sel_baddr + aid_sel_offset
+				+ MT6991_BWM_LAYER_OFFEST * idx);
+		} else {
+			writel(0x0, aid_sel_baddr + aid_sel_offset
+				+ MT6991_BWM_LAYER_OFFEST * idx);
+		}
+	}
 
 	return 0;
 }
@@ -690,6 +737,8 @@ static const struct mtk_disp_bwm_data mt6991_bwm_driver_data = {
 	.fmt_rgb565_is_0 = true,
 	.fmt_uyvy = 4U,
 	.fmt_yuyv = 5U,
+	.aid_sel_mapping = &mtk_ovl_bwm_aid_sel_MT6991,
+	.aid_sel_baddr_mapping = &mtk_bwm_mmsys_mapping_MT6991,
 };
 
 static const struct of_device_id mtk_disp_bwm_driver_dt_match[] = {
