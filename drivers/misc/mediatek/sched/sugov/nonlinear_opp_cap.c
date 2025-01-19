@@ -916,7 +916,7 @@ inline unsigned long get_cpu_max_freq(int cpu)
 	if (cpu_max_freq)
 		return cpu_max_freq[cpu];
 
-	return 0;
+	return 1;
 }
 EXPORT_SYMBOL(get_cpu_max_freq);
 
@@ -925,7 +925,7 @@ inline unsigned long get_cpu_min_freq(int cpu)
 	if (cpu_min_freq)
 		return cpu_min_freq[cpu];
 
-	return 0;
+	return 1;
 }
 EXPORT_SYMBOL(get_cpu_min_freq);
 
