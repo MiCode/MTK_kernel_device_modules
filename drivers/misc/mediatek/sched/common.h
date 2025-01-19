@@ -564,9 +564,7 @@ static inline unsigned long _task_util_est(struct task_struct *p)
 
 static inline unsigned long task_util_est(struct task_struct *p)
 {
-	if (sched_feat(UTIL_EST) && is_util_est_enable())
-		return max(task_util(p), _task_util_est(p));
-	return task_util(p);
+	return max(task_util(p), _task_util_est(p));
 }
 
 static inline unsigned int topology_get_non_s_scale_dpt_v2(int cpu)
