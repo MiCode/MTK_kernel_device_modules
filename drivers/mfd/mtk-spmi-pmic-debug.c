@@ -118,57 +118,60 @@ void mtk_spmi_pmic_get_glitch_cnt(u16 *buf)
 
 		/* pr_info("%s slvid 0x%x cid 0x%x\n", __func__, i, */
 		/* mtk_spmi_pmic_debug[i]->cid); */
-
+		regmap = mtk_spmi_pmic_debug[i]->regmap;
 		if (mtk_spmi_pmic_debug[i]->cid == 0x16) {
-			regmap = mtk_spmi_pmic_debug[i]->regmap;
 			regmap_read(regmap, mtk_spmi_pmic_debug[i]->cid_addr_l, &reg_val);
 			pr_info("%s slvid 0x%x MT6316 %s cid_l 0x%x\n", __func__, i,
 				reg_val >= MT6316_SWCID_L_E4_CODE ? "E4" : "E3", reg_val);
-			if (reg_val >= MT6316_SWCID_L_E4_CODE) {
-				/* dump glitch status */
-				regmap_read(regmap, mtk_spmi_pmic_debug[i]->spmi_glitch_sts0, &glitch_sta);
-				/* pr_info("%s glitch status: slvid 0x%x 0x%x\n", __func__, i, glitch_sta); */
+		}
+		if (((mtk_spmi_pmic_debug[i]->cid == 0x16) && (reg_val >= MT6316_SWCID_L_E4_CODE)) ||
+			(mtk_spmi_pmic_debug[i]->cid == 0x61) ||
+			(mtk_spmi_pmic_debug[i]->cid == 0x67)) {
 
-				/* dump rising/falling edge deglitch counter */
-				reg_val = 0x2;
-				regmap_update_bits(regmap,
-					mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
-					(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
-					mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
-				regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
-					(void *)&sck_cnt, 2);
+			/* dump glitch status */
+			regmap_read(regmap, mtk_spmi_pmic_debug[i]->spmi_glitch_sts0, &glitch_sta);
+			/* pr_info("%s glitch status: slvid 0x%x 0x%x\n", __func__, i, glitch_sta); */
 
-				reg_val = 0xa;
-				regmap_update_bits(regmap,
-					mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
-					(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
-					mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
-				regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
-					(void *)&sck_degitch_cnt, 2);
+			/* dump rising/falling edge deglitch counter */
+			reg_val = 0x2;
+			regmap_update_bits(regmap,
+				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
+				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
+				mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
+			regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
+				(void *)&sck_cnt, 2);
 
-				reg_val = 0xe;
-				regmap_update_bits(regmap,
-					mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
-					(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
-					mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
-				regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
-					(void *)&sda_cnt, 2);
+			reg_val = 0xa;
+			regmap_update_bits(regmap,
+				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
+				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
+				mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
+			regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
+				(void *)&sck_degitch_cnt, 2);
 
-				reg_val = 0x6;
-				regmap_update_bits(regmap,
-					mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
-					(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
-					mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
+			reg_val = 0xe;
+			regmap_update_bits(regmap,
+				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
+				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
+				mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
+			regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
+				(void *)&sda_cnt, 2);
 
-				glitch_cnt_array[4*i+1] = glitch_sta;
-				glitch_cnt_array[4*i+2] = sck_cnt;
-				glitch_cnt_array[4*i+3] = sck_degitch_cnt;
-				glitch_cnt_array[4*i+4] = sda_cnt;
-				/* pr_info("%s scl_cnt: 0x%x, scl_degitch_cnt: 0x%x, sda_cnt: 0x%x\n", */
-				/* __func__, sck_cnt, sck_degitch_cnt, sda_cnt); */
-			}
+			reg_val = 0x6;
+			regmap_update_bits(regmap,
+				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
+				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
+				mtk_spmi_pmic_debug[i]->spmi_debug_out_l_shift), reg_val);
+
+			glitch_cnt_array[4*i+1] = glitch_sta;
+			glitch_cnt_array[4*i+2] = sck_cnt;
+			glitch_cnt_array[4*i+3] = sck_degitch_cnt;
+			glitch_cnt_array[4*i+4] = sda_cnt;
+			/* pr_info("%s scl_cnt: 0x%x, scl_degitch_cnt: 0x%x, sda_cnt: 0x%x\n", */
+			/* __func__, sck_cnt, sck_degitch_cnt, sda_cnt); */
 		}
 	}
+
 	if (buf != NULL)
 		memcpy(buf, glitch_cnt_array, spmi_glitch_idx_cnt*sizeof(u16));
 	else {
