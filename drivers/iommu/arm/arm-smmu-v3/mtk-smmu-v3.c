@@ -473,6 +473,34 @@ static bool mtk_delay_hw_init(struct arm_smmu_device *smmu)
 	return delay_hw_init;
 }
 
+static void smmu_stash_mode_cfg(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+	void __iomem *wp_base = smmu->wp_base;
+	unsigned int stash_mode_val = 0;
+
+	switch (data->stash_mode) {
+	case SMMUWP_STASH_MODE0:
+		stash_mode_val = SMMUWP_STASH_MODE0_VAL;
+		break;
+	case SMMUWP_STASH_MODE1:
+		stash_mode_val = SMMUWP_STASH_MODE1_VAL;
+		break;
+	case SMMUWP_STASH_MODE2:
+		stash_mode_val = SMMUWP_STASH_MODE2_VAL;
+		break;
+	case SMMUWP_STASH_MODE3:
+		stash_mode_val = SMMUWP_STASH_MODE3_VAL;
+		break;
+	default:
+		return;
+	}
+
+	smmu_write_field(wp_base, SMMUWP_GLB_CTL0,
+			 SMMUWP_STASH_MODE_MSK,
+			 stash_mode_val);
+}
+
 static void smmu_init_wpcfg(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -533,6 +561,9 @@ static void smmu_init_wpcfg(struct arm_smmu_device *smmu)
 		smmu_write_field(wp_base, SMMUWP_TCU_CTL0,
 				 TCU_QOS_MSK, data->tcu_qos);
 	}
+
+	/* Set translation stash mode */
+	smmu_stash_mode_cfg(smmu);
 
 	dev_info(smmu->dev,
 		 "[%s] done GLB_CTL0(0x%x)=0x%x TCU_CTL0(0x%x)=0x%x TCU_CTL1(0x%x)=0x%x\n",
@@ -2740,7 +2771,7 @@ static const struct mtk_smmu_ops mtk_smmu_ops = {
 static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
-	u32 prefetch, irq_disable, ssid_enable, tcu_qos;
+	u32 prefetch, irq_disable, ssid_enable, tcu_qos, val;
 	int ret;
 
 	/* parse tcu prefetch config */
@@ -2786,6 +2817,15 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 	if (!ret) {
 		data->tcu_qos = tcu_qos & TCU_QOS_MSK;
 		dev_info(smmu->dev, "parse tcu-qos:%d\n", tcu_qos);
+	}
+
+	ret = of_property_read_u32(smmu->dev->of_node, "mtk,stash-mode", &val);
+	if (!ret) {
+		data->stash_mode = val;
+		dev_info(smmu->dev, "parse stash-mode:%d\n", val);
+	} else {
+		/* no need set stash mode */
+		data->stash_mode = -1;
 	}
 
 	if (of_property_read_bool(smmu->dev->of_node, "mtk,smmu-ela"))

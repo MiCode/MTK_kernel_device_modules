@@ -81,6 +81,8 @@
 #define CTL0_AUTO_SLP_DIS		F_BIT_SET(9)
 #define CTL0_STTSL_DIS			F_BIT_SET(10)
 #define CTL0_CFG_TAB_DCM_EN		F_BIT_SET(11)
+#define CTL0_CFG_OG_DIS			F_BIT_SET(12)
+#define CTL0_CFG_DFTSLV_EN		F_BIT_SET(13)
 #define CTL0_CPU_PARTID_DIS		F_BIT_SET(14)
 /* New bits of SMMU wrapper extension */
 #define CTL0_TCU2SLC_DCM_EN		F_BIT_SET(18)
@@ -88,6 +90,16 @@
 #define CTL0_DVM_DCM_EN			F_BIT_SET(20)
 #define CTL0_CPU_TBU_PARTID_DIS		F_BIT_SET(21)
 #define CTL0_CFG_HWPMU_EN		F_BIT_SET(24)
+
+#define SMMUWP_STASH_MODE0		(0x0)
+#define SMMUWP_STASH_MODE1		(0x1)
+#define SMMUWP_STASH_MODE2		(0x2)
+#define SMMUWP_STASH_MODE3		(0x3)
+#define SMMUWP_STASH_MODE0_VAL		(0x0)
+#define SMMUWP_STASH_MODE1_VAL		(CTL0_STTSL_DIS)
+#define SMMUWP_STASH_MODE2_VAL		(CTL0_CFG_DFTSLV_EN)
+#define SMMUWP_STASH_MODE3_VAL		(CTL0_STTSL_DIS | CTL0_CFG_DFTSLV_EN)
+#define SMMUWP_STASH_MODE_MSK		(CTL0_STTSL_DIS | CTL0_CFG_DFTSLV_EN)
 
 #define SMMUWP_GLB_CTL1			(0x4)
 #define SMMUWP_GLB_CTL2			(0x8)
@@ -659,6 +671,7 @@ struct mtk_smmu_data {
 	u32				pmg_max;
 	u32				tcu_prefetch;
 	u32				tcu_qos;
+	int				stash_mode;
 	bool				axslc;
 	bool				ssid_enabled;
 	bool				ela_support;
