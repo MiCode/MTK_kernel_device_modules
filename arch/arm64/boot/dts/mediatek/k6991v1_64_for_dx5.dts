@@ -736,6 +736,10 @@ bootargs_ext = "rcu_nocbs=0-7";
 	};
 };
 
+&wifi {
+	flavor-bin = "dx5";
+};
+
 &bt {
 	flavor-bin = "dx5";
 };
