@@ -217,7 +217,7 @@ int core_ctl_enable_policy(unsigned int policy)
 
 		/* reset recorded data when turn on */
 		if (!old_val && enable_policy)
-			reset_cpu_over_stat();
+			policy_chg_notify();
 	}
 
 	if (success)
