@@ -15985,7 +15985,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		vcp-secure-dump = <0>;   /* enable dump via secure world*/
 		vcp-secure-dump-size = <0x400000>;
 		vcp-secure-dump-offset = <0xa00000>;
-		vcp-secure-dump-dram-offset = <0x200000>;
+		vcp-secure-dump-dram-offset = <0x300000>;
 		vcp-sec-dump-key = "mediatek,me_vcp_reserved";
 
 		memorydump = <0x60000>, /* l2tcm */
@@ -16125,8 +16125,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
 		mmup-secure-dump = <0>;   /* enable dump via secure world*/
-		mmup-secure-dump-size = <0x200000>;
-		mmup-secure-dump-offset = <0xc00000>;
+		mmup-secure-dump-size = <0x100000>;
+		mmup-secure-dump-offset = <0xd00000>;
 
 		memorydump = <0x020000>, /* l1c */
 			<0x003f00>, /* regdump */
