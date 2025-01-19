@@ -459,7 +459,7 @@ static void over_thresh_chg_notify(void)
 		/* re-calculate over_thres count when updated threshold */
 		list_for_each_entry(p, &cpu_rq(cpu)->cfs_tasks, se.group_node) {
 			struct cc_task_struct *cc_ts =
-				&((struct mtk_task *) p->android_vendor_data1)->cc_task;
+				&((struct mtk_task *) android_task_vendor_data(p))->cc_task;
 
 			over_type = is_task_over_thres(p);
 			WRITE_ONCE(cc_ts->over_type, (u64)over_type);
@@ -536,7 +536,7 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 	/* check if task is over threshold */
 	over_type = get_over_type(cpu_over_thres, util);
 	update_nr_over_thres_locked(cpu_over_thres, over_type, p, util, inc);
-	cc_ts = &((struct mtk_task *) p->android_vendor_data1)->cc_task;
+	cc_ts = &((struct mtk_task *)android_task_vendor_data(p))->cc_task;
 	WRITE_ONCE(cc_ts->over_type, (u64)over_type);
 	spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 }
@@ -639,7 +639,7 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 		cpu = cpu_of(task_rq(p));
 
 		spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
-		cc_ts = &((struct mtk_task *) p->android_vendor_data1)->cc_task;
+		cc_ts = &((struct mtk_task *)android_task_vendor_data(p))->cc_task;
 		old_type = READ_ONCE(cc_ts->over_type);
 
 		util = task_util(p);

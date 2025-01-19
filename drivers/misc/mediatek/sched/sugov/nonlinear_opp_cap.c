@@ -840,7 +840,7 @@ void set_sbb(int flag, int pid, bool set)
 
 				get_task_struct(group_leader);
 				sts = &((struct mtk_task *)
-					group_leader->android_vendor_data1)->sbb_task;
+					android_task_vendor_data(group_leader))->sbb_task;
 				sts->set_group = set;
 				put_task_struct(group_leader);
 				success = 1;
@@ -856,7 +856,7 @@ void set_sbb(int flag, int pid, bool set)
 			struct sbb_task_struct *sts;
 
 			get_task_struct(p);
-			sts = &((struct mtk_task *) p->android_vendor_data1)->sbb_task;
+			sts = &((struct mtk_task *)android_task_vendor_data(p))->sbb_task;
 			sts->set_task = set;
 			put_task_struct(p);
 			success = 1;
@@ -878,12 +878,12 @@ bool is_sbb_trigger(struct rq *rq)
 	if (curr && curr->exit_state == 0) {
 		struct sbb_task_struct *sts;
 
-		sts = &((struct mtk_task *) curr->android_vendor_data1)->sbb_task;
+		sts = &((struct mtk_task *)android_task_vendor_data(curr))->sbb_task;
 		sbb_trigger |= sts->set_task;
 		group_leader = curr->group_leader;
 		if (group_leader && group_leader->exit_state == 0) {
 			get_task_struct(group_leader);
-			sts = &((struct mtk_task *) group_leader->android_vendor_data1)->sbb_task;
+			sts = &((struct mtk_task *)android_task_vendor_data(group_leader))->sbb_task;
 			sbb_trigger |= sts->set_group;
 			put_task_struct(group_leader);
 		}
@@ -1744,7 +1744,7 @@ int set_curr_uclamp_hint(int pid, int set)
 	}
 
 	get_task_struct(p);
-	cu_ht = &((struct mtk_task *) p->android_vendor_data1)->cu_hint;
+	cu_ht = &((struct mtk_task *)android_task_vendor_data(p))->cu_hint;
 	cu_ht->hint = set;
 	put_task_struct(p);
 	rcu_read_unlock();
@@ -1770,7 +1770,7 @@ int get_curr_uclamp_hint(int pid)
 	}
 
 	get_task_struct(p);
-	cu_ht = &((struct mtk_task *) p->android_vendor_data1)->cu_hint;
+	cu_ht = &((struct mtk_task *)android_task_vendor_data(p))->cu_hint;
 	hint = cu_ht->hint;
 	put_task_struct(p);
 	rcu_read_unlock();

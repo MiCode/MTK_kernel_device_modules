@@ -218,7 +218,7 @@ static void set_window_start(struct rq *rq)
 	static int sync_cpu_available;
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
 	struct flt_rq *sync_fsrq;
-	struct flt_task_struct *fts = &((struct mtk_task *)current->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(current))->flt_task;
 
 	if (likely(fsrq->window_start))
 		return;
@@ -256,7 +256,7 @@ static inline u64 scale_exec_time(u64 delta, struct rq *rq)
 
 inline bool flt_is_new_task(struct task_struct *p)
 {
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 
 	return fts->active_time < NEW_TASK_ACTIVE_TIME;
 }
@@ -267,7 +267,7 @@ static void rollover_task_window(struct task_struct *p, bool full_window)
 	u32 curr_window;
 	int i;
 	struct flt_rq *fsrq = &per_cpu(flt_rq, task_rq(p)->cpu);
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 
 	/* Rollover the sum */
 	curr_window = 0;
@@ -368,7 +368,7 @@ static void rollover_cpu_window(struct rq *rq, bool full_window)
 static void update_cpu_busy_time(struct task_struct *p, struct rq *rq,
 				 int event, u64 wallclock, u64 irqtime)
 {
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
 	u64 mark_start = fts->mark_start;
 	int new_window, full_window = 0, nr_full_windows = 0;
@@ -576,7 +576,7 @@ void flt_rvh_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	bool double_enqueue = false;
 	int flt_groupid = -1;
 	bool is_flt_group_id = false;
@@ -611,7 +611,7 @@ void flt_rvh_dequeue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	bool double_dequeue = false;
 
 	int flt_groupid = -1;
@@ -670,7 +670,7 @@ static void update_history(struct rq *rq, struct task_struct *p,
 			u32 runtime, int samples, int event,
 			enum history_event update_history_event)
 {
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	u32 *hist = &fts->sum_history[0];
 	u32 *util_sum_hist = &fts->util_sum_history[0];
 	u32 *util_avg_hist = &fts->util_avg_history[0];
@@ -729,7 +729,7 @@ done:
 
 static u64 add_to_task_demand(struct rq *rq, struct task_struct *p, u64 delta, enum win_event event)
 {
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	unsigned long cie = arch_scale_cpu_capacity(cpu_of(rq));
 	unsigned long fie = arch_scale_freq_capacity(cpu_of(rq));
 	u64 scaled_time = 0;
@@ -752,7 +752,7 @@ static u64 add_to_task_demand(struct rq *rq, struct task_struct *p, u64 delta, e
 static u64 update_task_demand(struct task_struct *p, struct rq *rq,
 			       int event, u64 wallclock)
 {
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	u64 mark_start = fts->mark_start;
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
 	u64 delta, window_start = fsrq->window_start;
@@ -831,7 +831,7 @@ static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event
 {
 	u64 old_window_start;
 	struct flt_rq *fsrq = &per_cpu(flt_rq, rq->cpu);
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	s64 delta = 0;
 	int group_id = -1;
 
@@ -882,7 +882,7 @@ done:
 static void flt_init_new_task_load(struct task_struct *p)
 {
 	int i;
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 	u32 init_load_windows = sched_init_task_load_windows;
 	u32 init_load_pct = sysctl_sched_init_task_load_pct;
 
@@ -924,7 +924,7 @@ static void flt_init_existing_task_load(struct task_struct *p)
 static void mark_task_starting(struct task_struct *p)
 {
 	u64 wallclock;
-	struct flt_task_struct *fts = &((struct mtk_task *)p->android_vendor_data1)->flt_task;
+	struct flt_task_struct *fts = &((struct mtk_task *)android_task_vendor_data(p))->flt_task;
 
 	wallclock = get_current_time();
 	fts->mark_start = wallclock;

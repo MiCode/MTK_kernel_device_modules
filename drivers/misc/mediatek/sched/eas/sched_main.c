@@ -47,6 +47,7 @@
 #include "eas_trace.h"
 
 #define TAG "EAS_IOCTL"
+#define AOSP_TASK_DATA_SIZE "android_arch_task_struct_size="
 
 int mtk_sched_asym_cpucapacity  =  1;
 unsigned int dn_pct = -1;
@@ -239,93 +240,6 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 	irq_log_store();
 }
 
-
-#if IS_ENABLED(CONFIG_DETECT_HUNG_TASK)
-
-struct migration_arg {
-	struct task_struct		*task;
-	int				dest_cpu;
-	struct set_affinity_pending	*pending;
-};
-
-/*
- * @refs: number of wait_for_completion()
- * @stop_pending: is @stop_work in use
- */
-struct set_affinity_pending {
-	refcount_t		refs;
-	unsigned int		stop_pending;
-	struct completion	done;
-	struct cpu_stop_work	stop_work;
-	struct migration_arg	arg;
-};
-//static void mtk_check_d_tasks(void *data, struct task_struct *p,
-void mtk_check_d_tasks(void *data, struct task_struct *p,
-				unsigned long t, bool *need_check)
-{
-	unsigned long pending_stime = 0;
-	unsigned long switch_count = p->nvcsw + p->nivcsw;
-	struct mig_task_struct *migts = &((struct mtk_task *)p->android_vendor_data1)->mig_task;
-	struct cpumask cpus;
-	struct set_affinity_pending *my_pending = NULL;
-	struct task_struct *dest_task;
-	struct migration_arg *arg;
-	int dest_cpu;
-
-	*need_check = true;
-
-	/*
-	 * Reset the migration_pending start time
-	 */
-	if (!p->migration_pending || switch_count != p->last_switch_count) {
-		migts->pending_rec = 0;
-		return;
-	}
-
-	/*check the cpu online mask */
-	if (p->migration_pending) {
-		if (!cpumask_and(&cpus, &p->cpus_mask, cpu_online_mask) ||
-			is_migration_disabled(p)) {
-			migts->pending_rec = 0;
-			*need_check = false;
-			return;
-		}
-	}
-
-	/*
-	 * Record the migration_pending start time
-	 */
-	if (p->migration_pending && migts->pending_rec == 0) {
-		migts->pending_rec = jiffies;
-		*need_check = false;
-		return;
-	}
-	/*
-	 * Check the whether migration time is time out or not
-	 */
-	pending_stime = migts->pending_rec;
-	if (time_is_after_jiffies(pending_stime + t * HZ)) {
-		*need_check = false;
-	} else {
-		*need_check = true;
-		my_pending = p->migration_pending;
-		if (my_pending) {
-			arg = &my_pending->arg;
-			dest_cpu = arg->dest_cpu;
-			dest_task = cpu_curr(dest_cpu);
-			pr_info(" pending %-15.15s %d %d %d %d\n",
-				dest_task->comm, dest_task->pid, dest_cpu,
-				my_pending->stop_pending, my_pending->done.done);
-		}
-		pr_info("flags:0x%x m_flags:%d %d %d %d %d 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx 0x%lx\n",
-			p->flags, p->migration_flags, is_migration_disabled(p), p->on_rq, p->on_cpu,
-			p->nr_cpus_allowed, p->cpus_mask.bits[0], p->cpus_ptr->bits[0],
-			cpu_active_mask->bits[0], cpu_online_mask->bits[0],
-			cpu_possible_mask->bits[0], cpu_pause_mask->bits[0]);
-	}
-}
-#endif
-
 void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
 	int clamp_id, unsigned int value)
 {
@@ -426,7 +340,7 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 	struct affinity_context *ctx, bool *skip_user_ptr)
 {
-	struct cpumask *kernel_allowed_mask = &((struct mtk_task *) p->android_vendor_data1)->kernel_allowed_mask;
+	struct cpumask *kernel_allowed_mask = &((struct mtk_task *)android_task_vendor_data(p))->kernel_allowed_mask;
 	struct rq *rq = task_rq(p);
 
 	// not set or invalid cpu mask
@@ -1031,15 +945,66 @@ void exit_flt_platform(void)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE)
+/*  for kernel6.12 later, run time checks for vendor data size*/
+static int mtk_check_task_vendor_size(void)
+{
+	int ret = -ENOMEM;
+	u32 val = 0;
+	const char *bootargs = NULL, *substr = NULL;
+	struct device_node *of_chosen;
+	char extracted_str[64] = {0};
+	int len;
+
+	of_chosen = of_find_node_by_path("/chosen");
+	if (of_chosen) {
+		bootargs = (char *)of_get_property(of_chosen, "bootargs", NULL);
+		substr = strstr(bootargs, AOSP_TASK_DATA_SIZE);
+		if (!substr) {
+			pr_info("%s not found in command line\n", AOSP_TASK_DATA_SIZE);
+			return -EINVAL;
+		}
+		substr += strlen(AOSP_TASK_DATA_SIZE);
+		len = strcspn(substr, " ");
+		snprintf(extracted_str, sizeof(extracted_str), "%s%.*s", AOSP_TASK_DATA_SIZE, len, substr);
+
+		substr = strstr(extracted_str, AOSP_TASK_DATA_SIZE);
+		substr += strlen(AOSP_TASK_DATA_SIZE);
+
+		if (kstrtouint(substr, 10, &val))
+			return -EINVAL;
+
+		/* santiy check max range*/
+		if (val > CONFIG_GKI_TASK_STRUCT_VENDOR_SIZE_MAX)
+			return -EINVAL;
+
+		if (val >= sizeof(struct mtk_task)) {
+			pr_info("[Size check ok] boot_arg=%u, mtk_task=%lu\n",
+				val, sizeof(struct mtk_task));
+			ret = 0;
+		} else
+			pr_info("[Size check fail] boot_arg=%u, mtk_task=%lu\n",
+				val, sizeof(struct mtk_task));
+	} else
+				pr_info("no chosen\n");
+	return ret;
+}
+#endif
+
 static int __init mtk_scheduler_init(void)
 {
 	struct proc_dir_entry *pe, *parent;
 	int ret = 0;
 
 	/* compile time checks for vendor data size */
-	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_task, struct task_struct);
+	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_static_vendor_task, struct task_struct);
 	MTK_VENDOR_DATA_SIZE_TEST(struct mtk_tg, struct task_group);
 
+#if IS_ENABLED(CONFIG_GKI_DYNAMIC_TASK_STRUCT_SIZE)
+	ret = mtk_check_task_vendor_size();
+	if (ret)
+		return ret;
+#endif
 	/* build cpu_array for hints-based gear search*/
 	init_cpu_array();
 	build_cpu_array();

@@ -81,7 +81,7 @@ EXPORT_SYMBOL(lookup_grp);
 
 inline struct grp *task_grp(struct task_struct *p)
 {
-	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	struct gp_task_struct *gts = &((struct mtk_task *)android_task_vendor_data(p))->gp_task;
 
 	return rcu_dereference(gts->grp);
 }
@@ -146,7 +146,7 @@ unlock:
 
 static void remove_task_from_group(struct task_struct *p)
 {
-	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	struct gp_task_struct *gts = &((struct mtk_task *)android_task_vendor_data(p))->gp_task;
 	struct grp *grp = gts->grp;
 	struct rq *rq;
 	struct rq_flags rf;
@@ -172,7 +172,7 @@ add_task_to_group(struct task_struct *p, struct grp *grp)
 {
 	struct rq *rq;
 	struct rq_flags rf;
-	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	struct gp_task_struct *gts = &((struct mtk_task *)android_task_vendor_data(p))->gp_task;
 	struct flt_rq *fsrq;
 	int flt_groupid = grp->id, queued;
 
@@ -201,7 +201,7 @@ int __sched_set_grp_id(struct task_struct *p, int group_id)
 	int rc = 0;
 	unsigned long flags;
 	struct grp *grp = NULL;
-	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	struct gp_task_struct *gts = &((struct mtk_task *)android_task_vendor_data(p))->gp_task;
 
 	if (group_id >= GROUP_ID_RECORD_MAX)
 		return -1;
@@ -336,7 +336,7 @@ static void group_init_tg_pointers(void)
 static void add_new_task_to_grp(struct task_struct *new, enum _GP_trace GP_trace)
 {
 	int groupid, ret;
-	struct gp_task_struct *gts = &((struct mtk_task *)new->android_vendor_data1)->gp_task;
+	struct gp_task_struct *gts = &((struct mtk_task *)android_task_vendor_data(new))->gp_task;
 
 	if (gts->customized)
 		return;
@@ -348,7 +348,7 @@ static void add_new_task_to_grp(struct task_struct *new, enum _GP_trace GP_trace
 
 static void group_init_new_task_load(struct task_struct *p)
 {
-	struct gp_task_struct *gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	struct gp_task_struct *gts = &((struct mtk_task *)android_task_vendor_data(p))->gp_task;
 
 	rcu_assign_pointer(gts->grp, NULL);
 }
@@ -398,7 +398,7 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 
 	cgroup_taskset_for_each(task, css, tset) {
 		grp_id = cgrptg->colocate ? cgrptg->groupid : -1;
-		gts = &((struct mtk_task *)task->android_vendor_data1)->gp_task;
+		gts = &((struct mtk_task *)android_task_vendor_data(task))->gp_task;
 		if (gts->customized)
 			continue;
 		ret = __sched_set_grp_id(task, grp_id);
@@ -463,7 +463,7 @@ int __set_task_to_group(int pid, int grp_id)
 	p = get_pid_task(find_vpid(pid), PIDTYPE_PID);
 	if (!p)
 		return ret;
-	gts = &((struct mtk_task *)p->android_vendor_data1)->gp_task;
+	gts = &((struct mtk_task *)android_task_vendor_data(p))->gp_task;
 	if (grp_id < 0)
 		gts->customized = false;
 	else

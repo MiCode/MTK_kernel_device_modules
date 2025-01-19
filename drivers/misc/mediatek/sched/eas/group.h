@@ -9,11 +9,6 @@
 #define GROUP_RAVG_HIST_SIZE_MAX (5)
 #define FLT_GROUP_START_IDX 6
 
-#define mts_to_ts(mts) ({ \
-		void *__mptr = (void *)(mts); \
-		((struct task_struct *)(__mptr - \
-			offsetof(struct task_struct, android_vendor_data1))); })
-
 /* gp mode */
 enum _GP_mode {
 	GP_MODE_0 = 0,
