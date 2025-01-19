@@ -595,7 +595,7 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	if (enable) {
 		if (dev->cpu_hint_mode & (1 << MTK_GRP_AWARE_MODE)) { // cpu grp awr mode
 			if (dev->cpu_hint_ref_cnt == 0) {
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#ifdef MTK_SCHED_SUPPORT
 				set_top_grp_aware(1, 0);
 				set_grp_awr_min_opp_margin(0, 0, 2560);
 				set_grp_awr_thr(0, 0, 1680000);
@@ -615,7 +615,7 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 		dev->cpu_hint_ref_cnt--;
 		if (dev->cpu_hint_mode & (1 << MTK_GRP_AWARE_MODE)) {
 			if (dev->cpu_hint_ref_cnt == 0) {
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#ifdef MTK_SCHED_SUPPORT
 				set_top_grp_aware(0, 0);
 #endif
 			}
@@ -644,7 +644,7 @@ void mtk_vcodec_set_cgrp(struct mtk_vcodec_ctx *ctx, bool enable, const char *de
 		if (!ctx->cgrp_enable) {
 			ctx->cgrp_enable = true;
 			dev->cgrp_ref_cnt++;
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#ifdef MTK_SCHED_SUPPORT
 			group_set_cgroup_colocate(1, 0); // enable
 			mtk_v4l2_debug(0, "[%s][%d] enable cgroup_colocate by %s (ref cnt %d)",
 				(ctx->type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id,
@@ -655,7 +655,7 @@ void mtk_vcodec_set_cgrp(struct mtk_vcodec_ctx *ctx, bool enable, const char *de
 		if (ctx->cgrp_enable) {
 			ctx->cgrp_enable = false;
 			dev->cgrp_ref_cnt--;
-#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#ifdef MTK_SCHED_SUPPORT
 			mtk_v4l2_debug(dev->cgrp_ref_cnt == 0 ? 0 : 2,
 				"[%s][%d] disable cgroup_colocate by %s (ref cnt %d)",
 				(ctx->type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id,
