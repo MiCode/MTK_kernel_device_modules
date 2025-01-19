@@ -124,7 +124,7 @@ int dsu_freq_changed(void *private)
 void (*eenv_dsu_init_hook)(void *private, int quant, unsigned int wl,
 		int PERCORE_L3_BW, unsigned int cpumask_val,
 		void __iomem *base, void __iomem *dsu_ctrl_base, unsigned long *pd_base_freq,
-		unsigned int dsu_ceiling_freq, int dsu_temp,
+		unsigned int dsu_ceiling_freq, int dsu_temp, unsigned int *dsu_fg_data,
 		unsigned int *val, unsigned int *output);
 EXPORT_SYMBOL(eenv_dsu_init_hook);
 
@@ -135,16 +135,25 @@ void eenv_dsu_init(void *private, int quant, unsigned int wl,
 	if (eenv_dsu_init_hook) {
 		int dsu_temp = 0;
 		unsigned int dsu_freq_thermal = 0;
+		unsigned int dsu_fg_data[MAX_NR_CPUS+2] = {0};
+		unsigned int cpu;
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		dsu_temp = get_dsu_temp()/1000;
 		dsu_freq_thermal = get_dsu_ceiling_freq();
 #endif
 
+		dsu_fg_data[0] = get_dsu_fine_ctrl_enable();
+		dsu_fg_data[1] = get_dsu_fine_ctrl();
+		if (dsu_fg_data[0]!=0 && dsu_fg_data[1] !=0) {
+			for_each_cpu(cpu, cpu_active_mask)
+				dsu_fg_data[cpu + 2] = get_fine_value_pct_cpu(cpu);
+		}
+
 		(*eenv_dsu_init_hook)(private, quant, wl,
 			PERCORE_L3_BW, cpumask_val,
 			get_l3ctl_sram_base_addr(), get_cdsu_sram_base_addr(), pd_base_freq,
-			dsu_freq_thermal, dsu_temp,
+			dsu_freq_thermal, dsu_temp, dsu_fg_data,
 			val, output);
 	}
 }
@@ -159,7 +168,7 @@ unsigned long update_dsu_status(struct energy_env *eenv, int quant,
 {
 	if (update_dsu_status_hook) {
 		unsigned long dsu_volt;
-		unsigned int output[6];
+		unsigned int output[9];
 
 		dsu_volt = update_dsu_status_hook(eenv->android_vendor_data1, quant,
 			eenv->wl_dsu, eenv->gear_idx, freq, this_cpu, dst_cpu, output);
@@ -167,7 +176,8 @@ unsigned long update_dsu_status(struct energy_env *eenv, int quant,
 		if (trace_sched_dsu_freq_enabled())
 			trace_sched_dsu_freq(eenv->gear_idx, dst_cpu, output[0], output[1],
 					output[2], output[3], (unsigned long)output[4],
-					(unsigned long)output[5], dsu_volt);
+					(unsigned long)output[5], dsu_volt, output[6], output[7],
+					output[8]);
 
 		return dsu_volt;
 	}

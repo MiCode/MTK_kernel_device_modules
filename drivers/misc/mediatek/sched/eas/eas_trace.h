@@ -160,10 +160,13 @@ TRACE_EVENT(sched_dsu_freq,
 
 	TP_PROTO(int gear_id, int dst_cpu, int dsu_freq_new, int dsu_volt_new,
 			int dsu_freq_base, int dsu_volt_base,
-			unsigned long cpu_freq, unsigned long dsu_freq, unsigned int dsu_volt),
+			unsigned long cpu_freq, unsigned long dsu_freq, unsigned int dsu_volt,
+			unsigned int dsu_fine_ctrl_support, unsigned int dsu_fine_ctrl,
+			unsigned int dsu_fine_value_pct),
 
 	TP_ARGS(gear_id, dst_cpu, dsu_freq_new, dsu_volt_new, dsu_freq_base, dsu_volt_base,
-			cpu_freq, dsu_freq, dsu_volt),
+			cpu_freq, dsu_freq, dsu_volt, dsu_fine_ctrl_support, dsu_fine_ctrl,
+			dsu_fine_value_pct),
 
 	TP_STRUCT__entry(
 		__field(int, gear_id)
@@ -175,6 +178,9 @@ TRACE_EVENT(sched_dsu_freq,
 		__field(unsigned long, cpu_freq)
 		__field(unsigned long, dsu_freq)
 		__field(unsigned int, dsu_volt)
+		__field(unsigned int, dsu_fine_ctrl_support)
+		__field(unsigned int, dsu_fine_ctrl)
+		__field(unsigned int, dsu_fine_value_pct)
 		),
 
 	TP_fast_assign(
@@ -187,9 +193,12 @@ TRACE_EVENT(sched_dsu_freq,
 		__entry->cpu_freq  = cpu_freq;
 		__entry->dsu_freq  = dsu_freq;
 		__entry->dsu_volt  = dsu_volt;
+		__entry->dsu_fine_ctrl_support  = dsu_fine_ctrl_support;
+		__entry->dsu_fine_ctrl  = dsu_fine_ctrl;
+		__entry->dsu_fine_value_pct  = dsu_fine_value_pct;
 		),
 
-	TP_printk("gear_id=%d dst_cpu=%d dsu_freq_new=%d dsu_volt_new=%d dsu_freq_base=%d dsu_volt_base=%d cpu_freq=%lu dsu_freq=%lu dsu_volt=%u",
+	TP_printk("gear_id=%d dst_cpu=%d dsu_freq_new=%d dsu_volt_new=%d dsu_freq_base=%d dsu_volt_base=%d cpu_freq=%lu dsu_freq=%lu dsu_volt=%u dsu_fine_ctrl_support=%u dsu_fine_ctrl=%u dsu_fine_value_pct=%u",
 		__entry->gear_id,
 		__entry->dst_cpu,
 		__entry->dsu_freq_new,
@@ -198,7 +207,10 @@ TRACE_EVENT(sched_dsu_freq,
 		__entry->dsu_volt_base,
 		__entry->cpu_freq,
 		__entry->dsu_freq,
-		__entry->dsu_volt)
+		__entry->dsu_volt,
+		__entry->dsu_fine_ctrl_support,
+		__entry->dsu_fine_ctrl,
+		__entry->dsu_fine_value_pct)
 );
 
 TRACE_EVENT(dsu_pwr_cal,
