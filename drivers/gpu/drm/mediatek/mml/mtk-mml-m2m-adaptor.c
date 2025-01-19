@@ -841,7 +841,7 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 			pix_mp->xfer_func = V4L2_XFER_FUNC_DEFAULT;
 			pix_mp->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
 			pix_mp->quantization = V4L2_QUANTIZATION_DEFAULT;
-			mml_log("[m2m] reset CSC to default");
+			mml_msg("[m2m] reset CSC to default");
 		}
 	}
 
@@ -859,10 +859,10 @@ static const struct mml_m2m_format *m2m_try_fmt_mplane(struct v4l2_format *f,
 			      &pix_mp->height, hmin, pix_limit->hmax, fmt->halign,
 			      fmt->salign);
 	if (org_w != pix_mp->width || org_h != pix_mp->height)
-		mml_log("[m2m]%s size change: %ux%u to %ux%u", __func__,
+		mml_msg("[m2m]%s size change: %ux%u to %ux%u", __func__,
 			org_w, org_h, pix_mp->width, pix_mp->height);
 	if (pix_mp->num_planes && pix_mp->num_planes != fmt->num_planes)
-		mml_log("[m2m]%s num of planes change: %u to %u", __func__,
+		mml_msg("[m2m]%s num of planes change: %u to %u", __func__,
 			pix_mp->num_planes, fmt->num_planes);
 	pix_mp->num_planes = fmt->num_planes;
 
