@@ -1,0 +1,49 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "smmu_public_headers",
+    hdrs = glob([
+        "arm-smmu-v3.h",
+        "mtk-smmu-v3.h",
+    ]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-smmuv3-mpam-mon",
+    srcs = [
+        "mtk-smmuv3-mpam-mon.c",
+    ],
+    header_deps = [
+        ":smmu_public_headers",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
+    ],
+    out = "mtk-smmuv3-mpam-mon.ko",
+)

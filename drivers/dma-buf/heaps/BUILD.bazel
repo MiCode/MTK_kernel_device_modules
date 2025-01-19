@@ -41,8 +41,8 @@ define_mgk_ddk_ko(
         "mtk_page_pool.h",
     ]),
     includes = ["."],
-    copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
     ],
     out = "system_heap.ko",
 )
