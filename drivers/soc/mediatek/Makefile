@@ -32,6 +32,9 @@ endif
 ifneq ($(wildcard $(src)/mtk-scpsys-mt6853.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6853.o
 endif
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6855.c),)
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6855.o
+endif
 ifneq ($(wildcard $(src)/mtk-scpsys-mt6877.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6877.o
 endif

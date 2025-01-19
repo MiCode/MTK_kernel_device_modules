@@ -1508,6 +1508,7 @@ mgk_64_platform_device_modules = {
     "drivers/soc/mediatek/mtk-scpsys-mt6768.ko": "mt6768",
     "drivers/soc/mediatek/mtk-scpsys-mt6781.ko": "mt6781",
     "drivers/soc/mediatek/mtk-scpsys-mt6789.ko": "mt6789",
+    "drivers/soc/mediatek/mtk-scpsys-mt6855.ko": "mt6855",
     "drivers/soc/mediatek/mtk-scpsys-mt6761.ko": "mt6761",
     "drivers/soc/mediatek/mtk-scpsys-mt6877.ko": "mt6877",
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6886.ko": "mt6886",
