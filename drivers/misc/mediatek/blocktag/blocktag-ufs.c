@@ -566,7 +566,7 @@ struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
 					  WQ_FREEZABLE | WQ_UNBOUND, 1);
 	INIT_WORK(&btag->worker, btag_ufs_work);
 
-	mtk_btag_earaio_register(btag);
+	mtk_btag_earaio_register(btag->name);
 
 	return btag;
 }

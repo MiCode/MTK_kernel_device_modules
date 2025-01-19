@@ -34,12 +34,12 @@ void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id)
 	unsigned long flags;
 	int qid;
 
-	if (!mictx_id.id)
+	if (!mictx_id.id || !mictx_id.btag_id)
 		return;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_type(mictx_id.storage);
+	btag = mtk_btag_find_by_id(mictx_id.btag_id);
 	if (!btag)
 		return;
 
@@ -100,7 +100,7 @@ void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_type(mictx_id.storage);
+	btag = mtk_btag_find_by_id(mictx_id.btag_id);
 	if (!btag)
 		return;
 
@@ -405,12 +405,12 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
-	if (!iostat || !mictx_id.id)
+	if (!iostat || !mictx_id.id || !mictx_id.btag_id)
 		return -EINVAL;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_type(mictx_id.storage);
+	btag = mtk_btag_find_by_id(mictx_id.btag_id);
 	if (!btag)
 		return -ENODEV;
 
@@ -426,7 +426,7 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 	if (mictx->full_logging)
 		mictx_evaluate_avg_qd(mictx, iostat);
 #endif
-	trace_blocktag_mictx_get_data(mictx_id.name, iostat);
+	trace_blocktag_mictx_get_data(mictx->name, iostat);
 
 	return 0;
 }
@@ -438,12 +438,12 @@ void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id mictx_id,
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
-	if (!mictx_id.id)
+	if (!mictx_id.id || !mictx_id.btag_id)
 		return;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_type(mictx_id.storage);
+	btag = mtk_btag_find_by_id(mictx_id.btag_id);
 	if (!btag)
 		return;
 
@@ -458,9 +458,12 @@ int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id)
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
+	if (!mictx_id.id || !mictx_id.btag_id)
+		return -1;
+
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_type(mictx_id.storage);
+	btag = mtk_btag_find_by_id(mictx_id.id);
 	if (!btag)
 		return -1;
 
@@ -475,6 +478,10 @@ static DEFINE_MUTEX(entry_lock);
 
 struct mictx_ioctl_info {
 	union {
+		struct mictx_register_info {
+			char btag_name[BTAG_NAME_LEN];
+			char mictx_name[BTAG_NAME_LEN];
+		} register_info;
 		struct mtk_btag_mictx_id mictx_id;
 		struct mtk_btag_mictx_iostat_struct iostat;
 	};
@@ -488,28 +495,32 @@ struct mictx_ioctl_info {
 static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
 			     unsigned long __arg)
 {
-	struct mictx_ioctl_info info, io_info;
+	struct mictx_ioctl_info input, output;
+	const char *btag_name, *mictx_name;
 	void __user *arg = (void __user *)__arg;
 	int ret = 0;
 
 	switch (cmd) {
 	case MICTX_ENABLE:
-		if (copy_from_user(&info, arg,
+		if (copy_from_user(&input, arg,
 				   sizeof(struct mictx_ioctl_info))) {
 			pr_notice("%s: copy from user failed for cmd %u, address %p",
 				  __func__, cmd, arg);
 			ret = -EFAULT;
 			goto ret_ioctl;
 		}
+		btag_name = input.register_info.btag_name;
+		mictx_name = input.register_info.mictx_name;
 
-		ret = mtk_btag_mictx_register(&info.mictx_id, NULL);
+		ret = mtk_btag_mictx_register(&output.mictx_id, btag_name,
+					      mictx_name, NULL);
 		if (ret) {
 			pr_notice("%s: mictx enable failed %d\n",
 				  __func__, ret);
 			goto ret_ioctl;
 		}
 
-		if (copy_to_user(arg, &info,
+		if (copy_to_user(arg, &output,
 				 sizeof(struct mictx_ioctl_info))) {
 			pr_notice("%s: copy to user failed for cmd %u, address %p",
 				  __func__, cmd, arg);
@@ -518,7 +529,7 @@ static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
 		}
 		break;
 	case MICTX_DISABLE:
-		if (copy_from_user(&info, arg,
+		if (copy_from_user(&input, arg,
 				   sizeof(struct mictx_ioctl_info))) {
 			pr_notice("%s: copy from user failed for cmd %u, address %p",
 				  __func__, cmd, arg);
@@ -526,18 +537,10 @@ static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
 			goto ret_ioctl;
 		}
 
-		mtk_btag_mictx_unregister(&info.mictx_id);
-
-		if (copy_to_user(arg, &info,
-				 sizeof(struct mictx_ioctl_info))) {
-			pr_notice("%s: copy to user failed for cmd %u, address %p",
-				  __func__, cmd, arg);
-			ret = -EFAULT;
-			goto ret_ioctl;
-		}
+		mtk_btag_mictx_unregister(&input.mictx_id);
 		break;
 	case MICTX_GET_DATA:
-		if (copy_from_user(&info, arg,
+		if (copy_from_user(&input, arg,
 				   sizeof(struct mictx_ioctl_info))) {
 			pr_notice("%s: copy from user failed for cmd %u, address %p",
 				  __func__, cmd, arg);
@@ -545,14 +548,14 @@ static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
 			goto ret_ioctl;
 		}
 
-		ret = mtk_btag_mictx_get_data(info.mictx_id, &io_info.iostat);
+		ret = mtk_btag_mictx_get_data(input.mictx_id, &output.iostat);
 		if (ret) {
 			pr_notice("%s: mictx get data failed %d\n",
 				  __func__, ret);
 			goto ret_ioctl;
 		}
 
-		if (copy_to_user(arg, &io_info,
+		if (copy_to_user(arg, &output,
 				 sizeof(struct mictx_ioctl_info))) {
 			pr_notice("%s: copy to user failed for cmd %u, address %p",
 				  __func__, cmd, arg);
@@ -631,7 +634,7 @@ unlock:
 }
 
 static int mictx_alloc(struct mtk_blocktag *btag, unsigned long *id,
-		       struct mtk_btag_mictx_vops *vops)
+		       const char *name, struct mtk_btag_mictx_vops *vops)
 {
 	struct mtk_btag_mictx *mictx;
 	__u64 cur_time = sched_clock();
@@ -654,6 +657,7 @@ static int mictx_alloc(struct mtk_blocktag *btag, unsigned long *id,
 		spin_lock_init(&mictx->q[qid].lock);
 	mictx->vops = vops;
 	mictx->full_logging = true;
+	strscpy(mictx->name, name, BTAG_NAME_LEN);
 
 	ret = xa_alloc(&btag->ctx.mictx_xa, &mictx->id, mictx, xa_limit_32b,
 		       GFP_ATOMIC);
@@ -689,19 +693,29 @@ void mtk_btag_mictx_free_all(struct mtk_blocktag *btag)
 }
 
 int mtk_btag_mictx_register(struct mtk_btag_mictx_id *mictx_id,
+			    const char *btag_name, const char *mictx_name,
 			    struct mtk_btag_mictx_vops *vops)
 {
 	struct mtk_blocktag *btag;
+	int ret;
 
 	mictx_id->id = 0;
+	mictx_id->btag_id = 0;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_type(mictx_id->storage);
+	btag = mtk_btag_find_by_name(btag_name);
 	if (!btag)
 		return -ENOENT;
 
-	return mictx_alloc(btag, &mictx_id->id, vops);
+	ret = mictx_alloc(btag, &mictx_id->id, mictx_name, vops);
+	if (ret < 0) {
+		pr_notice("mictx alloc fail %d\n", ret);
+		return ret;
+	}
+	mictx_id->btag_id = btag->id;
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_btag_mictx_register);
 
@@ -711,7 +725,7 @@ void mtk_btag_mictx_unregister(struct mtk_btag_mictx_id *mictx_id)
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_type(mictx_id->storage);
+	btag = mtk_btag_find_by_id(mictx_id->btag_id);
 	if (!btag)
 		return;
 

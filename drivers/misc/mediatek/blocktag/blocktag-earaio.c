@@ -515,7 +515,7 @@ static int earaio_control_show(struct seq_file *s, void *data)
 	char name[BTAG_NAME_LEN] = {' '};
 
 	rcu_read_lock();
-	btag = mtk_btag_find_by_type(earaio_ctrl.mictx_id.storage);
+	btag = mtk_btag_find_by_id(earaio_ctrl.mictx_id.btag_id);
 	if (btag)
 		strncpy(name, btag->name, BTAG_NAME_LEN - 1);
 	rcu_read_unlock();
@@ -608,8 +608,9 @@ static struct mtk_btag_mictx_vops mictx_earaio_vops = {
 	.top_io_notify = earaio_top_io_notify,
 };
 
-void mtk_btag_earaio_register(struct mtk_blocktag *btag)
+void mtk_btag_earaio_register(const char *btag_name)
 {
+	char buf[BTAG_NAME_LEN];
 	int ret;
 
 	if (!earaio_ctrl.enabled) {
@@ -620,12 +621,10 @@ void mtk_btag_earaio_register(struct mtk_blocktag *btag)
 		earaio_ctrl.seq_r_threshold = THRESHOLD_MAX;
 		earaio_ctrl.seq_w_threshold = THRESHOLD_MAX;
 		earaio_ctrl.fuse_threshold = THRESHOLD_MAX;
-		earaio_ctrl.mictx_id.storage = btag->storage_type;
-		strncpy(earaio_ctrl.mictx_id.name, "earaio", BTAG_NAME_LEN - 1);
 	}
 
-	/* Enable mictx by default if EARA-IO is enabled*/
-	ret = mtk_btag_mictx_register(&earaio_ctrl.mictx_id,
+	snprintf(buf, BTAG_NAME_LEN, "earaio_%s", btag_name);
+	ret = mtk_btag_mictx_register(&earaio_ctrl.mictx_id, btag_name, buf,
 				      &mictx_earaio_vops);
 	if (ret) {
 		pr_notice("earaio mictx enable failed: %d\n", ret);

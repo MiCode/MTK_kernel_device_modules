@@ -61,8 +61,7 @@ static unsigned int check_dram_bw = 0xFFFF;
 
 static struct mtk_btag_mictx_iostat_struct iostat;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-static struct mtk_btag_mictx_id ufs_mictx_id = {.storage = BTAG_STORAGE_UFS,
-						.name = "perf_tracker"};
+static struct mtk_btag_mictx_id ufs_mictx_id;
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SWPM_SUPPORT)
@@ -489,7 +488,8 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		if (val && !perf_tracker_on) {
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-			mtk_btag_mictx_register(&ufs_mictx_id, NULL);
+			mtk_btag_mictx_register(&ufs_mictx_id, "ufs",
+						"perf_tracker", NULL);
 #endif
 			insert_freq_qos_hook();
 			check_dram_bw = qos_rec_check_sram_ext();

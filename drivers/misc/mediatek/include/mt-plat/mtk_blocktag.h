@@ -27,9 +27,8 @@ enum mtk_btag_storage_type {
 
 #define BTAG_NAME_LEN           16
 struct mtk_btag_mictx_id {
+	unsigned long btag_id;
 	unsigned long id;
-	enum mtk_btag_storage_type storage;
-	char name[BTAG_NAME_LEN];
 };
 
 enum mtk_btag_io_type {
@@ -70,6 +69,7 @@ int mtk_btag_mictx_get_data(
 	struct mtk_btag_mictx_id mictx_id,
 	struct mtk_btag_mictx_iostat_struct *iostat);
 int mtk_btag_mictx_register(struct mtk_btag_mictx_id *mictx_id,
+			    const char *btag_name, const char *mictx_name,
 			    struct mtk_btag_mictx_vops *vops);
 void mtk_btag_mictx_unregister(struct mtk_btag_mictx_id *mictx_id);
 

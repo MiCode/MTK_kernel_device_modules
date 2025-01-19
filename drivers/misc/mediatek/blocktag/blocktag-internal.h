@@ -114,6 +114,7 @@ struct mtk_btag_mictx_queue {
 
 struct mtk_btag_mictx {
 	struct rcu_head rcu;
+	char name[BTAG_NAME_LEN];
 	struct __mictx_workload {
 		spinlock_t lock;
 		__u64 idle_begin;
@@ -258,8 +259,8 @@ struct mtk_btag_vops {
 		const char __user *ubuf, size_t count);
 };
 
-struct mtk_blocktag *mtk_btag_find_by_type(
-	enum mtk_btag_storage_type storage_type);
+struct mtk_blocktag *mtk_btag_find_by_name(const char *name);
+struct mtk_blocktag *mtk_btag_find_by_id(unsigned long id);
 short mtk_btag_page_pidlog_get(struct page *p);
 void mtk_btag_page_pidlog_set(struct page *p, short pid);
 void mtk_btag_pidlog_insert(struct mtk_btag_proc_pidlogger *pidlog,
@@ -300,7 +301,7 @@ void mtk_btag_mictx_free_all(struct mtk_blocktag *btag);
 void mtk_btag_mictx_init(struct mtk_blocktag *btag);
 
 void mtk_btag_earaio_init(struct proc_dir_entry *root);
-void mtk_btag_earaio_register(struct mtk_blocktag *btag);
+void mtk_btag_earaio_register(const char *btag_name);
 void mtk_btag_earaio_check_window(void);
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 top_pages_r,
 				__u32 top_pages_w, __u32 top_rnd_cnt);

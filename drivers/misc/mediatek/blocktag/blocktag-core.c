@@ -71,7 +71,7 @@ static DEFINE_XARRAY_ALLOC1(btag_xa);
 phys_addr_t dram_start_addr;
 phys_addr_t dram_end_addr;
 
-static struct mtk_blocktag *mtk_btag_find_by_name(const char *name)
+struct mtk_blocktag *mtk_btag_find_by_name(const char *name)
 {
 	struct mtk_blocktag *btag;
 	unsigned long id;
@@ -83,17 +83,9 @@ static struct mtk_blocktag *mtk_btag_find_by_name(const char *name)
 	return NULL;
 }
 
-struct mtk_blocktag *mtk_btag_find_by_type(
-					enum mtk_btag_storage_type storage_type)
+struct mtk_blocktag *mtk_btag_find_by_id(unsigned long id)
 {
-	struct mtk_blocktag *btag;
-	unsigned long id;
-
-	xa_for_each(&btag_xa, id, btag)
-		if (btag->storage_type == storage_type)
-			return btag;
-
-	return NULL;
+	return xa_load(&btag_xa, id);
 }
 
 /* pid logger: page loger*/
@@ -465,8 +457,8 @@ static size_t btag_show_usedmem(struct mtk_blocktag *btag, char **buff,
 
 		xa_for_each(&btag->ctx.mictx_xa, id, mictx) {
 			size_l = struct_size(mictx, q, btag->ctx.count);
-			BTAG_PRINTF(buff, size, seq, "%s mictx-%lu: %zu bytes\n",
-				    btag->name, id, size_l);
+			BTAG_PRINTF(buff, size, seq, "%s mictx-%lu %s: %zu bytes\n",
+				    btag->name, id, mictx->name, size_l);
 			used_mem += size_l;
 		}
 	}
