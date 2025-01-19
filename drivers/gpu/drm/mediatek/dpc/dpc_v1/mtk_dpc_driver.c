@@ -3089,7 +3089,7 @@ static void dpc_config_v1(const enum mtk_dpc_subsys subsys, bool en)
 {
 	unsigned int mask = 0x0;
 	unsigned long flags = 0;
-	int ret = 0;
+	int ret __maybe_unused = 0;
 
 	if (!MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		DPCERR("invalid subsys:%d, en:%d", subsys, en);
