@@ -76,7 +76,7 @@
 #include "dvfsrc-exp.h"
 #endif
 #include "mtk_dsi.h"
-
+#include "mtk_dsi_lpc.h"
 #include "mtk_drm_mmp.h"
 /* *******Panel Master******** */
 #include "mtk_fbconfig_kdebug.h"
@@ -3799,6 +3799,7 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_COMP0_OUT_CB0,
 	DDP_COMPONENT_MERGE0_OUT_CB0,
 	DDP_COMPONENT_DSI0,
+	DDP_COMPONENT_DSI_LPC,
 	DDP_COMPONENT_VDISP_AO,
 #ifndef DRM_BYPASS_PQ_MT6993
 	/* PQ0_OUT_CB3 -> DLO_ASYNC1 -> DLI_ASYC21 -> DISP_CHIST1*/
@@ -7009,6 +7010,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
 	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6993,
 	.get_channel_idx = mtk_disp_get_channel_idx,
+	.dsi_lpc_init_config = mtk_dsi_lpc_init_config,
 	.pwr_clk_map = pwr_clk_map,
 	.pwr_on_order = mt6993_pwr_on_order,
 	.pwr_off_order = mt6993_pwr_off_order,
@@ -8832,6 +8834,11 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 
 	/* hwvsync_en*/
 	mtk_crtc->hwvsync_en = 1;
+
+	if (mtk_dsi_lpc_en()) {
+		mtk_dsi_lpc_set_interrupt_enable(mtk_crtc);
+		mtk_dsi_lpc_hwvsync_en(true, drm_crtc_index(&mtk_crtc->base));
+	}
 
 	return ret;
 }
@@ -11790,6 +11797,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_OVL_OUTPROC},
 	{.compatible = "mediatek,mt6993-vdisp-ao",
 	 .data = (void *)MTK_DISP_VDISP_AO},
+	{.compatible = "mediatek,mt6993-dsi-lpc",
+	 .data = (void *)MTK_DSI_LPC},
 	/* MML */
 	{.compatible = "mediatek,mt6983-mml_rsz",
 	 .data = (void *)MTK_MML_RSZ},
@@ -12537,7 +12546,7 @@ SKIP_OVLSYS_CONFIG:
 		    comp_type == MTK_DISP_MERGE || comp_type == MTK_OVL_OUTPROC ||
 		    comp_type == MTK_DISP_RDMA || comp_type == MTK_DISP_MDP_RDMA
 		    || comp_type == MTK_DISP_WDMA || comp_type == MTK_DISP_RSZ
-		    || comp_type == MTK_DISP_MDP_RSZ ||
+		    || comp_type == MTK_DISP_MDP_RSZ || comp_type == MTK_DSI_LPC ||
 		    comp_type == MTK_DISP_POSTMASK || comp_type == MTK_DSI
 		    || comp_type == MTK_DISP_DSC || comp_type == MTK_DPI
 #ifndef DRM_BYPASS_PQ
@@ -12862,6 +12871,7 @@ MODULE_DEVICE_TABLE(of, mtk_drm_of_ids);
 static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_drm_platform_driver,
 	&mtk_vdisp_ao_driver,
+	&mtk_dsi_lpc_driver,
 	&mtk_ddp_driver,
 	&mtk_disp_tdshp_driver,
 	&mtk_disp_color_driver,

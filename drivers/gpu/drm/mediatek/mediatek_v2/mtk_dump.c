@@ -66,6 +66,9 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_VDISP_AO:
 		mtk_vdisp_ao_dump(comp);
 		break;
+	case DDP_COMPONENT_DSI_LPC:
+		mtk_dsi_lpc_dump(comp);
+		break;
 	case DDP_COMPONENT_OVL_EXDMA0:
 	case DDP_COMPONENT_OVL_EXDMA1:
 	case DDP_COMPONENT_OVL_EXDMA2:
@@ -364,6 +367,9 @@ int mtk_dump_analysis(struct mtk_ddp_comp *comp)
 		break;
 	case DDP_COMPONENT_VDISP_AO:
 		mtk_vdisp_ao_analysis(comp);
+		break;
+	case DDP_COMPONENT_DSI_LPC:
+		mtk_dsi_lpc_analysis(comp);
 		break;
 	case DDP_COMPONENT_RDMA0:
 	case DDP_COMPONENT_RDMA1:

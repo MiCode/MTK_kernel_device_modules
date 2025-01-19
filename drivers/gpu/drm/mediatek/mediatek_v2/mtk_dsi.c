@@ -56,6 +56,7 @@
 #include "platform/mtk_drm_platform.h"
 #include "mtk_drm_trace.h"
 #include "mtk_disp_gamma.h"
+#include "mtk_dsi_lpc.h"
 
 /* ************ Panel Master ********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -3447,7 +3448,8 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 			inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 		}
 	} else {
-		inten |= TE_RDY_INT_FLAG;
+		if (!mtk_dsi_lpc_en())
+			inten |= TE_RDY_INT_FLAG;
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 						priv->data->mmsys_id == MMSYS_MT6991))
 			inten |= TARGET_LINE_INT_FLAG;
@@ -13261,12 +13263,15 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 
 		} else {
-			inten |= TE_RDY_INT_FLAG;
+			if (!mtk_dsi_lpc_en())
+				inten |= TE_RDY_INT_FLAG;
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi) {
-				inten |= TE_RDY_INT_FLAG;
+				if (!mtk_dsi_lpc_en())
+					inten |= TE_RDY_INT_FLAG;
+
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 			}
@@ -13314,12 +13319,15 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 
 		} else {
-			inten |= TE_RDY_INT_FLAG;
+			if (!mtk_dsi_lpc_en())
+				inten |= TE_RDY_INT_FLAG;
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi) {
-				inten |= TE_RDY_INT_FLAG;
+				if (!mtk_dsi_lpc_en())
+					inten |= TE_RDY_INT_FLAG;
+
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 			}
@@ -14192,6 +14200,30 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		partial_roi = (struct mtk_rect *)params;
 		mtk_cal_dsi_valid_partial_roi(comp, partial_roi);
+	}
+		break;
+	case DSI_LPC_PANEL_PARAMS:
+	{
+		struct mtk_drm_crtc *crtc = NULL;
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+		struct mtk_panel_ext *panel_ext = NULL;
+
+		if (!mtk_dsi_lpc_en())
+			break;
+
+		if (comp == NULL || comp->mtk_crtc == NULL) {
+			DDPMSG("%s, cmd:%d, invalid comp, crtc\n", __func__, cmd);
+			break;
+		}
+
+		crtc = comp->mtk_crtc;
+		panel_ext = dsi->ext;
+
+		if (panel_ext){
+			if (panel_ext->params)
+				mtk_dsi_lpc_update_panel_params(crtc, comp, handle, panel_ext->params);
+		}
 	}
 		break;
 	default:

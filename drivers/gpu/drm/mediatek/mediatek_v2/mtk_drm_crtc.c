@@ -67,6 +67,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_disp_ovl.h"
 #include "mtk_disp_spr.h"
+#include "mtk_dsi_lpc.h"
 #include "mtk_dp.h"
 #include "mtk_disp_dbi_count.h"
 
@@ -3556,6 +3557,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		mtk_drm_top_clk_prepare_enable(crtc);
 		mtk_crtc_gce_event_config(crtc);
 		mtk_crtc_vdisp_ao_config(crtc);
+		mtk_crtc_dsi_lpc_config(crtc);
 
 		/*APSRC control*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, true);
@@ -7843,6 +7845,9 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 					MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
 		}
 	}
+	// update LPC panel params
+	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LPC_PANEL_PARAMS, &en);
+
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LFR_SET, &en);
 	//vdo ltpo
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LTPO_VDO_SET, &en);
@@ -14993,6 +14998,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 
 	mtk_crtc_gce_event_config(crtc);
 	mtk_crtc_vdisp_ao_config(crtc);
+	mtk_crtc_dsi_lpc_config(crtc);
 
 	/*
 	 * for case display does not have multiple display mode,
@@ -16227,6 +16233,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/*Need to move here to prevent cmdq time for first config*/
 	mtk_crtc_gce_event_config(crtc);
+	mtk_crtc_dsi_lpc_config(crtc);
 
 	/* 2. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
@@ -21155,6 +21162,32 @@ void mtk_crtc_vblank_irq(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	char tag_name[100] = {'\0'};
 	ktime_t ktime = ktime_get();
+
+	mtk_crtc->vblank_time = ktime_to_timespec64(ktime);
+
+	if (sprintf(tag_name, "%d|HW_VSYNC|%lld", DRM_TRACE_VSYNC_ID, ktime) >= 0)
+		mtk_drm_trace_c("%s", tag_name);
+	CRTC_MMP_MARK((int) index, enable_vblank, 0, ktime);
+
+/*
+ *	DDPMSG("%s CRTC%d %s\n", __func__,
+ *			drm_crtc_index(crtc), tag_name);
+ */
+	drm_crtc_handle_vblank(&mtk_crtc->base);
+
+	if (sprintf(tag_name, "%d|HW_VSYNC|%d", DRM_TRACE_VSYNC_ID, 0) >= 0)
+		mtk_drm_trace_c("%s", tag_name);
+}
+void mtk_crtc_vblank_irq_for_lpc_resync(struct drm_crtc *crtc)
+{
+	int index = drm_crtc_index(crtc);
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	char tag_name[100] = {'\0'};
+	long long ts;
+	ktime_t ktime;
+
+	mtk_dsi_lpc_resync_ts(&ts, mtk_crtc);
+	ktime = (ktime_t)ts;
 
 	mtk_crtc->vblank_time = ktime_to_timespec64(ktime);
 
@@ -26128,4 +26161,12 @@ void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc)
 		priv->data->vdisp_ao_irq_config(crtc->dev);
 	if (priv->data->vdisp_ao_qos_config)
 		priv->data->vdisp_ao_qos_config(crtc->dev);
+}
+
+void mtk_crtc_dsi_lpc_config(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (priv->data->dsi_lpc_init_config)
+		priv->data->dsi_lpc_init_config(crtc);
 }

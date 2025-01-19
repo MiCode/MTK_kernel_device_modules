@@ -125,6 +125,7 @@ struct mtk_mmsys_driver_data {
 	void (*gce_event_config)(struct drm_device *drm);
 	void (*vdisp_ao_irq_config)(struct drm_device *drm);
 	void (*vdisp_ao_qos_config)(struct drm_device *drm);
+	void (*dsi_lpc_init_config)(struct drm_crtc *crtc);
 	enum PF_TS_TYPE pf_ts_type;
 	bool respective_ostdl;
 	bool ovl_exdma_rule;
@@ -549,6 +550,7 @@ extern struct platform_driver mtk_ovl_exdma_driver;
 extern struct platform_driver mtk_ovl_blender_driver;
 extern struct platform_driver mtk_ovl_outproc_driver;
 extern struct platform_driver mtk_vdisp_ao_driver;
+extern struct platform_driver mtk_dsi_lpc_driver;
 extern struct platform_driver mtk_disp_rdma_driver;
 extern struct platform_driver mtk_disp_mdp_rdma_driver;
 extern struct platform_driver mtk_disp_wdma_driver;

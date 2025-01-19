@@ -25,6 +25,7 @@ mediatek-drm-y := mtk_drm_drv.o \
 		  mtk_drm_gem.o \
 		  mtk_drm_plane.o \
 		  mtk_dsi.o \
+		  mtk_dsi_lpc.o \
 		  mtk_mipi_tx.o \
 		  mtk_writeback.o \
 		  mtk_fence.o \

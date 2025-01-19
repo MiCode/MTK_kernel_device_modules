@@ -1422,6 +1422,7 @@ bool mtk_crtc_get_vblank_timestamp(struct drm_crtc *crtc,
 void mtk_drm_crtc_commit(struct drm_crtc *crtc);
 void mtk_crtc_ddp_irq(struct drm_crtc *crtc, struct mtk_ddp_comp *comp);
 void mtk_crtc_vblank_irq(struct drm_crtc *crtc);
+void mtk_crtc_vblank_irq_for_lpc_resync(struct drm_crtc *crtc);
 int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			const struct mtk_crtc_path_data *path_data);
 void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
@@ -1761,6 +1762,7 @@ enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int 
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle);
+void mtk_crtc_dsi_lpc_config(struct drm_crtc *crtc);
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,

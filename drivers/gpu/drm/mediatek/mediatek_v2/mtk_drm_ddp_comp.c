@@ -332,6 +332,7 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_OVL_BLENDER] = "blender",
 	[MTK_OVL_OUTPROC] = "outproc",
 	[MTK_DISP_VDISP_AO] = "vdisp_ao",
+	[MTK_DSI_LPC] = "dsi-lpc",
 	[MTK_DISP_RDMA] = "rdma",
 	[MTK_DISP_MDP_RDMA] = "mdp_rdma",
 	[MTK_DISP_WDMA] = "wdma",
@@ -1411,6 +1412,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
 /*995*/	{DDP_COMPONENT_SYS_B_RSZ0, MTK_DISP_RSZ, 6, NULL, 0},
+	{DDP_COMPONENT_DSI_LPC, MTK_DSI_LPC, 0, NULL, 0},
 };
 
 bool mtk_ddp_comp_is_output(struct mtk_ddp_comp *comp)

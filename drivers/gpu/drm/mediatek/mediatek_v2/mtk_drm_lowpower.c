@@ -2238,6 +2238,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 
 	mtk_crtc_gce_event_config(crtc);
 	mtk_crtc_vdisp_ao_config(crtc);
+	mtk_crtc_dsi_lpc_config(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"update_mmclk", 4, perf_string, true);

@@ -1,0 +1,710 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+
+#include <drm/drm_vblank.h>
+
+#include <linux/clk.h>
+#include <linux/component.h>
+#include <linux/of_device.h>
+#include <linux/of_irq.h>
+#include <linux/platform_device.h>
+#include "mtk_drm_trace.h"
+
+#ifndef DRM_CMDQ_DISABLE
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#else
+#include "mtk-cmdq-ext.h"
+#endif
+
+#include "mtk_drm_crtc.h"
+#include "mtk_drm_ddp_comp.h"
+#include "mtk_dump.h"
+#include "mtk_drm_drv.h"
+#include "mtk_drm_mmp.h"
+#include "mtk_dsi_lpc.h"
+#include <linux/module.h>
+
+int lpc_te_irq_en;
+module_param(lpc_te_irq_en, int, 0644);
+
+#define DSI_LPC_EN (0x0)
+#define DSI_LPC_EN_BIT_FLD REG_FLD_MSB_LSB(0, 0)
+#define DSI_LPC_EN_BIT BIT(0)
+#define DSI_LPC_DBG_MON_EN BIT(4)
+#define DSI_LPC_DBG_MON_RST BIT(5)
+
+#define DSI_LPC_PHY_CON (0x04)
+#define DSI_LPC_EVENT_TYPE (0x08)
+#define DSI_LPC_GPIO_OUT_CON (0x0C)
+#define DSI_LPC_SYS_TIMER_TIMESTAMP0 (0x80)
+#define DSI_LPC_SYS_TIMER_TIMESTAMP1 (0x84)
+
+#define DSI_LPC_CONFIG(n) (0x100 + 0x100 * (n))
+#define DSI_LPC_UNIT_EN BIT(0)
+#define DSI_LPC_UNIT_EN_FLD REG_FLD_MSB_LSB(0, 0)
+#define DSI_LPC_UNIT_REST BIT(1)
+#define DSI_LPC_HYNC_PWR_ON_SEQ_EN BIT(4)
+#define DSI_LPC_DCM_DIS BIT(31)
+
+#define DSI_LPC_INTEN(n) (0x104 + 0x100 * (n))
+#define DSI_SOF_INT_EN BIT(0)
+#define DSI_DONE_INT_EN BIT(1)
+#define DSI_START_INT_EN BIT(2)
+#define DSI_FRAME_DONE_INT_EN BIT(3)
+#define DSI_GATE_EVENT_INT_EN BIT(4)
+#define DSI_LPC_INTERVAL_START_INT_EN BIT(5)
+#define IDLE_FRAME_PRD_START_INT_EN BIT(6)
+#define GPIO_HSYNC_INT_EN BIT(7)
+#define DBG_CALI_FAIL_INT_EN BIT(8)
+#define HSYNC_PWR_ON_PLUSE_INT_EN BIT(9)
+#define EXT_TE_PLUS_INT_EN BIT(10)
+#define EVENT_TE_INT_EN BIT(11)
+#define REPORTED_RESYNC_INT_EN BIT(12)
+#define MIPI_ERROR_FLAG_INT_EN BIT(13)
+
+#define DSI_LPC_INSTA(n) (0x108 + 0x100 * (n))
+#define DSI_SOF_INT BIT(0)
+#define DSI_DONE_INT BIT(1)
+#define DSI_START_INT BIT(2)
+#define DSI_FRAME_DONE_INT BIT(3)
+#define DSI_GATE_EVENT_INT BIT(4)
+#define DSI_LPC_INTERVAL_START_INT BIT(5)
+#define IDLE_FRAME_PRD_START_INT BIT(6)
+#define GPIO_HSYNC_INT BIT(7)
+#define DBG_CALI_FAIL_INT BIT(8)
+#define HSYNC_PWR_ON_PLUSE_INT BIT(9)
+#define EXT_TE_PLUS_INT BIT(10)
+#define EVENT_TE_INT BIT(11)
+#define REPORTED_RESYNC_INT BIT(12)
+#define MIPI_ERROR_FLAG_INT BIT(13)
+
+#define DSI_LPC_UP_INTEN(n) (0x10C + 0x100 * (n))
+#define DSI_LPC_UP_INSTA(n) (0x110 + 0x100 * (n))
+#define DSI_LPC_SCP_INTEN(n) (0x114 + 0x100 * (n))
+#define DSI_LPC_SCP_INSTA(n) (0x118 + 0x100 * (n))
+
+#define DSI_LPC_FRAME_SIZE(n) (0x11C + 0x100 * (n))
+#define DSI_LPC_EM_PRD_NUM(n) (0x120 + 0x100 * (n))
+#define DSI_LPC_HSYNC_PRD_NUM(n) (0x124 + 0x100 * (n))
+
+#define DSI_LPC_VIDLE_CON(n) (0x128 + 0x100 * (n))
+#define DSI_LPC_DSI_VIDLE_EN BIT(0)
+#define DSI_LPC_HSYNC_MODE_SEL REG_FLD_MSB_LSB(6, 4)
+#define DSI_LPC_GPIO_HSYNC_EN BIT(7)
+#define DSI_LPC_GPIO_HSYNC_TYPE BIT(8)
+
+#define DSI_LPC_GPIO_HSYNC_CON0(n) (0x12C + 0x100 * (n))
+#define DSI_LPC_GPIO_HSYNC_WIDTH_A REG_FLD_MSB_LSB(15, 0)
+#define DSI_LPC_GPIO_HSYNC_WIDTH_B REG_FLD_MSB_LSB(31, 16)
+#define DSI_LPC_GPIO_HSYNC_CON1(n) (0x130 + 0x100 * (n))
+#define DSI_LPC_GPIO_HSYNC_EVENT_SHIFT_NUM REG_FLD_MSB_LSB(15, 0)
+#define DSI_LPC_GPIO_HSYNC_MASK_TIMER REG_FLD_MSB_LSB(31, 16)
+
+#define DSI_LPC_GATE_NL(n) (0x134 + 0x100 * (n))
+#define DSI_LPC_GATE_NL_SIZE REG_FLD_MSB_LSB(19, 0)
+#define DSI_LPC_AFTER_TE_GATE_EVENT_EN BIT(28)
+
+#define DSI_LPC_TE_CON0(n) (0x160 + 0x100 * (n))
+#define DSI_LPC_TE_TYPE REG_FLD_MSB_LSB(2, 0)
+#define DSI_LPC_EVENT_TE_SEL BIT(4)
+#define DSI_LPC_TE_NUM REG_FLD_MSB_LSB(17, 8)
+#define DSI_LPC_HW_VSYNC_ON BIT(31)
+#define DSI_LPC_HW_VSYNC_ON_FLD REG_FLD_MSB_LSB(31, 31)
+
+#define DSI_LPC_TE_CON1(n) (0x164 + 0x100 * (n))
+#define DSI_LPC_FAKE_TE_PRD REG_FLD_MSB_LSB(17, 0)
+
+#define DSI_LPC_TE_CON2(n) (0x168 + 0x100 * (n))
+#define DSI_LPC_FTE_MASK_EN BIT(0)
+#define DSI_LPC_FTE_MASK_NUM REG_FLD_MSB_LSB(7, 4)
+#define DSI_LPC_TE_DOWNSAMP_EN BIT(8)
+#define DSI_LPC_TE_DOWNSAMP_NUM REG_FLD_MSB_LSB(21, 12)
+
+#define DSI_LPC_SOF_TIMESTAMP_0(n) (0x180 + 0x100 * (n))
+#define DSI_LPC_SOF_TIMESTAMP_1(n) (0x184 + 0x100 * (n))
+#define DSI_LPC_FRAME_DONE_TIMESTAMP_0(n) (0x188 + 0x100 * (n))
+#define DSI_LPC_FRAME_DONE_TIMESTAMP_1(n) (0x18C + 0x100 * (n))
+#define DSI_LPC_EVENT_TE_TIMESTAMP_0(n) (0x190 + 0x100 * (n))
+#define DSI_LPC_EVENT_TE_TIMESTAMP_1(n) (0x194 + 0x100 * (n))
+#define DSI_LPC_RESYNC_TE_TIMESTAMP_0(n) (0x198 + 0x100 * (n))
+#define DSI_LPC_RESYNC_TE_TIMESTAMP_1(n) (0x19C + 0x100 * (n))
+#define DSI_LPC_GATE_EVENT_TIMESTAMP_0(n) (0x1A0 + 0x100 * (n))
+#define DSI_LPC_GATE_EVENT_TIMESTAMP_1(n) (0x1A4 + 0x100 * (n))
+
+#define DSI_LPC_DBG0(n) (0x1B0 + 0x100 * (n))
+#define HSYNC_ACCU_HSYNC_NUM REG_FLD_MSB_LSB(11, 0)
+#define EM_PRD_CNT REG_FLD_MSB_LSB(31, 12)
+#define DSI_LPC_DBG1(n) (0x1B4 + 0x100 * (n))
+#define DSI_LPC_DBG2(n) (0x1B8 + 0x100 * (n))
+#define DSI_LPC_DBG3(n) (0x1BC + 0x100 * (n))
+#define FRAME_LINE_CNT REG_FLD_MSB_LSB(19, 0)
+#define GPIO_HSYNC_FSM_STATE REG_FLD_MSB_LSB(22, 20)
+#define IDLE_FRAME_PRD BIT(23)
+#define DSI_LPC_THREAD BIT(24)
+#define DSI_LPC_TRIG BIT(25)
+#define TE_TYPE_WRK REG_FLD_MSB_LSB(28, 26)
+
+#define DSI_LPC_DBG4(n) (0x1C0 + 0x100 * (n))
+#define FAKE_TE_CNT REG_FLD_MSB_LSB(9, 0)
+#define FAKE_TE_PRD_CNT REG_FLD_MSB_LSB(27, 10)
+
+#define DSI_LPC_DBG5(n) (0x1C4 + 0x100 * (n))
+#define USED_FAKE_TE_PRD REG_FLD_MSB_LSB(17, 0)
+#define DSI_LPC_GPI(n) (0x1FC + 0x100 * (n))
+#define DSI_LPC_EXT_TE_SEL REG_FLD_MSB_LSB(1, 0)
+#define DSI_LPC_MIPI_ERROR_FLAG_SEL REG_FLD_MSB_LSB(3, 2)
+
+static void __iomem *dsi_lpc_base;
+static resource_size_t dsi_lpc_regs_pa;
+
+static bool dsi_lpc_en;
+static unsigned int panel_skip_vblank;
+ktime_t ts_offset;	// arch_timer_get_cntfrq: MT6993 = 1,000,000,000
+
+struct mtk_dsi_lpc {
+	struct mtk_ddp_comp ddp_comp;
+	struct drm_crtc *crtc;
+};
+
+static inline struct mtk_dsi_lpc *comp_to_dsi_lpc(struct mtk_ddp_comp *comp)
+{
+	return container_of(comp, struct mtk_dsi_lpc, ddp_comp);
+}
+int mtk_dsi_lpc_dump(struct mtk_ddp_comp *comp)
+{
+	int i = 0;
+
+	if (!dsi_lpc_regs_pa || !dsi_lpc_base)
+		return 0;
+
+	DDPDUMP("== LPC REGS:0x%pa ==\n", &dsi_lpc_regs_pa);
+
+	for (i = 0; i < 0x1FF; i += 16) {
+		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", i,
+			readl(dsi_lpc_base + i),
+			readl(dsi_lpc_base + i + 0x4),
+			readl(dsi_lpc_base + i + 0x8),
+			readl(dsi_lpc_base + i + 0xC));
+	}
+
+	return 0;
+}
+void mtk_dsi_lpc_analysis(struct mtk_ddp_comp *comp)
+{
+	unsigned int reg_val;
+	int i = 0;
+
+	if (!dsi_lpc_regs_pa || !dsi_lpc_base)
+		return;
+
+	DDPDUMP("== LPC ANALYSIS:0x%pa ==\n", &dsi_lpc_regs_pa);
+	reg_val = readl(dsi_lpc_base + DSI_LPC_EN);
+	DDPDUMP("LPC_EN:%d\n", REG_FLD_VAL_GET(DSI_LPC_EN_BIT_FLD, reg_val));
+	for (i = 0; i < 4; i++) {
+		reg_val = readl(dsi_lpc_base + DSI_LPC_CONFIG(i));
+		if ((reg_val & 0x1) == 0)
+			break;
+		DDPDUMP("LPC(%d) UNIT_EN:%d\n", i, REG_FLD_VAL_GET(DSI_LPC_UNIT_EN_FLD, reg_val));
+		reg_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(i));
+		DDPDUMP("TE_TYPE:%d,LPC_TE_NUM:%d,HW_VSYNC_ON:%d\n",
+			REG_FLD_VAL_GET(DSI_LPC_TE_TYPE, reg_val),
+			REG_FLD_VAL_GET(DSI_LPC_TE_NUM, reg_val),
+			REG_FLD_VAL_GET(DSI_LPC_HW_VSYNC_ON_FLD, reg_val));
+		reg_val = readl(dsi_lpc_base + DSI_LPC_TE_CON1(i));
+		DDPDUMP("FAKE_TE_PRD:%d\n", REG_FLD_VAL_GET(DSI_LPC_FAKE_TE_PRD, reg_val));
+	}
+}
+static void mtk_dsi_lpc_prepare(struct mtk_ddp_comp *comp)
+{
+	mtk_ddp_comp_clk_prepare(comp);
+}
+static void mtk_dsi_lpc_unprepare(struct mtk_ddp_comp *comp)
+{
+	mtk_ddp_comp_clk_unprepare(comp);
+}
+static void mtk_dsi_lpc_config(struct mtk_ddp_comp *comp,
+	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	struct mtk_dsi_lpc *dsi_lpc = container_of(comp, struct mtk_dsi_lpc, ddp_comp);
+}
+static int mtk_dsi_lpc_unit(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *output_comp = NULL;
+	int index = 0;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
+		/* temp support dsi0
+		 * if (output_comp->id == DDP_COMPONENT_DSI0)
+		 * index = 0;
+		 * else if (output_comp->id == DDP_COMPONENT_DSI1)
+		 * index = 1;
+		 * else if (output_comp->id == DDP_COMPONENT_DSI2)
+		 * index = 2;
+		 * return index;
+		 */
+		return 0;
+	}
+	return -1;
+}
+void set_pl_kernel_offset(void)
+{
+	ktime_t ts = ktime_get();
+
+	ts_offset = arch_timer_read_counter() - ts;
+
+	DDPINFO("%s,ker:%llu,offset:%llu\n", __func__, ts, ts_offset);
+}
+ktime_t pl_kernel_offset(void)
+{
+	return ts_offset;
+}
+void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc)
+{
+	/* repot sof time */
+	int index = 0;
+	unsigned long ts0, ts1;
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return;
+	}
+
+	ts0 = readl(dsi_lpc_base + DSI_LPC_SOF_TIMESTAMP_0(index));
+	ts1 = readl(dsi_lpc_base + DSI_LPC_SOF_TIMESTAMP_1(index));
+	*sof_ts = (ts1 << 32 | ts0) << 7;
+	*sof_ts -= pl_kernel_offset();
+
+	if (index == 0)
+		DRM_MMP_MARK(dsi_lpc0_ts, ts1, ts0);
+	drm_trace_tag_value("lpc_sof_timestamp", *sof_ts);
+}
+void mtk_dsi_lpc_event_te_ts(long long *event_te_ts_diff, struct mtk_drm_crtc *mtk_crtc)
+{
+	/* repot sof time */
+	int index = 0;
+	unsigned long ts0 = 0, ts1 = 0;
+	static long long pre_event_te_ts;
+	long long event_te_ts = 0;
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return;
+	}
+
+	ts0 = readl(dsi_lpc_base + DSI_LPC_EVENT_TE_TIMESTAMP_0(index));
+	ts1 = readl(dsi_lpc_base + DSI_LPC_EVENT_TE_TIMESTAMP_1(index));
+	event_te_ts = (ts1 << 32 | ts0) << 7;
+	if (event_te_ts > pre_event_te_ts)
+		*event_te_ts_diff = event_te_ts - pre_event_te_ts;
+
+	pre_event_te_ts = event_te_ts;
+}
+void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc)
+{
+	/* repot resync time */
+	int index = 0;
+	unsigned long ts0, ts1;
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return;
+	}
+
+	ts0 = readl(dsi_lpc_base + DSI_LPC_RESYNC_TE_TIMESTAMP_0(index));
+	ts1 = readl(dsi_lpc_base + DSI_LPC_RESYNC_TE_TIMESTAMP_1(index));
+	*resync_ts = (ts1 << 32 | ts0) << 7;
+	*resync_ts -= pl_kernel_offset();
+
+	if (index == 0)
+		DRM_MMP_MARK(dsi_lpc0_ts, ts1, ts0);
+	drm_trace_tag_value("lpc_resync_timestamp", *resync_ts);
+}
+void mtk_dsi_lpc_set_interrupt_enable(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *output_comp = NULL;
+	int index = 0;
+	u32 inten = 0;
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return;
+	}
+
+	if (mtk_crtc->hwvsync_en)
+		inten |= REPORTED_RESYNC_INT_EN;
+	else
+		inten &= ~REPORTED_RESYNC_INT_EN;
+
+	if (lpc_te_irq_en)
+		inten |= EVENT_TE_INT_EN;
+
+	writel(0, dsi_lpc_base + DSI_LPC_INTEN(index));
+	writel(inten, dsi_lpc_base + DSI_LPC_INTEN(index));
+
+	DDPINFO("%s,[%d]inten:0x%x\n", __func__, index, inten);
+}
+void mtk_dsi_lpc_hwvsync_en(bool en, int index)
+{
+	unsigned int lpc_te_con0_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(index));
+
+	if (en)
+		lpc_te_con0_val |= DSI_LPC_HW_VSYNC_ON;
+	else
+		lpc_te_con0_val &= ~DSI_LPC_HW_VSYNC_ON;
+
+	writel(lpc_te_con0_val, dsi_lpc_base + DSI_LPC_TE_CON0(index));
+	DDPINFO("%s,en:%d,val:0x%x\n", __func__, en, lpc_te_con0_val);
+
+	if (en) {
+		drm_trace_tag_start("lpc_hwvsync_on");
+		DRM_MMP_EVENT_START(dsi_lpc, 0xFFFFFFFF, en);
+	} else {
+		drm_trace_tag_end("lpc_hwvsync_on");
+		DRM_MMP_EVENT_END(dsi_lpc, 0xFFFFFFFF, en);
+	}
+}
+void mtk_dsi_set_lpc_en(bool en)
+{
+	writel(en, dsi_lpc_base + DSI_LPC_EN);
+}
+void mtk_dsi_lpc_unit_en(bool en, int index)
+{
+	writel(en, dsi_lpc_base + DSI_LPC_CONFIG(index));
+}
+bool mtk_dsi_lpc_en(void)
+{
+	return dsi_lpc_en;
+}
+void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_ddp_comp *comp, struct cmdq_pkt *cmdq_handle,
+	struct mtk_panel_params *params)
+{
+	int index = 0;
+	unsigned int lpc_te_con0_val = 0;
+	unsigned long dsi_lpc_fake_te_prd = 0;
+	unsigned int te_num_mask = 0x0003FF00;//DSI_LPC_TE_NUM REG_FLD_MSB_LSB(17, 8)
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return;
+	}
+
+	lpc_te_con0_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(index));
+	lpc_te_con0_val &= ~te_num_mask;
+	panel_skip_vblank = params->skip_vblank;
+	lpc_te_con0_val |= (panel_skip_vblank << 8) & te_num_mask;
+
+	dsi_lpc_fake_te_prd = params->real_te_duration * 26;
+
+	if (cmdq_handle) {
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+			dsi_lpc_regs_pa + DSI_LPC_TE_CON0(index), lpc_te_con0_val, ~0);
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					dsi_lpc_regs_pa + DSI_LPC_TE_CON1(index), dsi_lpc_fake_te_prd, ~0);
+	} else {
+		writel(lpc_te_con0_val, dsi_lpc_base + DSI_LPC_TE_CON0(index));
+		writel(dsi_lpc_fake_te_prd, dsi_lpc_base + DSI_LPC_TE_CON1(index));
+	}
+
+	DDPMSG("%s,[%d]te_num:%d,fake_te_prd:%d\n", __func__, index, panel_skip_vblank,dsi_lpc_fake_te_prd);
+
+	DRM_MMP_MARK(dsi_lpc, panel_skip_vblank,dsi_lpc_fake_te_prd);
+	drm_trace_tag_value("lpc_te_num", panel_skip_vblank);
+	drm_trace_tag_value("lpc_fake_te_prd", dsi_lpc_fake_te_prd);
+}
+void mtk_dsi_lpc_init_config(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	enum mtk_panel_type type = PANEL_TYPE_COUNT;
+	struct mtk_panel_params *params = NULL;
+	int index = 0;
+	unsigned int dsi_lpc_te_con = 0;
+	unsigned long dsi_lpc_fake_te_prd = 0;
+
+	set_pl_kernel_offset();
+
+	if (priv == NULL)
+		return;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_LPC_EN)) {
+		DDPMSG("%s, lpc not enable\n", __func__);
+		return;
+	}
+	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		DDPMSG("%s, lpc only support cmd mode\n", __func__);
+		return;
+	}
+
+	if (!mtk_drm_lcm_is_connect(mtk_crtc)) {
+		DDPMSG("%s, lcm is not connected\n", __func__);
+		return;
+	}
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return;
+	}
+
+	params = mtk_drm_get_lcm_ext_params(crtc);
+	if (!params) {
+		DDPMSG("%s,lcm params pointer is NULL\n", __func__);
+		return;
+	}
+
+	/* set MTE mode */
+	dsi_lpc_te_con = 2;
+	if (params->skip_vblank) {
+		panel_skip_vblank = params->skip_vblank;
+		dsi_lpc_te_con |= panel_skip_vblank << 8;
+	}
+	if (!dsi_lpc_base) {
+		DDPMSG("%s,dsi_lpc_base is NULL\n", __func__);
+		return;
+	}
+	writel(dsi_lpc_te_con, dsi_lpc_base + DSI_LPC_TE_CON0(index));
+
+	/* real_te_duration (us), FAKE_TE_PRD (26M clock cycle) */
+	dsi_lpc_fake_te_prd = params->real_te_duration * 26;
+	writel(dsi_lpc_fake_te_prd, dsi_lpc_base + DSI_LPC_TE_CON1(index));
+
+	DDPINFO("%s, te_num:%d,fake_te_prd:%d\n", __func__, panel_skip_vblank,dsi_lpc_fake_te_prd);
+
+	dsi_lpc_en = true;
+	mtk_dsi_set_lpc_en(true);
+	mtk_dsi_lpc_unit_en(true, index);
+
+	if (lpc_te_irq_en)
+		mtk_dsi_lpc_set_interrupt_enable(mtk_crtc);
+}
+void mtk_dsi_lpc_first_config(struct mtk_ddp_comp *comp,
+	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+
+}
+static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+			  enum mtk_ddp_io_cmd cmd, void *params)
+{
+	struct mtk_dsi_lpc *dsi_lpc = NULL;
+	void **out_params;
+
+	if (!comp) {
+		pr_info("%s: error, comp=NULL!\n", __func__);
+		return 0;
+	}
+	if(mtk_ddp_comp_get_type(comp->id) != MTK_DSI_LPC) {
+		pr_info("%s: comp = %s, return!\n", __func__, mtk_dump_comp_str(comp));
+		return 0;
+	}
+	dsi_lpc = container_of(comp, struct mtk_dsi_lpc, ddp_comp);
+
+	return 0;
+}
+static const struct mtk_ddp_comp_funcs mtk_dsi_lpc_funcs = {
+	//.start = mtk_dsi_lpc_start,
+	//.stop = mtk_dsi_lpc_stop,
+	.prepare = mtk_dsi_lpc_prepare,
+	.unprepare = mtk_dsi_lpc_unprepare,
+	//.config = mtk_dsi_lpc_config,
+	//.first_cfg = mtk_dsi_lpc_first_config,
+	//.io_cmd = mtk_dsi_lpc_io_cmd,
+};
+static int mtk_dsi_lpc_bind(struct device *dev, struct device *master,
+			     void *data)
+{
+	struct mtk_dsi_lpc *priv = dev_get_drvdata(dev);
+	struct drm_device *drm_dev = data;
+	int ret;
+
+	DDPFUNC("+");
+	ret = mtk_ddp_comp_register(drm_dev, &priv->ddp_comp);
+	if (ret < 0) {
+		dev_err(dev, "Failed to register component %s: %d\n",
+			dev->of_node->full_name, ret);
+		return ret;
+	}
+	DDPFUNC("-");
+	return 0;
+}
+static void mtk_dsi_lpc_unbind(struct device *dev, struct device *master,
+				void *data)
+{
+	struct mtk_dsi_lpc  *priv = dev_get_drvdata(dev);
+	struct drm_device *drm_dev = data;
+
+	mtk_ddp_comp_unregister(drm_dev, &priv->ddp_comp);
+}
+static const struct component_ops mtk_dsi_lpc_component_ops = {
+	.bind = mtk_dsi_lpc_bind, .unbind = mtk_dsi_lpc_unbind,
+};
+static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
+{
+	struct mtk_dsi_lpc *dsi_lpc = dev_id;
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct drm_vblank_crtc *vblank = NULL;
+	unsigned int status = 0;
+	unsigned int ret = 0;
+	int index = 0;
+
+	comp = &dsi_lpc->ddp_comp;
+	if (IS_ERR_OR_NULL(comp))
+		return IRQ_NONE;
+
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+	mtk_crtc = comp->mtk_crtc;
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	if (!mtk_crtc->base.dev) {
+		DDPPR_ERR("%s mtk_crtc->base.dev is NULL\n", __func__);
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	index = drm_crtc_index(&mtk_crtc->base);
+	vblank = &mtk_crtc->base.dev->vblank[index];
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	status = readl(comp->regs + DSI_LPC_INSTA(index));
+	if (!status) {
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	if (index == 0)
+		DRM_MMP_MARK(dsi_lpc0, status, 0);
+	else if (index == 1)
+		DRM_MMP_MARK(dsi_lpc1, status, 0);
+
+	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(comp), status);
+
+	if (status) {
+		writel(~status, comp->regs + DSI_LPC_INSTA(index));
+		if (status & REPORTED_RESYNC_INT) {
+			int refcount = atomic_read(&vblank->refcount);
+
+			if (!vblank || refcount == 0) {
+				// disable hwvsync
+				mtk_crtc->hwvsync_en = 0;
+				mtk_dsi_lpc_set_interrupt_enable(mtk_crtc);
+				mtk_dsi_lpc_hwvsync_en(false, index);
+			} else
+				mtk_crtc_vblank_irq_for_lpc_resync(&mtk_crtc->base);
+
+			drm_trace_tag_value("lpc_resync_irq", refcount);
+		}
+		if (status & EVENT_TE_INT) {
+			long long event_te_ts_diff;
+
+			mtk_dsi_lpc_event_te_ts(&event_te_ts_diff, mtk_crtc);
+			drm_trace_tag_value("lpc_te_irq", event_te_ts_diff);
+		}
+	}
+
+	ret = IRQ_HANDLED;
+out:
+	mtk_drm_top_clk_isr_put(comp);
+
+	return ret;
+}
+
+static int mtk_dsi_lpc_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct mtk_dsi_lpc *priv;
+	enum mtk_ddp_comp_id comp_id;
+	int ret;
+	int irq, num_irqs;
+
+	DDPFUNC("+");
+	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
+	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DSI_LPC);
+	if ((int)comp_id < 0) {
+		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
+		return comp_id;
+	}
+
+	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
+				&mtk_dsi_lpc_funcs);
+	if (ret) {
+		dev_err(dev, "Failed to initialize component: %d\n", ret);
+		return ret;
+	}
+
+	dsi_lpc_base = priv->ddp_comp.regs;
+	dsi_lpc_regs_pa = priv->ddp_comp.regs_pa;
+
+	platform_set_drvdata(pdev, priv);
+	num_irqs = platform_irq_count(pdev);
+
+	if (num_irqs) {
+
+		irq = platform_get_irq(pdev, 0);
+		if (irq < 0)
+			return irq;
+
+		ret = devm_request_irq(dev, irq, mtk_dsi_lpc_irq_handler,
+					   IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
+					   priv);
+		if (ret < 0) {
+			DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
+					__func__, __LINE__,
+					irq, ret, comp_id);
+			return ret;
+		}
+	}
+
+	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
+
+	ret = component_add(dev, &mtk_dsi_lpc_component_ops);
+	if (ret != 0) {
+		dev_err(dev, "Failed to add component: %d\n", ret);
+		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
+	}
+	set_pl_kernel_offset();
+	DDPFUNC("-");
+
+	return ret;
+}
+static void mtk_dsi_lpc_remove(struct platform_device *pdev)
+{
+	struct mtk_dsi_lpc *priv = dev_get_drvdata(&pdev->dev);
+
+	component_del(&pdev->dev, &mtk_dsi_lpc_component_ops);
+	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
+}
+static const struct of_device_id mtk_dsi_lpc_driver_dt_match[] = {
+	{.compatible = "mediatek,mt6993-dsi-lpc",},
+	{},
+};
+MODULE_DEVICE_TABLE(of, mtk_dsi_lpc_driver_dt_match);
+
+struct platform_driver mtk_dsi_lpc_driver = {
+	.probe = mtk_dsi_lpc_probe,
+	.remove = mtk_dsi_lpc_remove,
+	.driver = {
+			.name = "mediatek-dsi-lpc",
+			.owner = THIS_MODULE,
+			.of_match_table = mtk_dsi_lpc_driver_dt_match,
+		},
+};

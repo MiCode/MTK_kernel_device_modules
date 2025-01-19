@@ -49,6 +49,7 @@
 #include "mtk_drm_graphics_base.h"
 #include "mtk_disp_bdg.h"
 #include "mtk_dsi.h"
+#include "mtk_dsi_lpc.h"
 #include "mtk_disp_vidle.h"
 #include "mtk_disp_postmask.h"
 #include <clk-fmeter.h>
@@ -2379,6 +2380,9 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 	unsigned int pf_idx;
 	unsigned int crtc_idx;
 	struct mtk_drm_private *drm_priv;
+	ktime_t sof_time;
+	long long sof_ts;
+	unsigned long flags;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
@@ -2407,7 +2411,20 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 		return;
 	}
 
-	mtk_crtc->sof_time = ktime_get();
+	if (mtk_dsi_lpc_en()) {
+		mtk_dsi_lpc_sof_ts(&sof_ts, mtk_crtc);
+		sof_time = (ktime_t) sof_ts;
+
+		spin_lock_irqsave(&mtk_crtc->pf_time_lock, flags);
+		mtk_crtc->pf_time = sof_time;
+		atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 1);
+		spin_unlock_irqrestore(&mtk_crtc->pf_time_lock, flags);
+		wake_up_interruptible(&(mtk_crtc->signal_irq_for_pre_fence_wq));
+	} else
+		sof_time = ktime_get();
+
+	mtk_crtc->sof_time = sof_time;
+
 	drm_priv = mtk_crtc->base.dev->dev_private;
 
 	if (drm_priv &&
