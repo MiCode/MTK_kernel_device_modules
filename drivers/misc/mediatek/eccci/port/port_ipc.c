@@ -415,8 +415,25 @@ int port_ipc_init(struct port_t *port)
 		dev->owner = THIS_MODULE;
 		ret = cdev_add(dev, MKDEV(port->major,
 			port->minor_base + port->minor), 1);
+		if (ret) {
+			CCCI_ERROR_LOG(0, IPC,
+				"%s-%d: cdev_add fail, ret = %d\n",
+				__func__, __LINE__, ret);
+			kfree(dev);
+			kfree(ipc_ctrl);
+			return ret;
+		}
 		ret = ccci_register_dev_node(port->name, port->major,
 			port->minor_base + port->minor);
+		if (ret) {
+			CCCI_ERROR_LOG(0, IPC,
+				"%s-%d: ccci_register_dev_node fail, ret = %d\n",
+				__func__, __LINE__, ret);
+			cdev_del(dev);
+			kfree(dev);
+			kfree(ipc_ctrl);
+			return ret;
+		}
 		port->interception = 0;
 		port->flags |= PORT_F_ADJUST_HEADER;
 	} else {

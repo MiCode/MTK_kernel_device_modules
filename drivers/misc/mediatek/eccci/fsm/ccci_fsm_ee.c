@@ -411,7 +411,7 @@ static void ccci_get_vioinfo_clear_md_violation(void)
 void fsm_md_normal_ee_handler(struct ccci_fsm_ctl *ctl)
 {
 	struct ccci_fsm_event *event = NULL;
-	int count = 0, ex_got = 0;
+	int count = 0;
 	int rec_ok_got = 0, pass_got = 0;
 	unsigned long flags;
 
@@ -433,7 +433,6 @@ void fsm_md_normal_ee_handler(struct ccci_fsm_ctl *ctl)
 			event = list_first_entry(&ctl->event_queue,
 				struct ccci_fsm_event, entry);
 			if (event->event_id == CCCI_EVENT_MD_EX) {
-				ex_got = 1;
 				fsm_finish_event(ctl, event);
 			} else if (event->event_id ==
 					CCCI_EVENT_MD_EX_REC_OK) {

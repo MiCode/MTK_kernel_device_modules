@@ -202,7 +202,7 @@ int ccci_ringbuf_write(struct ccci_ringbuf *ringbuf,
 	unsigned char *data, int data_len)
 {
 	int aligned_data_len;
-	unsigned int read, write, length;
+	unsigned int write, length;
 	unsigned char *tx_buffer = NULL;
 	unsigned char *h_ptr = NULL;
 
@@ -213,7 +213,6 @@ int ccci_ringbuf_write(struct ccci_ringbuf *ringbuf,
 		return -CCCI_RINGBUF_PARAM_ERR;
 	if (ccci_ringbuf_writeable(ringbuf, data_len) <= 0)
 		return -CCCI_RINGBUF_NOT_ENOUGH;
-	read = (unsigned int)(ringbuf->tx_control.read);
 	write = (unsigned int)(ringbuf->tx_control.write);
 	length = (unsigned int)(ringbuf->tx_control.length);
 	tx_buffer = ringbuf->buffer + ringbuf->rx_control.length;
@@ -340,12 +339,11 @@ int ccci_ringbuf_readable(struct ccci_ringbuf *ringbuf)
 int ccci_ringbuf_read(struct ccci_ringbuf *ringbuf,
 	unsigned char *buf, int read_size)
 {
-	unsigned int read, write, length;
+	unsigned int read, length;
 
 	if (ringbuf == NULL || read_size == 0 || buf == NULL)
 		return -CCCI_RINGBUF_PARAM_ERR;
 	read = (unsigned int)(ringbuf->rx_control.read);
-	write = (unsigned int)(ringbuf->rx_control.write);
 	length = (unsigned int)(ringbuf->rx_control.length);
 	/* skip header */
 	read += CCIF_HEADER_LEN;

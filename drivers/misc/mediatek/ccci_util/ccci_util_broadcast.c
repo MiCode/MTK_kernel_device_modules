@@ -485,12 +485,6 @@ static long ccci_util_bc_ioctl(struct file *filp, unsigned int cmd,
 long ccci_util_bc_compat_ioctl(struct file *filp, unsigned int cmd,
 	unsigned long arg)
 {
-	struct ccci_util_bc_user_ctlb *user_ctlb;
-	struct bc_ctl_block_t *bc_dev;
-
-	user_ctlb = filp->private_data;
-	bc_dev = user_ctlb->bc_dev_ptr;
-
 	if (!filp->f_op || !filp->f_op->unlocked_ioctl) {
 		CCCI_UTIL_ERR_MSG(
 		"%s(!filp->f_op || !filp->f_op->unlocked_ioctl)\n", __func__);
