@@ -43,6 +43,7 @@ u32 tmem_high_freq;
 u32 cpu_map;
 #endif
 
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 static int tmem_open(struct inode *inode, struct file *file)
 {
 	UNUSED(inode);
@@ -241,7 +242,6 @@ static const struct proc_ops tmem_fops = {
 	.proc_write = tmem_write,
 };
 
-#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 static void trusted_mem_create_proc_entry(void)
 {
 	proc_create("tmem0", 0664, NULL, &tmem_fops);
