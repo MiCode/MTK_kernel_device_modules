@@ -3577,16 +3577,15 @@ pwrap: pwrap@1000d000 {
 	mmdvfs-debug {
 		compatible = "mediatek,mmdvfs-debug";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		force-step0 = <1>;
-		release-step0 = <1>;
+		force-step0 = <1>;	/* 0:opp0,  1:opp1, ... */
+		release-step0 = <1>;	/* 0:disable,  1:enable */
 	};
 
 	mmdvfs {
 		compatible = "mediatek,mmdvfs";
 		operating-points-v2 = <&opp_table_mm>;
 		mediatek,support-mux = "mm";
-		mediatek,mux-mm = "TOP_MMPLL_D2",
-			"TOP_UNIVPLL1_D2", "TOP_MMPLL";
+		mediatek,mux-mm = "TOP_MMPLL_D2", "TOP_UNIVPLL1_D2", "TOP_MMPLL";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		_vcore-supply = <&mt_pmic_vcore_buck_reg>;
 		clocks = <&topckgen CLK_TOP_MM_SEL>,
