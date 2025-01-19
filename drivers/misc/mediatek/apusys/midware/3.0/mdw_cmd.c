@@ -1154,11 +1154,14 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 
 	mutex_lock(&mpriv->mtx);
 
-	prev_c = (struct mdw_cmd *)idr_remove(&mpriv->cmds, in->id);
+	prev_c = (struct mdw_cmd *)idr_find(&mpriv->cmds, in->id);
 
 	/* delete stale cmd if not run_stale */
-	if (in->op != MDW_CMD_IOCTL_RUN_STALE && prev_c)
+	if (in->op != MDW_CMD_IOCTL_RUN_STALE && prev_c) {
+		if (prev_c != idr_remove(&mpriv->cmds, prev_c->id))
+			mdw_drv_warn("remove id(%d) conflict\n", prev_c->id);
 		mdw_cmd_delete_async(prev_c);
+	}
 
 	/* create new cmd for enq and run */
 	if (in->op == MDW_CMD_IOCTL_ENQ || in->op == MDW_CMD_IOCTL_RUN) {
@@ -1175,12 +1178,16 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 			ret = -EUSERS;
 			goto delete_cmd;
 		}
-
-	} else if (in->op == MDW_CMD_IOCTL_RUN_STALE) {
+		/* return input fence wait_fd (enq does NOT use fence) */
+		fd = wait_fd;
+	} else if (in->op == MDW_CMD_IOCTL_RUN_STALE && prev_c) {
 		/* run stale, set prev as current cmd */
 		c = prev_c;
 		prev_c = NULL;
 		mdw_cmd_debug("run stale mode\n");
+	} else {
+		mdw_drv_err("unexcept operation op(%d) id(%lld)\n", in->op, in->id);
+		goto out;
 	}
 
 	/* run_cmd for run and run_stale */
