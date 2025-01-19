@@ -35,7 +35,9 @@
 #define MAX_CPU_CORE_NUM			8
 #define MAX_PMIC_SPMI_GLITCH_SZ		96
 #define MAX_DVFSRC_INFO_SZ		64
-#define MAX_WIFI_PCIE_SZ				32
+#define MAX_WIFI_PCIE_SZ                32
+#define MAX_WIFI_BAND_NUM               3
+#define MAX_WIFI_ANTENA_NUM             2
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -603,4 +605,43 @@ struct mbraink_wifi2mbr_pcie_data {
 	u32 idx;
 	struct mbraink_wifi2mbr_pcie_struct pcie_data[MAX_WIFI_PCIE_SZ];
 };
+
+struct mbraink_wifi2mbr_txpwr_coex_info {
+	bool bt_on;
+	bool lte_on;
+	unsigned char reserved[2];
+	unsigned int bt_profile;
+	unsigned int pta_grant;
+	unsigned int pta_req;
+	unsigned int curr_op_mode;
+};
+
+struct mbraink_wifi2mbr_txpwr_d_die_info {
+	unsigned int delta;
+	signed char target_pwr;
+	unsigned char comp_grp;
+	unsigned char fe_gain_mode;
+	unsigned char reserved[5];
+};
+
+struct mbraink_wifi2mbr_txpwr_info {
+	bool epa_support;
+	unsigned char cal_type;
+	unsigned char center_ch;
+	unsigned char mcc_idx;
+	unsigned int rf_band;
+	signed int temp;
+	unsigned int antsel;
+	struct mbraink_wifi2mbr_txpwr_coex_info coex;
+	struct mbraink_wifi2mbr_txpwr_d_die_info d_die_info;
+};
+
+struct mbraink_wifi2mbr_tx_power_data {
+	u64 timestamp;
+	unsigned char rpt_type;
+	unsigned char max_bn_num;
+	unsigned char max_ant_num;
+	struct mbraink_wifi2mbr_txpwr_info info[MAX_WIFI_BAND_NUM][MAX_WIFI_ANTENA_NUM];
+};
+
 #endif

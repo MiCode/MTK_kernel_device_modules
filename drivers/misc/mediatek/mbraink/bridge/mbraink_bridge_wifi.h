@@ -18,6 +18,7 @@ enum mbr2wifi_reason {
 	MBR2WIFI_TEST_LP_RATIO,
 	MBR2WIFI_TX_TIMEOUT,
 	MBR2WIFI_PCIE_DATA,
+	MBR2WIFI_TXPWR_RPT,
 };
 
 struct wifi2mbr_hdr {
@@ -34,6 +35,7 @@ enum wifi2mbr_tag {
 	WIFI2MBR_TAG_LP_RATIO,
 	WIFI2MBR_TAG_TXTIMEOUT,
 	WIFI2MBR_TAG_PCIE,
+	WIFI2MBR_TAG_TXPWR_RPT,
 	WIFI2MBR_TAG_MAX
 };
 
@@ -125,6 +127,49 @@ struct wifi2mbr_PcieInfo {
 	unsigned int l0_time;
 	unsigned int l1_time;
 	unsigned int l1p2_time;
+};
+
+/* struct for WIFI2MBR_TAG_txpwr_info */
+#define WIFI2MBR_MAX_BAND_NUM               3
+#define WIFI2MBR_MAX_ANTENA_NUM             2
+
+struct wifi2mbr_txpwr_coex_info {
+	bool bt_on;
+	bool lte_on;
+	unsigned char reserved[2];
+	unsigned int bt_profile;
+	unsigned int pta_grant;
+	unsigned int pta_req;
+	unsigned int curr_op_mode;
+};
+
+struct wifi2mbr_txpwr_d_die_info {
+	unsigned int delta;
+	signed char target_pwr;
+	unsigned char comp_grp;
+	unsigned char fe_gain_mode;
+	unsigned char reserved[5];
+};
+
+struct wifi2mbr_txpwr_info {
+	bool epa_support;
+	unsigned char cal_type;
+	unsigned char center_ch;
+	unsigned char mcc_idx;
+	unsigned int rf_band;
+	signed int temp;
+	unsigned int antsel;
+	struct wifi2mbr_txpwr_coex_info coex;
+	struct wifi2mbr_txpwr_d_die_info d_die_info;
+};
+
+struct wifi2mbr_txpwr {
+	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
+	unsigned char rpt_type;
+	unsigned char max_bn_num;
+	unsigned char max_ant_num;
+	struct wifi2mbr_txpwr_info info[WIFI2MBR_MAX_BAND_NUM][WIFI2MBR_MAX_ANTENA_NUM];
 };
 
 struct mbraink2wifi_ops {

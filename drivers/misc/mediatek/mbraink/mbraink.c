@@ -1154,6 +1154,29 @@ static long handle_wifi_txtimeout_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_wifi_tx_power_report(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_tx_power_data *wifi_tx_power_buf =
+		(struct mbraink_wifi2mbr_tx_power_data *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(wifi_tx_power_buf,
+			(struct mbraink_wifi2mbr_tx_power_data *) arg,
+			sizeof(struct mbraink_wifi2mbr_tx_power_data))) {
+		pr_notice("copy mbraink_wifi2mbr_tx_power_data data from user Err!\n");
+		return -EPERM;
+	}
+
+	mbraink_get_wifi_tx_power_data(wifi_tx_power_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_tx_power_data *) arg,
+			wifi_tx_power_buf,
+			sizeof(struct mbraink_wifi2mbr_tx_power_data))) {
+		pr_notice("Copy wifi_tx_power_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long handle_vdec_fps_info(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
@@ -1674,6 +1697,17 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_wifi_txtimeout_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_WIFI_TXPWR_RPT:
+	{
+		mbraink_data =
+			kmalloc(sizeof(struct mbraink_wifi2mbr_tx_power_data),
+				GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_tx_power_report(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

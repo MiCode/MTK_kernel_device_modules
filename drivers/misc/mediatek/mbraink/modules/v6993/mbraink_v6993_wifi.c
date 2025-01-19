@@ -321,6 +321,88 @@ void mbraink_v6993_get_wifi_pcie_data(int current_idx,
 		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
 }
 
+void copy_txpwr_info(struct mbraink_wifi2mbr_txpwr_info *dest,
+		     const struct wifi2mbr_txpwr_info *src)
+{
+	dest->epa_support = src->epa_support;
+	dest->cal_type = src->cal_type;
+	dest->center_ch = src->center_ch;
+	dest->mcc_idx = src->mcc_idx;
+	dest->rf_band = src->rf_band;
+	dest->temp = src->temp;
+	dest->antsel = src->antsel;
+
+	dest->coex.bt_on = src->coex.bt_on;
+	dest->coex.lte_on = src->coex.lte_on;
+	memcpy(dest->coex.reserved, src->coex.reserved, sizeof(dest->coex.reserved));
+	dest->coex.bt_profile = src->coex.bt_profile;
+	dest->coex.pta_grant = src->coex.pta_grant;
+	dest->coex.pta_req = src->coex.pta_req;
+	dest->coex.curr_op_mode = src->coex.curr_op_mode;
+
+	dest->d_die_info.delta = src->d_die_info.delta;
+	dest->d_die_info.target_pwr = src->d_die_info.target_pwr;
+	dest->d_die_info.comp_grp = src->d_die_info.comp_grp;
+	dest->d_die_info.fe_gain_mode = src->d_die_info.fe_gain_mode;
+	memcpy(dest->d_die_info.reserved, src->d_die_info.reserved, sizeof(dest->d_die_info.reserved));
+}
+
+void mbraink_v6993_get_wifi_tx_power_data(struct mbraink_wifi2mbr_tx_power_data *txpwr_buffer)
+{
+	unsigned short len = 0;
+	enum wifi2mbr_status ret;
+	struct wifi2mbr_txpwr txpwr_info;
+	int retry_count = 0;
+
+	memset(txpwr_buffer, 0, sizeof(struct mbraink_wifi2mbr_tx_power_data));
+
+	while (retry_count < MAX_WIFI_DATA_CNT) {
+		ret = mbraink_bridge_wifi_get_data(MBR2WIFI_TXPWR_RPT,
+						   WIFI2MBR_TAG_TXPWR_RPT,
+						   (void *)(&txpwr_info), &len);
+
+		if (ret == WIFI2MBR_NO_OPS || ret == WIFI2MBR_END) {
+			break;
+		} else if (ret == WIFI2MBR_FAILURE) {
+			retry_count++;
+			continue;
+		} else if (ret == WIFI2MBR_SUCCESS) {
+			if (len != sizeof(struct wifi2mbr_txpwr)) {
+				pr_info("%s: Received data length (%u) doesn't match expected size (%zu)",
+					__func__, len, sizeof(struct wifi2mbr_txpwr));
+				retry_count++;
+				continue;
+			}
+
+			txpwr_buffer->timestamp = txpwr_info.timestamp;
+			txpwr_buffer->rpt_type = txpwr_info.rpt_type;
+			txpwr_buffer->max_bn_num = txpwr_info.max_bn_num;
+			txpwr_buffer->max_ant_num = txpwr_info.max_ant_num;
+
+			if (txpwr_buffer->max_bn_num > MAX_WIFI_BAND_NUM ||
+			    txpwr_buffer->max_ant_num > MAX_WIFI_ANTENA_NUM) {
+				pr_info("%s: Invalid max_bn_num (%u) or max_ant_num (%u)",
+					__func__, txpwr_buffer->max_bn_num,
+					txpwr_buffer->max_ant_num);
+				retry_count++;
+				continue;
+			}
+
+			for (int bn = 0; bn < txpwr_buffer->max_bn_num; bn++) {
+				for (int ant = 0; ant < txpwr_buffer->max_ant_num; ant++) {
+					copy_txpwr_info(&txpwr_buffer->info[bn][ant],
+							&txpwr_info.info[bn][ant]);
+				}
+			}
+
+			break;
+		}
+	}
+
+	if (retry_count == MAX_WIFI_DATA_CNT)
+		pr_info("%s: Reached maximum retry count\n", __func__);
+}
+
 static struct mbraink_wifi_ops mbraink_v6993_wifi_ops = {
 	.get_wifi_rate_data = mbraink_v6993_get_wifi_rate_data,
 	.get_wifi_radio_data = mbraink_v6993_get_wifi_radio_data,
@@ -328,6 +410,7 @@ static struct mbraink_wifi_ops mbraink_v6993_wifi_ops = {
 	.get_wifi_lp_data = mbraink_v6993_get_wifi_lp_data,
 	.get_wifi_txtimeout_data = mbraink_v6993_get_wifi_txtimeout_data,
 	.get_wifi_pcie_data = mbraink_v6993_get_wifi_pcie_data,
+	.get_wifi_tx_power_data = mbraink_v6993_get_wifi_tx_power_data,
 };
 
 int mbraink_v6993_wifi_init(void)

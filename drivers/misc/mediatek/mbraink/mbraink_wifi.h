@@ -18,5 +18,6 @@ void mbraink_get_wifi_txtimeout_data(int current_idx,
 				struct mbraink_wifi2mbr_txtimeout_data *txtimeout_buffer);
 void mbraink_get_wifi_pcie_data(int current_idx,
 				struct mbraink_wifi2mbr_pcie_data *pcie_buffer);
+void mbraink_get_wifi_tx_power_data(struct mbraink_wifi2mbr_tx_power_data *tx_power_data);
 #endif
 
