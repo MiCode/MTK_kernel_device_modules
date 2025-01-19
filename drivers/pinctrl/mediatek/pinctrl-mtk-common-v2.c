@@ -117,9 +117,11 @@ static void mtk_hw_set_mode_race_free(struct mtk_pinctrl *pctl,
 		struct mtk_pin_field *pf, u32 value)
 {
 	unsigned int value_new;
+	unsigned int modify_enable_bit;
 
 	/* MSB of mask is modification-enable bit, set this bit */
-	value_new = 0x8 | value;
+	modify_enable_bit = (pf->mask +1) >> 1;
+	value_new = modify_enable_bit | value;
 	if (value_new == value)
 		dev_notice(pctl->dev,
 			"invalid mode 0x%x, use it by ignoring MSBit!\n",

@@ -1237,7 +1237,7 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 
-        if (hw->soc->capability_flags & FLAG_MT63XX) {
+	if (hw->soc->capability_flags & FLAG_MT63XX) {
 		(void)mt63xx_hw_set_value(hw, grp->pin,
 			PINCTRL_PIN_REG_AD_SWITCH,
 			((function == 1) ? 1 : 0));
@@ -1248,6 +1248,8 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 			if (!need_ad_sw_switch)
 				/* HW auto swtich */
 				return 0;
+			(void)mt63xx_hw_set_value(hw, grp->pin,
+			        PINCTRL_PIN_REG_AD_SWITCH, 1);
 		} else {
 			/* shall not happen */
 		}
