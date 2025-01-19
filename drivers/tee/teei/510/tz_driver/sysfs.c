@@ -126,7 +126,7 @@ static DEVICE_ATTR_RW(teei_log_level);
 
 
 #define DRIVER_LOADER_HOSTNAME "bta_loader"
-#define UUID_STRING_LENGTH 32
+#define UUID_STRING_LENGTH 33
 
 static struct TEEC_Context ut_drv_context;
 static bool is_context_init;
@@ -179,7 +179,7 @@ static inline void uuid_to_str(struct TEEC_UUID *uuid, char *buf)
 {
 	int ret = 0;
 
-	ret = snprintf(buf, UUID_STRING_LENGTH+1,
+	ret = snprintf(buf, UUID_STRING_LENGTH,
 			"%08x%04x%04x%02x%02x%02x%02x%02x%02x%02x%02x",
 			uuid->timeLow, uuid->timeMid,
 			uuid->timeHiAndVersion,
@@ -486,7 +486,7 @@ static ssize_t list_ut_drv_show(struct device *cd,
 
 	list_for_each_entry(entry, &ut_drv_list, list) {
 		uuid_to_str(&entry->uuid, uuid_str);
-		s += snprintf(s, UUID_STRING_LENGTH+1, "%s\n", uuid_str);
+		s += snprintf(s, UUID_STRING_LENGTH, "%s\n", uuid_str);
 	}
 
 	return (ssize_t)(s - buf);
