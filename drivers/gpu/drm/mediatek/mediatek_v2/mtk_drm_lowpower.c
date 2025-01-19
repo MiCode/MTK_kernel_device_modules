@@ -643,7 +643,7 @@ void mtk_drm_idlemgr_perf_dump_func(struct drm_crtc *crtc, bool lock)
 	if (perf->count > 0) {
 		idlemgr_ctx = idlemgr->idlemgr_ctx;
 		DDPMSG(
-			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz,%dus),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu,cpu_avg:%llu-%llu,cpu_cnt:%llu\n",
+			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%lluMhz,%dus),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu,cpu_avg:%llu-%llu,cpu_cnt:%llu\n",
 			__func__, crtc_id, idlemgr_ctx->priv.hw_async,
 			idlemgr_ctx->priv.vblank_async,
 			idlemgr_ctx->priv.sram_sleep,
@@ -685,7 +685,7 @@ static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc)
 	if (perf->count > 0) {
 		crtc_id = drm_crtc_index(crtc);
 		DDPMSG(
-			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%uMhz),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu,cpu_avg:%llu-%llu,cpu_cnt:%llu\n",
+			"%s:crtc:%u,async:%d/%d,sram_sleep:%d,cpu:(0x%x,%lluMhz),count:%llu,max:%llu-%llu,min:%llu-%llu,avg:%llu-%llu,cpu_avg:%llu-%llu,cpu_cnt:%llu\n",
 			__func__, crtc_id, idlemgr_ctx->priv.hw_async,
 			idlemgr_ctx->priv.vblank_async,
 			idlemgr_ctx->priv.sram_sleep,

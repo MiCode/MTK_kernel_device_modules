@@ -133,9 +133,9 @@ void init_drm_mmp_event(void)
 	for (i = 0; i < DISP_MUTEX_DDP_COUNT; i++) {
 		char name[32];
 
-		snprintf(name, sizeof(name), "MUTEX%d", i);
-		g_DRM_MMP_Events.mutex[i] =
-			mmprofile_register_event(g_DRM_MMP_Events.ddp, name);
+		if (snprintf(name, sizeof(name), "MUTEX%d", i) >= 0)
+			g_DRM_MMP_Events.mutex[i] =
+				mmprofile_register_event(g_DRM_MMP_Events.ddp, name);
 	}
 
 	g_DRM_MMP_Events.postmask =

@@ -2384,25 +2384,40 @@ static void _ovl_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			       struct mtk_plane_state *state,
 			       struct cmdq_pkt *handle)
 {
-	struct mtk_plane_pending_state *pending = &state->pending;
-	unsigned int fmt = pending->format;
-	unsigned int pitch = pending->pitch & 0xffff;
-	unsigned int pitch_msb = ((pending->pitch >> 16) & 0xf);
-	unsigned int dst_h = pending->height;
-	unsigned int dst_w = pending->width;
-	unsigned int src_x = pending->src_x;
-	unsigned int src_y = pending->src_y;
+	struct mtk_plane_pending_state *pending = NULL;
+	unsigned int fmt = 0;
+	unsigned int pitch = 0;
+	unsigned int pitch_msb = 0;
+	unsigned int dst_h = 0;
+	unsigned int dst_w = 0;
+	unsigned int src_x = 0;
+	unsigned int src_y = 0;
 	unsigned int lye_idx = 0, ext_lye_idx = 0;
 	unsigned int src_size = 0;
 	unsigned int offset = 0;
 	unsigned int clip = 0;
 	unsigned int buf_size = 0;
 	int rotate = 0;
-	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+	struct mtk_disp_ovl *ovl = NULL;
 	struct mtk_panel_params *params = NULL;
 	unsigned int aid_sel_offset = 0;
 	resource_size_t mmsys_reg = 0;
 	int sec_bit;
+
+	if (!comp || !state) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+	pending = &state->pending;
+	fmt = pending->format;
+	pitch = pending->pitch & 0xffff;
+	pitch_msb = ((pending->pitch >> 16) & 0xf);
+	dst_h = pending->height;
+	dst_w = pending->width;
+	src_x = pending->src_x;
+	src_y = pending->src_y;
+
+	ovl = comp_to_ovl(comp);
 
 	if (fmt == DRM_FORMAT_YUYV || fmt == DRM_FORMAT_YVYU ||
 	    fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_VYUY) {
@@ -2419,8 +2434,12 @@ static void _ovl_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 
 	src_size = (dst_h << 16) | dst_w;
 
-	if (comp->mtk_crtc)
-		params = mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
+	if (!comp->mtk_crtc) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+
+	params = mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
 	if (params && params->rotate == MTK_PANEL_ROTATE_180)
 		if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
 			rotate = 1;
@@ -3722,7 +3741,17 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 			 enum mtk_ddp_comp_id next, struct mtk_rect rsz_src_roi,
 			 struct mtk_rect rsz_dst_roi, struct cmdq_pkt *handle)
 {
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_drm_private *priv = NULL;
+
+	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->base.dev) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
+	priv = comp->mtk_crtc->base.dev->dev_private;
+	if (!priv) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return;
+	}
 
 	if (prev == DDP_COMPONENT_RSZ0 ||
 		prev == DDP_COMPONENT_RSZ1 ||
