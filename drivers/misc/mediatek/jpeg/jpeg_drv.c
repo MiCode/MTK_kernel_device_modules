@@ -477,7 +477,10 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	if (!dec_hwlocked[(id+1)%HW_CORE_NUMBER] && !dec_hwlocked[(id+2)%HW_CORE_NUMBER]) {
 		if (gJpegqDev.jpegLarb[0]) {
 			JPEG_LOG(1, "power on larb7");
-			ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[0]);
+			if (gJpegqDev.is_ccf_one_step)
+				ret = mtk_smi_larb_enable(gJpegqDev.jpegLarb[0]);
+			else
+				ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[0]);
 			if (ret)
 				JPEG_LOG(0, "pm_runtime_resume_and_get failed %d",
 					ret);
@@ -509,7 +512,10 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	if (id == 2) {
 		if (gJpegqDev.jpegLarb[1]) {
 			JPEG_LOG(1, "power on larb8");
-			ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[1]);
+			if (gJpegqDev.is_ccf_one_step)
+				ret = mtk_smi_larb_enable(gJpegqDev.jpegLarb[1]);
+			else
+				ret = pm_runtime_resume_and_get(gJpegqDev.jpegLarb[1]);
 			if (ret)
 				JPEG_LOG(0, "pm_runtime_resume_and_get failed %d",
 					ret);
@@ -535,7 +541,10 @@ void jpeg_drv_hybrid_dec_power_off(int id)
 		jpeg_drv_hybrid_dec_end_dvfs(1);
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec_c2);
 		if (gJpegqDev.jpegLarb[1]) {
-			pm_runtime_put_sync(gJpegqDev.jpegLarb[1]);
+			if (gJpegqDev.is_ccf_one_step)
+				mtk_smi_larb_disable(gJpegqDev.jpegLarb[1]);
+			else
+				pm_runtime_put_sync(gJpegqDev.jpegLarb[1]);
 			JPEG_LOG(1, "Larb 8 Power Off (trigger id: %d)", id);
 		}
 	} else
@@ -545,7 +554,10 @@ void jpeg_drv_hybrid_dec_power_off(int id)
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec_c1);
 		clk_disable_unprepare(gJpegqDev.jpegClk.clk_venc_jpgDec);
 		if (gJpegqDev.jpegLarb[0]) {
-			pm_runtime_put_sync(gJpegqDev.jpegLarb[0]);
+			if (gJpegqDev.is_ccf_one_step)
+				mtk_smi_larb_disable(gJpegqDev.jpegLarb[0]);
+			else
+				pm_runtime_put_sync(gJpegqDev.jpegLarb[0]);
 			JPEG_LOG(1, "Larb 7 Power Off (trigger id: %d)", id);
 		}
 	}
@@ -1223,6 +1235,10 @@ static int jpeg_probe(struct platform_device *pdev)
 					   &gJpegqDev.axdomain[0]);
 		if (ret == 0)
 			JPEG_LOG(0, "axdomain: 0x%x", gJpegqDev.axdomain[0]);
+
+		gJpegqDev.is_ccf_one_step = of_property_read_bool(pdev->dev.of_node,
+								  "ccf-one-step");
+		JPEG_LOG(0, "ccf-one-step: 0x%x", gJpegqDev.is_ccf_one_step);
 	} else {
 		i = HW_CORE_NUMBER - 1;
 
@@ -1285,10 +1301,13 @@ static int jpeg_probe(struct platform_device *pdev)
 		gJpegqDev.jpegLarb[node_index] = &larbdev->dev;
 		JPEG_LOG(0, "get larb from node %d", node_index);
 
-		if (!device_link_add(gJpegqDev.pDev[node_index], gJpegqDev.jpegLarb[node_index],
-			DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
-			JPEG_LOG(0, "larb device link fail");
-			return -1;
+		if (gJpegqDev.is_ccf_one_step == false) {
+			if (!device_link_add(gJpegqDev.pDev[node_index],
+					     gJpegqDev.jpegLarb[node_index],
+					     DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+				JPEG_LOG(0, "larb device link fail");
+				return -1;
+			}
 		}
 	}
 
@@ -1306,7 +1325,9 @@ static int jpeg_probe(struct platform_device *pdev)
 		if (pdev->dev.dma_parms)
 			dma_set_max_seg_size(&pdev->dev, (unsigned int)DMA_BIT_MASK(34));
 	}
-	pm_runtime_enable(&pdev->dev);
+
+	if (gJpegqDev.is_ccf_one_step == false)
+		pm_runtime_enable(&pdev->dev);
 
 	jpeg_drv_hybrid_dec_prepare_dvfs(node_index);
 	jpeg_drv_prepare_bw_request(node_index);

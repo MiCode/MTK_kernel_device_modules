@@ -66,6 +66,7 @@ struct JpegDeviceStruct {
 	struct notifier_block pm_post_suspend_notifier;
 	bool is_suspending;
 	bool is_shutdowning;
+	bool is_ccf_one_step;
 	struct icc_path *jpeg_path_wdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_bsdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_huff_offset[HW_CORE_NUMBER];
