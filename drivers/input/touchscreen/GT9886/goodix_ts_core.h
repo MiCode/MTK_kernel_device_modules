@@ -42,7 +42,7 @@
 #include <linux/regulator/consumer.h>
 #endif
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
 #include "mtk_disp_notify.h"
 #endif
@@ -456,7 +456,7 @@ struct goodix_ts_core {
 	struct notifier_block ts_notifier;
 	struct goodix_ts_esd ts_esd;
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
 	struct notifier_block disp_notifier;
 #endif
 };
@@ -753,7 +753,7 @@ extern void goodix_msg_printf(const char *fmt, ...);
 extern int i2c_touch_resume(void);
 extern int i2c_touch_suspend(void);
 extern int goodix_start_cfg_bin(struct goodix_ts_core *ts_core);
-#if (IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI))
+#if (IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI) && IS_ENABLED(CONFIG_TOUCHSCREEN_MTK_TUI_COMMON_API))
 extern void register_tpd_tui_request(int (*enter_func)(void), int (*exit_func)(void));
 extern int gt9886_tpd_enter_tui(void);
 extern int gt9886_tpd_exit_tui(void);
