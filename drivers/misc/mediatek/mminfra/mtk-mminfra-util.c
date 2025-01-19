@@ -181,8 +181,8 @@ EXPORT_SYMBOL_GPL(mtk_mminfra_on_off);
 
 int mminfra_ctrl(struct cb_params *cb_para)
 {
-	pr_notice("%s: name(%s) on_off(%d) vote_bit(%d)\n", __func__,
-		cb_para->name, cb_para->onoff, cb_para->vote_bit);
+	//pr_notice("%s: name(%s) on_off(%d) vote_bit(%d)\n", __func__,
+	//	cb_para->name, cb_para->onoff, cb_para->vote_bit);
 
 	mtk_mminfra_on_off((cb_para->onoff ? true : false),
 		g_mminfra_pd->mminfra_type0_pwr,
