@@ -13218,7 +13218,7 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	cfg.bpc = mtk_crtc->bpc;
 
 	if (output_comp && output_comp->id == DDP_COMPONENT_DSI0) {
-		DDPMSG("%s DSI_STATE_DGB6-9[%u %u %u %u]\n", __func__,
+		DDPMSG("%s DSI_STATE_DGB6-9[0x%x 0x%x 0x%x 0x%x]\n", __func__,
 			readl(output_comp->regs + 0x274),
 			readl(output_comp->regs + 0x278),
 			readl(output_comp->regs + 0x27C),
@@ -13502,11 +13502,17 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
 
 	if (output_comp && output_comp->id == DDP_COMPONENT_DSI0) {
-		DDPMSG("%s DSI_STATE_DGB6-9[%u %u %u %u]\n", __func__,
+		DDPMSG("%s DSI_STATE_DGB6-9[0x%x 0x%x 0x%x 0x%x]\n", __func__,
 			readl(output_comp->regs + 0x274),
 			readl(output_comp->regs + 0x278),
 			readl(output_comp->regs + 0x27C),
 			readl(output_comp->regs + 0x280));
+
+		DDPMSG("%s DSI DEBUG log [0x%x 0x%x 0x%x 0x%x]\n", __func__,
+			readl(output_comp->regs + 0x0c),
+			readl(output_comp->regs + 0x08),
+			readl(output_comp->regs + 0x34),
+			readl(output_comp->regs + 0x400));
 	}
 
 	cmdq_pkt_flush(cmdq_handle);
