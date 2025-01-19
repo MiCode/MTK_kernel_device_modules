@@ -467,6 +467,9 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 	if (ret_val)
 		return ret_val;
 
+	/* Only port0 use config read detect AER */
+	if (port->port_num != 0)
+		return 0;
 	/*
 	 * PCIe cannot read the config space of EP when an AER event occurs,
 	 * If rxerr, block PCIe data transmission and avoid system hang.
