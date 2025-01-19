@@ -214,9 +214,7 @@ int32_t mddp_on_disable(enum mddp_app_type_e in_type)
 	 * Deactivate first to avoid state machine corruption
 	 */
 	if (mddp_f_dev_is_wan_lan_dev()) {
-		int32_t ret = 0;
-
-		ret = mddp_on_deactivate(MDDP_APP_TYPE_WH);
+		mddp_on_deactivate(MDDP_APP_TYPE_WH);
 	}
 
 	/*
