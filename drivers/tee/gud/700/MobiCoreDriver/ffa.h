@@ -16,8 +16,6 @@
 #ifndef KINIBI_FFA_H
 #define KINIBI_FFA_H
 
-#ifdef MC_FFA_FASTCALL
-
 #include <linux/interrupt.h>
 
 #include "mmu.h"
@@ -37,7 +35,5 @@ int ffa_share_trace_buffer(phys_addr_t buffer, u32 size, u64 *ffa_handle);
 int ffa_share_mci_buffer(const void *mci, size_t n_cont_pages, u64 *ffa_handle);
 int ffa_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag);
 int ffa_reclaim_buffer(struct tee_mmu *mmu);
-
-#endif /* MC_FFA_FASTCALL */
 
 #endif /* KINIBI_FFA_H */

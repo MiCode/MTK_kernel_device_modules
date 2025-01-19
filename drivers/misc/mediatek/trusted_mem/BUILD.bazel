@@ -32,17 +32,14 @@ filegroup(
 	]),
 )
 
-# ARM FFA driver
-ffa_module = "ffa_v11"
+## @package Arm FF-A (ffa)
+#  Cloned from common-kernel's arm_ffa driver.
+#
+#  This driver provides interface for all the client drivers making use of the
+#  features offered by ARM FF-A.
+#
 
-filegroup(
-	name = "ffa_srcs",
-	srcs = [
-		"{}/bus.c".format(ffa_module),
-		"{}/driver.c".format(ffa_module),
-		"{}/smccc.c".format(ffa_module),
-	],
-)
+ffa_module = "ffa_v11"
 
 ddk_headers(
 	name = "ffa_hdrs",
@@ -56,17 +53,42 @@ ddk_headers(
 
 define_mgk_ddk_ko(
 	name = "ffa",
-	srcs = [
-		"{}/bus.c".format(ffa_module),
-		"{}/driver.c".format(ffa_module),
-		"{}/smccc.c".format(ffa_module),
-	],
 	out = "{}.ko".format(ffa_module),
+	srcs = [
+		"ffa_dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_ARM_FFA_TRANSPORT": {
+			True: [
+				"{}/bus.c".format(ffa_module),
+				"{}/driver.c".format(ffa_module),
+			],
+		},
+		"CONFIG_ARM_FFA_SMCCC": {
+			True: [
+				"{}/smccc.c".format(ffa_module),
+			],
+		},
+	},
 	header_deps = [
 		":ffa_hdrs",
 	],
 	includes = [
 		"{}".format(ffa_module),
+	],
+)
+
+## @package Trusted Memory (trusted_mem, tmem/tmem_ffa)
+#  Trusted memory driver for MediaTek ALPS platforms.
+#
+
+ddk_headers(
+	name = "tmem_hdrs",
+	hdrs = glob([
+		"public/*.h",
+	]),
+	includes = [
+		".",
 	],
 )
 

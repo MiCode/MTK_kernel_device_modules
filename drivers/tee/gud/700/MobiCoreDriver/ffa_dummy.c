@@ -9,7 +9,6 @@
 #include "mmu.h"
 #include "mmu_internal.h"
 
-#ifdef MC_FFA_FASTCALL
 #include <linux/arm_ffa.h>
 #include "public/trustonic_ffa_api.h"
 
@@ -70,4 +69,3 @@ int tt_ffa_memory_reclaim(u64 handle, u64 tag)
 }
 EXPORT_SYMBOL(tt_ffa_memory_reclaim);
 
-#endif /* MC_FFA_FASTCALL */
