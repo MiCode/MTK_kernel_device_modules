@@ -36778,9 +36778,11 @@ void mtk_disp_mutex_remove_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1 &&
 			ddp->side_regs_pa)
 		regs_pa = ddp->side_regs_pa;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_1 &&
+			ddp->sys_b_side_regs_pa)
 		regs_pa = ddp->sys_b_side_regs_pa;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_0 &&
+			ddp->sys_b_regs_pa)
 		regs_pa = ddp->sys_b_regs_pa;
 	else
 		regs_pa = ddp->regs_pa;
