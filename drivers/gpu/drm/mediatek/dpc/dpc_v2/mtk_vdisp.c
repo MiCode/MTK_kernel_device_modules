@@ -136,7 +136,7 @@ static void check_subcomm_status(void)
 
 static s32 mtk_vdisp_get_power_cnt(void)
 {
-	return atomic_read(&g_mtcmos_cnt);
+	return atomic_read_acquire(&g_mtcmos_cnt);
 }
 
 static s32 mtk_vdisp_poll_power_cnt(s32 val)
@@ -411,7 +411,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (priv->pwr_ack_wait_con)
 			writel(priv->pwr_ack_wait_time, priv->pwr_ack_wait_con);
 
-		atomic_or(BIT(priv->pd_id), &g_mtcmos_cnt);
+		atomic_fetch_or(BIT(priv->pd_id), &g_mtcmos_cnt);
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
 	case GENPD_NOTIFY_ON:
@@ -494,8 +494,14 @@ static int genpd_event_notifier(struct notifier_block *nb,
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 			__pm_relax(g_vdisp_wake_lock);
 #endif
-		}
-		atomic_and(~BIT(priv->pd_id), &g_mtcmos_cnt);
+			if (!atomic_dec_and_test(&g_mtcmos_cnt)) {
+				atomic_set_release(&g_mtcmos_cnt, 0);
+				VDISPERR("mtcmos_cnt should be zero, reset to (%d)\n",
+					 atomic_read_acquire(&g_mtcmos_cnt));
+			}
+		} else
+			atomic_fetch_and(~BIT(priv->pd_id), &g_mtcmos_cnt);
+
 		mutex_unlock(&g_mtcmos_cnt_lock);
 		break;
 	default:
