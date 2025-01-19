@@ -1200,6 +1200,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 		if (frm_buf->has_qpmap) {
 			vsi->qpmap_addr = frm_buf->qpmap_dma_addr;
 			vsi->qpmap_size = frm_buf->qpmap_dma->size;
+			vsi->is_aosp_qpmap = frm_buf->is_aosp_qpmap;
 		} else {
 			vsi->qpmap_addr = 0;
 			vsi->qpmap_size = 0;

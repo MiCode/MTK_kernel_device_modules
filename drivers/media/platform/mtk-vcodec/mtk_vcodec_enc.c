@@ -2241,8 +2241,8 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 				index, meta_desc.fd_flag, meta_desc.type,
 				meta_desc.size, meta_desc.value);
 
-			if ((meta_desc.type == METADATA_QPMAP || meta_desc.type == METADATA_ROI_QPOFFSET_RECTS) &&
-				!meta_desc.fd_flag) {
+			if ((meta_desc.type == METADATA_QPMAP || meta_desc.type == METADATA_ROI_QPOFFSET_RECTS ||
+			     meta_desc.type == METADATA_ROI_QPOFFSET_MAP) && !meta_desc.fd_flag) {
 				mtk_v4l2_err("qpmap/qprects should provide buffer fd");
 				continue;
 			} else if ((meta_desc.type == METADATA_HDR ||
@@ -2253,7 +2253,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			}
 
 			if (meta_desc.fd_flag) {
-				if (meta_desc.type == METADATA_QPMAP) {
+				if (meta_desc.type == METADATA_QPMAP || meta_desc.type == METADATA_ROI_QPOFFSET_MAP) {
 					dmabuf = dma_buf_get(meta_desc.value);
 
 					if (IS_ERR(dmabuf)) {
@@ -2268,8 +2268,10 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					}
 					mtkbuf->frm_buf.qpmap_dma = dmabuf;
 					mtkbuf->frm_buf.has_qpmap = 1;
-					mtk_v4l2_debug(2, "[%d] Have Qpmap fd, buf->index:%d. qpmap_dma:%p, fd:%u",
-						ctx->id, buf->index, mtkbuf->frm_buf.qpmap_dma, meta_desc.value);
+					mtkbuf->frm_buf.is_aosp_qpmap = (meta_desc.type == METADATA_ROI_QPOFFSET_MAP);
+					mtk_v4l2_debug(2, "[%d] Have Qpmap fd(is aosp? %d), buf->index:%d. qpmap_dma:%p, fd:%u",
+						ctx->id, mtkbuf->frm_buf.is_aosp_qpmap, buf->index,
+						mtkbuf->frm_buf.qpmap_dma, meta_desc.value);
 				} else if (meta_desc.type == METADATA_ADAPTIVE_B_INPUT) {
 					dmabuf = dma_buf_get(meta_desc.value);
 					if (IS_ERR(dmabuf)) {

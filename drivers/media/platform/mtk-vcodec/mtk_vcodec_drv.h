@@ -559,6 +559,7 @@ struct venc_frm_buf {
 	struct sg_table *qpmap_sgt;
 	unsigned int meta_offset;
 	bool has_qpmap;
+	bool is_aosp_qpmap;
 	struct dma_buf *qpmap_dma;
 	dma_addr_t qpmap_dma_addr;
 	bool has_qprects;
@@ -597,6 +598,7 @@ enum metadata_type {
 	METADATA_DYNAMICPARAM    = 4,
 	METADATA_ADAPTIVE_B_INPUT = 7,
 	METADATA_ROI_QPOFFSET_RECTS = 8,
+	METADATA_ROI_QPOFFSET_MAP = 9, //AOSP QPMAP
 };
 
 struct meta_describe {
