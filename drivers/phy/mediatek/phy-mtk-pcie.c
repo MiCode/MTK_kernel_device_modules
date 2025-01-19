@@ -1173,7 +1173,7 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 				     RG_XTP_GLB_TPLL0_SDM_SSC_CTL, DISABLE_SSC);
 
 	if (pcie_phy->short_reach_en)
-		return mtk_pcie_sphy3_sr_init(phy, false, true);
+		return mtk_pcie_sphy3_sr_init(phy, true, true);
 
 	return 0;
 }
