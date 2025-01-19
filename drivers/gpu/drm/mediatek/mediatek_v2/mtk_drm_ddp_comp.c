@@ -3168,6 +3168,7 @@ void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	struct mtk_drm_private *priv = drm->dev_private;
 	unsigned int sodi_req_val = 0, sodi_req_mask = 0;
 	unsigned int emi_req_val = 0, emi_req_mask = 0;
+	unsigned int val, val_mask;
 	bool en = *((bool *)data);
 
 	if (id == DDP_COMPONENT_ID_MAX) { /* config when top clk on */
@@ -3308,27 +3309,38 @@ void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		return;
 
 	if (handle == NULL) {
-		unsigned int v;
-		/* 0xF0/0xF4: only config on OVLSYS(HARD CODE) */
-		if (priv->ovlsys0_regs) {
-			v = readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
-			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
-			writel_relaxed(v, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
-		}
 		if (priv->ovlsys1_regs) {
-			v = readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
-			v = (v & ~(MT6989_OVL_SODI_REQ_VAL));
-			writel_relaxed(v, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
+			val = 0;
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA6_SEL);
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA7_SEL);
+			writel_relaxed(val, priv->ovlsys1_regs + OVLSYS_EXRDMA_ULTRA_SEL0);
+			writel_relaxed(val, priv->ovlsys1_regs + OVLSYS_EXRDMA_PREULTRA_SEL0);
+
+			val = 0;
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA8_SEL);
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA9_SEL);
+			writel_relaxed(0x44, priv->ovlsys1_regs + OVLSYS_EXRDMA_ULTRA_SEL1);
+			writel_relaxed(0x44, priv->ovlsys1_regs + OVLSYS_EXRDMA_PREULTRA_SEL1);
 		}
 	} else {
-		/* 0xF0/0xF4: config on OVLSYS(HARD CODE) */
-		if (priv->ovlsys0_regs_pa) {
-			cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
-				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
-		}
-		if (priv->ovlsys1_regs_pa) {
+		if (priv->ovlsys1_regs) {
+			val = 0;
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA6_SEL);
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA7_SEL);
 			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
-				MMSYS_SODI_REQ_MASK, 0, MT6989_OVL_SODI_REQ_VAL);
+				OVLSYS_EXRDMA_ULTRA_SEL0, val, ~0);
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				OVLSYS_EXRDMA_PREULTRA_SEL0, val, ~0);
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				OVLSYS_EXRDMA_ULTRA_SEL1, 0x44, ~0);
+
+			val = 0;
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA8_SEL);
+			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA9_SEL);
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				OVLSYS_EXRDMA_ULTRA_SEL1, val, ~0);
+			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
+				OVLSYS_EXRDMA_PREULTRA_SEL1, val, ~0);
 		}
 	}
 }

@@ -71,6 +71,7 @@
 #define DP_TGEN_VWIDTH_REVEN			0x0078
 #define DP_TGEN_VPORCH_REVEN			0x007C
 #define DP_MUTEX_VSYNC_SETTING			0x00E0
+    #define MUTEX_VSYNC_SEL					BIT(16)
 #define DP_SHEUDO_REG_UPDATE			0x00E4
 #define DP_INTERNAL_DCM_DIS				0x00E8
 #define DP_TARGET_LINE					0x00F0
@@ -96,6 +97,10 @@
 #define DP_BUF_ULTRA_LOW				0x0240
 #define DP_BUF_URGENT_HIGH				0x0244
 #define DP_BUF_URGENT_LOW				0x0248
+#define DP_BUF_VDE						0x024C
+    #define BUF_VDE_BLOCK_URGENT			BIT(0)
+    #define BUF_NON_VDE_FORCE_PREULTRA		BIT(1)
+    #define BUF_VDE_BLOCK_ULTRA				BIT(2)
 #define DP_SW_NP_SEL					0x0250
 #define DP_PATTERN_CTRL0				0x0F00
 	#define DP_PATTERN_COLOR_BAR			BIT(6)
@@ -997,7 +1002,6 @@ static void mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_URGENT_HIGH, handle);
 	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_URGENT_LOW, handle);
 
-	mtk_ddp_write_relaxed(comp, 0x1000F, DP_MUTEX_VSYNC_SETTING, handle);
 }
 
 void mhal_DPTx_VideoClock(bool enable, int resolution)
@@ -1020,9 +1024,12 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 	unsigned int hfp = 0, hbp = 0;
 	unsigned int vpw = 0;
 	unsigned int vfp = 0, vbp = 0;
+	unsigned int vtotal = 0;
 	unsigned int bg_left = 0, bg_right = 0;
 	unsigned int bg_top = 0, bg_bot = 0;
 	unsigned int rw_times = 0;
+	u32 val = 0, line_time;
+	u32 dp_vfp_mutex = 0;
 
 	DPTXMSG("%s w %d, h, %d, clock %d, fps %d!\n",
 			__func__, cfg->w, cfg->h, cfg->clock, cfg->vrefresh);
@@ -1179,6 +1186,14 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, dp_intf->driver_data->np_sel,
 			DP_SW_NP_SEL, handle);
 	mtk_dp_intf_golden_setting(comp, handle);
+	val = BUF_VDE_BLOCK_URGENT | BUF_NON_VDE_FORCE_PREULTRA | BUF_VDE_BLOCK_ULTRA;
+	mtk_ddp_write_relaxed(comp, val, DP_BUF_VDE, handle);
+
+	vtotal = vfp + vpw + vbp + cfg->h;
+	line_time = 1000000 / (vtotal * cfg->vrefresh);
+	val = (200 + line_time - 1) / line_time;
+	val = val | MUTEX_VSYNC_SEL;
+	mtk_ddp_write_relaxed(comp, val, DP_MUTEX_VSYNC_SETTING, handle);
 
 	DPTXMSG("%s config done\n",
 			mtk_dump_comp_str(comp));
