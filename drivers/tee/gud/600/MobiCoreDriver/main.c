@@ -524,7 +524,11 @@ static inline int device_common_init(void)
 		return ret;
 	}
 
+#if KERNEL_VERSION(6, 3, 0) > LINUX_VERSION_CODE
+	main_ctx.class = class_create(THIS_MODULE, "trustonic_tee");
+#else
 	main_ctx.class = class_create("trustonic_tee");
+#endif
 	if (IS_ERR(main_ctx.class)) {
 		ret = PTR_ERR(main_ctx.class);
 		mc_dev_err(ret, "class_create failed");

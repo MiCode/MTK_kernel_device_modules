@@ -49,6 +49,7 @@ enum tee_protocol_fe_cmd {
 	TEE_GP_CLOSE_SESSION,
 	TEE_GP_INVOKE_COMMAND,
 	TEE_GP_REQUEST_CANCELLATION,
+	TEE_MC_WAIT_CANCELLED,
 };
 
 enum tee_protocol_be_cmd {

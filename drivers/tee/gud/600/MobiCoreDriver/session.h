@@ -64,6 +64,8 @@ struct tee_session {
 	struct tee_wsm		wsms[MC_MAP_MAX];
 	/* This TA is of Global Platform type */
 	int			is_gp;
+	/* True if a mcp_wait has been cancelled by the FE */
+	int			is_cancelled;
 };
 
 struct tee_session *session_create(struct tee_client *client,
@@ -75,6 +77,7 @@ static inline void session_get(struct tee_session *session)
 
 int session_put(struct tee_session *session);
 int session_close(struct tee_session *session);
+int session_get_state(struct tee_session *session);
 
 int session_mc_open_session(struct tee_session *session,
 			    struct mcp_open_info *info);

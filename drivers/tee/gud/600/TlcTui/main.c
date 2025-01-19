@@ -234,7 +234,11 @@ static int __init tlc_tui_init(void)
 		return err;
 	}
 
+#if KERNEL_VERSION(6, 3, 0) > LINUX_VERSION_CODE
+	tui_class = class_create(THIS_MODULE, "tui_cls");
+#else
 	tui_class = class_create("tui_cls");
+#endif
 
 	dev_tlc_tui = device_create(tui_class, NULL, devno, NULL, TUI_DEV_NAME);
 

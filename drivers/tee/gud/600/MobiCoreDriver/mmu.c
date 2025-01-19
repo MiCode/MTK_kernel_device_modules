@@ -168,6 +168,19 @@ static inline long gup_local(struct mm_struct *mm, uintptr_t start,
 
 	return get_user_pages(start, nr_pages, gup_flags, pages, NULL);
 }
+#elif KERNEL_VERSION(6, 5, 0) > LINUX_VERSION_CODE
+static inline long gup_local(struct mm_struct *mm, uintptr_t start,
+			     unsigned long nr_pages, int write,
+			     struct page **pages)
+{
+	unsigned int gup_flags = 0;
+
+	gup_flags |= FOLL_LONGTERM;
+	if (write)
+		gup_flags |= FOLL_WRITE;
+
+	return pin_user_pages(start, nr_pages, gup_flags, pages, NULL);
+}
 #else
 static inline long gup_local(struct mm_struct *mm, uintptr_t start,
 			     unsigned long nr_pages, int write,
@@ -210,8 +223,13 @@ static void tee_mmu_delete(struct tee_mmu *mmu)
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
 	if (mmu->dma_buf) {
+#if KERNEL_VERSION(6, 6, 0) <= LINUX_VERSION_CODE
+		dma_buf_unmap_attachment_unlocked(mmu->attach, mmu->sgt,
+						  DMA_BIDIRECTIONAL);
+#else
 		dma_buf_unmap_attachment(mmu->attach, mmu->sgt,
 					 DMA_BIDIRECTIONAL);
+#endif
 		dma_buf_detach(mmu->dma_buf, mmu->attach);
 		dma_buf_put(mmu->dma_buf);
 	}
@@ -370,7 +388,12 @@ static bool mmu_get_dma_buffer(struct tee_mmu *mmu, int va)
 	if (IS_ERR(mmu->attach))
 		goto err_attach;
 
+#if KERNEL_VERSION(6, 6, 0) <= LINUX_VERSION_CODE
+	mmu->sgt = dma_buf_map_attachment_unlocked(mmu->attach,
+						   DMA_BIDIRECTIONAL);
+#else
 	mmu->sgt = dma_buf_map_attachment(mmu->attach, DMA_BIDIRECTIONAL);
+#endif
 	if (IS_ERR(mmu->sgt))
 		goto err_map;
 

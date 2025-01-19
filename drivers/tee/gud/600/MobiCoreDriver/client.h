@@ -35,6 +35,12 @@ bool client_has_sessions(struct tee_client *client);
 void client_close(struct tee_client *client);
 void client_cleanup(void);
 const char *client_vm_id(struct tee_client *client);
+int client_get_session_state(struct tee_client *client, u32 session_id);
+int client_is_wait_cancelled(struct tee_client *client,
+			     u32 session_id,
+			     int *cancelled_status);
+int client_set_wait_cancelled(struct tee_client *client, u32 session_id);
+int client_unset_wait_cancelled(struct tee_client *client, u32 session_id);
 
 /* MC */
 int client_mc_open_session(struct tee_client *client,

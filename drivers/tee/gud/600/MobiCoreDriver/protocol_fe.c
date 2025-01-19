@@ -376,7 +376,7 @@ int protocol_mc_wait(struct mcp_session *session, s32 timeout)
 {
 	struct protocol_fe *pfe = l_ctx.pfe;
 	struct protocol_mc_session *fe_mc_session;
-	int ret;
+	int ret, ret_cancel;
 
 	/* Locked by caller so no two waits can happen on one session */
 	fe_mc_session = find_mc_session(session->sid);
@@ -401,13 +401,39 @@ int protocol_mc_wait(struct mcp_session *session, s32 timeout)
 	ret = pfe->fe2be_data->otherend_ret;
 out:
 	protocol_put(pfe);
+	/* any ret != 0 is an error in BE cmd, we exit without waiting */
 	if (ret)
 		return ret;
 
 	/* Now wait for notification from Dom0 */
 	ret = wait_for_completion_interruptible(&fe_mc_session->completion);
-	if (!ret)
+	if (!ret) {
+		/* wait succeed, we return the effective call BE error code */
 		ret = fe_mc_session->ret;
+	} else {
+		/* wait() canceled, but BE launched !!!! */
+		mc_dev_warn("wait() interrupted, session:%d", session->sid);
+
+		/* Notify BE of wait cancellation
+		 * (FE stack will re-send this command when possible,
+		 * re-try loop from McClient ?)
+		 */
+		protocol_fe_get(pfe);
+		/* In */
+		pfe->fe2be_data->session_id = session->sid;
+		pfe->fe2be_data->timeout = 0;
+		/* Set the FE command for the BE */
+		pfe->fe2be_data->cmd = TEE_MC_WAIT_CANCELLED;
+		/* Call */
+		ret_cancel = protocol_call_be(pfe);
+		if (ret_cancel) {
+			/* if cancel cmd changed the ret,
+			 * else keep the wait() error
+			 */
+			ret = pfe->fe2be_data->otherend_ret;
+		}
+		protocol_put(pfe);
+	}
 
 	return ret;
 }
