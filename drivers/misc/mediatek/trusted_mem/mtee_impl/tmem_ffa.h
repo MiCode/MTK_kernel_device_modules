@@ -22,4 +22,5 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 		struct sg_table *table, u64 *ffa_handle);
 int tmem_ffa_page_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 ffa_handle);
 
+void tmem_hf_bypass_s2(bool enable, u64 pa, u32 size);
 #endif /* TMEM_CARVEOUT_HEAP_H_ */

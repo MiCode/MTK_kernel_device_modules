@@ -67,3 +67,6 @@ int tmem_carveout_destroy(int idx)
 {
 	return 0;
 }
+void tmem_hf_bypass_s2(bool enable)
+{
+}

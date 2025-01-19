@@ -402,6 +402,32 @@ int tmem_ffa_region_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 	return TMEM_KPOOL_FREE_CHUNK_FAILED;
 }
 
+void tmem_hf_bypass_s2(bool enable, u64 pa, u32 size)
+{
+	struct ffa_send_direct_data ffa_data = {
+		.data0 = 0x17849,
+		.data1 = 0,
+		.data2 = 0,
+		.data3 = 0,
+	};
+
+	if (tmem_ffa_dev == NULL) {
+		pr_info("%s: tmem_ffa_probe() failed\n", __func__);
+	}
+
+	if (enable) {
+		ffa_data.data1 = true;
+		ffa_data.data2 = pa;
+		ffa_data.data3 = pa + size;
+	} else {
+		ffa_data.data1 = false;
+		ffa_data.data2 = 0;
+		ffa_data.data3 = 0;
+	}
+
+	tmem_ffa_ops->msg_ops->sync_send_receive(tmem_ffa_dev, &ffa_data);
+}
+
 int tmem_carveout_create(int idx, phys_addr_t heap_base, size_t heap_size)
 {
 	if (tmem_carveout_heap[idx] != NULL) {
@@ -522,7 +548,7 @@ int tmem_register_ffa_module(void)
 		return TMEM_KPOOL_FFA_INIT_FAILED;
 	}
 
-	if (tmem_ffa_dev == NULL) {
+	if (is_hf_bypass_cma_enabled() || tmem_ffa_dev == NULL) {
 		tmem_ffa_dev = get_tee_ffa_dev();
 		if (is_google_real_driver())
 			tmem_ffa_dev = trusty_ffa_get_dev();

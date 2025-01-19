@@ -37,6 +37,7 @@
 #define FFA_ENABLED_DT_UNAME "memory-ffa-enabled"
 #define TEE_MMAP_BY_PAGE_ENABLED_DT_UNAME "tee-mmap-by-page-enabled"
 #define PAGE_BASED_V2_ENABLED_DT_UNAME "page-based-v2-enabled"
+#define HAFNIUM_BYPASS_CMA_ENABLED_DT_UNAME "hafnium-bypass-cma-enabled"
 #define SVP_FEATURES_DT_UNAME "SecureVideoPath"
 #define SVP_ON_MTEE_DT_UNAME "MTEE"
 #define SVP_STATIC_RESERVED_DT_UNAME "mediatek,reserve-memory-svp"
@@ -658,6 +659,17 @@ bool is_tee_mmap_by_page_enabled(void)
 	struct device_node *dt_node;
 
 	dt_node = of_find_node_by_name(NULL, TEE_MMAP_BY_PAGE_ENABLED_DT_UNAME);
+	if (!dt_node)
+		return false;
+
+	return true;
+}
+
+bool is_hf_bypass_cma_enabled(void)
+{
+	struct device_node *dt_node;
+
+	dt_node = of_find_node_by_name(NULL, HAFNIUM_BYPASS_CMA_ENABLED_DT_UNAME);
 	if (!dt_node)
 		return false;
 

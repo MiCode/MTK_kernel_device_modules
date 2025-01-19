@@ -497,6 +497,9 @@ static int mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
 	struct mtee_peer_ops_data *ops_data = &mtee_dev_desc->u_ops_data.mtee;
 	KREE_SHAREDMEM_PARAM mem_param;
 
+	if (is_hf_bypass_cma_enabled())
+		tmem_hf_bypass_s2(true, pa, size);
+
 	if (is_pkvm_enabled()) {
 		/* pKVM & FF-A */
 		ret = pkvm_mtee_mem_reg_add(pa, size, peer_data, dev_desc);
@@ -607,6 +610,9 @@ static int mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 		pr_info("[%d] tmem_ffa_heap[%d] destroy PASS\n",
 				mtee_dev_desc->kern_tmem_type, mtee_dev_desc->mtee_chunks_id);
 	}
+
+	if (is_hf_bypass_cma_enabled())
+		tmem_hf_bypass_s2(false, 0, 0);
 
 	MTEE_SESSION_UNLOCK();
 
