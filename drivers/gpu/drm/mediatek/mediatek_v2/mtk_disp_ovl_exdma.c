@@ -3787,7 +3787,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			bw_val = debug_module_bw[phy_id];
 
 		if (bw_val != comp->last_hrt_bw) {
-			DDPDBG("%s/%d bw_val %u -> %u\n",
+			DDPDBG("%s bw_val %u -> %u\n",
 				mtk_dump_comp_str_id(comp->id), comp->last_hrt_bw, bw_val);
 			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 				priv->data->respective_ostdl);
