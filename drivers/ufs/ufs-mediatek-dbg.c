@@ -1875,7 +1875,7 @@ int ufs_mtk_cali_hold(void)
 		ufshcd_hold(hba);
 		ahit = ufshcd_readl(hba, REG_AUTO_HIBERNATE_IDLE_TIMER);
 		if (ahit == 0)
-			ufshcd_writel(hba, hba->ahit, REG_AUTO_HIBERNATE_IDLE_TIMER);
+			ufshcd_writel(hba, (0x3 << 10 | 0x1), REG_AUTO_HIBERNATE_IDLE_TIMER);
 
 		ret = ufs_mtk_wait_link_state(hba, VS_LINK_HIBERN8, 15);
 		if (ret)
