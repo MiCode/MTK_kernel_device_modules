@@ -1027,17 +1027,32 @@ static u32 arch_timer_reg_read_tval(void)
 }
 #endif
 
+static uint64_t read_systimer_cnt(void)
+{
+        uint32_t cnt_lo, cnt_hi, tmp_hi, i;
+        uint64_t cnt = 0;
+
+        if (!systimer_base)
+                return 0;
+
+	for (i = 0; i < 100; i++) {
+		cnt_hi = readl(systimer_base + SYSTIMER_CNTCV_H);
+		cnt_lo = readl(systimer_base + SYSTIMER_CNTCV_L);
+		tmp_hi = readl(systimer_base + SYSTIMER_CNTCV_H);
+		if (cnt_hi == tmp_hi)
+			break;
+	}
+
+        cnt = ((uint64_t)cnt_hi << 32) | cnt_lo;
+        return cnt;
+}
+
 static void wdt_dump_cntcv(void *arg)
 {
 	int ret = -1;
 	uint64_t cnt = 0;
-	uint32_t low = 0;
 
-	if (systimer_base) {
-		low = readl(systimer_base + SYSTIMER_CNTCV_L);
-		cnt = readl(systimer_base + SYSTIMER_CNTCV_H);
-		cnt = cnt << 32 | low;
-	}
+        cnt = read_systimer_cnt();
 
 	if (arg)
 		pr_info("sc:%lld\n", sched_clock());
@@ -1442,16 +1457,12 @@ static int wdt_pm_notify(struct notifier_block *notify_block,
 	uint64_t cnt = 0;
 
 	if (systimer_base) {
-		uint32_t low = 0;
 
 		cnt = sched_clock();
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 		aee_rr_rec_wdk_ktime(cnt);
 #endif
-
-		low = readl(systimer_base + SYSTIMER_CNTCV_L);
-		cnt = readl(systimer_base + SYSTIMER_CNTCV_H);
-		cnt = cnt << 32 | low;
+		cnt = read_systimer_cnt();
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 		aee_rr_rec_wdk_systimer_cnt(cnt);
 #endif
@@ -1850,11 +1861,8 @@ static int __init hangdet_init(void)
 
 	if (systimer_base) {
 		uint64_t cnt;
-		uint32_t low;
 
-		low = readl(systimer_base + SYSTIMER_CNTCV_L);
-		cnt = readl(systimer_base + SYSTIMER_CNTCV_H);
-		cnt = cnt << 32 | low;
+                cnt = read_systimer_cnt();
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 		aee_rr_rec_wdk_systimer_cnt(cnt);
 #endif
