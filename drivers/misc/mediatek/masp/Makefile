@@ -12,5 +12,5 @@ include $(MASP_DRIVER_DIR)/$(ASF_VER)/Makefile.sec
 
 sec-y += $(sec_obj)
 
-obj-$(CONFIG_MTK_SECURITY_SW_SUPPORT) += sec.o
+#obj-$(CONFIG_MTK_SECURITY_SW_SUPPORT) += sec.o
 

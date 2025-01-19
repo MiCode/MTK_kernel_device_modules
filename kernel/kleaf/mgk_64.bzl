@@ -212,6 +212,7 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/char/hw_random:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/char/rpmb:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/devfreq:ddk_makefiles".format(kernel_version),
@@ -238,6 +239,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/log_store:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/masp:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/monitor_hang:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:ddk_makefile".format(kernel_version),
@@ -302,6 +304,7 @@ mgk_64_kleaf_device_modules_srcs = [
 
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/char/hw_random:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/char/rpmb:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/devfreq:ddk_kconfigs".format(kernel_version),
@@ -337,6 +340,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irtx:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/log_store:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/masp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/monitor_hang:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprintk:ddk_kconfigs".format(kernel_version),
@@ -403,6 +407,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
 
 mgk_64_kleaf_device_modules = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/char/hw_random:sec-rng".format(kernel_version),
     "//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:mediatek-cpufreq-hw".format(kernel_version),
     "//kernel_device_modules-{}/drivers/devfreq:mtk-dvfsrc-devfreq".format(kernel_version),
@@ -496,6 +501,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:gz-trusty".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ips:mtk-ips-helper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/log_store:log_store".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/masp:sec".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:mtk_mdpm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/monitor_hang:monitor_hang".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprintk:mtk_printk_ctrl".format(kernel_version),
@@ -773,7 +779,7 @@ mgk_64_kleaf_platform_user_modules = {
 
 mgk_64_device_modules = [
     # keep sorted
-    "drivers/char/hw_random/sec-rng.ko",
+    #"drivers/char/hw_random/sec-rng.ko",
     "drivers/char/rpmb/rpmb-mtk.ko",
     "drivers/clk/mediatek/fhctl.ko",
     #"drivers/clocksource/timer-mediatek.ko",
@@ -919,7 +925,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/lens/tof/stmvl53l4.ko",
     #"drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko",
     #"drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko",
-    "drivers/misc/mediatek/masp/sec.ko",
+    #"drivers/misc/mediatek/masp/sec.ko",
     "drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko",
     "drivers/misc/mediatek/mbraink/mtk_mbraink.ko",
     "drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko",
