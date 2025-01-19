@@ -899,7 +899,7 @@ static ssize_t eb_dvfs_kpi_show(struct kobject *kobj,
 						ret = mtk_get_fastdvfs_mode((void *)ipi_data);
 						if (ret) {
 							pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-									"->Frame[%d] pid: %u Frame_id: %u deq_ts: %u done_ts: %u ulMask: 0x%X\n",
+									"->Frame[%d] pid: %u Frame_id: %u q2done: %u gpu_time: %u ulMask: 0x%X\n",
 										j,
 										ipi_data->u.set_para.arg[0],
 										ipi_data->u.set_para.arg[1],

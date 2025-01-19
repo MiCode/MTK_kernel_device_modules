@@ -245,13 +245,18 @@ void ged_eb_dvfs_trace_dump(void)
 
 	//struct GpuUtilization_Ex util_ex;
 
-	if (ged_policy_state == POLICY_STATE_LB ||
-			ged_policy_state == POLICY_STATE_FORCE_LB)
-		eCommitType = GED_DVFS_LOADING_BASE_COMMIT;
-	else if (ged_policy_state == POLICY_STATE_FB)
-		eCommitType = GED_DVFS_FRAME_BASE_COMMIT;
-	else
-		eCommitType = GED_DVFS_FALLBACK_COMMIT;
+	if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
+		if (ged_policy_state == POLICY_STATE_LB ||
+				ged_policy_state == POLICY_STATE_FORCE_LB)
+			eCommitType = GED_DVFS_LOADING_BASE_COMMIT;
+		else if (ged_policy_state == POLICY_STATE_FB)
+			eCommitType = GED_DVFS_FRAME_BASE_COMMIT;
+		else
+			eCommitType = GED_DVFS_FALLBACK_COMMIT;
+	} else {
+		eCommitType = eb_policy_state;
+	}
+
 
 	if (eb_policy_state != pre_eb_policy_state ||
 		ged_policy_state != pre_ged_policy_state ||
@@ -315,7 +320,7 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_26M_REPLACE));
 	}
 
-	if (eb_policy_state != POLICY_STATE_FB) {
+	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {
 		trace_tracing_mark_write(5566, "t_gpu",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU));
 		trace_tracing_mark_write(5566, "t_gpu_target",
@@ -356,32 +361,89 @@ void ged_eb_dvfs_trace_dump(void)
 void ged_eb_dvfs_frame_done_dump(void)
 {
 #if defined(MTK_GPU_EB_SUPPORT)
+	int top_freq_diff = 0, sc_freq_diff = 0;
+	union combineData tmp_multi = {0};
+	struct cmd_info custom_ceiling_info ={0};
+	struct cmd_info custom_boost_info ={0};
+	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
+	int ui32FloorID = ged_get_cur_limit_idx_floor();
+
+	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_FB_MARGIN_PARAM);
+
 	trace_tracing_mark_write(5566, "commit_type",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_COMMIT_TYPE));
+	trace_tracing_mark_write(5566, "gpu_freq",
+		(long long) ged_get_cur_stack_freq() / 1000);
+
+	trace_tracing_mark_write(5566, "gpu_freq_ceil",
+		ged_get_freq_by_idx(ui32CeilingID) / 1000);
+	trace_tracing_mark_write(5566, "gpu_freq_floor",
+		ged_get_freq_by_idx(ui32FloorID) / 1000);
+	trace_tracing_mark_write(5566, "limitter_ceil",
+		ged_get_cur_limiter_ceil());
+	trace_tracing_mark_write(5566, "limitter_floor",
+		ged_get_cur_limiter_floor());
+	if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
+		custom_ceiling_info = ged_dvfs_get_custom_ceiling_gpu_freq_info();
+		trace_tracing_mark_write(5566, "limitter_ceil_pid",
+			custom_ceiling_info.pid);
+		trace_tracing_mark_write(5566, "limitter_ceil_id",
+			custom_ceiling_info.user_id);
+		trace_tracing_mark_write(5566, "limitter_ceil_cus_val",
+			custom_ceiling_info.value);
+	}
+
+	if (ged_get_cur_limiter_floor() == LIMIT_POWERHAL) {
+		custom_boost_info = ged_dvfs_get_custom_boost_gpu_freq_info();
+		trace_tracing_mark_write(5566, "limitter_floor_pid",
+			custom_boost_info.pid);
+		trace_tracing_mark_write(5566, "limitter_floor_id",
+			custom_boost_info.user_id);
+		trace_tracing_mark_write(5566, "limitter_floor_cus_val",
+			custom_boost_info.value);
+	}
+
 	trace_tracing_mark_write(5566, "t_gpu",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU));
 	trace_tracing_mark_write(5566, "t_gpu_target",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU_TARGET));
-	trace_tracing_mark_write(5566, "stack_freq",
-		mtk_gpueb_sysram_read(SYSRAM_GPU_STACK_FREQ));
-	trace_tracing_mark_write(5566, "top_freq",
-		mtk_gpueb_sysram_read(SYSRAM_GPU_TOP_FREQ));
+
+	trace_GPU_DVFS__Policy__Frame_based__Frequency(
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_FREQ_FLOOR].addr),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr));
+
+	trace_GPU_DVFS__Policy__Frame_based__Workload(
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_BUSY_CYCLE_CUR].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_BUSY_CYCLE].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_PIPE].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_REAL].addr),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOADING_MODE));
+
+	trace_GPU_DVFS__Policy__Frame_based__GPU_Time(
+		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU_TARGET),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_TARGET_HD].addr),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_REAL].addr),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_PIPE].addr));
+
+	trace_GPU_DVFS__Policy__Frame_based__Margin(
+		tmp_multi.twoVar.var1,
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MARGIN].addr),
+		tmp_multi.twoVar.var2);
+
+	sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
+		ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
+	top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
+		ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+
+	trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
+		div_u64(ged_get_cur_real_stack_freq(), 1000), div_u64(ged_get_cur_top_freq(), 1000),
+		div_s64(sc_freq_diff, 1000), div_s64(top_freq_diff, 1000));
+
 	trace_tracing_mark_write(5566, "preserve",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE));
-	trace_tracing_mark_write(5566, "t_gpu_pipe",
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_PIPE].addr));
-	trace_tracing_mark_write(5566, "t_gpu_real",
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_REAL].addr));
-	trace_tracing_mark_write(5566, "workload_pipe",
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_PIPE].addr));
-	trace_tracing_mark_write(5566, "workload_real",
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_REAL].addr));
-	trace_tracing_mark_write(5566, "target_freq",
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr));
-	trace_tracing_mark_write(5566, "target_opp",
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr));
-	trace_tracing_mark_write(5566, "fb_margin",
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MARGIN].addr));
+
 
 #endif
 }

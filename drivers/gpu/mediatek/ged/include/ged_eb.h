@@ -1002,13 +1002,18 @@ typedef struct {
  GEN("top_freq", GPU_TOP_FREQ, 1, "top_freq") \
  GEN("t_gpu", GPU_T_GPU, 1, "t_gpu") \
  GEN("t_gpu_target", GPU_T_GPU_TARGET, 1, "t_gpu_target") \
+ GEN("t_gpu_target_hd", GPU_T_GPU_TARGET_HD, 1, "t_gpu_target_hd") \
  GEN("t_gpu_pipe", GPU_T_GPU_PIPE, 1, "t_gpu_pipe") \
  GEN("t_gpu_real", GPU_T_GPU_REAL, 1, "t_gpu_real") \
  GEN("workload_pipe", GPU_WORKLOAD_PIPE, 1, "workload_pipe") \
  GEN("workload_real", GPU_WORKLOAD_REAL, 1, "workload_real") \
  GEN("target_freq", GPU_TARGET_FREQ, 1, "target_freq") \
  GEN("target_opp", GPU_TARGET_OPP, 1, "target_opp") \
- GEN("fb_margin", GPU_FB_MARGIN, 1, "fb_margin")
+ GEN("fb_margin", GPU_FB_MARGIN, 1, "fb_margin") \
+ GEN("fb_margin_param", GPU_FB_MARGIN_PARAM, 2, "fb_margin_param") \
+ GEN("fb_freq_floor", GPU_FB_FREQ_FLOOR, 1, "fb_freq_floor") \
+ GEN("fb_busy_cycle_cur", GPU_FB_BUSY_CYCLE_CUR, 1, "fb_busy_cycle_cur") \
+ GEN("fb_busy_cycle", GPU_FB_BUSY_CYCLE, 1, "fb_busy_cycle")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,
