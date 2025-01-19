@@ -1,0 +1,45 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "include/**/*.h",
+    ]),
+)
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+define_mgk_ddk_ko(
+    name = "mtk_irtx_pwm",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_IRTX_PWM_SUPPORT": {
+            True:["mtk_irtx_pwm.c",],
+        },
+	},
+    includes = [
+		"$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pwm/pwm_v2/include",
+    ],
+	hdrs = [],
+	ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/pwm:mtk-pwm".format(kernel_version)],
+    copts = [
+        "-Wall",
+        "-Werror",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    local_defines = [
+        "MTK_IRTX_PWM_TEST_ENABLED=0"
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)

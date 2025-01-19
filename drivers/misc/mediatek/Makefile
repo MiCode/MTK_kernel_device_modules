@@ -75,7 +75,6 @@ obj-$(CONFIG_MTK_PMIC_PROTECT) += pmic_protect/
 obj-$(CONFIG_MTK_PMIC_TIA) += pmic_tia/
 obj-$(CONFIG_MTK_MDPM) += mdpm/
 obj-$(CONFIG_MTK_MDPM_LEGACY) += mdpm_v1/
-obj-$(CONFIG_MTK_IRTX_PWM_SUPPORT) += irtx/
 obj-$(CONFIG_MTK_PBM) += pbm/
 obj-$(CONFIG_MTK_CG_PEAK_POWER_THROTTLING) += cg_ppt/
 obj-$(CONFIG_MTK_CCU) += ccu/src/
