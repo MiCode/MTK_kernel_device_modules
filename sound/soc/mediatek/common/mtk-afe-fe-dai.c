@@ -537,38 +537,38 @@ EXPORT_SYMBOL_GPL(mtk_afe_fe_hw_params);
 #if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 void unreg_dram_passthrough_shm(struct mtk_base_afe_memif *memif)
 {
-	//if (memif->using_passthrough
-	//		&& memif->dram_dma_addr
-	//		&& memif->substream->runtime->dma_addr == memif->dram_dma_addr) {
-	//	memif->substream->runtime->dma_area = NULL;
-	//	memif->substream->runtime->dma_addr = 0;
-	//	memif->substream->runtime->dma_bytes = 0;
-	//	memif->using_passthrough = 0;
-	//}
+	if (memif->using_passthrough
+			&& memif->dram_dma_addr
+			&& memif->substream->runtime->dma_addr == memif->dram_dma_addr) {
+		memif->substream->runtime->dma_area = NULL;
+		memif->substream->runtime->dma_addr = 0;
+		memif->substream->runtime->dma_bytes = 0;
+		memif->using_passthrough = 0;
+	}
 
-	//memif->dram_dma_area = NULL;
-	//memif->dram_dma_addr = 0;
-	//memif->dram_dma_bytes = 0;
+	memif->dram_dma_area = NULL;
+	memif->dram_dma_addr = 0;
+	memif->dram_dma_bytes = 0;
 }
 EXPORT_SYMBOL_GPL(unreg_dram_passthrough_shm);
 
 void unreg_sram_passthrough_shm(struct mtk_base_afe_memif *memif)
 {
-	//if (memif->using_passthrough
-	//		&& memif->sram_dma_addr
-	//		&& memif->substream->runtime->dma_addr == memif->sram_dma_addr) {
-	//	memif->substream->runtime->dma_area = NULL;
-	//	memif->substream->runtime->dma_addr = 0;
-	//	memif->substream->runtime->dma_bytes = 0;
-	//	memif->using_passthrough = 0;
-	//}
+	if (memif->using_passthrough
+			&& memif->sram_dma_addr
+			&& memif->substream->runtime->dma_addr == memif->sram_dma_addr) {
+		memif->substream->runtime->dma_area = NULL;
+		memif->substream->runtime->dma_addr = 0;
+		memif->substream->runtime->dma_bytes = 0;
+		memif->using_passthrough = 0;
+	}
 
 	if (memif->sram_dma_area)
 		iounmap(memif->sram_dma_area);
 
-	//memif->sram_dma_area = NULL;
-	//memif->sram_dma_addr = 0;
-	//memif->sram_dma_bytes = 0;
+	memif->sram_dma_area = NULL;
+	memif->sram_dma_addr = 0;
+	memif->sram_dma_bytes = 0;
 }
 EXPORT_SYMBOL_GPL(unreg_sram_passthrough_shm);
 #endif
