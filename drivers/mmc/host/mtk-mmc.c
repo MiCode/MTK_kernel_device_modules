@@ -725,7 +725,7 @@ static const struct mtk_mmc_compatible mt6993_compat = {
 	.new_tx_ver = MSDC_NEW_TX_V2,
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
-		.enable = false,
+		.enable = true,
 		.work_mode = MSDC_SPM_SW_MODE,
 		/* soc26m/inframtcmos/buspll/ddrsrc/emi/ddren */
 		.infra_ack_bit = (BIT(2) | BIT(3) | BIT(4) | BIT(5) | BIT(6) | BIT(7)),
@@ -2571,17 +2571,14 @@ static void msdc_init_hw(struct msdc_host *host)
 
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 	/*
-	 * disable hw wait spm ack, otherwise dma timeout
-	 * case1: when hw supports spm-msdc mechanism and sw mode is used.
-	 * case2: when hw supports spm-msdc mechanism, but the sw disables
-	 * the spm-msdc flow during bringup, and hw spm enable bit may not
-	 * be ready during bringup.
+	 * only enable hw wait spm ack when hw supports spm-msdc mechanism
+	 * and hw mode is used, otherwise dma timeout.
 	 */
 	if ((host->msdc_spm_hw_supp &&
 		 host->dev_comp->infra_check.enable &&
-		 host->dev_comp->infra_check.work_mode == MSDC_SPM_SW_MODE) ||
-		(host->msdc_spm_hw_supp &&
-		 host->dev_comp->infra_check.enable == false))
+		 host->dev_comp->infra_check.work_mode == MSDC_SPM_HW_MODE))
+		sdr_clr_bits(host->base + SDC_STS, SDC_STS_NOT_WAIT_ACK);
+	else
 		sdr_set_bits(host->base + SDC_STS, SDC_STS_NOT_WAIT_ACK);
 #else
 	/* SPM module maybe not ready in FPGA stage, so disable hw wait spm ack */
@@ -4893,15 +4890,11 @@ static int infra_req_release(struct msdc_host *host)
 {
 	struct arm_smccc_res res;
 
-	if (host->dev_comp->infra_check.work_mode == MSDC_SPM_HW_MODE) {
-		sdr_set_bits(host->base + SDC_STS, SDC_STS_RES_RELEASE);
-	} else {
-		mmc_mtk_infra_req_release(res, host->id);
-		if (res.a0) {
-			pr_info("%s: infra request release fail, err: %lu\n",
-				 __func__, res.a0);
-			return 1;
-		}
+	mmc_mtk_infra_req_release(res, host->id);
+	if (res.a0) {
+		pr_info("%s: infra request release fail, err: %lu\n",
+			 __func__, res.a0);
+		return 1;
 	}
 
 	return 0;
@@ -4937,10 +4930,20 @@ static int __maybe_unused msdc_runtime_suspend(struct device *dev)
 	}
 
 	msdc_save_reg(host);
+
+	/*
+	 * release operation must be the last msdc ip access,
+	 * otherwise 26m/infra/buspll req will be trigger.
+	 */
+	if (host->dev_comp->infra_check.enable &&
+		host->dev_comp->infra_check.work_mode == MSDC_SPM_HW_MODE)
+		sdr_set_bits(host->base + SDC_STS, SDC_STS_RES_RELEASE);
+
 	msdc_gate_clock(host);
 
 	/* release spm request to avoid infra can not keep off */
-	if (host->dev_comp->infra_check.enable)
+	if (host->dev_comp->infra_check.enable &&
+		host->dev_comp->infra_check.work_mode == MSDC_SPM_SW_MODE)
 		if (infra_req_release(host))
 			WARN_ON_ONCE(1);
 
@@ -4989,7 +4992,7 @@ static int __maybe_unused msdc_runtime_resume(struct device *dev)
 
 	/*
 	 * ensure infra keep on during msdc ip work.
-	 * sw flow: send spm request -> ungating cg -> polling infra ack -> ip work
+	 * sw flow: send spm request -> polling infra ack -> ungating cg -> ip work
 	 */
 	if (host->dev_comp->infra_check.enable) {
 		ret = infra_req_ack_check(host);
