@@ -1848,11 +1848,6 @@ void cmdq_mdp_compose_readback(struct cmdqRecStruct *handle,
 	}
 }
 
-static s32 mdp_get_hdr_hist_data(void)
-{
-	return MDP_HDR_HIST_DATA_LEGACY;
-}
-
 static s32 mdp_get_rdma_idx(u32 eng_base)
 {
 	s32 rdma_idx = -1;
@@ -1937,7 +1932,6 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getEngineBase = mdp_engine_base_get;
 	pFunc->getEngineBaseCount = mdp_engine_base_count;
 	pFunc->getEngineGroupName = mdp_get_engine_group_name;
-	pFunc->getHdrHistData = mdp_get_hdr_hist_data;
 	pFunc->mdpComposeReadback = cmdq_mdp_compose_readback;
 	pFunc->getRDMAIndex = mdp_get_rdma_idx;
 	pFunc->mdpIsCaminSupport = mdp_check_camin_support_virtual;
