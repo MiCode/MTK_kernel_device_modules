@@ -100,15 +100,15 @@ static void get_timing(struct lcm *ctx)
 {
 	struct vdo_timing timing;
 
-	pr_info("%s +\n", __func__);
+	pr_debug("%s +\n", __func__);
 	serdes_get_modes(ctx->bridge, &timing);
-	pr_info("%s: timing[%dx%d@%d]\n", __func__, timing.width, timing.height, timing.fps);
-	pr_info("%s: timing[%d %d %d][%d %d %d]\n", __func__, timing.hfp, timing.hsa, timing.hbp,
+	pr_debug("%s: timing[%dx%d@%d]\n", __func__, timing.width, timing.height, timing.fps);
+	pr_debug("%s: timing[%d %d %d][%d %d %d]\n", __func__, timing.hfp, timing.hsa, timing.hbp,
 			timing.vfp, timing.vsa, timing.vbp);
 	if (!timing.width || !timing.height || !timing.fps ||
 		!timing.hfp || !timing.hsa || !timing.hbp ||
 		!timing.vfp || !timing.vsa || !timing.vbp) {
-		pr_info("%s: get timing error! used default parameter!", __func__);
+		pr_debug("%s: get timing error! used default parameter!", __func__);
 		timing.width = DEFAULT_WIDTH;
 		timing.height = DEFAULT_HEIGHT;
 		timing.hfp = DEFAULT_HFP;
@@ -153,36 +153,36 @@ static void get_timing(struct lcm *ctx)
 		ctx->ext_params.crop_height[1] = 0;
 	}
 
-	pr_info("%s -\n", __func__);
+	pr_debug("%s -\n", __func__);
 }
 
 static void lcm_poweron(struct lcm *ctx)
 {
-	pr_info("%s +\n", __func__);
-	pr_info("%s -\n", __func__);
+	pr_debug("%s +\n", __func__);
+	pr_debug("%s -\n", __func__);
 }
 
 static void lcm_poweroff(struct lcm *ctx)
 {
-	pr_info("%s +\n", __func__);
-	pr_info("%s -\n", __func__);
+	pr_debug("%s +\n", __func__);
+	pr_debug("%s -\n", __func__);
 }
 
 static void lcm_panel_init(struct lcm *ctx)
 {
-	pr_info("%s+\n", __func__);
-	pr_info("%s-\n", __func__);
+	pr_debug("%s+\n", __func__);
+	pr_debug("%s-\n", __func__);
 }
 
 static int lcm_unprepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s +\n", __func__);
+	pr_debug("%s +\n", __func__);
 
 	lcm_poweroff(ctx);
 
-	pr_info("%s -\n", __func__);
+	pr_debug("%s -\n", __func__);
 	return 0;
 }
 
@@ -190,7 +190,7 @@ static int lcm_prepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s +\n", __func__);
+	pr_debug("%s +\n", __func__);
 
 	lcm_poweron(ctx);
 	lcm_panel_init(ctx);
@@ -199,7 +199,7 @@ static int lcm_prepare(struct drm_panel *panel)
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_rst(panel);
 #endif
-	pr_info("%s -\n", __func__);
+	pr_debug("%s -\n", __func__);
 
 	return 0;
 }
@@ -208,11 +208,11 @@ static int lcm_disable(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s +\n", __func__);
+	pr_debug("%s +\n", __func__);
 
 	serdes_disable(ctx->bridge);
 
-	pr_info("%s -\n", __func__);
+	pr_debug("%s -\n", __func__);
 
 	return 0;
 }
@@ -221,26 +221,26 @@ static int lcm_enable(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s +\n", __func__);
+	pr_debug("%s +\n", __func__);
 
 	serdes_enable(ctx->bridge);
 
-	pr_info("%s -\n", __func__);
+	pr_debug("%s -\n", __func__);
 
 	return 0;
 }
 
 static int panel_ata_check(struct drm_panel *panel)
 {
-	pr_info("%s +\n", __func__);
-	pr_info("%s -\n", __func__);
+	pr_debug("%s +\n", __func__);
+	pr_debug("%s -\n", __func__);
 	return 1;
 }
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
 {
-	pr_info("%s +\n", __func__);
-	pr_info("%s -\n", __func__);
+	pr_debug("%s +\n", __func__);
+	pr_debug("%s -\n", __func__);
 	return 0;
 }
 
@@ -249,9 +249,9 @@ static int panel_get_link_status(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s +\n", __func__);
+	pr_debug("%s +\n", __func__);
 	return serdes_get_link_status(ctx->bridge);
-	pr_info("%s -\n", __func__);
+	pr_debug("%s -\n", __func__);
 }
 #endif
 
@@ -269,8 +269,8 @@ static int lcm_get_modes(struct drm_panel *panel,
 	struct drm_display_mode *mode;
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s:%s +\n", __func__,ctx->dev->of_node->name);
-	pr_info("mode:[%dx%d][%d/%d/%d][%d/%d/%d]\n",
+	pr_debug("%s:%s +\n", __func__,ctx->dev->of_node->name);
+	pr_debug("mode:[%dx%d][%d/%d/%d][%d/%d/%d]\n",
 		ctx->disp_mode.hdisplay,
 		ctx->disp_mode.vdisplay,
 		ctx->disp_mode.hsync_start,
@@ -296,7 +296,7 @@ static int lcm_get_modes(struct drm_panel *panel,
 	connector->display_info.width_mm = ctx->disp_mode.width_mm;
 	connector->display_info.height_mm = ctx->disp_mode.height_mm;
 
-	pr_info("%s -\n", __func__);
+	pr_debug("%s -\n", __func__);
 
 	return 1;
 }
@@ -318,7 +318,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	int ret;
 	const struct panel_desc *desc;
 
-	pr_info("%s+, name:%s\n", __func__, dev->of_node->name);
+	pr_debug("%s+, name:%s\n", __func__, dev->of_node->name);
 
 	dsi_node = of_get_parent(dev->of_node);
 	if (dsi_node) {
@@ -329,7 +329,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 				pr_info("No panel connected,skip probe lcm\n");
 				return -ENODEV;
 			}
-			pr_info("device node name:%s\n", remote_node->name);
+			pr_debug("device node name:%s\n", remote_node->name);
 		}
 	}
 	if (remote_node != dev->of_node) {
@@ -379,9 +379,9 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 #if defined(CONFIG_MTK_PANEL_EXT)
 	ctx->ext_params.pll_clk = ctx->pll;
 	ctx->ext_params.vdo_per_frame_lp_enable = ctx->lppf;
-	pr_info("pll_clk=%d, lppf=%d\n", ctx->ext_params.pll_clk, ctx->ext_params.vdo_per_frame_lp_enable);
+	pr_debug("pll_clk=%d, lppf=%d\n", ctx->ext_params.pll_clk, ctx->ext_params.vdo_per_frame_lp_enable);
 	if (ctx->ext_params.crop_width[0] && ctx->ext_params.crop_width[1]) {
-		pr_info("super frame![%d*%d]+[%d*%d]=[%d*%d]\n", ctx->ext_params.crop_width[0],
+		pr_debug("super frame![%d*%d]+[%d*%d]=[%d*%d]\n", ctx->ext_params.crop_width[0],
 			ctx->ext_params.crop_height[1],
 			ctx->ext_params.crop_width[0],
 			ctx->ext_params.crop_height[1],
@@ -395,7 +395,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	}
 #endif
 
-	pr_info("%s-\n", __func__);
+	pr_debug("%s-\n", __func__);
 
 	return ret;
 }
