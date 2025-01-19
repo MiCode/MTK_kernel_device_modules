@@ -38,15 +38,7 @@
 
 static void __iomem *vdisp_ao_base;
 
-struct vdisp_ao_data {
-	int ao_int_config;
-};
-
-struct mtk_vdisp_ao {
-	struct mtk_ddp_comp ddp_comp;
-	struct drm_crtc *crtc;
-	const struct vdisp_ao_data *data;
-};
+static struct mtk_vdisp_ao *g_priv;
 
 static const struct vdisp_ao_data vdisp_ao_data_mt6991 = {
 	.ao_int_config = 1,		//	CPU_INT:1
@@ -54,6 +46,8 @@ static const struct vdisp_ao_data vdisp_ao_data_mt6991 = {
 
 static const struct vdisp_ao_data vdisp_ao_data_mt6993 = {
 	.ao_int_config = 33,	// CPU_INT:1, MODULE_INIT_MODE:1
+	.irq_count = 36,
+	.irq_cfg = mt6993_irq_cfg,
 };
 
 static inline struct mtk_vdisp_ao *comp_to_vdisp_ao(struct mtk_ddp_comp *comp)
@@ -91,24 +85,40 @@ static void vdisp_ao_dump_16_qos_info_MT6993(struct mtk_ddp_comp *comp)
 void mtk_vdisp_ao_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+	int i = 0;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
 
+	if (IS_ERR_OR_NULL(mtk_crtc))
+		return;
+
+	priv = mtk_crtc->base.dev->dev_private;
+
 	DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	/* INTEN, MERGED, SELECTED, TOP */
 	mtk_serial_dump_reg(baddr, DISP_REG_VDISP_AO_INTEN, 4);
 
-	mtk_serial_dump_reg(baddr, DISP_REG_VDISP_AO_INT_SEL_G0_MT6991, 4);
-	mtk_serial_dump_reg(baddr, DISP_REG_VDISP_AO_INT_SEL_G4_MT6991, 3);
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		mtk_serial_dump_reg(baddr, DISP_REG_VDISP_AO_INT_SEL_G0_MT6991, 4);
+		mtk_serial_dump_reg(baddr, DISP_REG_VDISP_AO_INT_SEL_G4_MT6991, 3);
 
-	mtk_serial_dump_reg(baddr, 0x100, 3);
-	mtk_serial_dump_reg(baddr, 0x120, 3);
-	mtk_serial_dump_reg(baddr, 0x140, 3);
+		mtk_serial_dump_reg(baddr, 0x100, 3);
+		mtk_serial_dump_reg(baddr, 0x120, 3);
+		mtk_serial_dump_reg(baddr, 0x140, 3);
 
-	mtk_serial_dump_reg(baddr, 0x210, 2);
+		mtk_serial_dump_reg(baddr, 0x210, 2);
+	} else {
+		mtk_serial_dump_reg(baddr, 0x14, 4);
+		mtk_serial_dump_reg(baddr, 0x24, 4);
+		mtk_serial_dump_reg(baddr, 0x34, 4);
+		mtk_serial_dump_reg(baddr, 0x44, 4);
+		mtk_serial_dump_reg(baddr, 0x54, 4);
+	}
 
 	/* 16 lv qos */
 	mtk_serial_dump_reg(baddr, 0x700, 4);
@@ -289,117 +299,31 @@ void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm)
 	mtk_vdisp_ao_int_sel_g5_MT6991();
 	mtk_vdisp_ao_int_sel_g6_MT6991();
 }
-
-static void mtk_vdisp_ao_int_sel_g0_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT00, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT01, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G0_MT6993);
-
-	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
-}
-
-static void mtk_vdisp_ao_int_sel_g1_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT02, CPU_INTSEL_BIT_MT6993_L);
-	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT03, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G1_MT6993);
-
-	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
-}
-static void mtk_vdisp_ao_int_sel_g2_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT04, CPU_INTSEL_BIT_MT6993_L);
-	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT05, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G2_MT6993);
-
-	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
-}
-//static void mtk_vdisp_ao_int_sel_g3_MT6993(void)
-//static void mtk_vdisp_ao_int_sel_g4_MT6993(void)
-//static void mtk_vdisp_ao_int_sel_g5_MT6993(void)
-//static void mtk_vdisp_ao_int_sel_g6_MT6993(void)
-static void mtk_vdisp_ao_int_sel_g13_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT26, CPU_INTSEL_BIT_MT6993_L);
-	//SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT27, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G13_MT6993);
-
-	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
-}
-
-static void mtk_vdisp_ao_int_sel_g14_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT28, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT29, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G14_MT6993);
-
-	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
-}
-
-static void mtk_vdisp_ao_int_sel_g15_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT30, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT31, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G15_MT6993);
-
-	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
-}
-
-static void mtk_vdisp_ao_int_sel_g16_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT32, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT33, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G16_MT6993);
-
-	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
-}
-
-static void mtk_vdisp_ao_int_sel_g17_MT6993(void)
-{
-	int value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT34, CPU_INTSEL_BIT_MT6993_L);
-	SET_VAL_MASK(value, mask, CPU_INT_SEL_BIT35, CPU_INTSEL_BIT_MT6993_H);
-
-	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G17_MT6993);
-
-	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
-}
-
 void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 {
-	DDPINFO("%s:%d\n", __func__, __LINE__);
+	int i = 0, value = 0, mask = 0;
 
-	mtk_vdisp_ao_int_sel_g0_MT6993();
-	mtk_vdisp_ao_int_sel_g1_MT6993();
+	if (!g_priv) {
+		DDPMSG("%s, g_priv is null\n", __func__);
+		return;
+	}
 
-	mtk_vdisp_ao_int_sel_g13_MT6993();
-	mtk_vdisp_ao_int_sel_g14_MT6993();
-	mtk_vdisp_ao_int_sel_g15_MT6993();
-	mtk_vdisp_ao_int_sel_g16_MT6993();
-	mtk_vdisp_ao_int_sel_g17_MT6993();
+	for (i = 0; i < g_priv->data->irq_count; i++) {
+		if (g_priv->data->irq_cfg[i].value == 0)
+			continue;
+
+		if (g_priv->data->irq_cfg[i].shift == 0) {
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, g_priv->data->irq_cfg[i].value, CPU_INTSEL_BIT_MT6993_L);
+		} else
+			SET_VAL_MASK(value, mask, g_priv->data->irq_cfg[i].value, CPU_INTSEL_BIT_MT6993_H);
+
+		DDPINFO("%s,%d:offset:0x%x,value:%d\n", __func__, i,
+			g_priv->data->irq_cfg[i].offset, g_priv->data->irq_cfg[i].value, value);
+
+		writel(value, vdisp_ao_base + g_priv->data->irq_cfg[i].offset);
+	}
 }
 
 static int __mtk_vdisp_ao_qos_config_MT6993(bool hrt_read, bool hrt_write)
@@ -482,6 +406,8 @@ static int mtk_vdisp_ao_probe(struct platform_device *pdev)
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
+
+	g_priv = priv;
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_VDISP_AO);
 	if ((int)comp_id < 0) {
