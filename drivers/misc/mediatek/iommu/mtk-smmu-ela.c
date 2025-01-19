@@ -5,8 +5,7 @@
  * This driver adds support for SMMU performance monitor via ELA.
  */
 
-#if (IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && \
-	IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG))
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 #define pr_fmt(fmt)    "mtk_smmu: ela " fmt
 
 #include <linux/device.h>
@@ -52,6 +51,8 @@ struct smmu_ela_ctrl {
 	struct smmu_pmu		pmu[SMMU_TXU_CNT_MAX];
 };
 
+static const char *HRT_DEBUG_EN_PROP_NAME = "mtk_fabric_hrt_debug";
+static const char *CHOSEN_NODE_PATH = "/chosen";
 static struct smmu_ela_ctrl *ela_ctrl[SMMU_TYPE_NUM];
 static int pmu_cntr0_evt[] = {
 	TCU_EVT_TRANSCATION,
@@ -324,13 +325,32 @@ static int mtk_smmu_ela_hw_init(u32 smmu_type)
 	return 0;
 }
 
+static bool mm_hrt_debug_enabled(void)
+{
+	struct device_node *chosen_node;
+	const char *name = NULL;
+	int ret = 0;
+
+	chosen_node = of_find_node_by_path(CHOSEN_NODE_PATH);
+	if (chosen_node) {
+		ret = of_property_read_string_index(chosen_node, HRT_DEBUG_EN_PROP_NAME, 0, &name);
+		if (!ret && (!strncmp("on", name, sizeof("on"))))
+			return true;
+	}
+
+	return false;
+}
+
 static int mtk_smmu_ela_data_init(u32 smmu_type)
 {
-	struct mtk_smmu_data *data;
 	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
 	struct smmu_ela_ctrl *ela;
 	struct smmu_pmu *pmu;
 	int i;
+
+	if (!mm_hrt_debug_enabled())
+		return -EINVAL;
 
 	data = get_smmu_data(smmu_type);
 	if (!data) {
@@ -695,4 +715,4 @@ static const struct kernel_param_ops smmu_ela_dump_ops = {
 };
 module_param_cb(smmu_ela_dump, &smmu_ela_dump_ops, NULL, 0644);
 MODULE_PARM_DESC(smmu_ela_dump, "smmu ela dump");
-#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 && CONFIG_MTK_IOMMU_DEBUG */
+#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */

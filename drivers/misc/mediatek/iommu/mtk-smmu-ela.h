@@ -10,14 +10,13 @@
 
 #include <linux/seq_file.h>
 
-#if (IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && \
-	IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG))
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 int mtk_smmu_enable_ela(u32 smmu_type);
 int mtk_smmu_disable_ela(u32 smmu_type);
 bool mtk_smmu_ela_enabled(u32 smmu_type);
 int mtk_smmu_ela_init(u32 smmu_type);
 void mtk_smmu_ela_dump(struct seq_file *s, u32 smmu_type);
-#else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 && CONFIG_MTK_IOMMU_DEBUG */
+#else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 static inline int mtk_smmu_enable_ela(u32 smmu_type)
 {
 	return -1;
@@ -41,5 +40,5 @@ static inline int mtk_smmu_ela_init(u32 smmu_type)
 static inline void mtk_smmu_ela_dump(struct seq_file *s, u32 smmu_type)
 {
 }
-#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 && CONFIG_MTK_IOMMU_DEBUG */
+#endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 #endif /* _MTK_SMMU_ELA_ */
