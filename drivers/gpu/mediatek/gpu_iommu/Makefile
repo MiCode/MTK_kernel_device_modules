@@ -30,3 +30,8 @@ ifneq ($(wildcard $(src)/gpu_iommu_mt6991.c),)
 mtk_gpu_iommu_mt6991-y := gpu_iommu_mt6991.o
 obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpu_iommu_mt6991.o
 endif
+
+mtk_gpu_iommu_mt6993-y := gpu_iommu_mt6993.o
+ifneq ($(wildcard $(src)/gpu_iommu_mt6993.c),)
+obj-$(CONFIG_MTK_GPU_MT6993_SUPPORT) += mtk_gpu_iommu_mt6993.o
+endif
