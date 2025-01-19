@@ -1,4 +1,4 @@
-obj-$(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) += sspm_v3.o
+#obj-$(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) += sspm_v3.o
 
 sspm_v3-y += sspm_sysfs.o
 sspm_v3-y += sspm_helper.o
