@@ -406,6 +406,9 @@ static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 
 	mmdvfs_debug_status_dump(file);
 
+	if (!MEM_BASE)
+		return 0;
+
 	// power total time
 	mmdvfs_debug_dump_line(file, "power/alone total time(ms)");
 	for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++)
