@@ -2858,8 +2858,11 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, i3c);
 
+	//Workaround for lockdep. It needs to communicate with kernel to resolve.
+	lockdep_off();
 	ret = i3c_master_register(&i3c->base, &pdev->dev,
 		    &mtk_i3c_master_ops, false);
+	lockdep_on();
 	if (ret) {
 		dev_info(&pdev->dev, "i3c_master_register failed!\n");
 		return ret;
