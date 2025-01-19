@@ -564,9 +564,6 @@ void vdec_dump_mem_buf(unsigned long h_vdec)
 	if (inst == NULL || inst->ctx == inst->ctx->dev_ctx)
 		return;
 
-	if (inst == NULL || inst->ctx == inst->ctx->dev_ctx)
-		return;
-
 	bs_fourcc = inst->ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 
 	mutex_lock(inst->vcu.ctx_ipi_lock);
@@ -777,7 +774,6 @@ int vcp_dec_ipi_handler(void *arg)
 				break;
 			}
 		}
-		mutex_unlock(&dev->ctx_mutex);
 		if (!msg_valid) {
 			if (vcu) {
 				inst = container_of(vcu, struct vdec_inst, vcu);

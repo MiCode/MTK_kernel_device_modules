@@ -588,7 +588,6 @@ int vcp_enc_ipi_handler(void *arg)
 				break;
 			}
 		}
-		mutex_unlock(&dev->ctx_mutex);
 		if (!msg_valid) {
 			if (vcu) {
 				inst = container_of(vcu, struct venc_inst, vcu_inst);
