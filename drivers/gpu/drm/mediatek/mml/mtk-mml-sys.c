@@ -239,8 +239,6 @@ struct sys_frame_data {
 	u32 frame_pipe_conti_jump;
 
 	u32 tile_idx;
-
-	u16 label_vlp_sleep;
 };
 
 struct dl_frame_data {
@@ -295,12 +293,6 @@ static s32 sys_config_prepare(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-static u32 sys_get_label_count(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg)
-{
-	return 1;
-}
-
 static s32 sys_setup_framedone_events(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
@@ -345,15 +337,9 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
 	if (cfg->dpc) {
-		if (mml_dl_dpc & MML_DPC_PKT_VOTE) {
-			struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
-			struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
-
-			mml_add_reuse_label(comp->id, &task->reuse[ccfg->pipe],
-				&sys_frm->label_vlp_sleep, 0);
+		if (mml_dl_dpc & MML_DPC_PKT_VOTE)
 			mml_dpc_power_keep_gce(comp->sysid, pkt, sys->data->gpr[ccfg->pipe],
-				&reuse->labels[sys_frm->label_vlp_sleep]);
-		}
+				&task->dpc_reuse_sys);
 	}
 
 	if (mml_isdc(cfg->info.mode) && !mml_dev_get_couple_cnt(cfg->mml)) {
@@ -1039,7 +1025,6 @@ static s32 sys_repost(struct mml_comp *comp, struct mml_task *task,
 
 static const struct mml_comp_config_ops sys_config_ops = {
 	.prepare = sys_config_prepare,
-	.get_label_count = sys_get_label_count,
 	.init = sys_init,
 	.frame = sys_config_frame,
 	.tile = sys_config_tile,

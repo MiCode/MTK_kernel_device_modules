@@ -504,6 +504,10 @@ dup_command:
 		task->reuse[pipe].label_idx = src->reuse[pipe].label_idx;
 		cmdq_reuse_refresh(task->pkts[pipe], task->reuse[pipe].labels,
 			task->reuse[pipe].label_idx);
+		task->dpc_reuse_sys = src->dpc_reuse_sys;
+		task->dpc_reuse_mutex = src->dpc_reuse_mutex;
+		cmdq_reuse_refresh(task->pkts[pipe], &task->dpc_reuse_sys.jump_to_begin, 3);
+		cmdq_reuse_refresh(task->pkts[pipe], &task->dpc_reuse_mutex.jump_to_begin, 3);
 	} else {
 		mml_err("[adpt]copy reuse labels fail");
 		ret = -ENOMEM;

@@ -124,7 +124,7 @@ struct dpc_funcs {
 	void (*dpc_vidle_power_release)(const enum mtk_vidle_voter_user);
 	void (*dpc_vidle_power_keep_by_gce)(struct cmdq_pkt *pkt,
 					    const enum mtk_vidle_voter_user user, const u16 gpr,
-					    struct cmdq_reuse *reuse);
+					    struct cmdq_poll_reuse *reuse);
 	void (*dpc_vidle_power_release_by_gce)(struct cmdq_pkt *pkt,
 					    const enum mtk_vidle_voter_user user);
 
