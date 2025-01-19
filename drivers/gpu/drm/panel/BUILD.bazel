@@ -63,6 +63,17 @@ PANELS = [
     "panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe",
     "panel-alpha-jdi-nt36672e-vdo-120hz-frameratev5",
     "panel-nt36672a-rt4801-vdo",
+    "panel-alpha-jdi-nt36672e-vdo-120hz",
+    "panel-alpha-jdi-nt36672e-vdo-120hz-hfp",
+    "panel-alpha-jdi-nt36672e-vdo-120hz-threshold",
+    "panel-alpha-jdi-nt36672e-vdo-144hz-hfp",
+    "panel-alpha-jdi-nt36672e-vdo-60hz",
+    "panel-nt37801-cmd-120hz",
+    "panel-nt37801-cmd-fhd",
+    "panel-nt37801-cmd-fhd-plus",
+    "panel-nt37801-cmd-ltpo",
+    "panel-nt37801-cmd-spr",
+    "panel-truly-td4330-cmd",
 ]
 
 [define_mgk_ddk_ko(
