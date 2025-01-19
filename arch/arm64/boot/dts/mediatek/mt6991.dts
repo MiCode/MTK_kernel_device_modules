@@ -15095,9 +15095,9 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		ulposc-cali-target = <400 650 850>;
 		ulposc-cali-config =
 			/* con0		con1		con2 */
-			<0x04eaa340	0x10000a00	0x484a>,
-			<0x0416a540	0x10000a00	0x484a>,
-			<0x055ea540	0x10000a00	0x484a>;
+			<0x04eaa340	0x10000a00	0x484f>,
+			<0x0416a540	0x10000a00	0x484f>,
+			<0x055ea540	0x10000a00	0x484f>;
 		clk-dbg-ver = "v4";
 		ccf-fmeter-support;
 		fmeter-args-u2-cali =
