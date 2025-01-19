@@ -52,6 +52,24 @@ define_mgk_ddk_ko(
     includes = ["."],
 )
 
+define_mgk_ddk_ko(
+    name = "mt6368-accdet",
+    srcs = [
+        "mt6368-accdet.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)
+
+#define_mgk_ddk_ko(
+#    name = "mt6681-accdet",
+#    srcs = [
+#        "mt6681-accdet.c",
+#    ],
+#    hdrs = glob(["**/*.h"]),
+#    includes = ["."],
+#)
+
 ddk_headers(
     name = "ddk_public_headers",
     includes = [

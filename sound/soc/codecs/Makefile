@@ -32,7 +32,6 @@ obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6359P)	+= snd-soc-mt6359.o
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6359_ACCDET) += mt6359-accdet.o
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6660)	+= snd-soc-mt6660.o
 obj-$(CONFIG_SND_SOC_MT6368)	+= snd-soc-mt6368.o
-obj-$(CONFIG_SND_SOC_MT6368_ACCDET) += mt6368-accdet.o
 obj-$(CONFIG_SND_SOC_MT6681)	+= snd-soc-mt6681.o
 obj-$(CONFIG_SND_SOC_MT6681_ACCDET) += mt6681-accdet.o
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_HDMI_CODEC)	+= snd-soc-hdmi-codec.o
