@@ -11,6 +11,6 @@
 #include "mbraink_ioctl_struct_def.h"
 
 int mbraink_enable_pmu_inst_spec(bool enable);
-int mbraink_get_pmu_inst_spec(struct mbraink_pmu_info *pmuInfo);
+int mbraink_get_pmu_info(struct mbraink_pmu_info *pmuInfo);
 
 #endif /*end of MBRAINK_PMU_H*/

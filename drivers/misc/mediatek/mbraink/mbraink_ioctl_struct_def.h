@@ -32,6 +32,7 @@
 #define MAX_LPM_STATE_NUM				16
 #define MAX_UFS_INFO_NUM				64
 #define MAX_WIFI_TXTIMEOUT_SZ			32
+#define MAX_CPU_CORE_NUM			8
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -267,15 +268,15 @@ struct mbraink_pmu_en {
 	unsigned int pmu_en;
 };
 
+enum pmu_options {
+	E_PMU_INST_SPEC = 0,
+	E_PMU_CPU_CYCLES = 1,
+};
+
 struct mbraink_pmu_info {
-	unsigned long cpu0_pmu_data_inst_spec;
-	unsigned long cpu1_pmu_data_inst_spec;
-	unsigned long cpu2_pmu_data_inst_spec;
-	unsigned long cpu3_pmu_data_inst_spec;
-	unsigned long cpu4_pmu_data_inst_spec;
-	unsigned long cpu5_pmu_data_inst_spec;
-	unsigned long cpu6_pmu_data_inst_spec;
-	unsigned long cpu7_pmu_data_inst_spec;
+	unsigned long pmu_options;
+	unsigned long pmu_data_inst_spec[MAX_CPU_CORE_NUM];
+	unsigned long pmu_data_cpu_cycles[MAX_CPU_CORE_NUM];
 };
 
 struct mbraink_power_spm_raw {

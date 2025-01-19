@@ -252,8 +252,13 @@ static long handlePmuInfo(unsigned long arg, void *mbraink_data)
 		0,
 		sizeof(struct mbraink_pmu_info));
 
+	if (copy_from_user(pmuInfo,(struct mbraink_pmu_info *)arg, sizeof(struct mbraink_pmu_info))) {
+		pr_notice("Data write pmu info from UserSpace Err!\n");
+		return -EPERM;
+	}
+
 	mutex_lock(&pmu_lock);
-	ret = mbraink_get_pmu_inst_spec(pmuInfo);
+	ret = mbraink_get_pmu_info(pmuInfo);
 	if (ret == 0) {
 		if (copy_to_user((struct mbraink_pmu_info *)arg,
 				pmuInfo,
