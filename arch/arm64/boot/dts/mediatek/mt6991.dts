@@ -21120,6 +21120,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			nvmem-cells = <&efuse_spare5>;
 			nvmem-cell-names = "efuse_spare5";
 			accdet-efuse-check = <1>;
+			app-wakelock-time = <1000>;
 			status = "okay";
 		};
 	};
