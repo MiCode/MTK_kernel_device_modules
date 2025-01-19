@@ -10,8 +10,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
-subdir-ccflags-y += -I$(srctree)/kernel/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
+#subdir-ccflags-y += -I$(srctree)/kernel/
 
-obj-$(CONFIG_MTK_DRAM_LOG_STORE) += log_store.o
+#obj-$(CONFIG_MTK_DRAM_LOG_STORE) += log_store.o
