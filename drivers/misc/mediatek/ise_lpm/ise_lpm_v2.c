@@ -14,7 +14,6 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
-#include <linux/pm_runtime.h>
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/soc/mediatek/mtk_ise.h>
@@ -26,9 +25,16 @@
 
 #include <mtk_ise_lpm.h>
 
+#define REQ_DRAM_RSC	1
+#define REQ_CLK_RSC		1
+#define REQ_SSR_RSC		1
+
+#ifdef REQ_SSR_RSC
+#include <linux/pm_runtime.h>
+#endif
+
 #define ISE_LPM_FREERUN_TIMEOUT_MS		7000
 #define ISE_LPM_PWR_OFF_DEBOUNCE_MS		1000
-#define ISE_LPM_DEINIT_TIMEOUT_MS		10000
 
 struct ise_lpm_work_struct {
 	struct work_struct work;
@@ -50,10 +56,11 @@ enum ise_pwr_ut_id_enum {
 enum ise_doorbell_cmd {
 	ISE_DOORBELL_REQ,
 	ISE_DOORBELL_RLS,
+	ISE_DOORBELL_FREERUN,
 };
 
 enum ise_doorbell_sta {
-	DOORBELL_ACK_OFF        = 0x00000000,
+	DOORBELL_ACK_OFF	= 0x00000000,
 	DOORBELL_REQ_ON		= 0x00000001,
 	DOORBELL_ACK_ON		= 0x00010001,
 	DOORBELL_REQ_OFF	= 0x00010000,
@@ -63,6 +70,7 @@ enum ise_doorbell_sta {
 struct device *ise_lpm_dev;
 struct mutex mutex_ise_lpm;
 static struct timer_list ise_lpm_timer;
+static bool ise_lpm_timer_active;
 static struct timer_list ise_lpm_pd_timer;
 static struct ise_lpm_work_struct ise_lpm_work;
 static struct workqueue_struct *ise_lpm_wq;
@@ -78,9 +86,93 @@ static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
 static uint32_t ise_doorbell_pa, ise_doorbell_size;
 static uint64_t ise_boot_cnt;
 static void __iomem *ise_doorbell_va;
+/* for legacy doorbell and pm runtime */
+static bool	ise_doorbell_legacy;
+static bool	ise_doorbell_legacy_init;
 
 static uint32_t ise_power_on(void);
 static uint32_t ise_power_off(void);
+
+enum MTK_ISE_LPM_KERNEL_OP {
+	MTK_ISE_LPM_KERNEL_OP_REQ_DRAM = 0,
+	MTK_ISE_LPM_KERNEL_OP_REL_DRAM = 1,
+	MTK_ISE_LPM_KERNEL_OP_SET_LEGACY_DB_STATE = 2,
+	MTK_ISE_LPM_KERNEL_OP_GET_LEGACY_DB_STATE = 3,
+	MTK_ISE_LPM_KERNEL_OP_REQ_CLK = 4,
+	MTK_ISE_LPM_KERNEL_OP_REL_CLK = 5,
+	MTK_ISE_LPM_KERNEL_OP_NUM
+};
+
+#ifdef REQ_DRAM_RSC
+static unsigned long ise_req_dram(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_REQ_DRAM,
+			0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+
+static unsigned long ise_rel_dram(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_REL_DRAM,
+			0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+#endif
+
+#ifdef REQ_CLK_RSC
+static unsigned long ise_req_clk(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_REQ_CLK,
+			0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+
+static unsigned long ise_rel_clk(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_REL_CLK,
+			0, 0, 0, 0, 0, &res);
+	return res.a0;
+}
+#endif
+
+#define ISE_LPM_MAGIC_PATTERN      0x15515521
+static unsigned long ise_set_legacy_db_state(uint32_t val)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_SET_LEGACY_DB_STATE,
+			ISE_LPM_MAGIC_PATTERN, val, 0, 0, 0, &res);
+	return res.a1;
+}
+
+static unsigned long ise_get_legacy_db_state(void)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_KERNEL_ISE_CONTROL,
+			ISE_MODULE_LPM,
+			MTK_ISE_LPM_KERNEL_OP_GET_LEGACY_DB_STATE,
+			0, 0, 0, 0, 0, &res);
+	return res.a1;
+}
 
 static void inc_ise_awake_cnt(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 {
@@ -234,7 +326,7 @@ static uint32_t ise_doorbell_rls(void)
 	return ret;
 }
 
-static uint32_t ise_doorbell_op(enum ise_doorbell_cmd cmd)
+static uint32_t _ise_doorbell_op(enum ise_doorbell_cmd cmd)
 {
 	uint32_t ret = 0;
 
@@ -244,7 +336,7 @@ static uint32_t ise_doorbell_op(enum ise_doorbell_cmd cmd)
 		if (cmd == ISE_DOORBELL_REQ)
 			ret = ise_doorbell_req();
 		else {
-			pr_err("error cmd %d in state %d\n", cmd, ise_state);
+			pr_err("%s: error cmd %d in state %d\n", __func__, cmd, ise_state);
 			BUG_ON(1);
 		}
 		break;
@@ -252,16 +344,123 @@ static uint32_t ise_doorbell_op(enum ise_doorbell_cmd cmd)
 		if (cmd == ISE_DOORBELL_RLS)
 			ret = ise_doorbell_rls();
 		else {
-			pr_err("error cmd %d in state %d\n", cmd, ise_state);
+			pr_err("%s: error cmd %d in state %d\n", __func__, cmd, ise_state);
 			BUG_ON(1);
 		}
 		break;
 	default:
-		pr_notice("%s abnormal state %d\n", __func__, ise_state);
+		pr_err("%s: abnormal state %d\n", __func__, ise_state);
 		break;
 	}
 
 	return ret;
+}
+
+static uint32_t ise_legacy_doorbell_req(void)
+{
+	uint32_t ret = 0;
+	uint32_t tmp = 0;
+	// 50ms
+	uint32_t retry = 0, retry_limit = 100;
+
+	ise_set_legacy_db_state(ISE_DOORBELL_REQ);
+
+	/* trigger IRQ */
+	if (!ise_doorbell_legacy_init) {
+		/* legacy db, we do not trigger irq, only sync state with first req. */
+		ise_doorbell_legacy_init = true;
+	} else {
+		tmp = readl(ise_doorbell_va);
+		tmp |= 0x1;
+		writel(tmp, ise_doorbell_va);
+	}
+
+	do {
+		tmp = ise_get_legacy_db_state();
+
+		if (tmp == DOORBELL_ACK_ON){
+			pr_info("power on done, retry=%d, cnt%llu\n", retry, ++ise_boot_cnt);
+			break;
+		}
+		if(retry >= retry_limit) {
+			ret = 1;
+			pr_err("iSE power on failed, retry=%d 0x%08x\n", retry, tmp);
+			BUG_ON(1);
+			break;
+		}
+		udelay(500);
+	} while (++retry);
+
+	return ret;
+}
+
+static uint32_t ise_legacy_doorbell_rls(void)
+{
+	uint32_t ret = 0;
+	uint32_t tmp = 0;
+	// 50ms
+	uint32_t retry = 0, retry_limit = 100;
+
+	ise_set_legacy_db_state(ISE_DOORBELL_RLS);
+
+	/* trigger IRQ */
+	tmp = readl(ise_doorbell_va);
+	tmp &= ~0x1;
+	writel(tmp, ise_doorbell_va);
+
+	do {
+		tmp = ise_get_legacy_db_state();
+		if (tmp == DOORBELL_ACK_OFF){
+			pr_info("power off done, retry=%d\n", retry);
+			break;
+		}
+		if(retry >= retry_limit) {
+			ret = 1;
+			pr_err("iSE power off failed, retry=%d 0x%08x\n", retry, tmp);
+			BUG_ON(1);
+			break;
+		}
+		udelay(500);
+	} while (++retry);
+
+	return ret;
+}
+
+static uint32_t _ise_legacy_doorbell_op(enum ise_doorbell_cmd cmd)
+{
+	uint32_t ret = 0;
+
+	ise_state = ise_get_legacy_db_state();
+	switch(ise_state) {
+	case DOORBELL_ACK_OFF:
+		if (cmd == ISE_DOORBELL_REQ)
+			ret = ise_legacy_doorbell_req();
+		else {
+			pr_err("%s: error cmd %d in state 0x%08x\n", __func__, cmd, ise_state);
+			BUG_ON(1);
+		}
+		break;
+	case DOORBELL_ACK_ON:
+		if (cmd == ISE_DOORBELL_RLS)
+			ret = ise_legacy_doorbell_rls();
+		else {
+			pr_err("%s: error cmd %d in state 0x%08x\n", __func__, cmd, ise_state);
+			BUG_ON(1);
+		}
+		break;
+	default:
+		pr_err("%s: abnormal state 0x%08x\n", __func__, ise_state);
+		break;
+	}
+
+	return ret;
+}
+
+static uint32_t ise_doorbell_op(enum ise_doorbell_cmd cmd) {
+	if (ise_doorbell_legacy)
+		return _ise_legacy_doorbell_op(cmd);
+	else
+		return _ise_doorbell_op(cmd);
 }
 
 static uint32_t ise_power_on(void)
@@ -270,6 +469,22 @@ static uint32_t ise_power_on(void)
 
 	/* APMCU wakelock */
 	__pm_stay_awake(ise_wakelock);
+
+#ifdef REQ_SSR_RSC
+	if (ise_doorbell_legacy) {
+		ret = pm_runtime_resume_and_get(ise_lpm_dev);
+		if (ret)
+			pr_err("pm_runtime_resume_and_get failed, ret=%d\n", ret);
+	}
+#endif
+
+#ifdef REQ_DRAM_RSC
+	ise_req_dram();
+#endif
+
+#ifdef REQ_CLK_RSC
+	ise_req_clk();
+#endif
 
 	/* Do DoorBell access */
 	ret = ise_doorbell_op(ISE_DOORBELL_REQ);
@@ -282,6 +497,25 @@ static uint32_t ise_power_off(void)
 	uint32_t ret = 0;
 	/* Do DoorBell access*/
 	ret = ise_doorbell_op(ISE_DOORBELL_RLS);
+
+	/* wait a little before releasing resources */
+	udelay(800);
+
+#ifdef REQ_CLK_RSC
+	ise_rel_clk();
+#endif
+
+#ifdef REQ_DRAM_RSC
+	ise_rel_dram();
+#endif
+
+#ifdef REQ_SSR_RSC
+	if (ise_doorbell_legacy) {
+		ret = pm_runtime_put_sync(ise_lpm_dev);
+		if (ret)
+			pr_err("pm_runtime_put_sync failed, ret=%d\n", ret);
+	}
+#endif
 
 	/* reease APMCU wakelock */
 	__pm_relax(ise_wakelock);
@@ -304,6 +538,7 @@ static void ise_lpm_timeout(struct timer_list *t)
 {
 	ise_lpm_send_wq(ISE_LPM_FREERUN);
 	del_timer(&ise_lpm_timer);
+	ise_lpm_timer_active = false;
 }
 
 static void ise_lpm_pwr_off_cb(struct timer_list *t)
@@ -397,11 +632,21 @@ static const struct proc_ops ise_lpm_dbg_fops = {
 static int ise_lpm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
+	const char *db_legacy_ptr = NULL;
 
 	if (!node) {
 		dev_info(&pdev->dev, "of_node required\n");
 		return -EINVAL;
 	}
+
+	mutex_init(&mutex_ise_lpm);
+
+	ise_lpm_wq = create_singlethread_workqueue("ISE_LPM_WQ");
+	if (!ise_lpm_wq) {
+		pr_err("probe: Failed to create workqueue.\n");
+		return -ENOMEM;
+	}
+	INIT_WORK(&ise_lpm_work.work, ise_lpm_work_handle);
 
 	ise_boot_cnt = 0;
 	ise_wakelock_en = 0;
@@ -425,6 +670,14 @@ static int ise_lpm_probe(struct platform_device *pdev)
 			pr_notice("ise-doorbell node not exist\n");
 		if (of_property_read_u32_index(pdev->dev.of_node, "ise-doorbell", 1, &ise_doorbell_size))
 			pr_notice("ise-doorbell node not exist\n");
+
+		ise_doorbell_legacy = false;
+		if (!of_property_read_string(pdev->dev.of_node, "ise-doorbell-legacy", &db_legacy_ptr)) {
+			if (!strncmp(db_legacy_ptr, "enable", strlen("enable"))) {
+				pr_notice("ise_lpm legacy doorbell\n");
+				ise_doorbell_legacy = true;
+			}
+		}
 		if ((!ise_doorbell_pa) | (!ise_doorbell_size))
 			pr_notice("ise-doorbell reg error 0x%x 0x%x\n", ise_doorbell_pa, ise_doorbell_size);
 		else {
@@ -435,13 +688,21 @@ static int ise_lpm_probe(struct platform_device *pdev)
 														PTR_ERR(ise_doorbell_va));
 				return -ENOMEM;
 			}
+			/* do doorbell request */
+			ise_doorbell_op(ISE_DOORBELL_REQ);
 		}
 		pr_notice("ise doorbell probe done\n");
 	}
 
 	if (ise_wakelock_en) {
-		mutex_init(&mutex_ise_lpm);
 		mutex_lock(&mutex_ise_lpm);
+#ifdef REQ_DRAM_RSC
+		ise_req_dram();
+#endif
+
+#ifdef REQ_CLK_RSC
+		ise_req_clk();
+#endif
 		/*
 		 * Since iSE already boot up at BL2 phase, so init following
 		 * ise_awake_cnt = 1
@@ -455,6 +716,16 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		mutex_unlock(&mutex_ise_lpm);
 		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
 
+#ifdef REQ_SSR_RSC
+		if (ise_doorbell_legacy) {
+			ise_lpm_dev = &pdev->dev;
+			pm_runtime_enable(ise_lpm_dev);
+			int ret = pm_runtime_resume_and_get(ise_lpm_dev);
+			if (ret)
+				pr_notice("pm_runtime_resume_and_get failed, ret=%d\n", ret);
+		}
+#endif
+
 		/* System wakelock */
 		ise_wakelock = wakeup_source_register(NULL, "ise_lpm wakelock");
 	}
@@ -463,17 +734,28 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		timer_setup(&ise_lpm_timer, ise_lpm_timeout, 0);
 		mod_timer(&ise_lpm_timer,
 			jiffies + msecs_to_jiffies(ise_lpm_fr_ms));
+		ise_lpm_timer_active = true;
 	}
-
-	ise_lpm_wq = create_singlethread_workqueue("ISE_LPM_WQ");
-	INIT_WORK(&ise_lpm_work.work, ise_lpm_work_handle);
 
 	return 0;
 }
 
-static int ise_lpm_remove(struct platform_device *pdev)
+static void ise_lpm_remove(struct platform_device *pdev)
 {
-	return 0;
+	pr_notice("%s ise-wakelock %d\n", __func__, ise_wakelock_en);
+
+	if (ise_lpm_timer_active)
+		del_timer_sync(&ise_lpm_timer);
+
+	mutex_lock(&mutex_ise_lpm);
+	del_timer_sync(&ise_lpm_pd_timer);
+	mutex_unlock(&mutex_ise_lpm);
+
+	if (ise_doorbell_va)
+		iounmap(ise_doorbell_va);
+
+	flush_workqueue(ise_lpm_wq);
+	destroy_workqueue(ise_lpm_wq);
 }
 
 static void ise_lpm_shutdown(struct platform_device *pdev)
