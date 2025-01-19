@@ -3436,7 +3436,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 				} else
 					fun_lye++;
 			} else if (mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER)) {
-				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA2;
+				comp_state.comp_id = mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA);
 				fun_lye++;
 			} else if (mtk_has_layer_cap(layer_info, MTK_DISP_CLIENT_CLEAR_LAYER)) {
 				comp_state.comp_id = DDP_COMPONENT_OVL_EXDMA2;

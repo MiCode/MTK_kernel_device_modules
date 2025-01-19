@@ -1694,6 +1694,9 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 
 void mtk_crtc_gce_event_config(struct drm_crtc *crtc);
 void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
+enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int path,
+	enum addon_scenario scn, enum mtk_ddp_comp_type type);
+
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle);

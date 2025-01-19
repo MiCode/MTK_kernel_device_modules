@@ -1004,8 +1004,9 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	/*bind_comp == NULL => when it does not use EXDMA2, no bind_comp, config size.*/
 	/*comp->id != bind_comp->id => exdma2->bind_comp does not need to be config size again.*/
 
-	/*if (((priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp == NULL)
-		|| (comp->id != priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp->id))) {
+	/*if (priv->data->ovl_exdma_rule && cmp_id < DDP_COMPONENT_ID_MAX &&
+		((priv->ddp_comp[cmp_id]->bind_comp == NULL)
+		|| (comp->id != priv->ddp_comp[cmp_id]->bind_comp->id))) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
 	}*/

@@ -1021,11 +1021,13 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_private *priv;
-	//struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_crtc_state *crtc_state = NULL;
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
 	priv = crtc->dev->dev_private;
+	crtc_state = to_mtk_crtc_state(crtc->state);
 
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
@@ -1082,7 +1084,9 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
 		       value, mask);
-	if (comp->id == DDP_COMPONENT_OVL_EXDMA2) {
+
+	if (priv->data->ovl_exdma_rule
+		&& comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa
 			+ DISP_REG_OVL_DATAPATH_CON, DISP_OVL_OUTPUT_CLAMP, DISP_OVL_OUTPUT_CLAMP);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + OVL_MOUT, 0x1, 0x3);
@@ -2240,6 +2244,8 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 	resource_size_t mmsys_reg = 0;
 	int sec_bit;
 	bool rpo_check_flag = false;
+	struct mtk_crtc_state *crtc_state = NULL;
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 	/* OVL comp might not attach to CRTC in layer_config(), need to check */
 	if (unlikely(!comp->mtk_crtc)) {
 		DDPPR_ERR("%s, %s has no CRTC\n", __func__, mtk_dump_comp_str(comp));
@@ -2249,6 +2255,7 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
 	priv = crtc->dev->dev_private;
+	crtc_state = to_mtk_crtc_state(crtc->state);
 
 	if (fmt == DRM_FORMAT_YUYV || fmt == DRM_FORMAT_YVYU ||
 	    fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_VYUY) {
@@ -2396,9 +2403,11 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 
 		write_phy_layer_addr_cmdq(comp, handle, lye_idx, pending->addr + offset);
 
+		mtk_addon_get_comp(crtc, crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
 
 		if (pending->pq_loop_type == 2) {
-			if (priv->data->mmsys_id == MMSYS_MT6991 && rpo_check_flag) {
+			if (priv->data->ovl_exdma_rule &&
+				comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX) {
 				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 					DISP_REG_OVL_SRC_SIZE, src_size, ~0);
 			} else {
@@ -2415,7 +2424,8 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 
 		if (comp->bind_comp) {
 			if (pending->pq_loop_type == 2) {
-				if (priv->data->mmsys_id == MMSYS_MT6991 && rpo_check_flag) {
+				if (priv->data->ovl_exdma_rule &&
+					comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX) {
 					if (blender_need_align == 1)
 						cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
 							DISP_REG_OVL_SRC_SIZE, pending->dst_roi + 1, ~0);
@@ -2566,6 +2576,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	unsigned int modifier = 0;
 	unsigned int blender_id = 0;
 	bool rpo_check_flag = false;
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 
 	if (!comp)
 		return;
@@ -2673,10 +2684,13 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		con |= mtk_ovl_yuv_matrix_convert(MTK_DRM_DATASPACE_V0_JFIF);
 	}
 
+	mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
+
 	if ((!pending->addr && pending->pq_loop_type == 0) || fmt == DRM_FORMAT_C8)
 		layer_src |= LSRC_COLOR;
 	else if ((pending->pq_loop_type == 2)
-		&& (priv->data->mmsys_id != MMSYS_MT6991 || !rpo_check_flag))
+		&& (!priv->data->ovl_exdma_rule ||
+		comp->id != cmp_id))
 		layer_src |= LSRC_PQ;
 
 	if (rotate) {
@@ -3037,6 +3051,8 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv;
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_crtc_state *crtc_state = NULL;
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 	/* input config */
 	struct mtk_plane_pending_state *pending = &state->pending;
 	dma_addr_t addr = pending->addr;
@@ -3089,6 +3105,7 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
 	priv = crtc->dev->dev_private;
+	crtc_state = to_mtk_crtc_state(crtc->state);
 
 	DDPDBG("%s:%d, addr:0x%lx, pitch:%d, vpitch:%d\n",
 		__func__, __LINE__, (unsigned long)addr,
@@ -3336,8 +3353,11 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_REG_OVL_PITCH,
 			lx_pitch, 0xffff);
 
+		mtk_addon_get_comp(crtc, crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
+
 		if (pending->pq_loop_type == 2) {
-			if (priv->data->mmsys_id == MMSYS_MT6991 && rpo_check_flag) {
+			if (priv->data->ovl_exdma_rule &&
+				comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX) {
 				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 					       DISP_REG_OVL_SRC_SIZE, lx_src_size, ~0);
 			} else {
@@ -3365,7 +3385,8 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 
 		if (comp->bind_comp) {
 			if (pending->pq_loop_type == 2
-				&& (priv->data->mmsys_id == MMSYS_MT6991 && rpo_check_flag))
+				&& (priv->data->ovl_exdma_rule &&
+				comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX))
 				cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
 					DISP_REG_OVL_SRC_SIZE, pending->dst_roi, ~0);
 			else
@@ -3415,6 +3436,15 @@ mtk_ovl_exdma_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id p
 			 enum mtk_ddp_comp_id next, struct mtk_rect rsz_src_roi,
 			 struct mtk_rect rsz_dst_roi, struct cmdq_pkt *handle)
 {
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_crtc *crtc;
+	struct mtk_crtc_state *crtc_state = NULL;
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
+
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	crtc_state = to_mtk_crtc_state(crtc->state);
+
 	if (prev == DDP_COMPONENT_RSZ0 ||
 		prev == DDP_COMPONENT_RSZ1 ||
 		prev == DDP_COMPONENT_Y2R0 ||
@@ -3441,7 +3471,8 @@ mtk_ovl_exdma_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id p
 	} else
 		_ovl_UFOd_in(comp, 0, handle);
 
-	if (prev == -1 && comp->id != DDP_COMPONENT_OVL_EXDMA2) {
+	if (prev == -1 &&
+		comp->id != mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
 			       rsz_src_roi.height << 16 | rsz_src_roi.width,
@@ -3456,6 +3487,15 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 				 union mtk_addon_config *addon_config,
 				 struct cmdq_pkt *handle)
 {
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_crtc *crtc;
+	struct mtk_crtc_state *crtc_state = NULL;
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
+
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	crtc_state = to_mtk_crtc_state(crtc->state);
+
 	if ((addon_config->config_type.module == DISP_RSZ ||
 		addon_config->config_type.module == DISP_RSZ_v2 ||
 		addon_config->config_type.module == DISP_RSZ_v3 ||
@@ -3584,7 +3624,8 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 
 		mtk_ovl_exdma_golden_setting(comp, config->is_dc, handle);
 
-		if (comp->id == DDP_COMPONENT_OVL_EXDMA2) {
+		if (priv->data->ovl_exdma_rule
+			&& comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)) {
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa
 				+ DISP_REG_OVL_DATAPATH_CON, DISP_OVL_OUTPUT_CLAMP, DISP_OVL_OUTPUT_CLAMP);
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + OVL_MOUT, 0x1, 0x3);
@@ -3604,6 +3645,8 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_crtc_state *crtc_state = NULL;
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 
 	if (!comp->mtk_crtc)
 		return;
@@ -3612,7 +3655,10 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	if (comp->mtk_crtc->base.index != 0)
 		return;
 
-	if (comp->id == DDP_COMPONENT_OVL_EXDMA2) {
+	crtc_state = to_mtk_crtc_state(crtc->state);
+
+	if (priv->data->ovl_exdma_rule &&
+		comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa
 			+ DISP_REG_OVL_DATAPATH_CON, DISP_OVL_OUTPUT_CLAMP, DISP_OVL_OUTPUT_CLAMP);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + OVL_MOUT, 0x1, 0x3);
