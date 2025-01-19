@@ -931,31 +931,6 @@ char *mtk_iommu_get_port_name(enum mtk_iommu_type type, int id, int tf_id)
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_get_port_name);
 
-int mtk_smmu_get_port_tf_ids(u32 smmu_id, int port, u32 *tf_ids, u32 ids_num)
-{
-	const struct mtk_iommu_port *port_list;
-	u32 port_nr;
-	int i, idx_list[] = {-1, -1};
-
-	if (!smmu_v3_enable || smmu_id > APU_SMMU || !tf_ids || ids_num == 0)
-		return -EINVAL;
-
-	port_nr = m4u_data->plat_data->port_nr[smmu_id];
-	if (port >= port_nr || mtk_iommu_port_idx(port, smmu_id, idx_list)) {
-		pr_info("%s fail, port=%d\n", __func__, port);
-		return -EINVAL;
-	}
-
-	port_list = m4u_data->plat_data->port_list[smmu_id];
-
-	for (i = 0; i < min_t(u32, ids_num, 2); i++)
-		if (idx_list[i] >= 0)
-			tf_ids[i] = port_list[idx_list[i]].tf_id;
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_get_port_tf_ids);
-
 const struct mau_config_info *mtk_iommu_get_mau_config(
 	enum mtk_iommu_type type, int id,
 	unsigned int slave, unsigned int mau)
@@ -1827,6 +1802,31 @@ int mtk_smmu_latest_trace_dump(struct seq_file *s, u32 smmu_type)
 	return dump_count;
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_latest_trace_dump);
+
+int mtk_smmu_get_port_tf_ids(u32 smmu_id, int port, u32 *tf_ids, u32 ids_num)
+{
+	const struct mtk_iommu_port *port_list;
+	u32 port_nr;
+	int i, idx_list[] = {-1, -1};
+
+	if (!smmu_v3_enable || smmu_id > APU_SMMU || !tf_ids || ids_num == 0)
+		return -EINVAL;
+
+	port_nr = m4u_data->plat_data->port_nr[smmu_id];
+	if (port >= port_nr || mtk_iommu_port_idx(port, smmu_id, idx_list)) {
+		pr_info("%s fail, port=%d\n", __func__, port);
+		return -EINVAL;
+	}
+
+	port_list = m4u_data->plat_data->port_list[smmu_id];
+
+	for (i = 0; i < min_t(u32, ids_num, 2); i++)
+		if (idx_list[i] >= 0)
+			tf_ids[i] = port_list[idx_list[i]].tf_id;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_get_port_tf_ids);
 #else /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 static inline int mtk_smmu_power_get(u32 smmu_type)
 {
