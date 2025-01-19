@@ -92,7 +92,7 @@ void enable_gauge_irq(struct mtk_gauge *gauge,
 {
 	struct irq_desc *desc;
 
-	if (irq >= GAUGE_IRQ_MAX)
+	if (irq >= GAUGE_IRQ_MAX || gauge->gm->disableGM30)
 		return;
 
 	desc = irq_to_desc(gauge->irq_no[irq]);
@@ -144,12 +144,6 @@ struct mtk_battery *get_mtk_battery(void)
 
 	return bm->gm1;
 }
-
-int bat_get_debug_level(void)
-{
-	return BMLOG_DEBUG_LEVEL;
-}
-
 
 bool is_algo_active(struct mtk_battery *gm)
 {
@@ -268,7 +262,7 @@ int dump_pseudo100(struct mtk_battery *gm, enum charge_sel select)
 
 	bm_err(gm, "%s:select=%d\n", __func__, select);
 
-	if (select >= MAX_CHARGE_RDC || select < 0)
+	if (select >= MAX_CHARGE_RDC)
 		return 0;
 
 	for (i = 0; i < MAX_TABLE; i++) {
@@ -1478,11 +1472,14 @@ static void fg_custom_parse_ratio_table(struct mtk_battery *gm,
 		const char *node_srting,
 		struct fuel_gauge_r_ratio_table *profile_struct, int column, int saddles)
 {
-	int battery_r_ratio_ma, battery_r_ratio;
+	int battery_r_ratio_ma = 0, battery_r_ratio = 1000;
 	int idx;
 	struct fuel_gauge_r_ratio_table *profile_p;
 	int s_len = strnlen(node_srting, MAX_PROP_NAME_LEN);
 	char *temp = kmalloc(s_len + 1, GFP_KERNEL);
+
+	if (temp == NULL)
+		return;
 
 	idx = 0;
 	strscpy(temp, node_srting, s_len + 1);

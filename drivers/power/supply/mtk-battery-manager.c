@@ -572,7 +572,7 @@ static ktime_t check_power_misc_time(struct mtk_battery_manager *bm)
 	}
 
 	if (bm->gm_no == 1) {
-		if (bm->sdc.bat[bm->gm1->id].down_to_low_bat == 1) {
+		if (bm->sdc.bat[0].down_to_low_bat == 1) {
 			ktime = ktime_set(10, 0);
 			goto out;
 		}
@@ -602,7 +602,7 @@ out:
 static int power_misc_routine_thread(void *arg)
 {
 	struct mtk_battery_manager *bm = arg;
-	int ret = 0, i;
+	int ret = 0, i, retry = 0;
 	unsigned long flags;
 	int pending_flags;
 	int polling[BATTERY_SDC_MAX] = {0};
@@ -612,6 +612,16 @@ static int power_misc_routine_thread(void *arg)
 		pr_debug("[%s] into\n", __func__);
 		ret = wait_event_interruptible(bm->sdc.wait_que,
 			(bm->sdc.timeout != 0) && !bm->is_suspend);
+
+		if (ret < 0) {
+			retry++;
+			if (retry < 0xFFFFFFFF)
+				continue;
+			else {
+				bm_err(bm->gm1, "%s something wrong retry: %d\n", __func__, retry);
+				break;
+			}
+		}
 
 		spin_lock_irqsave(&bm->sdc.slock, flags);
 		pending_flags = bm->sdc.timeout;
@@ -777,7 +787,7 @@ static void bm_update_status(struct mtk_battery_manager *bm)
 static int battery_manager_routine_thread(void *arg)
 {
 	struct mtk_battery_manager *bm = arg;
-	int ret;
+	int ret = 0, retry = 0;
 	struct timespec64 end_time, tmp_time_now;
 	ktime_t ktime, time_now;
 	unsigned long flags;
@@ -786,6 +796,15 @@ static int battery_manager_routine_thread(void *arg)
 		ret = wait_event_interruptible(bm->wait_que,
 			(bm->bm_update_flag  > 0) && !bm->is_suspend);
 
+		if (ret < 0) {
+			retry++;
+			if (retry < 0xFFFFFFFF)
+				continue;
+			else {
+				bm_err(bm->gm1, "%s something wrong retry: %d\n", __func__, retry);
+				break;
+			}
+		}
 
 		spin_lock_irqsave(&bm->slock, flags);
 		bm->bm_update_flag = 0;
@@ -800,13 +819,13 @@ static int battery_manager_routine_thread(void *arg)
 		tmp_time_now  = ktime_to_timespec64(time_now);
 		end_time.tv_sec = tmp_time_now.tv_sec + 10;
 		end_time.tv_nsec = tmp_time_now.tv_nsec;
-		ktime = ktime_set(end_time.tv_sec, end_time.tv_nsec);
 		bm->endtime = end_time;
 #ifdef BM_USE_HRTIMER
 		ktime = ktime_set(10, 0);
 		hrtimer_start(&bm->bm_hrtimer, ktime, HRTIMER_MODE_REL);
 #endif
 #ifdef BM_USE_ALARM_TIMER
+		ktime = ktime_set(end_time.tv_sec, end_time.tv_nsec);
 		alarm_start(&bm->bm_alarmtimer, ktime);
 #endif
 		spin_lock_irqsave(&bm->slock, flags);
@@ -861,7 +880,7 @@ static int bm_pm_event(struct notifier_block *notifier,
 	struct timespec64 now;
 	struct mtk_battery_manager *bm;
 	unsigned long flags;
-	int i, pending_flags, wake_up_power;
+	int i, pending_flags, wake_up_power = 0;
 
 	bm = container_of(notifier,
 		struct mtk_battery_manager, pm_notifier);
@@ -1044,8 +1063,10 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 		ret_val = battery_get_int_property(gm, BAT_PROP_TEMPERATURE);
 		break;
 	case QMAX_DESIGN:
-		ret_val = gm->fg_table_cust_data.fg_profile[
-				gm->battery_id].q_max * 10;
+		if (gm->battery_id < 0 || gm->battery_id >= TOTAL_BATTERY_NUMBER)
+			ret_val = gm->fg_table_cust_data.fg_profile[0].q_max * 10;
+		else
+			ret_val = gm->fg_table_cust_data.fg_profile[gm->battery_id].q_max * 10;
 		break;
 	case QMAX:
 		ret_val = gm->daemon_data.qmxa_t_0ma;
@@ -1560,9 +1581,11 @@ static void mtk_battery_manager_handler(struct mtk_battery_manager *bm, void *nl
 	struct mtk_battery *gm;
 	bool send = true;
 
-	if (bm == NULL)
+	if (bm == NULL) {
 		bm = get_mtk_battery_manager();
-
+		if (bm == NULL)
+			return;
+	}
 	msg = nl_data;
 //	ret_msg->nl_cmd = msg->nl_cmd;
 	ret_msg->cmd = msg->cmd;
@@ -1580,8 +1603,10 @@ static void mtk_battery_manager_handler(struct mtk_battery_manager *bm, void *nl
 		gm = bm->gm1;
 	else if (msg->instance_id == 1)
 		gm = bm->gm2;
-	else
+	else {
 		pr_err("[%s] can not find gm, id:%d cmd:%d\n", __func__, msg->instance_id, msg->cmd);
+		return;
+	}
 
 	switch (msg->cmd) {
 
@@ -1701,9 +1726,6 @@ void mtk_bm_netlink_handler(struct sk_buff *skb)
 		if (fgd_ret_msg == NULL)
 			return;
 	}
-
-	if (!fgd_ret_msg)
-		return;
 
 	memset(fgd_ret_msg, 0, size);
 

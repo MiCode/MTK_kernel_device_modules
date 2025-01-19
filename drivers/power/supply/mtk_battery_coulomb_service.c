@@ -517,12 +517,14 @@ void gauge_coulomb_service_init(struct mtk_battery *gm)
 {
 	int val = 0;
 	struct mtk_coulomb_service *cs;
-	int ret;
+	int ret = 0;
 
 	bm_debug(gm, "[%s] into\n", __func__);
 	cs = &gm->cs;
 	cs->gm = gm;
-	snprintf(cs->name, 20, "%s gct", gm->gauge->name);
+	ret = snprintf(cs->name, 20, "%s gct", gm->gauge->name);
+	if (ret < 0)
+		bm_err(gm, "[%s] something wrong\n", __func__);
 
 
 	INIT_LIST_HEAD(&cs->coulomb_head_minus);

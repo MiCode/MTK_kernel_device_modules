@@ -85,7 +85,7 @@ int gauge_get_property(struct mtk_battery *gm, enum gauge_property gp,
 
 int gauge_get_int_property(struct mtk_battery *gm, enum gauge_property gp)
 {
-	int val;
+	int val = 0;
 
 	gauge_get_property(gm, gp, &val);
 	return val;
@@ -188,6 +188,26 @@ int bm_get_vsys(struct mtk_battery_manager *bm)
 	return val;
 }
 
+int bat_get_debug_level(struct mtk_battery *gm)
+{
+	if (gm == NULL) {
+		pr_debug("[%s] can not get gauge log level\n", __func__);
+		return BMLOG_DEBUG_LEVEL;
+	} else
+		return gm->log_level;
+}
+
+char *bat_get_gauge_name(struct mtk_battery *gm)
+{
+
+	if (gm == NULL) {
+		pr_debug("[%s] can not get gauge name\n", __func__);
+		return "BATTERY";
+	} else
+		return gm->gauge->name;
+}
+
+
 int gauge_set_property(struct mtk_battery *gm, enum gauge_property gp,
 	int val)
 {
@@ -237,7 +257,7 @@ int battery_get_property(struct mtk_battery *gm, enum battery_property bp,
 
 int battery_get_int_property(struct mtk_battery *gm, enum battery_property bp)
 {
-	int val;
+	int val = 0;
 
 	battery_get_property(gm, bp, &val);
 	return val;
@@ -398,7 +418,7 @@ int set_bm_shutdown_cond(struct mtk_battery_manager *bm, int shutdown_cond)
 
 	now_is_kpoc = is_kernel_power_off_charging(bm->gm1);
 	now_current = gauge_get_int_property(bm->gm1, GAUGE_PROP_BATTERY_CURRENT);
-	now_current = gauge_get_int_property(bm->gm2, GAUGE_PROP_BATTERY_CURRENT);
+	now_current += gauge_get_int_property(bm->gm2, GAUGE_PROP_BATTERY_CURRENT);
 
 	if (now_current >= 0)
 		now_is_charging = 1;
@@ -719,16 +739,26 @@ void battery_update(struct mtk_battery_manager *bm)
 		}
 
 		if (!bm->gm1->bat_plug_out) {
-			if (d1->quse == 0)
-				d1->quse = bm->gm1->fg_table_cust_data.fg_profile[0].fg_profile[
-					bm->gm1->fg_table_cust_data.fg_profile[0].size - 1].mah;
+			if (d1->quse == 0) {
+				if (bm->gm1->battery_id < 0 || bm->gm1->battery_id >= TOTAL_BATTERY_NUMBER)
+					d1->quse = bm->gm1->fg_table_cust_data.fg_profile[
+								0].q_max * 10;
+				else
+					d1->quse = bm->gm1->fg_table_cust_data.fg_profile[
+								bm->gm1->battery_id].q_max * 10;
+			}
 			real_uisoc += bm->gm1->ui_soc * d1->quse;
 			real_quse += d1->quse;
 		}
 		if (!bm->gm2->bat_plug_out) {
-			if (d2->quse == 0)
-				d2->quse = bm->gm2->fg_table_cust_data.fg_profile[0].fg_profile[
-					bm->gm2->fg_table_cust_data.fg_profile[0].size - 1].mah;
+			if (d2->quse == 0) {
+				if (bm->gm2->battery_id < 0 || bm->gm2->battery_id >= TOTAL_BATTERY_NUMBER)
+					d2->quse = bm->gm2->fg_table_cust_data.fg_profile[
+								0].q_max * 10;
+				else
+					d2->quse = bm->gm2->fg_table_cust_data.fg_profile[
+								bm->gm2->battery_id].q_max * 10;
+			}
 			real_uisoc += bm->gm2->ui_soc * d2->quse;
 			real_quse += d2->quse;
 		}
@@ -748,7 +778,7 @@ void battery_update(struct mtk_battery_manager *bm)
 
 			tmp_duraction = ktime_to_timespec64(duraction);
 			if (bm->gm1->fg_cust_data.shutdown_gauge1_xmins == true &&
-				tmp_duraction.tv_sec >= 60 * bm->gm1->fg_cust_data.shutdown_1_time) {
+				tmp_duraction.tv_sec >= 60LL * bm->gm1->fg_cust_data.shutdown_1_time) {
 				pr_err("force uisoc zero percent\n");
 				set_bm_shutdown_cond(bm, UISOC_ONE_PERCENT);
 			}

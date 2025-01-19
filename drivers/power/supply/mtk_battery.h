@@ -51,43 +51,43 @@
 
 #define bm_err(gm, fmt, args...)   \
 do {\
-	if (gm != NULL && gm->log_level >= BMLOG_ERROR_LEVEL) {	\
-		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	if (bat_get_debug_level(gm) >= BMLOG_ERROR_LEVEL) {	\
+		pr_notice("%s:" fmt, bat_get_gauge_name(gm), ##args);	\
 	}	\
 } while (0)
 
 #define bm_warn(gm, fmt, args...)   \
 do {\
-	if (gm != NULL && gm->log_level >= BMLOG_WARNING_LEVEL) {	\
-		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	if (bat_get_debug_level(gm) >= BMLOG_WARNING_LEVEL) {	\
+		pr_notice("%s:" fmt, bat_get_gauge_name(gm), ##args);	\
 	}	\
 } while (0)
 
 #define bm_notice(gm, fmt, args...)   \
 do {\
-	if (gm != NULL && gm->log_level >= BMLOG_NOTICE_LEVEL) {	\
-		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	if (bat_get_debug_level(gm) >= BMLOG_NOTICE_LEVEL) {	\
+		pr_notice("%s:" fmt, bat_get_gauge_name(gm), ##args);	\
 	}	\
 } while (0)
 
 #define bm_info(gm, fmt, args...)   \
 do {\
-	if (gm != NULL && gm->log_level >= BMLOG_INFO_LEVEL) {	\
-		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	if (bat_get_debug_level(gm) >= BMLOG_INFO_LEVEL) {	\
+		pr_notice("%s:" fmt, bat_get_gauge_name(gm), ##args);	\
 	}	\
 } while (0)
 
 #define bm_debug(gm, fmt, args...)   \
 do {\
-	if (gm != NULL && gm->log_level >= BMLOG_DEBUG_LEVEL) {	\
-		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	if (bat_get_debug_level(gm) >= BMLOG_DEBUG_LEVEL) {	\
+		pr_notice("%s:" fmt, bat_get_gauge_name(gm), ##args);	\
 	}	\
 } while (0)
 
 #define bm_trace(gm, fmt, args...)\
 do {\
-	if (gm != NULL && gm->log_level >= BMLOG_TRACE_LEVEL) {	\
-		pr_notice("%s:" fmt, gm->gauge->name, ##args);	\
+	if (bat_get_debug_level(gm) >= BMLOG_TRACE_LEVEL) {	\
+		pr_notice("%s:" fmt, bat_get_gauge_name(gm), ##args);	\
 	}	\
 } while (0)
 
@@ -1401,7 +1401,8 @@ extern void enable_gauge_irq(struct mtk_gauge *gauge,
 	enum gauge_irq irq);
 extern void disable_gauge_irq(struct mtk_gauge *gauge,
 	enum gauge_irq irq);
-extern int bat_get_debug_level(void);
+extern int bat_get_debug_level(struct mtk_battery *gm);
+extern char *bat_get_gauge_name(struct mtk_battery *gm);
 extern int force_get_tbat(struct mtk_battery *gm, bool update);
 extern int force_get_tbat_internal(struct mtk_battery *gm);
 extern int wakeup_fg_algo_cmd(struct mtk_battery *gm,
