@@ -815,6 +815,8 @@ static void cqhci_finish_mrq(struct mmc_host *mmc, unsigned int tag)
 			data->bytes_xfered = 0;
 		else
 			data->bytes_xfered = data->blksz * data->blocks;
+		mmc_mtk_biolog_transfer_req_compl(mmc, tag, 0);
+		mmc_mtk_biolog_check(mmc, cq_host->qcnt);
 	}
 
 	mmc_cqe_request_done(mmc, mrq);
