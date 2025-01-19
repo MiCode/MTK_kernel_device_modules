@@ -16152,6 +16152,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		udc = <&ssusb>;
 	};
 
+	usb_logger: usb-logger {
+		compatible = "mediatek,usb-logger";
+	};
+
 	usb_boost: usb-boost-manager {
 		compatible = "mediatek,usb-boost", "mediatek,mt6991-usb-boost";
 		usb-audio;
