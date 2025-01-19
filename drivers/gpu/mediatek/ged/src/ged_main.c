@@ -146,7 +146,7 @@ unsigned int g_ged_efuse_id;
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int g_ged_apo_support;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
-unsigned int g_ged_frame_base_optimize;
+unsigned int g_ged_frame_base_optimize = 1;
 int prom_enable;
 int soc_timer_unit;
 int g_target_fps_vsync;
@@ -625,11 +625,9 @@ GED_ERROR check_frame_base_optimize(void)
 	struct device_node *app_node;
 	int ret = GED_OK, ret_temp;
 
-	g_ged_frame_base_optimize = 0;
 	app_node = of_find_compatible_node(NULL, NULL, "mediatek,mali");
 	if (!app_node) {
 		GED_LOGE("No mali node.");
-		g_ged_frame_base_optimize = 0;
 	} else {
 		ret_temp = of_property_read_u32(app_node, "gpu-frame-base-optimize",
 			&g_ged_frame_base_optimize);
