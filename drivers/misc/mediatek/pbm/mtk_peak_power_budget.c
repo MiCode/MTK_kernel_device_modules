@@ -29,6 +29,12 @@
 #include "mtk_cg_peak_power_throttling_core.h"
 #include "mtk_peak_power_budget_cgppt.h"
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+#include <linux/scmi_protocol.h>
+#include <tinysys-scmi.h>
+#endif
+
+
 #define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF
 #define MAX_POWER_DRAM 4000
@@ -107,6 +113,87 @@ struct ppb ppb_manual = {
 	.cg_budget_thd = 0,
 	.cg_budget_cnt = 0,
 };
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+static int scmi_spbm_id;
+static struct scmi_tinysys_info_st *_tinfo;
+static DEFINE_MUTEX(spbm_ipi_mutex);
+static int spbm_sspm_ready;
+int spbm_ipi_ackdata;
+enum {
+	SPBM_IPI_SCMI_SET,
+	SPBM_IPI_SCMI_GET,
+};
+
+enum {
+	SPBM_IPI_SOC,
+	NR_SPBM_IPI,
+};
+
+#endif
+
+static int spbm_ipi_to_sspm_scmi_command(unsigned int cmd, unsigned int p1, unsigned int p2,
+			unsigned int p3, unsigned int p4)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	int ret = 0, ackdata = 0;
+	struct scmi_tinysys_status rvalue = {0};
+
+	mutex_lock(&spbm_ipi_mutex);
+
+	if (cmd >= NR_SPBM_IPI) {
+		pr_info("spbm ipi cmd get error %d\n",
+			cmd);
+		goto error;
+	}
+
+	if (spbm_sspm_ready != 1) {
+		pr_info("spbm ipi not ready, skip cmd=%d\n", cmd);
+		goto error;
+	}
+
+	switch (p4) {
+	case SPBM_IPI_SCMI_SET:
+		ret = scmi_tinysys_common_set(_tinfo->ph, scmi_spbm_id,
+			cmd, p1, p2, p3, p4);
+		if (ret) {
+			pr_info("spbm ipi cmd %d send fail ret %d\n",
+			cmd, ret);
+			goto error;
+		}
+		pr_info("spbm send ipi to sspm cmd %d success\n", cmd);
+		ackdata = rvalue.r1;
+		break;
+	case SPBM_IPI_SCMI_GET:
+		break;
+	}
+	mutex_unlock(&spbm_ipi_mutex);
+	return ackdata;
+error:
+	mutex_unlock(&spbm_ipi_mutex);
+#endif
+	return -1;
+}
+static void spbm_ipi_init(void)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	unsigned int ret;
+
+	_tinfo = get_scmi_tinysys_info();
+
+	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-spbm",
+			&scmi_spbm_id);
+	if (ret) {
+		pr_info("get scmi-spbm fail, ret %d\n", ret);
+		spbm_sspm_ready = -2;
+		return;
+	}
+
+	spbm_sspm_ready = 1;
+	pr_info("%s ready!\n", __func__);
+#endif
+}
+
 static int spbm_intf_read_csram_s32(int offset)
 {
 	void __iomem *addr = spbm_csram_base + offset;
@@ -1217,7 +1304,10 @@ static void bat_handler(struct work_struct *work)
 		|| aging_stage != last_aging_stage) {
 		if (timer_pending(&ppb_dbg_timer)) {
 			del_timer_sync(&ppb_dbg_timer);
-			ppb_print_dbg_log(NULL);
+			if (pb.version == 2)
+				ppb_print_dbg_log(NULL);
+			if (pb.version == 3)
+				ppb3_print_dbg_log(NULL);
 		}
 
 		volt = soc_to_ocv(soc * 100, 0, pb.soc_err);
@@ -1255,7 +1345,8 @@ static void bat_handler(struct work_struct *work)
 		pb.aging_cur_stage = aging_stage;
 		kicker_ppb_request_power(KR_BUDGET, pb.sys_power);
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
-		notify_gpueb();
+		if (pb.version == 2)
+			notify_gpueb();
 #endif
 		pr_info("%s: update vsys-er[p,v]=%d,%d vsys[p,v]=%d,%d SOC[soc,ui,s]=%d,%d,%d R[C,A,dc,ac]=%d,%d,%d,%d T[t,s]=%d,%d A[c,s]=%d,%d\n",
 			__func__, pb.sys_power, pb.ocv, pb.sys_power_noerr,
@@ -1264,6 +1355,9 @@ static void bat_handler(struct work_struct *work)
 
 		if (pb.sys_power_noerr <= MBRAIN_NOTIFY_BUDGET_THD && soc != last_soc && cb_func)
 			cb_func();
+
+		if (pb.version == 3)
+			spbm_ipi_to_sspm_scmi_command(SPBM_IPI_SOC, soc, 0, 0, SPBM_IPI_SCMI_SET);
 
 		last_temp = temp;
 		last_soc = soc;
@@ -2555,6 +2649,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	if (pb.version == 3) {
 		timer_setup(&ppb_dbg_timer, ppb3_print_dbg_log, TIMER_DEFERRABLE);
 		mod_timer(&ppb_dbg_timer, jiffies + PPB3_LOG_DURATION);
+		spbm_ipi_init();
 	} else {
 		timer_setup(&ppb_dbg_timer, ppb_print_dbg_log, TIMER_DEFERRABLE);
 		mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);

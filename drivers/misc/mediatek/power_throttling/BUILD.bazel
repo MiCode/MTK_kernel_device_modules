@@ -144,3 +144,20 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/core_ctl",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "mtk_apu_power_throttling",
+    srcs = [
+        "mtk_apu_power_throttling.c",
+    ],
+    hdrs = [
+        "mtk_apu_power_throttling.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+    ],
+)
+
