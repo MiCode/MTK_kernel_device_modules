@@ -20316,11 +20316,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 				      <&mt6379_auxadc_1 MT6379_AUXADC_BATSNS_DBG>;
 			io-channel-names = "chg_vbat", "auxadc_vbat";
 			charger = <&mt6379_chg>;
-			isink-load-supply = <&mt6363_isink_load>;
 			gauge = <&mtk_gauge>;
-			imix_r {
-				val = <90>;
-			};
 		};
 
 		mtk_gauge: mtk-gauge {
@@ -20389,11 +20385,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			io-channel-names = "chg_vbat", "auxadc_vbat";
 			charger = <&mt6379_chg>;
 			gauge = <&mtk_gauge2>;
-			isink-load-supply = <&mt6363_isink_load>;
-			shared-supply-cnt = <2>;
-			imix_r {
-				val = <90>;
-			};
 		};
 
 		mtk_gauge2: mtk-gauge2 {
