@@ -147,7 +147,6 @@ void lpm_suspend_s2idle_reflect(int cpu,
 		pr_info("[name:spm&][%s:%d] - resume\n",
 			__func__, __LINE__);
 
-		pm_system_wakeup();
 	}
 	cpumask_clear_cpu(cpu, &s2idle_cpumask);
 }
@@ -256,15 +255,15 @@ static int lpm_init_spm_irq(void)
 		goto FINISHED;
 	}
 
-	ret = request_irq(irq, spm_irq_handler, 0, "spm-irq", NULL);
-	if (ret) {
-		pr_info("[name:spm&][SPM] failed to install spm irq handler, ret = %d\n", ret);
-		goto FINISHED;
-	}
-
 	ret = enable_irq_wake(irq);
 	if (ret) {
 		pr_info("[name:spm&][SPM] failed to enable spm irq wake, ret = %d\n", ret);
+		goto FINISHED;
+	}
+
+	ret = request_irq(irq, spm_irq_handler, 0, "spm-irq", NULL);
+	if (ret) {
+		pr_info("[name:spm&][SPM] failed to install spm irq handler, ret = %d\n", ret);
 		goto FINISHED;
 	}
 
