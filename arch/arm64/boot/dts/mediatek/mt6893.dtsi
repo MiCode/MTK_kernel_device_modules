@@ -3968,9 +3968,8 @@ cpus {
 		};
 
 		disp_smi_subcom: disp-smi-subcom@14120000 {
-			compatible = "mediatek,disp_smi_subcom",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,disp_smi_subcom", "mediatek,mt6893-smi-common",
+				"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x14120000 0 0x1000>;
 			mediatek,common-id = <5>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_DISP>;
@@ -3982,9 +3981,8 @@ cpus {
 		};
 
 		disp_smi_subcom1: disp-smi-subcom1@14121000 {
-			compatible = "mediatek,disp_smi_subcom1",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,disp_smi_subcom1", "mediatek,mt6893-smi-common",
+				"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x14121000 0 0x3000>;
 			mediatek,common-id = <6>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_DISP>;
@@ -4013,9 +4011,8 @@ cpus {
 		};
 
 		mdp_smi_subcom: mdp-smi-subcom@1f023000 {
-			compatible = "mediatek,mdp_smi_subcom",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,mdp_smi_subcom","mediatek,mt6893-smi-common",
+				"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x1f023000 0 0x1000>;
 			mediatek,common-id = <8>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_MDP>;
@@ -4027,9 +4024,8 @@ cpus {
 		};
 
 		mdp_smi_subcom1: mdp-smi-subcom1@1f024000 {
-			compatible = "mediatek,mdp_smi_subcom1",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,mdp_smi_subcom1", "mediatek,mt6893-smi-common",
+				 "mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x1f024000 0 0x3000>;
 			mediatek,common-id = <10>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_MDP>;
@@ -4041,9 +4037,8 @@ cpus {
 		};
 
 		mdp_smi_common: mdp-smi-common@1f002000 {
-			compatible = "mediatek,mdp_smi_common",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,mdp_smi_common", "mediatek,mt6893-smi-common",
+				 "mediatek,smi-common", "syscon";
 			reg = <0 0x1f002000 0 0x1000>;
 			mediatek,smi-supply = <&mdp_smi_subcom 0 &mdp_smi_subcom1 0>;
 			mediatek,common-id = <7>;
@@ -4059,8 +4054,8 @@ cpus {
 
 		sysram_smi_common: sysram-smi-common@1f022000 {
 			compatible = "mediatek,sysram_smi_common",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+				"mediatek,mt6893-smi-common",
+				"mediatek,smi-common", "syscon";
 			reg = <0 0x1f022000 0 0x1000>;
 			mediatek,common-id = <9>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_MDP>;
@@ -6383,9 +6378,8 @@ cpus {
 		};
 
 		cam_smi_5x1_sub_comm: cam-smi-subcom@1a00c000 {
-			compatible = "mediatek,cam_smi_subcom",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,cam_smi_subcom", "mediatek,mt6893-smi-common",
+				"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x1a00c000 0 0x1000>;
 			mediatek,smi-supply = <&mdp_smi_common 0>;
 			mediatek,common-id = <1>;
@@ -6398,9 +6392,8 @@ cpus {
 		};
 
 		cam_smi_2x1_sub_comm0: cam-smi-subcom1@1a00d000 {
-			compatible = "mediatek,cam_smi_subcom1",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,cam_smi_subcom1", "mediatek,mt6893-smi-common",
+				"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x1a00d000 0 0x1000>;
 			mediatek,smi-supply = <&mdp_smi_common 0>;
 			mediatek,common-id = <2>;
@@ -6413,9 +6406,8 @@ cpus {
 		};
 
 		cam_smi_2x1_sub_comm1: cam-smi-subcom2@1a00e000 {
-			compatible = "mediatek,cam_smi_subcom2",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,cam_smi_subcom2", "mediatek,mt6893-smi-common",
+				"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x1a00e000 0 0x1000>;
 			mediatek,smi-supply = <&mdp_smi_common 0>;
 			mediatek,common-id = <3>;
@@ -6561,9 +6553,8 @@ cpus {
 		};
 
 		ipe_smi_2x1_sub_comm: ipe-smi-subcom@1b00e000 {
-			compatible = "mediatek,ipe_smi_subcom",
-				     "mediatek,mt6893-smi-common",
-					 "mediatek,smi-common";
+			compatible = "mediatek,ipe_smi_subcom", "mediatek,mt6893-smi-common",
+					 "mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
 			reg = <0 0x1b00e000 0 0x1000>;
 			mediatek,common-id = <4>;
 			mediatek,smi-supply = <&smi_common 0>;
