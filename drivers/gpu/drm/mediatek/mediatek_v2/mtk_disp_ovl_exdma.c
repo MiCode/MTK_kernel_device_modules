@@ -4124,8 +4124,10 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		if (!IS_ERR(comp->hdr_qos_req)) {
-			if (bw_val && usage_ovl_compr)
+			if (bw_val && usage_ovl_compr) {
 				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
+				hdr_bw_val = (hdr_bw_val > 129) ? hdr_bw_val : 129; //set low bound
+			}
 
 			if (hdr_bw_val != comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw_val %u -> %u\n",
@@ -4229,8 +4231,10 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		comp->last_hrt_bw = bw_val;
 
 		if (!IS_ERR(comp->hdr_qos_req)) {
-			if (bw_val && usage_ovl_compr)
+			if (bw_val && usage_ovl_compr) {
 				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
+				hdr_bw_val = (hdr_bw_val > 129) ? hdr_bw_val : 129; //set low bound
+			}
 
 			if (hdr_bw_val > comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw fast up %u -> %u\n",
