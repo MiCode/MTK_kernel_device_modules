@@ -36,7 +36,6 @@
 
 #include "goodix_ts_core.h"
 #define CREATE_TRACE_POINTS
-#include "touch_trace.h"
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
@@ -1355,7 +1354,6 @@ void goodix_ts_report_finger(struct input_dev *dev,
 {
 	unsigned int touch_num = touch_data->touch_num;
 	int i;
-	int64_t ktime_now_ns, ktime_irq_ns, ktime_diff_ns;
 
 	ts_core->finger_down = touch_data->touch_num > 0;
 	mutex_lock(&dev->mutex);
@@ -1392,13 +1390,6 @@ void goodix_ts_report_finger(struct input_dev *dev,
 	input_set_timestamp(dev,
 		ns_to_ktime(atomic64_read(&ts_core->timestamp)));
 	input_sync(dev);
-	if (trace_enable == true) {
-		ktime_now_ns = ktime_get_ns();
-		ktime_irq_ns = atomic64_read(&ts_core->timestamp);
-		ktime_diff_ns = ktime_now_ns - ktime_irq_ns;
-		trace_touch_event(ktime_now_ns, ktime_irq_ns, ktime_diff_ns);
-	}
-
 #ifdef GOODIX_TZ
 	if ((atomic_read(&delayed_reset) == 1) && (touch_num == 0)) {
 		struct goodix_ts_hw_ops *hw_ops = ts_core->hw_ops;
