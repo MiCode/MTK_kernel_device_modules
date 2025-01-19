@@ -548,6 +548,9 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 		return;
 	}
 
+	if (!p)
+		return;
+
 	util = task_util(p);
 	spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
 	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
