@@ -3,7 +3,9 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#define pr_fmt(fmt) "[ktch]"fmt
+#ifndef pr_fmt
+#define pr_fmt(fmt) "[ktch]" fmt
+#endif
 
 #include <linux/cpufreq.h>
 #include <linux/input.h>
