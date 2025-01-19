@@ -41,6 +41,7 @@ SIMPLE_CHG_MODULES = [
     "mt6362-chg",
     "mt6370-charger",
     "mt6375-charger",
+    "mtk_2p_charger",
     "rt9465",
     "rt9490-charger",
     "rt9758-charger",
@@ -205,7 +206,196 @@ define_mgk_ddk_ko(
     ],
     includes = ["."],
     hdrs = glob([
-	"mtk_charger.h",
+        "mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pep",
+    srcs = [
+        "mtk_pe.c",
+        "mtk_pe.h",
+        "mtk_pe_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pep20",
+    srcs = [
+        "mtk_pe2.c",
+        "mtk_pe2.h",
+        "mtk_pe2_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pep40",
+    srcs = [
+        "mtk_pe4.c",
+        "mtk_pe4.h",
+        "mtk_pe4_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pep45",
+    srcs = [
+        "mtk_pe4_5.c",
+        "mtk_pe4_5.h",
+        "mtk_pe4_5_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pep50",
+    srcs = [
+        "mtk_pe5.c",
+        "mtk_pe5.h",
+        "mtk_pe5_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pep50p",
+    srcs = [
+        "mtk_pe5p.c",
+        "mtk_pe5p.h",
+        "mtk_pe5p_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_charger.h",
+        "mtk_smartcharging.h",
+    ]),
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_hvbpc",
+    srcs = [
+        "mtk_hvbp.c",
+        "mtk_hvbp.h",
+        "mtk_hvbp_hal.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "mtk_charger.h",
         "mtk_smartcharging.h",
     ]),
     ko_deps = [
