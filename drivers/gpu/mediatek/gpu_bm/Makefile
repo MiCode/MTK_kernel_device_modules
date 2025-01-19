@@ -18,7 +18,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/
 
 ifeq ($(CONFIG_MTK_GPU_SUPPORT),y)
-#ccflags-$(CONFIG_MTK_QOS_FRAMEWORK) += -DMTK_QOS_FRAMEWORK
+ccflags-$(CONFIG_MTK_QOS_FRAMEWORK) += -DMTK_QOS_FRAMEWORK
 $(info *GPU BM QoS 2.0 QOS Framework defined)
 endif
 
