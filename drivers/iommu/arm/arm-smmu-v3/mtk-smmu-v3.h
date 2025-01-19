@@ -661,6 +661,7 @@ struct mtk_smmu_data {
 	u32				tcu_qos;
 	bool				axslc;
 	bool				ssid_enabled;
+	bool				ela_support;
 	u32				*smi_com_base;
 	u32				smi_com_base_cnt;
 	bool				irq_disable;
@@ -1145,9 +1146,15 @@ static inline void smmu_write_reg(void __iomem *base,
 	writel_relaxed(val, base + offset);
 }
 
+static inline u64 smmu_read_reg64(void __iomem *base,
+				  unsigned int offset)
+{
+	return readq_relaxed(base + offset);
+}
+
 static inline void smmu_write_reg64(void __iomem *base,
 				    unsigned int offset,
-				    unsigned int val)
+				    u64 val)
 {
 	writeq_relaxed(val, base + offset);
 }

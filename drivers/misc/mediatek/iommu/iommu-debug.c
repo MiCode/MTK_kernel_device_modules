@@ -32,6 +32,7 @@
 #include "iommu_debug.h"
 #include "iommu_port.h"
 #include "io-pgtable-arm.h"
+#include "mtk-smmu-ela.h"
 #include "smmu_reg.h"
 
 #include "../../../iommu/arm/arm-smmu-v3/arm-smmu-v3.h"
@@ -2155,6 +2156,7 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 				continue;
 
 			mtk_smmu_wpreg_dump(s, i);
+			mtk_smmu_ela_dump(s, i);
 			mtk_smmu_power_put(i);
 
 			/* no need dump all page table raw data */

@@ -32,6 +32,7 @@ ddk_headers(
         "iommu_pseudo.h",
         "iommu_secure.h",
         "mtk-iommu-util.h",
+	"mtk-smmu-ela.h",
         "smmu_secure.h",
     ]),
     includes = ["."],
@@ -127,10 +128,12 @@ define_mgk_ddk_ko(
     srcs = [
         "iommu_port.h",
         "iommu-debug.c",
+	"mtk-smmu-ela.c",
         "smmu_reg.h",
     ],
     hdrs = glob([
         "iommu_debug.h",
+	"mtk-smmu-ela.h",
     ]),
     includes = ["."],
     copts = [
@@ -158,6 +161,9 @@ define_mgk_ddk_ko(
     header_deps = [
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
     ],
-    ko_deps = [":mtk_iommu_util"],
+    ko_deps = [
+        ":mtk_iommu_util",
+        ":iommu_debug",
+    ],
     out = "mtk_smmu_qos.ko",
 )

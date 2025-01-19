@@ -27,6 +27,7 @@
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 #include "iommu_debug.h"
 #endif
+#include "mtk-smmu-ela.h"
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 #include "smmu_secure.h"
 #endif
@@ -943,6 +944,9 @@ static int mtk_smmu_hw_init(struct arm_smmu_device *smmu)
 	smmu_pmu_remap(smmu);
 	if (data->plat_data->smmu_type == GPU_SMMU && data->irq_disable)
 		smmu->features |= ARM_SMMU_FEAT_DIS_EVTQ;
+
+	if (data->ela_support)
+		mtk_smmu_ela_init(plat_data->smmu_type);
 
 	return 0;
 }
@@ -2783,6 +2787,9 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 		data->tcu_qos = tcu_qos & TCU_QOS_MSK;
 		dev_info(smmu->dev, "parse tcu-qos:%d\n", tcu_qos);
 	}
+
+	if (of_property_read_bool(smmu->dev->of_node, "mtk,smmu-ela"))
+		data->ela_support = true;
 }
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)

@@ -22,6 +22,7 @@
 #include "mtk_smmu_qos_events.h"
 
 #include "arm-smmu-v3.h"
+#include "mtk-smmu-ela.h"
 #include "mtk-smmu-v3.h"
 #include "mtk-iommu-util.h"
 
@@ -87,6 +88,7 @@ static struct smmu_lmu_data smmu_lmu_list[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX + 1] =
 static struct smmu_mpam_data smmu_mpam_list[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX + 1] = {0};
 static bool power_state[SMMU_TYPE_NUM];
 static bool need_poll[SMMU_TYPE_NUM];
+static bool ela_enable[SMMU_TYPE_NUM];
 static char trace_buf[SMMU_QOS_TRACE_BUF_MAX];
 
 static struct hrtimer hr_timer;
@@ -1191,6 +1193,12 @@ static int smmu_qos_debug_set_ftrace(const char *val,
 				pr_info("%s, smmu:%d get power ok\n",
 					__func__, i);
 			}
+
+			if (mtk_smmu_ela_enabled(i)) {
+				ela_enable[i] = true;
+				mtk_smmu_disable_ela(i);
+			}
+
 			power_state[i] = true;
 			create_pmu_perf_events(i);
 			start_smmu_lmu(i);
@@ -1217,6 +1225,11 @@ static int smmu_qos_debug_set_ftrace(const char *val,
 			destroy_pmu_perf_event(i);
 			stop_smmu_lmu(i);
 			destroy_mpam_perf_event(i);
+
+			if (ela_enable[i]) {
+				mtk_smmu_enable_ela(i);
+				ela_enable[i] = false;
+			}
 
 			mtk_smmu_rpm_put(i);
 			pr_info("%s, smmu:%d put power ok\n",
@@ -2060,6 +2073,7 @@ int mtk_smmu_qos_probe(struct platform_device *pdev)
 	for (i = 0; i < SMMU_TYPE_NUM; i++) {
 		power_state[i] = false;
 		need_poll[i] = false;
+		ela_enable[i] = false;
 		data = get_smmu_data(i);
 		if (data != NULL) {
 			wp_base = data->smmu.wp_base;
