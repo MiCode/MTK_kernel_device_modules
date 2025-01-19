@@ -11,7 +11,8 @@
 # GNU General Public License for more details.
 #
 
-obj-$(CONFIG_MTPROF) = bootprof.o
+obj-$(CONFIG_MTPROF) += bootprof.o
+bootprof-y := bootprof_main.o
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 ccflags-y += -I$(srctree)/include/trace/events

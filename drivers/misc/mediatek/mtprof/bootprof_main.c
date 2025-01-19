@@ -578,10 +578,10 @@ static void mt_bootprof_bldr_show(struct seq_file *m)
 
 		if(bldr.bl2ext_st > 0)
 			seq_printf(m, "%10d %6u : %s (%s: %d)\n", bldr.bl2ext, bldr.bl2ext_st,
-						"bl2_ext", "Start->Show logo", bldr.logo);
+					"bl2_ext", "Start->Show logo", bldr.logo);
 		else
 			seq_printf(m, "%10d %6s : %s (%s: %d)\n", bldr.bl2ext, "",
-						"bl2_ext", "Start->Show logo", bldr.logo);
+					"bl2_ext", "Start->Show logo", bldr.logo);
 		if(bldr.tfa > 0)
 			seq_printf(m, "%10u %6s : %s\n", bldr.tfa, "", "tfa");
 		if(bldr.sec_os > 0)
@@ -596,7 +596,7 @@ static void mt_bootprof_bldr_show(struct seq_file *m)
 	} else {
 		seq_printf(m, "%10d        : %s\n", bldr.pl, "preloader");
 		seq_printf(m, "%10u        : %s (%s: %u)\n", bldr.lk,
-                                    "lk", "Start->Show logo", bldr.logo);
+				"lk", "Start->Show logo", bldr.logo);
 	}
 	return;
 }
