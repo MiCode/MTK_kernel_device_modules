@@ -212,6 +212,7 @@ int avg_freq;
 unsigned int pre_freq, cur_freq;
 
 #define GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM 4
+#define GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM 20
 #define GED_FB_DVFS_FERQ_DROP_RATIO_LIMIT 30
 static int is_fb_dvfs_triggered;
 static int is_fallback_mode_triggered;
@@ -252,6 +253,12 @@ static int g_enable_lb_async;
 static unsigned int protm_cnt;
 static unsigned int protm_status;
 static unsigned int protm_enable;
+
+unsigned int fb_rsf_policy_enable = 0;
+extern unsigned int force_loading_based_enable;
+static unsigned int fb_mfrc_policy_enable;
+static unsigned int fb_mfrc_policy_margin;
+
 
 void ged_dvfs_last_and_target_cb(int t_gpu_target, int boost_accum_gpu)
 {
@@ -2202,13 +2209,18 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	int minfreq_idx = ged_get_min_oppidx();
 	static int num_pre_frames;
 	static int cur_frame_idx;
+	static int cur_rsf_frame_idx;
 	static int busy_cycle[GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM];
+	static int rsf_busy_cycle[GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM];
 	int gpu_busy_cycle = 0;
 	int busy_cycle_cur;
 	unsigned long ui32IRQFlags;
 	static unsigned int force_fallback_pre;
 	static int margin_low_bound;
 	int cur_opp_id = ged_get_cur_oppidx();
+
+	fb_mfrc_policy_enable = force_loading_based_enable >> 8;
+	fb_mfrc_policy_margin = force_loading_based_enable & 0xFF;
 
 	gpu_freq_pre = ged_get_cur_freq();
 	gpu_freq_overdue_max = div_u64(((u64)ged_get_max_freq_in_opp() * 1000), OVERDUE_FREQ_TH);
@@ -2278,6 +2290,10 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	/* obtain GPU frame property */
 	t_gpu = div_u64(t_gpu, 100000);   // change unit from ns to 100*us
 	t_gpu_target = div_u64(t_gpu_target, 100000);   // change unit from ns to 100*us
+
+	if (fb_mfrc_policy_enable==2 && ged_kpi_get_main_bq_uncomplete_dequeue_count()){
+		return gpu_freq_pre;
+	}
 
 	gpu_util_history_query_frame_property(&frame_workload, &frame_t_gpu);
 	t_gpu_pipe = t_gpu;
@@ -2384,6 +2400,11 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	trace_GPU_DVFS__Policy__Frame_based__Margin__Detail(dvfs_margin_mode,
 		target_fps_margin, dvfs_min_margin_inc_step, dvfs_margin_low_bound);
 
+	if (fb_mfrc_policy_enable==2 && !ged_kpi_get_main_bq_uncomplete_dequeue_count()){
+		gx_fb_dvfs_margin = fb_mfrc_policy_margin*10;
+		trace_tracing_mark_write(5566, "mfrc_policy_margin", fb_mfrc_policy_margin);
+	}
+
 	t_gpu_target_hd = div_u64((u64)t_gpu_target * (1000 - gx_fb_dvfs_margin), 1000);
 
 	//  * 100 to keep unit uniform
@@ -2403,6 +2424,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	busy_cycle_cur = ap_workload;
 
 	busy_cycle[cur_frame_idx] = busy_cycle_cur;
+	rsf_busy_cycle[cur_rsf_frame_idx] = busy_cycle_cur;
 
 	if (num_pre_frames != GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM - 1) {
 		gpu_busy_cycle = busy_cycle[cur_frame_idx];
@@ -2414,6 +2436,10 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 		gpu_busy_cycle = (gpu_busy_cycle > busy_cycle_cur) ?
 			gpu_busy_cycle : busy_cycle_cur;
 	}
+
+	if(fb_rsf_policy_enable)
+		gpu_busy_cycle = rsf_busy_cycle[(cur_rsf_frame_idx+(GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM-fb_rsf_policy_enable))%GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM];
+
 
 	trace_GPU_DVFS__Policy__Frame_based__Workload((busy_cycle_cur * 100),
 		(gpu_busy_cycle * 100), (ap_workload_real * 100),
@@ -2439,6 +2465,9 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 	cur_frame_idx = (cur_frame_idx + 1) %
 		GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM;
+
+	cur_rsf_frame_idx = (cur_rsf_frame_idx + 1) %
+		GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM;
 
 	ui32NewFreqID = minfreq_idx;
 

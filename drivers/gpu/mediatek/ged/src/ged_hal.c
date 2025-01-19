@@ -186,7 +186,7 @@ static ssize_t custom_boost_gpu_freq_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(custom_boost_gpu_freq);
 //-----------------------------------------------------------------------------
-unsigned int fb_rsf_policy_flag;
+extern unsigned int fb_rsf_policy_enable;
 
 static ssize_t fb_rsf_policy_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -194,9 +194,9 @@ static ssize_t fb_rsf_policy_show(struct kobject *kobj,
 {
 	int pos = 0;
 
-	if (fb_rsf_policy_flag){
+	if (fb_rsf_policy_enable){
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"fb_rsf_policy_enable (%d)\n",fb_rsf_policy_flag);
+				"fb_rsf_policy_enable (%d)\n",fb_rsf_policy_enable);
 	}else
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"fb_rsf_policy is disabled\n");
 
@@ -214,11 +214,11 @@ static ssize_t fb_rsf_policy_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtouint(acBuffer, 0, &u32Value) == 0) {
-				if (u32Value > 0 && u32Value < 4) {
-					fb_rsf_policy_flag = u32Value;
+				if (u32Value > 0) {
+					fb_rsf_policy_enable = u32Value;
 					ged_eb_dvfs_task(EB_FB_RSF_POLICY_ENABLE, u32Value);
 				} else {
-					fb_rsf_policy_flag = 0;
+					fb_rsf_policy_enable = 0;
 					ged_eb_dvfs_task(EB_FB_RSF_POLICY_ENABLE, 0);
 				}
 			}
@@ -1245,11 +1245,19 @@ static ssize_t force_loading_base_show(struct kobject *kobj,
 {
 
 	int pos = 0;
+	int margin = 0;
+	int force_loading_base = 0;
 
-	if (force_loading_based_enable)
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"force_loading_base is enabled\n");
-	else
-		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"force_loading_base is disabled\n");
+	if (force_loading_based_enable) {
+		force_loading_base = force_loading_based_enable >> 8;
+		if (force_loading_base == 1)
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,"force_loading_base is enabled\n");
+		else if (force_loading_base == 2){
+			margin =  force_loading_based_enable&0xFF;
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,"MFRC dvfs policy is enabled , MFRC dvfs margin %d\n",margin);
+		}
+	}else
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,"force_loading_base & MFRC dvfs policy is disabled\n");
 
 	return pos;
 }
@@ -1263,10 +1271,13 @@ static ssize_t force_loading_base_store(struct kobject *kobj,
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
-				if (i32Value > 0 && i32Value < 256)
-					force_loading_based_enable = 1;
-				else
+				if (i32Value > 0 && i32Value < 1000) {
+					force_loading_based_enable = i32Value;
+					ged_eb_dvfs_task(EB_FB_MFRC_POLICY_ENABLE, i32Value);
+				} else {
 					force_loading_based_enable = 0;
+					ged_eb_dvfs_task(EB_FB_MFRC_POLICY_ENABLE, i32Value);
+				}
 			}
 		}
 	}
@@ -1274,6 +1285,7 @@ static ssize_t force_loading_base_store(struct kobject *kobj,
 	return count;
 }
 static KOBJ_ATTR_RW(force_loading_base);
+//------------------------------------------------------------------------------
 
 static ssize_t gpu_fps_show(struct kobject *kobj,
 		struct kobj_attribute *attr,

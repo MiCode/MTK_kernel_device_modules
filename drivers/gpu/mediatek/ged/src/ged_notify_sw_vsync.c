@@ -423,8 +423,8 @@ void ged_eb_dvfs_frame_done_dump(void)
 	trace_GPU_DVFS__Policy__Frame_based__Workload(
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_BUSY_CYCLE_CUR].addr),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_BUSY_CYCLE].addr),
-			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_PIPE].addr),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_REAL].addr),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_PIPE].addr),
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOADING_MODE));
 
 	trace_GPU_DVFS__Policy__Frame_based__GPU_Time(
@@ -451,6 +451,9 @@ void ged_eb_dvfs_frame_done_dump(void)
 	trace_tracing_mark_write(5566, "preserve",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE));
 
+	if (mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) >> 8 == 2)
+		trace_tracing_mark_write(5566, "mfrc_policy_margin",
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) & 0xFF);
 
 #endif
 }

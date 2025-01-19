@@ -664,10 +664,11 @@ enum {
 	GPUFDVFS_IPI_GET_LB_TUNE_PARAM      = 16,
 	GPUFDVFS_IPI_SET_KPI_TS             = 17,
 	GPUFDVFS_IPI_GET_DEFAULT_POLICY_MODE = 18,
-	GPUFDVFS_IPI_GET_KPI_DATA 			= 19,
-	GPUFDVFS_IPI_GET_TABLE_DATA			= 20,
-	GPUFDVFS_IPI_SET_FB_RSF_POLICY = 21,
-	GPUFDVFS_IPI_SET_CONFIG				= 22,
+	GPUFDVFS_IPI_GET_KPI_DATA           = 19,
+	GPUFDVFS_IPI_GET_TABLE_DATA         = 20,
+	GPUFDVFS_IPI_SET_FB_RSF_POLICY      = 21,
+	GPUFDVFS_IPI_SET_CONFIG             = 22,
+	GPUFDVFS_IPI_SET_FB_MFRC_POLICY     = 23,
 
 	NR_GPUFDVFS_IPI,
 };
@@ -866,6 +867,7 @@ enum ged_eb_dvfs_task_index {
 	EB_SET_PANEL_REFRESH_RATE,
 	EB_DBG_CMD,
 	EB_FB_RSF_POLICY_ENABLE,
+	EB_FB_MFRC_POLICY_ENABLE,
 	EB_MAX_INDEX,
 };
 
@@ -1017,6 +1019,7 @@ typedef struct {
  GEN("fb_busy_cycle", GPU_FB_BUSY_CYCLE, 1, "fb_busy_cycle") \
  GEN("t_gpu_target_us", GPU_T_TARGET_US, 1, "t_gpu_target_us") \
  GEN("g_debug", GPU_DEBUG, 1, "g_debug") \
+ GEN("fb_mfrc", GPU_FB_MFRC, 1, "fb_mfrc")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

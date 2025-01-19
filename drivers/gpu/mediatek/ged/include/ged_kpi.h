@@ -97,6 +97,7 @@ void ged_kpi_set_loading_mode(unsigned int mode, unsigned int stride_size);
 
 GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info);
 int ged_kpi_get_main_bq_uncomplete_count(void);
+int ged_kpi_get_main_bq_uncomplete_dequeue_count(void);
 GED_ERROR ged_kpi_eb_dvfs_get_time(struct ged_risky_bq_info *info);
 
 /* For Gift Usage */

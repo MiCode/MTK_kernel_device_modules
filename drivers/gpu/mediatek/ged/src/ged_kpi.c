@@ -179,6 +179,7 @@ struct GED_KPI_HEAD {
 	int i32QedBuffer_length;
 	int i32Gpu_uncompleted;
 	int i32Gpu_uncompleted_queue;		//calculate uncomplete count from queue
+	int i32Gpu_uncompleted_dequeue;		//calculate uncomplete count from dequeue
 	unsigned int gpu_completed_count;
 	int i32DebugQedBuffer_length;
 	int isSF;
@@ -457,6 +458,8 @@ static u64 eb_ullTimeStamp;
 static int g_policy_frame_his[POLICY_FRAME_NUM];
 static int g_policy_his_idx;
 static bool g_stable_lb;
+
+static unsigned int uncompleted_queue_cnt;
 
 /* ------------------------------------------------------------------- */
 void (*ged_kpi_output_gfx_info2_fp)(long long t_gpu, unsigned int cur_freq
@@ -1445,7 +1448,7 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 
 static int ged_kpi_get_fallback_mode(void)
 {
-	if (force_loading_based_enable)
+	if ((force_loading_based_enable >> 8) == 1)
 		return 1;
 	else
 		return is_loading_based;
@@ -1639,6 +1642,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		spin_unlock(&psHead->sListLock);
 		psHead->i32Count += 1;
 		psHead->i32Gpu_uncompleted++;
+		psHead->i32Gpu_uncompleted_dequeue++;
+		uncompleted_queue_cnt = psHead->i32Gpu_uncompleted_dequeue;
 		psHead->last_TimeStampD = psKPI->ullTimeStampD;
 		psKPI->i32Gpu_uncompleted = psHead->i32Gpu_uncompleted;
 
@@ -1890,6 +1895,8 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		psHead->last_TimeStamp2 = psTimeStamp->ullTimeStamp;
 		psHead->i32Gpu_uncompleted--;
 		psHead->i32Gpu_uncompleted_queue--;
+		psHead->i32Gpu_uncompleted_dequeue--;
+		uncompleted_queue_cnt = psHead->i32Gpu_uncompleted_dequeue;
 		//ged_eb_dvfs_task(EB_UPDATE_UNCOMPLETE_COUNT, psHead->i32Gpu_uncompleted_queue);
 		psHead->gpu_completed_count++;
 		psKPI->gpu_loading = psTimeStamp->i32GPUloading;
@@ -3243,6 +3250,11 @@ int ged_kpi_get_main_bq_uncomplete_count(void)
 		return main_head->i32Gpu_uncompleted;
 	else
 		return -1;
+}
+
+int ged_kpi_get_main_bq_uncomplete_dequeue_count(void)
+{
+	return uncompleted_queue_cnt;
 }
 
 unsigned long long ged_kpi_get_fb_timestamp(void)
