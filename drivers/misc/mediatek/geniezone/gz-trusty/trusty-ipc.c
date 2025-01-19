@@ -1980,86 +1980,110 @@ static void _txvq_cb(struct virtqueue *txvq)
 static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 				struct tipc_dev_config *config)
 {
-	int err, i;
+	int err = 0;
 	struct virtio_device *vdev = vds->vdev;
-	struct virtqueue **vqs;
-	struct virtqueue_info **vqs_info;
-	int allvq_num;
+	struct virtqueue **vqs = NULL;
+	struct virtqueue_info *vqs_info = NULL;
+	size_t allvq_num = 0UL;
 
 	allvq_num = vds->rxvq_num + vds->txvq_num;
+	if (unlikely(!allvq_num)) {
+		err = -ENODEV;
+		goto final;
+	}
 
 	/* allocate temporary arrays */
 	vqs = devm_kcalloc(&vdev->dev, allvq_num, sizeof(struct virtqueue *),
-			   GFP_KERNEL);
-	if (!vqs)
-		return -ENOMEM;
+			GFP_KERNEL);
+	if (unlikely(!vqs)) {
+		err = -ENOMEM;
+		goto final;
+	}
 
-	vqs_info = devm_kcalloc(&vdev->dev, allvq_num, sizeof(struct virtqueue_info *),
-				GFP_KERNEL);
-	if (!vqs_info)
-		return -ENOMEM;
-
-	for (int i = 0; i < allvq_num; i++) {
-        vqs_info[i] = devm_kcalloc(&vdev->dev, 1, sizeof(struct virtqueue_info),
-				GFP_KERNEL);
-        if (!vqs_info[i])
-            return -ENOMEM;
-    }
+	vqs_info = devm_kcalloc(&vdev->dev, allvq_num,
+			sizeof(struct virtqueue_info), GFP_KERNEL);
+	if (unlikely(!vqs_info)) {
+		err = -ENOMEM;
+		goto final;
+	}
 
 	/* set rx vqueue name & callback */
 	err = snprintf(vds->rxvq_name, MAX_DEV_NAME_LEN, "%s-rxvq-0",
-		       config->dev_name.tee_name);
-	if (err < 0) {
+			config->dev_name.tee_name);
+	if (unlikely(err < 0)) {
 		dev_info(&vds->vdev->dev, "%s set rxvq_name failed err:%d\n",
-			 __func__, err);
+				__func__, err);
 	}
 
-	vqs_info[0]->name = vds->rxvq_name;
-	vqs_info[0]->callback = _rxvq_cb;
+	vqs_info[0].name = vds->rxvq_name;
+	vqs_info[0].callback = _rxvq_cb;
 
 	/* set tx vqueue name & callback */
-	vds->txvq_name = devm_kcalloc(&vdev->dev, vds->txvq_num,
-				      sizeof(*vds->txvq_name), GFP_KERNEL);
-	if (!vds->txvq_name)
-		return -ENOMEM;
+	if (likely(!vds->txvq_name))
+		vds->txvq_name = devm_kcalloc(&vdev->dev, vds->txvq_num,
+				sizeof(*vds->txvq_name), GFP_KERNEL);
+	if (unlikely(!vds->txvq_name)) {
+		err = -ENOMEM;
+		goto final;
+	}
 
-	for (i = 0; i < vds->txvq_num; i++) {
+	for (size_t i = 0UL; i < vds->txvq_num; ++i) {
 		int txvq_start_idx = vds->rxvq_num;
 
-		err = snprintf(vds->txvq_name[i], MAX_DEV_NAME_LEN, "%s-txvq-%d",
-			       config->dev_name.tee_name, i);
-		if (err < 0) {
+		err = snprintf(vds->txvq_name[i], MAX_DEV_NAME_LEN,
+				"%s-txvq-%zu", config->dev_name.tee_name, i);
+		if (unlikely(err < 0)) {
 			dev_info(&vds->vdev->dev,
-				 "%s set txvq_name failed err:%d\n",
-				 __func__, err);
+					"%s set txvq_name failed err:%d\n",
+					__func__, err);
 		}
 
-		vqs_info[txvq_start_idx + i]->name = vds->txvq_name[i];
-		vqs_info[txvq_start_idx + i]->callback = _txvq_cb;
+		vqs_info[txvq_start_idx + i].name = vds->txvq_name[i];
+		vqs_info[txvq_start_idx + i].callback = _txvq_cb;
 	}
 
 	/* find tx virtqueues (rx and tx and in this order) */
-	err = vdev->config->find_vqs(vdev, allvq_num, vqs, *vqs_info, NULL);
-	if (err)
-		return err;
+	err = vdev->config->find_vqs(vdev, allvq_num, vqs, vqs_info, NULL);
+	if (unlikely(!!err))
+		goto final;
 
 	vds->rxvq = vqs[0];
 
 	vds->txvq = devm_kcalloc(&vdev->dev, vds->txvq_num,
-				 sizeof(struct virtqueue *), GFP_KERNEL);
-	for (i = 0; i < vds->txvq_num; i++) {
+			sizeof(struct virtqueue *), GFP_KERNEL);
+	for (size_t i = 0UL; i < vds->txvq_num; ++i) {
 		int txvq_start_idx = vds->rxvq_num;
 
 		vds->txvq[i] = vqs[txvq_start_idx + i];
 	}
 
-	/* release temporary arrays */
-	devm_kfree(&vdev->dev, vqs);
-	for (int i = 0; i < allvq_num; i++)
-		devm_kfree(&vdev->dev, vqs_info[i]);
-	devm_kfree(&vdev->dev, vqs_info);
+	/* flag setup done */
+	err = 0;
 
-	return 0;
+final:
+	/* release tx vqueue stuff if setup fails */
+	if (unlikely(!!err)) {
+		if (unlikely(!!vds->txvq)) {
+			devm_kfree(&vdev->dev, vds->txvq);
+			vds->txvq = NULL;
+		}
+		if (unlikely(!!vds->txvq_name)) {
+			devm_kfree(&vdev->dev, vds->txvq_name);
+			vds->txvq_name = NULL;
+		}
+	}
+
+	/* release temporary arrays */
+	if (likely(!!vqs)) {
+		devm_kfree(&vdev->dev, vqs);
+		vqs = NULL;
+	}
+	if (likely(!!vqs_info)) {
+		devm_kfree(&vdev->dev, vqs_info);
+		vqs_info = NULL;
+	}
+
+	return err;
 }
 
 int gz_tipc_set_default_cpumask(uint32_t cpumask)
