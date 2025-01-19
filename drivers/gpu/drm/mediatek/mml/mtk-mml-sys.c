@@ -1208,7 +1208,7 @@ s32 mml_mminfra_pw_enable(struct mml_comp *comp)
 	 * cause mminfra must power on before other mtcmos, and must off after it.
 	 */
 	mml_msg_dpc("%s mminfra pm_runtime_resume_and_get", __func__);
-	mml_mmp(dpc_pm_runtime_get, MMPROFILE_FLAG_PULSE, 0, 0);
+	mml_mmp(pw_get, MMPROFILE_FLAG_PULSE, 0, 0);
 	ret = pm_runtime_resume_and_get(sys->dev);
 	if (ret)
 		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
@@ -1239,7 +1239,7 @@ s32 mml_mminfra_pw_disable(struct mml_comp *comp)
 	}
 
 	mml_msg_dpc("%s mminfra pm_runtime_put_sync", __func__);
-	mml_mmp(dpc_pm_runtime_put, MMPROFILE_FLAG_PULSE, 0, 0);
+	mml_mmp(pw_put, MMPROFILE_FLAG_PULSE, 0, 0);
 	pm_runtime_put_sync(sys->dev);
 
 	return 0;

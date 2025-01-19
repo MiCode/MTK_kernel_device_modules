@@ -6,11 +6,9 @@
 #ifndef __MTK_MML_MMP_H__
 #define __MTK_MML_MMP_H__
 
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 #ifndef MML_FPGA
 #if IS_ENABLED(CONFIG_MMPROFILE)
 #define MML_MMP_SUPPORT
-#endif
 #endif
 #endif
 
@@ -44,33 +42,37 @@ struct mml_mmp_events_t {
 	mmp_event query_mode;
 	mmp_event query_layer;
 	mmp_event submit;
-	mmp_event submit_info;
 	mmp_event config;
-	mmp_event config_dle;
-	mmp_event dumpinfo;
+	mmp_event flush;
+	mmp_event submit_cb;
+	mmp_event taskdone;
+	mmp_event exec;
+	mmp_event racing_enter;
+	mmp_event racing_stop;
+	mmp_event racing_stop_sync;
+	mmp_event couple;
+	mmp_event kick;
+	mmp_event dvfs;
+	mmp_event addon;
+	mmp_event dle;
+	mmp_event dpc;
+	mmp_event clock;
+
+	/* events for submit */
 	mmp_event task_create;
 	mmp_event buf_map;
+
+	/* events for config */
+	mmp_event config_dle;
+	mmp_event dumpinfo;
 	mmp_event comp_prepare;
-	mmp_event buf_prepare;
 	mmp_event command;
 	mmp_event fence;
 	mmp_event fence_timeout;
 	mmp_event wait_ready;
-	mmp_event flush;
-	mmp_event submit_cb;
-	mmp_event racing_enter;
-	mmp_event racing_stop;
-	mmp_event racing_stop_sync;
-	mmp_event irq_loop;
-	mmp_event irq_err;
-	mmp_event irq_done;
-	mmp_event irq_stop;
-	mmp_event fence_sig;
-	mmp_event exec;
-	mmp_event couple;
-	mmp_event kick;
 
 	/* events for command (dle and pipes) */
+	mmp_event buf_prepare;
 	mmp_event command0;
 	mmp_event command1;
 	mmp_event tile_alloc;
@@ -81,41 +83,41 @@ struct mml_mmp_events_t {
 	mmp_event mutex_en;
 	mmp_event mutex_dis;
 
-	/* mmdvfs and mmqos */
-	mmp_event dvfs;
+	/* events for taskdone */
+	mmp_event irq_loop;
+	mmp_event irq_err;
+	mmp_event irq_done;
+	mmp_event irq_stop;
+	mmp_event fence_sig;
+
+	/* events for dvfs */
 	mmp_event throughput;
 	mmp_event bandwidth;
 	mmp_event mmdvfs;
 
-	/* events for clock */
-	mmp_event clock;
-	mmp_event clk_enable;
-	mmp_event clk_disable;
-
 	/* events for inline rotate disp addon */
-	mmp_event addon;
 	mmp_event addon_mml_calc_cfg;
 	mmp_event addon_addon_config;
 	mmp_event addon_start;
 	mmp_event addon_unprepare;
 	mmp_event addon_dle_config;
 
-	/* events for dle adaptor */
-	mmp_event dle;
+	/* events for dle */
 	mmp_event dle_config_create;
-
-	/*events for dle PQ irq*/
 	mmp_event dle_aal_irq_done;
 
-	mmp_event dpc;
-	mmp_event dpc_cfg;
+	/* events for dpc */
 	mmp_event dpc_exception_flow;
-	mmp_event dpc_pm_runtime_get;
-	mmp_event dpc_pm_runtime_put;
 	mmp_event dpc_dc;
 	mmp_event dpc_bw_hrt;
 	mmp_event dpc_bw_srt;
 	mmp_event dpc_dvfs;
+
+	/* events for clock */
+	mmp_event pw_get;
+	mmp_event pw_put;
+	mmp_event clk_enable;
+	mmp_event clk_disable;
 };
 
 void mml_mmp_init(void);
