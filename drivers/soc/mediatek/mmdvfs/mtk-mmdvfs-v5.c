@@ -129,6 +129,35 @@ enable_vcp_end:
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_enable_vcp);
 
+int mmdvfs_vote_step(const u8 pwr_idx, const s8 opp)
+{
+	u8 user_id, mux_id, level;
+
+	if (pwr_idx >= mmdvfs_data->rc_num) {
+		MMDVFS_ERR("rc_num:%hhu pwr_idx:%hhu invalid.", mmdvfs_data->rc_num, pwr_idx);
+		return -EINVAL;
+	}
+	if (opp >= mmdvfs_data->rc[pwr_idx].level_num) {
+		MMDVFS_ERR("level_num:%hhu opp:%hd invalid.",
+			mmdvfs_data->rc[pwr_idx].level_num, opp);
+		return -EINVAL;
+	}
+
+	user_id = mmdvfs_data->rc[pwr_idx].vote_user;
+	mux_id = mmdvfs_data->user[user_id].mux;
+	level = OPP2LEVEL(mmdvfs_data->rc[pwr_idx].level_num, opp);
+
+	mtk_mmdvfs_enable_vcp(true, user_id);
+	clk_set_rate(mmdvfs_data->user[user_id].clk, mmdvfs_data->mux[mux_id].freq[level]);
+	mtk_mmdvfs_enable_vcp(false, user_id);
+
+	MMDVFS_DBG("pwr_idx:%hhu opp:%hhd level:%hhu user_id:%hhu mux_id:%hhu freq:%llu",
+		pwr_idx, opp, level, user_id, mux_id, mmdvfs_data->mux[mux_id].freq[level]);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_vote_step);
+
 static inline void mmdvfs_check_vcp_power(void)
 {
 	int i;
@@ -158,7 +187,7 @@ static int mmdvfs_pm_notifier(struct notifier_block *notifier, unsigned long pm_
 
 static struct notifier_block mmdvfs_pm_notifier_block = {
 	.notifier_call = mmdvfs_pm_notifier,
-	.priority = 0,
+	.priority = 1,  //digit larger means higher priority
 };
 
 static int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *data, const bool vcp)
@@ -354,9 +383,23 @@ static int mmdvfs_vcp_init(void)
 static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long parent_rate)
 {
 	struct mmdvfs_user *user = container_of(hw, typeof(*user), clk_hw);
+	struct mmdvfs_mux *mux = &mmdvfs_data->mux[user->mux];
+	u8 level;
+	int i;
 
-	MMDVFS_DBG("user_id:%d user_name:%s user_mux:%d user_xpu:%d user_level:%d rate:%lu",
-		user->id, user->name, user->mux, user->xpu, user->level, rate);
+	for (i = 0; i < mmdvfs_data->rc[mux->rc].level_num; i++)
+		if (rate <= mux->freq[i])
+			break;
+
+	level = (i == mmdvfs_data->rc[mux->rc].level_num) ? (i - 1) : i;
+
+	mutex_lock(&mux->lock);
+	if(mmdvfs_data->ops->dfs_vote_by_xpu)
+		mmdvfs_data->ops->dfs_vote_by_xpu(user->id, level);
+	mutex_unlock(&mux->lock);
+
+	MMDVFS_DBG("user_id:%d user_name:%s user_mux:%d user_xpu:%d user_level:%d rate:%lu level:%d",
+		user->id, user->name, user->mux, user->xpu, user->level, rate, level);
 
 	return 0;
 }
@@ -463,6 +506,7 @@ static int mmdvfs_parse_mmdvfs_mux(struct device_node *node, struct mmdvfs_data 
 			//return -EINVAL;
 		}
 
+		mutex_init(&mux->lock);
 		MMDVFS_DBG("i:%d mux_id:%d mux_name:%s mux_rc:%d mux_pos:%d mux_freq[0]:%llu",
 			i, mux_id, mux->name, mux->rc, mux->pos, mux->freq[0]);
 	}
@@ -546,7 +590,22 @@ static int mmdvfs_parse_mmdvfs_ap_user(struct device *dev, struct mmdvfs_data *m
 	return 0;
 }
 
-int mmdvfs_v5_probe(struct platform_device *pdev)
+static int mmdvfs_get_rc_base(struct mmdvfs_data *mmdvfs_data)
+{
+	int i;
+	struct mmdvfs_rc *rc;
+
+	for (i = 0; i < mmdvfs_data->rc_num; i++) {
+		rc = &mmdvfs_data->rc[i];
+		rc->rc_base = ioremap(rc->pa, 0x100000);
+	}
+
+	MMDVFS_DBG("mmdvfs_v5_get_rc_base pass");
+
+	return 0;
+}
+
+int mmdvfs_v5_mux_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = pdev->dev.of_node;
@@ -558,19 +617,35 @@ int mmdvfs_v5_probe(struct platform_device *pdev)
 
 	ret = mmdvfs_parse_mmdvfs_mux(node, mmdvfs_data);
 	ret = mmdvfs_parse_mmdvfs_clk(node, mmdvfs_data);
-	ret = mmdvfs_parse_mmdvfs_ap_user(dev, mmdvfs_data);
-
-	register_pm_notifier(&mmdvfs_pm_notifier_block);
+	ret = mmdvfs_get_rc_base(mmdvfs_data);
 
 	ret = mmdvfs_vcp_init();
-
-	//Test
-	mtk_mmdvfs_enable_vcp(true, 16);
-	clk_set_rate(mmdvfs_data->user[16].clk, 500);
+	register_pm_notifier(&mmdvfs_pm_notifier_block);
 
 	return ret;
 }
-EXPORT_SYMBOL(mmdvfs_v5_probe);
+EXPORT_SYMBOL(mmdvfs_v5_mux_probe);
+
+int mmdvfs_v5_user_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	int ret;
+
+	MMDVFS_DBG("mmdvfs_v5_user_probe in");
+
+	ret = mmdvfs_parse_mmdvfs_ap_user(dev, mmdvfs_data);
+
+	//Test
+	mtk_mmdvfs_enable_vcp(true, 16);
+	mmdvfs_vote_step(0, 0);
+	mmdvfs_vote_step(0, 1);
+	mmdvfs_vote_step(0, -1);
+
+	MMDVFS_DBG("mmdvfs_v5_user_probe done");
+
+	return ret;
+}
+EXPORT_SYMBOL(mmdvfs_v5_user_probe);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek MMDVFS");

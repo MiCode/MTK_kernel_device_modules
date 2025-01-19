@@ -17,7 +17,8 @@
 	pr_notice("[mmdvfs][dbg]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
 #define MMDVFS_ERR(fmt, args...) \
 	pr_notice("[mmdvfs][err]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
-
+#define OPP2LEVEL(level_num, opp) \
+	((opp) == -1 ? 0 : ((level_num) - (opp) - 1))
 enum {
 	log_pwr,
 	log_ipi,
@@ -43,6 +44,8 @@ struct mmdvfs_rc {
 	const u8 id;
 	const u32 pa;
 	const u8 level_num;
+	const u8 vote_user;
+	void __iomem *rc_base;
 };
 
 struct mmdvfs_mux {
@@ -51,6 +54,7 @@ struct mmdvfs_mux {
 	const u8 pos;
 	const char *name;
 	u64 freq[MAX_LEVEL];
+	struct mutex lock;
 };
 
 struct mmdvfs_user {
@@ -58,10 +62,15 @@ struct mmdvfs_user {
 	const char *name;
 	const u8 mux;
 	const u8 xpu;
+	const u32 xpu_ofs;
 	const u8 level;
 	struct clk_hw clk_hw;
 	struct clk *clk;
 	int vcp_power;
+};
+
+struct mmdvfs_ops {
+	int (*dfs_vote_by_xpu)(const u8 user_id, const u8 level);
 };
 
 struct mmdvfs_data {
@@ -71,8 +80,11 @@ struct mmdvfs_data {
 	const u8 mux_num;
 	struct mmdvfs_user *user;
 	const u8 user_num;
+	struct mmdvfs_ops *ops;
 };
 
-int mmdvfs_v5_probe(struct platform_device *pdev);
+int mmdvfs_v5_mux_probe(struct platform_device *pdev);
+int mmdvfs_v5_user_probe(struct platform_device *pdev);
+int mmdvfs_vote_step(const u8 pwr_idx, const s8 opp);
 
 #endif /* __DRV_CLK_MMDVFS_V5_H */
