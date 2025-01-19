@@ -124,7 +124,7 @@ int init_sched_ctrl(void)
 		_percore_l3_bw = true;
 		_dsu_pwr_enable = true;
 		_dpt_v2_enable = false;
-		_dpt_v2_swpm_mode = 0;
+		_dpt_v2_swpm_mode = 2;
 		break;
 	default:
 		am_support = 0;
