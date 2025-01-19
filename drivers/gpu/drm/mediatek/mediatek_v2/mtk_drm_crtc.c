@@ -10707,7 +10707,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc_state *crtc_state = cb_data->state;
-	struct drm_crtc *crtc = crtc_state->crtc;
+	struct drm_crtc *crtc = cb_data->crtc ? cb_data->crtc : crtc_state->crtc;
 
 	/* debug log */
 	DDPINFO("%s +\n", __func__);
@@ -10723,16 +10723,14 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc_state *crtc_state = cb_data->state;
-	struct drm_atomic_state *atomic_state = crtc_state->state;
-	struct drm_crtc *crtc = crtc_state->crtc;
+	struct drm_atomic_state *atomic_state;
+	struct drm_crtc *crtc = cb_data->crtc ? cb_data->crtc : crtc_state->crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = NULL;
-	struct drm_crtc_state *old_crtc_state =
-		drm_atomic_get_old_crtc_state(atomic_state, crtc);
-	struct mtk_crtc_state *old_mtk_state =
-		to_mtk_crtc_state(old_crtc_state);
-	unsigned int frame_idx = old_mtk_state->prop_val[CRTC_PROP_OVL_DSI_SEQ];
 	bool use_union_fence = false;
+	struct drm_crtc_state *old_crtc_state;
+	struct mtk_crtc_state *old_mtk_state;
+	unsigned int frame_idx;
 
 	int session_id, id;
 	unsigned int ovl_status = 0;
@@ -10757,6 +10755,22 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			__func__, __LINE__);
 		return;
 	}
+
+	id = drm_crtc_index(crtc);
+
+	if (cb_data->is_retrig) {
+		CRTC_MMP_MARK(id, retrig_cfg, 0, cb_data->pres_fence_idx);
+		drm_trace_tag_value_byid("retrig_cfg", cb_data->pres_fence_idx, id);
+		cmdq_pkt_wait_complete(cb_data->cmdq_handle);
+		mtk_drm_del_cb_data(data, id);
+		cmdq_pkt_destroy(cb_data->cmdq_handle);
+		kfree(cb_data);
+		return;
+	}
+	atomic_state = crtc_state->state;
+	old_crtc_state = drm_atomic_get_old_crtc_state(atomic_state, crtc);
+	old_mtk_state = to_mtk_crtc_state(old_crtc_state);
+	frame_idx = old_mtk_state->prop_val[CRTC_PROP_OVL_DSI_SEQ];
 
 	DDPINFO("crtc_state:0x%llx, atomic_state:%lu, crtc:%lu, pf:%u\n",
 		(u64)crtc_state, (unsigned long)atomic_state,
@@ -13621,6 +13635,10 @@ out_unlock:
 static int _mtk_crtc_check_trigger(void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *private = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+	struct drm_device *dev= crtc->dev;
 	struct sched_param param = {.sched_priority = 94 };
 	int ret;
 
@@ -13633,7 +13651,10 @@ static int _mtk_crtc_check_trigger(void *data)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 		atomic_set(&mtk_crtc->trig_event_act, 0);
 
-		__mtk_check_trigger(mtk_crtc);
+		if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_RETRIGGER))
+			mtk_request_retrig(dev, crtc_idx);
+		else
+			__mtk_check_trigger(mtk_crtc);
 
 		atomic_set(&mtk_crtc->trig_event_act, 0);
 
@@ -13647,6 +13668,10 @@ static int _mtk_crtc_check_trigger(void *data)
 static int _mtk_crtc_check_trigger_delay(void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *private = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
+	struct drm_device *dev= crtc->dev;
 	struct sched_param param = {.sched_priority = 94 };
 	int ret;
 
@@ -13663,8 +13688,12 @@ static int _mtk_crtc_check_trigger_delay(void *data)
 		atomic_set(&mtk_crtc->delayed_trig, 0);
 
 		usleep_range(32000, 33000);
-		if (!atomic_read(&mtk_crtc->delayed_trig))
-			__mtk_check_trigger(mtk_crtc);
+		if (!atomic_read(&mtk_crtc->delayed_trig)) {
+			if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_RETRIGGER))
+				mtk_request_retrig(dev, crtc_idx);
+			else
+				__mtk_check_trigger(mtk_crtc);
+		}
 
 		if (kthread_should_stop())
 			break;
@@ -19559,6 +19588,32 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	return 0;
 }
 
+int mtk_crtc_retrig_flush(struct mtk_cmdq_cb_data *cb_data, struct cmdq_pkt *cmdq_handle)
+{
+	if (!cb_data) {
+		DDPPR_ERR("%s: cb_data is null\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s: cmdq_handle is null\n", __func__);
+		return -EINVAL;
+	}
+
+	cb_data->store_cb_data = kzalloc(sizeof(struct cb_data_store), GFP_KERNEL);
+	if (!cb_data->store_cb_data) {
+		DDPPR_ERR("%s: store_cb_data alloc fail\n", __func__);
+		return -EINVAL;
+	}
+
+	if (cmdq_pkt_flush_async(cmdq_handle, ddp_cmdq_cb, cb_data) < 0) {
+		DDPPR_ERR("%s: cmdq_pkt_flush_async failed!\n", __func__);
+		kfree(cb_data->store_cb_data);
+		return -EINVAL;
+	}
+	return 0;
+}
+
 static int mtk_drm_crtc_find_ovl_comp_id(struct mtk_drm_private *priv,
 	int is_ovl_2l, int is_dual_pipe)
 {
@@ -20763,6 +20818,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	atomic_set(&mtk_crtc->delayed_trig, 1);
+	cb_data->is_retrig = false;
 	cb_data->state = old_crtc_state;
 	cb_data->cmdq_handle = cmdq_handle;
 	cb_data->misc = mtk_crtc->ddp_mode;
@@ -23121,6 +23177,15 @@ int mtk_drm_get_union_fence_ioctl(struct drm_device *dev, void *data,
 	mtk_drm_idlemgr_kick_async(crtc);
 
 	/* create config_fence */
+	if (args->omit_fence_type & MTK_OMIT_CONFIG_FENCE) {
+		curr_config_fence_idx = atomic_read(&priv->crtc_config[crtc_index]);
+		config_fence.fence = MTK_INVALID_FENCE_FD;
+		config_fence.value = curr_config_fence_idx + 1;
+		atomic_inc(&priv->crtc_config[crtc_index]);
+		args->config_fence_fd = config_fence.fence;
+		args->config_fence_idx = config_fence.value;
+		goto create_config_fence_done;
+	}
 	config_timeline_id = mtk_fence_get_config_timeline_id(session_id);
 	config_layer_info = mtk_fence_get_layer_info(session_id, config_timeline_id);
 	if (!config_layer_info) {
@@ -23139,9 +23204,19 @@ int mtk_drm_get_union_fence_ioctl(struct drm_device *dev, void *data,
 	}
 	args->config_fence_fd = config_fence.fence;
 	args->config_fence_idx = config_fence.value;
+create_config_fence_done:
 	drm_trace_tag_value("create_config_fence", args->config_fence_idx);
 
 	/* create present_fence */
+	if (args->omit_fence_type & MTK_OMIT_PRESENT_FENCE) {
+		curr_present_fence_idx = atomic_read(&priv->crtc_present[crtc_index]);
+		present_fence.fence = MTK_INVALID_FENCE_FD;
+		present_fence.value = curr_present_fence_idx + 1;
+		atomic_inc(&priv->crtc_present[crtc_index]);
+		args->present_fence_fd = present_fence.fence;
+		args->present_fence_idx = present_fence.value;
+		goto create_present_fence_done;
+	}
 	present_timeline_id = mtk_fence_get_present_timeline_id(session_id);
 	present_layer_info = mtk_fence_get_layer_info(session_id, present_timeline_id);
 	if (!present_layer_info) {
@@ -23160,11 +23235,21 @@ int mtk_drm_get_union_fence_ioctl(struct drm_device *dev, void *data,
 	}
 	args->present_fence_fd = present_fence.fence;
 	args->present_fence_idx = present_fence.value;
+create_present_fence_done:
 	drm_trace_tag_value("create_present_fence", args->present_fence_idx);
 
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PARTIAL_UPDATE)) {
 		/* create frame_done_fence */
+		if (args->omit_fence_type & MTK_OMIT_FRAME_DONE_FENCE) {
+			curr_frame_done_fence_idx = atomic_read(&priv->crtc_frame_done[crtc_index]);
+			frame_done_fence.fence = MTK_INVALID_FENCE_FD;
+			frame_done_fence.value = curr_frame_done_fence_idx + 1;
+			atomic_inc(&priv->crtc_frame_done[crtc_index]);
+			args->frame_done_fence_fd = frame_done_fence.fence;
+			args->frame_done_fence_idx = frame_done_fence.value;
+			goto create_frame_done_fence_done;
+		}
 		frame_done_timeline_id = mtk_fence_get_frame_done_timeline_id(session_id);
 		frame_done_layer_info = mtk_fence_get_layer_info(session_id, frame_done_timeline_id);
 		if (!frame_done_layer_info) {
@@ -23183,6 +23268,7 @@ int mtk_drm_get_union_fence_ioctl(struct drm_device *dev, void *data,
 		}
 		args->frame_done_fence_fd = frame_done_fence.fence;
 		args->frame_done_fence_idx = frame_done_fence.value;
+create_frame_done_fence_done:
 		drm_trace_tag_value("create_frame_done_fence", args->frame_done_fence_idx);
 
 		DDPFENCE("P+/%s%d/cfg,T%d,idx%d,fd%d/pf,T%d,idx%d,fd%d/fdone,T%d,idx%d,fd%d\n",

@@ -7222,7 +7222,8 @@ int mtk_drm_suspend_release_fence(struct device *dev)
 /*---------------- function for repaint start ------------------*/
 void drm_trigger_repaint(enum DRM_REPAINT_TYPE type, struct drm_device *drm_dev)
 {
-	if (type > DRM_WAIT_FOR_REPAINT && type < DRM_REPAINT_TYPE_NUM) {
+	if ((type > DRM_WAIT_FOR_REPAINT && type < DRM_REPAINT_TYPE_NUM) ||
+		(type & MTK_REQUEST_RETRIG_TYPE_MASK) > 0) {
 		struct mtk_drm_private *pvd = drm_dev->dev_private;
 		struct repaint_job_t *repaint_job;
 
@@ -8023,6 +8024,10 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_UNION_FENCE))
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_UNION_FENCE;
+
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_RETRIGGER))
+		caps_info->disp_feature_flag |=
+				DRM_DISP_FEATURE_RETRIGGER;
 
 #ifndef DRM_BYPASS_PQ
 	{
@@ -10375,6 +10380,283 @@ int mtk_drm_ioctl_mml_ctrl(struct drm_device *dev, void *data, struct drm_file *
 	return ret;
 }
 
+void mtk_request_retrig_enable(struct drm_device *dev,
+		uint32_t crtc_id, uint32_t fps, bool enable,
+		enum PQ_FEATURE_BIT_SHIFT feature)
+{
+	if (enable) {
+		drm_trigger_repaint(MTK_REQUEST_RETRIG_TYPE_START |
+			crtc_id << MTK_REQUEST_RETRIG_CRTC_ID_SHIFT |
+			fps << MTK_REQUEST_RETRIG_FPS_SHIFT |
+			feature << MTK_REQUEST_RETRIG_PQ_FEATURE_SHIFT,
+			dev);
+	} else {
+		drm_trigger_repaint(MTK_REQUEST_RETRIG_TYPE_STOP |
+			crtc_id << MTK_REQUEST_RETRIG_CRTC_ID_SHIFT |
+			feature << MTK_REQUEST_RETRIG_PQ_FEATURE_SHIFT,
+			dev);
+	}
+}
+
+void mtk_request_retrig(struct drm_device *dev,
+		uint32_t crtc_id)
+{
+	drm_trigger_repaint(
+		MTK_REQUEST_RETRIG_TYPE_ONCE |
+		crtc_id << MTK_REQUEST_RETRIG_CRTC_ID_SHIFT,
+		dev);
+}
+
+#define RT_MIN_FPS 60
+#define RT_PRETE_DUR 2000
+
+int mtk_get_retrig_sleep_us(unsigned int base_t, unsigned int vrefresh_t, unsigned int *sleep_t)
+{
+	unsigned int cur_t = 0, diff_t = 0, target_t = 0;
+	unsigned int step = 0, step_dur = 0, next_tgt_dur = 0;
+
+	if (!sleep_t) {
+		DDPPR_ERR("%s: sleep_t is null\n", __func__);
+		return -EINVAL;
+	}
+
+	cur_t = ktime_get() / 1000;
+	if (base_t >= cur_t) {
+		DDPPR_ERR("%s: time corrupted base_t:%u, cur_t:%u\n",
+			__func__, base_t, cur_t);
+		return -EINVAL;
+	}
+
+	diff_t = cur_t - base_t;
+	// if diff_t > 500ms, the target_t may become inaccurate,
+	// do not use retrig_sleep.
+	if (diff_t > 500000) {
+		*sleep_t = 0;
+		return 0;
+	}
+
+	if (vrefresh_t < RT_MIN_FPS)
+		vrefresh_t = RT_MIN_FPS;
+	step_dur = 1000000 / vrefresh_t;
+
+	step = diff_t / step_dur;
+	step += 1;
+	target_t = base_t + step * step_dur;
+	next_tgt_dur = target_t - cur_t;
+
+	if (next_tgt_dur > step_dur) {
+		DDPPR_ERR("%s: cal error next_tgt_dur:%u > step_dur:%u\n",
+			__func__, next_tgt_dur, step_dur);
+		return -EINVAL;
+	}
+
+	if (next_tgt_dur > RT_PRETE_DUR)
+		*sleep_t = next_tgt_dur - RT_PRETE_DUR;
+	else
+		*sleep_t = 0;
+
+	return 0;
+}
+
+int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
+		struct drm_file *file_priv)
+{
+	struct mtk_drm_private *private = dev->dev_private;
+	struct mtk_retrig *retrig = data;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_crtc_state *crtc_state;
+	unsigned int crtc_idx;
+	int session_id;
+	struct cmdq_pkt *cmdq_handle;
+	struct mtk_cmdq_cb_data *cb_data;
+	dma_addr_t addr;
+	unsigned int sleep_t;
+
+#ifdef DRM_CMDQ_DISABLE
+	DDPPR_ERR("%s: not support DRM_CMDQ_DISABLE!\n", __func__);
+	return -ENOENT;
+#endif
+
+#ifndef MTK_DRM_CMDQ_ASYNC
+	DDPPR_ERR("%s: not support no MTK_DRM_CMDQ_ASYNC!\n", __func__);
+	return -ENOENT;
+#endif
+
+	if (!private) {
+		DDPPR_ERR("private is nullptr!\n");
+		return -ENOENT;
+	}
+
+	if (retrig->present_fence_idx == (unsigned int)-1) {
+		DDPPR_ERR("%s: present_fence_idx is invalid!\n", __func__);
+		return -ENOENT;
+	}
+
+	crtc = drm_crtc_find(dev, file_priv, retrig->crtc_id);
+	if (!crtc) {
+		DDPPR_ERR("%s: crtc is null (crtc_id: %d)\n", __func__, retrig->crtc_id);
+		return -ENOENT;
+	}
+	crtc_state = crtc->state;
+	if (!crtc_state) {
+		DDPPR_ERR("%s: crtc_state is null (crtc_id: %d)\n", __func__, retrig->crtc_id);
+		return -ENOENT;
+	}
+	crtc_idx = drm_crtc_index(crtc);
+	session_id = mtk_get_session_id(crtc);
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s: mtk_crtc is null (crtc_id: %d)\n", __func__, retrig->crtc_id);
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		return -ENOENT;
+	}
+
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		// why enable retrig when vdo mode!!? handle this case anyway.
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		return 0;
+	}
+
+	if (mtk_crtc->ddp_mode == DDP_NO_USE) {
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		return 0;
+	}
+
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+		/* if last frame is mml, not handle yet */
+		// TODO
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		return 0;
+	}
+
+	DDP_PROFILE("[PROFILE] %s+\n", __func__);
+	DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
+	if (!mtk_crtc->enabled) {
+		DDPPR_ERR("%s: crtc is not enabled!\n", __func__);
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		goto retrig_end;
+	}
+
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_SPHRT) &&
+		private->usage[crtc_idx] != DISP_ENABLE) {
+		DDPPR_ERR("%s: crtc usage is not DISP_ENABLE!\n", __func__);
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		goto retrig_end;
+	}
+
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
+	// create cmdq_handle
+	if (mtk_crtc->sec_on) {
+		mtk_crtc_pkt_create(&cmdq_handle, crtc,
+			mtk_crtc->gce_obj.client[CLIENT_SEC_CFG]);
+	} else {
+		mtk_crtc_pkt_create(&cmdq_handle, crtc,
+			mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	}
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s: cmdq_handle creation failed\n", __func__);
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		goto retrig_end;
+	}
+
+	// create cb_data
+	cb_data = kmalloc(sizeof(struct mtk_cmdq_cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		DDPPR_ERR("%s: cb_data alloc failed\n", __func__);
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		cmdq_pkt_destroy(cmdq_handle);
+		goto retrig_end;
+	}
+	cb_data->is_retrig = true;
+	cb_data->state = crtc_state;
+	cb_data->crtc = crtc;
+	cb_data->cmdq_handle = cmdq_handle;
+	cb_data->pres_fence_idx = retrig->present_fence_idx;
+
+	// setup config
+	if (crtc_idx == 0) {
+		mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+	}
+	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
+
+	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+
+	addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_PRESENT_FENCE(crtc_idx));
+	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr, retrig->present_fence_idx, ~0);
+	CRTC_MMP_MARK((int) crtc_idx, update_present_fence, 0, retrig->present_fence_idx);
+	drm_trace_tag_value("update_present_fence", retrig->present_fence_idx);
+
+	cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
+
+	// wait to TE - 1ms
+	if (mtk_get_retrig_sleep_us(
+			private->crtc_rel_present_ts[crtc_idx] / 1000,
+			drm_mode_vrefresh(&crtc->state->adjusted_mode),
+			&sleep_t) < 0) {
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		cmdq_pkt_destroy(cmdq_handle);
+		kfree(cb_data);
+		goto retrig_end;
+	}
+
+	if (sleep_t > 0) {
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
+
+		mtk_drm_trace_begin("retrig_sleep %u", sleep_t);
+		usleep_range(sleep_t, sleep_t + 100);
+		mtk_drm_trace_end("retrig_sleep %u", sleep_t);
+
+		DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
+		/* Must double check, if crtc is disabled, gce mbox will be disabled too */
+		if (!mtk_crtc->enabled) {
+			atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+			mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+			cmdq_pkt_destroy(cmdq_handle);
+			kfree(cb_data);
+			goto retrig_end;
+		}
+	}
+
+	// flush
+	mtk_drm_trace_begin("retrig_kick_flush %u", retrig->present_fence_idx);
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	CRTC_MMP_MARK(crtc_idx, retrig_flush, 0, retrig->present_fence_idx);
+	if (mtk_crtc_retrig_flush(cb_data, cmdq_handle) < 0) {
+		DDPPR_ERR("%s: mtk_crtc_retrig_flush failed!\n", __func__);
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		cmdq_pkt_destroy(cmdq_handle);
+		kfree(cb_data);
+	}
+	mtk_drm_trace_end("retrig_kick_flush %u", retrig->present_fence_idx);
+
+retrig_end:
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
+	DDP_PROFILE("[PROFILE] %s-\n", __func__);
+	return 0;
+}
+
 static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_GEM_CREATE, mtk_gem_create_ioctl,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
@@ -10404,7 +10686,7 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_WAIT_REPAINT, mtk_drm_wait_repaint_ioctl,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_GET_DISPLAY_CAPS, mtk_drm_get_display_caps_ioctl,
-			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
+			  0),
 	DRM_IOCTL_DEF_DRV(MTK_SET_DDP_MODE, mtk_drm_set_ddp_mode,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_GET_SESSION_INFO, mtk_drm_get_info_ioctl,
@@ -10472,6 +10754,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_UNMAP_DMA_BUF, mtk_drm_unmap_dma_buf,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_GET_UNION_FENCE, mtk_drm_get_union_fence_ioctl,
+			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(MTK_RETRIG, mtk_drm_ioctl_retrig,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 };
 

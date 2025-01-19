@@ -3126,6 +3126,14 @@ static void process_dbg_opt(const char *opt)
 		} else if (strncmp(opt + 6, "off", 3) == 0) {
 			g_trace_log = 0;
 		}
+	} else if (strncmp(opt, "retrig:", 7) == 0) {
+		if (strncmp(opt + 7, "once", 4) == 0) {
+			mtk_request_retrig(drm_dev, 0);
+		} else if (strncmp(opt + 7, "on", 2) == 0) {
+			mtk_request_retrig_enable(drm_dev, 0, 60, 1, 15);
+		} else if (strncmp(opt + 7, "off", 3) == 0) {
+			mtk_request_retrig_enable(drm_dev, 0, 0, 0, 15);
+		}
 	} else if (strncmp(opt, "logger:", 7) == 0) {
 		if (strncmp(opt + 7, "on", 2) == 0) {
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)

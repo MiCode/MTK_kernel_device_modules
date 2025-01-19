@@ -1408,6 +1408,7 @@ struct mtk_cmdq_cb_data {
 	ktime_t signal_ts;
 	struct cb_data_store *store_cb_data;
 	uint64_t pts;
+	bool is_retrig;
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;
@@ -1500,6 +1501,7 @@ void mtk_crtc_connect_addon_module(struct drm_crtc *crtc, bool skip_cwb);
 void mtk_crtc_disconnect_addon_module(struct drm_crtc *crtc);
 int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb, void *cb_data,
 			struct cmdq_pkt *cmdq_handle);
+int mtk_crtc_retrig_flush(struct mtk_cmdq_cb_data *cb_data, struct cmdq_pkt *cmdq_handle);
 /*Msync 2.0*/
 int mtk_drm_set_msync_cmd_level_table(unsigned int level_id, unsigned int level_fps,
 		unsigned int max_fps, unsigned int min_fps);

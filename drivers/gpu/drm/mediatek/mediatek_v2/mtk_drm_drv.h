@@ -660,4 +660,11 @@ void mtk_set_aod_scp_semaphore(int lock);
 unsigned int mtk_aod_scp_vdisp_sema_check(void);
 int mtk_drm_get_mml_mode_caps(void);
 int mtk_drm_get_mml_hw_caps(void);
+void mtk_request_retrig_enable(struct drm_device *dev,
+		uint32_t crtc_id, uint32_t fps, bool enable,
+		enum PQ_FEATURE_BIT_SHIFT feature);
+void mtk_request_retrig(struct drm_device *dev,
+		uint32_t crtc_id);
+int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
+		struct drm_file *file_priv);
 #endif /* MTK_DRM_DRV_H */

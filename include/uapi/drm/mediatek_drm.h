@@ -473,6 +473,7 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_DEBUG_LOG			0x3E
 
 #define DRM_MTK_GET_UNION_FENCE 0x3F
+#define DRM_MTK_RETRIG	0x18
 
 /* CHIST */
 #define DRM_MTK_GET_CHIST           0x46
@@ -700,6 +701,7 @@ enum MTK_DRM_DISP_FEATURE {
 	DRM_DISP_FEATURE_SPHRT = 0x00008000,
 	DRM_DISP_FEATURE_PARTIAL_UPDATE = 0x00010000,
 	DRM_DISP_FEATURE_UNION_FENCE = 0x00020000,
+	DRM_DISP_FEATURE_RETRIGGER = 0x00040000,
 };
 
 enum MTK_DRM_DUMP_POINT {
@@ -2137,8 +2139,23 @@ struct mtk_drm_mml_ctrl {
 #define DRM_IOCTL_MTK_MML_CTRL DRM_IOWR(DRM_COMMAND_BASE + \
 	DRM_MTK_MML_CTRL, struct mtk_drm_mml_ctrl)
 
+enum MTK_OMIT_FENCE_TYPE : unsigned int {
+	MTK_OMIT_NONE = 0,
+	MTK_OMIT_CONFIG_FENCE = 1 << 0,
+	MTK_OMIT_PRESENT_FENCE = 1 << 1,
+	MTK_OMIT_FRAME_DONE_FENCE = 1 << 2,
+	MTK_OMIT_ALL = MTK_OMIT_CONFIG_FENCE |
+					MTK_OMIT_PRESENT_FENCE |
+					MTK_OMIT_FRAME_DONE_FENCE,
+};
+
 struct mtk_union_fence {
 	uint32_t crtc_id;
+	/* When user do not want to create & use certain fence,
+	 * raise related mask bit of the fence type, and disp dirver
+	 * should return fence_fd as -1, but keep fence_idx increase.
+	 */
+	enum MTK_OMIT_FENCE_TYPE omit_fence_type;
 	/* signal config fence after config hw */
 	int32_t config_fence_fd;
 	uint32_t config_fence_idx;
@@ -2154,6 +2171,35 @@ struct mtk_union_fence {
 
 #define DRM_IOCTL_MTK_GET_UNION_FENCE DRM_IOWR(DRM_COMMAND_BASE + \
 	DRM_MTK_GET_UNION_FENCE, struct mtk_union_fence)
+
+enum MTK_REQUEST_RETRIG_TYPE : unsigned int {
+	MTK_REQUEST_RETRIG_TYPE_SHIFT       = 30u,
+	MTK_REQUEST_RETRIG_TYPE_MASK        = (0x3u << MTK_REQUEST_RETRIG_TYPE_SHIFT),
+	MTK_REQUEST_RETRIG_TYPE_START       = (0x1u << MTK_REQUEST_RETRIG_TYPE_SHIFT),
+	MTK_REQUEST_RETRIG_TYPE_STOP        = (0x2u << MTK_REQUEST_RETRIG_TYPE_SHIFT),
+	MTK_REQUEST_RETRIG_TYPE_ONCE        = (0x3u << MTK_REQUEST_RETRIG_TYPE_SHIFT),
+
+	// if MTK_REQUEST_RETRIG_TYPE is START, STOP or ONCE, it will:
+	//  - encode crtc_id in bit 24~29
+	MTK_REQUEST_RETRIG_CRTC_ID_SHIFT    = 24u,
+	MTK_REQUEST_RETRIG_CRTC_ID_MASK     = (0x3Fu << MTK_REQUEST_RETRIG_CRTC_ID_SHIFT),
+
+	// if MTK_REQUEST_RETRIG_TYPE is START or STOP, it will:
+	//  - encode PQ_FEATURE_BIT_SHIFT in bit 0~11
+	//  - encode fps in bit 12~23
+	MTK_REQUEST_RETRIG_FPS_SHIFT        = 12u,
+	MTK_REQUEST_RETRIG_FPS_MASK         = (0xFFFu << MTK_REQUEST_RETRIG_FPS_SHIFT),
+
+	MTK_REQUEST_RETRIG_PQ_FEATURE_SHIFT = 0u,
+	MTK_REQUEST_RETRIG_PQ_FEATURE_MASK  = (0xFFFu << MTK_REQUEST_RETRIG_PQ_FEATURE_SHIFT),
+};
+
+struct mtk_retrig {
+	unsigned int crtc_id;
+	unsigned int present_fence_idx;
+};
+
+#define DRM_IOCTL_MTK_RETRIG DRM_IOWR(DRM_COMMAND_BASE + DRM_MTK_RETRIG, struct mtk_retrig)
 
 #define MTK_DRM_ADVANCE
 #define MTK_DRM_FORMAT_DIM		fourcc_code('D', ' ', '0', '0')
