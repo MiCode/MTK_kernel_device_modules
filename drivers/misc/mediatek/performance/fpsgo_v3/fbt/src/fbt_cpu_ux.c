@@ -95,6 +95,7 @@ static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
 
 #if IS_ENABLED(CONFIG_ARM64)
+#define SMART_LAUNCH_BOOST_SUPPORT_CLUSTER_NUM 3
 static int smart_launch_off_on;
 static int cluster_num;
 static int nr_freq_opp_cnt;
@@ -1833,14 +1834,16 @@ void init_smart_launch_engine(void)
 #if IS_ENABLED(CONFIG_ARM64)
 	smart_launch_off_on = fbt_get_ux_smart_launch_enable();
 	if (smart_launch_off_on) {
-		fpsgo_notify_smart_launch_algorithm_fp =
-		fpsgo_notify_smart_launch_algorithm;
 		cluster_num  = fpsgo_arch_nr_clusters();
+		if (cluster_num != SMART_LAUNCH_BOOST_SUPPORT_CLUSTER_NUM)
+			return;
 		nr_freq_opp_cnt = fpsgo_arch_nr_max_opp_cpu();
 		capacity_info = kcalloc(cluster_num,
 				sizeof(struct smart_launch_capacity_info), GFP_KERNEL);
 		init_smart_launch_capacity_tb(cluster_num);
 		updata_smart_launch_capacity_tb();
+		fpsgo_notify_smart_launch_algorithm_fp =
+		fpsgo_notify_smart_launch_algorithm;
 	}
 #endif
 }
