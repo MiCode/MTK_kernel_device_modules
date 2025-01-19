@@ -59,7 +59,7 @@
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_STATIC_POWER_LEGACY)
-#include "mtk_static_power.h"
+#include <leakage_table_v2/mtk_static_power.h>
 #endif
 
 /**
