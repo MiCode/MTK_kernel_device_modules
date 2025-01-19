@@ -142,7 +142,6 @@ obj-$(CONFIG_DRM_MEDIATEK_HDMI) += mediatek-drm-hdmi.o
 mediatek-drm-$(CONFIG_DRM_FBDEV_EMULATION) += mtk_drm_fbdev.o
 
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mediatek-drm.o
-obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_sync.o
 
 ifneq ($(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT), y)
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mtk_aod_scp.o

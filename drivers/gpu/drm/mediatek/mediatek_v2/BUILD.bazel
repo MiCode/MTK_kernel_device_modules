@@ -36,6 +36,18 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "mtk_sync",
+    srcs = [
+        "mtk_sync.c",
+    ],
+    hdrs = [
+        "mtk_sync.h",
+    ],
+    includes = ["."],
+)
+
+
+define_mgk_ddk_ko(
     name = "mtk_disp_notify",
     srcs = [
         "mtk_disp_notify.c",
