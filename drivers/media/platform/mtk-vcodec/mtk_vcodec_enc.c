@@ -4254,15 +4254,16 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
+        ctx->enc_params.highquality = -1;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_HIGHQUALITY;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable highquality";
-	cfg.min = 0;
-	cfg.max = 1;
+	cfg.min = -1;
+	cfg.max = 2;
 	cfg.step = 1;
-	cfg.def = 0;
+	cfg.def = ctx->enc_params.highquality;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

@@ -514,7 +514,7 @@ struct venc_vcu_config {
 	__u32 i_p_qp_delta;
 	__u32 qp_control_mode;
 	__u32 frame_level_qp;
-	__u32 highquality;
+	__s32 highquality;
 	__u32 dummynal;
 	__u32 slbc_addr;
 	__u32 wpp_mode;

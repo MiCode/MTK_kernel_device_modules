@@ -396,7 +396,7 @@ struct mtk_enc_params {
 	unsigned int    svp_mode;
 	unsigned int    tsvc;
 	unsigned int    nonrefpfreq;
-	unsigned int    highquality;
+	int             highquality;
 	int             max_qp;
 	int             min_qp;
 	int             framelvl_qp;
@@ -489,7 +489,7 @@ struct venc_enc_param {
 	unsigned int svp_mode;
 	unsigned int tsvc;
 	unsigned int nonrefpfreq;
-	unsigned int highquality;
+	int highquality;
 	unsigned int max_qp;
 	unsigned int min_qp;
 	unsigned int framelvl_qp;
