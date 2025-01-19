@@ -11,6 +11,52 @@
 #include <linux/of_device.h>
 #include <linux/string.h>
 #include "usb_offload.h"
+#include "mtu3.h"
+
+void usb_offload_hub_working(bool hub_offloading, bool hold)
+{
+	struct wakeup_source *ws = uodev->dev->power.wakeup;
+
+	if (!uodev->policy.support_hub || !hub_offloading || !ws)
+		return;
+
+	USB_OFFLOAD_INFO("hold:%d active:%d\n", hold, ws->active);
+
+	if (hold && !ws->active)
+		pm_stay_awake(uodev->dev);
+	else if (!hold && ws->active)
+		pm_relax(uodev->dev);
+}
+
+enum uo_provider_type usb_offload_mem_type(void)
+{
+	if (uodev->policy.all_on_sram)
+		return usb_offload_mem_type_lp();
+
+	return UO_PROV_DRAM;
+}
+
+enum uo_provider_type usb_offload_mem_type_lp(void)
+{
+	if (!uodev->policy.adv_lowpwr)
+		return UO_PROV_DRAM;
+
+	return uodev->adv_lowpwr ? UO_PROV_SRAM : UO_PROV_DRAM;
+}
+
+enum uo_provider_type usb_offload_mem_type_lp_ex(int direction)
+{
+	if (uodev->policy.adv_lowpwr_dl_only && direction == SNDRV_PCM_STREAM_CAPTURE)
+		return UO_PROV_DRAM;
+
+	return usb_offload_mem_type_lp();
+}
+
+void usb_offload_improve_idle_power(bool start)
+{
+	if (uodev->policy.support_idle_lowpwr)
+		ssusb_offload_streaming(uodev->ssusb_offload_notify, start);
+}
 
 enum offload_smc_request {
     OFFLOAD_SMC_AUD_SUSPEND = 6,
@@ -39,6 +85,27 @@ enum uo_source_type usb_offload_sram_source_id(const char *buf)
 		return UO_SOURCE_NUM;
 }
 
+struct policy_member {
+	const char *name;
+	size_t length;
+	size_t offset;
+};
+
+#define POLICY_MAP(member, length) \
+ { #member, length, offsetof(struct usb_offload_policy, member) }
+
+static struct policy_member flow_control[] = {
+	POLICY_MAP(adv_lowpwr,          10),
+	POLICY_MAP(force_on_secondary,  18),
+	POLICY_MAP(support_fb,          10),
+	POLICY_MAP(support_hub,         11),
+	POLICY_MAP(hid_disable_offload, 19),
+	POLICY_MAP(hid_disable_sync,    16),
+	POLICY_MAP(hid_tr_switch,       13),
+	POLICY_MAP(support_idle_lowpwr, 19),
+	POLICY_MAP(all_on_sram,         11),
+};
+
 #define MAX_INPUT_NUM   50
 static ssize_t flow_ctrl_store(struct device *dev,
     struct device_attribute *attr, const char *buf, size_t count)
@@ -48,7 +115,8 @@ static ssize_t flow_ctrl_store(struct device *dev,
 	char *input = buffer;
 	const char *field1, *field2;
 	const char * const delim = " \0\n\t";
-	bool enable;
+	bool enable, *bool_value;
+	int i;
 
 	strscpy(buffer, buf, sizeof(buffer) <= count ? sizeof(buffer) : count);
 	field1 = strsep(&input, delim);
@@ -59,45 +127,30 @@ static ssize_t flow_ctrl_store(struct device *dev,
 	if (kstrtobool(field2, &enable))
 		return -EINVAL;
 
-	if (!strncmp(field1, "adv_lowpwr", 10))
-		policy->adv_lowpwr = enable;
-	else if (!strncmp(field1, "force_on_secondary", 18))
-		policy->force_on_secondary = enable;
-	else if (!strncmp(field1, "support_fb", 10))
-		policy->support_fb = enable;
-	else if (!strncmp(field1, "support_hub", 11))
-		policy->support_hub = enable;
-	else if (!strncmp(field1, "hid_disable_offload", 19))
-		policy->hid_disable_offload = enable;
-	else if (!strncmp(field1, "hid_disable_sync", 16))
-		policy->hid_disable_sync = enable;
-	else if (!strncmp(field1, "hid_tr_switch", 13))
-		policy->hid_tr_switch = enable;
-	else
-		return -EINVAL;
+	for (i = 0; i < ARRAY_SIZE(flow_control); i++) {
+		bool_value = (void *)policy + flow_control[i].offset;
+		if (!strncmp(field1, flow_control[i].name, flow_control[i].length)) {
+			*bool_value = enable;
+			return count;
+		}
+	}
 
-	return count;
+	return -EINVAL;
 }
 
 static ssize_t flow_ctrl_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
 	struct usb_offload_policy *policy = &uodev->policy;
+	bool *bool_value;
+	int i, cnt = 0;
 
-	return sprintf(buf, "adv_lowpwr:%d\n"
-			"force_on_secondary:%d\n"
-			"hid_disable_offload:%d\n"
-			"hid_disable_sync:%d\n"
-			"hid_tr_switch:%d\n"
-			"support_fb:%d\n"
-			"support_hub:%d\n",
-			policy->adv_lowpwr,
-			policy->force_on_secondary,
-			policy->hid_disable_offload,
-			policy->hid_disable_sync,
-			policy->hid_tr_switch,
-			policy->support_fb,
-			policy->support_hub);
+	for (i = 0; i < ARRAY_SIZE(flow_control); i++) {
+		bool_value = (void *)policy + flow_control[i].offset;
+		cnt += sprintf(buf + cnt, "%s=%d\n", flow_control[i].name, *bool_value);
+	}
+
+	return cnt;
 }
 
 static DEVICE_ATTR_RW(flow_ctrl);
@@ -167,7 +220,6 @@ static void usb_offload_link_mtu3(struct device *uo_dev, struct usb_offload_poli
 			policy->hid_disable_offload = true;
 			goto put_node;
 		}
-
 		mtu3_dev = &pdev->dev;
 
 		link =  device_link_add(uo_dev, mtu3_dev,
@@ -196,13 +248,13 @@ void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_pol
 	policy->force_on_secondary = false;
 	policy->support_fb = of_property_read_bool(node, "mediatek,explicit-feedback");
 	policy->support_hub = of_property_read_bool(node, "mediatek,hub-offload");
+	policy->support_idle_lowpwr = of_property_read_bool(node, "mediatek,idle-lowpwr");
+	policy->all_on_sram = of_property_read_bool(node, "mediatek,all-on-sram");
 
 	policy->hid_disable_sync = false;
 	policy->hid_tr_switch = true;
 
 	usb_offload_link_mtu3(dev, policy);
-	USB_OFFLOAD_INFO("hid_disable_sync:%d hid_tr_switch:%d hid_disable_offload:%d\n",
-		policy->hid_disable_sync, policy->hid_tr_switch, policy->hid_disable_offload);
 
 	if (of_property_read_bool(node, "mediatek,smc-ctrl")) {
 		policy->smc_suspend = OFFLOAD_SMC_AUD_SUSPEND;
@@ -211,8 +263,6 @@ void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_pol
 		policy->smc_suspend = -1;
 		policy->smc_resume = -1;
 	}
-
-	USB_OFFLOAD_INFO("smc_suspend:%d smc_resume:%d\n", policy->smc_suspend, policy->smc_resume);
 
 	/* advanced power mode was enabled as long as main-sram was defined */
 	if (!of_property_read_string(node, "mediatek,main-sram", &sram_source)) {
@@ -242,9 +292,11 @@ void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_pol
 
 	policy->adv_lowpwr_dl_only = of_property_read_bool(node, "adv-lowpower-dl-only");
 
-	USB_OFFLOAD_INFO("adv_lowpwr:%d(dl_only:%d) main-sram:%d secondary-sram:%d rsv_size:%d\n",
+	USB_OFFLOAD_INFO("adv_lowpwr:%d(dl_only:%d) main-sram:%d(%s) secondary-sram:%d(%s) rsv_size:%d\n",
 		policy->adv_lowpwr, policy->adv_lowpwr_dl_only,
-		policy->main_sram, policy->secondary_sram, policy->reserved_size);
+		policy->main_sram, usb_offload_sram_source_string(policy->main_sram),
+		policy->secondary_sram, usb_offload_sram_source_string(policy->secondary_sram),
+		policy->reserved_size);
 
 	if (sysfs_create_group(&dev->kobj, &usb_offload_group))
 		USB_OFFLOAD_ERR("fail to create sysfs attribtues\n");

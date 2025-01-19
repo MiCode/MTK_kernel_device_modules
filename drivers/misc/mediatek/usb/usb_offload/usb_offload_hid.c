@@ -404,7 +404,7 @@ static void hid_giveback_urb(struct work_struct *work_struct)
 		hid_ring_lock(hid, "<Finish Giveback>");
 		xhci_stop_hid_ep(hid);
 		if (uodev->policy.hid_tr_switch) {
-			xhci_realloc_hid_ring(hid, UO_PROV_DRAM);
+			xhci_realloc_hid_ring(hid, usb_offload_mem_type());
 		} else if (!dsp_abnormal && xhci_hid_move_enq(hid, hid->cur_enqueue, hid->cycle_state)) {
 			ring = xhci_get_hid_tr_ring(hid);
 			if (unlikely(!ring)) {
@@ -448,10 +448,7 @@ static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable
 {
 	struct usb_offload_urb_msg msg = {0};
 	int ret = 0, urb_size;
-	enum uo_provider_type type;
 	struct xhci_ring *ring;
-
-	type = uodev->policy.adv_lowpwr ? UO_PROV_SRAM : UO_PROV_DRAM;
 
 	if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
 		hid_err("hid:%p does not need offloading\n", hid);
@@ -488,7 +485,7 @@ static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable
 
 		urb_size = (unsigned int)hid->urb->transfer_buffer_length;
 		ret = mtk_offload_alloc_mem(hid->buf_payload, urb_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
-					type, UO_STRUCT_URB, false);
+					usb_offload_mem_type_lp(), UO_STRUCT_URB, false);
 		if (ret) {
 			hid_err("%s fail allocate hid-offload urb\n", hid->name);
 			goto error;
@@ -628,7 +625,7 @@ static void hid_reset(struct hid_ep_info *hid)
 	xhci_stop_hid_ep(hid);
 
 	if (uodev->policy.hid_tr_switch) {
-		xhci_realloc_hid_ring(hid, UO_PROV_DRAM);
+		xhci_realloc_hid_ring(hid, usb_offload_mem_type());
 	} else {
 		if (!ret) {
 			xhci_initialize_ring_info_(ring, 1);
@@ -779,8 +776,7 @@ int usb_offload_hid_start(void)
 			hid_ring_lock(hid, "<AP Suspend>");
 			if (!buf || uodev->policy.hid_tr_switch) {
 				hid_info("hid transfer ring isn't under managed\n");
-				ret = xhci_realloc_hid_ring(hid, uodev->policy.adv_lowpwr ?
-						UO_PROV_SRAM : UO_PROV_DRAM);
+				ret = xhci_realloc_hid_ring(hid, usb_offload_mem_type_lp());
 				if (ret) {
 					hid_err("fail to re-allocate hid ring\n");
 					uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_ALLOC_TR_FAIL);

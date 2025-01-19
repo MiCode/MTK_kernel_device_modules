@@ -310,6 +310,8 @@ struct usb_offload_policy {
 	bool hid_disable_offload;
 	bool hid_disable_sync;
 	bool hid_tr_switch;
+	bool support_idle_lowpwr;
+	bool all_on_sram;
 	int smc_suspend;
 	int smc_resume;
 	enum uo_source_type main_sram;
@@ -480,7 +482,11 @@ void usb_offload_ipi_trace_handler(void *param);
  * platform policy
  ****/
 void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_policy *policy);
-
+void usb_offload_improve_idle_power(bool start);
+enum uo_provider_type usb_offload_mem_type(void);
+enum uo_provider_type usb_offload_mem_type_lp(void);
+enum uo_provider_type usb_offload_mem_type_lp_ex(int direction);
+void usb_offload_hub_working(bool hub_offloading, bool hold);
 /****
  * raw data dump related
  ****/

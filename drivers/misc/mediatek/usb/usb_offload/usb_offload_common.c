@@ -129,19 +129,6 @@ static void free_stream_urb(int direction)
 			stream->direction ? "rx" : "tx");
 }
 
-static enum uo_provider_type lowpwr_mem_type(void)
-{
-	return uodev->adv_lowpwr ? UO_PROV_SRAM : UO_PROV_DRAM;
-}
-
-static enum uo_provider_type lowpwr_mem_type_ex(int direction)
-{
-	if (uodev->policy.adv_lowpwr_dl_only && direction == SNDRV_PCM_STREAM_CAPTURE)
-		return UO_PROV_DRAM;
-
-	return lowpwr_mem_type();
-}
-
 static void print_all_memory(void)
 {
 	struct uo_buffer *array;
@@ -210,14 +197,12 @@ static void memory_cleanup(void)
 		}
 	}
 
+	usb_offload_improve_idle_power(false);
+
 	for (i = 0; i < UO_MAX_DEVICE; i++)
 		uodev->valid_device[i] = NULL;
 
-	if (uodev->hold_wakelock) {
-		pm_relax(uodev->dev);
-		uodev->hold_wakelock = false;
-		USB_OFFLOAD_INFO("hold_wakelock:%d\n", uodev->hold_wakelock);
-	}
+	usb_offload_hub_working(uodev->hub_offloading, false);
 
 	USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d\n", is_vcore_hold);
 	if (is_vcore_hold) {
@@ -1144,7 +1129,7 @@ static int usb_offload_prepare_msg_ext(
 	USB_OFFLOAD_INFO("total_size:%d direction:%d (has_sync_ep:%d expand_tr:%d)\n",
 		total_size, uainfo->direction, has_sync_ep, expend_tr);
 
-	type = lowpwr_mem_type_ex(uainfo->direction);
+	type = usb_offload_mem_type_lp_ex(uainfo->direction);
 
 	/* requeset for memory (urbs + 2nd segment)*/
 	ret = mtk_offload_alloc_mem(stream->urb, total_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
@@ -1449,7 +1434,8 @@ static struct xhci_device_context_array *xhci_mtk_alloc_dcbaa(struct xhci_hcd *x
 		return NULL;
 	}
 
-	if (mtk_offload_alloc_mem(buf, sizeof(*xhci_ctx), 64, UO_PROV_DRAM, UO_STRUCT_DCBAA, true)) {
+	if (mtk_offload_alloc_mem(buf, sizeof(*xhci_ctx), 64,
+			usb_offload_mem_type(), UO_STRUCT_DCBAA, true)) {
 		USB_OFFLOAD_ERR("fail to allocate dcbaa\n");
 		return NULL;
 	}
@@ -1492,7 +1478,8 @@ static void xhci_mtk_alloc_container_ctx(struct xhci_hcd *xhci, struct xhci_cont
 		goto error;
 	}
 
-	if (mtk_offload_alloc_mem(buf, ctx->size, 64, UO_PROV_DRAM, UO_STRUCT_CTX, true)) {
+	if (mtk_offload_alloc_mem(buf, ctx->size, 64,
+			usb_offload_mem_type(), UO_STRUCT_CTX, true)) {
 		USB_OFFLOAD_ERR("fail to allocate context\n");
 		goto error;
 	}
@@ -1818,7 +1805,7 @@ static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
 			&ring->last_seg, num_segs, 0, cycle_state, ring_type,
 			max_packet, mem_flags, p_type, is_rsv);
 	if (ret) {
-		USB_OFFLOAD_ERR("Fail to alloc segment for rings (mem_id:%d)\n", lowpwr_mem_type());
+		USB_OFFLOAD_ERR("Fail to alloc segment for rings (mem_id:%d)\n", p_type);
 		goto fail;
 	}
 
@@ -2017,7 +2004,7 @@ static int xhci_mtk_realloc_isoc_ring(struct snd_usb_substream *subs)
 
 	slot_id = subs->dev->slot_id;
 	ep_id = xhci_get_endpoint_index_(&data_ep->desc);
-	type = lowpwr_mem_type_ex(usb_endpoint_dir_in(&data_ep ->desc));
+	type = usb_offload_mem_type_lp_ex(usb_endpoint_dir_in(&data_ep ->desc));
 	ret = xhci_mtk_realloc_transfer_ring(slot_id, ep_id, type, true);
 	if (!ret)
 		USB_OFFLOAD_INFO("success to reallocate data-ep's"
@@ -2255,7 +2242,7 @@ static struct xhci_ring *xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
 	int cycle_state = 1;
 
 	event_ring = xhci_mtk_alloc_ring(udev->xhci, num_segs, cycle_state,
-			TYPE_EVENT, 0, GFP_ATOMIC, lowpwr_mem_type(), true);
+			TYPE_EVENT, 0, GFP_ATOMIC, usb_offload_mem_type_lp(), true);
 	if (!event_ring) {
 		USB_OFFLOAD_ERR("error allocating event ring\n");
 		return NULL;
@@ -2280,7 +2267,8 @@ static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev,
 		ret = -EINVAL;
 		goto FAIL_TO_ALLOC_ERST;
 	}
-	ret = mtk_offload_alloc_mem(buf, size, 64, lowpwr_mem_type(), UO_STRUCT_ERST, true);
+	ret = mtk_offload_alloc_mem(buf, size, 64,
+		usb_offload_mem_type_lp(), UO_STRUCT_ERST, true);
 	if (ret != 0) {
 		USB_OFFLOAD_ERR("Allocate ERST Fail!!!\n");
 		goto FAIL_TO_ALLOC_ERST;
@@ -2747,14 +2735,8 @@ stop_offload:
 
 		ret = usb_offload_enable_stream(&uainfo, stream);
 		if (uainfo.enable) {
-			if (!ret) {
+			if (!ret)
 				stream->streaming = true;
-				if (uodev->hub_offloading) {
-					uodev->hold_wakelock = true;
-					pm_stay_awake(uodev->dev);
-					USB_OFFLOAD_INFO("hold_wakelock:%d\n", uodev->hold_wakelock);
-				}
-			}
 		} else {
 			free_stream_urb(stream->direction);
 			stream->streaming = false;
@@ -2763,31 +2745,35 @@ stop_offload:
 		uodev->is_streaming = get_stream(SNDRV_PCM_STREAM_PLAYBACK)->streaming ||
 			get_stream(SNDRV_PCM_STREAM_CAPTURE)->streaming;
 
-		if (!uainfo.enable && !uodev->is_streaming) {
-			/* stop offload hid */
-			usb_offload_hid_stop();
-			/* remove ir when there's no streaming */
-			xhci_mtk_remove_sideband(uodev->sb);
-
-			if (uodev->hold_wakelock) {
-				pm_relax(uodev->dev);
-				uodev->hold_wakelock = false;
-				USB_OFFLOAD_INFO("hold_wakelock:%d\n", uodev->hold_wakelock);
-			}
-		}
-
-		print_all_memory();
-
 		if (uodev->is_streaming) {
+			usb_offload_hub_working(uodev->hub_offloading, true);
+
+			/* enter mp3 non-offload low power mode */
+			usb_offload_improve_idle_power(true);
+
 			mtk_clk_notify(NULL, NULL, NULL, 1, 1, 0, CLK_EVT_BYPASS_PLL);
 			USB_OFFLOAD_MEM_DBG("CLK_EVT_BYPASS_PLL 1 suspend\n");
 		} else {
+			if (!uainfo.enable) {
+				/* stop offload hid */
+				usb_offload_hid_stop();
+				/* remove ir when there's no streaming */
+				xhci_mtk_remove_sideband(uodev->sb);
+			}
+
+			usb_offload_hub_working(uodev->hub_offloading, false);
+
+			/* leave mp3 non-offload low power mode */
+			usb_offload_improve_idle_power(false);
+
 			mtk_clk_notify(NULL, NULL, NULL, 0, 1, 0, CLK_EVT_BYPASS_PLL);
 			USB_OFFLOAD_MEM_DBG("CLK_EVT_BYPASS_PLL 0 suspend\n");
 		}
 		uo_mbrain_update(phase, UO_ERROR_SUCCESS);
 		break;
 	}
+
+	print_all_memory();
 
 	USB_OFFLOAD_INFO("is_stream:%d, tx_stream:%d, rx_stream:%d, inited:%d, opened:%d\n",
 			uodev->is_streaming,
@@ -2847,9 +2833,11 @@ int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 	/* if any power sensitive structure on afe sram ? */
 	hold_vcore = mtk_offload_hold_vcore();
 
-	if (hold_apsrc)
+	if (hold_apsrc) {
 		mode = uodev->speed < USB_SPEED_SUPER ?
 				SSUSB_OFFLOAD_MODE_D : SSUSB_OFFLOAD_MODE_D_SS;
+		goto dram_mode;
+	}
 
 	if (hold_vcore)
 		mode = uodev->speed < USB_SPEED_SUPER ?
@@ -2858,8 +2846,8 @@ int xhci_mtk_ssusb_offload_get_mode(struct device *dev)
 		mode = uodev->speed < USB_SPEED_SUPER ?
 			SSUSB_OFFLOAD_MODE_S_EX : SSUSB_OFFLOAD_MODE_S_SS_EX;
 
+dram_mode:
 	USB_OFFLOAD_INFO("mode:%d hold_apsrc:%d hold_vcore:%d\n", mode, hold_apsrc, hold_vcore);
-
 	return mode;
 }
 
@@ -2877,6 +2865,8 @@ static int usb_offload_probe(struct platform_device *pdev)
 	}
 
 	uodev->dev = &pdev->dev;
+
+	device_init_wakeup(uodev->dev, true);
 
 	usb_offload_platform_policy_init(uodev->dev, &uodev->policy);
 	uodev->adv_lowpwr = uodev->policy.adv_lowpwr;
