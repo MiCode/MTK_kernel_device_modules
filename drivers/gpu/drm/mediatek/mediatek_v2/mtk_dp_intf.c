@@ -1091,7 +1091,6 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 		DPTXERR("%s error, w %d, h, %d, fps %d!\n",
 			__func__, cfg->w, cfg->h, cfg->vrefresh);
 
-
 	mtk_dp_inf_video_clock(dp_intf);
 
 	mtk_ddp_write_relaxed(comp, vsize << 16 | hsize,
@@ -1269,10 +1268,8 @@ int mtk_dp_intf_analysis(struct mtk_ddp_comp *comp)
 unsigned long long mtk_dpintf_get_frame_hrt_bw_base(
 		struct mtk_drm_crtc *mtk_crtc, struct mtk_dp_intf *dp_intf)
 {
-	unsigned long long bw_base;
-	int hact;
-	int vtotal;
-	int vact;
+	unsigned long long base_bw;
+	unsigned int vtotal, htotal;
 	int vrefresh;
 	u32 bpp = 4;
 
@@ -1280,29 +1277,25 @@ unsigned long long mtk_dpintf_get_frame_hrt_bw_base(
 	if (!(mtk_crtc && mtk_crtc->base.state))
 		return 1;
 
-	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+	htotal = mtk_crtc->base.state->adjusted_mode.htotal;
 	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
-	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-	bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
-	bw_base = div_u64(bw_base * vtotal, vact);
-	bw_base = div_u64(bw_base, 1000);
-	bw_base = (bw_base * 15) / 10;
+	base_bw = (unsigned long long)div_u64(vtotal * htotal * vrefresh * bpp, 1000000);
 
-	if (dp_intf_bw != bw_base) {
-		dp_intf_bw = bw_base;
-		DPTXMSG("%s Frame Bw:%llu, bpp:%d\n", __func__, bw_base, bpp);
+	if (dp_intf_bw != base_bw) {
+		dp_intf_bw = base_bw;
+		DPTXMSG("%s Frame Bw:%llu, htotal:%d, vtotal:%d, vrefresh:%d\n",
+			__func__, base_bw, htotal, vtotal, vrefresh);
 	}
-	return bw_base;
+
+	return base_bw;
 }
 
 static unsigned long long mtk_dpintf_get_frame_hrt_bw_base_by_mode(
 		struct mtk_drm_crtc *mtk_crtc, struct mtk_dp_intf *dp_intf)
 {
 	unsigned long long base_bw;
-	unsigned int hact;
-	unsigned int vtotal;
-	unsigned int vact;
+	unsigned int vtotal, htotal;
 	unsigned int vrefresh;
 	u32 bpp = 4;
 
@@ -1310,18 +1303,15 @@ static unsigned long long mtk_dpintf_get_frame_hrt_bw_base_by_mode(
 	if (!(mtk_crtc && mtk_crtc->avail_modes))
 		return 1;
 
-	hact = mtk_crtc->avail_modes->hdisplay;
+	htotal = mtk_crtc->avail_modes->htotal ;
 	vtotal = mtk_crtc->avail_modes->vtotal;
-	vact = mtk_crtc->avail_modes->vdisplay;
 	vrefresh = drm_mode_vrefresh(mtk_crtc->avail_modes);
-	base_bw = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
-	base_bw = div_u64(base_bw * vtotal, vact);
-	base_bw = div_u64(base_bw, 1000);
-	base_bw = (base_bw * 15) / 10;
+	base_bw = (unsigned long long)div_u64(vtotal * htotal * vrefresh * bpp, 1000000);
 
 	if (dp_intf_bw != base_bw) {
 		dp_intf_bw = base_bw;
-		DPTXMSG("%s Frame Bw:%llu, bpp:%d\n", __func__, base_bw, bpp);
+		DPTXMSG("%s Frame Bw:%llu, htotal:%d, vtotal:%d, vrefresh:%d\n",
+			__func__, base_bw, htotal, vtotal, vrefresh);
 	}
 
 	return base_bw;
@@ -1423,7 +1413,6 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 	dp_intf->driver_data = (struct mtk_dp_intf_driver_data *)of_id->data;
-	DPTXMSG("%s:%d\n", __func__, __LINE__);
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	dp_intf->regs = devm_ioremap_resource(dev, mem);
@@ -1486,7 +1475,6 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 		return comp_id;
 	}
 
-	DPTXMSG("%s:%d\n", __func__, __LINE__);
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &dp_intf->ddp_comp, comp_id,
 				&mtk_dp_intf_funcs);
 	if (ret) {
@@ -1494,7 +1482,6 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	DPTXMSG("%s:%d\n", __func__, __LINE__);
 	/* Get dp intf irq num and request irq */
 	dp_intf->irq = platform_get_irq(pdev, 0);
 	dp_intf->res = SINK_MAX;
@@ -1512,8 +1499,6 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 		ret = -EPROBE_DEFER;
 		return ret;
 	}
-
-	DPTXMSG("%s:%d\n", __func__, __LINE__);
 
 	platform_set_drvdata(pdev, dp_intf);
 	pm_runtime_enable(dev);
@@ -1591,7 +1576,6 @@ static void mtk_dp_intf_mt6989_get_pll_clk(struct mtk_dp_intf *dp_intf)
 
 static void mtk_dp_intf_mt6991_get_pll_clk(struct mtk_dp_intf *dp_intf)
 {
-	DPTXMSG("%s+\n", __func__);
 	dp_intf->pclk = devm_clk_get(dp_intf->dev, "MUX_DP");
 	dp_intf->pclk_src[MT6991_TCK_26M] = devm_clk_get(dp_intf->dev, "DPI_26M");
 	dp_intf->pclk_src[MT6991_TVDPLL_D4] = devm_clk_get(dp_intf->dev, "TVDPLL_D4");
@@ -1649,16 +1633,8 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 	if (irq_intsa == 3)
 		mtk_dp_video_trigger(video_unmute << 16 | dp_intf->res);
 
-	if (((irq_intsa + 1) % 200 == 0)
-		|| ((irq_vdesa + 1) % 200 == 0)
-		|| ((irq_underflowsa + 1) % 200 == 0)
-		|| ((irq_tl + 1) % 200 == 0))
-		DDPMSG("%s, status:0x%x, vsync:%d, vde:%d, underflow:%d, target_line:%d\n",
-				__func__, status, irq_intsa, irq_vdesa, irq_underflowsa, irq_tl);
-
 	return IRQ_HANDLED;
 }
-
 
 static const struct mtk_dp_intf_driver_data mt6885_dp_intf_driver_data = {
 	.reg_cmdq_ofs = 0x200,
@@ -1729,7 +1705,6 @@ static const struct of_device_id mtk_dp_intf_driver_dt_match[] = {
 	.data = &mt6991_dp_intf_driver_data},
 	{},
 };
-
 MODULE_DEVICE_TABLE(of, mtk_dp_intf_driver_dt_match);
 
 struct platform_driver mtk_dp_intf_driver = {
