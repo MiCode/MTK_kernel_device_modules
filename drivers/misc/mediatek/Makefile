@@ -77,6 +77,7 @@ obj-$(CONFIG_MTK_AEE_FEATURE) += aee/
 obj-$(CONFIG_MTK_SELINUX_AEE_WARNING) += selinux_warning/
 obj-$(CONFIG_MTK_CLKBUF_CTRL) += clkbuf/
 obj-$(CONFIG_MTK_SRCLKEN_RC) += srclken_rc/
+obj-$(CONFIG_MTK_HWCCF) += hwccf/
 obj-$(CONFIG_MTK_POWER_THROTTLING_COMMON) += power_throttling/
 obj-$(CONFIG_MTK_PMIC_PROTECT) += pmic_protect/
 obj-$(CONFIG_MTK_PMIC_TIA) += pmic_tia/
