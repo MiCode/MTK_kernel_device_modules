@@ -910,6 +910,11 @@ static int trusty_log_probe(struct platform_device *pdev)
 {
 	int rc;
 
+	if (!is_google_real_driver()) {
+		dev_info(&pdev->dev, "%s: google trusty log dummy driver\n", __func__);
+		return 0;
+	}
+
 	if (!trusty_supports_logging(pdev->dev.parent))
 		return -ENXIO;
 

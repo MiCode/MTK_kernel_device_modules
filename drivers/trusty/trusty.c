@@ -39,6 +39,8 @@ module_param(use_high_wq, bool, 0660);
 static int nop_nice_value = -20; /* default to highest */
 module_param(nop_nice_value, int, 0660);
 
+static u32 real_drv;
+
 struct trusty_work {
 	struct trusty_state *s;
 	unsigned int cpu;
@@ -1038,6 +1040,12 @@ static int trusty_cpu_down(unsigned int cpu, struct hlist_node *node)
 	return 0;
 }
 
+u32 is_google_real_driver(void)
+{
+	return real_drv;
+}
+EXPORT_SYMBOL(is_google_real_driver);
+
 static int trusty_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1048,6 +1056,12 @@ static int trusty_probe(struct platform_device *pdev)
 	if (!node) {
 		dev_err(&pdev->dev, "of_node required\n");
 		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(node, "google,real-drv", &real_drv);
+	if (ret || !real_drv) {
+		dev_info(&pdev->dev, "%s: google trusty dummy driver\n", __func__);
+		return 0;
 	}
 
 	s = kzalloc(sizeof(*s), GFP_KERNEL);

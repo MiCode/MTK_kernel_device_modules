@@ -536,6 +536,11 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	unsigned long irq_flags;
 	struct trusty_irq_state *is;
 
+	if (!is_google_real_driver()) {
+		dev_info(&pdev->dev, "%s: google trusty dummy driver\n", __func__);
+		return 0;
+	}
+
 	gic_node = of_find_compatible_node(NULL, NULL, "arm,gic-v3");
 	if (!gic_node) {
 		dev_err(&pdev->dev, "gic-v3 of_node required\n");

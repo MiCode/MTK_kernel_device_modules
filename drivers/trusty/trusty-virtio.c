@@ -729,6 +729,11 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	int ret;
 	struct trusty_ctx *tctx;
 
+	if (!is_google_real_driver()) {
+		dev_info(&pdev->dev, "%s: google trusty virtio dummy driver\n", __func__);
+		return 0;
+	}
+
 	tctx = kzalloc(sizeof(*tctx), GFP_KERNEL);
 	if (!tctx)
 		return -ENOMEM;

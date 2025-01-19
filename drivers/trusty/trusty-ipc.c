@@ -2555,6 +2555,11 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	vq_callback_t *vq_cbs[] = {_rxvq_cb, _txvq_cb};
 	static const char * const vq_names[] = { "rx", "tx" };
 
+	if (!is_google_real_driver()) {
+		dev_info(&vdev->dev, "%s: google trusty ipc dummy driver\n", __func__);
+		return 0;
+	}
+
 	vds = kzalloc(sizeof(*vds), GFP_KERNEL);
 	if (!vds)
 		return -ENOMEM;
@@ -2726,6 +2731,11 @@ static int __init tipc_init(void)
 {
 	int ret;
 	dev_t dev;
+
+	if (!is_google_real_driver()) {
+		pr_info("%s: google trusty ipc dummy driver\n", __func__);
+		return 0;
+	}
 
 	ret = alloc_chrdev_region(&dev, 0, MAX_DEVICES, KBUILD_MODNAME);
 	if (ret) {
