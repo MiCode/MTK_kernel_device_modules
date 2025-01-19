@@ -92,6 +92,7 @@ int sbe_delete_spid_loading(int tgid);
 int sbe_update_spid_loading(int *cur_pid_arr, int cur_pid_num, int tgid);
 int sbe_query_spid_loading(void);
 int sbe_split_task_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr, const char *caller);
+int sbe_split_task_tid(char *dep_name, int dep_num, int *out_tid_arr, const char *caller);
 int sbe_base_init(void);
 void sbe_base_exit(void);
 

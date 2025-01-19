@@ -288,6 +288,69 @@ void sbe_receive_doframe_end(int pid,
 	sbe_put_tree_lock(__func__);
 }
 
+void sbe_set_critical_task(int cur_pid, unsigned long long id,
+		int dep_mode, char *dep_name, int dep_num)
+{
+	int i;
+	int local_specific_tid_num = 0;
+	int *local_specific_tid_arr = NULL;
+	struct task_info *local_specific_action_arr = NULL;
+
+	if (dep_mode && dep_num > 0) {
+		local_specific_tid_arr = kcalloc(dep_num, sizeof(int), GFP_KERNEL);
+		local_specific_action_arr = kcalloc(dep_num, sizeof(struct task_info), GFP_KERNEL);
+		if (local_specific_tid_arr && local_specific_action_arr) {
+			int local_action = 0;
+			int op_dep_by_tid = 0;
+
+			switch (dep_mode) {
+			case 1:
+				local_action = XGF_DEL_DEP;
+				break;
+			case 2:
+				local_action = XGF_ADD_DEP_NO_LLF;
+				break;
+			case 3:
+				local_action = XGF_ADD_DEP_NO_LLF;
+				op_dep_by_tid = 1;
+				break;
+			case 4:
+				local_action = XGF_DEL_DEP;
+				op_dep_by_tid = 1;
+				break;
+			default:
+				local_action = -100;
+				break;
+			}
+
+			if (local_action != -100) {
+				if (op_dep_by_tid)
+					local_specific_tid_num = sbe_split_task_tid(dep_name, dep_num,
+						local_specific_tid_arr, __func__);
+				else
+					local_specific_tid_num = sbe_split_task_name(sbe_get_tgid(cur_pid),
+						dep_name, dep_num, local_specific_tid_arr, __func__);
+
+				for (i = 0; i < local_specific_tid_num; i++) {
+					local_specific_action_arr[i].pid = local_specific_tid_arr[i];
+					local_specific_action_arr[i].action = local_action;
+				}
+				//clear dep set before
+				fpsgo_other2xgf_set_critical_tasks(cur_pid, id, NULL, 0, -1);
+				//set new dep task
+				fpsgo_other2xgf_set_critical_tasks(cur_pid, id,
+					local_specific_action_arr, local_specific_tid_num, 1);
+			}
+		}
+
+		kfree(local_specific_action_arr);
+		kfree(local_specific_tid_arr);
+	} else if (dep_mode == 5 && dep_num == 0) {
+		//CLEAR dep set before
+		fpsgo_other2xgf_set_critical_tasks(cur_pid, id, NULL, 0, -1);
+	}
+}
+
 static void sbe_notifier_wq_cb_rescue(int pid, int start, int enhance,
 	int rescue_type, unsigned long long rescue_target, unsigned long long frameID)
 {
@@ -306,10 +369,6 @@ static void sbe_notifier_wq_cb_hwui_frame_hint(int start,
 		unsigned long long curr_ts, unsigned long long id,
 		int dep_mode, char *dep_name, int dep_num, long long frame_flags)
 {
-	int i;
-	int local_specific_tid_num = 0;
-	int *local_specific_tid_arr = NULL;
-	struct task_info *local_specific_action_arr = NULL;
 
 	switch (start) {
 	case -1:
@@ -317,6 +376,7 @@ static void sbe_notifier_wq_cb_hwui_frame_hint(int start,
 		break;
 	case 0:
 		sbe_receive_frame_start(cur_pid, frameID, curr_ts, id);
+		sbe_set_critical_task(cur_pid, id, dep_mode, dep_name, dep_num);
 		break;
 	case 1:
 		sbe_receive_frame_end(cur_pid, frameID, curr_ts, id);
@@ -324,25 +384,11 @@ static void sbe_notifier_wq_cb_hwui_frame_hint(int start,
 	case 2:
 		sbe_receive_doframe_end(cur_pid, frameID, curr_ts, id, frame_flags);
 		break;
+	case 3://only dep actions
+		sbe_set_critical_task(cur_pid, id, dep_mode, dep_name, dep_num);
+		break;
 	default:
 		break;
-	}
-
-	if (dep_mode && dep_num > 0) {
-		local_specific_tid_arr = kcalloc(dep_num, sizeof(int), GFP_KERNEL);
-		local_specific_action_arr = kcalloc(dep_num, sizeof(struct task_info), GFP_KERNEL);
-		if (local_specific_tid_arr && local_specific_action_arr) {
-			local_specific_tid_num = sbe_split_task_name(sbe_get_tgid(cur_pid),
-				dep_name, dep_num, local_specific_tid_arr, __func__);
-			for (i = 0; i < local_specific_tid_num; i++) {
-				local_specific_action_arr[i].pid = local_specific_tid_arr[i];
-				local_specific_action_arr[i].action = XGF_DEL_DEP;
-			}
-			fpsgo_other2xgf_set_critical_tasks(cur_pid, id,
-				local_specific_action_arr, local_specific_tid_num, 1);
-		}
-		kfree(local_specific_action_arr);
-		kfree(local_specific_tid_arr);
 	}
 }
 

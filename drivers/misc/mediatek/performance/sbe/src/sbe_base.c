@@ -659,6 +659,37 @@ int sbe_split_task_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr,
 	return index;
 }
 
+
+int sbe_split_task_tid(char *dep_name, int dep_num, int *out_tid_arr, const char *caller)
+{
+	char *thread_name = NULL, *remain_str = NULL;
+	char local_thread_name[16];
+	int i;
+	int index = 0;
+	int tid;
+
+	if (!dep_name || dep_num <= 0 || !out_tid_arr)
+		return index;
+
+	remain_str = dep_name;
+	for (i = 0; i < dep_num; i++) {
+		thread_name = strsep(&remain_str, ",");
+		if (!thread_name || !memcpy(local_thread_name, thread_name, 16))
+			break;
+		local_thread_name[15] = '\0';
+		sbe_trace("[SBE] %s split task name: %s", caller, local_thread_name);
+
+		if (kstrtoint(local_thread_name, 10, &tid))
+			continue;
+
+		out_tid_arr[index] = tid;
+		index++;
+		sbe_trace("[SBE] %s split task tid: %d", caller, tid);
+	}
+
+	return index;
+}
+
 static ssize_t sbe_render_info_status_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
