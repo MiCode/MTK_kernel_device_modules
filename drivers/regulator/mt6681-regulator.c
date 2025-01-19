@@ -108,11 +108,9 @@ static int mt6681_regulator_set_mode(struct regulator_dev *rdev,
 				     unsigned int mode)
 {
 	int ret = 0;
-	int curr_mode;
 	struct i2c_adapter *adap = info->i2c_client->adapter;
 
 	scp_wake_request(adap);
-	curr_mode = mt6681_regulator_get_mode(rdev);
 	switch (mode) {
 	case REGULATOR_MODE_NORMAL:
 		ret = regmap_update_bits(rdev->regmap,
