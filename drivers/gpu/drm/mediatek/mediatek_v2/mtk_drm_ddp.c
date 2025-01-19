@@ -1057,6 +1057,8 @@
 
 #define OVLSYS_INTMERGE		0x008
 #define DISPSYS_INTMERGE	0x008
+#define MT6993_DISPSYS_INTMERGE	0x014
+#define MT6993_DISPSYS1_INTMERGE	0x008
 
 #define MT6897_OVLSYS_BYPASS_MUX_SHADOW			0xF00
 #define MT6897_OVLSYS_OVL_CON				0xF08
@@ -43966,6 +43968,27 @@ void mtk_ddp_disable_merge_irq(struct drm_device *drm)
 	if (priv->side_config_regs)
 		writel_relaxed(0, priv->side_config_regs + DISPSYS_INTMERGE);
 }
+
+void mtk_ddp_disable_merge_irq_MT6993(struct drm_device *drm)
+{
+	struct mtk_drm_private *priv = drm->dev_private;
+
+	if (priv->ovlsys0_regs)
+		writel_relaxed(0, priv->ovlsys0_regs + OVLSYS_INTMERGE);
+	if (priv->ovlsys1_regs)
+		writel_relaxed(0, priv->ovlsys1_regs + OVLSYS_INTMERGE);
+	if (priv->ovlsys2_regs)
+		writel_relaxed(0, priv->ovlsys2_regs + OVLSYS_INTMERGE);
+	if (priv->config_regs)
+		writel_relaxed(0, priv->config_regs + MT6993_DISPSYS_INTMERGE);
+	if (priv->side_config_regs)
+		writel_relaxed(0, priv->side_config_regs + MT6993_DISPSYS1_INTMERGE);
+	if (priv->sys_b_config_regs)
+		writel_relaxed(0, priv->sys_b_config_regs + MT6993_DISPSYS_INTMERGE);
+	if (priv->sys_b_side_config_regs)
+		writel_relaxed(0, priv->sys_b_side_config_regs + MT6993_DISPSYS1_INTMERGE);
+}
+
 
 void mtk_ddp_clean_ovl_pq_crossbar(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {
