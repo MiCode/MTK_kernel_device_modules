@@ -78,10 +78,10 @@ static int aov_recovery_handler(struct npu_scp_ipi_param *recv_msg)
 
 	switch (recv_msg->act) {
 	case NPU_SCP_RECOVERY_ACK:
-		pr_info("%s Get NPU_SCP_RECOVERY_ACK\n", __func__); //debug
+		// pr_info("%s Get NPU_SCP_RECOVERY_ACK\n", __func__); //debug
 		break;
 	case NPU_SCP_RECOVERY_TO_APMCU:
-		pr_info("%s Get NPU_SCP_RECOVERY_TO_APMCU\n", __func__); //debug
+		// pr_info("%s Get NPU_SCP_RECOVERY_TO_APMCU\n", __func__); //debug
 		atomic_set(&recovery_ctx->ack_to_scp, 1);
 		complete(&recovery_ctx->notify_tx_scp);
 		break;
