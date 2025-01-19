@@ -236,6 +236,17 @@ static struct eint_struct md_eint_struct[] = {
 	{SIM_HOT_PLUG_EINT_MAX, "invalid_type", 0xFF,},
 };
 
+static struct eint_struct md_eint_map_struct[] = {
+	{SIM_EINT_NUM, "interrupts", 0,},
+	{SIM_EINT_DEBOUNCE, "debounce", 1,},
+	{SIM_EINT_POLA, "interrupts", 1,},
+	{SIM_EINT_SENS, "interrupts", 1,},
+	{SIM_EINT_SOCKE, "sockettype", 1,},
+	{SIM_EINT_DEDICATEDEN, "dedicated", 1,},
+	{SIM_EINT_SRCPIN, "src_pin", 1,},
+	{SIM_HOT_PLUG_EINT_MAX, "invalid_type", 0xFF,},
+};
+
 static struct eint_node_name md_eint_node[] = {
 	{"MD1-SIM1-HOT-PLUG-EINT", 1,},
 	{"MD1-SIM2-HOT-PLUG-EINT", 2,},
@@ -285,11 +296,15 @@ static int get_eint_attr_val(struct device_node *node, int index)
 		ret = of_property_read_u32_index(node,
 			md_eint_struct[type].property,
 			md_eint_struct[type].index, &value);
+		if (ret != 0)
+			ret = of_property_read_u32_index(node,
+				md_eint_map_struct[type].property,
+				md_eint_struct[type].index, &value);
 		if (ret != 0) {
 			md_eint_struct[type].value_sim[index] =
-			ERR_SIM_HOT_PLUG_QUERY_TYPE;
-			CCCI_NORMAL_LOG(0, RPC, "%s:  not found\n",
-			md_eint_struct[type].property);
+				ERR_SIM_HOT_PLUG_QUERY_TYPE;
+			CCCI_NORMAL_LOG(0, RPC, "%s: not found\n",
+				md_eint_struct[type].property);
 			ret = ERR_SIM_HOT_PLUG_QUERY_TYPE;
 			continue;
 		}
@@ -318,8 +333,7 @@ static int get_eint_attr_val(struct device_node *node, int index)
 					= -1;
 				md_eint_struct[SIM_EINT_SENS].value_sim[index]
 					= -1;
-				CCCI_ERROR_LOG(0, RPC,
-					"invalid value, please check dtsi!\n");
+				CCCI_ERROR_LOG(0, RPC, "invalid value, please check dtsi!\n");
 				break;
 			}
 			type++;
@@ -327,8 +341,7 @@ static int get_eint_attr_val(struct device_node *node, int index)
 			/* debounce time should divide by 1000 due
 			 * to different unit in AP and MD.
 			 */
-			md_eint_struct[type].value_sim[index] =
-				value/covert_AP_to_MD_unit;
+			md_eint_struct[type].value_sim[index] = value/covert_AP_to_MD_unit;
 		} else
 			md_eint_struct[type].value_sim[index] = value;
 	}
@@ -725,7 +738,7 @@ ssize_t port_rpc_ecid_show(char *buf)
 #endif
 
 static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
-	struct rpc_buffer *p_rpc_buf, int tmp_data[])
+	struct rpc_buffer *p_rpc_buf, unsigned int tmp_data[])
 {
 	/*
 	 * tmp_data[] is used to make sure memory address is valid
@@ -1404,7 +1417,7 @@ static void rpc_msg_handler(struct port_t *port, struct sk_buff *skb)
 	char *ptr = NULL, *ptr_base = NULL;
 	/* unsigned int tmp_data[128]; */
 	/* size of tmp_data should be >= any RPC output result */
-	int *tmp_data = kmalloc(128*sizeof(int), GFP_ATOMIC);
+	unsigned int *tmp_data = kmalloc(128*sizeof(int), GFP_ATOMIC);
 
 	if (tmp_data == NULL) {
 		CCCI_ERROR_LOG(0, RPC,
