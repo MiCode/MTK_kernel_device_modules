@@ -318,6 +318,9 @@ static int get_nr_policy(void) {
 	}
 
 	for_each_possible_cpu(cpu) {
+		if (cpu >= MAX_NR_POLICY) // for coverity
+			break;
+
 		policy = cpufreq_cpu_get(cpu);
 		if (!policy) {
 			pr_info("No cpufreq policy for cpu %d\n", cpu);
