@@ -29,8 +29,15 @@ struct mtk_mminfra_pd {
 	struct mminfra_mtcmos mm_mtcmos[MM_PWR_NUM_NR];
 };
 
+struct mtk_mminfra_util {
+	void __iomem *vlp_base;
+	u32 vlp_rsvd6_ofs;
+	u32 irq_rdy_bit;
+};
+
 static struct device *g_dev;
 static struct mtk_mminfra_pd *g_mminfra_pd;
+static struct mtk_mminfra_util *g_mminfra_util;
 spinlock_t mminfra_pd_lock;
 
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
@@ -183,13 +190,27 @@ int mminfra_ctrl(struct cb_params *cb_para)
 }
 #endif
 
+static void mminfra_util_shutdown(struct platform_device *pdev)
+{
+	if (!g_mminfra_util->vlp_base)
+		return;
+
+	writel(readl(g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs) &
+		~(1 << g_mminfra_util->irq_rdy_bit),
+		g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs);
+
+	pr_notice("[mminfra]%s shutdown done vlp:%x\n", __func__,
+		readl(g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs));
+}
+
 static int mminfra_util_probe(struct platform_device *pdev)
 {
-	u32 i, tmp;
+	u32 i, tmp, vlp_base_pa;
 	int ret = 0;
 
 	g_mminfra_pd = devm_kzalloc(&pdev->dev, sizeof(*g_mminfra_pd), GFP_KERNEL);
-	if (!g_mminfra_pd)
+	g_mminfra_util = devm_kzalloc(&pdev->dev, sizeof(*g_mminfra_util), GFP_KERNEL);
+	if (!g_mminfra_pd || !g_mminfra_util)
 		return -ENOMEM;
 
 	g_dev = &pdev->dev;
@@ -216,6 +237,14 @@ static int mminfra_util_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (!of_property_read_u32(g_dev->of_node, "mminfra-vlp-base", &vlp_base_pa))
+		g_mminfra_util->vlp_base = ioremap(vlp_base_pa, 0x1000);
+	else
+		g_mminfra_util->vlp_base = NULL;
+
+	of_property_read_u32(g_dev->of_node, "mminfra-vlp-ao-rsvd6-ofs", &(g_mminfra_util->vlp_rsvd6_ofs));
+	of_property_read_u32(g_dev->of_node, "mminfra-mm1-irq-rdy-bit", &(g_mminfra_util->irq_rdy_bit));
+
 	spin_lock_init(&mminfra_pd_lock);
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 	ret = register_mtk_clk_external_api_cb(CLK_REQUEST_MMINFRA_CB, &mminfra_ctrl, NULL);
@@ -236,6 +265,7 @@ static const struct of_device_id of_mminfra_util_match_tbl[] = {
 
 static struct platform_driver mminfra_util_drv = {
 	.probe = mminfra_util_probe,
+	.shutdown = mminfra_util_shutdown,
 	.driver = {
 		.name = "mtk-mminfra-util",
 		.of_match_table = of_mminfra_util_match_tbl,
