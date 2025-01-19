@@ -148,6 +148,10 @@ struct mtk_mmsys_driver_data {
 	const enum pwr_clk_id *pwr_on_order;
 	const enum pwr_clk_id *pwr_off_order;
 	int pwr_length;
+	int (*get_dispsys_reg) (struct platform_device *pdev,
+			struct mtk_drm_private *private, unsigned int dispsys_num);
+	int (*get_ovlsys_reg) (struct platform_device *pdev,
+			struct mtk_drm_private *private, unsigned int ovlsys_num);
 };
 
 struct mtk_drm_lyeblob_ids {

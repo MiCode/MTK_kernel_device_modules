@@ -2329,6 +2329,295 @@ mtk_drm_atomic_state_alloc(struct drm_device *dev)
 	return &mtk_state->base;
 }
 
+struct device *mtk_drm_get_pd_device(struct device *dev, const char *id)
+{
+	int index;
+	struct device_node *np = NULL;
+	struct platform_device *pd_pdev;
+	struct device *pd_dev;
+
+	index = of_property_match_string(dev->of_node, "pd-names", id);
+	if (index < 0) {
+		DDPPR_ERR("can't match %s device node\n", id);
+		return NULL;
+	}
+	np = of_parse_phandle(dev->of_node, "pd-others", index);
+	if (!np) {
+		DDPPR_ERR("can't find %s device node\n", id);
+		return NULL;
+	}
+
+	DDPINFO("get %s power-domain at %s\n", id, np->full_name);
+
+	pd_pdev = of_find_device_by_node(np);
+	if (!pd_pdev) {
+		DDPPR_ERR("can't get %s pdev\n", id);
+		return NULL;
+	}
+
+	pd_dev = get_device(&pd_pdev->dev);
+	of_node_put(np);
+
+	return pd_dev;
+}
+
+static int mtk_disp_get_dispsys_reg_mt6993(struct platform_device *pdev,
+	struct mtk_drm_private *private, unsigned int dispsys_num)
+{
+	struct resource *mem;
+	struct device *dev = &pdev->dev;
+	struct platform_device *side_pdev;
+	struct device *side_dev = NULL;
+	struct device_node *side_node = NULL;
+	int ret = 0;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	private->config_regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(private->config_regs)) {
+		ret = PTR_ERR(private->config_regs);
+		dev_err(dev, "Failed to ioremap mmsys-config resource: %d\n",
+			ret);
+		return ret;
+	}
+	private->config_regs_pa = mem->start;
+	private->mmsys_dev = dev;
+
+	if (dispsys_num <= 1)
+		return ret;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (mem) {
+		private->side_config_regs = devm_ioremap_resource(dev, mem);
+		if (IS_ERR(private->side_config_regs)) {
+			ret = PTR_ERR(private->side_config_regs);
+			dev_err(dev, "Failed to ioremap mmsys-config resource: %d\n",
+				ret);
+			return ret;
+		}
+		private->side_config_regs_pa = mem->start;
+	}
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (mem) {
+		private->sys_b_config_regs = devm_ioremap_resource(dev, mem);
+		if (IS_ERR(private->sys_b_config_regs)) {
+			ret = PTR_ERR(private->sys_b_config_regs);
+			dev_err(dev, "Failed to ioremap sys-b-config resource: %d\n",
+				ret);
+			return ret;
+		}
+		private->sys_b_config_regs_pa = mem->start;
+	}
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+
+	if (mem) {
+		private->sys_b_side_config_regs = devm_ioremap_resource(dev, mem);
+		if (IS_ERR(private->sys_b_side_config_regs)) {
+			ret = PTR_ERR(private->sys_b_side_config_regs);
+			dev_err(dev, "Failed to ioremap sys-b-side-config resource: %d\n",
+				ret);
+			return ret;
+		}
+		private->sys_b_side_config_regs_pa = mem->start;
+	}
+
+	side_dev = mtk_drm_get_pd_device(dev, "side_dispsys");
+	if (!side_dev) {
+		/* tricky method to handle dispsys1 power domain */
+		side_node = of_find_compatible_node(NULL, NULL, "mediatek,disp_mutex0");
+		if (side_node) {
+			side_pdev = of_find_device_by_node(side_node);
+			if (!side_pdev)
+				DDPPR_ERR("can't get side_mmsys_dev\n");
+			else
+				side_dev = get_device(&side_pdev->dev);
+		} else {
+			DDPPR_ERR("can't find side_mmsys node");
+		}
+		of_node_put(side_node);
+	}
+	private->side_mmsys_dev = side_dev;
+
+	return ret;
+}
+
+static int mtk_disp_get_ovlsys_reg_mt6993(struct platform_device *pdev,
+	struct mtk_drm_private *private, unsigned int ovlsys_num)
+{
+	struct resource *mem;
+	struct device *dev = &pdev->dev;
+	struct platform_device *side_pdev;
+	struct device *side_dev = NULL;
+	struct device_node *side_node = NULL;
+	int ret = 0;
+
+
+	if (private->ovlsys_num == 0)
+		return ret;
+
+	/* ovlsys config */
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+	if (!mem)
+		return ret;
+
+	private->ovlsys0_regs_pa = mem->start;
+	private->ovlsys0_regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(private->ovlsys0_regs)) {
+		ret = PTR_ERR(private->ovlsys0_regs);
+		dev_err(dev, "Failed to ioremap ovlsys0-config resource: %d\n",
+			ret);
+		return ret;
+	}
+
+	side_dev = mtk_drm_get_pd_device(dev, "ovlsys");
+	private->ovlsys_dev = side_dev;
+
+	if (private->ovlsys_num == 1)
+		return ret;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 5);
+	if (!mem)
+		return ret;
+
+	private->ovlsys1_regs_pa = mem->start;
+	private->ovlsys1_regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(private->ovlsys1_regs)) {
+		ret = PTR_ERR(private->ovlsys1_regs);
+		dev_err(dev, "Failed to ioremap ovlsys1-config resource: %d\n",
+			ret);
+		return ret;
+	}
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 6);
+	if (!mem)
+		return ret;
+
+	private->ovlsys2_regs_pa = mem->start;
+	private->ovlsys2_regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(private->ovlsys2_regs)) {
+		ret = PTR_ERR(private->ovlsys2_regs);
+		dev_err(dev, "Failed to ioremap ovlsys2-config resource: %d\n",
+			ret);
+		return ret;
+	}
+
+	side_dev = mtk_drm_get_pd_device(dev, "side_ovlsys");
+	private->side_ovlsys_dev = side_dev;
+
+	return ret;
+}
+
+static int mtk_disp_get_dispsys_reg_mt6991(struct platform_device *pdev,
+	struct mtk_drm_private *private, unsigned int dispsys_num)
+{
+	struct resource *mem;
+	struct device *dev = &pdev->dev;
+	struct platform_device *side_pdev;
+	struct device *side_dev = NULL;
+	struct device_node *side_node = NULL;
+	int ret = 0;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	private->config_regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(private->config_regs)) {
+		ret = PTR_ERR(private->config_regs);
+		dev_err(dev, "Failed to ioremap mmsys-config resource: %d\n",
+			ret);
+		return ret;
+	}
+	private->config_regs_pa = mem->start;
+	private->mmsys_dev = dev;
+
+	if (dispsys_num <= 1)
+		return ret;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (mem) {
+		private->side_config_regs = devm_ioremap_resource(dev, mem);
+		if (IS_ERR(private->side_config_regs)) {
+			ret = PTR_ERR(private->side_config_regs);
+			dev_err(dev, "Failed to ioremap mmsys-config resource: %d\n",
+				ret);
+			return ret;
+		}
+		private->side_config_regs_pa = mem->start;
+	}
+
+	side_dev = mtk_drm_get_pd_device(dev, "side_dispsys");
+	if (!side_dev) {
+		/* tricky method to handle dispsys1 power domain */
+		side_node = of_find_compatible_node(NULL, NULL, "mediatek,disp_mutex0");
+		if (side_node) {
+			side_pdev = of_find_device_by_node(side_node);
+			if (!side_pdev)
+				DDPPR_ERR("can't get side_mmsys_dev\n");
+			else
+				side_dev = get_device(&side_pdev->dev);
+		} else {
+			DDPPR_ERR("can't find side_mmsys node");
+		}
+		of_node_put(side_node);
+	}
+	private->side_mmsys_dev = side_dev;
+
+	return ret;
+}
+
+static int mtk_disp_get_ovlsys_reg_mt6991(struct platform_device *pdev,
+	struct mtk_drm_private *private, unsigned int ovlsys_num)
+{
+	struct resource *mem;
+	struct device *dev = &pdev->dev;
+	struct platform_device *side_pdev;
+	struct device *side_dev = NULL;
+	struct device_node *side_node = NULL;
+	int ret = 0;
+
+
+	if (private->ovlsys_num == 0)
+		return ret;
+
+	/* ovlsys config */
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (!mem)
+		return ret;
+
+	private->ovlsys0_regs_pa = mem->start;
+	private->ovlsys0_regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(private->ovlsys0_regs)) {
+		ret = PTR_ERR(private->ovlsys0_regs);
+		dev_err(dev, "Failed to ioremap ovlsys0-config resource: %d\n",
+			ret);
+		return ret;
+	}
+
+	side_dev = mtk_drm_get_pd_device(dev, "ovlsys");
+	private->ovlsys_dev = side_dev;
+
+	if (private->ovlsys_num == 1)
+		return ret;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	if (!mem)
+		return ret;
+
+	private->ovlsys1_regs_pa = mem->start;
+	private->ovlsys1_regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(private->ovlsys1_regs)) {
+		ret = PTR_ERR(private->ovlsys1_regs);
+		dev_err(dev, "Failed to ioremap ovlsys1-config resource: %d\n",
+			ret);
+		return ret;
+	}
+
+	side_dev = mtk_drm_get_pd_device(dev, "side_ovlsys");
+	private->side_ovlsys_dev = side_dev;
+
+	return ret;
+}
+
+
 static const struct drm_mode_config_funcs mtk_drm_mode_config_funcs = {
 	.fb_create = mtk_drm_mode_fb_create,
 	.atomic_check = mtk_atomic_check,
@@ -6970,6 +7259,9 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.pwr_off_order = mt6991_pwr_off_order,
 	.pwr_length = MT6991_PWR_CLK_NUMS,
 //	.ct_wiat_cmdq_event = true,
+	.get_dispsys_reg = mtk_disp_get_dispsys_reg_mt6991,
+	.get_ovlsys_reg = mtk_disp_get_ovlsys_reg_mt6991,
+
 };
 
 static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
@@ -7018,6 +7310,8 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.pwr_length = MT6993_PWR_CLK_NUMS,
 	//.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
 	//.get_channel_idx = mtk_disp_get_channel_idx_MT6993,
+	.get_dispsys_reg = mtk_disp_get_dispsys_reg_mt6993,
+	.get_ovlsys_reg = mtk_disp_get_ovlsys_reg_mt6993,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
@@ -11988,38 +12282,6 @@ struct disp_iommu_device *disp_get_iommu_dev(void)
 	return &disp_iommu;
 }
 
-struct device *mtk_drm_get_pd_device(struct device *dev, const char *id)
-{
-	int index;
-	struct device_node *np = NULL;
-	struct platform_device *pd_pdev;
-	struct device *pd_dev;
-
-	index = of_property_match_string(dev->of_node, "pd-names", id);
-	if (index < 0) {
-		DDPPR_ERR("can't match %s device node\n", id);
-		return NULL;
-	}
-	np = of_parse_phandle(dev->of_node, "pd-others", index);
-	if (!np) {
-		DDPPR_ERR("can't find %s device node\n", id);
-		return NULL;
-	}
-
-	DDPINFO("get %s power-domain at %s\n", id, np->full_name);
-
-	pd_pdev = of_find_device_by_node(np);
-	if (!pd_pdev) {
-		DDPPR_ERR("can't get %s pdev\n", id);
-		return NULL;
-	}
-
-	pd_dev = get_device(&pd_pdev->dev);
-	of_node_put(np);
-
-	return pd_dev;
-}
-
 static int mtk_drm_get_segment_id(struct platform_device *pdev,
 	struct mtk_drm_private *private)
 {
@@ -12259,89 +12521,24 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		private->pq_path_sel = pq_path_sel;
 	else
 		private->pq_path_sel = 1;
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	private->config_regs = devm_ioremap_resource(dev, mem);
-	if (IS_ERR(private->config_regs)) {
-		ret = PTR_ERR(private->config_regs);
-		dev_err(dev, "Failed to ioremap mmsys-config resource: %d\n",
-			ret);
+
+	if (private->data->get_dispsys_reg)
+		ret = private->data->get_dispsys_reg(pdev, private, dispsys_num);
+	else
+		ret = mtk_disp_get_dispsys_reg_mt6991(pdev, private, dispsys_num);
+
+	if (ret)
 		return ret;
-	}
-	private->config_regs_pa = mem->start;
-	private->mmsys_dev = dev;
-
-	if (dispsys_num <= 1)
-		goto SKIP_SIDE_DISP;
-
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (mem) {
-		private->side_config_regs = devm_ioremap_resource(dev, mem);
-		if (IS_ERR(private->side_config_regs)) {
-			ret = PTR_ERR(private->side_config_regs);
-			dev_err(dev, "Failed to ioremap mmsys-config resource: %d\n",
-				ret);
-			return ret;
-		}
-		private->side_config_regs_pa = mem->start;
-	}
-
-	side_dev = mtk_drm_get_pd_device(dev, "side_dispsys");
-	if (!side_dev) {
-		/* tricky method to handle dispsys1 power domain */
-		side_node = of_find_compatible_node(NULL, NULL, "mediatek,disp_mutex0");
-		if (side_node) {
-			side_pdev = of_find_device_by_node(side_node);
-			if (!side_pdev)
-				DDPPR_ERR("can't get side_mmsys_dev\n");
-			else
-				side_dev = get_device(&side_pdev->dev);
-		} else {
-			DDPPR_ERR("can't find side_mmsys node");
-		}
-		of_node_put(side_node);
-	}
-	private->side_mmsys_dev = side_dev;
 
 SKIP_SIDE_DISP:
 
-	if (private->ovlsys_num == 0)
-		goto SKIP_OVLSYS_CONFIG;
+	if (private->data->get_ovlsys_reg)
+		ret = private->data->get_ovlsys_reg(pdev, private, dispsys_num);
+	else
+		ret = mtk_disp_get_ovlsys_reg_mt6991(pdev, private, dispsys_num);
 
-	/* ovlsys config */
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	if (!mem)
-		goto SKIP_OVLSYS_CONFIG;
-
-	private->ovlsys0_regs_pa = mem->start;
-	private->ovlsys0_regs = devm_ioremap_resource(dev, mem);
-	if (IS_ERR(private->ovlsys0_regs)) {
-		ret = PTR_ERR(private->ovlsys0_regs);
-		dev_err(dev, "Failed to ioremap ovlsys0-config resource: %d\n",
-			ret);
+	if (ret)
 		return ret;
-	}
-
-	side_dev = mtk_drm_get_pd_device(dev, "ovlsys");
-	private->ovlsys_dev = side_dev;
-
-	if (private->ovlsys_num == 1)
-		goto SKIP_OVLSYS_CONFIG;
-
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-	if (!mem)
-		goto SKIP_OVLSYS_CONFIG;
-
-	private->ovlsys1_regs_pa = mem->start;
-	private->ovlsys1_regs = devm_ioremap_resource(dev, mem);
-	if (IS_ERR(private->ovlsys1_regs)) {
-		ret = PTR_ERR(private->ovlsys1_regs);
-		dev_err(dev, "Failed to ioremap ovlsys1-config resource: %d\n",
-			ret);
-		return ret;
-	}
-
-	side_dev = mtk_drm_get_pd_device(dev, "side_ovlsys");
-	private->side_ovlsys_dev = side_dev;
 
 SKIP_OVLSYS_CONFIG:
 
