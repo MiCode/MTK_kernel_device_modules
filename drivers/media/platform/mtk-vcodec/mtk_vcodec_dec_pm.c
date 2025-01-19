@@ -1091,8 +1091,8 @@ static int mtk_vdec_translation_fault_callback(
 	    port_idx == VDEC_M4U_PORT_LAT0_UFO_C ||
 	    port_idx == VDEC_M4U_PORT_LAT0_MC)
 		hw_id = MTK_VDEC_CORE;
-	else if (MTK_M4U_TO_LARB(port) == 4)
-		hw_id = MTK_VDEC_CORE; // larb4 CORE
+	else if (MTK_M4U_TO_LARB(port) == 4 || MTK_M4U_TO_LARB(port) == 6)
+		hw_id = MTK_VDEC_CORE; // larb4 & larb6 CORE
 	else if (MTK_M4U_TO_LARB(port) == 5 && vdec_hw_ipm == VCODEC_IPM_V2)
 		hw_id = MTK_VDEC_LAT; // larb5 LAT
 	else {
@@ -1138,7 +1138,8 @@ static int mtk_vdec_translation_fault_callback(
 		    port == dev->dec_m4u_ports[VDEC_M4U_PORT_UFO_ENC])
 			mtk_vdec_dump_addr_reg(dev, MTK_VDEC_CORE, DUMP_VDEC_REF_BUF);
 	} else if (port == dev->dec_m4u_ports[VDEC_M4U_PORT_MC] ||
-		   port == dev->dec_m4u_ports[VDEC_M4U_PORT_LAT0_MC]) {
+		   port == dev->dec_m4u_ports[VDEC_M4U_PORT_LAT0_MC] ||
+		   port == dev->dec_m4u_ports[VDEC_M4U_PORT_MC2]) {
 		mtk_vdec_dump_addr_reg(dev, hw_id, DUMP_VDEC_REF_BUF);
 	} else if (port == dev->dec_m4u_ports[VDEC_M4U_PORT_AVC_MV]) {
 		mtk_vdec_dump_addr_reg(dev, hw_id, DUMP_VDEC_MV_BUF);
@@ -1267,6 +1268,8 @@ int mtk_vdec_m4u_port_name_to_index(const char *name)
 		return VDEC_M4U_PORT_LAT0_UNIWRAP;
 	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_UNIWRAP, name))
 		return VDEC_M4U_PORT_UNIWRAP;
+	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_MC_PORT2, name))
+		return VDEC_M4U_PORT_MC2;
 	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_VIDEO_UP_SEC, name))
 		return VDEC_M4U_PORT_VIDEO_UP_SEC;
 	else if (!strcmp(MTK_VDEC_M4U_PORT_NAME_VIDEO_UP_NOR, name))
