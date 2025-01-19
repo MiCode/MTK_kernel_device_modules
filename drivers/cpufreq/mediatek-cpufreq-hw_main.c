@@ -266,6 +266,7 @@ static int mtk_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 		latency = CPUFREQ_ETERNAL;
 
 	/* us convert to ns */
+	latency = latency & 0xFFFFU;
 	policy->cpuinfo.transition_latency = latency * 1000;
 
 	policy->fast_switch_possible = true;
