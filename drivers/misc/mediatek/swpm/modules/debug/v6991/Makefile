@@ -42,11 +42,6 @@ ${BUILD_SWPM_DBG_MODUDLE_NAME}-objs += swpm_v6991_ext.o
 ${BUILD_SWPM_DBG_MODUDLE_NAME}-objs += swpm_v6991_subsys.o
 ${BUILD_SWPM_DBG_MODUDLE_NAME}-objs += swpm_v6991_dbg_init.o
 
-BUILD_SWPM_CPU_DBG_MODUDLE_NAME=mtk-swpm-cpu-dbg-v6991
-obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_CPU_DBG_MODUDLE_NAME}.o
-${BUILD_SWPM_CPU_DBG_MODUDLE_NAME}-objs += subsys/swpm_cpu_v6991.o
-${BUILD_SWPM_CPU_DBG_MODUDLE_NAME}-objs += subsys/swpm_cpu_v6991_dbg_init.o
-
 BUILD_SWPM_MML_DBG_MODUDLE_NAME=mtk-swpm-mml-dbg-v6991
 obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_MML_DBG_MODUDLE_NAME}.o
 ${BUILD_SWPM_MML_DBG_MODUDLE_NAME}-objs += subsys/swpm_mml_v6991.o
