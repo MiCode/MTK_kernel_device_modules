@@ -15924,6 +15924,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mediatek,vcore-check-rg = <0x1c0132b0>;
 		mediatek,vcore-check-offset = <6>;
 		mediatek,mmdebug = <&mmdebug>;
+		mediatek,mmup-sram;
 	};
 
 	mmdvfs-user {
