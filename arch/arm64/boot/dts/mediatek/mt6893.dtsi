@@ -4201,7 +4201,7 @@ cpus {
 			reg = <0 0x19010000 0 0x1000>;
 			iommu_id = <0>;
 			iommu_type = "apu";
-			mediatek,apu_power = <&apusys_power>;
+			mediatek,apu-power = <&apusys_power>;
 			interrupts = <GIC_SPI 393 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_APU>;
 			clocks = <&apu_conn_clk CLK_APUC_IOMMU_0>;
@@ -4213,7 +4213,7 @@ cpus {
 			reg = <0 0x19015000 0 0x1000>;
 			iommu_id = <1>;
 			iommu_type = "apu";
-			mediatek,apu_power = <&apusys_power>;
+			mediatek,apu-power = <&apusys_power>;
 			interrupts = <GIC_SPI 398 IRQ_TYPE_LEVEL_HIGH 0>;
 			power-domains = <&scpsys MT6893_POWER_DOMAIN_APU>;
 			clocks = <&apu_conn_clk CLK_APUC_IOMMU_1>;
