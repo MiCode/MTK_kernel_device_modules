@@ -922,6 +922,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6983".format(kernel_version): "mt6983",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6985".format(kernel_version): "mt6985",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6989".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:memory-amms".format(kernel_version): "mt6761 mt6765 mt6768 mt6781 mt6833 mt6853 mt6877",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-chk-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-dbg-mt6789".format(kernel_version): "mt6789",
