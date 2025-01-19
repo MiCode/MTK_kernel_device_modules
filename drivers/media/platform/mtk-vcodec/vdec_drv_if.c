@@ -267,7 +267,7 @@ void vdec_decode_prepare(void *ctx_prepare,
 
 	mtk_vcodec_dec_clock_on(&ctx->dev->pm, hw_id);
 
-	if (ret == 0 && !mtk_vcodec_is_vcp(MTK_INST_DECODER))
+	if (ret == 0 && !mtk_vcodec_is_vcp(MTK_INST_DECODER) && ctx->dev->dec_irq[hw_id] > 0)
 		enable_irq(ctx->dev->dec_irq[hw_id]);
 	mtk_vdec_dvfs_begin_frame(ctx, hw_id);
 	mtk_vdec_pmqos_begin_frame(ctx);
@@ -301,7 +301,7 @@ void vdec_decode_unprepare(void *ctx_unprepare,
 	else
 		vcodec_trace_count("VDEC_HW_LAT", 0);
 
-	if (!mtk_vcodec_is_vcp(MTK_INST_DECODER))
+	if (!mtk_vcodec_is_vcp(MTK_INST_DECODER) && ctx->dev->dec_irq[hw_id] > 0)
 		disable_irq(ctx->dev->dec_irq[hw_id]);
 
 	mtk_vcodec_dec_clock_off(&ctx->dev->pm, hw_id);

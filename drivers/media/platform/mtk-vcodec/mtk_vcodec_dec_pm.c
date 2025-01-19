@@ -79,7 +79,7 @@ int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)
 	int ret = 0;
 #ifndef FPGA_PWRCLK_API_DISABLE
 	struct device_node *node;
-	struct platform_device *pdev;
+	struct platform_device *pdev, *larb_pdev;
 	struct mtk_vcodec_pm *pm;
 	int larb_index;
 	int i = 0;
@@ -110,36 +110,37 @@ int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)
 	// parse "mediatek,larbs"
 	node = of_parse_phandle(pdev->dev.of_node, "mediatek,larbs", 0);
 	if (!node)
-		mtk_v4l2_err("no mediatek,larb found");
-	for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
-		node = of_parse_phandle(pdev->dev.of_node, "mediatek,larbs", larb_index);
-		if (!node)
-			break;
+		mtk_v4l2_debug(0, "no mediatek,larb found");
+	else {
+		for (larb_index = 0; larb_index < MTK_VDEC_MAX_LARB_COUNT; larb_index++) {
+			node = of_parse_phandle(pdev->dev.of_node, "mediatek,larbs", larb_index);
+			if (!node)
+				break;
 
-		pdev = of_find_device_by_node(node);
-		if (WARN_ON(!pdev)) {
-			of_node_put(node);
-			return -1;
-		}
-		pm->larbvdecs[larb_index] = &pdev->dev;
-		mtk_v4l2_debug(2, "larbvdecs[%d] = %p", larb_index, pm->larbvdecs[larb_index]);
-		pdev = mtkdev->plat_dev;
+			larb_pdev = of_find_device_by_node(node);
+			if (WARN_ON(!larb_pdev)) {
+				of_node_put(node);
+				mtk_v4l2_err("get larb(%d) device by node fail", larb_index);
+				return -1;
+			}
+			pm->larbvdecs[larb_index] = &larb_pdev->dev;
+			mtk_v4l2_debug(2, "larbvdecs[%d] = %p", larb_index, pm->larbvdecs[larb_index]);
 
-		if (!device_link_add(&pdev->dev, pm->larbvdecs[larb_index],
-					DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
-			mtk_v4l2_err("%s larb(%d) device link fail\n", __func__, larb_index);
-			return -1;
+			if (!device_link_add(&pdev->dev, pm->larbvdecs[larb_index],
+						DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS)) {
+				mtk_v4l2_err("larb(%d) device link fail", larb_index);
+				return -1;
+			}
 		}
 	}
 
 	memset(clks_data, 0x00, sizeof(struct mtk_vdec_clks_data));
-	while (!of_property_read_string_index(
-			pdev->dev.of_node, "clock-names", clk_id, &clk_name)) {
+	while (!of_property_read_string_index(pdev->dev.of_node, "clock-names", clk_id, &clk_name)) {
 		mtk_v4l2_debug(2, "init clock, id: %d, name: %s", clk_id, clk_name);
 		pm->vdec_clks[clk_id] = devm_clk_get(&pdev->dev, clk_name);
 		if (IS_ERR(pm->vdec_clks[clk_id])) {
 			mtk_v4l2_err(
-				"[VCODEC][ERROR] Unable to devm_clk_get id: %d, name: %s\n",
+				"[VCODEC][ERROR] Unable to devm_clk_get id: %d, name: %s",
 				clk_id, clk_name);
 			return PTR_ERR(pm->vdec_clks[clk_id]);
 		}
@@ -192,7 +193,8 @@ int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)
 		mutex_init(&pm->dec_racing_info_mutex);
 	}
 
-	pm_runtime_enable(&pdev->dev);
+	if (pm->larbvdecs[0])
+		pm_runtime_enable(&pdev->dev);
 #endif
 
 	return ret;
@@ -205,7 +207,8 @@ void mtk_vcodec_release_dec_pm(struct mtk_vcodec_dev *dev)
 	mutex_unlock(&dev->dec_dvfs_mutex);
 #endif
 #ifndef FPGA_PWRCLK_API_DISABLE
-	pm_runtime_disable(dev->pm.dev);
+	if (dev->pm.larbvdecs[0])
+		pm_runtime_disable(dev->pm.dev);
 #endif
 }
 
