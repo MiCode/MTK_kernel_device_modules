@@ -747,7 +747,7 @@ error:
 	slbc_backup_private_data(uid, d);
 	mutex_unlock(&slbc_ops_lock);
 
-	return 0;
+	return ret;
 }
 
 static int slbc_release_cache(struct slbc_data *d)
@@ -949,7 +949,7 @@ error:
 	slbc_backup_private_data(uid, d);
 	mutex_unlock(&slbc_ops_lock);
 
-	return 0;
+	return ret;
 }
 
 int slbc_power_on(struct slbc_data *d)

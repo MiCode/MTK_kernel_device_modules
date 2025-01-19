@@ -213,7 +213,6 @@ static int slbc_request_buffer(struct slbc_data *d)
 	int ret = 0;
 	int uid = d->uid;
 	int sid;
-	struct slbc_config *config;
 
 	/* slbc_debug_log("%s: TP_BUFFER\n", __func__); */
 
@@ -224,7 +223,6 @@ static int slbc_request_buffer(struct slbc_data *d)
 		if (sid != SID_NOT_FOUND) {
 			d->sid = sid;
 			d->config = &p_config[sid];
-			config = (struct slbc_config *)d->config;
 		}
 	}
 
