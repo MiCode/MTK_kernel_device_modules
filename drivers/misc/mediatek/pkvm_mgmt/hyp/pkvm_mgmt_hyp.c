@@ -8,9 +8,12 @@
 
 #include "../../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "../../../../arch/arm64/kvm/hyp/include/nvhe/spinlock.h"
+#include "pkvm_ctrl.h"
 
-// Here saves all el2 smc call ids for blocking any invalid el1 smc
-// call to use el2 smc call ids
+/*
+ * Here saves all el2 smc call ids for blocking any invalid el1 smc
+ * call to use el2 smc call ids
+ */
 static const uint64_t el2_smc_id_list[] = {
 };
 
@@ -80,8 +83,15 @@ bool mtk_smc_handler(struct user_pt_regs *ctxt)
 	return false;
 }
 
+/* For pkvm print */
+void pkvm_print_tfa_char(const char ch)
+{
+	arm_smccc_1_1_smc(MTK_SIP_HYP_PKVM_CONTROL, PKVM_HYP_PUTS, (unsigned long)ch, 0, 0);
+}
+
 int mtk_smc_handler_hyp_init(const struct pkvm_module_ops *ops)
 {
 	hyp_spin_lock_init(&handler_glist_lock);
+	ops->register_serial_driver(pkvm_print_tfa_char);
 	return ops->register_host_smc_handler(mtk_smc_handler);
 }
