@@ -44,43 +44,6 @@ static struct attribute_group attr_group = {
 #endif
 
 #if IS_ENABLED(CONFIG_KALLSYMS)
-#if !IS_ENABLED(CONFIG_KALLSYMS_BASE_RELATIVE)
-static void mrdump_cblock_kallsyms_init(struct mrdump_ksyms_param *kparam)
-{
-	struct mrdump_ksyms_param tmp_kp;
-	unsigned long start_addr;
-
-	memset(&tmp_kp, 0, sizeof(struct mrdump_ksyms_param));
-	start_addr = 0; // (unsigned long)kallsyms_addresses;
-	tmp_kp.tag[0] = 'K';
-	tmp_kp.tag[1] = 'S';
-	tmp_kp.tag[2] = 'Y';
-	tmp_kp.tag[3] = 'M';
-
-	switch (sizeof(unsigned long)) {
-	case 4:
-		tmp_kp.flag = KSYM_32;
-		break;
-	case 8:
-		tmp_kp.flag = KSYM_64;
-		break;
-	default:
-		BUILD_BUG();
-	}
-	tmp_kp.start_addr = __pa_symbol(start_addr);
-	// tmp_kp.size = (unsigned long)&kallsyms_token_index - start_addr + 512;
-	tmp_kp.crc = crc32(0, (unsigned char *)start_addr, tmp_kp.size);
-	// tmp_kp.addresses_off = (unsigned long)&kallsyms_addresses - start_addr;
-	// tmp_kp.num_syms_off = (unsigned long)&kallsyms_num_syms - start_addr;
-	// tmp_kp.names_off = (unsigned long)&kallsyms_names - start_addr;
-	// tmp_kp.markers_off = (unsigned long)&kallsyms_markers - start_addr;
-	// tmp_kp.token_table_off =
-	// 	(unsigned long)&kallsyms_token_table - start_addr;
-	// tmp_kp.token_index_off =
-	// 	(unsigned long)&kallsyms_token_index - start_addr;
-	memcpy_toio(kparam, &tmp_kp, sizeof(struct mrdump_ksyms_param));
-}
-#else
 static void mrdump_cblock_kallsyms_init(struct mrdump_ksyms_param *kparam)
 {
 	struct mrdump_ksyms_param tmp_kp;
@@ -128,7 +91,6 @@ static void mrdump_cblock_kallsyms_init(struct mrdump_ksyms_param *kparam)
 
 	memcpy_toio(kparam, &tmp_kp, sizeof(struct mrdump_ksyms_param));
 }
-#endif
 #endif
 
 void mrdump_cblock_late_init(void)

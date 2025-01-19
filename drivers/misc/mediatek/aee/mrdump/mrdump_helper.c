@@ -34,7 +34,6 @@
 
 static u32 mrdump_ka_done;
 
-static unsigned long *mrdump_ka;
 static int *mrdump_ko;
 static unsigned long _mrdump_krb;
 static unsigned int _mrdump_kns;
@@ -44,6 +43,7 @@ static u8 *mrdump_ktt;
 static u16 *mrdump_kti;
 static unsigned long p_stext;
 static unsigned long p_etext;
+//static unsigned long p_text;
 static unsigned long p_init_begin;
 
 #if IS_ENABLED(CONFIG_64BIT)
@@ -52,7 +52,6 @@ static unsigned long p_init_begin;
 #define KALLS_ALGN	4
 #endif
 
-#if IS_ENABLED(CONFIG_KALLSYMS_BASE_RELATIVE)
 unsigned long aee_get_kns_addr(void);
 
 unsigned long aee_get_kn_off(void)
@@ -86,7 +85,6 @@ unsigned long aee_get_kti_off(void)
 
 	return (unsigned long)mrdump_kti - aee_get_kns_addr();
 }
-#endif
 
 unsigned long aee_get_ka_off(void)
 {
@@ -96,7 +94,7 @@ unsigned long aee_get_ka_off(void)
 	return (unsigned long)mrdump_ko - aee_get_kns_addr();
 }
 
-// static int retry_nm = 100;
+static int retry_nm = 100;
 
 static void *kinfo_vaddr;
 
@@ -121,14 +119,20 @@ static void mrdump_ka_work_func(struct work_struct *work)
 	kinfo = &(dbg_kinfo->info);
 	if (dbg_kinfo->magic_number == DEBUG_KINFO_MAGIC) {
 		_mrdump_kns = kinfo->num_syms;
-		_mrdump_krb = kinfo->_relative_pa + kimage_voffset;
-		mrdump_ko = (void *)(kinfo->_offsets_pa + kimage_voffset);
+		/*
+		 * debug_kinfo should update, after that, revert this WA
+		 * _mrdump_krb = kinfo->_relative_pa + kimage_voffset;
+		 * mrdump_ko = (void *)(kinfo->_offsets_pa + kimage_voffset);
+		 */
 		mrdump_kn = (void *)(kinfo->_names_pa + kimage_voffset);
 		mrdump_ktt = (void *)(kinfo->_token_table_pa + kimage_voffset);
 		mrdump_kti = (void *)(kinfo->_token_index_pa + kimage_voffset);
+		mrdump_ko = (void *)mrdump_kti + 256 * sizeof(u16);
 		mrdump_km = (void *)(kinfo->_markers_pa + kimage_voffset);
 		p_stext = __phys_to_kimg(kinfo->_stext_pa);
 		p_etext = __phys_to_kimg(kinfo->_etext_pa);
+		//p_text = __phys_to_kimg(kinfo->_text_pa);
+		_mrdump_krb = p_stext - SEGMENT_ALIGN;
 		p_init_begin = __phys_to_kimg(kinfo->_sinittext_pa);
 		aee_base_addrs_init();
 		mrdump_cblock_late_init();
@@ -138,10 +142,10 @@ static void mrdump_ka_work_func(struct work_struct *work)
 		mrdump_ka_done = MRDUMP_KA_MAGIC;
 	} else {
 		pr_info("%s: retry in 0.1 second", __func__);
-		// if (--retry_nm >= 0)
-		// 	schedule_delayed_work(&ka_work, HZ / 10);
-		// else
-		// 	pr_info("%s failed\n", __func__);
+		if (--retry_nm >= 0)
+			schedule_delayed_work(&ka_work, HZ / 10);
+		else
+			pr_info("%s failed\n", __func__);
 	}
 }
 
@@ -183,9 +187,6 @@ tail:
 
 static unsigned long mrdump_idx2addr(int idx)
 {
-	if (!IS_ENABLED(CONFIG_KALLSYMS_BASE_RELATIVE))
-		return *(mrdump_ka + idx);
-
 	if (!IS_ENABLED(CONFIG_KALLSYMS_ABSOLUTE_PERCPU))
 		return _mrdump_krb + (u32)(*(mrdump_ko + idx));
 
