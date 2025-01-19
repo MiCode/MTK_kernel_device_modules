@@ -12,7 +12,17 @@
 
 #include "devapc-mt6991.h"
 
-static const struct mtk_device_num mtk6991_devices_num[] = {
+struct tag_chipid {
+	uint32_t size;
+	uint32_t hw_code;
+	uint32_t hw_subcode;
+	uint32_t hw_ver;
+	uint32_t sw_ver;
+};
+
+static int g_sw_ver = 1;
+
+static struct mtk_device_num mtk6991_devices_num[] = {
 	{
 		DEVAPC_TYPE_INFRA,
 		VIO_SLAVE_NUM_APINFRA_IO,
@@ -697,9 +707,18 @@ const char *index_to_subsys(int slave_type, uint32_t vio_index,
 				return mt6991_devices_apinfra_slb[i].device;
 		}
 	} else if (slave_type == SLAVE_TYPE_PERI_PAR) {
-		for (i = 0; i < VIO_SLAVE_NUM_PERI_PAR; i++) {
-			if (vio_index == mt6991_devices_peri_par[i].vio_index)
-				return mt6991_devices_peri_par[i].device;
+		if (g_sw_ver) {
+			int slave_num = ARRAY_SIZE(mt6991_devices_peri_par_b0);
+
+			for (i = 0; i < slave_num; i++) {
+				if (vio_index == mt6991_devices_peri_par_b0[i].vio_index)
+					return mt6991_devices_peri_par_b0[i].device;
+			}
+		} else {
+			for (i = 0; i < VIO_SLAVE_NUM_PERI_PAR; i++) {
+				if (vio_index == mt6991_devices_peri_par_a0[i].vio_index)
+					return mt6991_devices_peri_par_a0[i].device;
+			}
 		}
 	} else if (slave_type == SLAVE_TYPE_VLP) {
 		for (i = 0; i < VIO_SLAVE_NUM_VLP; i++) {
@@ -955,7 +974,7 @@ static struct mtk_devapc_soc mt6991_data = {
 	.device_info[SLAVE_TYPE_APINFRA_INT] = mt6991_devices_apinfra_int,
 	.device_info[SLAVE_TYPE_APINFRA_MMU] = mt6991_devices_apinfra_mmu,
 	.device_info[SLAVE_TYPE_APINFRA_SLB] = mt6991_devices_apinfra_slb,
-	.device_info[SLAVE_TYPE_PERI_PAR] = mt6991_devices_peri_par,
+	.device_info[SLAVE_TYPE_PERI_PAR] = mt6991_devices_peri_par_a0,
 	.device_info[SLAVE_TYPE_VLP] = mt6991_devices_vlp,
 	.device_info[SLAVE_TYPE_ADSP] = mt6991_devices_adsp,
 	.device_info[SLAVE_TYPE_MMINFRA] = mt6991_devices_mminfra,
@@ -984,9 +1003,43 @@ static const struct dev_pm_ops devapc_dev_pm_ops = {
 	.resume_noirq = devapc_resume_noirq,
 };
 
+static int devapc_get_chipid(void)
+{
+	struct tag_chipid *chip_id;
+	struct device_node *node = of_find_node_by_path("/chosen");
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (!node) {
+		pr_notice("chosen node not found in device tree\n");
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", NULL);
+	if (!chip_id) {
+		pr_notice("could not found atag,chipid in chosen\n");
+		return -ENODEV;
+	}
+
+	g_sw_ver = (int)chip_id->sw_ver;
+
+	return 0;
+}
+
 static int mt6991_devapc_probe(struct platform_device *pdev)
 {
-	return mtk_devapc_probe(pdev, &mt6991_data);
+	int ret = 0;
+
+	ret = devapc_get_chipid();
+
+	if (g_sw_ver != 0) {
+		mt6991_data.device_info[SLAVE_TYPE_PERI_PAR] = mt6991_devices_peri_par_b0;
+		mtk6991_devices_num[SLAVE_TYPE_PERI_PAR].vio_slave_num = ARRAY_SIZE(mt6991_devices_peri_par_b0);
+	}
+
+	return mtk_devapc_probe(pdev, (struct mtk_devapc_soc *)&mt6991_data);
 }
 
 static int mt6991_devapc_remove(struct platform_device *dev)

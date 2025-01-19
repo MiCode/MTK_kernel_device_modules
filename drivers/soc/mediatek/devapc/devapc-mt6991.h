@@ -1925,7 +1925,7 @@ static const struct mtk_device_info mt6991_devices_apinfra_slb[] = {
 	{-1, -1, 33, "reserve", false},
 };
 
-static const struct mtk_device_info mt6991_devices_peri_par[] = {
+static const struct mtk_device_info mt6991_devices_peri_par_a0[] = {
 	/* sys_idx, ctrl_idx, vio_idx, device, vio_irq */
 	/* 0 */
 	{0, 0, 0, "UARTHUB_APB_S", true},
@@ -2235,6 +2235,330 @@ static const struct mtk_device_info mt6991_devices_peri_par[] = {
 	{-1, -1, 267, "PCIE1_SMPU", false},
 	{-1, -1, 268, "DEVICE_APC_PERI _AO", false},
 	{-1, -1, 269, "DEVICE_APC_PERI_PDN", false},
+};
+
+static const struct mtk_device_info mt6991_devices_peri_par_b0[] = {
+	/* sys_idx, ctrl_idx, vio_idx, device, vio_irq */
+	/* 0 */
+	{0, 0, 0, "UARTHUB_APB_S", true},
+	{0, 1, 1, "UARTHUB_APB_S-1", true},
+	{0, 2, 2, "UARTHUB_APB_S-2", true},
+	{0, 3, 3, "UARTHUB_APB_S-3", true},
+	{0, 4, 4, "UARTHUB_APB_S-4", true},
+	{0, 5, 5, "SPI0_APB_S", true},
+	{0, 6, 6, "SPI0_APB_S-1", true},
+	{0, 7, 7, "SPI1_APB_S", true},
+	{0, 8, 8, "SPI1_APB_S-1", true},
+	{0, 9, 9, "SPI2_APB_S", true},
+
+	/* 10 */
+	{0, 10, 10, "SPI2_APB_S-1", true},
+	{0, 11, 11, "SPI3_APB_S", true},
+	{0, 12, 12, "SPI3_APB_S-1", true},
+	{0, 13, 13, "SPI4_APB_S", true},
+	{0, 14, 14, "SPI4_APB_S-1", true},
+	{0, 15, 15, "SPI5_APB_S", true},
+	{0, 16, 16, "SPI5_APB_S-1", true},
+	{0, 17, 17, "SPI6_APB_S", true},
+	{0, 18, 18, "SPI6_APB_S-1", true},
+	{0, 19, 19, "SPI7_APB_S", true},
+
+	/* 20 */
+	{0, 20, 20, "SPI7_APB_S-1", true},
+	{0, 21, 21, "I2C_APB_S", true},
+	{0, 22, 22, "I2C_APB_S-1", true},
+	{0, 23, 23, "I2C_APB_S-2", true},
+	{0, 24, 24, "I2C_APB_S-3", true},
+	{0, 25, 25, "I2C_APB_S-4", true},
+	{0, 26, 26, "I2C_APB_S-5", true},
+	{0, 27, 27, "I2C_APB_S-6", true},
+	{0, 28, 28, "I2C_APB_S-7", true},
+	{0, 29, 29, "I2C_APB_S-8", true},
+
+	/* 30 */
+	{0, 30, 30, "I2C_APB_S-9", true},
+	{0, 31, 31, "I2C_APB_S-10", true},
+	{0, 32, 32, "I2C_APB_S-11", true},
+	{0, 33, 33, "I2C_APB_S-12", true},
+	{0, 34, 34, "I2C_APB_S-13", true},
+	{0, 35, 35, "I2C_APB_S-14", true},
+	{0, 36, 36, "I2C_APB_S-15", true},
+	{0, 37, 37, "I2C_APB_S-16", true},
+	{0, 38, 38, "APDMA_APB_S", true},
+	{0, 39, 39, "APDMA_APB_S-1", true},
+
+	/* 40 */
+	{0, 40, 40, "APDMA_APB_S-2", true},
+	{0, 41, 41, "APDMA_APB_S-3", true},
+	{0, 42, 42, "APDMA_APB_S-4", true},
+	{0, 43, 43, "APDMA_APB_S-5", true},
+	{0, 44, 44, "APDMA_APB_S-6", true},
+	{0, 45, 45, "APDMA_APB_S-7", true},
+	{0, 46, 46, "APDMA_APB_S-8", true},
+	{0, 47, 47, "APDMA_APB_S-9", true},
+	{0, 48, 48, "APDMA_APB_S-10", true},
+	{0, 49, 49, "APDMA_APB_S-11", true},
+
+	/* 50 */
+	{0, 50, 50, "APDMA_APB_S-12", true},
+	{0, 51, 51, "APDMA_APB_S-13", true},
+	{0, 52, 52, "APDMA_APB_S-14", true},
+	{0, 53, 53, "APDMA_APB_S-15", true},
+	{0, 54, 54, "APDMA_APB_S-16", true},
+	{0, 55, 55, "APDMA_APB_S-17", true},
+	{0, 56, 56, "APDMA_APB_S-18", true},
+	{0, 57, 57, "APDMA_APB_S-19", true},
+	{0, 58, 58, "APDMA_APB_S-20", true},
+	{0, 59, 59, "APDMA_APB_S-21", true},
+
+	/* 60 */
+	{0, 60, 60, "APDMA_APB_S-22", true},
+	{0, 61, 61, "APDMA_APB_S-23", true},
+	{0, 62, 62, "APDMA_APB_S-24", true},
+	{0, 63, 63, "APDMA_APB_S-25", true},
+	{0, 64, 64, "APDMA_APB_S-26", true},
+	{0, 65, 65, "APDMA_APB_S-27", true},
+	{0, 66, 66, "APDMA_APB_S-28", true},
+	{0, 67, 67, "APDMA_APB_S-29", true},
+	{0, 68, 68, "APDMA_APB_S-30", true},
+	{0, 69, 69, "APDMA_APB_S-31", true},
+
+	/* 70 */
+	{0, 70, 70, "APDMA_APB_S-32", true},
+	{0, 71, 71, "APDMA_APB_S-33", true},
+	{0, 72, 72, "APDMA_APB_S-34", true},
+	{0, 73, 73, "APDMA_APB_S-35", true},
+	{0, 74, 74, "APDMA_APB_S-36", true},
+	{0, 75, 75, "APDMA_APB_S-37", true},
+	{0, 76, 76, "UART0_APB_S", true},
+	{0, 77, 77, "UART1_APB_S", true},
+	{0, 78, 78, "UART2_APB_S", true},
+	{0, 79, 79, "UART3_APB_S", true},
+
+	/* 80 */
+	{0, 80, 80, "UART4_APB_S", true},
+	{0, 81, 81, "UART5_APB_S", true},
+	{0, 82, 83, "PWM_PERI_APB_S", true},
+	{0, 83, 84, "DISP_PWM0_APB_S", true},
+	{0, 84, 85, "DISP_PWM1_APB_S", true},
+	{0, 85, 86, "DISP_PWM2_APB_S", true},
+	{0, 86, 87, "DISP_PWM3_APB_S", true},
+	{0, 87, 88, "DISP_PWM4_APB_S", true},
+	{0, 88, 97, "NOR_APB_S", true},
+	{0, 89, 100, "ETHERNET0_APB_S", true},
+
+	/* 90 */
+	{0, 90, 101, "ETHERNET1_APB_S", true},
+	{0, 91, 102, "ETHERNET0_MCGR_APB_S", true},
+	{0, 92, 103, "ETHERNET1_MCGR_APB_S", true},
+	{0, 93, 104, "DEVICE_APC_PERI_PAR_PDN_APB_S", true},
+	{0, 94, 105, "BCRM_PERI_PAR_PDN_APB_S", true},
+	{0, 95, 106, "USB_TO_PERI_RX_SNOC_CTRL", true},
+	{0, 96, 107, "PERI_TO_PCIE2_TX_SNOC_CTRL", true},
+	{0, 97, 108, "PCIE2_TO_PERI_RX_SNOC_CTRL", true},
+	{0, 98, 109, "PERI_TO_PCIE_TX_SNOC_CTRL", true},
+	{0, 99, 110, "PCIE_TO_PERI_RX_SNOC_CTRL", true},
+
+	/* 100 */
+	{0, 100, 111, "UFS_TO_PERI_RX_SNOC_CTRL", true},
+	{0, 101, 112, "PERI_FAKE_ENG_MI20_APB_S", true},
+	{0, 102, 113, "PERI_FAKE_ENG_MI21_APB_S", true},
+	{0, 103, 114, "PERI_FAKE_ENG_MI22_APB_S", true},
+	{0, 104, 115, "PERI_PCIE0_SMPU_APB_S", true},
+	{0, 105, 116, "PERI_PCIE1_SMPU_APB_S", true},
+	{0, 106, 117, "PERI_SMI_SUB_COMMON0_APB_S", true},
+	{0, 107, 118, "PERI_SMI_SUB_COMMON1_APB_S", true},
+	{0, 108, 119, "PCIE0_S", true},
+	{0, 109, 120, "PCIE0_S-1", true},
+
+	/* 110 */
+	{0, 110, 121, "PCIE0_S-2", true},
+	{0, 111, 122, "PCIE0_S-3", true},
+	{0, 112, 123, "PCIE0_S-4", true},
+	{0, 113, 124, "PCIE0_S-5", true},
+	{0, 114, 125, "PCIE0_S-6", true},
+	{0, 115, 126, "PCIE0_S-7", true},
+	{0, 116, 127, "PCIE0_S-8", true},
+	{0, 117, 128, "PCIE0_S-9", true},
+	{0, 118, 129, "PCIE0_S-10", true},
+	{0, 119, 130, "PCIE0_S-11", true},
+
+	/* 120 */
+	{0, 120, 131, "PCIE0_S-12", true},
+	{0, 121, 132, "PCIE0_S-13", true},
+	{0, 122, 133, "PCIE0_S-14", true},
+	{0, 123, 134, "PCIE0_S-15", true},
+	{0, 124, 135, "PCIE0_S-16", true},
+	{0, 125, 136, "PCIE0_S-17", true},
+	{0, 126, 137, "PCIE0_S-18", true},
+	{0, 127, 138, "PCIE0_S-19", true},
+	{0, 128, 139, "PCIE0_S-20", true},
+	{0, 129, 140, "PCIE0_S-21", true},
+
+	/* 130 */
+	{0, 130, 141, "PCIE0_S-22", true},
+	{0, 131, 142, "PCIE0_S-23", true},
+	{0, 132, 143, "PCIE0_S-24", true},
+	{0, 133, 144, "PCIE0_S-25", true},
+	{0, 134, 145, "PCIE0_S-26", true},
+	{0, 135, 146, "PCIE1_S", true},
+	{0, 136, 147, "PCIE1_S-1", true},
+	{0, 137, 148, "PCIE1_S-2", true},
+	{0, 138, 149, "PCIE1_S-3", true},
+	{0, 139, 150, "PCIE1_S-4", true},
+
+	/* 140 */
+	{0, 140, 151, "PCIE1_S-5", true},
+	{0, 141, 152, "PCIE1_S-6", true},
+	{0, 142, 153, "PCIE1_S-7", true},
+	{0, 143, 154, "PCIE1_S-8", true},
+	{0, 144, 155, "PCIE1_S-9", true},
+	{0, 145, 156, "PCIE1_S-10", true},
+	{0, 146, 157, "PCIE1_S-11", true},
+	{0, 147, 158, "PCIE1_S-12", true},
+	{0, 148, 159, "PCIE1_S-13", true},
+	{0, 149, 160, "PCIE1_S-14", true},
+
+	/* 150 */
+	{0, 150, 161, "PCIE1_S-15", true},
+	{0, 151, 162, "PCIE1_S-16", true},
+	{0, 152, 163, "PCIE1_S-17", true},
+	{0, 153, 164, "PCIE1_S-18", true},
+	{0, 154, 165, "PCIE1_S-19", true},
+	{0, 155, 166, "PCIE1_S-20", true},
+	{0, 156, 167, "PCIE1_S-21", true},
+	{0, 157, 168, "PCIE1_S-22", true},
+	{0, 158, 169, "USB0_S", true},
+	{0, 159, 170, "USB0_S-1", true},
+
+	/* 160 */
+	{0, 160, 171, "USB0_S-2", true},
+	{0, 161, 172, "USB0_S-3", true},
+	{0, 162, 173, "USB0_S-4", true},
+	{0, 163, 174, "USB0_S-5", true},
+	{0, 164, 175, "USB0_S-6", true},
+	{0, 165, 176, "USB0_S-7", true},
+	{0, 166, 177, "USB0_S-8", true},
+	{0, 167, 178, "USB0_S-9", true},
+	{0, 168, 179, "USB0_S-10", true},
+	{0, 169, 180, "USB0_S-11", true},
+
+	/* 170 */
+	{0, 170, 181, "USB0_S-12", true},
+	{0, 171, 182, "USB0_S-13", true},
+	{0, 172, 183, "USB0_S-14", true},
+	{0, 173, 184, "USB0_S-15", true},
+	{0, 174, 185, "USB0_S-16", true},
+	{0, 175, 186, "USB0_S-17", true},
+	{0, 176, 187, "USB0_S-18", true},
+	{0, 177, 188, "USB0_S-19", true},
+	{0, 178, 189, "USB0_S-20", true},
+	{0, 179, 190, "USB0_S-21", true},
+
+	/* 180 */
+	{0, 180, 191, "USB0_S-22", true},
+	{0, 181, 192, "USB0_S-23", true},
+	{0, 182, 193, "USB0_S-24", true},
+	{0, 183, 195, "NOR_AXI_S", true},
+	{0, 184, 198, "MSDC1_S-1", true},
+	{0, 185, 199, "MSDC1_S-2", true},
+	{0, 186, 200, "MSDC2_S-1", true},
+	{0, 187, 201, "MSDC2_S-2", true},
+	{0, 188, 202, "PERI_MBIST_AO_APB_S", true},
+	{0, 189, 203, "BCRM_PERI_PAR_AO_APB_S", true},
+
+	/* 190 */
+	{0, 190, 204, "PERICFG_SEC_AO_APB_S", true},
+	{0, 191, 205, "PERICFG_AO_DUAL_APB_S", true},
+	{0, 192, 206, "PERICFG_AO_APB_S", true},
+	{0, 193, 207, "DEBUG_CTRL_PERI_PAR_AO_APB_S", true},
+	{0, 194, 208, "DEVICE_APC_PERI_PAR_AO_APB_S", true},
+	{0, 195, 209, "PERI_AO_PBUS_S", true},
+
+	{-1, -1, 210, "OOB_way_en", true},
+	{-1, -1, 211, "OOB_way_en", true},
+	{-1, -1, 212, "OOB_way_en", true},
+	{-1, -1, 213, "OOB_way_en", true},
+
+	/* 200 */
+	{-1, -1, 214, "OOB_way_en", true},
+	{-1, -1, 215, "OOB_way_en", true},
+	{-1, -1, 216, "OOB_way_en", true},
+	{-1, -1, 217, "OOB_way_en", true},
+	{-1, -1, 218, "OOB_way_en", true},
+	{-1, -1, 219, "OOB_way_en", true},
+	{-1, -1, 220, "OOB_way_en", true},
+	{-1, -1, 221, "OOB_way_en", true},
+	{-1, -1, 222, "OOB_way_en", true},
+	{-1, -1, 223, "OOB_way_en", true},
+
+	/* 210 */
+	{-1, -1, 224, "OOB_way_en", true},
+	{-1, -1, 225, "OOB_way_en", true},
+	{-1, -1, 226, "OOB_way_en", true},
+	{-1, -1, 227, "OOB_way_en", true},
+	{-1, -1, 228, "OOB_way_en", true},
+	{-1, -1, 229, "OOB_way_en", true},
+	{-1, -1, 230, "OOB_way_en", true},
+	{-1, -1, 231, "OOB_way_en", true},
+	{-1, -1, 232, "OOB_way_en", true},
+	{-1, -1, 233, "OOB_way_en", true},
+
+	/* 220 */
+	{-1, -1, 234, "OOB_way_en", true},
+	{-1, -1, 235, "OOB_way_en", true},
+	{-1, -1, 236, "OOB_way_en", true},
+	{-1, -1, 237, "OOB_way_en", true},
+	{-1, -1, 238, "OOB_way_en", true},
+	{-1, -1, 239, "OOB_way_en", true},
+	{-1, -1, 240, "OOB_way_en", true},
+	{-1, -1, 241, "OOB_way_en", true},
+	{-1, -1, 242, "OOB_way_en", true},
+	{-1, -1, 243, "OOB_way_en", true},
+
+	/* 230 */
+	{-1, -1, 244, "OOB_way_en", true},
+	{-1, -1, 245, "OOB_way_en", true},
+	{-1, -1, 246, "OOB_way_en", true},
+	{-1, -1, 247, "OOB_way_en", true},
+	{-1, -1, 248, "OOB_way_en", true},
+	{-1, -1, 249, "OOB_way_en", true},
+	{-1, -1, 250, "OOB_way_en", true},
+	{-1, -1, 251, "OOB_way_en", true},
+	{-1, -1, 252, "OOB_way_en", true},
+	{-1, -1, 253, "OOB_way_en", true},
+
+	/* 240 */
+	{-1, -1, 254, "OOB_way_en", true},
+	{-1, -1, 255, "OOB_way_en", true},
+	{-1, -1, 256, "OOB_way_en", true},
+	{-1, -1, 257, "OOB_way_en", true},
+	{-1, -1, 258, "OOB_way_en", true},
+	{-1, -1, 259, "OOB_way_en", true},
+	{-1, -1, 260, "OOB_way_en", true},
+	{-1, -1, 261, "OOB_way_en", true},
+	{-1, -1, 262, "OOB_way_en", true},
+	{-1, -1, 263, "OOB_way_en", true},
+
+	/* 250 */
+	{-1, -1, 264, "OOB_way_en", true},
+	{-1, -1, 265, "OOB_way_en", true},
+	{-1, -1, 266, "OOB_way_en", true},
+	{-1, -1, 267, "OOB_way_en", true},
+	{-1, -1, 268, "OOB_way_en", true},
+
+	{-1, -1, 269, "Decode_error", true},
+	{-1, -1, 270, "Decode_error", true},
+	{-1, -1, 271, "Decode_error", true},
+
+	{-1, -1, 272, "IIC_P2P_REMAP", false},
+	{-1, -1, 273, "APDMA", false},
+
+	/* 260 */
+	{-1, -1, 274, "PCIE0_SMPU", false},
+	{-1, -1, 275, "PCIE1_SMPU", false},
+	{-1, -1, 276, "DEVICE_APC_PERI _AO", false},
+	{-1, -1, 277, "DEVICE_APC_PERI_PDN", false},
 };
 
 static const struct mtk_device_info mt6991_devices_vlp[] = {
@@ -3702,7 +4026,7 @@ enum DEVAPC_VIO_SLAVE_NUM {
 	VIO_SLAVE_NUM_APINFRA_INT = ARRAY_SIZE(mt6991_devices_apinfra_int),
 	VIO_SLAVE_NUM_APINFRA_MMU = ARRAY_SIZE(mt6991_devices_apinfra_mmu),
 	VIO_SLAVE_NUM_APINFRA_SLB = ARRAY_SIZE(mt6991_devices_apinfra_slb),
-	VIO_SLAVE_NUM_PERI_PAR = ARRAY_SIZE(mt6991_devices_peri_par),
+	VIO_SLAVE_NUM_PERI_PAR = ARRAY_SIZE(mt6991_devices_peri_par_a0),
 	VIO_SLAVE_NUM_VLP = ARRAY_SIZE(mt6991_devices_vlp),
 	VIO_SLAVE_NUM_ADSP = ARRAY_SIZE(mt6991_devices_adsp),
 	VIO_SLAVE_NUM_MMINFRA = ARRAY_SIZE(mt6991_devices_mminfra),
