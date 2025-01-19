@@ -1912,6 +1912,13 @@ static int lcm_set_spr_cmdq(void *dsi, struct drm_panel *panel, dcs_grp_write_gc
 
 	return 0;
 }
+
+static int panel_ata_check(struct drm_panel *panel)
+{
+	/* Customer test by own ATA tool */
+	return 1;
+}
+
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
@@ -1934,6 +1941,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.set_spr_cmdq = lcm_set_spr_cmdq,
 	/* Not real backlight cmd in AOD, just for QC purpose */
 	.set_aod_light_mode = lcm_setbacklight_cmdq,
+	.ata_check = panel_ata_check,
 };
 #endif
 

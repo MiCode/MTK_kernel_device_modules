@@ -1414,6 +1414,12 @@ static enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
 }
 #endif
 
+static int panel_ata_check(struct drm_panel *panel)
+{
+	/* Customer test by own ATA tool */
+	return 1;
+}
+
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
@@ -1433,6 +1439,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.lcm_update_roi = lcm_update_roi,
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
 	.lcm_valid_roi = rm692h5_lcm_valid_roi,
+	.ata_check = panel_ata_check,
 };
 #endif
 
