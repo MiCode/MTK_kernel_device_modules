@@ -1155,6 +1155,14 @@
 		status = "disabled";
 	};
 
+	ivi_dispsys1_config_clk: ivi-syscon@32400000 {
+		compatible = "mediatek,mt6991-ivi-mmsys1", "syscon";
+		reg = <0 0x32400000 0 0x1000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
+		#clock-cells = <1>;
+		status = "disabled";
+	};
+
 	lastbus: lastbus {
 		compatible = "mediatek,lastbus";
 		enabled = <1>;
