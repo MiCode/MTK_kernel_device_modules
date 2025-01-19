@@ -35,7 +35,7 @@ static void handle_init_ack_msg(struct vdec_vcu_inst *vcu, struct vdec_vcu_ipi_i
 	/* the content in vsi is initialized to 0 in VCU */
 	vcu->vsi = VCU_FPTR(vcu_mapping_dm_addr)(vcu->dev, msg->vcu_inst_addr);
 	vcu->inst_addr = msg->vcu_inst_addr;
-	mtk_vcodec_debug(vcu, "- vcu_inst_addr = 0x%llx", vcu->inst_addr);
+	mtk_v4l2_debug(0, "- vcu_inst_addr = 0x%llx", vcu->inst_addr);
 }
 
 static void handle_query_cap_ack_msg(struct vdec_vcu_inst *vcu,
