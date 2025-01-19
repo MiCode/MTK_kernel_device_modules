@@ -706,7 +706,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->val);
 		p->scenario = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_SCENARIO;
-		if (p->scenario == 3 || p->scenario == 1) {
+		if (p->scenario == V4L2_VENC_SCENARIO_SMVR || p->scenario == V4L2_VENC_SCENARIO_WFD) {
 			src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 				V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 			if (!src_vq) {
