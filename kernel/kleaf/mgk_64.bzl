@@ -147,6 +147,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_src".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -165,6 +166,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/power/supply:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -223,6 +225,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_touch_boost".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_powerhal".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -577,8 +581,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo.ko",
     "drivers/misc/mediatek/performance/frs/frs.ko",
     "drivers/misc/mediatek/performance/load_track/load_track.ko",
-    "drivers/misc/mediatek/performance/mtk_ioctl_touch_boost.ko",
-    "drivers/misc/mediatek/performance/mtk_ioctl_powerhal.ko",
     "drivers/misc/mediatek/performance/mtk_perf_ioctl.ko",
     "drivers/misc/mediatek/performance/mtk_perf_ioctl_magt.ko",
     "drivers/misc/mediatek/performance/powerhal_cpu_ctrl/powerhal_cpu_ctrl.ko",

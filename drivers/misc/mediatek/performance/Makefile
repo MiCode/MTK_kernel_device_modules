@@ -18,18 +18,6 @@ MTK_PERF_IOCTL_SRC = $(MTK_PERF_IOCTL)
 obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += mtk_perf_ioctl.o
 mtk_perf_ioctl-objs += $(MTK_PERF_IOCTL_SRC)
 
-# mtk_ioctl_touch_boost
-MTK_IOCTL_TOUCH_BOOST = $(mtk_ioctl_touch_boost_objs:%.o=perf_ioctl/%.o)
-MTK_IOCTL_TOUCH_BOOST_SRC = $(MTK_IOCTL_TOUCH_BOOST)
-obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += mtk_ioctl_touch_boost.o
-mtk_ioctl_touch_boost-objs += $(MTK_IOCTL_TOUCH_BOOST_SRC)
-
-# mtk_ioctl_powerhal
-MTK_IOCTL_POWERHAL = $(mtk_ioctl_powerhal_objs:%.o=perf_ioctl/%.o)
-MTK_IOCTL_POWERHAL_SRC = $(MTK_IOCTL_POWERHAL)
-obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += mtk_ioctl_powerhal.o
-mtk_ioctl_powerhal-objs += $(MTK_IOCTL_POWERHAL_SRC)
-
 # mtk_perf_ioctl_magt
 MTK_PERF_IOCTL_MAGT = $(mtk_perf_ioctl_magt_objs:%.o=perf_ioctl/%.o)
 MTK_PERF_IOCTL_MAGT_SRC = $(MTK_PERF_IOCTL_MAGT)
