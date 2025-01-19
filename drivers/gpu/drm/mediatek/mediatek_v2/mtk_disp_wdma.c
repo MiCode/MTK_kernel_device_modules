@@ -2491,6 +2491,11 @@ static int mtk_disp_wdma_probe(struct platform_device *pdev)
 	priv->info_data->fifo_size_uv_2plane = priv->data->fifo_size_uv_2plane;
 	priv->info_data->fifo_size_3plane = priv->data->fifo_size_3plane;
 	priv->info_data->fifo_size_uv_3plane = priv->data->fifo_size_uv_3plane;
+	priv->info_data->force_ostdl_bw = priv->data->force_ostdl_bw;
+	priv->info_data->buf_con1_fld_fifo_pseudo_size =
+			priv->data->buf_con1_fld_fifo_pseudo_size;
+	priv->info_data->buf_con1_fld_fifo_pseudo_size_uv =
+			priv->data->buf_con1_fld_fifo_pseudo_size_uv;
 
 	if (priv->data->fifo_size_1plane == PARSE_FROM_DTS) {
 		ret = of_property_read_u32(dev->of_node,
