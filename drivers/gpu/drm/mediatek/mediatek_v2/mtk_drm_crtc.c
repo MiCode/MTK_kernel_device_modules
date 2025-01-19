@@ -80,10 +80,6 @@
 
 #include <soc/mediatek/mmqos.h>
 
-// [0] after mode switch [1] fps hint
-int dynamic_vidle_enable;
-module_param(dynamic_vidle_enable, int, 0644);
-
 //force on:0x10001, off:0x10000
 int debug_ct_wait;
 module_param(debug_ct_wait, int, 0644);
@@ -2911,7 +2907,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 
 		cmdq_mbox_disable(client->chan);
 		DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
-		mtk_drm_top_clk_disable_unprepare(crtc->dev);
+		mtk_drm_top_clk_disable_unprepare(crtc);
 	}
 
 	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
@@ -14678,7 +14674,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		/* 10. power off MTCMOS*/
 		/* TODO: need to check how to unprepare MTCMOS */
 		DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
-		mtk_drm_top_clk_disable_unprepare(crtc->dev);
+		mtk_drm_top_clk_disable_unprepare(crtc);
 	}
 
 	/* Workaround: if CRTC2, reset wdma->fb to NULL to prevent CRTC2
@@ -16087,7 +16083,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 #endif
 				mtk_crtc_ddp_unprepare(mtk_crtc);
 				DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
-				mtk_drm_top_clk_disable_unprepare(crtc->dev);
+				mtk_drm_top_clk_disable_unprepare(crtc);
 			}
 			if (comp)
 				mtk_ddp_comp_io_cmd(comp, NULL, CONNECTOR_PANEL_ENABLE, NULL);
@@ -16293,32 +16289,23 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				DDPINFO("crtc active_changed(%u) doze_changed(%u->%u)\n",
 					(bool)crtc->state->active_changed,
 					old_mtk_state->doze_changed, mtk_crtc_state->doze_changed);
+				mtk_vidle_hint_update(VIDLE_HINT_DOZE);
 				mtk_vidle_update_dt_by_type(crtc, mtk_dsi_is_cmd_mode(output_comp) ?
 							    PANEL_TYPE_CMD : PANEL_TYPE_VDO);
 			}
 		}
 
-		/* keep power on to avoid extra TE during mode switch process */
-		if (mtk_crtc_state->disp_mode_changed)
-			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DISP_DPC_CFG | VOTER_ONLY);
-		else {
-			if (dynamic_vidle_enable) {
-				static u8 debounce = 3;
+		if (mtk_crtc_state->doze_changed || mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
+			mtk_vidle_hint_update(VIDLE_HINT_DOZE);
 
-				if (old_mtk_state->disp_mode_changed)
-					debounce = 3;
-				else if(--debounce == 1) {
-					DDPMSG("disp_mode_changed(1->0->0->0) enable vidle\n");
-					mtk_vidle_config_ff(true);
-				} else if (debounce == 0)
-					mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
-									    mtk_crtc_state->cmdq_handle);
-			} else {
-				/* this is the only way to release DISP_VIDLE_USER_DISP_DPC_CFG */
-				mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG,
-								    mtk_crtc_state->cmdq_handle);
-			}
-		}
+		if (mtk_crtc_state->disp_mode_changed) {
+			mtk_vidle_hint_update(VIDLE_HINT_MODE_SWITCH);
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DISP_DPC_CFG | VOTER_ONLY);
+		} else
+			mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG, mtk_crtc_state->cmdq_handle);
+
+		/* disable vidle by special case debounce, or enable after mtcmos on debounce */
+		mtk_vidle_hint_decision(__func__);
 	}
 #endif
 

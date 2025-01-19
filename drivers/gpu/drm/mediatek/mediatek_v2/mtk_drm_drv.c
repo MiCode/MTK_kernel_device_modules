@@ -7122,7 +7122,6 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	bool en = 1;
 	int ret;
 	unsigned long flags = 0;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -7142,43 +7141,29 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 
 	spin_lock_irqsave(&top_clk_lock, flags);
 	atomic_inc(&top_clk_ref);
+	if (atomic_read(&top_clk_ref) == 1) {
+		DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
+		priv->power_state = true;
+	}
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		if (atomic_read(&top_clk_ref) == 1) {
-			DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
-			priv->power_state = true;
-
 			mtk_vidle_enable(true, priv);
-			/* turn on ff only when crtc0 exsit */
-			if (drm_crtc_index(crtc) == 0) {
-				CRTC_MMP_MARK(drm_crtc_index(crtc), enter_vidle,
-					(0xc10c | 0x10000000), atomic_read(&top_clk_ref));
-				mtk_vidle_config_ff(true);
-			} else {
-				CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
-					(0xc10c | 0x20000000), atomic_read(&top_clk_ref));
-				mtk_vidle_config_ff(false);
-			}
-		} else if (atomic_read(&top_clk_ref) > 1) {
-			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
-				(0xc10c | 0x30000000), atomic_read(&top_clk_ref));
-			mtk_vidle_config_ff(false);
+			mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_ON);
+		} else {
+			/* disable ff for multi crtc */
+			mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_ON);
+			DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
+				mtk_vidle_hint_update(VIDLE_HINT_GET));
 		}
-
+		mtk_vidle_config_ff(false);
 	} else {
-		if (atomic_read(&top_clk_ref) == 1)  {
-			DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
-			priv->power_state = true;
+		struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
 
-			mtk_crtc = to_mtk_crtc(priv->crtc[0]);
-			if (mtk_crtc &&
+		if (atomic_read(&top_clk_ref) == 1)  {
+			if (mtk_crtc0 &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
-				mtk_crtc->is_mml_dc = false;
-			CRTC_MMP_MARK(drm_crtc_index(crtc), leave_vidle,
-				(0xc10c | 0x40000000), atomic_read(&top_clk_ref));
-			mtk_vidle_config_ff(false);
-			mtk_vidle_enable(mtk_vidle_is_ff_enabled(), priv);
+				mtk_crtc0->is_mml_dc = false;
 		}
 	}
 
@@ -7193,12 +7178,11 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 		priv->data->disable_merge_irq(crtc->dev);
 }
 
-void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
+void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 {
-	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int i = 0, cnt = 0;
 	unsigned long flags = 0;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -7217,21 +7201,25 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 		}
 		priv->power_state = false;
 
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			CRTC_MMP_MARK(0, leave_vidle,
-				(0xc10c0ff | 0x10000000), atomic_read(&top_clk_ref));
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		} else {
+			struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
+
 			CRTC_MMP_MARK(0, leave_vidle,
 				(0xc10c0ff | 0x20000000), atomic_read(&top_clk_ref));
-			mtk_crtc = to_mtk_crtc(priv->crtc[0]);
-			if (mtk_crtc &&
+			if (mtk_crtc0 &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
-				mtk_crtc->is_mml_dc = false;
+				mtk_crtc0->is_mml_dc = false;
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
+		}
+	} else {
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_OFF);
+			DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
+				mtk_vidle_hint_update(VIDLE_HINT_GET));
 		}
 	}
 	spin_unlock_irqrestore(&top_clk_lock, flags);
@@ -8913,7 +8901,7 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	 * Here we only decrease ref count, the power will hold on.
 	 */
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		mtk_drm_top_clk_disable_unprepare(drm);
+		mtk_drm_top_clk_disable_unprepare(private->crtc[0]);
 
 	/*
 	 * When kernel init, SMI larb will get once for keeping

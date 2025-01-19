@@ -49,6 +49,7 @@ struct mtk_disp_vidle {
 	enum mtk_dpc_version dpc_version;
 	enum mtk_vdisp_version vdisp_version;
 	int pm_ret_crtc;	/* for DISP_VIDLE_USER_CRTC only, already locked by crtc_lock */
+	struct mtk_vidle_hint hint;
 };
 
 static struct mtk_disp_vidle vidle_data = {
@@ -375,32 +376,10 @@ static void mtk_set_vidle_stop_flag_v1(unsigned int flag, unsigned int stop)
 		mtk_vidle_pause(false);
 }
 
-static void mtk_vidle_stop(void)
-{
-	// mtk_vidle_power_keep();
-	mtk_vidle_dt_enable(0);
-	/* TODO: stop timestamp */
-}
-
-static void mtk_set_vidle_stop_flag_v2(unsigned int flag, unsigned int stop)
-{
-	if (stop)
-		mtk_disp_vidle_flag.vidle_stop =
-			mtk_disp_vidle_flag.vidle_stop | flag;
-	else
-		mtk_disp_vidle_flag.vidle_stop =
-			mtk_disp_vidle_flag.vidle_stop & ~flag;
-
-	if (mtk_disp_vidle_flag.vidle_stop)
-		mtk_vidle_stop();
-}
-
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
 {
 	if (vidle_data.dpc_version == DPC_VER1)
 		return mtk_set_vidle_stop_flag_v1(flag, stop);
-	else
-		return mtk_set_vidle_stop_flag_v2(flag, stop);
 }
 
 static int mtk_set_dt_configure_all(unsigned int dur_frame, unsigned int dur_vblank)
@@ -801,6 +780,52 @@ void mtk_vidle_dsi_pll_set(const u32 value)
 {
 	if (disp_dpc_driver.dpc_dsi_pll_set)
 		disp_dpc_driver.dpc_dsi_pll_set(value);
+}
+
+u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
+{
+	switch (type) {
+	case VIDLE_HINT_MTCMOS_ON:
+		vidle_data.hint.mtcmos_debounce = VIDLE_MTCMOS_DEBOUNCE;
+		break;
+	case VIDLE_HINT_MODE_SWITCH:
+		vidle_data.hint.mode_switch_debounce = VIDLE_MODE_SWITCH_DEBOUNCE;
+		break;
+	case VIDLE_HINT_DOZE:
+		vidle_data.hint.doze_debounce = VIDLE_DOZE_DEBOUNCE;
+		break;
+	case VIDLE_HINT_MULTI_CRTC_ON:
+		vidle_data.hint.crtc_fuse++;
+		break;
+	case VIDLE_HINT_MULTI_CRTC_OFF:
+		vidle_data.hint.crtc_fuse--;
+		break;
+	default:
+		break;
+	}
+
+	return (vidle_data.hint.crtc_fuse << 24) |
+	       (vidle_data.hint.doze_debounce << 16) |
+	       (vidle_data.hint.mode_switch_debounce << 8) |
+		vidle_data.hint.mtcmos_debounce;
+}
+
+int mtk_vidle_hint_decision(const char *caller)
+{
+	bool decision;
+
+	vidle_data.hint.mode_switch_debounce -= (vidle_data.hint.mode_switch_debounce > 0);
+	vidle_data.hint.mtcmos_debounce -= (vidle_data.hint.mtcmos_debounce > 0);
+	vidle_data.hint.doze_debounce -= (vidle_data.hint.doze_debounce > 0);
+
+	decision = !(vidle_data.hint.crtc_fuse |
+		     vidle_data.hint.doze_debounce |
+		     vidle_data.hint.mode_switch_debounce |
+		     vidle_data.hint.mtcmos_debounce);
+
+	mtk_vidle_config_ff(decision);
+
+	return decision;
 }
 
 void mtk_vidle_register_v1(const struct dpc_funcs *funcs)
