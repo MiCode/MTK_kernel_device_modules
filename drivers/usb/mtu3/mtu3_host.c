@@ -246,6 +246,11 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 		value = mtu3_readl(ibase, SSUSB_U3_CTRL(i));
 		value &= ~(SSUSB_U3_PORT_PDN | SSUSB_U3_PORT_DIS);
 		value |= SSUSB_U3_PORT_HOST_SEL;
+		/* update host speed setting */
+		if (ssusb->u3d->max_speed_host == USB_SPEED_SUPER_PLUS)
+			value |= SSUSB_U3_PORT_SSP_SPEED;
+		else
+			value &= ~SSUSB_U3_PORT_SSP_SPEED;
 		mtu3_writel(ibase, SSUSB_U3_CTRL(i), value);
 	}
 
@@ -268,6 +273,11 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 
 	/* update txdeemph */
 	ssusb_set_txdeemph(ssusb);
+
+	/* update noise still transfer */
+	ssusb_set_noise_still_tr(ssusb);
+
+	ssusb_set_ldm_resp_delay(ssusb);
 
 	if (ssusb->eusb2_cm_l1) {
 		value = mtu3_readl(ssusb->mac_base, U3D_USB20_LPM_TIMING_PARAM);
@@ -444,9 +454,42 @@ int ssusb_host_u3_suspend(struct ssusb_mtk *ssusb)
 	return 0;
 }
 
+static void ssusb_get_host_rscs(struct ssusb_mtk *ssusb)
+{
+	struct device_node *parent_dn = ssusb->dev->of_node;
+	struct device_node *child;
+	struct platform_device *pdev;
+	struct resource *res;
+
+	for_each_child_of_node(parent_dn, child) {
+		if (of_device_is_compatible(child, "mediatek,mtk-xhci") ||
+		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1") ||
+		    of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
+			pdev = of_find_device_by_node(child);
+			if (pdev && ssusb->ls_slp_quirk) {
+				res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
+				if (res)
+					ssusb->host_base = devm_ioremap(ssusb->dev, res->start,
+					    resource_size(res));
+				if (IS_ERR_OR_NULL(ssusb->host_base))
+					dev_info(ssusb->dev, "failed to get host_base\n");
+				break;
+			}
+		}
+	}
+}
+
+static void ssusb_clear_host_rscs(struct ssusb_mtk *ssusb)
+{
+	if (!IS_ERR_OR_NULL(ssusb->host_base))
+		devm_iounmap(ssusb->dev, ssusb->host_base);
+}
+
 static void ssusb_host_setup(struct ssusb_mtk *ssusb)
 {
 	host_ports_num_get(ssusb);
+
+	ssusb_get_host_rscs(ssusb);
 
 	/*
 	 * power on host and power on/enable all ports
@@ -466,40 +509,8 @@ static void ssusb_host_cleanup(struct ssusb_mtk *ssusb)
 		ssusb_set_vbus(&ssusb->otg_switch, 0);
 
 	ssusb_host_disable(ssusb);
-}
 
-static void ssusb_get_platform_driver(struct ssusb_mtk *ssusb)
-{
-	struct device_node *parent_dn = ssusb->dev->of_node;
-	struct device_node *child;
-	struct platform_device *pdev;
-	struct resource *res;
-
-	for_each_child_of_node(parent_dn, child) {
-		if (of_device_is_compatible(child, "mediatek,mtk-xhci") ||
-		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1") ||
-		    of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
-			pdev = of_find_device_by_node(child);
-			if (pdev) {
-				ssusb->xhci_pdrv =
-					to_platform_driver(pdev->dev.driver);
-				break;
-			}
-		}
-	}
-
-	if (pdev) {
-		if (!ssusb->ls_slp_quirk)
-			return;
-
-		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
-		if (res)
-			ssusb->host_base = devm_ioremap(ssusb->dev, res->start,
-			    resource_size(res));
-
-		if (IS_ERR_OR_NULL(ssusb->host_base))
-			dev_info(ssusb->dev, "failed to get host_base\n");
-	}
+	ssusb_clear_host_rscs(ssusb);
 }
 
 /*
@@ -523,10 +534,6 @@ int ssusb_host_init(struct ssusb_mtk *ssusb, struct device_node *parent_dn)
 	}
 
 	dev_info(parent_dev, "xHCI platform device register success...\n");
-
-	ssusb_set_noise_still_tr(ssusb);
-
-	ssusb_get_platform_driver(ssusb);
 
 	return 0;
 }

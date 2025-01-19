@@ -176,24 +176,6 @@ static void switch_port_to_device(struct ssusb_mtk *ssusb)
 	ssusb_check_clocks(ssusb, check_clk);
 }
 
-static void ssusb_host_register(struct ssusb_mtk *ssusb, bool on)
-{
-	int ret;
-
-	dev_info(ssusb->dev, "%s %d\n", __func__, on);
-
-	if (!ssusb->xhci_pdrv)
-		return;
-
-	if (on) {
-		ret = platform_driver_register(ssusb->xhci_pdrv);
-		if (ret)
-			dev_info(ssusb->dev, "register host driver fail\n");
-	} else {
-		platform_driver_unregister(ssusb->xhci_pdrv);
-	}
-}
-
 int ssusb_set_vbus(struct otg_switch_mtk *otg_sx, int is_on)
 {
 	struct ssusb_mtk *ssusb = otg_sx_to_ssusb(otg_sx);
@@ -259,12 +241,10 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	case USB_ROLE_HOST:
 		ssusb->is_host = false;
 		ssusb->host_dev = false;
-		ssusb_set_vbus(otg_sx, 0);
 		/* wait for host device remove done, e.g. usb audio */
 		mdelay(50);
 		/* unregister host driver */
-		ssusb_host_register(ssusb, false);
-		ssusb_host_disable(ssusb);
+		ssusb_host_exit(ssusb);
 		switch_port_to_off(ssusb);
 		/* wait for hw to complete host off */
 		mdelay(50);
@@ -299,16 +279,9 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	switch (desired_role) {
 	case USB_ROLE_HOST:
 		switch_port_to_on(ssusb, PHY_MODE_USB_HOST);
-		ssusb_host_enable(ssusb);
-		ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_HOST);
 		/* register host driver */
-		ssusb_host_register(ssusb, true);
-		ssusb_set_noise_still_tr(ssusb);
-		ssusb_set_ldm_resp_delay(ssusb);
-		ssusb_set_vbus(otg_sx, 1);
-		mtu3_check_params(mtu);
+		ssusb_host_init(ssusb, ssusb->dev->of_node);
 		ssusb->is_host = true;
-		mtu3_set_speed(mtu, mtu->max_speed_host);
 		break;
 	case USB_ROLE_DEVICE:
 		/* avoid suspend when works as device */
