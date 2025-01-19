@@ -25,12 +25,13 @@
 #endif
 
 #include "sched_avg.h"
+#include "core_ctl.h"
+#include "common.h"
 #include <sched_sys_common.h>
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
 #endif
 #include <eas/eas_plus.h>
-#include "core_ctl.h"
 #include <mtk_cpu_power_throttling.h>
 
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
@@ -45,6 +46,7 @@ extern int get_immediate_tslvts1_1_wrap(void);
 #define MAX_CPUS_PER_CLUSTER	6
 #define MAX_BTASK_THRESH	100
 #define BIG_TASK_AVG_THRESHOLD	25
+#define WIN_SIZE	10
 
 #define for_each_cluster(cluster, idx) \
 	for ((cluster) = &cluster_state[idx]; (idx) < num_clusters;\
@@ -94,10 +96,14 @@ struct cpu_data {
 	bool paused_by_cc;
 	bool force_paused;
 	unsigned int cpu;
-	unsigned int cpu_util_pct;
+	unsigned int cpu_util_pct[WIN_SIZE];
 	unsigned int is_busy;
 	struct cluster_data *cluster;
 	unsigned int force_pause_req;
+	unsigned int win_idx;
+	unsigned int cpu_active_loading[WIN_SIZE];
+	u64 last_wall_time;
+	u64 last_idle_time;
 };
 
 static unsigned int enable_policy;
@@ -585,6 +591,64 @@ static void set_cpu_busy_down_thres(struct cluster_data *cluster, unsigned int v
 		cluster->cpu_busy_down_thres = val;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 }
+
+/*
+ * get_cpu_active_loading - Calculates the CPU loading for each CPU
+ *
+ * This function iterates over each possible CPU and calculates its loading
+ * based on the difference between total wall time and idle time since the last
+ * measurement. It stores the calculated CPU loading in the provided cpu_info
+ * structure.
+ *
+ * The CPU loading is calculated as a percentage value representing the
+ * proportion of non-idle time(active time) over the total measured wall time for each CPU.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int get_cpu_active_loading(void)
+{
+	unsigned long flags;
+	int cpu;
+	unsigned int cpu_active_loading, idx;
+	struct cpu_data *cpu_stat;
+	u64 prev_wall_time, prev_idle_time, wall_time, idle_time;
+
+	if (!initialized)
+		return 0;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	for_each_possible_cpu(cpu) {
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		cpu_active_loading = 0;
+		wall_time = 0;
+		idle_time = 0;
+
+		prev_wall_time = cpu_stat->last_wall_time;
+		prev_idle_time = cpu_stat->last_idle_time;
+
+		/* update both wall & idle time, and idle time include iowait */
+		cpu_stat->last_idle_time = get_cpu_idle_time(cpu, &cpu_stat->last_wall_time, 1);
+
+		if (cpu_active(cpu)) {
+			wall_time = cpu_stat->last_wall_time - prev_wall_time;
+			idle_time = cpu_stat->last_idle_time - prev_idle_time;
+		}
+
+		if (wall_time > 0 && wall_time > idle_time)
+			cpu_active_loading = div_u64(((wall_time - idle_time)*100),
+							wall_time);
+
+		cpu_stat->win_idx = ((cpu_stat->win_idx + 1) % WIN_SIZE);
+		idx = cpu_stat->win_idx;
+		if (idx >= 0 && idx < WIN_SIZE) {
+			cpu_stat->cpu_active_loading[idx] = cpu_active_loading;
+			cpu_stat->cpu_util_pct[idx] = get_cpu_util_pct(cpu, false);
+		}
+	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	return 0;
+}
+
 
 /* ==================== export function ======================== */
 
@@ -1216,7 +1280,7 @@ static ssize_t show_global_state(const struct cluster_data *state, char *buf)
 		count += snprintf(buf + count, PAGE_SIZE - count,
 				"\tPaused by core_ctl: %u\n", c->paused_by_cc);
 		count += snprintf(buf + count, PAGE_SIZE - count,
-				"\tCPU utils(%%): %u\n", c->cpu_util_pct);
+				"\tCPU utils(%%): %u\n", c->cpu_util_pct[c->win_idx]);
 		count += snprintf(buf + count, PAGE_SIZE - count,
 				"\tIs busy: %u\n", c->is_busy);
 		count += snprintf(buf + count, PAGE_SIZE - count,
@@ -1321,7 +1385,7 @@ static void get_busy_cpus(void)
 	unsigned long flags;
 	struct cluster_data *cluster;
 	struct cpu_data *cpu_stat;
-	int cpu = 0, cid = 0, i = 0, cpu_count = 0;
+	int cpu = 0, cid = 0, i = 0, cpu_count = 0, idx = 0;
 
 	/* check CPU is busy or not */
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
@@ -1331,15 +1395,15 @@ static void get_busy_cpus(void)
 
 		if (!cluster || !cluster->inited)
 			continue;
-
-		cpu_stat->cpu_util_pct = get_cpu_util_pct(cpu, false);
-		if (cpu_stat->cpu_util_pct >= cluster->cpu_busy_up_thres)
+		idx = cpu_stat->win_idx;
+		if (cpu_stat->cpu_util_pct[idx] > cluster->cpu_busy_up_thres)
 			cpu_stat->is_busy = true;
-		else if (cpu_stat->cpu_util_pct < cluster->cpu_busy_down_thres)
+		else if (cpu_stat->cpu_util_pct[idx] < cluster->cpu_busy_down_thres)
 			cpu_stat->is_busy = false;
 		/* else remain previous status */
 	}
 
+	/* Define need spread cpus */
 	for (cid = 0; cid < num_clusters; cid++) {
 		cluster = &cluster_state[cid];
 		cpu_count = 0;
@@ -1520,6 +1584,8 @@ static inline void core_ctl_main_algo(void)
 	unsigned int orig_need_cpu[MAX_CLUSTERS] = {0};
 	struct cpumask active_cpus;
 
+	/* get each cpu loading */
+	get_cpu_active_loading();
 	/* get needed spread cpus */
 	get_busy_cpus();
 	/* get TLP of over threshold tasks */
@@ -1865,6 +1931,7 @@ static int cpu_pause_cpuhp_state(unsigned int cpu,  bool online)
 	unsigned long flags;
 	struct cpumask cpu_resume_req;
 	unsigned int pause_cpus;
+	unsigned int i;
 
 	if (unlikely(!cluster || !cluster->inited))
 		return 0;
@@ -1892,7 +1959,11 @@ static int cpu_pause_cpuhp_state(unsigned int cpu,  bool online)
 			cluster->nr_paused_cpus--;
 			resume = true;
 		}
-		state->cpu_util_pct = 0;
+
+		for (i=0; i<WIN_SIZE; i++) {
+			state->cpu_util_pct[i] = 0;
+			state->cpu_active_loading[i] = 0;
+		}
 		state->force_paused = false;
 		cluster->active_cpus = get_active_cpu_count(cluster);
 	}
@@ -2049,6 +2120,7 @@ static int cluster_init(const struct cpumask *mask)
 		state->cluster = cluster;
 		state->cpu = cpu;
 		state->force_pause_req = CLEARED_FORCE_PAUSE;
+		state->win_idx = 0;
 	}
 
 	cluster->cpu_busy_up_thres = busy_up_thres[cluster->cluster_id];
