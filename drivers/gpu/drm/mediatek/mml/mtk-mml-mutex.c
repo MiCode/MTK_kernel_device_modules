@@ -27,6 +27,9 @@
 #define MUTEX_MOD(id, offset)	((offset) + (id) * 0x20)
 #define MUTEX_SOF(id, offset)	((offset) + (id) * 0x20)
 
+int mml_mutex_dl_sof;
+module_param(mml_mutex_dl_sof, int, 0644);
+
 struct mutex_data {
 	/* Count of display mutex HWs */
 	u32 mutex_cnt;
@@ -59,6 +62,7 @@ struct mml_mutex {
 	u16 event_pipe0_mml;
 	u16 event_pipe1_mml;
 	u16 event_stream_sof;
+	u16 event_prete;
 
 	struct mutex_module modules[MML_MAX_COMPONENTS];
 };
@@ -188,8 +192,20 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	bool sof_en = cfg->info.mode != MML_MODE_DIRECT_LINK;
+	bool sof_en = true;
 	s32 ret;
+
+	/* DL mode and dpc off case, mutex sof control by dsi src */
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (mml_mutex_dl_sof) {
+			/* mutex en in disp pkt */
+			sof_en = false;
+		} else if (comp == path->mutex) {
+			/* wait pre-te in first mutex trigger */
+			cmdq_pkt_clear_event(pkt, mutex->event_prete);
+			cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
+		}
+	}
 
 	/* DL mode config sof only, other modes enable to trigger directly */
 	ret = mutex_enable(mutex, pkt, path, 0x0, cfg->info.mode, true, sof_en);
@@ -517,9 +533,11 @@ static void mutex_addon_config(struct mtk_ddp_comp *ddp_comp,
 		mode = mutex->connected_mode;
 	}
 
-	if (mode == MML_MODE_DIRECT_LINK)
-		mutex_addon_config_dl(ddp_comp, prev, next, addon_config, pkt);
-	else if (mode == MML_MODE_DDP_ADDON)
+	if (mode == MML_MODE_DIRECT_LINK) {
+		/* in dpc enable case, mutex trigger by mml pkt directly */
+		if (mml_mutex_dl_sof)
+			mutex_addon_config_dl(ddp_comp, prev, next, addon_config, pkt);
+	} else if (mode == MML_MODE_DDP_ADDON)
 		mutex_addon_config_addon(ddp_comp, prev, next, addon_config, pkt);
 	else
 		mml_err("%s not support mode %d(%d)", __func__, mode, cfg->submit.info.mode);
@@ -613,6 +631,8 @@ static int probe(struct platform_device *pdev)
 
 	if (!of_property_read_u16(dev->of_node, "sof-event", &priv->event_stream_sof))
 		mml_log("stream0 sof event %u", priv->event_stream_sof);
+	if (!of_property_read_u16(dev->of_node, "event-prete", &priv->event_prete))
+		mml_log("dpc pre-te event %u", priv->event_prete);
 
 	ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
 				&ddp_comp_funcs);

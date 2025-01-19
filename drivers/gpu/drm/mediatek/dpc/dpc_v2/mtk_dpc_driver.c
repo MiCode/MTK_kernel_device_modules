@@ -120,7 +120,7 @@ static struct mtk_dpc2_dt_usage mt6991_dt_usage[DPC2_VIDLE_CNT] = {
 /*31*/	{0, 0x13B13B},
 /*32*/	{0, 500},						/* MML1		EOF	OFF	*/
 /*33*/	{1, DPC2_DT_TE_120 - DPC2_DT_PRESZ - DPC2_DT_MTCMOS},	/*		TE	ON	*/
-/*34*/	{0, 0x13B13B},						/*		TE	PRETE	*/
+/*34*/	{1, DPC2_DT_TE_120 - DPC2_DT_PRESZ + 20},		/*		TE	PRETE	*/
 /*35*/	{1, DPC2_DT_POSTSZ},					/*		TE	OFF	*/
 /*36*/	{0, 0x13B13B},	/* VDISP */
 /*37*/	{0, 0x13B13B},
@@ -488,6 +488,7 @@ static void dpc_duration_update(const u32 us)
 		dpc_dt_set_update(12, us - DPC2_DT_INFRA);
 		dpc_dt_set_update(18, us - presz - DPC2_DT_MMINFRA);
 		dpc_dt_set_update(33, us - presz - DPC2_DT_MTCMOS);
+		dpc_dt_set_update(34, us - DPC2_DT_PRESZ + 20);
 		dpc_dt_set_update(40, us - DPC2_DT_INFRA);
 		dpc_dt_set_update(46, us - presz - DPC2_DT_MMINFRA);
 		dpc_dt_set_update(64, us - presz - DPC2_DT_MTCMOS - DPC2_DT_DSION - DPC2_DT_VCORE);
