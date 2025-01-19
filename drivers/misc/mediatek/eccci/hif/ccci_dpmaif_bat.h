@@ -18,7 +18,8 @@
 #include "ccci_dpmaif_com.h"
 
 
-#define MAX_ALLOC_BAT_CNT (100000)
+#define MAX_ALLOC_BAT_CNT (0xFFFF)
+#define MAX_ALLOC_BAT_CNT_FROM_MD (100000)
 
 #define MIN_ALLOC_SKB_CNT (2000)
 #define MIN_ALLOC_FRG_CNT (2000)

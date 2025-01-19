@@ -93,7 +93,7 @@ unsigned int g_alloc_skb_threshold     = MIN_ALLOC_SKB_CNT;
 unsigned int g_alloc_frg_threshold     = MIN_ALLOC_FRG_CNT;
 unsigned int g_alloc_skb_tbl_threshold = MIN_ALLOC_SKB_TBL_CNT;
 unsigned int g_alloc_frg_tbl_threshold = MIN_ALLOC_FRG_TBL_CNT;
-unsigned int g_max_bat_skb_cnt_for_md  = MAX_ALLOC_BAT_CNT;
+unsigned int g_max_bat_skb_cnt_for_md  = MAX_ALLOC_BAT_CNT_FROM_MD;
 
 static unsigned int g_use_page_tbl;
 
@@ -568,7 +568,7 @@ alloc_end:
 			hdr.hw_rd = ccci_drv3_dl_get_bat_ridx();
 		else  //version 1, 2
 			 hdr.hw_rd = ccci_drv2_dl_get_bat_ridx();
-		hdr.thrd = alloc_skb_threshold;
+		hdr.thrd = (u16)alloc_skb_threshold;
 		hdr.pre_time = pre_time;
 		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
 	}
@@ -640,8 +640,8 @@ static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
 	else  //version 1, 2
 		atomic_set(&bat_req->bat_rd_idx, ccci_drv2_dl_get_frg_bat_ridx());
 
-	if (alloc_frg_threshold > g_max_bat_skb_cnt_for_md)
-		alloc_frg_threshold = g_max_bat_skb_cnt_for_md;
+	if (g_max_bat_skb_cnt_for_md == 0xFFFF)  //need alloc max frg to bat
+		alloc_frg_threshold = MAX_ALLOC_BAT_CNT;
 
 	buf_used = get_ringbuf_used_cnt(bat_req->bat_cnt,
 				atomic_read(&bat_req->bat_rd_idx),
@@ -732,7 +732,7 @@ alloc_end:
 			hdr.cnt  = count;
 			hdr.crd  = atomic_read(&bat_req->bat_rd_idx);
 			hdr.cwr  = bat_wr_idx;
-			hdr.thrd = alloc_frg_threshold;
+			hdr.thrd = (u16)alloc_frg_threshold;
 			ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
 		}
 	}
@@ -1043,7 +1043,7 @@ void ccci_dpmaif_bat_stop(void)
 	ccci_dpmaif_bat_free();
 
 	g_use_page_tbl = 0;
-	g_max_bat_skb_cnt_for_md = MAX_ALLOC_BAT_CNT;
+	g_max_bat_skb_cnt_for_md = MAX_ALLOC_BAT_CNT_FROM_MD;
 
 	atomic_set(&g_bat_alloc_thread_wakeup_cnt, 0);
 }
