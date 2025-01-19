@@ -527,7 +527,7 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 
 		/* this path does not use current mml mutex */
 		if (path->mutex != &mutex->comp && path->mutex2 != &mutex->comp) {
-			mml_err("%s no mutex in path %u", __func__, path->path_id);
+			mml_msg("%s no mutex in path %u", __func__, path->path_id);
 			return;
 		}
 

@@ -1552,7 +1552,7 @@ static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
 		u32 ovldli_sz = cmdq_pkt_backup_get(pkt, &task->ovl_dli_size);
 		u32 ovldli_status = cmdq_pkt_backup_get(pkt, &task->ovl_dli_status);
 
-		if ((status1 & 0x0fff0000) != (task->dlo_size & 0x0fff0000))
+		if ((status1 & 0x1fff0000) != (task->dlo_size & 0x1fff0000))
 			mml_err("task job %u dlo size %#010x status %#010x not match",
 				task->job.jobid, task->dlo_size, status1);
 		else if (mml_dlo_dbg & BIT(2))
@@ -2390,13 +2390,11 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 dl_h = tile->in.ye - tile->in.ys + 1;
 	u32 size = (dl_h << 16) + dl_w;
 
+	if (sys->data->px_per_tick == 2)
+		size = size | (1 << 30);
 	if (comp->sysid == task->config->path[ccfg->pipe]->mmlsys->sysid)
 		task->dlo_size = size;
-	if (sys->data->px_per_tick == 2)
-		cmdq_pkt_write(pkt, NULL, base_pa + offset,
-			size + (1 << 30), U32_MAX);
-	else
-		cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
 
 	if (dl_frm) {
 		dl_frm->max_size.width = dl_w;
@@ -2405,6 +2403,10 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	return 0;
 }
+
+static const struct mml_comp_config_ops dl_config_ops = {
+	.tile = dl_config_tile,
+};
 
 static s32 dl_wait(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 idx)
@@ -2437,7 +2439,7 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-static const struct mml_comp_config_ops dl_config_ops = {
+static const struct mml_comp_config_ops dlo_config_ops_mt6989 = {
 	.tile = dl_config_tile,
 	.wait = dl_wait,
 	.post = dl_post,
@@ -2472,6 +2474,15 @@ static const struct mml_comp_config_ops dlo_config_ops_mt6991f = {
 	.wait = dl_wait,
 	.post = dlo_post_mt6991f,
 };
+
+static s32 dl_wait_mt6993(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 idx)
+{
+	if (task->config->info.mode == MML_MODE_DIRECT_LINK)
+		cmdq_pkt_wfe(task->pkts[ccfg->pipe], task->config->info.disp_done_event);
+
+	return 0;
+}
 
 #define MT6993_MML_DLO_ASYNC0_STATUS0	0xaf4
 #define MT6993_OVLSYS_DLI0_SIZE		0x32900b24
@@ -2515,7 +2526,7 @@ static s32 dlo_post_mt6993d(struct mml_comp *comp, struct mml_task *task,
 
 static const struct mml_comp_config_ops dlo_config_ops_mt6993d = {
 	.tile = dl_config_tile,
-	.wait = dl_wait,
+	.wait = dl_wait_mt6993,
 	.post = dlo_post_mt6993d,
 };
 
@@ -2622,6 +2633,18 @@ static int dlo_comp_init(struct device *dev, struct mml_sys *sys,
 		return ret;
 	comp->tile_ops = &dlo_tile_ops;
 	return 0;
+}
+
+static int dlo_comp_init_mt6989(struct device *dev, struct mml_sys *sys, struct mml_comp *comp)
+{
+	int ret = dl_comp_init(dev, sys, comp);
+
+	if (ret)
+		return ret;
+	comp->tile_ops = &dlo_tile_ops;
+	comp->config_ops = &dlo_config_ops_mt6989;
+
+	return ret;
 }
 
 static int dlo_comp_init_mt6991f(struct device *dev, struct mml_sys *sys, struct mml_comp *comp)
@@ -3143,7 +3166,7 @@ static const struct mml_data mt6989_mml_data = {
 	.comp_inits = {
 		[MML_CT_SYS] = &sys_comp_init,
 		[MML_CT_DL_IN] = &dli_comp_init,
-		[MML_CT_DL_OUT] = &dlo_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init_mt6989,
 	},
 	.ddp_comp_funcs = {
 		[MML_CT_SYS] = &sys_ddp_funcs,
