@@ -829,10 +829,8 @@ unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s, 
 	int pd_pwr_eff;
 	int unused_debug[6];
 
-	util = get_cpu_util_with_margin(cpu, cpu_util);
 
 	if (dpt_v2_support) {
-
 		dpt_v2_cap_params.cpu_util_local = dpt_v2_cap_params.cpu_util_local == 0 ? 1 : dpt_v2_cap_params.cpu_util_local;
 		opp = dpt_v2_linear_local_cap2opp_hook(cpu, false, util);
 		pd_pwr_eff = dpt_v2_opp2pwr_eff_hook(false, cpu, opp,
@@ -841,6 +839,7 @@ unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s, 
 			dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local, dpt_v2_cap_params.IPC_scaling_factor);
 	}
 	else {
+		util = get_cpu_util_with_margin(cpu, cpu_util);
 		opp = pd_util2opp(cpu, util, false, wl, val_s, false, DPT_CALL_CALC_PWR_EFF);
 		pd_pwr_eff = pd_opp2pwr_eff(cpu, opp, false, wl, val_s, false, DPT_CALL_CALC_PWR_EFF);
 		cap = pd_opp2cap(cpu, opp, false, wl, val_s, false, DPT_CALL_CALC_PWR_EFF);

@@ -490,13 +490,14 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			/* record best non-idle cpu in gear if gear don't have idle cpus */
 			irq_log_store();
 			if (dpt_v2_support) {
-				unsigned long dpt_v2_cpu_util_local = 0, dpt_v2_coef1_util_local = 0, dpt_v2_coef2_util_local = 0, min, max;
+				unsigned long dpt_v2_cpu_util_local = 0, dpt_v2_coef1_util_local = 0;
+				unsigned long dpt_v2_coef2_util_local = 0, min, max, unused[2];
 				int IPC_scaling_factor = get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
 
 				mtk_cpu_util_cfs_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local);
 				mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local, p, &min, &max);
-				cpu_util_cum = dpt_v2_util2cap_needed_local_hook(dpt_v2_cpu_util_local, dpt_v2_coef1_util_local, dpt_v2_coef2_util_local);
-				dpt_v2_uclamp2local_cap_hook(cpu, false, &min, &max);
+				cpu_util_cum = dpt_v2_util2cap_needed_local_hook(dpt_v2_cpu_util_local,
+					dpt_v2_coef1_util_local, dpt_v2_coef2_util_local, unused);
 				dpt_v2_uclamp2local_cap_hook(cpu, false, &min_cap, &max_cap);
 
 				min = max(min, min_cap);
@@ -508,6 +509,11 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 					max = max_cap;
 				else
 					max = max(max, max_cap);
+
+				if (mtk_uclamp_involve(min, max, 0))
+					cpu_util_cum = (cpu_util_cum * DEFAULT_MARGIN) >> SCHED_CAPACITY_SHIFT;
+				else
+					cpu_util_cum = get_cpu_util_with_margin(cpu, cpu_util_cum);
 
 				cpu_util_cum = sugov_effective_cpu_perf_clamp(cpu_util_cum, min, max);
 
