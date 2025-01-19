@@ -15115,6 +15115,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		scp-ultra-dl-memif-id = <0x7>;
 		scp-ultra-ul-memif-id = <0x16>;
 		ultra-afe-with-adsp;
+		ultra-toggle-clr-irq;
 	};
 
 	md_auxadc:md-auxadc {
