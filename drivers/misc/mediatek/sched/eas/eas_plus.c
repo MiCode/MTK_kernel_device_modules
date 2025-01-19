@@ -1087,7 +1087,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu, str
 
 #else
 __always_inline
-unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s, dpt_v2_cap_params_struct dpt_v2_cap_params)
+unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s, int dpt_v2_support, dpt_v2_cap_params_struct dpt_v2_cap_params)
 {
 	return 0;
 }

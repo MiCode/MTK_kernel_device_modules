@@ -389,11 +389,11 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 			cpu_util = eenv->cpu_max_util[cpu][dst_idx];
 
 		if (cpumask_test_cpu(cpu, pd_cpus)) {
-			pd_cpu = (max_util <= cpu_util) ? cpu : pd_cpu;
+			pd_cpu = (max_util < cpu_util) ? cpu : pd_cpu;
 			max_util = max(max_util, cpu_util);
 		}
 
-		gear_cpu = (gear_max_util <= cpu_util) ? cpu : gear_cpu;
+		gear_cpu = (gear_max_util < cpu_util) ? cpu : gear_cpu;
 		gear_max_util = max(gear_max_util, cpu_util);
 
 		/*get dst_cpu base utilization*/

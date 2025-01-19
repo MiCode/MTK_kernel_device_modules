@@ -752,7 +752,7 @@ void update_wl_cpu_dsu_separately(int wl_tcm, int type, int is_manual, int *wl_c
 
 		for (gear_idx = 0; gear_idx < pd_count; gear_idx++) {
 			for_each_cpu(cpu, &pd_cpumask[gear_idx])
-				mtk_update_cpu_capacity(cpu, pd_opp2cap(cpu, 0, true, 0, NULL, true,
+				mtk_update_cpu_capacity(cpu, pd_opp2cap(cpu, 0, true, *wl_curr, NULL, true,
 						DPT_CALL_UPDATE_WL_TBL), *wl_curr, CAP_UPDATED_BY_WL);
 		}
 	}
