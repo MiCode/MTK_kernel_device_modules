@@ -16048,6 +16048,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 	mmdvfs_v5_mux: mmdvfs-v5-mux {
 		//compatible = "mediatek,mtk-mmdvfs-v5-mux";
+		#clock-cells = <1>;
 		mediatek,mmdvfs-muxs = <MMDVFS_V5_MUX_CAM>, <MMDVFS_V5_MUX_CAMTM>, <MMDVFS_V5_MUX_VDE>,
 			<MMDVFS_V5_MUX_IMG>, <MMDVFS_V5_MUX_IPE>, <MMDVFS_V5_MUX_DIS>, <MMDVFS_V5_MUX_MDP>,
 			<MMDVFS_V5_MUX_SMI>, <MMDVFS_V5_MUX_VEN>, <MMDVFS_V5_MUX_VEN_MDP>;
@@ -16056,7 +16057,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mediatek,mmdvfs-opp-table = <&opp_table_cam>, <&opp_table_cam>, <&opp_table_vdec>,
 			<&opp_table_img>, <&opp_table_img>, <&opp_table_disp>, <&opp_table_disp>,
 			<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_venc>;
-		#clock-cells = <1>;
+	};
+
+	mmdvfs_v5_user: mmdvfs-v5-user {
+		//compatible = "mediatek,mtk-mmdvfs-v5-user";
 		clocks = <&mmdvfs_v5_mux MMDVFS_V5_AP_CAM>, <&mmdvfs_v5_mux MMDVFS_V5_AP_VDE>,
 			<&mmdvfs_v5_mux MMDVFS_V5_AP_IMG>, <&mmdvfs_v5_mux MMDVFS_V5_AP_IPE>, <&mmdvfs_v5_mux MMDVFS_V5_AP_DIS>,
 			<&mmdvfs_v5_mux MMDVFS_V5_AP_MML>, <&mmdvfs_v5_mux MMDVFS_V5_AP_SMI>, <&mmdvfs_v5_mux MMDVFS_V5_AP_VEN>,
