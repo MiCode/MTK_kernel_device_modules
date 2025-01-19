@@ -7043,6 +7043,14 @@ int mtk_drm_suspend_release_fence(struct device *dev)
 	unsigned int i = 0;
 	struct mtk_drm_private *private = dev_get_drvdata(dev);
 
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_UNION_FENCE)) {
+		mtk_release_union_fence(private->session_id[0],
+			atomic_read(&private->crtc_config[0]), 0, MTK_UNION_FENCE_CONFIG);
+		mtk_release_union_fence(private->session_id[0],
+			atomic_read(&private->crtc_present[0]), 0, MTK_UNION_FENCE_PRESENT);
+		return 0;
+	}
+
 	for (i = 0; i < MTK_TIMELINE_OUTPUT_TIMELINE_ID; i++) {
 		DDPINFO("%s layerid=%d\n", __func__, i);
 		mtk_release_layer_fence(private->session_id[0], i);
@@ -7861,6 +7869,11 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_PARTIAL_UPDATE;
 #endif
+
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_UNION_FENCE))
+		caps_info->disp_feature_flag |=
+				DRM_DISP_FEATURE_UNION_FENCE;
+
 #ifndef DRM_BYPASS_PQ
 	{
 		struct mtk_ddp_comp *ddp_comp;
@@ -9517,6 +9530,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	for (i = 0; i < MAX_CRTC ; ++i) {
 		atomic_set(&private->crtc_present[i], 0);
 		atomic_set(&private->crtc_rel_present[i], 0);
+		atomic_set(&private->crtc_config[i], 0);
 	}
 	atomic_set(&private->rollback_all, 0);
 	mtk_drm_svp_init(drm);
@@ -10263,6 +10277,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_MAP_DMA_BUF, mtk_drm_map_dma_buf,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_UNMAP_DMA_BUF, mtk_drm_unmap_dma_buf,
+			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(MTK_GET_UNION_FENCE, mtk_drm_get_union_fence_ioctl,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 };
 

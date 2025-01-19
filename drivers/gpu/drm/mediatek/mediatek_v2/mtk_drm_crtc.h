@@ -1404,6 +1404,8 @@ struct mtk_ddp_comp *mtk_ddp_comp_request_output(struct mtk_drm_crtc *mtk_crtc);
 /* get fence */
 int mtk_drm_crtc_getfence_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
+int mtk_drm_get_union_fence_ioctl(struct drm_device *dev, void *data,
+				struct drm_file *file_priv);
 int mtk_drm_crtc_get_sf_fence_ioctl(struct drm_device *dev, void *data,
 				    struct drm_file *file_priv);
 int mtk_drm_crtc_fence_release_ioctl(struct drm_device *dev, void *data,

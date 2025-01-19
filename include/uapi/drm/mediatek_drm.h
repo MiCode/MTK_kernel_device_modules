@@ -472,6 +472,8 @@ struct DISP_AAL_TRIG_STATE {
 
 #define DRM_MTK_DEBUG_LOG			0x3E
 
+#define DRM_MTK_GET_UNION_FENCE 0x3F
+
 /* CHIST */
 #define DRM_MTK_GET_CHIST           0x46
 #define DRM_MTK_GET_CHIST_CAPS      0x47
@@ -686,6 +688,7 @@ enum MTK_DRM_DISP_FEATURE {
 	DRM_DISP_FEATURE_GPU_CACHE = 0x00004000,
 	DRM_DISP_FEATURE_SPHRT = 0x00008000,
 	DRM_DISP_FEATURE_PARTIAL_UPDATE = 0x00010000,
+	DRM_DISP_FEATURE_UNION_FENCE = 0x00020000,
 };
 
 enum MTK_DRM_DUMP_POINT {
@@ -842,6 +845,7 @@ enum MTK_CRTC_ABILITY {
 	ABILITY_PARTIAL_UPDATE = BIT(13),
 	ABILITY_PARTIAL_UPDATE_BISO = BIT(14),
 	ABILITY_STASH_CMD = BIT(15),
+	ABILITY_UNION_FENCE = BIT(16),
 };
 
 struct mtk_drm_wb_caps {
@@ -2102,6 +2106,19 @@ struct mtk_drm_mml_ctrl {
 
 #define DRM_IOCTL_MTK_MML_CTRL DRM_IOWR(DRM_COMMAND_BASE + \
 	DRM_MTK_MML_CTRL, struct mtk_drm_mml_ctrl)
+
+struct mtk_union_fence {
+	uint32_t crtc_id;
+	/* signal config fence after config hw */
+	int32_t config_fence_fd;
+	uint32_t config_fence_idx;
+	/* signal present fence after sof */
+	int32_t present_fence_fd;
+	uint32_t present_fence_idx;
+};
+
+#define DRM_IOCTL_MTK_GET_UNION_FENCE DRM_IOWR(DRM_COMMAND_BASE + \
+	DRM_MTK_GET_UNION_FENCE, struct mtk_union_fence)
 
 #define MTK_DRM_ADVANCE
 #define MTK_DRM_FORMAT_DIM		fourcc_code('D', ' ', '0', '0')

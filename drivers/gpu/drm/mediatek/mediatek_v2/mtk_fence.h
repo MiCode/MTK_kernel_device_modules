@@ -57,6 +57,7 @@ enum MTK_TIMELINE_ENUM {
 	MTK_TIMELINE_SP7_PRESENT_TIMELINE_ID,
 	MTK_TIMELINE_SP8_PRESENT_TIMELINE_ID,
 	MTK_TIMELINE_SP9_PRESENT_TIMELINE_ID,
+	MTK_TIMELINE_PRIMARY_CONFIG_TIMELINE_ID,
 	MTK_TIMELINE_COUNT,
 };
 
@@ -80,6 +81,7 @@ struct mtk_fence_buf_info {
 	unsigned int seq;
 	unsigned int layer_type;
 	unsigned int slc_cached;
+	unsigned int layer_id;
 };
 
 struct mtk_fence_sync_info {
@@ -140,6 +142,12 @@ struct mtk_fence_session_sync_info {
 	struct mtk_fence_info session_layer_info[MTK_TIMELINE_COUNT];
 };
 
+enum MTK_UNION_FENCE_TYPE {
+	MTK_UNION_FENCE_CONFIG,
+	MTK_UNION_FENCE_PRESENT,
+	MTK_UNION_FENCE_FRAME_DONE,
+};
+
 char *mtk_fence_session_mode_spy(unsigned int session_id);
 
 void mtk_init_fence(void);
@@ -156,12 +164,14 @@ void mtk_release_layer_fence(unsigned int session_id, unsigned int layer_id);
 int mtk_release_present_fence(unsigned int session_id, unsigned int fence_idx, ktime_t time);
 int mtk_release_sf_present_fence(unsigned int session_id,
 				 unsigned int fence_idx);
+int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, ktime_t time,
+		int fence_type);
 int mtk_fence_get_output_timeline_id(void);
 int mtk_fence_get_interface_timeline_id(void);
 
 struct mtk_fence_buf_info *
 mtk_fence_prepare_buf(struct drm_device *dev, struct drm_mtk_gem_submit *buf,
-					 bool is_implicit, struct dma_resv *resv);
+					 bool is_implicit, struct dma_resv *resv, bool use_union_fence);
 int mtk_fence_init(void);
 int mtk_fence_get_cached_layer_info(unsigned int session_id,
 				    unsigned int timeline_idx,
@@ -183,6 +193,7 @@ unsigned int mtk_fence_query_buf_info(unsigned int session_id,
 
 int mtk_fence_get_ovl_timeline_id(int layer_id);
 int mtk_fence_get_present_timeline_id(unsigned int session_id);
+int mtk_fence_get_config_timeline_id(unsigned int session_id);
 int mtk_fence_get_sf_present_timeline_id(unsigned int session_id);
 struct mtk_fence_session_sync_info *
 disp_get_session_sync_info(unsigned int session_id);
