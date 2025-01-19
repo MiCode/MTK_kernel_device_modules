@@ -2534,6 +2534,8 @@ int get_api_sync_flag(void)
 {
 	return api_sync_flag;
 }
+EXPORT_SYMBOL(get_api_sync_flag);
+
 void set_api_sync_flag(int flag)
 {
 	unsigned int tmp_sysram_val = 0;
@@ -2568,6 +2570,9 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 5) {
 		dcs_set_fix_num(4);
 		start_mewtwo_timer();
+	} else if (flag == 6 || flag == 7) {
+		if (api_sync_flag != flag)
+			api_sync_flag = flag;
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 	} else if ((flag & 0xFFFF0000) == 0x55660000) {
 		// pre-throttle cases
