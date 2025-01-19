@@ -3197,7 +3197,7 @@ static int usb_offload_remove(struct platform_device *pdev)
 	int ret;
 
 	USB_OFFLOAD_INFO("\n");
-	ret = ssusb_offload_unregister(uodev->ssusb_offload_notify->dev);
+	ret = ssusb_offload_unregister(uodev->ssusb_offload_notify);
 	if (ret)
 		USB_OFFLOAD_ERR("ssusb_offload_unregister failed!\n");
 

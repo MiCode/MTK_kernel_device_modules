@@ -354,7 +354,9 @@ struct ssusb_mtk {
 	u32 vsv_mask;
 	u32 vsv_vers;
 	/* offload */
+	bool offload_support;
 	int offload_mode;
+	struct ssusb_offload *offload;
 	/* dp switch */
 	struct regmap *dp_switch;
 	u32 dp_switch_oft;
@@ -498,6 +500,7 @@ struct mtu3 {
 /* struct ssusb_offload */
 struct ssusb_offload {
 	struct device *dev;
+	struct ssusb_mtk *ssusb;
 	int	(*get_mode)(struct device *dev);
 };
 
