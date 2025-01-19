@@ -209,6 +209,11 @@ void md_cd_lock_modem_clock_src(int locked)
 	}
 
 	if (locked) {
+		if (md_cd_plat_val_ptr.mdsrc_settle_time) {
+			settle = md_cd_plat_val_ptr.mdsrc_settle_time;
+			goto settle_time_get_done;
+		}
+
 		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
 			MD_REG_AP_MDSRC_SETTLE, 0, 0, 0, 0, 0, &res);
 
@@ -225,6 +230,7 @@ void md_cd_lock_modem_clock_src(int locked)
 				"md source settle fail (0x%lX, 0x%lX) set = %d\n",
 				res.a0, res.a1, settle);
 		}
+settle_time_get_done:
 		mdelay(settle);
 
 		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
@@ -2131,6 +2137,15 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	} else
 		CCCI_NORMAL_LOG(0, TAG, "%s: boot_status_value = 0x%x\n",
 			__func__, md_cd_plat_val_ptr.boot_status_value);
+
+	ret = of_property_read_u32(dev_ptr->dev.of_node,
+		"mediatek,mdsrc-settle-time",
+		&md_cd_plat_val_ptr.mdsrc_settle_time);
+	if (ret < 0) {
+		md_cd_plat_val_ptr.mdsrc_settle_time = 0;
+		CCCI_NORMAL_LOG(0, TAG, "%s: mdsrc_settle_time not find\n", __func__);
+	} else
+		CCCI_NORMAL_LOG(0, TAG, "mdsrc_settle_time:%d\n", md_cd_plat_val_ptr.mdsrc_settle_time);
 
 	/* Get spm sleep base */
 	md_cd_plat_val_ptr.spm_sleep_base =

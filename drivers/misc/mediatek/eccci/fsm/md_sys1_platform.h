@@ -55,6 +55,7 @@ struct  ccci_plat_val {
 	int srclken_o1_bit;
 	unsigned int md_first_power_on;
 	unsigned int boot_status_value;
+	unsigned int mdsrc_settle_time;
 };
 
 struct ccci_clk_node {
