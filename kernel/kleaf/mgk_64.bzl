@@ -304,6 +304,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/spi:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -410,6 +411,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/spi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -726,6 +728,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/spi:spi-mt65xx".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:mme".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1065,8 +1069,6 @@ mgk_64_device_modules = [
     "drivers/ufs/ufs-mediatek-dbg.ko",
     "drivers/ufs/vendor/ufs-mediatek-mod.ko",
     "drivers/ufs/vendor/ufs-mediatek-mod-ise.ko",
-    "drivers/soc/mediatek/devapc/device-apc-common.ko",
-    "drivers/soc/mediatek/devapc/device-apc-common-legacy.ko",
     "drivers/soc/mediatek/mtk-mmdvfs.ko",
     "drivers/soc/mediatek/mtk-mmdvfs-v3.ko",
     "drivers/soc/mediatek/mmdvfs/mtk-mmdvfs-v5.ko",
@@ -1413,7 +1415,7 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/slbc/slbc_mt6991.ko": "mt6991",
     "drivers/misc/mediatek/slbc/slbc_mt6993.ko": "mt6993",
     "drivers/soc/mediatek/devapc/device-apc-mt6761.ko": "mt6761",
-    "drivers/soc/mediatek/devapc/device-apc-mt6765.ko": "mt6765",
+    #"drivers/soc/mediatek/devapc/device-apc-mt6765.ko": "mt6765",
     "drivers/soc/mediatek/devapc/device-apc-mt6768.ko": "mt6768",
     "drivers/soc/mediatek/devapc/device-apc-mt6781.ko": "mt6781",
     "drivers/soc/mediatek/devapc/device-apc-mt6833.ko": "mt6833",
@@ -2083,7 +2085,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/pmsr/v3/pmsr_v3.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pmsr/v4/pmsr_v4.ko")
 
-        mgk_64_device_modules.remove("drivers/soc/mediatek/devapc/device-apc-common.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version))
 
         #mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/pmic_lvsys_notify.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/power_gs_v1/mtk_power_gs_v1.ko")
