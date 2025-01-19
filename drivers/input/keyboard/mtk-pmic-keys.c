@@ -28,6 +28,7 @@
 #include <linux/mfd/mt6661/registers.h>
 #include <linux/mfd/mt6661/core.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/atomic.h>
 
 /* 6358 pmic define */
 #define MT6358_TOPSTATUS			(0x28)
@@ -78,6 +79,8 @@
 #define MT6357_PWRKEY_RST_SHIFT			9
 #define MT6357_HOMEKEY_RST_SHIFT		8
 #define MT6357_RST_DU_SHIFT			12
+#define INT_MASK_PWRKEY				0x09
+
 struct mtk_pmic_keys_regs {
 	u32 deb_reg;
 	u32 deb_mask;
@@ -263,6 +266,7 @@ enum mtk_pmic_keys_lp_mode {
 
 static struct platform_device *ktf_pmic_pdev;
 static struct mtk_pmic_keys *ktf_pmic_key;
+static atomic_t last_key_status = ATOMIC_INIT(0);
 static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 		const struct mtk_pmic_regs *pmic_regs)
 {
@@ -413,6 +417,93 @@ static irqreturn_t mtk_pmic_keys_irq_handler_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+/* val: 0, disable powerkey irq; 1, enable powerkey irq */
+static int powerkey_irq_control(int val)
+{
+	int ret;
+
+	struct mtk_pmic_keys_info *info = &(ktf_pmic_key->keys[MTK_PMIC_PWRKEY_INDEX]);
+
+	dev_dbg(info->keys->dev, "(%s) last mode\n", val ? "exit" : "enter");
+	if (val == 1)
+		ret = regmap_update_bits(info->keys->regmap, info->regs->intsel_reg,
+				INT_MASK_PWRKEY, INT_MASK_PWRKEY);
+	else
+		ret = regmap_update_bits(info->keys->regmap, info->regs->intsel_reg,
+				INT_MASK_PWRKEY, 0);
+	if (ret < 0)
+		dev_info(info->keys->dev, "regmap update PMIC failed %d\n", ret);
+
+	return ret;
+}
+
+/* mode:true, last mode disable powerkey irq; mode:false, normal mode enable powerkey irq */
+int last_key_set(bool mode)
+{
+	int ret;
+
+	ret = powerkey_irq_control(mode ? 0 : 1);
+	if (!ret)
+		atomic_set(&last_key_status, mode ? 1 : 0);
+
+	return ret;
+}
+EXPORT_SYMBOL(last_key_set);
+
+int last_key_get(bool mode)
+{
+	return atomic_read(&last_key_status);
+}
+EXPORT_SYMBOL(last_key_get);
+
+/* powerkey irq show */
+static ssize_t powerkey_irq_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	unsigned int val;
+	int err;
+
+	struct mtk_pmic_keys_info *info = &(ktf_pmic_key->keys[MTK_PMIC_PWRKEY_INDEX]);
+
+	err = regmap_read(info->keys->regmap, info->regs->intsel_reg, &val);
+	if (err < 0) {
+		dev_info(info->keys->dev, "Failed to read powerkey IRQ status\n");
+		return err;
+	}
+
+	val = ((val & INT_MASK_PWRKEY) == INT_MASK_PWRKEY) ? 1 : 0;
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", val);
+}
+
+/* powerkey irq store */
+static ssize_t powerkey_irq_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	int value, ret;
+
+	struct mtk_pmic_keys_info *info = &(ktf_pmic_key->keys[MTK_PMIC_PWRKEY_INDEX]);
+
+	ret = kstrtoint(buf, 10, &value);
+	if (ret)
+		return ret;
+
+	if (value != 0 && value != 1)
+		return -EINVAL;
+
+	ret = powerkey_irq_control(value);
+	if (ret < 0) {
+		dev_info(info->keys->dev, "Failed to control powerkey IRQ, value = %d\n", value);
+		return ret;
+	}
+
+	return count;
+}
+
+DEVICE_ATTR_RW(powerkey_irq);
+
 static int mtk_pmic_key_setup(struct mtk_pmic_keys *keys,
 		struct mtk_pmic_keys_info *info)
 {
@@ -550,6 +641,7 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 	struct input_dev *input_dev;
 	const struct of_device_id *of_id =
 		of_match_device(of_mtk_pmic_keys_match_tbl, &pdev->dev);
+	bool pwrkey_scp_enable = false;
 
 	ktf_pmic_pdev = pdev;
 	keys = devm_kzalloc(&pdev->dev, sizeof(*keys), GFP_KERNEL);
@@ -642,6 +734,19 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 		}
 
 		index++;
+	}
+
+	pwrkey_scp_enable = of_property_read_bool(keys->dev->of_node,
+						"pwrkey-scp-enable");
+
+	if (pwrkey_scp_enable) {
+		dev_info(keys->dev, "powerkey on scp is enabled\n");
+		error = device_create_file(&pdev->dev, &dev_attr_powerkey_irq);
+		if (error) {
+			dev_info(&pdev->dev,
+				"create powerkey_irq failed (%d)\n", error);
+			return error;
+		}
 	}
 
 	error = input_register_device(input_dev);
