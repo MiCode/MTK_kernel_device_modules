@@ -276,6 +276,20 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				       comp->regs_pa + DITHER_REG(16),
 				       0x40404040, ~0);
+		} else if (cfg->bpc == 5) { /* 565 */
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(15),
+				       0x50500001, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(16),
+				       0x50504040, ~0);
+		} else if (cfg->bpc == 6) { /* 666 */
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(15),
+				       0x40400001, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(16),
+				       0x40404040, ~0);
 		} else if (cfg->bpc > 10) {
 			/* High depth LCM, no need dither */
 			DDPINFO("%s: High depth LCM (bpp = %u), no dither\n",
