@@ -231,8 +231,9 @@ static void ufs_mtk_cfg_unipro_cg(struct ufs_hba *hba, bool enable)
 static void ufs_mtk_crypto_enable(struct ufs_hba *hba)
 {
 	struct arm_smccc_res res;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	ufs_mtk_crypto_ctrl(res, 1);
+	ufs_mtk_crypto_ctrl(host->host_id, res, 1);
 	if (res.a0) {
 		dev_info(hba->dev, "%s: crypto enable failed, err: %lu\n",
 			 __func__, res.a0);
@@ -259,7 +260,7 @@ static void ufs_mtk_host_reset(struct ufs_hba *hba)
 
 	/* restore mphy setting aftre mphy reset */
 	if (host->mphy_reset)
-		ufs_mtk_mphy_ctrl(UFS_MPHY_RESTORE, res);
+		ufs_mtk_mphy_ctrl(host->host_id, UFS_MPHY_RESTORE, res);
 }
 
 static void ufs_mtk_init_reset_control(struct ufs_hba *hba,
@@ -399,7 +400,7 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 	if (host->ref_clk_enabled == on)
 		return 0;
 
-	ufs_mtk_ref_clk_notify(on, PRE_CHANGE, res);
+	ufs_mtk_ref_clk_notify(host->host_id, on, PRE_CHANGE, res);
 
 	if (on) {
 		ufshcd_writel(hba, REFCLK_REQUEST, REG_UFS_REFCLK_CTRL);
@@ -440,7 +441,7 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 	 * set ref_clk_enabled directly.(keep DIFN disable, keep resource)
 	 */
 	if (on)
-		ufs_mtk_ref_clk_notify(false, POST_CHANGE, res);
+		ufs_mtk_ref_clk_notify(host->host_id, false, POST_CHANGE, res);
 	else
 		host->ref_clk_enabled = false;
 
@@ -451,7 +452,7 @@ out:
 	if (on)
 		ufshcd_delay_us(host->ref_clk_ungating_wait_us, 10);
 
-	ufs_mtk_ref_clk_notify(on, POST_CHANGE, res);
+	ufs_mtk_ref_clk_notify(host->host_id, on, POST_CHANGE, res);
 
 	return 0;
 }
@@ -594,13 +595,13 @@ static int ufs_mtk_mphy_power_on(struct ufs_hba *hba, bool on)
 				goto out;
 			/* wait 200 us to stablize VA09 */
 			usleep_range(200, 210);
-			ufs_mtk_va09_pwr_ctrl(res, 1);
+			ufs_mtk_va09_pwr_ctrl(host->host_id , res, 1);
 		}
 		phy_power_on(mphy);
 	} else {
 		phy_power_off(mphy);
 		if (ufs_mtk_is_va09_supported(hba)) {
-			ufs_mtk_va09_pwr_ctrl(res, 0);
+			ufs_mtk_va09_pwr_ctrl(host->host_id , res, 0);
 			ret = regulator_disable(host->reg_va09);
 		}
 	}
@@ -1296,13 +1297,14 @@ static int ufs_mtk_vreg_fix_vcc(struct ufs_hba *hba)
 	struct device *dev = hba->dev;
 	char vcc_name[MAX_VCC_NAME];
 	struct arm_smccc_res res;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	int err, ver;
 
 	if (info->vcc)
 		return 0;
 
 	if (of_property_read_bool(np, "mediatek,ufs-vcc-by-num")) {
-		ufs_mtk_get_vcc_num(res);
+		ufs_mtk_get_vcc_num(host->host_id, res);
 		if (res.a1 > UFS_VCC_NONE && res.a1 < UFS_VCC_MAX)
 			snprintf(vcc_name, MAX_VCC_NAME, "vcc-opt%lu", res.a1);
 		else
@@ -1633,7 +1635,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	/* backup mphy setting if mphy can reset */
 	if (host->mphy_reset)
-		ufs_mtk_mphy_ctrl(UFS_MPHY_BACKUP, res);
+		ufs_mtk_mphy_ctrl(host->host_id, UFS_MPHY_BACKUP, res);
 
 	/* Enable runtime autosuspend */
 	hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND;
@@ -1686,10 +1688,10 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	if (ufs_mtk_is_rtff_mtcmos(hba)) {
 		/* First Restore here, to avoid backup unexpected value */
-		ufs_mtk_mtcmos_ctrl(false, res);
+		ufs_mtk_mtcmos_ctrl(host->host_id, false, res);
 
 		/* Power on to init */
-		ufs_mtk_mtcmos_ctrl(true, res);
+		ufs_mtk_mtcmos_ctrl(host->host_id, true, res);
 	}
 
 	ufs_mtk_setup_clocks(hba, true, POST_CHANGE);
@@ -2034,8 +2036,9 @@ static int ufs_mtk_link_startup_notify(struct ufs_hba *hba,
 static int ufs_mtk_device_reset(struct ufs_hba *hba)
 {
 	struct arm_smccc_res res;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	ufs_mtk_device_reset_ctrl(0, res);
+	ufs_mtk_device_reset_ctrl(host->host_id, 0, res);
 
 	/* disable hba in middle of device reset */
 	ufshcd_hba_stop(hba);
@@ -2049,7 +2052,7 @@ static int ufs_mtk_device_reset(struct ufs_hba *hba)
 	 */
 	usleep_range(10, 15);
 
-	ufs_mtk_device_reset_ctrl(1, res);
+	ufs_mtk_device_reset_ctrl(host->host_id, 1, res);
 
 	/* Some devices may need time to respond to rst_n */
 	usleep_range(10000, 15000);
@@ -2421,8 +2424,9 @@ static void ufs_mtk_vccqx_set_lpm(struct ufs_hba *hba, bool lpm)
 static void ufs_mtk_vsx_set_lpm(struct ufs_hba *hba, bool lpm)
 {
 	struct arm_smccc_res res;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	ufs_mtk_device_pwr_ctrl(!lpm,
+	ufs_mtk_device_pwr_ctrl(host->host_id, !lpm,
 	(unsigned long)hba->dev_info.wspecversion, res);
 }
 
@@ -2499,9 +2503,9 @@ static int ufs_mtk_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 	}
 
 	if (ufshcd_is_link_off(hba))
-		ufs_mtk_device_reset_ctrl(0, res);
+		ufs_mtk_device_reset_ctrl(host->host_id, 0, res);
 
-	ufs_mtk_sram_pwr_ctrl(false, res);
+	ufs_mtk_sram_pwr_ctrl(host->host_id, false, res);
 
 	/* Release pm_qos/clk if enter suspend is scale up mode */
 	if (ufshcd_is_clkscaling_supported(hba) && (host->clk_scale_up)) {
@@ -2532,7 +2536,7 @@ static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	if (hba->ufshcd_state != UFSHCD_STATE_OPERATIONAL)
 		ufs_mtk_dev_vreg_set_lpm(hba, false);
 
-	ufs_mtk_sram_pwr_ctrl(true, res);
+	ufs_mtk_sram_pwr_ctrl(host->host_id, true, res);
 
 	err = ufs_mtk_mphy_power_on(hba, true);
 	if (err)
@@ -3345,7 +3349,7 @@ static int ufs_mtk_system_suspend(struct device *dev)
 		ufs_mtk_dev_vreg_set_lpm(hba, true);
 
 	if (!ret && ufs_mtk_is_rtff_mtcmos(hba))
-		ufs_mtk_mtcmos_ctrl(false, res);
+		ufs_mtk_mtcmos_ctrl(host->host_id, false, res);
 out:
 	if (ret)
 		up(&host->rpmb_sem);
@@ -3357,21 +3361,20 @@ static int ufs_mtk_system_resume(struct device *dev)
 {
 	int ret = 0;
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_mtk_host *host;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct arm_smccc_res res;
 
 	if (pm_runtime_suspended(hba->dev))
 		goto out;
 
 	if (ufs_mtk_is_rtff_mtcmos(hba))
-		ufs_mtk_mtcmos_ctrl(true, res);
+		ufs_mtk_mtcmos_ctrl(host->host_id, true, res);
 
 	ufs_mtk_dev_vreg_set_lpm(hba, false);
 
 out:
 	ret = ufshcd_system_resume(dev);
 
-	host = ufshcd_get_variant(hba);
 	if (!ret) {
 		up(&host->rpmb_sem);
 		hrtimer_start(&host->rq_timer, 500 * NSEC_PER_MSEC, HRTIMER_MODE_REL);
@@ -3396,7 +3399,7 @@ static int ufs_mtk_runtime_suspend(struct device *dev)
 	ufs_mtk_dev_vreg_set_lpm(hba, true);
 
 	if (ufs_mtk_is_rtff_mtcmos(hba))
-		ufs_mtk_mtcmos_ctrl(false, res);
+		ufs_mtk_mtcmos_ctrl(host->host_id, false, res);
 
 	if (host->phy_dev)
 		pm_runtime_put_sync(host->phy_dev);
@@ -3412,7 +3415,7 @@ static int ufs_mtk_runtime_resume(struct device *dev)
 	struct arm_smccc_res res;
 
 	if (ufs_mtk_is_rtff_mtcmos(hba))
-		ufs_mtk_mtcmos_ctrl(true, res);
+		ufs_mtk_mtcmos_ctrl(host->host_id, true, res);
 
 	if (host->phy_dev)
 		pm_runtime_get_sync(host->phy_dev);
