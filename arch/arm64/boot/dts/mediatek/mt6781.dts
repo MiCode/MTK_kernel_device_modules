@@ -1498,6 +1498,7 @@
 		mr4-version = <1>;
 		mr4-rg = <0x0090 0x0000ffff 0>;
 		fmeter-version = <0>;
+		fmeter-sub-version = <1>;
 		crystal-freq = <52>;
 		pll-id = <0x0510 0x80000000 31>;
 		shu-lv = <0x00e4 0x00000006 1>;
@@ -1510,10 +1511,6 @@
 			 <0x0da0 0x00000007 0>;
 		ckdiv4 = <0x0d18 0x08000000 27>,
 			 <0x0d18 0x08000000 27>;
-		ardqrev-b0 = <0x0c38 0x00000001 31>,
-			 <0x0c38 0x00000001 31>;
-		phypllddr-400en = <0x0d84 0x00000001 8>,
-			 <0x0d84 0x00000001 8>;
 		ckmul2 = <0x0d90 0x0000ffff 0>,
 			 <0x0d90 0x0000ffff 0>;
 	};
