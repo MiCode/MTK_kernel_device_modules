@@ -31,7 +31,6 @@ define_mgk_ddk_ko(
 	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sensor/2.0/sensorhub",
     ],
     header_deps = [
-        "//vendor/mediatek/tests/kernel/ktf_testcase/sensorhub/sensorhub_ait:ddk_public_headers",
 	"//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
     ],
     ko_deps = [
