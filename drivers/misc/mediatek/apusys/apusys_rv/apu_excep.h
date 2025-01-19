@@ -6,6 +6,34 @@
 #ifndef APU_EXCEP_H
 #define APU_EXCEP_H
 
+/* WDT_INT */
+#define WDT_INT_OFFSET (0x0)
+#define WDT_INT_STATUS (0x1)
+/* WDT_CTRL0 */
+#define WDT_CTRL0_OFFSET (0x4)
+#define WDT_EN_BIT (31)
+
+#define COMM_CTRL_0 (0x0)
+#define COMM_CTRL_1 (0x4)
+#define COMM_CTRL_2 (0x8)
+
+#define MON_PC_T0_0 (0x24)
+#define MON_LR_T0_0 (0x28)
+#define MON_SP_T0_0 (0x2C)
+#define MON_PC_T1_0 (0x30)
+#define MON_LR_T1_0 (0x34)
+#define MON_SP_T1_0 (0x38)
+
+#define MON_PC_T0_1 (0x5C)
+#define MON_LR_T0_1 (0x60)
+#define MON_SP_T0_1 (0x64)
+#define MON_PC_T1_1 (0x68)
+#define MON_LR_T1_1 (0x6C)
+#define MON_SP_T1_1 (0x70)
+
+#define CACHE_DUMP_SETTING (0xC0)
+#define L2_CACHE_DICT_ADDR (0x8000)
+
 #define MON_PC (0x838)
 #define MON_LR (0x83c)
 #define MON_SP (0x840)

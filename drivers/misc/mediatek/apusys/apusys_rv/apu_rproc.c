@@ -32,7 +32,9 @@
 #include "apu_regdump.h"
 #include "apusys_rv_tag.h"
 #include "aov_recovery.h"
-
+#if APU_PRG_SUPPORT
+#include "apu_ce_excep_v2.h"
+#endif
 
 struct mtk_apu *g_apu_struct;
 uint32_t g_apu_log;
@@ -42,7 +44,11 @@ static void *apu_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iome
 	void *ptr = NULL;
 	struct mtk_apu *apu = (struct mtk_apu *)rproc->priv;
 
-	if (da < DRAM_OFFSET + apu->up_code_buf_sz) {
+	if (BOOT_FROM_APU_TCM && da < apu->up_code_buf_sz) {
+		ptr = apu->apu_tcm + CODE_BUF_OFS + (da - TCM_OFFSET);
+		dev_info(apu->dev, "%s: (APU TCM): da = 0x%llx, len = 0x%lx\n",
+			__func__, da, len);
+	} else if (da < DRAM_OFFSET + apu->up_code_buf_sz) {
 		ptr = apu->code_buf + (da - DRAM_OFFSET);
 		dev_info(apu->dev, "%s: (DRAM): da = 0x%llx, len = 0x%lx\n",
 			__func__, da, len);
@@ -101,7 +107,7 @@ static int __apu_run(struct rproc *rproc)
 	delta = timespec64_sub(end, begin);
 	dev_info(dev,
 		 "APU uP boot done. boot time: %llu s, %llu ns. fw_ver: %s\n",
-		 (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec, run->fw_ver);
+		 (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec, apu->fw_ver);
 
 	return 0;
 
@@ -194,7 +200,7 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		}
 	}
 
-	if (apu->platdata->flags & F_PRELOAD_FIRMWARE &&
+	if ((APU_PRG_SUPPORT || apu->platdata->flags & F_PRELOAD_FIRMWARE) &&
 		(apu->platdata->flags & F_BYPASS_IOMMU) == 0) {
 		apu->code_buf = (void *) apu->apu_sec_mem_base +
 			apu->apusys_sec_info->up_code_buf_ofs;
@@ -216,7 +222,10 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		}
 
 		dev_info(dev, "%s: iommu_map done\n", __func__);
-		return ret;
+		if (!APU_PRG_SUPPORT)
+			return ret;
+		else
+			dev_info(dev, "%s: APU_PRG_SUPPORT is set, skip return\n", __func__);
 	}
 
 	/* Allocate code buffer */
@@ -246,13 +255,16 @@ static int apu_dram_boot_init(struct mtk_apu *apu)
 		dev_info(dev, "%s: sgt.nents = %d, sgt.orig_nents = %d\n",
 			__func__, sgt.nents, sgt.orig_nents);
 		/* Map sg_list to MD32_BOOT_ADDR */
-		if ((apu->platdata->flags & F_SMMU_SUPPORT) == 0)
+		if ((apu->platdata->flags & F_SMMU_SUPPORT) == 0) {
+			dev_info(dev, "%s: IOMMU_PRIV unset\n", __func__);
 			map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
 				sgt.nents, IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
-		else
-		/* add IOMMU_PRIV for SMMU security criterion of AXI sideband AxPROT */
+		} else {
+			dev_info(dev, "%s: IOMMU_PRIV set\n", __func__);
+			/* add IOMMU_PRIV for SMMU security criterion of AXI sideband AxPROT */
 			map_sg_sz = iommu_map_sg(domain, iova, sgt.sgl,
 				sgt.nents, IOMMU_READ | IOMMU_WRITE | IOMMU_PRIV, GFP_KERNEL);
+		}
 
 		dev_info(dev, "%s: sgt.nents = %d, sgt.orig_nents = %d\n",
 			__func__, sgt.nents, sgt.orig_nents);
@@ -286,7 +298,7 @@ static int apu_probe(struct platform_device *pdev)
 	struct mtk_apu_hw_ops *hw_ops;
 	char *fw_name = "mrv.elf";
 	int ret = 0;
-	uint32_t up_code_buf_sz;
+	uint32_t up_code_buf_sz, regdump_sz, coredump_buf_sz, tbufdump_sz, ramdump_sz;
 
 	dev_info(dev, "%s +\n", __func__);
 	data = (struct mtk_apu_platdata *)of_device_get_match_data(dev);
@@ -352,7 +364,43 @@ static int apu_probe(struct platform_device *pdev)
 	}
 	apu->up_code_buf_sz = up_code_buf_sz;
 
-	if (apu->platdata->flags & F_PRELOAD_FIRMWARE) {
+	ret = of_property_read_u32(np, "regdump-sz",
+						   &regdump_sz);
+	if (ret) {
+		dev_info(dev, "parsing regdump-sz error: %d\n", ret);
+		apu->regdump_sz = 0;
+	} else {
+		apu->regdump_sz = regdump_sz;
+	}
+
+	ret = of_property_read_u32(np, "tbufdump-sz",
+						   &tbufdump_sz);
+	if (ret) {
+		dev_info(dev, "parsing tbufdump-sz error: %d\n", ret);
+		apu->tbufdump_sz = 0;
+	} else {
+		apu->tbufdump_sz = tbufdump_sz;
+	}
+
+	ret = of_property_read_u32(np, "ramdump-sz",
+						   &ramdump_sz);
+	if (ret) {
+		dev_info(dev, "parsing ramdump-sz error: %d\n", ret);
+		apu->ramdump_sz = 0;
+	} else {
+		apu->ramdump_sz = ramdump_sz;
+	}
+
+	ret = of_property_read_u32(np, "up-coredump-buf-sz",
+						   &coredump_buf_sz);
+	if (ret) {
+		dev_info(dev, "parsing up-coredump-buf-sz error: %d\n", ret);
+		apu->coredump_buf_sz = 0;
+	} else {
+		apu->coredump_buf_sz = coredump_buf_sz;
+	}
+
+	if (APU_PRG_SUPPORT || apu->platdata->flags & F_PRELOAD_FIRMWARE) {
 		/* prevent MPU violation when F_SECURE_BOOT is enabled */
 		if ((apu->platdata->flags & F_SECURE_BOOT) == 0) {
 			apusys_sec_mem_node = of_find_compatible_node(NULL, NULL,
@@ -495,6 +543,12 @@ static int apu_probe(struct platform_device *pdev)
 	ret = apu_excep_init(pdev, apu);
 	if (ret < 0)
 		goto remove_apu_excep;
+
+#if APU_PRG_SUPPORT
+	ret = apu_ce_bin_init(pdev, apu);
+	if (ret < 0)
+		goto remove_apu_ce_excep;
+#endif
 
 	ret = aov_recovery_ipi_init(pdev, apu);
 	if (ret < 0)
@@ -646,6 +700,9 @@ const struct mtk_apu_platdata mt8188_platdata;
 #ifndef MT6991_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt6991_platdata;
 #endif
+#ifndef MT6993_APUSYS_RV_PLAT_DATA
+const struct mtk_apu_platdata mt6993_platdata;
+#endif
 
 static const struct of_device_id mtk_apu_of_match[] = {
 	{ .compatible = "mediatek,mt6878-apusys_rv", .data = &mt6878_platdata},
@@ -657,8 +714,9 @@ static const struct of_device_id mtk_apu_of_match[] = {
 	{ .compatible = "mediatek,mt6983-apusys_rv", .data = &mt6983_platdata},
 	{ .compatible = "mediatek,mt6985-apusys_rv", .data = &mt6985_platdata},
 	{ .compatible = "mediatek,mt6989-apusys_rv", .data = &mt6989_platdata},
-	{ .compatible = "mediatek,mt8188-apusys_rv", .data = &mt8188_platdata},
 	{ .compatible = "mediatek,mt6991-apusys_rv", .data = &mt6991_platdata},
+	{ .compatible = "mediatek,mt6993-apusys_rv", .data = &mt6993_platdata},
+	{ .compatible = "mediatek,mt8188-apusys_rv", .data = &mt8188_platdata},
 	{},
 };
 

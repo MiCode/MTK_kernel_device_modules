@@ -65,6 +65,8 @@ static int aov_recovery_ipi_send(void)
 
 	mutex_lock(&aov_ipi_mtx);
 
+	reinit_completion(&aov_rpm_dev.ack);
+
     /* power on */
 	ret = rpmsg_sendto(aov_rpm_dev.ept, NULL, 1, 0);
 	if (ret && ret != -EOPNOTSUPP) {

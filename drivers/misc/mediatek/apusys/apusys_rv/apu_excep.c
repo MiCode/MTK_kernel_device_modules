@@ -17,6 +17,9 @@
 #include "hw_logger.h"
 #include "apu_regdump.h"
 #include "hw_logger.h"
+#if APU_PRG_SUPPORT
+#include "pci_dev.h"
+#endif
 
 static const uint32_t TaskContext[] = {
 	0x0, // GPR
@@ -185,6 +188,7 @@ enum apusys_assert_module {
 	assert_apusys_qos,
 	assert_apusys_aps,
 	assert_apusys_ce,
+	assert_apusys_hds,
 
 	assert_module_max,
 };
@@ -209,7 +213,16 @@ static void apu_do_tcmdump(struct mtk_apu *apu)
 	memcpy(apu->coredump->tcmdump, (char *) apu->md32_tcm, apu->md32_tcm_sz);
 }
 
-static void apu_do_ramdump(struct mtk_apu *apu)
+static void apu_do_ramdump_rv55(struct mtk_apu *apu)
+{
+	uint32_t tcm_sz = L1_ITCM_SIZE + L1_DTCM_SIZE + L1_DTCM_SIZE;
+
+	memcpy(apu->coredump->ramdump,
+		(char *) apu->code_buf + tcm_sz,
+		apu->up_code_buf_sz - tcm_sz);
+}
+
+static void apu_do_ramdump_rv33(struct mtk_apu *apu)
 {
 	memcpy(apu->coredump->ramdump,
 		(char *) apu->code_buf + apu->md32_tcm_sz,
@@ -296,6 +309,9 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 	uint32_t val;
 	uint32_t *ptr;
 	uint32_t up_code_buf_sz, md32_tcm_sz;
+	uint32_t reg_dump_rv55[REG_SIZE_RV55/sizeof(uint32_t)];
+	int idx_base = 0;
+	uint32_t core_id, hart_id, mask;
 
 	dev_info(dev, "%s +\n", __func__);
 
@@ -394,117 +410,226 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_CLEAR_WDT_ISR, 0);
 
 	} else {
-		pc = ioread32(apu->md32_sysctrl + MON_PC);
-		lr = ioread32(apu->md32_sysctrl + MON_LR);
-		sp = ioread32(apu->md32_sysctrl + MON_SP);
-		reg_dump[0] = REG_SIZE; // reg dump size
-		reg_dump[1] = lr;
-		reg_dump[2] = sp;
-		reg_dump[32] = pc;
-		reg_dump[33] = sp;
+		if ((apu->platdata->flags & F_COREDUMP_RV55) == 0) { // RV33
+			pc = ioread32(apu->md32_sysctrl + MON_PC);
+			lr = ioread32(apu->md32_sysctrl + MON_LR);
+			sp = ioread32(apu->md32_sysctrl + MON_SP);
+			reg_dump[0] = REG_SIZE; // reg dump size
+			reg_dump[1] = lr;
+			reg_dump[2] = sp;
+			reg_dump[32] = pc;
+			reg_dump[33] = sp;
 
-		if ((apu->platdata->flags & F_TCM_WA) == 0)
-			apu_do_tcmdump(apu);
-		apu_do_ramdump(apu);
+			if ((apu->platdata->flags & F_TCM_WA) == 0)
+				apu_do_tcmdump(apu);
+			apu_do_ramdump_rv33(apu);
 
-		tbuf_cur_ptr = (ioread32(apu->md32_sysctrl + MD32_STATUS) >> 16 & 0x7);
-		for (i = 0; i < 8; i++) {
-			spin_lock_irqsave(&apu->reg_lock, flags);
-			iowrite32(tbuf_cur_ptr, apu->md32_sysctrl + TBUF_DBG_SEL);
-			spin_unlock_irqrestore(&apu->reg_lock, flags);
-			if (tbuf_cur_ptr > 0)
-				tbuf_cur_ptr--;
-			else
-				tbuf_cur_ptr = 7;
-			for (j = 0; j < 4; j++) {
-				tbuf_dump[i*4 + j] =
+			tbuf_cur_ptr = (ioread32(apu->md32_sysctrl + MD32_STATUS) >> 16 & 0x7);
+			for (i = 0; i < 8; i++) {
+				spin_lock_irqsave(&apu->reg_lock, flags);
+				iowrite32(tbuf_cur_ptr, apu->md32_sysctrl + TBUF_DBG_SEL);
+				spin_unlock_irqrestore(&apu->reg_lock, flags);
+				if (tbuf_cur_ptr > 0)
+					tbuf_cur_ptr--;
+				else
+					tbuf_cur_ptr = 7;
+				for (j = 0; j < 4; j++) {
+					tbuf_dump[i*4 + j] =
 					ioread32(apu->md32_sysctrl +
-						TBUF_DBG_DAT3 - j*4);
+							TBUF_DBG_DAT3 - j*4);
+				}
 			}
-		}
-		memcpy(apu->coredump->tbufdump, tbuf_dump, sizeof(tbuf_dump));
+			memcpy(apu->coredump->tbufdump, tbuf_dump, sizeof(tbuf_dump));
 
-		spin_lock_irqsave(&apu->reg_lock, flags);
+			spin_lock_irqsave(&apu->reg_lock, flags);
 
-		/* ungate md32 cg for debug apb connection */
-		if (!hw_ops->cg_ungating) {
+			/* ungate md32 cg for debug apb connection */
+			if (!hw_ops->cg_ungating) {
+				spin_unlock_irqrestore(&apu->reg_lock, flags);
+				WARN_ON(1);
+				return;
+			}
+			hw_ops->cg_ungating(apu);
+
+			/* set DBG_EN */
+			iowrite32(0x1, apu->md32_debug_apb + DBG_EN);
+			/* set DBG MODE */
+			iowrite32(0x0, apu->md32_debug_apb + DBG_MODE);
 			spin_unlock_irqrestore(&apu->reg_lock, flags);
-			WARN_ON(1);
-			return;
-		}
-		hw_ops->cg_ungating(apu);
-
-		/* set DBG_EN */
-		iowrite32(0x1, apu->md32_debug_apb + DBG_EN);
-		/* set DBG MODE */
-		iowrite32(0x0, apu->md32_debug_apb + DBG_MODE);
-		spin_unlock_irqrestore(&apu->reg_lock, flags);
-		/* ATTACH */
-		dbg_apb_iw(apu, DBG_ATTACH_INSTR);
-		/* REQUEST */
-		dbg_apb_iw(apu, DBG_REQUEST_INSTR);
-		/* Read DBG STATUS Register */
-		status = dbg_apb_dr(apu, DBG_STATUS_REG_INSTR);
-
-		dev_info(dev, "%s: status = 0x%x\n", __func__, status);
-
-		timeout = 0;
-		/* Check if RV33 go into DEBUG mode */
-		while ((status & 0x1) != 0x1) {
-			udelay(10);
+			/* ATTACH */
+			dbg_apb_iw(apu, DBG_ATTACH_INSTR);
+			/* REQUEST */
+			dbg_apb_iw(apu, DBG_REQUEST_INSTR);
 			/* Read DBG STATUS Register */
 			status = dbg_apb_dr(apu, DBG_STATUS_REG_INSTR);
-			if (timeout++ > 100) {
-				dev_info(dev, "%s: timeout\n", __func__);
-				break;
-			}
-		}
 
-		if ((status & 0x1) == 0x1) {
-			reg_dump[0] = REG_SIZE; // reg dump size
+			dev_info(dev, "%s: status = 0x%x\n", __func__, status);
+
+			timeout = 0;
+			/* Check if RV33 go into DEBUG mode */
+			while ((status & 0x1) != 0x1) {
+				udelay(10);
+				/* Read DBG STATUS Register */
+				status = dbg_apb_dr(apu, DBG_STATUS_REG_INSTR);
+				if (timeout++ > 100) {
+					dev_info(dev, "%s: timeout\n", __func__);
+					break;
+				}
+			}
+
+			if ((status & 0x1) == 0x1) {
+				reg_dump[0] = REG_SIZE; // reg dump size
+				/* Read GPRs */
+				for (i = 1; i < 32; i++) {
+					val = 0x7DF01073 | ((uint32_t) i << 15);
+					dbg_apb_dw(apu, DBG_INSTR_REG_INSTR, val);
+					dbg_apb_iw(apu, DBG_EXECUTE_INSTR);
+					reg_dump[i] = dbg_apb_dr(apu, DBG_DATA_REG_INSTR);
+				}
+
+				/* Read CSRs */
+				for (i = 34; i < REG_SIZE/sizeof(uint32_t); i++)
+					reg_dump[i] = dbg_read_csr(apu, TaskContext[i]);
+			}
+
+			if ((status & 0x1) == 0x1) { /* Read Cache Data */
+				dbg_apb_dw(apu, DBG_ADDR_REG_INSTR, apu->md32_tcm_sz);
+				ptr = (uint32_t *) apu->coredump->ramdump;
+				up_code_buf_sz = apu->up_code_buf_sz;
+				md32_tcm_sz = apu->md32_tcm_sz;
+				/* read one word per loop */
+				for (i=0; i < (up_code_buf_sz - md32_tcm_sz)/sizeof(uint32_t); i++) {
+					dbg_apb_iw(apu, DBG_READ_DM);
+					data = dbg_apb_dr(apu, DBG_DATA_REG_INSTR);
+					ptr[i] = data;
+				}
+			}
+
+			memcpy(apu->coredump->regdump, reg_dump, sizeof(reg_dump));
+		} else { /* F_COREDUMP_RV55 */
+			if (!hw_ops->cg_ungating) {
+				WARN_ON(1);
+				return;
+			}
+			/* enable cg to allow tcm access */
+			hw_ops->cg_ungating(apu);
+
+			if ((apu->platdata->flags & F_TCM_WA) == 0) {
+				apu_do_tcmdump(apu);
+			}
+
+			apu_do_ramdump_rv55(apu);
+			/* TODO: tbuf */
+
+			/* C0H0 */
+			core_id = 0;
+			hart_id = 0;
+			reg_dump_rv55[0] = REG_SIZE_RV55; /* reg dump size */
+			reg_dump_rv55[32] = ioread32(apu->apu_rv_wrap + MON_PC_T0_0);
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x0 << 0x5);
 			/* Read GPRs */
 			for (i = 1; i < 32; i++) {
-				val = 0x7DF01073 | ((uint32_t) i << 15);
-				dbg_apb_dw(apu, DBG_INSTR_REG_INSTR, val);
-				dbg_apb_iw(apu, DBG_EXECUTE_INSTR);
-				reg_dump[i] = dbg_apb_dr(apu, DBG_DATA_REG_INSTR);
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
 			}
 
 			/* Read CSRs */
-			for (i = 34; i < REG_SIZE/sizeof(uint32_t); i++)
-				reg_dump[i] = dbg_read_csr(apu, TaskContext[i]);
-		}
-
-		if ((status & 0x1) == 0x1) { /* Read Cache Data */
-			dbg_apb_dw(apu, DBG_ADDR_REG_INSTR, apu->md32_tcm_sz);
-			ptr = (uint32_t *) apu->coredump->ramdump;
-			up_code_buf_sz = apu->up_code_buf_sz;
-			md32_tcm_sz = apu->md32_tcm_sz;
-			/* read one word per loop */
-			for (i=0; i < (up_code_buf_sz - md32_tcm_sz)/sizeof(uint32_t); i++) {
-				dbg_apb_iw(apu, DBG_READ_DM);
-				data = dbg_apb_dr(apu, DBG_DATA_REG_INSTR);
-				ptr[i] = data;
+			idx_base = 33;
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x1 << 0x5);
+			for (i = 0; i < 16; i++) {
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[idx_base + i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
 			}
+
+			memcpy(apu->coredump->regdump, reg_dump_rv55, sizeof(reg_dump_rv55));
+
+			/* C0H1 */
+			core_id = 0;
+			hart_id = 1;
+			reg_dump_rv55[0] = REG_SIZE_RV55;
+			reg_dump_rv55[32] = ioread32(apu->apu_rv_wrap + MON_PC_T1_0);
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x0 << 0x5);
+			/* Read GPRs */
+			for (i = 1; i < 32; i++) {
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
+			}
+
+			/* Read CSRs */
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x1 << 0x5);
+			for (i = 0; i < 16; i++) {
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[idx_base + i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
+			}
+
+			memcpy(apu->coredump->regdump + REG_SIZE_RV55, reg_dump_rv55, sizeof(reg_dump_rv55));
+
+			/* C1H0 */
+			core_id = 1;
+			hart_id = 0;
+			reg_dump_rv55[0] = REG_SIZE_RV55;
+			reg_dump_rv55[32] = ioread32(apu->apu_rv_wrap + MON_PC_T0_1);
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x0 << 0x5);
+			/* Read GPRs */
+			for (i = 1; i < 32; i++) {
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
+			}
+
+			/* Read CSRs */
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x1 << 0x5);
+			for (i = 0; i < 16; i++) {
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[idx_base + i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
+			}
+
+			memcpy(apu->coredump->regdump + REG_SIZE_RV55 + REG_SIZE_RV55, reg_dump_rv55, sizeof(reg_dump_rv55));
+
+			/* C1H1 */
+			core_id = 1;
+			hart_id = 1;
+			reg_dump_rv55[0] = REG_SIZE_RV55;
+			reg_dump_rv55[32] = ioread32(apu->apu_rv_wrap + MON_PC_T1_1);
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x0 << 0x5);
+			/* Read GPRs */
+			for (i = 1; i < 32; i++) {
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
+			}
+
+			/* Read CSRs */
+			idx_base += 33;
+			mask = (core_id << 0x8) | (hart_id << 0x6) | (0x1 << 0x5);
+			for (i = 0; i < 16; i++) {
+				val = ioread32(apu->apu_rv_wrap + COMM_CTRL_0);
+				iowrite32((val & 0xFFFFF003) | (mask | i) << 0x2, apu->apu_rv_wrap + COMM_CTRL_0);
+				reg_dump_rv55[idx_base + i] = ioread32(apu->apu_rv_wrap + COMM_CTRL_2);
+			}
+			memcpy(apu->coredump->regdump + REG_SIZE_RV55 + REG_SIZE_RV55 + REG_SIZE_RV55, reg_dump_rv55, sizeof(reg_dump_rv55));
 		}
 
 		if (!hw_ops->cg_gating) {
 			WARN_ON(1);
 			return;
 		}
-		/* freeze md32 by gating cg */
+		/* freeze rv by gating cg */
 		hw_ops->cg_gating(apu);
 
 		if (!hw_ops->rv_cachedump) {
 			WARN_ON(1);
 			return;
 		}
+
 		hw_ops->rv_cachedump(apu);
 
-		memcpy(apu->coredump->regdump, reg_dump, sizeof(reg_dump));
-
 		if (apu->platdata->flags & F_TCM_WA) {
-			/* reset uP before tcmdump to prevent axi slave blocked by uP */
 			iowrite32(0, apu->md32_sysctrl);
 			apu_do_tcmdump(apu);
 		}
@@ -590,8 +715,12 @@ static int apu_wdt_irq_register(struct platform_device *pdev,
 	struct device *dev = apu->dev;
 	int ret = 0;
 
+#if APU_PRG_SUPPORT
+	apu->wdt_irq_number = apu_get_irq(APU_WDT_IRQ_BIT);
+#else
 	apu->wdt_irq_number = platform_get_irq_byname(pdev, "apu_wdt");
 	dev_info(dev, "%s: wdt_irq_number = %d\n", __func__, apu->wdt_irq_number);
+#endif
 
 	ret = devm_request_threaded_irq(&pdev->dev, apu->wdt_irq_number,
 				apu_wdt_isr, apu_wdt_isr_work,

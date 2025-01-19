@@ -46,7 +46,17 @@ struct mtk_apu_hw_ops {
 	int (*irq_affin_unset)(struct mtk_apu *apu);
 	int (*irq_affin_clear)(struct mtk_apu *apu);
 
+	/* apmcu and apusys_rv timesync */
+	void (*timesync_update)(struct mtk_apu *apu);
+
+	/* mbox counting hw semaphore related API */
+	int (*mbox_counting_hw_sem_reader_trylock)(struct mtk_apu *apu, uint32_t user);
+	int (*mbox_counting_hw_sem_reader_unlock)(struct mtk_apu *apu, uint32_t user);
 };
+
+typedef enum {
+	MBOX_HW_SEMA_RD_KRN_USR_LOGGER = 0UL,
+} APU_MBOX_COUNTING_HW_SEM_READER_KERNEL_USER_ID;
 
 #define F_PRELOAD_FIRMWARE		BIT(0)
 #define F_AUTO_BOOT				BIT(1)
@@ -65,8 +75,9 @@ struct mtk_apu_hw_ops {
 #define F_TCM_WA				BIT(14)
 #define F_EXCEPTION_KE			BIT(15)
 #define F_INFRA_WA				BIT(16)
-
-/* #define APUSYS_RV_FPGA_EP */
+#define F_RV_BSP_RX_SUPPORT		BIT(17)
+#define F_COREDUMP_RV55			BIT(18)
+#define F_DEBUG_MEM_SUPPORT		BIT(19)
 
 #define MAX_PWR_SUB_LATENCY (8)
 
@@ -154,11 +165,13 @@ struct mtk_apu {
 	struct platform_device *pdev;
 	struct device *dev;
 	void *md32_tcm;
+	void *apu_tcm;
 	void *md32_cache_dump;
 	void *apu_sctrl_reviser;
 	void *apu_wdt;
 	void *apu_ao_ctl;
 	void *md32_sysctrl;
+	void *apu_rv_wrap;
 	void *md32_debug_apb;
 	void *apu_mbox;
 	void *apu_rpc;
@@ -213,8 +226,12 @@ struct mtk_apu {
 	bool ce_dbg_polling_dump_mode;
 	bool apusys_rv_trace_on;
 	wait_queue_head_t ack_wq; /* for waiting for ipi ack */
-	struct timespec64 intr_ts_begin;
-	struct timespec64 intr_ts_end;
+	struct timespec64 ipi_top_ts_begin;
+	struct timespec64 ipi_top_ts_end;
+	struct timespec64 ipi_bottom_ts_begin;
+	struct timespec64 ipi_bottom_ts_end;
+	struct timespec64 ipi_handler_ts_begin;
+	struct timespec64 ipi_handler_ts_end;
 	struct apu_mbox_hdr hdr;
 
 	/* ipi share buffer */
@@ -234,6 +251,11 @@ struct mtk_apu {
 	struct device *apu_iommu0, *apu_iommu1;
 
 	uint32_t md32_tcm_sz;
+	uint32_t md32_tcm_start_addr;
+	uint32_t ramdump_sz;
+	uint32_t tbufdump_sz;
+	uint32_t regdump_sz;
+	uint32_t coredump_buf_sz;
 	uint32_t up_code_buf_sz;
 	dma_addr_t apummu_hwlog_buf_da;
 
@@ -243,20 +265,32 @@ struct mtk_apu {
 	uint32_t ipi_wake_lock_ref_cnt[APU_IPI_MAX];
 
 	bool disable_ke;
+	s8 fw_ver[APU_FW_VER_LEN];
+
+	dma_addr_t debug_memory_iova;
+	uint32_t debug_memory[PAGE_SIZE/4] __attribute__((aligned(PAGE_SIZE)));
 };
 
 #define CONFIG_SIZE (round_up(sizeof(struct config_v1), PAGE_SIZE))
 #define REG_SIZE (4UL * 151UL)
+#define TBUF_ENTRY_NUM		32
 #define TBUF_SIZE (4UL * 32UL)
 #define CACHE_DUMP_SIZE (37UL * 1024UL)
 #define DRAM_OFFSET (0x00000UL)
-#define TCM_OFFSET (0x4d000000UL)
+#define TCM_OFFSET (0x00000UL)
 #define CODE_BUF_DA (DRAM_OFFSET)
 #define APU_SEC_FW_IOVA (0x200000UL)
 /* delay 30s and trigger KE */
 #define APU_KE_DELAY_MS (30 * 1000)
 /* bypass trigger KE while system bootup */
 #define BOOT_BYPASS_APU_KE_MS (60 * 1000)
+
+#define REG_SIZE_RV55 (149UL * 4UL)
+#define L2_CACHE_DUMP_WAY_SIZE (32UL * 1024UL)
+#define L2_CACHE_DUMP_DICT_SIZE (24UL * 1024UL)
+#define L1_ITCM_SIZE (16UL * 1024UL)
+#define L1_DTCM_SIZE (16UL * 1024UL)
+#define L2_CACHE_DUMP_SIZE_RV55 (L2_CACHE_DUMP_WAY_SIZE * 8) + L2_CACHE_DUMP_DICT_SIZE
 
 int apu_mem_init(struct mtk_apu *apu);
 void apu_mem_remove(struct mtk_apu *apu);
@@ -293,6 +327,7 @@ extern const struct mtk_apu_platdata mt6985_platdata;
 extern const struct mtk_apu_platdata mt6989_platdata;
 extern const struct mtk_apu_platdata mt8188_platdata;
 extern const struct mtk_apu_platdata mt6991_platdata;
+extern const struct mtk_apu_platdata mt6993_platdata;
 
 extern int reviser_set_init_info(struct mtk_apu *apu);
 extern int vpu_set_init_info(struct mtk_apu *apu);
@@ -305,10 +340,23 @@ extern void apu_deepidle_exit(struct mtk_apu *apu);
 #define apu_info_ratelimited(dev, fmt, ...)  \
 {                                                \
 	static DEFINE_RATELIMIT_STATE(_rs,           \
-					  HZ * 5,                    \
-					  50);                       \
+						HZ * 5,                  \
+						50);                     \
 	if (__ratelimit(&_rs))                       \
 		dev_info(dev, fmt, ##__VA_ARGS__);       \
 }
+
+/* TODO: remove these if not needed in the future */
+#define APU_PRG_SUPPORT (0)
+#define BOOT_FROM_APU_TCM (0)
+
+#define APU_TCM_BASE 0x4d000000
+#define APU_TCM_CODE_BUF_SZ 0x400000
+
+#define CODE_BUF_OFS (0x0)
+#define LOGGER_BUF_OFS (0x100000)
+#define COREDUMP_BUF_OFS (0x200000)
+#define IPI_BUF_OFS (0x3D0000)
+#define CONF_BUF_OFS (0x3E0000)
 
 #endif /* APU_H */

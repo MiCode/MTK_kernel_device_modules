@@ -92,6 +92,7 @@ struct config_v1 {
 	u64 time_offset;
 	u64 time_diff;
 	u64 time_diff_cycle;
+	u32 debug_memory_iova;
 	/* system related config end */
 
 	/* entry table */

@@ -219,8 +219,12 @@ static void apu_mrdump_register(struct mtk_apu *apu)
 	unsigned long base_va = 0;
 	unsigned long base_pa = 0;
 	unsigned long size = 0;
-	uint32_t coredump_size = apu->up_code_buf_sz + REG_SIZE +
-		TBUF_SIZE + CACHE_DUMP_SIZE;
+	uint32_t coredump_size;
+
+	if (!apu->coredump_buf_sz)
+		coredump_size = apu->up_code_buf_sz + REG_SIZE + TBUF_SIZE + CACHE_DUMP_SIZE;
+	else
+		coredump_size = apu->coredump_buf_sz;
 
 	if (apu->platdata->flags & F_SECURE_COREDUMP) {
 		base_pa = apu->apusys_aee_coredump_mem_start +
@@ -344,13 +348,15 @@ int apu_procfs_init(struct platform_device *pdev)
 		goto out;
 	}
 
-	regdump_seqlog = proc_create("apusys_regdump", 0440,
-		procfs_root, &regdump_file_ops);
-	ret = IS_ERR_OR_NULL(regdump_seqlog);
-	if (ret) {
-		dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_regdump)\n",
-			ret);
-		goto out;
+	if ((apu->platdata->flags & F_BRINGUP) == 0) {
+		regdump_seqlog = proc_create("apusys_regdump", 0440,
+			procfs_root, &regdump_file_ops);
+		ret = IS_ERR_OR_NULL(regdump_seqlog);
+		if (ret) {
+			dev_info(&pdev->dev, "(%d)failed to create apusys_rv node(apusys_regdump)\n",
+				ret);
+			goto out;
+		}
 	}
 
 	debug_ctrl_seqlog = proc_create("apusys_debug_ctrl", 0440,

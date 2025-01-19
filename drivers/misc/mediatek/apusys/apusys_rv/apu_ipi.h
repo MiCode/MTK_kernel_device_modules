@@ -40,11 +40,13 @@ enum {
 	APU_IPI_APUMMU_RPMSG,
 	APU_IPI_EDMA_RX,
 	APU_IPI_APUMMU_RX,
+	APU_IPI_RV_BSP_RX,
+	APU_IPI_HDS_TX,
+	APU_IPI_HDS_RX,
 	APU_IPI_MAX,
 };
 
 struct apu_run {
-	s8 fw_ver[APU_FW_VER_LEN];
 	u32 signaled;
 	wait_queue_head_t wq;
 };

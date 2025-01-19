@@ -25,22 +25,16 @@ int logger_v2_counting_hw_sema_reader_trylock(void) {
 	if (check_g_apu_init())
 		return -EINVAL;
 
-	/* FIXME: use apu ops trylock
 	return g_apu->platdata->ops.mbox_counting_hw_sem_reader_trylock(
 		g_apu, MBOX_HW_SEMA_RD_KRN_USR_LOGGER);
-	*/
-	return 0;
 }
 
 int logger_v2_counting_hw_sema_reader_unlock(void) {
 	if (check_g_apu_init())
 		return -EINVAL;
 
-	/* FIXME: use apu ops unlock
 	return g_apu->platdata->ops.mbox_counting_hw_sem_reader_unlock(
 		g_apu, MBOX_HW_SEMA_RD_KRN_USR_LOGGER);
-	*/
-	return 0;
 }
 
 int logger_v2_debug_info_dump(struct seq_file *s) {

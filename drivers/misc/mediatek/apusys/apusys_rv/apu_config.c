@@ -49,6 +49,7 @@ void apu_config_user_ptr_init(const struct mtk_apu *apu)
 int apu_config_setup(struct mtk_apu *apu)
 {
 	struct device *dev = apu->dev;
+	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
 	unsigned long flags;
 	int ret;
 	u64 timertick;
@@ -61,8 +62,13 @@ int apu_config_setup(struct mtk_apu *apu)
 		return -ENOMEM;
 	}
 
-	dev_info(dev, "%s: apu->conf_buf = 0x%llx, apu->conf_da = 0x%llx\n",
-		__func__, (uint64_t) apu->conf_buf, (uint64_t) apu->conf_da);
+	if (BOOT_FROM_APU_TCM) {
+		apu->conf_buf = apu->apu_tcm + CONF_BUF_OFS;
+		apu->conf_da = APU_TCM_BASE + CONF_BUF_OFS;
+	}
+
+	dev_info(dev, "%s: apu->conf_buf = 0x%llx, apu->conf_da = 0x%llx, CONFIG_SIZE = 0x%lx\n",
+		__func__, (uint64_t) apu->conf_buf, (uint64_t) apu->conf_da, CONFIG_SIZE);
 
 	memset(apu->conf_buf, 0, CONFIG_SIZE);
 
@@ -72,16 +78,25 @@ int apu_config_setup(struct mtk_apu *apu)
 	/* Set config addr in mbox */
 	iowrite32((u32)apu->conf_da,
 		apu->apu_mbox + MBOX_HOST_CONFIG_ADDR);
-	spin_unlock_irqrestore(&apu->reg_lock, flags);
-
-	spin_lock_irqsave(&apu->reg_lock, flags);
-	apu->conf_buf->time_offset = sched_clock();
-	timertick = arch_timer_read_counter();
+	dev_info(dev, "%s: apu->apu_mbox = 0x%x\n",
+		__func__, ioread32(apu->apu_mbox + MBOX_HOST_CONFIG_ADDR));
 	spin_unlock_irqrestore(&apu->reg_lock, flags);
 
 	/* Calculate time diff for cold boot */
-	apu->conf_buf->time_diff = (timertick * 1000 / 13) - apu->conf_buf->time_offset;
-	apu->conf_buf->time_diff_cycle = timertick - (apu->conf_buf->time_offset * 13 / 1000);
+	if (hw_ops->timesync_update) {
+		hw_ops->timesync_update(apu);
+	} else {
+		spin_lock_irqsave(&apu->reg_lock, flags);
+		apu->conf_buf->time_offset = sched_clock();
+		timertick = arch_timer_read_counter();
+		spin_unlock_irqrestore(&apu->reg_lock, flags);
+
+		apu->conf_buf->time_diff = (timertick * 1000 / 13) - apu->conf_buf->time_offset;
+		apu->conf_buf->time_diff_cycle = timertick - (apu->conf_buf->time_offset * 13 / 1000);
+	}
+
+	if (apu->platdata->flags & F_DEBUG_MEM_SUPPORT)
+		apu->conf_buf->debug_memory_iova = apu->debug_memory_iova;
 
 	ret = apu_ipi_config_init(apu);
 	if (ret) {
@@ -101,10 +116,12 @@ int apu_config_setup(struct mtk_apu *apu)
 		goto out;
 	}
 
-	ret = mvpu_config_init(apu);
-	if (ret) {
-		dev_info(apu->dev, "mvpu config init failed\n");
-		goto out;
+	if (APU_PRG_SUPPORT || (apu->platdata->flags & F_BRINGUP) == 0) {
+		ret = mvpu_config_init(apu);
+		if (ret) {
+			dev_info(apu->dev, "mvpu config init failed\n");
+			goto out;
+		}
 	}
 
 	return 0;
@@ -116,7 +133,8 @@ out:
 void apu_config_remove(struct mtk_apu *apu)
 {
 	apu_ipi_config_remove(apu);
-	mvpu_config_remove(apu);
+	if (APU_PRG_SUPPORT || (apu->platdata->flags & F_BRINGUP) == 0)
+		mvpu_config_remove(apu);
 
 	dma_free_coherent(apu->dev, CONFIG_SIZE,
 		apu->conf_buf, apu->conf_da);

@@ -31,6 +31,8 @@
 
 /* apu_mbox register definition */
 #define MBOX_HOST_CONFIG_ADDR (0x48)
+#define MBOX_RV_PWR_STA_FLG (0x50)
+#define MBOX_RV_TIMESYNC_FLG (0x54)
 #define MBOX_WKUP_CFG (0x80)
 #define APU_SEMA_CTRL0 (0x800)
 #define APU_SEMA_DATA0 (0x840)
@@ -41,13 +43,18 @@
 
 /* apu_mbox register definition for mbox addr change*/
 #define APU_MBOX_SEMA0_CTRL (0x090)
-#define APU_MBOX_SEMA0_RST  (0x094)
-#define APU_MBOX_SEMA0_STA  (0x098)
+#define APU_MBOX_SEMA0_RST (0x094)
+#define APU_MBOX_SEMA0_STA (0x098)
 #define APU_MBOX_SEMA1_CTRL (0x0A0)
-#define APU_MBOX_SEMA1_RST  (0x0A4)
-#define APU_MBOX_SEMA1_STA  (0x0A8)
-#define APU_MBOX_DUMMY      (0x040)
-#define APU_MBOX_OFFSET(i)	(0x10000 * i)
+#define APU_MBOX_SEMA1_RST (0x0A4)
+#define APU_MBOX_SEMA1_STA (0x0A8)
+#define APU_MBOX_DUMMY (0x040)
+#define APU_MBOX_SEMA2_WRITER_CTRL (0x60)
+#define APU_MBOX_SEMA2_READER_CTRL (0x64)
+#define APU_MBOX_SEMA2_RST (0x68)
+#define APU_MBOX_SEMA2_STA (0x6c)
+#define APU_MBOX_SEMA2_READER_USER_STA  (0x70)
+#define APU_MBOX_OFFSET(i)  (0x10000 * i)
 
 /* apu_rpc register definition */
 #define APU_RPC_STATUS_1 (0x34)
