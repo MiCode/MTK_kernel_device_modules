@@ -66,7 +66,7 @@ static struct {
 	[FUSE_SYNCFS]		= { "SYNCFS" },
 	[FUSE_TMPFILE]		= { "TMPFILE" },
 	[FUSE_STATX]		= { "STATX" },
-//	[FUSE_CANONICAL_PATH]	= { "CANONICAL_PATH" },
+	[FUSE_CANONICAL_PATH]	= { "CANONICAL_PATH" },
 	[CUSE_INIT]		= { "CUSE_INIT" },
 };
 
@@ -85,12 +85,14 @@ static const char *filtername(int filter)
 	switch (filter) {
 	case 0:
 		return "NONE";
-//	case FUSE_PREFILTER:
-//		return "FUSE_PREFILTER";
-//	case FUSE_POSTFILTER:
-//		return "FUSE_POSTFILTER";
-//	case FUSE_PREFILTER | FUSE_POSTFILTER:
-//		return "FUSE_PREFILTER | FUSE_POSTFILTER";
+#ifdef FUSE_OPCODE_FILTER
+	case FUSE_PREFILTER:
+		return "FUSE_PREFILTER";
+	case FUSE_POSTFILTER:
+		return "FUSE_POSTFILTER";
+	case FUSE_PREFILTER | FUSE_POSTFILTER:
+		return "FUSE_PREFILTER | FUSE_POSTFILTER";
+#endif
 	default:
 		return NULL;
 	}
@@ -191,10 +193,14 @@ static DEFINE_SPINLOCK(pid_stat_lock);
 
 static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 {
+#ifdef FUSE_OPCODE_FILTER
+	u32 opcode = rq->in.h.opcode & FUSE_OPCODE_FILTER;
+	u32 filter = rq->in.h.opcode & ~FUSE_OPCODE_FILTER;
+#else
 	u32 opcode = rq->in.h.opcode;
 	u32 filter = 0;
-//	u32 opcode = rq->in.h.opcode & FUSE_OPCODE_FILTER;
-//	u32 filter = rq->in.h.opcode & ~FUSE_OPCODE_FILTER;
+#endif
+
 	struct btag_fuse_entry *e;
 	unsigned long flags;
 	unsigned int idx;
@@ -227,10 +233,12 @@ static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 	if (opcode && opcode < FUSE_MAXOP) {
 		spin_lock_irqsave(&stat_lock, flags);
 		stat[opcode].count++;
-//		if (filter & FUSE_PREFILTER)
-//			stat[opcode].prefilter++;
-//		if (filter & FUSE_POSTFILTER)
-//			stat[opcode].postfilter++;
+#ifdef FUSE_OPCODE_FILTER
+		if (filter & FUSE_PREFILTER)
+			stat[opcode].prefilter++;
+		if (filter & FUSE_POSTFILTER)
+			stat[opcode].postfilter++;
+#endif
 		total_req_cnt++;
 		spin_unlock_irqrestore(&stat_lock, flags);
 
@@ -240,10 +248,12 @@ static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 		if (grp->kn->name && !strcmp("top-app", grp->kn->name)) {
 			spin_lock_irqsave(&top_stat_lock, flags);
 			top_stat[opcode].count++;
-//			if (filter & FUSE_PREFILTER)
-//				top_stat[opcode].prefilter++;
-//			if (filter & FUSE_POSTFILTER)
-//				top_stat[opcode].postfilter++;
+#ifdef FUSE_OPCODE_FILTER
+			if (filter & FUSE_PREFILTER)
+				top_stat[opcode].prefilter++;
+			if (filter & FUSE_POSTFILTER)
+				top_stat[opcode].postfilter++;
+#endif
 			total_req_cnt_top++;
 			spin_unlock_irqrestore(&top_stat_lock, flags);
 		}
