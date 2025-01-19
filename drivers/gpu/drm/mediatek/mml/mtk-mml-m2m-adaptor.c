@@ -99,6 +99,11 @@ static void mml_m2m_process_done(struct mml_m2m_ctx *mctx, enum vb2_buffer_state
 	mutex_lock(&v4l2_dev->m2m_mutex);
 	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
 	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
+	if (!src_buf ||!dst_buf) {
+		mml_err("[m2m]%s no src or dst buffer found", __func__);
+		mutex_unlock(&v4l2_dev->m2m_mutex);
+		return;
+	}
 	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
 	dst_buf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
 	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
@@ -1988,7 +1993,11 @@ static int mml_m2m_device_register(struct device *dev, struct mml_v4l2_dev *v4l2
 	vdev->lock = &v4l2_dev->m2m_mutex;
 	vdev->vfl_dir = VFL_DIR_M2M;
 	vdev->v4l2_dev = &v4l2_dev->v4l2_dev;
-	snprintf(vdev->name, sizeof(vdev->name), "%s:m2m", MML_M2M_MODULE_NAME);
+	if (snprintf(vdev->name, sizeof(vdev->name), "%s:m2m", MML_M2M_MODULE_NAME) <= 0){
+		dev_err(dev, "Failed to get the name of video device\n");
+		ret = PTR_ERR(vdev->name);
+		goto err_video_alloc;
+	}
 	video_set_drvdata(vdev, mml);
 	v4l2_dev->m2m_vdev = vdev;
 

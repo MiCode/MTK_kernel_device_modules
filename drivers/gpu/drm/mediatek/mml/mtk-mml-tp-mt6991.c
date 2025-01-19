@@ -1145,7 +1145,7 @@ static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_ca
 		return true;
 	}
 
-	if (!tp->qos[mml_sys_frame].opp_cnt) {
+	if (!tp || !tp->qos[mml_sys_frame].opp_cnt) {
 		mml_err("no opp table support");
 		return false;
 	}
