@@ -241,15 +241,6 @@ void dptx_shutdown(void)
 	g_mtk_dp->shutdown = 1;
 	DPTXMSG("unprepare dptx shutdown\n");
 	if (g_mtk_dp->priv->pwr_node) {
-		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
-			// Sram setting
-			base = ioremap(0x3EFF1A10, 0x10);
-			writel(0x1, base + 0xC);
-			iounmap(base);
-			base = ioremap(0x3EFFC000, 0x100);
-			writel(0x20000, base + 0xA4);
-			iounmap(base);
-		}
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 		pm_runtime_put_sync(g_mtk_dp->dev);
@@ -1699,15 +1690,6 @@ void mdrv_DPTx_put_device(void)
 	}
 	if(g_mtk_dp->shutdown == 0) {
 		if (g_mtk_dp->priv->pwr_node) {
-			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
-				// Sram setting
-				base = ioremap(0x3EFF1A10, 0x10);
-				writel(0x1, base + 0xC);
-				iounmap(base);
-				base = ioremap(0x3EFFC000, 0x100);
-				writel(0x20000, base + 0xA4);
-				iounmap(base);
-			}
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 			pm_runtime_put_sync(g_mtk_dp->dev);
@@ -4377,6 +4359,7 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 {
 	void *base;
 	int ret;
+	unsigned int value;
 
 	if (g_mtk_dp == NULL) {
 		DPTXERR("%s: dp not initial\n", __func__);
@@ -4412,8 +4395,19 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 				}
 				if (g_mtk_dp->priv->pwr_node) {
 					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
+						// set sram sleep mode
+						base = ioremap(0x3EFF1A10, 0x10);
+						writel(0x0, base + 0xC);
+						iounmap(base);
+
+						// set sram as pdn mode(can't be sleep mode)
+						base = ioremap(0x3EFF1A00, 0x100);
+						writel(0x40, base + 0x0);
+						iounmap(base);
+
+						// set "not" bypass sram when power on dptx
 						base = ioremap(0x3EFFC000, 0x100);
-						writel(0x20000, base + 0xA8); // Set bit 0 to 1 (reset)
+						writel(0x20000, base + 0xA8);
 						iounmap(base);
 					}
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
@@ -4431,14 +4425,20 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					iounmap(base);
 					mtk_dp_intf_prepare_clk();
 				} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
-					// Sram setting
-					base = ioremap(0x3EFF1A10, 0x10);
-					writel(0x0, base + 0xC);
-					iounmap(base);
 					// dvo CG setting
 					base = ioremap(0x3E900A70, 0x10);
+					DPTXMSG("CG setting =0x%x\n",readl(base + 0x8));
 					writel(0xFFFFFFFF, base + 0x8);
 					iounmap(base);
+
+					//sram debug
+					base = ioremap(0x3EFF1A40, 0x10);
+					value = readl(base);
+					iounmap(base);
+					//Check if 3eff1a40[9:8]=0x3 sram is pdn
+					if ((value & 0x0300) == 0x0300)
+						DPTXERR("SRAM is power down mode\n");
+
 					/* Enable 26M to enable aux */
 					mtk_dp_dvo_prepare_clk();
 				}

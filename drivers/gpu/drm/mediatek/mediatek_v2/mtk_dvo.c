@@ -150,6 +150,7 @@
 #define INFOQ_END_LATENCY_MASK		(0xFFFF << 16)
 
 #define DVO_MUTEX_VSYNC_SET			0x84
+#define MUTEX_VFP					4
 #define MUTEX_VSYNC_SEL				BIT(0)
 
 #define DVO_MATRIX_SET				0x140
@@ -203,6 +204,7 @@
 
 #define DVO_STATUS					0xE00
 
+#define dvo_dp_sel_lsb				24
 
 static const struct of_device_id mtk_dvo_driver_dt_match[];
 /**
@@ -245,9 +247,9 @@ enum TVDPLL_CLK {
 
 static const struct mtk_dp_dvo_resolution_cfg resolution_cfg[SINK_MAX] = {
 	[SINK_640_480] = {
-					.clksrc = TVDPLL_D16,
+					.clksrc = TVDPLL_D8,
 					.dp_clk = 37125,
-					.tvppll_clk = 25200000*4
+					.tvppll_clk = 25200000*2
 				},
 	[SINK_800_600] = {
 					.clksrc = TVDPLL_D16,
@@ -599,11 +601,10 @@ void mtk_dvo_video_clock(struct mtk_dp_dvo *dp_dvo)
 		DPTXMSG("%s clk_set_parent dp_dvo->pclk: err=%d\n",
 			__func__, ret);
 
-
 	// mux set hard code
 	base = ioremap(0x10040000, 0x100);
 	writel(0x7000000, base + 0x38);
-	writel(0x1000000, base + 0x34);
+	writel((clksrc << dvo_dp_sel_lsb), base + 0x34);
 	writel(0x800, base + 0x4);
 	iounmap(base);
 
@@ -890,11 +891,12 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 	val = DISP_BUF_VDE_BLOCK_URGENT | DISP_BUF_NON_VDE_FORCE_PREULTRA | DISP_BUF_VDE_BLOCK_ULTRA;
 	mtk_ddp_write_relaxed(comp, val, DVO_BUF_VDE, handle);
 
-	// vtotal = vfp + vpw + vbp + cfg->h;
-	// line_time = 1000000 / (vtotal * cfg->vrefresh);
-	// val = (200 + line_time - 1) / line_time;
-	// val = val | MUTEX_VSYNC_SEL;
-	// mtk_ddp_write_relaxed(comp, val, DVO_MUTEX_VSYNC_SET, handle);
+	vtotal = vfp + vpw + vbp + cfg->h;
+	line_time = 1000000 / (vtotal * cfg->vrefresh);
+	val = (200 + line_time - 1) / line_time;
+	val = (val << MUTEX_VFP) | MUTEX_VSYNC_SEL;
+	mtk_ddp_write_relaxed(comp, val, DVO_MUTEX_VSYNC_SET, handle);
+	DPTXMSG("%s vsync_time=%d\n",val);
 
 	DPTXMSG("%s config done\n",
 			mtk_dump_comp_str(comp));
