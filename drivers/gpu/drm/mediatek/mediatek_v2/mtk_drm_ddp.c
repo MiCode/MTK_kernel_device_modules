@@ -31183,6 +31183,29 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 
 		break;
 
+	case MMSYS_MT6789:
+		value = mtk_ddp_mout_en_MT6789(reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) | value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		value = mtk_ddp_sout_sel_MT6789(reg_data, cur, next, &addr);
+		if (value >= 0)
+			writel_relaxed(value, config_regs + addr);
+
+		value = mtk_ddp_sel_in_MT6789(reg_data, cur, next, &addr);
+		if (value >= 0)
+			writel_relaxed(value, config_regs + addr);
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6789(
+			reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) | value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+		break;
+
 	case MMSYS_MT6983:
 		/* decide which dispsys need to config */
 		if (mtk_crtc->dispsys_num > 1 && reg_data->dispsys_map &&
@@ -31859,6 +31882,36 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				+ addr, value, ~0);
 		break;
 
+	case MMSYS_MT6789:
+		value = mtk_ddp_mout_en_MT6789(mtk_crtc->mmsys_reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_crtc->config_regs_pa
+				+ addr, value, value);
+
+		value = mtk_ddp_sout_sel_MT6789(mtk_crtc->mmsys_reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_crtc->config_regs_pa
+				+ addr, value, ~0);
+
+		value = mtk_ddp_sel_in_MT6789(mtk_crtc->mmsys_reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_crtc->config_regs_pa
+				+ addr, value, ~0);
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6789(mtk_crtc->mmsys_reg_data,
+				cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_crtc->config_regs_pa
+				+ addr, value, value);
+		break;
+
 	case MMSYS_MT6983:
 		/* decide which dispsys need to config */
 		if (mtk_crtc->dispsys_num > 1 && reg_data->dispsys_map &&
@@ -32528,6 +32581,19 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 			writel_relaxed(reg, config_regs + addr);
 		}
 		break;
+	case MMSYS_MT6789:
+		value = mtk_ddp_mout_en_MT6789(reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6789(reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+		break;
 	case MMSYS_MT6983:
 		if (!reg_data || !reg_data->dispsys_map) {
 			DDPPR_ERR("%s failed with NULL reg_data or dispsys_map\n", __func__);
@@ -32899,6 +32965,19 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa + addr, ~value, value);
+		break;
+	case MMSYS_MT6789:
+		value = mtk_ddp_mout_en_MT6789(mtk_crtc->mmsys_reg_data,
+					cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->config_regs_pa + addr, ~value, value);
+
+		value = mtk_ddp_ovl_bg_blend_en_MT6789(mtk_crtc->mmsys_reg_data,
+					cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				       mtk_crtc->config_regs_pa + addr, ~value, value);
 		break;
 	case MMSYS_MT6983:
 		/* decide which dispsys need to config */
@@ -35524,6 +35603,9 @@ mtk_ddp_get_mmsys_reg_data(enum mtk_mmsys_id mmsys_id)
 		break;
 	case MMSYS_MT6885:
 		data = &mt6885_mmsys_reg_data;
+		break;
+	case MMSYS_MT6789:
+		data = &mt6789_mmsys_reg_data;
 		break;
 	case MMSYS_MT6983:
 		data = &mt6983_mmsys_reg_data;
@@ -43695,6 +43777,8 @@ static const struct of_device_id ddp_driver_dt_match[] = {
 	 .data = &mt6877_ddp_driver_data},
 	{.compatible = "mediatek,mt6781-disp-mutex",
 	 .data = &mt6781_ddp_driver_data},
+	{.compatible = "mediatek,mt6789-disp-mutex",
+	 .data = &mt6789_ddp_driver_data},
 	{.compatible = "mediatek,mt6879-disp-mutex",
 	 .data = &mt6879_ddp_driver_data},
 	{.compatible = "mediatek,mt6835-disp-mutex",

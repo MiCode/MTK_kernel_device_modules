@@ -3989,6 +3989,7 @@ static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6781-disp-aal", .data = &mt6781_aal_driver_data},
 	{ .compatible = "mediatek,mt6983-disp-aal", .data = &mt6983_aal_driver_data},
 	{ .compatible = "mediatek,mt6895-disp-aal", .data = &mt6895_aal_driver_data},
+	{ .compatible = "mediatek,mt6789-disp-aal", .data = &mt6789_aal_driver_data},
 	{ .compatible = "mediatek,mt6879-disp-aal", .data = &mt6879_aal_driver_data},
 	{ .compatible = "mediatek,mt6985-disp-aal", .data = &mt6985_aal_driver_data},
 	{ .compatible = "mediatek,mt6897-disp-aal", .data = &mt6897_aal_driver_data},

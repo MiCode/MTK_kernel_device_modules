@@ -1548,6 +1548,7 @@ unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 		priv->data->mmsys_id == MMSYS_MT6886 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 		priv->data->mmsys_id == MMSYS_MT6835 ||
+		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6855) &&
 		(dsi->d_rate != 0)) {
 		data_rate = dsi->d_rate;
@@ -1941,6 +1942,9 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 
 	/* Store DSI data rate in MHz */
 	dsi->data_rate = data_rate;
+
+	if (dsi->ext && dsi->ext->params->data_rate_khz)
+		mipi_tx_rate = dsi->ext->params->data_rate_khz * 1000;
 
 	DDPDBG("set mipitx's data rate: %lu Hz\n", mipi_tx_rate);
 
@@ -2461,6 +2465,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6768 ||
 					priv->data->mmsys_id == MMSYS_MT6761 ||
 					priv->data->mmsys_id == MMSYS_MT6765 ||
+					priv->data->mmsys_id == MMSYS_MT6789 ||
 					priv->data->mmsys_id == MMSYS_MT6877 ||
 					priv->data->mmsys_id == MMSYS_MT6833 ||
 					priv->data->mmsys_id == MMSYS_MT6885 ||
@@ -13733,6 +13738,7 @@ static const struct of_device_id mtk_dsi_of_match[] = {
 	{.compatible = "mediatek,mt6833-dsi", .data = &mt6833_dsi_driver_data},
 	{.compatible = "mediatek,mt6877-dsi", .data = &mt6877_dsi_driver_data},
 	{.compatible = "mediatek,mt6781-dsi", .data = &mt6781_dsi_driver_data},
+	{.compatible = "mediatek,mt6789-dsi", .data = &mt6789_dsi_driver_data},
 	{.compatible = "mediatek,mt6879-dsi", .data = &mt6879_dsi_driver_data},
 	{.compatible = "mediatek,mt6855-dsi", .data = &mt6855_dsi_driver_data},
 	{.compatible = "mediatek,mt6835-dsi", .data = &mt6835_dsi_driver_data},

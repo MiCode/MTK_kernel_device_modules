@@ -6,5 +6,6 @@
 #ifndef MTK_DRM_PLATFORM_H
 #define MTK_DRM_PLATFORM_H
 #include "mtk_drm_6835.h"
+#include "mtk_drm_6789.h"
 
 #endif /* MTK_DRM_PLATFORM_H */

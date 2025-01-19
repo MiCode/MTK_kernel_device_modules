@@ -3455,6 +3455,15 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			break;
 		}
 
+		if ((priv->data->mmsys_id == MMSYS_MT6789) &&
+			mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER) &&
+			comp_state.comp_id != DDP_COMPONENT_OVL0_2L &&
+			comp_state.comp_id != DDP_COMPONENT_OVL1_2L) {
+			DDPMSG("RPO not use the OVL_2l, change layer_cap\n");
+			layer_info->layer_caps &= ~MTK_DISP_RSZ_LAYER;
+			mtk_gles_incl_layer(disp_info, idx, i);
+		}
+
 		if (is_extended_layer(layer_info)) {
 			comp_state.ext_lye_id = LYE_EXT0 + ext_cnt;
 			ext_cnt++;
@@ -4261,8 +4270,13 @@ static int RPO_rule(struct drm_crtc *crtc,
 		if (!is_rsz_valid(c))
 			continue;
 
-		if (same_ratio_limitation(crtc, c, RATIO_LIMIT, disp_w, disp_h))
-			continue;
+		if (!(!(mtk_crtc->is_dual_pipe) &&
+			(i == 0 && private && private->data &&
+			(private->data->mmsys_id == MMSYS_MT6789)))) {
+			if (same_ratio_limitation(crtc, c, RATIO_LIMIT,
+				disp_w, disp_h))
+				continue;
+		}
 
 		mtk_rect_make(&src_layer_roi,
 			((c->dst_offset_x * c->src_width * 10) / c->dst_width + 5) / 10,
@@ -5031,6 +5045,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	/* Initial HRT conditions */
 	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
@@ -5157,6 +5172,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	/* adjust scenario after dispatch gles range */
 	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
