@@ -1849,7 +1849,7 @@ static int mml_record_print(struct mml_dev *mml)
 	return 0;
 }
 
-static int mml_copy_debug_buffer(struct mml_dev *mml)
+static int mml_copy_debug_buffer(struct mml_dev *mml, bool records, bool logs)
 {
 	if (!mml->debug_buffer) {
 		mml->debug_buffer = vmalloc(MML_DEBUG_BUF_SIZE);
@@ -1860,9 +1860,9 @@ static int mml_copy_debug_buffer(struct mml_dev *mml)
 	} else
 		mml->debug_buf_idx = 0;
 
-	if (mml->debug_print_record)
+	if (records)
 		mml_record_print(mml);
-	if (mml->debug_print_log && mml->debug_buf_idx < MML_DEBUG_BUF_SIZE - 1)
+	if (logs && mml->debug_buf_idx < MML_DEBUG_BUF_SIZE - 1)
 		mml->debug_buf_idx += mml_print_log_buffer(mml->debug_buffer + mml->debug_buf_idx,
 			MML_DEBUG_BUF_SIZE - mml->debug_buf_idx - 1);
 
@@ -1876,7 +1876,7 @@ static int mml_record_copy(struct seq_file *seq, void *data)
 	struct mml_dev *mml = (struct mml_dev *)seq->private;
 	int ret;
 
-	ret = mml_copy_debug_buffer(mml);
+	ret = mml_copy_debug_buffer(mml, true, false);
 	if (ret)
 		return ret;
 
@@ -2193,7 +2193,7 @@ static ssize_t mml_debug_read(struct file *file, char __user *ubuf, size_t count
 	if (*ppos)
 		goto out;
 
-	ret = mml_copy_debug_buffer(mml);
+	ret = mml_copy_debug_buffer(mml, mml->debug_print_record, mml->debug_print_log);
 	if (ret)
 		return ret;
 	n = mml->debug_buf_idx;
