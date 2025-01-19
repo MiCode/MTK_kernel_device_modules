@@ -10814,6 +10814,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,axslc;
 			dma-coherent;
 			mtk,tcu-qos = <5>;
+			mtk,power-awake;
 
 			iommu-groups {
 				apu_iommu_group_0: apu-iommu-group-code {
@@ -10844,6 +10845,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-coherent;
 			ssid-enable = <1>;
 			mtk,tcu-qos = <5>;
+			mtk,power-awake;
 
 			iommu-groups {
 				mm_iommu_group_0: mm-iommu-group-common {
