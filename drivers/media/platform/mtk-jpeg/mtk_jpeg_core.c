@@ -551,6 +551,20 @@ static int mtk_jpeg_s_fmt_mplane(struct mtk_jpeg_ctx *ctx,
 	return 0;
 }
 
+static int vidioc_enum_framesizes(struct file *file, void *priv,
+				 struct v4l2_frmsizeenum *fsize)
+{
+	fsize->type = V4L2_FRMSIZE_TYPE_CONTINUOUS;
+	fsize->stepwise.min_width = MTK_JPEG_MIN_WIDTH;
+	fsize->stepwise.max_width = MTK_JPEG_DEFAULT_WIDTH;
+	fsize->stepwise.min_height = MTK_JPEG_MIN_HEIGHT;
+	fsize->stepwise.max_height = MTK_JPEG_DEFAULT_HEIGHT;
+	fsize->stepwise.step_width = 1;
+	fsize->stepwise.step_height = 1;
+
+	return 0;
+}
+
 static int mtk_jpeg_s_fmt_vid_out_mplane(struct file *file, void *priv,
 					 struct v4l2_format *f)
 {
@@ -1041,6 +1055,7 @@ static const struct v4l2_ioctl_ops mtk_jpeg_dec_ioctl_ops = {
 	.vidioc_querycap                = mtk_jpeg_querycap,
 	.vidioc_enum_fmt_vid_cap	= mtk_jpeg_enum_fmt_vid_cap,
 	.vidioc_enum_fmt_vid_out	= mtk_jpeg_enum_fmt_vid_out,
+	.vidioc_enum_framesizes         = vidioc_enum_framesizes,
 	.vidioc_try_fmt_vid_cap_mplane	= mtk_jpeg_try_fmt_vid_cap_mplane,
 	.vidioc_try_fmt_vid_out_mplane	= mtk_jpeg_try_fmt_vid_out_mplane,
 	.vidioc_g_fmt_vid_cap_mplane    = mtk_jpeg_g_fmt_vid_mplane,
