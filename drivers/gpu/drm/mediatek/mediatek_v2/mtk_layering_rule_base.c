@@ -4359,7 +4359,7 @@ static void check_is_mml_layer(const int disp_idx,
 	enum MTK_LAYERING_CAPS mml_capacity = DISP_MML_CAPS_MASK;
 	struct mtk_drm_private *priv = NULL;
 	struct mml_frame_info *mml_info = NULL;
-	struct mml_frame_info **multi_mml_info = NULL;
+	struct mml_frame_info *multi_mml_info = NULL;
 	struct mml_drm_ctx *mml_ctx = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 	u32 ns = 0;
@@ -4388,7 +4388,7 @@ static void check_is_mml_layer(const int disp_idx,
 	}
 
 	if (disp_info->layer_num[disp_idx] > 0) {
-		multi_mml_info = vzalloc(sizeof(struct mml_frame_info *) * disp_info->layer_num[disp_idx]);
+		multi_mml_info = vzalloc(sizeof (struct mml_frame_info) * disp_info->layer_num[disp_idx]);
 		if (!multi_mml_info) {
 			DDPPR_ERR("%s multi_mml_info alloc failed\n", __func__);
 			return;
@@ -4407,7 +4407,7 @@ static void check_is_mml_layer(const int disp_idx,
 		c = &disp_info->input_config[disp_idx][i];
 		if (MTK_MML_OVL_LAYER & c->layer_caps) {
 			if (mml_multi_layer) {
-				multi_mml_info[mml_cnt] = &(disp_info->mml_cfg[disp_idx][i]);
+				multi_mml_info[mml_cnt] = (disp_info->mml_cfg[disp_idx][i]);
 				if (!output_comp) {
 					/* Check line time and slbc state once per HRT */
 					mutex_lock(&priv->commit.lock);
@@ -4417,9 +4417,9 @@ static void check_is_mml_layer(const int disp_idx,
 
 					mutex_unlock(&priv->commit.lock);
 				}
-				multi_mml_info[mml_cnt]->mode = query_mml_mode(dev, crtc, MML_MODE_UNKNOWN);
-				multi_mml_info[mml_cnt]->act_time =
-					multi_mml_info[mml_cnt]->dest[0].compose.height * ns;
+				multi_mml_info[mml_cnt].mode = query_mml_mode(dev, crtc, MML_MODE_UNKNOWN);
+				multi_mml_info[mml_cnt].act_time =
+					multi_mml_info[mml_cnt].dest[0].compose.height * ns;
 
 				mml_cnt++;
 			} else {
@@ -4492,7 +4492,7 @@ static void check_is_mml_layer(const int disp_idx,
 			vfree(multi_mml_info);
 			return;
 		}
-		mml_drm_query_multi_layer(mml_ctx, multi_mml_info[0], mml_cnt, mml_duration);
+		mml_drm_query_multi_layer(mml_ctx, multi_mml_info, mml_cnt, mml_duration);
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
@@ -4535,8 +4535,8 @@ static void check_is_mml_layer(const int disp_idx,
 			}
 
 			if (j < mml_cnt) {
-				DDPINFO("%s,L%d,m:%d\n", __func__, i, multi_mml_info[j]->mode);
-				c->layer_caps |= mml_mode_mapping(multi_mml_info[j]->mode);
+				DDPINFO("%s,L%d,m:%d\n", __func__, i, multi_mml_info[j].mode);
+				c->layer_caps |= mml_mode_mapping(multi_mml_info[j].mode);
 				j ++;
 			} else
 				c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
