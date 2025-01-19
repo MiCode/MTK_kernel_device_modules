@@ -2783,6 +2783,19 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 	if (irq_sta == 0)
 		return 0;
 
+	if (irq_sta >= STA_TCU_RAS_CRI)
+		dev_info(smmu->dev,
+			 "IRQ_STA:0x%x CTL:[0x%x 0x%x 0x%x] MON:[0x%x 0x%x 0x%x 0x%x 0x%x]\n",
+			 irq_sta,
+			 smmu_read_reg(wp_base, SMMUWP_GLB_CTL0),
+			 smmu_read_reg(wp_base, SMMUWP_GLB_CTL1),
+			 smmu_read_reg(wp_base, SMMUWP_GLB_CTL2),
+			 smmu_read_reg(wp_base, SMMUWP_GLB_MON0),
+			 smmu_read_reg(wp_base, SMMUWP_GLB_MON1),
+			 smmu_read_reg(wp_base, SMMUWP_GLB_MON2),
+			 smmu_read_reg(wp_base, SMMUWP_GLB_MON3),
+			 smmu_read_reg(wp_base, SMMUWP_GLB_MON4));
+
 	if (irq_sta & STA_TCU_GLB_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_GLB_INTR);
 		dev_info(smmu->dev,

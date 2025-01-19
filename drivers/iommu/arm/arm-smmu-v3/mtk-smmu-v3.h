@@ -84,12 +84,20 @@
 #define CTL0_DVM_DCM_EN			F_BIT_SET(20)
 #define CTL0_CPU_TBU_PARTID_DIS		F_BIT_SET(21)
 
+#define SMMUWP_GLB_CTL1			(0x4)
+#define SMMUWP_GLB_CTL2			(0x8)
 #define SMMUWP_GLB_CTL4			(0x10)
 #define CTL4_TBU_IRQ_SEL		GENMASK(1, 0)
 #define CTL4_FENCE_TIMER		GENMASK(15, 8)
 /* Latency water mark, used with SMMUWP_TCU_MON4, SMMUWP_TBUx_MON9, SMMUWP_TBUx_MON10 */
 #define CTL4_LAT_SPEC			GENMASK(31, 16)
 #define LAT_SPEC_DEF_VAL		(2400)
+
+#define SMMUWP_GLB_MON0			(0x50)
+#define SMMUWP_GLB_MON1			(0x54)
+#define SMMUWP_GLB_MON2			(0x58)
+#define SMMUWP_GLB_MON3			(0x5c)
+#define SMMUWP_GLB_MON4			(0x60)
 
 /*
  * Start LMU
