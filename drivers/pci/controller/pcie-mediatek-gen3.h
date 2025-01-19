@@ -28,7 +28,27 @@ enum cplto_range {
 	R5_16MS_55MS
 };
 
+enum hs_feature_id {
+	PCIE_RPM_CTRL = 1
+};
+
+enum mtk_pcie_suspend_link_state {
+	LINK_STATE_L2 = 0,
+	LINK_STATE_PCIPM_L12,
+	LINK_STATE_ASPM_L12
+};
+
+/*
+ * struct handshake_info - PCIe RC handshake protocol with EP
+ */
+struct handshake_info {
+	int feature_id;
+	int data_size;
+	u8 data[64];
+};
+
 bool mtk_pcie_in_use(int port);
+int mtk_pcie_ep_set_info(int port, struct handshake_info *params);
 int mtk_pcie_probe_port(int port);
 int mtk_pcie_remove_port(int port);
 int mtk_pcie_disable_refclk(int port);
