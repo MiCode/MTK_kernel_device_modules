@@ -461,6 +461,10 @@ static int mtk_per_core_cpu_resources_init(struct platform_device *pdev,
 		return mtk_cpu_resources_init(pdev, cpu, index, offsets);
 	else if (cpu == control_group_master[control_group]) {
 		master = perf_domain_master[index];
+		if (master == -1) {
+			dev_info(dev, "no master for control group %d, index %d\n", control_group, index);
+			return -EINVAL;
+		}
 		master_c = mtk_freq_domain_map[master];
 
 		c = devm_kzalloc(dev, sizeof(*c), GFP_KERNEL);
