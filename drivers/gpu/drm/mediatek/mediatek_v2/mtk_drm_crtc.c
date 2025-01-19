@@ -10497,7 +10497,7 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 
 					if ((avg > 1024 || avg == 0 || peak > 1024 || peak == 0) &&
 						aee_trigger) {
-						DDPAEE("bwm20 layer%d ratio error,avg%d peak%d\n", i,
+						DDPMSG("bwm20 layer%d ratio error,avg%d peak%d\n", i,
 							avg, peak);
 						aee_trigger = false;
 						DDPMSG("BWMT===== all_layer_compress_ratio_tb =====\n");
