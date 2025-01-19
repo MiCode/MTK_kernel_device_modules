@@ -21,6 +21,10 @@
 #include <conap_scp.h>
 #include <linux/poll.h>
 
+#if IS_ENABLED(CONFIG_MTK_AOL_DEBUG)
+#define AOLTEST_SUPPORT
+#endif
+
 #include "conap_scp_priv.h"
 #ifdef AOLTEST_SUPPORT
 #include "aoltest_core.h"
