@@ -281,6 +281,8 @@ static const struct mtk_gate mm_hwv_pds[] = {
 		/* parent */"cam_vcore"),
 	[MT6991_PD_CAM_VCORE_CAMISP_VCORE] = PD_HWV_V(MT6991_PD_CAM_VCORE_CAMISP_VCORE, "cam_vcore_isp_vcore",
 		/* parent */"cam_vcore"),
+	[MT6991_PD_CAM_VCORE_CCU] = PD_HWV_V(MT6991_PD_CAM_VCORE_CCU, "cam_vcore_ccu",
+		/* parent */"cam_vcore"),
 	/* CAM_CCU */
 	//PD_MM_HWV(MT6991_PD_CAM_CCU, "cam_ccu",
 	//	/* parent */"cam_vcore", 22),

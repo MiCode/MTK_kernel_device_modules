@@ -1086,6 +1086,7 @@ const char * const *get_mt6991_all_clk_names(void)
 		"cam_vcore_smi",
 		"cam_vcore_seninf",
 		"cam_vcore_isp_vcore",
+		"cam_vcore_ccu",
 		"cam_ccu",
 		"disp_vcore",
 		"disp_vcore_smi",
