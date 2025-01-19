@@ -79,7 +79,7 @@ static struct rt_smem_region_lk_fmt gen6297_noncacheable_tbl[] = {
 {0ULL, 0ULL, {SMEM_USER_CCISM_MCU,	0, (720+1)*1024, 0,	SMEM_NO_CLR_FIRST, 0}},
 {0ULL, 0ULL, {SMEM_USER_CCISM_MCU_EXP,   0, (120+1)*1024,	SMEM_NO_CLR_FIRST, 0}},
 {0ULL, 0ULL, {SMEM_USER_RESERVED,        0, 18*1024,	 0,	0,	0}},
-{0ULL, 0ULL, {SMEM_USER_MD_DRDI,         0, BANK4_DRDI_SMEM_SIZE, 0, SMEM_NO_CLR_FIRST, 0}},
+{0ULL, 0ULL, {SMEM_USER_MD_DRDI,         0, 0, 0, SMEM_NO_CLR_FIRST, 0}},
 };
 
 static struct rt_smem_region_lk_fmt gen6297_cacheable_tbl[] = {
