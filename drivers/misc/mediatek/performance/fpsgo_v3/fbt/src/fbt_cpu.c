@@ -227,11 +227,25 @@ enum FPSGO_TASK_ATTRIBUTE {
 	FPSGO_TASK_VIP = 2,
 };
 
+enum FPSGO_MULTIUSER_CHECK {
+	FPSGO_NO_MULTIUSER = 0,
+	FPSGO_MULTIUSER_OTHER,
+	FPSGO_MULTIUSER_DOMINANT,
+};
+
 enum FPSGO_TUNING_POINT_CONTROL {
 	FPSGO_TP_CONTROL_NONE = 0,
 	FPSGO_TP_CONTROL_ML = 1,
 	FPSGO_TP_CONTROL_BM = 2,
 	FPSGO_TP_CONTROL_MAX = 3,
+};
+
+enum FPSGO_TUNING_POINT_STATE {
+	FPSGO_TP_NOT_SET = -1,
+	FPSGO_TP_SET_BUT_NOT_ACTIVATE = 0,
+	FPSGO_TP_MLPOINT_ACTIVATE = 1,
+	FPSGO_TP_BMPOINT_ACTIVATE = 2,
+	FPSGO_TP_STATE_MAX = 3,
 };
 
 enum FPSGO_TASK_GROUP {
@@ -1298,13 +1312,28 @@ DONE:
 	return ret;
 }
 
-static void fbt_change_task_policy(int policy, int pid, int group, int spid_action,
-	int spid_prio, int spid_timeout, int *is_vip, int vip_mask, int reset)
+/* check whether there are multiple renders set boost_VIP */
+static int fbt_check_multiple_vip_control(int rid)
 {
-	/*
-	 * prioririty based vip setting
-	 * heavy: priority 3, second: priority 2, others: priority 1
-	 */
+	int count = 0;
+	struct fbt_thread_blc *pos, *next;
+
+	mutex_lock(&blc_mlock);
+	list_for_each_entry_safe(pos, next, &blc_list, entry) {
+		if (pos->b_vip_set)
+			count++;
+		if (count > 1) {
+			mutex_unlock(&blc_mlock);
+			return (rid == max_blc_pid) ? FPSGO_MULTIUSER_DOMINANT : FPSGO_MULTIUSER_OTHER;
+		}
+	}
+	mutex_unlock(&blc_mlock);
+	return FPSGO_NO_MULTIUSER;
+}
+
+static void fbt_change_task_policy(int policy, int pid, int group, int spid_action,
+	int spid_prio, int spid_timeout, int *is_vip, int vip_mask, int multiuser_check, int reset)
+{
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	int group_bit = group == FPSGO_GROUP_OTHERS ? 1 : group << 1;
 	if (spid_prio) {
@@ -1315,13 +1344,38 @@ static void fbt_change_task_policy(int policy, int pid, int group, int spid_acti
 	}
 
 	if (policy == FPSGO_TASK_VIP && (group_bit & vip_mask)) {
+		if (multiuser_check == FPSGO_MULTIUSER_OTHER)
+			goto MINOR_USER;
+
+		/*
+		 * prioririty based vip setting
+		 * heavy: priority 3, second: priority 2, others: priority 1
+		 */
 		int prio = group + MIN_PRIORITY_BASED_VIP;
 
 		if (prio >= MIN_PRIORITY_BASED_VIP && prio <= MAX_PRIORITY_BASED_VIP) {
 			set_task_priority_based_vip_and_throttle(pid, prio, 60);
 			*is_vip = 1;
 		}
-	} else if (reset || *is_vip) {
+		goto OUT;
+
+MINOR_USER:
+		/*
+		 * prioririty based vip setting for minor user
+		 * heavy: priority 2, second: priority 1
+		 */
+		if (group != FPSGO_GROUP_OTHERS) {
+			int prio_minor = group + MIN_PRIORITY_BASED_VIP - 1;
+
+			if (prio_minor >= MIN_PRIORITY_BASED_VIP && prio_minor <= MAX_PRIORITY_BASED_VIP) {
+				set_task_priority_based_vip_and_throttle(pid, prio_minor, 60);
+				*is_vip = 1;
+			}
+			goto OUT;
+		}
+	}
+
+	if (reset || *is_vip) {
 		unset_task_priority_based_vip(pid);
 		*is_vip = 0;
 	}
@@ -1374,27 +1428,75 @@ DONE:
 
 }
 
-/* having tuning two tuning point for dynamicly control task placement through perfidx*/
+/* check whether there are multiple renders set policy hint (tuning point) */
+static int fbt_check_multiple_tp_control(int rid)
+{
+	int count = 0;
+	struct fbt_thread_blc *pos, *next;
+
+	mutex_lock(&blc_mlock);
+	list_for_each_entry_safe(pos, next, &blc_list, entry) {
+		if (pos->tp_set)
+			count++;
+		if (count > 1) {
+			mutex_unlock(&blc_mlock);
+			return (rid == max_blc_pid) ? FPSGO_MULTIUSER_DOMINANT : FPSGO_MULTIUSER_OTHER;
+		}
+	}
+	mutex_unlock(&blc_mlock);
+	return FPSGO_NO_MULTIUSER;
+}
+
+/*  Policy hint (tuning point) for dynamicly control task placement through perfidx */
 static void fbt_tp_control(int pid, int group, int bm_th, int ml_th,
 		int tp_policy, int min_cap_base,int *group_affinity, int *group_affinity_mask,
-		int *group_prefer)
+		int *group_prefer, int multiuser_check)
 {
-	int tp_exceed = 0;
+	int tp_exceed = FPSGO_TP_SET_BUT_NOT_ACTIVATE;
 
+	if (!bm_th && !ml_th) {
+		tp_exceed = FPSGO_TP_NOT_SET;
+		goto OUT;
+	}
+
+	if (multiuser_check == FPSGO_MULTIUSER_OTHER)
+		goto MINORUSER;
+
+	/*
+	 * Jump here when:
+	 * 1. Only one render activate policy hint:
+	 * 2. The heaviest render when multiple render activate policy hint:
+	 */
 	if (bm_th && group == FPSGO_GROUP_HEAVY && min_cap_base >= bm_th) {
 		if (group_affinity && (tp_policy & FPSGO_TP_CONTROL_BM))
 			*group_affinity = FPSGO_BAFFINITY_B;
 		else if (group_prefer)
 			*group_prefer = FPSGO_PREFER_BIG;
-		tp_exceed = 2;
+		tp_exceed = FPSGO_TP_BMPOINT_ACTIVATE;
 	} else if (ml_th && min_cap_base >= ml_th) {
 		if (group_affinity && (tp_policy & FPSGO_TP_CONTROL_ML)) {
 			if (group_affinity_mask && !get_fbt_cpu_mask(FPSGO_PREFER_B_M, group_affinity_mask))
 				*group_affinity = FPSGO_BAFFINITY_USERDEFINE;
 		} else if (group_prefer)
 			*group_prefer = FPSGO_PREFER_B_M;
-		tp_exceed = 1;
+		tp_exceed = FPSGO_TP_MLPOINT_ACTIVATE;
 	}
+	goto OUT;
+
+	/*
+	 * Jump here when multiple render activate policy hint and this is not the heaviest
+	 */
+MINORUSER:
+	if (bm_th && group == FPSGO_GROUP_HEAVY && min_cap_base >= bm_th) {
+		if (group_affinity && (tp_policy & FPSGO_TP_CONTROL_ML)) {
+			if (group_affinity_mask && !get_fbt_cpu_mask(FPSGO_PREFER_B_M, group_affinity_mask))
+				*group_affinity = FPSGO_BAFFINITY_USERDEFINE;
+		} else if (group_prefer)
+			*group_prefer = FPSGO_PREFER_B_M;
+		tp_exceed = FPSGO_TP_BMPOINT_ACTIVATE;
+	}
+
+OUT:
 	fpsgo_systrace_c_fbt_debug(pid, 0, tp_exceed, "turn_point_exceed");
 	fpsgo_systrace_c_fbt_debug(pid, 0, tp_policy, "turn_point_policy");
 }
@@ -1610,7 +1712,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 	fbt_affinity_task(FPSGO_BAFFINITY_NONE, fl->pid, 0, 0, 0,fl->reset_taskmask,
 		fl->action, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
 	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action,
-		0, 0, &fl->is_vip, 0, 1);
+		0, 0, &fl->is_vip, 0, 0, 1);
 	fbt_set_task_vvip(0, fl->pid, 0, &fl->is_vvip, 1);
 	fbt_gear_hint_prefer_cpu(0, fl->pid, &fl->is_prefer, 1);
 	fbt_set_task_ls(0, 0, fl->pid, 0, &fl->ori_ls);
@@ -2354,9 +2456,11 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int separate_release_sec_final;
 	int boost_affinity_final;
 	int boost_VIP_final;
+	int vip_multiuser_check;
 	int tp_policy_final;
 	int bm_th_final;
 	int ml_th_final;
+	int tp_multiuser_check;
 	int gh_prefer_final;
 	int boost_LR_final;
 	int set_ls_final;
@@ -2401,7 +2505,15 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 
 	fbt_get_user_group_setting(thr, user_cpumask);
 
-	if (vip_follow_gh)
+	tp_multiuser_check = fbt_check_multiple_tp_control(thr->pid);
+	if (tp_multiuser_check != FPSGO_NO_MULTIUSER)
+		fpsgo_main_trace("tp multi-user detected!");
+
+	vip_multiuser_check = fbt_check_multiple_vip_control(thr->pid);
+	if (vip_multiuser_check != FPSGO_NO_MULTIUSER)
+		fpsgo_main_trace("vip multi-user detected!");
+
+	if (vip_follow_gh && tp_multiuser_check == FPSGO_NO_MULTIUSER)
 		turn_on_vip_in_gh();
 	else
 		turn_off_vip_in_gh();
@@ -2549,7 +2661,8 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		min_cap_other = (min_cap_other > max_cap_other) ? max_cap_other : min_cap_other;
 
 		fbt_tp_control(fl->pid, fl->heavyidx, bm_th_final, ml_th_final, tp_policy_final,
-			min_cap_base, &group_affinity_final, &group_affinity_mask[fl->heavyidx], &group_prefer_final);
+			min_cap_base, &group_affinity_final, &group_affinity_mask[fl->heavyidx],
+			&group_prefer_final, tp_multiuser_check);
 		fbt_task_cap(fl->pid, min_cap, min_cap_b, min_cap_m, min_cap_other, max_cap,
 				max_cap_b,max_cap_m, max_cap_other, max_util, max_util_b,
 				max_util_m, max_util_other, separate_aa_final, separate_release_sec_final,
@@ -2573,7 +2686,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			&fl->policy, &fl->prefer_type, &fl->ori_ls, group_affinity_mask, FPSGO_MAX_GROUP);
 		fbt_gear_hint_prefer_cpu(group_prefer_final, fl->pid, &fl->is_prefer, 0);
 		fbt_change_task_policy(boost_VIP_final, fl->pid, fl->heavyidx, fl->action,
-			fl->prio, fl->timeout, &fl->is_vip, vip_mask_final, 0);
+			fl->prio, fl->timeout, &fl->is_vip, vip_mask_final, vip_multiuser_check, 0);
 		fbt_set_task_vvip(set_vvip_final, fl->pid, fl->heavyidx, &fl->is_vvip, 0);
 		fbt_set_task_ls(set_ls_final, ls_groupmask_final, fl->pid,
 			fl->heavyidx, &fl->ori_ls);
@@ -4940,6 +5053,7 @@ static int fbt_boost_policy(
 	int powerRL_enable_final;
 	int powerRL_FPS_margin_final;
 	int powerRL_cap_limit_range_final;
+	int is_tp_set = 0, is_boost_vip_set = 0;
 #if IS_ENABLED(CONFIG_ARM64)
 	int s32_target_time;
 #endif
@@ -4984,6 +5098,12 @@ static int fbt_boost_policy(
 		target_time_up_bound_final = thread_info->attr.target_time_up_bound_by_pid;
 
 
+
+	if (thread_info->attr.bm_th_by_pid || thread_info->attr.ml_th_by_pid)
+		is_tp_set = 1;
+
+	if (thread_info->attr.boost_vip_by_pid)
+		is_boost_vip_set = 1;
 
 	cur_ts = fpsgo_get_time();
 
@@ -5192,6 +5312,8 @@ static int fbt_boost_policy(
 			thread_info->p_blc->blc_b = blc_wt_b;
 			thread_info->p_blc->blc_m = blc_wt_m;
 		}
+		thread_info->p_blc->tp_set = is_tp_set;
+		thread_info->p_blc->b_vip_set = is_boost_vip_set;
 		thread_info->p_blc->dep_num = thread_info->dep_valid_size;
 		if (thread_info->dep_arr)
 			memcpy(thread_info->p_blc->dep, thread_info->dep_arr,
@@ -6847,6 +6969,9 @@ static void fbt_jank_thread_restore(int pid)
 	struct fpsgo_loading *fl = NULL;
 	int group_affinity_final;
 	int group_affinity_mask[FPSGO_MAX_GROUP];
+	int tp_multiuser_check;
+	int vip_multiuser_check;
+
 
 	mutex_lock(&fbt_mlock);
 	iter = fpsgo_get_render_info_by_bufID(max_blc_pid, max_blc_buffer_id);
@@ -6860,6 +6985,9 @@ static void fbt_jank_thread_restore(int pid)
 	group_affinity_mask[FPSGO_GROUP_HEAVY] = user_cpumask[FPSGO_GROUP_HEAVY];
 	group_affinity_mask[FPSGO_GROUP_SECOND] = user_cpumask[FPSGO_GROUP_SECOND];
 	group_affinity_mask[FPSGO_GROUP_OTHERS] = user_cpumask[FPSGO_GROUP_OTHERS];
+
+	tp_multiuser_check = fbt_check_multiple_tp_control(pid);
+	vip_multiuser_check = fbt_check_multiple_vip_control(pid);
 
 	for (i = 0; i < iter->dep_valid_size; i++) {
 		if (iter->dep_arr[i].pid == pid) {
@@ -6907,13 +7035,13 @@ static void fbt_jank_thread_restore(int pid)
 
 	fbt_tp_control(fl->pid, fl->heavyidx, iter->attr.bm_th_by_pid,
 		iter->attr.ml_th_by_pid, iter->attr.tp_policy_by_pid, min_cap_base,
-		&group_affinity_final, &group_affinity_mask[fl->heavyidx], NULL);
+		&group_affinity_final, &group_affinity_mask[fl->heavyidx], NULL, tp_multiuser_check);
 	fbt_set_per_task_cap(pid, min_cap_final, max_cap_final, 1024);
 	fpsgo_systrace_c_fbt(pid, 0, min_cap_final, "restore_perf_min");
 	fpsgo_systrace_c_fbt(pid, 0, max_cap_final, "restore_perf_max");
 
 	fbt_change_task_policy(iter->attr.boost_vip_by_pid, fl->pid, fl->heavyidx, fl->action,
-		fl->prio, fl->timeout, &fl->is_vip, iter->attr.vip_mask_by_pid, 0);
+		fl->prio, fl->timeout, &fl->is_vip, iter->attr.vip_mask_by_pid, vip_multiuser_check, 0);
 	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_vip_by_pid, "restore_priority");
 
 	fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx,
