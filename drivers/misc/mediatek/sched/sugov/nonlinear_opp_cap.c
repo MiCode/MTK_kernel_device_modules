@@ -410,15 +410,8 @@ skip_single_idle_cpu:
  * uclamp_min/max: uclamp_min/max after multiply by margin
  */
 unsigned long sys_min_cap = UINT_MAX, sys_second_max_cap = 0;
-int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max, int is_multiply_by_margin)
+int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max)
 {
-	if (!is_multiply_by_margin) {
-		uclamp_min = clamp((uclamp_min * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
-			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
-		uclamp_max = clamp((uclamp_max * DEFAULT_MARGIN) >> SCHED_FIXEDPOINT_SHIFT,
-			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
-	}
-
 	if ((uclamp_min > sys_min_cap) || (uclamp_max <= sys_second_max_cap))
 		return true;
 
@@ -3396,7 +3389,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	rq = cpu_rq(cpu);
 	rq_uclamp_min = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
 	rq_uclamp_max = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
-	uclamp_involved = mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max, 0);
+	uclamp_involved = mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max);
 	curr_task_uclamp = get_curr_task_uclamp_ctrl();
 
 	if (data != NULL) {
@@ -3542,7 +3535,7 @@ unsigned long get_freq_margin(int cpu, unsigned long util)
 		rq = cpu_rq(cpu);
 		rq_uclamp_min = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
 		rq_uclamp_max = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
-		if (mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max, 0)) {
+		if (mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max)) {
 			margin = util_scale;
 			margin_id = 0;
 			goto done;
@@ -3595,7 +3588,7 @@ unsigned long dpt_v2_get_uclamped_cpu_util(int cpu, unsigned long max_util, unsi
 	int wl_for_uclamp = get_eas_wl(0);
 
 	/* k6.12 uclamp不需要*1.25倍, user調整前先暫時保留 */
-	if (mtk_uclamp_involve(min_util, max_util, 0)) {
+	if (mtk_uclamp_involve(min_util, max_util)) {
 		min_util = clamp((min_util * DEFAULT_MARGIN) >> SCHED_CAPACITY_SHIFT,
 			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
 		max_util = clamp((max_util * DEFAULT_MARGIN) >> SCHED_CAPACITY_SHIFT,

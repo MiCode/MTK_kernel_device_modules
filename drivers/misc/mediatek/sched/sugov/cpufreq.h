@@ -257,7 +257,7 @@ DECLARE_PER_CPU(struct mtk_rq *, rq_data);
 
 #define DEFAULT_MARGIN 1280
 #define NO_MARGIN 1024
-extern int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max, int is_multiply_by_margin);
+extern int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max);
 /* DPT */
 struct curr_collab_state_struct {
 	int state;

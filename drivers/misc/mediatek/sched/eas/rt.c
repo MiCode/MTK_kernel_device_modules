@@ -510,7 +510,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 				else
 					max = max(max, max_cap);
 
-				if (mtk_uclamp_involve(min, max, 0))
+				if (mtk_uclamp_involve(min, max))
 					cpu_util_cum = (cpu_util_cum * DEFAULT_MARGIN) >> SCHED_CAPACITY_SHIFT;
 				else
 					cpu_util_cum = get_cpu_util_with_margin(cpu, cpu_util_cum);
