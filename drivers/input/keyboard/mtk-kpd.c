@@ -86,7 +86,6 @@ static void kpd_keymap_handler(unsigned long data)
 	int pressed;
 	u16 new_state[KPD_NUM_MEMS], change, mask;
 	u16 hw_keycode, keycode;
-	void *dest;
 	struct mtk_keypad *keypad = (struct mtk_keypad *)data;
 
 	kpd_get_keymap_state(keypad->base, new_state);
@@ -123,7 +122,7 @@ static void kpd_keymap_handler(unsigned long data)
 		}
 	}
 
-	dest = memcpy(keypad->keymap_state, new_state, sizeof(new_state));
+	memcpy(keypad->keymap_state, new_state, sizeof(new_state));
 	enable_irq(keypad->irqnr);
 }
 
