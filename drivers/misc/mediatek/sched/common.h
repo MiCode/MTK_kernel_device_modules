@@ -245,16 +245,6 @@ void set_dsu_idle_enable(bool boost_ctrl);
 void unset_dsu_idle_enable(void);
 bool is_dsu_idle_enable(void);
 
-void set_runnable_boost_enable(bool boost_ctrl);
-void unset_runnable_boost_enable(void);
-bool is_runnable_boost_enable(void);
-
-unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int boost);
-
-unsigned long mtk_cpu_util_cfs(int cpu);
-unsigned long mtk_cpu_util_cfs_boost(int cpu);
-void mtk_cpu_util_cfs_boost_hook(void *data, int cpu, unsigned long *util);
-
 #define EAS_NODE_NAME "eas_info"
 #define EAS_PROP_CSRAM "csram-base"
 #define EAS_PROP_OFFS_CAP "offs-cap"

@@ -14,13 +14,6 @@
 
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
-#include "cpufreq.h"
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-#include "mtk_energy_model/v3/energy_model.h"
-#else
-#include "mtk_energy_model/v1/energy_model.h"
-#endif
-#include "common.h"
 #include <linux/tick.h>
 #include <linux/sched/cpufreq.h>
 #include <linux/sched/clock.h>
@@ -34,13 +27,20 @@
 #include <uapi/linux/sched/types.h>
 #include <thermal_interface.h>
 #include <mt-plat/mtk_irq_mon.h>
+#include "common.h"
+#include "cpufreq.h"
+#include "cpu_util.h"
 #include "sched_version_ctrl.h"
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+#include "mtk_energy_model/v3/energy_model.h"
+#else
+#include "mtk_energy_model/v1/energy_model.h"
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "sugov_trace.h"
 
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
-#define DEFAULT_RUNNABLE_BOOST	true
 #define DEFAULT_DSU_IDLE		true
 #define DEFAULT_CURR_TASK_UCLAMP	false
 
@@ -79,27 +79,6 @@ void (*fpsgo_notify_fbt_is_boost_fp)(int fpsgo_is_boost);
 EXPORT_SYMBOL(fpsgo_notify_fbt_is_boost_fp);
 
 /************************* scheduler common ************************/
-
-/* runnable_boost_enable ctrl */
-static bool runnable_boost_enable = DEFAULT_RUNNABLE_BOOST;
-
-void set_runnable_boost_enable(bool boost_ctrl)
-{
-	runnable_boost_enable = boost_ctrl;
-}
-EXPORT_SYMBOL(set_runnable_boost_enable);
-
-void unset_runnable_boost_enable(void)
-{
-	runnable_boost_enable = DEFAULT_RUNNABLE_BOOST;
-}
-EXPORT_SYMBOL(unset_runnable_boost_enable);
-
-inline bool is_runnable_boost_enable(void)
-{
-	return runnable_boost_enable;
-}
-EXPORT_SYMBOL(is_runnable_boost_enable);
 
 /* curr_task_uclamp_max_ctrl */
 static int curr_task_uclamp_max_ctrl = DEFAULT_CURR_TASK_UCLAMP;

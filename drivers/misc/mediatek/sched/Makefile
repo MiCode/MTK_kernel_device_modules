@@ -11,6 +11,7 @@ endif
 cpufreq_sugov_ext-y += sugov/nonlinear_opp_cap.o
 cpufreq_sugov_ext-y += sugov/dsu_interface.o
 cpufreq_sugov_ext-y += sugov/sched_version_ctrl.o
+cpufreq_sugov_ext-y += sugov/cpu_util.o
 cpufreq_sugov_ext-y += common.o
 
 obj-$(CONFIG_MTK_SCHEDULER) += scheduler.o

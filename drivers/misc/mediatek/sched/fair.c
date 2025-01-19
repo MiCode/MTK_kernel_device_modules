@@ -12,14 +12,9 @@
 #include <sched/sched.h>
 #include <linux/sched/clock.h>
 #include "eas/eas_plus.h"
+#include "sugov/cpu_util.h"
 #include "sugov/cpufreq.h"
 #include "sugov/dsu_interface.h"
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-#include "mtk_energy_model/v3/energy_model.h"
-#else
-#include "mtk_energy_model/v1/energy_model.h"
-#endif
-#include "common.h"
 #include <sched/pelt.h>
 #include <linux/stop_machine.h>
 #include <linux/kthread.h>
@@ -27,6 +22,12 @@
 #include <thermal_interface.h>
 #endif
 #include <mt-plat/mtk_irq_mon.h>
+#include "common.h"
+#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
+#include "mtk_energy_model/v3/energy_model.h"
+#else
+#include "mtk_energy_model/v1/energy_model.h"
+#endif
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 #include "eas/vip.h"
 #endif

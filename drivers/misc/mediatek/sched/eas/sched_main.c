@@ -22,6 +22,7 @@
 #include "common.h"
 #include "eas_plus.h"
 #include "sched_sys_common.h"
+#include "sugov/cpu_util.h"
 #include "sugov/cpufreq.h"
 #include "eas_adpf.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
@@ -1129,9 +1130,9 @@ static int __init mtk_scheduler_init(void)
 
 #endif
 
-	//ret = register_trace_android_rvh_cpu_util_cfs_boost(mtk_cpu_util_cfs_boost_hook, NULL);
+	ret = register_trace_android_rvh_cpu_util_cfs_boost(hook_cpu_util_cfs_boost, NULL);
 	if (ret)
-		pr_info("register mtk_cpu_util_cfs_boost_hook hooks failed, returned %d\n", ret);
+		pr_info("register android_rvh_cpu_util_cfs_boost failed, returned %d\n", ret);
 
 	ret = register_trace_android_vh_scheduler_tick(hook_sched_tick, NULL);
 	if (ret)

@@ -9,7 +9,9 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <sched/sched.h>
+#include "sugov/cpu_util.h"
 #include <sugov/cpufreq.h>
+#include <linux/sort.h>
 #include "common.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v3/energy_model.h"
@@ -18,7 +20,6 @@
 #endif
 #include "eas_plus.h"
 #include "eas_trace.h"
-#include <linux/sort.h>
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
 #endif
