@@ -954,6 +954,11 @@ typedef struct {
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET1, 2, "pid | bqid") \
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET2, 2, "fps | use") \
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET3, 1, "t_gpu_target") \
+ GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 4, "gov_support | gov_enable | max_core | current_core") \
+ GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 4, "rdy_current_core | target | fix_core | mode") \
+ GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
+ GEN("Policy__GOV_Detail", GPU_EB_LOG_DUMP_GOV_DETAIL1, 1, "rdy_core_mask") \
+ GEN("Policy__GOV_Detail", GPU_EB_LOG_DUMP_GOV_DETAIL2, 1, "gov_mask") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE1, 2, "dbg1_1 | dbg1_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE2, 2, "dbg2_1 | dbg2_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE3, 2, "dbg3_1 | dbg3_2") \
@@ -965,18 +970,7 @@ typedef struct {
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE9, 2, "dbg9_1 | dbg9_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE10, 2, "dbg10_1 | dbg10_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE11, 2, "dbg11_1 | dbg11_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE12, 2, "dbg12_1 | dbg12_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE13, 2, "dbg13_1 | dbg13_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE14, 2, "dbg14_1 | dbg14_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE15, 2, "dbg15_1 | dbg15_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE16, 2, "dbg16_1 | dbg16_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE17, 2, "dbg17_1 | dbg17_2")
-
- /* Enable after Jayer SB due to no space
- GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 2, "max_core | current_core") \
- GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 2, "fix_core | mode") \
- GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
- */
+ GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE12, 2, "dbg12_1 | dbg12_2")
 
 // sysram
 #define GPU_FDVFS_V2_COUNTER_LIST \

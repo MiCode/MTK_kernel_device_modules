@@ -2053,6 +2053,120 @@ TRACE_EVENT(GPU_DVFS__EB_LOWPWR,
 );
 
 
+TRACE_EVENT(GPU_DVFS__EBRB_DCS_DATA,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2, const unsigned int *arg3,
+			const unsigned int *arg4, const unsigned int *arg5, const unsigned int *arg6,
+			const unsigned int *arg7, const unsigned int *arg8),
+	TP_ARGS(arg, arg2, arg3, arg4, arg5, arg6, arg7, arg8),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+		__field(unsigned int, v0)__field(unsigned int, v1)__field(unsigned int, v2)__field(unsigned int, v3)
+		__field(unsigned int, v4)__field(unsigned int, v5)__field(unsigned int, v6)__field(unsigned int, v7)
+		__field(unsigned int, c0)__field(unsigned int, c1)__field(unsigned int, c2)__field(unsigned int, c3)
+		__field(unsigned int, c4)__field(unsigned int, c5)__field(unsigned int, c6)__field(unsigned int, c7)
+		__field(unsigned int, q0)__field(unsigned int, q1)__field(unsigned int, q2)__field(unsigned int, q3)
+		__field(unsigned int, q4)__field(unsigned int, q5)__field(unsigned int, q6)__field(unsigned int, q7)
+		__field(unsigned int, w0)__field(unsigned int, w1)__field(unsigned int, w2)__field(unsigned int, w3)
+		__field(unsigned int, w4)__field(unsigned int, w5)__field(unsigned int, w6)__field(unsigned int, w7)
+		__field(unsigned int, s0)__field(unsigned int, s1)__field(unsigned int, s2)__field(unsigned int, s3)
+		__field(unsigned int, s4)__field(unsigned int, s5)__field(unsigned int, s6)__field(unsigned int, s7)
+		__field(unsigned int, t0)__field(unsigned int, t1)__field(unsigned int, t2)__field(unsigned int, t3)
+		__field(unsigned int, t4)__field(unsigned int, t5)__field(unsigned int, t6)__field(unsigned int, t7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+		__entry->v0 = arg3[0];__entry->v1 = arg3[1];__entry->v2 = arg3[2];__entry->v3 = arg3[3];
+		__entry->v4 = arg3[4];__entry->v5 = arg3[5];__entry->v6 = arg3[6];__entry->v7 = arg3[7];
+		__entry->c0 = arg4[0];__entry->c1 = arg4[1];__entry->c2 = arg4[2];__entry->c3 = arg4[3];
+		__entry->c4 = arg4[4];__entry->c5 = arg4[5];__entry->c6 = arg4[6];__entry->c7 = arg4[7];
+		__entry->q0 = arg5[0];__entry->q1 = arg5[1];__entry->q2 = arg5[2];__entry->q3 = arg5[3];
+		__entry->q4 = arg5[4];__entry->q5 = arg5[5];__entry->q6 = arg5[6];__entry->q7 = arg5[7];
+		__entry->w0 = arg6[0];__entry->w1 = arg6[1];__entry->w2 = arg6[2];__entry->w3 = arg6[3];
+		__entry->w4 = arg6[4];__entry->w5 = arg6[5];__entry->w6 = arg6[6];__entry->w7 = arg6[7];
+		__entry->s0 = arg7[0];__entry->s1 = arg7[1];__entry->s2 = arg7[2];__entry->s3 = arg7[3];
+		__entry->s4 = arg7[4];__entry->s5 = arg7[5];__entry->s6 = arg7[6];__entry->s7 = arg7[7];
+		__entry->t0 = arg8[0];__entry->t1 = arg8[1];__entry->t2 = arg8[2];__entry->t3 = arg8[3];
+		__entry->t4 = arg8[4];__entry->t5 = arg8[5];__entry->t6 = arg8[6];__entry->t7 = arg8[7];
+
+	),
+
+	TP_printk("u0=%u|%u|%u|%u|%u|%u|%u|%u u1=%u|%u|%u|%u|%u|%u|%u|%u u2=%u|%u|%u|%u|%u|%u|%u|%u u3=%u|%u|%u|%u|%u|%u|%u|%u u4=%u|%u|%u|%u|%u|%u|%u|%u"
+	    " u5=%u|%u|%u|%u|%u|%u|%u|%u u6=%u|%u|%u|%u|%u|%u|%u|%u u7=%u|%u|%u|%u|%u|%u|%u|%u",
+		__entry->u0, __entry->r0, __entry->v0, __entry->c0, __entry->q0, __entry->w0, __entry->s0, __entry->t0,
+		__entry->u1, __entry->r1, __entry->v1, __entry->c1, __entry->q1, __entry->w1, __entry->s1, __entry->t1,
+		__entry->u2, __entry->r2, __entry->v2, __entry->c2, __entry->q2, __entry->w2, __entry->s2, __entry->t2,
+		__entry->u3, __entry->r3, __entry->v3, __entry->c3, __entry->q3, __entry->w3, __entry->s3, __entry->t3,
+		__entry->u4, __entry->r4, __entry->v4, __entry->c4, __entry->q4, __entry->w4, __entry->s4, __entry->t4,
+		__entry->u5, __entry->r5, __entry->v5, __entry->c5, __entry->q5, __entry->w5, __entry->s5, __entry->t5,
+		__entry->u6, __entry->r6, __entry->v6, __entry->c6, __entry->q6, __entry->w6, __entry->s6, __entry->t6,
+		__entry->u7, __entry->r7, __entry->v7, __entry->c7, __entry->q7, __entry->w7, __entry->s7, __entry->t7)
+);
+
+TRACE_EVENT(GPU_DVFS__EBRB_DCS_DETAIL,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2),
+	TP_ARGS(arg, arg2),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+	),
+
+	TP_printk("u0=%u|%u u1=%u|%u u2=%u|%u u3=%u|%u u4=%u|%u u5=%u|%u u6=%u|%u u7=%u|%u",
+		__entry->u0, __entry->r0,
+		__entry->u1, __entry->r1,
+		__entry->u2, __entry->r2,
+		__entry->u3, __entry->r3,
+		__entry->u4, __entry->r4,
+		__entry->u5, __entry->r5,
+		__entry->u6, __entry->r6,
+		__entry->u7, __entry->r7)
+
+);
+
+TRACE_EVENT(GPU_DVFS__EBRB_GOV_DETAIL,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2),
+	TP_ARGS(arg, arg2),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+	),
+
+	TP_printk("u0=%u|%u u1=%u|%u u2=%u|%u u3=%u|%u u4=%u|%u u5=%u|%u u6=%u|%u u7=%u|%u",
+		__entry->u0, __entry->r0,
+		__entry->u1, __entry->r1,
+		__entry->u2, __entry->r2,
+		__entry->u3, __entry->r3,
+		__entry->u4, __entry->r4,
+		__entry->u5, __entry->r5,
+		__entry->u6, __entry->r6,
+		__entry->u7, __entry->r7)
+
+);
+
 #endif /* _TRACE_GED_H */
 
 

@@ -449,7 +449,7 @@ void dcs_enable(int enable)
 			ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
 		g_cur_core_num = g_max_core_num;
 		g_dcs_enable = 0;
-		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_mask, g_lowpwr_mode);
+		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 	}
 
@@ -596,6 +596,7 @@ void dcs_set_gov_enable(unsigned int enable) {
 
 	g_has_gov_support = ipi_data.u.set_para.arg[0];
 	g_gov_enable = ipi_data.u.set_para.arg[1];
+	g_setting_dirty = true;
 
 	if (g_gov_enable) {
 
@@ -606,11 +607,10 @@ void dcs_set_gov_enable(unsigned int enable) {
 
 		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
 		g_cur_core_num = g_max_core_num;
-		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_mask, g_lowpwr_mode);
+		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 
 		mutex_unlock(&g_DCS_lock);
-
 	}
 }
 
@@ -649,7 +649,7 @@ void dcs_set_lowpwr(int enable)
 					ged_dvfs_set_gpu_core_mask_fp(g_avail_mask_table[max_avail_idx].mask);
 					g_cur_core_num = g_avail_mask_table[max_avail_idx].num;
 					trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num,
-												g_fix_core_mask, g_lowpwr_mode);
+												g_fix_core_num, g_lowpwr_mode);
 					trace_GPU_DVFS__Policy__DCS__Detail(g_avail_mask_table[max_avail_idx].mask);
 					trace_tracing_mark_write(5566, "silence", g_lowpwr_mode);
 				}
