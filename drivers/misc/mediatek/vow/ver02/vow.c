@@ -800,14 +800,23 @@ static void vow_service_Init(void)
 				       0,
 				       NULL,
 				       VOW_IPI_BYPASS_ACK);
+		if (ipi_ret != IPI_SCP_SEND_PASS)
+			VOWDRV_DEBUG("%s(), IPIMSG_GET_ALEXA_ENGINE_VER send error %d\n", __func__, ipi_ret);
+
 		ipi_ret = vow_ipi_send(IPIMSG_VOW_GET_GOOGLE_ENGINE_VER,
 				       0,
 				       NULL,
 				       VOW_IPI_BYPASS_ACK);
+		if (ipi_ret != IPI_SCP_SEND_PASS)
+			VOWDRV_DEBUG("%s(), IPIMSG_GET_GOOGLE_ENGINE_VER send error %d\n", __func__, ipi_ret);
+
 		ipi_ret = vow_ipi_send(IPIMSG_VOW_GET_GOOGLE_ARCH,
 				       0,
 				       NULL,
 				       VOW_IPI_BYPASS_ACK);
+		if (ipi_ret != IPI_SCP_SEND_PASS)
+			VOWDRV_DEBUG("%s(), IPIMSG_GET_GOOGLE_ARCH send error %d\n", __func__, ipi_ret);
+
 		for (I = 0; I < MAX_VOW_SPEAKER_MODEL; I++) {
 			if ((vowserv.vow_speaker_model[I].flag > 1) ||
 			    (vowserv.vow_speaker_model[I].enabled > 1)) {
@@ -1538,7 +1547,6 @@ static void vow_check_boundary(unsigned int copy_len, unsigned int bound_len)
 /* for payload dump feature(data from scp) */
 static void vow_service_ReadPayloadDumpData(unsigned int buf_length)
 {
-	unsigned int ret = 0;
 	unsigned int payloaddump_len = 0;
 
 	if (vowserv.payloaddump_enable == false) {
@@ -1577,15 +1585,19 @@ static void vow_service_ReadPayloadDumpData(unsigned int buf_length)
 	mutex_unlock(&vow_payloaddump_mutex);
 
 	//copy to user space
-	ret = copy_to_user(
-		      (void __user *)(vowserv.payloaddump_user_return_size_addr),
-		      &payloaddump_len,
-		      sizeof(unsigned int));
+	if (copy_to_user(
+		(void __user *)(vowserv.payloaddump_user_return_size_addr),
+		&payloaddump_len,
+		sizeof(unsigned int)))
+		VOWDRV_DEBUG("%s(), copy payloaddump_len fail", __func__);
+
 	mutex_lock(&vow_payloaddump_mutex);
-	ret = copy_to_user(
-		      (void __user *)vowserv.payloaddump_user_addr,
-		      vowserv.payloaddump_kernel_ptr,
-		      payloaddump_len);
+	if (copy_to_user(
+		(void __user *)vowserv.payloaddump_user_addr,
+		vowserv.payloaddump_kernel_ptr,
+		payloaddump_len))
+		VOWDRV_DEBUG("%s(), copy payloaddump_kernel_ptr fail", __func__);
+
 	mutex_unlock(&vow_payloaddump_mutex);
 }
 
@@ -1732,22 +1744,24 @@ static int vow_service_ReadVoiceData_Internal(void)
 		vowserv.transfer_length = VOW_VOICE_RECORD_THRESHOLD;
 
 	if (vowserv.kernel_voicedata_idx >= (vowserv.transfer_length >> 1)) {
-		unsigned int ret;
 
 		/*VOWDRV_DEBUG("TX Leng:%d, %d, [%d]\n",*/
 		/*	     vowserv.kernel_voicedata_idx,*/
 		/*	     buf_length,*/
 		/*	     vowserv.transfer_length);*/
-		ret = copy_to_user(
-		      (void __user *)(vowserv.voicedata_user_return_size_addr),
-		      &vowserv.transfer_length,
-		      sizeof(unsigned int));
+		if (copy_to_user(
+		    (void __user *)(vowserv.voicedata_user_return_size_addr),
+		    &vowserv.transfer_length,
+		    sizeof(unsigned int)))
+			VOWDRV_DEBUG("%s(), copy_to_user fail", __func__);
 
 		mutex_lock(&vow_vmalloc_lock);
-		ret = copy_to_user(
-		      (void __user *)vowserv.voicedata_user_addr,
-		      vowserv.voicedata_kernel_ptr,
-		      vowserv.transfer_length);
+		if (copy_to_user(
+		    (void __user *)vowserv.voicedata_user_addr,
+		    vowserv.voicedata_kernel_ptr,
+		    vowserv.transfer_length))
+			VOWDRV_DEBUG("%s(), copy_to_user fail", __func__);
+
 		mutex_unlock(&vow_vmalloc_lock);
 
 		/* move left data to buffer's head */
@@ -1793,7 +1807,7 @@ static int vow_service_ReadVoiceData_Internal(void)
 
 static void vow_service_GetVowDumpData(void)
 {
-	unsigned int size = 0, i = 0, ret = 0, idx = 0, user_size = 0;
+	unsigned int size = 0, i = 0, idx = 0, user_size = 0;
 	unsigned long flags;
 
 	if (vowserv.dump_pcm_flag == false)
@@ -1871,18 +1885,22 @@ static void vow_service_GetVowDumpData(void)
 			}
 
 			mutex_lock(&vow_vmalloc_lock);
-			ret = copy_to_user(
-					 (void __user *)(temp_dump_info.user_dump_addr +
-					 temp_dump_info.user_dump_idx),
-					 temp_dump_info.kernel_dump_addr,
-					 size);
+			if (copy_to_user(
+				(void __user *)(temp_dump_info.user_dump_addr +
+				temp_dump_info.user_dump_idx),
+				temp_dump_info.kernel_dump_addr,
+				size))
+				VOWDRV_DEBUG("%s(), copy_to_user fail", __func__);
+
 			mutex_unlock(&vow_vmalloc_lock);
 			temp_dump_info.user_dump_idx += size;
 			user_size = (unsigned int)temp_dump_info.user_dump_idx;
-			ret = copy_to_user(
-				  (void __user *)(temp_dump_info.user_return_size_addr),
-				  &user_size,
-				  sizeof(unsigned int));
+			if (copy_to_user(
+				(void __user *)(temp_dump_info.user_return_size_addr),
+				&user_size,
+				sizeof(unsigned int)))
+				VOWDRV_DEBUG("%s(), copy_to_user fail", __func__);
+
 			/*VOWDRV_DEBUG("%s(), %d, kernel_dump_addr: 0x%x, user_dump_idx: 0x%x\n",*/
 			/*	     __func__, i,*/
 			/*	     temp_dump_info.kernel_dump_addr,*/
@@ -1928,11 +1946,15 @@ static void vow_service_GetVowDumpData(void)
 
 static void vow_service_ReadDumpData(void)
 {
-	if (DumpData_Wait_Queue_flag == 0)
-		wait_event_interruptible_timeout(DumpData_Wait_Queue,
+	int ret = 0;
+
+	if (DumpData_Wait_Queue_flag == 0) {
+		ret = wait_event_interruptible_timeout(DumpData_Wait_Queue,
 						 DumpData_Wait_Queue_flag,
 						 msecs_to_jiffies(100));
-
+		if (ret < 0)
+			VOWDRV_DEBUG("wait %s fail, ret=%d\n", __func__, ret);
+	}
 	if (DumpData_Wait_Queue_flag == 1) {
 		DumpData_Wait_Queue_flag = 0;
 		if ((VowDrv_GetHWStatus() == VOW_PWR_OFF) ||
@@ -1952,13 +1974,17 @@ static void vow_service_ReadDumpData(void)
 static void vow_service_ReadVoiceData(void)
 {
 	int stop_condition = 0;
+	int ret = 0;
 
 	while (1) {
 		/*VOWDRV_DEBUG("vow wait for intr, flag = %d\n", VoiceData_Wait_Queue_flag);*/
-		if (VoiceData_Wait_Queue_flag == 0)
-			wait_event_interruptible_timeout(VoiceData_Wait_Queue,
+		if (VoiceData_Wait_Queue_flag == 0) {
+			ret = wait_event_interruptible_timeout(VoiceData_Wait_Queue,
 							 VoiceData_Wait_Queue_flag,
 							 msecs_to_jiffies(100));
+			if (ret < 0)
+				VOWDRV_DEBUG("wait %s fail, ret=%d\n", __func__, ret);
+		}
 
 		if (VoiceData_Wait_Queue_flag == 1) {
 			VoiceData_Wait_Queue_flag = 0;
@@ -1989,6 +2015,7 @@ static void vow_service_ReadVoiceData(void)
 static bool vow_service_get_scp_recover(unsigned long arg)
 {
 	struct vow_scp_recover_info_t scp_recover_temp;
+	int ret = 0;
 
 	if (copy_from_user((void *)&scp_recover_temp,
 			   (const void __user *)arg,
@@ -2000,9 +2027,12 @@ static bool vow_service_get_scp_recover(unsigned long arg)
 	if (vowserv.scp_recover_user_return_size_addr == 0)
 		return false;
 
-	if (ScpRecover_Wait_Queue_flag == 0)
-		wait_event_interruptible(ScpRecover_Wait_Queue,
+	if (ScpRecover_Wait_Queue_flag == 0) {
+		ret = wait_event_interruptible(ScpRecover_Wait_Queue,
 					 ScpRecover_Wait_Queue_flag);
+		if (ret < 0)
+			VOWDRV_DEBUG("wait %s fail, ret=%d\n", __func__, ret);
+	}
 	if (ScpRecover_Wait_Queue_flag == 1) {
 		ScpRecover_Wait_Queue_flag = 0;
 		// copy scp recover event to user
@@ -2026,6 +2056,8 @@ static void vow_hal_reboot(void)
 			       0,
 			       NULL,
 			       VOW_IPI_BYPASS_ACK);
+	if (ipi_ret != IPI_SCP_SEND_PASS)
+		VOWDRV_DEBUG("%s(), IPIMSG send error %d\n", __func__, ipi_ret);
 }
 
 static void vow_service_reset(void)
@@ -2085,11 +2117,15 @@ static int vow_pcm_dump_notify(bool enable)
 				       1,
 				       &vow_ipi_buf[0],
 				       VOW_IPI_BYPASS_ACK);
+		if (ipi_ret != IPI_SCP_SEND_PASS)
+			VOWDRV_DEBUG("%s(), IPIMSG_PCM_DUMP_ON send error %d\n", __func__, ipi_ret);
 	} else {
 		ipi_ret = vow_ipi_send(IPIMSG_VOW_PCM_DUMP_OFF,
 				       1,
 				       &vow_ipi_buf[0],
 				       VOW_IPI_BYPASS_ACK);
+		if (ipi_ret != IPI_SCP_SEND_PASS)
+			VOWDRV_DEBUG("%s(), IPIMSG_PCM_DUMP_OFF send error %d\n", __func__, ipi_ret);
 	}
 #else
 	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
@@ -2221,7 +2257,7 @@ static int VowDrv_SetHWStatus(int status)
 	int ret = 0;
 
 	VOWDRV_DEBUG("%s(): set:%x, cur:%x\n",
-		     __func__, status, vowserv.pwr_status);
+		     __func__, status, VowDrv_GetHWStatus());
 	if ((status < NUM_OF_VOW_PWR_STATUS) && (status >= VOW_PWR_OFF)) {
 		spin_lock(&vowdrv_lock);
 		vowserv.pwr_status = status;
@@ -2870,14 +2906,10 @@ static bool vow_service_NotifyCHREStatus(unsigned int status)
 static int VowDrv_SetVowEINTStatus(int status)
 {
 	int ret = 0;
-	int wakeup_event = 0;
 
 	if ((status < NUM_OF_VOW_EINT_STATUS)
 	 && (status >= VOW_EINT_DISABLE)) {
 		spin_lock(&vowdrv_lock);
-		if ((vowserv.eint_status != VOW_EINT_PASS)
-		 && (status == VOW_EINT_PASS))
-			wakeup_event = 1;
 		vowserv.eint_status = status;
 		spin_unlock(&vowdrv_lock);
 	} else {
@@ -3467,9 +3499,12 @@ static ssize_t VowDrv_read(struct file *fp,
 	}
 	VowDrv_SetVowEINTStatus(VOW_EINT_RETRY);
 
-	if (VowDrv_Wait_Queue_flag == 0)
+	if (VowDrv_Wait_Queue_flag == 0) {
 		ret = wait_event_interruptible(VowDrv_Wait_Queue,
 					       VowDrv_Wait_Queue_flag);
+		if (ret < 0)
+			VOWDRV_DEBUG("wait %s fail, ret=%d\n", __func__, ret);
+	}
 	if (VowDrv_Wait_Queue_flag == 1) {
 		VowDrv_Wait_Queue_flag = 0;
 		if (VowDrv_GetHWStatus() == VOW_PWR_OFF) {
@@ -3717,6 +3752,8 @@ static int vow_scp_recover_event(struct notifier_block *this,
 		vow_ipi_buf[0] = vowserv.custom_model_size;
 		ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_CUSTOM_MODEL,
 				       1, &vow_ipi_buf[0], VOW_IPI_BYPASS_ACK);
+		if (ipi_ret != IPI_SCP_SEND_PASS)
+			VOWDRV_DEBUG("%s(), IPIMSG_SET_CUSTOM_MODEL send error %d\n", __func__, ipi_ret);
 
 		/* send VOW model status */
 		for (I = 0; I < MAX_VOW_SPEAKER_MODEL; I++) {
