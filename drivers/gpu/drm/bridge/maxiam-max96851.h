@@ -31,14 +31,20 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/spinlock.h>
+#include <linux/of_irq.h>
+#include <linux/interrupt.h>
+#include <linux/wait.h>
 
 #define SERDES_DEBUG						0
+#define SERDES_DEBUG_INFO					"MAX96851"
+#define SERDES_POLL_TIMEOUT_MS				2000
 
 #define I2C_WRITE							0x1
 #define PANEL_NAME_SIZE						64
 #define DEVICE_IDENTIFIER_ADDR				0x0D
 
 #define PANEL_NAME							"panel-name"
+#define SERDES_SUPPORT_HOTPLUG				"ser-support-hotplug"
 #define SERDES_SUPER_FRAME					"ser-super-frame"
 #define SERDES_DUAL_LINK					"ser-dual-link"
 #define SUPPORT_MST							"ser-dp-mst"
@@ -78,8 +84,8 @@
 
 #define MAX96851_DP_MST_SETTING				"max96851-dp-mst-setting"
 #define DP_MST_INIT_CMD						"ser-mst-init-cmd"
-#define MAX96851_DP_MST_TOUCH_I2C_ADDR		"dp_mst_touch_i2c_addr"
-#define MAX96851_DP_MST_TOUCH_INIT_CMD		"dp_mst_touch-init-cmd"
+#define MAX96851_DP_MST_TOUCH_I2C_ADDR		"dp-mst-touch-i2c-addr"
+#define MAX96851_DP_MST_TOUCH_INIT_CMD		"dp-mst-touch-init-cmd"
 
 #define BL_ON_CMD							"bl-on-cmd"
 #define BL_OFF_CMD							"bl-off-cmd"
@@ -87,6 +93,25 @@
 #define SINGAL_SETTING						"signal-setting"
 #define SUPERFRAME_SETTING					"superframe-setting"
 
+#define SER_REG_0x2A_LINKA_CTRL				0x2A
+#define SER_CMSL_LINKA_LOCKED				BIT(0)
+
+
+#define SER_REG_0x34_LINKB_CTRL				0x34
+#define SER_CMSL_LINKB_LOCKED				BIT(0)
+
+#define DES_REG_0x06ff_HOTPLUG_DETECT		0x06FF
+#define DES_HOTPLUG_CHECK_VALUE				0x22
+
+enum serdes_status{
+	des_link_status_connected = 1,
+	des_link_status_disconnected,
+	des_linka_status_connected,
+	des_linka_status_disconnected,
+	des_linkb_status_connected,
+	des_linkb_status_disconnected,
+	des_link_status_unknown,
+};
 
 struct serdes_cmd_info {
 	u8 *obj;
@@ -123,6 +148,14 @@ struct max96851_bridge {
 	struct drm_bridge *panel_bridge;
 	struct gpio_desc *gpio_pd_n;
 	struct gpio_desc *gpio_rst_n;
+
+	/* irq handle for hotplug */
+	bool serdes_init_done;
+	bool is_support_hotplug;
+	int irq_num;
+	wait_queue_head_t waitq;
+	struct task_struct *serdes_hotplug_task;
+	atomic_t hotplug_event;
 
 	/* Serdes i2c client */
 	struct i2c_client *max96851_i2c;
@@ -162,6 +195,7 @@ struct max96851_bridge {
 	int serdes_enable_index;
 	spinlock_t enable_index_lock;
 
+	bool boot_from_lk;
 	bool dual_link_support;
 	bool superframe_support;
 	bool asymmetric_multi_view;
