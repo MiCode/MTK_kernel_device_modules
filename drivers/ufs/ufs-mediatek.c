@@ -2527,6 +2527,10 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	if (ufsm_eh_in_progress(hba))
 		goto out;
 
+	ufs_mtk_ahb_dump(hba);
+	ufs_mtk_axi_dump(hba);
+	ufs_mtk_mon_dump(hba);
+
 	mt_irq_dump_status(hba->irq);
 
 	/* Dump ufshci register 0x0 ~ 0x9C */
@@ -2546,9 +2550,9 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	/* Dump ufshci register 0x2100 */
 	ufshcd_dump_regs(hba, REG_UFS_EXTREG, 0x4, "Ext Reg (0x2100): ");
 
-	/* Dump ufshci register 0x2200 ~ 0x22AC */
+	/* Dump ufshci register 0x2200 ~ 0x2248 */
 	ufshcd_dump_regs(hba, REG_UFS_MPHYCTRL,
-			 REG_UFS_REJECT_MON - REG_UFS_MPHYCTRL + 4,
+			 REG_UFS_MTK_STATUS - REG_UFS_MPHYCTRL + 4,
 			 "MPHY Ctrl (0x2200): ");
 
 	if (host->ip_ver < IP_VER_MT6899) {
@@ -2573,9 +2577,6 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 				"UFSHCI (0x2800): ");
 	}
 
-	ufs_mtk_mon_dump(hba);
-	ufs_mtk_ahb_dump(hba);
-	ufs_mtk_axi_dump(hba);
 
 	ufs_mtk_dbg_dump(100);
 

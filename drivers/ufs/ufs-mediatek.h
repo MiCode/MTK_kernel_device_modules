@@ -55,6 +55,7 @@
 #define REG_UFS_EXTREG              0x2100
 #define REG_UFS_MPHYCTRL            0x2200
 #define REG_UFS_MTK_IP_VER          0x2240
+#define REG_UFS_MTK_STATUS          0x2248
 /* UPIU Monitor */
 #define REG_UFS_NOPOUT_MON          0x2280
 #define REG_UFS_NOPIN_MON           0x2284
