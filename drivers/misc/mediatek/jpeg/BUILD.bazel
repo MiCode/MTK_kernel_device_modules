@@ -1,0 +1,46 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "jpeg-driver",
+    srcs = [
+        "jpeg_dma_buf.c",
+        "jpeg_drv.c",
+        "jpeg_dma_buf.h",
+        "jpeg_drv_reg.h",
+        "jpeg_drv.h",
+    ],
+    includes = [
+        ".",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)

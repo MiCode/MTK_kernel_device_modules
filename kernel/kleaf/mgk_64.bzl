@@ -453,6 +453,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irtx:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/locking:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/log_store:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/masp:ddk_kconfigs".format(kernel_version),
@@ -741,6 +742,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irtx:mtk_irtx_pwm".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/ak7375c:ak7375c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/ak7377a:ak7377a".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/bu64253gwz:bu64253gwz".format(kernel_version),
@@ -1358,7 +1360,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm_v2.ko",
-    "drivers/misc/mediatek/jpeg/jpeg-driver.ko",
+    #"drivers/misc/mediatek/jpeg/jpeg-driver.ko",
     #"drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko",
     #"drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko",
     #"drivers/misc/mediatek/masp/sec.ko",
@@ -1848,6 +1850,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_secure".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version))
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
