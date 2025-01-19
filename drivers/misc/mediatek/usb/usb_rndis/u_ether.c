@@ -1586,6 +1586,8 @@ struct net_device *mtk_gether_connect(struct gether *link)
 		if (netif_running(dev->net))
 			eth_start(dev, GFP_ATOMIC);
 
+		netif_device_attach(dev->net);
+
 	/* on error, disable any endpoints  */
 	} else {
 		(void) usb_ep_disable(link->out_ep);
