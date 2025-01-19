@@ -142,30 +142,45 @@ int mmdvfs_dump_dvfsrc_rg(void)
 
 	MMDVFS_ERR("get dvfsrc_rg_dump ops failed");
 
-	return -1;
+	return -EPERM;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_dump_dvfsrc_rg);
 
-int mmdvfs_user_dfs_vote_by_opp(const u8 idx, const s8 opp, const bool force)
+int mmdvfs_dump_dvfsrc_record(void)
 {
-	u8 mux, lvl;
+	if(mmdvfs_data->ops->dvfsrc_record_dump)
+		return mmdvfs_data->ops->dvfsrc_record_dump();
 
-	if (unlikely(!mmdvfs_data || idx >= mmdvfs_data->user_num))
+	MMDVFS_ERR("get dvfsrc_record_dump ops failed");
+
+	return -EPERM;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_dump_dvfsrc_record);
+
+int mmdvfs_force_step(const u8 idx, const s8 opp)
+{
+	int i;
+	u8 level, user_id, mux_id;
+
+	if (unlikely(!mmdvfs_data || idx >= mmdvfs_data->rc_num))
 		return -EINVAL;
 
-	mux = mmdvfs_data->user[idx].mux;
-	lvl = OPP2LEVEL(mmdvfs_data->mux[mux].rc, opp);
+	level = OPP2LEVEL(idx, opp);
+	level = (opp < 0) ? 0 : mmdvfs_data->rc[idx].level_num + level; //transfer to force level
 
-	mutex_lock(&mmdvfs_data->mux[mux].lock);
-	if(mmdvfs_data->ops->dfs_vote_by_xpu)
-		mmdvfs_data->ops->dfs_vote_by_xpu(mmdvfs_data->user[idx].id, lvl);
-		// TODO : + (force ? mmdvfs_data->rc[mmdvfs_data->mux[mux].rc].level_num : 0));
-	mutex_unlock(&mmdvfs_data->mux[mux].lock);
+	for (i = 0; i < mmdvfs_data->rc[idx].force_user_num; i++) {
+		user_id = mmdvfs_data->rc[idx].force_user[i];
+		mux_id = mmdvfs_data->user[user_id].mux;
+
+		mutex_lock(&mmdvfs_data->mux[mux_id].lock);
+		if(mmdvfs_data->ops->dfs_vote_by_xpu)
+			mmdvfs_data->ops->dfs_vote_by_xpu(user_id, level);
+		mutex_unlock(&mmdvfs_data->mux[mux_id].lock);
+	}
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mmdvfs_user_dfs_vote_by_opp);
-
+EXPORT_SYMBOL_GPL(mmdvfs_force_step);
 
 int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 {

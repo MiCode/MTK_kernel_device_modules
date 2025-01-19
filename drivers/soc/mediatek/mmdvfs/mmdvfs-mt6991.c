@@ -19,7 +19,7 @@ int mmdvfs_mt6993_dvfsrc_rg_dump(void)
 	for (i = 0; i < MMDVFS_V5_PWR_NUM; i++) {
 		if (!mmdvfs_rc[i].rc_base) {
 			MMDVFS_ERR("get rc_base failed, rc_id:%hhu", i);
-			ret = -1;
+			ret = -EFAULT;
 			continue;
 		}
 		rc_level[i] = readl(mmdvfs_rc[i].rc_base + RC_CURRENT_LEVEL);
@@ -29,7 +29,7 @@ int mmdvfs_mt6993_dvfsrc_rg_dump(void)
 	for (i = 0; i < MMDVFS_V5_MUX_NUM; i++) {
 		if (!mmdvfs_rc[mmdvfs_mux[i].rc].rc_base) {
 			MMDVFS_ERR("get rc_base failed, rc_id:%hhu", mmdvfs_mux[i].rc);
-			ret = -1;
+			ret = -EFAULT;
 			continue;
 		}
 
@@ -45,7 +45,7 @@ int mmdvfs_mt6993_dvfsrc_rg_dump(void)
 
 		if (!mmdvfs_rc[rc_id].rc_base) {
 			MMDVFS_ERR("get rc_base failed, rc_id:%hhu", i);
-			ret = -1;
+			ret = -EFAULT;
 			continue;
 		}
 
@@ -53,6 +53,39 @@ int mmdvfs_mt6993_dvfsrc_rg_dump(void)
 			i, (readl(mmdvfs_rc[rc_id].rc_base + RC_XPUx_MUX_SEL) >> ((pos % 8) * 0x4)) & 0xf,
 			mmdvfs_user[i].mux, mux_level[mmdvfs_user[i].mux],
 			rc_id, rc_level[rc_id]);
+	}
+
+	return ret;
+}
+
+int mmdvfs_mt6993_dvfsrc_record_dump(void)
+{
+	int i, j, k, ret = 0;
+
+	for (i = 0; i < MMDVFS_V5_PWR_NUM; i++) {
+		if (!mmdvfs_rc[i].rc_base) {
+			MMDVFS_ERR("get rc_base failed, rc_id:%hhu", i);
+			ret = -EFAULT;
+			continue;
+		}
+
+		for (j = 0; j < RC_RECORD_COUNT; j++) {
+			MMDVFS_DBG("rc_id:%hhu, regs(%#x) = %#x",
+				i, mmdvfs_rc[i].pa + RC_DVS_RECORD_0_0 + j * 0x20,
+				readl(mmdvfs_rc[i].rc_base + RC_DVS_RECORD_0_0 + j * 0x20));
+			MMDVFS_DBG("rc_id:%hhu, regs(%#x) = %#x",
+				i, mmdvfs_rc[i].pa + RC_DVS_RECORD_0_1 + j * 0x20,
+				readl(mmdvfs_rc[i].rc_base + RC_DVS_RECORD_0_1 + j * 0x20));
+			MMDVFS_DBG("rc_id:%hhu, regs(%#x) = %#x",
+				i, mmdvfs_rc[i].pa + RC_DVS_RECORD_0_3 + j * 0x20,
+				readl(mmdvfs_rc[i].rc_base + RC_DVS_RECORD_0_3 + j * 0x20));
+		}
+
+		for (j = 0; j < 7; j++)
+			for (k = 0; k < RC_RECORD_COUNT; k++)
+				MMDVFS_DBG("rc_id:%hhu, regs(%#x) = %#x",
+					i, mmdvfs_rc[i].pa + RC_DFS_RECORD_0_0 + (j > 0 ? (0x48 + (j - 1) * 0x40) : 0) + k * 0x4,
+					readl(mmdvfs_rc[i].rc_base + RC_DFS_RECORD_0_0 + (j > 0 ? (0x48 + (j - 1) * 0x40) : 0) + k * 0x4));
 	}
 
 	return ret;
@@ -69,6 +102,11 @@ int mmdvfs_mt6993_dfs_vote_by_xpu(const u8 user_id, const u8 level)
 
 	MMDVFS_DBG("[%s:%d] user_id:%d level:%d", __func__, __LINE__, user_id, level);
 
+	if (level >= mmdvfs_rc[rc_id].level_num * 2) {
+		MMDVFS_ERR("invalid level, user_id:%d level:%d", user_id, level);
+		return -EINVAL;
+	}
+
 	//RC_XPUx_MUX_SEL_CLR: clear vote
 	writel(0xf << (pos % 8) * 0x4, mmdvfs_rc[rc_id].rc_base + RC_XPUx_MUX_SEL_CLR);
 	//RC_XPUx_MUX_SEL_SET: vote
@@ -82,6 +120,8 @@ int mmdvfs_mt6993_dfs_vote_by_xpu(const u8 user_id, const u8 level)
 		targ = (readl(mmdvfs_rc[rc_id].rc_base + (pos / 8) * 0x4 + RC_MUX_SEL_ENABLE) >> ((pos % 8) * 0x4)) & 0xf;
 		curr = (readl(mmdvfs_rc[rc_id].rc_base + (pos / 8) * 0x4 + RC_MUX_SEL_CURR_ENABLE) >> ((pos % 8) * 0x4)) & 0xf;
 	} while (!(vote <= curr && (vote <= targ || ~irq)));
+
+	mmdvfs_user[user_id].level = level;
 
 	MMDVFS_DBG("user_id:%d level:%d mux_sel_pre:%#010x mux_sel:%#010x irq:%hhu vote:%hhu targ:%hhu curr:%hhu",
 		user_id, level, (readl(mmdvfs_rc[rc_id].rc_base + RC_XPUx_MUX_SEL_PRE) >> ((pos % 8) * 0x4)) & 0xf,

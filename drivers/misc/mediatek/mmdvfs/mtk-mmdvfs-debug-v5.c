@@ -71,7 +71,7 @@ int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 	}
 
 	mtk_mmdvfs_enable_vcp(true, user[idx].idx);
-	ret = mmdvfs_user_dfs_vote_by_opp(user[idx].idx, opp, true);
+	ret = mmdvfs_force_step(idx, opp);
 	if (!ret)
 		user[idx].force_opp = opp;
 	mtk_mmdvfs_enable_vcp(false, user[idx].idx);
@@ -162,6 +162,7 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 	int i, j, k, ret;
 
 	ret = mmdvfs_debug_dump_volt_freq(file);
+	ret = mmdvfs_dump_dvfsrc_record();
 
 	// TODO : dram, reg
 

@@ -44,7 +44,8 @@ struct mmdvfs_rc {
 	const u8 id;
 	const u32 pa;
 	const u8 level_num;
-	const u8 vote_user;
+	const u8 *force_user;
+	const u8 force_user_num;
 	void __iomem *rc_base;
 };
 
@@ -63,7 +64,7 @@ struct mmdvfs_user {
 	const u8 mux;
 	const u8 xpu;
 	const u32 xpu_ofs;
-	const u8 level;
+	u8 level;
 	struct clk_hw clk_hw;
 	struct clk *clk;
 	int vcp_power;
@@ -72,6 +73,7 @@ struct mmdvfs_user {
 struct mmdvfs_ops {
 	int (*dfs_vote_by_xpu)(const u8 user_id, const u8 level);
 	int (*dvfsrc_rg_dump)(void);
+	int (*dvfsrc_record_dump)(void);
 };
 
 struct mmdvfs_data {
@@ -91,6 +93,7 @@ inline void mmdvfs_mmup_cb_mutex_lock(void);
 inline void mmdvfs_mmup_cb_mutex_unlock(void);
 
 inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp);
-int mmdvfs_user_dfs_vote_by_opp(const u8 idx, const s8 opp, const bool force);
+int mmdvfs_force_step(const u8 idx, const s8 opp);
 int mmdvfs_dump_dvfsrc_rg(void);
+int mmdvfs_dump_dvfsrc_record(void);
 #endif /* __DRV_CLK_MMDVFS_V5_H */
