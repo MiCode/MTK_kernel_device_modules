@@ -11,7 +11,7 @@ ccflags-y += -I$(srctree)/drivers/ufs/
 ccflags-y += -I$(srctree)/drivers/mmc/host/
 ccflags-y += -I$(srctree)/include/ufs/
 
-obj-$(CONFIG_DEVICE_MODULES_MMC_MTK)			+= mtk-sd.o
+#obj-$(CONFIG_DEVICE_MODULES_MMC_MTK)			+= mtk-sd.o
 obj-$(CONFIG_DEVICE_MODULES_MMC_MTK_PRO)		+= mtk-mmc.o
 #obj-$(CONFIG_DEVICE_MODULES_MMC_DEBUG)			+= mtk-mmc-dbg.o
 obj-$(CONFIG_DEVICE_MODULES_MMC_MTK_MMC_WP)		+= mtk-mmc-wp.o

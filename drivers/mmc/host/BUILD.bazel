@@ -93,3 +93,31 @@ define_mgk_ddk_ko(
 	],
     out = "cqhci.ko",
 )
+
+define_mgk_ddk_ko(
+	name = "mtk-sd",
+	srcs = [
+		"mtk-sd.c",
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:headers".format(kernel_version),
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mmc/host:cqhci".format(kernel_version),
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
+		"-I$(srctree)/drivers/ufs/",
+		"-I$(srctree)/drivers/mmc/host/",
+		"-I$(srctree)/include/ufs/",
+	],
+    out = "mtk-sd.ko",
+)
