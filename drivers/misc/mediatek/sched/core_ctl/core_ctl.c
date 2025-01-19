@@ -62,7 +62,7 @@ extern int get_immediate_tslvts1_1_wrap(void);
 
 #define core_ctl_debug(x...)		\
 	do {				\
-		if (debug_enable)	\
+		if (debug_enable > DEBUG_DETAIL)	\
 			pr_info(x);	\
 	} while (0)
 
@@ -158,18 +158,18 @@ static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
 
 /* ==================== module parameter ======================== */
 
-static bool debug_enable;
-module_param_named(debug_enable, debug_enable, bool, 0600);
+static int debug_enable;
+module_param_named(debug_enable, debug_enable, int, 0600);
 
 static void periodic_debug_handler(struct work_struct *work);
 static int periodic_debug_enable;
-static int periodic_debug_delay = 50;
+static int periodic_debug_delay = 100;
 module_param_named(periodic_debug_delay, periodic_debug_delay, int, 0600);
 static DECLARE_DELAYED_WORK(periodic_debug, periodic_debug_handler);
 
 enum {
 	DISABLE_DEBUG = 0,
-	DEBUG_STD,
+	DEBUG_ROUGH,
 	DEBUG_DETAIL,
 	DEBUG_CNT
 };
@@ -215,6 +215,14 @@ static void periodic_debug_handler(struct work_struct *work)
 	unsigned int index = 0;
 	unsigned int max_cpus[MAX_CLUSTERS];
 	unsigned int min_cpus[MAX_CLUSTERS];
+	unsigned int boost[MAX_CLUSTERS];
+	unsigned int need_cpus[MAX_CLUSTERS];
+	unsigned int assist_cpus[MAX_CLUSTERS];
+	int gas_enable = 0;
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	gas_enable = get_top_grp_aware();
+#endif
 
 	if (periodic_debug_enable == DISABLE_DEBUG)
 		return;
@@ -222,10 +230,20 @@ static void periodic_debug_handler(struct work_struct *work)
 	for_each_cluster(cluster, index) {
 		max_cpus[index] = cluster->max_cpus;
 		min_cpus[index] = cluster->min_cpus;
+		boost[index] = cluster->boost;
+		need_cpus[index] = cluster->need_cpus;
+		assist_cpus[index] = cluster->nr_assist;
 	}
 
-	trace_core_ctl_periodic_debug_handler(enable_policy, max_cpus, min_cpus,
-			cpumask_bits(cpu_online_mask)[0], cpumask_bits(cpu_pause_mask)[0]);
+	pr_info("%s: policy=%u max=%u|%u|%u min=%u|%u|%u bst=%u|%u|%u gas=%d act=%lx iso=%lx need=%u|%u|%u assist=%u|%u|%u ",
+			TAG, enable_policy,
+			max_cpus[0], max_cpus[1], max_cpus[2],
+			min_cpus[0], min_cpus[1], min_cpus[2],
+			boost[0], boost[1], boost[2],
+			gas_enable, cpumask_bits(cpu_online_mask)[0], cpumask_bits(cpu_pause_mask)[0],
+			need_cpus[0], need_cpus[1], need_cpus[2],
+			assist_cpus[0], assist_cpus[1], assist_cpus[2]);
+
 	mod_delayed_work(system_power_efficient_wq,
 			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
 }
@@ -355,14 +373,14 @@ bool is_cluster_init(unsigned int cid)
 	return  cluster_state[cid].inited;
 }
 
-static bool power_cost_evaluation(struct cluster_data *cluster)
+static int power_cost_evaluation(struct cluster_data *cluster)
 {
 	struct cluster_data *prev_cluster;
 	struct cpu_data *cpu_stat;
 	int cpu, cid = 0, win_idx = 0;
 	int need_isolated_cpu;
 	unsigned long cap_avg = 0, prev_cap_avg = 0, prev_new_cap;
-	bool ret = true;
+	unsigned int ret = 1;
 
 	if (unlikely(!cluster || !cluster->inited))
 		return ret;
@@ -391,7 +409,7 @@ static bool power_cost_evaluation(struct cluster_data *cluster)
 
 	prev_new_cap = prev_cap_avg + div_u64(need_isolated_cpu*cap_avg, prev_cluster->active_cpus);
 	if (prev_new_cap > prev_cluster->cap_turn_point)
-		ret = false;
+		ret = 0;
 
 	return ret;
 }
@@ -402,6 +420,7 @@ static bool demand_eval(struct cluster_data *cluster)
 	unsigned int need_cpus = 0;
 	bool ret = false;
 	bool need_flag = false;
+	unsigned int cost_flag = 0;
 	unsigned int new_need;
 	unsigned int old_need;
 	s64 now, elapsed;
@@ -452,8 +471,10 @@ static bool demand_eval(struct cluster_data *cluster)
 		ret = elapsed >= cluster->offline_throttle_ms;
 
 		/* Calculate effective of isolation when core-off */
-		if (ret)
-			ret = power_cost_evaluation(cluster);
+		if (ret) {
+			cost_flag = power_cost_evaluation(cluster);
+			ret = ret & cost_flag;
+		}
 	}
 
 	if (ret) {
@@ -468,6 +489,7 @@ static bool demand_eval(struct cluster_data *cluster)
 			cluster->boost,
 			gas_enable,
 			cluster->enable,
+			cost_flag,
 			ret && need_flag,
 			cluster->next_offline_time);
 unlock:

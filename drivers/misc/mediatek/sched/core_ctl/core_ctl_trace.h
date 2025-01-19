@@ -82,12 +82,13 @@ TRACE_EVENT(core_ctl_demand_eval,
 			unsigned int boost,
 			unsigned int gas_enable,
 			unsigned int enable,
+			unsigned int cost_eff,
 			unsigned int updated,
 			unsigned int next_off_time),
 
 		TP_ARGS(cid, old_need, new_need,
 			active_cpus, min_cpus, max_cpus, boost,
-			gas_enable, enable, updated, next_off_time),
+			gas_enable, enable, cost_eff, updated, next_off_time),
 
 		TP_STRUCT__entry(
 			__field(u32, cid)
@@ -99,6 +100,7 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__field(u32, boost)
 			__field(u32, gas_enable)
 			__field(u32, enable)
+			__field(u32, cost_eff)
 			__field(u32, updated)
 			__field(u32, next_off_time)
 		),
@@ -113,11 +115,12 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__entry->boost = boost;
 			__entry->gas_enable = gas_enable;
 			__entry->enable = enable;
+			__entry->cost_eff = cost_eff;
 			__entry->updated = updated;
 			__entry->next_off_time = next_off_time;
 		),
 
-		TP_printk("cid=%u, old=%u, new=%u, act=%u min=%u max=%u bst=%u gas=%u enbl=%u update=%u next_off_time=%u",
+		TP_printk("cid=%u, old=%u, new=%u, act=%u min=%u max=%u bst=%u gas=%u enbl=%u eff=%u update=%u next_off_time=%u",
 			__entry->cid,
 			__entry->old_need,
 			__entry->new_need,
@@ -127,6 +130,7 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__entry->boost,
 			__entry->gas_enable,
 			__entry->enable,
+			__entry->cost_eff,
 			__entry->updated,
 			__entry->next_off_time)
 );
@@ -169,39 +173,6 @@ TRACE_EVENT(core_ctl_nr_over_thres,
 		__entry->prod_up[0], __entry->prod_up[1], __entry->prod_up[2], 
 		__entry->prod_down[0], __entry->prod_down[1], __entry->prod_down[2])
 
-);
-
-TRACE_EVENT(core_ctl_periodic_debug_handler,
-
-	TP_PROTO(
-		unsigned int enable_policy,
-		unsigned int *max_cpus,
-		unsigned int *min_cpus,
-		unsigned int active,
-		unsigned int paused),
-	TP_ARGS(enable_policy, max_cpus, min_cpus, active, paused),
-
-	TP_STRUCT__entry(
-		__field(unsigned int, enable_policy)
-		__array(unsigned int, max_cpus, 3)
-		__array(unsigned int, min_cpus, 3)
-		__field(unsigned int, active)
-		__field(unsigned int, paused)
-	),
-
-	TP_fast_assign(
-		__entry->enable_policy = enable_policy;
-		memcpy(__entry->max_cpus, max_cpus, sizeof(unsigned int)*3);
-		memcpy(__entry->min_cpus, min_cpus, sizeof(unsigned int)*3);
-		__entry->active = active;
-		__entry->paused = paused;
-	),
-
-	TP_printk("enable_policy=%u, max_cpu=%u|%u|%u, min_cpu=%u|%u|%u, active=%x, paused=%x",
-		__entry->enable_policy,
-		__entry->max_cpus[0], __entry->max_cpus[1], __entry->max_cpus[2],
-		__entry->min_cpus[0], __entry->min_cpus[1], __entry->min_cpus[2],
-		__entry->active, __entry->paused)
 );
 
 TRACE_EVENT(core_ctl_call_notifier,
