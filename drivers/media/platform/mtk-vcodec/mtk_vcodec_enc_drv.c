@@ -169,9 +169,7 @@ static int fops_vcodec_open(struct file *file)
 		V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 
 	ctx->enc_flush_buf->vb.vb2_buf.vb2_queue = src_vq;
-	ctx->enc_flush_buf->vb.vb2_buf.num_planes = 1;
 	ctx->enc_flush_buf->lastframe = NON_EOS;
-	vb2_set_plane_payload(&ctx->enc_flush_buf->vb.vb2_buf, 0, 1);
 	mtk_vcodec_enc_set_default_params(ctx);
 
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
