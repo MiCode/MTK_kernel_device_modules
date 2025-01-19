@@ -37,6 +37,11 @@ module_param(fpga_type, int, 0444);
 MODULE_PARM_DESC(fpga_type,
 "Different rcx/acx/ncx combination for fpga platform, check platform code for detail");
 
+uint32_t dev_bitmap = 0x0;
+module_param(dev_bitmap, uint, 0444);
+MODULE_PARM_DESC(dev_bitmap,
+"Different devices combination for fpga platform, check platform code for detail");
+
 static void apu_pwr_wake_lock(void)
 {
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -199,6 +204,9 @@ const struct apupwr_plat_data mt8188_plat_data;
 #ifndef MT6991_PLAT_DATA
 const struct apupwr_plat_data mt6991_plat_data;
 #endif
+#ifndef MT6993_PLAT_DATA
+const struct apupwr_plat_data mt6993_plat_data;
+#endif
 
 static const struct of_device_id of_match_apu_top[] = {
 	{ .compatible = "mt6983,apu_top_3", .data = &mt6983_plat_data},
@@ -210,6 +218,7 @@ static const struct of_device_id of_match_apu_top[] = {
 	{ .compatible = "mt8188,apu_top_3", .data = &mt8188_plat_data},
 	{ .compatible = "mt6989,apu_top_3", .data = &mt6989_plat_data},
 	{ .compatible = "mt6991,apu_top_3", .data = &mt6991_plat_data},
+	{ .compatible = "mt6993,apu_top_3", .data = &mt6993_plat_data},
 	{ /* end of list */},
 };
 
