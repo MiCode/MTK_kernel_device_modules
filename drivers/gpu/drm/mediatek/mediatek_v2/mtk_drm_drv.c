@@ -11402,6 +11402,30 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DLI_ASYNC},
 	{.compatible = "mediatek,mt6897-disp-dli-async",
 	 .data = (void *)MTK_DISP_DLI_ASYNC},
+	{.compatible = "mediatek,mt6993-disp-b-dli-async",
+	 .data = (void *)MTK_DISP_B_DLI_ASYNC},
+	{.compatible = "mediatek,mt6993-disp-b-dlo-async",
+	 .data = (void *)MTK_DISP_B_DLO_ASYNC},
+	{.compatible = "mediatek,mt6991-ovl-0-dli-async",
+	 .data = (void *)MTK_OVL_0_DLI_ASYNC},
+	{.compatible = "mediatek,mt6991-ovl-1-dli-async",
+	 .data = (void *)MTK_OVL_1_DLI_ASYNC},
+	{.compatible = "mediatek,mt6993-ovl-0-dli-async",
+	 .data = (void *)MTK_OVL_0_DLI_ASYNC},
+	{.compatible = "mediatek,mt6993-ovl-1-dli-async",
+	 .data = (void *)MTK_OVL_1_DLI_ASYNC},
+	{.compatible = "mediatek,mt6993-ovl-2-dli-async",
+	 .data = (void *)MTK_OVL_2_DLI_ASYNC},
+	{.compatible = "mediatek,mt6991-ovl-0-dlo-async",
+	 .data = (void *)MTK_OVL_0_DLO_ASYNC},
+	{.compatible = "mediatek,mt6991-ovl-1-dlo-async",
+	 .data = (void *)MTK_OVL_1_DLO_ASYNC},
+	{.compatible = "mediatek,mt6993-ovl-0-dlo-async",
+	 .data = (void *)MTK_OVL_0_DLO_ASYNC},
+	{.compatible = "mediatek,mt6993-ovl-1-dlo-async",
+	 .data = (void *)MTK_OVL_1_DLO_ASYNC},
+	{.compatible = "mediatek,mt6993-ovl-2-dlo-async",
+	 .data = (void *)MTK_OVL_2_DLO_ASYNC},
 	{.compatible = "mediatek,mt6983-disp-inlinerotate",
 	 .data = (void *)MTK_DISP_INLINE_ROTATE},
 	{.compatible = "mediatek,mt6895-disp-inlinerotate",
@@ -12056,6 +12080,10 @@ SKIP_OVLSYS_CONFIG:
 		    || comp_type == MTK_DP_INTF || comp_type == MTK_DISP_DPTX
 		    || comp_type == MTK_DISP_Y2R || comp_type == MTK_DISP_INLINE_ROTATE
 		    || comp_type == MTK_DISP_DLI_ASYNC || comp_type == MTK_DISP_DLO_ASYNC
+		    || comp_type == MTK_DISP_B_DLI_ASYNC || comp_type == MTK_DISP_B_DLO_ASYNC
+		    || comp_type == MTK_OVL_0_DLI_ASYNC || comp_type == MTK_OVL_0_DLO_ASYNC
+		    || comp_type == MTK_OVL_1_DLI_ASYNC || comp_type == MTK_OVL_1_DLO_ASYNC
+		    || comp_type == MTK_OVL_2_DLI_ASYNC || comp_type == MTK_OVL_2_DLO_ASYNC
 		    || comp_type == MTK_DISP_R2Y
 		    || comp_type == MTK_DISP_DVO || comp_type == MTK_DISP_BWM
 		) {
