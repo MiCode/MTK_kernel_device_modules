@@ -1,0 +1,46 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "inc/*.h",
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm-perf-arm-pmu",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SWPM_PERF_ARMV8_PMU": {
+            True:["swpm_perf_arm_pmu.c"],
+        },
+    },
+    includes = [
+        "inc",
+    ],
+    hdrs = glob([
+        "*.h",
+        "inc/*.h",
+    ]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
