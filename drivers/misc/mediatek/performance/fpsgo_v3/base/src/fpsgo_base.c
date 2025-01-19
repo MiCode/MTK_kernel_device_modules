@@ -882,6 +882,9 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	set_bit(FPSGO_TYPE, &local_master_type);
 	iter_thr->master_type = local_master_type;
 	iter_thr->bypass_closed_loop = 0;
+	iter_thr->sum_cpu_time_us = 0;
+	iter_thr->sum_q2q_time_us = 0;
+	iter_thr->sum_reset_ts = 0;
 	iter_thr->pmu_info_tree = RB_ROOT;
 	iter_thr->powerRL.uclamp = 100;
 	iter_thr->powerRL.ruclamp = 100;
