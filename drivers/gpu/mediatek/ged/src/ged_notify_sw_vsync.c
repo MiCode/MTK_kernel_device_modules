@@ -994,12 +994,13 @@ EXPORT_SYMBOL(ged_get_idle_time);
 
 bool ged_gpu_is_heavy(void)
 {
-	unsigned int gpu_loading;
-	int freq_id = ged_get_cur_oppidx();
+	unsigned int gpu_loading = 0;
+	int cur_oppidx = ged_get_cur_oppidx();
+	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 
 	mtk_get_gpu_loading(&gpu_loading);
 
-	return ((gpu_loading >= 85) && (freq_id == 0));
+	return ((gpu_loading >= 85) && (cur_oppidx <= ui32CeilingID));
 }
 EXPORT_SYMBOL(ged_gpu_is_heavy);
 
