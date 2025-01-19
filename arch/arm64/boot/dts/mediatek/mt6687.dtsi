@@ -78,5 +78,9 @@
 				bits = <6 1>;
 			};
 		};
+
+		mt6687_audclk: mt6687-audclk {
+			compatible = "mediatek,mt6687-audclk";
+		};
 	};
 };
