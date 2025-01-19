@@ -4646,7 +4646,7 @@ static int mtk_preconfig_dsi_enable(struct mtk_dsi *dsi)
 	mtk_dsi_exit_ulps(dsi, false);
 	if (is_bdg_supported())
 		check_stopstate(NULL);
-	mtk_dsi_clk_hs_mode(dsi, 0);
+	mtk_dsi_clk_hs_mode(dsi, 1);
 
 	return 0;
 }
@@ -5587,7 +5587,6 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	}
 
 	mtk_dsi_set_mode(dsi);
-	mtk_dsi_clk_hs_mode(dsi, 1);
 	if (dsi->slave_dsi) {
 		if (mtk_dsi_is_cmd_mode(&dsi->slave_dsi->ddp_comp))
 			mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
@@ -5595,7 +5594,6 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		if (mtk_dsi_is_LTPO_VM_Enable(dsi))
 			mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), EXT_TE_EN, EXT_TE_EN);
 		mtk_dsi_set_mode(dsi->slave_dsi);
-		mtk_dsi_clk_hs_mode(dsi->slave_dsi, 1);
 	}
 	if (is_bdg_supported()) {
 		if (get_bdg_tx_mode() != CMD_MODE) {
