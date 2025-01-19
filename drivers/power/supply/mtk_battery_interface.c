@@ -156,14 +156,14 @@ int get_charger_vbat(struct mtk_battery_manager *bm)
 			ret = val.intval / 1000;
 		else {
 			ret = gauge_get_int_property(bm->gm1,
-				GAUGE_PROP_BATTERY_VOLTAGE) / 10;
+				GAUGE_PROP_BATTERY_VOLTAGE);
 			pr_err("[%s] get POWER_SUPPLY_PROP_CHARGE_NOW fail\n", __func__);
 		}
 
 		power_supply_put(psy);
 	} else {
 		ret = gauge_get_int_property(bm->gm1,
-			GAUGE_PROP_BATTERY_VOLTAGE) / 10;
+			GAUGE_PROP_BATTERY_VOLTAGE);
 		pr_err("[%s] get charger power supply fail\n", __func__);
 	}
 

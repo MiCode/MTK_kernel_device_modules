@@ -196,7 +196,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 		if (gm->disableGM30)
 			vbat = 4000;
 		else
-			vbat = bm_get_vsys(gm->bm);
+			vbat = gauge_get_int_property(gm, GAUGE_PROP_BATTERY_VOLTAGE);
 
 		sdu->batdata[sdu->batidx] = vbat;
 
