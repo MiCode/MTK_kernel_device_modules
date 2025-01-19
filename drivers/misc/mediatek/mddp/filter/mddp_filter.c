@@ -27,6 +27,7 @@
 #include "mddp_f_proto.h"
 #include "mddp_ipc.h"
 #include "mtk_ccci_common.h"
+#include "mddp_export.h"
 
 
 #define USED_TIMEOUT 1
@@ -426,6 +427,57 @@ int32_t mddp_f_set_ct_value(uint8_t *buf, uint32_t buf_len)
 	return 0;
 }
 
+int32_t mddp_f_send_v4_conntrack_info(struct mddp_dev_ipv4_conntrack_event_t* buf, int32_t command)
+{
+	struct mddp_md_msg_t *md_msg;
+	struct mddp_app_t *app;
+
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
+	if (unlikely(!md_msg))
+		return -EAGAIN;
+	if (command == MDDP_CMCMD_IPV4_NEW_CONNTRACK)
+		md_msg->msg_id = IPC_MSG_ID_DPFM_ADD_CONN_V4;
+	else if (command == MDDP_CMCMD_IPV4_DST_CONNTRACK)
+		md_msg->msg_id = IPC_MSG_ID_DPFM_DEL_CONN_V4;
+	md_msg->data_len = sizeof(struct mddp_dev_ipv4_conntrack_event_t);
+	buf->wan_netif_id = mddp_f_get_valid_netif_id();
+	if (buf->wan_netif_id == -1) {
+		kfree(md_msg);
+		return buf->wan_netif_id;
+	}
+	memcpy(&md_msg->data, buf, md_msg->data_len);
+	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
+	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_DPFM);
+
+	return 0;
+}
+
+int32_t mddp_f_send_v6_conntrack_info(struct mddp_dev_ipv6_conntrack_event_t* buf, int32_t command)
+{
+	struct mddp_md_msg_t *md_msg;
+	struct mddp_app_t *app;
+
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
+	if (unlikely(!md_msg))
+		return -EAGAIN;
+	if (command == MDDP_CMCMD_IPV6_NEW_CONNTRACK)
+		md_msg->msg_id = IPC_MSG_ID_DPFM_ADD_CONN_V6;
+	else if (command == MDDP_CMCMD_IPV6_DST_CONNTRACK)
+		md_msg->msg_id = IPC_MSG_ID_DPFM_DEL_CONN_V6;
+	md_msg->data_len = sizeof(struct mddp_dev_ipv6_conntrack_event_t);
+	buf->wan_netif_id = mddp_f_get_valid_netif_id();
+	if (buf->wan_netif_id == -1) {
+		kfree(md_msg);
+		return buf->wan_netif_id;
+	}
+	memcpy(&md_msg->data, buf, md_msg->data_len);
+	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
+	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_DPFM);
+
+	return 0;
+}
+
+
 //------------------------------------------------------------------------------
 // Kernel functions.
 //------------------------------------------------------------------------------
@@ -487,8 +539,7 @@ static const struct net_device_ops mddp_wan_netdev_ops = {
 
 static int __net_init mddp_nf_register(struct net *net)
 {
-	return nf_register_net_hooks(net, mddp_nf_ops,
-					ARRAY_SIZE(mddp_nf_ops));
+	return nf_register_net_hooks(net, mddp_nf_ops, ARRAY_SIZE(mddp_nf_ops));
 }
 
 static void __net_exit mddp_nf_unregister(struct net *net)

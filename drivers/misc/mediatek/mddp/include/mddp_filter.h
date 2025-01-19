@@ -20,11 +20,14 @@ bool mddp_f_dev_add_wan_dev(char *dev_name);
 void mddp_f_dev_del_lan_dev(char *dev_name);
 void mddp_f_dev_del_wan_dev(char *dev_name);
 bool mddp_f_dev_is_wan_lan_dev(void);
+int mddp_f_dev_get_valid_netif_id(void);
 struct net_device *mddp_f_is_support_lan_dev(int ifindex);
 struct net_device *mddp_f_is_support_wan_dev(int ifindex);
 
 int32_t mddp_f_msg_hdlr(uint32_t msg_id, void *buf, uint32_t buf_len);
 int32_t mddp_f_set_ct_value(uint8_t *buf, uint32_t buf_len);
+int32_t mddp_f_send_v4_conntrack_info(struct mddp_dev_ipv4_conntrack_event_t *buf, int command);
+int32_t mddp_f_send_v6_conntrack_info(struct mddp_dev_ipv6_conntrack_event_t *buf, int command);
 void mddp_netfilter_hook(void);
 void mddp_netfilter_unhook(void);
 

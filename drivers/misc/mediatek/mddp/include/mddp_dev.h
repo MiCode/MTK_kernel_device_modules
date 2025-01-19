@@ -17,8 +17,10 @@
 #define MDDP_DETAILED_STATE_DISABLE 0
 #define MDDP_MD_LOG_ENABLE 19283746
 #define MDDP_MD_LOG_DISABLE 0
-#define MDDP_EM_SUPPORT	1                   /**< Engineer mode support */
-
+#define MDDP_CONNECTION_BASE_ENABLE 1
+#define MDDP_CONNECTION_BASE_DISABLE 0
+#define MDDP_EM_SUPPORT 1                   /**< Engineer mode support */
+extern bool mddp_connection_base_activated_s;
 //------------------------------------------------------------------------------
 // Public functions.
 // -----------------------------------------------------------------------------

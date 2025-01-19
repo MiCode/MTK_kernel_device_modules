@@ -29,5 +29,6 @@ struct mddp_f_dev_netif {
 // -----------------------------------------------------------------------------
 int mddp_f_dev_to_netif_id(struct net_device *netdev);
 void mddp_f_wan_netdev_set(struct net_device *netdev);
+int mddp_f_get_valid_netif_id(void);
 
 #endif /* _MDDP_F_DEV_H */

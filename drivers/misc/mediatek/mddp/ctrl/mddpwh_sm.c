@@ -192,8 +192,8 @@ static void mddpwh_sm_rsp_act_ok(struct mddp_app_t *app)
 	// 2. Send RSP to upper module.
 	mddp_dev_response(app->type, MDDP_CMCMD_ACT_RSP,
 			true, (uint8_t *)&act, sizeof(act));
-
-	schedule_work(&mddp_hook_work);
+	if (!mddp_connection_base_activated_s)
+		schedule_work(&mddp_hook_work);
 }
 
 static void mddpwh_sm_deact(struct mddp_app_t *app)
@@ -225,8 +225,8 @@ static void mddpwh_sm_rsp_deact(struct mddp_app_t *app)
 {
 	struct mddp_dev_rsp_deact_t     deact = {0};
 
-	schedule_work(&mddp_unhook_work);
-
+	if (!mddp_connection_base_activated_s)
+		schedule_work(&mddp_unhook_work);
 	// 2. Send RSP to WiFi
 	if (app->drv_hdlr.change_state != NULL)
 		app->drv_hdlr.change_state(app->state, NULL, NULL);

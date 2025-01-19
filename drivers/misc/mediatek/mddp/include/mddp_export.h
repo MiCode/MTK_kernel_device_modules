@@ -9,6 +9,7 @@
 #define __MDDP_EXPORT_H
 
 #include <linux/if.h>
+#include <linux/in6.h>
 
 #include "mddp_wifi_def.h"
 //------------------------------------------------------------------------------
@@ -103,7 +104,10 @@ enum mddp_ctrl_msg_e {
 	MDDP_CMCMD_SET_DATA_LIMIT_REQ,
 	MDDP_CMCMD_SET_CT_VALUE_REQ,
 	MDDP_CMCMD_SET_WARNING_AND_DATA_LIMIT_REQ,
-
+	MDDP_CMCMD_IPV4_NEW_CONNTRACK,
+	MDDP_CMCMD_IPV4_DST_CONNTRACK,
+	MDDP_CMCMD_IPV6_NEW_CONNTRACK,
+	MDDP_CMCMD_IPV6_DST_CONNTRACK,
 	/* CMCMD Response */
 	MDDP_CMCMD_RSP_BEGIN = 0x100,
 	MDDP_CMCMD_ENABLE_RSP = MDDP_CMCMD_RSP_BEGIN,
@@ -166,6 +170,28 @@ struct mddp_dev_req_set_warning_and_data_limit_t {
 struct mddp_dev_req_set_ct_value_t {
 	uint32_t                udp_ct_timeout;
 	uint32_t                tcp_ct_timeout;
+};
+
+struct mddp_dev_ipv4_conntrack_event_t {
+	uint32_t src_ip;
+	uint32_t dst_ip;
+	uint32_t pub_ip;
+	uint16_t sport;
+	uint16_t dport;
+	uint16_t pub_port;
+	uint8_t proto_num;
+	uint8_t mac[6];
+	int wan_netif_id;
+};
+
+struct mddp_dev_ipv6_conntrack_event_t {
+	struct in6_addr src_ip;
+	struct in6_addr dst_ip;
+	uint16_t sport;
+	uint16_t dport;
+	uint8_t proto_num;
+	uint8_t mac[6];
+	int wan_netif_id;
 };
 
 /*

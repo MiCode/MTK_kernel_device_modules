@@ -16,6 +16,8 @@
 #include "mddp_dev.h"
 #include "mddp_if.h"
 #include "mddp_sm.h"
+#include "mddp_filter.h"
+#include <linux/in6.h>
 
 //------------------------------------------------------------------------------
 // Struct definition.
@@ -122,6 +124,7 @@ uint32_t mddp_debug_log_class_s = MDDP_LC_ALL;
 uint32_t mddp_debug_log_level_s = MDDP_LL_DEFAULT;
 static bool mddp_dstate_activated_s;
 static bool mddp_md_log_activated_s;
+bool mddp_connection_base_activated_s = true;
 
 //------------------------------------------------------------------------------
 // Function Prototype.
@@ -281,7 +284,7 @@ static int32_t em_cmd_status;
 static ssize_t
 em_test_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "staus:%d, cmd_buf:%s\n",
+	return scnprintf(buf, PAGE_SIZE, "status:%d, cmd_buf:%s\n",
 			em_cmd_status, em_cmd_buf);
 }
 
@@ -298,7 +301,6 @@ em_test_store(struct device *dev,
 	unsigned int            str_len;
 
 	str_len = strlen(buf);
-
 	snprintf(em_cmd_buf, EM_CMD_BUF_SZ, "%.*s",
 			(int)min(count, sizeof(em_cmd_buf) - 1), buf);
 	strsep_buf_p = em_cmd_buf;
@@ -393,6 +395,30 @@ md_log_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(md_log);
 
+static ssize_t
+mddp_method_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE,"MDDP is %s base now\n", mddp_connection_base_activated_s? "Connection":"Packet");
+}
+
+static ssize_t
+mddp_method_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf,
+		size_t count)
+{
+	unsigned long value;
+
+	if (!kstrtoul(buf, 0, &value)) {
+		if (value == MDDP_CONNECTION_BASE_ENABLE)
+			mddp_connection_base_activated_s = true;
+		else if (value == MDDP_CONNECTION_BASE_DISABLE)
+			mddp_connection_base_activated_s = false;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(mddp_method);
 
 static struct attribute *mddp_attrs[] = {
 	&dev_attr_version.attr,
@@ -403,6 +429,7 @@ static struct attribute *mddp_attrs[] = {
 #ifdef MDDP_EM_SUPPORT
 	&dev_attr_em_test.attr,
 #endif
+	&dev_attr_mddp_method.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(mddp);
@@ -1113,7 +1140,50 @@ static long mddp_dev_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 			}
 		}
 		break;
+	case MDDP_CMCMD_IPV4_NEW_CONNTRACK:
+	case MDDP_CMCMD_IPV4_DST_CONNTRACK:
+		if (!mddp_connection_base_activated_s)
+			break;
+		if (data_len == sizeof(struct mddp_dev_ipv4_conntrack_event_t)) {
+			struct mddp_dev_ipv4_conntrack_event_t *to, *from;
 
+			to = (struct mddp_dev_ipv4_conntrack_event_t *)&buf;
+			from = (struct mddp_dev_ipv4_conntrack_event_t *)
+				&(((struct mddp_dev_req_common_t *)arg)->data);
+			ret = copy_from_user(to, from, data_len);
+			if (ret) {
+				ret = -EFAULT;
+				goto ioctl_error;
+			}
+			ret = mddp_f_send_v4_conntrack_info(
+				(struct mddp_dev_ipv4_conntrack_event_t*)to, dev_req.msg);
+			if (ret == -1) {
+				goto ioctl_error;
+			}
+		}
+		break;
+	case MDDP_CMCMD_IPV6_NEW_CONNTRACK:
+	case MDDP_CMCMD_IPV6_DST_CONNTRACK:
+		if (!mddp_connection_base_activated_s)
+			break;
+		if (data_len == sizeof(struct mddp_dev_ipv6_conntrack_event_t)) {
+			struct mddp_dev_ipv6_conntrack_event_t *to, *from;
+
+			to = (struct mddp_dev_ipv6_conntrack_event_t *)&buf;
+			from = (struct mddp_dev_ipv6_conntrack_event_t *)
+				&(((struct mddp_dev_req_common_t *)arg)->data);
+			ret = copy_from_user(to, from, data_len);
+			if (ret) {
+				ret = -EFAULT;
+				goto ioctl_error;
+			}
+			ret = mddp_f_send_v6_conntrack_info(
+				(struct mddp_dev_ipv6_conntrack_event_t*)to, dev_req.msg);
+			if (ret == -1) {
+				goto ioctl_error;
+			}
+		}
+		break;
 	default:
 		MDDP_C_LOG(MDDP_LL_WARN, "%s: Invalid command(%d)!\n",
 				__func__, dev_req.msg);
@@ -1123,7 +1193,7 @@ static long mddp_dev_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
 ioctl_error:
 	MDDP_C_LOG(MDDP_LL_INFO,
-			"%s: cmd(%d) app_type(%d), ret (%ld).\n",
+			"%s: cmd(%d), app_type(%d), ret (%ld).\n",
 			__func__, dev_req.msg, dev_req.app_type, ret);
 	return ret;
 }

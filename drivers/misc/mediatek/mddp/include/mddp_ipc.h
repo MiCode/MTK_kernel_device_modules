@@ -73,6 +73,15 @@ enum MDDP_MDFPM_MSG_ID_CODE {
 	IPC_MSG_ID_MDFPM_SEND_ILM,
 	IPC_MSG_ID_MDFPM_LOG,
 	IPC_MSG_ID_MDFPM_REQ_UPSCALING,
+	IPC_MSG_ID_RESERVED_16,
+	IPC_MSG_ID_RESERVED_17,
+	IPC_MSG_ID_RESERVED_18,
+	IPC_MSG_ID_RESERVED_19,
+	IPC_MSG_ID_RESERVED_20,
+	IPC_MSG_ID_DPFM_ADD_CONN_V4,
+	IPC_MSG_ID_DPFM_DEL_CONN_V4,
+	IPC_MSG_ID_DPFM_ADD_CONN_V6,
+	IPC_MSG_ID_DPFM_DEL_CONN_V6,
 };
 
 #define MDFPM_AP_USER_ID    0x13578642
@@ -123,6 +132,8 @@ struct mddp_md_msg_t {
 		struct mddpw_txd_t txd;
 		struct mddpw_drv_notify_info_t wifi_notify;
 		struct mddp_f_set_ct_timeout_req_t ct_req;
+		struct mddp_dev_ipv4_conntrack_event_t v4_event;
+		struct mddp_dev_ipv6_conntrack_event_t v6_event;
 	);
 };
 

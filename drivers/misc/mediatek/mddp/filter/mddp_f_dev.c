@@ -133,6 +133,20 @@ int mddp_f_dev_to_netif_id(struct net_device *netdev)
 	return -1;
 }
 
+int mddp_f_get_valid_netif_id(void)
+{
+	int i;
+
+	for (i = 0; (i < MDDP_MAX_WAN_DEV_NUM) && (mddp_f_wan_dev_cnt_g > 0); i++) {
+		if (mddp_f_wan_dev[i].is_valid == true) {
+			/* Matched! */
+			return mddp_f_wan_dev[i].netif_id;
+		}
+	}
+
+	return -1;
+}
+
 int mddp_f_data_usage_wan_dev_name_to_id(char *dev_name)
 {
 	int i;
@@ -145,6 +159,17 @@ int mddp_f_data_usage_wan_dev_name_to_id(char *dev_name)
 	}
 
 	return -1;
+}
+
+int mddp_f_dev_get_valid_netif_id(void)
+{
+	int i;
+
+	for (i = 0; i < MDDP_MAX_LAN_DEV_NUM; i++) {
+		if (mddp_f_wan_dev[i].is_valid == false)
+			return mddp_f_wan_dev[i].netif_id;
+	}
+	return -ENODEV;
 }
 
 bool mddp_f_dev_add_lan_dev(char *dev_name, int netif_id)
