@@ -3676,7 +3676,7 @@ static void mtk_venc_worker(struct mtk_vcodec_ctx *ctx)
 		}
 		mtk_vdec_queue_stop_enc_event(ctx);
 
-		if (vb2_get_plane_payload(src_vb, 0) == 0U) {
+		if (src_buf_info != ctx->enc_flush_buf && vb2_get_plane_payload(src_vb, 0) == 0U) {
 			src_vb2_v4l2->flags |= V4L2_BUF_FLAG_LAST;
 			vb2_set_plane_payload(&src_buf_info->vb.vb2_buf, 0, 0);
 			v4l2_m2m_buf_done(src_vb2_v4l2,
