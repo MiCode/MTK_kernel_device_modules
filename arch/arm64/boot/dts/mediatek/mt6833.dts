@@ -2121,8 +2121,8 @@
 				<&iommu0 M4U_PORT_L4_VDEC_UFO_ENC_EXT>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			mediatek,mailbox-gce = <&gce>;
-			mediatek,dec_gce_th_num = <1>; /* VDEC GCE HW THREAD NUM*/
-			mediatek,enc_gce_th_num = <2>; /* VDEC GCE HW THREAD NUM*/
+			mediatek,dec-gce-th-num = <1>; /* VDEC GCE HW THREAD NUM*/
+			mediatek,enc-gce-th-num = <2>; /* VDEC GCE HW THREAD NUM*/
 
 			mboxes = <&gce 7 0 CMDQ_THR_PRIO_1>,
 				<&gce 12 0 CMDQ_THR_PRIO_1>,
@@ -2256,7 +2256,7 @@
 			clock-names =
 				"CORE_MT_CG_VDEC0";
 			operating-points-v2 = <&opp_table_vdec>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_MC_EXT)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_UFO_EXT)
@@ -2319,18 +2319,18 @@
 				<808996950 0 218 218>, /* VP8 */
 				<809062486 0 218 218>; /* VP9 */
 			bandwidth-table =
-				<3 232>,
-				<3 0>,
-				<2 178>,
-				<5 1>,
-				<5 1>,
-				<5 0>,
-				<5 0>,
-				<0 8>,
-				<0 0>,
-				<5 16>,
-				<5 0>,
-				<6 0>;
+				<4 2 232>,
+				<4 0 0>,
+				<4 1 178>,
+				<4 2 1>,
+				<4 2 1>,
+				<4 2 0>,
+				<4 2 0>,
+				<4 0 8>,
+				<4 0 0>,
+				<4 0 16>,
+				<4 2 0>,
+				<4 0 0>;
 			svp-mtee = <1>;
 		};
 
@@ -2338,6 +2338,7 @@
 			compatible = "mediatek,mt6833-vcodec-enc";
 			mediatek,platform = "platform:mt6833";
 			mediatek,ipm = <1>;
+			venc-core-count = <1>;
 			reg = <0 0x17020000 0 0x2000>,
 				  <0 0x17820000 0 0x20000>;
 			reg-names =
@@ -2365,7 +2366,22 @@
 			clock-names =
 				"MT_CG_VENC0";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			venc-disable-hw-break = <1>;
+			port-arg-num = <3>;
+			port-def = <0 M4U_PORT_L7_VENC_RCPU 0>,
+				<0 M4U_PORT_L7_VENC_REC 0>,
+				<0 M4U_PORT_L7_VENC_BSDMA 0>,
+				<0 M4U_PORT_L7_VENC_SV_COMV 0>,
+				<0 M4U_PORT_L7_VENC_RD_COMV 0>,
+				<0 M4U_PORT_L7_VENC_CUR_LUMA 0>,
+				<0 M4U_PORT_L7_VENC_CUR_CHROMA 0>,
+				<0 M4U_PORT_L7_VENC_REF_LUMA 0>,
+				<0 M4U_PORT_L7_VENC_REF_CHROMA 0>,
+				<0 M4U_PORT_L7_JPGENC_Y_RDMA 0>,
+				<0 M4U_PORT_L7_JPGENC_C_RDMA 0>,
+				<0 M4U_PORT_L7_JPGENC_Q_TABLE 0>,
+				<0 M4U_PORT_L7_JPGENC_BSDMA>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_RCPU)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_REC)
@@ -2416,20 +2432,20 @@
 					<1179206984 486000 4 4>,
 					<1179206984 4294967295 9 7>;
 			bandwidth-table =
-					<4 10>,
-					<3 160>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 0.7 */
-					<0 20>,
-					<5 4>,
-					<5 16>,
-					<1 194>,
-					<2 97>,
-					<1 0>,
-					<2 642>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 4 * 0.7*/
-					<6 7>;
+					<7 2 10>,
+					<7 1 160>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 0.7 */
+					<7 1 20>,
+					<7 2 4>,
+					<7 1 16>,
+					<7 0 194>,
+					<7 0 97>,
+					<7 0 0>,
+					<7 0 642>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 4 * 0.7*/
+					<7 0 7>;
 		};
 
 		jpgenc@17030000 {
-			compatible = "mediatek,mtk-jpgenc-32bit";
+			compatible = "mediatek,mtk-jpgenc";
 			reg = <0 0x17030000 0 0x10000>;
 			interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>;
@@ -2442,7 +2458,7 @@
 				 <&iommu0  M4U_PORT_L7_JPGENC_Q_TABLE>,
 				 <&iommu0  M4U_PORT_L7_JPGENC_BSDMA>;
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_Y_RDMA)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_JPGENC_C_RDMA)
@@ -2456,6 +2472,7 @@
 						"path_jpegenc_q_table",
 						"path_jpegenc_bsdma";
 			interconnect-num = <4>;
+			support-34bits = <0>;
 		};
 
 	};
