@@ -1292,11 +1292,16 @@ int mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev, int bitdepth)
 		va = map.vaddr;
 
 		/* fill working buffer */
+		ret = dma_buf_begin_cpu_access(dmabuf, DMA_TO_DEVICE);
+		if (ret)
+			mtk_v4l2_err("vp mode src_buf[%d][%d] dma_buf_begin_cpu_access failed %d", idx, i, ret);
 		copy_times = src_buf->mem.len / pattern_len;
 		for (j = 0; j < copy_times; j++)
 			memcpy((va + j * pattern_len), pattern, pattern_len);
-		dma_sync_sg_for_device(io_dev, src_buf->sgt->sgl,
-			src_buf->sgt->nents, DMA_TO_DEVICE);
+		ret = dma_buf_end_cpu_access(dmabuf, DMA_TO_DEVICE);
+		if (ret)
+			mtk_v4l2_err("vp mode src_buf[%d][%d] dma_buf_end_cpu_access failed %d", idx, i, ret);
+
 		dma_buf_vunmap_unlocked(dmabuf, &map);
 	}
 	mutex_unlock(&dev->vp_mode_buf_mutex);
