@@ -288,15 +288,27 @@ unsigned int mtk_get_axiid(unsigned int emi_id)
 	unsigned int value;
 	struct emi_mpu *mpu;
 	void __iomem *emi_cen_base;
-	unsigned int axiid_mask = 0xffff;
 	struct reg_info_t *dump_reg;
+	//value
+	unsigned int axiid_value;
+	unsigned int axiid_ext_value;
+	unsigned int masterid_value;
+	//mask
+	unsigned int axiid_mask = 0x1fff;
+	unsigned int axiid_ext_mask = 0x7;
+	unsigned int masterid_mask = 0xf;
+	//offset
+	unsigned int axiid_offset = 3;
+        unsigned int axiid_ext_offset = 8;
+        unsigned int masterid_offset = 12;
 
 	mpu = global_emi_mpu;
-	if (!mpu)
-		return -EINVAL;
 	dump_reg = mpu->dump_reg;
 	emi_cen_base = mpu->emi_cen_base[emi_id];
-	value = readl(emi_cen_base + dump_reg[0].offset) & axiid_mask;
+	axiid_value = (readl(emi_cen_base + dump_reg[0].offset)>>axiid_offset) & axiid_mask;
+	axiid_ext_value = (readl(emi_cen_base + dump_reg[2].offset)>>axiid_ext_offset) & axiid_ext_mask;
+	masterid_value = (readl(emi_cen_base + dump_reg[2].offset)>>masterid_offset) & masterid_mask;
+	value = (axiid_ext_value<<18) + (axiid_value<<5) + masterid_value;
 
 	return value;
 }
