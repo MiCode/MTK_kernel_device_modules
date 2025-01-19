@@ -4599,6 +4599,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		w-hrt-ostdl = <1>;
 	};
 
+	ktf-mmqos-test {
+		compatible = "mediatek,ktf-mmqos-test";
+		mmqos-supply = <&mmqos>;
+		interconnects =
+			<&mmqos MASTER_LARB_PORT(SMMU_L2_P6_MDP_RROT0)
+				&mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(SMMU_L0_P0_OVL_RDMA2_HDR)
+				&mmqos SLAVE_COMMON(0)>;
+		interconnect-names = "test_icc_sw_bw", "test_icc_hw_bw";
+	};
+
 	soc {
 				compatible = "simple-bus";
 				#address-cells = <2>;
