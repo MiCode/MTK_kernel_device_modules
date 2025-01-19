@@ -163,6 +163,7 @@ static struct regulator *dvfsrc_vscp_power;
 static struct regulator *reg_vcore;
 static struct regulator *reg_vsram;
 
+static int scp_pm_event(struct notifier_block *notifier, unsigned long pm_event, void *unused);
 
 /* ulposc calibration data */
 static void turn_onoff_ulposc2(enum ulposc_onoff_enum on);
@@ -1087,10 +1088,17 @@ static ssize_t mt_scp_dvfs_sleep_cnt_proc_write(
 				__func__, ret);
 			return -ESCP_DVFS_IPI_FAILED;
 		}
+#if IS_ENABLED(CONFIG_PM)
+	} else if (!strcmp(cmd, "pm_suspend_prepare")) {
+		scp_pm_event(NULL, PM_SUSPEND_PREPARE, NULL);
+	} else if (!strcmp(cmd, "pm_post_suspend")) {
+		scp_pm_event(NULL, PM_POST_SUSPEND, NULL);
+#endif /* IS_ENABLED(CONFIG_PM) */
 	} else {
 		pr_notice("[%s]: invalid command: %s\n", __func__, cmd);
 		return -ESCP_DVFS_DBG_INVALID_CMD;
 	}
+
 
 	return count;
 }
@@ -1441,10 +1449,10 @@ bool sync_ulposc_cali_data_to_scp(void)
 	bool cali_ok = true;
 
 	if (!g_dvfs_dev.ulposc_hw.do_ulposc_cali) {
-		pr_notice("[%s]: ulposc2 calibration is not done by AP\n",
+		pr_notice("[%s]: no ulposc2 cali data\n",
 			__func__);
 		/* u2 is usable, return true */
-		return true;
+		goto FINISH;
 	}
 
 	if (g_dvfs_dev.ulposc_hw.cali_failed) {
@@ -1484,10 +1492,12 @@ bool sync_ulposc_cali_data_to_scp(void)
 		}
 	}
 
+FINISH:
 	/*
 	 * After syncing, scp will be changed to default freq, which is not set by kernel.
 	 * Reset last_scp_expected_freq to prevent not updating freq in scp reset flow.
 	 */
+
 	last_scp_expected_freq = 0;
 	last_sap_expected_freq = 0;
 
@@ -2298,6 +2308,27 @@ FINISH:
 	return 0;
 }
 
+static int scp_pm_event(struct notifier_block *notifier,
+		unsigned long pm_event, void *unused)
+{
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		mt_scp_dump_sleep_count();
+		if (scpreg.low_pwr_dbg)
+			mt_scp_start_res_prof();
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:
+		mt_scp_dump_sleep_count();
+		if (scpreg.low_pwr_dbg)
+			mt_scp_stop_res_prof();
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block scp_pm_notifier_func = {
+	.notifier_call = scp_pm_event,
+};
 #endif /* IS_ENABLED(CONFIG_PM) */
 
 static int __init mt_scp_dts_init_scp_clk_hw(struct device_node *node)
@@ -2736,9 +2767,7 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 	 * defined in clk-fmeter.h has been provided.
 	 */
 	g_dvfs_dev.ccf_fmeter_support = of_property_read_bool(node, PROPNAME_CCF_FM_SUPPORT);
-	if (!g_dvfs_dev.ccf_fmeter_support) {
-		pr_notice("[%s]: fmeter api havn't been provided, use legacy one\n", __func__);
-	} else {
+	if (g_dvfs_dev.ccf_fmeter_support) {
 		/* fmeter args for ulposc2 clibration process */
 		ret = mt_scp_dts_fmeter_get(node, PROPNAME_FM_ARGS_U2_CALI,
 			&g_dvfs_dev.ccf_fmeter_id,
@@ -2761,6 +2790,8 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 			g_dvfs_dev.ccf_fmeter_id_result,
 			g_dvfs_dev.ccf_fmeter_type_result);
 	}
+	pr_notice("[%s] fmeter_support = %s\n", __func__,
+		g_dvfs_dev.ccf_fmeter_support ? "Y" : "N");
 
 	/* init dvfs data */
 	ret = mt_scp_dts_init_dvfs_data(node, &g_dvfs_dev.opp);
@@ -2892,6 +2923,14 @@ static int __init mt_scp_dvfs_pdrv_probe(struct platform_device *pdev)
 	g_dvfs_dev.ulposc_hw.cali_configs = NULL;
 
 	scp_dvfs_lock = wakeup_source_register(NULL, "scp wakelock");
+
+#if IS_ENABLED(CONFIG_PM)
+	ret = register_pm_notifier(&scp_pm_notifier_func);
+	if (ret) {
+		pr_notice("[%s]: failed to register PM notifier.\n", __func__);
+		WARN_ON(1);
+	}
+#endif /* IS_ENABLED(CONFIG_PM) */
 
 #if IS_ENABLED(CONFIG_PROC_FS)
 	/* init proc */
