@@ -590,11 +590,10 @@ static const struct mtk_i2c_compatible mt6781_compat = {
 	.timing_adjust = 1,
 	.dma_sync = 1,
 	.ltiming_adjust = 1,
-	.dma_ver = 1,
+	.dma_ver = 0,
 	.apdma_sync = 1,
 	.max_dma_support = 36,
 	.fifo_size = 8,
-	.slave_addr_ver = 1,
 };
 
 static const struct mtk_i2c_compatible mt6877_compat = {
