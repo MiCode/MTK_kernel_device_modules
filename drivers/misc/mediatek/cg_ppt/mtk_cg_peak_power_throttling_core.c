@@ -377,7 +377,7 @@ static void get_sgnl_data(struct sgnlInfo *sgnl_info)
 
 	struct power_supply *psy;
 	union power_supply_propval val;
-	unsigned int gpu_loading;
+	unsigned int gpu_loading = 0;
 	int i;
 
 	/*
