@@ -659,8 +659,7 @@ void mtk_vidle_dvfs_set(const u8 level)
 {
 	vidle_data.level = level;
 	if (disp_dpc_driver.dpc_dvfs_set)
-		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level,
-					     !atomic_read(&g_ff_enabled));
+		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level, true);
 	else
 		DDPINFO("%s NOT SET:%d\n", __func__, level);
 }
