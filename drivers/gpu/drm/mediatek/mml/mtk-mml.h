@@ -106,6 +106,12 @@ struct mml_pq_film_grain_params {
 	unsigned char clip_to_restricted_range;
 };
 
+struct meta_ds_param {
+	bool en;
+	uint32_t gain_mid;
+	uint32_t gain_high;
+};
+
 struct mml_pq_video_param {
 	uint32_t video_id;
 	uint32_t  time_stamp;
@@ -116,6 +122,7 @@ struct mml_pq_video_param {
 	int32_t qpsum;
 	struct mml_pq_film_grain_params fg_meta;
 	uint16_t rotate;
+	struct meta_ds_param ds_param;
 };
 
 struct mml_pq_config {
@@ -169,6 +176,7 @@ enum mml_pq_video_mode {
 	MML_PQ_AIREGION,
 	MML_PQ_CCORR,
 	MML_PQ_HLG,
+	MML_PQ_APP,
 };
 
 struct mml_pq_param {
