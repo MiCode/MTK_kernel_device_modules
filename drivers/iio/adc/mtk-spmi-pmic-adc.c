@@ -404,12 +404,13 @@ static const struct auxadc_info mt6661_poll_info = {
 static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 			  int channel, int channel2, int *val)
 {
-	const struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
-	int ret;
+	struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
 	unsigned int poll_en = 0;
+	int ret;
 	u16 buf = 0;
 	u8 wdata = 0;
 
+	auxadc_chan->regs = &adc_dev->info->regs_tbl[channel];
 	if (!auxadc_chan->regs)
 		return -EINVAL;
 
@@ -494,11 +495,12 @@ static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 static int get_auxadc_out_poll(struct pmic_adc_device *adc_dev,
 			       int channel, int channel2, int *val)
 {
-	const struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
-	int ret;
+	struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
 	unsigned int poll_en = 0, old_pures, extsrc_sel_mask;
+	int ret;
 	u16 buf = 0;
 
+	auxadc_chan->regs = &adc_dev->info->regs_tbl[channel];
 	if (!auxadc_chan->regs || !auxadc_chan->regs->poll_en_reg)
 		return -EINVAL;
 
