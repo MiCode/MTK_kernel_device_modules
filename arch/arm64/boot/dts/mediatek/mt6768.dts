@@ -4319,7 +4319,7 @@ transparent_hugepage=never";
 		};
 
 	vcodec_dec: vcodec_dec@16000000 {
-		compatible = "mediatek,mt6768-vcodec-dec";
+		compatible = "mediatek,vcodec-dec";
 		mediatek,platform = "platform:mt6768";
 		mediatek,ipm = <1>;
 		reg = <0 0x16000000 0 0x1000>,		/* VDEC_SYS */
@@ -4439,7 +4439,7 @@ transparent_hugepage=never";
 	};
 
 	vcodec_enc: vcodec_enc@17000000 {
-		compatible = "mediatek,mt6768-vcodec-enc";
+		compatible = "mediatek,vcodec-enc";
 		mediatek,platform = "platform:mt6768";
 		mediatek,ipm = <1>;
 		reg = <0 0x17020000 0 0x2000>;

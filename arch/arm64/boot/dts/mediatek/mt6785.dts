@@ -3724,7 +3724,7 @@ page_owner=on loop.max_part=7";
 	};
 
 	vcodec_dec: vcodec_dec@16000000 {
-		compatible = "mediatek,mt6785-vcodec-dec";
+		compatible = "mediatek,vcodec-dec";
 		reg = <0 0x16000000 0 0x1000>,		/* VDEC_SYS */
 			 <0 0x16020000 0 0x400>,		/* VDEC_VLD */
 			 <0 0x16021000 0 0x1000>,		/* VDEC_MC */
@@ -3858,7 +3858,7 @@ page_owner=on loop.max_part=7";
 	};
 
 	vcodec_enc: vcodec_enc@17000000 {
-		compatible = "mediatek,mt6785-vcodec-enc", "syscon";
+		compatible = "mediatek,vcodec-enc", "syscon";
 		reg = <0 0x17000000 0 0x1000>,
 			<0 0x17020000 0 0x1000>;
 #ifdef CONFIG_MTK_IOMMU_V2

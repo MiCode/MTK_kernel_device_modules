@@ -2770,7 +2770,7 @@
 		};
 
 		vdec@16000000 {
-			compatible = "mediatek,mt6781-vcodec-dec";
+			compatible = "mediatek,vcodec-dec";
 			mediatek,platform = "platform:mt6781";
 			mediatek,ipm = <1>;
 			reg = <0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
@@ -2909,7 +2909,7 @@
 		};
 
 		venc@17000000 {
-			compatible = "mediatek,mt6781-vcodec-enc";
+			compatible = "mediatek,vcodec-enc";
 			mediatek,platform = "platform:mt6781";
 			mediatek,ipm = <1>;
 			reg = <0 0x17000000 0 0x1000>,	/* VENC_GCON */
