@@ -283,6 +283,25 @@ int mtk_clear_smpu_log(unsigned int emi_id)
 }
 EXPORT_SYMBOL(mtk_clear_smpu_log);
 
+unsigned int mtk_get_axiid(unsigned int emi_id)
+{
+	unsigned int value;
+	struct emi_mpu *mpu;
+	void __iomem *emi_cen_base;
+	unsigned int axiid_mask = 0xffff;
+	struct reg_info_t *dump_reg;
+
+	mpu = global_emi_mpu;
+	if (!mpu)
+		return -EINVAL;
+	dump_reg = mpu->dump_reg;
+	emi_cen_base = mpu->emi_cen_base[emi_id];
+	value = readl(emi_cen_base + dump_reg[0].offset) & axiid_mask;
+
+	return value;
+}
+EXPORT_SYMBOL(mtk_get_axiid);
+
 static const struct of_device_id emimpu_of_ids[] = {
 	{.compatible = "mediatek,common-emimpu",},
 	{}
