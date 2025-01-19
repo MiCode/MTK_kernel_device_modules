@@ -1823,6 +1823,21 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 	return 0;
 }
 
+int calculate_hrt_total_bw(int max_freq, int chn_cnt, int io_width, int def_hrt_value)
+{
+	int cal_total_hrt_bw;
+
+	if (max_freq > 0 && chn_cnt > 0)
+		cal_total_hrt_bw = max_freq * chn_cnt * io_width;
+	else {
+		MMQOS_ERR("dramc or emi not ready,cannot get max frequency or channel count");
+		return def_hrt_value;
+	}
+	MMQOS_DBG("max_freq:%d, channel_count:%d, io_width:%d", max_freq, chn_cnt, io_width);
+	return cal_total_hrt_bw;
+}
+EXPORT_SYMBOL_GPL(calculate_hrt_total_bw);
+
 void mmqos_hrt_dump(void)
 {
 	u32 larb_id = 0;
@@ -1867,7 +1882,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	struct larb_node *larb_node;
 	struct larb_port_node *larb_port_node;
 	struct mtk_iommu_data *smi_imu;
-	int i, j, id, num_larbs = 0, ret, ddr_type;
+	int i, j, id, num_larbs = 0, ret, ddr_type, io_width;
 #if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
 	int max_freq, chn_cnt;
 #endif
@@ -2188,14 +2203,16 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		memcpy(hrt, &mmqos_desc->hrt, sizeof(mmqos_desc->hrt));
 	pr_notice("[mmqos] ddr type: %d\n", mtk_dramc_get_ddr_type());
 
+	if (ddr_type == TYPE_LPDDR3)
+		io_width = 4;
+	else
+		io_width = 2;
+
 #if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
 	max_freq = mtk_dramc_get_steps_freq(0);
 	chn_cnt = mtk_emicen_get_ch_cnt();
-	if (max_freq > 0 && chn_cnt > 0)
-		hrt->hrt_total_bw = max_freq * chn_cnt * 2;
-	else
-		MMQOS_ERR("dramc or emi not ready, cannot get max frequency or channel count");
-	MMQOS_DBG("max_freq:%d, channel count:%d", max_freq, chn_cnt);
+	hrt->hrt_total_bw = calculate_hrt_total_bw(max_freq, chn_cnt, io_width,
+								hrt->hrt_total_bw);
 #endif
 	MMQOS_DBG("hrt_total_bw: %d", hrt->hrt_total_bw);
 
