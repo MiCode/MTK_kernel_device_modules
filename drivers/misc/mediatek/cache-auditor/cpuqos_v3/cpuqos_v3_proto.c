@@ -21,15 +21,8 @@
 #include "cpuqos_sys_common.h"
 #include "common.h"
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-#include <mtk_slbc_sram.h>
-#else
-#define SLC_SYSRAM_BASE         0x00113E00
-#define CPUQOS_MODE             0x9C
-static void __iomem *sram_base_addr;
-#endif
-
 static void __iomem *l3ctl_sram_base_addr;
+#define SIZE_USAGE_OFS	0x4
 #define RESOURCE_USAGE_OFS	0xC
 #define CUS_INT_STA 0xCC
 #define PER_GRP 0x4
@@ -537,15 +530,6 @@ int set_cpuqos_mode(int mode)
 
 	if (ram_base != RAM_BASE_SLC)
 		iowrite32(cpuqos_perf_mode, l3ctl_sram_base_addr);
-	else {
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-		slbc_sram_write(CPUQOS_MODE, cpuqos_perf_mode);
-#else
-		pr_info("Set to SLBC fail: config is disable\n");
-		sram_base_addr = ioremap(SLC_SYSRAM_BASE, SLC_SRAM_SIZE);
-		iowrite32(cpuqos_perf_mode, (sram_base_addr + CPUQOS_MODE));
-#endif
-	}
 
 	/*
 	 * Ensure the pd map update is visible before kicking the CPUs.
@@ -613,19 +597,7 @@ static void cpuqos_tracer(void)
 {
 	unsigned int csize = 0;
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-	csize = slbc_sram_read(SLC_CPU_DEBUG1_R_OFS);
-#else
-	sram_base_addr = ioremap(SLC_SYSRAM_BASE, SLC_SRAM_SIZE);
-
-	if (!sram_base_addr) {
-		pr_info("Remap SLC SYSRAM failed\n");
-		return;
-	}
-
-	csize = ioread32(sram_base_addr + SLC_CPU_DEBUG1_R_OFS);
-#endif
-	csize &= 0xf;
+	csize = ioread32(l3ctl_sram_base_addr + SIZE_USAGE_OFS);
 
 	if (!boot_complete) {
 		pr_info("cpuqos_mode=%d, slices=%u, cache way mode=%u",

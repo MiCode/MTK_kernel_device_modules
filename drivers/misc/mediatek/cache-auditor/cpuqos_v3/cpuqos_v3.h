@@ -8,11 +8,6 @@
 #include <linux/ioctl.h>
 #include "common.h"
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-extern u32 slbc_sram_read(u32 offset);
-extern void slbc_sram_write(u32 offset, u32 val);
-#endif
-
 struct _CPUQOS_V3_PACKAGE {
 	__u32 mode;
 	__u32 pid;
