@@ -1308,7 +1308,7 @@ static void disp_aal_dre3_reset_to_linear(struct mtk_ddp_comp *comp, int check)
 			/* write each block dre curve */
 			if (!disp_aal_dre3_write_linear_curve(aal_data,
 				dre3_gain, blk_x, blk_y, dre_blk_x_num, check)) {
-				AALERR("%s write_linear_curve error\n");
+				AALERR("write_linear_curve error\n");
 				return;
 			}
 		}
@@ -1316,7 +1316,7 @@ static void disp_aal_dre3_reset_to_linear(struct mtk_ddp_comp *comp, int check)
 	/* write each block dre curve last point */
 	if (!disp_aal_dre3_write_linear_curve16(aal_data,
 		dre3_gain, dre_blk_x_num, dre_blk_y_num, check))
-		AALERR("%s write_linear_curve16 error\n");
+		AALERR("write_linear_curve16 error\n");
 }
 
 static void disp_aal_init_dre3_curve(struct mtk_ddp_comp *comp)
