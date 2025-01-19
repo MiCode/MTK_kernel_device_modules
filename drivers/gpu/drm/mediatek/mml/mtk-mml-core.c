@@ -1141,16 +1141,16 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 		mml_mmp(dpc_bw_srt, MMPROFILE_FLAG_PULSE, sysid, srt_bw[sysid]);
 		mml_mmp(dpc_bw_hrt, MMPROFILE_FLAG_PULSE, sysid, hrt_bw_max);
 
+		/* set channel bw for dpc2.0 */
 		mml_dpc_channel_bw_set_by_idx(sysid, stash_srt_bw[sysid], false);
 		mml_dpc_channel_bw_set_by_idx(sysid, stash_hrt_bw[sysid], true);
 	}
 
 	/* set dpc dvfs (mminfra, bus) */
 	mml_dpc_dvfs_set(dpc_dvfs_lv, true);
-	mml_dpc_dvfs_bw_set(path->mmlsys->id, hrt_bw_max);
 
-	if (path->mmlsys2)
-		mml_dpc_dvfs_bw_set(path->mmlsys2->id, hrt_bw_max);
+	/* set channel bw total for dpc1.0 */
+	mml_dpc_channel_bw_set(path->mmlsys->id, hrt_bw_max);
 
 	/* and update in dvfs end case */
 	if (trigger)
