@@ -169,6 +169,12 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/hybrid:ktf_hybrid_demo",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_device_class_ut:ktf_usb_device_class_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_type_c_ut:ktf_usb_type_c_ut",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/scp:ktf_scp",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcp:ktf_vcp",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/sspm:ktf_sspm",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/sspm/sspm_ait:ktf_sspm_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/fhctl/fhctl_ut:ktf_fhctl_ut",
+
 ]
 
 mgk_64_kleaf_userdebug_modules = [
@@ -208,6 +214,12 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/hybrid:ktf_hybrid_demo",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_device_class_ut:ktf_usb_device_class_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_type_c_ut:ktf_usb_type_c_ut",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/scp:ktf_scp",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcp:ktf_vcp",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/sspm:ktf_sspm",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/sspm/sspm_ait:ktf_sspm_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/fhctl/fhctl_ut:ktf_fhctl_ut",
+
 ]
 
 mgk_64_kleaf_user_modules = [
