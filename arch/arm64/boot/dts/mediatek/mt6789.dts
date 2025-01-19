@@ -64,6 +64,7 @@
 			    androidboot.hardware=mt6789 \
 			    initcall_debug=1 transparent_hugepage=never \
 			    vmalloc=400M swiotlb=noforce \
+			    android_arch_task_struct_size=512 \
 			    firmware_class.path=/vendor/firmware pelt=8\
 			    loop.max_part=7";
 		atag,videolfb-fb_base_l = <0x7e605000>;
@@ -2001,7 +2002,7 @@
 			#performance-domain-cells = <1>;
 		};
 
-		eas_info: eas_info {
+		eas_info: eas-info {
 			compatible = "mediatek,eas-info";
 			csram-base = <0x0011bc00>;
 			/* L, B, CCI */
