@@ -944,6 +944,70 @@ static void set_all_tc_hw_reboot(struct lvts_data *lvts_data)
 	enable_all_sensing_points(lvts_data);
 }
 
+static int pass_msr_to_tfa(struct lvts_data *lvts_data,
+	int trip_point)
+{
+	int i, tc_id;
+	struct tc_settings *tc = lvts_data->tc;
+	unsigned int msr_raw, cur_msr_raw;
+	struct device *dev = lvts_data->dev;
+	struct platform_ops *ops = &lvts_data->ops;
+	struct arm_smccc_res res;
+
+	for (tc_id = 0; tc_id < lvts_data->num_tc; tc_id++) {
+		if (trip_point == THERMAL_TEMP_INVALID) {
+			arm_smccc_smc(MTK_SIP_KERNEL_THROTTLE_CONTROL,
+				2,
+				THERMAL_TEMP_INVALID, 0,
+				tc_id, 0, 0, 0, &res);
+			if (res.a0 != 0) {
+				dev_info(dev,
+				"SMC call failed with error: %lu, tc_id=%d\n",
+				res.a0, tc_id);
+				return -EIO;
+			}
+			dev_info(dev, "SMC call success, tc_id=%d\n", tc_id);
+
+			continue;
+		}
+
+		msr_raw = 0;
+		for (i = 0; i < tc[tc_id].num_sensor; i++) {
+			if (tc[tc_id].sensor_on_off[i] != SEN_ON)
+				continue;
+
+			cur_msr_raw = ops->lvts_temp_to_raw(&(tc[tc_id].coeff),
+				i, trip_point);
+			if (msr_raw < cur_msr_raw)
+				msr_raw = cur_msr_raw;
+		}
+		if (msr_raw != (msr_raw & 0xFFFF)) {
+			dev_info(dev,
+	"[%s] overflow: trip_point = %d, tc_id = %d, msr = %d, a = %d %d %d %d\n",
+			__func__,
+			trip_point, tc_id, msr_raw, tc[tc_id].coeff.a[0],
+			tc[tc_id].coeff.a[1], tc[tc_id].coeff.a[2],
+			tc[tc_id].coeff.a[3]);
+
+			return -ERANGE;
+		}
+		arm_smccc_smc(MTK_SIP_KERNEL_THROTTLE_CONTROL,
+				2,
+				msr_raw, 0,
+				tc_id, 0, 0, 0, &res);
+		if (res.a0 != 0) {
+			dev_info(dev,
+				"SMC call failed with error: %lu, tc_id=%d\n",
+				res.a0, tc_id);
+				return -EIO;
+		}
+		dev_info(dev, "SMC call success, tc_id=%d\n", tc_id);
+
+
+	}
+	return 0;
+}
+
 static void update_all_tc_hw_reboot_point(struct lvts_data *lvts_data,
 	int trip_point)
 {
@@ -959,30 +1023,22 @@ static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
 {
 	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
-	struct arm_smccc_res res;
 
 	int ret;
 
 	if (trip->type != THERMAL_TRIP_CRITICAL || lvts_tz->id != 0)
 		return 0;
 
-	update_all_tc_hw_reboot_point(lvts_data, temp);
-	if (IS_ENABLE(FEATURE_CHANGE_REBOOT_TEMP_IN_TFA) == 0)
+	if (IS_ENABLE(FEATURE_CHANGE_REBOOT_TEMP_IN_TFA) == 0) {
+		update_all_tc_hw_reboot_point(lvts_data, temp);
 		set_all_tc_hw_reboot(lvts_data);
+		ret = set_reboot_temperature(temp);
+	} else {
+		ret = pass_msr_to_tfa(lvts_data, temp);
 
-	ret = set_reboot_temperature(temp);
-
-	if (IS_ENABLE(FEATURE_CHANGE_REBOOT_TEMP_IN_TFA)) {
-		if (temp != DISABLE_THERMAL_HW_REBOOT) {
-			arm_smccc_smc(MTK_SIP_KERNEL_THERMAL_CONTROL,
-				temp | MAGIC_NUMBER3,
-				MAGIC_NUMBER1, MAGIC_NUMBER2,
-				0, 0, 0, 0, &res);
-		} else {
-			arm_smccc_smc(MTK_SIP_KERNEL_THERMAL_CONTROL,
-				DISABLE_THERMAL_HW_REBOOT,
-				MAGIC_NUMBER1, MAGIC_NUMBER2,
-				0, 0, 0, 0, &res);
+		if (ret == 0) {
+			update_all_tc_hw_reboot_point(lvts_data, temp);
+			ret = set_reboot_temperature(temp);
 		}
 	}
 
