@@ -18,6 +18,7 @@
 
 #include <scp_mbrain_dbg.h>
 #include <dvfsrc-mb.h>
+#include <mtk-smap-common.h>
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 #include <spmi-mtk.h>
@@ -1089,6 +1090,52 @@ static int mbraink_v6993_power_get_dvfsrc_info(
 }
 #endif
 
+void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	unsigned int version = 1;
+	unsigned int cnt = 0;
+	unsigned long long sys_time = 0;
+	unsigned int type = 0;
+	unsigned long long real_time_start = 0;
+	unsigned long long real_time_end = 0;
+	unsigned int dyn_base = 0;
+	unsigned int cg_subsys_dyn = 0;
+	unsigned int cg_ratio = 0;
+
+	cnt = smap_mbrain_data->cnt;
+	sys_time = smap_mbrain_data->sys_time;
+	type = smap_mbrain_data->type;
+	real_time_start = smap_mbrain_data->real_time_start;
+	real_time_end = smap_mbrain_data->real_time_end;
+	dyn_base = smap_mbrain_data->dyn_base;
+	cg_subsys_dyn = smap_mbrain_data->cg_subsys_dyn;
+	cg_ratio = smap_mbrain_data->cg_ratio;
+
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%d:%d:%lld:%d:%lld:%lld:%d:%d:%d",
+			NETLINK_EVENT_SMAP_NOTIFY,
+			version,
+			cnt,
+			sys_time,
+			type,
+			real_time_start,
+			real_time_end,
+			dyn_base,
+			cg_subsys_dyn,
+			cg_ratio);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	mbraink_netlink_send_msg(netlink_buf);
+
+}
+
 static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getVotingInfo = NULL,
 	.getPowerInfo = NULL,
@@ -1133,6 +1180,12 @@ int mbraink_v6993_power_init(struct device *dev)
 	ret = register_ppb_mbrian_cb(pt2mbrain_ppb_notify_func);
 	if (ret != 0) {
 		pr_info("register ppb callback failed by: %d", ret);
+		return ret;
+	}
+
+	ret = register_smap_mbrain_cb(smap2mbrain_notify);
+	if (ret != 0) {
+		pr_info("register smap callback failed by: %d", ret);
 		return ret;
 	}
 

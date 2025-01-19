@@ -16,6 +16,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/
 endif
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smap/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smap/
+
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/spmi/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/spmi/
 
