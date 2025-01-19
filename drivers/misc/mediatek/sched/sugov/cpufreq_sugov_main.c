@@ -325,7 +325,7 @@ inline int curr_clamp(struct rq *rq, unsigned long *util)
 		return -1;
 	}
 
-	cu_ht = &((struct mtk_task *) curr_task->android_vendor_data1)->cu_hint;
+	cu_ht = &((struct mtk_task *)android_task_vendor_data(curr_task))->cu_hint;
 	if (!cu_ht->hint) {
 		rcu_read_unlock();
 		return -1;

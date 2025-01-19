@@ -47,7 +47,7 @@ inline unsigned int get_num_higher_prio_vip(int cpu, int vip_prio)
 
 struct task_struct *vts_to_ts(struct vip_task_struct *vts)
 {
-	struct mtk_task *mts = container_of(vts, struct mtk_task, vip_task);
+	struct mtk_static_vendor_task *mts = container_of(vts, struct mtk_static_vendor_task, vip_task);
 	struct task_struct *ts = mts_to_ts(mts);
 	return ts;
 }
@@ -356,7 +356,7 @@ EXPORT_SYMBOL_GPL(prio_is_vip);
 
 bool task_is_vip(struct task_struct *p, int type)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
 	if (rt_task(p))
 		return false;
@@ -373,7 +373,7 @@ EXPORT_SYMBOL_GPL(task_is_vip);
 
 static inline unsigned int vip_task_limit(struct task_struct *p)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
 	return vts->throttle_time;
 }
@@ -449,7 +449,7 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 
 static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
 	struct list_head *prev = vts->vip_list.prev;
 	struct list_head *next = vts->vip_list.next;
@@ -617,7 +617,7 @@ void set_task_vvip_and_throttle(int pid, unsigned int throttle_time)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->vvip = true;
 		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
 		done = 1;
@@ -640,7 +640,7 @@ void set_task_vvip(int pid)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->vvip = true;
 		done = 1;
 		put_task_struct(p);
@@ -662,7 +662,7 @@ void unset_task_vvip(int pid)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->vvip = false;
 		vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
 		done = 1;
@@ -688,7 +688,7 @@ void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int th
 	prio = clamp(prio, MIN_PRIORITY_BASED_VIP, MAX_PRIORITY_BASED_VIP);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->priority_based_prio = prio;
 		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
 		done = 1;
@@ -712,7 +712,7 @@ void set_task_priority_based_vip(int pid, int prio)
 	prio = clamp(prio, MIN_PRIORITY_BASED_VIP, MAX_PRIORITY_BASED_VIP);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->priority_based_prio = prio;
 		done = 1;
 		put_task_struct(p);
@@ -734,7 +734,7 @@ void unset_task_priority_based_vip(int pid)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->priority_based_prio = NOT_VIP;
 		vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
 		done = 1;
@@ -848,7 +848,7 @@ void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->basic_vip = true;
 		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
 		done = 1;
@@ -871,7 +871,7 @@ void set_task_basic_vip(int pid)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->basic_vip = true;
 		done = 1;
 		put_task_struct(p);
@@ -893,7 +893,7 @@ void unset_task_basic_vip(int pid)
 	p = find_task_by_vpid(pid);
 	if (p) {
 		get_task_struct(p);
-		vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->basic_vip = false;
 		vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
 		done = 1;
@@ -914,7 +914,7 @@ EXPORT_SYMBOL(unset_task_basic_vip);
 inline int get_vip_task_prio(struct task_struct *p)
 {
 	int vip_prio = NOT_VIP;
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
 	if (rt_task(p))
 		return NOT_VIP;
@@ -947,7 +947,7 @@ EXPORT_SYMBOL_GPL(get_vip_task_prio);
 
 void vip_enqueue_task(struct rq *rq, struct task_struct *p)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 	int vip_prio = get_vip_task_prio(p);
 
 	if (unlikely(!vip_enable))
@@ -984,7 +984,7 @@ void vip_enqueue_task(struct rq *rq, struct task_struct *p)
  */
 static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) curr->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)curr->android_vendor_data1)->vip_task;
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
 	s64 delta;
 	unsigned int limit;
@@ -1045,13 +1045,13 @@ void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p
 				struct sched_entity *se, struct sched_entity *pse)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
-	struct vip_task_struct *vts_p = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts_p = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 	struct task_struct *c = rq->curr;
 	struct vip_task_struct *vts_c;
 	bool resched = false;
 	bool p_is_vip, curr_is_vip;
 
-	vts_c = &((struct mtk_task *) rq->curr->android_vendor_data1)->vip_task;
+	vts_c = &((struct mtk_static_vendor_task *)rq->curr->android_vendor_data1)->vip_task;
 
 	if (unlikely(!vip_enable))
 		return;
@@ -1097,7 +1097,7 @@ void vip_cfs_tick(struct rq *rq)
 	struct vip_task_struct *vts;
 	struct rq_flags rf;
 
-	vts = &((struct mtk_task *) rq->curr->android_vendor_data1)->vip_task;
+	vts = &((struct mtk_static_vendor_task *)rq->curr->android_vendor_data1)->vip_task;
 
 	if (unlikely(!vip_enable))
 		return;
@@ -1169,7 +1169,7 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 __no_kcsan
 void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int flags)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
 	if (unlikely(!vip_enable))
 		return;
@@ -1195,7 +1195,7 @@ inline bool vip_fair_task(struct task_struct *p)
 
 void init_vip_task_struct(struct task_struct *p)
 {
-	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
 	INIT_LIST_HEAD(&vts->vip_list);
 	vts->sum_exec_snapshot = 0;
@@ -1210,7 +1210,7 @@ void init_vip_task_struct(struct task_struct *p)
 
 void init_task_gear_hints(struct task_struct *p)
 {
-	struct task_gear_hints *ghts = &((struct mtk_task *) p->android_vendor_data1)->gear_hints;
+	struct task_gear_hints *ghts = &((struct mtk_task *)android_task_vendor_data(p))->gear_hints;
 
 	ghts->gear_start = GEAR_HINT_UNSET;
 	ghts->num_gear   = GEAR_HINT_UNSET;
@@ -1277,7 +1277,7 @@ void vip_push_runnable(struct rq *src_rq)
 	if (cpumask_weight(task_to_pushed->cpus_ptr) <= 1)
 		goto put_task;
 
-	vts = &((struct mtk_task *) task_to_pushed->android_vendor_data1)->vip_task;
+	vts = &((struct mtk_static_vendor_task *)task_to_pushed->android_vendor_data1)->vip_task;
 	vts->faster_compute_eng = true;
 	mtk_find_energy_efficient_cpu(NULL, task_to_pushed, this_cpu, 0, &new_cpu);
 

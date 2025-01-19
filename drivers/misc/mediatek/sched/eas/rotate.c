@@ -235,7 +235,7 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (dst_ls && !cpumask_test_cpu(src_cpu, &dst_eff))
 			continue;
 
-		rts = &((struct mtk_task *) rq->curr->android_vendor_data1)->rot_task;
+		rts = &((struct mtk_task *)android_task_vendor_data(rq->curr))->rot_task;
 		wait = wc - READ_ONCE(rts->ktime_ns);
 
 		if (wait > max_wait) {
@@ -273,7 +273,7 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (dst_ls && !cpumask_test_cpu(src_cpu, &dst_eff))
 			continue;
 
-		rts = &((struct mtk_task *) rq->curr->android_vendor_data1)->rot_task;
+		rts = &((struct mtk_task *)android_task_vendor_data(rq->curr))->rot_task;
 		run = wc - READ_ONCE(rts->ktime_ns);
 
 		if (run < TASK_ROTATION_THRESHOLD_NS)
@@ -368,7 +368,7 @@ EXPORT_SYMBOL_GPL(set_big_task_rotation);
 void rotat_after_enqueue_task(void __always_unused *data, struct rq *rq,
 				struct task_struct *p)
 {
-	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
+	struct rot_task_struct *rts = &((struct mtk_task *)android_task_vendor_data(p))->rot_task;
 
 	WRITE_ONCE(rts->ktime_ns, ktime_get_raw_ns());
 }
@@ -376,7 +376,7 @@ void rotat_after_enqueue_task(void __always_unused *data, struct rq *rq,
 void rotat_task_stats(void __always_unused *data,
 				struct task_struct *p)
 {
-	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
+	struct rot_task_struct *rts = &((struct mtk_task *)android_task_vendor_data(p))->rot_task;
 
 	if (!get_eas_hook())
 		return;
@@ -387,7 +387,7 @@ void rotat_task_stats(void __always_unused *data,
 void rotat_task_newtask(void __always_unused *data,
 				struct task_struct *p, unsigned long clone_flags)
 {
-	struct rot_task_struct *rts = &((struct mtk_task *)p->android_vendor_data1)->rot_task;
+	struct rot_task_struct *rts = &((struct mtk_task *)android_task_vendor_data(p))->rot_task;
 
 	if (!get_eas_hook())
 		return;
