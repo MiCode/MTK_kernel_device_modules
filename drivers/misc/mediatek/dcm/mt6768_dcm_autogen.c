@@ -540,12 +540,6 @@ bool dcm_dramc_ch0_top0_ddrphy_is_on(void)
 {
 	bool ret = true;
 
-	ret &= ((reg_read(DRAMC_CH0_TOP0_MISC_CG_CTRL0) &
-		DRAMC_CH0_TOP0_DDRPHY_REG0_MASK) ==
-		(unsigned int) DRAMC_CH0_TOP0_DDRPHY_REG0_ON);
-	ret &= ((reg_read(DRAMC_CH0_TOP0_MISC_CG_CTRL2) &
-		DRAMC_CH0_TOP0_DDRPHY_REG1_MASK) ==
-		(unsigned int) DRAMC_CH0_TOP0_DDRPHY_REG1_ON);
 	ret &= ((reg_read(DRAMC_CH0_TOP0_MISC_CTRL3) &
 		DRAMC_CH0_TOP0_DDRPHY_REG2_MASK) ==
 		(unsigned int) DRAMC_CH0_TOP0_DDRPHY_REG2_ON);
@@ -735,12 +729,6 @@ bool dcm_dramc_ch1_top0_ddrphy_is_on(void)
 {
 	bool ret = true;
 
-	ret &= ((reg_read(DRAMC_CH1_TOP0_MISC_CG_CTRL0) &
-		DRAMC_CH1_TOP0_DDRPHY_REG0_MASK) ==
-		(unsigned int) DRAMC_CH1_TOP0_DDRPHY_REG0_ON);
-	ret &= ((reg_read(DRAMC_CH1_TOP0_MISC_CG_CTRL2) &
-		DRAMC_CH1_TOP0_DDRPHY_REG1_MASK) ==
-		(unsigned int) DRAMC_CH1_TOP0_DDRPHY_REG1_ON);
 	ret &= ((reg_read(DRAMC_CH1_TOP0_MISC_CTRL3) &
 		DRAMC_CH1_TOP0_DDRPHY_REG2_MASK) ==
 		(unsigned int) DRAMC_CH1_TOP0_DDRPHY_REG2_ON);
