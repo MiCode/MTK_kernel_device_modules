@@ -4787,19 +4787,16 @@ static void process_dbg_opt(const char *opt)
 			DDPMSG("dual_te parse error!\n");
 		}
 	} else if (strncmp(opt, "manual_mml_mode:", 16) == 0) {
-		// 0 as not use manual
-		if (strncmp(opt + 16, "0", 1) == 0)
-			g_mml_mode = MML_MODE_UNKNOWN;
-		else if (strncmp(opt + 16, "1", 1) == 0)
-			g_mml_mode = MML_MODE_DIRECT_LINK;
-		else if (strncmp(opt + 16, "2", 1) == 0)
-			g_mml_mode = MML_MODE_RACING;
-		else if (strncmp(opt + 16, "3", 1) == 0)
-			g_mml_mode = MML_MODE_MML_DECOUPLE;
-		else if (strncmp(opt + 16, "4", 1) == 0)
-			g_mml_mode = MML_MODE_MDP_DECOUPLE;
-		else if (strncmp(opt + 16, "-1", 2) == 0)
-			g_mml_mode = MML_MODE_NOT_SUPPORT;
+		int ret, value;
+
+		ret = sscanf(opt + 16, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		g_mml_mode = value;
+
 		DDPMSG("mml_mode:%d", g_mml_mode);
 	} else if (strncmp(opt, "force_mml:", 10) == 0) {
 		struct drm_crtc *crtc;
