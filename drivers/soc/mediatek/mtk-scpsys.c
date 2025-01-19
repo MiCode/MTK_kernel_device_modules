@@ -1494,6 +1494,16 @@ err_pwr_ack:
 	return ret;
 }
 
+static int scpsys_dummy_power_on(struct generic_pm_domain *genpd)
+{
+	return 0;
+}
+
+static int scpsys_dummy_power_off(struct generic_pm_domain *genpd)
+{
+	return 0;
+}
+
 static int mtk_mminfra_hwv_is_enable_done(struct scp_domain *scpd)
 {
 	u32 val = 0;
@@ -1897,6 +1907,9 @@ struct scp *init_scp(struct platform_device *pdev,
 		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PBUS_OPS)) {
 			genpd->power_on = scpsys_pbus_power_on;
 			genpd->power_off = scpsys_pbus_power_off;
+		} else if (MTK_SCPD_CAPS(scpd, MTK_SCPD_DUMMY_OPS)) {
+			genpd->power_on = scpsys_dummy_power_on;
+			genpd->power_off = scpsys_dummy_power_off;
 		} else {
 			genpd->power_off = scpsys_power_off;
 			genpd->power_on = scpsys_power_on;
