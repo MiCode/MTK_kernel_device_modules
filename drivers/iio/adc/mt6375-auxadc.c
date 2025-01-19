@@ -100,6 +100,33 @@
 #define AUXADC_NAG_IRQ_EN_MASK		BIT(5)
 #define AUXADC_NAG_EN_MASK		BIT(0)
 
+#define AUXADC_CONVERSION_MAX_RETRY_CNT	3
+#define AUXADC_BATSNS_MIN_mV		1000
+#define AUXADC_BATSNS_MAX_mV		5265
+
+unsigned int dbg_log_level = 0;
+module_param(dbg_log_level, uint, 0644);
+
+#define mt_dbg(dev, force_en, fmt, ...)					\
+	do {								\
+		if (force_en) {						\
+			dev_info(dev, fmt, ##__VA_ARGS__);		\
+			break;						\
+		}							\
+									\
+		switch (dbg_log_level) {				\
+		case 0:							\
+			break;						\
+		case 1:							\
+			dev_info_ratelimited(dev, fmt, ##__VA_ARGS__);	\
+			break;						\
+		case 2:							\
+		default:						\
+			dev_info(dev, fmt, ##__VA_ARGS__);		\
+			break;						\
+		}							\
+	} while(0)
+
 struct dev_constraint {
 	unsigned int rg_bm_base;
 	unsigned int rg_hk1_base;
@@ -176,7 +203,7 @@ static const struct {
 		    BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_SCALE))
 
 static const struct iio_chan_spec auxadc_channels[] = {
-	AUXADC_CHAN_RAW_SCALE(BATSNS, 15, IIO_VOLTAGE),
+	AUXADC_CHAN_RAW(BATSNS, 15, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW_SCALE(BATON, 12, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW(IMP, 15, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW(IMIX_R, 16, IIO_RESISTANCE),
@@ -240,21 +267,29 @@ static int auxadc_get_chg_vbat(struct mt6375_priv *priv, int *chg_vbat)
 
 static int mt6375_auxadc_read_channel(struct mt6375_priv *priv, int chan, int dbits, int *val)
 {
-	unsigned int enable, out_reg, rdy_val;
-	u16 raw_val;
-	int ret, chg_vbat = 0;
+	unsigned int enable, out_reg, rdy_val, retry_cnt = 0;
+	int ret, tmp_val = 0, chg_vbat = 0;
+	struct device *dev = priv->dev;
+	bool abnormal = false;
+	u16 raw_val = 0;
 
-	if (chan == MT6375_AUXADC_VREF) {
+	switch (chan) {
+	case MT6375_AUXADC_VREF:
 		enable = VREF_ENMASK;
 		out_reg = AUXADC_OUT_CH11;
-	} else if (chan == MT6375_AUXADC_BATON) {
+		break;
+	case MT6375_AUXADC_BATON:
 		enable = BATON_ENMASK;
 		out_reg = AUXADC_OUT_CH3;
-	} else if (chan == MT6375_AUXADC_BATSNS) {
+		break;
+	case MT6375_AUXADC_BATSNS_DBG:
+		enable = BATSNS_ENMASK;
+		out_reg = AUXADC_OUT_CH0;
+		break;
+	case MT6375_AUXADC_BATSNS:
 		if (atomic_read(&priv->vbat0_flag)) {
 			ret = auxadc_get_chg_vbat(priv, &chg_vbat);
-			dev_info(priv->dev,
-				 "%s, auxadc_vbat is abnormal, use chg_vbat: %dmV(ret:%d)\n",
+			dev_info(dev, "%s, auxadc_vbat is abnormal, use chg_vbat: %d mV (ret:%d)\n",
 				 __func__, chg_vbat, ret);
 			if (ret >= 0)
 				*val = chg_vbat;
@@ -264,30 +299,62 @@ static int mt6375_auxadc_read_channel(struct mt6375_priv *priv, int chan, int db
 
 		enable = BATSNS_ENMASK;
 		out_reg = AUXADC_OUT_CH0;
-	} else {
+		break;
+	default:
+		chan = MT6375_AUXADC_BATSNS;
 		enable = BATSNS_ENMASK;
 		out_reg = AUXADC_OUT_CH0;
+		break;
 	}
 
-	ret = regmap_write(priv->regmap, rg_xlate(priv, AUXADC_RQST0), enable);
-	if (ret)
-		return ret;
+	do {
+		ret = regmap_write(priv->regmap, rg_xlate(priv, AUXADC_RQST0), enable);
+		if (ret) {
+			dev_info(dev, "%s, Failed to enable %s(ch%d) channel trigger\n",
+				 __func__, mt6375_auxadc_chan_labels[chan], chan);
+			continue;
+		}
 
-	usleep_range(1000, 1200);
+		usleep_range(1000, 1200);
 
-	ret = regmap_read_poll_timeout(priv->regmap, rg_xlate(priv, out_reg + 1),
+		ret = regmap_read_poll_timeout(priv->regmap, rg_xlate(priv, out_reg + 1),
 				       rdy_val, rdy_val & ADC_OUT_RDY, 500, 11 * 1000);
-	if (ret == -ETIMEDOUT)
-		dev_info(priv->dev, "%s, %s(ch%d) channel timeout\n",
-			 __func__, chan < MT6375_AUXADC_MAX_CHANNEL ?
-			 mt6375_auxadc_chan_labels[chan] : "!!INVALID!!", chan);
+		if (ret == -ETIMEDOUT)
+			dev_info(priv->dev, "%s, %s(ch%d) channel timeout\n",
+				 __func__, mt6375_auxadc_chan_labels[chan], chan);
 
-	ret = regmap_raw_read(priv->regmap, rg_xlate(priv, out_reg),
-			      &raw_val, sizeof(raw_val));
-	if (ret)
-		return ret;
+		ret = regmap_raw_read(priv->regmap, rg_xlate(priv, out_reg),
+				      &raw_val, sizeof(raw_val));
+		if (ret) {
+			dev_info(dev, "%s, Failed to read chan output data (rg:0x%02X, ret:%d)\n",
+				 __func__, rg_xlate(priv, out_reg), ret);
+			continue;
+		}
 
-	*val = raw_val & (BIT(dbits) - 1);
+		tmp_val = raw_val & (BIT(dbits) - 1);
+
+		/*
+		 * To avoid out-of-sync problem caused by vbat0 flag, the calculation of
+		 * "scale()" in channel batsns is advanced to "raw()".
+		 */
+		if (chan == MT6375_AUXADC_BATSNS) {
+			*val = div_s64((s64)tmp_val * 7360, BIT(dbits));
+			if (*val < AUXADC_BATSNS_MIN_mV || *val > AUXADC_BATSNS_MAX_mV)
+				abnormal = true;
+		} else
+			*val = tmp_val;
+
+		mt_dbg(dev, abnormal,
+		       "%s, %s(ch%d) 0x%02X = 0x%04X (output_val: %d, %s%d), retry_cnt: %d\n",
+		       __func__, mt6375_auxadc_chan_labels[chan], chan,
+		       rg_xlate(priv, out_reg), raw_val, tmp_val,
+		       chan == MT6375_AUXADC_BATSNS ? "auto-scale: " : "", *val, retry_cnt);
+
+		if (abnormal) {
+			retry_cnt++;
+			mdelay(20);
+		}
+	} while (retry_cnt > 0 && retry_cnt < AUXADC_CONVERSION_MAX_RETRY_CNT);
 
 	return IIO_VAL_INT;
 }
@@ -397,15 +464,6 @@ static int mt6375_auxadc_read_imp(struct mt6375_priv *priv, int *vbat, int *ibat
 static int auxadc_read_scale(struct mt6375_priv *priv, int chan, int dbits, int *val1, int *val2)
 {
 	switch (chan) {
-	case MT6375_AUXADC_BATSNS:
-		if (atomic_read(&priv->vbat0_flag)) {
-			*val1 = 1;
-			*val2 = 1;
-		} else {
-			*val1 = 7360;
-			*val2 = BIT(dbits);
-		}
-		return IIO_VAL_FRACTIONAL;
 	case MT6375_AUXADC_BATSNS_DBG:
 		*val1 = 7360;
 		*val2 = BIT(dbits);
@@ -547,7 +605,8 @@ static const struct irq_domain_ops auxadc_domain_ops = {
 static int mt6375_auxadc_vbat_is_valid(struct mt6375_priv *priv, bool *valid)
 {
 	static struct iio_channel *auxadc_vbat_chan;
-	int ret = 0, chg_vbat = 0, auxadc_vbat = 0;
+	int ret = 0, ret2 = 0, chg_vbat = 0, auxadc_vbat = 0;
+	struct device *dev = priv->dev;
 
 	if (IS_ERR_OR_NULL(auxadc_vbat_chan))
 		auxadc_vbat_chan = devm_iio_channel_get(priv->dev, "auxadc_vbat");
@@ -556,19 +615,19 @@ static int mt6375_auxadc_vbat_is_valid(struct mt6375_priv *priv, bool *valid)
 		return PTR_ERR(auxadc_vbat_chan);
 
 	ret = auxadc_get_chg_vbat(priv, &chg_vbat);
-	dev_info(priv->dev, "%s, chg_vbat = %dmV (ret:%d)\n", __func__, chg_vbat, ret);
+	ret2 = iio_read_channel_processed(auxadc_vbat_chan, &auxadc_vbat);
+	dev_info(dev, "%s, chg_vbat = %d mV (ret:%d), auxadc_vbat = %d mV (ret:%d)\n",
+		 __func__, chg_vbat, ret, auxadc_vbat, ret2);
 
-	ret |= iio_read_channel_processed(auxadc_vbat_chan, &auxadc_vbat);
-	dev_info(priv->dev, "%s, auxadc_vbat = %dmV (ret:%d)\n", __func__, auxadc_vbat, ret);
-
-	if (!ret && abs(chg_vbat - auxadc_vbat) > 1000) {
-		dev_info(priv->dev,
-			 "%s, unexpected vbat cell (more than 1000mV difference)!!\n", __func__);
+	if (abs(chg_vbat - auxadc_vbat) > 1000) {
+		dev_info(dev,
+			 "%s, Unexpected vbat (more than 1V difference, chg_vbat = %d mV(ret:%d), auxadc_vbat = %d mV(ret:%d))!!\n",
+			 __func__, chg_vbat, ret, auxadc_vbat, ret2);
 		*valid = false;
 	} else
 		*valid = true;
 
-	return ret;
+	return ret | ret2;
 }
 
 static int mt6375_auxadc_handle_vbat0(struct mt6375_priv *priv, bool is_vbat0)
@@ -577,15 +636,15 @@ static int mt6375_auxadc_handle_vbat0(struct mt6375_priv *priv, bool is_vbat0)
 	union power_supply_propval val;
 	int i, ret;
 
-	/* set/clr vbat0 bits */
+	/* Set or clear vbat0 flag */
 	ret = regmap_update_bits(priv->regmap, rg_xlate(priv, SYSTEM_INFO_CON2_H),
 				 VBAT0_FLAG, is_vbat0 ? 0xFF : 0);
-	if (ret < 0) {
+	if (ret) {
 		dev_info(priv->dev, "%s, Failed to clear vbat0 flag\n", __func__);
 		return ret;
 	}
 
-	/* notify gauge & charger */
+	/* Notify gauge & charger */
 	chg_psy = devm_power_supply_get_by_phandle(priv->dev, "charger");
 	if (IS_ERR_OR_NULL(chg_psy))
 		return PTR_ERR(chg_psy);
@@ -594,7 +653,7 @@ static int mt6375_auxadc_handle_vbat0(struct mt6375_priv *priv, bool is_vbat0)
 	ret = power_supply_set_property(chg_psy, POWER_SUPPLY_PROP_ENERGY_EMPTY, &val);
 	power_supply_changed(chg_psy);
 
-	/* mask/unmask irq & disable function */
+	/* Mask or unmask IRQ & Disable function */
 	for (i = 0; i < ARRAY_SIZE(vbat_event); i++) {
 		if (is_vbat0) {
 			ret = regmap_update_bits(priv->regmap,
@@ -946,7 +1005,7 @@ static int mt6375_auxadc_get_rac(struct mt6375_priv *priv)
 	int vbat_1 = 0, vbat_2 = 0;
 	int ibat_1 = 0, ibat_2 = 0;
 	int rac = 0, ret = 0;
-	int retry_count = 0;
+	int retry_cnt = 0;
 
 	/* to make sure dummy load has been disabled */
 	if (regulator_is_enabled(priv->isink_load))
@@ -999,9 +1058,9 @@ static int mt6375_auxadc_get_rac(struct mt6375_priv *priv)
 
 		dev_info(priv->dev, "%s, v1=%d,v2=%d,c1=%d,c2=%d,v_diff=%d,c_diff=%d,rac=%d,ret=%d,retry=%d\n",
 			 __func__, vbat_1, vbat_2, ibat_1, ibat_2, (vbat_1 - vbat_2),
-			 (ibat_2 - ibat_1), rac, ret, retry_count);
+			 (ibat_2 - ibat_1), rac, ret, retry_cnt);
 
-		if (++retry_count >= 3)
+		if (++retry_cnt >= 3)
 			break;
 	} while (ret == -1);
 
