@@ -321,7 +321,7 @@ int uarthub_core_inband_set_sta_char(unsigned char sta_char)
 		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
 	}
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] sta_char=[0x%x]\n", __func__, sta_char);
 #endif
 	return g_plat_ic_core_ops->uarthub_plat_inband_set_sta_char(sta_char);
@@ -396,16 +396,12 @@ int uarthub_core_inband_trigger_ctrl(void)
 		return UARTHUB_ERR_BT_NOT_AWAKE;
 	}
 
-#if UARTHUB_INFO_LOG
-	if (g_plat_ic_core_ops->uarthub_plat_inband_get_sta_char != NULL)
-		pr_info("[%s] sta_char=[0x%x]\n",
-			__func__, g_plat_ic_core_ops->uarthub_plat_inband_get_sta_char());
-#endif
-
 	state = g_plat_ic_core_ops->uarthub_plat_inband_trigger_ctrl();
 
-#if UARTHUB_INFO_LOG
-	pr_info("[%s] state=[0x%x]\n", __func__, state);
+#if UARTHUB_DEBUG_LOG
+	if (g_plat_ic_core_ops->uarthub_plat_inband_get_sta_char != NULL)
+		pr_info("[%s] sta_char, trigger_sta=[%d]\n",
+			__func__, g_plat_ic_core_ops->uarthub_plat_inband_get_sta_char(), state);
 #endif
 
 	return state;
@@ -555,7 +551,7 @@ int uarthub_core_is_enable_fw_flow_ctrl_with_inband(void)
 	else
 		is_enable = g_plat_ic_core_ops->uarthub_plat_is_enable_fw_flow_ctrl_with_inband();
 
-#if UARTHUB_INFO_LOG
+#if UARTHUB_DEBUG_LOG
 	pr_info("[%s] is_enable=[%d]\n", __func__, is_enable);
 #endif
 
