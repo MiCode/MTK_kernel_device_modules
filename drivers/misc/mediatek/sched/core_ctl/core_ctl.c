@@ -2370,7 +2370,7 @@ static int __init core_ctl_init(void)
 		goto failed_deprob;
 	}
 
-	ret = register_pt_isolate_cb(core_ctl_force_pause_cpu);
+	ret = register_pt_isolate_cb(core_ctl_force_pause_request);
 	if (ret)
 		pr_info("%s: Could not register register_pt_isolate_cb\n", TAG);
 
