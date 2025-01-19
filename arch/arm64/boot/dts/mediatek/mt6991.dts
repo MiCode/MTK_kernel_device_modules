@@ -16410,7 +16410,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	mvpu {
 		compatible = "mediatek, mt6991-mvpu";
 		core-num = <2>;
-		version = <0x0>;
 		mask = /bits/ 64 <0x00000003ffffffff>;
 		mtk,iommu-group = <&apu_iommu_group_0>;
 		iommus = <&apu_smmu 0xf>;
