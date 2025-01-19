@@ -49,6 +49,7 @@ enum swpm_num_type {
 	DDR_FREQ,
 	CORE_IP,
 	CORE_VOL,
+	EMI_FREQ,
 	XPU_IP,
 };
 
@@ -81,6 +82,12 @@ struct vol_duration {
 	int32_t vol;
 	int64_t duration;
 };
+
+struct freq_duration {
+	int32_t freq;
+	int64_t duration;
+};
+
 struct ddr_act_times {
 	int32_t freq;
 	int64_t active_time;
@@ -145,6 +152,10 @@ struct swpm_internal_ops {
 		 uint32_t *out1, uint32_t *out2, uint32_t *out3);
 	int32_t (*const data_record_number_get)
 		(uint32_t *number);
+	int32_t (*const emi_freq_duration_get)
+		(int32_t freq_num,
+		 struct freq_duration *duration);
+
 };
 
 extern int32_t sync_latest_data(void);
@@ -158,11 +169,15 @@ extern int32_t get_ddr_freq_data_ip_stats(int32_t data_ip_num,
 					  void *stats);
 extern int32_t get_vcore_ip_num(void);
 extern int32_t get_vcore_vol_num(void);
+extern int32_t get_emi_freq_num(void);
 extern int32_t get_vcore_ip_vol_stats(int32_t ip_num,
 				       int32_t vol_num,
 				       void *stats);
 extern int32_t get_vcore_vol_duration(int32_t vol_num,
 				      struct vol_duration *duration);
+extern int32_t get_emi_freq_duration(int32_t freq_num,
+				      struct freq_duration *duration);
+
 extern int32_t get_xpu_ip_num(void);
 extern int32_t get_xpu_ip_stats(int32_t ip_num, void *stats);
 extern int32_t get_res_sig_stats(struct res_sig_stats *stats);

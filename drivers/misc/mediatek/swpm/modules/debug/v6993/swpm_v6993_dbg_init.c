@@ -197,11 +197,12 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
 	int i;
-	int32_t core_vol_num, xpu_ip_num;
+	int32_t core_vol_num, xpu_ip_num, emi_freq_num;
 	int data_update_count = 0;
 	int ret;
 	struct ip_stats *xpu_ip_stats_ptr = NULL;
 	struct vol_duration *core_duration_ptr = NULL;
+	struct freq_duration *emi_duration_ptr = NULL;
 	struct res_sig_stats *spm_res_sig_stats_ptr = NULL;
 
 	if (!ToUser)
@@ -209,9 +210,12 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 
 	core_vol_num = get_vcore_vol_num();
 	xpu_ip_num = get_xpu_ip_num();
+	emi_freq_num = get_emi_freq_num();
 
 	core_duration_ptr =
 	kcalloc(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
+	emi_duration_ptr =
+	kcalloc(emi_freq_num, sizeof(struct freq_duration), GFP_KERNEL);
 	xpu_ip_stats_ptr =
 	kcalloc(xpu_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
 	spm_res_sig_stats_ptr =
@@ -221,6 +225,12 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 		swpm_dbg_log("core_duration_idx failure\n");
 		goto End;
 	}
+
+	if (!emi_duration_ptr) {
+		swpm_dbg_log("emi_duration_idx failure\n");
+		goto End;
+	}
+
 	if (!xpu_ip_stats_ptr) {
 		swpm_dbg_log("xpu_ip_stats_idx failure\n");
 		goto End;
@@ -244,6 +254,7 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	}
 
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
+	get_emi_freq_duration(emi_freq_num, emi_duration_ptr);
 	get_xpu_ip_stats(xpu_ip_num, xpu_ip_stats_ptr);
 	get_data_record_number(&data_update_count);
 
@@ -268,8 +279,15 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 		swpm_dbg_log("Volt %dV: Time(msec):%lld\n",
 			core_duration_ptr[i].vol, core_duration_ptr[i].duration);
 	}
+
+	for (i = 0; i < emi_freq_num; i++) {
+		swpm_dbg_log("EMI freq %dMhz: Time(msec):%lld\n",
+			emi_duration_ptr[i].freq, emi_duration_ptr[i].duration);
+	}
+
 End:
 	kfree(core_duration_ptr);
+	kfree(emi_duration_ptr);
 
 	if (xpu_ip_stats_ptr) {
 		for (i = 0; i < xpu_ip_num; i++)

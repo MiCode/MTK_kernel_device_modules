@@ -105,6 +105,9 @@ struct share_index_ext {
 	/* last ddr freq index */
 	unsigned int last_freq_idx;
 
+	/* last emi freq index */
+	unsigned int last_emi_idx;
+
 	/* for determine if the data has been updated */
 	unsigned int update_count;
 };
@@ -127,6 +130,9 @@ struct share_subsys_data {
 	unsigned int core_volt_num;
 	unsigned int core_opp_info_addr;
 	unsigned int core_acc_time_addr;
+	unsigned int emi_freq_num;
+	unsigned int emi_acc_time_addr;
+	unsigned int emi_opp_freq_addr;
 };
 
 extern spinlock_t swpm_sub_data_spinlock;

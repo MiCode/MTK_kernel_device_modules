@@ -27,7 +27,7 @@ int32_t sync_latest_data(void)
 	int ret = SWPM_NOT_EXE;
 	if (SWPM_PSP_OPS && SWPM_PSP_OPS->cmd) {
 		ret = SWPM_PSP_SUCCESS;
-		ret |= SWPM_PSP_OPS->cmd(REQ_DATA, 0);
+		ret |= SWPM_PSP_OPS->cmd(SYNC_DATA, 0);
 	}
 
 	return ret;
@@ -135,6 +135,29 @@ int32_t get_vcore_vol_duration(int32_t vol_num,
 	return 0;
 }
 EXPORT_SYMBOL(get_vcore_vol_duration);
+
+int32_t get_emi_freq_duration(int32_t freq_num,
+			       struct freq_duration *duration)
+{
+	if (SWPM_PSP_OPS &&
+	    SWPM_PSP_OPS->emi_freq_duration_get &&
+	    duration != NULL)
+		return SWPM_PSP_OPS->emi_freq_duration_get(freq_num,
+							duration);
+
+	return 0;
+}
+EXPORT_SYMBOL(get_emi_freq_duration);
+
+int32_t get_emi_freq_num(void)
+{
+	if (SWPM_PSP_OPS && SWPM_PSP_OPS->num_get)
+		return SWPM_PSP_OPS->num_get(EMI_FREQ);
+
+	return 0;
+}
+EXPORT_SYMBOL(get_emi_freq_num);
+
 
 int32_t get_xpu_ip_num(void)
 {

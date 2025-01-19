@@ -10,6 +10,8 @@
 #define DEFAULT_AVG_WINDOW		(50)
 #define ALL_SWPM_TYPE				(0xFFFF)
 
+#define for_each_pwr_mtr(i)    for (i = 0; i < NR_SWPM_TYPE; i++)
+
 enum swpm_type {
 	CPU_SWPM_TYPE,
 	GPU_SWPM_TYPE,
