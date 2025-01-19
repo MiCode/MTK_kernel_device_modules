@@ -27,6 +27,7 @@ ddk_headers(
     name = "mcupm_public_headers",
     hdrs = [
         "include/mcupm_ipi_id.h",
+        "include/mcupm_driver.h",
     ],
     includes = ["include"],
 )

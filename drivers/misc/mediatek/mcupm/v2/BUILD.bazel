@@ -18,7 +18,7 @@ define_mgk_ddk_ko(
                 "mcupm_logger.c",
                 "mcupm_plt.c",
                 "mcupm_timesync.c",
-                "include/mcupm_driver.h",
+                "include/mcupm_internal_driver.h",
                 "include/mcupm_emi_mpu.h",
                 "include/mcupm_ipi_table.h",
                 "include/mcupm_plt.h",

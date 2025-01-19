@@ -12,7 +12,7 @@
 #include <asm/timex.h>
 
 #include "mcupm_ipi_id.h"
-#include "../include/mcupm_driver.h"
+#include "../include/mcupm_internal_driver.h"
 #include "../include/mcupm_timesync.h"
 
 

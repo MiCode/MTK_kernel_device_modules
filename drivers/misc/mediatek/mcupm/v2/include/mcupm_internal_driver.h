@@ -2,12 +2,10 @@
  *
  * Copyright (c) 2020 MediaTek Inc.
  */
-#ifndef __MCUPM_DEFINE_H__
-#define __MCUPM_DEFINE_H__
+#ifndef __MCUPM_INTERNAL_DRIVER_H__
+#define __MCUPM_INTERNAL_DRIVER_H__
 
 #include <linux/types.h>
-#include <linux/poll.h>
-
 
 /* MCUPM MBOX */
 #define MCUPM_MBOX_SLOT_SIZE		0x4
@@ -38,17 +36,11 @@
 #define MCUPM_RESERVED_DEBUG		(1)
 #define MCUPM_PLT_LOGGER_BUF_LEN	0x100000
 
+#if !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE) && !IS_ENABLED(CONFIG_MTK_MET_MEM_ALLOC)
 #define MCUPM_MET_LOGGER_BUF_LEN	0x400000
+#endif
 #define MCUPM_PLT_EEMSN_BUF_LEN		0x1000
 #define MCUPM_BRISKET_BUF_LEN		0x1000
-
-enum {
-	MCUPM_MEM_ID = 0,
-	MCUPM_MET_ID,
-	MCUPM_EEMSN_MEM_ID,
-	MCUPM_BRISKET_ID,
-	NUMS_MCUPM_MEM_ID,
-};
 
 struct mcupm_reserve_mblock {
 	u32 num;
@@ -105,14 +97,9 @@ extern bool has_reserved_memory;
 extern bool skip_logger;
 
 extern ssize_t mcupm_log_read(char __user *data, size_t len);
-extern unsigned int mcupm_log_poll(struct file *file, poll_table *wait);
+extern unsigned int mcupm_log_poll(void);
 extern int mcupm_mbox_write(unsigned int mbox, unsigned int slot, void *buf,
 				unsigned int len);
 extern int mcupm_mbox_read(unsigned int mbox, unsigned int slot, void *buf,
 			unsigned int len);
-extern phys_addr_t mcupm_reserve_mem_get_phys(unsigned int id);
-extern phys_addr_t mcupm_reserve_mem_get_virt(unsigned int id);
-extern phys_addr_t mcupm_reserve_mem_get_size(unsigned int id);
-extern int mcupms_device_probe(struct platform_device *pdev);
-extern void mcupms_device_remove(struct platform_device *pdev);
 #endif

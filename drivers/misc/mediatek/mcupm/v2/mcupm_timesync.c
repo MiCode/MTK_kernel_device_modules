@@ -12,7 +12,7 @@
 #include <asm/timex.h>
 
 
-#include "include/mcupm_driver.h"
+#include "include/mcupm_internal_driver.h"
 #include "include/mcupm_timesync.h"
 
 #define mcupm_ts_write(id, val) \

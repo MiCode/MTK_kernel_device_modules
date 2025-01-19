@@ -11,7 +11,8 @@
 #include <linux/of.h>
 
 #include "mcupm_ipi_id.h"
-#include "include/mcupm_driver.h"
+#include "mcupm_driver.h"
+#include "include/mcupm_internal_driver.h"
 #include "include/mcupm_plt.h"
 #include "include/mcupm_ipi_table.h"
 #include "include/mcupm_timesync.h"

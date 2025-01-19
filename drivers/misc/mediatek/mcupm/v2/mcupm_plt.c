@@ -10,8 +10,9 @@
 #include <linux/io.h>
 
 #include "mcupm_ipi_id.h"
+#include "mcupm_driver.h"
 #include "include/mcupm_plt.h"
-#include "include/mcupm_driver.h"
+#include "include/mcupm_internal_driver.h"
 
 /* import from mcupm_driver */
 extern int mcupm_plt_ackdata;

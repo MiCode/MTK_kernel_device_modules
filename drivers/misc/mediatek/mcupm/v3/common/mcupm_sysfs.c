@@ -14,7 +14,7 @@
 
 
 #include "mcupm_ipi_id.h"
-#include "../include/mcupm_driver.h"
+#include "../include/mcupm_internal_driver.h"
 #include "../include/mcupm_sysfs.h"
 
 static int mcupm_log_if_open(struct inode *inode, struct file *file);

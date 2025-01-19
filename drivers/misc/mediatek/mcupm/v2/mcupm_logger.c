@@ -13,7 +13,7 @@
 #include <linux/poll.h>
 
 #include "mcupm_ipi_id.h"
-#include "include/mcupm_driver.h"
+#include "include/mcupm_internal_driver.h"
 
 extern int mcupm_plt_ackdata;
 
