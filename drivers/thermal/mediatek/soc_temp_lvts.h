@@ -476,4 +476,10 @@ struct tag_chipid {
 #define THERMAL_PROTECTION_STAGE_1		0x20000000
 #define THERMAL_PROTECTION_STAGE_2		0x40000000
 #define THERMAL_PROTECTION_STAGE_3		0x80000000
+
+/*SYSRAM offset*/
+#define LVTS_DEBUG1_OFFSET          (0x0E0)
+#define LVTS_DEBUG2_OFFSET          (0x120)
+#define LVTS_DEBUG3_OFFSET          (0x0EC)
+
 #endif /* __MTK_SOC_TEMP_LVTS_H__ */
