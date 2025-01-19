@@ -495,7 +495,7 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 			comp = path->nodes[i].comp;
 			cache->label_cnt += call_cfg_op(comp, get_label_count, task, &ccfg[i]);
 		}
-		reuse->labels = kcalloc(cache->label_cnt, sizeof(*reuse->labels), GFP_KERNEL);
+		reuse->labels = vzalloc(cache->label_cnt * sizeof(*reuse->labels));
 		if (!reuse->labels) {
 			ret = -ENOMEM;
 			goto err;
@@ -2348,7 +2348,7 @@ void mml_core_destroy_task(struct mml_task *task)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(task->reuse); i++) {
-		kfree(task->reuse[i].labels);
+		vfree(task->reuse[i].labels);
 		kfree(task->reuse[i].label_mods);
 		kfree(task->reuse[i].label_check);
 	}

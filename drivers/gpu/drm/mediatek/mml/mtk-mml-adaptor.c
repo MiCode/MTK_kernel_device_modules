@@ -417,6 +417,7 @@ s32 task_dup(struct mml_task *task, u32 pipe)
 	struct mml_frame_config *cfg = task->config;
 	struct mml_ctx *ctx = task->ctx;
 	struct mml_task *src;
+	int ret = 0;
 
 	if (!cfg->nocmd &&		/* drm, m2m */
 	    unlikely(task->pkts[pipe])) {
@@ -488,13 +489,14 @@ dup_command:
 	cmdq_pkt_copy(task->pkts[pipe], src->pkts[pipe]);
 	task->pkts[pipe]->user_data = (void *)task;
 
-	task->reuse[pipe].labels = kcalloc(cfg->cache[pipe].label_cnt,
-		sizeof(*task->reuse[pipe].labels), GFP_KERNEL);
+	task->reuse[pipe].labels = vzalloc(cfg->cache[pipe].label_cnt *
+		sizeof(*task->reuse[pipe].labels));
 	task->reuse[pipe].label_mods = kcalloc(cfg->cache[pipe].label_cnt,
 		sizeof(*task->reuse[pipe].label_mods), GFP_KERNEL);
 	task->reuse[pipe].label_check = kcalloc(cfg->cache[pipe].label_cnt,
 		sizeof(*task->reuse[pipe].label_check), GFP_KERNEL);
-	if (task->reuse[pipe].labels && task->reuse[pipe].label_mods) {
+	if (task->reuse[pipe].labels && task->reuse[pipe].label_mods &&
+		task->reuse[pipe].label_check) {
 		memcpy(task->reuse[pipe].labels, src->reuse[pipe].labels,
 			sizeof(*task->reuse[pipe].labels) * cfg->cache[pipe].label_cnt);
 		memcpy(task->reuse[pipe].label_mods, src->reuse[pipe].label_mods,
@@ -504,12 +506,13 @@ dup_command:
 			task->reuse[pipe].label_idx);
 	} else {
 		mml_err("[adpt]copy reuse labels fail");
+		ret = -ENOMEM;
 	}
 dup_pq:
 	/* dle TODO: copy pq_task results */
 	/* mml_pq_dup_task(task->pq_task, src->pq_task) */
 	mutex_unlock(&ctx->config_mutex);
-	return 0;
+	return ret;
 }
 
 struct mml_tile_cache *task_get_tile_cache(struct mml_task *task, u32 pipe)
