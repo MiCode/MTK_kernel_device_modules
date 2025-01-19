@@ -4146,7 +4146,10 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
 		return;
 	}
-	wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1; /* 1 ms */
+	if (dsi->ext && dsi->ext->params->is_cphy)
+		wake_up_prd = (dsi->data_rate * 1000) / (1024 * 7) + 1; /* 1 ms */
+	else
+		wake_up_prd = (dsi->data_rate * 1000) / (1024 * 8) + 1; /* 1 ms */
 
 	mtk_crtc = dsi->is_slave ?
 		dsi->master_dsi->ddp_comp.mtk_crtc
