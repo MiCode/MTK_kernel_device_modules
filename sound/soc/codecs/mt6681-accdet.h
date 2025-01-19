@@ -118,6 +118,7 @@ struct head_dts_data {
 	unsigned int moisture_comp_vref2;
 	unsigned int moisture_use_ext_res;
 	unsigned int accdet_irq_gpio_enable;
+	unsigned int app_wakelock_time;
 };
 enum {
 	accdet_state000 = 0,
