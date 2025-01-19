@@ -4686,7 +4686,7 @@ EXIT:
 /*****************************************************************************
  * Called when the device is being detached from the driver
  *****************************************************************************/
-static signed int FDVT_remove(struct platform_device *pDev)
+static void FDVT_remove(struct platform_device *pDev)
 {
 	/*struct resource *pRes;*/
 	signed int irq_num;
@@ -4741,7 +4741,6 @@ static signed int FDVT_remove(struct platform_device *pDev)
 	class_destroy(pFDVTClass);
 	pFDVTClass = NULL;
 	/*  */
-	return 0;
 }
 
 /*****************************************************************************
