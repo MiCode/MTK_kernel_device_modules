@@ -17,7 +17,6 @@ obj-$(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) += sspm/
 obj-$(CONFIG_MTK_TINYSYS_SCMI) += tinysys_scmi/
 obj-$(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT) += mcupm/
 obj-$(CONFIG_MTK_ET) += et/
-obj-$(CONFIG_MTK_SUBPMIC_MISC) += subpmic/
 obj-$(CONFIG_MMPROFILE) += mmp/
 obj-$(CONFIG_MMEVENT) += mme/
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += apusys/

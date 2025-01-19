@@ -1,0 +1,52 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "charger_class",
+    srcs = [
+        "charger_class.c",
+    ],
+    hdrs = ["charger_class.h"],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "adapter_class",
+    srcs = [
+        "adapter_class.c",
+    ],
+    hdrs = ["adapter_class.h"],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_charger_algorithm_class",
+    srcs = [
+        "mtk_charger_algorithm_class.c",
+    ],
+    hdrs = ["mtk_charger_algorithm_class.h"],
+    includes = ["."],
+)

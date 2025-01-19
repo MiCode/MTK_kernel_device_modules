@@ -7,7 +7,10 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/slab.h>
+#include <linux/property.h>
 
 #include <linux/extdev_io_class.h>
 
@@ -23,7 +26,7 @@ static ssize_t extdev_io_store(struct device *dev,
 			       struct device_attribute *attr,
 			       const char *buf, size_t count);
 
-#define EXTDEV_IO_DEVICE_ATTR(_name, _mode) 		\
+#define EXTDEV_IO_DEVICE_ATTR(_name, _mode)		\
 {							\
 	.attr = { .name = #_name, .mode = _mode },	\
 	.show = extdev_io_show,				\
@@ -62,17 +65,26 @@ static int extdev_io_read(struct extdev_io_device *extdev, char *buf)
 		extdev->data_buffer_size = extdev->size;
 	}
 	/* read transfer */
-	if (!desc->io_read)
-		return -EPERM;
-	ret = desc->io_read(desc->rmap, extdev->reg, extdev->data_buffer,
-			    extdev->size);
+	if (desc->rmap)
+		ret = regmap_bulk_read(desc->rmap, extdev->reg, extdev->data_buffer, extdev->size);
+	else if (desc->io_read)
+		ret = desc->io_read(desc->drvdata, extdev->reg, extdev->data_buffer, extdev->size);
+	else
+		ret = -EPERM;
 	if (ret < 0)
 		return ret;
 	data = extdev->data_buffer;
 	cnt = snprintf(buf + cnt, 256, "0x");
-	for (i = 0; i < extdev->size; i++)
+	if (cnt >= 256)
+		return -ENOMEM;
+	for (i = 0; i < extdev->size; i++) {
 		cnt += snprintf(buf + cnt, 256, "%02x,", *(data + i));
+		if (cnt >= 256)
+			return -ENOMEM;
+	}
 	cnt = snprintf(buf + cnt, 256, "\n");
+	if (cnt >= 256)
+		return -ENOMEM;
 	return ret;
 }
 
@@ -111,9 +123,12 @@ static int extdev_io_write(struct extdev_io_device *extdev, const char *buf_inte
 	if (val_cnt != extdev->size)
 		return -EINVAL;
 	/* write transfer */
-	if (!desc->io_write)
-		return -EPERM;
-	ret = desc->io_write(desc->rmap, extdev->reg, extdev->data_buffer, extdev->size);
+	if (desc->rmap)
+		ret = regmap_bulk_write(desc->rmap, extdev->reg, extdev->data_buffer, extdev->size);
+	else if (desc->io_write)
+		ret = desc->io_write(desc->drvdata, extdev->reg, extdev->data_buffer, extdev->size);
+	else
+		ret = -EPERM;
 	return (ret < 0) ? ret : cnt;
 }
 
@@ -128,19 +143,27 @@ static ssize_t extdev_io_show(struct device *dev,
 	mutex_lock(&extdev->io_lock);
 	switch (offset) {
 	case EXTDEV_IO_DESC_REG:
-		snprintf(buf, 256, "0x%04x\n", extdev->reg);
+		ret = snprintf(buf, 256, "0x%04x\n", extdev->reg);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	case EXTDEV_IO_DESC_SIZE:
-		snprintf(buf, 256, "%d\n", extdev->size);
+		ret = snprintf(buf, 256, "%d\n", extdev->size);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	case EXTDEV_IO_DESC_DATA:
 		ret = extdev_io_read(extdev, buf);
 		break;
 	case EXTDEV_IO_DESC_TYPE:
-		snprintf(buf, 256, "%s\n", extdev->desc->typestr);
+		ret = snprintf(buf, 256, "%s\n", extdev->desc->typestr);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	case EXTDEV_IO_DESC_LOCK:
-		snprintf(buf, 256, "%d\n", extdev->access_lock);
+		ret = snprintf(buf, 256, "%d\n", extdev->access_lock);
+		if (ret >= 256)
+			ret = -ENOMEM;
 		break;
 	default:
 		ret = -EINVAL;
@@ -150,7 +173,7 @@ static ssize_t extdev_io_show(struct device *dev,
 	return ret < 0 ? ret : strlen(buf);
 }
 
-static int get_parameters(char *buf, long int *param1, int num_of_par)
+static int get_parameters(char *buf, long *param1, int num_of_par)
 {
 	char *token;
 	int base, cnt;
@@ -181,7 +204,7 @@ static ssize_t extdev_io_store(struct device *dev,
 {
 	struct extdev_io_device *extdev = dev_get_drvdata(dev);
 	const ptrdiff_t offset = attr - extdev_io_device_attributes;
-	long int val;
+	long val = 0;
 	int ret = 0;
 
 	mutex_lock(&extdev->io_lock);
@@ -211,8 +234,8 @@ static ssize_t extdev_io_store(struct device *dev,
 	return ret < 0 ? ret : count;
 }
 
-struct extdev_io_device * extdev_io_device_register(struct device *parent,
-						    struct extdev_desc *desc)
+struct extdev_io_device *extdev_io_device_register(struct device *parent,
+						   const struct extdev_desc *desc)
 {
 	struct extdev_io_device *extdev;
 
@@ -221,16 +244,17 @@ struct extdev_io_device * extdev_io_device_register(struct device *parent,
 		return ERR_PTR(-EINVAL);
 	}
 
-	if (!desc || !desc->devname || !desc->typestr || !desc->rmap)
+	if (!desc || !desc->devname || !desc->typestr)
 		return ERR_PTR(-EINVAL);
 
 	extdev = devm_kzalloc(parent, sizeof(*extdev), GFP_KERNEL);
-	if (!extdev) {
-		pr_err("%s: failed to alloc extdev\n", __func__);
+	if (!extdev)
 		return ERR_PTR(-ENOMEM);
-	}
 
-	extdev->desc = desc;
+	extdev->desc = devm_kmemdup(parent, desc, sizeof(*desc), GFP_KERNEL);
+	if (!extdev->desc)
+		return ERR_PTR(-ENOMEM);
+
 	mutex_init(&extdev->io_lock);
 
 	/* for MTK engineer setting */
@@ -269,8 +293,8 @@ static void devm_extdev_io_device_release(struct device *dev, void *res)
 	extdev_io_device_unregister(*extdev);
 }
 
-struct extdev_io_device * devm_extdev_io_device_register(struct device *parent,
-							 struct extdev_desc *desc)
+struct extdev_io_device *devm_extdev_io_device_register(struct device *parent,
+							const struct extdev_desc *desc)
 {
 	struct extdev_io_device **ptr, *extdev;
 
@@ -289,6 +313,101 @@ struct extdev_io_device * devm_extdev_io_device_register(struct device *parent,
 	return extdev;
 }
 EXPORT_SYMBOL_GPL(devm_extdev_io_device_register);
+
+static void __maybe_unused extdev_io_pdev_unregister(void *data)
+{
+	struct platform_device *pdev = data;
+
+	of_platform_device_destroy(&pdev->dev, NULL);
+}
+
+#define EXTDEV_IO_PDEV_NAME_SIZE		64
+int devm_extdev_io_device_general_create(struct device *parent, struct platform_device **pdev,
+					 struct extdev_io_device **extdev, struct regmap *rmap)
+{
+	const char *compatilble_name, *bus_name, *chip_name;
+	char pdev_name[EXTDEV_IO_PDEV_NAME_SIZE] = "\0";
+	size_t buf_size = sizeof(pdev_name);
+	struct fwnode_handle *dbg_fwnode;
+	struct extdev_desc extdev_desc;
+	int ret = 0, offset = 0;
+
+	if (!parent) {
+		pr_info("%s, No parent device\n", __func__);
+		return -ENODEV;
+	}
+
+	dbg_fwnode = device_get_named_child_node(parent, "rtk-generic-dbg");
+	if (!dbg_fwnode) {
+		dev_info(parent, "%s, Failed to get rtk-generic-dbg dts node\n", __func__);
+		return -ENODEV;
+	}
+
+	if (!pdev) {
+		dev_info(parent, "%s, No platform device!", __func__);
+		goto create_by_extdev_io_class;
+	}
+
+	/* 1st Method: Driver probe in subpmic-dbg */
+	if (!fwnode_property_read_string(dbg_fwnode, "compatible", &compatilble_name)) {
+		offset += scnprintf(pdev_name + offset, buf_size - offset,
+				    "%s-dbg", dev_name(parent));
+
+		*pdev = of_platform_device_create(to_of_node(dbg_fwnode), pdev_name, parent);
+		if (*pdev) {
+			ret = devm_add_action_or_reset(parent, extdev_io_pdev_unregister, *pdev);
+			if (ret) {
+				dev_info(parent, "%s, Failed to create devm pdev!\n", __func__);
+				goto out;
+			}
+
+			dev_info(parent, "%s, Create %s dbg platform device successfully!",
+				 __func__, pdev_name);
+			goto out;
+		} else {
+			dev_info(parent, "%s, Failed to create %s\n", __func__, pdev_name);
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+
+create_by_extdev_io_class:
+	/* 2nd: Only create extdev_io by extdev_io class (without subpmic-dbg) */
+	if (!rmap || !extdev) {
+		dev_info(parent, "%s, No regmap, or no extdev!!\n", __func__);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = fwnode_property_read_string(dbg_fwnode, "dbg-bus", &bus_name);
+	if (ret) {
+		dev_info(parent, "%s, Failed to get dbg-bus dts node!!\n", __func__);
+		goto out;
+	}
+
+	ret = fwnode_property_read_string(dbg_fwnode, "dbg-name", &chip_name);
+	if (ret) {
+		dev_info(parent, "%s, Failed to get dbg-name dts node!!\n", __func__);
+		goto out;
+	}
+
+	extdev_desc.dirname = devm_kasprintf(parent, GFP_KERNEL, "%s.%s",
+					     chip_name, dev_name(parent));
+	extdev_desc.devname = dev_name(parent);
+	extdev_desc.typestr = devm_kasprintf(parent, GFP_KERNEL, "%s,%s", bus_name, chip_name);
+	extdev_desc.rmap = rmap;
+	*extdev = devm_extdev_io_device_register(parent, &extdev_desc);
+	if (IS_ERR(*extdev)) {
+		dev_info(parent, "%s, Failed to register extdev_io device\n", __func__);
+		ret = PTR_ERR(*extdev);
+	} else
+		ret = 0;
+
+out:
+	fwnode_handle_put(dbg_fwnode);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(devm_extdev_io_device_general_create);
 
 static struct attribute *extdev_io_class_attrs[] = {
 	&extdev_io_device_attributes[0].attr,
@@ -310,7 +429,7 @@ static const struct attribute_group *extdev_io_attr_groups[] = {
 
 static int __init extdev_io_class_init(void)
 {
-	pr_info("%s\n", __func__);
+	pr_info("%s starting\n", __func__);
 	extdev_io_class = class_create("extdev_io");
 	if (IS_ERR(extdev_io_class)) {
 		pr_err("Unable to create extdev_io class(%ld)\n", PTR_ERR(extdev_io_class));

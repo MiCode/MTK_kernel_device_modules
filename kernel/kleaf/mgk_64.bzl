@@ -136,45 +136,83 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
-    "//kernel_device_modules-{}/drivers/mfd:ddk_makefile".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_makefile".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/nvmem:ddk_makefiles".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/core:srcs".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/nvmem:ddk_makefiles".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mfd:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/core:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:ddk_src".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
-    "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_kconfigs".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/nvmem:ddk_kconfigs".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/keyboard:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/nvmem:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6360-adc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6370-adc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6375-adc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6375-auxadc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6379-adc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/iio/adc:rt9490-adc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/keyboard:mtk-kpd".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/keyboard:mtk-pmic-keys".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/nvmem:nvmem_mtk-devinfo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6360-core".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6370".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6375".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:extdev_io_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:mt6360-dbg".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:mt6370-dbg".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:subpmic-dbg".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/core:hf_manager".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:pd_dbg_info".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:rt_pd_manager".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpci_late_sync".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6360".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6370".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1711h".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:xhci-mtk-hcd-v2".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/nvmem:nvmem_mtk-devinfo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-fpgaphy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-mt6379-eusb2-repeater".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-nxp-eusb2-repeater".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-tphy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-xsphy".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/input/keyboard:mtk-kpd".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/input/keyboard:mtk-pmic-keys".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:adapter_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_algorithm_class".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:mt6360-regulator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:mt6370-regulator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:mt6379-regulator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:rt4803".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:rt5133-regulator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:rt6160-regulator".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -313,15 +351,9 @@ mgk_64_device_modules = [
     "drivers/i3c/master/mtk-i3c-master-mt69xx.ko",
     "drivers/iio/adc/mt6338-auxadc.ko",
     "drivers/iio/adc/mt635x-auxadc.ko",
-    "drivers/iio/adc/mt6360-adc.ko",
-    "drivers/iio/adc/mt6370-adc.ko",
-    "drivers/iio/adc/mt6375-adc.ko",
-    "drivers/iio/adc/mt6379-adc.ko",
-    "drivers/iio/adc/mt6375-auxadc.ko",
     "drivers/iio/adc/mt6577_auxadc.ko",
     "drivers/iio/adc/mt6681-auxadc.ko",
     "drivers/iio/adc/mtk-spmi-pmic-adc.ko",
-    "drivers/iio/adc/rt9490-adc.ko",
     "drivers/input/touchscreen/BoTai_Multi_Touch/BoTai_touch_one/botai_touch_one.ko",
     "drivers/input/touchscreen/BoTai_Multi_Touch/BoTai_touch_two/botai_touch_two.ko",
     "drivers/input/touchscreen/GT9886/gt9886.ko",
@@ -588,9 +620,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/ssc/debug/v2/mtk-ssc-dbg-v2.ko",
     "drivers/misc/mediatek/ssc/mtk-ssc.ko",
     "drivers/misc/mediatek/sspm/v3/sspm_v3.ko",
-    "drivers/misc/mediatek/subpmic/extdev_io_class.ko",
-    "drivers/misc/mediatek/subpmic/mt6370-dbg.ko",
-    "drivers/misc/mediatek/subpmic/subpmic-dbg.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v1/mtk-swpm-dbg-common-v1.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v1/mtk-swpm-isp-wrapper.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6886/mtk-swpm-core-dbg-v6886.ko",
@@ -638,15 +667,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/typec/mux/ps5170.ko",
     "drivers/misc/mediatek/typec/mux/ptn36241g.ko",
     "drivers/misc/mediatek/typec/mux/usb_dp_selector.ko",
-    "drivers/misc/mediatek/typec/tcpc/pd_dbg_info.ko",
-    "drivers/misc/mediatek/typec/tcpc/rt_pd_manager.ko",
-    "drivers/misc/mediatek/typec/tcpc/tcpc_class.ko",
-    "drivers/misc/mediatek/typec/tcpc/tcpci_late_sync.ko",
-    "drivers/misc/mediatek/typec/tcpc/tcpc_mt6360.ko",
-    "drivers/misc/mediatek/typec/tcpc/tcpc_mt6370.ko",
-    "drivers/misc/mediatek/typec/tcpc/tcpc_mt6375.ko",
-    "drivers/misc/mediatek/typec/tcpc/tcpc_mt6379.ko",
-    "drivers/misc/mediatek/typec/tcpc/tcpc_rt1711h.ko",
     "drivers/misc/mediatek/uarthub/uarthub_drv.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko",
@@ -692,8 +712,6 @@ mgk_64_device_modules = [
     "drivers/pinctrl/mediatek/pinctrl-mt6373.ko",
     "drivers/pinctrl/mediatek/pinctrl-mtk-common-v2_debug.ko",
     "drivers/pinctrl/mediatek/pinctrl-mtk-v2.ko",
-    "drivers/power/supply/adapter_class.ko",
-    "drivers/power/supply/charger_class.ko",
     "drivers/power/supply/mt6357_battery.ko",
     "drivers/power/supply/mt6358_battery.ko",
     "drivers/power/supply/mt6359p_battery.ko",
@@ -709,7 +727,6 @@ mgk_64_device_modules = [
     "drivers/power/supply/ufcs/ufcs_mt6379.ko",
     "drivers/power/supply/mtk_ufcs_adapter.ko",
     "drivers/power/supply/mtk_2p_charger.ko",
-    "drivers/power/supply/mtk_charger_algorithm_class.ko",
     "drivers/power/supply/mtk_charger_framework.ko",
     "drivers/power/supply/mtk_chg_type_det.ko",
     "drivers/power/supply/mtk_hvbpc.ko",
@@ -728,20 +745,14 @@ mgk_64_device_modules = [
     "drivers/regulator/mt6315-regulator.ko",
     "drivers/regulator/mt6316-regulator.ko",
     "drivers/regulator/mt6359p-regulator.ko",
-    "drivers/regulator/mt6360-regulator.ko",
     "drivers/regulator/mt6363-regulator.ko",
     "drivers/regulator/mt6368-regulator.ko",
     "drivers/regulator/mt6369-regulator.ko",
     "drivers/regulator/mt6373-regulator.ko",
-    "drivers/regulator/mt6379-regulator.ko",
-    "drivers/regulator/mt6370-regulator.ko",
     "drivers/regulator/mt6681-regulator.ko",
     "drivers/regulator/mtk-dvfsrc-regulator.ko",
     "drivers/regulator/mtk-extbuck-debug.ko",
     "drivers/regulator/mtk-vmm-isp71-regulator.ko",
-    "drivers/regulator/rt4803.ko",
-    "drivers/regulator/rt5133-regulator.ko",
-    "drivers/regulator/rt6160-regulator.ko",
     "drivers/remoteproc/mtk_ccu.ko",
     "drivers/remoteproc/mtk_ccu_mssv.ko",
     "drivers/reset/reset-ti-syscon.ko",
@@ -1423,8 +1434,8 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cpufreq_v2/src/CPU_DVFS.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/upower/Upower.ko":"mt6877"})
-        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/subpmic/generic_debugfs.ko":"mt6877"})
-        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/subpmic/mt6360-dbg.ko":"mt6877"})
+        mgk_64_kleaf_device_modules.update("//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:generic_debugfs".format(kernel_version))
+        mgk_64_kleaf_device_modules.update("//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:mt6360-dbg".format(kernel_version))
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6877.ko":"mt6877"})
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/dcm/mt6877_dcm.ko":"mt6877"})
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/lpm/modules/debug/mt6989/mtk-lpm-dbg-mt6989.ko")
@@ -2331,15 +2342,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ps5170.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ptn36241g.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/usb_dp_selector.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/pd_dbg_info.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/rt_pd_manager.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_class.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpci_late_sync.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6360.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6370.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6375.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_rt1711h.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/tcpc/tcpc_mt6379.ko")
 
         mgk_64_device_modules.remove("drivers/power/supply/mt6360_charger.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mt6360_pmu_chg.ko")
@@ -2362,6 +2364,16 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.remove("drivers/power/supply/ufcs/ufcs_class.ko")
         mgk_64_device_modules.remove("drivers/power/supply/ufcs/ufcs_mt6379.ko")
+
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6360".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6370".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1711h".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:pd_dbg_info".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:rt_pd_manager".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpci_late_sync".format(kernel_version))
 
     if "mt6893_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
@@ -2620,7 +2632,6 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.remove("drivers/mailbox/mtk-mbox-mailbox.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pgboost/pgboost.ko")
-        mgk_64_device_modules.remove("drivers/regulator/mt6370-regulator.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/platform/v1/mtk-lpm-plat-v1-legacy.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/k6893/mtk-lpm-dbg-mt6893-legacy.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/mtk-lpm-legacy.ko")
@@ -2628,6 +2639,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/slbc_ipi.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/slbc_trace.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:mt6370-regulator".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6886.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6895.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6897.ko")
@@ -3127,7 +3139,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
 
-        mgk_64_device_modules.remove("drivers/regulator/mt6370-regulator.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/gate_ic/rt4831a_drv.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mm-fake-engine.ko")
@@ -3138,6 +3149,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")
         mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:mt6370-regulator".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
@@ -3344,12 +3356,12 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/gate_ic/rt4831a_drv.ko")
-        mgk_64_device_modules.remove("drivers/regulator/mt6370-regulator.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v2/sspm.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/sspm/v3/sspm_v3.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:mt6370-regulator".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/lpm/modules/debug/mt6989/mtk-lpm-dbg-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/lpm/modules/debug/mt6991/mtk-lpm-dbg-mt6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko")

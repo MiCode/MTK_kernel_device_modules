@@ -165,6 +165,7 @@ static const struct file_operations lock_debug_fops = {
 	.write = lock_debug_write,
 };
 
+#if IS_ENABLED(CONFIG_MTK_SUBPMIC_DEBUGFS)
 int generic_debugfs_register(struct dbg_info *di)
 {
 	struct dbg_internal *d = &di->internal;
@@ -224,6 +225,7 @@ void generic_debugfs_unregister(struct dbg_info *di)
 	kfree(d->data_buffer);
 }
 EXPORT_SYMBOL_GPL(generic_debugfs_unregister);
+#endif /* CONFIG_DEBUG_FS */
 
 static int __init generic_debugfs_init(void)
 {

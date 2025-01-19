@@ -1,0 +1,68 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+SIMPLE_MODULE_NAME = [
+    "mt6360-regulator",
+    "mt6370-regulator",
+    "mt6379-regulator",
+    "rt4803",
+]
+
+[define_mgk_ddk_ko(
+    name = "{}".format(mod),
+    srcs = [
+        "{}.c".format(mod),
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+) for mod in SIMPLE_MODULE_NAME]
+
+define_mgk_ddk_ko(
+    name = "rt5133-regulator",
+    srcs = [
+        "rt5133-regulator.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:extdev_io_class".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "rt6160-regulator",
+    srcs = [
+        "rt6160.h",
+        "rt6160-regulator.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+)

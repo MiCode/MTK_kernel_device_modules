@@ -14,7 +14,7 @@ filegroup(
 )
 
 filegroup(
-    name = "ddk_makefile",
+    name = "ddk_src",
     srcs = glob([
         "**/Makefile",
         "**/Kbuild",
@@ -28,16 +28,16 @@ define_mgk_ddk_ko(
     srcs = [
         "mt6360-core.c",
     ],
-    includes = ["."],
+    includes = ["include"],
 )
 
 define_mgk_ddk_ko(
     name = "mt6370",
     srcs = [
+        "mt6370.h",
         "mt6370.c",
     ],
-    hdrs = ["mt6370.h"],
-    includes = ["."],
+    includes = ["include"],
 )
 
 define_mgk_ddk_ko(
@@ -45,17 +45,17 @@ define_mgk_ddk_ko(
     srcs = [
         "mt6375.c",
     ],
-    includes = ["."],
+    includes = ["include"],
 )
 
 define_mgk_ddk_ko(
     name = "mt6379s",
     srcs = [
+        "mt6379.h",
         "mt6379-spmi.c",
         "mt6379-core.c",
     ],
-    hdrs = ["mt6379.h"],
-    includes = ["."],
+    includes = ["include"],
 )
 
 define_mgk_ddk_ko(
@@ -63,5 +63,5 @@ define_mgk_ddk_ko(
     srcs = [
         "rt9490.c",
     ],
-    includes = ["."],
+    includes = ["include"],
 )
