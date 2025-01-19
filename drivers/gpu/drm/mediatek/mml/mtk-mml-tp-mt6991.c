@@ -985,6 +985,8 @@ static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 
 static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning)
 {
+	u32 inw = info->src.width;
+	u32 inh = info->src.height;
 	u32 w = info->dest[0].data.width;
 	u32 h = info->dest[0].data.height;
 	u32 cw = info->dest[0].crop.r.width;
@@ -994,8 +996,8 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		info->dest[0].rotate == MML_ROT_270)
 		swap(w, h);
 
-	mml_msg("[topology]%s target %ux%u crop %ux%u",
-		__func__, w, h, cw, ch);
+	mml_msg("[topology]%s in %ux%u target %ux%u crop %ux%u",
+		__func__, inw, inh, w, h, cw, ch);
 
 	/* default binning off */
 	if (can_binning)
@@ -1006,9 +1008,9 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 		if (can_binning && (cw >= w * 2 || ch >= h * 2) &&
 			MML_FMT_YUV420(info->src.format)) {
 			*can_binning = true;
-			if (cw >= w * 2)
+			if (cw >= w * 2 && !(inw & 0x3) && !(cw & 0x3))
 				cw = cw / 2;
-			if (ch >= h * 2)
+			if (ch >= h * 2 && !(inh & 0x3) && !(ch & 0x3))
 				ch = ch / 2;
 		}
 	}
