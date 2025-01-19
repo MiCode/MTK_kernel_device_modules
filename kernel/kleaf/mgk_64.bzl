@@ -898,6 +898,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
     #"drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
     #"drivers/misc/mediatek/pkvm_mkp/pkvm_mkp.ko",
+    "drivers/misc/mediatek/performance/game/mtk_game.ko",
     "drivers/misc/mediatek/pmic_protect/mtk-pmic-oc-debug.ko",
     "drivers/misc/mediatek/pmsr/v3/pmsr_v3.ko",
     "drivers/misc/mediatek/power_throttling/mtk_gpu_power_throttling.ko",
