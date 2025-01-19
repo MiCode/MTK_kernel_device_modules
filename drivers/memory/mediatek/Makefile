@@ -9,6 +9,5 @@ else
 obj-$(CONFIG_MTK_EMI) += smpu.o
 obj-$(CONFIG_MTK_EMI) += smpu-hook-v1.o
 obj-$(CONFIG_MTK_EMI_MPU_TEST) += emi-mpu-test.o
-obj-$(CONFIG_MTK_EMI_MPU_TEST) += emi-mpu-test-v2.o
 endif
 

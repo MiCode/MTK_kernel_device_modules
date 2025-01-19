@@ -173,3 +173,11 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "emi-mpu-test-v2",
+    srcs = [
+        "emi-mpu-test-v2.c",
+    ],
+    includes = ["."],
+)
