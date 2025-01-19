@@ -358,6 +358,9 @@
 #define DSI_BUF_URGENT_LOW(data)	(DSI_BUF_CON0(data) + 0x38 + data->con_offset)
 #define DSI_BUF_PREURGENT_HIGH(data)	(DSI_BUF_CON0(data) + 0x3c + data->con_offset)
 
+#define DSI_BUF_SIZE(data)	(DSI_BUF_CON0(data) + 0xc)
+#define DSI_BUF_REAL_SIZE REG_FLD_MSB_LSB(14, 0)
+
 #define CONFIG (0xff << 0)
 #define SHORT_PACKET 0
 #define LONG_PACKET 2
@@ -2653,13 +2656,16 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	output_valid_us = dsi->driver_data->output_valid_fifo_us ?
 				dsi->driver_data->output_valid_fifo_us : 25;
 
+	mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_BUF_EN, BUF_BUF_EN);
+
 	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
 		&& (priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6991 ||
 			priv->data->mmsys_id == MMSYS_MT6993)) {
 		dli_relay_1tnp = 2;
 
-		if (priv->data->mmsys_id == MMSYS_MT6989) {
+		switch (priv->data->mmsys_id) {
+		case MMSYS_MT6989:
 			if (comp->id == DDP_COMPONENT_DSI2)
 				buf_con = 1036;
 			else if ((comp->id == DDP_COMPONENT_DSI0) ||
@@ -2667,8 +2673,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 				buf_con = 1554;
 			else
 				DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
-		} else if (priv->data->mmsys_id == MMSYS_MT6991 ||
-					priv->data->mmsys_id == MMSYS_MT6993) {
+			break;
+		case MMSYS_MT6991:
 			if (comp->id == DDP_COMPONENT_DSI1)
 				buf_con = 1036;
 			else if ((comp->id == DDP_COMPONENT_DSI0) ||
@@ -2676,6 +2682,13 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 				buf_con = 1554;
 			else
 				DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
+			break;
+		case MMSYS_MT6993:
+			buf_con = readl(dsi->regs + DSI_BUF_SIZE(dsi->driver_data));
+			buf_con = REG_FLD_VAL_GET(DSI_BUF_REAL_SIZE, buf_con);
+			break;
+		default:
+			break;
 		}
 	}
 
@@ -2770,7 +2783,6 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	writel((urgent_hi & 0xfffff), dsi->regs + DSI_BUF_URGENT_HIGH(dsi->driver_data));
 	writel((urgent_lo & 0xfffff), dsi->regs + DSI_BUF_URGENT_LOW(dsi->driver_data));
 	writel(rw_times, dsi->regs + DSI_TX_BUF_RW_TIMES(dsi->driver_data));
-	mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_BUF_EN, BUF_BUF_EN);
 
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
 		(dsi->driver_data->support_pre_urgent & PREURGENT_SUPPORT_VDO)) {
