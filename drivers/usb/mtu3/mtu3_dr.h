@@ -14,6 +14,8 @@
 
 int ssusb_host_init(struct ssusb_mtk *ssusb, struct device_node *parent_dn);
 void ssusb_host_exit(struct ssusb_mtk *ssusb);
+int ssusb_host_init_v2(struct ssusb_mtk *ssusb);
+void ssusb_host_exit_v2(struct ssusb_mtk *ssusb);
 int ssusb_wakeup_of_property_parse(struct ssusb_mtk *ssusb,
 				struct device_node *dn);
 int ssusb_host_enable(struct ssusb_mtk *ssusb);

@@ -466,7 +466,8 @@ static void ssusb_get_host_rscs(struct ssusb_mtk *ssusb)
 		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1") ||
 		    of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
 			pdev = of_find_device_by_node(child);
-			of_node_put(child);
+			if (pdev)
+				ssusb->xhci_pdrv = to_platform_driver(pdev->dev.driver);
 
 			if (pdev && ssusb->ls_slp_quirk) {
 				res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
@@ -544,3 +545,50 @@ void ssusb_host_exit(struct ssusb_mtk *ssusb)
 	of_platform_depopulate(ssusb->dev);
 	ssusb_host_cleanup(ssusb);
 }
+
+static int ssusb_host_register(struct ssusb_mtk *ssusb, bool on)
+{
+	int ret;
+
+	dev_info(ssusb->dev, "%s %d\n", __func__, on);
+
+	if (!ssusb->xhci_pdrv)
+		return 0;
+
+	if (on) {
+		ret = platform_driver_register(ssusb->xhci_pdrv);
+		if (ret) {
+			dev_info(ssusb->dev, "register host driver fail\n");
+			return ret;
+		}
+	} else {
+		platform_driver_unregister(ssusb->xhci_pdrv);
+	}
+	return 0;
+}
+
+/* v2 still use platform_driver_unregister to unbind xhci driver */
+int  ssusb_host_init_v2(struct ssusb_mtk *ssusb)
+{
+	int ret;
+
+	ssusb_host_setup(ssusb);
+	ret = ssusb_host_register(ssusb, true);
+
+	if (ret) {
+		/* Register xhci driver fail */
+		dev_info(ssusb->dev, "failed to register XHCI driver.\n");
+		return ret;
+	}
+
+	ssusb_get_host_rscs(ssusb);
+
+	return 0;
+}
+
+void ssusb_host_exit_v2(struct ssusb_mtk *ssusb)
+{
+	ssusb_host_register(ssusb, false);
+	ssusb_host_cleanup(ssusb);
+}
+

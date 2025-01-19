@@ -246,7 +246,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		/* wait for host device remove done, e.g. usb audio */
 		mdelay(50);
 		/* unregister host driver */
-		ssusb_host_exit(ssusb);
+		ssusb_host_exit_v2(ssusb);
 		switch_port_to_off(ssusb);
 		/* wait for hw to complete host off */
 		mdelay(50);
@@ -282,7 +282,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	case USB_ROLE_HOST:
 		switch_port_to_on(ssusb, PHY_MODE_USB_HOST);
 		/* register host driver */
-		ssusb_host_init(ssusb, ssusb->dev->of_node);
+		ssusb_host_init_v2(ssusb);
 		ssusb->is_host = true;
 		break;
 	case USB_ROLE_DEVICE:
