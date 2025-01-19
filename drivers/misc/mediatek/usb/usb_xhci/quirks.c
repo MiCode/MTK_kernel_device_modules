@@ -401,6 +401,11 @@ static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
 	}
 }
 
+static void xhci_mtk_usb_asap_quirk(struct urb *urb)
+{
+	urb->transfer_flags |= URB_ISO_ASAP;
+}
+
 static bool xhci_mtk_is_usb_audio(struct urb *urb)
 {
 	struct usb_host_config *config = NULL;
@@ -559,25 +564,48 @@ static void xhci_mtk_mbrain_cleanup(struct device *dev)
 
 static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
 {
-	if (!urb || !urb->setup_packet || !urb->dev)
+	u32 ep_type;
+
+	if (!urb || !urb->dev)
 		return;
 
-	if (xhci_mtk_is_usb_audio(urb)) {
-		/* apply clear packet size */
-		xhci_mtk_usb_clear_packet_size_quirk(urb);
-		/* apply set interface face delay */
-		xhci_mtk_usb_set_interface_quirk(urb);
+	ep_type = usb_endpoint_type(&urb->ep->desc);
+
+	if (ep_type == USB_ENDPOINT_XFER_CONTROL) {
+		if (!urb->setup_packet)
+			return;
+
+		if (xhci_mtk_is_usb_audio(urb)) {
+			/* apply clear packet size */
+			xhci_mtk_usb_clear_packet_size_quirk(urb);
+			/* apply set interface face delay */
+			xhci_mtk_usb_set_interface_quirk(urb);
+		}
+	} else if (ep_type == USB_ENDPOINT_XFER_ISOC) {
+		if (xhci_mtk_is_usb_audio(urb)) {
+			/* add URB_ISO_ASAP flag */
+			xhci_mtk_usb_asap_quirk(urb);
+		}
 	}
 }
 
 static void xhci_trace_ep_urb_giveback(void *data, struct urb *urb)
 {
-	if (!urb || !urb->setup_packet || !urb->dev)
+	u32 ep_type;
+
+	if (!urb || !urb->dev)
 		return;
 
-	if (xhci_mtk_is_usb_audio(urb)) {
-		/* apply set sample rate delay */
-		xhci_mtk_usb_set_sample_rate_quirk(urb);
+	ep_type = usb_endpoint_type(&urb->ep->desc);
+
+	if (ep_type == USB_ENDPOINT_XFER_CONTROL) {
+		if (!urb->setup_packet)
+			return;
+
+		if (xhci_mtk_is_usb_audio(urb)) {
+			/* apply set sample rate delay */
+			xhci_mtk_usb_set_sample_rate_quirk(urb);
+		}
 	}
 
 	xhci_mtk_mbrain_action(urb);
