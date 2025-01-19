@@ -1111,6 +1111,14 @@ void setup_vm(struct kvm_cpu_context *ctx)
 		vm->identity_map_mode = map_mode;
 		break;
 	case IDENTITY_MAP:
+		vmid = ctx->regs.regs[2];
+		mem_base = ctx->regs.regs[3];
+		mem_size = ctx->regs.regs[4];
+		vm = get_vm(vmid);
+		add_to_map_region(vm, mem_base, mem_size);
+		vm->vm_ipa_range.base = mem_base;
+		vm->vm_ipa_range.size = mem_size;
+		break;
 	case IDENTITY_MAP_MBLOCK:
 		vmid = ctx->regs.regs[2];
 		mem_base = ctx->regs.regs[3];
@@ -1163,6 +1171,7 @@ void mtk_iommu_init(struct kvm_cpu_context *ctx)
 		pkvm_smmu_ops->puts("mtk_iommu_init : share fail");
 		goto error;
 	}
+
 	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
 	pmm_page = (void *)pkvm_smmu_ops->hyp_va((phys_addr_t)pglist_pa);
 
@@ -1206,6 +1215,7 @@ void mtk_iommu_init(struct kvm_cpu_context *ctx)
 		pkvm_smmu_ops->puts("mtk_iommu_init : malloc init fail");
 		goto error;
 	}
+
 	smmu_mem_init(0);
 	/* flush all mpool memory */
 	for (i = 0; i < in_mpt.mem_block_num; i++) {
@@ -1219,6 +1229,7 @@ void mtk_iommu_init(struct kvm_cpu_context *ctx)
 		}
 	}
 	smmu_dump_all_vm_stage2();
+
 error:
 	cpu_reg(ctx, 1) = ret;
 }
@@ -1246,11 +1257,6 @@ static int mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
 		mmio_write(regs, smmu_dev, esr, off);
 	else
 		mmio_read(regs, smmu_dev, esr, off);
-
-	/* PC + 4  to escape the dabt exception */
-	/* kvm_iommu_host_dabt_handler will do this stuff */
-	// elr_el1 = read_sysreg_el2(SYS_ELR);
-	// write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
 
 	return 0;
 }
@@ -1306,6 +1312,64 @@ static void mtk_smmu_iotlb_sync(void *cookie,
 			    struct iommu_iotlb_gather *gather)
 {
 }
+/* Checking idmap range is in the range of vm's ipa range, otherwise return false */
+bool kvm_iommu_idmap_range_check(phys_addr_t start, phys_addr_t end,
+				 unsigned int vmid)
+{
+	struct smmu_vm *vm;
+
+	vm = get_vm(vmid);
+	if (start < vm->vm_ipa_range.base)
+		return false;
+
+	if (end > (vm->vm_ipa_range.base + vm->vm_ipa_range.size))
+		return false;
+
+	return true;
+}
+/* Flush TLB in every 5000 times SMMU idmap, which trigger from pVM launched */
+unsigned long tlbi_counter;
+
+static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
+				       phys_addr_t start, phys_addr_t end,
+				       int prot)
+{
+	phys_addr_t paddr;
+	uint32_t size;
+	bool tlb_sync = false;
+
+	paddr = start;
+	size = end - start;
+	if ((kvm_iommu_idmap_range_check(start, end, 0) == false) ||
+	    (kvm_iommu_idmap_range_check(start, end, 1) == false))
+		return;
+
+	hyp_spin_lock(&smmu_all_vm_lock);
+	smmu_lazy_free();
+	if (!prot) {
+		/* unmap vm */
+		smmu_vm_unmap(0, paddr, size);
+		smmu_vm_unmap(1, paddr, size);
+	} else {
+		/* return page */
+		if ((prot & KVM_PGTABLE_PROT_R) ||
+		    (prot & KVM_PGTABLE_PROT_W)) {
+			smmu_vm_map(0, paddr, size,
+				    MM_MODE_R | MM_MODE_W | MM_MODE_X);
+			smmu_vm_map(1, paddr, size, MM_MODE_R);
+		}
+	}
+
+	if (tlbi_counter > 5000) {
+		tlb_sync = true;
+		tlbi_counter = 0;
+	} else
+		tlbi_counter++;
+
+	hyp_spin_unlock(&smmu_all_vm_lock);
+	if (tlb_sync)
+		mtk_smmu_sync();
+}
 
 struct kvm_iommu_ops smmu_ops = {
 	.init				= mtk_smmu_init,
@@ -1318,6 +1382,7 @@ struct kvm_iommu_ops smmu_ops = {
 	.suspend			= mtk_smmu_suspend,
 	.resume				= mtk_smmu_resume,
 	.iotlb_sync			= mtk_smmu_iotlb_sync,
+	.host_stage2_idmap		= mtk_smmu_host_stage2_idmap,
 };
 
 int smmu_hyp_init(const struct pkvm_module_ops *ops)
