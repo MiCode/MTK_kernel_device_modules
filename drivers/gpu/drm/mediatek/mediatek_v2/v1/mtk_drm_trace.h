@@ -1,0 +1,80 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+
+#ifndef __MTK_DRM_TRACE__
+#define __MTK_DRM_TRACE__
+
+#include "mtk_drm_ddp_comp.h"
+
+#define DRM_TRACE_ID 0xFFFF0000
+#define DRM_TRACE_FPS_ID (DRM_TRACE_ID + 1)
+#define DRM_TRACE_FENCE_ID (DRM_TRACE_ID + 2)
+#define DRM_TRACE_VSYNC_ID (DRM_TRACE_ID + 3)
+
+
+/* MTK_DRM FTRACE */
+extern unsigned int g_trace_log;
+#define mtk_drm_trace_begin(fmt, args...) do { \
+	if (g_trace_log) { \
+		mtk_drm_print_trace( \
+			"B|%d|"fmt"\n", current->tgid, ##args); \
+	} \
+} while (0)
+
+#define mtk_drm_trace_end(fmt, args...) do { \
+	if (g_trace_log) { \
+		mtk_drm_print_trace("E|%d|"fmt"\n", \
+		current->tgid, ##args); \
+	} \
+} while (0)
+
+#define mtk_drm_trace_async_begin(fmt, args...) do { \
+	if (g_trace_log >= 2) { \
+		mtk_drm_print_trace( \
+			"S|%d|"fmt"\n", current->tgid, ##args); \
+	} \
+} while (0)
+
+#define mtk_drm_trace_async_end(fmt, args...) do { \
+	if (g_trace_log >= 2) { \
+		mtk_drm_print_trace( \
+			"F|%d|"fmt"\n", current->tgid, ##args); \
+	} \
+} while (0)
+
+#define mtk_drm_trace_c(fmt, args...) do { \
+	if (g_trace_log) { \
+		mtk_drm_print_trace( \
+			"C|"fmt"\n", ##args); \
+	} \
+} while (0)
+
+void mtk_drm_print_trace(char *fmt, ...);
+//bool drm_trace_is_on(void);
+void drm_trace_tag_start(const char *tag);
+void drm_trace_tag_end(const char *tag);
+void drm_trace_tag_start_byid(const char *tag, int id);
+void drm_trace_tag_end_byid(const char *tag, int id);
+void drm_trace_tag_mark(const char *tag);
+void drm_trace_tag_mark_bycrtc(const char *tag, int crtc_index);
+void drm_trace_tag_value(const char *tag, unsigned long value);
+void drm_trace_tag_value_byid(const char *tag, unsigned long value, int id);
+void drm_trace_tag_value_state(const char *tag, unsigned long value);
+void drm_trace_tag_value_state_byid(const char *tag, unsigned long value, int id);
+void drm_trace_tag_value64(const char *tag, unsigned long long value);
+void drm_trace_tag_value64_state(const char *tag, unsigned long long value);
+void drm_trace_tag_value64_state_byid(const char *tag, unsigned long long value, int id);
+void drm_trace_tag_name_begin(const char *name);
+void drm_trace_tag_name_end(const char *name);
+void mtk_drm_refresh_tag_start(struct mtk_ddp_comp *ddp_comp);
+void mtk_drm_refresh_tag_end(struct mtk_ddp_comp *ddp_comp);
+void MMPathTraceDRM(struct mtk_ddp_comp *ddp_comp);
+int MMPathTraceRDMA(struct mtk_ddp_comp *ddp_comp, char *str,
+	unsigned int strlen, unsigned int n);
+int MMPathTraceWDMA(struct mtk_ddp_comp *ddp_comp, char *str,
+	unsigned int strlen, unsigned int n);
+int MMPathTraceCrtcPlanes(struct drm_crtc *crtc,
+	char *str, int strlen, int n);
+#endif

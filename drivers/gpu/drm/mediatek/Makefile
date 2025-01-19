@@ -4,6 +4,7 @@ ifeq (m, $(CONFIG_DRM_MEDIATEK_DUMMY))
 obj-$(CONFIG_DRM_MEDIATEK_DUMMY) += dummy_drm/
 else ifeq (y, $(filter y, $(CONFIG_DRM_MEDIATEK_V2)))
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mediatek_v2/
+obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mediatek_v2/v1/
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mml/
 else
 
