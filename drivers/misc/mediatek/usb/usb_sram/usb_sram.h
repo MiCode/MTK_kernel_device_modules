@@ -15,21 +15,24 @@
  * @list: private field for management
  */
 struct mtk_usb_sram_region {
-    void *virt;
+	void *virt;
 	dma_addr_t phys;
 	size_t size;
 	struct list_head list;
-    int from;
+	int from;
+	int to;
 };
 
 /**
  * mtk_usb_sram_allocate - request space on usb sram
  * @size: desire size
  * @align: address alignment
- * 
+ * @start: start index of block
+ *
  * Return poniter to sram block on success or NULL on failure
  */
-extern struct mtk_usb_sram_region *mtk_usb_sram_allocate(unsigned int size, int align);
+extern struct mtk_usb_sram_region *mtk_usb_sram_allocate(
+	unsigned int size, int align, int start);
 
 /**
  * mtk_usb_sram_free - give back requested space

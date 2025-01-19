@@ -18,6 +18,21 @@ unsigned int allow_request;
 module_param(allow_request, uint, 0644);
 MODULE_PARM_DESC(allow_request, "accept memory request or not");
 
+unsigned int debug_memory_log;
+module_param(debug_memory_log, uint, 0644);
+MODULE_PARM_DESC(debug_memory_log, "enable/dsable debug log");
+
+#define usb_sram_dbg(dev, fmt, args...) do { \
+	if (debug_memory_log > 0) \
+		dev_info(dev, fmt, ##args); \
+} while(0)
+
+#define usb_sram_full(dev, fmt, args...) do { \
+	if (debug_memory_log > 1) \
+		dev_info(dev, fmt, ##args); \
+} while(0)
+
+
 struct usb_sram_block {
 	int index;
 	bool occupied;
@@ -70,8 +85,8 @@ static char *parse_region_info(struct mtk_usb_sram_region *region)
 {
 	int n;
 
-	n = snprintf(parse_info, INFO_MAX_LEN, "phys:0x%llx virt:%p size:%zu from:%d",
-		region->phys, region->virt, region->size, region->from);
+	n = snprintf(parse_info, INFO_MAX_LEN, "phys:0x%llx virt:%p size:%zu from:%d to:%d",
+		region->phys, region->virt, region->size, region->from, region->to);
 	parse_info[n < INFO_MAX_LEN ? n : INFO_MAX_LEN - 1] = '\0';
 
 	return parse_info;
@@ -107,19 +122,30 @@ static struct mtk_usb_sram_region *in_region_list_virt(struct mtk_usb_sram *mana
 	return NULL;
 }
 
+static void dump_region(struct mtk_usb_sram *manager)
+{
+	struct mtk_usb_sram_region *pos;
+
+	if (list_empty(&manager->region_list))
+		return;
+
+	list_for_each_entry(pos, &manager->region_list, list) {
+		usb_sram_dbg(manager->dev, "%s\n", parse_region_info(pos));
+	}
+}
+
 static void dump_group(struct mtk_usb_sram *manager, struct usb_sram_block *block)
 {
 	struct usb_sram_block *pos;
 
-	dev_dbg(manager->dev, "%s\n", __func__);
-	dev_dbg(manager->dev, "%s\n", decode_block(block));
+	usb_sram_full(manager->dev, "%s\n", decode_block(block));
 
 
 	if (list_empty(&block->link))
 		return;
 
 	list_for_each_entry(pos, &block->link, link) {
-		dev_dbg(manager->dev, "%s\n", decode_block(pos));
+		usb_sram_full(manager->dev, "%s\n", decode_block(pos));
 	}
 
 }
@@ -134,17 +160,26 @@ static void vacate_block(struct usb_sram_block *block)
 	block->occupied = false;
 }
 
-static void init_group(struct usb_sram_block *start, struct usb_sram_block *end)
+static size_t init_group(struct usb_sram_block *start, struct usb_sram_block *end)
 {
 	struct usb_sram_block *cur;
+	size_t group_size = 0;
+
+	if (!start || !end || start > end)
+		return 0;
 
 	cur = start;
 	occupy_block(cur);
+	group_size = cur->size;
+
 	while (cur != end) {
 		cur = cur + 1;
 		occupy_block(cur);
+		group_size += cur->size;
 		list_add_tail(&cur->link, &start->link);
 	}
+
+	return group_size;
 }
 
 static void deinit_group(struct usb_sram_block *start)
@@ -155,20 +190,22 @@ static void deinit_group(struct usb_sram_block *start)
 		list_for_each_entry_safe(pos, next, &start->link, link) {
 			vacate_block(pos);
 			list_del(&pos->link);
+			INIT_LIST_HEAD(&pos->link);
 		}
 	}
 	vacate_block(start);
 	INIT_LIST_HEAD(&start->link);
 }
 
-struct mtk_usb_sram_region *mtk_usb_sram_allocate(unsigned int size, int align)
+struct mtk_usb_sram_region *mtk_usb_sram_allocate(unsigned int size, int align, int start_idx)
 {
 	struct device *dev;
 	struct mtk_usb_sram *manager = g_manager;
 	struct usb_sram_block *start, *end, *cur;
 	struct mtk_usb_sram_region *region = NULL;
 	int request = size, residue;
-	int i = 0;
+	size_t group_size;
+	int i = start_idx;
 	bool found_block = false;
 
 	if (!allow_request)
@@ -192,7 +229,7 @@ struct mtk_usb_sram_region *mtk_usb_sram_allocate(unsigned int size, int align)
 		cur = &manager->blocks[i];
 		residue = request;
 
-		dev_dbg(dev, "start [%s] req:%d align:%d\n", decode_block(start), size, align);
+		usb_sram_full(dev, "start [%s] req:%d align:%d\n", decode_block(start), size, align);
 
 		if (start->occupied)
 			goto next_block;
@@ -204,15 +241,19 @@ struct mtk_usb_sram_region *mtk_usb_sram_allocate(unsigned int size, int align)
 		/* residue = 0 means that group has sufficient space */
 		while (i < manager->block_num && residue > 0) {
 			residue -= cur->size;
-			dev_dbg(dev, "checking [%s], req:%d res:%d\n", decode_block(cur), request, residue);
+			usb_sram_full(dev, "checking [%s], req:%d res:%d\n", decode_block(cur), request, residue);
 			if (cur->occupied)
 				goto next_block;
 			if (residue <= 0) {
 				end = cur;
-				found_block = true;
 				dev_info(manager->dev, "found block%d ~ block%d\n", start->index, end->index);
-				init_group(start, end);
-				dump_group(manager, start);
+				group_size = init_group(start, end);
+				if (group_size > 0) {
+					found_block = true;
+					dump_group(manager, start);
+				} else
+					dev_info(manager->dev, "fail to init group (block%d ~ block%d)\n",
+						start->index, end->index);
 			}
 			cur = &manager->blocks[++i];
 		}
@@ -223,18 +264,22 @@ next_block:
 
 	spin_unlock(&manager->block_lock);
 	if (found_block) {
-		region = kzalloc(sizeof(*region), GFP_KERNEL);
+		region = kzalloc(sizeof(struct mtk_usb_sram_region), GFP_KERNEL);
 		if (!region) {
 			dev_info(manager->dev, "%s can't create region\n", __func__);
 			goto error;
 		}
 		region->from = start->index;
+		region->to = end->index;
 		region->phys = start->phys;
 		region->size = (size_t)request;
 		region->virt = (void *)ioremap_wc(region->phys, region->size);
 
+		dev_info(manager->dev, "allocate [%s]\n", parse_region_info(region));
+
 		spin_lock(&manager->list_lock);
 		list_add_tail(&region->list, &manager->region_list);
+		dump_region(manager);
 		spin_unlock(&manager->list_lock);
 	}
 
@@ -276,7 +321,7 @@ int mtk_usb_sram_free(dma_addr_t physical)
 		return -EINVAL;
 	}
 	list_del(&region->list);
-
+	dump_region(manager);
 	spin_unlock(&manager->list_lock);
 
 	return _mtk_usb_sram_free(manager, region);
@@ -310,7 +355,7 @@ static void *allocate_for_offload(dma_addr_t *phys_addr, unsigned int size, int 
 {
 	struct mtk_usb_sram_region *blk;
 
-	blk = mtk_usb_sram_allocate(size, align);
+	blk = mtk_usb_sram_allocate(size, align, 0);
 	if (!blk) {
 		return NULL;
 	}
@@ -399,6 +444,107 @@ static void usb_sram_bus_clk_parse(struct mtk_usb_sram *manager)
 	}
 }
 
+static int usb_sram_allocate_dbg(int index, u32 size)
+{
+	struct mtk_usb_sram *manager = g_manager;
+	struct mtk_usb_sram_region *region;
+
+	if (index >= manager->block_num || index < 0)
+		return -EINVAL;
+
+	region = mtk_usb_sram_allocate(size, -1, index);
+
+	return region ? 0 : -EINVAL;
+}
+
+static int usb_sram_free_dbg(int index)
+{
+	struct mtk_usb_sram *manager = g_manager;
+
+	if (index >= manager->block_num || index < 0)
+		return -EINVAL;
+
+	return mtk_usb_sram_free(manager->blocks[index].phys);
+}
+
+#define MAX_INPUT_NUM   50
+static ssize_t dbg_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct mtk_usb_sram *manager = g_manager;
+	char buffer[MAX_INPUT_NUM];
+	char *input = buffer;
+	const char *field1, *field2, *field3;
+	const char * const delim = " \0\n\t";
+	int start_index, ret;
+	u32 size;
+
+	strscpy(buffer, buf, sizeof(buffer) <= count ? sizeof(buffer) : count);
+	dev_info(manager->dev, "%s input: [%s]\n", __func__, input);
+	field1 = strsep(&input, delim);
+	field2 = strsep(&input, delim);
+	if (!field1 || !field2)
+		goto invalid_input;
+
+	ret = kstrtoint(field2, 10, &start_index);
+	if (ret < 0)
+		goto invalid_input;
+
+	if (!strncmp(field1, "allocate", 8)) {
+		field3 = strsep(&input, delim);
+		if (!field3)
+			goto invalid_input;
+		ret = kstrtou32(field3, 10, &size);
+		if (ret < 0)
+			goto invalid_input;
+		dev_info(manager->dev, "%s allocate: index:%d size:%d\n", __func__, start_index, size);
+		if (!usb_sram_allocate_dbg(start_index, size))
+			goto success;
+		else
+			goto error;
+		return usb_sram_allocate_dbg(start_index, size) ? count : -EINVAL;
+	} else if (!strncmp(field1, "free", 4)) {
+		dev_info(manager->dev, "%s free: index:%d\n", __func__, start_index);
+		if (!usb_sram_free_dbg(start_index))
+			goto success;
+		else
+			goto error;
+	} else
+		goto invalid_input;
+
+invalid_input:
+	dev_info(manager->dev, "%s invalid input\n", __func__);
+	return -EINVAL;
+
+error:
+	dev_info(manager->dev, "%s operation error\n", __func__);
+success:
+	return count;
+}
+
+static ssize_t dbg_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mtk_usb_sram *manager = g_manager;
+	int cnt = 0, i;
+
+	for (i = 0; i < manager->block_num; i++)
+		cnt += sprintf(buf + cnt, "%s\n", decode_block(&manager->blocks[i]));
+
+	return cnt;
+}
+
+static DEVICE_ATTR_RW(dbg);
+
+static struct attribute *usb_sram_attrs[] = {
+	&dev_attr_dbg.attr,
+	NULL,
+};
+
+static const struct attribute_group usb_sram_group = {
+	.attrs = usb_sram_attrs,
+};
+
 static void usb_sram_dts_parse(struct device_node *node, struct mtk_usb_sram *manager)
 {
 	u32 block_size;
@@ -479,6 +625,9 @@ static int usb_sram_probe(struct platform_device *pdev)
 	g_manager = manager;
 
 	mtk_register_usb_sram_ops(allocate_for_offload, free_for_offload);
+
+	if (sysfs_create_group(&dev->kobj, &usb_sram_group))
+		USB_OFFLOAD_ERR("fail to create sysfs attribtues\n");
 
 	return ret;
 
