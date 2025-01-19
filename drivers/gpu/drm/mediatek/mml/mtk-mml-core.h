@@ -741,6 +741,8 @@ struct mml_task {
 
 	struct cmdq_backup dlo_status;
 	u32 dlo_size;
+	struct cmdq_backup ovl_dli_size;
+	struct cmdq_backup ovl_dli_status;
 
 	/* mml context */
 	struct mml_ctx *ctx;

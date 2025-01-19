@@ -299,7 +299,14 @@ static const int disp_mml_dl_exdma_path[] = {
 	DDP_COMPONENT_OVLSYS_DLI_ASYNC1,
 	DDP_COMPONENT_MML_MUTEX0,
 	DDP_COMPONENT_MML_MUTEX1,
-//	DDP_COMPONENT_OVL_EXDMA0,
+	DDP_COMPONENT_OVL_EXDMA0,
+};
+
+static const int disp_mml_dl_exdma_v2_path[] = {
+	DDP_COMPONENT_MML_MUTEX1,
+	DDP_COMPONENT_MML_MUTEX0,
+	DDP_COMPONENT_OVLSYS_DLI_ASYNC0,
+	DDP_COMPONENT_OVL_EXDMA0,
 };
 
 static const int disp_mml_sram_only_path[] = {
@@ -487,6 +494,10 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 				.path = disp_mml_dl_exdma_path,
 				.path_len = ARRAY_SIZE(disp_mml_dl_exdma_path),
 			},
+		[DISP_MML_DL_EXDMA_v2] = {
+				.path = disp_mml_dl_exdma_v2_path,
+				.path_len = ARRAY_SIZE(disp_mml_dl_exdma_v2_path),
+			},
 		[DISP_MML_IR_PQ_v3] = {
 				.path = disp_mml_rsz_path_v3,
 				.path_len = ARRAY_SIZE(disp_mml_rsz_path_v3),
@@ -601,7 +612,8 @@ static void mtk_addon_path_stop(struct drm_crtc *crtc,
 			addon_config->config_type.module == DISP_MML_IR_PQ_v3 ||
 			addon_config->config_type.module == DISP_MML_DL ||
 			addon_config->config_type.module == DISP_MML_DL_1 ||
-			addon_config->config_type.module == DISP_MML_DL_EXDMA) &&
+			addon_config->config_type.module == DISP_MML_DL_EXDMA ||
+			addon_config->config_type.module == DISP_MML_DL_EXDMA_v2) &&
 			addon_config->config_type.type == ADDON_DISCONNECT)
 			mtk_ddp_comp_addon_config(add_comp, -1, -1, addon_config, cmdq_handle);
 	}

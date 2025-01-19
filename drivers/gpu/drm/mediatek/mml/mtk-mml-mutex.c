@@ -187,9 +187,11 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			/* mutex en in disp pkt */
 			sof_en = false;
 		} else if (comp == path->mutex) {
-			/* wait pre-te in first mutex trigger */
-			cmdq_pkt_clear_event(pkt, mutex->event_prete);
-			cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
+			if (mutex->event_prete) {
+				/* wait pre-te in first mutex trigger */
+				cmdq_pkt_clear_event(pkt, mutex->event_prete);
+				cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
+			}
 		}
 
 		if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
@@ -624,6 +626,30 @@ static irqreturn_t mml_mutex_irq_handler_mt6991(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t mml_mutex_irq_handler_mt6993(int irq, void *dev_id)
+{
+	struct mml_mutex *mutex = dev_id;
+	struct mml_comp *comp = &mutex->comp;
+	void __iomem *base = comp->base;
+	unsigned long irq_status = readl(base + MUTEX_INSTA);
+
+	mml_mmp(mutex, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
+
+	writel(0, base + MUTEX_INSTA);
+
+	if (!irq_status)
+		return IRQ_HANDLED;
+
+	if (irq_status & BIT(1)) {
+		if (mutex->idx == 1) {
+			mml_mmp(rrot1, MMPROFILE_FLAG_START, comp->id, 0);
+			mml_mmp(rrot0, MMPROFILE_FLAG_START, comp->id, 0);
+		}
+	}
+
+	return IRQ_HANDLED;
+}
+
 static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 	.addon_config = mutex_addon_config,
 };
@@ -659,15 +685,17 @@ static int probe(struct platform_device *pdev)
 	/* get index of wrot by alias */
 	priv->idx = of_alias_get_id(dev->of_node, "mml-mutex");
 
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
-		mml_log("fail to get mutex%u irq %d", priv->idx, irq);
-	else {
-		ret = devm_request_irq(dev, irq, priv->data->handler,
-			IRQF_SHARED, dev_name(dev), priv);
-		priv->irq = true;
-		mml_log("register mutex%u irq %s %d irq %d",
-			priv->idx, ret ? "fail" : "success", ret, irq);
+	if (priv->data->handler) {
+		irq = platform_get_irq(pdev, 0);
+		if (irq < 0)
+			mml_log("fail to get mutex%u irq %d", priv->idx, irq);
+		else {
+			ret = devm_request_irq(dev, irq, priv->data->handler,
+				IRQF_SHARED, dev_name(dev), priv);
+			priv->irq = true;
+			mml_log("register mutex%u irq %s %d irq %d",
+				priv->idx, ret ? "fail" : "success", ret, irq);
+		}
 	}
 
 	of_property_for_each_string(node, "mutex-comps", prop, name) {
@@ -789,6 +817,7 @@ static const struct mutex_data mt6993_mmlf_mutex_data = {
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.handler = mml_mutex_irq_handler_mt6993,
 };
 
 const struct of_device_id mml_mutex_driver_dt_match[] = {

@@ -504,6 +504,8 @@ dup_command:
 	task->perf_sof = src->perf_sof;
 	task->dlo_size = src->dlo_size;
 	task->dlo_status= src->dlo_status;
+	task->ovl_dli_size= src->ovl_dli_size;
+	task->ovl_dli_status= src->ovl_dli_status;
 	if (task->reuse[pipe].labels && task->reuse[pipe].label_mods &&
 		task->reuse[pipe].label_check) {
 		memcpy(task->reuse[pipe].labels, src->reuse[pipe].labels,

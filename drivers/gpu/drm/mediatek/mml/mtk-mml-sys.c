@@ -68,7 +68,7 @@ static const u16 sys_mt6993[] = {
 #define MML_MAX_SYS_DL_RELAYS	12
 #define MML_MAX_SYS_DBG_REGS	150
 #define MML_MAX_GCE_EVENT_SEL	32
-#define MML_MAX_PATH_CBS	4
+#define MML_MAX_PATH_CBS	5
 
 #define APU_CTRL		0x2d0
 #define APU_HANDLE		0x200
@@ -746,7 +746,7 @@ static void sys_insert_begin_loop(struct mml_task *task,
 
 	sys_frm->frame_loop_offset = cmdq_pkt_get_curr_offset(pkt);
 
-	if (ccfg->pipe == 0 && cfg->dual && cfg->disp_vdo && likely(mml_ir_loop)) {
+	if (ccfg->pipe == 0 && cfg->disp_vdo && likely(mml_ir_loop)) {
 		cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX0, 0);
 		sys_frm->frame_pipe_conti_jump = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
@@ -772,7 +772,8 @@ static void sys_insert_begin_loop(struct mml_task *task,
 		cmdq_pkt_cond_jump_abs(pkt, CMDQ_THR_SPR_IDX0, &lhs, &rhs, CMDQ_EQUAL);
 
 		/* loop case, tell pipe1 to check loop condition */
-		cmdq_pkt_set_event(pkt, sys->event_racing_pipe1_next);
+		if (cfg->dual)
+			cmdq_pkt_set_event(pkt, sys->event_racing_pipe1_next);
 
 		/* not loop case, skip set event_racing_pipe1_next event by jump here */
 		sys_frm->frame_pipe_conti_offset = pkt->cmd_buf_size;
@@ -1131,6 +1132,10 @@ static s32 sys_repost(struct mml_comp *comp, struct mml_task *task,
 		sys_addr_update(comp, task, ccfg);
 		if (comp->sysid == path->mmlsys->sysid && task->dlo_status.inst_offset)
 			cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->dlo_status);
+		if (comp->sysid == path->mmlsys->sysid && task->ovl_dli_size.inst_offset)
+			cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->ovl_dli_size);
+		if (comp->sysid == path->mmlsys->sysid && task->ovl_dli_status.inst_offset)
+			cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->ovl_dli_status);
 	}
 	return 0;
 }
@@ -1176,7 +1181,7 @@ static const struct debug_reg mt6991_ovl_debug_regs[] = {
 	{"OVL_DLI_ASYNC1_STATUS1  ",	0x30c},
 };
 
-static void sys_debug_dump_dl(struct mml_comp *comp)
+static void sys_debug_dump_dl_mt6991(struct mml_comp *comp)
 {
 	const u32 ovl_base = 0x32800000;
 	void *va = (void *)ioremap(ovl_base, 4096);
@@ -1187,6 +1192,28 @@ static void sys_debug_dump_dl(struct mml_comp *comp)
 		value = readl(va + mt6991_ovl_debug_regs[i].offset);
 		mml_err("%s %#05x: %#010x",
 			mt6991_ovl_debug_regs[i].name, mt6991_ovl_debug_regs[i].offset, value);
+	}
+
+	iounmap((void *)va);
+}
+
+static const struct debug_reg mt6993_ovl_debug_regs[] = {
+	{"OVL_DLI_ASYNC0_SIZE     ",	0xbcc},
+	{"OVL_DLI_ASYNC0_STATUS0  ",	0xb24},
+	{"OVL_DLI_ASYNC0_STATUS1  ",	0xb28},
+};
+
+static void sys_debug_dump_dl_mt6993(struct mml_comp *comp)
+{
+	const u32 ovl_base = 0x32900000;
+	void *va = (void *)ioremap(ovl_base, 4096);
+	u32 value, i;
+
+	mml_err("dump ovlsys base %#010x", ovl_base);
+	for (i = 0; i < ARRAY_SIZE(mt6993_ovl_debug_regs); i++) {
+		value = readl(va + mt6993_ovl_debug_regs[i].offset);
+		mml_err("%s %#05x: %#010x",
+			mt6993_ovl_debug_regs[i].name, mt6993_ovl_debug_regs[i].offset, value);
 	}
 
 	iounmap((void *)va);
@@ -1328,13 +1355,20 @@ static const struct mml_comp_debug_ops sys_debug_ops_mt6991 = {
 	.dump = &sys_debug_dump,
 	.dump_fast = &sys_debug_dump_fast_mml1,
 	.reset = &sys_reset_current,
-	.dump_dl = &sys_debug_dump_dl,
+	.dump_dl = &sys_debug_dump_dl_mt6991,
 };
 
 static const struct mml_comp_debug_ops sys_debug_ops_mt6991_mml0 = {
 	.dump = &sys_debug_dump,
 	.dump_fast = &sys_debug_dump_fast_mml0,
 	.reset = &sys_reset_current,
+};
+
+static const struct mml_comp_debug_ops sys_debug_ops_mt6993 = {
+	.dump = &sys_debug_dump,
+	.dump_fast = &sys_debug_dump_fast_mml1,
+	.reset = &sys_reset_current,
+	.dump_dl = &sys_debug_dump_dl_mt6993,
 };
 
 s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
@@ -1515,16 +1549,20 @@ static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK && task->dlo_status.inst_offset &&
 		comp->sysid == cfg->path[ccfg->pipe]->mmlsys->sysid) {
 		u32 status1 = cmdq_pkt_backup_get(pkt, &task->dlo_status);
+		u32 ovldli_sz = cmdq_pkt_backup_get(pkt, &task->ovl_dli_size);
+		u32 ovldli_status = cmdq_pkt_backup_get(pkt, &task->ovl_dli_status);
 
 		if ((status1 & 0x0fff0000) != (task->dlo_size & 0x0fff0000))
 			mml_err("task job %u dlo size %#010x status %#010x not match",
 				task->job.jobid, task->dlo_size, status1);
 		else if (mml_dlo_dbg & BIT(2))
-			mml_log("task job %u dlo size %#010x status %#010x",
-				task->job.jobid, task->dlo_size, status1);
+			mml_log("task job %u dlo size %#010x status %#010x ovl dli %#010x %#010x",
+				task->job.jobid, task->dlo_size, status1,
+				ovldli_sz, ovldli_status);
 		else if (mml_dlo_dbg & BIT(1))
-			mml_msg("task job %u dlo size %#010x status %#010x",
-				task->job.jobid, task->dlo_size, status1);
+			mml_msg("task job %u dlo size %#010x status %#010x ovl dli %#010x %#010x",
+				task->job.jobid, task->dlo_size, status1,
+				ovldli_sz, ovldli_status);
 
 		mml_mmp(dlo, MMPROFILE_FLAG_PULSE, task->dlo_size, status1);
 	}
@@ -2435,6 +2473,52 @@ static const struct mml_comp_config_ops dlo_config_ops_mt6991f = {
 	.post = dlo_post_mt6991f,
 };
 
+#define MT6993_MML_DLO_ASYNC0_STATUS0	0xaf4
+#define MT6993_OVLSYS_DLI0_SIZE		0x32900b24
+#define MT6993_OVLSYS_DLI0_STATUS	0x32900bcc
+
+static s32 dlo_post_mt6993d(struct mml_comp *comp, struct mml_task *task,
+		   struct mml_comp_config *ccfg)
+{
+	s32 ret = dl_post(comp, task, ccfg);
+	struct mml_frame_config *cfg = task->config;
+
+	if ((mml_dlo_dbg & BIT(0)) && cfg->info.mode == MML_MODE_DIRECT_LINK &&
+		comp->sysid == cfg->path[ccfg->pipe]->mmlsys->sysid) {
+		struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+		int ret;
+
+		ret = cmdq_pkt_backup(pkt, comp->base_pa + MT6993_MML_DLO_ASYNC0_STATUS0,
+			&task->dlo_status);
+		if (ret) {
+			mml_err("%s fail to backup dlo status", __func__);
+			task->dlo_status.inst_offset = 0;
+		}
+
+		ret = cmdq_pkt_backup(pkt, MT6993_OVLSYS_DLI0_SIZE,
+			&task->ovl_dli_size);
+		if (ret) {
+			mml_err("%s fail to backup ovl_dli size", __func__);
+			task->ovl_dli_size.inst_offset = 0;
+		}
+
+		ret = cmdq_pkt_backup(pkt, MT6993_OVLSYS_DLI0_STATUS,
+			&task->ovl_dli_status);
+		if (ret) {
+			mml_err("%s fail to backup ovl_dli status", __func__);
+			task->ovl_dli_status.inst_offset = 0;
+		}
+	}
+
+	return ret;
+}
+
+static const struct mml_comp_config_ops dlo_config_ops_mt6993d = {
+	.tile = dl_config_tile,
+	.wait = dl_wait,
+	.post = dlo_post_mt6993d,
+};
+
 static s32 dl_mml_config_tile(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 idx)
 {
@@ -2548,6 +2632,18 @@ static int dlo_comp_init_mt6991f(struct device *dev, struct mml_sys *sys, struct
 		return ret;
 	comp->tile_ops = &dlo_tile_ops;
 	comp->config_ops = &dlo_config_ops_mt6991f;
+
+	return ret;
+}
+
+static int dlo_comp_init_mt6993d(struct device *dev, struct mml_sys *sys, struct mml_comp *comp)
+{
+	int ret = dl_comp_init(dev, sys, comp);
+
+	if (ret)
+		return ret;
+	comp->tile_ops = &dlo_tile_ops;
+	comp->config_ops = &dlo_config_ops_mt6993d;
 
 	return ret;
 }
@@ -3178,7 +3274,7 @@ static const struct mml_data mt6993_mmld_data = {
 	.comp_inits = {
 		[MML_CT_SYS] = &sys_comp_init,
 		[MML_CT_DL_IN] = &dli_comp_init,
-		[MML_CT_DL_OUT] = &dlo_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init_mt6993d,
 		[MML_CT_SYS_IN] = &dl_comp_init,
 		[MML_CT_SYS_OUT] = &dl_comp_init,
 	},
@@ -3191,7 +3287,7 @@ static const struct mml_data mt6993_mmld_data = {
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
 	.hw_ops = &sys_hw_ops_mminfra,
-	.debug_ops = &sys_debug_ops_mt6991,
+	.debug_ops = &sys_debug_ops_mt6993,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.px_per_tick = 2,
 	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
@@ -3202,6 +3298,7 @@ static const struct mml_data mt6993_mmld_data = {
 	.reg = sys_mt6993,
 	.sof_grp_bit = 12,
 	.cb_sof_grp_bit = 28,
+	.irq = true,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {

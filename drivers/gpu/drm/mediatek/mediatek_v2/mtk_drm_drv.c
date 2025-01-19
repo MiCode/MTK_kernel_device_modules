@@ -3712,7 +3712,7 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL0_OUTPROC0,
 	//DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
 	DDP_COMPONENT_OVLSYS_DLO_ASYNC12,
-	//DDP_COMPONENT_OVL_EXDMA0,
+	DDP_COMPONENT_OVL_EXDMA0,
 };
 
 static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
@@ -4152,7 +4152,7 @@ static const struct mtk_addon_module_data mt6991_addon_mml_dl_data[] = {
 };
 
 static const struct mtk_addon_module_data mt6993_addon_mml_dl_data[] = {
-	{DISP_MML_DL_EXDMA, ADDON_BEFORE, DDP_COMPONENT_OVL_EXDMA0/*DDP_COMPONENT_OVL0_EXDMA_OUT_CB0*/},
+	{DISP_MML_DL_EXDMA_v2, ADDON_BEFORE, DDP_COMPONENT_OVL_EXDMA0/*DDP_COMPONENT_OVL0_EXDMA_OUT_CB0*/},
 };
 
 static const struct mtk_addon_module_data addon_dsc0_data[] = {
@@ -11818,8 +11818,6 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_MML_MML},
 	{.compatible = "mediatek,mt6991-mml",
 	 .data = (void *)MTK_MML_MML},
-	{.compatible = "mediatek,mt6993-mml",
-	 .data = (void *)MTK_MML_MML},
 	{.compatible = "mediatek,mt6897-mml",
 	 .data = (void *)MTK_MML_MML},
 	{.compatible = "mediatek,mt6886-mml",
@@ -11832,11 +11830,11 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_MML_MUTEX},
 	{.compatible = "mediatek,mt6991-mml_mutex",
 	 .data = (void *)MTK_MML_MUTEX},
-	{.compatible = "mediatek,mt6993-mml_mutex",
-	 .data = (void *)MTK_MML_MUTEX},
 	{.compatible = "mediatek,mt6991-mmlt_mutex",
 	 .data = (void *)MTK_MML_MUTEX},
-	{.compatible = "mediatek,mt6993-mmlt_mutex",
+	{.compatible = "mediatek,mt6993-mmld_mutex",
+	 .data = (void *)MTK_MML_MUTEX},
+	{.compatible = "mediatek,mt6993-mmlf_mutex",
 	 .data = (void *)MTK_MML_MUTEX},
 	{.compatible = "mediatek,mt6897-mml_mutex",
 	 .data = (void *)MTK_MML_MUTEX},

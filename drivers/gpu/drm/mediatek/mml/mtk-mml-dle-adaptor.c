@@ -495,6 +495,15 @@ struct mml_ddp_comp_match {
 	const char *name;
 };
 
+/* mt6991
+ *	mml-tile mutex = mml0_mutex0 = DDP_COMPONENT_MML_MUTEX1 (alias mml-mutex1)
+ *	mml-frame mutex = mml1_mutex0 = DDP_COMPONENT_MML_MUTEX0 (alias mml-mutex0)
+ *
+ * mt6993
+ *	mml-tile mutex NOT PROBE DDP COMP
+ *	mml-frame mutex = mml1_mutex0 = DDP_COMPONENT_MML_MUTEX0 (alias mml-mutex0)
+ *	mml-dma mutex = mml2_mutex0 = DDP_COMPONENT_MML_MUTEX1 (alias mml-mutex1)
+ */
 static const struct mml_ddp_comp_match mml_ddp_matches[] = {
 	{ DDP_COMPONENT_MML_MML0, MTK_MML_MML, "mmlsys" },
 	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mutex0" },
@@ -505,7 +514,7 @@ static const struct mml_ddp_comp_match mml_ddp_matches[] = {
 	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mml_mutex0" },
 	{ DDP_COMPONENT_MML_MUTEX1, MTK_MML_MUTEX, "mml0_mutex0" },
 	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mml1_mutex0" },
-	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mml2_mutex0" },
+	{ DDP_COMPONENT_MML_MUTEX1, MTK_MML_MUTEX, "mml2_mutex0" },
 };
 
 static s32 mml_ddp_comp_get_id(struct device_node *node, const char *name)

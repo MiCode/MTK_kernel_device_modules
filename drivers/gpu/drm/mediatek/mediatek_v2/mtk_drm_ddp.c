@@ -26946,6 +26946,9 @@ static int mtk_ddp_ovl_pq_in_cb_MT6993(enum mtk_ddp_comp_id cur, enum mtk_ddp_co
 {
 	int value = -1;
 
+	if (cur == DDP_COMPONENT_MML_MUTEX0 || cur == DDP_COMPONENT_MML_MUTEX1)
+		return 0;
+
 	switch (cur) {
 	case DDP_COMPONENT_OVLSYS_DLI_ASYNC0:
 	case DDP_COMPONENT_OVLSYS1_DLI_ASYNC0:
@@ -27004,7 +27007,8 @@ static int mtk_ddp_ovl_exdma_out_cb_MT6993(enum mtk_ddp_comp_id cur, enum mtk_dd
 {
 	int value = -1;
 
-	if (cur == DDP_COMPONENT_OVL_EXDMA0 && next == DDP_COMPONENT_DLI_ASYNC0)
+	if (cur == DDP_COMPONENT_OVL_EXDMA0 &&
+		(next == DDP_COMPONENT_DLI_ASYNC0 || next == DDP_COMPONENT_OVL_EXDMA0))
 		return 0;
 
 	switch (cur) {

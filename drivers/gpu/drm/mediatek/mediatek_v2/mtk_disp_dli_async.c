@@ -108,11 +108,12 @@ static void mtk_dli_async_addon_config(struct mtk_ddp_comp *comp,
 	else
 		dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE];
 
-	if ((addon_config->config_type.module == DISP_MML_IR_PQ_v2) ||
-	    (addon_config->config_type.module == DISP_MML_IR_PQ_v2_1) ||
-	    (addon_config->config_type.module == DISP_MML_DL) ||
-	    (addon_config->config_type.module == DISP_MML_DL_1) ||
-	    (addon_config->config_type.module == DISP_MML_DL_EXDMA)) {
+	if (addon_config->config_type.module == DISP_MML_IR_PQ_v2 ||
+	    addon_config->config_type.module == DISP_MML_IR_PQ_v2_1 ||
+	    addon_config->config_type.module == DISP_MML_DL ||
+	    addon_config->config_type.module == DISP_MML_DL_1 ||
+	    addon_config->config_type.module == DISP_MML_DL_EXDMA ||
+	    addon_config->config_type.module == DISP_MML_DL_EXDMA_v2) {
 		u8 pipe = addon_config->addon_mml_config.pipe;
 		u32 width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
 		u32 height = addon_config->addon_mml_config.mml_dst_roi[pipe].height;
@@ -146,7 +147,7 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 	priv = mtk_crtc->base.dev->dev_private;
 	dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE];
 
-	if (addon_config->config_type.module != DISP_MML_DL_EXDMA) {
+	if (addon_config->config_type.module != DISP_MML_DL_EXDMA_v2) {
 		DDPINFO("%s module:%d dli:%#x p:%u w:%u h:%u fail\n",
 			__func__, addon_config->config_type.module,
 			dli_in_relay_size, pipe, width, height);
@@ -162,7 +163,7 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 		dli_in_relay_size, pipe, width, height);
 
 	cmdq_pkt_write(handle, NULL, comp->regs_pa + dli_in_relay_size,
-		height << 16 | width, U32_MAX);
+		1 << 30 | height << 16 | width, U32_MAX);
 }
 
 static void mtk_dli_async_size_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
