@@ -418,6 +418,12 @@ struct gpufreq_bus_tracker_info {
 	unsigned int addr;
 };
 
+struct gpufreq_preoc_info {
+	unsigned int count;
+	unsigned int throttle_time; /* us */
+	unsigned int scale_factor;
+};
+
 /**************************************************
  * Shared Status
  **************************************************/
@@ -516,6 +522,7 @@ struct gpufreq_shared_status {
 	struct gpufreq_gpm3_info gpm3_table[GPUFREQ_MAX_GPM3_NUM];
 	struct gpufreq_ptp3_shared_status ptp3_status;
 	struct gpu_ptp3_info ptp3_info;
+	struct gpufreq_preoc_info preoc_info;
 	struct gpufreq_bus_tracker_info bus_slv_error[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_bus_tracker_info bus_slv_timeout[GPUFREQ_MAX_BUSTRK_NUM];
 };
