@@ -5425,7 +5425,7 @@ cpus {
 			kernel-lib = <0x7de00000 0x00500000 0xffffffff>;
 			work-buf = <0x0 0x12000 0xffffffff>;
 			dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
-			iommus = <&iommu2 M4U_PORT_L21_APU_FAKE_CODE>;
+			iommus = <&iommu3 M4U_PORT_L21_APU_FAKE_CODE>;
 		};
 
 		apu1_clk: syscon@19031000 {
@@ -5447,7 +5447,7 @@ cpus {
 			kernel-lib = <0x7e700000 0x00500000 0xffffffff>;
 			work-buf = <0x0 0x12000 0xffffffff>;
 			dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
-			iommus = <&iommu2 M4U_PORT_L21_APU_FAKE_CODE>;
+			iommus = <&iommu3 M4U_PORT_L21_APU_FAKE_CODE>;
 		};
 
 		apu2_clk: syscon@19032000 {
@@ -5469,7 +5469,7 @@ cpus {
 			kernel-lib = <0x7f000000 0x00500000 0xffffffff>;
 			work-buf = <0x0 0x12000 0xffffffff>;
 			dma-ranges = <0x3 0x0 0x3 0x0 0x1 0x0>;
-			iommus = <&iommu2 M4U_PORT_L21_APU_FAKE_CODE>;
+			iommus = <&iommu3 M4U_PORT_L21_APU_FAKE_CODE>;
 		};
 
 		apu_mdla0_clk: syscon@19034000 {
