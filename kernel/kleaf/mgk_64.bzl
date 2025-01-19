@@ -2445,12 +2445,12 @@ def get_overlay_modules_list():
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/misc/mediatek/flashlight/flashlights-ocp81375.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/fusb304.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/mux_switch.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ps5169.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ps5170.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/ptn36241g.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/usb_dp_selector.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:fusb304".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:mux_switch".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5169".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5170".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ptn36241g".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/power/supply/mtk_chg_det.ko")
         mgk_64_device_modules.remove("drivers/power/supply/mtk_hvbpc.ko")
