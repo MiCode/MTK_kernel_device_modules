@@ -310,7 +310,7 @@ int slbc_deactivate(struct slbc_data *d)
 				"done");
 
 		if (test_bit(uid, &slbc_sid_rel_q)) {
-			slbc_debug_log("%s: %s already in release_q!",
+			slbc_debug_log("%s: %s already in release_q %lx!",
 					__func__, slbc_uid_str[uid],
 					slbc_sid_rel_q);
 		}
@@ -668,7 +668,7 @@ int slbc_request(struct slbc_data *d)
 	}
 
 	if (test_bit(uid, &slbc_sid_req_q)) {
-		slbc_debug_log("%s: %s already in request_q!",
+		slbc_debug_log("%s: %s already in request_q %lx!",
 				__func__, slbc_uid_str[uid],
 				slbc_sid_req_q);
 	}
