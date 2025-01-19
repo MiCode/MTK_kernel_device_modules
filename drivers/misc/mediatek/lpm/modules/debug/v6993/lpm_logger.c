@@ -17,6 +17,7 @@
 #include <linux/spinlock.h>
 
 #include <lpm.h>
+#include <lpm_module.h>
 #include <lpm_spm_comm.h>
 #include <lpm_pcm_def.h>
 #include <lpm_dbg_common_v2.h>
@@ -678,7 +679,7 @@ struct subsys_req plat_subsys_req[] = {
 	{"uarthub", SPM_REQ_STA_15, (0x1F << 20), 0, 0, 0},
 	{"pcie", SPM_REQ_STA_7, (0x3FFF << 12), 0, 0, 0},
 	{"srclkeni", SPM_REQ_STA_14, (0x3 << 30), SPM_REQ_STA_15, 0x3F, 0},
-	{"spm", SPM_SRC_REQ_0, 0xF08, SPM_SRC_REQ_1, 0x3, 0},
+	{"spm", SPM_SRC_REQ_0, 0x8F38, SPM_SRC_REQ_1, 0x3, 0},
 };
 
 struct logger_timer {
@@ -817,13 +818,6 @@ static int lpm_log_common_info(void)
 				wakesrc->comm_clksys2_mon_0);
 	}
 	return 0;
-}
-
-static unsigned int lpm_get_last_suspend_wakesrc(void)
-{
-	struct lpm_spm_wake_status *wakesrc = log_help.wakesrc;
-
-	return wakesrc->r12_last_suspend;
 }
 
 static int lpm_get_wakeup_status(void)
