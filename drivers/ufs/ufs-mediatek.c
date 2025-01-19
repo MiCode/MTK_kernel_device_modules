@@ -913,26 +913,32 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 	return ret;
 }
 
-static void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba, unsigned int cpu)
+static u32 ufs_mtk_mcq_get_irq(struct ufs_hba *hba, unsigned int cpu)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct blk_mq_tag_set *tag_set = &hba->host->tag_set;
 	struct blk_mq_queue_map	*map = &tag_set->map[HCTX_TYPE_DEFAULT];
 	unsigned int nr = map->nr_queues;
-	unsigned int q_index, _cpu, irq;
-	int ret;
+	unsigned int q_index;
 
 	q_index = map->mq_map[cpu];
 	if (q_index > nr) {
 		dev_err(hba->dev, "hwq index %d exceed %d\n",
 			q_index, nr);
-		return;
+		return MTK_MCQ_INVALID_IRQ;
 	}
 
-	irq = host->mcq_intr_info[q_index].irq;
+	return host->mcq_intr_info[q_index].irq;
+}
+
+static void ufs_mtk_mcq_set_irq_affinity(struct ufs_hba *hba, unsigned int cpu)
+{
+	unsigned int irq, _cpu;
+	int ret;
+
+	irq = ufs_mtk_mcq_get_irq(hba, cpu);
 	if (irq == MTK_MCQ_INVALID_IRQ) {
-		dev_err(hba->dev, "invalid irq. unable to bind q%d to cpu%d",
-			q_index, cpu);
+		dev_err(hba->dev, "invalid irq. unable to bind irq to cpu%d", cpu);
 		return;
 	}
 
@@ -1526,6 +1532,36 @@ static int ufs_mtk_cpu_online_notify(unsigned int cpu, struct hlist_node *node)
 	return 0;
 }
 
+static int ufs_mtk_cpu_offline_notify(unsigned int cpu, struct hlist_node *node)
+{
+	struct ufs_mtk_host *host = hlist_entry_safe(node, struct ufs_mtk_host, cpuhp_node);
+	struct ufs_hba *hba = host->hba;
+	struct cpumask mask;
+	unsigned int irq;
+	int ret = 0;
+
+	if (cpu == 3) {
+		/* Avoid binding irq affinity to CPU0 or CPU3 (off) */
+		cpumask_setall(&mask);
+		cpumask_clear_cpu(0, &mask);
+		cpumask_clear_cpu(3, &mask);
+
+		ret = irq_set_affinity_hint(hba->irq, &mask);
+		dev_info(hba->dev, "set irq %d affinity to CPU %*pbl %s\n",
+				hba->irq, cpumask_pr_args(&mask), ret ? "failed" : "");
+
+		/* Migrate irq of CPU0 to other CPUs */
+		irq = ufs_mtk_mcq_get_irq(hba, 0);
+		if (irq != MTK_MCQ_INVALID_IRQ) {
+			ret = irq_set_affinity_hint(irq, &mask);
+			dev_info(hba->dev, "set irq %d affinity to CPU %*pbl %s\n",
+					irq, cpumask_pr_args(&mask), ret ? "failed" : "");
+		}
+	}
+
+	return 0;
+}
+
 /**
  * ufs_mtk_init - find other essential mmio bases
  * @hba: host controller instance
@@ -1667,8 +1703,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_rpmb_init(hba);
 
-	host->cpuhp_state = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN,
-						"ufs:online", ufs_mtk_cpu_online_notify, NULL);
+	host->cpuhp_state = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN, "ufs:online",
+					ufs_mtk_cpu_online_notify, ufs_mtk_cpu_offline_notify);
 	if (host->cpuhp_state < 0)
 		dev_err(hba->dev, "Setup cpu hotplug state failed, ret: %d\n", host->cpuhp_state);
 
