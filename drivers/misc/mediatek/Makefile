@@ -48,7 +48,6 @@ obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MON) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MOU) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_LAG) += imgsensor/src/
 obj-$(CONFIG_MTK_IOMMU_MISC) += iommu/
-obj-$(CONFIG_MTK_COMBO) += connectivity/
 obj-$(CONFIG_MTK_CONN_SCP) += conn_scp/
 obj-$(CONFIG_MTK_CONN_MD) += conn_md/
 obj-$(CONFIG_MTK_UARTHUB) += uarthub/
