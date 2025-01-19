@@ -4145,7 +4145,7 @@
 		};
 
 		iommu1: iommu@19010000 {
-			compatible = "mediatek,mt6873-apu-iommu";
+			compatible = "mediatek,mt6853-apu-iommu";
 			reg = <0 0x19010000 0 0x1000>;
 			iommu_id = <0>;
 			iommu_type = "apu";
