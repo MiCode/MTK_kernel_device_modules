@@ -4280,6 +4280,7 @@
 		gpu-vb-efuse=<0x0344 0x3800>;
 		gpu-vb-opp0 = <75000 75000 75000 75000 75000 75000 75000 75000 75000 75000>;
 		gpu-vb-opp0-mcl50=<75000>;
+		thermal-bank = <2>;
 		eemg_detectors = "EEMG_DET_GPU", "EEMG_DET_GPU_HI";
 		EEMG_DET_GPU{
 			ctrl_id = <0>;
