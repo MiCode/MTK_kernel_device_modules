@@ -744,13 +744,18 @@ struct mtk_vcodec_ctx {
 	bool prev_no_input;
 	bool dynamic_low_latency;
 	bool lpw_timer_wait; // if timer is start waiting
+	bool lpw_start_not_get;
+	bool lpw_is_pausing;
 	struct timer_list lpw_timer;
 	enum vdec_low_power_state lpw_state;
 	unsigned int lpw_dec_start_cnt;	// count for low power mode to decode after start streaming
 	unsigned int group_dec_cnt;
-	u64 group_start_time; // jiffies_to_nsecs
-	u64 lpw_start_time; // jiffies_to_nsecs
+	unsigned int start_dec_cnt;
+	unsigned long group_start_jiffies; // jiffies
+	unsigned long lpw_start_jiffies; // jiffies
+	unsigned long lpw_last_disp_jiffies; // jiffies
 	u64 lpw_start_ts; // ns
+	u64 lpw_pause_time; // ns
 	u64 lpw_last_disp_ts;
 	u64 lpw_ts_diff;
 

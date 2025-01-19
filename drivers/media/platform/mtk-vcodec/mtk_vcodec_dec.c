@@ -13,6 +13,7 @@
 #include <linux/timer.h>
 #include <linux/jiffies.h>
 #include <linux/sched.h>
+#include <linux/overflow.h>
 #include <mtk_heap.h>
 
 #include "mtk_heap.h"
@@ -494,9 +495,15 @@ static u64 mtk_vdec_ts_update_mode_and_timestamp(struct mtk_vcodec_ctx *ctx, u64
 	return timestamp;
 }
 
-static int mtk_vdec_get_lpw_limit(struct mtk_vcodec_ctx *ctx)
+#define GET_BUF_PAIRS(m2m_ctx, src_cnt, dst_cnt, pair_cnt) { \
+	src_cnt = v4l2_m2m_num_src_bufs_ready(m2m_ctx); \
+	dst_cnt = v4l2_m2m_num_dst_bufs_ready(m2m_ctx); \
+	pair_cnt = MIN(src_cnt, dst_cnt); \
+}
+
+static unsigned int mtk_vdec_get_lpw_limit(struct mtk_vcodec_ctx *ctx)
 {
-	int default_limit = mtk_vdec_lpw_limit;
+	int default_limit = mtk_vdec_lpw_limit, limit_cnt;
 
 	if (ctx->dynamic_low_latency)
 		return 1;
@@ -504,7 +511,8 @@ static int mtk_vdec_get_lpw_limit(struct mtk_vcodec_ctx *ctx)
 	if (ctx->picinfo.buf_w * ctx->picinfo.buf_h > MTK_VDEC_4K_WH)
 		default_limit = mtk_vdec_lpw_limit - 2;
 
-	return (ctx->input_slot > 0) ? MAX(1, MIN(default_limit, ctx->input_slot - 2)) : default_limit;
+	limit_cnt = (ctx->input_slot > 0) ? MIN(default_limit, ctx->input_slot - 2) : default_limit;
+	return (unsigned int)MAX(1, limit_cnt);
 }
 
 static int mtk_vdec_get_lpw_start_limit(struct mtk_vcodec_ctx *ctx)
@@ -526,7 +534,7 @@ static int mtk_vdec_get_lpw_start_limit(struct mtk_vcodec_ctx *ctx)
 static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
 {
 	struct mtk_vcodec_ctx *ctx = container_of(timer, struct mtk_vcodec_ctx, lpw_timer);
-	int src_cnt, dst_cnt, pair_cnt;
+	unsigned int src_cnt, dst_cnt, pair_cnt;
 	bool need_trigger = false;
 	unsigned long flags;
 
@@ -536,9 +544,7 @@ static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
 	spin_lock_irqsave(&ctx->lpw_lock, flags);
 	if (ctx->lpw_timer_wait) {
 		if (ctx->lpw_state == VDEC_LPW_WAIT) {
-			src_cnt = v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx);
-			dst_cnt = v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx);
-			pair_cnt = MIN(src_cnt, dst_cnt);
+			GET_BUF_PAIRS(ctx->m2m_ctx, src_cnt, dst_cnt, pair_cnt);
 			mtk_lpw_debug(1, "[%d] timer timeup, switch lpw_state(%d) to DEC(%d)(pair cnt %d(%d,%d))",
 				ctx->id, ctx->lpw_state, VDEC_LPW_DEC, pair_cnt, src_cnt, dst_cnt);
 			ctx->lpw_state = VDEC_LPW_DEC;
@@ -562,6 +568,30 @@ static void mtk_vdec_lpw_deinit_timer(struct mtk_vcodec_ctx *ctx)
 	del_timer_sync(&ctx->lpw_timer);
 }
 
+static void mtk_vdec_lpw_reset_start(struct mtk_vcodec_ctx *ctx)
+{
+	ctx->lpw_state = VDEC_LPW_DEC;
+	ctx->lpw_dec_start_cnt = mtk_vdec_get_lpw_start_limit(ctx);
+	ctx->in_group = false;
+	ctx->lpw_start_not_get = true;
+	ctx->lpw_start_ts = ctx->lpw_last_disp_ts = 0;
+	ctx->lpw_is_pausing = false;
+	ctx->lpw_pause_time = 0;
+	ctx->start_dec_cnt = 0;
+}
+
+static void mtk_vdec_lpw_set_pause(struct mtk_vcodec_ctx *ctx)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&ctx->lpw_lock, flags);
+
+	ctx->in_group = false;
+	ctx->lpw_is_pausing = true;
+
+	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
+}
+
 static void mtk_vdec_lpw_set_ts(struct mtk_vcodec_ctx *ctx, u64 ts)
 {
 	unsigned long flags;
@@ -570,48 +600,77 @@ static void mtk_vdec_lpw_set_ts(struct mtk_vcodec_ctx *ctx, u64 ts)
 		return;
 
 	spin_lock_irqsave(&ctx->lpw_lock, flags);
-	if (ctx->lpw_start_time == 0) {
-		ctx->lpw_start_time = jiffies_to_nsecs(jiffies);
+	if (ctx->lpw_start_not_get) {
+		ctx->lpw_start_jiffies = jiffies;
 		ctx->lpw_start_ts = ctx->lpw_last_disp_ts = ts;
+		ctx->lpw_start_not_get = false;
 	}
+	if (ctx->lpw_is_pausing) {
+		// pause start time should be last display time
+		ctx->lpw_pause_time += jiffies_to_nsecs(jiffies - ctx->lpw_last_disp_jiffies);
+		ctx->lpw_is_pausing = false;
+	}
+	ctx->start_dec_cnt++;
 	if (ts >= ctx->lpw_last_disp_ts)
 		ctx->lpw_ts_diff = ts - ctx->lpw_last_disp_ts;
 	ctx->lpw_last_disp_ts = MAX(ts, ctx->lpw_last_disp_ts);
+	ctx->lpw_last_disp_jiffies = jiffies;
 	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 }
 
 #define T_T "%lld.%06d" // time of ms.ns
 #define TMNS(x) NS_TO_MS(x), NS_MOD_MS(x) // ms, ns
-
 static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 {
-	u64 timeout = 0, curr_time, group_time, dec_time, delay_time, limit_time; // ns
-	u64 limit_time_g, limit_time_s = 0, ts_diff_s, time_diff; // ns
+	u64 timeout = 0, group_time, dec_time, delay_time, limit_time; // ns
+	u64 limit_time_g, limit_time_s = 0, ts_diff_g, ts_diff_s, time_diff; // ns
+	unsigned long curr_jiffies;
 	unsigned int limit_cnt = mtk_vdec_get_lpw_limit(ctx);
 	unsigned int delay_cnt = limit_cnt / 2;
+	unsigned int op_rate = MAX(ctx->op_rate_adaptive, ctx->dec_params.operating_rate);
+	u64 op_diff = div_u64(1000000000, op_rate), op_diff_s; // ns
 	bool use_default = false, use_group = true;
+	unsigned long flags;
 
 	if (!ctx->low_pw_mode || ctx->dynamic_low_latency)
 		return;
 
+	spin_lock_irqsave(&ctx->lpw_lock, flags);
 	if (ctx->lpw_state == VDEC_LPW_WAIT && !ctx->lpw_timer_wait) {
-		curr_time = jiffies_to_nsecs(jiffies);
-		if (curr_time <= ctx->group_start_time) {
-			dec_time = MS_TO_NS(10); // 10ms
-			group_time = dec_time * ctx->group_dec_cnt;
-			mtk_lpw_debug(0, "[%d][warning] curr_time "T_T" <= group_start_time "T_T" not valid, set dec_time to default %lld ms",
-				ctx->id, TMNS(curr_time), TMNS(ctx->group_start_time), NS_TO_MS(dec_time));
-		} else {
-			group_time = curr_time - ctx->group_start_time;
-			dec_time = div_u64(group_time, ctx->group_dec_cnt);
+		curr_jiffies = jiffies;
+		 if (time_before(curr_jiffies, ctx->group_start_jiffies)) {
+			group_time = MS_TO_NS(10) * ctx->group_dec_cnt; // dec_time default 10ms
+			mtk_lpw_debug(0, "[%d][warning] curr_time "T_T" < group_start_time "T_T" not valid, set dec_time to default 10 ms",
+				ctx->id, TMNS(jiffies_to_nsecs(curr_jiffies)),
+				TMNS(jiffies_to_nsecs(ctx->group_start_jiffies)));
+		} else if (curr_jiffies == ctx->group_start_jiffies) {
+			group_time = jiffies_to_nsecs(1); // 1 tick
+			mtk_lpw_debug(1, "[%d] curr_time "T_T" == group_start_time "T_T", set group_time to 1 tick "T_T" ms",
+				ctx->id, TMNS(jiffies_to_nsecs(curr_jiffies)),
+				TMNS(jiffies_to_nsecs(ctx->group_start_jiffies)), TMNS(group_time));
+		} else
+			group_time = jiffies_to_nsecs(curr_jiffies - ctx->group_start_jiffies);
+
+		ts_diff_g = ctx->lpw_ts_diff;
+		if (op_diff < ctx->lpw_ts_diff) {
+			mtk_lpw_debug(1, "[%d] ts diff for group "T_T" > op rate (%d) time "T_T" ms, use op time",
+				ctx->id, TMNS(ctx->lpw_ts_diff), op_rate, TMNS(op_diff));
+			ts_diff_g = op_diff;
 		}
+		dec_time = div_u64(group_time, ctx->group_dec_cnt);
 		delay_time = dec_time * delay_cnt;
-		limit_time_g = ctx->lpw_ts_diff * ctx->group_dec_cnt; // limit form group
+		limit_time_g = ts_diff_g * ctx->group_dec_cnt; // limit form group
 
 		ts_diff_s = ctx->lpw_last_disp_ts - ctx->lpw_start_ts;
-		time_diff = curr_time - ctx->lpw_start_time;
-		if (ts_diff_s > time_diff + delay_time)
-			limit_time_s = ts_diff_s - time_diff - delay_time; // limit from start
+		if (!check_mul_overflow(op_diff, (u64)(ctx->start_dec_cnt - 1), &op_diff_s) && op_diff_s < ts_diff_s) {
+			mtk_lpw_debug(1, "[%d] ts diff from start "T_T" - "T_T" = "T_T" > op rate (%d) time "T_T" * (%d-1) = "T_T" ms, use op time",
+				ctx->id, TMNS(ctx->lpw_last_disp_ts), TMNS(ctx->lpw_start_ts), TMNS(ts_diff_s),
+				op_rate, TMNS(op_diff), ctx->start_dec_cnt, TMNS(op_diff_s));
+			ts_diff_s = op_diff_s;
+		}
+		time_diff = jiffies_to_nsecs(curr_jiffies - ctx->lpw_start_jiffies);
+		if (ts_diff_s > time_diff - ctx->lpw_pause_time + delay_time)
+			limit_time_s = ts_diff_s - (time_diff - ctx->lpw_pause_time) - delay_time; // limit from start
 
 		if (limit_time_g >= limit_time_s) {
 			limit_time = limit_time_g;
@@ -628,10 +687,11 @@ static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 			use_default = true;
 		}
 
-		mtk_lpw_debug(1, "[%d] lpw_timer timeout %s "T_T" (g limit: "T_T" = "T_T" * %d, s limit: "T_T" = "T_T" - "T_T" - "T_T", delay_time: "T_T" = "T_T" (= "T_T" / %d) * %d)",
+		mtk_lpw_debug(1, "[%d] lpw_timer timeout %s "T_T" (g limit: "T_T" = "T_T" * %d, s limit: "T_T" = "T_T" - ("T_T" - "T_T") - "T_T", delay_time: "T_T" = "T_T" (= "T_T" / %d) * %d)",
 			ctx->id, use_default ? "default" : (use_group ? " group " : " start "), TMNS(timeout),
-			TMNS(limit_time_g), TMNS(ctx->lpw_ts_diff), ctx->group_dec_cnt,
-			TMNS(limit_time_s), TMNS(ts_diff_s), TMNS(time_diff), TMNS(delay_time),
+			TMNS(limit_time_g), TMNS(ts_diff_g), ctx->group_dec_cnt,
+			TMNS(limit_time_s), TMNS(ts_diff_s),
+			TMNS(time_diff), TMNS(ctx->lpw_pause_time), TMNS(delay_time),
 			TMNS(delay_time), TMNS(dec_time), TMNS(group_time), ctx->group_dec_cnt, delay_cnt);
 
 		if (timeout > 0) {
@@ -639,6 +699,7 @@ static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 			mod_timer(&ctx->lpw_timer, jiffies + nsecs_to_jiffies(timeout));
 		}
 	}
+	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 }
 
 static void mtk_vdec_lpw_stop_timer(struct mtk_vcodec_ctx *ctx, bool need_lock)
@@ -682,7 +743,7 @@ static void mtk_vdec_lpw_switch_reset(struct mtk_vcodec_ctx *ctx, bool need_lock
 static bool mtk_vdec_lpw_check_dec_start(struct mtk_vcodec_ctx *ctx,
 	bool need_lock, bool is_EOS, char *debug_str)
 {
-	int src_cnt, dst_cnt, pair_cnt, limit_cnt;
+	unsigned int src_cnt, dst_cnt, pair_cnt, limit_cnt;
 	unsigned long flags;
 	bool has_switch = false;
 
@@ -695,9 +756,7 @@ static bool mtk_vdec_lpw_check_dec_start(struct mtk_vcodec_ctx *ctx,
 	if (ctx->lpw_state != VDEC_LPW_WAIT && !is_EOS)
 		goto check_lpw_start_done;
 
-	src_cnt = v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx);
-	dst_cnt = v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx);
-	pair_cnt = MIN(src_cnt, dst_cnt);
+	GET_BUF_PAIRS(ctx->m2m_ctx, src_cnt, dst_cnt, pair_cnt);
 	limit_cnt = mtk_vdec_get_lpw_limit(ctx);
 
 	if (is_EOS) {
@@ -719,8 +778,8 @@ check_lpw_start_done:
 	return has_switch;
 }
 
-static bool mtk_vdec_lpw_check_low_latency(struct mtk_vcodec_ctx *ctx,
-	int src_cnt, int dst_cnt, int pair_cnt)
+static bool mtk_vdec_lpw_check_low_latency_no_lock(struct mtk_vcodec_ctx *ctx,
+	unsigned int src_cnt, unsigned int dst_cnt, unsigned int pair_cnt)
 {
 	bool no_input = false;
 	bool detect_low_latency = false;
@@ -750,39 +809,31 @@ static bool mtk_vdec_lpw_check_low_latency(struct mtk_vcodec_ctx *ctx,
 	return ctx->dynamic_low_latency;
 }
 
-static bool mtk_vdec_lpw_check_dec_stop(struct mtk_vcodec_ctx *ctx,
-	bool need_lock, bool before_decode, char *debug_str)
+static bool mtk_vdec_lpw_check_dec_stop_no_lock(struct mtk_vcodec_ctx *ctx, char *debug_str)
 {
-	int src_cnt, dst_cnt, pair_cnt, limit_cnt;
-	unsigned long flags;
+	unsigned int src_cnt, dst_cnt, pair_cnt, limit_cnt;
 	bool has_switch = false;
 
 	if (!ctx->low_pw_mode)
 		return has_switch;
 
-	if (need_lock)
-		spin_lock_irqsave(&ctx->lpw_lock, flags);
+	GET_BUF_PAIRS(ctx->m2m_ctx, src_cnt, dst_cnt, pair_cnt);
+	limit_cnt = 1; // before decode
+	mtk_lpw_debug(8, "[%d] pair cnt %d(%d,%d) lpw_state(%d) lpw_dec_start_cnt %d, group_dec_cnt %d",
+		ctx->id, pair_cnt, src_cnt, dst_cnt, ctx->lpw_state,
+		ctx->lpw_dec_start_cnt, ctx->group_dec_cnt);
 
-	src_cnt = v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx);
-	dst_cnt = v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx);
-	pair_cnt = MIN(src_cnt, dst_cnt);
-	limit_cnt = before_decode ? 1 : 0;
-	if (before_decode)
-		mtk_lpw_debug(8, "[%d] pair cnt %d(%d,%d) lpw_state(%d) lpw_dec_start_cnt %d, group_dec_cnt %d",
-			ctx->id, pair_cnt, src_cnt, dst_cnt, ctx->lpw_state,
-			ctx->lpw_dec_start_cnt, ctx->group_dec_cnt);
-
-	if (!before_decode && ctx->lpw_dec_start_cnt == 0 && pair_cnt <= limit_cnt) // after decode group end
-		mtk_vdec_lpw_check_low_latency(ctx, src_cnt, dst_cnt, pair_cnt);
+	if (ctx->lpw_dec_start_cnt == 0 && pair_cnt <= limit_cnt) // check when group end
+		mtk_vdec_lpw_check_low_latency_no_lock(ctx, src_cnt, dst_cnt, pair_cnt);
 
 	if (ctx->lpw_state != VDEC_LPW_DEC || ctx->dynamic_low_latency)
 		goto check_lpw_stop_done;
 
-	if (before_decode && ctx->lpw_dec_start_cnt > 0) {
+	if (ctx->lpw_dec_start_cnt > 0) {
 		ctx->lpw_dec_start_cnt--;
 		if (pair_cnt <= limit_cnt) {
 			has_switch = true; // for get out of in_group
-			if (ctx->lpw_dec_start_cnt <= mtk_vdec_lpw_start_limit) {
+			if (ctx->lpw_dec_start_cnt > 0 && ctx->lpw_dec_start_cnt <= mtk_vdec_lpw_start_limit) {
 				// done driver dpb size but no more pair to decode
 				mtk_lpw_debug(1, "[%d] lpw_dec_start_cnt less %d not done but no more pair cnt %d(%d,%d)",
 					ctx->id, ctx->lpw_dec_start_cnt, pair_cnt, src_cnt, dst_cnt);
@@ -806,9 +857,40 @@ static bool mtk_vdec_lpw_check_dec_stop(struct mtk_vcodec_ctx *ctx,
 	}
 
 check_lpw_stop_done:
-	if (need_lock)
-		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 	return has_switch;
+}
+
+static void mtk_vdec_lpw_update_before_dec(struct mtk_vcodec_ctx *ctx)
+{
+	unsigned long flags;
+	bool has_stop;
+
+	if (!ctx->low_pw_mode)
+		return;
+
+	spin_lock_irqsave(&ctx->lpw_lock, flags);
+	mtk_vdec_lpw_stop_timer(ctx, false);
+
+	if (!ctx->in_group) {
+		ctx->in_group = true;
+		vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
+		ctx->group_start_jiffies = jiffies;
+		ctx->group_dec_cnt = 0;
+	}
+	ctx->group_dec_cnt++;
+
+	has_stop = mtk_vdec_lpw_check_dec_stop_no_lock(ctx, "before dec");
+	if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency ||
+				(ctx->lpw_dec_start_cnt > 0 && has_stop))) {
+		ctx->in_group = false;
+		vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
+	}
+
+	if (vdec_if_set_param(ctx, SET_PARAM_VDEC_IN_GROUP, (void *)ctx->in_group) != 0)
+		mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_VDEC_IN_GROUP(%d)",
+			ctx->id, SET_PARAM_VDEC_IN_GROUP);
+
+	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 }
 
 static int mtk_vdec_set_frame(struct mtk_vcodec_ctx *ctx,
@@ -918,7 +1000,7 @@ static void mtk_vdec_cgrp_deinit(struct mtk_vcodec_ctx *ctx)
  * reference list.
  */
 static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
-	bool got_early_eos)
+	bool got_early_eos, bool is_first)
 {
 	struct vdec_fb *disp_frame_buffer = NULL;
 	struct mtk_video_dec_buf *dstbuf;
@@ -927,7 +1009,7 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
 	bool no_output = false;
 	u64 max_ts;
 
-	mtk_v4l2_debug(4, "[%d]", ctx->id);
+	mtk_v4l2_debug(8, "[%d]", ctx->id);
 
 	mutex_lock(&ctx->buf_lock);
 	if (vdec_if_get_param(ctx, GET_PARAM_DISP_FRAME_BUFFER, &disp_frame_buffer)) {
@@ -937,13 +1019,12 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
 	}
 
 	if (disp_frame_buffer == NULL) {
-		mtk_v4l2_debug(4, "No display frame buffer");
+		mtk_v4l2_debug(is_first ? 4 : 8, "No display frame buffer");
 		mutex_unlock(&ctx->buf_lock);
 		return NULL;
 	}
 	if (!virt_addr_valid(disp_frame_buffer)) {
-		mtk_v4l2_debug(3, "Bad display frame buffer %p",
-			disp_frame_buffer);
+		mtk_v4l2_debug(2, "Bad display frame buffer %p", disp_frame_buffer);
 		mutex_unlock(&ctx->buf_lock);
 		return NULL;
 	}
@@ -1017,6 +1098,9 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
 		v4l2_m2m_buf_done(&dstbuf->vb, VB2_BUF_STATE_DONE);
 		ctx->decoded_frame_cnt++;
 		vcodec_trace_end();
+	} else {
+		mtk_v4l2_debug(4, "[%d] id=%d display buffer unused %d",
+			ctx->id, disp_frame_buffer->index, dstbuf->used);
 	}
 	mutex_unlock(&ctx->buf_lock);
 
@@ -1031,7 +1115,7 @@ static struct vb2_buffer *get_display_buffer(struct mtk_vcodec_ctx *ctx,
  * previous sps/pps/resolution change decode, or do nothing if user
  * space still owns this buffer
  */
-static struct vb2_v4l2_buffer *get_free_buffer(struct mtk_vcodec_ctx *ctx)
+static struct vb2_v4l2_buffer *get_free_buffer(struct mtk_vcodec_ctx *ctx, bool is_first)
 {
 	struct mtk_video_dec_buf *dstbuf;
 	struct vdec_fb *free_frame_buffer = NULL;
@@ -1047,12 +1131,12 @@ static struct vb2_v4l2_buffer *get_free_buffer(struct mtk_vcodec_ctx *ctx)
 	}
 
 	if (free_frame_buffer == NULL) {
-		mtk_v4l2_debug(4, " No free frame buffer");
+		mtk_v4l2_debug(is_first ? 4 : 8, " No free frame buffer");
 		mutex_unlock(&ctx->buf_lock);
 		return NULL;
 	}
 	if (!virt_addr_valid(free_frame_buffer)) {
-		mtk_v4l2_debug(3, "Bad free frame buffer %p",
+		mtk_v4l2_debug(2, "Bad free frame buffer %p",
 			free_frame_buffer);
 		mutex_unlock(&ctx->buf_lock);
 		return NULL;
@@ -1199,7 +1283,7 @@ err_in_rdyq:
 }
 
 static struct vb2_buffer *get_free_bs_buffer(struct mtk_vcodec_ctx *ctx,
-	struct mtk_vcodec_mem *current_bs)
+	struct mtk_vcodec_mem *current_bs, bool is_first)
 {
 	struct mtk_vcodec_mem *free_bs_buffer;
 	struct mtk_video_dec_buf *srcbuf;
@@ -1214,17 +1298,16 @@ static struct vb2_buffer *get_free_bs_buffer(struct mtk_vcodec_ctx *ctx,
 	mutex_unlock(&ctx->buf_lock);
 
 	if (free_bs_buffer == NULL) {
-		mtk_v4l2_debug(3, "No free bitstream buffer");
+		mtk_v4l2_debug(is_first ? 4 : 8, "No free bitstream buffer");
 		return NULL;
 	}
 	if (current_bs == free_bs_buffer) {
-		mtk_v4l2_debug(4,
-			"No free bitstream buffer except current bs: %p",
+		mtk_v4l2_debug(4, "No free bitstream buffer except current bs: %p",
 			current_bs);
 		return NULL;
 	}
 	if (!virt_addr_valid(free_bs_buffer)) {
-		mtk_v4l2_debug(3, "Bad free bitstream buffer %p",
+		mtk_v4l2_debug(2, "Bad free bitstream buffer %p",
 			free_bs_buffer);
 		return NULL;
 	}
@@ -1247,9 +1330,11 @@ static void clean_free_bs_buffer(struct mtk_vcodec_ctx *ctx,
 	struct mtk_vcodec_mem *current_bs)
 {
 	struct vb2_buffer *framptr_vb;
+	bool is_first = true;
 
 	do {
-		framptr_vb = get_free_bs_buffer(ctx, current_bs);
+		framptr_vb = get_free_bs_buffer(ctx, current_bs, is_first);
+		is_first = false;
 	} while (framptr_vb);
 }
 
@@ -1257,9 +1342,11 @@ static void clean_free_bs_buffer(struct mtk_vcodec_ctx *ctx,
 static void clean_display_buffer(struct mtk_vcodec_ctx *ctx, bool got_early_eos)
 {
 	struct vb2_buffer *framptr_vb;
+	bool is_first = true;
 
 	do {
-		framptr_vb = get_display_buffer(ctx, got_early_eos);
+		framptr_vb = get_display_buffer(ctx, got_early_eos, is_first);
+		is_first = false;
 	} while (framptr_vb);
 }
 
@@ -1267,9 +1354,11 @@ static bool clean_free_fm_buffer(struct mtk_vcodec_ctx *ctx)
 {
 	struct vb2_v4l2_buffer *framptr_vb2_v4l2;
 	bool has_eos = false;
+	bool is_first = true;
 
 	do {
-		framptr_vb2_v4l2 = get_free_buffer(ctx);
+		framptr_vb2_v4l2 = get_free_buffer(ctx, is_first);
+		is_first = false;
 		if (framptr_vb2_v4l2 != NULL && (framptr_vb2_v4l2->flags & V4L2_BUF_FLAG_LAST))
 			has_eos = true;
 	} while (framptr_vb2_v4l2);
@@ -1941,7 +2030,7 @@ int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, b
 	struct vb2_buffer *src_vb;
 	bool got_early_eos = false, has_eos;
 
-	mtk_v4l2_debug(1, "type = %d", type);
+	mtk_v4l2_debug(8, "type = %d", type);
 
 	if (!mtk_vcodec_state_in_range(ctx, MTK_STATE_HEADER, MTK_STATE_STOP)) { //  < HEADER
 		mtk_v4l2_err("type = %d state %d no valid", type, mtk_vcodec_get_state(ctx));
@@ -2063,8 +2152,8 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 						need_update = true;
 						ctx->is_active = 0;
 						mtk_vdec_dvfs_update_dvfs_params(ctx);
-						mtk_v4l2_debug(0, "[VDVFS] ctx %d inactive",
-							ctx->id);
+						mtk_v4l2_debug(0, "[VDVFS] ctx %d inactive", ctx->id);
+						mtk_vdec_lpw_set_pause(ctx); // for group decode
 					}
 				} else {
 					if (!ctx->is_active) {
@@ -3296,17 +3385,19 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 	unsigned int i;
 	struct mtk_video_dec_buf *mtkbuf;
 	struct vb2_v4l2_buffer *vb2_v4l2;
+	bool is_cap = V4L2_TYPE_IS_CAPTURE(vb->type);
 #if ENABLE_META_BUF
 	void *general_buf_va = NULL;
 	int *pFenceFd;
 	int metaBufferfd = -1;
 #endif
 
-	vcodec_trace_begin("%s(%s)", __func__,
-		V4L2_TYPE_IS_CAPTURE(vb->vb2_queue->type) ? "out" : "in");
+	if (!V4L2_TYPE_IS_MULTIPLANAR(vb->type))
+		return 0;
 
-	mtk_v4l2_debug(4, "[%d] (%d) id=%d",
-				   ctx->id, vb->vb2_queue->type, vb->index);
+	vcodec_trace_begin("%s(%s)", __func__, is_cap ? "out" : "in");
+	mtk_v4l2_debug(4, "[%d] (%d) id=%d %s",
+		ctx->id, vb->vb2_queue->type, vb->index, is_cap ? "FB" : "BS");
 
 	q_data = mtk_vdec_get_q_data(ctx, vb->vb2_queue->type);
 
@@ -3396,7 +3487,8 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 		if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 			struct mtk_vcodec_mem src_mem;
 			struct vb2_dc_buf *dc_buf = vb->planes[0].mem_priv;
-			mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
+
+			mtk_v4l2_debug(8, "[%d] Cache sync+", ctx->id);
 
 			src_mem.dma_addr = vb2_dma_contig_plane_dma_addr(vb, 0);
 			src_mem.size = (size_t)vb2_get_plane_payload(vb, 0);
@@ -3410,7 +3502,8 @@ static int vb2ops_vdec_buf_prepare(struct vb2_buffer *vb)
 			for (plane = 0; plane < vb->num_planes; plane++) {
 				struct vdec_fb dst_mem;
 				struct vb2_dc_buf *dc_buf = vb->planes[plane].mem_priv;
-				mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
+
+				mtk_v4l2_debug(8, "[%d] Cache sync+", ctx->id);
 
 				dma_sync_sg_for_device(
 					vb->vb2_queue->dev,
@@ -3460,16 +3553,17 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	dma_addr_t new_dma_addr;
 	bool new_dma = false;
 	char debug_bs[50] = "";
+	bool is_cap = V4L2_TYPE_IS_CAPTURE(vb->type);
 #ifdef VDEC_CHECK_ALIVE
 	struct vdec_check_alive_work_struct *retrigger_ctx_work;
 #endif
 
-	vcodec_trace_begin("%s-%d(%s)(%d)", __func__, ctx->id,
-		vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE ? "out" : "in", vb->index);
+	if (!V4L2_TYPE_IS_MULTIPLANAR(vb->type))
+		return;
 
-	mtk_v4l2_debug(4, "[%d] (%d) id=%d, vb=%p",
-				   ctx->id, vb->vb2_queue->type,
-				   vb->index, vb);
+	vcodec_trace_begin("%s-%d(%s)(%d)", __func__, ctx->id, is_cap ? "out" : "in", vb->index);
+	mtk_v4l2_debug(4, "[%d] (%d) id=%d %s, vb=%p",
+		ctx->id, vb->vb2_queue->type, vb->index, is_cap ? "FB" : "BS", vb);
 
 	ret = mtk_vcodec_dec_init(ctx, mtk_vdec_get_q_data(ctx, vb->vb2_queue->type));
 	if (ret) {
@@ -3495,7 +3589,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	 */
 	vb2_v4l2 = to_vb2_v4l2_buffer(vb);
 	buf = to_video_dec_buf(vb2_v4l2);
-	if (vb->vb2_queue->type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
+	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		mutex_lock(&ctx->buf_lock);
 		if (buf->used == false) {
 			vb->timestamp = 0;
@@ -3561,7 +3655,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	mtk_vdec_lpw_check_dec_start(ctx, true, (buf->lastframe != NON_EOS), "qbuf src");
 
 	if (!mtk_vcodec_is_state(ctx, MTK_STATE_INIT)) {
-		mtk_v4l2_debug(4, "[%d] already init driver %d",
+		mtk_v4l2_debug(8, "[%d] already init driver %d",
 			ctx->id, mtk_vcodec_get_state(ctx));
 		goto err_buf_prepare;
 	}
@@ -3800,7 +3894,7 @@ static void vb2ops_vdec_buf_finish(struct vb2_buffer *vb)
 			struct vdec_fb dst_mem;
 			struct vb2_dc_buf *dc_buf = vb->planes[plane].mem_priv;
 
-			mtk_v4l2_debug(4, "[%d] Cache sync+", ctx->id);
+			mtk_v4l2_debug(8, "[%d] Cache sync+", ctx->id);
 
 			dma_sync_sg_for_cpu(vb->vb2_queue->dev, dc_buf->dma_sgt->sgl,
 				dc_buf->dma_sgt->orig_nents, DMA_FROM_DEVICE);
@@ -3849,8 +3943,8 @@ static int vb2ops_vdec_buf_init(struct vb2_buffer *vb)
 	struct mtk_video_dec_buf *buf = to_video_dec_buf(vb2_v4l2);
 
 	if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
-		mtk_v4l2_debug(4, "[%d] pfb=%p used %d ready_to_display %d queued_in_v4l2 %d",
-			vb->vb2_queue->type, &buf->frame_buffer,
+		mtk_v4l2_debug(4, "(%d) id=%d pfb=%p used %d ready_to_display %d queued_in_v4l2 %d",
+			vb->vb2_queue->type, vb->index, &buf->frame_buffer,
 			buf->used, buf->ready_to_display, buf->queued_in_v4l2);
 		/* User could use different struct dma_buf*
 		 * with the same index & enter this buf_init.
@@ -3878,11 +3972,10 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(q);
 	unsigned long total_frame_bufq_count;
 	unsigned long vcp_dvfs_data[1] = {0};
-	unsigned long flags;
 	int origin_state, ret;
 
 	vcodec_trace_begin("%s-%d(%s)", __func__, ctx->id,
-		q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE ? "out" : "in");
+		V4L2_TYPE_IS_CAPTURE(q->type) ? "out" : "in");
 
 	origin_state = mtk_vcodec_set_state_from(ctx, MTK_STATE_HEADER, MTK_STATE_FLUSH);
 	mtk_v4l2_debug(4, "[%d] (%d) state=(%x)", ctx->id, q->type, origin_state);
@@ -3890,16 +3983,10 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 	if (q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		if (ctx->ipi_blocked != NULL)
 			*(ctx->ipi_blocked) = false;
-		spin_lock_irqsave(&ctx->lpw_lock, flags);
-		mtk_vdec_lpw_stop_timer(ctx, false);
-		ctx->lpw_state = VDEC_LPW_DEC;
-		ctx->lpw_dec_start_cnt = mtk_vdec_get_lpw_start_limit(ctx);
-		ctx->in_group = false;
+		mtk_vdec_lpw_stop_timer(ctx, true);
+		mtk_vdec_lpw_reset_start(ctx);
 		ctx->dynamic_low_latency = false;
 		ctx->prev_no_input = false;
-		ctx->lpw_start_time = 0;
-		ctx->lpw_start_ts = ctx->lpw_last_disp_ts = 0;
-		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 
 		// SET_PARAM_TOTAL_FRAME_BUFQ_COUNT for SW DEC(VDEC_DRV_DECODER_MTK_SOFTWARE=1)
 		if (!mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
@@ -3973,7 +4060,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	int ret;
 
 	vcodec_trace_begin("%s-%d(%s)", __func__, ctx->id,
-		q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE ? "out" : "in");
+		V4L2_TYPE_IS_CAPTURE(q->type) ? "out" : "in");
 
 	mtk_v4l2_debug(4, "[%d] (%d) state=(%x) ctx->decoded_frame_cnt=%d",
 		ctx->id, q->type, mtk_vcodec_get_state(ctx), ctx->decoded_frame_cnt);
@@ -4246,34 +4333,8 @@ static void mtk_vdec_worker(struct mtk_vcodec_ctx *ctx)
 		}
 	}
 
-	if (ctx->low_pw_mode) {
-		unsigned long flags;
-		bool has_stop;
-
-		spin_lock_irqsave(&ctx->lpw_lock, flags);
-		mtk_vdec_lpw_stop_timer(ctx, false);
-
-		if (!ctx->in_group) {
-			ctx->in_group = true;
-			vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
-			ctx->group_start_time = jiffies_to_nsecs(jiffies);
-			ctx->group_dec_cnt = 0;
-		}
-		ctx->group_dec_cnt++;
-
-		has_stop = mtk_vdec_lpw_check_dec_stop(ctx, false, true, "before dec");
-		if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency ||
-					(ctx->lpw_dec_start_cnt > 0 && has_stop))) {
-			ctx->in_group = false;
-			vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
-		}
-
-		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_IN_GROUP, (void *)ctx->in_group) != 0)
-			mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_VDEC_IN_GROUP(%d)",
-				ctx->id, SET_PARAM_VDEC_IN_GROUP);
-
-		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
-	}
+	// check buf pairs, need before src & dst buf remove
+	mtk_vdec_lpw_update_before_dec(ctx);
 
 	if (src_buf_info->used == false)
 		mtk_vdec_ts_insert(ctx, ctx->timestamp);
@@ -4402,22 +4463,11 @@ static void mtk_vdec_worker(struct mtk_vcodec_ctx *ctx)
 		}
 	}
 
-	if (ctx->low_pw_mode) {
-		unsigned long flags;
-
-		spin_lock_irqsave(&ctx->lpw_lock, flags);
-		mtk_vdec_lpw_check_dec_stop(ctx, false, false, "after dec");
-		if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency)) {
-			ctx->in_group = false;
-			vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
-		}
-		mtk_vdec_lpw_start_timer(ctx);
-		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
-	} else
-		mtk_v4l2_debug(4, "[%d] state %d, src %d, dst %d",
-			ctx->id, mtk_vcodec_get_state(ctx),
-			v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx),
-			v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx));
+	mtk_vdec_lpw_start_timer(ctx);
+	mtk_v4l2_debug(4, "[%d] state %d, src %d, dst %d",
+		ctx->id, mtk_vcodec_get_state(ctx),
+		v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx),
+		v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx));
 
 vdec_worker_finish:
 	v4l2_m2m_job_finish(dev->m2m_dev_dec, ctx->m2m_ctx);

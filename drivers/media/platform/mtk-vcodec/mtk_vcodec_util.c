@@ -898,11 +898,11 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 		memcpy(d_sgl, s_sgl, sizeof(*s_sgl));
 		contig_size += s_sgl->length;
 		sgt_tmp->nents++;
-		mtk_v4l2_debug(4, "%d contig_size %d bytesused %d.\n",
+		mtk_v4l2_debug(8, "%d contig_size %d bytesused %d.\n",
 			i, contig_size, size);
 		if (contig_size >= size) {
 			sgl_len = PAGE_ALIGN(s_sgl->length - (contig_size - size));
-			mtk_v4l2_debug(4, "trunc len from %u to %u.\n", s_sgl->length, sgl_len);
+			mtk_v4l2_debug(8, "trunc len from %u to %u.\n", s_sgl->length, sgl_len);
 			sg_set_page(d_sgl, sg_page(s_sgl), sgl_len, s_sgl->offset);
 			break;
 		}
@@ -916,7 +916,7 @@ int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 		mtk_v4l2_debug(0, "direction %d not correct\n", direction);
 		return -1;
 	}
-	mtk_v4l2_debug(4, "flush nents %d total nents %d\n",
+	mtk_v4l2_debug(8, "flush nents %d total nents %d\n",
 		sgt_tmp->nents, sgt->orig_nents);
 	sg_free_table(sgt_tmp);
 	kfree(sgt_tmp);

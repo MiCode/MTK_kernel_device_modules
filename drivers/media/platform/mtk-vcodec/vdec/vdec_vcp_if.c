@@ -1488,23 +1488,12 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	struct vdec_inst *inst = (struct vdec_inst *)h_vdec;
 	struct vdec_vcu_inst *vcu = &inst->vcu;
 	struct vdec_ap_ipi_dec_start msg;
-	uint64_t vdec_fb_va;
-	uint64_t fb_dma[VIDEO_MAX_PLANES] = { 0 };
 	uint32_t num_planes;
 	unsigned int i = 0;
 	unsigned int bs_fourcc = inst->ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 	unsigned int fm_fourcc = inst->ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 	unsigned int *errormap_info = &inst->ctx->errormap_info[0];
-
-	num_planes = fb ? inst->vsi->dec.fb_num_planes : 0U;
-
-	for (i = 0; i < num_planes; i++)
-		fb_dma[i] = (u64)fb->fb_base[i].dma_addr;
-
-	vdec_fb_va = (u64)(uintptr_t)fb;
-
-	mtk_vcodec_debug(inst, "+ [%d] FB y_dma=%llx c_dma=%llx va=%p num_planes %d",
-		inst->num_nalu, fb_dma[0], fb_dma[1], fb, num_planes);
+	char debug_str[128] = {0};
 
 	/* bs == NULL means reset decoder */
 	if (bs == NULL) {
@@ -1516,46 +1505,45 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 			return vdec_vcp_reset(inst, VDEC_DRAIN_EOS); // drain & return EOS frame (2)
 	}
 
-	mtk_vcodec_debug(inst, "+ BS dma=0x%llx dmabuf=%p format=%s",
-		(uint64_t)bs->dma_addr, bs->dmabuf, FOURCC_STR(bs_fourcc));
+	mtk_vcodec_debug(inst, "+ [%d] BS id=%d dma=0x%llx dmabuf=%p format=%s",
+		inst->num_nalu, bs->index, (uint64_t)bs->dma_addr, bs->dmabuf, FOURCC_STR(bs_fourcc));
 
 	inst->vsi->dec.vdec_bs_va = (u64)(uintptr_t)bs;
 	inst->vsi->dec.bs_dma = (uint64_t)bs->dma_addr;
 	inst->vsi->dec.bs_non_acp_dma = bs->non_acp_iova;
-
-	for (i = 0; i < num_planes; i++)
-		inst->vsi->dec.fb_dma[i] = fb_dma[i];
 
 	if (inst->vsi->input_driven == NON_INPUT_DRIVEN) {
 		inst->vsi->dec.vdec_fb_va = (u64)(uintptr_t)NULL;
 		inst->vsi->dec.index = 0xFF;
 	}
 	if (fb != NULL) {
-		inst->vsi->dec.vdec_fb_va = vdec_fb_va;
+		num_planes = inst->vsi->dec.fb_num_planes;
+		for (i = 0; i < num_planes; i++)
+			inst->vsi->dec.fb_dma[i] = (u64)fb->fb_base[i].dma_addr;
+
+		inst->vsi->dec.vdec_fb_va = (u64)(uintptr_t)fb;
 		inst->vsi->dec.index = fb->index;
 		if (fb->dma_general_buf != 0) {
 			inst->vsi->general_buf_fd = fb->general_buf_fd;
 			inst->vsi->general_buf_size = fb->dma_general_buf->size;
 			inst->vsi->general_buf_dma = fb->dma_general_addr;
-			mtk_vcodec_debug(inst, "dma_general_buf dma_buf=%p fd=%d dma=%llx size=%lu",
-			    fb->dma_general_buf, inst->vsi->general_buf_fd,
-			    inst->vsi->general_buf_dma,
-			    fb->dma_general_buf->size);
+			SNPRINTF(debug_str, sizeof(debug_str), "dma_general_buf dma_buf=%p fd=%d dma=%llx size=%lu",
+				fb->dma_general_buf, inst->vsi->general_buf_fd,
+				inst->vsi->general_buf_dma, fb->dma_general_buf->size);
 		} else {
 			fb->general_buf_fd = -1;
 			inst->vsi->general_buf_fd = -1;
 			inst->vsi->general_buf_size = 0;
-			mtk_vcodec_debug(inst, "no general buf dmabuf");
+			SNPRINTF(debug_str, sizeof(debug_str), "no general buf dmabuf");
 		}
+		mtk_vcodec_debug(inst, "+ FB id=%d y_dma=%llx c_dma=%llx va=%p num_planes %d format=%s, %s",
+			fb->index, inst->vsi->dec.fb_dma[0], inst->vsi->dec.fb_dma[1],
+			fb, num_planes, FOURCC_STR(fm_fourcc), debug_str);
+
 		mtk_vcodec_in_out_trace_count(inst->ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, false, 1);
 	}
 
 	inst->vsi->dec.timestamp = inst->ctx->timestamp;
-
-	mtk_vcodec_debug(inst, "+ FB y_fd=%llx c_fd=%llx BS fd=%llx format=%s",
-		inst->vsi->dec.fb_fd[0], inst->vsi->dec.fb_fd[1],
-		inst->vsi->dec.bs_fd, FOURCC_STR(fm_fourcc));
-
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_id = AP_IPIMSG_DEC_START;
