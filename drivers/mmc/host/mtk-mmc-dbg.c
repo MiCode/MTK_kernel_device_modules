@@ -553,7 +553,7 @@ static void __emmc_store_buf_start_swcqhci(struct mmc_host *mmc, struct mmc_requ
 static void __emmc_store_buf_start(void *__data, struct mmc_host *mmc,
 	struct mmc_request *mrq)
 {
-	unsigned long long t, tn;
+	unsigned long long t;
 	unsigned long long nanosec_rem = 0;
 	static int last_cmd, last_arg, skip;
 	int l_skip = 0;
@@ -568,7 +568,6 @@ static void __emmc_store_buf_start(void *__data, struct mmc_host *mmc,
 
 	host = mmc_priv(mmc);
 	t = cpu_clock(print_cpu_test);
-	tn = t;
 	nanosec_rem = do_div(t, 1000000000)/1000;
 
 	spin_lock_irqsave(&host->log_lock, flags);
@@ -711,7 +710,7 @@ static void __emmc_store_buf_end(void *__data, struct mmc_host *mmc,
 static void __sd_store_buf_start(void *__data, struct mmc_host *mmc,
 	struct mmc_request *mrq)
 {
-	unsigned long long t, tn;
+	unsigned long long t;
 	unsigned long long nanosec_rem;
 	unsigned long flags;
 	struct msdc_host *host = NULL;
@@ -724,7 +723,6 @@ static void __sd_store_buf_start(void *__data, struct mmc_host *mmc,
 
 	host = mmc_priv(mmc);
 	t = cpu_clock(print_cpu_test);
-	tn = t;
 	nanosec_rem = do_div(t, 1000000000)/1000;
 
 	spin_lock_irqsave(&host->log_lock, flags);
@@ -746,7 +744,7 @@ static void __sd_store_buf_start(void *__data, struct mmc_host *mmc,
 static void __sd_store_buf_end(void *__data, struct mmc_host *mmc,
 	struct mmc_request *mrq)
 {
-	unsigned long long t, tn;
+	unsigned long long t;
 	unsigned long long nanosec_rem;
 	static int last_cmd, last_arg, skip;
 	int l_skip = 0;
@@ -761,7 +759,6 @@ static void __sd_store_buf_end(void *__data, struct mmc_host *mmc,
 
 	host = mmc_priv(mmc);
 	t = cpu_clock(print_cpu_test);
-	tn = t;
 	nanosec_rem = do_div(t, 1000000000)/1000;
 
 	/* skip log if last cmd rsp are the same */
