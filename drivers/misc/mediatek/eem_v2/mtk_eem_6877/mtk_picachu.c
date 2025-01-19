@@ -158,7 +158,7 @@ static phys_addr_t picachu_mem_base_virt;
 static phys_addr_t picachu_mem_size;
 
 
-/* static void _check_aee_parameter(void); */
+static void _check_aee_parameter(void);
 
 static void dump_picachu_info(struct seq_file *m, struct picachu_info *info)
 {
@@ -203,7 +203,7 @@ static void dump_picachu_info(struct seq_file *m, struct picachu_info *info)
 	}
 
 #ifdef PICACHU_RESERVED_DEBUG
-	/* _check_aee_parameter(); */
+	_check_aee_parameter();
 #endif
 }
 
@@ -328,7 +328,7 @@ static int picachu_assign_memory_block(void)
 
 	accumlate_memory_size = 0;
 	for (id = 0; id < NUMS_MEM_ID; id++) {
-		picachu_reserve_mblock[id].start_virt = picachu_mem_base_phys +
+		picachu_reserve_mblock[id].start_virt = picachu_mem_base_virt +
 			accumlate_memory_size;
 		accumlate_memory_size += picachu_reserve_mblock[id].size;
 	}
@@ -378,8 +378,7 @@ static int picachu_map_memory_region(void)
 	 * Working buffer memory address to
 	 * kernel virtual address.
 	 */
-	picachu_mem_base_virt = (phys_addr_t)(uintptr_t)
-		ioremap_wc(picachu_mem_base_phys, picachu_mem_size);
+	picachu_mem_base_virt = (phys_addr_t)(uintptr_t) ioremap_wc(picachu_mem_base_phys, picachu_mem_size);
 
 	if (!picachu_mem_base_virt)
 		return -ENOMEM;
@@ -484,76 +483,76 @@ static int _picachu_reserve_memory_init(void)
 
 #endif	/* CONFIG_OF_RESERVED_MEM */
 
-//static void _check_aee_parameter(void)
-//{
-//	void __iomem *addr_ptr = NULL;
-//	unsigned int val = 0;
-//	unsigned char sig = 0;
-//	unsigned char efuse_major_ver = 0;
-//	unsigned char efuse_mirror_ver = 0;
-//	unsigned char db_major_ver = 0;
-//	unsigned char db_mirror_ver = 0;
+static void _check_aee_parameter(void)
+{
+	void __iomem *addr_ptr = NULL;
+	unsigned int val = 0;
+	unsigned char sig = 0;
+	unsigned char efuse_major_ver = 0;
+	unsigned char efuse_mirror_ver = 0;
+	unsigned char db_major_ver = 0;
+	unsigned char db_mirror_ver = 0;
 
-//	addr_ptr = (void __iomem *)picachu_reserve_mem_get_virt(PICACHU_AEE_ID);
-//	if (addr_ptr) {
-//		val = picachu_read(addr_ptr);
-//		/* Get signature */
-//		sig = val >> PICACHU_SIGNATURE_SHIFT_BIT;
-//		sig = sig & 0xff;
-//		if (sig == PICACHU_SIG) {
-//			val = val & 0x00FFFFFF;
-//			if (val & (0x1 << 0)) {
-//				aee_kernel_exception("PICACHU",
-//					"Error: picachu is disable via DOE");
-//				pr_info("[PICACHU] Error: picachu is disable via DOE");
-//			}
-//			if (val & (0x1 << 1)) {
-//				aee_kernel_exception("PICACHU",
-//					"Error: picachu para image not found");
-//				pr_info("[PICACHU] Error: picachu para image not found");
-//			}
-//			if (val & (0x1 << 2)) {
-//				aee_kernel_exception("PICACHU", "Error: use safe efuse");
-//				pr_info("[PICACHU] Error: use safe efuse");
-//			}
-//		} else {
-//			aee_kernel_exception("PICACHU", "Error: sig = %d", sig);
-//			pr_info("[PICACHU] Error: sig = %d", sig);
-//		}
+	addr_ptr = (void __iomem *)picachu_reserve_mem_get_virt(PICACHU_AEE_ID);
+	if (addr_ptr) {
+		val = picachu_read(addr_ptr);
+		/* Get signature */
+		sig = val >> PICACHU_SIGNATURE_SHIFT_BIT;
+		sig = sig & 0xff;
+		if (sig == PICACHU_SIG) {
+			val = val & 0x00FFFFFF;
+			if (val & (0x1 << 0)) {
+				aee_kernel_exception("PICACHU",
+					"Error: picachu is disable via DOE");
+				pr_info("[PICACHU] Error: picachu is disable via DOE");
+			}
+			if (val & (0x1 << 1)) {
+				aee_kernel_exception("PICACHU",
+					"Error: picachu para image not found");
+				pr_info("[PICACHU] Error: picachu para image not found");
+			}
+			if (val & (0x1 << 2)) {
+				aee_kernel_exception("PICACHU", "Error: use safe efuse");
+				pr_info("[PICACHU] Error: use safe efuse");
+			}
+		} else {
+			aee_kernel_exception("PICACHU", "Error: sig = %d", sig);
+			pr_info("[PICACHU] Error: sig = %d", sig);
+		}
 
-//		val = picachu_read(addr_ptr + 0x4);
-//		efuse_major_ver = (val & 0x000000FF);
-//		efuse_mirror_ver = (val & 0x0000FF00) >> 8;
-//		db_major_ver = (val & 0x00FF0000) >> 16;
-//		db_mirror_ver = (val & 0xFF000000) >> 24;
+		val = picachu_read(addr_ptr + 0x4);
+		efuse_major_ver = (val & 0x000000FF);
+		efuse_mirror_ver = (val & 0x0000FF00) >> 8;
+		db_major_ver = (val & 0x00FF0000) >> 16;
+		db_mirror_ver = (val & 0xFF000000) >> 24;
 
-//		pr_info("[PICACHU]fuse_major_ver=%d, efuse_mirror_ver=%d, db_major_ver=%d, db_mirror_ver=%d\n",
-//			efuse_major_ver,
-//			efuse_mirror_ver,
-//			db_major_ver,
-//			db_mirror_ver);
+		pr_info("[PICACHU]fuse_major_ver=%d, efuse_mirror_ver=%d, db_major_ver=%d, db_mirror_ver=%d\n",
+			efuse_major_ver,
+			efuse_mirror_ver,
+			db_major_ver,
+			db_mirror_ver);
 
-//		if (efuse_major_ver > db_major_ver) {
-//			aee_kernel_exception("PICACHU",
-//			"Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
-//			efuse_major_ver,
-//			db_major_ver);
-//			pr_info("[PICACHU] Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
-//			efuse_major_ver,
-//			db_major_ver);
-//		}
+		if (efuse_major_ver > db_major_ver) {
+			aee_kernel_exception("PICACHU",
+			"Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
+			efuse_major_ver,
+			db_major_ver);
+			pr_info("[PICACHU] Error:efuse_major_ver=%d > db_major_ver=%d, need to update DB",
+			efuse_major_ver,
+			db_major_ver);
+		}
 
-//		if (efuse_mirror_ver > db_mirror_ver) {
-//			aee_kernel_warning("PICACHU",
-//			"Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
-//			efuse_mirror_ver,
-//			db_mirror_ver);
-//			pr_info("PICACHU Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
-//			efuse_mirror_ver,
-//			db_mirror_ver);
-//		}
-//	}
-//}
+		if (efuse_mirror_ver > db_mirror_ver) {
+			aee_kernel_warning("PICACHU",
+			"Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
+			efuse_mirror_ver,
+			db_mirror_ver);
+			pr_info("PICACHU Warning:efuse_mirror_ver=%d > db_mirror_ver=%d",
+			efuse_mirror_ver,
+			db_mirror_ver);
+		}
+	}
+}
 #endif
 
 static int __init picachu_init(void)
@@ -575,10 +574,9 @@ static int __init picachu_init(void)
 	if (ret) {
 		pr_info("[PICACHU]%s():%d Reserved Memory Failed\n", __func__, __LINE__);
 		return -ENOMEM;
-}
+	}
+	_check_aee_parameter();
 #endif
-	// _check_aee_parameter();
-
 	return ret;
 }
 
