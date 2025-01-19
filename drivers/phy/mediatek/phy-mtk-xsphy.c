@@ -833,7 +833,7 @@ static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err0;
 	}
 
-	file = proc_create_data(SIB_STR, 0644,
+	file = proc_create_data(SIB_STR, 0640,
 			phy_root, &proc_sib_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", SIB_STR);
@@ -841,7 +841,7 @@ static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(LOOPBACK_STR, 0444,
+	file = proc_create_data(LOOPBACK_STR, 0440,
 			phy_root, &proc_loopback_test_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", LOOPBACK_STR);
@@ -849,7 +849,7 @@ static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(TX_LCTXCM1_STR, 0644,
+	file = proc_create_data(TX_LCTXCM1_STR, 0640,
 			phy_root, &proc_tx_lctxcm1_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", TX_LCTXCM1_STR);
@@ -857,7 +857,7 @@ static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(TX_LCTXC0_STR, 0644,
+	file = proc_create_data(TX_LCTXC0_STR, 0640,
 			phy_root, &proc_tx_lctxc0_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", TX_LCTXC0_STR);
@@ -865,7 +865,7 @@ static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(TX_LCTXCP1_STR, 0644,
+	file = proc_create_data(TX_LCTXCP1_STR, 0640,
 			phy_root, &proc_tx_lctxcp1_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", TX_LCTXCP1_STR);
@@ -1338,7 +1338,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err0;
 	}
 
-	file = proc_create_data(TERM_SEL_STR, 0644,
+	file = proc_create_data(TERM_SEL_STR, 0640,
 			phy_root, &proc_term_sel_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", TERM_SEL_STR);
@@ -1346,7 +1346,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(VRT_SEL_STR, 0644,
+	file = proc_create_data(VRT_SEL_STR, 0640,
 			phy_root, &proc_vrt_sel_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", VRT_SEL_STR);
@@ -1354,7 +1354,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(PHY_REV6_STR, 0644,
+	file = proc_create_data(PHY_REV6_STR, 0640,
 			phy_root, &proc_phy_rev6_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", PHY_REV6_STR);
@@ -1362,7 +1362,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(DISCTH_STR, 0644,
+	file = proc_create_data(DISCTH_STR, 0640,
 			phy_root, &proc_discth_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", DISCTH_STR);
@@ -1370,7 +1370,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(RX_SQTH_STR, 0644,
+	file = proc_create_data(RX_SQTH_STR, 0640,
 			phy_root, &proc_rx_sqth_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", RX_SQTH_STR);
@@ -1378,7 +1378,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(INTR_OFS_STR, 0644,
+	file = proc_create_data(INTR_OFS_STR, 0640,
 			phy_root, &proc_intr_ofs_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", INTR_OFS_STR);
@@ -1386,7 +1386,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 		goto err1;
 	}
 
-	file = proc_create_data(TERM_OFS_STR, 0644,
+	file = proc_create_data(TERM_OFS_STR, 0640,
 			phy_root, &proc_term_ofs_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", TERM_OFS_STR);
@@ -1395,7 +1395,7 @@ static int u2_phy_procfs_init(struct mtk_xsphy *xsphy,
 	}
 
 	if (mtk_phy_get_mode(xsphy) == XSP_MODE_JTAG) {
-		file = proc_create_data(USB_JTAG_REG, 0644,
+		file = proc_create_data(USB_JTAG_REG, 0640,
 			phy_root, &proc_jtag_fops, inst);
 		if (!file) {
 			dev_info(dev, "failed to creat proc file: %s\n", USB_JTAG_REG);
