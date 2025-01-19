@@ -1008,9 +1008,11 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	int i = 0, ret = -1;
 	bool rgu_fiq = false;
 	unsigned long s_s2idle = get_s2idle_state();
+#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 	char smp_histroy[60] = {'\0'};
 #if IS_ENABLED(CONFIG_SMP)
 	static int j;
+#endif
 #endif
 
 	if (toprgu_base && (ioread32(toprgu_base + WDT_MODE) & WDT_MODE_EN))
@@ -1066,8 +1068,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		g_hang_detected = 1;
 		dump_timeout = 2;
 	}
-
-#if IS_ENABLED(CONFIG_SMP)
+#if IS_ENABLED(CONFIG_SMP) && (!IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE))
 	if ((((~(local_bit - 1)) & local_bit) == local_bit) && j++ > 3) {
 		int cpu = 0;
 		int smp_ret[MAX_CPUNR] = {255};
@@ -1085,6 +1086,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 #endif
 
 	wk_tsk_kick_time[cpu] = sched_clock();
+#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 #if !IS_ENABLED(CONFIG_ARM64)
 	ret = snprintf(msg_buf, WK_MAX_MSG_SIZE,
 	 "[wdk-c] cpu=%d o_k=%d lbit=0x%x cbit=0x%x,%x,%d,%d,%lld,%x,%llu,%llu,%llu,%llu,[%lld,%ld] %d %lx\n",
@@ -1103,6 +1105,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	 div_u64(lastresume_syst, 1000000), wk_tsk_kick_time[cpu], curInterval, r_counter, s_s2idle,
 	 (ret >= 0) ? smp_histroy : " ");
 #endif
+#endif
 	if ((local_bit & (get_check_bit() & s_s2idle)) == (get_check_bit() & s_s2idle)) {
 		all_k_timer_t = sched_clock();
 		if (timer_pending(&aee_dump_timer))
@@ -1115,9 +1118,11 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		g_hang_detected = 0;
 		dump_timeout = 0;
 		local_bit = 0;
+#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 		kwdt_time_sync();
 #if CHK_HWT_IRQ
 		save_irq_info();
+#endif
 #endif
 		if (toprgu_base)
 			iowrite32(WDT_RST_RELOAD, toprgu_base + WDT_RST);
@@ -1147,11 +1152,13 @@ static void kwdt_process_kick(int local_bit, int cpu,
 
 	spin_unlock_bh(&lock);
 
+#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 	if (ret >= 0)
 		pr_info("%s", msg_buf);
 
 #if IS_ENABLED(CONFIG_SMP)
 	pr_info("%s", tmr_buf[cpu]);
+#endif
 #endif
 
 	if (dump_timeout) {
