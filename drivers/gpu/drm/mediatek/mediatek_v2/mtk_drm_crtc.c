@@ -22099,14 +22099,14 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 	struct drm_display_mode *adjust_mode;
 	char *panel_name;
 
-	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (unlikely(!comp))
-		DDPPR_ERR("%s:invalid output comp\n", __func__);
-
 	if (!mtk_crtc || !mtk_crtc->avail_modes) {
 		DDPPR_ERR("%s:mtk_crtc or avail_modes is NULL\n", __func__);
 		return 0;
 	}
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (unlikely(!comp))
+		DDPPR_ERR("%s:invalid output comp\n", __func__);
 
 	mode_idx = mtk_crtc->mode_idx;
 	adjust_mode = &(mtk_crtc->avail_modes[mode_idx]);
