@@ -6454,6 +6454,25 @@ static inline char *mt6989_soc_m7_port_name(u32 axid)
 		return "SOC_M7_UNKNOWN";
 }
 
+static inline char *mt6989_smmu_soc_port_name(u32 type, int id, int tf_id)
+{
+	if (type != SOC_SMMU) {
+		pr_info("%s is not support type:%u\n", __func__, type);
+		return NULL;
+	}
+
+	switch (id) {
+	case SOC_SMMU_M4:
+		return mt6989_soc_m4_port_name(tf_id);
+	case SOC_SMMU_M6:
+		return mt6989_soc_m6_port_name(tf_id);
+	case SOC_SMMU_M7:
+		return mt6989_soc_m7_port_name(tf_id);
+	default:
+		return "SOC_UNKNOWN";
+	}
+}
+
 static const struct mtk_iommu_port mm_port_mt6991[] = {
 	/* Larb0 -- MM -- 13 */
 	MM_IOMMU_PORT_INIT("L0_P0_OVL_RDMA2_HDR", MM_SMMU_DISP, 0, 0x0, 0),
@@ -7406,6 +7425,25 @@ static inline char *mt6991_soc_m7_port_name(u32 axid)
 		return "SOC_M7_CPUM_M";
 	else
 		return "SOC_M7_UNKNOWN";
+}
+
+static inline char *mt6991_smmu_soc_port_name(u32 type, int id, int tf_id)
+{
+	if (type != SOC_SMMU) {
+		pr_info("%s is not support type:%u\n", __func__, type);
+		return NULL;
+	}
+
+	switch (id) {
+	case SOC_SMMU_M4:
+		return mt6991_soc_m4_port_name(tf_id);
+	case SOC_SMMU_M6:
+		return mt6991_soc_m6_port_name(tf_id);
+	case SOC_SMMU_M7:
+		return mt6991_soc_m7_port_name(tf_id);
+	default:
+		return "SOC_UNKNOWN";
+	}
 }
 
 #endif /* IOMMU_PORT_H */

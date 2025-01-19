@@ -3191,44 +3191,6 @@ static int default_smmu_common_id(u32 smmu_type, u32 tbu_id)
 	return default_smmu_common_ids[smmu_type][tbu_id];
 }
 
-static char *mt6989_smmu_soc_port_name(u32 type, int id, int tf_id)
-{
-	if (type != SOC_SMMU) {
-		pr_info("%s is not support type:%u\n", __func__, type);
-		return NULL;
-	}
-
-	switch (id) {
-	case SOC_SMMU_M4:
-		return mt6989_soc_m4_port_name(tf_id);
-	case SOC_SMMU_M6:
-		return mt6989_soc_m6_port_name(tf_id);
-	case SOC_SMMU_M7:
-		return mt6989_soc_m7_port_name(tf_id);
-	default:
-		return "SOC_UNKNOWN";
-	}
-}
-
-static char *mt6991_smmu_soc_port_name(u32 type, int id, int tf_id)
-{
-	if (type != SOC_SMMU) {
-		pr_info("%s is not support type:%u\n", __func__, type);
-		return NULL;
-	}
-
-	switch (id) {
-	case SOC_SMMU_M4:
-		return mt6991_soc_m4_port_name(tf_id);
-	case SOC_SMMU_M6:
-		return mt6991_soc_m6_port_name(tf_id);
-	case SOC_SMMU_M7:
-		return mt6991_soc_m7_port_name(tf_id);
-	default:
-		return "SOC_UNKNOWN";
-	}
-}
-
 static const struct mtk_m4u_plat_data mt6761_data = {
 	.port_list[MM_IOMMU] = iommu_port_mt6761,
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(iommu_port_mt6761),
