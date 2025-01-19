@@ -2586,7 +2586,7 @@ void mdrv_DPTx_InitPort(struct mtk_dp *mtk_dp)
 	mhal_DPTx_SetAuxSwap(mtk_dp, aux_swap);
 	mhal_DPTx_DigitalSetting(mtk_dp);
 	mhal_DPTx_AnalogPowerOnOff(mtk_dp, true);
-	mhal_DPTx_PHYSetting(mtk_dp);
+	mhal_DPTx_PHYSetting(mtk_dp, MAX_LANECOUNT);
 	mhal_DPTx_HPDDetectSetting(mtk_dp);
 
 	mhal_DPTx_DigitalSwReset(mtk_dp);
