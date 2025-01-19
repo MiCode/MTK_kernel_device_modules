@@ -1018,11 +1018,10 @@
 		/*
 		 * index 0 for infra bus tracer
 		 * index 1 for peri1 bus tracer
-		 * index 2 for peri2 bus tracer
 		 */
-		mediatek,num-tracer = <3>;
-		mediatek,enabled-tracer = <1 1 1>;
-		mediatek,at-id = <0x10 0x30 0x70>;
+		mediatek,num-tracer = <2>;
+		mediatek,enabled-tracer = <1 1>;
+		mediatek,at-id = <0x10 0x30>;
 
 		/* filters: disabled by default */
 		/*
