@@ -117,6 +117,13 @@ enum MTK_ODDMR_DMR_MODE_TYPE {
 	DMR_MODE_TYPE_RGB7X8Q = 8,
 };
 
+enum DISP_ODDMR_SLC_IDX {
+	DMR_SLC,
+	OD_SLC,
+	DBI_SLC,
+	ODDMR_SLC_NUM,
+};
+
 /***************** file parsing ******************/
 struct mtk_oddmr_pq_pair {
 	uint32_t addr;
@@ -418,6 +425,8 @@ struct mtk_disp_oddmr_data {
 	enum mtk_od_version od_version;
 	bool is_dmr_support_stash;
 	bool is_dbi_support_stash;
+	int slc_read_alloc;
+	int slc_period;
 };
 
 struct mtk_disp_oddmr_od_data {
@@ -559,6 +568,7 @@ struct mtk_disp_oddmr_primary {
 	uint32_t od_max_fps;
 	ktime_t sof_time;
 	ktime_t sof_time_last;
+	int slc_frame_cnt[ODDMR_SLC_NUM];
 };
 
 /**
@@ -618,6 +628,7 @@ struct mtk_disp_oddmr {
 	uint32_t larb_dbir;
 	uint32_t larb_odr;
 	uint32_t larb_odw;
+	uint32_t use_slc[ODDMR_SLC_NUM];
 	uint32_t od_user_gain;
 	/*user pq od bypass lock*/
 	uint32_t pq_od_bypass;

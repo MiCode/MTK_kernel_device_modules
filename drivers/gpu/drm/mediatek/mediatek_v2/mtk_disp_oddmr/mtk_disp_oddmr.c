@@ -679,6 +679,15 @@
 	#define MT6991_REG_DMR_V_ST_B					REG_FLD_MSB_LSB(29, 16)
 	#define MT6991_REG_DMR_V_CROP_EN_B				REG_FLD_MSB_LSB(31, 31)
 
+#define DISP_ODDMR_DBI_GUSER_CTRL_1 0x068
+	#define REG_DBI_AR_SLC REG_FLD_MSB_LSB(12, 8)
+#define DISP_ODDMR_DMR_GUSER_CTRL_1 0x070
+	#define REG_DMR_AR_SLC REG_FLD_MSB_LSB(12, 8)
+#define DISP_ODDMR_ODR_GUSER_CTRL_1 0x078
+	#define REG_ODR_AR_SLC REG_FLD_MSB_LSB(12, 8)
+#define DISP_ODDMR_ODW_GUSER_CTRL_1 0x080
+	#define REG_ODW_WR_SLC REG_FLD_MSB_LSB(12, 8)
+
 static bool debug_flow_log;
 #define ODDMRFLOW_LOG(fmt, arg...) do { \
 	if (debug_flow_log) \
@@ -737,6 +746,11 @@ static unsigned char lookup[16] = {
 	0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
 	0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf,
 };
+
+static int g_slc_gid[ODDMR_SLC_NUM] = {-1, -1, -1};
+static int g_slc_valid[ODDMR_SLC_NUM];
+static int g_slc_read_alloc;
+static int g_slc_period;
 
 /* 0: instant trigger, 1: delay trigger 2: no trigger*/
 static uint32_t g_od_check_trigger = 1;
@@ -1214,6 +1228,92 @@ static void mtk_oddmr_set_crop_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 		mtk_oddmr_set_crop(comp1, pkg);
 	} else
 		mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_CRP_BYPSS, pkg);
+}
+
+static int disp_oddmr_get_slc_uid(enum DISP_ODDMR_SLC_IDX idx)
+{
+	int uid = -1;
+
+	switch (idx) {
+	case DMR_SLC:
+		uid = ID_DMR;
+		break;
+	case OD_SLC:
+		uid = ID_OD;
+		break;
+	case DBI_SLC:
+		uid = ID_DBI;
+		break;
+	default:
+		DDPPR_ERR("%s not support idx %d\n", __func__, idx);
+	}
+	return uid;
+}
+
+static int disp_oddmr_slc_request(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_IDX idx)
+{
+	struct slbc_gid_data data = {0};
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	int uid, gid;
+	int ret = -1;
+
+	data.sign = SLC_DATA_MAGIC;
+	uid = disp_oddmr_get_slc_uid(idx);
+	if (uid < 0)
+		return ret;
+	if (g_slc_gid[idx] <= 0) {
+		gid = -1;
+		ret = slbc_gid_request(uid, &gid, &data);
+		g_slc_gid[idx] = gid;
+		if (ret)
+			DDPPR_ERR("%s request failed %d\n", __func__, ret);
+	} else {
+		DDPPR_ERR("%s already requested for %d:%d\n", __func__, idx, g_slc_gid[idx]);
+		ret = 0;
+	}
+	return ret;
+}
+
+static int disp_oddmr_slc_valid(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_IDX idx)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	int uid;
+	int ret = -1;
+
+	uid = disp_oddmr_get_slc_uid(idx);
+	if (uid < 0)
+		return ret;
+
+	if (g_slc_gid[idx] > 0 && !g_slc_valid[idx]) {
+		ret = slbc_validate(uid, g_slc_gid[idx]);
+		if (!ret)
+			g_slc_valid[idx] = 1;
+		else
+			DDPPR_ERR("%s failed %d %d\n", __func__, idx, g_slc_gid[idx]);
+	} else
+		DDPPR_ERR("%s skip %d %d %d\n", __func__, idx, g_slc_gid[idx], g_slc_valid[idx]);
+	return ret;
+}
+
+static int disp_oddmr_slc_invalid(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_IDX idx)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	int uid;
+	int ret = -1;
+
+	uid = disp_oddmr_get_slc_uid(idx);
+	if (uid < 0)
+		return ret;
+
+	if (g_slc_gid[idx] > 0 && g_slc_valid[idx]) {
+		ret = slbc_invalidate(uid, g_slc_gid[idx]);
+		if (!ret)
+			g_slc_valid[idx] = 0;
+		else
+			DDPPR_ERR("%s failed %d %d\n", __func__, idx, g_slc_gid[idx]);
+	} else
+		DDPPR_ERR("%s skip %d %d %d\n", __func__, idx, g_slc_gid[idx], g_slc_valid[idx]);
+	return ret;
 }
 
 static void mtk_oddmr_od_udma_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
@@ -2457,6 +2557,19 @@ static void mtk_oddmr_remap_config(struct mtk_ddp_comp *comp,
 
 }
 
+static void mtk_oddmr_dmr_set_slc(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, int ar)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	int value, mask;
+
+	if (oddmr_data->use_slc[DMR_SLC] && g_slc_valid[DMR_SLC]) {
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, ar, REG_DMR_AR_SLC);
+		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DMR_GUSER_CTRL_1, mask, handle);
+	}
+}
+
 static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle)
 {
@@ -2483,6 +2596,8 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 				&comp->mtk_crtc->base, comp, true);
 	bool dmr_support;
+	struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
+	struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
 
 	unsigned int i = 0;
 	unsigned int dmr_udma_height = 0; //byte base
@@ -2693,14 +2808,34 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 			mtk_oddmr_set_dmr_enable(comp, 0, handle);
 		else
 			mtk_oddmr_set_dmr_enable(comp, oddmr_data->dmr_enable, handle);
+
+		if (!dsi->output_en)
+			oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
+		ODDMRLOW_LOG("slc cnt %d\n", oddmr_data->primary_data->slc_frame_cnt[DMR_SLC]);
+		if (!oddmr_data->primary_data->slc_frame_cnt[DMR_SLC])
+			mtk_oddmr_dmr_set_slc(comp, handle, 6);
+		else
+			mtk_oddmr_dmr_set_slc(comp, handle, 2);
 	}
 	reg_tuning_en = atomic_read(&oddmr_data->reg_tuning_en);
 	if (reg_tuning_en == 1)
 		mtk_oddmr_tuning_cfg(comp, handle, &oddmr_data->primary_data->oddmr_reg_tuning_info);
 }
 
-static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
-		struct cmdq_pkt *handle)
+static void mtk_oddmr_dbi_set_slc(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, int ar)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	int value, mask;
+
+	if (oddmr_data->use_slc[DBI_SLC] && g_slc_valid[DBI_SLC]) {
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, ar, REG_DBI_AR_SLC);
+		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DBI_GUSER_CTRL_1, mask, handle);
+	}
+}
+
+static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
@@ -2725,7 +2860,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 	unsigned int cur_dbv;
 	unsigned int cur_fps;
 	unsigned int gain_ratio;
-	uint32_t value = 0, mask = 0;
+	uint32_t value, mask;
 	unsigned int dbi_size_as_block = 0;
 
 	if (oddmr_data->primary_data->dbi_support && oddmr_data->primary_data->dbi_state == ODDMR_INIT_DONE
@@ -2742,6 +2877,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 
 		if (!(oddmr_data->spr_enable == 0 || oddmr_data->spr_relay == 1)) {
 			if (oddmr_data->data->dbi_version == MTK_DBI_V2) {
+				value = 0;
+				mask = 0;
 				switch(oddmr_data->spr_format) {
 				case MTK_PANEL_RGBG_BGRG_TYPE:
 				case MTK_PANEL_BGRG_RGBG_TYPE:
@@ -2811,6 +2948,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 					oddmr_data->dbi_data.dbi_table_block_h[idx];
 				scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
 			}
+			oddmr_data->primary_data->slc_frame_cnt[DBI_SLC] = 0;
 			mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
 		}
 		cur_tb = atomic_read(&oddmr_data->dbi_data.cur_table_idx);
@@ -2999,6 +3137,11 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp,
 				handle, dbi_dbv_node, dbi_cfg_data);
 		}
 		mtk_oddmr_set_dbi_enable(comp, oddmr_data->dbi_enable, handle);
+		ODDMRLOW_LOG("slc cnt %d\n", oddmr_data->primary_data->slc_frame_cnt[DBI_SLC]);
+		if (!oddmr_data->primary_data->slc_frame_cnt[DBI_SLC])
+			mtk_oddmr_dbi_set_slc(comp, handle, 6);
+		else
+			mtk_oddmr_dbi_set_slc(comp, handle, 2);
 	}
 }
 
@@ -3526,6 +3669,32 @@ void mtk_disp_oddmr_debug(struct drm_crtc *crtc, const char *opt)
 		}
 		ODDMRFLOW_LOG("oddmr_err_trigger_mask = %u\n", val);
 		oddmr_err_trigger_mask = val;
+	} else if (strncmp(opt, "slc_en:", 7) == 0) {
+		int idx, en, ret;
+
+		ret = sscanf(opt, "slc_en:%d,%d\n", &idx, &en);
+		if (ret != 2) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		ODDMRFLOW_LOG("slc_en:%d,%d\n", idx, en);
+		if (en) {
+			oddmr_data->use_slc[idx] = 1;
+			disp_oddmr_slc_request(comp, idx);
+			disp_oddmr_slc_valid(comp, idx);
+		} else
+			disp_oddmr_slc_invalid(comp, idx);
+	} else if (strncmp(opt, "slc_alloc:", 10) == 0) {
+		int period, alloc, ret;
+
+		ret = sscanf(opt, "slc_alloc:%d,%d\n", &alloc, &period);
+		if (ret != 2) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		ODDMRFLOW_LOG("slc_alloc:%d/%d\n", alloc, period);
+		g_slc_period = period;
+		g_slc_read_alloc = alloc;
 	} else if (strncmp(opt, "debugdump:", 10) == 0) {
 		ODDMRFLOW_LOG("debug_flow_log = %d\n", debug_flow_log);
 		ODDMRFLOW_LOG("debug_api_log = %d\n", debug_api_log);
@@ -5205,9 +5374,10 @@ static void mtk_oddmr_dmr_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, s
 			// check dbv range & switch bin file
 			cur_binset_idx = atomic_read(&oddmr_data->dmr_data.cur_binset_idx);
 			is_bin_chg = mtk_oddmr_dmr_binset_check(comp, cur_binset_idx, bl_level, handle);
-			if (is_bin_chg)
+			if (is_bin_chg) {
+				oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 				mtk_oddmr_dmr_config(comp, handle);
-			else
+			} else
 				ODDMRFLOW_LOG("bin index dose not been changed\n");
 			remap_enable = atomic_read(&oddmr_data->dmr_data.remap_enable);
 			if (remap_enable == 1)
@@ -5769,8 +5939,10 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			mutex_lock(&oddmr_data->primary_data->timing_lock);
 			cur_dbv = oddmr_data->primary_data->current_timing.bl_level;
 			mutex_unlock(&oddmr_data->primary_data->timing_lock);
-			if (mtk_oddmr_dmr_binset_check(comp, dmr_binset_idx, cur_dbv, handle))
+			if (mtk_oddmr_dmr_binset_check(comp, dmr_binset_idx, cur_dbv, handle)) {
+				oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 				mtk_oddmr_dmr_config(comp, handle);
+			}
 		}
 	}
 		break;
@@ -5779,11 +5951,19 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		bool sec_on = *(bool *)params;
 		unsigned int cur_dbv;
 		unsigned int cur_binset_idx;
+		int cnt;
+		int slc_alloc, slc_period;
 		static int dmr_binset_idx;
 		static int dmr_enable;
 		static int dbi_enable;
 		unsigned int remap_enable;
 
+		slc_alloc = oddmr_data->data->slc_read_alloc;
+		slc_period = oddmr_data->data->slc_period;
+		if (g_slc_period) {
+			slc_alloc = g_slc_read_alloc;
+			slc_period = g_slc_period;
+		}
 		if (oddmr_data->is_right_pipe)
 			break;
 		mtk_oddmr_od_sec_bypass(comp, sec_on, handle);
@@ -5796,6 +5976,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			mutex_unlock(&oddmr_data->primary_data->timing_lock);
 
 			mtk_oddmr_dmr_binset_check(comp, cur_binset_idx, cur_dbv, handle);
+			oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 			mtk_oddmr_dmr_config(comp, handle);
 			dmr_enable = oddmr_data->dmr_enable;
 			atomic_set(&oddmr_data->dmr_data.remap_enable, dmr_enable);
@@ -5808,13 +5989,30 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					mtk_oddmr_remap_set_enable(comp, handle, false);
 			}
 			dmr_binset_idx = cur_binset_idx;
+		} else if (oddmr_data->dmr_enable) {
+			cnt = oddmr_data->primary_data->slc_frame_cnt[DMR_SLC];
+			if (cnt < slc_alloc)
+				mtk_oddmr_dmr_set_slc(comp, handle, 6);
+			if (cnt >= slc_alloc && cnt < slc_alloc + 2)
+				mtk_oddmr_dmr_set_slc(comp, handle, 2);
+			oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = (cnt + 1) % slc_period;
+			ODDMRLOW_LOG("dmr slc cnt %d, alloc %d, period %d\n", cnt, slc_alloc, slc_period);
 		}
 
 		mtk_oddmr_dbi_srt_cal(comp, oddmr_data->dbi_enable);
 
 		if(dbi_enable != oddmr_data->dbi_enable) {
+			oddmr_data->primary_data->slc_frame_cnt[DBI_SLC] = 0;
 			mtk_oddmr_dbi_config(comp,handle);
 			dbi_enable = oddmr_data->dbi_enable;
+		} else if (oddmr_data->dbi_enable) {
+			cnt = oddmr_data->primary_data->slc_frame_cnt[DBI_SLC];
+			if (cnt < slc_alloc)
+				mtk_oddmr_dbi_set_slc(comp, handle, 6);
+			if (cnt >= slc_alloc && cnt < slc_alloc + 2)
+				mtk_oddmr_dbi_set_slc(comp, handle, 2);
+			oddmr_data->primary_data->slc_frame_cnt[DBI_SLC] = (cnt + 1) % slc_period;
+			ODDMRLOW_LOG("dbi slc cnt %d, alloc %d, period %d\n", cnt, slc_alloc, slc_period);
 		}
 		break;
 	}
@@ -9800,7 +9998,13 @@ static int mtk_oddmr_dbi_enable(struct mtk_ddp_comp *comp, bool en)
 		ODDMRFLOW_LOG("can not enable, state %d\n", oddmr_data->primary_data->dbi_state);
 		return -EFAULT;
 	}
+	if (en && oddmr_data->use_slc[DBI_SLC]) {
+		int ret;
 
+		ret = disp_oddmr_slc_request(comp, DBI_SLC);
+		if (!ret)
+			disp_oddmr_slc_valid(comp, DBI_SLC);
+	}
 	oddmr_data->dbi_enable_req = enable;
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
@@ -9842,7 +10046,13 @@ static int mtk_oddmr_dmr_enable(struct mtk_ddp_comp *comp, bool en)
 		DDPPR_ERR("can not enable, state %d\n", oddmr_data->primary_data->dmr_state);
 		return -EFAULT;
 	}
+	if (en && oddmr_data->use_slc[DMR_SLC]) {
+		int ret;
 
+		ret = disp_oddmr_slc_request(comp, DMR_SLC);
+		if (!ret)
+			disp_oddmr_slc_valid(comp, DMR_SLC);
+	}
 	oddmr_data->dmr_enable_req = enable;
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
@@ -11419,7 +11629,6 @@ static int mtk_oddmr_create_workqueue(struct mtk_disp_oddmr *oddmr_data)
 	return 0;
 }
 
-
 static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -11431,6 +11640,7 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	struct device_node *smp_node = NULL;
 	struct platform_device *spm_pdev = NULL;
 	struct resource *res = NULL;
+	int count = 0, idx;
 
 	DDPMSG("%s+\n", __func__);
 	oddmr_data = devm_kzalloc(dev, sizeof(*oddmr_data), GFP_KERNEL);
@@ -11457,6 +11667,11 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 		dev_err(dev, "%s failed to initialize component: %d\n", __func__, ret);
 		goto error_primary;
 	}
+	count = of_property_count_u32_elems(dev->of_node, "mediatek,oddmr-slc");
+	if (count <= 0)
+		memset(oddmr_data->use_slc, 0, sizeof(oddmr_data->use_slc));
+	else
+		of_property_read_u32_array(dev->of_node, "mediatek,oddmr-slc", oddmr_data->use_slc, count);
 	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-dmrr", &oddmr_data->larb_dmrr);
 	if (ret) {
 		dev_err(dev, "%s Failed to initialize oddmr-dmrr: %d\n", __func__, ret);
@@ -11645,6 +11860,8 @@ static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
 	.od_version = MTK_OD_V2,
 	.is_dmr_support_stash = true,
 	.is_dbi_support_stash = true,
+	.slc_read_alloc = 1,
+	.slc_period = 10,
 };
 
 static const struct of_device_id mtk_disp_oddmr_driver_dt_match[] = {
