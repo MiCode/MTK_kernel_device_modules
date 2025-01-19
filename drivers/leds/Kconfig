@@ -17,7 +17,7 @@ config LEDS_MT6362
 	tristate "MT6362 SPMI LEDS driver"
 	depends on LEDS_CLASS_FLASH && OF
 	depends on V4L2_FLASH_LED_CLASS || !V4L2_FLASH_LED_CLASS
-	depends on MFD_MT6362
+	depends on REGULATOR_MT6362
 	help
 	  Say yes here to have support for the MT6362 LEDS
 	  Provide strobe and torch mode with flashlight, and
