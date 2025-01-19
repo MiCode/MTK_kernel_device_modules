@@ -24,6 +24,7 @@
 /* I2C Slave Setting */
 #define sgm37604a_SLAVE_ADDR_WRITE	0x36
 
+static unsigned short s_last_backlight_level = 255;
 static struct i2c_client *new_client;
 static const struct i2c_device_id sgm37604a_i2c_id[] = { {"sgm37604a", 0}, {} };
 
@@ -76,7 +77,7 @@ int sgm37604a_read_byte(unsigned char cmd, unsigned char *returnData)
 
 	mutex_unlock(&sgm37604a_i2c_access);
 
-	return 0;
+	return 1;
 }
 
 int sgm37604a_write_byte(unsigned char cmd, unsigned char writeData)
@@ -84,7 +85,7 @@ int sgm37604a_write_byte(unsigned char cmd, unsigned char writeData)
 	char write_data[2] = { 0 };
 	int ret = 0;
 
-	pr_notice("[KE/sgm37604a] cmd: %02x, data: %02x,%s\n", cmd, writeData, __func__);
+	pr_debug("[KE/sgm37604a] cmd: %02x, data: %02x,%s\n", cmd, writeData, __func__);
 
 	mutex_lock(&sgm37604a_i2c_access);
 
@@ -92,10 +93,46 @@ int sgm37604a_write_byte(unsigned char cmd, unsigned char writeData)
 	write_data[1] = writeData;
 
 	ret = i2c_master_send(new_client, write_data, 2);
+	if (ret < 0) {
+		mutex_unlock(&sgm37604a_i2c_access);
+		pr_notice("[sgm37604a] I2C write fail!!!\n");
+
+		return ret;
+	}
+
 	mutex_unlock(&sgm37604a_i2c_access);
+	return 1;
+}
+EXPORT_SYMBOL(sgm37604a_write_byte);
+
+int sgm37604a_ic_backlight_set(unsigned int level)
+{
+	int sgm_level = 0;
+	int ret = 0;
+
+	if (level > 255)
+		level = 255;
+
+	sgm_level = backlight_i2c_map_hx[level];
+	pr_debug("[KE/sgm37604a] %s,leds sgm37604a backlight: level = %d sgm_level = %d\n",
+			__func__, level, sgm_level);
+
+	while (level != s_last_backlight_level) {
+		if (level > s_last_backlight_level)
+			s_last_backlight_level++;
+		else if (level < s_last_backlight_level)
+			s_last_backlight_level--;
+		ret |= sgm37604a_write_byte(0x1A, (backlight_i2c_map_hx[s_last_backlight_level] & 0x0F));
+		ret |=sgm37604a_write_byte(0x19, (backlight_i2c_map_hx[s_last_backlight_level] >> 4));
+		if (ret < 0)
+			pr_info("[KE/sgm37604a] %s, backlight set fail: level = %d s_last_backlight_level = %d\n",
+			__func__, level, s_last_backlight_level);
+	}
+	sgm37604a_write_byte(0x11,0x00);
 
 	return ret;
 }
+EXPORT_SYMBOL(sgm37604a_ic_backlight_set);
 
 static int sgm37604a_driver_probe(struct i2c_client *client)
 {
