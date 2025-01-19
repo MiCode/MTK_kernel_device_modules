@@ -11,6 +11,7 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/workqueue.h>
 #include <soc/mediatek/smi.h>
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -28,6 +29,9 @@ static DEFINE_MUTEX(mmdebug_vcp_pwr_mutex);
 static struct mmdebug_ipi_data mmdebug_vcp_ipi_data;
 
 static bool mmdebug_init_done;
+
+struct workqueue_struct *mmdebug_workq;
+struct work_struct mmdebug_work;
 
 bool mmdebug_is_init_done(void)
 {
@@ -78,6 +82,11 @@ enable_vcp_end:
 	return ret;
 }
 
+static void mmdebug_work_impl(struct work_struct *work)
+{
+	raw_notifier_call_chain(&mmdebug_status_dump_notifier_list, 0, NULL);
+}
+
 static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 	unsigned int len) // vcp > ap
 {
@@ -105,7 +114,11 @@ static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 #endif
 		MMDEBUG_ERR("MMDEBUG kernel warning str:%s idx:%hhu ack:%hhu base:%hhu",
 			kernel_warn_type_str[slot.idx], slot.idx, slot.ack, slot.base);
-		raw_notifier_call_chain(&mmdebug_status_dump_notifier_list, 0, NULL);
+
+		if (!work_pending(&mmdebug_work))
+			queue_work(mmdebug_workq, &mmdebug_work);
+		else
+			MMDEBUG_ERR("queue work fail");
 		break;
 	default:
 		MMDEBUG_ERR("ipi_id:%u func:%hhu idx:%hhu ack:%hhu base:%hhu",
@@ -169,6 +182,10 @@ static int mmdebug_vcp_probe(struct platform_device *pdev)
 	kthr_vcp = kthread_run(mmdebug_vcp_init_thread, NULL, "mmdebug-vcp");
 	if (IS_ERR(kthr_vcp))
 		MMDEBUG_ERR("create kthread mmdebug_vcp_init_thread failed");
+
+	mmdebug_workq = create_singlethread_workqueue("mmdebug_workq");
+	INIT_WORK(&mmdebug_work, mmdebug_work_impl);
+
 	MMDEBUG_DBG("probe success");
 	return 0;
 }
