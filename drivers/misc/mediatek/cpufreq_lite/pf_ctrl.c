@@ -97,6 +97,7 @@ int __set_pf_ctrl_enable(bool enable)
 	return 0;
 }
 
+#if 0
 static ssize_t pf_ctrl_enable_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -134,7 +135,8 @@ static ssize_t pf_ctrl_enable_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-PROC_FOPS_RW(pf_ctrl_enable);
+#endif
+PROC_FOPS_RO(pf_ctrl_enable);
 
 
 static int pf_ctrl_max_freq_proc_show(struct seq_file *m, void *v)
@@ -155,6 +157,7 @@ static int pf_ctrl_interval_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+#if 0
 static ssize_t pf_ctrl_max_freq_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -190,8 +193,10 @@ static ssize_t pf_ctrl_max_freq_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-PROC_FOPS_RW(pf_ctrl_max_freq);
+#endif
+PROC_FOPS_RO(pf_ctrl_max_freq);
 
+#if 0
 static ssize_t pf_ctrl_min_freq_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -227,8 +232,10 @@ static ssize_t pf_ctrl_min_freq_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-PROC_FOPS_RW(pf_ctrl_min_freq);
+#endif
+PROC_FOPS_RO(pf_ctrl_min_freq);
 
+#if 0
 static ssize_t pf_ctrl_interval_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -268,7 +275,8 @@ static ssize_t pf_ctrl_interval_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-PROC_FOPS_RW(pf_ctrl_interval);
+#endif
+PROC_FOPS_RO(pf_ctrl_interval);
 
 static int create_pf_ctrl_fs(void)
 {
