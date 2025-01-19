@@ -223,9 +223,11 @@ int eyemon_scan(struct ufs_hba *hba, int lane, int host_device,
 	if (err)
 		return -1;
 
-	if (cmd.value != 0x1) {
+	if ((cmd.value != 0x1) || ((host_device == HOST_EYE) &&
+		(host->ip_ver <= IP_VER_MT6899))) {
 		EYEMON_PRINTF(out, *size,
-			"[UFS] Device does not support eye monitor!\n");
+			"[UFS] %s does not support eye monitor!\n",
+			(host_device == HOST_EYE) ? "Host" : "Device");
 		return -1;
 	}
 
