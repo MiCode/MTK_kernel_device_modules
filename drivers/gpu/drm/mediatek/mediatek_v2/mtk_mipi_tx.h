@@ -242,4 +242,5 @@ unsigned int _dsi_get_data_rate(struct phy *phy);
 unsigned int _dsi_get_data_rate_mt6983(struct phy *phy);
 void backup_mipitx_impedance(struct mtk_mipi_tx *mipi_tx);
 void refill_mipitx_impedance(struct mtk_mipi_tx *mipi_tx);
+void mtk_mipi_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP);
 #endif

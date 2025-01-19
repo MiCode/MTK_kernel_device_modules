@@ -11008,8 +11008,25 @@ void _mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP)
 		vdisp_func.sent_aod_scp_sema(_SPM_SEMA_AP);
 	else
 		DDPMSG("WARNING: sent aod scp semaphore fail!\n");
+	mtk_mipi_sent_aod_scp_sema(_SPM_SEMA_AP);
 }
 EXPORT_SYMBOL_GPL(_mtk_sent_aod_scp_sema);
+
+unsigned int mtk_aod_scp_vdisp_sema_check(void)
+{
+	/* check vdisp aod scp sema status
+	 * if (vdisp_func.poll_power_cnt(0) < 0) ==> vdisp power on
+	 * vdisp power on ==> vdisp hold the aod scp sema ==> return 1
+	 */
+	if (vdisp_func.poll_power_cnt) {
+		if (vdisp_func.poll_power_cnt(0) < 0)
+			return 1;
+		else
+			return 0;
+	}
+
+	return 1; //default: vdisp power on
+}
 
 static bool init_secure_static_path_switch(struct device *dev, struct mtk_drm_private *priv)
 {
