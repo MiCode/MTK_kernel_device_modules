@@ -339,13 +339,6 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 				i, readl(MEM_REC_PWR_ALN_OPP(i, k)));
 	}
 
-	// power total time
-	mmdvfs_debug_dump_line(file, "power/alone total time(ms)");
-	for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++)
-		for (j = 0; j < MAX_OPP; j++)
-			mmdvfs_debug_dump_line(file, "pwr:%u opp:%u total_time:%llu",
-				i, j, readq(MEM_PWR_TOTAL_TIME(i, j)));
-
 	// latest mux cb
 	mmdvfs_debug_dump_line(file, "latest mux cb mux/opp");
 	val = readl(MEM_MUX_CB_MUX_OPP);
@@ -409,7 +402,17 @@ EXPORT_SYMBOL_GPL(mmdvfs_debug_status_dump);
 
 static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 {
+	u32 i, j;
+
 	mmdvfs_debug_status_dump(file);
+
+	// power total time
+	mmdvfs_debug_dump_line(file, "power/alone total time(ms)");
+	for (i = 0; i < MMDVFS_OPP_RECORD_NUM; i++)
+		for (j = 0; j < MAX_OPP; j++)
+			mmdvfs_debug_dump_line(file, "pwr:%u opp:%u total_time:%llu",
+				i, j, readq(MEM_PWR_TOTAL_TIME(i, j)));
+
 	return 0;
 }
 
