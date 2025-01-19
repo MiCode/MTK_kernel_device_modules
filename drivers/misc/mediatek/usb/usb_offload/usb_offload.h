@@ -172,6 +172,7 @@ enum usb_audio_device_speed {
 
 struct mem_info_xhci {
 	bool adv_lowpwr;
+	unsigned int uac_slot_id;
 	unsigned long long rsv_dram_addr;
 	unsigned int rsv_dram_size;
 	unsigned long long rsv_sram_addr;
@@ -316,7 +317,7 @@ struct usb_offload_policy {
 	u32 reserved_size;
 };
 
-#define UO_MAX_DEVICE    10
+#define UO_MAX_DEVICE  5
 struct usb_offload_dev {
 	struct device *dev;
 	struct usb_device *valid_device[UO_MAX_DEVICE];
@@ -334,6 +335,8 @@ struct usb_offload_dev {
 	enum usb_device_speed speed;
 	bool adsp_exception;
 	bool adsp_ready;
+	bool hub_offloading;
+	bool hold_wakelock;
 	struct ssusb_offload *ssusb_offload_notify;
 	struct mutex dev_lock;
 	void *tracer;

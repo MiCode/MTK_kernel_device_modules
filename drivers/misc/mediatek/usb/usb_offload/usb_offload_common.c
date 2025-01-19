@@ -73,6 +73,39 @@ unsigned int debug_memory_log;
 module_param(debug_memory_log, uint, 0644);
 MODULE_PARM_DESC(debug_memory_log, "Enable/Disable Debug Memory log");
 
+static int add_valid_device(struct usb_device *udev)
+{
+	int i;
+
+	for (i = 0; i < UO_MAX_DEVICE; i++) {
+		if (uodev->valid_device[i])
+			continue;
+		uodev->valid_device[i] = udev;
+		USB_OFFLOAD_INFO("valid device %d [slot:%d bDeviceClass:0x%x]\n",
+			i, udev->slot_id, udev->descriptor.bDeviceClass);
+		return i;
+	}
+
+	USB_OFFLOAD_ERR("exceed allowed device number\n");
+	return -ENOMEM;
+}
+
+static struct usb_device *get_uac_device(void)
+{
+	struct usb_device *udev;
+	int i;
+
+	for (i = 0; i < UO_MAX_DEVICE; i++) {
+		udev = uodev->valid_device[i];
+		if (!udev)
+			continue;
+		if (udev->descriptor.bDeviceClass != USB_CLASS_HUB)
+			return udev;
+	}
+
+	return NULL;
+}
+
 static struct usb_offload_stream *get_stream(int direction)
 {
 	if (direction >= 2)
@@ -173,6 +206,12 @@ static void memory_cleanup(void)
 				uodev->adv_lowpwr, uodev->policy.adv_lowpwr);
 			uodev->adv_lowpwr = uodev->policy.adv_lowpwr;
 		}
+	}
+
+	if (uodev->hold_wakelock) {
+		pm_relax(uodev->dev);
+		uodev->hold_wakelock = false;
+		USB_OFFLOAD_INFO("hold_wakelock:%d\n", uodev->hold_wakelock);
 	}
 
 	USB_OFFLOAD_MEM_DBG("is_vcore_hold:%d\n", is_vcore_hold);
@@ -2058,7 +2097,7 @@ static int xhci_mtk_create_sideband(struct usb_offload_dev *uodev)
 	struct usb_device *uac_device;
 	int ret = 0;
 
-	uac_device = uodev->valid_device[0];
+	uac_device = get_uac_device();
 	if (unlikely(!uac_device)) {
 		USB_OFFLOAD_ERR("uac device was NULL\n");
 		return -EINVAL;
@@ -2403,11 +2442,10 @@ error:
 static int usb_offload_open(struct inode *ip, struct file *fp)
 {
 	struct xhci_hcd *xhci;
-	struct usb_device *udev;
-	int i, total_device = 0, valid_device = 0;
+	struct usb_device *udev, *rhdev;
 	bool support, bypass;
 	u32 max_devices;
-	int err = 0;
+	int err = 0, i, valid_num = 0;
 
 	mutex_lock(&uodev->dev_lock);
 	if (!uob_get_first(UO_STRUCT_DCBAA) || !uob_get_first(UO_STRUCT_CTX)) {
@@ -2436,28 +2474,48 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 	}
 	xhci = uodev->xhci;
 
+	if (unlikely(!xhci_to_hcd(xhci) || !(xhci_to_hcd(xhci))->self.root_hub)) {
+		USB_OFFLOAD_ERR("fail to get root hub\n");
+		goto NOT_SUPPORT_OFFLOAD;
+	}
+	rhdev = (xhci_to_hcd(xhci))->self.root_hub;
+
 	for (i = 0; i < UO_MAX_DEVICE; i++)
 		uodev->valid_device[i] = NULL;
 
+	uodev->hub_offloading = false;
 	max_devices = HCS_MAX_SLOTS(xhci->cap_regs->hcs_params1);
 	for (i = 0; i < max_devices; i++) {
 		if (!xhci->devs[i])
 			continue;
-		total_device++;
 		udev = xhci->devs[i]->udev;
 		if (unlikely(!udev))
 			continue;
 		check_valid_device(udev, &support, &bypass);
 
 		if (bypass)
-			/* it's not audio device, bypass it and keep checking */
+			/* it's not UAC, bypass it and keep checking */
 			continue;
 
 		if (support) {
-			/* it's valid device, continue to check other devices*/
-			if ((valid_device + 1) < UO_MAX_DEVICE) {
-				uodev->valid_device[valid_device] = udev;
-				valid_device++;
+			/* it's valid device, store it into list */
+			if (add_valid_device(udev) < 0)
+				goto NOT_SUPPORT_OFFLOAD;
+			else {
+				valid_num++;
+				udev = udev->parent;
+				while (udev != rhdev) {
+					/* it attached on hub, check if support hub offloading */
+					if (!uodev->policy.support_hub) {
+						USB_OFFLOAD_ERR("unsupport hub offloading\n");
+						goto NOT_SUPPORT_OFFLOAD;
+					}
+					/* support it, store all levels into list */
+					uodev->hub_offloading = true;
+					if (add_valid_device(udev) < 0)
+						goto NOT_SUPPORT_OFFLOAD;
+					udev = udev->parent;
+				}
 			}
 		} else {
 			/* it's invalid device, direcly return unsupported regardless other devices */
@@ -2466,15 +2524,8 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 		}
 	}
 
-	USB_OFFLOAD_INFO("total_device:%d valid_device:%d\n", total_device, valid_device);
-
-	if (unlikely(!valid_device)) {
+	if (unlikely(!valid_num)) {
 		USB_OFFLOAD_ERR("no valid device\n");
-		goto NOT_SUPPORT_OFFLOAD;
-	}
-
-	if (!uodev->policy.support_hub && total_device >= 2) {
-		USB_OFFLOAD_ERR("unsupport hub offloading\n");
 		goto NOT_SUPPORT_OFFLOAD;
 	}
 
@@ -2501,6 +2552,7 @@ static long usb_offload_ioctl(struct file *fp,
 	unsigned int cmd, unsigned long value)
 {
 	long ret = 0;
+	struct usb_device *udev;
 	struct usb_audio_stream_info uainfo;
 	struct usb_offload_stream *stream;
 	struct mem_info_xhci *xhci_mem;
@@ -2568,9 +2620,15 @@ static long usb_offload_ioctl(struct file *fp,
 		USB_OFFLOAD_INFO("[reserved sram] addr:0x%llx size:%d\n",
 			xhci_mem->rsv_sram_addr, xhci_mem->rsv_sram_size);
 
+		udev = get_uac_device();
+		if (!udev)
+			goto stop_offload;
+		xhci_mem->uac_slot_id = udev->slot_id;
+
 		ret = usb_offload_send_ipi_msg(UOI_INIT_ADSP, xhci_mem, sizeof(struct mem_info_xhci));
 		print_all_memory();
 		if (ret || (value == 0)) {
+stop_offload:
 			uodev->is_streaming = false;
 			get_stream(SNDRV_PCM_STREAM_PLAYBACK)->streaming = false;
 			get_stream(SNDRV_PCM_STREAM_CAPTURE)->streaming = false;
@@ -2634,8 +2692,14 @@ static long usb_offload_ioctl(struct file *fp,
 
 		ret = usb_offload_enable_stream(&uainfo, stream);
 		if (uainfo.enable) {
-			if (!ret)
+			if (!ret) {
 				stream->streaming = true;
+				if (uodev->hub_offloading) {
+					uodev->hold_wakelock = true;
+					pm_stay_awake(uodev->dev);
+					USB_OFFLOAD_INFO("hold_wakelock:%d\n", uodev->hold_wakelock);
+				}
+			}
 		} else {
 			free_stream_urb(stream->direction);
 			stream->streaming = false;
@@ -2649,8 +2713,12 @@ static long usb_offload_ioctl(struct file *fp,
 			usb_offload_hid_stop();
 			/* remove ir when there's no streaming */
 			xhci_mtk_remove_sideband(uodev->sb);
-			/* power-off sram if no streaming */
+			if (uodev->hold_wakelock) {
+				pm_relax(uodev->dev);
+				uodev->hold_wakelock = false;
+				USB_OFFLOAD_INFO("hold_wakelock:%d\n", uodev->hold_wakelock);
 			}
+		}
 
 		print_all_memory();
 
@@ -2764,6 +2832,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->opened = false;
 	uodev->speed = USB_SPEED_UNKNOWN;
 	uodev->xhci = NULL;
+	uodev->hub_offloading = false;
 
 	uodev->sb = NULL;
 	uodev->num_entries_in_use = 0;
