@@ -5052,6 +5052,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			bw_val = ((layer_num * bw_val) / 400) * dmr_enable;
 			/* stash bw = data_bw / 4096 * 16 */
 			bw_val += bw_val / 256;
+			bw_val = bw_val > 17 ? bw_val : 17; //set low bound
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dmrr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 
@@ -5061,6 +5062,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			bw_val = ((layer_num * bw_val) / 400) * dbi_enable;
 			/* stash bw = data_bw / 4096 * 16 */
 			bw_val += bw_val / 256;
+			bw_val = bw_val > 17 ? bw_val : 17; //set low bound
 			__mtk_disp_set_module_hrt(oddmr_priv->qos_req_dbir_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 
