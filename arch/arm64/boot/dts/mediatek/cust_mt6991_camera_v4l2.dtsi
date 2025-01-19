@@ -968,6 +968,8 @@
 		sensor-names = "imx758_mipi_raw",
 					"imx858_mipi_raw",
 					"ov50d_mipi_raw";
+		reindex-match = "ov50d_mipi_raw";
+		reindex-to = <2>;
 		reg = <0x10>;
 		maximum-pmic-delay = <4000>;
 
