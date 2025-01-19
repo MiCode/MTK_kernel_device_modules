@@ -31,7 +31,7 @@ void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 EXPORT_SYMBOL_GPL(fpsgo_notify_acquire_fp);
 void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota, unsigned long long identifier);
 EXPORT_SYMBOL_GPL(fpsgo_notify_buffer_quota_fp);
-int (*fpsgo_get_enable_signal_fp)(int tgid, int wait);
+int (*fpsgo_get_enable_signal_fp)(int tgid, int wait, int *ret);
 EXPORT_SYMBOL_GPL(fpsgo_get_enable_signal_fp);
 void (*fpsgo_notify_producer_info_fp)(int ipc_tgid, int pid, int connectedAPI,
 	int queue_SF, unsigned long long buffer_id);
@@ -843,8 +843,10 @@ static long device_ioctl(struct file *filp,
 			sizeof(struct _FPSGO_PACKAGE));
 		break;
 	case FPSGO_ENABLE_SIGNAL:
-		if (fpsgo_get_enable_signal_fp)
-			ret = fpsgo_get_enable_signal_fp(msgKM->pid1, msgKM->value1);
+		if (fpsgo_get_enable_signal_fp) {
+			ret = fpsgo_get_enable_signal_fp(msgKM->pid1, msgKM->value1, &msgKM->value2);
+			perfctl_copy_to_user(msgUM, msgKM, sizeof(struct _FPSGO_PACKAGE));
+		}
 		break;
 	case FPSGO_PRODUCER_INFO:
 		if (fpsgo_notify_producer_info_fp)

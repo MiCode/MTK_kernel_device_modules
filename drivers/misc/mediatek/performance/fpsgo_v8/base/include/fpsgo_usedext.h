@@ -18,7 +18,7 @@ extern void (*fpsgo_notify_acquire_fp)(int c_pid, int p_pid,
 extern void (*fpsgo_notify_buffer_quota_fp)(int pid, int quota,
 		unsigned long long identifier);
 
-extern int (*fpsgo_get_enable_signal_fp)(int tgid, int wait);
+extern int (*fpsgo_get_enable_signal_fp)(int tgid, int wait, int *ret);
 extern void (*fpsgo_notify_producer_info_fp)(int ipc_tgid, int pid, int connectedAPI,
 	int queue_SF, unsigned long long buffer_id);
 

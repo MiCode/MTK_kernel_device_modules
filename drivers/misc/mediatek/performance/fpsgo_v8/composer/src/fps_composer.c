@@ -492,17 +492,21 @@ int fpsgo_ctrl2comp_get_receive_fw_info_enable(void)
 	return receive_fw_info_enable;
 }
 
-int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid)
+int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid, int *ret)
 {
 	struct wait_enable_info *iter;
 
+	*ret = 0;
+
 	mutex_lock(&wait_enable_lock);
-	iter = fpsgo_add_wait_enable_info(current->pid);
+	iter = fpsgo_search_and_add_wait_enable_info(current->pid, 1);
 	if (!iter) {
 		mutex_unlock(&wait_enable_lock);
+		*ret = -ENOMEM;
+		FPSGO_LOGE("[comp] no memory to wait for tgid:%d pid:%d\n", tgid, current->pid);
 		goto out;
 	}
-	FPSGO_LOGE("[comp] from userspace request tgid:%d pid:%d receive_fw_info_enable:%d wait_cond:%d\n",
+	FPSGO_LOGE("[comp] from userspace request tgid:%d pid:%d enable:%d cond:%d\n",
 		tgid, current->pid, receive_fw_info_enable, iter->wait_cond);
 	mutex_unlock(&wait_enable_lock);
 
@@ -513,18 +517,15 @@ int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid)
 	 *       --> prepare_to_wait_event (hold wq_head->lock)
 	 *       --> ___wait_is_interruptible
 	 *       --> finish_wait
-	*/
+	 */
 	wait_event_interruptible(iter->wait_q, iter->wait_cond);
 
-	FPSGO_LOGE("[comp] wakeup tgid:%d pid:%d receive_fw_info_enable:%d wait_cond:%d\n",
+	FPSGO_LOGE("[comp] wakeup tgid:%d pid:%d enable:%d cond:%d\n",
 		tgid, current->pid, receive_fw_info_enable, iter->wait_cond);
 
-	if (!iter->wait_cond) {
-		mutex_lock(&wait_enable_lock);
-		fpsgo_delete_wait_enable_info(1, 0, iter);
-		mutex_unlock(&wait_enable_lock);
-	}
-	fpsgo_delete_wait_enable_info(0, 1, iter);
+	mutex_lock(&wait_enable_lock);
+	iter->wait_cond = 0;
+	mutex_unlock(&wait_enable_lock);
 
 out:
 	return receive_fw_info_enable;
@@ -1120,6 +1121,10 @@ static void fpsgo_com_notify_to_do_recycle(struct work_struct *work)
 	ret2 = fpsgo_comp2fstb_do_recycle();
 	ret3 = fpsgo_comp2xgf_do_recycle();
 
+	mutex_lock(&wait_enable_lock);
+	fpsgo_check_wait_enable_info_status();
+	mutex_unlock(&wait_enable_lock);
+
 	mutex_lock(&recycle_lock);
 
 	if (ret1 && ret2 && ret3) {
@@ -1268,9 +1273,6 @@ static ssize_t receive_fw_info_enable_store(struct kobject *kobj,
 {
 	char *acBuffer = NULL;
 	int arg;
-	struct wait_enable_info *iter;
-	struct hlist_node *h = NULL;
-	HLIST_HEAD(wait_arr);
 
 	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
@@ -1281,25 +1283,12 @@ static ssize_t receive_fw_info_enable_store(struct kobject *kobj,
 			if (kstrtoint(acBuffer, 0, &arg))
 				goto out;
 
-			if (arg >= 0 && arg <= INT_MAX - 1) {
+			if (arg >= 0 && arg <= INT_MAX - 1 && receive_fw_info_enable != arg) {
 				receive_fw_info_enable = arg;
 
 				mutex_lock(&wait_enable_lock);
-				fpsgo_get_all_wait_enable_info(&wait_arr);
-				fpsgo_delete_wait_enable_info(1, 0, NULL);
+				fpsgo_wake_up_all_wait_enable_info();
 				mutex_unlock(&wait_enable_lock);
-
-				hlist_for_each_entry_safe(iter, h, &wait_arr, entry2) {
-					hlist_del(&iter->entry2);
-					iter->wait_cond = 1;
-					/*
-					 * wake_up_interruptible
-					 *   --> __wake_up
-					 *     --> __wake_up_common_lock (hold wq_head->lock)
-					 *       --> __wake_up_common (call wq_head->lock)
-					*/
-					wake_up_interruptible(&iter->wait_q);
-				}
 			}
 		}
 	}

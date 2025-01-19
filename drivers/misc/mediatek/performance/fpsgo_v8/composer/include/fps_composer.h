@@ -58,7 +58,7 @@ void fpsgo_notify_frame_info_callback(int pid, unsigned long cmd,
 int notify_fpsgo_touch_latency_ko_ready(void);
 
 int fpsgo_ctrl2comp_get_receive_fw_info_enable(void);
-int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid);
+int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid, int *ret);
 void fpsgo_ctrl2comp_producer_info(int ipc_tgid, int pid, int api, int queue_SF,
 	unsigned long long buffer_id);
 

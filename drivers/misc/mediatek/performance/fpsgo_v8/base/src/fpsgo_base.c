@@ -57,6 +57,7 @@ static int global_kfps_mask = 0xFFF;
 static int total_fps_control_num;
 static int total_render_info_num;
 static int total_linger_num;
+static int total_wait_enable_info_num;
 static int total_no_boost_info_num;
 static int total_jank_detection_info_num;
 
@@ -1645,7 +1646,7 @@ int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id)
 	return ret;
 }
 
-struct wait_enable_info *fpsgo_add_wait_enable_info(int pid)
+struct wait_enable_info *fpsgo_search_and_add_wait_enable_info(int pid, int create)
 {
 	struct rb_node **p = &wait_fpsgo_enable_tree.rb_node;
 	struct rb_node *parent = NULL;
@@ -1653,7 +1654,7 @@ struct wait_enable_info *fpsgo_add_wait_enable_info(int pid)
 
 	while (*p) {
 		parent = *p;
-		iter = rb_entry(parent, struct wait_enable_info, entry1);
+		iter = rb_entry(parent, struct wait_enable_info, entry);
 
 		if (pid < iter->pid)
 			p = &(*p)->rb_left;
@@ -1663,6 +1664,9 @@ struct wait_enable_info *fpsgo_add_wait_enable_info(int pid)
 			return iter;
 	}
 
+	if (!create || total_wait_enable_info_num >= FPSGO_MAX_WAIT_ENABLE_INFO_SIZE)
+		return NULL;
+
 	iter = kzalloc(sizeof(struct wait_enable_info), GFP_KERNEL);
 	if (!iter)
 		return NULL;
@@ -1671,42 +1675,56 @@ struct wait_enable_info *fpsgo_add_wait_enable_info(int pid)
 	iter->wait_cond = 0;
 	init_waitqueue_head(&iter->wait_q);
 
-	rb_link_node(&iter->entry1, parent, p);
-	rb_insert_color(&iter->entry1, &wait_fpsgo_enable_tree);
+	rb_link_node(&iter->entry, parent, p);
+	rb_insert_color(&iter->entry, &wait_fpsgo_enable_tree);
+	total_wait_enable_info_num++;
 
 	return iter;
 }
 
-void fpsgo_delete_wait_enable_info(int erase, int free, struct wait_enable_info *iter)
+static void fpsgo_delete_wait_enable_info(struct wait_enable_info *iter)
 {
-	struct wait_enable_info *tmp;
-	struct rb_node *rbn;
-
 	if (iter) {
-		if (erase)
-			rb_erase(&iter->entry1, &wait_fpsgo_enable_tree);
-		if (free)
-			kfree(iter);
-	} else {
-		rbn = rb_first(&wait_fpsgo_enable_tree);
-		while (rbn) {
-			tmp = rb_entry(rbn, struct wait_enable_info, entry1);
-			rb_erase(&tmp->entry1, &wait_fpsgo_enable_tree);
-			if (free)
-				kfree(tmp);
-			rbn = rb_first(&wait_fpsgo_enable_tree);
-		}
+		rb_erase(&iter->entry, &wait_fpsgo_enable_tree);
+		kfree(iter);
+		total_wait_enable_info_num--;
 	}
 }
 
-void fpsgo_get_all_wait_enable_info(struct hlist_head *arr)
+int fpsgo_check_wait_enable_info_status(void)
 {
-	struct wait_enable_info *iter;
-	struct rb_node *rbn;
+	struct wait_enable_info *iter = NULL;
+	struct rb_node *rbn = NULL;
+
+	rbn = rb_first(&wait_fpsgo_enable_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct wait_enable_info, entry);
+		if (fpsgo_get_tgid(iter->pid))
+			rbn = rb_next(rbn);
+		else {
+			fpsgo_delete_wait_enable_info(iter);
+			rbn = rb_first(&wait_fpsgo_enable_tree);
+		}
+	}
+
+	return total_wait_enable_info_num;
+}
+
+void fpsgo_wake_up_all_wait_enable_info(void)
+{
+	struct wait_enable_info *iter = NULL;
+	struct rb_node *rbn = NULL;
 
 	for (rbn = rb_first(&wait_fpsgo_enable_tree); rbn; rbn = rb_next(rbn)) {
-		iter = rb_entry(rbn, struct wait_enable_info, entry1);
-		hlist_add_head(&iter->entry2, arr);
+		iter = rb_entry(rbn, struct wait_enable_info, entry);
+		iter->wait_cond = 1;
+		/*
+		 * wake_up_interruptible
+		 *   --> __wake_up
+		 *     --> __wake_up_common_lock (hold wq_head->lock)
+		 *       --> __wake_up_common (call wq_head->lock)
+		 */
+		wake_up_interruptible(&iter->wait_q);
 	}
 }
 

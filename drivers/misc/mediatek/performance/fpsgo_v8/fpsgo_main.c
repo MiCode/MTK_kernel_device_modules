@@ -855,9 +855,9 @@ int fpsgo_notify_magt_dep_list(int pid, void *dep_task_arr, int dep_task_num)
 	return 0;
 }
 
-int fpsgo_get_enable_signal(int tgid, int wait) {
+int fpsgo_get_enable_signal(int tgid, int wait, int *ret) {
 	// consider all open or by process open
-	return wait ? fpsgo_ctrl2comp_wait_receive_fw_info_enable(tgid) :
+	return wait ? fpsgo_ctrl2comp_wait_receive_fw_info_enable(tgid, ret) :
 				fpsgo_ctrl2comp_get_receive_fw_info_enable();
 }
 

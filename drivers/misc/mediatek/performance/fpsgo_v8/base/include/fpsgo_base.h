@@ -30,6 +30,7 @@
 #define BY_PID_DELETE_VAL -2
 #define FPSGO_MAX_RECYCLE_IDLE_CNT 10
 #define FPSGO_MAX_TREE_SIZE 10
+#define FPSGO_MAX_WAIT_ENABLE_INFO_SIZE 1000
 #define FPSGO_MAX_NO_BOOST_INFO_SIZE 100
 #define FPSGO_MAX_JANK_DETECTION_INFO_SIZE 5
 #define FPSGO_MAX_JANK_DETECTION_BOOST_CNT 2
@@ -384,8 +385,7 @@ struct wait_enable_info {
 	int pid;
 	int wait_cond;
 	struct wait_queue_head wait_q;
-	struct rb_node entry1;  // to store request
-	struct hlist_node entry2;  // to wake up
+	struct rb_node entry;
 };
 
 #ifdef FPSGO_DEBUG
@@ -441,9 +441,9 @@ struct acquire_info *fpsgo_add_acquire_info(int p_pid, int c_pid, int c_tid,
 	int api, unsigned long long buffer_id, unsigned long long ts);
 struct acquire_info *fpsgo_search_acquire_info(int tid, unsigned long long buffer_id);
 int fpsgo_delete_acquire_info(int mode, int tid, unsigned long long buffer_id);
-struct wait_enable_info *fpsgo_add_wait_enable_info(int pid);
-void fpsgo_delete_wait_enable_info(int erase, int free, struct wait_enable_info *iter);
-void fpsgo_get_all_wait_enable_info(struct hlist_head *arr);
+struct wait_enable_info *fpsgo_search_and_add_wait_enable_info(int pid, int create);
+int fpsgo_check_wait_enable_info_status(void);
+void fpsgo_wake_up_all_wait_enable_info(void);
 int fpsgo_get_all_render_info(struct hlist_head *arr);
 int fpsgo_get_all_acquire_info(struct hlist_head *arr);
 void fpsgo_main_trace(const char *fmt, ...);
