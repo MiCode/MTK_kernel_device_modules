@@ -120,70 +120,70 @@ static int tsallts_get_temp(struct thermal_zone_device *thermal, int *t)
 	return 0;
 }
 
-static int tsallts_bind(
-struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = -1, index, i;
+// static int tsallts_bind(
+// struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = -1, index, i;
 
-	index = tsallts_get_index(thermal);
-	tsallts_dprintk("[%s ts%d]\n", __func__, index);
+// 	index = tsallts_get_index(thermal);
+// 	tsallts_dprintk("[%s ts%d]\n", __func__, index);
 
-	for (i = 0; i < 10; i++) {
-		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
-			table_val = i;
-			break;
-		}
-	}
+// 	for (i = 0; i < 10; i++) {
+// 		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
+// 			table_val = i;
+// 			break;
+// 		}
+// 	}
 
-	if (table_val == -1)
-		return 0;
+// 	if (table_val == -1)
+// 		return 0;
 
-	tsallts_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
+// 	tsallts_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
 
-	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
-		tsallts_dprintk(
-			"[%s ts %d] error binding cooling dev\n", __func__,
-			index);
+// 	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
+// 		tsallts_dprintk(
+// 			"[%s ts %d] error binding cooling dev\n", __func__,
+// 			index);
 
-		return -EINVAL;
-	}
+// 		return -EINVAL;
+// 	}
 
-	tsallts_dprintk("[%s ts %d] binding OK, %d\n", __func__, index,
-								table_val);
-	return 0;
-}
+// 	tsallts_dprintk("[%s ts %d] binding OK, %d\n", __func__, index,
+// 								table_val);
+// 	return 0;
+// }
 
-static int tsallts_unbind(
-struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = -1, index, i;
+// static int tsallts_unbind(
+// struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = -1, index, i;
 
-	index = tsallts_get_index(thermal);
-	tsallts_dprintk("[%s ts%d]\n", __func__, index);
+// 	index = tsallts_get_index(thermal);
+// 	tsallts_dprintk("[%s ts%d]\n", __func__, index);
 
-	for (i = 0; i < 10; i++) {
-		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
-			table_val = i;
-			break;
-		}
-	}
+// 	for (i = 0; i < 10; i++) {
+// 		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
+// 			table_val = i;
+// 			break;
+// 		}
+// 	}
 
-	if (table_val == -1)
-		return 0;
+// 	if (table_val == -1)
+// 		return 0;
 
-	tsallts_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
+// 	tsallts_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
 
-	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
-		tsallts_dprintk(
-			"[%s ts %d] error unbinding cooling dev\n", __func__,
-			index);
+// 	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
+// 		tsallts_dprintk(
+// 			"[%s ts %d] error unbinding cooling dev\n", __func__,
+// 			index);
 
-		return -EINVAL;
-	}
+// 		return -EINVAL;
+// 	}
 
-	tsallts_dprintk("[%s ts %d] unbinding OK\n", __func__, index);
-	return 0;
-}
+// 	tsallts_dprintk("[%s ts %d] unbinding OK\n", __func__, index);
+// 	return 0;
+// }
 
 
 
@@ -245,10 +245,17 @@ static void mtkts_allts_start_timer(void)
 	}
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 /* bind callback functions to thermalzone */
 static struct thermal_zone_device_ops tsallts_dev_ops = {
-	.bind = tsallts_bind,
-	.unbind = tsallts_unbind,
+	.should_bind = mtk_thermal_should_bind,
 	.get_temp = tsallts_get_temp,
 	.change_mode = tsallts_change_mode,
 	.get_crit_temp = tsallts_get_crit_temp,

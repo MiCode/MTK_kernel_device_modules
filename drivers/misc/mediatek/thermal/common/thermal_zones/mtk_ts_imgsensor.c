@@ -343,69 +343,69 @@ static int mtk_imgs_get_temp(struct thermal_zone_device *thermal, int *t)
 	return 0;
 }
 
-static int mtk_imgs_bind(
-struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = -1, index, i;
+// static int mtk_imgs_bind(
+// struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = -1, index, i;
 
-	index = mtk_imgs_get_index(thermal);
-	mtk_imgs_dprintk("[%s ts%d]\n", __func__, index);
+// 	index = mtk_imgs_get_index(thermal);
+// 	mtk_imgs_dprintk("[%s ts%d]\n", __func__, index);
 
-	for (i = 0; i < 10; i++) {
-		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
-			table_val = i;
-			break;
-		}
-	}
+// 	for (i = 0; i < 10; i++) {
+// 		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
+// 			table_val = i;
+// 			break;
+// 		}
+// 	}
 
-	if (table_val == -1)
-		return 0;
+// 	if (table_val == -1)
+// 		return 0;
 
-	mtk_imgs_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
+// 	mtk_imgs_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
 
-	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
-		mtk_imgs_dprintk(
-			"[%s ts %d] error binding cooling dev\n", __func__,
-			index);
-		return -EINVAL;
-	}
+// 	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
+// 		mtk_imgs_dprintk(
+// 			"[%s ts %d] error binding cooling dev\n", __func__,
+// 			index);
+// 		return -EINVAL;
+// 	}
 
-	mtk_imgs_dprintk("[%s ts %d] binding OK, %d\n", __func__,
-						index, table_val);
+// 	mtk_imgs_dprintk("[%s ts %d] binding OK, %d\n", __func__,
+// 						index, table_val);
 
-	return 0;
-}
+// 	return 0;
+// }
 
-static int mtk_imgs_unbind(
-struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = -1, index, i;
+// static int mtk_imgs_unbind(
+// struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = -1, index, i;
 
-	index = mtk_imgs_get_index(thermal);
-	mtk_imgs_dprintk("[%s ts%d]\n", __func__, index);
+// 	index = mtk_imgs_get_index(thermal);
+// 	mtk_imgs_dprintk("[%s ts%d]\n", __func__, index);
 
-	for (i = 0; i < 10; i++) {
-		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
-			table_val = i;
-			break;
-		}
-	}
+// 	for (i = 0; i < 10; i++) {
+// 		if (!strcmp(cdev->type, g_tsData[index].bind[i])) {
+// 			table_val = i;
+// 			break;
+// 		}
+// 	}
 
-	if (table_val == -1)
-		return 0;
+// 	if (table_val == -1)
+// 		return 0;
 
-	mtk_imgs_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
+// 	mtk_imgs_dprintk("[%s ts %d] %s\n", __func__, index, cdev->type);
 
-	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
-		mtk_imgs_dprintk(
-			"[%s ts %d] error unbinding cooling dev\n", __func__,
-									index);
-		return -EINVAL;
-	}
+// 	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
+// 		mtk_imgs_dprintk(
+// 			"[%s ts %d] error unbinding cooling dev\n", __func__,
+// 									index);
+// 		return -EINVAL;
+// 	}
 
-	mtk_imgs_dprintk("[%s ts %d] unbinding OK\n", __func__, index);
-	return 0;
-}
+// 	mtk_imgs_dprintk("[%s ts %d] unbinding OK\n", __func__, index);
+// 	return 0;
+// }
 
 
 static int mtk_imgs_change_mode(
@@ -468,10 +468,17 @@ static void mtkts_allts_start_timer(void)
 	}
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 /* bind callback functions to thermalzone */
 static struct thermal_zone_device_ops mtk_imgs_dev_ops = {
-	.bind = mtk_imgs_bind,
-	.unbind = mtk_imgs_unbind,
+	.should_bind = mtk_thermal_should_bind,
 	.get_temp = mtk_imgs_get_temp,
 	.change_mode = mtk_imgs_change_mode,
 	.get_crit_temp = mtk_imgs_get_crit_temp,

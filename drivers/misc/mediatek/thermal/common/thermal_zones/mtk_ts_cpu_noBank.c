@@ -340,123 +340,123 @@ void set_taklking_flag(bool flag)
 	tscpu_printk("talking_flag=%d\n", talking_flag);
 }
 
-static int tscpu_bind
-(struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int tscpu_bind
+// (struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0)) {
-		table_val = 0;
-#if CFG_LVTS_DOMINATOR
-#if CFG_THERM_LVTS
-		lvts_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
-#endif
-#else
-		tscpu_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
-#endif
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind1)) {
-		table_val = 1;
-		/* only when a valid cooler is tried to bind here,
-		 * we set tc_mid_trip to trip_temp[1];
-		 */
-		tc_mid_trip = trip_temp[1];
-#if CFG_LVTS_DOMINATOR
-#if CFG_THERM_LVTS
-		lvts_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
-#endif
-#else
-		tscpu_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
-#endif
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind2)) {
-		table_val = 2;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind3)) {
-		table_val = 3;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind4)) {
-		table_val = 4;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind5)) {
-		table_val = 5;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind6)) {
-		table_val = 6;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind7)) {
-		table_val = 7;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind8)) {
-		table_val = 8;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind9)) {
-		table_val = 9;
-		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
-	} else {
-		return 0;
-	}
+// 	if (!strcmp(cdev->type, g_bind0)) {
+// 		table_val = 0;
+// #if CFG_LVTS_DOMINATOR
+// #if CFG_THERM_LVTS
+// 		lvts_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
+// #endif
+// #else
+// 		tscpu_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
+// #endif
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind1)) {
+// 		table_val = 1;
+// 		/* only when a valid cooler is tried to bind here,
+// 		 * we set tc_mid_trip to trip_temp[1];
+// 		 */
+// 		tc_mid_trip = trip_temp[1];
+// #if CFG_LVTS_DOMINATOR
+// #if CFG_THERM_LVTS
+// 		lvts_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
+// #endif
+// #else
+// 		tscpu_config_all_tc_hw_protect(trip_temp[0], tc_mid_trip);
+// #endif
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind2)) {
+// 		table_val = 2;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind3)) {
+// 		table_val = 3;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind4)) {
+// 		table_val = 4;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind5)) {
+// 		table_val = 5;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind6)) {
+// 		table_val = 6;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind7)) {
+// 		table_val = 7;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind8)) {
+// 		table_val = 8;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind9)) {
+// 		table_val = 9;
+// 		/* tscpu_dprintk("tscpu_bind %s\n", cdev->type); */
+// 	} else {
+// 		return 0;
+// 	}
 
-	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
-		tscpu_warn("%s error binding cooling dev\n", __func__);
-		return -EINVAL;
-	}
+// 	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
+// 		tscpu_warn("%s error binding cooling dev\n", __func__);
+// 		return -EINVAL;
+// 	}
 
-	tscpu_printk("%s binding OK, %d\n", __func__, table_val);
-	return 0;
-}
+// 	tscpu_printk("%s binding OK, %d\n", __func__, table_val);
+// 	return 0;
+// }
 
-static int tscpu_unbind
-(struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int tscpu_unbind
+// (struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0)) {
-		table_val = 0;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind1)) {
-		table_val = 1;
-		/* only when a valid cooler is tried to bind here,
-		 * we set tc_mid_trip to trip_temp[1];
-		 */
-		tc_mid_trip = -275000;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind2)) {
-		table_val = 2;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind3)) {
-		table_val = 3;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind4)) {
-		table_val = 4;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind5)) {
-		table_val = 5;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind6)) {
-		table_val = 6;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind7)) {
-		table_val = 7;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind8)) {
-		table_val = 8;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else if (!strcmp(cdev->type, g_bind9)) {
-		table_val = 9;
-		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
-	} else
-		return 0;
+// 	if (!strcmp(cdev->type, g_bind0)) {
+// 		table_val = 0;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind1)) {
+// 		table_val = 1;
+// 		/* only when a valid cooler is tried to bind here,
+// 		 * we set tc_mid_trip to trip_temp[1];
+// 		 */
+// 		tc_mid_trip = -275000;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind2)) {
+// 		table_val = 2;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind3)) {
+// 		table_val = 3;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind4)) {
+// 		table_val = 4;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind5)) {
+// 		table_val = 5;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind6)) {
+// 		table_val = 6;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind7)) {
+// 		table_val = 7;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind8)) {
+// 		table_val = 8;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else if (!strcmp(cdev->type, g_bind9)) {
+// 		table_val = 9;
+// 		/* tscpu_dprintk("tscpu_unbind %s\n", cdev->type); */
+// 	} else
+// 		return 0;
 
 
-	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
-		tscpu_warn("%s error unbinding cooling dev\n", __func__);
-		return -EINVAL;
-	}
+// 	// if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
+// 	// 	tscpu_warn("%s error unbinding cooling dev\n", __func__);
+// 	// 	return -EINVAL;
+// 	// }
 
-	tscpu_printk("%s unbinding OK\n", __func__);
-	return 0;
-}
+// 	tscpu_printk("%s unbinding OK\n", __func__);
+// 	return 0;
+// }
 
 
 static int tscpu_change_mode
@@ -572,10 +572,17 @@ static int tscpu_get_temp
 	return ret;
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 /* bind callback functions to thermalzone */
 static struct thermal_zone_device_ops mtktscpu_dev_ops = {
-	.bind = tscpu_bind,
-	.unbind = tscpu_unbind,
+	.should_bind = mtk_thermal_should_bind,
 	.get_temp = tscpu_get_temp,
 	.change_mode = tscpu_change_mode,
 	.get_crit_temp = tscpu_get_crit_temp,

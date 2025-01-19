@@ -297,61 +297,61 @@ static int mtkts_dctm_get_temp(struct thermal_zone_device *thermal, int *t)
 	return 0;
 }
 
-static int mtkts_dctm_bind(struct thermal_zone_device *thermal,
-	struct thermal_cooling_device *cdev)
-{
-	int i, table_val = 10;
+// static int mtkts_dctm_bind(struct thermal_zone_device *thermal,
+// 	struct thermal_cooling_device *cdev)
+// {
+// 	int i, table_val = 10;
 
-	for (i = 0; i < 10; i++) {
-		if (!strcmp(cdev->type, g_bind[i])) {
-			table_val = i;
-			mtkts_dctm_dprintk("[%s] %s, trip %d\n",
-				__func__, cdev->type, i);
-			break;
-		}
-	}
+// 	for (i = 0; i < 10; i++) {
+// 		if (!strcmp(cdev->type, g_bind[i])) {
+// 			table_val = i;
+// 			mtkts_dctm_dprintk("[%s] %s, trip %d\n",
+// 				__func__, cdev->type, i);
+// 			break;
+// 		}
+// 	}
 
-	if (table_val == 10)
-		return -EINVAL; /* Not match */
+// 	if (table_val == 10)
+// 		return -EINVAL; /* Not match */
 
-	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
-		mtkts_dctm_dprintk("[%s] error binding cooling dev %s\n",
-			__func__, cdev->type);
-		return -EINVAL;
-	}
+// 	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
+// 		mtkts_dctm_dprintk("[%s] error binding cooling dev %s\n",
+// 			__func__, cdev->type);
+// 		return -EINVAL;
+// 	}
 
-	mtkts_dctm_dprintk("[%s] binding OK %s, trip %d\n",
-		__func__, cdev->type, table_val);
-	return 0;
-}
+// 	mtkts_dctm_dprintk("[%s] binding OK %s, trip %d\n",
+// 		__func__, cdev->type, table_val);
+// 	return 0;
+// }
 
-static int mtkts_dctm_unbind(struct thermal_zone_device *thermal,
-			    struct thermal_cooling_device *cdev)
-{
-	int i, table_val = 10;
+// static int mtkts_dctm_unbind(struct thermal_zone_device *thermal,
+// 			    struct thermal_cooling_device *cdev)
+// {
+// 	int i, table_val = 10;
 
-	for (i = 0; i < 10; i++) {
-		if (!strcmp(cdev->type, g_bind[i])) {
-			table_val = i;
-			mtkts_dctm_dprintk("[%s] %s, trip %d\n",
-				__func__, cdev->type, i);
-			break;
-		}
-	}
+// 	for (i = 0; i < 10; i++) {
+// 		if (!strcmp(cdev->type, g_bind[i])) {
+// 			table_val = i;
+// 			mtkts_dctm_dprintk("[%s] %s, trip %d\n",
+// 				__func__, cdev->type, i);
+// 			break;
+// 		}
+// 	}
 
-	if (table_val == 10)
-		return -EINVAL; /* Not match */
+// 	if (table_val == 10)
+// 		return -EINVAL; /* Not match */
 
-	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
-		mtkts_dctm_dprintk("[%s] error unbinding cooling dev %s\n",
-			__func__, cdev->type);
-		return -EINVAL;
-	}
+// 	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
+// 		mtkts_dctm_dprintk("[%s] error unbinding cooling dev %s\n",
+// 			__func__, cdev->type);
+// 		return -EINVAL;
+// 	}
 
-	mtkts_dctm_dprintk("[%s] unbinding OK %s, trip %d\n",
-		__func__, cdev->type, table_val);
-	return 0;
-}
+// 	mtkts_dctm_dprintk("[%s] unbinding OK %s, trip %d\n",
+// 		__func__, cdev->type, table_val);
+// 	return 0;
+// }
 
 
 static int mtkts_dctm_change_mode(struct thermal_zone_device *thermal,
@@ -368,10 +368,17 @@ static int mtkts_dctm_get_crit_temp(struct thermal_zone_device *thermal,
 	return 0;
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 /* bind callback functions to thermalzone */
 static struct thermal_zone_device_ops mtkts_dctm_dev_ops = {
-	.bind = mtkts_dctm_bind,
-	.unbind = mtkts_dctm_unbind,
+	.should_bind = mtk_thermal_should_bind,
 	.get_temp = mtkts_dctm_get_temp,
 	.change_mode = mtkts_dctm_change_mode,
 	.get_crit_temp = mtkts_dctm_get_crit_temp,

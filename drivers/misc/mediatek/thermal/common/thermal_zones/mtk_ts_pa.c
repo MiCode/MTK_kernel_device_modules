@@ -255,102 +255,102 @@ static int mtktspa_get_temp(struct thermal_zone_device *thermal, int *t)
 	return 0;
 }
 
-static int mtktspa_bind(
-struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int mtktspa_bind(
+// struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0)) {
-		table_val = 0;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind1)) {
-		table_val = 1;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind2)) {
-		table_val = 2;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind3)) {
-		table_val = 3;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind4)) {
-		table_val = 4;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind5)) {
-		table_val = 5;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind6)) {
-		table_val = 6;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind7)) {
-		table_val = 7;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind8)) {
-		table_val = 8;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind9)) {
-		table_val = 9;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else
-		return 0;
+// 	if (!strcmp(cdev->type, g_bind0)) {
+// 		table_val = 0;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind1)) {
+// 		table_val = 1;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind2)) {
+// 		table_val = 2;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind3)) {
+// 		table_val = 3;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind4)) {
+// 		table_val = 4;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind5)) {
+// 		table_val = 5;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind6)) {
+// 		table_val = 6;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind7)) {
+// 		table_val = 7;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind8)) {
+// 		table_val = 8;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind9)) {
+// 		table_val = 9;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else
+// 		return 0;
 
 
-	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
-		mtktspa_dprintk("[%s] error binding cooling dev\n", __func__);
-		return -EINVAL;
-	}
+// 	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
+// 		mtktspa_dprintk("[%s] error binding cooling dev\n", __func__);
+// 		return -EINVAL;
+// 	}
 
-	mtktspa_dprintk("[%s] binding OK\n", __func__);
-	return 0;
-}
+// 	mtktspa_dprintk("[%s] binding OK\n", __func__);
+// 	return 0;
+// }
 
-static int mtktspa_unbind(
-struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int mtktspa_unbind(
+// struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0)) {
-		table_val = 0;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind1)) {
-		table_val = 1;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind2)) {
-		table_val = 2;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind3)) {
-		table_val = 3;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind4)) {
-		table_val = 4;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind5)) {
-		table_val = 5;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind6)) {
-		table_val = 6;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind7)) {
-		table_val = 7;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind8)) {
-		table_val = 8;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind9)) {
-		table_val = 9;
-		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else
-		return 0;
+// 	if (!strcmp(cdev->type, g_bind0)) {
+// 		table_val = 0;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind1)) {
+// 		table_val = 1;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind2)) {
+// 		table_val = 2;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind3)) {
+// 		table_val = 3;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind4)) {
+// 		table_val = 4;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind5)) {
+// 		table_val = 5;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind6)) {
+// 		table_val = 6;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind7)) {
+// 		table_val = 7;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind8)) {
+// 		table_val = 8;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind9)) {
+// 		table_val = 9;
+// 		mtktspa_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else
+// 		return 0;
 
-	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
-		mtktspa_dprintk(
-			"[%s] error unbinding cooling dev\n", __func__);
+// 	// if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
+// 	// 	mtktspa_dprintk(
+// 	// 		"[%s] error unbinding cooling dev\n", __func__);
 
-		return -EINVAL;
-	}
+// 	// 	return -EINVAL;
+// 	// }
 
-	mtktspa_dprintk("[%s] unbinding OK\n", __func__);
-	return 0;
-}
+// 	mtktspa_dprintk("[%s] unbinding OK\n", __func__);
+// 	return 0;
+// }
 
 
 static int mtktspa_change_mode(
@@ -367,10 +367,17 @@ struct thermal_zone_device *thermal, int *temperature)
 	return 0;
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 /* bind callback functions to thermalzone */
 static struct thermal_zone_device_ops mtktspa_dev_ops = {
-	.bind = mtktspa_bind,
-	.unbind = mtktspa_unbind,
+	.should_bind = mtk_thermal_should_bind,
 	.get_temp = mtktspa_get_temp,
 	.change_mode = mtktspa_change_mode,
 	.get_crit_temp = mtktspa_get_crit_temp,

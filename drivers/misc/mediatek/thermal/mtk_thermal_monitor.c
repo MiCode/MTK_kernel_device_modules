@@ -1141,141 +1141,141 @@ void  mtkthermal_exit(void)
 /*
  * .bind wrapper: bind the thermal zone device with a thermal cooling device.
  */
-static int mtk_thermal_wrapper_bind
-(struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int ret = 0;
-	struct thermal_zone_device_ops *ops;
+// static int mtk_thermal_wrapper_bind
+// (struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int ret = 0;
+// 	struct thermal_zone_device_ops *ops;
 
-	/* WARNING! bind will invoke
-	 * mtk_thermal_zone_bind_cooling_device_wrapper(),
-	 * so don't rollback cooler's devdata in this bind...
-	 */
+// 	/* WARNING! bind will invoke
+// 	 * mtk_thermal_zone_bind_cooling_device_wrapper(),
+// 	 * so don't rollback cooler's devdata in this bind...
+// 	 */
 
-#if MTK_THERMAL_MONITOR_CONDITIONAL_COOLING
-	{
-		int i = 0;
-		struct mtk_thermal_cooler_data *cldata = NULL;
+// #if MTK_THERMAL_MONITOR_CONDITIONAL_COOLING
+// 	{
+// 		int i = 0;
+// 		struct mtk_thermal_cooler_data *cldata = NULL;
 
-		mutex_lock(&MTM_COOLER_LOCK);
-		cldata = cdev->devdata;
-		mutex_unlock(&MTM_COOLER_LOCK);
+// 		mutex_lock(&MTM_COOLER_LOCK);
+// 		cldata = cdev->devdata;
+// 		mutex_unlock(&MTM_COOLER_LOCK);
 
-		for (; i < MTK_THERMAL_MONITOR_COOLER_MAX_EXTRA_CONDITIONS;
-		i++) {
-			if ((cldata->conditions[i][0] != 0x0) &&
-				(cldata->condition_last_value[i]) == NULL) {
+// 		for (; i < MTK_THERMAL_MONITOR_COOLER_MAX_EXTRA_CONDITIONS;
+// 		i++) {
+// 			if ((cldata->conditions[i][0] != 0x0) &&
+// 				(cldata->condition_last_value[i]) == NULL) {
 
-				if (strncmp(cldata->conditions[i],
-					thermal->type, 20) == 0) {
+// 				if (strncmp(cldata->conditions[i],
+// 					thermal->type, 20) == 0) {
 
-					cldata->condition_last_value[i] =
-							&(thermal->temperature);
+// 					cldata->condition_last_value[i] =
+// 							&(thermal->temperature);
 
-					THRML_LOG(
-						"[.bind]condition+ tz: %s cdev: %s condition: %s\n",
-						thermal->type, cdev->type,
-						cldata->conditions[i]);
-				}
-			}
-		}
-	}
-#endif
+// 					THRML_LOG(
+// 						"[.bind]condition+ tz: %s cdev: %s condition: %s\n",
+// 						thermal->type, cdev->type,
+// 						cldata->conditions[i]);
+// 				}
+// 			}
+// 		}
+// 	}
+// #endif
 
-	/* Bind Relationship to StoreLogger */
-	THRML_LOG("[.bind]+ tz: %s cdev: %s tz_data:%p cl_data:%p\n",
-	thermal->type, cdev->type, thermal->devdata, cdev->devdata);
+// 	/* Bind Relationship to StoreLogger */
+// 	THRML_LOG("[.bind]+ tz: %s cdev: %s tz_data:%p cl_data:%p\n",
+// 	thermal->type, cdev->type, thermal->devdata, cdev->devdata);
 
-	ops = getClientZoneOps(thermal);
+// 	ops = getClientZoneOps(thermal);
 
-	if (!ops) {
-		THRML_ERROR_LOG(
-			"[.bind]E tz: %s unregistered.\n", thermal->type);
+// 	if (!ops) {
+// 		THRML_ERROR_LOG(
+// 			"[.bind]E tz: %s unregistered.\n", thermal->type);
 
-		return 1;
-	}
+// 		return 1;
+// 	}
 
-	if (ops->bind)
-		ops->bind(thermal, cdev);
+// 	// if (ops->bind)
+// 	// 	ops->bind(thermal, cdev);
 
-	/* Bind Relationship to StoreLogger */
-	THRML_LOG("[.bind]- tz: %s cdev: %s tz_data:%p cl_data:%p\n",
-		thermal->type, cdev->type, thermal->devdata, cdev->devdata);
+// 	/* Bind Relationship to StoreLogger */
+// 	THRML_LOG("[.bind]- tz: %s cdev: %s tz_data:%p cl_data:%p\n",
+// 		thermal->type, cdev->type, thermal->devdata, cdev->devdata);
 
-	/* Log in mtk_thermal_zone_bind_cooling_device_wrapper() */
-	/* THRML_STORAGE_LOG(THRML_LOGGER_MSG_BIND, bind, thermal->type,
-	 *							cdev->type);
-	 */
+// 	/* Log in mtk_thermal_zone_bind_cooling_device_wrapper() */
+// 	/* THRML_STORAGE_LOG(THRML_LOGGER_MSG_BIND, bind, thermal->type,
+// 	 *							cdev->type);
+// 	 */
 
-	return ret;
-}
+// 	return ret;
+// }
 
 /*
  *.unbind wrapper: unbind the thermal zone device with a thermal cooling device.
  */
-static int mtk_thermal_wrapper_unbind
-(struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int ret = 0;
-	struct thermal_zone_device_ops *ops;
+// static int mtk_thermal_wrapper_unbind
+// (struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int ret = 0;
+// 	struct thermal_zone_device_ops *ops;
 
-#if MTK_THERMAL_MONITOR_CONDITIONAL_COOLING
-	{
-		int i = 0;
-		struct mtk_thermal_cooler_data *cldata = NULL;
+// #if MTK_THERMAL_MONITOR_CONDITIONAL_COOLING
+// 	{
+// 		int i = 0;
+// 		struct mtk_thermal_cooler_data *cldata = NULL;
 
-		mutex_lock(&MTM_COOLER_LOCK);
-		cldata = cdev->devdata;
-		mutex_unlock(&MTM_COOLER_LOCK);
+// 		mutex_lock(&MTM_COOLER_LOCK);
+// 		cldata = cdev->devdata;
+// 		mutex_unlock(&MTM_COOLER_LOCK);
 
-		/* Clear cldata->tz */
-		if (thermal == cldata->tz) {
-			/* clear the state of cooler bounded first... */
-			if (cdev->ops) {
-				int tmp_exit_pt = cldata->exit_threshold;
+// 		/* Clear cldata->tz */
+// 		if (thermal == cldata->tz) {
+// 			/* clear the state of cooler bounded first... */
+// 			if (cdev->ops) {
+// 				int tmp_exit_pt = cldata->exit_threshold;
 
-				cldata->exit_threshold = 0;
-				cdev->ops->set_cur_state(cdev, 0);
-				cldata->exit_threshold = tmp_exit_pt;
-			}
+// 				cldata->exit_threshold = 0;
+// 				cdev->ops->set_cur_state(cdev, 0);
+// 				cldata->exit_threshold = tmp_exit_pt;
+// 			}
 
-			cldata->tz = NULL;
-			cldata->trip = 0;
-		}
+// 			cldata->tz = NULL;
+// 			cldata->trip = 0;
+// 		}
 
-		for (; i < MTK_THERMAL_MONITOR_COOLER_MAX_EXTRA_CONDITIONS;
-		i++) {
-			if ((cldata->condition_last_value[i] != NULL) &&
-				(&(thermal->temperature) ==
-				cldata->condition_last_value[i])) {
+// 		for (; i < MTK_THERMAL_MONITOR_COOLER_MAX_EXTRA_CONDITIONS;
+// 		i++) {
+// 			if ((cldata->condition_last_value[i] != NULL) &&
+// 				(&(thermal->temperature) ==
+// 				cldata->condition_last_value[i])) {
 
-				cldata->condition_last_value[i] = NULL;
-				THRML_LOG(
-					"[.unbind]condition- tz: %s cdev: %s condition: %s\n",
-					thermal->type, cdev->type,
-					cldata->conditions[i]);
-			}
-		}
-	}
-#endif
+// 				cldata->condition_last_value[i] = NULL;
+// 				THRML_LOG(
+// 					"[.unbind]condition- tz: %s cdev: %s condition: %s\n",
+// 					thermal->type, cdev->type,
+// 					cldata->conditions[i]);
+// 			}
+// 		}
+// 	}
+// #endif
 
-	THRML_LOG("[.unbind]+ tz: %s cdev: %s\n", thermal->type, cdev->type);
+// 	THRML_LOG("[.unbind]+ tz: %s cdev: %s\n", thermal->type, cdev->type);
 
-	ops = getClientZoneOps(thermal);
+// 	ops = getClientZoneOps(thermal);
 
-	if (!ops) {
-		THRML_ERROR_LOG("[.unbind]E tz: %s unregistered.\n",
-							thermal->type);
-		return 1;
-	}
+// 	if (!ops) {
+// 		THRML_ERROR_LOG("[.unbind]E tz: %s unregistered.\n",
+// 							thermal->type);
+// 		return 1;
+// 	}
 
-	if (ops->unbind)
-		ret = ops->unbind(thermal, cdev);
+// 	// if (ops->unbind)
+// 	// 	ret = ops->unbind(thermal, cdev);
 
-	THRML_LOG("[.unbind]- tz: %s cdev: %s\n", thermal->type, cdev->type);
+// 	THRML_LOG("[.unbind]- tz: %s cdev: %s\n", thermal->type, cdev->type);
 
-	return ret;
-}
+// 	return ret;
+// }
 
 /*
  * .get_temp wrapper: get the current temperature of the thermal zone.
@@ -1407,8 +1407,8 @@ static int mtk_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip_id
 
 /* Wrapper callback OPS */
 static struct thermal_zone_device_ops mtk_thermal_wrapper_dev_ops = {
-	.bind = mtk_thermal_wrapper_bind,
-	.unbind = mtk_thermal_wrapper_unbind,
+	// .bind = mtk_thermal_wrapper_bind,
+	// .unbind = mtk_thermal_wrapper_unbind,
 	.get_temp = mtk_thermal_wrapper_get_temp,
 	.change_mode = mtk_thermal_wrapper_change_mode,
 	.get_crit_temp = mtk_thermal_wrapper_get_crit_temp,
@@ -1588,10 +1588,10 @@ int trip, struct thermal_cooling_device *cdev)
 	THRML_LOG("%s thermal_type:%s trip:%d cdev_type:%s  ret:%d\n", __func__,
 			thermal->type, trip, cdev->type, ret);
 
-	ret =
-		thermal_zone_bind_cooling_device(thermal, trip, cdev,
-			THERMAL_NO_LIMIT, THERMAL_NO_LIMIT,
-			THERMAL_WEIGHT_DEFAULT);
+	// ret =
+	// 	thermal_zone_bind_cooling_device(thermal, trip, cdev,
+	// 		THERMAL_NO_LIMIT, THERMAL_NO_LIMIT,
+	// 		THERMAL_WEIGHT_DEFAULT);
 
 	if (ret) {
 		/* THRML_ERROR_LOG("thermal_zone_bind_cooling_device Fail.

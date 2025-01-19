@@ -170,82 +170,82 @@ static int mtktscharger2_get_temp(struct thermal_zone_device *thermal, int *t)
 	return 0;
 }
 
-static int mtktscharger2_bind(
-struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int mtktscharger2_bind(
+// struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0))
-		table_val = 0;
-	else if (!strcmp(cdev->type, g_bind1))
-		table_val = 1;
-	else if (!strcmp(cdev->type, g_bind2))
-		table_val = 2;
-	else if (!strcmp(cdev->type, g_bind3))
-		table_val = 3;
-	else if (!strcmp(cdev->type, g_bind4))
-		table_val = 4;
-	else if (!strcmp(cdev->type, g_bind5))
-		table_val = 5;
-	else if (!strcmp(cdev->type, g_bind6))
-		table_val = 6;
-	else if (!strcmp(cdev->type, g_bind7))
-		table_val = 7;
-	else if (!strcmp(cdev->type, g_bind8))
-		table_val = 8;
-	else if (!strcmp(cdev->type, g_bind9))
-		table_val = 9;
-	else
-		return 0;
+// 	if (!strcmp(cdev->type, g_bind0))
+// 		table_val = 0;
+// 	else if (!strcmp(cdev->type, g_bind1))
+// 		table_val = 1;
+// 	else if (!strcmp(cdev->type, g_bind2))
+// 		table_val = 2;
+// 	else if (!strcmp(cdev->type, g_bind3))
+// 		table_val = 3;
+// 	else if (!strcmp(cdev->type, g_bind4))
+// 		table_val = 4;
+// 	else if (!strcmp(cdev->type, g_bind5))
+// 		table_val = 5;
+// 	else if (!strcmp(cdev->type, g_bind6))
+// 		table_val = 6;
+// 	else if (!strcmp(cdev->type, g_bind7))
+// 		table_val = 7;
+// 	else if (!strcmp(cdev->type, g_bind8))
+// 		table_val = 8;
+// 	else if (!strcmp(cdev->type, g_bind9))
+// 		table_val = 9;
+// 	else
+// 		return 0;
 
-	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
-		mtktscharger2_dprintk("%s error binding %s\n", __func__,
-								cdev->type);
-		return -EINVAL;
-	}
+// 	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
+// 		mtktscharger2_dprintk("%s error binding %s\n", __func__,
+// 								cdev->type);
+// 		return -EINVAL;
+// 	}
 
-	mtktscharger2_dprintk("%s binding %s at %d\n", __func__, cdev->type,
-								table_val);
-	return 0;
-}
+// 	mtktscharger2_dprintk("%s binding %s at %d\n", __func__, cdev->type,
+// 								table_val);
+// 	return 0;
+// }
 
-static int mtktscharger2_unbind(struct thermal_zone_device *thermal,
-			    struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int mtktscharger2_unbind(struct thermal_zone_device *thermal,
+// 			    struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0))
-		table_val = 0;
-	else if (!strcmp(cdev->type, g_bind1))
-		table_val = 1;
-	else if (!strcmp(cdev->type, g_bind2))
-		table_val = 2;
-	else if (!strcmp(cdev->type, g_bind3))
-		table_val = 3;
-	else if (!strcmp(cdev->type, g_bind4))
-		table_val = 4;
-	else if (!strcmp(cdev->type, g_bind5))
-		table_val = 5;
-	else if (!strcmp(cdev->type, g_bind6))
-		table_val = 6;
-	else if (!strcmp(cdev->type, g_bind7))
-		table_val = 7;
-	else if (!strcmp(cdev->type, g_bind8))
-		table_val = 8;
-	else if (!strcmp(cdev->type, g_bind9))
-		table_val = 9;
-	else
-		return 0;
+// 	if (!strcmp(cdev->type, g_bind0))
+// 		table_val = 0;
+// 	else if (!strcmp(cdev->type, g_bind1))
+// 		table_val = 1;
+// 	else if (!strcmp(cdev->type, g_bind2))
+// 		table_val = 2;
+// 	else if (!strcmp(cdev->type, g_bind3))
+// 		table_val = 3;
+// 	else if (!strcmp(cdev->type, g_bind4))
+// 		table_val = 4;
+// 	else if (!strcmp(cdev->type, g_bind5))
+// 		table_val = 5;
+// 	else if (!strcmp(cdev->type, g_bind6))
+// 		table_val = 6;
+// 	else if (!strcmp(cdev->type, g_bind7))
+// 		table_val = 7;
+// 	else if (!strcmp(cdev->type, g_bind8))
+// 		table_val = 8;
+// 	else if (!strcmp(cdev->type, g_bind9))
+// 		table_val = 9;
+// 	else
+// 		return 0;
 
-	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
-		mtktscharger2_dprintk("%s error unbinding %s\n", __func__,
-								cdev->type);
-		return -EINVAL;
-	}
+// 	// if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
+// 	// 	mtktscharger2_dprintk("%s error unbinding %s\n", __func__,
+// 	// 							cdev->type);
+// 	// 	return -EINVAL;
+// 	// }
 
-	mtktscharger2_dprintk("%s unbinding OK\n", __func__);
-	return 0;
-}
+// 	mtktscharger2_dprintk("%s unbinding OK\n", __func__);
+// 	return 0;
+// }
 
 
 static int mtktscharger2_change_mode(
@@ -263,10 +263,17 @@ struct thermal_zone_device *thermal, int *temperature)
 	return 0;
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 /* bind callback functions to thermalzone */
 static struct thermal_zone_device_ops mtktscharger2_dev_ops = {
-	.bind = mtktscharger2_bind,
-	.unbind = mtktscharger2_unbind,
+	.should_bind = mtk_thermal_should_bind,
 	.get_temp = mtktscharger2_get_temp,
 	.change_mode = mtktscharger2_change_mode,
 	.get_crit_temp = mtktscharger2_get_crit_temp,

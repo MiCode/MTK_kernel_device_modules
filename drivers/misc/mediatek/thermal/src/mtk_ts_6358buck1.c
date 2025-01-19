@@ -92,102 +92,102 @@ static int mt6358tsbuck1_get_temp(struct thermal_zone_device *thermal, int *t)
 	return 0;
 }
 
-static int mt6358tsbuck1_bind
-(struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int mt6358tsbuck1_bind
+// (struct thermal_zone_device *thermal, struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0)) {
-		table_val = 0;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind1)) {
-		table_val = 1;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind2)) {
-		table_val = 2;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind3)) {
-		table_val = 3;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind4)) {
-		table_val = 4;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind5)) {
-		table_val = 5;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind6)) {
-		table_val = 6;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind7)) {
-		table_val = 7;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind8)) {
-		table_val = 8;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind9)) {
-		table_val = 9;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else {
-		return 0;
-	}
+// 	if (!strcmp(cdev->type, g_bind0)) {
+// 		table_val = 0;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind1)) {
+// 		table_val = 1;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind2)) {
+// 		table_val = 2;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind3)) {
+// 		table_val = 3;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind4)) {
+// 		table_val = 4;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind5)) {
+// 		table_val = 5;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind6)) {
+// 		table_val = 6;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind7)) {
+// 		table_val = 7;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind8)) {
+// 		table_val = 8;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind9)) {
+// 		table_val = 9;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else {
+// 		return 0;
+// 	}
 
-	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
-		mtktspmic_info(
-			"[%s] error binding cooling dev\n", __func__);
-		return -EINVAL;
-	}
+// 	if (mtk_thermal_zone_bind_cooling_device(thermal, table_val, cdev)) {
+// 		mtktspmic_info(
+// 			"[%s] error binding cooling dev\n", __func__);
+// 		return -EINVAL;
+// 	}
 
-	mtktspmic_dprintk("[%s] binding OK, %d\n", __func__, table_val);
-	return 0;
-}
+// 	mtktspmic_dprintk("[%s] binding OK, %d\n", __func__, table_val);
+// 	return 0;
+// }
 
-static int mt6358tsbuck1_unbind(struct thermal_zone_device *thermal,
-			    struct thermal_cooling_device *cdev)
-{
-	int table_val = 0;
+// static int mt6358tsbuck1_unbind(struct thermal_zone_device *thermal,
+// 			    struct thermal_cooling_device *cdev)
+// {
+// 	int table_val = 0;
 
-	if (!strcmp(cdev->type, g_bind0)) {
-		table_val = 0;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind1)) {
-		table_val = 1;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind2)) {
-		table_val = 2;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind3)) {
-		table_val = 3;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind4)) {
-		table_val = 4;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind5)) {
-		table_val = 5;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind6)) {
-		table_val = 6;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind7)) {
-		table_val = 7;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind8)) {
-		table_val = 8;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else if (!strcmp(cdev->type, g_bind9)) {
-		table_val = 9;
-		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
-	} else
-		return 0;
+// 	if (!strcmp(cdev->type, g_bind0)) {
+// 		table_val = 0;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind1)) {
+// 		table_val = 1;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind2)) {
+// 		table_val = 2;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind3)) {
+// 		table_val = 3;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind4)) {
+// 		table_val = 4;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind5)) {
+// 		table_val = 5;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind6)) {
+// 		table_val = 6;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind7)) {
+// 		table_val = 7;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind8)) {
+// 		table_val = 8;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else if (!strcmp(cdev->type, g_bind9)) {
+// 		table_val = 9;
+// 		mtktspmic_dprintk("[%s] %s\n", __func__, cdev->type);
+// 	} else
+// 		return 0;
 
-	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
-		mtktspmic_info(
-			"[%s] error unbinding cooling dev\n", __func__);
-		return -EINVAL;
-	}
+// 	if (thermal_zone_unbind_cooling_device(thermal, table_val, cdev)) {
+// 		mtktspmic_info(
+// 			"[%s] error unbinding cooling dev\n", __func__);
+// 		return -EINVAL;
+// 	}
 
-	mtktspmic_dprintk("[%s] unbinding OK\n", __func__);
-	return 0;
-}
+// 	mtktspmic_dprintk("[%s] unbinding OK\n", __func__);
+// 	return 0;
+// }
 
 
 static int mt6358tsbuck1_change_mode
@@ -204,10 +204,19 @@ static int mt6358tsbuck1_get_crit_temp
 	return 0;
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 /* bind callback functions to thermalzone */
 static struct thermal_zone_device_ops mt6358tsbuck1_dev_ops = {
-	.bind = mt6358tsbuck1_bind,
-	.unbind = mt6358tsbuck1_unbind,
+	.should_bind = mtk_thermal_should_bind,
+	// .bind = mt6358tsbuck1_bind,
+	// .unbind = mt6358tsbuck1_unbind,
 	.get_temp = mt6358tsbuck1_get_temp,
 	.change_mode = mt6358tsbuck1_change_mode,
 	.get_crit_temp = mt6358tsbuck1_get_crit_temp,

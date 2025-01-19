@@ -522,116 +522,116 @@ static void wmt_cal_stats(struct timer_list *t)
 	//return 0;
 }
 
-static int wmt_thz_bind(struct thermal_zone_device *thz_dev,
-			struct thermal_cooling_device *cool_dev)
-{
-	struct linux_thermal_ctrl_if *p_linux_if __maybe_unused = 0;
-	int table_val = 0;
+// static int wmt_thz_bind(struct thermal_zone_device *thz_dev,
+// 			struct thermal_cooling_device *cool_dev)
+// {
+// 	struct linux_thermal_ctrl_if *p_linux_if __maybe_unused = 0;
+// 	int table_val = 0;
 
-	wmt_tm_dprintk("%s\n", __func__);
+// 	wmt_tm_dprintk("%s\n", __func__);
 
-	if (pg_wmt_tm)
-		p_linux_if = &pg_wmt_tm->linux_if;
-	else
-		return -EINVAL;
+// 	if (pg_wmt_tm)
+// 		p_linux_if = &pg_wmt_tm->linux_if;
+// 	else
+// 		return -EINVAL;
 
-	if (!strcmp(cool_dev->type, g_bind0)) {
-		table_val = 0;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind1)) {
-		table_val = 1;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind2)) {
-		table_val = 2;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind3)) {
-		table_val = 3;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind4)) {
-		table_val = 4;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind5)) {
-		table_val = 5;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind6)) {
-		table_val = 6;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind7)) {
-		table_val = 7;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind8)) {
-		table_val = 8;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind9)) {
-		table_val = 9;
-		wmt_tm_dprintk("[%s] %s\n", __func__, cool_dev->type);
-	} else
-		return 0;
+// 	if (!strcmp(cool_dev->type, g_bind0)) {
+// 		table_val = 0;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind1)) {
+// 		table_val = 1;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind2)) {
+// 		table_val = 2;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind3)) {
+// 		table_val = 3;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind4)) {
+// 		table_val = 4;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind5)) {
+// 		table_val = 5;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind6)) {
+// 		table_val = 6;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind7)) {
+// 		table_val = 7;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind8)) {
+// 		table_val = 8;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind9)) {
+// 		table_val = 9;
+// 		wmt_tm_dprintk("[%s] %s\n", __func__, cool_dev->type);
+// 	} else
+// 		return 0;
 
-	if (mtk_thermal_zone_bind_cooling_device(
-		thz_dev, table_val, cool_dev)) {
-		wmt_tm_info("%s binding fail\n", __func__);
-		return -EINVAL;
-	}
+// 	if (mtk_thermal_zone_bind_cooling_device(
+// 		thz_dev, table_val, cool_dev)) {
+// 		wmt_tm_info("%s binding fail\n", __func__);
+// 		return -EINVAL;
+// 	}
 
-	wmt_tm_dprintk("%s binding OK\n", __func__);
-	return 0;
-}
+// 	wmt_tm_dprintk("%s binding OK\n", __func__);
+// 	return 0;
+// }
 
-static int wmt_thz_unbind(struct thermal_zone_device *thz_dev,
-			  struct thermal_cooling_device *cool_dev)
-{
-	struct linux_thermal_ctrl_if *p_linux_if __maybe_unused = 0;
-	int table_val = 0;
+// static int wmt_thz_unbind(struct thermal_zone_device *thz_dev,
+// 			  struct thermal_cooling_device *cool_dev)
+// {
+// 	struct linux_thermal_ctrl_if *p_linux_if __maybe_unused = 0;
+// 	int table_val = 0;
 
-	wmt_tm_dprintk("%s\n", __func__);
+// 	wmt_tm_dprintk("%s\n", __func__);
 
-	if (pg_wmt_tm)
-		p_linux_if = &pg_wmt_tm->linux_if;
-	else
-		return -EINVAL;
+// 	if (pg_wmt_tm)
+// 		p_linux_if = &pg_wmt_tm->linux_if;
+// 	else
+// 		return -EINVAL;
 
-	if (!strcmp(cool_dev->type, g_bind0)) {
-		table_val = 0;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind1)) {
-		table_val = 1;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind2)) {
-		table_val = 2;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind3)) {
-		table_val = 3;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind4)) {
-		table_val = 4;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind5)) {
-		table_val = 5;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind6)) {
-		table_val = 6;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind7)) {
-		table_val = 7;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind8)) {
-		table_val = 8;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else if (!strcmp(cool_dev->type, g_bind9)) {
-		table_val = 9;
-		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
-	} else
-		return 0;
+// 	if (!strcmp(cool_dev->type, g_bind0)) {
+// 		table_val = 0;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind1)) {
+// 		table_val = 1;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind2)) {
+// 		table_val = 2;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind3)) {
+// 		table_val = 3;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind4)) {
+// 		table_val = 4;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind5)) {
+// 		table_val = 5;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind6)) {
+// 		table_val = 6;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind7)) {
+// 		table_val = 7;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind8)) {
+// 		table_val = 8;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else if (!strcmp(cool_dev->type, g_bind9)) {
+// 		table_val = 9;
+// 		wmt_tm_dprintk("%s %s\n", __func__, cool_dev->type);
+// 	} else
+// 		return 0;
 
-	if (thermal_zone_unbind_cooling_device(thz_dev, table_val, cool_dev)) {
-		wmt_tm_info("%s error unbinding cooling dev\n", __func__);
-		return -EINVAL;
-	}
+// 	if (thermal_zone_unbind_cooling_device(thz_dev, table_val, cool_dev)) {
+// 		wmt_tm_info("%s error unbinding cooling dev\n", __func__);
+// 		return -EINVAL;
+// 	}
 
-	wmt_tm_dprintk("%s unbinding OK\n", __func__);
-	return 0;
-}
+// 	wmt_tm_dprintk("%s unbinding OK\n", __func__);
+// 	return 0;
+// }
 
 static int wmt_thz_get_temp(struct thermal_zone_device *thz_dev, int *pv)
 {
@@ -1449,9 +1449,16 @@ static void mtkts_wmt_start_thermal_timer(void)
 	up(&sem_mutex);
 }
 
+static bool mtk_thermal_should_bind(struct thermal_zone_device *tz,
+				   const struct thermal_trip *trip,
+				   struct thermal_cooling_device *cdev,
+				   struct cooling_spec *c)
+{
+	return true;
+}
+
 static struct thermal_zone_device_ops wmt_thz_dev_ops = {
-	.bind = wmt_thz_bind,
-	.unbind = wmt_thz_unbind,
+	.should_bind = mtk_thermal_should_bind,
 	.get_temp = wmt_thz_get_temp,
 	.change_mode = wmt_thz_change_mode,
 	.get_crit_temp = wmt_thz_get_crit_temp,
