@@ -107,7 +107,10 @@ static struct task_struct *pick_task_dl_clone(struct rq *rq)
 		return NULL;
 
 	dl_se = pick_next_dl_entity_clone(dl_rq);
-	WARN_ON_ONCE(!dl_se);
+
+	/* Add NULL check for coverity */
+	if (!dl_se)
+		return NULL;
 
 	if (dl_se->dl_server)
 		return NULL;
