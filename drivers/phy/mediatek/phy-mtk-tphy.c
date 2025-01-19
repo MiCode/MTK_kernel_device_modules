@@ -1591,13 +1591,16 @@ static void u3_phy_instance_power_off(struct mtk_tphy *tphy,
 	struct mtk_phy_instance *instance)
 {
 	struct u3phy_banks *bank = &instance->u3_banks;
+	enum phy_mode mode = instance->phy->attrs.mode;
 	u32 index = instance->index;
 
-	mtk_phy_set_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLD,
+	if (mode !=  PHY_MODE_USB_HOST) {
+		mtk_phy_set_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLD,
 			 P3C_FORCE_IP_SW_RST | P3C_REG_IP_SW_RST);
 
-	mtk_phy_set_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLE,
+		mtk_phy_set_bits(bank->chip + U3P_U3_CHIP_GPIO_CTLE,
 			 P3C_RG_SWRST_U3_PHYD_FORCE_EN | P3C_RG_SWRST_U3_PHYD);
+	}
 
 	dev_info(tphy->dev, "%s(%d)\n", __func__, index);
 }
