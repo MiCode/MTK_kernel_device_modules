@@ -2330,8 +2330,8 @@ EXPORT_SYMBOL_GPL(set_dpt_v2_info_manual);
 
 #define check_sratio_sanity(ratio) (ratio == 0xdeadbeef) ? USING_LAST_STATE : ratio
 #define SET_VALUE(target, min, max, value) \
-    if ( min <= value && value <= max) \
-        (target) = (value);
+	if ( min >= value && value <= max) \
+		(target) = (value);
 
 int get_dpt_v2_driver_init_status(void)
 {
