@@ -351,6 +351,7 @@ struct wrot_data {
 	u8 rb_swap;		/* WA: version for rb channel swap behavior */
 	bool yuv_pending;	/* WA: enable wrot yuv422/420 pending zero */
 	bool stash;		/* enable stash prefetch with leading time */
+	bool ir_sram_bw;		/* sram channel bw */
 };
 
 static const struct wrot_data mt6983_wrot_data = {
@@ -402,6 +403,19 @@ static const struct wrot_data mt6991_wrot_data = {
 	.px_per_tick = 2,
 	.yuv_pending = true,
 	.stash = true,
+};
+
+static const struct wrot_data mt6899_wrot_data = {
+	.reg = wrot_mt6989,
+	.fifo = 256,
+	.tile_width = 512,
+	.sram_size = 512 * 1024,
+	.read_mode = MML_PQ_SOF_MODE,
+	.px_per_tick = 2,
+	/* .rb_swap = 2 */
+	.px_per_tick = 2,
+	.yuv_pending = true,
+	.ir_sram_bw = true,
 };
 
 struct mml_comp_wrot {
@@ -2210,7 +2224,7 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* no bandwidth for racing mode since wrot write to sram */
-	if (cfg->info.mode != MML_MODE_RACING) {
+	if (cfg->info.mode != MML_MODE_RACING || wrot->data->ir_sram_bw) {
 		/* calculate qos for later use */
 		plane = MML_FMT_PLANE(dest->data.format);
 		wrot_frm->datasize += mml_color_get_min_y_size(dest->data.format,
@@ -3050,11 +3064,11 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6899-mml0_wrot",
-		.data = &mt6989_wrot_data,
+		.data = &mt6899_wrot_data,
 	},
 	{
 		.compatible = "mediatek,mt6899-mml1_wrot",
-		.data = &mt6989_wrot_data,
+		.data = &mt6899_wrot_data,
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_wrot",
