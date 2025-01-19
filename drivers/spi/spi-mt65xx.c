@@ -1250,10 +1250,40 @@ static bool mtk_spi_can_dma(struct spi_controller *ctrl,
 			    struct spi_device *spi,
 			    struct spi_transfer *xfer)
 {
-	/* Buffers for DMA transactions must be 4-byte aligned */
-	return (xfer->len > MTK_SPI_MAX_FIFO_SIZE &&
-		(unsigned long)xfer->tx_buf % 4 == 0 &&
-		(unsigned long)xfer->rx_buf % 4 == 0);
+	/* Buffers for DMA transactions must be cacheline aligned */
+	u32 dcache_line_size = 0;
+	bool vmalloced_buf = false;
+	bool kmap_buf = false;
+
+	if (xfer->len <= MTK_SPI_MAX_FIFO_SIZE)
+		return false;
+
+	dcache_line_size = (u32)cache_line_size();
+	vmalloced_buf = (is_vmalloc_addr(xfer->tx_buf) ||
+		              is_vmalloc_addr(xfer->rx_buf));
+#ifdef CONFIG_HIGHMEM
+	kmap_buf = ((unsigned long)xfer->tx_buf >= PKMAP_BASE &&
+				(unsigned long)xfer->tx_buf < (PKMAP_BASE +
+				(LAST_PKMAP * PAGE_SIZE)) &&
+				(unsigned long)xfer->rx_buf >= PKMAP_BASE &&
+				(unsigned long)xfer->rx_buf < (PKMAP_BASE +
+				(LAST_PKMAP * PAGE_SIZE)));
+#endif
+	/* The VA address at the beginning of DMA must be cacheline aligned,
+	 * otherwise there will be cache consistency issues. The addresses given
+	 * by vmalloc and kmap are not necessarily cacheline aligned, but the
+	 * addresses given by kmalloc are cacheline aligned. At the same time,
+	 * if the buffer is sent in the form of a global array plus an offset,
+	 * it cannot be guaranteed to be cacheline aligned. Therefore, first
+	 * we need to judge the properties of the address, then check VA to
+	 * ensure cacheline alignment, finally triggering DMA transmission.
+	 */
+	if (vmalloced_buf || kmap_buf) {
+		dev_info(&spi->dev, "buf is from nonliner mapped area,plz use kmalloc!\n");
+		return false;
+	} else
+		return (IS_ALIGNED((size_t)xfer->tx_buf, dcache_line_size) &&
+				IS_ALIGNED((size_t)xfer->rx_buf, dcache_line_size));
 }
 
 static int mtk_spi_setup(struct spi_device *spi)
@@ -1486,6 +1516,10 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 	u32 reg_val, nio, tx_size, reg_val2;
 	char *tx_tmp_buf, *rx_tmp_buf;
 	int ret = 0;
+	bool rx_need_cpy = false;
+	u32 dcache_line_size = (u32)cache_line_size();
+	bool vmalloced_buf = false;
+	bool kmap_buf = false;
 
 	mdata->use_spimem = true;
 	reinit_completion(&mdata->spimem_done);
@@ -1587,7 +1621,19 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 	}
 
 	if (op->data.dir == SPI_MEM_DATA_IN) {
-		if (!IS_ALIGNED((size_t)op->data.buf.in, 4)) {
+		vmalloced_buf = is_vmalloc_addr(op->data.buf.in);
+#ifdef CONFIG_HIGHMEM
+		kmap_buf = ((unsigned long)op->data.buf.in >= PKMAP_BASE &&
+					(unsigned long)op->data.buf.in < (PKMAP_BASE +
+					(LAST_PKMAP * PAGE_SIZE)));
+#endif
+		/* Same as can_dma judgment logic, this also needs to judge the
+		 * buffer to avoid cache coherency issues.
+		 */
+		rx_need_cpy = (!IS_ALIGNED((size_t)op->data.buf.in, dcache_line_size) ||
+						vmalloced_buf || kmap_buf);
+
+		if (rx_need_cpy) {
 			rx_tmp_buf = kzalloc(op->data.nbytes,
 					     GFP_KERNEL | GFP_DMA);
 			if (!rx_tmp_buf) {
@@ -1636,12 +1682,11 @@ unmap_rx_dma:
 	if (op->data.dir == SPI_MEM_DATA_IN) {
 		dma_unmap_single(mdata->dev, mdata->rx_dma,
 				 op->data.nbytes, DMA_FROM_DEVICE);
-		if (!IS_ALIGNED((size_t)op->data.buf.in, 4))
+		if (rx_need_cpy)
 			memcpy(op->data.buf.in, rx_tmp_buf, op->data.nbytes);
 	}
 kfree_rx_tmp_buf:
-	if (op->data.dir == SPI_MEM_DATA_IN &&
-	    !IS_ALIGNED((size_t)op->data.buf.in, 4))
+	if (op->data.dir == SPI_MEM_DATA_IN && rx_need_cpy)
 		kfree(rx_tmp_buf);
 unmap_tx_dma:
 	dma_unmap_single(mdata->dev, mdata->tx_dma,
