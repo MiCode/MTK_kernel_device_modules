@@ -522,6 +522,15 @@ static int ise_lpm_probe(struct platform_device *pdev)
 
 		/* System wakelock */
 		ise_wakelock = wakeup_source_register(NULL, "ise_lpm wakelock");
+	} else {
+		ise_lpm_dev = &pdev->dev;
+		pm_runtime_enable(ise_lpm_dev);
+		ret = pm_runtime_resume_and_get(ise_lpm_dev);
+		if (ret)
+			pr_notice("pm_runtime_resume_and_get failed, ret=%d\n", ret);
+		ret = pm_runtime_put_sync(ise_lpm_dev);
+		if (ret)
+			pr_notice("pm_runtime_put_sync failed, ret=%d\n", ret);
 	}
 
 	if (ise_lpm_freerun_en) {
