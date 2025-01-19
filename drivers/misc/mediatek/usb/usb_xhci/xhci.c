@@ -4294,7 +4294,8 @@ out:
 	return ret;
 }
 
-int xhci_address_device_(struct usb_hcd *hcd, struct usb_device *udev)
+int xhci_address_device_(struct usb_hcd *hcd, struct usb_device *udev,
+			       unsigned int timeout_ms)
 {
 	return xhci_setup_device(hcd, udev, SETUP_CONTEXT_ADDRESS);
 }

@@ -1982,7 +1982,8 @@ struct xhci_driver_overrides {
 			    struct usb_tt *tt, gfp_t mem_flags);
 	int (*hub_control)(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 				u16 wIndex, char *buf, u16 wLength);
-	int (*address_device)(struct usb_hcd *hcd, struct usb_device *udev);
+	int (*address_device)(struct usb_hcd *hcd, struct usb_device *udev,
+				  unsigned int timeout_ms);
 	int (*bus_suspend)(struct usb_hcd *hcd);
 	int (*bus_resume)(struct usb_hcd *hcd);
 
@@ -2180,7 +2181,8 @@ int xhci_check_bandwidth_(struct usb_hcd *hcd, struct usb_device *udev);
 void xhci_reset_bandwidth_(struct usb_hcd *hcd, struct usb_device *udev);
 int xhci_update_hub_device_(struct usb_hcd *hcd, struct usb_device *hdev,
 			   struct usb_tt *tt, gfp_t mem_flags);
-int xhci_address_device_(struct usb_hcd *hcd, struct usb_device *udev);
+int xhci_address_device_(struct usb_hcd *hcd, struct usb_device *udev,
+			       unsigned int timeout_ms);
 int xhci_disable_slot(struct xhci_hcd *xhci, u32 slot_id);
 int xhci_ext_cap_init_(struct xhci_hcd *xhci);
 
