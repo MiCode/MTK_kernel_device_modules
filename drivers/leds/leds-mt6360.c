@@ -1117,7 +1117,7 @@ static int mt6360_fled_parse_dt(struct device *dev,
 		of_property_read_u32(child, "ct", &mtfled_cdev->dev_id.ct);
 		of_property_read_u32(child, "part", &mtfled_cdev->dev_id.part);
 		snprintf(mtfled_cdev->dev_id.name, FLASHLIGHT_NAME_SIZE,
-				mtfled_cdev->fl_cdev.led_cdev.name);
+				"%s", mtfled_cdev->fl_cdev.led_cdev.name);
 		mtfled_cdev->dev_id.channel = reg;
 		mt6360_flash_class[reg] = &mtfled_cdev->fl_cdev;
 		mtfled_cdev->dev_id.decouple = 0;
