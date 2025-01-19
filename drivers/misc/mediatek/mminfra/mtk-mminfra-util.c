@@ -125,8 +125,8 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 		// add ref_cnt
 		ref_cnt = atomic_inc_return(&g_mminfra_pd->mm_mtcmos[mm_pwr].ref_cnt);
 		if (ref_cnt != 1) {
-			pr_notice("%s: already enabled, mm_pwr(%d) ref_cnt(%d)\n",
-				__func__, mm_pwr, ref_cnt);
+			// pr_notice("%s: already enabled, mm_pwr(%d) ref_cnt(%d)\n",
+			// 	__func__, mm_pwr, ref_cnt);
 			spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 			return 0;
 		}
@@ -143,8 +143,8 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 		// minus ref_cnt
 		ref_cnt = atomic_dec_return(&g_mminfra_pd->mm_mtcmos[mm_pwr].ref_cnt);
 		if (ref_cnt != 0) {
-			pr_notice("%s: ref_cnt>1, mm_pwr(%d) ref_cnt(%d)\n",
-				__func__, mm_pwr, ref_cnt);
+			// pr_notice("%s: ref_cnt>1, mm_pwr(%d) ref_cnt(%d)\n",
+			// 	__func__, mm_pwr, ref_cnt);
 			spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 			return 0;
 		}
