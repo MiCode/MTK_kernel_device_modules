@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/hwccf/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek
 
 ifneq ($(wildcard $(src)/mtk-vmm-notifier-mt6991.c),)
 obj-$(CONFIG_MTK_VMM_NOTIFIER_MT6991) += mtk-vmm-notifier-mt6991.o

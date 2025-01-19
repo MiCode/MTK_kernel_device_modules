@@ -21,6 +21,11 @@
 
 #include <mt-plat/mtk-vmm-notifier.h>
 
+#include "clk-mtk.h"
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+#include "hwccf_provider.h"
+#include "hwccf_provider_data.h"
+#endif
 
 #define ISP_LOGI(fmt, args...) \
 	pr_notice("%s(): " fmt "\n", \
@@ -156,19 +161,39 @@ static void vmm_locked_hwccf_ctrl(bool enable, unsigned int vote_bit)
 
 static int vmm_locked_buck_ctrl(bool enable)
 {
+	int ret = 0;
 	int pre_cnt = vmm_user_counter;
 
-	if (enable)
-		vmm_user_counter++;
-	else
-		vmm_user_counter--;
+	vmm_user_counter += (enable ? 1 : -1);
 
-	if (pre_cnt == 0 && vmm_user_counter == 1)
-		vmm_locked_hwccf_ctrl(true, HW_CCF_AP_VOTER_BIT);
-	else if (pre_cnt == 1 && vmm_user_counter == 0)
-		vmm_locked_hwccf_ctrl(false, HW_CCF_AP_VOTER_BIT);
+	// Check if we're transitioning from 0 to 1 (enabling) or from 1 to 0 (disabling)
+	if ((pre_cnt == 0 && vmm_user_counter == 1) || (pre_cnt == 1 && vmm_user_counter == 0)) {
+		bool is_activating = (pre_cnt == 0 && vmm_user_counter == 1);
 
-	return 0;
+// #if IS_ENABLED(CONFIG_MTK_HWCCF)
+		// ret = hwccf_voter_ctrl(MM_HWCCF, HW_CCF_XPU0_BACKUP_GRP_2,
+		// 				 is_activating ? HWCCF_VOTE : HWCCF_UNVOTE,
+		// 				 HW_CCF_AP_VOTER_BIT);
+		// if (ret)
+		// 	ISP_LOGI("HWCCF_voter_ctrl fail, ret: %d\n", ret);
+// #else
+		vmm_locked_hwccf_ctrl(is_activating, HW_CCF_AP_VOTER_BIT);
+// #endif
+	}
+
+	return ret;
+}
+
+int mtk_vmm_ctrl(struct cb_params *cb_para)
+{
+	int ret = 0;
+
+	mutex_lock(&ctrl_mutex);
+	/* TODO: save cg_status, PIC: Eric Chien */
+	ret = vmm_locked_buck_ctrl(cb_para->onoff ? true : false);
+	mutex_unlock(&ctrl_mutex);
+
+	return ret;
 }
 
 static int mtk_camera_pd_callback(struct notifier_block *nb,
@@ -248,6 +273,9 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 	vmm_pm_runtime_enable(dev, pd_id);
 
 	ISP_LOGI("[%s][%d] pd_id[%d] vmm_vnter[%d] end\n", __func__, __LINE__, pd_id, vmm_user_counter);
+
+	register_mtk_clk_external_api_cb(CLK_REQUEST_VMM_CB, &mtk_vmm_ctrl, NULL);
+
 	return 0;
 }
 
@@ -342,8 +370,34 @@ static const struct kernel_param_ops vmm_notify_ut_ctrl_ops = {
 	.set = mtk_vmm_notify_ut_ctrl,
 };
 
+int mtk_vmm_ccf_ut_ctrl(const char *val, const struct kernel_param *kp)
+{
+	unsigned int enable;
+	unsigned int vote_bit;
+	struct cb_params cb_para;
+	int ret;
+
+	ret = sscanf(val, "%u %u", &enable, &vote_bit);
+	if (ret <= 0) {
+		ISP_LOGI("sscanf ret is wrong %d\n", ret);
+		return 0;
+	}
+	ISP_LOGI("[%s][%d] en[%u] vote_bit[%u]\n", __func__, __LINE__, enable, vote_bit);
+	cb_para.onoff = enable;
+	mtk_vmm_ctrl(&cb_para);
+
+	return 0;
+}
+
+static const struct kernel_param_ops vmm_ccf_ut_ctrl_ops = {
+	.set = mtk_vmm_ccf_ut_ctrl,
+};
+
 module_param_cb(vmm_notify_ut_ctrl, &vmm_notify_ut_ctrl_ops, NULL, 0644);
 MODULE_PARM_DESC(vmm_notify_ut_ctrl, "vmm_notify_ut_ctrl");
+
+module_param_cb(vmm_ccf_ut_ctrl, &vmm_ccf_ut_ctrl_ops, NULL, 0644);
+MODULE_PARM_DESC(vmm_ccf_ut_ctrl, "vmm_ccf_ut_ctrl");
 
 module_init(mtk_vmm_notifier_init);
 module_exit(mtk_vmm_notifier_exit);
