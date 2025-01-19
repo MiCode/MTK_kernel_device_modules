@@ -3767,12 +3767,13 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (debug_module_bw[phy_id])
 			bw_val = debug_module_bw[phy_id];
 
-		if (bw_val == comp->last_hrt_bw)
+		if (bw_val == comp->last_hrt_bw && usage_ovl_compr == comp->last_compr)
 			break;
 
 		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 			priv->data->respective_ostdl);
 		comp->last_hrt_bw = bw_val;
+		comp->last_compr = usage_ovl_compr;
 
 		if (!IS_ERR(comp->hdr_qos_req)) {
 			if (bw_val)
@@ -3827,6 +3828,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, 0,
 			priv->data->respective_ostdl);
 		comp->last_hrt_bw = 0;
+		comp->last_compr = 0;
 
 		if (!IS_ERR(comp->hdr_qos_req))
 			__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, 0,
