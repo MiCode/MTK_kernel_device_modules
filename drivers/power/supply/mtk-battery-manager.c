@@ -1366,16 +1366,19 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 		pr_err("%s retry to get chg_psy\n", __func__);
 		bs_data->chg_psy = chg_psy;
 	} else {
-		ret = power_supply_get_property(chg_psy,
+		ret |= power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_ONLINE, &online);
 
-		ret = power_supply_get_property(chg_psy,
+		ret |= power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_STATUS, &status);
 
-		ret = power_supply_get_property(chg_psy,
+		ret |= power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_ENERGY_EMPTY, &vbat0);
 
-		if (!online.intval || ret < 0) {
+		if (ret < 0)
+			pr_debug("%s ret: %d\n", __func__, ret);
+
+		if (!online.intval) {
 			bs_data->bat_status = POWER_SUPPLY_STATUS_DISCHARGING;
 		} else {
 			if (status.intval == POWER_SUPPLY_STATUS_NOT_CHARGING) {
