@@ -71,7 +71,20 @@
 	_MMEVENT_LOG_CHOICE(N, module, buf_index, log_level, log_type, ##__VA_ARGS__)
 
 #define _MMEVENT_LOG_CHOICE(N, module, buf_index, log_level, log_type, ...) \
-	_MMEVENT_LOG_CHOICE_##N(module, buf_index, log_level, log_type, ##__VA_ARGS__)
+	do { \
+		if (g_print_mme_log[module]) \
+			_MMEVENT_LOG_CHOICE_##N(module, buf_index, log_level, log_type, ##__VA_ARGS__); \
+		else \
+			_print_kernel_log(log_level, ##__VA_ARGS__); \
+	} while(0)
+
+#define _print_kernel_log(log_level, fmt, ...) \
+	do { \
+		if (log_level == LOG_LEVEL_ERROR) \
+			pr_info("ERROR:"fmt, ##__VA_ARGS__);    \
+		else \
+			pr_info(fmt, ##__VA_ARGS__);    \
+	} while(0)
 
 #define _MMEVENT_LOG_CHOICE_1(module, type, log_level, log_type, format) \
 	do { \
@@ -93,7 +106,7 @@
 		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
 			(g_ring_buffer_units[module][type] > 0)) { \
 			unsigned int mme_format_size = sizeof(char *); \
-			unsigned int mme_data1_size, mme_data1_flag, mme_str_len; \
+			unsigned int mme_data1_size=0, mme_data1_flag=0, mme_str_len=0; \
 			unsigned long long p_mme_buf; \
 			PROCESS_DATA(data1, mme_data1_size, mme_data1_flag, mme_str_len); \
 			p_mme_buf = mmevent_log((mme_format_size + mme_data1_size + MME_PID_SIZE), \
@@ -111,7 +124,7 @@
 		if ((module < MME_MODULE_MAX) && (type < MME_BUFFER_INDEX_MAX) && \
 			(g_ring_buffer_units[module][type] > 0)) { \
 			unsigned int mme_format_size = sizeof(char *); \
-			unsigned int mme_data_size[N], mme_data_flag[N], mme_str_len[N]; \
+			unsigned int mme_data_size[N]={0}, mme_data_flag[N]={0}, mme_str_len[N]={0}; \
 			unsigned int mme_log_length = mme_format_size + MME_PID_SIZE, mme_index; \
 			unsigned long long mme_log_flag = 0, p_mme_buf = 0; \
 			PROCESS_DATA_##N(mme_data_size, mme_data_flag, mme_str_len, ##__VA_ARGS__); \
@@ -239,9 +252,10 @@
 			is_stack_str = true; \
 		size_data = (is_str_data ? (is_stack_str ? \
 					(_ALIGN_4_BYTES(sizeof(char *) + \
-					(str_len=strlen((char *)(unsigned long)(data))) + 1)) : \
+					(str_len=MIN(strlen((char *)(unsigned long)(data)), \
+					MAX_STACK_STR_SIZE)) + 1)) : \
 					sizeof(char *)): (is_int_pointer_data ? FLAG_INT_POINTER_SIZE : \
-					 sizeof(data))); \
+					sizeof(typeof(data)))); \
 		flag_data = (is_str_data ? \
 					(is_stack_str ? \
 					DATA_FLAG_STACK_REGION_STRING : DATA_FLAG_CODE_REGION_STRING) : \
@@ -258,9 +272,11 @@
 	do { \
 		switch (flag_data) { \
 		case DATA_FLAG_STACK_REGION_STRING: \
-			*((char **)p) = (char *)(unsigned long)(data); \
-			strscpy((char *)(p+sizeof(char *)), (char *)(unsigned long)(data), \
-					str_len+1); \
+			if ((char *)(unsigned long)(data)) { \
+				*((char **)p) = (char *)(unsigned long)(data); \
+				strscpy((char *)(p+sizeof(char *)), (char *)(unsigned long)(data), \
+						str_len+1); \
+			} \
 			break; \
 		case DATA_FLAG_SIZE_1: \
 		case DATA_FLAG_SIZE_2: \

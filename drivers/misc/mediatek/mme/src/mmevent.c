@@ -25,6 +25,15 @@
 
 #include "mmevent.h"
 
+/* If it is 64bit use __pa_nodebug, otherwise use __pa_symbol_nodebug or __pa */
+#ifndef __pa_nodebug
+#ifdef __pa_symbol_nodebug
+#define __pa_nodebug __pa_symbol_nodebug
+#else
+#define __pa_nodebug __pa
+#endif
+#endif
+
 static int bmme_init_buffer;
 
 static struct mme_header_t mme_header = {
@@ -130,6 +139,7 @@ char *get_hash_value(unsigned long key)
 	return value;
 }
 
+#define MAX_INVALID_ENTRIES 128
 char *hash_table_to_char_array(unsigned int *p_buffer_size)
 {
 	struct str_hash_entry *entry;
@@ -137,12 +147,27 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 	unsigned int total_size = 0;
 	char *array, *ptr;
 	int ret;
+	char c;
+	unsigned int invalid_indices[MAX_INVALID_ENTRIES];
+	unsigned int invalid_count = 0;
 
 	hash_for_each(str_hash_table, bkt, entry, hnode) {
+		ret = copy_from_kernel_nofault(&c, entry->value, sizeof(c));
+		if (ret != 0) {
+			MMEERR("invalid value:%llx,ret:%d,invalid_count:%d",(unsigned long long)entry->value,
+				ret, invalid_count);
+			if (invalid_count < MAX_INVALID_ENTRIES) {
+				invalid_indices[invalid_count++] = bkt;
+			} else {
+				MMEERR("invalid count exceeded max entries:%d", MAX_INVALID_ENTRIES);
+				return NULL;
+			}
+			continue;
+		}
 		total_size += 16 + strlen(entry->value) + 2;
 	}
 
-	MMEMSG("total_size:%d", total_size);
+	MMEINFO("total_size:%d", total_size);
 	if (total_size == 0) {
 		MMEERR("total_size is 0");
 		return NULL;
@@ -156,6 +181,18 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 
 	ptr = array;
 	hash_for_each(str_hash_table, bkt, entry, hnode) {
+		bool skip_entry = false;
+
+		for (unsigned int i = 0; i < invalid_count; ++i) {
+			if (invalid_indices[i] == bkt) {
+				skip_entry = true;
+				break;
+			}
+		}
+
+		if (skip_entry)
+			continue;
+
 		ret = snprintf(ptr, total_size - (ptr - array), "%lx:", entry->key);
 		if (ret < 0) {
 			MMEERR("snprintf failed, ret:%d", ret);
@@ -194,6 +231,9 @@ EXPORT_SYMBOL(g_ring_buffer_spinlock);
 
 struct mme_module_t mme_globals[MME_MODULE_MAX] = {0};
 EXPORT_SYMBOL(mme_globals);
+
+bool g_print_mme_log[MME_MODULE_MAX] = {true};
+EXPORT_SYMBOL(g_print_mme_log);
 
 #define MME_MRDUMP_BUFFER_SIZE (3*1024*1024)
 #define MAX_MODULE_BUFFER_SIZE (10*1024*1024)
@@ -312,6 +352,7 @@ bool mme_register_buffer(unsigned int module, char *module_buf_name, unsigned in
 	spin_unlock_irqrestore(&g_register_spinlock, flags);
 
 	g_ring_buffer_spinlock[module][type] = t_spinlock;
+	g_print_mme_log[module] = true;
 	mme_globals[module].enable = 1;
 	bmme_init_buffer = 1;
 
@@ -693,23 +734,37 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 
 					if (!get_hash_value((unsigned long)p_str))
 						add_hash_entry((unsigned long)p_str, p_str);
+				} else {
+					MMEERR("invalid p_str, index:%d, p_str:%llx, unit_size:%d, i:%d",
+							index, (unsigned long long)p_str, unit_size, i);
 				}
 			}
 
 			if (type == DATA_FLAG_STACK_REGION_STRING) {
+				int max_length = (unit_size - MME_HEADER_UNIT_SIZE) * MME_UNIT_SIZE - data_size;
+
+				max_length = MIN(max_length, MAX_STACK_STR_SIZE);
 				p_str = (char *)p;
-				if (is_valid_addr(p_str))
-					type_size = _ALIGN_4_BYTES(strlen(p_str)+1);
-				else
-					MMEERR("invalid stack region addr, index:%d, p_str:%llx, i:%d",
-						index, (unsigned long long)p_str, i);
+				type_size = sizeof(char *);
+				p_str += type_size;
+
+				while (*p_str != '\0' && type_size < max_length) {
+					type_size += 1;
+					p_str += 1;
+				}
+				if (type_size == max_length && *p_str != '\0') {
+					MMEERR("invalid stack str,index:%d,type_size:%d,unit_size:%d,data_size:%d,i:%d",
+							index, type_size, unit_size, data_size, i);
+					break;
+				}
+				type_size = _ALIGN_4_BYTES(type_size + 1);
 			}
 
 			data_size += type_size;
 			p += type_size;
 		}
 
-		index += _MME_UNIT_NUM(data_size);
+		index += unit_size;
 		MMEINFO("END, data_size = %d, unit size = %d, index:%d",
 				data_size, unit_size, index);
 	}
@@ -891,7 +946,7 @@ void mmevent_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 {
 	unsigned int copy_size = 0;
 
-	MMEMSG("mme mrdump begin");
+	MMEMSG("mrdump +");
 	if (!bmme_init_buffer) {
 		MMEERR("RingBuffer is not initialized");
 		return;
@@ -907,6 +962,7 @@ void mmevent_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 	*vaddr = (unsigned long)g_mrdump_buffer;
 	mme_get_dump_buffer(0, g_mrdump_buffer, MME_MRDUMP_BUFFER_SIZE, &copy_size, true);
 	*size = copy_size;
+	MMEMSG("mrdump - size:%lu", *size);
 }
 
 // ------------------------------- Driver Section ---------------------------------------------
@@ -945,6 +1001,23 @@ static void process_dbg_cmd(char *cmd)
 		}
 
 		MMEMSG("scale_ring_buffer, module:%lu, scale_value:%lu", module, scale_value);
+	} else if (strncmp(cmd, "switch_kernel_log:", 18) == 0) {
+		char *p = (char *)cmd + 18;
+		char *mme_log_str = NULL;
+		unsigned long is_kernel_log = 0;
+		unsigned long module = 0;
+
+		p += strspn(p, " ");
+		mme_log_str = strchr(p, ' ');
+		MMEMSG("p:%s, mme_log_str:%s", p, mme_log_str);
+		if (mme_log_str) {
+			*mme_log_str = '\0';
+			if (kstrtoul(p, 10, &module) == 0 && module < MME_MODULE_MAX) {
+				if (kstrtoul(mme_log_str + 1, 10, &is_kernel_log) == 0 && is_kernel_log < 100)
+					g_print_mme_log[module] = is_kernel_log ? false : true;
+			}
+		}
+		MMEMSG("switch_kernel_log, module:%lu, is_kernel_log:%lu", module, is_kernel_log);
 	} else {
 		MMEMSG("invalid mme debug command: %s\n",
 			cmd != NULL ? cmd : "(empty)");

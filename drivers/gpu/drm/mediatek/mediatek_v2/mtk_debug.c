@@ -3080,7 +3080,11 @@ static void process_dbg_opt(const char *opt)
 		}
 	} else if (strncmp(opt, "logger:", 7) == 0) {
 		if (strncmp(opt + 7, "on", 2) == 0) {
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+			init_mme_buffer();
+#else
 			init_log_buffer();
+#endif
 			logger_enable = 1;
 		} else if (strncmp(opt + 7, "off", 3) == 0) {
 			logger_enable = 0;

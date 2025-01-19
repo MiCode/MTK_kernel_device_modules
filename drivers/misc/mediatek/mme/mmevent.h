@@ -116,6 +116,7 @@ extern unsigned int g_flag_shifts[MME_DATA_MAX];
 
 extern bool debug_log_on;
 extern bool mme_debug_on;
+extern bool g_print_mme_log[MME_MODULE_MAX];
 
 enum data_flag_t {
 	DATA_FLAG_INVALID = 0,
@@ -191,7 +192,9 @@ static inline void save_int_pointer_data(unsigned long long p_buf,
 
 #define MAX_PID_COUNT 480
 
-#define MME_MAX_UNIT_NUM 128
+#define MAX_STACK_STR_SIZE 1015
+
+#define MME_MAX_UNIT_NUM 256
 
 #define _MME_UNIT_NUM(x) ((((x) + 7) >> 3) + MME_HEADER_UNIT_SIZE)
 
@@ -272,4 +275,3 @@ struct str_hash_entry {
 }
 #endif
 #endif
-
