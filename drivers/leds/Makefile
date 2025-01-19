@@ -2,6 +2,7 @@
 
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/flashlight
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/leds
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/video/backlight
 subdir-ccflags-y += -I$(srctree)/drivers/power/supply
 
 obj-$(CONFIG_DEVICE_MODULES_LEDS_MT6360)		+= leds-mt6360.o

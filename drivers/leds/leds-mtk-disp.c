@@ -11,7 +11,9 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <leds-mtk.h>
-
+#if IS_ENABLED(CONFIG_BACKLIGHT_SGM37604A)
+#include "sgm37604a.h"
+#endif
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " %s(%d) :" fmt, __func__, __LINE__
 
@@ -158,6 +160,17 @@ static int __maybe_unused led_i2c_set(struct mt_led_data *mdev,
 	return 0;
 }
 
+static int __maybe_unused led_i2c_set_sgm37604a(struct mt_led_data *mdev,
+		int brightness, unsigned int params, unsigned int params_flag)
+{
+	pr_debug("set brightness for sgm37604a : %d", brightness);
+#if IS_ENABLED(CONFIG_BACKLIGHT_SGM37604A)
+	return sgm37604a_ic_backlight_set(brightness);
+#else
+	return -1;
+#endif
+}
+
 static int __maybe_unused led_set_virtual(struct mt_led_data *mdev,
 		int brightness, unsigned int params, unsigned int params_flag)
 {
@@ -169,6 +182,7 @@ static const struct of_device_id of_disp_leds_match[] = {
 	{ .compatible = "mediatek,disp-leds", .data = (int *)led_disp_set},
 	{ .compatible = "mediatek,disp-conn-leds", .data = (int *)led_disp_conn_set},
 	{ .compatible = "mediatek,i2c-leds", .data = (int *)led_i2c_set},
+	{ .compatible = "mediatek,i2c-leds-sgm37604a", .data = (int *)led_i2c_set_sgm37604a},
 	{ .compatible = "mediatek,mtk-leds", .data = (int *)led_set_virtual},
 	{},
 };
