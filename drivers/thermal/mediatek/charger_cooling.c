@@ -25,10 +25,12 @@ struct charger_cooler_info {
 static struct charger_cooler_info charger_cl_data;
 /* < -1 is unlimit, unit is uA. */
 static const int master_charger_state_to_current_limit[CHARGER_STATE_NUM] = {
-	-1, 5200000, 4600000, 4200000, 3800000, 3400000, 3000000, 2600000, 2200000, 1800000, 1400000, 1000000, 700000, 500000, 0
+	UNLIMIT_CURRENT_MASK, 5200000, 4600000, 4200000, 3800000, 3400000, 3000000, 2600000, 2200000
+	, 1800000, 1400000, 1000000, 700000, 500000, 0
 };
 static const int slave_charger_state_to_current_limit[CHARGER_STATE_NUM] = {
-	-1, 5200000, 4600000, 4200000, 3800000, 3400000, 3000000, 2600000, 2200000, 1800000, 1400000, 1000000, 700000, 500000, 0
+	-1, 5200000, 4600000, 4200000, 3800000, 3400000, 3000000, 2600000, 2200000, 1800000, 1400000
+	, 1000000, 700000, 500000, 0
 };
 
 /*==================================================
@@ -110,7 +112,7 @@ static int cooling_state_to_charger_limit_v1(struct charger_cooling_device *chg)
 	if (prop_bat_chr.intval == 0)
 		prop_input.intval = 0;
 	else
-		prop_input.intval = -1;
+		prop_input.intval = UNLIMIT_CURRENT_MASK;
 	ret = power_supply_set_property(chg->chg_psy,
 		POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT, &prop_input);
 	if (ret != 0) {
