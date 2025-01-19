@@ -2914,22 +2914,16 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 		}
 	} else {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) {
-			horizontal_sync_active_byte =
-				ALIGN_TO((t_hsa * dsi_tmp_buf_bpp - 10), 4);
+			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 10;
 
-			horizontal_backporch_byte =
-				ALIGN_TO((t_hbp * dsi_tmp_buf_bpp - 10), 4);
+			horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp - 10;
 		} else {
-			horizontal_sync_active_byte =
-				ALIGN_TO((t_hsa * dsi_tmp_buf_bpp - 4), 4);
+			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 4;
 
-			horizontal_backporch_byte =
-				ALIGN_TO(((t_hbp + t_hsa) * dsi_tmp_buf_bpp -
-				 10), 4);
+			horizontal_backporch_byte = (t_hbp + t_hsa) * dsi_tmp_buf_bpp - 10;
 		}
 
-		horizontal_frontporch_byte =
-			ALIGN_TO((t_hfp * dsi_tmp_buf_bpp - 12), 4);
+		horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12;
 	}
 	dsi->vfp = t_vfp;
 	dsi->vbp = t_vbp;
@@ -3062,10 +3056,10 @@ void DSI_Config_VDO_Timing_with_DSC(struct mtk_dsi *dsi)
 	"[DISP]-kernel-%s, ap_tx_total_word_cnt=%d, ap_tx_line_cycle=%d, ap_tx_cycle_time=%d\n",
 	__func__, ap_tx_total_word_cnt, ap_tx_line_cycle, ap_tx_cycle_time);
 
-	writel(ALIGN_TO((t_hsa), 4), dsi->regs + DSI_HSA_WC(dsi->driver_data));
-	writel(ALIGN_TO((t_hbp), 4), dsi->regs + DSI_HBP_WC(dsi->driver_data));
-	writel(ALIGN_TO((t_hfp), 4), dsi->regs + DSI_HFP_WC(dsi->driver_data));
-	writel(ALIGN_TO((t_hbllp), 4), dsi->regs + DSI_BLLP_WC(dsi->driver_data));
+	writel(t_hsa, dsi->regs + DSI_HSA_WC(dsi->driver_data));
+	writel(t_hbp, dsi->regs + DSI_HBP_WC(dsi->driver_data));
+	writel(t_hfp, dsi->regs + DSI_HFP_WC(dsi->driver_data));
+	writel(t_hbllp, dsi->regs + DSI_BLLP_WC(dsi->driver_data));
 }
 
 static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
