@@ -282,6 +282,47 @@ int engine_request_interrupts(struct platform_device *pdev, struct engine_contro
 	return 0;
 }
 
+#define ZRAM_SMMU_PROT_EN	(0x1UL << 3)
+static inline void engine_wait_smmu_prot_off(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_PWR_PROT_EN_0;
+	uint32_t reg_val = zram_readl(reg);
+
+	/* Disable SMMU prot */
+	reg_val &= (~ZRAM_SMMU_PROT_EN);
+	zram_writel(reg_val, reg);
+
+	/* Wait for ready */
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_SMMU_PROT_EN) == ZRAM_SMMU_PROT_EN);
+
+	reg = ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_PWR_PROT_RDY_0;
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_SMMU_PROT_EN) == ZRAM_SMMU_PROT_EN);
+}
+
+static inline void engine_wait_smmu_prot_on(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_PWR_PROT_EN_0;
+	uint32_t reg_val = zram_readl(reg);
+
+	/* Enable SMMU prot */
+	reg_val |= ZRAM_SMMU_PROT_EN;
+	zram_writel(reg_val, reg);
+
+	/* Wait for ready */
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_SMMU_PROT_EN) != ZRAM_SMMU_PROT_EN);
+
+	reg = ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_PWR_PROT_RDY_0;
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_SMMU_PROT_EN) != ZRAM_SMMU_PROT_EN);
+}
+
 /* Power on only - no reference count */
 #define ZRAM_SSYS_PWR_ON_OFF	(0x1UL << 4)
 #define ZRAM_SSYS_RTFF_GRP_EN	(0xFUL << 8)
@@ -300,6 +341,9 @@ int engine_power_on(struct engine_control_t *ctrl)
 		reg_val = zram_readl(reg);
 	} while ((reg_val & ZRAM_SSYS_PWR_ACK) != ZRAM_SSYS_PWR_ACK);
 
+	/* Wait for SMMU prot off */
+	engine_wait_smmu_prot_off(ctrl);
+
 	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
 
 	return 0;
@@ -311,6 +355,9 @@ void engine_power_off(struct engine_control_t *ctrl)
 {
 	void __iomem *reg = ctrl->zram_pm_base + ZRAM_SSYSPM_CON;
 	uint32_t reg_val = zram_readl(reg);
+
+	/* Wait for SMMU prot on */
+	engine_wait_smmu_prot_on(ctrl);
 
 	/* POWER off */
 	reg_val |= ZRAM_SSYS_RTFF_GRP_EN;

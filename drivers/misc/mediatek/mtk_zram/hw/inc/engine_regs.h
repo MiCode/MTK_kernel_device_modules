@@ -67,6 +67,8 @@ struct engine_error_t {
 #define	ZRAM_CONFIG_ZRAM_CG_CON4				0x0140
 #define	ZRAM_CONFIG_ZRAM_CG_CLR4				0x0148
 #define	ZRAM_CONFIG_ZRAM_VERSION				0x0FFC
+#define	ZRAM_CONFIG_ZRAM_PWR_PROT_EN_0				0x09A0
+#define	ZRAM_CONFIG_ZRAM_PWR_PROT_RDY_0				0x09B0
 
 // ---------------------- ZRAM_ENC Definitions ---------------------- //
 #define ZRAM_ENC_GMCIF_CON_READ_INSTN				0x001C
