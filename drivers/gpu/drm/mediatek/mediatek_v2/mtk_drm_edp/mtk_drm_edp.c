@@ -2006,6 +2006,7 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 	struct mtk_edp *mtk_edp = dev;
 	unsigned long flags;
 	u32 status;
+	int ret = 0;
 
 	pr_info("[eDPTX] %s+\n", __func__);
 	if (mtk_edp->need_debounce && mtk_edp->train_info.cable_plugged_in)
@@ -2018,7 +2019,12 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 
 	if (status & MTK_DP_THREAD_HPD_EVENT) {
 		dev_info(mtk_edp->dev, "[eDPTX] Receive IRQ from sink devices\n");
-		mtk_edp_hpd_sink_event(mtk_edp);
+		// mtk_edp_hpd_sink_event(mtk_edp);
+		ret = mtk_edp_training(mtk_edp);
+		if (ret)
+			pr_info("[eDPTX] link trainning failed %d\n", ret);
+
+		pr_info("[eDPTX] %s-\n", __func__);
 		return IRQ_HANDLED;
 	}
 
