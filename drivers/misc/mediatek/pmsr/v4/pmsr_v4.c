@@ -234,8 +234,6 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 		(read_idx < cfg.pmsr_tool_buffer_max_space)) {
 
 		pmsr_tool_val = &cfg.share_buf[read_idx];
-		if (!pmsr_tool_val)
-			return;
 
 		pmsr_tool_last_idx = read_idx;
 
