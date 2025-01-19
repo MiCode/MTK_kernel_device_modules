@@ -46,7 +46,6 @@
 #define MT6893_TOP_AXI_PROT_EN_MM_VENC_CORE1_2ND	(BIT(29) | BIT(31))
 #define MT6893_TOP_AXI_PROT_EN_MDP	(BIT(10))
 #define MT6893_TOP_AXI_PROT_EN_MM_MDP	(BIT(2) | BIT(4) |  \
-			BIT(6) | BIT(8) |  \
 			BIT(18) | BIT(22) |  \
 			BIT(28) | BIT(30))
 #define MT6893_TOP_AXI_PROT_EN_MM_2_MDP	(BIT(0) | BIT(2) |  \
@@ -54,20 +53,17 @@
 			BIT(8))
 #define MT6893_TOP_AXI_PROT_EN_MDP_2ND	(BIT(23))
 #define MT6893_TOP_AXI_PROT_EN_MM_MDP_2ND	(BIT(3) | BIT(5) |  \
-			BIT(7) | BIT(9) |  \
 			BIT(19) | BIT(23) |  \
 			BIT(29) | BIT(31))
 #define MT6893_TOP_AXI_PROT_EN_MM_2_MDP_2ND	(BIT(1) | BIT(7) |  \
 			BIT(9) | BIT(11))
 #define MT6893_TOP_AXI_PROT_EN_SUB_INFRA_VDNR_MDP	(BIT(20))
-#define MT6893_TOP_AXI_PROT_EN_MM_DISP	(BIT(0) | BIT(6) |  \
-			BIT(8) | BIT(10) |  \
+#define MT6893_TOP_AXI_PROT_EN_MM_DISP	(BIT(0) | BIT(10) | \
 			BIT(12) | BIT(14) |  \
 			BIT(16) | BIT(20) |  \
 			BIT(24) | BIT(26))
 #define MT6893_TOP_AXI_PROT_EN_DISP	(BIT(6))
-#define MT6893_TOP_AXI_PROT_EN_MM_DISP_2ND	(BIT(1) | BIT(7) |  \
-			BIT(9) | BIT(15) |  \
+#define MT6893_TOP_AXI_PROT_EN_MM_DISP_2ND	(BIT(1) | BIT(15) |  \
 			BIT(17) | BIT(21) |  \
 			BIT(25) | BIT(27))
 #define MT6893_TOP_AXI_PROT_EN_SUB_INFRA_VDNR_DISP	(BIT(21))
