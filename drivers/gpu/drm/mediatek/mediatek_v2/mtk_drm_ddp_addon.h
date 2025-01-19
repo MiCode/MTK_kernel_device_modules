@@ -37,6 +37,7 @@ enum addon_scenario {
 	MML_DL,	       /* MML Direct Link */
 	MML_SRAM_ONLY, /* MML Inline Rotate */
 	DSC_COMP, /* describe which DSC module would apply in this CRTC */
+	WDMA_WRITE_BACK_MID,
 	ADDON_SCN_NR,
 };
 
@@ -64,6 +65,7 @@ enum addon_module {
 	DISP_OVLSYS_WDMA2,
 	DISP_OVLSYS_WDMA0_v2,
 	DISP_OVLSYS_UFBC_WDMA0,
+	DISP_OVLSYS_WDMA0_v3,
 	DISP_WDMA2_v2,
 	DISP_UFBC_WDMA1,
 	DISP_UFBC_WDMA1_1,
@@ -80,6 +82,7 @@ enum addon_module {
 	DISP_MML_IR_PQ_v3,
 	DSC_0,
 	DSC_1,
+	DISP_WDMA_MID,
 	ADDON_MODULE_NUM,
 };
 

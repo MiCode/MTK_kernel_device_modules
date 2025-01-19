@@ -246,6 +246,28 @@ struct drm_crtc *_get_context(void)
 	return &g_context;
 }
 
+enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state)
+{
+	enum addon_scenario scn;
+
+	switch (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO]) {
+	case 0:
+		scn = WDMA_WRITE_BACK_OVL;
+		break;
+	case 1:
+		scn = WDMA_WRITE_BACK_MID;
+		break;
+	case 2:
+		scn = WDMA_WRITE_BACK;
+		break;
+	default:
+		scn = WDMA_WRITE_BACK_OVL;
+		break;
+	}
+
+	return scn;
+}
+
 static void mtk_drm_crtc_finish_page_flip(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -1088,10 +1110,7 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	else {
 		state = to_mtk_crtc_state(crtc->state);
 		if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
-			if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
-				scn = WDMA_WRITE_BACK_OVL;
-			else
-				scn = WDMA_WRITE_BACK;
+			scn = mtk_crtc_wb_get_scn(state);
 			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
 						scn);
 			mtk_drm_crtc_addon_dump(crtc, addon_data);
@@ -1668,10 +1687,7 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	else {
 		state = to_mtk_crtc_state(crtc->state);
 		if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
-			if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
-				scn = WDMA_WRITE_BACK_OVL;
-			else
-				scn = WDMA_WRITE_BACK;
+			scn = mtk_crtc_wb_get_scn(state);
 			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
 						scn);
 			mtk_drm_crtc_addon_analysis(crtc, addon_data);
@@ -3812,6 +3828,8 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		if (comp->id == DDP_COMPONENT_WDMA1)
 			return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
+		if (comp->id == DDP_COMPONENT_OVLSYS_WDMA0)
+			return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
 	}
 	if (priv->data->mmsys_id == MMSYS_MT6989) {
 		if (comp->id == DDP_COMPONENT_WDMA1)
@@ -3844,10 +3862,7 @@ int mtk_crtc_wb_addon_get_event(struct drm_crtc *crtc)
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc))
 		return -EINVAL;
 
-	if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
-		scn = WDMA_WRITE_BACK_OVL;
-	else
-		scn = WDMA_WRITE_BACK;
+	scn = mtk_crtc_wb_get_scn(state);
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
 	if (!addon_data)
@@ -3882,10 +3897,7 @@ void _mtk_crtc_wb_addon_module_disconnect(
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc))
 		return;
 
-	if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
-		scn = WDMA_WRITE_BACK_OVL;
-	else
-		scn = WDMA_WRITE_BACK;
+	scn = mtk_crtc_wb_get_scn(state);
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
 	if (!addon_data)
@@ -3916,9 +3928,13 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA_MID) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
+			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_OVLSYS_WDMA0_v3)) {
 			if (mtk_crtc->is_dual_pipe) {
 				/* disconnect left pipe */
 				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
@@ -4260,10 +4276,8 @@ _mtk_crtc_wb_addon_module_connect(
 		return;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
-	if (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO] == 0)
-		scn = WDMA_WRITE_BACK_OVL;
-	else
-		scn = WDMA_WRITE_BACK;
+
+	scn = mtk_crtc_wb_get_scn(state);
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
 	if (!addon_data)
@@ -4293,9 +4307,13 @@ _mtk_crtc_wb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA_MID) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
 			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2)) {
+			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_OVLSYS_WDMA0_v3)) {
 			struct mtk_rect src_roi = {0};
 			struct mtk_rect dst_roi = {0};
 			struct drm_framebuffer *fb;
@@ -16421,7 +16439,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EINVAL;
 	}
-
 	if (mtk_crtc_gec_flush_check(crtc) < 0)	{
 		if (cb_data) {
 			struct drm_crtc_state *crtc_state;
@@ -19361,9 +19378,13 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			/* HW support cwb dump */
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
-				priv->data->mmsys_id == MMSYS_MT6897 ||
-				priv->data->mmsys_id == MMSYS_MT6991)
+				priv->data->mmsys_id == MMSYS_MT6897)
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+			if (priv->data->mmsys_id == MMSYS_MT6991) {
+				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
+			}
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_RSZ;
