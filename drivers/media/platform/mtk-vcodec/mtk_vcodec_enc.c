@@ -2077,12 +2077,14 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 				    !(buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) &&
 				    vcp_get_io_device_ex(VCP_IOMMU_ACP_CODEC)) {
 					vq->dev = vcp_get_io_device_ex(VCP_IOMMU_ACP_CODEC);
-					mtk_v4l2_debug(2, "[%d] src_vq use VCP_IOMMU_ACP_CODEC domain %p",
+					mtk_v4l2_debug(0, "[%d] src_vq use VCP_IOMMU_ACP_CODEC domain %p",
 						ctx->id, vq->dev);
 				} else if (vq->dev != ctx->dev->smmu_dev) {
 					vq->dev = ctx->dev->smmu_dev;
-					mtk_v4l2_debug(4, "[%d] src_vq use smmu_dev domain %p", ctx->id, vq->dev);
-				}
+					mtk_v4l2_debug(0, "[%d] src_vq use smmu_dev domain %p", ctx->id, vq->dev);
+				} else if (mtk_venc_input_acp_enable)
+					mtk_v4l2_debug(0, "[%d] src_vq ACP enable not use (is_cached %d, flag 0x%x)",
+						ctx->id, is_cached, buf->flags);
 			}
 #endif
 			ctx->has_first_input = true;
