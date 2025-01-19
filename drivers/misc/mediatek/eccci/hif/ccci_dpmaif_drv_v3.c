@@ -153,7 +153,10 @@ static void drv3_common_hw_init(void)
 				((1<<9)|(1<<10)|(1<<15)|(1<<16)));
 
 	/*Set Power on/off flag*/
-	DPMA_WRITE_PD_DL(NRL2_DPMAIF_DL_RESERVE_RW, 0xFF);
+	if (g_plat_inf == 6993)
+		DPMA_WRITE_PD_DL(NRL2_DPMAIF_DL_RESERVE_AO_RW, 0xFF);
+	else
+		DPMA_WRITE_PD_DL(NRL2_DPMAIF_DL_RESERVE_RW, 0xFF);
 }
 
 void ccci_drv3_dl_set_bid_maxcnt(unsigned int cnt)
@@ -1016,8 +1019,15 @@ static unsigned int drv3_ul_idle_check(void)
 
 static bool drv3_dpmaif_check_power_down(void)
 {
-	if (DPMA_READ_PD_DL(NRL2_DPMAIF_DL_RESERVE_RW) == 0) {
-		DPMA_WRITE_PD_DL(NRL2_DPMAIF_DL_RESERVE_RW, 0xFF);
+	unsigned int chk_reg_addr;
+
+	if (g_plat_inf == 6993)
+		chk_reg_addr = NRL2_DPMAIF_DL_RESERVE_AO_RW;
+	else
+		chk_reg_addr = NRL2_DPMAIF_DL_RESERVE_RW;
+
+	if (DPMA_READ_PD_DL(chk_reg_addr) == 0) {
+		DPMA_WRITE_PD_DL(chk_reg_addr, 0xFF);
 		return true;
 	}
 
