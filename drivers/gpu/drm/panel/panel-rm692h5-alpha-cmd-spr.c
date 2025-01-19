@@ -428,10 +428,10 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 	static struct mipi_dsi_msg spr_on_setting[ARRAY_SIZE(panel_spr_on_setting)] = { 0 };
 	static struct mipi_dsi_msg spr_off_setting[ARRAY_SIZE(panel_spr_off_setting)] = { 0 };
 
-	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_60hz)] = { 0 };
-	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_90hz)] = { 0 };
-	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_120hz)] = { 0 };
-	static struct mipi_dsi_msg fps_120hz_360te[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
+	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
+	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
+	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_120hz_mte)] = { 0 };
+	static struct mipi_dsi_msg fps_default[ARRAY_SIZE(cmd_set_fps_120hz_mte)] = { 0 };
 
 	if (!panel) {
 		pr_err("%s, error, panel is NULL\n", __func__);
@@ -474,21 +474,21 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 			spr_off_setting[i].tx_buf = panel_spr_off_setting[i].para_list;
 		}
 
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_60hz); i++) {
-			fps_60hz[i].tx_len= cmd_set_fps_60hz[i].count;
-			fps_60hz[i].tx_buf = cmd_set_fps_60hz[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_90hz); i++) {
-			fps_90hz[i].tx_len= cmd_set_fps_90hz[i].count;
-			fps_90hz[i].tx_buf = cmd_set_fps_90hz[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz); i++) {
-			fps_120hz[i].tx_len= cmd_set_fps_120hz[i].count;
-			fps_120hz[i].tx_buf = cmd_set_fps_120hz[i].para_list;
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
+			fps_60hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
+			fps_60hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
 		}
 		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
-			fps_120hz_360te[i].tx_len= cmd_set_fps_120hz_360te[i].count;
-			fps_120hz_360te[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
+			fps_90hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
+			fps_90hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
+		}
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_mte); i++) {
+			fps_120hz[i].tx_len= cmd_set_fps_120hz_mte[i].count;
+			fps_120hz[i].tx_buf = cmd_set_fps_120hz_mte[i].para_list;
+		}
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_mte); i++) {
+			fps_default[i].tx_len= cmd_set_fps_120hz_mte[i].count;
+			fps_default[i].tx_buf = cmd_set_fps_120hz_mte[i].para_list;
 		}
 	}
 
@@ -541,7 +541,7 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 		.is_rd = 0, /* 0:write 1:read */
 		.is_package = 0,
 		.rd_to_slot = 0,
-		.cmd_num = ARRAY_SIZE(cmd_set_fps_60hz),
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_360te),
 		.transfer_mode = PACKET_LP_MODE,
 		.cmd_msg = fps_60hz,
 	};
@@ -550,7 +550,7 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 		.is_rd = 0, /* 0:write 1:read */
 		.is_package = 0,
 		.rd_to_slot = 0,
-		.cmd_num = ARRAY_SIZE(cmd_set_fps_90hz),
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_360te),
 		.transfer_mode = PACKET_LP_MODE,
 		.cmd_msg = fps_90hz,
 	};
@@ -559,18 +559,18 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 		.is_rd = 0, /* 0:write 1:read */
 		.is_package = 0,
 		.rd_to_slot = 0,
-		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz),
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_mte),
 		.transfer_mode = PACKET_LP_MODE,
 		.cmd_msg = fps_120hz,
 	};
 
-	struct mtk_dsi_cmd_msg fps_120hz_360te_cmd = {
+	struct mtk_dsi_cmd_msg fps_default_cmd = {
 		.is_rd = 0, /* 0:write 1:read */
 		.is_package = 0,
 		.rd_to_slot = 0,
-		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_360te),
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_mte),
 		.transfer_mode = PACKET_LP_MODE,
-		.cmd_msg = fps_120hz_360te,
+		.cmd_msg = fps_default,
 	};
 
 	if (ctx->dvv == DV1)
@@ -596,7 +596,7 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 		cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
 		break;
 	default:
-		cb(dsi_drv, handle, cmd_opt, &fps_120hz_360te_cmd);
+		cb(dsi_drv, handle, cmd_opt, &fps_default_cmd);
 		break;
 	}
 
@@ -892,7 +892,68 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage,
 		struct mtk_dsi_cmd_option *cmd_opt)
 {
-	return 1;
+	int i = 0;
+	int ret = 0;
+	static int flag;
+	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
+	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
+	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
+	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_120hz_mte)] = { 0 };
+
+	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
+
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
+			fps_60hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
+			fps_60hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
+		}
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
+			fps_90hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
+			fps_90hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
+		}
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_mte); i++) {
+			fps_120hz[i].tx_len= cmd_set_fps_120hz_mte[i].count;
+			fps_120hz[i].tx_buf = cmd_set_fps_120hz_mte[i].para_list;
+		}
+	}
+	struct mtk_dsi_cmd_msg fps_60hz_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_360te),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = fps_60hz,
+	};
+
+	struct mtk_dsi_cmd_msg fps_90hz_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_360te),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = fps_90hz,
+	};
+
+	struct mtk_dsi_cmd_msg fps_120hz_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_mte),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = fps_120hz,
+	};
+
+	if (drm_mode_vrefresh(m) == 120)
+		cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
+	else if (drm_mode_vrefresh(m) == 90)
+		cb(dsi_drv, handle, cmd_opt, &fps_90hz_cmd);
+	else if (drm_mode_vrefresh(m) == 60)
+		cb(dsi_drv, handle, cmd_opt, &fps_60hz_cmd);
+	else
+		ret = 1;
+
+	return ret;
 }
 
 #if defined(CONFIG_MTK_PANEL_EXT)
