@@ -225,6 +225,13 @@ static void xhci_mtk_usb_format_quirk(struct snd_usb_audio *chip)
 	if (chip->usb_id == USB_ID(0xbe57, 0x0238))
 		out_max_bits = 16;
 
+	/* Restrict the format to 48kHz for audio headset */
+	if (chip->usb_id == USB_ID(0x12d1, 0x3a07)
+			&& le16_to_cpu(chip->dev->descriptor.bcdDevice) == 0x49) {
+		in_max_rate = 48000;
+		out_max_rate = 48000;
+	}
+
 	if (!in_max_bits && !out_max_bits && !in_max_rate && !out_max_rate)
 		return;
 
