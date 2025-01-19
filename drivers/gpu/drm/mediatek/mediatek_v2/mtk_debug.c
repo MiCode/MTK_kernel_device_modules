@@ -5181,7 +5181,7 @@ static void process_dbg_opt(const char *opt)
 			DDPPR_ERR("new_send_ddic_test_v1 fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("hc1 in1 %d, flags=0x%x, rd=%d, slot=%d, package=%d, transmit_mode=%d, ret=%d\n", __LINE__,
+		DDPMSG("%d, flags=0x%x, rd=%d, slot=%d, package=%d, transmit_mode=%d, ret=%d\n", __LINE__,
 			flags, rd, slot, package, transmit_mode, ret);
 
 		struct test_struct test_cmd_w[3] = {
@@ -5215,7 +5215,7 @@ static void process_dbg_opt(const char *opt)
 		cmd_opt.flags = flags;
 		cmd_opt.crtc_id = 0;
 
-		DDPMSG("hc1 in1 new_send_ddic_test_v1\n");
+		DDPMSG("new_send_ddic_test_v1\n");
 		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
 	}  else if (strncmp(opt, "new_send_ddic_test_v3:", 22) == 0) { //hc0
 		int flags = 0, rd = 0, slot = 0, package = 0, transmit_mode = 0, cmd_num = 0;
@@ -5231,8 +5231,8 @@ static void process_dbg_opt(const char *opt)
 			DDPPR_ERR("new_send_ddic_test_v3 fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("hc1 in1 %d, flags=0x%x, rd=%d, rd_to_slot=%d, cmd_num=%d, package=%d, transmit_mode=%d, (%d,%d,%d,%d,%d), ret=%d\n", __LINE__,
-			flags, rd, slot, cmd_num, package, transmit_mode,
+		DDPMSG("%d, flags=0x%x, rd=%d, slot=%d, cmd_num=%d, package=%d, mode=%d, (%d,%d,%d,%d,%d), ret=%d\n",
+			__LINE__, flags, rd, slot, cmd_num, package, transmit_mode,
 			tx_len[0], tx_len[1], tx_len[2], tx_len[3], tx_len[4], ret);
 
 		cmd_opt.flags = flags;
@@ -5240,14 +5240,14 @@ static void process_dbg_opt(const char *opt)
 
 		test_cmd = vmalloc(sizeof(struct mtk_dsi_cmd_msg));
 		if (!test_cmd) {
-			DDPMSG("hc1 alloc mtk_dsi_cmd_msg fail\n");
+			DDPMSG("alloc mtk_dsi_cmd_msg fail\n");
 			return;
 		}
 		memset(test_cmd, 0, sizeof(struct mtk_dsi_cmd_msg));
 
 		test_cmd->cmd_msg = vmalloc(cmd_num *sizeof(struct mipi_dsi_msg));
 		if (!test_cmd->cmd_msg) {
-			DDPMSG("hc1 alloc mipi_dsi_msg fail\n");
+			DDPMSG("alloc mipi_dsi_msg fail\n");
 			return;
 		}
 
@@ -5272,9 +5272,9 @@ static void process_dbg_opt(const char *opt)
 			test_cmd->cmd_msg[i].tx_len = tx_len[i];
 		}
 
-		DDPMSG("hc1 in2 new_send_ddic_test_v3 ++\n");
+		DDPMSG("new_send_ddic_test_v3 ++\n");
 		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, test_cmd);
-		DDPMSG("hc1 in2 new_send_ddic_test_v3 --\n");
+		DDPMSG("new_send_ddic_test_v3 --\n");
 
 		for (i = 0; i < cmd_num; i++)
 			vfree(tx_buf[i]);
@@ -5292,8 +5292,7 @@ static void process_dbg_opt(const char *opt)
 			DDPPR_ERR("set_new_dsi fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("hc1 debug cmd %d, in1 set_new_dsi, new_dsi=%d,%d,%d,%d,%d, ret=%d\n",
-			 __LINE__,
+		DDPMSG("debug cmd %d, in1 set_new_dsi, new_dsi=%d,%d,%d,%d,%d, ret=%d\n", __LINE__,
 			dsi_cmd_v2_dbg[BACKLIGHT_DBG], dsi_cmd_v2_dbg[SPR_DBG],
 			dsi_cmd_v2_dbg[PANEL_INIT_DBG], dsi_cmd_v2_dbg[MODE_SWITCH_DBG],
 			dsi_cmd_v2_dbg[ESD_CHECK_DBG], ret);
@@ -5313,10 +5312,9 @@ static void process_dbg_opt(const char *opt)
 		}
 		DDPMSG("new_read_ddic %d,flags=0x%x,slot=%d,idx=%d,len=%d,addr=0x%x,ret=%d\n",
 			__LINE__, flags, slot, idx, rx_len, addr, ret);
-
 		msg.rx_buf= vmalloc(rx_len * sizeof(u8));
 		if (!msg.rx_buf) {
-			DDPMSG("hc1 alloc rx_buf fail\n");
+			DDPMSG("alloc rx_buf fail\n");
 			return;
 		}
 
@@ -5333,12 +5331,12 @@ static void process_dbg_opt(const char *opt)
 		cmd_opt.flags = flags;
 		cmd_opt.crtc_id = 0;
 
-		DDPMSG("hc1 in2 new_read_ddic ++\n");
+		DDPMSG("new_read_ddic ++\n");
 		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
 
 		rx_buf = (char *)test_cmd.cmd_msg->rx_buf;
 		for (i = 0; i < rx_len; i++)
-			DDPMSG("hc1 in2 new_read_ddic, rx_data[%d]:0x%x, ret=%d\n", rx_buf[i], ret);
+			DDPMSG("new_read_ddic, rx_data[%d]:0x%x, ret=%d\n", rx_buf[i], ret);
 
 		vfree(msg.rx_buf);
 	}

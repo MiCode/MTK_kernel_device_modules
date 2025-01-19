@@ -188,6 +188,8 @@ struct mtk_lcm_dsi_cmd_packet {
 	struct list_head cmd_list;
 };
 
+typedef int (*mtk_dsi_ddic_cmd) (void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt,
+				const struct mtk_dsi_cmd_msg *data);
 typedef  void (*mtk_dsi_ddic_handler_cb)(struct cmdq_cb_data data);
 typedef void (*dcs_write_gce) (struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				const void *data, size_t len);
@@ -789,6 +791,21 @@ struct mtk_panel_funcs {
 	void (*lcm_valid_roi)(struct mtk_panel_params *ext_param,
 		unsigned int *x, unsigned int *y, unsigned int *w, unsigned int *h);
 	int (*get_lcm_power_state)(struct drm_panel *panel);
+	int (*panel_init)(struct drm_panel *panel);
+	int (*panel_deinit)(struct drm_panel *panel);
+	int (*panel_init_v2)(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+		struct mtk_dsi_cmd_option *cmd_opt);
+	int (*panel_deinit_v2)(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+		struct mtk_dsi_cmd_option *cmd_opt);
+	int (*mode_switch_v2)(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+		struct drm_connector *connector, unsigned int cur_mode,
+		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage, struct mtk_dsi_cmd_option *cmd_opt);
+	int (*set_bl_elvss_cmdq_v2)(void *dsi_drv, mtk_dsi_ddic_cmd cb,
+		void *handle, struct mtk_bl_ext_config *bl_ext_config, struct mtk_dsi_cmd_option *cmd_opt);
+	int (*set_backlight_cmdq_v2)(void *dsi_drv, mtk_dsi_ddic_cmd cb,
+		void *handle, unsigned int level, struct mtk_dsi_cmd_option *cmd_opt);
+	int (*set_aod_light_mode_v2)(void *dsi_drv, mtk_dsi_ddic_cmd cb,
+		void *handle, unsigned int mode, struct mtk_dsi_cmd_option *cmd_opt);
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);
