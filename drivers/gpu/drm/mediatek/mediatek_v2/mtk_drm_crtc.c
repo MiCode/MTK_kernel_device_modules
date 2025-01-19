@@ -16976,6 +16976,8 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = NULL;
 	int session_id;
+	unsigned int i;
+	int sec_on = 0;
 	unsigned int fence_idx = cb_data->wb_fence_idx;
 	struct pixel_type_map *pixel_types;
 	unsigned int spr_mode_type, bw_zero;
@@ -16998,6 +17000,26 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	//	drm_framebuffer_put(cb_data->wb_fb);
 	session_id = mtk_get_session_id(crtc);
 	mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
+	DDPINFO("%s: fence %u\n", __func__, fence_idx);
+
+	// reset wb sec_on state to enter idle
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	for (i = 0; i < mtk_crtc->layer_nr; i++) {
+		struct drm_plane *plane = &mtk_crtc->planes[i].base;
+
+		if (plane->state->crtc) {
+			if (plane->state->fb
+				&& plane->state->fb->format->format
+					!= DRM_FORMAT_C8
+				&& mtk_drm_fb_is_secure(plane->state->fb))
+				sec_on = true;
+		}
+
+	}
+	mtk_crtc->sec_on = sec_on;
+
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	bw_zero = 0;
 	if (priv && priv->power_state) {
