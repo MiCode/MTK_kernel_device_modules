@@ -1620,10 +1620,10 @@ static void cmdq_pkt_instr_encoder(void *buf, u16 arg_c, u16 arg_b,
 	*(uint64_t *)buf = (uint64_t)arg_c |
 		((uint64_t)arg_b << 16) |
 		((uint64_t)arg_a << 32) |
-		((uint64_t)s_op << 48) |
-		((uint64_t)arg_c_type << 53) |
-		((uint64_t)arg_b_type << 54) |
-		((uint64_t)arg_a_type << 55) |
+		((uint64_t)(s_op & (0x1F)) << 48) |
+		((uint64_t)(arg_c_type & (0x1)) << 53) |
+		((uint64_t)(arg_b_type & (0x1)) << 54) |
+		((uint64_t)(arg_a_type & (0x1)) << 55) |
 		((uint64_t)op << 56);
 
 	temp_inst = *(struct cmdq_instruction *)buf;
