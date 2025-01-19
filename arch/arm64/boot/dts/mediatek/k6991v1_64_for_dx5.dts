@@ -1373,12 +1373,14 @@ bootargs_ext = "rcu_nocbs=0-7";
 &smi_ccu_sub_comm1 {
 	power-domains;
 	no-pm-runtime;
+	skip-tcms-check;
 	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
 };
 
 &smi_ccu_sub_comm0 {
 	power-domains;
 	no-pm-runtime;
+	skip-tcms-check;
 	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
 };
 
@@ -1514,6 +1516,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 &smi_larb30 {
 	power-domains;
 	no-pm-runtime;
+	skip-tcms-check;
 	mediatek,pd-id = <MT6991_SMI_PD_CAM_CCU>;
 };
 
