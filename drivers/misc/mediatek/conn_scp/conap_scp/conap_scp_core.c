@@ -844,9 +844,11 @@ int conap_scp_init(void)
 
 	/* max msg size & buffer init */
 	g_max_msg_size = connsys_scp_get_max_msg_size();
-	g_msg_buf = vmalloc(g_max_msg_size);
-	if (g_msg_buf == NULL)
-		pr_notice("[%s] allocate msg buf fail\n", __func__);
+	if (g_max_msg_size > 0) {
+		g_msg_buf = vmalloc(g_max_msg_size);
+		if (g_msg_buf == NULL)
+			pr_notice("[%s] allocate msg buf fail\n", __func__);
+	}
 
 	/* init ipi */
 	ipi_cb.conap_scp_ipi_msg_notify = conap_scp_msg_notify;
