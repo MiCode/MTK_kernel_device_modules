@@ -16040,9 +16040,13 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 	}
 
-	if (crtc_id == 0 && !mode_changed &&
-	    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
-		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG, mtk_crtc_state->cmdq_handle);
+	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		/* keep power on to avoid extra TE during mode switch process */
+		if (mode_changed)
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DISP_DPC_CFG | VOTER_ONLY);
+		else
+			mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG, mtk_crtc_state->cmdq_handle);
+	}
 #endif
 
 	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
