@@ -167,6 +167,7 @@ struct mtk_dpc {
 	bool mmdvfs_power_sync;
 	unsigned int mmdvfs_settings_count;
 	unsigned int *mmdvfs_settings_addr;
+	unsigned int mtcmos_mask;
 	unsigned int (*get_sys_status)(enum dpc_sys_status_id, unsigned int *status);
 };
 static struct mtk_dpc *g_priv;
@@ -476,6 +477,7 @@ static struct mtk_dpc_dt_usage mt6878_mml_cmd_dt_usage[DPC_MML_DT_CNT] = {
 
 static unsigned int mt6989_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 static unsigned int mt6878_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
+static unsigned int mt6899_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 
 static struct mtk_dpc mt6989_dpc_driver_data = {
 	.mmsys_id = MMSYS_MT6989,
@@ -487,6 +489,7 @@ static struct mtk_dpc mt6989_dpc_driver_data = {
 	.mmdvfs_power_sync = false,
 	.mmdvfs_settings_addr = NULL,
 	.mmdvfs_settings_count = 0,
+	.mtcmos_mask = 0x3f,
 };
 
 static struct mtk_dpc mt6878_dpc_driver_data = {
@@ -499,6 +502,20 @@ static struct mtk_dpc mt6878_dpc_driver_data = {
 	.mmdvfs_power_sync = true,
 	.mmdvfs_settings_addr = mt6878_mmdvfs_settings_addr,
 	.mmdvfs_settings_count = 0, //pending by mmdvfs ready
+	.mtcmos_mask = 0x3f,
+};
+
+static struct mtk_dpc mt6899_dpc_driver_data = {
+	.mmsys_id = MMSYS_MT6899,
+	.disp_cmd_dt_usage = mt6989_disp_cmd_dt_usage,
+	.mml_cmd_dt_usage = mt6989_mml_cmd_dt_usage,
+	.disp_vdo_dt_usage = NULL,
+	.mml_vdo_dt_usage = NULL,
+	.get_sys_status = mt6899_get_sys_status,
+	.mmdvfs_power_sync = true,
+	.mmdvfs_settings_addr = NULL,
+	.mmdvfs_settings_count = 0,
+	.mtcmos_mask = 0x1f,
 };
 
 static void _dpc_analysis(bool detail);
@@ -683,18 +700,28 @@ static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
 
 	switch (subsys) {
 	case DPC_SUBSYS_DIS0:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS0)) == 0)
+			return 0;
 		addr = DISP_REG_DPC_DISP0_DEBUG1;
 		break;
 	case DPC_SUBSYS_DIS1:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS1)) == 0)
+			return 0;
 		addr = DISP_REG_DPC_DISP1_DEBUG1;
 		break;
 	case DPC_SUBSYS_OVL0:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL0)) == 0)
+			return 0;
 		addr = DISP_REG_DPC_OVL0_DEBUG1;
 		break;
 	case DPC_SUBSYS_OVL1:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL1)) == 0)
+			return 0;
 		addr = DISP_REG_DPC_OVL1_DEBUG1;
 		break;
 	case DPC_SUBSYS_MML1:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_MML1)) == 0)
+			return 0;
 		addr = DISP_REG_DPC_MML1_DEBUG1;
 		break;
 	default:
@@ -844,6 +871,88 @@ static unsigned int mt6878_get_sys_status(enum dpc_sys_status_id id, unsigned in
 			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
 		break;
 #endif
+	case SYS_VALUE_VDISP_DVFS_LEVEL:
+		if (!dbg_vdisp_level)
+			return 0;
+		mask = 0x1c;
+		if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
+		break;
+	default:
+		return 0;
+	}
+
+	if (addr == NULL)
+		return 0;
+
+	value = readl(addr);
+	if (status)
+		*status = value;
+
+	return (value & mask);
+}
+
+static unsigned int mt6899_get_sys_status(enum dpc_sys_status_id id, unsigned int *status)
+{
+	unsigned int mask = 0, value = 0;
+	void __iomem *addr = NULL;
+
+	switch (id) {
+	case SYS_POWER_ACK_MMINFRA:
+		mask = SPM_PWR_FLD_MMINFRA_MASK_MT6899;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MSB_MT6899;
+		break;
+	case SYS_POWER_ACK_DISP1_SUBSYS:
+		mask = SPM_PWR_FLD_DISP1_MASK_MT6899;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MSB_MT6899;
+		break;
+	case SYS_POWER_ACK_MML1_SUBSYS:
+		mask = SPM_PWR_FLD_MML1_MASK_MT6899;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MSB_MT6899;
+		break;
+	case SYS_POWER_ACK_DPC:
+		mask = SPM_PWR_FLD_DISP_VCORE_MASK_MT6899;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MT6899;
+		break;
+	case SYS_STATE_MMINFRA:
+		mask = SPM_REQ_MMINFRA_STATE_MT6899;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6899;
+		break;
+	case SYS_STATE_APSRC:
+		mask = SPM_REQ_APSRC_STATE_MT6899;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6899;
+		break;
+	case SYS_STATE_EMI:
+		mask = SPM_REQ_EMI_STATE_MT6899;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6899;
+		break;
+	case SYS_STATE_HRT_BW:
+		mask = VCORE_DVFSRC_HRT_BW_MASK;
+		if (g_priv->sys_va[VCORE_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VCORE_DVFSRC_DEBUG];
+		break;
+	case SYS_STATE_SRT_BW:
+		mask = VCORE_DVFSRC_SRT_BW_MASK;
+		if (g_priv->sys_va[VCORE_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VCORE_DVFSRC_DEBUG];
+		break;
+	case SYS_STATE_VLP_VOTE:
+		mask = U32_MAX;
+		if (g_priv->sys_va[VLP_BASE])
+			addr = g_priv->sys_va[VLP_BASE] + VLP_DISP_SW_VOTE_CON;
+		break;
+	case SYS_STATE_VDISP_DVFS:
+		mask = 0x3;
+		if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
+		break;
 	case SYS_VALUE_VDISP_DVFS_LEVEL:
 		if (!dbg_vdisp_level)
 			return 0;
@@ -1349,6 +1458,9 @@ static void dpc_dt_set(u16 dt, u32 us)
 	u32 value = us * 26;	/* 26M base, 20 bits range, 38.46 ns ~ 38.46 ms*/
 	u32 max_counter = 0xFFFFF;
 
+	if (g_priv->mmsys_id == MMSYS_MT6899)
+		max_counter = 0x1FFFFFF; /*24bits range, 1.29s*/
+
 	if (value > max_counter)
 		value = max_counter;
 
@@ -1578,14 +1690,18 @@ static void dpc_disp_group_enable_func(const enum mtk_dpc_disp_vidle group, bool
 	case DPC_DISP_VIDLE_MTCMOS:
 		/* MTCMOS auto_on_off enable, both ack */
 		value = (en && avail) ? (BIT(0) | BIT(4)) : 0;
-		writel(value, dpc_base + DISP_REG_DPC_DISP0_MTCMOS_CFG);
-		writel(value, dpc_base + DISP_REG_DPC_OVL0_MTCMOS_CFG);
-		writel(value, dpc_base + DISP_REG_DPC_OVL1_MTCMOS_CFG);
+		if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS0))
+			writel(value, dpc_base + DISP_REG_DPC_DISP0_MTCMOS_CFG);
+		if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL0))
+			writel(value, dpc_base + DISP_REG_DPC_OVL0_MTCMOS_CFG);
+		if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL1))
+			writel(value, dpc_base + DISP_REG_DPC_OVL1_MTCMOS_CFG);
 		break;
 	case DPC_DISP_VIDLE_MTCMOS_DISP1:
 		/* MTCMOS auto_on_off enable, both ack, pwr off dependency */
 		value = (en && avail) ? (BIT(0) | BIT(4) | BIT(6)) : 0;
-		writel(value, dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG);
+		if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS1))
+			writel(value, dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG);
 
 		/* DDR_SRC and EMI_REQ DT is follow DISP1 */
 		value1 = (en && mtk_dpc_support_cap(DPC_VIDLE_APSRC_OFF)) ?
@@ -1641,7 +1757,8 @@ static void dpc_mml_group_enable_func(const enum mtk_dpc_mml_vidle group, bool e
 	case DPC_MML_VIDLE_MTCMOS:
 		/* MTCMOS auto_on_off enable, both ack */
 		value = (en && avail) ? (BIT(0) | BIT(4)) : 0;
-		writel(value, dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG);
+		if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_MML1))
+			writel(value, dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG);
 
 		/* DDR_SRC and EMI_REQ DT is follow MML1 */
 		value1 = (en && mtk_dpc_support_cap(DPC_VIDLE_APSRC_OFF)) ?
@@ -2830,11 +2947,15 @@ static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, c
 	/* CLR : execute SW threads, disable auto MTCMOS */
 	switch (subsys) {
 	case DPC_SUBSYS_DIS0:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS0)) == 0)
+			break;
 		addr = en ? DISP_REG_DPC_DISP0_THREADx_CLR(thread)
 			  : DISP_REG_DPC_DISP0_THREADx_SET(thread);
 		writel(1, dpc_base + addr);
 		break;
 	case DPC_SUBSYS_DIS1:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS1)) == 0)
+			break;
 		addr = en ? DISP_REG_DPC_DISP1_THREADx_CLR(thread)
 			  : DISP_REG_DPC_DISP1_THREADx_SET(thread);
 		writel(1, dpc_base + addr);
@@ -2855,6 +2976,8 @@ static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, c
 		}
 		break;
 	case DPC_SUBSYS_OVL0:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL0)) == 0)
+			break;
 		addr = en ? DISP_REG_DPC_OVL0_THREADx_CLR(thread)
 			  : DISP_REG_DPC_OVL0_THREADx_SET(thread);
 		writel(1, dpc_base + addr);
@@ -2875,11 +2998,15 @@ static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, c
 		}
 		break;
 	case DPC_SUBSYS_OVL1:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL1)) == 0)
+			break;
 		addr = en ? DISP_REG_DPC_OVL1_THREADx_CLR(thread)
 			  : DISP_REG_DPC_OVL1_THREADx_SET(thread);
 		writel(1, dpc_base + addr);
 		break;
 	case DPC_SUBSYS_MML1:
+		if ((g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_MML1)) == 0)
+			break;
 		addr = en ? DISP_REG_DPC_MML1_THREADx_CLR(thread)
 			  : DISP_REG_DPC_MML1_THREADx_SET(thread);
 		writel(1, dpc_base + addr);
@@ -3457,11 +3584,16 @@ static void _dpc_analysis(bool detail)
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
 	DPCDUMP("mtcmos: (disp:%#04x %#04x %#04x %#04x mml1:%#04x)",
-		readl(dpc_base + DISP_REG_DPC_DISP0_MTCMOS_CFG),
-		readl(dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG),
-		readl(dpc_base + DISP_REG_DPC_OVL0_MTCMOS_CFG),
-		readl(dpc_base + DISP_REG_DPC_OVL1_MTCMOS_CFG),
-		readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG));
+		(g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS0)) ?
+			readl(dpc_base + DISP_REG_DPC_DISP0_MTCMOS_CFG) : 0x0,
+		(g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS1)) ?
+			readl(dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG) : 0x0,
+		(g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL0)) ?
+			readl(dpc_base + DISP_REG_DPC_OVL0_MTCMOS_CFG) : 0x0,
+		(g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL1)) ?
+			readl(dpc_base + DISP_REG_DPC_OVL1_MTCMOS_CFG) : 0x0,
+		(g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_MML1)) ?
+			readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG) : 0x0);
 
 	status = g_priv->get_sys_status(SYS_STATE_APSRC, &value);
 	DPCDUMP("APSRC req:0x%x, value:%#04x", status, value);
@@ -3485,25 +3617,35 @@ static void _dpc_analysis(bool detail)
 		(unsigned long long)g_priv->dpc_pa + 0x200);
 	dpc_dump_regs(0x200, 0x2E0);
 
-	DPCDUMP("=============== DPC DISP0_MTCMOS, pa:0x%llx ================",
-		(unsigned long long)g_priv->dpc_pa + 0x300);
-	dpc_dump_regs(0x300, 0x37C);
+	if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS0)) {
+		DPCDUMP("=============== DPC DISP0_MTCMOS, pa:0x%llx ================",
+			(unsigned long long)g_priv->dpc_pa + 0x300);
+		dpc_dump_regs(0x300, 0x37C);
+	}
 
-	DPCDUMP("=============== DPC DISP1_MTCMOS, pa:0x%llx ================",
-		(unsigned long long)g_priv->dpc_pa + 0x400);
-	dpc_dump_regs(0x400, 0x47C);
+	if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS1)) {
+		DPCDUMP("=============== DPC DISP1_MTCMOS, pa:0x%llx ================",
+			(unsigned long long)g_priv->dpc_pa + 0x400);
+		dpc_dump_regs(0x400, 0x47C);
+	}
 
-	DPCDUMP("=============== DPC OVL0_MTCMOS, pa:0x%llx ================",
-		(unsigned long long)g_priv->dpc_pa + 0x500);
-	dpc_dump_regs(0x500, 0x57C);
+	if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL0)) {
+		DPCDUMP("=============== DPC OVL0_MTCMOS, pa:0x%llx ================",
+			(unsigned long long)g_priv->dpc_pa + 0x500);
+		dpc_dump_regs(0x500, 0x57C);
+	}
 
-	DPCDUMP("=============== DPC OVL1_MTCMOS, pa:0x%llx ================",
-		(unsigned long long)g_priv->dpc_pa + 0x600);
-	dpc_dump_regs(0x600, 0x67C);
+	if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_OVL1)) {
+		DPCDUMP("=============== DPC OVL1_MTCMOS, pa:0x%llx ================",
+			(unsigned long long)g_priv->dpc_pa + 0x600);
+		dpc_dump_regs(0x600, 0x67C);
+	}
 
-	DPCDUMP("=============== DPC MML1_MTCMOS, pa:0x%llx ================",
-		(unsigned long long)g_priv->dpc_pa + 0x700);
-	dpc_dump_regs(0x700, 0x77C);
+	if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_MML1)) {
+		DPCDUMP("=============== DPC MML1_MTCMOS, pa:0x%llx ================",
+			(unsigned long long)g_priv->dpc_pa + 0x700);
+		dpc_dump_regs(0x700, 0x77C);
+	}
 
 	DPCDUMP("=============== DPC debug, pa:0x%llx ================",
 		(unsigned long long)g_priv->dpc_pa + 0x800);
@@ -3789,6 +3931,7 @@ static int mtk_dpc_state_monitor_thread(void *data)
 static const struct of_device_id mtk_dpc_driver_v1_dt_match[] = {
 	{.compatible = "mediatek,mt6989-disp-dpc-v1", .data = &mt6989_dpc_driver_data},
 	{.compatible = "mediatek,mt6878-disp-dpc-v1", .data = &mt6878_dpc_driver_data},
+	{.compatible = "mediatek,mt6899-disp-dpc-v1", .data = &mt6899_dpc_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_dpc_driver_v1_dt_match);
