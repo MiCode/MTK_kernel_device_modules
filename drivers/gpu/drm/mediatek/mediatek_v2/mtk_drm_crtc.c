@@ -7371,11 +7371,6 @@ void mtk_drm_crtc_mode_check(struct drm_crtc *crtc,
 			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 	}
 
-	/* FIXME: workaround for hwc */
-	if (mtk_crtc->res_switch != RES_SWITCH_NO_USE)
-		if (mtk_crtc->mode_idx == old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX])
-			new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] = mtk_crtc->mode_idx;
-
 	DDPMSG("%s++ from %llu to %llu\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		new_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
