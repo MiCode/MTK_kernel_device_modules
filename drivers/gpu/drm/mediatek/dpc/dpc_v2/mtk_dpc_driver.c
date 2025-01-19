@@ -49,6 +49,9 @@ module_param(irq_aee, int, 0644);
 int mminfra_floor;
 module_param(mminfra_floor, int, 0644);
 
+int post_vlp_delay = 60;
+module_param(post_vlp_delay, int, 0644);
+
 u32 dump_begin;
 module_param(dump_begin, uint, 0644);
 u32 dump_lines = 40;
@@ -1491,7 +1494,7 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 	mtk_disp_vlp_vote(VOTE_SET, user);
 
 	if (user >= DISP_VIDLE_USER_CRTC)
-		udelay(50);
+		udelay(post_vlp_delay);
 	else if (user == 5)
 		mtk_disp_vlp_vote(VOTE_SET, DISP_VIDLE_USER_MML1);
 
@@ -1518,16 +1521,12 @@ static void dpc_clear_wfe_event(struct cmdq_pkt *pkt, enum mtk_vidle_voter_user 
 }
 
 static void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
-					const u16 gpr)
+					const u16 gpr, struct cmdq_reuse *reuse)
 {
 	cmdq_pkt_write(pkt, NULL, g_priv->voter_set_pa, BIT(user), U32_MAX);
 
-	if (gpr) {
-		cmdq_pkt_poll_timeout(pkt, 0xb, SUBSYS_NO_SUPPORT,
-				      g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].chk_pa, ~0, 0xFFFF, gpr);
-		cmdq_pkt_poll_timeout(pkt, 0xb, SUBSYS_NO_SUPPORT,
-				      g_priv->mtcmos_cfg[DPC_SUBSYS_OVL0].chk_pa, ~0, 0xFFFF, gpr);
-	}
+	if (gpr)
+		cmdq_pkt_sleep_reuse(pkt, CMDQ_US_TO_TICK(post_vlp_delay), gpr, reuse);
 }
 
 static void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user)

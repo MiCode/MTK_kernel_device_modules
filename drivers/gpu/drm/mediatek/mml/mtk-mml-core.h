@@ -1068,7 +1068,7 @@ void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task);
 void mml_core_stop_racing(struct mml_frame_config *cfg, bool force);
 
 
-void add_reuse_label(u32 comp_id, struct mml_task_reuse *reuse, u16 *label_idx, u32 value);
+void mml_add_reuse_label(u32 comp_id, struct mml_task_reuse *reuse, u16 *label_idx, u32 value);
 
 /* mml_assign - assign to reg_idx with value. Cache the label of this
  * instruction to mml_pipe_cache and record its entry into label_array.

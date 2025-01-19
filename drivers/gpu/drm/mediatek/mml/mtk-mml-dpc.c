@@ -120,7 +120,7 @@ void mml_dpc_hrt_bw_set(u32 sysid, const u32 bw_in_mb, bool force_keep)
 	mml_dpc_funcs.dpc_hrt_bw_set(mml_sysid_to_dpc_subsys(sysid), bw_in_mb, force_keep);
 }
 
-int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt)
+int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_reuse *reuse)
 {
 	const enum mtk_vidle_voter_user user = mml_sysid_to_dpc_user_cmdq(sysid);
 
@@ -131,7 +131,7 @@ int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt)
 
 	mml_msg_dpc("%s exception flow gce user %d keep", __func__, user);
 
-	mml_dpc_funcs.dpc_vidle_power_keep_by_gce(pkt, user, 0);
+	mml_dpc_funcs.dpc_vidle_power_keep_by_gce(pkt, user, gpr, reuse);
 	return 0;
 }
 

@@ -1525,7 +1525,7 @@ static void aal_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 		&reuse->labels[reuse->label_idx],
 		&aal_frm->polling_reuse);
 
-	add_reuse_label(comp->id, reuse, &aal_frm->labels[AAL_POLLGPR_0],
+	mml_add_reuse_label(comp->id, reuse, &aal_frm->labels[AAL_POLLGPR_0],
 		task->pq_task->aal_hist[pipe]->va_offset);
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p] offset[%d]",
