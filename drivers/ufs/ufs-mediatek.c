@@ -1583,6 +1583,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	int err = 0;
 	struct arm_smccc_res res;
 	struct tag_ufs *atag;
+	u32 val;
 
 	host = devm_kzalloc(dev, sizeof(*host), GFP_KERNEL);
 	if (!host) {
@@ -1608,6 +1609,15 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	if (!id) {
 		err = -EINVAL;
 		goto out;
+	}
+
+	err = of_property_read_u32(dev->of_node, "id", &val);
+	if (!err) {
+		host->host_id = val;
+		dev_info(dev, "set host id to %d\n", host->host_id);
+	} else {
+		host->host_id = 0;
+		dev_info(dev, "default set host id to 0\n");
 	}
 
 	/* Initialize host capability */
@@ -1708,7 +1718,9 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	ufs_mtk_dbg_register(hba);
 
-	ufs_mtk_rpmb_init(hba);
+	if (host->host_id == 0)
+		ufs_mtk_rpmb_init(hba);
+
 	ufs_mb_init(hba);
 
 	host->cpuhp_state = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN, "ufs:online",
@@ -2621,7 +2633,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	}
 
 
-	ufs_mtk_dbg_dump(100);
+	ufs_mtk_dbg_dump(hba, 100);
 
 	ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_ERR);
 
@@ -2632,7 +2644,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	}
 
 out:
-	ufs_mtk_eh_err_cnt();
+	ufs_mtk_eh_err_cnt(hba);
 }
 
 static int ufs_mtk_apply_dev_quirks(struct ufs_hba *hba)
@@ -2805,7 +2817,7 @@ out_mb:
 	}
 
 	if (evt == UFS_EVT_ABORT)
-		ufs_mtk_eh_abort(val);
+		ufs_mtk_eh_abort(hba, val);
 
 }
 
@@ -3164,7 +3176,7 @@ static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 
 void _ufs_mtk_dbg_dump(struct ufs_hba *hba, u32 latest_cnt)
 {
-	ufs_mtk_dbg_dump(latest_cnt);
+	ufs_mtk_dbg_dump(hba, latest_cnt);
 }
 #endif
 

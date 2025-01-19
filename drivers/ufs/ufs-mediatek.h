@@ -292,6 +292,7 @@ struct ufs_mtk_host {
 	u16 ref_clk_ungating_wait_us;
 	u16 ref_clk_gating_wait_us;
 	u32 ip_ver;
+	u32 host_id;
 	u32 desired_ahit;
 	u32 max_gear;
 	struct ufs_mtk_clk mclk;
@@ -328,6 +329,9 @@ struct ufs_mtk_host {
 	struct ufs_mbrain_entry mb_entries[UFS_EVT_FATAL_ERR + 1][UFS_EVENT_HIST_LENGTH];
 	struct workqueue_struct *mb_workq;
 	ufs_mb_event_notify mb_notify;
+
+	/* debug module */
+	struct ufs_mtk_dbg *mdbg;
 
 	bool mcq_set_intr;
 	bool is_mcq_intr_enabled;
@@ -399,6 +403,12 @@ enum {
 	CLK_FORCE_SCALE_DOWN,
 	CLK_FORCE_SCALE_UP,
 	CLK_FORCE_SCALE_G1
+};
+
+enum ufs_host {
+	HOST0    = 0,
+	HOST1    = 1,
+	HOST_CNT = 2
 };
 
 void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode);

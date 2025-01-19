@@ -17,7 +17,7 @@
 #include "ufs-mediatek-priv.h"
 #include "ufs-mediatek.h"
 
-extern struct ufs_hba *g_hba;
+static struct ufs_hba *ise_hba;
 
 static inline bool ufshcd_is_host_ready(struct ufs_hba *hba)
 {
@@ -153,7 +153,7 @@ static int ise_rpmb_prepare_kp(struct ufs_hba *hba)
 	ret = ufshcd_block_io(hba);
 	if (ret) {
 		dev_err(hba->dev, "%s: block io faialed (%d)", __func__, ret);
-		ufs_mtk_dbg_dump(10);
+		ufs_mtk_dbg_dump(hba, 10);
 		goto pm_put;
 	}
 
@@ -184,7 +184,7 @@ static int ise_rpmb_unprepare_kp(struct ufs_hba *hba)
 #define IOR_ISE_RPMB_PROGRAM_KEY _IOR(ISE_RPMB_PROGRAM_KEY,'a', int *)
 static long ise_rpmb_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 {
-	struct ufs_hba *hba = g_hba;
+	struct ufs_hba *hba = ise_hba;
 	int ret;
 
 	switch (cmd) {
@@ -249,6 +249,8 @@ int ufs_mtk_ise_rpmb_probe(struct ufs_hba *hba)
 	ise_rpmb_class = NULL;
 	host = ufshcd_get_variant(hba);
 	atag = host->atag;
+
+	ise_hba = hba;
 
 	if (!atag) {
 		dev_err(hba->dev, "%s: atag not found", __func__);

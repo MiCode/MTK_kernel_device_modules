@@ -981,9 +981,9 @@ static ssize_t dbg_tp_unregister_store(struct device *dev,
 		return count;
 
 	if (value)
-		ufs_mtk_dbg_tp_unregister();
+		ufs_mtk_dbg_tp_unregister(hba);
 	else
-		ufs_mtk_dbg_tp_register();
+		ufs_mtk_dbg_tp_register(hba);
 
 	return count;
 }

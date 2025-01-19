@@ -3114,7 +3114,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	ufs_mtk_ahb_dump(hba);
 	ufs_mtk_axi_dump(hba);
 
-	ufs_mtk_dbg_dump(100);
+	ufs_mtk_dbg_dump(hba, 100);
 
 	ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_ERR);
 
@@ -3271,7 +3271,7 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 	}
 
 	if (evt == UFS_EVT_ABORT)
-		ufs_mtk_eh_abort(val);
+		ufs_mtk_eh_abort(hba, val);
 
 }
 
@@ -3630,7 +3630,7 @@ static void ufs_mtk_hibern8_notify(struct ufs_hba *hba, enum uic_cmd_dme cmd,
 
 void _ufs_mtk_dbg_dump(struct ufs_hba *hba, u32 latest_cnt)
 {
-	ufs_mtk_dbg_dump(latest_cnt);
+	ufs_mtk_dbg_dump(hba, latest_cnt);
 }
 #endif
 

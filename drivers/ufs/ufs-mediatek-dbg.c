@@ -4,7 +4,12 @@
  * Authors:
  *	Stanley Chu <stanley.chu@mediatek.com>
  */
+#include "linux/err.h"
+#include "linux/export.h"
+#include "linux/printk.h"
+#include "linux/slab.h"
 #include <linux/atomic.h>
+#include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/of_address.h>
@@ -21,6 +26,7 @@
 #include <linux/sysfs.h>
 #include <linux/tracepoint.h>
 #include <linux/vmalloc.h>
+#include <linux/phy/phy.h>
 #include <sched/sched.h>
 #include "governor.h"
 #include "ufshcd-priv.h"
@@ -40,19 +46,11 @@
 #define UFS_AEE_BUFFER_SIZE (100 * 1024)
 
 /*
- * Currently only global variables are used.
- *
- * For scalability, may introduce multiple history
- * instances bound to each device in the future.
+ * Currently only ufshba use global variable for trace32 debug
  */
-static bool cmd_hist_initialized;
-static bool cmd_hist_enabled;
-static spinlock_t cmd_hist_lock;
-static unsigned int cmd_hist_cnt;
-static unsigned int cmd_hist_ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
-static struct cmd_hist_struct *cmd_hist;
-static struct ufs_hba *ufshba;
-static char *ufs_aee_buffer;
+static struct ufs_hba *ufshba[HOST_CNT];
+#define ufshcd_to_dbg(hba) \
+	(((struct ufs_mtk_host *)ufshcd_get_variant(hba))->mdbg)
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
@@ -60,13 +58,13 @@ static char *ufs_aee_buffer;
 
 extern void mt_irq_dump_status(unsigned int irq);
 
-void ufs_mtk_eh_abort(unsigned int tag)
+void ufs_mtk_eh_abort(struct ufs_hba *hba, unsigned int tag)
 {
-	static int ufs_abort_aee_count;
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
-	if (!ufs_abort_aee_count) {
-		ufs_abort_aee_count++;
-		ufs_mtk_dbg_cmd_hist_disable();
+	if (!mdbg->ufs_abort_aee_count) {
+		mdbg->ufs_abort_aee_count++;
+		ufs_mtk_dbg_cmd_hist_disable(mdbg);
 		ufs_mtk_aee_warning("ufshcd_abort at tag %d", tag);
 	}
 }
@@ -92,19 +90,19 @@ void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_eh_unipro_set_lpm);
 
-void ufs_mtk_eh_err_cnt(void)
+void ufs_mtk_eh_err_cnt(struct ufs_hba *hba)
 {
-	static ktime_t err_ktime;
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 	ktime_t delta_ktime;
 	s64 delta_msecs;
 
-	delta_ktime = ktime_sub(local_clock(), err_ktime);
+	delta_ktime = ktime_sub(local_clock(), mdbg->err_ktime);
 	delta_msecs = ktime_to_ms(delta_ktime);
 
 	/* If last error happen more than 72 hrs, clear error count */
 	/* Treat errors happen in 3000 ms as one time error */
 	if (delta_msecs >= 3000) {
-		err_ktime = local_clock();
+		mdbg->err_ktime = local_clock();
 		ufs_mtk_aee_warning("UIC Error");
 	}
 }
@@ -252,14 +250,13 @@ void ufs_mtk_check_bus_status(struct ufs_hba *hba)
 EXPORT_SYMBOL_GPL(ufs_mtk_check_bus_status);
 #endif
 
-static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
-				  struct seq_file *m, u32 id,
-				  char *err_name)
+static void ufs_mtk_dbg_print_err_hist(struct ufs_hba *hba, char **buff,
+				unsigned long *size, struct seq_file *m,
+				u32 id, char *err_name)
 {
 	int i;
 	bool found = false;
 	struct ufs_event_hist *e;
-	struct ufs_hba *hba = ufshba;
 
 	if (id >= UFS_EVT_CNT)
 		return;
@@ -281,11 +278,10 @@ static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 		SPREAD_PRINTF(buff, size, m, "No record of %s\n", err_name);
 }
 
-static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
-			    struct seq_file *m)
+static void ufs_mtk_dbg_print_info(struct ufs_hba *hba, char **buff,
+				unsigned long *size, struct seq_file *m)
 {
 	struct ufs_mtk_host *host;
-	struct ufs_hba *hba = ufshba;
 
 	if (!hba)
 		return;
@@ -387,59 +383,59 @@ static void ufs_mtk_dbg_print_info(char **buff, unsigned long *size,
 		      hba->nutrs, hba->dev_info.bqueuedepth);
 
 	/* Error history */
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_PA_ERR, "pa_err");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_DL_ERR, "dl_err");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_NL_ERR, "nl_err");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_TL_ERR, "tl_err");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_DME_ERR, "dme_err");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_AUTO_HIBERN8_ERR,
 			      "auto_hibern8_err");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_FATAL_ERR, "fatal_err");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_LINK_STARTUP_FAIL,
 			      "link_startup_fail");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_RESUME_ERR, "resume_fail");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_SUSPEND_ERR, "suspend_fail");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_WL_RES_ERR, "wlun resume_fail");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_WL_SUSP_ERR, "wlun suspend_fail");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_DEV_RESET, "dev_reset");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_HOST_RESET, "host_reset");
-	ufs_mtk_dbg_print_err_hist(buff, size, m,
+	ufs_mtk_dbg_print_err_hist(hba, buff, size, m,
 			      UFS_EVT_ABORT, "task_abort");
 }
 
-static int cmd_hist_get_entry(void)
+static int cmd_hist_get_entry(struct ufs_mtk_dbg *mdbg)
 {
 	unsigned long flags;
 	unsigned int ptr;
 
-	spin_lock_irqsave(&cmd_hist_lock, flags);
-	cmd_hist_ptr++;
-	if (cmd_hist_ptr >= MAX_CMD_HIST_ENTRY_CNT)
-		cmd_hist_ptr = 0;
-	ptr = cmd_hist_ptr;
+	spin_lock_irqsave(&mdbg->cmd_hist_lock, flags);
+	mdbg->cmd_hist_ptr++;
+	if (mdbg->cmd_hist_ptr >= MAX_CMD_HIST_ENTRY_CNT)
+		mdbg->cmd_hist_ptr = 0;
+	ptr = mdbg->cmd_hist_ptr;
 
-	cmd_hist_cnt++;
-	spin_unlock_irqrestore(&cmd_hist_lock, flags);
+	mdbg->cmd_hist_cnt++;
+	spin_unlock_irqrestore(&mdbg->cmd_hist_lock, flags);
 
 	/* Initialize common fields */
-	cmd_hist[ptr].cpu = smp_processor_id();
-	cmd_hist[ptr].duration = 0;
-	cmd_hist[ptr].pid = current->pid;
-	cmd_hist[ptr].time = local_clock();
+	mdbg->cmd_hist[ptr].cpu = smp_processor_id();
+	mdbg->cmd_hist[ptr].duration = 0;
+	mdbg->cmd_hist[ptr].pid = current->pid;
+	mdbg->cmd_hist[ptr].time = local_clock();
 
 	return ptr;
 }
@@ -460,8 +456,13 @@ static void probe_android_vh_ufs_send_tm_command(void *data, struct ufs_hba *hba
 	enum cmd_hist_event event = CMD_UNKNOWN;
 	enum ufs_trace_str_t _str_t = str_t;
 	struct utp_task_req_desc *d = &hba->utmrdl_base_addr[tag];
+	struct cmd_hist_struct *cmd_hist;
+	struct ufs_mtk_dbg *mdbg = data;
 
-	if (!cmd_hist_enabled)
+	if (IS_ERR_OR_NULL(mdbg))
+		return;
+
+	if (!mdbg->cmd_hist_enabled)
 		return;
 
 	lun = (be32_to_cpu(d->upiu_req.req_header.dword_0) >> 8) & 0xFF;
@@ -483,8 +484,9 @@ static void probe_android_vh_ufs_send_tm_command(void *data, struct ufs_hba *hba
 		break;
 	}
 
-	ptr = cmd_hist_get_entry();
+	ptr = cmd_hist_get_entry(mdbg);
 
+	cmd_hist = mdbg->cmd_hist;
 	cmd_hist[ptr].event = event;
 	cmd_hist[ptr].cmd.tm.lun = lun;
 	cmd_hist[ptr].cmd.tm.tag = tag;
@@ -497,30 +499,39 @@ static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
 				 enum cmd_hist_event event)
 {
 	int ptr;
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
-	ptr = cmd_hist_get_entry();
+	if (IS_ERR_OR_NULL(mdbg))
+		return;
 
-	cmd_hist[ptr].event = event;
-	cmd_hist[ptr].cmd.dev.type = hba->dev_cmd.type;
+	ptr = cmd_hist_get_entry(mdbg);
+
+	mdbg->cmd_hist[ptr].event = event;
+	mdbg->cmd_hist[ptr].cmd.dev.type = hba->dev_cmd.type;
 
 	if (hba->dev_cmd.type == DEV_CMD_TYPE_NOP)
 		return;
 
-	cmd_hist[ptr].cmd.dev.tag = lrbp->task_tag;
-	cmd_hist[ptr].cmd.dev.opcode =
+	mdbg->cmd_hist[ptr].cmd.dev.tag = lrbp->task_tag;
+	mdbg->cmd_hist[ptr].cmd.dev.opcode =
 		hba->dev_cmd.query.request.upiu_req.opcode;
-	cmd_hist[ptr].cmd.dev.idn =
+	mdbg->cmd_hist[ptr].cmd.dev.idn =
 		hba->dev_cmd.query.request.upiu_req.idn;
-	cmd_hist[ptr].cmd.dev.index =
+	mdbg->cmd_hist[ptr].cmd.dev.index =
 		hba->dev_cmd.query.request.upiu_req.index;
-	cmd_hist[ptr].cmd.dev.selector =
+	mdbg->cmd_hist[ptr].cmd.dev.selector =
 		hba->dev_cmd.query.request.upiu_req.selector;
 }
 
 static void probe_android_vh_ufs_send_command(void *data, struct ufs_hba *hba,
 					      struct ufshcd_lrb *lrbp)
 {
-	if (!cmd_hist_enabled)
+	struct ufs_mtk_dbg *mdbg = data;
+
+	if (IS_ERR_OR_NULL(mdbg))
+		return;
+
+	if (!mdbg->cmd_hist_enabled)
 		return;
 
 	if (lrbp->cmd)
@@ -532,7 +543,12 @@ static void probe_android_vh_ufs_send_command(void *data, struct ufs_hba *hba,
 static void probe_android_vh_ufs_compl_command(void *data, struct ufs_hba *hba,
 					      struct ufshcd_lrb *lrbp)
 {
-	if (!cmd_hist_enabled)
+	struct ufs_mtk_dbg *mdbg = data;
+
+	if (IS_ERR_OR_NULL(mdbg))
+		return;
+
+	if (!mdbg->cmd_hist_enabled)
 		return;
 
 	if (lrbp->cmd)
@@ -548,8 +564,13 @@ static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
 {
 	int ptr, ptr_cur;
 	enum cmd_hist_event event;
+	struct cmd_hist_struct *cmd_hist;
+	struct ufs_mtk_dbg *mdbg = data;
 
-	if (!cmd_hist_enabled)
+	if (IS_ERR_OR_NULL(mdbg))
+		return;
+
+	if (!mdbg->cmd_hist_enabled)
 		return;
 
 	if (str_t == UFS_CMD_SEND)
@@ -559,8 +580,9 @@ static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
 	else
 		return;
 
-	ptr = cmd_hist_get_entry();
+	ptr = cmd_hist_get_entry(mdbg);
 
+	cmd_hist = mdbg->cmd_hist;
 	cmd_hist[ptr].event = event;
 	cmd_hist[ptr].cmd.utp.tag = tag;
 	cmd_hist[ptr].cmd.utp.transfer_len = transfer_len;
@@ -595,17 +617,23 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 {
 	int ptr, ptr_cur;
 	enum cmd_hist_event event;
+	struct cmd_hist_struct *cmd_hist;
+	struct ufs_mtk_dbg *mdbg = data;
 
-	if (!cmd_hist_enabled)
+	if (IS_ERR_OR_NULL(mdbg))
 		return;
 
-	ptr = cmd_hist_get_entry();
+	if (!mdbg->cmd_hist_enabled)
+		return;
+
+	ptr = cmd_hist_get_entry(mdbg);
 
 	if (str_t == UFS_CMD_SEND)
 		event = CMD_UIC_SEND;
 	else
 		event = CMD_UIC_CMPL_GENERAL;
 
+	cmd_hist = mdbg->cmd_hist;
 	cmd_hist[ptr].event = event;
 	cmd_hist[ptr].cmd.uic.cmd = cmd;
 	cmd_hist[ptr].cmd.uic.arg1 = arg1;
@@ -1456,14 +1484,9 @@ EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_dump_work);
 void ufs_mtk_dbg_phy_enable(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	struct device_node *np;
 	struct resource res;
 
-	np = of_find_compatible_node(NULL, NULL, "mediatek,mt8183-ufsphy");
-	if (!np)
-		goto out;
-
-	if (of_address_to_resource(np, 0, &res))
+	if (of_address_to_resource(host->mphy->dev.of_node, 0, &res))
 		goto out;
 
 	mphy_phys_base = res.start;
@@ -1484,19 +1507,27 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 {
 	int ptr;
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	struct ufs_mtk_host *host = ufshcd_get_variant(ufshba);
+	struct ufs_mtk_host *host;
 	u32 val;
 #endif
+	struct cmd_hist_struct *cmd_hist;
+	struct ufs_mtk_dbg *mdbg = data;
 
-	if (!cmd_hist_enabled)
+	if (IS_ERR_OR_NULL(mdbg))
 		return;
 
-	ptr = cmd_hist_get_entry();
+	if (!mdbg->cmd_hist_enabled)
+		return;
 
+	ptr = cmd_hist_get_entry(mdbg);
+
+	cmd_hist = mdbg->cmd_hist;
 	cmd_hist[ptr].event = CMD_CLK_GATING;
 	cmd_hist[ptr].cmd.clk_gating.state = state;
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	host = mdbg->host;
+
 	if (state == CLKS_ON && host->mphy_base) {
 		writel(0xC1000200, host->mphy_base + 0x20C0);
 		cmd_hist[ptr].cmd.clk_gating.arg1 =
@@ -1548,12 +1579,18 @@ static void probe_ufshcd_profile_clk_scaling(void *data, const char *dev_name,
 	const char *profile_info, s64 time_us, int err)
 {
 	int ptr;
+	struct cmd_hist_struct *cmd_hist;
+	struct ufs_mtk_dbg *mdbg = data;
 
-	if (!cmd_hist_enabled)
+	if (IS_ERR_OR_NULL(mdbg))
 		return;
 
-	ptr = cmd_hist_get_entry();
+	if (!mdbg->cmd_hist_enabled)
+		return;
 
+	ptr = cmd_hist_get_entry(mdbg);
+
+	cmd_hist = mdbg->cmd_hist;
 	cmd_hist[ptr].event = CMD_CLK_SCALING;
 	if (!strcmp(profile_info, "up"))
 		cmd_hist[ptr].cmd.clk_scaling.state = CLKS_SCALE_UP;
@@ -1568,12 +1605,18 @@ static void probe_ufshcd_pm(void *data, const char *dev_name,
 			    enum ufsdbg_pm_state state)
 {
 	int ptr;
+	struct cmd_hist_struct *cmd_hist;
+	struct ufs_mtk_dbg *mdbg = data;
 
-	if (!cmd_hist_enabled)
+	if (IS_ERR_OR_NULL(mdbg))
 		return;
 
-	ptr = cmd_hist_get_entry();
+	if (!mdbg->cmd_hist_enabled)
+		return;
 
+	ptr = cmd_hist_get_entry(mdbg);
+
+	cmd_hist = mdbg->cmd_hist;
 	cmd_hist[ptr].event = CMD_PM;
 	cmd_hist[ptr].cmd.pm.state = state;
 	cmd_hist[ptr].cmd.pm.err = err;
@@ -1798,49 +1841,53 @@ static int ufs_mtk_wait_link_state(struct ufs_hba *hba, u32 state,
  */
 int ufs_mtk_cali_hold(void)
 {
-	struct ufs_hba *hba = ufshba;
+	struct ufs_hba *hba;
 	u64 timeout = 1000 * 1000; /* 1 sec */;
-	int ret = 0;
+	int i, ret = 0;
 	u32 ahit;
 
-	if (!hba)
-		return -EINVAL;
+	for (i = 0; i < HOST_CNT; i++) {
+		hba = ufshba[i];
+		if (!hba)
+			continue;
 
-	pm_runtime_get_sync(&hba->ufs_device_wlun->sdev_gendev);
-	ufs_mtk_scsi_block_requests(hba);
+		pm_runtime_get_sync(&hba->ufs_device_wlun->sdev_gendev);
+		ufs_mtk_scsi_block_requests(hba);
 
-	if (ufs_mtk_wait_for_doorbell_clr(hba, timeout)) {
-		dev_err(hba->dev, "%s: wait doorbell clr timeout!\n",
-				__func__);
-		ufs_mtk_scsi_unblock_requests(hba);
-		pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
-		ret = -EBUSY;
+		if (ufs_mtk_wait_for_doorbell_clr(hba, timeout)) {
+			dev_err(hba->dev, "%s: wait doorbell clr timeout!\n",
+					__func__);
+			ufs_mtk_scsi_unblock_requests(hba);
+			pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
+			ret = -EBUSY;
+		}
+
+		/*
+		* To make sure clock scaling isn't work when ref-clk
+		* calibration ongoing
+		*/
+		if (ufshcd_is_clkscaling_supported(hba)) {
+			queue_work(hba->clk_scaling.workq,
+				&hba->clk_scaling.suspend_work);
+			flush_work(&hba->clk_scaling.suspend_work);
+		}
+
+		/* Make sure host enter AH8 and clock off */
+		ufshcd_hold(hba);
+		ahit = ufshcd_readl(hba, REG_AUTO_HIBERNATE_IDLE_TIMER);
+		if (ahit == 0)
+			ufshcd_writel(hba, hba->ahit, REG_AUTO_HIBERNATE_IDLE_TIMER);
+
+		ret = ufs_mtk_wait_link_state(hba, VS_LINK_HIBERN8, 15);
+		if (ret)
+			dev_err(hba->dev, "%s: UFS enter hibernate timeout!", __func__);
+		ufshcd_release(hba);
+
+		down(&hba->host_sem);
+
+		dev_info(hba->dev, "%s: UFS Block Request ret = %d\n",
+			__func__, ret);
 	}
-
-	/*
-	 * To make sure clock scaling isn't work when ref-clk
-	 * calibration ongoing
-	 */
-	if (ufshcd_is_clkscaling_supported(hba)) {
-		queue_work(hba->clk_scaling.workq,
-			&hba->clk_scaling.suspend_work);
-		flush_work(&hba->clk_scaling.suspend_work);
-	}
-
-	/* Make sure host enter AH8 and clock off */
-	ufshcd_hold(hba);
-	ahit = ufshcd_readl(hba, REG_AUTO_HIBERNATE_IDLE_TIMER);
-	if (ahit == 0)
-		ufshcd_writel(hba, hba->ahit, REG_AUTO_HIBERNATE_IDLE_TIMER);
-
-	ret = ufs_mtk_wait_link_state(hba, VS_LINK_HIBERN8, 15);
-	if (ret)
-		dev_err(hba->dev, "%s: UFS enter hibernate timeout!", __func__);
-	ufshcd_release(hba);
-
-	down(&hba->host_sem);
-
-	dev_info(hba->dev, "%s: UFS Block Request ret = %d\n", __func__, ret);
 
 	return ret;
 }
@@ -1851,57 +1898,56 @@ EXPORT_SYMBOL_GPL(ufs_mtk_cali_hold);
  */
 int ufs_mtk_cali_release(void)
 {
-	struct ufs_hba *hba = ufshba;
+	struct ufs_hba *hba;
+	int i;
 
-	if (!hba)
-		return -EINVAL;
+	for (i = 0; i < HOST_CNT; i++) {
+		hba = ufshba[i];
+		if (!hba)
+			continue;
 
-	up(&hba->host_sem);
+		up(&hba->host_sem);
 
-	ufs_mtk_scsi_unblock_requests(hba);
-	pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
+		ufs_mtk_scsi_unblock_requests(hba);
+		pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
 
-	dev_info(hba->dev, "%s: UFS Unblock Request Success!\n", __func__);
+		dev_info(hba->dev, "%s: UFS Unblock Request Success!\n",
+			__func__);
+	}
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_cali_release);
 
-int ufs_mtk_dbg_cmd_hist_enable(void)
+int ufs_mtk_dbg_cmd_hist_enable(struct ufs_mtk_dbg *mdbg)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&cmd_hist_lock, flags);
-	if (!cmd_hist) {
-		cmd_hist_enabled = false;
-		spin_unlock_irqrestore(&cmd_hist_lock, flags);
+	spin_lock_irqsave(&mdbg->cmd_hist_lock, flags);
+	if (!mdbg->cmd_hist) {
+		mdbg->cmd_hist_enabled = false;
+		spin_unlock_irqrestore(&mdbg->cmd_hist_lock, flags);
 		return -ENOMEM;
 	}
 
-	cmd_hist_enabled = true;
-	spin_unlock_irqrestore(&cmd_hist_lock, flags);
+	mdbg->cmd_hist_enabled = true;
+	spin_unlock_irqrestore(&mdbg->cmd_hist_lock, flags);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_cmd_hist_enable);
 
-int ufs_mtk_dbg_cmd_hist_disable(void)
+int ufs_mtk_dbg_cmd_hist_disable(struct ufs_mtk_dbg *mdbg)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&cmd_hist_lock, flags);
-	cmd_hist_enabled = false;
-	spin_unlock_irqrestore(&cmd_hist_lock, flags);
+	spin_lock_irqsave(&mdbg->cmd_hist_lock, flags);
+	mdbg->cmd_hist_enabled = false;
+	spin_unlock_irqrestore(&mdbg->cmd_hist_lock, flags);
 
 	return 0;
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_cmd_hist_disable);
-
-static void _cmd_hist_cleanup(void)
-{
-	ufs_mtk_dbg_cmd_hist_disable();
-	vfree(cmd_hist);
-}
 
 #define CLK_GATING_STATE_MAX (4)
 
@@ -1913,11 +1959,12 @@ static char *clk_gating_state_str[CLK_GATING_STATE_MAX + 1] = {
 	"unknown"
 };
 
-static void ufs_mtk_dbg_print_clk_gating_event(char **buff,
-					unsigned long *size,
+static void ufs_mtk_dbg_print_clk_gating_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
 					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 	int idx = cmd_hist[ptr].cmd.clk_gating.state;
 
 	if (idx < 0 || idx >= CLK_GATING_STATE_MAX)
@@ -1946,11 +1993,12 @@ static char *clk_scaling_state_str[CLK_SCALING_STATE_MAX + 1] = {
 	"unknown"
 };
 
-static void ufs_mtk_dbg_print_clk_scaling_event(char **buff,
-					unsigned long *size,
+static void ufs_mtk_dbg_print_clk_scaling_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
 					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 	int idx = cmd_hist[ptr].cmd.clk_scaling.state;
 
 	if (idx < 0 || idx >= CLK_SCALING_STATE_MAX)
@@ -1978,11 +2026,12 @@ static char *ufsdbg_pm_state_str[UFSDBG_PM_STATE_MAX + 1] = {
 	"unknown"
 };
 
-static void ufs_mtk_dbg_print_pm_event(char **buff,
-					unsigned long *size,
+static void ufs_mtk_dbg_print_pm_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
 					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 	int idx = cmd_hist[ptr].cmd.pm.state;
 	int err = cmd_hist[ptr].cmd.pm.err;
 	unsigned long time_us = cmd_hist[ptr].cmd.pm.time_us;
@@ -2008,11 +2057,12 @@ static void ufs_mtk_dbg_print_pm_event(char **buff,
 		);
 }
 
-static void ufs_mtk_dbg_print_device_reset_event(char **buff,
-					unsigned long *size,
+static void ufs_mtk_dbg_print_device_reset_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
 					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 	int idx = cmd_hist[ptr].cmd.clk_gating.state;
 
 	if (idx < 0 || idx >= CLK_GATING_STATE_MAX)
@@ -2030,10 +2080,12 @@ static void ufs_mtk_dbg_print_device_reset_event(char **buff,
 		);
 }
 
-static void ufs_mtk_dbg_print_uic_event(char **buff, unsigned long *size,
-				   struct seq_file *m, int ptr)
+static void ufs_mtk_dbg_print_uic_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
+					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	SPREAD_PRINTF(buff, size, m,
@@ -2051,10 +2103,12 @@ static void ufs_mtk_dbg_print_uic_event(char **buff, unsigned long *size,
 		);
 }
 
-static void ufs_mtk_dbg_print_utp_event(char **buff, unsigned long *size,
-				   struct seq_file *m, int ptr)
+static void ufs_mtk_dbg_print_utp_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
+					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
@@ -2078,10 +2132,12 @@ static void ufs_mtk_dbg_print_utp_event(char **buff, unsigned long *size,
 		);
 }
 
-static void ufs_mtk_dbg_print_dev_event(char **buff, unsigned long *size,
-				      struct seq_file *m, int ptr)
+static void ufs_mtk_dbg_print_dev_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
+					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 
@@ -2101,10 +2157,12 @@ static void ufs_mtk_dbg_print_dev_event(char **buff, unsigned long *size,
 		);
 }
 
-static void ufs_mtk_dbg_print_tm_event(char **buff, unsigned long *size,
-				   struct seq_file *m, int ptr)
+static void ufs_mtk_dbg_print_tm_event(struct ufs_mtk_dbg *mdbg,
+					char **buff, unsigned long *size,
+					struct seq_file *m, int ptr)
 {
 	struct timespec64 dur;
+	struct cmd_hist_struct *cmd_hist = mdbg->cmd_hist;
 
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
@@ -2123,32 +2181,39 @@ static void ufs_mtk_dbg_print_tm_event(char **buff, unsigned long *size,
 		);
 }
 
-static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
-				  u32 latest_cnt, struct seq_file *m, bool omit)
+static void ufs_mtk_dbg_print_cmd_hist(struct ufs_hba *hba,
+				char **buff, unsigned long *size,
+				u32 latest_cnt, struct seq_file *m, bool omit)
 {
 	int ptr;
 	int cnt;
 	unsigned long flags;
+	struct cmd_hist_struct *cmd_hist;
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
-	if (!cmd_hist_initialized)
+	if (IS_ERR_OR_NULL(mdbg))
 		return;
 
-	spin_lock_irqsave(&cmd_hist_lock, flags);
+	if (!mdbg->cmd_hist_initialized)
+		return;
 
+	spin_lock_irqsave(&mdbg->cmd_hist_lock, flags);
+
+	cmd_hist = mdbg->cmd_hist;
 	if (!cmd_hist) {
-		spin_unlock_irqrestore(&cmd_hist_lock, flags);
+		spin_unlock_irqrestore(&mdbg->cmd_hist_lock, flags);
 		return;
 	}
 
 	if (omit)
-		cnt = min_t(u32, cmd_hist_cnt, MAX_CMD_HIST_ENTRY_CNT);
+		cnt = min_t(u32, mdbg->cmd_hist_cnt, MAX_CMD_HIST_ENTRY_CNT);
 	else
 		cnt = MAX_CMD_HIST_ENTRY_CNT;
 
 	if (latest_cnt)
 		cnt = min_t(u32, latest_cnt, cnt);
 
-	ptr = cmd_hist_ptr;
+	ptr = mdbg->cmd_hist_ptr;
 
 	SPREAD_PRINTF(buff, size, m,
 		      "UFS CMD History: Latest %d of total %d entries, ptr=%d\n",
@@ -2156,23 +2221,23 @@ static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
 
 	while (cnt) {
 		if (cmd_hist[ptr].event < CMD_DEV_SEND)
-			ufs_mtk_dbg_print_utp_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_utp_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event < CMD_TM_SEND)
-			ufs_mtk_dbg_print_dev_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_dev_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event < CMD_UIC_SEND)
-			ufs_mtk_dbg_print_tm_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_tm_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event < CMD_REG_TOGGLE)
-			ufs_mtk_dbg_print_uic_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_uic_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event == CMD_CLK_GATING)
-			ufs_mtk_dbg_print_clk_gating_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_clk_gating_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event == CMD_CLK_SCALING)
-			ufs_mtk_dbg_print_clk_scaling_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_clk_scaling_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event == CMD_PM)
-			ufs_mtk_dbg_print_pm_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_pm_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event == CMD_ABORTING)
-			ufs_mtk_dbg_print_utp_event(buff, size, m, ptr);
+			ufs_mtk_dbg_print_utp_event(mdbg, buff, size, m, ptr);
 		else if (cmd_hist[ptr].event == CMD_DEVICE_RESET)
-			ufs_mtk_dbg_print_device_reset_event(buff, size,
+			ufs_mtk_dbg_print_device_reset_event(mdbg, buff, size,
 							     m, ptr);
 		cnt--;
 		ptr--;
@@ -2180,17 +2245,17 @@ static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
 			ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 	}
 	if (omit)
-		cmd_hist_cnt = 1;
+		mdbg->cmd_hist_cnt = 1;
 
-	spin_unlock_irqrestore(&cmd_hist_lock, flags);
+	spin_unlock_irqrestore(&mdbg->cmd_hist_lock, flags);
 
 }
 
-void ufs_mtk_dbg_dump(u32 latest_cnt)
+void ufs_mtk_dbg_dump(struct ufs_hba *hba, u32 latest_cnt)
 {
-	ufs_mtk_dbg_print_info(NULL, NULL, NULL);
+	ufs_mtk_dbg_print_info(hba, NULL, NULL, NULL);
 
-	ufs_mtk_dbg_print_cmd_hist(NULL, NULL, latest_cnt, NULL, true);
+	ufs_mtk_dbg_print_cmd_hist(hba, NULL, NULL, latest_cnt, NULL, true);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_dump);
 
@@ -2198,29 +2263,61 @@ void ufs_mtk_dbg_get_aee_buffer(unsigned long *vaddr, unsigned long *size)
 {
 	unsigned long free_size = UFS_AEE_BUFFER_SIZE;
 	char *buff;
+	struct ufs_hba *hba = ufshba[0];
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
-	if (!cmd_hist) {
+	if (!mdbg->cmd_hist) {
 		pr_info("failed to dump UFS: null cmd history buffer");
 		return;
 	}
 
-	if (!ufs_aee_buffer) {
+	if (!mdbg->ufs_aee_buffer) {
 		pr_info("failed to dump UFS: null AEE buffer");
 		return;
 	}
 
-	buff = ufs_aee_buffer;
-	ufs_mtk_dbg_print_info(&buff, &free_size, NULL);
-	ufs_mtk_dbg_print_cmd_hist(&buff, &free_size,
+	buff = mdbg->ufs_aee_buffer;
+	ufs_mtk_dbg_print_info(hba, &buff, &free_size, NULL);
+	ufs_mtk_dbg_print_cmd_hist(hba, &buff, &free_size,
 				   MAX_CMD_HIST_ENTRY_CNT, NULL, false);
 
-	/* retrun start location */
-	*vaddr = (unsigned long)ufs_aee_buffer;
+	/* return start location */
+	*vaddr = (unsigned long) mdbg->ufs_aee_buffer;
 	*size = UFS_AEE_BUFFER_SIZE - free_size;
 
-	ufs_mtk_dbg_cmd_hist_enable();
+	ufs_mtk_dbg_cmd_hist_enable(mdbg);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_get_aee_buffer);
+
+void ufs_mtk_dbg_get_aee_buffer1(unsigned long *vaddr, unsigned long *size)
+{
+	unsigned long free_size = UFS_AEE_BUFFER_SIZE;
+	char *buff;
+	struct ufs_hba *hba = ufshba[1];
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
+
+	if (!mdbg->cmd_hist) {
+		pr_info("failed to dump UFS: null cmd history buffer");
+		return;
+	}
+
+	if (!mdbg->ufs_aee_buffer) {
+		pr_info("failed to dump UFS: null AEE buffer");
+		return;
+	}
+
+	buff = mdbg->ufs_aee_buffer;
+	ufs_mtk_dbg_print_info(hba, &buff, &free_size, NULL);
+	ufs_mtk_dbg_print_cmd_hist(hba, &buff, &free_size,
+				   MAX_CMD_HIST_ENTRY_CNT, NULL, false);
+
+	/* return start location */
+	*vaddr = (unsigned long) mdbg->ufs_aee_buffer;
+	*size = UFS_AEE_BUFFER_SIZE - free_size;
+
+	ufs_mtk_dbg_cmd_hist_enable(mdbg);
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_get_aee_buffer1);
 
 #ifndef USER_BUILD_KERNEL
 #define PROC_PERM		0660
@@ -2232,9 +2329,12 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 				 size_t count, loff_t *data)
 {
 	unsigned long op = UFSDBG_UNKNOWN;
-	struct ufs_hba *hba = ufshba;
+	struct ufs_hba *hba = pde_data(file_inode(file));
+	struct ufs_mtk_dbg *mdbg;
 	char cmd_buf[16];
 	u16 rnd;
+
+	mdbg = ufshcd_to_dbg(hba);
 
 	if (count == 0 || count > 15)
 		return -EINVAL;
@@ -2248,12 +2348,12 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 
 	if (op == UFSDBG_CMD_LIST_DUMP) {
 		dev_info(hba->dev, "debug info and cmd history dump\n");
-		ufs_mtk_dbg_dump(MAX_CMD_HIST_ENTRY_CNT);
+		ufs_mtk_dbg_dump(hba, MAX_CMD_HIST_ENTRY_CNT);
 	} else if (op == UFSDBG_CMD_LIST_ENABLE) {
-		ufs_mtk_dbg_cmd_hist_enable();
+		ufs_mtk_dbg_cmd_hist_enable(mdbg);
 		dev_info(hba->dev, "cmd history on\n");
 	} else if (op == UFSDBG_CMD_LIST_DISABLE) {
-		ufs_mtk_dbg_cmd_hist_disable();
+		ufs_mtk_dbg_cmd_hist_disable(mdbg);
 		dev_info(hba->dev, "cmd history off\n");
 	} else if (op == UFSDBG_MPHY_DUMP) {
 		dev_info(hba->dev, "ufs mphy reg debug dump\n");
@@ -2274,8 +2374,10 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 
 static int ufs_debug_proc_show(struct seq_file *m, void *v)
 {
-	ufs_mtk_dbg_print_info(NULL, NULL, m);
-	ufs_mtk_dbg_print_cmd_hist(NULL, NULL, MAX_CMD_HIST_ENTRY_CNT,
+	struct ufs_hba *hba = m->private;
+
+	ufs_mtk_dbg_print_info(hba, NULL, NULL, m);
+	ufs_mtk_dbg_print_cmd_hist(hba, NULL, NULL, MAX_CMD_HIST_ENTRY_CNT,
 				   m, false);
 	return 0;
 }
@@ -2293,18 +2395,24 @@ static const struct proc_ops ufs_debug_proc_fops = {
 	.proc_release = single_release,
 };
 
-static int ufs_mtk_dbg_init_procfs(void)
+static int ufs_mtk_dbg_init_procfs(struct ufs_hba *hba)
 {
-	struct proc_dir_entry *prEntry;
+	struct proc_dir_entry *prEntry = NULL;
 	kuid_t uid;
 	kgid_t gid;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	uid = make_kuid(&init_user_ns, 0);
 	gid = make_kgid(&init_user_ns, 1001);
 
 	/* Create "ufs_debug" node */
-	prEntry = proc_create("ufs_debug", PROC_PERM, NULL,
-			      &ufs_debug_proc_fops);
+	if (host->host_id == 0) {
+		prEntry = proc_create_data("ufs_debug", PROC_PERM, NULL,
+			      &ufs_debug_proc_fops, hba);
+	} else if (host->host_id == 1) {
+		prEntry = proc_create_data("ufs1_debug", PROC_PERM, NULL,
+			      &ufs_debug_proc_fops, hba);
+	}
 
 	if (prEntry)
 		proc_set_user(prEntry, uid, gid);
@@ -2314,7 +2422,7 @@ static int ufs_mtk_dbg_init_procfs(void)
 	return 0;
 }
 
-int ufs_mtk_dbg_tp_register(void)
+int ufs_mtk_dbg_tp_register(struct ufs_hba *hba)
 {
 	int i;
 
@@ -2330,7 +2438,7 @@ int ufs_mtk_dbg_tp_register(void)
 
 		tracepoint_probe_register(interests[i].tp,
 					  interests[i].func,
-					  NULL);
+					  ufshcd_to_dbg(hba));
 		interests[i].init = true;
 	}
 
@@ -2338,7 +2446,7 @@ int ufs_mtk_dbg_tp_register(void)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_tp_register);
 
-void ufs_mtk_dbg_tp_unregister(void)
+void ufs_mtk_dbg_tp_unregister(struct ufs_hba *hba)
 {
 	int i;
 
@@ -2346,7 +2454,7 @@ void ufs_mtk_dbg_tp_unregister(void)
 		if (interests[i].init) {
 			tracepoint_probe_unregister(interests[i].tp,
 						    interests[i].func,
-						    NULL);
+						    ufshcd_to_dbg(hba));
 			interests[i].init = false;
 		}
 	}
@@ -2355,68 +2463,92 @@ void ufs_mtk_dbg_tp_unregister(void)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_tp_unregister);
 
-static void ufs_mtk_dbg_cleanup(void)
-{
-	ufs_mtk_dbg_tp_unregister();
-
-	_cmd_hist_cleanup();
-}
-
 int ufs_mtk_dbg_register(struct ufs_hba *hba)
 {
-	int ret;
+	int ret = 0;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct ufs_mtk_dbg *mdbg;
+	struct cmd_hist_struct *cmd_hist;
+
+	mdbg = kzalloc(sizeof(struct ufs_mtk_dbg), GFP_NOFS);
+	if (IS_ERR_OR_NULL(mdbg)) {
+		dev_err(hba->dev, "debug data alloc failed\n");
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	/*
 	 * Ignore any failure of AEE buffer allocation to still allow
 	 * command history dump in procfs.
 	 */
-	ufs_aee_buffer = kzalloc(UFS_AEE_BUFFER_SIZE, GFP_NOFS);
+	mdbg->ufs_aee_buffer = kzalloc(UFS_AEE_BUFFER_SIZE, GFP_NOFS);
 
-	spin_lock_init(&cmd_hist_lock);
-	ufshba = hba;
-	cmd_hist_initialized = true;
+	cmd_hist = kcalloc(MAX_CMD_HIST_ENTRY_CNT,
+			   sizeof(struct cmd_hist_struct),
+			   GFP_KERNEL);
+	if (!cmd_hist) {
+		dev_err(hba->dev, "command history buffer alloc failed\n");
+		ret = -ENOMEM;
+		kfree(mdbg->ufs_aee_buffer);
+		kfree(mdbg);
+		goto out;
+	}
+	mdbg->cmd_hist = cmd_hist;
+	mdbg->host = host;
+	host->mdbg = mdbg;
+
+	spin_lock_init(&mdbg->cmd_hist_lock);
+	if (host->host_id < HOST_CNT)
+		ufshba[host->host_id] = hba;
+	mdbg->cmd_hist_initialized = true;
+	mdbg->cmd_hist_ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 
 	/* Install the tracepoints */
 	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
 
-	ret = ufs_mtk_dbg_tp_register();
-	if (ret)
+	ret = ufs_mtk_dbg_tp_register(hba);
+	if (ret) {
+		dev_err(hba->dev, "trace point register failed\n");
+		ufs_mtk_dbg_tp_unregister(hba);
+		kfree(mdbg->cmd_hist);
+		kfree(mdbg->ufs_aee_buffer);
+		kfree(mdbg);
 		goto out;
+	}
 
 	/* Create control nodes in procfs */
-	ret = ufs_mtk_dbg_init_procfs();
+	ret = ufs_mtk_dbg_init_procfs(hba);
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	if (host->host_id == 0) {
+		mrdump_mini_add_extra_file((unsigned long)mdbg->cmd_hist,
+			__pa_nodebug(mdbg->cmd_hist), UFS_AEE_BUFFER_SIZE,
+			"UFS_CMD_HIST");
+		mrdump_set_extra_dump(AEE_EXTRA_FILE_UFS,
+			ufs_mtk_dbg_get_aee_buffer);
+	} else if (host->host_id == 1) {
+		mrdump_mini_add_extra_file((unsigned long)mdbg->cmd_hist,
+			__pa_nodebug(mdbg->cmd_hist), UFS_AEE_BUFFER_SIZE,
+			"UFS1_CMD_HIST");
+		mrdump_set_extra_dump(AEE_EXTRA_FILE_UFS1,
+			ufs_mtk_dbg_get_aee_buffer1);
+	}
+#endif
+
+	ufs_mtk_dbg_cmd_hist_enable(mdbg);
 
 out:
-	/* Enable command history feature by default */
-	if (!ret)
-		ufs_mtk_dbg_cmd_hist_enable();
-	else
-		ufs_mtk_dbg_cleanup();
-
 	return ret;
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_register);
 
 static void __exit ufs_mtk_dbg_exit(void)
 {
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-	mrdump_set_extra_dump(AEE_EXTRA_FILE_UFS, NULL);
-#endif
-	kfree(cmd_hist);
+	return;
 }
 
 static int __init ufs_mtk_dbg_init(void)
 {
-	cmd_hist = kcalloc(MAX_CMD_HIST_ENTRY_CNT,
-			   sizeof(struct cmd_hist_struct),
-			   GFP_KERNEL);
-#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-	mrdump_mini_add_extra_file((unsigned long)cmd_hist,
-						__pa_nodebug(cmd_hist),
-						UFS_AEE_BUFFER_SIZE,
-						"UFS_CMD_HIST");
-	mrdump_set_extra_dump(AEE_EXTRA_FILE_UFS, ufs_mtk_dbg_get_aee_buffer);
-#endif
 	return 0;
 }
 

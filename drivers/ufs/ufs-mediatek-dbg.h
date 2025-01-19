@@ -11,6 +11,7 @@
 #include <linux/device.h>
 #include <linux/seq_file.h>
 #include <linux/types.h>
+#include <linux/ktime.h>
 #include <mt-plat/aee.h>
 
 /*
@@ -187,16 +188,30 @@ struct mon_struct {
 	char name[16];
 };
 
-int ufs_mtk_dbg_tp_register(void);
-void ufs_mtk_dbg_tp_unregister(void);
+struct ufs_mtk_dbg {
+	struct ufs_mtk_host *host;
+	bool cmd_hist_initialized;
+	bool cmd_hist_enabled;
+	spinlock_t cmd_hist_lock;
+	unsigned int cmd_hist_cnt;
+	unsigned int cmd_hist_ptr;
+	struct cmd_hist_struct *cmd_hist;
+	char *ufs_aee_buffer;
+	int ufs_abort_aee_count;
+	ktime_t err_ktime;
+	struct dentry *debugfs_root;
+};
+
+int ufs_mtk_dbg_tp_register(struct ufs_hba *hba);
+void ufs_mtk_dbg_tp_unregister(struct ufs_hba *hba);
 int ufs_mtk_dbg_register(struct ufs_hba *hba);
-extern void ufs_mtk_dbg_dump(u32 latest_cnt);
+extern void ufs_mtk_dbg_dump(struct ufs_hba *hba, u32 latest_cnt);
 int ufs_mtk_cali_hold(void);
 int ufs_mtk_cali_release(void);
-int ufs_mtk_dbg_cmd_hist_enable(void);
-int ufs_mtk_dbg_cmd_hist_disable(void);
-void ufs_mtk_eh_abort(unsigned int tag);
-void ufs_mtk_eh_err_cnt(void);
+int ufs_mtk_dbg_cmd_hist_enable(struct ufs_mtk_dbg *mdbg);
+int ufs_mtk_dbg_cmd_hist_disable(struct ufs_mtk_dbg *mdbg);
+void ufs_mtk_eh_abort(struct ufs_hba *hba, unsigned int tag);
+void ufs_mtk_eh_err_cnt(struct ufs_hba *hba);
 void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret);
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -216,6 +231,8 @@ void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret);
 #define ufs_mtk_eh_abort(...)
 #define ufs_mtk_eh_err_cnt(...)
 #define ufs_mtk_eh_unipro_set_lpm(...)
+#define ufs_mtk_cali_hold(...)
+#define ufs_mtk_cali_release(...)
 #endif /* CONFIG_SCSI_UFS_MEDIATEK_DBG */
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
