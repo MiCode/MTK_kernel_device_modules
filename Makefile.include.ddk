@@ -60,3 +60,4 @@ EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/watchdog/*Module.sy
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mtprof/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/sound/soc/mediatek/common/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mminfra/*Module.symvers)
+EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/mailbox/*Module.symvers)

@@ -176,6 +176,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/sound/soc/mediatek/common:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mailbox:ddk_srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -224,6 +225,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mailbox:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -359,6 +361,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:bootprof".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-btcvsd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mm-fake-engine".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mailbox:mtk-ise-mailbox".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -520,7 +523,6 @@ mgk_64_device_modules = [
     "drivers/leds/leds-mtk-pwm.ko",
     "drivers/leds/flash/leds-mt6370-flash.ko",
     "drivers/leds/flash/leds-mt6379.ko",
-    "drivers/mailbox/mtk-ise-mailbox.ko",
     "drivers/mailbox/mtk-mbox-mailbox.ko",
     "drivers/media/platform/mtk-jpeg/mtk_jpeg.ko",
     "drivers/media/platform/mtk-vcodec/mtk-vcodec-common.ko",
