@@ -383,6 +383,7 @@ struct gpufreq_ptp3_shared_status {
 	enum gpufreq_brcast_mode brcast_mode;
 	enum gpufreq_delsel_mode delsel_mode;
 	unsigned int ptp3_mode;
+	unsigned int ptp3_debug_mode;
 	unsigned int hbvc_freq_ctrl_support;
 	unsigned int hbvc_volt_ctrl_support;
 	unsigned int hbvc_preoc_support;
