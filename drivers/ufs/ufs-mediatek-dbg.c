@@ -93,6 +93,7 @@ EXPORT_SYMBOL_GPL(ufs_mtk_eh_unipro_set_lpm);
 
 void ufs_mtk_eh_err_cnt(void)
 {
+	static int err_count;
 	static ktime_t err_ktime;
 	ktime_t delta_ktime;
 	s64 delta_msecs;
@@ -101,11 +102,21 @@ void ufs_mtk_eh_err_cnt(void)
 	delta_msecs = ktime_to_ms(delta_ktime);
 
 	/* If last error happen more than 72 hrs, clear error count */
+	if (delta_msecs >= 72 * 60 * 60 * 1000)
+		err_count = 0;
+
 	/* Treat errors happen in 3000 ms as one time error */
 	if (delta_msecs >= 3000) {
 		err_ktime = local_clock();
-		ufs_mtk_aee_warning("UIC Error");
+		err_count++;
 	}
+
+	/*
+	 * Most uic error is recoverable, it should be minor.
+	 * Only dump db if uic error heppen frequently(>=6) in 72 hrs.
+	 */
+	if (err_count >= 6)
+		ufs_mtk_aee_warning("Error Dump %d", err_count);
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_eh_err_cnt);
 
