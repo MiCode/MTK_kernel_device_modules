@@ -192,17 +192,28 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 }
 
 #define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> PAGE_SHIFT)
-static void earaio_try_boost(bool boost)
+
+/**
+ * earaio_try_boost - try to send an ACCEL_NORMAL boost message if needed
+ * @boost:	Whether to boost or not
+ *
+ * This function attempts to send an ACCEL_NORMAL message based on the @boost.
+ *
+ * If @boost is false, this always returns 0 indicating a successful unboost.
+ * If @boost is true, this function returns:
+ *   - 0: ACCEL_NORMAL message is prepared for the earaio service.
+ *   - 1: no need to send ACCEL_NORMAL, threshold cannot be reached
+ *   - 2: no need to send ACCEL_NORMAL, disable or no user
+ *   - 3: no need to send ACCEL_NORMAL, already in boosted
+ */
+static int earaio_try_boost(bool boost)
 {
 	unsigned long flags;
-	int changed = 0; // 0: not try, 1: try and success, 2: try but fail
+	__u32 *top;
+	int ret = 1;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	int fuse_req_cnt = 0, fuse_unlink_cnt = 0;
 #endif
-	__u32 *top;
-
-	if (!earaio_ctrl.enabled || !earaio_ctrl.earaio_boost_entry)
-		return;
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 
@@ -214,44 +225,46 @@ static void earaio_try_boost(bool boost)
 		earaio_ctrl.start_collect = false;
 		earaio_ctrl.earaio_boost_state = ACCEL_NO;
 		earaio_ctrl.boosted = boost;
+		ret = 0;
 		goto end;
 	}
 
-	if (earaio_ctrl.boosted)
+	if (!earaio_ctrl.enabled || !earaio_ctrl.earaio_boost_entry ||
+	    !earaio_ctrl.msg_open_cnt) {
+		ret = 2;
 		goto end;
+	}
 
+	/* TODO: we need to check earaio_boost_state also ? */
+	if (earaio_ctrl.boosted || earaio_ctrl.earaio_boost_state) {
+		ret = 3;
+		goto end;
+	}
+
+	/* Establish threshold for top app read, write */
 	top = earaio_ctrl.pwd_top_pages;
-	/* Establish threshold */
 	if (top[BTAG_IO_READ] >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
-	    top[BTAG_IO_WRITE] >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES) {
-		if (earaio_ctrl.msg_open_cnt &&
-			!earaio_ctrl.earaio_boost_state) {
-			mtk_btag_earaio_boost_fill(ACCEL_NORMAL);
-			earaio_ctrl.boosted = boost;
-			changed = 1;
-		}
-	}
+	    top[BTAG_IO_WRITE] >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
+		goto need_boost;
+
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
-	if (changed != 1) {
-		mtk_btag_fuse_get_req_cnt(&fuse_req_cnt, &fuse_unlink_cnt);
-		if (((fuse_req_cnt > earaio_ctrl.fuse_threshold) &&
-		      (top[BTAG_IO_READ] || top[BTAG_IO_WRITE]))
-		 || (fuse_unlink_cnt > earaio_ctrl.fuse_unlink_threshold)) {
-			if (earaio_ctrl.msg_open_cnt &&
-			    !earaio_ctrl.earaio_boost_state) {
-				mtk_btag_earaio_boost_fill(ACCEL_NORMAL);
-				earaio_ctrl.boosted = boost;
-				changed = 1;
-			}
-		}
-	}
+	/* Establish threshold for top app fuse request count */
+	mtk_btag_fuse_get_req_cnt(&fuse_req_cnt, &fuse_unlink_cnt);
+	if (((fuse_req_cnt > earaio_ctrl.fuse_threshold) &&
+	    (top[BTAG_IO_READ] || top[BTAG_IO_WRITE])) ||
+	    (fuse_unlink_cnt > earaio_ctrl.fuse_unlink_threshold))
+		goto need_boost;
 #endif
 
 end:
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	return ret;
 
-	if (boost && changed == 0)
-		mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, false);
+need_boost:
+	mtk_btag_earaio_boost_fill(ACCEL_NORMAL);
+	earaio_ctrl.boosted = boost;
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	return 0;
 }
 
 static void mtk_btag_eara_start_collect(void)
@@ -519,8 +532,12 @@ static const struct proc_ops earaio_control_fops = {
 
 void mtk_btag_earaio_check_window(void)
 {
-	if ((sched_clock() - earaio_ctrl.pwd_begin) >= PWD_WIDTH_NS)
-		earaio_try_boost(true);
+	if ((sched_clock() - earaio_ctrl.pwd_begin) < PWD_WIDTH_NS)
+		return;
+
+	/* only reset data when the threshold has not been reached */
+	if (earaio_try_boost(true) == 1)
+		mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, false);
 }
 
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
