@@ -1157,6 +1157,22 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 
 	gm->no_prop_timeout_control = NO_PROP_TIMEOUT_CONTROL;
 
+	/* r_learning related*/
+	fg_cust_data->enable_r_learning = ENABLE_R_LEARNING;
+	fg_cust_data->rl_count = RL_COUNT;
+	fg_cust_data->enable_r_charge = ENABLE_R_CHARGE;
+	fg_cust_data->rl_cycle_min = RL_CYCLE_MIN;
+	fg_cust_data->rl_aging_max = RL_AGING_MAX;
+	fg_cust_data->rl_iavg_min = RL_IAVG_MIN;
+	fg_cust_data->rl_enable_aging = RL_ENABLE_AGING;
+	fg_cust_data->rl_enable_reverse = RL_ENABLE_REVERSE;
+	fg_cust_data->active_rl_region = ACTIVE_RL_REGION;
+	fg_cust_data->rl_gain_offset_diff = RL_GAIN_OFFSET_DIFF;
+	fg_cust_data->lower_score_cycle = LOWER_SCORE_CYCLE;
+	fg_cust_data->rl_score_th = RL_SCORE_TH;
+	memcpy(&fg_cust_data->rl_region, &rl_region,
+			sizeof(fg_cust_data->rl_region));
+
 	gm->avgvbat_array_size = AVGVBAT_ARRAY_SIZE;
 	/* battery healthd */
 	fg_cust_data->bat_bh_en = BAT_BH_EN;
@@ -2320,6 +2336,42 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 		&(r_pseudo100_raw), 1);
 	fg_read_dts_val(gm, np, "g_FG_charge_PSEUDO100_col",
 		&(r_pseudo100_col), 1);
+
+	/* r_learning related*/
+	fg_read_dts_val(gm, np, "ENABLE_R_LEARNING",
+		&(fg_cust_data->enable_r_learning), 1);
+	fg_read_dts_val(gm, np, "RL_COUNT",
+		&(fg_cust_data->rl_count), 1);
+	fg_read_dts_val(gm, np, "ENABLE_R_CHARGE",
+		&(fg_cust_data->enable_r_charge), 1);
+	fg_read_dts_val(gm, np, "RL_CYCLE_MIN",
+		&(fg_cust_data->rl_cycle_min), 1);
+	fg_read_dts_val(gm, np, "RL_AGING_MAX",
+		&(fg_cust_data->rl_aging_max), 1);
+	fg_read_dts_val(gm, np, "RL_IAVG_MIN",
+		&(fg_cust_data->rl_iavg_min), 1);
+	fg_read_dts_val(gm, np, "RL_ENABLE_AGING",
+		&(fg_cust_data->rl_enable_aging), 1);
+	fg_read_dts_val(gm, np, "RL_ENABLE_REVERSE",
+		&(fg_cust_data->rl_enable_reverse), 1);
+	fg_read_dts_val(gm, np, "RL_GAIN_OFFSET_DIFF",
+		&(fg_cust_data->rl_gain_offset_diff), 1);
+	fg_read_dts_val(gm, np, "LOWER_SCORE_CYCLE",
+		&(fg_cust_data->lower_score_cycle), 1);
+	fg_read_dts_val(gm, np, "RL_SCORE_TH",
+		&(fg_cust_data->rl_score_th), 1);
+
+	fg_read_dts_val(gm, np, "ACTIVE_RL_REGION",
+		&(fg_cust_data->active_rl_region), 1);
+	if (fg_cust_data->active_rl_region > MAX_RL_REGION) {
+		bm_err(gm, "rl region exceed limit, please modify %d %d\n", fg_cust_data->active_rl_region, MAX_RL_REGION);
+		fg_cust_data->active_rl_region = MAX_RL_REGION;
+	}
+
+	for (i = 0; i <= fg_cust_data->active_rl_region; i++) {
+		fg_read_dts_val_by_idx(gm, np, "RL_REGION", i, &fg_cust_data->rl_region[i], 1);
+		bm_err(gm, "rl region result %d\n", fg_cust_data->rl_region[i]);
+	}
 
 	/* init for pseudo100 */
 	for (i = 0; i < MAX_TABLE; i++) {

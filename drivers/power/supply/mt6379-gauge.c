@@ -56,6 +56,7 @@
 
 #define FG_GAINERR_SEL_MASK			GENMASK(1, 0)
 #define FG_ON_MASK				BIT(0)
+#define RG_INT_EN_FG_ZCV_MASK			BIT(4)
 #define FG_ZCV_DET_EN_MASK			BIT(2)
 #define FG_ZCV_DET_EN_SHIFT			2
 #define FG_LATCHDATA_ST_MASK			BIT(7)
@@ -167,7 +168,8 @@
 
 enum mt6379_fg_rg_list {
 	/* BM (BAT1 : 0x7xx, BAT2: 0xAxx) */
-	MT6379_REG_BM_TOP_INT_CON0_SET = 0,		/* 0x25 */
+	MT6379_REG_BM_TOP_INT_CON0 = 0,			/* 0x24 */
+	MT6379_REG_BM_TOP_INT_CON0_SET,			/* 0x25 */
 	MT6379_REG_BM_TOP_INT_CON0_CLR,			/* 0x26 */
 	MT6379_REG_BM_TOP_INT_MASK_CON0,		/* 0x2D */
 	MT6379_REG_BM_TOP_INT_MASK_CON0_SET,		/* 0x2E */
@@ -265,6 +267,7 @@ enum mt6379_fg_rg_list {
 static const unsigned int rg[][MT6379_FG_RG_MAX] = {
 	{
 		/* BAT1 BM : 0x7xx */
+		[MT6379_REG_BM_TOP_INT_CON0]			= 0x724,
 		[MT6379_REG_BM_TOP_INT_CON0_SET]		= 0x725,
 		[MT6379_REG_BM_TOP_INT_CON0_CLR]		= 0x726,
 		[MT6379_REG_BM_TOP_INT_MASK_CON0]		= 0x72D,
@@ -352,6 +355,7 @@ static const unsigned int rg[][MT6379_FG_RG_MAX] = {
 	},
 	{
 		/* BAT2 BM : 0xAxx */
+		[MT6379_REG_BM_TOP_INT_CON0]			= 0xA24,
 		[MT6379_REG_BM_TOP_INT_CON0_SET]		= 0xA25,
 		[MT6379_REG_BM_TOP_INT_CON0_CLR]		= 0xA26,
 		[MT6379_REG_BM_TOP_INT_MASK_CON0]		= 0xA2D,
@@ -2786,13 +2790,17 @@ static int zcv_intr_en_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field
 
 	if (en == 0) {
 		disable_gauge_irq(gauge, ZCV_IRQ);
-		regmap_update_bits(gauge->regmap, rg[bat_idx][MT6379_REG_FGADC_CON0],
-				   FG_ZCV_DET_EN_MASK, 0);
+		/*regmap_update_bits(gauge->regmap, rg[bat_idx][MT6379_REG_FGADC_CON0],
+					FG_ZCV_DET_EN_MASK, 0);*/
+		regmap_update_bits(gauge->regmap, rg[bat_idx][MT6379_REG_BM_TOP_INT_CON0],
+					RG_INT_EN_FG_ZCV_MASK, 0);
 		mdelay(1);
 	} else if (en == 1) {
 		enable_gauge_irq(gauge, ZCV_IRQ);
 		regmap_update_bits(gauge->regmap, rg[bat_idx][MT6379_REG_FGADC_CON0],
-				   FG_ZCV_DET_EN_MASK, FG_ZCV_DET_EN_MASK);
+					FG_ZCV_DET_EN_MASK, FG_ZCV_DET_EN_MASK);
+		regmap_update_bits(gauge->regmap, rg[bat_idx][MT6379_REG_BM_TOP_INT_CON0],
+					RG_INT_EN_FG_ZCV_MASK, RG_INT_EN_FG_ZCV_MASK);
 	}
 
 	bm_debug(gauge->gm, "[FG_ZCV_INT][fg_set_zcv_intr_en] BAT%d en:%d\n", bat_idx + 1, en);

@@ -48,6 +48,8 @@
 #define	PROP_BATTERY_TEMPERATURE_ADC_TIMEOUT 10
 #define MAX_PROP_NAME_LEN 50
 
+#define MAX_RL_REGION 10
+
 #define BMLOG_DEFAULT_LEVEL BMLOG_DEBUG_LEVEL
 
 #define bm_err(gm, fmt, args...)   \
@@ -355,6 +357,7 @@ enum Fg_kernel_cmds {
 	FG_KERNEL_CMD_SEND_SHUTDOWN_DATA,
 	FG_KERNEL_CMD_GET_DYNAMIC_ZCV_TABLE,
 	FG_KERNEL_CMD_REQ_CHANGE_BAT_CYCLE,
+	FG_KERNEL_CMD_GET_RL_DATA,
 	FG_KERNEL_CMD_FROM_USER_NUMBER
 
 };
@@ -731,6 +734,21 @@ struct fuel_gauge_custom_data {
 	int pre_tracking_jump;
 	int last_mode_reset;
 	int pre_tracking_soc_reset;
+
+	/* r_learning_relate*/
+	int enable_r_learning;
+	int rl_count;
+	int enable_r_charge;
+	int rl_cycle_min;
+	int rl_aging_max;
+	int rl_iavg_min;
+	int rl_enable_aging;
+	int rl_enable_reverse;
+	int active_rl_region;
+	int rl_gain_offset_diff;
+	int lower_score_cycle;
+	int rl_score_th;
+	int rl_region[MAX_RL_REGION + 1];
 };
 
 struct fgd_cmd_param_t_custom {
@@ -1691,6 +1709,20 @@ extern void mtk_irq_thread_init(struct mtk_battery *gm);
 
 #define SHUTDOWN_CAR_RATIO		1
 
+
+/* r_learning_releate */
+#define ENABLE_R_LEARNING 0
+#define RL_COUNT 10
+#define ENABLE_R_CHARGE 1
+#define RL_CYCLE_MIN 600
+#define RL_AGING_MAX 9500
+#define RL_IAVG_MIN 150
+#define RL_ENABLE_AGING 1
+#define RL_ENABLE_REVERSE 0
+#define ACTIVE_RL_REGION 3
+#define RL_GAIN_OFFSET_DIFF 1
+#define LOWER_SCORE_CYCLE 100
+#define RL_SCORE_TH 60
 
 /* different temp using different gauge 0% */
 #define MULTI_TEMP_GAUGE0		1

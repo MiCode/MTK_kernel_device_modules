@@ -1720,7 +1720,7 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 			wakeup_fg_algo_cmd(gm,
 				FG_INTR_KERNEL_CMD,
 				FG_KERNEL_CMD_REQ_CHANGE_AGING_DATA,
-				param * 100);
+				param);
 		}
 		break;
 	case 796:
@@ -1945,6 +1945,16 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 				return_value = current_car;
 			}
 			bm_err(gm, "return car without reset %lld\n", return_value);
+		}
+		break;
+	case 813:
+		{
+			int val = param;
+			wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
+					FG_KERNEL_CMD_GET_RL_DATA, val);
+
+			bm_err(gm, "exe_BAT_EC cmd %d %d. test R learning\n",
+				cmd, val);
 		}
 		break;
 	default:
