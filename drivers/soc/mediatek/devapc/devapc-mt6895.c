@@ -228,7 +228,7 @@ static const char *mt6895_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return "UNKNOWN_MASTER_TO_SCP";
 		/* mi1 */
 		} else if ((vio_addr >= VLP_INFRA_START && vio_addr <= VLP_INFRA_END) ||
-			(vio_addr >= VLP_INFRA_1_START && vio_addr <= VLP_INFRA_1_END)) {
+			(vio_addr >= VLP_INFRA_1_START)) {
 			if ((bus_id & 0x3) == 0x0)
 				return "SCP_M";
 			else if ((bus_id & 0x3) == 0x1)

@@ -31,8 +31,8 @@ struct tag_chipid {
 
 struct devapc_excep_entry {
 	char name[DEVAPC_EXCEP_NAME_LEN];
-	int excep_type;
-	int slave_type;
+	uint32_t excep_type;
+	uint32_t slave_type;
 	void __iomem *base;
 };
 
@@ -472,7 +472,7 @@ static const char *mt6991_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return "DPMSR_AHB_M";
 		/* mi1 */
 		} else if ((vio_addr >= VLP_INFRA_START && vio_addr <= VLP_INFRA_END) ||
-			(vio_addr >= VLP_INFRA_1_START && vio_addr <= VLP_INFRA_1_END)) {
+			(vio_addr >= VLP_INFRA_1_START)) {
 			if ((bus_id & 0x3) == 0x0)
 				return "SCP_M";
 			else if ((bus_id & 0x3) == 0x1)
@@ -1090,7 +1090,7 @@ static struct devapc_excep_callbacks apinfra_excep_handler = {
 	.handle_excep = apinfra_vio_callback,
 };
 
-static int devapc_get_chipid(void)
+static void devapc_get_chipid(void)
 {
 	struct tag_chipid *chip_id;
 	struct device_node *node = of_find_node_by_path("/chosen");
@@ -1101,18 +1101,18 @@ static int devapc_get_chipid(void)
 
 	if (!node) {
 		pr_notice("chosen node not found in device tree\n");
-		return -ENODEV;
+		return;
 	}
 
 	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", NULL);
 	if (!chip_id) {
 		pr_notice("could not found atag,chipid in chosen\n");
-		return -ENODEV;
+		return;
 	}
 
 	g_sw_ver = (int)chip_id->sw_ver;
 
-	return 0;
+	return;
 }
 
 static void register_devapc_excep(struct platform_device *pdev)
@@ -1177,9 +1177,7 @@ static void register_devapc_excep(struct platform_device *pdev)
 
 static int mt6991_devapc_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-
-	ret = devapc_get_chipid();
+	devapc_get_chipid();
 
 	if (g_sw_ver != 0) {
 		mt6991_data.device_info[SLAVE_TYPE_PERI_PAR] = mt6991_devices_peri_par_b0;
