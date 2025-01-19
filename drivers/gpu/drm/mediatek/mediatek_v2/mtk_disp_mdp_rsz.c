@@ -329,6 +329,8 @@ static void mtk_rsz_algo_config(struct rsz_fw_in *in, struct rsz_fw_out *out,
 		((u64)shift << RSZ_PREC_SHIFT) *
 		prec) >> RSZ_PREC_SHIFT;
 
+	cal_param->hori_trunc_bit = 0;
+	cal_param->vert_trunc_bit = 0;
 	/* Save the coefficients to the parameters */
 	if (is_hor) { /* for horizontal */
 		out->hori_step = coeff_step;
@@ -466,7 +468,7 @@ static void mtk_rsz_algo_init(struct rsz_fw_out *out,
 static void mtk_rsz_fw(struct rsz_fw_in *in, struct rsz_fw_out *out,
 				u32 in_len, u32 out_len, bool is_hor)
 {
-	struct rsz_cal_param cal_param;
+	struct rsz_cal_param cal_param = {0};
 
 	mtk_rsz_algo_init(out, &cal_param);
 	in->use121filter = 1;
@@ -1273,7 +1275,7 @@ static int mtk_mdp_rsz_set_partial_update(struct mtk_ddp_comp *comp,
 						&comp->mtk_crtc->base, NULL, true);
 	u32 frm_in_h, frm_out_h;
 	u32 in_h = 0, out_h = 0;
-	struct rsz_tile_params th[1];
+	struct rsz_tile_params th[1] = {0};
 	u32 reg_val = 0;
 	u32 tile_idx = 0;
 	unsigned int overhead_v;
@@ -1587,7 +1589,8 @@ int mtk_mdp_rsz_analysis(struct mtk_ddp_comp *comp)
 			 REG_FLD_VAL_GET(FLD_RSZ_OUTPUT_IMAGE_H, out_size),
 			 readl(baddr + RSZ_HOR_COEFF_STEP),
 			 readl(baddr + RSZ_VER_COEFF_STEP));
-	DDPDUMP("%s", msg);
+	if (n >= 0)
+		DDPDUMP("%s", msg);
 
 	n = snprintf(
 		msg, LEN, "luma_h:%d.%d,luma_v:%d.%d,chroma_h:%d.%d\n",
@@ -1597,7 +1600,8 @@ int mtk_mdp_rsz_analysis(struct mtk_ddp_comp *comp)
 		readl(baddr + RSZ_LUMA_VER_SUB_OFFSET),
 		readl(baddr + RSZ_CHROMA_HOR_INT_OFFSET),
 		readl(baddr + RSZ_CHROMA_HOR_SUB_OFFSET));
-	DDPDUMP("%s", msg);
+	if (n >= 0)
+		DDPDUMP("%s", msg);
 
 	n = snprintf(msg, LEN,
 			 "dbg_sel:%d, in(%u,%u);shadow_ctrl:bypass:%d,force:%d,",
