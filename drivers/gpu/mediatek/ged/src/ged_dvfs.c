@@ -2218,6 +2218,22 @@ increaseEnd:
 	return tar_opp;
 }
 
+// check cur_opp ia at largest top opp of current core_num
+static bool check_dcs_at_largest_top(unsigned int cur_opp_id)
+{
+	// only one opp for each core_num
+	if (g_oppnum_eachmask == 1)
+		return true;
+	// not in DCS
+	if (cur_opp_id < ged_get_min_oppidx_real())
+		return true;
+	// core num change if opp - 1
+	if (cur_opp_id > 1 && cur_opp_id == get_max_oppidx_with_same_stack(cur_opp_id))
+		return true;
+
+	return false;
+}
+
 // determine async policy: decreasing or increasing
 // return true if is decreasing
 static bool determine_async_policy(int cur_opp_id, int ui32NewFreqID)
@@ -2227,7 +2243,7 @@ static bool determine_async_policy(int cur_opp_id, int ui32NewFreqID)
 	else if (cur_opp_id > ged_get_min_oppidx_real() &&
 			ui32NewFreqID > ged_get_min_oppidx_real())
 		return true;
-	else if (cur_opp_id == (ged_get_min_oppidx_real() + 1) &&
+	else if (check_dcs_at_largest_top(cur_opp_id) &&
 			ui32NewFreqID >= g_async_id_threshold)
 		return true;
 	else
@@ -2243,7 +2259,7 @@ static bool check_async_policy_needed(int cur_opp_id, int ui32NewFreqID)
 		return false;
 
 	return !((cur_opp_id == g_async_id_threshold ||
-			 cur_opp_id == (ged_get_min_oppidx_real() + 1)) &&
+			 check_dcs_at_largest_top(cur_opp_id)) &&
 				ui32NewFreqID < g_async_id_threshold);
 }
 #endif /*ENABLE_ASYNC_RATIO*/
