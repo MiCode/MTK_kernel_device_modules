@@ -2008,7 +2008,16 @@ static struct iommu_device *mtk_iommu_probe_device(struct device *dev)
 	struct mtk_iommu_data *data;
 	unsigned int larbid, larbidx, i;
 
+	if (!fwspec) {
+		dev_info(dev, "Get iommu fwspec fail\n");
+		return ERR_PTR(-ENODEV);
+	}
+
 	data = dev_iommu_priv_get(dev);
+	if (!data) {
+		dev_info(dev, "Get iommu data fail\n");
+		return ERR_PTR(-ENODEV);
+	}
 
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, LEGACY_MULTI_LARB))
 		return &data->iommu;
