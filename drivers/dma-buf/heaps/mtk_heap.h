@@ -55,13 +55,8 @@ int dmabuf_to_tmem_type(const struct dma_buf *dmabuf, u32 *sec_hdl);
 
 void dma_heap_pool_prefill(unsigned long size, const char *heap_name);
 
-struct sg_table *mtk_smmu_map_dma_buf(struct dma_buf_attachment *attach,
-				      enum dma_data_direction direction,
-				      u32 ssid);
-void mtk_smmu_unmap_dma_buf(struct dma_buf_attachment *attach,
-			    struct sg_table *sg_table,
-			    enum dma_data_direction direction,
-			    u32 ssid);
+struct dma_buf_attachment *dma_buf_attach_ssid(struct dma_buf *dmabuf,
+					       struct device *dev, u32 ssid);
 
 /*
  * in 32bit project compile the arithmetic division, the "/" will

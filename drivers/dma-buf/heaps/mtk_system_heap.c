@@ -92,6 +92,26 @@ static struct iova_cache_data *get_iova_cache(struct system_heap_buffer *buffer,
 	return NULL;
 }
 
+static int iommu_dma_map_sgtable(struct device *dev, struct sg_table *sgt,
+				 enum dma_data_direction dir,
+				 unsigned long attrs, u32 ssid)
+{
+	if (smmu_v3_enable && ssid != SMMU_NO_SSID)
+		return mtk_smmu_map_sgtable(dev, sgt, dir, attrs, ssid);
+	else
+		return dma_map_sgtable(dev, sgt, dir, attrs);
+}
+
+static void iommu_dma_unmap_sgtable(struct device *dev, struct sg_table *sgt,
+				    enum dma_data_direction dir,
+				    unsigned long attrs, u32 ssid)
+{
+	if (smmu_v3_enable && ssid != SMMU_NO_SSID)
+		mtk_smmu_unmap_sgtable(dev, sgt, dir, attrs, ssid);
+	else
+		dma_unmap_sgtable(dev, sgt, dir, attrs);
+}
+
 static bool needs_swiotlb_bounce(struct device *dev, struct sg_table *table)
 {
 	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
@@ -361,6 +381,7 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 	INIT_LIST_HEAD(&a->list);
 	a->mapped = false;
 	a->uncached = buffer->uncached;
+	a->ssid = SMMU_NO_SSID;
 	attachment->priv = a;
 
 	mutex_lock(&buffer->lock);
@@ -409,6 +430,7 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	u64 tab_id = 0;
 	struct system_heap_buffer *buffer = attachment->dmabuf->priv;
 	bool coherent = dev_is_dma_coherent(attachment->dev);
+	u32 ssid = a->ssid;
 
 	if (a->uncached)
 		attr |= DMA_ATTR_SKIP_CPU_SYNC;
@@ -423,7 +445,7 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 		tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
 		cache_data = get_iova_cache(buffer, tab_id, coherent);
 	} else if (fwspec && smmu_v3_enable) {
-		tab_id = get_smmu_tab_id(attachment->dev);
+		tab_id = get_smmu_tab_id_for_dev_ssid(attachment->dev, ssid);
 		cache_data = get_iova_cache(buffer, tab_id, coherent);
 		dom_id = 0;
 	}
@@ -455,7 +477,7 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	}
 
 	/* first map OR device without iommus attribute */
-	if (dma_map_sgtable(attachment->dev, table, direction, attr)) {
+	if (iommu_dma_map_sgtable(attachment->dev, table, direction, attr, ssid)) {
 		pr_info("%s map fail tab:%llu, dom:%d, dev:%s\n",
 			__func__, tab_id, dom_id, dev_name(attachment->dev));
 		mutex_unlock(&buffer->map_lock);
@@ -503,7 +525,7 @@ static struct sg_table *system_heap_map_dma_buf(struct dma_buf_attachment *attac
 	if (a->uncached)
 		attr |= DMA_ATTR_SKIP_CPU_SYNC;
 
-	ret = dma_map_sgtable(attachment->dev, table, direction, attr);
+	ret = iommu_dma_map_sgtable(attachment->dev, table, direction, attr, a->ssid);
 	if (ret)
 		return ERR_PTR(ret);
 
@@ -542,7 +564,7 @@ static void system_heap_unmap_dma_buf(struct dma_buf_attachment *attachment,
 		return;
 	}
 
-	dma_unmap_sgtable(attachment->dev, table, direction, attr);
+	iommu_dma_unmap_sgtable(attachment->dev, table, direction, attr, a->ssid);
 }
 
 static int system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
@@ -867,6 +889,7 @@ static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
 	struct mtk_heap_dev_info dev_info;
 	struct sg_table *table;
 	unsigned long attrs;
+	u32 ssid = SMMU_NO_SSID;
 	int k;
 
 	/*
@@ -902,7 +925,12 @@ static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
 			if (!cache_data->mapped[k])
 				continue;
 
-			dma_unmap_sgtable(dev_info.dev, table, dev_info.direction, attrs);
+			if (smmu_v3_enable)
+				ssid = smmu_tab_id_to_ssid(cache_data->tab_id);
+
+			iommu_dma_unmap_sgtable(dev_info.dev, table,
+						dev_info.direction,
+						attrs, ssid);
 			cache_data->mapped[k] = false;
 			sg_free_table(table);
 			kfree(table);
@@ -1819,86 +1847,21 @@ int dma_buf_get_gid(struct dma_buf *dmabuf)
 }
 EXPORT_SYMBOL_GPL(dma_buf_get_gid);
 
-struct sg_table *dma_buf_map_attachment_ssid(struct dma_buf_attachment *attach,
-					     enum dma_data_direction dir,
-					     u32 ssid)
+struct dma_buf_attachment *dma_buf_attach_ssid(struct dma_buf *dmabuf,
+					       struct device *dev, u32 ssid)
 {
-	struct dma_heap_attachment *a = attach->priv;
-	struct sg_table *table = a->table;
-	int attrs = attach->dma_map_attrs;
-	int ret;
+	struct dma_buf_attachment *attach = dma_buf_attach(dmabuf, dev);
+	struct dma_heap_attachment *a;
 
-	if (a->mapped)
-		return ERR_PTR(-EBUSY);
+	if (!IS_ERR_OR_NULL(attach)) {
+		a = attach->priv;
+		if (!IS_ERR_OR_NULL(a))
+			a->ssid = ssid;
+	}
 
-	if (a->uncached)
-		attrs |= DMA_ATTR_SKIP_CPU_SYNC;
-
-	ret = mtk_smmu_map_sgtable(attach->dev, table, dir, attrs, ssid);
-	if (ret)
-		return ERR_PTR(ret);
-
-	a->mapped = true;
-	attach->dir = dir;
-
-	return table;
+	return attach;
 }
-
-void dma_buf_unmap_attachment_ssid(struct dma_buf_attachment *attach,
-				   struct sg_table *sg_table,
-				   enum dma_data_direction dir,
-				   u32 ssid)
-{
-	struct dma_heap_attachment *a = attach->priv;
-	int attrs = attach->dma_map_attrs;
-
-	if (a->uncached)
-		attrs |= DMA_ATTR_SKIP_CPU_SYNC;
-	a->mapped = false;
-
-	mtk_smmu_unmap_sgtable(attach->dev, sg_table, dir, attrs, ssid);
-}
-
-struct sg_table *mtk_smmu_map_dma_buf(struct dma_buf_attachment *attach,
-				      enum dma_data_direction direction,
-				      u32 ssid)
-{
-	struct sg_table *sg_table;
-
-	if (!smmu_v3_enable)
-		return NULL;
-
-	might_sleep();
-
-	if (WARN_ON(!attach || !attach->dmabuf || ssid == SMMU_NO_SSID))
-		return ERR_PTR(-EINVAL);
-
-	dma_resv_lock(attach->dmabuf->resv, NULL);
-	sg_table = dma_buf_map_attachment_ssid(attach, direction, ssid);
-	dma_resv_unlock(attach->dmabuf->resv);
-
-	return sg_table;
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_map_dma_buf);
-
-void mtk_smmu_unmap_dma_buf(struct dma_buf_attachment *attach,
-			    struct sg_table *sg_table,
-			    enum dma_data_direction direction,
-			    u32 ssid)
-{
-	if (!smmu_v3_enable)
-		return;
-
-	might_sleep();
-
-	if (WARN_ON(!attach || !attach->dmabuf || !sg_table || ssid == SMMU_NO_SSID))
-		return;
-
-	dma_resv_lock(attach->dmabuf->resv, NULL);
-	dma_buf_unmap_attachment_ssid(attach, sg_table, direction, ssid);
-	dma_resv_unlock(attach->dmabuf->resv);
-}
-EXPORT_SYMBOL_GPL(mtk_smmu_unmap_dma_buf);
+EXPORT_SYMBOL_GPL(dma_buf_attach_ssid);
 
 module_init(mtk_system_heap_create);
 module_exit(mtk_system_heap_exit);

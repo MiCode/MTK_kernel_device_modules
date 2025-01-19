@@ -89,6 +89,7 @@ struct dma_heap_attachment {
 	bool mapped;
 
 	bool uncached;
+	u32 ssid;
 };
 
 struct mtk_heap_dev_info {
