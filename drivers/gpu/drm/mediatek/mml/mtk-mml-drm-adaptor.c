@@ -141,7 +141,7 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 	}
 
 	if (info->dest_cnt > MML_MAX_OUTPUTS) {
-		mml_msg("[drm]info with issue, dest_cnt exceeds MML_MAX_OUTPUTS.");
+		mml_msg("[drm]dest count exceed %u", info->dest_cnt);
 		goto not_support;
 	}
 
@@ -151,6 +151,12 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 		u32 desth = dest->data.height;
 		u32 crop_srcw = dest->crop.r.width ? dest->crop.r.width : info->src.width;
 		u32 crop_srch = dest->crop.r.height ? dest->crop.r.height : info->src.height;
+
+		if (!destw || !desth || !crop_srcw || !crop_srch) {
+			mml_msg("[drm]not support empty size %u %u %u %u",
+				crop_srcw, crop_srch, destw, desth);
+			goto not_support;
+		}
 
 		if (mml_sz_out(destw, desth)) {
 			mml_msg("[drm]not support dest size %u %u", destw, desth);
