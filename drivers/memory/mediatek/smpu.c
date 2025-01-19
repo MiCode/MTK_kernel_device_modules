@@ -563,7 +563,7 @@ static int smpu_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No smpu node dump\n");
 		return -ENXIO;
 	}
-	dump_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+	dump_list = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 	if (!dump_list)
 		return -ENXIO;
 
@@ -575,7 +575,7 @@ static int smpu_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	mpu->dump_reg = devm_kmalloc(
+	mpu->dump_reg = devm_kzalloc(
 		&pdev->dev, size * sizeof(struct smpu_reg_info_t), GFP_KERNEL);
 	if (!(mpu->dump_reg))
 		return -ENOMEM;
@@ -593,7 +593,7 @@ static int smpu_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "No clear smpu");
 		return -ENXIO;
 	}
-	mpu->clear_reg = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+	mpu->clear_reg = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 	if (!(mpu->clear_reg))
 		return -ENOMEM;
 
@@ -612,7 +612,7 @@ static int smpu_probe(struct platform_device *pdev)
 	if (size <= 0)
 		dev_err(&pdev->dev, "No clear_md smpu");
 	if (size > 0) {
-		mpu->clear_md_reg = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+		mpu->clear_md_reg = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 		if (!(mpu->clear_md_reg))
 			return -ENOMEM;
 
@@ -633,7 +633,7 @@ static int smpu_probe(struct platform_device *pdev)
 					       sizeof(char));
 
 	mpu->vio_dump_cnt = size / sizeof(struct smpu_vio_dump_info_t);
-	mpu->vio_reg_info = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+	mpu->vio_reg_info = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 	if (!(mpu->vio_reg_info))
 		return -ENOMEM;
 	size >>= 2;
@@ -648,7 +648,7 @@ static int smpu_probe(struct platform_device *pdev)
 		pr_info("No clear smpu\n");
 		return -ENXIO;
 	}
-	mpu->mask_reg = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+	mpu->mask_reg = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 	if (!(mpu->clear_reg))
 		return -ENOMEM;
 
@@ -673,7 +673,7 @@ static int smpu_probe(struct platform_device *pdev)
 			pr_debug("No smpu node dump-md\n");
 			mpu->dump_md_cnt = 0;
 		} else {
-			dump_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+			dump_list = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 			if (!dump_list)
 				return -ENXIO;
 
@@ -686,7 +686,7 @@ static int smpu_probe(struct platform_device *pdev)
 				return -ENXIO;
 			}
 
-			mpu->dump_md_reg = devm_kmalloc(
+			mpu->dump_md_reg = devm_kzalloc(
 				&pdev->dev,
 				size * sizeof(struct smpu_reg_info_t),
 				GFP_KERNEL);
@@ -703,7 +703,7 @@ static int smpu_probe(struct platform_device *pdev)
 		//bypass_axi
 		size = of_property_count_elems_of_size(smpu_node, "bypass-axi",
 						       sizeof(char));
-		miumpu_bypass_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+		miumpu_bypass_list = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 		if (!miumpu_bypass_list)
 			return -ENOMEM;
 
@@ -716,7 +716,7 @@ static int smpu_probe(struct platform_device *pdev)
 			pr_info("No bypass miu mpu\n");
 			return -ENXIO;
 		}
-		mpu->bypass_axi = devm_kmalloc(
+		mpu->bypass_axi = devm_kzalloc(
 			&pdev->dev,
 			axi_set_num * sizeof(struct bypass_axi_info_t),
 			GFP_KERNEL);
@@ -737,7 +737,7 @@ static int smpu_probe(struct platform_device *pdev)
 		size = of_property_count_elems_of_size(smpu_node, "bypass",
 						       sizeof(char));
 
-		miumpu_bypass_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+		miumpu_bypass_list = devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 		if (!miumpu_bypass_list)
 			return -ENOMEM;
 
@@ -749,7 +749,7 @@ static int smpu_probe(struct platform_device *pdev)
 			pr_info("No bypass miu mpu\n");
 			return -ENXIO;
 		}
-		mpu->bypass_miu_reg = devm_kmalloc(
+		mpu->bypass_miu_reg = devm_kzalloc(
 			&pdev->dev, size * sizeof(unsigned int), GFP_KERNEL);
 		if (!(mpu->bypass_miu_reg))
 			return -ENOMEM;
@@ -761,7 +761,7 @@ static int smpu_probe(struct platform_device *pdev)
 						       sizeof(char));
 		if (size > 0) {
 			gpu_bypass_list =
-				devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
+				devm_kzalloc(&pdev->dev, size, GFP_KERNEL);
 			if (!gpu_bypass_list)
 				return -ENOMEM;
 
@@ -774,7 +774,7 @@ static int smpu_probe(struct platform_device *pdev)
 			}
 
 			mpu->gpu_bypass_list =
-				devm_kmalloc(&pdev->dev,
+				devm_kzalloc(&pdev->dev,
 					     size * sizeof(unsigned int),
 					     GFP_KERNEL);
 
@@ -797,12 +797,12 @@ static int smpu_probe(struct platform_device *pdev)
 	//reg base end
 
 	mpu->vio_msg =
-		devm_kmalloc(&pdev->dev, MTK_SMPU_MAX_CMD_LEN, GFP_KERNEL);
+		devm_kzalloc(&pdev->dev, MTK_SMPU_MAX_CMD_LEN, GFP_KERNEL);
 	if (!(mpu->vio_msg))
 		return -ENOMEM;
 
 	mpu->vio_msg_gpu =
-		devm_kmalloc(&pdev->dev, MAX_GPU_VIO_LEN, GFP_KERNEL);
+		devm_kzalloc(&pdev->dev, MAX_GPU_VIO_LEN, GFP_KERNEL);
 	if (!mpu->vio_msg_gpu)
 		return -ENOMEM;
 
