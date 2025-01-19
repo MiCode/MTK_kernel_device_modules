@@ -23,6 +23,8 @@
 #define DEFAULT_PF_MAX_FREQ		1500000
 #define DEFAULT_PF_INTERVAL		1000
 
+#define PF_CTRL_DEBUG			0
+
 u32 *g_pf_ctrl_enable;
 u32 *g_pf_ctrl_max_freq;
 u32 *g_pf_ctrl_min_freq;
@@ -35,7 +37,7 @@ static int pf_ctrl_max_freq = DEFAULT_PF_MAX_FREQ;
 static int pf_ctrl_interval = DEFAULT_PF_INTERVAL;
 static int pf_counter;
 static bool last_pf_dis;
-static struct pf_work_struct pf_switch_work;
+static struct pf_work_struct pf_switch_work[COREL_NUM];
 static struct delayed_work pf_top_work;
 static struct pf_info pf_ctrl_info;
 static struct cpufreq_policy *ptr_policy_0;
@@ -100,7 +102,7 @@ int __set_pf_ctrl_enable(bool enable)
 	return 0;
 }
 
-#if 0
+#if PF_CTRL_DEBUG
 static ssize_t pf_ctrl_enable_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -138,8 +140,10 @@ static ssize_t pf_ctrl_enable_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-#endif
+PROC_FOPS_RW(pf_ctrl_enable);
+#else
 PROC_FOPS_RO(pf_ctrl_enable);
+#endif
 
 
 static int pf_ctrl_max_freq_proc_show(struct seq_file *m, void *v)
@@ -160,7 +164,7 @@ static int pf_ctrl_interval_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-#if 0
+#if PF_CTRL_DEBUG
 static ssize_t pf_ctrl_max_freq_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -196,10 +200,8 @@ static ssize_t pf_ctrl_max_freq_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-#endif
-PROC_FOPS_RO(pf_ctrl_max_freq);
+PROC_FOPS_RW(pf_ctrl_max_freq);
 
-#if 0
 static ssize_t pf_ctrl_min_freq_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -235,10 +237,8 @@ static ssize_t pf_ctrl_min_freq_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-#endif
-PROC_FOPS_RO(pf_ctrl_min_freq);
+PROC_FOPS_RW(pf_ctrl_min_freq);
 
-#if 0
 static ssize_t pf_ctrl_interval_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -278,8 +278,12 @@ static ssize_t pf_ctrl_interval_proc_write(struct file *file,
 	free_page((unsigned long)buf);
 	return count;
 }
-#endif
+PROC_FOPS_RW(pf_ctrl_interval);
+#else
+PROC_FOPS_RO(pf_ctrl_max_freq);
+PROC_FOPS_RO(pf_ctrl_min_freq);
 PROC_FOPS_RO(pf_ctrl_interval);
+#endif
 
 static int create_pf_ctrl_fs(void)
 {
@@ -345,19 +349,24 @@ static void pf_switch_work_function(struct work_struct *work)
 
 static void trigger_pf_work(int type)
 {
+	static cpumask_t flush_cpus;
 	int cpu;
 
 	cpus_read_lock();
+	cpumask_clear(&flush_cpus);
 	for_each_online_cpu(cpu) {
 		if (cpu >= COREL_NUM)
 			continue;
 		if (type == PF_DISABLE || type == PF_ENABLE){
-			pf_switch_work.pf_type = type;
-			pf_switch_work.cpu = cpu;
-			queue_work_on(cpu, pf_ctrl_wq, &pf_switch_work.work);
-			flush_work(&pf_switch_work.work);
+			pf_switch_work[cpu].pf_type = type;
+			queue_work_on(cpu, pf_ctrl_wq, &pf_switch_work[cpu].work);
+			cpumask_set_cpu(cpu, &flush_cpus);
 		}
 	}
+
+	for_each_cpu(cpu, &flush_cpus)
+		flush_work(&pf_switch_work[cpu].work);
+
 	cpus_read_unlock();
 
 	trace_trigger_pf_work(type, pf_ctrl_info.pf_off_total_time);
@@ -424,6 +433,8 @@ EXPORT_SYMBOL_GPL(mtk_set_pf_ctrl_enable);
 
 int mtk_pf_ctrl_init(void)
 {
+	int cpu;
+
 	pf_ctrl_wq = alloc_workqueue("pf_ctrl_wq", __WQ_LEGACY, 1);
 	if (!pf_ctrl_wq) {
 		pr_info("%s: failed to allocate workqueue!\n", __func__);
@@ -431,8 +442,11 @@ int mtk_pf_ctrl_init(void)
 	}
 	ptr_policy_0 = cpufreq_cpu_get(0);
 	INIT_DELAYED_WORK(&pf_top_work, pf_main_work);
-	pf_switch_work.pf_type = PF_ENABLE;
-	INIT_WORK(&pf_switch_work.work, pf_switch_work_function);
+	for (cpu = 0; cpu < COREL_NUM; cpu++) {
+		pf_switch_work[cpu].cpu = cpu;
+		pf_switch_work[cpu].pf_type = PF_ENABLE;
+		INIT_WORK(&pf_switch_work[cpu].work, pf_switch_work_function);
+	}
 
 	create_pf_ctrl_fs();
 
