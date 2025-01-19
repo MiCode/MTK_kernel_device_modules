@@ -600,27 +600,6 @@ static inline void check_ul_mask_state_register(unsigned int L2TIMR0)
 	}
 }
 
-static inline void check_dl_mask_state_register(unsigned int L2RIMR0)
-{
-	if (!dpmaif_ctl->support_2rxq) {
-	/* check UL&DL mask status register */
-		if ((L2RIMR0 & AP_DL_L2INTR_Msk_Check) != AP_DL_L2INTR_Msk_Check) {
-			/* if has error bit, set mask */
-			DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0, ~(AP_DL_L2INTR_En_Msk));
-			/* use msk to clear dummy interrupt */
-			DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~(AP_DL_L2INTR_En_Msk));
-		}
-	} else {
-		if ((L2RIMR0 & AP_LRO_DL_L2INTR_Msk_Check) != AP_LRO_DL_L2INTR_Msk_Check) {
-			/* if has error bit, set mask */
-			DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0,
-					~(AP_DL_L2INTR_LRO_En_Msk));
-			/* use msk to clear dummy interrupt */
-			DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~(AP_DL_L2INTR_LRO_En_Msk));
-		}
-	}
-}
-
 /* L2 RX interrupt mask register and L2 RX interrupt Status register
  * are not one-to-one mapping, this function adjust this unmapped bit
  * positions of the mask and sts register into a on-by-one bit mapping.
@@ -637,6 +616,30 @@ static inline unsigned int mapping_rx_reg_from_mask_to_sts(unsigned int L2RIMR0)
 	ret_val |= ((L2RIMR0 >> 12) & 1) << 10; // move bit 12 to bit 10
 
 	return ret_val;
+}
+
+static inline void check_dl_mask_state_register(unsigned int L2RIMR0)
+{
+	unsigned int L2RISAR0;
+
+	if (!dpmaif_ctl->support_2rxq) {
+	/* check UL&DL mask status register */
+		if ((L2RIMR0 & AP_DL_L2INTR_Msk_Check) != AP_DL_L2INTR_Msk_Check) {
+			/* if has error bit, set mask */
+			DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0, ~(AP_DL_L2INTR_En_Msk));
+			/* use msk to clear dummy interrupt */
+			DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~(AP_DL_L2INTR_En_Msk));
+		}
+	} else {
+		if ((L2RIMR0 & AP_LRO_DL_L2INTR_Msk_Check) != AP_LRO_DL_L2INTR_Msk_Check) {
+			/* if has error bit, set mask */
+			DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0,
+					~(AP_DL_L2INTR_LRO_En_Msk));
+			/* use msk to clear dummy interrupt */
+			L2RISAR0 = mapping_rx_reg_from_mask_to_sts(AP_DL_L2INTR_LRO_En_Msk);
+			DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~L2RISAR0);
+		}
+	}
 }
 
 static irqreturn_t drv3_isr0(int irq, void *data)
@@ -1281,6 +1284,8 @@ static int drv3_suspend_noirq(struct device *dev)
 
 static int drv3_resume_noirq(struct device *dev)
 {
+	unsigned int L2RISAR0;
+
 	/* UL set mask */
 	DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMSR0, ~(AP_UL_L2INTR_En_Msk));
 	/* use msk to clear dummy interrupt */
@@ -1295,7 +1300,8 @@ static int drv3_resume_noirq(struct device *dev)
 		/* if has error bit, set mask */
 		DPMA_WRITE_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMSR0, ~(AP_DL_L2INTR_LRO_En_Msk));
 		/* use msk to clear dummy interrupt */
-		DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~(AP_DL_L2INTR_LRO_En_Msk));
+		L2RISAR0 = mapping_rx_reg_from_mask_to_sts(AP_DL_L2INTR_LRO_En_Msk);
+		DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~L2RISAR0);
 	}
 
 	CCCI_NORMAL_LOG(0, TAG, "[%s] support LRO: %u; mask: dl=0x%x ul=0x%x\n",
