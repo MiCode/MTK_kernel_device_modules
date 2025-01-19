@@ -286,7 +286,7 @@ static void usb_offload_monitor_interrupt(void *data, void *stream,
 	dev_dbg(tester.dev, "%s match:%d i:%d in_use:%d\n", __func__, match, i, tester.in_use);
 
 	if (match) {
-		if (i < MAX_TRACE_ISR) {
+		if (i < MAX_TRACE_ISR && i >= 0) {
 			if (tester.done[i].cnt + 1 <= UINT_MAX)
 				tester.done[i].cnt++;
 		} else
@@ -336,7 +336,7 @@ static void xhci_monitor_interrupt(void *data, struct urb *urb)
 	dev_dbg(tester.dev, "%s match:%d i:%d in_use:%d\n", __func__, match, i, tester.in_use);
 
 	if (match) {
-		if (i < MAX_TRACE_ISR) {
+		if (i < MAX_TRACE_ISR && i >= 0) {
 			if (tester.done[i].cnt + 1 <= UINT_MAX)
 				tester.done[i].cnt++;
 		} else
