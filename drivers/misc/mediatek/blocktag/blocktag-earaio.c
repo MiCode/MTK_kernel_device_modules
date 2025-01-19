@@ -46,20 +46,29 @@ typedef struct _EARA_IO_SYS_PACKAGE {
 #define ACCEL_SEQ                    4
 #define ACCEL_FUSE                   5
 
-struct eara_iostat {
-	int io_wl;
-	int io_top;
-	int io_reqc_r;
-	int io_reqc_w;
-	int io_q_dept;
-	int io_reqsz_top_r;
-	int io_reqsz_top_w;
-	int io_reqc_rand;
-	int fuse_req_cnt;
-	int fuse_unlink_cnt;
-	unsigned short hot_pid;
-	unsigned short hot_tgid;
+#define MAX_IO_INFO_NR 2
+struct earaio_iostat {
+	struct _io {
+		int wl;
+		int top;
+		int reqc_r;
+		int reqc_w;
+		int q_dept;
+		int reqsz_top_r;
+		int reqsz_top_w;
+		int reqc_rand;
+	} io[MAX_IO_INFO_NR];
+	char io_name[MAX_IO_INFO_NR][BTAG_NAME_LEN];
+	struct _fuse {
+		int req_cnt;
+		int unlink_cnt;
+		unsigned short hot_pid;
+		unsigned short hot_tgid;
+	} fuse;
 };
+
+static_assert(sizeof(struct earaio_iostat) <= sizeof(EARA_IO_SYS_PACKAGE),
+	      "earaio_iostat is large then earaio ioctl package");
 
 /* mini context for major embedded storage only */
 #define MICTX_PROC_CMD_BUF_SIZE (16)
@@ -67,6 +76,12 @@ struct eara_iostat {
 
 static DEFINE_MUTEX(eara_ioctl_lock);
 static struct mtk_btag_earaio_control earaio_ctrl;
+
+#define for_each_valid_mictx_id(mictx_id, index)			\
+	for (index = 0, mictx_id = &earaio_ctrl.io_info[index].mictx_id;\
+	     index < MAX_IO_INFO_NR && mictx_id->id;			\
+	     mictx_id = ++index < MAX_IO_INFO_NR ?			\
+	     &earaio_ctrl.io_info[index].mictx_id : NULL)
 
 static int earaio_boost_open(struct inode *inode, struct file *file)
 {
@@ -168,27 +183,30 @@ static inline void earaio_get_fuse_count(u64 *total, u64 *unlink)
 #endif
 }
 
-static void earaio_set_fuse_data(struct eara_iostat *data)
+static void earaio_set_fuse_data(struct earaio_iostat *data)
 {
 	unsigned long flags;
 	u64 total, unlink;
 
 	earaio_get_fuse_count(&total, &unlink);
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	data->fuse_req_cnt = (int)(total - earaio_ctrl.fuse_total_prev);
-	data->fuse_unlink_cnt = (int)(unlink - earaio_ctrl.fuse_unlink_prev);
+	data->fuse.req_cnt = (int)(total - earaio_ctrl.fuse_total_prev);
+	data->fuse.unlink_cnt = (int)(unlink - earaio_ctrl.fuse_unlink_prev);
 	earaio_ctrl.fuse_total_prev = total;
 	earaio_ctrl.fuse_unlink_prev = unlink;
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
-	mtk_btag_fuse_get_hot_pid(&data->hot_pid, &data->hot_tgid);
+	mtk_btag_fuse_get_hot_pid(&data->fuse.hot_pid, &data->fuse.hot_tgid);
 }
 #endif
 
 static void earaio_reset_data(void)
 {
+	struct mtk_btag_mictx_id *mictx_id;
 	unsigned long flags;
+	int index;
 
-	mtk_btag_mictx_reset(&earaio_ctrl.mictx_id);
+	for_each_valid_mictx_id(mictx_id, index)
+		mtk_btag_mictx_reset(mictx_id);
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	earaio_get_fuse_count(&earaio_ctrl.fuse_total_prev,
@@ -198,22 +216,28 @@ static void earaio_reset_data(void)
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
-static void mtk_btag_eara_get_data(struct eara_iostat *data)
+static void mtk_btag_eara_get_data(struct earaio_iostat *data)
 {
 	struct mtk_btag_mictx_iostat_struct iostat = {0};
+	struct mtk_btag_mictx_id *mictx_id;
 	unsigned long flags;
+	int index;
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 
-	mtk_btag_mictx_get_data(&earaio_ctrl.mictx_id, &iostat);
-	data->io_wl = iostat.wl;
-	data->io_top = iostat.top;
-	data->io_reqc_r = iostat.reqcnt_r;
-	data->io_reqc_w = iostat.reqcnt_w;
-	data->io_q_dept = iostat.q_depth;
-	data->io_reqc_rand = iostat.top_rnd_cnt;
-	data->io_reqsz_top_r = iostat.top_pages_r << PAGE_SHIFT;
-	data->io_reqsz_top_w = iostat.top_pages_w << PAGE_SHIFT;
+	for_each_valid_mictx_id(mictx_id, index) {
+		mtk_btag_mictx_get_data(mictx_id, &iostat);
+		data->io[index].wl = iostat.wl;
+		data->io[index].top = iostat.top;
+		data->io[index].reqc_r = iostat.reqcnt_r;
+		data->io[index].reqc_w = iostat.reqcnt_w;
+		data->io[index].q_dept = iostat.q_depth;
+		data->io[index].reqc_rand = iostat.top_rnd_cnt;
+		data->io[index].reqsz_top_r = iostat.top_pages_r << PAGE_SHIFT;
+		data->io[index].reqsz_top_w = iostat.top_pages_w << PAGE_SHIFT;
+		strscpy(data->io_name[index], earaio_ctrl.io_info[index].name,
+			BTAG_NAME_LEN);
+	}
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	earaio_set_fuse_data(data);
 #endif
@@ -239,11 +263,13 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
  */
 static int earaio_try_boost(bool boost)
 {
+	struct mtk_btag_mictx_id *mictx_id;
 	unsigned long flags;
 	__u32 top_r, top_w;
-	int ret = 1;
+	int index, ret = 1;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	u64 fuse_total, fuse_unlink;
+	__u32 total_top_rw = 0;
 #endif
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
@@ -273,15 +299,20 @@ static int earaio_try_boost(bool boost)
 	}
 
 	/* Establish threshold for top app read, write */
-	mtk_btag_mictx_get_top_rw(&earaio_ctrl.mictx_id, &top_r, &top_w);
-	if (top_r >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
-	    top_w >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
-		goto need_boost;
+	for_each_valid_mictx_id(mictx_id, index) {
+		mtk_btag_mictx_get_top_rw(mictx_id, &top_r, &top_w);
+		if (top_r >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
+		    top_w >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
+			goto need_boost;
+#if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
+		total_top_rw += (top_r + top_w);
+#endif
+	}
 
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	/* Establish threshold for top app fuse request count */
 	earaio_get_fuse_count(&fuse_total, &fuse_unlink);
-	if (((fuse_total > earaio_ctrl.fuse_threshold) && (top_r || top_w)) ||
+	if (((fuse_total > earaio_ctrl.fuse_threshold) && total_top_rw) ||
 	    (fuse_unlink > earaio_ctrl.fuse_unlink_threshold))
 		goto need_boost;
 #endif
@@ -335,15 +366,15 @@ static void mtk_btag_eara_switch_collect(int cmd)
 
 static void mtk_btag_eara_transfer_data(__s32 *data, __s32 input_size)
 {
-	struct eara_iostat eara_io_data = {0};
+	struct earaio_iostat earaio_data = {0};
 	int limit_size;
 
 	mutex_lock(&eara_ioctl_lock);
-	mtk_btag_eara_get_data(&eara_io_data);
+	mtk_btag_eara_get_data(&earaio_data);
 	mutex_unlock(&eara_ioctl_lock);
 
-	limit_size = MIN(input_size, sizeof(struct eara_iostat));
-	memcpy(data, &eara_io_data, limit_size);
+	limit_size = MIN(input_size, sizeof(struct earaio_iostat));
+	memcpy(data, &earaio_data, limit_size);
 }
 
 static unsigned long eara_ioctl_copy_from_user(void *pvTo,
@@ -468,7 +499,8 @@ static const struct proc_ops earaio_ioctl_fops = {
 static ssize_t earaio_control_write(struct file *file, const char __user *ubuf,
 				    size_t count, loff_t *ppos)
 {
-	int ret;
+	struct mtk_btag_mictx_id *mictx_id;
+	int index, ret;
 	char cmd[MICTX_PROC_CMD_BUF_SIZE] = {0};
 
 	if (!count)
@@ -494,10 +526,12 @@ static ssize_t earaio_control_write(struct file *file, const char __user *ubuf,
 		earaio_ctrl.enabled = true;
 		pr_info("EARA-IO QoS Enable\n");
 	} else if (!strcmp(cmd, "2")) {
-		mtk_btag_mictx_set_full_logging(&earaio_ctrl.mictx_id, false);
+		for_each_valid_mictx_id(mictx_id, index)
+			mtk_btag_mictx_set_full_logging(mictx_id, false);
 		pr_info("EARA-IO Full Logging Disable\n");
 	} else if (!strcmp(cmd, "3")) {
-		mtk_btag_mictx_set_full_logging(&earaio_ctrl.mictx_id, true);
+		for_each_valid_mictx_id(mictx_id, index)
+			mtk_btag_mictx_set_full_logging(mictx_id, true);
 		pr_info("EARA-IO Full Logging Enable\n");
 	} else {
 		pr_info("proc_write: invalid cmd %s\n", cmd);
@@ -511,23 +545,29 @@ err:
 
 static int earaio_control_show(struct seq_file *s, void *data)
 {
-	struct mtk_blocktag *btag;
-	char name[BTAG_NAME_LEN] = {' '};
-
-	rcu_read_lock();
-	btag = mtk_btag_find_by_id(earaio_ctrl.mictx_id.btag_id);
-	if (btag)
-		strncpy(name, btag->name, BTAG_NAME_LEN - 1);
-	rcu_read_unlock();
+	struct mtk_btag_mictx_id *mictx_id;
+	int index;
 
 	seq_puts(s, "<MTK EARA-IO Control Unit>\n");
-	seq_printf(s, "Monitor Storage Type: %s\n", name);
+
+	seq_printf(s, "Monitor Storage:");
+	for_each_valid_mictx_id(mictx_id, index)
+		seq_printf(s, " [%s]", earaio_ctrl.io_info[index].name);
+	seq_printf(s, "\n");
+
 	seq_puts(s, "Status:\n");
 	seq_printf(s, "  EARA-IO Control     : %s\n",
 		   earaio_ctrl.enabled ? "Enable" : "Disable");
-	seq_printf(s, "  EARA-IO Full Loging : %s\n",
-		   mtk_btag_mictx_full_logging(&earaio_ctrl.mictx_id) ?
-		   "Enable" : "Disable");
+
+	seq_printf(s, "  EARA-IO Full Loging :");
+	rcu_read_lock();
+	for_each_valid_mictx_id(mictx_id, index) {
+		seq_printf(s, " [%s]", mtk_btag_mictx_full_logging(mictx_id) ?
+			   "Enable" : "Disable");
+	}
+	rcu_read_unlock();
+	seq_printf(s, "\n");
+
 	seq_puts(s, "Commands: echo n > earaio_ctrl, n presents\n");
 	seq_puts(s, "  Disable EARA-IO QoS  : 0\n");
 	seq_puts(s, "  Enable EARA-IO QoS   : 1\n");
@@ -610,34 +650,54 @@ static struct mtk_btag_mictx_vops mictx_earaio_vops = {
 
 void mtk_btag_earaio_register(const char *btag_name)
 {
-	char buf[BTAG_NAME_LEN];
-	int ret;
+	struct mtk_btag_mictx_id *mictx_id;
+	unsigned long flags;
+	int i, ret;
+
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 
 	if (!earaio_ctrl.enabled) {
-		spin_lock_init(&earaio_ctrl.lock);
 		earaio_ctrl.enabled = true;
 		earaio_ctrl.pwd_begin = sched_clock();
-		earaio_ctrl.rand_rw_threshold = THRESHOLD_MAX;
-		earaio_ctrl.seq_r_threshold = THRESHOLD_MAX;
-		earaio_ctrl.seq_w_threshold = THRESHOLD_MAX;
-		earaio_ctrl.fuse_threshold = THRESHOLD_MAX;
 	}
 
-	snprintf(buf, BTAG_NAME_LEN, "earaio_%s", btag_name);
-	ret = mtk_btag_mictx_register(&earaio_ctrl.mictx_id, btag_name, buf,
+	for (i = 0; i < MAX_IO_INFO_NR; i++)
+		if (!earaio_ctrl.io_info[i].mictx_id.id)
+			break;
+	if (i == MAX_IO_INFO_NR)
+		goto unlock;
+
+	mictx_id = &earaio_ctrl.io_info[i].mictx_id;
+	snprintf(earaio_ctrl.io_info[i].name, BTAG_NAME_LEN,
+		 "earaio_%s", btag_name);
+	ret = mtk_btag_mictx_register(mictx_id, btag_name,
+				      earaio_ctrl.io_info[i].name,
 				      &mictx_earaio_vops);
 	if (ret) {
+		mictx_id->id = 0;
 		pr_notice("earaio mictx enable failed: %d\n", ret);
-		return;
+		goto unlock;
 	}
 
 	/* Disable Full Logging for earaio by default */
-	mtk_btag_mictx_set_full_logging(&earaio_ctrl.mictx_id, false);
+	mtk_btag_mictx_set_full_logging(mictx_id, false);
+
+unlock:
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+
+	if (i == MAX_IO_INFO_NR)
+		pr_notice("register %s failed, no empty mictx_id\n", btag_name);
 }
 
 void mtk_btag_earaio_init(struct proc_dir_entry *root)
 {
 	struct proc_dir_entry *proc_root, *proc_entry;
+
+	spin_lock_init(&earaio_ctrl.lock);
+	earaio_ctrl.rand_rw_threshold = THRESHOLD_MAX;
+	earaio_ctrl.seq_r_threshold = THRESHOLD_MAX;
+	earaio_ctrl.seq_w_threshold = THRESHOLD_MAX;
+	earaio_ctrl.fuse_threshold = THRESHOLD_MAX;
 
 	proc_root = proc_mkdir("earaio", root);
 	if (IS_ERR(proc_root)) {

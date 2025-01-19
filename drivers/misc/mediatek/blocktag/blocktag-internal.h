@@ -162,6 +162,10 @@ struct mtk_btag_earaio_control {
 
 	/* peeking window */
 	__u64 pwd_begin;
+	struct _io_info {
+		struct mtk_btag_mictx_id mictx_id;
+		char name[BTAG_NAME_LEN];
+	} io_info[2];
 
 	bool boosted;
 
