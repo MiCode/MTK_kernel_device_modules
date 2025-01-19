@@ -282,6 +282,7 @@ struct mdw_cmd_in {
 			uint32_t u_pid;
 			uint32_t hse_num;
 			uint64_t function_bitmask; //bitmask
+			uint64_t auto_dvfs_target_time;
 
 			/* prev info */
 			uint64_t prev_exec_ms;

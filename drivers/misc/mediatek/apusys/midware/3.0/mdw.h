@@ -424,6 +424,9 @@ struct mdw_cmd {
 	uint64_t mpriv_release_time;
 	uint64_t enter_rv_cb_time;
 	uint64_t rv_cb_time;
+
+	/* auto dvfs target time (ms) */
+	uint64_t auto_dvfs_target_time;
 };
 
 struct mdw_plat_func {

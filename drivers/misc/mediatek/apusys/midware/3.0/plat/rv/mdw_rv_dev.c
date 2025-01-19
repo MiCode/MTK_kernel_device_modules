@@ -368,6 +368,7 @@ int mdw_rv_dev_run_cmd(struct mdw_fpriv *mpriv, struct mdw_rv_cmd *rc)
 	rc->s_msg.msg.c.size = rc->cb->size;
 	rc->s_msg.msg.c.start_ts_ns = rc->start_ts_ns;
 	rc->s_msg.complete = mdw_rv_ipi_cmplt_cmd;
+	rc->s_msg.msg.inf_id = rc->c->inference_id;
 
 	/* send */
 	ret = mdw_rv_dev_send_msg(mrdev, &rc->s_msg);

@@ -948,6 +948,7 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	c->tolerance_ms = in->exec.tolerance_ms;
 	c->is_dtime_set = in->exec.is_dtime_set;
 	c->num_links = in->exec.num_links;
+	c->auto_dvfs_target_time = in->exec.auto_dvfs_target_time;
 	c->predecessors_num = in->exec.predecessors_num;
 	if (check_mul_overflow(c->predecessors_num, sizeof(*c->predecessors), &c->predecessors_size)) {
 		mdw_drv_err("predecessors_num overflow\n");

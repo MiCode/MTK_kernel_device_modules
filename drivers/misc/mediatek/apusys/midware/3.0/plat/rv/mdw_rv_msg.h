@@ -100,6 +100,7 @@ struct mdw_ipi_msg {
 		struct mdw_ipi_param p;
 		struct mdw_ipi_ucmd u;
 	};
+	uint64_t inf_id;
 };
 
 struct mdw_ipi_msg_sync {

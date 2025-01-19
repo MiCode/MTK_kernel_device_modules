@@ -63,6 +63,8 @@ struct mdw_rv_msg_cmd {
 	uint32_t tolerance_ms;
 	/* cmd done */
 	uint32_t cmd_done; // up output
+	/* dvfs target time */
+	uint64_t auto_dvfs_target_time;
 } __packed;
 
 struct mdw_rv_msg_sc {
@@ -120,7 +122,8 @@ static void mdw_plat_v6_show_msg(struct mdw_mem_map *map)
 	mdw_cmd_debug("  end_vertices(%u/%u) function_bitmask(0x%llx) app_type(%u) hse_num(%u) vlm_max(%u)\n",
 		rmc->end_vertices_size, rmc->end_vertices_offset, rmc->function_bitmask, rmc->app_type,
 		rmc->hse_num, rmc->vlm_max);
-	mdw_cmd_debug("  tol_t(%u) inf_t(%u)\n", rmc->tolerance_ms, rmc->inference_ms);
+	mdw_cmd_debug("  tol_t(%u) inf_t(%u) dvfs_target_t(%llu)\n",
+		rmc->tolerance_ms, rmc->inference_ms, rmc->auto_dvfs_target_time);
 
 	/* cmdbufs */
 	rcb = (struct mdw_rv_msg_cb *)(map->vaddr + rmc->cmdbuf_infos_offset);
@@ -375,6 +378,7 @@ static struct mdw_mem_map *mdw_plat_v6_create_msg(struct mdw_cmd *c)
 	rmc->inference_ms = c->inference_ms;
 	rmc->tolerance_ms = c->tolerance_ms;
 	rmc->inference_id = c->inference_id;
+	rmc->auto_dvfs_target_time = c->auto_dvfs_target_time;
 	//mdw_rv_cmd_print(rmc);
 
 	/* assign subcmds info */
@@ -450,14 +454,6 @@ static struct mdw_mem_map *mdw_plat_v6_create_msg(struct mdw_cmd *c)
 
 		rmaci++;
 	}
-
-	/* clear einfos */
-	memset((void *)rmc + rmc->exec_infos_offset, 0, c->exec_infos->size);
-
-	/* clear exec ret */
-	c->einfos->c.ret = 0;
-	c->einfos->c.sc_rets = 0;
-	rmc->cmd_done = 0;
 
 	if (mdw_mem_flush(mpriv, rv_cmdbuf))
 		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%llu) fail\n",
@@ -601,6 +597,28 @@ static int mdw_plat_v6_delete_cmd_priv(struct mdw_cmd *c)
 	return ret;
 }
 
+static void mdw_plat_v6_reset_info(struct mdw_rv_msg_cmd *rmc, struct mdw_cmd *c,
+				 struct mdw_mem_map *map)
+{
+	struct mdw_rv_msg_sc *rmsc = NULL;
+	uint32_t i = 0;
+
+	/* clear einfos */
+	memset((void *)rmc + rmc->exec_infos_offset, 0, c->exec_infos->size);
+	/* clear exec ret */
+	c->einfos->c.ret = 0;
+	c->einfos->c.sc_rets = 0;
+	rmc->cmd_done = 0;
+	/* clear up reserve */
+	rmsc = (struct mdw_rv_msg_sc *)(map->vaddr + rmc->subcmds_offset);
+	for (i = 0; i < rmc->num_subcmds; i++) {
+		memset(rmsc->up_reserve, 0, sizeof(rmsc->up_reserve));
+		rmsc++;
+	}
+	/* update inference id */
+	rmc->inference_id = c->inference_id;
+}
+
 /**
  * mdw_plat_v6_run_cmd() - Use rpmsg_sendto to power on or off
  * @c: mdw command
@@ -622,8 +640,8 @@ static int mdw_plat_v6_run_cmd(struct mdw_cmd *c)
 	/* assign rv msg */
 	rmc = (struct mdw_rv_msg_cmd *)rc->cb->vaddr;
 
-	/* update inference id */
-	rmc->inference_id = c->inference_id;
+	/* clear execute info and update inf_id */
+	mdw_plat_v6_reset_info(rmc, c, rc->cb);
 
 	mdw_plat_v6_show_msg(rc->cb);
 
