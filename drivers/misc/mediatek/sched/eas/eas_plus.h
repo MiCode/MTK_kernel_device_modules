@@ -135,8 +135,8 @@ extern void mtk_overutilized_temp(void *ignore, struct task_struct *p,
 							int wake_flags, int *target_cpu);
 
 extern unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
-		struct cpumask *pd_cpus, unsigned long max_util, unsigned long allowed_cpu_cap,
-		unsigned long scale_cpu);
+		struct cpumask *pd_cpus,unsigned long max_util, unsigned long allowed_cpu_cap,
+		unsigned long scale_cpu, unsigned long min,unsigned long max);
 
 /* arch-related API */
 #define volt_diff  5000
@@ -302,7 +302,8 @@ extern void hook_sched_balance_newidle(void *data, struct rq *this_rq,
 extern unsigned long calc_pwr(int cpu, unsigned long task_util);
 extern unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s);
 extern unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv,
-		int cpu, unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered);
+		int cpu, struct task_struct *p, unsigned long max_util, struct cpumask *cpus,
+		bool is_dsu_pwr_triggered, unsigned long min, unsigned long max);
 #endif
 
 extern int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,

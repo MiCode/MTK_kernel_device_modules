@@ -161,6 +161,34 @@ TRACE_EVENT(sugov_ext_util,
 		__entry->idle)
 );
 
+TRACE_EVENT(sugov_ext_util_freq,
+	TP_PROTO(int cpu, unsigned long util,
+		unsigned int min, unsigned int max, unsigned int freq),
+	TP_ARGS(cpu, util, min, max, freq),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned long, util)
+		__field(unsigned int, min)
+		__field(unsigned int, max)
+		__field(unsigned int, freq)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->util = util;
+		__entry->min = min;
+		__entry->max = max;
+		__entry->freq = freq;
+	),
+	TP_printk(
+		"cpu=%d util_with_uclamp=%lu min=%u max=%u cpu_freq=%d",
+		__entry->cpu,
+		__entry->util,
+		__entry->min,
+		__entry->max,
+		__entry->freq)
+);
+
+
 TRACE_EVENT(sugov_ext_wl,
 	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl_tcm,
 		int wl_cpu_curr, int wl_cpu_delay, int wl_cpu_manual, int wl_dsu_curr,

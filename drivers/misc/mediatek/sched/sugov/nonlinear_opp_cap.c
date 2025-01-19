@@ -2609,7 +2609,8 @@ void set_grp_high_freq(int cluster_id, bool set)
 EXPORT_SYMBOL(set_grp_high_freq);
 
 inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
-				unsigned int cpu, unsigned long *next_freq, struct cpumask *cpumask)
+				unsigned int cpu, unsigned long *next_freq, struct cpumask *cpumask,
+				unsigned long min, unsigned long max)
 {
 	int gearid __maybe_unused = topology_cluster_id(cpu), i;
 	unsigned int first_cpu = cpumask_first(cpumask);
@@ -2689,8 +2690,13 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 			trace_sugov_ext_curr_task_uclamp(cpu, flg_pid, flg_curr_task, flg_exit_state,
 				max_util_curr, max_util_curr_eff, rq->uclamp[UCLAMP_MAX].value);
 	}
-
+	else{
+		util = sugov_effective_cpu_perf_clamp(util, min, max);
+	}
 	*next_freq = pd_get_util_freq(cpu, util);
+	if (trace_sugov_ext_util_freq_enabled()) {
+		trace_sugov_ext_util_freq(cpu, util, min, max, *next_freq);
+	}
 
 	if (trace_sugov_ext_group_dvfs_enabled())
 		trace_sugov_ext_group_dvfs(first_cpu, util, pelt_util_with_margin,
@@ -2704,18 +2710,17 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 }
 
 void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
-		unsigned long *next_freq)
+		unsigned long *next_freq, unsigned long min, unsigned long max)
 {
 	int orig_util = util;
 	unsigned int cpu=0;
-
 	if (!cpumask)
 		return;
 
 	cpu = cpumask_first(cpumask);
 
 	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
-		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask);
+		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask,min,max);
 		return;
 	}
 
@@ -2727,8 +2732,13 @@ void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 		orig_util < turn_point_util[cpu])
 		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
 					>> SCHED_CAPACITY_SHIFT);
-
+	util = sugov_effective_cpu_perf_clamp(util, min, max);
 	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false, DPT_CALL_MTK_MAP_UTIL_FREQ);
+
+	if (trace_sugov_ext_util_freq_enabled()) {
+		trace_sugov_ext_util_freq(cpu, util, min, max, *next_freq);
+	}
+
 	if (data != NULL) {
 		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
 		struct cpufreq_policy *policy = sg_policy->policy;

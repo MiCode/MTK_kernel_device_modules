@@ -189,10 +189,9 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 		unsigned long util = mtk_cpu_util_next(cpu, p, -1, 0);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-		busy_time += mtk_cpu_util(cpu, util, ENERGY_UTIL,
-					NULL, 0, 1024);
+		busy_time += mtk_effective_cpu_util(cpu, util, NULL, NULL, NULL);
 #else
-		busy_time += effective_cpu_util(cpu, util, ENERGY_UTIL, NULL);
+		busy_time += effective_cpu_util(cpu, util, NULL, NULL);
 #endif
 	}
 
@@ -208,7 +207,7 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
  */
 static inline unsigned long
 eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
-		 struct task_struct *p, int dst_cpu)
+		 struct task_struct *p, int dst_cpu, unsigned long *min, unsigned long *max)
 {
 	unsigned long max_util = 0, gear_max_util = 0;
 	int pd_idx = cpumask_first(pd_cpus);
@@ -231,13 +230,25 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 			 */
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 			if (tsk)
-				cpu_util = mtk_cpu_util(cpu, util, FREQUENCY_UTIL, tsk,
-						eenv->min_cap, eenv->max_cap);
+				cpu_util = mtk_effective_cpu_util(cpu, util, tsk, min, max);
 			else
-				cpu_util = mtk_cpu_util(cpu, util, FREQUENCY_UTIL, tsk, 0, 1024);
+				cpu_util = mtk_effective_cpu_util(cpu, util, tsk, min, max);
 #else
-			cpu_util = effective_cpu_util(cpu, util, FREQUENCY_UTIL, tsk);
+			cpu_util = effective_cpu_util(cpu, util, min, max);
 #endif
+			if (tsk && uclamp_is_used()) {
+				*min = max(*min, uclamp_eff_value(p, UCLAMP_MIN));
+				/*
+				* If there is no active max uclamp constraint,
+				* directly use task's one, otherwise keep max.
+				*/
+				if (uclamp_rq_is_idle(cpu_rq(cpu)))
+					*max = uclamp_eff_value(p, UCLAMP_MAX);
+				else
+					*max = max(*max, uclamp_eff_value(p, UCLAMP_MAX));
+			}
+			//cpu_util = sugov_effective_cpu_perf_clamp(cpu_util, min, max);
+
 			eenv->cpu_max_util[cpu][dst_idx] = cpu_util;
 		} else
 			cpu_util = eenv->cpu_max_util[cpu][dst_idx];
@@ -256,11 +267,23 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 			unsigned long cpu_util_base;
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-			cpu_util_base = mtk_cpu_util(cpu, util_base, FREQUENCY_UTIL, NULL,
-					0, 1024);
+			cpu_util_base = mtk_effective_cpu_util(cpu, util_base, NULL, min, max);
 #else
-			cpu_util_base = effective_cpu_util(cpu, util, FREQUENCY_UTIL, tsk);
+			cpu_util_base = effective_cpu_util(cpu, util, min, max);
 #endif
+			if (tsk && uclamp_is_used()) {
+				*min = max(*min, uclamp_eff_value(p, UCLAMP_MIN));
+				/*
+				* If there is no active max uclamp constraint,
+				* directly use task's one, otherwise keep max.
+				*/
+				if (uclamp_rq_is_idle(cpu_rq(cpu)))
+					*max = uclamp_eff_value(p, UCLAMP_MAX);
+				else
+					*max = max(*max, uclamp_eff_value(p, UCLAMP_MAX));
+			}
+			//cpu_util_base = sugov_effective_cpu_perf_clamp(cpu_util_base, min, max);
+
 			eenv->cpu_max_util[cpu][0] = cpu_util_base;
 			if (trace_sched_max_util_enabled())
 				trace_sched_max_util("cpu", cpu, dst_cpu, 0,
@@ -326,6 +349,7 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 {
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned int cpu, pd_idx;
+	unsigned long min, max;
 	struct perf_domain *pd_ptr = pd;
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
@@ -383,9 +407,9 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 			eenv->total_util += eenv->pds_busy_time[pd_idx];
 
 			/* get dsu_freq_base by max_util voting */
-			max_util = eenv_pd_max_util(eenv, cpus, p, -1);
+			max_util = eenv_pd_max_util(eenv, cpus, p, -1, &min, &max);
 			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
-					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
+					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx), min, max);
 			eenv->pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
 			eenv->pd_base_max_util[pd_idx] = max_util;
 		}
@@ -449,7 +473,8 @@ static inline unsigned long
 mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		       struct cpumask *pd_cpus, struct task_struct *p, int dst_cpu)
 {
-	unsigned long pd_max_util = eenv_pd_max_util(eenv, pd_cpus, p, dst_cpu);
+	unsigned long min, max;
+	unsigned long pd_max_util = eenv_pd_max_util(eenv, pd_cpus, p, dst_cpu, &min, &max);
 	unsigned long gear_max_util = -1;
 	int pd_idx = cpumask_first(pd_cpus);
 	unsigned long busy_time = eenv->pds_busy_time[pd_idx];
@@ -467,7 +492,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		pd_freq = eenv->pd_base_freq[pd_idx];
 	} else {
 		pd_freq = pd_get_util_cpufreq(eenv, pd_cpus, pd_max_util,
-				eenv->pds_cpu_cap[pd_idx], scale_cpu);
+				eenv->pds_cpu_cap[pd_idx], scale_cpu,min, max);
 	}
 
 	if (eenv->wl_support && is_dsu_pwr_triggered(eenv->wl_dsu)) {
@@ -487,7 +512,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
 		gear_freq = pd_get_util_cpufreq(eenv, pd_cpus, gear_max_util,
-				eenv->pds_cpu_cap[pd_idx], scale_cpu);
+				eenv->pds_cpu_cap[pd_idx], scale_cpu,min, max);
 		gear_volt = pd_get_freq_volt(pd_idx, gear_freq, false, eenv->wl_cpu);
 
 		if (gear_volt-pd_volt < volt_diff) {
@@ -662,7 +687,8 @@ calc_sharebuck_done:
 		} else {
 			share_buck_freq = pd_get_util_cpufreq(eenv, pd_cpus,
 					eenv->gear_max_util[share_buck.gear_idx][dst_idx],
-					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
+					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx),
+					0, SCHED_CAPACITY_SCALE);
 		}
 		dsu_extern_volt = pd_get_freq_volt(cpumask_first(share_buck.cpus),
 				share_buck_freq, false, eenv->wl_dsu);
@@ -2283,12 +2309,12 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 		/* Evaluate the energy impact of using this CPU. */
 		if (unlikely(in_irq)) {
-			unsigned long max_util;
+			unsigned long min, max, max_util;
 
-			max_util = eenv_pd_max_util(&eenv, cpus, p, cpu);
+			max_util = eenv_pd_max_util(&eenv, cpus, p, cpu,&min,&max);
 
-			cur_delta = shared_buck_calc_pwr_eff(&eenv, cpu, max_util, cpus,
-				is_dsu_pwr_triggered(eenv.wl_dsu));
+			cur_delta = shared_buck_calc_pwr_eff(&eenv, cpu, p, max_util, cpus,
+				is_dsu_pwr_triggered(eenv.wl_dsu), min, max);
 			base_energy = 0;
 		} else {
 			eenv_pd_busy_time(&eenv, cpus, p);

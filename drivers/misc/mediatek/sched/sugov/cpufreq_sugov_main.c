@@ -53,7 +53,7 @@ struct sugov_cpu {
 	unsigned int		iowait_boost;
 	u64			last_update;
 	unsigned long		util;
-	unsigned long		bw_dl;
+	unsigned long		bw_min;
 	unsigned long		max;
 
 	/* The field below is for single-CPU policies only: */
@@ -233,17 +233,18 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy)
  * cpufreq driver limitations.
  */
 static unsigned int get_next_freq(struct sugov_policy *sg_policy,
-				  unsigned long util, unsigned long max)
+				  unsigned long util, unsigned long cap,
+				  unsigned long min, unsigned long max)
 {
 	struct cpufreq_policy *policy = sg_policy->policy;
 	unsigned int freq = policy->cpuinfo.max_freq;
 	unsigned long next_freq = 0;
 
-	mtk_map_util_freq((void *)sg_policy, util, policy->related_cpus, &next_freq);
+	mtk_map_util_freq((void *)sg_policy, util, policy->related_cpus, &next_freq, min, max);
 	if (next_freq) {
 		freq = next_freq;
 	} else {
-		freq = map_util_freq(util, freq, max);
+		freq = map_util_freq(util, freq, cap);
 		if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
 			return sg_policy->next_freq;
 		sg_policy->cached_raw_freq = freq;
@@ -252,6 +253,22 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 
 	return freq;
 }
+
+//Clone from kernel mainline -  sugov_effective_cpu_perf
+unsigned long sugov_effective_cpu_perf_clamp(unsigned long actual,
+				unsigned long min, unsigned long max)
+{
+	/* Add dvfs headroom to actual utilization */
+	/* Actually we don't need to target the max performance */
+	if (actual < max)
+		max = actual;
+	/*
+	 * Ensure at least minimum performance while providing more compute
+	 * capacity when possible.
+	 */
+	return max(min, max);
+}
+EXPORT_SYMBOL(sugov_effective_cpu_perf_clamp);
 
 inline int curr_clamp(struct rq *rq, unsigned long *util)
 {
@@ -309,21 +326,15 @@ inline int curr_clamp(struct rq *rq, unsigned long *util)
  * based on the task model parameters and gives the minimal utilization
  * required to meet deadlines.
  */
-unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
-				 enum cpu_util_type type,
-				 struct task_struct *p,
-				 unsigned long min_cap, unsigned long max_cap)
+unsigned long mtk_effective_cpu_util(unsigned int cpu, unsigned long util_cfs, struct task_struct *p,
+				unsigned long *min, unsigned long *max)
 {
-	unsigned long dl_util, util, irq, max;
+	unsigned long util, irq, scale;
 	unsigned long util_ori;
 	struct rq *rq = cpu_rq(cpu);
 
-	max = arch_scale_cpu_capacity(cpu);
+	scale = arch_scale_cpu_capacity(cpu);
 
-	if (!uclamp_is_used() &&
-	    type == FREQUENCY_UTIL && rt_rq_is_runnable(&rq->rt)) {
-		return max;
-	}
 
 	/*
 	 * Early check to see if IRQ/steal time saturates the CPU, can be
@@ -331,8 +342,30 @@ unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
 	 * update_irq_load_avg().
 	 */
 	irq = cpu_util_irq(rq);
-	if (unlikely(irq >= max))
-		return max;
+	if (unlikely(irq >= scale)) {
+		if (min)
+			*min = scale;
+		if (max)
+			*max = scale;
+		return scale;
+	}
+
+	if (min) {
+		/*
+		 * The minimum utilization returns the highest level between:
+		 * - the computed DL bandwidth needed with the IRQ pressure which
+		 *   steals time to the deadline task.
+		 * - The minimum performance requirement for CFS and/or RT.
+		 */
+		*min = max(irq + cpu_bw_dl(rq), uclamp_rq_get(rq, UCLAMP_MIN));
+		/*
+		 * When an RT task is runnable and uclamp is not used, we must
+		 * ensure that the task will run at maximum compute capacity.
+		 */
+		if (!uclamp_is_used() && rt_rq_is_runnable(&rq->rt))
+			*min = max(*min, scale);
+	}
+
 
 	/*
 	 * Because the time spend on RT/DL tasks is visible as 'lost' time to
@@ -340,16 +373,11 @@ unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
 	 * utilization (PELT windows are synchronized) we can directly add them
 	 * to obtain the CPU's actual utilization.
 	 *
-	 * CFS and RT utilization can be boosted or capped, depending on
-	 * utilization clamp constraints requested by currently RUNNABLE
-	 * tasks.
-	 * When there are no CFS RUNNABLE tasks, clamps are released and
-	 * frequency will be gracefully reduced with the utilization decay.
 	 */
 	util = util_cfs + cpu_util_rt(rq);
 	util_ori = util;
 
-	if (type == FREQUENCY_UTIL) {
+	if (min && max) {
 		bool sbb_trigger = false;
 		struct sbb_cpu_data *sbb_data = per_cpu(sbb, cpu);
 
@@ -376,17 +404,16 @@ unsigned long mtk_cpu_util(unsigned int cpu, unsigned long util_cfs,
 				goto skip_rq_uclamp;
 			else if (gu_ctrl) {
 				unsigned long umax_with_gear;
-
 				umax_with_gear = min_t(unsigned long,
 					umax, get_cpu_gear_uclamp_max(cpu));
-				util = clamp_val(util, umin, umax_with_gear);
+				*max = umax_with_gear;
+
 				if (trace_sugov_ext_gear_uclamp_enabled())
 					trace_sugov_ext_gear_uclamp(cpu, util_ori,
 						umin, umax, util, get_cpu_gear_uclamp_max(cpu));
 				goto skip_rq_uclamp;
 			}
 		}
-		util = mtk_uclamp_rq_util_with(rq, util, p, min_cap, max_cap, NULL, NULL, false);
 skip_rq_uclamp:
 		if (sbb_trigger && trace_sugov_ext_sbb_enabled()) {
 			int pid = -1;
@@ -406,26 +433,17 @@ skip_rq_uclamp:
 	}
 
 
-	dl_util = cpu_util_dl(rq);
+	util += cpu_util_dl(rq);
 
 	/*
-	 * For frequency selection we do not make cpu_util_dl() a permanent part
-	 * of this sum because we want to use cpu_bw_dl() later on, but we need
-	 * to check if the CFS+RT+DL sum is saturated (ie. no idle time) such
-	 * that we select f_max when there is no idle time.
-	 *
-	 * NOTE: numerical errors or stop class might cause us to not quite hit
-	 * saturation when we should -- something for later.
+	 * The maximum hint is a soft bandwidth requirement, which can be lower
+	 * than the actual utilization because of uclamp_max requirements.
 	 */
-	if (util + dl_util >= max)
-		return max;
+	if (max)
+		*max = min(scale, uclamp_rq_get(rq, UCLAMP_MAX));
 
-	/*
-	 * OTOH, for energy computation we need the estimated running time, so
-	 * include util_dl and ignore dl_bw.
-	 */
-	if (type == ENERGY_UTIL)
-		util += dl_util;
+	if (util >= scale)
+		return scale;
 
 	/*
 	 * There is still idle time; further improve the number by using the
@@ -442,42 +460,25 @@ skip_rq_uclamp:
 				irq, util, scale_irq_capacity(util, irq, max),
 				cpu_bw_dl(rq));
 #endif
-	util = scale_irq_capacity(util, irq, max);
+	util = scale_irq_capacity(util, irq, scale);
 	util += irq;
 
-	/*
-	 * Bandwidth required by DEADLINE must always be granted while, for
-	 * FAIR and RT, we use blocked utilization of IDLE CPUs as a mechanism
-	 * to gracefully reduce the frequency when no tasks show up for longer
-	 * periods of time.
-	 *
-	 * Ideally we would like to set bw_dl as min/guaranteed freq and util +
-	 * bw_dl as requested freq. However, cpufreq is not yet ready for such
-	 * an interface. So, we only do the latter for now.
-	 */
-	if (type == FREQUENCY_UTIL)
-		util += cpu_bw_dl(rq);
-
-	return min(max, util);
+	return min(scale, util);
 }
-EXPORT_SYMBOL(mtk_cpu_util);
+EXPORT_SYMBOL(mtk_effective_cpu_util);
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 void (*sugov_grp_awr_update_cpu_tar_util_hook)(int cpu);
 EXPORT_SYMBOL(sugov_grp_awr_update_cpu_tar_util_hook);
 #endif
 
-static void sugov_get_util(struct sugov_cpu *sg_cpu)
+static void sugov_get_util(struct sugov_cpu *sg_cpu, unsigned long boost,unsigned long *min,unsigned long *max)
 {
 	unsigned long cpu_util = mtk_cpu_util_cfs_boost(sg_cpu->cpu);
-	struct rq *rq = cpu_rq(sg_cpu->cpu);
 
-	sg_cpu->max = arch_scale_cpu_capacity(sg_cpu->cpu);
-	sg_cpu->bw_dl = cpu_bw_dl(rq);
-
-	sg_cpu->util = mtk_cpu_util(sg_cpu->cpu, cpu_util, FREQUENCY_UTIL,
-							(struct task_struct *)UINTPTR_MAX,
-							0, SCHED_CAPACITY_SCALE);
+	sg_cpu->util = mtk_effective_cpu_util(sg_cpu->cpu, cpu_util,(struct task_struct *)UINTPTR_MAX, min, max);
+	sg_cpu->bw_min = *min;
+	sg_cpu->util = max(sg_cpu->util, boost);
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	if (sugov_grp_awr_update_cpu_tar_util_hook && grp_dvfs_ctrl_mode)
 		sugov_grp_awr_update_cpu_tar_util_hook(sg_cpu->cpu);
@@ -571,18 +572,17 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
  * This mechanism is designed to boost high frequently IO waiting tasks, while
  * being more conservative on tasks which does sporadic IO operations.
  */
-static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
+static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 								unsigned long max_cap)
 {
-	unsigned long boost;
 
 	/* No boost currently required */
 	if (!sg_cpu->iowait_boost)
-		return;
+		return 0;
 
 	/* Reset boost if the CPU appears to have been idle enough */
 	if (sugov_iowait_reset(sg_cpu, time, false))
-		return;
+		return 0;
 
 	if (!sg_cpu->iowait_boost_pending) {
 		/*
@@ -591,7 +591,7 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 		sg_cpu->iowait_boost >>= 1;
 		if (sg_cpu->iowait_boost < IOWAIT_BOOST_MIN) {
 			sg_cpu->iowait_boost = 0;
-			return;
+			return 0;
 		}
 	}
 
@@ -601,11 +601,7 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	 * sg_cpu->util is already in capacity scale; convert iowait_boost
 	 * into the same scale so we can compare.
 	 */
-	boost = (sg_cpu->iowait_boost * max_cap) >> SCHED_CAPACITY_SHIFT;
-	boost = mtk_uclamp_rq_util_with(cpu_rq(sg_cpu->cpu), boost, NULL, 0, max_cap,
-		NULL, NULL, false);
-	if (sg_cpu->util < boost)
-		sg_cpu->util = boost;
+	 return (sg_cpu->iowait_boost * max_cap) >> SCHED_CAPACITY_SHIFT;
 }
 
 /*
@@ -614,7 +610,7 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
  */
 static inline void ignore_dl_rate_limit(struct sugov_cpu *sg_cpu)
 {
-	if (cpu_bw_dl(cpu_rq(sg_cpu->cpu)) > sg_cpu->bw_dl)
+	if (cpu_bw_dl(cpu_rq(sg_cpu->cpu)) > sg_cpu->bw_min)
 		sg_cpu->sg_policy->limits_changed = true;
 }
 
@@ -674,11 +670,12 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
-	struct rq *rq;
+	unsigned long min, max;
 	unsigned long umin, umax, max_cap;
 	unsigned int next_f;
 	int this_cpu = smp_processor_id();
 	struct sugov_rq_data *sugov_data_ptr;
+	unsigned long boost;
 	max_cap = arch_scale_cpu_capacity(sg_cpu->cpu);
 
 	raw_spin_lock(&sg_policy->update_lock);
@@ -698,20 +695,19 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 
 	/* Critical Task aware thermal throttling, notify thermal */
 	mtk_set_cpu_min_opp_single(sg_cpu);
-	sugov_get_util(sg_cpu);
-	sugov_iowait_apply(sg_cpu, time, max_cap);
-	if (trace_sugov_ext_util_enabled()) {
-		rq = cpu_rq(sg_cpu->cpu);
+	boost = sugov_iowait_apply(sg_cpu, time, max_cap);
+	sugov_get_util(sg_cpu, boost,&min, &max);
+	umin = min;
+	umax = max;
+	if (gu_ctrl)
+		umax = min_t(unsigned long,
+			umax, get_cpu_gear_uclamp_max(sg_cpu->cpu));
 
-		umin = rq->uclamp[UCLAMP_MIN].value;
-		umax = rq->uclamp[UCLAMP_MAX].value;
-		if (gu_ctrl)
-			umax = min_t(unsigned long,
-				umax, get_cpu_gear_uclamp_max(sg_cpu->cpu));
+	if (trace_sugov_ext_util_enabled()) {
 		trace_sugov_ext_util(sg_cpu->cpu, sg_cpu->util, umin, umax, 0);
 	}
 
-	next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max);
+	next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max, umin, umax);
 
 	if (!sugov_update_next_freq(sg_policy, time, next_f)) {
 		raw_spin_unlock(&sg_policy->update_lock);
@@ -737,7 +733,6 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 {
 	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
 	struct cpufreq_policy *policy = sg_policy->policy;
-	struct rq *rq;
 	struct sugov_rq_data *sugov_data_ptr;
 	unsigned long umin, umax;
 	unsigned long util = 0, max_cap;
@@ -748,31 +743,31 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 	max_cap = arch_scale_cpu_capacity(sg_cpu->cpu);
 
 	for_each_cpu(j, policy->cpus) {
+		unsigned long boost;
 		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
+		unsigned long min, max;
 
-		sugov_get_util(j_sg_cpu);
-		sugov_iowait_apply(j_sg_cpu, time, max_cap);
+		boost = sugov_iowait_apply(j_sg_cpu, time, max_cap);
+		sugov_get_util(j_sg_cpu, boost, &min, &max);
 
 		if (_ignore_idle_ctrl) {
 			sugov_data_ptr = &per_cpu(rq_data, j)->sugov_data;
 			idle = (mtk_available_idle_cpu(j)
 				&& ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) ? 1 : 0));
 		}
+		umin = min;
+		umax = max;
+		if (gu_ctrl)
+			umax = min_t(unsigned long,
+				umax, get_cpu_gear_uclamp_max(j));
 		if (trace_sugov_ext_util_enabled()) {
-			rq = cpu_rq(j);
-
-			umin = rq->uclamp[UCLAMP_MIN].value;
-			umax = rq->uclamp[UCLAMP_MAX].value;
-			if (gu_ctrl)
-				umax = min_t(unsigned long,
-					umax, get_cpu_gear_uclamp_max(j));
 			trace_sugov_ext_util(j, idle ? 0 : j_sg_cpu->util, umin, umax, idle);
 		}
 		if (idle)
 			continue;
 		util = max(j_sg_cpu->util, util);
 	}
-	return get_next_freq(sg_policy, util, max_cap);
+	return get_next_freq(sg_policy, util, max_cap, umin, umax);
 }
 
 static void

@@ -260,13 +260,14 @@ int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq)
 
 unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 		struct cpumask *pd_cpus, unsigned long max_util,
-		unsigned long allowed_cpu_cap, unsigned long scale_cpu)
+		unsigned long allowed_cpu_cap, unsigned long scale_cpu,
+		unsigned long min,unsigned long max)
 {
-	unsigned long freq, arch_max_freq __maybe_unused = 0;
+	unsigned long  freq, arch_max_freq __maybe_unused = 0;
 
 #if IS_ENABLED(CONFIG_NONLINEAR_FREQ_CTL)
 	mtk_map_util_freq(NULL, max_util, pd_cpus,
-		&freq);
+		&freq, min, max);
 #else
 	arch_max_freq = pd_get_opp_freq(cpumask_first(pd_cpus), 0);
 	max_util = map_util_perf(max_util);
@@ -954,8 +955,9 @@ unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long ma
 }
 
 __always_inline
-unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
-		unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered)
+unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu, struct task_struct *p,
+		unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered,
+		unsigned long min, unsigned long max)
 {
 	int pd_idx = cpumask_first(cpus);
 	unsigned long pwr_eff;
@@ -967,7 +969,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 	scale_cpu = arch_scale_cpu_capacity(pd_idx);
 
 	pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
-			eenv->pds_cpu_cap[pd_idx], scale_cpu);
+			eenv->pds_cpu_cap[pd_idx], scale_cpu, min ,max);
 
 	if (eenv->wl_support && is_dsu_pwr_triggered) {
 		dsu_volt = update_dsu_status(eenv, false, pd_freq, pd_idx, dst_cpu);
@@ -985,7 +987,7 @@ unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
 		gear_freq = pd_get_util_cpufreq(eenv, cpus, gear_max_util,
-				eenv->pds_cpu_cap[pd_idx], scale_cpu);
+				eenv->pds_cpu_cap[pd_idx], scale_cpu, min ,max);
 		gear_volt = pd_get_freq_volt(pd_idx, gear_freq, false, eenv->wl_cpu);
 
 		if (gear_volt-pd_volt < volt_diff) {
@@ -1031,7 +1033,8 @@ unsigned long calc_pwr_eff_v2(struct energy_env *eenv, int cpu, unsigned long ma
 
 __always_inline
 unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv, int dst_cpu,
-		unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered)
+		unsigned long max_util, struct cpumask *cpus, bool is_dsu_pwr_triggered,
+		unsigned long min, unsigned long max)
 {
 	return 0;
 }

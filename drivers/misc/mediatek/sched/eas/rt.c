@@ -173,7 +173,7 @@ inline unsigned long mtk_sched_cpu_util(int cpu)
 	unsigned long util;
 
 	irq_log_store();
-	util = mtk_cpu_util(cpu, mtk_cpu_util_cfs(cpu), ENERGY_UTIL, NULL, 0, SCHED_CAPACITY_SCALE);
+	util = mtk_effective_cpu_util(cpu, mtk_cpu_util_cfs(cpu), NULL, NULL, NULL);
 	irq_log_store();
 
 	return util;
@@ -182,10 +182,22 @@ inline unsigned long mtk_sched_cpu_util(int cpu)
 inline unsigned long mtk_sched_max_util(struct task_struct *p, int cpu,
 					unsigned long min_cap, unsigned long max_cap)
 {
-	unsigned long util;
+	unsigned long min, max, util;
 
 	irq_log_store();
-	util = mtk_cpu_util(cpu, mtk_cpu_util_cfs(cpu), FREQUENCY_UTIL, p, min_cap, max_cap);
+	util = mtk_effective_cpu_util(cpu, mtk_cpu_util_cfs(cpu), p, &min, &max);
+	if (p && uclamp_is_used()) {
+		min = max(min, min_cap);
+		/*
+		* If there is no active max uclamp constraint,
+		* directly use task's one, otherwise keep max.
+		*/
+		if (uclamp_rq_is_idle(cpu_rq(cpu)))
+			max = max_cap;
+		else
+			max = max(max, max_cap);
+	}
+	util = sugov_effective_cpu_perf_clamp(util, min, max);
 	irq_log_store();
 
 	return util;
