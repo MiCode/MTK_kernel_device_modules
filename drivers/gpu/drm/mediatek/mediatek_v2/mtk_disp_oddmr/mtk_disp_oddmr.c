@@ -6060,7 +6060,7 @@ static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
 			g_oddmr1_priv->od_enable =
 				g_oddmr1_priv->od_enable_req && !g_oddmr1_priv->pq_od_bypass;
 		}
-		ODDMRLOW_LOG("pq_od_bypass %d, caller: 0x%x, od_enable %d",
+		ODDMRLOW_LOG("pq_od_bypass %d, caller: 0x%x, od_enable %d\n",
 			g_oddmr_priv->pq_od_bypass, caller, g_oddmr_priv->od_enable);
 		if (bypass == 0) {
 			mtk_oddmr_set_od_enable_dual(comp,
@@ -10448,6 +10448,9 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 		__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+	if (oddmr->data->od_version != MTK_OD_V2)
+		mtk_oddmr_bypass(comp, (enable == 1) ? 1 : 0, PQ_FEATURE_KRN_PU, handle);
 
 	/* oddmr crop offset set*/
 	oddmr->set_partial_update = enable;
