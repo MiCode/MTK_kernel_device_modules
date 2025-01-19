@@ -1574,9 +1574,8 @@ static bool msdc_cmd_done(struct msdc_host *host, int events,
 		host->need_tune = true;
 
 	if (cmd->opcode == MMC_CMDQ_TASK_MGMT && host->id == MSDC_EMMC) {
-		/* if resp is incorrect for cmd48, return a error to reset MMC device */
-		if	(cmd->resp[0] != 0x0900)
-			cmd->error = -EIO;
+		/* for cmd48, return a error to reset MMC device */
+		cmd->error = -EIO;
 		dev_info(host->dev, "%s: cmd=48, error=%d, resp=0x%08X\n",
 			__func__, cmd->error, cmd->resp[0]);
 	}
