@@ -50,6 +50,7 @@ define_mgk_ddk_ko(
 		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
 	],
 	includes = [
 		".",
@@ -75,6 +76,7 @@ define_mgk_ddk_ko(
 	],
 	ko_deps = [
 		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
 	],
 	includes = [
 		".",

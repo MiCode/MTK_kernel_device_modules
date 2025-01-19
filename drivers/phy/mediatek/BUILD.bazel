@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
@@ -84,10 +85,11 @@ define_mgk_ddk_ko(
     srcs = [
         "phy-mtk-ufs.c",
     ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
+    ],
     includes = ["."],
     copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/ufs",
-        "-I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor",
         "-I$(srctree)/drivers/ufs",
     ]
 )

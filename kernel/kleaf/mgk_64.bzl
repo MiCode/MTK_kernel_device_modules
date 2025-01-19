@@ -372,6 +372,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/ufs:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -500,6 +501,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/ufs:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -887,6 +889,9 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_ipi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-dbg".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod-ise".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1318,9 +1323,6 @@ mgk_64_device_modules = [
     "drivers/regulator/mt6681-regulator.ko",
     "drivers/regulator/mtk-vmm-isp71-regulator.ko",
     "drivers/remoteproc/mtk_ccu.ko",
-    "drivers/ufs/ufs-mediatek-dbg.ko",
-    "drivers/ufs/vendor/ufs-mediatek-mod.ko",
-    "drivers/ufs/vendor/ufs-mediatek-mod-ise.ko",
     "drivers/soc/mediatek/mtk-mmdvfs.ko",
     "drivers/soc/mediatek/mtk-mmdvfs-v3.ko",
     "drivers/soc/mediatek/mmdvfs/mtk-mmdvfs-v5.ko",
