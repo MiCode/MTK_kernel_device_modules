@@ -80,9 +80,11 @@ void write_ste(unsigned long long *st_entry, const unsigned long long *data)
 
 void push_entry_to_cmdq(uint64_t *cmdq_entry, const uint64_t *cmd_dword)
 {
-	if (!cmdq_entry)
+	if (!cmdq_entry) {
 		pkvm_smmu_ops->puts("SMMUv3: error cmdq_entry ptr");
-
+		WARN_ON(1);
+		return;
+	}
 	for (unsigned int i = 0; i < CMD_SIZE_DW; i++)
 		cmdq_entry[i] = cmd_dword[i];
 
