@@ -2567,28 +2567,28 @@ void set_api_sync_flag(int flag)
 		// pre-throttle cases
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
 			// reset default
-			set_gpu_pre_throttle(0x27BC86AA);
-			set_gpu_pre_throttle_opp(0x27BC86AA);
+			set_gpu_pre_throttle(0x27BC86AA,2);
+			set_gpu_pre_throttle_opp(0x27BC86AA,2);
 		} else {
 			if ((flag & 0x0000FF00) > 0) {
 				// set preferred temp.
-				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000);
+				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000,2);
 			}
 
 			if ((flag & 0x000000FF) > 0) {
 				if (ged_get_max_freq_in_opp() > 1430) {
 					// set 1.6 preferred opp.
-					set_gpu_pre_throttle_opp((flag & 0x000000FF)+6);
+					set_gpu_pre_throttle_opp((flag & 0x000000FF)+6,2);
 				} else {
 					// set preferred opp.
-					set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
+					set_gpu_pre_throttle_opp((flag & 0x000000FF)-1,2);
 				}
 			}
 		}
 		GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d / freq: %d",
 			__func__, __LINE__, (flag & 0x0000FFFF),
-			get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp(),
-			gpufreq_get_freq_by_idx(TARGET_DEFAULT, get_gpu_pre_throttle_opp()));
+			get_gpu_pre_throttle_temp(2), get_gpu_pre_throttle_opp(2),
+			gpufreq_get_freq_by_idx(TARGET_DEFAULT, get_gpu_pre_throttle_opp(2)));
 #endif
 	}
 }
