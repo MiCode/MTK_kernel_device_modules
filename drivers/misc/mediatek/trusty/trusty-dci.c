@@ -48,7 +48,7 @@ static enum mc_result ise_tdrv_gp_execute(u32 cmdId)
 static int ise_tdrv_gp_listenDci(void *arg)
 {
 	enum mc_result mc_ret;
-	u32 cmdId;
+	u32 cmdId = 0;
 
 	pr_info("%s: DCI listener.\n", __func__);
 
