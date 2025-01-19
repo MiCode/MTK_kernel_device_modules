@@ -382,7 +382,8 @@ static int mtk_cg_enable_generic_hwv(struct clk_hw *hw)
 	if (ret)
 		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
 
-	if ((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
+	if (((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
+		&& ((cg->flags & BYPASS_CHECK) != BYPASS_CHECK))
 		ret = __hwv_cg_dma_back(hw, false);
 
 	return ret;
@@ -415,7 +416,8 @@ static int mtk_cg_enable_generic_hwv_inv(struct clk_hw *hw)
 	if (ret)
 		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
 
-	if ((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
+	if (((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
+		&& ((cg->flags & BYPASS_CHECK) != BYPASS_CHECK))
 		ret = __hwv_cg_dma_back(hw, true);
 
 	return ret;

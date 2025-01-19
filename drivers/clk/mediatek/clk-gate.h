@@ -19,6 +19,12 @@
 #define pr_pd_dbg(fmt, ...) \
 	pr_notice("[CLKPD] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
+#define BYPASS_CHECK BIT(26)
+#define TYPE_MTCMOS  BIT(27)
+#define RES_FRAMEWORK_VMM		BIT(28)
+#define RES_FRAMEWORK_MMINFRA		BIT(29)
+#define RES_FRAMEWORK_VDISP		BIT(30)
+
 struct clk;
 
 struct mtk_clk_gate {

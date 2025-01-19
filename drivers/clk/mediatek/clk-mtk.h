@@ -261,20 +261,25 @@ void mtk_clk_register_dividers(const struct mtk_clk_divider *mcds,
 struct clk_onecell_data *mtk_alloc_clk_data(unsigned int clk_num);
 void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 
-#define HAVE_RST_BAR			BIT(16)
-#define PLL_AO				BIT(17)
+
+/* common */
 #define CLK_USE_HW_VOTER		BIT(18)
 #define HWV_CHK_FULL_STA		BIT(19)
+#define CLK_EN_MM_INFRA_PWR		BIT(22)
+
+/* pll */
+#define HAVE_RST_BAR			BIT(16)
+#define PLL_AO				BIT(17)
+#define CLK_ENABLE_MERGE_CONTROL	BIT(23)
+
+/* mux */
 #define CLK_ENABLE_QUICK_SWITCH		BIT(20)
 #define MUX_ROUND_CLOSEST		BIT(21)
-#define CLK_EN_MM_INFRA_PWR		BIT(22)
-#define CLK_ENABLE_MERGE_CONTROL	BIT(23)
 #define QUICK_SWITCH_CHK		BIT(24)
+
+/* special cg */
+#define CLK_EN_MM_INFRA_PWR		BIT(22)
 #define HWV_CHK_VCP_READY		BIT(25)
-#define TYPE_MTCMOS			BIT(26)
-#define RES_FRAMEWORK_VMM		BIT(27)
-#define RES_FRAMEWORK_MMINFRA		BIT(28)
-#define RES_FRAMEWORK_VDISP		BIT(29)
 
 struct mtk_pll_div_table {
 	u32 div;
