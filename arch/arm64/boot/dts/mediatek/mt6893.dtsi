@@ -860,6 +860,7 @@ cpus {
 		gpu-vb-efuse = <0x0120 0x1e00000>;
 		gpu-vb-opp0 = <80000 80000 80000 80000 76250 72500 70000>;
 		gpu-vb-opp0-mcl50 = <80000>;
+		thermal-bank = <4>;
 		eemg_detectors = "EEMG_DET_GPU", "EEMG_DET_GPU_HI";
 		EEMG_DET_GPU {
 			ctrl_id = <0>;
