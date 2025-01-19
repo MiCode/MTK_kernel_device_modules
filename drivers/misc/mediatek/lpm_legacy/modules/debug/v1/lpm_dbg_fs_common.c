@@ -21,12 +21,11 @@
 #include <linux/suspend.h>
 #include <lpm_call.h>
 #include <lpm_call_type.h>
-/* FIXME */
 
-#if IS_ENABLED(CONFIG_MTK_LPM_GS_DUMP_SUPPORT)
-#include <gs/v1/lpm_power_gs.h>
-#elif IS_ENABLED(CONFIG_MTK_POWER_GS_LEGACY)
+#if IS_ENABLED(CONFIG_MTK_POWER_GS_LEGACY)
 #include <mtk_power_gs_api.h>
+#else
+#include <gs/v1/lpm_power_gs.h>
 #endif
 
 
