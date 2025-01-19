@@ -17,6 +17,7 @@
 #include <linux/trace_events.h>
 
 #include "clk-mtk.h"
+#include "clk-pll.h"
 #include "clk-mux.h"
 #include "clk-gate.h"
 
@@ -5219,7 +5220,7 @@ static void __iomem *plls_base[PLL_SYS_NUM];
 		.en_reg = _en_reg,					\
 		.en_mask = _en_mask,					\
 		.pll_en_bit = _pll_en_bit,				\
-		.flags = (_flags | PLL_CFLAGS | CLK_FENC_ENABLE),				\
+		.flags = (_flags | PLL_CFLAGS),				\
 		.rst_bar_mask = _rst_bar_mask,				\
 		.fmax = MT6991_PLL_FMAX,				\
 		.fmin = MT6991_PLL_FMIN,				\
@@ -5232,31 +5233,7 @@ static void __iomem *plls_base[PLL_SYS_NUM];
 		.pcw_shift = _pcw_shift,				\
 		.pcwbits = _pcwbits,					\
 		.pcwibits = MT6991_INTEGER_BITS,			\
-	}
-
-#define PLL_SETCLR(_id, _name, _pll_setclr, _en_setclr_bit,		\
-			_rstb_setclr_bit, _flags, _pd_reg,		\
-			_pd_shift, _tuner_reg, _tuner_en_reg,		\
-			_tuner_en_bit, _pcw_reg, _pcw_shift,		\
-			_pcwbits) {					\
-		.id = _id,						\
-		.name = _name,						\
-		.reg = 0,						\
-		.pll_setclr = &(_pll_setclr),				\
-		.en_setclr_bit = _en_setclr_bit,			\
-		.rstb_setclr_bit = _rstb_setclr_bit,			\
-		.flags = (_flags | PLL_CFLAGS),				\
-		.fmax = MT6991_PLL_FMAX,				\
-		.fmin = MT6991_PLL_FMIN,				\
-		.pd_reg = _pd_reg,					\
-		.pd_shift = _pd_shift,					\
-		.tuner_reg = _tuner_reg,				\
-		.tuner_en_reg = _tuner_en_reg,			\
-		.tuner_en_bit = _tuner_en_bit,				\
-		.pcw_reg = _pcw_reg,					\
-		.pcw_shift = _pcw_shift,				\
-		.pcwbits = _pcwbits,					\
-		.pcwibits = MT6991_INTEGER_BITS,			\
+		.ops = &mtk_pll_ops,					\
 	}
 
 #define PLL_FENC(_id, _name, _fenc_sta_ofs, _fenc_sta_bit,		\
@@ -5267,7 +5244,7 @@ static void __iomem *plls_base[PLL_SYS_NUM];
 		.reg = 0,						\
 		.fenc_sta_ofs = _fenc_sta_ofs,				\
 		.fenc_sta_bit = _fenc_sta_bit,				\
-		.flags = (_flags | PLL_CFLAGS | CLK_FENC_ENABLE),	\
+		.flags = (_flags | PLL_CFLAGS),				\
 		.fmax = MT6991_PLL_FMAX,				\
 		.fmin = MT6991_PLL_FMIN,				\
 		.pd_reg = _pd_reg,					\
@@ -5276,6 +5253,7 @@ static void __iomem *plls_base[PLL_SYS_NUM];
 		.pcw_shift = _pcw_shift,				\
 		.pcwbits = _pcwbits,					\
 		.pcwibits = MT6991_INTEGER_BITS,			\
+		.ops = &mtk_pll_fenc_ops,				\
 	}
 
 static const struct mtk_pll_data cci_plls[] = {

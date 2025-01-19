@@ -15,41 +15,7 @@
 #include <linux/module.h>
 #include <mt-plat/aee.h>
 #include "clk-mtk.h"
-
-#define REG_CON0		0
-#define REG_CON1		4
-
-#define CON0_BASE_EN		BIT(0)
-#define CON0_PWR_ON		BIT(0)
-#define CON0_ISO_EN		BIT(1)
-#define PCW_CHG_MASK		BIT(31)
-
-#define AUDPLL_TUNER_EN		BIT(31)
-
-#define POSTDIV_MASK		0x7
-
-/* default 7 bits integer, can be overridden with pcwibits. */
-#define INTEGER_BITS		7
-
-#define MTK_WAIT_HWV_PLL_PREPARE_CNT	500
-#define MTK_WAIT_HWV_PLL_PREPARE_US		1
-#define MTK_WAIT_HWV_PLL_VOTE_CNT		100
-#define MTK_WAIT_HWV_PLL_LONG_VOTE_CNT		2500
-#define MTK_WAIT_HWV_PLL_VOTE_US		2
-#define MTK_WAIT_HWV_PLL_DONE_CNT		100000
-#define MTK_WAIT_HWV_PLL_DONE_US		1
-
-#define MTK_WAIT_HWV_RES_PREPARE_CNT	500
-#define MTK_WAIT_HWV_RES_PREPARE_US		1
-#define MTK_WAIT_HWV_RES_VOTE_CNT		1000
-#define MTK_WAIT_HWV_RES_VOTE_US		2
-#define MTK_WAIT_HWV_RES_DONE_CNT		100000
-#define MTK_WAIT_HWV_RES_DONE_US		1
-
-#define PLL_EN_TYPE				0
-#define PLL_RSTB_TYPE				1
-
-#define PLL_MMINFRA_VOTE_BIT		26
+#include "clk-pll.h"
 
 static bool is_registered;
 
@@ -59,31 +25,6 @@ static bool is_registered;
  * part and the remaining bits (if present) for the fractional part. Also they
  * have a 3 bit power-of-two post divider.
  */
-
-struct mtk_clk_pll {
-	struct clk_hw	hw;
-	void __iomem	*base_addr;
-	void __iomem	*pd_addr;
-	void __iomem	*pwr_addr;
-	void __iomem	*tuner_addr;
-	void __iomem	*tuner_en_addr;
-	void __iomem	*pcw_addr;
-	void __iomem	*pcw_chg_addr;
-	void __iomem	*en_addr;
-	void __iomem	*en_set_addr;
-	void __iomem	*en_clr_addr;
-	void __iomem	*rstb_addr;
-	void __iomem	*rstb_set_addr;
-	void __iomem	*rstb_clr_addr;
-	void __iomem	*fenc_addr;
-	const struct mtk_pll_data *data;
-	struct regmap	*hwv_regmap;
-	unsigned int	en_msk;
-	unsigned int	rstb_msk;
-	unsigned int	fenc_msk;
-	unsigned int	flags;
-	unsigned int	onoff_cnt;
-};
 
 static bool (*mtk_fh_set_rate)(const char *name, unsigned long dds, int postdiv) = NULL;
 
@@ -1204,7 +1145,7 @@ bool mtk_hwv_pll_is_on(struct clk_hw *hw)
 }
 EXPORT_SYMBOL_GPL(mtk_hwv_pll_is_on);
 
-static const struct clk_ops mtk_pll_ops = {
+const struct clk_ops mtk_pll_ops = {
 	.is_prepared	= mtk_pll_is_prepared,
 	.prepare	= mtk_pll_prepare,
 	.unprepare	= mtk_pll_unprepare,
@@ -1212,8 +1153,9 @@ static const struct clk_ops mtk_pll_ops = {
 	.round_rate	= mtk_pll_round_rate,
 	.set_rate	= mtk_pll_set_rate,
 };
+EXPORT_SYMBOL_GPL(mtk_pll_ops);
 
-static const struct clk_ops mtk_pll_fenc_ops = {
+const struct clk_ops mtk_pll_fenc_ops = {
 	.is_prepared	= mtk_pll_fenc_is_prepared,
 	.prepare	= mtk_pll_fenc_prepare,
 	.unprepare	= mtk_pll_fenc_unprepare,
@@ -1221,8 +1163,9 @@ static const struct clk_ops mtk_pll_fenc_ops = {
 	.round_rate	= mtk_pll_round_rate,
 	.set_rate	= mtk_pll_set_rate,
 };
+EXPORT_SYMBOL_GPL(mtk_pll_fenc_ops);
 
-static const struct clk_ops mtk_pll_setclr_ops = {
+const struct clk_ops mtk_pll_setclr_ops = {
 	.is_prepared	= mtk_pll_setclr_is_prepared,
 	.prepare	= mtk_pll_setclr_prepare,
 	.unprepare	= mtk_pll_setclr_unprepare,
@@ -1230,8 +1173,9 @@ static const struct clk_ops mtk_pll_setclr_ops = {
 	.round_rate	= mtk_pll_round_rate,
 	.set_rate	= mtk_pll_set_rate,
 };
+EXPORT_SYMBOL_GPL(mtk_pll_setclr_ops);
 
-static const struct clk_ops mtk_hwv_pll_ops = {
+const struct clk_ops mtk_hwv_pll_ops = {
 	.is_prepared	= mtk_pll_is_prepared,
 	.prepare	= mtk_hwv_pll_prepare,
 	.unprepare	= mtk_hwv_pll_unprepare,
@@ -1239,8 +1183,9 @@ static const struct clk_ops mtk_hwv_pll_ops = {
 	.round_rate	= mtk_pll_round_rate,
 	.set_rate	= mtk_pll_set_rate,
 };
+EXPORT_SYMBOL_GPL(mtk_hwv_pll_ops);
 
-static const struct clk_ops mtk_hwv_pll_setclr_ops = {
+const struct clk_ops mtk_hwv_pll_setclr_ops = {
 	.is_prepared	= mtk_pll_setclr_is_prepared,
 	.prepare	= mtk_hwv_pll_setclr_prepare,
 	.unprepare	= mtk_hwv_pll_setclr_unprepare,
@@ -1248,8 +1193,9 @@ static const struct clk_ops mtk_hwv_pll_setclr_ops = {
 	.round_rate	= mtk_pll_round_rate,
 	.set_rate	= mtk_pll_set_rate,
 };
+EXPORT_SYMBOL_GPL(mtk_hwv_pll_setclr_ops);
 
-static const struct clk_ops mtk_hwv_pll_no_res_setclr_ops = {
+const struct clk_ops mtk_hwv_pll_no_res_setclr_ops = {
 	.is_prepared	= mtk_pll_setclr_is_prepared,
 	.prepare	= mtk_hwv_pll_no_res_setclr_prepare,
 	.unprepare	= mtk_hwv_pll_no_res_setclr_unprepare,
@@ -1257,6 +1203,7 @@ static const struct clk_ops mtk_hwv_pll_no_res_setclr_ops = {
 	.round_rate	= mtk_pll_round_rate,
 	.set_rate	= mtk_pll_set_rate,
 };
+EXPORT_SYMBOL_GPL(mtk_hwv_pll_no_res_setclr_ops);
 
 static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 		void __iomem *base,
@@ -1303,22 +1250,21 @@ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 
 	pll->hw.init = &init;
 	pll->data = data;
+	if (data->fenc_sta_ofs) {
+		pll->fenc_addr = base + data->fenc_sta_ofs;
+		pll->fenc_msk = BIT(data->fenc_sta_bit);
+	}
 
 	init.name = data->name;
 	init.flags = (data->flags & PLL_AO) ? CLK_IS_CRITICAL : 0;
 	if (hw_voter_regmap)
 		pll->hwv_regmap = hw_voter_regmap;
-	if (data->flags & CLK_FENC_ENABLE) {
-		init.ops = &mtk_pll_fenc_ops;
-		pll->fenc_addr = base + data->fenc_sta_ofs;
-		pll->fenc_msk = BIT(data->fenc_sta_bit);
+	if (data->ops) {
+		init.ops = data->ops;
 	} else if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER)) {
-		if (data->pll_setclr) {
-			if (data->flags & CLK_NO_RES)
-				init.ops = &mtk_hwv_pll_no_res_setclr_ops;
-			else
-				init.ops = &mtk_hwv_pll_setclr_ops;
-		} else
+		if (data->pll_setclr)
+			init.ops = &mtk_hwv_pll_setclr_ops;
+		else
 			init.ops = &mtk_hwv_pll_ops;
 	} else {
 		if (data->pll_setclr)

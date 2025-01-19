@@ -362,7 +362,7 @@ static const struct mtk_gate mm1_clks[] = {
 		.reg = 0,						\
 		.fenc_sta_ofs = _fenc_sta_ofs,				\
 		.fenc_sta_bit = _fenc_sta_bit,				\
-		.flags = (_flags | PLL_CFLAGS | CLK_FENC_ENABLE),	\
+		.flags = (_flags | PLL_CFLAGS),	\
 		.fmax = MT6991_PLL_FMAX,				\
 		.fmin = MT6991_PLL_FMIN,				\
 		.pd_reg = _pd_reg,					\
@@ -371,6 +371,7 @@ static const struct mtk_gate mm1_clks[] = {
 		.pcw_shift = _pcw_shift,				\
 		.pcwbits = _pcwbits,					\
 		.pcwibits = MT6991_INTEGER_BITS,			\
+		.ops = &mtk_pll_fenc_ops,				\
 	}
 
 static const struct mtk_pll_data apmixed_plls[] = {

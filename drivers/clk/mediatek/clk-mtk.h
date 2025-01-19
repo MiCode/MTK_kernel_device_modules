@@ -244,14 +244,12 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define MUX_ROUND_CLOSEST		BIT(21)
 #define CLK_EN_MM_INFRA_PWR		BIT(22)
 #define CLK_ENABLE_MERGE_CONTROL	BIT(23)
-#define CLK_NO_RES			BIT(24)
-#define CLK_FENC_ENABLE			BIT(25)
-#define QUICK_SWITCH_CHK		BIT(26)
-#define HWV_CHK_VCP_READY		BIT(27)
-#define TYPE_MTCMOS			BIT(28)
-#define RES_FRAMEWORK_VMM		BIT(29)
-#define RES_FRAMEWORK_MMINFRA		BIT(30)
-#define RES_FRAMEWORK_VDISP		BIT(31)
+#define QUICK_SWITCH_CHK		BIT(24)
+#define HWV_CHK_VCP_READY		BIT(25)
+#define TYPE_MTCMOS			BIT(26)
+#define RES_FRAMEWORK_VMM		BIT(27)
+#define RES_FRAMEWORK_MMINFRA		BIT(28)
+#define RES_FRAMEWORK_VDISP		BIT(29)
 
 struct mtk_pll_div_table {
 	u32 div;
@@ -406,11 +404,9 @@ struct cb_params {
 	uint32_t vote_val;
 };
 
-
 int register_mtk_clk_external_api_cb(enum cb_type type, int (*new_callback)(struct cb_params *), const char *fail_msg);
 extern int (*callback[CLK_REQUEST_CB_NUM])(struct cb_params *);
 
-int mtk_pwr_simple_probe(struct platform_device *pdev);
 int mtk_clk_simple_probe(struct platform_device *pdev);
 extern int register_mtk_clk_notifier(struct notifier_block *nb);
 extern int unregister_mtk_clk_notifier(struct notifier_block *nb);

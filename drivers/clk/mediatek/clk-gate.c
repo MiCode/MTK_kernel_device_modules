@@ -17,6 +17,9 @@
 #include "clk-mtk.h"
 #include "clk-gate.h"
 
+#define CTRL_ON			1
+#define CTRL_OFF		0
+
 static bool is_registered;
 
 static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
@@ -184,7 +187,6 @@ static int __hwv_cg_dma_back(struct clk_hw *hw, bool inv)
 	u32 val = 0, val2 = 0, val3 = 0;
 	int i = 0;
 
-
 	while (1) {
 		regmap_read(cg->regmap, cg->sta_ofs, &val);
 		if ((inv && (val & BIT(cg->bit)) != 0) ||
@@ -198,7 +200,6 @@ static int __hwv_cg_dma_back(struct clk_hw *hw, bool inv)
 
 		i++;
 	}
-
 
 	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
 			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
@@ -559,8 +560,6 @@ static void mtk_cg_disable_unused_null(struct clk_hw *hw)
 {
 }
 
-#ifdef DX5_MM
-#define CTRL_ON 1
 static int mtk_cg_prepare_mm_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -615,7 +614,6 @@ CG_PREPARE_FAIL:
 	return ret;
 }
 
-#define CTRL_OFF 0
 static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -669,7 +667,6 @@ CG_UNPREPARE_FAIL:
 	pr_cg_err("mtk_cg_unprepare_mm_hwv - %s, ret: %x\n", c_n, -ret);
 	return;
 }
-#endif
 
 const struct clk_ops mtk_clk_gate_ops_null = {
 	.is_prepared	= mtk_cg_bit_is_set_null,
@@ -770,8 +767,8 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_ap_hwv_ops_inv);
 /*6993 MM Generic HWV*/
 const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
-//	.prepare	= mtk_cg_prepare_mm_hwv,
-//	.unprepare	= mtk_cg_unprepare_mm_hwv,
+	.prepare	= mtk_cg_prepare_mm_hwv,
+	.unprepare	= mtk_cg_unprepare_mm_hwv,
 	.enable		= mtk_cg_enable_generic_hwv,
 	.disable	= mtk_cg_disable_generic_hwv,
 };
@@ -780,8 +777,8 @@ EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_mm_hwv_ops);
 /*6993 MM Generic HWV*/
 const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
-//	.prepare	= mtk_cg_prepare_mm_hwv,
-//	.unprepare	= mtk_cg_unprepare_mm_hwv,
+	.prepare	= mtk_cg_prepare_mm_hwv,
+	.unprepare	= mtk_cg_unprepare_mm_hwv,
 	.enable		= mtk_cg_enable_generic_hwv_inv,
 	.disable	= mtk_cg_disable_generic_hwv,
 };

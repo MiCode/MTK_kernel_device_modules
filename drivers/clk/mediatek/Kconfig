@@ -192,8 +192,7 @@ config COMMON_CLK_MT6833_VCODEC
 config COMMON_CLK_PG_LEGACY
 	bool "Clock Manager supports MediaTek legacy PG"
 	help
-	  If you wish to use MediaTek legacy PGï¼Œ
-	  say Y. Otherwise, say N.
+	  If you wish to use MediaTek legacy PGï¼?	  say Y. Otherwise, say N.
 
 config COMMON_CLK_MT6781
 	tristate "Clock driver for Mediatek MT6781"
@@ -1393,6 +1392,15 @@ config COMMON_CLK_MT6991_IVI
 	  This driver supports MediaTek MT6991 ivi clocks,
 	  which is used to control ivi clock output.
 	  If you wish to use clock resources from the ivi device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6991_PD
+	tristate "Clock driver for MediaTek MT6991 PD"
+	depends on COMMON_CLK_MT6991
+	help
+	  This driver supports MediaTek MT6991 pd clocks,
+	  which is used to control pd clock output.
+	  If you wish to use clock resources from the pd device,
 	  say Y. Otherwise, say N.
 
 config DEVICE_MODULES_COMMON_CLK_MT8192

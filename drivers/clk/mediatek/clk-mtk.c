@@ -331,7 +331,7 @@ void mtk_clk_register_fixed_clks(const struct mtk_fixed_clk *clks,
 			continue;
 
 		clk = clk_register_fixed_rate(NULL, rc->name, rc->parent, 0,
-						  rc->rate);
+						rc->rate);
 
 		if (IS_ERR(clk)) {
 			pr_err("Failed to register clk %s: %ld\n",
