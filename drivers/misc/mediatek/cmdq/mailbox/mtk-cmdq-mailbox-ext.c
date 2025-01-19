@@ -537,6 +537,9 @@ void cmdq_dump_usage(void)
 	s32 i, j, usage[CMDQ_THR_MAX_COUNT];
 
 	for (i = 0; i < 2; i++) {
+		if (!g_cmdq[i])
+			break;
+
 		cmdq_msg("%s: hwid:%d suspend:%d usage:%d fast_usage:%d",
 			__func__, g_cmdq[i]->hwid, g_cmdq[i]->suspended,
 			atomic_read(&g_cmdq[i]->usage),
@@ -3099,6 +3102,9 @@ static int cmdq_burst_irq_callback(unsigned int irq, enum irq_mon_aee_type type)
 		return -1;
 
 	for (i = 0; i < 2; i++) {
+		if (!g_cmdq[i])
+			break;
+
 		if(irq == g_cmdq[i]->irq)
 			cmdq_dump_thrd_irq_history(g_cmdq[i]->hwid);
 	}
