@@ -313,8 +313,6 @@ static void md_cd_exception(struct ccci_modem *md, enum HIF_EX_STAGE stage)
 	case HIF_EX_INIT_DONE:
 		break;
 	case HIF_EX_CLEARQ_DONE:
-		/* give DHL some time to flush data */
-		msleep(2000);
 		ccci_hif_md_exception(md->hif_flag, stage);
 		/* tell MD to reset CLDMA */
 		ccci_hif_send_data(CCIF_HIF_ID, H2D_EXCEPTION_CLEARQ_ACK);

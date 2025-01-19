@@ -454,7 +454,9 @@ static struct port_t md_ccci_ports[] = {
 	{CCCI_SMEM_CH, CCCI_SMEM_CH, SMEM_Q, SMEM_Q, SMEM_Q, SMEM_Q,
 		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
 		&smem_port_ops, SMEM_USER_CCB_META, "ccci_ccb_meta",},
-
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, SMEM_Q, SMEM_Q, SMEM_Q, SMEM_Q,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_MD_POST_DUMP, "ccci_md_post_dump",},
 };
 
 int port_get_cfg(struct port_t **ports)

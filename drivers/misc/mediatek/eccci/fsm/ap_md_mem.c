@@ -86,6 +86,7 @@ static struct ccci_smem_region md1_cacheable_tbl[] = {
 	{SMEM_USER_CCB_META,		0,	0,	0},
 	{SMEM_USER_RAW_DHL,		0,	0,	0},
 	{SMEM_USER_RAW_MDM,		0,	0,	0},
+	{SMEM_USER_MD_POST_DUMP,	0,	0,	0},
 	{SMEM_USER_RAW_UDC_DESCTAB,	0,	0,	0},
 	{SMEM_USER_RAW_USIP,		0,	0,	SMF_NCLR_FIRST, },
 	{SMEM_USER_MAX, },

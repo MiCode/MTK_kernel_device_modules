@@ -688,6 +688,8 @@ static void config_ap_side_feature(struct ccci_modem *md,
 		CCCI_FEATURE_OPTIONAL_SUPPORT;
 	md_feature->feature_set[DBM_SHARE_MEMORY].support_mask =
 		CCCI_FEATURE_OPTIONAL_SUPPORT;
+	md_feature->feature_set[MD_POST_DUMP].support_mask =
+		CCCI_FEATURE_OPTIONAL_SUPPORT;
 }
 
 static void ccci_sib_region_set_runtime(struct ccci_runtime_feature *rt_feature,
@@ -1347,6 +1349,14 @@ static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 				}
 				break;
 			}
+
+			case MD_POST_DUMP:
+				ccci_smem_region_set_runtime(
+					SMEM_USER_MD_POST_DUMP,
+					&rt_feature, &rt_shm);
+				append_runtime_feature(&rt_data, &rt_feature,
+				&rt_shm);
+				break;
 			default:
 				break;
 			};

@@ -94,6 +94,7 @@ static struct rt_smem_region_lk_fmt gen6297_cacheable_tbl[] = {
 {0ULL, 0ULL, {SMEM_USER_RAW_MD_CONSYS,	0,	0, 0, (SMEM_NO_CLR_FIRST | SMEM_ATTR_NO_MAP), 0}},
 {0ULL, 0ULL, {SMEM_USER_MD_NVRAM_CACHE,	0,	0, 0, 0, 0}},
 {0ULL, 0ULL, {SMEM_USER_CCB_START,		0,	0, 0, 0, 0}},
+{0ULL, 0ULL, {SMEM_USER_MD_POST_DUMP,           0,      0, 0, 0, 0}},
 {0ULL, 0ULL, {SMEM_USER_RAW_UDC_DESCTAB,	0,	0, 0, }},
 {0ULL, 0ULL, {SMEM_USER_RAW_USIP,	0,	0, 0, SMEM_NO_CLR_FIRST, 0}},
 };
@@ -453,6 +454,7 @@ static int cmpt_c_smem_layout_init(struct rt_smem_region_lk_fmt tbl[], unsigned 
 		case SMEM_USER_RAW_MD_CONSYS:
 		case SMEM_USER_MD_NVRAM_CACHE: /* go through */
 		case SMEM_USER_RAW_USIP:
+		case SMEM_USER_MD_POST_DUMP:
 		case SMEM_USER_RAW_UDC_DESCTAB:
 			offset = 0;
 			size = 0;
