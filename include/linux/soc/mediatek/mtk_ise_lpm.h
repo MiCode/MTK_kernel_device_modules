@@ -25,6 +25,7 @@ enum mtk_ise_awake_id_t {
 
 enum mtk_ise_awake_ack_t {
 	ISE_SUCCESS = 0x0,
+	ISE_AWAKE_FAILED,
 	ISE_ERR_WAKELOCK_DISABLE,
 	ISE_ERR_UID,
 	ISE_ERR_UNLOCK_BEFORE_LOCK,
