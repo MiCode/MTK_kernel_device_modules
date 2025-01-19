@@ -1716,16 +1716,16 @@ static ssize_t whitebox_power_force_state_show(struct kobject *kobj,
 	int pos = 0;
 	int state6_3 = 0;
 	int state7_3 = 0;
-	int state20_3 = 0;
+	int state24_3 = 0;
 
 	force_state = ged_get_whitebox_power_test_case();
 	state6_3 = stat_mcu_store[6][3];
 	state7_3 = stat_mcu_store[7][3];
-	state20_3 = stat_mcu_store[20][3];
+	state24_3 = stat_mcu_store[24][3];
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
-				"stat_mcu_store[6][3]=%d, stat_mcu_store[7][3]=%d, stat_mcu_store[20][3]=%d, force_state=%d\n",
-					state6_3, state7_3, state20_3, force_state);
+				"stat_mcu_store[6][3]=%d, stat_mcu_store[7][3]=%d, stat_mcu_store[24][3]=%d, force_state=%d\n",
+					state6_3, state7_3, state24_3, force_state);
 
 	return pos;
 }

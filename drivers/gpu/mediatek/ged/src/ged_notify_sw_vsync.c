@@ -925,7 +925,7 @@ EXPORT_SYMBOL(ged_get_whitebox_power_test_case_clear);
 
 void ged_set_whitebox_power_state_store(int first, int second)
 {
-	if (first >= 0 && second >= 0)
+	if ((first >= 0 && first < 30) && (second >= 0 && first < 30))
 		stat_mcu_store[first][second]++;
 }
 EXPORT_SYMBOL(ged_set_whitebox_power_state_store);
