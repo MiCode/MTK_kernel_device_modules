@@ -80,7 +80,11 @@ char print_at_AEE_buffer[160];
 
 #define SEQ_printf_at_AEE(m, x...)		\
 do {						\
-	snprintf(print_at_AEE_buffer, sizeof(print_at_AEE_buffer), x);	\
+	int len = snprintf(print_at_AEE_buffer, sizeof(print_at_AEE_buffer), x);	\
+	if (len < 0)	\
+		aee_sram_fiq_log("sched_debug: snprintf error");	\
+	else if (len >= sizeof(print_at_AEE_buffer))	\
+		aee_sram_fiq_log("sched_debug: string was truncated\n");	\
 	aee_sram_fiq_log(print_at_AEE_buffer);	\
 } while (0)
 
