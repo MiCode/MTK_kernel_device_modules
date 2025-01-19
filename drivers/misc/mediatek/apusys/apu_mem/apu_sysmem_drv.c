@@ -169,7 +169,7 @@ static struct apu_sysmem_buffer *apu_sysmem_alloc(struct apu_sysmem_allocator *a
 
 	/* map kva */
 	if (mem_type == APU_SYSMEM_TYPE_DRAM) {
-		if (dma_buf_vmap(buf->dbuf, &buf->map)) {
+		if (dma_buf_vmap_unlocked(buf->dbuf, &buf->map)) {
 			apu_sysmem_err("vmap dmabuf failed, memtype(%d) size(%llu) flags(0x%llx)\n",
 				mem_type, size, flags);
 			goto free_dmabuf;
@@ -218,7 +218,7 @@ static int apu_sysmem_free(struct apu_sysmem_allocator *allocator,
 
 	/* unmap kva */
 	if (buf->mem_type == APU_SYSMEM_TYPE_DRAM)
-		dma_buf_vunmap(buf->dbuf, &buf->map);
+		dma_buf_vunmap_unlocked(buf->dbuf, &buf->map);
 
 	/* release dmabuf */
 	apu_sysmem_dmaheap_free(buf->dbuf);
@@ -300,7 +300,7 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 
 	/* map vaddr */
 	if (mem_type == APU_SYSMEM_TYPE_DRAM) {
-		if (dma_buf_vmap(map->dbuf, &map->map)) {
+		if (dma_buf_vmap_unlocked(map->dbuf, &map->map)) {
 			apu_sysmem_err("vmap dmabuf failed, dbuf(0x%llx) map_bitmask(0x%llx)\n",
 				(uint64_t)dbuf, map_bitmask);
 			goto free_map;
@@ -319,7 +319,7 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 		apu_sysmem_err("dma_buf_attach failed: %d\n", ret);
 		goto unmap_vaddr;
 	}
-	map->sgt = dma_buf_map_attachment(map->attach, DMA_BIDIRECTIONAL);
+	map->sgt = dma_buf_map_attachment_unlocked(map->attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(map->sgt)) {
 		ret = PTR_ERR(map->sgt);
 		apu_sysmem_err("dma_buf_map_attachment_unlocked failed: %d\n", ret);
@@ -358,12 +358,12 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	goto out;
 
 unmap_dbuf:
-	dma_buf_unmap_attachment(map->attach, map->sgt, DMA_BIDIRECTIONAL);
+	dma_buf_unmap_attachment_unlocked(map->attach, map->sgt, DMA_BIDIRECTIONAL);
 detach_dbuf:
 	dma_buf_detach(map->dbuf, map->attach);
 unmap_vaddr:
 	if (mem_type == APU_SYSMEM_TYPE_DRAM)
-		dma_buf_vunmap(map->dbuf, &map->map);
+		dma_buf_vunmap_unlocked(map->dbuf, &map->map);
 free_map:
 	kfree(map);
 put_dma_buf:
@@ -392,12 +392,12 @@ static int apu_sysmem_unmap(struct apu_sysmem_allocator *allocator,
 		apu_sysmem_err("unmap eva(0x%llx) failed\n", map->device_iova);
 
 	/* unmap iova */
-	dma_buf_unmap_attachment(map->attach, map->sgt, DMA_BIDIRECTIONAL);
+	dma_buf_unmap_attachment_unlocked(map->attach, map->sgt, DMA_BIDIRECTIONAL);
 	dma_buf_detach(map->dbuf, map->attach);
 
 	/* unmap vaddr */
 	if (map->mem_type == APU_SYSMEM_TYPE_DRAM)
-		dma_buf_vunmap(map->dbuf, &map->map);
+		dma_buf_vunmap_unlocked(map->dbuf, &map->map);
 
 	/* free buf */
 	kfree(map);

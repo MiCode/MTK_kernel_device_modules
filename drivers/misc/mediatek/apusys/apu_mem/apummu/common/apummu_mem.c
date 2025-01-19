@@ -420,7 +420,7 @@ void apummu_mem_free(struct device *dev, struct apummu_mem *mem)
 	dma_buf_put(mem->dbuf);
 #else
 	if (mem->iova != 0) { // To handle dma_heap_buffer_alloc fail by signal
-		dma_buf_unmap_attachment(mem->attach, mem->sgt, DMA_BIDIRECTIONAL);
+		dma_buf_unmap_attachment_unlocked(mem->attach, mem->sgt, DMA_BIDIRECTIONAL);
 		dma_buf_detach(mem->priv, mem->attach);
 		dma_heap_buffer_free(mem->priv);
 		dma_heap_put(mem->heap);
@@ -471,9 +471,9 @@ int apummu_mem_alloc(struct device *dev, struct apummu_mem *mem)
 		goto dma_buf_attach_err;
 	}
 
-	mem->sgt = dma_buf_map_attachment(mem->attach, DMA_BIDIRECTIONAL);
+	mem->sgt = dma_buf_map_attachment_unlocked(mem->attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR_OR_NULL(mem->sgt)) {
-		AMMU_LOG_ERR("dma_buf_map_attachment fail\n");
+		AMMU_LOG_ERR("dma_buf_map_attachment_unlocked fail\n");
 		ret = -ENOMEM;
 		goto dbuf_map_attachment_err;
 	}
