@@ -334,7 +334,7 @@ static void led_debug_log(struct mt_led_data *s_led,
 
 	s_led->debug.count++;
 
-	if (ret < 0 || ret >= 4096) {
+	if (ret < 0 || ret >= (4096 - strlen(s_led->debug.buffer))) {
 		pr_info("print log error!");
 		s_led->debug.count = 5;
 	}
@@ -694,10 +694,10 @@ int mt_leds_classdev_register(struct device *parent,
 		4095 - strlen(led_dat->debug.buffer),
 		"[Light] Set %s directly ", led_dat->conf.cdev.name);
 
-	if (ret < 0 || ret >= 4096)
+	if (ret < 0 || ret >= (4096 - strlen(led_dat->debug.buffer)))
 		pr_info("print log init error!");
 
-	led_dat->last_brightness = led_dat->conf.cdev.brightness;
+	led_dat->last_brightness = 0;
 	mtk_set_hw_brightness(led_dat,
 		brightness_maptolevel(&led_dat->conf, led_dat->last_brightness),
 		0, 1 << SET_BACKLIGHT_LEVEL);
