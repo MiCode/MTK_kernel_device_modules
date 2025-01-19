@@ -100,6 +100,7 @@ typedef int(*UARTHUB_PLAT_DUMP_UARTIP_DEBUG_INFO) (
 	const char *tag, struct mutex *uartip_lock);
 typedef int(*UARTHUB_PLAT_DUMP_INTFHUB_DEBUG_INFO) (const char *tag);
 typedef int(*UARTHUB_PLAT_DUMP_SSPM_WAKEUP_DEBUG_INFO) (const char *tag);
+typedef int(*UARTHUB_PLAT_DUMP_EXTEND_DEBUG_INFO) (const char *tag);
 typedef int(*UARTHUB_PLAT_DUMP_DEBUG_MONITOR) (const char *tag);
 typedef int(*UARTHUB_PLAT_DEBUG_MONITOR_CTRL) (int enable, int mode, int ctrl);
 typedef int(*UARTHUB_PLAT_DEBUG_MONITOR_STOP) (int stop);
@@ -124,6 +125,7 @@ struct uarthub_debug_ops_struct {
 	UARTHUB_PLAT_DUMP_UARTIP_DEBUG_INFO uarthub_plat_dump_uartip_debug_info;
 	UARTHUB_PLAT_DUMP_INTFHUB_DEBUG_INFO uarthub_plat_dump_intfhub_debug_info;
 	UARTHUB_PLAT_DUMP_SSPM_WAKEUP_DEBUG_INFO uarthub_plat_dump_sspm_wakeup_debug_info;
+	UARTHUB_PLAT_DUMP_EXTEND_DEBUG_INFO uarthub_plat_dump_extend_debug_info;
 	UARTHUB_PLAT_DUMP_DEBUG_MONITOR uarthub_plat_dump_debug_monitor;
 	UARTHUB_PLAT_DEBUG_MONITOR_CTRL uarthub_plat_debug_monitor_ctrl;
 	UARTHUB_PLAT_DEBUG_MONITOR_STOP uarthub_plat_debug_monitor_stop;

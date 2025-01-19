@@ -685,6 +685,9 @@ int uarthub_core_debug_info(const char *tag)
 	if (g_plat_ic_debug_ops->uarthub_plat_dump_sspm_wakeup_debug_info)
 		g_plat_ic_debug_ops->uarthub_plat_dump_sspm_wakeup_debug_info(tag);
 
+	if (g_plat_ic_debug_ops->uarthub_plat_dump_extend_debug_info)
+		g_plat_ic_debug_ops->uarthub_plat_dump_extend_debug_info(tag);
+
 	pr_info("[%s][%s] ----------------------------------------\n",
 		def_tag, ((tag == NULL) ? "null" : tag));
 
