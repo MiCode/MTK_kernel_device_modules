@@ -12,6 +12,23 @@
 #endif
 #include "game_trace_event.h"
 
+void game_main_trace(const char *fmt, ...)
+{
+	char log[256];
+	va_list args;
+	int len;
+
+	if (!trace_game_main_trace_enabled())
+		return;
+
+	va_start(args, fmt);
+	len = vsnprintf(log, sizeof(log), fmt, args);
+
+	if (unlikely(len == 256))
+		log[255] = '\0';
+	va_end(args);
+	trace_game_main_trace(log);
+}
 
 
 static void __game_systrace_print(int type, char *buf)

@@ -10,16 +10,5 @@
 # GNU General Public License for more details.
 #
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/include \
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/engine_cooler \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/frame_interpolate \
-	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include \
-
-mtk_game_objs += game.o \
-	game_base.o \
-	game_sysfs.o \
-	engine_cooler/game_ec.o \
-	frame_interpolate/fi_base.o \
-	frame_interpolate/frame_interpolate.o \
-
-obj-$(CONFIG_MTK_GAME) += mtk_game.o
-mtk_game-objs += $(mtk_game_objs)
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/base/include

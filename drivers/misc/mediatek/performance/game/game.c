@@ -15,6 +15,7 @@
 #include <uapi/linux/sched/types.h>
 #include "game.h"
 #include "engine_cooler/game_ec.h"
+#include "frame_interpolate/frame_interpolate.h"
 
 static struct task_struct *kGame_task;
 
@@ -184,6 +185,7 @@ static int gameMain(void *arg)
 	set_user_nice(current, -20);
 
 	game_notifier_wq_cb();
+	frame_interpolate_exit();
 
 	return 0;
 }
@@ -203,6 +205,7 @@ static int __init game_init(void)
 		goto end;
 	}
 	wake_up_process(kGame_task);
+	frame_interpolate_init();
 end:
 	return ret;
 }
