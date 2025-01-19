@@ -12,7 +12,7 @@
 #include <linux/device.h>
 #include <linux/notifier.h>
 #include <linux/types.h>
-
+#include <linux/scmi_protocol.h>
 
 struct scmi_tinysys_status {
 	u32 r1;
@@ -60,5 +60,6 @@ struct scmi_tinysys_notifier_report {
 };
 
 int scmi_tinysys_register(void);
+void scmi_tinysys_unregister(void);
 
 #endif /* _MTK_TINYSYS_PROTOCOL_H */

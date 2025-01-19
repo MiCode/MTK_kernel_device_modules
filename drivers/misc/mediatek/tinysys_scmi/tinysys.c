@@ -261,19 +261,33 @@ static const struct scmi_protocol_events tinysys_protocol_events = {
 
 static int scmi_tinysys_protocol_init(const struct scmi_protocol_handle *ph)
 {
+	int ret;
 	u32 version;
 	struct scmi_tinysys_info *pinfo;
 
-	ph->xops->version_get(ph, &version);
+	dev_dbg(ph->dev, "Tinysys protocol init Start\n");
+	ret = ph->xops->version_get(ph, &version);
+	if (ret) {
+		dev_err(ph->dev, "version get fail, %d\n", ret);
+		return ret;
+	}
 
 	dev_dbg(ph->dev, "Tinysys Protocol Version %d.%d\n",
 		PROTOCOL_REV_MAJOR(version), PROTOCOL_REV_MINOR(version));
 
 	pinfo = devm_kzalloc(ph->dev, sizeof(*pinfo), GFP_KERNEL);
-	if (!pinfo)
+	if (!pinfo) {
+		dev_err(ph->dev, "pinfo alloc fail\n");
 		return -ENOMEM;
+	}
 
-	scmi_tinysys_attributes_get(ph, pinfo);
+	ret = scmi_tinysys_attributes_get(ph, pinfo);
+	if (ret) {
+		dev_err(ph->dev, "Attribute get fail, %d\n", ret);
+		/* Free pinfo */
+		devm_kfree(ph->dev, pinfo);
+		return ret;
+	}
 
 	pinfo->version = version;
 
@@ -297,6 +311,10 @@ int scmi_tinysys_register(void)
 	return scmi_protocol_register(&scmi_tinysys_protocol);
 }
 
+void scmi_tinysys_unregister(void)
+{
+	scmi_protocol_unregister(&scmi_tinysys_protocol);
+}
 MODULE_DESCRIPTION("SCMI tinysys protocol");
 MODULE_LICENSE("GPL v2");
 

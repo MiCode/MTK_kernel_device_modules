@@ -192,24 +192,38 @@ DEVICE_ATTR_RW(tinysys_scmi_debug);
 
 static int scmi_tinysys_probe(struct scmi_device *sdev)
 {
+	int ret;
 	struct device *dev = &sdev->dev;
 
 	const struct scmi_handle *handle = sdev->handle;
 	struct scmi_protocol_handle *ph;
 
-	if (!handle)
+	if (!handle) {
+		pr_err("tinysys-scmi no device\n");
 		return -ENODEV;
+	}
 
-	scmi_tinysys_register();
+	pr_notice("tinysys-scmi probe start!\n");
+
+	ret = scmi_tinysys_register();
+	if (ret) {
+		pr_err("tinysys-scmi register fail!, ret = %d\n", ret);
+		ret = -EPROBE_DEFER;
+		goto CLEAN;
+	}
 
 	tinysys_ops = handle->devm_protocol_get(sdev, SCMI_PROTOCOL_TINYSYS, &ph);
-	if (IS_ERR(tinysys_ops))
-		return PTR_ERR(tinysys_ops);
+	if (IS_ERR(tinysys_ops)) {
+		pr_err("tinysys-scmi protocol get fail!, ret = %ld\n", PTR_ERR(tinysys_ops));
+		ret = -EPROBE_DEFER;
+		goto CLEAN;
+    }
 
 	t_info = devm_kzalloc(dev, sizeof(*t_info), GFP_KERNEL);
-	if (!t_info)
+	if (!t_info) {
+		pr_err("tinysys-scmi t_info alloc fail\n");
 		return -ENOMEM;
-
+	}
 	t_info->sdev = sdev;
 
 	t_info->ph = ph;
@@ -218,8 +232,13 @@ static int scmi_tinysys_probe(struct scmi_device *sdev)
 	if (device_create_file(dev, &dev_attr_tinysys_scmi_debug))
 		pr_notice("tinysys scmi debug ret fail\n");
 #endif
-
+	pr_notice("tinysys-scmi probe done!\n");
 	return 0;
+CLEAN:
+	pr_err("tinysys-scmi probe retry...\n");
+	scmi_tinysys_unregister();
+	return ret;
+
 }
 
 static const struct scmi_device_id scmi_id_table[] = {
