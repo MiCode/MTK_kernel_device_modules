@@ -52,31 +52,6 @@ static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt
 	rt_ea_output->rt_aggre_preempt_enable = -1;
 }
 
-#if IS_ENABLED(CONFIG_RT_SOFTINT_OPTIMIZATION)
-/*
- * Return whether the task on the given cpu is currently non-preemptible
- * while handling a potentially long softint, or if the task is likely
- * to block preemptions soon because it is a ksoftirq thread that is
- * handling slow softints.
- */
-bool task_may_not_preempt(struct task_struct *task, int cpu)
-{
-	__u32 softirqs = per_cpu(active_softirqs, cpu) |
-			local_softirq_pending();
-
-	struct task_struct *cpu_ksoftirqd = per_cpu(ksoftirqd, cpu);
-
-	return ((softirqs & LONG_SOFTIRQ_MASK) &&
-		(task == cpu_ksoftirqd ||
-		 task_thread_info(task)->preempt_count & SOFTIRQ_MASK));
-}
-#else
-static inline bool task_may_not_preempt(struct task_struct *task, int cpu)
-{
-	return false;
-}
-#endif /* CONFIG_RT_SOFTINT_OPTIMIZATION */
-
 #if IS_ENABLED(CONFIG_SMP)
 static inline unsigned long task_util(struct task_struct *p)
 {
@@ -166,6 +141,11 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 	return true;
 }
 #endif
+
+static bool rt_task_fits_cpu(struct task_struct *p, int cpu)
+{
+	return rt_task_fits_capacity(p, cpu) && !cpu_busy_with_softirqs(cpu);
+}
 
 inline unsigned long mtk_sched_cpu_util(int cpu)
 {
@@ -387,7 +367,7 @@ inline unsigned int mtk_get_idle_exit_latency(int cpu,
 			rt_ea_output->cfs_cpus = (rt_ea_output->cfs_cpus | (1 << cpu));
 
 			if ((curr->prio > rt_ea_output->cfs_lowest_prio)
-				&& (!task_may_not_preempt(curr, cpu))) {
+				&& (!cpu_busy_with_softirqs(cpu))) {
 				rt_ea_output->cfs_lowest_prio = curr->prio;
 				rt_ea_output->cfs_lowest_cpu = cpu;
 				rt_ea_output->cfs_lowest_pid = curr->pid;
@@ -599,9 +579,7 @@ DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_rt_mask);
 void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 				int sd_flag, int flags, int *target_cpu)
 {
-	struct task_struct *curr;
 	struct rq *rq, *this_cpu_rq;
-	bool may_not_preempt;
 	bool sync = !!(flags & WF_SYNC);
 	int ret, target = -1, this_cpu, select_reason = -1;
 	struct cpumask *lowest_mask = this_cpu_cpumask_var_ptr(mtk_select_rq_rt_mask);
@@ -644,14 +622,9 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	rq = cpu_rq(source_cpu);
 
 	rcu_read_lock();
-	/* unlocked access */
-	curr = READ_ONCE(rq->curr);
-
-	/* check source_cpu status */
-	may_not_preempt = task_may_not_preempt(curr, source_cpu);
 
 	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p,
-				lowest_mask, rt_task_fits_capacity);
+				lowest_mask, rt_task_fits_cpu);
 
 	cpumask_andnot(lowest_mask, lowest_mask, cpu_pause_mask);
 	cpumask_and(lowest_mask, lowest_mask, cpu_active_mask);
@@ -659,8 +632,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	irq_log_store();
 	mtk_rt_energy_aware_wake_cpu(p, lowest_mask, ret, &target, true, &rt_ea_output);
 
-	if (target != -1 &&
-		(may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr)) {
+	if (target != -1 && p->prio < cpu_rq(target)->rt.highest_prio.curr) {
 		*target_cpu = target;
 		select_reason = LB_RT_IDLE | rt_ea_output.select_reason;
 		if (!(rt_ea_output.idle_cpus & (1 << target)))
