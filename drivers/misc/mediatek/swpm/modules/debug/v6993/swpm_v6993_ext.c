@@ -86,7 +86,7 @@ static ktime_t last_req_data_time;
 struct mutex swpm_get_sram_data_mutex = __MUTEX_INITIALIZER(swpm_get_sram_data_mutex);
 
 static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
-	"DISP", "VENC", "VDEC", "ADSP", "MCU",
+	"DISP", "VENC", "VDEC", "ADSP", "SCP", "MCU",
 };
 /* ddr bw ip (total r/total w/cpu/gpu/mm/md) */
 static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
