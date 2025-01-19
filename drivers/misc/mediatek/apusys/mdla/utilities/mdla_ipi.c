@@ -181,6 +181,8 @@ static void mdla_ipi_up_msg(u32 type, u64 val)
 		mdla_aee_exception("MDLA", "MDLA debug check failed");
 	else if (type == MDLA_IPI_MICROP_MSG_CMD_FAILED)
 		mdla_aee_exception("MDLA", "MDLA cmd failed");
+	else if (type == MDLA_IPI_MICROP_MSG_WDEC_RESOURCE_BUSY)
+		mdla_aee_exception("MDLA", "WDEC resource busy");
 }
 
 static int mdla_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
