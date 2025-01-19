@@ -2085,7 +2085,7 @@ static inline void dpmaif_set_txq_thread_aff(int *affinity_set, struct dpmaif_tx
 static int dpmaif_txq_done_thread(void *arg)
 {
 	struct dpmaif_tx_queue *txq = (struct dpmaif_tx_queue *)arg;
-	unsigned int L2TISAR0;
+	unsigned int L2TISAR0, new_cnt;
 	int ret, affinity_set = -1;
 
 	while (1) {
@@ -2138,13 +2138,14 @@ static int dpmaif_txq_done_thread(void *arg)
 
 			L2TISAR0 &= (drv.ul_int_qdone_msk &
 					(1 << (txq->index + UL_INT_DONE_OFFSET)));
+			if (L2TISAR0)
+				DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0, L2TISAR0);
 
-			if (L2TISAR0 && (dpmaif_get_txq_drb_release_cnt(txq) > 0)) {
+			new_cnt = dpmaif_get_txq_drb_release_cnt(txq);
+			if (new_cnt)
 				hrtimer_start(&txq->txq_done_timer,
 					ktime_set(0, 500000), HRTIMER_MODE_REL);
-
-				DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_UL_L2TISAR0, L2TISAR0);
-			} else {
+			else {
 				/* clear IP busy register wake up cpu case */
 				ccci_drv_clear_ip_busy();
 				/* enable tx done interrupt */
