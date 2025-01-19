@@ -6090,14 +6090,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1a37010c 0 0x4>, /* MBOX2 clr */
 				<0 0x1a380000 0 0x100>, /* MBOX3 base */
 				<0 0x1a380100 0 0x4>, /* MBOX3 set */
-				<0 0x1a38010c 0 0x4>, /* MBOX3 clr */
-				<0 0x10001000 0 0x8>; /* INFRACFG_AO ADSP_RSV */
+				<0 0x1a38010c 0 0x4>; /* MBOX3 clr */
 			reg-names = "cfg", "cfg2", "cfg3", "cfg_hrt",
 				"mbox0_base", "mbox0_set", "mbox0_clr",
 				"mbox1_base", "mbox1_set", "mbox1_clr",
 				"mbox2_base", "mbox2_set", "mbox2_clr",
-				"mbox3_base", "mbox3_set", "mbox3_clr",
-				"infracfg_rsv";
+				"mbox3_base", "mbox3_set", "mbox3_clr";
 
 			interrupts = <GIC_SPI 709 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX0 */
 				<GIC_SPI 710 IRQ_TYPE_LEVEL_HIGH 0>, /* MBOX1 */
