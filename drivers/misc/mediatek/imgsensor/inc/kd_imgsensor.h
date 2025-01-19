@@ -143,6 +143,7 @@
 /* SENSOR CHIP VERSION */
 /*IMX*/
 #define IMX06A_SENSOR_ID                        0xa18a
+#define IMX06C_SENSOR_ID                        0xa18c
 #define IMX858_SENSOR_ID                        0x0858
 #define IMX858DUAL_SENSOR_ID                    0x0859
 #define IMX499_SENSOR_ID                        0x0499
