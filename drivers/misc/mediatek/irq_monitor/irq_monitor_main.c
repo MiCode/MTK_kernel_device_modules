@@ -545,8 +545,14 @@ static void probe_irq_enable(void *data, unsigned long ip,
 
 	if (!pi_stat->tracing)
 		return;
-	BUG_ON(pi_stat->enable_locked);
-	pi_stat->enable_locked = 1;
+	/*
+	 * If an NMI or exception occurs here, such as being probed by kprobe,
+	 * and the arch(arm64) does not handle IRQ state tracking properly,
+	 * this function may recursively call itself. Use an expensive comxchg
+	 * here to prevent recursion.
+	 */
+	if (cmpxchg(&pi_stat->enable_locked, 0, 1))
+		return;
 	pi_stat->enable_timestamp = sched_clock();
 	pi_stat->enable_ip = ip;
 	pi_stat->enable_parent_ip = parent_ip;
@@ -584,8 +590,14 @@ static void probe_preempt_enable(void *data, unsigned long ip,
 
 	if (!pi_stat->tracing)
 		return;
-	BUG_ON(pi_stat->enable_locked);
-	pi_stat->enable_locked = 1;
+	/*
+	 * If an NMI or exception occurs here, such as being probed by kprobe,
+	 * and the arch(arm64) does not handle IRQ state tracking properly,
+	 * this function may recursively call itself. Use an expensive comxchg
+	 * here to prevent recursion.
+	 */
+	if (cmpxchg(&pi_stat->enable_locked, 0, 1))
+		return;
 	pi_stat->enable_timestamp = sched_clock();
 	pi_stat->enable_ip = ip;
 	pi_stat->enable_parent_ip = parent_ip;
