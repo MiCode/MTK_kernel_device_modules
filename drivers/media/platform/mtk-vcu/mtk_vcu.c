@@ -2902,27 +2902,25 @@ int vcu_get_log(char *val, unsigned int val_len)
 	int len;
 	int wait_cnt = 0;
 
-	if (vcu_ptr != NULL &&
-		vcu_ptr->vdec_log_info != NULL &&
-		val != NULL && val_len <= 1024) {
-		mutex_lock(&vcu_ptr->log_lock);
-
-		/* wait vpud got log done */
-		while (atomic_read(&vcu_ptr->vdec_log_got) != 0) {
-			wait_cnt++;
-			if (wait_cnt > 10) {
-				pr_info("[VCU] %s(%d) timeout return\n", __func__, __LINE__);
-				mutex_unlock(&vcu_ptr->log_lock);
-				return -EFAULT;
-			}
-			usleep_range(10000, 20000);
-		}
-		vcu_ptr->vdec_log_info->type = 1;
-	} else {
+	if (vcu_ptr == NULL ||
+	    vcu_ptr->vdec_log_info == NULL ||
+	    val == NULL || val_len > 1024) {
 		pr_info("[VCU] %s(%d) return\n", __func__, __LINE__);
-		mutex_unlock(&vcu_ptr->log_lock);
 		return -EFAULT;
 	}
+	mutex_lock(&vcu_ptr->log_lock);
+
+	/* wait vpud got log done */
+	while (atomic_read(&vcu_ptr->vdec_log_got) != 0) {
+		wait_cnt++;
+		if (wait_cnt > 10) {
+			pr_info("[VCU] %s(%d) timeout return\n", __func__, __LINE__);
+			mutex_unlock(&vcu_ptr->log_lock);
+			return -EFAULT;
+		}
+		usleep_range(10000, 20000);
+	}
+	vcu_ptr->vdec_log_info->type = 1;
 
 	pr_info("[log wakeup VPUD] log_info %p type %d vcu_ptr %p\n",
 		(char *)vcu_ptr->vdec_log_info->log_info,
