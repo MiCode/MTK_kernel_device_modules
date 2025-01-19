@@ -1885,6 +1885,7 @@ static int gpufreq_gpueb_init(void)
 	g_ipi_magic = readl(gpueb_gpr_addr);
 	if (unlikely(!g_ipi_magic)) {
 		GPUFREQ_LOGE("fail to init ipi magic number");
+		gpufreq_abort();
 		ret = GPUFREQ_EINVAL;
 		goto done;
 	}
