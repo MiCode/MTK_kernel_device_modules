@@ -138,6 +138,8 @@ static void xhci_mtk_usb_clear_packet_size_quirk(struct urb *urb)
 {
 	struct device *dev = &urb->dev->dev;
 	struct usb_ctrlrequest *ctrl = NULL;
+	struct usb_interface *iface = NULL;
+	struct usb_host_interface *alt = NULL;
 	struct snd_usb_audio *chip;
 	struct snd_usb_endpoint *ep, *en;
 	struct snd_urb_ctx *ctx;
@@ -145,6 +147,17 @@ static void xhci_mtk_usb_clear_packet_size_quirk(struct urb *urb)
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0)
+		return;
+
+	iface = usb_ifnum_to_if(urb->dev, ctrl->wIndex);
+	if (!iface)
+		return;
+
+	alt = usb_altnum_to_altsetting(iface, ctrl->wValue);
+	if (!alt)
+		return;
+
+	if (alt->desc.bInterfaceClass != USB_CLASS_AUDIO)
 		return;
 
 	chip = usb_get_intfdata(to_usb_interface(dev));
@@ -172,9 +185,22 @@ static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 {
 	struct device *dev = &urb->dev->dev;
 	struct usb_ctrlrequest *ctrl = NULL;
+	struct usb_interface *iface = NULL;
+	struct usb_host_interface *alt = NULL;
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0)
+		return;
+
+	iface = usb_ifnum_to_if(urb->dev, ctrl->wIndex);
+	if (!iface)
+		return;
+
+	alt = usb_altnum_to_altsetting(iface, ctrl->wValue);
+	if (!alt)
+		return;
+
+	if (alt->desc.bInterfaceClass != USB_CLASS_AUDIO)
 		return;
 
 	dev_dbg(dev, "delay 5ms for UAC device\n");
