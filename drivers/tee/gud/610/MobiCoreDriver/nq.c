@@ -684,8 +684,12 @@ static void nq_dump_status(void)
 		}
 
 		for (j = 0; j < sizeof(info); j++) {
-			snprintf(&uuid_str[(i * sizeof(info) + j) * 2], 3,
+			ret = snprintf(&uuid_str[(i * sizeof(info) + j) * 2], 3,
 				 "%02x", (info >> (j * 8)) & 0xff);
+			if (ret < 0) {
+				mc_dev_info("  %-22s= %s", "mcExcep.uuid", "Failed to create uuid str");
+				return;
+			}
 		}
 	}
 	tee_restore_affinity(old_affinity);
@@ -1349,7 +1353,12 @@ int nq_start(void)
 	l_ctx.tee_scheduler_run = true;
 
 	for (cnt = 0; cnt < NQ_TEE_WORKER_THREADS; cnt++) {
-		snprintf(worker_name, 13, "tee_worker/%d", cnt);
+		ret = snprintf(worker_name, 13, "tee_worker/%d", cnt);
+		if (ret < 0) {
+			mc_dev_info("Failed to create worker name");
+			return ret;
+		}
+
 		l_ctx.tee_worker[cnt] = kthread_create(tee_worker,
 						       (void *)((uintptr_t)cnt),
 						       "%s", worker_name);

@@ -827,9 +827,8 @@ static inline int tee_mmu_register_buffer(struct tee_mmu	*mmu,
 		kfree(all_pages);
 		mmu->all_pages = NULL;
 		if (ret) {
+			mc_dev_err(ret, "sharing buffer failed, free mmu %p", mmu);
 			tee_mmu_free(mmu);
-			mc_dev_err(ret, "sharing buffer failed, free mmu %p",
-				   mmu);
 		}
 	}
 	return ret;
