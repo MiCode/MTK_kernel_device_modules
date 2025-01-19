@@ -26,7 +26,11 @@ void adsp_bus_monitor_dump(void)
 	dump_addr = pdata->dtcm + pdata->dtcm_size - item->offset;
 
 	adsp_enable_clock();
+	adsp_latch_dump_region(true);
+
 	memcpy_fromio(&debug_info, dump_addr, sizeof(struct bus_monitor_debug_info));
+
+	adsp_latch_dump_region(false);
 	adsp_disable_clock();
 
 	if (debug_info.state <= STATE_RUN)
