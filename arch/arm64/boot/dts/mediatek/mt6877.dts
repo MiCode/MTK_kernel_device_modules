@@ -9201,14 +9201,6 @@
 	regulator-always-on;
 };
 
-&mt6359p_vproc2_reg {
-	regulator-always-on;
-};
-
-&mt6359p_vsram_md_reg {
-	regulator-always-on;
-};
-
 &mt6359p_vemc_reg {
 	regulator-always-on;
 };
