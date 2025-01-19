@@ -295,7 +295,6 @@ void mtk_setscheduler_uclamp(void *data, struct task_struct *tsk,
 		trace_sched_set_uclamp(tsk->pid,
 		task_cpu(tsk), task_on_rq_queued(tsk), clamp_id, value);
 }
-//static void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 				      unsigned int new_pelt, int *ret)
 {
@@ -329,7 +328,6 @@ void mtk_sched_pelt_multiplier(void *data, unsigned int old_pelt,
 #endif
 }
 
-//static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 {
 	struct cfs_rq *cfs_rq = cfs_rq_of(se);
@@ -1161,7 +1159,7 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register find_lowest_rq hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
+	ret = register_trace_android_vh_sched_pelt_multiplier(mtk_sched_pelt_multiplier, NULL);
 	if (ret)
 		pr_info("register mtk_sched_pelt_multiplier hooks failed, returned %d\n", ret);
 
@@ -1169,8 +1167,8 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register dump_throttled_rt_tasks hooks failed, returned %d\n", ret);
 
-	//ret = register_trace_android_rvh_post_init_entity_util_avg(
-	//	mtk_post_init_entity_util_avg, NULL);
+	ret = register_trace_android_rvh_post_init_entity_util_avg(
+		mtk_post_init_entity_util_avg, NULL);
 	if (ret)
 		pr_info("register mtk_post_init_entity_util_avg hooks failed, returned %d\n", ret);
 
