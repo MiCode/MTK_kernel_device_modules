@@ -2238,6 +2238,8 @@ static GED_ERROR ged_kpi_push_timestamp(
 		if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
 			INIT_WORK(&psTimeStamp->sWork, ged_kpi_work_cb);
 			queue_work(g_psWorkQueue, &psTimeStamp->sWork);
+		} else {
+			ged_free(psTimeStamp, sizeof(struct GED_TIMESTAMP));
 		}
 		switch (eTimeStampType) {
 		case GED_TIMESTAMP_TYPE_D:
