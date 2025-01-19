@@ -345,7 +345,6 @@ static void infra_bp_dump_flow(void)
 {
 	int i;
 	unsigned int status;
-	unsigned int check_count = 0;
 	struct bus_parity_elem *bpm;
 	union bus_parity_err *bpr;
 
@@ -388,7 +387,6 @@ static void infra_bp_dump_flow(void)
 				bpr->slv.awaddr[1] = readl(bpm->base+0x1C);
 			}
 		} else {
-			check_count++;
 			continue;
 		}
 	}
