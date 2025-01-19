@@ -138,7 +138,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait_fuzz",
     "//vendor/mediatek/tests/kernel/ktf_testcase/dma_buf/dma_buf_ait:ktf_dma_buf_ait",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:emi_slc_ut",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/i2c/i2c_ait:ktf_i2c_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/typec:ktf_i2c_suspend",
     "//vendor/mediatek/tests/kernel/ktf_testcase/iommu/iommu_ait:ktf_iommu_ait",
@@ -174,7 +174,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait_fuzz",
     "//vendor/mediatek/tests/kernel/ktf_testcase/dma_buf/dma_buf_ait:ktf_dma_buf_ait",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:emi_slc_ut",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/i2c/i2c_ait:ktf_i2c_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/typec:ktf_i2c_suspend",
     "//vendor/mediatek/tests/kernel/ktf_testcase/iommu/iommu_ait:ktf_iommu_ait",
@@ -2631,8 +2631,8 @@ def get_overlay_modules_list():
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/misc/mediatek/flashlight/flashlights-ocp81375.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/usb_dp_selector.ko")
-        mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:emi_slc_ut")
-        mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:emi_slc_ut")
+        mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut")
+        mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:fusb304".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:mux_switch".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5169".format(kernel_version))
