@@ -592,6 +592,7 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	struct device_node *hvfs_node, *csram_sys_node, *qos_node;
 	struct of_phandle_args args;
 	struct resource *csram_res;
+	struct resource *usram_res;
 	struct resource *qos_res;
 	struct platform_device *pdev_c;
 	struct platform_device *pdev_qos;
@@ -615,12 +616,6 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	if (pdev_c == NULL) {
 		pr_notice("failed to find pdev @ %s\n", __func__);
 		return -EINVAL;
-	}
-
-	usram_base = devm_platform_ioremap_resource(pdev_c, 0);
-	if (IS_ERR(usram_base)) {
-		pr_notice("failed to map usram_base @ %s\n", __func__);
-		return PTR_ERR(usram_base);
 	}
 
 	csram_res = platform_get_resource(pdev_c, IORESOURCE_MEM, 1);
@@ -677,8 +672,19 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 	init_brake_enabled = check_init_brake_enabled();
 	pr_notice("%s: init_brake_enabled=%d\n", __func__, init_brake_enabled);
 
+	usram_res = platform_get_resource(pdev_c, IORESOURCE_MEM, 0);
+	if (!usram_res) {
+		pr_notice("failed to get mem resource @ %s\n", __func__);
+		return -ENODEV;
+	}
+	usram_base = ioremap(usram_res->start, resource_size(usram_res));
+	if (!usram_base) {
+		pr_notice("failed to map usram_base @ %s\n", __func__);
+		return -ENOMEM;
+	}
 	pwr_tbl_ver = readl_relaxed(usram_base + LKG_PARA_VER_OFFSET);
 	pr_notice("%s: pwr_tbl_ver: %d\n", __func__, pwr_tbl_ver);
+	iounmap(usram_base);
 
 	qos_node = of_find_node_by_name(NULL, "cpuqos-v3");
 	if (!qos_node) {
