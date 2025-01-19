@@ -1428,8 +1428,8 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 
 	struct thermal_zone_device *tz = NULL;
 	struct mtk_thermal_tz_data *tzdata = NULL;
-	int tzidx;
-	int	ret;
+	int tzidx = 0;
+	int	ret = 0;
 
 	THRML_LOG("%s tz: %s trips: %d passive_delay_jiffies: %d polling_delay_jiffies: %d\n",
 			__func__, type, num_trip, passive_delay_jiffies, polling_delay_jiffies);
@@ -1440,7 +1440,7 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 	tzdata = kzalloc(sizeof(struct mtk_thermal_tz_data), GFP_KERNEL);
 	if (!tzdata) {
 		THRML_ERROR_LOG("%s tzdata kzalloc fail.\n", __func__);
-		return ERR_PTR(-ENOMEM);
+		goto error_tz;
 	}
 
 	mutex_init(&tzdata->ma_lock);
@@ -1469,19 +1469,20 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 			passive_delay_jiffies, polling_delay_jiffies);
 
 	if (IS_ERR(tz)) {
-		pr_err("%s %s fail, err=%ld\n", __func__, type, PTR_ERR(tz));
-		return tz;
+		THRML_ERROR_LOG("%s %s fail, err=%ld\n", __func__, type, PTR_ERR(tz));
+		goto error_tz;
 	}
 
 	if (strcmp(tz->governor->name, mtk_zone_params.governor_name))
-		pr_err("%s %s governor %s, not match %s\n", __func__, type, tz->governor->name, mtk_zone_params.governor_name);
+		THRML_ERROR_LOG("%s %s governor %s, not match %s\n",
+				 __func__, type, tz->governor->name, mtk_zone_params.governor_name);
 
 	ret = thermal_zone_device_enable(tz);
 
 	if (ret) {
 		thermal_zone_device_unregister(tz);
-		pr_err("%s %s thermal_zone_device_enable fail, ret=%d\n", __func__, type, ret);
-		return tz;
+		THRML_ERROR_LOG("%s %s thermal_zone_device_enable fail, ret=%d\n", __func__, type, ret);
+		goto error_tz;
 	}
 
 	tzidx = mtk_thermal_get_tz_idx(type);
@@ -1497,6 +1498,7 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 
 	/* create a proc for this tz... */
 	if (_get_proc_tz_dir_entry() != NULL) {
+		mutex_lock(&MTM_TZ_PROC_DIR_LOCK);
 		struct proc_dir_entry *entry;
 
 		entry = proc_create_data((const char *)type, 0664,
@@ -1512,11 +1514,22 @@ int tc1, int tc2, int passive_delay_jiffies, int polling_delay_jiffies){
 			proc_set_user(entry, uid, gid);
 			THRML_LOG("%s proc file created: %p\n", __func__, tz);
 		}
+		mutex_unlock(&MTM_TZ_PROC_DIR_LOCK);
 	}
 
 	/* This interface function adds a new thermal zone device */
 	return tz;
 
+error_tz:
+	/* free memory */
+	if (tzdata) {
+		mutex_lock(&tzdata->ma_lock);
+		tzdata->ops = NULL;
+		mutex_unlock(&tzdata->ma_lock);
+		mutex_destroy(&tzdata->ma_lock);
+		kfree(tzdata);
+	}
+	return NULL;
 }
 EXPORT_SYMBOL(mtk_thermal_zone_device_register_wrapper);
 
@@ -1525,14 +1538,20 @@ void mtk_thermal_zone_device_unregister_wrapper(struct thermal_zone_device *tz)
 {
 	char type[32] = { 0 };
 	struct mtk_thermal_tz_data *tzdata = NULL;
-	int tzidx;
+	int tzidx = 0;
 
-	strncpy(type, tz->type, 20);
+	if (!tz)
+		return;
+
+	strscpy(type, tz->type, sizeof(type) - 1);
+
 	tzdata = (struct mtk_thermal_tz_data *)tz->devdata;
 
+	mutex_lock(&MTM_TZ_PROC_DIR_LOCK);
 	/* delete the proc file entry from proc */
 	if (proc_tz_dir_entry != NULL)
 		remove_proc_entry((const char *)type, proc_tz_dir_entry);
+	mutex_lock(&MTM_TZ_PROC_DIR_LOCK);
 
 	tzidx = mtk_thermal_get_tz_idx(tz->type);
 
