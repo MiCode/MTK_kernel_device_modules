@@ -294,9 +294,9 @@ void mtk_btag_free(struct mtk_blocktag *btag);
 
 void mtk_btag_get_aee_buffer(unsigned long *vaddr, unsigned long *size);
 
+void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id);
 void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
 			       __u32 *top_pages_r, __u32 *top_pages_w);
-void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id, bool force);
 void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 				 enum mtk_btag_io_type io_type, __u64 tot_len,
 				 __u64 top_len, __u32 tid, __u16 qid);
@@ -312,7 +312,6 @@ void mtk_btag_mictx_init(struct mtk_blocktag *btag);
 
 void mtk_btag_earaio_init(struct proc_dir_entry *root);
 void mtk_btag_earaio_register(struct mtk_blocktag *btag);
-void mtk_btag_earaio_clear_data(void);
 void mtk_btag_earaio_check_window(void);
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 top_pages_r,
 				__u32 top_pages_w, __u32 top_rnd_cnt);

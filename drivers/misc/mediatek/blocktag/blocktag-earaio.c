@@ -184,10 +184,11 @@ static void earaio_set_fuse_data(struct eara_iostat *data)
 }
 #endif
 
-void mtk_btag_earaio_clear_data(void)
+static void earaio_reset_data(void)
 {
 	unsigned long flags;
 
+	mtk_btag_mictx_reset(earaio_ctrl.mictx_id);
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	earaio_get_fuse_count(&earaio_ctrl.fuse_total_prev,
@@ -306,7 +307,7 @@ static void mtk_btag_eara_start_collect(void)
 		earaio_ctrl.start_collect = true;
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 
-	mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, true);
+	earaio_reset_data();
 }
 
 static void mtk_btag_eara_stop_collect(void)
@@ -560,7 +561,7 @@ void mtk_btag_earaio_check_window(void)
 
 	/* only reset data when the threshold has not been reached */
 	if (earaio_try_boost(true) == 1)
-		mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, false);
+		earaio_reset_data();
 }
 
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 top_pages_r,

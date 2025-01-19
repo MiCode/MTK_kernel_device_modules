@@ -22,8 +22,6 @@
 #include "blocktag-trace.h"
 #include "mtk_blocktag.h"
 
-#define MICTX_RESET_NS 1000000000
-
 static struct mtk_btag_mictx *mictx_find(struct mtk_blocktag *btag, __u64 id)
 {
 	struct mtk_btag_mictx *mictx;
@@ -34,13 +32,23 @@ static struct mtk_btag_mictx *mictx_find(struct mtk_blocktag *btag, __u64 id)
 	return NULL;
 }
 
-/* TODO:
- * this is only used in mtk_btag_mictx_check_window. check if this is necessary.
- */
-static void mictx_reset(struct mtk_btag_mictx *mictx)
+void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id)
 {
+	struct mtk_blocktag *btag;
+	struct mtk_btag_mictx *mictx;
 	unsigned long flags;
 	int qid;
+
+	btag = mtk_btag_find_by_type(mictx_id.storage);
+	if (!btag)
+		return;
+
+	rcu_read_lock();
+	mictx = mictx_find(btag, mictx_id.id);
+	if (!mictx) {
+		rcu_read_unlock();
+		return;
+	}
 
 	/* clear throughput, request data */
 	for (qid = 0; qid < mictx->queue_nr; qid++) {
@@ -81,6 +89,8 @@ static void mictx_reset(struct mtk_btag_mictx *mictx)
 	mictx->top.pages[BTAG_IO_WRITE] = 0;
 	mictx->top.rnd_cnt = 0;
 	spin_unlock_irqrestore(&mictx->top.lock, flags);
+
+	rcu_read_unlock();
 }
 
 void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
@@ -107,32 +117,6 @@ void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
 	*top_pages_r = mictx->top.pages[BTAG_IO_READ];
 	*top_pages_w = mictx->top.pages[BTAG_IO_WRITE];
 	spin_unlock_irqrestore(&mictx->top.lock, flags);
-	rcu_read_unlock();
-}
-
-void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id, bool force)
-{
-	struct mtk_blocktag *btag;
-	struct mtk_btag_mictx *mictx;
-
-	btag = mtk_btag_find_by_type(mictx_id.storage);
-	if (!btag)
-		return;
-
-	rcu_read_lock();
-	mictx = mictx_find(btag, mictx_id.id);
-	if (!mictx) {
-		rcu_read_unlock();
-		return;
-	}
-
-	if (force) {
-		mictx_reset(mictx);
-	} else if  (sched_clock() - READ_ONCE(mictx->wl.window_begin) > MICTX_RESET_NS) {
-		mictx_reset(mictx);
-		mtk_btag_earaio_clear_data();
-	}
-
 	rcu_read_unlock();
 }
 
