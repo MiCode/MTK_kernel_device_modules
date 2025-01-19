@@ -70,6 +70,7 @@
 #define PEXTP_REQ_CTRL			0x7C
 #define PCIE_26M_REQ_FORCE_ON		BIT(0)
 #define RG_PCIE26M_BYPASS		BIT(4)
+#define RG_PEXTP_DDREN_ACK_SEL		BIT(12)
 #define PEXTP_SLPPROT_RDY		0x264
 /* PCIe0/1 is bit2/3, PCIe2 is bit4/5 */
 #define PEXTP_MAC_SLP_READY(port)	BIT(2 + (port/2) * 2)
@@ -3378,6 +3379,11 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 	val &= ~SYS_CLK_RDY_TIME;
 	val |= SYS_CLK_RDY_TIME_TO_10US;
 	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
+
+	/* Wait DDREN ack */
+	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
+	val |= RG_PEXTP_DDREN_ACK_SEL;
+	writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
 
 	if ((port->chipid == CHIP_VER_B0) && (port->port_num < 2)) {
 		val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
