@@ -900,7 +900,7 @@
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
 		vbus-supply = <&otg_vbus>;
-		vbus-volt = <5000000>;
+		vbus-voltage = <5000000>;
 		tcpc = "type_c_port0";
 		mediatek,bypss-typec-sink = <1>;
 		vbus-current = <1800000>;
@@ -938,10 +938,18 @@
 		compatible = "mediatek,mtk_ctd";
 		bc12_sel = <0>;
 	};
+
+	rt-pd-manager {
+		compatible = "mediatek,rt-pd-manager";
+	};
+
 	typec_mux_switch: typec_mux_switch {
 		compatible = "mediatek,typec_mux_switch";
-		status = "okay";
 		orientation-switch;
+		mode-switch;
+		accessory;
+		mediatek,inverse-orientation;
+		status = "okay";
 		port {
 			ssusb_mux: endpoint@0 {
 				remote-endpoint = <&tcpc_typec_usb>;
