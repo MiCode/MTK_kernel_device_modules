@@ -14,9 +14,12 @@
 	(&((struct mtk_task *)&(p)->android_vendor_data1)->turbo_data)
 #define get_inherit_task(parent)	\
 	((struct task_struct *)((u64)(parent)->android_vendor_data1))
+#define get_vip_t(p)	\
+	(&((struct mtk_task *)&(p)->android_vendor_data1)->vip_task)
 #define TOUCH_DOWN 1
 #define TOUCH_SUSTAIN_MS 2000
 #define INVALID_TGID -1
+#define INVALID_VAL -1
 #define INVALID_LOADING -1
 
 struct list_head;
@@ -76,11 +79,8 @@ struct cpu_info {
 	int *cpu_loading;
 };
 
-extern int set_tgid_vip(int tgid);
-extern int unset_tgid_vip(int tgid);
-extern void turn_on_tgid_vip(void);
-extern void turn_off_tgid_vip(void);
 extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
+extern inline int get_vip_task_prio(struct task_struct *p);
 
 /*
  * Nice levels are multiplicative, with a gentle 10% change for every

@@ -13,6 +13,64 @@
 #include <linux/tracepoint.h>
 #include <task_turbo.h>
 
+TRACE_EVENT(binder_vip_set,
+	TP_PROTO(pid_t a_pid, pid_t b_pid, int a_vip_prio, unsigned int a_throttle,
+		int b_vip_prio, unsigned int b_throttle),
+	TP_ARGS(a_pid, b_pid, a_vip_prio, a_throttle, b_vip_prio, b_throttle),
+
+	TP_STRUCT__entry(
+		__field(pid_t, a_pid)
+		__field(pid_t, b_pid)
+		__field(int, a_vip_prio)
+		__field(unsigned int, a_throttle)
+		__field(int, b_vip_prio)
+		__field(unsigned int, b_throttle)
+	),
+	TP_fast_assign(
+		__entry->a_pid = a_pid;
+		__entry->b_pid = b_pid;
+		__entry->a_vip_prio = a_vip_prio;
+		__entry->a_throttle = a_throttle;
+		__entry->b_vip_prio = b_vip_prio;
+		__entry->b_throttle = b_throttle;
+	),
+	TP_printk("%d -> %d: (%d, %d) / (%d, %d)",
+		__entry->a_pid,
+		__entry->b_pid,
+		__entry->a_vip_prio,
+		__entry->a_throttle,
+		__entry->b_vip_prio,
+		__entry->b_throttle)
+);
+
+TRACE_EVENT(binder_vip_restore,
+	TP_PROTO(pid_t b_pid, int now_vip_prio, unsigned int now_throttle, int bavk_vip_prio,
+		unsigned int back_throttle),
+	TP_ARGS(b_pid, now_vip_prio, now_throttle, bavk_vip_prio, back_throttle),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+		__field(int, now_vip_prio)
+		__field(unsigned int, now_throttle)
+		__field(int, bavk_vip_prio)
+		__field(unsigned int, back_throttle)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+		__entry->now_vip_prio = now_vip_prio;
+		__entry->now_throttle = now_throttle;
+		__entry->bavk_vip_prio = bavk_vip_prio;
+		__entry->back_throttle = back_throttle;
+	),
+	TP_printk("%d: (%d, %d)->(%d, %d)",
+		__entry->b_pid,
+		__entry->now_vip_prio,
+		__entry->now_throttle,
+		__entry->bavk_vip_prio,
+		__entry->back_throttle)
+);
+
+
 TRACE_EVENT(turbo_set,
 	TP_PROTO(struct task_struct *p),
 	TP_ARGS(p),
@@ -242,13 +300,17 @@ TRACE_EVENT(turbo_rtmutex_prepare_setprio,
 );
 
 TRACE_EVENT(turbo_vip,
-	TP_PROTO(int avg_cpu_loading, int cpu_loading_thres, const char *vip_desc, int pid),
-	TP_ARGS(avg_cpu_loading, cpu_loading_thres, vip_desc, pid),
+	TP_PROTO(int avg_cpu_loading, int cpu_loading_thres, const char *vip_desc, int pid,
+				const char *caller, int enf_val, u64 enf_mask),
+	TP_ARGS(avg_cpu_loading, cpu_loading_thres, vip_desc, pid, caller, enf_val, enf_mask),
 	TP_STRUCT__entry(
 		__field(int, avg_cpu_loading)
 		__field(int, cpu_loading_thres)
 		__string(vip_desc, vip_desc)
 		__field(int, pid)
+		__string(caller, caller)
+		__field(int, enf_val)
+		__field(u64, enf_mask)
 	),
 
 	TP_fast_assign(
@@ -256,13 +318,19 @@ TRACE_EVENT(turbo_vip,
 		__entry->cpu_loading_thres = cpu_loading_thres;
 		__assign_str(vip_desc, vip_desc);
 		__entry->pid = pid;
+		__assign_str(caller, caller);
+		__entry->enf_val = enf_val;
+		__entry->enf_mask = enf_mask;
 	),
 
-	TP_printk("avg_cpu_loading=%d cpu_loading_thres=%d %s tgid=%d",
+	TP_printk("avg_cpu_loading=%d cpu_loading_thres=%d %s tgid=%d enforce caller=%s val=%d mask=%llu",
 		__entry->avg_cpu_loading,
 		__entry->cpu_loading_thres,
 		__get_str(vip_desc),
-		__entry->pid)
+		__entry->pid,
+		__get_str(caller),
+		__entry->enf_val,
+		__entry->enf_mask)
 );
 
 #endif /*_TRACE_TASK_TURBO_H */
