@@ -449,7 +449,7 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 				call_hw_op(task->config->path[0]->mmlsys,
 					mminfra_pw_enable);
 				call_hw_op(task->config->path[0]->mmlsys,
-					pw_enable, task->config->info.mode);
+					pw_enable, task->config->info.mode, false);
 				mml_msg_dpc("%s dpc exception flow on", __func__);
 				mml_dpc_exc_keep(task->config->mml, comp->sysid);
 				call_hw_op(comp, clk_enable);
@@ -1613,7 +1613,7 @@ static void hdr_histdone_cb(struct cmdq_cb_data data)
 		mml_dpc_exc_release(hdr->mml, comp->sysid);
 		/* ccf power off */
 		call_hw_op(hdr->mmlsys_comp, pw_disable,
-			hdr->pq_task->task->config->info.mode);
+			hdr->pq_task->task->config->info.mode, false);
 		call_hw_op(hdr->mmlsys_comp, mminfra_pw_disable);
 		mml_clock_unlock(hdr->mml);
 		mml_lock_wake_lock(hdr->mml, false);

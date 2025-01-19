@@ -27,7 +27,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2 \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp \
              -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi \
              -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3 \
-             -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec
+             -I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mminfra/
 
 ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme

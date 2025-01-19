@@ -12,6 +12,7 @@
 #include <linux/platform_device.h>
 #include <mtk_drm_ddp_comp.h>
 #include <cmdq-util.h>
+#include <mtk-mminfra-util.h>
 
 #include "mtk-mml-dpc.h"
 #include "mtk-mml-core.h"
@@ -243,6 +244,9 @@ struct mml_sys {
 
 	u32 apu_base;
 	void __iomem *apu_base_va;
+
+	bool pwr_control_by_mminfra;
+	u32 mminfra_all_on_pwr_idx;
 };
 
 struct sys_frame_data {
@@ -1262,13 +1266,13 @@ static const struct mml_comp_debug_ops sys_debug_ops_mt6991_mml0 = {
 	.reset = &sys_reset_current,
 };
 
-s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode)
+s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 {
 	int ret;
 	struct mml_sys *sys = comp_to_sys(comp);
 	bool pwon = comp->pw_cnt == 0;
 
-	ret = mml_comp_pw_enable(comp, mode);
+	ret = mml_comp_pw_enable(comp, mode, sys->pwr_control_by_mminfra);
 
 	if (!ret && pwon) {
 		if (mode == MML_MODE_DIRECT_LINK ||
@@ -1284,7 +1288,7 @@ s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode)
 	return ret;
 }
 
-s32 mml_sys_pw_disable(struct mml_comp *comp, const s8 mode)
+s32 mml_sys_pw_disable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 {
 	int ret;
 	struct mml_sys *sys = comp_to_sys(comp);
@@ -1299,7 +1303,7 @@ s32 mml_sys_pw_disable(struct mml_comp *comp, const s8 mode)
 			mml_dpc_mtcmos_auto(comp->sysid, false, mode);
 	}
 
-	ret = mml_comp_pw_disable(comp, mode);
+	ret = mml_comp_pw_disable(comp, mode, sys->pwr_control_by_mminfra);
 
 	return ret;
 }
@@ -1332,9 +1336,16 @@ s32 mml_mminfra_pw_enable(struct mml_comp *comp)
 	 */
 	mml_msg_dpc("%s mminfra pm_runtime_resume_and_get", __func__);
 	mml_mmp(pw_get, MMPROFILE_FLAG_PULSE, 0, 0);
-	ret = pm_runtime_resume_and_get(sys->dev);
-	if (ret)
-		mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
+	if (sys->pwr_control_by_mminfra) {
+		mml_log("%s enable by mminfra_on_off", __func__);
+		ret = mtk_mminfra_on_off(true, MM_PWR_MM_1, MM_TYPE_MML);
+		if (ret)
+			mml_err("%s enable mtk_mminfra_on_off fail ret:%d", __func__, ret);
+	} else {
+		ret = pm_runtime_resume_and_get(sys->dev);
+		if (ret)
+			mml_err("%s enable pw-domain fail ret:%d", __func__, ret);
+	}
 
 	return ret;
 }
@@ -1364,7 +1375,14 @@ s32 mml_mminfra_pw_disable(struct mml_comp *comp)
 
 	mml_msg_dpc("%s mminfra pm_runtime_put_sync", __func__);
 	mml_mmp(pw_put, MMPROFILE_FLAG_PULSE, 0, 0);
-	pm_runtime_put_sync(sys->dev);
+	if (sys->pwr_control_by_mminfra) {
+		mml_log("%s disable by mminfra_on_off", __func__);
+		ret = mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_MML);
+		if (ret)
+			mml_err("%s disable mtk_mminfra_on_off fail ret:%d", __func__, ret);
+	} else {
+		pm_runtime_put_sync(sys->dev);
+	}
 
 	return 0;
 }
@@ -1474,6 +1492,7 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	const char *name;
 	u32 value, comp_id, selbit, selmask;
 	s32 ret;
+	int get_pd_cnt = 0;
 
 	/* This larb_dev represent mmlsys it self for MMINFRA power domain on/off.
 	 * The mml-core will manually do pw_enable/pw_disable by this dev,
@@ -1481,7 +1500,19 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 	 */
 	if (sys->data->pw_mminfra) {
 		sys->dev = dev;
-		pm_runtime_enable(dev);
+		get_pd_cnt = of_count_phandle_with_args(dev->of_node,
+						"power-domains",
+						"#power-domain-cells");
+		mml_log("%s get %d power-domains", __func__, get_pd_cnt);
+		if (get_pd_cnt == -ENOENT || get_pd_cnt == 0) {
+			sys->pwr_control_by_mminfra = true;
+			of_property_read_u32(dev->of_node,
+				"mminfra-all-on-pwr-idx", &sys->mminfra_all_on_pwr_idx);
+			mml_log("%s controlled by mminfra", __func__);
+		}
+		else {
+			pm_runtime_enable(dev);
+		}
 	}
 	ret = mml_comp_init_larb(comp, dev);
 	if (ret)
@@ -1721,7 +1752,7 @@ static void sys_ddp_disable_locked(const struct mml_topology_path *path,
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 
 	if (path->mmlsys) {
-		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode);
+		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode, false);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 	}
 	mml_trace_ex_end();
@@ -1777,7 +1808,7 @@ static void sys_ddp_enable(struct mml_sys *sys, struct mml_task *task, u32 pipe)
 
 	if (path->mmlsys) {
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
-		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode);
+		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode, false);
 	}
 
 	mml_trace_ex_end();
@@ -2624,7 +2655,7 @@ void mml_sys_destroy(struct platform_device *pdev, struct mml_sys *sys,
 	int i;
 
 	mml_dle_put_context(sys->dle_ctx);
-	if (sys->data->pw_mminfra)
+	if (sys->data->pw_mminfra && !sys->pwr_control_by_mminfra)
 		pm_runtime_disable(&pdev->dev);
 	for (i = 0; i < sys->comp_cnt; i++)
 		component_del(&pdev->dev, comp_ops);

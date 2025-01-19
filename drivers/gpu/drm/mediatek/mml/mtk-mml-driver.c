@@ -973,7 +973,7 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	return 0;
 }
 
-s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode)
+s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 {
 	int ret = 0;
 
@@ -994,16 +994,26 @@ s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode)
 #ifndef MML_FPGA
 	mml_msg_dpc("%s comp %u pm_runtime_resume_and_get", __func__, comp->id);
 	mml_mmp(pw_get, MMPROFILE_FLAG_PULSE, comp->id, 0);
-	ret = pm_runtime_resume_and_get(comp->larb_dev);
-	if (ret)
-		mml_err("%s enable fail ret:%d", __func__, ret);
+
+	if (pw_by_mminfra) {
+		mml_log("%s mtk_smi_larb_enable", __func__);
+		ret = mtk_smi_larb_enable(comp->larb_dev);
+		if (ret)
+			mml_err("%s mtk_smi_larb_enable fail ret:%d", __func__, ret);
+	} else {
+		ret = pm_runtime_resume_and_get(comp->larb_dev);
+		if (ret)
+			mml_err("%s enable fail ret:%d", __func__, ret);
+	}
 #endif
 
 	return ret;
 }
 
-s32 mml_comp_pw_disable(struct mml_comp *comp, const s8 mode)
+s32 mml_comp_pw_disable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 {
+	int ret = 0;
+
 	comp->pw_cnt--;
 	if (comp->pw_cnt > 0)
 		return 0;
@@ -1021,7 +1031,15 @@ s32 mml_comp_pw_disable(struct mml_comp *comp, const s8 mode)
 #ifndef MML_FPGA
 	mml_msg_dpc("%s comp %u pm_runtime_put_sync", __func__, comp->id);
 	mml_mmp(pw_put, MMPROFILE_FLAG_PULSE, comp->id, 0);
-	pm_runtime_put_sync(comp->larb_dev);
+
+	if (pw_by_mminfra) {
+		mml_log("%s mtk_smi_larb_disable", __func__);
+		ret = mtk_smi_larb_disable(comp->larb_dev);
+		if (ret)
+			mml_err("%s mtk_smi_larb_disable fail ret:%d", __func__, ret);
+	} else {
+		pm_runtime_put_sync(comp->larb_dev);
+	}
 #endif
 
 	return 0;
@@ -1116,9 +1134,9 @@ void mml_dpc_task_cnt_inc(struct mml_task *task)
 		mml_clock_lock(mml);
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
-		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode);
+		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode, false);
 		if (path->mmlsys2)
-			call_hw_op(path->mmlsys2, pw_enable, task->config->info.mode);
+			call_hw_op(path->mmlsys2, pw_enable, task->config->info.mode, false);
 		mml_mmp(dpc, MMPROFILE_FLAG_START, 1, 0);
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
@@ -1147,8 +1165,8 @@ void mml_dpc_task_cnt_dec(struct mml_task *task)
 		mml_mmp(dpc, MMPROFILE_FLAG_END, 0, 0);
 		if (path->mmlsys2)
 			call_hw_op(path->mmlsys2, pw_disable,
-				task->config->info.mode);
-		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode);
+				task->config->info.mode, false);
+		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode, false);
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 		mml_clock_unlock(mml);

@@ -690,7 +690,7 @@ static void clarity_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			/* ccf power on */
 			call_hw_op(task->config->path[0]->mmlsys, mminfra_pw_enable);
 			call_hw_op(task->config->path[0]->mmlsys, pw_enable,
-				task->config->info.mode);
+				task->config->info.mode, false);
 			/* dpc exception flow on */
 			mml_msg_dpc("%s dpc exception flow on", __func__);
 			mml_dpc_exc_keep(task->config->mml, comp->sysid);
@@ -746,7 +746,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		/* ccf power on */
 		call_hw_op(task->config->path[0]->mmlsys, mminfra_pw_enable);
 		call_hw_op(task->config->path[0]->mmlsys, pw_enable,
-			task->config->info.mode);
+			task->config->info.mode, false);
 		/* dpc exception flow on */
 		mml_msg_dpc("%s dpc exception flow on", __func__);
 		mml_dpc_exc_keep(task->config->mml, comp->sysid);
@@ -813,7 +813,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			/* ccf power on */
 			call_hw_op(task->config->path[0]->mmlsys, mminfra_pw_enable);
 			call_hw_op(task->config->path[0]->mmlsys, pw_enable,
-				task->config->info.mode);
+				task->config->info.mode, false);
 			/* dpc exception flow on */
 			mml_msg_dpc("%s dpc exception flow on", __func__);
 			mml_dpc_exc_keep(task->config->mml, comp->sysid);
@@ -894,7 +894,7 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 	mml_clock_lock(task->config->mml);
 	call_hw_op(task->config->path[0]->mmlsys, mminfra_pw_enable);
 	call_hw_op(task->config->path[0]->mmlsys, pw_enable,
-		task->config->info.mode);
+		task->config->info.mode, false);
 	if (task->config->dpc) {
 		/* dpc exception flow on */
 		mml_msg("%s dpc exception flow on", __func__);
@@ -944,7 +944,7 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 		mml_dpc_exc_release(task->config->mml, comp->sysid);
 	}
 	call_hw_op(task->config->path[0]->mmlsys, pw_disable,
-		task->config->info.mode);
+		task->config->info.mode, false);
 	call_hw_op(task->config->path[0]->mmlsys, mminfra_pw_disable);
 
 	mml_clock_unlock(task->config->mml);
@@ -2352,7 +2352,7 @@ static void aal_readback_work(struct work_struct *work_item)
 		mml_dpc_exc_release(aal->mml, comp->sysid);
 		/* ccf power off */
 		call_hw_op(aal->mmlsys_comp, pw_disable,
-			aal->pq_task->task->config->info.mode);
+			aal->pq_task->task->config->info.mode, false);
 		call_hw_op(aal->mmlsys_comp, mminfra_pw_disable);
 		mml_clock_unlock(aal->mml);
 		mml_lock_wake_lock(aal->mml, false);
@@ -2406,7 +2406,7 @@ static void clarity_histdone_cb(struct cmdq_cb_data data)
 		mml_dpc_exc_release(aal->mml, comp->sysid);
 		/* ccf power off */
 		call_hw_op(aal->mmlsys_comp, pw_disable,
-			aal->pq_task->task->config->info.mode);
+			aal->pq_task->task->config->info.mode, false);
 		call_hw_op(aal->mmlsys_comp, mminfra_pw_disable);
 		mml_clock_unlock(aal->mml);
 		mml_lock_wake_lock(aal->mml, false);
