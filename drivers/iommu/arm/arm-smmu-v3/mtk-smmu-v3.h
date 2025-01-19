@@ -169,6 +169,8 @@
 #define SMMU_TCU_CTL4_DVM		(0x210)
 #define DVM_EN_REQ			F_BIT_SET(0)
 #define DVM_EN_ACK			F_BIT_SET(1)
+#define DVM_ENABLE			(DVM_EN_REQ | DVM_EN_ACK)
+#define DVM_DISABLE			(~DVM_ENABLE)
 
 /* SMMU TCU latency meters control registers
  * TCU_MON_ID: The monitoring AXI ID if needed, default monitor all

@@ -2181,29 +2181,59 @@ static inline bool mtk_smmu_dvm_connect_done(struct arm_smmu_device *smmu)
 	void __iomem *wp_base = smmu->wp_base;
 
 	val = smmu_read_field(wp_base, SMMU_TCU_CTL4_DVM, (DVM_EN_ACK | DVM_EN_REQ));
-	return val == (DVM_EN_ACK | DVM_EN_REQ);
+	return val == DVM_ENABLE;
+}
+
+static void mtk_smmu_dvm_debug(struct arm_smmu_device *smmu)
+{
+	void __iomem *wp_base = smmu->wp_base;
+
+	dev_info(smmu->dev,
+		 "TCU_CTL4_DVM:[0x%x] SMMUWP_TCU_MON7:[0x%x] SMMUWP_TCU_DBG4:[0x%x] CR2:[0x%x]\n",
+		 smmu_read_reg(wp_base, SMMU_TCU_CTL4_DVM),
+		 smmu_read_reg(wp_base, SMMUWP_TCU_MON7),
+		 smmu_read_reg(wp_base, SMMUWP_TCU_DBG4),
+		 readl_relaxed(smmu->base + ARM_SMMU_CR2));
 }
 
 static void mtk_smmu_dvm_connect(struct arm_smmu_device *smmu)
 {
-	unsigned int attempts = 0;
+	unsigned int val = 0, attempts = 0;
 	void __iomem *wp_base = smmu->wp_base;
 
-	if (mtk_smmu_dvm_connect_done(smmu)) {
+	val = smmu_read_field(wp_base, SMMU_TCU_CTL4_DVM, (DVM_EN_ACK | DVM_EN_REQ));
+	switch (val) {
+	case DVM_ENABLE:
 		/* SMMU has already connected with DVM */
 		return;
-	}
-
-	/* SMMU connect with DVM MI */
-	smmu_write_field(wp_base, SMMU_TCU_CTL4_DVM, DVM_EN_REQ, DVM_EN_REQ);
-	while (attempts++ < SMMU_POLL_MAX_ATTEMPTS) {
-		if (mtk_smmu_dvm_connect_done(smmu)) {
-			/* SMMU has already connected with DVM */
-			return;
+	case DVM_EN_ACK:
+		/*
+		 * In this case, coherency connection signaling states is
+		 * Disconnect(SYSCOREQ == 0 && SYSACK == 1). In the connect
+		 * flow, this probably means that coherency connection
+		 * signaling states is incorrect now.
+		 */
+		pr_info("%s, Unexpected dvm status\n", __func__);
+		break;
+	case DVM_DISABLE:
+		/* Connect smmu and DVM MI */
+		smmu_write_field(wp_base, SMMU_TCU_CTL4_DVM, DVM_EN_REQ, DVM_EN_REQ);
+		fallthrough;
+	case DVM_EN_REQ:
+		for (attempts = 0; attempts < SMMU_POLL_MAX_ATTEMPTS; attempts++) {
+			/* Polling until connect success */
+			if (mtk_smmu_dvm_connect_done(smmu)) {
+				/* SMMU has already connected with DVM */
+				return;
+			}
 		}
+		pr_info("%s, dvm connect timeout\n", __func__);
+		break;
+	default:
+		break;
 	}
 
-	pr_info("%s, dvm connect timeout\n", __func__);
+	mtk_smmu_dvm_debug(smmu);
 }
 
 static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
@@ -2252,9 +2282,11 @@ static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
 			return SMC_SMMU_FAIL;
 		hyp_smmu_dump_s2_pgtable(debug_info);
 
-		if (mtk_smmu_dvm_support(smmu) && !mtk_smmu_dvm_connect_done(smmu))
-			pr_info("[%s] %s, This fault may be caused by DVM not connect\n",
+		if (mtk_smmu_dvm_support(smmu) && !mtk_smmu_dvm_connect_done(smmu)) {
+			pr_info("[%s] %s, This fault may be caused by DVM disconnection\n",
 				HYP_SMMU_INFO_PREFIX, __func__);
+			mtk_smmu_dvm_debug(smmu);
+		}
 		break;
 	case HYP_SMMU_REG_DUMP_EVT:
 		/* dump smmu hw reg */

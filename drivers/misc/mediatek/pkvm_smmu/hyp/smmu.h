@@ -245,6 +245,12 @@ enum MPU_REQ_ORIGIN_ZONE_ID {
 #define HW_DVM_DISABLE	0
 #define HW_DVM_ENABLE	1
 #define HW_DVM_RETRY	2
+/* System coherence status */
+#define DVM_EN_REQ		(1U)
+#define DVM_EN_ACK		(2U)
+#define SYSCO_STATUS_MASK	MAKE_MASK(1, 0)
+#define DVM_CONNECTED		(DVM_EN_REQ | DVM_EN_ACK)
+#define DVM_DISCONNECTED	(~DVM_CONNECTED)
 /*******************************************************************************
  * Other
  ******************************************************************************/

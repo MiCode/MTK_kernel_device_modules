@@ -300,10 +300,11 @@ static unsigned int hw_dvm_check(void)
 }
 
 /* MCUSYS and DVM_MI connect */
-bool dvm_mi_cpu_connect(void)
+static bool dvm_mi_cpu_connect(void)
 {
 	void *reg_address_va = NULL;
 	uint32_t polling_times = 0;
+	uint32_t reg_value = 0;
 
 	if (!dvm_mi_va_base) {
 		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm mi va is NULL");
@@ -311,22 +312,50 @@ bool dvm_mi_cpu_connect(void)
 	}
 
 	reg_address_va = (void *)(dvm_mi_va_base + DVM_MI_DVM_CTRL);
-	writel(0x1, reg_address_va);
-	for (polling_times = 0; polling_times < MAX_POLLING_TIME;
-		 polling_times++) {
-		if ((readl(reg_address_va) & 0x3) == 0x3)
-			return true;
-	}
-	pkvm_smmu_ops->puts("[pKVM_SMMU] dvm connect timeout");
+	reg_value = readl(reg_address_va);
 
+	/* Check dvm mi and mcusys connect status */
+	switch ((reg_value & SYSCO_STATUS_MASK)) {
+	case DVM_CONNECTED:
+		/* DVM has already connected with MCUSYS */
+		return true;
+	case DVM_EN_ACK:
+		/*
+		 * In this case, coherency connection signaling states is
+		 * Disconnect(SYSCOREQ == 0 && SYSACK == 1). In the connect
+		 * flow, this probably means that coherency connection
+		 * signaling states is incorrect now.
+		 */
+		pkvm_smmu_ops->puts("[pKVM_SMMU] Unexpected dvm status");
+		break;
+	case DVM_DISCONNECTED:
+		/* Connect system coherence to MCUSYS */
+		writel((reg_value | DVM_EN_REQ), reg_address_va);
+		fallthrough;
+	case DVM_EN_REQ:
+		for (polling_times = 0; polling_times < MAX_POLLING_TIME;
+			polling_times++) {
+			/* Polling until connect success */
+			if ((readl(reg_address_va) & SYSCO_STATUS_MASK)	==
+				 DVM_CONNECTED)
+				return true;
+		}
+		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm connect timeout");
+		break;
+	default:
+		break;
+	}
+
+	dvm_mi_reg_debug_dump();
 	return false;
 }
 
 /* MCUSYS and DVM_MI disconnect */
-void dvm_mi_cpu_disconnect(void)
+static void dvm_mi_cpu_disconnect(void)
 {
 	void *reg_address_va = NULL;
 	uint32_t polling_times = 0;
+	uint32_t reg_value = 0;
 
 	if (!dvm_mi_va_base) {
 		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm mi va is NULL");
@@ -334,15 +363,42 @@ void dvm_mi_cpu_disconnect(void)
 	}
 
 	reg_address_va = (void *)(dvm_mi_va_base + DVM_MI_DVM_CTRL);
-	writel(0x0, reg_address_va);
-	for (polling_times = 0; polling_times < MAX_POLLING_TIME;
-		polling_times++) {
-		if ((readl(reg_address_va) & 0x3) == 0x0)
-			return;
+	reg_value = readl(reg_address_va);
+
+	/* Check dvm mi and mcusys connect status */
+	switch ((reg_value & SYSCO_STATUS_MASK)) {
+	case DVM_DISCONNECTED:
+		/* DVM has already disconnected with MCUSYS */
+		return;
+	case DVM_EN_REQ:
+		/*
+		 * In this case, coherency connection signaling states is
+		 * Connect(SYSCOREQ == 1 && SYSACK == 0). In the disconnect
+		 * flow, this probably means that coherency connection
+		 * signaling states is incorrect now.
+		 */
+		pkvm_smmu_ops->puts("[pKVM_SMMU] Unexpected dvm status");
+		break;
+	case DVM_CONNECTED:
+		/* Disconnect system coherence to MCUSYS */
+		writel((reg_value & (~DVM_EN_REQ)), reg_address_va);
+		fallthrough;
+	case DVM_EN_ACK:
+		for (polling_times = 0; polling_times < MAX_POLLING_TIME;
+			polling_times++) {
+			/* Polling until connect success */
+			if ((readl(reg_address_va) & SYSCO_STATUS_MASK) ==
+				 DVM_DISCONNECTED)
+				return;
+		}
+		pkvm_smmu_ops->puts("[pKVM_SMMU] dvm disconnect timeout");
+		break;
+	default:
+		break;
 	}
 
-	pkvm_smmu_ops->puts("[pKVM_SMMU] dvm disconnect fail");
 	dvm_mi_reg_debug_dump();
+	return;
 }
 
 static void issue_sw_dvm(void)
@@ -921,38 +977,6 @@ unsigned long smmu_debug_dump_reg(uint8_t smmu_type, uint32_t reg)
 		return (uint64_t)readl(smmu_dev->smmuv3->base_addr + reg);
 	}
 	return INVALID_SMMU_TYPE_BIT;
-}
-
-/*
- * Dump DVM MI register for debug purpose.
- * 1. FIFO register: Number of pending dvm messages,
- * 2. OSTD register: Number of waiting response dvm messages,
- */
-void dvm_mi_reg_debug_dump(void)
-{
-	if (!dvm_mi_va_base) {
-		pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: dvm mi va is NULL");
-		return;
-	}
-
-	/* FIFO register dump */
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: AC_FIFO");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AC_FIFO)));
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: CR_FIFO");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + CR_FIFO)));
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: AR_FIFO");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AR_FIFO)));
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: AW_R_FIFO");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AW_R_FIFO)));
-	/* OSTD register dump */
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: ACP_OSTD_CNT_0");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + ACP_OSTD_CNT_0)));
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: ACP_OSTD_CNT_1");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + ACP_OSTD_CNT_1)));
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: AC_OSTD_CNT");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AC_OSTD_CNT)));
-	pkvm_smmu_ops->puts("dvm_mi_reg_debug_dump: AR_OSTD_CNT");
-	pkvm_smmu_ops->putx64(readl((void *)(dvm_mi_va_base + AR_OSTD_CNT)));
 }
 
 /*
