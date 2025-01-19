@@ -756,7 +756,7 @@ static bool mtk_vdec_lpw_check_dec_stop(struct mtk_vcodec_ctx *ctx,
 
 	if (before_decode && ctx->lpw_dec_start_cnt > 0) {
 		ctx->lpw_dec_start_cnt--;
-		if (ctx->lpw_dec_start_cnt <= mtk_vdec_lpw_limit && pair_cnt <= limit_cnt) {
+		if (ctx->lpw_dec_start_cnt < (ctx->dpb_size - 1) && pair_cnt <= limit_cnt) {
 			// done driver dpb size but no more pair to decode
 			mtk_lpw_debug(1, "[%d] lpw_dec_start_cnt less %d not done but no more pair cnt %d(%d,%d)",
 				ctx->id, ctx->lpw_dec_start_cnt, pair_cnt, src_cnt, dst_cnt);
