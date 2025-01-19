@@ -1153,6 +1153,9 @@ static int clkdbg_pm_runtime_get_sync(struct seq_file *s, void *v)
 
 			dev = dev_from_name(pd_name);
 
+			if (dev == NULL)
+				break;
+
 			pr_dbg("pm_runtime_get_sync_all: %s\n", pd_name);
 			r = pm_runtime_get_sync(dev);
 			if (r != 0)
@@ -1200,6 +1203,9 @@ static int clkdbg_pm_runtime_put_sync(struct seq_file *s, void *v)
 				break;
 
 			dev = dev_from_name(pd_name);
+
+			if (dev == NULL)
+				break;
 
 			pr_dbg("pm_runtime_put_sync_all: %s\n", pd_name);
 			r = pm_runtime_put_sync(dev);

@@ -1080,9 +1080,18 @@ static int scpsys_apu_power_off(struct generic_pm_domain *genpd)
 
 static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
 {
+	struct scp *scp = scpd->scp;
+	struct regmap *hwv_regmap;
 	u32 val = 0;
 
-	regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+	if (scpd->hwv_regmap)
+		hwv_regmap = scpd->hwv_regmap;
+	else if (scp->hwv_regmap)
+		hwv_regmap = scp->hwv_regmap;
+	else
+		return 0;
+
+	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
 	if ((val & scpd->data->vcp_mask) == scpd->data->vcp_mask)
 		return 1;
 
@@ -1092,12 +1101,17 @@ static int mtk_check_vcp_is_ready(struct scp_domain *scpd)
 static int mtk_hwv_is_done(struct scp_domain *scpd)
 {
 	struct scp *scp = scpd->scp;
+	struct regmap *hwv_regmap;
 	u32 val = 0, mask = 0;
 
 	if (scpd->hwv_regmap)
-		regmap_read(scpd->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+		hwv_regmap = scpd->hwv_regmap;
+	else if (scp->hwv_regmap)
+		hwv_regmap = scp->hwv_regmap;
 	else
-		regmap_read(scp->hwv_regmap, scpd->data->hwv_done_ofs, &val);
+		return 0;
+
+	regmap_read(hwv_regmap , scpd->data->hwv_done_ofs, &val);
 
 	mask = BIT(scpd->data->hwv_shift);
 	if ((val & mask) == mask)
@@ -1114,8 +1128,10 @@ static int mtk_hwv_is_enable_done(struct scp_domain *scpd)
 
 	if (scpd->hwv_regmap)
 		hwv_regmap = scpd->hwv_regmap;
-	else
+	else if (scp->hwv_regmap)
 		hwv_regmap = scp->hwv_regmap;
+	else
+		return 0;
 
 	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
 	regmap_read(hwv_regmap, scpd->data->hwv_en_ofs, &val2);
@@ -1136,8 +1152,10 @@ static int mtk_hwv_is_disable_done(struct scp_domain *scpd)
 
 	if (scpd->hwv_regmap)
 		hwv_regmap = scpd->hwv_regmap;
-	else
+	else if (scp->hwv_regmap)
 		hwv_regmap = scp->hwv_regmap;
+	else
+		return 0;
 
 	regmap_read(hwv_regmap, scpd->data->hwv_done_ofs, &val);
 	regmap_read(hwv_regmap, scpd->data->hwv_clr_sta_ofs, &val2);
@@ -1258,7 +1276,7 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 	struct scp_domain *scpd = container_of(genpd, struct scp_domain, genpd);
 	struct scp *scp = scpd->scp;
 	struct regmap *hwv_regmap;
-	struct regmap *cksys2_regmap;
+	struct regmap *cksys2_regmap = NULL;
 	u32 val = 0;
 	int ret = 0;
 	int tmp;
@@ -1288,10 +1306,12 @@ static int scpsys_hwv_power_off(struct generic_pm_domain *genpd)
 		goto err_lp_clk;
 
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_HWV_CHK_MUX_OPT)) {
-		/* chk mux is on */
-		regmap_read(cksys2_regmap, scpd->data->chk_data.hwv_debug_mux_ofs_opt, &val);
-		if ((val & scpd->data->chk_data.hwv_debug_mux_shift_opt) == 0)
-			goto err_mux_off;
+		if (cksys2_regmap) {
+			/* chk mux is on */
+			regmap_read(cksys2_regmap, scpd->data->chk_data.hwv_debug_mux_ofs_opt, &val);
+			if ((val & scpd->data->chk_data.hwv_debug_mux_shift_opt) == 0)
+				goto err_mux_off;
+		}
 	}
 
 	/* wait for irq status idle */
