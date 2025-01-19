@@ -58,3 +58,10 @@ s __tpstrtab_android_rvh_set_cpus_allowed_ptr
 s __traceiter_android_rvh_set_cpus_allowed_ptr
 s __tracepoint_android_rvh_set_cpus_allowed_ptr
 s __thaw_task
+s __arm64_sys_swapon
+s __free_cluster
+s free_cluster
+s put_swap_folio
+s scan_swap_map_try_ssd_cluster
+s swap_do_scheduled_discard
+s swapcache_free_entries
