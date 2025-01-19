@@ -100,6 +100,7 @@
 #define DEFAULT_QUOTA_V2_DIFF_CLAMP_MIN 0
 #define DEFAULT_FPSGO_EXP_L2Q_MULTIPLE_TIMES 2
 #define DEFAULT_POWERRL_FPS_MARGIN -20
+#define DEFAULT_POWERRL_CAP_LIMIT_RANGE 20
 #define DEFAULT_POWERRL_CURRENT_UNIT 1000
 #define DEFAULT_POWERRL_VOLTAGE_UNIT 1000
 #define DEFAULT_POWERRL_TOTAL_UNIT 1000
@@ -347,6 +348,7 @@ static int rl_l2q_exp_times;
 static int user_vsync_fpks;
 static int powerRL_enable;
 static int powerRL_FPS_margin;
+static int powerRL_cap_limit_range;
 static int powerRL_current_unit;
 static int powerRL_voltage_unit;
 static int powerRL_total_unit;
@@ -543,7 +545,7 @@ EXPORT_SYMBOL(fbt_cal_target_time_fp);
 int (*fbt_power_rl_fp)(int pid, unsigned long long bufID,
 		unsigned long long ts, unsigned int target_fps_ori,
 		int power_current, unsigned long long inst_frame,
-		int min_cap, int fps_margin,
+		int min_cap, int fps_margin, int cap_limit_range,
 		int *uclamp, int *ruclamp,
 		int *uclamp_m, int *ruclamp_m);
 EXPORT_SYMBOL(fbt_power_rl_fp);
@@ -2690,6 +2692,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 
 	render_attr->powerRL_enable_by_pid = powerRL_enable;
 	render_attr->powerRL_FPS_margin_by_pid = powerRL_FPS_margin;
+	render_attr->powerRL_cap_limit_range_by_pid = powerRL_cap_limit_range;
 
 #if FPSGO_MW
 	fpsgo_attr = fpsgo_find_attr_by_pid(thr->tgid, 0);
@@ -2878,6 +2881,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->powerRL_enable_by_pid = pid_attr.powerRL_enable_by_pid;
 	if (pid_attr.powerRL_FPS_margin_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->powerRL_FPS_margin_by_pid = pid_attr.powerRL_FPS_margin_by_pid;
+	if (pid_attr.powerRL_cap_limit_range_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->powerRL_cap_limit_range_by_pid = pid_attr.powerRL_cap_limit_range_by_pid;
 
 by_tid:
 	fpsgo_attr_tid = fpsgo_find_attr_by_tid(thr->pid, 0);
@@ -4822,7 +4827,7 @@ out:
 EXPORT_SYMBOL(fbt_cal_target_time_ns);
 
 int fbt_power_rl(struct render_info *thr, int is_powerRL_ready, int separate_aa_active, int powerRL_FPS_margin_final,
-	unsigned long long ts, unsigned int target_fps_ori)
+	int powerRL_cap_limit_range_final, unsigned long long ts, unsigned int target_fps_ori)
 {
 	int ret = 0;
 
@@ -4872,7 +4877,7 @@ int fbt_power_rl(struct render_info *thr, int is_powerRL_ready, int separate_aa_
 			ret = fbt_power_rl_fp(thr->pid, thr->buffer_id,
 				ts, target_fps_ori,
 				power_current, inst_frame,
-				min_cap, powerRL_FPS_margin_final,
+				min_cap, powerRL_FPS_margin_final, powerRL_cap_limit_range_final,
 				&thr->powerRL.uclamp, &thr->powerRL.ruclamp,
 				&thr->powerRL.uclamp_m, &thr->powerRL.ruclamp_m);
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 1, "powerRL_enable");
@@ -4931,6 +4936,7 @@ static int fbt_boost_policy(
 	int expected_fps_margin_final;
 	int powerRL_enable_final;
 	int powerRL_FPS_margin_final;
+	int powerRL_cap_limit_range_final;
 #if IS_ENABLED(CONFIG_ARM64)
 	int s32_target_time;
 #endif
@@ -4970,6 +4976,7 @@ static int fbt_boost_policy(
 	limit_min_cap_target_t_final = thread_info->attr.limit_min_cap_target_t_by_pid;
 	powerRL_enable_final = thread_info->attr.powerRL_enable_by_pid;
 	powerRL_FPS_margin_final = thread_info->attr.powerRL_FPS_margin_by_pid;
+	powerRL_cap_limit_range_final = thread_info->attr.powerRL_cap_limit_range_by_pid;
 	if (!cooler_on)
 		target_time_up_bound_final = thread_info->attr.target_time_up_bound_by_pid;
 
@@ -5021,7 +5028,7 @@ static int fbt_boost_policy(
 
 	if (powerRL_enable_final && bat_psy)
 		fbt_power_rl(thread_info, fbt_get_powerRL_ko_is_ready(), separate_aa_final, powerRL_FPS_margin_final,
-			ts, target_fps_ori);
+		powerRL_cap_limit_range_final, ts, target_fps_ori);
 
 	limit_cap = check_limit_cap(0);
 	limit_sys_max_cap = fbt_get_limit_capacity(0);
@@ -7761,8 +7768,12 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->powerRL_FPS_margin_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->powerRL_FPS_margin_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "powerRL_cap_limit_range")) {
+		if ((val <= 100 && val >= 0) && action == 's')
+			boost_attr->powerRL_cap_limit_range_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->powerRL_cap_limit_range_by_pid = BY_PID_DEFAULT_VAL;
 	}
-
 delete_pid:
 	if (delete) {
 		delete_attr_by_pid(pid);
@@ -9369,6 +9380,10 @@ FBT_SYSFS_READ(powerRL_FPS_margin, fbt_mlock, powerRL_FPS_margin);
 FBT_SYSFS_WRITE_VALUE(powerRL_FPS_margin, fbt_mlock, powerRL_FPS_margin, -50, 0);
 static KOBJ_ATTR_RW(powerRL_FPS_margin);
 
+FBT_SYSFS_READ(powerRL_cap_limit_range, fbt_mlock, powerRL_cap_limit_range);
+FBT_SYSFS_WRITE_VALUE(powerRL_cap_limit_range, fbt_mlock, powerRL_cap_limit_range, 0, 100);
+static KOBJ_ATTR_RW(powerRL_cap_limit_range);
+
 FBT_SYSFS_READ(powerRL_current_unit, fbt_mlock, powerRL_current_unit);
 FBT_SYSFS_WRITE_VALUE(powerRL_current_unit, fbt_mlock, powerRL_current_unit, 1, 10000);
 static KOBJ_ATTR_RW(powerRL_current_unit);
@@ -9505,6 +9520,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_enable);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_FPS_margin);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_cap_limit_range);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_current_unit);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_voltage_unit);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
@@ -9666,6 +9682,7 @@ int __init fbt_cpu_init(void)
 	// powerRL related
 	powerRL_enable = fbt_get_default_powerRL_enable();
 	powerRL_FPS_margin = DEFAULT_POWERRL_FPS_MARGIN;
+	powerRL_cap_limit_range = DEFAULT_POWERRL_CAP_LIMIT_RANGE;
 	powerRL_current_unit = DEFAULT_POWERRL_CURRENT_UNIT;
 	powerRL_voltage_unit = DEFAULT_POWERRL_VOLTAGE_UNIT;
 	powerRL_total_unit= DEFAULT_POWERRL_TOTAL_UNIT;
@@ -9775,6 +9792,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_user_vsync_fpks);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_enable);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_FPS_margin);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_cap_limit_range);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_current_unit);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage_unit);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
