@@ -317,6 +317,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_makefile".format(kernel_version),
 ]
@@ -435,6 +436,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_kconfigs".format(kernel_version),
 ]
@@ -818,6 +820,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-bringup".format(kernel_version): "mt6761 mt6765 mt6768 mt6781 mt6833 mt6853 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:memory-amms".format(kernel_version): "mt6761 mt6765 mt6768 mt6781 mt6833 mt6853 mt6877",
 
     ## write vendor file by platform here
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
@@ -1013,7 +1016,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mdp/cmdq_helper_inf.ko",
     #"drivers/misc/mediatek/mdp/mdp_drv_dummy.ko",
     "drivers/misc/mediatek/mmdebug/mtk-mmdebug-vcp.ko",
-    "drivers/misc/mediatek/memory-amms/memory-amms.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-ccu.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug-v3.ko",
     "drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug-v5.ko",
@@ -2934,7 +2936,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
         mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/memory-amms/memory-amms.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/adsp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/v1/adsp-v1.ko")
