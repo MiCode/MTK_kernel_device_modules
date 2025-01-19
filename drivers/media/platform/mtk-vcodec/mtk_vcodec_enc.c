@@ -2225,8 +2225,9 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					mtkbuf->frm_buf.dyparams_dma = mtkbuf->frm_buf.metabuffer_dma;
 					mtkbuf->frm_buf.dyparams_dma_addr = mtkbuf->frm_buf.metabuffer_addr;
 					mtkbuf->frm_buf.dyparams_offset = meta_desc.value;
-					mtk_v4l2_debug(2,"meta data:dyparams_dma:%p dyparams_dma_addr  iova 0x%llx",
-						mtkbuf->frm_buf.dyparams_dma, mtkbuf->frm_buf.dyparams_dma_addr);
+					mtk_v4l2_debug(2,"meta data:dyparams_dma:%p dyparams_dma_addr  iova 0x%lx",
+						mtkbuf->frm_buf.dyparams_dma,
+						(unsigned long)mtkbuf->frm_buf.dyparams_dma_addr);
 				}
 			}
 		}

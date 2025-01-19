@@ -227,7 +227,7 @@ static int mtk_jpeg_enc_ctrls_setup(struct mtk_jpeg_ctx *ctx)
 	return 0;
 }
 
-void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
+static void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 {
 	const char *descr = NULL;
 
