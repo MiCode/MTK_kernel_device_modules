@@ -166,7 +166,9 @@ static int __init mtk_sleep_init(void)
 #endif
 	mtk_idle_module_initialize_plat();
 	spm_logger_init();
+#if IS_ENABLED(CONFIG_ARM64)
 	add_cpu_qos_tracer();
+#endif
 	spm_drv_init = !ret;
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	ccci_set_spm_mdsrc_cb(&spm_ap_mdsrc_req);
