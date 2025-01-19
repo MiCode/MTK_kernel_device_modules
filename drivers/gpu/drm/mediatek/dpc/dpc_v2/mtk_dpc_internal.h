@@ -371,6 +371,7 @@ struct mtk_dpc {
 	void __iomem *rtff_pwr_con;
 	void __iomem *vdisp_ao_cg_con;
 	void __iomem *mminfra_chk;
+	void __iomem *mminfra_voter;
 
 	struct mtk_dpc_mtcmos_cfg *mtcmos_cfg;
 	struct mtk_dpc_dt_usage *disp_dt_usage;
