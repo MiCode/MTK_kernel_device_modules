@@ -514,9 +514,11 @@ static int earaio_control_show(struct seq_file *s, void *data)
 	struct mtk_blocktag *btag;
 	char name[BTAG_NAME_LEN] = {' '};
 
+	rcu_read_lock();
 	btag = mtk_btag_find_by_type(earaio_ctrl.mictx_id.storage);
 	if (btag)
 		strncpy(name, btag->name, BTAG_NAME_LEN - 1);
+	rcu_read_unlock();
 
 	seq_puts(s, "<MTK EARA-IO Control Unit>\n");
 	seq_printf(s, "Monitor Storage Type: %s\n", name);

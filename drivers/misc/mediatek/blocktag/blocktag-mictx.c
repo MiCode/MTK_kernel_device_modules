@@ -22,14 +22,9 @@
 #include "blocktag-trace.h"
 #include "mtk_blocktag.h"
 
-static struct mtk_btag_mictx *mictx_find(struct mtk_blocktag *btag, __u64 id)
+static struct mtk_btag_mictx *mictx_find(struct mtk_blocktag *btag, __u32 id)
 {
-	struct mtk_btag_mictx *mictx;
-
-	list_for_each_entry_rcu(mictx, &btag->ctx.mictx.list, list)
-		if (mictx->id == id)
-			return mictx;
-	return NULL;
+	return xa_load(&btag->ctx.mictx_xa, id);
 }
 
 void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id)
@@ -39,16 +34,18 @@ void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id)
 	unsigned long flags;
 	int qid;
 
+	if (!mictx_id.id)
+		return;
+
+	guard(rcu)();
+
 	btag = mtk_btag_find_by_type(mictx_id.storage);
 	if (!btag)
 		return;
 
-	rcu_read_lock();
 	mictx = mictx_find(btag, mictx_id.id);
-	if (!mictx) {
-		rcu_read_unlock();
+	if (!mictx)
 		return;
-	}
 
 	/* clear throughput, request data */
 	for (qid = 0; qid < mictx->queue_nr; qid++) {
@@ -89,8 +86,6 @@ void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id)
 	mictx->top.pages[BTAG_IO_WRITE] = 0;
 	mictx->top.rnd_cnt = 0;
 	spin_unlock_irqrestore(&mictx->top.lock, flags);
-
-	rcu_read_unlock();
 }
 
 void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
@@ -103,21 +98,20 @@ void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
 	if (!top_pages_r || !top_pages_w)
 		return;
 
+	guard(rcu)();
+
 	btag = mtk_btag_find_by_type(mictx_id.storage);
 	if (!btag)
 		return;
 
-	rcu_read_lock();
 	mictx = mictx_find(btag, mictx_id.id);
-	if (!mictx) {
-		rcu_read_unlock();
+	if (!mictx)
 		return;
-	}
+
 	spin_lock_irqsave(&mictx->top.lock, flags);
 	*top_pages_r = mictx->top.pages[BTAG_IO_READ];
 	*top_pages_w = mictx->top.pages[BTAG_IO_WRITE];
 	spin_unlock_irqrestore(&mictx->top.lock, flags);
-	rcu_read_unlock();
 }
 
 void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
@@ -126,12 +120,13 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 {
 	struct mtk_btag_mictx *mictx;
 	__u32 top_pages_r, top_pages_w, top_rnd_cnt;
+	unsigned long id;
 
 	if (!btag || tid >= BTAG_MAX_TAG || io_type == BTAG_IO_UNKNOWN)
 		return;
 
 	rcu_read_lock();
-	list_for_each_entry_rcu(mictx, &btag->ctx.mictx.list, list) {
+	xa_for_each(&btag->ctx.mictx_xa, id, mictx) {
 		struct mtk_btag_mictx_queue *q = &mictx->q[qid];
 		unsigned long flags;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
@@ -198,12 +193,13 @@ void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
 				     __u32 tid, __u16 qid)
 {
 	struct mtk_btag_mictx *mictx;
+	unsigned long id;
 
 	if (!btag || tid >= BTAG_MAX_TAG)
 		return;
 
 	rcu_read_lock();
-	list_for_each_entry_rcu(mictx, &btag->ctx.mictx.list, list) {
+	xa_for_each(&btag->ctx.mictx_xa, id, mictx) {
 		struct mtk_btag_mictx_queue *q = &mictx->q[qid];
 		unsigned long flags;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
@@ -409,19 +405,18 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
-	if (!iostat)
+	if (!iostat || !mictx_id.id)
 		return -EINVAL;
+
+	guard(rcu)();
 
 	btag = mtk_btag_find_by_type(mictx_id.storage);
 	if (!btag)
 		return -ENODEV;
 
-	rcu_read_lock();
 	mictx = mictx_find(btag, mictx_id.id);
-	if (!mictx) {
-		rcu_read_unlock();
+	if (!mictx)
 		return -ENOENT;
-	}
 
 	memset(iostat, 0, sizeof(struct mtk_btag_mictx_iostat_struct));
 	mictx_evaluate_workload(mictx, iostat);
@@ -431,8 +426,6 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 	if (mictx->full_logging)
 		mictx_evaluate_avg_qd(mictx, iostat);
 #endif
-	rcu_read_unlock();
-
 	trace_blocktag_mictx_get_data(mictx_id.name, iostat);
 
 	return 0;
@@ -445,40 +438,36 @@ void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id mictx_id,
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
+	if (!mictx_id.id)
+		return;
+
+	guard(rcu)();
+
 	btag = mtk_btag_find_by_type(mictx_id.storage);
 	if (!btag)
 		return;
 
-	rcu_read_lock();
 	mictx = mictx_find(btag, mictx_id.id);
-	if (!mictx) {
-		rcu_read_unlock();
+	if (!mictx)
 		return;
-	}
 	mictx->full_logging = enable;
-	rcu_read_unlock();
 }
 
 int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
-	int ret;
+
+	guard(rcu)();
 
 	btag = mtk_btag_find_by_type(mictx_id.storage);
 	if (!btag)
 		return -1;
 
-	rcu_read_lock();
 	mictx = mictx_find(btag, mictx_id.id);
-	if (!mictx) {
-		rcu_read_unlock();
+	if (!mictx)
 		return -1;
-	}
-	ret = mictx->full_logging;
-	rcu_read_unlock();
-
-	return ret;
+	return mictx->full_logging;
 }
 
 static struct proc_dir_entry *mictx_ioctl_entry;
@@ -641,15 +630,14 @@ unlock:
 	mutex_unlock(&entry_lock);
 }
 
-static int mictx_alloc(struct mtk_blocktag *btag, __u16 *id,
+static int mictx_alloc(struct mtk_blocktag *btag, unsigned long *id,
 		       struct mtk_btag_mictx_vops *vops)
 {
 	struct mtk_btag_mictx *mictx;
-	unsigned long flags;
 	__u64 cur_time = sched_clock();
-	int qid;
+	int qid, ret;
 
-	mictx = kzalloc(struct_size(mictx, q, btag->ctx.count), GFP_NOFS);
+	mictx = kzalloc(struct_size(mictx, q, btag->ctx.count), GFP_ATOMIC);
 	if (!mictx)
 		return -ENOMEM;
 
@@ -665,15 +653,15 @@ static int mictx_alloc(struct mtk_blocktag *btag, __u16 *id,
 	for (qid = 0; qid < btag->ctx.count; qid++)
 		spin_lock_init(&mictx->q[qid].lock);
 	mictx->vops = vops;
-
-	spin_lock_irqsave(&btag->ctx.mictx.list_lock, flags);
-	mictx->id = btag->ctx.mictx.last_unused_id;
-	*id = mictx->id;
 	mictx->full_logging = true;
-	btag->ctx.mictx.nr_list++;
-	btag->ctx.mictx.last_unused_id++;
-	list_add_tail_rcu(&mictx->list, &btag->ctx.mictx.list);
-	spin_unlock_irqrestore(&btag->ctx.mictx.list_lock, flags);
+
+	ret = xa_alloc(&btag->ctx.mictx_xa, &mictx->id, mictx, xa_limit_32b,
+		       GFP_ATOMIC);
+	if (ret < 0) {
+		kfree(mictx);
+		return ret;
+	}
+	*id = mictx->id;
 
 	return 0;
 }
@@ -681,39 +669,22 @@ static int mictx_alloc(struct mtk_blocktag *btag, __u16 *id,
 static void mictx_free(struct mtk_blocktag *btag, __u16 id)
 {
 	struct mtk_btag_mictx *mictx;
-	unsigned long flags;
 
-	spin_lock_irqsave(&btag->ctx.mictx.list_lock, flags);
-	list_for_each_entry(mictx, &btag->ctx.mictx.list, list)
-		if (mictx->id == id)
-			goto found;
-	spin_unlock_irqrestore(&btag->ctx.mictx.list_lock, flags);
-	return;
+	mictx = xa_erase(&btag->ctx.mictx_xa, id);
+	if (!mictx)
+		return;
 
-found:
-	list_del_rcu(&mictx->list);
-	btag->ctx.mictx.nr_list--;
-	spin_unlock_irqrestore(&btag->ctx.mictx.list_lock, flags);
-
-	synchronize_rcu();
-	kfree(mictx);
+	kfree_rcu(mictx, rcu);
 }
 
 void mtk_btag_mictx_free_all(struct mtk_blocktag *btag)
 {
-	struct mtk_btag_mictx *mictx, *n;
-	unsigned long flags;
-	LIST_HEAD(free_list);
+	struct mtk_btag_mictx *mictx;
+	unsigned long id;
 
-	spin_lock_irqsave(&btag->ctx.mictx.list_lock, flags);
-	list_splice_init(&btag->ctx.mictx.list, &free_list);
-	btag->ctx.mictx.nr_list = 0;
-	spin_unlock_irqrestore(&btag->ctx.mictx.list_lock, flags);
-
-	synchronize_rcu();
-	list_for_each_entry_safe(mictx, n, &free_list, list) {
-		list_del(&mictx->list);
-		kfree(mictx);
+	xa_for_each(&btag->ctx.mictx_xa, id, mictx) {
+		xa_erase(&btag->ctx.mictx_xa, id);
+		kfree_rcu(mictx, rcu);
 	}
 }
 
@@ -723,6 +694,8 @@ int mtk_btag_mictx_register(struct mtk_btag_mictx_id *mictx_id,
 	struct mtk_blocktag *btag;
 
 	mictx_id->id = 0;
+
+	guard(rcu)();
 
 	btag = mtk_btag_find_by_type(mictx_id->storage);
 	if (!btag)
@@ -736,6 +709,8 @@ void mtk_btag_mictx_unregister(struct mtk_btag_mictx_id *mictx_id)
 {
 	struct mtk_blocktag *btag;
 
+	guard(rcu)();
+
 	btag = mtk_btag_find_by_type(mictx_id->storage);
 	if (!btag)
 		return;
@@ -746,7 +721,5 @@ EXPORT_SYMBOL_GPL(mtk_btag_mictx_unregister);
 
 void mtk_btag_mictx_init(struct mtk_blocktag *btag)
 {
-	spin_lock_init(&btag->ctx.mictx.list_lock);
-	btag->ctx.mictx.nr_list = 0;
-	INIT_LIST_HEAD(&btag->ctx.mictx.list);
+	xa_init_flags(&btag->ctx.mictx_xa, XA_FLAGS_ALLOC1);
 }

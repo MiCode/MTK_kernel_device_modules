@@ -27,7 +27,7 @@ enum mtk_btag_storage_type {
 
 #define BTAG_NAME_LEN           16
 struct mtk_btag_mictx_id {
-	__u16 id;
+	unsigned long id;
 	enum mtk_btag_storage_type storage;
 	char name[BTAG_NAME_LEN];
 };

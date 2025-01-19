@@ -64,9 +64,8 @@ char *blockio_aee_buffer;
 /* procfs dentries */
 struct proc_dir_entry *btag_proc_root;
 
-/* blocktag */
-LIST_HEAD(mtk_btag_list);
-spinlock_t list_lock;
+/* blocktag xarray */
+static DEFINE_XARRAY_ALLOC1(btag_xa);
 
 /* memory block for PIDLogger */
 phys_addr_t dram_start_addr;
@@ -75,15 +74,11 @@ phys_addr_t dram_end_addr;
 static struct mtk_blocktag *mtk_btag_find_by_name(const char *name)
 {
 	struct mtk_blocktag *btag;
+	unsigned long id;
 
-	rcu_read_lock();
-	list_for_each_entry_rcu(btag, &mtk_btag_list, list) {
-		if (!strncmp(btag->name, name, BTAG_NAME_LEN - 1)) {
-			rcu_read_unlock();
+	xa_for_each(&btag_xa, id, btag)
+		if (!strncmp(btag->name, name, BTAG_NAME_LEN - 1))
 			return btag;
-		}
-	}
-	rcu_read_unlock();
 
 	return NULL;
 }
@@ -92,15 +87,11 @@ struct mtk_blocktag *mtk_btag_find_by_type(
 					enum mtk_btag_storage_type storage_type)
 {
 	struct mtk_blocktag *btag;
+	unsigned long id;
 
-	rcu_read_lock();
-	list_for_each_entry_rcu(btag, &mtk_btag_list, list) {
-		if (btag->storage_type == storage_type) {
-			rcu_read_unlock();
+	xa_for_each(&btag_xa, id, btag)
+		if (btag->storage_type == storage_type)
 			return btag;
-		}
-	}
-	rcu_read_unlock();
 
 	return NULL;
 }
@@ -460,6 +451,9 @@ static size_t btag_show_usedmem(struct mtk_blocktag *btag, char **buff,
 	}
 
 	if (BTAG_CTX(btag)) {
+		struct mtk_btag_mictx *mictx;
+		unsigned long id;
+
 		size_l = btag->ctx.size * btag->ctx.count;
 		BTAG_PRINTF(buff, size, seq,
 			    "%s queue context: %d contexts * %d = %zu bytes\n",
@@ -469,18 +463,12 @@ static size_t btag_show_usedmem(struct mtk_blocktag *btag, char **buff,
 			    size_l);
 		used_mem += size_l;
 
-		size_l = btag->ctx.mictx.nr_list *
-			 (sizeof(struct mtk_btag_mictx) +
-			 sizeof(struct mtk_btag_mictx_queue) * btag->ctx.count);
-		BTAG_PRINTF(buff, size, seq,
-			    "%s mictx list: %d mictx * (%zu + %d * %zu) = %zu bytes\n",
-			    btag->name,
-			    btag->ctx.mictx.nr_list,
-			    sizeof(struct mtk_btag_mictx),
-			    btag->ctx.count,
-			    sizeof(struct mtk_btag_mictx_queue),
-			    size_l);
-		used_mem += size_l;
+		xa_for_each(&btag->ctx.mictx_xa, id, mictx) {
+			size_l = struct_size(mictx, q, btag->ctx.count);
+			BTAG_PRINTF(buff, size, seq, "%s mictx-%lu: %zu bytes\n",
+				    btag->name, id, size_l);
+			used_mem += size_l;
+		}
 	}
 
 	BTAG_PRINTF(buff, size, seq,
@@ -591,16 +579,17 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 {
 	size_t used_mem = 0;
 	struct mtk_blocktag *btag;
+	unsigned long id;
 
 	BTAG_PRINTF(buff, size, seq, "[Trace]\n");
 	rcu_read_lock();
-	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
+	xa_for_each(&btag_xa, id, btag)
 		btag_show_ringtrace(btag, buff, size, seq);
 	rcu_read_unlock();
 
 	BTAG_PRINTF(buff, size, seq, "[Info]\n");
 	rcu_read_lock();
-	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
+	xa_for_each(&btag_xa, id, btag)
 		if (btag->vops->seq_show) {
 			BTAG_PRINTF(buff, size, seq, "<%s: context info>\n",
 				    btag->name);
@@ -627,7 +616,7 @@ static void mtk_btag_seq_main_info(char **buff, unsigned long *size,
 
 	BTAG_PRINTF(buff, size, seq, "[Memory Usage]\n");
 	rcu_read_lock();
-	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
+	xa_for_each(&btag_xa, id, btag)
 		used_mem += btag_show_usedmem(btag, buff, size, seq);
 	rcu_read_unlock();
 
@@ -688,6 +677,7 @@ static ssize_t mtk_btag_main_write(struct file *file, const char __user *ubuf,
 {
 	struct mtk_blocktag *btag;
 	char cmd[64] = {'\0'};
+	unsigned long id;
 
 	if (count == 0 || count > 64)
 		goto end;
@@ -707,7 +697,7 @@ static ssize_t mtk_btag_main_write(struct file *file, const char __user *ubuf,
 
 end:
 	rcu_read_lock();
-	list_for_each_entry_rcu(btag, &mtk_btag_list, list)
+	xa_for_each(&btag_xa, id, btag)
 		mtk_btag_clear_trace(&btag->rt);
 	rcu_read_unlock();
 
@@ -728,14 +718,12 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 				    __u32 ctx_count, struct mtk_btag_vops *vops)
 {
 	struct mtk_blocktag *btag;
-	unsigned long flags;
 	int ret;
 
 	if (!name || !ringtrace_count || !ctx_size || !ctx_count)
 		return ERR_PTR(-EINVAL);
 
-	btag = mtk_btag_find_by_type(storage_type);
-	if (btag) {
+	if (mtk_btag_find_by_name(name)) {
 		pr_notice("blocktag %s already exists\n", name);
 		return ERR_PTR(-EEXIST);
 	}
@@ -778,9 +766,10 @@ struct mtk_blocktag *mtk_btag_alloc(const char *name,
 		goto free_proc;
 	}
 
-	spin_lock_irqsave(&list_lock, flags);
-	list_add_rcu(&btag->list, &mtk_btag_list);
-	spin_unlock_irqrestore(&list_lock, flags);
+	/* after xa_alloc, btag can be found by mtk_btag_find_by_* */
+	ret = xa_alloc(&btag_xa, &btag->id, btag, xa_limit_32b, GFP_NOFS);
+	if (ret < 0)
+		goto free_proc;
 
 	return btag;
 
@@ -793,22 +782,22 @@ free_btag:
 	return ERR_PTR(ret);
 }
 
-void mtk_btag_free(struct mtk_blocktag *btag)
+static void __btag_free(struct rcu_head *r)
 {
-	unsigned long flags;
+	struct mtk_blocktag *btag = container_of(r, struct mtk_blocktag, rcu);
 
-	if (!btag)
-		return;
-
-	spin_lock_irqsave(&list_lock, flags);
-	list_del_rcu(&btag->list);
-	spin_unlock_irqrestore(&list_lock, flags);
-
-	synchronize_rcu();
+	proc_remove(btag->dentry.droot);
 	mtk_btag_mictx_free_all(btag);
 	kfree(btag->ctx.priv);
-	proc_remove(btag->dentry.droot);
 	kfree(btag);
+}
+
+void mtk_btag_free(struct mtk_blocktag *btag)
+{
+	if (!xa_erase(&btag_xa, btag->id))
+		return;
+
+	call_rcu(&btag->rcu, __btag_free);
 }
 
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
@@ -1187,8 +1176,6 @@ EXPORT_SYMBOL(mtk_btag_get_aee_buffer);
 
 static int __init mtk_btag_init(void)
 {
-	spin_lock_init(&list_lock);
-
 	mtk_btag_init_memory();
 	mtk_btag_init_pidlogger();
 	mtk_btag_init_procfs();
