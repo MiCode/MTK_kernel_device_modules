@@ -1029,7 +1029,7 @@ initcall_debug=1";
 	/* Microtrust SW IRQ number 249(281) ~ 254(286) */
 	utos: utos {
 		compatible = "microtrust,utos";
-		interrupts = <GIC_SPI 271 IRQ_TYPE_EDGE_RISING 0>,
+		interrupts = <GIC_SPI 249 IRQ_TYPE_EDGE_RISING 0>,
 			<GIC_SPI 250 IRQ_TYPE_EDGE_RISING 0>;
 	};
 	utos_tester {
