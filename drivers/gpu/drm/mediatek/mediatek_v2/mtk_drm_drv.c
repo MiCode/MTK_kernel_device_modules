@@ -3346,6 +3346,10 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
 	DDP_COMPONENT_OVL1_BLENDER5,
 	DDP_COMPONENT_OVL1_EXDMA7,
 	DDP_COMPONENT_OVL1_BLENDER6,
+	DDP_COMPONENT_OVL1_EXDMA8,
+	DDP_COMPONENT_OVL1_BLENDER7,
+	DDP_COMPONENT_OVL1_EXDMA9,
+	DDP_COMPONENT_OVL1_BLENDER8,
 	DDP_COMPONENT_OVL1_OUTPROC3,
 	DDP_COMPONENT_OVLSYS1_DLO_ASYNC10,
 	DDP_COMPONENT_DLI_ASYNC13,
@@ -5356,9 +5360,8 @@ static const struct mtk_crtc_path_data mt6991_mtk_ext_path_data = {
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_ext_dp,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_ext_dp),
 	.path_req_hrt[DDP_MAJOR][0] = true,
-	// .dual_path[0] = mt6989_mtk_ddp_dual_ext_dp,
-	// .dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_ext_dp),
 	.addon_data = mt6991_addon_ext,
+	.is_exdma_dual_layer = true,
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_dp_w_tdshp_path_data = {

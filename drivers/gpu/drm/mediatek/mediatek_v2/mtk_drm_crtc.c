@@ -392,7 +392,7 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 		if (crtc_id == 0)
 			next_blender = DDP_COMPONENT_OVL0_BLENDER1 + plane_index;
 		else if (crtc_id == 1)
-			next_blender = DDP_COMPONENT_OVL1_BLENDER5 + plane_index;
+			next_blender = dual_comp_blender_map_mt6991(comp->id);
 		else if (crtc_id == 2)
 			next_blender = dual_comp_blender_map_mt6991(comp->id);
 		else if (crtc_id == 3)
@@ -619,7 +619,7 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 						ovl1_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
-						0, 0xc0);
+						0, 0x3c0);
 	} else if (crtc_id == 2) {
 		if (ddp->ovlsys1_regs)
 			ovl1_mutex_regs_pa = ddp->ovlsys1_regs_pa;

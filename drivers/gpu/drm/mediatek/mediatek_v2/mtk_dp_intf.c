@@ -90,6 +90,12 @@
 #define DP_BUF_RW_TIMES					0x0220
 #define DP_BUF_SODI_HIGH				0x0224
 #define DP_BUF_SODI_LOW					0x0228
+#define DP_BUF_PREULTRA_HIGH			0x0234
+#define DP_BUF_PREULTRA_LOW				0x0238
+#define DP_BUF_ULTRA_HIGH				0x023C
+#define DP_BUF_ULTRA_LOW				0x0240
+#define DP_BUF_URGENT_HIGH				0x0244
+#define DP_BUF_URGENT_LOW				0x0248
 #define DP_SW_NP_SEL					0x0250
 #define DP_PATTERN_CTRL0				0x0F00
 	#define DP_PATTERN_COLOR_BAR			BIT(6)
@@ -916,6 +922,13 @@ static void void_mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 	struct mtk_dp_intf *dp_intf = comp_to_dp_intf(comp);
 	u32 dp_buf_sodi_high = 5255;
 	u32 dp_buf_sodi_low = 3899;
+	u32 dp_buf_preultra_high = 5687;
+	u32 dp_buf_preultra_low = 5468;
+	u32 dp_buf_ultra_high = 5468;
+	u32 dp_buf_ultra_low = 5031;
+	u32 dp_buf_urgent_high = 2625;
+	u32 dp_buf_urgent_low = 2406;
+
 
 	DDPMSG("%s mode %s %dx%d@%dhz sodi_high %d sodi_low %d handle %p\n",
 		__func__,
@@ -929,6 +942,15 @@ static void void_mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 
 	mtk_ddp_write_relaxed(comp, dp_buf_sodi_high, DP_BUF_SODI_HIGH, handle);
 	mtk_ddp_write_relaxed(comp, dp_buf_sodi_low, DP_BUF_SODI_LOW, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_preultra_high, DP_BUF_PREULTRA_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_preultra_low, DP_BUF_PREULTRA_LOW, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_ultra_high, DP_BUF_ULTRA_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_ultra_low, DP_BUF_ULTRA_LOW, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_ULTRA_HIGH, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_ULTRA_LOW, handle);
 }
 
 void mhal_DPTx_VideoClock(bool enable, int resolution)
