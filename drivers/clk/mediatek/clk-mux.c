@@ -957,7 +957,7 @@ EXPORT_SYMBOL_GPL(mtk_hwv_dfs_mux_dummy_ops);
 const struct clk_ops mtk_hwv_dfs_mux_fenc_ops = {
 	.enable = mtk_clk_hwv_mux_fenc_enable,
 	.disable = mtk_clk_hwv_mux_disable,
-	.is_enabled = mtk_clk_mux_is_enabled,
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
 	.get_parent = mtk_clk_mux_get_parent,
 	.set_parent = mtk_clk_hwv_mux_upd_set_parent,
 	.determine_rate = mtk_clk_mux_upd_determine_rate,

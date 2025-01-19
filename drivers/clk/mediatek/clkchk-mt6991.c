@@ -3546,13 +3546,7 @@ static const char * const off_pll_names[] = {
 	"mfgpll-sc1",
 	"univpll",
 	"msdcpll",
-	"mainpll2",
-	"univpll2",
-	"mmpll2",
-	"imgpll",
 	"tvdpll1",
-	"tvdpll2",
-	"tvdpll3",
 	NULL
 };
 
@@ -3564,7 +3558,6 @@ static const char * const notice_pll_names[] = {
 };
 
 static const char * const bypass_pll_name[] = {
-	"univpll",
 	NULL
 };
 
@@ -3581,6 +3574,59 @@ static const char * const *get_notice_pll_names(void)
 static const char * const *get_bypass_pll_name(void)
 {
 	return bypass_pll_name;
+}
+
+static const char * const off_mux_names[] = {
+	"ck2_seninf0_sel",
+	"ck2_seninf1_sel",
+	"ck2_seninf2_sel",
+	"ck2_seninf3_sel",
+	"ck2_seninf4_sel",
+	"ck2_seninf5_sel",
+	"ck2_img1_sel",
+	"ck2_ipe_sel",
+	"ck2_cam_sel",
+	"ck2_camtm_sel",
+	"ck2_dpe_sel",
+	"ck2_vdec_sel",
+	"ck2_ccusys_sel",
+	"ck2_ccutm_sel",
+	"ck2_venc_sel",
+	"ck2_dp1_sel",
+	"ck2_dp0_sel",
+	"ck2_disp_sel",
+	"ck2_mdp_sel",
+	NULL
+};
+
+static const char * const notice_mux_names[] = {
+	"ck2_mminfra_sel",
+	"ck2_mminfra_snoc_sel",
+	"ck2_mmup_sel",
+	"ck2_mminfra_ao_sel",
+	NULL
+};
+
+static const char * const bypass_mux_name[] = {
+	"ck_usb_1p_sel",
+	"ck_usb_xhci_1p_sel",
+	"ck_usb_fmcnt_p1_sel",
+	NULL
+};
+
+static const char * const *get_off_mux_names(void)
+{
+	return off_mux_names;
+}
+
+static const char * const *get_notice_mux_names(void)
+{
+	return notice_mux_names;
+}
+
+static const char * const *get_bypass_mux_name(void)
+{
+	return bypass_mux_name;
 }
 
 static bool is_pll_chk_bug_on(void)
@@ -3812,6 +3858,9 @@ static struct clkchk_ops clkchk_mt6991_ops = {
 	.get_off_pll_names = get_off_pll_names,
 	.get_notice_pll_names = get_notice_pll_names,
 	.get_bypass_pll_name = get_bypass_pll_name,
+	.get_off_mux_names = get_off_mux_names,
+	.get_notice_mux_names = get_notice_mux_names,
+	.get_bypass_mux_name = get_bypass_mux_name,
 	.is_pll_chk_bug_on = is_pll_chk_bug_on,
 	.get_vf_name = get_vf_name,
 	.get_vf_opp = get_vf_opp,

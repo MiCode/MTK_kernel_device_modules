@@ -73,39 +73,55 @@ struct regname {
 };
 
 struct clkchk_ops {
+	/* debug cmd */
 	const struct regname *(*get_all_regnames)(void);
+
+	/* power status check */
 	u32 *(*get_spm_pwr_status_array)(void);
 	u32 (*get_spm_pwr_status)(u32 ofs);
 	u32 (*get_pwr_status)(s32 idx);
 	struct pvd_msk *(*get_pvd_pwr_mask)(void);
 	int (*get_pvd_pwr_data_idx)(const char *pvdname);
+	bool (*is_pwr_on)(struct provider_clk *pvdck);
+
+	/* suspend check for clock not off */
 	const char * const *(*get_off_pll_names)(void);
 	const char * const *(*get_notice_pll_names)(void);
+	const char * const *(*get_bypass_pll_name)(void);
+	const char * const *(*get_off_mux_names)(void);
+	const char * const *(*get_notice_mux_names)(void);
+	const char * const *(*get_bypass_mux_name)(void);
 	bool (*is_pll_chk_bug_on)(void);
 	bool (*is_suspend_retry_stop)(bool reset_cnt);
+
+	/* check vcoredvfs for LVHF */
 	const char *(*get_vf_name)(int id);
 	int (*get_vf_opp)(int id, int opp);
 	u32 (*get_vf_num)(void);
 	int (*get_vcore_opp)(void);
-	bool (*is_pwr_on)(struct provider_clk *pvdck);
+
+	/* error detect flow */
 	void (*devapc_dump)(void);
+	void (*check_hwv_irq_sta)(void);
+	void (*check_mm_hwv_irq_sta)(void);
+	void (*check_apmixed_sta)(bool bug_on);
+	bool (*is_cg_chk_pwr_on)(void);
+	void (*cg_timeout_handle)(struct regmap *regmap, u32 id, u32 shift);
+	int (*chk_pm_state)(void);
+
+	/* error log dump flow */
 	void (*dump_hwv_history)(struct regmap *regmap, u32 id);
 	void (*get_bus_reg)(void);
 	void (*dump_bus_reg)(struct regmap *regmap, u32 ofs);
 	void (*dump_vlp_reg)(struct regmap *regmap, u32 shift);
 	void (*dump_pll_reg)(bool bug_on);
-	bool (*is_cg_chk_pwr_on)(void);
 	void (*trace_clk_event)(const char *name, unsigned int clk_sta);
 	void (*trace_pwr_event)(const char *name, unsigned int pwr_sta);
 	void (*trigger_trace_dump)(unsigned int enable);
-	void (*check_hwv_irq_sta)(void);
-	void (*check_mm_hwv_irq_sta)(void);
-	const char * const *(*get_bypass_pll_name)(void);
-	void (*check_apmixed_sta)(bool bug_on);
 	void (*dev_pm_resume)(void);
 	void (*external_dump)(void);
-	void (*cg_timeout_handle)(struct regmap *regmap, u32 id, u32 shift);
-	int (*chk_pm_state)(void);
+
+	/* test flow */
 	void (*verify_debug_flow)(void);
 };
 

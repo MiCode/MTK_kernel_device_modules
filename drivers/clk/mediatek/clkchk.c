@@ -30,7 +30,7 @@
 #include "mt-plat/aee.h"
 
 #define MAX_CLK_NUM			2048
-#define PLL_LEN				20
+#define CLK_LEN				25
 #define INV_MSK				0xFFFFFFFF
 #define PWR_STA_BIT			BIT(30)
 #define PWR_STA_2ND_BIT			BIT(31)
@@ -408,7 +408,7 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 
 	pll_names = clkchk_ops->get_off_pll_names();
 	for (; *pll_names != NULL && p_name != NULL; pll_names++) {
-		if (!strncmp(p_name, *pll_names, PLL_LEN)) {
+		if (!strncmp(p_name, *pll_names, CLK_LEN)) {
 			p_hw = clk_hw_get_parent(c_hw);
 			pr_notice("[%-21s: %8s, %3d, %3d, %10ld, %21s]\n",
 					c_name,
@@ -482,6 +482,67 @@ static bool check_pll_off(void)
 	name = clkchk_ops->get_notice_pll_names();
 
 	__check_pll_off(name);
+
+	if (ret)
+		return true;
+
+	return false;
+}
+
+static bool __check_mux_off(const char * const *name)
+{
+	int valid = 0;
+
+	for (; *name != NULL; name++) {
+		struct provider_clk *pvdck = __clk_chk_lookup_pvdck(*name);
+
+		if (!clkchk_pvdck_is_enabled(pvdck) && !clkchk_pvdck_is_prepared(pvdck))
+			continue;
+
+		pr_notice("suspend warning[0m: %s is on\n", *name);
+
+		if (check_bypass_status) {
+			bool bypass_name_is_equal = false;
+			const char * const *bypass_name;
+
+			bypass_name = clkchk_ops->get_bypass_mux_name();
+			for (; *bypass_name != NULL; bypass_name++)
+				if (!strcmp(*bypass_name, *name)) {
+					bypass_name_is_equal = true;
+					pr_notice("clk-chk bypass %s\n", (char*)bypass_name);
+					continue;
+				}
+			if (bypass_name_is_equal)
+				continue;
+		}
+
+		valid++;
+	}
+
+	if (valid)
+		return true;
+
+	return false;
+}
+
+static bool check_mux_off(void)
+{
+	const char * const *name;
+	int ret = 0;
+
+	if (clkchk_ops == NULL || clkchk_ops->get_off_mux_names == NULL)
+		return false;
+
+	name = clkchk_ops->get_off_mux_names();
+
+	ret = __check_mux_off(name);
+
+	if (clkchk_ops == NULL || clkchk_ops->get_notice_mux_names == NULL)
+		return false;
+
+	name = clkchk_ops->get_notice_mux_names();
+
+	__check_mux_off(name);
 
 	if (ret)
 		return true;
@@ -619,7 +680,7 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 {
 	struct provider_clk *pvdck = get_all_provider_clks(true);
 
-	if (check_pll_off()) {
+	if (check_pll_off() || check_mux_off()) {
 		for (; pvdck->ck != NULL; pvdck++)
 			dump_enabled_clks(pvdck);
 
