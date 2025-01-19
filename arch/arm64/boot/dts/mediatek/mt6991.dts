@@ -15550,6 +15550,11 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		vib-supply = <&mt6373_vibr>;
 	};
 
+	tp_offload_scp: tp-offload-scp {
+		compatible = "mediatek,tp-offload-scp";
+		status = "okay";
+	};
+
 	gps: gps@40c00000 {
 		compatible = "mediatek,mt6991-gps";
 		reg = <0 0x40c00000 0 0x100000>,
