@@ -62,7 +62,7 @@
 #include <linux/compat.h>
 #endif
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_disp_notify.h"
 #endif
 
@@ -1049,7 +1049,7 @@ static struct platform_driver mtk_afe_routing_driver = {
 	.remove = mtk_afe_routing_remove,
 };
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 static int soc_notifier_callback(struct notifier_block *nb,
 				 unsigned long value, void *v)
 {
@@ -1097,7 +1097,7 @@ static int __init mtk_soc_routing_platform_init(void)
 
 	ret = platform_driver_register(&mtk_afe_routing_driver);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	ret = mtk_disp_notifier_register("Audio", &soc_notif);
 	if (ret)
 		pr_err("FAILED TO REGISTER disp notifier (%d)\n", ret);
