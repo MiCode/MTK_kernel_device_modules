@@ -3094,7 +3094,7 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 
 	aal_data->primary_data->backlight_set = 0;
 	aal_data->primary_data->get_size_available = 0;
-	aal_data->primary_data->ess_level = 0;
+	aal_data->primary_data->ess_level = ESS_LEVEL_BY_CUSTOM_LIB;
 	aal_data->primary_data->dre_en = DRE_EN_BY_CUSTOM_LIB;
 	aal_data->primary_data->ess_en = ESS_EN_BY_CUSTOM_LIB;
 	aal_data->primary_data->ess_level_cmd_id = 0;
