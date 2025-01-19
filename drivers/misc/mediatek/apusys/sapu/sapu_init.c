@@ -5,7 +5,7 @@
 #include "sapu_driver.h"
 #include "mtk-smmu-v3.h"
 
-#define ENABLE_DRAM_FB 1
+#define ENABLE_DRAM_FB 0
 
 #define SAPU_DATAMEM_PAGE_BASED_HEAP "mtk_sapu_page-uncached"
 #define SAPU_DATAMEM_REGION_BASED_HEAP "mtk_sapu_data_shm_region-aligned"
