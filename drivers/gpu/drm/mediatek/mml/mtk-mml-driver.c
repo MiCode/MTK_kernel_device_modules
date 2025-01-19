@@ -1317,7 +1317,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	if (comp->srt_bw != srt_bw || comp->hrt_bw != hrt_bw) {
 		mml_trace_begin("mml_bw_%u_%u", srt_bw, hrt_bw);
 #ifndef MML_FPGA
-		if (task->config->dpc) {
+		if (cfg->dpc) {
 			u32 srt_icc, hrt_icc;
 
 			if (mtk_mml_hrt_mode == MML_HRT_OSTD_MAX) {
@@ -1357,6 +1357,11 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 		comp->hrt_bw = hrt_bw;
 		mml_trace_end();
 		updated = true;
+	}
+
+	if (cfg->dpc) {
+		task->dpc_srt_bw[comp->sysid] += comp->srt_bw;
+		task->dpc_hrt_bw[comp->sysid] += comp->hrt_bw;
 	}
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->srt_bw << 16) | comp->hrt_bw);
