@@ -105,6 +105,9 @@ module_param(mml_crc_test, int, 0644);
 int mml_freq_for_tppa;
 module_param(mml_freq_for_tppa, int, 0644);
 
+int mml_opp_rsv = 4;
+module_param(mml_opp_rsv, int, 0644);
+
 struct mml_dpc {
 	atomic_t task_cnt;
 	atomic_t exc_pw_cnt[mml_max_sys];
@@ -374,7 +377,7 @@ void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid)
 			break;
 
 		/* available freq from table, store in MHz */
-		sysqos->opp_speeds[i] = (u32)div_u64(freq, 1000000) - 5;
+		sysqos->opp_speeds[i] = (u32)div_u64(freq, 1000000) - mml_opp_rsv;
 		sysqos->opp_volts[i] = dev_pm_opp_get_voltage(opp);
 		sysqos->freq_max = sysqos->opp_speeds[i];
 		mml_log("mml%u opp %u: %uMHz\t%d",
