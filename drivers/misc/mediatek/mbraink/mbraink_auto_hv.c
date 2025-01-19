@@ -9,32 +9,32 @@ static struct nbl_trace g_nbl_trace = {0};
 int mbraink_auto_cpuload_init(void)
 {
 	struct nbl_trace *tc = &g_nbl_trace;
-	int ret;
+	int ret = 0;
 
 	if (!tc->rmem) {
 		struct device_node *np = of_find_compatible_node(NULL, NULL,
 				"mediatek,nbl_trace");
 		if (!np) {
 			pr_info("%s: failed to find nbl_trace node in device tree\n", __func__);
-			return -ENOMEM;
+			return ret;
 		}
 
 		tc->rmem = of_reserved_mem_lookup(np);
 		if (!tc->rmem) {
 			pr_info("%s: failed to get reserved memory\n", __func__);
-			return -ENOENT;
+			return ret;
 		}
 	}
 
 	tc->buf = ioremap_cache(tc->rmem->base, tc->rmem->size);
 	if (!tc->buf) {
 		pr_info("%s: failed to remap memory\n", __func__);
-		return -ENOMEM;
+		return ret;
 	}
 
 	tc->cntfrq = arch_timer_get_cntfrq();
 
-	return 0;
+	return ret;
 
 unmap:
 	iounmap(tc->buf);
