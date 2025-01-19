@@ -178,6 +178,56 @@ static int mtk_cg_is_done_hwv(struct clk_hw *hw)
 	return val != 0;
 }
 
+static int __hwv_cg_dma_back(struct clk_hw *hw, bool inv)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	u32 val = 0, val2 = 0, val3 = 0;
+	int i = 0;
+
+
+	while (1) {
+		regmap_read(cg->regmap, cg->sta_ofs, &val);
+		if ((inv && (val & BIT(cg->bit)) != 0) ||
+				(!inv && (val & BIT(cg->bit)) == 0))
+			break;
+
+		if (i < MTK_WAIT_HWV_DONE_CNT)
+			udelay(MTK_WAIT_HWV_DONE_US);
+		else
+			goto hwv_done_fail;
+
+		i++;
+	}
+
+
+	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
+			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
+			cg->bit, CLK_EVT_HWV_CG_CHK_PWR);
+
+
+	return 0;
+
+hwv_done_fail:
+	regmap_read(cg->regmap, cg->sta_ofs, &val2);
+
+	if (inv)
+		regmap_write(cg->regmap, cg->set_ofs, BIT(cg->bit));
+	else
+		regmap_write(cg->regmap, cg->clr_ofs, BIT(cg->bit));
+	regmap_read(cg->regmap, cg->sta_ofs, &val3);
+
+	pr_cg_err("%s cg enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
+	pr_cg_err("%s cg rewrite(%x)\n", clk_hw_get_name(hw), val3);
+	if ((inv && (val3 & BIT(cg->bit)) != 0) || (!inv && (val3 & BIT(cg->bit)) == 0))
+		pr_notice("cg rewrite success!\n");
+	else
+		pr_notice("cg rewrite failed!\n");
+
+
+	return -EBUSY;
+}
+
+
 static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
 {
 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
@@ -283,6 +333,97 @@ static int mtk_cg_enable_hwv_inv(struct clk_hw *hw)
 	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 1, 0, CLK_EVT_CLK_TRACE);
 
 	return __cg_enable_hwv(hw, true);
+}
+
+static int mtk_cg_enable_generic_hwv(struct clk_hw *hw)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+	struct cb_params params;
+
+	params.regmap = cg->hwv_regmap;
+	if (params.regmap)
+
+	params.name = c_n;
+	params.setclr_ofs = cg->hwv_set_ofs;
+	params.done_ofs = cg->hwv_sta_ofs;
+	params.vote_bit = cg->bit;
+
+	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 1, 0, CLK_EVT_CLK_TRACE);
+
+	if (!callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB]) {
+		pr_cg_err("mtk_raw_hwccf_voter_ctrl is NULL\n");
+		return -EINVAL;
+	}
+
+	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
+
+	if (ret)
+		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
+
+	ret = __hwv_cg_dma_back(hw, false);
+
+	return ret;
+}
+
+static int mtk_cg_enable_generic_hwv_inv(struct clk_hw *hw)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+	struct cb_params params;
+
+	params.regmap = cg->hwv_regmap;
+	params.name = c_n;
+	params.setclr_ofs = cg->hwv_set_ofs;
+	params.done_ofs = cg->hwv_sta_ofs;
+	params.vote_bit = cg->bit;
+
+	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 1, 0, CLK_EVT_CLK_TRACE);
+
+	if (!callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB]) {
+		pr_cg_err("mtk_raw_hwccf_voter_ctrl is NULL\n");
+		return -EINVAL;
+	}
+
+	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
+
+	if (ret)
+		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
+
+	ret = __hwv_cg_dma_back(hw, true);
+
+	return ret;
+}
+
+static void mtk_cg_disable_generic_hwv(struct clk_hw *hw)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+
+	struct cb_params params;
+
+	params.regmap = cg->hwv_regmap;
+	params.name = c_n;
+	params.setclr_ofs = cg->hwv_clr_ofs;
+	params.done_ofs = cg->hwv_sta_ofs;
+	params.vote_bit = cg->bit;
+
+	mtk_clk_notify(NULL, NULL, clk_hw_get_name(hw), 0, 0, 0, CLK_EVT_CLK_TRACE);
+
+	if (!callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB]) {
+		pr_cg_err("mtk_raw_hwccf_voter_ctrl is NULL\n");
+		return;
+	}
+
+	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
+
+	if (ret)
+		pr_cg_err("fail disable - %s, ret: %x\n", c_n, -ret);
+
+	return;
 }
 
 static void mtk_cg_disable_hwv(struct clk_hw *hw)
@@ -418,6 +559,118 @@ static void mtk_cg_disable_unused_null(struct clk_hw *hw)
 {
 }
 
+#ifdef DX5_MM
+#define CTRL_ON 1
+static int mtk_cg_prepare_mm_hwv(struct clk_hw *hw)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+	struct cb_params params;
+
+	params.regmap = cg->hwv_regmap;
+	params.onoff = CTRL_ON;
+	params.name = c_n;
+	params.setclr_ofs = cg->hwv_set_ofs;
+	params.done_ofs = cg->hwv_sta_ofs;
+	params.vote_bit = cg->bit;
+
+	if (cg->flags & RES_FRAMEWORK_VMM) {
+		if (!callback[CLK_REQUEST_VMM_CB]) {
+			pr_cg_err("vmm_ctrl is NULL\n");
+			return -EINVAL;
+		}
+		ret = callback[CLK_REQUEST_VMM_CB](&params);
+		if (ret) {
+			pr_cg_err("vmm_enable failed - %s\n", c_n);
+			goto CG_PREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_MMINFRA) {
+		if (!callback[CLK_REQUEST_MMINFRA_CB]) {
+			pr_cg_err("mminfra_ctrl is NULL\n");
+			return -EINVAL;
+		}
+		ret = callback[CLK_REQUEST_MMINFRA_CB](&params);
+		if (ret) {
+			pr_cg_err("mminfra_enable failed - %s\n", c_n);
+			goto CG_PREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_VDISP) {
+		if (!callback[CLK_REQUEST_VDISP_CB]) {
+			pr_cg_err("vdisp_ctrl is NULL\n");
+			return -EINVAL;
+		}
+		ret = callback[CLK_REQUEST_VDISP_CB](&params);
+		if (ret) {
+			pr_cg_err("vdisp_enable failed - %s\n", c_n);
+			goto CG_PREPARE_FAIL;
+		}
+	}
+	return ret;
+
+CG_PREPARE_FAIL:
+	pr_cg_err("mtk_cg_prepare_mm_hwv - %s, ret: %x\n", c_n, -ret);
+	return ret;
+}
+
+#define CTRL_OFF 0
+static void mtk_cg_unprepare_mm_hwv(struct clk_hw *hw)
+{
+	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+	struct cb_params params;
+
+	params.regmap = cg->hwv_regmap;
+	params.onoff = CTRL_OFF;
+	params.name = c_n;
+	params.setclr_ofs = cg->hwv_set_ofs;
+	params.done_ofs = cg->hwv_sta_ofs;
+	params.vote_bit = cg->bit;
+
+	if (cg->flags & RES_FRAMEWORK_VMM) {
+		if (!callback[CLK_REQUEST_VMM_CB]) {
+			pr_cg_err("vmm_ctrl is NULL\n");
+			return;
+		}
+		ret = callback[CLK_REQUEST_VMM_CB](&params);
+		if (ret) {
+			pr_cg_err("vmm_enable failed - %s\n", c_n);
+			goto CG_UNPREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_MMINFRA) {
+		if (!callback[CLK_REQUEST_MMINFRA_CB]) {
+			pr_cg_err("mminfra_ctrl is NULL\n");
+			return;
+		}
+		ret = callback[CLK_REQUEST_MMINFRA_CB](&params);
+		if (ret) {
+			pr_cg_err("mminfra_enable failed - %s\n", c_n);
+			goto CG_UNPREPARE_FAIL;
+		}
+	}
+	if (cg->flags & RES_FRAMEWORK_VDISP) {
+		if (!callback[CLK_REQUEST_VDISP_CB]) {
+			pr_cg_err("vdisp_ctrl is NULL\n");
+			return;
+		}
+		ret = callback[CLK_REQUEST_VDISP_CB](&params);
+		if (ret) {
+			pr_cg_err("vdisp_enable failed - %s\n", c_n);
+			goto CG_UNPREPARE_FAIL;
+		}
+	}
+	return;
+
+CG_UNPREPARE_FAIL:
+	pr_cg_err("mtk_cg_unprepare_mm_hwv - %s, ret: %x\n", c_n, -ret);
+	return;
+}
+#endif
+
 const struct clk_ops mtk_clk_gate_ops_null = {
 	.is_prepared	= mtk_cg_bit_is_set_null,
 	.enable		= mtk_cg_enable_null,
@@ -448,7 +701,7 @@ const struct clk_ops mtk_clk_gate_ops_setclr_inv_dummy = {
 	.enable		= mtk_cg_enable_inv,
 };
 EXPORT_SYMBOL(mtk_clk_gate_ops_setclr_inv_dummy);
-
+/*6993 SOC res*/
 const struct clk_ops mtk_clk_gate_ops_setclr = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
 	.enable		= mtk_cg_enable,
@@ -456,7 +709,7 @@ const struct clk_ops mtk_clk_gate_ops_setclr = {
 	.disable_unused = mtk_cg_disable_unused,
 };
 EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_setclr);
-
+/*6993 SOC res*/
 const struct clk_ops mtk_clk_gate_ops_setclr_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
 	.enable		= mtk_cg_enable_inv,
@@ -480,7 +733,7 @@ const struct clk_ops mtk_clk_gate_ops_hwv_inv = {
 	.disable_unused = mtk_cg_disable_unused_hwv,
 };
 EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_hwv_inv);
-
+/*6993 SOC res*/
 const struct clk_ops mtk_clk_gate_ops_no_setclr = {
 	.is_prepared	= mtk_cg_bit_is_cleared,
 	.enable		= mtk_cg_enable_no_setclr,
@@ -488,7 +741,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr = {
 	.disable_unused = mtk_cg_disable_unused_no_setclr,
 };
 EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_no_setclr);
-
+/*6993 SOC res with inv CG*/
 const struct clk_ops mtk_clk_gate_ops_no_setclr_inv = {
 	.is_prepared	= mtk_cg_bit_is_set,
 	.enable		= mtk_cg_enable_inv_no_setclr,
@@ -496,6 +749,43 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv = {
 	.disable_unused = mtk_cg_disable_unused_inv_no_setclr,
 };
 EXPORT_SYMBOL_GPL(mtk_clk_gate_ops_no_setclr_inv);
+/*6993 SOC Generic HWV*/
+const struct clk_ops mtk_clk_gate_generic_ap_hwv_ops = {
+	.is_prepared	= mtk_cg_bit_is_cleared, /*if read back need consider inverse cg*/
+	.enable		= mtk_cg_enable_generic_hwv,
+	.disable	= mtk_cg_disable_generic_hwv,
+	/*no need to register .disable_unused, since following call back run before late init*/
+	/*.disable_unused = ,*/
+};
+EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_ap_hwv_ops);
+
+/*6993 SOC Generic HWV*/
+const struct clk_ops mtk_clk_gate_generic_ap_hwv_ops_inv = {
+	.is_prepared	= mtk_cg_bit_is_set,
+	.enable		= mtk_cg_enable_generic_hwv_inv,
+	.disable	= mtk_cg_disable_generic_hwv,
+};
+EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_ap_hwv_ops_inv);
+
+/*6993 MM Generic HWV*/
+const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops = {
+	.is_prepared	= mtk_cg_bit_is_cleared,
+//	.prepare	= mtk_cg_prepare_mm_hwv,
+//	.unprepare	= mtk_cg_unprepare_mm_hwv,
+	.enable		= mtk_cg_enable_generic_hwv,
+	.disable	= mtk_cg_disable_generic_hwv,
+};
+EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_mm_hwv_ops);
+
+/*6993 MM Generic HWV*/
+const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops_inv = {
+	.is_prepared	= mtk_cg_bit_is_set,
+//	.prepare	= mtk_cg_prepare_mm_hwv,
+//	.unprepare	= mtk_cg_unprepare_mm_hwv,
+	.enable		= mtk_cg_enable_generic_hwv_inv,
+	.disable	= mtk_cg_disable_generic_hwv,
+};
+EXPORT_SYMBOL_GPL(mtk_clk_gate_generic_mm_hwv_ops_inv);
 
 struct clk *mtk_clk_register_gate_hwv(
 		const struct mtk_gate *gate,

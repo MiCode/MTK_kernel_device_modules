@@ -42,6 +42,28 @@ static const struct sp_clk_ops *sp_clk_ops;
 
 static bool mmproc_sspm_vote_sync_bits_support;
 
+const char *cb_name[CLK_REQUEST_CB_NUM] = {
+	"REQUEST_MMINFRA_CB",
+	"REQUEST_VMM_CB",
+	"REQUEST_VDISP_CB",
+	"REQUEST_RAW_HWCCF_VOTER_CB",
+	"REQUEST_RAW_HWCCF_IS_ENABLED_CB",
+};
+
+int (*callback[CLK_REQUEST_CB_NUM])(struct cb_params *) = {NULL};
+
+int register_mtk_clk_external_api_cb(enum cb_type type, int (*new_callback)(struct cb_params *), const char *fail_msg)
+{
+	if (!new_callback) {
+		pr_err("request %s fail!\n", cb_name[type]);
+		return -EINVAL;
+	} else {
+		callback[type] = new_callback;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(register_mtk_clk_external_api_cb);
+
 void set_sp_clk_ops(const struct sp_clk_ops *ops)
 {
 	sp_clk_ops = ops;
@@ -309,7 +331,7 @@ void mtk_clk_register_fixed_clks(const struct mtk_fixed_clk *clks,
 			continue;
 
 		clk = clk_register_fixed_rate(NULL, rc->name, rc->parent, 0,
-					      rc->rate);
+						  rc->rate);
 
 		if (IS_ERR(clk)) {
 			pr_err("Failed to register clk %s: %ld\n",

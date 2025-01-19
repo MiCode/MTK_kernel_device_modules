@@ -10,6 +10,12 @@
 #include <linux/regmap.h>
 #include <linux/clk-provider.h>
 
+#define pr_cg_err(fmt, ...) \
+	pr_err("[CLKCG][Error] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
+#define pr_cg_dbg(fmt, ...) \
+	pr_notice("[CLKCG] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+
 struct clk;
 
 struct mtk_clk_gate {
@@ -60,6 +66,12 @@ extern const struct clk_ops mtk_clk_gate_ops_setclr_inv;
 extern const struct clk_ops mtk_clk_gate_ops_setclr_inv_dummy;
 extern const struct clk_ops mtk_clk_gate_ops_no_setclr;
 extern const struct clk_ops mtk_clk_gate_ops_no_setclr_inv;
+extern const struct clk_ops mtk_pwr_ops_hwv;
+extern const struct clk_ops mtk_pwr_ops_null;
+extern const struct clk_ops mtk_clk_gate_generic_ap_hwv_ops;
+extern const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops;
+extern const struct clk_ops mtk_clk_gate_generic_ap_hwv_ops_inv;
+extern const struct clk_ops mtk_clk_gate_generic_mm_hwv_ops_inv;
 
 struct clk *mtk_clk_register_gate_hwv(
 		const struct mtk_gate *gate,

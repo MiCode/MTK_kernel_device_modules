@@ -777,6 +777,58 @@ static int mtk_clk_mux_upd_determine_rate(struct clk_hw *hw, struct clk_rate_req
 	return 0;
 }
 
+static int mtk_clk_mux_generic_hwv_enable(struct clk_hw *hw)
+{
+	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+    struct cb_params params;
+
+    params.regmap = mux->hwv_regmap;
+    params.name = c_n;
+    params.setclr_ofs = mux->data->hwv_set_ofs;
+    params.done_ofs = mux->data->hwv_sta_ofs;
+    params.vote_bit = mux->data->gate_shift;
+
+	if (!callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB]) {
+		pr_mux_err("mtk_raw_hwccf_voter_ctrl is NULL\n");
+		return -EINVAL;
+	}
+
+	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
+
+	if (ret)
+		pr_mux_err("fail enable - %s, ret: %x\n", c_n, -ret);
+
+	return ret;
+}
+
+static void mtk_clk_mux_generic_hwv_disable(struct clk_hw *hw)
+{
+	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+	const char *c_n = clk_hw_get_name(hw);
+	int ret = 0;
+    struct cb_params params;
+
+    params.regmap = mux->hwv_regmap;
+    params.name = c_n;
+    params.setclr_ofs = mux->data->hwv_clr_ofs;
+    params.done_ofs = mux->data->hwv_sta_ofs;
+    params.vote_bit = mux->data->gate_shift;
+
+	if (!callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB]) {
+		pr_mux_err("mtk_raw_hwccf_voter_ctrl is NULL\n");
+		return;
+	}
+
+	ret = callback[CLK_REQUEST_RAW_HWCCF_VOTER_CB](&params);
+
+	if (ret)
+		pr_mux_err("fail disable - %s, ret: %x\n", c_n, -ret);
+
+	return;
+}
+
 static int mtk_clk_mux_determine_rate_dummy(struct clk_hw *hw, struct clk_rate_request *req)
 {
 	return 0;
@@ -834,6 +886,7 @@ const struct clk_ops mtk_mux_gate_clr_set_upd_ops = {
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_clr_set_upd_ops);
 
+/* 6993 for ufs */
 const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_2_ops = {
 	.enable = mtk_clk_mux_fenc_enable_setclr,
 	.disable = mtk_clk_mux_disable_setclr,
@@ -844,6 +897,7 @@ const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_2_ops = {
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_fenc_clr_set_upd_2_ops);
 
+/* 6993 cksys soc-nohwccf mux */
 const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_ops = {
 	.enable = mtk_clk_mux_fenc_enable_setclr,
 	.disable = mtk_clk_mux_disable_setclr,
@@ -853,6 +907,25 @@ const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_ops = {
 	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_gate_fenc_clr_set_upd_ops);
+
+/* 6993 cksys soc-hwccf  & mm-hwccf mux */
+const struct clk_ops mtk_mux_generic_hwv_ops = {
+	.enable = mtk_clk_mux_generic_hwv_enable,
+	.disable = mtk_clk_mux_generic_hwv_disable,
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_generic_hwv_ops);
+
+/* 6993 cksys2 mm-al mux */
+const struct clk_ops mtk_mux_generic_hwv_al_ops = {
+	/* should implment is enable and get result from HWCCF */
+	.get_parent = mtk_clk_mux_get_parent,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_generic_hwv_al_ops);
 
 const struct clk_ops mtk_hwv_mux_fenc_ops = {
 	.enable = mtk_clk_hwv_mux_fenc_enable,

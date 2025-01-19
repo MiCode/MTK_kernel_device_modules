@@ -216,7 +216,7 @@ struct provider_clk *get_all_provider_clks(bool is_internal)
 }
 EXPORT_SYMBOL_GPL(get_all_provider_clks);
 
-static struct provider_clk *__clk_chk_lookup_pvdck(const char *name)
+struct provider_clk *__clk_chk_lookup_pvdck(const char *name)
 {
 	struct provider_clk *pvdck = get_all_provider_clks(true);
 
@@ -228,7 +228,7 @@ static struct provider_clk *__clk_chk_lookup_pvdck(const char *name)
 	return NULL;
 }
 
-static struct clk *__clk_chk_lookup(const char *name)
+struct clk *__clk_chk_lookup(const char *name)
 {
 	struct provider_clk *pvdck = __clk_chk_lookup_pvdck(name);
 
@@ -324,6 +324,7 @@ int clkchk_pvdck_is_on(struct provider_clk *pvdck)
 }
 EXPORT_SYMBOL(clkchk_pvdck_is_on);
 
+/* confirm it's parent enable & itself prepare or not */
 bool clkchk_pvdck_is_prepared(struct provider_clk *pvdck)
 {
 	struct clk_hw *hw;
@@ -341,6 +342,7 @@ bool clkchk_pvdck_is_prepared(struct provider_clk *pvdck)
 }
 EXPORT_SYMBOL(clkchk_pvdck_is_prepared);
 
+/* confirm itself enable or not */
 bool clkchk_pvdck_is_enabled(struct provider_clk *pvdck)
 {
 	struct clk_hw *hw;
@@ -420,14 +422,20 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 	}
 }
 
+/* if exist pll on, return true */
 static bool __check_pll_off(const char * const *name)
 {
 	int valid = 0;
 
+
 	for (; *name != NULL; name++) {
 		struct provider_clk *pvdck = __clk_chk_lookup_pvdck(*name);
+		struct clk_hw *c_hw = __clk_get_hw(pvdck->ck);
 
 		if (!clkchk_pvdck_is_enabled(pvdck))
+			continue;
+
+		if (!clk_hw_is_prepared(c_hw))
 			continue;
 
 		pr_notice("suspend warning[0m: %s is on\n", *name);
@@ -615,6 +623,7 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 		for (; pvdck->ck != NULL; pvdck++)
 			dump_enabled_clks(pvdck);
 
+		/* go -1 means call system retry dev pm suspend, allow do twice */
 		if (!clkchk_is_retry_bug_on(false))
 			return -1;
 
@@ -628,6 +637,7 @@ static int clk_chk_dev_pm_suspend(struct device *dev)
 				"fail to disable clk/pd in suspend\n");
 #endif
 	} else {
+		/* pll off suscess*/
 		clkchk_is_retry_bug_on(true);
 	}
 
@@ -696,6 +706,14 @@ static void clkchk_trace_clk_event(const char *name, unsigned int clk_sta)
 	clkchk_ops->trace_clk_event(name, clk_sta);
 }
 
+static void clkchk_trace_pwr_event(const char *name, unsigned int pwr_sta)
+{
+	if (clkchk_ops == NULL || clkchk_ops->trace_clk_event == NULL)
+		return;
+
+	clkchk_ops->trace_pwr_event(name, pwr_sta);
+}
+
 static void clkchk_trigger_trace_dump(unsigned int enable)
 {
 	if (clkchk_ops == NULL || clkchk_ops->trigger_trace_dump == NULL)
@@ -753,6 +771,9 @@ static int clkchk_evt_handling(struct notifier_block *nb,
 		break;
 	case CLK_EVT_CLK_TRACE:
 		clkchk_trace_clk_event(clkd->name, clkd->id);
+		break;
+	case CLK_EVT_PWR_TRACE:
+		clkchk_trace_pwr_event(clkd->name, clkd->id);
 		break;
 	case CLK_EVT_TRIGGER_TRACE_DUMP:
 		clkchk_trigger_trace_dump(clkd->id);

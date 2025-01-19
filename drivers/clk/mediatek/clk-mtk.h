@@ -52,6 +52,7 @@ enum clk_evt_type {
 	CLK_EVT_MMINFRA_HWV_TIMEOUT = 10,
 	CLK_EVT_CHECK_APMIXED_STAT = 11,
 	CLK_EVT_DEBUG_FLOW_VERIFY = 12,
+	CLK_EVT_PWR_TRACE = 13,
 	CLK_EVT_NUM,
 };
 
@@ -247,6 +248,10 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define CLK_FENC_ENABLE			BIT(25)
 #define QUICK_SWITCH_CHK		BIT(26)
 #define HWV_CHK_VCP_READY		BIT(27)
+#define TYPE_MTCMOS			BIT(28)
+#define RES_FRAMEWORK_VMM		BIT(29)
+#define RES_FRAMEWORK_MMINFRA		BIT(30)
+#define RES_FRAMEWORK_VDISP		BIT(31)
 
 struct mtk_pll_div_table {
 	u32 div;
@@ -373,10 +378,39 @@ struct mtk_clk_desc {
 	size_t num_clks;
 };
 
+struct mtk_pwr_desc {
+	const struct mtk_mtcmos *pwrs;
+	size_t num_pwrs;
+};
+
 struct sp_clk_ops {
 	int (*sp_clk_control)(struct mtk_clk_mux *mux, u8 index, u32 mask);
 };
 
+enum cb_type {
+	CLK_REQUEST_MMINFRA_CB,
+	CLK_REQUEST_VMM_CB,
+	CLK_REQUEST_VDISP_CB,
+	CLK_REQUEST_RAW_HWCCF_VOTER_CB,
+	CLK_REQUEST_RAW_HWCCF_IS_ENABLED_CB,
+	CLK_REQUEST_CB_NUM,
+};
+
+struct cb_params {
+	struct regmap *regmap;
+	int onoff;
+	const char *name;
+	uint32_t setclr_ofs;
+	uint32_t done_ofs;
+	uint32_t vote_bit;
+	uint32_t vote_val;
+};
+
+
+int register_mtk_clk_external_api_cb(enum cb_type type, int (*new_callback)(struct cb_params *), const char *fail_msg);
+extern int (*callback[CLK_REQUEST_CB_NUM])(struct cb_params *);
+
+int mtk_pwr_simple_probe(struct platform_device *pdev);
 int mtk_clk_simple_probe(struct platform_device *pdev);
 extern int register_mtk_clk_notifier(struct notifier_block *nb);
 extern int unregister_mtk_clk_notifier(struct notifier_block *nb);

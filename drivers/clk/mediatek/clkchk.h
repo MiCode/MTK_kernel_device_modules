@@ -61,6 +61,7 @@ struct regbase {
 	int id;
 	const char *name;
 	int pg;
+	/* pre-clk node name */
 	const char *pn;
 };
 
@@ -95,6 +96,7 @@ struct clkchk_ops {
 	void (*dump_pll_reg)(bool bug_on);
 	bool (*is_cg_chk_pwr_on)(void);
 	void (*trace_clk_event)(const char *name, unsigned int clk_sta);
+	void (*trace_pwr_event)(const char *name, unsigned int pwr_sta);
 	void (*trigger_trace_dump)(unsigned int enable);
 	void (*check_hwv_irq_sta)(void);
 	void (*check_mm_hwv_irq_sta)(void);
@@ -117,6 +119,7 @@ int set_clkchk_notify(void);
 void set_clkchk_ops(const struct clkchk_ops *ops);
 void clkchk_hwv_irq_init(struct platform_device *pdev);
 
+extern struct clk *clk_chk_lookup(const char *name);
 extern bool pdchk_get_bug_on_stat(void);
 extern void pdchk_dump_trace_evt(void);
 extern const struct dev_pm_ops clk_chk_dev_pm_ops;

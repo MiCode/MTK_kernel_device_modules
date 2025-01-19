@@ -174,6 +174,8 @@ obj-$(CONFIG_COMMON_CLK_MT6991_MDPSYS) += clk-mt6991-mdpsys.o
 obj-$(CONFIG_COMMON_CLK_MT6991_VCODEC) += clk-mt6991-vcodec.o
 obj-$(CONFIG_COMMON_CLK_MT6991_IVI) += clk-mt6991-ivi.o
 endif
+ifneq ($(wildcard $(src)/clk-mt6993.c),)
+endif
 ifneq ($(wildcard $(src)/clk-mt6899.c),)
 obj-$(CONFIG_COMMON_CLK_MT6899) += clk-mt6899.o clk-bringup.o
 obj-$(CONFIG_COMMON_CLK_MT6899_ADSP) += clk-mt6899-adsp.o

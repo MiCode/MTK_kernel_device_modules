@@ -236,9 +236,9 @@ static int clkdbg_dump_provider_clks(struct seq_file *s, void *v)
 	struct provider_clk *pvdck = get_all_provider_clks(false);
 
 	seq_printf(s, "[%10s: %-21s: %10s, %15s, %15s, %10s, %15s]\n",
-	"clk_domain",
+	"clk_dts",
 	"clk_hw_name",
-	"clk_is_on",
+	"clk_pwr",
 	"clk_is_prepared",
 	"clk_is_enabled",
 	"clk_rate",
@@ -1026,7 +1026,7 @@ static void dump_genpd_state(struct genpd_state *pdst, struct seq_file *s)
 	};
 
 	seq_puts(s, "domain_on [pmd_name  status]\n");
-	seq_puts(s, "\tdev_on (dev_name usage_count, disable, status)\n");
+	seq_puts(s, "\tdev_on (dev_name usage_count, irq_safe, disable, status)\n");
 	seq_puts(s, "------------------------------------------------------\n");
 
 	for (; pdst->pd != NULL; pdst++) {
