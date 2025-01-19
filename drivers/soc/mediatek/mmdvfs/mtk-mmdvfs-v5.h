@@ -4,8 +4,8 @@
  * Author: Anthony Huang <anthony.huang@mediatek.com>
  */
 
-#ifndef __DRV_CLK_MMDVFS_V5_H
-#define __DRV_CLK_MMDVFS_V5_H
+#ifndef __MMDVFS_V5_H__
+#define __MMDVFS_V5_H__
 
 #include <linux/clk-provider.h>
 
@@ -86,14 +86,16 @@ struct mmdvfs_data {
 	struct mmdvfs_ops *ops;
 };
 
-int mmdvfs_v5_mux_probe(struct platform_device *pdev);
+int mmdvfs_mux_probe(struct platform_device *pdev);
 
 inline bool mmdvfs_mmup_cb_ready_get(void);
 inline void mmdvfs_mmup_cb_mutex_lock(void);
 inline void mmdvfs_mmup_cb_mutex_unlock(void);
 
+inline u8 mmdvfs_user_get_rc(const u8 idx);
 inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp);
 int mmdvfs_force_step(const u8 idx, const s8 opp);
 int mmdvfs_dump_dvfsrc_rg(void);
 int mmdvfs_dump_dvfsrc_record(void);
-#endif /* __DRV_CLK_MMDVFS_V5_H */
+#endif
+

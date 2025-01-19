@@ -1252,7 +1252,7 @@ mgk_64_platform_device_modules = {
     "drivers/interconnect/mediatek/mmqos-mt6989.ko": "mt6989",
     "drivers/interconnect/mediatek/mmqos-mt6991.ko": "mt6991",
     "drivers/interconnect/mediatek/mmqos-mt6877.ko": "mt6877",
-    "drivers/soc/mediatek/mmdvfs/mmdvfs-mt6991.ko": "mt6991",
+    "drivers/soc/mediatek/mmdvfs/mmdvfs-mt6993.ko": "mt6993",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6855.ko": "mt6855",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6879.ko": "mt6879",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6886.ko": "mt6886",
@@ -2087,7 +2087,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
         mgk_64_device_modules.remove("drivers/soc/mediatek/mmdvfs/mtk-mmdvfs-v5.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug-v5.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/mmdvfs/mmdvfs-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/mmdvfs/mmdvfs-mt6993.ko")
 
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")

@@ -118,6 +118,12 @@ inline void mmdvfs_mmup_cb_mutex_unlock(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_mmup_cb_mutex_unlock);
 
+inline u8 mmdvfs_user_get_rc(const u8 idx)
+{
+	return mmdvfs_data->mux[mmdvfs_data->user[idx].mux].rc;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_user_get_rc);
+
 inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp)
 {
 	u8 mux, lvl;
@@ -466,7 +472,7 @@ static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long 
 {
 	struct mmdvfs_user *user = container_of(hw, typeof(*user), clk_hw);
 	struct mmdvfs_mux *mux = &mmdvfs_data->mux[user->mux];
-	u8 level;
+	u8 level = 0;
 	int i;
 
 	for (i = 0; i < mmdvfs_data->rc[mux->rc].level_num; i++)
@@ -645,12 +651,12 @@ static int mmdvfs_get_rc_base(struct mmdvfs_data *mmdvfs_data)
 		rc->rc_base = ioremap(rc->pa, 0x100000);
 	}
 
-	MMDVFS_DBG("mmdvfs_v5_get_rc_base pass");
+	MMDVFS_DBG("pass");
 
 	return 0;
 }
 
-int mmdvfs_v5_mux_probe(struct platform_device *pdev)
+int mmdvfs_mux_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = pdev->dev.of_node;
@@ -671,7 +677,7 @@ int mmdvfs_v5_mux_probe(struct platform_device *pdev)
 
 	return ret;
 }
-EXPORT_SYMBOL(mmdvfs_v5_mux_probe);
+EXPORT_SYMBOL(mmdvfs_mux_probe);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek MMDVFS");

@@ -51,15 +51,17 @@ static u8 *fmeter_type;
 
 static bool met_freerun;
 
-static u8 user_count;
+static u8 ap_user_count;
+static u8 rl_user_count;
 struct mmdvfs_debug_user {
-	u8 idx;
+	u8 id;
+	u8 rc;
 	const char *name;
 	struct clk *clk;
 	s8 force_opp;
 	s8 vote_opp;
 };
-static struct mmdvfs_debug_user *user;
+static struct mmdvfs_debug_user *ap_user, *rl_user;
 
 int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
 {
@@ -72,16 +74,16 @@ int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
 	int ret;
 
-	if (idx >= user_count) {
+	if (idx >= ap_user_count) {
 		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
 		return -EINVAL;
 	}
 
-	mtk_mmdvfs_enable_vcp(true, user[idx].idx);
+	mtk_mmdvfs_enable_vcp(true, ap_user[idx].id);
 	ret = mmdvfs_force_step(idx, opp);
 	if (!ret)
-		user[idx].force_opp = opp;
-	mtk_mmdvfs_enable_vcp(false, user[idx].idx);
+		ap_user[idx].force_opp = opp;
+	mtk_mmdvfs_enable_vcp(false, ap_user[idx].id);
 
 	return ret;
 }
@@ -91,16 +93,16 @@ int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
 {
 	int ret;
 
-	if (idx >= user_count) {
+	if (idx >= ap_user_count) {
 		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
 		return -EINVAL;
 	}
 
-	mtk_mmdvfs_enable_vcp(true, user[idx].idx);
-	ret = clk_set_rate(user[idx].clk, mmdvfs_user_get_freq_by_opp(user[idx].idx, opp));
+	mtk_mmdvfs_enable_vcp(true, ap_user[idx].id);
+	ret = clk_set_rate(ap_user[idx].clk, mmdvfs_user_get_freq_by_opp(ap_user[idx].id, opp));
 	if (!ret)
-		user[idx].vote_opp = opp;
-	mtk_mmdvfs_enable_vcp(false, user[idx].idx);
+		ap_user[idx].vote_opp = opp;
+	mtk_mmdvfs_enable_vcp(false, ap_user[idx].id);
 
 	return ret;
 }
@@ -131,6 +133,29 @@ static int mmdvfs_debug_v5_set_vote_step(const char *val, const struct kernel_pa
 
 	return mmdvfs_debug_vote_step(idx, opp);
 }
+
+static int mmdvfs_debug_freerun(const char *val, const struct kernel_param *kp)
+{
+	int idx = 0, i, ret;
+
+	ret = sscanf(val, "%d", &idx);
+	if (ret != 1) {
+		MMDVFS_DBG("failed:%d idx:%d", ret, idx);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < rl_user_count; i++)
+		if (rl_user && rl_user[i].rc == idx)
+			ret = clk_set_rate(rl_user[i].clk, 0);
+
+	return ret;
+}
+
+static struct kernel_param_ops mmdvfs_debug_freerun_ops = {
+	.set = mmdvfs_debug_freerun,
+};
+module_param_cb(freerun, &mmdvfs_debug_freerun_ops, NULL, 0644);
+MODULE_PARM_DESC(freerun, "freerun by rc id");
 
 static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 {
@@ -180,7 +205,7 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 		mmdvfs_seq_print(file, "mmup_cb_ready:%d mmup_sram:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
 		return 0;
 	}
-	mtk_mmdvfs_enable_vcp(true, user ? user[0].idx : 0);
+	mtk_mmdvfs_enable_vcp(true, ap_user ? ap_user[0].id : 0);
 
 	mmdvfs_seq_print(file, "mmup_sram:%#lx", (unsigned long)(void *)SRAM_BASE);
 
@@ -244,7 +269,7 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 		}
 	}
 
-	mtk_mmdvfs_enable_vcp(false, user ? user[0].idx : 0);
+	mtk_mmdvfs_enable_vcp(false, ap_user ? ap_user[0].id : 0);
 	mmdvfs_mmup_cb_mutex_unlock();
 
 	return 0;
@@ -293,13 +318,13 @@ static int mmdvfs_debug_pm_notifier(struct notifier_block *notifier, unsigned lo
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		MMDVFS_DBG("PM_SUSPEND_PREPARE in");
-		for (i = 0; i < user_count; i++) {
-			if (unlikely(user[i].force_opp != OPP_NAG || user[i].vote_opp != OPP_NAG))
-				MMDVFS_DBG("user i:%d idx:%hhu name:%16s force:%hhd vote:%hhd not release at suspend",
-					i, user[i].idx, user[i].name, user[i].force_opp, user[i].vote_opp);
-			if (unlikely(user[i].force_opp != OPP_NAG))
+		for (i = 0; i < ap_user_count; i++) {
+			if (unlikely(ap_user[i].force_opp != OPP_NAG || ap_user[i].vote_opp != OPP_NAG))
+				MMDVFS_DBG("user i:%d id:%hhu name:%16s force:%hhd vote:%hhd not release at suspend",
+					i, ap_user[i].id, ap_user[i].name, ap_user[i].force_opp, ap_user[i].vote_opp);
+			if (unlikely(ap_user[i].force_opp != OPP_NAG))
 				mmdvfs_debug_force_step(i, OPP_NAG);
-			if (unlikely(user[i].vote_opp != OPP_NAG))
+			if (unlikely(ap_user[i].vote_opp != OPP_NAG))
 				mmdvfs_debug_vote_step(i, OPP_NAG);
 		}
 		break;
@@ -401,8 +426,9 @@ static inline int mmdvfs_debug_parse_fmeter(struct device *dev)
 	return ret;
 }
 
-static inline int mmdvfs_debug_parse_user(struct device *dev)
+static inline int mmdvfs_debug_parse_user(struct device *dev, struct mmdvfs_debug_user **_user, u8 *count)
 {
+	struct mmdvfs_debug_user *user;
 	struct property *prop;
 	const char *name;
 	struct clk *clk;
@@ -413,29 +439,31 @@ static inline int mmdvfs_debug_parse_user(struct device *dev)
 		MMDVFS_DBG("count_strings clock-names failed:%d", ret);
 		return ret;
 	}
-	user_count = ret;
+	*count = ret;
 
-	user = kcalloc(user_count, sizeof(*user), GFP_KERNEL);
+	user = kcalloc(*count, sizeof(*user), GFP_KERNEL);
 	if (!user)
 		return -ENOMEM;
 
+	*_user = user;
 	of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
 		struct of_phandle_args spec;
 
 		ret = of_parse_phandle_with_args(dev->of_node, "clocks", "#clock-cells", i, &spec);
 		if (!ret)
-			user[i].idx = spec.args[0];
+			user[i].id = spec.args[0];
 
 		clk = devm_clk_get(dev, name);
 		if (!IS_ERR_OR_NULL(clk))
 			user[i].clk = clk;
 
+		user[i].rc = mmdvfs_user_get_rc(user[i].id);
 		user[i].name = name;
 		user[i].force_opp = OPP_NAG;
 		user[i].vote_opp = OPP_NAG;
 
-		MMDVFS_DBG("user i:%d idx:%hhu name:%16s clk:%p force:%hhd vote:%hhd",
-			i, user[i].idx, user[i].name, user[i].clk, user[i].force_opp, user[i].vote_opp);
+		MMDVFS_DBG("user:%p count:%hhu i:%2d id:%2hhu rc:%hhu name:%16s clk:%p force:%hhd vote:%hhd",
+			*_user, *count, i, user[i].id, user[i].rc, user[i].name, user[i].clk, user[i].force_opp, user[i].vote_opp);
 
 		i += 1;
 	}
@@ -477,12 +505,12 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	mmdvfs_debug_parse_regulator(dev);
 	mmdvfs_debug_parse_mux(dev);
 	mmdvfs_debug_parse_fmeter(dev);
-	mmdvfs_debug_parse_user(dev);
+	mmdvfs_debug_parse_user(dev, &ap_user, &ap_user_count);
 
 	met_freerun = of_property_read_bool(dev->of_node, "mediatek,met-freerun");
 
 	MMDVFS_DBG("mux_base:%pa mux_count:%hu fmeter_count:%hhu user_count:%hhu met_freerun:%d",
-		&mux_base_pa, mux_count, fmeter_count, user_count, met_freerun);
+		&mux_base_pa, mux_count, fmeter_count, ap_user_count, met_freerun);
 
 	register_pm_notifier(&mmdvfs_debug_pm_notifier_block);
 	mmdvfs_debug_ops_set(&mmdvfs_debug_v5_ops);
@@ -503,7 +531,7 @@ static void mmdvfs_debug_remove(struct platform_device *pdev)
 
 static const struct of_device_id of_mmdvfs_debug[] = {
 	{
-		.compatible = "mediatek,mmdvfs-debug-v5",
+		.compatible = "mediatek,mmdvfs-debug",
 	},
 	{}
 };
@@ -517,11 +545,49 @@ static struct platform_driver mmdvfs_debug_drv = {
 	},
 };
 
+static int mmdvfs_debug_user_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	int i, ret;
+
+	mmdvfs_debug_parse_user(dev, &rl_user, &rl_user_count);
+
+	for (i = 0; i < rl_user_count; i++)
+		ret = clk_set_rate(rl_user[i].clk, mmdvfs_user_get_freq_by_opp(rl_user[i].id, 0));
+
+	return ret;
+}
+
+static void mmdvfs_debug_user_remove(struct platform_device *pdev)
+{
+}
+
+static const struct of_device_id of_mmdvfs_debug_user[] = {
+	{
+		.compatible = "mediatek,mmdvfs-debug-user",
+	},
+	{}
+};
+
+static struct platform_driver mmdvfs_debug_user_drv = {
+	.probe = mmdvfs_debug_user_probe,
+	.remove = mmdvfs_debug_user_remove,
+	.driver = {
+		.name = "mtk-mmdvfs-debug-user",
+		.of_match_table = of_mmdvfs_debug_user,
+	},
+};
+
+static struct platform_driver * const mmdvfs_debug_drvs[] = {
+	&mmdvfs_debug_drv,
+	&mmdvfs_debug_user_drv,
+};
+
 static int __init mmdvfs_debug_init(void)
 {
 	int ret;
 
-	ret = platform_driver_register(&mmdvfs_debug_drv);
+	ret = platform_register_drivers(mmdvfs_debug_drvs, ARRAY_SIZE(mmdvfs_debug_drvs));
 	if (ret)
 		MMDVFS_DBG("failed:%d", ret);
 
@@ -530,7 +596,7 @@ static int __init mmdvfs_debug_init(void)
 
 static void __exit mmdvfs_debug_exit(void)
 {
-	platform_driver_unregister(&mmdvfs_debug_drv);
+	platform_unregister_drivers(mmdvfs_debug_drvs, ARRAY_SIZE(mmdvfs_debug_drvs));
 }
 
 module_init(mmdvfs_debug_init);
