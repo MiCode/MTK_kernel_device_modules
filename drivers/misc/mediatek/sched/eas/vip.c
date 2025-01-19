@@ -746,50 +746,6 @@ EXPORT_SYMBOL(unset_task_priority_based_vip);
 /* priority based VIP interface */
 
 /* TGID */
-void set_tgid_basic_vip(int tgid)
-{
-	// FIXME: thread_group is removed from task_struct
-#if 0
-	struct task_struct *group_leader, *p;
-	struct vip_task_struct *vts;
-
-	rcu_read_lock();
-	group_leader = find_task_by_vpid(tgid);
-	if (group_leader) {
-		list_for_each_entry(p, &group_leader->thread_group, thread_group) {
-			get_task_struct(p);
-			vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-			vts->basic_vip = true;
-			put_task_struct(p);
-		}
-	}
-	rcu_read_unlock();
-#endif
-}
-EXPORT_SYMBOL_GPL(set_tgid_basic_vip);
-
-void unset_tgid_basic_vip(int tgid)
-{
-	// FIXME: thread_group is removed from task_struct
-#if 0
-	struct task_struct *group_leader, *p;
-	struct vip_task_struct *vts;
-
-	rcu_read_lock();
-	group_leader = find_task_by_vpid(tgid);
-	if (group_leader) {
-		list_for_each_entry(p, &group_leader->thread_group, thread_group) {
-			get_task_struct(p);
-			vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-			vts->basic_vip = false;
-			put_task_struct(p);
-		}
-	}
-	rcu_read_unlock();
-#endif
-}
-EXPORT_SYMBOL_GPL(unset_tgid_basic_vip);
-
 int show_tgid(int slot_id)
 {
 	return tgid_vip_arr[slot_id];
@@ -1269,7 +1225,6 @@ void init_task_gear_hints(struct task_struct *p)
 	ghts->reverse    = 0;
 }
 
-//static void vip_new_tasks(void *unused, struct task_struct *new)
 void vip_new_tasks(void *unused, struct task_struct *new)
 {
 	init_vip_task_struct(new);
@@ -1457,6 +1412,6 @@ void vip_init(void)
 		tgid_vip_arr[slot_id] = -1;
 
 	/* init vip related value to newly forked tasks */
-	//register_vip_hooks();
-	//vip_enable = sched_vip_enable_get();
+	register_vip_hooks();
+	vip_enable = sched_vip_enable_get();
 }

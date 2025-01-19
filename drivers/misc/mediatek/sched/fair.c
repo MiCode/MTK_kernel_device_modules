@@ -2342,6 +2342,13 @@ unlock:
 
 	irq_log_store();
 
+/* The following fail path will be copied to the hook function of select_task_rq_fair
+ * because overutilization won't enter fail path since kernel moved the condition about
+ * overutilized from find_energy_efficient to select_task_rq_fair.
+ * We have to copied the algo. to the hook function of select_task_rq_fair to enter
+ * the fail path when overutilized triggerd.
+ */
+
 fail:
 	/* All cpu failed, even sys_max_spare_cap_cpu is not captured*/
 
@@ -2499,6 +2506,243 @@ done:
 	}
 
 	irq_log_store();
+}
+
+void mtk_find_energy_efficient_cpu_fail(int *new_cpu, struct task_struct *p, int this_cpu,
+	int prev_cpu, int sync, struct cpumask allowed_cpu_mask, int select_reason, bool is_vip, int vip_prio, struct cpumask vip_candidate)
+{
+	int target, recent_used_cpu, backup_reason = 0;
+
+	/* All cpu failed, even sys_max_spare_cap_cpu is not captured*/
+
+	/* from overutilized & zero_util */
+	if (cpumask_empty(&allowed_cpu_mask)) {
+		cpumask_andnot(&allowed_cpu_mask, p->cpus_ptr, cpu_pause_mask);
+		cpumask_and(&allowed_cpu_mask, &allowed_cpu_mask, cpu_active_mask);
+	} else {
+		if (select_reason != LB_FAIL)
+			select_reason = LB_FAIL_IN_REGULAR;
+	}
+
+	rcu_read_lock();
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	if (is_vip) {
+		struct cpumask temp_mask;
+
+		/* for VVIP, select biggest CPU */
+		if (prio_is_vip(vip_prio , VVIP) && !cpumask_empty(&vip_candidate)) {
+			*new_cpu = cpumask_last(&vip_candidate);
+			backup_reason = LB_BACKUP_VVIP;
+			goto backup_unlock;
+		}
+
+		/* for other VIPs */
+		cpumask_copy(&temp_mask, &allowed_cpu_mask);
+		if (!cpumask_and(&allowed_cpu_mask, &allowed_cpu_mask, &vip_candidate))
+			cpumask_copy(&allowed_cpu_mask, &temp_mask);
+	}
+#endif
+
+	if (cpumask_test_cpu(this_cpu, p->cpus_ptr) && (this_cpu != prev_cpu))
+		target = mtk_wake_affine(p, this_cpu, prev_cpu, sync);
+	else
+		target = prev_cpu;
+
+	if (cpumask_test_cpu(target, &allowed_cpu_mask) &&
+		/* Don't check CPU idle state if task is VIP, since idle is not critical for VIP*/
+	    (is_vip || (mtk_available_idle_cpu(target) || sched_idle_cpu(target))) &&
+	    task_fits_capacity(p, capacity_of(target), get_adaptive_margin(target))) {
+		*new_cpu = target;
+		backup_reason = LB_BACKUP_AFFINE_IDLE_FIT;
+		goto backup_unlock;
+	}
+
+	/*
+	 * If the previous CPU fit_capacity and idle, don't be stupid:
+	 */
+	if (prev_cpu != target && mtk_cpus_share_cache(prev_cpu, target) &&
+		cpumask_test_cpu(prev_cpu, &allowed_cpu_mask) &&
+  	    (is_vip || (mtk_available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu))) &&
+	    task_fits_capacity(p, capacity_of(prev_cpu), get_adaptive_margin(prev_cpu))) {
+		*new_cpu = prev_cpu;
+		backup_reason = LB_BACKUP_PREV;
+		goto backup_unlock;
+	}
+
+	irq_log_store();
+
+	/*
+	 * Allow a per-cpu kthread to stack with the wakee if the
+	 * kworker thread and the tasks previous CPUs are the same.
+	 * The assumption is that the wakee queued work for the
+	 * per-cpu kthread that is now complete and the wakeup is
+	 * essentially a sync wakeup. An obvious example of this
+	 * pattern is IO completions.
+	 */
+	if (cpumask_test_cpu(this_cpu, &allowed_cpu_mask) &&
+		is_per_cpu_kthread(current) && in_task() &&
+	    prev_cpu == this_cpu &&
+	    this_rq()->nr_running <= 1 &&
+	    task_fits_capacity(p, capacity_of(this_cpu), get_adaptive_margin(this_cpu))) {
+		*new_cpu = this_cpu;
+		backup_reason = LB_BACKUP_CURR;
+		goto backup_unlock;
+	}
+
+	irq_log_store();
+
+	/* Check a recently used CPU as a potential idle candidate: */
+	recent_used_cpu = p->recent_used_cpu;
+	p->recent_used_cpu = prev_cpu;
+	if (recent_used_cpu != prev_cpu && recent_used_cpu != target &&
+		mtk_cpus_share_cache(recent_used_cpu, target) &&
+		cpumask_test_cpu(recent_used_cpu, &allowed_cpu_mask) &&
+	    (is_vip || (mtk_available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu))) &&
+	    task_fits_capacity(p, capacity_of(recent_used_cpu), get_adaptive_margin(recent_used_cpu))) {
+		*new_cpu = recent_used_cpu;
+		/*
+		 * Replace recent_used_cpu
+		 * candidate for the next
+		 */
+		p->recent_used_cpu = prev_cpu;
+		backup_reason = LB_BACKUP_RECENT_USED_CPU;
+		goto backup_unlock;
+	}
+
+	irq_log_store();
+
+	*new_cpu = mtk_select_idle_capacity(p, &allowed_cpu_mask, target, is_vip);
+	if (*new_cpu < nr_cpumask_bits) {
+		backup_reason = LB_BACKUP_IDLE_CAP;
+		goto backup_unlock;
+	}
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	if (is_vip) {
+		*new_cpu = find_vip_backup_cpu(p, &allowed_cpu_mask, prev_cpu, target);
+		if (*new_cpu < nr_cpumask_bits) {
+			backup_reason = LB_BACKUP_VIP_IN_MASK;
+			goto backup_unlock;
+		}
+	}
+#endif
+
+	if (*new_cpu == -1 && cpumask_test_cpu(target, p->cpus_ptr)) {
+		*new_cpu = target;
+		backup_reason = LB_BACKUP_AFFINE_WITHOUT_IDLE_CAP;
+		goto backup_unlock;
+	}
+
+	*new_cpu = -1;
+backup_unlock:
+	rcu_read_unlock();
+
+/* done: */
+	irq_log_store();
+
+	/* if (trace_sched_find_energy_efficient_cpu_enabled())
+	 * 	trace_sched_find_energy_efficient_cpu(in_interrupt(), best_delta, best_energy_cpu,
+	 * 			best_energy_cpu, idle_max_spare_cap_cpu, sys_max_spare_cap_cpu); */
+	if (trace_sched_select_task_rq_enabled()) {
+		bool latency_sensitive = false;
+		struct cpumask effective_softmask;
+
+		compute_effective_softmask(p, &latency_sensitive, &effective_softmask);
+		trace_sched_select_task_rq(p, in_interrupt(), select_reason, backup_reason, prev_cpu,
+				*new_cpu, task_util(p), task_util_est(p), uclamp_task_util(p),
+				latency_sensitive, sync, &effective_softmask);
+	}
+	/* if (trace_sched_effective_mask_enabled()) {
+	 * 	struct soft_affinity_task *sa_task = &((struct mtk_task *)
+	 * 		p->android_vendor_data1)->sa_task;
+	 * 	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
+	 * 	struct cpumask softmask;
+
+	 * 	if (css) {
+	 * 		struct task_group *tg = container_of(css, struct task_group, css);
+	 * 		struct soft_affinity_tg *sa_tg = &((struct mtk_tg *)
+	 * 			tg->android_vendor_data1)->sa_tg;
+	 * 		softmask = sa_tg->soft_cpumask;
+	 * 	} else {
+	 * 		cpumask_clear(&softmask);
+	 * 		cpumask_copy(&softmask, cpu_possible_mask);
+	 * 	}
+	 * 	trace_sched_effective_mask(p, *new_cpu, latency_sensitive,
+	 * 		&effective_softmask, &sa_task->soft_cpumask, &softmask);
+	 * }
+	 */
+
+	irq_log_store();
+}
+
+void mtk_find_energy_efficient_cpu_overutilized(int *target_cpu, struct task_struct *p, int wake_flags, int prev_cpu)
+{
+	int this_cpu = smp_processor_id();
+	struct root_domain *rd = cpu_rq(this_cpu)->rd;
+	struct perf_domain *pd;
+	struct cpumask allowed_cpu_mask;
+	int order_index = 0, end_index = 0, reverse = 0;
+	bool is_vip = false;
+	int vip_prio = NOT_VIP;
+	struct cpumask vip_candidate;
+	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+    struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
+
+    vip_prio = get_vip_task_prio(p);
+    is_vip = prio_is_vip(vip_prio, NOT_VIP);
+    if (vts->faster_compute_eng) {
+        // in_irq = true;
+        vts->faster_compute_eng = false;
+    }
+
+	cpumask_clear(&vip_candidate);
+#endif
+
+    if (!get_eas_hook())
+        return;
+
+    cpumask_clear(&allowed_cpu_mask);
+
+	irq_log_store();
+
+	rcu_read_lock();
+
+	pd = rcu_dereference(rd->pd);
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	if (is_vip) {
+		if (vip_in_gh)
+			mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
+		vip_candidate = find_min_num_vip_cpus(pd, p, vip_prio, &allowed_cpu_mask,
+			order_index, end_index, reverse);
+	}
+#endif
+
+	rcu_read_unlock();
+    mtk_find_energy_efficient_cpu_fail(target_cpu, p, this_cpu, prev_cpu, sync, allowed_cpu_mask, LB_FAIL, is_vip, vip_prio, vip_candidate);
+}
+EXPORT_SYMBOL_GPL(mtk_find_energy_efficient_cpu_overutilized);
+
+static inline bool mtk_is_rd_overutilized(struct root_domain *rd)
+{
+	return READ_ONCE(rd->overutilized);
+}
+
+void mtk_overutilized_temp(void *ignore, struct task_struct *p,
+							int prev_cpu, int sd_flag,
+							int wake_flags, int *target_cpu)
+{
+	/* if (target_cpu < 0) { */
+	if (wake_flags & WF_TTWU) {
+		if (!(wake_flags & WF_CURRENT_CPU) ||
+			!cpumask_test_cpu(smp_processor_id(), p->cpus_ptr))
+			if (mtk_is_rd_overutilized(this_rq()->rd)) {
+				mtk_find_energy_efficient_cpu_overutilized(target_cpu, p, wake_flags, prev_cpu);
+			}
+	}
+	/* } */
 }
 #endif
 

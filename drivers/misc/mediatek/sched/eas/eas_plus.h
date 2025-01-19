@@ -130,6 +130,9 @@ extern void hook_sched_balance_find_src_group(void *data, struct sched_group *bu
 extern void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p,
 		int prev_cpu, int sync, int *new_cpu);
 extern void mtk_cpu_overutilized(void *data, int cpu, int *overutilized);
+extern void mtk_overutilized_temp(void *ignore, struct task_struct *p,
+							int prev_cpu, int sd_flag,
+							int wake_flags, int *target_cpu);
 
 extern unsigned long pd_get_util_cpufreq(struct energy_env *eenv,
 		struct cpumask *pd_cpus, unsigned long max_util, unsigned long allowed_cpu_cap,
