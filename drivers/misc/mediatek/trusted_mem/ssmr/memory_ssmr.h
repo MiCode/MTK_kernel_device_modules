@@ -49,5 +49,5 @@ bool is_pkvm_enabled(void);
 bool is_ffa_enabled(void);
 bool is_page_based_v2_enabled(void);
 bool is_tee_mmap_by_page_enabled(void);
-
+struct device *get_ssmr_dev(void);
 #endif
