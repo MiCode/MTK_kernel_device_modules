@@ -52,5 +52,8 @@ extern int sched_adpf_callback(struct _SESSION *session);
 extern void set_group_active_ratio_cap(int gear_id, int val);
 extern void set_eas_adpf_enable(int val);
 extern int get_eas_adpf_enable(void);
+extern void set_eas_adpf_vip(int val);
+extern void unset_eas_adpf_vip(void);
+
 #endif
 

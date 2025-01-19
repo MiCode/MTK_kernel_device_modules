@@ -16,9 +16,11 @@
 #include "eas_adpf.h"
 
 #define ADPF_MAX_SESSION 64
+#define DEFAULT_EAS_ADPF_VIP	false
 
 static DEFINE_MUTEX(adpf_mutex);
 static int eas_adpf_enable = 1;
+static int eas_adpf_vip_ctrl = DEFAULT_EAS_ADPF_VIP;
 
 int sched_adpf_callback(struct _SESSION *session)
 {
@@ -54,7 +56,8 @@ int sched_adpf_callback(struct _SESSION *session)
 			__set_task_to_group(session->threadIds[i], -1);
 			__set_task_to_group(session->threadIds[i], GROUP_ID_2);
 #endif
-			set_task_basic_vip(session->threadIds[i]);
+			if(eas_adpf_vip_ctrl)
+				set_task_basic_vip(session->threadIds[i]);
 		}
 		mutex_unlock(&adpf_mutex);
 		break;
@@ -123,7 +126,8 @@ int sched_adpf_callback(struct _SESSION *session)
 			__set_task_to_group(session->threadIds[i], -1);
 			__set_task_to_group(session->threadIds[i], GROUP_ID_2);
 #endif
-			set_task_basic_vip(session->threadIds[i]);
+			if(eas_adpf_vip_ctrl)
+				set_task_basic_vip(session->threadIds[i]);
 		}
 		mutex_unlock(&adpf_mutex);
 		break;
@@ -133,7 +137,7 @@ int sched_adpf_callback(struct _SESSION *session)
 
 	if (trace_sched_adpf_get_value_enabled()) {
 		trace_sched_adpf_get_value(cmd, sid, session->tgid, session->uid,
-			session->threadIds_size, session->targetDurationNanos);
+			session->threadIds_size, session->targetDurationNanos, eas_adpf_vip_ctrl);
 	}
 
 	return 0;
@@ -152,3 +156,14 @@ int get_eas_adpf_enable(void)
 }
 EXPORT_SYMBOL_GPL(get_eas_adpf_enable);
 
+void set_eas_adpf_vip(int val)
+{
+	eas_adpf_vip_ctrl = val;
+}
+EXPORT_SYMBOL_GPL(set_eas_adpf_vip);
+
+void unset_eas_adpf_vip(void)
+{
+	eas_adpf_vip_ctrl = DEFAULT_EAS_ADPF_VIP;
+}
+EXPORT_SYMBOL_GPL(unset_eas_adpf_vip);

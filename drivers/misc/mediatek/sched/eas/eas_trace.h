@@ -2095,9 +2095,9 @@ TRACE_EVENT(sched_set_preferred_cluster,
 TRACE_EVENT(sched_adpf_get_value,
 
 	TP_PROTO(unsigned int cmd, unsigned int sid, unsigned int tgid, unsigned int uid, int threadIds_size,
-	long targetDurationNanos),
+	long targetDurationNanos, int eas_adpf_vip_ctrl),
 
-	TP_ARGS(cmd, sid, tgid, uid, threadIds_size, targetDurationNanos),
+	TP_ARGS(cmd, sid, tgid, uid, threadIds_size, targetDurationNanos, eas_adpf_vip_ctrl),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, cmd)
@@ -2106,6 +2106,7 @@ TRACE_EVENT(sched_adpf_get_value,
 		__field(unsigned int, uid)
 		__field(int, threadIds_size)
 		__field(long, targetDurationNanos)
+		__field(int, eas_adpf_vip_ctrl)
 	),
 
 	TP_fast_assign(
@@ -2115,11 +2116,12 @@ TRACE_EVENT(sched_adpf_get_value,
 		__entry->uid = uid;
 		__entry->threadIds_size = threadIds_size;
 		__entry->targetDurationNanos = targetDurationNanos;
+		__entry->eas_adpf_vip_ctrl = eas_adpf_vip_ctrl;
 	),
 
-	TP_printk("cmd = %d sid = %d tgid = %d uid = %d threadIds_size = %d targetDurationNanos = %ld\n",
+	TP_printk("cmd = %d sid = %d tgid = %d uid = %d threadIds_size = %d targetDurationNanos = %ld eas_adpf_vip_ctrl= %d\n",
 		  __entry->cmd, __entry->sid, __entry->tgid, __entry->uid, __entry->threadIds_size,
-		  __entry->targetDurationNanos)
+		  __entry->targetDurationNanos, __entry->eas_adpf_vip_ctrl)
 );
 
 /* clamp_id: 0 = UCLAMP_MIN, 1 = UCLAMP_MAX */
