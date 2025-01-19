@@ -148,7 +148,7 @@ int edma_send_cmd(int cmd, void *hnd, struct apusys_device *adev)
 			break;
 		}
 
-		if (cmd_hnd->cmdbufs[0].size != sizeof(struct edma_ext)) {
+		if (cmd_hnd->cmdbufs[0].size < sizeof(struct edma_ext)) {
 			LOG_ERR("%s cmdHnd->cmdbufs[0].size = %d error\n",
 				__func__, cmd_hnd->cmdbufs[0].size);
 			break;

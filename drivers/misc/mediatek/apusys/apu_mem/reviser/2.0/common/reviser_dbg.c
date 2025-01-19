@@ -259,9 +259,7 @@ static ssize_t reviser_dbg_read_mem_tcm(struct file *filp, char *buffer,
 		return -EINVAL;
 	}
 
-	vbuffer = (unsigned char *)
-		__get_free_pages(GFP_KERNEL, get_order(rdv->plat.bank_size));
-
+	vbuffer = kvmalloc(rdv->plat.bank_size, GFP_KERNEL);
 	if (vbuffer == NULL) {
 		LOG_ERR("allocate fail 0x%x\n", rdv->plat.bank_size);
 		return res;
@@ -275,9 +273,7 @@ static ssize_t reviser_dbg_read_mem_tcm(struct file *filp, char *buffer,
 	res = simple_read_from_buffer(buffer, length, offset,
 			vbuffer, rdv->plat.bank_size);
 
-	//vfree(vbuffer);
-
-	free_pages((unsigned long)vbuffer, get_order(rdv->plat.bank_size));
+	kvfree(vbuffer);
 	return res;
 }
 
