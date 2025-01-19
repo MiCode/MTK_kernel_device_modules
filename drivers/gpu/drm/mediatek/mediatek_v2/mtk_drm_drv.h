@@ -62,6 +62,37 @@ struct mtk_fake_eng_data {
 	const struct mtk_fake_eng_reg *fake_eng_reg;
 };
 
+enum pwr_clk_id {
+	CLK_DISP_VCORE,
+	CLK_DIS0,
+	CLK_DIS1,
+	CLK_OVL0,
+	CLK_OVL1,
+	CLK_MML0,
+	CLK_MML1,
+	CLK_EDPTX,
+	CLK_DPTX,
+	CLK_DSI_PHY0,
+	CLK_DIS0_A,
+	CLK_DIS0_B,
+	CLK_DIS1_A,
+	CLK_DIS1_B,
+	CLK_OVL2,
+	CLK_MML2,
+	CLK_DSI_PHY1,
+	CLK_DSI_PHY2,
+	CLK_VDISP_PERI,
+	CLK_MAX_NUM,
+};
+
+#define MT6991_PWR_CLK_NUMS 6
+#define MT6993_PWR_CLK_NUMS 10
+
+struct pwr_clk_map {
+	const char *name;
+	enum pwr_clk_id id;
+};
+
 struct mtk_mmsys_driver_data {
 	const struct mtk_crtc_path_data *main_path_data;
 	const struct mtk_crtc_path_data *ext_path_data;
@@ -110,6 +141,10 @@ struct mtk_mmsys_driver_data {
 			unsigned int bw_base, enum CHANNEL_TYPE type);
 	void (*update_channel_bw_by_larb)(struct mtk_larb_port_bw *port_bw,
 			unsigned int *subcomm_bw_sum, unsigned int size, enum CHANNEL_TYPE type);
+	struct pwr_clk_map *pwr_clk_map;
+	const enum pwr_clk_id *pwr_on_order;
+	const enum pwr_clk_id *pwr_off_order;
+	int pwr_length;
 };
 
 struct mtk_drm_lyeblob_ids {
@@ -143,20 +178,6 @@ enum MTK_CONNECTOR_PROP {
 	CONNECTOR_PROP_CSC_BL,        /* csc bylayer backlight */
 	CONNECTOR_PROP_PANEL_NITS,    /* panel nits */
 	CONNECTOR_PROP_MAX,
-};
-
-enum pwr_clk_id {
-	CLK_DISP_VCORE,
-	CLK_DIS0,
-	CLK_DIS1,
-	CLK_OVL0,
-	CLK_OVL1,
-	CLK_MML1,
-	CLK_MML0,
-	CLK_EDPTX,
-	CLK_DPTX,
-	CLK_DSI_PHY0,
-	CLK_MAX_NUM,
 };
 
 struct mtk_connector_state {

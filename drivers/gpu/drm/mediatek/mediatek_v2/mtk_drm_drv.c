@@ -3627,6 +3627,74 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_seventh_path[] = {
 };
 #endif
 
+static struct pwr_clk_map pwr_clk_map[] = {
+	{"CLK_DISP_VCORE", CLK_DISP_VCORE},
+	{"CLK_DIS0", CLK_DIS0},
+	{"CLK_DIS1", CLK_DIS1},
+	{"CLK_OVL0", CLK_OVL0},
+	{"CLK_OVL1", CLK_OVL1},
+	{"CLK_MML0", CLK_MML0},
+	{"CLK_MML1", CLK_MML1},
+	{"CLK_EDPTX", CLK_EDPTX},
+	{"CLK_DPTX", CLK_DPTX},
+	{"CLK_DSI_PHY0", CLK_DSI_PHY0},
+	{"CLK_DIS0_A", CLK_DIS0_A},
+	{"CLK_DIS0_B", CLK_DIS0_B},
+	{"CLK_DIS1_A", CLK_DIS1_A},
+	{"CLK_DIS1_B", CLK_DIS1_B},
+	{"CLK_OVL2", CLK_OVL2},
+	{"CLK_MML2", CLK_MML2},
+	{"CLK_DSI_PHY1", CLK_DSI_PHY1},
+	{"CLK_DSI_PHY2", CLK_DSI_PHY2},
+	{"CLK_VDISP_PERI", CLK_VDISP_PERI},
+	{NULL, -1}
+};
+
+static const enum pwr_clk_id mt6993_pwr_on_order[] = {
+	CLK_DSI_PHY0,
+	CLK_DISP_VCORE,
+	CLK_VDISP_PERI,
+	CLK_DIS0_A,
+	CLK_DIS0_B,
+	CLK_DIS1_A,
+	CLK_DIS1_B,
+	CLK_OVL0,
+	CLK_OVL1,
+	CLK_OVL2,
+};
+
+static const enum pwr_clk_id mt6993_pwr_off_order[] = {
+	CLK_DIS0_A,
+	CLK_DIS0_B,
+	CLK_DIS1_A,
+	CLK_DIS1_B,
+	CLK_OVL0,
+	CLK_OVL1,
+	CLK_OVL2,
+	CLK_VDISP_PERI,
+	CLK_DISP_VCORE,
+	CLK_DSI_PHY0,
+};
+
+
+static const enum pwr_clk_id mt6991_pwr_on_order[] = {
+	CLK_DSI_PHY0,
+	CLK_DISP_VCORE,
+	CLK_DIS0,
+	CLK_DIS1,
+	CLK_OVL0,
+	CLK_OVL1,
+};
+
+static const enum pwr_clk_id mt6991_pwr_off_order[] = {
+	CLK_DIS0,
+	CLK_DIS1,
+	CLK_OVL0,
+	CLK_OVL1,
+	CLK_DISP_VCORE,
+	CLK_DSI_PHY0,
+};
+
 static const enum mtk_ddp_comp_id mt6993_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL_EXDMA3,
 	DDP_COMPONENT_OVL0_BLENDER1,
@@ -6896,6 +6964,10 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6991,
 	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6991,
 	.get_channel_idx = mtk_disp_get_channel_idx,
+	.pwr_clk_map = pwr_clk_map,
+	.pwr_on_order = mt6991_pwr_on_order,
+	.pwr_off_order = mt6991_pwr_off_order,
+	.pwr_length = MT6991_PWR_CLK_NUMS,
 //	.ct_wiat_cmdq_event = true,
 };
 
@@ -6936,6 +7008,12 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
 	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6993,
 	.get_channel_idx = mtk_disp_get_channel_idx,
+	.pwr_clk_map = pwr_clk_map,
+	.pwr_on_order = mt6993_pwr_on_order,
+	.pwr_off_order = mt6993_pwr_off_order,
+	.pwr_length = MT6993_PWR_CLK_NUMS,
+	//.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
+	//.get_channel_idx = mtk_disp_get_channel_idx_MT6993,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
@@ -7091,19 +7169,6 @@ static const struct mtk_mmsys_driver_data mt6855_mmsys_driver_data = {
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
 	.use_infra_mem_res = false,
-};
-
-static const char * const pwr_clk_names[CLK_MAX_NUM] = {
-	[CLK_DISP_VCORE] = "disp_vcore",
-	[CLK_DIS0] = "dis0",
-	[CLK_DIS1] = "dis1",
-	[CLK_OVL0] = "ovl0",
-	[CLK_OVL1] = "ovl1",
-	[CLK_MML1] = "mml1",
-	[CLK_MML0] = "mml0",
-	[CLK_EDPTX] = "edptx",
-	[CLK_DPTX] = "dptx",
-	[CLK_DSI_PHY0] = "dsi_phy0",
 };
 
 #ifdef MTK_DRM_FENCE_SUPPORT
@@ -7267,7 +7332,7 @@ int mtk_drm_esd_recovery_check_ioctl(struct drm_device *dev, void *data,
 
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 {
-	int ret = 0;
+	int ret = 0, i;
 
 	if (!priv)
 		return -1;
@@ -7338,16 +7403,10 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			}
 		}
 #endif
-
 		if (priv->pwr_node) {
-			clk_prepare_enable(priv->pwr_clks[CLK_DSI_PHY0]);
 			mtk_mminfra_on_off(true, MM_PWR_MM_1, MM_TYPE_DISP);
-
-			clk_prepare_enable(priv->pwr_clks[CLK_DISP_VCORE]);
-			clk_prepare_enable(priv->pwr_clks[CLK_DIS0]);
-			clk_prepare_enable(priv->pwr_clks[CLK_DIS1]);
-			clk_prepare_enable(priv->pwr_clks[CLK_OVL0]);
-			clk_prepare_enable(priv->pwr_clks[CLK_OVL1]);
+			for (i = 0; i < priv->data->pwr_length; i++)
+				clk_prepare_enable(priv->pwr_clks[priv->data->pwr_on_order[i]]);
 		} else {
 			if (priv->dsi_phy0_dev) {
 				ret = pm_runtime_resume_and_get(priv->dsi_phy0_dev);
@@ -7384,14 +7443,9 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		break;
 	case DISP_PM_PUT:
 		if (priv->pwr_node) {
-			clk_disable_unprepare(priv->pwr_clks[CLK_DIS0]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_DIS1]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_OVL0]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_OVL1]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_DISP_VCORE]);
-
+			for (i = 0; i < priv->data->pwr_length; i++)
+				clk_disable_unprepare(priv->pwr_clks[priv->data->pwr_off_order[i]]);
 			mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
-			clk_disable_unprepare(priv->pwr_clks[CLK_DSI_PHY0]);
 		} else {
 			if (priv->side_ovlsys_dev)
 				pm_runtime_put_sync(priv->side_ovlsys_dev);
@@ -7417,16 +7471,10 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		break;
 	case DISP_PM_PUT_SYNC:
-
 		if (priv->pwr_node) {
-			clk_disable_unprepare(priv->pwr_clks[CLK_DIS0]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_DIS1]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_OVL0]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_OVL1]);
-			clk_disable_unprepare(priv->pwr_clks[CLK_DISP_VCORE]);
-
+			for (i = 0; i < priv->data->pwr_length; i++)
+				clk_disable_unprepare(priv->pwr_clks[priv->data->pwr_off_order[i]]);
 			mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
-			clk_disable_unprepare(priv->pwr_clks[CLK_DSI_PHY0]);
 		} else {
 			if (priv->side_ovlsys_dev)
 				pm_runtime_put_sync(priv->side_ovlsys_dev);
@@ -7511,6 +7559,7 @@ static void mtk_drm_get_pwr_clk(struct mtk_drm_private *priv)
 {
 	struct device *dev = priv->mmsys_dev;
 	struct device_node *pwr_node;
+	struct pwr_clk_map *clk_map;
 	int i;
 
 	pwr_node = of_parse_phandle(dev->of_node, "pwr-handle", 0);
@@ -7521,16 +7570,20 @@ static void mtk_drm_get_pwr_clk(struct mtk_drm_private *priv)
 	}
 
 	priv->pwr_node = pwr_node;
-	// Get clocks from pwr_dev
-	for (i = 0; i < CLK_MAX_NUM; i++) {
-		priv->pwr_clks[i] = of_clk_get_by_name(pwr_node, pwr_clk_names[i]);
-		if (IS_ERR(priv->pwr_clks[i])) {
-			dev_err(dev, "Failed to get %s clock\n", pwr_clk_names[i]);
-			priv->pwr_clks[i] = NULL;
-			priv->pwr_node = NULL;
-		}
+	clk_map = priv->data->pwr_clk_map;
+	if (!clk_map) {
+		DDPMSG("%s No clk_map\n", __func__);
+		return;
 	}
-	DDPDBG("%s\n", __func__);
+	// Get clocks from pwr_dev
+	for (i = 0; clk_map[i].name != NULL; i++) {
+		priv->pwr_clks[clk_map[i].id] = of_clk_get_by_name(pwr_node, clk_map[i].name);
+		if (IS_ERR(priv->pwr_clks[clk_map[i].id])) {
+			DDPMSG("No %s clock in pwr dev\n", clk_map[i].name);
+			priv->pwr_clks[clk_map[i].id] = NULL;
+		} else
+			DDPMSG("get %s id: %d\n", clk_map[i].name, clk_map[i].id);
+	}
 }
 
 static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
@@ -7608,6 +7661,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	bool en = 1;
 	int ret;
 	unsigned long flags = 0;
+	void *base;
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -7623,6 +7677,12 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 		ret = clk_prepare_enable(priv->top_clk[i]);
 		if (ret)
 			DDPPR_ERR("top clk prepare enable failed:%d\n", i);
+	}
+	/* remove after mod1_hf_ck_cg define done */
+	if (priv->data->pwr_length == MT6993_PWR_CLK_NUMS) {
+		base = ioremap(0x3E700A78, 0x4);
+		writel(0xFF000000, base);
+		iounmap(base);
 	}
 
 	spin_lock_irqsave(&top_clk_lock, flags);
