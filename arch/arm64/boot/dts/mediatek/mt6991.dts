@@ -10461,6 +10461,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#iommu-cells = <1>;
 			mediatek,axslc;
 			dma-coherent;
+			mtk,tcu-qos = <5>;
 
 			iommu-groups {
 				soc_iommu_group_0: soc-iommu-group-common {
@@ -10763,6 +10764,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			tcu-prefetch = <2>;
 			mediatek,axslc;
 			dma-coherent;
+			mtk,tcu-qos = <5>;
 
 			iommu-groups {
 				apu_iommu_group_0: apu-iommu-group-code {
@@ -10792,28 +10794,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,axslc;
 			dma-coherent;
 			ssid-enable = <1>;
-
-			/* global mpam: partid, pmg */
-			mtk,gmpam-cfg = <1 0>;
-			/* ste mpam: sid, partid, pmg */
-			mtk,mpam-cfg = <128 1 0>,
-				       <130 1 0>,
-				       <131 1 0>,
-				       <132 1 0>,
-				       <137 1 0>,
-				       <138 1 0>,
-				       <139 1 0>,
-				       <140 1 0>,
-				       <144 1 0>,
-				       <145 1 0>,
-				       <147 1 0>,
-				       <160 1 0>,
-				       <161 1 0>,
-				       <176 1 0>,
-				       <177 1 0>,
-				       <183 1 0>,
-				       <199 1 0>,
-				       <208 1 0>;
+			mtk,tcu-qos = <5>;
 
 			iommu-groups {
 				mm_iommu_group_0: mm-iommu-group-common {
@@ -10867,6 +10848,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,mpam-cfg = <1 5 0>,
 				       <2 5 0>;
 			dma-coherent;
+			mtk,tcu-qos = <5>;
 		};
 
 		apusys_rv: apusys-rv@4c200000 {
