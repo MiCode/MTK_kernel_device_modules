@@ -517,6 +517,8 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_GET_BOUND:
 	case GPUFDVFS_IPI_GET_MARGIM:
 	case GPUFDVFS_IPI_GET_MODE:
+	case GPUFDVFS_IPI_GET_FB_TUNE_PARAM:
+	case GPUFDVFS_IPI_GET_LB_TUNE_PARAM:
 		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
@@ -814,10 +816,10 @@ unsigned int mtk_gpueb_dvfs_set_mode(unsigned int action)
 	/* modify loading base interval timer */
 	if (eb_policy_mode)
 		ged_kpi_set_loading_mode(LB_TIMEOUT_TYPE_REDUCE_MIPS,
-					GED_DEFAULT_SLIDE_STRIDE_SIZE);
+					g_loading_stride_size);
 	else
 		ged_kpi_set_loading_mode(0,
-					GED_DEFAULT_SLIDE_STRIDE_SIZE);
+					g_loading_stride_size);
 
 	ret = mtk_gpueb_set_stability_mode(eb_policy_mode);
 
@@ -1168,6 +1170,7 @@ static void ged_eb_dvfs_udpate_gpu_uncomplete_time(void)
 int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 {
 	u64 soc_timer = 0;
+	int tmp = 0;
 
 	if (is_fdvfs_enable()) {
 		switch (index) {
@@ -1265,6 +1268,27 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 		break;
 		case EB_UPDATE_LAST_COMMIT_TOP_IDX:
 			mtk_gpueb_sysram_write(SYSRAM_GPU_LAST_COMMIT_TOP_IDX, value);
+		break;
+		case EB_DBG_CMD:
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_FALLBACK_INTERVAL,
+				g_fallback_mode * 100 + g_fallback_time);
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_FALLBACK_WIN_SIZE,
+				g_fallback_window_size);
+			mtk_get_loading_base_dvfs_step(&tmp);
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_LB_DVFS_STEP, tmp);
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_LOADING_STRIDE_SIZE,
+				g_loading_target_mode * 100 + g_loading_stride_size);
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_LOADING_WIN_SIZE,
+				ged_dvfs_get_lb_win_size_cmd());
+			// g_tb_dvfs_margin_value [0:7]
+			mtk_get_timer_base_dvfs_margin(&tmp);
+			// g_tb_dvfs_margin_mode [8:16]
+			tmp |= ged_dvfs_get_tb_dvfs_margin_mode();
+			// g_tb_dvfs_margin_value_min_cmd [16:23]
+			tmp |= ((ged_dvfs_get_margin_value_min_cmd() & 0xFF) << 16);
+			// g_tb_dvfs_margin_step [24:27]
+			tmp |= ((ged_dvfs_get_margin_step() & 0xF) << 24);
+			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_TB_DVFS_MARGIN, tmp);
 		break;
 		default:
 			GPUFDVFS_LOGI("(%d), no cmd: %d\n", __LINE__, index);

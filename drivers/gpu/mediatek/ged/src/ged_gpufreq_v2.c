@@ -204,15 +204,6 @@ GED_ERROR ged_gpufreq_init(void)
 			i, g_mask_table[i].num, g_mask_table[i].mask);
 	}
 
-	// write min_core_num to sysram if dcs enable
-	if (is_dcs_enable() && g_avail_mask_num > 1) {
-		// [0:7] for min_core_num, [8:15] for avail_mask_num, [16:31] for enable dcs flag
-		dcs_enable_sysram_val = g_mask_table[1].num << COMMON_LOW_BIT;
-		dcs_enable_sysram_val += g_avail_mask_num << COMMON_MID_BIT;
-		dcs_enable_sysram_val += 0x1 << COMMON_HIGH_BIT;
-	} else
-		dcs_enable_sysram_val = 0;
-
 	/* init virtual opp table by core mask table */
 	g_virtual_oppnum = g_working_oppnum + (g_avail_mask_num - 1) * g_oppnum_eachmask;
 	g_min_virtual_oppidx = g_virtual_oppnum - 1;
@@ -1028,5 +1019,14 @@ unsigned int ged_gpufreq_get_power_state(void)
 
 unsigned int ged_gpufreq_get_dcs_sysram(void)
 {
+	// write min_core_num to sysram if dcs enable
+	if (is_dcs_enable() && g_avail_mask_num > 1) {
+		// [0:7] for min_core_num, [8:15] for avail_mask_num, [16:31] for enable dcs flag
+		dcs_enable_sysram_val = g_mask_table[1].num << COMMON_LOW_BIT;
+		dcs_enable_sysram_val += g_avail_mask_num << COMMON_MID_BIT;
+		dcs_enable_sysram_val += 0x1 << COMMON_HIGH_BIT;
+	} else
+		dcs_enable_sysram_val = 0;
+
 	return dcs_enable_sysram_val;
 }

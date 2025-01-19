@@ -12,6 +12,7 @@
 #include <ged_dcs.h>
 #include <ged_log.h>
 #include "ged_tracepoint.h"
+#include "ged_eb.h"
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>
@@ -340,6 +341,10 @@ void dcs_enable(int enable)
 		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_mask);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 	}
+
+	// write dcs related data to sysram for EB dvfs
+	ged_eb_dvfs_task(EB_DCS_ENABLE, ged_gpufreq_get_dcs_sysram());
+	ged_eb_dvfs_task(EB_REINIT, 0);
 
 	mutex_unlock(&g_DCS_lock);
 }
