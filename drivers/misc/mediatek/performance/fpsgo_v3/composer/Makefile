@@ -22,6 +22,7 @@ FSTB_TOP = $(FPSGO_TOP)/fstb
 COM_TOP = $(FPSGO_TOP)/composer
 
 obj-y += src/fps_composer.o
+obj-y += src/fpsgo_adpf.o
 
 ccflags-y += \
 	-I$(srctree)/include/ \

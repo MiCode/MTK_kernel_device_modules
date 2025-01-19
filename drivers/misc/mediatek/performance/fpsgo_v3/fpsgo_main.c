@@ -33,6 +33,7 @@
 #include "mtk_drm_arr.h"
 #include "fbt_cpu_ux.h"
 #include "fpsgo_frame_info.h"
+#include "fpsgo_adpf.h"
 
 #define CREATE_TRACE_POINTS
 #define MAX_MAGT_TARGET_FPS_NUM 10
@@ -1460,6 +1461,7 @@ static int __init fpsgo_init(void)
 	mtk_fstb_init();
 	fpsgo_composer_init();
 	fbt_cpu_init();
+	fpsgo_adpf_init();
 
 	if (fpsgo_arch_nr_clusters() > 0)
 		fpsgo_switch_enable(1);
