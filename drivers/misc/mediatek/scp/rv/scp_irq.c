@@ -26,7 +26,7 @@ static void wait_scp_ready_to_reboot(void)
 {
 	int retry = 0;
 	unsigned long c0, c1;
-	unsigned long core_sap = CORE_RDY_TO_REBOOT;
+	bool sap_ready_to_reboot = false;
 
 	/* clr after SCP side INT trigger,
 	 * or SCP may lost INT max wait = 200ms
@@ -35,16 +35,16 @@ static void wait_scp_ready_to_reboot(void)
 		c0 = readl(SCP_GPR_CORE0_REBOOT);
 		c1 = scpreg.core_nums == 2 ? readl(SCP_GPR_CORE1_REBOOT) :
 			CORE_RDY_TO_REBOOT;
-		if (sap_enabled())
-			core_sap = sap_cfg_reg_read(CFG_GPR5_OFFSET);
+		sap_ready_to_reboot = is_sap_ready_to_reboot();
 		if ((c0 == CORE_RDY_TO_REBOOT) && (c1 == CORE_RDY_TO_REBOOT)
-			&& core_sap == CORE_RDY_TO_REBOOT)
+			&& sap_ready_to_reboot)
 			break;
 		udelay(2);
 	}
 
 	if (retry == 0)
-		pr_notice("[SCP] SCP don't stay in wfi c0:%lx c1:%lx sap:%lx\n", c0, c1, core_sap);
+		pr_notice("[SCP] SCP don't stay in wfi c0:%lx c1:%lx sap:%d\n",
+			c0, c1, sap_ready_to_reboot);
 	udelay(10);
 }
 
@@ -57,7 +57,6 @@ static void scp_A_wdt_handler(struct tasklet_struct *t)
 	unsigned int reg0 = readl(R_CORE0_WDT_IRQ);
 	unsigned int reg1 = scpreg.core_nums == 2 ?
 		readl(R_CORE1_WDT_IRQ) : 0;
-	unsigned int reg_sap = 0;
 
 #if SCP_RECOVERY_SUPPORT
 	if (scp_set_reset_status() == RESET_STATUS_STOP) {
@@ -69,8 +68,6 @@ static void scp_A_wdt_handler(struct tasklet_struct *t)
 		pr_notice("%s: scp resetting\n", __func__);
 #endif
 	wait_scp_ready_to_reboot();
-	if (sap_enabled())
-		reg_sap = sap_cfg_reg_read(CFG_WDT_IRQ_OFFSET);
 
 #if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
 	if (scpreg.secure_dump) {
@@ -78,7 +75,7 @@ static void scp_A_wdt_handler(struct tasklet_struct *t)
 			scp_do_wdt_clear(0);
 		if (reg1)
 			scp_do_wdt_clear(1);
-		if (reg_sap)
+		if (is_sap_trigger_wdt())
 			scp_do_wdt_clear(sap_get_core_id());
 	} else
 #endif

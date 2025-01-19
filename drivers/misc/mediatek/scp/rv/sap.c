@@ -13,6 +13,26 @@
 #include "scp_helper.h"
 #include "sap.h"
 
+enum {
+	REG_WDT_IRQ,
+	REG_GPR5,
+	REG_STATUS,
+	REG_PC,
+	REG_LR,
+	REG_SP,
+	REG_PC_LATCH,
+	REG_LR_LATCH,
+	REG_SP_LATCH,
+	MAX_DTS_DEFINE_REGS,
+};
+
+struct struct_reg {
+	bool valid;
+	const char *name;
+	void __iomem * addr;
+	uint32_t size;
+};
+
 struct sap_status_reg {
 	uint32_t status;
 	uint32_t pc;
@@ -26,16 +46,58 @@ struct sap_status_reg {
 struct sap_device {
 	bool enable;
 	bool pll_clock_support;
+	bool reg_parse_from_dts;
 
 	uint8_t core_id;
 	void __iomem *reg_cfg;
 	struct mtk_mbox_device mbox_dev;
 	struct sap_status_reg status_reg;
+	struct struct_reg *reg_list;
+};
+
+#define INIT_STRUCT_REG(n)	\
+	{ .valid = false, .name = #n, .addr = NULL, .size = 0 }
+static struct struct_reg sap_reg_list[MAX_DTS_DEFINE_REGS] = {
+	INIT_STRUCT_REG(sap_wdt_irq),
+	INIT_STRUCT_REG(sap_gpr5),
+	INIT_STRUCT_REG(sap_status),
+	INIT_STRUCT_REG(mon_pc),
+	INIT_STRUCT_REG(mon_lr),
+	INIT_STRUCT_REG(mon_sp),
+	INIT_STRUCT_REG(mon_pc_latch),
+	INIT_STRUCT_REG(mon_lr_latch),
+	INIT_STRUCT_REG(mon_sp_latch),
 };
 
 static struct sap_device sap_dev;
 struct mtk_ipi_device sap_ipidev;
 EXPORT_SYMBOL(sap_ipidev);
+
+static void sap_dump_last_regs_v2(struct struct_reg *reg_list)
+{
+	struct sap_status_reg *reg = &sap_dev.status_reg;
+
+	if (READ_ONCE(reg_list[REG_STATUS].valid))
+		reg->status = readl(reg_list[REG_STATUS].addr);
+
+	if (READ_ONCE(reg_list[REG_PC].valid))
+		reg->pc = readl(reg_list[REG_PC].addr);
+
+	if (READ_ONCE(reg_list[REG_LR].valid))
+		reg->lr = readl(reg_list[REG_LR].addr);
+
+	if (READ_ONCE(reg_list[REG_SP].valid))
+		reg->sp = readl(reg_list[REG_SP].addr);
+
+	if (READ_ONCE(reg_list[REG_PC_LATCH].valid))
+		reg->pc_latch  = readl(reg_list[REG_PC_LATCH].addr);
+
+	if (READ_ONCE(reg_list[REG_LR_LATCH].valid))
+		reg->lr_latch  = readl(reg_list[REG_LR_LATCH].addr);
+
+	if (READ_ONCE(reg_list[REG_SP_LATCH].valid))
+		reg->sp_latch  = readl(reg_list[REG_SP_LATCH].addr);
+}
 
 void sap_dump_last_regs(void)
 {
@@ -44,6 +106,16 @@ void sap_dump_last_regs(void)
 
 	if (!READ_ONCE(sap_dev.enable))
 		return;
+
+	if (READ_ONCE(sap_dev.reg_parse_from_dts)) {
+		sap_dump_last_regs_v2(sap_dev.reg_list);
+		return;
+	}
+
+	if (!cfg_base) {
+		pr_err("invalid cfg_base, skip read last regs\n");
+		return;
+	}
 
 	reg->status = readl(cfg_base + CFG_STATUS_OFFSET);
 	reg->pc = readl(cfg_base + CFG_MON_PC_OFFSET);
@@ -158,11 +230,55 @@ bool sap_delicated_clock_supported(void)
 }
 EXPORT_SYMBOL_GPL(sap_delicated_clock_supported);
 
-uint32_t sap_cfg_reg_read(uint32_t reg_offset)
+static uint32_t sap_cfg_reg_read(uint32_t reg_offset)
 {
 	void __iomem *cfg_base = sap_dev.reg_cfg;
 
+	if (!cfg_base) {
+		pr_err("invalid cfg_base, skip read %u\n", reg_offset);
+		return 0;
+	}
+
 	return readl(cfg_base + reg_offset);
+}
+
+bool is_sap_trigger_wdt(void)
+{
+	struct struct_reg *reg_list = sap_dev.reg_list;
+
+	if (!READ_ONCE(sap_dev.enable))
+		return false;
+
+	if (READ_ONCE(reg_list[REG_WDT_IRQ].valid))
+		return readl(reg_list[REG_WDT_IRQ].addr);
+
+	return sap_cfg_reg_read(CFG_WDT_IRQ_OFFSET);
+}
+
+bool is_sap_ready_to_reboot(void)
+{
+	struct struct_reg *reg_list = sap_dev.reg_list;
+
+	if (!READ_ONCE(sap_dev.enable))
+		return true;
+
+	if (READ_ONCE(reg_list[REG_GPR5].valid))
+		return readl(reg_list[REG_GPR5].addr) & CORE_RDY_TO_REBOOT;
+
+	return sap_cfg_reg_read(CFG_GPR5_OFFSET) & CORE_RDY_TO_REBOOT;
+}
+
+bool is_sap_halted(void)
+{
+	struct struct_reg *reg_list = sap_dev.reg_list;
+
+	if (!READ_ONCE(sap_dev.enable))
+		return true;
+
+	if (READ_ONCE(reg_list[REG_STATUS].valid))
+		return readl(reg_list[REG_STATUS].addr) & B_CORE_HALT;
+
+	return sap_cfg_reg_read(CFG_STATUS_OFFSET) & B_CORE_HALT;
 }
 
 static void sap_setup_pin_table(struct mtk_mbox_device *mbox_dev, uint8_t mbox)
@@ -389,6 +505,31 @@ static bool sap_parse_ipi_table(struct mtk_mbox_device *mbox_dev,
 	return true;
 }
 
+static int sap_device_parse_regs(struct platform_device *pdev)
+{
+	struct resource *res = NULL;
+	struct sap_device *dev = &sap_dev;
+	struct struct_reg *reg = NULL;
+	uint32_t i = 0;
+
+	for (i = 0; i < MAX_DTS_DEFINE_REGS; i++) {
+		reg = &dev->reg_list[i];
+		res = platform_get_resource_byname(pdev,
+			IORESOURCE_MEM, reg->name);
+		if (!res)
+			continue;
+
+		reg->addr = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(reg->addr))
+			return (int)PTR_ERR(reg->addr);
+
+		reg->size = resource_size(res);
+		reg->valid = true;
+	}
+
+	return 0;
+}
+
 static int sap_device_probe(struct platform_device *pdev)
 {
 	struct sap_device *dev = &sap_dev;
@@ -419,18 +560,25 @@ static int sap_device_probe(struct platform_device *pdev)
 	WRITE_ONCE(dev->enable, true);
 	dev->core_id = core_id;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,  "sap_cfg_reg");
-	if (!res) {
-		pr_err("platform_get_resource fail\n");
-		ret = -EINVAL;
-		goto err_res;
-	}
+	dev->reg_parse_from_dts = of_property_read_bool(
+			pdev->dev.of_node, "reg-parse-from-dts");
+	if (dev->reg_parse_from_dts) {
+		ret = sap_device_parse_regs(pdev);
+		if (ret < 0)
+			goto err_res;
+	} else {
+		res = platform_get_resource_byname(pdev,
+				IORESOURCE_MEM, "sap_cfg_reg");
+		if (!res) {
+			ret = -EINVAL;
+			goto err_res;
+		}
 
-	dev->reg_cfg = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR((void const *)dev->reg_cfg)) {
-		pr_err("devm_ioremap_resource fail\n");
-		ret = -EIO;
-		goto err_res;
+		dev->reg_cfg = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(dev->reg_cfg)) {
+			ret = (int)PTR_ERR(dev->reg_cfg);
+			goto err_res;
+		}
 	}
 
 	dev->mbox_dev.name = "sap_mboxdev";
@@ -455,7 +603,6 @@ static int sap_device_probe(struct platform_device *pdev)
 	return 0;
 
 err_ipi:
-	devm_release_mem_region(&pdev->dev, res->start, resource_size(res));
 err_res:
 	WRITE_ONCE(dev->enable, false);
 	return ret;
@@ -493,6 +640,7 @@ void sap_init(void)
 {
 	struct sap_device *dev = &sap_dev;
 
+	dev->reg_list = sap_reg_list;
 	WRITE_ONCE(dev->enable, false);
 	WRITE_ONCE(dev->pll_clock_support, false);
 	if (platform_driver_register(&mtk_sap_device))

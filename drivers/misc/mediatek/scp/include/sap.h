@@ -33,7 +33,9 @@ extern struct mtk_ipi_device sap_ipidev;
 bool sap_enabled(void);
 bool sap_delicated_clock_supported(void);
 uint8_t sap_get_core_id(void);
-uint32_t sap_cfg_reg_read(uint32_t reg_offset);
+bool is_sap_trigger_wdt(void);
+bool is_sap_ready_to_reboot(void);
+bool is_sap_halted(void);
 void sap_dump_last_regs(void);
 void sap_show_last_regs(void);
 uint32_t sap_print_last_regs(char *buf, uint32_t size);
@@ -45,7 +47,9 @@ uint32_t sap_get_secure_dump_size(void);
 static inline bool sap_enabled(void) { return false; }
 static inline bool sap_delicated_clock_supported(void) { return false; }
 static inline uint8_t sap_get_core_id(void) { return 0; };
-static inline uint32_t sap_cfg_reg_read(uint32_t reg_offset) { return 0; }
+static inline bool is_sap_trigger_wdt(void) { return false; }
+static inline bool is_sap_ready_to_reboot(void) { return true; }
+static inline bool is_sap_halted(void) { return true; }
 static inline void sap_dump_last_regs(void) {}
 static inline void sap_show_last_regs(void) {}
 static inline uint32_t sap_print_last_regs(char *buf, uint32_t size) { return 0; }
