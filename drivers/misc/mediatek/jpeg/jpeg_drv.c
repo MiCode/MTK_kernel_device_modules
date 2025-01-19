@@ -151,12 +151,17 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 		(unsigned long)(unsigned char *)obuf_iova,
 		(unsigned long)(unsigned char *)(obuf_iova>>32));
 
+	if (ret != 0) {
+		mutex_unlock(&jpeg_hybrid_dec_lock);
+		JPEG_LOG(0, "get obuf_iova fail");
+		return ret;
+	}
+
 	ret = jpg_dmabuf_vmap(bufInfo[id].o_dbuf, &map);
 	ptr = map.vaddr;
 	if (ret == 0 && ptr != NULL && data[20] > 0)
 		memset(ptr, 0, data[20]);
 	jpg_dmabuf_vunmap(bufInfo[id].o_dbuf, &map);
-	*index_buf_fd = jpg_dmabuf_fd(bufInfo[id].o_dbuf);
 
 	ret = jpg_dmabuf_get_iova(bufInfo[id].i_dbuf, &ibuf_iova, gJpegqDev.smmu_dev[node_id],
 	&bufInfo[id].i_attach, &bufInfo[id].i_sgt);
@@ -169,8 +174,6 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 		JPEG_LOG(0, "get iova fail i:0x%llx o:0x%llx", ibuf_iova, obuf_iova);
 		return ret;
 	}
-	bufInfo[id].o_dbuf = jpg_dmabuf_get(*index_buf_fd);
-	// get obuf for adding reference count, avoid early release in userspace.
 
 	if (!dec_hwlocked[id] || !dec_hw_enable[id]) {
 		mutex_unlock(&jpeg_hybrid_dec_lock);
@@ -178,6 +181,10 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 			 id, dec_hwlocked[id], dec_hw_enable[id]);
 		return -1;
 	}
+
+	*index_buf_fd = jpg_dmabuf_fd(bufInfo[id].o_dbuf);
+	// get obuf for adding reference count, avoid early release in userspace.
+	bufInfo[id].o_dbuf = jpg_dmabuf_get(*index_buf_fd);
 
 	IMG_REG_WRITE(data[0], REG_JPGDEC_HYBRID_090(id));
 	IMG_REG_WRITE(data[1], REG_JPGDEC_HYBRID_090(id));
