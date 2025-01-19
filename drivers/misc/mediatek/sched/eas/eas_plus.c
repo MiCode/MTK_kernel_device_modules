@@ -1108,6 +1108,7 @@ void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, 
 
 	if (!p || p->nr_cpus_allowed == 1) {
 		rq->misfit_task_load = 0;
+		rq->misfit_reason = -1;
 		return;
 	}
 
@@ -1118,6 +1119,7 @@ void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, 
 	fits = util_fits_capacity(util, uclamp_min, uclamp_max, capacity, cpu_of(rq));
 	if (fits > 0) {
 		rq->misfit_task_load = 0;
+		rq->misfit_reason = -1;
 		goto out;
 	}
 
@@ -1127,6 +1129,7 @@ void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, 
 	 */
 	misfit_task_load = task_h_load(p);
 	rq->misfit_task_load = max_t(unsigned long, misfit_task_load, 1);
+	rq->misfit_reason = MISFIT_PERF;
 
 out:
 	if (trace_sched_mtk_update_misfit_status_enabled())
