@@ -1381,7 +1381,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 31,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MML1_SHUTDOWN] = {
 		.name = "mml1-shutdown",
@@ -1393,7 +1393,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x1474,
 		.hwv_clr_sta_ofs = 0x1478,
 		.hwv_shift = 0,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MM_INFRA0] = {
 		.name = "mm-infra0",
@@ -1525,8 +1525,6 @@ static const struct scp_subdomain scp_subdomain_mt6991_mmpc_swrgo[] = {
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_EIS},
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_TNR},
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_LITE},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML0_SHUTDOWN},
-	{MT6991_POWER_DOMAIN_DISP_VCORE, MT6991_POWER_DOMAIN_MML1_SHUTDOWN},
 };
 
 static const struct scp_soc_data mt6991_mmpc_data = {
