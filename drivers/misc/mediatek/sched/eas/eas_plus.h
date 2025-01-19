@@ -80,6 +80,8 @@ struct energy_env {
 	unsigned long gear_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
 	unsigned long pds_cpu_cap[MAX_NR_CPUS];
 	unsigned long pds_cap[MAX_NR_CPUS];
+	unsigned long pd_base_max_util[MAX_NR_CPUS];
+	unsigned long pd_base_freq[MAX_NR_CPUS];
 	unsigned long total_util;
 
 	/* temperature for each cpu*/
