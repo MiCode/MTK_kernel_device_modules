@@ -17236,6 +17236,13 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		nvmem-cell-names = "efuse_segment_cell";
 	};
 
+	smap: smap@1000f000 {
+		compatible = "mediatek,mt6991-smap";
+		reg = <0 0x1000f000 0 0x1000>;
+		smap-mode = <0x0>;
+		smap-mon-enable;
+	};
+
 	peak_power_budget:peak-power-budget@117780 {
 		compatible = "mediatek,peak_power_budget";
 		bootmode = <&chosen>;
