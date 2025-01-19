@@ -141,25 +141,16 @@ static void mtk_btag_earaio_boost_fill(int boost)
 		wake_up(&earaio_ctrl.msg_readable);
 }
 
-static void mtk_btag_earaio_clear_data_internal(void)
-{
-	earaio_ctrl.rand_req_cnt = 0;
-
-	earaio_ctrl.pwd_begin = sched_clock();
-	earaio_ctrl.pwd_top_pages[BTAG_IO_READ] = 0;
-	earaio_ctrl.pwd_top_pages[BTAG_IO_WRITE] = 0;
-}
-
 void mtk_btag_earaio_clear_data(void)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	mtk_btag_earaio_clear_data_internal();
-	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	mtk_btag_fuse_clear_req_cnt();
 #endif
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+	earaio_ctrl.pwd_begin = sched_clock();
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
@@ -167,28 +158,24 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 {
 	struct mtk_btag_mictx_iostat_struct iostat = {0};
 	unsigned long flags;
-	__u32 *top;
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 
 	mtk_btag_mictx_get_data(earaio_ctrl.mictx_id, &iostat);
-
-	top = earaio_ctrl.pwd_top_pages;
-	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-	data->io_reqc_rand = earaio_ctrl.rand_req_cnt;
-	data->io_reqsz_top_r = (top[BTAG_IO_READ]) << PAGE_SHIFT;
-	data->io_reqsz_top_w = (top[BTAG_IO_WRITE]) << PAGE_SHIFT;
-	mtk_btag_earaio_clear_data_internal();
-	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
-
 	data->io_wl = iostat.wl;
 	data->io_top = iostat.top;
 	data->io_reqc_r = iostat.reqcnt_r;
 	data->io_reqc_w = iostat.reqcnt_w;
 	data->io_q_dept = iostat.q_depth;
+	data->io_reqc_rand = iostat.top_rnd_cnt;
+	data->io_reqsz_top_r = iostat.top_pages_r << PAGE_SHIFT;
+	data->io_reqsz_top_w = iostat.top_pages_w << PAGE_SHIFT;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	mtk_btag_eara_get_fuse_data(data);
 #endif
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+	earaio_ctrl.pwd_begin = sched_clock();
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
 #define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> PAGE_SHIFT)
@@ -209,7 +196,7 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 static int earaio_try_boost(bool boost)
 {
 	unsigned long flags;
-	__u32 *top;
+	__u32 top_r, top_w;
 	int ret = 1;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	int fuse_req_cnt = 0, fuse_unlink_cnt = 0;
@@ -242,16 +229,15 @@ static int earaio_try_boost(bool boost)
 	}
 
 	/* Establish threshold for top app read, write */
-	top = earaio_ctrl.pwd_top_pages;
-	if (top[BTAG_IO_READ] >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
-	    top[BTAG_IO_WRITE] >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
+	mtk_btag_mictx_get_top_rw(earaio_ctrl.mictx_id, &top_r, &top_w);
+	if (top_r >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
+	    top_w >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
 		goto need_boost;
 
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	/* Establish threshold for top app fuse request count */
 	mtk_btag_fuse_get_req_cnt(&fuse_req_cnt, &fuse_unlink_cnt);
-	if (((fuse_req_cnt > earaio_ctrl.fuse_threshold) &&
-	    (top[BTAG_IO_READ] || top[BTAG_IO_WRITE])) ||
+	if (((fuse_req_cnt > earaio_ctrl.fuse_threshold) && (top_r || top_w)) ||
 	    (fuse_unlink_cnt > earaio_ctrl.fuse_unlink_threshold))
 		goto need_boost;
 #endif
@@ -272,17 +258,11 @@ static void mtk_btag_eara_start_collect(void)
 	unsigned long flags;
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
-
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
-
-	/*
-	 * Check original start_collect to prevent from calling
-	 * mtk_btag_earaio_clear_data_internal()
-	 * when original start_collect is true
-	 */
 	if (!earaio_ctrl.start_collect)
 		earaio_ctrl.start_collect = true;
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+
 	mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, true);
 }
 
@@ -540,22 +520,16 @@ void mtk_btag_earaio_check_window(void)
 		mtk_btag_mictx_check_window(earaio_ctrl.mictx_id, false);
 }
 
-void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
+void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 top_pages_r,
+				__u32 top_pages_w, __u32 top_rnd_cnt)
 {
 	int early_notification = 0;
 	unsigned long flags;
-	__u32 *top = earaio_ctrl.pwd_top_pages;
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 
-	top[type] += (__u32)(size >> PAGE_SHIFT);
-
-	if (size == (1 << PAGE_SHIFT))
-		earaio_ctrl.rand_req_cnt++;
-
 	if (earaio_ctrl.earaio_boost_state != ACCEL_RAND) {
-		if (earaio_ctrl.rand_req_cnt >
-			earaio_ctrl.rand_rw_threshold) {
+		if (top_rnd_cnt > earaio_ctrl.rand_rw_threshold) {
 			early_notification = ACCEL_RAND;
 			mtk_btag_earaio_boost_fill(ACCEL_RAND);
 			if (!earaio_ctrl.start_collect)
@@ -563,16 +537,14 @@ void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
 		}
 	}
 
-	if (earaio_ctrl.earaio_boost_state != ACCEL_SEQ
-	 && earaio_ctrl.earaio_boost_state != ACCEL_RAND) {
-		top = earaio_ctrl.pwd_top_pages;
+	if (earaio_ctrl.earaio_boost_state != ACCEL_SEQ &&
+	    earaio_ctrl.earaio_boost_state != ACCEL_RAND) {
 		if (type == BTAG_IO_READ &&
-		    top[BTAG_IO_READ] > earaio_ctrl.seq_r_threshold) {
+		    top_pages_r > earaio_ctrl.seq_r_threshold) {
 			early_notification = ACCEL_SEQ;
 			mtk_btag_earaio_boost_fill(ACCEL_SEQ);
-		} else if (type == BTAG_IO_WRITE  &&
-		    top[BTAG_IO_WRITE] > earaio_ctrl.seq_w_threshold &&
-		    top[BTAG_IO_READ] == 0) {
+		} else if (type == BTAG_IO_WRITE && top_pages_r == 0 &&
+			   top_pages_w > earaio_ctrl.seq_w_threshold) {
 			early_notification = ACCEL_SEQ;
 			mtk_btag_earaio_boost_fill(ACCEL_SEQ);
 			if (!earaio_ctrl.start_collect)
@@ -593,7 +565,7 @@ void mtk_btag_earaio_register(struct mtk_blocktag *btag)
 	if (!earaio_ctrl.enabled) {
 		spin_lock_init(&earaio_ctrl.lock);
 		earaio_ctrl.enabled = true;
-		mtk_btag_earaio_clear_data_internal();
+		earaio_ctrl.pwd_begin = sched_clock();
 		earaio_ctrl.rand_rw_threshold = THRESHOLD_MAX;
 		earaio_ctrl.seq_r_threshold = THRESHOLD_MAX;
 		earaio_ctrl.seq_w_threshold = THRESHOLD_MAX;

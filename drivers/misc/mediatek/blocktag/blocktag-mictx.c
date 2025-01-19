@@ -74,6 +74,40 @@ static void mictx_reset(struct mtk_btag_mictx *mictx)
 	if (mictx->wl.idle_begin)
 		mictx->wl.idle_begin = mictx->wl.window_begin;
 	spin_unlock_irqrestore(&mictx->wl.lock, flags);
+
+	/* clear top app io information */
+	spin_lock_irqsave(&mictx->top.lock, flags);
+	mictx->top.pages[BTAG_IO_READ] = 0;
+	mictx->top.pages[BTAG_IO_WRITE] = 0;
+	mictx->top.rnd_cnt = 0;
+	spin_unlock_irqrestore(&mictx->top.lock, flags);
+}
+
+void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
+			       __u32 *top_pages_r, __u32 *top_pages_w)
+{
+	struct mtk_blocktag *btag;
+	struct mtk_btag_mictx *mictx;
+	unsigned long flags;
+
+	if (!top_pages_r || !top_pages_w)
+		return;
+
+	btag = mtk_btag_find_by_type(mictx_id.storage);
+	if (!btag)
+		return;
+
+	rcu_read_lock();
+	mictx = mictx_find(btag, mictx_id.id);
+	if (!mictx) {
+		rcu_read_unlock();
+		return;
+	}
+	spin_lock_irqsave(&mictx->top.lock, flags);
+	*top_pages_r = mictx->top.pages[BTAG_IO_READ];
+	*top_pages_w = mictx->top.pages[BTAG_IO_WRITE];
+	spin_unlock_irqrestore(&mictx->top.lock, flags);
+	rcu_read_unlock();
 }
 
 void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id, bool force)
@@ -107,6 +141,7 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 				 __u64 top_len, __u32 tid, __u16 qid)
 {
 	struct mtk_btag_mictx *mictx;
+	__u32 top_pages_r, top_pages_w, top_rnd_cnt;
 
 	if (!btag || tid >= BTAG_MAX_TAG || io_type == BTAG_IO_UNKNOWN)
 		return;
@@ -126,6 +161,16 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 			mictx->wl.idle_begin = 0;
 		}
 		spin_unlock_irqrestore(&mictx->wl.lock, flags);
+
+		/* top app io information */
+		spin_lock_irqsave(&mictx->top.lock, flags);
+		mictx->top.pages[io_type] += (__u32)(top_len >> PAGE_SHIFT);
+		if (top_len == (1 << PAGE_SHIFT))
+			mictx->top.rnd_cnt++;
+		top_pages_r = mictx->top.pages[BTAG_IO_READ];
+		top_pages_w = mictx->top.pages[BTAG_IO_WRITE];
+		top_rnd_cnt = mictx->top.rnd_cnt;
+		spin_unlock_irqrestore(&mictx->top.lock, flags);
 
 		/* request size & count */
 		spin_lock_irqsave(&q->lock, flags);
@@ -161,7 +206,8 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 	rcu_read_unlock();
 
 	if (top_len && btag->vops->earaio_enabled)
-		mtk_btag_earaio_update_pwd(io_type, top_len);
+		mtk_btag_earaio_update_pwd(io_type, top_pages_r, top_pages_w,
+					   top_rnd_cnt);
 }
 
 void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
@@ -261,6 +307,21 @@ static __u32 calculate_throughput(__u64 bytes, __u64 time)
 	tp = (tp * 1000) >> 10;      /* KB/s */
 
 	return (__u32)tp;
+}
+
+static void mictx_evaluate_top(struct mtk_btag_mictx *mictx,
+			       struct mtk_btag_mictx_iostat_struct *iostat)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&mictx->top.lock, flags);
+	iostat->top_pages_r = mictx->top.pages[BTAG_IO_READ];
+	iostat->top_pages_w = mictx->top.pages[BTAG_IO_WRITE];
+	iostat->top_rnd_cnt = mictx->top.rnd_cnt;
+	mictx->top.pages[BTAG_IO_READ] = 0;
+	mictx->top.pages[BTAG_IO_WRITE] = 0;
+	mictx->top.rnd_cnt = 0;
+	spin_unlock_irqrestore(&mictx->top.lock, flags);
 }
 
 static void mictx_evaluate_queue(struct mtk_btag_mictx *mictx,
@@ -380,6 +441,7 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 
 	memset(iostat, 0, sizeof(struct mtk_btag_mictx_iostat_struct));
 	mictx_evaluate_workload(mictx, iostat);
+	mictx_evaluate_top(mictx, iostat);
 	mictx_evaluate_queue(mictx, iostat);
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	if (mictx->full_logging)
@@ -628,6 +690,7 @@ static int mictx_alloc(enum mtk_btag_storage_type type)
 	spin_lock_init(&mictx->wl.lock);
 	mictx->wl.window_begin = cur_time;
 	mictx->wl.idle_begin = cur_time;
+	spin_lock_init(&mictx->top.lock);
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	spin_lock_init(&mictx->avg_qd.lock);
 	mictx->avg_qd.last_depth_chg = cur_time;

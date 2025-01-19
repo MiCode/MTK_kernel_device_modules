@@ -34,24 +34,23 @@ struct mtk_btag_mictx_id {
 
 /*
  * public structure to provide IO statistics
- * in a period of time.
- *
- * Make sure MTK_BTAG_FEATURE_MICTX_IOSTAT is
- * defined alone with mictx series.
  */
 struct mtk_btag_mictx_iostat_struct {
-	__u64 duration;  /* duration time for below performance data (ns) */
-	__u32 tp_req_r;  /* throughput (per-request): read  (KB/s) */
-	__u32 tp_req_w;  /* throughput (per-request): write (KB/s) */
-	__u32 tp_all_r;  /* throughput (overlapped) : read  (KB/s) */
-	__u32 tp_all_w;  /* throughput (overlapped) : write (KB/s) */
-	__u32 reqsize_r; /* request size : read  (Bytes) */
-	__u32 reqsize_w; /* request size : write (Bytes) */
-	__u32 reqcnt_r;  /* request count: read */
-	__u32 reqcnt_w;  /* request count: write */
-	__u16 wl;	/* storage device workload (%) */
-	__u16 top;       /* ratio of request (size) by top-app */
-	__u16 q_depth;   /* storage cmdq queue depth */
+	__u64 duration;    /* duration time for below performance data (ns) */
+	__u32 tp_req_r;    /* throughput (per-request): read  (KB/s) */
+	__u32 tp_req_w;    /* throughput (per-request): write (KB/s) */
+	__u32 tp_all_r;    /* throughput (overlapped) : read  (KB/s) */
+	__u32 tp_all_w;    /* throughput (overlapped) : write (KB/s) */
+	__u32 reqsize_r;   /* request size : read  (Bytes) */
+	__u32 reqsize_w;   /* request size : write (Bytes) */
+	__u32 reqcnt_r;    /* request count: read */
+	__u32 reqcnt_w;    /* request count: write */
+	__u32 top_pages_r; /* request size from top app: read (Pages) */
+	__u32 top_pages_w; /* request size from top app: write (Pages) */
+	__u32 top_rnd_cnt; /* 4KB request cout from top app */
+	__u16 wl;          /* storage device workload (%) */
+	__u16 top;         /* ratio of request (size) by top-app */
+	__u16 q_depth;     /* storage cmdq queue depth */
 };
 
 int mtk_btag_mictx_get_data(

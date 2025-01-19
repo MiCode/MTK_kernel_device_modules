@@ -130,6 +130,11 @@ struct mtk_btag_mictx {
 		__u64 window_begin;
 		__u16 depth;
 	} wl;
+	struct __mictx_top_app_io {
+		spinlock_t lock;
+		__u32 pages[BTAG_IO_TYPE_NR];
+		__u32 rnd_cnt;
+	} top;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_DEBUG_BUILD)
 	struct __mictx_average_queue_depth {
 		spinlock_t lock;
@@ -163,7 +168,6 @@ struct mtk_btag_earaio_control {
 
 	/* peeking window */
 	__u64 pwd_begin;
-	__u32 pwd_top_pages[BTAG_IO_TYPE_NR];
 
 	bool boosted;
 
@@ -175,7 +179,6 @@ struct mtk_btag_earaio_control {
 	wait_queue_head_t msg_readable;
 
 	int earaio_boost_state;
-	int rand_req_cnt;
 	int rand_rw_threshold;
 	int seq_r_threshold; /* in # of pages */
 	int seq_w_threshold; /* in # of pages */
@@ -304,6 +307,8 @@ void mtk_btag_free(struct mtk_blocktag *btag);
 
 void mtk_btag_get_aee_buffer(unsigned long *vaddr, unsigned long *size);
 
+void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
+			       __u32 *top_pages_r, __u32 *top_pages_w);
 void mtk_btag_mictx_check_window(struct mtk_btag_mictx_id mictx_id, bool force);
 void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 				 enum mtk_btag_io_type io_type, __u64 tot_len,
@@ -322,7 +327,8 @@ void mtk_btag_earaio_init(struct proc_dir_entry *root);
 void mtk_btag_earaio_register(struct mtk_blocktag *btag);
 void mtk_btag_earaio_clear_data(void);
 void mtk_btag_earaio_check_window(void);
-void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size);
+void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 top_pages_r,
+				__u32 top_pages_w, __u32 top_rnd_cnt);
 
 /* seq file operations */
 void *mtk_btag_seq_debug_start(struct seq_file *seq, loff_t *pos);
