@@ -3051,6 +3051,26 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "arm,physical-memory-group-manager";
 	};
 
+	gpu_protected_memory_allocator: protected-memory-allocator {
+		compatible = "arm,protected-memory-allocator";
+		pma-version = <2>;
+		gpr-id = <6>;
+		gmpu-table-size = <0x0>;
+		protected-reserve-size = <0x200000>;
+		disable-init-gpu-iommu = <0>;
+		gpufreq-supply = <&gpufreq>;
+		gpu-iommu {
+			compatible = "mediatek,gpu-iommu";
+			iommus = <&gpu_smmu 0x01>; /* SID=1 */
+			mtk,smmu-dma-mode = "disable";
+		};
+		gpu-iommu-protected {
+			 compatible = "mediatek,gpu-iommu";
+			 iommus = <&gpu_smmu 0x02>; /* SID=2 */
+			 mtk,smmu-dma-mode = "disable";
+		};
+	};
+
 	aod_scp: aod-scp {
 		compatible = "mediatek,aod_scp";
 		dsi0 = <&dsi0 0x1000>;
@@ -7610,28 +7630,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			gps-emi-offset = <0x4f0000>;
 			gps-emi-size = <0x140000>;
-		};
-
-		gpu_protected_memory_allocator: protected-memory-allocator@4b09f000 {
-			compatible = "arm,protected-memory-allocator";
-			reg = <0 0x4b09f000 0 0x1000>;
-			reg-names = "gpueb_base";
-			gpr-offset = <0xd00>;
-			gpr-id = <6>;
-			gmpu-table-size = <0x0>;
-			protected-reserve-size = <0x200000>;
-			disable-init-gpu-iommu = <0>;
-			gpufreq-supply = <&gpufreq>;
-			gpu-iommu {
-				compatible = "mediatek,gpu-iommu";
-				iommus = <&gpu_smmu 0x01>; /* SID=1 */
-				mtk,smmu-dma-mode = "disable";
-			};
-			gpu-iommu-protected {
-				compatible = "mediatek,gpu-iommu";
-				iommus = <&gpu_smmu 0x02>; /* SID=2 */
-				mtk,smmu-dma-mode = "disable";
-			};
 		};
 
 		mali: mali@48000000 {
