@@ -59,7 +59,7 @@ static u8 serdes_read_byte(struct i2c_client *client,
 #if SERDES_DEBUG
 		pr_info("[MAX96851] Failed to send i2c command, ret = %d\n", ret);
 #endif
-		return ret;
+		return 0;
 	}
 
 	ret = i2c_master_recv(client, &buf, 1);
@@ -68,7 +68,7 @@ static u8 serdes_read_byte(struct i2c_client *client,
 #if SERDES_DEBUG
 		pr_info("[MAX96851] Failed to recv i2c data, ret = %d\n", ret);
 #endif
-		return -1;
+		return 0;
 	}
 
 	mutex_unlock(&edp_i2c_access);
@@ -171,8 +171,10 @@ static void ser_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 	for (i = 0; i < cmd_data->length; i++) {
 		ret = serdes_write_byte(max_bridge->max96851_i2c, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
+#if SERDES_DEBUG
 			pr_info("[MAX96851] Write ser command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
+#endif
 		}
 
 		if (cmd_data->delay_ms[i])
@@ -191,8 +193,10 @@ static void des_init_loop(struct max96851_bridge *max_bridge, struct serdes_cmd_
 	for (i = 0; i < cmd_data->length; i++) {
 		ret = serdes_write_byte(max_bridge->max96752_i2c, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
+#if SERDES_DEBUG
 			pr_info("[MAX96851] Write des command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
+#endif
 		}
 
 		if (cmd_data->delay_ms[i])
@@ -230,8 +234,10 @@ static void serdes_init_loop(struct max96851_bridge *max_bridge, struct serdes_c
 		}
 		ret = serdes_write_byte(client, cmd_data->addr[i], cmd_data->data[i]);
 		if (ret) {
+#if SERDES_DEBUG
 			pr_info("[MAX96851] Write seres command failed, addr=0x%x data=0x%x ret: %d\n",
 					cmd_data->addr[i], cmd_data->data[i], ret);
+#endif
 		}
 
 		if (cmd_data->delay_ms[i])
@@ -1396,9 +1402,6 @@ static int max96851_bridge_attach(struct drm_bridge *bridge,
 
 		serdes_hotplug_handler(max_bridge);
 	}
-
-	if (max_bridge->is_dp)
-		serdes_init_by_dts(max_bridge);
 
 	pr_info("[MAX96851] Serdes DP: %d %s-\n", max_bridge->is_dp, __func__);
 
