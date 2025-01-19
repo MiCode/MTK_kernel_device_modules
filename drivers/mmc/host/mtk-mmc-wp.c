@@ -110,7 +110,6 @@ retry:
 				minor += bdev->bd_disk->minors;
 			blkdev_put(bdev, NULL);
 			retries = 0;
-			bdev = NULL;
 			continue;
 		}
 		if(bdev)
