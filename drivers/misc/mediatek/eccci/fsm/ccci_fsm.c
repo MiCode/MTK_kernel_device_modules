@@ -156,8 +156,6 @@ static void broadcast_md_state_kernel(int old_stat, int new_stat)
 #define KERN_MD_STAT_BD_DEBUG
 #ifdef KERN_MD_STAT_BD_DEBUG
 	u64 ts_nsec;
-
-	CCCI_NORMAL_LOG(0, FSM, "kern_broadcast_md_sate: %d start\n", new_stat);
 #endif
 
 	spin_lock_irqsave(&state_broadcase_lock, flags);
@@ -172,15 +170,17 @@ static void broadcast_md_state_kernel(int old_stat, int new_stat)
 			md_state_callbacks[i].callback(old_stat, new_stat);
 #ifdef KERN_MD_STAT_BD_DEBUG
 			ts_nsec = local_clock() - ts_nsec;
-			CCCI_NORMAL_LOG(0, FSM, "broadcast %d to <%lu/user%d>%p cost %lld ns\n",
-				new_stat, i, md_state_callbacks[i].ch_id,
-				md_state_callbacks[i].callback, ts_nsec);
+
+			/* irq long threshold is 5ms */
+			if (ts_nsec >= 5000000)
+				CCCI_NORMAL_LOG(0, FSM,
+					"broadcast %d to <%lu/user%d>%p cost %lld ns\n",
+					new_stat, i, md_state_callbacks[i].ch_id,
+					md_state_callbacks[i].callback, ts_nsec);
 #endif
 		} else
 			break;
 	}
-
-	CCCI_NORMAL_LOG(0, FSM, "kern_broadcast_md_sate: %d/0x%lx end\n", new_stat, bitmap);
 }
 
 static void (*s_dpmaif_debug_push_data_to_stack)(void);
