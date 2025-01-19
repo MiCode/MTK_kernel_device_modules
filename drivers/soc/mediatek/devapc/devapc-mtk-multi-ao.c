@@ -339,7 +339,8 @@ static int32_t clear_vio_status(int slave_type, uint32_t module)
 
 		reg = mtk_devapc_pd_get(slave_type, VIO_STA,
 				apc_register_index);
-		writel(0x1 << apc_set_index, reg);
+		if (reg)
+			writel(0x1 << apc_set_index, reg);
 
 	} else {
 		pr_err(PFX "%s: %s, %s:0x%x, %s:0x%x\n",
