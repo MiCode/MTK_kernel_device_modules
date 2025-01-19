@@ -1,4 +1,7 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl",
+    "kernel_version",
+)
 
 package(
     default_visibility = [
@@ -25,12 +28,9 @@ filegroup(
 
 define_mgk_ddk_ko(
     name = "mtk_slbc",
-    srcs = [],
-    conditional_srcs = {
-        "CONFIG_MTK_SLBC": {
-            True:["slbc.c"],
-        },
-    },
+    srcs = [
+        "slbc.c",
+    ],
     includes = [
         ".",
     ],
@@ -64,5 +64,28 @@ define_mgk_ddk_ko(
     ],
     ko_deps = [
         ":mtk_slbc",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "slbc_ipi",
+    srcs = [
+        "slbc_ipi.c",
+    ],
+    hdrs = [
+        "slbc_ipi.h",
+    ],
+    includes = [
+        ".",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc",
+    ],
+    ko_deps = [
+        ":mtk_slbc",
+        ":slbc_trace",
+	"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
     ],
 )
