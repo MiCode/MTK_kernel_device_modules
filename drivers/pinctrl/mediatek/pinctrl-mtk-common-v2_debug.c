@@ -72,14 +72,10 @@ int gpio_get_tristate_input(unsigned int pin)
 		return -EINVAL;
 	}
 
-	if (pin < hw->chip.base) {
-		pr_notice(FUN_3STATE ": please use virtual pin number\n");
-		return -EINVAL;
-	}
-
-	if (pin - hw->chip.base >= hw->soc->npins) {
-		pr_notice(FUN_3STATE ": invalid pin number: %u\n",
-			pin);
+	if ((pin < hw->chip.base) || (pin - hw->chip.base >= hw->soc->npins)) {
+		pr_notice(FUN_3STATE ": invalid pin number: %u , "
+			"valid range: %u ~ %u\n",
+			pin, hw->chip.base, hw->chip.base + hw->soc->npins - 1);
 		return -EINVAL;
 	}
 
@@ -153,7 +149,7 @@ static int mtk_hw_set_value_wrap(struct mtk_pinctrl *hw, unsigned int gpio,
 	if (gpio > hw->soc->npins)
 		return -EINVAL;
 
-	if (!strncmp(hw->dev->kobj.name, "mt63", strlen("mt63")))
+	if (hw->soc->capability_flags & (FLAG_MT63XX | FLAG_MT66XX))
 		return mt63xx_hw_set_value(hw, gpio, field, value);
 
 	desc = (const struct mtk_pin_desc *)&hw->soc->pins[gpio];
@@ -240,7 +236,7 @@ static int mtk_gpio_proc_show(struct seq_file *file, void *v)
 		return 0;
 	}
 
-	if (!strncmp(hw->dev->kobj.name, "mt63", strlen("mt63")))
+	if (hw->soc->capability_flags & (FLAG_MT63XX | FLAG_MT66XX))
 		mt63xx = 1;
 	else
 		mt63xx = 0;
@@ -288,7 +284,7 @@ static ssize_t mtk_gpio_write(struct file *file, const char __user *ubuf,
 		return count;
 	}
 
-	if (!strncmp(hw->dev->kobj.name, "mt63", strlen("mt63")))
+	if (hw->soc->capability_flags & (FLAG_MT63XX | FLAG_MT66XX))
 		mt63xx = 1;
 	else
 		mt63xx = 0;

@@ -1213,6 +1213,7 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 {
 	struct mtk_pinctrl *hw = pinctrl_dev_get_drvdata(pctldev);
 	struct mtk_pinctrl_group *grp = hw->groups + group;
+	int err, need_ad_sw_switch;
 	bool ret;
 
 	ret = mtk_pctrl_is_function_valid(hw, grp->pin, function);
@@ -1222,9 +1223,23 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 
-	(void)mt63xx_hw_set_value(hw, grp->pin, PINCTRL_PIN_REG_AD_SWITCH,
-					((function == 1) ? 1 : 0));
+        if (hw->soc->capability_flags & FLAG_MT63XX) {
+		(void)mt63xx_hw_set_value(hw, grp->pin,
+			PINCTRL_PIN_REG_AD_SWITCH,
+			((function == 1) ? 1 : 0));
+	} else if (hw->soc->capability_flags & FLAG_MT66XX) {
+		need_ad_sw_switch = mt63xx_hw_get_value(hw, grp->pin,
+			PINCTRL_PIN_REG_AD_SW_SWITCH, &err);
+		if (!err) {
+			if (!need_ad_sw_switch)
+				/* HW auto swtich */
+				return 0;
+		} else {
+			/* shall not happen */
+		}
+	}
 
+	/* SW switch */
 	return mt63xx_hw_set_value(hw, grp->pin, PINCTRL_PIN_REG_MODE,
 					function);
 }
@@ -1413,11 +1428,16 @@ ssize_t mt63xx_pctrl_show_one_pin(struct mtk_pinctrl *hw,
 	 * Normally, we shall check >= hw->soc->npins.
 	 * However, when pin number starting index is 1, instead of 0,
 	 *  we shall check > hw->soc->npins.
-         * To unify checking rule, hw->soc->npins is added by 1 in probe
-         *  function when starting index is 1.
+	 * To unify checking rule, hw->soc->npins is added by 1 in probe
+	 *  function when starting index is 1.
 	 */
 	if (gpio >= hw->soc->npins)
 		return -EINVAL;
+
+	if ((gpio >= 0) && (gpio < hw->soc->real_pin_start_idx)) {
+		len += sprintf(buf, "%02d: dummy-pin", gpio);
+		return len;
+	}
 
 	if (mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_MODE, &val) >= 0)
 		len += snprintf(buf + len, bufLen - len,
@@ -1509,7 +1529,7 @@ static int mt63xx_gpio_get_direction(struct gpio_chip *chip, unsigned int gpio)
 	struct mtk_pinctrl *hw = gpiochip_get_data(chip);
 	int value, err;
 
-	if (gpio >= hw->soc->npins)
+	if ((gpio >= hw->soc->npins) || (gpio < hw->soc->real_pin_start_idx))
 		return -EINVAL;
 
 	err = mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_DIR, &value);
@@ -1524,7 +1544,7 @@ static int mt63xx_gpio_get(struct gpio_chip *chip, unsigned int gpio)
 	struct mtk_pinctrl *hw = gpiochip_get_data(chip);
 	int value, err;
 
-	if (gpio >= hw->soc->npins)
+	if ((gpio >= hw->soc->npins) || (gpio < hw->soc->real_pin_start_idx))
 		return -EINVAL;
 
 	err = mt63xx_hw_get_value(hw, gpio, PINCTRL_PIN_REG_DI, &value);
@@ -1538,7 +1558,7 @@ static void mt63xx_gpio_set(struct gpio_chip *chip, unsigned int gpio, int value
 {
 	struct mtk_pinctrl *hw = gpiochip_get_data(chip);
 
-	if (gpio >= hw->soc->npins)
+	if ((gpio >= hw->soc->npins) || (gpio < hw->soc->real_pin_start_idx))
 		return;
 
 	(void)mt63xx_hw_set_value(hw, gpio, PINCTRL_PIN_REG_DO, !!value);
@@ -1548,7 +1568,7 @@ static int mt63xx_gpio_direction_input(struct gpio_chip *chip, unsigned int gpio
 {
 	struct mtk_pinctrl *hw = gpiochip_get_data(chip);
 
-	if (gpio >= hw->soc->npins)
+	if ((gpio >= hw->soc->npins) || (gpio < hw->soc->real_pin_start_idx))
 		return -EINVAL;
 
 	return pinctrl_gpio_direction_input(chip, gpio);
@@ -1559,7 +1579,7 @@ static int mt63xx_gpio_direction_output(struct gpio_chip *chip, unsigned int gpi
 {
 	struct mtk_pinctrl *hw = gpiochip_get_data(chip);
 
-	if (gpio >= hw->soc->npins)
+	if ((gpio >= hw->soc->npins) || (gpio < hw->soc->real_pin_start_idx))
 		return -EINVAL;
 
 	mt63xx_gpio_set(chip, gpio, value);
@@ -1596,6 +1616,7 @@ int mt63xx_pinctrl_probe(struct platform_device *pdev,
 			    const struct mtk_pin_soc *soc)
 {
 	struct pinctrl_pin_desc *pins;
+	struct pinctrl_desc *desc;
 	struct mtk_pinctrl *hw;
 	int err, i, npins;
 
@@ -1648,12 +1669,20 @@ int mt63xx_pinctrl_probe(struct platform_device *pdev,
 		pins[i].name = hw->soc->pins[i].name;
 	}
 
-	/* Setup pins descriptions per SoC types */
-	mtk_desc_mt63xx.pins = (const struct pinctrl_pin_desc *)pins;
-	mtk_desc_mt63xx.npins = npins;
+	desc = kzalloc(sizeof(mtk_desc_mt63xx), GFP_KERNEL);
+	if (!desc) {
+		dev_notice(&pdev->dev,
+			"Failed to alloc memory for struct pinctrl_desc\n");
+		return -ENOMEM;
+	}
 
-	err = devm_pinctrl_register_and_init(&pdev->dev, &mtk_desc_mt63xx, hw,
-					     &hw->pctrl);
+	memcpy(desc, &mtk_desc_mt63xx, sizeof(mtk_desc_mt63xx));
+
+	/* Setup pins descriptions per SoC types */
+	desc->pins = (const struct pinctrl_pin_desc *)pins;
+	desc->npins = npins;
+
+	err = devm_pinctrl_register_and_init(&pdev->dev, desc, hw, &hw->pctrl);
 	if (err)
 		return err;
 

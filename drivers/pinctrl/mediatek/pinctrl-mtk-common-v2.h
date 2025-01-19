@@ -95,6 +95,7 @@ enum {
 	PINCTRL_PIN_REG_DRV_ADV,
 	PINCTRL_PIN_REG_RSEL,
 	PINCTRL_PIN_REG_AD_SWITCH,
+	PINCTRL_PIN_REG_AD_SW_SWITCH,
 	PINCTRL_PIN_REG_MAX,
 };
 
@@ -246,7 +247,9 @@ struct mtk_pinctrl;
 
 #define FLAG_RACE_FREE_ACCESS	0x00000001
 #define FLAG_DRIVE_SET_RAW	0x00000002
-#define FLAG_GPIO_START_IDX_1   0x00000004
+#define FLAG_GPIO_START_IDX_1	0x00000004
+#define FLAG_MT63XX		0x00000008
+#define FLAG_MT66XX		0x00000010
 
 /* struct mtk_pin_soc - the structure that holds SoC-specific data */
 struct mtk_pin_soc {
@@ -257,6 +260,7 @@ struct mtk_pin_soc {
 	unsigned int			ngrps;
 	const struct function_desc	*funcs;
 	unsigned int			nfuncs;
+	unsigned int			real_pin_start_idx;
 
 	/* Specific parameters per SoC */
 	u8				gpio_m;
