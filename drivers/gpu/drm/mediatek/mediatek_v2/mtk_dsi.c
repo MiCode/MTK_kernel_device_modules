@@ -3154,8 +3154,14 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 			inten |= TE_RDY_INT_FLAG | INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG;
 			inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 		}
-	} else
+	} else {
 		inten |= TE_RDY_INT_FLAG;
+
+		if (mtk_crtc->is_mml_dl)
+			inten |= FRAME_DONE_INT_FLAG;
+		else
+			inten &= ~FRAME_DONE_INT_FLAG;
+	}
 
 	writel(0, dsi->regs + DSI_INTSTA);
 	writel(inten, dsi->regs + DSI_INTEN);
@@ -3638,7 +3644,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 	} else {
 		if (comp->id == DDP_COMPONENT_DSI0)
-			DRM_MMP_MARK(dsi0, status, 0);
+			DRM_MMP_MARK(dsi0, status, mtk_crtc->is_mml_dl);
 		else if (comp->id == DDP_COMPONENT_DSI1)
 			DRM_MMP_MARK(dsi1, status, 0);
 		else if (comp->id == DDP_COMPONENT_DSI2)
@@ -11849,6 +11855,12 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		} else {
 			inten |= TE_RDY_INT_FLAG;
+
+			if (crtc->is_mml_dl)
+				inten |= FRAME_DONE_INT_FLAG;
+			else
+				inten &= ~FRAME_DONE_INT_FLAG;
+
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi) {
@@ -11899,6 +11911,12 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		} else {
 			inten |= TE_RDY_INT_FLAG;
+
+			if (crtc->is_mml_dl)
+				inten |= FRAME_DONE_INT_FLAG;
+			else
+				inten &= ~FRAME_DONE_INT_FLAG;
+
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi) {
