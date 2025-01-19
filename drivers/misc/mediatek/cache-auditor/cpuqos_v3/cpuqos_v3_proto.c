@@ -141,7 +141,7 @@ int task_curr_clone(const struct task_struct *p)
 unsigned int get_task_pd(struct task_struct *p)
 {
 	unsigned int pd;
-	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)android_task_vendor_data(p))->cpuqos_task;
 
 	pd = READ_ONCE(cqts->pd);
 
@@ -151,7 +151,7 @@ unsigned int get_task_pd(struct task_struct *p)
 unsigned int get_task_rank(struct task_struct *p)
 {
 	unsigned int rank;
-	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)android_task_vendor_data(p))->cpuqos_task;
 
 	rank = READ_ONCE(cqts->rank);
 
@@ -330,7 +330,7 @@ static void cpuqos_v3_sync_current_mb(void *task)
 
 static void cpuqos_v3_kick_task(struct task_struct *p, int pd)
 {
-	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)android_task_vendor_data(p))->cpuqos_task;
 
 	if (pd >= 0)
 		WRITE_ONCE(cqts->pd, pd);
@@ -423,7 +423,7 @@ int set_task_pd(int pid, int pd)
 
 	if (p) {
 		get_task_struct(p);
-		cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+		cqts = &((struct mtk_task *)android_task_vendor_data(p))->cpuqos_task;
 	}
 	rcu_read_unlock();
 
@@ -740,7 +740,7 @@ static void cpuqos_v3_hook_switch(void __always_unused *data,
 static void cpuqos_v3_task_newtask(void __always_unused *data,
 				struct task_struct *p, unsigned long clone_flags)
 {
-	struct cpuqos_task_struct *cqts = &((struct mtk_task *)p->android_vendor_data1)->cpuqos_task;
+	struct cpuqos_task_struct *cqts = &((struct mtk_task *)android_task_vendor_data(p))->cpuqos_task;
 
 	WRITE_ONCE(cqts->pd, PD3); /* pd */
 	WRITE_ONCE(cqts->rank, GROUP_RANK); /* rank */
