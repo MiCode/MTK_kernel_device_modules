@@ -436,6 +436,8 @@ static dma_addr_t vpu_iova_alloc(struct device *dev,
 	/* allocate kvm and map */
 	if (i->bin == VPU_MEM_ALLOC) {
 		ret = vpu_mem_alloc(dev, i, iova);
+		if (ret)
+			goto out;
 		iova = i->iova;
 	/* map from vpu firmware loaded at bootloader */
 	} else if (i->size) {
