@@ -518,4 +518,5 @@
 	status = "okay";
 };
 #include "mediatek/cust_mt6853_touch_1080x1920.dtsi"
+#include <k6853v1_64/cust.dtsi>
 /*End of this file, DO NOT ADD ANYTHING HERE*/
