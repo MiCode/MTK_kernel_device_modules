@@ -406,7 +406,7 @@ int mtk_pe45_get_setting_by_watt(struct chg_alg_device *alg, int *voltage,
 
 	}
 
-	pe45_cap->apdo_idx = i;
+	pe45_cap->apdo_idx = i >= pe45_cap->nr ? pe45_cap->nr - 1 : i;
 	*voltage = vbus;
 	*ibus_current_setting = ibus_setting;
 	*actual_current = ibus;
@@ -703,14 +703,11 @@ int mtk_pe45_rcable_control_chg_level(struct chg_alg_device *alg, int *vbus, int
 int mtk_pe45_get_init_lower_watt(struct chg_alg_device *alg)
 {
 	int ret;
-	struct mtk_pe45 *pe45;
-	int vbus1, ibus1;
-	int vbat1;
+	int ibus1;
 	int voltage = 0, input_current = 1000, actual_current = 0;
 	int voltage1 = 0, adapter_ibus;
 	unsigned int i;
 
-	pe45 = dev_get_drvdata(&alg->dev);
 	voltage = 0;
 	mtk_pe45_get_setting_by_watt(alg, &voltage, &adapter_ibus,
 		&actual_current, 15000000, &input_current);
@@ -729,9 +726,7 @@ int mtk_pe45_get_init_lower_watt(struct chg_alg_device *alg)
 	}
 
 	mtk_pe45_get_ibus(alg, &ibus1);
-	vbus1 = pe4_hal_get_vbus(alg);
 	ibus1 = ibus1 / 1000;
-	vbat1 = pe4_hal_get_vbat(alg);
 	voltage1 = voltage;
 
 	return voltage1 * ibus1;
@@ -740,7 +735,6 @@ int mtk_pe45_get_init_lower_watt(struct chg_alg_device *alg)
 int mtk_pe45_get_init_watt(struct chg_alg_device *alg)
 {
 	int ret;
-	struct mtk_pe45 *pe45;
 	int vbus1, ibus1;
 	int vbus2, ibus2;
 	int vbat1, vbat2;
@@ -749,7 +743,6 @@ int mtk_pe45_get_init_watt(struct chg_alg_device *alg)
 	bool is_enable = false, is_chip_enable = false;
 	unsigned int i;
 
-	pe45 = dev_get_drvdata(&alg->dev);
 	voltage = 0;
 	mtk_pe45_get_setting_by_watt(alg, &voltage, &adapter_ibus,
 		&actual_current, 27000000, &input_current);
@@ -1299,7 +1292,6 @@ int mtk_pe45_cc_state(struct chg_alg_device *alg)
 	int ret;
 	int oldavbus = 0;
 	int oldibus = 0;
-	int watt;
 	int max_watt;
 //	struct charger_data *pdata;
 	int actual_current;
@@ -1328,7 +1320,6 @@ int mtk_pe45_cc_state(struct chg_alg_device *alg)
 	ccl = pe45->charger_current1 / 1000;
 	ccl2 = pe45->charger_current1 / 1000;
 	cv = pe45->cv / 1000;
-	watt = pe45->avbus * ibus;
 
 	icl = pe45->input_current1 / 1000 *
 		(100 - pe45->ibus_err) / 100;
@@ -1343,12 +1334,13 @@ int mtk_pe45_cc_state(struct chg_alg_device *alg)
 	icl_threshold = 100;
 	max_watt = pe45->avbus * max_icl;
 
-	pe4_dbg("[pe45_cc]vbus:%d:%d,ibus:%d,cibus:%d,ibat:%d icl:%d:%d,ccl:%d,%d,vbat:%d,maxIbus:%d,mivr:%d\n",
+	pe4_dbg("[pe45_cc]vbus:%d:%d,ibus:%d,cibus:%d,ibat:%d icl:%d:%d,ccl:%d,%d,cv:%d,%d,vbat:%d,maxIbus:%d,mivr:%d\n",
 		pe45->avbus, vbus,
 		ibus,
 		compare_ibus,
 		ibat,
 		icl, max_icl,
+		cv, max_watt,
 		ccl, ccl2,
 		vbat, pe45->max_charger_ibus,
 		chg1_mivr);
@@ -1680,6 +1672,7 @@ static void _pe4_set_current(struct chg_alg_device *alg)
 			//goto out;
 		}
 	}
+	pe4_dbg("%s:%d\n", __func__, ret_value);
 }
 
 static int _pe45p_start_algo(struct chg_alg_device *alg)

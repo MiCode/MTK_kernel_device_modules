@@ -255,11 +255,15 @@ int pe2_hal_enable_charger(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1  && hal->chg1_dev != NULL)
+	if (chgidx == CHG1  && hal->chg1_dev != NULL) {
 		ret = charger_dev_enable(hal->chg1_dev, en);
-	else if (chgidx == CHG2  && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	} else if (chgidx == CHG2  && hal->chg2_dev != NULL) {
 		ret = charger_dev_enable(hal->chg2_dev, en);
-
+		if (ret < 0)
+			return ret;
+	}
 	pe2_dbg("%s idx:%d %d\n", __func__, chgidx, en);
 	return 0;
 }
@@ -274,11 +278,15 @@ int pe2_hal_is_charger_enable(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1  && hal->chg1_dev != NULL)
+	if (chgidx == CHG1  && hal->chg1_dev != NULL) {
 		ret = charger_dev_is_enabled(hal->chg1_dev, en);
-	else if (chgidx == CHG2  && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	} else if (chgidx == CHG2  && hal->chg2_dev != NULL) {
 		ret = charger_dev_is_enabled(hal->chg2_dev, en);
-
+		if (ret < 0)
+			return ret;
+	}
 	pe2_dbg("%s idx:%d %d\n", __func__, chgidx, *en);
 	return 0;
 }
@@ -561,11 +569,15 @@ int pe2_hal_charger_enable_chip(struct chg_alg_device *alg,
 		return -EINVAL;
 	hal = chg_alg_dev_get_drv_hal_data(alg);
 
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_enable_chip(hal->chg1_dev, enable);
-	else if (chgidx == CHG2 && hal->chg2_dev != NULL) {
+		if (ret < 0)
+			return ret;
+	} else if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		pe2_dbg("%s idx:%d %d test\n", __func__, chgidx, enable);
 		ret = charger_dev_enable_chip(hal->chg2_dev, enable);
+		if (ret < 0)
+			return ret;
 	}
 	pe2_dbg("%s idx:%d %d %d\n", __func__, chgidx, enable,
 		hal->chg2_dev != NULL);
@@ -582,10 +594,16 @@ int pe2_hal_set_eoc_current(struct chg_alg_device *alg,
 		return -EINVAL;
 	hal = chg_alg_dev_get_drv_hal_data(alg);
 
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_set_eoc_current(hal->chg1_dev, uA);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_set_eoc_current(hal->chg2_dev, uA);
+		if (ret < 0)
+			return ret;
+	}
 	pe2_dbg("%s idx:%d %d\n", __func__, chgidx, uA);
 	return 0;
 }
@@ -600,10 +618,16 @@ int pe2_hal_enable_termination(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_enable_termination(hal->chg1_dev, enable);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_enable_termination(hal->chg2_dev, enable);
+		if (ret < 0)
+			return ret;
+	}
 	pe2_dbg("%s idx:%d %d\n", __func__, chgidx, enable);
 	return 0;
 }
@@ -618,10 +642,16 @@ int pe2_hal_get_min_charging_current(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_get_min_charging_current(hal->chg1_dev, uA);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_get_min_charging_current(hal->chg2_dev, uA);
+		if (ret < 0)
+			return ret;
+	}
 	pe2_dbg("%s idx:%d %d\n", __func__, chgidx, *uA);
 	return 0;
 }
@@ -636,10 +666,16 @@ int pe2_hal_get_min_input_current(struct chg_alg_device *alg,
 		return -EINVAL;
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
-	if (chgidx == CHG1 && hal->chg1_dev != NULL)
+	if (chgidx == CHG1 && hal->chg1_dev != NULL) {
 		ret = charger_dev_get_min_input_current(hal->chg1_dev, uA);
-	if (chgidx == CHG2 && hal->chg2_dev != NULL)
+		if (ret < 0)
+			return ret;
+	}
+	if (chgidx == CHG2 && hal->chg2_dev != NULL) {
 		ret = charger_dev_get_min_input_current(hal->chg2_dev, uA);
+		if (ret < 0)
+			return ret;
+	}
 	pe2_dbg("%s idx:%d %d\n", __func__, chgidx, *uA);
 	return 0;
 }

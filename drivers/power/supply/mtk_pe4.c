@@ -674,7 +674,6 @@ int mtk_pe40_get_ibus(struct chg_alg_device *alg, u32 *ibus)
 int mtk_pe40_get_init_watt(struct chg_alg_device *alg)
 {
 	int ret;
-	struct mtk_pe40 *pe40;
 	int vbus1, ibus1;
 	int vbus2, ibus2;
 	int vbat1, vbat2;
@@ -683,7 +682,6 @@ int mtk_pe40_get_init_watt(struct chg_alg_device *alg)
 	bool is_enable = false, is_chip_enable = false;
 	unsigned int i;
 
-	pe40 = dev_get_drvdata(&alg->dev);
 	voltage = 0;
 	mtk_pe40_get_setting_by_watt(alg, &voltage, &adapter_ibus,
 		&actual_current, 27000000, &input_current);
@@ -1189,13 +1187,14 @@ int mtk_pe40_cc_state(struct chg_alg_device *alg)
 	icl_threshold = 100;
 	max_watt = pe40->avbus * max_icl;
 
-	pe4_dbg("[pe40_cc]vbus:%d:%d,ibus:%d,cibus:%d,ibat:%d icl:%d:%d,ccl:%d,%d,vbat:%d,maxIbus:%d,mivr:%d,%d\n",
+	pe4_dbg("[pe40_cc]vbus:%d:%d,ibus:%d,cibus:%d,ibat:%d icl:%d:%d,ccl:%d,%d,cv:%d,%d,vbat:%d,maxIbus:%d,mivr:%d,%d\n",
 		pe40->avbus, vbus,
 		ibus,
 		compare_ibus,
 		ibat,
 		icl, max_icl,
 		ccl, ccl2,
+		cv, max_watt,
 		vbat, pe40->max_charger_ibus,
 		chg1_mivr, chg2_mivr);
 
@@ -1540,6 +1539,7 @@ static void _pe4_set_current(struct chg_alg_device *alg)
 			//goto out;
 		}
 	}
+	pe4_dbg("%s:%d\n", __func__, ret_value);
 }
 
 static int _pe4_start_algo(struct chg_alg_device *alg)

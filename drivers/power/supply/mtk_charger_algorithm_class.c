@@ -241,7 +241,7 @@ struct chg_alg_device *chg_alg_device_register(const char *name,
 	chg_dev->dev.parent = parent;
 	chg_dev->dev.release = chg_alg_device_release;
 	algo_name = kasprintf(GFP_KERNEL, "%s", name);
-	dev_set_name(&chg_dev->dev, algo_name);
+	dev_set_name(&chg_dev->dev, "%s", algo_name);
 	dev_set_drvdata(&chg_dev->dev, devdata);
 	kfree(algo_name);
 

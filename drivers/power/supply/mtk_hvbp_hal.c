@@ -485,6 +485,11 @@ static int hvbp_get_tbat(struct hvbp_hal *hal)
 	} else {
 		tmp_ret = power_supply_get_property(bat_psy,
 						 POWER_SUPPLY_PROP_TEMP, &prop);
+		if (tmp_ret) {
+			HVBP_ERR("%s Couldn't get bat_psy\n", __func__);
+			ret = 27;
+			return ret;
+		}
 		ret = prop.intval / 10;
 	}
 
@@ -535,6 +540,11 @@ int hvbp_hal_get_soc(struct chg_alg_device *alg, u32 *soc)
 	} else {
 		ret_tmp = power_supply_get_property(bat_psy,
 					     POWER_SUPPLY_PROP_CAPACITY, &prop);
+		if (ret_tmp < 0){
+			HVBP_ERR("%s Couldn't get battery capacity\n", __func__);
+			ret = 50;
+			return ret;
+		}
 		ret = prop.intval;
 	}
 	if (ret < 0)

@@ -82,6 +82,11 @@ int get_uisoc(struct mtk_charger *info)
 	} else {
 		ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_CAPACITY, &prop);
+		if (ret < 0) {
+			chr_err("%s Couldn't get soc\n", __func__);
+			ret = 50;
+			return ret;
+		}
 		ret = prop.intval;
 	}
 
@@ -120,6 +125,11 @@ int get_battery_voltage(struct mtk_charger *info)
 	} else {
 		ret = power_supply_get_property(bat_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
+		if (ret < 0) {
+			chr_err("%s Couldn't get vbat\n", __func__);
+			ret = 3999;
+			return ret;
+		}
 		ret = prop.intval / 1000;
 	}
 
@@ -448,7 +458,7 @@ int get_usb_type(struct mtk_charger *info)
 	union power_supply_propval prop2 = {0};
 	static struct power_supply *bc12_psy;
 
-	int ret;
+	int ret = 0;
 
 	bc12_psy = info->bc12_psy;
 
@@ -464,8 +474,12 @@ int get_usb_type(struct mtk_charger *info)
 	} else {
 		ret = power_supply_get_property(bc12_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop);
+		if (ret < 0)
+			chr_debug("%s Couldn't get cablestat.\n", __func__);
 		ret = power_supply_get_property(bc12_psy,
 			POWER_SUPPLY_PROP_USB_TYPE, &prop2);
+		if (ret < 0)
+			chr_debug("%s Couldn't get usbtype.\n", __func__);
 	}
 	chr_debug("%s online:%d usb_type:%d\n", __func__,
 		prop.intval,
