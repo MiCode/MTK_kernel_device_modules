@@ -20,6 +20,7 @@
 #include "cmdq-sec-mailbox.h"
 #include "cmdq-sec-tl-api.h"
 #include "cmdq-util.h"
+#include <mtk-mminfra-util.h>
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 #include "cmdq_sec_mtee.h"
@@ -178,6 +179,8 @@ struct cmdq_sec {
 #endif
 	struct mutex mbox_mutex;
 	spinlock_t		pkvm_lock;
+	bool		pwr_control_by_mminfra;
+	u32			mminfra_all_on_pwr_idx;
 };
 static atomic_t cmdq_path_res = ATOMIC_INIT(0);
 static atomic_t cmdq_path_res_mtee = ATOMIC_INIT(0);
@@ -318,7 +321,12 @@ void cmdq_sec_mbox_enable(void *chan)
 			atomic_read(&cmdq->thread[i].usage));
 
 		// power
-		pm_runtime_get_sync(cmdq->mbox.dev);
+		ret = cmdq->pwr_control_by_mminfra ?
+			mtk_mminfra_on_off(true, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
+			pm_runtime_get_sync(cmdq->mbox.dev);
+
+		if (ret != 0)
+			cmdq_err("%s vote mminfra on err:%d", __func__, ret);
 		if (mminfra_power_cb && !mminfra_power_cb())
 			cmdq_err("hwid:%hu usage:%d mminfra power not enable",
 				cmdq->hwid, usage);
@@ -341,7 +349,7 @@ void cmdq_sec_mbox_disable(void *chan)
 {
 	struct cmdq_sec *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
-	s32 usage, i;
+	s32 usage, i, ret;
 
 	mutex_lock(&cmdq->mbox_mutex);
 
@@ -398,7 +406,11 @@ void cmdq_sec_mbox_disable(void *chan)
 		if (mminfra_power_cb && !mminfra_power_cb())
 			cmdq_err("hwid:%hu usage:%d mminfra power not enable",
 				cmdq->hwid, usage);
-		pm_runtime_put_sync(cmdq->mbox.dev);
+		ret = cmdq->pwr_control_by_mminfra ?
+			mtk_mminfra_on_off(false, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
+			pm_runtime_put_sync(cmdq->mbox.dev);
+		if (ret != 0)
+			cmdq_err("%s vote mminfra off err:%d", __func__, ret);
 	}
 	mutex_unlock(&cmdq->mbox_mutex);
 }
@@ -1919,6 +1931,7 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	struct device_link *link;
 	unsigned int dl_flags = DL_FLAG_PM_RUNTIME |
 		DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_AUTOREMOVE_SUPPLIER;
+	int genpd_num = 0;
 #endif /* defined(CMDQ_SECURE_MTEE_SUPPORT) */
 
 	cmdq_msg("%s", __func__);
@@ -2029,7 +2042,20 @@ cmdq_sec_probe_mtee_end:
 	cmdq_sec_reserved_mem_lookup(cmdq->shared_mem);
 
 	platform_set_drvdata(pdev, cmdq);
-	pm_runtime_enable(dev);
+
+	genpd_num = of_count_phandle_with_args(dev->of_node,
+						"power-domains",
+						"#power-domain-cells");
+	cmdq_msg("%s num:%d", __func__, genpd_num);
+
+	if (genpd_num == -ENOENT) {
+		cmdq->pwr_control_by_mminfra = true;
+		of_property_read_u32(dev->of_node,
+			"mminfra-all-on-pwr-idx", &cmdq->mminfra_all_on_pwr_idx);
+		cmdq_msg("%s pwr_control_by_mminfra enable", __func__);
+		return 0;
+	} else
+		pm_runtime_enable(dev);
 
 	cmdq->hwid = cmdq_util_track_ctrl(cmdq, cmdq->base_pa, true);
 
