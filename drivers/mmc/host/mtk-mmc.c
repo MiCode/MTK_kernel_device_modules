@@ -2554,11 +2554,11 @@ static void msdc_init_hw(struct msdc_host *host)
 		 host->dev_comp->infra_check.work_mode == MSDC_SPM_SW_MODE) ||
 		(host->msdc_spm_hw_supp &&
 		 host->dev_comp->infra_check.enable == false))
-		sdr_set_bits(host->base, SDC_STS_NOT_WAIT_ACK);
+		sdr_set_bits(host->base + SDC_STS, SDC_STS_NOT_WAIT_ACK);
 #else
 	/* SPM module maybe not ready in FPGA stage, so disable hw wait spm ack */
 	if (host->msdc_spm_hw_supp == true)
-		sdr_set_bits(host->base, SDC_STS_NOT_WAIT_ACK);
+		sdr_set_bits(host->base + SDC_STS, SDC_STS_NOT_WAIT_ACK);
 #endif
 
 	host->need_tune = false;
@@ -2726,7 +2726,8 @@ static void msdc_ops_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		if (host->id == MSDC_SD) {
 			if (host->mclk == 100000) {
 				host->block_bad_card = 1;
-				gpio_dump_regs_range(33, 33);
+				if (host->cd_gpio_num != INVALID_CD_GPIO)
+					gpio_dump_regs_range((int)host->cd_gpio_num, (int)host->cd_gpio_num);
 				pr_notice("[%s]: msdc%d power off at clk %dhz set block_bad_card = %d, SDcard status = %d\n",
 					__func__, host->id, host->mclk,
 					host->block_bad_card, mmc_gpio_get_cd(mmc));
@@ -4121,6 +4122,11 @@ static void msdc_of_property_parse(struct platform_device *pdev,
 		host->msdc_spm_hw_supp = true;
 	else
 		host->msdc_spm_hw_supp = false;
+
+	if (of_property_read_u32(pdev->dev.of_node, "cd-gpio-num", &host->cd_gpio_num))
+		host->cd_gpio_num = INVALID_CD_GPIO;
+	else
+		pr_info("mmc%d cd_gpio found, num is %d\n", host->id, host->cd_gpio_num);
 
 	/* default value is TFA version, indicate tf-a is used */
 	host->tf_ver = MMC_MTK_TFA_VERSION;

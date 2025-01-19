@@ -47,6 +47,7 @@
 
 #define CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD	(1 << 31)
 
+#define INVALID_CD_GPIO		(0xFFFFFFFF)
 #define MAX_BD_NUM          1024
 #define MSDC_NR_CLOCKS      3
 #define MSDC_EMMC           0
@@ -634,6 +635,7 @@ struct msdc_host {
 	u32 req_vcore;
 	u32 ocr_volt;
 	u32 sw_ver;
+	u32 cd_gpio_num;
 	struct regulator *dvfsrc_vcore_power;
 	bool use_cmd_intr;
 	bool sdcard_aggressive_pm;
