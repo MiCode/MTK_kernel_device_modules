@@ -1025,6 +1025,21 @@ static const struct phy_ops eusb2_repeater_ops = {
 	.owner		= THIS_MODULE,
 };
 
+static void split_str(char *str, char *value, char *mode, int size)
+{
+	int i = 0;
+
+	for (i = 0; i < size; i++) {
+		if (str[i] == ' ') {
+			if (i+1 < sizeof(str)) {
+				mode[0]= str[i+1];
+				break;
+			}
+		}
+		value[i] = str[i];
+	}
+}
+
 static void cover_val_to_str(u32 val, u8 width, char *str)
 {
 	int i;
@@ -1043,15 +1058,23 @@ static int proc_vrt_sel_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
 	u32 tmp = 0;
+	char dstr[16] = "No assignment";
+	char hstr[16] = "No assignment";
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR0_0, &tmp);
 	tmp >>= RG_USB20_VRT_SEL_SHIFT;
 	tmp &= RG_USB20_VRT_SEL_MASK;
 
+	if (rptr->vrt_sel != -EINVAL)
+		cover_val_to_str(rptr->vrt_sel, 3, dstr);
+	if (rptr->host_vrt_sel != -EINVAL)
+		cover_val_to_str(rptr->host_vrt_sel, 3, hstr);
 	cover_val_to_str(tmp, 3, str);
 
-	seq_printf(s, "\n%s = %s\n", VRT_SEL_STR, str);
+	seq_printf(s, "device_%s = %s\n", VRT_SEL_STR, dstr);
+	seq_printf(s, "host_%s = %s\n", VRT_SEL_STR, hstr);
+	seq_printf(s, "RG: %s = %s\n", VRT_SEL_STR, str);
 	return 0;
 }
 
@@ -1066,20 +1089,39 @@ static ssize_t proc_vrt_sel_write(struct file *file,
 	struct seq_file *s = file->private_data;
 	struct eusb2_repeater *rptr = s->private;
 	char buf[20];
+	char value[20];
+	char mode[1];
+	int min = 0;
 	u32 val;
 
+	mode[0] = '*';
 	memset(buf, 0x00, sizeof(buf));
-	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+	memset(value, 0x00, sizeof(value));
+	min = min_t(size_t, sizeof(buf) - 1, count);
+
+	if (copy_from_user(&buf, ubuf, min))
 		return -EFAULT;
 
-	if (kstrtouint(buf, 2, &val))
+	if (buf[0] == ' ')
 		return -EINVAL;
 
-	rptr->vrt_sel = val;
-	rptr->host_vrt_sel = val;
+	split_str(buf, value, mode, min);
+
+	if (kstrtouint(value, 2, &val))
+		return -EINVAL;
+
+	if (mode[0] == 'd')
+		rptr->vrt_sel = val;
+	else if (mode[0] == 'h')
+		rptr->host_vrt_sel = val;
+	else if (mode[0] == '*') {
+		rptr->vrt_sel = val;
+		rptr->host_vrt_sel = val;
+	} else
+		return -EINVAL;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_0, RG_USB20_VRT_SEL,
-			rptr->vrt_sel << RG_USB20_VRT_SEL_SHIFT);
+			val << RG_USB20_VRT_SEL_SHIFT);
 
 	return count;
 }
@@ -1096,15 +1138,23 @@ static int proc_discth_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
 	u32 tmp = 0;
+	char dstr[16] = "No assignment";
+	char hstr[16] = "No assignment";
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_0, &tmp);
 	tmp >>= RG_USB20_DISCTH_SHIFT;
 	tmp &= RG_USB20_DISCTH_MASK;
 
+	if (rptr->discth != -EINVAL)
+		cover_val_to_str(rptr->discth, 4, dstr);
+	if (rptr->host_discth != -EINVAL)
+		cover_val_to_str(rptr->host_discth, 4, hstr);
 	cover_val_to_str(tmp, 4, str);
 
-	seq_printf(s, "\n%s = %s\n", DISCTH_STR, str);
+	seq_printf(s, "device_%s = %s\n", DISCTH_STR, dstr);
+	seq_printf(s, "host_%s = %s\n", DISCTH_STR, hstr);
+	seq_printf(s, "RG: %s = %s\n", DISCTH_STR, str);
 	return 0;
 }
 
@@ -1119,20 +1169,39 @@ static ssize_t proc_discth_write(struct file *file,
 	struct seq_file *s = file->private_data;
 	struct eusb2_repeater *rptr = s->private;
 	char buf[20];
+	char value[20];
+	char mode[1];
+	int min = 0;
 	u32 val;
 
+	mode[0] = '*';
 	memset(buf, 0x00, sizeof(buf));
-	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+	memset(value, 0x00, sizeof(value));
+	min = min_t(size_t, sizeof(buf) - 1, count);
+
+	if (copy_from_user(&buf, ubuf, min))
 		return -EFAULT;
 
-	if (kstrtouint(buf, 2, &val))
+	if (buf[0] == ' ')
 		return -EINVAL;
 
-	rptr->discth = val;
-	rptr->host_discth = val;
+	split_str(buf, value, mode, min);
+
+	if (kstrtouint(value, 2, &val))
+		return -EINVAL;
+
+	if (mode[0] == 'd')
+		rptr->discth = val;
+	else if (mode[0] == 'h')
+		rptr->host_discth = val;
+	else if (mode[0] == '*') {
+		rptr->discth = val;
+		rptr->host_discth = val;
+	} else
+		return -EINVAL;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0, RG_USB20_DISCTH,
-			rptr->discth << RG_USB20_DISCTH_SHIFT);
+			val << RG_USB20_DISCTH_SHIFT);
 
 	return count;
 }
@@ -1149,15 +1218,23 @@ static int proc_rx_sqth_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
 	u32 tmp = 0;
+	char dstr[16] = "No assignment";
+	char hstr[16] = "No assignment";
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_0, &tmp);
 	tmp >>= RG_USB20_SQTH_SHIFT;
 	tmp &= RG_USB20_SQTH_MASK;
 
+	if (rptr->rx_sqth != -EINVAL)
+		cover_val_to_str(rptr->rx_sqth, 4, dstr);
+	if (rptr->host_rx_sqth != -EINVAL)
+		cover_val_to_str(rptr->host_rx_sqth, 4, hstr);
 	cover_val_to_str(tmp, 4, str);
 
-	seq_printf(s, "\n%s = %s\n", RX_SQTH_STR, str);
+	seq_printf(s, "device_%s = %s\n", RX_SQTH_STR, dstr);
+	seq_printf(s, "host_%s = %s\n", RX_SQTH_STR, hstr);
+	seq_printf(s, "RG: %s = %s\n", RX_SQTH_STR, str);
 	return 0;
 }
 
@@ -1172,20 +1249,39 @@ static ssize_t proc_rx_sqth_write(struct file *file,
 	struct seq_file *s = file->private_data;
 	struct eusb2_repeater *rptr = s->private;
 	char buf[20];
+	char value[20];
+	char mode[1];
+	int min = 0;
 	u32 val;
 
+	mode[0] = '*';
 	memset(buf, 0x00, sizeof(buf));
-	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+	memset(value, 0x00, sizeof(value));
+	min = min_t(size_t, sizeof(buf) - 1, count);
+
+	if (copy_from_user(&buf, ubuf, min))
 		return -EFAULT;
 
-	if (kstrtouint(buf, 2, &val))
+	if (buf[0] == ' ')
 		return -EINVAL;
 
-	rptr->rx_sqth = val;
-	rptr->host_rx_sqth = val;
+	split_str(buf, value, mode, min);
+
+	if (kstrtouint(value, 2, &val))
+		return -EINVAL;
+
+	if (mode[0] == 'd')
+		rptr->rx_sqth = val;
+	else if (mode[0] == 'h')
+		rptr->host_rx_sqth = val;
+	else if (mode[0] == '*') {
+		rptr->rx_sqth = val;
+		rptr->host_rx_sqth = val;
+	} else
+		return -EINVAL;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_0, RG_USB20_SQTH,
-			rptr->rx_sqth << RG_USB20_SQTH_SHIFT);
+			val << RG_USB20_SQTH_SHIFT);
 
 	return count;
 }
@@ -1202,15 +1298,23 @@ static int proc_pre_emphasis_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
 	u32 tmp = 0;
+	char dstr[16] = "No assignment";
+	char hstr[16] = "No assignment";
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_3, &tmp);
 	tmp >>= RG_USB20_HS_PE_SHIFT;
 	tmp &= RG_USB20_HS_PE_MASK;
 
+	if (rptr->pre_emphasis != -EINVAL)
+		cover_val_to_str(rptr->pre_emphasis, 3, dstr);
+	if (rptr->host_pre_emphasis != -EINVAL)
+		cover_val_to_str(rptr->host_pre_emphasis, 3, hstr);
 	cover_val_to_str(tmp, 3, str);
 
-	seq_printf(s, "\n%s = %s\n", PRE_EMP_STR, str);
+	seq_printf(s, "device_%s = %s\n", PRE_EMP_STR, dstr);
+	seq_printf(s, "host_%s = %s\n", PRE_EMP_STR, hstr);
+	seq_printf(s, "RG: %s = %s\n", PRE_EMP_STR, str);
 	return 0;
 }
 
@@ -1225,20 +1329,39 @@ static ssize_t proc_pre_emphasis_write(struct file *file,
 	struct seq_file *s = file->private_data;
 	struct eusb2_repeater *rptr = s->private;
 	char buf[20];
+	char value[20];
+	char mode[1];
+	int min = 0;
 	u32 val;
 
+	mode[0] = '*';
 	memset(buf, 0x00, sizeof(buf));
-	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+	memset(value, 0x00, sizeof(value));
+	min = min_t(size_t, sizeof(buf) - 1, count);
+
+	if (copy_from_user(&buf, ubuf, min))
 		return -EFAULT;
 
-	if (kstrtouint(buf, 2, &val))
+	if (buf[0] == ' ')
 		return -EINVAL;
 
-	rptr->pre_emphasis = val;
-	rptr->host_pre_emphasis = val;
+	split_str(buf, value, mode, min);
+
+	if (kstrtouint(value, 2, &val))
+		return -EINVAL;
+
+	if (mode[0] == 'd')
+		rptr->pre_emphasis = val;
+	else if (mode[0] == 'h')
+		rptr->host_pre_emphasis = val;
+	else if (mode[0] == '*') {
+		rptr->pre_emphasis = val;
+		rptr->host_pre_emphasis = val;
+	} else
+		return -EINVAL;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_PE,
-			rptr->pre_emphasis << RG_USB20_HS_PE_SHIFT);
+			val << RG_USB20_HS_PE_SHIFT);
 
 	return count;
 }
@@ -1255,15 +1378,23 @@ static int proc_equalization_show(struct seq_file *s, void *unused)
 {
 	struct eusb2_repeater *rptr = s->private;
 	u32 tmp = 0;
+	char dstr[16] = "No assignment";
+	char hstr[16] = "No assignment";
 	char str[16];
 
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR2_3, &tmp);
 	tmp >>= RG_USB20_HS_EQ_SHIFT;
 	tmp &= RG_USB20_HS_EQ_MASK;
 
+	if (rptr->equalization != -EINVAL)
+		cover_val_to_str(rptr->equalization, 4, dstr);
+	if (rptr->host_equalization != -EINVAL)
+		cover_val_to_str(rptr->host_equalization, 4, hstr);
 	cover_val_to_str(tmp, 4, str);
 
-	seq_printf(s, "\n%s = %s\n", EQ_STR, str);
+	seq_printf(s, "device_%s = %s\n", EQ_STR, dstr);
+	seq_printf(s, "host_%s = %s\n", EQ_STR, hstr);
+	seq_printf(s, "RG: %s = %s\n", EQ_STR, str);
 	return 0;
 }
 
@@ -1278,20 +1409,39 @@ static ssize_t proc_equalization_write(struct file *file,
 	struct seq_file *s = file->private_data;
 	struct eusb2_repeater *rptr = s->private;
 	char buf[20];
+	char value[20];
+	char mode[1];
+	int min = 0;
 	u32 val;
 
+	mode[0] = '*';
 	memset(buf, 0x00, sizeof(buf));
-	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+	memset(value, 0x00, sizeof(value));
+	min = min_t(size_t, sizeof(buf) - 1, count);
+
+	if (copy_from_user(&buf, ubuf, min))
 		return -EFAULT;
 
-	if (kstrtouint(buf, 2, &val))
+	if (buf[0] == ' ')
 		return -EINVAL;
 
-	rptr->equalization = val;
-	rptr->host_equalization = val;
+	split_str(buf, value, mode, min);
+
+	if (kstrtouint(value, 2, &val))
+		return -EINVAL;
+
+	if (mode[0] == 'd')
+		rptr->equalization = val;
+	else if (mode[0] == 'h')
+		rptr->host_equalization = val;
+	else if (mode[0] == '*') {
+		rptr->equalization = val;
+		rptr->host_equalization = val;
+	} else
+		return -EINVAL;
 
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_EQ,
-			rptr->equalization << RG_USB20_HS_EQ_SHIFT);
+			val << RG_USB20_HS_EQ_SHIFT);
 
 	return count;
 }
@@ -1337,16 +1487,25 @@ static ssize_t proc_intr_ofs_write(struct file *file,
 	struct seq_file *s = file->private_data;
 	struct eusb2_repeater *rptr = s->private;
 	char buf[20];
+	char value[20];
+	char mode[1];
 	u32 val, new_val;
 
+	mode[0] = '*';
 	memset(buf, 0x00, sizeof(buf));
+	memset(value, 0x00, sizeof(value));
 	if (count > sizeof(buf) - 1)
 		return -EINVAL;
 
 	if (copy_from_user(&buf, ubuf, count))
 		return -EFAULT;
 
-	if (kstrtoint(buf, 10, &val))
+	if (buf[0] == ' ')
+		return -EINVAL;
+
+	split_str(buf, value, mode, count);
+
+	if (kstrtoint(value, 10, &val))
 		return -EINVAL;
 
 	new_val = rptr->intr_cal + val;
@@ -1360,8 +1519,15 @@ static ssize_t proc_intr_ofs_write(struct file *file,
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_1, RG_USB20_INTR_CAL,
 			new_val << RG_USB20_INTR_CAL_SHIFT);
 
-	rptr->intr_ofs = val;
-	rptr->host_intr_ofs = val;
+	if (mode[0] == 'd')
+		rptr->intr_ofs = val;
+	else if (mode[0] == 'h')
+		rptr->host_intr_ofs = val;
+	else if (mode[0] == '*') {
+		rptr->intr_ofs = val;
+		rptr->host_intr_ofs = val;
+	} else
+		return -EINVAL;
 
 	return count;
 }
@@ -1407,16 +1573,25 @@ static ssize_t proc_term_ofs_write(struct file *file,
 	struct seq_file *s = file->private_data;
 	struct eusb2_repeater *rptr = s->private;
 	char buf[20];
+	char value[20];
+	char mode[1];
 	u32 val, new_val;
 
+	mode[0] = '*';
 	memset(buf, 0x00, sizeof(buf));
+	memset(value, 0x00, sizeof(value));
 	if (count > sizeof(buf) - 1)
 		return -EINVAL;
 
 	if (copy_from_user(&buf, ubuf, count))
 		return -EFAULT;
 
-	if (kstrtoint(buf, 10, &val))
+	if (buf[0] == ' ')
+		return -EINVAL;
+
+	split_str(buf, value, mode, count);
+
+	if (kstrtoint(value, 10, &val))
 		return -EINVAL;
 
 	new_val = rptr->term_cal + val;
@@ -1430,8 +1605,15 @@ static ssize_t proc_term_ofs_write(struct file *file,
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_2, RG_USB20_TERM_CAL,
 			new_val << RG_USB20_TERM_CAL_SHIFT);
 
-	rptr->term_ofs = val;
-	rptr->host_term_ofs = val;
+	if (mode[0] == 'd')
+		rptr->term_ofs = val;
+	else if (mode[0] == 'h')
+		rptr->host_term_ofs = val;
+	else if (mode[0] == '*') {
+		rptr->term_ofs = val;
+		rptr->host_term_ofs = val;
+	} else
+		return -EINVAL;
 
 	return count;
 }
