@@ -1494,7 +1494,9 @@ enum ipi_debug_opt {
 	IPI_VCP_TEST_END = 199,
 	IPI_MMUP_TEST = 200,
 	IPI_MMUP_TEST_END = 299,
-	IPI_DEBUG_MAX = 300,
+	IPI_SET_MMUP_SEL_0 = 300,
+	IPI_SET_MMUP_SEL_10 = 310,
+	IPI_DEBUG_MAX = 400,
 };
 
 static inline ssize_t vcp_ipi_test_show(struct device *kobj
@@ -1599,6 +1601,12 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 		break;
 	case IPI_MMUP_TEST ... IPI_MMUP_TEST_END:
 		cmd.type = opt;
+		ret = mtk_ipi_send(mmup_get_ipidev(), IPI_OUT_TEST_1, 0, &cmd,
+			PIN_OUT_SIZE_TEST_1, 0);
+		break;
+	case IPI_SET_MMUP_SEL_0 ... IPI_SET_MMUP_SEL_10:
+		cmd.type = opt;
+		cmd.ipi_time_h = opt - IPI_SET_MMUP_SEL_0;
 		ret = mtk_ipi_send(mmup_get_ipidev(), IPI_OUT_TEST_1, 0, &cmd,
 			PIN_OUT_SIZE_TEST_1, 0);
 		break;
