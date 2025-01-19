@@ -12,6 +12,7 @@
 #include <cmdq-util.h>
 #include <linux/sched/clock.h>
 #include <linux/delay.h>
+#include <linux/ratelimit.h>
 
 #include "mtk-mml-core.h"
 #include "mtk-mml-buf.h"
@@ -792,10 +793,15 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 	struct mml_comp *comp;
 	u32 i;
 
-	mml_err("dump %d task %p pipe %u config %p job %u mode %u",
-		cnt, task, pipe, cfg, task->job.jobid, cfg->info.mode);
+	mml_err("dump %d task %p pipe %u config %p job %u mode %u topology %u%s",
+		cnt, task, pipe, cfg, task->job.jobid, cfg->info.mode, path->path_id,
+		task->dump_full ? "" : " (reduce dump)");
 	/* print info for this task */
 	dump_task(task);
+
+	/* dump simple info to reduce kernel log impact */
+	if (!task->dump_full)
+		return;
 
 	if (cfg->dual) {
 		mml_err("dump another pipe thread status for dual:");
@@ -911,6 +917,7 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 
 	if (mml_comp_dump) {
+		task->dump_full = true; /* back to full for manually debug */
 		core_comp_dump(task, pipe, -1);
 		/* dump once */
 		if (mml_comp_dump == 2)
@@ -1933,6 +1940,19 @@ static const cmdq_async_flush_cb dump_cbs[MML_PIPE_CNT] = {
 	[1] = core_taskdump1_cb,
 };
 
+static int aee_cb(struct cmdq_cb_data data)
+{
+	static DEFINE_RATELIMIT_STATE(aee_rate, 30 * HZ, 2);
+	bool ignore = __ratelimit(&aee_rate);
+	struct cmdq_pkt *pkt = data.data;
+	struct mml_task *task = pkt->user_data;
+
+	if (ignore)
+		task->dump_full = false;
+
+	return ignore ? CMDQ_NO_AEE : CMDQ_AEE_WARN;
+}
+
 static void mml_core_stop_racing_pipe(struct mml_frame_config *cfg, u32 pipe, bool force)
 {
 	const struct mml_topology_path *path = cfg->path[pipe];
@@ -2032,7 +2052,9 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 
 	/* assign error handler */
 	pkt->err_cb.cb = dump_cbs[pipe];
+	pkt->aee_cb = aee_cb;
 	pkt->err_cb.data = (void *)task;
+	task->dump_full = true;
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* force stop current running racing */

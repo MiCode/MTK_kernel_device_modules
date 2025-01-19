@@ -709,6 +709,7 @@ struct mml_task {
 	struct mml_pq_task *pq_task;
 
 	bool err;
+	bool dump_full;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	/* frame dump */
