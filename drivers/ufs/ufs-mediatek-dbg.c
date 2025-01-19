@@ -129,7 +129,11 @@ static void __iomem *reg_topckgen;
 
 void ufs_mtk_check_bus_init(u32 ip_ver)
 {
-	if (ip_ver == IP_VER_NONE) {
+	if (ip_ver == IP_VER_MT6991_A0 ||
+		ip_ver == IP_VER_MT6991_B0) {
+		if (reg_ufscfg_ao == NULL)
+			reg_ufscfg_ao = ioremap(0x168A0000, 0x204);
+	} else if (ip_ver == IP_VER_NONE) {
 		if (reg_ufscfg_ao == NULL)
 			reg_ufscfg_ao = ioremap(0x112B8000, 0xCC);
 
@@ -162,7 +166,18 @@ void ufs_mtk_check_bus_status(struct ufs_hba *hba)
 	void __iomem *reg;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	if (host->ip_ver == IP_VER_NONE) {
+	if (host->ip_ver == IP_VER_MT6991_A0 ||
+		host->ip_ver == IP_VER_MT6991_B0) {
+		if (reg_ufscfg_ao == NULL)
+			return;
+
+		/* Read UFSCFG_AO reg to detect bus hang*/
+		reg = reg_ufscfg_ao + 0x180;
+		if (readl(reg) != 0x10) {
+			pr_err("%s: UFS2PERI_AXI off\n", __func__);
+			BUG_ON(1);
+		}
+	} else if (host->ip_ver == IP_VER_NONE) {
 		/* Check ufs clock: ufs_axi_ck and ufs_ck */
 		if (mt_get_fmeter_freq(FM_U_CK, CKGEN) == 0) {
 			pr_err("%s: hf_fufs_ck off\n", __func__);

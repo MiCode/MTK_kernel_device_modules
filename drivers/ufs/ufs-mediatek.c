@@ -338,7 +338,7 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 				0x453000, REG_UFS_MMIO_OPT_CTRL_0);
 		}
 
-		if (host->ip_ver >= IP_VER_MT6991) {
+		if (host->ip_ver >= IP_VER_MT6991_A0) {
 			/* Enable multi-rtt */
 			ufshcd_rmwl(hba, MRTT_EN, MRTT_EN, REG_UFS_MMIO_OPT_CTRL_0);
 			/* Enable random performance improvement */
@@ -393,9 +393,6 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 	struct arm_smccc_res res;
 	ktime_t timeout, time_checked;
 	u32 value;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	void __iomem *ufscfg_ao_base;
-#endif
 
 	if (host->ref_clk_enabled == on)
 		return 0;
@@ -416,13 +413,7 @@ static int ufs_mtk_setup_ref_clk(struct ufs_hba *hba, bool on)
 	mb();
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	/* Read UFSCFG_AO reg to detect bus hang*/
-	if (host->ip_ver == IP_VER_MT6991) {
-		ufscfg_ao_base = ioremap(0x168A0000, 0x1000);
-		value = readl(ufscfg_ao_base + 0x180);
-		if (value != 0x10)
-			BUG_ON(1);
-	}
+	ufshcd_vops_check_bus_status(hba);
 #endif
 
 	/* Wait for ack */
@@ -3134,7 +3125,7 @@ static const struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	.config_esi          = ufs_mtk_config_esi,
 	.config_scsi_dev     = ufs_mtk_config_scsi_dev,
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	//.check_bus_status    = ufs_mtk_check_bus_status,
+	.check_bus_status    = ufs_mtk_check_bus_status,
 	//.dbg_dump            = _ufs_mtk_dbg_dump,
 #endif
 };
