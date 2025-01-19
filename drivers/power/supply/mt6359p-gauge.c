@@ -1207,7 +1207,7 @@ static int average_current_get(struct mtk_gauge *gauge_dev,
 	int fg_iavg_reg_27_16 = 0;
 	int fg_iavg_reg_15_00 = 0;
 	int sign_bit = 0;
-	int is_bat_charging;
+	int is_bat_charging = 0;
 	int iavg_vld;
 	int r_fg_value, car_tune_value;
 
@@ -1258,8 +1258,8 @@ static int average_current_get(struct mtk_gauge *gauge_dev,
 			car_tune_value;
 
 		bm_debug(gauge_dev->gm,
-			"[fg_get_current_iavg] fg_iavg_ma %lld fg_iavg_reg %lld fg_iavg_reg_tmp %lld\n",
-			fg_iavg_ma, fg_iavg_reg, fg_iavg_reg_tmp);
+			"[fg_get_current_iavg] fg_iavg_ma %lld fg_iavg_reg %lld fg_iavg_reg_tmp %lld is_bat_charging:%d\n",
+			fg_iavg_ma, fg_iavg_reg, fg_iavg_reg_tmp, is_bat_charging);
 
 #if defined(__LP64__) || defined(_LP64)
 		do_div(fg_iavg_ma, 1000000);
@@ -1634,7 +1634,7 @@ static int coulomb_get(struct mtk_gauge *gauge,
 int hw_info_set(struct mtk_gauge *gauge_dev,
 	struct mtk_gauge_sysfs_field_info *attr, int en)
 {
-	int ret;
+	int ret = 0;
 	int is_iavg_valid;
 	int avg_current;
 	int iavg_th;
@@ -1655,7 +1655,11 @@ int hw_info_set(struct mtk_gauge *gauge_dev,
 	/* fg_offset = pmic_get_register_value(PMIC_FG_OFFSET); */
 
 	/* Iavg */
-	average_current_get(gauge_dev, NULL, &avg_current);
+	ret = average_current_get(gauge_dev, NULL, &avg_current);
+	if (ret) {
+		pr_notice("%s error, ret = %d\n", __func__, ret);
+		return ret;
+	}
 	is_iavg_valid = gauge_dev->fg_hw_info.current_avg_valid;
 	if ((is_iavg_valid == 1) && (gauge_status->iavg_intr_flag == 0)) {
 		bm_debug(gauge_dev->gm, "[read_fg_hw_info]set first fg_set_iavg_intr %d %d\n",
@@ -3731,6 +3735,11 @@ static int adc_cali_cdev_init(struct platform_device *pdev)
 		bat_cali_devno,
 		NULL, BAT_CALI_DEVNAME);
 
+	if (IS_ERR(class_dev)) {
+		bm_err(gm, "%s, Failed to create cdev_device\n", __func__);
+		cdev_del(bat_cali_cdev);
+		return PTR_ERR(bat_cali_cdev);
+	}
 	return 0;
 }
 
