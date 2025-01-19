@@ -1496,7 +1496,7 @@ static ssize_t apo_autosuspend_delay_ms_store(struct kobject *kobj,
 		const char *buf, size_t count)
 {
 	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-	u32 i32Value = 0;
+	int i32Value = 0;
 
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
