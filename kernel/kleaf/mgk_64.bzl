@@ -114,12 +114,14 @@ mgk_64_kleaf_modules = [
 
 mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
-    "//vendor/mediatek/tests/ktf/kernel:ktf",
+    "//vendor/mediatek/tests/ktf/kernel:ktf_ddk",
+
 ]
 
 mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
-    "//vendor/mediatek/tests/ktf/kernel:ktf",
+    "//vendor/mediatek/tests/ktf/kernel:ktf_ddk",
+
 ]
 
 mgk_64_kleaf_user_modules = [
