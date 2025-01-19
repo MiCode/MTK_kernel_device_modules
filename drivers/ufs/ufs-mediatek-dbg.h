@@ -43,6 +43,7 @@ enum ufsdbg_cmd_type {
 	UFSDBG_CMD_LIST_ENABLE  = 3,
 	UFSDBG_CMD_LIST_DISABLE = 4,
 	UFSDBG_MPHY_DUMP        = 5,
+	UFSDBG_UIC_ERR_INJECT   = 6,
 	UFSDBG_UNKNOWN
 };
 

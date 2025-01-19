@@ -2205,6 +2205,7 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 	unsigned long op = UFSDBG_UNKNOWN;
 	struct ufs_hba *hba = ufshba;
 	char cmd_buf[16];
+	u16 rnd;
 
 	if (count == 0 || count > 15)
 		return -EINVAL;
@@ -2229,6 +2230,14 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 		dev_info(hba->dev, "ufs mphy reg debug dump\n");
 		ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_DUMP);
 		ufs_mtk_dbg_phy_dump(hba);
+	} else if (op == UFSDBG_UIC_ERR_INJECT) {
+		ufshcd_rpm_get_sync(hba);
+		ufshcd_hold(hba);
+		get_random_bytes(&rnd, sizeof(rnd));
+		dev_info(hba->dev, "Inject UIC error %d, val=%d\n", rnd % (UFS_EVT_DME_ERR + 1), rnd);
+		ufshcd_update_evt_hist(hba, rnd %(UFS_EVT_DME_ERR + 1) , rnd);
+		ufshcd_release(hba);
+		ufshcd_rpm_put(hba);
 	}
 
 	return count;
