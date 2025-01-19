@@ -8462,6 +8462,11 @@
 		reg = <0x6 SPMI_USID 0xb SPMI_GSID>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		extbuck_debug {
+			compatible = "mediatek,extbuck-debug";
+		};
+
 		mt6315_6_regulator: mt6315_6_regulator {
 			compatible = "mediatek,mt6315_6-regulator";
 			interrupt-parent = <&pio>;
@@ -8500,6 +8505,11 @@
 		reg = <0x3 SPMI_USID 0xb SPMI_GSID>;
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		extbuck_debug {
+			compatible = "mediatek,extbuck-debug";
+		};
+
 		mt6315_3_regulator: mt6315_3_regulator {
 			compatible = "mediatek,mt6315_3-regulator";
 			interrupt-parent = <&pio>;
@@ -9193,19 +9203,7 @@
 	regulator-always-on;
 };
 
-&mt6359p_vproc2_reg {
-	regulator-always-on;
-};
-
-&mt6359p_vsram_md_reg {
-	regulator-always-on;
-};
-
 &mt6359p_vemc_reg {
-	regulator-always-on;
-};
-
-&mt6359p_vbif28_reg {
 	regulator-always-on;
 };
 
@@ -9221,3 +9219,5 @@
 	md-vdigrf-supply = <&mt6359p_vpu_reg>;
 	md-vdigrf = <700000 700000>;
 };
+
+/delete-node/ &mt6315_6_vbuck4;
