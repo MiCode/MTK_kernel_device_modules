@@ -8,6 +8,15 @@
 
 #define MAX_DATA_SIZE 6
 
+enum dvfs_data {
+	DDR,
+	VCORE,
+	EMI,
+	TEMP_ZONE,
+	RSRV_1,
+	RSRV_2,
+};
+
 enum dvfs_info_regs {
 	SW_REQ1 = 0,
 	SW_REQ2,
@@ -81,9 +90,7 @@ struct mtk_dvfsrc_mb {
 #define DVFSRC_RSV_1        (0x78C)
 #define DVFSRC_RSV_2        (0x790)
 #define DVFSRC_RSV_3        (0x794)
-#define DVFSRC_RSV_4        (0x798)
-#define DVFSRC_RSV_5        (0x79C)
-#define DVFSRC_RSV_6        (0x7A0)
+#define DVFSRC_RSV_5        (0x294)
 
 void dvfsrc_get_data(struct mtk_dvfsrc_header *header);
 void dvfsrc_get_dvfs_info(struct mtk_dvfsrc_dvfs_info_header *dvfs_info_header);

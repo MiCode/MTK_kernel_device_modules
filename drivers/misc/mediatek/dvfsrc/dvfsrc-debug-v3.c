@@ -19,11 +19,14 @@
 enum dvfsrc_regs {
 	DVFSRC_BASIC_CONTROL,
 	DVFSRC_SW_REQ1,
+	DVFSRC_SW_REQ9,
 	DVFSRC_INT,
 	DVFSRC_INT_EN,
 	DVFSRC_SW_BW_0,
+	DVFSRC_SW_BW_0_DDR,
 	DVFSRC_ISP_HRT,
 	DVFSRC_DEBUG_STA_0,
+	DVFSRC_DEBUG_STA_11,
 	DVFSRC_VCORE_REQUEST,
 	DVFSRC_CURRENT_LEVEL,
 	DVFSRC_TARGET_LEVEL,
@@ -152,6 +155,40 @@ static const int mt6989_regs[] = {
 	[DVFSRC_SW_BW_0] = 0x1DC,
 	[DVFSRC_ISP_HRT] = 0x20C,
 	[DVFSRC_DEBUG_STA_0] = 0x29C,
+	[DVFSRC_VCORE_REQUEST] = 0x80,
+	[DVFSRC_CURRENT_LEVEL] = 0x5F0,
+	[DVFSRC_TARGET_LEVEL] = 0x5F0,
+	[DVFSRC_LAST] = 0x3AC,
+	[DVFSRC_RECORD_0] = 0x3B8,
+	[DVFSRC_DDR_REQUEST] = 0x2C8,
+	[DVSFRC_HRT_REQ_MD_URG] = 0x320,
+	[DVFSRC_HRT_REQ_MD_BW_0] = 0x324,
+	[DVFSRC_HRT_REQ_MD_BW_8] = 0x344,
+	[DVFSRC_MD_TURBO] = 0xE0,
+	[DVFSRC_95MD_SCEN_BW4] = 0x278,
+	[DVFSRC_95MD_SCEN_BW0] = 0x258,
+	[DVFSRC_95MD_SCEN_BW0_T] = 0x268,
+	[DVFSRC_RSRV_4] = 0x290,
+	[DVFSRC_RSRV_5] = 0x294,
+	[DVFSRC_MD_DDR_FLOOR_REQUEST] = 0x5E4,
+	[DVFSRC_QOS_DDR_REQUEST] = 0x5E8,
+	[DVFSRC_LEVEL_LABEL_L] = 0xFC,
+	[DVFSRC_LEVEL_LABEL_H] = 0x6B0,
+	[DVFSRC_CEILING] = 0x6A8,
+	[DVFSRC_CEILING_SW_REQ] = 0x600,
+};
+
+static const int mt6993_regs[] = {
+	[DVFSRC_BASIC_CONTROL] = 0x0,
+	[DVFSRC_SW_REQ1] = 0x10,
+	[DVFSRC_SW_REQ9] = 0x5F8,
+	[DVFSRC_INT] = 0xC8,
+	[DVFSRC_INT_EN] = 0xCC,
+	[DVFSRC_SW_BW_0] = 0x1DC,
+	[DVFSRC_SW_BW_0_DDR] = 0xB68,
+	[DVFSRC_ISP_HRT] = 0x20C,
+	[DVFSRC_DEBUG_STA_0] = 0x29C,
+	[DVFSRC_DEBUG_STA_11] = 0xB90,
 	[DVFSRC_VCORE_REQUEST] = 0x80,
 	[DVFSRC_CURRENT_LEVEL] = 0x5F0,
 	[DVFSRC_TARGET_LEVEL] = 0x5F0,
@@ -557,6 +594,156 @@ static char *dvfsrc_dump_record(struct mtk_dvfsrc *dvfsrc,
 			dvfsrc_read(dvfsrc, DVFSRC_RECORD_0, offset + 0x18));
 		}
 	}
+	p += snprintf(p, buff_end - p, "\n");
+
+	return p;
+}
+
+static char *dvfsrc_dump_reg_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
+{
+	char *buff_end = p + size;
+
+	p += snprintf(p, buff_end - p, "%-12s: %08x\n",
+		"CONTROL",
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x0));
+
+	p += snprintf(p, buff_end - p, "%-12s: %08x\n",
+		"CURRENT",
+		dvfsrc_read(dvfsrc, DVFSRC_CURRENT_LEVEL, 0x0));
+
+	p += snprintf(p, buff_end - p, "%-12s: %08x\n",
+		"TARGET",
+		dvfsrc_read(dvfsrc, DVFSRC_TARGET_LEVEL, 0x0));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %08x, %08x, %08x, %08x\n",
+		"SW_REQ 1~4",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0xC));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %08x, %08x, %08x, %08x\n",
+		"SW_REQ 5~8",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x10),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x14),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x18),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x1C));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %08x, %08x, %08x, %08x\n",
+		"SW_REQ 9~12",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ9, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ9, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ9, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ9, 0xC));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %d, %d, %d, %d, %d, %d, %d\n",
+		"DDR_SW_BW_0~6",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0xC),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x10),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x14),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x18));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %d, %d, %d\n",
+		"DDR_SW_BW_7~9",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x1C),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x20),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x24));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %d, %d, %d, %d, %d, %d, %d\n",
+		"EMI_SW_BW_0~6",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0xC),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x10),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x14),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x18));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %d, %d, %d\n",
+		"EMI_SW_BW_7~9",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x1C),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x20),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0_DDR, 0x24));
+
+	p += snprintf(p, buff_end - p, "%-12s: %x\n",
+		"INT",
+		dvfsrc_read(dvfsrc, DVFSRC_INT, 0x0));
+
+	p += snprintf(p, buff_end - p, "%-12s: %x\n",
+		"INT_EN",
+		dvfsrc_read(dvfsrc, DVFSRC_INT_EN, 0x0));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"ISP_HRT",
+		dvfsrc_read(dvfsrc, DVFSRC_ISP_HRT, 0x0));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %x, %x, %x, %x\n",
+		"DEBUG_STA_0",
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0xC));
+
+	p += snprintf(p, buff_end - p,
+		"%-12s: %x, %x, %x\n",
+		"DEBUG_STA_4",
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x10),
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x14),
+		dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x18));
+
+	p += snprintf(p, buff_end - p,
+	"%-12s: %x, %x, %x, %x\n",
+	"DEBUG_STA_7",
+	dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x1C),
+	dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x20),
+	dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x24),
+	dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_0, 0x28));
+
+	p += snprintf(p, buff_end - p,
+	"%-12s: %x\n",
+	"DEBUG_STA_11",
+	dvfsrc_read(dvfsrc, DVFSRC_DEBUG_STA_11, 0x0));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"MD_RISING",
+		dvfsrc_get_md_rising_ddr_gear(dvfsrc));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"MD_HRT_BW",
+		dvfsrc_get_md_bw(dvfsrc));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"HRT_BW_REQ",
+		dvfsrc_get_hrt_bw_ddr_gear(dvfsrc));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"HIFI_VCORE",
+		dvfsrc_get_hifi_vcore_gear(dvfsrc));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"HIFI_DDR",
+		dvfsrc_get_hifi_ddr_gear(dvfsrc));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"HIFI_RISING",
+		dvfsrc_get_hifi_rising_ddr_gear(dvfsrc));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d, %x\n",
+		"SCP_VCORE",
+		dvfsrc_get_scp_req(dvfsrc),
+		dvfsrc_read(dvfsrc, DVFSRC_VCORE_REQUEST, 0x0));
+
 	p += snprintf(p, buff_end - p, "\n");
 
 	return p;
@@ -1100,6 +1287,26 @@ const struct dvfsrc_config mt6989_dvfsrc_config = {
 	.spm_regs = mt6897_spm_regs,
 	.dump_record = dvfsrc_dump_record,
 	.dump_reg = dvfsrc_dump_reg,
+	.dump_spm_info = dvfsrc_dump_mt6873_spm_info,
+	.dump_vmode_info = dvfsrc_dump_mt6873_vmode_info,
+	.query_request = dvfsrc_query_request_status,
+	.query_dvfs_time = dvfsrc_query_dvfs_time,
+	.dump_spm_cmd = dvfsrc_dump_mt6983_spm_cmd,
+	.dump_spm_timer_latch = dvfsrc_dump_mt6983_spm_timer_latch,
+	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
+	.query_opp_count = dvfsrc_get_opp_count,
+	.query_opp_gear_info = dvfsrc_get_opp_gear_info,
+	.set_ddr_ceiling = dvfsrc_set_ceiling_ddr_opp,
+	.set_vcore_avs = dvfsrc_set_vcore_avs,
+	.dump_vcore_avs_zone = dvfsrc_dump_vcore_avs_zone,
+};
+
+const struct dvfsrc_config mt6993_dvfsrc_config = {
+	.ip_version = 4, /*mt6989 series*/
+	.regs = mt6993_regs,
+	.spm_regs = mt6897_spm_regs,
+	.dump_record = dvfsrc_dump_record,
+	.dump_reg = dvfsrc_dump_reg_mt6993,
 	.dump_spm_info = dvfsrc_dump_mt6873_spm_info,
 	.dump_vmode_info = dvfsrc_dump_mt6873_vmode_info,
 	.query_request = dvfsrc_query_request_status,

@@ -25,12 +25,12 @@ void dvfsrc_mt6989_get_data(struct mtk_dvfsrc_header *header)
 	header->data_length = dvfsrc_drv->dvd->data_length;
 	header->version = dvfsrc_drv->dvd->max_ddr_info_ver;
 
-	header->data[0] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_1);
-	header->data[1] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_2);
-	header->data[2] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_3);
-	header->data[3] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_4);
-	header->data[4] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_5);
-	header->data[5] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_6);
+	header->data[DDR] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_1);
+	header->data[VCORE] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_2);
+	header->data[EMI] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_3);
+	header->data[TEMP_ZONE] = dvfsrc_read(dvfsrc_drv, DVFSRC_RSV_5);
+	header->data[RSRV_1] = 0;
+	header->data[RSRV_2] = 0;
 
 	dev_info(dvfsrc_drv->dev, "%s %d-%d-%d-%d\n", __func__,
 		header->module_id, header->version,
@@ -144,6 +144,16 @@ static const struct mtk_dvfsrc_data mt6899_data = {
 	.config = &mt6899_config,
 };
 
+static const struct mtk_dvfsrc_data mt6993_data = {
+	.module_id = 2,
+	.data_offset = 0,
+	.data_length = sizeof(struct mtk_dvfsrc_header),
+	.max_ddr_info_ver = 2,
+	.dvfs_info_ver = 0x6993,
+	.dvfs_info_regs = mt6991_regs,
+	.config = &mt6991_config,
+};
+
 
 static const struct of_device_id dvfsrc_mdv_of_match[] = {
 	{
@@ -155,6 +165,9 @@ static const struct of_device_id dvfsrc_mdv_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6899-dvfsrc",
 		.data = &mt6899_data,
+	}, {
+		.compatible = "mediatek,mt6993-dvfsrc",
+		.data = &mt6993_data,
 	}, {
 		/* sentinel */
 	},
