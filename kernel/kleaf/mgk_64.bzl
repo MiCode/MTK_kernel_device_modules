@@ -556,6 +556,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/regulator:mt6379-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6661-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6667-regulator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:mt6688".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mtk-dvfsrc-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mtk-extbuck-debug".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:rt4803".format(kernel_version),

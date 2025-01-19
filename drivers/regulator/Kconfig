@@ -193,6 +193,16 @@ config REGULATOR_MT6681
 	  The driver can also be build as a module.
 	  If so, the module will be called mt6681_regulator
 
+config REGULATOR_MT6688
+	tristate "Mediatek MT6688 PMIC"
+	depends on SPMI
+	select REGMAP
+	help
+	  Say y here to select this option to enable power regulators of
+	  Mediatek MT6688 PMIC.
+	  This driver provide supports for one VBST and five LDOs through
+	  generic regulator interface.
+
 config DEVICE_MODULES_REGULATOR_MTK_DVFSRC
 	tristate "MediaTek DVFSRC regulator driver"
 	depends on MTK_DVFSRC

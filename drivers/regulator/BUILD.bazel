@@ -38,6 +38,7 @@ SIMPLE_MODULE_NAME = [
     "mt6379-regulator",
     "mt6661-regulator",
     "mt6667-regulator",
+    "mt6688",
     "mtk-extbuck-debug",
     "rt4803",
 ]
