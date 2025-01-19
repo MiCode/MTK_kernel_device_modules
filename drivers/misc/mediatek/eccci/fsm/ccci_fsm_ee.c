@@ -235,6 +235,8 @@ void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb)
 	struct ccci_header *ccci_h = (struct ccci_header *)skb->data;
 	unsigned long flags;
 	enum MD_STATE md_state = ccci_fsm_get_md_state();
+	char *data;
+	int ee_pkg_len;
 
 	if (md_state != EXCEPTION) {
 		CCCI_ERROR_LOG(0, FSM,
@@ -243,11 +245,10 @@ void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb)
 		return;
 	}
 	if (ccci_h->data[1] == MD_EX) {
-		if (unlikely(ccci_h->reserved != MD_EX_CHK_ID)) {
+		if (unlikely(ccci_h->reserved != MD_EX_CHK_ID))
 			CCCI_ERROR_LOG(0, FSM,
-				"receive invalid MD_EX %x\n",
-				ccci_h->reserved);
-		} else {
+				"receive invalid MD_EX 0x%x\n", ccci_h->reserved);
+		else {
 			spin_lock_irqsave(&ee_ctl->ctrl_lock, flags);
 			ee_ctl->ee_info_flag
 				|= (MD_EE_FLOW_START | MD_EE_MSG_GET);
@@ -257,22 +258,20 @@ void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb)
 			fsm_append_event(ctl, CCCI_EVENT_MD_EX, NULL, 0);
 		}
 	} else if (ccci_h->data[1] == MD_EX_REC_OK) {
-		if (unlikely(ccci_h->reserved != MD_EX_REC_OK_CHK_ID)) {
+		if (unlikely(ccci_h->reserved != MD_EX_REC_OK_CHK_ID))
 			CCCI_ERROR_LOG(0, FSM,
-				"receive invalid MD_EX_REC_OK %x\n",
-				ccci_h->reserved);
-		} else {
+				"receive invalid MD_EX_REC_OK 0x%x\n", ccci_h->reserved);
+		else {
 			spin_lock_irqsave(&ee_ctl->ctrl_lock, flags);
-			ee_ctl->ee_info_flag
-				|= (MD_EE_FLOW_START | MD_EE_OK_MSG_GET);
+			ee_ctl->ee_info_flag |= (MD_EE_FLOW_START | MD_EE_OK_MSG_GET);
 			spin_unlock_irqrestore(&ee_ctl->ctrl_lock, flags);
 			/* Keep exception info package from MD*/
-			if (ee_ctl->ops->set_ee_pkg)
-				ee_ctl->ops->set_ee_pkg(ee_ctl,
-				skb_pull(skb, sizeof(struct ccci_header)), skb->len);
-
-			fsm_append_event(ctl,
-				CCCI_EVENT_MD_EX_REC_OK, NULL, 0);
+			if (ee_ctl->ops->set_ee_pkg) {
+				data = skb_pull(skb, sizeof(struct ccci_header));
+				ee_pkg_len = skb->len;
+				ee_ctl->ops->set_ee_pkg(ee_ctl, data, ee_pkg_len);
+			}
+			fsm_append_event(ctl, CCCI_EVENT_MD_EX_REC_OK, NULL, 0);
 		}
 	} else if (ccci_h->data[1] == MD_EX_PASS) {
 		spin_lock_irqsave(&ee_ctl->ctrl_lock, flags);
@@ -280,8 +279,7 @@ void fsm_ee_message_handler(struct ccci_fsm_ee *ee_ctl, struct sk_buff *skb)
 		spin_unlock_irqrestore(&ee_ctl->ctrl_lock, flags);
 		fsm_append_event(ctl, CCCI_EVENT_MD_EX_PASS, NULL, 0);
 	} else if (ccci_h->data[1] == CCCI_DRV_VER_ERROR) {
-		CCCI_ERROR_LOG(0, FSM,
-			"AP/MD driver version mis-match\n");
+		CCCI_ERROR_LOG(0, FSM, "AP/MD driver version mis-match\n");
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aed_md_exception_api(NULL, 0, NULL,
 			0, "AP/MD driver version mis-match\n",
