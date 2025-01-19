@@ -3523,14 +3523,14 @@
 			"mbox3",
 			"mbox4";
 
-			core_0 = "enable";
-			scp_sramSize = <0x000c0000>;
-			core_nums = <1>;	/* core number */
+			core-0 = "enable";
+			scp-sram-size = <0x000c0000>;
+			core-nums = <1>;	/* core number */
 			twohart = <1>;		/* two hart arch */
 
-			mbox_count = <4>;
+			mbox-count = <4>;
 			/* id, mbox, send_size*/
-			send_table =
+			send-table =
 			< 0 0  9>, /* IPI_OUT_AUDIO_VOW_1 */
 			< 3 1  2>, /* IPI_OUT_APCCCI_0 */
 			< 4 1  1>, /* IPI_OUT_DVFS_SET_FREQ_0 */
@@ -3547,7 +3547,7 @@
 			<18 3  2>; /* IPI_OUT_SCPCTL_1 */
 
 			/* id, mbox, recv_size, recv_opt */
-			recv_table =
+			recv-table =
 			< 1 0  2 0>, /* IPI_IN_AUDIO_VOW_ACK_1 */
 			< 2 0 26 0>, /* IPI_IN_AUDIO_VOW_1 */
 			< 7 1  2 0>, /* IPI_IN_APCCCI_0 */
@@ -3567,7 +3567,7 @@
 			<15 3  1 1>; /* IPI_OUT_C_SLEEP_1 */
 
 			/* feature, frequecy, coreid */
-			scp_feature_tbl =
+			scp-feature-tbl =
 			< 0   5 1>,	/* vow */
 			< 1   0 0>,	/* sensor */
 			< 2  26 0>,	/* flp */
@@ -3585,11 +3585,11 @@
 			<14 100 0>;	/* spk process */
 
 			debug_dumptimeout = "enable"; /*core dump timeout debug*/
-			secure_dump = "enable";	/* enable dump via secure world */
-			secure_dump_size = <0x200000>;
+			secure-dump = "enable";	/* enable dump via secure world */
+			secure-dump-size = <0x200000>;
 
-			scp_mem_key = "mediatek,reserve-memory-scp_share";
-			scp_mem_tbl =
+			scp-mem-key = "mediatek,reserve-memory-scp_share";
+			scp-mem-tbl =
 			< 0 0x0 0x0>,      /* secure dump, its size is in secure_dump_size */
 			< 1 0x4E300 0x0>,  /* vow, 297KB (2 model size)*/
 			< 2 0x100000 0x0>, /* ensor main, 1 MB */
