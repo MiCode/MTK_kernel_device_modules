@@ -588,7 +588,7 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s:config ds regs, count: %d", __func__, result->ds_reg_cnt);
 	tdshp_frm->config_success = true;
 	for (i = 0; i < result->ds_reg_cnt; i++) {
-		mml_write(pkt, base_pa + regs[i].offset, regs[i].value,
+		mml_write(comp->id, pkt, base_pa + regs[i].offset, regs[i].value,
 			regs[i].mask, reuse, cache,
 			&tdshp_frm->labels[i]);
 
@@ -735,9 +735,9 @@ static void tdshp_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	pa = task->pq_task->tdshp_hist[pipe]->pa;
 
 	/* readback to this pa */
-	mml_assign(pkt, idx_out, (u32)pa,
+	mml_assign(comp->id, pkt, idx_out, (u32)pa,
 		reuse, cache, &tdshp_frm->labels[TDSHP_POLLGPR_0]);
-	mml_assign(pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
+	mml_assign(comp->id, pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
 		reuse, cache, &tdshp_frm->labels[TDSHP_POLLGPR_1]);
 
 	/* read contour histogram status */
@@ -836,7 +836,7 @@ static s32 tdshp_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s:config ds regs, count: %d is_set_test[%d]", __func__, result->ds_reg_cnt,
 		result->is_set_test);
 	for (i = 0; i < result->ds_reg_cnt; i++) {
-		mml_update(reuse, tdshp_frm->labels[i], regs[i].value);
+		mml_update(comp->id, reuse, tdshp_frm->labels[i], regs[i].value);
 		mml_pq_msg("[ds][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
@@ -874,9 +874,9 @@ static s32 tdshp_config_repost(struct mml_comp *comp, struct mml_task *task,
 			goto put_comp_config;
 		}
 
-		mml_update(reuse, tdshp_frm->labels[TDSHP_POLLGPR_0],
+		mml_update(comp->id, reuse, tdshp_frm->labels[TDSHP_POLLGPR_0],
 			(u32)task->pq_task->tdshp_hist[pipe]->pa);
-		mml_update(reuse, tdshp_frm->labels[TDSHP_POLLGPR_1],
+		mml_update(comp->id, reuse, tdshp_frm->labels[TDSHP_POLLGPR_1],
 			(u32)DO_SHIFT_RIGHT(task->pq_task->tdshp_hist[pipe]->pa, 32));
 	}
 

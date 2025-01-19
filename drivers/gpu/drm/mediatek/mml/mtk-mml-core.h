@@ -644,7 +644,9 @@ struct mml_reuse_array {
 
 struct mml_task_reuse {
 	struct cmdq_reuse *labels;
+	u16 *label_mods;
 	u16 label_idx;
+	bool *label_check;
 };
 
 /* pipe info for mml_task */
@@ -1066,11 +1068,12 @@ void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task);
 void mml_core_stop_racing(struct mml_frame_config *cfg, bool force);
 
 
-void add_reuse_label(struct mml_task_reuse *reuse, u16 *label_idx, u32 value);
+void add_reuse_label(u32 comp_id, struct mml_task_reuse *reuse, u16 *label_idx, u32 value);
 
 /* mml_assign - assign to reg_idx with value. Cache the label of this
  * instruction to mml_pipe_cache and record its entry into label_array.
  *
+ * @comp_id	component id for check
  * @pkt:	cmdq task
  * @reg_idx:	common purpose register index
  * @value:	value to write
@@ -1081,7 +1084,7 @@ void add_reuse_label(struct mml_task_reuse *reuse, u16 *label_idx, u32 value);
  *
  * return:	0 if success, error no if fail
  */
-s32 mml_assign(struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
+s32 mml_assign(u32 comp_id, struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
 	       struct mml_task_reuse *reuse,
 	       struct mml_pipe_cache *cache,
 	       u16 *label_idx);
@@ -1089,6 +1092,7 @@ s32 mml_assign(struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
 /* mml_write - write to addr with value and mask. Cache the label of this
  * instruction to mml_pipe_cache and record its entry into label_array.
  *
+ * @comp_id	component id for check
  * @pkt:	cmdq task
  * @addr:	register addr or dma addr
  * @value:	value to write
@@ -1100,25 +1104,35 @@ s32 mml_assign(struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
  *
  * return:	0 if success, error no if fail
  */
-s32 mml_write(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
+s32 mml_write(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	      struct mml_task_reuse *reuse,
 	      struct mml_pipe_cache *cache,
 	      u16 *label_idx);
 
 /* mml_update - update new value to cache, which entry index from label.
  *
+ * @comp_id	component id for check
  * @reuse:	label cache for cmdq_reuse from task, which caches label of
  *		this task and pipe.
  * @label_idx:	label entry point to instruction want to update
  * @value:	value to be update
  */
-void mml_update(struct mml_task_reuse *reuse, u16 label_idx, u32 value);
+void mml_update(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx, u32 value);
 
-s32 mml_write_array(struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
+/* mml_reuse_touch - mark check without change value
+ *
+ * @comp_id	component id for check
+ * @reuse:	label cache for cmdq_reuse from task, which caches label of
+ *		this task and pipe.
+ * @label_idx:	label entry point to instruction want to update
+ */
+void mml_reuse_touch(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx);
+
+s32 mml_write_array(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	struct mml_task_reuse *reuse, struct mml_pipe_cache *cache,
 	struct mml_reuse_array *reuses);
 
-void mml_update_array(struct mml_task_reuse *reuse,
+void mml_update_array(u32 comp_id, struct mml_task_reuse *reuse,
 	struct mml_reuse_array *reuses, u32 reuse_idx, u32 off_idx, u32 value);
 
 int mml_tracing_mark_write(char *fmt, ...);

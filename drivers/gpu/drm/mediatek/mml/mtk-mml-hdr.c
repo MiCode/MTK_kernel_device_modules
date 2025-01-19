@@ -522,7 +522,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* TODO: use different regs */
 	mml_pq_msg("%s:config hdr regs, count: %d", __func__, result->hdr_reg_cnt);
 	for (i = 0; i < result->hdr_reg_cnt; i++) {
-		mml_write_array(pkt, base_pa + regs[i].offset, regs[i].value,
+		mml_write_array(comp->id, pkt, base_pa + regs[i].offset, regs[i].value,
 			regs[i].mask, reuse, cache, &hdr_frm->reuse_reg);
 		mml_pq_msg("[hdr][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
@@ -530,9 +530,9 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		for (i = 0; i < HDR_CURVE_NUM; i += 2) {
-			mml_write_array(pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_1],
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_1],
 				curve[i], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
-			mml_write_array(pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_2],
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_2],
 				curve[i + 1], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
 		}
 	} else if (mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) {
@@ -768,7 +768,7 @@ static void hdr_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 		&reuse->labels[reuse->label_idx],
 		&hdr_frm->polling_reuse);
 
-	add_reuse_label(reuse, &hdr_frm->labels[HDR_POLLGPR_0],
+	add_reuse_label(comp->id, reuse, &hdr_frm->labels[HDR_POLLGPR_0],
 		task->pq_task->hdr_hist[pipe]->va_offset);
 }
 
@@ -805,9 +805,9 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	pa = task->pq_task->hdr_hist[pipe]->pa;
 
 	/* readback to this pa */
-	mml_assign(pkt, idx_out, (u32)pa,
+	mml_assign(comp->id, pkt, idx_out, (u32)pa,
 		reuse, cache, &hdr_frm->labels[HDR_POLLGPR_0]);
-	mml_assign(pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
+	mml_assign(comp->id, pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
 		reuse, cache, &hdr_frm->labels[HDR_POLLGPR_1]);
 
 	cmdq_pkt_wfe(pkt, hdr->event_eof);
@@ -962,13 +962,13 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		val_idx = 0;
 		for (i = 0; i < hdr_frm->reuse_reg.idx; i++)
 			for (j = 0; j < hdr_frm->reuse_reg.offs[i].cnt; j++, val_idx++)
-				mml_update_array(reuse, &hdr_frm->reuse_reg, i, j,
+				mml_update_array(comp->id, reuse, &hdr_frm->reuse_reg, i, j,
 					regs[val_idx].value);
 
 		val_idx = 0;
 		for (i = 0; i < hdr_frm->reuse_curve.idx; i++)
 			for (j = 0; j < hdr_frm->reuse_curve.offs[i].cnt; j++, val_idx++)
-				mml_update_array(reuse, &hdr_frm->reuse_curve, i, j,
+				mml_update_array(comp->id, reuse, &hdr_frm->reuse_curve, i, j,
 					curve[val_idx]);
 	} else if (mode == MML_MODE_DIRECT_LINK) {
 		hdr->curve_pq_task = task->pq_task;
@@ -1029,7 +1029,7 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 		cmdq_vcp_enable(true);
 		mml_pq_get_vcp_buf_offset(task, MML_PQ_HDR0 + pipe,
 			task->pq_task->hdr_hist[pipe]);
-		mml_update(reuse, hdr_frm->labels[HDR_POLLGPR_0],
+		mml_update(comp->id, reuse, hdr_frm->labels[HDR_POLLGPR_0],
 			cmdq_pkt_vcp_reuse_val(engine,
 			task->pq_task->hdr_hist[pipe]->va_offset,
 			HDR_HIST_NUM));
@@ -1045,9 +1045,9 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 			goto comp_config_put;
 		}
 
-		mml_update(reuse, hdr_frm->labels[HDR_POLLGPR_0],
+		mml_update(comp->id, reuse, hdr_frm->labels[HDR_POLLGPR_0],
 			(u32)task->pq_task->hdr_hist[pipe]->pa);
-		mml_update(reuse, hdr_frm->labels[HDR_POLLGPR_1],
+		mml_update(comp->id, reuse, hdr_frm->labels[HDR_POLLGPR_1],
 			(u32)DO_SHIFT_RIGHT(task->pq_task->hdr_hist[pipe]->pa, 32));
 
 		begin_pa = cmdq_pkt_get_pa_by_offset(pkt, hdr_frm->begin_offset);

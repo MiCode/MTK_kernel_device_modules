@@ -316,7 +316,7 @@ static s32 wrot_write_ofst(struct cmdq_pkt *pkt,
 	return ret;
 }
 
-static s32 wrot_write_addr(struct cmdq_pkt *pkt,
+static s32 wrot_write_addr(u32 comp_id, struct cmdq_pkt *pkt,
 			   dma_addr_t addr, dma_addr_t addr_high, u64 value,
 			   struct mml_task_reuse *reuse,
 			   struct mml_pipe_cache *cache,
@@ -324,21 +324,21 @@ static s32 wrot_write_addr(struct cmdq_pkt *pkt,
 {
 	s32 ret;
 
-	ret = mml_write(pkt, addr, value & GENMASK_ULL(31, 0), U32_MAX,
+	ret = mml_write(comp_id, pkt, addr, value & GENMASK_ULL(31, 0), U32_MAX,
 			reuse, cache, label_idx);
 	if (ret)
 		return ret;
 
-	ret = mml_write(pkt, addr_high, value >> 32, U32_MAX,
+	ret = mml_write(comp_id, pkt, addr_high, value >> 32, U32_MAX,
 			reuse, cache, label_idx + 1);
 	return ret;
 }
 
-static void wrot_update_addr(struct mml_task_reuse *reuse,
+static void wrot_update_addr(u32 comp_id, struct mml_task_reuse *reuse,
 			     u16 label, u16 label_high, u64 value)
 {
-	mml_update(reuse, label, value & GENMASK_ULL(31, 0));
-	mml_update(reuse, label_high, value >> 32);
+	mml_update(comp_id, reuse, label, value & GENMASK_ULL(31, 0));
+	mml_update(comp_id, reuse, label_high, value >> 32);
 }
 
 struct wrot_data {
@@ -1256,15 +1256,15 @@ static void wrot_config_addr(const struct mml_comp_wrot *wrot,
 
 	if (!mml_slt) {
 		/* Write frame base address */
-		wrot_write_addr(pkt,
+		wrot_write_addr(wrot->comp.id, pkt,
 				base_pa + wrot->reg[VIDO_BASE_ADDR],
 				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH], addr,
 				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR]);
-		wrot_write_addr(pkt,
+		wrot_write_addr(wrot->comp.id, pkt,
 				base_pa + wrot->reg[VIDO_BASE_ADDR_C],
 				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_C], addr_c,
 				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR_C]);
-		wrot_write_addr(pkt,
+		wrot_write_addr(wrot->comp.id, pkt,
 				base_pa + wrot->reg[VIDO_BASE_ADDR_V],
 				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_V], addr_v,
 				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR_V]);
@@ -2467,15 +2467,15 @@ static s32 update_frame_addr(struct mml_comp *comp, struct mml_task *task,
 		addr_v = wrot_frm->iova[2] + wrot_frm->plane_offset[2];
 	}
 	/* update frame base address to list */
-	wrot_update_addr(reuse,
+	wrot_update_addr(comp->id, reuse,
 			 wrot_frm->labels[WROT_LABEL_ADDR],
 			 wrot_frm->labels[WROT_LABEL_ADDR_HIGH],
 			 addr);
-	wrot_update_addr(reuse,
+	wrot_update_addr(comp->id, reuse,
 			 wrot_frm->labels[WROT_LABEL_ADDR_C],
 			 wrot_frm->labels[WROT_LABEL_ADDR_HIGH_C],
 			 addr_c);
-	wrot_update_addr(reuse,
+	wrot_update_addr(comp->id, reuse,
 			 wrot_frm->labels[WROT_LABEL_ADDR_V],
 			 wrot_frm->labels[WROT_LABEL_ADDR_HIGH_V],
 			 addr_v);

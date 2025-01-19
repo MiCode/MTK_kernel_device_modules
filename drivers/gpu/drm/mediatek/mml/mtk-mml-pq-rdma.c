@@ -336,24 +336,24 @@ static s32 rdma_write_ofst(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe
 	return ret;
 }
 
-static s32 rdma_write_reuse(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe,
+static s32 rdma_write_reuse(struct cmdq_pkt *pkt, u32 comp_id, phys_addr_t base_pa, u8 hw_pipe,
 			    enum cpr_reg_idx idx, u32 value,
 			    struct mml_task_reuse *reuse,
 			    struct mml_pipe_cache *cache,
 			    u16 *label_idx, bool write_sec)
 {
 	if (write_sec) {
-		return mml_assign(pkt,
+		return mml_assign(comp_id, pkt,
 			RDMA_CPR_PREBUILT(CMDQ_PREBUILT_MML, hw_pipe, idx), value,
 			reuse, cache, label_idx);
 	}
 	/* else */
-	return mml_write(pkt,
+	return mml_write(comp_id, pkt,
 		base_pa + reg_idx_to_ofst[idx], value, U32_MAX,
 		reuse, cache, label_idx);
 }
 
-static s32 rdma_write_addr(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe,
+static s32 rdma_write_addr(struct cmdq_pkt *pkt, u32 comp_id, phys_addr_t base_pa, u8 hw_pipe,
 			   enum cpr_reg_idx lsb_idx, u64 value,
 			   struct mml_task_reuse *reuse,
 			   struct mml_pipe_cache *cache,
@@ -367,22 +367,22 @@ static s32 rdma_write_addr(struct cmdq_pkt *pkt, phys_addr_t base_pa, u8 hw_pipe
 
 	msb_idx = lsb_to_msb[lsb_idx];
 
-	ret = rdma_write_reuse(pkt, base_pa, hw_pipe,
+	ret = rdma_write_reuse(pkt, comp_id, base_pa, hw_pipe,
 			       lsb_idx, value & GENMASK_ULL(31, 0),
 			       reuse, cache, label_idx, write_sec);
 	if (ret)
 		return ret;
-	ret = rdma_write_reuse(pkt, base_pa, hw_pipe,
+	ret = rdma_write_reuse(pkt, comp_id, base_pa, hw_pipe,
 			       msb_idx, value >> 32,
 			       reuse, cache, label_idx + 1, write_sec);
 	return ret;
 }
 
-static void rdma_update_addr(struct mml_task_reuse *reuse,
+static void rdma_update_addr(u32 comp_id, struct mml_task_reuse *reuse,
 			     u16 label_lsb, u16 label_msb, u64 value)
 {
-	mml_update(reuse, label_lsb, value & GENMASK_ULL(31, 0));
-	mml_update(reuse, label_msb, value >> 32);
+	mml_update(comp_id, reuse, label_lsb, value & GENMASK_ULL(31, 0));
+	mml_update(comp_id, reuse, label_msb, value >> 32);
 }
 
 enum rdma_golden_fmt {
@@ -783,19 +783,19 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		__func__, iova[0], iova[1], iova[2]);
 
 	if (!mml_slt) {
-		rdma_write_addr(pkt, base_pa, hw_pipe,
+		rdma_write_addr(pkt, comp->id, base_pa, hw_pipe,
 				CPR_RDMA_SRC_BASE_0,
 				iova[0],
 				reuse, cache,
 				&rdma_frm->labels[RDMA_LABEL_BASE_0],
 				write_sec);
-		rdma_write_addr(pkt, base_pa, hw_pipe,
+		rdma_write_addr(pkt, comp->id, base_pa, hw_pipe,
 				CPR_RDMA_SRC_BASE_1,
 				iova[1],
 				reuse, cache,
 				&rdma_frm->labels[RDMA_LABEL_BASE_1],
 				write_sec);
-		rdma_write_addr(pkt, base_pa, hw_pipe,
+		rdma_write_addr(pkt, comp->id, base_pa, hw_pipe,
 				CPR_RDMA_SRC_BASE_2,
 				iova[2],
 				reuse, cache,
@@ -1000,15 +1000,15 @@ static s32 rdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	iova[2] = src_buf->dma[2].iova + src->plane_offset[2];
 
 
-	rdma_update_addr(reuse,
+	rdma_update_addr(comp->id, reuse,
 			 rdma_frm->labels[RDMA_LABEL_BASE_0],
 			 rdma_frm->labels[RDMA_LABEL_BASE_0_MSB],
 			 iova[0]);
-	rdma_update_addr(reuse,
+	rdma_update_addr(comp->id, reuse,
 			 rdma_frm->labels[RDMA_LABEL_BASE_1],
 			 rdma_frm->labels[RDMA_LABEL_BASE_1_MSB],
 			 iova[1]);
-	rdma_update_addr(reuse,
+	rdma_update_addr(comp->id, reuse,
 			 rdma_frm->labels[RDMA_LABEL_BASE_2],
 			 rdma_frm->labels[RDMA_LABEL_BASE_2_MSB],
 			 iova[2]);

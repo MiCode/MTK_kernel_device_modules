@@ -467,15 +467,15 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			dev_buf, fg_table_pa[FG_BUF_NUM-1], 0, FG_BUF_SCALING_SIZE, DMA_TO_DEVICE);
 
 		/* enable filmGrain */
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0xF, 0xF,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0xF, 0xF,
 			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
 	} else {
 		/* relay filmGrain */
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_CTRL_0], 1, 1 << 0,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0], 1, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, 0xF,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, 0xF,
 			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
 	}
 
@@ -489,29 +489,29 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s FG_CR_TBL_ADDR[%pad]", __func__, &fg_table_pa[2]);
 	mml_pq_msg("%s FG_LUT_TBL_ADDR[%pad]", __func__, &fg_table_pa[3]);
 
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE],
 		(u32)(fg_table_pa[0]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUMA_TBL_BASE_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE],
 		(u32)(fg_table_pa[1]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CB_TBL_BASE_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE],
 		(u32)(fg_table_pa[2]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CR_TBL_BASE_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUT_BASE],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_LUT_BASE],
 		(u32)(fg_table_pa[3]),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_LABEL]);
 
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE_MSB],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE_MSB],
 		DO_SHIFT_RIGHT((fg_table_pa[0]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE_MSB],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CB_TBL_BASE_MSB],
 		DO_SHIFT_RIGHT((fg_table_pa[1]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE_MSB],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CR_TBL_BASE_MSB],
 		DO_SHIFT_RIGHT((fg_table_pa[2]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_LUT_BASE_MSB],
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_LUT_BASE_MSB],
 		DO_SHIFT_RIGHT((fg_table_pa[3]), 32),
 		U32_MAX, reuse, cache, &fg_frm->labels[FG_LUT_BASE_MSB_LABEL]);
 
@@ -524,17 +524,17 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		crop->r.width << 0 | crop->r.height << 16, U32_MAX);
 
 	/* config pps */
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_0], mml_pq_fg_get_pps0(fg_meta),
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_PPS_0], mml_pq_fg_get_pps0(fg_meta),
 		0x1FFFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_0_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_1], mml_pq_fg_get_pps1(fg_meta),
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_PPS_1], mml_pq_fg_get_pps1(fg_meta),
 		0x01FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_1_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_2], mml_pq_fg_get_pps2(fg_meta),
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_PPS_2], mml_pq_fg_get_pps2(fg_meta),
 		0x01FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_2_LABEL]);
-	mml_write(pkt, base_pa + fg->data->reg_table[FG_PPS_3], mml_pq_fg_get_pps3(fg_meta),
-		0x00FFFFFF, reuse, cache, &fg_frm->labels[FG_PPS_3_LABEL]);
+	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_PPS_3], mml_pq_fg_get_pps3(fg_meta),
+		0x00FFFFFF, reuse, cache,  &fg_frm->labels[FG_PPS_3_LABEL]);
 
 	if (fg->data->hw_ar) {
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CFG],
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CFG],
 			en_hw_ar << 0 |
 			fg_meta->ar_coeff_lag << 1 |
 			fg_meta->ar_coeff_shift << 3 |
@@ -547,21 +547,21 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CFG_LABEL]);
 
 		for (i = 0; i < 6; i++) {
-			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_Y_0 + i],
+			mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_Y_0 + i],
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 2]) << 16 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 3]) << 24,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i]);
 
-			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_0 + i],
+			mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_0 + i],
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 2]) << 16 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 3]) << 24,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i]);
 
-			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_0 + i],
+			mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_0 + i],
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 2]) << 16 |
@@ -569,11 +569,11 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i]);
 		}
 
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_6],
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_6],
 				fg_meta->ar_coeffs_cb[24] << 0,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CB_6_LABEL]);
 
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_6],
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_6],
 				fg_meta->ar_coeffs_cr[24] << 0,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CR_6_LABEL]);
 	}
@@ -583,15 +583,15 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (buf_ready) {
 		/* trigger FG load table */
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 1 << 0, 1 << 0,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 1 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_0]);
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
 	} else {
 		/* since buffer is not available, we do not trigger FG load table */
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
-			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_0]);
-		mml_write(pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
+			reuse, cache,  &fg_frm->labels[FG_TRIGGER_LABEL_0]);
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_TRIGGER], 0 << 0, 1 << 0,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
 	}
 
@@ -675,8 +675,8 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* enable filmGrain */
-	mml_update(reuse, fg_frm->labels[FG_CTRL_0_LABEL], relay_mode << 0);
-	mml_update(reuse, fg_frm->labels[FG_CK_EN_LABEL], 0xF);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CTRL_0_LABEL], relay_mode << 0);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CK_EN_LABEL], 0xF);
 
 	mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth, en_hw_ar);
 
@@ -694,32 +694,32 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s FG_CR_TBL_ADDR[%pad]", __func__, &fg_table_pa[2]);
 	mml_pq_msg("%s FG_LUT_TBL_ADDR[%pad]", __func__, &fg_table_pa[3]);
 
-	mml_update(reuse, fg_frm->labels[FG_LUMA_TBL_BASE_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_LUMA_TBL_BASE_LABEL],
 		(u32)(fg_table_pa[0]));
-	mml_update(reuse, fg_frm->labels[FG_CB_TBL_BASE_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CB_TBL_BASE_LABEL],
 		(u32)(fg_table_pa[1]));
-	mml_update(reuse, fg_frm->labels[FG_CR_TBL_BASE_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CR_TBL_BASE_LABEL],
 		(u32)(fg_table_pa[2]));
-	mml_update(reuse, fg_frm->labels[FG_LUT_BASE_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_LUT_BASE_LABEL],
 		(u32)(fg_table_pa[3]));
 
-	mml_update(reuse, fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_LUMA_TBL_BASE_MSB_LABEL],
 		DO_SHIFT_RIGHT(fg_table_pa[0], 32));
-	mml_update(reuse, fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CB_TBL_BASE_MSB_LABEL],
 		DO_SHIFT_RIGHT(fg_table_pa[1], 32));
-	mml_update(reuse, fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CR_TBL_BASE_MSB_LABEL],
 		DO_SHIFT_RIGHT(fg_table_pa[2], 32));
-	mml_update(reuse, fg_frm->labels[FG_LUT_BASE_MSB_LABEL],
+	mml_update(comp->id, reuse, fg_frm->labels[FG_LUT_BASE_MSB_LABEL],
 		DO_SHIFT_RIGHT(fg_table_pa[3], 32));
 
 	/* config pps */
-	mml_update(reuse, fg_frm->labels[FG_PPS_0_LABEL], mml_pq_fg_get_pps0(fg_meta));
-	mml_update(reuse, fg_frm->labels[FG_PPS_1_LABEL], mml_pq_fg_get_pps1(fg_meta));
-	mml_update(reuse, fg_frm->labels[FG_PPS_2_LABEL], mml_pq_fg_get_pps2(fg_meta));
-	mml_update(reuse, fg_frm->labels[FG_PPS_3_LABEL], mml_pq_fg_get_pps3(fg_meta));
+	mml_update(comp->id, reuse, fg_frm->labels[FG_PPS_0_LABEL], mml_pq_fg_get_pps0(fg_meta));
+	mml_update(comp->id, reuse, fg_frm->labels[FG_PPS_1_LABEL], mml_pq_fg_get_pps1(fg_meta));
+	mml_update(comp->id, reuse, fg_frm->labels[FG_PPS_2_LABEL], mml_pq_fg_get_pps2(fg_meta));
+	mml_update(comp->id, reuse, fg_frm->labels[FG_PPS_3_LABEL], mml_pq_fg_get_pps3(fg_meta));
 
 	if (fg->data->hw_ar) {
-		mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CFG_LABEL],
+		mml_update(comp->id, reuse, fg_frm->labels[FG_AR_COEFF_CFG_LABEL],
 			en_hw_ar << 0 |
 			fg_meta->ar_coeff_lag << 1 |
 			fg_meta->ar_coeff_shift << 3 |
@@ -731,35 +731,35 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			fg_meta->num_cr_points << 21);
 
 		for (i = 0; i < 6; i++) {
-			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i],
+			mml_update(comp->id, reuse, fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i],
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 2]) << 16 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 3]) << 24);
 
-			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i],
+			mml_update(comp->id, reuse, fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i],
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 2]) << 16 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 3]) << 24);
 
-			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i],
+			mml_update(comp->id, reuse, fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i],
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 2]) << 16 |
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 3]) << 24);
 		}
 
-		mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CB_6_LABEL],
+		mml_update(comp->id, reuse, fg_frm->labels[FG_AR_COEFF_CB_6_LABEL],
 				fg_meta->ar_coeffs_cb[24] << 0);
 
-		mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CR_6_LABEL],
+		mml_update(comp->id, reuse, fg_frm->labels[FG_AR_COEFF_CR_6_LABEL],
 				fg_meta->ar_coeffs_cr[24] << 0);
 	}
 
 	/* trigger FG load table */
-	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x1);
-	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x1);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
 
 exit:
 	mml_pq_trace_ex_end();
@@ -767,11 +767,11 @@ exit:
 
 buf_err_exit:
 	/* relay filmGrain */
-	mml_update(reuse, fg_frm->labels[FG_CTRL_0_LABEL], 0x1);
-	mml_update(reuse, fg_frm->labels[FG_CK_EN_LABEL], 0x7);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CTRL_0_LABEL], 0x1);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_CK_EN_LABEL], 0x7);
 	/* don't trigger FG load table */
-	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x0);
-	mml_update(reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_TRIGGER_LABEL_0], 0x0);
+	mml_update(comp->id, reuse, fg_frm->labels[FG_TRIGGER_LABEL_1], 0x0);
 	mml_pq_trace_ex_end();
 	return ret;
 }
