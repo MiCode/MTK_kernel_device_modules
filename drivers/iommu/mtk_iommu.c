@@ -330,14 +330,12 @@ static const struct mtk_iommu_iova_region single_domain[] = {
 	{.iova_base = 0,		.size = SZ_4G},
 };
 
-static const struct mtk_iommu_iova_region mt8192_multi_dom[] = {
-	{ .iova_base = 0x0,		.size = SZ_4G},		/* disp: 0 ~ 4G */
-	#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
-	{ .iova_base = SZ_4G,		.size = SZ_4G},		/* vdec: 4G ~ 8G */
-	{ .iova_base = SZ_4G * 2,	.size = SZ_4G},		/* CAM/MDP: 8G ~ 12G */
-	{ .iova_base = 0x240000000ULL,	.size = 0x4000000},	/* CCU0 */
-	{ .iova_base = 0x244000000ULL,	.size = 0x4000000},	/* CCU1 */
-	#endif
+static struct mtk_iommu_iova_region mt6789_multi_dom[] __maybe_unused = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	{ .iova_base = 0x0, .size = SZ_4G},	      /* disp : 0 ~ 4G */
+	{ .iova_base = SZ_4G, .size = SZ_4G},     /* vdec : 4G ~ 8G */
+	{ .iova_base = SZ_4G * 2, .size = SZ_4G}, /* CAM/MDP: 8G ~ 12G */
+#endif
 };
 
 /* use the same data as mt6853 */
@@ -712,6 +710,16 @@ static const struct mtk_iommu_iova_region mt6985_multi_dom_apu[] = {
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2,APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3,LK_RESV:32MB */
 #endif
+};
+
+static const struct mtk_iommu_iova_region mt8192_multi_dom[] = {
+	{ .iova_base = 0x0,		.size = SZ_4G},		/* disp: 0 ~ 4G */
+	#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	{ .iova_base = SZ_4G,		.size = SZ_4G},		/* vdec: 4G ~ 8G */
+	{ .iova_base = SZ_4G * 2,	.size = SZ_4G},		/* CAM/MDP: 8G ~ 12G */
+	{ .iova_base = 0x240000000ULL,	.size = 0x4000000},	/* CCU0 */
+	{ .iova_base = 0x244000000ULL,	.size = 0x4000000},	/* CCU1 */
+	#endif
 };
 
 static phys_addr_t mtk_iommu_iova_to_phys(struct iommu_domain *domain,
@@ -3608,6 +3616,19 @@ static const struct mtk_iommu_plat_data mt6781_data = {
 			 {0, 14, 16}, {0, 13, 18, 17}},
 };
 
+static const struct mtk_iommu_plat_data mt6789_data = {
+	.m4u_plat = M4U_MT6789,
+	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
+			 NOT_STD_AXI_MODE | IOVA_34_EN | SHARE_PGTABLE |
+			 IOMMU_SEC_EN | HAS_SMI_SUB_COMM | WR_THROT_EN |
+			 PGTABLE_PA_35_EN | HAS_BCLK,
+	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
+	.iommu_id	= DISP_IOMMU,
+	.iommu_type     = MM_IOMMU,
+	.iova_region    = mt6789_multi_dom,
+	.iova_region_nr = ARRAY_SIZE(mt6789_multi_dom),
+};
+
 /* use the same data as mt6873 */
 static const struct mtk_iommu_plat_data mt6833_data = {
 	.m4u_plat = M4U_MT6833,
@@ -4232,6 +4253,7 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt6768-m4u", .data = &mt6768_data},
 	{ .compatible = "mediatek,mt6779-m4u", .data = &mt6779_data},
 	{ .compatible = "mediatek,mt6781-m4u", .data = &mt6781_data},
+	{ .compatible = "mediatek,mt6789-disp-iommu", .data = &mt6789_data},
 	{ .compatible = "mediatek,mt6833-m4u", .data = &mt6833_data},
 	{ .compatible = "mediatek,mt6853-m4u", .data = &mt6853_data},
 	{ .compatible = "mediatek,mt6853-apu-iommu", .data = &mt6853_data_apu},

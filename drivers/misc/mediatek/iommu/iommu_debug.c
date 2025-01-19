@@ -745,6 +745,41 @@ static int mtk_iommu_port_idx(int id, enum mtk_iommu_type type, int *idx_list)
 	return idx_list[0] >= 0 ? 0 : -1;
 }
 
+int mtk_iommu_skip_aee_report(enum mtk_iommu_type type, u64 fault_iova, int idx)
+{
+	const struct mtk_iommu_port *port_list;
+	static int mt6789_idx[] = {1, 4};
+	static int mt6895_idx[] = {2, 3, 4};
+	static int mt6983_idx[] = {2, 3, 4};
+	int i;
+
+	if ((type == MM_IOMMU) && (fault_iova == 0)) {
+		port_list = m4u_data->plat_data->port_list[type];
+		/* Work around for display driver issue mt6789 mt6895 mt6983 */
+		if (port_list == &mm_port_mt6789[0]) {
+			for (i = 0; i < sizeof(mt6789_idx) / sizeof(mt6789_idx[0]); i++) {
+				if (idx == mt6789_idx[i])
+					return 1;
+			}
+		}
+
+		if (port_list == &mm_port_mt6895[0]) {
+			for (i = 0; i < sizeof(mt6895_idx) / sizeof(mt6895_idx[0]); i++) {
+				if (idx == mt6895_idx[i])
+					return 1;
+			}
+		}
+
+		if (port_list == &mm_port_mt6983[0]) {
+			for (i = 0; i < sizeof(mt6983_idx) / sizeof(mt6983_idx[0]); i++) {
+				if (idx == mt6983_idx[i])
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 static void report_custom_fault(
 	u64 fault_iova, u64 fault_pa,
 	u32 fault_id, u32 type, int id)
@@ -786,6 +821,9 @@ static void report_custom_fault(
 			m4u_data->m4u_cb[idx].fault_fn(m4u_data->m4u_cb[idx].port,
 			fault_iova, m4u_data->m4u_cb[idx].fault_data);
 	}
+
+	if (mtk_iommu_skip_aee_report(type, fault_iova, idx))
+		return;
 
 	m4u_aee_print(mmu_translation_log_format,
 		(smmu_v3_enable ? "SMMU" : "M4U"),
@@ -3411,6 +3449,12 @@ static const struct mtk_m4u_plat_data mt6781_data = {
 	.mm_tf_ccu_support   = 1,
 };
 
+static const struct mtk_m4u_plat_data mt6789_data = {
+	.port_list[MM_IOMMU] = mm_port_mt6789,
+	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6789),
+	.mm_tf_ccu_support   = 1,
+};
+
 static const struct mtk_m4u_plat_data mt6833_data = {
 	.port_list[MM_IOMMU] = mm_port_mt6833,
 	.port_nr[MM_IOMMU]   = ARRAY_SIZE(mm_port_mt6833),
@@ -3569,6 +3613,7 @@ static const struct of_device_id mtk_m4u_dbg_of_ids[] = {
 	{ .compatible = "mediatek,mt6765-iommu-debug", .data = &mt6765_data},
 	{ .compatible = "mediatek,mt6768-iommu-debug", .data = &mt6768_data},
 	{ .compatible = "mediatek,mt6781-iommu-debug", .data = &mt6781_data},
+	{ .compatible = "mediatek,mt6789-iommu-debug", .data = &mt6789_data},
 	{ .compatible = "mediatek,mt6833-iommu-debug", .data = &mt6833_data},
 	{ .compatible = "mediatek,mt6853-iommu-debug", .data = &mt6853_data},
 	{ .compatible = "mediatek,mt6855-iommu-debug", .data = &mt6855_data},
