@@ -559,8 +559,10 @@
 #define MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1		0x128
 #define MT6991_DISP_ODDMR_REG_DBI_UDMA_X_INI			0x12C
 #define MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI			0x130
+#define MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT		0x13C
 #define MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0		0x144
 #define MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_1		0x148
+#define MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI			0x150
 #define MT6991_DISP_ODDMR_REG_DMR_SPR_MODE				0x154
 	#define MT6991_REG_DMR_SPR_MODE						REG_FLD_MSB_LSB(1, 0)
 	#define MT6991_REG_DMR_DELTA_MODE_EVEN				REG_FLD_MSB_LSB(4, 2)
@@ -628,6 +630,18 @@
 #define MT6991_DISP_ODDMR_REG_DBI_VSIZE				0x10704
 #define MT6991_DISP_ODDMR_REG_DMR_X_INI				0x10830
 #define MT6991_DISP_ODDMR_REG_DMR_Y_INI				0x10834
+#define MT6991_DISP_ODDMR_REG_V_CROP_EN_R			0x10A04
+	#define MT6991_REG_DMR_V_LENGTH_R				REG_FLD_MSB_LSB(13, 0)
+	#define MT6991_REG_DMR_V_ST_R					REG_FLD_MSB_LSB(29, 16)
+	#define MT6991_REG_DMR_V_CROP_EN_R				REG_FLD_MSB_LSB(31, 31)
+#define MT6991_DISP_ODDMR_REG_V_CROP_EN_G			0x10A0C
+	#define MT6991_REG_DMR_V_LENGTH_G				REG_FLD_MSB_LSB(13, 0)
+	#define MT6991_REG_DMR_V_ST_G					REG_FLD_MSB_LSB(29, 16)
+	#define MT6991_REG_DMR_V_CROP_EN_G				REG_FLD_MSB_LSB(31, 31)
+#define MT6991_DISP_ODDMR_REG_V_CROP_EN_B			0x10A14
+	#define MT6991_REG_DMR_V_LENGTH_B				REG_FLD_MSB_LSB(13, 0)
+	#define MT6991_REG_DMR_V_ST_B					REG_FLD_MSB_LSB(29, 16)
+	#define MT6991_REG_DMR_V_CROP_EN_B				REG_FLD_MSB_LSB(31, 31)
 
 static bool debug_flow_log;
 #define ODDMRFLOW_LOG(fmt, arg...) do { \
@@ -2315,6 +2329,15 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	dma_addr_t addr = 0;
 	uint32_t value = 0, mask = 0;
 
+	// DMR V2 partial update
+	unsigned int crop_height;
+	unsigned int overhead_v;
+	unsigned int comp_overhead_v;
+	unsigned int slice_size, slice_height;
+	unsigned int dmr_y_ini, dmr_y_offset = 0;
+	unsigned int dmr_udma_height, dmr_input_height; //pixel base
+	unsigned int is_compression_mode;
+
 	if (is_oddmr_dmr_support == true && g_oddmr_priv->dmr_state == ODDMR_INIT_DONE) {
 		mtk_oddmr_dmr_common_init(comp, handle);
 		if (!(g_oddmr_priv->spr_enable == 0 || g_oddmr_priv->spr_relay == 1)) {
@@ -2383,6 +2406,67 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 			mtk_oddmr_write(default_comp, addr >> 4, DISP_ODDMR_DMR_UDMA_CTR_4, handle);
 			mtk_oddmr_write(default_comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
 		}
+
+		if(oddmr_priv->set_partial_update == 1) {
+			overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
+				? 0 : oddmr_priv->tile_overhead_v.overhead_v;
+			comp_overhead_v = (!overhead_v) ? 0 : oddmr_priv->tile_overhead_v.comp_overhead_v;
+			crop_height = oddmr_priv->roi_height + (overhead_v - comp_overhead_v) * 2;
+			dmr_input_height = oddmr_priv->roi_height + overhead_v * 2;
+			is_compression_mode = atomic_read(&g_oddmr_priv->dmr_data.is_compression_mode);
+			ODDMRAPI_LOG("log: %s %d overhead_v:%d comp_overhead_v:%d crop_hegiht:%d\n",
+				__func__, __LINE__, overhead_v, comp_overhead_v, crop_height);
+
+			/* update y ini */
+			dmr_y_ini = oddmr_priv->dbi_pu_data.dbi_y_ini;
+
+			if (oddmr_priv->data->dmr_version == MTK_DMR_V2) {
+				//ODDMR input size
+				mtk_oddmr_write(comp, dmr_input_height,
+					MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT, handle);
+
+				//DBI&DMR input size
+				mtk_oddmr_write(comp, dmr_input_height,
+					MT6991_DISP_ODDMR_REG_DMR_FRAME_HEIGHT, handle);
+
+				//DBI&DMR input pos
+				mtk_oddmr_write(comp, dmr_y_ini,
+					MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
+
+				if (is_compression_mode) {
+					// align dmr slice size
+					slice_size = atomic_read(&g_oddmr_priv->dmr_data.slice_size);
+					slice_height = atomic_read(&g_oddmr_priv->dmr_data.slice_height);
+					if (dmr_y_ini % slice_height != 0)
+						dmr_y_offset = dmr_y_ini % slice_height;
+					dmr_y_ini -= dmr_y_offset;
+					dmr_udma_height = dmr_input_height + dmr_y_offset;
+					if (dmr_udma_height % slice_height != 0)
+						dmr_udma_height = ((dmr_udma_height / slice_height) + 1) * slice_height;
+					// dmr udma config
+					mtk_oddmr_write(comp, (slice_size * (dmr_udma_height / slice_height)),
+						MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
+					mtk_oddmr_write(comp, (slice_size * (dmr_y_ini / slice_height)),
+						MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI, handle);
+					mtk_oddmr_write(comp,
+						((1 << 31) | (dmr_y_offset << 16) | crop_height),
+						MT6991_DISP_ODDMR_REG_V_CROP_EN_R, handle);
+					mtk_oddmr_write(comp,
+						((1 << 31) | (dmr_y_offset << 16) | crop_height),
+						MT6991_DISP_ODDMR_REG_V_CROP_EN_G, handle);
+					mtk_oddmr_write(comp,
+						((1 << 31) | (dmr_y_offset << 16) | crop_height),
+						MT6991_DISP_ODDMR_REG_V_CROP_EN_B, handle);
+				}
+
+				//DBI&DMR output size
+				mtk_oddmr_write(comp, dmr_input_height,
+					MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_VSIZE, handle);
+				mtk_oddmr_write(comp, dmr_input_height,
+					MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
+			}
+		}
+
 		mtk_oddmr_set_dmr_enable(comp, g_oddmr_priv->dmr_enable, handle);
 	}
 
@@ -6384,6 +6468,12 @@ static int mtk_oddmr_get_dmr_cfg_data(struct mtk_drm_dmr_cfg_info *cfg_info)
 	ODDMRLOW_LOG("basic_info.zero_bit %d\n", dmr_cfg_data->basic_info.zero_bit);
 	ODDMRLOW_LOG("basic_info.h_num %d\n", dmr_cfg_data->basic_info.h_num);
 	ODDMRLOW_LOG("basic_info.v_num %d\n", dmr_cfg_data->basic_info.v_num);
+	ODDMRLOW_LOG("dmr_pu_info.partial_update_dmr_is_compression_mode %d\n",
+		dmr_cfg_data->dmr_pu_info.partial_update_dmr_is_compression_mode);
+	ODDMRLOW_LOG("dmr_pu_info.partial_update_dmr_slice_size %d\n",
+		dmr_cfg_data->dmr_pu_info.partial_update_dmr_slice_size);
+	ODDMRLOW_LOG("dmr_pu_info.partial_update_dmr_slice_height %d\n",
+		dmr_cfg_data->dmr_pu_info.partial_update_dmr_slice_height);
 
 	if(dmr_cfg_data->static_cfg.reg_num) {
 		size = sizeof(uint32_t) * dmr_cfg_data->static_cfg.reg_num;
@@ -7465,6 +7555,12 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 	atomic_set(&g_oddmr_priv->dmr_data.cur_dbv_table_idx, dbv_table_idx);
 	atomic_set(&g_oddmr_priv->dmr_data.cur_fps_node, fps_node);
 	atomic_set(&g_oddmr_priv->dmr_data.cur_fps_table_idx, fps_table_idx);
+	atomic_set(&g_oddmr_priv->dmr_data.slice_size,
+		dmr_cfg_data->dmr_pu_info.partial_update_dmr_slice_size);
+	atomic_set(&g_oddmr_priv->dmr_data.slice_height,
+		dmr_cfg_data->dmr_pu_info.partial_update_dmr_slice_height);
+	atomic_set(&g_oddmr_priv->dmr_data.is_compression_mode,
+		dmr_cfg_data->dmr_pu_info.partial_update_dmr_is_compression_mode);
 
 	mtk_drm_idlemgr_kick(__func__,
 			&default_comp->mtk_crtc->base, 1);
@@ -8777,6 +8873,12 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	unsigned int y_idx2_ini, y_remain2_ini;
 	unsigned int reg_val;
 
+	// DMR V2 partial update
+	unsigned int slice_size, slice_height;
+	unsigned int dmr_y_ini, dmr_y_offset = 0;
+	unsigned int dmr_udma_height, dmr_input_height; //pixel base
+	unsigned int is_compression_mode;
+
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 		__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
@@ -8788,15 +8890,19 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	oddmr->roi_height = partial_roi.height;
 	crop_voffset = comp_overhead_v;
 	crop_height = oddmr->roi_height + (overhead_v - comp_overhead_v) * 2;
+	dmr_input_height = partial_roi.height + overhead_v * 2;
 
 	DDPDBG("%s, %s total overhead_v:%d, oddmr overhead_v:%d\n",
 		__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v);
 
 	/* update y ini */
-	if (oddmr->set_partial_update == 1)
+	if (oddmr->set_partial_update == 1) {
 		dbi_y_ini = partial_roi.y - overhead_v;
-	else
+		dmr_y_ini = partial_roi.y - overhead_v;
+	} else {
 		dbi_y_ini = 0;
+		dmr_y_ini = 0;
+	}
 
 	/* update udma y ini */
 	//if (is_roi_en == 1) {
@@ -8825,6 +8931,9 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	oddmr->dbi_pu_data.y_idx2_ini = y_idx2_ini;
 	oddmr->dbi_pu_data.y_remain2_ini = y_remain2_ini;
 
+	is_compression_mode = atomic_read(&g_oddmr_priv->dmr_data.is_compression_mode);
+	slice_size = atomic_read(&g_oddmr_priv->dmr_data.slice_size);
+	slice_height = atomic_read(&g_oddmr_priv->dmr_data.slice_height);
 	/* oddmr reg config */
 	if (oddmr->set_partial_update == 1) {
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
@@ -8847,17 +8956,18 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					DISP_ODDMR_REG_Y_REMAIN2_INI, handle);
 		}
 
-		if (oddmr->data->dbi_version == MTK_DBI_V2) {
+		if (oddmr->data->dbi_version == MTK_DBI_V2 ||
+			oddmr->data->dmr_version == MTK_DMR_V2) {
 			//ODDMR input size
 			mtk_oddmr_write(comp,
 				(partial_roi.height + overhead_v * 2),
 				MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT, handle);
 
-			//DBI input size
+			//DBI&DMR input size
 			mtk_oddmr_write(comp,
 				(partial_roi.height + overhead_v * 2),
 				MT6991_DISP_ODDMR_REG_DMR_FRAME_HEIGHT, handle);
-			//DBI input pos
+			//DBI&DMR input pos
 			mtk_oddmr_write(comp, dbi_y_ini,
 				MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
 
@@ -8882,7 +8992,31 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
 			}
 
-			//DBI output size
+			if (is_oddmr_dmr_support && g_oddmr_priv->dmr_enable && is_compression_mode) {
+				// align dmr slice size
+				if (dmr_y_ini % slice_height != 0)
+					dmr_y_offset = dmr_y_ini % slice_height;
+				dmr_y_ini -= dmr_y_offset;
+				dmr_udma_height = dmr_input_height + dmr_y_offset;
+				if (dmr_udma_height % slice_height != 0)
+					dmr_udma_height = ((dmr_udma_height / slice_height) + 1) * slice_height;
+
+				mtk_oddmr_write(comp, (slice_size * (dmr_udma_height / slice_height)),
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
+				mtk_oddmr_write(comp, (slice_size * (dmr_y_ini / slice_height)),
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI, handle);
+				mtk_oddmr_write(comp,
+					((1 << 31) | (dmr_y_offset << 16) | crop_height),
+					MT6991_DISP_ODDMR_REG_V_CROP_EN_R, handle);
+				mtk_oddmr_write(comp,
+					((1 << 31) | (dmr_y_offset << 16) | crop_height),
+					MT6991_DISP_ODDMR_REG_V_CROP_EN_G, handle);
+				mtk_oddmr_write(comp,
+					((1 << 31) | (dmr_y_offset << 16) | crop_height),
+					MT6991_DISP_ODDMR_REG_V_CROP_EN_B, handle);
+			}
+
+			//DBI&DMR output size
 			mtk_oddmr_write(comp,
 				(partial_roi.height + overhead_v * 2),
 				MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_VSIZE, handle);
@@ -8910,15 +9044,16 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					DISP_ODDMR_REG_Y_REMAIN2_INI, handle);
 		}
 
-		if (oddmr->data->dbi_version == MTK_DBI_V2) {
+		if (oddmr->data->dbi_version == MTK_DBI_V2 ||
+			oddmr->data->dmr_version == MTK_DMR_V2) {
 			//ODDMR input size
 			mtk_oddmr_write(comp, full_height,
 				MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT, handle);
 
-			//DBI input size
+			//DBI&DMR input size
 			mtk_oddmr_write(comp, full_height,
 				MT6991_DISP_ODDMR_REG_DMR_FRAME_HEIGHT, handle);
-			//DBI input pos
+			//DBI&DMR input pos
 			mtk_oddmr_write(comp, 0,
 				MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
 
@@ -8940,7 +9075,23 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
 			}
 
-			//DBI output size
+			if (is_oddmr_dmr_support && g_oddmr_priv->dmr_enable && is_compression_mode) {
+				mtk_oddmr_write(comp, (slice_size * (full_height / slice_height)),
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
+				mtk_oddmr_write(comp, 0,
+					MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI, handle);
+				mtk_oddmr_write(comp,
+					((0 << 31) | (0 << 16) | full_height),
+					MT6991_DISP_ODDMR_REG_V_CROP_EN_R, handle);
+				mtk_oddmr_write(comp,
+					((0 << 31) | (0 << 16) | full_height),
+					MT6991_DISP_ODDMR_REG_V_CROP_EN_G, handle);
+				mtk_oddmr_write(comp,
+					((0 << 31) | (0 << 16) | full_height),
+					MT6991_DISP_ODDMR_REG_V_CROP_EN_B, handle);
+			}
+
+			//DBI&DMR output size
 			mtk_oddmr_write(comp, full_height,
 				MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_VSIZE, handle);
 			mtk_oddmr_write(comp, full_height,

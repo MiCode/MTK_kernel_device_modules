@@ -108,6 +108,21 @@ struct mtk_drm_dmr_basic_info {
 //	unsigned int real_frame_height;
 };
 
+struct mtk_drm_oddmr_partial_update_params {
+	unsigned int partial_update_scale_factor_h;
+	unsigned int partial_update_scale_factor_v;
+	unsigned int partial_update_real_frame_width;
+	unsigned int partial_update_real_frame_height;
+	unsigned int partial_update_dmr_is_compression_mode;
+	unsigned int partial_update_dmr_slice_size; //byte base
+	unsigned int partial_update_dmr_slice_height; //pixel base
+	unsigned int dummy0;
+	unsigned int dummy1;
+	unsigned int dummy2;
+	unsigned int dummy3;
+	unsigned int dummy4;
+};
+
 struct mtk_drm_dmr_static_cfg {
 	unsigned int reg_num;
 	unsigned int *reg_offset;
@@ -183,6 +198,7 @@ struct mtk_drm_dmr_cfg_info {
 	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
 	struct mtk_drm_dmr_table_index table_index;
 	struct mtk_drm_dmr_table_content table_content;
+	struct mtk_drm_oddmr_partial_update_params dmr_pu_info;
 };
 
 struct mtk_drm_dbi_cfg_info {
@@ -324,6 +340,9 @@ struct mtk_disp_oddmr_dmr_data {
 	struct mtk_drm_gem_obj *mura_table[DMR_DBV_TABLE_MAX][DMR_FPS_TABLE_MAX];
 	atomic_t remap_enable;
 	atomic_t remap_gain;
+	atomic_t slice_size;
+	atomic_t slice_height;
+	atomic_t is_compression_mode;
 };
 
 struct mtk_disp_oddmr_cfg {
