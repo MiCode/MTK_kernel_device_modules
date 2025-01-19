@@ -260,6 +260,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 
 	/* make sure id unique and cached last */
 	task->job.jobid = atomic_inc_return(&ctx->job_serial);
+	task->adaptor_type = MML_ADAPTOR_DLE;
 	task->cb_param = cb_param;
 	cfg->last_jobid = task->job.jobid;
 	list_add_tail(&task->entry, &cfg->await_tasks);
