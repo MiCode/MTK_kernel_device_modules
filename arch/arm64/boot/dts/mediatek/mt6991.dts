@@ -8315,9 +8315,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#clock-cells = <1>;
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS0_DORMANT>;
 			pd-others = <&disp1_mutex0>, <&disp_ovl0_exdma3>, <&disp_ovl1_exdma3>,
-							<&disp_dpc>, <&mipi_tx_config0>;
+							<&disp_dpc>, <&mipi_tx_config0>, <&mipi_tx_config1>;
 			pd-names = "side_dispsys", "ovlsys", "side_ovlsys",
-							"mminfra_in_dpc", "dsi_phy0";
+							"mminfra_in_dpc", "dsi_phy0", "dsi_phy1";
 			clocks =
 				<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_VDISP_AO_CONFIG_DISP>,
 				<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_DPC_DISP>,
