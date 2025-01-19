@@ -61,19 +61,6 @@ struct _POWERHAL_PACKAGE {
 	__u32 value;
 };
 
-
-struct _CPU_CTRL_PACKAGE {
-	__s32 cmd;
-	__s32 value;
-};
-
-enum {
-	UNKNOWN = -1,
-	FPSGO_BOOST = 0,
-	CPUFREQ_BOOST = 1,
-};
-
-#define NOTIFY_BOOST             _IOW('g', 1, struct _CPU_CTRL_PACKAGE)
 #define POWERHAL_SET_ADPF_DATA   _IOW('g', 1, struct _ADPF_PACKAGE)
 #define POWERHAL_GET_ADPF_DATA   _IOW('g', 2, struct _ADPF_PACKAGE)
 

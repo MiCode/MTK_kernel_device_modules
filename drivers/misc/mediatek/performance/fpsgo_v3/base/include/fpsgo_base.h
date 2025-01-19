@@ -583,8 +583,6 @@ struct fps_control_pid_info {
 	((type *)(((char *)ptr) - offsetof(type, member)))
 
 typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
-extern int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
-extern int (*unregister_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
 
 long long fpsgo_task_sched_runtime(struct task_struct *p);
 long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask);

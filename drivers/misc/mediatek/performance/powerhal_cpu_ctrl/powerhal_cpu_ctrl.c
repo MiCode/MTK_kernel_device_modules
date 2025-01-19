@@ -70,34 +70,16 @@ static const struct proc_ops perfmgr_ ## name ## _proc_fops = { \
 #define CLUSTER_MAX 10
 #define CORE_MAX 8
 
-typedef void (*fpsgo_notify_is_boost_cb)(int fpsgo_is_boosting);
-int (*register_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
-EXPORT_SYMBOL_GPL(register_get_fpsgo_is_boosting_fp);
-int (*unregister_get_fpsgo_is_boosting_fp)(fpsgo_notify_is_boost_cb func_cb);
-EXPORT_SYMBOL_GPL(unregister_get_fpsgo_is_boosting_fp);
-
 typedef struct _cpufreq {
 	int min;
 	int max;
 } _cpufreq;
-
-struct k_list {
-	struct list_head queue_list;
-	int _cmd;
-	int _value;
-};
 
 static int policy_num;
 static int *opp_count;
 static unsigned int **opp_table;
 static int *_opp_cnt;
 static unsigned int **cpu_opp_tbl;
-static LIST_HEAD(head);
-static int condition_get_cmd;
-static DECLARE_WAIT_QUEUE_HEAD(boost_queue);
-static DEFINE_MUTEX(boost_lock);
-static DEFINE_MUTEX(cpu_boost_lock);
-static DEFINE_MUTEX(cpu_ctrl_lock);
 static struct _cpufreq freq_to_set[CLUSTER_MAX];
 static struct _cpufreq core_freq_to_set[CORE_MAX];
 struct freq_qos_request *freq_min_request;
@@ -112,63 +94,6 @@ static int adpf_enable = 1;
 static struct _SESSION *sessionList[ADPF_MAX_SESSION];
 static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
 static DEFINE_MUTEX(adpf_mutex);
-static int sf_hint_low_power_enabled;
-
-static void send_boost_cmd(int cmd, int value)
-{
-	static struct k_list *node;
-
-	mutex_lock(&boost_lock);
-
-	node = kmalloc(sizeof(*node), GFP_KERNEL);
-	if (node == NULL)
-		goto out;
-
-	node->_value = value;
-	node->_cmd = cmd;
-
-	list_add_tail(&node->queue_list, &head);
-	condition_get_cmd = 1;
-
-out:
-	mutex_unlock(&boost_lock);
-
-	wake_up_interruptible(&boost_queue);
-}
-
-void _boost_get_cmd(int *cmd, int *value)
-{
-	static struct k_list *node;
-
-	wait_event_interruptible(boost_queue, condition_get_cmd);
-
-	mutex_lock(&boost_lock);
-
-	if (!list_empty(&head)) {
-		node = list_first_entry(&head, struct k_list, queue_list);
-
-		*cmd = node->_cmd;
-		*value = node->_value;
-
-		list_del(&node->queue_list);
-		kfree(node);
-	}
-
-	if (list_empty(&head))
-		condition_get_cmd = 0;
-
-	mutex_unlock(&boost_lock);
-}
-
-void notify_fpsgo_is_boost(int is_boosting)
-{
-	send_boost_cmd(FPSGO_BOOST, is_boosting);
-}
-
-void notify_cpu_is_boost(int is_boosting)
-{
-	send_boost_cmd(CPUFREQ_BOOST, is_boosting);
-}
 
 static void _adpf_systrace(int tgid, long val, const char *fmt, ...)
 {
@@ -382,7 +307,6 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 	char *buf = perfmgr_copy_from_user_for_proc(ubuf, cnt);
 	//int ret = 0;
 	int update_failed = 0;
-	int isBooting = 0;
 
 	if (!buf) {
 		pr_debug("buf is null\n");
@@ -433,21 +357,6 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 			pr_info("update cpufreq failed.");
 			update_failed = 1;
 		}
-
-
-		if (sf_hint_low_power_enabled) {
-			isBooting = 0;
-
-			if (opp_count[cpu] <= 0)
-				goto out;
-			if (core_freq_to_set[cpu].min > opp_table[cpu][opp_count[cpu]-1])
-				isBooting = 1;
-
-			if (isBooting)
-				notify_cpu_is_boost(1);
-			else
-				notify_cpu_is_boost(0);
-		}
 	}
 
 out:
@@ -483,52 +392,6 @@ out:
 
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
-
-static ssize_t perfmgr_sf_hint_low_power_enabled_proc_write(
-		struct file *filp, const char *ubuf,
-		size_t cnt, loff_t *_data)
-{
-	char buf[64];
-	int value;
-	int ret;
-
-	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
-		return -EINVAL;
-
-	buf[cnt] = 0;
-	ret = kstrtoint(buf, 10, &value);
-	if (ret < 0)
-		return ret;
-
-	sf_hint_low_power_enabled = value;
-
-	if (sf_hint_low_power_enabled) {
-		if (register_get_fpsgo_is_boosting_fp)
-			register_get_fpsgo_is_boosting_fp(&notify_fpsgo_is_boost);
-	} else {
-		if (unregister_get_fpsgo_is_boosting_fp)
-			unregister_get_fpsgo_is_boosting_fp(&notify_fpsgo_is_boost);
-	}
-
-	return cnt;
-}
-
-static ssize_t perfmgr_sf_hint_low_power_enabled_proc_show(struct file *file,
-		char __user *ubuf, size_t count, loff_t *ppos)
-{
-	int n = 0;
-	char buffer[64];
-
-	if (*ppos != 0)
-		goto out;
-	n = scnprintf(buffer, 64, "%d\n", sf_hint_low_power_enabled);
-out:
-	if (n < 0)
-		return -EINVAL;
-
-	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
-}
-
 
 static ssize_t perfmgr_adpf_enable_proc_write(struct file *filp,
 		const char *ubuf, size_t cnt, loff_t *data)
@@ -566,7 +429,6 @@ out:
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
 
-PROC_FOPS_RW(sf_hint_low_power_enabled);
 PROC_FOPS_RW(perfserv_freq);
 PROC_FOPS_RW(adpf_enable);
 
@@ -1002,7 +864,6 @@ static int __init powerhal_cpu_ctrl_init(void)
 		const struct proc_ops *fops;
 	};
 	const struct pentry entries[] = {
-		PROC_ENTRY(sf_hint_low_power_enabled),
 		PROC_ENTRY(perfserv_freq),
 		PROC_ENTRY(adpf_enable),
 	};
@@ -1108,9 +969,6 @@ static int __init powerhal_cpu_ctrl_init(void)
 	powerhal_adpf_close_fp = adpf_close;
 	powerhal_adpf_sent_hint_fp = adpf_sent_hint;
 	powerhal_adpf_set_threads_fp = adpf_set_threads;
-	boost_get_cmd_fp = _boost_get_cmd;
-
-	sf_hint_low_power_enabled = 0;
 
 	// DSU
 	powerhal_dsu_sport_mode_fp = dsu_sport_mode;

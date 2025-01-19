@@ -1484,8 +1484,6 @@ static int __init fpsgo_init(void)
 	fpsgo_wait_fstb_active_fp = fpsgo_wait_fstb_active;
 	fpsgo_notify_buffer_quota_fp = fpsgo_notify_buffer_quota;
 	fpsgo_get_pid_fp = fpsgo_get_pid;
-	register_get_fpsgo_is_boosting_fp = register_get_fpsgo_is_boosting;
-	unregister_get_fpsgo_is_boosting_fp = unregister_get_fpsgo_is_boosting;
 #if IS_ENABLED(CONFIG_MTK_PERF_IOCTL_MAGT)
 	magt2fpsgo_notify_target_fps_fp = fpsgo_notify_magt_target_fps;
 	magt2fpsgo_notify_dep_list_fp = fpsgo_notify_magt_dep_list;

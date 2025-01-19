@@ -62,7 +62,6 @@ struct _SESSION {
 };
 
 typedef int (*adpfCallback)(struct _SESSION *);
-extern void (*boost_get_cmd_fp)(int *cmd, int *value);
 extern int adpf_register_callback(adpfCallback callback);
 extern int adpf_unregister_callback(int idx);
 
