@@ -2472,7 +2472,8 @@ struct arm_smmu_domain *arm_smmu_domain_alloc(void)
 	spin_lock_init(&smmu_domain->devices_lock);
 
 	smmu_domain->ssid_domains = RB_ROOT;
-	spin_lock_init(&smmu_domain->ssid_lock);
+	spin_lock_init(&smmu_domain->ssid_domains_lock);
+	mutex_init(&smmu_domain->ssid_mutex);
 
 	return smmu_domain;
 }

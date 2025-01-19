@@ -883,7 +883,8 @@ struct arm_smmu_domain {
 	struct mmu_notifier		mmu_notifier;
 
 	struct rb_root			ssid_domains;
-	spinlock_t			ssid_lock;
+	spinlock_t			ssid_domains_lock;
+	struct mutex			ssid_mutex;
 };
 
 /* The following are exposed for testing purposes. */
