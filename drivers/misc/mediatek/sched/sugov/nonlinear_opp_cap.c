@@ -2311,6 +2311,12 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	unsigned long flt_util = 0, pelt_util_with_margin;
 	unsigned long util_ori = util;
 	u64 idle_time_stamp, wall_time_stamp;
+	struct rq *rq;
+	unsigned long rq_uclamp_min, rq_uclamp_max;
+
+	rq = cpu_rq(cpu);
+	rq_uclamp_min = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
+	rq_uclamp_max = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
 
 	if (data != NULL) {
 		sg_policy = (struct sugov_policy *)data;
@@ -2337,7 +2343,10 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	pelt_util_with_margin =
 		(util * READ_ONCE(adaptive_margin[first_cpu])) >> SCHED_CAPACITY_SHIFT;
 
-	util = max_t(int, pelt_util_with_margin, flt_util);
+	if(mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max, 0))
+		util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
+	else
+		util = max_t(int, pelt_util_with_margin, flt_util);
 
 	*next_freq = pd_get_util_freq(cpu, util);
 
