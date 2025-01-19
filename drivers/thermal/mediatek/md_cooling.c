@@ -362,7 +362,7 @@ static int init_md_cooling_device(struct device *dev, struct device_node *np, in
 		return -ENOMEM;
 
 	size = sizeof(md_cdev->name);
-	offset = snprintf(md_cdev->name, size, np->name);
+	offset = snprintf(md_cdev->name, size, "%s",np->name);
 
 	if (offset < 0)
 		goto init_fail;
