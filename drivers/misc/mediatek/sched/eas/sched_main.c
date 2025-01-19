@@ -21,6 +21,7 @@
 #include <sched/sched.h>
 #include "common.h"
 #include "eas_plus.h"
+#include "shortcut/compress.h"
 #include "sched_sys_common.h"
 #include "sugov/cpu_util.h"
 #include "sugov/cpufreq.h"
@@ -486,6 +487,17 @@ static long eas_ioctl_impl(struct file *filp,
 		.mask = 0
 	};
 
+	int rate = 0;
+	int cluster_idx = 0;
+	struct shortcut_compress_relax_enough_args shortcut_compress_relax_enough_cpu_args = {
+		.cluster_idx = 0,
+		.util = 0
+	};
+	struct shortcut_compress_relax_enough_args shortcut_compress_relax_enough_tsk_args = {
+		.cluster_idx = 0,
+		.util = 0
+	};
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	int grp_id;
 	struct gas_ctrl gas_ctrl_args = {
@@ -702,6 +714,52 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_to_user((void *)arg, &val, sizeof(unsigned int)))
 			return -1;
 		break;
+
+	case EAS_SET_SHORTCUT_COMPRESS_RATE:
+		if (easctl_copy_from_user(&rate, (void *)arg, sizeof(int)))
+			return -1;
+
+		set_shortcut_compress_rate(rate);
+		break;
+
+	case EAS_RESET_SHORTCUT_COMPRESS_RATE:
+		reset_shortcut_compress_rate();
+		break;
+
+	case EAS_SET_SHORTCUT_COMPRESS_RELAX_ENOUGH_CPU_UTIL:
+		if (easctl_copy_from_user(&shortcut_compress_relax_enough_cpu_args, (void *)arg,
+					sizeof(struct shortcut_compress_relax_enough_args)))
+			return -1;
+
+		set_shortcut_compress_relax_enough_cpu_util(
+				shortcut_compress_relax_enough_cpu_args.cluster_idx,
+				shortcut_compress_relax_enough_cpu_args.util);
+		break;
+
+	case EAS_RESET_SHORTCUT_COMPRESS_RELAX_ENOUGH_CPU_UTIL:
+		if (easctl_copy_from_user(&cluster_idx, (void *)arg, sizeof(int)))
+			return -1;
+
+		reset_shortcut_compress_relax_enough_cpu_util(cluster_idx);
+		break;
+
+	case EAS_SET_SHORTCUT_COMPRESS_RELAX_ENOUGH_TSK_UTIL:
+		if (easctl_copy_from_user(&shortcut_compress_relax_enough_tsk_args, (void *)arg,
+					sizeof(struct shortcut_compress_relax_enough_args)))
+			return -1;
+
+		set_shortcut_compress_relax_enough_tsk_util(
+				shortcut_compress_relax_enough_tsk_args.cluster_idx,
+				shortcut_compress_relax_enough_tsk_args.util);
+		break;
+
+	case EAS_RESET_SHORTCUT_COMPRESS_RELAX_ENOUGH_TSK_UTIL:
+		if (easctl_copy_from_user(&cluster_idx, (void *)arg, sizeof(int)))
+			return -1;
+
+		reset_shortcut_compress_relax_enough_tsk_util(cluster_idx);
+		break;
+
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
@@ -1133,6 +1191,8 @@ static int __init mtk_scheduler_init(void)
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	vip_init();
 #endif
+
+	compress_init();
 
 	init_skip_hiIRQ();
 	init_rt_aggre_preempt();

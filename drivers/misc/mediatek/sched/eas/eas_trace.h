@@ -2624,6 +2624,107 @@ TRACE_EVENT(sched_calc_pwr_eff_dpt_v2,
 		__entry->total_util_local,
 		__entry->IPC_scaling_factor)
 );
+
+TRACE_EVENT(sched_compress_to_cpu,
+	TP_PROTO(struct task_struct *p, int compress_cpu, int candidate_cpu, int order_index,
+		int tsk_util_clp, int cpu_util_tal, struct rq *rq,
+		int rate, int relax_enough_cpu_util, int relax_enough_tsk_util),
+
+	TP_ARGS(p, compress_cpu, candidate_cpu, order_index, tsk_util_clp, cpu_util_tal,
+		rq, rate, relax_enough_cpu_util, relax_enough_tsk_util),
+
+	TP_STRUCT__entry(
+		__field(int,  pid)
+		__field(int,  rt)
+		__field(int,  prio)
+		__field(int,  compress_cpu)
+		__field(int,  candidate_cpu)
+		__field(int,  order_index)
+		__field(int,  tsk_util_clp)
+		__field(int,  tsk_util_est)
+		__field(int,  tsk_util_avg)
+		__field(int,  tsk_runnable)
+		__field(int,  cpu_util_tal)
+		__field(int,  rq_cfs_util_est)
+		__field(int,  rq_cfs_util_avg)
+		__field(int,  rq_cfs_runnable_avg)
+		__field(int,  rq_rt_util_est)
+		__field(int,  rq_rt_util_avg)
+		__field(int,  rq_rt_runnable_avg)
+		__field(int,  rq_nr_running)
+		__field(int,  rq_cfs_nr_running)
+		__field(int,  rq_rt_nr_running)
+		__field(bool, sched_fair_runnable)
+		__field(bool, sched_rt_runnable)
+		__field(bool, rt_rq_is_runnable)
+		__field(int,  rt_queued)
+		__field(int,  rate)
+		__field(int,  relax_enough_cpu_util)
+		__field(int,  relax_enough_tsk_util)
+	),
+
+	TP_fast_assign(
+		__entry->pid                   = p->pid;
+		__entry->rt                    = rt_task(p);
+		__entry->prio                  = p->prio;
+		__entry->compress_cpu          = compress_cpu;
+		__entry->candidate_cpu         = candidate_cpu;
+		__entry->order_index           = order_index;
+		__entry->tsk_util_clp          = tsk_util_clp;
+		__entry->tsk_util_est          = READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
+		__entry->tsk_util_avg          = READ_ONCE(p->se.avg.util_avg);
+		__entry->tsk_runnable          = READ_ONCE(p->se.avg.runnable_avg);
+		__entry->cpu_util_tal          = cpu_util_tal;
+		__entry->rq_cfs_util_est       = READ_ONCE(rq->cfs.avg.util_est);
+		__entry->rq_cfs_util_avg       = READ_ONCE(rq->cfs.avg.util_avg);
+		__entry->rq_cfs_runnable_avg   = READ_ONCE(rq->cfs.avg.runnable_avg);
+		__entry->rq_rt_util_est        = READ_ONCE(rq->avg_rt.util_est);
+		__entry->rq_rt_util_avg        = READ_ONCE(rq->avg_rt.util_avg);
+		__entry->rq_rt_runnable_avg    = READ_ONCE(rq->avg_rt.runnable_avg);
+		__entry->rq_nr_running         = READ_ONCE(rq->nr_running);
+		__entry->rq_cfs_nr_running     = READ_ONCE(rq->cfs.nr_running);
+		__entry->rq_rt_nr_running      = READ_ONCE(rq->rt.rt_nr_running);
+		__entry->sched_fair_runnable   = sched_fair_runnable(rq);
+		__entry->sched_rt_runnable     = sched_rt_runnable(rq);
+		__entry->rt_rq_is_runnable     = rt_rq_is_runnable(&(rq->rt));
+		__entry->rt_queued             = READ_ONCE(rq->rt.rt_queued);
+		__entry->rate                  = rate;
+		__entry->relax_enough_cpu_util = relax_enough_cpu_util;
+		__entry->relax_enough_tsk_util = relax_enough_tsk_util;
+	),
+
+	TP_printk("pid=%5d rt=%d prio=%3d compress_cpu=%2d candidate_cpu=%2d order_index=%d tsk_util_clp=%4d tsk_util_est=%4d tsk_util_avg=%4d tsk_runnable=%4d cpu_util_tal=%4d rq_cfs_util_est=%4d rq_cfs_util_avg=%4d rq_cfs_runnable_avg=%4d rq_rt_util_est=%4d rq_rt_util_avg=%4d rq_rt_runnable_avg=%4d rq_nr_running=%2d rq_cfs_nr_running=%2d rq_rt_nr_running=%2d sched_fair_runnable=%d sched_rt_runnable=%d rt_rq_is_runnable=%d rt_queued=%d rate=%d relax_enough_cpu_util[%d]=%4d relax_enough_tsk_util[%d]=%4d",
+		__entry->pid,
+		__entry->rt,
+		__entry->prio,
+		__entry->compress_cpu,
+		__entry->candidate_cpu,
+		__entry->order_index,
+		__entry->tsk_util_clp,
+		__entry->tsk_util_est,
+		__entry->tsk_util_avg,
+		__entry->tsk_runnable,
+		__entry->cpu_util_tal,
+		__entry->rq_cfs_util_est,
+		__entry->rq_cfs_util_avg,
+		__entry->rq_cfs_runnable_avg,
+		__entry->rq_rt_util_est,
+		__entry->rq_rt_util_avg,
+		__entry->rq_rt_runnable_avg,
+		__entry->rq_nr_running,
+		__entry->rq_cfs_nr_running,
+		__entry->rq_rt_nr_running,
+		__entry->sched_fair_runnable,
+		__entry->sched_rt_runnable,
+		__entry->rt_rq_is_runnable,
+		__entry->rt_queued,
+		__entry->rate,
+		__entry->order_index,
+		__entry->relax_enough_cpu_util,
+		__entry->order_index,
+		__entry->relax_enough_tsk_util
+	)
+);
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

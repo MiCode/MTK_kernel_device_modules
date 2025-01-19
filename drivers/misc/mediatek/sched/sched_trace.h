@@ -285,42 +285,43 @@ TRACE_EVENT(sched_util_fits_cpu,
 );
 
 TRACE_EVENT(sched_find_best_candidates,
+	TP_PROTO(struct task_struct *tsk, struct cpumask *candidates, int policy,
+		int order_index, int end_index, bool is_vip, struct cpumask *allowed_cpu_mask),
 
-	TP_PROTO(struct task_struct *tsk, bool is_vip,
-		struct cpumask *candidates, int order_index, int end_index,
-		struct cpumask *allowed_cpu_mask),
-
-	TP_ARGS(tsk, is_vip, candidates, order_index, end_index, allowed_cpu_mask),
+	TP_ARGS(tsk, candidates, policy, order_index, end_index, is_vip, allowed_cpu_mask),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
-		__field(bool,  is_vip)
 		__field(long,  candidates)
+		__field(int,   policy)
 		__field(int,   order_index)
 		__field(int,   end_index)
-		__field(long,   active_mask)
-		__field(long,   pause_mask)
-		__field(long,   allowed_cpu_mask)
+		__field(bool,  is_vip)
+		__field(long,  active_mask)
+		__field(long,  pause_mask)
+		__field(long,  allowed_cpu_mask)
 		),
 
 	TP_fast_assign(
-		__entry->pid        = tsk->pid;
-		__entry->is_vip     = is_vip;
-		__entry->candidates = candidates->bits[0];
-		__entry->order_index   = order_index;
-		__entry->end_index     = end_index;
-		__entry->active_mask     = cpu_active_mask->bits[0];
-		__entry->pause_mask     = cpu_pause_mask->bits[0];
-		__entry->allowed_cpu_mask     = allowed_cpu_mask->bits[0];
+		__entry->pid              = tsk->pid;
+		__entry->candidates       = candidates->bits[0];
+		__entry->policy           = policy;
+		__entry->order_index      = order_index;
+		__entry->end_index        = end_index;
+		__entry->is_vip           = is_vip;
+		__entry->active_mask      = cpu_active_mask->bits[0];
+		__entry->pause_mask       = cpu_pause_mask->bits[0];
+		__entry->allowed_cpu_mask = allowed_cpu_mask->bits[0];
 		),
 
 	TP_printk(
-		"pid=%d is_vip=%d candidates=0x%lx order_index=%d end_index=%d active_mask=0x%lx pause_mask=0x%lx allowed_mask=0x%lx",
+		"pid=%d candidates=0x%lx policy=0x%08x order_index=%d end_index=%d is_vip=%d active_mask=0x%lx pause_mask=0x%lx allowed_mask=0x%lx",
 		__entry->pid,
-		__entry->is_vip,
 		__entry->candidates,
+		__entry->policy,
 		__entry->order_index,
 		__entry->end_index,
+		__entry->is_vip,
 		__entry->active_mask,
 		__entry->pause_mask,
 		__entry->allowed_cpu_mask)

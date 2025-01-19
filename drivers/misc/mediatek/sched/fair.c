@@ -13,6 +13,7 @@
 #include <linux/sched/clock.h>
 #include <linux/arch_topology.h>
 #include "eas/eas_plus.h"
+#include "eas/shortcut/compress.h"
 #include "sugov/cpu_util.h"
 #include "sugov/cpufreq.h"
 #include "sugov/dsu_interface.h"
@@ -2157,6 +2158,7 @@ struct find_best_candidates_parameters {
 	int order_index;
 	int end_index;
 	int reverse;
+	int shortcut;
 	int fbc_reason;
 	bool is_vip;
 	int vip_prio;
@@ -2194,6 +2196,17 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	int vip_prio = fbc_params->vip_prio;
 	struct cpumask vip_candidate = fbc_params->vip_candidate;
 	int dpt_v2_support = eenv->dpt_v2_support;
+
+	if (!latency_sensitive && !is_vip) {
+		int compress_cpu = compress_to_cpu(p, order_index);
+
+		if (compress_cpu >= 0) {
+			fbc_params->fbc_reason = fbc_params->shortcut = LB_SHORTCUT_COMPRESS;
+			cpumask_set_cpu(compress_cpu, candidates);
+
+			goto done;
+		}
+	}
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	is_vvip = prio_is_vip(vip_prio, VVIP);
@@ -2408,9 +2421,10 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	if ((cluster > end_index) && !cpumask_empty(cpus))
 		fbc_params->fbc_reason = LB_FAIL;
 
+done:
 	if (trace_sched_find_best_candidates_enabled())
-		trace_sched_find_best_candidates(p, is_vip, candidates, order_index, end_index,
-				allowed_cpu_mask);
+		trace_sched_find_best_candidates(p, candidates, fbc_params->fbc_reason,
+				order_index, end_index, is_vip, allowed_cpu_mask);
 }
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
@@ -2531,6 +2545,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	fbc_params.order_index = order_index;
 	fbc_params.end_index = end_index;
 	fbc_params.reverse = reverse;
+	fbc_params.shortcut = 0;
 	fbc_params.fbc_reason = 0;
 	fbc_params.is_vip = is_vip;
 	fbc_params.vip_prio = vip_prio;
@@ -2616,8 +2631,13 @@ unlock:
 
 	/* All cpu failed on !fit_capacity, use sys_max_spare_cap_cpu */
 	if (best_energy_cpu >= 0) {
+		if (fbc_params.shortcut > 0 && fbc_params.fbc_reason == fbc_params.shortcut)
+			select_reason = fbc_params.fbc_reason;
+		else
+			select_reason = LB_BEST_ENERGY_CPU | fbc_params.fbc_reason;
+
 		*new_cpu = best_energy_cpu;
-		select_reason = LB_BEST_ENERGY_CPU | fbc_params.fbc_reason;
+
 		goto done;
 	}
 

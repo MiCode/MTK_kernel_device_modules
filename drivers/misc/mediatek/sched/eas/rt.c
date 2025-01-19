@@ -11,6 +11,7 @@
 #include "eas_plus.h"
 #include "eas_trace.h"
 #include "vip.h"
+#include "shortcut/compress.h"
 #include <mt-plat/mtk_irq_mon.h>
 
 bool skip_hiIRQ_enable;
@@ -52,6 +53,7 @@ static inline void rt_energy_aware_output_init(struct rt_energy_aware_output *rt
 	rt_ea_output->rt_lowest_cpu = -1;
 	rt_ea_output->rt_lowest_prio = p->prio;
 	rt_ea_output->rt_lowest_pid = -1;
+	rt_ea_output->shortcut = 0;
 	rt_ea_output->select_reason = 0;
 	rt_ea_output->rt_aggre_preempt_enable = -1;
 }
@@ -412,6 +414,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	bool _rt_aggre_preempt_enable = rt_ea_output->rt_aggre_preempt_enable;
 	int dpt_v2_support = is_dpt_v2_support();
 	dpt_v2_cap_params_struct dpt_v2_cap_params[MAX_NR_CPUS];
+	int compress_cpu;
 
 	irq_log_store();
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
@@ -432,6 +435,15 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	/* pd not existed */
 	if (!pd)
 		goto unlock;
+
+	compress_cpu = compress_to_cpu(p, order_index);
+
+	if (compress_cpu >= 0) {
+		rt_ea_output->select_reason = rt_ea_output->shortcut = LB_SHORTCUT_COMPRESS;
+		cpumask_set_cpu(compress_cpu, &candidates);
+
+		goto target;
+	}
 
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		best_idle_exit_latency = UINT_MAX;
@@ -561,6 +573,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	if ((cluster > end_index) && target_pd)
 		rt_ea_output->select_reason = LB_FAIL;
 
+target:
 	weight = cpumask_weight(&candidates);
 	irq_log_store();
 
@@ -665,6 +678,15 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	irq_log_store();
 	mtk_rt_energy_aware_wake_cpu(p, lowest_mask, ret, &target, true, &rt_ea_output);
 
+	if (target >= 0) {
+		if (rt_ea_output.shortcut > 0 && rt_ea_output.select_reason == rt_ea_output.shortcut) {
+			select_reason = rt_ea_output.select_reason;
+			*target_cpu = target;
+
+			goto unlock;
+		}
+	}
+
 	if (target != -1 &&
 		(may_not_preempt || p->prio < cpu_rq(target)->rt.highest_prio.curr)) {
 		*target_cpu = target;
@@ -732,6 +754,15 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowes
 	mtk_rt_energy_aware_wake_cpu(p, &avail_lowest_mask, ret, &target, false, &rt_ea_output);
 
 	irq_log_store();
+
+	if (target >= 0) {
+		if (rt_ea_output.select_reason == rt_ea_output.shortcut) {
+			select_reason = rt_ea_output.select_reason;
+			*lowest_cpu = target;
+
+			goto out;
+		}
+	}
 
 	/* best energy cpu found */
 	if (target != -1) {

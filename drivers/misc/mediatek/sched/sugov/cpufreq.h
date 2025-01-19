@@ -311,6 +311,7 @@ extern int get_curr_task_uclamp_ctrl(void);
 #define DPT_CALL_PD_GET_CPU_OPP 25
 #define DPT_CALL_MTK_EM_CPU_ENERGY 26
 #define DPT_CALL_INIT_UCLAMP_INVOLVE 27
+#define DPT_CALL_COMPRESS_INIT 28
 
 #define DPT_CALL_DEBUG1 98
 #define DPT_CALL_DEBUG2 99
