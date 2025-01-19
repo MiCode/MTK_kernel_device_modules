@@ -44,7 +44,6 @@
 LIST_HEAD(hmp_domains);
 
 /*TODO: find the magic bias number */
-#define TOP_APP_GROUP_ID	40
 #define TURBO_PID_COUNT		8
 #define INHERITED_RWSEM_COUNT	4
 #define RENDER_THREAD_NAME	"RenderThread"
@@ -119,6 +118,7 @@ static DEFINE_MUTEX(enforced_qualified_lock);
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 static struct task_struct *inherited_rwsem_owners[INHERITED_RWSEM_COUNT] = {NULL};
+static struct cgroup_subsys_state *top_app_css;
 
 static bool is_turbo_task(struct task_struct *p);
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem);
@@ -2036,18 +2036,13 @@ module_param_cb(unset_turbo_pid, &unset_turbo_pid_param_ops,
 		&unset_turbo_pid_param, 0644);
 MODULE_PARM_DESC(unset_turbo_pid, "unset turbo task by pid");
 
-static inline int get_st_group_id(struct task_struct *task)
+static inline bool is_top_app(struct task_struct *task)
 {
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	const int subsys_id = cpu_cgrp_id;
-	struct cgroup *grp;
-
-	rcu_read_lock();
-	grp = task_cgroup(task, subsys_id);
-	rcu_read_unlock();
-	return grp->kn->id;
+	guard(rcu)();
+	return top_app_css == task_css(task, cpu_cgrp_id);
 #else
-	return 0;
+	return false;
 #endif
 }
 
@@ -2148,7 +2143,7 @@ static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct task_
 	if (ret)
 		return;
 
-	if (get_st_group_id(p) == TOP_APP_GROUP_ID) {
+	if (is_top_app(p)) {
 		if (!cgroup_check_set_turbo(p))
 			return;
 		add_turbo_list(p);
@@ -2235,6 +2230,20 @@ void init_hmp_domains(void)
 	hmp_cpu_mask_setup();
 }
 
+static void init_top_app_css(void)
+{
+	struct cgroup_subsys_state *root_css = &root_task_group.css;
+	struct cgroup_subsys_state *css = root_css;
+
+	guard(rcu)();
+	css_for_each_child(css, root_css)
+		if (css && css->cgroup && css->cgroup->kn && css->cgroup->kn->name &&
+		    !strcmp(css->cgroup->kn->name, "top-app")) {
+			top_app_css = css;
+			return;
+		}
+}
+
 void hmp_cpu_mask_setup(void)
 {
 	struct hmp_domain *domain;
@@ -2296,7 +2305,7 @@ static void sys_set_turbo_task(struct task_struct *p)
 	if (!launch_turbo_enable())
 		return;
 
-	if (get_st_group_id(p) != TOP_APP_GROUP_ID)
+	if (!is_top_app(p))
 		return;
 
 	if (strcmp(p->comm, RENDER_THREAD_NAME))
@@ -2512,6 +2521,7 @@ static int __init init_task_turbo(void)
 	}
 
 	init_hmp_domains();
+	init_top_app_css();
 	task_turbo_select_task_rq_fair_hook = task_turbo_select_task_rq_fair;
 
 	/* register tracepoint of scheduler_tick */
