@@ -504,6 +504,8 @@ struct venc_enc_param {
 	unsigned int lowlatencywfd;
 	unsigned int slice_count;
 	unsigned int slbc_addr;
+	unsigned int slbc_cpu_used_performance;
+	unsigned int slbc_request_extra;
 	char *set_vcp_buf;
 	unsigned int wpp_mode;
 	unsigned int low_latency_mode;
@@ -811,6 +813,8 @@ struct mtk_vcodec_ctx {
 	int use_slbc_extra;
 	unsigned int slbc_addr;
 	unsigned int slbc_addr_extra;
+	unsigned int slbc_cpu_used_performance;
+	unsigned int slbc_request_extra;
 	int sysram_enable;
 #if ENABLE_FENCE
 	struct sync_timeline *p_timeline_obj;

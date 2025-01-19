@@ -1650,6 +1650,8 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->num_b_frame = enc_params->num_b_frame;
 	param->slbc_ready = ctx->use_slbc;
 	param->slbc_addr = ctx->slbc_addr;
+	param->slbc_cpu_used_performance = ctx->slbc_cpu_used_performance;
+	param->slbc_request_extra = ctx->slbc_request_extra;
 	param->i_qp = enc_params->i_qp;
 	param->p_qp = enc_params->p_qp;
 	param->b_qp = enc_params->b_qp;
@@ -2912,7 +2914,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	}
 
 	//release slb for cpu used more perf than venc
-	ctx->enc_params.slbc_cpu_used_performance =
+	ctx->slbc_cpu_used_performance =
 		(isSLB_CPU_USED_PERFORMANCE_USAGE(q_data_src->visible_width, q_data_src->visible_height,
 		ctx->enc_params.framerate_num/ctx->enc_params.framerate_denom, ctx->dev->enc_slb_cpu_used_perf) &&
 		(ctx->dev->enc_slb_cpu_used_perf > 0) && (ctx->enc_params.operationrate < 120));
@@ -2925,11 +2927,11 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		slb_ex_res_thresh = ctx->dev->enc_slb_extra_res_thresh[1];
 	}
 
-	ctx->enc_params.slbc_request_extra =
+	ctx->slbc_request_extra =
 	(isENCODE_REQUEST_SLB_EXTRA(q_data_src->visible_width, q_data_src->visible_height, slb_ex_res_thresh) &&
 	(ctx->dev->enc_slb_extra > 0));
 
-	if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_cpu_used_performance == 1)) {
+	if ((ctx->use_slbc == 1) && (ctx->slbc_cpu_used_performance == 1)) {
 		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release, %p\n", &ctx->sram_data);
 		slbc_release(&ctx->sram_data);
 		ctx->use_slbc = 0;
@@ -2937,7 +2939,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release ref %d\n", ctx->sram_data.ref);
 		if (ctx->sram_data.ref <= 0)
 			atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
-	} else if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_request_extra == 1)) {
+	} else if ((ctx->use_slbc == 1) && (ctx->slbc_request_extra == 1)) {
 		ctx->sram_data_extra.uid = UID_MM_VENC_EXT;
 		ctx->sram_data_extra.type = TP_BUFFER;
 		ctx->sram_data_extra.size = 0;
@@ -2993,7 +2995,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		if (ctx->enc_params.slbc_encode_performance)
 			atomic_inc(&mtk_venc_slb_cb.perf_used_cnt);
 	} else {
-		if (!ctx->enc_params.slbc_cpu_used_performance) {
+		if (!ctx->slbc_cpu_used_performance) {
 			atomic_inc(&mtk_venc_slb_cb.later_cnt);
 			ctx->later_cnt_once = true;
 		}
@@ -3005,7 +3007,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
 		atomic_read(&mtk_venc_slb_cb.later_cnt),
 		ctx->later_cnt_once,
-		ctx->enc_params.slbc_cpu_used_performance);
+		ctx->slbc_cpu_used_performance);
 
 	if (ret) {
 		mtk_v4l2_err("venc_if_set_param failed=%d", ret);

@@ -811,7 +811,7 @@ int vcu_enc_encode(struct venc_vcu_inst *vcu, unsigned int bs_mode,
 			atomic_read(&mtk_venc_slb_cb.later_cnt),
 			vcu->ctx->later_cnt_once);
 	} else if (!vcu->ctx->use_slbc && atomic_read(&mtk_venc_slb_cb.request_slbc) &&
-		!vcu->ctx->enc_params.slbc_cpu_used_performance) {
+		!vcu->ctx->slbc_cpu_used_performance) {
 		if (slbc_request(&vcu->ctx->sram_data) >= 0) {
 			vcu->ctx->use_slbc = 1;
 			vcu->ctx->slbc_addr = (unsigned int)(unsigned long)

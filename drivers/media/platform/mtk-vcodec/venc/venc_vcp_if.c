@@ -1451,7 +1451,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			atomic_read(&mtk_venc_slb_cb.later_cnt),
 			inst->ctx->later_cnt_once);
 	} else if (!inst->ctx->use_slbc && atomic_read(&mtk_venc_slb_cb.request_slbc) &&
-		!inst->ctx->enc_params.slbc_cpu_used_performance) {
+		!inst->ctx->slbc_cpu_used_performance) {
 		if (slbc_request(&inst->ctx->sram_data) >= 0) {
 			inst->ctx->use_slbc = 1;
 			inst->ctx->slbc_addr = (unsigned int)(unsigned long)
@@ -2138,6 +2138,7 @@ static int venc_vcp_set_param(unsigned long handle,
 		inst->vsi->config.num_b_frame = enc_prm->num_b_frame;
 		inst->vsi->config.slbc_ready = enc_prm->slbc_ready;
 		inst->vsi->config.slbc_addr = enc_prm->slbc_addr;
+		inst->vsi->config.slbc_cpu_used_performance = enc_prm->slbc_cpu_used_performance;
 		inst->vsi->config.i_qp = enc_prm->i_qp;
 		inst->vsi->config.p_qp = enc_prm->p_qp;
 		inst->vsi->config.b_qp = enc_prm->b_qp;
