@@ -2819,7 +2819,6 @@ static long usb_offload_ioctl(struct file *fp,
 		ret = send_init_ipi_msg_to_adsp(xhci_mem);
 		print_all_memory();
 		if (ret || (value == 0)) {
-			xhci_remove_secondary_interrupter_(uodev->xhci->main_hcd, uodev->ir_2nd);
 			uodev->is_streaming = false;
 			uodev->tx_streaming = false;
 			uodev->rx_streaming = false;
