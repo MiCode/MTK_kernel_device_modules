@@ -361,4 +361,5 @@ struct share_buck_info {
 extern struct share_buck_info share_buck;
 extern int get_share_buck(void);
 extern int sched_cgroup_state(struct task_struct *p, int subsys_id);
+extern int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask);
 #endif

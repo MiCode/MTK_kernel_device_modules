@@ -1144,3 +1144,17 @@ int set_util_est_ctrl(bool enable)
 	sysctl_util_est = enable;
 	return 0;
 }
+
+int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask)
+{
+	struct cpumask *kernel_allowed_mask;
+	int ret;
+
+	if (!p)
+		return -EINVAL;
+	kernel_allowed_mask = &((struct mtk_task *) p->android_vendor_data1)->kernel_allowed_mask;
+	cpumask_copy(kernel_allowed_mask, new_mask);
+	ret = set_cpus_allowed_ptr(p, new_mask);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(set_cpus_allowed_ptr_by_kernel);

@@ -112,6 +112,7 @@ struct mtk_task {
 	struct flt_task_struct flt_task;
 	struct cpuqos_task_struct cpuqos_task;
 	struct mig_task_struct mig_task;
+	struct cpumask kernel_allowed_mask;
 };
 
 struct soft_affinity_tg {

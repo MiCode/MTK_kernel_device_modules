@@ -382,6 +382,26 @@ static void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 	}
 }
 
+static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
+	struct affinity_context *ctx, bool *skip_user_ptr)
+{
+	struct cpumask *kernel_allowed_mask = &((struct mtk_task *) p->android_vendor_data1)->kernel_allowed_mask;
+	struct rq *rq = task_rq(p);
+
+	// not set or invalid cpu mask
+	if (cpumask_empty(kernel_allowed_mask))
+		return;
+
+	if (p->user_cpus_ptr &&
+		!(ctx->flags & (SCA_USER | SCA_MIGRATE_ENABLE | SCA_MIGRATE_DISABLE)) &&
+		cpumask_and(rq->scratch_mask, ctx->new_mask, p->user_cpus_ptr)) {
+		*skip_user_ptr = true;
+		cpumask_copy(rq->scratch_mask, kernel_allowed_mask);
+		ctx->new_mask = rq->scratch_mask;
+		}
+
+}
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 static void sched_irq_mon_init(void)
 {
@@ -1151,6 +1171,10 @@ static int __init mtk_scheduler_init(void)
 	ret = register_trace_android_vh_setscheduler_uclamp(mtk_setscheduler_uclamp, NULL);
 	if (ret)
 		pr_info("register mtk_setscheduler_uclamp hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_set_cpus_allowed_ptr(mtk_set_cpus_allowed_ptr, NULL);
+	if (ret)
+		pr_info("register mtk_set_cpus_allowed_ptr hooks failed, returned %d\n", ret);
 
 out_wq:
 	return ret;
