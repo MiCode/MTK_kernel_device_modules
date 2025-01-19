@@ -99,6 +99,20 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "emi-mpu-test",
+    srcs = [
+        "emi-mpu-test.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "emi-slb",
     srcs = [
         "emi-slb.c",
