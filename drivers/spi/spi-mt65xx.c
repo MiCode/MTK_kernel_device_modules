@@ -878,8 +878,14 @@ static void mtk_spi_set_cs(struct spi_device *spi, bool enable)
 	u32 reg_val;
 	struct mtk_spi *mdata = spi_controller_get_devdata(spi->controller);
 
+	/* For sw_cs, the action of the underlying driver to reverse
+	 * the enable polarity is redundant, so we removed it.
+	 * For hw_cs, it cannot be removed because there is a reset
+	 * action in cs_deassert.
+	 */
 	if (spi->mode & SPI_CS_HIGH)
-		enable = !enable;
+		if (!mdata->dev_comp->sw_cs)
+			enable = !enable;
 
 	reg_val = readl(mdata->base + SPI_CMD_REG);
 	if (mdata->dev_comp->sw_cs) {
