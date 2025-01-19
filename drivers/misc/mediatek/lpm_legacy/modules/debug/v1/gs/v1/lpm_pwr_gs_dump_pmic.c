@@ -209,17 +209,22 @@ int lpm_gs_pmic_cmp(int user)
 		if (!strcmp((*_pmic)->pwr_domain, "6363"))
 			regmap = pmic_get_regmap("pmic");
 		else if (!strcmp((*_pmic)->pwr_domain, "6366") ||
-			 !strcmp((*_pmic)->pwr_domain, "6365"))
+			 !strcmp((*_pmic)->pwr_domain, "6365")||
+			 !strcmp((*_pmic)->pwr_domain, "6359P"))
 			regmap = pmic_get_regmap("pwrap");
 		else if (!strcmp((*_pmic)->pwr_domain, "6368") ||
 			 !strcmp((*_pmic)->pwr_domain, "6373"))
 			regmap = pmic_get_regmap("second_pmic");
-		else if (!strcmp((*_pmic)->pwr_domain, "6315"))
+		else if (!strcmp((*_pmic)->pwr_domain, "6315")||
+			 !strcmp((*_pmic)->pwr_domain, "6315-1") ||
+			 !strcmp((*_pmic)->pwr_domain, "6315-2")||
+			 !strcmp((*_pmic)->pwr_domain, "6315-3"))
 			regmap = pmic_get_regmap("mt6315");
 
-		if (IS_ERR(regmap) || !regmap)
+		if (IS_ERR(regmap) || !regmap){
+			pr_info("%s regmap not found : %s",__func__, (*_pmic)->pwr_domain);
 			continue;
-
+		}
 		generic_dump_pmic((*_pmic)->pwr_domain, i,
 				  &((*_pmic)->user[user]), regmap);
 	}
