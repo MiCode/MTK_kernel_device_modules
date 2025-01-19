@@ -40,6 +40,8 @@ static int cpuqos_ipi_cb(unsigned int, void *, void *, unsigned int);
 #define CPUQOS_IPI	0
 #endif
 
+/* Todo implement mcupm driver pdata*/
+struct platform_device *mcupm_pdev;
 spinlock_t mcupm_mbox_lock[MCUPM_MBOX_TOTAL];
 
 int mcupm_plt_ackdata;
@@ -185,42 +187,33 @@ phys_addr_t mcupm_reserve_mem_get_phys(unsigned int id)
 	if (id >= NUMS_MCUPM_MEM_ID) {
 		pr_info("[MCUPM] no reserve memory for 0x%x", id);
 		return 0;
-	}
-	if(!has_reserved_memory) {
-		pr_info("[MCUPM] no reserve memory for 0x%x", id);
-		return 0;
-	}
-	return mcupm_reserve_mblock[id].start_phys;
+	} else
+		return mcupm_reserve_mblock[id].start_phys;
 }
+EXPORT_SYMBOL_GPL(mcupm_reserve_mem_get_phys);
 
 phys_addr_t mcupm_reserve_mem_get_virt(unsigned int id)
 {
 	if (id >= NUMS_MCUPM_MEM_ID) {
 		pr_info("[MCUPM] no reserve memory for 0x%x", id);
 		return 0;
-	}
-	if(!has_reserved_memory) {
-		pr_info("[MCUPM] no reserve memory for 0x%x", id);
-		return 0;
-	}
-	return (phys_addr_t)mcupm_reserve_mblock[id].start_virt;
+	} else
+		return (phys_addr_t)mcupm_reserve_mblock[id].start_virt;
 }
+EXPORT_SYMBOL_GPL(mcupm_reserve_mem_get_virt);
 
 phys_addr_t mcupm_reserve_mem_get_size(unsigned int id)
 {
 	if (id >= NUMS_MCUPM_MEM_ID) {
 		pr_info("[MCUPM] no reserve memory for 0x%x", id);
 		return 0;
-	}
-	if(!has_reserved_memory) {
-		pr_info("[MCUPM] no reserve memory for 0x%x", id);
-		return 0;
-	}
-	return mcupm_reserve_mblock[id].size;
+	} else
+		return mcupm_reserve_mblock[id].size;
 }
+EXPORT_SYMBOL_GPL(mcupm_reserve_mem_get_size);
 
 #if defined(MODULE)
-int mcupm_assign_memory_block(void)
+static int mcupm_assign_memory_block(void)
 {
 	int ret = 0;
 	unsigned int id;
@@ -261,7 +254,7 @@ int mcupm_assign_memory_block(void)
 
 	return ret;
 }
-int mcupm_map_memory_region(void)
+static int mcupm_map_memory_region(void)
 {
 	struct device_node *rmem_node;
 	struct reserved_mem *rmem;
@@ -318,7 +311,7 @@ int mcupm_map_memory_region(void)
 	return 0;
 }
 #else
-int __init mcupm_reserve_mem_of_init(struct reserved_mem *rmem)
+static int __init mcupm_reserve_mem_of_init(struct reserved_mem *rmem)
 {
 	unsigned int id;
 	phys_addr_t accumlate_memory_size = 0;
@@ -371,7 +364,7 @@ int __init mcupm_reserve_mem_of_init(struct reserved_mem *rmem)
 RESERVEDMEM_OF_DECLARE(mcupm_reservedmem, MCUPM_MEM_RESERVED_KEY,
 	mcupm_reserve_mem_of_init);
 
-int mcupm_reserve_memory_init(void)
+static int mcupm_reserve_memory_init(void)
 {
 	unsigned int id;
 	phys_addr_t accumlate_memory_size;
@@ -418,13 +411,10 @@ int mcupm_reserve_memory_init(void)
 #endif
 #endif
 
-/* MCUPM HELPER */
+/* MCUPM HELPER. User is apmcu_sspm_mailbox_read/write*/
 int mcupm_mbox_read(unsigned int mbox, unsigned int slot, void *buf,
 			unsigned int len)
 {
-	if(get_mcupms_ipidev_number() > 0)
-		return -EINVAL;
-
 	if (WARN_ON(len > (mcupm_mboxdev.pin_send_table[mbox]).msg_size)) {
 		pr_debug("mbox:%u warning\n", mbox);
 		return -EINVAL;
@@ -433,6 +423,7 @@ int mcupm_mbox_read(unsigned int mbox, unsigned int slot, void *buf,
 	return mtk_mbox_read(&mcupm_mboxdev, mbox, slot,
 				buf, len * MBOX_SLOT_SIZE);
 }
+EXPORT_SYMBOL_GPL(mcupm_mbox_read);
 
 int mcupm_mbox_write(unsigned int mbox, unsigned int slot, void *buf,
 			unsigned int len)
@@ -440,9 +431,6 @@ int mcupm_mbox_write(unsigned int mbox, unsigned int slot, void *buf,
 	unsigned long flags;
 	unsigned int status;
 	int ret;
-
-	if(get_mcupms_ipidev_number() > 0)
-		return -EINVAL;
 
 	if (WARN_ON(len > (mcupm_mboxdev.pin_send_table[mbox]).msg_size) ||
 		WARN_ON(!buf)) {
@@ -468,6 +456,13 @@ int mcupm_mbox_write(unsigned int mbox, unsigned int slot, void *buf,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(mcupm_mbox_write);
+
+void *get_mcupm_ipidev(void)
+{
+	return &mcupm_ipidev;
+}
+EXPORT_SYMBOL_GPL(get_mcupm_ipidev);
 
 #if CPUQOS_IPI
 #define UBUS_BASE   0x0C800000
@@ -578,10 +573,13 @@ static int post_mcupm_set_emi_mpu(void)
 }
 #endif
 
-int mcupm_device_probe(struct platform_device *pdev)
+static int mcupm_device_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct device *dev = &pdev->dev;
+
+	mcupm_pdev = pdev;
+
 
 	if (of_property_read_bool(dev->of_node, "skip-logger"))
 		skip_logger = true;
@@ -622,29 +620,92 @@ int mcupm_device_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	ret = mcupm_timesync_init();
+	if (ret) {
+		pr_info("MCUPM timesync init fail\n");
+		return ret;
+	}
 #if CPUQOS_IPI
 	mcupm_plat_init();
 #endif
 
 	return 0;
 }
-void mcupm_device_remove(struct platform_device *pdev)
+static void mcupm_device_remove(struct platform_device *pdev)
 {
 	//Todo implement remove ipi interface and memory
 	mcupm_plt_module_exit();
-	return;
 }
 
 #if IS_ENABLED(CONFIG_PM)
-int mt6779_mcupm_suspend(struct device *dev)
+static int mt6779_mcupm_suspend(struct device *dev)
 {
 	mcupm_timesync_suspend();
 	return 0;
 }
 
-int mt6779_mcupm_resume(struct device *dev)
+static int mt6779_mcupm_resume(struct device *dev)
 {
 	mcupm_timesync_resume();
 	return 0;
 }
+
+static const struct dev_pm_ops mt6779_mcupm_dev_pm_ops = {
+	.suspend = mt6779_mcupm_suspend,
+	.resume  = mt6779_mcupm_resume,
+};
 #endif
+
+static const struct of_device_id mcupm_of_match[] = {
+	{ .compatible = "mediatek,mcupm", },
+	{},
+};
+
+static const struct platform_device_id mcupm_id_table[] = {
+	{ "mcupm", 0},
+	{ },
+};
+
+static struct platform_driver mtk_mcupm_driver = {
+	.shutdown = NULL,
+	.suspend = NULL,
+	.resume = NULL,
+	.probe = mcupm_device_probe,
+	.remove = mcupm_device_remove,
+	.driver = {
+		.name = "mcupm",
+		.owner = THIS_MODULE,
+		.of_match_table = mcupm_of_match,
+#if IS_ENABLED(CONFIG_PM)
+		.pm = &mt6779_mcupm_dev_pm_ops,
+#endif
+
+	},
+	.id_table = mcupm_id_table,
+};
+
+/*
+ * driver initialization entry point
+ */
+static int __init mcupm_module_init(void)
+{
+	int ret = 0;
+
+	pr_info("[MCUPM] mcupm module init.\n");
+
+	ret = platform_driver_register(&mtk_mcupm_driver);
+
+	return ret;
+}
+
+static void __exit mcupm_module_exit(void)
+{
+    //Todo release resource
+	pr_info("[MCUPM] mcupm module exit.\n");
+}
+
+MODULE_DESCRIPTION("MEDIATEK Module MCUPM driver");
+MODULE_LICENSE("GPL v2");
+
+module_init(mcupm_module_init);
+module_exit(mcupm_module_exit);

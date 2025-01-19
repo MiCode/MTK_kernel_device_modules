@@ -6,8 +6,6 @@
 #define __MCUPM_DEFINE_H__
 
 #include <linux/types.h>
-#include <linux/poll.h>
-
 
 /* MCUPM MBOX */
 #define MCUPM_MBOX_SLOT_SIZE		0x4
@@ -109,7 +107,7 @@ extern bool has_reserved_memory;
 extern bool skip_logger;
 
 extern ssize_t mcupm_log_read(char __user *data, size_t len);
-extern unsigned int mcupm_log_poll(struct file *file, poll_table *wait);
+extern unsigned int mcupm_log_poll(void);
 extern int mcupm_mbox_write(unsigned int mbox, unsigned int slot, void *buf,
 				unsigned int len);
 extern int mcupm_mbox_read(unsigned int mbox, unsigned int slot, void *buf,

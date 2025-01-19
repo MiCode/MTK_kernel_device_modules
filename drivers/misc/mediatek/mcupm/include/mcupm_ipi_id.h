@@ -25,31 +25,9 @@
 #define CH_S_14         14
 #define CH_S_15         15
 
-enum mtk_multi_mcupm {
-	mst,
-	slv0,
-	slv1,
-	max_mcupm,
-};
-enum multi_mcupm_chan_id {
-	CHAN_PLATFORM,
-	CHAN_CPU_DVFS,
-	CHAN_FHCTL,
-	CHAN_SUSPEND,
-	CHAN_MCDI,
-	CHAN_IPIR_C_MET,
-	CHAN_IPIS_C_MET,
-	CHAN_EEMSN,
-	CHAN_WLC,
-	MCUPM_CHAN_MAX,
-};
-
 extern struct mtk_mbox_device mcupm_mboxdev;
 extern struct mtk_ipi_device mcupm_ipidev;
 
 void *get_mcupm_ipidev(void);
-u32 get_mcupms_ipidev_number(void);
-#define GET_MCUPM_IPIDEV(t) (t < get_mcupms_ipidev_number() ? (&(((struct mtk_ipi_device *)get_mcupm_ipidev())[t])) : NULL)
-#define GET_MCUPM_MBOXDEV(t) (t < get_mcupms_ipidev_number() ? (((struct mtk_ipi_device *)get_mcupm_ipidev())[t].mbdev) : NULL)
 
 #endif /* __MCUPM_IPI_ID_H__ */
