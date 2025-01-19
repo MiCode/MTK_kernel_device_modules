@@ -196,7 +196,7 @@ EXPORT_SYMBOL_GPL(soc_init_aud_intf);
 static int soc_alloc_sram(struct usb_offload_buffer *buf, unsigned int size)
 {
 	int ret = 0;
-	struct mtk_audio_usb_mem *audio_sram;
+	struct mtk_audio_usb_mem *audio_sram = NULL;
 
 	if (!aud_intf || !aud_intf->ops->allocate_sram)
 		return -EOPNOTSUPP;

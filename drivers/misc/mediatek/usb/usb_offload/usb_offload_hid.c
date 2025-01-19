@@ -41,12 +41,12 @@ MODULE_PARM_DESC(hid_tr_switch, "Transfer Ring Switch");
 
 #define hid_dbg(fmt, args...) do { \
 		if (hid_debug > 0) \
-			pr_info("HID, %s(%d) " fmt, __func__, __LINE__, ## args); \
+			pr_info("UO, [HID] %s(%d) " fmt, __func__, __LINE__, ## args); \
 	} while (0)
 #define hid_info(fmt, args...) \
-	pr_info("HID, %s(%d) " fmt, __func__, __LINE__, ## args)
+	pr_info("UO, [HID] %s(%d) " fmt, __func__, __LINE__, ## args)
 #define hid_err(fmt, args...) \
-	pr_info("HID ERROR, %s(%d) " fmt, __func__, __LINE__, ## args)
+	pr_info("UO, [HID ERROR] %s(%d) " fmt, __func__, __LINE__, ## args)
 
 /* sync_flag bit defined*/
 #define HID_NEED_OFFLOAD    0
@@ -761,7 +761,7 @@ int usb_offload_hid_start(void)
 	struct xhci_ring *ring;
 	struct usb_offload_buffer *buf;
 	bool need_offload;
-	int i;
+	int i, ret;
 
 	if (hid_disable_offload)
 		return 0;
@@ -795,14 +795,25 @@ int usb_offload_hid_start(void)
 			hid_ring_lock(hid, "<AP Suspend>");
 			if (!buf || hid_tr_switch) {
 				hid_info("hid transfer ring isn't under managed\n");
-				xhci_realloc_hid_ring(hid, uodev->adv_lowpwr ?
+				ret = xhci_realloc_hid_ring(hid, uodev->adv_lowpwr ?
 						USB_OFFLOAD_MEM_SRAM_ID : USB_OFFLOAD_MEM_DRAM_ID);
-			} else
-				xhci_hid_ep_ctx_control(hid, out_ep_ctx, true);
-			hid_ring_unlock(hid, "<AP Suspend>");
+				if (ret)
+					hid_err("fail to re-allocate hid ring\n");
+			} else {
+				ret = xhci_hid_ep_ctx_control(hid, out_ep_ctx, true);
+				if (ret)
+					hid_err("fail to re-configure hid ep\n");
+			}
 
-			/* inform dsp to start hid offloading */
-			usb_offload_prepare_send_urb_msg(hid, true, AUDIO_IPI_MSG_NEED_ACK);
+			if (ret == 0) {
+				hid_ring_unlock(hid, "<AP Suspend>");
+				/* inform dsp to start hid offloading */
+				usb_offload_prepare_send_urb_msg(hid, true, AUDIO_IPI_MSG_NEED_ACK);
+			} else {
+				clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
+				hid_ring_unlock(hid, "<Fail to Start>");
+			}
+
 		} else
 			hid_ep_unlock(hid, "<AP Suspend>");
 	}
