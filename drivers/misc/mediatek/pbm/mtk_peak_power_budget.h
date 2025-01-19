@@ -80,16 +80,6 @@ struct ppb {
 	unsigned int cg_budget_cnt;
 };
 
-struct hpt {
-	unsigned int vsys_budget;
-	unsigned int cpub_sf_lv1;
-	unsigned int cpub_sf_lv2;
-	unsigned int cpum_sf_lv1;
-	unsigned int cpum_sf_lv2;
-	unsigned int gpu_sf_lv1;
-	unsigned int gpu_sf_lv2;
-};
-
 struct power_budget_t {
 	unsigned int version;
 	int hpt_max_lv;

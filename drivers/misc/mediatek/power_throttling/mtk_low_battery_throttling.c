@@ -990,7 +990,8 @@ static void psy_handler(struct work_struct *work)
 			if (aging_stage == 0)
 				ag_offset = 0;
 			else
-				ag_offset = lbat_data->aging_volts[aging_stage-1];
+				ag_offset = lbat_data->aging_volts[lbat_data->aging_max_stage * temp_stage +
+					aging_stage-1];
 
 			thd_info = &lbat_data->lbat_thd[INTR_1][temp_stage];
 			for (i = 0; i < thd_info->thd_volts_size; i++) {
@@ -1008,7 +1009,8 @@ static void psy_handler(struct work_struct *work)
 				if (aging_stage == 0)
 					ag_offset = 0;
 				else
-					ag_offset = lbat_data->aging_volts[aging_stage-1];
+					ag_offset = lbat_data->aging_volts[lbat_data->aging_max_stage * temp_stage +
+						aging_stage-1];
 
 				for (i = 0; i < thd_info->thd_volts_size; i++) {
 					thd_info->ag_thd_volts[i] = thd_info->thd_volts[i] + ag_offset;
@@ -1185,12 +1187,12 @@ static int low_battery_thd_setting(struct platform_device *pdev, struct lbat_thl
 			priv->aging_max_stage = 0;
 		}
 
-		priv->aging_volts = devm_kmalloc_array(&pdev->dev, priv->aging_max_stage * priv->temp_max_stage,
+		priv->aging_volts = devm_kmalloc_array(&pdev->dev, priv->aging_max_stage * (priv->temp_max_stage + 1),
 			sizeof(u32), GFP_KERNEL);
 		if (!priv->aging_volts)
 			return -ENOMEM;
 
-		for (i = 0; i < priv->temp_max_stage; i++) {
+		for (i = 0; i <= priv->temp_max_stage; i++) {
 			ret = snprintf(str, THD_VOLTS_LENGTH, "bat%d-aging-volts-t%d", priv->bat_type, i);
 			if (ret < 0)
 				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
