@@ -4552,7 +4552,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		//bkrs-reg = <0x1e800250>;
 		//vlp-base = <0x1c000000>;
 		//spm-base = <0x1c001000>;
-		//mm-voter-base = <0x1ec45130>;
+		mm-voter-base = <0x31a80130>;
 		mm-mtcmos-base = <0x31b50084>;
 		mm-mtcmos-mask = <0xc0000000>;
 		//mminfra-ao-base;
