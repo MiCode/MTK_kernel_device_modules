@@ -90,6 +90,50 @@ static struct iova_cache_data *get_iova_cache(struct mtk_sec_heap_buffer *buffer
 	return NULL;
 }
 
+void free_iova_cache(struct mtk_sec_heap_buffer *buffer,
+		     struct device *iommu_dev, int is_region_base)
+{
+	struct iova_cache_data *cache_data, *temp_data;
+	struct sg_table *table;
+	struct mtk_heap_dev_info dev_info;
+	unsigned long attrs;
+	int skip_unmap, j = 0;
+
+	list_for_each_entry_safe(cache_data, temp_data, &buffer->iova_caches, iova_caches) {
+		for (j = 0; j < MTK_M4U_DOM_NR_MAX; j++) {
+			if (!cache_data->mapped[j])
+				continue;
+
+		        table = cache_data->mapped_table[j];
+			dev_info = cache_data->dev_info[j];
+			attrs = dev_info.map_attrs | DMA_ATTR_SKIP_CPU_SYNC;
+			skip_unmap = 0;
+			if (is_region_base) {
+				if (smmu_v3_enable)
+					skip_unmap = get_smmu_tab_id(dev_info.dev) ==
+						     get_smmu_tab_id(iommu_dev);
+				else
+					skip_unmap = dev_is_normal_region(dev_info.dev);
+			}
+
+			if (skip_unmap)
+				continue;
+
+			pr_debug("%s: free tab:%llu, dom:%d iova:0x%lx, dev:%s\n",
+				 __func__, cache_data->tab_id, j,
+				 (unsigned long)sg_dma_address(table->sgl),
+				 dev_name(dev_info.dev));
+			dma_unmap_sgtable(dev_info.dev, table,
+					  dev_info.direction, attrs);
+			cache_data->mapped[j] = false;
+			sg_free_table(table);
+			kfree(table);
+		}
+		list_del(&cache_data->iova_caches);
+		kfree(cache_data);
+	}
+}
+
 bool region_heap_is_aligned(struct dma_heap *heap)
 {
 	if (strstr(dma_heap_get_name(heap), "aligned"))

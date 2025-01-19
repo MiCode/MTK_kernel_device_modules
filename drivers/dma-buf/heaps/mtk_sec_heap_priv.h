@@ -127,5 +127,8 @@ int copy_sec_sg_table(struct sg_table *source, struct sg_table *dest);
 int fill_heap_sgtable(struct secure_heap_region *sec_heap,
 		struct mtk_sec_heap_buffer *buffer);
 
+void free_iova_cache(struct mtk_sec_heap_buffer *buffer,
+		struct device *iommu_dev,int is_region_base);
+
 #endif /* _MTK_SEC_HEAP_PRIV_H */
 

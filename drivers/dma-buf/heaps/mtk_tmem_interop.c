@@ -649,8 +649,7 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 
 void tmem_page_free(struct dma_buf *dmabuf)
 {
-	struct iova_cache_data *cache_data, *temp_data;
-	int j, ret = -EINVAL;
+	int ret = -EINVAL;
 	struct secure_heap_page *sec_heap;
 	struct mtk_sec_heap_buffer *buffer = NULL;
 
@@ -666,29 +665,7 @@ void tmem_page_free(struct dma_buf *dmabuf)
 	}
 
 	/* remove all domains' sgtable */
-	list_for_each_entry_safe(cache_data, temp_data, &buffer->iova_caches, iova_caches) {
-		for (j = 0; j < MTK_M4U_DOM_NR_MAX; j++) {
-			struct sg_table *table = cache_data->mapped_table[j];
-			struct mtk_heap_dev_info dev_info = cache_data->dev_info[j];
-			unsigned long attrs =
-				dev_info.map_attrs | DMA_ATTR_SKIP_CPU_SYNC;
-
-			if (!cache_data->mapped[j])
-				continue;
-			pr_debug(
-				"%s: free tab:%llu, region:%d iova:0x%lx, dev:%s\n",
-				__func__, cache_data->tab_id, j,
-				(unsigned long)sg_dma_address(table->sgl),
-				dev_name(dev_info.dev));
-			dma_unmap_sgtable(dev_info.dev, table,
-					  dev_info.direction, attrs);
-			cache_data->mapped[j] = false;
-			sg_free_table(table);
-			kfree(table);
-		}
-		list_del(&cache_data->iova_caches);
-		kfree(cache_data);
-	}
+	free_iova_cache(buffer, NULL, 0);
 
 	trusted_mem_page_based_free(sec_heap->tmem_type, buffer->sec_handle);
 
@@ -852,39 +829,13 @@ free_buffer:
 TMEM_PRIV int region_free(struct secure_heap_region *sec_heap,
 		struct mtk_sec_heap_buffer *buffer)
 {
-	struct iova_cache_data *cache_data, *temp_data;
 	struct device *iommu_dev;
-	int j, ret = 0;
 	u64 sec_handle = 0;
+	int ret = 0;
 
 	iommu_dev = sec_heap->iommu_dev;
 	/* remove all domains' sgtable */
-	list_for_each_entry_safe(cache_data, temp_data, &buffer->iova_caches, iova_caches) {
-		for (j = 0; j < MTK_M4U_DOM_NR_MAX; j++) {
-			struct sg_table *table = cache_data->mapped_table[j];
-			struct mtk_heap_dev_info dev_info =
-				cache_data->dev_info[j];
-			unsigned long attrs =
-				dev_info.map_attrs | DMA_ATTR_SKIP_CPU_SYNC;
-
-			if (!cache_data->mapped[j] ||
-			    (!smmu_v3_enable && dev_is_normal_region(dev_info.dev)) ||
-			    (smmu_v3_enable &&
-			    (get_smmu_tab_id(dev_info.dev) == get_smmu_tab_id(iommu_dev))))
-				continue;
-			pr_debug("%s: free tab:%llu, dom:%d iova:0x%lx, dev:%s\n",
-				 __func__, cache_data->tab_id, j,
-				 (unsigned long)sg_dma_address(table->sgl),
-				 dev_name(dev_info.dev));
-			dma_unmap_sgtable(dev_info.dev, table,
-					  dev_info.direction, attrs);
-			cache_data->mapped[j] = false;
-			sg_free_table(table);
-			kfree(table);
-		}
-		list_del(&cache_data->iova_caches);
-		kfree(cache_data);
-	}
+	free_iova_cache(buffer, iommu_dev, 1);
 
 	sec_handle = buffer->sec_handle;
 	ret = trusted_mem_api_unref(sec_heap->tmem_type, sec_handle,
