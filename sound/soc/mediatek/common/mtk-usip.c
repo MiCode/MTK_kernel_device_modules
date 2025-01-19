@@ -228,30 +228,31 @@ static int usip_mmap(struct file *file, struct vm_area_struct *area)
 }
 static void usip_get_addr(void)
 {
-#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
-	int size_o = 0;
-	phys_addr_t phys_addr;
-
-	phys_addr_t srw_base;
-	unsigned int srw_size;
-	phys_addr_t r_rw_base;
-	unsigned int r_rw_size;
-
-	phys_addr = get_smem_phy_start_addr(0, SMEM_USER_RAW_USIP, &size_o);
-	if (phys_addr == 0) {
-		pr_info("%s(), cannot get emi addr from ccci", __func__);
-		usip.memory_ready = false;
-	} else {
-		usip.memory_ready = true;
-
-		get_md_resv_mem_info(&r_rw_base, &r_rw_size, &srw_base, &srw_size);
-		pr_info("%s(), 0x%lx %d 0x%lx %d 0x%lx", __func__,
-			(unsigned long)r_rw_base, r_rw_size, (unsigned long)srw_base, srw_size, (unsigned long)phys_addr);
-
-		usip.memory_size = size_o;
-		usip.addr_phy = phys_addr;
-	}
-#endif
+/* #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+ *      int size_o = 0;
+ *	phys_addr_t phys_addr;
+ *
+ *	phys_addr_t srw_base;
+ *	unsigned int srw_size;
+ *	phys_addr_t r_rw_base;
+ *	unsigned int r_rw_size;
+ *
+ *        phys_addr = get_smem_phy_start_addr(0, SMEM_USER_RAW_USIP, &size_o);
+ *	if (phys_addr == 0) {
+ *		pr_info("%s(), cannot get emi addr from ccci", __func__);
+ *		usip.memory_ready = false;
+ *	} else {
+ *		usip.memory_ready = true;
+ *
+ *		get_md_resv_mem_info(&r_rw_base, &r_rw_size, &srw_base, &srw_size);
+ *		pr_info("%s(), 0x%lx %d 0x%lx %d 0x%lx", __func__,
+ *                    (unsigned long)r_rw_base, r_rw_size, (unsigned long)srw_base, srw_size, (unsigned long)phys_addr);
+ *
+ *		usip.memory_size = size_o;
+ *		usip.addr_phy = phys_addr;
+ *	}
+ *#endif
+ */
 }
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT) || IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 static void usip_send_emi_info_to_dsp_ble(void)

@@ -24,7 +24,7 @@
 #include <audio_playback_msg_id.h>
 #include <audio_ipi_platform.h>
 #include <audio_messenger_ipi.h>
-#include <../common/mtk-base-afe.h>
+#include "../common/mtk-base-afe.h"
 
 #ifndef _MTK_SCP_AUDIO_BASE_H_
 #define _MTK_SCP_AUDIO_BASE_H_

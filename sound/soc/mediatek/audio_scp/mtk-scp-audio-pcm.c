@@ -469,7 +469,7 @@ int mtk_reinit_scp_audio(void)
 					     0, 0, NULL);
 		pr_info("%s scene = %d\n", __func__, scene);
 	}
-	return 0;
+	return ret;
 }
 
 int scp_audio_pcm_recover_event(struct notifier_block *this,
@@ -1136,7 +1136,7 @@ static int mtk_scp_audio_pcm_copy_ul(struct snd_pcm_substream *substream,
 
 static int mtk_scp_audio_pcm_copy(struct snd_soc_component *component,
 		struct snd_pcm_substream *substream, int channel,
-		snd_pcm_uframes_t pos, void __user *buf,
+		snd_pcm_uframes_t pos, struct iov_iter *buf,
 		unsigned long bytes)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -1152,7 +1152,7 @@ static int mtk_scp_audio_pcm_copy(struct snd_soc_component *component,
 
 	if (bytes <= 0) {
 		pr_info(
-			"error %s channel = %d pos = %lu count = %lu bytes = %d\n",
+			"error %s channel = %d pos = %lu count = %lu bytes = %lu\n",
 			__func__, channel, pos, bytes, bytes);
 		return -1;
 	}

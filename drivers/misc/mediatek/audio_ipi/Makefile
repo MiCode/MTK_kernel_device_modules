@@ -22,6 +22,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_scp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_scp
 #endif
 
 
@@ -38,10 +39,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_scp
 # audio_ipi-objs += common/audio_ipi_dma.o
 # audio_ipi-objs += common/audio_ringbuf.o
 # audio_ipi-objs += common/audio_ipi_platform_common.o
-
-#ifeq ($(CONFIG_DEVICE_MODULES_VHOST_ADSP),y)
-# audio_ipi-objs += common/audio_ipi_auto.o
-#endif
 
 ### platform codes
 # IPI_PLATFORM_VERSION = v4

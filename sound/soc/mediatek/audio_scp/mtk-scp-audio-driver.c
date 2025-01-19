@@ -103,7 +103,7 @@ static int scp_audio_dev_probe(struct platform_device *pdev)
 	struct mtk_scp_audio_base *scp_audio;
 	struct scp_audio_task_attr task_attr;
 	int ret = 0;
-	struct device *dev;
+	//struct device *dev;
 
 	ret = of_property_read_u32_array(pdev->dev.of_node,
 					 "scp-spk-process-enable",
@@ -135,7 +135,7 @@ static int scp_audio_dev_probe(struct platform_device *pdev)
 	scp_audio->scp_audio_hardware = &scp_audio_hardware;
 
 	scp_audio->dev = &pdev->dev;
-	dev = scp_audio->dev;
+	//dev = scp_audio->dev;
 
 	scp_audio->request_dram_resource = scp_audio_dram_request;
 	scp_audio->release_dram_resource = scp_audio_dram_release;

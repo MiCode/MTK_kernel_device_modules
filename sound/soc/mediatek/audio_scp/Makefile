@@ -14,13 +14,13 @@
 # MTK Platform Support
 
 # scp audio include path
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/audio_ipi/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/include
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/scp/rv
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv
 
 # platform include path
-subdir-ccflags-y += -I$(srctree)/sound/soc/mediatek/common
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
 
 # object code
 mtk-scp-audiocommon-objs := scp_audio_ipi.o audio_mbox.o

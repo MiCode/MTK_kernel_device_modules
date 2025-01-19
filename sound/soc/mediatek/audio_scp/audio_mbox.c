@@ -178,7 +178,7 @@ int audio_mbox_send(void *msg, unsigned int wait)
 	}
 EXIT:
 	if (ret && ret != MBOX_PIN_BUSY)
-		pr_err("%s() fail, mbox error = %d\n", __func__, pin_send->mbox, ret);
+		pr_info("%s() fail,mbox %d, mbox error = %d\n", __func__, pin_send->mbox, ret);
 
 	/* TODO : maybe move to audio_ipi_queue */
 	scp_awake_unlock((void *)SCP_A_ID);
