@@ -1064,6 +1064,9 @@ void arm_smmu_get_ste_used(const __le64 *ent, __le64 *used_bits)
 	/* Mediatek ste mpam cfg */
 	used_bits[4] |= cpu_to_le64(STRTAB_STE_4_PARTID);
 	used_bits[5] |= cpu_to_le64(STRTAB_STE_5_PMG);
+	used_bits[1] |= cpu_to_le64(STRTAB_STE_1_DCP | STRTAB_STE_1_MEMATTR |
+				    STRTAB_STE_1_MTCFG | STRTAB_STE_1_ALLOCCFG |
+				    STRTAB_STE_1_SHCFG);
 }
 EXPORT_SYMBOL_IF_KUNIT(arm_smmu_get_ste_used);
 
@@ -1627,17 +1630,10 @@ void arm_smmu_make_cdtable_ste(struct arm_smmu_ste *target,
 	memset(target, 0, sizeof(*target));
 	target->data[0] = cpu_to_le64(
 		STRTAB_STE_0_V |
+		FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_S1_TRANS) |
 		FIELD_PREP(STRTAB_STE_0_S1FMT, cd_table->s1fmt) |
 		(cd_table->cdtab_dma & STRTAB_STE_0_S1CTXPTR_MASK) |
 		FIELD_PREP(STRTAB_STE_0_S1CDMAX, cd_table->s1cdmax));
-
-	/* Mediatek, set bypass s1 */
-	if (!test_bit(IOMMU_DEV_FEAT_BYPASS_S1, master->features))
-		target->data[0] |= cpu_to_le64(
-			FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_S1_TRANS));
-	else
-		target->data[0] |= cpu_to_le64(
-			FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_BYPASS));
 
 	target->data[1] = cpu_to_le64(
 		FIELD_PREP(STRTAB_STE_1_S1DSS, s1dss) |
@@ -2949,7 +2945,6 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	};
 	struct arm_smmu_master *master;
 	struct arm_smmu_cd *cdptr;
-	const char *prop_str;
 
 	if (!fwspec)
 		return -ENOENT;
@@ -2959,6 +2954,10 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 
 	dev_info(smmu->dev, "[%s] dev:%s, stage:%d\n",
 		 __func__, dev_name(dev), smmu_domain->stage);
+
+	/* Specific to Mediatek */
+	if (smmu && smmu->impl && smmu->impl->smmu_dev_setup_features)
+		smmu->impl->smmu_dev_setup_features(master);
 
 	ret = arm_smmu_rpm_get(smmu);
 	if (ret) {
@@ -3014,18 +3013,6 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
 	if (ret) {
 		mutex_unlock(&arm_smmu_asid_lock);
 		goto out_rpm_put;
-	}
-
-	/* Mediatek, set bypass s1 */
-	if (!of_property_read_string(dev->of_node, "mtk,smmu-dma-mode",
-				     &prop_str)) {
-		dev_info(smmu->dev, "[%s] smmu-dma-mode found for dev:%s prop_str=%s",
-			 __func__, dev_name(dev), prop_str);
-		if (!strcmp(prop_str, "bypass")) {
-			set_bit(IOMMU_DEV_FEAT_BYPASS_S1, master->features);
-			dev_info(smmu->dev, "[%s] set_bit bypass for dev:%s",
-				 __func__, dev_name(dev));
-		}
 	}
 
 	switch (smmu_domain->stage) {
@@ -3265,6 +3252,12 @@ static int arm_smmu_attach_dev_identity(struct iommu_domain *domain,
 	struct arm_smmu_master *master = dev_iommu_priv_get(dev);
 
 	arm_smmu_make_bypass_ste(master->smmu, &ste);
+
+	/* Specific to Mediatek */
+	if (master->smmu && master->smmu->impl &&
+	    master->smmu->impl->smmu_dev_setup_features)
+		master->smmu->impl->smmu_dev_setup_features(master);
+
 	arm_smmu_attach_dev_ste(domain, dev, &ste, STRTAB_STE_1_S1DSS_BYPASS);
 	return 0;
 }

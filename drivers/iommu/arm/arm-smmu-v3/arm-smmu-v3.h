@@ -298,6 +298,17 @@ struct arm_smmu_ste {
 
 #define STRTAB_STE_5_PMG		GENMASK_ULL(7, 0)
 
+/* Specific to Mediatek */
+#define STRTAB_STE_1_DCP		(1UL << 17)
+#define STRTAB_STE_1_DCP_EN		0x1
+#define STRTAB_STE_1_MEMATTR		GENMASK_ULL(35, 32)
+#define STRTAB_STE_1_MEMATTR_IWBOWB	0xf
+#define STRTAB_STE_1_MTCFG		(1UL << 36)
+#define STRTAB_STE_1_MTCFG_OVR		0x1
+#define STRTAB_STE_1_ALLOCCFG		GENMASK_ULL(40, 37)
+#define STRTAB_STE_1_ALLOCCFG_RAWA	0xe
+#define STRTAB_STE_1_SHCFG_ISH		3UL
+
 /*
  * Context descriptors.
  *
@@ -476,7 +487,9 @@ struct arm_smmu_cd {
  *
  */
 #define IOMMU_DEV_FEAT_BYPASS_S1		(MTK_IOMMU_DEV_FEAT_BASE + 0)
-#define MASTER_FEATURE_COUNT_EXTENDED		(MTK_IOMMU_DEV_FEAT_BASE + 1)
+#define IOMMU_DEV_FEAT_DCP			(MTK_IOMMU_DEV_FEAT_BASE + 1)
+#define IOMMU_DEV_FEAT_STE_COHERENT		(MTK_IOMMU_DEV_FEAT_BASE + 2)
+#define MASTER_FEATURE_COUNT_EXTENDED		(MTK_IOMMU_DEV_FEAT_BASE + 3)
 
 enum pri_resp {
 	PRI_RESP_DENY = 0,
@@ -946,6 +959,7 @@ struct arm_smmu_impl {
 	phys_addr_t (*iova_to_phys_ssid)(struct device *dev, dma_addr_t iova,
 					 u32 ssid);
 	u64 (*get_tab_id_ssid)(struct device *dev, u32 ssid);
+	void (*smmu_dev_setup_features)(struct arm_smmu_master *master);
 };
 
 struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);

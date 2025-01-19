@@ -13,6 +13,7 @@
 #include <linux/err.h>
 #include <linux/interrupt.h>
 #include <linux/iopoll.h>
+#include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 
@@ -1303,6 +1304,90 @@ static int set_dev_bypass_smmu_s1(struct device *dev, bool enable)
 	return 0;
 }
 
+static u64 set_ste_val(u64 ste_val, u64 mask, u64 setting)
+{
+	u64 new_ste_val;
+	new_ste_val = ste_val;
+	new_ste_val &= ~mask;
+
+	if (setting)
+		new_ste_val |= FIELD_PREP(mask, setting);
+
+	return new_ste_val;
+}
+
+static int set_dev_feature_enable(struct arm_smmu_master *master,
+				  unsigned int mtk_iommu_feat, __le64 *dst_ste,
+				  bool enable)
+{
+	u64 val;
+	u32 ste_entry_idx;
+
+	if (!master || !dst_ste)
+		return -EINVAL;
+
+	switch (mtk_iommu_feat) {
+	case IOMMU_DEV_FEAT_BYPASS_S1:
+		ste_entry_idx = 0;
+		val = le64_to_cpu(dst_ste[ste_entry_idx]);
+		if (enable)
+			val = set_ste_val(val, STRTAB_STE_0_CFG,
+					  STRTAB_STE_0_CFG_BYPASS);
+		else
+			val = set_ste_val(val, STRTAB_STE_0_CFG,
+					  STRTAB_STE_0_CFG_S1_TRANS);
+		dst_ste[ste_entry_idx] = cpu_to_le64(val);
+		pr_info("%s bypass-s1 feature:0x%x, dev:%s 0x%llx\n", __func__,
+			mtk_iommu_feat, dev_name(master->dev), val);
+		break;
+	case IOMMU_DEV_FEAT_DCP:
+		ste_entry_idx = 1;
+		val = le64_to_cpu(dst_ste[ste_entry_idx]);
+		if (enable)
+			val = set_ste_val(val, STRTAB_STE_1_DCP,
+					  STRTAB_STE_1_DCP_EN);
+		else
+			val = set_ste_val(val, STRTAB_STE_1_DCP, 0);
+		dst_ste[ste_entry_idx] = cpu_to_le64(val);
+		pr_info("%s dcp feature:0x%x, dev:%s 0x%llx\n", __func__,
+			mtk_iommu_feat, dev_name(master->dev), val);
+		break;
+	case IOMMU_DEV_FEAT_STE_COHERENT:
+		ste_entry_idx = 1;
+		val = le64_to_cpu(dst_ste[ste_entry_idx]);
+		if (enable) {
+			val = set_ste_val(val, STRTAB_STE_1_MEMATTR,
+					  STRTAB_STE_1_MEMATTR_IWBOWB);
+			val = set_ste_val(val, STRTAB_STE_1_MTCFG,
+					  STRTAB_STE_1_MTCFG_OVR);
+			val = set_ste_val(val, STRTAB_STE_1_ALLOCCFG,
+					  STRTAB_STE_1_ALLOCCFG_RAWA);
+			val = set_ste_val(val, STRTAB_STE_1_SHCFG,
+					  STRTAB_STE_1_SHCFG_ISH);
+		} else {
+			val = set_ste_val(val, STRTAB_STE_1_MEMATTR, 0);
+			val = set_ste_val(val, STRTAB_STE_1_MTCFG, 0);
+			val = set_ste_val(val, STRTAB_STE_1_ALLOCCFG, 0);
+			val = set_ste_val(val, STRTAB_STE_1_SHCFG, 0);
+		}
+		dst_ste[ste_entry_idx] = cpu_to_le64(val);
+		pr_info("%s ste-coherent feature:0x%x, dev:%s, 0x%llx\n",
+			__func__, mtk_iommu_feat, dev_name(master->dev), val);
+		break;
+	default:
+		pr_info("%s invalid feature:0x%x, dev:%s\n", __func__,
+			mtk_iommu_feat, dev_name(master->dev));
+		return -EINVAL;
+	}
+
+	if (enable)
+		set_bit(mtk_iommu_feat, master->features);
+	else
+		clear_bit(mtk_iommu_feat, master->features);
+
+	return 0;
+}
+
 static int mtk_smmu_def_domain_type(struct device *dev)
 {
 	const char *propname = "mtk,smmu-dma-mode";
@@ -1399,6 +1484,56 @@ static int mtk_smmu_dev_disable_feature(struct device *dev,
 	}
 }
 
+static void mtk_smmu_dev_setup_features(struct arm_smmu_master *master)
+{
+	struct arm_smmu_device *smmu;
+	struct device *dev;
+	const char *prop_str;
+	bool dma_disable = 0;
+
+	dev = master->dev;
+	smmu = master->smmu;
+	if (!smmu || !dev)
+		return;
+
+	/* Mediatek, set bypass s1 */
+	if (!of_property_read_string(dev->of_node, "mtk,smmu-dma-mode",
+				     &prop_str)) {
+		dev_info(smmu->dev,
+			 "[%s] smmu-dma-mode found for dev:%s prop_str=%s",
+			 __func__, dev_name(dev), prop_str);
+		if (!strcmp(prop_str, "bypass")) {
+			set_bit(IOMMU_DEV_FEAT_BYPASS_S1, master->features);
+			dev_info(smmu->dev, "[%s] set_bit bypass for dev:%s",
+				 __func__, dev_name(dev));
+		}
+		if (!strcmp(prop_str, "disable"))
+			dma_disable = 1;
+	}
+
+	/*
+	 * DCP Directed Cache Prefetch
+	 * DCP=1 is for enabling write stash into cpu cache behavior
+	 */
+	if (of_property_read_bool(dev->of_node, "mtk,smmu-dcp")) {
+		dev_info(smmu->dev, "[%s] smmu-dcp found for dev:%s", __func__,
+			 dev_name(dev));
+		set_bit(IOMMU_DEV_FEAT_DCP, master->features);
+	}
+
+	/*
+	 * STE coherent hint: for TBU of this sid,
+	 * memory attribute is cacheable (IWBOWB,RAWA) + shareable(ISH)
+	 */
+	if (dma_disable && of_dma_is_coherent(dev->of_node)) {
+		dev_info(
+			smmu->dev,
+			"[%s] dma-mode=disable and dma-coherent found for dev:%s",
+			__func__, dev_name(dev));
+		set_bit(IOMMU_DEV_FEAT_STE_COHERENT, master->features);
+	}
+}
+
 static void mtk_smmu_setup_features(struct arm_smmu_master *master, u32 sid,
 				    __le64 *dst)
 {
@@ -1407,6 +1542,7 @@ static void mtk_smmu_setup_features(struct arm_smmu_master *master, u32 sid,
 	__le64 *steptr;
 	u64 val;
 	bool s1_vld;
+	int i;
 
 	if (!master || !master->smmu || !dst)
 		return;
@@ -1440,6 +1576,17 @@ static void mtk_smmu_setup_features(struct arm_smmu_master *master, u32 sid,
 		val = FIELD_GET(STRTAB_STE_5_PMG, le64_to_cpu(steptr[5]));
 		dst[5] &=  cpu_to_le64(~(STRTAB_STE_5_PMG));
 		dst[5] |= cpu_to_le64(FIELD_PREP(STRTAB_STE_5_PMG, val));
+	}
+
+	/* Setup dev features in STE for TBU */
+	for (i = 0;
+	     i < (MASTER_FEATURE_COUNT_EXTENDED - MTK_IOMMU_DEV_FEAT_BASE);
+	     i++) {
+		if (test_bit((MTK_IOMMU_DEV_FEAT_BASE + i), master->features)) {
+			set_dev_feature_enable(master,
+					       (MTK_IOMMU_DEV_FEAT_BASE + i),
+					       dst, true);
+		}
 	}
 }
 
@@ -2483,6 +2630,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.unmap_sg_ssid = mtk_smmu_unmap_sg_ssid,
 	.iova_to_phys_ssid = mtk_smmu_iova_to_phys_ssid,
 	.get_tab_id_ssid = mtk_smmu_get_tab_id_ssid,
+	.smmu_dev_setup_features = mtk_smmu_dev_setup_features,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
