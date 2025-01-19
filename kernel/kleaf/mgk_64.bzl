@@ -1596,6 +1596,7 @@ mgk_64_platform_device_modules = {
     "drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6993.ko": "mt6993",
     "drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko": "mt6991",
     "drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6993.ko": "mt6993",
+    "drivers/gpu/mediatek/gpu_bm/mtk_gpu_qos_bringup.ko": "mt6789 mt6855",
     "drivers/interconnect/mediatek/mmqos-mt6886.ko": "mt6886",
     "drivers/interconnect/mediatek/mmqos-mt6893.ko": "mt6893",
     "drivers/interconnect/mediatek/mmqos-mt6897.ko": "mt6897",
