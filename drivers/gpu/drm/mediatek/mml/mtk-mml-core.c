@@ -1884,9 +1884,6 @@ static void core_taskdone_cb(struct cmdq_cb_data data)
 	else
 		mml_mmp(irq_done, MMPROFILE_FLAG_PULSE, task->job.jobid, pipe);
 
-	if (task->config->task_ops->signal_irq)
-		task->config->task_ops->signal_irq(task);
-
 	core_taskdone_check(task);
 	mml_trace_end();
 }
