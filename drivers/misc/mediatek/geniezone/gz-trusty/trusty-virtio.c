@@ -522,15 +522,14 @@ err_new_virtqueue:
 static int trusty_virtio_find_vqs(struct virtio_device *vdev,
 				  unsigned int nvqs,
 				  struct virtqueue *vqs[],
-				  vq_callback_t *callbacks[],
-				  const char *const names[],
-				  const bool *ctx, struct irq_affinity *desc)
+				  struct virtqueue_info vqs_info[],
+				  struct irq_affinity *desc)
 {
 	uint i;
 	int ret;
 
 	for (i = 0; i < nvqs; i++) {
-		vqs[i] = _find_vq(vdev, i, callbacks[i], names[i]);
+		vqs[i] = _find_vq(vdev, i, vqs_info[i].callback, vqs_info[i].name);
 		if (IS_ERR(vqs[i])) {
 			ret = PTR_ERR(vqs[i]);
 			_del_vqs(vdev);
@@ -1115,7 +1114,7 @@ err_thread_create:
 	return ret;
 }
 
-static int trusty_virtio_remove(struct platform_device *pdev)
+static void trusty_virtio_remove(struct platform_device *pdev)
 {
 	struct trusty_ctx *tctx = platform_get_drvdata(pdev);
 
@@ -1140,7 +1139,6 @@ static int trusty_virtio_remove(struct platform_device *pdev)
 
 	/* free context */
 	kfree(tctx);
-	return 0;
 }
 
 static const struct of_device_id trusty_of_match[] = {

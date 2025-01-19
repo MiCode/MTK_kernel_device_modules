@@ -1983,8 +1983,7 @@ static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 	int err, i;
 	struct virtio_device *vdev = vds->vdev;
 	struct virtqueue **vqs;
-	vq_callback_t **vq_cbs;
-	char **vq_names;
+	struct virtqueue_info **vqs_info;
 	int allvq_num;
 
 	allvq_num = vds->rxvq_num + vds->txvq_num;
@@ -1995,15 +1994,17 @@ static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 	if (!vqs)
 		return -ENOMEM;
 
-	vq_cbs = devm_kcalloc(&vdev->dev, allvq_num, sizeof(vq_callback_t *),
-			      GFP_KERNEL);
-	if (!vq_cbs)
+	vqs_info = devm_kcalloc(&vdev->dev, allvq_num, sizeof(struct virtqueue_info *),
+				GFP_KERNEL);
+	if (!vqs_info)
 		return -ENOMEM;
 
-	vq_names = devm_kcalloc(&vdev->dev, allvq_num, sizeof(char *),
+	for (int i = 0; i < allvq_num; i++) {
+        vqs_info[i] = devm_kcalloc(&vdev->dev, 1, sizeof(struct virtqueue_info),
 				GFP_KERNEL);
-	if (!vq_names)
-		return -ENOMEM;
+        if (!vqs_info[i])
+            return -ENOMEM;
+    }
 
 	/* set rx vqueue name & callback */
 	err = snprintf(vds->rxvq_name, MAX_DEV_NAME_LEN, "%s-rxvq-0",
@@ -2013,8 +2014,8 @@ static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 			 __func__, err);
 	}
 
-	vq_names[0] = vds->rxvq_name;
-	vq_cbs[0] = _rxvq_cb;
+	vqs_info[0]->name = vds->rxvq_name;
+	vqs_info[0]->callback = _rxvq_cb;
 
 	/* set tx vqueue name & callback */
 	vds->txvq_name = devm_kcalloc(&vdev->dev, vds->txvq_num,
@@ -2033,13 +2034,12 @@ static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 				 __func__, err);
 		}
 
-		vq_names[txvq_start_idx + i] = vds->txvq_name[i];
-		vq_cbs[txvq_start_idx + i] = _txvq_cb;
+		vqs_info[txvq_start_idx + i]->name = vds->txvq_name[i];
+		vqs_info[txvq_start_idx + i]->callback = _txvq_cb;
 	}
 
 	/* find tx virtqueues (rx and tx and in this order) */
-	err = vdev->config->find_vqs(vdev, allvq_num, vqs, vq_cbs,
-				     (const char **)vq_names, NULL, NULL);
+	err = vdev->config->find_vqs(vdev, allvq_num, vqs, *vqs_info, NULL);
 	if (err)
 		return err;
 
@@ -2055,8 +2055,9 @@ static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 
 	/* release temporary arrays */
 	devm_kfree(&vdev->dev, vqs);
-	devm_kfree(&vdev->dev, vq_cbs);
-	devm_kfree(&vdev->dev, vq_names);
+	for (int i = 0; i < allvq_num; i++)
+		devm_kfree(&vdev->dev, vqs_info[i]);
+	devm_kfree(&vdev->dev, vqs_info);
 
 	return 0;
 }
