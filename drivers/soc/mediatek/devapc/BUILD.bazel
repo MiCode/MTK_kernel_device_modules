@@ -57,3 +57,75 @@ define_mgk_ddk_ko(
         "DBG_ENABLE=1",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "device-apc-mt6768",
+    out = "device-apc-mt6768.ko",
+    srcs = [
+        "devapc-mt6768.c"
+    ],
+    hdrs = glob([
+        "**/devapc-mt6768.h",
+        "**/devapc-mtk-common.h"
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version)
+    ],
+    local_defines = [
+        "DBG_ENABLE=1"
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "device-apc-mt6895",
+    out = "device-apc-mt6895.ko",
+    srcs = [
+        "devapc-mt6895.c"
+    ],
+    hdrs = glob([
+        "**/devapc-mt6895.h",
+        "**/devapc-mtk-multi-ao.h"
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version)
+    ],
+    local_defines = [
+        "DBG_ENABLE=1"
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "device-apc-mt6991",
+    out = "device-apc-mt6991.ko",
+    srcs = [
+        "devapc-mt6991.c"
+    ],
+    hdrs = glob([
+        "**/devapc-mt6991.h",
+        "**/devapc-mtk-multi-ao.h"
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version)
+    ],
+    local_defines = [
+        "DBG_ENABLE=1"
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "device-apc-mt6993",
+    out = "device-apc-mt6993.ko",
+    srcs = [
+        "devapc-mt6993.c"
+    ],
+    hdrs = glob([
+        "**/devapc-mt6993.h",
+        "**/devapc-mtk-multi-ao.h"
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version)
+    ],
+    local_defines = [
+        "DBG_ENABLE=1"
+    ],
+)

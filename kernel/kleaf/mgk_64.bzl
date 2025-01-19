@@ -1014,6 +1014,11 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp1".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp".format(kernel_version): "mt6855",
 
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6768".format(kernel_version): "mt6768",
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6991".format(kernel_version): "mt6991",
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6993".format(kernel_version): "mt6993",
+
   ## write vendor file by platform here
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6895":"mt6895",
@@ -1573,22 +1578,6 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/mdp/mdp_drv_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6991.ko": "mt6991",
-    #"drivers/soc/mediatek/devapc/device-apc-mt6765.ko": "mt6765",
-    "drivers/soc/mediatek/devapc/device-apc-mt6768.ko": "mt6768",
-    "drivers/soc/mediatek/devapc/device-apc-mt6781.ko": "mt6781",
-    "drivers/soc/mediatek/devapc/device-apc-mt6833.ko": "mt6833",
-    "drivers/soc/mediatek/devapc/device-apc-mt6853.ko": "mt6853",
-    "drivers/soc/mediatek/devapc/device-apc-mt6877.ko": "mt6877",
-    "drivers/soc/mediatek/devapc/device-apc-mt6879.ko": "mt6879",
-    "drivers/soc/mediatek/devapc/device-apc-mt6886.ko": "mt6886",
-    "drivers/soc/mediatek/devapc/device-apc-mt6893.ko": "mt6893",
-    "drivers/soc/mediatek/devapc/device-apc-mt6895.ko": "mt6895",
-    "drivers/soc/mediatek/devapc/device-apc-mt6897.ko": "mt6897",
-    "drivers/soc/mediatek/devapc/device-apc-mt6983.ko": "mt6983",
-    "drivers/soc/mediatek/devapc/device-apc-mt6985.ko": "mt6985",
-    "drivers/soc/mediatek/devapc/device-apc-mt6989.ko": "mt6989",
-    "drivers/soc/mediatek/devapc/device-apc-mt6991.ko": "mt6991",
-    "drivers/soc/mediatek/devapc/device-apc-mt6993.ko": "mt6993",
     "drivers/soc/mediatek/mtk-pm-domains.ko": "mt8188",
     "drivers/soc/mediatek/mtk-scpsys-mt6991-spm.ko": "mt6991",
     "drivers/soc/mediatek/mtk-scpsys-mt6991-mmpc.ko": "mt6991",
@@ -2163,20 +2152,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")
 
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6761.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6765.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6768.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6833.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6853.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6877.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6879.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6893.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6895.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6985.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6989.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6991.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6993.ko")
-
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuhotplug/mtk_cpuhp.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cpufreq_v2/src/CPU_DVFS.ko")
@@ -2581,19 +2556,9 @@ def get_overlay_modules_list():
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:slbc_mt6993".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6833.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6853.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6877.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6879.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6886.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6893.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6895.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6897.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6983.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6985.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6989.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6991.ko")
-        mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6993.ko")
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6895".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6991".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6993".format(kernel_version))
 
     if "mt6761_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase")
