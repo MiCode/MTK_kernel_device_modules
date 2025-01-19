@@ -21,4 +21,5 @@ ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dfrc/
 ccflags-y  += -I$(srctree)/kernel/trace/
 ccflags-y  += -I$(MTK_TOP)/performance/fpsgo_v3/
 ccflags-y  += -I$(MTK_TOP)/performance/fpsgo_v3/base/include
+ccflags-y  += -I$(MTK_TOP)/performance/fpsgo_v3/composer/include
 ccflags-y  += -I$(MTK_TOP)/performance/include

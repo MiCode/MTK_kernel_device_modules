@@ -886,6 +886,8 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	iter_thr->powerRL.ruclamp = 100;
 	iter_thr->powerRL.uclamp_m = 100;
 	iter_thr->powerRL.ruclamp_m = 100;
+	iter_thr->frame_count = 0;
+
 
 	fbt_set_render_boost_attr(iter_thr);
 	fbt_init_ux(iter_thr);

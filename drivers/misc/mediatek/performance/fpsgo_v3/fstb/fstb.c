@@ -29,6 +29,7 @@
 #include "fstb.h"
 #include "fstb_usedext.h"
 #include "fpsgo_usedext.h"
+#include "fps_composer.h"
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 #include "ged_kpi.h"
@@ -1902,9 +1903,14 @@ void fpsgo_comp2fstb_notify_info(int pid, unsigned long long bufID,
 	fstb_post_process_target_fps(local_final_tfps, local_fps_margin,
 		iter->target_fps_diff, &local_final_tfps, NULL, NULL);
 
-	if (!test_bit(USER_TYPE, &iter->master_type))
-		ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps,
-			local_fps_margin, iter->target_fps_diff, iter->cpu_time);
+	if (!test_bit(USER_TYPE, &iter->master_type)) {
+		if (!fpsgo_com_get_mfrc_is_on())
+			ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps,
+				local_fps_margin, iter->target_fps_diff, iter->cpu_time);
+		else
+			ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps * 2,
+				local_fps_margin, iter->target_fps_diff, iter->cpu_time);
+	}
 
 	if (fpsgo2msync_hint_frameinfo_fp)
 		fpsgo2msync_hint_frameinfo_fp(pid, bufID,
