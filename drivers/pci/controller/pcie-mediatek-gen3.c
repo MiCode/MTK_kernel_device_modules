@@ -417,6 +417,7 @@ struct mtk_pcie_port {
 };
 
 static struct platform_device *pdev_list[MTK_PCIE_MAX_PORT];
+static u32 mtk_pcie_rc_ltssm_sta[MTK_PCIE_MAX_PORT];
 
 /**
  * mtk_pcie_config_tlp_header() - Configure a configuration TLP header
@@ -913,6 +914,9 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	if (err) {
 		val = readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG);
 		dev_info(port->dev, "PCIe link down, ltssm reg val: %#x\n", val);
+		if (port->port_num < MTK_PCIE_MAX_PORT)
+			mtk_pcie_rc_ltssm_sta[port->port_num] = val;
+
 		port->full_debug_dump = true;
 		mtk_pcie_dump_link_info(port->port_num);
 		port->full_debug_dump = false;
@@ -1909,7 +1913,7 @@ int mtk_pcie_probe_port(int port)
 	if (device_attach(&pdev->dev) <= 0) {
 		device_release_driver(&pdev->dev);
 		pr_info("%s: pcie probe fail!\n", __func__);
-		return -ENODEV;
+		return mtk_pcie_rc_ltssm_sta[port];
 	}
 
 	return 0;
