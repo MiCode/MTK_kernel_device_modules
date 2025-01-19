@@ -45,7 +45,6 @@
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_disp_notify.h"
 #endif
-#include "ts_scp_core.h"
 
 #define GOODIX_CORE_DRIVER_NAME			"mtk-tpd3"
 #define GOODIX_PEN_DRIVER_NAME			"goodix_ts,pen"
@@ -423,6 +422,13 @@ struct goodix_touch_data {
 	struct goodix_ts_coords coords[GOODIX_MAX_TOUCH];
 };
 
+struct goodix_touch_offload_data{
+	int touch_num;
+	int64_t scp_timestamp;
+	int64_t scp_archcounter;
+    struct goodix_ts_coords coords[GOODIX_MAX_TOUCH];
+};
+
 struct goodix_ts_key {
 	int status;
 	int code;
@@ -536,6 +542,8 @@ struct goodix_ts_core {
 	atomic64_t timestamp;
 	struct goodix_ts_event ts_event;
 
+	bool finger_down;
+	bool need_retry_offload;
 	/* every pointer of this array represent a kind of config */
 	struct goodix_ic_config *ic_configs[GOODIX_MAX_CONFIG_GROUP];
 	struct regulator *avdd;
@@ -748,28 +756,5 @@ extern void mt_spi_disable_master_clk(struct spi_device *spidev);
 extern int tpd_gt9895_enter_tui(void);
 extern int tpd_gt9895_exit_tui(void);
 #endif
-
-extern void connect_irq(void (*irq_func)(bool enable));
-extern void connect_esd_control(void (*esd_ctrl_func)(bool enable));
-extern void connect_report_func(void (*report_func)(struct ts_scp_device *dev));
-extern int generic_pinctrl_init(void);
-extern int generic_pinctrl_remove(void);
-extern void generic_power_on_reinit_register(int (*reinit_func)(void));
-extern int generic_power_on_reinit(void);
-extern void connect_pinctrl(struct pinctrl *pinctrl);
-extern void connect_pinctrl_spi(struct pinctrl_state *spi_default);
-extern void connect_pinctrl_int_resume(struct pinctrl_state *int_active);
-extern void connect_pinctrl_rst_resume(struct pinctrl_state *rst_active);
-extern void connect_pinctrl_int_suspend(struct pinctrl_state *int_suspend);
-extern void connect_pinctrl_rst_suspend(struct pinctrl_state *rst_suspend);
-extern void connect_pinctrl_touch_mode_ap(struct pinctrl_state *touch_mode_ap);
-extern void connect_pinctrl_touch_mode_scp(struct pinctrl_state *touch_mode_scp);
-extern void ts_scp_set_scenario_status(unsigned int scene);
-extern void ts_scp_clear_scenario_status(unsigned int scene);
-extern void ts_scp_set_scp_enable(void);
-extern void ts_scp_set_scp_disable(void);
-extern bool ts_scp_check_is_scp_enabled(struct ts_scp_tp_scenario *scene);
-extern void ts_scp_is_scp_touch_need_probe(void);
-extern void ts_scp_set_touch_type_id(uint8_t type, uint8_t id);
 
 #endif

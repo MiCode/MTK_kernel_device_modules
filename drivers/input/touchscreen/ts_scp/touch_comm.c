@@ -15,17 +15,14 @@
 
 #include "tiny_crc8.h"
 #include "ts_scp_core.h"
-//#include "ready.h"
 
 struct touch_notify_handle {
 	void (*handler)(struct touch_comm_notify *n, void *private_data);
 	void *private_data;
 };
 
-//static bool scp_status;
 static DEFINE_MUTEX(touch_comm_lock);
 static uint8_t touch_comm_sequence;
-static
 struct touch_notify_handle touch_notify_handle[MAX_TOUCH_COMM_NOTIFY_CMD];
 
 static void touch_comm_notify_handler(int id, void *data, unsigned int len)
@@ -95,16 +92,6 @@ static int touch_comm_ctrl_seq_send(struct touch_comm_ctrl *ctrl,
 		return -EREMOTEIO;
 	}
 
-	if (ack.command == TOUCH_COMM_CTRL_QUERY_SCP_STATUS_CMD) {
-		ts_scp_set_scp_enable();
-	}
-	if (ack.command == TOUCH_COMM_CTRL_SCP_HANDLE_CMD) {
-		ts_scp_info("switch to scp");
-	}
-	if (ack.command == TOUCH_COMM_CTRL_AP_HANDLE_CMD) {
-		ts_scp_info("switch to ap");
-	}
-
 	return 0;
 }
 
@@ -129,37 +116,12 @@ static int touch_comm_ctrl_send_locked(struct touch_comm_ctrl *ctrl,
 	return ret;
 }
 
-int touch_comm_ctrl_send(struct touch_comm_ctrl *ctrl, unsigned int size)
+static int touch_comm_ctrl_send(struct touch_comm_ctrl *ctrl, unsigned int size)
 {
 	int ret = 0;
 
 	mutex_lock(&touch_comm_lock);
 	ret = touch_comm_ctrl_send_locked(ctrl, size);
-	mutex_unlock(&touch_comm_lock);
-	return ret;
-}
-
-static int touch_comm_notify_locked(struct touch_comm_notify *notify)
-{
-	int ret = 0;
-
-	notify->sequence = touch_comm_sequence;
-	notify->crc8 =
-		tiny_crc8((uint8_t *)notify, offsetof(typeof(*notify), crc8));
-	ret = ipi_comm_noack(get_notify_id(), (unsigned char *)notify,
-		sizeof(*notify));
-	if (ret < 0)
-		return ret;
-	touch_comm_sequence++;
-	return ret;
-}
-
-int touch_comm_notify(struct touch_comm_notify *notify)
-{
-	int ret = 0;
-
-	mutex_lock(&touch_comm_lock);
-	ret = touch_comm_notify_locked(notify);
 	mutex_unlock(&touch_comm_lock);
 	return ret;
 }
@@ -182,7 +144,7 @@ static int touch_comm_notify_status_bypass_locked(struct touch_comm_notify_statu
 	return ret;
 }
 
-int touch_comm_notify_status_bypass(struct touch_comm_notify_status *notify)
+static int touch_comm_notify_status_bypass(struct touch_comm_notify_status *notify)
 {
 	int ret = 0;
 
@@ -191,7 +153,61 @@ int touch_comm_notify_status_bypass(struct touch_comm_notify_status *notify)
 	mutex_unlock(&touch_comm_lock);
 	return ret;
 }
+void touch_comm_data_notify(u_int8_t touch_type, u_int8_t touch_id, int cmd, void *data, uint8_t length)
+{
+	int ret = 0;
+	struct touch_comm_notify_status *ts_scp_notify_status = NULL;
+	uint32_t notify_size = 0;
 
+	notify_size = ipi_comm_size(sizeof(*ts_scp_notify_status));
+	ts_scp_notify_status = kzalloc(notify_size, GFP_KERNEL);
+
+	ts_scp_notify_status->touch_id = touch_id;
+	ts_scp_notify_status->touch_type = touch_type;
+	ts_scp_notify_status->command = cmd;
+	ts_scp_notify_status->length = length;
+	if (length <= sizeof(ts_scp_notify_status->value)) {
+        memcpy(ts_scp_notify_status->value, data, length);
+	} else {
+		ts_scp_err("the data length of cmd=%u to send too long", cmd);
+		ret = -EIO;
+	    goto error;
+	}
+	ret = touch_comm_notify_status_bypass(ts_scp_notify_status);
+	if (ret < 0)
+		ts_scp_err("notify ready to scp fail %d", ret);
+	else
+		ts_scp_info("need scp touch probe");
+error:
+	kfree(ts_scp_notify_status);
+}
+
+int touch_comm_cmd_send(uint8_t touch_type, uint8_t cmd, void *data, uint8_t length)
+{
+	int ret = 0;
+	struct touch_comm_ctrl *ctrl = NULL;
+	uint32_t ctrl_size = 0;
+
+	ctrl_size = ipi_comm_size(sizeof(*ctrl));
+	ctrl = kzalloc(ctrl_size, GFP_KERNEL);
+	ctrl->touch_type = touch_type;
+	ctrl->command = cmd;
+	ctrl->length = length;
+	ts_scp_info("ts_scp_comm_with ctrl_size=%d, cmd=0x%02x, length=%d",
+		ctrl_size, cmd, length);
+	if ((length <= sizeof(ctrl->data)) && (data != NULL)) {
+		memcpy(ctrl->data, data, length);
+	} else {
+		ts_scp_err("the data length of cmd=%u to send too long", cmd);
+		ret = -EIO;
+	    goto error;
+	}
+	ret = touch_comm_ctrl_send(ctrl, ctrl_size);
+error:
+	kfree(ctrl);
+
+	return ret;
+}
 void touch_comm_notify_handler_register(uint8_t cmd,
 		void (*f)(struct touch_comm_notify *n, void *private_data),
 		void *private_data)

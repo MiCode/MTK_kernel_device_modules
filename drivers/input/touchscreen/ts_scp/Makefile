@@ -6,7 +6,5 @@ ts_scp_common-y := \
 			touch_ipi_comm.o \
 			touch_comm.o \
 			tiny_crc8.o \
-			interface.o \
-			scenario_handle.o \
 			ts_scp_core.o
 

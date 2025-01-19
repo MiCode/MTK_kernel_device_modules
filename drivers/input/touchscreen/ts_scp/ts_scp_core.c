@@ -21,805 +21,922 @@
 #include <linux/version.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/notifier.h>
+#include "scp_rv.h"
+#include "timesync.h"
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 38)
 #include <linux/input/mt.h>
 #define INPUT_TYPE_B_PROTOCOL
 #endif
 
-DEFINE_SPINLOCK(ts_scp_fifo_lock);
-DECLARE_COMPLETION(ts_scp_data_done);
-DEFINE_KFIFO(ts_scp_data_fifo, struct ts_scp_tp_multi_data, 8);
+struct ts_scp_option_cmd {
+    unsigned int status;
+    uint8_t cmd;
+    uint8_t touch_type;
+    uint8_t data[TOUCH_COMM_CTRL_DATA_MAX];
+};
 
-DECLARE_COMPLETION(ts_scp_ready_done);
-DECLARE_COMPLETION(ts_scp_scene_done);
+struct ts_scp_core_state {
+    unsigned int tp_state[MAX_TS_TOUCH_TYPE];
+    unsigned int scp_state;
+    spinlock_t lock;
+};
+
+struct ts_scp_device {
+    struct task_struct *task_cmd;
+    struct task_struct *task_data;
+    struct input_dev *input_dev;
+    struct timesync_filter filter;
+
+    int ts_scp_major;
+    struct class *ts_scp_class;
+    struct device *device;
+    bool ts_scp_common_enable;
+    struct tp_offload_scp *tp[MAX_TS_TOUCH_TYPE];
+    struct ts_scp_core_state core_state;
+    struct hrtimer after_scp_reset_timer;
+    atomic_t scp_crash_num_from_boot;
+    atomic_t scp_crash_num;
+};
+
+DEFINE_SPINLOCK(ts_scp_data_fifo_lock);
+DECLARE_COMPLETION(ts_scp_data_done);
+DEFINE_KFIFO(ts_scp_data_fifo, struct ts_scp_data, 16);
+
+DEFINE_SPINLOCK(ts_scp_cmd_fifo_lock);
+DECLARE_COMPLETION(ts_scp_cmd_done);
+DEFINE_KFIFO(ts_scp_cmd_fifo, struct ts_scp_option_cmd, 8);
 
 bool debug_log_flag = false;
-uint8_t ctrl_cmd;
+struct ts_scp_node_ctrl ctrl_cmd;
+
 struct ts_scp_device ts_scp_dev;
-struct touch_comm_notify_status ts_scp_notify_status;
-void (*generic_report_func)(struct ts_scp_device *dev);
-static bool touch_on_ap_has_finger_flag = false;
-static int finger_on_mode = TS_FINIGER_NONE;
-atomic_t scp_crash_num = ATOMIC_INIT(0);
+static DEFINE_MUTEX(tp_mutex);
 
-static int ts_scp_cmd_scp_handle(void);
-static int ts_scp_cmd_ap_handle(void);
-static int ts_scp_cmd_query_scp_status(void);
-static int ts_scp_cmd_suspend(void);
-static int ts_scp_cmd_resume(void);
-static int ts_scp_cmd_reinit(void);
-static void ts_scp_touch_mode_scp(void);
-static void ts_scp_touch_mode_ap(void);
-static uint8_t ts_scp_get_touch_type(void);
-static uint8_t ts_scp_get_touch_id(void);
-static void ts_scp_force_switch_to_ap(void);
-static void ts_scp_ready_process(void);
-static void ts_scp_force_reset_crash_num(void);
+static void ts_scp_set_tp_status(uint8_t touch_type, unsigned int state);
+static void ts_scp_clear_tp_status(uint8_t touch_type, unsigned int state);
+static int ts_scp_get_tp_status(uint8_t touch_type);
+void ts_scp_cmd_handler_async(struct ts_scp_cmd *option_cmd);
 
-void connect_report_func(void (*report_func)(struct ts_scp_device *dev))
+int ts_scp_request_offload(struct tp_offload_scp *tp)
 {
-	ts_scp_info("connect report func");
-	generic_report_func = report_func;
-}
-EXPORT_SYMBOL_GPL(connect_report_func);
+    int ret = 0;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    uint8_t touch_type;
 
-int generic_power_on_reinit(void)
-{
-	if (generic_power_on_reinit_func) {
-		if (ts_scp_check_is_scp_enabled(&scene)) {
-			ts_scp_info("reinit scp side");
-			ts_scp_cmd_reinit();
-			return 0;
-		} else {
-			ts_scp_info("reinit ap side");
-			return generic_power_on_reinit_func();
-		}
-	} else {
-		ts_scp_err("generic_power_on_reinit_func is NULL");
-		return -ENOSYS;
-	}
+    if (!tp)
+        return -EINVAL;
+
+    touch_type = tp->touch_type;
+    if (touch_type >= MAX_TS_TOUCH_TYPE || touch_type == TS_TYPE_INVALID)
+        return -EINVAL;
+
+    mutex_lock(&tp_mutex);
+    if (dev->tp[touch_type]) {
+        ts_scp_err("Repeat touch type[%u]tp offload requested old %s new %s",
+            touch_type, dev->tp[touch_type]->name, tp->name);
+        ret = -EFAULT;
+        mutex_unlock(&tp_mutex);
+        return ret;
+    }
+    /* init */
+    dev->tp[touch_type] = tp;
+    mutex_unlock(&tp_mutex);
+    ts_scp_set_tp_status(touch_type, STAT_AP_TP_READY);
+
+    return ret;
 }
-EXPORT_SYMBOL_GPL(generic_power_on_reinit);
+EXPORT_SYMBOL(ts_scp_request_offload);
+
+void ts_scp_release_offload(struct tp_offload_scp *tp)
+{
+    struct ts_scp_device *dev = &ts_scp_dev;
+    uint8_t touch_type;
+
+    if (!tp)
+        return;
+
+    touch_type = tp->touch_type;
+    if (touch_type >= MAX_TS_TOUCH_TYPE || touch_type == TS_TYPE_INVALID)
+        return;
+
+    mutex_lock(&tp_mutex);
+    if (!dev->tp[touch_type] || (dev->tp[touch_type] != tp))
+        goto out;
+    dev->tp[touch_type] = NULL;
+    ts_scp_clear_tp_status(touch_type, STAT_AP_TP_READY);
+out:
+    mutex_unlock(&tp_mutex);
+}
+EXPORT_SYMBOL(ts_scp_release_offload);
 
 /* debug log on/off show */
 static ssize_t ts_scp_debug_log_show(struct device *dev,
-				       struct device_attribute *attr,
-				       char *buf)
+                   struct device_attribute *attr,
+                   char *buf)
 {
-	int r = 0;
+    int r = 0;
 
-	r = sprintf(buf, "state:%s\n",
-		    debug_log_flag ?
-		    "enabled" : "disabled");
-	if (r < 0)
-		ts_scp_err("buf print fail");
+    r = sprintf(buf, "state:%s\n",
+            debug_log_flag ?
+            "enabled" : "disabled");
+    if (r < 0)
+        ts_scp_err("buf print fail");
 
-	return r;
+    return r;
 }
 
 /* debug log on/off store */
 static ssize_t ts_scp_debug_log_store(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
+                    struct device_attribute *attr,
+                    const char *buf, size_t count)
 {
-	if (!buf || count <= 0)
-		return -EINVAL;
+    if (!buf || count <= 0)
+        return -EINVAL;
 
-	if (buf[0] != '0')
-		debug_log_flag = true;
-	else
-		debug_log_flag = false;
-	return count;
+    if (buf[0] != '0')
+        debug_log_flag = true;
+    else
+        debug_log_flag = false;
+    return count;
 }
 
 /* touch on scp or ap side show */
-static ssize_t ts_scp_touch_stat_show(struct device *dev,
-				       struct device_attribute *attr,
-				       char *buf)
+static ssize_t ts_scp_touch_state_show(struct device *dev,
+                       struct device_attribute *attr,
+                       char *buf)
 {
-	int r = 0;
-	bool touch_stat;
+    int r = 0;
+    bool touch_stat;
+    struct ts_scp_device *tp_dev = &ts_scp_dev;
 
-	touch_stat = ts_scp_check_is_scp_enabled(&scene);
-	r = sprintf(buf, "touch side:%s\n",
-		    touch_stat ?
-		    "scp" : "ap");
-	if (r < 0)
-		ts_scp_err("buf print fail");
+    for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
+        if (tp_dev->tp[i] != NULL) {
+            touch_stat = STAT_TP_WORK_MODE & ts_scp_get_tp_status(i);
+            r = sprintf(buf, "Touch type:%u, touch side:%s\n", i, touch_stat ? "scp" : "ap");
+            if (r < 0)
+                ts_scp_err("buf print fail");
+        }
+    }
 
-	return r;
+    return r;
 }
 
 /* ctrl cmd show */
 static ssize_t ts_scp_ctrl_show(struct device *dev,
-				       struct device_attribute *attr,
-				       char *buf)
+                       struct device_attribute *attr,
+                       char *buf)
 {
-	int r = 0;
+    int r = 0;
 
-	r = sprintf(buf, "ctrl cmd: 0x%02x\n", ctrl_cmd);
-	if (r < 0)
-		ts_scp_err("buf print fail");
+    r = sprintf(buf, "ctrl cmd: %u,%u\n", ctrl_cmd.touch_type, ctrl_cmd.cmd);
+    if (r < 0)
+        ts_scp_err("buf print fail");
 
-	return r;
+    return r;
 }
 
 /* ctrl cmd store */
 static ssize_t ts_scp_ctrl_store(struct device *dev,
-					struct device_attribute *attr,
-					const char *buf, size_t count)
+                    struct device_attribute *attr,
+                    const char *buf, size_t count)
 {
-	int ret = 0;
+    unsigned int touch_type = TS_TYPE_INVALID;
+    unsigned int cmd = 0;
+    int ret;
+    struct ts_scp_cmd option_cmd;
+    struct ts_scp_device *tp_dev = &ts_scp_dev;
 
-	if (!buf || count <= 0)
-		return -EINVAL;
+    ret = sscanf(buf, "%u,%u", &touch_type, &cmd);
+    if (ret != 2)
+        return -EINVAL;
+    ctrl_cmd.touch_type = touch_type;
+    ctrl_cmd.cmd = cmd;
+    ts_scp_info("ts_scp_ctrl_store Touch_type = %u, cmd = %u", touch_type, cmd);
 
-	ctrl_cmd = buf[0];
-	ts_scp_info("ts_scp_ctrl_store cmd=0x%02x", buf[0]);
-
-	switch (buf[0]) {
-	case '0':
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			if (ts_scp_check_is_finger_on_touch(&scene) == false) {
-				generic_irq_enable(false);
-				generic_esd_control(false);
-				ts_scp_touch_mode_scp();
-				ts_scp_set_scp_enable();
-				ts_scp_clear_scenario_status(STAT_SCP_CRASH);
-				ret = ts_scp_cmd_scp_handle();
-				if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-					|| (ret == -EREMOTEIO))
-					goto err_ack;
-			} else {
-				touch_on_ap_has_finger_flag = true;
-				finger_on_mode = TS_FINIGER_ENABLE_CMD;
-				ts_scp_info("Touch work on AP, has touch on touchscreen enable");
-			}
-		} else {
-			ts_scp_info("scp crash too much. cmd not works. cmd=0x%02x", buf[0]);
-		}
-		break;
-	case '1':
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			generic_irq_enable(true);
-			generic_esd_control(true);
-			ts_scp_touch_mode_ap();
-			ts_scp_set_scp_disable();
-			ret = ts_scp_cmd_ap_handle();
-			if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-				|| (ret == -EREMOTEIO))
-				goto err_ack;
-		} else {
-			ts_scp_info("scp crash too much. cmd not works. cmd=0x%02x", buf[0]);
-		}
-		break;
-	case '2':
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			ts_scp_ready_process();
-		} else {
-			ts_scp_info("scp crash too much. cmd not works. cmd=0x%02x", buf[0]);
-		}
-		break;
-	case '3':
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			ret = ts_scp_cmd_suspend();
-			if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-				|| (ret == -EREMOTEIO))
-				goto err_ack;
-		} else {
-			ts_scp_info("scp crash too much. cmd not works. cmd=0x%02x", buf[0]);
-		}
-		break;
-	case '4':
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			ret = ts_scp_cmd_resume();
-			if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-				|| (ret == -EREMOTEIO))
-				goto err_ack;
-		} else {
-			ts_scp_info("scp crash too much. cmd not works. cmd=0x%02x", buf[0]);
-		}
-		break;
-	case '5':
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			generic_power_on_reinit();
-		} else {
-			ts_scp_info("scp crash too much. cmd not works. cmd=0x%02x", buf[0]);
-		}
-		break;
-	case '6':
-		ts_scp_force_reset_crash_num();
-		break;
-	default:
-		ts_scp_err("ctrl node receive error cmd");
-		break;
-	}
-	return count;
-
-err_ack:
-	ts_scp_force_switch_to_ap();
-	return count;
+    switch (cmd) {
+    case 0:
+        option_cmd.command = TOUCH_COMM_CTRL_SCP_HANDLE_CMD;
+        option_cmd.touch_type = touch_type;
+        ts_scp_cmd_handler_async(&option_cmd);
+        break;
+    case 1:
+        option_cmd.command = TOUCH_COMM_CTRL_AP_HANDLE_CMD;
+        option_cmd.touch_type = touch_type;
+        ts_scp_cmd_handler_async(&option_cmd);
+        break;
+    case 3:
+        option_cmd.command = TOUCH_COMM_CTRL_SUSPEND_CMD;
+        option_cmd.touch_type = touch_type;
+        ts_scp_cmd_handler_async(&option_cmd);
+        break;
+    case 4:
+        option_cmd.command = TOUCH_COMM_CTRL_RESUME_CMD;
+        option_cmd.touch_type = touch_type;
+        ts_scp_cmd_handler_async(&option_cmd);
+        break;
+    case 5:
+        option_cmd.command = TOUCH_COMM_CTRL_REINIT_CMD;
+        option_cmd.touch_type = touch_type;
+        ts_scp_cmd_handler_async(&option_cmd);
+        break;
+    case 6:
+        atomic_set(&tp_dev->scp_crash_num_from_boot, 0);
+        break;
+    default:
+        ts_scp_err("ctrl node receive error cmd");
+        break;
+    }
+    return count;
 }
 
 static DEVICE_ATTR(debug_log, 0660,
-		ts_scp_debug_log_show, ts_scp_debug_log_store);
+        ts_scp_debug_log_show, ts_scp_debug_log_store);
 static DEVICE_ATTR(touch_stat, 0440,
-		ts_scp_touch_stat_show, NULL);
+        ts_scp_touch_state_show, NULL);
 static DEVICE_ATTR(ctrl, 0660,
-		ts_scp_ctrl_show, ts_scp_ctrl_store);
+        ts_scp_ctrl_show, ts_scp_ctrl_store);
 
 static struct attribute *ts_scp_attrs[] = {
-	&dev_attr_debug_log.attr,
-	&dev_attr_touch_stat.attr,
-	&dev_attr_ctrl.attr,
-	NULL,
+    &dev_attr_debug_log.attr,
+    &dev_attr_touch_stat.attr,
+    &dev_attr_ctrl.attr,
+    NULL,
 };
 
 static struct attribute_group ts_scp_attrs_group = {
-	.attrs = ts_scp_attrs,
+    .attrs = ts_scp_attrs,
 };
 
 const struct attribute_group *ts_scp_attrs_groups[] = {
-	&ts_scp_attrs_group,
-	NULL,
+    &ts_scp_attrs_group,
+    NULL,
 };
 
 static int ts_scp_open(struct inode *inode, struct file *filp)
 {
-	filp->private_data = &ts_scp_dev;
-	return nonseekable_open(inode, filp);
+    filp->private_data = &ts_scp_dev;
+    return nonseekable_open(inode, filp);
 }
 
 static int ts_scp_release(struct inode *inode, struct file *filp)
 {
-	return 0;
+    return 0;
 }
 
 static long ts_scp_ioctl(struct file *filp,
-			unsigned int cmd, unsigned long arg)
+            unsigned int cmd, unsigned long arg)
 {
-	int ret = 0;
-	unsigned int size = _IOC_SIZE(cmd);
-	void __user *ubuf = (void __user *)arg;
-	struct ts_scp_node_debug debug;
-	struct ts_scp_node_ctrl ctrl;
+    int ret = 0;
+    unsigned int size = _IOC_SIZE(cmd);
+    void __user *ubuf = (void __user *)arg;
+    struct ts_scp_node_debug debug;
+    struct ts_scp_node_ctrl ctrl;
 
-	switch (cmd) {
-	case TS_SCP_NODE_DEBUG:
-		if (size != sizeof(debug))
-			return -EINVAL;
-		if (copy_from_user(&debug, ubuf, size))
-			return -EFAULT;
+    switch (cmd) {
+    case TS_SCP_NODE_DEBUG:
+        if (size != sizeof(debug))
+            return -EINVAL;
+        if (copy_from_user(&debug, ubuf, size))
+            return -EFAULT;
 
-		debug_log_flag = debug.debug_on;
-		break;
-	case TS_SCP_NODE_CTRL:
-		if (size != sizeof(debug))
-			return -EINVAL;
-		if (copy_from_user(&debug, ubuf, size))
-			return -EFAULT;
+        debug_log_flag = debug.debug_on;
+        break;
+    case TS_SCP_NODE_CTRL:
+        if (size != sizeof(ctrl))
+            return -EINVAL;
+        if (copy_from_user(&ctrl, ubuf, size))
+            return -EFAULT;
 
-		ctrl_cmd = ctrl.cmd;
-		break;
-	default:
-		ts_scp_err("Unknown command %u\n", cmd);
-		return -EINVAL;
-	}
-	return ret;
+        ctrl_cmd.touch_type = ctrl.touch_type;
+        ctrl_cmd.cmd = ctrl.cmd;
+        break;
+    default:
+        ts_scp_err("Unknown command %u", cmd);
+        return -EINVAL;
+    }
+    return ret;
 }
 
 static const struct file_operations ts_scp_fops = {
-	.owner          = THIS_MODULE,
-	.open           = ts_scp_open,
-	.release        = ts_scp_release,
-	.unlocked_ioctl = ts_scp_ioctl,
-	.compat_ioctl   = ts_scp_ioctl,
+    .owner          = THIS_MODULE,
+    .open           = ts_scp_open,
+    .release        = ts_scp_release,
+    .unlocked_ioctl = ts_scp_ioctl,
+    .compat_ioctl   = ts_scp_ioctl,
 };
 
-static void ts_scp_data_notify_func(struct touch_comm_notify *n,
-		void *private_data)
+int64_t ts_scp_generate_timestamp(int64_t scp_timestamp, int64_t scp_archcounter)
 {
-	if (n->command != TOUCH_COMM_NOTIFY_DATA_CMD)
-		return;
+    int64_t origin_boottime, origin_ktime, result_timestamp;
+    int64_t bootime_offset_ns, ktime_ns;
+    struct ts_scp_device *dev = &ts_scp_dev;
 
-	memcpy(&ts_scp_dev.ts_data->multi_data, n->value,
-		sizeof(struct ts_scp_tp_multi_data));
+    timesync_filter_set(&dev->filter, scp_timestamp, scp_archcounter);
+    origin_boottime = ktime_get_boottime_ns();
+    origin_ktime = ktime_get_ns();
+    bootime_offset_ns = origin_boottime - origin_ktime;
+    result_timestamp = scp_timestamp + timesync_filter_get(&dev->filter);
+    ktime_ns = result_timestamp - bootime_offset_ns;
 
-	spin_lock(&ts_scp_fifo_lock);
-	kfifo_in(&ts_scp_data_fifo, &ts_scp_dev.ts_data->multi_data, 1);
-	complete(&ts_scp_data_done);
-	spin_unlock(&ts_scp_fifo_lock);
+    return ktime_ns;
 }
+EXPORT_SYMBOL(ts_scp_generate_timestamp);
 
-static void ts_scp_ready_notify_func(struct touch_comm_notify *n,
-		void *private_data)
+static void ts_scp_data_notify_func(struct touch_comm_notify *n,
+        void *private_data)
 {
-	if (n->command != TOUCH_COMM_NOTIFY_READY_CMD)
-		return;
-	complete(&ts_scp_ready_done);
+    struct ts_scp_data tp_data;
+    unsigned long flags = 0;
+
+    if (n->command != TOUCH_COMM_NOTIFY_DATA_CMD)
+        return;
+
+    tp_data.touch_type = n->touch_type;
+    memcpy(tp_data.data, n->value,
+        sizeof(int32_t)*TOUCH_COMM_DATA_MAX);
+
+    spin_lock_irqsave(&ts_scp_data_fifo_lock, flags);
+    if (kfifo_is_full(&ts_scp_data_fifo)) {
+        ts_scp_err("ts_scp data fifo full");
+        goto error;
+    }
+    kfifo_in(&ts_scp_data_fifo, &tp_data, 1);
+    complete(&ts_scp_data_done);
+error:
+    spin_unlock_irqrestore(&ts_scp_data_fifo_lock, flags);
 }
 
 static void ts_scp_data_process(void)
 {
-	unsigned int ret = 0;
-	struct ts_scp_tp_multi_data multi_data;
-	unsigned long flags = 0;
+    unsigned int ret = 0;
+    struct ts_scp_data tp_data;
+    unsigned long flags = 0;
 
-	while (1) {
-		spin_lock_irqsave(&ts_scp_fifo_lock, flags);
-		ret = kfifo_out(&ts_scp_data_fifo, &multi_data, 1);
-		spin_unlock_irqrestore(&ts_scp_fifo_lock, flags);
-		if (!ret) {
-			break;
-		}
+    while (1) {
+        spin_lock_irqsave(&ts_scp_data_fifo_lock, flags);
+        ret = kfifo_out(&ts_scp_data_fifo, &tp_data, 1);
+        spin_unlock_irqrestore(&ts_scp_data_fifo_lock, flags);
+        if (!ret)
+            break;
 
-		ts_scp_dev.ts_data->multi_data = multi_data;
-		generic_report_func(&ts_scp_dev);
-	}
+        mutex_lock(&tp_mutex);
+        if (ts_scp_dev.tp[tp_data.touch_type]->report_func != NULL)
+            ts_scp_dev.tp[tp_data.touch_type]->report_func(&tp_data);
+        mutex_unlock(&tp_mutex);
+    }
 }
 
-static int ts_scp_thread(void *data)
+static int ts_scp_data_thread(void *data)
 {
-	int ret = 0;
+    int ret = 0;
 
-	while (!kthread_should_stop()) {
-		ret = wait_for_completion_interruptible(&ts_scp_data_done);
-		if (ret)
-			continue;
+    while (!kthread_should_stop()) {
+        ret = wait_for_completion_interruptible(&ts_scp_data_done);
+        if (ret)
+            continue;
 
-		ts_scp_data_process();
-	}
+        ts_scp_data_process();
+    }
 
-	return 0;
+    return 0;
 }
 
-static void ts_scp_ready_process(void)
+void ts_scp_cmd_handler_async(struct ts_scp_cmd *option_cmd)
 {
-	int ret = 0;
+    struct ts_scp_option_cmd option_data;
+    unsigned long flags = 0;
 
-	if (ts_scp_check_is_crash_too_much(&scene) == false) {
-		if (ts_scp_check_is_finger_on_touch(&scene) == false) {
-			generic_irq_enable(false);
-			generic_esd_control(false);
-			ts_scp_touch_mode_scp();
-			ts_scp_clear_scenario_status(STAT_SCP_CRASH);
-			ret = ts_scp_cmd_query_scp_status();
-			if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-				|| (ret == -EREMOTEIO))
-				ts_scp_force_switch_to_ap();
-		} else {
-			touch_on_ap_has_finger_flag = true;
-			finger_on_mode = TS_FINIGER_READY_CMD;
-			ts_scp_info("Touch work on AP, has touch on touchscreen");
-		}
-	} else {
-		ts_scp_info("scp crash too much, ready process not works");
-	}
+    option_data.cmd = option_cmd->command;
+    option_data.touch_type = option_cmd->touch_type;
+    memcpy(&option_data.data, &option_cmd->data, sizeof(option_data.data));
+
+    spin_lock_irqsave(&ts_scp_cmd_fifo_lock, flags);
+    if (kfifo_is_full(&ts_scp_cmd_fifo)) {
+        ts_scp_err("ts_scp cmd fifo full, drop cmd-%u for touch type-%u", option_cmd->command, option_cmd->touch_type);
+        goto error;
+    }
+    kfifo_in(&ts_scp_cmd_fifo, &option_data, 1);
+    complete(&ts_scp_cmd_done);
+error:
+    spin_unlock_irqrestore(&ts_scp_cmd_fifo_lock, flags);
 }
+EXPORT_SYMBOL(ts_scp_cmd_handler_async);
 
-static int ts_scp_ready_thread(void *data)
+static void ts_scp_set_tp_status(uint8_t touch_type, unsigned int state)
 {
-	int ret = 0;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    unsigned long flags;
+    struct ts_scp_cmd cmd_data;
 
-	while (!kthread_should_stop()) {
-		ret = wait_for_completion_interruptible(&ts_scp_ready_done);
-		if (ret)
-			continue;
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    dev->core_state.tp_state[touch_type] = dev->core_state.tp_state[touch_type] | state;
+    ts_scp_info("Update core tp:%u state:%04x", touch_type, dev->core_state.tp_state[touch_type]);
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
 
-		ts_scp_ready_process();
-	}
-
-	return 0;
+    cmd_data.touch_type = touch_type;
+    cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
+    ts_scp_cmd_handler_async(&cmd_data);
 }
 
-void ts_scp_scene_process(struct ts_scp_tp_scenario *scene)
+static void ts_scp_clear_tp_status(uint8_t touch_type, unsigned int state)
 {
-	int ret = 0;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    unsigned long flags;
+    struct ts_scp_cmd cmd_data;
 
-	if (ts_scp_check_is_crash_too_much(scene) == false) {
-		if ((scene->status & STAT_SCP_SUSPEND) && !(scene->status & STAT_SCP_RESUME)) {
-			ret = ts_scp_cmd_suspend();
-			if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-				|| (ret == -EREMOTEIO))
-				ts_scp_force_switch_to_ap();
-			ts_scp_clear_scenario_status(STAT_SCP_SUSPEND);
-		}
-		if (!(scene->status & STAT_SCP_SUSPEND) && (scene->status & STAT_SCP_RESUME)) {
-			ret = ts_scp_cmd_resume();
-			if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-				|| (ret == -EREMOTEIO))
-				ts_scp_force_switch_to_ap();
-			ts_scp_clear_scenario_status(STAT_SCP_RESUME);
-		}
-		if ((touch_on_ap_has_finger_flag == true) &&
-			(ts_scp_check_is_finger_on_touch(scene) == false)) {
-				if (finger_on_mode == TS_FINIGER_READY_CMD) {
-					ts_scp_ready_process();
-					touch_on_ap_has_finger_flag = false;
-					ts_scp_info("AP no touch on touchscreen, auto ready");
-				} else if (finger_on_mode == TS_FINIGER_ENABLE_CMD) {
-					generic_irq_enable(false);
-					generic_esd_control(false);
-					ts_scp_touch_mode_scp();
-					ts_scp_set_scp_enable();
-					ts_scp_clear_scenario_status(STAT_SCP_CRASH);
-					ret = ts_scp_cmd_scp_handle();
-					if ((ret == -EBADMSG) || (ret == -EILSEQ) || (ret == -EPROTO)
-						|| (ret == -EREMOTEIO))
-						ts_scp_force_switch_to_ap();
-					ts_scp_info("AP no touch on touchscreen, auto enable");
-				}
-		}
-	} else {
-		ts_scp_info("scp crash too much, scene process not works");
-		if ((scene->status & STAT_SCP_SUSPEND) && !(scene->status & STAT_SCP_RESUME)) {
-			ts_scp_clear_scenario_status(STAT_SCP_SUSPEND);
-		}
-		if (!(scene->status & STAT_SCP_SUSPEND) && (scene->status & STAT_SCP_RESUME)) {
-			ts_scp_clear_scenario_status(STAT_SCP_RESUME);
-		}
-	}
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    dev->core_state.tp_state[touch_type] = dev->core_state.tp_state[touch_type] & (~(state));
+    ts_scp_info("Update core tp:%u state:%04x", touch_type, dev->core_state.tp_state[touch_type]);
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
+
+    cmd_data.touch_type = touch_type;
+    cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
+    ts_scp_cmd_handler_async(&cmd_data);
 }
 
-static int ts_scp_scene_thread(void *data)
+static void ts_scp_set_scp_status(unsigned int state)
 {
-	int ret = 0;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    unsigned long flags;
+    struct ts_scp_cmd cmd_data;
 
-	while (!kthread_should_stop()) {
-		ret = wait_for_completion_interruptible(&ts_scp_scene_done);
-		if (ret)
-			continue;
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    dev->core_state.scp_state = dev->core_state.scp_state | state;
+    ts_scp_info("Update core scp state:%04x", dev->core_state.scp_state);
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
 
-		scene.status_changed = ts_scp_scene_flag_changed();
-		if(scene.status_changed)
-		{
-			ts_scp_scene_process(&scene);
-			scene.status_changed = 0;
-		}
-	}
-	return 0;
+    for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
+        if (dev->tp[i] != NULL) {
+            cmd_data.touch_type = i;
+            cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
+            ts_scp_cmd_handler_async(&cmd_data);
+        }
+    }
 }
 
-static void ts_scp_force_reset_crash_num(void) {
-	atomic_set(&scp_crash_num, 0);
-	ts_scp_clear_scenario_status(STAT_SCP_CRASH_TOO_MUCH);
-	ts_scp_info("force reset crash num=%d", atomic_read(&scp_crash_num));
-}
-
-static int ts_scp_comm_with(int cmd,
-		void *data, uint8_t length)
+static void ts_scp_clear_scp_status(unsigned int state)
 {
-	int ret = 0;
-	struct touch_comm_ctrl *ctrl = NULL;
-	uint32_t ctrl_size = 0;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    unsigned long flags;
+    struct ts_scp_cmd cmd_data;
 
-	if (ts_scp_check_is_crash_too_much(&scene) == false) {
-		ctrl_size = ipi_comm_size(sizeof(*ctrl) + length);
-		ctrl = kzalloc(ctrl_size, GFP_KERNEL);
-		ctrl->touch_id = ts_scp_get_touch_id();
-		ctrl->command = cmd;
-		ctrl->length = length;
-		ts_scp_info("ts_scp_comm_with ctrl_size=%d, cmd=0x%02x, length=%d",
-			ctrl_size, cmd, length);
-		if (length)
-			memcpy(ctrl->data, data, length);
-		ret = touch_comm_ctrl_send(ctrl, ctrl_size);
-		kfree(ctrl);
-		return ret;
-	} else {
-		ts_scp_info("scp crash too much, not send cmd. cmd=0x%02x", cmd);
-		return 0;
-	}
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    dev->core_state.scp_state = dev->core_state.scp_state & (~(state));
+    ts_scp_info("Update core scp state:%04x", dev->core_state.scp_state);
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
+
+    for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
+        if (dev->tp[i] != NULL) {
+            cmd_data.touch_type = i;
+            cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
+            ts_scp_cmd_handler_async(&cmd_data);
+        }
+    }
 }
 
-static int ts_scp_cmd_scp_handle(void)
+static void ts_scp_reset_update_status(void)
 {
-	return ts_scp_comm_with(
-		TOUCH_COMM_CTRL_SCP_HANDLE_CMD, NULL, 0);
+    struct ts_scp_device *dev = &ts_scp_dev;
+    unsigned long flags;
+    struct ts_scp_cmd cmd_data;
+
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    dev->core_state.scp_state = dev->core_state.scp_state & (~STAT_SCP_STATE_READY);
+    dev->core_state.scp_state = dev->core_state.scp_state | STAT_SCP_STATE_CRASH_DURATION;
+    ts_scp_info("Update core scp state:%04x", dev->core_state.scp_state);
+    for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
+        if (dev->tp[i] != NULL) {
+            dev->core_state.tp_state[i]  = dev->core_state.tp_state[i] & (~(STAT_SCP_TP_INIT_READY | STAT_SCP_TP_WORK_STATE));
+            ts_scp_info("Update core tp:%u state:%04x", i, dev->core_state.tp_state[i]);
+        }
+    }
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
+
+    for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
+        if (dev->tp[i] != NULL) {
+            cmd_data.touch_type = i;
+            cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
+            ts_scp_cmd_handler_async(&cmd_data);
+        }
+    }
 }
 
-static int ts_scp_cmd_ap_handle(void)
+static int ts_scp_get_tp_status(uint8_t touch_type)
 {
-	return ts_scp_comm_with(
-		TOUCH_COMM_CTRL_AP_HANDLE_CMD, NULL, 0);
+    struct ts_scp_device *dev = &ts_scp_dev;
+    unsigned long flags;
+    unsigned int current_tp_status;
+
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    current_tp_status = dev->core_state.tp_state[touch_type];
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
+
+    return current_tp_status;
+}
+/*
+static int ts_scp_get_scp_status(void)
+{
+    struct ts_scp_device *dev = &ts_scp_dev;
+    unsigned long flags;
+    unsigned int current_scp_status;
+
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    current_scp_status = dev->core_state.scp_state;
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
+
+    return current_scp_status;
+}
+*/
+int ts_scp_offload_check_status(uint8_t touch_type)
+{
+    bool touch_state;
+
+    touch_state = STAT_TP_WORK_MODE & ts_scp_get_tp_status(touch_type);
+    return touch_state ? 0 : -1;
+}
+EXPORT_SYMBOL(ts_scp_offload_check_status);
+
+int ts_scp_cmd_handler_sync(struct ts_scp_cmd *option_cmd)
+{
+    int ret = -1;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    uint8_t touch_type = option_cmd->touch_type;
+    uint8_t current_cmd = option_cmd->command;
+
+    switch (current_cmd) {
+        case TOUCH_COMM_CTRL_RESUME_CMD:
+        case TOUCH_COMM_CTRL_SUSPEND_CMD:
+        case TOUCH_COMM_CTRL_REINIT_CMD:
+        case TOUCH_COMM_CTRL_CHANGE_REPORT_RATE_CMD:
+            if (!ts_scp_offload_check_status(touch_type)) {
+                ret = touch_comm_cmd_send(touch_type, current_cmd, option_cmd->data, sizeof(option_cmd->data));
+                if (ret) {
+                    ts_scp_info("cmd-%u failed! force change to ap", current_cmd);
+                    mutex_lock(&tp_mutex);
+                    if (dev->tp[touch_type]->offload_scp != NULL)
+                        dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                    mutex_unlock(&tp_mutex);
+                    ts_scp_clear_tp_status(touch_type, STAT_TP_WORK_MODE);
+                }
+            } else {
+                ts_scp_info("tp work not scp");
+            }
+            break;
+        case TOUCH_COMM_CTRL_SCP_HANDLE_CMD:
+            if (ts_scp_offload_check_status(touch_type)) {
+                mutex_lock(&tp_mutex);
+                if (dev->tp[touch_type]->offload_scp != NULL) {
+                    ret = dev->tp[touch_type]->offload_scp(dev->tp[touch_type], true);
+                    if (!ret) {
+                        ret = touch_comm_cmd_send(touch_type, TOUCH_COMM_CTRL_SCP_HANDLE_CMD, option_cmd->data, 0);
+                        if (!ret) {
+                            ts_scp_info("tp work mode change to scp");
+                            ts_scp_set_tp_status(touch_type, STAT_TP_WORK_MODE);
+                        } else {
+                            dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                        }
+                    } else {
+                        dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                    }
+                }
+                mutex_unlock(&tp_mutex);
+            } else {
+                ts_scp_info("tp work alread in scp not to do cmd: TOUCH_COMM_CTRL_SCP_HANDLE_CMD");
+            }
+            break;
+        case TOUCH_COMM_CTRL_AP_HANDLE_CMD:
+            if (!ts_scp_offload_check_status(touch_type)) {
+                mutex_lock(&tp_mutex);
+                ret = touch_comm_cmd_send(touch_type, TOUCH_COMM_CTRL_AP_HANDLE_CMD, option_cmd->data, 0);
+                if (!ret) {
+                    if (dev->tp[touch_type]->offload_scp != NULL)
+                        dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                    ts_scp_info("tp work mode change to AP");
+                } else {
+                    ts_scp_info("cmd of tp work mode change to AP failed! force change to ap");
+                    if (dev->tp[touch_type]->offload_scp != NULL)
+                        dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                }
+                ts_scp_clear_tp_status(touch_type, STAT_TP_WORK_MODE);
+                mutex_unlock(&tp_mutex);
+            } else {
+                ts_scp_info("tp work alread in ap not to da cmd: TOUCH_COMM_CTRL_AP_HANDLE_CMD");
+            }
+            break;
+        default:
+            break;
+    }
+
+    return ret;
+}
+EXPORT_SYMBOL(ts_scp_cmd_handler_sync);
+
+static void ts_scp_cmd_onceprocess(struct ts_scp_option_cmd *option_data)
+{
+    uint8_t current_cmd = option_data->cmd;
+    uint8_t touch_type = option_data->touch_type;
+    unsigned int current_scp_status, current_tp_status;
+    unsigned long flags;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    struct ts_scp_cmd cmd_data;
+    int ret;
+
+    spin_lock_irqsave(&dev->core_state.lock, flags);
+    current_scp_status = dev->core_state.scp_state;
+    current_tp_status = dev->core_state.tp_state[touch_type];
+    spin_unlock_irqrestore(&dev->core_state.lock, flags);
+
+    switch (current_cmd) {
+        case TOUCH_COMM_CTRL_STATUS_UPDATE:
+            if ((STAT_SCP_STATE_READY & current_scp_status)
+            && (STAT_AP_TP_READY & current_tp_status)
+            && (!(STAT_SCP_STATE_CRASH_TOO_MUCH & current_scp_status))
+            && (!(STAT_SCP_TP_INIT_READY & current_tp_status))
+            && (!(STAT_SCP_TP_WORK_STATE & current_tp_status))) {
+                touch_comm_data_notify(touch_type, dev->tp[touch_type]->touch_id, TOUCH_COMM_NOTIFY_READY_CMD, NULL, 0);
+            } else if ((STAT_SCP_STATE_READY | current_scp_status)
+            && (STAT_AP_TP_READY & current_tp_status)
+            && (!(STAT_SCP_STATE_CRASH_TOO_MUCH & current_scp_status))
+            && (STAT_SCP_TP_INIT_READY & current_tp_status)
+            && (!(STAT_SCP_TP_WORK_STATE & current_tp_status))
+            && (!(STAT_SCP_STATE_CRASH_DURATION & current_scp_status))) {
+                mutex_lock(&tp_mutex);
+                if (dev->tp[touch_type]->offload_scp != NULL) {
+                    ret = dev->tp[touch_type]->offload_scp(dev->tp[touch_type], true);
+                    if (!ret) {
+                        ret = touch_comm_cmd_send(touch_type, TOUCH_COMM_CTRL_QUERY_SCP_STATUS_CMD, cmd_data.data, 0);
+                        if (!ret) {
+                            ts_scp_set_tp_status(touch_type, STAT_SCP_TP_WORK_STATE);
+                            ts_scp_set_tp_status(touch_type, STAT_TP_WORK_MODE);
+                        } else {
+                            ts_scp_err("query scp tp work failed");
+                            dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                        }
+                    } else {
+                        dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                    }
+                }
+                mutex_unlock(&tp_mutex);
+            } else if(STAT_SCP_STATE_CRASH_TOO_MUCH & current_scp_status) {
+                if (!ts_scp_offload_check_status(touch_type)) {
+                    mutex_lock(&tp_mutex);
+                    if (dev->tp[touch_type]->offload_scp != NULL)
+                        dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                    mutex_unlock(&tp_mutex);
+                    ts_scp_clear_tp_status(touch_type, STAT_TP_WORK_MODE);
+                }
+            } else if(! (STAT_SCP_STATE_READY & current_scp_status)) {
+                if (!ts_scp_offload_check_status(touch_type)) {
+                    mutex_lock(&tp_mutex);
+                    if (dev->tp[touch_type]->offload_scp != NULL)
+                        dev->tp[touch_type]->offload_scp(dev->tp[touch_type], false);
+                    mutex_unlock(&tp_mutex);
+                    ts_scp_clear_tp_status(touch_type, STAT_TP_WORK_MODE);
+                }
+            }
+            break;
+        case TOUCH_COMM_CTRL_SCP_HANDLE_CMD:
+        case TOUCH_COMM_CTRL_AP_HANDLE_CMD:
+        case TOUCH_COMM_CTRL_SUSPEND_CMD:
+        case TOUCH_COMM_CTRL_RESUME_CMD:
+        case TOUCH_COMM_CTRL_REINIT_CMD:
+        case TOUCH_COMM_CTRL_CHANGE_REPORT_RATE_CMD:
+            cmd_data.command = current_cmd;
+            cmd_data.touch_type = touch_type;
+            memcpy(&cmd_data.data, &option_data->data, sizeof(cmd_data.data));
+            ts_scp_cmd_handler_sync(&cmd_data);
+            break;
+        default:
+            break;
+    }
+    return;
 }
 
-static int ts_scp_cmd_query_scp_status(void)
+static void ts_scp_cmd_process(void)
 {
-	return ts_scp_comm_with(
-		TOUCH_COMM_CTRL_QUERY_SCP_STATUS_CMD, NULL, 0);
+    unsigned int ret = 0;
+    struct ts_scp_option_cmd option_data;
+    unsigned long flags = 0;
+
+    while (1) {
+        spin_lock_irqsave(&ts_scp_cmd_fifo_lock, flags);
+        ret = kfifo_out(&ts_scp_cmd_fifo, &option_data, 1);
+        spin_unlock_irqrestore(&ts_scp_cmd_fifo_lock, flags);
+        if (!ret) {
+            break;
+        }
+        ts_scp_cmd_onceprocess(&option_data);
+    }
 }
 
-static int ts_scp_cmd_suspend(void)
+static int ts_scp_cmd_thread(void *data)
 {
-	return ts_scp_comm_with(
-		TOUCH_COMM_CTRL_SUSPEND_CMD, NULL, 0);
+    int ret = 0;
+
+    while (!kthread_should_stop()) {
+        ret = wait_for_completion_interruptible(&ts_scp_cmd_done);
+        if (ret)
+            continue;
+
+        ts_scp_cmd_process();
+    }
+    return 0;
 }
 
-static int ts_scp_cmd_resume(void)
+static void ts_scp_ready_notify_func(struct touch_comm_notify *n,
+        void *private_data)
 {
-	return ts_scp_comm_with(
-		TOUCH_COMM_CTRL_RESUME_CMD, NULL, 0);
+    if (n->command != TOUCH_COMM_NOTIFY_READY_CMD)
+        return;
+    ts_scp_set_tp_status(n->touch_type, STAT_SCP_TP_INIT_READY);
 }
 
-static int ts_scp_cmd_reinit(void)
+static enum hrtimer_restart ts_after_scp_reset_timer_func(struct hrtimer *timer)
 {
-	return ts_scp_comm_with(
-		TOUCH_COMM_CTRL_REINIT_CMD, NULL, 0);
-}
+    struct ts_scp_device *dev = &ts_scp_dev;
 
-static void ts_scp_touch_mode_ap(void)
-{
-	int ret;
-
-	ret = pinctrl_select_state(generic_pinctrl->pinctrl,
-				generic_pinctrl->touch_mode_ap);
-	if (ret < 0)
-		ts_scp_err("Failed to select default pinstate, ret:%d", ret);
-}
-
-static void ts_scp_touch_mode_scp(void)
-{
-	int ret;
-
-	ret = pinctrl_select_state(generic_pinctrl->pinctrl,
-				generic_pinctrl->touch_mode_scp);
-	if (ret < 0)
-		ts_scp_err("Failed to select default pinstate, ret:%d", ret);
-}
-
-static void ts_scp_force_switch_to_ap(void)
-{
-	ts_scp_info("ts_scp_force_switch_to_ap");
-	ts_scp_touch_mode_ap();
-	generic_irq_enable(true);
-	generic_esd_control(true);
-	ts_scp_set_scp_disable();
+    if (atomic_read(&dev->scp_crash_num) < (MAX_CRASH_NUM_ONE_DURATION + 1))
+        ts_scp_clear_scp_status(STAT_SCP_STATE_CRASH_DURATION);
+    ts_scp_info("scp crash after timer expire");
+    atomic_set(&dev->scp_crash_num, 0);
+    return HRTIMER_NORESTART;
 }
 
 static int scp_platform_ready_notifier_call(struct notifier_block *this,
-		unsigned long event, void *ptr)
+        unsigned long event, void *ptr)
 {
-	if (event == SCP_EVENT_STOP) {
-		atomic_inc(&scp_crash_num) ;
-		ts_scp_info("scp crash! SCP_EVENT_STOP, crash num=%d", atomic_read(&scp_crash_num));
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			ts_scp_set_scenario_status(STAT_SCP_CRASH);
-			ts_scp_force_switch_to_ap();
-			if (atomic_read(&scp_crash_num) > MAX_CRASH_NUM - 1) {
-				ts_scp_set_scenario_status(STAT_SCP_CRASH_TOO_MUCH);
-			}
-		}
-	} else if (event == SCP_EVENT_READY) {
-		if (ts_scp_check_is_crash_too_much(&scene) == false) {
-			ts_scp_info("scp ready! SCP_EVENT_READY");
-			ts_scp_set_scenario_status(STAT_SCP_SCP_READY);
-			ts_scp_is_scp_touch_need_probe();
-		} else {
-			ts_scp_clear_scenario_status(STAT_SCP_SCP_READY);
-			ts_scp_info("scp crash too much, scp ready status not set");
-		}
-	}
+    struct ts_scp_device *dev = &ts_scp_dev;
 
-	return NOTIFY_DONE;
+    if (event == SCP_EVENT_STOP) {
+        atomic_inc(&dev->scp_crash_num_from_boot);
+        atomic_inc(&dev->scp_crash_num);
+        ts_scp_info("scp crash! SCP_EVENT_STOP, crash num=%d", atomic_read(&dev->scp_crash_num_from_boot));
+        ts_scp_reset_update_status();
+        if (!hrtimer_active(&dev->after_scp_reset_timer))
+            hrtimer_start(&dev->after_scp_reset_timer, ns_to_ktime(TS_AFTER_SCP_REST_TIME), HRTIMER_MODE_REL);
+
+        if (atomic_read(&dev->scp_crash_num_from_boot) > MAX_CRASH_NUM - 1) {
+            ts_scp_set_scp_status(STAT_SCP_STATE_CRASH_TOO_MUCH);
+        }
+    } else if (event == SCP_EVENT_READY) {
+        ts_scp_info("scp ready! SCP_EVENT_READY");
+        ts_scp_set_scp_status(STAT_SCP_STATE_READY);
+    }
+
+    return NOTIFY_DONE;
 }
 
 static struct notifier_block scp_platform_ready_notifier = {
-	.notifier_call = scp_platform_ready_notifier_call,
+    .notifier_call = scp_platform_ready_notifier_call,
 };
-
-void ts_scp_is_scp_touch_need_probe(void)
-{
-	int ret = 0;
-
-	if(ts_scp_check_is_ready_probe(&scene))
-	{
-		ts_scp_notify_status.touch_id = ts_scp_get_touch_id();
-		ts_scp_notify_status.touch_type = ts_scp_get_touch_type();
-		ts_scp_notify_status.command = TOUCH_COMM_NOTIFY_READY_CMD;
-		ts_scp_notify_status.length = 0;
-		ret = touch_comm_notify_status_bypass(&ts_scp_notify_status);
-		if (ret < 0)
-			ts_scp_err("notify ready to scp fail %d", ret);
-		else
-			ts_scp_info("need scp touch probe");
-	}
-}
-EXPORT_SYMBOL_GPL(ts_scp_is_scp_touch_need_probe);
-
-void ts_scp_set_touch_type_id(uint8_t type, uint8_t id)
-{
-	ts_scp_notify_status.touch_type = type;
-	ts_scp_notify_status.touch_id = id;
-	ts_scp_info("set touch type=%d, id=%d", type, id);
-}
-EXPORT_SYMBOL_GPL(ts_scp_set_touch_type_id);
-
-static uint8_t ts_scp_get_touch_type(void)
-{
-	ts_scp_info("get touch type, type=%d", ts_scp_notify_status.touch_type);
-	return ts_scp_notify_status.touch_type;
-}
-
-static uint8_t ts_scp_get_touch_id(void)
-{
-	ts_scp_info("get touch id, id=%d", ts_scp_notify_status.touch_id);
-	return ts_scp_notify_status.touch_id;
-}
-
-int64_t ts_scp_timesync(struct ts_scp_device *device)
-{
-	int64_t origin_boottime, origin_ktime, result_timestamp;
-	int64_t bootime_offset_ns, ktime_ns;
-
-	timesync_filter_set(&device->filter,
-		device->ts_data->multi_data.scp_timestamp,
-		device->ts_data->multi_data.scp_archcounter);
-	origin_boottime = ktime_get_boottime_ns();
-	origin_ktime = ktime_get_ns();
-	bootime_offset_ns = origin_boottime - origin_ktime;
-	result_timestamp = device->ts_data->multi_data.scp_timestamp + timesync_filter_get(&device->filter);
-	ktime_ns = result_timestamp - bootime_offset_ns;
-	//ts_scp_info("boottime=%lld, result=%lld", origin_boottime, result_timestamp);
-	//ts_scp_info("result_ktime_ns=%lld, ori_ktime_ns=%lld, bootime_offset_ns=%lld",
-	//	ktime_ns, origin_ktime, bootime_offset_ns);
-
-	return ktime_ns;
-}
-EXPORT_SYMBOL_GPL(ts_scp_timesync);
 
 static int ts_scp_parse_dts(struct ts_scp_device *dev, struct device_node *node)
 {
-	dev->ts_scp_common_enable = of_property_read_bool(node, "tp-offload-scp-common-enable");
+    dev->ts_scp_common_enable = of_property_read_bool(node, "tp-offload-scp-common-enable");
 
-	return 0;
+    return 0;
 }
 
 static int ts_scp_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	struct device *node_dev;
-	struct ts_scp_device *dev = &ts_scp_dev;
-	struct ts_scp_device *device;
-	struct sched_param param = { .sched_priority = MAX_RT_PRIO / 2 };
+    int ret = 0;
+    struct device *node_dev;
+    struct ts_scp_device *dev = &ts_scp_dev;
+    struct ts_scp_device *device;
+    struct sched_param param = { .sched_priority = MAX_RT_PRIO / 2 };
 
-	ts_scp_info("ts_scp_init in");
+    ts_scp_info("ts_scp_init in");
 
-	device = devm_kzalloc(&pdev->dev, sizeof(*device), GFP_KERNEL);
-	if (!device)
-		return -ENOMEM;
+    device = devm_kzalloc(&pdev->dev, sizeof(*device), GFP_KERNEL);
+    if (!device)
+        return -ENOMEM;
 
-	ts_scp_parse_dts(device, pdev->dev.of_node);
+    ts_scp_parse_dts(device, pdev->dev.of_node);
 
-	if(device->ts_scp_common_enable == true) {
-		ts_scp_info("ts_scp_common_enable true");
+    if(device->ts_scp_common_enable == true) {
+        ts_scp_info("ts_scp_common_enable true");
 
-		dev->ts_data = kzalloc(sizeof(struct ts_scp_data), GFP_KERNEL);
-		if (!dev->ts_data) {
-			ts_scp_err("Failed to allocate memory for ts_scp_data\n");
-			return -1;
-		}
+        /* init device node */
+        dev->ts_scp_major = register_chrdev(0, "ts_scp", &ts_scp_fops);
+        if (dev->ts_scp_major < 0) {
+            ts_scp_err("Unable to get major");
+            ret = dev->ts_scp_major;
+            goto err_exit;
+        }
+        dev->ts_scp_class = class_create("ts_scp");
+        if (IS_ERR(dev->ts_scp_class)) {
+            ts_scp_err("Failed to create class");
+            ret = PTR_ERR(dev->ts_scp_class);
+            goto err_class;
+        }
+        node_dev = device_create_with_groups(dev->ts_scp_class, NULL,
+            MKDEV(dev->ts_scp_major, 0), dev,
+            ts_scp_attrs_groups, "ts_scp");
+        if (IS_ERR(node_dev)) {
+            ts_scp_err("Failed to create device");
+            ret = PTR_ERR(node_dev);
+            goto err_dev;
+        }
 
-		/* init device node */
-		dev->ts_scp_major = register_chrdev(0, "ts_scp", &ts_scp_fops);
-		if (dev->ts_scp_major < 0) {
-			ts_scp_err("Unable to get major");
-			ret = dev->ts_scp_major;
-			goto err_exit;
-		}
-		dev->ts_scp_class = class_create("ts_scp");
-		if (IS_ERR(dev->ts_scp_class)) {
-			ts_scp_err("Failed to create class");
-			ret = PTR_ERR(dev->ts_scp_class);
-			goto err_class;
-		}
-		node_dev = device_create_with_groups(dev->ts_scp_class, NULL,
-			MKDEV(dev->ts_scp_major, 0), dev,
-			ts_scp_attrs_groups, "ts_scp");
-		if (IS_ERR(node_dev)) {
-			ts_scp_err("Failed to create device");
-			ret = PTR_ERR(node_dev);
-			goto err_dev;
-		}
+        ts_scp_info("ts_scp_init node create");
 
-		//ts_scp_sysfs_init(dev);
-		ts_scp_info("ts_scp_init node create");
+        ts_scp_dev.filter.max_diff = 10000000000LL;
+        ts_scp_dev.filter.min_diff = 10000000LL;
+        ts_scp_dev.filter.bufsize = 16;
+        ts_scp_dev.filter.name = "ts_scp";
+        ret = timesync_filter_init(&ts_scp_dev.filter);
+        if (ret < 0) {
+            ts_scp_err("timesync filter init fail %d", ret);
+            goto err_task;
+        }
+        spin_lock_init(&dev->core_state.lock);
+        dev->core_state.scp_state = STAT_NONE;
+        ret = touch_comm_init();
+        if (ret < 0) {
+            ts_scp_err("touch comm init fail ret = %d", ret);
+            goto err_task;
+        }
 
-		ts_scp_dev.filter.max_diff = 10000000000LL;
-		ts_scp_dev.filter.min_diff = 10000000LL;
-		ts_scp_dev.filter.bufsize = 16;
-		ts_scp_dev.filter.name = "ts_scp";
-		ret = timesync_filter_init(&ts_scp_dev.filter);
-		if (ret < 0) {
-			ts_scp_err("timesync filter init fail %d", ret);
-			goto err_task;
-		}
+        dev->task_data = kthread_run(ts_scp_data_thread, dev, "ts_scp_data");
+        if (IS_ERR(dev->task_data)) {
+            ret = -ENOMEM;
+            ts_scp_err("create thread fail %d", ret);
+            goto err_task;
+        }
+        sched_setscheduler_nocheck(dev->task_data, SCHED_FIFO, &param);
 
-		ret = touch_comm_init();
-		if (ret < 0) {
-			ts_scp_err("touch comm init fail ret = %d", ret);
-			goto err_task;
-		}
+        dev->task_cmd = kthread_run(ts_scp_cmd_thread, dev, "ts_scp_cmd");
+        if (IS_ERR(dev->task_cmd)) {
+            ret = -ENOMEM;
+            ts_scp_err("create thread fail %d", ret);
+            goto err_task;
+        }
+        sched_setscheduler_nocheck(dev->task_cmd, SCHED_FIFO, &param);
 
-		dev->task = kthread_run(ts_scp_thread, dev, "ts_scp");
-		if (IS_ERR(dev->task)) {
-			ret = -ENOMEM;
-			ts_scp_err("create thread fail %d", ret);
-			goto err_task;
-		}
-		sched_setscheduler_nocheck(dev->task, SCHED_FIFO, &param);
+        /* init after scp reset timer */
+        hrtimer_init(&dev->after_scp_reset_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+        dev->after_scp_reset_timer.function = ts_after_scp_reset_timer_func;
 
-		dev->task_ready = kthread_run(ts_scp_ready_thread, dev, "ts_scp_ready");
-		if (IS_ERR(dev->task_ready)) {
-			ret = -ENOMEM;
-			ts_scp_err("create thread fail %d", ret);
-			goto err_task;
-		}
+        atomic_set(&dev->scp_crash_num_from_boot, 0);
+        atomic_set(&dev->scp_crash_num, 0);
 
-		dev->task_scene = kthread_run(ts_scp_scene_thread, dev, "ts_scp_scene");
-		if (IS_ERR(dev->task_scene)) {
-			ret = -ENOMEM;
-			ts_scp_err("create scene thread fail %d", ret);
-			goto err_task;
-		}
+        touch_comm_notify_handler_register(TOUCH_COMM_NOTIFY_DATA_CMD,
+            ts_scp_data_notify_func, dev);
 
-		touch_comm_notify_handler_register(TOUCH_COMM_NOTIFY_DATA_CMD,
-			ts_scp_data_notify_func, dev);
+        touch_comm_notify_handler_register(TOUCH_COMM_NOTIFY_READY_CMD,
+            ts_scp_ready_notify_func, dev);
 
-		touch_comm_notify_handler_register(TOUCH_COMM_NOTIFY_READY_CMD,
-			ts_scp_ready_notify_func, dev);
+        scp_A_register_notify(&scp_platform_ready_notifier);
 
-		scp_A_register_notify(&scp_platform_ready_notifier);
+        ts_scp_info("ts_scp_init success");
+        return 0;
 
-		ts_scp_info("ts_scp_init success");
-		return 0;
-
-	err_task:
-		device_destroy(dev->ts_scp_class, MKDEV(dev->ts_scp_major, 0));
-	err_dev:
-		class_destroy(dev->ts_scp_class);
-	err_class:
-		unregister_chrdev(dev->ts_scp_major, "ts_scp");
-	err_exit:
-		return ret;
-	} else {
-		ts_scp_info("ts_scp_common_enable false");
-		return 0;
-	}
+    err_task:
+        device_destroy(dev->ts_scp_class, MKDEV(dev->ts_scp_major, 0));
+    err_dev:
+        class_destroy(dev->ts_scp_class);
+    err_class:
+        unregister_chrdev(dev->ts_scp_major, "ts_scp");
+    err_exit:
+        return ret;
+    } else {
+        ts_scp_info("ts_scp_common_enable false");
+        return 0;
+    }
 }
 
 static void ts_scp_remove(struct platform_device *pdev)
 {
-	struct ts_scp_device *dev = &ts_scp_dev;
-	//struct ts_scp_device *dev = platform_get_drvdata(pdev);
+    struct ts_scp_device *dev = &ts_scp_dev;
 
-	scp_A_unregister_notify(&scp_platform_ready_notifier);
-	device_destroy(dev->ts_scp_class, MKDEV(dev->ts_scp_major, 0));
-	class_destroy(dev->ts_scp_class);
-	unregister_chrdev(dev->ts_scp_major, "ts_scp");
+    scp_A_unregister_notify(&scp_platform_ready_notifier);
+    device_destroy(dev->ts_scp_class, MKDEV(dev->ts_scp_major, 0));
+    class_destroy(dev->ts_scp_class);
+    unregister_chrdev(dev->ts_scp_major, "ts_scp");
 
-	//ts_scp_sysfs_exit(dev);
-
-	touch_comm_notify_handler_unregister(TOUCH_COMM_NOTIFY_DATA_CMD);
-	touch_comm_notify_handler_unregister(TOUCH_COMM_NOTIFY_READY_CMD);
-	if (!IS_ERR_OR_NULL(dev->task))
-		kthread_stop(dev->task);
+    touch_comm_notify_handler_unregister(TOUCH_COMM_NOTIFY_DATA_CMD);
+    touch_comm_notify_handler_unregister(TOUCH_COMM_NOTIFY_READY_CMD);
+    if (!IS_ERR_OR_NULL(dev->task_cmd))
+        kthread_stop(dev->task_cmd);
+    if (!IS_ERR_OR_NULL(dev->task_data))
+        kthread_stop(dev->task_data);
+    hrtimer_cancel(&dev->after_scp_reset_timer);
 }
 
 static const struct of_device_id ts_scp_of_match[] = {
-	{ .compatible = "mediatek,tp-offload-scp" },
-	{},
+    { .compatible = "mediatek,tp-offload-scp" },
+    {},
 };
 MODULE_DEVICE_TABLE(of, ts_scp_of_match);
 
 static struct platform_driver ts_scp_driver = {
-	.probe = ts_scp_probe,
-	.remove = ts_scp_remove,
-	.driver = {
-		.name = "ts-scp",
-		.of_match_table = ts_scp_of_match,
-	},
+    .probe = ts_scp_probe,
+    .remove = ts_scp_remove,
+    .driver = {
+    .name = "ts-scp",
+    .of_match_table = ts_scp_of_match,
+    },
 };
 
 module_platform_driver(ts_scp_driver);

@@ -11,7 +11,7 @@
 #include <linux/completion.h>
 #include <linux/delay.h>
 
-#include "scp.h"
+#include "scp_rv.h"
 #include "touch_ipi_comm.h"
 
 struct ipi_controller {

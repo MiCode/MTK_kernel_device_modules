@@ -8,19 +8,10 @@
 
 #include <linux/input.h>
 #include "touch_comm.h"
-#include "interface.h"
-#include "scenario_handle.h"
-#include "scp_rv.h"
-#include "timesync.h"
 
-#define MAX_SCP_FINGER_NUM	10
-#define MAX_CRASH_NUM		10
-
-enum ts_scp_point_status {
-	TS_SCP_NONE = 0,
-	TS_SCP_RELEASE,
-	TS_SCP_TOUCH,
-};
+#define MAX_CRASH_NUM                  (10)
+#define MAX_CRASH_NUM_ONE_DURATION     (1)
+#define TS_AFTER_SCP_REST_TIME         (10000000000)
 
 enum ts_scp_touch_uniq_id {
     TOUCH_ID_INVALID = 0,
@@ -31,65 +22,64 @@ enum ts_scp_touch_uniq_id {
 };
 
 enum ts_scp_touch_type {
-	TS_UNIQ_NONE = 0,
-	TS_UNIQ_ONE,
-	TS_UNIQ_TWO,
-	TS_UNIQ_THREE,
-	MAX_TOUCH_UNIQ_ID,
+    TS_TYPE_INVALID = 0,
+    TS_TYPE_PRIMARY,
+    TS_TYPE_SECONDARY,
+    MAX_TS_TOUCH_TYPE,
 };
 
-enum ts_scp_ack_ret_value {
-	TS_ACK_FAIL = 0,
-	TS_ACK_PASS,
-	MAX_ACK_VALUE,
+enum touch_comm_ctrl_cmd {
+    TOUCH_COMM_CTRL_SCP_HANDLE_CMD, //SCP handle touch event
+    TOUCH_COMM_CTRL_AP_HANDLE_CMD, //AP handle touch event
+    TOUCH_COMM_CTRL_QUERY_SCP_STATUS_CMD, //query scp is ready for touch or not
+    TOUCH_COMM_CTRL_SUSPEND_CMD, //notify suspend
+    TOUCH_COMM_CTRL_RESUME_CMD, //notify resume
+    TOUCH_COMM_CTRL_REINIT_CMD, //notify reinit
+    TOUCH_COMM_CTRL_CHANGE_REPORT_RATE_CMD, //change report rate
+
+    TOUCH_COMM_CTRL_STATUS_UPDATE,
+    MAX_TOUCH_COMM_CTRL_CMD,
 };
 
-enum ts_scp_finger_on_mode {
-	TS_FINIGER_NONE = 0,
-	TS_FINIGER_ENABLE_CMD,
-	TS_FINIGER_READY_CMD,
-	MAX_FINGER_MODE,
+enum touch_comm_notify_cmd {
+    TOUCH_COMM_NOTIFY_DATA_CMD,
+    TOUCH_COMM_NOTIFY_READY_CMD,
+    MAX_TOUCH_COMM_NOTIFY_CMD,
 };
 
-/* scp touch event data */
-struct ts_scp_tp_data{
-	int32_t finger_status;
-	uint32_t position_x;
-	uint32_t position_y;
-	uint32_t major;
-	uint32_t pressure;
-};
+/*State Mask*/
+#define STAT_NONE                       (0x0000)
+/*SCP Touch state bit 0-15*/
+#define STAT_SCP_TP_INIT_READY          (0x0010)
+#define STAT_SCP_TP_WORK_STATE          (0x0020)
+#define STAT_TP_WORK_MODE               (0x8000)
+#define STAT_AP_TP_READY                (0x0100)
 
-struct ts_scp_tp_multi_data{
-    int touch_num;
-	int64_t scp_timestamp;
-	int64_t scp_archcounter;
-    struct ts_scp_tp_data coords[MAX_SCP_FINGER_NUM];
-};
-/*
-struct ts_scp_tp_scenario{
-	uint32_t scenario_flag;
-	uint16_t scenario_prio;
-	uint32_t scenario_status;
-};
-*/
+/*SCP state bit 0-15*/
+#define STAT_SCP_STATE_READY            (0x0001)
+#define STAT_SCP_STATE_CRASH_DURATION   (0x0004)
+#define STAT_SCP_STATE_CRASH_TOO_MUCH   (0x0002)
+/*State Mask*/
+
 struct ts_scp_data {
-	struct ts_scp_tp_multi_data multi_data;
+    uint8_t touch_type;
+    int32_t data[TOUCH_COMM_DATA_MAX];
 };
 
-struct ts_scp_device {
-	struct ts_scp_data *ts_data;
-	struct ts_scp_ctrl *ctrl;
-	struct task_struct *task;
-	struct task_struct *task_ready;
-	struct task_struct *task_scene;
-	struct input_dev *input_dev;
-	struct timesync_filter filter;
+struct ts_scp_cmd {
+    uint8_t touch_type;
+    uint8_t command;
+    uint8_t data[TOUCH_COMM_CTRL_DATA_MAX];
+};
 
-	int ts_scp_major;
-	struct class *ts_scp_class;
-	struct device *device;
-	bool ts_scp_common_enable;
+struct tp_offload_scp {
+    int (*offload_scp)(struct tp_offload_scp *tp, bool enable);
+    void (*report_func)(void *data);
+
+    char *name;
+    uint8_t touch_type;
+    uint8_t touch_id;
+    void *private_data;
 };
 
 /* log macro */
@@ -103,25 +93,21 @@ extern bool debug_log_flag;
 		pr_info("[TS-DBG][%s:%d] "fmt"\n", __func__, __LINE__, ##arg);}
 
 struct ts_scp_node_debug {
-	bool debug_on;
+    bool debug_on;
 };
 
 struct ts_scp_node_ctrl {
-	uint8_t cmd;
+    uint8_t touch_type;
+    uint8_t cmd;
 };
 
 #define TS_SCP_NODE_DEBUG           _IOWR('a', 1, struct ts_scp_node_debug)
 #define TS_SCP_NODE_CTRL            _IOWR('a', 2, struct ts_scp_node_ctrl)
 
-extern struct ts_scp_device ts_scp_dev;
-extern struct touch_comm_notify_status ts_scp_notify_status;
-extern void (*generic_report_func)(struct ts_scp_device *dev);
-extern struct completion ts_scp_scene_done;
-
-void connect_report_func(void (*report_func)(struct ts_scp_device *dev));
-int generic_power_on_reinit(void);
-void ts_scp_is_scp_touch_need_probe(void);
-void ts_scp_set_touch_type_id(uint8_t type, uint8_t id);
-int64_t ts_scp_timesync(struct ts_scp_device *device);
-
+int ts_scp_request_offload(struct tp_offload_scp *tp);
+void ts_scp_release_offload(struct tp_offload_scp *tp);
+int ts_scp_cmd_handler_sync(struct ts_scp_cmd *option_cmd);
+void ts_scp_cmd_handler_async(struct ts_scp_cmd *option_cmd);
+int ts_scp_offload_check_status(uint8_t touch_type);
+int64_t ts_scp_generate_timestamp(int64_t scp_timestamp, int64_t scp_archcounter);
 #endif
