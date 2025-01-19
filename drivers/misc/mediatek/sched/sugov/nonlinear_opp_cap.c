@@ -2434,8 +2434,8 @@ void update_dpt_v2_info(void)
 	int cpu, status = 0;
 	u64 global_clock_sum = 0, local_clock_sum = 0;
 	unsigned int cpu_coef1_sratio[MAX_NR_CPUS], cpu_coef2_sratio[MAX_NR_CPUS], cpu_sratio[MAX_NR_CPUS];
-	int coef2_ltime = (coef2_ltime_addr) ? ioread32(coef2_ltime_addr) : USING_LAST_STATE;
-	int coef1_ltime = (coef1_ltime_addr) ? ioread32(coef1_ltime_addr)  : USING_LAST_STATE;
+	int coef2_ltime = (coef2_ltime_addr) ? ioread32(coef2_ltime_addr) : 1;
+	int coef1_ltime = (coef1_ltime_addr) ? ioread32(coef1_ltime_addr)  : 1;
 	unsigned int coef1_s, coef2_s, total_s;
 	unsigned long cpu_util[MAX_NR_CPUS], coef1_util[MAX_NR_CPUS], coef2_util[MAX_NR_CPUS];
 
@@ -2445,9 +2445,9 @@ void update_dpt_v2_info(void)
 	for_each_possible_cpu(cpu) {
 		dpt_rq = &per_cpu(__dpt_rq, cpu);
 
-		coef1_s = (coef1_sratio_addr) ? ioread8(coef1_sratio_addr + (COEF1_COEF2_S_PER_CPU_SIZE * cpu)) : USING_LAST_STATE;
-		coef2_s = (coef2_sratio_addr) ? ioread8(coef2_sratio_addr + (COEF1_COEF2_S_PER_CPU_SIZE * cpu)) : USING_LAST_STATE;
-		total_s = (cpu_sratio_addr) ? ioread32(cpu_sratio_addr + (CPU_S_PER_CPU_SIZE * cpu)) : USING_LAST_STATE;
+		coef1_s = (coef1_sratio_addr) ? ioread8(coef1_sratio_addr + (COEF1_COEF2_S_PER_CPU_SIZE * cpu)) : 1;
+		coef2_s = (coef2_sratio_addr) ? ioread8(coef2_sratio_addr + (COEF1_COEF2_S_PER_CPU_SIZE * cpu)) : 1;
+		total_s = (cpu_sratio_addr) ? ioread32(cpu_sratio_addr + (CPU_S_PER_CPU_SIZE * cpu)) : 1;
 
 		SET_VALUE(dpt_rq->cur_ltime[S_COEF1], coef1_min_ltime, coef1_max_ltime, coef1_ltime);
 		SET_VALUE(dpt_rq->cur_ltime[S_COEF1], coef1_min_ltime, coef1_max_ltime, dpt_rq->coef1_ltime_manual);
