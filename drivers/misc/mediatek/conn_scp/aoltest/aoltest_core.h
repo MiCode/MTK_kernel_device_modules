@@ -13,5 +13,6 @@ int aoltest_core_init(void);
 void aoltest_core_deinit(void);
 
 int aoltest_core_send_dbg_msg(uint32_t param0, uint32_t param1);
+int aoltest_core_send_dbg_data(uint8_t *buf, uint32_t size);
 
 #endif // _AOLTEST_CORE_H_

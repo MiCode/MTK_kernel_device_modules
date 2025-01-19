@@ -76,7 +76,7 @@ struct shm_msg_cmd {
 /*  +-------------------+ */
 /******************************/
 #define CONAP_SHM_SUPPORT		1
-#define CONAP_SHM_MAX_PKT_SZ		(3*1024)
+#define CONAP_SHM_MAX_PKT_SZ		(10*1024)
 
 #ifdef CONAP_SHM_SUPPORT
 struct conap_buf {
@@ -298,7 +298,7 @@ int conap_scp_shm_read(uint8_t *msg_buf, uint32_t oft, uint32_t msg_sz)
 	phys_addr_t rptr = oft;
 	uint32_t cpsz1, cpsz2;
 
-	if (msg_sz >= CONAP_SHM_MAX_PKT_SZ)
+	if (msg_sz > CONAP_SHM_MAX_PKT_SZ)
 		return -1;
 
 	if (oft > buf_len)
