@@ -9,9 +9,9 @@
 #include "lib/spinlock.h"
 #include "policy.h"
 
-#define cpu_reg(ctxt, r)	((ctxt)->regs.regs[r])
-#define DECLARE_REG(type, name, ctxt, reg)\
-			type name = (type)cpu_reg(ctxt, (reg))
+#define cpu_reg(regs, r)	(regs)->regs[r]
+#define DECLARE_REG(type, name, regs, reg)\
+			type name = (type)cpu_reg(regs, (reg))
 
 enum attr_type {
 	ATTR_RW = 0x0001,
