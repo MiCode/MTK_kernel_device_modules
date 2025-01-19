@@ -35,6 +35,9 @@
 #define MT6661_RG_VSYS_UVLO_VTHL_MASK                                   (0xF)
 #define MT6661_RG_VSYS_UVLO_VTHL_SHIFT                                  (0)
 
+#define MT6661_TOP_TMA_KEY_L                                            (0x3b4)
+#define MT6661_TOP_TMA_KEY_H                                            (0x3b5)
+
 /* PMIC AUXADC OUT/RDY */
 // CH0 OUT/RDY
 #define MT6661_AUXADC_ADC0_L                                            (0x1088)

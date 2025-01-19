@@ -33,6 +33,8 @@
 #define DLPT_NOTIFY_FAST_UISOC		30
 #define	DLPT_VOLT_MIN			3100
 
+#define MT6661_TMA_UNLOCK_VALUE		0x999E
+
 struct reg_t {
 	unsigned int addr;
 	unsigned int mask;
@@ -43,6 +45,8 @@ struct dlpt_regs_t {
 	struct reg_t rgs_chrdet;
 	struct reg_t uvlo_reg;
 	struct reg_t vbb_uvlo_reg;
+	unsigned int lock_reg;
+	unsigned int unlock_val;
 	const struct linear_range uvlo_range;
 };
 
@@ -171,11 +175,13 @@ struct dlpt_regs_t mt6661_dlpt_regs = {
 		MT6661_RG_VBB_UVLO_VTHL_SHIFT
 	},
 	.uvlo_range = {
-		.min = 1700,
-		.min_sel = 0,
+		.min = 2000,
+		.min_sel = 3,
 		.max_sel = 10,
 		.step = 100,
 	},
+	.lock_reg = MT6661_TOP_TMA_KEY_L,
+	.unlock_val = MT6661_TMA_UNLOCK_VALUE,
 };
 
 struct dlpt_priv {
@@ -527,14 +533,20 @@ static int linear_range_get_selector(const struct linear_range *r,
 static void pmic_uvlo_init(int uvlo_level, int vbb_uvlo_level)
 {
 	int ret, val = 0;
+	unsigned int regval = 0, buf = 0;
 
+	if (dlpt.regs->lock_reg) {
+		buf = dlpt.regs->unlock_val;
+		regmap_bulk_write(dlpt.regmap, dlpt.regs->lock_reg, &buf, 2);
+	}
 	ret = linear_range_get_selector(&dlpt.regs->uvlo_range, uvlo_level, &val);
 	if (!ret) {
 		regmap_update_bits(dlpt.regmap, dlpt.regs->uvlo_reg.addr,
 				   dlpt.regs->uvlo_reg.mask,
 				   val << dlpt.regs->uvlo_reg.shift);
-		pr_info("[dlpt] UVLO_VOLT_LEVEL = %d, RG_UVLO_VTHL = 0x%x\n",
-			uvlo_level, val);
+		regmap_read(dlpt.regmap, dlpt.regs->uvlo_reg.addr, &regval);
+		pr_info("[dlpt] UVLO_VOLT_LEVEL = %d, set RG_UVLO_VTHL[0x%x] to 0x%x, read check: 0x%x\n",
+			uvlo_level, dlpt.regs->uvlo_reg.addr, val, regval);
 	} else
 		pr_notice("[dlpt] Invalid uvlo_level (%d)\n", uvlo_level);
 
@@ -544,10 +556,15 @@ static void pmic_uvlo_init(int uvlo_level, int vbb_uvlo_level)
 			regmap_update_bits(dlpt.regmap, dlpt.regs->vbb_uvlo_reg.addr,
 					   dlpt.regs->vbb_uvlo_reg.mask,
 					   val << dlpt.regs->vbb_uvlo_reg.shift);
-			pr_info("[dlpt] VBB_UVLO_VOLT_LEVEL = %d, RG_VBB_UVLO_VTHL = 0x%x\n",
-				vbb_uvlo_level, val);
+			regmap_read(dlpt.regmap, dlpt.regs->vbb_uvlo_reg.addr, &regval);
+			pr_info("[dlpt] VBB_UVLO_VOLT_LEVEL = %d, set RG_VBB_UVLO_VTHL[0x%x] to 0x%x, read check: 0x%x\n",
+				vbb_uvlo_level, dlpt.regs->vbb_uvlo_reg.addr, val, regval);
 		} else
 			pr_notice("[dlpt] Invalid vbb_uvlo_level (%d)\n", vbb_uvlo_level);
+	}
+	if (dlpt.regs->lock_reg) {
+		buf = 0;
+		regmap_bulk_write(dlpt.regmap, dlpt.regs->lock_reg, &buf, 2);
 	}
 }
 
