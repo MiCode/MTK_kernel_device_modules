@@ -8417,7 +8417,16 @@
 	typec_mux_switch: typec_mux_switch {
 		compatible = "mediatek,typec_switch";
 		switch-names = "fusb340";
+		orientation-switch;
+		mode-switch;
+		accessory;
+		mediatek,inverse-orientation;
 		status = "okay";
+		port {
+			ssusb_mux: endpoint {
+				remote-endpoint = <&tcpc_typec_usb>;
+			};
+		};
 	};
 
 	fusb340: fusb340 {
@@ -9115,6 +9124,11 @@
 				pin-assignment,mode-c;
 				pin-assignment,mode-d;
 				pin-assignment,mode-e;
+			};
+		};
+		port {
+			tcpc_typec_usb: endpoint {
+				remote-endpoint = <&ssusb_mux>;
 			};
 		};
 	};

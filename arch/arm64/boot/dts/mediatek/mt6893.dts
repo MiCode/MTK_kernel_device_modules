@@ -725,7 +725,16 @@
 
 	typec_mux_switch: typec_mux_switch {
 		compatible = "mediatek,typec_mux_switch";
+		orientation-switch;
+		mode-switch;
+		accessory;
+		mediatek,inverse-orientation;
 		status = "okay";
+		port {
+			ssusb_mux: endpoint {
+				remote-endpoint = <&tcpc_typec_usb>;
+			};
+		};
 	};
 
 	fusb304: fusb304 {
@@ -783,6 +792,14 @@
 };
 
 #include "mediatek/mt6360.dtsi"
+
+&mt6360_typec {
+	port {
+		tcpc_typec_usb: endpoint@0 {
+			remote-endpoint = <&ssusb_mux>;
+		};
+	};
+};
 
 &pmic {
 	interrupt-parent = <&pio>;
