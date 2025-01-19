@@ -810,7 +810,7 @@ static void mtk_ovl_exdma_all_layer_off(struct mtk_ddp_comp *comp,
 	DDPINFO("%s+ %s pkt: %p\n", __func__, mtk_dump_comp_str(comp), handle);
 	if (keep_first_layer) {
 		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3) {
-			DDPMSG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
+			DDPINFO("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 			return;
 		}
 	}

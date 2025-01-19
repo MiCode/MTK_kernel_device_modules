@@ -683,7 +683,7 @@ static void dpc_enable_v2(const u8 en)
 
 static void dpc_enable_v3(const u8 en)
 {
-	DPCFUNC("en(%u)", en);
+	//DPCFUNC("en(%u)", en);
 
 	u16 i = 0;
 

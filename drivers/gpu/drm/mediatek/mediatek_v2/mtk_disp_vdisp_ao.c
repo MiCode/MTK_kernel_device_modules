@@ -377,21 +377,21 @@ void mtk_vdisp_ao_qos_config_MT6993(struct drm_device *drm)
 	//cwb need hrt_write
 	value = hrt_r_hrt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM0_MT6993);
-	DDPMSG("set subcom0 hrt_r, hrt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom0 hrt_r, hrt_w, value=0x%llx\n", value);
 
 	//only when od on can chg srt_write to hrt_write
 	value = hrt_r_srt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM1_MT6993);
-	DDPMSG("set subcom1 hrt_r, srt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom1 hrt_r, srt_w, value=0x%llx\n", value);
 
 	value = hrt_r_srt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM2_MT6993);
-	DDPMSG("set subcom2 hrt_r, srt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom2 hrt_r, srt_w, value=0x%llx\n", value);
 
 	//cwb need hrt_write
 	value = hrt_r_hrt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM3_MT6993);
-	DDPMSG("set subcom3 hrt_r, hrt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom3 hrt_r, hrt_w, value=0x%llx\n", value);
 }
 
 static int mtk_vdisp_ao_probe(struct platform_device *pdev)

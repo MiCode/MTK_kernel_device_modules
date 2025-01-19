@@ -2646,7 +2646,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	mmsys_clk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000000;
 	if (!mmsys_clk) {
-		DDPPR_ERR("%s:%d mmclk is zero\n", __func__, __LINE__);
+		DDPINFO("%s:%d mmclk is zero\n", __func__, __LINE__);
 		mmsys_clk = 208;
 	}
 
@@ -7367,7 +7367,7 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + dsi->driver_data->reg_cmdq0_ofs,
 			       0x002c3909, ~0);
-		DDPMSG("dsi test dummy reg 0x154:0x%x, 0x3FC:0x%x\n",
+		DDPINFO("dsi test dummy reg 0x154:0x%x, 0x3FC:0x%x\n",
 			readl(dsi->regs + 0x154),
 			readl(dsi->regs + 0x3FC));
 		/* Dummy test reg , need to remove*/

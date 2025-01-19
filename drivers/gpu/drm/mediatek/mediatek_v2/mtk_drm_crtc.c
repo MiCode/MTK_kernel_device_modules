@@ -1060,7 +1060,7 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 	int value = 0;
 
 	if (mtk_crtc->first_blender)
-		DDPMSG("reset path first: %d\n",mtk_crtc->first_blender->id);
+		DDPINFO("reset path first: %d\n",mtk_crtc->first_blender->id);
 
 	mutex = mtk_crtc->mutex[0];
 	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
@@ -14162,15 +14162,15 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 		if ((crtc->state->adjusted_mode.hdisplay == mtk_crtc->scaling_ctx.lcm_width)
 			&& (crtc->state->adjusted_mode.vdisplay == mtk_crtc->scaling_ctx.lcm_height)) {
-			DDPMSG("%s scaling_en mismatch, reset to false\n", __func__);
+			DDPINFO("%s scaling_en mismatch, reset to false\n", __func__);
 			mtk_crtc->scaling_ctx.scaling_en = false;
 		} else {
-			DDPMSG("%s scaling_en, will continue to scaling\n", __func__);
+			DDPINFO("%s scaling_en, will continue to scaling\n", __func__);
 			mtk_crtc->scaling_ctx.scaling_en = true;
 		}
 	}
 
-	DDPMSG("%s:%d scaling_en:%d hdisplay:%d vdisplay:%d lcm:width:%d lcm_height:%d\n",
+	DDPINFO("%s:%d scaling_en:%d hdisplay:%d vdisplay:%d lcm:width:%d lcm_height:%d\n",
 		__func__, __LINE__, mtk_crtc->scaling_ctx.scaling_en,
 		crtc->state->adjusted_mode.hdisplay, crtc->state->adjusted_mode.vdisplay,
 		mtk_crtc->scaling_ctx.lcm_width, mtk_crtc->scaling_ctx.lcm_height);
@@ -15924,7 +15924,7 @@ int mtk_drm_crtc_get_panel_original_size(struct drm_crtc *crtc, unsigned int *wi
 		DDPMSG("invalid display mode\n");
 	}
 
-	DDPMSG("panel original size:%dx%d\n", *width, *height);
+	DDPINFO("panel original size:%dx%d\n", *width, *height);
 
 	return ret;
 }

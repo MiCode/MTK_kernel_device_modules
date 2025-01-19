@@ -678,7 +678,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 			   ((slice_bits - num_extra_mux_bits) % mux_word_size != 0)) {
 			num_extra_mux_bits--;
 		}
-		DDPMSG("RCT_ON = 0x%X, num_extra_mux_bits = %d->%d, slice_bits = %d\n",
+		DDPINFO("RCT_ON = 0x%X, num_extra_mux_bits = %d->%d, slice_bits = %d\n",
 			 (dsc_params->rct_on), reg_val, num_extra_mux_bits, slice_bits);
 
 		final_offset = rc_model_size + num_extra_mux_bits -
@@ -1289,7 +1289,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			   ((slice_bits - num_extra_mux_bits) % mux_word_size != 0)) {
 			num_extra_mux_bits--;
 		}
-		DDPMSG("RCT_ON = 0x%X, num_extra_mux_bits = %d->%d, slice_bits = %d\n",
+		DDPINFO("RCT_ON = 0x%X, num_extra_mux_bits = %d->%d, slice_bits = %d\n",
 			 (dsc_params->rct_on), reg_val, num_extra_mux_bits, slice_bits);
 
 		final_offset = rc_model_size + num_extra_mux_bits -

@@ -457,8 +457,9 @@ EXPORT_SYMBOL(mtk_vdisp_ctrl);
 
 int vdisp_ctrl(struct cb_params *cb_para)
 {
-	VDISPDBG("%s: name(%s) on_off(%d) vote_bit(%d)\n", __func__,
-		cb_para->name, cb_para->onoff, cb_para->vote_bit);
+	/*VDISPDBG("%s: name(%s) on_off(%d) vote_bit(%d)\n", __func__,
+	 *	cb_para->name, cb_para->onoff, cb_para->vote_bit);
+	 */
 
 	mtk_vdisp_ctrl(cb_para->onoff,
 		cb_para->name, 0,
