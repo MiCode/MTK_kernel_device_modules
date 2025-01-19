@@ -67,9 +67,6 @@
 #define SET_OFFSET	0x1
 #define CLR_OFFSET	0x2
 
-/* EFUSE Register width (bytes) definitions */
-#define EFUSE_REG_WIDTH		2
-
 /* Timeout (us) of polling the status */
 #define EFUSE_POLL_TIMEOUT	30000
 #define EFUSE_TRIG_DELAY_US	40
@@ -159,6 +156,8 @@ struct efuse_chip_data {
 	const struct efuse_reg *reg;
 	unsigned int key_reg_num;
 	unsigned int key_reg_val;
+	unsigned int efuse_reg_width;
+	unsigned int efuse_reg_read_width;
 };
 
 struct mt635x_efuse {
@@ -229,13 +228,13 @@ static int mt635x_efuse_read(void *context, unsigned int offset,
 	}
 	/* Set SW trigger read */
 	if (reg->otp_rd_mode)
-		ret = regmap_write(efuse->regmap, reg->otp_rd_mode, 3);
+		ret = regmap_write(efuse->regmap, reg->otp_rd_mode, 2);
 	else
 		ret = regmap_write(efuse->regmap, reg->otp_rd_sw, 1);
 
 	if (ret)
 		goto disable_efuse;
-	for (; offset < offset_end; offset += EFUSE_REG_WIDTH) {
+	while (offset < offset_end) {
 		/* Set the row to be read, one row is 2 bytes data */
 		ret = regmap_write(efuse->regmap, reg->otp_pa, offset);
 		if (ret)
@@ -257,18 +256,19 @@ static int mt635x_efuse_read(void *context, unsigned int offset,
 
 		/* Read data from efuse memory, must delay before read */
 		udelay(EFUSE_READ_DELAY_US);
-		if (data->ctrl_reg_width == EFUSE_REG_WIDTH)
+		if (data->ctrl_reg_width == data->efuse_reg_width)
 			ret = regmap_read(efuse->regmap,
 					  reg->otp_dout_sw, &buf);
 		else
 			ret = regmap_bulk_read(efuse->regmap,
 					       reg->otp_dout_sw,
 					       (u8 *) &buf,
-					       EFUSE_REG_WIDTH);
+					       data->efuse_reg_width);
 		if (ret)
 			goto disable_efuse;
 		dev_dbg(efuse->dev, "EFUSE[%d]=0x%x\n", offset, buf);
 		*val++ = (unsigned short)buf;
+		offset += (unsigned int)(data->efuse_reg_width / data->efuse_reg_read_width);
 	}
 disable_efuse:
 	/* Disable SW trigger read */
@@ -403,12 +403,12 @@ static int mt635x_efuse_probe(struct platform_device *pdev)
 	efuse->dev = &pdev->dev;
 	platform_set_drvdata(pdev, efuse);
 
-	econfig.stride = 2;
-	econfig.word_size = EFUSE_REG_WIDTH;
+	econfig.stride = efuse->data->efuse_reg_width / efuse->data->efuse_reg_read_width;
+	econfig.word_size = efuse->data->efuse_reg_width;
 	econfig.read_only = true;
 	econfig.name = dev_name(&pdev->dev);
 	econfig.id = NVMEM_DEVID_NONE;
-	econfig.size = efuse->data->reg_num * EFUSE_REG_WIDTH;
+	econfig.size = efuse->data->reg_num * efuse->data->efuse_reg_width;
 	econfig.reg_read = mt635x_efuse_read;
 	econfig.priv = efuse;
 	econfig.dev = &pdev->dev;
@@ -445,18 +445,24 @@ static const struct efuse_chip_data mt6357_efuse_data = {
 	.reg_num = 128,
 	.ctrl_reg_width = 0x2,
 	.reg = &reg_v0,
+	.efuse_reg_width = 0x2,
+	.efuse_reg_read_width = 0x1,
 };
 
 static const struct efuse_chip_data mt6359p_efuse_data = {
 	.reg_num = 128,
 	.ctrl_reg_width = 0x2,
 	.reg = &reg_v1,
+	.efuse_reg_width = 0x2,
+	.efuse_reg_read_width = 0x1,
 };
 
 static const struct efuse_chip_data mt6363_efuse_data = {
 	.reg_num = 128,
 	.ctrl_reg_width = 0x1,
 	.reg = &reg_v2,
+	.efuse_reg_width = 0x2,
+	.efuse_reg_read_width = 0x1,
 };
 
 static const struct efuse_chip_data mt6368_efuse_data = {
@@ -465,18 +471,24 @@ static const struct efuse_chip_data mt6368_efuse_data = {
 	.reg = &reg_v2,
 	.key_reg_num = 0x39e,
 	.key_reg_val = 0x9C97,
+	.efuse_reg_width = 0x2,
+	.efuse_reg_read_width = 0x1,
 };
 
 static const struct efuse_chip_data mt6377_efuse_data = {
 	.reg_num = 128,
 	.ctrl_reg_width = 0x1,
 	.reg = &reg_v3,
+	.efuse_reg_width = 0x2,
+	.efuse_reg_read_width = 0x1,
 };
 
 static const struct efuse_chip_data mt6661_efuse_data = {
 	.reg_num = 128,
 	.ctrl_reg_width = 0x1,
 	.reg = &reg_v4,
+	.efuse_reg_width = 0x2,
+	.efuse_reg_read_width = 0x2,
 };
 
 static const struct of_device_id mt635x_efuse_of_match[] = {
