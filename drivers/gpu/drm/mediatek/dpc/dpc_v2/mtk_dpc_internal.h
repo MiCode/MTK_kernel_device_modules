@@ -275,17 +275,9 @@ enum mtk_dpc_cap_id {
 #define has_cap(id) (g_priv && (g_priv->vidle_mask & BIT(id)))
 
 enum mtk_dpc_bw_type {
-	DPC_SRT_READ,				/* channel bw */
-	DPC_SRT_WRITE,				/* channel bw */
-	DPC_HRT_READ,				/* channel bw */
-	DPC_HRT_WRITE,				/* channel bw */
 	DPC_TOTAL_HRT,
 	DPC_TOTAL_SRT,
 	DPC_BW_TYPE_CNT,
-	DPC_MML0_SHARED_SRT = 0,		/* store channel bw shared with mml for disp_bw */
-	DPC_MML0_SHARED_HRT = 1,		/* store channel bw shared with mml for disp_bw */
-	DPC_MML1_SHARED_SRT = 2,		/* store channel bw shared with mml for disp_bw */
-	DPC_MML1_SHARED_HRT = 3,		/* store channel bw shared with mml for disp_bw */
 };
 
 struct mtk_dpc_dt_usage {
@@ -302,7 +294,7 @@ struct mtk_dpc2_dt_usage {
 
 struct mtk_dpc_dvfs_bw {
 	u32 mml_bw;
-	u32 disp_bw[DPC_BW_TYPE_CNT];		/* only store channel bw shared with mml */
+	u32 disp_bw[DPC_BW_TYPE_CNT];
 	u32 mml0_bw[DPC_BW_TYPE_CNT];
 	u32 mml1_bw[DPC_BW_TYPE_CNT];
 	u8 bw_level;
@@ -322,6 +314,8 @@ struct mtk_dpc_mtcmos_cfg {
 struct mtk_dpc_channel_bw_cfg {
 	u16 offset;
 	u8 shift;
+	u16 disp_bw;
+	u16 mml_bw;
 };
 
 static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread);
@@ -383,8 +377,6 @@ struct mtk_dpc {
 	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
 
 	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, bool en);
-	void (*mml_bw_set)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_bw_type type,
-			      const u32 bw_in_mb, const bool force);
 	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
 	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
 };
