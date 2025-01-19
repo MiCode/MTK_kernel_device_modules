@@ -1786,28 +1786,48 @@ static void devapc_hre_restore(int slave_type)
 	struct mtk_devapc_vio_info *vio_info = mtk_devapc_ctx->soc->vio_info;
 	uint32_t size = vio_info->vio_mask_sta_num[slave_type];
 	uint32_t i;
+	void __iomem *reg;
 
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg0_reg,
-		mtk_devapc_pd_get(slave_type, VIO_DBG0, 0));
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg1_reg,
-		mtk_devapc_pd_get(slave_type, VIO_DBG1, 0));
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg2_reg,
-		mtk_devapc_pd_get(slave_type, VIO_DBG2, 0));
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg3_reg,
-		mtk_devapc_pd_get(slave_type, VIO_DBG3, 0));
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_apc_con_reg,
-		mtk_devapc_pd_get(slave_type, APC_CON, 0));
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_shift_sta_reg,
-		mtk_devapc_pd_get(slave_type, VIO_SHIFT_STA, 0));
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_shift_sel_reg,
-		mtk_devapc_pd_get(slave_type, VIO_SHIFT_SEL, 0));
-	writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_shift_con_reg,
-		mtk_devapc_pd_get(slave_type, VIO_SHIFT_CON, 0));
+	reg = mtk_devapc_pd_get(slave_type, VIO_DBG0, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg0_reg, reg);
+
+	reg = mtk_devapc_pd_get(slave_type, VIO_DBG1, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg1_reg, reg);
+
+	reg = mtk_devapc_pd_get(slave_type, VIO_DBG2, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg2_reg, reg);
+
+	reg = mtk_devapc_pd_get(slave_type, VIO_DBG3, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_dbg3_reg, reg);
+
+	reg = mtk_devapc_pd_get(slave_type, APC_CON, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_apc_con_reg, reg);
+
+	reg = mtk_devapc_pd_get(slave_type, VIO_SHIFT_STA, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_shift_sta_reg, reg);
+
+	reg =mtk_devapc_pd_get(slave_type, VIO_SHIFT_SEL, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_shift_sel_reg, reg);
+
+	reg = mtk_devapc_pd_get(slave_type, VIO_SHIFT_CON, 0);
+	if (reg)
+		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_shift_con_reg, reg);
+
 	for (i = 0; i < size; i++) {
-		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_mask_reg[i],
-			mtk_devapc_pd_get(slave_type, VIO_MASK, i));
-		writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_sta_reg[i],
-			mtk_devapc_pd_get(slave_type, VIO_STA, i));
+		reg = mtk_devapc_pd_get(slave_type, VIO_MASK, i);
+		if (reg)
+			writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_mask_reg[i], reg);
+
+		reg = mtk_devapc_pd_get(slave_type, VIO_STA, i);
+		if (reg)
+			writel(mtk_devapc_ctx->pd_reg[slave_type].pd_vio_sta_reg[i], reg);
 	}
 }
 
