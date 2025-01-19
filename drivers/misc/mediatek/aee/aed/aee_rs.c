@@ -11,9 +11,9 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-#include <mtk_drm_assert_ext.h>
-#endif
+//#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
+//#include <mtk_drm_assert_ext.h>
+//#endif
 
 #include "aed.h"
 
