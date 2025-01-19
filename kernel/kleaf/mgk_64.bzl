@@ -2672,13 +2672,10 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_secure".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
-        mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-util.ko")
-
-        mgk_64_platform_device_modules.update("drivers/interconnect/mediatek/mmqos-mt6789.ko")
 
         mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
 
@@ -2689,9 +2686,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/cmdq/mailbox/cmdq-sec-drv.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/cmdq/mailbox/cmdq-test.ko")
-
+        mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
         mgk_64_device_modules.remove("drivers/soc/mediatek/mmdvfs/mtk-mmdvfs-v5.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mmdvfs/mtk-mmdvfs-debug-v5.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/mmdvfs/mmdvfs-mt6993.ko")
