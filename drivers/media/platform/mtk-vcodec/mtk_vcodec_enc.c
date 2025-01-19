@@ -2917,7 +2917,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		if (ctx->sram_data.ref <= 0)
 			atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
 	} else if ((ctx->use_slbc == 1) && (ctx->enc_params.slbc_request_extra == 1)) {
-		ctx->sram_data_extra.uid = UID_MM_VENC_8K;
+		ctx->sram_data_extra.uid = UID_MM_VENC_EXT;
 		ctx->sram_data_extra.type = TP_BUFFER;
 		ctx->sram_data_extra.size = 0;
 		ctx->sram_data_extra.flag = FG_POWER;
