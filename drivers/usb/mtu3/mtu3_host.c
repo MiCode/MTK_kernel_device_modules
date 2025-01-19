@@ -466,6 +466,8 @@ static void ssusb_get_host_rscs(struct ssusb_mtk *ssusb)
 		    of_device_is_compatible(child, "mediatek,mtk-xhci-p1") ||
 		    of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
 			pdev = of_find_device_by_node(child);
+			of_node_put(child);
+
 			if (pdev && ssusb->ls_slp_quirk) {
 				res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
 				if (res)
@@ -473,8 +475,8 @@ static void ssusb_get_host_rscs(struct ssusb_mtk *ssusb)
 					    resource_size(res));
 				if (IS_ERR_OR_NULL(ssusb->host_base))
 					dev_info(ssusb->dev, "failed to get host_base\n");
-				break;
 			}
+			break;
 		}
 	}
 }
@@ -488,9 +490,6 @@ static void ssusb_clear_host_rscs(struct ssusb_mtk *ssusb)
 static void ssusb_host_setup(struct ssusb_mtk *ssusb)
 {
 	host_ports_num_get(ssusb);
-
-	ssusb_get_host_rscs(ssusb);
-
 	/*
 	 * power on host and power on/enable all ports
 	 * if support OTG, gadget driver will switch port0 to device mode
@@ -534,6 +533,8 @@ int ssusb_host_init(struct ssusb_mtk *ssusb, struct device_node *parent_dn)
 	}
 
 	dev_info(parent_dev, "xHCI platform device register success...\n");
+
+	ssusb_get_host_rscs(ssusb);
 
 	return 0;
 }
