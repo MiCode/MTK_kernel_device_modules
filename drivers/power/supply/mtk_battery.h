@@ -1258,9 +1258,7 @@ struct mtk_battery {
 	int iavg_th[MAX_TABLE];
 
 	/*sw low battery interrupt*/
-#ifdef FOR_DDK_PATCH_TEMP_DISABLE
 	struct lbat_user *lowbat_service;
-#endif
 	int sw_low_battery_ht_en;
 	int sw_low_battery_ht_threshold;
 	int sw_low_battery_lt_en;

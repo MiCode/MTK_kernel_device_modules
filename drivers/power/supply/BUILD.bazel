@@ -81,6 +81,7 @@ define_mgk_ddk_ko(
     includes = ["."],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
@@ -152,7 +153,6 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
     ],
 )
-
 
 define_mgk_ddk_ko(
     name = "mtk_pd_adapter",
@@ -248,7 +248,6 @@ define_mgk_ddk_ko(
     ],
 )
 
-
 [define_mgk_ddk_ko(
     name = "{}_battery".format(gauge),
     srcs = [
@@ -263,6 +262,7 @@ define_mgk_ddk_ko(
     includes = ["."],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
         ":mtk_battery_manager",
     ],
     copts = [
@@ -288,6 +288,7 @@ define_mgk_ddk_ko(
     includes = ["."],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
         ":mtk_battery_manager",
     ],
     copts = [
@@ -304,8 +305,15 @@ define_mgk_ddk_ko(
     srcs = [
         "mtk_gauge.h",
         "sgm41516d.c",
+        "sgm41516d.h",
     ],
     includes = ["."],
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_charger_algorithm_class",
+        ":mtk_charger_framework",
+    ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
