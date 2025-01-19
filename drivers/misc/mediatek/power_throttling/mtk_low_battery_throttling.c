@@ -279,13 +279,13 @@ static unsigned int convert_to_thl_lv(enum LOW_BATTERY_USER_TAG intr_type, unsig
 
 	if (intr_type == LBAT_INTR_1 || intr_type == LBAT_INTR_2) {
 		if (input_lv < LBAT_PMIC_LEVEL_NUM  && temp_stage <= lbat_data->temp_max_stage)
-			thl_lv = lbat_data->thl_lv[temp_stage * (lbat_data->temp_max_stage + 1) + input_lv];
+			thl_lv = lbat_data->thl_lv[temp_stage * LBAT_PMIC_LEVEL_NUM + input_lv];
 		else
 			pr_info("%s:Out of boundary: intr_type=%d pmic_lv=%d temp_stage=%d return %d\n", __func__,
 				intr_type, input_lv, temp_stage, input_lv);
 	} else if (intr_type == LVSYS_INTR) {
 		if (input_lv && temp_stage <= lbat_data->temp_max_stage)
-			thl_lv = lbat_data->thl_lv[temp_stage * (lbat_data->temp_max_stage + 1) + LBAT_PMIC_MAX_LEVEL];
+			thl_lv = lbat_data->thl_lv[temp_stage * LBAT_PMIC_LEVEL_NUM + LBAT_PMIC_MAX_LEVEL];
 		else if (temp_stage > lbat_data->temp_max_stage)
 			pr_info("%s:Out of boundary: intr_type=%d pmic_lv=%d temp_stage=%d return %d\n", __func__,
 				intr_type, input_lv, temp_stage, input_lv);
@@ -935,9 +935,9 @@ static void psy_handler(struct work_struct *work)
 	if ((temp_stage <= lbat_data->temp_max_stage && temp_stage != lbat_data->temp_cur_stage) ||
 		(aging_stage <= lbat_data->aging_max_stage && aging_stage != lbat_data->aging_cur_stage)) {
 		if (lbat_data->ppb_mode != 1 && !lbat_data->lbat_thd_modify) {
-			thl_lv_idx = lbat_data->temp_cur_stage * (lbat_data->temp_max_stage+1) + lbat_data->l_pmic_lv;
+			thl_lv_idx = lbat_data->temp_cur_stage * LBAT_PMIC_LEVEL_NUM + lbat_data->l_pmic_lv;
 			pre_thl_lv = lbat_data->thl_lv[thl_lv_idx];
-			thl_lv_idx = temp_stage * (lbat_data->temp_max_stage+1) + lbat_data->l_pmic_lv;
+			thl_lv_idx = temp_stage * LBAT_PMIC_LEVEL_NUM + lbat_data->l_pmic_lv;
 			cur_thl_lv = lbat_data->thl_lv[thl_lv_idx];
 			if (pre_thl_lv != cur_thl_lv) {
 				lbat_data->temp_cur_stage = temp_stage;
