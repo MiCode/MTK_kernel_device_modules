@@ -755,6 +755,11 @@ static int __init mobicore_init(void)
 	if (ret)
 		g_ctx.sel2_support = 0;
 	mc_dev_info("support sel2: %d", g_ctx.sel2_support);
+
+	ret = of_property_read_u32(node, "trustonic,affinity-mask", &g_ctx.affinity_mask);
+	if (ret || (0 == g_ctx.affinity_mask))
+		g_ctx.affinity_mask = PLAT_DEFAULT_TEE_AFFINITY_MASK;
+	mc_dev_info("default affinity mask: %x", g_ctx.affinity_mask);
 #else
 #ifdef MC_FFA_FASTCALL
 	ret = ffa_register_module();

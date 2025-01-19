@@ -370,7 +370,7 @@ static irqreturn_t irq_handler(int intr, void *arg)
 
 int tee_set_affinity(cpumask_t *old_affinity)
 {
-	int ret = 0, affinity_tries = 0;
+	int ret = 0;
 	cpumask_t local_old_affinity;
 	unsigned long affinity = get_tee_affinity();
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
@@ -407,6 +407,12 @@ int tee_set_affinity(cpumask_t *old_affinity)
 	 */
 	l_ctx.stat_set_affinity++;
 	if (!cpumask_subset(&local_old_affinity, to_cpumask(&affinity))) {
+#ifdef MTK_ADAPTED
+		if (set_cpus_allowed_ptr(current, to_cpumask(&affinity)) != 0)
+			mc_dev_devel("set cpus affinity failed");
+		l_ctx.stat_set_cpu_allowed++;
+#else
+		int affinity_tries = 0;
 		ret = set_cpus_allowed_ptr(current, to_cpumask(&affinity));
 		/* set affinity may fail if CPU has been disconnected.
 		 * may not be fatal, just retry few time before exit...
@@ -425,6 +431,7 @@ int tee_set_affinity(cpumask_t *old_affinity)
 		} else {
 			l_ctx.stat_set_cpu_allowed++;
 		}
+#endif /* MTK_ADAPTED */
 	}
 
 	*old_affinity = local_old_affinity;
@@ -1763,7 +1770,11 @@ int nq_init(void)
 		goto err_mci;
 
 	#if defined(PLAT_DEFAULT_TEE_AFFINITY_MASK)
+#ifdef MTK_ADAPTED
+	l_ctx.default_affinity_mask = g_ctx.affinity_mask;
+#else
 	l_ctx.default_affinity_mask = PLAT_DEFAULT_TEE_AFFINITY_MASK;
+#endif /* MTK_ADAPTED */
 	#else
 	l_ctx.default_affinity_mask = (1 << nr_cpu_ids) - 1;
 	#endif

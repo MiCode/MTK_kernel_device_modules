@@ -72,6 +72,7 @@ struct mc_device_ctx {
 #ifdef MTK_ADAPTED
 	u32			real_drv;
 	u32			sel2_support;
+	u32			affinity_mask;
 #endif
 };
 
