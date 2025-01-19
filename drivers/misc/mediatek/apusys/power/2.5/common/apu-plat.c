@@ -389,9 +389,6 @@ static noinline int _update_v_f_2_opp(struct apu_dev *ad, unsigned long v, int o
 					(ulong)(v),
 					(ulong)(v));
 	dev_pm_opp_put(pm_opp);
-	if (ret)
-		goto out;
-out:
 	return ret;
 }
 
