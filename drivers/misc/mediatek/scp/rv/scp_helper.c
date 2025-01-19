@@ -433,24 +433,38 @@ int scp_get_semaphore_3way(int flag)
 	unsigned int cnt;
 	unsigned long spin_flags;
 	unsigned int read_back;
+	void __iomem *sema_reg;
+	int scp_awake_flag = 0;
 
 	/* return -1 to prevent from access when driver not ready */
 	if (!driver_init_done)
 		return SEMAPHORE_NOT_INIT;
+
+	if (scpreg.cfgreg_ap_en)
+		sema_reg = scpreg.cfgreg_ap + 0x0008;
+	else
+		sema_reg = SCP_3WAY_SEMAPHORE;
+
+	/* Need to awawke scp avoid peri off */
+	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
+		scp_awake_flag = -1;
+		pr_notice("[SCP] %s: awake scp fail\n", __func__);
+		return ret;
+	}
 
 	/* spinlock context safe*/
 	spin_lock_irqsave(&scp_awake_spinlock, spin_flags);
 
 	flag = flag * 4 + 2;
 
-	read_back = (readl(SCP_3WAY_SEMAPHORE) >> flag) & 0x1;
+	read_back = (readl(sema_reg) >> flag) & 0x1;
 	if (read_back == 0) {
 		cnt = SEMAPHORE_3WAY_TIMEOUT;
 
 		while (cnt-- > 0) {
-			writel((1 << flag), SCP_3WAY_SEMAPHORE);
+			writel((1 << flag), sema_reg);
 
-			read_back = (readl(SCP_3WAY_SEMAPHORE) >> flag) & 0x1;
+			read_back = (readl(sema_reg) >> flag) & 0x1;
 			if (read_back == 1) {
 				ret = SEMAPHORE_SUCCESS;
 				break;
@@ -464,6 +478,11 @@ int scp_get_semaphore_3way(int flag)
 	}
 
 	spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
+
+	if(scp_awake_flag == 0) {
+		if (scp_awake_unlock((void *)SCP_A_ID) == -1)
+			pr_notice("[SCP] %s: awake unlock fail\n", __func__);
+	}
 
 	return ret;
 }
@@ -481,20 +500,34 @@ int scp_release_semaphore_3way(int flag)
 	int ret = SEMAPHORE_FAIL;
 	unsigned long spin_flags;
 	unsigned int read_back;
+	void __iomem *sema_reg;
+	int scp_awake_flag = 0;
 
 	/* return -1 to prevent from access when driver not ready */
 	if (!driver_init_done)
 		return SEMAPHORE_NOT_INIT;
+
+	if (scpreg.cfgreg_ap_en)
+		sema_reg = scpreg.cfgreg_ap + 0x0008;
+	else
+		sema_reg = SCP_3WAY_SEMAPHORE;
+
+	/* Need to awawke scp avoid peri off */
+	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
+		scp_awake_flag = -1;
+		pr_notice("[SCP] %s: awake scp fail\n", __func__);
+		return ret;
+	}
 
 	/* spinlock context safe*/
 	spin_lock_irqsave(&scp_awake_spinlock, spin_flags);
 
 	flag = flag * 4 + 2;
 
-	read_back = (readl(SCP_3WAY_SEMAPHORE) >> flag) & 0x1;
+	read_back = (readl(sema_reg) >> flag) & 0x1;
 	if (read_back == 1) {
-		writel((1 << flag), SCP_3WAY_SEMAPHORE);
-		read_back = (readl(SCP_3WAY_SEMAPHORE) >> flag) & 0x1;
+		writel((1 << flag), sema_reg);
+		read_back = (readl(sema_reg) >> flag) & 0x1;
 		if (read_back == 0)
 			ret = SEMAPHORE_SUCCESS;
 		else
@@ -504,6 +537,11 @@ int scp_release_semaphore_3way(int flag)
 	}
 
 	spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
+
+	if(scp_awake_flag == 0) {
+		if (scp_awake_unlock((void *)SCP_A_ID) == -1)
+			pr_notice("[SCP] %s: awake unlock fail\n", __func__);
+	}
 
 	return ret;
 }
