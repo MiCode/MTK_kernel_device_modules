@@ -828,6 +828,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
 			},
 		},
+		.dyn = {
+			.switch_en = 1,
+			.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
 		},
@@ -918,6 +922,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
 				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
 			},
+		},
+		.dyn = {
+			.switch_en = 1,
+			.data_rate = MIPI_DATA_RATE_120HZ + 2,
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
@@ -1010,6 +1018,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
 			},
 		},
+		.dyn = {
+			.switch_en = 1,
+			.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
 		},
@@ -1100,6 +1112,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
 				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
 			},
+		},
+		.dyn = {
+			.switch_en = 1,
+			.data_rate = MIPI_DATA_RATE_120HZ + 2,
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
@@ -1192,6 +1208,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
 			},
 		},
+		.dyn = {
+			.switch_en = 1,
+			.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
 		},
@@ -1276,6 +1296,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
 			},
 		},
+		.dyn = {
+			.switch_en = 1,
+			.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 90,
 		},
@@ -1359,6 +1383,10 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
 				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
 			},
+		},
+		.dyn = {
+			.switch_en = 1,
+			.data_rate = MIPI_DATA_RATE_120HZ + 2,
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 60,
