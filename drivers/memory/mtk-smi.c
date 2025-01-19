@@ -5457,6 +5457,12 @@ int mtk_smi_set_larb_value(struct device *larbdev, u32 offset, u32 value)
 		return -EINVAL;
 	larb = dev_get_drvdata(larbdev);
 
+	if (larb->larb_set_num < 0
+		|| larb->larb_set_num > SMI_USER_SET_MISC_NR) {
+		pr_notice("%s: larb%d set num err:%d\n",
+			__func__, larb->larbid, larb->larb_set_num);
+		return 0;
+	}
 	larb->larb_set_misc[larb->larb_set_num].offset = offset;
 	larb->larb_set_misc[larb->larb_set_num].value = value;
 
@@ -5487,6 +5493,12 @@ int mtk_smi_set_comm_value(struct device *dev, u32 offset, u32 value)
 		return -EINVAL;
 	common = dev_get_drvdata(dev);
 
+	if (common->common_set_num < 0
+		|| common->common_set_num > SMI_USER_SET_MISC_NR) {
+		pr_notice("%s: common%d set num err:%d\n",
+			__func__, common->commid, common->common_set_num);
+		return 0;
+	}
 	common->common_set_misc[common->common_set_num].offset = offset;
 	common->common_set_misc[common->common_set_num].value = value;
 
