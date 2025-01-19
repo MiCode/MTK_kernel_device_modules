@@ -127,8 +127,10 @@ static void pkvm_smmu_region_mapping(u64 region_start, u32 region_size,
 				     u32 region_id, u32 lock)
 {
 #if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+	static uint32_t hvc_id_map;
+	static uint32_t hvc_id_unmap;
 	struct arm_smccc_res res;
-	uint32_t smc_id;
+	uint32_t hvc_id;
 	int ret;
 
 	if (!is_pkvm_enabled()) {
@@ -136,20 +138,26 @@ static void pkvm_smmu_region_mapping(u64 region_start, u32 region_size,
 		return;
 	}
 
-	if (lock == 1)
-		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_REGION_MAP, 0, 0, 0,
-				  0, 0, 0, &res);
-	else
-		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_REGION_UNMAP, 0, 0,
-				  0, 0, 0, 0, &res);
+	if (!hvc_id_map) {
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_REGION_MAP,
+			0, 0, 0, 0, 0, 0, &res);
+		hvc_id_map = res.a1;
+	}
 
-	smc_id = res.a1;
-	if (smc_id != 0) {
-		ret = pkvm_el2_mod_call(smc_id, region_start, region_size,
+	if (!hvc_id_unmap) {
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_SEC_REGION_UNMAP,
+			0, 0, 0, 0, 0, 0, &res);
+		hvc_id_unmap = res.a1;
+	}
+
+	hvc_id = (lock == 1) ? hvc_id_map : hvc_id_unmap;
+
+	if (hvc_id != 0) {
+		ret = pkvm_el2_mod_call(hvc_id, region_start, region_size,
 					region_id);
 
 		if (ret != 0)
-			pr_info("smc_id=%#x smmu_ret=%x\n", smc_id, ret);
+			pr_info("hvc_id=%#x smmu_ret=%x\n", hvc_id, ret);
 	} else
 		pr_info("%s hvc is invalid\n", __func__);
 #endif
@@ -240,7 +248,6 @@ static int pkvm_mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 
 	MTEE_SESSION_LOCK();
 
-	pkvm_smmu_region_mapping(0, 0, mtee_dev_desc->mtee_chunks_id, 0);
 #if IS_ENABLED(CONFIG_MTK_PKVM_TMEM)
 	if (is_pkvm_enabled()) {
 		struct arm_smccc_res res;
@@ -258,6 +265,8 @@ static int pkvm_mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 			pr_info("%s: hvc is invalid\n", __func__);
 	}
 #endif
+
+	pkvm_smmu_region_mapping(0, 0, mtee_dev_desc->mtee_chunks_id, 0);
 
 	if (is_ffa_enabled()) {
 		ret = tmem_carveout_destroy(mtee_dev_desc->mtee_chunks_id);
