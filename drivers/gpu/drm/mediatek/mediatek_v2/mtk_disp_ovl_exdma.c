@@ -4153,7 +4153,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	}
 	case BACKUP_OVL_STATUS: {
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-		dma_addr_t slot = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_OVL_STATUS);
+		u32 idx = drm_crtc_index(&mtk_crtc->base);
+		dma_addr_t slot = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_OVL_STATUS(idx));
 
 		cmdq_pkt_mem_move(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_STA,

@@ -348,6 +348,49 @@ static void mtk_drm_crtc_reset(struct drm_crtc *crtc)
 	state->base.crtc = crtc;
 }
 
+unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmdq_cb_data *cb_data)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = NULL;
+	priv = mtk_crtc->base.dev->dev_private;
+	int id = drm_crtc_index(crtc);
+	unsigned int ovl_status = 0;
+
+	if (priv && priv->power_state) {
+		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_OVL_STATUS(id));
+		if (ovl_status & 1) {
+			CRTC_MMP_MARK(id, ovl_status_err, ovl_status, 0);
+			DDPPR_ERR("%s CRTC%d ovl status error:0x%x\n", __func__, id, ovl_status);
+			mtk_dprec_snapshot();
+			if (priv->data->mmsys_id == MMSYS_MT6985 ||
+				priv->data->mmsys_id == MMSYS_MT6989 ||
+				priv->data->mmsys_id == MMSYS_MT6885 ||
+				priv->data->mmsys_id == MMSYS_MT6991) {
+				DDPINFO("ovl status error. TS: 0x%08x\n", ovl_status);
+				mtk_drm_crtc_mini_analysis(crtc);
+				mtk_drm_crtc_mini_dump(crtc);
+				//cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
+			} else {
+				cmdq_util_hw_trace_dump(0, 0);
+				mtk_drm_crtc_analysis(crtc);
+				mtk_drm_crtc_dump(crtc);
+				cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
+			}
+
+			if (priv->data->mmsys_id == MMSYS_MT6989) {
+				static bool called;
+
+				if (unlikely(!called)) {
+					called = true;
+					mtk_smi_dbg_dump_for_disp();
+				}
+			}
+		}
+	}
+	return ovl_status;
+}
+
 static unsigned int dual_comp_blender_map_mt6991(unsigned int comp_id)
 {
 	unsigned int ret = 0;
@@ -9507,42 +9550,13 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-	if ((id == 0) && (priv && priv->power_state)) {
-		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_OVL_STATUS);
 
+	ovl_status = mtk_drm_crtc_check_ovl_status(crtc, cb_data);
+
+	if ((id == 0) && (priv && priv->power_state)) {
 		/* BW monitor: Set valid to 1 */
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR)) {
 			mtk_drm_ovl_bw_monitor_ratio_save(mtk_crtc, frame_idx);
-		}
-
-		if (ovl_status & 1) {
-			CRTC_MMP_MARK(id, ovl_status_err, ovl_status, 0);
-			DDPPR_ERR("ovl status error:0x%x\n", ovl_status);
-			mtk_dprec_snapshot();
-			if (priv->data->mmsys_id == MMSYS_MT6985 ||
-				priv->data->mmsys_id == MMSYS_MT6989 ||
-				priv->data->mmsys_id == MMSYS_MT6885 ||
-				priv->data->mmsys_id == MMSYS_MT6991) {
-				DDPINFO("ovl status error. TS: 0x%08x\n", ovl_status);
-				mtk_drm_crtc_mini_analysis(crtc);
-				mtk_drm_crtc_mini_dump(crtc);
-				//cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
-			} else {
-				cmdq_util_hw_trace_dump(0, 0);
-				mtk_drm_crtc_analysis(crtc);
-				mtk_drm_crtc_dump(crtc);
-				cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
-			}
-
-			if (priv->data->mmsys_id == MMSYS_MT6989) {
-				static bool called;
-
-				if (unlikely(!called)) {
-					called = true;
-					mtk_smi_dbg_dump_for_disp();
-				}
-			}
 		}
 
 		/*Msync 2.0 related function*/
@@ -18757,6 +18771,36 @@ static void sf_cmdq_cb(struct cmdq_cb_data data)
 }
 #endif
 
+void mtk_drm_crtc_backup_ovl_status(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	u32 crtc_idx = drm_crtc_index(crtc);
+	struct mtk_ddp_comp *comp;
+
+	comp = mtk_crtc->first_exdma;
+	/* for platform using ovl */
+	if (IS_ERR_OR_NULL(comp)) {
+		comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0_2L);
+		if (IS_ERR_OR_NULL(comp)) {
+			comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1_2L);
+			if (IS_ERR_OR_NULL(comp)) {
+				comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL3_2L);
+				if (IS_ERR_OR_NULL(comp)) {
+					comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0);
+					if (IS_ERR_OR_NULL(comp)) {
+						comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1);
+					}
+				}
+			}
+		}
+	}
+
+	if (IS_ERR_OR_NULL(comp))
+		DDPMSG("CRTC%d failed to backup ovl status\n", crtc_idx);
+	else
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle, BACKUP_OVL_STATUS, NULL);
+}
+
 static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 				      struct drm_atomic_state *atomic_state)
 {
@@ -18991,26 +19035,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		}
 	}
 
-	/* backup ovl0 2l status for crtc0 */
-	if (index == 0) {
-		comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0_2L);
-		if (IS_ERR_OR_NULL(comp)) {
-			comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1_2L);
-			if (IS_ERR_OR_NULL(comp)) {
-				comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL0);
-				if (IS_ERR_OR_NULL(comp)) {
-					comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL1);
-					if (IS_ERR_OR_NULL(comp))
-						comp = mtk_ddp_comp_find_by_id(crtc, DDP_COMPONENT_OVL_EXDMA3);
-				}
-			}
-		}
-		if (IS_ERR_OR_NULL(comp))
-			DDPMSG("%s: failed to backup ovl status\n", __func__);
-		else
-			mtk_ddp_comp_io_cmd(comp, cmdq_handle,
-				BACKUP_OVL_STATUS, NULL);
-	}
+	/* backup ovl status */
+	mtk_drm_crtc_backup_ovl_status(crtc, cmdq_handle);
 
 	/* need to check mml is submit done */
 	if ((mtk_crtc->is_mml || mtk_crtc->is_mml_dl) && mtk_crtc->is_mml_submit)
