@@ -390,6 +390,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v1:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/smap:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:srcs".format(kernel_version),

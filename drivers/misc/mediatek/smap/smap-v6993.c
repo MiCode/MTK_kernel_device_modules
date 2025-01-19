@@ -37,6 +37,18 @@ int register_smap_mbrain_cb(smap_mbrain_callback smap_mbrain_cb)
 }
 EXPORT_SYMBOL(register_smap_mbrain_cb);
 
+int get_smap_mbrain_data(struct smap_mbrain *mbrain_data)
+{
+	if (!smap_data) {
+		smap_print("No smap_data\n");
+		return -EINVAL;
+	}
+
+	memcpy(mbrain_data, &smap_data->mbrain_data, sizeof(struct smap_mbrain));
+	return 0;
+}
+EXPORT_SYMBOL(get_smap_mbrain_data);
+
 static inline u32 smap_read(u32 offset)
 {
 	int len;
@@ -60,6 +72,22 @@ static inline void smap_write(u32 offset, u32 val)
 	writel(val, smap_data->regs + offset);
 }
 
+static int smap_setting(struct smap_entry *entry)
+{
+	int i, ret = 0;
+
+	for (i = 0; i < SMAP_INIT_SETTING_ARRAY_LEN; i++) {
+		if (entry[i].addr == 0)
+			break;
+		if (entry[i].mask == 1)
+			continue;
+
+		smap_write(entry[i].addr, entry[i].value);
+	}
+
+	return ret;
+}
+
 static void smap_init(enum SMAP_MODE mode)
 {
 	smap_print("mode: %d\n", mode);
@@ -69,155 +97,19 @@ static void smap_init(enum SMAP_MODE mode)
 		return;
 	}
 
-	smap_write(SMAP_DETECTION_MODE, 0x3);
-	smap_write(SMAP_IMAX_LEN, 0x67);
-	smap_write(SMAP_IMAX_WEIGHT_LEN, 0x67);
-	smap_write(SPM_DVS_LEVEL_FLAG_MASK_EN, 0xFFFCC00);
-
-	if ((mode == MODE_TEST1) || (mode == MODE_TEST2) || (mode == MODE_TEST3)) {
-		smap_write(SMAP_EMI_IMAX_THRESHOLD, 0x5028);
-		smap_write(SMAP_DRAMG0_IMAX_THRESHOLD, 0xA0 << 10 | 0xA0);
-		smap_write(SMAP_DRAMG1_IMAX_THRESHOLD, 0xA0 << 10 | 0xA0);
-		smap_write(SMAP_CHINF_IMAX_THRESHOLD, 0x50 << 10 | 0x50);
-		smap_write(SMAP_DRAMG0_IMAX_WEIGHT_THRESHOLD, 0xA0 << 10 | 0xA0);
-		smap_write(SMAP_DRAMG1_IMAX_WEIGHT_THRESHOLD, 0xA0 << 10 | 0xA0);
-		smap_write(SMAP_CHINF_IMAX_WEIGHT_THRESHOLD, 0x50 << 10 | 0x50);
-		smap_write(SMAP_EMI_IMAX_WEIGHT_THRESHOLD, (0x28 << 18) | (0x28 << 9) | 0x28);
-	} else {
-		smap_write(SMAP_EMI_IMAX_THRESHOLD, 0xE472);
-		smap_write(SMAP_DRAMG0_IMAX_THRESHOLD, 0x100 << 10 | 0x100);
-		smap_write(SMAP_DRAMG1_IMAX_THRESHOLD, 0xA0 << 10 | 0xA0);
-		smap_write(SMAP_CHINF_IMAX_THRESHOLD, 0x80 << 10 | 0x80);
-		smap_write(SMAP_DRAMG0_IMAX_WEIGHT_THRESHOLD, 0x100 << 10 | 0x100);
-		smap_write(SMAP_DRAMG1_IMAX_WEIGHT_THRESHOLD, 0x100 << 10 | 0x100);
-		smap_write(SMAP_CHINF_IMAX_WEIGHT_THRESHOLD, 0x80 << 10 | 0x80);
-		smap_write(SMAP_EMI_IMAX_WEIGHT_THRESHOLD, (0x28 << 18) | (0xA0 << 9) | 0xA0);
-	}
-
-	smap_write(SMAP_EMI_IMAX_WEIGHT_THRESHOLD_1, (0x50 << 18) | (0x50 << 9) | 0x28);
-	smap_write(SMAP_EMI_IMAX_WEIGHT_THRESHOLD_2, (0xA0 << 18) | (0x78 << 9) | 0x78);
-	smap_write(PMSR_RESERVED_RW_REG_1, (0x140 << 19) | (0xA0 << 9) | 0xA0);
-	smap_write(PMSR_RESERVED_RW_REG_2, (0xA0 << 20) | (0x280 << 10) | 0x1E0);
-	smap_write(SMAP_DRAM_IMAX_WEIGHT_THRESHOLD_1, (0xA0 << 20) | (0x280 << 10) | 0x1E0);
-	smap_write(PMSR_RESERVED_RW_REG_3, (0x1E0 << 20) | (0x140 << 10) | 0xA0);
-	smap_write(SMAP_DRAM_IMAX_WEIGHT_THRESHOLD_3, (0x140 << 20) | (0xA0 << 10) | 0x280);
-	smap_write(SMAP_DRAM_IMAX_WEIGHT_THRESHOLD_CHI, (0x140 << 20) | (0xA0 << 10) | 0x280);
-	smap_write(SMAP_CHI_IMAX_WEIGHT_THRESHOLD_1, (0xF0 << 11) | 0xA0);
-	smap_write(SMAP_CHI_IMAX_WEIGHT_THRESHOLD_2, (0x50 << 11) | 0x140);
-	smap_write(SMAP_CHI_IMAX_WEIGHT_THRESHOLD_3, (0xF0 << 11) | 0xA0);
-	smap_write(SMAP_CHI_IMAX_WEIGHT_THRESHOLD_4, 0x140);
-	smap_write(SMAP_DRAM_IMAX_MASK, 0x0);
-	smap_write(SMAP_DRAM_IMAX_WEIGHT_MASK, 0x0);
-	smap_write(SMAP_CHINF_IMAX_MASK, 0x0);
-	smap_write(SMAP_CHINF_IMAX_WEIGHT_MASK, 0x0);
-	smap_write(SMAP_ZRAM_IMAX_MASK, 0x0);
-	smap_write(SMAP_ZRAM_IMAX_WEIGHT_MASK, 0x0);
-	smap_write(SMAP_APU_IDLE2MAX_MASK, 0x3);
-	smap_write(SMAP_APU_IMAX_MASK, 0x0);
-	smap_write(SMAP_APU_IMAX_WEIGHT_MASK, 0x0);
-	smap_write(SMAP_EMI_VDEC_VENC_IDLE2MAX_MASK, 0xfff);
-
 	if (mode == MODE_NORMAL)
-		smap_write(SMAP_EMI_VDEC_VENC_IMAX_MASK, 0xADA);
+		smap_setting(SMAP_NORMAL_MODE_ENTRY);
+	else if (mode == MODE_TEST1)
+		smap_setting(SMAP_DVT_MODE_ENTRY);
 	else
-		smap_write(SMAP_EMI_VDEC_VENC_IMAX_MASK, 0xADE);
-
-	smap_write(SMAP_EMI_VDEC_IMAX_WEIGHT_MASK, 0xADE);
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_0, 0x1 | (0x2 << 8) | (0x3 << 16) | (0x4 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_1, 0x5 | (0x2 << 8) | (0x2 << 16) | (0x2 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_2, 0x1 | (0x2 << 8) | (0x3 << 16) | (0x4 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_3, 0x5 | (0x1 << 8) | (0x1 << 16) | (0x1 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_4, 0x2 | (0x3 << 8) | (0x4 << 16) | (0x5 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_5, 0x1 | (0x2 << 8) | (0x3 << 16) | (0x4 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_6, 0x5 | (0x1 << 8) | (0x2 << 16) | (0x3 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_7, 0x4 | (0x5 << 8) | (0x1 << 16) | (0x2 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_8, 0x3 | (0x4 << 8) | (0x5 << 16) | (0x1 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_9, 0x2 | (0x3 << 8) | (0x4 << 16) | (0x5 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_10, 0x1 | (0x2 << 8) | (0x3 << 16) | (0x4 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS, 0x5 | (0x3 << 8) | (0x4 << 16) | (0x5 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_1, 0x6 | (0x7 << 8) | (0x3 << 16) | (0x4 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_2, 0x5 | (0x6 << 8) | (0x7 << 16) | (0x3 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_3, 0x4 | (0x5 << 8) | (0x6 << 16) | (0x7 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_4, 0x3 | (0x4 << 8) | (0x5 << 16) | (0x6 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_5, 0x7 | (0x4 << 8) | (0x4 << 16) | (0x4 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_6, 0x3 | (0x4 << 8) | (0x5 << 16) | (0x6 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_7, 0x7 | (0x2 << 8) | (0x2 << 16) | (0x3 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_8, 0x4 | (0x5 << 8) | (0x6 << 16) | (0x7 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_9, 0x3 | (0x4 << 8) | (0x5 << 16) | (0x6 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_10, 0x7 | (0x3 << 8) | (0x4 << 16) | (0x5 << 24));
-	smap_write(SMAP_IMAX_WEIGHT_GROUP_DVS_11, 0x6 | (0x7 << 8));
-	smap_write(SMAP_CLK_GATING_MASK, 0xFADFE033);
-
-	if (mode == MODE_TEST3) {
-		smap_write(SMAP_CLK_GATING_CONFIG_3, 0x55555555);
-		smap_write(SMAP_CLK_GATING_CONFIG_4, 0x5);
-	} else {
-		smap_write(SMAP_CLK_GATING_CONFIG_3, 0x33333333);
-		smap_write(SMAP_CLK_GATING_CONFIG_4, 0x3);
-	}
-
-	smap_write(SMAP_CLK_GATING_CONFIG_6, 0x55555555);
-	smap_write(SMAP_CLK_GATING_CONFIG_7, 0x5);
-	smap_write(VENC0_SMAP_CLK_GATING_LENGTH, 0x88);
-	smap_write(VENC1_SMAP_CLK_GATING_LENGTH, 0x88);
-	smap_write(VENC2_SMAP_CLK_GATING_LENGTH, 0x88);
-	smap_write(EMI_N_SMAP_CLK_GATING_LENGTH, 0x88);
-	smap_write(EMI_S_SMAP_CLK_GATING_LENGTH, 0x88);
-	smap_write(VENC0_SMAP_CLK_GATING_LENGTH_1, 0x88);
-	smap_write(VENC1_SMAP_CLK_GATING_LENGTH_1, 0x88);
-	smap_write(VENC2_SMAP_CLK_GATING_LENGTH_1, 0x88);
-	smap_write(EMI_N_SMAP_CLK_GATING_LENGTH_1, 0x88);
-	smap_write(EMI_S_SMAP_CLK_GATING_LENGTH_1, 0x88);
-	smap_write(VENC0_SMAP_CLK_GATING_LENGTH_2, 0x88);
-	smap_write(VENC1_SMAP_CLK_GATING_LENGTH_2, 0x88);
-	smap_write(VENC2_SMAP_CLK_GATING_LENGTH_2, 0x88);
-	smap_write(EMI_N_SMAP_CLK_GATING_LENGTH_2, 0x88);
-	smap_write(EMI_S_SMAP_CLK_GATING_LENGTH_2, 0x88);
-	smap_write(EMI_HRT_FLAG_MASK_EN, 0x1);
-	smap_write(VENC0_HRT_FLAG_MASK_EN, 0x1);
-	smap_write(VENC1_HRT_FLAG_MASK_EN, 0x1);
-	smap_write(VENC2_HRT_FLAG_MASK_EN, 0x1);
-	smap_write(SMAP_IMAX_WEIGHT_CONFIG, 0xFF | (0x1DD << 8));
-	smap_write(SUBSYS_CG_SEL, 0x19F0);
-	smap_write(SUBSYS_CG_RATIO_56, 0x384 | (0x44C << 12));
-	smap_write(SUBSYS_CG_RATIO_78, 0x514 | (0x5DC << 12));
-	smap_write(SUBSYS_CG_RATIO_5_1, 0x32A | (0x2D0 << 12));
-	smap_write(SUBSYS_CG_RATIO_5_2, 0x276 | (0x21C << 12));
-	smap_write(SUBSYS_CG_RATIO_5_3, 0x1C2 | (0x168 << 12));
-	smap_write(SUBSYS_CG_RATIO_5_4, 0x10E | (0xB4 << 12));
-	smap_write(SUBSYS_CG_RATIO_5_5, 0x5A);
-	smap_write(SUBSYS_CG_RATIO_6_1, 0x3DE | (0x370 << 12));
-	smap_write(SUBSYS_CG_RATIO_6_2, 0x302 | (0x294 << 12));
-	smap_write(SUBSYS_CG_RATIO_6_3, 0x226 | (0x1B8 << 12));
-	smap_write(SUBSYS_CG_RATIO_6_4, 0x14A | (0xDC << 12));
-	smap_write(SUBSYS_CG_RATIO_6_5, 0x6E);
-	smap_write(SUBSYS_CG_RATIO_7_1, 0x492 | (0x410 << 12));
-	smap_write(SUBSYS_CG_RATIO_7_2, 0x38E | (0x30C << 12));
-	smap_write(SUBSYS_CG_RATIO_7_3, 0x28A | (0x208 << 12));
-	smap_write(SUBSYS_CG_RATIO_7_4, 0x186 | (0x104 << 12));
-	smap_write(SUBSYS_CG_RATIO_7_5, 0x82);
-	smap_write(SUBSYS_CG_RATIO_8_1, 0x546 | (0x4B0 << 12));
-	smap_write(SUBSYS_CG_RATIO_8_2, 0x41A | (0x384 << 12));
-	smap_write(SUBSYS_CG_RATIO_8_3, 0x2EE | (0x258 << 12));
-	smap_write(SUBSYS_CG_RATIO_8_4, 0x1C2 | (0x12C << 12));
-	smap_write(SUBSYS_CG_RATIO_8_5, 0x96);
-	smap_write(MC99_IC, 0x0);
-	smap_write(MC99_IC_MASK_EN, 0x1);
-
-	if (mode == MODE_TEST2 || mode == MODE_TEST3)
-		smap_write(HIGH_TEMP_MASK_EN, 0x1);
-	else
-		smap_write(HIGH_TEMP_MASK_EN, 0x0);
-
-	smap_write(SMAP_IRQ_B_MASK, 0x2);
-	smap_write(SMAP_ENABLE, 0x1);
+		smap_print("wrong mode\n");
 }
 
 static ssize_t dump_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_type,
 	enum SMAP_MBRAIN_LOG mlog)
 {
 	unsigned int len = 0, cnt;
-	unsigned int sys_time_h, sys_time_l, type, result, dyn_base, cg_subsys_dyn, cg_ratio;
+	unsigned int sys_time_h, sys_time_l, result, dyn_base, cg_subsys_dyn, cg_ratio;
 	unsigned long long sys_time;
 	struct timespec64 tv = {0};
 
@@ -230,38 +122,34 @@ static ssize_t dump_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_type,
 	sys_time_h = smap_read(PMSR_RESERVED_RW_REG_5);
 	sys_time_l = smap_read(PMSR_RESERVED_RW_REG_6);
 	result = smap_read(PMSR_RESERVED_RW_REG_7);
-	type = result >> 29;
 	dyn_base = (result >> 4) & 0xFFF;
 	cg_subsys_dyn = (result >> 16) & 0xFFF;
 	cg_ratio = (result >> 28) & 0xF;
 
 	if (log_type == DUMP_HEADER) {
 		len += snprintf(buf + len, PAGE_SIZE - len, "CNT=%u\n", cnt);
-		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME_H=%u\n", sys_time_h);
-		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME_L=%u\n", sys_time_l);
-		len += snprintf(buf + len, PAGE_SIZE - len, "RESULT=%x\n", result);
-		len += snprintf(buf + len, PAGE_SIZE - len, "TYPE=%x\n", type);
-		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=%x\n", dyn_base);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=%x\n", cg_subsys_dyn);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=%x\n", cg_ratio);
+		sys_time = ((uint64_t)sys_time_h << 32) | sys_time_l;
+		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME=%llu, ", sys_time);
+		len += snprintf(buf + len, PAGE_SIZE - len, "RESULT=0x%x\n", result);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=0x%x\n", dyn_base);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=0x%x\n", cg_subsys_dyn);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=0x%x\n", cg_ratio);
 	} else if (log_type == DUMP_NO_HEADER) {
 		len += snprintf(buf + len, PAGE_SIZE - len, "%u, ", cnt);
-		len += snprintf(buf + len, PAGE_SIZE - len, "%u, ", sys_time_h);
-		len += snprintf(buf + len, PAGE_SIZE - len, "%u, ", sys_time_l);
-		len += snprintf(buf + len, PAGE_SIZE - len, "%x, ", result);
-		len += snprintf(buf + len, PAGE_SIZE - len, "%x, ", type);
-		len += snprintf(buf + len, PAGE_SIZE - len, "%x, ", dyn_base);
-		len += snprintf(buf + len, PAGE_SIZE - len, "%x, ", cg_subsys_dyn);
-		len += snprintf(buf + len, PAGE_SIZE - len, "%x\n", cg_ratio);
+		sys_time = ((uint64_t)sys_time_h << 32) | sys_time_l;
+		len += snprintf(buf + len, PAGE_SIZE - len, "%llu, ", sys_time);
+		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x, ", result);
+		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x, ", dyn_base);
+		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x, ", cg_subsys_dyn);
+		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x\n", cg_ratio);
 	} else if (log_type == DUMP_KERNEL) {
 		len += snprintf(buf + len, PAGE_SIZE - len, "CNT=%u, ", cnt);
-		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME_H=%u, ", sys_time_h);
-		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME_L=%u, ", sys_time_l);
-		len += snprintf(buf + len, PAGE_SIZE - len, "RESULT=%x, ", result);
-		len += snprintf(buf + len, PAGE_SIZE - len, "TYPE=%x, ", type);
-		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=%x, ", dyn_base);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=%x, ", cg_subsys_dyn);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=%x\n", cg_ratio);
+		sys_time = ((uint64_t)sys_time_h << 32) | sys_time_l;
+		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME=%llu, ", sys_time);
+		len += snprintf(buf + len, PAGE_SIZE - len, "RESULT=0x%x, ", result);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=0x%x, ", dyn_base);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=0x%x, ", cg_subsys_dyn);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=0x%x\n", cg_ratio);
 	} else if (log_type == NO_DUMP)
 		len = 0;
 

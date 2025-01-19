@@ -102,7 +102,6 @@ static int mtk_smap_debug_probe(struct platform_device *pdev)
 {
 	struct platform_device *parent_dev;
 	struct device *dev = &pdev->dev;
-	struct mtk_smap *smap_data;
 
 	parent_dev = to_platform_device(dev->parent);
 

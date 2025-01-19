@@ -13,6 +13,15 @@ filegroup(
     ]),
 )
 
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
 define_mgk_ddk_ko(
     name = "smap-mt6991",
     srcs = [
