@@ -2766,6 +2766,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	rw_times = mtk_dsi_calculate_rw_times(dsi, width, height);
 
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
+		priv->data->mmsys_id == MMSYS_MT6993)
+		tmp = 0x4E9;
+
 	DDPINFO(
 		"%s,mode=0x%lx,valid_theshold=0x%x,lp_perline_en=%d,1t%dp,buf_con:%d\n",
 		__func__, dsi->mode_flags & MIPI_DSI_MODE_VIDEO, tmp,
@@ -2808,6 +2812,18 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		ultra_lo = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
 		urgent_hi = urgent_hi_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
 		urgent_lo = urgent_lo_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+	}
+
+	if (priv->data->mmsys_id == MMSYS_MT6993) {
+		sodi_hi = 0xfffff;
+		sodi_lo = 0xfffff;
+		preultra_hi = 0xfffff;
+		preultra_lo = 0xfffff;
+		ultra_hi = 0xfffff;
+		ultra_lo = 0xfffff;
+		urgent_hi = 0xfffff;
+		urgent_lo = 0xfffff;
+		rw_times = 0x5eec0;
 	}
 
 	writel((sodi_hi & 0xfffff), dsi->regs + DSI_BUF_SODI_HIGH(dsi->driver_data));
