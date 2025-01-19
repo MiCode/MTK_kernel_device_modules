@@ -126,6 +126,8 @@ struct mml_dev {
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
 	struct mml_sys_state sys_state[mml_max_sys];
 	struct mml_sys_qos qos[mml_max_sys];
+	u16 port_srt_bw[mml_max_sys][MML_MAX_PORT];
+	u16 port_hrt_bw[mml_max_sys][MML_MAX_PORT];
 	u32 vcp_ref;
 	struct mutex sys_state_mutex;
 	struct mml_sys *sys;
@@ -1050,9 +1052,6 @@ s32 mml_comp_clk_disable(struct mml_comp *comp, bool dpc)
 		return -EINVAL;
 	}
 
-	/* clear bandwidth before disable if this component support dma */
-	call_hw_op(comp, qos_clear, dpc);
-
 	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, 0);
 	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
 		if (IS_ERR_OR_NULL(comp->clks[i]))
@@ -1291,14 +1290,14 @@ static u32 mml_calc_bw_couple(struct mml_dev *mml, u32 datasize)
 		return (u32)div_u64((u64)datasize * 21, 80000);
 }
 
-void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up)
+void mml_comp_qos_calc(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 throughput)
 {
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	u32 datasize, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw;
-	bool hrt, updated = false;
+	bool hrt;
 
 	datasize = comp->hw_ops->qos_datasize_get(task, ccfg);
 	if (!datasize) {
@@ -1349,69 +1348,104 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 
 	/* store for debug log */
 	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
-	if (comp->srt_bw != srt_bw || comp->hrt_bw != hrt_bw) {
-		mml_trace_begin("mml_bw_%u_%u", srt_bw, hrt_bw);
-#ifndef MML_FPGA
-		if (cfg->dpc) {
-			u32 srt_icc, hrt_icc;
 
-			if (mtk_mml_hrt_mode == MML_HRT_OSTD_MAX) {
-				srt_icc = MBps_to_icc(srt_bw);
-				hrt_icc = hrt_bw <= mml_hrt_bound ?
-					MTK_MMQOS_MAX_BW : MBps_to_icc(hrt_bw);
-			} else if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY) {
+	comp->srt_bw = max_t(u32, comp->srt_bw, srt_bw);
+	comp->hrt_bw = max_t(u32, comp->hrt_bw, hrt_bw);
+	comp->stash_srt_bw = max_t(u32, comp->stash_srt_bw, stash_srt_bw);
+	comp->stash_hrt_bw = max_t(u32, comp->stash_hrt_bw, stash_hrt_bw);
+
+	mml_msg("%s comp %u bw %u %u stash %u %u tput %u%s",
+		__func__, comp->id, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw, throughput,
+		hrt ? " hrt" : "");
+}
+
+void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 throughput, u32 tput_up)
+{
+	struct mml_frame_config *cfg = task->config;
+	struct mml_dev *mml = cfg->mml;
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
+	const u32 srt_bw = comp->srt_bw, hrt_bw = comp->hrt_bw;
+	const u32 stash_srt_bw = comp->stash_srt_bw, stash_hrt_bw = comp->stash_hrt_bw;
+	bool hrt = cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK;
+	bool updated = false;
+
+	/* store for debug log */
+	task->pipe[ccfg->pipe].bandwidth = max(comp->srt_bw, task->pipe[ccfg->pipe].bandwidth);
+	if (srt_bw == mml->port_srt_bw[comp->sysid][comp->larb_port] &&
+		hrt_bw == mml->port_hrt_bw[comp->sysid][comp->larb_port])
+		goto skip_update;
+
+	/* disable clock will set bw to 0, so skip bw 0 here to reduce mips in config thread */
+	if (!srt_bw && !hrt_bw)
+		goto skip_clear;
+
+	mml_trace_begin("mml_comp%u_bw_%u_%u", comp->id, srt_bw, hrt_bw);
+#ifndef MML_FPGA
+	if (cfg->dpc) {
+		u32 srt_icc, hrt_icc;
+
+		if (mtk_mml_hrt_mode == MML_HRT_OSTD_MAX) {
+			srt_icc = MBps_to_icc(srt_bw);
+			hrt_icc = hrt_bw <= mml_hrt_bound ?
+				MTK_MMQOS_MAX_BW : MBps_to_icc(hrt_bw);
+		} else if (mtk_mml_hrt_mode == MML_HRT_OSTD_ONLY) {
+			srt_icc = 0;
+			hrt_icc = MTK_MMQOS_MAX_BW;
+		} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
+			if (hrt_bw < mml_hrt_bound) {
 				srt_icc = 0;
 				hrt_icc = MTK_MMQOS_MAX_BW;
-			} else if (mtk_mml_hrt_mode == MML_HRT_LIMIT) {
-				if (hrt_bw < mml_hrt_bound) {
-					srt_icc = 0;
-					hrt_icc = MTK_MMQOS_MAX_BW;
-				} else {
-					srt_icc = MBps_to_icc(srt_bw);
-					hrt_icc = MBps_to_icc(hrt_bw);
-				}
 			} else {
-				/* MML_HRT_ENABLE, MML_HRT_MMQOS */
 				srt_icc = MBps_to_icc(srt_bw);
 				hrt_icc = MBps_to_icc(hrt_bw);
 			}
-
-			mtk_icc_set_bw(comp->icc_dpc_path, srt_icc, hrt_icc);
-			if (comp->icc_stash_path)
-				mtk_icc_set_bw(comp->icc_dpc_stash_path,
-					MBps_to_icc(stash_srt_bw), MBps_to_icc(stash_hrt_bw));
 		} else {
-			mtk_icc_set_bw(comp->icc_path,
-				MBps_to_icc(srt_bw), MBps_to_icc(hrt_bw));
-			if (comp->icc_stash_path)
-				mtk_icc_set_bw(comp->icc_stash_path,
-					MBps_to_icc(stash_srt_bw), MBps_to_icc(stash_hrt_bw));
+			/* MML_HRT_ENABLE, MML_HRT_MMQOS */
+			srt_icc = MBps_to_icc(srt_bw);
+			hrt_icc = MBps_to_icc(hrt_bw);
 		}
-#endif
-		comp->srt_bw = srt_bw;
-		comp->hrt_bw = hrt_bw;
-		mml_trace_end();
-		updated = true;
-	}
 
+		mtk_icc_set_bw(comp->icc_dpc_path, srt_icc, hrt_icc);
+		if (comp->icc_stash_path)
+			mtk_icc_set_bw(comp->icc_dpc_stash_path,
+				MBps_to_icc(stash_srt_bw), MBps_to_icc(stash_hrt_bw));
+	} else {
+		mtk_icc_set_bw(comp->icc_path,
+			MBps_to_icc(srt_bw), MBps_to_icc(hrt_bw));
+		if (comp->icc_stash_path)
+			mtk_icc_set_bw(comp->icc_stash_path,
+				MBps_to_icc(stash_srt_bw), MBps_to_icc(stash_hrt_bw));
+	}
+#endif
+	mml_trace_end();
+	updated = true;
+
+skip_clear:
+	mml->port_srt_bw[comp->sysid][comp->larb_port] = srt_bw;
+	mml->port_hrt_bw[comp->sysid][comp->larb_port] = hrt_bw;
+
+skip_update:
 	if (cfg->dpc) {
-		task->dpc_srt_bw[comp->sysid] += comp->srt_bw;
-		task->dpc_hrt_bw[comp->sysid] += comp->hrt_bw;
+		task->dpc_srt_bw[comp->sysid] += srt_bw;
+		task->dpc_hrt_bw[comp->sysid] += hrt_bw;
 		task->dpc_srt_write_bw[comp->sysid] += stash_srt_bw;
 		task->dpc_hrt_write_bw[comp->sysid] += stash_hrt_bw;
 	}
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->srt_bw << 16) | comp->hrt_bw);
 
-	mml_msg_qos("%s comp %u %s bw %u %u stash %u %u by throughput %u pixel %u size %u%s%s dpc %u mode %d",
+	mml_msg_qos("%s comp %u %s bw %u %u stash %u %u by throughput %u pixel %u%s%s dpc %u hrtmode %d",
 		__func__, comp->id, comp->name, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw,
-		throughput, cache->max_tput_pixel, datasize,
+		throughput, cache->max_tput_pixel,
 		hrt ? " hrt" : "", updated ? " update" : "",
 		task->config->dpc, mtk_mml_hrt_mode);
 }
 
-void mml_comp_qos_clear(struct mml_comp *comp, bool dpc)
+void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 {
+	struct mml_dev *mml = task->config->mml;
+
 #ifndef MML_FPGA
 	if (dpc) {
 		mtk_icc_set_bw(comp->icc_dpc_path, 0, 0);
@@ -1425,6 +1459,12 @@ void mml_comp_qos_clear(struct mml_comp *comp, bool dpc)
 #endif
 	comp->srt_bw = 0;
 	comp->hrt_bw = 0;
+	comp->stash_srt_bw = 0;
+	comp->stash_hrt_bw = 0;
+	mml->port_srt_bw[comp->sysid][comp->larb_port] = 0;
+	mml->port_hrt_bw[comp->sysid][comp->larb_port] = 0;
+
+	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	mml_msg_qos("%s comp %u %s qos bw clear%s",
 		__func__, comp->id, comp->name, dpc ? " dpc" : "");
