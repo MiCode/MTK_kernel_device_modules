@@ -10,8 +10,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 
 # target object
-obj-${CONFIG_MTK_ADSP_V0} += adsp-$(VERSION).o
+# obj-${CONFIG_MTK_ADSP_V0} += adsp-$(VERSION).o
 
-adsp-$(VERSION)-objs += adsp_driver_$(VERSION).o
-adsp-$(VERSION)-objs += adsp_clk_tinysys.o
-adsp-$(VERSION)-objs += adsp_platform.o
+# adsp-$(VERSION)-objs += adsp_driver_$(VERSION).o
+# adsp-$(VERSION)-objs += adsp_clk_tinysys.o
+# adsp-$(VERSION)-objs += adsp_platform.o

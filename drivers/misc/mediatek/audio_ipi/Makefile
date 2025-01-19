@@ -27,25 +27,25 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_scp
 
 
 ### target object
-obj-$(CONFIG_MTK_AUDIO_IPI) += audio_ipi.o
+# obj-$(CONFIG_MTK_AUDIO_IPI) += audio_ipi.o
 
 ### build codes
-audio_ipi-objs += common/audio_ipi.o
-audio_ipi-objs += common/audio_task_manager.o
-audio_ipi-objs += common/audio_messenger_ipi.o
-audio_ipi-objs += common/audio_ipi_queue.o
-audio_ipi-objs += common/adsp_ipi_queue.o
-audio_ipi-objs += common/audio_ipi_dma.o
-audio_ipi-objs += common/audio_ringbuf.o
-audio_ipi-objs += common/audio_ipi_platform_common.o
+# audio_ipi-objs += common/audio_ipi.o
+# audio_ipi-objs += common/audio_task_manager.o
+# audio_ipi-objs += common/audio_messenger_ipi.o
+# audio_ipi-objs += common/audio_ipi_queue.o
+# audio_ipi-objs += common/adsp_ipi_queue.o
+# audio_ipi-objs += common/audio_ipi_dma.o
+# audio_ipi-objs += common/audio_ringbuf.o
+# audio_ipi-objs += common/audio_ipi_platform_common.o
 
 #ifeq ($(CONFIG_DEVICE_MODULES_VHOST_ADSP),y)
-audio_ipi-objs += common/audio_ipi_auto.o
+# audio_ipi-objs += common/audio_ipi_auto.o
 #endif
 
 ### platform codes
-IPI_PLATFORM_VERSION = v4
-audio_ipi-objs += $(IPI_PLATFORM_VERSION)/audio_ipi_platform.o
+# IPI_PLATFORM_VERSION = v4
+# audio_ipi-objs += $(IPI_PLATFORM_VERSION)/audio_ipi_platform.o
 
 
 

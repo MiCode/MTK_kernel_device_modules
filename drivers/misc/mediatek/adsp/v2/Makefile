@@ -9,8 +9,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek
 
 # target object
-obj-${CONFIG_MTK_ADSP_V2} += adsp-$(VERSION).o
+# obj-${CONFIG_MTK_ADSP_V2} += adsp-$(VERSION).o
 
-adsp-$(VERSION)-objs += adsp_driver_$(VERSION).o
-adsp-$(VERSION)-objs += adsp_clk_audio.o
-adsp-$(VERSION)-objs += adsp_platform.o
+# adsp-$(VERSION)-objs += adsp_driver_$(VERSION).o
+# adsp-$(VERSION)-objs += adsp_clk_audio.o
+# adsp-$(VERSION)-objs += adsp_platform.o
