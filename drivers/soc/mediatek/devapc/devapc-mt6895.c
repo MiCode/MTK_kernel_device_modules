@@ -596,9 +596,9 @@ static int mt6895_devapc_probe(struct platform_device *pdev)
 	return mtk_devapc_probe(pdev, &mt6895_data);
 }
 
-static int mt6895_devapc_remove(struct platform_device *dev)
+static void mt6895_devapc_remove(struct platform_device *dev)
 {
-	return mtk_devapc_remove(dev);
+	mtk_devapc_remove(dev);
 }
 
 static struct platform_driver mt6895_devapc_driver = {

@@ -2034,7 +2034,7 @@ remove_procfs:
 	return ret;
 }
 
-static int hw_logger_remove(struct platform_device *pdev)
+static void hw_logger_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
@@ -2076,8 +2076,6 @@ static int hw_logger_remove(struct platform_device *pdev)
 		iounmap(apu_mbox);
 		apu_mbox = NULL;
 	}
-
-	return 0;
 }
 
 static void hw_logger_shutdown(struct platform_device *pdev)

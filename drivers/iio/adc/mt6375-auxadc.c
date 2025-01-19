@@ -1224,7 +1224,7 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 	return devm_iio_device_register(&pdev->dev, indio_dev);
 }
 
-static int mt6375_auxadc_remove(struct platform_device *pdev)
+static void mt6375_auxadc_remove(struct platform_device *pdev)
 {
 	struct mt6375_priv *priv = platform_get_drvdata(pdev);
 
@@ -1235,8 +1235,6 @@ static int mt6375_auxadc_remove(struct platform_device *pdev)
 		if (!priv->is_imix_r_unused && priv->battery_psy)
 			power_supply_put(priv->battery_psy);
 	}
-
-	return 0;
 }
 
 static int mt6375_auxadc_suspend_late(struct device *dev)

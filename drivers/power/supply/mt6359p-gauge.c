@@ -3856,13 +3856,12 @@ static const struct of_device_id mt6359_gauge_of_match[] = {
 	{},
 };
 
-static int mt6359_gauge_remove(struct platform_device *pdev)
+static void mt6359_gauge_remove(struct platform_device *pdev)
 {
 	struct mtk_gauge *gauge = platform_get_drvdata(pdev);
 
 	if (gauge)
 		devm_kfree(&pdev->dev, gauge);
-	return 0;
 }
 
 MODULE_DEVICE_TABLE(of, mt6359_gauge_of_match);

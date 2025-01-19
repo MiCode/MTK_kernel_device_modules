@@ -2621,7 +2621,7 @@ static int therm_intf_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int therm_intf_remove(struct platform_device *pdev)
+static void therm_intf_remove(struct platform_device *pdev)
 {
 	therm_intf_debugfs_exit();
 	sysfs_remove_group(kernel_kobj, &thermal_attr_group);
@@ -2629,8 +2629,6 @@ static int therm_intf_remove(struct platform_device *pdev)
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 		mtk_leds_unregister_notifier(&leds_init_notifier);
 #endif
-
-	return 0;
 }
 
 static struct platform_driver therm_intf_driver = {

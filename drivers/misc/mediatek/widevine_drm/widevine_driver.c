@@ -173,7 +173,7 @@ out:
 	return ret;
 }
 
-static int wv_remove(struct platform_device *pdev)
+static void wv_remove(struct platform_device *pdev)
 {
 	WV_LOG(0, "remove device\n");
 
@@ -185,8 +185,6 @@ static int wv_remove(struct platform_device *pdev)
 		wv_cdev = NULL;
 	}
 	unregister_chrdev_region(wv_devt, 1);
-
-	return 0;
 }
 
 #if IS_ENABLED(CONFIG_OF)

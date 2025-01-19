@@ -223,6 +223,8 @@ enum {
 	MDW_APPTYPE_STREAMING = 2,
 };
 
+DEFINE_MIN_HEAP(uint64_t, mdw_min_heap);
+
 struct mdw_device {
 	enum mdw_driver_type driver_type;
 	union {
@@ -276,7 +278,7 @@ struct mdw_device {
 	/* cmd history */
 	uint64_t idle_time_ts;
 	uint64_t predict_cmd_ts[MDW_NUM_PREDICT_CMD];
-	struct min_heap heap;
+	struct mdw_min_heap heap;
 	atomic_t cmd_running;
 	struct mutex h_mtx;
 

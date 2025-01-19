@@ -1193,10 +1193,9 @@ static int teei_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int teei_remove(struct platform_device *pdev)
+static void teei_remove(struct platform_device *pdev)
 {
 	remove_sysfs(pdev);
-	return 0;
 }
 
 static const struct of_device_id teei_of_ids[] = {

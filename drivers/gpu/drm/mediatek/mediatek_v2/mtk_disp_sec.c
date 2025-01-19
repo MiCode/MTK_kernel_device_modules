@@ -223,10 +223,9 @@ static int disp_sec_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int disp_sec_remove(struct platform_device *pdev)
+static void disp_sec_remove(struct platform_device *pdev)
 {
 	DDPINFO("%s+\n", __func__);
-	return 0;
 }
 
 static const struct mtk_disp_sec_data legacy_sec_driver_data = {
@@ -518,10 +517,9 @@ static int disp_mtee_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int disp_mtee_remove(struct platform_device *pdev)
+static void disp_mtee_remove(struct platform_device *pdev)
 {
 	DDPINFO("%s\n", __func__);
-	return 0;
 }
 
 static const struct of_device_id of_disp_mtee_match_tbl[] = {

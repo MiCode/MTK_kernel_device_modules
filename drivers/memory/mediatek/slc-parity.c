@@ -399,7 +399,7 @@ static int slc_parity_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int slc_parity_remove(struct platform_device *pdev)
+static void slc_parity_remove(struct platform_device *pdev)
 {
 	struct slc_parity *slc = platform_get_drvdata(pdev);
 
@@ -410,8 +410,6 @@ static int slc_parity_remove(struct platform_device *pdev)
 	flush_work(&slc_parity_work);
 
 	global_slc_parity = NULL;
-
-	return 0;
 }
 
 static struct platform_driver slc_parity_driver = {

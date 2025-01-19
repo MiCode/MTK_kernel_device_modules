@@ -74,11 +74,9 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int platform_fpsgo_remove(struct platform_device *pdev)
+static void platform_fpsgo_remove(struct platform_device *pdev)
 {
 	icc_put(bw_path);
-
-	return 0;
 }
 
 static const struct of_device_id platform_fpsgo_of_match[] = {

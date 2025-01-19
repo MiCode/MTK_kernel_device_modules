@@ -426,13 +426,12 @@ static const struct of_device_id mtk_chr_det_of_match[] = {
 	{},
 };
 
-static int mtk_chr_det_remove(struct platform_device *pdev)
+static void mtk_chr_det_remove(struct platform_device *pdev)
 {
 	struct mtk_chr_det *info = platform_get_drvdata(pdev);
 
 	if (info)
 		devm_kfree(&pdev->dev, info);
-	return 0;
 }
 
 MODULE_DEVICE_TABLE(of, mtk_chr_det_of_match);

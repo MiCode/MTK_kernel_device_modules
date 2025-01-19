@@ -1210,13 +1210,13 @@ void free_cpu_array(void)
 
 static int mtk_wake_affine_idle(int this_cpu, int prev_cpu, int sync)
 {
-	if (available_idle_cpu(this_cpu) && mtk_cpus_share_cache(this_cpu, prev_cpu))
-		return available_idle_cpu(prev_cpu) ? prev_cpu : this_cpu;
+	if (mtk_available_idle_cpu(this_cpu) && mtk_cpus_share_cache(this_cpu, prev_cpu))
+		return mtk_available_idle_cpu(prev_cpu) ? prev_cpu : this_cpu;
 
 	if (sync && cpu_rq(this_cpu)->nr_running == 1)
 		return this_cpu;
 
-	if (available_idle_cpu(prev_cpu))
+	if (mtk_available_idle_cpu(prev_cpu))
 		return prev_cpu;
 
 	return nr_cpumask_bits;
@@ -1370,7 +1370,7 @@ mtk_select_idle_capacity(struct task_struct *p, struct cpumask *allowed_cpumask,
 	for_each_cpu_wrap(cpu, allowed_cpumask, target) {
 		unsigned long cpu_cap = capacity_of(cpu);
 
-		if (!is_vip && (!available_idle_cpu(cpu) && !sched_idle_cpu(cpu)))
+		if (!is_vip && (!mtk_available_idle_cpu(cpu) && !sched_idle_cpu(cpu)))
 			continue;
 		if (fits_capacity(task_util, cpu_cap, get_adaptive_margin(cpu)))
 			return cpu;
@@ -2032,7 +2032,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			 * Because this is just a backup option, we do not take care
 			 * of exit latency.
 			 */
-			if (latency_sensitive && available_idle_cpu(cpu)) {
+			if (latency_sensitive && mtk_available_idle_cpu(cpu)) {
 				if (is_target_max_spare_cpu(spare_cap_without_p, idle_max_spare_cap,
 					*idle_max_spare_cap_cpu, cpu, "idle_max_spare")) {
 					idle_max_spare_cap = spare_cap_without_p;
@@ -2077,7 +2077,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 			if (!latency_sensitive)
 				continue;
 
-			if (available_idle_cpu(cpu)) {
+			if (mtk_available_idle_cpu(cpu)) {
 				cpu_cap = arch_scale_cpu_capacity(cpu);
 				idle = idle_get_state(cpu_rq(cpu));
 				if (idle && idle->exit_latency > pd_min_exit_lat &&
@@ -2381,7 +2381,7 @@ fail:
 
 	if (cpumask_test_cpu(target, &allowed_cpu_mask) &&
 		/* Don't check CPU idle state if task is VIP, since idle is not critical for VIP*/
-	    (is_vip || (available_idle_cpu(target) || sched_idle_cpu(target))) &&
+	    (is_vip || (mtk_available_idle_cpu(target) || sched_idle_cpu(target))) &&
 	    task_fits_capacity(p, capacity_of(target), get_adaptive_margin(target))) {
 		*new_cpu = target;
 		backup_reason = LB_BACKUP_AFFINE_IDLE_FIT;
@@ -2393,7 +2393,7 @@ fail:
 	 */
 	if (prev_cpu != target && mtk_cpus_share_cache(prev_cpu, target) &&
 		cpumask_test_cpu(prev_cpu, &allowed_cpu_mask) &&
-	    (is_vip || (available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu))) &&
+	    (is_vip || (mtk_available_idle_cpu(prev_cpu) || sched_idle_cpu(prev_cpu))) &&
 	    task_fits_capacity(p, capacity_of(prev_cpu), get_adaptive_margin(prev_cpu))) {
 		*new_cpu = prev_cpu;
 		backup_reason = LB_BACKUP_PREV;
@@ -2428,7 +2428,7 @@ fail:
 	if (recent_used_cpu != prev_cpu && recent_used_cpu != target &&
 		mtk_cpus_share_cache(recent_used_cpu, target) &&
 		cpumask_test_cpu(recent_used_cpu, &allowed_cpu_mask) &&
-	    (is_vip || (available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu))) &&
+	    (is_vip || (mtk_available_idle_cpu(recent_used_cpu) || sched_idle_cpu(recent_used_cpu))) &&
 	    task_fits_capacity(p, capacity_of(recent_used_cpu), get_adaptive_margin(recent_used_cpu))) {
 		*new_cpu = recent_used_cpu;
 		/*

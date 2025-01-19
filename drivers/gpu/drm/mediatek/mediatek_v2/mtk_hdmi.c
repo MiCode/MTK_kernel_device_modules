@@ -4117,7 +4117,7 @@ static int mtk_drm_hdmi_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_drm_hdmi_remove(struct platform_device *pdev)
+static void mtk_drm_hdmi_remove(struct platform_device *pdev)
 {
 	struct mtk_hdmi *hdmi = platform_get_drvdata(pdev);
 
@@ -4126,8 +4126,6 @@ static int mtk_drm_hdmi_remove(struct platform_device *pdev)
 	drm_bridge_remove(&hdmi->bridge);
 	mtk_hdmi_clk_disable(hdmi);
 	hdmitx_debug_uninit();
-
-	return 0;
 }
 
 struct ipi_cmd_s {

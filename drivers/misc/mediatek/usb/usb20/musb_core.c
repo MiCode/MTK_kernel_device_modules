@@ -4824,7 +4824,7 @@ int musb_remove(struct platform_device *pdev)
 }
 EXPORT_SYMBOL(musb_remove);
 
-static int mt_usb_remove(struct platform_device *pdev)
+static void mt_usb_remove(struct platform_device *pdev)
 {
 	struct mt_usb_glue *glue = platform_get_drvdata(pdev);
 	struct platform_device *usb_phy = glue->usb_phy;
@@ -4832,8 +4832,6 @@ static int mt_usb_remove(struct platform_device *pdev)
 	platform_device_unregister(glue->musb_pdev);
 	usb_phy_generic_unregister(usb_phy);
 	kfree(glue);
-
-	return 0;
 }
 
 static const struct of_device_id apusb_of_ids[] = {

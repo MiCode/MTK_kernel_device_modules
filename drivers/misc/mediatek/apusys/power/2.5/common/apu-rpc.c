@@ -301,12 +301,11 @@ static int apu_rpc_probe(struct platform_device *pdev)
 	return apupw_dbg_register_nodes(dev);
 }
 
-static int apu_rpc_remove(struct platform_device *pdev)
+static void apu_rpc_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "%s\n", __func__);
 	iounmap(spm_reg);
 	apupw_dbg_release_nodes();
-	return 0;
 }
 
 static const struct of_device_id of_match[] = {

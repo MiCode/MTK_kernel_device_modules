@@ -265,11 +265,9 @@ error:
 	return ret;
 }
 
-static int rt4801h_drv_remove(struct platform_device *pdev)
+static void rt4801h_drv_remove(struct platform_device *pdev)
 {
 	DDPMSG("%s\n", __func__);
-
-	return 0;
 }
 
 

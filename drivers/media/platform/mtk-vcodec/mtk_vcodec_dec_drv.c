@@ -761,7 +761,7 @@ static const struct of_device_id mtk_vcodec_match[] = {
 
 MODULE_DEVICE_TABLE(of, mtk_vcodec_match);
 
-static int mtk_vcodec_dec_remove(struct platform_device *pdev)
+static void mtk_vcodec_dec_remove(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev = platform_get_drvdata(pdev);
 
@@ -790,8 +790,6 @@ static int mtk_vcodec_dec_remove(struct platform_device *pdev)
 	vdec_vcp_remove(dev);
 #endif
 	vdec_if_dev_ctx_deinit(dev);
-
-	return 0;
 }
 
 static const struct dev_pm_ops mtk_vcodec_dec_pm_ops = {

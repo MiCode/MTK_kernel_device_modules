@@ -1623,7 +1623,7 @@ static int mdpsys_con_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mdpsys_con_remove(struct platform_device *pdev)
+static void mdpsys_con_remove(struct platform_device *pdev)
 {
 	CMDQ_LOG("%s\n", __func__);
 
@@ -1632,8 +1632,6 @@ static int mdpsys_con_remove(struct platform_device *pdev)
 	mdpsys_con_ctx.mmu_dev_sec = NULL;
 
 	CMDQ_LOG("%s done\n", __func__);
-
-	return 0;
 }
 
 static const struct of_device_id mdpsyscon_of_ids[] = {

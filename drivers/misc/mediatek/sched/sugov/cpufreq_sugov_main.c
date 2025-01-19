@@ -755,7 +755,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 
 		if (_ignore_idle_ctrl) {
 			sugov_data_ptr = &per_cpu(rq_data, j)->sugov_data;
-			idle = (available_idle_cpu(j)
+			idle = (mtk_available_idle_cpu(j)
 				&& ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) ? 1 : 0));
 		}
 		if (trace_sugov_ext_util_enabled()) {

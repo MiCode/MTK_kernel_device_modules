@@ -913,7 +913,7 @@ err_unregister:
 	return err;
 }
 
-static int mtk_cqdma_remove(struct platform_device *pdev)
+static void mtk_cqdma_remove(struct platform_device *pdev)
 {
 	struct mtk_cqdma_device *cqdma = platform_get_drvdata(pdev);
 	struct mtk_cqdma_vchan *vc;
@@ -948,7 +948,6 @@ static int mtk_cqdma_remove(struct platform_device *pdev)
 		devm_kfree(&pdev->dev, cqdma->pc[i]);
 	devm_kfree(&pdev->dev, cqdma->pc);
 	devm_kfree(&pdev->dev, cqdma);
-	return 0;
 }
 
 static struct platform_driver mtk_cqdma_driver = {

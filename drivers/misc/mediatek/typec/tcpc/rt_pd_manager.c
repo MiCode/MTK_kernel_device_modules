@@ -708,13 +708,12 @@ out:
 	return ret;
 }
 
-static int rt_pd_manager_remove(struct platform_device *pdev)
+static void rt_pd_manager_remove(struct platform_device *pdev)
 {
 	struct rt_pd_manager_data *rpmd = platform_get_drvdata(pdev);
 
 	dev_info(rpmd->dev, "%s ++\n", __func__);
 	rt_pd_manager_remove_helper(rpmd);
-	return 0;
 }
 
 static const struct of_device_id rt_pd_manager_of_match[] = {

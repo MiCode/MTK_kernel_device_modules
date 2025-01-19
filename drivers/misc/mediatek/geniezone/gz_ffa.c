@@ -202,7 +202,7 @@ int kmalloc_aligned(size_t mem_size, void **origin_ptr, void **ptr)
 	void *__ptr;
 
 	FFA_ERR("%s %d\n", __func__, __LINE__);
-	__ptr = kmalloc_large(mem_size + alignment, GFP_KERNEL);
+	__ptr = __kmalloc_large_noprof(mem_size + alignment, GFP_KERNEL);
 	if (!IS_ERR_OR_NULL(__ptr)) {
 		*origin_ptr = __ptr;
 		*ptr = (void *) (((u64)__ptr + mask) & ~mask);

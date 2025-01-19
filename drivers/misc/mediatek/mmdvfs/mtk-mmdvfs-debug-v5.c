@@ -334,9 +334,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mmdvfs_debug_remove(struct platform_device *pdev)
+static void mmdvfs_debug_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static const struct of_device_id of_mmdvfs_debug[] = {

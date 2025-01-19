@@ -416,20 +416,17 @@ static int apusys_sapu_probe(struct platform_device *pdev)
 
 	return ret;
 }
-static int apusys_sapu_remove(struct platform_device *pdev)
+static void apusys_sapu_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
 	if (!sapu) {
 		pr_info("%s: sapu is NULL\n", __func__);
-		return -ENODEV;
 	}
 
 	mutex_destroy(&sapu->dmabuf_lock);
 	misc_deregister(&sapu->mdev);
 	devm_kfree(dev, sapu);
-
-	return 0;
 }
 
 static int sapu_lock_rpmsg_probe(struct rpmsg_device *rpdev)

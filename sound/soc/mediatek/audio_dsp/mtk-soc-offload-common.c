@@ -1107,13 +1107,12 @@ static int mtk_asoc_dloffload_new(struct snd_soc_component *component,
 	return 0;
 }
 
-static int mtk_dloffload_remove(struct platform_device *pdev)
+static void mtk_dloffload_remove(struct platform_device *pdev)
 {
 	pr_debug("%s\n", __func__);
 #ifdef use_wake_lock
 	aud_wake_lock_destroy(Offload_suspend_lock);
 #endif
-	return 0;
 }
 
 static struct snd_compress_ops mtk_offload_compr_ops = {

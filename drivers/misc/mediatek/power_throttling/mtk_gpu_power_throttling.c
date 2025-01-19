@@ -194,9 +194,9 @@ static const struct of_device_id gpu_power_throttling_of_match[] = {
 	{},
 };
 
-static int mtk_gpu_power_throttling_remove(struct platform_device *pdev)
+static void mtk_gpu_power_throttling_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 MODULE_DEVICE_TABLE(of, gpu_power_throttling_of_match);

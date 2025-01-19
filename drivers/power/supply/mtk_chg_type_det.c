@@ -380,14 +380,13 @@ out:
 	return ret;
 }
 
-static int mtk_ctd_remove(struct platform_device *pdev)
+static void mtk_ctd_remove(struct platform_device *pdev)
 {
 	struct mtk_ctd_info *mci = platform_get_drvdata(pdev);
 
 	dev_dbg(mci->dev, "%s\n", __func__);
 	kthread_stop(mci->attach_task);
 	mtk_ctd_driver_remove_helper(mci);
-	return 0;
 }
 
 static const struct of_device_id __maybe_unused mtk_ctd_of_id[] = {

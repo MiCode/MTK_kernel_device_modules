@@ -149,10 +149,9 @@ static int mtk_dvfsrc_debugfs_probe(struct platform_device *pdev)
 }
 
 
-static int mtk_dvfsrc_debugfs_remove(struct platform_device *pdev)
+static void mtk_dvfsrc_debugfs_remove(struct platform_device *pdev)
 {
-	 debugfs_remove_recursive(mtk_dvfsrc_dir);
-	return 0;
+	debugfs_remove_recursive(mtk_dvfsrc_dir);
 }
 
 static const int mt6991_regs[] = {

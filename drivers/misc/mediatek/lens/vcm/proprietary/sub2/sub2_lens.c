@@ -611,10 +611,9 @@ static int AF_probe(struct platform_device *pdev)
 	return i2c_add_driver(&AF_i2c_driver);
 }
 
-static int AF_remove(struct platform_device *pdev)
+static void AF_remove(struct platform_device *pdev)
 {
 	i2c_del_driver(&AF_i2c_driver);
-	return 0;
 }
 
 static int AF_suspend(struct platform_device *pdev, pm_message_t mesg)

@@ -374,9 +374,9 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int mtk_vdisp_remove(struct platform_device *pdev)
+static void mtk_vdisp_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static const struct of_device_id mtk_vdisp_driver_v1_dt_match[] = {

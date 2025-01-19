@@ -229,10 +229,9 @@ static int mtk_lvds_tx_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_lvds_tx_remove(struct platform_device *pdev)
+static void mtk_lvds_tx_remove(struct platform_device *pdev)
 {
 	of_clk_del_provider(pdev->dev.of_node);
-	return 0;
 }
 
 static const struct of_device_id mtk_lvds_tx_match[] = {

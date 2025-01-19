@@ -655,7 +655,7 @@ static MINT32 seninf_probe(struct platform_device *pDev)
 	return ret;
 }
 
-static MINT32 seninf_remove(struct platform_device *pDev)
+static void seninf_remove(struct platform_device *pDev)
 {
 	struct SENINF *pseninf = &gseninf;
 
@@ -685,8 +685,6 @@ static MINT32 seninf_remove(struct platform_device *pDev)
 
 	class_destroy(pseninf->pclass);
 	pseninf->pclass = NULL;
-
-	return 0;
 }
 
 static MINT32 seninf_suspend(struct platform_device *pDev, pm_message_t mesg)

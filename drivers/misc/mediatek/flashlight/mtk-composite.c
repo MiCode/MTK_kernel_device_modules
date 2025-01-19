@@ -241,15 +241,13 @@ vdec_end:
 	return rc;
 }
 
-static int mtk_composite_remove(struct platform_device *dev)
+static void mtk_composite_remove(struct platform_device *dev)
 {
 	struct mtk_composite_v4l2_device *pfdev = platform_get_drvdata(dev);
 
 	v4l2_async_nf_unregister(&pfdev->notifier);
 	v4l2_async_nf_cleanup(&pfdev->notifier);
 	mtk_composite_unregister_entities(pfdev);
-
-	return 0;
 }
 
 static void mtk_composite_shutdown(struct platform_device *dev)

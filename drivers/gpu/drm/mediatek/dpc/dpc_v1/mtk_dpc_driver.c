@@ -4460,10 +4460,9 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	return ret;
 }
 
-static int mtk_dpc_remove_v1(struct platform_device *pdev)
+static void mtk_dpc_remove_v1(struct platform_device *pdev)
 {
 	DPCFUNC();
-	return 0;
 }
 
 static void mtk_dpc_shutdown_v1(struct platform_device *pdev)

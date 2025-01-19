@@ -1421,13 +1421,12 @@ err_dev:
 	return err;
 }
 
-static int usb_meta_remove(struct platform_device *pdev)
+static void usb_meta_remove(struct platform_device *pdev)
 {
 	usb_composite_unregister(&android_usb_driver);
 	class_destroy(android_class);
 	kfree(_android_dev);
 	_android_dev = NULL;
-	return 0;
 }
 
 static const struct of_device_id usb_meta_of_match[] = {

@@ -919,7 +919,7 @@ out:
 	return ret;
 }
 
-static int vpu_remove(struct platform_device *pdev)
+static void vpu_remove(struct platform_device *pdev)
 {
 	struct vpu_device *vd = platform_get_drvdata(pdev);
 
@@ -937,8 +937,6 @@ static int vpu_remove(struct platform_device *pdev)
 	vpu_exit_dev_pwr(pdev, vd);
 	vpu_dev_del(vd);
 	vpu_free(pdev);
-
-	return 0;
 }
 
 static int vpu_suspend(struct vpu_device *vd)

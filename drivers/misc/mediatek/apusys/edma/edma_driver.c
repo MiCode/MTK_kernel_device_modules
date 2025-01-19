@@ -229,9 +229,9 @@ static int mtk_edma_sub_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_edma_sub_remove(struct platform_device *pdev)
+static void mtk_edma_sub_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static struct platform_driver mtk_edma_sub_driver = {
@@ -380,7 +380,7 @@ dev_out:
 
 }
 
-static int edma_remove(struct platform_device *pdev)
+static void edma_remove(struct platform_device *pdev)
 {
 	struct edma_device *edma_device = platform_get_drvdata(pdev);
 
@@ -395,8 +395,6 @@ static int edma_remove(struct platform_device *pdev)
 	class_destroy(edma_class);
 
 	edma_remove_sysfs(&pdev->dev);
-
-	return 0;
 }
 
 

@@ -449,14 +449,13 @@ static int simple_lcm_cust_drv_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int simple_lcm_cust_drv_remove(struct platform_device *pdev)
+static void simple_lcm_cust_drv_remove(struct platform_device *pdev)
 {
 	int ret = 0;
 
 	ret = mtk_simple_lcm_cust_drv_deinit(MTK_LCM_FUNC_DSI);
 
 	DDPMSG("%s, ret:%d\n", __func__, ret);
-	return ret;
 }
 
 static const struct of_device_id simple_lcm_cust_of_match[] = {

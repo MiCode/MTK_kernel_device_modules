@@ -429,7 +429,7 @@ free_node:
 	return ret;
 }
 
-static int apummu_remove(struct platform_device *pdev)
+static void apummu_remove(struct platform_device *pdev)
 {
 	struct apummu_dev_info *adv = platform_get_drvdata(pdev);
 
@@ -446,7 +446,6 @@ static int apummu_remove(struct platform_device *pdev)
 	g_adv = NULL;
 
 	AMMU_LOG_INFO("remove done\n");
-	return 0;
 }
 
 

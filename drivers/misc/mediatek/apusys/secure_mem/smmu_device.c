@@ -20,10 +20,9 @@ static int apusys_aov_smmu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int apusys_aov_smmu_remove(struct platform_device *pdev)
+static void apusys_aov_smmu_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "%s removed\n", __func__);
-	return 0;
 }
 
 static const struct of_device_id apusys_aov_smmu_of_match[] = {
@@ -49,10 +48,9 @@ static int secure_apu_smmu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int secure_apu_smmu_remove(struct platform_device *pdev)
+static void secure_apu_smmu_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "%s removed\n", __func__);
-	return 0;
 }
 
 static const struct of_device_id secure_apu_smmu_of_match[] = {

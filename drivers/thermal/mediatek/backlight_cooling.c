@@ -157,7 +157,7 @@ static int backlight_cooling_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int backlight_cooling_remove(struct platform_device *pdev)
+static void backlight_cooling_remove(struct platform_device *pdev)
 {
 	struct backlight_cooling_device *bl_cdev;
 
@@ -165,8 +165,6 @@ static int backlight_cooling_remove(struct platform_device *pdev)
 	thermal_cooling_device_unregister(bl_cdev->cdev);
 
 	platform_set_drvdata(pdev, NULL);
-
-	return 0;
 }
 
 static struct platform_driver backlight_cooling_driver = {

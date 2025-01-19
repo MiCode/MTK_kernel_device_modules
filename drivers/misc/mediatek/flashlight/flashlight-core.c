@@ -1960,7 +1960,7 @@ err_allocate_chrdev:
 	return -1;
 }
 
-static int flashlight_remove(struct platform_device *pdev)
+static void flashlight_remove(struct platform_device *pdev)
 {
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 	struct flashlight_cooling_device *f_cdev;
@@ -1988,8 +1988,6 @@ static int flashlight_remove(struct platform_device *pdev)
 	cdev_del(flashlight_cdev);
 	/* unregister char device number */
 	unregister_chrdev_region(flashlight_devno, 1);
-
-	return 0;
 }
 
 static void flashlight_shutdown(struct platform_device *pdev)

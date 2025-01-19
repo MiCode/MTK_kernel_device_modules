@@ -2122,9 +2122,9 @@ static int mtk_pe4_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_pe4_remove(struct platform_device *dev)
+static void mtk_pe4_remove(struct platform_device *dev)
 {
-	return 0;
+
 }
 
 static void mtk_pe4_shutdown(struct platform_device *dev)

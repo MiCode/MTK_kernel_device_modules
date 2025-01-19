@@ -291,20 +291,18 @@ static int mtk_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 	return 0;
 }
 
-static int mtk_cpufreq_hw_cpu_exit(struct cpufreq_policy *policy)
+static void mtk_cpufreq_hw_cpu_exit(struct cpufreq_policy *policy)
 {
 	struct cpufreq_mtk *c;
 
 	c = mtk_freq_domain_map[policy->cpu];
 	if (!c) {
 		pr_info("No scaling support for CPU%d\n", policy->cpu);
-		return -ENODEV;
+		return;
 	}
 
 	/* HW should be in paused state now */
 	writel_relaxed(0x0, c->reg_bases[REG_FREQ_ENABLE]);
-
-	return 0;
 }
 
 static void mtk_cpufreq_register_em(struct cpufreq_policy *policy)
@@ -731,10 +729,9 @@ release_region:
 	return ret;
 }
 
-static int mtk_cpufreq_hw_driver_remove(struct platform_device *pdev)
+static void mtk_cpufreq_hw_driver_remove(struct platform_device *pdev)
 {
 	cpufreq_unregister_driver(&cpufreq_mtk_hw_driver);
-	return 0;
 }
 
 static const struct of_device_id mtk_cpufreq_hw_match[] = {

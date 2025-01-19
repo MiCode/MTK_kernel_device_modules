@@ -309,7 +309,7 @@ err_unprepare_clk:
 	return ret;
 }
 
-static int kpd_pdrv_remove(struct platform_device *pdev)
+static void kpd_pdrv_remove(struct platform_device *pdev)
 {
 	struct mtk_keypad *keypad = platform_get_drvdata(pdev);
 
@@ -317,8 +317,6 @@ static int kpd_pdrv_remove(struct platform_device *pdev)
 	wakeup_source_unregister(keypad->suspend_lock);
 	input_unregister_device(keypad->input_dev);
 	clk_disable_unprepare(keypad->clk);
-
-	return 0;
 }
 
 static int kpd_pdrv_suspend(struct platform_device *pdev, pm_message_t state)

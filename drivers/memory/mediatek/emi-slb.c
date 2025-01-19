@@ -303,7 +303,7 @@ static int emislb_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int emislb_remove(struct platform_device *pdev)
+static void emislb_remove(struct platform_device *pdev)
 {
 	struct emi_slb *slb = platform_get_drvdata(pdev);
 
@@ -314,8 +314,6 @@ static int emislb_remove(struct platform_device *pdev)
 	flush_work(&emislb_work);
 
 	global_emi_slb = NULL;
-
-	return 0;
 }
 
 static struct platform_driver emislb_driver = {

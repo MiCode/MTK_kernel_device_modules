@@ -2209,9 +2209,9 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int peak_power_budget_remove(struct platform_device *pdev)
+static void peak_power_budget_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static const struct of_device_id peak_power_budget_of_match[] = {

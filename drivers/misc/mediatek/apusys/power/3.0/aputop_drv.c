@@ -133,17 +133,15 @@ static int apu_top_probe(struct platform_device *pdev)
 	return pwr_data->plat_aputop_pb(pdev);
 }
 
-static int apu_top_remove(struct platform_device *pdev)
+static void apu_top_remove(struct platform_device *pdev)
 {
 	if (check_pwr_data())
-		return -ENODEV;
+		return;
 
 	dev_info(&pdev->dev, "%s %s\n", __func__, pwr_data->plat_name);
 	pwr_data->plat_aputop_rm(pdev);
 	pm_runtime_disable(&pdev->dev);
 	apu_pwr_wake_exit();
-
-	return 0;
 }
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)

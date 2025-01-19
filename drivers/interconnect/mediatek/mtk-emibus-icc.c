@@ -306,14 +306,12 @@ err:
 	return ret;
 }
 
-static int emibus_icc_remove(struct platform_device *pdev)
+static void emibus_icc_remove(struct platform_device *pdev)
 {
 	struct dvfsrc_emibus_icc_provider *emibus_icc_p = platform_get_drvdata(pdev);
 
 	icc_provider_deregister(&emibus_icc_p->provider);
 	icc_nodes_remove(&emibus_icc_p->provider);
-
-	return 0;
 }
 
 static struct platform_driver emi_icc_emibus_driver = {

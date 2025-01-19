@@ -2414,7 +2414,7 @@ err_sys_add:
 	return ret;
 }
 
-static int mml_remove(struct platform_device *pdev)
+static void mml_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mml_dev *mml = platform_get_drvdata(pdev);
@@ -2429,8 +2429,6 @@ static int mml_remove(struct platform_device *pdev)
 	comp_master_deinit(dev);
 	mml_sys_destroy(pdev, mml->sys, &sys_comp_ops);
 	devm_kfree(dev, mml);
-
-	return 0;
 }
 
 static int __maybe_unused mml_pm_suspend(struct device *dev)

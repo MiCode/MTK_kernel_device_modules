@@ -234,7 +234,7 @@ static ssize_t tracker_status_store(struct device_driver *driver, const char *bu
 static DRIVER_ATTR(tracker_status, 0664, tracker_status_show, tracker_status_store);
 
 static int systracker_watchpoint_probe(struct platform_device *pdev);
-static int systracker_watchpoint_remove(struct platform_device *pdev);
+static void systracker_watchpoint_remove(struct platform_device *pdev);
 
 static const struct of_device_id systracker_of_ids[] = {
 	{ .compatible = TRACKER_COMPATIBLE, },
@@ -402,10 +402,9 @@ static int systracker_watchpoint_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int systracker_watchpoint_remove(struct platform_device *pdev)
+static void systracker_watchpoint_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "systracker watchpoint removed.\n");
-	return 0;
 }
 
 static int __init systracker_watchpoint_init(void)

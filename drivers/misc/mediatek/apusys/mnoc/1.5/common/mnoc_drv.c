@@ -310,7 +310,7 @@ static int mnoc_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static int mnoc_remove(struct platform_device *pdev)
+static void mnoc_remove(struct platform_device *pdev)
 {
 	struct device_node *node = NULL;
 	struct apu_mnoc *p_mnoc = NULL;
@@ -319,7 +319,7 @@ static int mnoc_remove(struct platform_device *pdev)
 
 #if MNOC_APU_PWR_CHK
 	if (!apusys_power_check())
-		return 0;
+		return;
 #endif
 
 	apu_power_callback_device_unregister(MNOC);
@@ -332,7 +332,7 @@ static int mnoc_remove(struct platform_device *pdev)
 	node = pdev->dev.of_node;
 	if (!node) {
 		LOG_ERR("get apusys_mnoc device node err\n");
-		return -ENODEV;
+		return;
 	}
 
 #if MNOC_INT_ENABLE
@@ -353,8 +353,6 @@ static int mnoc_remove(struct platform_device *pdev)
 #endif
 
 	LOG_DEBUG("-\n");
-
-	return 0;
 }
 
 static struct platform_driver mnoc_driver = {

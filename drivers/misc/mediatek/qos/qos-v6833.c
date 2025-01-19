@@ -197,9 +197,9 @@ static const struct of_device_id mtk_qos_of_match[] = {
 	},
 };
 
-static int mt6833_qos_remove(struct platform_device *pdev)
+static void mt6833_qos_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 

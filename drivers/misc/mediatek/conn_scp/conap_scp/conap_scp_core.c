@@ -55,7 +55,7 @@ const struct of_device_id conn_scp_of_ids[] = {
 
 
 static int conn_scp_probe(struct platform_device *pdev);
-static int conn_scp_remove(struct platform_device *pdev);
+static void conn_scp_remove(struct platform_device *pdev);
 
 static struct platform_driver g_connscp_dev_drv = {
 	.probe = conn_scp_probe,
@@ -803,9 +803,9 @@ int conn_scp_probe(struct platform_device *pdev)
 	return 0;
 }
 
-int conn_scp_remove(struct platform_device *pdev)
+void conn_scp_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 

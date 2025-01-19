@@ -1328,7 +1328,7 @@ static int jpeg_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int jpeg_remove(struct platform_device *pdev)
+static void jpeg_remove(struct platform_device *pdev)
 {
 	int i, node_index;
 
@@ -1348,8 +1348,6 @@ static int jpeg_remove(struct platform_device *pdev)
 		dec_hw_enable[i] = false;
 	}
 	jpeg_drv_hybrid_dec_unprepare_dvfs();
-
-	return 0;
 }
 
 static void jpeg_shutdown(struct platform_device *pdev)

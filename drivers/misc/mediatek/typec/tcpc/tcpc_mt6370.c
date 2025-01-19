@@ -1050,7 +1050,7 @@ err_tcpc_reg:
 	return ret;
 }
 
-static int mt6370_tcpc_remove(struct platform_device *pdev)
+static void mt6370_tcpc_remove(struct platform_device *pdev)
 {
 	struct mt6370_tcpc_data *ddata = platform_get_drvdata(pdev);
 
@@ -1058,8 +1058,6 @@ static int mt6370_tcpc_remove(struct platform_device *pdev)
 		tcpc_device_unregister(ddata->dev, ddata->tcpc);
 		device_init_wakeup(&pdev->dev, false);
 	}
-
-	return 0;
 }
 
 static void mt6370_tcpc_shutdown(struct platform_device *pdev)

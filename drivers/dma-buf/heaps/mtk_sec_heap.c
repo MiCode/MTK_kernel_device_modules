@@ -1709,8 +1709,8 @@ static struct dma_buf *alloc_dmabuf(struct dma_heap *heap,
 
 static struct dma_buf *tmem_page_allocate(struct dma_heap *heap,
 					  unsigned long len,
-					  unsigned long fd_flags,
-					  unsigned long heap_flags)
+					  u32 fd_flags,
+					  u64 heap_flags)
 {
 	int ret = -ENOMEM;
 	struct dma_buf *dmabuf;
@@ -1786,8 +1786,8 @@ free_buffer:
 
 static struct dma_buf *tmem_region_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    unsigned long fd_flags,
-					    unsigned long heap_flags)
+					    u32 fd_flags,
+					    u64 heap_flags)
 {
 	int ret = -ENOMEM;
 	struct dma_buf *dmabuf;

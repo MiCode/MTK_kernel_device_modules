@@ -474,14 +474,12 @@ error:
 	return ret;
 }
 
-static int rt4831a_drv_remove(struct platform_device *pdev)
+static void rt4831a_drv_remove(struct platform_device *pdev)
 {
 	DDPMSG("%s\n", __func__);
 #ifdef LEDS_BRIGHTNESS_CHANGED
 	mtk_leds_unregister_notifier(&rt4831a_leds_init_notifier);
 #endif
-
-	return 0;
 }
 
 

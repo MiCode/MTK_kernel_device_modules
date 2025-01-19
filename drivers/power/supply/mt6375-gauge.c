@@ -4177,12 +4177,11 @@ out_irq_chip:
 	return ret;
 }
 
-static int mt6375_gauge_remove(struct platform_device *pdev)
+static void mt6375_gauge_remove(struct platform_device *pdev)
 {
 	struct mt6375_priv *priv = platform_get_drvdata(pdev);
 
 	gauge_del_irq_chip(priv);
-	return 0;
 }
 
 static void mt6375_gauge_shutdown(struct platform_device *pdev)

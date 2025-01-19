@@ -72,9 +72,9 @@ static void musb_shutdown_main(struct platform_device *pdev)
 	return musb_shutdown(pdev);
 }
 
-static int musb_remove_main(struct platform_device *pdev)
+static void musb_remove_main(struct platform_device *pdev)
 {
-	return musb_remove(pdev);
+	musb_remove(pdev);
 }
 
 extern const struct dev_pm_ops musb_dev_pm_ops;

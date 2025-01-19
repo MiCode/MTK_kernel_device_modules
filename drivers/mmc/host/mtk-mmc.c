@@ -765,8 +765,6 @@ extern void gpio_dump_regs_range(int start, int end);
 static void msdc_cmd_next(struct msdc_host *host,
 		struct mmc_request *mrq, struct mmc_command *cmd);
 static void __msdc_enable_sdio_irq(struct msdc_host *host, int enb);
-static int msdc_install_tracepoints(struct msdc_host *host);
-static void msdc_uninstall_tracepoints(void);
 
 static const u32 cmd_ints_mask = MSDC_INTEN_CMDRDY | MSDC_INTEN_RSPCRCERR |
 			MSDC_INTEN_CMDTMO | MSDC_INTEN_ACMDRDY |
@@ -4588,7 +4586,6 @@ skip_hwcq:
 #if IS_ENABLED(CONFIG_RPMB)
 	ret = mmc_rpmb_register(mmc);
 #endif
-	msdc_install_tracepoints(host);
 	dev_info(&pdev->dev, "[%s %d]ret=%d\n", __func__, __LINE__, ret);
 	return 0;
 end:
@@ -4618,7 +4615,7 @@ host_free:
 	return ret;
 }
 
-static int msdc_drv_remove(struct platform_device *pdev)
+static void msdc_drv_remove(struct platform_device *pdev)
 {
 	struct mmc_host *mmc;
 	struct msdc_host *host;
@@ -4646,10 +4643,7 @@ static int msdc_drv_remove(struct platform_device *pdev)
 		iounmap(host->infra_ack_vaddr);
 
 	mmc_free_host(mmc);
-	msdc_uninstall_tracepoints();
 	mmc_mtk_biolog_exit();
-
-	return 0;
 }
 
 static void msdc_save_reg(struct msdc_host *host)
@@ -4895,77 +4889,6 @@ static int __maybe_unused msdc_suspend(struct device *dev)
 static int __maybe_unused msdc_resume(struct device *dev)
 {
 	return pm_runtime_force_resume(dev);
-}
-
-static void msdc_vh_mmc_update_mmc_queue(void *data,
-			struct mmc_card *card, struct mmc_queue *mq)
-{
-	bool cache_enabled;
-
-	if (!mmc_card_mmc(card))
-		return;
-
-	cache_enabled = !!test_bit(QUEUE_FLAG_WC, &mq->queue->queue_flags);
-	blk_queue_write_cache(mq->queue, cache_enabled, false);
-	blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, mq->queue);
-	dev_dbg(mmc_dev(card->host), "disable fua and force complete on same CPU in mmc queue\n");
-}
-
-static struct tracepoints_table msdc_interests[] = {
-	{
-		.name = "android_vh_mmc_update_mmc_queue",
-		.func = msdc_vh_mmc_update_mmc_queue
-	},
-};
-
-#define FOR_EACH_INTEREST(i) \
-	for (i = 0; i < sizeof(msdc_interests) / sizeof(struct tracepoints_table); \
-	i++)
-
-static void msdc_lookup_tracepoints(struct tracepoint *tp, void *ignore)
-{
-	int i;
-
-	FOR_EACH_INTEREST(i) {
-		if (strcmp(msdc_interests[i].name, tp->name) == 0)
-			msdc_interests[i].tp = tp;
-	}
-}
-
-static void msdc_uninstall_tracepoints(void)
-{
-	int i;
-
-	FOR_EACH_INTEREST(i) {
-		if (msdc_interests[i].init) {
-			tracepoint_probe_unregister(msdc_interests[i].tp,
-						    msdc_interests[i].func,
-						    NULL);
-		}
-	}
-}
-
-static int msdc_install_tracepoints(struct msdc_host *host)
-{
-	int i;
-
-	/* Install the tracepoints */
-	for_each_kernel_tracepoint(msdc_lookup_tracepoints, NULL);
-
-	FOR_EACH_INTEREST(i) {
-		if (msdc_interests[i].tp == NULL) {
-			dev_info(host->dev, "Error: tracepoint %s not found\n",
-				msdc_interests[i].name);
-			continue;
-		}
-
-		tracepoint_probe_register(msdc_interests[i].tp,
-					  msdc_interests[i].func,
-					  NULL);
-		msdc_interests[i].init = true;
-	}
-
-	return 0;
 }
 
 static const struct dev_pm_ops msdc_dev_pm_ops = {

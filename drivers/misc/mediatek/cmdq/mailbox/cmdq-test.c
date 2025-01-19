@@ -1916,14 +1916,13 @@ static int cmdq_test_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int cmdq_test_remove(struct platform_device *pdev)
+static void cmdq_test_remove(struct platform_device *pdev)
 {
 	struct cmdq_test *test = (struct cmdq_test *)platform_get_drvdata(pdev);
 
 	cmdq_mbox_destroy(test->clt);
 	cmdq_mbox_destroy(test->loop);
 	cmdq_mbox_destroy(test->sec);
-	return 0;
 }
 
 static const struct of_device_id cmdq_test_of_ids[] = {

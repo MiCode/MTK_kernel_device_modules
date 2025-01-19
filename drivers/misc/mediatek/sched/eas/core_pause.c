@@ -196,7 +196,7 @@ int cpu_drain_rq(unsigned int cpu)
 	if (!cpu_online(cpu) || !cpu_active(cpu))
 		return 0;
 
-	if (available_idle_cpu(cpu))
+	if (mtk_available_idle_cpu(cpu))
 		return 0;
 
 	return stop_one_cpu(cpu, drain_rq_cpu_stop, NULL);
@@ -452,7 +452,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 		 * Need to pay attention to the difference between
 		 * available_idle_cpu() and idle_cpu() when migration.
 		 */
-		if (!available_idle_cpu(*cpu))
+		if (!mtk_available_idle_cpu(*cpu))
 			return;
 
 		/* Keep default_cpu = this cpu & non-pause & hk_mask */
@@ -475,7 +475,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 			if (*cpu == i)
 				continue;
 
-			if (!available_idle_cpu(i) && !cpu_paused(i)) {
+			if (!mtk_available_idle_cpu(i) && !cpu_paused(i)) {
 				*cpu = i;
 				goto unlock;
 			}
@@ -489,7 +489,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 				if (no_pau == -1)
 					no_pau = i;
 
-				if (!available_idle_cpu(i) && (no_pau_idle == -1))
+				if (!mtk_available_idle_cpu(i) && (no_pau_idle == -1))
 					no_pau_idle = i;
 			}
 		}
@@ -559,7 +559,7 @@ void hook_rvh_find_new_ilb(void *data, struct cpumask *nohz_idle_cpus_mask, int 
 		if (cpu_paused(cpu))
 			continue;
 
-		if (available_idle_cpu(cpu)) {
+		if (mtk_available_idle_cpu(cpu)) {
 			*new_ilb = cpu;
 			return;
 		}

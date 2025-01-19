@@ -370,7 +370,7 @@ inline unsigned int mtk_get_idle_exit_latency(int cpu,
 	struct task_struct *curr;
 
 	/* CPU is idle */
-	if (available_idle_cpu(cpu)) {
+	if (mtk_available_idle_cpu(cpu)) {
 		if (rt_ea_output)
 			rt_ea_output->idle_cpus = (rt_ea_output->idle_cpus | (1 << cpu));
 

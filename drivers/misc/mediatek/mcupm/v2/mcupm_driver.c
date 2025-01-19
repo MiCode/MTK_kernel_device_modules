@@ -631,11 +631,10 @@ static int mcupm_device_probe(struct platform_device *pdev)
 
 	return 0;
 }
-static int mcupm_device_remove(struct platform_device *pdev)
+static void mcupm_device_remove(struct platform_device *pdev)
 {
 	//Todo implement remove ipi interface and memory
 	mcupm_plt_module_exit();
-	return 0;
 }
 
 #if IS_ENABLED(CONFIG_PM)

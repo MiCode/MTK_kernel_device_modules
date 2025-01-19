@@ -2592,12 +2592,11 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mt6379_charger_remove(struct platform_device *pdev)
+static void mt6379_charger_remove(struct platform_device *pdev)
 {
 	struct mt6379_charger_data *cdata = platform_get_drvdata(pdev);
 
 	charger_device_unregister(cdata->chgdev);
-	return 0;
 }
 
 static const struct of_device_id mt6379_charger_of_match[] = {

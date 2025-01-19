@@ -542,9 +542,9 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int ise_lpm_remove(struct platform_device *pdev)
+static void ise_lpm_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static void ise_lpm_shutdown(struct platform_device *pdev)

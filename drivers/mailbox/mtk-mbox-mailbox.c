@@ -327,12 +327,11 @@ static const struct of_device_id tinysys_mbox_of_ids[] = {
 	{}
 };
 
-static int tinysys_mbox_remove(struct platform_device *pdev)
+static void tinysys_mbox_remove(struct platform_device *pdev)
 {
 #ifdef CONFIG_MTK_SCMI_TIMEOUT_HOOK
 	unregister_trace_android_vh_scmi_timeout_sync(scmi_timeout_set, NULL);
 #endif
-	return 0;
 }
 
 static struct platform_driver tinysys_mbox_drv = {

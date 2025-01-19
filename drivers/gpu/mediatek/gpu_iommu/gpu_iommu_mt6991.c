@@ -24,10 +24,9 @@ static int gpu_iommu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int gpu_iommu_remove(struct platform_device *pdev)
+static void gpu_iommu_remove(struct platform_device *pdev)
 {
 	pr_info("[gpu_iommu] %s\n", __func__);
-	return 0;
 }
 
 static const struct of_device_id match_table[] = {

@@ -8924,7 +8924,7 @@ EXIT:
 /******************************************************************************
  * Called when the device is being detached from the driver
  *****************************************************************************/
-static signed int ISP_remove(struct platform_device *pDev)
+static void ISP_remove(struct platform_device *pDev)
 {
 	/*    struct resource *pRes;*/
 	signed int IrqNum;

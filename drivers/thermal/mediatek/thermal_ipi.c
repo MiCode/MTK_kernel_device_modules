@@ -248,9 +248,9 @@ static int thermal_ipi_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int thermal_ipi_remove(struct platform_device *pdev)
+static void thermal_ipi_remove(struct platform_device *pdev)
 {
-	return sysfs_create_group(kernel_kobj, &thermal_ipi_attr_group);
+	sysfs_create_group(kernel_kobj, &thermal_ipi_attr_group);
 }
 
 static struct platform_driver thermal_ipi_driver = {

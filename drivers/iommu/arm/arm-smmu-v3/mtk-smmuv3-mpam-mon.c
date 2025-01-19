@@ -743,7 +743,7 @@ static int smmu_mpam_mon_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int smmu_mpam_mon_remove(struct platform_device *pdev)
+static void smmu_mpam_mon_remove(struct platform_device *pdev)
 {
 	struct smmu_mpam_mon_list *mpam_mon_list;
 	struct smmu_mpam_mon *mpam_mon;
@@ -757,8 +757,6 @@ static int smmu_mpam_mon_remove(struct platform_device *pdev)
 		perf_pmu_unregister(&mpam_mon->pmu);
 		cpuhp_state_remove_instance_nocalls(cpuhp_state_num, &mpam_mon->node);
 	}
-
-	return 0;
 }
 
 #ifdef CONFIG_OF

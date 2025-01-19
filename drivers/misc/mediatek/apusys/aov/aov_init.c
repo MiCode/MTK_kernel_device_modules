@@ -631,7 +631,7 @@ static int apusys_aov_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int apusys_aov_remove(struct platform_device *pdev)
+static void apusys_aov_remove(struct platform_device *pdev)
 {
 	struct apusys_aov_ctx *ctx = platform_get_drvdata(pdev);
 
@@ -646,8 +646,6 @@ static int apusys_aov_remove(struct platform_device *pdev)
 	debugfs_remove_recursive(ctx->dbg_dir);
 
 	aov_ctx = NULL;
-
-	return 0;
 }
 
 static int apusys_aov_state_change(enum npu_scp_state_change_action state)

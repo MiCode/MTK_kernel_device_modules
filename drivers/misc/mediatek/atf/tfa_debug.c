@@ -554,20 +554,19 @@ static int __init tfa_debug_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int tfa_debug_remove(struct platform_device *pdev)
+static void tfa_debug_remove(struct platform_device *pdev)
 {
 	pr_notice("%s\n", __func__);
 	if (!is_debug_buf_info_valid())
-		return -EINVAL;
+		return;
 	if (info.proc_dir == NULL)
-		return -ENOENT;
+		return;
 	remove_proc_entry(DEBUG_BUF_ATF_LOGGER_SNAPSHOT_PROC_NAME,
 		info.proc_dir);
 	remove_proc_entry(DEBUG_BUF_TOTAL_RAW_PROC_NAME,
 		info.proc_dir);
 	remove_proc_entry(DEBUG_BUF_PROC_FOLDER_NAME, NULL);
 	memunmap(info.vaddr);
-	return 0;
 }
 
 static struct platform_driver tfa_debug_driver_probe = {

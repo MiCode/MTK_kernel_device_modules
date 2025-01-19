@@ -2866,13 +2866,12 @@ static int cmdq_resume(struct device *dev)
 	return 0;
 }
 
-static int cmdq_remove(struct platform_device *pdev)
+static void cmdq_remove(struct platform_device *pdev)
 {
 	struct cmdq *cmdq = platform_get_drvdata(pdev);
 
 	destroy_workqueue(cmdq->buf_dump_wq);
 	mbox_controller_unregister(&cmdq->mbox);
-	return 0;
 }
 
 static int cmdq_mbox_send_data(struct mbox_chan *chan, void *data)

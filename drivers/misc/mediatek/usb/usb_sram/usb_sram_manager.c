@@ -379,14 +379,13 @@ static int usb_sram_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int usb_sram_remove(struct platform_device *pdev)
+static void usb_sram_remove(struct platform_device *pdev)
 {
 	struct mtk_usb_sram *manager = platform_get_drvdata(pdev);
 	struct mtk_usb_sram_region *cur, *next;
-	int ret = 0;
 
 	if (!manager)
-		return ret;
+		return;
 
 	if (!list_empty(&manager->region_list)) {
 		list_for_each_entry_safe(cur, next, &manager->region_list, list) {
@@ -394,8 +393,6 @@ static int usb_sram_remove(struct platform_device *pdev)
 			list_del(&cur->list);
 		}
 	}
-
-	return ret;
 }
 
 static const struct of_device_id usb_sram_of_match[] = {

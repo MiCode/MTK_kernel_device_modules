@@ -349,12 +349,11 @@ static int usb_dp_selector_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int usb_dp_selector_remove(struct platform_device *pdev)
+static void usb_dp_selector_remove(struct platform_device *pdev)
 {
 	struct usb_dp_selector *uds = platform_get_drvdata(pdev);
 
 	mtk_typec_switch_unregister(uds->sw);
-	return 0;
 }
 
 static const struct of_device_id usb_dp_selector_ids[] = {

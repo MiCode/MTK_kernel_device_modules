@@ -713,9 +713,9 @@ static int mt6768_devapc_probe(struct platform_device *pdev)
 	return mtk_devapc_probe_v1(pdev, &mt6768_data);
 }
 
-static int mt6768_devapc_remove(struct platform_device *dev)
+static void mt6768_devapc_remove(struct platform_device *dev)
 {
-	return mtk_devapc_remove_v1(dev);
+	mtk_devapc_remove_v1(dev);
 }
 
 static struct platform_driver mt6768_devapc_driver = {

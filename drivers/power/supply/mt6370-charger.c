@@ -4122,15 +4122,13 @@ static int mt6370_chg_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mt6375_chg_remove(struct platform_device *pdev)
+static void mt6375_chg_remove(struct platform_device *pdev)
 {
 	struct mt6375_priv *priv = platform_get_drvdata(pdev);
 
 	mt_dbg(&pdev->dev, "%s\n", __func__);
 	if (priv)
 		device_remove_file(&pdev->dev, &dev_attr_shipping_mode);
-
-	return 0;
 }
 static const struct of_device_id mt6370_chg_of_match[] = {
 	{ .compatible = "mediatek,mt6370-charger", },

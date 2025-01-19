@@ -771,14 +771,12 @@ err_disable_clk_auxadc:
 	return ret;
 }
 
-static int soc_thermal_remove(struct platform_device *pdev)
+static void soc_thermal_remove(struct platform_device *pdev)
 {
 	struct soc_thermal *mt = platform_get_drvdata(pdev);
 
 	clk_disable_unprepare(mt->clk_peri_therm);
 	clk_disable_unprepare(mt->clk_auxadc);
-
-	return 0;
 }
 
 static struct platform_driver soc_thermal_driver = {

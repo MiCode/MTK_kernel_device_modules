@@ -66,7 +66,7 @@ static int apumem_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int apumem_remove(struct platform_device *pdev)
+static void apumem_remove(struct platform_device *pdev)
 {
 	int type = 0;
 
@@ -74,7 +74,6 @@ static int apumem_remove(struct platform_device *pdev)
 	mdw_mem_rsc_unregister(type);
 
 	pr_info("%s +\n", __func__);
-	return 0;
 }
 
 static const struct of_device_id mem_of_match[] = {

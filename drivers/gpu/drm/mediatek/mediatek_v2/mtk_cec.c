@@ -1091,7 +1091,7 @@ static int mtk_cec_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_cec_remove(struct platform_device *pdev)
+static void mtk_cec_remove(struct platform_device *pdev)
 {
 	int i;
 	struct mtk_cec *cec = platform_get_drvdata(pdev);
@@ -1101,7 +1101,6 @@ static int mtk_cec_remove(struct platform_device *pdev)
 
 	for (i = 0; i < ARRAY_SIZE(mtk_cec_clk_names); i++)
 		clk_disable_unprepare(cec->clk[i]);
-	return 0;
 }
 
 struct mtk_hdmi_cec_data {

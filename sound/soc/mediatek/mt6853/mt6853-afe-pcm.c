@@ -5752,7 +5752,7 @@ err_pm_disable:
 	return ret;
 }
 
-static int mt6853_afe_pcm_dev_remove(struct platform_device *pdev)
+static void mt6853_afe_pcm_dev_remove(struct platform_device *pdev)
 {
 	struct mtk_base_afe *afe = platform_get_drvdata(pdev);
 
@@ -5762,7 +5762,6 @@ static int mt6853_afe_pcm_dev_remove(struct platform_device *pdev)
 
 	/* disable afe clock */
 	mt6853_afe_disable_clock(afe);
-	return 0;
 }
 
 static const struct of_device_id mt6853_afe_pcm_dt_match[] = {

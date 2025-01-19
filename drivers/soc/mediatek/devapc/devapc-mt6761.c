@@ -806,10 +806,9 @@ static int devapc_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int devapc_remove(struct platform_device *dev)
+static void devapc_remove(struct platform_device *dev)
 {
 	clk_disable_unprepare(dapc_infra_clk);
-	return 0;
 }
 
 static int devapc_suspend(struct platform_device *dev, pm_message_t state)

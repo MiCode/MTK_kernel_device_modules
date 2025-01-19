@@ -117,7 +117,7 @@ static irqreturn_t ccu_isr_callback_xxx(int irq, void *device_id)
 
 static int ccu_probe(struct platform_device *dev);
 
-static int ccu_remove(struct platform_device *dev);
+static void ccu_remove(struct platform_device *dev);
 
 static int ccu_suspend(struct platform_device *dev, pm_message_t mesg);
 
@@ -1563,7 +1563,7 @@ EXIT:
 }
 
 
-static int ccu_remove(struct platform_device *pDev)
+static void ccu_remove(struct platform_device *pDev)
 {
 	/*    struct resource *pRes; */
 
@@ -1596,7 +1596,6 @@ static int ccu_remove(struct platform_device *pDev)
 	class_destroy(ccu_class);
 	ccu_class = NULL;
 	/*  */
-	return 0;
 }
 
 static int ccu_suspend(struct platform_device *pdev, pm_message_t mesg)

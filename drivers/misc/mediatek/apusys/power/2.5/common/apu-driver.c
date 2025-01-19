@@ -315,12 +315,11 @@ static int apusys_power_probe(struct platform_device *pdev)
 	return err;
 }
 
-static int apusys_power_remove(struct platform_device *pdev)
+static void apusys_power_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "%s %d\n", __func__, __LINE__);
 	of_platform_depopulate(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
-	return 0;
 }
 
 static const struct of_device_id apusys_power_of_match[] = {

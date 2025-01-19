@@ -1142,13 +1142,11 @@ static int gz_main_probe(struct platform_device *pdev)
 	return res;
 }
 
-static int gz_main_remove(struct platform_device *pdev)
+static void gz_main_remove(struct platform_device *pdev)
 {
 	KREE_DEBUG("%s gz driver exit\n", __func__);
 
 	remove_files();
-
-	return 0;
 }
 
 static const struct of_device_id gz_main_of_match[] = {

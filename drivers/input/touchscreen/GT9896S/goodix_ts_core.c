@@ -2536,7 +2536,7 @@ err_init:
 	return r;
 }
 
-static int gt9896s_ts_remove(struct platform_device *pdev)
+static void gt9896s_ts_remove(struct platform_device *pdev)
 {
 	struct gt9896s_ts_core *core_data = platform_get_drvdata(pdev);
 
@@ -2551,7 +2551,6 @@ static int gt9896s_ts_remove(struct platform_device *pdev)
 #endif
 	// can't free the memory for tools or gesture module
 	//kfree(core_data);
-	return 0;
 }
 
 #ifdef CONFIG_PM

@@ -245,6 +245,8 @@ void set_dsu_idle_enable(bool boost_ctrl);
 void unset_dsu_idle_enable(void);
 bool is_dsu_idle_enable(void);
 
+int mtk_available_idle_cpu(int cpu);
+
 #define EAS_NODE_NAME "eas_info"
 #define EAS_PROP_CSRAM "csram-base"
 #define EAS_PROP_OFFS_CAP "offs-cap"

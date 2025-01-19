@@ -341,11 +341,11 @@ static int trusted_mem_init(struct platform_device *pdev)
 	return TMEM_OK;
 }
 
-static int trusted_mem_exit(struct platform_device *pdev)
+static void trusted_mem_exit(struct platform_device *pdev)
 {
 #if WITH_SSHEAP_PROC
 	if (strncmp(dev_name(&pdev->dev), "ssheap", 6) == 0)
-		return ssheap_exit(pdev);
+		ssheap_exit(pdev);
 #endif
 
 #ifdef MTEE_DEVICES_SUPPORT
@@ -363,7 +363,6 @@ static int trusted_mem_exit(struct platform_device *pdev)
 
 	trusted_mem_subsys_exit();
 
-	return 0;
 }
 
 static const struct of_device_id tm_of_match_table[] = {

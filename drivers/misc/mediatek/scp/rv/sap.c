@@ -633,9 +633,9 @@ static int sap_device_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int sap_device_remove(struct platform_device *dev)
+static void sap_device_remove(struct platform_device *dev)
 {
-	return 0;
+
 }
 
 static const struct of_device_id sap_of_ids[] = {

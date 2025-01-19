@@ -204,9 +204,9 @@ static const struct of_device_id mtk_qos_of_match[] = {
 	},
 };
 
-static int qos_legacy_remove(struct platform_device *pdev)
+static void qos_legacy_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 

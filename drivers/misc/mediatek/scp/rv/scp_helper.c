@@ -3257,7 +3257,7 @@ static void scp_device_shutdown(struct platform_device *dev)
 	system_shutdown = true;
 }
 
-static int scp_device_remove(struct platform_device *dev)
+static void scp_device_remove(struct platform_device *dev)
 {
 	if (scp_mbox_info) {
 		kfree(scp_mbox_info);
@@ -3271,8 +3271,6 @@ static int scp_device_remove(struct platform_device *dev)
 		kfree(scp_mbox_pin_send);
 		scp_mbox_pin_send = NULL;
 	}
-
-	return 0;
 }
 
 static int scpsys_device_probe(struct platform_device *pdev)

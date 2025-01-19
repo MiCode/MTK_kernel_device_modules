@@ -7051,7 +7051,7 @@ EXIT:
 /*******************************************************************************
  * Called when the device is being detached from the driver
  ******************************************************************************/
-static int ISP_remove(struct platform_device *pDev)
+static void ISP_remove(struct platform_device *pDev)
 {
 	/*    struct resource *pRes; */
 	int IrqNum;
@@ -7081,7 +7081,6 @@ static int ISP_remove(struct platform_device *pDev)
 #if (ISP_BOTTOMHALF_WORKQ == 1)
 	destroy_workqueue(isr_log_wq);
 #endif
-	return 0;
 }
 
 static int ISP_suspend(struct platform_device *pDev, pm_message_t Mesg)

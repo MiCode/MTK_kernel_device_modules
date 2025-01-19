@@ -359,11 +359,9 @@ static int last_bus_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int last_bus_remove(struct platform_device *pdev)
+static void last_bus_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "driver removed\n");
-
-	return 0;
 }
 
 static const struct of_device_id last_bus_of_ids[] = {

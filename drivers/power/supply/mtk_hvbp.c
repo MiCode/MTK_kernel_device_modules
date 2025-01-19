@@ -3852,7 +3852,7 @@ err:
 	return ret;
 }
 
-static int hvbp_remove(struct platform_device *pdev)
+static void hvbp_remove(struct platform_device *pdev)
 {
 	struct hvbp_algo_info *info = platform_get_drvdata(pdev);
 	struct hvbp_algo_data *data;
@@ -3867,8 +3867,6 @@ static int hvbp_remove(struct platform_device *pdev)
 		mutex_destroy(&data->notify_lock);
 		chg_alg_device_unregister(info->alg);
 	}
-
-	return 0;
 }
 
 static int __maybe_unused hvbp_suspend(struct device *dev)

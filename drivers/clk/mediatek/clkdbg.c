@@ -1320,7 +1320,7 @@ static int clkdbg_probe(struct platform_device *pdev)
 	return r;
 }
 
-static int clkdbg_remove(struct platform_device *pdev)
+static void clkdbg_remove(struct platform_device *pdev)
 {
 	int r;
 
@@ -1328,8 +1328,6 @@ static int clkdbg_remove(struct platform_device *pdev)
 	if (r != 0)
 		pr_warn("%s(): pm_runtime_put_sync(%d)\n", __func__, r);
 	pm_runtime_disable(&pdev->dev);
-
-	return r;
 }
 
 struct pdev_drv {

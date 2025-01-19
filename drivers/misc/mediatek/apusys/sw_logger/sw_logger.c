@@ -1074,7 +1074,7 @@ remove_procfs:
 	return ret;
 }
 
-static int sw_logger_remove(struct platform_device *pdev)
+static void sw_logger_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
@@ -1087,8 +1087,6 @@ static int sw_logger_remove(struct platform_device *pdev)
 		dma_free_coherent(dev, APU_LOG_SIZE,
 			sw_log_buf, handle);
 	}
-
-	return 0;
 }
 
 static const struct of_device_id apusys_sw_logger_of_match[] = {

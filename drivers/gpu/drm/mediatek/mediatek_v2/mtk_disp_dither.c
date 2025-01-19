@@ -874,14 +874,12 @@ error_dev_init:
 	return ret;
 }
 
-static int disp_dither_remove(struct platform_device *pdev)
+static void disp_dither_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_dither *priv = dev_get_drvdata(&pdev->dev);
 
 	component_del(&pdev->dev, &mtk_disp_dither_component_ops);
 	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
-
-	return 0;
 }
 
 static const struct mtk_disp_dither_data mt6768_dither_driver_data = {

@@ -701,7 +701,7 @@ static int dbg_error_flag_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int dbg_error_flag_remove(struct platform_device *pdev)
+static void dbg_error_flag_remove(struct platform_device *pdev)
 {
 	int i;
 
@@ -709,8 +709,6 @@ static int dbg_error_flag_remove(struct platform_device *pdev)
 
 	for (i = 0; i < dbg_error_flag.nr_error_flag; i++)
 		flush_work(&dbg_error_flag.err_flag_str[i].wk);
-
-	return 0;
 }
 
 static const struct of_device_id dbg_error_flag_of_ids[] = {

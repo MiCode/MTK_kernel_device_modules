@@ -4168,9 +4168,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_charger_remove(struct platform_device *dev)
+static void mtk_charger_remove(struct platform_device *dev)
 {
-	return 0;
 }
 
 static void mtk_charger_shutdown(struct platform_device *dev)

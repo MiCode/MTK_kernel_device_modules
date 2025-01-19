@@ -5548,14 +5548,12 @@ static int mtk_disp_ovl_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int mtk_disp_ovl_remove(struct platform_device *pdev)
+static void mtk_disp_ovl_remove(struct platform_device *pdev)
 {
 	//struct mtk_disp_ovl *priv = dev_get_drvdata(&pdev->dev);
 
 	component_del(&pdev->dev, &mtk_disp_ovl_component_ops);
 	//mtk_ddp_comp_pm_disable(&priv->ddp_comp);
-
-	return 0;
 }
 
 static const struct mtk_disp_ovl_data mt2701_ovl_driver_data = {

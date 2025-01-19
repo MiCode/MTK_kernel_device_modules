@@ -491,9 +491,9 @@ static int mtk_mutex_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_mutex_remove(struct platform_device *pdev)
+static void mtk_mutex_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static const struct of_device_id mutex_driver_dt_match[] = {

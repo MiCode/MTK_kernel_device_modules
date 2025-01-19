@@ -2314,7 +2314,7 @@ static int slbc_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int slbc_remove(struct platform_device *pdev)
+static void slbc_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
@@ -2324,8 +2324,6 @@ static int slbc_remove(struct platform_device *pdev)
 	if (slbc_all_cache_mode)
 		mtk_dmaheap_unregister_slc_callback();
 	devm_kfree(dev, slbc);
-
-	return 0;
 }
 
 static int slbc_suspend(struct device *dev)

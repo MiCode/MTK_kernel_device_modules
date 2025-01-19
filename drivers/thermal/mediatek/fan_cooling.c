@@ -194,7 +194,7 @@ static int fan_cooling_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int fan_cooling_remove(struct platform_device *pdev)
+static void fan_cooling_remove(struct platform_device *pdev)
 {
 	struct fan_cooling_device *fan_cdev;
 
@@ -202,8 +202,6 @@ static int fan_cooling_remove(struct platform_device *pdev)
 
 	thermal_cooling_device_unregister(fan_cdev->cdev);
 	platform_set_drvdata(pdev, NULL);
-
-	return 0;
 }
 
 static struct platform_driver fan_cooling_driver = {

@@ -658,14 +658,9 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int gpu_pdma_remove(struct platform_device *dev)
+static void gpu_pdma_remove(struct platform_device *dev)
 {
-	int ret;
-
-	ret = 0;
 	__delete_file();
-
-	return ret;
 }
 
 static struct platform_driver gpu_pdma_driver = {

@@ -230,7 +230,7 @@ error_alloc_state:
 	return result;
 }
 
-static int trusty_log_remove(struct platform_device *pdev)
+static void trusty_log_remove(struct platform_device *pdev)
 {
 	/* do not wake up ise during device shutdown */
 	//int result;
@@ -255,8 +255,6 @@ static int trusty_log_remove(struct platform_device *pdev)
 #endif
 	trusty_shm_free(s->log, TRUSTY_LOG_SIZE);
 	kfree(s);
-
-	return 0;
 }
 
 static const struct of_device_id trusty_test_of_match[] = {

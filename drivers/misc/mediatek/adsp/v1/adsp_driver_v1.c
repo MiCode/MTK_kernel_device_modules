@@ -150,10 +150,9 @@ ERROR:
 	return ret;
 }
 
-static int adspsys_drv_remove(struct platform_device *pdev)
+static void adspsys_drv_remove(struct platform_device *pdev)
 {
 	pm_runtime_disable(&pdev->dev);
-	return 0;
 }
 
 static int adsp_core_drv_probe(struct platform_device *pdev)
@@ -235,9 +234,9 @@ static int adsp_core_drv_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int adsp_core_drv_remove(struct platform_device *pdev)
+static void adsp_core_drv_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static struct platform_driver adspsys_driver = {

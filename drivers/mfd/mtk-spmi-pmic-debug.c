@@ -150,11 +150,9 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int mtk_spmi_pmic_debug_remove(struct platform_device *pdev)
+static void mtk_spmi_pmic_debug_remove(struct platform_device *pdev)
 {
 	device_remove_file(&pdev->dev, &dev_attr_pmic_access);
-
-	return 0;
 }
 
 static const struct of_device_id mtk_spmi_pmic_debug_of_match[] = {

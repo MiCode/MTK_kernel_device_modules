@@ -889,9 +889,8 @@ void mtk_vdisp_dpc_register(const struct dpc_funcs *funcs)
 }
 EXPORT_SYMBOL(mtk_vdisp_dpc_register);
 
-static int mtk_vdisp_remove(struct platform_device *pdev)
+static void mtk_vdisp_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static const struct of_device_id mtk_vdisp_driver_v2_dt_match[] = {

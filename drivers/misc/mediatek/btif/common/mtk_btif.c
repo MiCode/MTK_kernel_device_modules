@@ -37,7 +37,7 @@
 
 /*-----------static function declearation----------------*/
 static int mtk_btif_probe(struct platform_device *pdev);
-static int mtk_btif_remove(struct platform_device *pdev);
+static void mtk_btif_remove(struct platform_device *pdev);
 static int mtk_btif_suspend(struct platform_device *pdev, pm_message_t state);
 static int mtk_btif_resume(struct platform_device *pdev);
 static int mtk_btif_drv_resume(struct device *dev);
@@ -269,13 +269,12 @@ static int mtk_btif_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_btif_remove(struct platform_device *pdev)
+static void mtk_btif_remove(struct platform_device *pdev)
 {
 /*Chaozhong: ToDo: to be implement*/
 	BTIF_INFO_FUNC("DO BTIF REMOVE\n");
 	platform_set_drvdata(pdev, NULL);
 	g_btif[0].private_data = NULL;
-	return 0;
 }
 
 int _btif_suspend(struct _mtk_btif_ *p_btif)

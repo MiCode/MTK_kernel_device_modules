@@ -2941,9 +2941,9 @@ static int probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int remove(struct platform_device *pdev)
+static void remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static const struct of_device_id test_of_ids[] = {

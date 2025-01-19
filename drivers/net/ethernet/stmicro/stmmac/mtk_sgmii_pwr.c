@@ -25,12 +25,10 @@ static int sgmii_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int sgmii_remove(struct platform_device *pdev)
+static void sgmii_remove(struct platform_device *pdev)
 {
 	pm_runtime_put_sync(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
-
-	return 0;
 }
 
 int sgmii_suspend(struct device *device)

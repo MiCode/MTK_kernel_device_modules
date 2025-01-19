@@ -2612,11 +2612,10 @@ static int PDA_probe(struct platform_device *pdev)
 	return nRet;
 }
 
-static int PDA_remove(struct platform_device *pdev)
+static void PDA_remove(struct platform_device *pdev)
 {
 	PDA_UnRegCharDev();
 	pm_runtime_disable(&pdev->dev);
-	return 0;
 }
 
 static int PDA_suspend(struct platform_device *pdev, pm_message_t mesg)
@@ -2715,10 +2714,9 @@ static int PDA2_probe(struct platform_device *pdev)
 	return nRet;
 }
 
-static int PDA2_remove(struct platform_device *pdev)
+static void PDA2_remove(struct platform_device *pdev)
 {
 	pm_runtime_disable(&pdev->dev);
-	return 0;
 }
 
 //////////////////////////////////////// PDA driver //////////////////////////

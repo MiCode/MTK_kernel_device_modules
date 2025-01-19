@@ -201,7 +201,7 @@ static int NO_OPTIMIZE fh_plt_drv_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int fh_plt_drv_remove(struct platform_device *pdev) {return 0; }
+static void fh_plt_drv_remove(struct platform_device *pdev) {}
 
 static void fh_plt_drv_shutdown(struct platform_device *pdev)
 {

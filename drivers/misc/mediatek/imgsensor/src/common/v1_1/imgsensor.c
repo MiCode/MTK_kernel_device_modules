@@ -2472,7 +2472,7 @@ static int imgsensor_probe(struct platform_device *pplatform_device)
 	return 0;
 }
 
-static int imgsensor_remove(struct platform_device *pplatform_device)
+static void imgsensor_remove(struct platform_device *pplatform_device)
 {
 	struct IMGSENSOR *pimgsensor = &gimgsensor;
 
@@ -2485,8 +2485,6 @@ static int imgsensor_remove(struct platform_device *pplatform_device)
 	device_destroy(pimgsensor->pclass, pimgsensor->dev_no);
 	class_destroy(pimgsensor->pclass);
 	imgsensor_proc_exit();
-
-	return 0;
 }
 
 static int imgsensor_suspend(struct platform_device *pdev, pm_message_t mesg)

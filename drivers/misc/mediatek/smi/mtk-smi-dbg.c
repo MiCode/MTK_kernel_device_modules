@@ -1262,10 +1262,8 @@ static void smi_dbg_init_v2(struct mtk_smi_dbg_node *node)
 {
 	u32 id, i = 0;
 	struct device *dev = node->dev;
-	struct property *prop;
-	const __be32 *cur;
 
-	of_property_for_each_u32(dev->of_node, "smi-user-id", prop, cur, id) {
+	of_property_for_each_u32(dev->of_node, "smi-user-id", id) {
 		if (i == ARRAY_SIZE(node->user)) {
 			dev_notice(dev, "%s: user exceed max limit!\n", __func__);
 			break;

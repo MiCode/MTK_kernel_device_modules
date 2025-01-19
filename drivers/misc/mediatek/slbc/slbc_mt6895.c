@@ -1002,15 +1002,13 @@ static int slbc_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int slbc_remove(struct platform_device *pdev)
+static void slbc_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
 	slbc_unregister_ipi_ops(&ipi_ops);
 	slbc_unregister_common_ops(&common_ops);
 	devm_kfree(dev, slbc);
-
-	return 0;
 }
 
 static int slbc_suspend(struct platform_device *pdev, pm_message_t state)

@@ -299,7 +299,7 @@ static int smap_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int smap_remove(struct platform_device *pdev)
+static void smap_remove(struct platform_device *pdev)
 {
 	struct mtk_smap *smap = platform_get_drvdata(pdev);
 
@@ -307,8 +307,6 @@ static int smap_remove(struct platform_device *pdev)
 		cancel_delayed_work_sync(&smap->defer_work);
 		destroy_workqueue(smap->smap_wq);
 	}
-
-	return 0;
 }
 
 static const struct of_device_id smap_of_match[] = {

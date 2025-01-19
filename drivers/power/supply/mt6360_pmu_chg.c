@@ -3301,7 +3301,7 @@ err_mutex_init:
 	return -EPROBE_DEFER;
 }
 
-static int mt6360_pmu_chg_remove(struct platform_device *pdev)
+static void mt6360_pmu_chg_remove(struct platform_device *pdev)
 {
 	struct mt6360_chg_info *mci = platform_get_drvdata(pdev);
 
@@ -3322,7 +3322,6 @@ static int mt6360_pmu_chg_remove(struct platform_device *pdev)
 	mutex_destroy(&mci->aicr_lock);
 	mutex_destroy(&mci->pe_lock);
 	mutex_destroy(&mci->hidden_mode_lock);
-	return 0;
 }
 
 static int __maybe_unused mt6360_pmu_chg_suspend(struct device *dev)

@@ -291,7 +291,7 @@ static int emi_icc_get_bw(struct icc_node *node, u32 *avg, u32 *peak)
 	return 0;
 }
 
-static int emi_icc_remove(struct platform_device *pdev);
+static void emi_icc_remove(struct platform_device *pdev);
 static int emi_icc_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
@@ -367,14 +367,12 @@ err:
 	return ret;
 }
 
-static int emi_icc_remove(struct platform_device *pdev)
+static void emi_icc_remove(struct platform_device *pdev)
 {
 	struct mtk_icc_provider *mtk_icc = platform_get_drvdata(pdev);
 
 	icc_provider_deregister(&mtk_icc->provider);
 	icc_nodes_remove(&mtk_icc->provider);
-
-	return 0;
 }
 
 static struct platform_driver emi_icc_driver = {

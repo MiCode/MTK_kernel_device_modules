@@ -2239,7 +2239,7 @@ err_req_irq:
 	return ret;
 }
 
-static int mtk_jpeg_remove(struct platform_device *pdev)
+static void mtk_jpeg_remove(struct platform_device *pdev)
 {
 	struct mtk_jpeg_dev *jpeg = platform_get_drvdata(pdev);
 
@@ -2249,8 +2249,6 @@ static int mtk_jpeg_remove(struct platform_device *pdev)
 	v4l2_m2m_release(jpeg->m2m_dev);
 	v4l2_device_unregister(&jpeg->v4l2_dev);
 	mtk_jpeg_clk_release(jpeg);
-
-	return 0;
 }
 
 static __maybe_unused int mtk_jpeg_pm_suspend(struct device *dev)

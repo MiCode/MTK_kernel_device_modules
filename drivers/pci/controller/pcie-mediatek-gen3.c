@@ -1805,7 +1805,7 @@ err_probe:
 	return err;
 }
 
-static int mtk_pcie_remove(struct platform_device *pdev)
+static void mtk_pcie_remove(struct platform_device *pdev)
 {
 	struct mtk_pcie_port *port = platform_get_drvdata(pdev);
 	struct pci_host_bridge *host = pci_host_bridge_from_priv(port);
@@ -1846,8 +1846,6 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 
 	if (port->pcidev)
 		pci_dev_put(port->pcidev);
-
-	return err;
 }
 
 static struct platform_device *mtk_pcie_find_pdev_by_port(int port)

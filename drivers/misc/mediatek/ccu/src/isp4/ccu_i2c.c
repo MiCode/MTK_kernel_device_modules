@@ -40,7 +40,7 @@ static int ccu_i2c_probe_2(struct i2c_client *client,
 static int ccu_i2c_probe_4(struct i2c_client *client,
 	const struct i2c_device_id *id);
 
-static int ccu_i2c_remove(struct i2c_client *client);
+static void ccu_i2c_remove(struct i2c_client *client);
 static uint32_t g_ccu_i2c_id = -1;
 static MBOOL ccu_i2c_enabled = MFALSE;
 static struct i2c_client *getCcuI2cClient(void);
@@ -147,9 +147,9 @@ static int ccu_i2c_probe_4(struct i2c_client *client,
 	return 0;
 }
 
-static int ccu_i2c_remove(struct i2c_client *client)
+static void ccu_i2c_remove(struct i2c_client *client)
 {
-	return 0;
+
 }
 
 /*---------------------------------------------------------------------------*/

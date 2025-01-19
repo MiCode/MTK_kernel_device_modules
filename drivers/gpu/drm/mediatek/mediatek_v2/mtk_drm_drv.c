@@ -11661,7 +11661,7 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 	mtk_vidle_force_power_ctrl_by_cpu(false);
 }
 
-static int mtk_drm_remove(struct platform_device *pdev)
+static void mtk_drm_remove(struct platform_device *pdev)
 {
 	struct mtk_drm_private *private = platform_get_drvdata(pdev);
 	struct drm_device *drm = private->drm;
@@ -11681,7 +11681,6 @@ static int mtk_drm_remove(struct platform_device *pdev)
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 	kfree(disp_perfs);
 #endif
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP

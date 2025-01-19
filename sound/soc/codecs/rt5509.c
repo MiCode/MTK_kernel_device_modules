@@ -906,10 +906,9 @@ static int rt5509_param_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int rt5509_param_remove(struct platform_device *pdev)
+static void rt5509_param_remove(struct platform_device *pdev)
 {
 	device_remove_file(&pdev->dev, &rt5509_proprietary_attr);
-	return 0;
 }
 
 static struct platform_driver rt5509_param_driver = {

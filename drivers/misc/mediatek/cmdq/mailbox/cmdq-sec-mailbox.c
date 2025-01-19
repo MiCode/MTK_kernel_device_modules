@@ -2021,12 +2021,11 @@ cmdq_sec_probe_mtee_end:
 	return 0;
 }
 
-static int cmdq_sec_remove(struct platform_device *pdev)
+static void cmdq_sec_remove(struct platform_device *pdev)
 {
 	struct cmdq_sec *cmdq = platform_get_drvdata(pdev);
 
 	mbox_controller_unregister(&cmdq->mbox);
-	return 0;
 }
 
 static struct platform_driver cmdq_sec_drv = {

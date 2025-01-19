@@ -282,13 +282,11 @@ static int emiisu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int emiisu_remove(struct platform_device *pdev)
+static void emiisu_remove(struct platform_device *pdev)
 {
 	sysfs_remove_bin_file(&pdev->dev.kobj, &emi_isu_buf_attr);
 
 	global_emi_isu = NULL;
-
-	return 0;
 }
 
 static struct platform_driver emiisu_drv = {

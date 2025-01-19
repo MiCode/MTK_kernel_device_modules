@@ -404,7 +404,7 @@ static struct miscdevice tpd2_misc_device = {
 static int __init tpd2_device_init_two(void);
 static void __exit tpd2_device_exit_two(void);
 static int tpd2_probe(struct platform_device *pdev);
-static int tpd2_remove(struct platform_device *pdev);
+static void tpd2_remove(struct platform_device *pdev);
 static struct work_struct tpd2_init_work;
 static struct workqueue_struct *tpd2_init_workqueue;
 static int tpd2_suspend_flag;
@@ -733,10 +733,9 @@ static int tpd2_probe(struct platform_device *pdev)
 
 	return 0;
 }
-static int tpd2_remove(struct platform_device *pdev)
+static void tpd2_remove(struct platform_device *pdev)
 {
 	input_unregister_device(tpd2->dev);
-	return 0;
 }
 
 /* called when loaded into kernel */

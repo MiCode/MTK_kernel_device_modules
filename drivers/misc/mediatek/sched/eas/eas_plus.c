@@ -725,7 +725,7 @@ int select_idle_cpu_from_domains(struct task_struct *p,
 						cpu_active_mask) {
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
 				continue;
-			if (available_idle_cpu(cpu)) {
+			if (mtk_available_idle_cpu(cpu)) {
 				best_cpu = cpu;
 				break;
 			}

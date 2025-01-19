@@ -79,10 +79,9 @@ int ssheap_init(struct platform_device *pdev)
 	return 0;
 }
 
-int ssheap_exit(struct platform_device *pdev)
+void ssheap_exit(struct platform_device *pdev)
 {
 	pr_info("%s:%d\n", __func__, __LINE__);
-	return 0;
 }
 
 #if independent_ssheap

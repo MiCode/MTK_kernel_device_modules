@@ -194,9 +194,9 @@ static int mtk_spmi_pmif_mpu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_spmi_pmif_mpu_remove(struct platform_device *pdev)
+static void mtk_spmi_pmif_mpu_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static const struct of_device_id mtk_spmi_pmif_mpu_match_table[] = {

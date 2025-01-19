@@ -27,7 +27,7 @@ static const struct of_device_id bus_tracer_of_ids[] = {
 };
 
 static int bus_tracer_probe(struct platform_device *pdev);
-static int bus_tracer_remove(struct platform_device *pdev);
+static void bus_tracer_remove(struct platform_device *pdev);
 static int bus_tracer_suspend(struct platform_device *pdev, pm_message_t state);
 static int bus_tracer_resume(struct platform_device *pdev);
 
@@ -62,16 +62,14 @@ static int bus_tracer_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int bus_tracer_remove(struct platform_device *pdev)
+static void bus_tracer_remove(struct platform_device *pdev)
 {
 	struct bus_tracer_plt *plt = bus_tracer_drv.cur_plt;
 
 	pr_debug("%s:%d: enter\n", __func__, __LINE__);
 
 	if (plt && plt->ops && plt->ops->remove)
-		return plt->ops->remove(plt, pdev);
-
-	return 0;
+		plt->ops->remove(plt, pdev);
 }
 
 static int bus_tracer_suspend(struct platform_device *pdev, pm_message_t state)

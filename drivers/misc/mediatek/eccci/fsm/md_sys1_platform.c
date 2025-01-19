@@ -2175,10 +2175,9 @@ unsigned int ccci_get_ap_plat(void)
 	return ap_plat_info;
 }
 
-static int ccci_modem_remove(struct platform_device *dev)
+static void ccci_modem_remove(struct platform_device *dev)
 {
 	ccci_remove_spm_resource();
-	return 0;
 }
 
 static void ccci_modem_shutdown(struct platform_device *dev)

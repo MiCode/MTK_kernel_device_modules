@@ -258,7 +258,7 @@ out:
 
 
 
-static int mdla_devfreq_remove(struct platform_device *pdev)
+static void mdla_devfreq_remove(struct platform_device *pdev)
 {
 	struct apu_dev *ad = platform_get_drvdata(pdev);
 
@@ -272,7 +272,6 @@ static int mdla_devfreq_remove(struct platform_device *pdev)
 	/* remove apu_device from list */
 	apu_del_devfreq(ad);
 	ad->plat_ops->uninit_devfreq(ad);
-	return 0;
 }
 
 static const struct apu_plat_data mt6873_mdla_data = {

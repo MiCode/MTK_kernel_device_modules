@@ -2717,7 +2717,7 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_i2c_remove(struct platform_device *pdev)
+static void mtk_i2c_remove(struct platform_device *pdev)
 {
 	struct mtk_i2c *i2c = platform_get_drvdata(pdev);
 
@@ -2736,8 +2736,6 @@ static int mtk_i2c_remove(struct platform_device *pdev)
 	}
 
 	i2c_del_adapter(&i2c->adap);
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP

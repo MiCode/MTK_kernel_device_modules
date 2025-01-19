@@ -465,7 +465,7 @@ static int md_cooling_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int md_cooling_remove(struct platform_device *pdev)
+static void md_cooling_remove(struct platform_device *pdev)
 {
 	struct list_head *pos, *next;
 	struct md_cooling_device *md_cdev;
@@ -483,8 +483,6 @@ static int md_cooling_remove(struct platform_device *pdev)
 	mutex_unlock(&md_cdev_list_lock);
 
 	platform_set_drvdata(pdev, NULL);
-
-	return 0;
 }
 
 static struct platform_driver md_cooling_driver = {

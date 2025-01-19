@@ -2252,7 +2252,7 @@ out_wq:
 	return ret;
 }
 
-static int rt9490_charger_remove(struct platform_device *pdev)
+static void rt9490_charger_remove(struct platform_device *pdev)
 {
 	struct rt9490_chg_data *data = platform_get_drvdata(pdev);
 
@@ -2261,7 +2261,6 @@ static int rt9490_charger_remove(struct platform_device *pdev)
 	destroy_workqueue(data->wq);
 	mutex_destroy(&data->lock);
 	mutex_destroy(&data->pe_lock);
-	return 0;
 }
 static void rt9490_charger_shutdown(struct platform_device *pdev)
 {

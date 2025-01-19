@@ -97,11 +97,9 @@ static int mt63xx_debug_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int mt63xx_debug_remove(struct platform_device *pdev)
+static void mt63xx_debug_remove(struct platform_device *pdev)
 {
 	device_remove_file(&pdev->dev, &dev_attr_pmic_access);
-
-	return 0;
 }
 
 static const struct of_device_id mt63xx_debug_of_match[] = {

@@ -4179,7 +4179,7 @@ err:
 	return ret;
 }
 
-static int pe50_remove(struct platform_device *pdev)
+static void pe50_remove(struct platform_device *pdev)
 {
 	struct pe50_algo_info *info = platform_get_drvdata(pdev);
 	struct pe50_algo_data *data;
@@ -4194,8 +4194,6 @@ static int pe50_remove(struct platform_device *pdev)
 		mutex_destroy(&data->notify_lock);
 		chg_alg_device_unregister(info->alg);
 	}
-
-	return 0;
 }
 
 static int __maybe_unused pe50_suspend(struct device *dev)

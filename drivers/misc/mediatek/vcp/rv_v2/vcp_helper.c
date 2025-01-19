@@ -2712,9 +2712,9 @@ static int vcp_io_device_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int vcp_io_device_remove(struct platform_device *dev)
+static void vcp_io_device_remove(struct platform_device *dev)
 {
-	return 0;
+
 }
 
 static void mbox_setup_pin_table(unsigned int mbox)
@@ -3161,7 +3161,7 @@ void dump_vcp_irq_status(void)
 }
 EXPORT_SYMBOL_GPL(dump_vcp_irq_status);
 
-static int vcp_device_remove(struct platform_device *pdev)
+static void vcp_device_remove(struct platform_device *pdev)
 {
 	pm_runtime_disable(&pdev->dev);
 
@@ -3171,8 +3171,6 @@ static int vcp_device_remove(struct platform_device *pdev)
 	vcp_mbox_pin_recv = NULL;
 	kfree(vcp_mbox_pin_send);
 	vcp_mbox_pin_send = NULL;
-
-	return 0;
 }
 
 static void vcp_device_shutdown(struct platform_device *pdev)

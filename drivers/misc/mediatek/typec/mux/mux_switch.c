@@ -429,12 +429,11 @@ static int typec_mux_switch_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int typec_mux_switch_remove(struct platform_device *pdev)
+static void typec_mux_switch_remove(struct platform_device *pdev)
 {
 	struct typec_mux_switch *mux_sw = dev_get_drvdata(&pdev->dev);
 
 	typec_mux_switch_procfs_exit(mux_sw);
-	return 0;
 }
 
 static const struct of_device_id typec_mux_switch_ids[] = {

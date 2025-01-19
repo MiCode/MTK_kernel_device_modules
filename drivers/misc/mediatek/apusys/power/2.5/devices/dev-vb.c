@@ -413,13 +413,12 @@ out:
 }
 
 
-static int vb_remove(struct platform_device *pdev)
+static void vb_remove(struct platform_device *pdev)
 {
 	struct apu_dev *ad = platform_get_drvdata(pdev);
 
 	of_platform_depopulate(ad->dev);
 	devm_kfree(ad->dev, ad);
-	return 0;
 }
 
 #define MT688x_VB_TABLE_CNT    3

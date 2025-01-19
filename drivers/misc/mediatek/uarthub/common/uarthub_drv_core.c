@@ -64,7 +64,7 @@ struct mutex g_uarthub_reset_lock;
 #define ISR_CLEAR_ALL_IRQ 1
 
 static int mtk_uarthub_probe(struct platform_device *pdev);
-static int mtk_uarthub_remove(struct platform_device *pdev);
+static void mtk_uarthub_remove(struct platform_device *pdev);
 static int mtk_uarthub_suspend(struct device *dev);
 static int mtk_uarthub_resume(struct device *dev);
 static int uarthub_core_init(void);
@@ -147,7 +147,7 @@ static int mtk_uarthub_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_uarthub_remove(struct platform_device *pdev)
+static void mtk_uarthub_remove(struct platform_device *pdev)
 {
 	pr_info("[%s] DO UARTHUB REMOVE\n", __func__);
 
@@ -158,7 +158,6 @@ static int mtk_uarthub_remove(struct platform_device *pdev)
 		g_uarthub_pdev = NULL;
 
 	atomic_set(&g_uarthub_probe_called, 0);
-	return 0;
 }
 
 static int mtk_uarthub_resume(struct device *dev)

@@ -581,7 +581,7 @@ out_free_rproc:
 	return ret;
 }
 
-static int apu_remove(struct platform_device *pdev)
+static void apu_remove(struct platform_device *pdev)
 {
 	struct mtk_apu *apu = platform_get_drvdata(pdev);
 	struct mtk_apu_hw_ops *hw_ops = &apu->platdata->ops;
@@ -606,13 +606,11 @@ static int apu_remove(struct platform_device *pdev)
 		apusys_rv_exit_drv_tags(apu);
 	if (!hw_ops->apu_memmap_remove) {
 		WARN_ON(1);
-		return -EINVAL;
+		return;
 	}
 	hw_ops->apu_memmap_remove(apu);
 
 	rproc_free(apu->rproc);
-
-	return 0;
 }
 
 #ifndef MT6878_APUSYS_RV_PLAT_DATA

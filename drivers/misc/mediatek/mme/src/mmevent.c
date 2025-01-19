@@ -25,8 +25,6 @@
 
 #include "mmevent.h"
 
-#define MIN(x, y)   ((x) <= (y) ? (x) : (y))
-
 static int bmme_init_buffer;
 
 static struct mme_header_t mme_header = {

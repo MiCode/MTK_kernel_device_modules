@@ -2309,14 +2309,12 @@ static const struct dvfsrc_soc_data mt6899_data = {
 	.emi_ddr_bw_en = true,
 };
 
-static int mtk_dvfsrc_remove(struct platform_device *pdev)
+static void mtk_dvfsrc_remove(struct platform_device *pdev)
 {
 	struct mtk_dvfsrc *dvfsrc = platform_get_drvdata(pdev);
 
 	platform_device_unregister(dvfsrc->regulator);
 	platform_device_unregister(dvfsrc->icc);
-
-	return 0;
 }
 
 static const struct of_device_id mtk_dvfsrc_of_match[] = {

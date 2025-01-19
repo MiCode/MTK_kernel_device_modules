@@ -411,10 +411,9 @@ static int ise_mbox_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int ise_mbox_remove(struct platform_device *pdev)
+static void ise_mbox_remove(struct platform_device *pdev)
 {
 	mutex_destroy(&mbox_lock);
-	return 0;
 }
 
 static const struct of_device_id ise_mbox_of_ids[] = {

@@ -1291,7 +1291,7 @@ out_fled_cdev:
 	return ret;
 }
 
-static int mt6360_led_remove(struct platform_device *pdev)
+static void mt6360_led_remove(struct platform_device *pdev)
 {
 	struct mt6360_led_info *mli = platform_get_drvdata(pdev);
 	struct mt6360_fled_classdev *mtfled_cdev;
@@ -1305,7 +1305,6 @@ static int mt6360_led_remove(struct platform_device *pdev)
 		v4l2_flash_release(mtfled_cdev->v4l2_flash);
 		led_classdev_flash_unregister(&mtfled_cdev->fl_cdev);
 	}
-	return 0;
 }
 
 static const struct of_device_id __maybe_unused mt6360_led_of_id[] = {

@@ -166,7 +166,7 @@ struct mtk_mmqos_desc {
 	}
 int mtk_mmqos_probe(struct platform_device *pdev);
 int mtk_mmqos_v2_probe(struct platform_device *pdev);
-int mtk_mmqos_remove(struct platform_device *pdev);
+void mtk_mmqos_remove(struct platform_device *pdev);
 /* For HRT */
 void mtk_mmqos_init_hrt(struct mmqos_hrt *hrt);
 int mtk_mmqos_register_hrt_sysfs(struct device *dev);

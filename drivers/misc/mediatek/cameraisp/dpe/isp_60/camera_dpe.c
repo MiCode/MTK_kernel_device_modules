@@ -5061,7 +5061,7 @@ EXIT:
 /*******************************************************************************
  * Called when the device is being detached from the driver
  ******************************************************************************/
-static signed int DPE_remove(struct platform_device *pDev)
+static void DPE_remove(struct platform_device *pDev)
 {
 	/*struct resource *pRes;*/
 	signed int IrqNum;
@@ -5099,7 +5099,6 @@ static signed int DPE_remove(struct platform_device *pDev)
 	pm_qos_remove_request(&dpe_pm_qos_request);
 #endif
 	//video_unregister_device(&DPE_devs[nr_DPE_devs - 1].vid_dpe_dev);
-	return 0;
 }
 /*******************************************************************************
  *

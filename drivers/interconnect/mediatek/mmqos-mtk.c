@@ -2309,7 +2309,7 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 }
 EXPORT_SYMBOL_GPL(mtk_mmqos_v2_probe);
 
-int mtk_mmqos_remove(struct platform_device *pdev)
+void mtk_mmqos_remove(struct platform_device *pdev)
 {
 	struct mtk_mmqos *mmqos = platform_get_drvdata(pdev);
 	struct icc_node *node, *temp;
@@ -2322,7 +2322,6 @@ int mtk_mmqos_remove(struct platform_device *pdev)
 	unregister_mmdvfs_notifier(&mmqos->nb);
 	//destroy_workqueue(mmqos->wq);
 	mtk_mmqos_unregister_hrt_sysfs(&pdev->dev);
-	return 0;
 }
 
 void clear_chnn_bw(void)

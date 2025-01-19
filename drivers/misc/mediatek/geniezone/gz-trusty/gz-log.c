@@ -960,7 +960,7 @@ error_alloc_state:
 	return ret;
 }
 
-static int trusty_gz_log_remove(struct platform_device *pdev)
+static void trusty_gz_log_remove(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct gz_log_state *gls = platform_get_drvdata(pdev);
@@ -996,8 +996,6 @@ static int trusty_gz_log_remove(struct platform_device *pdev)
 	mutex_destroy(&gls->lock);
 	kfree(gls);
 	memset(&glctx, 0, sizeof(glctx));
-
-	return 0;
 }
 
 static const struct of_device_id trusty_gz_of_match[] = {

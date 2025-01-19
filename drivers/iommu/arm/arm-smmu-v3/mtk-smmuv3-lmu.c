@@ -850,14 +850,12 @@ out_unregister:
 	return err;
 }
 
-static int smmu_lmu_remove(struct platform_device *pdev)
+static void smmu_lmu_remove(struct platform_device *pdev)
 {
 	struct smmu_lmu *smmu_lmu = platform_get_drvdata(pdev);
 
 	perf_pmu_unregister(&smmu_lmu->pmu);
 	cpuhp_state_remove_instance_nocalls(cpuhp_state_num, &smmu_lmu->node);
-
-	return 0;
 }
 
 #ifdef CONFIG_OF

@@ -1365,7 +1365,7 @@ error_dev_init:
 	return ret;
 }
 
-static int disp_ccorr_remove(struct platform_device *pdev)
+static void disp_ccorr_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_ccorr *priv = dev_get_drvdata(&pdev->dev);
 
@@ -1376,7 +1376,6 @@ static int disp_ccorr_remove(struct platform_device *pdev)
 	if (priv->ddp_comp.id == DDP_COMPONENT_CCORR0)
 		mtk_leds_unregister_notifier(&leds_init_notifier);
 #endif
-	return 0;
 }
 
 static const struct mtk_disp_ccorr_data mt6768_ccorr_driver_data = {

@@ -1560,7 +1560,7 @@ static int cgppt_driver_probe(struct platform_device *pdev)
 	return 0; // Return 0 means success, negative values indicate failure
 }
 
-static int cgppt_driver_remove(struct platform_device *pdev)
+static void cgppt_driver_remove(struct platform_device *pdev)
 {
 	pr_info("[CG PPT] %s()\n", __func__);
 
@@ -1581,8 +1581,6 @@ static int cgppt_driver_remove(struct platform_device *pdev)
 
 	//cgppt work
 	trace_work_deinit();
-
-	return 0;
 }
 
 

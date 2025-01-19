@@ -2929,11 +2929,11 @@ DTS_INIT_FAILED:
 /***************************************
  * this function should never be called
  ****************************************/
-static int mt_scp_dvfs_pdrv_remove(struct platform_device *pdev)
+static void mt_scp_dvfs_pdrv_remove(struct platform_device *pdev)
 {
 	if (!scp_dvfs_feature_enable()) {
 		pr_notice("bypass scp dvfs pdrv remove\n");
-		return 0;
+		return;
 	}
 
 	kfree(g_dvfs_dev.opp);
@@ -2942,7 +2942,6 @@ static int mt_scp_dvfs_pdrv_remove(struct platform_device *pdev)
 	kfree(g_dvfs_dev.ulposc_hw.cali_freq);
 	kfree(g_dvfs_dev.ulposc_hw.cali_configs);
 
-	return 0;
 }
 
 static struct platform_driver mt_scp_dvfs_pdrv __refdata = {

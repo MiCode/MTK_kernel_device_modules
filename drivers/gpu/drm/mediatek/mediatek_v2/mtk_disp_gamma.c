@@ -1206,14 +1206,12 @@ error_dev_init:
 	return ret;
 }
 
-static int disp_gamma_remove(struct platform_device *pdev)
+static void disp_gamma_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_gamma *priv = dev_get_drvdata(&pdev->dev);
 
 	component_del(&pdev->dev, &mtk_disp_gamma_component_ops);
 	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
-
-	return 0;
 }
 
 struct mtk_disp_gamma_data legacy_driver_data = {

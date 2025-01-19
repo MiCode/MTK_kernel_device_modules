@@ -1612,7 +1612,7 @@ err_no_dma:
 	return rc;
 }
 
-static int mtk_uart_apdma_remove(struct platform_device *pdev)
+static void mtk_uart_apdma_remove(struct platform_device *pdev)
 {
 	struct mtk_uart_apdmadev *mtkd = platform_get_drvdata(pdev);
 
@@ -1623,8 +1623,6 @@ static int mtk_uart_apdma_remove(struct platform_device *pdev)
 	dma_async_device_unregister(&mtkd->ddev);
 
 	pm_runtime_disable(&pdev->dev);
-
-	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP

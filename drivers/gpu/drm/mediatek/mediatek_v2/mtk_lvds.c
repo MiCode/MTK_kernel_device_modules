@@ -449,13 +449,12 @@ static int mtk_drm_lvds_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_drm_lvds_remove(struct platform_device *pdev)
+static void mtk_drm_lvds_remove(struct platform_device *pdev)
 {
 	struct mtk_lvds *lvds = platform_get_drvdata(pdev);
 
 	pm_runtime_disable(&pdev->dev);
 	drm_bridge_remove(&lvds->bridge);
-	return 0;
 }
 
 static const struct of_device_id mtk_drm_lvds_of_ids[] = {

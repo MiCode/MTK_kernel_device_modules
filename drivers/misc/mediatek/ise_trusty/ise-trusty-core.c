@@ -720,7 +720,7 @@ err_allocate_state:
 	return ret;
 }
 
-static int trusty_remove(struct platform_device *pdev)
+static void trusty_remove(struct platform_device *pdev)
 {
 	/* do not wake up ise during device shutdown */
 	//unsigned int cpu;
@@ -750,7 +750,6 @@ static int trusty_remove(struct platform_device *pdev)
 		kfree(s->version_str);
 	}
 	kfree(s);
-	return 0;
 }
 
 static const struct of_device_id trusty_of_match[] = {

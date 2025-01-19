@@ -3422,7 +3422,7 @@ static const struct of_device_id mtk_vcu_match[] = {
 
 MODULE_DEVICE_TABLE(of, mtk_vcu_match);
 
-static int mtk_vcu_remove(struct platform_device *pdev)
+static void mtk_vcu_remove(struct platform_device *pdev)
 {
 	struct mtk_vcu *vcu = platform_get_drvdata(pdev);
 
@@ -3435,8 +3435,6 @@ static int mtk_vcu_remove(struct platform_device *pdev)
 	class_destroy(vcu->vcu_class);
 	cdev_del(vcu->vcu_cdev);
 	unregister_chrdev_region(vcu->vcu_devno, 1);
-
-	return 0;
 }
 
 static const struct dev_pm_ops mtk_vcu_pm_ops = {
@@ -3521,9 +3519,9 @@ static const struct of_device_id mtk_vcu_io_match[] = {
 
 MODULE_DEVICE_TABLE(of, mtk_vcu_io_match);
 
-static int mtk_vcu_io_remove(struct platform_device *pdev)
+static void mtk_vcu_io_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static struct platform_driver mtk_vcu_io_driver = {

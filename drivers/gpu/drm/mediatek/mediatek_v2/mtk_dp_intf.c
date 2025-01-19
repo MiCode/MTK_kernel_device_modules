@@ -1572,12 +1572,11 @@ static int mtk_dp_intf_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int mtk_dp_intf_remove(struct platform_device *pdev)
+static void mtk_dp_intf_remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &mtk_dp_intf_component_ops);
 
 	pm_runtime_disable(&pdev->dev);
-	return 0;
 }
 
 static s32 mtk_dp_intf_poll_for_idle(struct mtk_dp_intf *dp_intf,

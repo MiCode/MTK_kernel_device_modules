@@ -137,9 +137,6 @@ static struct nl_rpmb_send_req nl_rpmb_req;
 
 #define RPMB_NAME "rpmb"
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-
-
 enum ufs_ioctl {
 	RPMB_IOCTL_PROGRAM_KEY_REGION0 = 1,
 	RPMB_IOCTL_WRITE_DATA = 3,

@@ -153,12 +153,11 @@ static int ptn36241g_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int ptn36241g_remove(struct platform_device *pdev)
+static void ptn36241g_remove(struct platform_device *pdev)
 {
 	struct ptn36241g *ptn = platform_get_drvdata(pdev);
 
 	mtk_typec_switch_unregister(ptn->sw);
-	return 0;
 }
 
 static const struct of_device_id ptn36241g_ids[] = {

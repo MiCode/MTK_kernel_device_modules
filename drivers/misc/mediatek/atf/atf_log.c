@@ -553,10 +553,9 @@ static int __init atf_logger_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int atf_logger_remove(struct platform_device *dev)
+static void atf_logger_remove(struct platform_device *dev)
 {
 	misc_deregister(&atf_log_dev);
-	return 0;
 }
 
 static const struct dev_pm_ops atf_pm_ops = {

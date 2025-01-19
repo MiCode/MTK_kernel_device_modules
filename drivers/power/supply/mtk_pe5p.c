@@ -4222,7 +4222,7 @@ err:
 	return ret;
 }
 
-static int pe5p_remove(struct platform_device *pdev)
+static void pe5p_remove(struct platform_device *pdev)
 {
 	struct pe5p_algo_info *info = platform_get_drvdata(pdev);
 	struct pe5p_algo_data *data;
@@ -4237,8 +4237,6 @@ static int pe5p_remove(struct platform_device *pdev)
 		mutex_destroy(&data->notify_lock);
 		chg_alg_device_unregister(info->alg);
 	}
-
-	return 0;
 }
 
 static int __maybe_unused pe5p_suspend(struct device *dev)

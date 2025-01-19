@@ -3094,7 +3094,7 @@ out:
 	return ret;
 }
 
-static int mt6375_chg_remove(struct platform_device *pdev)
+static void mt6375_chg_remove(struct platform_device *pdev)
 {
 	struct mt6375_chg_data *ddata = platform_get_drvdata(pdev);
 
@@ -3110,8 +3110,6 @@ static int mt6375_chg_remove(struct platform_device *pdev)
 		mutex_destroy(&ddata->pe_lock);
 		mutex_destroy(&ddata->attach_lock);
 	}
-
-	return 0;
 }
 
 static const struct of_device_id __maybe_unused mt6375_chg_of_match[] = {

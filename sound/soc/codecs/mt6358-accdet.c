@@ -2356,7 +2356,7 @@ err_chrdevregion:
 	return ret;
 }
 
-static int mt6358_accdet_remove(struct platform_device *pdev)
+static void mt6358_accdet_remove(struct platform_device *pdev)
 {
 	destroy_workqueue(accdet->eint_workqueue);
 	destroy_workqueue(accdet->dis_micbias_workqueue);
@@ -2365,7 +2365,6 @@ static int mt6358_accdet_remove(struct platform_device *pdev)
 	class_destroy(accdet->accdet_class);
 	unregister_chrdev_region(accdet->accdet_devno, 1);
 	devm_kfree(&pdev->dev, accdet);
-	return 0;
 }
 
 static long mt_accdet_unlocked_ioctl(struct file *file, unsigned int cmd,

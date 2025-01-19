@@ -979,7 +979,7 @@ EXIT:
 /*******************************************************************************
  * Called when the device is being detached from the driver
  ******************************************************************************/
-static int cam_mem_remove(struct platform_device *pDev)
+static void cam_mem_remove(struct platform_device *pDev)
 {
 	LOG_NOTICE("+\n");
 
@@ -993,8 +993,6 @@ static int cam_mem_remove(struct platform_device *pDev)
 	pCamMemClass = NULL;
 
 	remove_proc_entry("driver/cam_mem_buf_list", NULL);
-
-	return 0;
 }
 
 /*******************************************************************************

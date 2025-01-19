@@ -220,13 +220,11 @@ static int mtk_dbgtop_drm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_dbgtop_drm_remove(struct platform_device *pdev)
+static void mtk_dbgtop_drm_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "driver removed\n");
 
 	global_dbgtop_drm = NULL;
-
-	return 0;
 }
 
 #if IS_ENABLED(CONFIG_OF)

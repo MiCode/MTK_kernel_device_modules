@@ -97,7 +97,7 @@ extern struct rproc *ccu_rproc_ipifuzz; /* IPIFuzz, to export symbol. */
 struct rproc *ccu_rproc_ipifuzz; /* IPIFuzz */
 #endif
 static int mtk_ccu_probe(struct platform_device *dev);
-static int mtk_ccu_remove(struct platform_device *dev);
+static void mtk_ccu_remove(struct platform_device *dev);
 static int mtk_ccu_read_platform_info_from_dt(struct device_node
 	*node, struct mtk_ccu *ccu);
 static int mtk_ccu_get_power(struct mtk_ccu *ccu, struct device *dev);
@@ -1174,7 +1174,7 @@ static int mtk_ccu_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int mtk_ccu_remove(struct platform_device *pdev)
+static void mtk_ccu_remove(struct platform_device *pdev)
 {
 	struct mtk_ccu *ccu = platform_get_drvdata(pdev);
 
@@ -1199,7 +1199,6 @@ static int mtk_ccu_remove(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_CCU_DEBUG)
 	mtk_ccu_unreg_chardev(ccu);
 #endif
-	return 0;
 }
 
 static int mtk_ccu_read_platform_info_from_dt(struct device_node
@@ -1240,12 +1239,11 @@ static int mtk_ccu_cam_main_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_ccu_cam_main_remove(struct platform_device *pdev)
+static void mtk_ccu_cam_main_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
 	pm_runtime_disable(dev);
-	return 0;
 }
 
 #if defined(CCU1_DEVICE)

@@ -348,7 +348,7 @@ static int debug_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int debug_remove(struct platform_device *pdev)
+static void debug_remove(struct platform_device *pdev)
 {
 	LOG_DEBUG("+\n");
 
@@ -358,8 +358,6 @@ static int debug_remove(struct platform_device *pdev)
 	sysfs_remove_group(&pdev->dev.kobj, &mdw_reg_dump_attr_group);
 
 	LOG_DEBUG("-\n");
-
-	return 0;
 }
 
 static struct platform_driver debug_driver = {

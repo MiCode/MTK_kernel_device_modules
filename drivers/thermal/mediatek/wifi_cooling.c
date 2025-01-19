@@ -150,7 +150,7 @@ static int wifi_cooling_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int wifi_cooling_remove(struct platform_device *pdev)
+static void wifi_cooling_remove(struct platform_device *pdev)
 {
 	struct wifi_cooling_device *wifi_cdev;
 
@@ -158,8 +158,6 @@ static int wifi_cooling_remove(struct platform_device *pdev)
 	thermal_cooling_device_unregister(wifi_cdev->cdev);
 
 	platform_set_drvdata(pdev, NULL);
-
-	return 0;
 }
 
 static struct platform_driver wifi_cooling_driver = {

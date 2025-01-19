@@ -1027,7 +1027,7 @@ err_smcall_table:
 	return ret;
 }
 
-static int trusty_remove(struct platform_device *pdev)
+static void trusty_remove(struct platform_device *pdev)
 {
 	struct trusty_state *s = platform_get_drvdata(pdev);
 
@@ -1041,8 +1041,6 @@ static int trusty_remove(struct platform_device *pdev)
 	if (s->version_str) {
 		device_remove_file(&pdev->dev, &dev_attr_trusty_version);
 	}
-
-	return 0;
 }
 
 static const struct of_device_id trusty_of_match[] = {

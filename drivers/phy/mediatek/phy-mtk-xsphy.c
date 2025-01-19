@@ -3162,12 +3162,11 @@ static const struct dev_pm_ops mtk_xsphy_pm_ops = {
 };
 #define DEV_PM_OPS (IS_ENABLED(CONFIG_PM) ? &mtk_xsphy_pm_ops : NULL)
 
-static int mtk_xsphy_remove(struct platform_device *pdev)
+static void mtk_xsphy_remove(struct platform_device *pdev)
 {
 	struct mtk_xsphy *xsphy = dev_get_drvdata(&pdev->dev);
 
 	mtk_xsphy_procfs_exit(xsphy);
-	return 0;
 }
 
 static struct platform_driver mtk_xsphy_driver = {

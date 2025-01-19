@@ -489,7 +489,7 @@ static int emimpu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int emimpu_remove(struct platform_device *pdev)
+static void emimpu_remove(struct platform_device *pdev)
 {
 	struct emi_mpu *mpu = platform_get_drvdata(pdev);
 
@@ -500,8 +500,6 @@ static int emimpu_remove(struct platform_device *pdev)
 	flush_work(&emimpu_work);
 
 	global_emi_mpu = NULL;
-
-	return 0;
 }
 
 static struct platform_driver emimpu_driver = {

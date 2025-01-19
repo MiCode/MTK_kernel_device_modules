@@ -593,7 +593,7 @@ free_node:
 	return ret;
 }
 
-static int reviser_remove(struct platform_device *pdev)
+static void reviser_remove(struct platform_device *pdev)
 {
 	struct reviser_dev_info *rdv = platform_get_drvdata(pdev);
 
@@ -615,8 +615,6 @@ static int reviser_remove(struct platform_device *pdev)
 	g_rdv = NULL;
 
 	LOG_INFO("remove done\n");
-
-	return 0;
 }
 
 

@@ -206,7 +206,7 @@ out:
 	return ret;
 }
 
-static int mdw_platform_remove(struct platform_device *pdev)
+static void mdw_platform_remove(struct platform_device *pdev)
 {
 	struct mdw_device *mdev = platform_get_drvdata(pdev);
 
@@ -219,8 +219,6 @@ static int mdw_platform_remove(struct platform_device *pdev)
 	kfree(mdev);
 	mdw_dev = NULL;
 	pr_info("%s +\n", __func__);
-
-	return 0;
 }
 
 static const struct of_device_id mdw_of_match[] = {

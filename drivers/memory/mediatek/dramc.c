@@ -1024,11 +1024,9 @@ unsigned int mtk_dramc_get_ddr_type(void)
 }
 EXPORT_SYMBOL(mtk_dramc_get_ddr_type);
 
-static int dramc_remove(struct platform_device *pdev)
+static void dramc_remove(struct platform_device *pdev)
 {
 	dramc_pdev = NULL;
-
-	return 0;
 }
 
 static const struct of_device_id dramc_of_ids[] = {

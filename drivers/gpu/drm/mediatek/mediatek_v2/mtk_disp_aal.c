@@ -3784,7 +3784,7 @@ error_dev_init:
 	return ret;
 }
 
-static int disp_aal_remove(struct platform_device *pdev)
+static void disp_aal_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_aal *priv = dev_get_drvdata(&pdev->dev);
 
@@ -3795,8 +3795,6 @@ static int disp_aal_remove(struct platform_device *pdev)
 	if (priv->ddp_comp.id == DDP_COMPONENT_AAL0)
 		mtk_leds_unregister_notifier(&leds_init_notifier);
 #endif
-
-	return 0;
 }
 
 static const struct mtk_disp_aal_data mt6768_aal_driver_data = {

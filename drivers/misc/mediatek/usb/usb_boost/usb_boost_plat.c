@@ -231,7 +231,7 @@ static int usb_boost_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int usb_boost_remove(struct platform_device *pdev)
+static void usb_boost_remove(struct platform_device *pdev)
 {
 	struct usb_policy *req_policy, *tmp;
 
@@ -240,8 +240,6 @@ static int usb_boost_remove(struct platform_device *pdev)
 		list_del(&req_policy->list);
 		kfree(req_policy);
 	}
-
-	return 0;
 }
 
 static const struct of_device_id usb_boost_of_match[] = {

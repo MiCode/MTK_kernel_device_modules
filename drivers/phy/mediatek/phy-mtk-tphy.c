@@ -2730,12 +2730,11 @@ put_child:
 	return retval;
 }
 
-static int mtk_tphy_remove(struct platform_device *pdev)
+static void mtk_tphy_remove(struct platform_device *pdev)
 {
 	struct mtk_tphy *tphy = dev_get_drvdata(&pdev->dev);
 
 	mtk_phy_procfs_exit(tphy);
-	return 0;
 }
 
 static struct platform_driver mtk_tphy_driver = {

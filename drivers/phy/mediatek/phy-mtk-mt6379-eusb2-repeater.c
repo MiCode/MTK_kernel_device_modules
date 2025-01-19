@@ -1629,12 +1629,11 @@ static int eusb2_rptr_procfs_exit(struct eusb2_repeater *rptr)
 	return 0;
 }
 
-static int eusb2_repeater_remove(struct platform_device *pdev)
+static void eusb2_repeater_remove(struct platform_device *pdev)
 {
 	struct eusb2_repeater *rptr = dev_get_drvdata(&pdev->dev);
 
 	eusb2_rptr_procfs_exit(rptr);
-	return 0;
 }
 
 static const struct of_device_id eusb2_repeater_of_match_table[] = {

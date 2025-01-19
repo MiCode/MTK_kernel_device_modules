@@ -5315,9 +5315,8 @@ err_out_wrap:
 	return ret;
 }
 
-static int pwrap_remove(struct platform_device *pdev)
+static void pwrap_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static struct platform_driver pwrap_drv = {

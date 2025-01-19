@@ -540,12 +540,11 @@ static int mtkips_helper_probe(struct platform_device *pdev)
 }
 
 
-static int mtkips_helper_remove(struct platform_device *pdev)
+static void mtkips_helper_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
 	ips_unregister_sysfs(dev);
-	return 0;
 }
 
 static int mtkips_pm_suspend(struct device *dev)

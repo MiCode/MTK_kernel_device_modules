@@ -73,10 +73,9 @@ static int scpsys_bring_up_probe(struct platform_device *pdev)
 	return r;
 }
 
-static int scpsys_bring_up_remove(struct platform_device *pdev)
+static void scpsys_bring_up_remove(struct platform_device *pdev)
 {
 	pm_runtime_put_sync(&pdev->dev);
-	return 0;
 }
 
 static struct platform_driver scpsys_bring_up = {

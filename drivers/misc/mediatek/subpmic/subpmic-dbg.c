@@ -103,12 +103,11 @@ static int subpmic_dbg_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int subpmic_dbg_remove(struct platform_device *pdev)
+static void subpmic_dbg_remove(struct platform_device *pdev)
 {
 	struct subpmic_dbg_info *mdi = platform_get_drvdata(pdev);
 
 	generic_debugfs_unregister(&mdi->dbg_info);
-	return 0;
 }
 
 static const struct subpmic_data mt6360_data = {

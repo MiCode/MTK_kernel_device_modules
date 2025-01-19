@@ -1271,7 +1271,7 @@ static const struct of_device_id vdec_fmt_match[] = {
 };
 
 
-static int vdec_fmt_remove(struct platform_device *pdev)
+static void vdec_fmt_remove(struct platform_device *pdev)
 {
 	struct mtk_vdec_fmt *fmt = platform_get_drvdata(pdev);
 
@@ -1280,8 +1280,6 @@ static int vdec_fmt_remove(struct platform_device *pdev)
 	class_destroy(fmt->fmt_class);
 	cdev_del(fmt->fmt_cdev);
 	unregister_chrdev_region(fmt->fmt_devno, 1);
-
-	return 0;
 }
 
 static const struct dev_pm_ops vdec_fmt_pm_ops = {

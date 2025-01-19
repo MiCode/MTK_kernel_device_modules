@@ -84,7 +84,7 @@ static int mbraink_v6989_probe(struct platform_device *pdev)
 }
 
 
-static int mbraink_v6989_remove(struct platform_device *pdev)
+static void mbraink_v6989_remove(struct platform_device *pdev)
 {
 	struct device *mbraink_v6989_device = &pdev->dev;
 
@@ -94,8 +94,6 @@ static int mbraink_v6989_remove(struct platform_device *pdev)
 	mbraink_v6989_battery_deinit();
 	mbraink_v6989_power_deinit();
 	mbraink_v6989_gpu_deinit();
-
-	return 0;
 }
 
 static const struct of_device_id mtk_mbraink_v6989_of_ids[] = {

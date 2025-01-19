@@ -55,7 +55,7 @@ void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	    !ufs_mtk_is_data_cmd(cmd))
 		return;
 
-	if (is_mcq_enabled(hba)) {
+	if (hba->mcq_enabled) {
 		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
 		qid = hq->id;
 	}
@@ -74,7 +74,7 @@ void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 	    !ufs_mtk_is_data_cmd(cmd))
 		return;
 
-	if (is_mcq_enabled(hba)) {
+	if (hba->mcq_enabled) {
 		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
 		qid = hq->id;
 	}

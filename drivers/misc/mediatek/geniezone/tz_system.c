@@ -1248,11 +1248,9 @@ static int tz_system_probe(struct platform_device *pdev)
 
 	return ret;
 }
-static int tz_system_remove(struct platform_device *pdev)
+static void tz_system_remove(struct platform_device *pdev)
 {
 	KREE_DEBUG("%s\n", __func__);
-
-	return 0;
 }
 
 #define MODULE_NAME "trusty_tz"

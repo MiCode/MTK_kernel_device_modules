@@ -876,11 +876,10 @@ static int probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int remove(struct platform_device *pdev)
+static void remove(struct platform_device *pdev)
 {
 	component_del(&pdev->dev, &mml_comp_ops);
 	component_del(&pdev->dev, &mml_comp_ops);
-	return 0;
 }
 
 const struct of_device_id mml_rsz_driver_dt_match[] = {

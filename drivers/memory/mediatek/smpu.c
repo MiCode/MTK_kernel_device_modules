@@ -850,7 +850,7 @@ static int smpu_probe(struct platform_device *pdev)
 
 	return 0;
 }
-static int smpu_remove(struct platform_device *pdev)
+static void smpu_remove(struct platform_device *pdev)
 {
 	struct smpu *mpu = platform_get_drvdata(pdev);
 
@@ -866,8 +866,6 @@ static int smpu_remove(struct platform_device *pdev)
 		global_skp = NULL;
 	else if (!strcmp(mpu->name, "skp"))
 		global_nkp = NULL;
-
-	return 0;
 }
 
 static struct platform_driver smpu_driver = {

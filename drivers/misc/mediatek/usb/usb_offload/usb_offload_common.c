@@ -2877,7 +2877,7 @@ INIT_SHAREMEM_FAIL:
 	return ret;
 }
 
-static int usb_offload_remove(struct platform_device *pdev)
+static void usb_offload_remove(struct platform_device *pdev)
 {
 	int ret;
 
@@ -2890,8 +2890,6 @@ static int usb_offload_remove(struct platform_device *pdev)
 	uob_deinit(UO_STRUCT_EVRING);
 	uob_deinit(UO_STRUCT_TRRING);
 	uob_deinit(UO_STRUCT_URB);
-
-	return 0;
 }
 
 static int usb_offload_smc_ctrl(int smc_req)

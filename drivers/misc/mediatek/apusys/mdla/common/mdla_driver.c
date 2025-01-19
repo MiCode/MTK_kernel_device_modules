@@ -337,12 +337,12 @@ err:
 	return ret;
 }
 
-static int mdla_remove(struct platform_device *pdev)
+static void mdla_remove(struct platform_device *pdev)
 {
 	int i;
 
 	if (mdla_pwr_apusys_disabled())
-		return 0;
+		return;
 
 	dev_info(&pdev->dev, "%s start -\n", __func__);
 
@@ -360,8 +360,6 @@ static int mdla_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 
 	dev_info(&pdev->dev, "%s done -\n", __func__);
-
-	return 0;
 }
 
 static int mdla_resume(struct platform_device *pdev)

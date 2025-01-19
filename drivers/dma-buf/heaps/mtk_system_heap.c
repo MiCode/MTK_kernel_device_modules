@@ -107,7 +107,7 @@ static bool needs_swiotlb_bounce(struct device *dev, struct sg_table *table)
 			phys_addr_t paddr = domain ?
 					    iommu_iova_to_phys(domain, sg_dma_address(sg)) :
 					    dma_to_phys(dev, sg_dma_address(sg));
-			if (is_swiotlb_buffer(dev, paddr))
+			if (swiotlb_find_pool(dev, paddr))
 				return true;
 		}
 	}
@@ -1360,8 +1360,8 @@ free_buffer:
 
 static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    unsigned long fd_flags,
-					    unsigned long heap_flags)
+					    u32 fd_flags,
+					    u64 heap_flags)
 {
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
@@ -1372,8 +1372,8 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 
 static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    unsigned long fd_flags,
-					    unsigned long heap_flags)
+					    u32 fd_flags,
+					    u64 heap_flags)
 {
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
 
@@ -1384,8 +1384,8 @@ static struct dma_buf *mtk_mm_heap_allocate(struct dma_heap *heap,
 
 static struct dma_buf *mtk_slc_heap_allocate(struct dma_heap *heap,
 					    unsigned long len,
-					    unsigned long fd_flags,
-					    unsigned long heap_flags)
+					    u32 fd_flags,
+					    u64 heap_flags)
 {
 	return system_heap_do_allocate(heap, len, fd_flags, heap_flags, false,
 				       &mtk_slc_heap_buf_ops);

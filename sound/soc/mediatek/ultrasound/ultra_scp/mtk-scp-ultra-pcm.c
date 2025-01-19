@@ -94,9 +94,9 @@ err_platform:
 	return ret;
 }
 
-static int scp_ultra_pcm_dev_remove(struct platform_device *pdev)
+static void scp_ultra_pcm_dev_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static const struct of_device_id scp_ultra_pcm_dt_match[] = {

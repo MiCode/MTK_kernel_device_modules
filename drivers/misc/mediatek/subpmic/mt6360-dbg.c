@@ -92,12 +92,11 @@ static int mt6360_dbg_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mt6360_dbg_remove(struct platform_device *pdev)
+static void mt6360_dbg_remove(struct platform_device *pdev)
 {
 	struct mt6360_dbg_info *mdi = platform_get_drvdata(pdev);
 
 	generic_debugfs_unregister(&mdi->dbg_info);
-	return 0;
 }
 
 static const struct platform_device_id mt6360_dbg_id[] = {

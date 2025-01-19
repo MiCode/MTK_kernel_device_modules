@@ -751,7 +751,7 @@ static int n3d_probe(struct platform_device *pDev)
 	return ret;
 }
 
-static int n3d_remove(struct platform_device *pDev)
+static void n3d_remove(struct platform_device *pDev)
 {
 	struct SENINF_N3D *pn3d = &gn3d;
 
@@ -771,8 +771,6 @@ static int n3d_remove(struct platform_device *pDev)
 
 	class_destroy(pn3d->pclass);
 	pn3d->pclass = NULL;
-
-	return 0;
 }
 
 static int n3d_suspend(struct platform_device *pDev, pm_message_t mesg)

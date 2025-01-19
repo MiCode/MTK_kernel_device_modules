@@ -2873,14 +2873,12 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_i3c_master_remove(struct platform_device *pdev)
+static void mtk_i3c_master_remove(struct platform_device *pdev)
 {
 	struct mtk_i3c_master *i3c = platform_get_drvdata(pdev);
 
 	list_del(&i3c->s_controller_info.list);
 	i3c_master_unregister(&i3c->base);
-
-	return 0;
 }
 
 static int mtk_i3c_suspend_noirq(struct device *dev)

@@ -348,7 +348,7 @@ static int mmup_device_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int mmup_device_remove(struct platform_device *pdev)
+static void mmup_device_remove(struct platform_device *pdev)
 {
 	kfree(mmup_mbox_info);
 	mmup_mbox_info = NULL;
@@ -356,8 +356,6 @@ static int mmup_device_remove(struct platform_device *pdev)
 	mmup_mbox_pin_recv = NULL;
 	kfree(mmup_mbox_pin_send);
 	mmup_mbox_pin_send = NULL;
-
-	return 0;
 }
 
 static const struct of_device_id mmup_of_ids[] = {

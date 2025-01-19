@@ -365,13 +365,11 @@ static int gic_ram_parity_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int gic_ram_parity_remove(struct platform_device *pdev)
+static void gic_ram_parity_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "driver removed\n");
 
 	flush_work(&gic_ram_parity.work);
-
-	return 0;
 }
 
 static const struct of_device_id gic_ram_parity_of_ids[] = {

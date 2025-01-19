@@ -753,9 +753,9 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_usb_extcon_remove(struct platform_device *pdev)
+static void mtk_usb_extcon_remove(struct platform_device *pdev)
 {
-	return 0;
+
 }
 
 static void mtk_usb_extcon_shutdown(struct platform_device *pdev)

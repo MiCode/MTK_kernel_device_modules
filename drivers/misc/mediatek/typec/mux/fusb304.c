@@ -157,12 +157,11 @@ static int fusb304_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int fusb304_remove(struct platform_device *pdev)
+static void fusb304_remove(struct platform_device *pdev)
 {
 	struct fusb304 *fusb = platform_get_drvdata(pdev);
 
 	mtk_typec_switch_unregister(fusb->sw);
-	return 0;
 }
 
 static const struct of_device_id fusb304_ids[] = {

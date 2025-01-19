@@ -1188,7 +1188,7 @@ error_dev_init:
 	return ret;
 }
 
-static int disp_c3d_remove(struct platform_device *pdev)
+static void disp_c3d_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_c3d *priv = dev_get_drvdata(&pdev->dev);
 
@@ -1196,7 +1196,6 @@ static int disp_c3d_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &mtk_disp_c3d_component_ops);
 	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	pr_notice("%s-\n", __func__);
-	return 0;
 }
 
 static const struct mtk_disp_c3d_data mt6983_c3d_driver_data = {

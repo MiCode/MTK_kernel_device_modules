@@ -43,10 +43,9 @@ static int mm_fake_eng_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mm_fake_eng_remove(struct platform_device *pdev)
+static void mm_fake_eng_remove(struct platform_device *pdev)
 {
 	pr_notice("%s for smmu fake dev", __func__);
-	return 0;
 }
 
 static const struct of_device_id mm_fake_eng_of_ids[] = {

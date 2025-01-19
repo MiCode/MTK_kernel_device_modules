@@ -365,7 +365,7 @@ static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 
 	return 0;
 }
-static int mtk_cpu_power_throttling_remove(struct platform_device *pdev)
+static void mtk_cpu_power_throttling_remove(struct platform_device *pdev)
 {
 	struct cpu_pt_policy *pt_policy, *pt_policy_t;
 	list_for_each_entry_safe(pt_policy, pt_policy_t, &pt_policy_list, cpu_pt_list) {
@@ -374,7 +374,6 @@ static int mtk_cpu_power_throttling_remove(struct platform_device *pdev)
 		list_del(&pt_policy->cpu_pt_list);
 		kfree(pt_policy);
 	}
-	return 0;
 }
 static const struct of_device_id cpu_power_throttling_of_match[] = {
 	{ .compatible = "mediatek,cpu-power-throttling", },

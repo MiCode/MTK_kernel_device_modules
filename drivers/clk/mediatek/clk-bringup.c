@@ -89,9 +89,8 @@ static int bring_up_probe(struct platform_device *pdev)
 	return r;
 }
 
-static int bring_up_remove(struct platform_device *pdev)
+static void bring_up_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 static struct platform_driver bring_up = {

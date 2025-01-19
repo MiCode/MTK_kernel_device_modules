@@ -175,14 +175,14 @@ static u32 _step_size;
 #endif
 static int ccu_probe(struct platform_device *dev);
 
-static int ccu_remove(struct platform_device *dev);
+static void ccu_remove(struct platform_device *dev);
 
 static int ccu_suspend(struct platform_device *dev,
 		       pm_message_t mesg);
 
 static int ccu_resume(struct platform_device *dev);
 static int ccu1_probe(struct platform_device *dev);
-static int ccu1_remove(struct platform_device *dev);
+static void ccu1_remove(struct platform_device *dev);
 static int ccu1_suspend(struct platform_device *dev,
 		       pm_message_t mesg);
 static int ccu1_resume(struct platform_device *dev);
@@ -1918,7 +1918,7 @@ EXIT:
 }
 
 
-static int ccu_remove(struct platform_device *pDev)
+static void ccu_remove(struct platform_device *pDev)
 {
 	/*    struct resource *pRes; */
 
@@ -1953,7 +1953,6 @@ static int ccu_remove(struct platform_device *pDev)
 	class_destroy(ccu_class);
 	ccu_class = NULL;
 	/*  */
-	return 0;
 }
 
 static int ccu_suspend(struct platform_device *pdev,
@@ -1979,13 +1978,11 @@ static int ccu1_probe(struct platform_device *pdev)
 }
 
 
-static int ccu1_remove(struct platform_device *pdev)
+static void ccu1_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
 	pm_runtime_disable(dev);
-
-	return 0;
 }
 
 static int ccu1_suspend(struct platform_device *pdev,

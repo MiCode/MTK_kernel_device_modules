@@ -59,7 +59,7 @@ static int led_pwm_set(struct mt_led_data *mdev,
 
 	led_dat->pwmstate.duty_cycle = duty;
 	led_dat->pwmstate.enabled = duty > 0;
-	return pwm_apply_state(led_dat->pwm, &led_dat->pwmstate);
+	return pwm_apply_might_sleep(led_dat->pwm, &led_dat->pwmstate);
 }
 
 __attribute__((nonnull))

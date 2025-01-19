@@ -443,13 +443,12 @@ static int mtk_dvfsrc_met_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_dvfsrc_met_remove(struct platform_device *pdev)
+static void mtk_dvfsrc_met_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 
 	dvfsrc_met_unregister_sysfs(dev);
 	dvfsrc_drv = NULL;
-	return 0;
 }
 
 static const struct of_device_id mtk_dvfsrc_met_of_match[] = {
