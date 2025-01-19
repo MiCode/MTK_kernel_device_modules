@@ -127,7 +127,12 @@ static int __init ssc_v1_init(void)
 		return 0;
 
 	ret = sysfs_create_file(ssc_kobj, __ATTR_OF(ssc_ctrl));
+	if(ret)
+		pr_info("[SSC] ssc_ctrl file creation failed\n");
+
 	ret = sysfs_create_file(ssc_kobj, __ATTR_OF(ssc_sw_req));
+	if(ret)
+		pr_info("[SSC] ssc_sw_req file creation failed\n");
 
 	return 0;
 }

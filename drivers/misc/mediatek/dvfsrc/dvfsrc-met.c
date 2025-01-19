@@ -278,10 +278,12 @@ static const struct dvfsrc_met_data mt6897_data = {
 	.max_emi_mon =  7,
 };
 
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768)
 static const struct dvfsrc_met_data mt6768_data = {
 	.met = &mt6768_met_config,
 	.version = 0x6768,
 };
+#endif
 
 static const struct dvfsrc_met_data mt6878_data = {
 	.met = &mt6983_met_config,
@@ -289,15 +291,19 @@ static const struct dvfsrc_met_data mt6878_data = {
 	.max_emi_mon =  7,
 };
 
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6765)
 static const struct dvfsrc_met_data mt6765_data = {
 	.met = &mt6765_met_config,
 	.version = 0x6765,
 };
+#endif
 
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6761)
 static const struct dvfsrc_met_data mt6761_data = {
 	.met = &mt6768_met_config,
 	.version = 0x6761,
 };
+#endif
 
 static const struct of_device_id dvfsrc_met_of_match[] = {
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6873)
