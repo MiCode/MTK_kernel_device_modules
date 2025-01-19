@@ -145,14 +145,14 @@ static void mt_power_gs_clk_compare(char *pmic_name,
 }
 int lpm_gs_clk_cmp_init(void *data)
 {
-	int i = 0, ret = 0, idx = 0;
+	int ret = 0, idx = 0;
 	struct lpm_gs_clk_info *_info;
 	struct lpm_gs_clk *const *_dcm;
 
 	if (!data)
 		return -EINVAL;
 	_info = (struct lpm_gs_clk_info *)data;
-	for (i = 0, _dcm = _info->dcm; *_dcm ; i++, _dcm++) {
+	for (_dcm = _info->dcm; *_dcm ; _dcm++) {
 		if (_info->attach) {
 			ret = _info->attach((*_dcm));
 			if (!ret) {
@@ -172,11 +172,11 @@ int lpm_gs_clk_cmp_init(void *data)
 }
 int __lpm_gs_clk_cmp(unsigned int flag, unsigned int type, int user)
 {
-	int i = 0, is_found;
+	int is_found;
 	struct lpm_gs_clk_info *_info = lpm_gs_clks.info;
 	struct lpm_gs_clk *const *_dcm;
 
-	for (i = 0, _dcm = _info->dcm; *_dcm ; i++, _dcm++) {
+	for (_dcm = _info->dcm; *_dcm ; _dcm++) {
 		is_found = (flag & LPM_GS_CMP_SEARCH) ? 0 : 1;
 		if (!is_found && ((*_dcm)->type == type))
 			is_found = 1;
