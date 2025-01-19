@@ -9,7 +9,7 @@
 #include <linux/platform_device.h>
 
 #define GHPM_IPI_TIMEOUT                   (5000)
-#define GPUEB_WAIT_TIMEOUT                 (5000)
+#define GPUEB_WAIT_TIMEOUT                 (10000)
 
 #define MFG_RPC_SLV_CTRL_UPDATE            (g_mfg_rpc_base + 0x0068)          /* 0x4B800068 */
 #define MFG_RPC_SLV_SLP_PROT_RDY_STA       (g_mfg_rpc_base + 0x0078)          /* 0x4B800078 */
