@@ -15739,6 +15739,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<9 0x1000>, /* MMQOS_MEM_ID 4KB */
 			<10 0x0>, /* secure dump, its size is in secure_dump_size */
 			<11 0x1000>; /* MMDVFS_MMUP_MEM_ID 4KB */
+
+		vcp-ao-feature;
 	};
 
 	vcp_io2: vcp-iommu-vdec {
