@@ -39,6 +39,7 @@ struct over_thres_stats {
 struct cluster_over_thres_stats {
 	u64 last_get_over_thres_time;
 	u64 max_capacity;
+	unsigned long freq_qos_max_of_min;
 };
 
 static DEFINE_PER_CPU(struct over_thres_stats, cpu_over_thres_state);
@@ -49,16 +50,19 @@ static DEFINE_PER_CPU(u64, rt_nr_max);
 static DEFINE_PER_CPU(u64, last_time);
 static DEFINE_PER_CPU(spinlock_t, nr_lock) = __SPIN_LOCK_UNLOCKED(nr_lock);
 static DEFINE_PER_CPU(spinlock_t, nr_over_thres_lock) = __SPIN_LOCK_UNLOCKED(nr_over_thres_lock);
+static DEFINE_SPINLOCK(core_ctl_cluster_state_lock);
 /*
  * static DEFINE_PER_CPU(u64, nr_prod_sum);
  * static DEFINE_PER_CPU(unsigned long, iowait_prod_sum);
  */
 static int init_thres;
 static int global_task_util;
+static struct notifier_block *core_ctl_freq_qos_min_notifier;
 
 /* pelt.h */
 #define MAX_CLUSTER_NR			3
 #define MAX_UTIL_TRACKER_PERIODIC_MS	8
+#define MAX_NR_POLICY	8
 
 static int init_thres_table(void);
 static unsigned int over_thres[MAX_CLUSTER_NR] = {50, 50, 50};
@@ -407,11 +411,31 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 }
 EXPORT_SYMBOL(sched_get_nr_over_thres_avg);
 
-void policy_chg_notify(void){
+void policy_chg_notify(void)
+{
 	over_thresh_chg_notify();
 	pr_info("%s: re-enable policy, flush over_thres status", TAG);
 }
 EXPORT_SYMBOL(policy_chg_notify);
+
+unsigned long get_freq_qos_max_of_min(unsigned int cid)
+{
+	struct cluster_over_thres_stats *cluster_over_thres;
+	unsigned long flags;
+	unsigned long last_freq_qos_max_of_min = 0;
+
+	if (cid >= MAX_CLUSTER_NR) {
+		pr_info("%s: error cid=%d to get freq qos min.", TAG, cid);
+		return last_freq_qos_max_of_min;
+	}
+	spin_lock_irqsave(&core_ctl_cluster_state_lock, flags);
+	cluster_over_thres = &cluster_over_thres_table[cid];
+	last_freq_qos_max_of_min = cluster_over_thres->freq_qos_max_of_min;
+	cluster_over_thres->freq_qos_max_of_min = 0;
+	spin_unlock_irqrestore(&core_ctl_cluster_state_lock, flags);
+	return last_freq_qos_max_of_min;
+}
+EXPORT_SYMBOL(get_freq_qos_max_of_min);
 
 static void over_thresh_chg_notify(void)
 {
@@ -929,6 +953,114 @@ static int init_attribs(void)
 	return ret;
 }
 
+static inline int get_nr_policy(void)
+{
+	int cpu, count = 0;
+	struct cpufreq_policy *policy, *last_policy = NULL;
+
+	for_each_possible_cpu(cpu) {
+		if (cpu >= MAX_NR_POLICY)
+			break;
+
+		policy = cpufreq_cpu_get(cpu);
+		if (!policy) {
+			pr_info("%s: No cpufreq policy for cpu %d\n", TAG, cpu);
+			continue;
+		}
+
+		if (policy == last_policy) {
+			cpufreq_cpu_put(policy);
+			continue;
+		}
+
+		last_policy = policy;
+		cpufreq_cpu_put(policy);
+		count++;
+	}
+
+	return count;
+}
+
+static int freq_qos_min_notifier_call(struct notifier_block *nb,
+				unsigned long freq_limit_min, void *ptr)
+{
+	int cid = nb - core_ctl_freq_qos_min_notifier;
+	struct cluster_over_thres_stats *cluster_over_thres;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_cluster_state_lock, flags);
+	cluster_over_thres = &cluster_over_thres_table[cid];
+	if (freq_limit_min > cluster_over_thres->freq_qos_max_of_min)
+		cluster_over_thres->freq_qos_max_of_min = freq_limit_min;
+	spin_unlock_irqrestore(&core_ctl_cluster_state_lock, flags);
+
+	return 0;
+}
+
+static void unregister_core_ctl_freq_qos_notifier(void)
+{
+	struct cpufreq_policy *policy;
+	int policy_idx = 0;
+	int cpu, ret = 0, nr_policy = 0;
+
+	nr_policy = get_nr_policy();
+	for_each_possible_cpu(cpu) {
+		if (policy_idx >= nr_policy || cpu >= MAX_NR_POLICY)
+			break;
+		policy = cpufreq_cpu_get(cpu);
+		if (policy) {
+			ret = freq_qos_remove_notifier(&policy->constraints, FREQ_QOS_MIN,
+						core_ctl_freq_qos_min_notifier + policy_idx);
+		}
+		if (ret)
+			pr_info("%s: freq_qos_min_notifier unregister failed with policy#%d\n", TAG, policy_idx);
+		policy_idx++;
+		cpu = cpumask_last(policy->related_cpus);
+		cpufreq_cpu_put(policy);
+	}
+}
+
+static int init_core_ctl_freq_qos_notifier(void)
+{
+	struct cpufreq_policy *policy;
+	int cpu, ret = 0, policy_idx, nr_policy = 0;
+
+	nr_policy = get_nr_policy();
+	core_ctl_freq_qos_min_notifier = kcalloc(nr_policy, sizeof(struct notifier_block), GFP_KERNEL);
+	if (!core_ctl_freq_qos_min_notifier) {
+		pr_info("%s: Failed to allocate memory for freq_qos_min_notifier.\n", TAG);
+		return -ENOMEM;
+	}
+	for (policy_idx = 0; policy_idx < nr_policy; policy_idx++)
+		core_ctl_freq_qos_min_notifier[policy_idx].notifier_call = freq_qos_min_notifier_call;
+
+	policy_idx = 0;
+	for_each_possible_cpu(cpu) {
+		if (policy_idx >= nr_policy || cpu >= MAX_NR_POLICY)
+			break;
+		policy = cpufreq_cpu_get(cpu);
+		if (policy) {
+			ret = freq_qos_add_notifier(&policy->constraints, FREQ_QOS_MIN,
+						core_ctl_freq_qos_min_notifier + policy_idx);
+			if (ret) {
+				pr_info("%s: freq_qos_min_notifier register failed with policy#%d\n", TAG, policy_idx);
+				cpufreq_cpu_put(policy);
+				goto register_failed;
+			}
+		}
+		policy_idx++;
+		cpu = cpumask_last(policy->related_cpus);
+		cpufreq_cpu_put(policy);
+	}
+	pr_info("%s: core_ctl_freq_qos_notifier registered, nr_policy=%d\n", TAG, nr_policy);
+
+	return ret;
+
+register_failed:
+	unregister_core_ctl_freq_qos_notifier();
+	return ret;
+}
+
 int init_sched_avg(void)
 {
 	int ret, ret_error_line;
@@ -940,6 +1072,12 @@ int init_sched_avg(void)
 	}
 
 	ret = init_attribs();
+	if (ret) {
+		ret_error_line = __LINE__;
+		goto failed;
+	}
+
+	ret =  init_core_ctl_freq_qos_notifier();
 	if (ret) {
 		ret_error_line = __LINE__;
 		goto failed;
@@ -997,4 +1135,5 @@ void exit_sched_avg(void)
 {
 	unregister_trace_pelt_se_tp(pelt_se_tp, NULL);
 	unregister_trace_sched_update_nr_running_tp(sched_update_nr_running_cb, NULL);
+	unregister_core_ctl_freq_qos_notifier();
 }

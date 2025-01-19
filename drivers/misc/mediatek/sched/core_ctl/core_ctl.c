@@ -124,6 +124,8 @@ struct cluster_data {
 	struct request_data demand_list[MAX_DEMAND_REQUESTER];
 	struct cluster_ppm_data ppm_data;
 	unsigned int cap_turn_point;
+	unsigned long freq_thres;
+	bool boost_by_freq;
 };
 
 struct cpu_data {
@@ -155,6 +157,7 @@ static unsigned int busy_up_thres[MAX_CLUSTERS] = {60, 60, 60};
 static unsigned int busy_down_thres[MAX_CLUSTERS] = {30, 30, 30};
 static unsigned int nr_task_thres[MAX_CLUSTERS] = {4, 4, 4};
 static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
+static unsigned long freq_thres[MAX_CLUSTERS] = {1200000, 1500000, 1700000};
 
 /* ==================== module parameter ======================== */
 
@@ -414,6 +417,24 @@ static int power_cost_evaluation(struct cluster_data *cluster)
 	return ret;
 }
 
+static void check_freq_min_req(void)
+{
+	unsigned int index = 0;
+	unsigned long flags;
+	struct cluster_data *cluster;
+	unsigned long last_freq_qos_max_of_min;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	for_each_cluster(cluster, index) {
+		last_freq_qos_max_of_min = get_freq_qos_max_of_min(index);
+		if (last_freq_qos_max_of_min > cluster->freq_thres)
+			cluster->boost_by_freq = true;
+		else
+			cluster->boost_by_freq = false;
+	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
 static bool demand_eval(struct cluster_data *cluster)
 {
 	unsigned long flags;
@@ -435,7 +456,8 @@ static bool demand_eval(struct cluster_data *cluster)
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 
-	if (cluster->boost || !cluster->enable || !enable_policy || gas_enable)
+	if (cluster->boost || !cluster->enable || !enable_policy
+			|| cluster->boost_by_freq || gas_enable)
 		need_cpus = cluster->max_cpus;
 	else
 		need_cpus = cluster->new_need_cpus;
@@ -486,7 +508,7 @@ static bool demand_eval(struct cluster_data *cluster)
 			cluster->active_cpus,
 			cluster->min_cpus,
 			cluster->max_cpus,
-			cluster->boost,
+			cluster->boost & cluster->boost_by_freq,
 			gas_enable,
 			cluster->enable,
 			cost_flag,
@@ -763,6 +785,19 @@ static void set_cpu_active_loading_thres(struct cluster_data *cluster, unsigned 
 	old_thresh = cluster->active_loading_thres;
 	if (old_thresh != val)
 		cluster->active_loading_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+static void set_freq_min_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+	unsigned int cid = cluster->cluster_id;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = freq_thres[cid];
+	if (old_thresh != val)
+		freq_thres[cid] = val;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 }
 
@@ -1254,6 +1289,26 @@ int core_ctl_set_cpu_active_loading_thres(unsigned int cid, unsigned int loading
 }
 EXPORT_SYMBOL(core_ctl_set_cpu_active_loading_thres);
 
+/*
+ *  core_ctl_set_freq_min_thres - set threshold of frequency min
+ *  @cid: cluster id
+ *  @freq: expected frequency(KHz)
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_freq_min_thres(unsigned int cid, unsigned int freq)
+{
+	struct cluster_data *cluster;
+
+	if (cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_freq_min_thres(cluster, freq);
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_freq_min_thres);
+
 void core_ctl_notifier_register(struct notifier_block *n)
 {
 	atomic_notifier_chain_register(&core_ctl_notifier, n);
@@ -1511,6 +1566,25 @@ static ssize_t show_cpu_active_loading_thres(const struct cluster_data *state, c
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->active_loading_thres);
 }
 
+static ssize_t store_freq_min_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_freq_min_thres(state, val);
+	return count;
+}
+
+static ssize_t show_freq_min_thres(const struct cluster_data *state, char *buf)
+{
+	unsigned int cid = state->cluster_id;
+
+	return scnprintf(buf, PAGE_SIZE, "%lu\n", freq_thres[cid]);
+}
+
 static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->thermal_up_thres);
@@ -1596,6 +1670,7 @@ core_ctl_attr_rw(cpu_busy_up_thres);
 core_ctl_attr_rw(cpu_busy_down_thres);
 core_ctl_attr_rw(cpu_nr_task_thres);
 core_ctl_attr_rw(cpu_active_loading_thres);
+core_ctl_attr_rw(freq_min_thres);
 
 static struct attribute *default_attrs[] = {
 	&min_cpus.attr,
@@ -1611,6 +1686,7 @@ static struct attribute *default_attrs[] = {
 	&cpu_busy_down_thres.attr,
 	&cpu_nr_task_thres.attr,
 	&cpu_active_loading_thres.attr,
+	&freq_min_thres.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(default);
@@ -1924,6 +2000,8 @@ static inline void core_ctl_main_algo(void)
 	 * if heaviest task is over threshold.
 	 */
 	check_heaviest_status();
+
+	check_freq_min_req();
 
 	index = 0;
 	for_each_cluster(cluster, index) {
@@ -2390,7 +2468,6 @@ static int cluster_init(const struct cpumask *mask)
 		return -EINVAL;
 	}
 	cluster->first_cpu = first_cpu;
-	cluster->min_cpus = 1;
 	cluster->max_cpus = cluster->num_cpus;
 	cluster->need_cpus = cluster->num_cpus;
 	cluster->offline_throttle_ms = 100;
@@ -2400,6 +2477,7 @@ static int cluster_init(const struct cpumask *mask)
 	cluster->nr_assist = 0;
 	cluster->min_cpus = default_min_cpus[cluster->cluster_id];
 	cluster->up_thres = get_over_threshold(cluster->cluster_id);
+	cluster->freq_thres = freq_thres[cluster->cluster_id];
 
 	if (cluster->cluster_id == 0)
 		cluster->down_thres = 0;

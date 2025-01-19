@@ -26,8 +26,8 @@ extern int init_sched_avg(void);
 extern void exit_sched_avg(void);
 extern unsigned int get_cpu_util_pct(unsigned int cpu, bool orig);
 extern int set_over_threshold(unsigned int index, unsigned int val);
-unsigned int get_over_threshold(int index);
-unsigned int get_max_capacity(unsigned int cid);
+extern unsigned int get_over_threshold(int index);
+extern unsigned int get_max_capacity(unsigned int cid);
 extern unsigned int pd_get_opp_leakage(unsigned int cpu,
 				    unsigned int opp,
 				    unsigned int temperature);
@@ -37,5 +37,6 @@ extern int get_max_rt_nr_running(int cpu);
 extern void policy_chg_notify(void);
 extern unsigned int core_ctl_get_policy(void);
 extern unsigned long _capacity_of(int cpu);
+extern unsigned long get_freq_qos_max_of_min(unsigned int cid);
 
 #endif /* _SCHED_AVG_H */
