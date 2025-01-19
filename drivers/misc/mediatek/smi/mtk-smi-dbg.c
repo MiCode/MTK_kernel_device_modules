@@ -446,7 +446,6 @@ struct mtk_smi_dbg {
 };
 static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
-static bool no_pm_runtime;
 static u32 dbg_version;
 static bool skip_bug_on;
 
@@ -479,7 +478,7 @@ static int mtk_smi_dbg_larb_enable(struct device *dev)
 		return -EAGAIN;
 	}
 
-	return no_pm_runtime ?
+	return (mtk_smi_ctrl_type(dev) == SMI_CTRL) ?
 			mtk_smi_larb_enable(dev) :
 			pm_runtime_resume_and_get(dev);
 }
@@ -491,19 +490,21 @@ static int mtk_smi_dbg_larb_disable(struct device *dev)
 		return -EAGAIN;
 	}
 
-	return no_pm_runtime ?
+	return (mtk_smi_ctrl_type(dev) == SMI_CTRL) ?
 			mtk_smi_larb_disable(dev) :
 			pm_runtime_put_sync(dev);
 }
 
 static inline int mtk_smi_dbg_get_if_in_use(struct device *dev)
 {
-	return no_pm_runtime ? mtk_smi_get_if_in_use(dev) : pm_runtime_get_if_in_use(dev);
+	return (mtk_smi_ctrl_type(dev) == SMI_CTRL) ?
+			mtk_smi_get_if_in_use(dev) : pm_runtime_get_if_in_use(dev);
 }
 
 static inline int mtk_smi_dbg_put_if_in_use(struct device *dev)
 {
-	return no_pm_runtime ? mtk_smi_put_if_in_use(dev) : pm_runtime_put(dev);
+	return (mtk_smi_ctrl_type(dev) == SMI_CTRL) ?
+			mtk_smi_put_if_in_use(dev) : pm_runtime_put(dev);
 }
 
 #define USER_REPORT_PWR_ON	(0xff)
@@ -1449,9 +1450,6 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 
 	smi->suspend_nb.notifier_call = smi_dbg_suspend_cb;
 	mtk_smi_driver_register_notifier(&smi->suspend_nb);
-
-	if (of_property_read_bool(dev->of_node, "no-pm-runtime"))
-		no_pm_runtime = true;
 
 	if ((dbg_version == SMI_DBG_VER_2) &&
 			!of_property_read_u32(dev->of_node, "vcodec-pwr-sta-rg", &tmp)) {

@@ -34,6 +34,7 @@ enum smi_real_time_type {
 	NON_APMCU,
 };
 
+enum smi_ctrl_type { PM_CTRL, SMI_CTRL, SMI_CTRL_TYPE_NR};
 extern struct mtk_smi_lock smi_lock;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -79,6 +80,7 @@ void mtk_smi_check_larb_ref_cnt(struct device *dev);
 int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis);
 int mtk_smi_larb_enable(struct device *larbdev);
 int mtk_smi_larb_disable(struct device *larbdev);
+int mtk_smi_ctrl_type(struct device *dev);
 int mtk_smi_get_if_in_use(struct device *dev);
 int mtk_smi_put_if_in_use(struct device *dev);
 int mtk_smi_larb_ut_result(void);
@@ -184,6 +186,12 @@ int mtk_smi_larb_disable(struct device *larbdev)
 {
 	return 0;
 }
+
+static inline int mtk_smi_ctrl_type(struct device *dev);
+{
+	return 0;
+}
+
 static inline
 int mtk_smi_get_if_in_use(struct device *dev)
 {
