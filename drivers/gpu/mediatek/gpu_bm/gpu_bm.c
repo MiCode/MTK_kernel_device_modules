@@ -33,6 +33,7 @@ static int gpu_bm_freq_inited;
 #endif
 static int gpu_bm_idx_inited;
 static int gpu_opp_num;
+static int gpu_opp_high;
 
 static void _mgq_proc_show_v1(struct seq_file *m)
 {
@@ -221,7 +222,10 @@ void MTKGPUQoS_mode(int seg_flag)
 	if (!gpu_bm_idx_inited) {
 		gpu_opp_num = gpufreq_get_opp_num(TARGET_DEFAULT);
 		min_idx = gpu_opp_num - 1;
-		high_idx = (gpu_opp_num - 1) / 4 + 1;
+		if (gpu_opp_high != -1)
+			high_idx = gpu_opp_high;
+		else
+			high_idx = (gpu_opp_num - 1) / 4 + 1;
 		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
 		gpu_bm_idx_inited = 1;
 	}
@@ -239,7 +243,10 @@ void MTKGPUQoS_mode(int seg_flag)
 	if (!gpu_bm_idx_inited) {
 		gpu_opp_num = mt_gpufreq_get_dvfs_table_num();
 		min_idx = gpu_opp_num - 1;
-		high_idx = (gpu_opp_num - 1) / 4 + 1;
+		if (gpu_opp_high != -1)
+			high_idx = gpu_opp_high;
+		else
+			high_idx = (gpu_opp_num - 1) / 4 + 1;
 		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
 		gpu_bm_idx_inited = 1;
 	}
@@ -404,6 +411,10 @@ static void _MTKGPUQoS_init(void)
 				else if (g_mode == GPU_BW_NO_PRED_MODE)
 					gpu_info_buf->freq = g_mode;
 			}
+			of_property_read_u32(gpu_bm_node, "qos-opp-high", &gpu_opp_high);
+			if (!gpu_opp_high)
+				gpu_opp_high = -1;
+			pr_info("@%s: qos-opp-high: %d\n", __func__, gpu_opp_high);
 		}
 
 	}
