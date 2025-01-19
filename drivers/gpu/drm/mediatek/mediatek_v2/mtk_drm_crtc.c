@@ -749,6 +749,7 @@ void mtk_drm_crtc_check_blender_connect(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp_comp *r_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	int retri_blank = 0;
 	/* connect blender path */
 
 	if (plane_state && plane_state->comp_state.blender_comp_id != 0)
@@ -771,6 +772,14 @@ void mtk_drm_crtc_check_blender_connect(struct mtk_drm_crtc *mtk_crtc,
 		return;
 	}
 
+	if (mtk_crtc->crtc_blank && mtk_crtc->last_blender == mtk_crtc->first_blender
+		&& mtk_crtc->tui_ovl_stat.blender_id != 0) {
+		mtk_crtc->last_blender = priv->ddp_comp[mtk_crtc->tui_ovl_stat.blender_id];
+		retri_blank = 1;
+	}
+
+retrigger_blank_connect:
+
 	if (comp && comp->funcs && comp->funcs->connect) {
 		if (mtk_crtc->last_blender->id == comp->id)
 			comp->funcs->connect(comp, cmdq_handle, comp->id, 0);
@@ -792,6 +801,12 @@ void mtk_drm_crtc_check_blender_connect(struct mtk_drm_crtc *mtk_crtc,
 		}
 
 		mtk_drm_crtc_blender_ovl_path(mtk_crtc, r_comp, cmdq_handle, false);
+	}
+
+	if (mtk_crtc->crtc_blank && retri_blank) {
+		comp = priv->ddp_comp[mtk_crtc->tui_ovl_stat.blender_id];
+		retri_blank = 0;
+		goto retrigger_blank_connect;
 	}
 }
 
@@ -24587,6 +24602,7 @@ void mtk_crtc_tui_ovl_status(struct drm_crtc *crtc)
 		mtk_crtc->tui_ovl_stat.aid_setting = 0xB50;
 		mtk_crtc->tui_ovl_stat.cb_reg = 0xE80;
 		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
+		mtk_crtc->tui_ovl_stat.blender_id = DDP_COMPONENT_OVL0_BLENDER2;
 	}
 }
 
