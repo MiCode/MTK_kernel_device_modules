@@ -673,7 +673,7 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_set_cgrp);
 
 void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec_buf *dst_buf_info)
 {
-	struct vb2_v4l2_buffer *dst_buf;
+	struct vb2_v4l2_buffer *dst_vb2_v4l2;
 	struct vdec_fb *pfb;
 	struct dma_buf *dbuf;
 	struct dma_fence *fence;
@@ -682,9 +682,9 @@ void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec
 		mtk_v4l2_err("Invalid arguments, ctx=0x%lx, dst_buf_info=0x%lx", (unsigned long)ctx, (unsigned long)dst_buf_info);
 		return;
 	}
-	dst_buf = &dst_buf_info->vb;
+	dst_vb2_v4l2 = &dst_buf_info->vb;
 	pfb = &dst_buf_info->frame_buffer;
-	dbuf = dst_buf->vb2_buf.planes[0].dbuf;
+	dbuf = dst_vb2_v4l2->vb2_buf.planes[0].dbuf;
 
 	pfb->slice_done_count = 0;
 	fence = mtk_vcodec_create_fence(ctx->dec_params.slice_count);
@@ -699,7 +699,7 @@ EXPORT_SYMBOL(mtk_vcodec_init_slice_info);
 
 struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 {
-	struct vb2_buffer *dst_buf = NULL;
+	struct vb2_buffer *dst_vb = NULL;
 	struct vdec_fb *pfb;
 	struct mtk_video_dec_buf *dst_buf_info;
 	struct vb2_v4l2_buffer *dst_vb2_v4l2;
@@ -719,29 +719,28 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 	else
 		dst_vb2_v4l2 = v4l2_m2m_next_dst_buf(ctx->m2m_ctx);
 
-	if (dst_vb2_v4l2 != NULL)
-		dst_buf = &dst_vb2_v4l2->vb2_buf;
-	if (dst_buf != NULL) {
-		dst_buf_info = container_of(dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
+	if (dst_vb2_v4l2 != NULL) {
+		dst_vb = &dst_vb2_v4l2->vb2_buf;
+		dst_buf_info = to_video_dec_buf(dst_vb2_v4l2);
 		pfb = &dst_buf_info->frame_buffer;
 
-		num_planes = dst_vb2_v4l2->vb2_buf.num_planes;
+		num_planes = dst_vb->num_planes;
 		pfb->num_planes = num_planes;
-		pfb->index = dst_buf->index;
+		pfb->index = dst_vb->index;
 
 		for (i = 0; i < num_planes; i++) {
 			if (mtk_v4l2_dbg_level > 0)
-				pfb->fb_base[i].va = vb2_plane_vaddr(dst_buf, i);
-			pfb->fb_base[i].dma_addr = vb2_dma_contig_plane_dma_addr(dst_buf, i);
+				pfb->fb_base[i].va = vb2_plane_vaddr(dst_vb, i);
+			pfb->fb_base[i].dma_addr = vb2_dma_contig_plane_dma_addr(dst_vb, i);
 			pfb->fb_base[i].size = ctx->picinfo.fb_sz[i];
-			pfb->fb_base[i].length = dst_buf->planes[i].length;
-			pfb->fb_base[i].dmabuf = dst_buf->planes[i].dbuf;
+			pfb->fb_base[i].length = vb2_plane_size(dst_vb, i);
+			pfb->fb_base[i].dmabuf = dst_vb->planes[i].dbuf;
 
 			if (dst_buf_info->used == false) {
 				if (pfb->fb_base[i].dmabuf)
 					get_dma_buf(pfb->fb_base[i].dmabuf);
-				mtk_v4l2_debug(4, "[Ref cnt] id=%d Ref get dma %p", pfb->index,
-					pfb->fb_base[i].dmabuf);
+				mtk_v4l2_debug(4, "[%d][Ref cnt] id=%d Ref get dma %p",
+					ctx->id, pfb->index, pfb->fb_base[i].dmabuf);
 			}
 		}
 		pfb->status = FB_ST_INIT;
@@ -750,10 +749,10 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 		ctx->fb_list[pfb->index + 1] = (uintptr_t)pfb;
 
 		mtk_v4l2_debug(1, "[%d] id=%d pfb=0x%p %llx VA=%p dma_addr[0]=%lx dma_addr[1]=%lx Size=%zx fd:%x, dma_general_buf = %p, dma_general_addr = 0x%lx, general_buf_fd = %d, num_rdy_bufs=%d",
-			ctx->id, dst_buf->index, pfb, (unsigned long long)pfb, pfb->fb_base[0].va,
+			ctx->id, dst_vb->index, pfb, (unsigned long long)pfb, pfb->fb_base[0].va,
 			(unsigned long)pfb->fb_base[0].dma_addr,
 			(unsigned long)pfb->fb_base[1].dma_addr,
-			pfb->fb_base[0].size, dst_buf->planes[0].m.fd,
+			pfb->fb_base[0].size, dst_vb->planes[0].m.fd,
 			pfb->dma_general_buf, (unsigned long)pfb->dma_general_addr, pfb->general_buf_fd,
 			v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx));
 	} else {
@@ -770,7 +769,7 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_get_fb);
 
 struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx)
 {
-	struct vb2_buffer *dst_buf;
+	struct vb2_buffer *dst_vb;
 	struct mtk_vcodec_mem *pbs_buf;
 	struct mtk_video_enc_buf *dst_buf_info;
 	struct vb2_v4l2_buffer *dst_vb2_v4l2;
@@ -781,36 +780,26 @@ struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx)
 	}
 
 	mtk_v4l2_debug_enter();
-	dst_vb2_v4l2 = v4l2_m2m_next_dst_buf(ctx->m2m_ctx);
+	dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
 	if (dst_vb2_v4l2 == NULL) {
-		mtk_v4l2_err("[%s][%d]dst_buf empty!!", __func__, ctx->id);
+		mtk_v4l2_err("[%d] dst_buf empty!!", ctx->id);
 		return NULL;
 	}
-	dst_buf = &dst_vb2_v4l2->vb2_buf;
-	if (dst_buf != NULL) {
-		dst_buf_info = container_of(dst_vb2_v4l2, struct mtk_video_enc_buf, vb);
-		pbs_buf = &dst_buf_info->bs_buf;
+	dst_vb = &dst_vb2_v4l2->vb2_buf;
+	dst_buf_info = to_video_enc_buf(dst_vb2_v4l2);
+	pbs_buf = &dst_buf_info->bs_buf;
 
-		if (!ctx->enc_params.svp_mode && mtk_v4l2_dbg_level > 0)
-			pbs_buf->va = vb2_plane_vaddr(dst_buf, 0);
-		pbs_buf->dma_addr = vb2_dma_contig_plane_dma_addr(dst_buf, 0);
-		pbs_buf->size = (size_t)dst_buf->planes[0].length;
-		pbs_buf->dmabuf = dst_buf->planes[0].dbuf;
+	if (!ctx->enc_params.svp_mode && mtk_v4l2_dbg_level > 0)
+		pbs_buf->va = vb2_plane_vaddr(dst_vb, 0);
+	pbs_buf->dma_addr = vb2_dma_contig_plane_dma_addr(dst_vb, 0);
+	pbs_buf->size = (size_t)vb2_plane_size(dst_vb, 0);
+	pbs_buf->dmabuf = dst_vb->planes[0].dbuf;
 
-		dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
-		dst_buf = &dst_vb2_v4l2->vb2_buf;
-		if (dst_buf != NULL) {
-			mtk_v4l2_debug(8, "[%d] index=%d, num_rdy_bufs=%d, dma_general_buf = %p, general_buf_fd = %d\n",
-				ctx->id, dst_buf->index,
-				v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx),
-				pbs_buf->dma_general_buf,
-				pbs_buf->general_buf_fd);
-		}
-
-	} else {
-		mtk_v4l2_err("[%d] No free framebuffer in v4l2!!\n", ctx->id);
-		pbs_buf = NULL;
-	}
+	mtk_v4l2_debug(8, "[%d] index=%d, num_rdy_bufs=%d, dma_general_buf = %p, general_buf_fd = %d\n",
+		ctx->id, dst_vb->index,
+		v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx),
+		pbs_buf->dma_general_buf,
+		pbs_buf->general_buf_fd);
 	mtk_v4l2_debug_leave();
 
 	return pbs_buf;
@@ -818,17 +807,17 @@ struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx)
 EXPORT_SYMBOL(mtk_vcodec_get_bs);
 
 int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
-		void *vbuf)
+		struct vb2_v4l2_buffer *vb2_v4l2)
 {
 	struct v4l2_m2m_buffer *b;
-	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)m2m_ctx->priv;
+	struct mtk_vcodec_ctx *ctx = get_ctx_from_m2m(m2m_ctx);
 
-	if (vbuf == NULL) {
-		mtk_v4l2_err("Invalid arguments, m2m_ctx=0x%lx, vbuf=0x%lx",
-			(unsigned long)m2m_ctx, (unsigned long)vbuf);
+	if (vb2_v4l2 == NULL) {
+		mtk_v4l2_err("Invalid arguments, m2m_ctx=0x%lx, vb2_v4l2=0x%lx",
+			(unsigned long)m2m_ctx, (unsigned long)vb2_v4l2);
 		return -1;
 	}
-	b = container_of(vbuf, struct v4l2_m2m_buffer, vb);
+	b = container_of(vb2_v4l2, struct v4l2_m2m_buffer, vb);
 	mtk_v4l2_debug(8, "[Debug] b %p b->list.next %p prev %p %p %p\n",
 		b, b->list.next, b->list.prev,
 		LIST_POISON1, LIST_POISON2);
@@ -841,35 +830,35 @@ int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
 			LIST_POISON1, LIST_POISON2);
 		return -1;
 	}
-	vcodec_trace_begin("%s(ts=%lld)", __func__, b->vb.vb2_buf.timestamp);
-	v4l2_m2m_buf_queue(m2m_ctx, vbuf);
+	vcodec_trace_begin("%s(ts=%lld)", __func__, vb2_v4l2->vb2_buf.timestamp);
+	v4l2_m2m_buf_queue(m2m_ctx, vb2_v4l2);
 	vcodec_trace_end();
-	mtk_vcodec_in_out_trace_count(ctx, b->vb.vb2_buf.type, true, 1);
+	mtk_vcodec_in_out_trace_count(ctx, vb2_v4l2->vb2_buf.type, true, 1);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_buf_queue_check);
 
 struct vb2_v4l2_buffer *v4l2_m2m_src_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx)
 {
-	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)m2m_ctx->priv;
-	struct vb2_v4l2_buffer *buf;
+	struct mtk_vcodec_ctx *ctx = get_ctx_from_m2m(m2m_ctx);
+	struct vb2_v4l2_buffer *vb2_v4l2;
 
-	buf = v4l2_m2m_src_buf_remove(m2m_ctx);
-	if (buf != NULL)
-		mtk_vcodec_in_out_trace_count(ctx, buf->vb2_buf.type, true, -1);
-	return buf;
+	vb2_v4l2 = v4l2_m2m_src_buf_remove(m2m_ctx);
+	if (vb2_v4l2 != NULL)
+		mtk_vcodec_in_out_trace_count(ctx, vb2_v4l2->vb2_buf.type, true, -1);
+	return vb2_v4l2;
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_src_buf_remove_check);
 
 struct vb2_v4l2_buffer *v4l2_m2m_dst_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx)
 {
-	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)m2m_ctx->priv;
-	struct vb2_v4l2_buffer *buf;
+	struct mtk_vcodec_ctx *ctx = get_ctx_from_m2m(m2m_ctx);
+	struct vb2_v4l2_buffer *vb2_v4l2;
 
-	buf = v4l2_m2m_dst_buf_remove(m2m_ctx);
-	if (buf != NULL)
-		mtk_vcodec_in_out_trace_count(ctx, buf->vb2_buf.type, true, -1);
-	return buf;
+	vb2_v4l2 = v4l2_m2m_dst_buf_remove(m2m_ctx);
+	if (vb2_v4l2 != NULL)
+		mtk_vcodec_in_out_trace_count(ctx, vb2_v4l2->vb2_buf.type, true, -1);
+	return vb2_v4l2;
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_dst_buf_remove_check);
 

@@ -170,7 +170,7 @@ void *mtk_vcu_set_buffer(struct mtk_vcu_queue *vcu_queue,
 				src_vb->planes[plane].mem_priv);
 			if (*dma_addr == mem_buff_data->iova) {
 				dbuf = src_vb->planes[plane].dbuf;
-				vcu_buffer->size = src_vb->planes[plane].length;
+				vcu_buffer->size = vb2_plane_size(src_vb, plane);
 				vcu_buffer->mem_priv = src_vb->planes[plane].mem_priv;
 				//op = DMA_TO_DEVICE;
 				pr_debug("src size = %d mem_buff_data len = %d\n",
@@ -184,7 +184,7 @@ void *mtk_vcu_set_buffer(struct mtk_vcu_queue *vcu_queue,
 				dst_vb->planes[plane].mem_priv);
 			if (*dma_addr == mem_buff_data->iova) {
 				dbuf = dst_vb->planes[plane].dbuf;
-				vcu_buffer->size = dst_vb->planes[plane].length;
+				vcu_buffer->size = vb2_plane_size(dst_vb, plane);
 				vcu_buffer->mem_priv = dst_vb->planes[plane].mem_priv;
 				//op = DMA_FROM_DEVICE;
 				pr_debug("dst size = %d mem_buff_data len = %d\n",

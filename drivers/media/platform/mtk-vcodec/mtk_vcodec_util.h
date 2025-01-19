@@ -19,6 +19,9 @@
 #endif
 #include <linux/trace_events.h>
 #include <linux/jiffies.h>
+#include <linux/bitmap.h>
+#include <media/videobuf2-v4l2.h>
+
 /* #define FPGA_PWRCLK_API_DISABLE */
 /* #define FPGA_INTERRUPT_API_DISABLE */
 
@@ -60,6 +63,12 @@
 		if (sprintf(args) < 0)						\
 			pr_notice("[ERROR] %s(),%d: sprintf error\n", __func__, __LINE__);	\
 	} while (0)
+
+#define for_each_vb_in_q(vq, index) \
+	for_each_set_bit(index, (vq)->bufs_bitmap, (vq)->max_num_buffers)
+#define get_ctx_from_m2m(m2m_ctx) ((struct mtk_vcodec_ctx *)((m2m_ctx)->priv))
+#define to_video_dec_buf(vb2_v4l2) container_of(vb2_v4l2, struct mtk_video_dec_buf, vb)
+#define to_video_enc_buf(vb2_v4l2) container_of(vb2_v4l2, struct mtk_video_enc_buf, vb)
 
 struct mtk_chipid {
 	__u32 size;
@@ -401,7 +410,7 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx);
 struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx);
 int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, bool no_need_put);
 void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx);
-int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx, void *vbuf);
+int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx, struct vb2_v4l2_buffer *vbuf);
 struct vb2_v4l2_buffer *v4l2_m2m_src_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx);
 struct vb2_v4l2_buffer *v4l2_m2m_dst_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx);
 int mtk_dma_sync_sg_range(const struct sg_table *sgt,
@@ -441,5 +450,17 @@ extern void set_top_grp_aware(int val, int force_ctrl);
 extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
 extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
 #endif
+
+static inline unsigned int vb2_get_max_num_bufs(struct vb2_queue *q)
+{
+	return q->max_num_buffers;
+}
+static inline u64 vb2_get_bufmap_u64(struct vb2_queue *q)
+{
+	u64 arr;
+
+	bitmap_to_arr64(&arr, q->bufs_bitmap, 64);
+	return arr;
+}
 
 #endif /* _MTK_VCODEC_UTIL_H_ */
