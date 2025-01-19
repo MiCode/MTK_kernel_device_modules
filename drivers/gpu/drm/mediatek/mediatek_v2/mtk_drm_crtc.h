@@ -1219,10 +1219,8 @@ struct mtk_drm_crtc {
 
 	struct mtk_ddp_comp *last_blender;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	struct mtk_ddp_comp *first_exdma;
 	struct mtk_ddp_comp *first_blender;
-#endif
 
 	wait_queue_head_t esd_notice_wq;
 	atomic_t esd_notice_status;
