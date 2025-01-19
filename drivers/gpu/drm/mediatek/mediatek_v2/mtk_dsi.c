@@ -7054,6 +7054,13 @@ bool mtk_dsi_is_cmd_mode(struct mtk_ddp_comp *comp)
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)
 		return true;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if(mtk_ddp_comp_get_type(comp->id) != MTK_DSI) {
+		DDPMSG("[W]%s comp %s is not dsi type\n", __func__, mtk_dump_comp_str(comp));
+		return false;
+	}
+#endif
+
 	dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO)
