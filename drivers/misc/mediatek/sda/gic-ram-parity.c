@@ -162,7 +162,7 @@ static irqreturn_t gic_ram_parity_isr(int irq, void *dev_id)
 	struct reg_offset *offset;
 	void __iomem *base;
 	u64 misc0, status;
-	unsigned int i, val;
+	unsigned int i, val = 0;
 
 	atomic_inc(&gic_ram_parity.nr_err);
 
