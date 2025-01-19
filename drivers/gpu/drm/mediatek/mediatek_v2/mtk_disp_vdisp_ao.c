@@ -19,8 +19,7 @@
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_dump.h"
 #include "mtk_drm_drv.h"
-#include "mtk_disp_vdisp_ao_mt6991_reg.h"
-#include "mtk_disp_vdisp_ao_mt6993_reg.h"
+#include "mtk_disp_vdisp_ao_reg.h"
 
 /* VDISP_AO_COMMON */
 #define DISP_REG_VDISP_AO_INTEN				(0x000UL)
