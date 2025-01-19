@@ -14,3 +14,4 @@ endif
 # EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/{ddk device module path}/*Module.symvers)
 
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/mfd/*Module.symvers)
+EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/atf/*Module.symvers)

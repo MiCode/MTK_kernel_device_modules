@@ -150,6 +150,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:mt6375".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -372,7 +373,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/apusys/apu_aov.ko",
     "drivers/misc/mediatek/apusys/power/apu_top.ko",
     "drivers/misc/mediatek/apusys/sapu/sapu.ko",
-    "drivers/misc/mediatek/atf/atf_logger.ko",
     "drivers/misc/mediatek/audio_ipi/audio_ipi.ko",
     "drivers/misc/mediatek/blocktag/blocktag.ko",
     "drivers/misc/mediatek/btif/common/btif_drv.ko",
