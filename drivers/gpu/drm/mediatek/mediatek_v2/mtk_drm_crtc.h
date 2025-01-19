@@ -209,8 +209,9 @@ enum EVENT_TRIGGER_PT {
 #define DISP_SLOT_CUR_HRT_VAL_DMRR (DISP_SLOT_PANEL_SPR_EN + 0x4)
 #define DISP_SLOT_CUR_HRT_VAL_DBIR (DISP_SLOT_CUR_HRT_VAL_DMRR + 0x4)
 #define DISP_SLOT_CUR_HRT_VAL_ODRW (DISP_SLOT_CUR_HRT_VAL_DBIR + 0x4)
-
-#define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_CUR_HRT_VAL_ODRW + 0x4)
+#define DISP_SLOT_RELEASE_DBI_COUNT_FENCE (DISP_SLOT_CUR_HRT_VAL_ODRW + 0x4)
+#define DISP_SLOT_CURRENT_DBI_COUNT_FENCE (DISP_SLOT_RELEASE_DBI_COUNT_FENCE + 0x4)
+#define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_CURRENT_DBI_COUNT_FENCE + 0x4)
 
 /* For idlemgr by wb*/
 #define DISP_SLOT_IDLEMGR_BY_WB_STATUS (DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE + 0x4)
@@ -544,6 +545,13 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_BL_SYNC_GAMMA_GAIN,
 	CRTC_PROP_DYNAMIC_WCG_OFF,
 	CRTC_PROP_WCG_BY_COLOR_MODE,
+	/*DBI HW counting */
+	CRTC_PROP_DBI_COUNT_ENABLE,
+	CRTC_PROP_DBI_COUNT_SLICE_NUM,
+	CRTC_PROP_DBI_COUNT_SLICE_SIZE,
+	CRTC_PROP_DBI_COUNT_BLOCK_H,
+	CRTC_PROP_DBI_COUNT_BLOCK_V,
+	CRTC_PROP_DBI_COUNT_FENCE_IDX,
 	CRTC_PROP_MAX,
 };
 
@@ -1030,6 +1038,43 @@ struct mtk_tui_ovl_stat {
 	unsigned int blender_id;
 };
 
+/* dbi temp */
+#define to_dbi_timer(x) container_of(x, struct mtk_dbi_timer, base)
+#define to_dbi_worker(x) container_of(x, struct mtk_dbi_timer, base)
+
+struct mtk_dbi_timer {
+	struct timer_list base;
+	struct mtk_drm_crtc *mtk_crtc;
+	int active;
+	int sec;
+	int enable;
+	int suspend;
+	spinlock_t lock;
+};
+
+struct mtk_dbi_event {
+	unsigned int event;
+	struct wait_queue_head event_wq;
+	spinlock_t lock;
+};
+
+struct dbi_count_data {
+	int support;
+	int slice_idx;
+
+	struct wait_queue_head disable_finish_wq;
+	atomic_t disable_finish;
+
+	int slice_size;
+	int slice_num;
+	int fence_idx;
+	int fence_unreleased;
+	struct mtk_dbi_timer dbi_timer;
+	struct mtk_dbi_event dbi_event;
+	atomic_t new_frame_arrival;
+	struct wait_queue_head new_frame_wq;
+};
+
 /**
  * struct mtk_drm_crtc - MediaTek specific crtc structure.
  * @base: crtc object.
@@ -1298,6 +1343,8 @@ struct mtk_drm_crtc {
 	bool is_plane0_updated;
 
 	bool reset_path;
+
+	struct dbi_count_data dbi_data;
 };
 
 enum BL_GAMMA_GAIN {
@@ -1717,5 +1764,4 @@ struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 #endif
 struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn);
 enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state);
-
 #endif /* MTK_DRM_CRTC_H */

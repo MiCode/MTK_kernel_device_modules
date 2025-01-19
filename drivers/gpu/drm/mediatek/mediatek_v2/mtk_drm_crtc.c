@@ -68,6 +68,8 @@
 #include "mtk_disp_ovl.h"
 #include "mtk_disp_spr.h"
 #include "mtk_dp.h"
+#include "mtk_disp_dbi_count.h"
+
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -128,6 +130,12 @@ static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "BL_SYNC_GAMMA_GAIN", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "DYNAMIC_WCG_OFF", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "WCG_BY_COLOR_MODE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_ENABLE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_SLICE_NUM", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_SLICE_SIZE", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_BLOCK_H", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_BLOCK_V", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_FENCE_IDX", 0, ULONG_MAX, 0},
 };
 
 static struct cmdq_pkt *sb_cmdq_handle;
@@ -10799,6 +10807,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
+	mtk_crtc_dbi_count_release_fence(mtk_crtc);
+
 	ovl_status = mtk_drm_crtc_check_ovl_status(crtc, cb_data);
 
 	if ((id == 0) && (priv && priv->power_state)) {
@@ -15174,6 +15184,9 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		}
 	}
 
+	/* for dbi idle count timer */
+	mtk_dbi_count_timer_enable(crtc);
+
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
@@ -16355,6 +16368,9 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		mml_drm_put_context(priv->mml_ctx);
 		priv->mml_ctx = NULL;
 	}
+
+	/* for dbi idle count timer */
+	mtk_dbi_count_timer_disable(crtc);
 
 	/* 11. set CRTC SW status */
 	mtk_crtc_set_status(crtc, false);
@@ -17919,6 +17935,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 	}
 
+	mtk_crtc_dbi_count_cfg(mtk_crtc, mtk_crtc_state);
+
 #ifdef MTK_DRM_ADVANCE
 	if (mtk_crtc->fake_layer.fake_layer_mask)
 		update_frame_weight(crtc, mtk_crtc_state);
@@ -19471,6 +19489,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return 0;
 		}
 		*/
+		atomic_set(&mtk_crtc->dbi_data.new_frame_arrival, 0);
 
 		mtk_crtc_pkt_create(&handle, crtc, client);
 		if (!handle) {
@@ -22410,6 +22429,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EXT_LAYER;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_CWB;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MSYNC20;
+			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_HW_COUNTING;
 #if defined(DISP_STASH_ENABLE)
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_STASH_CMD;
 #endif
@@ -22518,6 +22538,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		else
 			atomic_set(&mtk_crtc->get_data_type, 0);
 	}
+	/*for dbi count*/
+	if (drm_crtc_index(&mtk_crtc->base) == 0)
+		mtk_crtc_dbi_count_init(mtk_crtc);
+
 	drm_mode_crtc_set_gamma_size(&mtk_crtc->base, MTK_LUT_SIZE);
 	/* TODO: Skip color mgmt first */
 	// drm_crtc_enable_color_mgmt(&mtk_crtc->base, 0, false, MTK_LUT_SIZE);

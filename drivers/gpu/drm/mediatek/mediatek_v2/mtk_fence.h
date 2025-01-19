@@ -59,6 +59,7 @@ enum MTK_TIMELINE_ENUM {
 	MTK_TIMELINE_SP9_PRESENT_TIMELINE_ID,
 	MTK_TIMELINE_PRIMARY_CONFIG_TIMELINE_ID,
 	MTK_TIMELINE_PRIMARY_FRAME_DONE_TIMELINE_ID,
+	MTK_TIMELINE_DBI_COUNT_TIMELINE_ID,
 	MTK_TIMELINE_COUNT,
 };
 
@@ -168,6 +169,8 @@ int mtk_release_sf_present_fence(unsigned int session_id,
 int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, ktime_t time,
 		int fence_type);
 int mtk_fence_get_output_timeline_id(void);
+int mtk_fence_get_dbi_count_timeline_id(void);
+
 int mtk_fence_get_interface_timeline_id(void);
 
 struct mtk_fence_buf_info *

@@ -860,6 +860,11 @@ int mtk_fence_get_output_timeline_id(void)
 	return MTK_TIMELINE_OUTPUT_TIMELINE_ID;
 }
 
+int mtk_fence_get_dbi_count_timeline_id(void)
+{
+	return MTK_TIMELINE_DBI_COUNT_TIMELINE_ID;
+}
+
 int mtk_fence_get_interface_timeline_id(void)
 {
 	return MTK_TIMELINE_OUTPUT_INTERFACE_TIMELINE_ID;

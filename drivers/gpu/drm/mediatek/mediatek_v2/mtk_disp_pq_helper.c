@@ -33,6 +33,8 @@
 #include "mtk_disp_dither.h"
 #include "mtk_disp_gamma.h"
 #include "mtk_disp_vidle.h"
+#include "mtk_disp_dbi_count.h"
+
 
 #define REQUEST_MAX_COUNT 20
 #define CHECK_TRIGGER_DELAY 1
@@ -568,6 +570,24 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
 		ret = disp_pq_proxy_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
+	} else if(pq_type == MTK_DISP_PQ_DBI_COUNT) {
+		if(cmd == PQ_DBI_COUNT_IDLE_TIMER_INIT)
+			ret = mtk_dbi_count_create_timer(crtc, kdata, true, true);
+		else if(cmd == PQ_DBI_COUNT_IDLE_TIMER_DELETE)
+			ret = mtk_dbi_count_delete_timer(crtc, true ,false);
+		else if(cmd == PQ_DBI_COUNT_GET_EVENT)
+			ret = mtk_dbi_count_wait_event(crtc, kdata);
+		else if(cmd == PQ_DBI_COUNT_WAIT_DISABLE_FINISH)
+			ret = mtk_dbi_count_wait_disable_finish(crtc, kdata);
+		else if(cmd == PQ_DBI_COUNT_WAIT_NEW_FRAME)
+			ret = mtk_dbi_count_wait_new_frame(crtc, kdata);
+		else if(cmd == PQ_DBI_COUNT_CLEAR_EVENT)
+			ret = mtk_dbi_count_clear_event(crtc, kdata);
+		else if(cmd == PQ_DBI_COUNT_CHECK_BUFFER)
+			ret = mtk_dbi_count_check_buffer(crtc, kdata);
+		else if(cmd == PQ_DBI_COUNT_LOAD_BUFFER)
+			ret = mtk_dbi_count_load_buffer(crtc, kdata);
+
 	} else {
 		for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
 			if (pq_module_matches[pq_type].type == mtk_ddp_comp_get_type(comp->id)) {

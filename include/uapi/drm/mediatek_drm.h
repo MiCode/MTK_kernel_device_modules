@@ -479,6 +479,9 @@ struct DISP_AAL_TRIG_STATE {
 #define DRM_MTK_GET_CHIST_CAPS      0x47
 #define DRM_MTK_SET_CHIST_CONFIG    0x48
 
+/* DBI COUNT */
+#define DRM_MTK_GET_DBI_COUNT_FENCE 0x4F
+
 #define DRM_MTK_GET_PQ_CAPS 0x54
 #define DRM_MTK_SET_PQ_CAPS 0x55
 
@@ -619,6 +622,13 @@ struct wb_frame_info {
 	__u32 src_width, src_height;
 	__u32 dst_width, dst_height;
 };
+
+struct dbi_count_info {
+	__u32 enable;
+	__u32 block_h, block_v;
+	__u32 slice_size, slice_num;
+};
+
 #define LYE_CRTC 4
 struct drm_mtk_layering_info {
 	struct drm_mtk_layer_config *input_config[LYE_CRTC];
@@ -640,6 +650,7 @@ struct drm_mtk_layering_info {
 	struct mml_frame_info *mml_cfg[LYE_CRTC];
 	struct wb_frame_info wb_cfg[LYE_CRTC];
 	__u32 exec_reserved_time;
+	struct dbi_count_info dbi_count_cfg[LYE_CRTC];
 };
 
 /**
@@ -846,6 +857,7 @@ enum MTK_CRTC_ABILITY {
 	ABILITY_PARTIAL_UPDATE_BISO = BIT(14),
 	ABILITY_STASH_CMD = BIT(15),
 	ABILITY_UNION_FENCE = BIT(16),
+	ABILITY_HW_COUNTING = BIT(17),
 };
 
 struct mtk_drm_wb_caps {
@@ -1575,6 +1587,7 @@ enum mtk_pq_module_type {
 	MTK_DISP_PQ_INVALID,
 	MTK_DISP_PQ_ODDMR,
 	MTK_DISP_VIRTUAL_TYPE,
+	MTK_DISP_PQ_DBI_COUNT,
 	MTK_DISP_PQ_TYPE_MAX = 65535,
 };
 
@@ -1634,6 +1647,10 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_VIRTUAL_SET_PROPERTY = 900,
 	PQ_VIRTUAL_CHECK_TRIGGER,
 	PQ_VIRTUAL_RELAY_ENGINES,
+	PQ_DBI_COUNT_IDLE_TIMER_INIT = 1000,
+	PQ_DBI_COUNT_IDLE_TIMER_DELETE,
+	PQ_DBI_COUNT_LOAD_BUFFER,
+	PQ_DBI_COUNT_CLEAR_EVENT,
 	/* Get cmd begin */
 	/* Notice:
 	 * Command for getting must be added after the PQ_GET_CMD_START.
@@ -1668,6 +1685,11 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_VIRTUAL_WAIT_CRTC_READY,
 	PQ_VIRTUAL_GET_PIXEL_TYPE_BY_FENCE,
 	PQ_VIRTUAL_GET_LCM_INDEX,
+	PQ_DBI_COUNT_GET_FENCE = 60700,
+	PQ_DBI_COUNT_GET_EVENT,
+	PQ_DBI_COUNT_WAIT_DISABLE_FINISH,
+	PQ_DBI_COUNT_WAIT_NEW_FRAME,
+	PQ_DBI_COUNT_CHECK_BUFFER,
 	PQ_CMD_MAX = 65535,
 };
 
@@ -1778,6 +1800,11 @@ struct mtk_pixel_type_fence {
 	unsigned int secure;
 };
 
+enum DBI_COUNT_EVENT {
+	DBI_COUNT_DONE = 0,
+	DBI_COUNT_IDLE_TIMER_TRIGGER,
+};
+
 struct mtk_drm_dma_buf {
 	__s32 fd;
 	__u64 mva;
@@ -1868,6 +1895,9 @@ struct mtk_drm_dma_buf {
 
 #define DRM_IOCTL_MTK_SET_CHIST_CONFIG     DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_SET_CHIST_CONFIG, struct drm_mtk_chist_config)
+
+#define DRM_IOCTL_MTK_GET_DBI_COUNT_FENCE     DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_GET_DBI_COUNT_FENCE, struct drm_mtk_fence)
 
 #define DRM_IOCTL_MTK_GET_PQ_CAPS DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_GET_PQ_CAPS, struct mtk_drm_pq_caps_info)

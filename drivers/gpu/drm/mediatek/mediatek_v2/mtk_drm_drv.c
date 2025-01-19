@@ -68,6 +68,8 @@
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_vidle.h"
 #include "mtk_vdisp_common.h"
+#include "mtk_disp_dbi_count.h"
+
 
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 #include <linux/interconnect.h>
@@ -9537,6 +9539,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		atomic_set(&private->crtc_rel_present[i], 0);
 		atomic_set(&private->crtc_config[i], 0);
 		atomic_set(&private->crtc_frame_done[i], 0);
+		atomic_set(&private->crtc_dbi_count[i], 0);
 	}
 	//mt6789 force GPU
 	if (private->data->mmsys_id == MMSYS_MT6789)
@@ -10263,6 +10266,8 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 			  0),
 	DRM_IOCTL_DEF_DRV(MTK_DRM_GET_LEASE_INFO, mtk_drm_get_lease_info_ioctl,
 			  0),
+	DRM_IOCTL_DEF_DRV(MTK_GET_DBI_COUNT_FENCE, mtk_drm_crtc_get_count_fence_ioctl,
+				  0),
 	DRM_IOCTL_DEF_DRV(MTK_KICK_IDLE, mtk_drm_ioctl_kick_idle,
 				  0),
 	DRM_IOCTL_DEF_DRV(MTK_PQ_FRAME_CONFIG, mtk_drm_ioctl_pq_frame_config,
@@ -10333,6 +10338,7 @@ static const struct drm_ioctl32_desc mtk_compat_ioctls[] = {
 	DRM_IOCTL32_DEF_DRV(MTK_GET_PQ_CAPS, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_DRM_SET_LEASE_INFO, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_DRM_GET_LEASE_INFO, NULL),
+	DRM_IOCTL32_DEF_DRV(MTK_GET_DBI_COUNT_FENCE, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_KICK_IDLE, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_PQ_FRAME_CONFIG, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_GET_MODE_EXT_INFO, NULL),

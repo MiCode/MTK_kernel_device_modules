@@ -5508,7 +5508,7 @@ void mtk_oddmr_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, struct cmdq_
 		mtk_oddmr_od_bl_chg(comp, bl_level, handle);
 }
 
-int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int *oddmr_hrt)
+int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int disp_idx, int *oddmr_hrt)
 {
 	int sum = 0;
 	unsigned long long res_ratio = 1000;
@@ -5520,12 +5520,16 @@ int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int *oddmr_hrt)
 	struct mtk_drm_private *priv;
 	int temp_hrt = 0;
 	bool dmr_support, od_support, dbi_support, wakeup = false;
+	int index;
 
 	ODDMRAPI_LOG("+\n");
 	priv = dev->dev_private;
 	drm_for_each_crtc(crtc, dev) {
 		comp = NULL;
 		mtk_crtc = to_mtk_crtc(crtc);
+		index = drm_crtc_index(crtc);
+		if(index != disp_idx)
+			continue;
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_ODDMR, 0);
 		if (!comp)
 			continue;

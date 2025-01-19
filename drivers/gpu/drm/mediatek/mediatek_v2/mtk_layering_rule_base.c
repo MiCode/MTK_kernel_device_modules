@@ -45,6 +45,7 @@
 #include "../mml/mtk-mml-color.h"
 #include "../mml/mtk-mml-drm-adaptor.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
+#include "mtk_disp_dbi_count.h"
 
 #include <linux/module.h>
 
@@ -2589,6 +2590,13 @@ static int calc_hrt_num(struct drm_device *dev,
 				      scan_overlap, l_rule_info->dal_enable, need_gpu_cache);
 		lyeblob_ids->overlap_ovl = sum_overlap_w;
 		lyeblob_ids->overlap_ovl_of_bwm = sum_overlap_w_of_bwm;
+		mtk_oddmr_hrt_cal_notify(dev, disp_idx, &comp_hrt_added);
+		mtk_dbi_count_hrt_cal(disp_info->dbi_count_cfg[disp_idx].enable,
+			disp_info->dbi_count_cfg[disp_idx].slice_size,
+			disp_info->dbi_count_cfg[disp_idx].slice_num,
+			disp_info->dbi_count_cfg[disp_idx].block_h,
+			disp_info->dbi_count_cfg[disp_idx].block_v,
+			&comp_hrt_added);
 	}
 	if (has_hrt_limit(disp_info, HRT_SECONDARY)) {
 		sum_overlap_w_of_second_disp =
@@ -2606,7 +2614,6 @@ static int calc_hrt_num(struct drm_device *dev,
 				false);
 	}
 	*/
-	mtk_oddmr_hrt_cal_notify(dev, &comp_hrt_added);
 
 	sum_overlap_w += comp_hrt_added;
 	if ((disp_idx == HRT_PRIMARY) && get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
@@ -3589,6 +3596,7 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 	bool no_disp = true;
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 	unsigned int disp = 0;
+	int comp_hrt_added = 0;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp = disp_info->disp_idx;
@@ -3612,6 +3620,16 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 
 		if ((disp == 0) && l_rule_info->dal_enable)
 			valid_ovl_cnt -= (HRT_AEE_WEIGHT / HRT_UINT_BOUND_BPP);
+		if (disp == 0) {
+			mtk_oddmr_hrt_cal_notify(drm_dev, disp, &comp_hrt_added);
+			mtk_dbi_count_hrt_cal(disp_info->dbi_count_cfg[disp].enable,
+				disp_info->dbi_count_cfg[disp].slice_size,
+				disp_info->dbi_count_cfg[disp].slice_num,
+				disp_info->dbi_count_cfg[disp].block_h,
+				disp_info->dbi_count_cfg[disp].block_v,
+				&comp_hrt_added);
+			valid_ovl_cnt -= (comp_hrt_added / HRT_UINT_BOUND_BPP);
+		}
 		valid_ovl_cnt /= HRT_UINT_WEIGHT;
 
 		hrt_disp_num--;
