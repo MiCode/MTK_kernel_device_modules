@@ -426,8 +426,11 @@ static bool mt6379_charger_is_usb_killer(struct mt6379_charger_data *cdata)
 	}
 
 recover:
-	for (; i >= 0; i--) /* set to default value */
-		mt6379_charger_field_set(cdata, settings[i].fd, 0);
+	for (; i >= 0; i--) { /* set to default value */
+		if (mt6379_charger_field_set(cdata, settings[i].fd, 0))
+			dev_notice(cdata->dev, "%s: Failed to recover %d setting\n",
+				   __func__, i);
+	}
 
 	return killer;
 }
