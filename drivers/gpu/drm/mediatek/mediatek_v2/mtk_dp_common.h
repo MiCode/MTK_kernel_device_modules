@@ -282,6 +282,10 @@ struct DPTX_PHY_PARAMETER {
 struct mtk_dp {
 	struct mtk_ddp_comp ddp_comp;
 	struct device *dev;
+	struct device *pd1;
+	struct device *pd2;
+	struct device_link *link1;
+	struct device_link *link2;
 	struct drm_device *drm_dev;
 	struct drm_connector conn;
 	struct drm_encoder enc;
