@@ -67,13 +67,13 @@ config VIDEO_MTK_ISP_HCP_ISP8
 	  events, and other notification events that are needed for a
 	  working camera session.
 
-config VIDEO_MTK_ISP_HCP_ISP8
+config VIDEO_MTK_ISP_HCP_ISP8S
 	tristate "Mediatek hcp processing function"
 	help
-		HCP driver acts a message protocol between imgsys driver and
-		userspace daemon. messages can include enqueue event, dequeue
-		events, and other notification events that are needed for a
-		working camera session.
+	  HCP driver acts a message protocol between imgsys driver and
+	  userspace daemon. messages can include enqueue event, dequeue
+	  events, and other notification events that are needed for a
+	  working camera session.
 
 config VIDEO_MTK_ISP_AOV
 	tristate "Mediatek aov processing function"
@@ -139,13 +139,13 @@ config VIDEO_MTK_ISP_IMGSYS_CMDQ_ISP8
 	  wait gce events, and notification that are needed for a
 	  working camera session.
 
-config VIDEO_MTK_ISP_IMGSYS_CMDQ_ISP8
+config VIDEO_MTK_ISP_IMGSYS_CMDQ_ISP8S
 	tristate "Mediatek imgsys cmdq processing function"
 	help
-		imgsys cmdq driver acts a message protocol between imgsys
-		driver and gce driver. messages can include R/W registers,
-		wait gce events, and notification that are needed for a
-		working camera session.
+	  imgsys cmdq driver acts a message protocol between imgsys
+	  driver and gce driver. messages can include R/W registers,
+	  wait gce events, and notification that are needed for a
+	  working camera session.
 
 config VIDEO_MTK_ISP_IMGSYS_7SP
 	tristate "Mediatek imgsys processing function"
@@ -162,6 +162,14 @@ config VIDEO_MTK_ISP_IMGSYS_8
 	  and/or statistics for better image qualities
 	  such as noise reduction, edge enhencement,
 	  and motion estimation, etc.
+	  
+config VIDEO_MTK_ISP_IMGSYS_8S
+	tristate "Mediatek imgsys processing function"
+	help
+	  imgsys driver controls post-processing on the streaming images
+	  and/or statistics for better image qualities
+	  such as noise reduction, edge enhencement,
+	  and motion estimation, etc.
 
 config MTK_IMGSYS_FRM_SYNC_ISP8
 	tristate "Mediatek imgsys processing function"
@@ -170,20 +178,6 @@ config MTK_IMGSYS_FRM_SYNC_ISP8
 	  imgsys and standalone engine
 	  To achie the purpose
 	  by controling gce software token.
-
-config VIDEO_MTK_ISP_IMGSYS_8
-	tristate "Mediatek imgsys processing function"
-	help
-		imgsys driver controls post-processing on the streaming images
-		and/or statistics for better image qualities
-		such as noise reduction, edge enhencement,
-		and motion estimation, etc.
-
-config MTK_IMGSYS_FRM_SYNC_ISP8
-	tristate "Mediatek imgsys processing function"
-	help
-		ITF driver control frame sync with imgsys and standalone engine
-		To achie the purpose by controling gce software token.
 
 config MTK_C2PS
 	tristate "Support MTK Camera Power Performance Sceduling (C2PS) mechanism mechanism"
