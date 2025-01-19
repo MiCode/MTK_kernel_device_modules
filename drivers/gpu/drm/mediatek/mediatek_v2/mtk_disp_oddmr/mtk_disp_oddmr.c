@@ -9099,7 +9099,7 @@ fail:
 
 #define share_lifecycle_offset (0x10000)
 bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
-	void *get_size, unsigned int curr_bl, unsigned int curr_fps)
+	void *get_size, unsigned int curr_bl, unsigned int curr_fps, int curr_temp)
 {
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 	struct iommu_domain *domain;
@@ -9115,6 +9115,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	void *table_addr;
 	unsigned int j;
 	static bool mem_maped;
+	static bool mem_init;
 	unsigned int map_size;
 
 	if(!g_oddmr_priv->dbi_data.support_scp)
@@ -9123,6 +9124,11 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	DDPMSG("%s: dbi-scp :%d scp rsv mem 0x%llx(0x%llx), size 0x%llx\n", __func__, SCP_DBI_MEM_ID,
 	get_mem_virt(SCP_DBI_MEM_ID), get_mem_phys(SCP_DBI_MEM_ID),
 	get_mem_size(SCP_DBI_MEM_ID));
+
+	if(!mem_init) {
+		memset((void *)get_mem_virt(SCP_DBI_MEM_ID), 0, get_mem_size(SCP_DBI_MEM_ID));
+		mem_init = true;
+	}
 
 	share_mem = (struct mtk_drm_dbi_share_info *)get_mem_virt(SCP_DBI_MEM_ID);
 	share_mem->unused_offset = sizeof(struct mtk_drm_dbi_share_info);
@@ -9137,6 +9143,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 
 	share_mem->curr_fps = curr_fps;
 	share_mem->curr_bl = curr_bl;
+	share_mem->curr_temp = curr_temp;
 
 	DDPMSG("dbi-scp %d/%d\n", share_mem->dbi_init_done, share_mem->dbi_hw_enable);
 

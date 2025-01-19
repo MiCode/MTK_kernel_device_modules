@@ -194,7 +194,7 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 	DDPMSG("%s, bl: %lld, fps: %d\n", __func__, mtk_get_cur_backlight(crtc), CFG_DISPLAY_VREFRESH);
 	mtk_drm_dbi_backup(crtc, scp_get_reserve_mem_phys,
 		scp_get_reserve_mem_virt, scp_get_reserve_mem_size,
-		AOD_TEMP_BACKLIGHT, CFG_DISPLAY_VREFRESH);
+		AOD_TEMP_BACKLIGHT, CFG_DISPLAY_VREFRESH, 26);
 
 	AOD_STAT_SET(AOD_STAT_CONFIGED);
 }
