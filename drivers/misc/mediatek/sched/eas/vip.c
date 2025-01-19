@@ -1068,6 +1068,9 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 		return;
 
 	/* slice expired. re-queue the task */
+	if (vts->vip_list.next == NULL || !link_with_others(&vts->vip_list))
+		return;
+
 	list_del_init(&vts->vip_list);
 	insert_vip_task(rq, vts, false, true, NOT_VIP);
 }
@@ -1414,14 +1417,6 @@ void vip_init(void)
 	/* init vip related value to group*/
 	init_vip_group();
 
-	/* init vip related value to exist tasks */
-	read_lock(&tasklist_lock);
-	for_each_process_thread(g, p) {
-		init_vip_task_struct(p);
-		init_task_gear_hints(p);
-	}
-	read_unlock(&tasklist_lock);
-
 	/* init vip related value to each rq */
 	for_each_possible_cpu(cpu) {
 		struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
@@ -1441,6 +1436,15 @@ void vip_init(void)
 		 */
 		init_vip_task_struct(cpu_rq(cpu)->idle);
 	}
+
+	/* init vip related value to exist tasks */
+	read_lock(&tasklist_lock);
+	for_each_process_thread(g, p) {
+		init_vip_task_struct(p);
+		init_task_gear_hints(p);
+	}
+	read_unlock(&tasklist_lock);
+
 
 	tgid_vip_status = 0;
 	tgid_vip_arr = kcalloc(NUM_MAXIMUM_TGID, sizeof(int),  GFP_KERNEL);
