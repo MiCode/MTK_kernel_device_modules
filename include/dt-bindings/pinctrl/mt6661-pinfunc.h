@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2024 MediaTek Inc.
+ * Author: Light Hsieh <light.hsieh@mediatek.com>
+ *
+ */
+
+#ifndef __MT6661_PINFUNC_H
+#define __MT6661_PINFUNC_H
+
+#include "mt65xx.h"
+
+#define PINMUX_MT6661_GPIO3__FUNC_GPIO3 (MTK_PIN_NO(3) | 0)
+#define PINMUX_MT6661_GPIO4__FUNC_GPIO4 (MTK_PIN_NO(4) | 0)
+#define PINMUX_MT6661_GPIO5__FUNC_GPIO5 (MTK_PIN_NO(5) | 0)
+#define PINMUX_MT6661_GPIO6__FUNC_GPIO6 (MTK_PIN_NO(6) | 0)
+#define PINMUX_MT6661_GPIO7__FUNC_GPIO7 (MTK_PIN_NO(7) | 0)
+#define PINMUX_MT6661_GPIO8__FUNC_GPIO8 (MTK_PIN_NO(8) | 0)
+#define PINMUX_MT6661_GPIO9__FUNC_GPIO9 (MTK_PIN_NO(9) | 0)
+#define PINMUX_MT6661_GPIO10__FUNC_GPIO10 (MTK_PIN_NO(10) | 0)
+#define PINMUX_MT6661_GPIO11__FUNC_GPIO11 (MTK_PIN_NO(11) | 0)
+
+#endif /* __MT6661_PINFUNC_H */
