@@ -846,4 +846,6 @@ void *mt6991_aud_get_power_scenario(void);
 void mt6991_aud_update_power_scenario(void);
 void mt6991_aud_swpm_power_off(void);
 
+bool mt6991_is_vow_bargein_memif(int);
+
 #endif

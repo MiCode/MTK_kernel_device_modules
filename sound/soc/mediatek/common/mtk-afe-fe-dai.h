@@ -68,4 +68,7 @@ int mtk_irq_set_enable(struct mtk_base_afe *afe,
 int mtk_irq_set_disable(struct mtk_base_afe *afe,
 			const struct mtk_base_irq_data *irq_data,
 			int afe_id);
+
+void register_is_vow_bargein_memif_callback(bool (*callback)(int));
+
 #endif
