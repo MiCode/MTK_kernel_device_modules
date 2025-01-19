@@ -3034,6 +3034,7 @@ cpus {
 			mediatek,ufs-disable-ah8;
 			mediatek,ufs-qos;
 			mediatek,ufs-broken-vcc;
+			mediatek,ufs-perf-huristic;
 
 			/* Reference clock control mode */
 			/* SW mode: 0, Half-HW mode: 1, HW mode: 2 */
