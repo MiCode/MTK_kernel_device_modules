@@ -1539,6 +1539,10 @@ bootargs_ext = "rcu_nocbs=0-7";
 	mminfra-type0-pwr = <MMINFRA_MT6991_PWR_MM1>; /* cg_link to mm1*/
 	mminfra-mtcmos-voter = <56 56 56>;
 	mminfra-mtcmos-data = <26 27 25>;
+	mminfra-vlp-base = <0x1c000000>;
+	mminfra-vlp-ao-rsvd6-ofs = <0x918>;
+	mminfra-mm1-irq-rdy-bit = <1>;
+	mediatek,vcp-supply = <&vcp>;
 };
 
 &mminfra_debug {
