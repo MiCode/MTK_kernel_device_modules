@@ -9364,12 +9364,12 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	drm->mode_config.min_height = 1;
 
 	/*
-	 * set max width and height as default value(4096x4096).
+	 * set max width and height as default value(8192x8192).
 	 * this value would be used to check framebuffer size limitation
 	 * at drm_mode_addfb().
 	 */
-	drm->mode_config.max_width = 4096;
-	drm->mode_config.max_height = 4096;
+	drm->mode_config.max_width = 8192;
+	drm->mode_config.max_height = 8192;
 	drm->mode_config.funcs = &mtk_drm_mode_config_funcs;
 
 	ret = component_bind_all(drm->dev, drm);
