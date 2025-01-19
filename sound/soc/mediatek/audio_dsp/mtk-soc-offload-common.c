@@ -40,7 +40,8 @@
 
 enum {
 	TASK_SCENE_OFFLOAD_MP3,
-	TASK_SCENE_OFFLOAD_AAC
+	TASK_SCENE_OFFLOAD_AAC,
+	TASK_SCENE_OFFLOAD_FLAC
 };
 
 typedef uint8_t task_offload_scene_t;
