@@ -8501,8 +8501,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mm_pd_clk MT6991_PD_DISP_EDPTX_EDP_TX>,
 				<&mm_pd_clk MT6991_PD_DISP_DPTX_DP_TX>,
 				<&mm_pd_clk MT6991_PD_DSI_PHY0_MIPI_TX_CONFIG0>;
-			clock-names = "disp_vcore", "dis0", "dis1",
-					"ovl0", "ovl1", "mml1", "mml0", "edptx", "dptx", "dsi_phy0";
+			clock-names = "CLK_DISP_VCORE", "CLK_DIS0", "CLK_DIS1",
+					"CLK_OVL0", "CLK_OVL1", "CLK_MML1", "CLK_MML0",
+					"CLK_EDPTX", "CLK_DPTX", "CLK_DSI_PHY0";
 		};
 
 
