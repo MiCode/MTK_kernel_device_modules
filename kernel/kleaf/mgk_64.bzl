@@ -145,6 +145,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/trusted_mem/trusted_mem_ait:ktf_trusted_mem_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/atflog:ktf_atflog",
 ]
 
 mgk_64_kleaf_userdebug_modules = [
@@ -172,6 +173,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/trusted_mem/trusted_mem_ait:ktf_trusted_mem_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/atflog:ktf_atflog",
 ]
 
 mgk_64_kleaf_user_modules = [
