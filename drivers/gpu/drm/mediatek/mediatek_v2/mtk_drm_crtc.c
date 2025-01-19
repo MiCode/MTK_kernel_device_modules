@@ -17062,6 +17062,7 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc *crtc = cb_data->crtc;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_crtc_state *state;
 	struct mtk_drm_private *priv = NULL;
 	int session_id;
 	unsigned int i;
@@ -17106,6 +17107,11 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 
 	}
 	mtk_crtc->sec_on = sec_on;
+	if (crtc->state) {
+		state = to_mtk_crtc_state(crtc->state);
+		if(fence_idx >= state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX])
+			state->prop_val[CRTC_PROP_OUTPUT_ENABLE] = 0;
+	}
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
