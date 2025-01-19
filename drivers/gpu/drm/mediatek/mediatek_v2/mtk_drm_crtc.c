@@ -6724,7 +6724,6 @@ static unsigned int overlap_to_bw(struct drm_crtc *crtc,
 void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base,
 	struct cmdq_pkt *handle, enum mtk_ddp_io_cmd event)
 {
-	static u32 pre_rpo_lye;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -6745,13 +6744,12 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 			continue;
 
 		if (priv->data->ovl_exdma_rule &&
-			(mtk_crtc_state->lye_state.rpo_lye || pre_rpo_lye)) {
+			(mtk_crtc_state->lye_state.rpo_lye || mtk_crtc->pre_rpo)) {
 			cmp_id = mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA);
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[cmp_id],
-				handle, event, &bw_base);
+			if (cmp_id < DDP_COMPONENT_ID_MAX)
+				mtk_ddp_comp_io_cmd(priv->ddp_comp[cmp_id],
+					handle, event, &bw_base);
 		}
-		if (event == PMQOS_SET_HRT_BW_DELAY_POST)
-			pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
 
 		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
 			mtk_ddp_comp_io_cmd(comp, handle, event,
@@ -9184,8 +9182,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv =
 			mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *comp;
-	static u32 pre_rpo_lye;
-	unsigned int cur_hrt_bw, cur_chan_hrt_bw;
+	unsigned int cur_hrt_bw, cur_larb_hrt_bw, cur_chan_hrt_bw;
 	unsigned int hrt_idx, crtc_idx, flag = DISP_BW_UPDATE_PENDING;
 	int i, j;
 
@@ -9196,11 +9193,12 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 		cmp_id = mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA);
 		//EXDMA2 is not on the list of basic main data path, need extra setting
 		if (priv->data->ovl_exdma_rule && (cmp_id < DDP_COMPONENT_ID_MAX)
-			&& (mtk_crtc_state->lye_state.rpo_lye || pre_rpo_lye)) {
+			&& (mtk_crtc_state->lye_state.rpo_lye
+			|| mtk_crtc->pre_rpo)) {
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[cmp_id],
 				NULL, PMQOS_UPDATE_BW, &flag);
 		}
-		pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
+
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
 				i, j, ddp_mode, 0)
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
@@ -9219,6 +9217,8 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 
 	if (priv->data->respective_ostdl)
 		mtk_disp_set_module_hrt(mtk_crtc, 0, NULL, PMQOS_SET_HRT_BW_DELAY_POST);
+
+	mtk_crtc->pre_rpo = mtk_crtc_state->lye_state.rpo_lye ? TRUE : FALSE;
 
 	cur_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL);
 
