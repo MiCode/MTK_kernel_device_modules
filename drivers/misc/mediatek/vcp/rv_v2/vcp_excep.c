@@ -86,6 +86,15 @@ void vcp_dump_last_regs(int mmup_enable)
 		return;
 	}
 
+	if (!IS_ERR((void const *) vcpreg.vcp_vlp_ao_rsvd7))
+		pr_notice("[VCP] ready bit = %08x\n", readl(VLP_AO_RSVD7));
+	if (!IS_ERR((void const *) vcpreg.vcp_pwr_ack))
+		pr_notice("[VCP] pwr ack = %08x\n", readl(VCP_PWR_ACK));
+	if (!IS_ERR((void const *) vcpreg.vcp_clk_sys))
+		pr_notice("[VCP] pdn = %08x\n", readl(VCP_PDN));
+	if (!IS_ERR((void const *) vcpreg.vcp_clk_sys))
+		pr_notice("[VCP] fenc = %08x\n", readl(VCP_FENC));
+
 	c0_m->status = readl(R_CORE0_STATUS);
 	c0_m->pc = readl(R_CORE0_MON_PC);
 	c0_m->lr = readl(R_CORE0_MON_LR);
@@ -127,6 +136,17 @@ void vcp_dump_last_regs(int mmup_enable)
 		readl(R_CORE0_IRQ_EN1), readl(R_CORE0_IRQ_EN2), readl(R_CORE0_IRQ_EN3));
 	pr_notice("[VCP] irq wakeup en: %08x,%08x,%08x,%08x\n", readl(R_CORE0_IRQ_SLP0),
 		readl(R_CORE0_IRQ_SLP1), readl(R_CORE0_IRQ_SLP2), readl(R_CORE0_IRQ_SLP3));
+	pr_notice("[VCP] SEC GPR: %08x,%08x,%08x,%08x\n", readl(R_GPR0_CFGREG_SEC),
+		readl(R_GPR1_CFGREG_SEC), readl(R_GPR2_CFGREG_SEC), readl(R_GPR3_CFGREG_SEC));
+	pr_notice("[VCP] AP GPR: %08x,%08x,%08x,%08x\n", readl(AP_R_GPR0), readl(AP_R_GPR1),
+		readl(AP_R_GPR2), readl(AP_R_GPR3));
+	pr_notice("[VCP] core GPR: %08x,%08x,%08x,%08x,%08x,%08x,%08x,%08x\n",
+		readl(R_CORE0_GENERAL_REG0), readl(R_CORE0_GENERAL_REG1),
+		readl(R_CORE0_GENERAL_REG2), readl(R_CORE0_GENERAL_REG3),
+		readl(R_CORE0_GENERAL_REG4), readl(R_CORE0_GENERAL_REG5),
+		readl(R_CORE0_GENERAL_REG6), readl(R_CORE0_GENERAL_REG7));
+	pr_notice("[VCP] GIPC %x %x\n", readl(R_GIPC_IN_SET), readl(R_GIPC_IN_CLR));
+
 	if (vcpreg.core_nums == 2)
 		mmup_dump_last_regs();
 
