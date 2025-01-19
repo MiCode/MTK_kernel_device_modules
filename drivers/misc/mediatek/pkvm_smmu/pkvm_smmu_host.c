@@ -70,34 +70,42 @@ enum smmu_id { SMMU_MM = 0, SMMU_APU, SMMU_SOC, SMMU_GPU, SMMU_ID_NUM };
 static bool fdt_node_check_compatible_contains(struct device_node *node,
 					       const char *str)
 {
-	int i, j;
-	int prop_len, str_len, compatible_idx;
-	unsigned int compatible_num;
-	const char *compatible_str[20];
-	const void *prop;
+	int str_len = 0;
+	int compatible_num = 0;
+	const char *compatible_str[20] = { NULL };
+
+	if (!node || !str)
+		return false;
 
 	str_len = strlen(str);
 	compatible_num = of_property_read_string_array(node, "compatible",
-						       compatible_str, 20);
+			compatible_str, 20);
 
-	if (compatible_num < 0)
+	if (compatible_num < 0) {
 		pr_info("%s: Can't find compatible info in this node\n",
-		       __func__);
+				__func__);
+		return false;
+	}
 
-	for (compatible_idx = 0; compatible_idx < compatible_num;
-	     compatible_idx++) {
-		prop_len = strlen(compatible_str[compatible_idx]);
+	for (int compatible_idx = 0; compatible_idx < compatible_num;
+			compatible_idx++) {
+		const char *prop_str = NULL;
+		int prop_len = 0;
 
+		prop_str = compatible_str[compatible_idx];
+		if (!prop_str)
+			continue;
+
+		prop_len = strlen(prop_str);
 		if (prop_len < str_len)
 			continue;
-		prop = (const void *)compatible_str[compatible_idx];
-		for (i = 0; i <= (prop_len - str_len); i++) {
-			if (((const char *)prop)[i] == str[0]) {
-				for (j = 1; (i + j) < prop_len; j++) {
-					if (((const char *)prop)[i + j] !=
-					    str[j])
+
+		for (int i = 0; i <= (prop_len - str_len); i++) {
+			if (prop_str[i] == str[0]) {
+				for (int j = 1; (i + j) < prop_len; j++) {
+					if (prop_str[i + j] != str[j])
 						break;
-					else if (j == (str_len - 1))
+					if (j == (str_len - 1))
 						return true;
 				}
 			}
@@ -159,10 +167,9 @@ enum setup_vm_ops {
 };
 void all_vm_no_map_mblock(struct device_node *node)
 {
-	struct device_node *mblock_node;
-	const char *rts_string[NR_RTS_STR_ARRAY] = {};
+	struct device_node *mblock_node = NULL;
+	const char *rts_string[NR_RTS_STR_ARRAY] = { NULL };
 	struct reserved_mem *rmem = NULL;
-	unsigned int i;
 	int nr_str = 0;
 
 	nr_str = of_property_read_string_array(
@@ -171,8 +178,7 @@ void all_vm_no_map_mblock(struct device_node *node)
 	if (nr_str < 0)
 		pr_info("%s: vm-no-map-mblock is none\n", __func__);
 	else {
-		for (i = 0; i < nr_str; i++) {
-			mblock_node = NULL;
+		for (int i = 0; i < nr_str; i++) {
 			mblock_node = of_find_compatible_node(NULL, NULL,
 							      rts_string[i]);
 			if (!mblock_node)
@@ -190,9 +196,9 @@ void all_vm_no_map_mblock(struct device_node *node)
 
 void s2_bypass_sid(struct device_node *node)
 {
-	unsigned int property_array[NR_SID];
-	int ret;
-	unsigned int i, array_size = 0;
+	unsigned int property_array[NR_SID] = { 0U };
+	int ret = 0;
+	int array_size = 0;
 
 	array_size = of_property_count_u32_elems(node, "s2-bypass-sid");
 
@@ -204,7 +210,7 @@ void s2_bypass_sid(struct device_node *node)
 		if (ret < 0)
 			pr_info("%s: s2-bypass-sid is none\n", __func__);
 		else {
-			for (i = 0; i < array_size; i++) {
+			for (int i = 0; i < array_size; i++) {
 				pkvm_el2_mod_call(smmu_vm_info_probe_handler,
 						  S2_BYPASS_SID,
 						  property_array[i]);
@@ -215,11 +221,11 @@ void s2_bypass_sid(struct device_node *node)
 
 void get_dram_range(phys_addr_t *phy_dram_start, phys_addr_t *phy_dram_size)
 {
-	struct device_node *memory;
-	const __be32 *memcell_buf;
-	int len, ret;
-	unsigned int array_size;
-	unsigned long long property_array_64[4];
+	struct device_node *memory = NULL;
+	const __be32 *memcell_buf = NULL;
+	int len = 0, ret = 0;
+	int array_size = 0;
+	unsigned long long property_array_64[4] = { 0ULL };
 
 	for_each_node_by_type (memory, "memory") {
 		memcell_buf = of_get_property(memory, "reg", &len);
@@ -253,9 +259,9 @@ void vm_vmid_set(struct device_node *node, unsigned int *vmid)
 
 void vm_sid_set(struct device_node *node, unsigned int vmid)
 {
-	unsigned int array_size, i;
-	int ret;
-	unsigned int property_array[NR_SID];
+	int array_size = 0;
+	int ret = 0;
+	unsigned int property_array[NR_SID] = { 0U };
 
 	array_size = of_property_count_u32_elems(node, "sid");
 
@@ -267,7 +273,7 @@ void vm_sid_set(struct device_node *node, unsigned int vmid)
 		if (ret < 0)
 			pr_info("%s: sid is none\n", __func__);
 		else {
-			for (i = 0; i < array_size; i++) {
+			for (int i = 0; i < array_size; i++) {
 				pkvm_el2_mod_call(smmu_vm_info_probe_handler,
 						  SID, vmid, property_array[i]);
 			}
@@ -373,7 +379,6 @@ void vm_idmap_mblock_set(struct device_node *node, unsigned int vmid)
 		pr_info("%s: identity-map-mblock is none\n", __func__);
 	else {
 		for (i = 0; i < nr_str; i++) {
-			mblock_node = NULL;
 			mblock_node = of_find_compatible_node(NULL, NULL,
 							      rts_string[i]);
 			if (!mblock_node)
@@ -419,7 +424,6 @@ unsigned int smmu_vm_info_probe(void)
 	unsigned int vm_num, vmid, ipa_granule;
 
 	/* VM common info */
-	node = NULL;
 	node = of_find_compatible_node(NULL, NULL, "mtk,smmu-hyp-vms");
 
 	if (!node) {
@@ -483,17 +487,19 @@ unsigned long long mpool_mem_calculate(unsigned int vm_num)
 
 bool device_reg_probe(struct device_node *node, unsigned int *reg_start, unsigned int *reg_size)
 {
-	unsigned int array_size, reg_range, reg[8];
-	int j;
+	int array_size = 0;
+	unsigned int reg_range = 0U, reg[8] = { 0U };
 	bool ret = false;
 
-	reg_range = 0;
 	array_size = of_property_count_u32_elems(node, "reg");
+	if (array_size < 0)
+		return ret;
+
 	if (of_property_read_u32_array(node, "reg", reg, array_size))
 		pr_info("%s: read reg value fail\n", __func__);
 	else {
 		/* Add up device's reg size */
-		for (j = 3; j < array_size; j = j + 4)
+		for (int j = 3; j < array_size; j = j + 4)
 			reg_range += reg[j];
 		*reg_start = reg[1];
 		*reg_size = reg_range;
@@ -511,11 +517,13 @@ bool is_device_coherent(struct device_node *node)
 
 struct device_node *get_dev_node_by_alias(struct device_node *alias_node, unsigned int i)
 {
-	char name[64];
-	const char *path;
+	char name[64] = "";
+	const char *path = NULL;
 	struct device_node *node = NULL;
 
-	sprintf(name, "mtksmmu%d", i);
+	if (sprintf(name, "mtksmmu%d", i) < 0)
+		return node;
+
 	if(!of_property_read_string(alias_node, name, &path))
 		node = of_find_node_by_path(path);
 	else
@@ -525,12 +533,11 @@ struct device_node *get_dev_node_by_alias(struct device_node *alias_node, unsign
 
 void smmu_device_probe(void)
 {
-	struct device_node *node, *alias_node;
-	unsigned int i, reg_start, reg_size;
-	bool dma_coherent;
-	int smmu_dev_id;
+	struct device_node *node = NULL, *alias_node = NULL;
+	unsigned int reg_start = 0U, reg_size = 0U;
+	bool dma_coherent = false;
+	int smmu_dev_id = 0;
 
-	node = alias_node = NULL;
 	alias_node = of_find_node_by_path("/aliases");
 
 	if (!alias_node) {
@@ -538,7 +545,7 @@ void smmu_device_probe(void)
 		return;
 	}
 
-	for (i = 0; i < SMMU_ID_NUM; i++) {
+	for (unsigned int i = 0; i < SMMU_ID_NUM; i++) {
 		node = get_dev_node_by_alias(alias_node, i);
 		if (!node) {
 			pr_info("%s: search device node by path fail\n", __func__);
@@ -614,10 +621,10 @@ void smmu_host_hvc(void)
 void smmu_alloc_memory(struct mpt *mpt, unsigned long long target_page_counts,
 		       unsigned long long *acc_page_num)
 {
-	unsigned long addr;
-	unsigned int page_order;
 	/* allocate memory from 2M contious memory to 4KB contious memory */
-	for (page_order = 9; page_order >= 0; page_order--) {
+	for (int page_order = 9; page_order >= 0; page_order--) {
+		unsigned long addr = 0UL;
+
 		if ((target_page_counts - *acc_page_num) <
 		    (1ULL << page_order)) {
 			pr_info("%s: left %#llx < request page  %#llx\n",
