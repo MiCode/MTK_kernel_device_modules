@@ -2602,14 +2602,18 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 5) {
 		dcs_set_fix_num(4);
 		start_mewtwo_timer();
-	} else if (flag == 6 || flag == 7) {
+	} else if (flag == 6) {
+		dcs_set_fix_num(2);
+		start_mewtwo_timer();
+	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000) ||
+		((flag & 0xFF000000) == 0x39000000)) {
 		if (api_sync_flag != flag)
 			api_sync_flag = flag;
 	} else if (flag == 8) {
 		MTKGPUQoS_mode_ratio(0);
 	} else if (flag == 9) {
 		MTKGPUQoS_mode_ratio(6080);
-#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
 	} else if ((flag & 0xFFF00000) == 0x55600000) {
 		// pre-throttle cases
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
