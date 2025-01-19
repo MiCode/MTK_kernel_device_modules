@@ -40,3 +40,12 @@ config MT6681_EFUSE
 
 	  This driver can also be built as a module. If so, the module
 	  will be called nvmem-mt6681-efuse.
+
+config MT6688_RTCCON
+	tristate "MT6688 RTCCON access support"
+	depends on REGULATOR_MT6688 || COMPILE_TEST
+	help
+	  This driver provides the RTCCON access in MT6688.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called nvmem-mt6688-rtccon.

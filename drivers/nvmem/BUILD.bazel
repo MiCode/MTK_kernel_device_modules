@@ -36,3 +36,10 @@ define_mgk_ddk_ko(
         "mt635x-efuse.c",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "nvmem-mt6688-rtccon",
+    srcs = [
+        "mt6688-rtccon.c",
+    ],
+)

@@ -410,6 +410,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/leds:leds-mtk".format(kernel_version),
     "//kernel_device_modules-{}/drivers/leds:regulator-vibrator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/nvmem:nvmem-mt635x-efuse".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/nvmem:nvmem-mt6688-rtccon".format(kernel_version),
     "//kernel_device_modules-{}/drivers/nvmem:nvmem_mtk-devinfo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version),
