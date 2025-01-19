@@ -3085,6 +3085,8 @@ def get_overlay_modules_list():
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
 
+        mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")
+
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")
