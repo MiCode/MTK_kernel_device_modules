@@ -669,15 +669,17 @@ int mtk_pe45_rcable_control_chg_level(struct chg_alg_device *alg, int *vbus, int
 	pe45_cap = &pe45->cap;
 	pe4_hal_get_mivr_state(alg, CHG1, &chg1_mivr);
 
-	if (chg1_mivr) {
+	if (chg1_mivr && *vbus >= pe45->r_cable_voltage[pe45->rcable_index]) {
 		if (pe45->rcable_index < MAX_RCABLE_INDEX - 1)
 			pe45->rcable_index = pe45->rcable_index + 1;
+
+		pe45->max_vbus = pe45->r_cable_voltage[pe45->rcable_index];
 		pe45->mivr_count = pe45->mivr_count + 1;
 	}
 
-	if (*vbus > pe45->r_cable_voltage[pe45->rcable_index] || chg1_mivr)
+	if (*vbus > pe45->r_cable_voltage[pe45->rcable_index])
 		*vbus = pe45->r_cable_voltage[pe45->rcable_index];
-	if (pe45->max_vbus > pe45->r_cable_voltage[pe45->rcable_index] || chg1_mivr)
+	if (pe45->max_vbus > pe45->r_cable_voltage[pe45->rcable_index])
 		pe45->max_vbus = pe45->r_cable_voltage[pe45->rcable_index];
 	if (pe45->vbus > pe45_cap->max_mv[pe45_cap->apdo_idx] ||
 		pe45->max_vbus > pe45_cap->max_mv[pe45_cap->apdo_idx]) {
@@ -1340,8 +1342,8 @@ int mtk_pe45_cc_state(struct chg_alg_device *alg)
 		compare_ibus,
 		ibat,
 		icl, max_icl,
-		cv, max_watt,
 		ccl, ccl2,
+		cv, max_watt,
 		vbat, pe45->max_charger_ibus,
 		chg1_mivr);
 
@@ -1378,11 +1380,6 @@ int mtk_pe45_cc_state(struct chg_alg_device *alg)
 
 		if (ibus >= (max_icl - icl_threshold) && ret != 4)
 			pe45->polling_interval = 3;
-
-		if (compare_ibus <= (max_icl - icl_threshold * 2)) {
-			new_watt = pe45->avbus * pe45->ibus - 500000;
-			pe45->avbus = pe45->avbus - 50;
-		}
 
 		if (pe45->avbus <= 5000)
 			pe45->avbus = 5000;
