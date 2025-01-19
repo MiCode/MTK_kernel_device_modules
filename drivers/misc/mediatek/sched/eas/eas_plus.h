@@ -424,7 +424,6 @@ struct share_buck_info {
 extern struct share_buck_info share_buck;
 extern int get_share_buck(void);
 extern int sched_cgroup_state(struct task_struct *p, int subsys_id);
-extern int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask);
 
 extern inline int util_fits_capacity_dpt_v2(unsigned long cpu_util_without_uclamp_local, unsigned long coef1_util_local,
 	unsigned long coef2_util_local, unsigned long uclamp_min, unsigned long uclamp_max, unsigned long local_capacity_of, int cpu, unsigned long *cpu_util_uclamped);

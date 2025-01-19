@@ -43,7 +43,6 @@
 #include <linux/kernel.h>
 #include <trace/trace.h>
 #include "sched/sched.h"
-#include "eas/eas_plus.h"
 
 #define TIME_1S  1000000000ULL
 #define TRAVERSE_PERIOD  300000000000ULL
@@ -82,6 +81,9 @@ EXPORT_SYMBOL(fpsgo_rl_delete_render_info_fp);
 void (*fpsgo_power_rl_delete_fp)(int pid, unsigned long long bufID);
 EXPORT_SYMBOL(fpsgo_power_rl_delete_fp);
 
+int (*set_cpus_allowed_ptr_by_kernel_fp)(struct task_struct *p, const struct cpumask *new_mask);
+EXPORT_SYMBOL(set_cpus_allowed_ptr_by_kernel_fp);
+
 static DEFINE_MUTEX(fpsgo_render_lock);
 
 long long fpsgo_task_sched_runtime(struct task_struct *p)
@@ -112,7 +114,10 @@ long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 		goto out_put_task;
 	}
 
-	retval = set_cpus_allowed_ptr_by_kernel(p, in_mask);
+	if (set_cpus_allowed_ptr_by_kernel_fp == NULL)
+		retval = set_cpus_allowed_ptr(p, in_mask);
+	else
+		retval = set_cpus_allowed_ptr_by_kernel_fp(p, in_mask);
 out_put_task:
 	put_task_struct(p);
 	return retval;

@@ -13,11 +13,15 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/inc
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/engine_cooler \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/frame_interpolate \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/kernel_core_ctrl \
+	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ \
+	-I$(srctree)/kernel/ \
 
 mtk_game_objs += game.o \
 	game_base.o \
 	game_sysfs.o \
 	engine_cooler/game_ec.o \
+	kernel_core_ctrl/kernel_core_ctrl.o \
 	frame_interpolate/fi_base.o \
 	frame_interpolate/frame_interpolate.o \
 

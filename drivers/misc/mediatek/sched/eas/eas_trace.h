@@ -2476,37 +2476,6 @@ TRACE_EVENT(sched_update_thermal_pressure_capacity,
 		__entry->wl)
 );
 
-TRACE_EVENT(sched_skip_user,
-	TP_PROTO(struct task_struct *p, bool skip_user, struct cpumask *user_cpus_ptr,
-		struct cpumask *kernel_allowed_mask, const struct cpumask *new_mask),
-
-	TP_ARGS(p, skip_user, user_cpus_ptr, kernel_allowed_mask, new_mask),
-
-	TP_STRUCT__entry(
-		__field(pid_t, pid)
-		__field(bool, skip_user)
-		__field(unsigned int, user_mask)
-		__field(unsigned int, kernel_allowed_mask)
-		__field(unsigned int, new_mask)
-	),
-
-	TP_fast_assign(
-		__entry->pid = p->pid;
-		__entry->skip_user = skip_user;
-		__entry->user_mask = cpumask_bits(user_cpus_ptr)[0];
-		__entry->kernel_allowed_mask = cpumask_bits(kernel_allowed_mask)[0];
-		__entry->new_mask = cpumask_bits(new_mask)[0];
-	),
-
-	TP_printk("pid=%d, skip_user=%d, user_mask=%d, kernel_allowed_mask=%d, new_mask=%d",
-		__entry->pid,
-		__entry->skip_user,
-		__entry->user_mask,
-		__entry->kernel_allowed_mask,
-		__entry->new_mask
-	)
-);
-
 TRACE_EVENT(sched_mtk_update_misfit_status_dpt_v2,
 	TP_PROTO(int cpu, int fit, int pid, unsigned long cpu_util_clamped, unsigned long cpu_util, unsigned long coef1_util,
 	unsigned long coef2_util, unsigned long uclamp_min, unsigned long uclamp_max, unsigned long capacity, unsigned long misfit_task_load),
