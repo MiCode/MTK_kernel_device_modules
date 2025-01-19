@@ -2745,7 +2745,10 @@ static int mtk_edp_bridge_atomic_check(struct drm_bridge *bridge,
 		 bridge_state->output_bus_cfg.format);
 
 	/* set edp output color depth */
-	mtk_edp->color_depth = display_info->bpc;
+	if (display_info->bpc)
+		mtk_edp->color_depth = display_info->bpc;
+	else
+		mtk_edp->color_depth = 8;
 
 	switch (input_bus_format) {
 	case MEDIA_BUS_FMT_YUYV8_1X16:
