@@ -548,24 +548,24 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 		for (i = 0; i < 6; i++) {
 			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_Y_0 + i],
-				fg_meta->ar_coeffs_y[i*4] << 0 |
-				fg_meta->ar_coeffs_y[i*4 + 1] << 8 |
-				fg_meta->ar_coeffs_y[i*4 + 2] << 16 |
-				fg_meta->ar_coeffs_y[i*4 + 3] << 24,
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4]) << 0 |
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 1]) << 8 |
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 2]) << 16 |
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 3]) << 24,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i]);
 
 			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_0 + i],
-				fg_meta->ar_coeffs_cb[i*4] << 0 |
-				fg_meta->ar_coeffs_cb[i*4 + 1] << 8 |
-				fg_meta->ar_coeffs_cb[i*4 + 2] << 16 |
-				fg_meta->ar_coeffs_cb[i*4 + 3] << 24,
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4]) << 0 |
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 1]) << 8 |
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 2]) << 16 |
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 3]) << 24,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i]);
 
 			mml_write(pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_0 + i],
-				fg_meta->ar_coeffs_cr[i*4] << 0 |
-				fg_meta->ar_coeffs_cr[i*4 + 1] << 8 |
-				fg_meta->ar_coeffs_cr[i*4 + 2] << 16 |
-				fg_meta->ar_coeffs_cr[i*4 + 3] << 24,
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4]) << 0 |
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 1]) << 8 |
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 2]) << 16 |
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 3]) << 24,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i]);
 		}
 
@@ -732,22 +732,22 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 		for (i = 0; i < 6; i++) {
 			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i],
-				fg_meta->ar_coeffs_y[i*4] << 0 |
-				fg_meta->ar_coeffs_y[i*4 + 1] << 8 |
-				fg_meta->ar_coeffs_y[i*4 + 2] << 16 |
-				fg_meta->ar_coeffs_y[i*4 + 3] << 24);
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4]) << 0 |
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 1]) << 8 |
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 2]) << 16 |
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 3]) << 24);
 
 			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i],
-				fg_meta->ar_coeffs_cb[i*4] << 0 |
-				fg_meta->ar_coeffs_cb[i*4 + 1] << 8 |
-				fg_meta->ar_coeffs_cb[i*4 + 2] << 16 |
-				fg_meta->ar_coeffs_cb[i*4 + 3] << 24);
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4]) << 0 |
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 1]) << 8 |
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 2]) << 16 |
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 3]) << 24);
 
 			mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i],
-				fg_meta->ar_coeffs_cr[i*4] << 0 |
-				fg_meta->ar_coeffs_cr[i*4 + 1] << 8 |
-				fg_meta->ar_coeffs_cr[i*4 + 2] << 16 |
-				fg_meta->ar_coeffs_cr[i*4 + 3] << 24);
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4]) << 0 |
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 1]) << 8 |
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 2]) << 16 |
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 3]) << 24);
 		}
 
 		mml_update(reuse, fg_frm->labels[FG_AR_COEFF_CB_6_LABEL],
