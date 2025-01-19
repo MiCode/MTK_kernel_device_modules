@@ -51,7 +51,7 @@ struct ccci_mem_layout *ccci_md_get_mem(void);
 struct ccci_smem_region *ccci_md_get_smem_by_user_id(enum SMEM_USER_ID user_id);
 //void ccci_md_clear_smem(int first_boot);
 void ap_md_mem_init(struct ccci_mem_layout *mem_layout);
-void ap_md_mem_init_for_gen93(struct ccci_mem_layout *mem_layout);
+void ap_md_mem_init_for_legacy(struct ccci_mem_layout *mem_layout);
 
 int smem_md_state_notification(unsigned char state);
 
