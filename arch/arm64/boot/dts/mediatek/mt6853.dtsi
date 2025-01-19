@@ -2731,6 +2731,10 @@
 			u2_phy_data: u2_phy_data {
 				reg = <0x1b0 0x4>;
 			};
+
+			efuse_fabinfo4: fabinfo4l@218 {
+				reg = <0x218 0x4>;
+			};
 		};
 
 		regulator-vibrator {
