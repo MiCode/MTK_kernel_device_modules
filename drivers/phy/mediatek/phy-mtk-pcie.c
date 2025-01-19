@@ -40,6 +40,7 @@
 #define TPLL_PWE_ON_STB_T_SEL_TO_3	0x3
 #define PEXTP_DIG_GLB_50		0x50
 #define RG_XTP_CKM_EN_L1S0		BIT(13)
+#define RG_XTP_CKM_EN_L1S1		BIT(14)
 #define PEXTP_DIG_PROBE_OUT		0xd0
 #define PEXTP_DIG_GLB_70		0x70
 #define RG_XTP_PIPE_UPDT		BIT(4)
@@ -946,14 +947,18 @@ static int mtk_pcie_phy_init_6991(struct phy *phy)
 				     RG_XTP_CKBG_STAL_STB_T_SEL,
 				     CKBG_STAL_STB_T_SEL_TO_0);
 
+		mtk_phy_clear_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_50,
+				   RG_XTP_CKM_EN_L1S1);
+
 		/* not bypass pipe reset, pipe reset will reset TPLL */
 		mtk_phy_clear_bits(pcie_phy->sif_base + PEXTP_DIG_GLB_20, RG_XTP_BYPASS_PIPE_RST_RC);
 
-		dev_info(dev, "CKM_38=%#x, GLB_20=%#x, GLB_30=%#x, GLB_38=%#x, GLB_F4=%#x\n",
+		dev_info(dev, "CKM_38=%#x, GLB_20=%#x, GLB_30=%#x, GLB_38=%#x, GLB_50=%#x, GLB_F4=%#x\n",
 			 readl_relaxed(pcie_phy->ckm_base + XTP_CKM_DA_REG_38),
 			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_20),
 			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_30),
 			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_38),
+			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_50),
 			 readl_relaxed(pcie_phy->sif_base + PEXTP_DIG_GLB_F4));
 	}
 
