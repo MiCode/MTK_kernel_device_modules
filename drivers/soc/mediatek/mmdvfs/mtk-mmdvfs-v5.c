@@ -163,7 +163,7 @@ EXPORT_SYMBOL_GPL(mmdvfs_dump_dvfsrc_record);
 
 int mmdvfs_force_step(const u8 idx, const s8 opp)
 {
-	int i;
+	int i, ret = 0;
 	u8 level, user_id, mux_id;
 
 	if (unlikely(!mmdvfs_data || idx >= mmdvfs_data->rc_num))
@@ -178,11 +178,11 @@ int mmdvfs_force_step(const u8 idx, const s8 opp)
 
 		mutex_lock(&mmdvfs_data->mux[mux_id].lock);
 		if(mmdvfs_data->ops->dfs_vote_by_xpu)
-			mmdvfs_data->ops->dfs_vote_by_xpu(user_id, level);
+			ret = mmdvfs_data->ops->dfs_vote_by_xpu(user_id, level);
 		mutex_unlock(&mmdvfs_data->mux[mux_id].lock);
 	}
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_force_step);
 
@@ -471,7 +471,7 @@ static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long 
 	struct mmdvfs_user *user = container_of(hw, typeof(*user), clk_hw);
 	struct mmdvfs_mux *mux = &mmdvfs_data->mux[user->mux];
 	u8 level = 0;
-	int i;
+	int i, ret = 0;
 
 	for (i = 0; i < mmdvfs_data->rc[mux->rc].level_num; i++)
 		if (rate <= mux->freq[i])
@@ -481,13 +481,13 @@ static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long 
 
 	mutex_lock(&mux->lock);
 	if(mmdvfs_data->ops->dfs_vote_by_xpu)
-		mmdvfs_data->ops->dfs_vote_by_xpu(user->id, level);
+		ret = mmdvfs_data->ops->dfs_vote_by_xpu(user->id, level);
 	mutex_unlock(&mux->lock);
 
-	MMDVFS_DBG("user_id:%d user_name:%s user_mux:%d user_xpu:%d user_level:%d rate:%lu level:%d",
-		user->id, user->name, user->mux, user->xpu, user->level, rate, level);
+	//MMDVFS_DBG("user_id:%d user_name:%s user_mux:%d user_xpu:%d user_level:%d rate:%lu level:%d",
+	//	user->id, user->name, user->mux, user->xpu, user->level, rate, level);
 
-	return 0;
+	return ret;
 }
 
 static long mmdvfs_round_rate(struct clk_hw *hw, unsigned long rate,
