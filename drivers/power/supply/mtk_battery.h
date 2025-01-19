@@ -12,6 +12,7 @@
 #include <linux/extcon.h>
 #include <linux/hrtimer.h>
 #include <linux/nvmem-consumer.h>
+#include <linux/overflow.h>
 #include <linux/power_supply.h>
 #include <linux/sysfs.h>
 #include <linux/wait.h>
@@ -1157,6 +1158,7 @@ struct mtk_battery {
 	int qmaxt;
 	int precise_soc;
 	int precise_uisoc;
+	long long saved_reset_car;
 
 	/*battery health*/
 	struct ag_center_data_st bh_data;

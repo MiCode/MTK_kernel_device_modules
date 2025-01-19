@@ -1933,6 +1933,20 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 				param);
 		}
 		break;
+	case 812:
+		{
+			long long return_value;
+			int current_car;
+
+			current_car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
+			if (check_add_overflow(gm->saved_reset_car, (long long)current_car, &return_value)) {
+				bm_err(gm, "return car overflow\n");
+				gm->saved_reset_car = 0;
+				return_value = current_car;
+			}
+			bm_err(gm, "return car without reset %lld\n", return_value);
+		}
+		break;
 	default:
 		bm_err(gm,
 			"exe_BAT_EC cmd %d, param %d, default\n",
@@ -3040,7 +3054,19 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	break;
 	case FG_DAEMON_CMD_FGADC_RESET:
 	{
-		bm_err(gm, "FG_DAEMON_CMD_FGADC_RESET\n");
+		int car_before_reset;
+		long long saved_car_before;
+
+		car_before_reset = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
+		saved_car_before = gm->saved_reset_car;
+		if (check_add_overflow(saved_car_before, (long long)car_before_reset, &gm->saved_reset_car)) {
+			bm_err(gm, "FG_DAEMON_CMD_FGADC_RESET saved car overflow\n");
+			gm->saved_reset_car = car_before_reset;
+		}
+
+		bm_err(gm, "FG_DAEMON_CMD_FGADC_RESET saved:%lld, before_reset:%lld %d\n",
+			gm->saved_reset_car, saved_car_before, car_before_reset);
+
 		battery_set_property(gm, BAT_PROP_FG_RESET, 0);
 	}
 	break;
