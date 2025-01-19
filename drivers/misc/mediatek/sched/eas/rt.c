@@ -493,8 +493,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 				mtk_cpu_util_cfs_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local);
 				mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local, p, &min, &max);
 				cpu_util_cum = dpt_v2_util2cap_needed_local_hook(dpt_v2_cpu_util_local, dpt_v2_coef1_util_local, dpt_v2_coef2_util_local);
-				cpu_util_cum = affect_cpu_util_ratio_at_util(cpu_util_cum, dpt_v2_cpu_util_local, (dpt_v2_cpu_util_local+dpt_v2_coef1_util_local+dpt_v2_coef2_util_local),
-					IPC_scaling_factor, __get_scaling_factor_shift_bit());
 				dpt_v2_uclamp2local_cap_hook(cpu, false, &min, &max);
 				dpt_v2_uclamp2local_cap_hook(cpu, false, &min_cap, &max_cap);
 

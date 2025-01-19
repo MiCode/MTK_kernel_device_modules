@@ -3700,7 +3700,7 @@ void mtk_update_load_avg_cfs_rq(void *unused, u64 now, struct cfs_rq *cfs_rq, in
 	}
 
 	/* Update root cfs_rq's utilization */
-	util_cfs = (cfs_rq->tg->parent) ? NULL : util_cfs;
+	util_cfs = (&rq->cfs != cfs_rq) ? NULL : util_cfs;
 
 	/*
 	* `clock_pelt` can also be synced when rq is idle,

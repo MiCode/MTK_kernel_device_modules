@@ -3520,7 +3520,6 @@ unsigned long dpt_v2_get_uclamped_cpu_util(int cpu, unsigned long max_util, unsi
 	util = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local);
 
 	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
-	util = affect_cpu_util_ratio_at_util(util, cpu_util_local, (cpu_util_local+coef1_util_local+coef2_util_local), 1 << scaling_factor_shift_bit, scaling_factor_shift_bit);
 
 	__margin = get_freq_margin(cpu, util);
 	util_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util * __margin >> SCHED_CAPACITY_SHIFT, __umin, __umax, true);
@@ -3579,7 +3578,6 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 	util = util_before_cpu_util_ratio = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local);
 
 	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
-	util = affect_cpu_util_ratio_at_util(util, cpu_util_local, (cpu_util_local+coef1_util_local+coef2_util_local),  (1 << scaling_factor_shift_bit), scaling_factor_shift_bit);
 
 	orig_util = util;
 	*capacity_result = util;
@@ -3866,9 +3864,13 @@ void task_global_to_local_dpt_v2(int cpu, struct task_struct *p,
 		if (cpumask_test_cpu(cpu, get_gear_cpumask(gear)))
 		{
 			const int covert_type = get_scaling_factor_convert_type(gear);
-			SET_VALUE(cpu_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX, task_inv_scaling_dpt_v2(p, covert_type, CPU_COMPUTING_CYCLE_SCALING));
-			SET_VALUE(coef1_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX, task_inv_scaling_dpt_v2(p, covert_type, COEF1_S_SCALING));
-			SET_VALUE(coef2_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX, task_inv_scaling_dpt_v2(p, covert_type, COEF2_S_SCALING));
+
+			SET_VALUE(cpu_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX,
+				task_inv_scaling_dpt_v2(p, covert_type, CPU_COMPUTING_CYCLE_SCALING));
+			SET_VALUE(coef1_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX,
+				task_scaling_dpt_v2(p, covert_type, COEF1_S_SCALING));
+			SET_VALUE(coef2_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX,
+				task_scaling_dpt_v2(p, covert_type, COEF2_S_SCALING));
 			break;
 		}
 	}

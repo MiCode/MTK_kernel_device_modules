@@ -363,22 +363,6 @@ DECLARE_PER_CPU(unsigned long, freq_ceiling);
 
 #define DPT_V2_MAX_RUNNING_TIME 1024
 #define DPT_V2_MAX_RUNNING_TIME_LOCAL 1024
-
-/* the method of util2freq mapping is
-* max_capacity = 1024 * cpu_util_local / total_util_local * IPC_scaling_factor
-* util = 1024 * cpu_util / (1024 - normalized_to_curr_lat(coef1_util_local), normalized_to_curr_lat(coef2_util_local))
-* target_freq / util = max_freq / max_capacity => target_freq = util * max_freq / max_capacity.
-* However the target_freq is not a legal freq (e.g. 1.0319G), we need mapping it to the legal freq, which may causing MIPs overhead.
-* Therefore, change the equation to below, which retains the max_capacity = 1024, we can then utilize an pre-calculated util2freq O(1) mapping table.
-* the process is demonstrated as below:
-* 1. Expand target_freq = util * max_freq / [max_capacity] => target_freq = util * max_freq / [1024 * cpu_util_local / total_util_local * IPC_scaling_factor ]
-* 2. target_freq = util * max_freq / [1024 * cpu_util_local / total_util_local * IPC_scaling_factor]
-* 3. target_freq = util * max_freq / 1024 / cpu_util_local * total_util_local / IPC_scaling_factor
-* 4. util' = util / cpu_util_local * total_util_local / IPC_scaling_factor
-* 5. target_freq = util' * max_freq / 1024
-* 6. target_freq / util' = max_freq / 1024 => we can now utilize the pre-calculated mapping table to find the target_freq.
-*/
- #define affect_cpu_util_ratio_at_util(util, cpu_util_local, total_util_local, IPC_scaling_factor, shift_bit) ((util * total_util_local << shift_bit) / (cpu_util_local * IPC_scaling_factor))
 /* End of DPT */
 
 #endif /* __CPUFREQ_H__ */

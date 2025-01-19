@@ -466,6 +466,13 @@ static inline int task_inv_scaling_dpt_v2(struct task_struct *p, int covert_type
 	return READ_ONCE(dts->inv_perf_scaling_factor[covert_type][scaling_type]);
 }
 
+static inline int task_scaling_dpt_v2(struct task_struct *p, int covert_type, int scaling_type)
+{
+	struct dpt_task_struct *dts = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+
+	return READ_ONCE(dts->perf_scaling_factor[covert_type][scaling_type]);
+}
+
 static inline unsigned long task_util_dpt_v2(struct task_struct *p, int type)
 {
 	struct dpt_task_struct *util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
@@ -591,7 +598,7 @@ static inline unsigned int topology_get_coef1_ltime_scale_dpt_v2(int cpu)
 
 static inline int topology_get_coef1_scale_dpt_v2(int cpu)
 {
-	return READ_ONCE(per_cpu(__dpt_rq, cpu).util_cfs.inv_perf_scaling_factor[TO_BCORE][COEF1_S_SCALING]);
+	return READ_ONCE(per_cpu(__dpt_rq, cpu).util_cfs.perf_scaling_factor[TO_BCORE][COEF1_S_SCALING]);
 }
 
 static inline unsigned int topology_get_coef2_s_scale_dpt_v2(int cpu)
@@ -606,7 +613,7 @@ static inline unsigned int topology_get_coef2_ltime_scale_dpt_v2(int cpu)
 
 static inline int topology_get_coef2_scale_dpt_v2(int cpu)
 {
-	return READ_ONCE(per_cpu(__dpt_rq, cpu).util_cfs.inv_perf_scaling_factor[TO_BCORE][COEF2_S_SCALING]);
+	return READ_ONCE(per_cpu(__dpt_rq, cpu).util_cfs.perf_scaling_factor[TO_BCORE][COEF2_S_SCALING]);
 }
 
 #if IS_ENABLED(CONFIG_UCLAMP_TASK)
