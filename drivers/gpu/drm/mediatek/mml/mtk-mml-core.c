@@ -1946,14 +1946,17 @@ static const cmdq_async_flush_cb dump_cbs[MML_PIPE_CNT] = {
 static int aee_cb(struct cmdq_cb_data data)
 {
 	static DEFINE_RATELIMIT_STATE(aee_rate, 30 * HZ, 2);
-	bool ignore = __ratelimit(&aee_rate);
+	bool aee = __ratelimit(&aee_rate);
 	struct cmdq_pkt *pkt = data.data;
 	struct mml_task *task = pkt->user_data;
 
-	if (ignore)
+	if (!aee) {
 		task->dump_full = false;
+		mml_err("task job %u skip full dump", task->job.jobid);
+		return CMDQ_NO_AEE;
+	}
 
-	return ignore ? CMDQ_NO_AEE : CMDQ_AEE_WARN;
+	return CMDQ_AEE_WARN;
 }
 
 static void mml_core_stop_racing_pipe(struct mml_frame_config *cfg, u32 pipe, bool force)
