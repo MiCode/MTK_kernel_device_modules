@@ -717,19 +717,29 @@ static void stmmac_get_qstats_string(struct stmmac_priv *priv, u8 *data)
 {
 	u32 tx_cnt = priv->plat->tx_queues_to_use;
 	u32 rx_cnt = priv->plat->rx_queues_to_use;
-	int q, stat;
+	int q, stat, ret;
 
 	for (q = 0; q < tx_cnt; q++) {
 		for (stat = 0; stat < STMMAC_TXQ_STATS; stat++) {
-			snprintf(data, ETH_GSTRING_LEN, "q%d_%s", q,
-				 stmmac_qstats_tx_string[stat]);
+			ret = snprintf(data, ETH_GSTRING_LEN, "q%d_%s", q,
+				       stmmac_qstats_tx_string[stat]);
+			if(ret < 0 || ret >= ETH_GSTRING_LEN) {
+				pr_err("Failed to write string for tx queue %d stat %d\n",
+				       q, stat);
+				continue;
+			}
 			data += ETH_GSTRING_LEN;
 		}
 	}
 	for (q = 0; q < rx_cnt; q++) {
 		for (stat = 0; stat < STMMAC_RXQ_STATS; stat++) {
-			snprintf(data, ETH_GSTRING_LEN, "q%d_%s", q,
-				 stmmac_qstats_rx_string[stat]);
+			ret = snprintf(data, ETH_GSTRING_LEN, "q%d_%s", q,
+				       stmmac_qstats_rx_string[stat]);
+			if(ret < 0 || ret >= ETH_GSTRING_LEN ) {
+				pr_err("Failed to write string for rx queue %d stat %d\n",
+				       q, stat);
+				continue;
+			}
 			data += ETH_GSTRING_LEN;
 		}
 	}
