@@ -401,6 +401,7 @@ enum mtk_dmr_version {
 enum mtk_od_version {
 	MTK_OD_V1,
 	MTK_OD_V2,
+	MTK_OD_V3,
 };
 
 struct mtk_disp_oddmr_data {
@@ -427,6 +428,7 @@ struct mtk_disp_oddmr_data {
 	enum mtk_od_version od_version;
 	bool is_dmr_support_stash;
 	bool is_dbi_support_stash;
+	bool is_od_support_stash;
 	int slc_read_alloc;
 	int slc_period;
 };
