@@ -6769,7 +6769,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			 * Instead of scpsys by PM flow.
 			 */
 			mediatek,ufs-rtff-mtcmos;
-			mediatek,ufs-qos;
 			mediatek,ufs-pmc-via-fastauto;
 			mediatek,ufs-mphy-debug;
 			mediatek,ufs-clkscale-only-by-user;
