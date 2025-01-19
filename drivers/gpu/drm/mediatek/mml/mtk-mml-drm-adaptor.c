@@ -781,7 +781,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 			mml_msg("[drm]reuse task %p pkt %p %p",
 				task, task->pkts[0], task->pkts[1]);
 		} else {
-			task = mml_core_create_task();
+			task = mml_core_create_task(atomic_read(&ctx->job_serial));
 			if (IS_ERR(task)) {
 				result = PTR_ERR(task);
 				mml_err("[drm]%s create task for reuse frame fail", __func__);
@@ -802,7 +802,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 			mml_err("[drm]%s create frame config fail", __func__);
 			goto err_unlock_exit;
 		}
-		task = mml_core_create_task();
+		task = mml_core_create_task(atomic_read(&ctx->job_serial));
 		if (IS_ERR(task)) {
 			list_del_init(&cfg->entry);
 			frame_config_destroy(cfg);
