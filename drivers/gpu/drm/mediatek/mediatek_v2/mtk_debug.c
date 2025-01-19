@@ -2415,12 +2415,6 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 	if (mtk_dsi_lpc_en()) {
 		mtk_dsi_lpc_sof_ts(&sof_ts, mtk_crtc);
 		sof_time = (ktime_t) sof_ts;
-
-		spin_lock_irqsave(&mtk_crtc->pf_time_lock, flags);
-		mtk_crtc->pf_time = sof_time;
-		atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 1);
-		spin_unlock_irqrestore(&mtk_crtc->pf_time_lock, flags);
-		wake_up_interruptible(&(mtk_crtc->signal_irq_for_pre_fence_wq));
 	} else
 		sof_time = ktime_get();
 

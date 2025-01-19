@@ -306,6 +306,7 @@ void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 		DDPMSG("%s, g_priv is null\n", __func__);
 		return;
 	}
+	writel(g_priv->data->ao_int_config, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);
 
 	for (i = 0; i < g_priv->data->irq_count; i++) {
 		if (g_priv->data->irq_cfg[i].value == 0)

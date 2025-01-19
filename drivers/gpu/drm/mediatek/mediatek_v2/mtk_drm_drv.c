@@ -9180,10 +9180,8 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 	/* hwvsync_en*/
 	mtk_crtc->hwvsync_en = 1;
 
-	if (mtk_dsi_lpc_en()) {
-		mtk_dsi_lpc_set_interrupt_enable(mtk_crtc);
-		mtk_dsi_lpc_hwvsync_en(true, drm_crtc_index(&mtk_crtc->base));
-	}
+	if (mtk_dsi_lpc_en())
+		mtk_dsi_lpc_interrupt_enable(mtk_crtc, crtc, true);
 
 	return ret;
 }

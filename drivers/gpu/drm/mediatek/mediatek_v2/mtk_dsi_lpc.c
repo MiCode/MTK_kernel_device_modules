@@ -26,6 +26,9 @@
 #include "mtk_dsi_lpc.h"
 #include <linux/module.h>
 
+int lpc_disable;
+module_param(lpc_disable, int, 0644);
+
 int lpc_te_irq_en;
 module_param(lpc_te_irq_en, int, 0644);
 
@@ -176,7 +179,7 @@ int mtk_dsi_lpc_dump(struct mtk_ddp_comp *comp)
 {
 	int i = 0;
 
-	if (!dsi_lpc_regs_pa || !dsi_lpc_base)
+	if (!mtk_dsi_lpc_en())
 		return 0;
 
 	DDPDUMP("== LPC REGS:0x%pa ==\n", &dsi_lpc_regs_pa);
@@ -196,7 +199,7 @@ void mtk_dsi_lpc_analysis(struct mtk_ddp_comp *comp)
 	unsigned int reg_val;
 	int i = 0;
 
-	if (!dsi_lpc_regs_pa || !dsi_lpc_base)
+	if (!mtk_dsi_lpc_en())
 		return;
 
 	DDPDUMP("== LPC ANALYSIS:0x%pa ==\n", &dsi_lpc_regs_pa);
@@ -222,6 +225,13 @@ static void mtk_dsi_lpc_prepare(struct mtk_ddp_comp *comp)
 }
 static void mtk_dsi_lpc_unprepare(struct mtk_ddp_comp *comp)
 {
+	int i = 0;
+
+	for (i = 0; i < 4; i++) {
+		writel(0, dsi_lpc_base + DSI_LPC_INTEN(i));
+		writel(0, dsi_lpc_base + DSI_LPC_INSTA(i));
+	}
+
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 static void mtk_dsi_lpc_config(struct mtk_ddp_comp *comp,
@@ -325,23 +335,46 @@ void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc)
 		DRM_MMP_MARK(dsi_lpc0_ts, ts1, ts0);
 	drm_trace_tag_value("lpc_resync_timestamp", *resync_ts);
 }
-void mtk_dsi_lpc_set_interrupt_enable(struct mtk_drm_crtc *mtk_crtc)
+void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
+							struct drm_crtc *crtc, bool lock)
 {
 	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int lpc_te_con0_val = 0;
 	int index = 0;
 	u32 inten = 0;
 
-	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (lock) {
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
+		if (!mtk_crtc->enabled) {
+			DDPMSG("%s crtc is disable\n", __func__);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+			return;
+		}
+		mtk_drm_idlemgr_kick(__func__, crtc, 0);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+	}
+
+	lpc_te_con0_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(index));
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
 	if (index < 0) {
 		DDPMSG("%s lpc unit error\n", __func__);
 		return;
 	}
 
-	if (mtk_crtc->hwvsync_en)
+	if (mtk_crtc->hwvsync_en) {
 		inten |= REPORTED_RESYNC_INT_EN;
-	else
+		lpc_te_con0_val |= DSI_LPC_HW_VSYNC_ON;
+		drm_trace_tag_start("lpc_hwvsync_on");
+		DRM_MMP_EVENT_START(dsi_lpc, 0xFFFFFFFF, 1);
+	} else {
 		inten &= ~REPORTED_RESYNC_INT_EN;
+		lpc_te_con0_val &= ~DSI_LPC_HW_VSYNC_ON;
+		drm_trace_tag_end("lpc_hwvsync_on");
+		DRM_MMP_EVENT_END(dsi_lpc, 0xFFFFFFFF, 0);
+	}
+	writel(lpc_te_con0_val, dsi_lpc_base + DSI_LPC_TE_CON0(index));
 
 	if (lpc_te_irq_en)
 		inten |= EVENT_TE_INT_EN;
@@ -349,27 +382,12 @@ void mtk_dsi_lpc_set_interrupt_enable(struct mtk_drm_crtc *mtk_crtc)
 	writel(0, dsi_lpc_base + DSI_LPC_INTEN(index));
 	writel(inten, dsi_lpc_base + DSI_LPC_INTEN(index));
 
-	DDPINFO("%s,[%d]inten:0x%x\n", __func__, index, inten);
-}
-void mtk_dsi_lpc_hwvsync_en(bool en, int index)
-{
-	unsigned int lpc_te_con0_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(index));
-
-	if (en)
-		lpc_te_con0_val |= DSI_LPC_HW_VSYNC_ON;
-	else
-		lpc_te_con0_val &= ~DSI_LPC_HW_VSYNC_ON;
-
-	writel(lpc_te_con0_val, dsi_lpc_base + DSI_LPC_TE_CON0(index));
-	DDPINFO("%s,en:%d,val:0x%x\n", __func__, en, lpc_te_con0_val);
-
-	if (en) {
-		drm_trace_tag_start("lpc_hwvsync_on");
-		DRM_MMP_EVENT_START(dsi_lpc, 0xFFFFFFFF, en);
-	} else {
-		drm_trace_tag_end("lpc_hwvsync_on");
-		DRM_MMP_EVENT_END(dsi_lpc, 0xFFFFFFFF, en);
+	if (lock) {
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	}
+
+	DDPMSG("%s,[%d]inten:0x%x\n", __func__, index, inten);
 }
 void mtk_dsi_set_lpc_en(bool en)
 {
@@ -415,7 +433,7 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 		writel(dsi_lpc_fake_te_prd, dsi_lpc_base + DSI_LPC_TE_CON1(index));
 	}
 
-	DDPMSG("%s,[%d]te_num:%d,fake_te_prd:%d\n", __func__, index, panel_skip_vblank,dsi_lpc_fake_te_prd);
+	DDPINFO("%s,[%d]te_num:%d,fake_te_prd:%d\n", __func__, index, panel_skip_vblank,dsi_lpc_fake_te_prd);
 
 	DRM_MMP_MARK(dsi_lpc, panel_skip_vblank,dsi_lpc_fake_te_prd);
 	drm_trace_tag_value("lpc_te_num", panel_skip_vblank);
@@ -468,24 +486,25 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc)
 		panel_skip_vblank = params->skip_vblank;
 		dsi_lpc_te_con |= panel_skip_vblank << 8;
 	}
-	if (!dsi_lpc_base) {
-		DDPMSG("%s,dsi_lpc_base is NULL\n", __func__);
-		return;
-	}
 	writel(dsi_lpc_te_con, dsi_lpc_base + DSI_LPC_TE_CON0(index));
 
 	/* real_te_duration (us), FAKE_TE_PRD (26M clock cycle) */
 	dsi_lpc_fake_te_prd = params->real_te_duration * 26;
 	writel(dsi_lpc_fake_te_prd, dsi_lpc_base + DSI_LPC_TE_CON1(index));
 
-	DDPINFO("%s, te_num:%d,fake_te_prd:%d\n", __func__, panel_skip_vblank,dsi_lpc_fake_te_prd);
+	if (lpc_disable)
+		dsi_lpc_en = false;
+	else
+		dsi_lpc_en = true;
 
-	dsi_lpc_en = true;
-	mtk_dsi_set_lpc_en(true);
-	mtk_dsi_lpc_unit_en(true, index);
+	DDPINFO("%s, lpc_en:%d, te_num:%d,fake_te_prd:%d\n", __func__,
+		dsi_lpc_en, panel_skip_vblank,dsi_lpc_fake_te_prd);
+
+	mtk_dsi_set_lpc_en(dsi_lpc_en);
+	mtk_dsi_lpc_unit_en(dsi_lpc_en, index);
 
 	if (lpc_te_irq_en)
-		mtk_dsi_lpc_set_interrupt_enable(mtk_crtc);
+		mtk_dsi_lpc_interrupt_enable(mtk_crtc, crtc, false);
 }
 void mtk_dsi_lpc_first_config(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
@@ -603,8 +622,7 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 			if (!vblank || refcount == 0) {
 				// disable hwvsync
 				mtk_crtc->hwvsync_en = 0;
-				mtk_dsi_lpc_set_interrupt_enable(mtk_crtc);
-				mtk_dsi_lpc_hwvsync_en(false, index);
+				mtk_dsi_lpc_interrupt_enable(mtk_crtc, &mtk_crtc->base, false);
 			} else
 				mtk_crtc_vblank_irq_for_lpc_resync(&mtk_crtc->base);
 

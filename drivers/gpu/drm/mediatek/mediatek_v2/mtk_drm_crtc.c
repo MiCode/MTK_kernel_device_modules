@@ -16411,7 +16411,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/*Need to move here to prevent cmdq time for first config*/
 	mtk_crtc_gce_event_config(crtc);
-	mtk_crtc_dsi_lpc_config(crtc);
 
 	/* 2. start trigger loop first to keep gce alive */
 	if (mtk_crtc_with_trigger_loop(crtc)) {
@@ -16452,6 +16451,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	}
 
 	mtk_crtc_vdisp_ao_config(crtc);
+	mtk_crtc_dsi_lpc_config(crtc);
 
 	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -22288,9 +22288,12 @@ static int mtk_drm_pf_release_thread(void *data)
 		atomic_set(&mtk_crtc->pf_event, 0);
 
 #ifndef DRM_CMDQ_DISABLE
-		if (likely(mtk_drm_lcm_is_connect(mtk_crtc)))
-			pf_time = mtk_check_preset_fence_timestamp(crtc);
-		else
+		if (likely(mtk_drm_lcm_is_connect(mtk_crtc))) {
+			if (mtk_dsi_lpc_en())
+				pf_time = mtk_crtc->sof_time;
+			else
+				pf_time = mtk_check_preset_fence_timestamp(crtc);
+		} else
 			pf_time = 0;
 		fence_idx = atomic_read(&private->crtc_rel_present[crtc_idx]);
 
