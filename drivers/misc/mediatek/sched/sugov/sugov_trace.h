@@ -162,29 +162,44 @@ TRACE_EVENT(sugov_ext_util,
 );
 
 TRACE_EVENT(sugov_ext_wl,
-	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl, int wl_raw, int wl_manual),
-	TP_ARGS(gear_id, cpu, wl, wl_raw, wl_manual),
+	TP_PROTO(unsigned int gear_id, unsigned int cpu, int wl_tcm,
+		int wl_cpu_curr, int wl_cpu_delay, int wl_cpu_manual, int wl_dsu_curr,
+		int wl_dsu_delay,int wl_dsu_manual),
+	TP_ARGS(gear_id, cpu, wl_tcm, wl_cpu_curr, wl_cpu_delay, wl_cpu_manual, wl_dsu_curr,
+		wl_dsu_delay, wl_dsu_manual),
 	TP_STRUCT__entry(
 		__field(unsigned int, gear_id)
 		__field(unsigned int, cpu)
-		__field(unsigned int, wl)
-		__field(unsigned int, wl_raw)
-		__field(int, wl_manual)
+		__field(int, wl_tcm)
+		__field(int, wl_cpu_curr)
+		__field(int, wl_cpu_delay)
+		__field(int, wl_cpu_manual)
+		__field(int, wl_dsu_curr)
+		__field(int, wl_dsu_delay)
+		__field(int, wl_dsu_manual)
 	),
 	TP_fast_assign(
 		__entry->gear_id = gear_id;
 		__entry->cpu = cpu;
-		__entry->wl = wl;
-		__entry->wl_raw = wl_raw;
-		__entry->wl_manual = wl_manual;
+		__entry->wl_tcm= wl_tcm;
+		__entry->wl_cpu_curr = wl_cpu_curr;
+		__entry->wl_cpu_delay = wl_cpu_delay;
+		__entry->wl_cpu_manual = wl_cpu_manual;
+		__entry->wl_dsu_curr = wl_dsu_curr;
+		__entry->wl_dsu_delay = wl_dsu_delay;
+		__entry->wl_dsu_manual = wl_dsu_manual;
 	),
 	TP_printk(
-		"gear_id=%u cpu=%u wle=%u wl_raw=%d wl_manual=%d",
+		"gear_id=%u cpu=%u wl_tcm=%d wl_cpu_curr=%d wl_cpu_delay=%d wl_cpu_manual=%d wl_dsu_curr=%d wl_dsu_delay=%d wl_dsu_manual=%d",
 		__entry->gear_id,
 		__entry->cpu,
-		__entry->wl,
-		__entry->wl_raw,
-		__entry->wl_manual)
+		__entry->wl_tcm,
+		__entry->wl_cpu_curr,
+		__entry->wl_cpu_delay,
+		__entry->wl_cpu_manual,
+		__entry->wl_dsu_curr,
+		__entry->wl_dsu_delay,
+		__entry->wl_dsu_manual)
 );
 
 TRACE_EVENT(sugov_ext_dsu_freq_vote,

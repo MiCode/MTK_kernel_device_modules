@@ -336,10 +336,13 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	eenv->total_util = 0;
 
 	/* get wl snapshot*/
-	if (eenv->wl_support)
-		eenv->wl = get_em_wl();
-	else
-		eenv->wl = 0;
+	if (eenv->wl_support) {
+		eenv->wl_cpu = get_em_wl();
+		eenv->wl_dsu = get_wl_dsu();
+	} else {
+		eenv->wl_cpu = 0;
+		eenv->wl_dsu = 0;
+	}
 
 	for (; pd_ptr; pd_ptr = pd_ptr->next) {
 		unsigned long cpu_thermal_cap;
@@ -402,8 +405,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		unsigned int output[8] = {[0 ... 7] = -1};
 		unsigned int val[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = -1};
 
-		if (is_dsu_pwr_triggered(eenv->wl)) {
-			eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl,
+		if (is_dsu_pwr_triggered(eenv->wl_dsu)) {
+			eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl_dsu,
 					PERCORE_L3_BW, cpu_active_mask->bits[0], eenv->pd_base_freq,
 					val, output);
 		}
@@ -459,7 +462,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 				eenv->pds_cpu_cap[pd_idx], scale_cpu);
 	}
 
-	if (eenv->wl_support && is_dsu_pwr_triggered(eenv->wl)) {
+	if (eenv->wl_support && is_dsu_pwr_triggered(eenv->wl_dsu)) {
 		dsu_volt = update_dsu_status(eenv, false, pd_freq, pd_idx, dst_cpu);
 
 		if (share_buck.gear_idx != eenv->gear_idx)
@@ -471,13 +474,13 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	/* dvfs power overhead */
 	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx))) {
 		/* dvfs Vin/Vout */
-		pd_volt = pd_get_freq_volt(pd_idx, pd_freq, false, eenv->wl);
+		pd_volt = pd_get_freq_volt(pd_idx, pd_freq, false, eenv->wl_cpu);
 
 		dst_idx = (dst_cpu >= 0) ? 1 : 0;
 		gear_max_util = eenv->gear_max_util[eenv->gear_idx][dst_idx];
 		gear_freq = pd_get_util_cpufreq(eenv, pd_cpus, gear_max_util,
 				eenv->pds_cpu_cap[pd_idx], scale_cpu);
-		gear_volt = pd_get_freq_volt(pd_idx, gear_freq, false, eenv->wl);
+		gear_volt = pd_get_freq_volt(pd_idx, gear_freq, false, eenv->wl_cpu);
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
@@ -593,7 +596,7 @@ mtk_compute_energy(struct energy_env *eenv, struct perf_domain *pd,
 
 	/* calc indirect DSU share_buck */
 
-	if (is_dsu_pwr_triggered(eenv->wl)) {
+	if (is_dsu_pwr_triggered(eenv->wl_dsu)) {
 		if ((share_buck.gear_idx != -1) && !(shared_gear(eenv->gear_idx))
 				&& dsu_freq_changed(eenv->android_vendor_data1)) {
 			struct root_domain *rd = this_rq()->rd;
@@ -654,7 +657,7 @@ calc_sharebuck_done:
 					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx));
 		}
 		dsu_extern_volt = pd_get_freq_volt(cpumask_first(share_buck.cpus),
-				share_buck_freq, false, eenv->wl);
+				share_buck_freq, false, eenv->wl_dsu);
 		eenv->gear_idx = gear_idx;
 	}
 
@@ -663,12 +666,12 @@ calc_sharebuck_done:
 	else
 		total_util = eenv->total_util;
 
-	dsu_pwr = get_dsu_pwr(eenv->wl, dst_cpu, eenv->task_busy_time, total_util,
-			eenv->android_vendor_data1, dsu_extern_volt, is_dsu_pwr_triggered(eenv->wl));
+	dsu_pwr = get_dsu_pwr(eenv->wl_dsu, dst_cpu, eenv->task_busy_time, total_util,
+			eenv->android_vendor_data1, dsu_extern_volt, is_dsu_pwr_triggered(eenv->wl_dsu));
 
 done:
 	if (trace_sched_compute_energy_cpu_dsu_enabled())
-		trace_sched_compute_energy_cpu_dsu(dst_cpu, eenv->wl, cpu_pwr, shared_pwr_dvfs,
+		trace_sched_compute_energy_cpu_dsu(dst_cpu, eenv->wl_cpu, cpu_pwr, shared_pwr_dvfs,
 					shared_pwr, dsu_pwr, cpu_pwr + shared_pwr + dsu_pwr);
 
 	return cpu_pwr + shared_pwr_dvfs + shared_pwr + dsu_pwr;
@@ -2238,7 +2241,8 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 			max_util = eenv_pd_max_util(&eenv, cpus, p, cpu);
 
-			cur_delta = shared_buck_calc_pwr_eff(&eenv, cpu, max_util, cpus, is_dsu_pwr_triggered(eenv.wl));
+			cur_delta = shared_buck_calc_pwr_eff(&eenv, cpu, max_util, cpus,
+				is_dsu_pwr_triggered(eenv.wl_dsu));
 			base_energy = 0;
 		} else {
 			eenv_pd_busy_time(&eenv, cpus, p);
