@@ -73,6 +73,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.irq_done = mmprofile_register_event(parent, "irq_done");
 	mml_mmp_events.irq_stop = mmprofile_register_event(parent, "irq_stop");
 	mml_mmp_events.fence_sig = mmprofile_register_event(parent, "fence_sig");
+	mml_mmp_events.m2m_sig = mmprofile_register_event(parent, "m2m_sig");
 
 	parent = mml_mmp_events.irq;
 	mml_mmp_events.mutex = mmprofile_register_event(parent, "mutex");
