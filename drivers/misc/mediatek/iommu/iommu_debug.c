@@ -1333,9 +1333,6 @@ static void dump_ste_cd_info(struct seq_file *s,
 	smmu = master->smmu;
 	domain = master->domain;
 
-	iommu_dump(s, "%s strtab base:0x%llx, cfg:0x%x\n", __func__,
-		   smmu->strtab_cfg.strtab_base, smmu->strtab_cfg.strtab_base_cfg);
-
 	if (smmu_ops && smmu_ops->get_step_ptr)
 		steptr = smmu_ops->get_step_ptr(smmu, sid);
 
