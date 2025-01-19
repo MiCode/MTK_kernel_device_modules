@@ -31,65 +31,72 @@
 #endif
 #define pr_fmt(fmt) "["KBUILD_MODNAME"]" fmt
 
+//unsigned long pmem_user_v2p_video(unsigned long va)
+//{
+//	unsigned long pageOffset = (va & (PAGE_SIZE - 1));
+//	pgd_t *pgd;
+//	p4d_t *p4dp;
+//	pud_t *pud;
+//	pmd_t *pmd;
+//	pte_t *pte;
+
+//	unsigned long pa;
+
+//	if (current == NULL) {
+//		pr_info("[ERROR] %s, current is NULL!\n", __func__);
+//		return 0;
+//	}
+
+//	if (current->mm == NULL) {
+//		pr_info("[ERROR] v2p, mm is NULL! tgid=0x%x, name=%s\n",
+//				current->tgid, current->comm);
+//		return 0;
+//	}
+
+//	spin_lock(&current->mm->page_table_lock);
+
+//	pgd = pgd_offset(current->mm, va);  /* what is tsk->mm */
+//	if (pgd_none(*pgd) || pgd_bad(*pgd)) {
+//		pr_info("[ERROR] v2p, va=0x%lx, pgd invalid!\n", va);
+//		spin_unlock(&current->mm->page_table_lock);
+//		return 0;
+//	}
+//	p4dp = p4d_offset(pgd, va);
+//	if (p4d_none(*p4dp)) {
+//		pr_info("[ERROR] v2p, va=0x%lx, p4dp invalid!\n", va);
+//		spin_unlock(&current->mm->page_table_lock);
+//		return 0;
+//}
+//	pud = pud_offset(p4dp, va);
+//	if (pud_none(*pud) || pud_bad(*pud)) {
+//		pr_info("[ERROR] v2p, va=0x%lx, pud invalid!\n", va);
+//		spin_unlock(&current->mm->page_table_lock);
+//		return 0;
+//	}
+
+//	pmd = pmd_offset(pud, va);
+//	if (pmd_none(*pmd) || pmd_bad(*pmd)) {
+//		pr_info("[ERROR] v2p(), va=0x%lx, pmd invalid!\n", va);
+//		spin_unlock(&current->mm->page_table_lock);
+//		return 0;
+//	}
+
+//	pte = pte_alloc_kernel(pmd, va);
+//	if (pte_present(*pte)) {
+//		pa = (pte_val(*pte) & PHYS_MASK & (PAGE_MASK)) | pageOffset;
+//		spin_unlock(&current->mm->page_table_lock);
+//		return pa;
+//	}
+
+//	pr_info("[ERROR] v2p, va=0x%lx, pte invalid!\n", va);
+//	spin_unlock(&current->mm->page_table_lock);
+//	return 0;
+//}
+
+/* [TODO] pmem_user_v2p_video va to pa mapping */
 unsigned long pmem_user_v2p_video(unsigned long va)
 {
-	unsigned long pageOffset = (va & (PAGE_SIZE - 1));
-	pgd_t *pgd;
-	p4d_t *p4dp;
-	pud_t *pud;
-	pmd_t *pmd;
-	pte_t *pte;
-
-	unsigned long pa;
-
-	if (current == NULL) {
-		pr_info("[ERROR] %s, current is NULL!\n", __func__);
-		return 0;
-	}
-
-	if (current->mm == NULL) {
-		pr_info("[ERROR] v2p, mm is NULL! tgid=0x%x, name=%s\n",
-				current->tgid, current->comm);
-		return 0;
-	}
-
-	spin_lock(&current->mm->page_table_lock);
-
-	pgd = pgd_offset(current->mm, va);  /* what is tsk->mm */
-	if (pgd_none(*pgd) || pgd_bad(*pgd)) {
-		pr_info("[ERROR] v2p, va=0x%lx, pgd invalid!\n", va);
-		spin_unlock(&current->mm->page_table_lock);
-		return 0;
-	}
-	p4dp = p4d_offset(pgd, va);
-	if (p4d_none(*p4dp)) {
-		pr_info("[ERROR] v2p, va=0x%lx, p4dp invalid!\n", va);
-		spin_unlock(&current->mm->page_table_lock);
-		return 0;
+	return va;
 }
-	pud = pud_offset(p4dp, va);
-	if (pud_none(*pud) || pud_bad(*pud)) {
-		pr_info("[ERROR] v2p, va=0x%lx, pud invalid!\n", va);
-		spin_unlock(&current->mm->page_table_lock);
-		return 0;
-	}
 
-	pmd = pmd_offset(pud, va);
-	if (pmd_none(*pmd) || pmd_bad(*pmd)) {
-		pr_info("[ERROR] v2p(), va=0x%lx, pmd invalid!\n", va);
-		spin_unlock(&current->mm->page_table_lock);
-		return 0;
-	}
-
-	pte = pte_alloc_kernel(pmd, va);
-	if (pte_present(*pte)) {
-		pa = (pte_val(*pte) & PHYS_MASK & (PAGE_MASK)) | pageOffset;
-		spin_unlock(&current->mm->page_table_lock);
-		return pa;
-	}
-
-	pr_info("[ERROR] v2p, va=0x%lx, pte invalid!\n", va);
-	spin_unlock(&current->mm->page_table_lock);
-	return 0;
-}
 EXPORT_SYMBOL(pmem_user_v2p_video);
