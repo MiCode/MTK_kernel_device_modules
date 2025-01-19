@@ -61,68 +61,6 @@
 #include "mtk-smmu-v3.h"
 #include "mtk-iommu-util.h"
 
-#define SMMU_PMCG_EVCNTR0               0x0
-#define SMMU_PMCG_EVCNTR(n, stride)     (SMMU_PMCG_EVCNTR0 + (n) * (stride))
-#define SMMU_PMCG_EVTYPER0              0x400
-#define SMMU_PMCG_EVTYPER(n)            (SMMU_PMCG_EVTYPER0 + (n) * 4)
-#define SMMU_PMCG_SID_SPAN_SHIFT        29
-#define SMMU_PMCG_SMR0                  0xA00
-#define SMMU_PMCG_SMR(n)                (SMMU_PMCG_SMR0 + (n) * 4)
-#define SMMU_PMCG_CNTENSET0             0xC00
-#define SMMU_PMCG_CNTENCLR0             0xC20
-#define SMMU_PMCG_INTENSET0             0xC40
-#define SMMU_PMCG_INTENCLR0             0xC60
-#define SMMU_PMCG_OVSCLR0               0xC80
-#define SMMU_PMCG_OVSSET0               0xCC0
-#define SMMU_PMCG_CFGR                  0xE00
-#define SMMU_PMCG_CFGR_SID_FILTER_TYPE  BIT(23)
-#define SMMU_PMCG_CFGR_MSI              BIT(21)
-#define SMMU_PMCG_CFGR_RELOC_CTRS       BIT(20)
-#define SMMU_PMCG_CFGR_SIZE             GENMASK(13, 8)
-#define SMMU_PMCG_CFGR_NCTR             GENMASK(5, 0)
-#define SMMU_PMCG_CR                    0xE04
-#define SMMU_PMCG_CR_ENABLE             BIT(0)
-#define SMMU_PMCG_IIDR                  0xE08
-#define SMMU_PMCG_IIDR_PRODUCTID        GENMASK(31, 20)
-#define SMMU_PMCG_IIDR_VARIANT          GENMASK(19, 16)
-#define SMMU_PMCG_IIDR_REVISION         GENMASK(15, 12)
-#define SMMU_PMCG_IIDR_IMPLEMENTER      GENMASK(11, 0)
-#define SMMU_PMCG_CEID0                 0xE20
-#define SMMU_PMCG_CEID1                 0xE28
-#define SMMU_PMCG_IRQ_CTRL              0xE50
-#define SMMU_PMCG_IRQ_CTRL_IRQEN        BIT(0)
-#define SMMU_PMCG_IRQ_CFG0              0xE58
-#define SMMU_PMCG_IRQ_CFG1              0xE60
-#define SMMU_PMCG_IRQ_CFG2              0xE64
-
-/* IMP-DEF ID registers */
-#define SMMU_PMCG_PIDR0                 0xFE0
-#define SMMU_PMCG_PIDR0_PART_0          GENMASK(7, 0)
-#define SMMU_PMCG_PIDR1                 0xFE4
-#define SMMU_PMCG_PIDR1_DES_0           GENMASK(7, 4)
-#define SMMU_PMCG_PIDR1_PART_1          GENMASK(3, 0)
-#define SMMU_PMCG_PIDR2                 0xFE8
-#define SMMU_PMCG_PIDR2_REVISION        GENMASK(7, 4)
-#define SMMU_PMCG_PIDR2_DES_1           GENMASK(2, 0)
-#define SMMU_PMCG_PIDR3                 0xFEC
-#define SMMU_PMCG_PIDR3_REVAND          GENMASK(7, 4)
-#define SMMU_PMCG_PIDR4                 0xFD0
-#define SMMU_PMCG_PIDR4_DES_2           GENMASK(3, 0)
-
-/* MSI config fields */
-#define MSI_CFG0_ADDR_MASK              GENMASK_ULL(51, 2)
-#define MSI_CFG2_MEMATTR_DEVICE_nGnRE   0x1
-
-#define SMMU_PMCG_DEFAULT_FILTER_SPAN   1
-#define SMMU_PMCG_DEFAULT_FILTER_SID    GENMASK(31, 0)
-
-#define SMMU_PMCG_MAX_COUNTERS          64
-#define SMMU_PMCG_ARCH_MAX_EVENTS       128
-
-#define SMMU_PMCG_PA_SHIFT              12
-
-#define SMMU_PMCG_EVCNTR_RDONLY         BIT(0)
-
 #define SMMU_TXU_EVENT_START		0x80
 #define SMMU_TXU_EVENT_END		0xe7
 
