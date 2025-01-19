@@ -229,7 +229,7 @@ struct ccci_fsm_event {
 	struct list_head entry;
 	enum CCCI_FSM_EVENT event_id;
 	unsigned int length;
-	unsigned char data[0];
+	unsigned char data[];
 };
 
 struct ccci_fsm_command {
