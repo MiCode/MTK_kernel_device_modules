@@ -501,7 +501,7 @@ void ged_eb_dvfs_frame_done_dump(void)
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_BUSY_CYCLE].addr),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_REAL].addr),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_WORKLOAD_PIPE].addr),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOADING_MODE));
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr));
 
 	trace_GPU_DVFS__Policy__Frame_based__GPU_Time(
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU),

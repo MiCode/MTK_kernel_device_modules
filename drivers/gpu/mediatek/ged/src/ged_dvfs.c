@@ -3730,7 +3730,7 @@ static void ged_dvfs_workload_mode(int i32WorkloadMode)
 		gx_dvfs_workload_mode = WORKLOAD_ACTIVE;
 	else if ((i32WorkloadMode >= 0) && (i32WorkloadMode < 100))
 		gx_dvfs_workload_mode = i32WorkloadMode;
-
+	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr, gx_dvfs_workload_mode);
 	mutex_unlock(&gsDVFSLock);
 }
 
@@ -4479,6 +4479,7 @@ GED_ERROR ged_dvfs_system_init(void)
 		of_property_read_u32(dvfs_loading_mode_node, "dvfs-workload-mode",
 							&gx_dvfs_workload_mode);
 	}
+	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr, gx_dvfs_workload_mode);
 	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_LOADING_MODE, gx_dvfs_loading_mode);
 	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr,0);
 
