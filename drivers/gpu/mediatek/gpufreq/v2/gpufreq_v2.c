@@ -103,6 +103,11 @@ unsigned long (*ged_get_last_commit_top_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_top_idx_fp);
 unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
 EXPORT_SYMBOL(ged_get_last_commit_stack_idx_fp);
+void (*ged_notify_gpu_fix_opp_fp)(int gpu_opp, int stack_opp);
+EXPORT_SYMBOL(ged_notify_gpu_fix_opp_fp);
+void (*ged_notify_gpu_fix_freq_volt_fp)(unsigned int fgpu, unsigned int vgpu,
+	unsigned int fstack, unsigned int vtstack);
+EXPORT_SYMBOL(ged_notify_gpu_fix_freq_volt_fp);
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool gpufreq_devapc_vio_callback(void);
 static bool gpufreq_bus_tracker_vio_callback(int slave_type);
@@ -1327,6 +1332,10 @@ int gpufreq_fix_target_oppidx(enum gpufreq_target target, int oppidx)
 	}
 
 done:
+	/* notify DVFS Policy */
+	if (likely(!ret) && ged_notify_gpu_fix_opp_fp)
+		ged_notify_gpu_fix_opp_fp(oppidx, oppidx);
+
 	if (unlikely(ret))
 		GPUFREQ_LOGE("fail to fix %s OPP index: %d (%d)",
 			target == TARGET_STACK ? "STACK" : "GPU", oppidx, ret);
@@ -1371,6 +1380,10 @@ int gpufreq_fix_dual_target_oppidx(int gpu_oppidx, int stack_oppidx)
 	}
 
 done:
+	/* notify DVFS Policy */
+	if (likely(!ret) && ged_notify_gpu_fix_opp_fp)
+		ged_notify_gpu_fix_opp_fp(gpu_oppidx, stack_oppidx);
+
 	if (unlikely(ret))
 		GPUFREQ_LOGE("fail to fix GPU/STACK OPP index: %d/%d (%d)",
 			gpu_oppidx, stack_oppidx, ret);
@@ -1423,6 +1436,10 @@ int gpufreq_fix_custom_freq_volt(enum gpufreq_target target,
 	}
 
 done:
+	/* notify DVFS Policy */
+	if (likely(!ret) && ged_notify_gpu_fix_freq_volt_fp)
+		ged_notify_gpu_fix_freq_volt_fp(freq, volt, freq, volt);
+
 	if (unlikely(ret))
 		GPUFREQ_LOGE("fail to fix %s F(%d)/V(%d) (%d)",
 			target == TARGET_STACK ? "STACK" : "GPU", freq, volt, ret);
@@ -1470,6 +1487,10 @@ int gpufreq_fix_dual_custom_freq_volt(unsigned int fgpu, unsigned int vgpu,
 	}
 
 done:
+	/* notify DVFS Policy */
+	if (likely(!ret) && ged_notify_gpu_fix_freq_volt_fp)
+		ged_notify_gpu_fix_freq_volt_fp(fgpu, vgpu, fstack, vstack);
+
 	if (unlikely(ret))
 		GPUFREQ_LOGE("fail to fix GPU F(%d)/V(%d), STACK F(%d)/V(%d) (%d)",
 			fgpu, vgpu, fstack, vstack, ret);

@@ -651,6 +651,9 @@ extern int (*mtk_get_gpu_cur_oppidx_fp)(enum gpufreq_target target);
 extern unsigned long (*ged_get_last_commit_idx_fp)(void);
 extern unsigned long (*ged_get_last_commit_top_idx_fp)(void);
 extern unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
+extern void (*ged_notify_gpu_fix_opp_fp)(int gpu_opp, int stack_opp);
+extern void (*ged_notify_gpu_fix_freq_volt_fp)(unsigned int fgpu, unsigned int vgpu,
+	unsigned int fstack, unsigned int vtstack);
 
 /**************************************************
  * External Function
