@@ -60,6 +60,7 @@ int mvpu30_ipi_send(uint32_t type, uint32_t dir, uint64_t *val)
 	ipi_data.data = *val;
 
 	mutex_lock(&mvpu_ipi_mtx);
+	reinit_completion(&mvpu_tx_rpm_dev.ack);
 
 	/* power on */
 	rpms_ret = rpmsg_sendto(mvpu_tx_rpm_dev.ept, NULL, 1, 0);
