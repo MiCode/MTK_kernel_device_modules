@@ -81,16 +81,20 @@ int mdw_rv_dev_dtime_handle(struct mdw_rv_dev *mrdev, struct mdw_cmd *c)
 	unsigned long power_dtime = 0;
 	uint32_t activate_dtime = c->power_dtime;
 
+	mdw_flw_debug("\n");
+
 	/* dtime handle */
 	activate_dtime = (activate_dtime > dbg_max_dtime)? dbg_max_dtime: activate_dtime;
 	activate_dtime = (activate_dtime < dbg_min_dtime)? dbg_min_dtime: activate_dtime;
 
 	mutex_lock(&mdev->dtime_mtx);
 	curr_dtime_ts = c->end_ts + activate_dtime;
-	if (mdev->max_dtime_ts < curr_dtime_ts)
+	if (mdev->max_dtime_ts < curr_dtime_ts) {
 		mdev->max_dtime_ts = curr_dtime_ts;
-	else
+	} else {
+		mdw_drv_warn("skip create power off dtime timer\n");
 		goto out;
+	}
 
 	power_dtime = msecs_to_jiffies(mdev->max_dtime_ts - c->end_ts);
 

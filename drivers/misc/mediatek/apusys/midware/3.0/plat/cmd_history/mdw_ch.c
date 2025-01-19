@@ -401,6 +401,7 @@ int mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 
 	if (mdw_ch_is_perf_mode(c)) {
 		mdw_flw_debug("perf mode cmd, bypass update\n");
+		c->need_dtime_handle = true;
 		return 0;
 	}
 
@@ -411,6 +412,7 @@ int mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 	if (ch_tbl == NULL) {
 		mdw_drv_warn("find ch table failed(0x%llx)\n", c->uid);
 		ret = -EINVAL;
+		c->need_dtime_handle = true;
 		goto out;
 	}
 

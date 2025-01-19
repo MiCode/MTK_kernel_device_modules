@@ -76,9 +76,12 @@ static int mdw_cmd_preprocess(struct mdw_cmd *c)
 
 static void mdw_cmd_update_einfos(struct mdw_cmd *c)
 {
-	if (c->cmd_state == MDW_CMD_STATE_POSTPROCESS_DONE)
+	if (c->cmd_state == MDW_CMD_STATE_POSTPROCESS_DONE) {
+		mdw_flw_debug("Skip update einfos\n");
 		return;
+	}
 
+	mdw_flw_debug("\n");
 	c->end_ts = sched_clock();
 	c->einfos->c.total_us = (c->end_ts - c->start_ts) / 1000;
 	c->einfos->c.inference_id = c->inference_id;
@@ -88,7 +91,10 @@ static void mdw_cmd_postprocess(struct mdw_cmd *c)
 {
 	struct mdw_device *mdev = c->mpriv->mdev;
 
-	mdw_cmd_debug("\n");
+	mdw_flw_debug("\n");
+
+	/* update einfos */
+	mdw_cmd_update_einfos(c);
 
 	/* post process such as copy exec info */
 	if (mdev->plat_funcs->postprocess_cmd(c))
@@ -96,9 +102,6 @@ static void mdw_cmd_postprocess(struct mdw_cmd *c)
 
 	/* copy cmdbuf to user */
 	mdw_cmd_cmdbuf_out(c);
-
-	/* update einfos */
-	mdw_cmd_update_einfos(c);
 
 	c->cmd_state = MDW_CMD_STATE_POSTPROCESS_DONE;
 }
