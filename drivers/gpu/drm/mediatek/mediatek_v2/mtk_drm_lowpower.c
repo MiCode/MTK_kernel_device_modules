@@ -1921,10 +1921,20 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"polling_dsi", 1, perf_string, false);
 
-	/* 0. Waiting CLIENT_DSI_CFG/CLIENT_CFG thread done */
+	/* 0. Waiting CLIENT_DSI_CFG/CLIENT_CHECK_T/CLIENT_CFG thread done */
 	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG])
 		mtk_crtc_pkt_create(&cmdq_handle1, crtc,
 			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+
+	if (cmdq_handle1) {
+		cmdq_pkt_flush(cmdq_handle1);
+		cmdq_pkt_destroy(cmdq_handle1);
+		cmdq_handle1 = NULL;
+	}
+
+	if (mtk_crtc->gce_obj.client[CLIENT_CHECK_T])
+		mtk_crtc_pkt_create(&cmdq_handle1, crtc,
+			mtk_crtc->gce_obj.client[CLIENT_CHECK_T]);
 
 	if (cmdq_handle1) {
 		cmdq_pkt_flush(cmdq_handle1);

@@ -11012,6 +11012,9 @@ void mtk_crtc_stop_event_loop(struct drm_crtc *crtc)
 	}
 
 	priv = mtk_crtc->base.dev->dev_private;
+	// stop check_t all pkt avoid not waiting fot event after stop event loop done
+	if (mtk_crtc->gce_obj.client[CLIENT_CHECK_T])
+		cmdq_mbox_stop(mtk_crtc->gce_obj.client[CLIENT_CHECK_T]);
 	cmdq_mbox_stop(mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP]);
 	cmdq_pkt_destroy(mtk_crtc->event_loop_cmdq_handle);
 	mtk_crtc->event_loop_cmdq_handle = NULL;
@@ -11788,6 +11791,7 @@ struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
 	struct cmdq_operand lop, rop;
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
 	const u16 var2 = CMDQ_THR_SPR_IDX3;
+	struct cmdq_client *cl;
 
 	// Temp code. This flow will only enter by debug command
 	// (CMD mode will enter MML IR by debug command), we don't
@@ -11799,9 +11803,11 @@ struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
 
 	drm_trace_tag_mark("crtc_set_dirty_wait");
 
-	/* todo: use new cmdq client */
-	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
-		mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+	if (mtk_crtc->gce_obj.client[CLIENT_CHECK_T])
+		cl = mtk_crtc->gce_obj.client[CLIENT_CHECK_T];
+	else
+		cl = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
+	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base, cl);
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
@@ -12583,10 +12589,22 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 			MTK_DRM_OPT_IDLEMGR_ASYNC))
 		async = mtk_drm_idlemgr_get_async_status(crtc);
 
-	/* 0. Waiting CLIENT_DSI_CFG thread done */
+	/* 0. Waiting CLIENT_DSI_CFG and CLIENT_CHECK_T thread done */
 	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] != NULL && async == false) {
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+
+		if (!cmdq_handle) {
+			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+			return;
+		}
+
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	}
+	if (mtk_crtc->gce_obj.client[CLIENT_CHECK_T] != NULL && async == false) {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+			mtk_crtc->gce_obj.client[CLIENT_CHECK_T]);
 
 		if (!cmdq_handle) {
 			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
@@ -22541,10 +22559,22 @@ void mtk_crtc_stop_for_pm(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 
 	DDPINFO("%s:%d +\n", __func__, __LINE__);
 
-	/* 0. Waiting CLIENT_DSI_CFG thread done */
+	/* 0. Waiting CLIENT_DSI_CFG and CLIENT_CHECK_T thread done */
 	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] != NULL) {
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+
+		if (!cmdq_handle) {
+			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+			return;
+		}
+
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	}
+	if (mtk_crtc->gce_obj.client[CLIENT_CHECK_T] != NULL) {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+			mtk_crtc->gce_obj.client[CLIENT_CHECK_T]);
 
 		if (!cmdq_handle) {
 			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);

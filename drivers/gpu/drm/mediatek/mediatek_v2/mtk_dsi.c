@@ -5404,6 +5404,14 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 		cmdq_pkt_destroy(handle);
 	}
 
+	/* Waiting CLIENT_CHECK_T thread done */
+	if (mtk_crtc->gce_obj.client[CLIENT_CHECK_T]) {
+		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
+				mtk_crtc->gce_obj.client[CLIENT_CHECK_T]);
+		cmdq_pkt_flush(handle);
+		cmdq_pkt_destroy(handle);
+	}
+
 	mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_CFG]);
 	cmdq_pkt_flush(handle);
