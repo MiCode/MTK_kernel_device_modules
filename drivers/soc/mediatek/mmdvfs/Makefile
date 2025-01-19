@@ -8,8 +8,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/
 
 ifneq ($(filter y m,$(CONFIG_MTK_TINYSYS_VCP_SUPPORT)),)
 obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs-v5.o
-endif
-
 ifneq ($(wildcard $(src)/mmdvfs-mt6991.c),)
 obj-$(CONFIG_MTK_MMDVFS) += mmdvfs-mt6991.o
+endif
 endif
