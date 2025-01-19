@@ -2,8 +2,8 @@
 /*
  * Copyright (c) 2020 MediaTek Inc.
  */
-#ifndef __MVPU_SEC_H__
-#define __MVPU_SEC_H__
+#ifndef __MVPU2X_SEC_H__
+#define __MVPU2X_SEC_H__
 #include <linux/dma-heap.h>
 #include <uapi/linux/dma-heap.h>
 #include <linux/dma-direction.h>
@@ -333,12 +333,12 @@ int check_batch_flow(void *session,
 						uint32_t *kreg_kva,
 						uint32_t knl_num);
 
-int mvpu20_load_img(struct device *dev);
+int mvpu2X_load_img(struct device *dev);
 
-int mvpu20_sec_init(struct device *dev);
+int mvpu2X_sec_init(struct device *dev);
 
-int mvpu20_sec_sysfs_init(struct kobject *root_dir);
+int mvpu2X_sec_sysfs_init(struct kobject *root_dir);
 
 #endif
 
-#endif /* __MVPU_SEC_H__ */
+#endif /* __MVPU2X_SEC_H__ */

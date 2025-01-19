@@ -12,8 +12,9 @@
 #include <linux/rpmsg.h>
 
 #include "mvpu_driver.h"
+#include "mvpu2X_cmd_data.h"
 #include "mvpu_plat.h"
-#include "mvpu_ipi.h"
+#include "mvpu2X_ipi.h"
 extern uint32_t apu_ce_sram_dump(struct device *dev);
 
 /*
@@ -27,6 +28,11 @@ struct mvpu_ipi_data {
 	u32 type0;
 	u16 dir;
 	u64 data;
+
+	u32 error_code;
+	char algo_name[MVPU_REQUEST_NAME_SIZE];
+	uint64_t mpu_addr;
+	uint32_t mpu_setting[MVPU_MPU_SEGMENT_NUMS];
 };
 static struct mvpu_ipi_data ipi_tx_recv_buf;
 static struct mvpu_ipi_data ipi_rx_send_buf;
@@ -41,7 +47,7 @@ struct mvpu_rpmsg_device {
 static struct mvpu_rpmsg_device mvpu_tx_rpm_dev;
 static struct mvpu_rpmsg_device mvpu_rx_rpm_dev;
 
-int mvpu20_ipi_send(uint32_t type, uint32_t dir, uint64_t *val)
+int mvpu2X_ipi_send(uint32_t type, uint32_t dir, uint64_t *val)
 {
 	struct mvpu_ipi_data ipi_data;
 	int ret = 0, rpms_ret = 0;
@@ -92,7 +98,7 @@ out:
 	return ret;
 }
 
-static int mvpu_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
+static int mvpu2X_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 
@@ -114,15 +120,7 @@ static int mvpu_rpmsg_tx_cb(struct rpmsg_device *rpdev, void *data,
 	return 0;
 }
 
-static void mvpu_trigger_db(u32 type, u64 val)
-{
-	if (type == MVPU_IPI_MICROP_MSG) {
-		apu_ce_sram_dump(&g_mvpu_platdata->pdev->dev);
-		mvpu_aee_warn("MVPU", "MVPU aee");
-	}
-}
-
-static int mvpu_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
+static int mvpu2X_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
 		int len, void *priv, u32 src)
 {
 	struct mvpu_ipi_data *d = (struct mvpu_ipi_data *)data;
@@ -135,7 +133,40 @@ static int mvpu_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
 
 		rpmsg_send(mvpu_rx_rpm_dev.ept, &ipi_rx_send_buf, sizeof(ipi_rx_send_buf));
 
-		mvpu_trigger_db(d->type0, d->data);
+		apu_ce_sram_dump(&g_mvpu_platdata->pdev->dev);
+		mvpu_aee_exception("MVPU", "MVPU aee");
+	} else {
+		pr_info("Receive command ack -> use the wrong channel!?\n");
+	}
+
+	return 0;
+}
+
+static int mvpu25a_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
+		int len, void *priv, u32 src)
+{
+	struct mvpu_ipi_data *d = (struct mvpu_ipi_data *)data;
+
+	if (d->type0 == MVPU_IPI_MICROP_MSG) {
+
+		ipi_rx_send_buf.type0  = d->type0;
+		ipi_rx_send_buf.dir    = d->dir;
+		ipi_rx_send_buf.data   = d->data;
+
+		ipi_rx_send_buf.error_code = d->error_code;
+		strscpy(ipi_rx_send_buf.algo_name, d->algo_name, sizeof(d->algo_name));
+		if (d->error_code == 94) {
+			pr_info("[MVPU] [ERROR] mpu addr 0x%llx\n", d->mpu_addr);
+			for (unsigned int idx = 38; idx >= 1; idx = idx-2)
+				pr_info("[MVPU] [ERROR] mpu_setting [%02d~%02d] 0x%08x~0x%08x\n",
+							idx-1, idx, d->mpu_setting[idx-1], d->mpu_setting[idx]);
+		}
+		rpmsg_send(mvpu_rx_rpm_dev.ept, &ipi_rx_send_buf, sizeof(ipi_rx_send_buf));
+
+		pr_info("[MVPU] [ERROR] error_code(%d), algo_name: %s\n",
+					ipi_rx_send_buf.error_code, ipi_rx_send_buf.algo_name);
+		apu_ce_sram_dump(&g_mvpu_platdata->pdev->dev);
+		mvpu_aee_exception("MVPU", "MVPU aee");
 	} else {
 		pr_info("Receive command ack -> use the wrong channel!?\n");
 	}
@@ -184,29 +215,51 @@ static const struct of_device_id mvpu_rx_rpmsg_of_match[] = {
 	{},
 };
 
-static struct rpmsg_driver mvpu_rpmsg_tx_drv = {
+static struct rpmsg_driver mvpu2X_rpmsg_tx_drv = {
 	.drv = {
 		.name = "mvpu-tx-rpmsg",
 		.owner = THIS_MODULE,
 		.of_match_table = mvpu_tx_rpmsg_of_match,
 	},
 	.probe = mvpu_rpmsg_tx_probe,
-	.callback = mvpu_rpmsg_tx_cb,
+	.callback = mvpu2X_rpmsg_tx_cb,
 	.remove = mvpu_rpmsg_remove,
 };
 
-static struct rpmsg_driver mvpu_rpmsg_rx_drv = {
+static struct rpmsg_driver mvpu2X_rpmsg_rx_drv = {
 	.drv = {
 		.name = "mvpu-rx-rpmsg",
 		.owner = THIS_MODULE,
 		.of_match_table = mvpu_rx_rpmsg_of_match,
 	},
 	.probe = mvpu_rpmsg_rx_probe,
-	.callback = mvpu_rpmsg_rx_cb,
+	.callback = mvpu2X_rpmsg_rx_cb,
 	.remove = mvpu_rpmsg_remove,
 };
 
-int mvpu20_ipi_init(void)
+static struct rpmsg_driver mvpu25a_rpmsg_tx_drv = {
+	.drv = {
+		.name = "mvpu-tx-rpmsg",
+		.owner = THIS_MODULE,
+		.of_match_table = mvpu_tx_rpmsg_of_match,
+	},
+	.probe = mvpu_rpmsg_tx_probe,
+	.callback = mvpu2X_rpmsg_tx_cb,
+	.remove = mvpu_rpmsg_remove,
+};
+
+static struct rpmsg_driver mvpu25a_rpmsg_rx_drv = {
+	.drv = {
+		.name = "mvpu-rx-rpmsg",
+		.owner = THIS_MODULE,
+		.of_match_table = mvpu_rx_rpmsg_of_match,
+	},
+	.probe = mvpu_rpmsg_rx_probe,
+	.callback = mvpu25a_rpmsg_rx_cb,
+	.remove = mvpu_rpmsg_remove,
+};
+
+int mvpu2X_ipi_init(void)
 {
 	int ret;
 
@@ -216,21 +269,48 @@ int mvpu20_ipi_init(void)
 	init_completion(&mvpu_tx_rpm_dev.ack);
 	mutex_init(&mvpu_ipi_mtx);
 
-	ret = register_rpmsg_driver(&mvpu_rpmsg_rx_drv);
+	ret = register_rpmsg_driver(&mvpu2X_rpmsg_rx_drv);
 	if (ret)
 		pr_info("failed to register mvpu rx rpmsg\n");
 
-	ret = register_rpmsg_driver(&mvpu_rpmsg_tx_drv);
+	ret = register_rpmsg_driver(&mvpu2X_rpmsg_tx_drv);
 	if (ret)
 		pr_info("failed to register mvpu tx rpmsg\n");
 
 	return 0;
 }
 
-void mvpu20_ipi_deinit(void)
+void mvpu2X_ipi_deinit(void)
 {
-	unregister_rpmsg_driver(&mvpu_rpmsg_tx_drv);
-	unregister_rpmsg_driver(&mvpu_rpmsg_rx_drv);
+	unregister_rpmsg_driver(&mvpu2X_rpmsg_tx_drv);
+	unregister_rpmsg_driver(&mvpu2X_rpmsg_rx_drv);
 	mutex_destroy(&mvpu_ipi_mtx);
 }
 
+int mvpu25a_ipi_init(void)
+{
+	int ret;
+
+	pr_info("%s +\n", __func__);
+
+	init_completion(&mvpu_rx_rpm_dev.ack);
+	init_completion(&mvpu_tx_rpm_dev.ack);
+	mutex_init(&mvpu_ipi_mtx);
+
+	ret = register_rpmsg_driver(&mvpu25a_rpmsg_rx_drv);
+	if (ret)
+		pr_info("failed to register mvpu rx rpmsg\n");
+
+	ret = register_rpmsg_driver(&mvpu25a_rpmsg_tx_drv);
+	if (ret)
+		pr_info("failed to register mvpu tx rpmsg\n");
+
+	return 0;
+}
+
+void mvpu25a_ipi_deinit(void)
+{
+	unregister_rpmsg_driver(&mvpu25a_rpmsg_tx_drv);
+	unregister_rpmsg_driver(&mvpu25a_rpmsg_rx_drv);
+	mutex_destroy(&mvpu_ipi_mtx);
+}

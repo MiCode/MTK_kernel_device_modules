@@ -10,7 +10,7 @@
 
 #include "mvpu_plat.h"
 
-#ifndef MVPU_V2_PLAT_DATA
+#ifndef MVPU_V2X_PLAT_DATA
 struct mvpu_platdata mvpu_mt6879_platdata;
 struct mvpu_platdata mvpu_mt6886_platdata;
 struct mvpu_platdata mvpu_mt6895_platdata;

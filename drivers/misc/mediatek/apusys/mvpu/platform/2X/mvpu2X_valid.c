@@ -10,9 +10,10 @@
 
 #include "mvpu_plat.h"
 #include "mvpu_sysfs.h"
-#include "mvpu_cmd_data.h"
-#include "mvpu_sec.h"
-#include "mvpu_handler.h"
+#include "mvpu2X_cmd_data.h"
+#include "mvpu2X_sec.h"
+#include "mvpu2X_handler.h"
+#include "mvpu2X_ipi.h"
 
 int mvpu_validation(void *hnd)
 {
@@ -176,6 +177,17 @@ int mvpu_validation(void *hnd)
 		}
 	}
 #endif
+
+	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25a) {
+		if ((mvpu_req->feature_control_mask & MVPU_REQ_FEATURE_OSGB_LIMITED) != MVPU_REQ_FEATURE_OSGB_LIMITED) {
+			pr_info("[MVPU] [ERROR] binary is too old, please regenerate binary with version after SW 4.1 (include OSG patch)\n");
+			strscpy(&mvpu_req->name[31], "\0", sizeof(char));
+			pr_info("[MVPU] algo_name: %s\n", mvpu_req->name);
+			mvpu_aee_exception("MVPU", "MVPU aee");
+			ret = -1;
+			goto END;
+		}
+	}
 
 	mutex_lock(&mvpu_pool_lock);
 

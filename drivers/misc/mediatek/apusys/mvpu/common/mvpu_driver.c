@@ -102,7 +102,7 @@ static int mvpu_probe(struct platform_device *pdev)
 	}
 	dev_info(dev, "%s: dma init pass\n", __func__);
 
-	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU2) {
+	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU2X || g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25a) {
 		if (g_mvpu_platdata->sec_ops->mvpu_sec_init(dev)) {
 			dev_info(dev, "%s: sec init fail\n", __func__);
 			return -EINVAL;
