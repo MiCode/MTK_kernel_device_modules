@@ -14303,6 +14303,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 					/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
 			mmqos-supply = <&mmqos>;
 			mediatek,imgsys-qof-ver = <31>;
+			mediatek,imgsys-ver = <0>;
 		};
 		imgsys_scp: imgsys-iommu-sentrymode {
 			compatible = "mediatek,imgsys-io-sentrymode";
