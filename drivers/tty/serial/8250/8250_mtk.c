@@ -126,6 +126,12 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 	mb(); /* make sure register access in order */ \
 } while (0)
 
+#define RX_NOTIFY_THRESHOLD  2
+#define RX_SIZE_SHIFT 10
+#define RX_NOTIFY_MASK 0x3F
+#define RX_NOTIFY_BASE 0x40
+#define RX_SIZE_SCALE (1ULL << RX_SIZE_SHIFT)
+
 #ifdef CONFIG_SERIAL_8250_DMA
 enum dma_rx_status {
 	DMA_RX_START = 0,
@@ -154,6 +160,18 @@ struct mtk8250_dump {
 struct mtk8250_info_dump {
 	unsigned long long rec_total;
 	struct mtk8250_dump rec[UART_DUMP_RECORE_NUM];
+};
+
+struct mtk8250_inb_dump {
+	unsigned long long timestamp;
+	unsigned int notify_size;
+};
+
+struct mtk8250_inb_info_dump {
+	unsigned long long inb_rec_total;
+	unsigned long long inb_rst_total;
+	unsigned long long inb_rst_t[UART_DUMP_RECORE_NUM];
+	struct mtk8250_inb_dump inb_rec[UART_DUMP_RECORE_NUM];
 };
 
 struct mtk8250_uart_info {
@@ -194,6 +212,8 @@ struct mtk8250_data {
 	void __iomem *peri_wakeup_ctl;
 	void __iomem *peri_wakeup_sta;
 	atomic_t uart_clk_count;
+	unsigned long long total_rx_size;
+	unsigned long long last_notified_size;
 	UART_WAKEUP_CB mtk8250_wakeup_cb;
 	void *wakeup_param;
 };
@@ -226,6 +246,7 @@ enum {
 
 unsigned int uart_reg_buf[LOG_BUF_SIZE];
 struct mtk8250_info_dump rx_record;
+struct mtk8250_inb_info_dump inb_record;
 
 static struct mtk8250_reset_data peri_reset = {0};
 static struct mtk8250_reg_data peri_wakeup = {0};
@@ -294,6 +315,7 @@ void uarthub_drv_callbacks_register(struct uarthub_drv_cbs *cbs)
 	uarthub_drv_cbs.inband_enable_ctrl = cbs->inband_enable_ctrl;
 	uarthub_drv_cbs.inband_is_support = cbs->inband_is_support;
 	uarthub_drv_cbs.bt_on_count_inc = cbs->bt_on_count_inc;
+	uarthub_drv_cbs.is_enable_fw_flow_ctrl_with_inband = cbs->is_enable_fw_flow_ctrl_with_inband;
 }
 EXPORT_SYMBOL(uarthub_drv_callbacks_register);
 
@@ -783,6 +805,73 @@ static void mtk8250_debug_regs_dump(struct uart_8250_port *up, const char *str)
 		uart_reg_buf[31]);
 }
 
+int mtk8250_uart_hub_is_enable_fw_flow_ctrl_with_inband(void)
+{
+	if (uarthub_drv_cbs.is_enable_fw_flow_ctrl_with_inband)
+		return uarthub_drv_cbs.is_enable_fw_flow_ctrl_with_inband();
+	else
+		return -1;
+}
+EXPORT_SYMBOL(mtk8250_uart_hub_is_enable_fw_flow_ctrl_with_inband);
+
+static void mtk8250_init_rx_notify_size(void)
+{
+	struct uart_8250_port *up = NULL;
+	unsigned long flags = 0;
+	unsigned long long idx = 0;
+
+	if (hub_uart_data == NULL) {
+		pr_info("[%s] hub_uart_data is null\n",__func__);
+		return;
+	}
+	if (hub_uart_data->support_hub) {
+		up = serial8250_get_port(hub_uart_data->line);
+		if (up) {
+			spin_lock_irqsave(&up->port.lock, flags);
+			hub_uart_data->total_rx_size = 0;
+			hub_uart_data->last_notified_size = 0;
+			//reassign to the new record
+			idx = (unsigned int)(inb_record.inb_rst_total % UART_DUMP_RECORE_NUM);
+			inb_record.inb_rst_total++;
+			inb_record.inb_rst_t[idx] = sched_clock();
+			spin_unlock_irqrestore(&up->port.lock, flags);
+		} else {
+			pr_info("[%s] up is null, inb_reset fail\n",__func__);
+		}
+	}
+}
+
+static void mtk8250_dump_inb_records(struct mtk8250_inb_info_dump *record, int total_count, int record_type)
+{
+		int idx = 0;
+		int count = 0;
+
+		if (total_count > UART_DUMP_RECORE_NUM)
+			idx = (unsigned int)(total_count % UART_DUMP_RECORE_NUM);
+
+		while (count < min_t(unsigned long long, UART_DUMP_RECORE_NUM, total_count)) {
+			if (record_type == 0) {
+				unsigned long long rx_inb_sec = record->inb_rec[idx].timestamp;
+				unsigned long rx_inb_ns = do_div(rx_inb_sec, 1000000000);
+
+				pr_info("[%s] idx=%d [%5lu.%06lu]  inb_notify_size = 0x%x\n",
+					__func__, idx, (unsigned long)rx_inb_sec,
+					rx_inb_ns / 1000,record->inb_rec[idx].notify_size);
+			} else {
+				unsigned long long inb_rst_sec = record->inb_rst_t[idx];
+				unsigned long inb_rst_ns = do_div(inb_rst_sec, 1000000000);
+
+				pr_info("[%s] inband_rest_t idx=%d  [%5lu.%06lu]\n",
+					__func__, idx, (unsigned long)inb_rst_sec, inb_rst_ns / 1000);
+			}
+
+			count++;
+			idx++;
+			idx = idx % UART_DUMP_RECORE_NUM;
+		}
+}
+
+
 void mtk8250_data_dump(void)
 {
 #ifdef CONFIG_UART_DATA_RECORD
@@ -790,7 +879,7 @@ void mtk8250_data_dump(void)
 	int count = 0;
 
 	if (rx_record.rec_total > UART_DUMP_RECORE_NUM)
-		idx = (unsigned int)((rx_record.rec_total + 1) % UART_DUMP_RECORE_NUM);
+		idx = (unsigned int)((rx_record.rec_total) % UART_DUMP_RECORE_NUM);
 
 	while (count < min_t(unsigned long long, UART_DUMP_RECORE_NUM, rx_record.rec_total)) {
 		unsigned int cnt_ = 0;
@@ -832,6 +921,14 @@ void mtk8250_data_dump(void)
 		idx++;
 		idx = idx%UART_DUMP_RECORE_NUM;
 	}
+
+	if (mtk8250_uart_hub_is_enable_fw_flow_ctrl_with_inband() != 1)
+		return;
+	/*Dump inb_rec records*/
+	mtk8250_dump_inb_records(&inb_record, inb_record.inb_rec_total, 0);
+	/*Dump inb_rst_t records*/
+	mtk8250_dump_inb_records(&inb_record, inb_record.inb_rst_total, 1);
+
 #else
 	pr_info("[%s] UART_DATA_RECORD is not config\n", __func__);
 #endif
@@ -1040,10 +1137,16 @@ EXPORT_SYMBOL(mtk8250_uart_hub_get_host_awake_sta);
 
 int mtk8250_uart_hub_set_host_awake_sta(int dev_index)
 {
-	if (uarthub_drv_cbs.set_host_awake_sta)
-		return uarthub_drv_cbs.set_host_awake_sta(dev_index);
-	else
-		return -1;
+	int ret = 0;
+
+	if (uarthub_drv_cbs.set_host_awake_sta) {
+		ret = uarthub_drv_cbs.set_host_awake_sta(dev_index);
+		if (mtk8250_uart_hub_is_enable_fw_flow_ctrl_with_inband() == 1)
+			mtk8250_init_rx_notify_size();
+		return ret;
+	}
+
+	return -1;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_set_host_awake_sta);
 
@@ -1700,6 +1803,34 @@ static void mtk_flip_buffer_push(struct tty_port *port, struct mtk8250_data *dat
 #ifdef CONFIG_SERIAL_8250_DMA
 static void mtk8250_rx_dma(struct uart_8250_port *up);
 
+static void mtk8250_uart_notify_rx_size(struct mtk8250_data *data,unsigned int cur_rx_size)
+{
+	unsigned long long rx_diff_kb = 0,notify_time = 0;
+	unsigned int notify_size_kb = 0, idx = 0;
+
+	/*Update total_rx_size after update vff rpt.*/
+	data->total_rx_size += cur_rx_size;
+
+	rx_diff_kb = (data->total_rx_size - data->last_notified_size) >> RX_SIZE_SHIFT;
+
+	if (rx_diff_kb < RX_NOTIFY_THRESHOLD)
+		return;
+
+	notify_size_kb = ((data->total_rx_size >> RX_SIZE_SHIFT) & RX_NOTIFY_MASK) + RX_NOTIFY_BASE;
+
+	notify_time = sched_clock();
+	mtk8250_uart_hub_inband_set_esc_sta(notify_size_kb);
+	mtk8250_uart_hub_inband_inband_trigger_ctrl();
+	/*Update last_notified_size after inband_trigger.*/
+	data->last_notified_size = (data->total_rx_size >> RX_SIZE_SHIFT)* RX_SIZE_SCALE;
+
+	/*reassign to the new record*/
+	idx = (unsigned int)(inb_record.inb_rec_total % UART_DUMP_RECORE_NUM);
+	inb_record.inb_rec_total++;
+	inb_record.inb_rec[idx].timestamp = notify_time;
+	inb_record.inb_rec[idx].notify_size = notify_size_kb;
+}
+
 static void mtk8250_dma_rx_complete(void *param)
 {
 	struct uart_8250_port *up = param;
@@ -1840,6 +1971,9 @@ static void mtk8250_dma_rx_complete(void *param)
 
 	up->port.icount.rx += copied;
 	mtk8250_uart_rx_setting(dma->rxchan, copied, total);
+
+	if (data->support_hub == 1 && mtk8250_uart_hub_is_enable_fw_flow_ctrl_with_inband() == 1)
+		mtk8250_uart_notify_rx_size(data, copied);
 
 	if (data->support_hub == 1)
 		mtk_flip_buffer_push(tty_port, data);
