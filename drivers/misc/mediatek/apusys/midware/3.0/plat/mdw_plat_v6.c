@@ -622,6 +622,9 @@ static int mdw_plat_v6_run_cmd(struct mdw_cmd *c)
 	/* assign rv msg */
 	rmc = (struct mdw_rv_msg_cmd *)rc->cb->vaddr;
 
+	/* update inference id */
+	rmc->inference_id = c->inference_id;
+
 	mdw_plat_v6_show_msg(rc->cb);
 
 	/* preprocess appendix */
