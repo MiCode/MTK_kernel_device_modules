@@ -194,8 +194,9 @@ enum gpuppm_limiter {
 	LIMIT_LOW_BATT     = 9,
 	LIMIT_PBM          = 10,
 	LIMIT_APIBOOST     = 11,
-	LIMIT_FPSGO        = 12,
-	LIMIT_NUM          = 13,
+	LIMIT_POWERHAL     = 12,
+	LIMIT_FIXCMD       = 13,
+	LIMIT_NUM          = 14,
 };
 
 enum gpuppm_limit_type {

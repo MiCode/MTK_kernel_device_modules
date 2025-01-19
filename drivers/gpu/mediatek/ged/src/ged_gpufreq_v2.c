@@ -756,7 +756,7 @@ int ged_set_limit_ceil(int limiter, int ceil)
 			LIMIT_APIBOOST, ceil, GPUPPM_KEEP_IDX);
 	else
 		return gpufreq_set_limit(TARGET_DEFAULT,
-			LIMIT_FPSGO, ceil, GPUPPM_KEEP_IDX);
+			LIMIT_POWERHAL, ceil, GPUPPM_KEEP_IDX);
 }
 
 int ged_set_limit_floor(int limiter, int floor)
@@ -769,7 +769,7 @@ int ged_set_limit_floor(int limiter, int floor)
 			LIMIT_APIBOOST, GPUPPM_KEEP_IDX, floor);
 	else
 		return gpufreq_set_limit(TARGET_DEFAULT,
-			LIMIT_FPSGO, GPUPPM_KEEP_IDX, floor);
+			LIMIT_POWERHAL, GPUPPM_KEEP_IDX, floor);
 }
 
 void ged_set_ud_mask_bit(unsigned int ud_mask_bit)
