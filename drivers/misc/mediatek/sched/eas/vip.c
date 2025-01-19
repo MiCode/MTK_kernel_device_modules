@@ -1185,6 +1185,7 @@ void vip_scheduler_tick(void *unused, struct rq *rq)
 	for (; se; se = NULL)
 #endif
 
+extern void set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se);
 void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct **p,
 				struct sched_entity **se, bool *repick, bool simple,
 				struct task_struct *prev)
@@ -1211,11 +1212,10 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	*se = &vip->se;
 	*repick = true;
 
-	/* commented out becasue kmainline remove the export symbol for set_next_entity() */
-	/*if (simple) {*/
-	/*        for_each_sched_entity((*se))*/
-	/*                set_next_entity(cfs_rq_of(*se), *se);*/
-	/*}*/
+	if (simple) {
+		for_each_sched_entity((*se))
+			set_next_entity(cfs_rq_of(*se), *se);
+	}
 }
 
 __no_kcsan
