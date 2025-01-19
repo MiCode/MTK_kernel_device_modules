@@ -19415,6 +19415,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = 0;
 	}
 
+	if (mtk_crtc->recovery_flg == true) {
+		DDPINFO("esd recovery need one full frame\n");
+		mtk_crtc->recovery_flg = false;
+		partial_enable = 0;
+	}
+
 	if (partial_enable == 1)
 		mtk_crtc_partial_compute_ovl_roi(crtc, &partial_roi);
 	else

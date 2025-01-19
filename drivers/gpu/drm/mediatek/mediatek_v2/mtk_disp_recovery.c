@@ -639,6 +639,7 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 				crtc_idx, i);
 			mtk_drm_esd_recover(crtc);
 			recovery_flg = 1;
+			mtk_crtc->recovery_flg = true;
 			mtk_drm_trace_end();
 		} while (++i < ESD_TRY_CNT);
 

@@ -1239,6 +1239,7 @@ struct mtk_drm_crtc {
 	bool is_dsc_output_swap;
 
 	bool capturing;
+	bool recovery_flg;
 
 	int dli_relay_1tnp;
 
