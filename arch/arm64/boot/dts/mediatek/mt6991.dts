@@ -16253,6 +16253,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mediatek,main-sram = "afe-sram";
 		mediatek,reserved-sram-size = <16384>;
 		mediatek,explicit-feedback;
+		mediatek,hub-offload;
 	};
 
 	/* ATF logger */
