@@ -11126,7 +11126,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,ipm = <2>;
 			mediatek,slc = <1>;
 			support-acp = <1>;
-			enable-acp-by-sw-ver = <1>;
+			//enable-acp-by-sw-ver = <1>;
 			mtk,smmu-shared = <&mm_smmu_codec>;
 
 			m4u-ports =
@@ -11235,7 +11235,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
 			support-acp = <1>;
-			enable-acp-by-sw-ver = <1>;
+			//enable-acp-by-sw-ver = <1>;
 			reg = <0 0x38020000 0 0x6000>,
 				<0 0x38820000 0 0x6000>,
 				<0 0x38c20000 0 0x6000>;
