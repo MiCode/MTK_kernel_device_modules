@@ -1380,10 +1380,6 @@ void register_vip_hooks(void)
 {
 	int ret = 0;
 
-	ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
-	if (ret)
-		pr_info("register wake_up_new_task hooks failed, returned %d\n", ret);
-
 	ret = register_trace_android_rvh_cpu_cgroup_online(vip_rvh_cpu_cgroup_online,
 		NULL);
 	if (ret)
@@ -1409,13 +1405,25 @@ void register_vip_hooks(void)
 void vip_init(void)
 {
 	struct task_struct *g, *p;
-	int cpu, slot_id;
+	int cpu, slot_id, ret = 0;
 
 	balance_vvip_overutilied = false;
 	balance_vip_overutilized = false;
 
 	/* init vip related value to group*/
 	init_vip_group();
+
+	ret = register_trace_android_rvh_wake_up_new_task(vip_new_tasks, NULL);
+	if (ret)
+		pr_info("register wake_up_new_task hooks failed, returned %d\n", ret);
+
+	/* init vip related value to exist tasks */
+	read_lock(&tasklist_lock);
+	for_each_process_thread(g, p) {
+		init_vip_task_struct(p);
+		init_task_gear_hints(p);
+	}
+	read_unlock(&tasklist_lock);
 
 	/* init vip related value to each rq */
 	for_each_possible_cpu(cpu) {
@@ -1436,15 +1444,6 @@ void vip_init(void)
 		 */
 		init_vip_task_struct(cpu_rq(cpu)->idle);
 	}
-
-	/* init vip related value to exist tasks */
-	read_lock(&tasklist_lock);
-	for_each_process_thread(g, p) {
-		init_vip_task_struct(p);
-		init_task_gear_hints(p);
-	}
-	read_unlock(&tasklist_lock);
-
 
 	tgid_vip_status = 0;
 	tgid_vip_arr = kcalloc(NUM_MAXIMUM_TGID, sizeof(int),  GFP_KERNEL);
