@@ -108,7 +108,6 @@ struct dev_constraint {
 	const unsigned int bat_idx;
 	int (*pre_irq_handler)(void *data);
 	int (*post_irq_handler)(void *data);
-	bool shared_isink_load_supply;
 	const char *pmic_compatible;
 };
 
@@ -127,6 +126,7 @@ struct mt6375_priv {
 	struct power_supply *battery_psy;
 	const struct dev_constraint *dinfo;
 	atomic_t vbat0_flag;
+	bool is_imix_r_unused;
 	int imix_r;
 	int irq;
 	int pre_uisoc;
@@ -172,6 +172,9 @@ static const struct {
 #define AUXADC_CHAN_PROCESSED(_idx, _resolution, _type)		\
 	AUXADC_CHAN(_idx, _resolution, _type, BIT(IIO_CHAN_INFO_PROCESSED))
 
+#define AUXADC_CHAN_RAW(_idx, _resolution, _type)		\
+	AUXADC_CHAN(_idx, _resolution, _type, BIT(IIO_CHAN_INFO_RAW))
+
 #define AUXADC_CHAN_RAW_SCALE(_idx, _resolution, _type)		\
 	AUXADC_CHAN(_idx, _resolution, _type,			\
 		    BIT(IIO_CHAN_INFO_RAW) | BIT(IIO_CHAN_INFO_SCALE))
@@ -180,7 +183,7 @@ static const struct iio_chan_spec auxadc_channels[] = {
 	AUXADC_CHAN_RAW_SCALE(BATSNS, 15, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW_SCALE(BATON, 12, IIO_VOLTAGE),
 	AUXADC_CHAN_PROCESSED(IMP, 15, IIO_VOLTAGE),
-	AUXADC_CHAN_RAW_SCALE(IMIX_R, 16, IIO_RESISTANCE),
+	AUXADC_CHAN_RAW(IMIX_R, 16, IIO_RESISTANCE),
 	AUXADC_CHAN_RAW_SCALE(VREF, 12, IIO_VOLTAGE),
 	AUXADC_CHAN_RAW_SCALE(BATSNS_DBG, 15, IIO_VOLTAGE)
 };
@@ -440,7 +443,7 @@ static int auxadc_read_raw(struct iio_dev *indio_dev, struct iio_chan_spec const
 			mutex_unlock(&priv->adc_lock);
 			return ret;
 		case MT6375_AUXADC_IMIX_R:
-			*val1 = priv->imix_r;
+			*val1 = priv->is_imix_r_unused ? 90 : priv->imix_r;
 			return IIO_VAL_INT;
 		}
 
@@ -465,6 +468,11 @@ static const char * const mt6375_auxadc_chan_labels[MT6375_AUXADC_MAX_CHANNEL] =
 static int auxadc_chan_labels(struct iio_dev *iiodev,
 			      struct iio_chan_spec const *chan, char *label)
 {
+	struct mt6375_priv *priv = iio_priv(iiodev);
+
+	if (chan->channel == MT6375_AUXADC_IMIX_R && priv->is_imix_r_unused)
+		return sysfs_emit(label, "%s\n", "imix_r (phase out!!)");
+
 	return sysfs_emit(label, "%s\n", chan->channel >= 0 ?
 			  mt6375_auxadc_chan_labels[chan->channel] : "INVALID");
 }
@@ -904,6 +912,7 @@ static int auxadc_reset(struct mt6375_priv *priv)
 				reset_key, sizeof(reset_key));
 }
 
+/* This function can only be used on the old platforms which use "imix-r" function */
 static int auxadc_get_uisoc(struct mt6375_priv *priv)
 {
 	struct power_supply *psy = priv->battery_psy;
@@ -925,6 +934,7 @@ static int auxadc_get_uisoc(struct mt6375_priv *priv)
 	return prop.intval;
 }
 
+/* This function can only be used on the old platforms which use "imix-r" function */
 static int auxadc_get_rac(struct mt6375_priv *priv)
 {
 	int vbat_1 = 0, vbat_2 = 0;
@@ -995,6 +1005,7 @@ static int auxadc_get_rac(struct mt6375_priv *priv)
 #define IMIX_R_MIN_MOHM	100
 #define IMIX_R_CALI_CNT	2
 
+/* This function can only be used on the old platforms which use "imix-r" function */
 static int auxadc_cali_imix_r(struct mt6375_priv *priv)
 {
 	int i, ret, imix_r_avg = 0, rac_val[IMIX_R_CALI_CNT];
@@ -1032,9 +1043,9 @@ static int auxadc_cali_imix_r(struct mt6375_priv *priv)
 
 static int mt6375_auxadc_parse_dt(struct mt6375_priv *priv)
 {
-	int ret = 0;
 	struct device_node *np, *imix_r_np;
 	u32 val = 0;
+	int ret = 0;
 
 	if (priv->dinfo)
 		np = of_find_compatible_node(NULL, NULL, priv->dinfo->pmic_compatible);
@@ -1049,19 +1060,32 @@ static int mt6375_auxadc_parse_dt(struct mt6375_priv *priv)
 		imix_r_np = of_get_child_by_name(np, "imix-r");
 
 	if (!imix_r_np) {
-		dev_notice(priv->dev, "no imix_r/imix-r dt node(%d)\n", ret);
-		return -ENODEV;
+		dev_info(priv->dev, "%s, No imix_r/imix-r dt node, using \"no imix-r\" version\n",
+			 __func__);
+		priv->is_imix_r_unused = true;
+		return 0;
 	}
 
 	ret = of_property_read_u32(imix_r_np, "val", &val);
 	if (ret) {
-		dev_notice(priv->dev, "no imix_r/imix-r value(%d)\n", ret);
+		dev_info(priv->dev, "%s, No imix_r/imix-r value(%d)\n", __func__, ret);
 		return ret;
 	}
 
 	priv->imix_r = val;
-	dev_info(priv->dev, "%s: imix_r = %d\n", __func__, priv->imix_r);
-	return ret;
+	dev_info(priv->dev, "%s, imix_r = %d\n", __func__, priv->imix_r);
+
+	priv->isink_load = devm_regulator_get_exclusive(priv->dev, "isink_load");
+	if (IS_ERR(priv->isink_load))
+		priv->isink_load = devm_regulator_get_exclusive(priv->dev, "isink-load");
+
+	if (IS_ERR(priv->isink_load)) {
+		dev_info(priv->dev, "%s, Failed to get isink_load/isink-load regulator [%d]\n",
+			 __func__, (int)PTR_ERR(priv->isink_load));
+		return PTR_ERR(priv->isink_load);
+	}
+
+	return 0;
 }
 
 #ifdef CONFIG_LOCKDEP
@@ -1082,7 +1106,6 @@ static const struct dev_constraint mt6379_bat1_dinfo = {
 	.gm30_evt_mask = MT6379_MASK_HK1_EVT,
 	.pre_irq_handler = mt6379_pre_irq_handler,
 	.post_irq_handler = mt6379_post_irq_handler,
-	.shared_isink_load_supply = true,
 };
 
 static const struct dev_constraint mt6379_bat2_dinfo = {
@@ -1094,7 +1117,6 @@ static const struct dev_constraint mt6379_bat2_dinfo = {
 	.gm30_evt_mask = MT6379_MASK_HK2_EVT,
 	.pre_irq_handler = mt6379_pre_irq_handler,
 	.post_irq_handler = mt6379_post_irq_handler,
-	.shared_isink_load_supply = true,
 };
 
 static int mt6379_check_bat_cell_count(struct mt6375_priv *priv)
@@ -1192,20 +1214,6 @@ static int mt6375_auxadc_probe(struct platform_device *pdev)
 	INIT_WORK(&priv->vbat0_work, auxadc_vbat0_poll_work);
 	alarm_init(&priv->vbat0_alarm, ALARM_BOOTTIME, vbat0_alarm_poll_func);
 
-	if (priv->dinfo && priv->dinfo->shared_isink_load_supply) {
-		priv->isink_load = devm_regulator_get(&pdev->dev, "isink-load");
-	} else {
-		priv->isink_load = devm_regulator_get_exclusive(&pdev->dev, "isink_load");
-		if (IS_ERR(priv->isink_load))
-			priv->isink_load = devm_regulator_get_exclusive(&pdev->dev, "isink-load");
-	}
-
-	if (IS_ERR(priv->isink_load)) {
-		dev_err(&pdev->dev, "Failed to get isink_load/isink-load regulator [%d]\n",
-			(int)PTR_ERR(priv->isink_load));
-		return PTR_ERR(priv->isink_load);
-	}
-
 	indio_dev->name = dev_name(&pdev->dev);
 	indio_dev->dev.parent = &pdev->dev;
 	indio_dev->info = &auxadc_iio_info;
@@ -1224,7 +1232,7 @@ static int mt6375_auxadc_remove(struct platform_device *pdev)
 		if (priv->gauge_psy)
 			power_supply_put(priv->gauge_psy);
 
-		if (priv->battery_psy)
+		if (!priv->is_imix_r_unused && priv->battery_psy)
 			power_supply_put(priv->battery_psy);
 	}
 
@@ -1236,16 +1244,14 @@ static int mt6375_auxadc_suspend_late(struct device *dev)
 	struct mt6375_priv *priv = dev_get_drvdata(dev);
 	int ret;
 
-	if (priv->dinfo)
-		dev_notice(dev, "%s, BAT%d++\n", __func__, priv->dinfo->bat_idx + 1);
-	else
-		dev_notice(dev, "%s, ++\n", __func__);
+	/* If the function of imix-r is unused, just skip this stage  */
+	if (priv->is_imix_r_unused)
+		return 0;
 
 	ret = auxadc_cali_imix_r(priv);
 	if (ret)
 		dev_err(dev, "calibrate imix_r ret=[%d]\n", ret);
 
-	dev_notice(dev, "%s, --\n", __func__);
 	return 0;
 }
 
