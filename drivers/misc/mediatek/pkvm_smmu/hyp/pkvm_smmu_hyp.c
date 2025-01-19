@@ -31,6 +31,7 @@ extern const struct pkvm_module_ops *pkvm_smmu_ops;
 #define __pkvm_hyp_donate_host(x, y) CALL_FROM_OPS(hyp_donate_host, x, y)
 #define __pkvm_host_donate_hyp(x, y) CALL_FROM_OPS(host_donate_hyp, x, y, false)
 #define hyp_phys_to_virt(x) CALL_FROM_OPS(hyp_va, x)
+#define kvm_iommu_snapshot_host_stage2(x) CALL_FROM_OPS(iommu_snapshot_host_stage2, x)
 #ifdef kern_hyp_va
 #undef kern_hyp_va
 #endif
@@ -1369,6 +1370,14 @@ static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 	hyp_spin_unlock(&smmu_all_vm_lock);
 	if (tlb_sync)
 		mtk_smmu_sync();
+}
+
+void smmu_finalise(struct kvm_cpu_context *ctx)
+{
+	int ret;
+
+	ret = kvm_iommu_snapshot_host_stage2(NULL);
+	cpu_reg(ctx, 0) = ret;
 }
 
 struct kvm_iommu_ops smmu_ops = {
