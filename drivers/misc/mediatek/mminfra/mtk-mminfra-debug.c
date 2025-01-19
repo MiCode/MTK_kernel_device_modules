@@ -76,7 +76,9 @@ static struct scmi_tinysys_info_st *tinfo;
 static int feature_id;
 static struct clk *mminfra_clk[MMINFRA_MAX_CLK_NUM];
 static atomic_t clk_ref_cnt = ATOMIC_INIT(0);
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
 static atomic_t vcp_ref_cnt = ATOMIC_INIT(0);
+#endif
 static struct device *dev;
 static struct mminfra_dbg *dbg;
 #if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
@@ -142,6 +144,10 @@ u32 mm_pwr_cnt[MM_PWR_NR];
 u32 mm_pwr_cnt_last[MM_PWR_NR];
 u32 mm_pwr_cnt_last_sample;
 u32 voter_cnt[32] = {0};
+
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
+static void mminfra_gals_dump(void);
+#endif
 
 static bool mminfra_check_scmi_status(void)
 {
@@ -833,6 +839,7 @@ static const struct kernel_param_ops mminfra_dbg_ut_ops = {
 module_param_cb(mminfra_dbg_ut, &mminfra_dbg_ut_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_dbg_ut, "mminfra dbg ut");
 
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
 static int vcp_mminfra_on(void)
 {
 	int count, ret;
@@ -844,7 +851,6 @@ static int vcp_mminfra_on(void)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 static int vcp_mminfra_off(void)
 {
 	int count, ret;
@@ -855,7 +861,12 @@ static int vcp_mminfra_off(void)
 
 	return ret;
 }
-#endif
+
+static void vcp_debug_dump(void)
+{
+	pr_info("cg_con0 = 0x%x\n", readl(dbg->mminfra_base + MMINFRA_CG_CON0));
+	mminfra_gals_dump();
+}
 
 static void mminfra_gals_dump_v1(void)
 {
@@ -916,28 +927,6 @@ static void mminfra_gals_dump_v3(void)
 	}
 	/* TODO: snoc gals dump */
 }
-
-static void mminfra_gals_dump(void)
-{
-	switch (mm_pwr_ver) {
-	case mm_pwr_v1:
-	case mm_pwr_v2:
-		mminfra_gals_dump_v1();
-		break;
-	case mm_pwr_v3:
-		mminfra_gals_dump_v3();
-		break;
-	default:
-		break;
-	}
-}
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-static void vcp_debug_dump(void)
-{
-	pr_info("cg_con0 = 0x%x\n", readl(dbg->mminfra_base + MMINFRA_CG_CON0));
-	mminfra_gals_dump();
-}
 #endif
 
 int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime)
@@ -985,8 +974,9 @@ int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime)
 		if (ret < 0 || ret >= LINK_MAX - len)
 			pr_notice("%s: ret:%d buf size:%d\n", __func__, ret, LINK_MAX - len);
 		dev_info(dev, "%s\n", buf);
-
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
 		mminfra_gals_dump();
+#endif
 		if (!skip_apsrc)
 			pr_notice("%s: gce apsrc: %#x=%#x\n", __func__, GCE_BASE + GCE_GCTL_VALUE,
 					readl(dbg->gce_base + GCE_GCTL_VALUE));
@@ -1023,12 +1013,32 @@ static int mminfra_get_for_smi_dbg(void *v)
 			pm_runtime_get_sync(dev);
 		else
 			mtk_mminfra_on_off(true, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG);
+
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
 		mminfra_gals_dump();
+#endif
 		ret = 1;
 	}
 
 	return ret;
 }
+
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
+static void mminfra_gals_dump(void)
+{
+	switch (mm_pwr_ver) {
+	case mm_pwr_v1:
+	case mm_pwr_v2:
+		mminfra_gals_dump_v1();
+		break;
+	case mm_pwr_v3:
+		mminfra_gals_dump_v3();
+		break;
+	default:
+		break;
+	}
+}
+#endif
 
 static int mminfra_put_for_smi_dbg(void *v)
 {
@@ -1163,11 +1173,13 @@ static bool mminfra_devapc_power_cb(void)
 				readl(dbg->mminfra_ao_base + MMINFRA_CG_CON0),
 				readl(dbg->mminfra_ao_base + MMINFRA_CG_CON1));
 			pr_info("%s is_mminfra_shutdown = %d\n", __func__, is_mminfra_shutdown);
+#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
 			if (!is_mminfra_shutdown) {
 				pr_info("%s set mminfra pwr on\n", __func__);
 				vcp_mminfra_on();
 			}
 			spin_unlock_irqrestore(&mm_dapc_lock, flags);
+#endif
 			return true;
 		}
 	} else if (mm_pwr_ver == mm_pwr_v3) {
@@ -1430,7 +1442,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		if (vcp_gipc) {
 			pm_runtime_irq_safe(dev);
 			dbg->irq_safe = true;
-		#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+		#if IS_ENABLED(CONFIG_MTK_MMINFRA_VCP)
 			vcp_register_mminfra_cb_ex(vcp_mminfra_on, vcp_mminfra_off, vcp_debug_dump);
 		#endif
 			is_mminfra_shutdown = false;
