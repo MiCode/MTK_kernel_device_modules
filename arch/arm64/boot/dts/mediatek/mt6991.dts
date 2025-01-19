@@ -13392,7 +13392,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		};
 
 		hcp: hcp@15001000 {
-			compatible = "mediatek,hcp8";
+			compatible = "mediatek,hcp8_f";
 			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			reg = <0 0x15001000 0 0x4000>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
