@@ -1169,8 +1169,6 @@ int collect_smmu_dma_regions(struct device *dev,
 	struct device_node *np = region_node;
 	int err;
 
-	dev_info(dev, "[%s], dev:%s\n", __func__, dev_name(dev));
-
 	if (!np)
 		return -EINVAL;
 
