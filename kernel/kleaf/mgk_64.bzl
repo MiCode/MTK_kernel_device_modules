@@ -147,6 +147,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/mfd:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/btif:ddk_makefiles".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pcie:ddk_makefile".format(kernel_version),
@@ -200,6 +201,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/memory/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/btif:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:ddk_kconfigs".format(kernel_version),
@@ -283,6 +285,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/btif:btif_drv".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:gz_trusty_mod".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ips:mtk-ips-helper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:mtk_mdpm".format(kernel_version),
@@ -630,7 +633,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/cpufreq_lite/cpudvfs.ko",
     "drivers/misc/mediatek/cross_sched/cross_sched.ko",
     "drivers/misc/mediatek/dcm/mtk_dcm.ko",
-    "drivers/misc/mediatek/dvfsrc/mtk-dvfsrc-helper.ko",
+    #"drivers/misc/mediatek/dvfsrc/mtk-dvfsrc-helper.ko",
     "drivers/misc/mediatek/eccci/ccci_auxadc.ko",
     "drivers/misc/mediatek/eccci/ccci_md_all.ko",
     "drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.ko",
@@ -1808,7 +1811,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6768_dcm.ko")
 
-        mgk_64_device_modules.append("drivers/misc/mediatek/dvfsrc/dvfsrc-opp-mt6768.ko")
+        mgk_64_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:dvfsrc-opp-mt6768".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
 
@@ -2832,7 +2835,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/dvfsrc/dvfsrc-opp-mt6765.ko")
+        mgk_64_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:dvfsrc-opp-mt6765".format(kernel_version))
+
         mgk_64_device_modules.append("drivers/misc/mediatek/hps_v3/mtk_cpuhp.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/thermal/thermal_monitor.ko")
@@ -3626,7 +3630,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched/c2ps_ioctl:c2ps_perf_ioctl")
         mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
         mgk_64_device_modules.append("drivers/regulator/mtk-pmic-oc-debug.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/dvfsrc/dvfsrc-opp-mt6781.ko")
+        mgk_64_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:dvfsrc-opp-mt6781".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/bridge/mtk_mbraink_bridge.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
