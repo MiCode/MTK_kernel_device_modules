@@ -263,8 +263,7 @@ static int gpu_working_opp_table_proc_show(struct seq_file *m, void *v)
 		else
 			seq_printf(m,
 				"[%02d] freq: %7d, volt: %6d, vsram: %6d\n",
-				i, opp_table[i].freq, opp_table[i].volt,
-				opp_table[i].vsram);
+				i, opp_table[i].freq, opp_table[i].volt + opp_table[i].margin, 75000);
 	}
 
 done:
@@ -299,8 +298,7 @@ static int stack_working_opp_table_proc_show(struct seq_file *m, void *v)
 		else
 			seq_printf(m,
 				"[%02d] freq: %7d, volt: %6d, vsram: %6d\n",
-				i, opp_table[i].freq, opp_table[i].volt,
-				opp_table[i].vsram);
+				i, opp_table[i].freq, opp_table[i].volt + opp_table[i].margin, 75000);
 	}
 
 done:
@@ -340,8 +338,7 @@ static int gpu_signed_opp_table_proc_show(struct seq_file *m, void *v)
 		else
 			seq_printf(m,
 				"[%02d*] freq: %7d, volt: %6d, vsram: %6d\n",
-				i, opp_table[i].freq, opp_table[i].volt,
-				opp_table[i].vsram);
+				i, opp_table[i].freq, opp_table[i].volt + opp_table[i].margin, 75000);
 	}
 
 done:
@@ -381,8 +378,7 @@ static int stack_signed_opp_table_proc_show(struct seq_file *m, void *v)
 		else
 			seq_printf(m,
 				"[%02d*] freq: %7d, volt: %6d, vsram: %6d\n",
-				i, opp_table[i].freq, opp_table[i].volt,
-				opp_table[i].vsram);
+				i, opp_table[i].freq, opp_table[i].volt + opp_table[i].margin, 75000);
 	}
 
 done:
