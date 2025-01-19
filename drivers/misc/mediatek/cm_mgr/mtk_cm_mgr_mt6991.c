@@ -52,6 +52,7 @@
  *****************************************************************************/
 spinlock_t cm_mgr_lock;
 static int cm_mgr_idx;
+static int cm_chip_ver;
 static unsigned int prev_freq_idx[CM_MGR_CPU_CLUSTER];
 static unsigned int prev_freq[CM_MGR_CPU_CLUSTER];
 
@@ -64,6 +65,23 @@ void __iomem *csram_base;
 /*****************************************************************************
  *  Platform functions
  *****************************************************************************/
+static void cm_get_chipid(void)
+{
+	struct device_node *dn = of_find_node_by_path("/chosen");
+	struct tag_chipid *chipid;
+
+	if (!dn)
+		dn = of_find_node_by_path("/chosen@0");
+	if (dn) {
+		chipid = (struct tag_chipid *) of_get_property(dn,"atag,chipid", NULL);
+		if (!chipid)
+			pr_info("%s(%d): could not found atag,chipid in chosen\n",  __func__, __LINE__);
+		else
+			cm_chip_ver = (int)chipid->sw_ver;
+	} else
+		pr_info("%s(%d): chosen node not found in device tree\n", __func__, __LINE__);
+}
+
 static int cm_get_base_addr(void)
 {
 	int ret = 0;
@@ -300,6 +318,8 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
+	cm_get_chipid();
+
 	ret = cm_mgr_common_init();
 	if (ret) {
 		pr_info("%s(%d): fail to common init. ret %d\n", __func__,
@@ -337,6 +357,7 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 			       cm_mgr_get_perf_mode_ceiling_opp());
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD,
 			       cm_mgr_get_perf_mode_thd());
+	cm_mgr_to_sspm_command(IPI_CM_MGR_CHIP_VER, cm_chip_ver);
 	cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, cm_mgr_get_enable());
 
 	pr_info("%s(%d): platform-cm_mgr_probe Done.\n", __func__, __LINE__);
