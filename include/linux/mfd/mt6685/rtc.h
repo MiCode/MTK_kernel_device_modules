@@ -173,6 +173,8 @@
 #define TOP2_ELR1                       MT6685_TOP2_ELR1
 #define TOP2_ELR1_MASK                  BIT(0)
 
+#define MT6687_TOP2_ELR1		0x130
+
 #define MTK_RTC_POLL_DELAY_US            10
 #define MTK_RTC_POLL_TIMEOUT             (jiffies_to_usecs(HZ))
 
@@ -206,6 +208,7 @@ enum rtc_reg_set {
 enum chip_version {
 	NULL_SERIES,
 	MT6685_SERIES,
+	MT6687_SERIES,
 };
 
 
@@ -253,10 +256,10 @@ enum boot_mode_t {
 struct mtk_rtc_data {
 	u32         wrtgr;
 	u32         hwid;
-	u32			chip_version;
+	u32         chip_version;
 	bool        single_read_write_is_supported;
-	struct reg_field *spare_reg_fields;
-	struct reg_field *cali_reg_fields;
+	struct      reg_field *spare_reg_fields;
+	struct      reg_field *cali_reg_fields;
 };
 
 static const char *rtc_time_reg_name[RTC_OFFSET_COUNT] = {

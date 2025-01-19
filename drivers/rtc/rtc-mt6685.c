@@ -203,7 +203,8 @@ static int rtc_field_write(struct mt6685_rtc *rtc,
 	if (ret != 0)
 		return ret;
 
-	if (rtc->data->chip_version == MT6685_SERIES) {
+	if (rtc->data->chip_version == MT6685_SERIES ||
+		rtc->data->chip_version == MT6687_SERIES) {
 		ret = rtc_unlock_fg_rg(rtc, field);
 		if (ret != 0)
 			return ret;
@@ -921,7 +922,8 @@ static bool mtk_rtc_check_set_time(struct mt6685_rtc *rtc, struct rtc_time *tm,
 					return ret;
 				mclk = mclk >> RG_RTC_MCLK_PDN_STA_SHIFT & RG_RTC_MCLK_PDN_STA_MASK;
 
-				if (rtc->data->chip_version == MT6685_SERIES) {
+				if (rtc->data->chip_version == MT6685_SERIES ||
+					rtc->data->chip_version == MT6687_SERIES) {
 					ret = rtc_read(rtc,
 						rtc->addr_base + RTC_SPAR_MACRO, &prot_key);
 
@@ -1517,6 +1519,11 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 		ret = rtc_update_bits(rtc, TOP2_ELR1, TOP2_ELR1_MASK, 1);
 		if (ret < 0)
 			dev_info(&pdev->dev, "check mt6685 TOP2_ELR1\n");
+	} else if (rtc->data->chip_version == MT6687_SERIES) {
+		/*Normal sequence power off when PON falling*/
+		ret = rtc_update_bits(rtc, MT6687_TOP2_ELR1, TOP2_ELR1_MASK, 1);
+		if (ret < 0)
+			dev_info(&pdev->dev, "check mt6687 TOP2_ELR1\n");
 	}
 
 	if (rtc->cali_is_supported)
@@ -1532,8 +1539,18 @@ static const struct mtk_rtc_data mt6685_rtc_data = {
 	.single_read_write_is_supported = true,
 };
 
+static const struct mtk_rtc_data mt6687_rtc_data = {
+	.wrtgr = RTC_WRTGR,
+	.hwid = HWID_MT6685,
+	.chip_version = MT6687_SERIES,
+	.spare_reg_fields = mt6685_spare_reg_fields,
+	.cali_reg_fields = mt6685_cali_reg_fields,
+	.single_read_write_is_supported = true,
+};
+
 static const struct of_device_id mt6685_rtc_of_match[] = {
 	{ .compatible = "mediatek,mt6685-rtc", .data = &mt6685_rtc_data },
+	{ .compatible = "mediatek,mt6687-rtc", .data = &mt6687_rtc_data },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mt6685_rtc_of_match);
