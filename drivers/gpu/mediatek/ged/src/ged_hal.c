@@ -99,8 +99,11 @@ static ssize_t opp_logs_show(struct kobject *kobj,
 			/* truncate to ms */
 			len += sprintf(buf + len, "%llu\n", report[i].ui64Active);
 		}
-	} else
+	} else {
 		len = sprintf(buf, "Not Supported.\n");
+		if (len < 0)
+			GED_LOGE("sprintf failed to write to buffer!\n");
+	}
 
 	if (report != NULL)
 		vfree(report);
@@ -625,6 +628,9 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
 		sizeof(struct fdvfs_ipi_data));
 
+	if (!ipi_data)
+		GED_LOGE("ged_alloc_atomic fail!\n");
+
 	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
 
 	eb_policy_mode = is_fdvfs_enable();
@@ -718,6 +724,8 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 				ipi_data->u.set_para.arg[3],
 				ipi_data->u.set_para.arg[4]);
 	}
+	if (ipi_data)
+		ged_free(ipi_data, sizeof(struct fdvfs_ipi_data));
 
 	return pos;
 }
