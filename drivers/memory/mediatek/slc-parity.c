@@ -14,7 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/slab.h>
-#include <mt-plat/aee.h>
+#include "mt-plat/aee.h"
 #include <soc/mediatek/emi.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 

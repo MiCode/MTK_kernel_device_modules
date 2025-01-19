@@ -16,7 +16,7 @@
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
-#include <mt-plat/aee.h>
+#include "mt-plat/aee.h"
 #include <soc/mediatek/emi.h>
 
 struct emi_slb {
