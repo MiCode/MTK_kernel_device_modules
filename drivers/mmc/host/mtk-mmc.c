@@ -61,6 +61,7 @@
 #define MSDC_GPIO_2 "msdc_gpio=2"
 
 static void msdc_request_done(struct msdc_host *host, struct mmc_request *mrq);
+static irqreturn_t msdc_thread_irq(int irq, void *dev_id);
 
 #define BOOTDEV_EMMC 1
 
@@ -1455,16 +1456,19 @@ static int msdc_auto_cmd_done(struct msdc_host *host, int events,
 		if (events & MSDC_INT_ACMDCRCERR) {
 			cmd->error = -EILSEQ;
 			host->error |= REQ_STOP_EIO;
+			bitmap_set(host->err_bag.err_bitmap, fls(ERR_ACMD_CRC)-1, 1);
+			host->err_bag.cmd_opcode = cmd->opcode;
+			host->err_bag.cmd_arg = cmd->arg;
+			host->err_bag.cmd_rsp = rsp[0];
 		} else if (events & MSDC_INT_ACMDTMO) {
 			cmd->error = -ETIMEDOUT;
 			host->error |= REQ_STOP_TMO;
+			bitmap_set(host->err_bag.err_bitmap, fls(ERR_ACMD_TMO)-1, 1);
+			host->err_bag.cmd_opcode = cmd->opcode;
+			host->err_bag.cmd_arg = cmd->arg;
+			host->err_bag.cmd_rsp = rsp[0];
 		}
 		host->need_tune = true;
-		dev_err(host->dev,
-			"%s: AUTO_CMD=%d arg=0x%X; rsp 0x%X; cmd_error=%d; "
-			"host_error= 0x%X\n",
-			__func__, cmd->opcode, cmd->arg, rsp[0], cmd->error,
-			host->error);
 	}
 	return cmd->error;
 }
@@ -1614,14 +1618,14 @@ static bool msdc_cmd_done(struct msdc_host *host, int events,
 					host->is_skip_hs200_tune = 0;
 				mmc_retune_needed(mmc);
 			}
-			bitmap_set(host->err_bag.err_bitmap,0,1);
+			bitmap_set(host->err_bag.err_bitmap, fls(ERR_CMD_CRC)-1, 1);
 			host->err_bag.cmd_opcode = cmd->opcode;
 			host->err_bag.cmd_arg = cmd->arg;
 			host->err_bag.cmd_rsp = rsp[0];
 		} else if (events & MSDC_INT_CMDTMO) {
 			cmd->error = -ETIMEDOUT;
 			host->error |= REQ_CMD_TMO;
-			bitmap_set(host->err_bag.err_bitmap,1,1);
+			bitmap_set(host->err_bag.err_bitmap, fls(ERR_CMD_TMO)-1, 1);
 			host->err_bag.cmd_opcode = cmd->opcode;
 			host->err_bag.cmd_arg = cmd->arg;
 			host->err_bag.cmd_rsp = rsp[0];
@@ -1635,8 +1639,9 @@ static bool msdc_cmd_done(struct msdc_host *host, int events,
 		host->need_tune = true;
 
 	if (cmd->opcode == MMC_CMDQ_TASK_MGMT && host->id == MSDC_EMMC) {
-		/* for cmd48, return a error to reset MMC device */
-		cmd->error = -EIO;
+		/* if resp is incorrect for cmd48, return a error to reset MMC device */
+		if	(cmd->resp[0] != 0x0900)
+			cmd->error = -EIO;
 		dev_info(host->dev, "%s: cmd=48, error=%d, resp=0x%08X\n",
 			__func__, cmd->error, cmd->resp[0]);
 	}
@@ -1682,7 +1687,7 @@ static bool msdc_command_resp_polling(struct msdc_host *host,
 	unsigned long timeout)
 {
 	bool ret = false;
-	unsigned long tmo;
+	unsigned long tmo, flags;
 	int events;
 
 retry:
@@ -1718,6 +1723,18 @@ retry:
 		goto retry;
 
 exit:
+	if (!bitmap_empty(host->err_bag.err_bitmap, ERR_BIT_SIZE)) {
+		host->err_bag.irq_timestamp = sched_clock();
+
+		spin_lock_irqsave(&host->err_info_lock, flags);
+		if (kfifo_is_full(&host->err_info_bag_ring) && kfifo_out(&host->err_info_bag_ring, &host->err_bag, 1))
+			atomic_inc(&host->err_dropped);
+		kfifo_in(&host->err_info_bag_ring, &host->err_bag, 1);
+		spin_unlock_irqrestore(&host->err_info_lock, flags);
+
+		bitmap_zero(host->err_bag.err_bitmap, ERR_BIT_SIZE);
+		msdc_thread_irq(host->irq, (void *)host);
+	}
 	return ret;
 }
 
@@ -2098,7 +2115,7 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 			if (events & MSDC_INT_DATTMO) {
 				data->error = -ETIMEDOUT;
 				host->data_timeout_cont++;
-				bitmap_set(host->err_bag.err_bitmap,3,1);
+				bitmap_set(host->err_bag.err_bitmap, fls(ERR_DAT_TMO)-1, 1);
 				if(data != NULL && data->mrq != NULL && data->mrq->cmd != NULL) {
 					host->err_bag.cmd_opcode = data->mrq->cmd->opcode;
 					host->err_bag.blocks = data->blocks;
@@ -2111,7 +2128,7 @@ static bool msdc_data_xfer_done(struct msdc_host *host, u32 events,
 			} else if (events & MSDC_INT_DATCRCERR) {
 				host->data_timeout_cont = 0;
 				data->error = -EILSEQ;
-				bitmap_set(host->err_bag.err_bitmap,2,1);
+				bitmap_set(host->err_bag.err_bitmap, fls(ERR_DAT_CRC)-1, 1);
 				if(data != NULL && data->mrq != NULL && data->mrq->cmd != NULL) {
 					host->err_bag.cmd_opcode = data->mrq->cmd->opcode;
 					host->err_bag.blocks = data->blocks;
@@ -2290,7 +2307,8 @@ static irqreturn_t msdc_thread_irq(int irq, void *dev_id)
 	struct err_info_bag dump_bag;
 
 	if (atomic_read(&host->err_dropped) >= 128) {
-		dev_info(host->dev, "Err kfifo has been full for a time and too much log dropped\n");
+		dev_info(host->dev,
+			"Err kfifo has been full for a time and too much log dropped\n");
 		atomic_set(&host->err_dropped, 0);
 	}
 
@@ -2307,25 +2325,33 @@ static irqreturn_t msdc_thread_irq(int irq, void *dev_id)
 			dev_info(host->dev, "Err kfifo out is fail\n");
 			break;
 		}
-		if (dump_bag.err_bitmap[0] & (ERR_CMD_CRC | ERR_CMD_TMO)) {
-			if (dump_bag.err_bitmap[0] & ERR_CMD_CRC)
-				dev_info(host->dev, "At time:%lld cmd_crc happen cmd=%d arg=0x%X; rsp 0x%X;\n",
-					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.cmd_arg,
-					dump_bag.cmd_rsp);
-			if (dump_bag.err_bitmap[0] & ERR_CMD_TMO)
-				dev_info(host->dev, "At time:%lld cmd_tmo happen cmd=%d arg=0x%X; rsp 0x%X;\n",
-					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.cmd_arg,
-					dump_bag.cmd_rsp);
+		if (dump_bag.err_bitmap[BITS_TO_LONGS(ERR_BIT_SIZE)-1] &
+			(ERR_CMD_CRC | ERR_CMD_TMO | ERR_ACMD_CRC | ERR_ACMD_TMO)) {
+			if (dump_bag.err_bitmap[BITS_TO_LONGS(ERR_BIT_SIZE)-1] &
+				(ERR_CMD_CRC | ERR_ACMD_CRC))
+				dev_info(host->dev,
+					"At time:%lld cmd_crc happen cmd=%d arg=0x%X; rsp 0x%X;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode,
+					dump_bag.cmd_arg, dump_bag.cmd_rsp);
+			if (dump_bag.err_bitmap[BITS_TO_LONGS(ERR_BIT_SIZE)-1] &
+				(ERR_CMD_TMO | ERR_ACMD_TMO))
+				dev_info(host->dev,
+					"At time:%lld cmd_tmo happen cmd=%d arg=0x%X; rsp 0x%X;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode,
+					dump_bag.cmd_arg, dump_bag.cmd_rsp);
 		}
-		if (dump_bag.err_bitmap[0] & (ERR_DAT_CRC | ERR_DAT_TMO)) {
-			if (dump_bag.err_bitmap[0] & ERR_DAT_CRC)
-				dev_info(host->dev, "At time:%lld dat_crc happen cmd=%d; blocks=%d; xfer_size=%d;\n",
-					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.blocks,
-					dump_bag.bytes_xfered);
-			if (dump_bag.err_bitmap[0] & ERR_DAT_TMO)
-				dev_info(host->dev, "At time:%lld dat_tmo happen cmd=%d; blocks=%d; xfer_size=%d;\n",
-					dump_bag.irq_timestamp, dump_bag.cmd_opcode, dump_bag.blocks,
-					dump_bag.bytes_xfered);
+		if (dump_bag.err_bitmap[BITS_TO_LONGS(ERR_BIT_SIZE)-1] &
+			(ERR_DAT_CRC | ERR_DAT_TMO)) {
+			if (dump_bag.err_bitmap[BITS_TO_LONGS(ERR_BIT_SIZE)-1] & ERR_DAT_CRC)
+				dev_info(host->dev,
+					"At time:%lld dat_crc happen cmd=%d; blocks=%d; xfer_size=%d;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode,
+					dump_bag.blocks, dump_bag.bytes_xfered);
+			if (dump_bag.err_bitmap[BITS_TO_LONGS(ERR_BIT_SIZE)-1] & ERR_DAT_TMO)
+				dev_info(host->dev,
+					"At time:%lld dat_tmo happen cmd=%d; blocks=%d; xfer_size=%d;\n",
+					dump_bag.irq_timestamp, dump_bag.cmd_opcode,
+					dump_bag.blocks, dump_bag.bytes_xfered);
 		}
 	}
 

@@ -95,6 +95,8 @@ struct err_info_bag {
 #define ERR_CMD_TMO         (0x1 << 1)
 #define ERR_DAT_CRC         (0x1 << 2)
 #define ERR_DAT_TMO         (0x1 << 3)
+#define ERR_ACMD_CRC        (0x1 << 4)
+#define ERR_ACMD_TMO        (0x1 << 5)
 
 #define ERR_CQHCI_CMD_CRC   (0x1 << 16)
 #define ERR_CQHCI_CMD_TMO   (0x1 << 17)
