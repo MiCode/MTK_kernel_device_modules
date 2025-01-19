@@ -725,7 +725,7 @@ ssize_t port_rpc_ecid_show(char *buf)
 #endif
 
 static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
-	struct rpc_buffer *p_rpc_buf, unsigned int tmp_data[])
+	struct rpc_buffer *p_rpc_buf, int tmp_data[])
 {
 	/*
 	 * tmp_data[] is used to make sure memory address is valid
@@ -1312,6 +1312,44 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 			break;
 
 		}
+#if IS_ENABLED(CONFIG_SCSI_UFS_MEDIATEK_DBG)
+	case IPC_RPC_AFC_UFC_IO_BLOCK_OP:
+		{
+			unsigned int op_id = 0;
+			int val = -1;
+
+			if (pkt_num != 1) {
+				CCCI_ERROR_LOG(0, RPC,
+					"invalid parameter for [0x%X]: pkt_num=%d!\n",
+					     p_rpc_buf->op_id, pkt_num);
+				pkt_num = 0;
+				pkt[pkt_num].len = sizeof(unsigned int);
+				pkt[pkt_num++].buf = (void *)&tmp_data[0];
+				pkt[pkt_num].len = sizeof(unsigned int);
+				pkt[pkt_num++].buf = (void *)&tmp_data[0];
+				break;
+			}
+
+			op_id = *(unsigned int *)(pkt[0].buf);
+			if (op_id == 1)
+				val = ufs_mtk_cali_hold();  //replace ufs api block io
+			else if (op_id == 0)
+				val = ufs_mtk_cali_release();  //replace ufs api relase io
+			else
+				CCCI_ERROR_LOG(0, RPC, "invalid op_id: %d!\n", op_id);
+			tmp_data[1] = val;
+			CCCI_DEBUG_LOG(0, RPC, "[0x%X]: op_id=%d, val=%d!\n",
+				p_rpc_buf->op_id, op_id, val);
+			tmp_data[0] = 0;
+			pkt_num = 0;
+			pkt[pkt_num].len = sizeof(unsigned int);
+			pkt[pkt_num++].buf = (void *)&tmp_data[0];
+			pkt[pkt_num].len = sizeof(unsigned int);
+			pkt[pkt_num++].buf = (void *)&tmp_data[1];
+			break;
+
+		}
+#endif
 	case IPC_RPC_IT_OP:
 		{
 			int i;
@@ -1366,8 +1404,7 @@ static void rpc_msg_handler(struct port_t *port, struct sk_buff *skb)
 	char *ptr = NULL, *ptr_base = NULL;
 	/* unsigned int tmp_data[128]; */
 	/* size of tmp_data should be >= any RPC output result */
-	unsigned int *tmp_data =
-		kmalloc(128*sizeof(unsigned int), GFP_ATOMIC);
+	int *tmp_data = kmalloc(128*sizeof(int), GFP_ATOMIC);
 
 	if (tmp_data == NULL) {
 		CCCI_ERROR_LOG(0, RPC,
