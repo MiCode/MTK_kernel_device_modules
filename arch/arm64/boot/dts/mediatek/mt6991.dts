@@ -6204,7 +6204,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<GIC_SPI 707 IRQ_TYPE_LEVEL_HIGH 0>;
 			mboxes = <&adspsys 0>, /*channel 0*/
 				<&adspsys 1>; /*channel 1*/
-			feature-control-bits = /bits/ 64 <0x00000000a8e78fff>;
+			feature-control-bits = /bits/ 64 <0x00000001a8e78fff>;
 		};
 
 		adsp_core1: adsp-core1@1a0d0000 {
@@ -15161,6 +15161,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		mtk-dsp-offload = <0x1d 0xffffffff 0xffffffff \
 				   0xffffffff 0x400000>;
 		mtk-dsp-deep = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-dynamic = <0x8000005 0xffffffff 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-playback = <0x1 0xe 0xffffffff 0x12 0x30000>;
 		mtk-dsp-music = <0x1 0xffffffff 0xffffffff 0xffffffff 0x0>;
 		mtk-dsp-capture1 = <0x1 0xffffffff 0x18 0x10 0x20000>;
