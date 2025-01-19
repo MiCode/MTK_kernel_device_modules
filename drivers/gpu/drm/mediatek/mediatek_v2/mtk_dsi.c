@@ -13032,7 +13032,7 @@ static int mtk_dsi_hotplug_kthread(void *data)
 				}
 			}
 
-			mtk_drm_crtc_enable(crtc);
+			mtk_drm_crtc_enable(crtc, false);
 
 			/* resubmit MML IR && since MML DL layer disable already, no need to resubmit */
 			if (mtk_crtc->is_mml) {

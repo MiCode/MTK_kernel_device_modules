@@ -13234,7 +13234,7 @@ static void mtk_set_dpc_dsi_clk(struct mtk_drm_crtc *mtk_crtc, bool enable)
 	DDPMSG("crtc%d %s set %d\n", id, __func__, value);
 }
 
-void mtk_drm_crtc_enable(struct drm_crtc *crtc)
+void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_crtc_state *mtk_state = NULL;
@@ -13444,10 +13444,12 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	/* 6. connect path */
 	mtk_crtc_connect_default_path(mtk_crtc);
 
-	mtk_crtc->qos_ctx->last_hrt_req = 0;
-	mtk_crtc->qos_ctx->last_larb_hrt_req = 0;
-	for (i = 0; i < BW_CHANNEL_NR ; i++)
-		mtk_crtc->qos_ctx->last_channel_req[i] = 0;
+	if (!need_report_bw) {
+		mtk_crtc->qos_ctx->last_hrt_req = 0;
+		mtk_crtc->qos_ctx->last_larb_hrt_req = 0;
+		for (i = 0; i < BW_CHANNEL_NR ; i++)
+			mtk_crtc->qos_ctx->last_channel_req[i] = 0;
+	}
 
 	/* 7. config ddp engine */
 	mtk_crtc_config_default_path(mtk_crtc);
@@ -13469,6 +13471,24 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 		mtk_crtc_restore_plane_setting(mtk_crtc);
 
 	/* 10. Set QOS BW */
+	if (need_report_bw) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			mtk_disp_set_hrt_bw(mtk_crtc,
+				mtk_crtc->qos_ctx->last_hrt_req);
+
+		if (priv->data->update_channel_hrt) {
+			for (i = 0; i < BW_CHANNEL_NR; i++)
+				mtk_disp_set_channel_hrt_bw(mtk_crtc,
+					mtk_crtc->qos_ctx->last_channel_req[i], i);
+		}
+
+		if (priv->data->respective_ostdl) {
+			mtk_disp_set_module_hrt(mtk_crtc,
+				mtk_drm_primary_frame_bw(crtc), NULL, PMQOS_SET_HRT_BW);
+		}
+	}
+
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
 			NULL, PMQOS_UPDATE_BW, NULL);
@@ -13818,7 +13838,7 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	if (of_property_read_bool(priv->mmsys_dev->of_node, "enable-output-int-switch"))
 		mtk_drm_crtc_update_interface(crtc, atomic_state);
 
-	mtk_drm_crtc_enable(crtc);
+	mtk_drm_crtc_enable(crtc, false);
 	CRTC_MMP_EVENT_END((int) index, resume,
 			mtk_crtc->enabled, 0);
 }
@@ -16018,7 +16038,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			}
 			goto end;
 		} else if (mtk_crtc->enabled == 0 && priv->usage[crtc_idx] == DISP_ENABLE) {
-			mtk_drm_crtc_enable(crtc);
+			mtk_drm_crtc_enable(crtc, false);
 			if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA) {
 				/* top clk/CG  have been enabledprepared while DISP_OPENNING,
 				 *disable that iteration prevent unbalanced ref cnt.
@@ -22043,7 +22063,7 @@ int mtk_crtc_path_switch(struct drm_crtc *crtc, unsigned int ddp_mode,
 	} else if (mtk_crtc->ddp_mode == DDP_NO_USE) {
 		CRTC_MMP_MARK(index, path_switch, 0, 3);
 		mtk_crtc->ddp_mode = ddp_mode;
-		mtk_drm_crtc_enable(crtc);
+		mtk_drm_crtc_enable(crtc, false);
 		goto done;
 	}
 

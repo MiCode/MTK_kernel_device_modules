@@ -538,7 +538,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	}
 
 
-	mtk_drm_crtc_enable(crtc);
+	mtk_drm_crtc_enable(crtc, true);
 	CRTC_MMP_MARK(index, esd_recovery, 0, 3);
 
 	/* resubmit MML IR && since MML DL layer disable already, no need to resubmit */

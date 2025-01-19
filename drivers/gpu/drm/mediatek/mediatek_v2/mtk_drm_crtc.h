@@ -1395,7 +1395,7 @@ int mtk_crtc_path_switch(struct drm_crtc *crtc, unsigned int path_sel,
 void mtk_need_vds_path_switch(struct drm_crtc *crtc);
 
 void mtk_drm_crtc_first_enable(struct drm_crtc *crtc);
-void mtk_drm_crtc_enable(struct drm_crtc *crtc);
+void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw);
 void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait);
 bool mtk_crtc_with_sub_path(struct drm_crtc *crtc, unsigned int ddp_mode);
 
