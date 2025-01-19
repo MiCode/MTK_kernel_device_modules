@@ -116,3 +116,11 @@ config DEVICE_MODULES_VHOST_SPI
 
 	  To compile this driver as a module, choose M here: the module will
 	  be called vhost_spi.
+
+config VHOST_MMDVFS
+	tristate "hypervisor vhost mmdvfs driver"
+	help
+	  This extension enable vhost mmdvfs driver, vhost mmdvfs driver enable
+	  for hypervisor project. The vhost driver is located at virt/grt,
+	  Also used to isolate the conflicting part of the mmdvfs driver
+	  on main project, default is n.
