@@ -754,6 +754,7 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 	int i = 0;
 	int adj_num = GPUFREQ_MAX_ADJ_NUM;
 	int gpm3_num = GPUFREQ_MAX_GPM3_NUM;
+	int pmic_reg_num = GPUFREQ_MAX_PMIC_REG_NUM;
 
 	mutex_lock(&gpufreq_debug_lock);
 
@@ -839,6 +840,23 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_H1,%d\n", g_shared_status->slt2_bmodel.vstack_h1);
 	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_H,%d\n", g_shared_status->slt2_bmodel.vstack_h);
 	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_L,%d\n", g_shared_status->slt2_bmodel.vstack_l);
+
+	if (g_shared_status->test_mode == TEST_PRIVILEGE) {
+		seq_puts(m, "\n[GPU_TOP PMIC Reg]\n");
+		for (i = 0; i < pmic_reg_num; i++) {
+			if (!g_shared_status->pmic_reg_gpu[i].addr)
+				break;
+			seq_printf(m, "0x%04x = 0x%02x\n",
+				g_shared_status->pmic_reg_gpu[i].addr, g_shared_status->pmic_reg_gpu[i].val);
+		}
+		seq_puts(m, "\n[GPU_STACK PMIC Reg]\n");
+		for (i = 0; i < pmic_reg_num; i++) {
+			if (!g_shared_status->pmic_reg_stack[i].addr)
+				break;
+			seq_printf(m, "0x%04x = 0x%02x\n",
+				g_shared_status->pmic_reg_stack[i].addr, g_shared_status->pmic_reg_stack[i].val);
+		}
+	}
 
 	mutex_unlock(&gpufreq_debug_lock);
 

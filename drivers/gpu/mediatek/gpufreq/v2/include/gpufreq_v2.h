@@ -24,6 +24,7 @@
 #define GPUFREQ_MAX_REG_NUM             (70)
 #define GPUFREQ_MAX_GPM3_NUM            (20)
 #define GPUFREQ_MAX_BUSTRK_NUM          (10)
+#define GPUFREQ_MAX_PMIC_REG_NUM        (20)
 #define GPUFREQ_DUMP_INFRA_SIZE         (8192)
 #define GPUFREQ_UNREFERENCED(param)     ((void)(param))
 #define GPUFREQ_PROFILE_TYPE_STRING(type) \
@@ -572,6 +573,8 @@ struct gpufreq_shared_status {
 	struct gpufreq_reg_info reg_stack_sel;
 	struct gpufreq_reg_info reg_top_delsel;
 	struct gpufreq_reg_info reg_stack_delsel;
+	struct gpufreq_reg_info pmic_reg_gpu[GPUFREQ_MAX_PMIC_REG_NUM];
+	struct gpufreq_reg_info pmic_reg_stack[GPUFREQ_MAX_PMIC_REG_NUM];
 	struct gpufreq_asensor_info asensor_info;
 	struct gpufreq_ips_info ips_info;
 	struct gpufreq_opp_info working_table_gpu[GPUFREQ_MAX_OPP_NUM];
