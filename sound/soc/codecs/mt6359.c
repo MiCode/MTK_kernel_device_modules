@@ -299,24 +299,6 @@ void mt6359_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 }
 EXPORT_SYMBOL_GPL(mt6359_set_mtkaif_calibration_phase);
 
-/* dl pga gain */
-static const char *const dl_pga_gain[] = {
-	"8Db", "7Db", "6Db", "5Db", "4Db",
-	"3Db", "2Db", "1Db", "0Db", "-1Db",
-	"-2Db", "-3Db",	"-4Db", "-5Db", "-6Db",
-	"-7Db", "-8Db", "-9Db", "-10Db", "-40Db"
-};
-
-static const char *const hp_dl_pga_gain[] = {
-	"8Db", "7Db", "6Db", "5Db", "4Db",
-	"3Db", "2Db", "1Db", "0Db", "-1Db",
-	"-2Db", "-3Db",	"-4Db", "-5Db", "-6Db",
-	"-7Db", "-8Db", "-9Db", "-10Db", "-11Db",
-	"-12Db", "-13Db", "-14Db", "-15Db", "-16Db",
-	"-17Db", "-18Db", "-19Db", "-20Db", "-21Db",
-	"-22Db", "-40Db"
-};
-
 static void zcd_enable(struct mt6359_priv *priv, bool enable, int device)
 {
 	if (enable) {
@@ -5599,9 +5581,9 @@ static void codec_write_reg(struct mt6359_priv *priv, void *arg)
 			 reg_addr, reg_value);
 		regmap_write(priv->regmap, reg_addr, reg_value);
 		regmap_read(priv->regmap, reg_addr, &reg_value);
-		dev_info(priv->dev, "%s(), reg_addr = 0x%x, reg_value = 0x%x\n",
+		dev_info(priv->dev, "%s(), reg_addr = 0x%x, reg_value = 0x%x, ret %d\n",
 			 __func__,
-			 reg_addr, reg_value);
+			 reg_addr, reg_value, ret);
 	} else {
 		dev_err(priv->dev, "token1 or token2 is NULL!\n");
 	}

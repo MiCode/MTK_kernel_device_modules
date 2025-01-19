@@ -214,8 +214,8 @@ static void mt6338_get_hw_ver(struct mt6338_priv *priv)
 	ecid2 = (efuse_val & 0x3f) << 26 | ecid2;
 
 	priv->hw_ver = value;
-	pr_info("%s() mt6338 fab=%d, hw_ver= %d, ecid = %lx%lx\n",
-		__func__, fab, priv->hw_ver, ecid, ecid2);
+	pr_info("%s() mt6338 fab=%d, hw_ver= %d, ecid = %lx%lx, ret %d\n",
+		__func__, fab, priv->hw_ver, ecid, ecid2, ret);
 }
 
 #ifdef NLE_IMP
@@ -893,15 +893,10 @@ static void mt6338_set_decoder_clk(struct mt6338_priv *priv, bool enable, bool h
 
 static void ldo_select_to_min(struct mt6338_priv *priv, bool enable, bool dual)
 {
-	unsigned int channel = 0x1;
-
 	dev_dbg(priv->dev, "%s()\n", __func__);
 
-	if (dual)
-		channel = 0x3;
-
 	if (enable) {
-		regmap_write(priv->regmap, MT6338_AUDDEC_PMU_CON36,	0x0);
+		regmap_write(priv->regmap, MT6338_AUDDEC_PMU_CON36, 0x0);
 		regmap_write(priv->regmap, MT6338_AUDDEC_PMU_CON39, 0x3f);
 		regmap_write(priv->regmap, MT6338_AUDDEC_PMU_CON37, 0x3f);
 	} else {
@@ -913,15 +908,10 @@ static void ldo_select_to_min(struct mt6338_priv *priv, bool enable, bool dual)
 
 static void nvreg_select_to_min(struct mt6338_priv *priv, bool enable, bool dual)
 {
-	unsigned int channel = 0x1;
-
-	if (dual)
-		channel = 0x3;
-
 	if (enable) {
 		/* NVREG_DACSW vout selection */
 		/* NVREG_HCBUF/NVREG_LCBUF vout selection */
-		regmap_write(priv->regmap, MT6338_AUDDEC_PMU_CON33,	0x0);
+		regmap_write(priv->regmap, MT6338_AUDDEC_PMU_CON33, 0x0);
 		/* Enable for NVREG */
 		regmap_write(priv->regmap, MT6338_AUDDEC_PMU_CON41, 0x3f);
 	}
@@ -1052,17 +1042,6 @@ void mt6338_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 		phase_3 << RG_AUD_PAD_TOP_PHASE_MODE3_SFT);
 }
 EXPORT_SYMBOL_GPL(mt6338_set_mtkaif_calibration_phase);
-
-static const char *const dl_pga_gain[] = {
-	"8Db", "7Db", "6Db", "5Db", "4Db",
-	"3Db", "2Db", "1Db", "0Db", "-1Db",
-	"-2Db", "-3Db",	"-4Db", "-5Db", "-6Db",
-	"-7Db", "-8Db", "-9Db", "-10Db", "-40Db"
-};
-
-static const char *const hp_dl_pga_gain[] = {
-	"9Db", "6Db", "3Db", "0Db"
-};
 
 static void hp_main_output_ramp(struct mt6338_priv *priv, bool up)
 {
@@ -6771,13 +6750,9 @@ static int mt_sdm_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6338_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	unsigned int rate = 0;
 
 	dev_dbg(priv->dev, "%s() dl sample_rate = %d", __func__, priv->dl_rate[0]);
-	if (priv->dl_rate[0] != 0)
-		rate = mt6338_rate_transform(priv->dl_rate[0]);
-	else
-		rate = MT6338_ADDA_48000HZ;
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/* select 12bit 2nd SDM  */
@@ -6804,13 +6779,9 @@ static int mt_sdm_3rd_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6338_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	unsigned int rate;
 
 	dev_dbg(priv->dev, "%s() dl sample_rate = %d", __func__, priv->dl_rate[0]);
-	if (priv->dl_rate[0] != 0)
-		rate = mt6338_rate_transform(priv->dl_rate[0]);
-	else
-		rate = MT6338_ADDA_48000HZ;
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		 /* select 12bit 2nd SDM  */
@@ -9945,8 +9916,8 @@ static int set_idac_trim_val(struct mt6338_priv *priv)
 	ret = nvmem_device_read(priv->hp_efuse, 0x63, 2, &efuse_val);
 	value_r = (efuse_val >> 4) & 0x7f;
 
-	dev_info(priv->dev, "%s(), efuse_l: %d efuse_r: %d\n",
-			 __func__, value_l, value_r);
+	dev_info(priv->dev, "%s(), efuse_l: %d efuse_r: %d, ret %d\n",
+			 __func__, value_l, value_r, ret);
 
 	regmap_update_bits(priv->regmap, MT6338_AUDDEC_2_PMU_CON0,
 		RG_AUDDACHPL_TRIM_LARGE_VAUDP18_MASK_SFT,
@@ -10731,9 +10702,9 @@ static void codec_write_reg(struct mt6338_priv *priv, void *arg)
 			 reg_addr, reg_value);
 		regmap_write(priv->regmap, reg_addr, reg_value);
 		regmap_read(priv->regmap, reg_addr, &reg_value);
-		dev_info(priv->dev, "%s(), reg_addr = 0x%x, reg_value = 0x%x\n",
+		dev_info(priv->dev, "%s(), reg_addr = 0x%x, reg_value = 0x%x, ret %d\n",
 			 __func__,
-			 reg_addr, reg_value);
+			 reg_addr, reg_value, ret);
 	} else {
 		dev_err(priv->dev, "token1 or token2 is NULL!\n");
 	}

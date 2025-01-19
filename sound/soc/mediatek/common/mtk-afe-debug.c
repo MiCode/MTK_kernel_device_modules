@@ -99,8 +99,8 @@ void mtk_afe_write_reg(struct mtk_base_afe *afe, void *arg)
 	if ((token1 != NULL) && (token2 != NULL)) {
 		ret = kstrtoul(token1, 16, &reg_addr);
 		ret = kstrtoul(token2, 16, &reg_value);
-		dev_info(afe->dev, "%s(), reg_addr 0x%lx, reg_value 0x%lx\n",
-			 __func__, reg_addr, reg_value);
+		dev_info(afe->dev, "%s(), reg_addr 0x%lx, reg_value 0x%lx, ret %d\n",
+			 __func__, reg_addr, reg_value, ret);
 
 		regmap_write(afe->regmap, reg_addr, reg_value);
 		regmap_read(afe->regmap, reg_addr, &reg_value_after);

@@ -270,8 +270,8 @@ static void mt6681_get_hw_ver(struct mt6681_priv *priv)
 	priv->hw_ver = id;
 	priv->hw_ecid = ecid << 31 | ecid2;
 
-	pr_info("MT6681_ID : %s() mt6681 hw_id =%d, hw_ver= %d, ecid = %lx%lx  (%llx)\n",
-		__func__, priv->hw_ver, ver, ecid, ecid2, priv->hw_ecid);
+	pr_info("MT6681_ID : %s() mt6681 hw_id =%d, hw_ver= %d, ecid = %lx%lx  (%llx), ret %d\n",
+		__func__, priv->hw_ver, ver, ecid, ecid2, priv->hw_ecid, ret);
 }
 
 #ifdef NLE_IMP
@@ -1662,13 +1662,6 @@ void mt6681_set_mtkaif_calibration_phase(struct snd_soc_component *cmpnt,
 	scp_wake_release(adap);
 }
 EXPORT_SYMBOL_GPL(mt6681_set_mtkaif_calibration_phase);
-
-static const char *const dl_pga_gain[] = {
-	"8Db",  "7Db",  "6Db",  "5Db",  "4Db",   "3Db",  "2Db",
-	"1Db",  "0Db",  "-1Db", "-2Db", "-3Db",  "-4Db", "-5Db",
-	"-6Db", "-7Db", "-8Db", "-9Db", "-10Db", "-40Db"};
-
-static const char *const hp_dl_pga_gain[] = {"9Db", "6Db", "3Db", "0Db"};
 
 static void hp_aux_feedback_loop_gain_ramp(struct mt6681_priv *priv, bool up)
 {
@@ -12331,14 +12324,10 @@ static int mt_sdm_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mt6681_priv *priv = snd_soc_component_get_drvdata(cmpnt);
-	unsigned int rate = 0;
 
 	dev_info(priv->dev, "%s() dl sample_rate = %d", __func__,
 		priv->dl_rate[0]);
-	if (priv->dl_rate[0] != 0)
-		rate = mt6681_dlsrc_rate_transform(priv->dl_rate[0]);
-	else
-		rate = MT6681_DLSRC_48000HZ;
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/* select 12bit 2nd SDM  */
@@ -19134,8 +19123,8 @@ static void codec_write_reg(struct mt6681_priv *priv, void *arg)
 			 __func__, reg_addr, reg_value);
 		regmap_write(priv->regmap, reg_addr, reg_value);
 		regmap_read(priv->regmap, reg_addr, &reg_value);
-		dev_info(priv->dev, "%s(), reg_addr = 0x%x, reg_value = 0x%x\n",
-			 __func__, reg_addr, reg_value);
+		dev_info(priv->dev, "%s(), reg_addr = 0x%x, reg_value = 0x%x, ret %d\n",
+			 __func__, reg_addr, reg_value, ret);
 	} else {
 		dev_info(priv->dev, "token1 or token2 is NULL!\n");
 	}
