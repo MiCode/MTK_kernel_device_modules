@@ -22,6 +22,14 @@
 
 #include "mdla_rv.h"
 
+struct mdla_plat_ip_ops {
+	int (*dbgfs_usage)(struct seq_file *s, void *data);
+	int (*dump_dbg_mem)(struct seq_file *s, void *data);
+	void (*rv_configuration)(void);
+	void (*alloc_dbg_mem)(void);
+	void (*free_dbg_mem)(void);
+};
+
 /* remove after lk/atf bootup flow ready */
 #define LK_BOOT_RDY 0
 
@@ -118,9 +126,9 @@ static struct mdla_dbgfs_ipi_file ipi_dbgfs_file[] = {
 	{MDLA_IPI_PMU_COUNT,     14, 0x04, 0660,            "c14",            &C14_fops, 0},
 	{MDLA_IPI_PMU_COUNT,     15, 0x04, 0660,            "c15",            &C15_fops, 0},
 	{MDLA_IPI_PREEMPT_CNT,    0, 0x6C, 0660,  "preempt_times",  &preempt_times_fops, 0},
-	{MDLA_IPI_FORCE_PWR_ON,   0, 0x6C, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
-	{MDLA_IPI_PROFILE_EN,     0, 0x68, 0660,      "profiling",      &profiling_fops, 0},
-	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x6C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
+	{MDLA_IPI_FORCE_PWR_ON,   0, 0x2C, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
+	{MDLA_IPI_PROFILE_EN,     0, 0x28, 0660,      "profiling",      &profiling_fops, 0},
+	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x2C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
 	{MDLA_IPI_INFO,           0, 0x6C, 0660,           "info",           &info_fops, 0},
 	{MDLA_IPI_HALT_STA,       0, 0x28, 0660,        "dbg_brk",        &dbg_brk_fops, 0},
 	{MDLA_IPI_DBG_OPTIONS,    0, 0x60, 0660,    "dbg_options",    &dbg_options_fops, 0},
@@ -138,6 +146,10 @@ static struct mdla_rv_mem dbg_mem;
 static struct mdla_rv_mem backup_mem;
 static struct mdla_rv_mem rv_dbg_mem;
 
+/*****************************************************************************
+ *                          Static Common Functions                          *
+ *****************************************************************************/
+
 static char *mdla_plat_get_ipi_str(int idx)
 {
 	u32 i;
@@ -149,11 +161,236 @@ static char *mdla_plat_get_ipi_str(int idx)
 	return "unknown";
 }
 
+static void mdla_plat_dummy_ip_ops(void)
+{
+}
+
 static int mdla_plat_unknown_dbgfs_usage(struct seq_file *s, void *data)
 {
 	seq_puts(s, "\n---------- unknown usage ----------\n");
 	return 0;
 }
+
+static int mdla_plat_alloc_mem(struct mdla_rv_mem *m, unsigned int size)
+{
+	struct device *dev;
+
+	if (mdla_plat_devices && mdla_plat_devices[0].dev)
+		dev = mdla_plat_devices[0].dev;
+	else
+		return -ENXIO;
+
+	m->buf = dma_alloc_coherent(dev, size, &m->da, GFP_KERNEL);
+	if (m->buf == NULL || m->da == 0) {
+		dev_info(dev, "%s() dma_alloc_coherent fail\n", __func__);
+		return -1;
+	}
+
+	m->size = size;
+	memset(m->buf, 0, size);
+
+	return 0;
+}
+
+static void mdla_plat_free_mem(struct mdla_rv_mem *m)
+{
+	struct device *dev;
+
+	if (mdla_plat_devices && mdla_plat_devices[0].dev)
+		dev = mdla_plat_devices[0].dev;
+	else
+		return;
+
+	if (m->buf && m->da && m->size) {
+		dma_free_coherent(dev, m->size, m->buf, m->da);
+		m->buf  = NULL;
+		m->size = 0;
+		m->da   = 0;
+	}
+}
+
+static void mdla_plat_alloc_up_dbg_mem(u32 size)
+{
+	mdla_plat_alloc_mem(&rv_dbg_mem, size);
+}
+
+static void mdla_plat_alloc_fw_backup_mem(u32 size)
+{
+	/* backup size * core num * preempt lv */
+	mdla_plat_alloc_mem(&backup_mem, size);
+}
+
+static void mdla_plat_alloc_dbg_mem(u32 size)
+{
+	mdla_plat_alloc_mem(&dbg_mem, size);
+}
+
+static void mdla_plat_alloc_dbg_mem_by_rv(void)
+{
+	u64 size = 0;
+
+	mdla_ipi_recv(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, &size);
+	if (size)
+		mdla_plat_alloc_mem(&dbg_mem, (u32)size);
+}
+
+static int mdla_rv_dbg_mem_show_nothing(struct seq_file *s, void *data)
+{
+	seq_puts(s, "No debug data!\n");
+
+	return 0;
+}
+
+static int mdla_rv_dbg_mem_dump_binary(struct seq_file *s, void *data)
+{
+	struct mdla_rv_mem *m = &dbg_mem;
+
+	if (!m->buf || !m->da || !m->size) {
+		seq_puts(s, "No debug data!\n");
+		return 0;
+	}
+
+	seq_write(s, m->buf, m->size);
+
+	return 0;
+}
+
+static int mdla_rv_dbg_mem_show(struct seq_file *s, void *data)
+{
+	u32 i = 0, *buf;
+	struct mdla_rv_mem *m = &dbg_mem;
+
+	if (!m->buf || !m->da || !m->size) {
+		seq_puts(s, "No debug data!\n");
+		return 0;
+	}
+
+	buf = (u32 *)m->buf;
+
+	for (i = 0; i < m->size / 4; i += 4) {
+		seq_printf(s, "0x%08x: %08x %08x %08x %08x\n",
+				4 * i,
+				buf[i],
+				buf[i + 1],
+				buf[i + 2],
+				buf[i + 3]);
+	}
+
+	return 0;
+}
+
+static int mdla_rv_dbg_mem_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mdla_rv_dbg_mem_show, inode->i_private);
+}
+
+static void mdla_plat_set_rv_backup_dbg_mem(void)
+{
+	if (boot_mem.da && main_mem.da) {
+		mdla_verbose("%s(): send ipi for fw addr(0x%08x, 0x%08x)\n", __func__,
+				(u32)boot_mem.da, (u32)main_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT, (u64)boot_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT_SZ, (u64)boot_mem.size);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN, (u64)main_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN_SZ, (u64)main_mem.size);
+	}
+
+	if (backup_mem.da) {
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BACKUP_DATA, (u64)backup_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BACKUP_DATA_SZ, (u64)backup_mem.size);
+	}
+
+	if (rv_dbg_mem.da) {
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA, (u64)rv_dbg_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA_SZ, (u64)rv_dbg_mem.size);
+	}
+
+	if (dbg_mem.da) {
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
+	}
+}
+
+static void mdla_plat_get_and_set_rv_dbg_mem(void)
+{
+
+	if (boot_mem.da && main_mem.da) {
+		mdla_verbose("%s(): send ipi for fw addr(0x%08x, 0x%08x)\n", __func__,
+				(u32)boot_mem.da, (u32)main_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT, (u64)boot_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT_SZ, (u64)boot_mem.size);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN, (u64)main_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN_SZ, (u64)main_mem.size);
+	}
+
+	mdla_plat_alloc_dbg_mem_by_rv();
+
+	if (dbg_mem.da) {
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
+	}
+}
+
+static void mdla_plat_get_ip_ver_from_rv(void)
+{
+	u64 ver = 0;
+
+	mdla_ipi_recv(MDLA_IPI_INFO, MDLA_IPI_INFO_HW_VER, &ver);
+	if (get_major_num(ver) != 0)
+		mdla_dbg_set_version((u32)ver);
+}
+
+static ssize_t mdla_rv_dbg_mem_write(struct file *flip,
+		const char __user *buffer,
+		size_t count, loff_t *f_pos)
+{
+	char *buf;
+	u32 size;
+	int ret;
+
+	buf = kzalloc(count + 1, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	ret = copy_from_user(buf, buffer, count);
+	if (ret)
+		goto out;
+
+	buf[count] = '\0';
+
+	if (kstrtouint(buf, 10, &size) != 0) {
+		count = -EINVAL;
+		goto out;
+	}
+
+	if (size > 0x200000 || size < 0x10)
+		goto out;
+
+	mutex_lock(&dbg_mem_mutex);
+	mdla_plat_free_mem(&dbg_mem);
+
+	if (mdla_plat_alloc_mem(&dbg_mem, size) == 0) {
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
+		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
+	}
+	mutex_unlock(&dbg_mem_mutex);
+
+out:
+	kfree(buf);
+	return count;
+}
+
+static const struct file_operations mdla_rv_dbg_mem_fops = {
+	.open = mdla_rv_dbg_mem_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+	.write = mdla_rv_dbg_mem_write,
+};
+
+/*****************************************************************************
+ *                          Static IP Functions                              *
+ *****************************************************************************/
 
 static int mdla_plat_v2_dbgfs_usage(struct seq_file *s, void *data)
 {
@@ -303,221 +540,164 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_puts(s, "\n---------- Command timeout setting ----------\n");
 	seq_printf(s, "echo [us(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_TIMEOUT].str);
 
-	seq_puts(s, "\n--------------- profile control ---------------\n");
-	seq_printf(s, "echo [0|1] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_PROFILE_EN));
-	seq_puts(s, "\t0: stop profiling\n");
-	seq_puts(s, "\t1: start to profile\n");
-
 	seq_puts(s, "\n------------- show information -------------\n");
 	seq_printf(s, "echo [item] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_INFO));
 	seq_puts(s, "and then cat /proc/apusys_logger/seq_log\n");
 	seq_printf(s, "\t%d: show register value\n", MDLA_IPI_INFO_REG);
 	seq_printf(s, "\t%d: show the last cmdbuf (if dump_cmdbuf_en != 0)\n",
 				MDLA_IPI_INFO_CMDBUF);
-	seq_printf(s, "\t%d: show profiling result\n", MDLA_IPI_INFO_PROF);
 
 	seq_puts(s, "\n----------- set debug options -----------\n");
 	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
 	seq_puts(s, "\tDisable preemption                               = 0x0001\n");
 	seq_puts(s, "\tPreempt once                                     = 0x0002\n");
-	seq_puts(s, "\tProfiline enable                                 = 0x0004\n");
 	seq_puts(s, "\tDump cmdbuf in seq log while CMD hang            = 0x0010\n");
 	seq_puts(s, "\tDump cmdbuf in /d/mdla/mdla_memory               = 0x0020\n");
 
 	return 0;
 }
 
-static int mdla_plat_alloc_mem(struct mdla_rv_mem *m, unsigned int size)
+static void mdla_plat_v2_rv_configuration(void)
 {
-	struct device *dev;
-
-	if (mdla_plat_devices && mdla_plat_devices[0].dev)
-		dev = mdla_plat_devices[0].dev;
-	else
-		return -ENXIO;
-
-	m->buf = dma_alloc_coherent(dev, size, &m->da, GFP_KERNEL);
-	if (m->buf == NULL || m->da == 0) {
-		dev_info(dev, "%s() dma_alloc_coherent fail\n", __func__);
-		return -1;
-	}
-
-	m->size = size;
-	memset(m->buf, 0, size);
-
-	return 0;
+	mdla_plat_set_rv_backup_dbg_mem();
 }
 
-static void mdla_plat_free_mem(struct mdla_rv_mem *m)
+static void mdla_plat_v3_rv_configuration(void)
 {
-	struct device *dev;
-
-	if (mdla_plat_devices && mdla_plat_devices[0].dev)
-		dev = mdla_plat_devices[0].dev;
-	else
-		return;
-
-	if (m->buf && m->da && m->size) {
-		dma_free_coherent(dev, m->size, m->buf, m->da);
-		m->buf  = NULL;
-		m->size = 0;
-		m->da   = 0;
-	}
+	mdla_plat_set_rv_backup_dbg_mem();
 }
 
-static int mdla_rv_dbg_mem_show(struct seq_file *s, void *data)
+static void mdla_plat_v5_rv_configuration(void)
 {
-	u32 i = 0, *buf;
-	struct mdla_rv_mem *m = &dbg_mem;
-
-	if (!m->buf || !m->da || !m->size) {
-		seq_puts(s, "No debug data!\n");
-		return 0;
-	}
-
-	buf = (u32 *)m->buf;
-
-	for (i = 0; i < m->size / 4; i += 4) {
-		seq_printf(s, "0x%08x: %08x %08x %08x %08x\n",
-				4 * i,
-				buf[i],
-				buf[i + 1],
-				buf[i + 2],
-				buf[i + 3]);
-	}
-
-	return 0;
+	mdla_plat_set_rv_backup_dbg_mem();
 }
 
-static int mdla_rv_dbg_mem_open(struct inode *inode, struct file *file)
+static void mdla_plat_v6_rv_configuration(void)
 {
-	return single_open(file, mdla_rv_dbg_mem_show, inode->i_private);
+	mdla_plat_get_and_set_rv_dbg_mem();
+	mdla_plat_get_ip_ver_from_rv();
 }
+
+static void mdla_plat_v2_alloc_dbg_mem(void)
+{
+	mdla_plat_alloc_dbg_mem(DEFAULT_DBG_SZ + 0x1000 * mdla_util_get_core_num());
+}
+
+static void mdla_plat_v3_alloc_dbg_mem(void)
+{
+	u32 nr_core_ids = mdla_util_get_core_num();
+
+	mdla_plat_alloc_dbg_mem(DEFAULT_DBG_SZ + 0x1000 * nr_core_ids);
+	/* backup size * core num * preempt lv */
+	mdla_plat_alloc_fw_backup_mem(1024 * nr_core_ids * 4);
+	mdla_plat_alloc_up_dbg_mem(DEFAULT_RV_DBG_SZ);
+}
+
+static void mdla_plat_v5_alloc_dbg_mem(void)
+{
+	u32 nr_core_ids = mdla_util_get_core_num();
+
+	mdla_plat_alloc_dbg_mem(DEFAULT_DBG_SZ + 0x1000 * nr_core_ids);
+	/* backup size * core num * preempt lv */
+	mdla_plat_alloc_fw_backup_mem(1024 * nr_core_ids * 4);
+	mdla_plat_alloc_up_dbg_mem(DEFAULT_RV_DBG_SZ);
+}
+
+static void mdla_plat_v6_alloc_dbg_mem(void)
+{
+	/* do nothing. allocate memory after obtaining the size through ipi on deferred kthread */
+}
+
+static void mdla_plat_v2_free_dbg_mem(void)
+{
+	mdla_plat_free_mem(&dbg_mem);
+}
+
+static void mdla_plat_v3_free_dbg_mem(void)
+{
+	mdla_plat_free_mem(&dbg_mem);
+	mdla_plat_free_mem(&backup_mem);
+	mdla_plat_free_mem(&rv_dbg_mem);
+}
+
+static void mdla_plat_v5_free_dbg_mem(void)
+{
+	mdla_plat_free_mem(&dbg_mem);
+	mdla_plat_free_mem(&backup_mem);
+	mdla_plat_free_mem(&rv_dbg_mem);
+}
+
+static void mdla_plat_v6_free_dbg_mem(void)
+{
+	mdla_plat_free_mem(&dbg_mem);
+}
+
+
+struct mdla_plat_ip_ops dummp_ops = {
+	.dbgfs_usage      = mdla_plat_unknown_dbgfs_usage,
+	.dump_dbg_mem     = mdla_rv_dbg_mem_show_nothing,
+	.rv_configuration = mdla_plat_dummy_ip_ops,
+	.alloc_dbg_mem    = mdla_plat_dummy_ip_ops,
+	.free_dbg_mem     = mdla_plat_dummy_ip_ops,
+};
+
+struct mdla_plat_ip_ops v2_ops = {
+	.dbgfs_usage      = mdla_plat_v2_dbgfs_usage,
+	.dump_dbg_mem     = mdla_rv_dbg_mem_show,
+	.rv_configuration = mdla_plat_v2_rv_configuration,
+	.alloc_dbg_mem    = mdla_plat_v2_alloc_dbg_mem,
+	.free_dbg_mem     = mdla_plat_v2_free_dbg_mem,
+};
+
+struct mdla_plat_ip_ops v3_ops = {
+	.dbgfs_usage      = mdla_plat_v3_dbgfs_usage,
+	.dump_dbg_mem     = mdla_rv_dbg_mem_show,
+	.rv_configuration = mdla_plat_v3_rv_configuration,
+	.alloc_dbg_mem    = mdla_plat_v3_alloc_dbg_mem,
+	.free_dbg_mem     = mdla_plat_v3_free_dbg_mem,
+};
+
+struct mdla_plat_ip_ops v5_ops = {
+	.dbgfs_usage      = mdla_plat_v5_dbgfs_usage,
+	.dump_dbg_mem     = mdla_rv_dbg_mem_show,
+	.rv_configuration = mdla_plat_v5_rv_configuration,
+	.alloc_dbg_mem    = mdla_plat_v5_alloc_dbg_mem,
+	.free_dbg_mem     = mdla_plat_v5_free_dbg_mem,
+};
+
+struct mdla_plat_ip_ops v6_ops = {
+	.dbgfs_usage      = mdla_plat_v6_dbgfs_usage,
+	.dump_dbg_mem     = mdla_rv_dbg_mem_dump_binary,
+	.rv_configuration = mdla_plat_v6_rv_configuration,
+	.alloc_dbg_mem    = mdla_plat_v6_alloc_dbg_mem,
+	.free_dbg_mem     = mdla_plat_v6_free_dbg_mem,
+};
+
+static struct mdla_plat_ip_ops *ip_ops = &dummp_ops;
+
+/*****************************************************************************/
 
 static int mdla_plat_send_addr_info(void *arg)
 {
 	msleep(1000);
 
-	if (boot_mem.da && main_mem.da) {
-		mdla_verbose("%s(): send ipi for fw addr(0x%08x, 0x%08x)\n", __func__,
-				(u32)boot_mem.da, (u32)main_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT, (u64)boot_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BOOT_SZ, (u64)boot_mem.size);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN, (u64)main_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_MAIN_SZ, (u64)main_mem.size);
-	}
-
-	if (backup_mem.da) {
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BACKUP_DATA, (u64)backup_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_BACKUP_DATA_SZ, (u64)backup_mem.size);
-	}
-
-	if (rv_dbg_mem.da) {
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA, (u64)rv_dbg_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_RV_DATA_SZ, (u64)rv_dbg_mem.size);
-	}
-
-	if (get_major_num(mdla_plat_get_version()) == 6) {
-		u64 size = 0, ver = 0;
-
-		/* allocate debug buffer */
-		mdla_ipi_recv(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, &size);
-		if (size) {
-			mdla_plat_alloc_mem(&dbg_mem, (u32)size);
-			if (dbg_mem.da) {
-				mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
-				mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
-			}
-		}
-
-		/* get HW IP version */
-		mdla_ipi_recv(MDLA_IPI_INFO, MDLA_IPI_INFO_HW_VER, &ver);
-		if (get_major_num(ver) != 0)
-			mdla_dbg_set_version((u32)ver);
-	} else if (dbg_mem.da) {
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
-	}
-
+	ip_ops->rv_configuration();
 
 	return 0;
 }
 
-static ssize_t mdla_rv_dbg_mem_write(struct file *flip,
-		const char __user *buffer,
-		size_t count, loff_t *f_pos)
-{
-	char *buf;
-	u32 size;
-	int ret;
-
-	/* v6: size is determined by uP platform driver and can't be changed */
-	if (get_major_num(mdla_plat_get_version()) == 6)
-		return 0;
-
-	buf = kzalloc(count + 1, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	ret = copy_from_user(buf, buffer, count);
-	if (ret)
-		goto out;
-
-	buf[count] = '\0';
-
-	if (kstrtouint(buf, 10, &size) != 0) {
-		count = -EINVAL;
-		goto out;
-	}
-
-	if (size > 0x200000 || size < 0x10)
-		goto out;
-
-	mutex_lock(&dbg_mem_mutex);
-	mdla_plat_free_mem(&dbg_mem);
-
-	if (mdla_plat_alloc_mem(&dbg_mem, size) == 0) {
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
-		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
-	}
-	mutex_unlock(&dbg_mem_mutex);
-
-out:
-	kfree(buf);
-	return count;
-}
-
-static const struct file_operations mdla_rv_dbg_mem_fops = {
-	.open = mdla_rv_dbg_mem_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-	.write = mdla_rv_dbg_mem_write,
-};
-
 static void mdla_plat_dbgfs_init(struct device *dev, struct dentry *parent)
 {
 	struct mdla_dbgfs_ipi_file *file;
-	int (*usage)(struct seq_file *s, void *data);
-	u32 hw_ip_ver, mask;
-	u32 i;
+	u32 i, mask, hw_ip_major_ver;
 
 	if (!dev || !parent)
 		return;
 
-	hw_ip_ver = get_major_num(mdla_plat_get_version());
+	debugfs_create_devm_seqfile(dev, DBGFS_USAGE_NAME, parent, ip_ops->dbgfs_usage);
 
-	switch (hw_ip_ver) {
-		case 2: 	usage = mdla_plat_v2_dbgfs_usage; 		break;
-		case 3: 	usage = mdla_plat_v3_dbgfs_usage; 		break;
-		case 5: 	usage = mdla_plat_v5_dbgfs_usage; 		break;
-		case 6: 	usage = mdla_plat_v6_dbgfs_usage; 		break;
-		default: 	usage = mdla_plat_unknown_dbgfs_usage;	break;
-	}
-
-	debugfs_create_devm_seqfile(dev, DBGFS_USAGE_NAME, parent, usage);
-
-	mask = BIT(hw_ip_ver);
+	hw_ip_major_ver = get_major_num(mdla_plat_get_version());
+	mask = BIT(hw_ip_major_ver);
 
 	for (i = 0; ipi_dbgfs_file[i].fops != NULL; i++) {
 		file = &ipi_dbgfs_file[i];
@@ -525,14 +705,13 @@ static void mdla_plat_dbgfs_init(struct device *dev, struct dentry *parent)
 			debugfs_create_file(file->str, file->mode, parent, &file->val, file->fops);
 	}
 
-	if (hw_ip_ver != 6)
+	if (hw_ip_major_ver <= 5)
 		debugfs_create_file(DBGFS_MEM_NAME, 0644, parent, NULL, &mdla_rv_dbg_mem_fops);
 }
 
 static void mdla_plat_memory_show(struct seq_file *s)
 {
-	seq_puts(s, "------- dump debug info  -------\n");
-	mdla_rv_dbg_mem_show(s, NULL);
+	ip_ops->dump_dbg_mem(s, NULL);
 }
 
 void mdla_plat_up_init(void)
@@ -560,6 +739,23 @@ int mdla_rv_init(struct platform_device *pdev)
 	if (!mdla_plat_devices)
 		return -1;
 
+	switch (get_major_num(mdla_plat_get_version())) {
+	case 2:
+		ip_ops = &v2_ops;
+		break;
+	case 3:
+		ip_ops = &v3_ops;
+		break;
+	case 5:
+		ip_ops = &v5_ops;
+		break;
+	case 6:
+		ip_ops = &v6_ops;
+		break;
+	default:
+		break;
+	}
+
 	mdla_set_device(mdla_plat_devices, nr_core_ids);
 
 	for (i = 0; i < nr_core_ids; i++) {
@@ -577,15 +773,9 @@ int mdla_rv_init(struct platform_device *pdev)
 	}
 
 	mdla_dbg_plat_cb()->dbgfs_plat_init = mdla_plat_dbgfs_init;
-	// DB: Dump MDLA_MEMORY
 	mdla_dbg_plat_cb()->memory_show     = mdla_plat_memory_show;
 
-	if (get_major_num(mdla_plat_get_version()) < 6) {
-		/* backup size * core num * preempt lv */
-		mdla_plat_alloc_mem(&backup_mem, 1024 * nr_core_ids * 4);
-		mdla_plat_alloc_mem(&dbg_mem, DEFAULT_DBG_SZ + 0x1000 * nr_core_ids);
-		mdla_plat_alloc_mem(&rv_dbg_mem, DEFAULT_RV_DBG_SZ);
-	}
+	ip_ops->alloc_dbg_mem();
 
 	return 0;
 }
@@ -594,13 +784,8 @@ void mdla_rv_deinit(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "%s()\n", __func__);
 
-	if (get_major_num(mdla_plat_get_version()) == 6) {
-		mdla_plat_free_mem(&dbg_mem);
-	} else {
-		mdla_plat_free_mem(&dbg_mem);
-		mdla_plat_free_mem(&backup_mem);
-		mdla_plat_free_mem(&rv_dbg_mem);
-	}
+	ip_ops->free_dbg_mem();
+
 	mdla_ipi_deinit();
 
 	if (mdla_plat_pwr_drv_ready()
