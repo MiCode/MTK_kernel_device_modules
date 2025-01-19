@@ -341,14 +341,20 @@ static ssize_t spi_log_show(struct device *dev, struct device_attribute *attr,
 			char *buf)
 {
 	char buf_temp[50] = { 0 };
+	int ret;
 
 	if (buf == NULL) {
 		pr_notice("%s() *buf is NULL\n", __func__);
 		return -EINVAL;
 	}
 
-	snprintf(buf_temp, sizeof(buf_temp), "Now spi log %s.\n",
-		(spi_log_status == LOG_CLOSE)?"disabled":"enabled");
+	ret = snprintf(buf_temp, sizeof(buf_temp), "Now spi log %s.\n",
+		(spi_log_status == LOG_CLOSE) ? "disabled" : "enabled");
+	if (ret <= 0) {
+		pr_notice("%s() snprintf failed\n", __func__);
+		return ret;
+	}
+
 	strncat(buf, buf_temp, strlen(buf_temp));
 
 	return strlen(buf);
@@ -1866,6 +1872,8 @@ void mt_spi_enable_master_clk(struct spi_device *spidev)
 	ms = spi_master_get_devdata(spidev->master);
 
 	ret = clk_prepare_enable(ms->spi_clk);
+
+	BUG_ON(ret < 0);
 }
 EXPORT_SYMBOL(mt_spi_enable_master_clk);
 
