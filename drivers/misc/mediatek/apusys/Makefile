@@ -381,17 +381,15 @@ apusys-objs += aps/aps_sysfs.o
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hw_logger/
 apusys-objs += hw_logger/hw_logger.o
 
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hw_logger/1.0/logger_v1.c),)
+# hw logger v1
 subdir-ccflags-y += -DLOGGER_V1_PLAT_DATA
 apusys-objs += hw_logger/1.0/logger_v1.o
-endif
 
-ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hw_logger/2.0/logger_v2.c),)
+# hw logger v2
 subdir-ccflags-y += -DLOGGER_V2_PLAT_DATA
 apusys-objs += hw_logger/2.0/logger_v2.o
 apusys-objs += hw_logger/2.0/logger_v2_ipi.o
 apusys-objs += hw_logger/2.0/logger_v2_procfs.o
-endif
 
 # sapu
 obj-$(CONFIG_MTK_APUSYS_SUPPORT) += sapu/
