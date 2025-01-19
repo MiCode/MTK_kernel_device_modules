@@ -136,6 +136,8 @@ module_param(mml_urate, int, 0644);
 /* dc mode reserve time in us */
 int dc_sw_reserve = 300;
 module_param(dc_sw_reserve, int, 0644);
+int pq_sw_reserve = 3000;
+module_param(pq_sw_reserve, int, 0644);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static bool mml_timeout_dump = true;
@@ -1207,11 +1209,13 @@ static u64 mml_core_calc_tput(struct mml_task *task, u32 pixel, u32 pipe,
 {
 	u64 duration = mml_core_time_dur_us(end, start);
 	u32 dpc = task->config->dpc;
+	u32 reserve = task->config->info.dest[0].pq_config.en_region_pq ?
+		pq_sw_reserve : dc_sw_reserve;
 
-	if (!duration || duration <= dc_sw_reserve)
+	if (!duration || duration <= reserve)
 		duration = 1;
 	else
-		duration -= dc_sw_reserve;
+		duration -= reserve;
 
 	/* truoughput by end time */
 	task->pipe[pipe].throughput[dpc] = (u32)div_u64(pixel, duration);
