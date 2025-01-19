@@ -865,7 +865,7 @@ void mtk_vidle_register(const struct dpc_funcs *funcs, enum mtk_dpc_version vers
 		__func__, vidle_data.panel_type, version,
 		vidle_data.level, vidle_data.hrt_bw, vidle_data.srt_bw);
 	vidle_data.dpc_version = version;
-//	disp_dpc_driver = *funcs;
+	disp_dpc_driver = *funcs;
 
 	if (version == DPC_VER1)
 		mtk_vidle_register_v1(funcs);
