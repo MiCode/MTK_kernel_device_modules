@@ -337,6 +337,54 @@ static u32	smi_rsi_regs[SMI_RSI_REGS_NR] = {
 	RSI_AXI_DBG_M1, RSI_AXI_DBG_S, RSI_AWOSTD_PSEUDO, RSI_AROSTD_PSEUDO
 };
 
+/* RSIU */
+#define RSIU_DCM_CON		(0x004)
+#define RSIU_DS_PM_CON		(0x008)
+#define RSIU_MISC_CON		(0x00C)
+#define RSIU_STA		(0x010)
+#define RSIU_IRQ		(0x014)
+#define RSIU_TEST_CON		(0x060)
+#define RSIU_AWOSTD_PSEUDO	(0x074)
+#define RSIU_AROSTD_PSEUDO	(0x078)
+#define RSIU_AWOSTD_M0		(0x080)
+#define RSIU_AWOSTD_M1		(0x084)
+#define RSIU_AWOSTD_S		(0x090)
+#define RSIU_WOSTD_M0		(0x0A0)
+#define RSIU_WOSTD_M1		(0x0A4)
+#define RSIU_WOSTD_S		(0x0B0)
+#define RSIU_AROSTD_M0		(0x0C0)
+#define RSIU_AROSTD_M1		(0x0C4)
+#define RSIU_AROSTD_S		(0x0D0)
+#define RSIU_WLAST_OWE_CNT_M0	(0x0E0)
+#define RSIU_WLAST_OWE_CNT_M1	(0x0E4)
+#define RSIU_WLAST_OWE_CNT_S	(0x0F0)
+#define RSIU_WDAT_CNT_M0	(0x100)
+#define RSIU_WDAT_CNT_M1	(0x104)
+#define RSIU_WDAT_CNT_S		(0x110)
+#define RSIU_RDAT_CNT_M0	(0x120)
+#define RSIU_RDAT_CNT_M1	(0x124)
+#define RSIU_RDAT_CNT_S		(0x130)
+#define RSIU_AXI_DBG_M0		(0x140)
+#define RSIU_AXI_DBG_M1		(0x144)
+#define RSIU_AXI_DBG_S		(0x150)
+#define RSIU_DBG_LATCH0		(0x154)
+#define RSIU_MAP_BANK		(0x158)
+#define RSIU_WID_MAP_0		(0x160)
+#define RSIU_WID_MAP_63		(0x25C)
+#define RSIU_RID_MAP_0		(0x260)
+#define RSIU_RID_MAP_63		(0x35C)
+
+#define SMI_RSIU_REGS_NR	(35)
+static u32	smi_rsiu_regs[SMI_RSIU_REGS_NR] = {
+	RSIU_DCM_CON, RSIU_DS_PM_CON, RSIU_MISC_CON, RSIU_STA, RSIU_IRQ, RSIU_TEST_CON,
+	RSIU_AWOSTD_PSEUDO, RSIU_AROSTD_PSEUDO, RSIU_AWOSTD_M0, RSIU_AWOSTD_M1, RSIU_AWOSTD_S,
+	RSIU_WOSTD_M0, RSIU_WOSTD_M1, RSIU_WOSTD_S, RSIU_AROSTD_M0, RSIU_AROSTD_M1,
+	RSIU_AROSTD_S, RSIU_WLAST_OWE_CNT_M0, RSIU_WLAST_OWE_CNT_M1, RSIU_WLAST_OWE_CNT_S,
+	RSIU_WDAT_CNT_M0, RSIU_WDAT_CNT_M1, RSIU_WDAT_CNT_S, RSIU_RDAT_CNT_M0, RSIU_RDAT_CNT_M1,
+	RSIU_RDAT_CNT_S, RSIU_AXI_DBG_M0, RSIU_AXI_DBG_M1, RSIU_AXI_DBG_S, RSIU_DBG_LATCH0,
+	RSIU_MAP_BANK, RSIU_WID_MAP_0, RSIU_WID_MAP_63, RSIU_RID_MAP_0, RSIU_RID_MAP_63,
+};
+
 #define SMI_MON_BUS_NR		(4)
 #define SMI_MON_CNT_NR		(9)
 #define SMI_MON_DEC(val, bit)	(((val) >> mon_bit[bit]) & \
@@ -1421,8 +1469,15 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 
 	for_each_compatible_node(node, NULL, mtk_smi_dbg_comp[2]) {
 
-		if (of_property_read_u32(node, "mediatek,rsi-id", &id))
+		if (!of_property_read_u32(node, "mediatek,rsi-id", &id)) {
+			smi->rsi[id].regs_nr = SMI_RSI_REGS_NR;
+			smi->rsi[id].regs = smi_rsi_regs;
+		} else if (!of_property_read_u32(node, "mediatek,rsiu-id", &id)){
+			smi->rsi[id].regs_nr = SMI_RSIU_REGS_NR;
+			smi->rsi[id].regs = smi_rsiu_regs;
+		} else
 			id = rsi_nr;
+
 		rsi_nr += 1;
 
 		pdev = of_find_device_by_node(node);
@@ -1441,9 +1496,6 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 		if (IS_ERR(va))
 			return PTR_ERR(va);
 		smi->rsi[id].va = va;
-
-		smi->rsi[id].regs_nr = SMI_RSI_REGS_NR;
-		smi->rsi[id].regs = smi_rsi_regs;
 	}
 
 	init_smi_dbg_setting(smi);
