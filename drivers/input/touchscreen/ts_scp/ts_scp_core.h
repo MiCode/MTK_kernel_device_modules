@@ -48,17 +48,17 @@ enum touch_comm_notify_cmd {
 };
 
 /*State Mask*/
-#define STAT_NONE                       (0x0000)
+#define STAT_NONE                       (0)
 /*SCP Touch state bit 0-15*/
-#define STAT_SCP_TP_INIT_READY          (0x0010)
-#define STAT_SCP_TP_WORK_STATE          (0x0020)
-#define STAT_TP_WORK_MODE               (0x8000)
-#define STAT_AP_TP_READY                (0x0100)
+#define STAT_SCP_TP_INIT_READY          (1 << 0)
+#define STAT_SCP_TP_WORK_STATE          (1 << 1)
+#define STAT_TP_WORK_MODE               (1 << 2)
+#define STAT_AP_TP_READY                (1 << 3)
 
 /*SCP state bit 0-15*/
-#define STAT_SCP_STATE_READY            (0x0001)
-#define STAT_SCP_STATE_CRASH_DURATION   (0x0004)
-#define STAT_SCP_STATE_CRASH_TOO_MUCH   (0x0002)
+#define STAT_SCP_STATE_READY            (1 << 0)
+#define STAT_SCP_STATE_CRASH_DURATION   (1 << 2)
+#define STAT_SCP_STATE_CRASH_TOO_MUCH   (1 << 3)
 /*State Mask*/
 
 struct ts_scp_data {

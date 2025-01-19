@@ -217,6 +217,7 @@ static ssize_t ts_scp_ctrl_store(struct device *dev,
     ctrl_cmd.touch_type = touch_type;
     ctrl_cmd.cmd = cmd;
     ts_scp_info("ts_scp_ctrl_store Touch_type = %u, cmd = %u", touch_type, cmd);
+	memset(&option_cmd, 0 , sizeof(struct ts_scp_cmd));
 
     switch (cmd) {
     case 0:
@@ -418,6 +419,7 @@ void ts_scp_cmd_handler_async(struct ts_scp_cmd *option_cmd)
     struct ts_scp_option_cmd option_data;
     unsigned long flags = 0;
 
+	memset(&option_data, 0 , sizeof(struct ts_scp_option_cmd));
     option_data.cmd = option_cmd->command;
     option_data.touch_type = option_cmd->touch_type;
     memcpy(&option_data.data, &option_cmd->data, sizeof(option_data.data));
@@ -445,6 +447,7 @@ static void ts_scp_set_tp_status(uint8_t touch_type, unsigned int state)
     ts_scp_info("Update core tp:%u state:%04x", touch_type, dev->core_state.tp_state[touch_type]);
     spin_unlock_irqrestore(&dev->core_state.lock, flags);
 
+	memset(&cmd_data, 0 , sizeof(struct ts_scp_cmd));
     cmd_data.touch_type = touch_type;
     cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
     ts_scp_cmd_handler_async(&cmd_data);
@@ -461,6 +464,7 @@ static void ts_scp_clear_tp_status(uint8_t touch_type, unsigned int state)
     ts_scp_info("Update core tp:%u state:%04x", touch_type, dev->core_state.tp_state[touch_type]);
     spin_unlock_irqrestore(&dev->core_state.lock, flags);
 
+	memset(&cmd_data, 0 , sizeof(struct ts_scp_cmd));
     cmd_data.touch_type = touch_type;
     cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
     ts_scp_cmd_handler_async(&cmd_data);
@@ -480,6 +484,7 @@ static void ts_scp_set_scp_status(unsigned int state)
 
     for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
         if (dev->tp[i] != NULL) {
+		memset(&cmd_data, 0 , sizeof(struct ts_scp_cmd));
             cmd_data.touch_type = i;
             cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
             ts_scp_cmd_handler_async(&cmd_data);
@@ -501,6 +506,7 @@ static void ts_scp_clear_scp_status(unsigned int state)
 
     for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
         if (dev->tp[i] != NULL) {
+		memset(&cmd_data, 0 , sizeof(struct ts_scp_cmd));
             cmd_data.touch_type = i;
             cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
             ts_scp_cmd_handler_async(&cmd_data);
@@ -528,6 +534,7 @@ static void ts_scp_reset_update_status(void)
 
     for (uint8_t i = 0; i < MAX_TS_TOUCH_TYPE; i++) {
         if (dev->tp[i] != NULL) {
+		memset(&cmd_data, 0 , sizeof(struct ts_scp_cmd));
             cmd_data.touch_type = i;
             cmd_data.command = TOUCH_COMM_CTRL_STATUS_UPDATE;
             ts_scp_cmd_handler_async(&cmd_data);
@@ -668,7 +675,7 @@ static void ts_scp_cmd_onceprocess(struct ts_scp_option_cmd *option_data)
             && (!(STAT_SCP_TP_INIT_READY & current_tp_status))
             && (!(STAT_SCP_TP_WORK_STATE & current_tp_status))) {
                 touch_comm_data_notify(touch_type, dev->tp[touch_type]->touch_id, TOUCH_COMM_NOTIFY_READY_CMD, NULL, 0);
-            } else if ((STAT_SCP_STATE_READY | current_scp_status)
+		} else if ((STAT_SCP_STATE_READY & current_scp_status)
             && (STAT_AP_TP_READY & current_tp_status)
             && (!(STAT_SCP_STATE_CRASH_TOO_MUCH & current_scp_status))
             && (STAT_SCP_TP_INIT_READY & current_tp_status)
