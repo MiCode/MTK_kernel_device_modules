@@ -27,7 +27,7 @@ enum mtk_btag_storage_type {
 
 #define BTAG_NAME_LEN           16
 struct mtk_btag_mictx_id {
-	__u64 id;
+	__u16 id;
 	enum mtk_btag_storage_type storage;
 	char name[BTAG_NAME_LEN];
 };
@@ -69,8 +69,9 @@ struct mtk_btag_mictx_iostat_struct {
 int mtk_btag_mictx_get_data(
 	struct mtk_btag_mictx_id mictx_id,
 	struct mtk_btag_mictx_iostat_struct *iostat);
-int mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id,
-			  struct mtk_btag_mictx_vops *vops, bool enable);
+int mtk_btag_mictx_register(struct mtk_btag_mictx_id *mictx_id,
+			    struct mtk_btag_mictx_vops *vops);
+void mtk_btag_mictx_unregister(struct mtk_btag_mictx_id *mictx_id);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
@@ -95,7 +96,8 @@ void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask);
 #else
 
 #define mtk_btag_mictx_get_data(...)
-#define mtk_btag_mictx_enable(...)
+#define mtk_btag_mictx_register(...)
+#define mtk_btag_mictx_unregister(...)
 
 #define mtk_btag_ufs_init(...)
 #define mtk_btag_ufs_exit(...)

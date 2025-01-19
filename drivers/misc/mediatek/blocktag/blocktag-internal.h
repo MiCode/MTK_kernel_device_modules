@@ -141,7 +141,7 @@ struct mtk_btag_mictx {
 	} tags[BTAG_MAX_TAG];
 	struct mtk_btag_mictx_vops *vops;
 	__u16 queue_nr;
-	__s8 id;
+	__u16 id;
 	bool full_logging;
 	struct mtk_btag_mictx_queue q[];
 };

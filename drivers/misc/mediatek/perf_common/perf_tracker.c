@@ -489,7 +489,7 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		if (val && !perf_tracker_on) {
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-			mtk_btag_mictx_enable(&ufs_mictx_id, NULL, val);
+			mtk_btag_mictx_register(&ufs_mictx_id, NULL);
 #endif
 			insert_freq_qos_hook();
 			check_dram_bw = qos_rec_check_sram_ext();
@@ -505,7 +505,7 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 				passtiveTick_off();
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-			mtk_btag_mictx_enable(&ufs_mictx_id, NULL, val);
+			mtk_btag_mictx_unregister(&ufs_mictx_id);
 #endif
 		}
 		perf_tracker_on = val;

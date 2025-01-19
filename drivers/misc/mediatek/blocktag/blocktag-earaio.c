@@ -623,7 +623,8 @@ void mtk_btag_earaio_register(struct mtk_blocktag *btag)
 	}
 
 	/* Enable mictx by default if EARA-IO is enabled*/
-	ret = mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, &mictx_earaio_vops, 1);
+	ret = mtk_btag_mictx_register(&earaio_ctrl.mictx_id,
+				      &mictx_earaio_vops);
 	if (ret) {
 		pr_notice("earaio mictx enable failed: %d\n", ret);
 		return;
