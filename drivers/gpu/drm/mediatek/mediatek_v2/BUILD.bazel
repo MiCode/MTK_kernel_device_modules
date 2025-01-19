@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
     default_visibility = [
@@ -32,4 +33,34 @@ define_mgk_ddk_ko(
         "mtk_panel_ext.h",
     ],
     includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_disp_notify",
+    srcs = [
+        "mtk_disp_notify.c",
+        "mtk_log.h",
+    ],
+
+    hdrs = [
+        "mtk_disp_notify.h",
+    ] + glob([
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/aee.h",
+    ]),
+
+    includes = [
+        "include",
+    ],
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = ["."],
+    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
 )
