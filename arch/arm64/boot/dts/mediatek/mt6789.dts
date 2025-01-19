@@ -2029,7 +2029,7 @@
 			reg = <0 0x1000c000 0 0x1000>; /* 4KB */
 		};
 
-		mtk_leds: mtk_leds {
+		mtk_leds: mtk-leds {
 			backlight {
 				label = "lcd-backlight";
 				max-brightness = <255>;
