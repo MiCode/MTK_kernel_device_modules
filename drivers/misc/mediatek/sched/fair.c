@@ -482,7 +482,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 			extern_volt = 0;
 			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
 					scale_cpu, eenv, extern_volt);
-			energy = energy * max(gear_volt, dsu_volt) / pd_volt;
+			energy = ((pd_volt) ? energy * max(gear_volt, dsu_volt) / pd_volt : energy);
 			shared_buck_mode = 2;
 		}
 	} else {
