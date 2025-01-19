@@ -27,6 +27,8 @@ static int mbraink_v6991_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemor
 	struct ddr_act_times *ddr_act_times_ptr = NULL;
 	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr = NULL;
 	struct ddr_ip_bc_stats *ddr_ip_stats_ptr = NULL;
+	uint32_t record_cnt = 0;
+	int32_t retV = 0;
 
 	if (pMemoryDdrInfo == NULL) {
 		pr_notice("pMemoryDdrInfo is NULL");
@@ -61,12 +63,18 @@ static int mbraink_v6991_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemor
 		ddr_ip_stats_ptr[i].bc_stats = kmalloc_array(ddr_freq_num,
 								sizeof(struct ddr_bc_stats),
 								GFP_KERNEL);
-
-	sync_latest_data();
+	for (i = 0; i < 2; i++) {
+		retV = sync_latest_data();
+		if (retV == SWPM_PSP_SUCCESS)
+			break;
+		pr_notice("%s(%d), (%d) retV(%d) sync latest data again\n",
+			__func__, __LINE__, i, retV);
+	}
 
 	get_ddr_act_times(ddr_freq_num, ddr_act_times_ptr);
 	get_ddr_sr_pd_times(ddr_sr_pd_times_ptr);
 	get_ddr_freq_data_ip_stats(ddr_bc_ip_num, ddr_freq_num, ddr_ip_stats_ptr);
+	get_data_record_number(&record_cnt);
 
 	if (ddr_freq_num > MAX_DDR_FREQ_NUM) {
 		pr_notice("ddr_freq_num over (%d)", MAX_DDR_FREQ_NUM);
@@ -95,6 +103,8 @@ static int mbraink_v6991_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemor
 				ddr_ip_stats_ptr[j].bc_stats[i].value;
 		}
 	}
+
+	pMemoryDdrInfo->updateCnt = record_cnt;
 
 End:
 	if (ddr_act_times_ptr != NULL)

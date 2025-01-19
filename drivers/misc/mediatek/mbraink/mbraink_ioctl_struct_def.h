@@ -33,6 +33,8 @@
 #define MAX_UFS_INFO_NUM				64
 #define MAX_WIFI_TXTIMEOUT_SZ			32
 #define MAX_CPU_CORE_NUM			8
+#define MAX_PMIC_SPMI_GLITCH_SZ		96
+#define MAX_DVFSRC_INFO_SZ		64
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -157,6 +159,7 @@ struct mbraink_memory_ddrInfo {
 	int64_t pdTimeInMs;
 	int32_t totalDdrFreqNum;
 	int32_t totalDdrIpNum;
+	uint32_t updateCnt;
 };
 
 struct mbraink_audio_idleRatioInfo {
@@ -212,6 +215,7 @@ struct mbraink_power_vcoreInfo {
 	struct mbraink_power_vcoreIpStats vcoreIpDurationInfo[MAX_VCORE_IP_NUM];
 	int32_t totalVCNum;
 	int32_t totalVCIpNum;
+	uint32_t updateCnt;
 };
 
 struct mbraink_cpufreq_notify_struct {
@@ -571,6 +575,17 @@ struct mbraink_power_scp_task_info {
 	unsigned int pos;
 	unsigned int size;
 	unsigned char scp_task_data[SCP_TASK_SZ];
+};
+
+struct mbraink_spmi_glitch_struct_data {
+	unsigned int spmi_glitch_count;
+	u16 spmi_glitch[MAX_PMIC_SPMI_GLITCH_SZ];
+};
+
+struct mbraink_dvfsrc_struct_data {
+	unsigned int version;
+	unsigned int dvfsrc_size;
+	unsigned int dvfsrc_info[MAX_DVFSRC_INFO_SZ];
 };
 
 #endif

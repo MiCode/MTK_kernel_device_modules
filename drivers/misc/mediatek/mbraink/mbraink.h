@@ -67,7 +67,8 @@
 
 #define POWER_SCP_TASK_INFO		'M'
 #define NETLINK_TRIGGER_RECV	'O'
-
+#define POWER_SPMI_GLITCH_INFO  'P'
+#define POWER_DVFSRC_INFO		'Q'
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -176,6 +177,12 @@
 #define RO_POWER_SCP_TASK_INFO	_IOR(IOC_MAGIC, POWER_SCP_TASK_INFO, \
 						struct mbraink_power_scp_task_info*)
 #define WO_NETLINK_TRIGGER_RECV		_IOW(IOC_MAGIC, NETLINK_TRIGGER_RECV, char*)
+
+#define RO_POWER_SPMI_GLITCH_INFO	_IOR(IOC_MAGIC, POWER_SPMI_GLITCH_INFO, \
+					struct mbraink_spmi_glitch_struct_data*)
+
+#define RO_POWER_DVFSRC_INFO	_IOR(IOC_MAGIC, POWER_DVFSRC_INFO, \
+					struct mbraink_dvfsrc_struct_data*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

@@ -17,6 +17,7 @@
 #include "mbraink_v6991_power.h"
 
 #include <scp_mbrain_dbg.h>
+#include <dvfsrc-mb.h>
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 #include <spmi-mtk.h>
@@ -29,6 +30,12 @@
 #include <rt6160.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MFD_MTK_SPMI_PMIC)
+#include <mtk-spmi-pmic-debug.h>
+#define MAX_SPMI_GLITCH_ID spmi_glitch_idx_cnt
+#else
+#define MAX_SPMI_GLITCH_ID 96
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
 
@@ -58,6 +65,12 @@ unsigned int g_md_read_count;
 #include <lpm_dbg_common_v2.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_MB)
+#define MAX_DVFSRC_NUM DVFS_INFO_REG_NUM
+#else
+#define MAX_DVFSRC_NUM 64
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 void lpm_get_suspend_event_info(struct lpm_dbg_lp_info *info);
 #endif
@@ -70,6 +83,8 @@ static int mbraink_v6991_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbr
 	struct ip_stats *core_ip_stats_ptr = NULL;
 	struct vol_duration *core_duration_ptr = NULL;
 	int32_t core_vol_check = 0, core_ip_check = 0;
+	uint32_t record_cnt = 0;
+	int32_t retV = 0;
 
 	core_vol_num = get_vcore_vol_num();
 	core_ip_num = get_vcore_ip_num();
@@ -95,10 +110,17 @@ static int mbraink_v6991_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbr
 		}
 	}
 
-	sync_latest_data();
+	for (i = 0; i < 2; i++) {
+		retV = sync_latest_data();
+		if (retV == SWPM_PSP_SUCCESS)
+			break;
+		pr_notice("%s(%d), (%d) retV(%d) sync latest data again\n",
+			__func__, __LINE__, i, retV);
+	}
 
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
 	get_vcore_ip_vol_stats(core_ip_num, core_vol_num, core_ip_stats_ptr);
+	get_data_record_number(&record_cnt);
 
 	if (core_vol_num > MAX_VCORE_NUM) {
 		pr_notice("core vol num over (%d)", MAX_VCORE_NUM);
@@ -133,6 +155,8 @@ static int mbraink_v6991_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbr
 		pmbrainkPowerVcoreInfo->vcoreIpDurationInfo[i].times.off_time =
 			core_ip_stats_ptr[i].times->off_time;
 	}
+
+	pmbrainkPowerVcoreInfo->updateCnt = record_cnt;
 
 End:
 	if (core_duration_ptr != NULL)
@@ -1009,6 +1033,52 @@ static int mbraink_v6991_power_get_lpmstate_info(struct mbraink_lpm_state_data *
 	return ret;
 }
 
+static int mbraink_v6991_power_get_spmi_glitch_info(
+	struct mbraink_spmi_glitch_struct_data *mbraink_spmi_glitch_data)
+{
+	u16 Buf[MAX_SPMI_GLITCH_ID] = {0};
+	int ret = 0;
+	int num = 0;
+
+	if (mbraink_spmi_glitch_data == NULL) {
+		pr_info("mbraink_spmi_glitch_data is null\n");
+		return -1;
+	}
+
+	mtk_spmi_pmic_get_glitch_cnt(Buf);
+	num = (MAX_PMIC_SPMI_GLITCH_SZ > MAX_SPMI_GLITCH_ID) ?
+		MAX_SPMI_GLITCH_ID : MAX_PMIC_SPMI_GLITCH_SZ;
+
+	memcpy(mbraink_spmi_glitch_data->spmi_glitch, Buf, sizeof(u16)*num);
+	mbraink_spmi_glitch_data->spmi_glitch_count = num;
+
+	return ret;
+}
+
+static int mbraink_v6991_power_get_dvfsrc_info(
+	struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data)
+{
+	struct mtk_dvfsrc_dvfs_info_header dvfsrcInfoHeader;
+	int ret = 0;
+	int num = 0;
+
+	if (mbraink_dvfsrc_data == NULL) {
+		pr_info("mbraink_dvfsrc_data is null\n");
+		return -1;
+	}
+
+	memset(&dvfsrcInfoHeader, 0x00, sizeof(struct mtk_dvfsrc_dvfs_info_header));
+	dvfsrc_get_dvfs_info(&dvfsrcInfoHeader);
+	num = (MAX_DVFSRC_INFO_SZ > MAX_DVFSRC_NUM) ?
+		MAX_DVFSRC_NUM : MAX_DVFSRC_INFO_SZ;
+	memcpy(mbraink_dvfsrc_data->dvfsrc_info,
+		dvfsrcInfoHeader.dvfs_info_val, sizeof(unsigned int)*num);
+	mbraink_dvfsrc_data->dvfsrc_size = num;
+	mbraink_dvfsrc_data->version = dvfsrcInfoHeader.dvfs_info_version;
+
+	return ret;
+}
+
 static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getVotingInfo = mbraink_v6991_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -1028,6 +1098,8 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getMmdvfsInfo = mbraink_v6991_power_get_mmdfvs_info,
 	.getPowerThrottleHwInfo = mbraink_v6991_power_get_power_throttle_hw_info,
 	.getLpmStateInfo = mbraink_v6991_power_get_lpmstate_info,
+	.getSpmiGlitchInfo = mbraink_v6991_power_get_spmi_glitch_info,
+	.getDvfsrcInfo = mbraink_v6991_power_get_dvfsrc_info,
 };
 
 int mbraink_v6991_power_init(void)

@@ -29,6 +29,8 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	_mbraink_power_ops.getLpmStateInfo = NULL;
+	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
+	_mbraink_power_ops.getDvfsrcInfo = NULL;
 	return 0;
 }
 
@@ -52,6 +54,8 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	_mbraink_power_ops.getLpmStateInfo = NULL;
+	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
+	_mbraink_power_ops.getDvfsrcInfo = NULL;
 	return 0;
 }
 
@@ -80,6 +84,8 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getMmdvfsInfo = ops->getMmdvfsInfo;
 	_mbraink_power_ops.getPowerThrottleHwInfo = ops->getPowerThrottleHwInfo;
 	_mbraink_power_ops.getLpmStateInfo = ops->getLpmStateInfo;
+	_mbraink_power_ops.getSpmiGlitchInfo = ops->getSpmiGlitchInfo;
+	_mbraink_power_ops.getDvfsrcInfo = ops->getDvfsrcInfo;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -106,6 +112,8 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	_mbraink_power_ops.getLpmStateInfo = NULL;
+	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
+	_mbraink_power_ops.getDvfsrcInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -386,6 +394,42 @@ int mbraink_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo)
 		ret = _mbraink_power_ops.getLpmStateInfo(lpmStateInfo);
 	else
 		pr_info("%s: Do not support ioctl get power lpm state info query.\n", __func__);
+
+	return ret;
+}
+
+int mbraink_power_get_spmi_glitch_info(
+	struct mbraink_spmi_glitch_struct_data *mbraink_spmi_glith_data)
+{
+	int ret = 0;
+
+	if (mbraink_spmi_glith_data == NULL) {
+		pr_info("%s: power spmi glitch data is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getSpmiGlitchInfo)
+		ret = _mbraink_power_ops.getSpmiGlitchInfo(mbraink_spmi_glith_data);
+	else
+		pr_info("%s: Do not support ioctl get power spmi glitch info query.\n", __func__);
+
+	return ret;
+}
+
+int mbraink_power_get_dvfsrc_info(
+	struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data)
+{
+	int ret = 0;
+
+	if (mbraink_dvfsrc_data == NULL) {
+		pr_info("%s: power dvfsrc data is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getDvfsrcInfo)
+		ret = _mbraink_power_ops.getDvfsrcInfo(mbraink_dvfsrc_data);
+	else
+		pr_info("%s: Do not support ioctl get power dvfsrc info query.\n", __func__);
 
 	return ret;
 }

@@ -45,4 +45,8 @@ int mbraink_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_da
 
 int mbraink_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo);
 
+int mbraink_power_get_spmi_glitch_info(struct mbraink_spmi_glitch_struct_data *mbraink_spmi_data);
+
+int mbraink_power_get_dvfsrc_info(struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data);
+
 #endif /*end of MBRAINK_POWER_H*/

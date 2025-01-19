@@ -1171,6 +1171,44 @@ static long handle_netlink_trigger_recv(unsigned long arg)
 	return ret;
 }
 
+static long handle_power_spmi_glitch_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_spmi_glitch_struct_data *power_spmi_glitch_buffer =
+		(struct mbraink_spmi_glitch_struct_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(power_spmi_glitch_buffer,
+		0,
+		sizeof(struct mbraink_spmi_glitch_struct_data));
+	ret = mbraink_power_get_spmi_glitch_info(power_spmi_glitch_buffer);
+	if (copy_to_user((struct mbraink_spmi_glitch_struct_data *) arg,
+			power_spmi_glitch_buffer,
+			sizeof(struct mbraink_spmi_glitch_struct_data))) {
+		pr_notice("Copy power_spmi_glitch_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_power_dvfsrc_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_dvfsrc_struct_data *power_dvfsrc_buffer =
+		(struct mbraink_dvfsrc_struct_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(power_dvfsrc_buffer,
+		0,
+		sizeof(struct mbraink_dvfsrc_struct_data));
+	ret = mbraink_power_get_dvfsrc_info(power_dvfsrc_buffer);
+	if (copy_to_user((struct mbraink_dvfsrc_struct_data *) arg,
+			power_dvfsrc_buffer,
+			sizeof(struct mbraink_dvfsrc_struct_data))) {
+		pr_notice("Copy power_dvfsrc_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1605,6 +1643,24 @@ static long mbraink_ioctl(struct file *filp,
 		kfree(mbraink_data);
 		break;
 	}
+	case RO_POWER_SPMI_GLITCH_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_spmi_glitch_struct_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_spmi_glitch_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_POWER_DVFSRC_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_dvfsrc_struct_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_dvfsrc_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;
@@ -1900,7 +1956,9 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 	unsigned int command;
 	unsigned long long value;
 	int retSize = 0;
+	struct mbraink_dvfsrc_struct_data mbraink_dvfsrc_data;
 
+	memset(&mbraink_dvfsrc_data, 0x00, sizeof(struct mbraink_dvfsrc_struct_data));
 	retSize = sscanf(buf, "%d %llu", &command, &value);
 	if (retSize == -1)
 		return 0;
@@ -1913,6 +1971,9 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 
 	if (command == 5)
 		mbraink_gpu_setOpMode((int)value);
+
+	if (command == 6)
+		mbraink_power_get_dvfsrc_info(&mbraink_dvfsrc_data);
 
 	return count;
 }
