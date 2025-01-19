@@ -51,6 +51,9 @@ define_mgk_ddk_ko(
     ],
     includes = ["."],
     hdrs = glob(["**/*.h"]),
+    copts = [
+	"-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/",
+    ],
 )
 
 # add ddk_headers to export headers for other modules to use in the future
