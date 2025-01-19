@@ -184,10 +184,12 @@ struct mtk_smi_larb_gen {
 
 #define LARB_MAX_COMMON		(2)
 #define SMI_MAX_CG_CTRL_NR		(7)
+enum smi_clk_type { SMI_CLK, SMI_PD, SMI_CLK_TYPE_NR};
 struct mtk_smi {
 	struct device			*dev;
 	int				nr_clks;
 	struct clk			*clks[SMI_MAX_CG_CTRL_NR];
+	u8				clk_type[SMI_MAX_CG_CTRL_NR];
 	struct clk			*clk_async; /*only needed by mt2701*/
 	union {
 		void __iomem		*smi_ao_base; /* only for gen1 */
@@ -296,6 +298,7 @@ static unsigned int smi_pd_ctrl_num;
 
 static struct mtk_smi_hwccf *gsmi_hwccf;
 static struct workqueue_struct *smi_pd_ctrl_wq;
+enum smi_ctrl_type { PM_CTRL, SMI_CTRL, SMI_CTRL_TYPE_NR};
 
 #if IS_ENABLED(CONFIG_MTK_SMI_DEBUG) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #define SMI_MME_LOG_SIZE	(160 * 1024)
@@ -671,11 +674,13 @@ void mtk_smi_dump_last_pd(const char *user)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_dump_last_pd);
 
-static int mtk_smi_clk_enable(const struct mtk_smi *smi)
+static int mtk_smi_clk_enable(const struct mtk_smi *smi, enum smi_ctrl_type ctrl_type)
 {
 	int i, j, ret;
 
 	for (i = 0; i < smi->nr_clks; i++) { /* without MTCMOS */
+		if ((ctrl_type == PM_CTRL) && (smi->clk_type[i] == SMI_PD))
+			continue;
 		ret = clk_prepare_enable(smi->clks[i]);
 		if (ret) {
 			dev_info(smi->dev, "CLK%d enable failed:%d\n", i, ret);
@@ -688,12 +693,15 @@ static int mtk_smi_clk_enable(const struct mtk_smi *smi)
 	return 0;
 }
 
-static void mtk_smi_clk_disable(const struct mtk_smi *smi)
+static void mtk_smi_clk_disable(const struct mtk_smi *smi, enum smi_ctrl_type ctrl_type)
 {
 	int i;
 
-	for (i = smi->nr_clks - 1; i >= 0; i--)
+	for (i = smi->nr_clks - 1; i >= 0; i--) {
+		if ((ctrl_type == PM_CTRL) && (smi->clk_type[i] == SMI_PD))
+			continue;
 		clk_disable_unprepare(smi->clks[i]);
+	}
 }
 
 int mtk_smi_larb_ultra_dis(struct device *larbdev, bool is_dis)
@@ -3582,6 +3590,7 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 		larb->smi.nr_clks = ret;
 
 	of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
+		larb->smi.clk_type[i] = strncmp(name, "smi_pd", strlen("smi_pd")) ? SMI_CLK : SMI_PD;
 		larb->smi.clks[i] = devm_clk_get(dev, name);
 		if (IS_ERR(larb->smi.clks[i])) {
 			dev_info(dev, "CLK%d:%s get failed\n", i, name);
@@ -3719,7 +3728,7 @@ static void mtk_smi_larb_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &mtk_smi_larb_component_ops);
 }
 
-static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
+static int __maybe_unused mtk_smi_larb_resume(struct device *dev, enum smi_ctrl_type ctrl_type)
 {
 	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
 	const struct mtk_smi_larb_gen *larb_gen = larb->larb_gen;
@@ -3740,7 +3749,7 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev)
 		larb->larbid, atomic_read(&larb->smi.ref_count));
 
 	clk_start = ktime_get();
-	ret = mtk_smi_clk_enable(&larb->smi);
+	ret = mtk_smi_clk_enable(&larb->smi, ctrl_type);
 	clk_end = ktime_get();
 	SMI_MME_INFO("larb:%d has enabled clk in callback get new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
@@ -3826,14 +3835,14 @@ static int mtk_smi_power_suspend_check(struct mtk_smi_pd *smi_pd, unsigned long 
 			break;
 		common = dev_get_drvdata(smi_pd->suspend_check_dev[i]);
 
-		ret = mtk_smi_clk_enable(common);
+		ret = mtk_smi_clk_enable(common, PM_CTRL);
 		if (ret) {
 			dev_notice(common->dev, "Failed to enable clock(%d)\n", ret);
 			return ret;
 		}
 
 		ret = mtk_smi_common_ostd_check(common, smi_pd->suspend_check_port[i], flags);
-		mtk_smi_clk_disable(common);
+		mtk_smi_clk_disable(common, PM_CTRL);
 
 		if (!ret)
 			continue;
@@ -3980,7 +3989,7 @@ void mtk_smi_larb_clamp_and_lock(struct device *larbdev, bool on)
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_clamp_and_lock);
 
-static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
+static int __maybe_unused mtk_smi_larb_suspend(struct device *dev, enum smi_ctrl_type ctrl_type)
 {
 	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
 	const struct mtk_smi_larb_gen *larb_gen = larb->larb_gen;
@@ -4013,15 +4022,25 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev)
 
 	smi_pd_ctrl_notify_off(larb->pd_id);
 
-	mtk_smi_clk_disable(&larb->smi);
+	mtk_smi_clk_disable(&larb->smi, ctrl_type);
 	SMI_MME_INFO("larb:%d has disabled clk in callback put new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
 
 	return 0;
 }
 
+static int __maybe_unused mtk_smi_larb_resume_pm_ops(struct device *dev)
+{
+	return mtk_smi_larb_resume(dev, PM_CTRL);
+}
+
+static int __maybe_unused mtk_smi_larb_suspend_pm_ops(struct device *dev)
+{
+	return mtk_smi_larb_suspend(dev, PM_CTRL);
+}
+
 static const struct dev_pm_ops smi_larb_pm_ops = {
-	SET_RUNTIME_PM_OPS(mtk_smi_larb_suspend, mtk_smi_larb_resume, NULL)
+	SET_RUNTIME_PM_OPS(mtk_smi_larb_suspend_pm_ops, mtk_smi_larb_resume_pm_ops, NULL)
 };
 
 static struct platform_driver mtk_smi_larb_driver = {
@@ -5201,6 +5220,7 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 		common->nr_clks = ret;
 
 	of_property_for_each_string(dev->of_node, "clock-names", prop, name) {
+		common->clk_type[i] = strncmp(name, "smi_pd", strlen("smi_pd")) ? SMI_CLK : SMI_PD;
 		common->clks[i] = devm_clk_get(dev, name);
 		if (IS_ERR(common->clks[i])) {
 			dev_info(dev, "CLK%d:%s get failed\n", i, name);
@@ -5321,7 +5341,7 @@ static void mtk_smi_common_remove(struct platform_device *pdev)
 	pm_runtime_disable(&pdev->dev);
 }
 
-static int __maybe_unused mtk_smi_common_resume(struct device *dev)
+static int __maybe_unused mtk_smi_common_resume(struct device *dev, enum smi_ctrl_type ctrl_type)
 {
 	struct mtk_smi *common = dev_get_drvdata(dev);
 	u32 bus_sel = common->plat->bus_sel;
@@ -5329,7 +5349,7 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 	ktime_t rs_start, rs_end;
 	ktime_t clk_start, clk_end;
 
-	if (atomic_read(&common->ref_count) > 1)
+	if (atomic_read(&common->ref_count) > 0)
 		goto out;
 	if (common->skip_rpm_cb) {
 		if (log_level & 1 << log_config_bit)
@@ -5342,7 +5362,7 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev)
 		common->commid, atomic_read(&common->ref_count));
 
 	clk_start = ktime_get();
-	ret = mtk_smi_clk_enable(common);
+	ret = mtk_smi_clk_enable(common, ctrl_type);
 	clk_end = ktime_get();
 	if (ret) {
 		dev_err(common->dev, "Failed to enable clock(%d).\n", ret);
@@ -5403,7 +5423,7 @@ out:
 	return 0;
 }
 
-static int __maybe_unused mtk_smi_common_suspend(struct device *dev)
+static int __maybe_unused mtk_smi_common_suspend(struct device *dev, enum smi_ctrl_type ctrl_type)
 {
 	struct mtk_smi *common = dev_get_drvdata(dev);
 
@@ -5430,15 +5450,25 @@ static int __maybe_unused mtk_smi_common_suspend(struct device *dev)
 
 	smi_pd_ctrl_notify_off(common->pd_id);
 
-	mtk_smi_clk_disable(common);
+	mtk_smi_clk_disable(common, ctrl_type);
 	SMI_MME_INFO("common:%d has disabled clk in callback put new ref_count:%d\n",
 		common->commid, atomic_read(&common->ref_count));
 
 	return 0;
 }
 
+static int __maybe_unused mtk_smi_common_resume_pm_ops(struct device *dev)
+{
+	return mtk_smi_common_resume(dev, PM_CTRL);
+}
+
+static int __maybe_unused mtk_smi_common_suspend_pm_ops(struct device *dev)
+{
+	return mtk_smi_common_suspend(dev, PM_CTRL);
+}
+
 static const struct dev_pm_ops smi_common_pm_ops = {
-	SET_RUNTIME_PM_OPS(mtk_smi_common_suspend, mtk_smi_common_resume, NULL)
+	SET_RUNTIME_PM_OPS(mtk_smi_common_suspend_pm_ops, mtk_smi_common_resume_pm_ops, NULL)
 };
 
 static int mtk_smi_bus_enable(struct device *dev, bool is_enable)
@@ -5450,7 +5480,8 @@ static int mtk_smi_bus_enable(struct device *dev, bool is_enable)
 
 	if (!is_enable) {
 		mutex_lock(&smi->pd_lock);
-		val = is_larb ? mtk_smi_larb_suspend(dev) : mtk_smi_common_suspend(dev);
+		val = is_larb ?
+			mtk_smi_larb_suspend(dev, SMI_CTRL) : mtk_smi_common_suspend(dev, SMI_CTRL);
 		if (val) {
 			dev_notice(dev, "Failed to enable:%d %s! val=%d\n",
 						is_enable, dev_name(dev), val);
@@ -5467,7 +5498,8 @@ static int mtk_smi_bus_enable(struct device *dev, bool is_enable)
 	}
 	if (is_enable) {
 		mutex_lock(&smi->pd_lock);
-		val = is_larb ? mtk_smi_larb_resume(dev) : mtk_smi_common_resume(dev);
+		val = is_larb ?
+			mtk_smi_larb_resume(dev, SMI_CTRL) : mtk_smi_common_resume(dev, SMI_CTRL);
 		if (val) {
 			dev_notice(dev, "Failed to enable:%d %s! val=%d\n",
 						is_enable, dev_name(dev), val);
@@ -5533,7 +5565,7 @@ static void smi_pd_ctrl_work(struct work_struct *work)
 	int ret;
 
 	mutex_lock(&smi->pd_lock);
-	ret = is_larb ? mtk_smi_larb_suspend(dev) : mtk_smi_common_suspend(dev);
+	ret = is_larb ? mtk_smi_larb_suspend(dev, SMI_CTRL) : mtk_smi_common_suspend(dev, SMI_CTRL);
 	if (ret)
 		dev_notice(dev, "Failed to disable:%s! val=%d\n", dev_name(dev), ret);
 	mutex_unlock(&smi->pd_lock);
