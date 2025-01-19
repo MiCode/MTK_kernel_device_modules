@@ -1113,7 +1113,7 @@ static void sys_debug_dump_dl(struct mml_comp *comp)
 	mml_err("dump ovlsys base %#010x", ovl_base);
 	for (i = 0; i < ARRAY_SIZE(mt6991_ovl_debug_regs); i++) {
 		value = readl(va + mt6991_ovl_debug_regs[i].offset);
-		mml_err("%s %#050x: %#010x",
+		mml_err("%s %#05x: %#010x",
 			mt6991_ovl_debug_regs[i].name, mt6991_ovl_debug_regs[i].offset, value);
 	}
 
