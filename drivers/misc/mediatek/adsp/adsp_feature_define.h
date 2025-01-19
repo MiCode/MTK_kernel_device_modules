@@ -29,6 +29,7 @@ bool is_feature_in_set(u32 cid, u32 fid);
 bool adsp_feature_is_active(u32 cid);
 int get_feature_register(u32 fid);
 bool flush_suspend_work(u32 cid);
+bool cancel_suspend_work(u32 cid);
 
 int _adsp_register_feature(u32 cid, u32 fid, u32 opt);
 int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt);

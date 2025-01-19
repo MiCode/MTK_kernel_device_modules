@@ -345,6 +345,19 @@ bool flush_suspend_work(u32 cid)
 	return false;
 }
 
+bool cancel_suspend_work(u32 cid)
+{
+	struct adsp_feature_control *ctrl = &feature_ctrl[cid];
+	bool ret = false;
+
+	mutex_lock(&ctrl->lock);
+	if (ctrl->total == 0 && delayed_work_pending(&ctrl->suspend_work))
+		ret = cancel_delayed_work(&ctrl->suspend_work);
+	mutex_unlock(&ctrl->lock);
+
+	return ret;
+}
+
 int init_adsp_feature_control(u32 cid, u64 feature_set, int delay_ms,
 			struct workqueue_struct *wq,
 			int (*_suspend)(void),

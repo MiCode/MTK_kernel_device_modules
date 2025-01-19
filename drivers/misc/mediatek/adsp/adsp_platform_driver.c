@@ -28,6 +28,7 @@ static int slb_memory_control(bool en);
 static u32 adsp_pending_cnt;
 static bool resume_first_time = true;
 static s64 core1_start_us = 0;
+int adsp_core1_suspend(void);
 
 /* adsp operation */
 int adsp_after_bootup(struct adsp_priv *pdata)
@@ -133,7 +134,13 @@ int adsp_core0_suspend(void)
 
 		/* if have more core, wait it suspend done */
 		if (get_adsp_core_total() > 1) {
-			ret = wait_another_core_suspend(pdata);
+			/* if another core is not suspended, suspend it now */
+			if (cancel_suspend_work(adsp_cores[ADSP_B_ID]->id)) {
+				pr_info("%s(), core 1 suspend late, suspend now", __func__);
+				ret = adsp_core1_suspend();
+			} else
+				ret = wait_another_core_suspend(pdata);
+
 			if (ret) {
 				pdata = adsp_cores[ADSP_B_ID];
 				goto ERROR;
