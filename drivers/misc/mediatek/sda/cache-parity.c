@@ -521,7 +521,6 @@ static irqreturn_t cache_parity_isr_v1(int irq, void *dev_id)
 	void __iomem *base;
 	unsigned int status;
 	unsigned int offset;
-	unsigned int irq_idx;
 	unsigned int i;
 
 	if (!atomic_read(&cache_parity.nr_err))
@@ -531,7 +530,6 @@ static irqreturn_t cache_parity_isr_v1(int irq, void *dev_id)
 
 	for (i = 0, parity_record = NULL; i < cache_parity.nr_irq; i++) {
 		if (parity_irq_record[i].irq == irq) {
-			irq_idx = i;
 			parity_record = &(parity_irq_record[i].parity_record);
 			pr_info("parity isr for %d\n", i);
 			break;
