@@ -156,6 +156,12 @@ static const int disp_ovlsys_wdma0_path_v2[] = {
 static const int disp_ovlsys_wdma0_path_v3[] = {
 	DDP_COMPONENT_OVLSYS_WDMA0,
 };
+/* Liber EXDMA DL CWB */
+static const int disp_ovlsys_wdma0_dl_path[] = {
+	DDP_COMPONENT_OVL0_BLENDER_OUT_CB10,
+	DDP_COMPONENT_OVL0_OUTPROC1,
+	DDP_COMPONENT_OVLSYS_WDMA0,
+};
 
 
 static const int disp_wdma2_path_v2[] = {
@@ -397,6 +403,10 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_OVLSYS_WDMA0_v3] = {
 				.path = disp_ovlsys_wdma0_path_v3,
 				.path_len = ARRAY_SIZE(disp_ovlsys_wdma0_path_v3),
+			},
+		[DISP_OVLSYS_WDMA0_DL] = {
+				.path = disp_ovlsys_wdma0_dl_path,
+				.path_len = ARRAY_SIZE(disp_ovlsys_wdma0_dl_path),
 			},
 		[DISP_WDMA2_v2] = {
 				.path = disp_wdma2_path_v2,

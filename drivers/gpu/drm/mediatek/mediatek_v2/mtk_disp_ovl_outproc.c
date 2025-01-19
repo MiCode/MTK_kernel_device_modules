@@ -441,6 +441,23 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 				 union mtk_addon_config *addon_config,
 				 struct cmdq_pkt *handle)
 {
+	unsigned int width, height;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+
+	width = addon_config->addon_wdma_config.wdma_dst_roi.width;
+	height = addon_config->addon_wdma_config.wdma_dst_roi.height;
+
+	DDPINFO("%s,%s,w:%d, h:%d\n", __func__, mtk_dump_comp_str(comp), width, height);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
+		       0x1, ~0);
+
+	if (width != 0 && height != 0)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
+				   height << 16 | width, ~0);
+
 	return;
 }
 

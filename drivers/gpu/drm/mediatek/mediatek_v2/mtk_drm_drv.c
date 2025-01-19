@@ -3913,6 +3913,10 @@ static const struct mtk_addon_module_data mt6989_addon_ovlsys_wdma0_data[] = {
 	{DISP_OVLSYS_WDMA0_v2, ADDON_AFTER, DDP_COMPONENT_OVL2_2L},
 };
 
+static const struct mtk_addon_module_data mt6991_addon_ovlsys_wdma0_dl_data[] = {
+	{DISP_OVLSYS_WDMA0_DL, ADDON_AFTER, DDP_COMPONENT_OVL_EXDMA0},
+};
+
 static const struct mtk_addon_module_data mt6991_addon_ovlsys_wdma0_data[] = {
 	{DISP_OVLSYS_WDMA0_v3, ADDON_AFTER, DDP_COMPONENT_OVL0_OUTPROC0},
 };
@@ -4421,6 +4425,12 @@ static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6991_addon_ovlsys_wdma0_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+	[WDMA_WRITE_BACK_EXDMA_DL] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys_wdma0_dl_data),
+		.module_data = mt6991_addon_ovlsys_wdma0_dl_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+
 };
 
 static const enum mtk_ddp_comp_id mt6991_scaling_main[] = {

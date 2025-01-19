@@ -2185,7 +2185,7 @@ static const struct mtk_cwb_funcs user_cwb_funcs = {
 static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	int crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	int crtc_idx = drm_crtc_index(&mtk_crtc->base), i;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct mtk_cwb_info *cwb_info = mtk_crtc->cwb_info;
 
@@ -2198,7 +2198,7 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 	cwb_info->count = 0;
 
 	if (cwb_info->scn == NONE)
-		cwb_info->scn = WDMA_WRITE_BACK_OVL;
+		cwb_info->scn = WDMA_WRITE_BACK;
 
 	/* Check if wdith height size will be affect by resolution switch */
 	mtk_crtc_set_width_height(&(cwb_info->src_roi.width), &(cwb_info->src_roi.height),
@@ -2209,6 +2209,8 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA0];
 			if (priv->data->mmsys_id == MMSYS_MT6989)
 				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA1];
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_WDMA4];
 		}
 		else if ((priv->data->mmsys_id == MMSYS_MT6985 ||
 					priv->data->mmsys_id == MMSYS_MT6897)
@@ -2216,16 +2218,18 @@ static void mtk_drm_cwb_info_init(struct drm_crtc *crtc)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
 		else if (priv->data->mmsys_id == MMSYS_MT6989)
 			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA1];
+		else if (priv->data->mmsys_id == MMSYS_MT6991) {
+			DDPMSG("chia-cheng DDP_COMPONENT_OVLSYS_WDMA0\n");
+			cwb_info->comp = priv->ddp_comp[DDP_COMPONENT_OVLSYS_WDMA0];
+		}
 	}
 
 	if (!cwb_info->buffer[0].dst_roi.width ||
 		!cwb_info->buffer[0].dst_roi.height) {
-		mtk_rect_make(&cwb_info->buffer[0].dst_roi, 0, 0,
-			crtc->state->adjusted_mode.hdisplay,
-			crtc->state->adjusted_mode.hdisplay);
-		mtk_rect_make(&cwb_info->buffer[1].dst_roi, 0, 0,
-			crtc->state->adjusted_mode.hdisplay,
-			crtc->state->adjusted_mode.hdisplay);
+		for (i = 0; i < CWB_BUFFER_NUM; i++) {
+			mtk_rect_make(&cwb_info->buffer[i].dst_roi,
+			0, 0, crtc->state->adjusted_mode.hdisplay, crtc->state->adjusted_mode.vdisplay);
+		}
 	}
 
 	/*alloc && config two fb*/
@@ -4435,6 +4439,8 @@ static void process_dbg_opt(const char *opt)
 			cwb_info->scn = WDMA_WRITE_BACK;
 		else if (path == 1)
 			cwb_info->scn = WDMA_WRITE_BACK_OVL;
+		else if (path == 3)
+			cwb_info->scn = WDMA_WRITE_BACK_EXDMA_DL;
 
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 

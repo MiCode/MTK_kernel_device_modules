@@ -26690,6 +26690,13 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 		return value;
 	}
 
+	if ((cur == DDP_COMPONENT_OVL0_BLENDER_OUT_CB10) &&
+		(next == DDP_COMPONENT_OVL0_OUTPROC1)) {
+		*addr = MT6991_OVL_BLENDER_OUT_CROSSBAR10_MOUT_EN;
+		value = MT6991_DISP_OUT_BLENDER_CB_TO_OVL_OUTPROC1;
+		return value;
+	}
+
 	/* dispsys0 pq_in_cb */
 	value = mtk_ddp_disp0_pq_in_cb_MT6991(cur, next, addr);
 	if (value > 0)
