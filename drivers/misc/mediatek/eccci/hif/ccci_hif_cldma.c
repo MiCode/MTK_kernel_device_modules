@@ -795,6 +795,9 @@ again:
 		skb_bytes = skb->len;
 #endif
 		lhif_h = *((struct lhif_header *)skb->data);
+		memset(&ccci_h, 0, sizeof(ccci_h));
+		memcpy(&ccci_h, &lhif_h, sizeof(lhif_h));
+		ccci_h.channel = lhif_h.netif;
 
 		/* check wakeup source */
 		if (atomic_cmpxchg(&md_ctrl->wakeup_src, 1, 0) == 1) {
