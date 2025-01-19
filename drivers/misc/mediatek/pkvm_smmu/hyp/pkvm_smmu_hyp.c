@@ -266,9 +266,8 @@ void mtk_smmu_share(struct kvm_cpu_context *ctx)
 			share_addr = &smmu_dev->guest_strtab_base_va;
 		} else {
 			region_start = smmu_dev->guest_cmdq_pa;
-			region_size = MTK_SMMU_CMDQ_SIZE(((uint64_t)readl_64(
-				(void *)(smmu_dev->reg_base_va_addr +
-					 CMDQ_BASE))));
+			region_size =
+				MTK_SMMU_CMDQ_SIZE(smmu_dev->guest_cmdq_regval);
 			share_addr = &smmu_dev->guest_cmdq_va;
 		}
 	}
@@ -1083,7 +1082,10 @@ static uint32_t guest_read_idr1(void *idr1_reg)
 		     (MTK_SMMU_GUEST_CMDQ_ENTRY << 21);
 	return guest_idr1;
 }
-
+/*
+ * MTK: don't retry, if cr0ack is not acked, return only.
+ * let linux kernel do retry.
+ */
 static void cr0_reg_polling(smmu_device_t *dev)
 {
 	bool ack = false;
@@ -1091,14 +1093,10 @@ static void cr0_reg_polling(smmu_device_t *dev)
 	if (((uint32_t)readl((void *)(dev->reg_base_va_addr) + CR0)) ==
 	    ((uint32_t)readl((void *)(dev->reg_base_va_addr) + CR0ACK)))
 		ack = true;
-	/* MTK: don't retry, let linux kernel do retry */
-
+	/* if hw cr0 register sync, then update sw guset_cr0ack value */
 	if (ack)
 		/* simulate hw cr0ack ack case */
 		dev->guest_cr0ack_regval = dev->guest_cr0_regval;
-	else
-		/* simulate hw cr0ack doesn't ack case */
-		dev->guest_cr0ack_regval = dev->guest_cr0ack_regval;
 }
 
 static int mmio_read(struct user_pt_regs *regs, smmu_device_t *smmu_dev,
@@ -1415,13 +1413,10 @@ bool kvm_iommu_idmap_range_check(phys_addr_t start, phys_addr_t end,
 	struct smmu_vm *vm;
 
 	vm = get_vm(vmid);
-	if (start < vm->vm_ipa_range.base)
+	if (!vm)
 		return false;
 
-	if (end > (vm->vm_ipa_range.base + vm->vm_ipa_range.size))
-		return false;
-
-	return true;
+	return	address_vm_range_check(vm, start, end);
 }
 /* Flush TLB in every 5000 times SMMU idmap, which trigger from pVM launched */
 unsigned long tlbi_counter;
