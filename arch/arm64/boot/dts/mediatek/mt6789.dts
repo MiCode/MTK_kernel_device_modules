@@ -448,6 +448,21 @@
 			size = <0 0x10000000>;
 			alignment = <0 0x1000000>;
 		};
+
+		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
+			compatible = "mediatek,dpmaif-resv-cache-mem";
+			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
+		dpmaif_resv_nocache_mem: ccci-dpmaif-nocache-memory {
+			compatible = "mediatek,dpmaif-resv-nocache-mem";
+			no-map;
+			size = <0 0x0050000>; /* 327680 Bytes */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
 	};
 
 	memory_ssmr_features: memory-ssmr-features {
@@ -2512,19 +2527,18 @@
 		dpmaif:dpmaif@10014000 {
 			compatible = "mediatek,dpmaif";
 			reg = <0 0x10014000 0 0x1000>, /*AO_UL*/
-				<0 0x10014400 0 0x1000>, /*AO_DL*/
 				<0 0x1022d000 0 0x1000>, /*PD_UL*/
-				<0 0x1022d100 0 0x1000>, /*PD_DL*/
-				<0 0x1022d400 0 0x1000>, /*PD_MISC*/
 				<0 0x1022c000 0 0x1000>, /*PD_MD_MISC*/
 				<0 0x1022e000 0 0x1000>; /*SRAM*/
 			/*GIC Interrupt ID 273-32*/
 			interrupts = <GIC_SPI 241 IRQ_TYPE_LEVEL_HIGH 0>;
-			mediatek,dpmaif_capability = <6>;
+			mediatek,dpmaif-ver = <1>;
+			/*bit1-txbusystop,bit6-rsvmem, always udpgro*/
+			mediatek,dpmaif-cap = <0x42>;
+			mediatek,plat-info = <6789>;
 			clocks = <&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>;
 			clock-names = "infra-dpmaif-clk";
-			mediatek,dpmaif_ver = <1>;
-			mediatek,chip_info = <6789>;
+			dpmaif-infracfg = <&infracfg_ao_clk>;
 		};
 
 		ccifdriver:ccifdriver@10209000 {
