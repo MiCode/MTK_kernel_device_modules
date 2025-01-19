@@ -642,6 +642,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/regulator:mt6315-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6316-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6359p-regulator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/regulator:mt6358-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6360-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6363-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6368-regulator".format(kernel_version),
@@ -2148,7 +2149,6 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.append("drivers/power/supply/bq2589x_charger.ko")
 
-        mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
         mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-mpu.ko")
         mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-pmif.ko")
 
@@ -2695,8 +2695,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-util.ko")
-
-        mgk_64_device_modules.append("drivers/regulator/mt6358-regulator.ko")
 
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
