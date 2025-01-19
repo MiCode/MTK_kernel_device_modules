@@ -18,6 +18,7 @@
 #define ELA_NUM_MAX		7
 #define CTI_NUM_MAX		6
 #define ELA_HW_ID_INIT		0x63
+#define CTI_SETTINGS_MAX	4
 
 #define BUS_WIDTH		16
 
@@ -137,8 +138,9 @@ struct mtk_cti {
 	u32 base_addr_pa;
 	void __iomem *base_addr_va;
 	u32 power_domain_id;
-	u32 cti_in_chnn_stop[2];
-	u32 cti_in_chnn_start[2];
+	u32 cti_in_chnn_stop[CTI_SETTINGS_MAX][2];
+	u32 cti_in_chnn_start[CTI_SETTINGS_MAX][2];
+	u32 cti_in_settings;
 	u32 cti_out_chnn_stop[2];
 	u32 cti_out_chnn_start[2];
 	struct platform_device *cti_ela;

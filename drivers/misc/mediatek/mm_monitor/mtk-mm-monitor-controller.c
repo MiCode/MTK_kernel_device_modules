@@ -14,6 +14,10 @@
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <soc/mediatek/smi.h>
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#include <linux/iommu.h>
+#include "mtk-smmu-v3.h"
+#endif
 
 #define MM_MONITOR_DRIVER_NAME		"mtk-mm-monitor-controller"
 
@@ -709,7 +713,7 @@ void init_ela(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 void init_cti(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 {
 	u32 cti_total_cnt = mmmc_power_domain->cti_total_cnt;
-	int i;
+	int i, j;
 
 	for (i = 0; i < cti_total_cnt; i++) {
 		struct mtk_cti *cti = mmmc_power_domain->cti[i];
@@ -723,10 +727,12 @@ void init_cti(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 		writel(0xC5ACCE55, base + LAR);
 		writel(0x01, base + CTICONTROL);
 		/* CTI settings */
-		writel(0x1 << cti->cti_in_chnn_start[1],
-			base + CTIINEN0(cti->cti_in_chnn_start[0]));
-		writel(0x1 << cti->cti_in_chnn_stop[1],
-			base + CTIINEN0(cti->cti_in_chnn_stop[0]));
+		for (j = 0; j < cti->cti_in_settings; j++) {
+			writel(0x1 << cti->cti_in_chnn_start[j][1],
+				base + CTIINEN0(cti->cti_in_chnn_start[j][0]));
+			writel(0x1 << cti->cti_in_chnn_stop[j][1],
+				base + CTIINEN0(cti->cti_in_chnn_stop[j][0]));
+		}
 		writel(0x1 << cti->cti_out_chnn_start[1],
 			base + CTIOUTEN0(cti->cti_out_chnn_start[0]));
 		writel(0x1 << cti->cti_out_chnn_stop[1],
@@ -1005,16 +1011,18 @@ int mtk_mmmc_fake_engine(const char *val, const struct kernel_param *kp)
 	}
 
 	dev = g_mtk_mm_fake_engine->dev;
-	dma_va = dma_alloc_coherent(dev, BUF_ALLOC_SIZE, &dma_pa, GFP_KERNEL);
+
+	dma_mask_bit = 32;
+	result = dma_set_coherent_mask(mtk_smmu_get_shared_device(dev), DMA_BIT_MASK(dma_mask_bit));
+	if (result) {
+		MM_MONITOR_ERR("set dma mask bit:%u failed:%d", dma_mask_bit, result);
+		return result;
+	}
+	dma_va = dma_alloc_coherent(mtk_smmu_get_shared_device(dev), BUF_ALLOC_SIZE, &dma_pa, GFP_KERNEL);
 	if (!dma_va) {
 		MM_MONITOR_ERR("alloc dma buffer fail dev:0x%p failed", dev);
 		return -ENOMEM;
 	}
-
-	dma_mask_bit = 35;
-	result = dma_set_coherent_mask(dev, DMA_BIT_MASK(dma_mask_bit));
-	MM_MONITOR_DBG("set dma mask bit:%u result:%d",
-		dma_mask_bit, result);
 
 	base = g_mtk_mm_fake_engine -> base_addr_va;
 	engine = g_mtk_mm_fake_engine->fake_engines[id];
@@ -1255,6 +1263,8 @@ int mtk_mm_axi_mon_limiter_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
 	int ret;
+	char	buf[LINE_MAX_LEN + 1] = {0};
+	s32 len = 0;
 
 	if (!np) {
 		MM_MONITOR_ERR("Device node is NULL");
@@ -1278,7 +1288,7 @@ int mtk_mm_axi_mon_limiter_probe(struct platform_device *pdev)
 
 	ostdbl_lut_size = of_property_count_u32_elems(np, "ostdbl-lut") / 2;
 	if (ostdbl_lut_size == 0) {
-		MM_MONITOR_ERR("Failed to get ostdbl-lut size\n");
+		MM_MONITOR_ERR("Failed to get ostdbl-lut size");
 		return -EINVAL;
 	}
 	ostdbl_lut = devm_kzalloc(dev, ostdbl_lut_size * sizeof(*ostdbl_lut), GFP_KERNEL);
@@ -1288,24 +1298,28 @@ int mtk_mm_axi_mon_limiter_probe(struct platform_device *pdev)
 	}
 	ret = of_property_read_u32_array(np, "ostdbl-lut", (uint32_t *)ostdbl_lut, ostdbl_lut_size * 2);
 	if (ret) {
+		devm_kfree(dev, ostdbl_lut);
 		MM_MONITOR_ERR("Failed to read ostdbl-lut");
 		return ret;
 	}
 
 	MM_MONITOR_DBG("urate_freq_table: ");
 	for (int i = 0; i < urate_lut_size; i++) {
-		MM_MONITOR_DBG("%u ", urate_freq_table[i]);
+		ret = snprintf(buf + len, LINE_MAX_LEN - len, " %u ", urate_freq_table[i]);
+		if (ret < 0)
+			MM_MONITOR_ERR("print error:%d", ret);
+		len += ret;
 	}
-	MM_MONITOR_DBG("\n");
+	MM_MONITOR_DBG("%s", buf);
 
 	MM_MONITOR_DBG("ostdbl_lut: ");
 	for (int i = 0; i < ostdbl_lut_size; i++) {
-		MM_MONITOR_DBG("r_ostdbl = %u, w_ostdbl = %u\n", ostdbl_lut[i].r_ostdbl, ostdbl_lut[i].w_ostdbl);
+		MM_MONITOR_DBG("r_ostdbl = %u, w_ostdbl = %u", ostdbl_lut[i].r_ostdbl, ostdbl_lut[i].w_ostdbl);
 	}
 
 	g_mtk_axi_mon = devm_kzalloc(&pdev->dev, sizeof(*g_mtk_axi_mon), GFP_KERNEL);
 	if (!g_mtk_axi_mon) {
-		MM_MONITOR_ERR("[mmqos]probe axi:error\n");
+		MM_MONITOR_ERR("[mmqos]probe axi:error");
 		return -ENOMEM;
 	}
 
@@ -1471,6 +1485,8 @@ int mtk_mm_cti_probe(struct platform_device *pdev, u32 power_domain_id)
 	struct device_node *node;
 	struct resource *res;
 	u32 hwid, cti_index = 0, subsys_id;
+	const __be32 *cti_in_stop = NULL, *cti_in_start = NULL;
+	int len_start = 0, len_stop = 0, i;
 
 	mtk_cti = devm_kzalloc(dev, sizeof(*mtk_cti), GFP_KERNEL);
 	if (!mtk_cti) {
@@ -1510,17 +1526,29 @@ int mtk_mm_cti_probe(struct platform_device *pdev, u32 power_domain_id)
 		mtk_cti->hwid, (unsigned long)mtk_cti->base_addr_va,
 		(unsigned long)mtk_cti->base_addr_pa, subsys_id);
 
-	of_property_read_u32_array(dev->of_node, "cti-in-chnn-stop",
-		mtk_cti->cti_in_chnn_stop, 2);
-	of_property_read_u32_array(dev->of_node, "cti-in-chnn-start",
-		mtk_cti->cti_in_chnn_start, 2);
+	cti_in_stop = of_get_property(dev->of_node, "cti-in-chnn-stop", &len_stop);
+	cti_in_start = of_get_property(dev->of_node, "cti-in-chnn-start", &len_start);
+	if (len_stop % (sizeof(__be32) * 2) != 0 || len_start % (sizeof(__be32) * 2) != 0) {
+		MM_MONITOR_ERR("Invalid length for cti-in-chnn-stop or cti-in-chnn-start");
+		return -EINVAL;
+	}
+	len_stop /= (sizeof(__be32) * 2);
+	for (i = 0; i < len_stop; i++) {
+		mtk_cti->cti_in_settings++;
+		mtk_cti->cti_in_chnn_stop[i][0] = be32_to_cpu(cti_in_stop[(i * 2)]);
+		mtk_cti->cti_in_chnn_stop[i][1]	= be32_to_cpu(cti_in_stop[(i * 2 + 1)]);
+		mtk_cti->cti_in_chnn_start[i][0] = be32_to_cpu(cti_in_start[(i * 2)]);
+		mtk_cti->cti_in_chnn_start[i][1] = be32_to_cpu(cti_in_start[(i * 2 + 1)]);
+		MM_MONITOR_DBG("CTI hwid:%d set:%d cti_in_chnn_stop:%d %d cti_in_chnn_start:%d %d",
+			mtk_cti->hwid, i,
+			mtk_cti->cti_in_chnn_stop[i][0], mtk_cti->cti_in_chnn_stop[i][1],
+			mtk_cti->cti_in_chnn_start[i][0], mtk_cti->cti_in_chnn_start[i][1]);
+	}
+
 	of_property_read_u32_array(dev->of_node, "cti-out-chnn-stop",
 		mtk_cti->cti_out_chnn_stop, 2);
 	of_property_read_u32_array(dev->of_node, "cti-out-chnn-start",
 		mtk_cti->cti_out_chnn_start, 2);
-	MM_MONITOR_DBG("CTI hwid:%d cti_in_chnn_stop:%d %d cti_in_chnn_start:%d %d",
-		mtk_cti->hwid, mtk_cti->cti_in_chnn_stop[0], mtk_cti->cti_in_chnn_stop[1],
-        mtk_cti->cti_in_chnn_start[0], mtk_cti->cti_in_chnn_start[1]);
 	MM_MONITOR_DBG("CTI hwid:%d cti_out_chnn_stop:%d %d cti_out_chnn_start:%d %d",
 		mtk_cti->hwid, mtk_cti->cti_out_chnn_stop[0], mtk_cti->cti_out_chnn_stop[1],
         mtk_cti->cti_out_chnn_start[0], mtk_cti->cti_out_chnn_start[1]);
@@ -1612,7 +1640,7 @@ int mtk_mmmc_config_probe(struct platform_device *pdev, u32 power_domain_id,
 	}
 
 	of_property_read_u32(dev->of_node, "mmmc-state", &mmmc_state);
-	MM_MONITOR_DBG("mmmc state: %#x\n", mmmc_state);
+	MM_MONITOR_DBG("mmmc state: %#x", mmmc_state);
 
 	return 0;
 }
@@ -1721,7 +1749,6 @@ static int mm_monitor_controller_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "power-domains", &power_domain_id);
 	subsys_id = MTK_SMI_ID2SUBSYS_ID(power_domain_id);
 	if (!g_mmmc_power_domain[subsys_id]) {
-		MM_MONITOR_DBG("allocate power_domain_id:%d buf", subsys_id);
 		mmmc_power_domain = devm_kzalloc(dev, sizeof(*mmmc_power_domain), GFP_KERNEL);
 		if (!mmmc_power_domain) {
 			MM_MONITOR_ERR("power_domain_id:%d failed to alloc struct",
@@ -1733,8 +1760,6 @@ static int mm_monitor_controller_probe(struct platform_device *pdev)
 		g_mmmc_power_domain_cnt++;
 	}
 
-	MM_MONITOR_DBG("engine:%d power_domain_id:%d",
-		plat_data->engine, subsys_id);
 	switch (plat_data->engine) {
 		case MM_AXI:
 			ret = mtk_mm_bwr_probe(pdev, power_domain_id);
