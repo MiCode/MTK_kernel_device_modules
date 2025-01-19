@@ -34,9 +34,8 @@
 #include <linux/dma-buf.h>
 #include <soc/mediatek/smi.h>
 #include "linux/soc/mediatek/mtk-cmdq-ext.h"
-#if 0 //SEC Tina
 #include <cmdq-sec.h>
-#endif
+#include <mtk_heap.h>
 #include <linux/suspend.h>
 #include <linux/rtc.h>
 
@@ -265,9 +264,8 @@ pr_debug(FDTAG "[%s] " format, __func__, ##args)
 static irqreturn_t isp_irq_fdvt(signed int irq, void *device_id);
 static bool config_fdvt(void);
 static signed int config_fdvt_hw(struct fdvt_config *basic_config);
-/* SEC not support, owner: Tina, date: 0929 */
-//  static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
-//							struct FDVT_MEM_RECORD *dmabuf);
+static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
+							struct FDVT_MEM_RECORD *dmabuf);
 static void fdvt_schedule_work(struct work_struct *data);
 static signed int fdvt_dump_reg(void);
 
@@ -1027,7 +1025,7 @@ struct dma_buf *aie_imem_sec_alloc(u32 size, bool IsSecure)
 	if (IS_ERR(my_dma_buf))
 		return NULL;
 
-	// mtk_dma_buf_set_name(my_dma_buf, "AIE_FAKE_NODE");
+	mtk_dma_buf_set_name(my_dma_buf, "AIE_FAKE_NODE");
 	return my_dma_buf;
 }
 
@@ -1245,7 +1243,6 @@ static inline void fdvt_reset_every_frame(void)
 /*****************************************************************************
  *
  *****************************************************************************/
-#if 0 //SECURE Tina
 static void fdvt_sec_fd2handler(struct fdvt_config *basic_config,
 				 struct FDVT_MEM_RECORD *dmabuf)
 {
@@ -1299,7 +1296,7 @@ static void fdvt_sec_fd2handler(struct fdvt_config *basic_config,
 				dmabuf_to_secure_handle(dmabuf->ImgSrcUV.dmabuf);
 	}
 }
-#endif
+
 static bool config_fdvt_request(signed int req_idx)
 {
 #ifdef FDVT_USE_GCE
@@ -1322,17 +1319,14 @@ static bool config_fdvt_request(signed int req_idx)
 				request->fdvt_frame_status[j] =
 					FDVT_FRAME_STATUS_RUNNING;
 				spin_unlock_irqrestore(spinlock_lrq_ptr, flags);
-				#if 0 /* SEC not support, owner: Tina, date: 0929 */
 				if (request->frame_config[j].FDVT_METADATA_TO_GCE.SecMemType
 					== 3 && request->frame_config[j].FDVT_IS_SECURE)
 					fdvt_sec_fd2handler(
 					&request->frame_config[j], &request->frame_dmabuf[j]);
-				#endif
 
 				if (request->frame_config[j].FDVT_IS_SECURE) {
-					/* SEC not support, owner: Tina, date: 0929 */
-					//  config_secure_fdvt_hw(
-					//  &request->frame_config[j], &request->frame_dmabuf[j]);
+					config_secure_fdvt_hw(
+					&request->frame_config[j], &request->frame_dmabuf[j]);
 				} else
 					config_fdvt_hw(&request->frame_config[j]);
 				spin_lock_irqsave(spinlock_lrq_ptr, flags);
@@ -1381,16 +1375,13 @@ static bool config_fdvt(void)
 						FDVT_FRAME_STATUS_RUNNING;
 					spin_unlock_irqrestore(spinlock_lrq_ptr,
 							       flags);
-					#if 0 /* SEC not support, owner: Tina, date: 0929 */
 					if (request->frame_config[j].FDVT_METADATA_TO_GCE.SecMemType
 						== 3 && request->frame_config[j].FDVT_IS_SECURE)
 						fdvt_sec_fd2handler(
 					&request->frame_config[j], &request->frame_dmabuf[j]);
-					#endif
 					if (request->frame_config[j].FDVT_IS_SECURE) {
-						/* SEC not support, owner: Tina, date: 0929 */
-						//  config_secure_fdvt_hw(
-					//  &request->frame_config[j], &request->frame_dmabuf[j]);
+						config_secure_fdvt_hw(
+					    &request->frame_config[j], &request->frame_dmabuf[j]);
 					} else {
 						config_fdvt_hw(
 							&request->frame_config[j]);
@@ -1459,9 +1450,9 @@ static bool config_fdvt(void)
 			if (j != MAX_FDVT_FRAME_REQUEST) {
 				request->fdvt_frame_status[j] =
 					FDVT_FRAME_STATUS_RUNNING;
-				if (request->frame_config[j].FDVT_IS_SECURE) {
-					//config_secure_fdvt_hw(&request->frame_config[j]);
-				}else
+				if (request->frame_config[j].FDVT_IS_SECURE)
+					config_secure_fdvt_hw(&request->frame_config[j]);
+				else
 					config_fdvt_hw(&request->frame_config[j]);
 				return MTRUE;
 			}
@@ -1847,6 +1838,7 @@ static signed int config_fdvt_hw(struct fdvt_config *basic_config)
 		}
 	}
 #endif
+
 	if (basic_config->FD_MODE == 0) {
 		cmdq_pkt_write(pkt, NULL, FDVT_ENABLE_HW, 0x00000111,
 			       CMDQ_REG_MASK);
@@ -2028,7 +2020,6 @@ static signed int config_fdvt_hw(struct fdvt_config *basic_config)
 }
 #endif
 
-#if 0 /* SEC not support, owner: Tina, date: 0929 */
 static void fdvt_tzmp2(struct fdvt_config *basic_config, struct FDVT_MEM_RECORD *dmabuf,
 			struct FDVT_SEC_MetaDataToGCE *dmabuf_metadata)
 {
@@ -2242,7 +2233,7 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 				return -1;
 			}
 			fdvt_sec_dma.FDResultBuf_MVA.va =
-						aie_get_va(fdvt_sec_dma.FDResultBuf_MVA.dmabuf);
+	aie_get_va(fdvt_sec_dma.FDResultBuf_MVA.dmabuf, &fdvt_sec_dma.FDResultBuf_MVA);
 			if (!fdvt_sec_dma.FDResultBuf_MVA.va) {
 				log_err("[Special memory] VA alloc error\n");
 				return -1;
@@ -2379,8 +2370,6 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 {
 	return 0;
 }
-#endif
-
 #endif
 
 #ifndef FDVT_USE_GCE
@@ -4050,10 +4039,8 @@ static signed int FDVT_open(struct inode *pInode, struct file *pFile)
 	/* Enable clock */
 	fdvt_enable_clock(MTRUE);
 	cmdq_mbox_enable(fdvt_clt->chan);
-	#if 0 //Tina SEC
 	if (fdvt_secure_clt)
 		cmdq_sec_mbox_enable(fdvt_secure_clt->chan);
-	#endif
 	fdvt_count = 0;
 	log_dbg("FDVT open clock_enable_count: %d", clock_enable_count);
 	/*  */
@@ -4141,10 +4128,8 @@ static signed int FDVT_release(struct inode *pInode, struct file *pFile)
 	fdvt_sec_dma.handler_first_time = 0;
 
 	cmdq_mbox_disable(fdvt_clt->chan);
-	#if 0 /* SEC not support, owner: Tina, date: 0929 */
 	if (fdvt_secure_clt)
 		cmdq_sec_mbox_disable(fdvt_secure_clt->chan);
-	#endif
 	fdvt_enable_clock(MFALSE);
 	log_dbg("FDVT release clock_enable_count: %d", clock_enable_count);
 	/*  */
@@ -4388,7 +4373,12 @@ static signed int FDVT_probe(struct platform_device *pDev)
 
 	FDVT_dev = &fdvt_devs[nr_fdvt_devs - 1];
 	FDVT_dev->dev = &pDev->dev;
-	dma_set_mask_and_coherent(FDVT_dev->dev, DMA_BIT_MASK(34));
+	ret = dma_set_mask_and_coherent(FDVT_dev->dev, DMA_BIT_MASK(34));
+	if (ret) {
+		dev_dbg(&pDev->dev,
+		"Unable to dma_set_mask_and_coherent, ret(%x).\n", ret);
+		return -ENOMEM;
+	}
 	/* iomap registers */
 	FDVT_dev->regs = of_iomap(pDev->dev.of_node, 0);
 	/* gISPSYS_Reg[nr_fdvt_devs - 1] = FDVT_dev->regs; */
