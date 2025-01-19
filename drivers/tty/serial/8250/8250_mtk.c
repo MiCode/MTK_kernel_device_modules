@@ -2278,7 +2278,7 @@ static bool mtk8250_dma_filter(struct dma_chan *chan, void *param)
 
 static bool is_dma_ready(struct uart_8250_port *up, struct mtk8250_uart_info *uart_reg)
 {
-	if (!up && !uart_reg)
+	if (!up || !uart_reg)
 		return false;
 
 	uart_reg->rx_remain[0] = serial_in(up, MTK_UART_DEBUG7);
