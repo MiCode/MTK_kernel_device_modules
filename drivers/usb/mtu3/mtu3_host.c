@@ -63,6 +63,15 @@ enum ssusb_uwk_vers {
 	SSUSB_UWK_V1_5,		/* specific revision 1.05 */
 };
 
+#define USB2_PORT_SC		0x430
+#define DEV_SPEED_MASK		(0xf << 10)
+#define DEV_UNDEFSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x0 << 10))
+#define DEV_FULLSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x1 << 10))
+#define DEV_LOWSPEED(p)		(((p) & DEV_SPEED_MASK) == (0x2 << 10))
+#define DEV_HIGHSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x3 << 10))
+#define DEV_SUPERSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x4 << 10))
+#define DEV_SUPERSPEEDPLUS(p)	(((p) & DEV_SPEED_MASK) == (0x5 << 10))
+
 /*
  * ip-sleep wakeup mode:
  * all clocks can be turn off, but power domain should be kept on
@@ -142,6 +151,32 @@ int ssusb_wakeup_of_property_parse(struct ssusb_mtk *ssusb,
 			ssusb->uwk_reg_base, ssusb->uwk_vers);
 
 	return PTR_ERR_OR_ZERO(ssusb->uwk);
+}
+
+enum usb_device_speed ssusb_host_get_speed(struct ssusb_mtk *ssusb)
+{
+	enum usb_device_speed speed = USB_SPEED_UNKNOWN;
+	u32 value;
+
+	if (IS_ERR_OR_NULL(ssusb->host_base))
+		goto unknown;
+
+	value = readl(ssusb->host_base + USB2_PORT_SC);
+
+	if (DEV_LOWSPEED(value))
+		speed = USB_SPEED_LOW;
+	else if (DEV_FULLSPEED(value))
+		speed = USB_SPEED_FULL;
+	else if (DEV_HIGHSPEED(value))
+		speed = USB_SPEED_HIGH;
+	else if (DEV_SUPERSPEED(value))
+		speed = USB_SPEED_SUPER;
+	else if (DEV_SUPERSPEEDPLUS(value))
+		speed = USB_SPEED_SUPER_PLUS;
+
+	dev_dbg(ssusb->dev, "%s %s\n", __func__, usb_speed_string(speed));
+unknown:
+	return speed;
 }
 
 void ssusb_wakeup_set(struct ssusb_mtk *ssusb, bool enable)
@@ -416,6 +451,7 @@ static void ssusb_get_platform_driver(struct ssusb_mtk *ssusb)
 	struct device_node *parent_dn = ssusb->dev->of_node;
 	struct device_node *child;
 	struct platform_device *pdev;
+	struct resource *res;
 
 	for_each_child_of_node(parent_dn, child) {
 		if (of_device_is_compatible(child, "mediatek,mtk-xhci") ||
@@ -428,6 +464,16 @@ static void ssusb_get_platform_driver(struct ssusb_mtk *ssusb)
 				break;
 			}
 		}
+	}
+
+	if (pdev) {
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
+		if (res)
+			ssusb->host_base = devm_ioremap(ssusb->dev, res->start,
+			    resource_size(res));
+
+		if (IS_ERR_OR_NULL(ssusb->host_base))
+			dev_info(ssusb->dev, "failed to get host_base\n");
 	}
 }
 
