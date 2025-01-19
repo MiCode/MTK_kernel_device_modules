@@ -11,11 +11,9 @@
 #include <linux/types.h>
 #include <linux/ktime.h>
 
-#define MML_MAX_INPUTS		2
 #define MML_MAX_OUTPUTS		2
 #define MML_MAX_PLANES		3
 #define MML_PIPE_CNT		2
-#define MML_MAX_LAYER		4	/* max layer count for time sharing */
 
 struct mml_job {
 	uint32_t jobid;

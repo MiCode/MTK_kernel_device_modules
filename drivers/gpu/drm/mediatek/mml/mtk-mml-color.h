@@ -137,7 +137,9 @@ enum mml_color {
 
 	/* Compression formats */
 	MML_FMT_RGBA8888_AFBC	= MML_FMT(1, 0, 0, 0, 1, 0, 0, 32, 0, 1, 2),
+	MML_FMT_BGRA8888_AFBC	= MML_FMT(1, 0, 0, 0, 1, 0, 0, 32, 0, 0, 2),
 	MML_FMT_RGBA1010102_AFBC = MML_FMT(1, 1, 0, 0, 1, 0, 0, 32, 0, 1, 2),
+	MML_FMT_BGRA1010102_AFBC = MML_FMT(1, 1, 0, 0, 1, 0, 0, 32, 0, 0, 2),
 	MML_FMT_YUV420_AFBC	= MML_FMT(1, 0, 0, 0, 1, 1, 1, 12, 1, 0, 12),
 	MML_FMT_YUV420_10P_AFBC	= MML_FMT(1, 1, 0, 0, 1, 1, 1, 16, 1, 0, 12),
 	/* HyFBC format YUV420, align size 32x16 */

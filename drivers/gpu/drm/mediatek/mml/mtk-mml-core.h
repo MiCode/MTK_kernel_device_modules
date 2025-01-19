@@ -257,6 +257,7 @@ extern u32 *rdma_crc_va[MML_PIPE_CNT];
 extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #endif
 
+#define MML_MAX_INPUTS		2
 #define MML_MAX_PATH_NODES	27 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
 #define MML_MAX_PATH_CACHES	32 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_AID_COMPS	10
@@ -527,7 +528,6 @@ struct mml_pipe_cache {
 struct mml_frame_config {
 	struct list_head entry;
 	struct mml_frame_info info;
-	enum mml_sys_id sysid;		/* main mmlsys used for this config */
 
 	/* frame input image size after rrot binning and rotate */
 	struct mml_frame_size frame_in;

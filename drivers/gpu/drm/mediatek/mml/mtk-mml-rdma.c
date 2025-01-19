@@ -1083,7 +1083,9 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_RGBA1010102:
 	case MML_FMT_BGRA1010102:
 	case MML_FMT_RGBA8888_AFBC:
+	case MML_FMT_BGRA8888_AFBC:
 	case MML_FMT_RGBA1010102_AFBC:
+	case MML_FMT_BGRA1010102_AFBC:
 		rdma_frm->bits_per_pixel_y = 32;
 		rdma_frm->bits_per_pixel_uv = 0;
 		rdma_frm->hor_shift_uv = 0;

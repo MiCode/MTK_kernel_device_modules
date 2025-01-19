@@ -389,34 +389,19 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 static s32 topology_select_path(struct mml_frame_config *cfg)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
-	s32 ret;
 
 	if (unlikely(!tp)) {
 		mml_err("%s path not exists", __func__);
 		return -ENXIO;
 	}
-
 	if (cfg->path[0]) {
 		mml_err("%s select path twice", __func__);
 		return -EBUSY;
 	}
-
 	if (!tp->op->select)
 		return -EPIPE;
 
-	ret = tp->op->select(tp, cfg);
-	if (ret < 0)
-		return ret;
-
-	/* assign mml-frame or mml-tile to this config */
-	if (cfg->path[0]->sys_en[mml_sys_frame])
-		cfg->sysid = mml_sys_frame;
-	else if (cfg->path[0]->sys_en[mml_sys_tile])
-		cfg->sysid = mml_sys_tile;
-	else
-		cfg->sysid = mml_sys_frame;	/* backward compatible */
-
-	return 0;
+	return tp->op->select(tp, cfg);
 }
 
 #define has_cfg_op(_comp, op) \

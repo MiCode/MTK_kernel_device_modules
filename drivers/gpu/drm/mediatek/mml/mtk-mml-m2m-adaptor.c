@@ -1101,9 +1101,13 @@ static void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 	case V4L2_PIX_FMT_P010_HYFBC:
 		descr = "MTK compressed P010 Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_RGB32_AFBC:
-		descr = "Arm compressed A/XRGB 8-8-8-8"; break;
+		descr = "Arm compressed RGBA 8-8-8-8"; break;
+	case V4L2_PIX_FMT_BGR32_AFBC:
+		descr = "Arm compressed BGRA 8-8-8-8"; break;
 	case V4L2_PIX_FMT_RGBA1010102_AFBC:
 		descr = "Arm compressed RGBA 10-10-10-2"; break;
+	case V4L2_PIX_FMT_BGRA1010102_AFBC:
+		descr = "Arm compressed BGRA 10-10-10-2"; break;
 	case V4L2_PIX_FMT_NV12_AFBC:
 		descr = "Arm compressed NV12 Y/UV 4:2:0"; break;
 	case V4L2_PIX_FMT_NV12_10B_AFBC:

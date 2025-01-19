@@ -670,7 +670,9 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_RGBA1010102:
 	case MML_FMT_BGRA1010102:
 	case MML_FMT_RGBA8888_AFBC:
+	case MML_FMT_BGRA8888_AFBC:
 	case MML_FMT_RGBA1010102_AFBC:
+	case MML_FMT_BGRA1010102_AFBC:
 		rrot_frm->bits_per_pixel_y = 32;
 		rrot_frm->bits_per_pixel_uv = 0;
 		rrot_frm->hor_shift_uv = 0;
@@ -2261,7 +2263,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 			h = h / 2;
 	}
 
-	if (format == MML_FMT_RGBA8888_AFBC || format == MML_FMT_RGBA1010102_AFBC) {
+	if (MML_FMT_AFBC_ARGB(format)) {
 		u32 block_line_header_per_page = pgsz / (w / 32 * 16);
 		u32 header_cmd_num, payload_cmd_num;
 
@@ -2276,7 +2278,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 		stash_cmd_num = header_cmd_num + payload_cmd_num;
 		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
 
-	} else if (format == MML_FMT_YUV420_AFBC || format == MML_FMT_YUV420_10P_AFBC) {
+	} else if (MML_FMT_AFBC_YUV(format)) {
 		u32 block_line_header_per_page = pgsz / (w / 16 * 16);
 		u32 header_cmd_num, payload_cmd_num;
 

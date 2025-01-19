@@ -76,8 +76,12 @@ static u32 afbc_drm_to_mml(u32 drm_format)
 	switch (drm_format) {
 	case MML_FMT_RGBA8888:
 		return MML_FMT_RGBA8888_AFBC;
+	case MML_FMT_BGRA8888:
+		return MML_FMT_BGRA8888_AFBC;
 	case MML_FMT_RGBA1010102:
 		return MML_FMT_RGBA1010102_AFBC;
+	case MML_FMT_BGRA1010102:
+		return MML_FMT_BGRA1010102_AFBC;
 	case MML_FMT_NV12:
 		return MML_FMT_YUV420_AFBC;
 	case MML_FMT_NV12_10L:

@@ -999,7 +999,9 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_ABGR2101010:
 	/* DMA_SUPPORT_AFBC */
 	case MML_FMT_RGBA8888_AFBC:
+	case MML_FMT_BGRA8888_AFBC:
 	case MML_FMT_RGBA1010102_AFBC:
+	case MML_FMT_BGRA1010102_AFBC:
 		wrot_frm->bbp_uv = 0;
 		wrot_frm->hor_sh_uv = 0;
 		wrot_frm->ver_sh_uv = 0;
