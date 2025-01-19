@@ -893,7 +893,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,120hz";
+		compatible = "jdi,nt36672e,vdo,120hz,frameratev5";
 		reg = <0>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
