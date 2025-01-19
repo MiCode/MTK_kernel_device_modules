@@ -8660,7 +8660,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
-					DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO((comp_idx + 1) * 3 +
+					DISP_SLOT_EXT_LAYER_PRE_AVG_RATIO(comp_idx * 3 +
 					ext_lye_id - 1));
 
 				cmdq_pkt_read(state->cmdq_handle, NULL,
@@ -8722,11 +8722,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
-					DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO((comp_idx + 1) * 3 +
+					DISP_SLOT_EXT_LAYER_PRE_PEAK_RATIO(comp_idx * 3 +
 					ext_lye_id - 1));
 
 				cmdq_pkt_read(state->cmdq_handle, NULL,
-					pre_avg_slot, CMDQ_THR_SPR_IDX1);
+					pre_peak_slot, CMDQ_THR_SPR_IDX1);
 			} else {
 				cmdq_pkt_read(state->cmdq_handle, NULL,
 					comp->regs_pa +
@@ -8958,8 +8958,6 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				display_compress_ratio_table[i].key_value,
 				*(display_compress_ratio_table[i].average_ratio),
 				*(display_compress_ratio_table[i].peak_ratio));
-				mtk_drm_crtc_dump(&mtk_crtc->base);
-				mtk_drm_crtc_analysis(&mtk_crtc->base);
 			}
 			normal_layer_compress_ratio_tb[index].frame_idx =
 				display_compress_ratio_table[i].frame_idx;
