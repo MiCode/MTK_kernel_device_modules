@@ -40,6 +40,7 @@ define_mgk_ddk_ko(
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/dma/mediatek:mtk-uart-apdma".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
     ],
     hdrs = glob(["8250_mtk.h"]),
     includes = ["."],

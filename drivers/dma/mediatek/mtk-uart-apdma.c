@@ -111,6 +111,7 @@
 #define DMA_D_STATE		-7
 #define DMA_RX_ENABLE_FAIL	-8
 #define DMA_FLUSH_FAIL		-9
+#define DMA_KFIFO_OP_ERR	-10
 
 /* dma debug buf size*/
 #define LOG_BUG_SIZE		20
@@ -206,6 +207,13 @@ struct mtk_chan *hub_dma_tx_chan;
 struct mtk_chan *hub_dma_rx_chan;
 struct mtk_chan db_chan;
 struct mtk_chan db_chan2;
+
+#ifndef CONFIG_FPGA_EARLY_PORTING
+#if IS_ENABLED(CONFIG_MTK_IRQ_DBG)
+extern void mt_irq_dump_status(unsigned int irq);
+#endif
+#endif
+
 #endif
 
 static inline struct mtk_uart_apdmadev *
@@ -405,6 +413,16 @@ void mtk_uart_apdma_end_record(struct dma_chan *chan)
 		_int_en, _en, _int_buf_size, peri_0_axi_dbg, peri_dbg,
 		__func__, c->dir == DMA_DEV_TO_MEM ? "dma_rx" : "dma_tx",
 		_debug_states, _vff_thre, _flush, _addr, _stop, _valid_size);
+
+#ifndef CONFIG_FPGA_EARLY_PORTING
+#if IS_ENABLED(CONFIG_MTK_IRQ_DBG)
+	if (hub_dma_tx_chan != NULL && hub_dma_rx_chan != NULL) {
+		mt_irq_dump_status(hub_dma_tx_chan->irq);
+		mt_irq_dump_status(hub_dma_rx_chan->irq);
+	}
+#endif
+#endif
+
 }
 EXPORT_SYMBOL(mtk_uart_apdma_end_record);
 
@@ -834,9 +852,8 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 			if (c->rec_info[idx].trans_len <= UART_RECORD_MAXLEN) {
 				ret = kfifo_out_peek(&u_state->port.xmit_fifo,c->rec_info[idx].rec_buf,
 					min((unsigned int)dump_len, c->rec_info[idx].trans_len));
-				if(ret <= 0) {
-					pr_info("[%s] kfifo_out_peek fail ret=%d\n",__func__,ret);
-				}
+				if(ret <= 0)
+					c->chan_debug_value = DMA_KFIFO_OP_ERR;
 			}
 		} else {
 			c->chan_debug_value = DMA_U_STATE; /* u_state==NULL */

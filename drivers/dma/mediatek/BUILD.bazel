@@ -38,6 +38,9 @@ define_mgk_ddk_ko(
     srcs = [
         "mtk-uart-apdma.c",
     ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+    ],
     copts = ["-I$(srctree)/drivers/dma/mediatek"],
 )
 
