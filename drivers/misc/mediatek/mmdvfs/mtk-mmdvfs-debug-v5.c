@@ -36,8 +36,6 @@
 
 #define OPP_NAG	(-1)
 
-struct seq_file *seq_file;
-
 struct workqueue_struct *workq;
 struct work_struct work;
 
@@ -170,15 +168,15 @@ MODULE_PARM_DESC(freerun, "freerun by rc id");
 static void mmdvfs_debug_work(struct work_struct *work)
 {
 	if (!IS_ERR_OR_NULL(reg_vcore))
-		mmdvfs_seq_print(seq_file, "vcore enabled:%d voltage:%d",
+		MMDVFS_DBG("vcore enabled:%d voltage:%d",
 			regulator_is_enabled(reg_vcore), regulator_get_voltage(reg_vcore));
 
 	if (!IS_ERR_OR_NULL(reg_vmm))
-		mmdvfs_seq_print(seq_file, "vmm enabled:%d voltage:%d",
+		MMDVFS_DBG("vmm enabled:%d voltage:%d",
 			regulator_is_enabled(reg_vmm), regulator_get_voltage(reg_vmm));
 
 	if (!IS_ERR_OR_NULL(reg_vdisp))
-		mmdvfs_seq_print(seq_file, "vdisp enabled:%d voltage:%d",
+		MMDVFS_DBG("vdisp enabled:%d voltage:%d",
 			regulator_is_enabled(reg_vdisp), regulator_get_voltage(reg_vdisp));
 }
 
@@ -306,8 +304,6 @@ struct notifier_block smi_dbg_nb = {mmdvfs_debug_smi_cb};
 
 static int mmdvfs_debug_show(struct seq_file *file, void *data)
 {
-	seq_file = file;
-
 	return mmdvfs_debug_status_dump(file);
 }
 
