@@ -406,8 +406,10 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 		}
 
 		/* this path does not use current mml mutex */
-		if (path->mutex != &mutex->comp && path->mutex2 != &mutex->comp)
+		if (path->mutex != &mutex->comp && path->mutex2 != &mutex->comp) {
+			mml_err("%s no mutex in path %u", __func__, path->path_id);
 			return;
+		}
 
 		sof = mutex->data->get_mutex_sof(&cfg->mutex);
 		mutex_enable(mutex, pkt, path, sof, MML_MODE_DIRECT_LINK, false, true);
