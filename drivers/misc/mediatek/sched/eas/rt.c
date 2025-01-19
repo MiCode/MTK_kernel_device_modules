@@ -840,6 +840,7 @@ out:
 	irq_log_store();
 }
 
+#ifdef CONFIG_RT_GROUP_SCHED
 void throttled_rt_tasks_debug(void *unused, int cpu, u64 clock,
 		ktime_t rt_period, u64 rt_runtime, s64 rt_period_timer_expires)
 {
@@ -854,3 +855,4 @@ void throttled_rt_tasks_debug(void *unused, int cpu, u64 clock,
 				clock - current->sched_info.last_arrival);
 #endif
 }
+#endif

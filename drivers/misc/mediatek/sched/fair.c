@@ -784,11 +784,6 @@ void init_task_soft_affinity(void)
 		pr_info("register sched_fork_init hooks failed, returned %d\n", ret);
 }
 
-static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
-{
-	return css ? container_of(css, struct task_group, css) : NULL;
-}
-
 void _init_tg_mask(struct cgroup_subsys_state *css)
 {
 	struct task_group *tg = css_tg(css);

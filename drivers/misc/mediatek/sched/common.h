@@ -213,7 +213,7 @@ static inline int rt_rq_throttled(struct rt_rq *rt_rq)
 #else /* !CONFIG_RT_GROUP_SCHED */
 static inline int rt_rq_throttled(struct rt_rq *rt_rq)
 {
-	return rt_rq->rt_throttled;
+	return false;
 }
 #endif
 

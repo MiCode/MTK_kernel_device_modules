@@ -1169,10 +1169,11 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_sched_pelt_multiplier hooks failed, returned %d\n", ret);
 
+#ifdef CONFIG_RT_GROUP_SCHED
 	ret = register_trace_android_vh_dump_throttled_rt_tasks(throttled_rt_tasks_debug, NULL);
 	if (ret)
 		pr_info("register dump_throttled_rt_tasks hooks failed, returned %d\n", ret);
-
+#endif
 	ret = register_trace_android_rvh_post_init_entity_util_avg(
 		mtk_post_init_entity_util_avg, NULL);
 	if (ret)

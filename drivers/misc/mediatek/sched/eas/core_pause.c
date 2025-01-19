@@ -67,6 +67,7 @@ void attach_tasks_clone(struct list_head *tasks, struct rq *rq)
 	}
 }
 
+#if 0
 static inline void
 rq_relock(struct rq *rq, struct rq_flags *rf)
 	__acquires(rq->lock)
@@ -178,14 +179,14 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 
 	rq->stop = stop;
 }
-
+#endif
 int drain_rq_cpu_stop(void *data)
 {
 	struct rq *rq = this_rq();
 	struct rq_flags rf;
 
 	rq_lock_irqsave(rq, &rf);
-	migrate_tasks(rq, &rf);
+//	migrate_tasks(rq, &rf);
 	rq_unlock_irqrestore(rq, &rf);
 
 	return 0;

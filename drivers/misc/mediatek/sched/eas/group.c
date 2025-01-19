@@ -314,11 +314,6 @@ out:
 }
 EXPORT_SYMBOL(group_set_cgroup_colocate);
 
-static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
-{
-	return css ? container_of(css, struct task_group, css) : NULL;
-}
-
 static void group_update_tg_pointer(struct cgroup_subsys_state *css)
 {
 	if (!strcmp(css->cgroup->kn->name, "top-app"))
