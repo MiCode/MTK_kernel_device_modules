@@ -457,26 +457,26 @@ struct dpmaif_ctrl {
 	struct wakeup_source     *wakelock;
 
 	/* for 95 dpmaif new register */
-	void __iomem              *ao_ul_base;
-	void __iomem              *ao_dl_base;
-	void __iomem              *pd_ul_base;
-	void __iomem              *pd_dl_base;
-	void __iomem              *pd_misc_base;
-	void __iomem              *pd_md_misc_base;
-	void __iomem              *pd_sram_base;
+	void __iomem              *ao_ul_base;      // DTS_reg[0]
+	void __iomem              *ao_dl_base;      // DTS_reg[0] + 0x400
+	void __iomem              *pd_ul_base;      // DTS_reg[1]
+	void __iomem              *pd_dl_base;      // DTS_reg[1] + 0x100
+	void __iomem              *pd_misc_base;    // DTS_reg[1] + 0x400
+	void __iomem              *pd_md_misc_base; // DTS_reg[2]
+	void __iomem              *pd_sram_base;    // DTS_reg[3]
 
 	/* for 97 dpmaif new register */
-	void __iomem              *pd_rdma_base;
-	void __iomem              *pd_wdma_base;
-	void __iomem              *ao_md_dl_base;
+	void __iomem              *pd_rdma_base;    //v2&v3: DTS_reg[1] + 0x200
+	void __iomem              *pd_wdma_base;    //v2&v3: DTS_reg[1] + 0x300
+	void __iomem              *ao_md_dl_base;   //v2&v3: DTS_reg[0] + 0x800
 
 	/* for 98 dpmaif new register */
-	void __iomem              *ao_dl_sram_base;
-	void __iomem              *ao_ul_sram_base;
-	void __iomem              *ao_msic_sram_base;
+	void __iomem              *ao_dl_sram_base;   //v3: DTS_reg[1] + 0xC00
+	void __iomem              *ao_ul_sram_base;   //v3: DTS_reg[1] + 0xD00
+	void __iomem              *ao_misc_sram_base; //v3: DTS_reg[1] + 0xE00
 
-	void __iomem              *pd_mmw_hpc_base;
-	void __iomem              *pd_dl_lro_base;
+	void __iomem              *pd_mmw_hpc_base;   //v3: DTS_reg[1] + 0x600
+	void __iomem              *pd_dl_lro_base;    //v3: DTS_reg[1] + 0x900
 
 	struct regmap             *infra_ao_base;
 	void __iomem              *infra_ao_mem_base;

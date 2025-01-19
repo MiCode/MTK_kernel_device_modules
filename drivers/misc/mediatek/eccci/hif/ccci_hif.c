@@ -463,9 +463,8 @@ int ccci_hif_state_notification(unsigned char state)
 	case WAITING_TO_STOP:
 		if (ccci_hif[DPMAIF_HIF_ID] &&
 			ccci_hif_op[DPMAIF_HIF_ID]->pre_stop) {
-			ccci_hif_dump_status(1 << DPMAIF_HIF_ID,
-				DUMP_FLAG_REG, NULL, -1);
-			 ccci_hif_op[DPMAIF_HIF_ID]->pre_stop(DPMAIF_HIF_ID);
+			ccci_hif_dump_status(1 << DPMAIF_HIF_ID, DUMP_FLAG_REG, NULL, -1);
+			ccci_hif_op[DPMAIF_HIF_ID]->pre_stop(DPMAIF_HIF_ID);
 		}
 		break;
 	case GATED:
@@ -474,8 +473,7 @@ int ccci_hif_state_notification(unsigned char state)
 		/* later than ccmni */
 		if (ccci_hif[DPMAIF_HIF_ID] &&
 			ccci_hif_op[DPMAIF_HIF_ID]->stop) {
-			ccci_hif_dump_status(1 << DPMAIF_HIF_ID,
-				DUMP_FLAG_REG, NULL, -1);
+			ccci_hif_dump_status(1 << DPMAIF_HIF_ID, DUMP_FLAG_REG, NULL, -1);
 			ret |= ccci_hif_op[DPMAIF_HIF_ID]->stop(DPMAIF_HIF_ID);
 		}
 		if (ccci_hif[CLDMA_HIF_ID] &&

@@ -31,7 +31,7 @@
 *void __iomem *dpmaif_pd_dl_lro_base;    0x1022D900
 *void __iomem *dpmaif_ao_dl_sram_base;   0x1022DC00
 *void __iomem *dpmaif_ao_ul_sram_base;   0x1022DD00
-*void __iomem *dpmaif_ao_msic_sram_base; 0x1022DE00
+*void __iomem *dpmaif_ao_misc_sram_base; 0x1022DE00
 
 *void __iomem *dpmaif_pd_sram_base;      0x1022E000
 ***********************************************************************/
@@ -104,7 +104,7 @@ do { \
 	dpmaif_write32(g_dpmaif_ctrl->pd_dl_base, (a), v)
 
 #define DPMA_WRITE_AO_MISC_SRAM(a, v) \
-	dpmaif_write32(g_dpmaif_ctrl->ao_msic_sram_base, (a), v)
+	dpmaif_write32(g_dpmaif_ctrl->ao_misc_sram_base, (a), v)
 
 #define DPMA_READ_AO_MD_DL(a) \
 	dpmaif_read32(g_dpmaif_ctrl->ao_md_dl_base, (a))
@@ -538,7 +538,7 @@ do { \
 
 
 
-/*DPMAIF PD AP MSIC/AO UL MISC CONFIG*/
+/*DPMAIF PD AP MISC/AO UL MISC CONFIG*/
 
 #define DPMAIF_PD_AP_DL_L2TICR0           NRL2_DPMAIF_AO_UL_APDL_L2TIMCR0
 #define DPMAIF_AO_DL_RDY_CHK_THRES        NRL2_DPMAIF_AO_DL_RDY_CHK_THRES

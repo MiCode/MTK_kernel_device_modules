@@ -1570,10 +1570,10 @@ static void drv3_dump_register(int buf_type)
 	/* open sram clock for sram dump */
 	DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_CG_EN, 0x7F);
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
-		"dump AP DPMAIF AO MISC SRAM; ao_msic_sram_base register -> (start addr: 0x%llX, len: %d):\n",
-		(unsigned long long)g_dpmaif_ctrl->ao_msic_sram_base + 0x00, 0xFF);
+		"dump AP DPMAIF AO MISC SRAM; ao_misc_sram_base register -> (start addr: 0x%llX, len: %d):\n",
+		(unsigned long long)g_dpmaif_ctrl->ao_misc_sram_base + 0x00, 0xFF);
 	ccci_util_mem_dump(buf_type,
-		g_dpmaif_ctrl->ao_msic_sram_base + 0x00, 0xFF);
+		g_dpmaif_ctrl->ao_misc_sram_base + 0x00, 0xFF);
 
 	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 		"dump AP DPMAIF AO UL SRAM; ao_ul_sram_base register -> (start addr: 0x%llX, len: %d):\n",
@@ -1956,7 +1956,7 @@ int ccci_dpmaif_drv3_init(void)
 	/* for 98 dpmaif new register */
 	g_dpmaif_ctrl->ao_dl_sram_base   = g_dpmaif_ctrl->pd_ul_base + 0xC00;
 	g_dpmaif_ctrl->ao_ul_sram_base   = g_dpmaif_ctrl->pd_ul_base + 0xD00;
-	g_dpmaif_ctrl->ao_msic_sram_base = g_dpmaif_ctrl->pd_ul_base + 0xE00;
+	g_dpmaif_ctrl->ao_misc_sram_base = g_dpmaif_ctrl->pd_ul_base + 0xE00;
 
 	if (g_dpmaif_ctrl->dl_bat_entry_size == 0)
 		g_dpmaif_ctrl->dl_bat_entry_size = DPMAIF_DL_BAT_ENTRY_SIZE;

@@ -1007,10 +1007,10 @@ static ssize_t md_cd_dump_store(struct ccci_modem *md,
 		}
 		//md->ops->dump_info(md, DUMP_FLAG_SMEM_MDSLP, NULL, 0);
 		if (strncmp(buf, "dpmaif", count - 1) == 0)
-			ccci_hif_dump_status(1<<DPMAIF_HIF_ID,
-				DUMP_FLAG_REG, NULL, -1);
-		if (strncmp(buf, "dpmaif_txq", count - 1) == 0)
-			ccci_hif_dump_status(1<<DPMAIF_HIF_ID, (1<<31), NULL, -1);
+			ccci_hif_dump_status(1 << DPMAIF_HIF_ID,
+				DUMP_FLAG_DUMP_TXQ | DUMP_FLAG_REG, NULL, -1);
+
+
 		if (strncmp(buf, "port", count - 1) == 0)
 			ccci_port_dump_status();
 	}
