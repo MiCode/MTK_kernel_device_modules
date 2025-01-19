@@ -2721,30 +2721,28 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 				if (is_compression_mode) {
 					// align dmr slice size
 					for (i = 0; i < dmr_cfg_data->dmr_pu_info.slice_num; i++) {
+						slice_size_sum += dmr_cfg_data->dmr_pu_info.slice_size[i];
+						slice_height_sum += dmr_cfg_data->dmr_pu_info.slice_height[i];
 						if (dmr_y_ini < slice_height_sum) {
 							if (i == 0) {
 								dmr_y_offset = dmr_y_ini;
 								dmr_udma_y_ini = 0;
 							} else {
-								dmr_y_offset = dmr_y_ini - (slice_height_sum - dmr_cfg_data->dmr_pu_info.slice_height[i - 1]);
-								dmr_udma_y_ini = slice_size_sum - dmr_cfg_data->dmr_pu_info.slice_size[i - 1];
+								dmr_y_offset = dmr_y_ini - (slice_height_sum - dmr_cfg_data->dmr_pu_info.slice_height[i]);
+								dmr_udma_y_ini = slice_size_sum - dmr_cfg_data->dmr_pu_info.slice_size[i];
 							}
 							break;
 						}
-						slice_size_sum += dmr_cfg_data->dmr_pu_info.slice_size[i];
-						slice_height_sum += dmr_cfg_data->dmr_pu_info.slice_height[i];
 					}
 					slice_size_sum = 0;
 					slice_height_sum = 0;
 					for (i = 0; i < dmr_cfg_data->dmr_pu_info.slice_num; i++) {
-						if (dmr_y_ini + dmr_input_height < slice_height_sum) {
-							if (i == 0)
-								dmr_udma_height = dmr_cfg_data->dmr_pu_info.slice_size[0];
-							else
-								dmr_udma_height = slice_size_sum - dmr_udma_y_ini;
-						}
 						slice_size_sum += dmr_cfg_data->dmr_pu_info.slice_size[i];
 						slice_height_sum += dmr_cfg_data->dmr_pu_info.slice_height[i];
+						if (dmr_y_ini + dmr_input_height <= slice_height_sum) {
+							dmr_udma_height = slice_size_sum - dmr_udma_y_ini;
+							break;
+						}
 					}
 					// dmr udma config
 					mtk_oddmr_write(comp, dmr_udma_height,
@@ -6737,11 +6735,6 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_UDMA_DMR_CTRL30, handle);
 				}
-				//9. close top_clk_foce_en
-				value = 0; mask = 0;
-				SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
-				mtk_oddmr_write_mask(comp, value,
-					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
 			} else {
 				value = 0; mask = 0;
 				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_EN);
@@ -7758,7 +7751,6 @@ static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 	mutex_unlock(&oddmr_data->primary_data->timing_lock);
 
 	ODDMRAPI_LOG("+\n");
-
 	if (cfg_info && cfg_info->fps_dbv_change_cfg.reg_offset && cfg_info->fps_dbv_change_cfg.reg_value) {
 		cnt = cfg_info->fps_dbv_change_cfg.reg_num;
 		if(dbv_node < (cfg_info->fps_dbv_node.DBV_num - 1))
@@ -7771,14 +7763,12 @@ static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 		else
 			fps_node_add1 = fps_node;
 
-
 		base_idx = dbv_node * (cfg_info->fps_dbv_node.FPS_num) * cnt + fps_node * cnt;
 		base_idx_fps_add1 = dbv_node * (cfg_info->fps_dbv_node.FPS_num) * cnt + fps_node_add1 * cnt;
 		base_idx_dbv_add1 = dbv_node_add1 * (cfg_info->fps_dbv_node.FPS_num) * cnt + fps_node * cnt;
 		base_idx_dbv_fps_add1 = dbv_node_add1 * (cfg_info->fps_dbv_node.FPS_num) * cnt + fps_node_add1 * cnt;
 
 		for(i = 0; i < cnt; i++) {
-
 			value_interpolate_by_dbv = mtk_oddmr_linear_interpolation(cur_dbv,
 				cfg_info->fps_dbv_node.DBV_node[dbv_node],
 				cfg_info->fps_dbv_change_cfg.reg_value[base_idx + i],
@@ -7794,7 +7784,6 @@ static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 				value_interpolate_by_dbv,
 				cfg_info->fps_dbv_node.FPS_node[fps_node_add1],
 				value_interpolate_by_dbv1);
-
 			mtk_oddmr_write_mask(comp,
 				value_interpolate_by_fps,
 				cfg_info->fps_dbv_change_cfg.reg_offset[i],
@@ -11169,30 +11158,28 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 			if (dmr_support && oddmr_data->dmr_enable && is_compression_mode) {
 				// align dmr slice size
 				for (i = 0; i < dmr_cfg_data->dmr_pu_info.slice_num; i++) {
+					slice_size_sum += dmr_cfg_data->dmr_pu_info.slice_size[i];
+					slice_height_sum += dmr_cfg_data->dmr_pu_info.slice_height[i];
 					if (dmr_y_ini < slice_height_sum) {
 						if (i == 0) {
 							dmr_y_offset = dmr_y_ini;
 							dmr_udma_y_ini = 0;
 						} else {
-							dmr_y_offset = dmr_y_ini - (slice_height_sum - dmr_cfg_data->dmr_pu_info.slice_height[i - 1]);
-							dmr_udma_y_ini = slice_size_sum - dmr_cfg_data->dmr_pu_info.slice_size[i - 1];
+							dmr_y_offset = dmr_y_ini - (slice_height_sum - dmr_cfg_data->dmr_pu_info.slice_height[i]);
+							dmr_udma_y_ini = slice_size_sum - dmr_cfg_data->dmr_pu_info.slice_size[i];
 						}
 						break;
 					}
-					slice_size_sum += dmr_cfg_data->dmr_pu_info.slice_size[i];
-					slice_height_sum += dmr_cfg_data->dmr_pu_info.slice_height[i];
 				}
 				slice_size_sum = 0;
 				slice_height_sum = 0;
 				for (i = 0; i < dmr_cfg_data->dmr_pu_info.slice_num; i++) {
-					if (dmr_y_ini + dmr_input_height < slice_height_sum) {
-						if (i == 0)
-							dmr_udma_height = dmr_cfg_data->dmr_pu_info.slice_size[0];
-						else
-							dmr_udma_height = slice_size_sum - dmr_udma_y_ini;
-					}
 					slice_size_sum += dmr_cfg_data->dmr_pu_info.slice_size[i];
 					slice_height_sum += dmr_cfg_data->dmr_pu_info.slice_height[i];
+					if (dmr_y_ini + dmr_input_height <= slice_height_sum) {
+						dmr_udma_height = slice_size_sum - dmr_udma_y_ini;
+						break;
+					}
 				}
 				mtk_oddmr_write(comp, dmr_udma_height,
 					MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
