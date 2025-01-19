@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
 
 package(
     default_visibility = [
@@ -40,4 +41,79 @@ define_mgk_ddk_ko(
         "rt4831a.h",
     ],
     includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "panel-hx83112b-auo-cmd-60hz-rt5081",
+    srcs = [
+        "panel-hx83112b-auo-cmd-60hz-rt5081.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
+)
+
+define_mgk_ddk_ko(
+    name = "panel-hx83112b-auo-vdo-60hz-rt5081",
+    srcs = [
+        "panel-hx83112b-auo-vdo-60hz-rt5081.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
+)
+
+define_mgk_ddk_ko(
+    name = "panel-nt35521_hd_dsi_vdo_truly_rt5081",
+    srcs = [
+        "panel-nt35521_hd_dsi_vdo_truly_rt5081.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
+)
+
+define_mgk_ddk_ko(
+    name = "panel-nt35695b-auo-vdo",
+    srcs = [
+        "panel-nt35695b-auo-vdo.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
+)
+
+define_mgk_ddk_ko(
+    name = "panel-sc-nt36672c-vdo-90hz-6382",
+    srcs = [
+        "panel-sc-nt36672c-vdo-90hz-6382.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+    ],
+    hdrs = [
+        "include/panel-sc-nt36672c-vdo-90hz-6382.h",
+    ],
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
+)
+
+define_mgk_ddk_ko(
+    name = "panel-td4320-fhdp-dsi-vdo-auo-rt5081",
+    srcs = [
+        "panel-td4320-fhdp-dsi-vdo-auo-rt5081.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)],
 )

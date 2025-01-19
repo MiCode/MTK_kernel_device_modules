@@ -5,7 +5,6 @@ ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
 endif
 
-obj-$(CONFIG_DRM_PANEL_NOVATEK_NT35695B_VDO) += panel-nt35695b-auo-vdo.o
 obj-$(CONFIG_DRM_PANEL_NOVATEK_NT35695B_CMD) += panel-nt35695b-auo-cmd.o
 obj-$(CONFIG_DRM_PANEL_NOVATEK_NT36672A_VDO) += panel-nt36672a-rt4801-vdo.o
 obj-$(CONFIG_DRM_PANEL_NOVATEK_NT36672_VDO_LANESWAP) += panel-nt36672-auo-vdo-laneswap.o
@@ -50,11 +49,6 @@ obj-$(CONFIG_DRM_PANEL_NT37801_CMD_SPR) += panel-nt37801-cmd-spr.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_FHD_PLUS) += panel-nt37801-cmd-fhd-plus.o
 obj-$(CONFIG_DRM_PANEL_ALPHA_NT37706_VDO_120HZ) += panel-alpha-nt37706-vdo-120hz.o
 obj-$(CONFIG_DRM_PANEL_BOE_TS127QFMLL1DKP0) += panel-boe-ts127qfmll1dkp0.o
-obj-$(CONFIG_DRM_PANEL_HX83112B_AUO_CMD_RT5081) += panel-hx83112b-auo-cmd-60hz-rt5081.o
-obj-$(CONFIG_DRM_PANEL_HX83112B_AUO_VDO_RT5081) += panel-hx83112b-auo-vdo-60hz-rt5081.o
-obj-$(CONFIG_DRM_PANEL_TD4320_FHDP_AUO_VDO_RT5081) += panel-td4320-fhdp-dsi-vdo-auo-rt5081.o
-obj-$(CONFIG_DRM_PANEL_NT35521_HD_VDO_TRULY_RT5081) += panel-nt35521_hd_dsi_vdo_truly_rt5081.o
-obj-$(CONFIG_DRM_PANEL_SC_NT36672C_VDO_90HZ_6382) += panel-sc-nt36672c-vdo-90hz-6382.o
 obj-$(CONFIG_DRM_PANEL_BOE_JD9365DA_VDO) += panel-boe-jd9365da-vdo.o
 obj-$(CONFIG_DRM_PANEL_ILI7838E_DV3_ALPHA_CMD) += panel-ili7838e-dv3-alpha-cmd.o
 obj-$(CONFIG_DRM_PANEL_RM692H5_CMD) += panel-rm692h5-cmd.o
