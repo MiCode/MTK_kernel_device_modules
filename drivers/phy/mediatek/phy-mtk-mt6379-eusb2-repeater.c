@@ -112,6 +112,11 @@
 #define RG_USB20_OSC_CALI_SHIFT		0
 #define RG_USB20_OSC_CALI_MASK		0x7F
 
+#define PHYA_U2_EXT_CR0_1               0x31
+#define RG_USB20_OSC_IBAND              GENMASK(7,0)
+#define RG_USB20_OSC_IBAND_SHIFT	0
+#define RG_USB20_OSC_IBAND_MASK		0xFF
+
 #define PHYA_U2_EXT_CR1_0		0x34
 #define RH_USB20_OSC_BUF_0		BIT(0)
 #define RH_USB20_OSC_BUF_0_SHIFT	0
@@ -652,6 +657,9 @@ static int eusb2_repeater_power_on(struct phy *phy)
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_USB20_OSC_BIAS_0,
 				RG_USB20_OSC_BIAS_0);
 
+		/* Set OSC_IBAND to 0x52 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR0_1, 0xFF, 0x52);
+
 		/* on */
 		/* RG_USB20_REV_A[5] = 0x1 */
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2,
@@ -810,6 +818,9 @@ static int eusb2_repeater_power_on(struct phy *phy)
 
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_USB20_OSC_BIAS_0,
 				RG_USB20_OSC_BIAS_0);
+
+			/* Set OSC_IBAND to 0x52 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR0_1, 0xFF, 0x52);
 
 			/* on */
 			/* RG_USB20_REV_A[5] = 0x1 */
