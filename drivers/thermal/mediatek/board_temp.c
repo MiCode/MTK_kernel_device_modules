@@ -4,6 +4,7 @@
  */
 #include <linux/bits.h>
 #include <linux/device.h>
+#include <linux/iio/consumer.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -54,6 +55,7 @@ struct tia_data {
 struct pmic_auxadc_data {
 	bool is_initialized;
 	unsigned int default_pullup_v;
+	unsigned int default_pullup_r;
 	unsigned int *pullup_v;
 	unsigned int *pullup_r;
 	unsigned int num_of_pullup_r_type;
@@ -71,6 +73,9 @@ struct board_ntc_info {
 	void __iomem *dbg_reg;
 	void __iomem *en_reg;
 	struct pmic_auxadc_data *adc_data;
+	int is_tia;
+	struct iio_channel *channel;
+	struct thermal_zone_device *tz_dev;
 };
 
 unsigned int tia2_rc_sel_to_value(unsigned int sel)
@@ -98,6 +103,11 @@ unsigned long long mt6685_adc2volt(unsigned int adc_raw)
 	return ((unsigned long long)adc_raw * 184000) >> 15;
 }
 
+unsigned long long mt6661_adc2volt(unsigned int adc_raw)
+{
+	return ((unsigned long long)adc_raw * 180000) >> 15;
+}
+
 static struct tia_data tia2_data = {
 	.valid_bit = 15,
 	.rc_offset = 16,
@@ -107,16 +117,30 @@ static struct tia_data tia2_data = {
 
 static struct pmic_auxadc_data mt6685_pmic_auxadc_data = {
 	.default_pullup_v = 184000,
+	.default_pullup_r = 100000,
 	.num_of_pullup_r_type = 3,
 	.pullup_r_calibration = NULL,
 	.adc2volt = mt6685_adc2volt,
 	.tia_param = &tia2_data,
 };
 
+static struct pmic_auxadc_data mt6661_pmic_auxadc_data = {
+	.default_pullup_v = 180000,
+	.default_pullup_r = 100000,
+	.num_of_pullup_r_type = 1,
+	.pullup_r_calibration = NULL,
+	.adc2volt = mt6661_adc2volt,
+	.tia_param = NULL,
+};
+
 static const struct of_device_id board_ntc_of_match[] = {
 	{
 		.compatible = "mediatek,mt6685-tia-ntc",
 		.data = (void *)&mt6685_pmic_auxadc_data,
+	},
+	{
+		.compatible = "mediatek,thermal-auxadc-sensor",
+		.data = (void *)&mt6661_pmic_auxadc_data,
 	},
 	{},
 };
@@ -173,6 +197,24 @@ static int board_ntc_get_temp(struct thermal_zone_device *tz, int *temp)
 	unsigned int val, r_type, r_ntc, dbg_reg, en_reg, count = 0;
 	unsigned long long v_in;
 	bool is_val_valid, is_rtype_valid;
+	int adc_raw, ret;
+
+	if (!ntc_info->is_tia) {
+		ret = iio_read_channel_raw(ntc_info->channel, &adc_raw);
+		if (ret < 0) {
+			dev_info(ntc_info->dev, "IIO channel read failed %d\n", ret);
+			return ret;
+		}
+
+		v_in = ntc_info->adc_data->adc2volt(adc_raw);
+		r_type = 0;
+		r_ntc = calculate_r_ntc(v_in, adc_data->pullup_r[r_type], adc_data->pullup_v[r_type]);
+		*temp = board_ntc_r_to_temp(ntc_info, r_ntc);
+		dev_dbg_ratelimited(ntc_info->dev, "adc_raw=0x%x, v_in/r_type/r_ntc/t=%llu/%d/%d/%d pullup_r=%d pullup_v=%d\n",
+			adc_raw, v_in, r_type, r_ntc, *temp, adc_data->pullup_r[r_type], adc_data->pullup_v[r_type]);
+
+		return 0;
+	}
 
 	while (count < READ_TIA_REG_COUNT_MAX) {
 		val = readl(ntc_info->data_reg);
@@ -260,8 +302,11 @@ static int board_ntc_init_auxadc_data(struct device *dev,
 		ret = adc_data->pullup_r_calibration(dev, adc_data);
 	} else {
 		for (i = 0; i < num; i++) {
-			adc_data->pullup_r[i] =
-				adc_data->tia_param->rc_sel_to_value(i);
+			if (adc_data->tia_param)
+				adc_data->pullup_r[i] = adc_data->tia_param->rc_sel_to_value(i);
+			else
+				adc_data->pullup_r[i] = adc_data->default_pullup_r;
+
 			adc_data->pullup_v[i] = adc_data->default_pullup_v;
 
 			dev_info(dev, "%d: default pullup_r=%d, pullup_v=%d\n",
@@ -328,6 +373,10 @@ static int board_ntc_probe(struct platform_device *pdev)
 	if (!ntc_info)
 		return -ENOMEM;
 
+	ntc_info->channel = devm_iio_channel_get(&pdev->dev, "sensor-channel");
+	if (IS_ERR(ntc_info->channel))
+		ntc_info->is_tia = 1;
+
 	ret = board_ntc_parse_lookup_table(&pdev->dev, ntc_info);
 	if (ret < 0)
 		return ret;
@@ -346,22 +395,24 @@ static int board_ntc_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ntc_info);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	tia_reg = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(tia_reg))
-		return PTR_ERR(tia_reg);
+	if (ntc_info->is_tia) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		tia_reg = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(tia_reg))
+			return PTR_ERR(tia_reg);
 
-	ntc_info->data_reg = tia_reg;
+		ntc_info->data_reg = tia_reg;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	tia_reg = devm_ioremap_resource(&pdev->dev, res);
-	if (!IS_ERR(tia_reg))
-		ntc_info->en_reg = tia_reg;
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		tia_reg = devm_ioremap_resource(&pdev->dev, res);
+		if (!IS_ERR(tia_reg))
+			ntc_info->en_reg = tia_reg;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	tia_reg = devm_ioremap_resource(&pdev->dev, res);
-	if (!IS_ERR(tia_reg))
-		ntc_info->dbg_reg = tia_reg;
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+		tia_reg = devm_ioremap_resource(&pdev->dev, res);
+		if (!IS_ERR(tia_reg))
+			ntc_info->dbg_reg = tia_reg;
+	}
 
 	tz_dev = devm_thermal_of_zone_register(
 			&pdev->dev, 0, ntc_info, &board_ntc_ops);
