@@ -381,6 +381,13 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (priv->vdisp_ao_cg_con)
 			writel(BIT(16), priv->vdisp_ao_cg_con + 0x8);
 
+		if (disp_dpc_driver.dpc_mtcmos_auto) {
+			if (priv->pd_id == DISP_PD_MML1)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML1, true);
+			else if (priv->pd_id == DISP_PD_MML0)
+				disp_dpc_driver.dpc_mtcmos_auto(DPC_SUBSYS_MML0, true);
+		}
+
 		/* unvote and power off mminfra, release should be called only if keep successfully */
 		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
 			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);

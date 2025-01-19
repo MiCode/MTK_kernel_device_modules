@@ -1201,7 +1201,6 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 	}
 
 	mml_dpc_group_enable(!dcen);
-	mml_dpc_mtcmos_auto(sysid, !dcen);
 }
 
 void mml_pw_set_kick_cb(struct mml_dev *mml,

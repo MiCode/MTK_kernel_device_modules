@@ -1065,6 +1065,8 @@ static void dpc_mml_group_enable(bool en)
 		/* vcore off */
 		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180202 : 0x180e0e;
 		writel(value, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
+
+		dpc_mtcmos_auto(DPC_SUBSYS_MML, en);
 	}
 }
 
