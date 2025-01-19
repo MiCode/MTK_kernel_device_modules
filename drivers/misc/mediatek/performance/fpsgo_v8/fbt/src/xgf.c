@@ -250,7 +250,7 @@ int xgf_check_main_sf_pid(int pid, int process_id)
 	tsk = find_task_by_vpid(pid);
 	if (tsk) {
 		get_task_struct(tsk);
-		strncpy(tmp_thread_name, tsk->comm, 16);
+		strscpy(tmp_thread_name, tsk->comm, 16);
 		tmp_thread_name[15] = '\0';
 		put_task_struct(tsk);
 	} else
@@ -656,14 +656,14 @@ int set_xgf_spid_list(char *proc_name,
 		goto out;
 	}
 
-	if (!strncpy(new_xgf_spid->process_name, proc_name, 16)) {
+	if (!strscpy(new_xgf_spid->process_name, proc_name, 16)) {
 		xgf_delete_spid(new_xgf_spid, &xgf_spid_list);
 		retval = -ENOMEM;
 		goto out;
 	}
 	new_xgf_spid->process_name[15] = '\0';
 
-	if (!strncpy(new_xgf_spid->thread_name,	thrd_name, 16)) {
+	if (!strscpy(new_xgf_spid->thread_name,	thrd_name, 16)) {
 		xgf_delete_spid(new_xgf_spid, &xgf_spid_list);
 		retval = -ENOMEM;
 		goto out;
@@ -731,7 +731,7 @@ static int xgf_render_setup_wspid_list(int tgid, int rpid, unsigned long long bu
 					goto gtsk_out;
 				}
 
-				if (!strncpy(new_xgf_spid->process_name,
+				if (!strscpy(new_xgf_spid->process_name,
 						xgf_spid_iter->process_name, 16)) {
 					xgf_delete_spid(new_xgf_spid, &xgf_wspid_list);
 					put_task_struct(sib);
@@ -740,7 +740,7 @@ static int xgf_render_setup_wspid_list(int tgid, int rpid, unsigned long long bu
 				}
 				new_xgf_spid->process_name[15] = '\0';
 
-				if (!strncpy(new_xgf_spid->thread_name,
+				if (!strscpy(new_xgf_spid->thread_name,
 						xgf_spid_iter->thread_name, 16)) {
 					xgf_delete_spid(new_xgf_spid, &xgf_wspid_list);
 					put_task_struct(sib);

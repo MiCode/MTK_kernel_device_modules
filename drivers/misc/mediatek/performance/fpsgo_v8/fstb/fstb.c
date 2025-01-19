@@ -752,7 +752,7 @@ static struct fstb_frame_info *fstb_get_frame_info(int pid,
 	rcu_read_unlock();
 
 	if (gtsk) {
-		strncpy(iter->proc_name, gtsk->comm, 16);
+		strscpy(iter->proc_name, gtsk->comm, 16);
 		iter->proc_name[15] = '\0';
 		iter->proc_id = gtsk->pid;
 		put_task_struct(gtsk);
@@ -1066,7 +1066,7 @@ void eara2fstb_get_tfps(int max_cnt, int *is_camera, int *pid, unsigned long lon
 		else
 			tfps[count] = iter->target_fps_notifying;
 		if (name)
-			strncpy(name[count], iter->proc_name, 16);
+			strscpy(name[count], iter->proc_name, 16);
 		count++;
 	}
 
@@ -2547,10 +2547,9 @@ static ssize_t set_user_target_by_prio_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	char *acBuffer = NULL;
-	int mode = -1, id = -1, prio = -1;
+	int mode = -1, id1 = -1, prio = -1;
+	unsigned long long id2 = 0;
 	unsigned long long target = 0;
-	struct fstb_frame_info *iter = NULL;
-	struct hlist_node *h = NULL;
 
 	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
@@ -2558,7 +2557,8 @@ static ssize_t set_user_target_by_prio_store(struct kobject *kobj,
 
 	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (sscanf(acBuffer, "%d %d %d %llu", &mode, &id, &prio, &target) != 4) {
+			if (sscanf(acBuffer, "%d %d %llu %d %llu",
+				&mode, &id1, &id2, &prio, &target) != 5) {
 				FPSGO_LOGE("[fstb] %s user set wrong args\n", __func__);
 				goto out;
 			}
@@ -2569,47 +2569,18 @@ static ssize_t set_user_target_by_prio_store(struct kobject *kobj,
 			}
 
 			if (target >= CFG_MIN_FPS_LIMIT && target <= dfps_ceiling) {
-				if (mode == 0) {
-					fpsgo_other2fstb_set_target(mode, id, 1, prio, (int)target, 0, 0);
-					FPSGO_LOGE("[fstb] user set target mode:%d id:%d prio:%d fps:%d\n",
-						mode, id, prio, (int)target);
-				} else if (mode == 1) {
-					hlist_for_each_entry_safe(iter, h, &fstb_frame_info_list, hlist) {
-						if (iter->pid != id)
-							continue;
-						fpsgo_other2fstb_set_target(mode, id, 1, prio, (int)target, 0, iter->bufid);
-						FPSGO_LOGE("[fstb] user set target mode:%d id:%d,0x%llx prio:%d fps:%d\n",
-							mode, id, iter->bufid, prio, (int)target);
-					}
-				}
+				fpsgo_other2fstb_set_target(mode, id1, 1, prio,
+					(int)target, 0, mode ? id2 : 0);
+				FPSGO_LOGE("[fstb] user set target mode:%d id:%d 0x%llx prio:%d fps:%d\n",
+					mode, id1, id2, prio, (int)target);
 			} else if (target >= dtime_ceiling && target < NSEC_PER_SEC) {
-				if (mode == 0) {
-					fpsgo_other2fstb_set_target(mode, id, 1, prio, 0, target, 0);
-					FPSGO_LOGE("[fstb] user set target mode:%d id:%d prio:%d time:%llu\n",
-						mode, id, prio, target);
-				} else if (mode == 1) {
-					hlist_for_each_entry_safe(iter, h, &fstb_frame_info_list, hlist) {
-						if (iter->pid != id)
-							continue;
-						fpsgo_other2fstb_set_target(mode, id, 1, prio, 0, target, iter->bufid);
-						FPSGO_LOGE("[fstb] user set target mode:%d id:%d,0x%llx prio:%d time:%llu\n",
-							mode, id, iter->bufid, prio, target);
-					}
-				}
+				fpsgo_other2fstb_set_target(mode, id1, 1, prio, 0, target, mode ? id2 : 0);
+				FPSGO_LOGE("[fstb] user set target mode:%d id:%d 0x%llx prio:%d time:%llu\n",
+					mode, id1, id2, prio, target);
 			} else {
-				if (mode == 0) {
-					fpsgo_other2fstb_set_target(mode, id, 0, prio, 0, 0, 0);
-					FPSGO_LOGE("[fstb] user unset target mode:%d id:%d prio:%d\n",
-						mode, id, prio);
-				} else if (mode == 1) {
-					hlist_for_each_entry_safe(iter, h, &fstb_frame_info_list, hlist) {
-						if (iter->pid != id)
-							continue;
-						fpsgo_other2fstb_set_target(mode, id, 0, prio, 0, 0, iter->bufid);
-						FPSGO_LOGE("[fstb] user unset target mode:%d id:%d,0x%llx prio:%d\n",
-							mode, id, iter->bufid, prio);
-					}
-				}
+				fpsgo_other2fstb_set_target(mode, id1, 0, prio, 0, 0, mode ? id2 : 0);
+				FPSGO_LOGE("[fstb] user unset target mode:%d id:%d 0x%llx prio:%d\n",
+					mode, id1, id2, prio);
 			}
 		}
 	}
