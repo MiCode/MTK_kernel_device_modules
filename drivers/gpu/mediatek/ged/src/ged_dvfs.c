@@ -3937,10 +3937,12 @@ unsigned long ged_dvfs_get_gpu_commit_opp_freq(void)
 unsigned int ged_dvfs_get_gpu_loading(void)
 {
 	unsigned int loading = 0;
+	union combineData tmp_multi = {0};
 
 	loading = (unsigned int)atomic_read(&g_gpu_loading_log);
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
-		loading = mtk_gpueb_sysram_read(SYSRAM_GPU_LOADING);
+		tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_LOADING);
+		loading = tmp_multi.twoVar.var1;
 	}
 
 	return loading;

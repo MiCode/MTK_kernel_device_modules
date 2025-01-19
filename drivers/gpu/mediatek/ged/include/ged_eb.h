@@ -696,6 +696,8 @@ enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_SET_USE_DEFAULT_MAGIN_ENABLE = 5,
 	GPUFDVFS_IPI_SET_MAJOR_MIN_CORE = 6,
 	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
+	GPUFDVFS_IPI_SET_LOADING_SELECT,
+	GPUFDVFS_IPI_GET_LOADING_SELECT,
 };
 
 /* IPI data structure */
@@ -984,6 +986,8 @@ typedef struct {
  GEN("Gpu_kpi_cpu_time", GPU_KPI_CPU_TIME, 1, "kpi_cpu_time") \
  GEN("Gpu_kpi_gpu_time", GPU_KPI_GPU_TIME, 1, "kpi_gpu_time") \
  GEN("Gpu_loading", GPU_LOADING, 1, "gpu_loading") \
+ GEN("MCU_ITER_normalize_loading", MCU_ITER_LOADING, 2, "MCU_ITER_LOADING") \
+ GEN("MCU_ITER_UNION_normalize_loading", MCU_ITER_UNION_LOADING, 1, "MCU_ITER_UNION_LOADING") \
  GEN("mbrain_sum_loading1", GPU_SUM_LOADING1, 1, "g_sum_loading") \
  GEN("mbrain_sum_loading2", GPU_SUM_LOADING2, 1, "g_sum_loading")\
  GEN("mbrain_sum_time1", GPU_SUM_TIME1, 1, "g_sum_delta_time") \

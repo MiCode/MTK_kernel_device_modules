@@ -2648,10 +2648,92 @@ static ssize_t enable_idx_notify_store(struct kobject *kobj,
 			}
 		}
 	}
-
 	return count;
+
 }
 static KOBJ_ATTR_RW(enable_idx_notify);
+
+static ssize_t eb_counter_select_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned int eb_policy_mode;
+	int pos = 0;
+	bool ret = true;
+	struct fdvfs_ipi_data *ipi_data;
+
+	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
+		sizeof(struct fdvfs_ipi_data));
+
+	if (!ipi_data) {
+		GED_LOGE("ged_alloc_atomic fail!\n");
+		return pos;
+	}
+
+	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
+
+	eb_policy_mode = is_fdvfs_enable();
+	if (eb_policy_dts_flag > 0 && eb_policy_mode & POLICY_MODE_V2) {
+		ipi_data->cmd = GPUFDVFS_IPI_SET_CONFIG;
+		ipi_data->u.set_para.arg[0] = GPUFDVFS_IPI_GET_LOADING_SELECT;
+		ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+		if (ret) {
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos, "%u\n", ipi_data->u.set_para.arg[1]);
+		}
+	} else {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos, "disbale\n");
+	}
+
+	if (ipi_data)
+		ged_free(ipi_data, sizeof(struct fdvfs_ipi_data));
+
+	return pos;
+
+}
+static ssize_t eb_counter_select_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+	unsigned int eb_policy_mode;
+	int pos = 0;
+	bool ret = true;
+	struct fdvfs_ipi_data *ipi_data;
+
+	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
+		sizeof(struct fdvfs_ipi_data));
+
+	if (!ipi_data) {
+		GED_LOGE("ged_alloc_atomic fail!\n");
+		return pos;
+	}
+
+	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				eb_policy_mode = is_fdvfs_enable();
+				if (eb_policy_dts_flag > 0 && eb_policy_mode & POLICY_MODE_V2) {
+					ipi_data->cmd = GPUFDVFS_IPI_SET_CONFIG;
+					ipi_data->u.set_para.arg[0] = GPUFDVFS_IPI_SET_LOADING_SELECT;
+					ipi_data->u.set_para.arg[1] = i32Value;
+					ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+					if (!ret)
+						GED_LOGE("GPUFDVFS_IPI_SET_LOADING_SELECT fail");
+				}
+			}
+		}
+	}
+
+	if (ipi_data)
+		ged_free(ipi_data, sizeof(struct fdvfs_ipi_data));
+
+	return count;
+
+}
+static KOBJ_ATTR_RW(eb_counter_select);
 #endif
 
 //-----------------------------------------------------------------------------
@@ -3090,6 +3172,13 @@ GED_ERROR ged_hal_init(void)
 			"Failed to create enable_idx_notify entry!\n");
 		goto ERROR;
 	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_eb_counter_select);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE(
+			"Failed to create eb_counter_select entry!\n");
+		goto ERROR;
+	}
 #endif
 
 #if defined(MTK_GPU_SLC_POLICY)
@@ -3215,7 +3304,8 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_autosuspend_stress);
 
 #if defined(MTK_GPU_EB_SUPPORT)
-		ged_sysfs_remove_file(hal_kobj, &kobj_attr_enable_idx_notify);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_enable_idx_notify);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_counter_select);
 #endif
 
 #if defined(MTK_GPU_SLC_POLICY)

@@ -231,6 +231,25 @@ void ged_set_prev_policy_state(enum gpu_dvfs_policy_state state)
 	g_prev_policy_state = state;
 }
 
+
+static void ged_eb_dump_norm_loading(void) {
+	union combineData tmp_multi = {0};
+	unsigned int gpu_loading = 0;
+	unsigned int iter_loading = 0;
+	unsigned int mcu_loading = 0;
+	unsigned int itet_mcu_union_loading = 0;
+
+	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_LOADING);
+	gpu_loading = tmp_multi.twoVar.var1;
+	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_MCU_ITER_LOADING);
+	iter_loading = tmp_multi.twoVar.var1;
+	mcu_loading = tmp_multi.twoVar.var2;
+	itet_mcu_union_loading = mtk_gpueb_sysram_read(SYSRAM_MCU_ITER_UNION_LOADING);
+
+	trace_GPU_DVFS__Loading(gpu_loading, 0,
+		0, 0, iter_loading, mcu_loading, itet_mcu_union_loading);
+}
+
 void ged_eb_dvfs_trace_dump(void)
 {
 #if defined(MTK_GPU_EB_SUPPORT)
@@ -251,6 +270,7 @@ void ged_eb_dvfs_trace_dump(void)
 	struct cmd_info custom_boost_info ={0};
 	union combineData tmp_multi = {0};
 	static unsigned int pre_is_offscreen;
+	static unsigned int pre_eb_nor_cnt, eb_nor_cnt;
 
 	//struct GpuUtilization_Ex util_ex;
 
@@ -354,6 +374,7 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MCU_LOADING),
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_LOADING),
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_LOADING));
+
 	}
 
 
@@ -365,9 +386,14 @@ void ged_eb_dvfs_trace_dump(void)
 				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
 		}
 		// show LB loading for V2
-		if ((is_fdvfs_enable() & POLICY_MODE_V2))
-			trace_GPU_DVFS__Loading(ged_dvfs_get_gpu_loading(), 0,
-					0, 0, 0, 0, ged_dvfs_get_gpu_loading());
+		if ((is_fdvfs_enable() & POLICY_MODE_V2)) {
+			tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_LOADING);
+			eb_nor_cnt = tmp_multi.twoVar.var2;
+			if (eb_nor_cnt != pre_eb_nor_cnt) {
+				ged_eb_dump_norm_loading();
+			}
+			pre_eb_nor_cnt = eb_nor_cnt;
+		}
 	}
 	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {
 		trace_tracing_mark_write(5566, "async_opp_diff",
@@ -452,8 +478,9 @@ void ged_eb_dvfs_frame_done_dump(void)
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU_TARGET));
 
 	// loading
-	trace_GPU_DVFS__Loading(ged_dvfs_get_gpu_loading(), 0,
-		0, 0, 0, 0, ged_dvfs_get_gpu_loading());
+	//trace_GPU_DVFS__Loading(ged_dvfs_get_gpu_loading(), 0,
+		//0, 0, 0, 0, ged_dvfs_get_gpu_loading());
+	ged_eb_dump_norm_loading();
 
 	trace_GPU_DVFS__Policy__Frame_based__Frequency(
 		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr),
