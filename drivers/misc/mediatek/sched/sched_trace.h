@@ -12,6 +12,7 @@
 #include <linux/tracepoint.h>
 #include <linux/compat.h>
 #include "common.h"
+#include "eas/eas_plus.h"
 
 #ifndef _SCHED_TRACE_INFO_
 #define _SCHED_TRACE_INFO_
@@ -530,6 +531,94 @@ TRACE_EVENT(sched_energy_init,
 		__entry->gear_idx,
 		__entry->cpu_cap,
 		__entry->pds_cap)
+);
+
+TRACE_EVENT(sched_dbg_eenv_init,
+
+	TP_PROTO(struct energy_env *eenv),
+
+	TP_ARGS(eenv),
+
+	TP_STRUCT__entry(
+		__field(int, dpt_v2_support)
+		__field(int, dpt_v2_swpm_support)
+		__field(int, min_cap)
+		__field(int, max_cap)
+		__field(int, task_busy_time)
+		__field(int, val_s)
+		__field(int, wl_support)
+		__field(int, wl_cpu)
+		__field(int, wl_dsu)
+		__field(int, pds_cpu_cap)
+		__field(int, pds_cap)
+		__field(int, pds_busy_time)
+		__field(int, cpu_max_util)
+		__field(int, gear_max_util)
+		__field(int, pd_base_max_util)
+		__field(int, pd_base_freq)
+		__field(int, cpu_temp)
+		__field(int, dpt_v2_freq)
+		__field(int, dpt_v2_gear_max_freq)
+		__field(int, dpt_v2_gear_max_freq_cpu)
+		__field(int, dpt_v2_sratio)
+		__field(int, dpt_v2_cpu_util)
+		__field(int, dpt_v2_coef1_util)
+		__field(int, dpt_v2_coef2_util)
+		),
+
+	TP_fast_assign(
+		__entry->dpt_v2_support           = (int)eenv->dpt_v2_support;
+		__entry->dpt_v2_swpm_support      = (int)eenv->dpt_v2_swpm_support;
+		__entry->min_cap                  = (int)eenv->min_cap;
+		__entry->max_cap                  = (int)eenv->max_cap;
+		__entry->task_busy_time           = (int)eenv->task_busy_time;
+		__entry->val_s                    = (int)eenv->val_s[0];
+		__entry->wl_support               = (int)eenv->wl_support;
+		__entry->wl_cpu                   = (int)eenv->wl_cpu;
+		__entry->wl_dsu                   = (int)eenv->wl_dsu;
+		__entry->pds_cpu_cap              = (int)eenv->pds_cpu_cap[0];
+		__entry->pds_cap                  = (int)eenv->pds_cap[0];
+		__entry->pds_busy_time            = (int)eenv->pds_busy_time[0];
+		__entry->cpu_max_util             = (int)eenv->cpu_max_util[0][0];
+		__entry->gear_max_util            = (int)eenv->gear_max_util[0][0];
+		__entry->pd_base_max_util         = (int)eenv->pd_base_max_util[0];
+		__entry->pd_base_freq             = (int)eenv->pd_base_freq[0];
+		__entry->cpu_temp                 = (int)eenv->cpu_temp[0];
+		__entry->dpt_v2_freq              = (int)eenv->dpt_v2_freq[0][0];
+		__entry->dpt_v2_gear_max_freq     = (int)eenv->dpt_v2_gear_max_freq[0][0];
+		__entry->dpt_v2_gear_max_freq_cpu = (int)eenv->dpt_v2_gear_max_freq_cpu[0][0];
+		__entry->dpt_v2_sratio            = (int)eenv->dpt_v2_sratio[0][0];
+		__entry->dpt_v2_cpu_util          = (int)eenv->dpt_v2_cpu_util[0][0];
+		__entry->dpt_v2_coef1_util        = (int)eenv->dpt_v2_coef1_util[0][0];
+		__entry->dpt_v2_coef2_util        = (int)eenv->dpt_v2_coef2_util[0][0];
+		),
+
+	TP_printk("dpt_v2_support=%d dpt_v2_swpm_support=%d min_cap=%4d max_cap=%4d task_busy_time=%4d val_s=%10d wl_support=%d wl_cpu=%d wl_dsu=%d pds_cpu_cap=%4d pds_cap=%4d pds_busy_time=%4d cpu_max_util=%4d gear_max_util=%4d pd_base_max_util=%4d pd_base_freq=%8d cpu_temp=%3d dpt_v2_freq=%8d dpt_v2_gear_max_freq=%8d dpt_v2_gear_max_freq_cpu=%d dpt_v2_sratio=%4d dpt_v2_cpu_util=%4d dpt_v2_coef1_util=%4d dpt_v2_coef2_util=%4d",
+		__entry->dpt_v2_support,
+		__entry->dpt_v2_swpm_support,
+		__entry->min_cap,
+		__entry->max_cap,
+		__entry->task_busy_time,
+		__entry->val_s,
+		__entry->wl_support,
+		__entry->wl_cpu,
+		__entry->wl_dsu,
+		__entry->pds_cpu_cap,
+		__entry->pds_cap,
+		__entry->pds_busy_time,
+		__entry->cpu_max_util,
+		__entry->gear_max_util,
+		__entry->pd_base_max_util,
+		__entry->pd_base_freq,
+		__entry->cpu_temp,
+		__entry->dpt_v2_freq,
+		__entry->dpt_v2_gear_max_freq,
+		__entry->dpt_v2_gear_max_freq_cpu,
+		__entry->dpt_v2_sratio,
+		__entry->dpt_v2_cpu_util,
+		__entry->dpt_v2_coef1_util,
+		__entry->dpt_v2_coef2_util
+		)
 );
 
 TRACE_EVENT(sched_eenv_init,

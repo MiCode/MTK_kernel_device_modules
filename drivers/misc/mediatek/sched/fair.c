@@ -433,13 +433,13 @@ DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
 static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 			int prev_cpu, struct perf_domain *pd, bool in_irq)
 {
-	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
-	unsigned int cpu, pd_idx;
-	unsigned long min, max;
-	struct perf_domain *pd_ptr = pd;
+	unsigned int cpu;
 
 	eenv->dpt_v2_support = is_dpt_v2_support();
 	eenv->dpt_v2_swpm_support = eenv->dpt_v2_support ? sched_dpt_v2_swpm_mode_get() : 0;
+
+	eenv->min_cap = uclamp_eff_value(p, UCLAMP_MIN);
+	eenv->max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 
 	eenv_task_busy_time(eenv, p, prev_cpu);
 
@@ -466,8 +466,38 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		}
 	}
 
+	if (eenv->dpt_v2_support) {
+		struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
+
+		for (struct perf_domain *pd_ptr = pd; pd_ptr; pd_ptr = pd_ptr->next) {
+			cpumask_and(cpus, perf_domain_span(pd_ptr), cpu_active_mask);
+			if (cpumask_empty(cpus))
+				continue;
+
+			for_each_cpu(cpu, cpus) {
+				eenv->dpt_v2_cap_params[cpu][0].IPC_scaling_factor
+					= eenv->dpt_v2_cap_params[cpu][1].IPC_scaling_factor
+					= get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
+
+				if (!s_type) {
+					dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu);
+
+					eenv->dpt_v2_sratio[cpu][0] = dpt_rq->sratio[S_TOTAL];
+				}
+
+				if (trace_sched_per_core_base_sratio_enabled())
+					trace_sched_per_core_base_sratio(
+							eenv->dpt_v2_support,
+							cpu,
+							eenv->dpt_v2_sratio[cpu][0]);
+			}
+		}
+	}
+}
+
+void eenv_init_for_wl(struct energy_env *eenv)
+{
 	eenv->wl_support = get_eas_dsu_ctrl();
-	eenv->total_util = 0;
 
 	/* get wl snapshot*/
 	if (eenv->wl_support) {
@@ -477,66 +507,73 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 		eenv->wl_cpu = 0;
 		eenv->wl_dsu = 0;
 	}
+}
 
-	for (; pd_ptr; pd_ptr = pd_ptr->next) {
+void eenv_init_for_cap(struct energy_env *eenv, struct perf_domain *pd)
+{
+	for (struct perf_domain *pd_ptr = pd; pd_ptr; pd_ptr = pd_ptr->next) {
 		unsigned long cpu_thermal_cap;
-		unsigned long max_util, pd_freq;
+		struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
+		int pd_idx, cpu;
 
 		cpumask_and(cpus, perf_domain_span(pd_ptr), cpu_active_mask);
 		if (cpumask_empty(cpus))
 			continue;
 
-		/* Account thermal pressure for the energy estimation */
 		pd_idx = cpu = cpumask_first(cpus);
-		eenv->gear_idx = topology_cluster_id(pd_idx);
-		cpu_thermal_cap = mtk_get_actual_cpu_capacity(cpu);
+		eenv->pds_cpu_cap[pd_idx] = cpu_thermal_cap = mtk_get_actual_cpu_capacity(cpu);
 
-		eenv->pds_cpu_cap[pd_idx] = cpu_thermal_cap;
 		eenv->pds_cap[pd_idx] = 0;
 		for_each_cpu(cpu, cpus) {
-			if (eenv->dpt_v2_support) {
+			if (eenv->dpt_v2_support)
 				eenv->pds_cap[pd_idx] += (DPT_V2_MAX_RUNNING_TIME_LOCAL * get_thermal_freq_ceiling_ratio(cpu)) >> FREQ_CEILING_RATIO_BIT;
-
-				eenv->dpt_v2_cap_params[cpu][0].IPC_scaling_factor = eenv->dpt_v2_cap_params[cpu][1].IPC_scaling_factor = get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
-
-				if (!s_type) {
-					dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu);
-					eenv->dpt_v2_sratio[cpu][0] = dpt_rq->sratio[S_TOTAL];
-				}
-				if (trace_sched_per_core_base_sratio_enabled())
-					trace_sched_per_core_base_sratio(eenv->dpt_v2_support, cpu, eenv->dpt_v2_sratio[cpu][0]);
-			} else
+			else
 				eenv->pds_cap[pd_idx] += cpu_thermal_cap;
 		}
+	}
+}
 
-		if (trace_sched_energy_init_enabled()) {
-			trace_sched_energy_init(cpus, eenv->gear_idx, eenv->pds_cpu_cap[pd_idx],
-				eenv->pds_cap[pd_idx]);
-		}
+void eenv_init_for_cpu(struct energy_env *eenv, struct task_struct *p, struct perf_domain *pd)
+{
+	unsigned long min, max;
 
-		if (eenv->wl_support) {
-			eenv_pd_busy_time(eenv, cpus, p);
-			eenv->total_util += eenv->pds_busy_time[pd_idx];
+	eenv->total_util = 0;
 
-			/* get dsu_freq_base by max_util voting */
-			max_util = eenv_pd_max_util(eenv, cpus, p, -1, &min, &max);
-			eenv->pd_base_max_util[pd_idx] = max_util;
+	for (struct perf_domain *pd_ptr = pd; pd_ptr; pd_ptr = pd_ptr->next) {
+		struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
+		unsigned long max_util, pd_freq;
+		int pd_idx;
 
-			if (eenv->dpt_v2_support) {
-				pd_freq = eenv_pd_max_util_dpt_v2(eenv, cpus, p, -1, &min, &max);
-				eenv->pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
-			} else {
-				pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
-						eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx), min, max);
-				eenv->pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
-			}
+		cpumask_and(cpus, perf_domain_span(pd_ptr), cpu_active_mask);
+		if (cpumask_empty(cpus))
+			continue;
+
+		pd_idx = cpumask_first(cpus);
+
+		eenv_pd_busy_time(eenv, cpus, p);
+		eenv->total_util += eenv->pds_busy_time[pd_idx];
+
+		/* get dsu_freq_base by max_util voting */
+
+		eenv->gear_idx = topology_cluster_id(pd_idx);
+
+		max_util = eenv_pd_max_util(eenv, cpus, p, -1, &min, &max);
+		eenv->pd_base_max_util[pd_idx] = max_util;
+
+		if (eenv->dpt_v2_support) {
+			pd_freq = eenv_pd_max_util_dpt_v2(eenv, cpus, p, -1, &min, &max);
+			eenv->pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
+		} else {
+			pd_freq = pd_get_util_cpufreq(eenv, cpus, max_util,
+					eenv->pds_cpu_cap[pd_idx], arch_scale_cpu_capacity(pd_idx), min, max);
+			eenv->pd_base_freq[pd_idx] = max(pd_freq, per_cpu(min_freq, pd_idx));
 		}
 	}
+}
 
-	if (unlikely(in_irq)) {
-		return;
-	}
-
+void eenv_init_for_temp(struct energy_env *eenv)
+{
+	int cpu;
 
 	for_each_cpu(cpu, cpu_possible_mask) {
 #if IS_ENABLED(CONFIG_MTK_LEAKAGE_AWARE_TEMP)
@@ -545,46 +582,50 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 #else
 		eenv->cpu_temp[cpu] = -1;
 #endif // CONFIG_MTK_LEAKAGE_AWARE_TEMP
+
 		if (!reasonable_temp(eenv->cpu_temp[cpu])) {
 			if (trace_sched_check_temp_enabled())
 				trace_sched_check_temp("cpu", cpu, eenv->cpu_temp[cpu]);
 		}
 	}
+}
 
-	if (eenv->wl_support) {
-		unsigned int output[8] = {[0 ... 7] = -1};
-		unsigned int val[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = -1};
+void eenv_init_for_dsu(struct energy_env *eenv)
+{
+	int cpu;
+	unsigned int output[8] = {[0 ... 7] = -1};
+	unsigned int val[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = -1};
 
-		if (is_dsu_pwr_triggered(eenv->wl_dsu)) {
-			eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl_dsu,
-					PERCORE_L3_BW, cpu_active_mask->bits[0], eenv->pd_base_freq,
-					val, output);
-		}
-
-		if (PERCORE_L3_BW) {
-			unsigned int sum_val = 0;
-			for_each_cpu(cpu, cpu_active_mask) {
-				sum_val += val[cpu];
-				if (trace_sched_per_core_BW_enabled())
-					trace_sched_per_core_BW(cpu, val[cpu], sum_val);
-			}
-		}
-
-		if (!reasonable_temp(output[0])) {
-			if (trace_sched_check_temp_enabled())
-				trace_sched_check_temp("dsu", -1, (int) output[0]);
-		}
-
-		if (trace_sched_eenv_init_enabled())
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-			trace_sched_eenv_init(output[1], output[2], output[6], output[7],
-					output[3], output[4], output[5],
-					share_buck.gear_idx);
-#else
-			trace_sched_eenv_init(output[1], output[2], output[6], output[7],
-					0, output[4], output[5], share_buck.gear_idx);
-#endif // CONFIG_MTK_THERMAL_INTERFACE
+	if (is_dsu_pwr_triggered(eenv->wl_dsu)) {
+		eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl_dsu,
+				PERCORE_L3_BW, cpu_active_mask->bits[0], eenv->pd_base_freq,
+				val, output);
 	}
+
+	if (PERCORE_L3_BW) {
+		unsigned int sum_val = 0;
+
+		for_each_cpu(cpu, cpu_active_mask) {
+			sum_val += val[cpu];
+			if (trace_sched_per_core_BW_enabled())
+				trace_sched_per_core_BW(cpu, val[cpu], sum_val);
+		}
+	}
+
+	if (!reasonable_temp(output[0])) {
+		if (trace_sched_check_temp_enabled())
+			trace_sched_check_temp("dsu", -1, (int) output[0]);
+	}
+
+	if (trace_sched_eenv_init_enabled())
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+		trace_sched_eenv_init(output[1], output[2], output[6], output[7],
+				output[3], output[4], output[5],
+				share_buck.gear_idx);
+#else
+		trace_sched_eenv_init(output[1], output[2], output[6], output[7],
+				0, output[4], output[5], share_buck.gear_idx);
+#endif // CONFIG_MTK_THERMAL_INTERFACE
 }
 
 static inline unsigned long
@@ -2370,8 +2411,6 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	unsigned int cpu;
 	struct perf_domain *pd;
 	int select_reason = -1, backup_reason = 0;
-	unsigned long min_cap = uclamp_eff_value(p, UCLAMP_MIN);
-	unsigned long max_cap = uclamp_eff_value(p, UCLAMP_MAX);
 	struct energy_env eenv;
 	struct cpumask effective_softmask;
 	bool in_irq = in_interrupt();
@@ -2445,24 +2484,12 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse, latency_sensitive);
 
-	irq_log_store();
-
-	eenv.min_cap = min_cap;
-	eenv.max_cap = max_cap;
-
-	eenv_task_busy_time(&eenv, p, prev_cpu);
-
 	eenv_init(&eenv, p, prev_cpu, pd, in_irq);
-
 	if (!eenv.task_busy_time) {
 		select_reason = LB_ZERO_EENV_UTIL;
 		rcu_read_unlock();
 		goto fail;
 	}
-
-	init_val_s(&eenv);
-
-	irq_log_store();
 
 	fbc_params.in_irq = in_irq;
 	fbc_params.latency_sensitive = latency_sensitive;
@@ -2493,6 +2520,20 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 		best_energy_cpu = cpumask_first(candidates);
 		goto unlock;
 	}
+
+	eenv_init_for_wl(&eenv);
+	eenv_init_for_cap(&eenv, pd);
+	eenv_init_for_cpu(&eenv, p, pd);
+	if (!unlikely(in_irq)) {
+		eenv_init_for_temp(&eenv);
+
+		if (eenv.wl_support)
+			eenv_init_for_dsu(&eenv);
+	}
+	init_val_s(&eenv);
+
+	if (trace_sched_dbg_eenv_init_enabled())
+		trace_sched_dbg_eenv_init(&eenv);
 
 	for_each_cpu(cpu, candidates) {
 		unsigned long cur_delta, base_energy;
