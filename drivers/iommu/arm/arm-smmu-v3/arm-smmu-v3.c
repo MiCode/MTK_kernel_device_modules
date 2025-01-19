@@ -32,7 +32,7 @@
 #include <uapi/linux/iommufd.h>
 
 #include "arm-smmu-v3.h"
-#include "../../dma-iommu.h"
+#include "dma-iommu.h"
 
 static bool disable_msipolling = true;
 module_param(disable_msipolling, bool, 0444);

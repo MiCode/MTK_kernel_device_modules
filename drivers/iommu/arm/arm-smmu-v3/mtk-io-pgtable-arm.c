@@ -22,8 +22,8 @@
 #include <asm/barrier.h>
 #include <asm/pgtable-hwdef.h>
 
-#include "../../io-pgtable-arm.h"
-#include "../../iommu-pages.h"
+#include "io-pgtable-arm.h"
+#include "iommu-pages.h"
 #include "mtk-smmu-v3.h"
 
 #define ARM_LPAE_MAX_ADDR_BITS		52
