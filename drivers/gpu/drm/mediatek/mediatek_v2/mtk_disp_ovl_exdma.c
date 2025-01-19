@@ -2614,7 +2614,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			vact = mode->vdisplay;
 			ratio_tmp = vtotal * 100 / vact;
 		} else
-			ratio_tmp = 125;
+			ratio_tmp = 100;
 
 		DDPDBG("%s, vrefresh=%d, ratio_tmp=%d\n",
 			__func__, vrefresh, ratio_tmp);
