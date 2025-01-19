@@ -1093,7 +1093,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(dir))
 		MMDVFS_DBG("proc_mkdir failed:%ld", PTR_ERR(dir));
 
-	proc = proc_create("mmdvfs_opp", 0444, dir, &mmdvfs_debug_opp_fops);
+	proc = proc_create("mmdvfs_opp", 0440, dir, &mmdvfs_debug_opp_fops);
 	if (IS_ERR_OR_NULL(proc))
 		MMDVFS_DBG("proc_create failed:%ld", PTR_ERR(proc));
 	else
