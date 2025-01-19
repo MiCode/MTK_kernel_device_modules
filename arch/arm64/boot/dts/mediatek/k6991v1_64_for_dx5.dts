@@ -1779,8 +1779,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &dp_tx {
-	power-domains;
-	power-domain-names;
+	power-domains= <&scpsys MT6991_POWER_DOMAIN_SSUSB_DP_PHY_P0>;
+	power-domain-names= "phy";
 };
 
 &mipi_tx_config0 {
