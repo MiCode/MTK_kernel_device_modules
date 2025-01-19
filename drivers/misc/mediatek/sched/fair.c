@@ -3735,7 +3735,7 @@ void mtk_update_load_avg_cfs_rq(void *unused, u64 now, struct cfs_rq *cfs_rq, in
 	if (util_cfs) {
 		util_cfs->util_cpu_avg += dpt_rq->util_cpu_avg_tmp;
 		util_cfs->util_coef1_avg += dpt_rq->util_coef1_avg_tmp;
-		util_cfs->util_coef1_avg += dpt_rq->util_coef2_avg_tmp;
+		util_cfs->util_coef2_avg += dpt_rq->util_coef2_avg_tmp;
 		util_cfs->util_cpu_sum += dpt_rq->util_cpu_sum_tmp;
 		util_cfs->util_coef1_sum += dpt_rq->util_coef1_sum_tmp;
 		util_cfs->util_coef2_sum += dpt_rq->util_coef2_sum_tmp;

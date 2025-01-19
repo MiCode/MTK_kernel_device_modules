@@ -95,8 +95,6 @@ inline int is_dpt_v2_support (void);
 
 void (*dpt_v2_uclamp2local_cap_hook)(int cpu, int quant, unsigned long *umin, unsigned long *umax);
 EXPORT_SYMBOL_GPL(dpt_v2_uclamp2local_cap_hook);
-void (*set_dpt_v2_linear_table_hook)(int ***opp2cap_linear_table, int ***cap2freq_linear_table_driver);
-EXPORT_SYMBOL_GPL(set_dpt_v2_linear_table_hook);
 void (*get_coef1_min_max_ltime_hook)(int *min_ltime, int *max_ltime);
 EXPORT_SYMBOL_GPL(get_coef1_min_max_ltime_hook);
 void (*get_coef2_min_max_ltime_hook)(int *min_ltime, int *max_ltime);
@@ -2340,76 +2338,31 @@ int get_dpt_v2_driver_init_status(void)
 }
 EXPORT_SYMBOL(get_dpt_v2_driver_init_status);
 
-int ***opp2cap_linear_table;
-int ***cap2freq_linear_table;
-int init_linear_table_done, init_dpt_v2_data_done;
-void alloc_dpt_v2_linear_table(void)
-{
-	int quant, gear_idx, nr_opp, cpu, nr_gears = get_nr_gears();
-
-	/* [gearless, legacy] * [nr_gears] * [max_nr_opp] */
-	opp2cap_linear_table = kcalloc(2, sizeof(int**), GFP_KERNEL);
-	for (quant = 0; quant < 2; quant++) {
-		opp2cap_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_KERNEL);
-		for (gear_idx = 0; gear_idx < nr_gears; gear_idx++) {
-			cpu = cpumask_first(get_gear_cpumask(gear_idx));
-			nr_opp = pd_util2opp(cpu, 0, quant, 0, NULL, true, 0);
-			opp2cap_linear_table[quant][gear_idx] = kcalloc(nr_opp+1, sizeof(int), GFP_KERNEL);
-			/* pr_info("init opp2cap linear table quant=%d gear_idx=%d opp=%d\n", quant, gear_idx, nr_opp+1); */
-		}
-	}
-	/* if (!opp2cap_linear_table)
-		pr_info("init opp2cap_linear_table failed\n"); */
-
-	/* [gearless, legacy] * [nr_gears] * [1025] */
-	cap2freq_linear_table = kcalloc(2, sizeof(int**), GFP_KERNEL);
-	for (quant = 0; quant < 2; quant++) {
-		cap2freq_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_KERNEL);
-		for (gear_idx = 0; gear_idx < nr_gears; gear_idx++) {
-			cap2freq_linear_table[quant][gear_idx] = kcalloc(SCHED_CAPACITY_SCALE+1, sizeof(int), GFP_KERNEL);
-			/* pr_info("init cap2freq linear table quant=%d gear_idx=%d cap_length=%ld\n", quant, gear_idx, SCHED_CAPACITY_SCALE+1); */
-		}
-	}
-	/* if (!cap2freq_linear_table)
-		pr_info("init cap2freq_linear_table failed\n"); */
-
-	init_linear_table_done = 1;
-
-	pr_info("alloc_dpt_v2_linear_table done\n");
-}
-
 void init_dpt_v2_driver(void)
 {
 	int dpt_v2_default_status, cpu;
 	dpt_rq_t *dpt_rq;
 
-	if (!init_dpt_v2_data_done) {
-		dpt_v2_default_status = sched_dpt_v2_enable_get();
+	dpt_v2_default_status = sched_dpt_v2_enable_get();
 
-		change_dpt_v2_support_hook(dpt_v2_default_status);
-		set_dpt_v2_default_status_hook(dpt_v2_default_status);
+	change_dpt_v2_support_hook(dpt_v2_default_status);
+	set_dpt_v2_default_status_hook(dpt_v2_default_status);
 
-		scaling_factor_shift_bit = get_scaling_factor_shift_bit_hook();
+	scaling_factor_shift_bit = get_scaling_factor_shift_bit_hook();
 
-		get_coef1_min_max_ltime_hook(&coef1_min_ltime, &coef1_max_ltime);
-		get_coef2_min_max_ltime_hook(&coef2_min_ltime, &coef2_max_ltime);
-		/* Latency info */
-		for_each_possible_cpu(cpu) {
-			dpt_rq = &per_cpu(__dpt_rq, cpu);
+	get_coef1_min_max_ltime_hook(&coef1_min_ltime, &coef1_max_ltime);
+	get_coef2_min_max_ltime_hook(&coef2_min_ltime, &coef2_max_ltime);
+	/* Latency info */
+	for_each_possible_cpu(cpu) {
+		dpt_rq = &per_cpu(__dpt_rq, cpu);
 
-			dpt_rq->min_ltime[S_COEF1] = coef1_min_ltime;
-			dpt_rq->min_ltime[S_COEF2] = coef2_min_ltime;
-		}
-
-		init_dpt_v2_data_done = 1;
-		pr_info("init dpt_v2_data_done\n");
+		dpt_rq->min_ltime[S_COEF1] = coef1_min_ltime;
+		dpt_rq->min_ltime[S_COEF2] = coef2_min_ltime;
 	}
 
-	if (init_linear_table_done) {
-		pr_info("set dpt_v2_linear_table\n");
-		set_dpt_v2_linear_table_hook(opp2cap_linear_table, cap2freq_linear_table);
-		init_dpt_v2_driver_done = 1;
-	}
+	pr_info("init dpt_v2_data_done\n");
+
+	init_dpt_v2_driver_done = 1;
 
 }
 
@@ -2709,8 +2662,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 		pr_info("init_dpt_io fail, return=%d\n", ret);
 
 	init_dpt_rq();
-
-	alloc_dpt_v2_linear_table();
 	*/
 
 	if (legacy_api_support_get()) {
