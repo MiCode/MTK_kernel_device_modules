@@ -27,6 +27,7 @@ const struct attribute_group *adsp_core_attr_groups[] = {
 static int slb_memory_control(bool en);
 static u32 adsp_pending_cnt;
 static bool resume_first_time = true;
+static s64 core1_start_us = 0;
 
 /* adsp operation */
 int adsp_after_bootup(struct adsp_priv *pdata)
@@ -102,6 +103,7 @@ int adsp_core0_suspend(void)
 	u32 status = 0;
 	struct adsp_priv *pdata = adsp_cores[ADSP_A_ID];
 	ktime_t start = ktime_get();
+	s64 us = ktime_to_us(start);
 
 	if (get_adsp_state(pdata) == ADSP_RUNNING) {
 		reinit_completion(&pdata->done);
@@ -151,7 +153,12 @@ int adsp_core0_suspend(void)
 		ktime_us_delta(ktime_get(), start));
 	return 0;
 ERROR:
-	pr_warn("%s(), can't going to suspend, ret(%d)\n", __func__, ret);
+	pr_warn("%s, can't going to suspend, ret(%d), start at [%lld.%lld]",
+			__func__, ret, (us / USEC_PER_SEC), (us % USEC_PER_SEC));
+	if (ret == -EBUSY)
+		pr_warn("%s, core0 suspend fail; core1 not in suspend, core1 start at [%lld.%lld]",
+			__func__, (core1_start_us / USEC_PER_SEC), (core1_start_us % USEC_PER_SEC));
+
 	adsp_mbox_dump();
 	adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 	return ret;
@@ -196,6 +203,7 @@ int adsp_core1_suspend(void)
 	u32 status = 0;
 	struct adsp_priv *pdata = adsp_cores[ADSP_B_ID];
 	ktime_t start = ktime_get();
+	core1_start_us = ktime_to_us(start);
 
 	if (get_adsp_state(pdata) == ADSP_RUNNING) {
 		reinit_completion(&pdata->done);
@@ -231,7 +239,8 @@ int adsp_core1_suspend(void)
 		ktime_us_delta(ktime_get(), start));
 	return 0;
 ERROR:
-	pr_warn("%s(), can't going to suspend, ret(%d)\n", __func__, ret);
+	pr_warn("%s, can't going to suspend, ret(%d), start at [%lld.%lld]",
+		__func__, ret, (core1_start_us / USEC_PER_SEC), (core1_start_us % USEC_PER_SEC));
 	adsp_mbox_dump();
 	adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 	return ret;
