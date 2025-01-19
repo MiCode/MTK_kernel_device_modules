@@ -132,6 +132,9 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define RX_NOTIFY_BASE 0x40
 #define RX_SIZE_SCALE (1ULL << RX_SIZE_SHIFT)
 
+#define BT_AWAKE_CNT	50
+#define BT_AWAKE_DB_CNT	(BT_AWAKE_CNT/(2))
+
 #ifdef CONFIG_SERIAL_8250_DMA
 enum dma_rx_status {
 	DMA_RX_START = 0,
@@ -218,6 +221,8 @@ struct mtk8250_data {
 	void *wakeup_param;
 	unsigned int apdma_peri_cg;
 	void __iomem *apdma_peri_cg_addr;
+	unsigned int bt_awake_cnt;
+	int last_bt_awake_ret;
 };
 
 struct mtk8250_comp {
@@ -810,6 +815,25 @@ static void mtk_save_uart_reg(struct uart_8250_port *up, unsigned int *reg_buf)
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
 
+static void mtk8250_dump_uart_reg(const char *str)
+{
+	struct uart_8250_port *up= NULL;
+	unsigned int uart_reg_buf[LOG_BUF_SIZE];
+
+	up = serial8250_get_port(hub_uart_data->line);
+	if(up == NULL) {
+		pr_info("[%s]: up is null\n",__func__);
+		return;
+	}
+
+	mtk_save_uart_reg(up,uart_reg_buf);
+	pr_info("[%s][%s]: db0=0x%x,db1=0x%x,db2=0x%x,db3=0x%x,"
+		"db4=0x%x,db5=0x%x,db6=0x%x,db7=0x%x,db8=0x%x \n",
+		__func__, str, uart_reg_buf[11], uart_reg_buf[12], uart_reg_buf[13],
+		uart_reg_buf[14], uart_reg_buf[15], uart_reg_buf[16],uart_reg_buf[17],
+		uart_reg_buf[18], uart_reg_buf[19]);
+}
+
 static void mtk8250_debug_regs_dump(struct uart_8250_port *up, const char *str)
 {
 	if (str == NULL)
@@ -1188,10 +1212,32 @@ EXPORT_SYMBOL(mtk8250_uart_hub_get_host_bt_awake_sta);
 
 int mtk8250_uart_hub_get_cmm_bt_awake_sta(void)
 {
-	if (uarthub_drv_cbs.get_cmm_bt_awake_sta)
-		return uarthub_drv_cbs.get_cmm_bt_awake_sta();
-	else
-		return -1;
+	int ret = 0;
+
+	if (!uarthub_drv_cbs.get_cmm_bt_awake_sta) {
+		ret = -1;
+		goto exit;
+	}
+
+	ret = uarthub_drv_cbs.get_cmm_bt_awake_sta();
+	if (ret == 1)
+		goto exit;
+
+	/*if the last return was successful, reset the bt_awake_cnt*/
+	if (hub_uart_data->last_bt_awake_ret == 1)
+		hub_uart_data->bt_awake_cnt = 0;
+
+	hub_uart_data->bt_awake_cnt++;
+
+	if (hub_uart_data->bt_awake_cnt % BT_AWAKE_DB_CNT == 0) {
+		mtk8250_dump_uart_reg("bt_awake_debug");
+		if (hub_uart_data->bt_awake_cnt >= BT_AWAKE_CNT)
+			hub_uart_data->bt_awake_cnt = 0;
+	}
+
+exit:
+	hub_uart_data->last_bt_awake_ret = ret;
+	return ret;
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_get_cmm_bt_awake_sta);
 

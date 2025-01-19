@@ -84,6 +84,7 @@
 
 #define UART_RECORD_COUNT	10
 #define MAX_POLLING_CNT		5000
+#define MAX_FLUSH_CNT		25000
 #define UART_RECORD_MAXLEN	4096
 #define UART_RX_DUMP_MAXLEN	4000
 #define UART_TX_DUMP_MAXLEN	1000
@@ -108,6 +109,10 @@
 #define DMA_U_STATE		-6
 #define DMA_D_STATE		-7
 #define DMA_RX_ENABLE_FAIL	-8
+#define DMA_FLUSH_FAIL		-9
+
+/* dma debug buf size*/
+#define LOG_BUG_SIZE		20
 
 struct uart_info {
 	unsigned int wpt_reg;
@@ -182,6 +187,7 @@ struct mtk_chan {
 	unsigned int start_valid_size;
 	unsigned int cur_rec_idx;
 	struct uart_info rec_info[UART_RECORD_COUNT];
+	unsigned int dma_debug_buf[LOG_BUG_SIZE];
 };
 
 static unsigned long long num;
@@ -269,6 +275,22 @@ void mtk_save_uart_apdma_reg(struct dma_chan *chan, unsigned int *reg_buf)
 	reg_buf[12] = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
 }
 EXPORT_SYMBOL(mtk_save_uart_apdma_reg);
+
+static void mtk_print_apdma_reg(const char *str, unsigned int *dma_reg_buf)
+{
+	if (str == NULL || dma_reg_buf == NULL) {
+		pr_info("[%s]: str or dma_reg_bug is NULL\n", __func__);
+		return;
+	}
+
+	pr_info("[%s][%s]int_flag=0x%x int_en=0x%x en=0x%x flush=0x%x "
+		"addr=0x%x len=0x%x thre=0x%x wpt=0x%x rpt=0x%x "
+		"int_buf_size=0x%x valid_size=0x%x left_size=0x%x debug_sta=0x%x\n",
+		__func__,str,dma_reg_buf[0],dma_reg_buf[1],dma_reg_buf[2],dma_reg_buf[3],
+		dma_reg_buf[4],dma_reg_buf[5],dma_reg_buf[6],dma_reg_buf[7],dma_reg_buf[8],
+		dma_reg_buf[9],dma_reg_buf[10],dma_reg_buf[11],dma_reg_buf[12]);
+}
+
 
 static unsigned int mtk_uart_apdma_get_peri_axi_status(void)
 {
@@ -710,10 +732,13 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	struct mtk_uart_apdmadev *mtkd =
 				to_mtk_uart_apdma_dev(c->vc.chan.device);
 	struct mtk_uart_apdma_desc *d = c->desc;
+	struct dma_chan *chan = NULL;
 	unsigned int wpt, vff_sz, left_data, rst_status;
 	unsigned int idx = 0;
 	int poll_cnt = MAX_POLLING_CNT;
 	int ret = 0;
+	unsigned int dma_reg_buf[LOG_BUG_SIZE];
+	unsigned int flush_flag = 0, poll_flush_cnt = MAX_FLUSH_CNT;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (c->is_hub_port) {
@@ -723,6 +748,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 		}
 	}
 #endif
+	chan = &c->vc.chan;
 	vff_sz = c->cfg.dst_port_window_size;
 
 	left_data = mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE);
@@ -828,8 +854,21 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 
 	/* HW auto set to 0 when left size >= threshold */
 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_TX_INT_EN_B);
-	if (!mtk_uart_apdma_read(c, VFF_FLUSH))
+	if (!mtk_uart_apdma_read(c, VFF_FLUSH)) {
 		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
+		flush_flag = mtk_uart_apdma_read(c, VFF_FLUSH);
+
+		while ((flush_flag != 0) && (poll_flush_cnt > 0)) {
+			udelay(4);
+			flush_flag = mtk_uart_apdma_read(c, VFF_FLUSH);
+			poll_flush_cnt--;
+		}
+		if (poll_flush_cnt <= 0) {
+			mtk_save_uart_apdma_reg(chan,dma_reg_buf);
+			c->chan_debug_value = DMA_FLUSH_FAIL;
+			memcpy(c->dma_debug_buf,dma_reg_buf,sizeof(dma_reg_buf));
+		}
+	}
 }
 
 static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
@@ -1323,8 +1362,11 @@ static void mtk_uart_apdma_issue_pending(struct dma_chan *chan)
 	}
 	debug_value = c->chan_debug_value;
 	spin_unlock_irqrestore(&c->vc.lock, flags);
-	if(debug_value)
+	if (debug_value) {
 		pr_info("[WARN]%s, debug_value[%d]\n", __func__, debug_value);
+		if (debug_value == DMA_FLUSH_FAIL && c->dir == DMA_MEM_TO_DEV)
+			mtk_print_apdma_reg("DMA_FLUSH_FAIL",c->dma_debug_buf);
+	}
 }
 
 static int mtk_uart_apdma_slave_config(struct dma_chan *chan,
