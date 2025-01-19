@@ -136,17 +136,21 @@ static int mmdvfs_debug_v5_set_vote_step(const char *val, const struct kernel_pa
 
 static int mmdvfs_debug_freerun(const char *val, const struct kernel_param *kp)
 {
-	int idx = 0, i, ret;
+	uint8_t idx = 0;
+	int i, ret = 0;
 
-	ret = sscanf(val, "%d", &idx);
+	ret = sscanf(val, "%hhu", &idx);
 	if (ret != 1) {
-		MMDVFS_DBG("failed:%d idx:%d", ret, idx);
+		MMDVFS_DBG("failed:%d idx:%hhu", ret, idx);
 		return -EINVAL;
 	}
 
-	for (i = 0; i < rl_user_count; i++)
-		if (rl_user && rl_user[i].rc == idx)
-			ret = clk_set_rate(rl_user[i].clk, 0);
+	if (rl_user)
+		for (i = 0; i < rl_user_count; i++)
+			if (rl_user[i].rc == idx) {
+				rl_user[i].vote_opp = OPP_NAG;
+				ret = clk_set_rate(rl_user[i].clk, mmdvfs_user_get_freq_by_opp(rl_user[i].id, OPP_NAG));
+			}
 
 	return ret;
 }
@@ -552,8 +556,10 @@ static int mmdvfs_debug_user_probe(struct platform_device *pdev)
 
 	mmdvfs_debug_parse_user(dev, &rl_user, &rl_user_count);
 
-	for (i = 0; i < rl_user_count; i++)
+	for (i = 0; i < rl_user_count; i++) {
 		ret = clk_set_rate(rl_user[i].clk, mmdvfs_user_get_freq_by_opp(rl_user[i].id, 0));
+		rl_user[i].vote_opp = 0;
+	}
 
 	return ret;
 }
