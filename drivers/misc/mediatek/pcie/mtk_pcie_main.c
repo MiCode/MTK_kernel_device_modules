@@ -104,6 +104,16 @@ static struct match_table test_table[] = {
 	.max_speed = {4, 4, 4},
 	.max_port = 3,
 	},
+	/* MT6993 PCIe info */
+	{
+	.compatible = "mediatek,mt6993-pcie-phy",
+	.phy_base = {0x16900000, 0x16930000},
+	.mac_base = {0x16910000, 0x16940000},
+	.test_lane = {1, 2},
+	.max_lane = {1, 2},
+	.max_speed = {4, 4},
+	.max_port = 2,
+	},
 };
 
 static struct mtk_pcie_info *pcie_smt;
