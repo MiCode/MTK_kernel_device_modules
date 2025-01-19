@@ -30,9 +30,7 @@ mgk_module_ext_outs = [
     "net/wireless/cfg80211.ko",
     "net/mac80211/mac80211.ko",
     "drivers/soc/mediatek/mtk-socinfo.ko",
-    "block/bfq.ko",
     "drivers/misc/rpmb-core.ko",
-    "drivers/mmc/core/mmc_block.ko",
 ]
 
 mgk_module_eng_outs = mgk_module_ext_outs + [
