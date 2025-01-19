@@ -2601,7 +2601,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	}
 #endif /*ENABLE_ASYNC_RATIO*/
 
-	trace_GPU_DVFS__Policy__Frame_based__Frequency(gpu_freq_tar, gpu_freq_floor, ui32NewFreqID);
+	trace_GPU_DVFS__Policy__Frame_based__Frequency(gpu_freq_tar, gpu_freq_floor, ui32NewFreqID, 0);
 
 	if (g_async_ratio_support)
 		ged_dvfs_gpu_freq_dual_commit((unsigned long)ui32NewFreqID,

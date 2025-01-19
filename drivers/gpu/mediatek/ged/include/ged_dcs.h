@@ -69,6 +69,11 @@ unsigned int dcs_get_adjust_ratio_th(void);
 unsigned int dcs_get_adjust_fr_cnt(void);
 unsigned int dcs_get_adjust_non_dcs_th(void);
 
+// major min
+unsigned int dcs_get_major_min(void);
+void dcs_set_major_min(unsigned int num, unsigned int option);
+ssize_t get_get_major_min_dump(char *buf, int sz, ssize_t pos);
+
 //gov
 unsigned int dcs_get_gov_support(void);
 unsigned int dcs_get_gov_enable(void);

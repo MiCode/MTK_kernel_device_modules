@@ -44,6 +44,10 @@ static unsigned int g_adjust_dcs_ratio_th; //freq max/min threshold (ex:20(2 tim
 static unsigned int g_adjust_dcs_fr_cnt;   // store frame cnt
 static unsigned int g_adjust_dcs_non_dcs_th; // none dcs threshold (ex: 20(20%))
 
+// major_min_core
+unsigned int g_major_min_core;
+unsigned int g_major_option;
+
 // gov core mask
 int g_has_gov_support;
 int g_gov_enable;
@@ -140,6 +144,7 @@ GED_ERROR ged_dcs_init_platform_info(void)
 
 	g_adjust_dcs_support = 1;
 	dcs_init_dts_with_eb();
+	dcs_set_major_min(6, 0);
 
 	return ret;
 }
@@ -537,6 +542,38 @@ unsigned int dcs_get_adjust_non_dcs_th(void)
 	return g_adjust_dcs_non_dcs_th;
 }
 EXPORT_SYMBOL(dcs_get_adjust_non_dcs_th);
+
+unsigned int dcs_get_major_min(void) {
+	return g_major_min_core;
+}
+
+void dcs_set_major_min(unsigned int num, unsigned int option){
+	struct fdvfs_ipi_data ipi_data = {0};
+	int ret = 0;
+
+	if (num <= g_max_core_num) {
+		g_major_min_core = num;
+		g_major_option = option;
+
+		ipi_data.u.set_para.arg[0] = GPUFDVFS_IPI_SET_MAJOR_MIN_CORE;
+		ipi_data.u.set_para.arg[1] = num;
+		ipi_data.u.set_para.arg[2] = option;
+		ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
+
+		if (ret)
+			GED_LOGD("%s err:%d\n", __func__, ret);
+	}
+}
+
+ssize_t get_get_major_min_dump(char *buf, int sz, ssize_t pos)
+{
+	int length;
+
+	length = scnprintf(buf + pos, sz - pos, "min:%u opt:%u", g_major_min_core, g_major_option);
+	pos += length;
+
+	return pos;
+}
 
 unsigned int dcs_get_gov_support(void) {
 	return g_has_gov_support;

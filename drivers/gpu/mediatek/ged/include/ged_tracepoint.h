@@ -435,24 +435,26 @@ TRACE_EVENT(GPU_DVFS__Policy__Common__Sync_Api,
 /* frame-based policy tracepoints */
 TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Frequency,
 
-	TP_PROTO(int target, int floor, int target_opp),
+	TP_PROTO(int target, int floor, int target_opp, int target_restrict),
 
-	TP_ARGS(target, floor, target_opp),
+	TP_ARGS(target, floor, target_opp, target_restrict),
 
 	TP_STRUCT__entry(
 		__field(int, target)
 		__field(int, floor)
 		__field(int, target_opp)
+		__field(int, target_restrict)
 	),
 
 	TP_fast_assign(
 		__entry->target = target;
 		__entry->floor = floor;
 		__entry->target_opp = target_opp;
+		__entry->target_restrict = target_restrict;
 	),
 
-	TP_printk("target=%d, floor=%d, target_opp=%d",
-		__entry->target, __entry->floor, __entry->target_opp)
+	TP_printk("target=%d, floor=%d, target_opp=%d, target_restrict=%d",
+		__entry->target, __entry->floor, __entry->target_opp, __entry->target_restrict)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__Frame_based__Workload,
@@ -916,6 +918,26 @@ TRACE_EVENT(GPU_DVFS__Policy__DCS__Detail,
 
 	TP_printk("core_mask=%u", __entry->core_mask)
 );
+
+TRACE_EVENT(GPU_DVFS__Policy__DCS_CONFIG,
+
+	TP_PROTO(unsigned int config, unsigned int major_core),
+
+	TP_ARGS(config, major_core),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, config)
+		__field(unsigned int, major_core)
+	),
+
+	TP_fast_assign(
+		__entry->config = config;
+		__entry->major_core = major_core;
+	),
+
+	TP_printk("config=%u, major_core=%u", __entry->config, __entry->major_core)
+);
+
 
 TRACE_EVENT(GPU_DVFS__EB_Frequency,
 	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top,

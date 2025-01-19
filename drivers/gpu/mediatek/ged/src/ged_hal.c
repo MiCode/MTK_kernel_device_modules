@@ -1442,6 +1442,49 @@ static ssize_t dcs_mode_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(dcs_mode);
 
+static ssize_t dcs_major_min_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	char debug_buf[GED_SYSFS_MAX_BUFF_SIZE];
+
+	get_get_major_min_dump(debug_buf, sizeof(debug_buf), 0);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", debug_buf);
+}
+
+static ssize_t dcs_major_min_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		int ret;
+		int major, option;
+
+		ret = sscanf(buf, "%d %d", &major, &option);
+		if (ret == 2) {
+			if (major < 0 || option < 0)
+				return count;
+		} else {
+			ret = sscanf(buf, "%d", &major);
+			if (ret == 1) {
+				if (major < 0)
+					return count;
+				option = 0;
+			} else
+				return count;
+		}
+		dcs_set_major_min(major, option);
+
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(dcs_major_min);
+
 static ssize_t dcs_stress_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -2757,6 +2800,12 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_major_min);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create dcs_mode entry!\n");
+		goto ERROR;
+	}
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_stress);
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create dcs_stress entry!\n");
@@ -3030,6 +3079,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_default_fps_margin_support);
 #ifdef GED_DCS_POLICY
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_major_min);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_support);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_fr_cnt);

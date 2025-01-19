@@ -380,6 +380,11 @@ void ged_eb_dvfs_trace_dump(void)
 		}
 	}
 
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[DCS_MAJOR_MIN].addr);
+		trace_GPU_DVFS__Policy__DCS_CONFIG(tmp_multi.twoVar.var1, tmp_multi.twoVar.var2);
+	}
+
 	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT)
 		eb_timeout_value = lb_timeout;
 	else if (eb_policy_state == GED_DVFS_FRAME_BASE_COMMIT)
@@ -452,7 +457,8 @@ void ged_eb_dvfs_frame_done_dump(void)
 	trace_GPU_DVFS__Policy__Frame_based__Frequency(
 		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr),
 		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_FREQ_FLOOR].addr),
-		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr));
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ_RESTRICT].addr));
 
 	trace_GPU_DVFS__Policy__Frame_based__Workload(
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_BUSY_CYCLE_CUR].addr),

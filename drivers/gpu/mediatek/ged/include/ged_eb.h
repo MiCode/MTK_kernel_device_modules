@@ -694,6 +694,7 @@ enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_SET_GOV_ENABLE = 3,
 	GPUFDVFS_IPI_SET_GPU_FPS_ENABLE = 4,
 	GPUFDVFS_IPI_SET_USE_DEFAULT_MAGIN_ENABLE = 5,
+	GPUFDVFS_IPI_SET_MAJOR_MIN_CORE = 6,
 	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
 };
 
@@ -1021,6 +1022,7 @@ typedef struct {
  GEN("workload_pipe", GPU_WORKLOAD_PIPE, 1, "workload_pipe") \
  GEN("workload_real", GPU_WORKLOAD_REAL, 1, "workload_real") \
  GEN("target_freq", GPU_TARGET_FREQ, 1, "target_freq") \
+ GEN("target_freq_restrict", GPU_TARGET_FREQ_RESTRICT, 1, "target_freq_restrict") \
  GEN("target_opp", GPU_TARGET_OPP, 1, "target_opp") \
  GEN("fb_margin", GPU_FB_MARGIN, 1, "fb_margin") \
  GEN("fb_margin_param", GPU_FB_MARGIN_PARAM, 2, "fb_margin_param") \
@@ -1030,6 +1032,7 @@ typedef struct {
  GEN("t_gpu_target_us", GPU_T_TARGET_US, 1, "t_gpu_target_us") \
  GEN("dcs_gov_core_num", DCS_GOV_CORE_NUM, 1, "dcs_gov_core_num") \
  GEN("dcs_gov_core_mask", DCS_GOV_CORE_MASK, 1, "dcs_gov_core_mask") \
+ GEN("major_min_core|major_option", DCS_MAJOR_MIN, 2, "major_min_core|major_option") \
  GEN("g_lowpwr_mode", GPU_LOWPWR_ENABLE, 1, "g_lowpwr_mode") \
  GEN("silence", GPU_LOWPWR_TRACE, 1, "silence") \
  GEN("g_debug", GPU_DEBUG, 1, "g_debug") \
