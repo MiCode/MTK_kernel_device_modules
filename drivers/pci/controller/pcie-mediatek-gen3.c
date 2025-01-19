@@ -641,8 +641,13 @@ static void mtk_pcie_save_restore_cfg(struct mtk_pcie_port *port, bool save)
 	struct pci_dev *pdev;
 	unsigned long flags;
 
-	if (!port->pcidev)
+	if (!port->pcidev) {
 		port->pcidev = pci_get_slot(host->bus, 0);
+		if (!port->pcidev) {
+			dev_info(port->dev, "port->pcidev is NULL, pci_get_slot failed!\n");
+			return;
+		}
+	}
 
 	pdev = port->pcidev;
 	spin_lock_irqsave(&port->cfg_lock, flags);
@@ -921,9 +926,13 @@ static int mtk_pcie_set_affinity(struct irq_data *data,
 {
 	struct mtk_pcie_port *port = data->domain->host_data;
 	struct irq_data *port_data = irq_get_irq_data(port->irq);
-	struct irq_chip *port_chip = irq_data_get_irq_chip(port_data);
+	struct irq_chip *port_chip;
 	int ret;
 
+	if (!port_data)
+		return -EINVAL;
+
+	port_chip = irq_data_get_irq_chip(port_data);
 	if (!port_chip || !port_chip->irq_set_affinity)
 		return -EINVAL;
 
@@ -2564,7 +2573,7 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		mtk_pcie_irq_save(port);
 		mtk_pcie_power_down(port);
 
-		if (port->dev->power.runtime_status && port->rpm) {
+		if ((port->dev->power.runtime_status != RPM_ACTIVE) && port->rpm) {
 			pdev->current_state = PCI_D3cold;
 			err = mtk_pcie_request_eint_irq(port);
 			if (err)
@@ -2615,7 +2624,7 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 			return 0;
 		}
 
-		if (port->dev->power.runtime_status && port->rpm) {
+		if ((port->dev->power.runtime_status != RPM_ACTIVE) && port->rpm) {
 			pdev->current_state = PCI_D0;
 			mtk_pcie_free_eint_irq(port);
 		}
