@@ -9292,23 +9292,6 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	if (priv->data->respective_ostdl)
 		mtk_disp_set_module_hrt(mtk_crtc, 0, NULL, PMQOS_SET_HRT_BW_DELAY_POST);
 
-	cur_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL);
-
-	if (cur_hrt_bw != NO_PENDING_HRT &&
-		cur_hrt_bw <= mtk_crtc->qos_ctx->last_hrt_req) {
-
-		DDPINFO("CRTC%u cur:%u last:%u, release HRT to last_hrt_req:%u\n",
-			crtc_idx, cur_hrt_bw, mtk_crtc->qos_ctx->last_hrt_req,
-			mtk_crtc->qos_ctx->last_hrt_req);
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_MMQOS_SUPPORT))
-			mtk_disp_set_hrt_bw(mtk_crtc,
-					mtk_crtc->qos_ctx->last_hrt_req);
-
-		*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL) =
-				NO_PENDING_HRT;
-	}
-
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		for (i = 0; i < BW_CHANNEL_NR; i++) {
 			cur_chan_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(
@@ -9360,6 +9343,24 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 			}
 		}
 	}
+
+	cur_hrt_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL);
+
+	if (cur_hrt_bw != NO_PENDING_HRT &&
+		cur_hrt_bw <= mtk_crtc->qos_ctx->last_hrt_req) {
+
+		DDPINFO("CRTC%u cur:%u last:%u, release HRT to last_hrt_req:%u\n",
+			crtc_idx, cur_hrt_bw, mtk_crtc->qos_ctx->last_hrt_req,
+			mtk_crtc->qos_ctx->last_hrt_req);
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			mtk_disp_set_hrt_bw(mtk_crtc,
+					mtk_crtc->qos_ctx->last_hrt_req);
+
+		*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL) =
+				NO_PENDING_HRT;
+	}
+
 }
 
 static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
