@@ -74,6 +74,7 @@ struct lcm {
 	const struct panel_desc *desc;
 
 	struct drm_display_mode disp_mode;
+	struct mtk_panel_params ext_params;
 	u32 pll;
 	u32 lppf;
 };
@@ -89,26 +90,11 @@ static const struct panel_desc serdes_panel_desc = {
 	.mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
 				MIPI_DSI_MODE_LPM,
 };
-static struct mtk_panel_params ext_params = {
-	.pll_clk = 478,
-};
 
 static inline struct lcm *panel_to_lcm(struct drm_panel *panel)
 {
 	return container_of(panel, struct lcm, panel);
 }
-
-static struct drm_display_mode default_mode = {
-	.clock = DEFAULT_CLOCK,
-	.hdisplay = DEFAULT_WIDTH,
-	.hsync_start = DEFAULT_WIDTH + DEFAULT_HFP,
-	.hsync_end = DEFAULT_WIDTH + DEFAULT_HFP + DEFAULT_HSA,
-	.htotal = DEFAULT_WIDTH + DEFAULT_HFP +DEFAULT_HSA + DEFAULT_HBP,
-	.vdisplay = DEFAULT_HEIGHT,
-	.vsync_start = DEFAULT_HEIGHT + DEFAULT_VFP,
-	.vsync_end = DEFAULT_HEIGHT + DEFAULT_VFP + DEFAULT_VSA,
-	.vtotal = DEFAULT_HEIGHT + DEFAULT_VFP + DEFAULT_VSA + DEFAULT_VBP,
-};
 
 static void get_timing(struct lcm *ctx)
 {
@@ -152,30 +138,20 @@ static void get_timing(struct lcm *ctx)
 	ctx->disp_mode.width_mm = timing.physcial_w;
 	ctx->disp_mode.height_mm = timing.physcial_h;
 	if (timing.crop_width[0] != 0 && timing.crop_width[1] != 0) {
-		ext_params.crop_width[0] = timing.crop_width[0];
-		ext_params.crop_width[1] = timing.crop_width[1];
-		ext_params.crop_height[0] = timing.crop_height[0];
-		ext_params.crop_height[1] = timing.crop_height[1];
-		ext_params.physical_width = timing.crop_width[0] + timing.crop_width[1];
-		ext_params.physical_height = timing.crop_height[0];
+		ctx->ext_params.crop_width[0] = timing.crop_width[0];
+		ctx->ext_params.crop_width[1] = timing.crop_width[1];
+		ctx->ext_params.crop_height[0] = timing.crop_height[0];
+		ctx->ext_params.crop_height[1] = timing.crop_height[1];
+		ctx->ext_params.physical_width = timing.crop_width[0] + timing.crop_width[1];
+		ctx->ext_params.physical_height = timing.crop_height[0];
 	} else {
-		ext_params.physical_width = ctx->disp_mode.hdisplay;
-		ext_params.physical_height = ctx->disp_mode.vdisplay;
-		ext_params.crop_width[0] = 0;
-		ext_params.crop_width[1] = 0;
-		ext_params.crop_height[0] = 0;
-		ext_params.crop_height[1] = 0;
+		ctx->ext_params.physical_width = ctx->disp_mode.hdisplay;
+		ctx->ext_params.physical_height = ctx->disp_mode.vdisplay;
+		ctx->ext_params.crop_width[0] = 0;
+		ctx->ext_params.crop_width[1] = 0;
+		ctx->ext_params.crop_height[0] = 0;
+		ctx->ext_params.crop_height[1] = 0;
 	}
-
-	default_mode.hdisplay = ctx->disp_mode.hdisplay;
-	default_mode.vdisplay = ctx->disp_mode.vdisplay;
-	default_mode.hsync_start = ctx->disp_mode.hsync_start;
-	default_mode.hsync_end = ctx->disp_mode.hsync_end;
-	default_mode.htotal = ctx->disp_mode.htotal;
-	default_mode.vsync_start = ctx->disp_mode.vsync_start;
-	default_mode.vsync_end = ctx->disp_mode.vsync_end;
-	default_mode.vtotal = ctx->disp_mode.vtotal;
-	default_mode.clock = ctx->disp_mode.clock;
 
 	pr_info("%s -\n", __func__);
 }
@@ -291,14 +267,24 @@ static int lcm_get_modes(struct drm_panel *panel,
 	struct drm_connector *connector)
 {
 	struct drm_display_mode *mode;
+	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s +\n", __func__);
-	mode = drm_mode_duplicate(connector->dev, &default_mode);
+	pr_info("%s:%s +\n", __func__,ctx->dev->of_node->name);
+	pr_info("mode:[%dx%d][%d/%d/%d][%d/%d/%d]\n",
+		ctx->disp_mode.hdisplay,
+		ctx->disp_mode.vdisplay,
+		ctx->disp_mode.hsync_start,
+		ctx->disp_mode.hsync_end,
+		ctx->disp_mode.htotal,
+		ctx->disp_mode.vsync_start,
+		ctx->disp_mode.vsync_end,
+		ctx->disp_mode.vtotal);
+	mode = drm_mode_duplicate(connector->dev, &ctx->disp_mode);
 	if (!mode) {
 		pr_info("failed to add mode %ux%ux@%u\n",
-			  default_mode.hdisplay,
-			  default_mode.vdisplay,
-			  drm_mode_vrefresh(&default_mode));
+			  ctx->disp_mode.hdisplay,
+			  ctx->disp_mode.vdisplay,
+			  drm_mode_vrefresh(&ctx->disp_mode));
 		return -ENOMEM;
 	}
 
@@ -307,8 +293,8 @@ static int lcm_get_modes(struct drm_panel *panel,
 	drm_mode_set_name(mode);
 	drm_mode_probed_add(connector, mode);
 
-	connector->display_info.width_mm = default_mode.width_mm;
-	connector->display_info.height_mm = default_mode.height_mm;
+	connector->display_info.width_mm = ctx->disp_mode.width_mm;
+	connector->display_info.height_mm = ctx->disp_mode.height_mm;
 
 	pr_info("%s -\n", __func__);
 
@@ -391,18 +377,18 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	}
 
 #if defined(CONFIG_MTK_PANEL_EXT)
-	ext_params.pll_clk = ctx->pll;
-	ext_params.vdo_per_frame_lp_enable = ctx->lppf;
-	pr_info("pll_clk=%d, lppf=%d\n", ext_params.pll_clk, ext_params.vdo_per_frame_lp_enable);
-	if (ext_params.crop_width[0] && ext_params.crop_width[1]) {
-		pr_info("super frame![%d*%d]+[%d*%d]=[%d*%d]\n", ext_params.crop_width[0],
-			ext_params.crop_height[1],
-			ext_params.crop_width[0],
-			ext_params.crop_height[1],
-			ext_params.physical_width,
-			ext_params.physical_height);
+	ctx->ext_params.pll_clk = ctx->pll;
+	ctx->ext_params.vdo_per_frame_lp_enable = ctx->lppf;
+	pr_info("pll_clk=%d, lppf=%d\n", ctx->ext_params.pll_clk, ctx->ext_params.vdo_per_frame_lp_enable);
+	if (ctx->ext_params.crop_width[0] && ctx->ext_params.crop_width[1]) {
+		pr_info("super frame![%d*%d]+[%d*%d]=[%d*%d]\n", ctx->ext_params.crop_width[0],
+			ctx->ext_params.crop_height[1],
+			ctx->ext_params.crop_width[0],
+			ctx->ext_params.crop_height[1],
+			ctx->ext_params.physical_width,
+			ctx->ext_params.physical_height);
 	}
-	ret = mtk_panel_ext_create(dev, &ext_params, &ext_funcs, &ctx->panel);
+	ret = mtk_panel_ext_create(dev, &ctx->ext_params, &ext_funcs, &ctx->panel);
 	if (ret < 0) {
 		pr_info("%s error!\n", __func__);
 		return ret;
