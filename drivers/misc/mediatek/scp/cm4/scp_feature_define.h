@@ -16,7 +16,11 @@
 #define SCP_LOGGER_ENABLE		(0)
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781)
+#define SCP_DVFS_INIT_ENABLE		(0)
+#else
 #define SCP_DVFS_INIT_ENABLE		(1)
+#endif
 
 #define SCP_RESERVED_MEM		(1)
 /* scp rescovery feature option*/
