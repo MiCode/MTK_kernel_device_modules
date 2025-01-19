@@ -190,6 +190,7 @@ mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/char/rpmb:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/devfreq:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/edac/mediatek:makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:ddk_src".format(kernel_version),
@@ -266,6 +267,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/char/rpmb:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/devfreq:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/edac/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:ddk_kconfigs".format(kernel_version),
@@ -354,6 +356,7 @@ mgk_64_kleaf_device_modules = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:mediatek-cpufreq-hw".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/devfreq:mtk-dvfsrc-devfreq".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_heap_refill".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
     "//kernel_device_modules-{}/drivers/edac/mediatek:mtk_edac_slc".format(kernel_version),
@@ -655,7 +658,6 @@ mgk_64_device_modules = [
     #"drivers/clk/mediatek/clk-common-dummy.ko",
     "drivers/clk/mediatek/fhctl.ko",
     #"drivers/clocksource/timer-mediatek.ko",
-    "drivers/devfreq/mtk-dvfsrc-devfreq.ko",
     "drivers/dma-buf/heaps/mtk_heap_debug.ko",
     "drivers/dma-buf/heaps/mtk_sec_heap.ko",
     #"drivers/misc/mediatek/pkvm_smmu/pkvm_smmu.ko",
