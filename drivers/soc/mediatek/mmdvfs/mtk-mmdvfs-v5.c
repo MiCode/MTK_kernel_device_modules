@@ -41,10 +41,12 @@ static bool mmup_ena;
 static phys_addr_t mmdvfs_mmup_iova;
 static phys_addr_t mmdvfs_mmup_pa;
 static void *mmdvfs_mmup_va;
+uint32_t mmup_ipi_ack_data;
 
 static phys_addr_t mmdvfs_vcp_iova;
 static phys_addr_t mmdvfs_vcp_pa;
 static void *mmdvfs_vcp_va;
+uint32_t vcp_ipi_ack_data;
 
 static bool mmdvfs_mmup_sram;
 static void __iomem *mmdvfs_mmup_sram_va;
@@ -141,7 +143,7 @@ EXPORT_SYMBOL_GPL(mmdvfs_user_get_freq_by_opp);
 
 int mmdvfs_dump_dvfsrc_rg(void)
 {
-	if(mmdvfs_data->ops->dvfsrc_rg_dump)
+	if(mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->dvfsrc_rg_dump)
 		return mmdvfs_data->ops->dvfsrc_rg_dump();
 
 	MMDVFS_ERR("get dvfsrc_rg_dump ops failed");
@@ -152,7 +154,7 @@ EXPORT_SYMBOL_GPL(mmdvfs_dump_dvfsrc_rg);
 
 int mmdvfs_dump_dvfsrc_record(void)
 {
-	if(mmdvfs_data->ops->dvfsrc_record_dump)
+	if(mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->dvfsrc_record_dump)
 		return mmdvfs_data->ops->dvfsrc_record_dump();
 
 	MMDVFS_ERR("get dvfsrc_record_dump ops failed");
@@ -270,7 +272,6 @@ static int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *
 		(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova) >> 32, (u32)(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova)};
 	int gen, ret = 0, retry = 0;
 	static u8 times;
-	u32 val = 0;
 
 	while (!is_vcp_ready_ex(feature_id) || !mmdvfs_mmup_cb_ready) {
 		if (!mmdvfs_mmup_cb_ready && func == FUNC_MMDVFS_INIT)
@@ -283,9 +284,6 @@ static int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *
 	}
 
 	mutex_lock(&mmdvfs_mmup_ipi_mutex);
-	val = readl(MEM_IPI_SYNC_FUNC(vcp));
-	writel(0, MEM_IPI_SYNC_DATA(vcp));
-	writel(val | (1 << func), MEM_IPI_SYNC_FUNC(vcp));
 	gen = vcp_cmd_ex(feature_id, VCP_GET_GEN, "mmdvfs_task");
 
 	mutex_lock(&mmdvfs_mmup_cb_mutex);
@@ -300,48 +298,27 @@ static int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *
 	if (!vcp_ipi_dev)
 		goto ipi_lock_end;
 
-	ret = mtk_ipi_send(vcp_ipi_dev, vcp ? IPI_OUT_MMDVFS_VCP : IPI_OUT_MMDVFS_MMUP,
+	ret = mtk_ipi_send_compl(vcp_ipi_dev, vcp ? IPI_OUT_MMDVFS_VCP : IPI_OUT_MMDVFS_MMUP,
 		IPI_SEND_WAIT, &slot, PIN_OUT_SIZE_MMDVFS, IPI_TIMEOUT_MS);
-	if (ret != IPI_ACTION_DONE)
-		goto ipi_lock_end;
+	MMDVFS_DBG("mtk_ipi_send_compl ret:%d", ret);  // need to remove after done
 
-	retry = 0;
-	while (!(readl(MEM_IPI_SYNC_DATA(vcp)) & (1 << func))) {
-		//temp code, need remove
-		if (!retry)
-			break;
-
-		if (++retry > 1000000) {
-			ret = IPI_COMPL_TIMEOUT;
-			break;
-		}
-		if (!is_vcp_ready_ex(feature_id)) {
-			ret = -ETIMEDOUT;
-			break;
-		}
-		udelay(1);
-	}
-
-	if (!ret)
-		writel(val & ~readl(MEM_IPI_SYNC_DATA(vcp)), MEM_IPI_SYNC_FUNC(vcp));
-	else if (gen == vcp_cmd_ex(feature_id, VCP_GET_GEN, "mmdvfs_task")) {
+	if ((ret != IPI_ACTION_DONE) && (gen == vcp_cmd_ex(feature_id, VCP_GET_GEN, "mmdvfs_task"))) {
 		if (!times)
 			vcp_cmd_ex(feature_id, VCP_SET_HALT, "mmdvfs_task");
 		times += 1;
 	}
 
 ipi_lock_end:
-	val = readl(MEM_IPI_SYNC_FUNC(vcp));
 	mutex_unlock(&mmdvfs_mmup_ipi_mutex);
 
 ipi_send_end:
 	if (ret || (log_level & (1 << log_ipi))) {
 		MMDVFS_ERR(
-			"ret:%d retry:%d vcp:%d feature_id:%u ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%#x",
+			"ret:%d retry:%d vcp:%d feature_id:%u ready:%d cb_ready:%d slot:%#llx vcp_power:%d unfinish func:%d",
 			ret, retry, vcp, feature_id, is_vcp_ready_ex(feature_id), mmdvfs_mmup_cb_ready,
-			*(u64 *)&slot, vcp_power, val);
-		MMDVFS_ERR("sync_data:%#x ts_pm_suspend:%llu ts_pm_resume:%llu",
-			readl(MEM_IPI_SYNC_DATA(vcp)), pm_cb_tick[0], pm_cb_tick[1]);
+			*(u64 *)&slot, vcp_power, func);
+		MMDVFS_ERR("ts_pm_suspend:%llu ts_pm_resume:%llu",
+			pm_cb_tick[0], pm_cb_tick[1]);
 		MMDVFS_ERR("ts_mmup_suspend:%llu ts_mmup_resume:%llu ts_mmup_ready:%llu ts_mmup_stop:%llu",
 			mmup_cb_tick[VCP_EVENT_SUSPEND], mmup_cb_tick[VCP_EVENT_RESUME],
 			mmup_cb_tick[VCP_EVENT_READY], mmup_cb_tick[VCP_EVENT_STOP]);
@@ -355,11 +332,14 @@ static inline void mmdvfs_mmup_sram_init(void)
 	static bool sram_init;
 
 	if (unlikely(!sram_init) && mmdvfs_mmup_sram) {
-		mmdvfs_mmup_sram_va = vcp_get_sram_virt_ex() + readl(MEM_SRAM_OFFSET);
+		if(mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->get_mmup_sram_offset)
+			mmdvfs_mmup_sram_va = vcp_get_sram_virt_ex() + mmdvfs_data->ops->get_mmup_sram_offset();
 		sram_init = true;
 		MMDVFS_DBG("sram_init:%d virt:%#lx offset:%#x va:%#lx",
 			sram_init, (unsigned long)(void *)vcp_get_sram_virt_ex(),
-			readl(MEM_SRAM_OFFSET), (unsigned long)(void *)mmdvfs_mmup_sram_va);
+			mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->get_mmup_sram_offset ?
+				mmdvfs_data->ops->get_mmup_sram_offset() : 0,
+			(unsigned long)(void *)mmdvfs_mmup_sram_va);
 	}
 }
 
@@ -389,7 +369,6 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 	case VCP_EVENT_SUSPEND:
 		MMDVFS_DBG("VCP_EVENT_SUSPEND in");
 		mmup_cb_tick[VCP_EVENT_SUSPEND] = sched_clock();
-		mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_SUSPEND, 0, 0, NULL, false);
 		mutex_lock(&mmdvfs_mmup_cb_mutex);
 		mmdvfs_mmup_cb_ready = false;
 		mutex_unlock(&mmdvfs_mmup_cb_mutex);
@@ -402,14 +381,25 @@ static struct notifier_block mmdvfs_mmup_notifier = {
 	.notifier_call	= mmdvfs_mmup_notifier_callback,
 };
 
+static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
+{
+	switch (action) {
+	case VCP_EVENT_READY:
+		MMDVFS_DBG("VCP_EVENT_READY in");
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block mmdvfs_vcp_notifier = {
+	.notifier_call	= mmdvfs_vcp_notifier_callback,
+};
+
 static int mmdvfs_vcp_init(void)
 {
-	static struct mtk_ipi_device *vcp_ipi_dev;
+	static struct mtk_ipi_device *vcp_ipi_dev, *mmup_ipi_dev;
 	struct iommu_domain *domain;
-	int retry = 0;
-
-	mmup_ena = is_mmup_enable_ex();
-	MMDVFS_DBG("mmup_ena:%d", mmup_ena);
+	int retry = 0, ret = 0;
 
 	/*while (!mmdebug_is_init_done()) {
 		if (++retry > 100) {
@@ -419,8 +409,9 @@ static int mmdvfs_vcp_init(void)
 		ssleep(1);
 	}*/
 
+	//vcp
 	retry = 0;
-	while (!is_vcp_ready_ex(MMDVFS_HFRP_FEATURE_ID)) {
+	while (!is_vcp_ready_ex(MMDVFS_VCP_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
 			MMDVFS_ERR("VCP not ready");
 			return -ETIMEDOUT;
@@ -429,23 +420,13 @@ static int mmdvfs_vcp_init(void)
 	}
 
 	retry = 0;
-	while (!(vcp_ipi_dev = vcp_get_ipidev(MMDVFS_HFRP_FEATURE_ID))) {
+	while (!(vcp_ipi_dev = vcp_get_ipidev(MMDVFS_VCP_FEATURE_ID))) {
 		if (++retry > 100) {
 			MMDVFS_ERR("cannot get vcp ipidev");
 			return -ETIMEDOUT;
 		}
 		ssleep(1);
 	}
-
-	mmdvfs_mmup_iova = vcp_get_reserve_mem_phys_ex(MMDVFS_MMUP_MEM_ID);
-	if (smmu_v3_enabled())
-		domain = iommu_get_domain_for_dev(
-			mtk_smmu_get_shared_device(&vcp_ipi_dev->mrpdev->pdev->dev));
-	else
-		domain = iommu_get_domain_for_dev(&vcp_ipi_dev->mrpdev->pdev->dev);
-	if (domain)
-		mmdvfs_mmup_pa = iommu_iova_to_phys(domain, mmdvfs_mmup_iova);
-	mmdvfs_mmup_va = (void *)vcp_get_reserve_mem_virt_ex(MMDVFS_MMUP_MEM_ID);
 
 	mmdvfs_vcp_iova = vcp_get_reserve_mem_phys_ex(MMDVFS_VCP_MEM_ID);
 	if (smmu_v3_enabled())
@@ -457,11 +438,60 @@ static int mmdvfs_vcp_init(void)
 		mmdvfs_vcp_pa = iommu_iova_to_phys(domain, mmdvfs_vcp_iova);
 	mmdvfs_vcp_va = (void *)vcp_get_reserve_mem_virt_ex(MMDVFS_VCP_MEM_ID);
 
-	MMDVFS_DBG("mmup: iova:%pa pa:%pa va:%#lx vcp: iova:%pa pa:%pa va:%#lx",
-		&mmdvfs_mmup_iova, &mmdvfs_mmup_pa, (unsigned long)mmdvfs_mmup_va,
+	MMDVFS_DBG("vcp: iova:%pa pa:%pa va:%#lx",
 		&mmdvfs_vcp_iova, &mmdvfs_vcp_pa, (unsigned long)mmdvfs_vcp_va);
 
-	vcp_A_register_notify_ex(MMDVFS_HFRP_FEATURE_ID, &mmdvfs_mmup_notifier);
+	ret = mtk_ipi_register(vcp_ipi_dev, IPI_OUT_MMDVFS_VCP,
+		NULL, NULL, &vcp_ipi_ack_data);
+	if (ret)
+		MMDVFS_ERR("mtk_ipi_register failed:%d ipi_id:%d", ret, IPI_OUT_MMDVFS_VCP);
+
+
+	mmup_ena = is_mmup_enable_ex();
+	MMDVFS_DBG("mmup_ena:%d", mmup_ena);
+	if (mmup_ena) {
+		retry = 0;
+		while (!is_vcp_ready_ex(MMDVFS_MMUP_FEATURE_ID)) {
+			if (++retry > VCP_SYNC_TIMEOUT_MS) {
+				MMDVFS_ERR("MMUP not ready");
+				return -ETIMEDOUT;
+			}
+			mdelay(1);
+		}
+
+		retry = 0;
+		while (!(mmup_ipi_dev = vcp_get_ipidev(MMDVFS_MMUP_FEATURE_ID))) {
+			if (++retry > 100) {
+				MMDVFS_ERR("cannot get mmup ipidev");
+				return -ETIMEDOUT;
+			}
+			ssleep(1);
+		}
+
+		mmdvfs_mmup_iova = vcp_get_reserve_mem_phys_ex(MMDVFS_MMUP_MEM_ID);
+		if (smmu_v3_enabled())
+			domain = iommu_get_domain_for_dev(
+				mtk_smmu_get_shared_device(&mmup_ipi_dev->mrpdev->pdev->dev));
+		else
+			domain = iommu_get_domain_for_dev(&mmup_ipi_dev->mrpdev->pdev->dev);
+		if (domain)
+			mmdvfs_mmup_pa = iommu_iova_to_phys(domain, mmdvfs_mmup_iova);
+		mmdvfs_mmup_va = (void *)vcp_get_reserve_mem_virt_ex(MMDVFS_MMUP_MEM_ID);
+
+		MMDVFS_DBG("mmup: iova:%pa pa:%pa va:%#lx",
+			&mmdvfs_mmup_iova, &mmdvfs_mmup_pa, (unsigned long)mmdvfs_mmup_va);
+
+		ret = mtk_ipi_register(mmup_ipi_dev, IPI_OUT_MMDVFS_MMUP,
+			NULL, NULL, &mmup_ipi_ack_data);
+		if (ret)
+			MMDVFS_ERR("mtk_ipi_register failed:%d ipi_id:%d", ret, IPI_OUT_MMDVFS_MMUP);
+	}
+
+	if (mmup_ena) {
+		vcp_A_register_notify_ex(MMDVFS_MMUP_FEATURE_ID, &mmdvfs_mmup_notifier);
+		vcp_A_register_notify_ex(MMDVFS_VCP_FEATURE_ID, &mmdvfs_vcp_notifier);
+	} else
+		vcp_A_register_notify_ex(MMDVFS_VCP_FEATURE_ID, &mmdvfs_mmup_notifier);
 
 	return 0;
 }
@@ -480,7 +510,7 @@ static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long 
 	level = (i == mmdvfs_data->rc[mux->rc].level_num) ? (i - 1) : i;
 
 	mutex_lock(&mux->lock);
-	if(mmdvfs_data->ops->dfs_vote_by_xpu)
+	if(mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->dfs_vote_by_xpu)
 		ret = mmdvfs_data->ops->dfs_vote_by_xpu(user->id, level);
 	mutex_unlock(&mux->lock);
 

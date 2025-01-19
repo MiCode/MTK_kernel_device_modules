@@ -74,6 +74,7 @@ struct mmdvfs_ops {
 	int (*dfs_vote_by_xpu)(const u8 user_id, const u8 level);
 	int (*dvfsrc_rg_dump)(void);
 	int (*dvfsrc_record_dump)(void);
+	u32 (*get_mmup_sram_offset)(void);
 };
 
 struct mmdvfs_data {
