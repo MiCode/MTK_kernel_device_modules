@@ -6521,9 +6521,9 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		DDPINFO("no plane to update, set default path\n");
 		mtk_crtc->last_blender = mtk_crtc->first_blender;
 	}
-
-	DDPINFO("%s, mtk_crtc->last_blender %s\n", __func__,
-		mtk_dump_comp_str_id(mtk_crtc->last_blender->id));
+	if (mtk_crtc->last_blender)
+		DDPINFO("%s, mtk_crtc->last_blender %s\n", __func__,
+			mtk_dump_comp_str_id(mtk_crtc->last_blender->id));
 }
 unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc)
 {

@@ -724,8 +724,9 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 				mtk_crtc->last_blender =
 					priv->ddp_comp[mtk_plane_state->comp_state.blender_comp_id];
 			}
-			DDPINFO("%s, mtk_crtc->last_blender %s\n", __func__,
-				mtk_dump_comp_str_id(mtk_crtc->last_blender->id));
+			if (mtk_crtc->last_blender)
+				DDPINFO("%s, mtk_crtc->last_blender %s\n", __func__,
+					mtk_dump_comp_str_id(mtk_crtc->last_blender->id));
 		}
 }
 
