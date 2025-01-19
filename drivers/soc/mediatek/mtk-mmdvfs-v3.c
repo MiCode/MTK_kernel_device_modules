@@ -1135,7 +1135,7 @@ static int mtk_mmdvfs_v3_set_force_step_ipi(const u16 pwr_idx, const s16 opp)
 	}
 
 	if (mmdvfs_mux_version)
-		return mmdvfs_force_step_by_vcp_ipi(pwr_idx, opp);
+		return mmdvfs_force_step_by_vcp_ipi(pwr_idx, (s8)opp);
 
 	last = &last_force_step[pwr_idx];
 
@@ -1170,7 +1170,7 @@ int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp, const bool cm
 		return 0;
 
 	if (mmdvfs_mux_version)
-		return mmdvfs_force_step_by_vcp(pwr_idx, opp);
+		return mmdvfs_force_step_by_vcp(pwr_idx, (s8)opp);
 
 	last = &last_force_step[pwr_idx];
 

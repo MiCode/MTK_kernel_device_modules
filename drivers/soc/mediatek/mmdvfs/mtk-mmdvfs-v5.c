@@ -270,7 +270,7 @@ static int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *
 		(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova) >> 32, (u32)(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova)};
 	int gen, ret = 0, retry = 0;
 	static u8 times;
-	u32 val;
+	u32 val = 0;
 
 	while (!is_vcp_ready_ex(feature_id) || !mmdvfs_mmup_cb_ready) {
 		if (!mmdvfs_mmup_cb_ready && func == FUNC_MMDVFS_INIT)
@@ -548,8 +548,8 @@ static int mmdvfs_parse_mmdvfs_mux(struct device_node *node, struct mmdvfs_data 
 	for (i = 0; i < mmdvfs_clk_num; i++) {
 		struct device_node *table, *level = NULL;
 		struct mmdvfs_mux *mux;
-		phandle handle;
-		u32 mux_id;
+		phandle handle = 0;
+		u32 mux_id = mmdvfs_data->mux_num;
 		u64 freq;
 		u8 idx = 0;
 
