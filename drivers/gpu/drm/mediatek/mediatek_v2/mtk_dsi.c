@@ -1317,7 +1317,8 @@ CONFIG_REG:
 		priv->data->mmsys_id == MMSYS_MT6897 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6835 ||
-		priv->data->mmsys_id == MMSYS_MT6886) {
+		priv->data->mmsys_id == MMSYS_MT6886 ||
+		priv->data->mmsys_id == MMSYS_MT6855) {
 		lpx = (lpx % 2) ? lpx + 1 : lpx; //lpx must be even
 		hs_prpr = (hs_prpr % 2) ? hs_prpr + 1 : hs_prpr; //hs_prpr must be even
 		hs_prpr = hs_prpr >= 6 ? hs_prpr : 6; //hs_prpr must be more than 6
@@ -14908,7 +14909,7 @@ static const struct mtk_dsi_driver_data mt6855_dsi_driver_data = {
 	.buffer_unit = 18,
 	.sram_unit = 18,
 	.max_vfp = 0xffe,
-	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
+	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V1,
 };
 
 static const struct mtk_dsi_driver_data mt2701_dsi_driver_data = {
