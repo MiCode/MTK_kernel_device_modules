@@ -122,7 +122,7 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	struct arm_smccc_res res;
 	void __iomem *ibase = ssusb->ippc_base;
 	u32 spm_ctrl, value, spm_msk = SSUSB_SPM_REQ_MSK;
-	u32 offload_msk = SSUSB_SPM_REQ_OFFLOAD_MSK;
+	u32 offload_req = 0;
 	u32 smc_req = -1;
 	int ret;
 	bool vcore_req_support = (ssusb->hwrscs_vers == SSUSB_HWRECS_V3);
@@ -147,7 +147,6 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	if (vcore_req_support)
 		spm_msk |= SSUSB_SPM_VCORE_EN;
 
-
 	/* Clear FORCE HW Request which is default on since MT6989 */
 	spm_ctrl &= ~SSUSB_SPM_FORCE_HW_REQ_MSK;
 
@@ -158,17 +157,24 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	case MTU3_STATE_POWER_ON:
 		spm_ctrl |= spm_msk;
 		break;
-	case MTU3_STATE_OFFLOAD_EX:
-		offload_msk &= ~(SSUSB_SPM_VCORE_EN);
+	case MTU3_STATE_OFFLOAD_IDLE:
+		/* set apsrc, ddren and emi to hw mode */
+		offload_req |= SSUSB_SPM_REQ_DRAM_HW;
 		fallthrough;
 	case MTU3_STATE_OFFLOAD:
-		/* Clear req for offload scenario */
-		spm_ctrl &= ~(offload_msk ^ spm_msk);
-
+		offload_req |= (SSUSB_SPM_INFRE_REQ | SSUSB_SPM_VRF18_REQ);
+		if (vcore_req_support)
+			offload_req |= SSUSB_SPM_VCORE_EN;
 		/* set apsrc=0 and ddren=1, inform peri not to protect bus */
-		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6899-mtu3"))
-			spm_ctrl |= SSUSB_SPM_DDR_EN;
-
+		if (state == MTU3_STATE_OFFLOAD &&
+			of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6899-mtu3"))
+			offload_req |= SSUSB_SPM_DDR_EN;
+		fallthrough;
+	case MTU3_STATE_OFFLOAD_EX:
+		/* no need dram in any offload mode */
+		spm_msk &= ~SSUSB_SPM_REQ_DRAM_SW;
+		offload_req |= SSUSB_SPM_SRCCLKENA;
+		spm_ctrl = offload_req;
 		break;
 	case MTU3_STATE_RESUME:
 		spm_ctrl |= spm_msk;
@@ -660,6 +666,23 @@ static int ssusb_offload_get_mode(struct ssusb_offload *offload)
 	else
 		return SSUSB_OFFLOAD_MODE_NONE;
 }
+
+void ssusb_offload_streaming(struct ssusb_offload *offload, bool start)
+{
+	struct ssusb_mtk *ssusb = offload->ssusb;
+
+	if (start) {
+		ssusb->offload_mode = ssusb_offload_get_mode(offload);
+		dev_info(ssusb->dev, "%s offload_mode:%d\n", __func__, ssusb->offload_mode);
+		if (ssusb->offload_mode == SSUSB_OFFLOAD_MODE_NONE)
+			/* no action for standby */
+			return;
+		ssusb_set_power_state(ssusb, MTU3_STATE_OFFLOAD_IDLE);
+	} else
+		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
+
+}
+EXPORT_SYMBOL_GPL(ssusb_offload_streaming);
 
 int ssusb_offload_register(struct ssusb_offload *offload)
 {
