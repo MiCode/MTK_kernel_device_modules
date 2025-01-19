@@ -221,6 +221,25 @@ TRACE_EVENT(GPU_Power__Policy__APO_Frame_Time,
 	TP_printk("apo_frame_time=%u", __entry->apo_frame_time)
 );
 
+TRACE_EVENT(GPU_DVFS__Policy__VERSION,
+
+	TP_PROTO(unsigned int kinfo, unsigned int ebinfo),
+
+	TP_ARGS(kinfo, ebinfo),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, kinfo)
+		__field(unsigned int, ebinfo)
+	),
+
+	TP_fast_assign(
+		__entry->kinfo = kinfo;
+		__entry->ebinfo = ebinfo;
+	),
+
+	TP_printk("kinfo=0x%x, ebinfo=0x%x", __entry->kinfo, __entry->ebinfo)
+);
+
 
 TRACE_EVENT(GPU_DVFS__Frequency,
 	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top,
@@ -1243,6 +1262,88 @@ TRACE_EVENT(GPU_DVFS__Policy__EB_DEBUG,
 	TP_printk("count=%u diff=%u", __entry->count, __entry->diff)
 );
 
+TRACE_EVENT(GPU_DVFS__EB_ONE_ARG_DEBUG,
+
+	TP_PROTO(unsigned int debug1_1),
+
+	TP_ARGS(debug1_1),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, debug1_1)
+	),
+
+	TP_fast_assign(
+		__entry->debug1_1 = debug1_1;
+	),
+
+	TP_printk("debug1_1=%u", __entry->debug1_1)
+);
+
+TRACE_EVENT(GPU_DVFS__EB_TWO_ARG_DEBUG,
+
+	TP_PROTO(unsigned int debug2_1, unsigned int debug2_2),
+
+	TP_ARGS(debug2_1, debug2_2),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, debug2_1)
+		__field(unsigned int, debug2_2)
+	),
+
+	TP_fast_assign(
+		__entry->debug2_1 = debug2_1;
+		__entry->debug2_2 = debug2_2;
+
+	),
+
+	TP_printk("debug2_1=%u debug2_2=%u", __entry->debug2_1, __entry->debug2_2)
+);
+
+TRACE_EVENT(GPU_DVFS__EB_THREE_ARG_DEBUG,
+
+	TP_PROTO(unsigned int debug3_1, unsigned int debug3_2, unsigned int debug3_3),
+
+	TP_ARGS(debug3_1, debug3_2, debug3_3),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, debug3_1)
+		__field(unsigned int, debug3_2)
+		__field(unsigned int, debug3_3)
+	),
+
+	TP_fast_assign(
+		__entry->debug3_1 = debug3_1;
+		__entry->debug3_2 = debug3_2;
+		__entry->debug3_3 = debug3_3;
+	),
+
+	TP_printk("debug3_1=%u debug3_2=%u debug3_3=%u", __entry->debug3_1, __entry->debug3_2, __entry->debug3_3)
+);
+
+TRACE_EVENT(GPU_DVFS__EB_FOUR_ARG_DEBUG,
+
+	TP_PROTO(unsigned int debug4_1, unsigned int debug4_2, unsigned int debug4_3, unsigned int debug4_4),
+
+	TP_ARGS(debug4_1, debug4_2, debug4_3, debug4_4),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, debug4_1)
+		__field(unsigned int, debug4_2)
+		__field(unsigned int, debug4_3)
+		__field(unsigned int, debug4_4)
+	),
+
+	TP_fast_assign(
+		__entry->debug4_1 = debug4_1;
+		__entry->debug4_2 = debug4_2;
+		__entry->debug4_3 = debug4_3;
+		__entry->debug4_4 = debug4_4;
+	),
+
+	TP_printk("debug4_1=%u debug4_2=%u debug4_3=%u debug4_4=%u",
+				__entry->debug4_1, __entry->debug4_2, __entry->debug4_3, __entry->debug4_4)
+);
+
 TRACE_EVENT(GPU_DVFS__Policy__EB_RINBUFFER,
 	TP_PROTO(const char *name, const int *arg, const u32 *diff_time),
 	TP_ARGS(name, arg, diff_time),
@@ -2165,6 +2266,129 @@ TRACE_EVENT(GPU_DVFS__EBRB_GOV_DETAIL,
 		__entry->u6, __entry->r6,
 		__entry->u7, __entry->r7)
 
+);
+
+TRACE_EVENT(GPU_DVFS__EBRB_ONE_ARG_PRESERVE,
+	TP_PROTO(const unsigned int *arg),
+	TP_ARGS(arg),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+
+	),
+
+	TP_printk("u0=%u u1=%u u2=%u u3=%u u4=%u u5=%u u6=%u u7=%u",
+		__entry->u0,
+		__entry->u1,
+		__entry->u2,
+		__entry->u3,
+		__entry->u4,
+		__entry->u5,
+		__entry->u6,
+		__entry->u7)
+);
+
+TRACE_EVENT(GPU_DVFS__EBRB_TWO_ARG_PRESERVE,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2),
+	TP_ARGS(arg, arg2),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+	),
+
+	TP_printk("u0=%u|%u u1=%u|%u u2=%u|%u u3=%u|%u u4=%u|%u u5=%u|%u u6=%u|%u u7=%u|%u",
+		__entry->u0, __entry->r0,
+		__entry->u1, __entry->r1,
+		__entry->u2, __entry->r2,
+		__entry->u3, __entry->r3,
+		__entry->u4, __entry->r4,
+		__entry->u5, __entry->r5,
+		__entry->u6, __entry->r6,
+		__entry->u7, __entry->r7)
+);
+
+
+TRACE_EVENT(GPU_DVFS__EBRB_THREE_ARG_PRESERVE,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2, const unsigned int *arg3),
+	TP_ARGS(arg, arg2, arg3),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+		__field(unsigned int, v0)__field(unsigned int, v1)__field(unsigned int, v2)__field(unsigned int, v3)
+		__field(unsigned int, v4)__field(unsigned int, v5)__field(unsigned int, v6)__field(unsigned int, v7)
+
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+		__entry->v0 = arg3[0];__entry->v1 = arg3[1];__entry->v2 = arg3[2];__entry->v3 = arg3[3];
+		__entry->v4 = arg3[4];__entry->v5 = arg3[5];__entry->v6 = arg3[6];__entry->v7 = arg3[7];
+	),
+
+	TP_printk("u0=%u|%u|%u u1=%u|%u|%u u2=%u|%u|%u u3=%u|%u|%u u4=%u|%u|%u u5=%u|%u|%u u6=%u|%u|%u u7=%u|%u|%u",
+		__entry->u0, __entry->r0, __entry->v0,
+		__entry->u1, __entry->r1, __entry->v1,
+		__entry->u2, __entry->r2, __entry->v2,
+		__entry->u3, __entry->r3, __entry->v3,
+		__entry->u4, __entry->r4, __entry->v4,
+		__entry->u5, __entry->r5, __entry->v5,
+		__entry->u6, __entry->r6, __entry->v6,
+		__entry->u7, __entry->r7, __entry->v7)
+);
+
+TRACE_EVENT(GPU_DVFS__EBRB_FOUR_ARG_PRESERVE,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2, const unsigned int *arg3, const unsigned int *arg4),
+	TP_ARGS(arg, arg2, arg3, arg4),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+		__field(unsigned int, v0)__field(unsigned int, v1)__field(unsigned int, v2)__field(unsigned int, v3)
+		__field(unsigned int, v4)__field(unsigned int, v5)__field(unsigned int, v6)__field(unsigned int, v7)
+		__field(unsigned int, c0)__field(unsigned int, c1)__field(unsigned int, c2)__field(unsigned int, c3)
+		__field(unsigned int, c4)__field(unsigned int, c5)__field(unsigned int, c6)__field(unsigned int, c7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+		__entry->v0 = arg3[0];__entry->v1 = arg3[1];__entry->v2 = arg3[2];__entry->v3 = arg3[3];
+		__entry->v4 = arg3[4];__entry->v5 = arg3[5];__entry->v6 = arg3[6];__entry->v7 = arg3[7];
+		__entry->c0 = arg4[0];__entry->c1 = arg4[1];__entry->c2 = arg4[2];__entry->c3 = arg4[3];
+		__entry->c4 = arg4[4];__entry->c5 = arg4[5];__entry->c6 = arg4[6];__entry->c7 = arg4[7];
+	),
+
+	TP_printk("u0=%u|%u|%u|%u u1=%u|%u|%u|%u u2=%u|%u|%u|%u u3=%u|%u|%u|%u u4=%u|%u|%u|%u u5=%u|%u|%u|%u u6=%u|%u|%u|%u u7=%u|%u|%u|%u",
+		__entry->u0, __entry->r0, __entry->v0, __entry->c0,
+		__entry->u1, __entry->r1, __entry->v1, __entry->c1,
+		__entry->u2, __entry->r2, __entry->v2, __entry->c2,
+		__entry->u3, __entry->r3, __entry->v3, __entry->c3,
+		__entry->u4, __entry->r4, __entry->v4, __entry->c4,
+		__entry->u5, __entry->r5, __entry->v5, __entry->c5,
+		__entry->u6, __entry->r6, __entry->v6, __entry->c6,
+		__entry->u7, __entry->r7, __entry->v7, __entry->c7)
 );
 
 #endif /* _TRACE_GED_H */

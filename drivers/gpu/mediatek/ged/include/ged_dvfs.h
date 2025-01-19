@@ -10,6 +10,8 @@
 #include "ged_type.h"
 #include "ged_log.h"
 
+#define GED_KDEBUG_VERSION              (0x20250113)
+
 #define GED_DVFS_UM_CAL      1
 
 #define GED_DVFS_PROBE_TO_UM 1

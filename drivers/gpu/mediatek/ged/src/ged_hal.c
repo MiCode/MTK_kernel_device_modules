@@ -2849,6 +2849,99 @@ static KOBJ_ATTR_RW(gpu_memsys);
 
 //-----------------------------------------------------------------------------
 
+static ssize_t ged_version_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+	bool ret = true;
+	unsigned int eb_policy_mode;
+	struct fdvfs_ipi_data *ipi_data;
+
+	eb_policy_mode = is_fdvfs_enable();
+	if (eb_policy_dts_flag > 0 && eb_policy_mode & POLICY_MODE_V2) {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"k:0x%08x eb:0x%08x\n", GED_KDEBUG_VERSION,
+					mtk_gpueb_sysram_read(SYSRAM_GPU_EB_VERSION));
+		ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
+			sizeof(struct fdvfs_ipi_data));
+
+		if (!ipi_data) {
+			GED_LOGE("ged_alloc_atomic fail!\n");
+			return pos;
+		}
+
+		ipi_data->cmd = GPUFDVFS_IPI_SET_CONFIG;
+		ipi_data->u.set_para.arg[0] = GPUFDVFS_IPI_GET_DUMMY_SWITCH;
+		ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+		if (ret) {
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos, "%u %u %u %u\n",
+					ipi_data->u.set_para.arg[1],
+					ipi_data->u.set_para.arg[2],
+					ipi_data->u.set_para.arg[3],
+					ipi_data->u.set_para.arg[4]);
+		}
+
+		if (ipi_data)
+			ged_free(ipi_data, sizeof(struct fdvfs_ipi_data));
+	} else {
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+			"k:0x%08x\n", GED_KDEBUG_VERSION);
+	}
+
+	return pos;
+}
+
+static ssize_t ged_version_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+	unsigned int eb_policy_mode;
+	int pos = 0;
+	bool ret = true;
+	struct fdvfs_ipi_data *ipi_data;
+
+	ipi_data = (struct fdvfs_ipi_data *)ged_alloc_atomic(
+		sizeof(struct fdvfs_ipi_data));
+
+	if (!ipi_data) {
+		GED_LOGE("ged_alloc_atomic fail!\n");
+		return pos;
+	}
+
+	memset(ipi_data, 0, sizeof(struct fdvfs_ipi_data));
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		eb_policy_mode = is_fdvfs_enable();
+		int config1 , config2, config3, config4 = 0;
+
+		if (sscanf(buf, "%d %d %d %d", &config1, &config2, &config3, &config4) <= 4) {
+			if (eb_policy_dts_flag > 0 && eb_policy_mode & POLICY_MODE_V2) {
+				ipi_data->cmd = GPUFDVFS_IPI_SET_CONFIG;
+				ipi_data->u.set_para.arg[0] = GPUFDVFS_IPI_SET_DUMMY_SWITCH;
+				ipi_data->u.set_para.arg[1] = config1;
+				ipi_data->u.set_para.arg[2] = config2;
+				ipi_data->u.set_para.arg[3] = config3;
+				ipi_data->u.set_para.arg[4] = config4;
+				ret = mtk_get_fastdvfs_mode((void *)ipi_data);
+				if (!ret)
+					GED_LOGE("GPUFDVFS_IPI_SET_LOADING_SELECT fail");
+			}
+		}
+	}
+
+	if (ipi_data)
+		ged_free(ipi_data, sizeof(struct fdvfs_ipi_data));
+
+	return count;
+
+}
+static KOBJ_ATTR_RW(ged_version);
+
+//-----------------------------------------------------------------------------
+
 GED_ERROR ged_hal_init(void)
 {
 	GED_ERROR err = GED_OK;
@@ -3245,6 +3338,12 @@ GED_ERROR ged_hal_init(void)
 	}
 #endif /* MTK_GPU_MEMSYS_UTIL */
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_ged_version);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create ged_version entry!\n");
+		goto ERROR;
+	}
+
 	return err;
 
 ERROR:
@@ -3334,6 +3433,9 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(memsys_kobj, &kobj_attr_gpu_memsys);
 	ged_sysfs_remove_dir(&memsys_kobj);
 #endif
+
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_version);
+
 	ged_sysfs_remove_dir(&hal_kobj);
 }
 //-----------------------------------------------------------------------------

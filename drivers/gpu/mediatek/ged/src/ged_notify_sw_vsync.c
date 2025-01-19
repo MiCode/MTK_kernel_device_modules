@@ -420,6 +420,23 @@ void ged_eb_dvfs_trace_dump(void)
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[DCS_MAJOR_MIN].addr);
 		trace_GPU_DVFS__Policy__DCS_CONFIG(tmp_multi.twoVar.var1, tmp_multi.twoVar.var2);
+
+		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_DEBUG1].addr);
+		trace_GPU_DVFS__EB_ONE_ARG_DEBUG(tmp_multi.oneVar.var1);
+
+		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_DEBUG2].addr);
+		trace_GPU_DVFS__EB_TWO_ARG_DEBUG(tmp_multi.twoVar.var1, tmp_multi.twoVar.var2);
+
+		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_DEBUG3].addr);
+		trace_GPU_DVFS__EB_THREE_ARG_DEBUG(tmp_multi.thrVar.var1, tmp_multi.thrVar.var2,
+										   tmp_multi.thrVar.var3);
+
+		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_DEBUG4].addr);
+		trace_GPU_DVFS__EB_FOUR_ARG_DEBUG(
+			tmp_multi.fourVar.var1, tmp_multi.fourVar.var2,
+			tmp_multi.fourVar.var3, tmp_multi.fourVar.var4);
+		trace_GPU_DVFS__Policy__VERSION(
+			GED_KDEBUG_VERSION, mtk_gpueb_sysram_read(SYSRAM_GPU_EB_VERSION));
 	}
 
 	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT)

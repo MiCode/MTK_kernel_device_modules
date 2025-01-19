@@ -698,6 +698,8 @@ enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_SET_MAJOR_MIN_CORE = 6,
 	GPUFDVFS_IPI_SET_LOADING_SELECT,
 	GPUFDVFS_IPI_GET_LOADING_SELECT,
+	GPUFDVFS_IPI_SET_DUMMY_SWITCH,
+	GPUFDVFS_IPI_GET_DUMMY_SWITCH,
 	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
 
 };
@@ -967,10 +969,10 @@ typedef struct {
  GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
  GEN("Policy__GOV_Detail", GPU_EB_LOG_DUMP_GOV_DETAIL1, 1, "rdy_core_mask") \
  GEN("Policy__GOV_Detail", GPU_EB_LOG_DUMP_GOV_DETAIL2, 1, "gov_mask") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE1, 2, "dbg1_1 | dbg1_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE2, 2, "dbg2_1 | dbg2_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE3, 2, "dbg3_1 | dbg3_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE4, 2, "dbg4_1 | dbg4_2") \
+GEN("GPU_DVFS__ONE_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE1, 1, "dbg1_1") \
+GEN("GPU_DVFS__TWO_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE2, 2, "dbg2_1 | dbg2_2") \
+GEN("GPU_DVFS__THREE_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE3, 3, "dbg3_1 | dbg3_2 | dbg3_3") \
+GEN("GPU_DVFS__FOUR_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE4, 4, "dbg4_1 | dbg4_2 | dbg4_3 | dbg4_4") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE5, 2, "dbg5_1 | dbg5_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE6, 2, "dbg6_1 | dbg6_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2") \
@@ -1002,9 +1004,9 @@ typedef struct {
  GEN("mbrain_opp_cost_ts1", GPU_OPP_COST_TS1, 1, "g_last_opp_cost_update_ts_ms") \
  GEN("mbrain_opp_cost_ts2", GPU_OPP_COST_TS2, 1, "g_last_opp_cost_update_ts_ms") \
  GEN("Gpu_debug_5566", GPU_DEBUG1, 1, "5566_debug1") \
- GEN("Gpu_debug_5566", GPU_DEBUG2, 1, "5566_debug2") \
- GEN("Gpu_debug_5566", GPU_DEBUG3, 1, "5566_debug3") \
- GEN("Gpu_debug_5566", GPU_DEBUG4, 1, "5566_debug4") \
+GEN("Gpu_debug_5566", GPU_DEBUG2, 2, "5566_debug2") \
+GEN("Gpu_debug_5566", GPU_DEBUG3, 3, "5566_debug3") \
+GEN("Gpu_debug_5566", GPU_DEBUG4, 4, "5566_debug4") \
  GEN("Gpu_debug_5566", GPU_DEBUG5, 1, "5566_debug5") \
  GEN("Gpu_debug_5566", GPU_DEBUG6, 1, "5566_debug6") \
  GEN("Gpu_debug_5566", GPU_DEBUG7, 1, "5566_debug7") \
@@ -1044,7 +1046,8 @@ GEN("policy_state_v2", GPU_EB_USE_POLICY_STATE_V2, 1, "policy_state_v2")\
  GEN("fb_async_param2", GPU_FB_ASYNC_PARAM2, 1, "fb_async_ratio_param2") \
  GEN("fb_npu_hint_ms", GPU_FB_NPU_HINT_MS, 1, "fb_npu_hint_ms") \
  GEN("workload_mode", GPU_EB_WORKLOAD_MODE, 1, "workload_mode") \
- GEN("fix_freq_id", GPU_FIX_FREQ_ID, 2, "enable|id")
+GEN("fix_freq_id", GPU_FIX_FREQ_ID, 2, "enable|id") \
+GEN("gpu_version", GPU_EB_VERSION, 1, "gpu_version")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

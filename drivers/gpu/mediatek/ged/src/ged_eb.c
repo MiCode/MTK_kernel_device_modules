@@ -452,6 +452,10 @@ static void ged_eb_sysram_debug_data_write(void)
 				case GPU_EB_LOG_DUMP_DCS1:
 				case GPU_EB_LOG_DUMP_DCS_DETAIL:
 				case GPU_EB_LOG_DUMP_GOV_DETAIL1:
+				case GPU_EB_LOG_DUMP_PRESERVE1:
+				case GPU_EB_LOG_DUMP_PRESERVE2:
+				case GPU_EB_LOG_DUMP_PRESERVE3:
+				case GPU_EB_LOG_DUMP_PRESERVE4:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
 							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
 					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1) {
@@ -533,6 +537,18 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 			case GPU_EB_LOG_DUMP_GOV_DETAIL2:
 				trace_GPU_DVFS__EBRB_GOV_DETAIL(dbg_data, dbg_data2);
+				break;
+			case GPU_EB_LOG_DUMP_PRESERVE1:
+				trace_GPU_DVFS__EBRB_ONE_ARG_PRESERVE(dbg_data);
+				break;
+			case GPU_EB_LOG_DUMP_PRESERVE2:
+				trace_GPU_DVFS__EBRB_TWO_ARG_PRESERVE(dbg_data, dbg_data2);
+				break;
+			case GPU_EB_LOG_DUMP_PRESERVE3:
+				trace_GPU_DVFS__EBRB_THREE_ARG_PRESERVE(dbg_data, dbg_data2, dbg_data3);
+				break;
+			case GPU_EB_LOG_DUMP_PRESERVE4:
+				trace_GPU_DVFS__EBRB_FOUR_ARG_PRESERVE(dbg_data, dbg_data2, dbg_data3, dbg_data4);
 				break;
 			default:
 				break;
