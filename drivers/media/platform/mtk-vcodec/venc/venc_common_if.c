@@ -512,6 +512,7 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.ifrm_q_ltr = enc_prm->ifrm_q_ltr;
 		inst->vsi->config.pfrm_q_ltr = enc_prm->pfrm_q_ltr;
 		inst->vsi->config.bfrm_q_ltr = enc_prm->bfrm_q_ltr;
+		inst->vsi->config.use_clean_gop = enc_prm->use_clean_gop;
 
 		if (enc_prm->visual_quality) {
 			memcpy(&inst->vsi->config.visual_quality,

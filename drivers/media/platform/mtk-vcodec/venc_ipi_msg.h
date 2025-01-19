@@ -553,6 +553,7 @@ struct venc_vcu_config {
 	struct mtk_venc_init_qp init_qp;
 	struct mtk_venc_frame_qp_range frame_qp_range;
 	struct mtk_venc_nal_length nal_length;
+	__u8 use_clean_gop;
 };
 
 /**

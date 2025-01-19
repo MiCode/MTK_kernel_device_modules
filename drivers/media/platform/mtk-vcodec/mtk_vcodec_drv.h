@@ -433,6 +433,7 @@ struct mtk_enc_params {
 	struct mtk_venc_init_qp init_qp;
 	struct mtk_venc_frame_qp_range frame_qp_range;
 	struct mtk_venc_nal_length nal_length;
+	bool use_clean_gop;
 };
 
 /*
@@ -531,6 +532,7 @@ struct venc_enc_param {
 	struct mtk_venc_init_qp *init_qp;
 	struct mtk_venc_frame_qp_range *frame_qp_range;
 	struct mtk_venc_nal_length *nal_length;
+	bool use_clean_gop;
 };
 
 /*
