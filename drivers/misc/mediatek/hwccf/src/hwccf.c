@@ -7,7 +7,6 @@
 #include <v0_hwccf.h>
 
 #include <hwccf_provider.h>
-#include <hwccf_dbg.h>
 #include <linux/module.h>
 #include <linux/regmap.h>
 
@@ -17,6 +16,7 @@
 #include <linux/mfd/syscon.h>
 #include <linux/platform_device.h>
 #include <linux/device.h>
+
 
 // Default HWCCF Timeout For _hwccf_voter_ctrl(...)
 #define MTK_WAIT_GHWV_PREPARE_CNT     3000
@@ -47,7 +47,7 @@
 
 static bool _inited;
 static struct regmap *regmaps[MAX_HWCCF];
-static int regmap_count = 0;
+static int regmap_count;
 static DEFINE_SPINLOCK(hwccf_lock);
 static DEFINE_SPINLOCK(hwccf_irq_lock);
 struct hwccf_ops *hwccf_ops;
@@ -86,25 +86,25 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 
 	// check mtcmos/pll/backup
 	switch (setclr_ofs & 0xfff) {
-		case V0_CCF_MTCMOS0_SET_OFS:
-			setclr_sta_ofs = V0_XPU_MTCMOS0_SET_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_0;
-			break;
-		case V0_CCF_MTCMOS0_CLR_OFS:
-			setclr_sta_ofs = V0_XPU_MTCMOS0_CLR_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_0;
-			break;
-		case V0_CCF_MTCMOS1_SET_OFS:
-			setclr_sta_ofs = V0_XPU_MTCMOS1_SET_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_1;
-			break;
-		case V0_CCF_MTCMOS1_CLR_OFS:
-			setclr_sta_ofs = V0_XPU_MTCMOS1_CLR_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_1;
-			break;
-		default:
-			setclr_sta_ofs = 0;
-			break;
+	case V0_CCF_MTCMOS0_SET_OFS:
+		setclr_sta_ofs = V0_XPU_MTCMOS0_SET_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_0;
+		break;
+	case V0_CCF_MTCMOS0_CLR_OFS:
+		setclr_sta_ofs = V0_XPU_MTCMOS0_CLR_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_0;
+		break;
+	case V0_CCF_MTCMOS1_SET_OFS:
+		setclr_sta_ofs = V0_XPU_MTCMOS1_SET_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_1;
+		break;
+	case V0_CCF_MTCMOS1_CLR_OFS:
+		setclr_sta_ofs = V0_XPU_MTCMOS1_CLR_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_1;
+		break;
+	default:
+		setclr_sta_ofs = 0;
+		break;
 	}
 
 	// Pre-Polling done
@@ -137,9 +137,6 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 			ret = -HWV_VOTE_TIMEOUT;
 			goto ERR;
 		}
-	} else if (!is_set) {
-		/* delay 100us for stable status */
-		udelay(100);
 	}
 
 	if (setclr_sta_ofs != 0) {
@@ -267,7 +264,7 @@ int v0_hwccf_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum H
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_CG_SET_OFS(resource_id) : V0_CG_CLR_OFS(resource_id));
 		done_ofs = V0_CG_DONE_OFS(resource_id);
 	} else if((resource_id > HW_CCF_CG_GRP_14) && (resource_id <= HW_CCF_CG_GRP_29)
-														&& (hwccf_type == MM_HWCCF)) {
+					&& (hwccf_type == MM_HWCCF)) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_CG_SET_OFS(resource_id) : V0_CG_CLR_OFS(resource_id));
 		done_ofs = V0_CG_DONE_OFS(resource_id);
 	} else {
@@ -286,8 +283,8 @@ ERR:
 	return ret;
 }
 
-
-static int _v1_hwccf_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+static int _v1_hwccf_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
 	int ret = 0;
 	uint32_t setclr_ofs = 0x0;
@@ -301,7 +298,7 @@ static int _v1_hwccf_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t res
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
 	} else if((resource_id > HW_CCF_CG_GRP_29) && (resource_id <= HW_CCF_CG_GRP_51)
-														&& (hwccf_type == MM_HWCCF)) {
+						&& (hwccf_type == MM_HWCCF)) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
 	} else if (resource_id == HW_CCF_MTCMOS_GRP_0) {
@@ -329,14 +326,16 @@ ERR:
 	return ret;
 }
 
-int v1_hwccf_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+int v1_hwccf_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
 {
-    return _v1_hwccf_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
+	return _v1_hwccf_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
 }
 
-int v1_hwccf_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+int v1_hwccf_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
-    return _v1_hwccf_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
+	return _v1_hwccf_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
 }
 
 int v0_raw_hwccf_voter_ctrl(struct cb_params *params)
@@ -396,20 +395,20 @@ static int _v1_hwccf_is_enabled(struct regmap *regmap, uint32_t setclr_ofs, uint
 
 	// XPU en_ofs replaced by ALL_XXX due to autolink
 	switch (en_ofs & 0xFFF) {
-		case 0x708:
-			en_ofs = CCF_ALL_MTCMOS_EN_0;
-			all_status_ofs = CCF_ALL_MTCMOS_STA_0;
-			break;
-		case 0x714:
-			en_ofs = CCF_ALL_MTCMOS_EN_1;
-			all_status_ofs = CCF_ALL_MTCMOS_STA_1;
-			break;
-		case 0x608:
-			en_ofs = CCF_ALL_MUX_EN;
-			all_status_ofs = CCF_ALL_MUX_STA;
-			break;
-		default:
-			break;
+	case 0x708:
+		en_ofs = CCF_ALL_MTCMOS_EN_0;
+		all_status_ofs = CCF_ALL_MTCMOS_STA_0;
+		break;
+	case 0x714:
+		en_ofs = CCF_ALL_MTCMOS_EN_1;
+		all_status_ofs = CCF_ALL_MTCMOS_STA_1;
+		break;
+	case 0x608:
+		en_ofs = CCF_ALL_MUX_EN;
+		all_status_ofs = CCF_ALL_MUX_STA;
+		break;
+	default:
+		break;
 	}
 
 	val = hwccf_read(regmap, en_ofs);
@@ -417,14 +416,15 @@ static int _v1_hwccf_is_enabled(struct regmap *regmap, uint32_t setclr_ofs, uint
 
 		// Polling done
 		val = (all_status_ofs ? hwccf_read(regmap, all_status_ofs) : hwccf_read(regmap, done_ofs));
-		return (all_status_ofs ? IS_MASK_SET(~val, done_ack_msk) : IS_MASK_SET(val, done_ack_msk));
+		return all_status_ofs ? IS_MASK_SET(~val, done_ack_msk) : IS_MASK_SET(val, done_ack_msk);
 	}
 	return 0;
 }
 
 int v1_raw_hwccf_is_enabled(struct cb_params *params)
 {
-	return _v1_hwccf_is_enabled(params->regmap, CCF_XPU(HWV_XPU_0) + params->setclr_ofs, BIT(params->vote_bit), params->done_ofs, BIT(params->vote_bit));
+	return _v1_hwccf_is_enabled(params->regmap, CCF_XPU(HWV_XPU_0) + params->setclr_ofs,
+			BIT(params->vote_bit), params->done_ofs, BIT(params->vote_bit));
 }
 
 int v1_hwccf_is_enabled(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
@@ -439,7 +439,7 @@ int v1_hwccf_is_enabled(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum H
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
 	} else if((resource_id > HW_CCF_CG_GRP_29) && (resource_id <= HW_CCF_CG_GRP_51)
-													&& (hwccf_type == MM_HWCCF)) {
+					&& (hwccf_type == MM_HWCCF)) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
 	} else if (resource_id == HW_CCF_MTCMOS_GRP_0) {
@@ -606,48 +606,48 @@ static int _v0_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 	uint32_t val;
 
 	switch (setclr_ofs & 0xFFF) {
-		case 0x218:
-			setclr_sta_ofs = V0_XPU_MTCMOS0_SET_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_0;
-			break;
-		case 0x21C:
-			setclr_sta_ofs = V0_XPU_MTCMOS0_CLR_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_0;
-			break;
-		case 0x220:
-			setclr_sta_ofs = V0_XPU_MTCMOS1_SET_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_1;
-			break;
-		case 0x224:
-			setclr_sta_ofs = V0_XPU_MTCMOS1_CLR_STA;
-			global_en_ofs = V0_CCF_MTCMOS_EN_1;
-			break;
-		case 0x210:
-			setclr_sta_ofs = V0_PLL_SET_STA;
-			global_en_ofs = V0_CCF_PLL_EN;
-			break;
-		case 0x214:
-			setclr_sta_ofs = V0_PLL_CLR_STA;
-			global_en_ofs = V0_CCF_PLL_EN;
-			break;
-		case 0x230:
-			setclr_sta_ofs = V0_CCF_BACKUP1_SET_STA;
-			global_en_ofs = V0_CCF_BACKUP1_EN;
-			break;
-		case 0x234:
-			setclr_sta_ofs = V0_CCF_BACKUP1_CLR_STA;
-			global_en_ofs = V0_CCF_BACKUP1_EN;
-			break;
-		case 0x238:
-			setclr_sta_ofs = V0_CCF_BACKUP2_SET_STA;
-			global_en_ofs = V0_CCF_BACKUP2_EN;
-			break;
-		case 0x23C:
-			setclr_sta_ofs = V0_CCF_BACKUP2_CLR_STA;
-			global_en_ofs = V0_CCF_BACKUP2_EN;
-			break;
-		default:
-			break;
+	case 0x218:
+		setclr_sta_ofs = V0_XPU_MTCMOS0_SET_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_0;
+		break;
+	case 0x21C:
+		setclr_sta_ofs = V0_XPU_MTCMOS0_CLR_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_0;
+		break;
+	case 0x220:
+		setclr_sta_ofs = V0_XPU_MTCMOS1_SET_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_1;
+		break;
+	case 0x224:
+		setclr_sta_ofs = V0_XPU_MTCMOS1_CLR_STA;
+		global_en_ofs = V0_CCF_MTCMOS_EN_1;
+		break;
+	case 0x210:
+		setclr_sta_ofs = V0_PLL_SET_STA;
+		global_en_ofs = V0_CCF_PLL_EN;
+		break;
+	case 0x214:
+		setclr_sta_ofs = V0_PLL_CLR_STA;
+		global_en_ofs = V0_CCF_PLL_EN;
+		break;
+	case 0x230:
+		setclr_sta_ofs = V0_CCF_BACKUP1_SET_STA;
+		global_en_ofs = V0_CCF_BACKUP1_EN;
+		break;
+	case 0x234:
+		setclr_sta_ofs = V0_CCF_BACKUP1_CLR_STA;
+		global_en_ofs = V0_CCF_BACKUP1_EN;
+		break;
+	case 0x238:
+		setclr_sta_ofs = V0_CCF_BACKUP2_SET_STA;
+		global_en_ofs = V0_CCF_BACKUP2_EN;
+		break;
+	case 0x23C:
+		setclr_sta_ofs = V0_CCF_BACKUP2_CLR_STA;
+		global_en_ofs = V0_CCF_BACKUP2_EN;
+		break;
+	default:
+		break;
 	}
 
 	// Profling start
@@ -741,7 +741,7 @@ ERR:
 }
 
 static int _v0_hwccf_irq_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
-                         uint32_t done_ofs)
+			uint32_t done_ofs)
 {
 	int ret = 0;
 
@@ -765,7 +765,7 @@ ERR:
 }
 
 static int _v1_hwccf_irq_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
-                         uint32_t done_ofs)
+			uint32_t done_ofs)
 {
 	int ret = 0;
 	//CCF_XPU(HWV_XPU_0)
@@ -789,7 +789,8 @@ ERR:
 	return ret;
 }
 
-int _v0_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+int _v0_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type,
+			uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
 	int ret = 0;
 	uint32_t setclr_ofs = 0x0;
@@ -832,17 +833,20 @@ ERR:
 	return ret;
 }
 
-int v0_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+int v0_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
 {
-    return _v0_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
+	return _v0_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
 }
 
-int v0_hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+int v0_hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
-    return _v0_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
+	return _v0_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
 }
 
-int _v1_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+int _v1_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
 	int ret = 0;
 	uint32_t setclr_ofs = 0x0;
@@ -876,14 +880,16 @@ ERR:
 	return ret;
 }
 
-int v1_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+int v1_hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
 {
-    return _v1_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
+	return _v1_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, BIT(vote_bit));
 }
 
-int v1_hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+int v1_hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
 {
-    return _v1_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
+	return _v1_hwccf_irq_voter_ctrl_wrapper( hwccf_type, resource_id, hwccf_op, vote_val);
 }
 
 void v1_hwccf_freeze(int is_MASK_XPC, struct regmap *regmap)
@@ -944,6 +950,134 @@ void v1_hwccf_unfreeze(int is_MASK_XPC, struct regmap *regmap)
 	hwccf_update_bit(regmap, HWCCF_REG_EN6, block_voting, 0);
 }
 
+
+
+int hwccf_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return -HWV_EINVAL;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_voter_ctrl)
+		return hwccf_ops->hwccf_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_bit);
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(hwccf_voter_ctrl);
+
+int hwccf_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return -HWV_EINVAL;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_multi_voter_ctrl)
+		return hwccf_ops->hwccf_multi_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_val);
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(hwccf_multi_voter_ctrl);
+
+int raw_hwccf_voter_ctrl(struct cb_params *params)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return -HWV_EINVAL;
+	}
+	if (hwccf_ops && hwccf_ops->raw_hwccf_voter_ctrl)
+		return hwccf_ops->raw_hwccf_voter_ctrl(params);
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(raw_hwccf_voter_ctrl);
+
+void hwccf_freeze(int is_MASK_XPC, struct regmap *regmap)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_freeze)
+		hwccf_ops->hwccf_freeze(is_MASK_XPC, regmap);
+}
+EXPORT_SYMBOL(hwccf_freeze);
+
+
+void hwccf_unfreeze(int is_MASK_XPC, struct regmap *regmap)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_unfreeze)
+		hwccf_ops->hwccf_unfreeze(is_MASK_XPC, regmap);
+}
+EXPORT_SYMBOL(hwccf_unfreeze);
+
+int hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return -HWV_EINVAL;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_irq_voter_ctrl)
+		return hwccf_ops->hwccf_irq_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_bit);
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(hwccf_irq_voter_ctrl);
+
+int hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return -HWV_EINVAL;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_irq_multi_voter_ctrl)
+		return hwccf_ops->hwccf_irq_multi_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_val);
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(hwccf_irq_multi_voter_ctrl);
+
+int hwccf_is_enabled(enum HWCCF_TYPE hwccf_type,
+		uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return 0;
+	}
+	if (hwccf_ops && hwccf_ops->hwccf_is_enabled)
+		return hwccf_ops->hwccf_is_enabled(hwccf_type, resource_id, hwccf_op, vote_bit);
+
+
+	HWCCF_ERR("ops NULL\n");
+
+	return 0;
+}
+EXPORT_SYMBOL(hwccf_is_enabled);
+
+int raw_hwccf_is_enabled(struct cb_params *params)
+{
+	if (!_inited) {
+		HWCCF_ERR("_inited FAILED!\n");
+		return 0;
+	}
+	if (hwccf_ops && hwccf_ops->raw_hwccf_is_enabled)
+		return hwccf_ops->raw_hwccf_is_enabled(params);
+
+
+	HWCCF_ERR("ops NULL\n");
+
+	return 0;
+}
+EXPORT_SYMBOL(raw_hwccf_is_enabled);
+
+
 static int hwccf_drv_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -981,172 +1115,27 @@ static int hwccf_drv_probe(struct platform_device *pdev)
 	if (regmap_count == match_data->required_regmaps) {
 
 		/* set platform ops */
-		hwccf_ops = match_data->ops;
+		// FIXME
+		//hwccf_ops = match_data->ops;
 
-		ret = register_mtk_clk_external_api_cb(CLK_REQUEST_RAW_HWCCF_VOTER_CB, hwccf_ops->raw_hwccf_voter_ctrl,
-												"register_raw_hwccf_voter_ctrl fail");
-		if (ret) {
+		ret = register_mtk_clk_external_api_cb(CLK_REQUEST_RAW_HWCCF_VOTER_CB,
+				hwccf_ops->raw_hwccf_voter_ctrl,
+				"register_raw_hwccf_voter_ctrl fail");
+		if (ret)
 			HWCCF_ERR("Failed to register raw_hwccf_voter_ctrl callback\n");
-		}
 
-		ret = register_mtk_clk_external_api_cb(CLK_REQUEST_RAW_HWCCF_IS_ENABLED_CB, hwccf_ops->raw_hwccf_is_enabled,
-												"register_raw_hwccf_is_enabled fail");
-		if (ret) {
+		ret = register_mtk_clk_external_api_cb(CLK_REQUEST_RAW_HWCCF_IS_ENABLED_CB,
+				hwccf_ops->raw_hwccf_is_enabled,
+				"register_raw_hwccf_is_enabled fail");
+		if (ret)
 			HWCCF_ERR("Failed to register raw_hwccf_is_enabled callback\n");
-		}
 
 		HWCCF_LOG("hwccf init done\n");
 		_inited = true;
 	}
 
-	ret = hwccf_proc_dbg_register();
-
-	if (ret)
-		HWCCF_ERR("Failed to register proc/hwccf_dbg\n");
-
 	return 0;
 }
-
-int hwccf_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return -HWV_EINVAL;
-	}
-	if (hwccf_ops && hwccf_ops->hwccf_voter_ctrl) {
-		return hwccf_ops->hwccf_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_bit);
-	}
-    return -EINVAL;
-}
-EXPORT_SYMBOL(hwccf_voter_ctrl);
-
-int hwccf_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return -HWV_EINVAL;
-	}
-	if (hwccf_ops && hwccf_ops->hwccf_multi_voter_ctrl) {
-		return hwccf_ops->hwccf_multi_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_val);
-	}
-    return -EINVAL;
-}
-EXPORT_SYMBOL(hwccf_multi_voter_ctrl);
-
-int raw_hwccf_voter_ctrl(struct cb_params *params)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return -HWV_EINVAL;
-	}
-	if (hwccf_ops && hwccf_ops->raw_hwccf_voter_ctrl) {
-		return hwccf_ops->raw_hwccf_voter_ctrl(params);
-	}
-	return -EINVAL;
-}
-EXPORT_SYMBOL(raw_hwccf_voter_ctrl);
-
-void hwccf_freeze(int is_MASK_XPC, struct regmap *regmap)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return;
-	}
-	if (hwccf_ops && hwccf_ops->hwccf_freeze) {
-		return hwccf_ops->hwccf_freeze(is_MASK_XPC, regmap);
-	}
-	return;
-}
-EXPORT_SYMBOL(hwccf_freeze);
-
-
-void hwccf_unfreeze(int is_MASK_XPC, struct regmap *regmap)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return;
-	}
-	if (hwccf_ops && hwccf_ops->hwccf_unfreeze) {
-		return hwccf_ops->hwccf_unfreeze(is_MASK_XPC, regmap);
-	}
-	return;
-}
-EXPORT_SYMBOL(hwccf_unfreeze);
-
-int hwccf_irq_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return -HWV_EINVAL;
-	}
-	if (hwccf_ops && hwccf_ops->hwccf_irq_voter_ctrl) {
-		return hwccf_ops->hwccf_irq_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_bit);
-	}
-	return -EINVAL;
-}
-EXPORT_SYMBOL(hwccf_irq_voter_ctrl);
-
-int hwccf_irq_multi_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_val)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return -HWV_EINVAL;
-	}
-	if (hwccf_ops && hwccf_ops->hwccf_irq_multi_voter_ctrl) {
-		return hwccf_ops->hwccf_irq_multi_voter_ctrl(hwccf_type, resource_id, hwccf_op, vote_val);
-	}
-	return -EINVAL;
-}
-EXPORT_SYMBOL(hwccf_irq_multi_voter_ctrl);
-
-int hwccf_is_enabled(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum HWCCF_OP hwccf_op, uint32_t vote_bit)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return 0;
-	}
-	if (hwccf_ops && hwccf_ops->hwccf_is_enabled) {
-		return hwccf_ops->hwccf_is_enabled(hwccf_type, resource_id, hwccf_op, vote_bit);
-	}
-
-	HWCCF_ERR("ops NULL\n");
-
-	return 0;
-}
-EXPORT_SYMBOL(hwccf_is_enabled);
-
-int raw_hwccf_is_enabled(struct cb_params *params)
-{
-	if (!_inited) {
-		HWCCF_ERR("_inited FAILED!\n");
-		return 0;
-	}
-	if (hwccf_ops && hwccf_ops->raw_hwccf_is_enabled) {
-		return hwccf_ops->raw_hwccf_is_enabled(params);
-	}
-
-	HWCCF_ERR("ops NULL\n");
-
-	return 0;
-}
-EXPORT_SYMBOL(raw_hwccf_is_enabled);
-
-uint32_t hwccf_read_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t ofs)
-{
-	struct regmap *map;
-	int ret;
-	uint32_t rval;
-
-	map = ((hwccf_type == AP_HWCCF) ? regmaps[AP_HWCCF]:regmaps[MM_HWCCF]);
-
-	ret = regmap_read(map, ofs, &rval);
-
-	if (ret)
-		return -HWV_READ_FAIL;
-	else
-		return rval;
-}
-
 static struct hwccf_ops v0_hwccf_ops = {
 	.hwccf_voter_ctrl = v0_hwccf_voter_ctrl,
 	.raw_hwccf_voter_ctrl = v0_raw_hwccf_voter_ctrl,
@@ -1192,6 +1181,6 @@ static struct platform_driver hwccf_driver = {
 	},
 };
 module_platform_driver(hwccf_driver);
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek HWCCF Driver");
 MODULE_AUTHOR("Kuan-Hsin Lee <kuan-hsin.lee@mediatek.com>");
