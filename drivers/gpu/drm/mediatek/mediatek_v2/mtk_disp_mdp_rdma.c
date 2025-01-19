@@ -31,6 +31,10 @@
 #define REG_UPDATE_INT BIT(1)
 #define UNDERRUN_INT BIT(2)
 
+#define DISP_REG_MDP_RDMA_VCSEL 0x01C
+#define VCSEL BIT(0)
+#define VCSEL_STASH BIT(1)
+
 #define DISP_REG_MDP_RDMA_CON 0x020
 #define OUTPUT_10B BIT(5)	/* output yuv 10bit */
 
@@ -57,6 +61,7 @@
 #define DISP_REG_MDP_RDMA_PREFETCH_CON 0x0a8
 #define PREFETCH_DISABLE BIT(31)
 #define AUTO_PREFETCH_NEXT BIT(30)
+#define PF_ULTRA_EN BIT(28)
 
 #define DISP_REG_MDP_RDMA_TRANSFORM_0 0x200
 #define TRANS_EN BIT(16)
@@ -235,8 +240,10 @@ static void mtk_mdp_rdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	if (data && data->sodi_config)
 		data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
 
+	mtk_ddp_write_mask(comp, 0,
+		DISP_REG_MDP_RDMA_VCSEL, (VCSEL | VCSEL_STASH), handle);
 	mtk_ddp_write_mask(comp, PREFETCH_DISABLE,
-		DISP_REG_MDP_RDMA_PREFETCH_CON, PREFETCH_DISABLE, handle);
+		DISP_REG_MDP_RDMA_PREFETCH_CON, (PF_ULTRA_EN | PREFETCH_DISABLE), handle);
 	mtk_ddp_write(comp, 0, DISP_REG_MDP_RDMA_INT_ENABLE, handle);
 	mtk_ddp_write_mask(comp, 0,
 		DISP_REG_MDP_RDMA_EN, ROT_ENABLE, handle);
@@ -588,11 +595,14 @@ static void mtk_mdp_rdma_layer_config_core(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_REG_MDP_RDMA_TRANSFORM_0,
 			0, ~0);
 	}
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_REG_MDP_RDMA_VCSEL,
+		(VCSEL | VCSEL_STASH), (VCSEL | VCSEL_STASH));
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_MDP_RDMA_PREFETCH_CON,
-		(prefetch_line_cnt | AUTO_PREFETCH_NEXT),
-		(0xff | AUTO_PREFETCH_NEXT | PREFETCH_DISABLE));
+		(prefetch_line_cnt | PF_ULTRA_EN | AUTO_PREFETCH_NEXT),
+		(0xff | PF_ULTRA_EN | AUTO_PREFETCH_NEXT | PREFETCH_DISABLE));
 }
 
 static void mtk_mdp_rdma_discrete_config(struct mtk_ddp_comp *comp,
