@@ -644,9 +644,11 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 				if (ret < 0)
 					MMEERR("pid buf name sprintf error,ret:%d", ret);
 			} else {
+				rcu_read_lock();
 				task = find_task_by_vpid(pid);
 				if (task != NULL)
 					get_task_comm(p_pid_buffer[pid_index].name, task);
+				rcu_read_unlock();
 			}
 
 			MMEINFO("pid:%d, pid_name:%s", pid, p_pid_buffer[pid_index].name);
