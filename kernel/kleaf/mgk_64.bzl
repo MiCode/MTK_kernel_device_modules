@@ -155,6 +155,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/masp:ktf_masp",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ufs:ktf_ufs",
     "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce_wbgai:ktf_cmdq_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/hybrid:ktf_hybrid_demo",
 
 ]
 
@@ -189,6 +190,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/masp:ktf_masp",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ufs:ktf_ufs",
     "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce_wbgai:ktf_cmdq_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/hybrid:ktf_hybrid_demo",
 ]
 
 mgk_64_kleaf_user_modules = [
