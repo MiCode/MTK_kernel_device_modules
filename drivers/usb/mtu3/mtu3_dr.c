@@ -114,6 +114,7 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 
 	pm_runtime_get(ssusb->dev);
 
+	ssusb_vsvoter_set(ssusb);
 	ssusb_pds_enable(ssusb);
 	ssusb_clks_enable(ssusb);
 
@@ -121,7 +122,6 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 	ssusb_reset(ssusb);
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
-	ssusb_vsvoter_set(ssusb);
 	ssusb_phy_power_on(ssusb);
 	ssusb_phy_set_mode(ssusb, mode);
 	ssusb_ip_sw_reset(ssusb);
@@ -135,10 +135,10 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	ssusb_ip_sleep(ssusb);
 	ssusb_phy_set_mode(ssusb, PHY_MODE_INVALID);
 	ssusb_phy_power_off(ssusb);
-	ssusb_vsvoter_clr(ssusb);
 	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 	ssusb_clks_disable(ssusb);
 	ssusb_pds_disable(ssusb);
+	ssusb_vsvoter_clr(ssusb);
 
 	pm_runtime_put(ssusb->dev);
 }

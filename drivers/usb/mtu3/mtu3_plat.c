@@ -999,6 +999,9 @@ static int ssusb_rscs_init(struct ssusb_mtk *ssusb)
 	if (ret)
 		goto clks_err;
 
+	/* reset USB MAC/PHY */
+	ssusb_reset(ssusb);
+
 phy_init:
 	ret = ssusb_phy_init(ssusb);
 	if (ret) {
@@ -1032,12 +1035,12 @@ vusb33_err:
 
 static void ssusb_rscs_exit(struct ssusb_mtk *ssusb)
 {
-	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
-	regulator_disable(ssusb->vusb33);
 	ssusb_phy_power_off(ssusb);
 	ssusb_phy_exit(ssusb);
+	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 	clk_bulk_disable_unprepare(BULK_PDS_CNT, ssusb->pds);
 	ssusb_vsvoter_clr(ssusb);
+	regulator_disable(ssusb->vusb33);
 }
 
 void ssusb_ip_sw_reset(struct ssusb_mtk *ssusb)
@@ -1384,9 +1387,6 @@ static int mtu3_probe(struct platform_device *pdev)
 	pm_runtime_get_sync(dev);
 
 	device_init_wakeup(dev, true);
-
-	/* reset USB MAC/PHY */
-	ssusb_reset(ssusb);
 
 	ret = ssusb_rscs_init(ssusb);
 	if (ret)
