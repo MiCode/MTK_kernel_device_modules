@@ -159,7 +159,10 @@
 #define PHA_EU2_CR0_2			0x22
 #define PHYA_EU2_CR1_2			0x27
 #define PHYD_COM_CR2_3			0x8b
+
 #define PHYD_COM_CR3_2			0x8E
+#define RG_USB20_LPM_EN			BIT(1)
+
 #define PHYA_U2_CR2_1			0x19
 #define PHYD_FM_CR0_1			0xA5
 #define PHYD_DBG_CR0_1			0x91
@@ -870,6 +873,11 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			/* RG_INIT_SW_PHY_SEL = 0x0 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
 				RG_INIT_SW_PHY_SEL, 0);
+
+			/* RG_USB20_LPM_EN = 0x1 */
+			if ((chip_rev & MT6379_CHIP_REV_MASK) >= 0x5)
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR3_2,
+					RG_USB20_LPM_EN, RG_USB20_LPM_EN);
 		}
 	}
 
