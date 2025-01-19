@@ -8,6 +8,7 @@
 
 #include <linux/types.h>
 #include "ged_type.h"
+#include "ged_log.h"
 
 #define GED_DVFS_UM_CAL      1
 
@@ -150,6 +151,10 @@ unsigned int ged_dvfs_get_gpu_blocking(void);
 unsigned int ged_dvfs_get_gpu_idle(void);
 unsigned int ged_dvfs_get_custom_ceiling_gpu_freq(void);
 unsigned int ged_dvfs_get_custom_boost_gpu_freq(void);
+struct cmd_info ged_dvfs_get_custom_ceiling_gpu_freq_info(void);
+struct cmd_info ged_dvfs_get_custom_boost_gpu_freq_info(void);
+ssize_t ged_dvfs_get_custom_ceiling_gpu_freq_info_str(char *buf, int sz, ssize_t pos);
+ssize_t ged_dvfs_get_custom_boost_gpu_freq_info_str(char *buf, int sz, ssize_t pos);
 
 unsigned long ged_query_info(GED_INFO eType);
 
