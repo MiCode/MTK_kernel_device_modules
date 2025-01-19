@@ -451,7 +451,8 @@ ifneq ($(wildcard $(src)/clk-mt6789.c),)
 obj-$(CONFIG_COMMON_CLK_MT6789) += clk-chk-mt6789.o
 clk-chk-mt6789-$(CONFIG_COMMON_CLK_MT6789) += clkchk-mt6789.o
 obj-$(CONFIG_COMMON_CLK_MT6789) += clk-fmeter-mt6789.o
-obj-$(CONFIG_COMMON_CLK_MT6789) += mtk-pd-chk-mt6789.o
+obj-$(CONFIG_COMMON_CLK_MT6789) += pd-chk-mt6789.o
+pd-chk-mt6789-$(CONFIG_COMMON_CLK_MT6789) += mtk-pd-chk-mt6789.o
 ifeq ($(CONFIG_DEBUG_FS), y)
 obj-$(CONFIG_COMMON_CLK_MT6789) += clk-dbg-mt6789.o
 clk-dbg-mt6789-$(CONFIG_COMMON_CLK_MT6789) += clkdbg-mt6789.o
