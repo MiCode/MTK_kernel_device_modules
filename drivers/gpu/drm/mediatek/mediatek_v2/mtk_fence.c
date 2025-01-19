@@ -96,6 +96,7 @@ _get_session_sync_info(unsigned int session_id)
 	struct mtk_fence_session_sync_info *session_info = NULL;
 	struct mtk_fence_info *layer_info = NULL;
 	char name[32];
+	int len = 0;
 
 	if (MTK_SESSION_TYPE(session_id) < MTK_SESSION_PRIMARY ||
 		MTK_SESSION_TYPE(session_id) >= MTK_SESSION_MAX) {
@@ -130,25 +131,30 @@ _get_session_sync_info(unsigned int session_id)
 
 				if (MTK_SESSION_TYPE(session_id) ==
 				    MTK_SESSION_PRIMARY)
-					sprintf(name, "-P_%d_%d-",
+					len = sprintf(name, "-P_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
 				else if (MTK_SESSION_TYPE(session_id) ==
 				    MTK_SESSION_EXTERNAL)
-					sprintf(name, "-E_%d_%d-",
+					len = sprintf(name, "-E_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
 				else if (MTK_SESSION_TYPE(session_id) ==
 				    MTK_SESSION_MEMORY)
-					sprintf(name, "-M_%d_%d-",
+					len = sprintf(name, "-M_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
 				else if (MTK_SESSION_TYPE(session_id) >=
 				    MTK_SESSION_SP0 && MTK_SESSION_TYPE(session_id) <
 				    MTK_SESSION_MAX)
-					sprintf(name, "-N%d_%d_%d-",
+					len = sprintf(name, "-N%d_%d_%d-",
 						MTK_SESSION_TYPE(session_id) - MTK_SESSION_SP0,
 						MTK_SESSION_DEV(session_id), j);
 				else
-					sprintf(name, "-NA_%d_%d-",
+					len = sprintf(name, "-NA_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
+
+				if (len < 0) {
+					/* Handle sprintf() error */
+					DDPPR_ERR("sprintf error\n");
+				}
 
 				layer_info =
 					&(session_info->session_layer_info[j]);

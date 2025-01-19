@@ -4848,7 +4848,7 @@ static void process_dbg_opt(const char *opt)
 
 	} else if (strncmp(opt, "disp_plat_dbg_profile:", 22) == 0) {
 		int err = 0;
-		struct disp_plat_dbg_scmi_data scmi_data;
+		struct disp_plat_dbg_scmi_data scmi_data = {0};
 
 		scmi_data.cmd = DISP_PLAT_DBG_PROFILE;
 
