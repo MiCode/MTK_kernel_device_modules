@@ -107,7 +107,6 @@ module_param(mml_freq_for_tppa, int, 0644);
 
 struct mml_dpc {
 	atomic_t task_cnt;
-	atomic_t addon_task_cnt;
 	atomic_t exc_pw_cnt[mml_max_sys];
 	atomic_t dc_force_cnt[mml_max_sys];
 };
@@ -1047,26 +1046,17 @@ struct device *mml_smmu_get_shared_device(struct device *dev, const char *name)
 	return shared_dev;
 }
 
-s32 mml_dpc_task_cnt_get(struct mml_task *task, bool addon_task)
+s32 mml_dpc_task_cnt_get(struct mml_task *task)
 {
 	struct mml_dev *mml = task->config->mml;
 
-	if (addon_task)
-		return atomic_read(&mml->dpc.addon_task_cnt);
-	else
-		return atomic_read(&mml->dpc.task_cnt);
+	return atomic_read(&mml->dpc.task_cnt);
 }
 
-void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
+void mml_dpc_task_cnt_inc(struct mml_task *task)
 {
 	struct mml_dev *mml = task->config->mml;
-	s32 cur_task_cnt = atomic_read(&mml->dpc.task_cnt);
-	s32 cur_addon_task_cnt = atomic_read(&mml->dpc.addon_task_cnt);
-
-	if (addon_task)
-		cur_addon_task_cnt = atomic_inc_return(&mml->dpc.addon_task_cnt);
-	else
-		cur_task_cnt = atomic_inc_return(&mml->dpc.task_cnt);
+	s32 cur_task_cnt = atomic_inc_return(&mml->dpc.task_cnt);
 
 	if (cur_task_cnt == 1) {
 		const struct mml_topology_path *path = task->config->path[0];
@@ -1085,26 +1075,15 @@ void mml_dpc_task_cnt_inc(struct mml_task *task, bool addon_task)
 	}
 }
 
-void mml_dpc_task_cnt_dec(struct mml_task *task, bool addon_task)
+void mml_dpc_task_cnt_dec(struct mml_task *task)
 {
 	struct mml_dev *mml = task->config->mml;
-	s32 cur_task_cnt = atomic_read(&mml->dpc.task_cnt);
-	s32 cur_addon_task_cnt = atomic_read(&mml->dpc.addon_task_cnt);
+	s32 cur_task_cnt = atomic_dec_return(&mml->dpc.task_cnt);
 
-	if (addon_task) {
-		cur_addon_task_cnt = atomic_dec_return(&mml->dpc.addon_task_cnt);
-		if (cur_addon_task_cnt < 0) {
-			cur_addon_task_cnt = 0;
-			atomic_set(&mml->dpc.addon_task_cnt, 0);
-			mml_err("%s addon task_cnt < 0", __func__);
-		}
-	} else {
-		cur_task_cnt = atomic_dec_return(&mml->dpc.task_cnt);
-		if (cur_task_cnt < 0) {
-			cur_task_cnt = 0;
-			atomic_set(&mml->dpc.task_cnt, 0);
-			mml_err("%s task_cnt < 0", __func__);
-		}
+	if (cur_task_cnt < 0) {
+		cur_task_cnt = 0;
+		atomic_set(&mml->dpc.task_cnt, 0);
+		mml_err("%s task_cnt < 0", __func__);
 	}
 
 	if (cur_task_cnt == 0) {

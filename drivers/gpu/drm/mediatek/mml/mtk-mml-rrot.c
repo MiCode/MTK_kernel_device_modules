@@ -2339,7 +2339,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 
 		if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
 			plane_y = w * h / pgsz;
-			plane_yv = w * h / pgsz;
+			plane_yv = w / 2 * h / 2 / pgsz;
 		} else {
 			u32 y_cmd_per_slice, uv_cmd_per_slice;
 			u32 y_slice_num, uv_slice_num;
@@ -2350,7 +2350,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 			uv_slice_num = w / 2 / 32 / bin_hor;
 
 			plane_y = y_cmd_per_slice * y_slice_num;
-			plane_yv = y_cmd_per_slice * uv_slice_num;
+			plane_yv = uv_cmd_per_slice * uv_slice_num;
 		}
 
 		stash_cmd_num = plane_y + plane_yv * 2;

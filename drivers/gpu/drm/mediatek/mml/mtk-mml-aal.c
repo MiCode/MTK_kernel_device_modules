@@ -715,7 +715,6 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 	struct mml_task_reuse *reuse = NULL;
 	struct mml_pipe_cache *cache = NULL;
 	struct aal_frame_data *aal_frm = NULL;
-	struct mml_frame_dest *dest = NULL;
 
 	if (IS_ERR_OR_NULL(task) || IS_ERR_OR_NULL(task->pq_task)) {
 		mml_err("%s task or pq_task is NULL", __func__);
@@ -729,7 +728,6 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 	reuse = &task->reuse[ccfg->pipe];
 	cache = &cfg->cache[ccfg->pipe];
 	aal_frm = aal_frm_data(ccfg);
-	dest = &cfg->info.dest[ccfg->node->out_idx];
 
 	if (mode != MML_MODE_DDP_ADDON && mode != MML_MODE_DIRECT_LINK)
 		return 0;
@@ -2305,21 +2303,16 @@ static const struct component_ops mml_comp_ops = {
 	.unbind = mml_unbind,
 };
 
-static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
-};
-
 static struct mml_comp_aal *dbg_probed_components[4];
 static int dbg_probed_count;
 
 static void aal_readback_work(struct work_struct *work_item)
 {
 	struct mml_comp_aal *aal = NULL;
-	u32 *phist0 = NULL;
 	struct mml_comp *comp = NULL;
 	void __iomem *base = NULL;
 
 	aal = container_of(work_item, struct mml_comp_aal, aal_readback_task);
-	phist0 = aal->phist;
 	comp = &aal->comp;
 	base = comp->base;
 
@@ -2427,7 +2420,6 @@ static void clarity_hist_work(struct work_struct *work_item)
 	struct mml_comp *comp = NULL;
 	struct cmdq_pkt *pkt = NULL;
 	struct cmdq_operand lop, rop;
-	struct mml_pq_task *pq_task = NULL;
 
 	const u16 idx_val = CMDQ_THR_SPR_IDX2;
 	u16 idx_out = 0;
@@ -2450,8 +2442,6 @@ static void clarity_hist_work(struct work_struct *work_item)
 	base_pa = comp->base_pa;
 	pkt = aal->hist_pkts[pipe];
 	idx_out = aal->data->cpr[aal->pipe];
-	pq_task = aal->pq_task;
-
 
 	mml_pq_ir_log("%s job_id[%d] eng_id[%d] cmd_buf_size[%zu] hist_cmd_done[%d]",
 		__func__, aal->jobid, comp->id,
