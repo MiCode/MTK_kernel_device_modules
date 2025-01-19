@@ -644,17 +644,10 @@ void unset_dsu_idle_enable(void);
 bool is_dsu_idle_enable(void);
 
 int mtk_available_idle_cpu(int cpu);
-void set_runnable_boost_enable(bool boost_ctrl);
-void unset_runnable_boost_enable(void);
-bool is_runnable_boost_enable(void);
 
-unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int boost);
 unsigned long mtk_cpu_util_next_dpt_v2(int cpu, struct task_struct *p, int dst_cpu, int boost, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util);
-unsigned long mtk_cpu_util_cfs(int cpu);
 unsigned long mtk_cpu_util_cfs_dpt_v2(int cpu, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util);
-unsigned long mtk_cpu_util_cfs_boost(int cpu);
 unsigned long mtk_cpu_util_cfs_boost_dpt_v2(int cpu, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util);
-void mtk_cpu_util_cfs_boost_hook(void *data, int cpu, unsigned long *util);
 
 #define EAS_NODE_NAME "eas_info"
 #define EAS_PROP_CSRAM "csram-base"

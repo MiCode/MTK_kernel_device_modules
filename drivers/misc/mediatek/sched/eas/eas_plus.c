@@ -9,7 +9,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <sched/sched.h>
-#include "sugov/cpu_util.h"
+#include "util/cpu_util.h"
 #include <sugov/cpufreq.h>
 #include <linux/sort.h>
 #include "common.h"

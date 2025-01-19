@@ -14,7 +14,7 @@
 #include <linux/arch_topology.h>
 #include "eas/eas_plus.h"
 #include "eas/shortcut/compress.h"
-#include "sugov/cpu_util.h"
+#include "util/cpu_util.h"
 #include "sugov/cpufreq.h"
 #include "sugov/dsu_interface.h"
 #include <sched/pelt.h>

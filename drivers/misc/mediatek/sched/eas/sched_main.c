@@ -23,7 +23,7 @@
 #include "eas_plus.h"
 #include "shortcut/compress.h"
 #include "sched_sys_common.h"
-#include "sugov/cpu_util.h"
+#include "util/cpu_util.h"
 #include "sugov/cpufreq.h"
 #include "eas_adpf.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)

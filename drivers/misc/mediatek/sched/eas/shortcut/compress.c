@@ -11,7 +11,7 @@
 #include "compress.h"
 #include "eas/eas_plus.h"
 #include "eas/eas_trace.h"
-#include "sugov/cpu_util.h"
+#include "util/cpu_util.h"
 #include "sugov/cpufreq.h"
 
 #define DEFAULT_SHORTCUT_COMPRESS_RATE 1

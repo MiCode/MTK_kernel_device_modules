@@ -28,7 +28,7 @@
 #include "mtk_energy_model/v1/energy_model.h"
 #endif // CONFIG_MTK_GEARLESS_SUPPORT
 #include "mediatek-cpufreq-hw_fdvfs.h"
-#include "sugov/cpu_util.h"
+#include "util/cpu_util.h"
 #include "dsu_interface.h"
 #include <mt-plat/mtk_irq_mon.h>
 #include "eas/group.h"

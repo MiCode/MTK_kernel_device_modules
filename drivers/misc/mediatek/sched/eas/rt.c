@@ -5,7 +5,7 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include <linux/cpuidle.h>
-#include "sugov/cpu_util.h"
+#include "util/cpu_util.h"
 #include "../sugov/cpufreq.h"
 #include "common.h"
 #include "eas_plus.h"

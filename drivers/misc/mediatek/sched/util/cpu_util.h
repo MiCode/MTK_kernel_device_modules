@@ -7,7 +7,7 @@
 #define _CPU_UTIL_H
 
 bool is_runnable_boost_enable(void);
-void set_runnable_boost_enable(bool boost_ctrl);
+void set_runnable_boost_enable(int ctrl);
 void unset_runnable_boost_enable(void);
 
 void hook_cpu_util_cfs_boost(void *data, int cpu, unsigned long *util);

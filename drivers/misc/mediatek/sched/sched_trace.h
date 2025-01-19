@@ -394,6 +394,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__field(int, vip_prio)
 		__field(bool, latency_sensitive)
 		__field(int, sync_flag)
+		__field(bool, runnable_boost)
 		__field(long, task_mask)
 		__field(long, effective_softmask)
 		__field(int, cpuctl_grp_id)
@@ -422,6 +423,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->vip_prio            = info->vip_prio;
 		__entry->latency_sensitive   = info->latency_sensitive;
 		__entry->sync_flag           = info->sync_flag;
+		__entry->runnable_boost      = is_runnable_boost_enable();
 		__entry->task_mask           = info->task_mask;
 		__entry->effective_softmask  = info->effective_softmask;
 		__entry->cpuctl_grp_id       = info->cpuctl_grp_id;
@@ -431,7 +433,7 @@ TRACE_EVENT(sched_select_task_rq,
 	),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d cpu_util=%lu cpu_util_est=%lu coef1_util=%lu coef1_util_est=%lu coef2_util=%lu coef2_util_est=%lu vip_prio=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d nr_candidates=%d time_ns=%u",
+		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d cpu_util=%lu cpu_util_est=%lu coef1_util=%lu coef1_util_est=%lu coef2_util=%lu coef2_util_est=%lu vip_prio=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d runnable_boost=%d cpuctl=%d cpuset=%d nr_candidates=%d time_ns=%u",
 		__entry->pid,
 		__entry->compat_thread,
 		__entry->in_irq,
@@ -453,6 +455,7 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->effective_softmask,
 		__entry->latency_sensitive,
 		__entry->sync_flag,
+		__entry->runnable_boost,
 		__entry->cpuctl_grp_id,
 		__entry->cpuset_grp_id,
 		__entry->nr_candidates,

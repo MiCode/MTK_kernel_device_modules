@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2023 MediaTek Inc.
  */
@@ -7,7 +7,8 @@
 
 #include "common.h"
 #include "cpu_util.h"
-#include "sugov_trace.h"
+#include "sugov/cpufreq.h"
+#include "sugov/sugov_trace.h"
 
 #define DEFAULT_RUNNABLE_BOOST	true
 
@@ -24,15 +25,26 @@ bool is_runnable_boost_enable(void)
 }
 EXPORT_SYMBOL(is_runnable_boost_enable);
 
-void set_runnable_boost_enable(bool boost_ctrl)
+void set_runnable_boost_enable(int ctrl)
 {
-	runnable_boost_enable = boost_ctrl;
+	if (_get_sched_debug_lock() == true)
+		return;
+
+	if (ctrl == -1) {
+		runnable_boost_enable = DEFAULT_RUNNABLE_BOOST;
+		return;
+	}
+
+	if (ctrl < 0 || ctrl > 1)
+		return;
+
+	runnable_boost_enable = ctrl;
 }
 EXPORT_SYMBOL(set_runnable_boost_enable);
 
 void unset_runnable_boost_enable(void)
 {
-	runnable_boost_enable = DEFAULT_RUNNABLE_BOOST;
+	set_runnable_boost_enable(-1);
 }
 EXPORT_SYMBOL(unset_runnable_boost_enable);
 

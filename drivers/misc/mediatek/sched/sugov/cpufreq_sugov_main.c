@@ -29,7 +29,7 @@
 #include <mt-plat/mtk_irq_mon.h>
 #include "common.h"
 #include "cpufreq.h"
-#include "cpu_util.h"
+#include "util/cpu_util.h"
 #include "sched_version_ctrl.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 #include "mtk_energy_model/v3/energy_model.h"
