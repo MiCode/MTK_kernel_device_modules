@@ -36,6 +36,7 @@
 #define RT6160_PGSTAT_MASK	BIT(0)
 
 #define RT6160_VENDOR_ID	0xA0
+#define RT6166_VENDOR_ID	0xB0
 #define RT6160_VOUT_MINUV	2025000
 #define RT6160_VOUT_MAXUV	5200000
 #define RT6160_VOUT_STPUV	25000
@@ -320,7 +321,8 @@ static int rt6160_probe(struct i2c_client *i2c)
 	if (ret)
 		return ret;
 
-	if ((devid & RT6160_VID_MASK) != RT6160_VENDOR_ID) {
+	devid = devid & RT6160_VID_MASK;
+	if (devid != RT6160_VENDOR_ID && devid != RT6166_VENDOR_ID) {
 		dev_err(&i2c->dev, "VID not correct [0x%02x]\n", devid);
 		return -ENODEV;
 	}
