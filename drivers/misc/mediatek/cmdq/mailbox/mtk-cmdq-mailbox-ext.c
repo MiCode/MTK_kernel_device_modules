@@ -129,13 +129,6 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define GCE_VM_ID_MAP3		0x5024
 #define GCE_HW_TRACE_THRD_EN	0x50d4
 
-#define GCE_HOST_VM_IRQ_STATUS			0x3014
-#define GCE_CPR_GSIZE		0x50C4
-#define GCE_VM_ID_MAP0		0x5018
-#define GCE_VM_ID_MAP1		0x501C
-#define GCE_VM_ID_MAP2		0x5020
-#define GCE_VM_ID_MAP3		0x5024
-
 #define CMDQ_JUMP_BY_OFFSET		0x10000000
 #define CMDQ_JUMP_BY_PA			0x10000001
 
@@ -3425,6 +3418,17 @@ static int cmdq_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&cmdq->irq_removes);
 	spin_lock_init(&cmdq->irq_removes_lock);
 
+	cmdq->gce_shift_bit = plat_data->shift;
+	cmdq->gce_mminfra = plat_data->mminfra;
+	gce_mminfra = cmdq->gce_mminfra;
+	cmdq->gce_thread_nr = plat_data->thread_nr;
+
+	dev_notice(dev,
+		"gce hwid:%d thread:%u shift:%u mminfra:0x%llx base:0x%lx pa:0x%lx\n",
+		cmdq->hwid, plat_data->thread_nr, plat_data->shift, plat_data->mminfra,
+		(unsigned long)cmdq->base,
+		(unsigned long)cmdq->base_pa);
+
 	init_waitqueue_head(&cmdq->err_irq_wq);
 	kthr = kthread_run(cmdq_irq_handler_thread, cmdq, "cmdq_irq_thread");
 
@@ -3504,17 +3508,6 @@ static int cmdq_probe(struct platform_device *pdev)
 				cmdq_msg("failed to create device link with smi");
 		}
 	}
-
-	cmdq->gce_shift_bit = plat_data->shift;
-	cmdq->gce_mminfra = plat_data->mminfra;
-	gce_mminfra = cmdq->gce_mminfra;
-	cmdq->gce_thread_nr = plat_data->thread_nr;
-
-	dev_notice(dev,
-		"gce hwid:%d thread:%u shift:%u mminfra:0x%llx base:0x%lx pa:0x%lx\n",
-		cmdq->hwid, plat_data->thread_nr, plat_data->shift, plat_data->mminfra,
-		(unsigned long)cmdq->base,
-		(unsigned long)cmdq->base_pa);
 
 	if (of_property_read_bool(dev->of_node, "poll-sleep-bit32"))
 		cmdq->poll_sleep_bit32 = true;
