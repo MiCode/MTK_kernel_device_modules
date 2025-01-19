@@ -29,6 +29,8 @@
 
 /*GPU ST0/ST2/ST3/ST4/ST5/ST6 = 0x15C/0x160/0x164/0x168/0x16C/0x170*/
 #define GPU_ST0_FREQ_OFFSET         (0x15C)
+#define GPU_PRE_THROTTLE_TEMP_OFFSET  (0x2E8)
+#define GPU_PRE_THROTTLE_OPP_OFFSET (0x3C0)
 
 #define GPU_TEMP_OFFSET             (0x180)
 #define APU_TEMP_OFFSET             (0x190)
@@ -229,6 +231,8 @@ extern int get_cpu_ceiling_freq (int cluster_id);
 typedef void (*ThermalHintFuncPtr)(int);
 extern void cm_thermal_hint_register(ThermalHintFuncPtr func);
 extern void cm_thermal_hint_unregister(void);
+extern int set_gpu_pre_throttle(int temp);
+extern int get_gpu_pre_throttle_temp(void);
 
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
