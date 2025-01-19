@@ -2711,8 +2711,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	for (int i = 0; i < MAX_NR_CPUS; i++) {
-		set_target_margin(i, 20);
-		set_target_margin_low(i, 20);
+		unset_target_margin(i);
+		unset_target_margin_low(i);
 		set_turn_point_freq(i, 0);
 	}
 
@@ -2852,6 +2852,9 @@ int sysctl_sched_capacity_margin_dvfs = 20;
 unsigned int turn_point_util[MAX_NR_CPUS];
 unsigned int target_margin[MAX_NR_CPUS];
 unsigned int target_margin_low[MAX_NR_CPUS];
+unsigned int target_margin_enable[MAX_NR_CPUS];
+unsigned int target_margin_low_enable[MAX_NR_CPUS];
+
 /*
  * set sched capacity margin for DVFS, Default = 20
  */
@@ -2882,13 +2885,14 @@ int set_target_margin(int cpu, int margin)
 	if (cpu < 0 || cpu > MAX_NR_CPUS)
 		return -1;
 
-	if (margin < -2000 || margin > 95)
+	if (margin < -2000 || margin > 99)
 		return -1;
 
 	policy = cpufreq_cpu_get(cpu);
 	if (policy) {
 		for_each_cpu(i, policy->related_cpus) {
 			target_margin[i] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+			target_margin_enable[i] = 1;
 		}
 		cpufreq_cpu_put(policy);
 	}
@@ -2905,13 +2909,14 @@ int set_target_margin_low(int cpu, int margin)
 	if (cpu < 0 || cpu > MAX_NR_CPUS)
 		return -1;
 
-	if (margin < -2000 || margin > 95)
+	if (margin < -2000 || margin > 99)
 		return -1;
 
 	policy = cpufreq_cpu_get(cpu);
 	if (policy) {
 		for_each_cpu(i, policy->related_cpus) {
 			target_margin_low[i] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+			target_margin_low_enable[i] = 1;
 		}
 		cpufreq_cpu_put(policy);
 	}
@@ -2931,6 +2936,41 @@ int get_target_margin_low(int cpu)
 	return (100 - (SCHED_CAPACITY_SCALE * 100) / target_margin_low[cpu]);
 }
 EXPORT_SYMBOL_GPL(get_target_margin_low);
+
+/* target_margin not used */ 
+int unset_target_margin(int cpu)
+{
+	struct cpufreq_policy *policy;
+	int i = 0;
+
+	policy = cpufreq_cpu_get(cpu);
+	if (policy) {
+		for_each_cpu(i, policy->related_cpus) {
+			target_margin[i] = (SCHED_CAPACITY_SCALE * 100 / (80));
+			target_margin_enable[i] = 0;
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(unset_target_margin);
+
+/* target_margin_low not used */ 
+int unset_target_margin_low(int cpu)
+{
+	struct cpufreq_policy *policy;
+	int i = 0;
+
+	policy = cpufreq_cpu_get(cpu);
+	if (policy) {
+		for_each_cpu(i, policy->related_cpus) {
+			target_margin_low[i] = (SCHED_CAPACITY_SCALE * 100 / (80));
+			target_margin_low_enable[i] = 0;
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(unset_target_margin_low);
+
 
 /*
  *for vonvenient, pass freq, but converty to util
@@ -3537,22 +3577,22 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 	orig_util = util;
 	*capacity_result = util;
 
-	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
+	if (turn_point_util[cpu] && target_margin_enable[cpu] &&
+		orig_util >= turn_point_util[cpu])
+		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
+					>> SCHED_CAPACITY_SHIFT);
+	else if (turn_point_util[cpu] && target_margin_low_enable[cpu] &&
+		orig_util < turn_point_util[cpu])
+		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
+					>> SCHED_CAPACITY_SHIFT);
+	else if (am_ctrl || grp_dvfs_ctrl_mode) {
 		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask, min, max);
-
 		if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
 			trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, cpu_util_local, coef1_util_local, coef2_util_local, util_before_cpu_util_ratio, min, max);
 		return;
 	}
-
-	if (turn_point_util[cpu] &&
-		orig_util >= turn_point_util[cpu])
-		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
-					>> SCHED_CAPACITY_SHIFT);
-	else if (turn_point_util[cpu] &&
-		orig_util < turn_point_util[cpu])
-		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
-					>> SCHED_CAPACITY_SHIFT);
+	else
+		util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
 
 	*next_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util, 0, 1024, false);
 	if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
@@ -3568,9 +3608,8 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 	}
 
 	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[cpu]) {
-		orig_util = (orig_util * util_scale) >> SCHED_CAPACITY_SHIFT;
 		trace_sugov_ext_turn_point_margin(cpu, orig_util, util,
-			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu]);
+			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu], am_ctrl, grp_dvfs_ctrl_mode);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_map_util_freq_dpt_v2);
@@ -3586,19 +3625,21 @@ void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 
 	cpu = cpumask_first(cpumask);
 
-	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
-		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask, min, max);
-		return;
-	}
-
-	if (turn_point_util[cpu] &&
+	if (turn_point_util[cpu] && target_margin_enable[cpu] &&
 		orig_util >= turn_point_util[cpu])
 		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
 					>> SCHED_CAPACITY_SHIFT);
-	else if (turn_point_util[cpu] &&
+	else if (turn_point_util[cpu] && target_margin_low_enable[cpu] &&
 		orig_util < turn_point_util[cpu])
 		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
 					>> SCHED_CAPACITY_SHIFT);
+	else if (am_ctrl || grp_dvfs_ctrl_mode) {
+		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask, min, max);
+		return;
+	}
+	else
+		util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
+
 	util = sugov_effective_cpu_perf_clamp(util, min, max);
 	*next_freq = pd_X2Y(cpu, util, CAP, FREQ, false, DPT_CALL_MTK_MAP_UTIL_FREQ);
 
@@ -3616,9 +3657,8 @@ void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 	}
 
 	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[cpu]) {
-		orig_util = (orig_util * util_scale) >> SCHED_CAPACITY_SHIFT;
 		trace_sugov_ext_turn_point_margin(cpu, orig_util, util,
-			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu]);
+			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu], am_ctrl, grp_dvfs_ctrl_mode);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_map_util_freq);

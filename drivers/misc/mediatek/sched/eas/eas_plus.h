@@ -312,6 +312,16 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_UNSET_DSU_IDLE			_IOW('g', 64,  unsigned int)
 #define EAS_SET_CURR_TASK_UCLAMP	_IOW('g', 65,  unsigned int)
 #define EAS_UNSET_CURR_TASK_UCLAMP	_IOW('g', 66,  unsigned int)
+#define EAS_TARGET_MARGIN_LOW_C0		_IOW('g', 67,  unsigned int)
+#define EAS_TARGET_MARGIN_LOW_C1		_IOW('g', 68,  unsigned int)
+#define EAS_TARGET_MARGIN_LOW_C2		_IOW('g', 69,  unsigned int)
+#define EAS_UNSET_TARGET_MARGIN_C0		_IOW('g', 70,  unsigned int)
+#define EAS_UNSET_TARGET_MARGIN_C1		_IOW('g', 71,  unsigned int)
+#define EAS_UNSET_TARGET_MARGIN_C2		_IOW('g', 72,  unsigned int)
+#define EAS_UNSET_TARGET_MARGIN_LOW_C0		_IOW('g', 73,  unsigned int)
+#define EAS_UNSET_TARGET_MARGIN_LOW_C1		_IOW('g', 74,  unsigned int)
+#define EAS_UNSET_TARGET_MARGIN_LOW_C2		_IOW('g', 75,  unsigned int)
+
 
 extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
@@ -391,6 +401,10 @@ extern void sched_pause_init(void);
 #define DPT_TURN_ON (is_dpt_support_driver_hook != NULL && is_dpt_support_driver_hook())
 extern int set_target_margin(int gearid, int margin);
 extern int set_turn_point_freq(int gearid, unsigned long turn_freq);
+extern int set_target_margin_low(int gearid, int margin);
+extern int unset_target_margin(int cpu);
+extern int unset_target_margin_low(int cpu);
+
 extern int set_util_est_ctrl(bool enable);
 struct share_buck_info {
 	int gear_idx;

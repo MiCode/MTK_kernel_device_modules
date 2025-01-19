@@ -776,6 +776,78 @@ static long eas_ioctl_impl(struct file *filp,
 				set_target_margin(i, val);
 		}
 		break;
+	case EAS_TARGET_MARGIN_LOW_C0:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 0)
+				set_target_margin_low(i, val);
+		}
+		break;
+	case EAS_TARGET_MARGIN_LOW_C1:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 1)
+				set_target_margin_low(i, val);
+		}
+		break;
+	case EAS_TARGET_MARGIN_LOW_C2:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 2)
+				set_target_margin_low(i, val);
+		}
+		break;
+	case EAS_UNSET_TARGET_MARGIN_C0:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 0)
+				unset_target_margin(i);
+		}
+		break;
+	case EAS_UNSET_TARGET_MARGIN_C1:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 1)
+				unset_target_margin(i);
+		}
+		break;
+	case EAS_UNSET_TARGET_MARGIN_C2:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 2)
+				unset_target_margin(i);
+		}
+		break;
+	case EAS_UNSET_TARGET_MARGIN_LOW_C0:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 0)
+				unset_target_margin_low(i);
+		}
+		break;
+	case EAS_UNSET_TARGET_MARGIN_LOW_C1:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 1)
+				unset_target_margin_low(i);
+		}
+		break;
+	case EAS_UNSET_TARGET_MARGIN_LOW_C2:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+		for(i = 0; i < MAX_NR_CPUS; i++) {
+			if(topology_cluster_id(i) == 2)
+				unset_target_margin_low(i);
+		}
+		break;
 	case EAS_UTIL_EST_CONTROL:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;

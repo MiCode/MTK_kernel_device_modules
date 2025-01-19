@@ -399,6 +399,8 @@ static inline int rt_rq_throttled(struct rt_rq *rt_rq)
 
 extern int set_target_margin(int gearid, int margin);
 extern int set_target_margin_low(int gearid, int margin);
+extern int unset_target_margin(int gearid);
+extern int unset_target_margin_low(int gearid);
 extern int set_turn_point_freq(int gearid, unsigned long freq);
 
 extern void set_curr_task_uclamp_ctrl(int set);

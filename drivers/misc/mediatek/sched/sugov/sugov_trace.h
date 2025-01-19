@@ -408,8 +408,9 @@ TRACE_EVENT(sugov_ext_group_dvfs,
 
 TRACE_EVENT(sugov_ext_turn_point_margin,
 	TP_PROTO(unsigned int cpu, unsigned int orig_util, unsigned int margin_util,
-	unsigned int turn_point, unsigned int target_margin, unsigned int target_margin_low),
-	TP_ARGS(cpu, orig_util, margin_util, turn_point, target_margin, target_margin_low),
+	unsigned int turn_point, unsigned int target_margin, unsigned int target_margin_low,
+	int am_ctrl, int grp_dvfs_ctrl_mode),
+	TP_ARGS(cpu, orig_util, margin_util, turn_point, target_margin, target_margin_low, am_ctrl, grp_dvfs_ctrl_mode),
 	TP_STRUCT__entry(
 		__field(unsigned int, cpu)
 		__field(unsigned int, orig_util)
@@ -417,6 +418,8 @@ TRACE_EVENT(sugov_ext_turn_point_margin,
 		__field(unsigned int, turn_point)
 		__field(unsigned int, target_margin)
 		__field(unsigned int, target_margin_low)
+		__field(int, am_ctrl)
+		__field(int, grp_dvfs_ctrl_mode)
 	),
 	TP_fast_assign(
 		__entry->cpu = cpu;
@@ -425,15 +428,19 @@ TRACE_EVENT(sugov_ext_turn_point_margin,
 		__entry->turn_point = turn_point;
 		__entry->target_margin = target_margin;
 		__entry->target_margin_low = target_margin_low;
+		__entry->am_ctrl = am_ctrl;
+		__entry->grp_dvfs_ctrl_mode = grp_dvfs_ctrl_mode;
 	),
 	TP_printk(
-		"cpu=%u orig_util=%u margin_util=%u turn_point=%d target_margin=%d target_margin_low=%d",
+		"cpu=%u orig_util=%u margin_util=%u turn_point=%d target_margin=%d target_margin_low=%d am_ctrl=%d grp_dvfs_ctrl_mode=%d",
 		__entry->cpu,
 		__entry->orig_util,
 		__entry->margin_util,
 		__entry->turn_point,
 		__entry->target_margin,
-		__entry->target_margin_low)
+		__entry->target_margin_low,
+		__entry->am_ctrl,
+		__entry->grp_dvfs_ctrl_mode)
 );
 
 TRACE_EVENT(collab_type_1_ret_function,
