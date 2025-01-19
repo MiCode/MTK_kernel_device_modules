@@ -756,7 +756,7 @@ unsigned int get_nr_gears(void)
 }
 EXPORT_SYMBOL_GPL(get_nr_gears);
 
-struct cpumask *get_gear_cpumask(unsigned int gear)
+inline struct cpumask *get_gear_cpumask(unsigned int gear)
 {
 	return &pd_cpumask[gear];
 }
