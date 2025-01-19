@@ -9942,14 +9942,15 @@ void mtk_crtc_clear_wait_event(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = NULL;
 
-	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
-		mtk_crtc_pkt_create(&cmdq_handle, crtc,
-			mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	mtk_crtc_pkt_create(&cmdq_handle, crtc,
+		mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
-		if (!cmdq_handle) {
-			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-			return;
-		}
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		return;
+	}
+
+	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
 
 		cmdq_pkt_set_event(cmdq_handle,
 				   mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
@@ -9957,6 +9958,10 @@ void mtk_crtc_clear_wait_event(struct drm_crtc *crtc)
 				   mtk_crtc->gce_obj.event[EVENT_ESD_EOF]);
 		cmdq_pkt_set_event(cmdq_handle,
 				   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+
+		} else
+			cmdq_pkt_set_event(cmdq_handle,
+					   mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
 
 		priv = mtk_crtc->base.dev->dev_private;
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -9966,7 +9971,6 @@ void mtk_crtc_clear_wait_event(struct drm_crtc *crtc)
 			cmdq_pkt_flush(cmdq_handle);
 			cmdq_pkt_destroy(cmdq_handle);
 		}
-	}
 
 }
 
@@ -19414,6 +19418,10 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		break;
 	case EVENT_CABC_EOF:
 		len = snprintf(buf, buf_len, "disp_token_cabc_eof%d",
+					drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_VDO_CABC_EOF:
+		len = snprintf(buf, buf_len, "disp_token_vdo_cabc_eof%d",
 					drm_crtc_index(&mtk_crtc->base));
 		break;
 	case EVENT_DSI_SOF:
