@@ -127,7 +127,7 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 		goto ERR;
 	}
 
-	if (global_en_ofs != 0) {
+	if (global_en_ofs != 0 && is_set) {
 		ret = regmap_read_poll_timeout_atomic(regmap, global_en_ofs, val,
 			is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val),
 			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
