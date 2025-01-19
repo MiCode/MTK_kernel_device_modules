@@ -13,6 +13,7 @@
 #define MMSYS_MT6989  0x6989
 #define MMSYS_MT6878  0x6878
 #define MMSYS_MT6991  0x6991
+#define MMSYS_MT6993  0x6993
 
 #define DPCFUNC(fmt, args...) \
 	pr_info("[dpc] %s:%d " fmt "\n", __func__, __LINE__, ##args)
@@ -336,8 +337,6 @@ struct mtk_dpc {
 	struct device *pd_dev;			/* mminfra mtcmos */
 	struct device *root_dev;		/* disp_vcore mtcmos */
 	struct notifier_block smi_nb;
-	struct notifier_block pm_nb;
-	struct notifier_block vcp_nb;
 	int disp_irq;
 	int mml_irq;
 	resource_size_t dpc_pa;
@@ -385,13 +384,19 @@ struct mtk_dpc {
 	void __iomem *mminfra_dummy;
 
 	struct mtk_dpc_mtcmos_cfg *mtcmos_cfg;
+	int subsys_cnt;
+
 	struct mtk_dpc_dt_usage *disp_dt_usage;
 	struct mtk_dpc_dt_usage *mml_dt_usage;
 	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
+	struct mtk_dpc_channel_bw_cfg *ch_bw_cfg;
 
 	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode);
 	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
 	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
+	void (*duration_update)(const u32 us);
+	void (*enable)(const u8 en);
+	int (*res_init)(struct mtk_dpc *priv);
 };
 
 #endif
