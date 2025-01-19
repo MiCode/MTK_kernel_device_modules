@@ -1,0 +1,26 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+define_mgk_ddk_ko(
+    name = "musb_main",
+    srcs = ["musb.c",],
+    hdrs = [
+        "musb_main.h",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/usb/core",
+    ],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version)],
+)

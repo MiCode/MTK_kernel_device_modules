@@ -20,11 +20,6 @@
 #include <mtk_musb.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
-#if IS_ENABLED(CONFIG_MTK_USB_TYPEC)
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
-#include <tcpm.h>
-#endif
-#endif
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
 #include <linux/phy/phy.h>
