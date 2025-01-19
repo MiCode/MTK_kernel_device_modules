@@ -39,6 +39,8 @@
 #define RT6166_VENDOR_ID	0xB0
 #define RT6160_VOUT_MINUV	2025000
 #define RT6160_VOUT_MAXUV	5200000
+#define RT6166_VOUT_MINUV	1800000
+#define RT6166_VOUT_MAXUV	4975000
 #define RT6160_VOUT_STPUV	25000
 #define RT6160_N_VOUTS		((RT6160_VOUT_MAXUV - RT6160_VOUT_MINUV) / RT6160_VOUT_STPUV + 1)
 
@@ -61,6 +63,7 @@ struct rt6160_priv {
 	struct regmap *regmap;
 	struct delayed_work polling_error;
 	bool enable_state;
+	uint8_t devid;
 	uint8_t id;
 };
 
@@ -326,13 +329,17 @@ static int rt6160_probe(struct i2c_client *i2c)
 		dev_err(&i2c->dev, "VID not correct [0x%02x]\n", devid);
 		return -ENODEV;
 	}
+	priv->devid = devid;
 
 	i2c_set_clientdata(i2c, priv);
 
 	priv->desc.name = "rt6160-buckboost";
 	priv->desc.type = REGULATOR_VOLTAGE;
 	priv->desc.owner = THIS_MODULE;
-	priv->desc.min_uV = RT6160_VOUT_MINUV;
+	if (priv->devid == RT6166_VENDOR_ID)
+		priv->desc.min_uV = RT6166_VOUT_MINUV;
+	else
+		priv->desc.min_uV = RT6160_VOUT_MINUV;
 	priv->desc.uV_step = RT6160_VOUT_STPUV;
 	if (vsel_active_low)
 		priv->desc.vsel_reg = RT6160_REG_VSELL;
