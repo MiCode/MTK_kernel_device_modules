@@ -98,6 +98,8 @@ struct mtk_mmsys_driver_data {
 	bool skip_trans;
 	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int bw_base, unsigned int channel_bw[]);
+	void (*update_channel_hrt_write)(struct mtk_drm_crtc *mtk_crtc,
+			unsigned int bw_base, unsigned int channel_bw[]);
 	unsigned int (*get_channel_idx)(enum CHANNEL_TYPE type, unsigned int i);
 	bool ct_wiat_cmdq_event;
 };
@@ -195,6 +197,7 @@ struct mtk_drm_private {
 	unsigned int ovlsys_usage[MAX_CRTC]; //describe each CRTC OVLSYS connect state
 	unsigned int req_hrt[MAX_CRTC];
 	unsigned int req_hrt_channel_bw[MAX_CRTC][BW_CHANNEL_NR];
+	unsigned int req_hrt_channel_write_bw[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int num_pipes;
 
 	unsigned int sw_ver;

@@ -163,8 +163,10 @@ enum EVENT_TRIGGER_PT {
 #define DISP_SLOT_CUR_LARB_HRT (DISP_SLOT_CUR_HRT_LEVEL + 0x4)
 #define DISP_SLOT_CUR_CHAN_HRT(n)                                      \
 	(DISP_SLOT_CUR_LARB_HRT + 0x4 + (0x4 * (n)))
-#define DISP_SLOT_CUR_BW_VAL(n)                                      \
+#define DISP_SLOT_CUR_CHAN_HRT_WRITE(n)                                      \
 	(DISP_SLOT_CUR_CHAN_HRT(BW_CHANNEL_NR) + (0x4 * (n)))
+#define DISP_SLOT_CUR_BW_VAL(n)                                      \
+	(DISP_SLOT_CUR_CHAN_HRT_WRITE(BW_CHANNEL_NR) + (0x4 * (n)))
 #define DISP_SLOT_CUR_HDR_BW_VAL(n)                                      \
 	(DISP_SLOT_CUR_BW_VAL(MAX_LAYER_NR) + (0x4 * (n)))
 #define DISP_SLOT_CUR_STASH_BW_VAL(n)                                      \

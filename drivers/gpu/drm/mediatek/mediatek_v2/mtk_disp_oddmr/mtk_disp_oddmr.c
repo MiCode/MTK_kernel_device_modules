@@ -5413,7 +5413,7 @@ int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int *oddmr_hrt)
 	return sum;
 }
 
-static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, int *oddmr_hrt)
+static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, int *oddmr_hrt)
 {
 	int sum = 0;
 	unsigned long long res_ratio = 1000;
@@ -5439,10 +5439,20 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, int *oddmr_hrt)
 	od_support = oddmr_data->primary_data->od_support;
 	dbi_support = oddmr_data->primary_data->dbi_support;
 
-	if (od_support || dmr_support || dbi_support) {
+	if (!od_support && !dmr_support && !dbi_support)
+		return 0;
+	if (g_oddmr_hrt_en == false)
+		return 0;
+
+	if (type == CHANNEL_HRT_WRITE) {
 		if (oddmr_data->od_enable) {
-			if (oddmr_data->data->dmr_version == MTK_OD_V2)
-				mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode);
+			if (oddmr_data->data->od_version == MTK_OD_V2)
+				sum += mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
+		}
+	} else {
+		if (oddmr_data->od_enable) {
+			if (oddmr_data->data->od_version == MTK_OD_V2)
+				sum += mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
 			else
 				sum += mtk_oddmr_od_bpp(comp, od_param->od_basic_info.basic_param.od_mode);
 		}
@@ -5464,20 +5474,19 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, int *oddmr_hrt)
 			}
 			sum += temp_hrt;
 		}
-		if (mtk_crtc->scaling_ctx.scaling_en) {
-			res_ratio =
-				((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
-				mtk_crtc->scaling_ctx.lcm_height * 1000) /
-				((unsigned long long)mtk_crtc->base.state->adjusted_mode.vdisplay *
-				mtk_crtc->base.state->adjusted_mode.hdisplay);
-		}
-		sum = sum * res_ratio / 1000;
-		ODDMRAPI_LOG("od %d dmr %d dbi %d sum %d res_ratio %llu\n",
-				oddmr_data->od_enable, oddmr_data->dmr_enable, oddmr_data->dbi_enable, sum, res_ratio);
 	}
+	if (mtk_crtc->scaling_ctx.scaling_en) {
+		res_ratio =
+			((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
+			mtk_crtc->scaling_ctx.lcm_height * 1000) /
+			((unsigned long long)mtk_crtc->base.state->adjusted_mode.vdisplay *
+			mtk_crtc->base.state->adjusted_mode.hdisplay);
+	}
+	sum = sum * res_ratio / 1000;
+	ODDMRAPI_LOG("type:%d, od %d dmr %d dbi %d sum %d res_ratio %llu\n",
+			type, oddmr_data->od_enable, oddmr_data->dmr_enable,
+			oddmr_data->dbi_enable, sum, res_ratio);
 
-	if (g_oddmr_hrt_en == false)
-		return 0;
 	if (oddmr_hrt)
 		*oddmr_hrt += sum;
 	return sum;
@@ -5780,6 +5789,33 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if(dbi_enable != oddmr_data->dbi_enable) {
 			mtk_oddmr_dbi_config(comp,handle);
 			dbi_enable = oddmr_data->dbi_enable;
+		}
+		break;
+	}
+	case PMQOS_GET_LARB_PORT_HRT_BW: {
+		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
+		int weight = 0;
+		unsigned int bw_base = 0;
+
+		data->larb_id = -1;
+		data->bw = 0;
+		if (data->type != CHANNEL_HRT_RW && data->type != CHANNEL_HRT_WRITE)
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0)
+			break;
+
+		mtk_oddmr_sum_hrt(comp, data->type, &weight);
+		if (weight > 0) {
+			bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
+			data->bw = bw_base * weight / 400;
+			DDPINFO("%s, oddmr comp:%d, larb:%d, type:%d, bw:%d, weight:%d\n",
+				__func__, comp->id, data->larb_id, data->type, data->bw, weight);
 		}
 		break;
 	}
@@ -6107,13 +6143,6 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_HRT_VAL_ODRW) =	NO_PENDING_HRT;
 		}
-	}
-		break;
-	case ODDMR_SUM_HRT:
-	{
-		int *oddmr_hrt = params;
-
-		mtk_oddmr_sum_hrt(comp, oddmr_hrt);
 	}
 		break;
 	case GET_VALID_PARTIAL_ROI:

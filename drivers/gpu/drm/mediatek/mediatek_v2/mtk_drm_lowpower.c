@@ -2307,6 +2307,12 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 				mtk_crtc->qos_ctx->last_channel_req[i], i);
 	}
 
+	if (priv->data->update_channel_hrt_write) {
+		for (i = 0; i < BW_CHANNEL_NR; i++)
+			mtk_disp_set_channel_hrt_write_bw(mtk_crtc,
+				mtk_crtc->qos_ctx->last_channel_write_req[i], i);
+	}
+
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"restore_plane", 16, perf_string, true);
 	/* 11. restore OVL setting */

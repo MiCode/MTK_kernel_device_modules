@@ -6539,6 +6539,7 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.real_srt_ostdl = true,
 	.skip_trans = true,
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6991,
+	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6991,
 	.get_channel_idx = mtk_disp_get_channel_idx_MT6991,
 //	.ct_wiat_cmdq_event = true,
 };
