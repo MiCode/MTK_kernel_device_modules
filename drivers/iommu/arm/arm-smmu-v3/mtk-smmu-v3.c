@@ -478,8 +478,12 @@ static void smmu_init_wpcfg(struct arm_smmu_device *smmu)
 	void __iomem *wp_base;
 
 	wp_base = smmu->wp_base;
-	dev_info(smmu->dev, "[%s] start, wp_base:0x%llx\n",
-		 __func__, (unsigned long long)wp_base);
+	dev_info(smmu->dev,
+		 "[%s] start GLB_CTL0(0x%x)=0x%x TCU_CTL0(0x%x)=0x%x TCU_CTL1(0x%x)=0x%x\n",
+		 __func__,
+		 SMMUWP_GLB_CTL0, smmu_read_reg(wp_base, SMMUWP_GLB_CTL0),
+		 SMMUWP_TCU_CTL0, smmu_read_reg(wp_base, SMMUWP_TCU_CTL0),
+		 SMMUWP_TCU_CTL1, smmu_read_reg(wp_base, SMMUWP_TCU_CTL1));
 
 	/* DCM basic setting */
 	smmu_write_field(wp_base, SMMUWP_GLB_CTL0, CTL0_DCM_EN, CTL0_DCM_EN);
@@ -516,22 +520,25 @@ static void smmu_init_wpcfg(struct arm_smmu_device *smmu)
 	if (data->axslc) {
 		smmu_write_field(wp_base, SMMUWP_GLB_CTL0,
 				 CTL0_STD_AXI_MODE_DIS, CTL0_STD_AXI_MODE_DIS);
-		smmu_write_field(wp_base, SMMU_TCU_CTL1_AXSLC, AXSLC_BIT_FIELD,
+		smmu_write_field(wp_base, SMMUWP_TCU_CTL1, AXSLC_BIT_FIELD,
 				 AXSLC_SET);
-		smmu_write_field(wp_base, SMMU_TCU_CTL1_AXSLC, SLC_SB_ONLY_EN,
+		smmu_write_field(wp_base, SMMUWP_TCU_CTL1, SLC_SB_ONLY_EN,
 				 SLC_SB_ONLY_EN);
-		dev_info(smmu->dev,
-			 "[%s] AXSLC done SMMU_TCU_CTL1_AXSLC(0x%llx)=0x%x\n",
-			 __func__,
-			 (unsigned long long)wp_base + SMMU_TCU_CTL1_AXSLC,
-			 smmu_read_reg(wp_base, SMMU_TCU_CTL1_AXSLC));
+	}
+
+	/* Set TCU ultra/pre-ultra signal */
+	if (data->tcu_qos == TCU_QOS_ULTRA ||
+	    data->tcu_qos == TCU_QOS_PREULTRA) {
+		smmu_write_field(wp_base, SMMUWP_TCU_CTL0,
+				 TCU_QOS_MSK, data->tcu_qos);
 	}
 
 	dev_info(smmu->dev,
-		 "[%s] GLB_CTL0(0x%llx)=0x%x\n",
+		 "[%s] done GLB_CTL0(0x%x)=0x%x TCU_CTL0(0x%x)=0x%x TCU_CTL1(0x%x)=0x%x\n",
 		 __func__,
-		 (unsigned long long)wp_base + SMMUWP_GLB_CTL0,
-		 smmu_read_reg(wp_base, SMMUWP_GLB_CTL0));
+		 SMMUWP_GLB_CTL0, smmu_read_reg(wp_base, SMMUWP_GLB_CTL0),
+		 SMMUWP_TCU_CTL0, smmu_read_reg(wp_base, SMMUWP_TCU_CTL0),
+		 SMMUWP_TCU_CTL1, smmu_read_reg(wp_base, SMMUWP_TCU_CTL1));
 }
 
 static void smmu_deinit_wpcfg(struct arm_smmu_device *smmu)
@@ -2679,7 +2686,7 @@ static const struct mtk_smmu_ops mtk_smmu_ops = {
 static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
-	u32 prefetch, irq_disable, ssid_enable;
+	u32 prefetch, irq_disable, ssid_enable, tcu_qos;
 	int ret;
 
 	/* parse tcu prefetch config */
@@ -2719,6 +2726,12 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 		dev_info(smmu->dev, "parse ssid-enable:%d\n", ssid_enable);
 	} else {
 		data->ssid_enabled = false;
+	}
+
+	ret = of_property_read_u32(smmu->dev->of_node, "mtk,tcu-qos", &tcu_qos);
+	if (!ret) {
+		data->tcu_qos = tcu_qos & TCU_QOS_MSK;
+		dev_info(smmu->dev, "parse tcu-qos:%d\n", tcu_qos);
 	}
 }
 
@@ -2936,7 +2949,7 @@ static const struct mtk_smmu_plat_data mt6991_data_gpu = {
 	.smmu_plat		= SMMU_MT6991,
 	.smmu_type		= GPU_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_EXTRA_DCM_EN | SMMU_HYP_EN |
-				  SMMU_DIS_CPU_PARTID | SMMU_DIS_CPU_TBU_PARTID,
+				  SMMU_DIS_CPU_TBU_PARTID,
 };
 
 static const struct mtk_smmu_plat_data mt6993_data_mm = {

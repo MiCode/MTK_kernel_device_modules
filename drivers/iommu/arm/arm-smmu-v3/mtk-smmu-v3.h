@@ -135,7 +135,16 @@
 /* SMMU non-secure interrupt pending count register, count 20 */
 #define SMMUWP_IRQ_CNTx(cnt)		(0x100 + 0x4 * (cnt))
 
-#define SMMU_TCU_CTL1_AXSLC		(0x204)
+#define SMMUWP_TCU_CTL0			(0x200)
+#define TCU_R_ULTRA_EN			F_BIT_SET(0)
+#define TCU_R_PREULTRA_EN		F_BIT_SET(1)
+#define TCU_W_ULTRA_EN			F_BIT_SET(2)
+#define TCU_W_PREULTRA_EN		F_BIT_SET(3)
+#define TCU_QOS_ULTRA			(TCU_R_ULTRA_EN | TCU_W_ULTRA_EN)
+#define TCU_QOS_PREULTRA		(TCU_R_PREULTRA_EN | TCU_W_PREULTRA_EN)
+#define TCU_QOS_MSK			GENMASK(3, 0)
+
+#define SMMUWP_TCU_CTL1			(0x204)
 #define AXSLC_BIT_FIELD			GENMASK(8, 4)
 #define AXSLC_CACHE			F_BIT_SET(5)
 #define AXSLC_ALLOCATE			F_BIT_SET(6)
@@ -649,6 +658,7 @@ struct mtk_smmu_data {
 	u32				partid_max;
 	u32				pmg_max;
 	u32				tcu_prefetch;
+	u32				tcu_qos;
 	bool				axslc;
 	bool				ssid_enabled;
 	u32				*smi_com_base;
