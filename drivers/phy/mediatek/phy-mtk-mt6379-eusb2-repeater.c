@@ -206,9 +206,6 @@
 #define EUSB2_HSTX_SR_STR	"eusb2_hstx_sr"
 #define EUSB2_REV_COM		"eusb2_tx_swing_enhance"
 
-#define PHY_MODE_DPPULLUP_SET	5
-#define PHY_MODE_DPPULLUP_CLR	6
-
 struct eusb2_repeater {
 	struct device *dev;
 	struct regmap *regmap;
@@ -1007,6 +1004,9 @@ static int eusb2_repeater_set_mode(struct phy *phy,
 		case PHY_MODE_DPPULLUP_CLR:
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_0,
 				RG_USB20_MANU_MODE | RG_USB20_PU_DP, 0);
+			break;
+		case PHY_MODE_DIS_PRE_EMP:
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_PE, 0);
 			break;
 		default:
 			return -EINVAL;

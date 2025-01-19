@@ -176,6 +176,7 @@ struct xhci_hcd_mtk {
 	struct proc_dir_entry *root;
 	struct proc_dir_entry *testmode_file;
 	DECLARE_HASHTABLE(mbrain_hash_table, 3);
+	struct phy *phy;
 };
 
 static inline struct xhci_hcd_mtk *hcd_to_mtk(struct usb_hcd *hcd)

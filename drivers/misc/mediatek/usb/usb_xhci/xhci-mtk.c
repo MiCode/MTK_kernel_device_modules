@@ -17,6 +17,7 @@
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/phy/phy.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_wakeirq.h>
 #include <linux/regmap.h>
@@ -40,6 +41,8 @@
 #include "xhci.h"
 #include "xhci-mtk.h"
 #include "quirks.h"
+
+#define PHY_MODE_DIS_PRE_EMP 11
 
 /* ip_pw_ctrl0 register */
 #define CTRL0_IP_SW_RST	BIT(0)
@@ -284,10 +287,16 @@ static ssize_t xhci_mtk_testmode_write(struct file *file,  const char __user *ub
 
 	if (!strncmp(buf, "test packet", 10))
 		testmode = HOST_CMD_TEST_PACKET;
-	else if (!strncmp(buf, "test K", 6))
+	else if (!strncmp(buf, "test K", 6)) {
 		testmode = HOST_CMD_TEST_K;
-	else if (!strncmp(buf, "test J", 6))
+		phy_set_mode_ext(mtk->phy, PHY_MODE_USB_HOST,
+			PHY_MODE_DIS_PRE_EMP);
+	}
+	else if (!strncmp(buf, "test J", 6)) {
 		testmode = HOST_CMD_TEST_J;
+		phy_set_mode_ext(mtk->phy, PHY_MODE_USB_HOST,
+			PHY_MODE_DIS_PRE_EMP);
+	}
 	else if (!strncmp(buf, "test SE0 NAK", 12))
 		testmode = HOST_CMD_TEST_SE0_NAK;
 
@@ -840,6 +849,11 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 		if (irq < 0)
 			return irq;
 	}
+
+	/* optional to get phy from xhci */
+	mtk->phy = devm_of_phy_optional_get(dev, node, NULL);
+	if (IS_ERR(mtk->phy))
+		dev_info(dev, "failed to get phy from xhci\n");
 
 	wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
 	if (wakeup_irq == -EPROBE_DEFER)

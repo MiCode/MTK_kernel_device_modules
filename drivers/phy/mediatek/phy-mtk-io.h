@@ -22,6 +22,7 @@ enum mtk_phy_submode {
 	PHY_MODE_FLIP,
 	PHY_MODE_SUSPEND_DEV,
 	PHY_MODE_SUSPEND_NO_DEV,
+	PHY_MODE_DIS_PRE_EMP,
 };
 
 static inline void mtk_phy_clear_bits(void __iomem *reg, u32 bits)

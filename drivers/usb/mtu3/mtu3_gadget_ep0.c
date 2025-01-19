@@ -15,6 +15,7 @@
 #include "mtu3_trace.h"
 
 #define MU3D_EP0_RX_WAIT_WA 1
+#define PHY_MODE_DIS_PRE_EMP 11
 
 /* ep0 is always mtu3->in_eps[0] */
 #define	next_ep0_request(mtu)	next_request((mtu)->ep0)
@@ -310,10 +311,14 @@ static int handle_test_mode(struct mtu3 *mtu, struct usb_ctrlrequest *setup)
 	case USB_TEST_J:
 		dev_dbg(mtu->dev, "USB_TEST_J\n");
 		mtu->test_mode_nr = TEST_J_MODE;
+		phy_set_mode_ext(mtu->ssusb->phys[0], PHY_MODE_USB_DEVICE,
+			PHY_MODE_DIS_PRE_EMP);
 		break;
 	case USB_TEST_K:
 		dev_dbg(mtu->dev, "USB_TEST_K\n");
 		mtu->test_mode_nr = TEST_K_MODE;
+		phy_set_mode_ext(mtu->ssusb->phys[0], PHY_MODE_USB_DEVICE,
+			PHY_MODE_DIS_PRE_EMP);
 		break;
 	case USB_TEST_SE0_NAK:
 		dev_dbg(mtu->dev, "USB_TEST_SE0_NAK\n");

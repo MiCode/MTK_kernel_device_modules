@@ -1996,6 +1996,15 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 					(P2A3_RG_USB20_PUPD_BIST_EN |
 					P2A3_RG_USB20_EN_PU_DP));
 			break;
+		case PHY_MODE_DIS_PRE_EMP:
+			for (i = 0; i < xsphy->num_rptr; i++) {
+				if (!IS_ERR_OR_NULL(xsphy->repeater[i]))
+					phy_set_mode_ext(xsphy->repeater[i],
+						PHY_MODE_USB_DEVICE, PHY_MODE_DIS_PRE_EMP);
+			}
+			mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR6,
+					P2A6_RG_U2_PHY_REV6);
+			break;
 		default:
 			return;
 		}
