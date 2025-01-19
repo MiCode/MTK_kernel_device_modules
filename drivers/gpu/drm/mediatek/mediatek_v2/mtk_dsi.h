@@ -178,6 +178,8 @@ struct mtk_dsi {
 	bool mipi_hopping_sta;
 	bool panel_osc_hopping_sta;
 	unsigned int data_phy_cycle;
+	unsigned int hfp_minimum_dphy;
+	unsigned int hfp_minimum_wc_dphy;
 	/* for Panel Master dcs read/write */
 	struct mipi_dsi_device *dev_for_PM;
 	atomic_t ulps_async;

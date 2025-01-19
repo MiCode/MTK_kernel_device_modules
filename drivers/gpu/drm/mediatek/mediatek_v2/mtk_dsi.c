@@ -635,6 +635,8 @@ int mtk_drm_dummy_cmd_on_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
+static unsigned int mtk_get_dsi_buf_bpp(struct mtk_dsi *dsi);
+
 static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 {
 	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
@@ -647,6 +649,7 @@ static void mtk_dsi_dphy_timconfig_v2(struct mtk_dsi *dsi, void *handle)
 	u32 ui = 0, cycle_time = 0;
 	u32 value = 0;
 	u32 hs_trail_m = 1, hs_trail_n = 0;
+	u32 dsi_buf_bpp;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	struct mtk_drm_private *priv = dsi->is_slave ?
 		dsi->master_dsi->ddp_comp.mtk_crtc->base.dev->dev_private
@@ -836,7 +839,29 @@ CONFIG_REG:
 			da_hs_exit = (da_hs_exit % 2) ? da_hs_exit : da_hs_exit + 1; //must be odd
 		}
 	}
-	dsi->data_phy_cycle = lpx + da_hs_exit + hs_prpr + hs_zero + 2;
+	dsi->data_phy_cycle = lpx + da_hs_exit + da_hs_prep + da_hs_zero + 2;
+
+	dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
+	if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+		!(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
+		dsi->hfp_minimum_dphy = DIV_ROUND_UP(2 + 4 + (da_hs_trail + 1 + dsi->data_phy_cycle) * dsi->lanes + 4, dsi_buf_bpp);
+	else if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+		(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
+		dsi->hfp_minimum_dphy = DIV_ROUND_UP(2 + 4 + (da_hs_trail + 1 + clk_hs_post + 1 + clk_hs_trail + clk_hs_exit + 1 +
+										lpx + clk_hs_prep + clk_hs_zero + dsi->data_phy_cycle) * dsi->lanes + 4, dsi_buf_bpp);
+	else
+		dsi->hfp_minimum_dphy = DIV_ROUND_UP(2 + 4 + 2 + 2, dsi_buf_bpp);
+	if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+		!(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
+		dsi->hfp_minimum_wc_dphy = (da_hs_trail + 1) * dsi->lanes - 2;
+	else if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+		(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
+		dsi->hfp_minimum_wc_dphy = (da_hs_trail + 1 + clk_hs_post + 1 + clk_hs_trail + clk_hs_exit + 1 +
+										lpx + clk_hs_prep + clk_hs_zero) * dsi->lanes - 2;
+	else
+		dsi->hfp_minimum_wc_dphy = (clk_hs_post + 1 + clk_hs_trail + clk_hs_exit + 1 +
+										lpx + clk_hs_prep + clk_hs_zero) * dsi->lanes - 2;
+
 	value = REG_FLD_VAL(FLD_LPX, lpx)
 		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
 		| REG_FLD_VAL(FLD_HS_ZERO, da_hs_zero)
@@ -1219,6 +1244,7 @@ static void mtk_dsi_cphy_timconfig_v3(struct mtk_dsi *dsi, void *handle)
 	u32 ta_go, ta_get, ta_sure;
 	u32 value = 0;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
+	u32 cphy_progseq_cycle = 2;
 
 	DDPINFO("%s data rate=%d\n", __func__, dsi->data_rate);
 
@@ -1252,7 +1278,7 @@ static void mtk_dsi_cphy_timconfig_v3(struct mtk_dsi *dsi, void *handle)
 
 CONFIG_REG:
 
-	dsi->data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + lpx + 5;
+	dsi->data_phy_cycle = da_hs_prep + da_hs_zero + da_hs_exit + 1 + lpx + cphy_progseq_cycle + 1;
 
 	value = REG_FLD_VAL(FLD_LPX, lpx)
 		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
@@ -2856,6 +2882,9 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	}
 }
 
+unsigned int mtk_dsi_get_ps_wc(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_dsi *dsi);
+
 static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 {
 	u32 horizontal_sync_active_byte;
@@ -2947,6 +2976,11 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 			horizontal_sync_active_byte = ALIGN_TO(
 				t_hsa * dsi_tmp_buf_bpp -
 				10 * dsi->lanes - 26, 2);
+		if (dsi->driver_data->n_verion >= VER_N3 && t_hsa * dsi_tmp_buf_bpp > 10 * dsi->lanes + 26 + 1)
+			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp -
+							10 * dsi->lanes - 26;
+		else if (dsi->driver_data->n_verion >= VER_N3 && t_hsa * dsi_tmp_buf_bpp <= 10 * dsi->lanes + 26 + 1)
+			horizontal_sync_active_byte = 1;
 
 		if (t_hbp * dsi_tmp_buf_bpp < 12 * dsi->lanes + 26 + 5)
 			horizontal_backporch_byte = 4;
@@ -2954,21 +2988,25 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 			horizontal_backporch_byte = ALIGN_TO(
 				t_hbp * dsi_tmp_buf_bpp -
 				12 * dsi->lanes - 26, 2);
+		if (dsi->driver_data->n_verion >= VER_N3 && t_hbp * dsi_tmp_buf_bpp > 12 * dsi->lanes + 26 + 1)
+			horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp -
+							12 * dsi->lanes - 26;
+		else if (dsi->driver_data->n_verion >= VER_N3 && t_hbp * dsi_tmp_buf_bpp <= 12 * dsi->lanes + 26 + 1)
+			horizontal_backporch_byte = 1;
 
-		if (t_hfp * dsi_tmp_buf_bpp < 8 * dsi->lanes + 28 +
-			2 * dsi->data_phy_cycle * dsi->lanes + 9)
-			horizontal_frontporch_byte = 8;
-		else if ((t_hfp * dsi_tmp_buf_bpp > 8 * dsi->lanes + 28 +
-			2 * dsi->data_phy_cycle * dsi->lanes + 8) &&
-			(t_hfp * dsi_tmp_buf_bpp < 8 * dsi->lanes + 28 +
+		if (t_hfp * dsi_tmp_buf_bpp < 10 * dsi->lanes + 28 +
 			2 * dsi->data_phy_cycle * dsi->lanes +
-			2 * (32 + 1) * dsi->lanes - 6 * dsi->lanes - 14))
+			2 * (32 + 1) * dsi->lanes - 6 * dsi->lanes - 14)
 			horizontal_frontporch_byte = 2*(32 + 1)*dsi->lanes -
 				6*dsi->lanes - 14;
 		else
 			horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp -
-				8 * dsi->lanes - 28 -
+				10 * dsi->lanes - 28 -
 				2 * dsi->data_phy_cycle * dsi->lanes;
+		if (dsi->driver_data->n_verion <= VER_N4 && horizontal_frontporch_byte < 8)
+			horizontal_frontporch_byte = 8;
+		else if (dsi->driver_data->n_verion >= VER_N3 && horizontal_frontporch_byte < 1)
+			horizontal_frontporch_byte = 1;
 
 		/* Check CPHY HFP minimum limitation */
 		if (dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS) {
@@ -2982,6 +3020,9 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 					(hfp_minimum / 2));
 		}
 	} else {
+		u32 total_bytes, ps_wc, bllp_wc;
+		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dsi->encoder.crtc);
+
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) {
 			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 10;
 
@@ -2993,6 +3034,51 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 		}
 
 		horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12;
+		if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+			dsi->driver_data->n_verion >= VER_N3) {
+			if (t_hfp * dsi_tmp_buf_bpp - 12 > dsi->data_phy_cycle * dsi->lanes)
+				horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12 - dsi->data_phy_cycle * dsi->lanes;
+			else
+				horizontal_frontporch_byte = 1;
+		}
+
+		/* Check DPHY HFP minimum limitation */
+		if (dsi->driver_data->n_verion >= VER_N4 && t_hfp < dsi->hfp_minimum_dphy)
+			DDPPR_ERR("%s HFP:%u < DPHY HFP minimum limitation:%u\n",
+					__func__, t_hfp, dsi->hfp_minimum_dphy);
+		if (dsi->driver_data->n_verion >= VER_N3 &&
+			horizontal_frontporch_byte < dsi->hfp_minimum_wc_dphy) {
+			DDPINFO(
+				"%s HFP_WC:%d < DPHY HFP_WC minimum limitation:%d\n",
+					__func__, horizontal_frontporch_byte, dsi->hfp_minimum_wc_dphy);
+			horizontal_frontporch_byte = dsi->hfp_minimum_wc_dphy;
+		}
+
+		ps_wc = mtk_dsi_get_ps_wc(mtk_crtc, dsi);
+		bllp_wc = readl(dsi->regs + DSI_BLLP_WC(dsi->driver_data));
+		if (dsi->ext && dsi->ext->params->vdo_per_frame_lp_enable) {
+			if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE)
+				total_bytes = 4 + (4 + horizontal_sync_active_byte + 2) + 4 + (4 + horizontal_backporch_byte + 2) +
+								(4 + ps_wc + 2) + (4 + horizontal_frontporch_byte + 2);
+			else if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST)
+				total_bytes = 4 + (4 + horizontal_backporch_byte + 2) + (4 + ps_wc + 2) + (4 + horizontal_frontporch_byte + 2) +
+								(4 + bllp_wc + 2);
+			else
+				total_bytes = 4 + (4 + horizontal_backporch_byte + 2) +	(4 + ps_wc + 2) + (4 + horizontal_frontporch_byte + 2);
+		} else {
+			if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE)
+				total_bytes = 4 + (4 + horizontal_sync_active_byte + 2) + 4 + (4 + horizontal_backporch_byte + 2) +
+								(4 + ps_wc + 2) + (4 + horizontal_frontporch_byte + 2) + dsi->data_phy_cycle * dsi->lanes;
+			else if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST)
+				total_bytes = 4 + (4 + horizontal_backporch_byte + 2) + (4 + ps_wc + 2) + (4 + horizontal_frontporch_byte + 2) +
+								(4 + bllp_wc + 2) + dsi->data_phy_cycle * dsi->lanes;
+			else
+				total_bytes = 4 + (4 + horizontal_backporch_byte + 2) +	(4 + ps_wc + 2) + (4 + horizontal_frontporch_byte + 2) +
+								dsi->data_phy_cycle * dsi->lanes;
+		}
+		/* fine-tune HFP */
+		if (dsi->driver_data->n_verion >= VER_N3)
+			horizontal_frontporch_byte = horizontal_frontporch_byte + dsi->lanes * 2 - total_bytes % (dsi->lanes * 2);
 	}
 	dsi->vfp = t_vfp;
 	dsi->vbp = t_vbp;
