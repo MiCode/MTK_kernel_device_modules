@@ -219,6 +219,12 @@ enum isp_tile_message tile_tdshp_init(struct tile_func_block *func,
 	return ISP_MESSAGE_TILE_OK;
 }
 
+enum isp_tile_message tile_chist_init(struct tile_func_block *func,
+				      struct tile_reg_map *reg_map)
+{
+	return ISP_MESSAGE_TILE_OK;
+}
+
 enum isp_tile_message tile_wrot_init(struct tile_func_block *func,
 				     struct tile_reg_map *reg_map)
 {
@@ -303,6 +309,12 @@ enum isp_tile_message tile_wrot_init(struct tile_func_block *func,
 		(data->rotate == MML_ROT_180) ||
 		(data->rotate == MML_ROT_270 && data->flip);
 
+	return ISP_MESSAGE_TILE_OK;
+}
+
+enum isp_tile_message tile_wdma_init(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map)
+{
 	return ISP_MESSAGE_TILE_OK;
 }
 
@@ -749,6 +761,12 @@ enum isp_tile_message tile_wrot_for(struct tile_func_block *func,
 	return ISP_MESSAGE_TILE_OK;
 }
 
+enum isp_tile_message tile_wdma_for(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map)
+{
+	return ISP_MESSAGE_TILE_OK;
+}
+
 enum isp_tile_message tile_rdma_back(struct tile_func_block *func,
 				     struct tile_reg_map *reg_map)
 {
@@ -1168,6 +1186,12 @@ enum isp_tile_message tile_wrot_back(struct tile_func_block *func,
 		tile_wrot_align_out_height(func, data, full_size_y_out);
 	}
 
+	return ISP_MESSAGE_TILE_OK;
+}
+
+enum isp_tile_message tile_wdma_back(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map)
+{
 	return ISP_MESSAGE_TILE_OK;
 }
 

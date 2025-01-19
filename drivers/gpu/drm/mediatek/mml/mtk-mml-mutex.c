@@ -628,7 +628,7 @@ static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 	.addon_config = mutex_addon_config,
 };
 
-static struct mml_mutex *dbg_probed_components[2];
+static struct mml_mutex *dbg_probed_components[3];
 static int dbg_probed_count;
 
 static int probe(struct platform_device *pdev)
@@ -780,7 +780,15 @@ static const struct mutex_data mt6991_mmlt_mutex_data = {
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
-	.handler = mml_mutex_irq_handler_mt6991,
+};
+
+static const struct mutex_data mt6993_mmlf_mutex_data = {
+	.mutex_cnt = 16,
+	.mod_offsets = {0x34, 0x38},
+	.sof_offset = 0x30,
+	.mod_cnt = 2,
+	.get_mutex_sof = get_mutex_sof_mt6991,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 };
 
 const struct of_device_id mml_mutex_driver_dt_match[] = {
@@ -831,6 +839,18 @@ const struct of_device_id mml_mutex_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6991-mmlt_mutex",
 		.data = &mt6991_mmlt_mutex_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mmlt_mutex",
+		.data = &mt6991_mmlt_mutex_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mmlf_mutex",
+		.data = &mt6993_mmlf_mutex_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mmld_mutex",
+		.data = &mt6993_mmlf_mutex_data,
 	},
 	{},
 };

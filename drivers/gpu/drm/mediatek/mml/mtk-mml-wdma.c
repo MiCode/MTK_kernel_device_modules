@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021 MediaTek Inc.
- * Author: Dennis YC Hsieh <dennis-yc.hsieh@mediatek.com>
+ * Copyright (c) 2025 MediaTek Inc.
+ * Author: Chris-YC Chen <chris-yc.chen@mediatek.com>
  */
 
 #include <linux/component.h>
@@ -33,8 +33,8 @@
 #include "smi_public.h"
 #endif
 
-/* WROT register offset */
-enum wrot_register {
+/* WDMA register offset */
+enum wdma_register {
 	VIDO_CTRL,
 	VIDO_DMA_PERF,
 	VIDO_MAIN_BUF_SIZE,
@@ -109,58 +109,10 @@ enum wrot_register {
 	VIDO_STASH_SW_ADDR_HIGH,
 	VIDO_STASH_SW_WORK,
 	VIDO_STASH_DELAY_CNT,
-	wrot_register_total,
+	wdma_register_total,
 };
 
-static const u16 wrot_mt6989[] = {
-	[VIDO_CTRL			] = 0x000,
-	[VIDO_DMA_PERF			] = 0x004,
-	[VIDO_MAIN_BUF_SIZE		] = 0x008,
-	[VIDO_SOFT_RST			] = 0x010,
-	[VIDO_SOFT_RST_STAT		] = 0x014,
-	[VIDO_INT_EN			] = 0x018,
-	[VIDO_INT			] = 0x01c,
-	[VIDO_CROP_OFST			] = 0x020,
-	[VIDO_TAR_SIZE			] = 0x024,
-	[VIDO_FRAME_SIZE		] = 0x028,
-	[VIDO_OFST_ADDR			] = 0x02c,
-	[VIDO_STRIDE			] = 0x030,
-	[VIDO_BKGD			] = 0x034,
-	[VIDO_OFST_ADDR_C		] = 0x038,
-	[VIDO_STRIDE_C			] = 0x03c,
-	[VIDO_CTRL_2			] = 0x048,
-	[VIDO_IN_LINE_ROT		] = 0x050,
-	[VIDO_DITHER			] = 0x054,
-	[VIDO_DITHER_CON		] = 0x058,
-	[VIDO_OFST_ADDR_V		] = 0x068,
-	[VIDO_STRIDE_V			] = 0x06c,
-	[VIDO_RSV_1			] = 0x070,
-	[VIDO_DMA_PREULTRA		] = 0x074,
-	[VIDO_IN_SIZE			] = 0x078,
-	[VIDO_ROT_EN			] = 0x07c,
-	[VIDO_FIFO_TEST			] = 0x080,
-	[VIDO_MAT_CTRL			] = 0x084,
-	[VIDO_SHADOW_CTRL		] = 0x08c,
-	[VIDO_DEBUG			] = 0x0d0,
-	[VIDO_PVRIC			] = 0x0d8,
-	[VIDO_SCAN_10BIT		] = 0x0dc,
-	[VIDO_PENDING_ZERO		] = 0x0e0,
-	[VIDO_CRC_CTRL			] = 0x0e8,
-	[VIDO_CRC_VALUE			] = 0x0ec,
-	[VIDO_BASE_ADDR			] = 0xf00,
-	[VIDO_BASE_ADDR_C		] = 0xf04,
-	[VIDO_BASE_ADDR_V		] = 0xf08,
-	[VIDO_PVRIC_FMT			] = 0xf0c,
-	[VIDO_AFBC_YUVTRANS		] = 0xf2c,
-	[VIDO_BASE_ADDR_HIGH		] = 0xf34,
-	[VIDO_BASE_ADDR_HIGH_C		] = 0xf38,
-	[VIDO_BASE_ADDR_HIGH_V		] = 0xf3c,
-	[VIDO_OFST_ADDR_HIGH		] = 0xf40,
-	[VIDO_OFST_ADDR_HIGH_C		] = 0xf44,
-	[VIDO_OFST_ADDR_HIGH_V		] = 0xf48,
-};
-
-u16 wrot_mt6991[] = {
+u16 wdma_mt6993[] = {
 	[VIDO_CTRL			] = 0x000,
 	[VIDO_DMA_PERF			] = 0x004,
 	[VIDO_MAIN_BUF_SIZE		] = 0x008,
@@ -235,7 +187,7 @@ u16 wrot_mt6991[] = {
 	[VIDO_STASH_DELAY_CNT		] = 0xf78,
 };
 
-#define WROT_MIN_BUF_LINE_NUM		16
+#define WDMA_MIN_BUF_LINE_NUM		16
 
 /* register mask */
 #define VIDO_INT_MASK			0x00000007
@@ -251,29 +203,29 @@ u16 wrot_mt6991[] = {
 /* SMI offset */
 #define SMI_LARB_NON_SEC_CON		0x380
 
-#define MML_WROT_RACING_MAX		64
+#define MML_WDMA_RACING_MAX		64
 
-#define WROT_POLL_SLEEP_TIME_US		(10)
-#define WROT_MAX_POLL_TIME_US		(1000)
+#define WDMA_POLL_SLEEP_TIME_US		(10)
+#define WDMA_MAX_POLL_TIME_US		(1000)
 
 /* debug option to change sram write height */
-int mml_racing_h = MML_WROT_RACING_MAX;
-module_param(mml_racing_h, int, 0644);
+int mml_wdma_racing_h = MML_WDMA_RACING_MAX;
+module_param(mml_wdma_racing_h, int, 0644);
 
-int mml_racing_rdone;
-module_param(mml_racing_rdone, int, 0644);
+int mml_wdma_racing_rdone;
+module_param(mml_wdma_racing_rdone, int, 0644);
 
 /* 0x1 for input crc, 0xd for output crc */
-int mml_wrot_crc;
-module_param(mml_wrot_crc, int, 0644);
+int mml_wdma_crc;
+module_param(mml_wdma_crc, int, 0644);
 
-int mml_wrot_bkgd_en;
-module_param(mml_wrot_bkgd_en, int, 0644);
-int mml_wrot_bkgd;
-module_param(mml_wrot_bkgd, int, 0644);
+int mml_wdma_bkgd_en;
+module_param(mml_wdma_bkgd_en, int, 0644);
+int mml_wdma_bkgd;
+module_param(mml_wdma_bkgd, int, 0644);
 
-int wrot_stash_delay = 20;
-module_param(wrot_stash_delay, int, 0644);
+int wdma_stash_delay = 20;
+module_param(wdma_stash_delay, int, 0644);
 
 /* ceil_m and floor_m helper function */
 static u32 ceil_m(u64 n, u64 d)
@@ -294,17 +246,17 @@ enum mml_pq_read_mode {
 	MML_PQ_SOF_MODE,
 };
 
-enum wrot_label {
-	WROT_LABEL_ADDR = 0,
-	WROT_LABEL_ADDR_HIGH,
-	WROT_LABEL_ADDR_C,
-	WROT_LABEL_ADDR_HIGH_C,
-	WROT_LABEL_ADDR_V,
-	WROT_LABEL_ADDR_HIGH_V,
-	WROT_LABEL_TOTAL
+enum wdma_label {
+	WDMA_LABEL_ADDR = 0,
+	WDMA_LABEL_ADDR_HIGH,
+	WDMA_LABEL_ADDR_C,
+	WDMA_LABEL_ADDR_HIGH_C,
+	WDMA_LABEL_ADDR_V,
+	WDMA_LABEL_ADDR_HIGH_V,
+	WDMA_LABEL_TOTAL
 };
 
-static s32 wrot_write_ofst(struct cmdq_pkt *pkt,
+static s32 wdma_write_ofst(struct cmdq_pkt *pkt,
 			   dma_addr_t addr, dma_addr_t addr_high, u64 value)
 {
 	s32 ret;
@@ -316,7 +268,7 @@ static s32 wrot_write_ofst(struct cmdq_pkt *pkt,
 	return ret;
 }
 
-static s32 wrot_write_addr(u32 comp_id, struct cmdq_pkt *pkt,
+static s32 wdma_write_addr(u32 comp_id, struct cmdq_pkt *pkt,
 			   dma_addr_t addr, dma_addr_t addr_high, u64 value,
 			   struct mml_task_reuse *reuse,
 			   struct mml_pipe_cache *cache,
@@ -334,14 +286,14 @@ static s32 wrot_write_addr(u32 comp_id, struct cmdq_pkt *pkt,
 	return ret;
 }
 
-static void wrot_update_addr(u32 comp_id, struct mml_task_reuse *reuse,
+static void wdma_update_addr(u32 comp_id, struct mml_task_reuse *reuse,
 			     u16 label, u16 label_high, u64 value)
 {
 	mml_update(comp_id, reuse, label, value & GENMASK_ULL(31, 0));
 	mml_update(comp_id, reuse, label_high, value >> 32);
 }
 
-struct wrot_data {
+struct wdma_data {
 	const u16 *reg;
 	u32 fifo;
 	u32 tile_width;
@@ -349,77 +301,32 @@ struct wrot_data {
 	u8 read_mode;
 	u8 px_per_tick;
 	u8 rb_swap;		/* WA: version for rb channel swap behavior */
-	bool yuv_pending;	/* WA: enable wrot yuv422/420 pending zero */
+	bool yuv_pending;	/* WA: enable wdma yuv422/420 pending zero */
 	bool stash;		/* enable stash prefetch with leading time */
 };
 
-static const struct wrot_data mt6983_wrot_data = {
-	.reg = wrot_mt6989,
-	.fifo = 256,
-	.tile_width = 512,
-	.sram_size = 512 * 1024,
-	.rb_swap = 1,
-	.px_per_tick = 1,
-};
-
-static const struct wrot_data mt6985_wrot_data = {
-	.reg = wrot_mt6989,
-	.fifo = 256,
-	.tile_width = 512,
-	.sram_size = 512 * 1024,
-	.read_mode = MML_PQ_EOF_MODE,
-	/* .rb_swap = 2 */
-	.px_per_tick = 1,
-};
-
-static const struct wrot_data mt6989_wrot_data = {
-	.reg = wrot_mt6989,
-	.fifo = 256,
-	.tile_width = 512,
-	.sram_size = 512 * 1024,
-	.read_mode = MML_PQ_SOF_MODE,
-	.px_per_tick = 2,
-	/* .rb_swap = 2 */
-	.yuv_pending = true,
-};
-
-static const struct wrot_data mt6878_wrot_data = {
-	.reg = wrot_mt6989,
-	.fifo = 256,
-	.tile_width = 512,
-	.sram_size = 512 * 1024,
-	.px_per_tick = 1,
-};
-
-static const struct wrot_data mt6991_wrot_data = {
-	.reg = wrot_mt6991,
+/*
+static const struct wdma_data mt6993_wdma_data = {
+	.reg = wdma_mt6993,
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
 	.px_per_tick = 2,
 	.read_mode = MML_PQ_SOF_MODE,
+	.px_per_tick = 2,
 	.yuv_pending = true,
 	.stash = true,
 };
+*/
 
-static const struct wrot_data mt6993_wrot_data = {
-	.reg = wrot_mt6991,
-	.fifo = 256,
-	.tile_width = 512,
-	.sram_size = 512 * 1024,
-	.px_per_tick = 2,
-	.read_mode = MML_PQ_SOF_MODE,
-	.stash = true,
-};
-
-struct mml_comp_wrot {
+struct mml_comp_wdma {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
-	const struct wrot_data *data;
+	const struct wdma_data *data;
 	const u16 *reg;
 	bool ddp_bound;
 
-	u16 event_eof;		/* wrot frame done */
+	u16 event_eof;		/* wdma frame done */
 	u16 event_bufa;		/* notify pipe0 that pipe1 ready buf a */
 	u16 event_bufb;		/* notify pipe0 that pipe1 ready buf b */
 	u16 event_buf_next;	/* notify pipe1 that pipe0 ready new round */
@@ -445,12 +352,12 @@ struct mml_comp_wrot {
 	u32 jobid;
 	u8 out_idx;
 	u8 dest_cnt;
-	struct workqueue_struct *wrot_ai_callback_wq;
-	struct work_struct wrot_ai_callback_task;
+	struct workqueue_struct *wdma_ai_callback_wq;
+	struct work_struct wdma_ai_callback_task;
 };
 
 /* meta data for each different frame config */
-struct wrot_frame_data {
+struct wdma_frame_data {
 	/* 0 or 1 for 1st or 2nd out port */
 	u8 out_idx;
 
@@ -508,29 +415,29 @@ struct wrot_frame_data {
 	/* array of indices to one of entry in cache entry list,
 	 * use in reuse command
 	 */
-	u16 labels[WROT_LABEL_TOTAL];
+	u16 labels[WDMA_LABEL_TOTAL];
 
 	u32 wdone_cnt;
 };
 
-static inline struct wrot_frame_data *wrot_frm_data(struct mml_comp_config *ccfg)
+static inline struct wdma_frame_data *wdma_frm_data(struct mml_comp_config *ccfg)
 {
 	return ccfg->data;
 }
 
-static inline struct mml_comp_wrot *comp_to_wrot(struct mml_comp *comp)
+static inline struct mml_comp_wdma *comp_to_wdma(struct mml_comp *comp)
 {
-	return container_of(comp, struct mml_comp_wrot, comp);
+	return container_of(comp, struct mml_comp_wdma, comp);
 }
 
-struct wrot_ofst_addr {
-	u64 y;	/* wrot_y_ofst_adr for VIDO_OFST_ADDR */
-	u64 c;	/* wrot_c_ofst_adr for VIDO_OFST_ADDR_C */
-	u64 v;	/* wrot_v_ofst_adr for VIDO_OFST_ADDR_V */
+struct wdma_ofst_addr {
+	u64 y;	/* wdma_y_ofst_adr for VIDO_OFST_ADDR */
+	u64 c;	/* wdma_c_ofst_adr for VIDO_OFST_ADDR_C */
+	u64 v;	/* wdma_v_ofst_adr for VIDO_OFST_ADDR_V */
 };
 
-/* different wrot setting between each tile */
-struct wrot_setting {
+/* different wdma setting between each tile */
+struct wdma_setting {
 	/* parameters for calculation */
 	u32 tar_xsize;
 	/* result settings */
@@ -598,134 +505,134 @@ static bool is_change_hy(u16 r, bool f)
 		(r == MML_ROT_270 && f));
 }
 
-static void wrot_config_left(struct mml_frame_dest *dest,
+static void wdma_config_left(struct mml_frame_dest *dest,
 			     const struct mml_rect *out_crop,
-			     struct wrot_frame_data *wrot_frm)
+			     struct wdma_frame_data *wdma_frm)
 {
-	wrot_frm->en_x_crop = true;
-	wrot_frm->out_crop.left = 0;
-	wrot_frm->out_crop.width = out_crop->width >> 1;
+	wdma_frm->en_x_crop = true;
+	wdma_frm->out_crop.left = 0;
+	wdma_frm->out_crop.width = out_crop->width >> 1;
 
 	if (MML_FMT_AFBC_ARGB(dest->data.format))
-		wrot_frm->out_crop.width = round_up(wrot_frm->out_crop.width, 32);
+		wdma_frm->out_crop.width = round_up(wdma_frm->out_crop.width, 32);
 	else if (MML_FMT_10BIT_PACKED(dest->data.format))
-		wrot_frm->out_crop.width = round_up(wrot_frm->out_crop.width, 4);
-	else if (wrot_frm->out_crop.width & 1)
-		wrot_frm->out_crop.width++; /* round_up(2) */
+		wdma_frm->out_crop.width = round_up(wdma_frm->out_crop.width, 4);
+	else if (wdma_frm->out_crop.width & 1)
+		wdma_frm->out_crop.width++; /* round_up(2) */
 
-	if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
-		wrot_frm->out_crop.width = out_crop->width - wrot_frm->out_crop.width;
+	if (is_change_wx(wdma_frm->rotate, wdma_frm->flip))
+		wdma_frm->out_crop.width = out_crop->width - wdma_frm->out_crop.width;
 }
 
-static void wrot_config_right(struct mml_frame_dest *dest,
+static void wdma_config_right(struct mml_frame_dest *dest,
 			      const struct mml_rect *out_crop,
-			      struct wrot_frame_data *wrot_frm)
+			      struct wdma_frame_data *wdma_frm)
 {
-	wrot_frm->en_x_crop = true;
-	wrot_frm->out_crop.left = out_crop->width >> 1;
+	wdma_frm->en_x_crop = true;
+	wdma_frm->out_crop.left = out_crop->width >> 1;
 
 	if (MML_FMT_AFBC_ARGB(dest->data.format))
-		wrot_frm->out_crop.left = round_up(wrot_frm->out_crop.left, 32);
+		wdma_frm->out_crop.left = round_up(wdma_frm->out_crop.left, 32);
 	else if (MML_FMT_10BIT_PACKED(dest->data.format))
-		wrot_frm->out_crop.left = round_up(wrot_frm->out_crop.left, 4);
-	else if (wrot_frm->out_crop.left & 1)
-		wrot_frm->out_crop.left++; /* round_up(2) */
+		wdma_frm->out_crop.left = round_up(wdma_frm->out_crop.left, 4);
+	else if (wdma_frm->out_crop.left & 1)
+		wdma_frm->out_crop.left++; /* round_up(2) */
 
-	if (is_change_wx(wrot_frm->rotate, wrot_frm->flip))
-		wrot_frm->out_crop.left = out_crop->width - wrot_frm->out_crop.left;
-	wrot_frm->out_crop.width = out_crop->width - wrot_frm->out_crop.left;
+	if (is_change_wx(wdma_frm->rotate, wdma_frm->flip))
+		wdma_frm->out_crop.left = out_crop->width - wdma_frm->out_crop.left;
+	wdma_frm->out_crop.width = out_crop->width - wdma_frm->out_crop.left;
 }
 
-static void wrot_config_top(struct mml_frame_data *src,
+static void wdma_config_top(struct mml_frame_data *src,
 			    const struct mml_rect *out_crop,
-			    struct wrot_frame_data *wrot_frm)
+			    struct wdma_frame_data *wdma_frm)
 {
-	wrot_frm->en_y_crop = true;
-	wrot_frm->out_crop.top = 0;
-	wrot_frm->out_crop.height = out_crop->height >> 1;
+	wdma_frm->en_y_crop = true;
+	wdma_frm->out_crop.top = 0;
+	wdma_frm->out_crop.height = out_crop->height >> 1;
 
 	if (MML_FMT_IS_YUV(src->format) || MML_FMT_COMPRESS(src->format))
-		wrot_frm->out_crop.height = round_up(wrot_frm->out_crop.height, 16);
-	else if (wrot_frm->out_crop.height & 1)
-		wrot_frm->out_crop.height++; /* round_up(2) */
+		wdma_frm->out_crop.height = round_up(wdma_frm->out_crop.height, 16);
+	else if (wdma_frm->out_crop.height & 1)
+		wdma_frm->out_crop.height++; /* round_up(2) */
 
-	if (wrot_frm->pending_y && is_change_hy(wrot_frm->rotate, wrot_frm->flip))
-		wrot_frm->out_crop.height = out_crop->height - wrot_frm->out_crop.height;
-	wrot_frm->out_crop.width = out_crop->width;
+	if (wdma_frm->pending_y && is_change_hy(wdma_frm->rotate, wdma_frm->flip))
+		wdma_frm->out_crop.height = out_crop->height - wdma_frm->out_crop.height;
+	wdma_frm->out_crop.width = out_crop->width;
 }
 
-static void wrot_config_bottom(struct mml_frame_data *src,
+static void wdma_config_bottom(struct mml_frame_data *src,
 			       const struct mml_rect *out_crop,
-			       struct wrot_frame_data *wrot_frm)
+			       struct wdma_frame_data *wdma_frm)
 {
-	wrot_frm->en_y_crop = true;
-	wrot_frm->out_crop.top = out_crop->height >> 1;
+	wdma_frm->en_y_crop = true;
+	wdma_frm->out_crop.top = out_crop->height >> 1;
 
 	if (MML_FMT_IS_YUV(src->format) || MML_FMT_COMPRESS(src->format))
-		wrot_frm->out_crop.top = round_up(wrot_frm->out_crop.top, 16);
-	else if (wrot_frm->out_crop.top & 1)
-		wrot_frm->out_crop.top++; /* round_up(2) */
+		wdma_frm->out_crop.top = round_up(wdma_frm->out_crop.top, 16);
+	else if (wdma_frm->out_crop.top & 1)
+		wdma_frm->out_crop.top++; /* round_up(2) */
 
-	if (wrot_frm->pending_y && is_change_hy(wrot_frm->rotate, wrot_frm->flip))
-		wrot_frm->out_crop.top = out_crop->height - wrot_frm->out_crop.top;
-	wrot_frm->out_crop.height = out_crop->height - wrot_frm->out_crop.top;
-	wrot_frm->out_crop.width = out_crop->width;
+	if (wdma_frm->pending_y && is_change_hy(wdma_frm->rotate, wdma_frm->flip))
+		wdma_frm->out_crop.top = out_crop->height - wdma_frm->out_crop.top;
+	wdma_frm->out_crop.height = out_crop->height - wdma_frm->out_crop.top;
+	wdma_frm->out_crop.width = out_crop->width;
 }
 
-static void wrot_config_pipe0(struct mml_frame_config *cfg,
+static void wdma_config_pipe0(struct mml_frame_config *cfg,
 			      struct mml_frame_dest *dest,
 			      const struct mml_rect *out_crop,
-			      struct wrot_frame_data *wrot_frm)
+			      struct wdma_frame_data *wdma_frm)
 {
 	if (cfg->info.mode == MML_MODE_RACING) {
-		if ((wrot_frm->rotate == MML_ROT_90 && !wrot_frm->flip) ||
-		    (wrot_frm->rotate == MML_ROT_270 && wrot_frm->flip))
-			wrot_config_bottom(&cfg->info.src, out_crop, wrot_frm);
-		else if ((wrot_frm->rotate == MML_ROT_90 && wrot_frm->flip) ||
-			 (wrot_frm->rotate == MML_ROT_270 && !wrot_frm->flip))
-			wrot_config_top(&cfg->info.src, out_crop, wrot_frm);
-		else if ((wrot_frm->rotate == MML_ROT_0 && !wrot_frm->flip) ||
-			 (wrot_frm->rotate == MML_ROT_180 && wrot_frm->flip))
-			wrot_config_left(dest, out_crop, wrot_frm);
-		else if ((wrot_frm->rotate == MML_ROT_0 && wrot_frm->flip) ||
-			 (wrot_frm->rotate == MML_ROT_180 && !wrot_frm->flip))
-			wrot_config_right(dest, out_crop, wrot_frm);
+		if ((wdma_frm->rotate == MML_ROT_90 && !wdma_frm->flip) ||
+		    (wdma_frm->rotate == MML_ROT_270 && wdma_frm->flip))
+			wdma_config_bottom(&cfg->info.src, out_crop, wdma_frm);
+		else if ((wdma_frm->rotate == MML_ROT_90 && wdma_frm->flip) ||
+			 (wdma_frm->rotate == MML_ROT_270 && !wdma_frm->flip))
+			wdma_config_top(&cfg->info.src, out_crop, wdma_frm);
+		else if ((wdma_frm->rotate == MML_ROT_0 && !wdma_frm->flip) ||
+			 (wdma_frm->rotate == MML_ROT_180 && wdma_frm->flip))
+			wdma_config_left(dest, out_crop, wdma_frm);
+		else if ((wdma_frm->rotate == MML_ROT_0 && wdma_frm->flip) ||
+			 (wdma_frm->rotate == MML_ROT_180 && !wdma_frm->flip))
+			wdma_config_right(dest, out_crop, wdma_frm);
 	} else {
-		wrot_config_left(dest, out_crop, wrot_frm);
+		wdma_config_left(dest, out_crop, wdma_frm);
 	}
 }
 
-static void wrot_config_pipe1(struct mml_frame_config *cfg,
+static void wdma_config_pipe1(struct mml_frame_config *cfg,
 			      struct mml_frame_dest *dest,
 			      const struct mml_rect *out_crop,
-			      struct wrot_frame_data *wrot_frm)
+			      struct wdma_frame_data *wdma_frm)
 {
 	if (cfg->info.mode == MML_MODE_RACING) {
-		if ((wrot_frm->rotate == MML_ROT_90 && !wrot_frm->flip) ||
-		    (wrot_frm->rotate == MML_ROT_270 && wrot_frm->flip))
-			wrot_config_top(&cfg->info.src, out_crop, wrot_frm);
-		else if ((wrot_frm->rotate == MML_ROT_90 && wrot_frm->flip) ||
-			 (wrot_frm->rotate == MML_ROT_270 && !wrot_frm->flip))
-			wrot_config_bottom(&cfg->info.src, out_crop, wrot_frm);
-		else if ((wrot_frm->rotate == MML_ROT_0 && !wrot_frm->flip) ||
-			 (wrot_frm->rotate == MML_ROT_180 && wrot_frm->flip))
-			wrot_config_right(dest, out_crop, wrot_frm);
-		else if ((wrot_frm->rotate == MML_ROT_0 && wrot_frm->flip) ||
-			 (wrot_frm->rotate == MML_ROT_180 && !wrot_frm->flip))
-			wrot_config_left(dest, out_crop, wrot_frm);
+		if ((wdma_frm->rotate == MML_ROT_90 && !wdma_frm->flip) ||
+		    (wdma_frm->rotate == MML_ROT_270 && wdma_frm->flip))
+			wdma_config_top(&cfg->info.src, out_crop, wdma_frm);
+		else if ((wdma_frm->rotate == MML_ROT_90 && wdma_frm->flip) ||
+			 (wdma_frm->rotate == MML_ROT_270 && !wdma_frm->flip))
+			wdma_config_bottom(&cfg->info.src, out_crop, wdma_frm);
+		else if ((wdma_frm->rotate == MML_ROT_0 && !wdma_frm->flip) ||
+			 (wdma_frm->rotate == MML_ROT_180 && wdma_frm->flip))
+			wdma_config_right(dest, out_crop, wdma_frm);
+		else if ((wdma_frm->rotate == MML_ROT_0 && wdma_frm->flip) ||
+			 (wdma_frm->rotate == MML_ROT_180 && !wdma_frm->flip))
+			wdma_config_left(dest, out_crop, wdma_frm);
 	} else {
-		wrot_config_right(dest, out_crop, wrot_frm);
+		wdma_config_right(dest, out_crop, wdma_frm);
 	}
 }
 
-static void wrot_config_smi(struct mml_comp_wrot *wrot,
+static void wdma_config_smi(struct mml_comp_wdma *wdma,
 	struct mml_frame_config *cfg, struct cmdq_pkt *pkt)
 {
 	const enum mml_mode mode = cfg->info.mode;
 	u32 mask = GENMASK(19, 16) | (0x1 << 3);
 	u32 value;
 
-	if (!wrot->smi_larb_con)
+	if (!wdma->smi_larb_con)
 		return;
 
 	/* config smi addr to emi (iova) or sram, and bw throttling */
@@ -736,105 +643,105 @@ static void wrot_config_smi(struct mml_comp_wrot *wrot,
 	else
 		value = 0;
 
-	cmdq_pkt_write(pkt, NULL, wrot->smi_larb_con, value, mask);
+	cmdq_pkt_write(pkt, NULL, wdma->smi_larb_con, value, mask);
 }
 
-static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_prepare(struct mml_comp *comp, struct mml_task *task,
 			struct mml_comp_config *ccfg)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	struct mml_frame_config *cfg = task->config;
-	struct wrot_frame_data *wrot_frm;
+	struct wdma_frame_data *wdma_frm;
 	struct mml_frame_dest *dest;
 	struct mml_rect out_crop;
 	u8 i;
 
 	/* initialize component frame data for current frame config */
-	wrot_frm = kzalloc(sizeof(*wrot_frm), GFP_KERNEL);
-	ccfg->data = wrot_frm;
+	wdma_frm = kzalloc(sizeof(*wdma_frm), GFP_KERNEL);
+	ccfg->data = wdma_frm;
 
 	/* cache out index for easy use */
-	wrot_frm->out_idx = ccfg->node->out_idx;
-	wrot_frm->rotate = cfg->out_rotate[wrot_frm->out_idx];
-	wrot_frm->flip = cfg->out_flip[wrot_frm->out_idx];
+	wdma_frm->out_idx = ccfg->node->out_idx;
+	wdma_frm->rotate = cfg->out_rotate[wdma_frm->out_idx];
+	wdma_frm->flip = cfg->out_flip[wdma_frm->out_idx];
 
 	/* select output port struct */
-	dest = &cfg->info.dest[wrot_frm->out_idx];
+	dest = &cfg->info.dest[wdma_frm->out_idx];
 
-	wrot_frm->compose = dest->compose;
-	wrot_frm->y_stride = dest->data.y_stride;
-	wrot_frm->uv_stride = dest->data.uv_stride;
-	if (wrot_frm->rotate == MML_ROT_0 || wrot_frm->rotate == MML_ROT_180) {
-		wrot_frm->out_w = dest->data.width;
-		wrot_frm->out_h = dest->data.height;
+	wdma_frm->compose = dest->compose;
+	wdma_frm->y_stride = dest->data.y_stride;
+	wdma_frm->uv_stride = dest->data.uv_stride;
+	if (wdma_frm->rotate == MML_ROT_0 || wdma_frm->rotate == MML_ROT_180) {
+		wdma_frm->out_w = dest->data.width;
+		wdma_frm->out_h = dest->data.height;
 	} else {
-		wrot_frm->out_w = dest->data.height;
-		wrot_frm->out_h = dest->data.width;
-		swap(wrot_frm->compose.width, wrot_frm->compose.height);
+		wdma_frm->out_w = dest->data.height;
+		wdma_frm->out_h = dest->data.width;
+		swap(wdma_frm->compose.width, wdma_frm->compose.height);
 	}
 
 	/* make sure uv stride data */
-	if (MML_FMT_PLANE(dest->data.format) > 1 && !wrot_frm->uv_stride)
-		wrot_frm->uv_stride = mml_color_get_min_uv_stride(
+	if (MML_FMT_PLANE(dest->data.format) > 1 && !wdma_frm->uv_stride)
+		wdma_frm->uv_stride = mml_color_get_min_uv_stride(
 			dest->data.format, dest->data.width);
 
 	/* plane offset for later use */
-	for (i = 0; i < task->buf.dest[wrot_frm->out_idx].cnt; i++)
-		wrot_frm->plane_offset[i] = dest->data.plane_offset[i];
+	for (i = 0; i < task->buf.dest[wdma_frm->out_idx].cnt; i++)
+		wdma_frm->plane_offset[i] = dest->data.plane_offset[i];
 
 	out_crop.left = 0;
 	out_crop.top = 0;
-	if (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
-		out_crop.width = wrot_frm->compose.width;
-		out_crop.height = wrot_frm->compose.height;
+	if (wdma->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
+		out_crop.width = wdma_frm->compose.width;
+		out_crop.height = wdma_frm->compose.height;
 		if (MML_FMT_H_SUBSAMPLE(dest->data.format) &&
 		    !MML_FMT_COMPRESS(dest->data.format)) {
 			/* Enable YUV422/420 pending zero on compose != dest */
-			wrot_frm->pending_x = wrot_frm->out_w - wrot_frm->compose.width;
-			wrot_frm->pending_y = wrot_frm->out_h - wrot_frm->compose.height;
+			wdma_frm->pending_x = wdma_frm->out_w - wdma_frm->compose.width;
+			wdma_frm->pending_y = wdma_frm->out_h - wdma_frm->compose.height;
 		}
 	} else {
-		out_crop.width = wrot_frm->out_w;
-		out_crop.height = wrot_frm->out_h;
+		out_crop.width = wdma_frm->out_w;
+		out_crop.height = wdma_frm->out_h;
 	}
 
 	if (cfg->dual) {
 		if (ccfg->pipe == 0)
-			wrot_config_pipe0(cfg, dest, &out_crop, wrot_frm);
+			wdma_config_pipe0(cfg, dest, &out_crop, wdma_frm);
 		else
-			wrot_config_pipe1(cfg, dest, &out_crop, wrot_frm);
+			wdma_config_pipe1(cfg, dest, &out_crop, wdma_frm);
 
 		if (cfg->info.mode == MML_MODE_RACING) {
-			if (wrot_frm->rotate == MML_ROT_0)
-				wrot_frm->sram_side = ccfg->pipe;
-			else if (wrot_frm->rotate == MML_ROT_90)
-				wrot_frm->sram_side = !ccfg->pipe;
-			else if (wrot_frm->rotate == MML_ROT_180)
-				wrot_frm->sram_side = !ccfg->pipe;
+			if (wdma_frm->rotate == MML_ROT_0)
+				wdma_frm->sram_side = ccfg->pipe;
+			else if (wdma_frm->rotate == MML_ROT_90)
+				wdma_frm->sram_side = !ccfg->pipe;
+			else if (wdma_frm->rotate == MML_ROT_180)
+				wdma_frm->sram_side = !ccfg->pipe;
 			else
-				wrot_frm->sram_side = ccfg->pipe;
+				wdma_frm->sram_side = ccfg->pipe;
 
-			if (wrot_frm->flip)
-				wrot_frm->sram_side = !wrot_frm->sram_side;
+			if (wdma_frm->flip)
+				wdma_frm->sram_side = !wdma_frm->sram_side;
 
-			mml_msg("%s wrot pipe %u out crop %u %u %u %u",
+			mml_msg("%s wdma pipe %u out crop %u %u %u %u",
 				__func__, ccfg->pipe,
-				wrot_frm->out_crop.left, wrot_frm->out_crop.top,
-				wrot_frm->out_crop.width, wrot_frm->out_crop.height);
+				wdma_frm->out_crop.left, wdma_frm->out_crop.top,
+				wdma_frm->out_crop.width, wdma_frm->out_crop.height);
 		}
 	} else {
 		/* assign full frame */
-		wrot_frm->en_x_crop = true;
-		wrot_frm->out_crop = out_crop;
+		wdma_frm->en_x_crop = true;
+		wdma_frm->out_crop = out_crop;
 	}
 
 	return 0;
 }
 
-static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_buf_map(struct mml_comp *comp, struct mml_task *task,
 			const struct mml_path_node *node)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct mml_file_buf *dest_buf = &task->buf.dest[node->out_idx];
 	s32 ret = 0;
@@ -848,7 +755,7 @@ static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 
 		/* get iova */
-		ret = mml_buf_iova_get(cfg->info.src.secure ? wrot->mmu_dev_sec : wrot->mmu_dev,
+		ret = mml_buf_iova_get(cfg->info.src.secure ? wdma->mmu_dev_sec : wdma->mmu_dev,
 			dest_buf);
 		if (ret < 0)
 			mml_err("%s iova fail %d", __func__, ret);
@@ -872,127 +779,122 @@ static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,
 	return ret;
 }
 
-static s32 wrot_buf_prepare(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-	struct mml_file_buf *dest_buf = &task->buf.dest[wrot_frm->out_idx];
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
+	struct mml_file_buf *dest_buf = &task->buf.dest[wdma_frm->out_idx];
 	u32 i;
 
 	if (task->config->info.mode == MML_MODE_RACING) {
 		/* assign sram pa directly */
 		mml_mmp(buf_prepare, MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
-		mutex_lock(&wrot->sram_mutex);
-		if (!wrot->sram_cnt)
-			wrot->sram_pa = (u64)mml_sram_get(task->config->mml, mml_sram_racing);
-		wrot->sram_cnt++;
+		mutex_lock(&wdma->sram_mutex);
+		if (!wdma->sram_cnt)
+			wdma->sram_pa = (u64)mml_sram_get(task->config->mml, mml_sram_racing);
+		wdma->sram_cnt++;
 		/* store it for mml record */
-		task->buf.dest[wrot_frm->out_idx].dma[0].iova = wrot->sram_pa;
-		task->buf.dest[wrot_frm->out_idx].size[0] = wrot->sram_size;
-		mutex_unlock(&wrot->sram_mutex);
-		wrot_frm->iova[0] = wrot->sram_pa;
+		task->buf.dest[wdma_frm->out_idx].dma[0].iova = wdma->sram_pa;
+		task->buf.dest[wdma_frm->out_idx].size[0] = wdma->sram_size;
+		mutex_unlock(&wdma->sram_mutex);
+		wdma_frm->iova[0] = wdma->sram_pa;
 		mml_mmp(buf_prepare, MMPROFILE_FLAG_END,
-			((u64)task->job.jobid << 16) | comp->id, wrot_frm->iova[0]);
+			((u64)task->job.jobid << 16) | comp->id, wdma_frm->iova[0]);
 	} else {
 		for (i = 0; i < dest_buf->cnt; i++)
-			wrot_frm->iova[i] = dest_buf->dma[i].iova;
+			wdma_frm->iova[i] = dest_buf->dma[i].iova;
 	}
 
-	if (!wrot_frm->iova[0])
+	if (!wdma_frm->iova[0])
 		return -EINVAL;
 
 	return 0;
 }
 
-static void wrot_buf_unprepare(struct mml_comp *comp, struct mml_task *task,
+static void wdma_buf_unprepare(struct mml_comp *comp, struct mml_task *task,
 			       struct mml_comp_config *ccfg)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 
 	if (task->config->info.mode == MML_MODE_RACING) {
-		mutex_lock(&wrot->sram_mutex);
-		wrot->sram_cnt--;
-		if (wrot->sram_cnt == 0)
+		mutex_lock(&wdma->sram_mutex);
+		wdma->sram_cnt--;
+		if (wdma->sram_cnt == 0)
 			mml_sram_put(task->config->mml, mml_sram_racing);
-		mutex_unlock(&wrot->sram_mutex);
+		mutex_unlock(&wdma->sram_mutex);
 	}
 }
 
-static s32 wrot_tile_prepare(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg,
 			     struct tile_func_block *func,
 			     union mml_tile_data *data)
 {
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
 	struct mml_frame_config *cfg = task->config;
-	struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_frame_dest *dest = &cfg->info.dest[wdma_frm->out_idx];
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 
-	data->wrot.dest_fmt = dest->data.format;
-	data->wrot.rotate = wrot_frm->rotate;
-	data->wrot.flip = wrot_frm->flip;
-	data->wrot.alpha = cfg->alpharot || cfg->alpharsz;
-	data->wrot.racing = cfg->info.mode == MML_MODE_RACING;
-	data->wrot.racing_h = max(mml_racing_h, MML_WROT_RACING_MAX);
+	data->wdma.dest_fmt = dest->data.format;
 
-	/* reuse wrot_frm data which processed with rotate and dual */
-	data->wrot.enable_x_crop = wrot_frm->en_x_crop;
-	data->wrot.enable_y_crop = wrot_frm->en_y_crop;
-	data->wrot.crop = wrot_frm->out_crop;
-	data->wrot.yuv_pending = (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING);
-	if (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
-		func->full_size_x_in = wrot_frm->compose.width;
-		func->full_size_y_in = wrot_frm->compose.height;
-		func->full_size_x_out = wrot_frm->compose.width;
-		func->full_size_y_out = wrot_frm->compose.height;
+	/* reuse wdma_frm data which processed with rotate and dual */
+	data->wdma.enable_x_crop = wdma_frm->en_x_crop;
+	data->wdma.enable_y_crop = wdma_frm->en_y_crop;
+	data->wdma.crop = wdma_frm->out_crop;
+
+	if (wdma->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
+		func->full_size_x_in = wdma_frm->compose.width;
+		func->full_size_y_in = wdma_frm->compose.height;
+		func->full_size_x_out = wdma_frm->compose.width;
+		func->full_size_y_out = wdma_frm->compose.height;
 	} else {
-		func->full_size_x_in = wrot_frm->out_w;
-		func->full_size_y_in = wrot_frm->out_h;
-		func->full_size_x_out = wrot_frm->out_w;
-		func->full_size_y_out = wrot_frm->out_h;
+		func->full_size_x_in = wdma_frm->out_w;
+		func->full_size_y_in = wdma_frm->out_h;
+		func->full_size_x_out = wdma_frm->out_w;
+		func->full_size_y_out = wdma_frm->out_h;
 	}
 
-	data->wrot.max_width = wrot->data->tile_width;
-	/* WROT support crop capability */
+	data->wdma.max_width = wdma->data->tile_width;
+	/* WDMA support crop capability */
 	func->type = TILE_TYPE_WDMA | TILE_TYPE_CROP_EN;
-	func->init_func = tile_wrot_init;
-	func->for_func = tile_wrot_for;
-	func->back_func = tile_wrot_back;
+	func->init_func = tile_wdma_init;
+	func->for_func = tile_wdma_for;
+	func->back_func = tile_wdma_back;
 	func->data = data;
 	func->enable_flag = true;
 
 	return 0;
 }
 
-static const struct mml_comp_tile_ops wrot_tile_ops = {
-	.prepare = wrot_tile_prepare,
+static const struct mml_comp_tile_ops wdma_tile_ops = {
+	.prepare = wdma_tile_prepare,
 };
 
-static u32 wrot_get_label_count(struct mml_comp *comp, struct mml_task *task,
+static u32 wdma_get_label_count(struct mml_comp *comp, struct mml_task *task,
 				struct mml_comp_config *ccfg)
 {
-	return WROT_LABEL_TOTAL;
+	return WDMA_LABEL_TOTAL;
 }
 
-static void wrot_color_fmt(struct mml_frame_config *cfg,
-			   struct wrot_frame_data *wrot_frm)
+static void wdma_color_fmt(struct mml_frame_config *cfg,
+			   struct wdma_frame_data *wdma_frm)
 {
-	u32 fmt = cfg->info.dest[wrot_frm->out_idx].data.format;
+	u32 fmt = cfg->info.dest[wdma_frm->out_idx].data.format;
 	u16 profile_in = cfg->info.src.profile;
-	u16 profile_out = cfg->info.dest[wrot_frm->out_idx].data.profile;
+	u16 profile_out = cfg->info.dest[wdma_frm->out_idx].data.profile;
 
-	wrot_frm->mat_en = 0;
-	wrot_frm->mat_sel = 15;
-	wrot_frm->bbp_y = MML_FMT_BITS_PER_PIXEL(fmt);
+	wdma_frm->mat_en = 0;
+	wdma_frm->mat_sel = 15;
+	wdma_frm->bbp_y = MML_FMT_BITS_PER_PIXEL(fmt);
 
 	switch (fmt) {
 	case MML_FMT_GREY:
 		/* Y only */
-		wrot_frm->bbp_uv = 0;
-		wrot_frm->hor_sh_uv = 0;
-		wrot_frm->ver_sh_uv = 0;
+		wdma_frm->bbp_uv = 0;
+		wdma_frm->hor_sh_uv = 0;
+		wdma_frm->ver_sh_uv = 0;
 		break;
 	case MML_FMT_RGB565:
 	case MML_FMT_BGR565:
@@ -1012,10 +914,10 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	case MML_FMT_BGRA8888_AFBC:
 	case MML_FMT_RGBA1010102_AFBC:
 	case MML_FMT_BGRA1010102_AFBC:
-		wrot_frm->bbp_uv = 0;
-		wrot_frm->hor_sh_uv = 0;
-		wrot_frm->ver_sh_uv = 0;
-		wrot_frm->mat_en = 1;
+		wdma_frm->bbp_uv = 0;
+		wdma_frm->hor_sh_uv = 0;
+		wdma_frm->ver_sh_uv = 0;
+		wdma_frm->mat_en = 1;
 		break;
 	case MML_FMT_UYVY:
 	case MML_FMT_VYUY:
@@ -1026,62 +928,62 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	/* HW_SUPPORT_10BIT_PATH */
 	case MML_FMT_YUVA1010102:
 		/* YUV422/444, 1 plane */
-		wrot_frm->bbp_uv = 0;
-		wrot_frm->hor_sh_uv = 0;
-		wrot_frm->ver_sh_uv = 0;
+		wdma_frm->bbp_uv = 0;
+		wdma_frm->hor_sh_uv = 0;
+		wdma_frm->ver_sh_uv = 0;
 		break;
 	case MML_FMT_I420:
 	case MML_FMT_YV12:
 		/* YUV420, 3 plane */
-		wrot_frm->bbp_uv = 8;
-		wrot_frm->hor_sh_uv = 1;
-		wrot_frm->ver_sh_uv = 1;
+		wdma_frm->bbp_uv = 8;
+		wdma_frm->hor_sh_uv = 1;
+		wdma_frm->ver_sh_uv = 1;
 		break;
 	case MML_FMT_I422:
 	case MML_FMT_YV16:
 		/* YUV422, 3 plane */
-		wrot_frm->bbp_uv = 8;
-		wrot_frm->hor_sh_uv = 1;
-		wrot_frm->ver_sh_uv = 0;
+		wdma_frm->bbp_uv = 8;
+		wdma_frm->hor_sh_uv = 1;
+		wdma_frm->ver_sh_uv = 0;
 		break;
 	case MML_FMT_I444:
 	case MML_FMT_YV24:
 		/* YUV444, 3 plane */
-		wrot_frm->bbp_uv = 8;
-		wrot_frm->hor_sh_uv = 0;
-		wrot_frm->ver_sh_uv = 0;
+		wdma_frm->bbp_uv = 8;
+		wdma_frm->hor_sh_uv = 0;
+		wdma_frm->ver_sh_uv = 0;
 		break;
 	case MML_FMT_NV12:
 	case MML_FMT_NV21:
 		/* YUV420, 2 plane */
-		wrot_frm->bbp_uv = 16;
-		wrot_frm->hor_sh_uv = 1;
-		wrot_frm->ver_sh_uv = 1;
+		wdma_frm->bbp_uv = 16;
+		wdma_frm->hor_sh_uv = 1;
+		wdma_frm->ver_sh_uv = 1;
 		break;
 	case MML_FMT_NV16:
 	case MML_FMT_NV61:
 		/* YUV422, 2 plane */
-		wrot_frm->bbp_uv = 16;
-		wrot_frm->hor_sh_uv = 1;
-		wrot_frm->ver_sh_uv = 0;
+		wdma_frm->bbp_uv = 16;
+		wdma_frm->hor_sh_uv = 1;
+		wdma_frm->ver_sh_uv = 0;
 		break;
 	/* HW_SUPPORT_10BIT_PATH */
 	case MML_FMT_NV12_10L:
 	case MML_FMT_NV21_10L:
 		/* P010 YUV420, 2 plane 10bit */
-		wrot_frm->bbp_uv = 32;
-		wrot_frm->hor_sh_uv = 1;
-		wrot_frm->ver_sh_uv = 1;
+		wdma_frm->bbp_uv = 32;
+		wdma_frm->hor_sh_uv = 1;
+		wdma_frm->ver_sh_uv = 1;
 		break;
 	case MML_FMT_NV15:
 	case MML_FMT_NV51:
 		/* MTK packed YUV420, 2 plane 10bit */
-		wrot_frm->bbp_uv = 20;
-		wrot_frm->hor_sh_uv = 1;
-		wrot_frm->ver_sh_uv = 1;
+		wdma_frm->bbp_uv = 20;
+		wdma_frm->hor_sh_uv = 1;
+		wdma_frm->ver_sh_uv = 1;
 		break;
 	default:
-		mml_err("[wrot] not support format %x", fmt);
+		mml_err("[wdma] not support format %x", fmt);
 		break;
 	}
 
@@ -1110,67 +1012,67 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
-	if (wrot_frm->mat_en == 1) {
+	if (wdma_frm->mat_en == 1) {
 		if (MML_FMT_IS_RGB(cfg->info.src.format) &&
-		    !cfg->info.dest[wrot_frm->out_idx].pq_config.en)
-			wrot_frm->mat_sel = 5;
+		    !cfg->info.dest[wdma_frm->out_idx].pq_config.en)
+			wdma_frm->mat_sel = 5;
 		else if (profile_in == MML_YCBCR_PROFILE_BT601)
-			wrot_frm->mat_sel = 6;
+			wdma_frm->mat_sel = 6;
 		else if (profile_in == MML_YCBCR_PROFILE_BT709)
-			wrot_frm->mat_sel = 7;
+			wdma_frm->mat_sel = 7;
 		else if (profile_in == MML_YCBCR_PROFILE_JPEG)
-			wrot_frm->mat_sel = 4;
+			wdma_frm->mat_sel = 4;
 		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709)
-			wrot_frm->mat_sel = 5;
+			wdma_frm->mat_sel = 5;
 		else
-			mml_err("[wrot] unknown profile conversion %x",
+			mml_err("[wdma] unknown profile conversion %x",
 				profile_in);
 	} else {
 		if (profile_in == MML_YCBCR_PROFILE_JPEG &&
 		    profile_out == MML_YCBCR_PROFILE_BT601) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 8;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 8;
 		} else if (profile_in == MML_YCBCR_PROFILE_JPEG &&
 			   profile_out == MML_YCBCR_PROFILE_BT709) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 9;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 9;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT601 &&
 			   profile_out == MML_YCBCR_PROFILE_JPEG) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 10;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 10;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
 			   profile_out == MML_YCBCR_PROFILE_JPEG) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 11;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 11;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
 			   profile_out == MML_YCBCR_PROFILE_BT601) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 12;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 12;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT601 &&
 			   profile_out == MML_YCBCR_PROFILE_BT709) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 13;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 13;
 		} else if (profile_in == MML_YCBCR_PROFILE_JPEG &&
 			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 14;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 14;
 		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709 &&
 			   profile_out == MML_YCBCR_PROFILE_BT709) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 8;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 8;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
 			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
-			wrot_frm->mat_en = 1;
-			wrot_frm->mat_sel = 10;
+			wdma_frm->mat_en = 1;
+			wdma_frm->mat_sel = 10;
 		}
 	}
 
 	/* Enable 10-bit input */
 	if (!MML_FMT_10BIT(fmt)) {
-		wrot_frm->mat_en = 1;
+		wdma_frm->mat_en = 1;
 		/* Enable 10-to-8 dither */
 		if (MML_FMT_10BIT(cfg->info.src.format)) {
-			wrot_frm->dither_con = (0x1 << 10) +
+			wdma_frm->dither_con = (0x1 << 10) +
 				 (0x0 << 8) +
 				 (0x0 << 4) +
 				 (0x1 << 2) +
@@ -1214,41 +1116,41 @@ static void calc_afbc_block(u32 bits_per_pixel, u32 y_stride, u32 vert_stride,
 	*addr = *addr_c + header_sz;
 }
 
-static void wrot_calc_hw_buf_setting(const struct mml_comp_wrot *wrot,
+static void wdma_calc_hw_buf_setting(const struct mml_comp_wdma *wdma,
 				     const struct mml_frame_config *cfg,
 				     const struct mml_frame_dest *dest,
-				     struct wrot_frame_data *wrot_frm)
+				     struct wdma_frame_data *wdma_frm)
 {
 	const u32 dest_fmt = dest->data.format;
 
 	if (MML_FMT_YUV422(dest_fmt)) {
 		if (MML_FMT_PLANE(dest_fmt) == 1) {
-			wrot_frm->fifo_max_sz = wrot->data->tile_width * 32;
-			wrot_frm->max_line_cnt = 32;
+			wdma_frm->fifo_max_sz = wdma->data->tile_width * 32;
+			wdma_frm->max_line_cnt = 32;
 		} else {
-			wrot_frm->fifo_max_sz = wrot->data->tile_width * 48;
-			wrot_frm->max_line_cnt = 48;
+			wdma_frm->fifo_max_sz = wdma->data->tile_width * 48;
+			wdma_frm->max_line_cnt = 48;
 		}
 	} else if (MML_FMT_YUV420(dest_fmt)) {
-		wrot_frm->fifo_max_sz = wrot->data->tile_width * 64;
-		wrot_frm->max_line_cnt = 64;
+		wdma_frm->fifo_max_sz = wdma->data->tile_width * 64;
+		wdma_frm->max_line_cnt = 64;
 	} else if (dest_fmt == MML_FMT_GREY) {
-		wrot_frm->fifo_max_sz = wrot->data->tile_width * 64;
-		wrot_frm->max_line_cnt = 64;
+		wdma_frm->fifo_max_sz = wdma->data->tile_width * 64;
+		wdma_frm->max_line_cnt = 64;
 	} else if (cfg->alpharot || cfg->alpharsz) {
-		wrot_frm->fifo_max_sz = wrot->data->tile_width * 16;
-		wrot_frm->max_line_cnt = 16;
+		wdma_frm->fifo_max_sz = wdma->data->tile_width * 16;
+		wdma_frm->max_line_cnt = 16;
 	} else {
-		wrot_frm->fifo_max_sz = wrot->data->tile_width * 32;
-		wrot_frm->max_line_cnt = 32;
+		wdma_frm->fifo_max_sz = wdma->data->tile_width * 32;
+		wdma_frm->max_line_cnt = 32;
 	}
 }
 
-static void wrot_config_addr(const struct mml_comp_wrot *wrot,
+static void wdma_config_addr(const struct mml_comp_wdma *wdma,
 			     const struct mml_frame_dest *dest,
 			     const u32 dest_fmt,
 			     const phys_addr_t base_pa,
-			     struct wrot_frame_data *wrot_frm,
+			     struct wdma_frame_data *wdma_frm,
 			     struct cmdq_pkt *pkt,
 			     struct mml_task_reuse *reuse,
 			     struct mml_pipe_cache *cache)
@@ -1256,59 +1158,59 @@ static void wrot_config_addr(const struct mml_comp_wrot *wrot,
 	u64 addr_c, addr_v, addr;
 
 	if (MML_FMT_AFBC(dest_fmt)) {
-		/* wrot afbc output case */
+		/* wdma afbc output case */
 		u32 block_x;
 		u32 frame_size;
 
 		/* Write frame base address */
-		calc_afbc_block(wrot_frm->bbp_y,
-				wrot_frm->y_stride, dest->data.vert_stride,
-				wrot_frm->iova, wrot_frm->plane_offset,
+		calc_afbc_block(wdma_frm->bbp_y,
+				wdma_frm->y_stride, dest->data.vert_stride,
+				wdma_frm->iova, wdma_frm->plane_offset,
 				&block_x, &addr_c, &addr_v, &addr);
 
-		if (wrot_frm->rotate == MML_ROT_0 || wrot_frm->rotate == MML_ROT_180)
-			frame_size = ((((wrot_frm->out_h + 31) >>
+		if (wdma_frm->rotate == MML_ROT_0 || wdma_frm->rotate == MML_ROT_180)
+			frame_size = ((((wdma_frm->out_h + 31) >>
 					 5) << 5) << 16) +
 					 ((block_x << 5) << 0);
 		else
-			frame_size = ((((wrot_frm->out_w + 31) >>
+			frame_size = ((((wdma_frm->out_w + 31) >>
 					 5) << 5) << 16) +
 					 ((block_x << 5) << 0);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_FRAME_SIZE],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_FRAME_SIZE],
 			       frame_size, U32_MAX);
 
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_AFBC_YUVTRANS],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_AFBC_YUVTRANS],
 			       MML_FMT_IS_RGB(dest_fmt), 0x1);
 	} else {
 		mml_msg("%s base %#llx+%u %#llx+%u %#llx+%u",
 			__func__,
-			wrot_frm->iova[0], wrot_frm->plane_offset[0],
-			wrot_frm->iova[1], wrot_frm->plane_offset[1],
-			wrot_frm->iova[2], wrot_frm->plane_offset[2]);
+			wdma_frm->iova[0], wdma_frm->plane_offset[0],
+			wdma_frm->iova[1], wdma_frm->plane_offset[1],
+			wdma_frm->iova[2], wdma_frm->plane_offset[2]);
 
-		addr = wrot_frm->iova[0] + wrot_frm->plane_offset[0];
-		addr_c = wrot_frm->iova[1] + wrot_frm->plane_offset[1];
-		addr_v = wrot_frm->iova[2] + wrot_frm->plane_offset[2];
+		addr = wdma_frm->iova[0] + wdma_frm->plane_offset[0];
+		addr_c = wdma_frm->iova[1] + wdma_frm->plane_offset[1];
+		addr_v = wdma_frm->iova[2] + wdma_frm->plane_offset[2];
 	}
 
 	if (!mml_slt) {
 		/* Write frame base address */
-		wrot_write_addr(wrot->comp.id, pkt,
-				base_pa + wrot->reg[VIDO_BASE_ADDR],
-				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH], addr,
-				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR]);
-		wrot_write_addr(wrot->comp.id, pkt,
-				base_pa + wrot->reg[VIDO_BASE_ADDR_C],
-				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_C], addr_c,
-				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR_C]);
-		wrot_write_addr(wrot->comp.id, pkt,
-				base_pa + wrot->reg[VIDO_BASE_ADDR_V],
-				base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_V], addr_v,
-				reuse, cache, &wrot_frm->labels[WROT_LABEL_ADDR_V]);
+		wdma_write_addr(wdma->comp.id, pkt,
+				base_pa + wdma->reg[VIDO_BASE_ADDR],
+				base_pa + wdma->reg[VIDO_BASE_ADDR_HIGH], addr,
+				reuse, cache, &wdma_frm->labels[WDMA_LABEL_ADDR]);
+		wdma_write_addr(wdma->comp.id, pkt,
+				base_pa + wdma->reg[VIDO_BASE_ADDR_C],
+				base_pa + wdma->reg[VIDO_BASE_ADDR_HIGH_C], addr_c,
+				reuse, cache, &wdma_frm->labels[WDMA_LABEL_ADDR_C]);
+		wdma_write_addr(wdma->comp.id, pkt,
+				base_pa + wdma->reg[VIDO_BASE_ADDR_V],
+				base_pa + wdma->reg[VIDO_BASE_ADDR_HIGH_V], addr_v,
+				reuse, cache, &wdma_frm->labels[WDMA_LABEL_ADDR_V]);
 	}
 }
 
-static void wrot_config_ready(struct mml_comp_wrot *wrot,
+static void wdma_config_ready(struct mml_comp_wdma *wdma,
 	struct mml_frame_config *cfg, u32 pipe, struct cmdq_pkt *pkt,
 	bool enable)
 {
@@ -1321,16 +1223,16 @@ static void wrot_config_ready(struct mml_comp_wrot *wrot,
 		return;
 	sel = path->mmlsys->base_pa + sel_off;
 
-	if (wrot->idx == 0)
+	if (wdma->idx == 0)
 		shift = 0;
-	else if (wrot->idx == 1)
+	else if (wdma->idx == 1)
 		shift = 3;
 	else
 		return;
 	mask = cfg->dual ? (0x7 << shift) | GENMASK(31, 6) : U32_MAX;
 
-	if (mml_racing_rdone) {
-		/* debug mode, make rdone to wrot tie 1 */
+	if (mml_wdma_racing_rdone) {
+		/* debug mode, make rdone to wdma tie 1 */
 		cmdq_pkt_write(pkt, NULL, sel, 0x24, U32_MAX);
 		return;
 	}
@@ -1346,13 +1248,13 @@ static void wrot_config_ready(struct mml_comp_wrot *wrot,
 	}
 }
 
-static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	struct mml_frame_config *cfg = task->config;
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-	struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
+	struct mml_frame_dest *dest = &cfg->info.dest[wdma_frm->out_idx];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
@@ -1360,15 +1262,15 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const phys_addr_t base_pa = comp->base_pa;
 	const u32 src_fmt = cfg->info.src.format;
 	const u32 dest_fmt = dest->data.format;
-	const u16 rotate = wrot_frm->rotate;
-	const u8 flip = wrot_frm->flip ? 1 : 0;
+	const u16 rotate = wdma_frm->rotate;
+	const u8 flip = wdma_frm->flip ? 1 : 0;
 	const u32 h_subsample = MML_FMT_H_SUBSAMPLE(dest_fmt);
 	const u32 v_subsample = MML_FMT_V_SUBSAMPLE(dest_fmt);
 	const u8 plane = MML_FMT_PLANE(dest_fmt);
-	const u32 preultra_en = 1;	/* always enable wrot pre-ultra */
+	const u32 preultra_en = 1;	/* always enable wdma pre-ultra */
 	const u32 crop_en = 1;		/* always enable crop */
 	const u32 hw_fmt = MML_FMT_HW_FORMAT(dest_fmt);
-	const u32 bkgden = mml_wrot_bkgd_en ? 1 : 0;
+	const u32 bkgden = mml_wdma_bkgd_en ? 1 : 0;
 
 	u32 out_swap = MML_FMT_SWAP(dest_fmt);
 	u32 uv_xsel, uv_ysel;
@@ -1376,18 +1278,18 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 scan_10bit = 0, bit_num = 0, pending_zero = 0, pvric = 0;
 
 	/* clear event */
-	cmdq_pkt_clear_event(pkt, wrot->event_eof);
+	cmdq_pkt_clear_event(pkt, wdma->event_eof);
 
-	wrot_color_fmt(cfg, wrot_frm);
+	wdma_color_fmt(cfg, wdma_frm);
 
 	/* calculate for later config tile use */
-	wrot_calc_hw_buf_setting(wrot, cfg, dest, wrot_frm);
+	wdma_calc_hw_buf_setting(wdma, cfg, dest, wdma_frm);
 
 	if (cfg->alpharot || cfg->rgbrot) {
-		wrot_frm->mat_en = 0;
-		wrot_frm->mat_sel = 15;
+		wdma_frm->mat_en = 0;
+		wdma_frm->mat_sel = 15;
 
-		if (wrot->data->rb_swap == 1) {
+		if (wdma->data->rb_swap == 1) {
 			if (!MML_FMT_AFBC(src_fmt) && !MML_FMT_10BIT(src_fmt))
 				out_swap ^= MML_FMT_SWAP(src_fmt);
 			else if (MML_FMT_AFBC(src_fmt) && !MML_FMT_10BIT(src_fmt))
@@ -1398,49 +1300,49 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
-	mml_msg("use config %p wrot %p", cfg, wrot);
+	mml_msg("use config %p wdma %p", cfg, wdma);
 
 	if (cfg->info.mode == MML_MODE_DDP_ADDON && ccfg->node->out_idx == MML_MAX_OUTPUTS - 1 &&
 			task->pq_param[0].src_hdr_video_mode == MML_PQ_AIREGION) {
 		/* TODO: need to fix pq_task */
-		wrot->pq_task = task->pq_task;
-		wrot->dual = task->config->dual;
-		wrot->out_idx = ccfg->node->out_idx;
-		wrot->jobid = task->job.jobid;
-		wrot->dest_cnt = cfg->info.dest_cnt;
-		wrot->frame_data.size_info.out_rotate[ccfg->node->out_idx] =
+		wdma->pq_task = task->pq_task;
+		wdma->dual = task->config->dual;
+		wdma->out_idx = ccfg->node->out_idx;
+		wdma->jobid = task->job.jobid;
+		wdma->dest_cnt = cfg->info.dest_cnt;
+		wdma->frame_data.size_info.out_rotate[ccfg->node->out_idx] =
 			cfg->out_rotate[ccfg->node->out_idx];
-		memcpy(&wrot->frame_data.pq_param, task->pq_param,
+		memcpy(&wdma->frame_data.pq_param, task->pq_param,
 			MML_MAX_OUTPUTS * sizeof(struct mml_pq_param));
-		memcpy(&wrot->frame_data.info, &task->config->info,
+		memcpy(&wdma->frame_data.info, &task->config->info,
 			sizeof(struct mml_frame_info));
-		memcpy(&wrot->frame_data.frame_out, &task->config->frame_out,
+		memcpy(&wdma->frame_data.frame_out, &task->config->frame_out,
 			MML_MAX_OUTPUTS * sizeof(struct mml_frame_size));
-		memcpy(&wrot->frame_data.size_info.frame_in_crop_s[0],
+		memcpy(&wdma->frame_data.size_info.frame_in_crop_s[0],
 			&cfg->frame_in_crop[0],
 			MML_MAX_OUTPUTS *sizeof(struct mml_crop));
 
-		wrot->frame_data.size_info.crop_size_s.width =
+		wdma->frame_data.size_info.crop_size_s.width =
 			cfg->frame_tile_sz.width;
-		wrot->frame_data.size_info.crop_size_s.height =
+		wdma->frame_data.size_info.crop_size_s.height =
 			cfg->frame_tile_sz.height;
-		wrot->frame_data.size_info.frame_size_s.width = cfg->frame_in.width;
-		wrot->frame_data.size_info.frame_size_s.height = cfg->frame_in.height;
+		wdma->frame_data.size_info.frame_size_s.width = cfg->frame_in.width;
+		wdma->frame_data.size_info.frame_size_s.height = cfg->frame_in.height;
 	}
 
 	/* Enable engine */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_ROT_EN], 0x01, 0x00000001);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_ROT_EN], 0x01, 0x00000001);
 
-	if (mml_wrot_crc)
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CRC_CTRL],
-			mml_wrot_crc, U32_MAX);
+	if (mml_wdma_crc)
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_CRC_CTRL],
+			mml_wdma_crc, U32_MAX);
 
 	/* Enable shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_SHADOW_CTRL],
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_SHADOW_CTRL],
 		(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 
 	if (h_subsample) {	/* YUV422/420 out */
-		wrot_frm->filt_v = MML_FMT_V_SUBSAMPLE(src_fmt) ||
+		wdma_frm->filt_v = MML_FMT_V_SUBSAMPLE(src_fmt) ||
 			 MML_FMT_GROUP(src_fmt) == 2 ?
 			 0 : uv_table[v_subsample][rotate][flip][1];
 		uv_xsel = uv_table[v_subsample][rotate][flip][2];
@@ -1454,83 +1356,83 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* Note: check odd size roi_w & roi_h for uv_xsel/uv_ysel */
-	if ((wrot_frm->compose.width & 0x1) && uv_xsel == 1)
+	if ((wdma_frm->compose.width & 0x1) && uv_xsel == 1)
 		uv_xsel = 0;
-	if ((wrot_frm->compose.height & 0x1) && uv_ysel == 1)
+	if ((wdma_frm->compose.height & 0x1) && uv_ysel == 1)
 		uv_ysel = 0;
 
-	/* Note: WROT not support UV swap */
+	/* Note: WDMA not support UV swap */
 	if (out_swap == 1 && MML_FMT_PLANE(dest_fmt) == 3) {
-		swap(wrot_frm->iova[1], wrot_frm->iova[2]);
-		swap(wrot_frm->plane_offset[1], wrot_frm->plane_offset[2]);
+		swap(wdma_frm->iova[1], wdma_frm->iova[2]);
+		swap(wdma_frm->plane_offset[1], wdma_frm->plane_offset[2]);
 	}
 
 	if (!mml_slt)
-		wrot_config_smi(wrot, cfg, pkt);
+		wdma_config_smi(wdma, cfg, pkt);
 
 	if (task->config->info.mode == MML_MODE_RACING) {
 		u64 sram_addr;
 
-		calc_plane_offset(wrot_frm->compose.left, 0,
-			wrot_frm->y_stride, wrot_frm->uv_stride,
-			wrot_frm->bbp_y, wrot_frm->bbp_uv,
-			wrot_frm->hor_sh_uv, wrot_frm->ver_sh_uv,
-			wrot_frm->plane_offset);
-		sram_addr = wrot->sram_pa + wrot_frm->plane_offset[0];
+		calc_plane_offset(wdma_frm->compose.left, 0,
+			wdma_frm->y_stride, wdma_frm->uv_stride,
+			wdma_frm->bbp_y, wdma_frm->bbp_uv,
+			wdma_frm->hor_sh_uv, wdma_frm->ver_sh_uv,
+			wdma_frm->plane_offset);
+		sram_addr = wdma->sram_pa + wdma_frm->plane_offset[0];
 
 		/* config ready signal from disp0 or disp1 */
-		wrot_config_ready(wrot, cfg, ccfg->pipe, pkt, true);
+		wdma_config_ready(wdma, cfg, ccfg->pipe, pkt, true);
 
 		/* inline rotate case always write to sram pa */
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_BASE_ADDR],
 			sram_addr, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_BASE_ADDR_HIGH],
 			sram_addr >> 32, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_C],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_BASE_ADDR_C],
 			sram_addr, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_C],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_BASE_ADDR_HIGH_C],
 			sram_addr >> 32, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_V],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_BASE_ADDR_V],
 			sram_addr, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BASE_ADDR_HIGH_V],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_BASE_ADDR_HIGH_V],
 			sram_addr >> 32, U32_MAX);
 
 		cmdq_pkt_write(pkt, NULL,
-			wrot->irot_base[0] + DISPSYS_SHADOW_CTRL, 0x2, U32_MAX);
+			wdma->irot_base[0] + DISPSYS_SHADOW_CTRL, 0x2, U32_MAX);
 
 		if (mml_racing_ut == 2)
 			cmdq_pkt_write(pkt, NULL,
-				wrot->irot_base[0] + INLINEROT_OVLSEL, 0x22, U32_MAX);
+				wdma->irot_base[0] + INLINEROT_OVLSEL, 0x22, U32_MAX);
 		else if (mml_racing_ut == 3)
 			cmdq_pkt_write(pkt, NULL,
-				wrot->irot_base[0] + INLINEROT_OVLSEL, 0xc, U32_MAX);
+				wdma->irot_base[0] + INLINEROT_OVLSEL, 0xc, U32_MAX);
 
 		mml_msg("%s sram pa %#x offset %u",
-			__func__, (u32)sram_addr, wrot_frm->plane_offset[0]);
+			__func__, (u32)sram_addr, wdma_frm->plane_offset[0]);
 	} else {
-		calc_plane_offset(wrot_frm->compose.left, wrot_frm->compose.top,
-			wrot_frm->y_stride, wrot_frm->uv_stride,
-			wrot_frm->bbp_y, wrot_frm->bbp_uv,
-			wrot_frm->hor_sh_uv, wrot_frm->ver_sh_uv,
-			wrot_frm->plane_offset);
+		calc_plane_offset(wdma_frm->compose.left, wdma_frm->compose.top,
+			wdma_frm->y_stride, wdma_frm->uv_stride,
+			wdma_frm->bbp_y, wdma_frm->bbp_uv,
+			wdma_frm->hor_sh_uv, wdma_frm->ver_sh_uv,
+			wdma_frm->plane_offset);
 
-		/* normal dram case config wrot iova with reuse */
-		wrot_config_addr(wrot, dest, dest_fmt, base_pa,
-				 wrot_frm, pkt, reuse, cache);
-		/* always turn off ready to wrot */
-		wrot_config_ready(wrot, cfg, ccfg->pipe, pkt, false);
+		/* normal dram case config wdma iova with reuse */
+		wdma_config_addr(wdma, dest, dest_fmt, base_pa,
+				 wdma_frm, pkt, reuse, cache);
+		/* always turn off ready to wdma */
+		wdma_config_ready(wdma, cfg, ccfg->pipe, pkt, false);
 
 		/* and clear inlinerot enable since last frame maybe racing mode */
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_LINE_ROT], 0, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_IN_LINE_ROT], 0, U32_MAX);
 	}
 
 	/* Write frame related registers */
 	alpha = (cfg->alpharot || cfg->alpharsz);
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CTRL],
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_CTRL],
 		       (uv_ysel		<< 30) +
 		       (uv_xsel		<< 28) +
 		       (flip		<< 24) +
-		       (wrot_frm->rotate << 20) +
+		       (wdma_frm->rotate << 20) +
 		       (alpha		<< 16) + /* alpha */
 		       (preultra_en	<< 14) + /* pre-ultra */
 		       (crop_en		<< 12) +
@@ -1538,9 +1440,9 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		       (bkgden		<<  5) +
 		       (hw_fmt		<<  0), 0xf131512f);
 
-	if (unlikely(mml_wrot_bkgd_en)) {
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CTRL], BIT(5), BIT(5));
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_BKGD], mml_wrot_bkgd, U32_MAX);
+	if (unlikely(mml_wdma_bkgd_en)) {
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_CTRL], BIT(5), BIT(5));
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_BKGD], mml_wdma_bkgd, U32_MAX);
 	}
 
 	if (MML_FMT_10BIT_LOOSE(dest_fmt)) {
@@ -1562,16 +1464,16 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		scan_10bit = 0;
 		pending_zero = BIT(26);
 	}
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_SCAN_10BIT], scan_10bit, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_PENDING_ZERO], pending_zero, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CTRL_2], bit_num, 0x00000007);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_SCAN_10BIT], scan_10bit, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_PENDING_ZERO], pending_zero, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_CTRL_2], bit_num, 0x00000007);
 
 	if (MML_FMT_AFBC(dest_fmt)) {
 		pvric |= BIT(0);
 		if (MML_FMT_10BIT(dest_fmt))
 			pvric |= BIT(1);
 	}
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_PVRIC], pvric, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_PVRIC], pvric, U32_MAX);
 
 	/* set ESL */
 	if (plane == 3 || plane == 2 || hw_fmt == 7)	/* 3-plane, 2-plane, Y8 */
@@ -1584,94 +1486,94 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		preultra = (176 << 12) + (136 << 0);
 	else
 		preultra = 0;
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DMA_PREULTRA], preultra,
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_DMA_PREULTRA], preultra,
 		       U32_MAX);
 
 	/* Write frame Y stride */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STRIDE], wrot_frm->y_stride,
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_STRIDE], wdma_frm->y_stride,
 		       U32_MAX);
 	/* Write frame UV stride */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STRIDE_C], wrot_frm->uv_stride,
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_STRIDE_C], wdma_frm->uv_stride,
 		       U32_MAX);
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STRIDE_V], wrot_frm->uv_stride,
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_STRIDE_V], wdma_frm->uv_stride,
 		       U32_MAX);
 
 	/* Write matrix control */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_MAT_CTRL],
-		       (wrot_frm->mat_sel << 4) +
-		       (wrot_frm->mat_en << 0), U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_MAT_CTRL],
+		       (wdma_frm->mat_sel << 4) +
+		       (wdma_frm->mat_en << 0), U32_MAX);
 
 	/* Set the fixed ALPHA as 0xff */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DITHER], 0xff000000, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_DITHER], 0xff000000, U32_MAX);
 
 	/* Set VIDO_RSV_1 */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_RSV_1], 0x80000000, 0x80000000);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_RSV_1], 0x80000000, 0x80000000);
 
 	/* Set VIDO_FIFO_TEST */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_FIFO_TEST], wrot->data->fifo, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_FIFO_TEST], wdma->data->fifo, U32_MAX);
 
-	/* turn off WROT dma dcm */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_ROT_EN],
+	/* turn off WDMA dma dcm */
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_ROT_EN],
 		       (0x1 << 23) + (0x1 << 20), 0x00900000);
 
 	/* Enable dither */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DITHER_CON], wrot_frm->dither_con, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_DITHER_CON], wdma_frm->dither_con, U32_MAX);
 
 	return 0;
 }
 
-static void wrot_tile_calc_comp(const struct mml_frame_dest *dest,
-				const struct wrot_frame_data *wrot_frm,
+static void wdma_tile_calc_comp(const struct mml_frame_dest *dest,
+				const struct wdma_frame_data *wdma_frm,
 				const struct mml_tile_engine *tile,
-				struct wrot_ofst_addr *ofst)
+				struct wdma_ofst_addr *ofst)
 {
 	/* Following data retrieve from tile calc result */
 	const u64 out_xs = tile->out.xs;
-	const u64 out_ys = 0; /* In decouple mode, wrot's tile->out.ys is constantly 0. */
-	const u64 out_w = wrot_frm->out_w;
-	const u64 out_h = wrot_frm->out_h;
+	const u64 out_ys = 0; /* In decouple mode, wdma's tile->out.ys is constantly 0. */
+	const u64 out_w = wdma_frm->out_w;
+	const u64 out_h = wdma_frm->out_h;
 	const char *msg = "";
 
-	if (wrot_frm->rotate == MML_ROT_0 && !wrot_frm->flip) {
+	if (wdma_frm->rotate == MML_ROT_0 && !wdma_frm->flip) {
 		/* Target Y offset */
-		ofst->y = (out_ys / 8) * (wrot_frm->y_stride / 128) * 1024 +
+		ofst->y = (out_ys / 8) * (wdma_frm->y_stride / 128) * 1024 +
 			  out_xs * 32;
 		msg = "No flip and no rotation";
-	} else if (wrot_frm->rotate == MML_ROT_0 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_0 && wdma_frm->flip) {
 		/* Target Y offset */
-		ofst->y = ((out_ys / 8) * (wrot_frm->y_stride / 128) +
+		ofst->y = ((out_ys / 8) * (wdma_frm->y_stride / 128) +
 			  (out_w / 32) - (out_xs / 32) - 1) * 1024;
 		msg = "Flip without rotation";
-	} else if (wrot_frm->rotate == MML_ROT_90 && !wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_90 && !wdma_frm->flip) {
 		/* Target Y offset */
-		ofst->y = ((out_xs / 8) * (wrot_frm->y_stride / 128) +
+		ofst->y = ((out_xs / 8) * (wdma_frm->y_stride / 128) +
 			  (out_h / 32) - (out_ys / 32) - 1) * 1024;
 		msg = "Rotate 90 degree only";
-	} else if (wrot_frm->rotate == MML_ROT_90 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_90 && wdma_frm->flip) {
 		/* Target Y offset */
-		ofst->y = (out_xs / 8) * (wrot_frm->y_stride / 128) * 1024 +
+		ofst->y = (out_xs / 8) * (wdma_frm->y_stride / 128) * 1024 +
 			  out_ys * 32;
 		msg = "Flip and Rotate 90 degree";
-	} else if (wrot_frm->rotate == MML_ROT_180 && !wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_180 && !wdma_frm->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_h / 8) - (out_ys / 8) - 1) *
-			  (wrot_frm->y_stride / 128) +
+			  (wdma_frm->y_stride / 128) +
 			  (out_w / 32) - (out_xs / 32) - 1) * 1024;
 		msg = "Rotate 180 degree only";
-	} else if (wrot_frm->rotate == MML_ROT_180 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_180 && wdma_frm->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_h / 8) - (out_ys / 8) - 1) *
-			  (wrot_frm->y_stride / 128)) * 1024 + out_xs * 32;
+			  (wdma_frm->y_stride / 128)) * 1024 + out_xs * 32;
 		msg = "Flip and Rotate 180 degree";
-	} else if (wrot_frm->rotate == MML_ROT_270 && !wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_270 && !wdma_frm->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_w / 8) - (out_xs / 8) - 1) *
-			  (wrot_frm->y_stride / 128)) * 1024 + out_ys * 32;
+			  (wdma_frm->y_stride / 128)) * 1024 + out_ys * 32;
 		msg = "Rotate 270 degree only";
-	} else if (wrot_frm->rotate == MML_ROT_270 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_270 && wdma_frm->flip) {
 		/* Target Y offset */
 		ofst->y = (((out_w / 8) - (out_xs / 8) - 1) *
-			  (wrot_frm->y_stride / 128) +
+			  (wdma_frm->y_stride / 128) +
 			  (out_h / 32) - (out_ys / 32) - 1) * 1024;
 		msg = "Flip and Rotate 270 degree";
 	}
@@ -1682,120 +1584,120 @@ static void wrot_tile_calc_comp(const struct mml_frame_dest *dest,
 		__func__, msg, ofst->y, ofst->c, ofst->v);
 }
 
-static void wrot_tile_calc(const struct mml_task *task,
-			   const struct mml_comp_wrot *wrot,
+static void wdma_tile_calc(const struct mml_task *task,
+			   const struct mml_comp_wdma *wdma,
 			   const struct mml_frame_dest *dest,
 			   const struct mml_frame_tile *tout,
 			   const struct mml_tile_engine *tile,
 			   const u32 idx,
 			   const enum mml_mode mode,
-			   struct wrot_frame_data *wrot_frm,
-			   struct wrot_ofst_addr *ofst)
+			   struct wdma_frame_data *wdma_frm,
+			   struct wdma_ofst_addr *ofst)
 {
 	/* Following data retrieve from tile calc result */
-	u64 out_xs = wrot_frm->pending_x ? round_up(tile->out.xs, 2) : tile->out.xs;
-	u64 out_ys = wrot_frm->pending_y ? round_up(tile->out.ys, 2) : tile->out.ys;
-	u32 out_w = wrot_frm->out_w;
-	u32 out_h = wrot_frm->out_h;
+	u64 out_xs = wdma_frm->pending_x ? round_up(tile->out.xs, 2) : tile->out.xs;
+	u64 out_ys = wdma_frm->pending_y ? round_up(tile->out.ys, 2) : tile->out.ys;
+	u32 out_w = wdma_frm->out_w;
+	u32 out_h = wdma_frm->out_h;
 	u32 sram_block = 0;		/* buffer block number for sram */
 	const char *msg = "";
 	bool tile_eol = false;
 
-	if (wrot_frm->rotate == MML_ROT_0 && !wrot_frm->flip) {
+	if (wdma_frm->rotate == MML_ROT_0 && !wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].v_tile_no & 0x1;
 			out_ys = 0;
 			tile_eol = tout->h_tile_cnt == (tout->tiles[idx].h_tile_no + 1);
 		}
 		/* Target Y offset */
-		ofst->y = out_ys * wrot_frm->y_stride +
-			  (out_xs * wrot_frm->bbp_y >> 3);
+		ofst->y = out_ys * wdma_frm->y_stride +
+			  (out_xs * wdma_frm->bbp_y >> 3);
 
 		/* Target U offset */
-		ofst->c = (out_ys >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
-			  ((out_xs >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+		ofst->c = (out_ys >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
+			  ((out_xs >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		/* Target V offset */
-		ofst->v = (out_ys >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
-			  ((out_xs >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+		ofst->v = (out_ys >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
+			  ((out_xs >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		msg = "No flip and no rotation";
-	} else if (wrot_frm->rotate == MML_ROT_0 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_0 && wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].v_tile_no & 0x1;
 			out_ys = 0;
 			tile_eol = tout->h_tile_cnt == (tout->tiles[idx].h_tile_no + 1);
 		}
 		/* Target Y offset */
-		ofst->y = out_ys * wrot_frm->y_stride +
+		ofst->y = out_ys * wdma_frm->y_stride +
 			  ((out_w - out_xs) *
-			  wrot_frm->bbp_y >> 3) - 1;
+			  wdma_frm->bbp_y >> 3) - 1;
 
 		/* Target U offset */
-		ofst->c = (out_ys >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
+		ofst->c = (out_ys >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
 			  (((out_w - out_xs) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		/* Target V offset */
-		ofst->v = (out_ys >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
+		ofst->v = (out_ys >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
 			  (((out_w - out_xs) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		msg = "Flip without rotation";
-	} else if (wrot_frm->rotate == MML_ROT_90 && !wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_90 && !wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].h_tile_no & 0x1;
 			out_xs = 0;
 			tile_eol = tout->v_tile_cnt == (tout->tiles[idx].v_tile_no + 1);
 		}
 		/* Target Y offset */
-		ofst->y = out_xs * wrot_frm->y_stride +
+		ofst->y = out_xs * wdma_frm->y_stride +
 			  ((out_h - out_ys) *
-			  wrot_frm->bbp_y >> 3) - 1;
+			  wdma_frm->bbp_y >> 3) - 1;
 
 		/* Target U offset */
-		ofst->c = (out_xs >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
+		ofst->c = (out_xs >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
 			  (((out_h - out_ys) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		/* Target V offset */
-		ofst->v = (out_xs >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
+		ofst->v = (out_xs >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
 			  (((out_h - out_ys) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		msg = "Rotate 90 degree only";
-	} else if (wrot_frm->rotate == MML_ROT_90 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_90 && wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = tout->tiles[idx].h_tile_no & 0x1;
 			out_xs = 0;
 			tile_eol = tout->v_tile_cnt == (tout->tiles[idx].v_tile_no + 1);
 		}
 		/* Target Y offset */
-		ofst->y = out_xs * wrot_frm->y_stride +
-			  (out_ys * wrot_frm->bbp_y >> 3);
+		ofst->y = out_xs * wdma_frm->y_stride +
+			  (out_ys * wdma_frm->bbp_y >> 3);
 
 		/* Target U offset */
-		ofst->c = (out_xs >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
-			  ((out_ys >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+		ofst->c = (out_xs >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
+			  ((out_ys >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		/* Target V offset */
-		ofst->v = (out_xs >> wrot_frm->ver_sh_uv) *
-			  wrot_frm->uv_stride +
-			  ((out_ys >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+		ofst->v = (out_xs >> wdma_frm->ver_sh_uv) *
+			  wdma_frm->uv_stride +
+			  ((out_ys >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		msg = "Flip and Rotate 90 degree";
-	} else if (wrot_frm->rotate == MML_ROT_180 && !wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_180 && !wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->v_tile_cnt - tout->tiles[idx].v_tile_no - 1) & 0x1;
 			out_h = tile->out.ye + 1;
@@ -1803,24 +1705,24 @@ static void wrot_tile_calc(const struct mml_task *task,
 		}
 		/* Target Y offset */
 		ofst->y = (out_h - out_ys - 1) *
-			  wrot_frm->y_stride +
+			  wdma_frm->y_stride +
 			  ((out_w - out_xs) *
-			  wrot_frm->bbp_y >> 3) - 1;
+			  wdma_frm->bbp_y >> 3) - 1;
 
 		/* Target U offset */
 		ofst->c = ((out_h - out_ys - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
 			  (((out_w - out_xs) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		/* Target V offset */
 		ofst->v = ((out_h - out_ys - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
 			  (((out_w - out_xs) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		msg = "Rotate 180 degree only";
-	} else if (wrot_frm->rotate == MML_ROT_180 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_180 && wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->v_tile_cnt - tout->tiles[idx].v_tile_no - 1) & 0x1;
 			out_h = tile->out.ye + 1;
@@ -1828,23 +1730,23 @@ static void wrot_tile_calc(const struct mml_task *task,
 		}
 		/* Target Y offset */
 		ofst->y = (out_h - out_ys - 1) *
-			  wrot_frm->y_stride +
-			  (out_xs * wrot_frm->bbp_y >> 3);
+			  wdma_frm->y_stride +
+			  (out_xs * wdma_frm->bbp_y >> 3);
 
 		/* Target U offset */
 		ofst->c = ((out_h - out_ys - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
-			  ((out_xs >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
+			  ((out_xs >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		/* Target V offset */
 		ofst->v = ((out_h - out_ys - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
-			  ((out_xs >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
+			  ((out_xs >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		msg = "Flip and Rotate 180 degree";
-	} else if (wrot_frm->rotate == MML_ROT_270 && !wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_270 && !wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->h_tile_cnt - tout->tiles[idx].h_tile_no - 1) & 0x1;
 			out_w = tile->out.xe + 1;
@@ -1852,23 +1754,23 @@ static void wrot_tile_calc(const struct mml_task *task,
 		}
 		/* Target Y offset */
 		ofst->y = (out_w - out_xs - 1) *
-			  wrot_frm->y_stride +
-			  (out_ys * wrot_frm->bbp_y >> 3);
+			  wdma_frm->y_stride +
+			  (out_ys * wdma_frm->bbp_y >> 3);
 
 		/* Target U offset */
 		ofst->c = ((out_w - out_xs - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
-			  ((out_ys >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
+			  ((out_ys >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		/* Target V offset */
 		ofst->v = ((out_w - out_xs - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
-			  ((out_ys >> wrot_frm->hor_sh_uv) *
-			  wrot_frm->bbp_uv >> 3);
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
+			  ((out_ys >> wdma_frm->hor_sh_uv) *
+			  wdma_frm->bbp_uv >> 3);
 
 		msg = "Rotate 270 degree only";
-	} else if (wrot_frm->rotate == MML_ROT_270 && wrot_frm->flip) {
+	} else if (wdma_frm->rotate == MML_ROT_270 && wdma_frm->flip) {
 		if (mode == MML_MODE_RACING) {
 			sram_block = (tout->h_tile_cnt - tout->tiles[idx].h_tile_no - 1) & 0x1;
 			out_w = tile->out.xe + 1;
@@ -1876,31 +1778,31 @@ static void wrot_tile_calc(const struct mml_task *task,
 		}
 		/* Target Y offset */
 		ofst->y = (out_w - out_xs - 1) *
-			  wrot_frm->y_stride +
+			  wdma_frm->y_stride +
 			  ((out_h - out_ys) *
-			  wrot_frm->bbp_y >> 3) - 1;
+			  wdma_frm->bbp_y >> 3) - 1;
 
 		/* Target U offset */
 		ofst->c = ((out_w - out_xs - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
 			  (((out_h - out_ys) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		/* Target V offset */
 		ofst->v = ((out_w - out_xs - 1) >>
-			  wrot_frm->ver_sh_uv) * wrot_frm->uv_stride +
+			  wdma_frm->ver_sh_uv) * wdma_frm->uv_stride +
 			  (((out_h - out_ys) >>
-			  wrot_frm->hor_sh_uv) * wrot_frm->bbp_uv >> 3) - 1;
+			  wdma_frm->hor_sh_uv) * wdma_frm->bbp_uv >> 3) - 1;
 
 		msg = "Flip and Rotate 270 degree";
 	}
 
 	if (mode == MML_MODE_RACING) {
-		ofst->y += wrot->data->sram_size * sram_block;
-		ofst->c += wrot->data->sram_size * sram_block;
-		ofst->v += wrot->data->sram_size * sram_block;
-		wrot_frm->wdone[idx].sram = sram_block;
-		wrot_frm->wdone[idx].eol = tile_eol;
+		ofst->y += wdma->data->sram_size * sram_block;
+		ofst->c += wdma->data->sram_size * sram_block;
+		ofst->v += wdma->data->sram_size * sram_block;
+		wdma_frm->wdone[idx].sram = sram_block;
+		wdma_frm->wdone[idx].eol = tile_eol;
 		tout->tiles[idx].eol = tile_eol;
 	}
 
@@ -1911,9 +1813,9 @@ static void wrot_tile_calc(const struct mml_task *task,
 		tile_eol ? " eol" : "");
 }
 
-static void wrot_check_buf(const struct mml_frame_dest *dest,
-			   struct wrot_setting *setting,
-			   const struct wrot_frame_data *wrot_frm,
+static void wdma_check_buf(const struct mml_frame_dest *dest,
+			   struct wdma_setting *setting,
+			   const struct wdma_frame_data *wdma_frm,
 			   struct check_buf_param *buf)
 {
 	/* Checking Y buffer usage
@@ -1939,8 +1841,8 @@ static void wrot_check_buf(const struct mml_frame_dest *dest,
 	} else {
 		if (!MML_FMT_V_SUBSAMPLE(dest->data.format)) {
 			/* YUV422 */
-			if (wrot_frm->rotate == MML_ROT_0 ||
-			    wrot_frm->rotate == MML_ROT_180) {
+			if (wdma_frm->rotate == MML_ROT_0 ||
+			    wdma_frm->rotate == MML_ROT_180) {
 				buf->uv_blk_width =
 					setting->main_blk_width >> 1;
 				buf->uv_blk_line = setting->main_buf_line_num;
@@ -1967,7 +1869,7 @@ static void wrot_check_buf(const struct mml_frame_dest *dest,
 		buf->uv_buf_check = 1;
 	}
 
-	if (wrot_frm->rotate == MML_ROT_90 || wrot_frm->rotate == MML_ROT_270) {
+	if (wdma_frm->rotate == MML_ROT_90 || wdma_frm->rotate == MML_ROT_270) {
 		if (dest->data.format == MML_FMT_NV15 ||
 		    dest->data.format == MML_FMT_NV51) {
 			if (setting->main_buf_line_num > 32)
@@ -1978,13 +1880,13 @@ static void wrot_check_buf(const struct mml_frame_dest *dest,
 	}
 }
 
-static void wrot_calc_setting(struct mml_comp_wrot *wrot,
+static void wdma_calc_setting(struct mml_comp_wdma *wdma,
 			      const struct mml_frame_dest *dest,
-			      const struct wrot_frame_data *wrot_frm,
-			      struct wrot_setting *setting)
+			      const struct wdma_frame_data *wdma_frm,
+			      struct wdma_setting *setting)
 {
 	u32 hw_fmt = MML_FMT_HW_FORMAT(dest->data.format);
-	u32 tile_width = wrot->data->tile_width;
+	u32 tile_width = wdma->data->tile_width;
 	u32 coeff1, coeff2, temp;
 	struct check_buf_param buf = {0};
 
@@ -2004,7 +1906,7 @@ static void wrot_calc_setting(struct mml_comp_wrot *wrot,
 	/* Allocate FIFO buffer */
 	setting->main_blk_width = setting->tar_xsize;
 
-	coeff1 = floor_m(wrot_frm->fifo_max_sz, setting->tar_xsize * 2) * 2;
+	coeff1 = floor_m(wdma_frm->fifo_max_sz, setting->tar_xsize * 2) * 2;
 	coeff2 = ceil_m(setting->tar_xsize, coeff1);
 	temp = ceil_m(setting->tar_xsize, coeff2 * 4) * 4;
 
@@ -2012,15 +1914,15 @@ static void wrot_calc_setting(struct mml_comp_wrot *wrot,
 		setting->main_buf_line_num = ceil_m(setting->tar_xsize, 4) * 4;
 	else
 		setting->main_buf_line_num = temp;
-	if (setting->main_buf_line_num > wrot_frm->max_line_cnt)
-		setting->main_buf_line_num = wrot_frm->max_line_cnt;
+	if (setting->main_buf_line_num > wdma_frm->max_line_cnt)
+		setting->main_buf_line_num = wdma_frm->max_line_cnt;
 
 	/* check for internal buffer size */
 	while (!buf.y_buf_check || !buf.uv_buf_check)
-		wrot_check_buf(dest, setting, wrot_frm, &buf);
+		wdma_check_buf(dest, setting, wdma_frm, &buf);
 }
 
-static u32 wrot_calc_stash_delay(struct mml_comp_config *ccfg,
+static u32 wdma_calc_stash_delay(struct mml_comp_config *ccfg,
 	const struct mml_frame_config *cfg, const struct mml_frame_dest *dest,
 	u32 in_xsize, u32 line_num)
 {
@@ -2039,9 +1941,9 @@ static u32 wrot_calc_stash_delay(struct mml_comp_config *ccfg,
 	if (dest->rotate == MML_ROT_0) {
 		/* config only page to page delay in clock level
 		 * [15:0] = 0
-		 * [31:16] = wrot_delay_us * clk_rate
+		 * [31:16] = wdma_delay_us * clk_rate
 		 */
-		return (clk_rate * wrot_stash_delay) << 16;
+		return (clk_rate * wdma_stash_delay) << 16;
 	}
 
 	/* config first cmd delay in line time level,
@@ -2049,16 +1951,16 @@ static u32 wrot_calc_stash_delay(struct mml_comp_config *ccfg,
 	 * [15:0] = (in_xsize * line_num / clk_rate - delay_us) * clk_rate / in_xsize
 	 * [31:16] = 4096 / bpp * 16
 	 */
-	delay_interval = (in_xsize * line_num / clk_rate - wrot_stash_delay) * clk_rate / in_xsize;
+	delay_interval = (in_xsize * line_num / clk_rate - wdma_stash_delay) * clk_rate / in_xsize;
 	delay_line = 524288 / MML_FMT_BITS_PER_PIXEL(dest->data.format);
 
 	return (delay_interval << 16) | delay_line;
 }
 
-static void wrot_calc_stash_addr_boundary(struct mml_comp *comp, struct cmdq_pkt *pkt,
+static void wdma_calc_stash_addr_boundary(struct mml_comp *comp, struct cmdq_pkt *pkt,
 	enum mml_color format, enum mml_orientation rotate, u32 height, u32 ystride, u32 uvstride)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	u32 stash_offset_addr = 0, stash_offset_addr_cv = 0;
 
 	if (rotate == MML_ROT_0 || rotate == MML_ROT_90) {
@@ -2079,28 +1981,28 @@ static void wrot_calc_stash_addr_boundary(struct mml_comp *comp, struct cmdq_pkt
 		}
 	}
 
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + wrot->reg[VIDO_STASH_OFST_ADDR],
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + wdma->reg[VIDO_STASH_OFST_ADDR],
 		stash_offset_addr, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + wrot->reg[VIDO_STASH_OFST_ADDR_C],
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + wdma->reg[VIDO_STASH_OFST_ADDR_C],
 		stash_offset_addr_cv, U32_MAX);
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + wrot->reg[VIDO_STASH_OFST_ADDR_V],
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + wdma->reg[VIDO_STASH_OFST_ADDR_V],
 		stash_offset_addr_cv, U32_MAX);
 	mml_msg("%s stash ofst addr %#010x %#010x format %#010x rot %u stride %u %u",
 		__func__, stash_offset_addr, stash_offset_addr_cv, format, rotate,
 		ystride, uvstride);
 }
 
-static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_config_tile(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg, u32 idx)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
 	u32 plane;
 
 	/* frame data should not change between each tile */
-	const struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
+	const struct mml_frame_dest *dest = &cfg->info.dest[wdma_frm->out_idx];
 	const phys_addr_t base_pa = comp->base_pa;
 	const enum mml_color dest_fmt = dest->data.format;
 
@@ -2116,244 +2018,244 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 	const u32 out_xe = tile->out.xe;
 	const u32 out_ys = tile->out.ys;
 	const u32 out_ye = tile->out.ye;
-	const u32 wrot_crop_ofst_x = tile->luma.x;
-	const u32 wrot_crop_ofst_y = tile->luma.y;
+	const u32 wdma_crop_ofst_x = tile->luma.x;
+	const u32 wdma_crop_ofst_y = tile->luma.y;
 
-	u32 wrot_in_xsize;
-	u32 wrot_in_ysize;
-	u32 wrot_tar_xsize;
-	u32 wrot_tar_ysize;
-	struct wrot_ofst_addr ofst = {0};
-	struct wrot_setting setting = {0};
+	u32 wdma_in_xsize;
+	u32 wdma_in_ysize;
+	u32 wdma_tar_xsize;
+	u32 wdma_tar_ysize;
+	struct wdma_ofst_addr ofst = {0};
+	struct wdma_setting setting = {0};
 	u32 buf_line_num;
 
 	/* Fill the tile settings */
 	if (MML_FMT_AFBC(dest_fmt))
-		wrot_tile_calc_comp(dest, wrot_frm, tile, &ofst);
+		wdma_tile_calc_comp(dest, wdma_frm, tile, &ofst);
 	else
-		wrot_tile_calc(task, wrot, dest, tout, tile, idx, cfg->info.mode,
-			       wrot_frm, &ofst);
+		wdma_tile_calc(task, wdma, dest, tout, tile, idx, cfg->info.mode,
+			       wdma_frm, &ofst);
 
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* enable inline rotate and config buffer 0 or 1 */
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_LINE_ROT],
-			(wrot_frm->wdone[idx].sram << 1) | 0x1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_IN_LINE_ROT],
+			(wdma_frm->wdone[idx].sram << 1) | 0x1, U32_MAX);
 	}
 
 	/* Write Y pixel offset */
-	wrot_write_ofst(pkt,
-			base_pa + wrot->reg[VIDO_OFST_ADDR],
-			base_pa + wrot->reg[VIDO_OFST_ADDR_HIGH], ofst.y);
+	wdma_write_ofst(pkt,
+			base_pa + wdma->reg[VIDO_OFST_ADDR],
+			base_pa + wdma->reg[VIDO_OFST_ADDR_HIGH], ofst.y);
 	/* Write U pixel offset */
-	wrot_write_ofst(pkt,
-			base_pa + wrot->reg[VIDO_OFST_ADDR_C],
-			base_pa + wrot->reg[VIDO_OFST_ADDR_HIGH_C], ofst.c);
+	wdma_write_ofst(pkt,
+			base_pa + wdma->reg[VIDO_OFST_ADDR_C],
+			base_pa + wdma->reg[VIDO_OFST_ADDR_HIGH_C], ofst.c);
 	/* Write V pixel offset */
-	wrot_write_ofst(pkt,
-			base_pa + wrot->reg[VIDO_OFST_ADDR_V],
-			base_pa + wrot->reg[VIDO_OFST_ADDR_HIGH_V], ofst.v);
+	wdma_write_ofst(pkt,
+			base_pa + wdma->reg[VIDO_OFST_ADDR_V],
+			base_pa + wdma->reg[VIDO_OFST_ADDR_HIGH_V], ofst.v);
 
 	/* Write source size and target size */
-	wrot_in_xsize = in_xe - in_xs + 1;
-	wrot_in_ysize = in_ye - in_ys + 1;
-	wrot_tar_xsize = out_xe - out_xs + 1;
-	wrot_tar_ysize = out_ye - out_ys + 1;
+	wdma_in_xsize = in_xe - in_xs + 1;
+	wdma_in_ysize = in_ye - in_ys + 1;
+	wdma_tar_xsize = out_xe - out_xs + 1;
+	wdma_tar_ysize = out_ye - out_ys + 1;
 
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_SIZE],
-		       (wrot_in_ysize << 16) + (wrot_in_xsize <<  0),
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_IN_SIZE],
+		       (wdma_in_ysize << 16) + (wdma_in_xsize <<  0),
 		       U32_MAX);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_TAR_SIZE],
-		       (wrot_tar_ysize << 16) + (wrot_tar_xsize <<  0),
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_TAR_SIZE],
+		       (wdma_tar_ysize << 16) + (wdma_tar_xsize <<  0),
 		       U32_MAX);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CROP_OFST],
-		       (wrot_crop_ofst_y << 16) + (wrot_crop_ofst_x <<  0),
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_CROP_OFST],
+		       (wdma_crop_ofst_y << 16) + (wdma_crop_ofst_x <<  0),
 		       U32_MAX);
 
 	/* config address boundary for stash prefetch */
-	if (wrot->data->stash && mml_stash_en(cfg->info.mode)) {
+	if (wdma->data->stash && mml_stash_en(cfg->info.mode)) {
 		if (!MML_FMT_COMPRESS(dest_fmt))
-			wrot_calc_stash_addr_boundary(comp, pkt, dest_fmt, dest->rotate,
-				wrot_tar_ysize, dest->data.y_stride, dest->data.uv_stride);
+			wdma_calc_stash_addr_boundary(comp, pkt, dest_fmt, dest->rotate,
+				wdma_tar_ysize, dest->data.y_stride, dest->data.uv_stride);
 		else
 			mml_log("[warn]stash addr boundary not support for format %#010x",
 				dest_fmt);
 	}
 
-	if (wrot_frm->pending_x || wrot_frm->pending_y) {
+	if (wdma_frm->pending_x || wdma_frm->pending_y) {
 		/* Not use auto mode */
-		u32 pending_zero = ((wrot_frm->pending_x & wrot_tar_xsize) << 2) +
-				   ((wrot_frm->pending_y & wrot_tar_ysize) << 9);
+		u32 pending_zero = ((wdma_frm->pending_x & wdma_tar_xsize) << 2) +
+				   ((wdma_frm->pending_y & wdma_tar_ysize) << 9);
 
-		if (wrot_frm->pending_x && !is_change_wx(wrot_frm->rotate, wrot_frm->flip))
+		if (wdma_frm->pending_x && !is_change_wx(wdma_frm->rotate, wdma_frm->flip))
 			pending_zero |= BIT(0);
-		if (wrot_frm->pending_y && !is_change_hy(wrot_frm->rotate, wrot_frm->flip))
+		if (wdma_frm->pending_y && !is_change_hy(wdma_frm->rotate, wdma_frm->flip))
 			pending_zero |= BIT(1);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_PENDING_ZERO],
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_PENDING_ZERO],
 			pending_zero, U32_MAX);
 	}
 
 	/* round up target footprint size for internal buffer and output */
-	if (wrot->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
+	if (wdma->data->yuv_pending && cfg->info.mode != MML_MODE_RACING) {
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270) {
 			if (MML_FMT_H_SUBSAMPLE(dest->data.format)) {
-				wrot_tar_xsize = round_up(wrot_tar_xsize, 2);
-				wrot_tar_ysize = round_up(wrot_tar_ysize, 2);
+				wdma_tar_xsize = round_up(wdma_tar_xsize, 2);
+				wdma_tar_ysize = round_up(wdma_tar_ysize, 2);
 			} else if (MML_FMT_V_SUBSAMPLE(dest->data.format)) {
-				wrot_tar_xsize = round_up(wrot_tar_xsize, 2);
+				wdma_tar_xsize = round_up(wdma_tar_xsize, 2);
 			}
 		} else {
 			if (MML_FMT_H_SUBSAMPLE(dest->data.format))
-				wrot_tar_xsize = round_up(wrot_tar_xsize, 2);
+				wdma_tar_xsize = round_up(wdma_tar_xsize, 2);
 			if (MML_FMT_V_SUBSAMPLE(dest->data.format))
-				wrot_tar_ysize = round_up(wrot_tar_ysize, 2);
+				wdma_tar_ysize = round_up(wdma_tar_ysize, 2);
 		}
 	}
 
 	/* set max internal buffer for tile usage,
 	 * and check for internal buffer size
 	 */
-	setting.tar_xsize = wrot_tar_xsize;
-	wrot_calc_setting(wrot, dest, wrot_frm, &setting);
+	setting.tar_xsize = wdma_tar_xsize;
+	wdma_calc_setting(wdma, dest, wdma_frm, &setting);
 	if (cfg->info.mode == MML_MODE_RACING) {
 		/* line number for inline always set 16,
 		 * since sram has no latency
 		 */
-		buf_line_num = WROT_MIN_BUF_LINE_NUM;
+		buf_line_num = WDMA_MIN_BUF_LINE_NUM;
 	} else {
 		/* line number for each tile calculated by format */
 		buf_line_num = setting.main_buf_line_num;
 	}
 
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_MAIN_BUF_SIZE],
+	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_MAIN_BUF_SIZE],
 		       (setting.main_blk_width << 16) |
 		       (buf_line_num << 8) |
-		       (wrot_frm->filt_v << 4), U32_MAX);
+		       (wdma_frm->filt_v << 4), U32_MAX);
 
-	/* Set wrot interrupt bit for debug,
-	 * this bit will clear to 0 after wrot done.
+	/* Set wdma interrupt bit for debug,
+	 * this bit will clear to 0 after wdma done.
 	 *
-	 * cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT], 0x1, U32_MAX);
+	 * cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_INT], 0x1, U32_MAX);
 	 */
 
 	/* qos accumulate tile pixel */
-	if (wrot_frm->tile_last_x < tile->out.xe) {
-		wrot_frm->max_size.width += wrot_tar_xsize;
-		wrot_frm->tile_last_x = tile->out.xe;
+	if (wdma_frm->tile_last_x < tile->out.xe) {
+		wdma_frm->max_size.width += wdma_tar_xsize;
+		wdma_frm->tile_last_x = tile->out.xe;
 	}
-	if (wrot_frm->tile_last_y < tile->out.ye) {
-		wrot_frm->max_size.height += wrot_tar_ysize;
-		wrot_frm->tile_last_y = tile->out.ye;
+	if (wdma_frm->tile_last_y < tile->out.ye) {
+		wdma_frm->max_size.height += wdma_tar_ysize;
+		wdma_frm->tile_last_y = tile->out.ye;
 	}
 
-	/* no bandwidth for racing mode since wrot write to sram */
+	/* no bandwidth for racing mode since wdma write to sram */
 	if (cfg->info.mode != MML_MODE_RACING) {
 		/* calculate qos for later use */
 		plane = MML_FMT_PLANE(dest->data.format);
-		wrot_frm->datasize += mml_color_get_min_y_size(dest->data.format,
-			wrot_tar_xsize, wrot_tar_ysize);
+		wdma_frm->datasize += mml_color_get_min_y_size(dest->data.format,
+			wdma_tar_xsize, wdma_tar_ysize);
 		if (plane > 1)
-			wrot_frm->datasize += mml_color_get_min_uv_size(dest->data.format,
-				wrot_tar_xsize, wrot_tar_ysize);
+			wdma_frm->datasize += mml_color_get_min_uv_size(dest->data.format,
+				wdma_tar_xsize, wdma_tar_ysize);
 		if (plane > 2)
-			wrot_frm->datasize += mml_color_get_min_uv_size(dest->data.format,
-				wrot_tar_xsize, wrot_tar_ysize);
+			wdma_frm->datasize += mml_color_get_min_uv_size(dest->data.format,
+				wdma_tar_xsize, wdma_tar_ysize);
 	}
 
 	if (idx == tile_cnt - 1 && cfg->info.mode == MML_MODE_DDP_ADDON &&
 			ccfg->node->out_idx == MML_MAX_OUTPUTS - 1 &&
 			task->pq_param[0].src_hdr_video_mode == MML_PQ_AIREGION) {
 
-		/* Set wrot interrupt status bit for judge if interrupt works,
-		 * this bit will clear to 0 after wrot done.
+		/* Set wdma interrupt status bit for judge if interrupt works,
+		 * this bit will clear to 0 after wdma done.
 		 */
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT], 0x1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_INT], 0x1, U32_MAX);
 
 		/* Enable Frame Done IRQ in IR Mode*/
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT_EN], 0x1, VIDO_INT_EN_MASK);
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_INT_EN], 0x1, VIDO_INT_EN_MASK);
 	} else
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_INT_EN], 0x0, VIDO_INT_EN_MASK);
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_INT_EN], 0x0, VIDO_INT_EN_MASK);
 
-	if (wrot->data->stash) {
+	if (wdma->data->stash) {
 		if (mml_stash_en(cfg->info.mode)) {
-			u32 delay_cnt = wrot_calc_stash_delay(ccfg, cfg, dest, wrot_in_xsize,
+			u32 delay_cnt = wdma_calc_stash_delay(ccfg, cfg, dest, wdma_in_xsize,
 				buf_line_num);
 
-			/* enable wrot stash for expect performance
+			/* enable wdma stash for expect performance
 			 * VIDO_STASH_DWNSAMP_H		[31:27] 2 (default)
 			 * VIDO_STASH_HW_MODE_SEL	[20:18] 2 (default)
 			 * VIDO_STASH_OVERTAKE_EN	[ 5: 5] 1 (default)
 			 * VIDO_STASH_LEAD_CMD_NUM	[ 4: 1] 1
 			 * VIDO_STASH_FUNC_EN		[ 0: 0] 1
 			 */
-			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STASH_CMD_FUNC_1],
+			cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_STASH_CMD_FUNC_1],
 				0x10080023, U32_MAX);
-			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STASH_DELAY_CNT],
+			cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_STASH_DELAY_CNT],
 				delay_cnt, U32_MAX);
 		} else {
 			/* stash off */
-			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_STASH_CMD_FUNC_1],
+			cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_STASH_CMD_FUNC_1],
 				0, U32_MAX);
 		}
 	}
 
 	mml_msg("%s min block width:%u min buf line num:%u dvfs size %u %u",
 		__func__, setting.main_blk_width, setting.main_buf_line_num,
-		wrot_frm->max_size.width, wrot_frm->max_size.height);
+		wdma_frm->max_size.width, wdma_frm->max_size.height);
 
 	return 0;
 }
 
-static inline void mml_ir_done_2to1(struct mml_comp_wrot *wrot, bool disp_dual,
+static inline void mml_ir_done_2to1(struct mml_comp_wdma *wdma, bool disp_dual,
 	struct cmdq_pkt *pkt, u32 pipe, u32 sram, u32 irot_h_off, u32 height)
 {
 	u32 wdone = 1 << sram;
 
 	if (pipe == 0) {
 		if (sram == 0)
-			cmdq_pkt_wfe(pkt, wrot->event_bufa);
+			cmdq_pkt_wfe(pkt, wdma->event_bufa);
 		else
-			cmdq_pkt_wfe(pkt, wrot->event_bufb);
+			cmdq_pkt_wfe(pkt, wdma->event_bufb);
 		/* for pipe 0, wait pipe 1 and trigger wdone */
-		cmdq_pkt_write(pkt, NULL, wrot->irot_base[0] + irot_h_off,
+		cmdq_pkt_write(pkt, NULL, wdma->irot_base[0] + irot_h_off,
 			height, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, wrot->irot_base[0] + INLINEROT_WDONE,
+		cmdq_pkt_write(pkt, NULL, wdma->irot_base[0] + INLINEROT_WDONE,
 			wdone, U32_MAX);
 		if (disp_dual) {
-			cmdq_pkt_write(pkt, NULL, wrot->irot_base[1] + irot_h_off,
+			cmdq_pkt_write(pkt, NULL, wdma->irot_base[1] + irot_h_off,
 				height, U32_MAX);
-			cmdq_pkt_write(pkt, NULL, wrot->irot_base[1] + INLINEROT_WDONE,
+			cmdq_pkt_write(pkt, NULL, wdma->irot_base[1] + INLINEROT_WDONE,
 				wdone, U32_MAX);
 		}
 		if (sram == 1)
-			cmdq_pkt_set_event(pkt, wrot->event_buf_next);
+			cmdq_pkt_set_event(pkt, wdma->event_buf_next);
 	} else {
 		if (sram == 0) {
 			/* notify pipe0 buf a */
-			cmdq_pkt_set_event(pkt, wrot->event_bufa);
+			cmdq_pkt_set_event(pkt, wdma->event_bufa);
 		} else {
 			/* notify pipe0 buf b and wait for loop,
 			 * this prevent event set twice or buf race condition
 			 */
-			cmdq_pkt_set_event(pkt, wrot->event_bufb);
-			cmdq_pkt_wfe(pkt, wrot->event_buf_next);
+			cmdq_pkt_set_event(pkt, wdma->event_bufb);
+			cmdq_pkt_wfe(pkt, wdma->event_buf_next);
 		}
 	}
 }
 
-static void wrot_config_inlinerot(struct mml_comp *comp, struct mml_task *task,
+static void wdma_config_inlinerot(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 idx)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_frame_config *cfg = task->config;
 	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	u32 height;
 	u32 irot_h_off;
 
-	if (wrot_frm->rotate == MML_ROT_0 || wrot_frm->rotate == MML_ROT_180)
+	if (wdma_frm->rotate == MML_ROT_0 || wdma_frm->rotate == MML_ROT_180)
 		height = tile->out.ye - tile->out.ys + 1;
 	else
 		height = tile->out.xe - tile->out.xs + 1;
@@ -2363,63 +2265,63 @@ static void wrot_config_inlinerot(struct mml_comp *comp, struct mml_task *task,
 	 * INLINEROT_HEIGHT1 for buf b
 	 * so assign reg by sram side
 	 */
-	irot_h_off = INLINEROT_HEIGHT0 + 4 * wrot_frm->wdone[idx].sram;
+	irot_h_off = INLINEROT_HEIGHT0 + 4 * wdma_frm->wdone[idx].sram;
 
 	/* config wdone to trigger inlinerot work */
 	if (cfg->dual) {
-		/* 2 wrot to 1 disp: wait and trigger 1 wdone
-		 * 2 wrot to 2 disp: wrot0 and wrot1 sync first
+		/* 2 wdma to 1 disp: wait and trigger 1 wdone
+		 * 2 wdma to 2 disp: wdma0 and wdma1 sync first
 		 */
-		mml_ir_done_2to1(wrot, cfg->disp_dual, pkt, ccfg->pipe,
-			wrot_frm->wdone[idx].sram, irot_h_off, height);
+		mml_ir_done_2to1(wdma, cfg->disp_dual, pkt, ccfg->pipe,
+			wdma_frm->wdone[idx].sram, irot_h_off, height);
 	} else if (!cfg->dual && cfg->disp_dual) {
-		/* 1 wrot to 2 disp: trigger 2 wdone (dual done) */
-		cmdq_pkt_write(pkt, NULL, wrot->irot_base[0] + irot_h_off,
+		/* 1 wdma to 2 disp: trigger 2 wdone (dual done) */
+		cmdq_pkt_write(pkt, NULL, wdma->irot_base[0] + irot_h_off,
 			height, U32_MAX);
 		cmdq_pkt_write(pkt, NULL,
-			wrot->irot_base[0] + INLINEROT_WDONE,
-			1 << wrot_frm->wdone[idx].sram, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, wrot->irot_base[1] + irot_h_off,
+			wdma->irot_base[0] + INLINEROT_WDONE,
+			1 << wdma_frm->wdone[idx].sram, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, wdma->irot_base[1] + irot_h_off,
 			height, U32_MAX);
 		cmdq_pkt_write(pkt, NULL,
-			wrot->irot_base[1] + INLINEROT_WDONE,
-			1 << wrot_frm->wdone[idx].sram, U32_MAX);
+			wdma->irot_base[1] + INLINEROT_WDONE,
+			1 << wdma_frm->wdone[idx].sram, U32_MAX);
 	} else {
-		/* 1 wrot to 1 disp: trigger 1 wdone (by pipe)
+		/* 1 wdma to 1 disp: trigger 1 wdone (by pipe)
 		 * both case set disp wdone for current pipe
 		 */
 		cmdq_pkt_write(pkt, NULL,
-			wrot->irot_base[wrot_frm->sram_side] + irot_h_off,
+			wdma->irot_base[wdma_frm->sram_side] + irot_h_off,
 			height, U32_MAX);
 		cmdq_pkt_write(pkt, NULL,
-			wrot->irot_base[wrot_frm->sram_side] + INLINEROT_WDONE,
-			1 << wrot_frm->wdone[idx].sram, U32_MAX);
+			wdma->irot_base[wdma_frm->sram_side] + INLINEROT_WDONE,
+			1 << wdma_frm->wdone[idx].sram, U32_MAX);
 	}
 }
 
-static s32 wrot_wait(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_wait(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg, u32 idx)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
-	/* wait wrot frame done */
-	cmdq_pkt_wfe(pkt, wrot->event_eof);
+	/* wait wdma frame done */
+	cmdq_pkt_wfe(pkt, wdma->event_eof);
 
-	if (task->config->info.mode == MML_MODE_RACING && wrot_frm->wdone[idx].eol) {
-		wrot_config_inlinerot(comp, task, ccfg, idx);
-		wrot_frm->wdone_cnt++;
+	if (task->config->info.mode == MML_MODE_RACING && wdma_frm->wdone[idx].eol) {
+		wdma_config_inlinerot(comp, task, ccfg, idx);
+		wdma_frm->wdone_cnt++;
 
 		/* debug, make gce send irq to cmdq and mark mmp pulse */
 		if (mml_racing_eoc == 1)
 			cmdq_pkt_eoc(pkt, false);
 		else if (mml_racing_eoc == 2) {
-			if (wrot_frm->wdone_cnt == 1 || wrot_frm->wdone_cnt == 2)
+			if (wdma_frm->wdone_cnt == 1 || wdma_frm->wdone_cnt == 2)
 				cmdq_pkt_eoc(pkt, false);
 		}
 
-		if (!task->config->disp_vdo && wrot_frm->wdone_cnt == 1)
+		if (!task->config->disp_vdo && wdma_frm->wdone_cnt == 1)
 			cmdq_pkt_set_event(pkt,
 				mml_ir_get_mml_ready_event(task->config->mml));
 	}
@@ -2427,52 +2329,52 @@ static s32 wrot_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-static void wrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
+static void wdma_backup_crc(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	int ret;
 
-	if (likely(!mml_wrot_crc))
+	if (likely(!mml_wdma_crc))
 		return;
 
-	ret = cmdq_pkt_backup(task->pkts[ccfg->pipe], comp->base_pa + wrot->reg[VIDO_CRC_VALUE],
+	ret = cmdq_pkt_backup(task->pkts[ccfg->pipe], comp->base_pa + wdma->reg[VIDO_CRC_VALUE],
 		&task->backup_crc_wdma[ccfg->pipe]);
 	if (ret) {
 		mml_err("%s fail to backup CRC", __func__);
-		mml_wrot_crc = 0;
+		mml_wdma_crc = 0;
 	}
 #endif
 }
 
-static void wrot_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
+static void wdma_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	if (!mml_wrot_crc || !task->backup_crc_wdma[ccfg->pipe].inst_offset)
+	if (!mml_wdma_crc || !task->backup_crc_wdma[ccfg->pipe].inst_offset)
 		return;
 
 	cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->backup_crc_wdma[ccfg->pipe]);
 #endif
 }
 
-static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 
 	/* accmulate data size and use max pixel */
-	cache->total_datasize += wrot_frm->datasize;
-	dvfs_cache_sz(cache, wrot_frm->max_size.width / wrot->data->px_per_tick,
-		wrot_frm->max_size.height, 0, 0);
-	dvfs_cache_log(cache, comp, "wrot");
+	cache->total_datasize += wdma_frm->datasize;
+	dvfs_cache_sz(cache, wdma_frm->max_size.width / wdma->data->px_per_tick,
+		wdma_frm->max_size.height, 0, 0);
+	dvfs_cache_log(cache, comp, "wdma");
 
-	wrot_backup_crc(comp, task, ccfg);
+	wdma_backup_crc(comp, task, ccfg);
 
-	mml_msg("%s pipe %hhu eol %u", __func__, ccfg->pipe, wrot_frm->wdone_cnt);
+	mml_msg("%s pipe %hhu eol %u", __func__, ccfg->pipe, wdma_frm->wdone_cnt);
 	return 0;
 }
 
@@ -2480,8 +2382,8 @@ static s32 update_frame_addr(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-	struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
+	struct mml_frame_dest *dest = &cfg->info.dest[wdma_frm->out_idx];
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 
 	const u32 dest_fmt = dest->data.format;
@@ -2489,42 +2391,42 @@ static s32 update_frame_addr(struct mml_comp *comp, struct mml_task *task,
 	u64 addr_c, addr_v, addr;
 
 	if (out_swap == 1 && MML_FMT_PLANE(dest_fmt) == 3)
-		swap(wrot_frm->iova[1], wrot_frm->iova[2]);
+		swap(wdma_frm->iova[1], wdma_frm->iova[2]);
 
 	/* DMA_SUPPORT_AFBC */
 	if (MML_FMT_AFBC(dest_fmt)) {
 		u32 block_x;
 
 		/* Write frame base address */
-		calc_afbc_block(wrot_frm->bbp_y,
-				wrot_frm->y_stride, dest->data.vert_stride,
-				wrot_frm->iova, wrot_frm->plane_offset,
+		calc_afbc_block(wdma_frm->bbp_y,
+				wdma_frm->y_stride, dest->data.vert_stride,
+				wdma_frm->iova, wdma_frm->plane_offset,
 				&block_x, &addr_c, &addr_v, &addr);
 	} else {
-		addr = wrot_frm->iova[0] + wrot_frm->plane_offset[0];
-		addr_c = wrot_frm->iova[1] + wrot_frm->plane_offset[1];
-		addr_v = wrot_frm->iova[2] + wrot_frm->plane_offset[2];
+		addr = wdma_frm->iova[0] + wdma_frm->plane_offset[0];
+		addr_c = wdma_frm->iova[1] + wdma_frm->plane_offset[1];
+		addr_v = wdma_frm->iova[2] + wdma_frm->plane_offset[2];
 	}
 	/* update frame base address to list */
-	wrot_update_addr(comp->id, reuse,
-			 wrot_frm->labels[WROT_LABEL_ADDR],
-			 wrot_frm->labels[WROT_LABEL_ADDR_HIGH],
+	wdma_update_addr(comp->id, reuse,
+			 wdma_frm->labels[WDMA_LABEL_ADDR],
+			 wdma_frm->labels[WDMA_LABEL_ADDR_HIGH],
 			 addr);
-	wrot_update_addr(comp->id, reuse,
-			 wrot_frm->labels[WROT_LABEL_ADDR_C],
-			 wrot_frm->labels[WROT_LABEL_ADDR_HIGH_C],
+	wdma_update_addr(comp->id, reuse,
+			 wdma_frm->labels[WDMA_LABEL_ADDR_C],
+			 wdma_frm->labels[WDMA_LABEL_ADDR_HIGH_C],
 			 addr_c);
-	wrot_update_addr(comp->id, reuse,
-			 wrot_frm->labels[WROT_LABEL_ADDR_V],
-			 wrot_frm->labels[WROT_LABEL_ADDR_HIGH_V],
+	wdma_update_addr(comp->id, reuse,
+			 wdma_frm->labels[WDMA_LABEL_ADDR_V],
+			 wdma_frm->labels[WDMA_LABEL_ADDR_HIGH_V],
 			 addr_v);
 
-	wrot_backup_crc_update(comp, task, ccfg);
+	wdma_backup_crc_update(comp, task, ccfg);
 
 	return 0;
 }
 
-static s32 wrot_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
+static s32 wdma_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			       struct mml_comp_config *ccfg)
 {
 	/* for reconfig case, no need update addr */
@@ -2533,49 +2435,49 @@ static s32 wrot_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	return update_frame_addr(comp, task, ccfg);
 }
 
-static const struct mml_comp_config_ops wrot_cfg_ops = {
-	.prepare = wrot_prepare,
-	.buf_map = wrot_buf_map,
-	.buf_prepare = wrot_buf_prepare,
-	.buf_unprepare = wrot_buf_unprepare,
-	.get_label_count = wrot_get_label_count,
-	.frame = wrot_config_frame,
-	.tile = wrot_config_tile,
-	.wait = wrot_wait,
-	.post = wrot_post,
-	.reframe = wrot_reconfig_frame,
+static const struct mml_comp_config_ops wdma_cfg_ops = {
+	.prepare = wdma_prepare,
+	.buf_map = wdma_buf_map,
+	.buf_prepare = wdma_buf_prepare,
+	.buf_unprepare = wdma_buf_unprepare,
+	.get_label_count = wdma_get_label_count,
+	.frame = wdma_config_frame,
+	.tile = wdma_config_tile,
+	.wait = wdma_wait,
+	.post = wdma_post,
+	.reframe = wdma_reconfig_frame,
 };
 
-static void wrot_init_frame_done_event(struct mml_comp *comp, u32 event)
+static void wdma_init_frame_done_event(struct mml_comp *comp, u32 event)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 
-	if (!wrot->event_eof)
-		wrot->event_eof = event;
+	if (!wdma->event_eof)
+		wdma->event_eof = event;
 }
 
-u32 wrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
+u32 wdma_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
-	return wrot_frm_data(ccfg)->datasize;
+	return wdma_frm_data(ccfg)->datasize;
 }
 
-static u32 wrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
+static u32 wdma_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
 	struct mml_frame_config *cfg = task->config;
-	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
-	const struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
+	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
+	const struct mml_frame_dest *dest = &cfg->info.dest[wdma_frm->out_idx];
 	const u32 rotate = dest->rotate;
 	const u32 format = dest->data.format;
 	u32 burst, srt_bw = *srt_bw_out, hrt_bw = *hrt_bw_out;
 
-	if (wrot_frm->stash_srt_bw)
+	if (wdma_frm->stash_srt_bw)
 		goto done;
 
 	if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
 		/* same as rdma */
-		wrot_frm->stash_srt_bw = srt_bw / 256;
-		wrot_frm->stash_hrt_bw = hrt_bw / 256;
+		wdma_frm->stash_srt_bw = srt_bw / 256;
+		wdma_frm->stash_hrt_bw = hrt_bw / 256;
 		goto done;
 	}
 
@@ -2604,48 +2506,48 @@ static u32 wrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 		break;
 	default:
 		burst = 8;
-		mml_log("%s unknown format burst for wrot %#010x", __func__, format);
+		mml_log("%s unknown format burst for wdma %#010x", __func__, format);
 		break;
 	}
 
-	wrot_frm->stash_srt_bw = srt_bw / burst;
-	wrot_frm->stash_hrt_bw = hrt_bw / burst;
+	wdma_frm->stash_srt_bw = srt_bw / burst;
+	wdma_frm->stash_hrt_bw = hrt_bw / burst;
 
-	wrot_frm->stash_srt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wrot_frm->stash_srt_bw);
-	if (wrot_frm->stash_hrt_bw)
-		wrot_frm->stash_hrt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wrot_frm->stash_hrt_bw);
+	wdma_frm->stash_srt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wdma_frm->stash_srt_bw);
+	if (wdma_frm->stash_hrt_bw)
+		wdma_frm->stash_hrt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wdma_frm->stash_hrt_bw);
 
 done:
-	*srt_bw_out = wrot_frm->stash_srt_bw;
-	*hrt_bw_out = wrot_frm->stash_hrt_bw;
+	*srt_bw_out = wdma_frm->stash_srt_bw;
+	*hrt_bw_out = wdma_frm->stash_hrt_bw;
 
 	return 0;
 }
 
-u32 wrot_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
+u32 wdma_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	return task->config->info.dest[ccfg->node->out_idx].data.format;
 }
 
-static void wrot_store_crc(struct mml_comp *comp, struct mml_task *task,
+static void wdma_store_crc(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	const u32 pipe = ccfg->pipe;
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 
-	if (!mml_wrot_crc || !task->backup_crc_wdma[pipe].inst_offset)
+	if (!mml_wdma_crc || !task->backup_crc_wdma[pipe].inst_offset)
 		return;
 
 	task->dest_crc[pipe] =
 		cmdq_pkt_backup_get(task->pkts[pipe], &task->backup_crc_wdma[pipe]);
-	mml_msg("%s wrot%d component %2u job %u pipe %u crc %#010x idx %u",
-		__func__, wrot->idx, comp->id, task->job.jobid,
+	mml_msg("%s wdma%d component %2u job %u pipe %u crc %#010x idx %u",
+		__func__, wdma->idx, comp->id, task->job.jobid,
 		ccfg->pipe, task->dest_crc[pipe], task->backup_crc_wdma[pipe].val_idx);
 #endif
 }
 
-static void wrot_task_done(struct mml_comp *comp, struct mml_task *task,
+static void wdma_task_done(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
@@ -2655,13 +2557,13 @@ static void wrot_task_done(struct mml_comp *comp, struct mml_task *task,
 	    ccfg->node->out_idx == MML_MAX_OUTPUTS - 1) {
 		mml_msg("%s out_idx[%d] id[%d]", __func__,
 			ccfg->node->out_idx, comp->id);
-		mml_pq_wrot_callback(task);
+		mml_pq_wdma_callback(task);
 	}
 
-	wrot_store_crc(comp, task, ccfg);
+	wdma_store_crc(comp, task, ccfg);
 }
 
-static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)
+static s32 mml_wdma_comp_clk_enable(struct mml_comp *comp)
 {
 	int ret;
 
@@ -2675,7 +2577,7 @@ static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)
 	return 0;
 }
 
-static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
+static s32 mml_wdma_comp_clk_disable(struct mml_comp *comp,
 				     bool dpc)
 {
 	int ret;
@@ -2689,19 +2591,19 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
 	return 0;
 }
 
-static const struct mml_comp_hw_ops wrot_hw_ops = {
-	.init_frame_done_event = &wrot_init_frame_done_event,
-	.clk_enable = &mml_wrot_comp_clk_enable,
-	.clk_disable = &mml_wrot_comp_clk_disable,
-	.qos_datasize_get = &wrot_datasize_get,
-	.qos_stash_bw_get = &wrot_qos_stash_bw_get,
-	.qos_format_get = &wrot_format_get,
+static const struct mml_comp_hw_ops wdma_hw_ops = {
+	.init_frame_done_event = &wdma_init_frame_done_event,
+	.clk_enable = &mml_wdma_comp_clk_enable,
+	.clk_disable = &mml_wdma_comp_clk_disable,
+	.qos_datasize_get = &wdma_datasize_get,
+	.qos_stash_bw_get = &wdma_qos_stash_bw_get,
+	.qos_format_get = &wdma_format_get,
 	.qos_set = &mml_comp_qos_set,
 	.qos_clear = &mml_comp_qos_clear,
-	.task_done = wrot_task_done,
+	.task_done = wdma_task_done,
 };
 
-static const char *wrot_state(u32 state)
+static const char *wdma_state(u32 state)
 {
 	switch (state) {
 	case 0x0:
@@ -2713,9 +2615,9 @@ static const char *wrot_state(u32 state)
 	}
 }
 
-static void wrot_debug_dump(struct mml_comp *comp)
+static void wdma_debug_dump(struct mml_comp *comp)
 {
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	void __iomem *base = comp->base;
 	u32 value[40];
 	u32 debug[33];
@@ -2723,16 +2625,16 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	u32 shadow_ctrl;
 	u32 i;
 
-	mml_err("wrot component %u dump:", comp->id);
-	value[0] = readl(base + wrot->reg[VIDO_CTRL]);
-	value[1] = readl(base + wrot->reg[VIDO_IN_SIZE]);
-	value[2] = readl(base + wrot->reg[VIDO_TAR_SIZE]);
-	value[3] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH]);
-	value[4] = readl(base + wrot->reg[VIDO_BASE_ADDR]);
-	value[5] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_C]);
-	value[6] = readl(base + wrot->reg[VIDO_BASE_ADDR_C]);
-	value[7] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_V]);
-	value[8] = readl(base + wrot->reg[VIDO_BASE_ADDR_V]);
+	mml_err("wdma component %u dump:", comp->id);
+	value[0] = readl(base + wdma->reg[VIDO_CTRL]);
+	value[1] = readl(base + wdma->reg[VIDO_IN_SIZE]);
+	value[2] = readl(base + wdma->reg[VIDO_TAR_SIZE]);
+	value[3] = readl(base + wdma->reg[VIDO_BASE_ADDR_HIGH]);
+	value[4] = readl(base + wdma->reg[VIDO_BASE_ADDR]);
+	value[5] = readl(base + wdma->reg[VIDO_BASE_ADDR_HIGH_C]);
+	value[6] = readl(base + wdma->reg[VIDO_BASE_ADDR_C]);
+	value[7] = readl(base + wdma->reg[VIDO_BASE_ADDR_HIGH_V]);
+	value[8] = readl(base + wdma->reg[VIDO_BASE_ADDR_V]);
 
 	mml_err("shadow VIDO_CTRL %#010x VIDO_IN_SIZE %#010x VIDO_TAR_SIZE %#010x",
 		value[0], value[1], value[2]);
@@ -2744,56 +2646,56 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[7], value[8]);
 
 	/* Enable shadow read working */
-	shadow_ctrl = readl(base + wrot->reg[VIDO_SHADOW_CTRL]);
+	shadow_ctrl = readl(base + wdma->reg[VIDO_SHADOW_CTRL]);
 	shadow_ctrl |= 0x4;
-	writel(shadow_ctrl, base + wrot->reg[VIDO_SHADOW_CTRL]);
+	writel(shadow_ctrl, base + wdma->reg[VIDO_SHADOW_CTRL]);
 
-	value[0] = readl(base + wrot->reg[VIDO_CTRL]);
-	value[1] = readl(base + wrot->reg[VIDO_DMA_PERF]);
-	value[2] = readl(base + wrot->reg[VIDO_MAIN_BUF_SIZE]);
-	value[3] = readl(base + wrot->reg[VIDO_SOFT_RST]);
-	value[4] = readl(base + wrot->reg[VIDO_SOFT_RST_STAT]);
-	value[5] = readl(base + wrot->reg[VIDO_INT]);
-	value[6] = readl(base + wrot->reg[VIDO_IN_SIZE]);
-	value[7] = readl(base + wrot->reg[VIDO_CROP_OFST]);
-	value[8] = readl(base + wrot->reg[VIDO_TAR_SIZE]);
-	value[9] = readl(base + wrot->reg[VIDO_FRAME_SIZE]);
-	value[10] = readl(base + wrot->reg[VIDO_OFST_ADDR_HIGH]);
-	value[11] = readl(base + wrot->reg[VIDO_OFST_ADDR]);
-	value[12] = readl(base + wrot->reg[VIDO_OFST_ADDR_HIGH_C]);
-	value[13] = readl(base + wrot->reg[VIDO_OFST_ADDR_C]);
-	value[14] = readl(base + wrot->reg[VIDO_OFST_ADDR_HIGH_V]);
-	value[15] = readl(base + wrot->reg[VIDO_OFST_ADDR_V]);
-	value[16] = readl(base + wrot->reg[VIDO_STRIDE]);
-	value[17] = readl(base + wrot->reg[VIDO_STRIDE_C]);
-	value[18] = readl(base + wrot->reg[VIDO_STRIDE_V]);
-	value[19] = readl(base + wrot->reg[VIDO_CTRL_2]);
-	value[20] = readl(base + wrot->reg[VIDO_IN_LINE_ROT]);
-	value[21] = readl(base + wrot->reg[VIDO_RSV_1]);
-	value[22] = readl(base + wrot->reg[VIDO_ROT_EN]);
-	value[23] = readl(base + wrot->reg[VIDO_SHADOW_CTRL]);
-	value[24] = readl(base + wrot->reg[VIDO_PVRIC]);
-	value[25] = readl(base + wrot->reg[VIDO_SCAN_10BIT]);
-	value[26] = readl(base + wrot->reg[VIDO_PENDING_ZERO]);
-	value[27] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH]);
-	value[28] = readl(base + wrot->reg[VIDO_BASE_ADDR]);
-	value[29] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_C]);
-	value[30] = readl(base + wrot->reg[VIDO_BASE_ADDR_C]);
-	value[31] = readl(base + wrot->reg[VIDO_BASE_ADDR_HIGH_V]);
-	value[32] = readl(base + wrot->reg[VIDO_BASE_ADDR_V]);
-	value[33] = readl(base + wrot->reg[VIDO_CRC_CTRL]);
-	value[34] = readl(base + wrot->reg[VIDO_CRC_VALUE]);
-	value[35] = readl(base + wrot->reg[VIDO_MAT_CTRL]);
-	value[36] = readl(base + wrot->reg[VIDO_DITHER_CON]);
-	value[37] = readl(base + wrot->reg[VIDO_DITHER]);
-	value[38] = readl(base + wrot->reg[VIDO_AFBC_YUVTRANS]);
-	value[39] = readl(base + wrot->reg[VIDO_BKGD]);
+	value[0] = readl(base + wdma->reg[VIDO_CTRL]);
+	value[1] = readl(base + wdma->reg[VIDO_DMA_PERF]);
+	value[2] = readl(base + wdma->reg[VIDO_MAIN_BUF_SIZE]);
+	value[3] = readl(base + wdma->reg[VIDO_SOFT_RST]);
+	value[4] = readl(base + wdma->reg[VIDO_SOFT_RST_STAT]);
+	value[5] = readl(base + wdma->reg[VIDO_INT]);
+	value[6] = readl(base + wdma->reg[VIDO_IN_SIZE]);
+	value[7] = readl(base + wdma->reg[VIDO_CROP_OFST]);
+	value[8] = readl(base + wdma->reg[VIDO_TAR_SIZE]);
+	value[9] = readl(base + wdma->reg[VIDO_FRAME_SIZE]);
+	value[10] = readl(base + wdma->reg[VIDO_OFST_ADDR_HIGH]);
+	value[11] = readl(base + wdma->reg[VIDO_OFST_ADDR]);
+	value[12] = readl(base + wdma->reg[VIDO_OFST_ADDR_HIGH_C]);
+	value[13] = readl(base + wdma->reg[VIDO_OFST_ADDR_C]);
+	value[14] = readl(base + wdma->reg[VIDO_OFST_ADDR_HIGH_V]);
+	value[15] = readl(base + wdma->reg[VIDO_OFST_ADDR_V]);
+	value[16] = readl(base + wdma->reg[VIDO_STRIDE]);
+	value[17] = readl(base + wdma->reg[VIDO_STRIDE_C]);
+	value[18] = readl(base + wdma->reg[VIDO_STRIDE_V]);
+	value[19] = readl(base + wdma->reg[VIDO_CTRL_2]);
+	value[20] = readl(base + wdma->reg[VIDO_IN_LINE_ROT]);
+	value[21] = readl(base + wdma->reg[VIDO_RSV_1]);
+	value[22] = readl(base + wdma->reg[VIDO_ROT_EN]);
+	value[23] = readl(base + wdma->reg[VIDO_SHADOW_CTRL]);
+	value[24] = readl(base + wdma->reg[VIDO_PVRIC]);
+	value[25] = readl(base + wdma->reg[VIDO_SCAN_10BIT]);
+	value[26] = readl(base + wdma->reg[VIDO_PENDING_ZERO]);
+	value[27] = readl(base + wdma->reg[VIDO_BASE_ADDR_HIGH]);
+	value[28] = readl(base + wdma->reg[VIDO_BASE_ADDR]);
+	value[29] = readl(base + wdma->reg[VIDO_BASE_ADDR_HIGH_C]);
+	value[30] = readl(base + wdma->reg[VIDO_BASE_ADDR_C]);
+	value[31] = readl(base + wdma->reg[VIDO_BASE_ADDR_HIGH_V]);
+	value[32] = readl(base + wdma->reg[VIDO_BASE_ADDR_V]);
+	value[33] = readl(base + wdma->reg[VIDO_CRC_CTRL]);
+	value[34] = readl(base + wdma->reg[VIDO_CRC_VALUE]);
+	value[35] = readl(base + wdma->reg[VIDO_MAT_CTRL]);
+	value[36] = readl(base + wdma->reg[VIDO_DITHER_CON]);
+	value[37] = readl(base + wdma->reg[VIDO_DITHER]);
+	value[38] = readl(base + wdma->reg[VIDO_AFBC_YUVTRANS]);
+	value[39] = readl(base + wdma->reg[VIDO_BKGD]);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
 		dbg_id += 0x100;
-		writel(dbg_id, base + wrot->reg[VIDO_INT_EN]);
-		debug[i] = readl(base + wrot->reg[VIDO_DEBUG]);
+		writel(dbg_id, base + wdma->reg[VIDO_INT_EN]);
+		debug[i] = readl(base + wdma->reg[VIDO_DEBUG]);
 	}
 
 	mml_err("VIDO_CTRL %#010x VIDO_DMA_PERF %#010x VIDO_MAIN_BUF_SIZE %#010x",
@@ -2837,66 +2739,66 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	}
 
 	/* parse state */
-	mml_err("WROT crop_busy:%u req:%u valid:%u",
+	mml_err("WDMA crop_busy:%u req:%u valid:%u",
 		(debug[2] >> 1) & 0x1, (debug[2] >> 2) & 0x1,
 		(debug[2] >> 3) & 0x1);
 	state = debug[2] & 0x1;
 	smi_req = (debug[24] >> 30) & 0x1;
-	mml_err("WROT state: %#x (%s)", state, wrot_state(state));
-	mml_err("WROT x_cnt %u y_cnt %u",
+	mml_err("WDMA state: %#x (%s)", state, wdma_state(state));
+	mml_err("WDMA x_cnt %u y_cnt %u",
 		debug[9] & 0x7f, (debug[9] >> 12) & 0x3ff);
-	mml_err("WROT smi_req:%u => suggest to ask SMI help:%u", smi_req, smi_req);
+	mml_err("WDMA smi_req:%u => suggest to ask SMI help:%u", smi_req, smi_req);
 }
 
-static void wrot_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe)
+static void wdma_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe)
 {
 	const struct mml_topology_path *path = cfg->path[pipe];
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 
 	if (cfg->info.mode == MML_MODE_RACING) {
-		cmdq_clear_event(path->clt->chan, wrot->event_bufa);
-		cmdq_clear_event(path->clt->chan, wrot->event_bufb);
-		cmdq_clear_event(path->clt->chan, wrot->event_buf_next);
+		cmdq_clear_event(path->clt->chan, wdma->event_bufa);
+		cmdq_clear_event(path->clt->chan, wdma->event_bufb);
+		cmdq_clear_event(path->clt->chan, wdma->event_buf_next);
 	}
 }
 
-static const struct mml_comp_debug_ops wrot_debug_ops = {
-	.dump = &wrot_debug_dump,
-	.reset = &wrot_reset,
+static const struct mml_comp_debug_ops wdma_debug_ops = {
+	.dump = &wdma_debug_dump,
+	.reset = &wdma_reset,
 };
 
 static int mml_bind(struct device *dev, struct device *master, void *data)
 {
-	struct mml_comp_wrot *wrot = dev_get_drvdata(dev);
+	struct mml_comp_wdma *wdma = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
 	s32 ret;
 
 	if (!drm_dev) {
-		ret = mml_register_comp(master, &wrot->comp);
+		ret = mml_register_comp(master, &wdma->comp);
 		if (ret)
 			dev_err(dev, "Failed to register mml component %s: %d\n",
 				dev->of_node->full_name, ret);
 	} else {
-		ret = mml_ddp_comp_register(drm_dev, &wrot->ddp_comp);
+		ret = mml_ddp_comp_register(drm_dev, &wdma->ddp_comp);
 		if (ret)
 			dev_err(dev, "Failed to register ddp component %s: %d\n",
 				dev->of_node->full_name, ret);
 		else
-			wrot->ddp_bound = true;
+			wdma->ddp_bound = true;
 	}
 	return ret;
 }
 
 static void mml_unbind(struct device *dev, struct device *master, void *data)
 {
-	struct mml_comp_wrot *wrot = dev_get_drvdata(dev);
+	struct mml_comp_wdma *wdma = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
 
 	if (!drm_dev) {
-		mml_unregister_comp(master, &wrot->comp);
+		mml_unregister_comp(master, &wdma->comp);
 	} else {
-		mml_ddp_comp_unregister(drm_dev, &wrot->ddp_comp);
-		wrot->ddp_bound = false;
+		mml_ddp_comp_unregister(drm_dev, &wdma->ddp_comp);
+		wdma->ddp_bound = false;
 	}
 }
 
@@ -2905,10 +2807,10 @@ static const struct component_ops mml_comp_ops = {
 	.unbind = mml_unbind,
 };
 
-static struct mml_comp_wrot *dbg_probed_components[4];
+static struct mml_comp_wdma *dbg_probed_components[4];
 static int dbg_probed_count;
 
-static bool wrot_reg_read(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
+static bool wdma_reg_read(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
 {
 	bool return_value = false;
 	u32 reg_value = 0;
@@ -2922,30 +2824,30 @@ static bool wrot_reg_read(struct mml_comp *comp, u32 addr, u32 value, u32 mask)
 	return return_value;
 }
 
-static void wrot_callback_work(struct work_struct *work_item)
+static void wdma_callback_work(struct work_struct *work_item)
 {
 #if !IS_ENABLED(CONFIG_MTK_MML_LEGACY)
-	struct mml_comp_wrot *wrot = NULL;
+	struct mml_comp_wdma *wdma = NULL;
 
-	wrot = container_of(work_item, struct mml_comp_wrot, wrot_ai_callback_task);
-	mml_pq_ir_wrot_callback(wrot->pq_task, wrot->frame_data,
-		wrot->jobid, wrot->dual);
+	wdma = container_of(work_item, struct mml_comp_wdma, wdma_ai_callback_task);
+	mml_pq_ir_wdma_callback(wdma->pq_task, wdma->frame_data,
+		wdma->jobid, wdma->dual);
 #endif
 }
 
-static irqreturn_t mml_wrot_irq_handler(int irq, void *dev_id)
+static irqreturn_t mml_wdma_irq_handler(int irq, void *dev_id)
 {
-	struct mml_comp_wrot *priv = dev_id;
+	struct mml_comp_wdma *priv = dev_id;
 	struct mml_comp *comp = &priv->comp;
-	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
-	uint8_t dest_cnt = wrot->dest_cnt;
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
+	uint8_t dest_cnt = wdma->dest_cnt;
 	irqreturn_t ret = IRQ_NONE;
-	u8 out_idx = wrot->out_idx;
+	u8 out_idx = wdma->out_idx;
 
-	if (wrot_reg_read(comp, wrot->reg[VIDO_INT], 0, (0x1))) {
-		writel(1, comp->base + wrot->reg[VIDO_INT]);
+	if (wdma_reg_read(comp, wdma->reg[VIDO_INT], 0, (0x1))) {
+		writel(1, comp->base + wdma->reg[VIDO_INT]);
 		if (dest_cnt == MML_MAX_OUTPUTS && out_idx == MML_MAX_OUTPUTS - 1) {
-			queue_work(priv->wrot_ai_callback_wq, &priv->wrot_ai_callback_task);
+			queue_work(priv->wdma_ai_callback_wq, &priv->wdma_ai_callback_task);
 			return IRQ_HANDLED;
 		}
 	}
@@ -2955,7 +2857,7 @@ static irqreturn_t mml_wrot_irq_handler(int irq, void *dev_id)
 static int probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct mml_comp_wrot *priv;
+	struct mml_comp_wdma *priv;
 	s32 ret;
 	int irq = -1;
 
@@ -2976,7 +2878,7 @@ static int probe(struct platform_device *pdev)
 		priv->mmu_dev_sec = dev;
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 		if (ret)
-			mml_err("fail to config wrot dma mask %d", ret);
+			mml_err("fail to config wdma dma mask %d", ret);
 	}
 
 	ret = mml_comp_init(pdev, &priv->comp);
@@ -3008,29 +2910,29 @@ static int probe(struct platform_device *pdev)
 	of_property_read_u16(dev->of_node, "event-buf-next",
 			     &priv->event_buf_next);
 
-	/* get index of wrot by alias */
-	priv->idx = of_alias_get_id(dev->of_node, "mml-wrot");
+	/* get index of wdma by alias */
+	priv->idx = of_alias_get_id(dev->of_node, "mml-wdma");
 
 	/* parse inline rot node for racing mode */
 	priv->irot_base[0] = mml_get_node_base_pa(pdev, "inlinerot", 0, &priv->irot_va[0]);
 	priv->irot_base[1] = mml_get_node_base_pa(pdev, "inlinerot", 1, &priv->irot_va[1]);
 
 	/* assign ops */
-	priv->comp.tile_ops = &wrot_tile_ops;
-	priv->comp.config_ops = &wrot_cfg_ops;
-	priv->comp.hw_ops = &wrot_hw_ops;
-	priv->comp.debug_ops = &wrot_debug_ops;
+	priv->comp.tile_ops = &wdma_tile_ops;
+	priv->comp.config_ops = &wdma_cfg_ops;
+	priv->comp.hw_ops = &wdma_hw_ops;
+	priv->comp.debug_ops = &wdma_debug_ops;
 
 	if (priv->data->read_mode == MML_PQ_EOF_MODE) {
-		priv->wrot_ai_callback_wq = create_workqueue("wrot_ai_callback");
-		INIT_WORK(&priv->wrot_ai_callback_task, wrot_callback_work);
+		priv->wdma_ai_callback_wq = create_workqueue("wdma_ai_callback");
+		INIT_WORK(&priv->wdma_ai_callback_task, wdma_callback_work);
 
 		irq = platform_get_irq(pdev, 0);
 		if (irq < 0)
-			dev_info(dev, "Failed to get wrot irq for AI Callback: %d\n", irq);
+			dev_info(dev, "Failed to get wdma irq for AI Callback: %d\n", irq);
 		else {
 			priv->irq = irq;
-			ret = devm_request_irq(dev, irq, mml_wrot_irq_handler,
+			ret = devm_request_irq(dev, irq, mml_wdma_irq_handler,
 				IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev), priv);
 			if (ret)
 				dev_info(dev, "register irq fail: %d irg:%d\n", ret, irq);
@@ -3043,7 +2945,7 @@ static int probe(struct platform_device *pdev)
 
 	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
 
-	mml_log("wrot%d (%u) smi larb con %pa event eof %hu sync %hu/%hu/%hu",
+	mml_log("wdma%d (%u) smi larb con %pa event eof %hu sync %hu/%hu/%hu",
 		priv->idx, priv->comp.id, &priv->smi_larb_con,
 		priv->event_eof,
 		priv->event_bufa,
@@ -3060,82 +2962,22 @@ static void remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &mml_comp_ops);
 }
 
-const struct of_device_id mml_wrot_driver_dt_match[] = {
-	{
-		.compatible = "mediatek,mt6983-mml_wrot",
-		.data = &mt6983_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6893-mml_wrot",
-		.data = &mt6983_wrot_data
-	},
-	{
-		.compatible = "mediatek,mt6879-mml_wrot",
-		.data = &mt6983_wrot_data
-	},
-	{
-		.compatible = "mediatek,mt6895-mml_wrot",
-		.data = &mt6983_wrot_data
-	},
-	{
-		.compatible = "mediatek,mt6985-mml_wrot",
-		.data = &mt6985_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6886-mml_wrot",
-		.data = &mt6983_wrot_data
-	},
-	{
-		.compatible = "mediatek,mt6897-mml_wrot",
-		.data = &mt6985_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6899-mml0_wrot",
-		.data = &mt6989_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6899-mml1_wrot",
-		.data = &mt6989_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6989-mml_wrot",
-		.data = &mt6989_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6878-mml_wrot",
-		.data = &mt6878_wrot_data
-	},
-	{
-		.compatible = "mediatek,mt6991-mml0_wrot",
-		.data = &mt6991_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6991-mml1_wrot",
-		.data = &mt6991_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6993-mml1_wrot",
-		.data = &mt6993_wrot_data,
-	},
-	{
-		.compatible = "mediatek,mt6993-mml2_wrot",
-		.data = &mt6993_wrot_data,
-	},
+const struct of_device_id mml_wdma_driver_dt_match[] = {
 	{},
 };
-MODULE_DEVICE_TABLE(of, mml_wrot_driver_dt_match);
+MODULE_DEVICE_TABLE(of, mml_wdma_driver_dt_match);
 
-struct platform_driver mml_wrot_driver = {
+struct platform_driver mml_wdma_driver = {
 	.probe = probe,
 	.remove = remove,
 	.driver = {
-		.name = "mediatek-mml-wrot",
+		.name = "mediatek-mml-wdma",
 		.owner = THIS_MODULE,
-		.of_match_table = mml_wrot_driver_dt_match,
+		.of_match_table = mml_wdma_driver_dt_match,
 	},
 };
 
-//module_platform_driver(mml_wrot_driver);
+//module_platform_driver(mml_wdma_driver);
 
 static s32 dbg_case;
 static s32 dbg_set(const char *val, const struct kernel_param *kp)
@@ -3195,9 +3037,9 @@ static const struct kernel_param_ops dbg_param_ops = {
 	.set = dbg_set,
 	.get = dbg_get,
 };
-module_param_cb(wrot_debug, &dbg_param_ops, NULL, 0644);
-MODULE_PARM_DESC(wrot_debug, "mml wrot debug case");
+module_param_cb(wdma_debug, &dbg_param_ops, NULL, 0644);
+MODULE_PARM_DESC(wdma_debug, "mml wdma debug case");
 
 MODULE_AUTHOR("Dennis-YC Hsieh <dennis-yc.hsieh@mediatek.com>");
-MODULE_DESCRIPTION("MediaTek SoC display MML WROT driver");
+MODULE_DESCRIPTION("MediaTek SoC display MML WDMA driver");
 MODULE_LICENSE("GPL v2");

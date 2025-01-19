@@ -1008,6 +1008,10 @@ const struct of_device_id mml_fg_driver_dt_match[] = {
 		.compatible = "mediatek,mt6991-mml1_fg",
 		.data = &mt6991_mmlf_fg_data
 	},
+	{
+		.compatible = "mediatek,mt6993-mml0_fg",
+		.data = &mt6991_mmlt_fg_data
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_fg_driver_dt_match);

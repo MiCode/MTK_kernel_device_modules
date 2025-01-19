@@ -1534,6 +1534,11 @@ void mml_pq_set_tdshp_status(struct mml_pq_task *pq_task, u8 out_idx)
 	mutex_unlock(&dev_data[out_idx]->tdshp_hist_mutex);
 }
 
+void mml_pq_set_chist_status(struct mml_pq_task *pq_task, u8 out_idx)
+{
+	mml_pq_set_tdshp_status(pq_task, out_idx);
+}
+
 bool mml_pq_tdshp_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe)
 {
 	u32 read_value = 0;
@@ -1565,6 +1570,11 @@ bool mml_pq_tdshp_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe)
 
 }
 
+bool mml_pq_chist_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe)
+{
+	return mml_pq_tdshp_hist_reading(pq_task, out_idx, pipe);
+}
+
 void mml_pq_tdshp_flag_check(bool dual, u8 out_idx)
 {
 
@@ -1574,6 +1584,11 @@ void mml_pq_tdshp_flag_check(bool dual, u8 out_idx)
 		atomic_dec_if_positive(&dev_data[out_idx]->tdshp_hist_read_cnt);
 	}
 	mutex_unlock(&dev_data[out_idx]->tdshp_hist_mutex);
+}
+
+void mml_pq_chist_flag_check(bool dual, u8 out_idx)
+{
+	mml_pq_tdshp_flag_check(dual, out_idx);
 }
 
 
@@ -1694,6 +1709,16 @@ int mml_pq_ir_wrot_callback(struct mml_pq_task *pq_task, struct mml_pq_frame_dat
 		frame_data, dual, mml_jobid, true);
 	return ret;
 }
+
+int mml_pq_ir_wdma_callback(struct mml_pq_task *pq_task, struct mml_pq_frame_data frame_data,
+			    u32 mml_jobid, bool dual)
+{
+	int ret = 0;
+
+	ret = mml_pq_ir_wrot_callback(pq_task, frame_data, mml_jobid, dual);
+
+	return ret;
+}
 #endif
 
 int mml_pq_wrot_callback(struct mml_task *task)
@@ -1712,6 +1737,15 @@ int mml_pq_wrot_callback(struct mml_task *task)
 	mml_pq_msg("%s second outoput done.\n", __func__);
 	ret = set_sub_task(task, sub_task, chan, &task->pq_param[1], true);
 	mml_pq_msg("%s end\n", __func__);
+	return ret;
+}
+
+int mml_pq_wdma_callback(struct mml_task *task)
+{
+	int ret = 0;
+
+	ret = mml_pq_wrot_callback(task);
+
 	return ret;
 }
 

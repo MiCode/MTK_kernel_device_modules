@@ -52,6 +52,7 @@
 #define RSZ_DEMO_OUT_HMASK		0x078
 #define RSZ_DEMO_OUT_VMASK		0x07c
 #define RSZ_CONTROL_3			0x084
+#define RSZ_CG_CFG			0x098
 #define RSZ_SHADOW_CTRL			0x0f0
 #define RSZ_ATPG			0x0fc
 #define RSZ_PAT1_GEN_SET		0x100
@@ -189,6 +190,24 @@ static const struct rsz_data mt6991_mmlf_rsz2_data = {
 	.px_per_tick = 4,
 	.wrot_pending = true,
 	.alpha_rsz_crop = true,
+};
+
+static const struct rsz_data mt6993_mmlt_rsz2_data = {
+	.tile_width = 1080,
+	.rsz_dbg = RSZ_DBG_MT6989,
+	.px_per_tick = 2,
+};
+
+static const struct rsz_data mt6993_mmlf_rsz2_data = {
+	.tile_width = 3872,
+	.rsz_dbg = RSZ_DBG_MT6989,
+	.px_per_tick = 4,
+};
+
+static const struct rsz_data mt6993_mmlf_rsz3_data = {
+	.tile_width = 544,
+	.rsz_dbg = RSZ_DBG_MT6989,
+	.px_per_tick = 4,
 };
 
 struct mml_comp_rsz {
@@ -476,8 +495,10 @@ static s32 rsz_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (rsz_frm->relay_mode) {
 		rsz_relay(pkt, base_pa);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CG_CFG, 0x7, U32_MAX);
 		return 0;
-	}
+	} else
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CG_CFG, 0xf, U32_MAX);
 
 	if (mml_rsz_fw_comb) {
 		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_CONTROL,
@@ -695,7 +716,7 @@ static void rsz_debug_dump(struct mml_comp *comp)
 {
 	const struct mml_comp_rsz *rsz = comp_to_rsz(comp);
 	void __iomem *base = comp->base;
-	u32 value[31];
+	u32 value[32];
 	u32 state;
 	u32 request[4];
 	u32 shadow_ctrl;
@@ -739,6 +760,7 @@ static void rsz_debug_dump(struct mml_comp *comp)
 	value[28] = readl(base + RSZ_ETC_SIM_PROT_GAINCON_3);
 	value[29] = readl(base + RSZ_ETC_BLEND);
 	value[30] = readl(base + RSZ_CONTROL_3);
+	value[31] = readl(base + RSZ_CG_CFG);
 
 	mml_err("RSZ_ENABLE %#010x RSZ_CON_1 %#010x RSZ_CON_2 %#010x RSZ_INT_FLAG %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -764,6 +786,7 @@ static void rsz_debug_dump(struct mml_comp *comp)
 		value[23], value[24], value[25]);
 	mml_err("RSZ_ETC_SIM_PROT_GAINCON_1 %#010x RSZ_ETC_SIM_PROT_GAINCON_2 %#010x RSZ_ETC_SIM_PROT_GAINCON_3 %#010x",
 		value[26], value[27], value[28]);
+	mml_err("RSZ_CG_CFG %#010x ", value[31]);
 
 	writel(0x1, base + RSZ_DEBUG_SEL);
 	value[0] = readl(base + RSZ_DEBUG);
@@ -970,6 +993,18 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6991-mml1_rsz2",
 		.data = &mt6991_mmlf_rsz2_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mml0_rsz2",
+		.data = &mt6993_mmlt_rsz2_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mml1_rsz2",
+		.data = &mt6993_mmlf_rsz2_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mml1_rsz3",
+		.data = &mt6993_mmlf_rsz3_data,
 	},
 	{},
 };

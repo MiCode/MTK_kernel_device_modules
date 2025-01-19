@@ -714,6 +714,8 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u64 iova[3];
 	u32 gmcif_con;
 	u32 prefetch = 0x43000000;
+	u8 ext_preultra_en = 1;
+	u8 exr_ultra_en = 1;
 
 	mml_msg("use config %p rdma %p", cfg, rdma);
 
@@ -778,6 +780,10 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	iova[0] = src_buf->dma[0].iova + src->plane_offset[0];
 	iova[1] = src_buf->dma[1].iova + src->plane_offset[1];
 	iova[2] = src_buf->dma[2].iova + src->plane_offset[2];
+	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_CON,
+		(ext_preultra_en << 19) +
+		(exr_ultra_en << 18),
+		write_sec);
 
 	mml_msg("%s src %#011llx %#011llx %#011llx",
 		__func__, iova[0], iova[1], iova[2]);
@@ -1342,6 +1348,10 @@ const struct of_device_id mml_pq_rdma_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6991-mml_pq_rdma",
+		.data = &mt6991_pq_rdma_data
+	},
+	{
+		.compatible = "mediatek,mt6993-mml_pq_rdma",
 		.data = &mt6991_pq_rdma_data
 	},
 	{},

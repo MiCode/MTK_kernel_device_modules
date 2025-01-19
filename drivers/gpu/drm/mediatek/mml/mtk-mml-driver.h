@@ -15,7 +15,7 @@
 #include <linux/of.h>
 #include "mtk-mml.h"
 
-#define MML_MAX_COMPONENTS	50
+#define MML_MAX_COMPONENTS	60
 #define MML_MAX_PORT		18
 #define MML_MAX_LAYER		4	/* max layer count for time sharing */
 
@@ -34,6 +34,7 @@ struct mml_topology_path;
 enum mml_sys_id {
 	mml_sys_tile = 0,	/* in most case, mml-tile, for mml_decouple_2, mmlsys0 */
 	mml_sys_frame,		/* in most case, mml-frame, mmlsys1 */
+	mml_sys_dma,		/* in most case, mml-dma, mmlsys2 */
 	mml_max_sys
 };
 
@@ -512,16 +513,16 @@ void mml_dump_read_data_unlock(struct mml_dev *mml);
  * @task:	Current task to dump
  * @force:	Force dump input, use for timeout dump.
  */
-void mml_dump_input(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task, bool force);
+void mml_dump_input(struct mml_dev *mml, const struct mml_topology_path *path, struct mml_task *task, bool force);
 
 /*
  * mml_dump_output - Dump output frame into mml dev frame cache.
  *
  * @mml:	The mml_dev instance
- * @sysid:	Current task mmlsys id
+ * @path:	Current path to dump
  * @task:	Current task to dump
  */
-void mml_dump_output(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task);
+void mml_dump_output(struct mml_dev *mml, const struct mml_topology_path *path, struct mml_task *task);
 #endif
 
 /*
@@ -549,6 +550,8 @@ extern struct platform_driver mml_wrot_driver;
 extern struct platform_driver mml_rrot_driver;
 extern struct platform_driver mml_merge_driver;
 extern struct platform_driver mml_c3d_driver;
+extern struct platform_driver mml_wdma_driver;
+extern struct platform_driver mml_chist_driver;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 extern struct platform_driver mtk_mml_test_drv;

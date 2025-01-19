@@ -28,15 +28,8 @@
 
 #define SYS_SHADOW_CTRL		0x010
 #define SYS_MISC_REG		0x0f0
-#define SYS_CG_CON0		0x100
-#define SYS_CG_CON1		0x110
-#define SYS_CG_CON2		0x120
-#define SYS_CG_CON3		0x130
 #define SYS_MDP_IRQ		0x280
-#define SYS_SW0_RST_B_REG	0x700
-#define SYS_SW1_RST_B_REG	0x704
 #define SYS_INTMERGE		0x8c4
-#define SYS_BYPASS_MUX_SHADOW	0xf00
 #define SYS_AID_SEL		0xfa8	/* only for mt6983/mt6895 */
 
 #define SYS_DL_IN_RELAY2_SIZE	0x250
@@ -46,11 +39,36 @@
 #define SYS_DLO_ASYNC5_STATUS1	0x420
 #define SYS_DL_OUT_RELAY5_SIZE	0x428
 
-#define MML_MAX_SYS_COMPONENTS	16
+#define SYS_CG_CON0		0x100
+#define SYS_CG_CON1		0x110
+#define SYS_CG_CON2		0x120
+#define SYS_CG_CON3		0x130
+
+enum sys_register {
+	SYS_SW0_RST_B_REG,
+	SYS_SW1_RST_B_REG,
+	SYS_BYPASS_MUX_SHADOW,
+	sys_register_total,
+};
+
+static const u16 sys_mt6989[] = {
+	[SYS_SW0_RST_B_REG] = 0x700,
+	[SYS_SW1_RST_B_REG] = 0x704,
+	[SYS_BYPASS_MUX_SHADOW] = 0xf00,
+};
+
+static const u16 sys_mt6993[] = {
+	[SYS_SW0_RST_B_REG] = 0xac0,
+	[SYS_SW1_RST_B_REG] = 0xac4,
+	[SYS_BYPASS_MUX_SHADOW] = 0x998,
+};
+
+#define MML_MAX_SYS_COMPONENTS	32
 #define MML_MAX_SYS_MUX_PINS	88
-#define MML_MAX_SYS_DL_RELAYS	7
-#define MML_MAX_SYS_DBG_REGS	100
-#define MML_MAX_GCE_EVENT_SEL	16
+#define MML_MAX_SYS_DL_RELAYS	12
+#define MML_MAX_SYS_DBG_REGS	150
+#define MML_MAX_GCE_EVENT_SEL	32
+#define MML_MAX_PATH_CBS	4
 
 #define APU_CTRL		0x2d0
 #define APU_HANDLE		0x200
@@ -89,6 +107,8 @@ enum mml_comp_type {
 	MML_CT_PATH,
 	MML_CT_DL_IN,
 	MML_CT_DL_OUT,
+	MML_CT_SYS_IN,
+	MML_CT_SYS_OUT,
 	MML_COMP_TYPE_TOTAL
 };
 
@@ -130,6 +150,9 @@ struct mml_data {
 	bool set_mml_uid;
 	bool gce_event;
 	bool irq;
+	const u16 *reg;
+	u8 sof_grp_bit;
+	u8 cb_sof_grp_bit;
 };
 
 enum mml_mux_type {
@@ -137,6 +160,8 @@ enum mml_mux_type {
 	MML_MUX_MOUT,
 	MML_MUX_SOUT,
 	MML_MUX_SELIN,
+	MML_MUX_CB_MOUT,
+	MML_MUX_CB_SELIN,
 };
 
 struct mml_mux_pin {
@@ -266,6 +291,9 @@ struct sys_frame_data {
 	u32 frame_pipe_conti_jump;
 
 	u32 tile_idx;
+
+	u32 reset_cbs[MML_MAX_PATH_CBS];
+	u8 reset_cbs_cnt;
 };
 
 struct dl_frame_data {
@@ -358,9 +386,9 @@ static s32 sys_setup_framedone_events(struct mml_comp *comp, struct mml_task *ta
 static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
+	struct mml_frame_config *cfg = task->config;
 #ifndef MML_FPGA
 	struct mml_sys *sys = comp_to_sys(comp);
-	struct mml_frame_config *cfg = task->config;
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
 	if (cfg->dpc) {
@@ -503,7 +531,8 @@ static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 #ifdef MML_FPGA
 	/* default shadow on and it's fine use shadow in shadow off flow */
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_BYPASS_MUX_SHADOW,
+	cmdq_pkt_write(pkt, NULL,
+		comp->base_pa + sys->data->reg[SYS_BYPASS_MUX_SHADOW],
 		cfg->shadow ? 0 : 1, U32_MAX);
 #endif
 
@@ -657,7 +686,7 @@ static void sys_config_aid_sel_bits_sys(struct mml_comp *comp, struct mml_task *
 
 static void config_mux(struct mml_sys *sys, struct cmdq_pkt *pkt,
 		       const phys_addr_t base_pa, u8 mux_idx, u8 sof_grp,
-		       u16 *offset, u32 *mout)
+		       u16 *offset, u32 *mout, bool *is_cb_mout)
 {
 	struct mml_mux_pin *mux;
 
@@ -673,7 +702,16 @@ static void config_mux(struct mml_sys *sys, struct cmdq_pkt *pkt,
 	case MML_MUX_SOUT:
 	case MML_MUX_SELIN:
 		cmdq_pkt_write(pkt, NULL, base_pa + mux->offset,
-			       mux->index + (sof_grp << 8), U32_MAX);
+			       mux->index + (sof_grp << sys->data->sof_grp_bit), U32_MAX);
+		break;
+	case MML_MUX_CB_MOUT:
+		*is_cb_mout = true;
+		*offset = mux->offset;
+		*mout |= 1 << mux->index;
+		break;
+	case MML_MUX_CB_SELIN:
+		cmdq_pkt_write(pkt, NULL, base_pa + mux->offset,
+			       mux->index+ (sof_grp << sys->data->cb_sof_grp_bit), U32_MAX);
 		break;
 	default:
 		break;
@@ -775,6 +813,7 @@ static s32 sys_config_tile(struct mml_comp *comp, struct mml_task *task,
 		const struct mml_path_node *node = &path->nodes[i];
 		u16 offset = 0;
 		u32 mout = 0;
+		bool is_cb_mout = false;
 		u8 from = node->id, to, mux_idx;
 
 		if (node->comp->sysid != comp->sysid)
@@ -789,14 +828,28 @@ static s32 sys_config_tile(struct mml_comp *comp, struct mml_task *task,
 			to = node->next[j]->id;
 			mux_idx = sys->adjacency[from][to];
 			config_mux(sys, pkt, base_pa, mux_idx, sof_grp,
-				   &offset, &mout);
+				   &offset, &mout, &is_cb_mout);
 			mux_idx = sys->adjacency[to][from];
 			config_mux(sys, pkt, base_pa, mux_idx, sof_grp,
-				   &offset, &mout);
+				   &offset, &mout, &is_cb_mout);
 		}
-		if (mout)
+		if (mout && is_cb_mout) {
 			cmdq_pkt_write(pkt, NULL, base_pa + offset,
-				       mout + (sof_grp << 8), U32_MAX);
+				mout + (sof_grp << sys->data->cb_sof_grp_bit),
+				U32_MAX);
+			if (!idx) {
+				/* only check first tile path cb mout */
+				if (sys_frm->reset_cbs_cnt < MML_MAX_PATH_CBS) {
+					sys_frm->reset_cbs[sys_frm->reset_cbs_cnt] =
+						base_pa + offset;
+					sys_frm->reset_cbs_cnt++;
+				} else
+					mml_err("%s reset_cbs_cnt %d overflow", __func__,
+						sys_frm->reset_cbs_cnt);
+			}
+		} else if (mout)
+			cmdq_pkt_write(pkt, NULL, base_pa + offset,
+				mout + (sof_grp << sys->data->sof_grp_bit), U32_MAX);
 	}
 	return 0;
 }
@@ -975,10 +1028,16 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
+	struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	enum mml_mode mode = task->config->info.mode;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	u8 i;
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct mml_sys *sys = comp_to_sys(comp);
+
+	for (i = 0; i < sys_frm->reset_cbs_cnt ; i++)
+		cmdq_pkt_write(pkt, NULL, sys_frm->reset_cbs[i], 0, U32_MAX);
 
 	/* later design only need in couple mode */
 	if (comp->id != path->mmlsys->id)
@@ -1202,15 +1261,16 @@ static void sys_debug_dump_fast_mml0(struct mml_comp *comp)
 static void sys_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe)
 {
 	const struct mml_topology_path *path = cfg->path[pipe];
+	struct mml_sys *sys = comp_to_sys(comp);
 
 	mml_err("[sys]reset bits %#llx for pipe %u", path->reset_bits, pipe);
 	if (path->reset0 != U32_MAX) {
-		writel(path->reset0, comp->base + SYS_SW0_RST_B_REG);
-		writel(U32_MAX, comp->base + SYS_SW0_RST_B_REG);
+		writel(path->reset0, comp->base + sys->data->reg[SYS_SW0_RST_B_REG]);
+		writel(U32_MAX, comp->base + sys->data->reg[SYS_SW0_RST_B_REG]);
 	}
 	if (path->reset1 != U32_MAX) {
-		writel(path->reset1, comp->base + SYS_SW1_RST_B_REG);
-		writel(U32_MAX, comp->base + SYS_SW1_RST_B_REG);
+		writel(path->reset1, comp->base + sys->data->reg[SYS_SW1_RST_B_REG]);
+		writel(U32_MAX, comp->base + sys->data->reg[SYS_SW1_RST_B_REG]);
 	}
 
 	if (cfg->info.mode == MML_MODE_RACING ||
@@ -1236,12 +1296,14 @@ static void sys_reset_current(struct mml_comp *comp, struct mml_frame_config *cf
 		sys->data->sysid, path->reset_bits, pipe);
 
 	if (path->reset_sys[sys->data->sysid].reset0 != U32_MAX) {
-		writel(path->reset_sys[sys->data->sysid].reset0, comp->base + SYS_SW0_RST_B_REG);
-		writel(U32_MAX, comp->base + SYS_SW0_RST_B_REG);
+		writel(path->reset_sys[sys->data->sysid].reset0,
+			comp->base + sys->data->reg[SYS_SW0_RST_B_REG]);
+		writel(U32_MAX, comp->base + sys->data->reg[SYS_SW0_RST_B_REG]);
 	}
 	if (path->reset_sys[sys->data->sysid].reset1 != U32_MAX) {
-		writel(path->reset_sys[sys->data->sysid].reset1, comp->base + SYS_SW1_RST_B_REG);
-		writel(U32_MAX, comp->base + SYS_SW1_RST_B_REG);
+		writel(path->reset_sys[sys->data->sysid].reset1,
+			comp->base + sys->data->reg[SYS_SW1_RST_B_REG]);
+		writel(U32_MAX, comp->base + sys->data->reg[SYS_SW1_RST_B_REG]);
 	}
 
 	if (cfg->info.mode == MML_MODE_RACING ||
@@ -1398,6 +1460,7 @@ s32 mml_mminfra_pw_disable(struct mml_comp *comp)
 
 static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 {
+#ifndef MML_FPGA
 	struct mml_sys *sys = comp_to_sys(comp);
 	s32 ret = mml_comp_clk_enable(comp);
 
@@ -1408,11 +1471,9 @@ static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 		if (sys->data->set_mml_uid)
 			mml_set_uid(&sys->mml_scmi);
 
-#ifndef MML_FPGA
 		cmdq_util_set_mml_aid_selmode();
-#endif
 	}
-
+#endif
 	return 0;
 }
 
@@ -1549,7 +1610,8 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 				mux->from, mux->to);
 			continue;
 		}
-		if (mux->type == MML_MUX_SELIN)
+		if (mux->type == MML_MUX_SELIN ||
+			mux->type == MML_MUX_CB_SELIN)
 			sys->adjacency[mux->to][mux->from] = i;
 		else
 			sys->adjacency[mux->from][mux->to] = i;
@@ -1669,7 +1731,7 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 #ifndef MML_FPGA
 	comp->hw_ops = sys->data->hw_ops;
 #else
-	comp->hw_ops = sys_hw_ops_fpga;
+	comp->hw_ops = &sys_hw_ops_fpga;
 #endif
 	return 0;
 }
@@ -2177,7 +2239,8 @@ static s32 dli_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 
 	/* DLI use as mml-tile rrot dual input, skip tile calc */
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK && comp->sysid == mml_sys_tile)
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK &&
+		comp->sysid == mml_sys_tile)
 		return 0;
 
 	func->type = TILE_TYPE_RDMA;
@@ -2245,7 +2308,8 @@ static s32 dlo_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	struct dl_frame_data *dl_frm;
 
 	/* DLO use as mml-tile rrot dual input, skip tile calc */
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK && comp->sysid == mml_sys_tile)
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK &&
+		comp->sysid == mml_sys_tile)
 		return 0;
 
 	dl_frm = kzalloc(sizeof(struct dl_frame_data), GFP_KERNEL);
@@ -2290,7 +2354,11 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	if (comp->sysid == task->config->path[ccfg->pipe]->mmlsys->sysid)
 		task->dlo_size = size;
-	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
+	if (sys->data->px_per_tick == 2)
+		cmdq_pkt_write(pkt, NULL, base_pa + offset,
+			size + (1 << 30), U32_MAX);
+	else
+		cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
 
 	if (dl_frm) {
 		dl_frm->max_size.width = dl_w;
@@ -2623,7 +2691,7 @@ err_comp_add:
 	return ret;
 }
 
-static struct mml_sys *dbg_probed_components[2];
+static struct mml_sys *dbg_probed_components[3];
 static int dbg_probed_count;
 
 struct mml_sys *mml_sys_create(struct platform_device *pdev,
@@ -2849,6 +2917,8 @@ static const struct mml_data mt6893_mml_data = {
 	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.sysid = mml_sys_frame,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6983_mml_data = {
@@ -2867,6 +2937,8 @@ static const struct mml_data mt6983_mml_data = {
 	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.sysid = mml_sys_frame,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6879_mml_data = {
@@ -2880,6 +2952,8 @@ static const struct mml_data mt6879_mml_data = {
 	.debug_ops = &sys_debug_ops,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.sysid = mml_sys_frame,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6985_mml_data = {
@@ -2900,6 +2974,8 @@ static const struct mml_data mt6985_mml_data = {
 	.aidsel_mode = MML_AIDSEL_ENGINE,
 	.set_mml_uid = true,
 	.sysid = mml_sys_frame,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6897_mml_data = {
@@ -2920,6 +2996,8 @@ static const struct mml_data mt6897_mml_data = {
 	.aidsel_mode = MML_AIDSEL_ENGINE,
 	.sysid = mml_sys_frame,
 	.ddren = 0x22,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6899_mmlt_data = {
@@ -2937,6 +3015,8 @@ static const struct mml_data mt6899_mmlt_data = {
 	.sysid = mml_sys_tile,
 	.pw_mminfra = true,
 	.ddren = 0x22,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6899_mmlf_data = {
@@ -2959,6 +3039,8 @@ static const struct mml_data mt6899_mmlf_data = {
 	.sysid = mml_sys_frame,
 	.pw_mminfra = true,
 	.ddren = 0x22,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6989_mml_data = {
@@ -2981,6 +3063,8 @@ static const struct mml_data mt6989_mml_data = {
 	.sysid = mml_sys_frame,
 	.pw_mminfra = true,
 	.ddren = 0x22,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6991_mmlt_data = {
@@ -3000,6 +3084,8 @@ static const struct mml_data mt6991_mmlt_data = {
 	.gce_event = true,
 	.ddren = 0x42,
 	.irq = true,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 };
 
 static const struct mml_data mt6991_mmlf_data = {
@@ -3023,7 +3109,99 @@ static const struct mml_data mt6991_mmlf_data = {
 	.pw_mminfra = true,
 	.gce_event = true,
 	.ddren = 0x42,
+	.reg = sys_mt6989,
+	.sof_grp_bit = 8,
 	.irq = true,
+};
+
+static const struct mml_data mt6993_mmlt_data = {
+	.comp_inits = {
+		[MML_CT_SYS] = &sys_comp_init,
+		[MML_CT_DL_IN] = &dli_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init,
+		[MML_CT_SYS_IN] = &dl_comp_init,
+		[MML_CT_SYS_OUT] = &dl_comp_init,
+	},
+	.ddp_comp_funcs = {
+		[MML_CT_SYS] = &sys_ddp_funcs,
+		[MML_CT_DL_IN] = &dl_ddp_funcs,
+		[MML_CT_DL_OUT] = &dl_ddp_funcs,
+		[MML_CT_SYS_IN] = &dl_ddp_funcs,
+		[MML_CT_SYS_OUT] = &dl_ddp_funcs,
+	},
+	.aid_sel = sys_config_aid_sel_bits_sys,
+	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops_mt6991,
+	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.px_per_tick = 2,
+	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
+	.sysid = mml_sys_tile,
+	.pw_mminfra = true,
+	.gce_event = true,
+	.ddren = 0x42,
+	.reg = sys_mt6993,
+	.sof_grp_bit = 12,
+	.cb_sof_grp_bit = 28,
+};
+
+static const struct mml_data mt6993_mmlf_data = {
+	.comp_inits = {
+		[MML_CT_SYS] = &sys_comp_init,
+		[MML_CT_DL_IN] = &dli_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init,
+		[MML_CT_SYS_IN] = &dl_comp_init,
+		[MML_CT_SYS_OUT] = &dl_comp_init,
+	},
+	.ddp_comp_funcs = {
+		[MML_CT_SYS] = &sys_ddp_funcs,
+		[MML_CT_DL_IN] = &dl_ddp_funcs,
+		[MML_CT_DL_OUT] = &dl_ddp_funcs,
+		[MML_CT_SYS_IN] = &dl_ddp_funcs,
+		[MML_CT_SYS_OUT] = &dl_ddp_funcs,
+	},
+	.aid_sel = sys_config_aid_sel_bits_sys,
+	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops_mt6991,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.px_per_tick = 2,
+	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
+	.sysid = mml_sys_frame,
+	.pw_mminfra = true,
+	.gce_event = true,
+	.ddren = 0x42,
+	.reg = sys_mt6993,
+	.sof_grp_bit = 12,
+	.cb_sof_grp_bit = 28,
+};
+
+static const struct mml_data mt6993_mmld_data = {
+	.comp_inits = {
+		[MML_CT_SYS] = &sys_comp_init,
+		[MML_CT_DL_IN] = &dli_comp_init,
+		[MML_CT_DL_OUT] = &dlo_comp_init,
+		[MML_CT_SYS_IN] = &dl_comp_init,
+		[MML_CT_SYS_OUT] = &dl_comp_init,
+	},
+	.ddp_comp_funcs = {
+		[MML_CT_SYS] = &sys_ddp_funcs,
+		[MML_CT_DL_IN] = &dl_ddp_funcs,
+		[MML_CT_DL_OUT] = &dl_ddp_funcs,
+		[MML_CT_SYS_IN] = &dl_ddp_funcs,
+		[MML_CT_SYS_OUT] = &dl_ddp_funcs,
+	},
+	.aid_sel = sys_config_aid_sel_bits_sys,
+	.hw_ops = &sys_hw_ops_mminfra,
+	.debug_ops = &sys_debug_ops_mt6991,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.px_per_tick = 2,
+	.aidsel_mode = MML_AIDSEL_ENGINEBITS,
+	.sysid = mml_sys_dma,
+	.pw_mminfra = true,
+	.gce_event = true,
+	.ddren = 0x42,
+	.reg = sys_mt6993,
+	.sof_grp_bit = 12,
+	.cb_sof_grp_bit = 28,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {
@@ -3071,6 +3249,10 @@ const struct of_device_id mtk_mml_of_ids[] = {
 		.compatible = "mediatek,mt6991-mml1",
 		.data = &mt6991_mmlf_data,
 	},
+	{
+		.compatible = "mediatek,mt6993-mmlsys2",
+		.data = &mt6993_mmld_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_mml_of_ids);
@@ -3088,6 +3270,14 @@ static const struct of_device_id mml_sys_of_ids[] = {
 	{
 		.compatible = "mediatek,mt6991-mmlsys0",
 		.data = &mt6991_mmlt_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mmlsys0",
+		.data = &mt6993_mmlt_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mmlsys1",
+		.data = &mt6993_mmlf_data,
 	},
 	{},
 };

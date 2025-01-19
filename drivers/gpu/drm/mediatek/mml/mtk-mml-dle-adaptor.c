@@ -505,6 +505,7 @@ static const struct mml_ddp_comp_match mml_ddp_matches[] = {
 	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mml_mutex0" },
 	{ DDP_COMPONENT_MML_MUTEX1, MTK_MML_MUTEX, "mml0_mutex0" },
 	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mml1_mutex0" },
+	{ DDP_COMPONENT_MML_MUTEX0, MTK_MML_MUTEX, "mml2_mutex0" },
 };
 
 static s32 mml_ddp_comp_get_id(struct device_node *node, const char *name)

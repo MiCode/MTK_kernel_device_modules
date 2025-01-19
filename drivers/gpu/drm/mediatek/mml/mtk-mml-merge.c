@@ -385,6 +385,10 @@ const struct of_device_id mml_merge_driver_dt_match[] = {
 		.compatible = "mediatek,mt6991-mml1_merge",
 		.data = &mt6991_merge_data,
 	},
+	{
+		.compatible = "mediatek,mt6993-mml2_merge",
+		.data = &mt6991_merge_data,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mml_merge_driver_dt_match);

@@ -14,8 +14,13 @@ enum isp_tile_message tile_prz_init(struct tile_func_block *func,
 				    struct tile_reg_map *reg_map);
 enum isp_tile_message tile_tdshp_init(struct tile_func_block *func,
 				      struct tile_reg_map *reg_map);
+enum isp_tile_message tile_chist_init(struct tile_func_block *func,
+				      struct tile_reg_map *reg_map);
 enum isp_tile_message tile_wrot_init(struct tile_func_block *func,
 				     struct tile_reg_map *reg_map);
+enum isp_tile_message tile_wdma_init(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map);
+
 /* prototype for */
 enum isp_tile_message tile_rdma_for(struct tile_func_block *func,
 				    struct tile_reg_map *reg_map);
@@ -27,12 +32,17 @@ enum isp_tile_message tile_prz_for(struct tile_func_block *func,
 				   struct tile_reg_map *reg_map);
 enum isp_tile_message tile_wrot_for(struct tile_func_block *func,
 				    struct tile_reg_map *reg_map);
+enum isp_tile_message tile_wdma_for(struct tile_func_block *func,
+				    struct tile_reg_map *reg_map);
+
 /* prototype back */
 enum isp_tile_message tile_rdma_back(struct tile_func_block *func,
 				     struct tile_reg_map *reg_map);
 enum isp_tile_message tile_prz_back(struct tile_func_block *func,
 				    struct tile_reg_map *reg_map);
 enum isp_tile_message tile_wrot_back(struct tile_func_block *func,
+				     struct tile_reg_map *reg_map);
+enum isp_tile_message tile_wdma_back(struct tile_func_block *func,
 				     struct tile_reg_map *reg_map);
 enum isp_tile_message tile_dlo_back(struct tile_func_block *func,
 				    struct tile_reg_map *reg_map);

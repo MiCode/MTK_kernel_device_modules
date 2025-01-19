@@ -258,7 +258,7 @@ extern dma_addr_t rdma_crc_pa[MML_PIPE_CNT];
 #endif
 
 #define MML_MAX_INPUTS		2
-#define MML_MAX_PATH_NODES	27 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
+#define MML_MAX_PATH_NODES	28 /* must align MAX_TILE_FUNC_NO in tile_driver.h */
 #define MML_MAX_PATH_CACHES	32 /* must >= PATH_MML_MAX in all mtk-mml-mtxxxx.c */
 #define MML_MAX_AID_COMPS	10
 #define MML_MAX_CMDQ_CLTS	4
@@ -416,7 +416,7 @@ struct mml_topology_path {
 	u64 engine_flags;
 
 	/* The flag to show which mmlsys enable in this path.
-	 * Indexed by enum mml_sys_id, could be mml_sys_frame or mml_sys_tile
+	 * Indexed by enum mml_sys_id, could be mml_sys_frame or mml_sys_tile or mml_sys_dma
 	 */
 	bool sys_en[mml_max_sys];
 };

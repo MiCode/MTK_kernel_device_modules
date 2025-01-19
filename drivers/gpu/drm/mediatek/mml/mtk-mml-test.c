@@ -1053,8 +1053,12 @@ static void setup_2in_2out(struct mml_submit *task, struct mml_ut *cur)
 	fillin_info_data(the_case.cfg_src1_format,
 		the_case.cfg_src1_w, the_case.cfg_src1_h,
 		&task->info.seg_map);
-	fillin_buf(&task->info.seg_map, cur->fd_in1, cur->size_in1,
-		&task->buffer.seg_map);
+	if (cur->use_dma)
+		fillin_buf_dma(&task->info.seg_map, cur->buf_src[1], cur->dma_size_in[1],
+			&task->buffer.seg_map);
+	else
+		fillin_buf(&task->info.seg_map, cur->fd_in1, cur->size_in1,
+			&task->buffer.seg_map);
 	/* config dest[1] info data and buf */
 	task->info.dest_cnt = 2;
 	task->buffer.dest_cnt = 2;
@@ -1830,6 +1834,21 @@ static const struct file_operations test_fops = {
 	.write = test_write,
 };
 
+static void mml_test_fill_frame_grey(u8 *va, u32 width, u32 height)
+{
+	u32 x, y;
+	const u32 step = 0xff;
+
+	for (y = 0; y < height; y++) {
+		for (x = 0; x < width; x++) {
+			u32 r = step * x / width;
+			u32 idx = (y * width + x);
+
+			va[idx] = r;
+		}
+	}
+}
+
 static void mml_test_fill_frame_rgb888(u8 *va, u32 width, u32 height)
 {
 	u32 x, y;
@@ -2039,6 +2058,58 @@ static int mml_test_create_src(struct dma_heap *heap, struct mml_ut *cur_case,
 	return 0;
 }
 
+static int mml_test_create_src1(struct dma_heap *heap, struct mml_ut *cur_case,
+	struct mml_buffer *buf)
+{
+	void *va;
+	struct iosys_map map = {0};
+	int ret;
+	u32 bufsize;
+
+	if (mml_test_alloc_frame(heap, buf, cur_case->cfg_src1_format,
+		cur_case->cfg_src1_w, cur_case->cfg_src1_h) < 0)
+		return -EINVAL;
+
+	/* retrieve va to fill in raw data */
+	ret = dma_buf_vmap(buf->dmabuf[0], &map);
+	if (ret) {
+		mml_err("[test]fail to vmap");
+		return -ENOMEM;
+	}
+	va = map.vaddr;
+	bufsize = buf->size[0] + buf->size[1] + buf->size[2];
+
+	mml_log("%s mapped va %llx buf size %u", __func__, (u64)va, bufsize);
+
+	switch (cur_case->cfg_src1_format) {
+	case MML_FMT_GREY:
+		mml_test_fill_frame_grey(va, cur_case->cfg_src1_w, cur_case->cfg_src1_h);
+		break;
+	case MML_FMT_RGB888:
+	case MML_FMT_BGR888:
+		mml_test_fill_frame_rgb888(va, cur_case->cfg_src1_w, cur_case->cfg_src1_h);
+		break;
+	case MML_FMT_RGBA8888:
+	case MML_FMT_BGRA8888:
+		mml_test_fill_frame_rgba8888(va, cur_case->cfg_src1_w, cur_case->cfg_src1_h);
+		break;
+	case MML_FMT_RGBA1010102:
+	case MML_FMT_BGRA1010102:
+		mml_test_fill_frame_rgba1010102(va, cur_case->cfg_src1_w, cur_case->cfg_src1_h);
+		break;
+	default:
+		if (!mml_test_use_last || !mml_test_fill_frame_dumpout(va, bufsize))
+			mml_err("[test]not support src1 format %#x", cur_case->cfg_src1_format);
+		break;
+	}
+
+	buf->flush = true;
+	dma_buf_vunmap(buf->dmabuf[0], &map);
+
+	return 0;
+}
+
+
 static int mml_test_create_dest(struct dma_heap *heap, struct mml_ut *cur_case,
 	struct mml_buffer *buf)
 {
@@ -2070,9 +2141,41 @@ static int mml_test_create_dest(struct dma_heap *heap, struct mml_ut *cur_case,
 	return 0;
 }
 
+static int mml_test_create_dest1(struct dma_heap *heap, struct mml_ut *cur_case,
+	struct mml_buffer *buf)
+{
+	u64 *va;
+	struct iosys_map map = {0};
+	u32 i;
+	int ret;
+
+	if (mml_test_alloc_frame(heap, buf, cur_case->cfg_dest1_format,
+		cur_case->cfg_dest1_w, cur_case->cfg_dest1_h) < 0)
+		return -EINVAL;
+
+	/* retrieve va to fill in raw data */
+	ret = dma_buf_vmap(buf->dmabuf[0], &map);
+	if (ret) {
+		mml_err("[test]%s fail to vmap", __func__);
+		return -ENOMEM;
+	}
+	va = map.vaddr;
+
+	mml_log("%s mapped va %llx", __func__, (u64)va);
+
+	for (i = 0; i < buf->size[0] / 8; i++)
+		va[i] = 0xdeadbeef + i;
+
+	buf->flush = true;
+	dma_buf_vunmap(buf->dmabuf[0], &map);
+
+	return 0;
+}
+
+
 static void mml_test_krun(u32 case_num)
 {
-	struct mml_buffer src_buf = {0}, dest_buf = {0};
+	struct mml_buffer src_buf = {0}, dest_buf = {0}, src_buf1 = {0}, dest_buf1 = {0};
 	struct mml_ut cur = {0};
 	struct dma_heap *heap = NULL;
 
@@ -2108,6 +2211,21 @@ static void mml_test_krun(u32 case_num)
 	cur.buf_dest[0] = dest_buf.dmabuf[0];
 	cur.dma_size_out[0] = dest_buf.size[0] + dest_buf.size[1] + dest_buf.size[2];
 
+	if (case_num == MML_UT_2IN_2OUT) {
+		if (mml_test_create_src1(heap, &cur, &src_buf1) < 0)
+			goto free_heap;
+
+		if (mml_test_create_dest1(heap, &cur, &dest_buf1) < 0)
+			goto free_heap;
+
+		cur.buf_src[1] = src_buf1.dmabuf[0];
+		cur.dma_size_in[1] = src_buf1.size[0] + src_buf1.size[1] +
+			src_buf1.size[2];
+		cur.buf_dest[1] = dest_buf1.dmabuf[0];
+		cur.dma_size_out[1] = dest_buf1.size[0] + dest_buf1.size[1] +
+			dest_buf1.size[2];
+	}
+
 	if (case_num < ARRAY_SIZE(cases) && cases[case_num].run)
 		cases[case_num].run(main_test, &cur);
 
@@ -2120,6 +2238,10 @@ free_heap:
 end:
 	mml_test_free_frame(&src_buf);
 	mml_test_free_frame(&dest_buf);
+	if (case_num == MML_UT_2IN_2OUT) {
+		mml_test_free_frame(&src_buf1);
+		mml_test_free_frame(&dest_buf1);
+	}
 }
 
 static int mml_test_krun_set(const char *val, const struct kernel_param *kp)

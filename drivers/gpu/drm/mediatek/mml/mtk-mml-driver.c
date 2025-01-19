@@ -412,7 +412,9 @@ static void mml_dvfs_vcp_enable(struct mml_dev *mml, enum mml_sys_id sysid)
 	mml->vcp_ref++;
 	if (mml->vcp_ref == 1) {
 		mml_mmp(mmdvfs, MMPROFILE_FLAG_START, sysid, 0);
+#ifndef MML_FPGA
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
+#endif
 	}
 }
 
@@ -420,7 +422,9 @@ static void mml_dvfs_vcp_disable(struct mml_dev *mml, enum mml_sys_id sysid)
 {
 	mml->vcp_ref--;
 	if (mml->vcp_ref == 0) {
+#ifndef MML_FPGA
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
+#endif
 		mml_mmp(mmdvfs, MMPROFILE_FLAG_END, sysid, 0);
 	}
 }
@@ -810,7 +814,7 @@ static s32 comp_init(struct platform_device *pdev, struct mml_comp *comp,
 	comp->base_pa = res->start;
 
 	/* default set to mml-frame, maybe change in tp_init_cache */
-	comp->sysid = mml_sys_frame;
+	comp->sysid = mml_sys_dma;
 
 	/* ignore clks if clkpropname is null as subcomponent */
 	if (!clkpropname)
@@ -2035,14 +2039,20 @@ void mml_dump_read_data_unlock(struct mml_dev *mml)
 	mutex_unlock(&mml->frm_dump_mutex);
 }
 
-void mml_dump_input(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task, bool force)
+void mml_dump_input(struct mml_dev *mml, const struct mml_topology_path *path, struct mml_task *task, bool force)
 {
 	const struct mml_frame_config *cfg = task->config;
 	struct mml_frm_dump_data *frm_data;
 	u16 mask_once = 0;
 	u64 cost = sched_clock();
+	enum mml_sys_id sysid;
 
 	mutex_lock(&mml->frm_dump_mutex);
+
+	if (path->sys_en[mml_sys_dma])
+		sysid = mml_mode_to_sysid(cfg->info.mode);
+	else
+		sysid = path->mmlsys->sysid;
 
 	if ((mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_src0)) ||
 		(mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_src0_always)) ||
@@ -2072,14 +2082,20 @@ void mml_dump_input(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task 
 	}
 }
 
-void mml_dump_output(struct mml_dev *mml, enum mml_sys_id sysid, struct mml_task *task)
+void mml_dump_output(struct mml_dev *mml, const struct mml_topology_path *path, struct mml_task *task)
 {
 	const struct mml_frame_config *cfg = task->config;
 	struct mml_frm_dump_data *frm_data;
 	u16 mask_once = 0;
 	u64 cost = sched_clock();
+	enum mml_sys_id sysid;
 
 	mutex_lock(&mml->frm_dump_mutex);
+
+	if (path->sys_en[mml_sys_dma])
+		sysid = mml_mode_to_sysid(cfg->info.mode);
+	else
+		sysid = path->mmlsys->sysid;
 
 	if ((mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_dest0)) ||
 		(mml->frm_dump_buf[sysid] & BIT(mml_frm_dump_dest0_always))) {
@@ -2276,6 +2292,7 @@ static int mml_probe(struct platform_device *pdev)
 	mutex_init(&mml->wake_ref_mutex);
 	mutex_init(&mml->dpc.dpc_mutex[mml_sys_tile]);
 	mutex_init(&mml->dpc.dpc_mutex[mml_sys_frame]);
+	mutex_init(&mml->dpc.dpc_mutex[mml_sys_dma]);
 
 	for (i = 0; i < ARRAY_SIZE(mml->sys_state); i++) {
 		mml->sys_state[i].sys_id = i;
@@ -2507,6 +2524,8 @@ static struct platform_driver *mml_drivers[] = {
 	&mml_rrot_driver,
 	&mml_merge_driver,
 	&mml_c3d_driver,
+	&mml_wdma_driver,
+	&mml_chist_driver,
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	&mtk_mml_test_drv,

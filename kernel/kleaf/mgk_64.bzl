@@ -1285,6 +1285,7 @@ mgk_64_platform_device_modules = {
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko": "mt6985",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko": "mt6989",
     "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko": "mt6991",
+    "drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko": "mt6993",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6886.ko": "mt6886",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6897.ko": "mt6897",
     "drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6899.ko": "mt6899",
@@ -1557,6 +1558,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
@@ -1890,6 +1892,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
@@ -2210,6 +2213,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6768.ko":"mt6768"})
 
         mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6768.ko":"mt6768"})
@@ -2361,6 +2365,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/mediatek_v2/mtk_disp_sec.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_gpueb.ko")
         mgk_64_device_modules.remove("drivers/gpu/mediatek/gpueb/mtk_ghpm_mt6991.ko")
@@ -2787,6 +2792,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
 
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/mediatek-cust-panel-sample.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/panel/mediatek-drm-gateic.ko")
@@ -3070,6 +3076,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/upower/Upower.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
@@ -3575,6 +3582,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
@@ -3745,6 +3753,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6985.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
 
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_dpc_v1.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_vdisp_v1.ko")

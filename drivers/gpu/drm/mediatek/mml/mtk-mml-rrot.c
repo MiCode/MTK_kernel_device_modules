@@ -291,6 +291,38 @@ static const struct rrot_data mt6991_rrot_data = {
 	},
 };
 
+static const struct rrot_data mt6993_rrot_data = {
+	.tile_width = 2048,
+	.px_per_tick = 2,
+	.vcsel = true,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6991),
+			.settings = th_argb_mt6991,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6991),
+			.settings = th_rgb_mt6991,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6991),
+			.settings = th_yuv420_mt6991,
+		},
+		[GOLDEN_FMT_YV12] = {
+			.cnt = ARRAY_SIZE(th_yv12_mt6991),
+			.settings = th_yv12_mt6991,
+		},
+		[GOLDEN_FMT_HYFBC] = {
+			.cnt = ARRAY_SIZE(th_hyfbc_mt6991),
+			.settings = th_hyfbc_mt6991,
+		},
+		[GOLDEN_FMT_AFBC] = {
+			.cnt = ARRAY_SIZE(th_afbc_mt6991),
+			.settings = th_afbc_mt6991,
+		},
+	},
+};
+
 struct mml_comp_rrot {
 	struct mml_comp comp;
 	const struct rrot_data *data;
@@ -2810,6 +2842,10 @@ const struct of_device_id mml_rrot_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6991-mml_rrot",
 		.data = &mt6991_rrot_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mml_rrot",
+		.data = &mt6993_rrot_data,
 	},
 	{},
 };

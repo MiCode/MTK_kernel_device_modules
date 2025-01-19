@@ -50,6 +50,11 @@ struct tdshp_tile_data {
 	u32 max_width;
 };
 
+struct chist_tile_data {
+	bool relay_mode;
+	u32 max_width;
+};
+
 struct wrot_tile_data {
 	enum mml_color dest_fmt;
 	u32 rotate;
@@ -68,6 +73,19 @@ struct wrot_tile_data {
 	bool first_y_pad;
 };
 
+struct wdma_tile_data {
+	enum mml_color dest_fmt;
+	u32 rotate;
+	bool flip;
+	bool alpha;
+	bool racing;
+	u8 racing_h;
+	bool enable_x_crop;
+	bool enable_y_crop;
+	struct mml_rect crop;
+	u32 max_width;
+};
+
 struct dlo_tile_data {
 	bool enable_x_crop;
 	struct mml_rect crop;
@@ -77,7 +95,9 @@ union mml_tile_data {
 	struct rdma_tile_data rdma;
 	struct rsz_tile_data rsz;
 	struct tdshp_tile_data tdshp;
+	struct chist_tile_data chist;
 	struct wrot_tile_data wrot;
+	struct wdma_tile_data wdma;
 	struct dlo_tile_data dlo;
 };
 

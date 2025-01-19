@@ -1242,8 +1242,10 @@ static struct mml_path_client *core_get_path_clt(struct mml_task *task, u32 pipe
 static u32 mml_qos_max_freq(const struct mml_topology_path *path,
 	const struct mml_topology_cache *tp)
 {
-	return path->sys_en[mml_sys_frame] ?
-		tp->qos[mml_sys_frame].freq_max : tp->qos[mml_sys_tile].freq_max;
+	return path->sys_en[mml_sys_dma] ?
+		tp->qos[mml_sys_dma].freq_max :
+		(path->sys_en[mml_sys_frame] ? tp->qos[mml_sys_frame].freq_max :
+		tp->qos[mml_sys_tile].freq_max);
 }
 
 static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
@@ -1788,7 +1790,7 @@ static void core_taskdone(struct work_struct *work)
 	mml_msg("%s job %u", __func__, jobid);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	mml_dump_output(cfg->mml, path->mmlsys->sysid, task);
+	mml_dump_output(cfg->mml, path, task);
 #endif
 
 	/* dl mode fast on/off during hw run, so enable mminfra and except flow back */
@@ -2062,7 +2064,7 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (mml_timeout_dump) {
-		mml_dump_input(cfg->mml, path->mmlsys->sysid, task, true);
+		mml_dump_input(task->config->mml, path, task, true);
 		mml_timeout_dump = false;
 	}
 #endif
@@ -2132,6 +2134,9 @@ static void mml_core_stop_racing_pipe(struct mml_frame_config *cfg, u32 pipe, bo
 static s32 core_flush(struct mml_task *task, u32 pipe)
 {
 	struct mml_frame_config *cfg = task->config;
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	const struct mml_topology_path *path = cfg->path[pipe];
+#endif
 	struct cmdq_client *tp_clt = cfg->path[pipe]->clt;
 	struct cmdq_client *rb_clt = mml_get_cmdq_clt(cfg->mml,
 		pipe + GCE_THREAD_START);
@@ -2195,7 +2200,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	mutex_unlock(&cfg->pipe_mutex);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	mml_dump_input(cfg->mml, cfg->path[pipe]->mmlsys->sysid, task, false);
+	mml_dump_input(task->config->mml, path, task, false);
 
 	if (pipe == 0 && mml_check_dumpsrv(DUMPOPT_SRC, &task->buf.src)) {
 		char fmt[24];

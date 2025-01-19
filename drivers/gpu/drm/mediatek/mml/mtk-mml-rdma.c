@@ -50,6 +50,7 @@
 #define RDMA_MF_BKGD_H_SIZE_IN_PXL	0x098
 #define RDMA_PREFETCH_CONTROL		0x0a8
 #define RDMA_UYVY10B_DUMMY		0x0b0
+#define RDMA_DDREN			0x0dc
 #define RDMA_VC1_RANGE			0x0f0
 #define RDMA_SRC_OFFSET_0		0x118
 #define RDMA_SRC_OFFSET_1		0x120
@@ -750,6 +751,39 @@ static const struct rdma_data mt6991_mmlf_rdma_data = {
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
+	.stash = true,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6985),
+			.settings = th_argb_mt6985,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6985),
+			.settings = th_rgb_mt6985,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6985),
+			.settings = th_yuv420_mt6985,
+		},
+		[GOLDEN_FMT_YV12] = {
+			.cnt = ARRAY_SIZE(th_yv12_mt6985),
+			.settings = th_yv12_mt6985,
+		},
+		[GOLDEN_FMT_HYFBC] = {
+			.cnt = ARRAY_SIZE(th_hyfbc_mt6985),
+			.settings = th_hyfbc_mt6985,
+		},
+		[GOLDEN_FMT_AFBC] = {
+			.cnt = ARRAY_SIZE(th_afbc_mt6985),
+			.settings = th_afbc_mt6985,
+		},
+	},
+};
+
+static const struct rdma_data mt6993_mmld_rdma_data = {
+	.tile_width = 1080,
+	.px_per_tick = 2,
+	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.stash = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -1523,6 +1557,9 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 u4pic_size_y_bs = 0;
 	u32 gmcif_con;
 	u8 in_swap;
+	u8 ext_preultra_en = 1;
+	u8 ext_ultra_en = 1;
+	u8 output_argb = 0;
 
 	mml_msg("use config %p rdma %p", cfg, rdma);
 
@@ -1648,6 +1685,9 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
+	output_argb = cfg->alpharot ||
+		(rdma->data->alpha_rsz_crop && cfg->alpharsz);
+
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_CON,
 		   (rdma_frm->hw_fmt << 0) +
 		   (filter_mode << 9) +
@@ -1659,7 +1699,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   (bit_number << 18) +
 		   (rdma_frm->blk_tile << 23) +
 		   (0 << 24) +	/* RING_BUF_READ */
-		   ((cfg->alpharot || cfg->alpharsz) << 25),
+		   (output_argb << 25),
 		   write_sec);
 
 	if (rdma_frm->blk_10bit)
@@ -1761,7 +1801,10 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* Enable 10-bit output */
 	output_10bit = 1;
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_CON,
+		   (ext_preultra_en << 19) +
+		   (ext_ultra_en << 18) +
 		   (rdma_frm->lb_2b_mode << 12) +
+		   (cfg->alpharsz << 11) +
 		   (output_10bit << 5) +
 		   (simple_mode << 4),
 		   write_sec);
@@ -2185,6 +2228,8 @@ static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x3, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_CON, 0x8000, 0x8000);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_CON, 0x0, 0x8000);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, 0x1, 0x1);
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, 0x0, 0x1);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x1, U32_MAX);
 }
 
@@ -2817,6 +2862,10 @@ const struct of_device_id mml_rdma_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6991-mml1_rdma",
 		.data = &mt6991_mmlf_rdma_data,
+	},
+	{
+		.compatible = "mediatek,mt6993-mml2_rdma1",
+		.data = &mt6993_mmld_rdma_data,
 	},
 	{},
 };

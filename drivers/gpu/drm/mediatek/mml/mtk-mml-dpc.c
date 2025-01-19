@@ -14,15 +14,15 @@ static struct dpc_funcs mml_dpc_funcs;
 static enum mtk_dpc_version mml_dpc_version;
 
 #define mml_sysid_to_dpc_subsys(sysid)	\
-	(sysid == mml_sys_frame ? DPC_SUBSYS_MML1 : DPC_SUBSYS_MML0)
+	(sysid == mml_sys_frame ? DPC_SUBSYS_MML1 : (sysid == mml_sys_tile ? DPC_SUBSYS_MML0 : DPC_SUBSYS_MML1))
 #define mml_sysid_to_dpc_user(sysid)	\
-	(sysid == mml_sys_frame ? DISP_VIDLE_USER_MML1 : DISP_VIDLE_USER_MML0)
+	(sysid == mml_sys_frame ? DISP_VIDLE_USER_MML1 : (sysid == mml_sys_tile ? DISP_VIDLE_USER_MML0 : DISP_VIDLE_USER_MML1))
 #define mml_sysid_to_dpc_user_cmdq(sysid)	\
-	(sysid == mml_sys_frame ? DISP_VIDLE_USER_MML1_CMDQ : DISP_VIDLE_USER_MML0_CMDQ)
+	(sysid == mml_sys_frame ? DISP_VIDLE_USER_MML1_CMDQ : (sysid == mml_sys_tile ? DISP_VIDLE_USER_MML0_CMDQ : DISP_VIDLE_USER_MML1_CMDQ))
 #define mml_sysid_to_dpc_srt_read_idx(sysid)	\
-	(sysid == mml_sys_frame ? 8 : 0)
+	(sysid == mml_sys_frame ? 8 : (sysid == mml_sys_tile ? 0 : 8))
 #define mml_sysid_to_dpc_hrt_read_idx(sysid)	\
-	(sysid == mml_sys_frame ? 10 : 2)
+	(sysid == mml_sys_frame ? 10 : (sysid == mml_sys_tile ? 2 : 10))
 
 void mml_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version)
 {
@@ -247,7 +247,9 @@ void mml_dpc_channel_bw_set_by_idx(u32 sysid, u32 bw, bool hrt)
 		return;
 	}
 
-	if (sysid == mml_sys_tile)
+	if (sysid == mml_sys_frame)
+		idx = hrt ? 11 : 9;
+	else if (sysid == mml_sys_tile)
 		idx = hrt ? 3 : 1;
 	else
 		idx = hrt ? 11 : 9;
