@@ -3590,7 +3590,7 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (plane_state->comp_state.comp_id == 0) {
-		if (priv->data->ovl_exdma_rule && crtc)
+		if (priv->data->ovl_exdma_rule)
 			plane_state->comp_state.comp_id =
 				mtk_crtc_get_plane_comp_id(crtc, state, plane_index);
 		else
@@ -8747,7 +8747,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
 				*(display_compress_ratio_table[i].peak_ratio) == 0) &&
 				priv->data->mmsys_id == MMSYS_MT6991) {
-				DDPMSG("%s ratio is 0, i:%d,frame_idx:%d,key value:%d avg%d peak%d\n",
+				DDPMSG("%s ratio is 0, i:%d,frame_idx:%d,key value:%llu avg%d peak%d\n",
 				__func__, i, display_compress_ratio_table[i].frame_idx,
 				display_compress_ratio_table[i].key_value,
 				*(display_compress_ratio_table[i].average_ratio),
@@ -11510,7 +11510,8 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 				mtk_crtc_get_plane_comp_id(crtc, mtk_crtc_state, plane_index);
 		}
 
-		if (plane_state->comp_state.comp_id)
+		if (plane_state->comp_state.comp_id &&
+			(plane_state->comp_state.comp_id < DDP_COMPONENT_ID_MAX))
 			comp = priv->ddp_comp[plane_state->comp_state.comp_id];
 		else {
 			/* TODO: all plane should contain proper mtk_plane_state

@@ -579,7 +579,7 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 		int ret = 0;
 		int i = 0;
 		int recovery_flg = 0;
-		unsigned int crtc_idx;
+		unsigned int crtc_idx = 0;
 
 		if (!esd_ctx) {
 			DDPPR_ERR("%s invalid ESD context, stop thread\n", __func__);
