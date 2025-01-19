@@ -206,6 +206,8 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_vdisp_v1.ko",
     "drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_dpc_v2.ko",
     "drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_vdisp_v2.ko",
+    "drivers/gpu/drm/mediatek/dpc/dpc_v3/mtk_dpc_v3.ko",
+    "drivers/gpu/drm/mediatek/dpc/dpc_v3/mtk_vdisp_v3.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mediatek-drm.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_disp_notify.ko",
@@ -2676,6 +2678,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v1/mtk_vdisp_v1.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_dpc_v2.ko")
         mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_vdisp_v2.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v3/mtk_dpc_v3.ko")
+        mgk_64_device_modules.remove("drivers/gpu/drm/mediatek/dpc/dpc_v3/mtk_vdisp_v3.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
