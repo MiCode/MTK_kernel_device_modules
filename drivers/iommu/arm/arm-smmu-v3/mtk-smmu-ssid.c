@@ -298,7 +298,7 @@ static dma_addr_t iommu_dma_alloc_iova(struct arm_smmu_ssid_domain *ssid_domain,
 				       size_t size, u64 dma_limit,
 				       struct device *dev)
 {
-	struct iommu_domain *domain = to_iommu_domain(ssid_domain);
+	struct iommu_domain *domain = &ssid_domain->domain->domain;
 	struct iommu_dma_cookie *cookie = domain->iova_cookie;
 	struct iova_domain *iovad = &cookie->iovad;
 	unsigned long shift, iova_len, iova;
@@ -328,7 +328,7 @@ static void iommu_dma_free_iova(struct arm_smmu_ssid_domain *ssid_domain,
 				struct iommu_iotlb_gather *gather,
 				struct device *dev)
 {
-	struct iommu_domain *domain = to_iommu_domain(ssid_domain);
+	struct iommu_domain *domain = &ssid_domain->domain->domain;
 	struct iommu_dma_cookie *cookie = domain->iova_cookie;
 	struct iova_domain *iovad = &cookie->iovad;
 
@@ -343,7 +343,7 @@ static dma_addr_t iommu_dma_map(struct arm_smmu_ssid_domain *ssid_domain,
 				phys_addr_t phys, size_t size, int prot,
 				u64 dma_mask, struct device *dev)
 {
-	struct iommu_domain *domain = to_iommu_domain(ssid_domain);
+	struct iommu_domain *domain = &ssid_domain->domain->domain;
 	struct iommu_dma_cookie *cookie = domain->iova_cookie;
 	struct iova_domain *iovad = &cookie->iovad;
 	size_t iova_off = iova_offset(iovad, phys);
@@ -376,7 +376,7 @@ static void iommu_dma_unmap(struct arm_smmu_ssid_domain *ssid_domain,
 			    dma_addr_t dma_addr, size_t size,
 			    struct device *dev)
 {
-	struct iommu_domain *domain = to_iommu_domain(ssid_domain);
+	struct iommu_domain *domain = &ssid_domain->domain->domain;
 	struct iommu_dma_cookie *cookie = domain->iova_cookie;
 	struct iova_domain *iovad = &cookie->iovad;
 	size_t iova_off = iova_offset(iovad, dma_addr);
@@ -657,9 +657,16 @@ static u64 get_smmu_tab_id_by_ssid_domain(struct arm_smmu_ssid_domain *ssid_doma
 u64 mtk_smmu_get_tab_id_ssid(struct device *dev, u32 ssid)
 {
 	struct arm_smmu_ssid_domain *ssid_domain;
+	struct iommu_domain *domain;
 
 	if (ssid != SMMU_NO_SSID) {
 		ssid_domain = smmu_ssid_domain_for_dev_ssid(dev, ssid);
+		domain = to_iommu_domain(ssid_domain);
+		if (!domain) {
+			dev_info(dev, "[%s] no ssid domain, ssid:%u\n", __func__, ssid);
+			return SMMU_TAB_ID_INVALID;
+		}
+
 		return get_smmu_tab_id_by_ssid_domain(ssid_domain);
 	} else {
 		return get_smmu_tab_id(dev);
@@ -830,7 +837,7 @@ int ssid_domain_finalise(struct arm_smmu_master *master,
 			 struct arm_smmu_ssid_domain *ssid_domain)
 {
 	struct iommu_domain *def_domain = &ssid_domain->default_domain->domain;
-	struct iommu_domain *domain = to_iommu_domain(ssid_domain);;
+	struct iommu_domain *domain = &ssid_domain->domain->domain;
 	struct device *dev = master->dev;
 	int ret = 0;
 
@@ -1079,11 +1086,13 @@ dma_addr_t mtk_smmu_map_pages_ssid(struct device *dev, struct page *page,
 	phys_addr_t phys = page_to_phys(page) + offset;
 	bool coherent = dev_is_dma_coherent(dev);
 	int prot = dma_info_to_prot(dir, coherent, attrs);
-	struct arm_smmu_ssid_domain *ssid_domain;
 	dma_addr_t iova, dma_mask = dma_get_mask(dev);
+	struct arm_smmu_ssid_domain *ssid_domain;
+	struct iommu_domain *domain;
 
 	ssid_domain = smmu_ssid_domain_for_dev_ssid(dev, ssid);
-	if (!ssid_domain) {
+	domain = to_iommu_domain(ssid_domain);
+	if (!domain) {
 		dev_info(dev, "[%s] no ssid domain, ssid:%u\n", __func__, ssid);
 		return DMA_MAPPING_ERROR;
 	}
@@ -1206,12 +1215,14 @@ void mtk_smmu_unmap_sg_ssid(struct device *dev, struct scatterlist *sg,
 			    unsigned long attrs, u32 ssid)
 {
 	struct arm_smmu_ssid_domain *ssid_domain;
+	struct iommu_domain *domain;
 	dma_addr_t end = 0, start = 0;
 	struct scatterlist *tmp;
 	int i;
 
 	ssid_domain = smmu_ssid_domain_for_dev_ssid(dev, ssid);
-	if (!ssid_domain) {
+	domain = to_iommu_domain(ssid_domain);
+	if (!domain) {
 		/* dma-heap deferred unmap when release dma-buf */
 		dev_dbg(dev, "[%s] no ssid domain, ssid:%u\n", __func__, ssid);
 		return;
