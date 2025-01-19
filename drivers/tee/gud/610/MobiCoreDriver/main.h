@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2020 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -21,6 +21,8 @@
 #include <linux/fs.h>		/* struct inode and struct file */
 #include <linux/mutex.h>
 #include <linux/version.h>
+
+#include "platform.h"		/* Platform specific defines */
 
 #define MC_VERSION(major, minor) \
 		((((major) & 0x0000ffff) << 16) | ((minor) & 0x0000ffff))
@@ -44,7 +46,9 @@
 #define mc_dev_devel(...)		do {} while (0)
 #endif /* !DEBUG */
 
-#define TEEC_TT_LOGIN_KERNEL	0x80000000
+#define TEEC_TT_LOGIN_KERNEL		0x80000000
+#define MAX_OPEN_SESSION_RETRY		10
+#define OPEN_SESSION_RETRY_TIMEOUT_MS	500
 
 #define TEE_START_NOT_TRIGGERED 1
 
@@ -65,8 +69,10 @@ struct mc_device_ctx {
 	atomic_t		c_vm_fes;
 	atomic_t		c_vm_maps;
 
-	u32 real_drv;
-	u32 sel2_support;
+#ifdef MTK_ADAPTED
+	u32			real_drv;
+	u32			sel2_support;
+#endif
 };
 
 extern struct mc_device_ctx g_ctx;

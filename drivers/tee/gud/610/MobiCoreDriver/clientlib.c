@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2020 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -16,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/sched.h>
 #include <linux/list.h>
@@ -38,8 +39,10 @@ static enum mc_result convert(int err)
 		return MC_DRV_NO_NOTIFICATION;
 	case EBADMSG:
 		return MC_DRV_ERR_NOTIFICATION;
-	case EAGAIN:
+	case ENOSPC:
 		return MC_DRV_ERR_OUT_OF_RESOURCES;
+	case EAGAIN:
+		return MC_DRV_ERR_SYSTEM_BUSY;
 	case EHOSTDOWN:
 		return MC_DRV_ERR_INIT;
 	case ENODEV:
@@ -115,8 +118,10 @@ enum mc_result mc_open_device(u32 device_id)
 	enum mc_result mc_result = MC_DRV_OK;
 	int ret;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!is_valid_device(device_id))
@@ -152,8 +157,10 @@ enum mc_result mc_close_device(u32 device_id)
 {
 	enum mc_result mc_result = MC_DRV_OK;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!is_valid_device(device_id))
@@ -190,9 +197,12 @@ enum mc_result mc_open_session(struct mc_session_handle *session,
 			       u8 *tci_va, u32 tci_len)
 {
 	enum mc_result ret;
+	int retries = MAX_OPEN_SESSION_RETRY;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session || !uuid)
@@ -205,9 +215,17 @@ enum mc_result mc_open_session(struct mc_session_handle *session,
 		return MC_DRV_ERR_DAEMON_DEVICE_NOT_OPEN;
 
 	/* Call core api */
-	ret = convert(
-		client_mc_open_session(client, uuid, (uintptr_t)tci_va, tci_len,
-				       &session->session_id));
+	do {
+		ret = convert(
+			client_mc_open_session(client, uuid, (uintptr_t)tci_va,
+					       tci_len, &session->session_id));
+		if (ret != MC_DRV_ERR_SYSTEM_BUSY)
+			break;
+
+		retries--;
+		msleep(OPEN_SESSION_RETRY_TIMEOUT_MS);
+	} while (retries > 0);
+
 	clientlib_client_put();
 	return ret;
 }
@@ -218,8 +236,10 @@ enum mc_result mc_open_trustlet(struct mc_session_handle *session,
 {
 	enum mc_result ret;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session || !ta_va || !ta_len)
@@ -245,8 +265,10 @@ enum mc_result mc_close_session(struct mc_session_handle *session)
 {
 	enum mc_result ret;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session)
@@ -269,8 +291,10 @@ enum mc_result mc_notify(struct mc_session_handle *session)
 {
 	enum mc_result ret;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session)
@@ -294,8 +318,10 @@ enum mc_result mc_wait_notification(struct mc_session_handle *session,
 {
 	enum mc_result ret;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session)
@@ -323,8 +349,10 @@ EXPORT_SYMBOL(mc_wait_notification);
 enum mc_result mc_malloc_wsm(u32 device_id, u32 align, u32 len, u8 **wsm,
 			     u32 wsm_flags)
 {
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!is_valid_device(device_id))
@@ -353,8 +381,10 @@ EXPORT_SYMBOL(mc_malloc_wsm);
 
 enum mc_result mc_free_wsm(u32 device_id, u8 *wsm)
 {
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!is_valid_device(device_id))
@@ -382,8 +412,10 @@ enum mc_result mc_map(struct mc_session_handle *session, void *address,
 		.flags = MC_IO_MAP_INPUT_OUTPUT,
 	};
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session)
@@ -419,8 +451,10 @@ enum mc_result mc_unmap(struct mc_session_handle *session, void *address,
 		.flags = MC_IO_MAP_INPUT_OUTPUT,
 	};
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session)
@@ -450,8 +484,10 @@ enum mc_result mc_get_session_error_code(struct mc_session_handle *session,
 {
 	enum mc_result ret;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.real_drv)
 		return MC_DRV_ERR_NOT_IMPLEMENTED;
+#endif
 
 	/* Check parameters */
 	if (!session)

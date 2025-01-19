@@ -43,7 +43,10 @@ mcDrvModule-y := \
 	vlx_fe.o \
 	xen_be.o \
 	xen_common.o \
-	xen_fe.o
+	xen_fe.o \
+	raite_be.o \
+	raite_common.o \
+	raite_fe.o
 
 # add our ffa modules to kernel.
 obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) += mcDrvModule-ffa.o
@@ -72,13 +75,17 @@ mcDrvModule-ffa-y := \
 	vlx_fe.o \
 	xen_be.o \
 	xen_common.o \
-	xen_fe.o
+	xen_fe.o \
+	raite_be.o \
+	raite_common.o \
+	raite_fe.o
 
 # Release mode by default
 ccflags-y += -DNDEBUG
 ccflags-y += -Wno-declaration-after-statement
 ccflags-y += $(KBUILD_CFLAGS_TRUSTONIC)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
+ccflags-y += -DMTK_ADAPTED
 
 ccflags-$(CONFIG_TRUSTONIC_TEE_DEBUG) += -DDEBUG
 

@@ -33,8 +33,12 @@
 #include "tee_client_error.h"
 #include "tee_client_api_imp.h"
 
+#define MTK_ADAPTED_FORCE
+
+#ifdef MTK_ADAPTED_FORCE
 /* Include GP spec naming (TEEC_*) data type and functions */
 #include "tee_client_api_cust.h"
+#endif
 
 #define TEEC_EXPORT
 
@@ -103,13 +107,17 @@ union teec_parameter {
 
 /** teec_operation definition */
 struct teec_operation {
-	u32			  started;	/**< started flag */
+	u32			  started;		/**< started flag */
+#ifdef MTK_ADAPTED_FORCE
 	union {
 		u32		  param_types;	/**< Parameter types */
 		u32		  paramTypes;
 	};
+#else
+	u32			  param_types;	/**< Parameter types */
+#endif
 	union teec_parameter	  params[4];	/**< Parameters */
-	struct teec_operation_imp imp;		/**< Opaque parameter */
+	struct teec_operation_imp imp;			/**< Opaque parameter */
 };
 
 #define TEEC_ORIGIN_API                     0x00000001

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Copyright (c) 2013-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -87,6 +87,10 @@ enum mc_result {
 	MC_DRV_ERR_NO_FREE_INSTANCES		= 39,
 	/* TA blob header is incorrect. */
 	MC_DRV_ERR_TA_HEADER_ERROR		= 40,
+	/* security violation such as brute force attack detection. */
+	MC_DRV_ERR_SECURITY			= 52,
+	/* System busy, restart command. */
+	MC_DRV_ERR_SYSTEM_BUSY			= 53,
 };
 
 /*

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -356,62 +356,6 @@ end:
 	return ret;
 }
 
-static int request_receive(void *address, u32 size)
-{
-	/*
-	 * At this point we have received the header and prepared some buffers
-	 * to receive data that we know are coming from the server.
-	 */
-
-	/* Check server state */
-	bool server_ok;
-
-	mutex_lock(&g_request.states_mutex);
-	server_ok = (g_request.server_state == RESPONSE_SENT) ||
-		    (g_request.server_state == DATA_SENT);
-	mutex_unlock(&g_request.states_mutex);
-	if (!server_ok) {
-		int ret = -EPIPE;
-
-		mc_dev_err(ret, "expected server state %d or %d, not %d",
-			   RESPONSE_SENT, DATA_SENT, g_request.server_state);
-		request_cancel();
-		return ret;
-	}
-
-	/* Setup reception buffer */
-	g_request.buffer = address;
-	g_request.size = size;
-	client_state_change(BUFFERS_READY);
-
-	/* Unlock write of data */
-	complete(&g_request.client_complete);
-
-	/* Wait for data */
-	do {
-		int ret = 0;
-
-		ret = wait_for_completion_interruptible(
-					     &g_request.server_complete);
-		if (!ret)
-			break;
-		/* We may have to freeze now */
-		check_freezing_ongoing();
-		/* freezing happened or was canceled,
-		 * let's sleep and try again
-		 */
-		msleep(500);
-	} while (1);
-
-	/* Reset reception buffer */
-	g_request.buffer = NULL;
-	g_request.size = 0;
-
-	/* Return to idle state */
-	client_state_change(IDLE);
-	return 0;
-}
-
 /* Must be called instead of request_receive() to cancel a pending request */
 static void request_cancel(void)
 {
@@ -423,68 +367,6 @@ static void request_cancel(void)
 	/* Return to idle state */
 	g_request.client_state = IDLE;
 	mutex_unlock(&g_request.states_mutex);
-}
-
-static int tee_object_get_request(const struct mc_uuid_t *uuid, bool is_gp,
-				  struct tee_object **tee_object)
-{
-	struct tee_object *obj = NULL;
-	int ret = 0;
-
-	if (!l_ctx.is_initialised)
-		return -ENOPROTOOPT;
-
-	/* Lock communication channel */
-	channel_lock();
-
-	/* Send request and wait for header */
-	ret = request_send(MC_DRV_GET_TRUSTLET, uuid, is_gp);
-	if (ret)
-		goto end;
-
-	/* Allocate memory */
-	obj = tee_object_alloc(g_request.response.length);
-	if (!obj) {
-		request_cancel();
-		ret = -ENOMEM;
-		goto end;
-	}
-
-	/* Get data */
-	ret = request_receive(&obj->data, obj->length);
-
-end:
-	channel_unlock();
-	if (ret) {
-		if (obj) {
-			tee_object_free(obj);
-			obj = NULL;
-		}
-	}
-
-	*tee_object = obj;
-
-	return ret;
-}
-
-struct tee_object *tee_object_get(const struct mc_uuid_t *uuid, bool is_gp)
-{
-	struct tee_object *obj = NULL;
-	int ret = 0;
-
-	/* Send request and wait for header */
-	while (true) {
-		ret = tee_object_get_request(uuid, is_gp, &obj);
-		if (ret != -EAGAIN)
-			break;
-
-		msleep(500);
-	}
-
-	if (ret)
-		return ERR_PTR(ret);
-
-	return obj;
 }
 
 static void mc_admin_sendcrashdump(void)
@@ -596,7 +478,7 @@ static inline int load_token(struct mc_admin_load_info *token)
 {
 	struct tee_mmu *mmu;
 	struct mcp_buffer_map map;
-	struct mc_ioctl_buffer buf = {0};
+	struct mc_ioctl_buffer buf;
 	int ret;
 
 	buf.va = (uintptr_t)token->address;
@@ -894,8 +776,10 @@ static int admin_open(struct inode *inode, struct file *file)
 	 * daemon is connected so now we can safely suppose
 	 * the secure world is loaded too
 	 */
-	if (l_ctx.last_tee_ret == TEE_START_NOT_TRIGGERED)
+	if (l_ctx.last_tee_ret == TEE_START_NOT_TRIGGERED) {
+		l_ctx.last_tee_ret = 0;
 		l_ctx.last_tee_ret = l_ctx.tee_start_cb();
+	}
 
 	/* Failed to start the TEE, either now or before */
 	if (l_ctx.last_tee_ret) {

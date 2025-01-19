@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2021-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -25,7 +25,11 @@
 #include "public/mc_user.h"
 
 #ifdef MC_FFA_FASTCALL
+#ifdef MTK_ADAPTED
 #include "ffa_v11/arm_ffa.h"
+#else
+#include <linux/arm_ffa.h>
+#endif
 #include "public/trustonic_ffa_api.h"
 
 #define KINIBI_FFA_TAG_SHARED		0
@@ -57,11 +61,13 @@ int ffa_module_probe(void)
 	return 0;
 }
 
+#ifdef MTK_ADAPTED
 struct ffa_device *get_tee_ffa_dev(void)
 {
 	return l_ffa_ctx.dev;
 }
 EXPORT_SYMBOL(get_tee_ffa_dev);
+#endif
 
 static int ffa_probe(struct ffa_device *ffa_dev)
 {

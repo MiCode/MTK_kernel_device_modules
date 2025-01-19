@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Copyright (c) 2013-2020 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,6 @@ extern "C" {
 /* Driver/daemon commands */
 enum {
 	/* Command 0 is reserved */
-	MC_DRV_GET_TRUSTLET = 4,
 	MC_DRV_SIGNAL_CRASH = 5,
 };
 

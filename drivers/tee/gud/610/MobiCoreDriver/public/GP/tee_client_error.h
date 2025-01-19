@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Copyright (c) 2013-2020 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -116,5 +116,9 @@
  **/
 #define TEEC_ERROR_STORAGE_NO_SPACE       ((uint32_t)0xFFFF3041)
 
-#endif /* TEE_CLIENT_ERROR_H */
+/**
+ * System is busy, try again
+ **/
+#define TEEC_TT_ERROR_SYSTEM_BUSY	  ((uint32_t)0xFFFFF001)
 
+#endif /* TEE_CLIENT_ERROR_H */

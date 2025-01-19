@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2024 TRUSTONIC LIMITED
+ * Copyright (c) 2019-2023 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -12,10 +12,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#ifndef BUILD_TAG_H
-#define BUILD_TAG_H
-#ifndef MOBICORE_COMPONENT_BUILD_TAG
-#define MOBICORE_COMPONENT_BUILD_TAG \
-	"Kinibi-FFA-A-610a-V003-20240523_152438_108509_7e976"
+
+#ifndef MC_RAITE_BE_H
+#define MC_RAITE_BE_H
+
+#include "protocol_common.h"
+
+#ifdef CONFIG_RAITE_HYP
+struct tee_protocol_ops *raite_be_check(void);
+#else
+static inline
+struct tee_protocol_ops *raite_be_check(void)
+{
+	return NULL;
+}
 #endif
-#endif /* BUILD_TAG_H */
+
+#endif /* MC_RAITE_BE_H */

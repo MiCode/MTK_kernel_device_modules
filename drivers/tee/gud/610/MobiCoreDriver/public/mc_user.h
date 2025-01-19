@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Copyright (c) 2013-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -22,7 +22,7 @@
 #include <linux/types.h>
 
 #ifndef __KERNEL__
-#define BIT(n)				(1 << (n))
+#define BIT(n)				(1U << (n))
 #endif /* __KERNEL__ */
 
 #define MC_USER_DEVNODE			"mobicore-user"
@@ -41,10 +41,10 @@
 #define OBJECT_LENGTH_MAX		0x8000000
 
 /* Flags for buffers to map (aligned on GP) */
-#define MC_IO_MAP_INPUT			BIT(0)
-#define MC_IO_MAP_OUTPUT		BIT(1)
+#define MC_IO_MAP_INPUT			BIT(0U)
+#define MC_IO_MAP_OUTPUT		BIT(1U)
 #define MC_IO_MAP_INPUT_OUTPUT		(MC_IO_MAP_INPUT | MC_IO_MAP_OUTPUT)
-#define MC_IO_FFA_LEND			BIT(25)
+#define MC_IO_FFA_LEND			BIT(25U)
 
 /*
  * Universally Unique Identifier (UUID) according to ISO/IEC 11578.

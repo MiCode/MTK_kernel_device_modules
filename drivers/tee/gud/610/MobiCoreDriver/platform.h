@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -23,8 +23,9 @@
  * else you can define it here using
  * #define MC_INTR_SSIQ	0
  */
-
-// #define MC_TEE_HOTPLUG
+#ifndef MTK_ADAPTED
+#define MC_TEE_HOTPLUG
+#endif
 
 /* Enable Paravirtualization support */
 // #define MC_FEBE
@@ -43,7 +44,9 @@
 // #define MC_SHADOW_BUFFER
 #if KERNEL_VERSION(6, 6, 0) <= LINUX_VERSION_CODE
 #define TRUSTONIC_USES_FFA_1_1
-// #define MC_SHADOW_BUFFER
+#ifndef MTK_ADAPTED
+#define MC_SHADOW_BUFFER
+#endif
 /* WARNING: Only use FFA_NOTIFICATION fo SPMC-EL2*/
 #define MC_FFA_NOTIFICATION 1
 #endif
@@ -53,11 +56,11 @@
 /* Probe TEE driver even if node not defined in Device Tree */
 #define MC_PROBE_WITHOUT_DEVICE_TREE
 
+#ifdef MTK_ADAPTED
 #define MC_DEVICE_PROPNAME "trustonic,mobicore"
-
-// #define MC_DISABLE_IRQ_WAKEUP /* Failing on this platform */
-
-/* #define MC_BIG_CORE 0x6 */
 #define PLAT_DEFAULT_TEE_AFFINITY_MASK 0x70
+#else
+#define MC_DEVICE_PROPNAME "arm,mcd"
+#endif
 
 #endif /* MC_DRV_PLATFORM_H */

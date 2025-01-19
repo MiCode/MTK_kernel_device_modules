@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -55,6 +55,8 @@
 
 #define NQ_NUM_ELEMS		64
 #define DEFAULT_TIMEOUT_MS	20000	/* We do nothing on timeout anyway */
+#define AFFINTIY_TRIES_SLEEP	200 /* 1sec retry if affinity not available */
+#define AFFINITY_TRIES_MAX		5
 
 #if !defined(NQ_TEE_WORKER_THREADS)
 #define NQ_TEE_WORKER_THREADS	4
@@ -165,6 +167,11 @@ static u8 get_tee_flags(void)
 {
 	return READ_ONCE(l_ctx.tee_sched->tee_flags);
 }
+
+static u32 get_timeout(void)
+{
+	return READ_ONCE(l_ctx.tee_sched->timeout_ms);
+}
 #else
 /* NOTE: we may use ACCESS_ONCE for older kernels */
 static u32 get_required_workers(void)
@@ -175,6 +182,11 @@ static u32 get_required_workers(void)
 static u8 get_tee_flags(void)
 {
 	return l_ctx.tee_sched->tee_flags;
+}
+
+static u32 get_timeout(void)
+{
+	return l_ctx.tee_sched->timeout_ms;
 }
 #endif
 
@@ -320,6 +332,12 @@ static int irq_bh_worker(void *arg)
 			nq_notif_handler(nf.session_id, nf.payload);
 		}
 
+		if (get_timeout() > 0)
+			mc_dev_devel("%d workers, %d required, timeout = %d\n",
+				     get_workers(),
+					  get_required_workers(),
+					  get_timeout());
+
 		/* This is needed to properly handle secure interrupts when */
 		/* there is no active worker.                               */
 		if (!get_workers()) {
@@ -332,8 +350,6 @@ static int irq_bh_worker(void *arg)
 			 * Linux scheduler point of view.
 			 */
 			while (i < NQ_TEE_WORKER_THREADS) {
-				set_user_nice(l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1 - i],
-					MIN_NICE);
 				if (wake_up_process(
 				l_ctx.tee_worker[NQ_TEE_WORKER_THREADS
 								 - 1 - i]))
@@ -352,27 +368,28 @@ static irqreturn_t irq_handler(int intr, void *arg)
 	return IRQ_HANDLED;
 }
 
-cpumask_t tee_set_affinity(void)
+int tee_set_affinity(cpumask_t *old_affinity)
 {
-	cpumask_t old_affinity;
+	int ret = 0, affinity_tries = 0;
+	cpumask_t local_old_affinity;
 	unsigned long affinity = get_tee_affinity();
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	char buf_aff[64];
 #endif
 
 #if KERNEL_VERSION(5, 3, 0) <= LINUX_VERSION_CODE
-	old_affinity = current->cpus_mask;
+	local_old_affinity = current->cpus_mask;
 #else
-	old_affinity = current->cpus_allowed;
+	local_old_affinity = current->cpus_allowed;
 #endif
 
 	if (current->flags & PF_NO_SETAFFINITY) {
 		mc_dev_devel("skip setting affinity");
-		return old_affinity;
+		return 0;
 	}
 
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
-	cpulist_scnprintf(buf_aff, sizeof(buf_aff), &old_affinity);
+	cpulist_scnprintf(buf_aff, sizeof(buf_aff), &local_old_affinity);
 	mc_dev_devel("aff = %lx mask = %lx curr_aff = %s (pid = %u)",
 		     affinity,
 		     l_ctx.default_affinity_mask,
@@ -382,19 +399,36 @@ cpumask_t tee_set_affinity(void)
 	mc_dev_devel("aff = %lx mask = %lx curr_aff = %*pbl (pid = %u)",
 		     affinity,
 		     l_ctx.default_affinity_mask,
-		     cpumask_pr_args(&old_affinity),
+		     cpumask_pr_args(&local_old_affinity),
 		     current->pid);
 #endif
 	/* we only change affinity if current affinity is not
 	 * a subset of requested TEE affinity
 	 */
 	l_ctx.stat_set_affinity++;
-	if (!cpumask_subset(&old_affinity, to_cpumask(&affinity))) {
-		set_cpus_allowed_ptr(current, to_cpumask(&affinity));
-		l_ctx.stat_set_cpu_allowed++;
+	if (!cpumask_subset(&local_old_affinity, to_cpumask(&affinity))) {
+		ret = set_cpus_allowed_ptr(current, to_cpumask(&affinity));
+		/* set affinity may fail if CPU has been disconnected.
+		 * may not be fatal, just retry few time before exit...
+		 */
+		while ((ret != 0) && (affinity_tries < AFFINITY_TRIES_MAX)) {
+			mc_dev_err(ret,
+				   "tee set cpus affinity failed, wait and retry...");
+			affinity_tries++;
+			msleep(AFFINTIY_TRIES_SLEEP);
+			ret = set_cpus_allowed_ptr(current,
+						   to_cpumask(&affinity));
+		}
+		if (affinity_tries >= AFFINITY_TRIES_MAX) {
+			mc_dev_err(ret, "no tee cpu available");
+			ret = -EAGAIN;
+		} else {
+			l_ctx.stat_set_cpu_allowed++;
+		}
 	}
 
-	return old_affinity;
+	*old_affinity = local_old_affinity;
+	return ret;
 }
 
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
@@ -418,7 +452,8 @@ void tee_restore_affinity(cpumask_t old_affinity)
 		     buf_cur_aff,
 		     current->pid);
 	if (!cpumask_equal(&old_affinity, &current->cpus_allowed))
-		set_cpus_allowed_ptr(current, &old_affinity);
+		if (set_cpus_allowed_ptr(current, &old_affinity) != 0)
+			mc_dev_devel("restore cpus affinity failed");
 }
 #else
 void tee_restore_affinity(cpumask_t old_affinity)
@@ -440,7 +475,8 @@ void tee_restore_affinity(cpumask_t old_affinity)
 		     cpumask_pr_args(&current_affinity),
 		     current->pid);
 	if (!cpumask_equal(&old_affinity, &current_affinity))
-		set_cpus_allowed_ptr(current, &old_affinity);
+		if (set_cpus_allowed_ptr(current, &old_affinity) != 0)
+			mc_dev_devel("restore cpus affinity failed");
 }
 #endif
 
@@ -509,27 +545,29 @@ int nq_session_notify(struct nq_session *session, u32 id, u32 payload)
 		session_state_update_internal(session, NQ_NOTIF_SENT);
 
 		nq_update_time();
-		old_affinity = tee_set_affinity();
-		if (fc_nsiq(session->id, payload))
-			ret = -EPROTO;
-		tee_restore_affinity(old_affinity);
+		if (tee_set_affinity(&old_affinity) != 0) {
+			ret = -EAGAIN;
+			mc_dev_err(ret, "failed to get requested tee cpus");
+		} else {
+			if (fc_nsiq(session->id, payload))
+				ret = -EPROTO;
+			tee_restore_affinity(old_affinity);
 
-		/* The logic behind this strategy is to use as much as
-		 * possible the same worker thread. It is supposed to
-		 * improve non-SMP use cases by giving TEE more
-		 * "weight" (using one and the same thread) from
-		 * Linux scheduler point of view.
-		 */
-		while (i < NQ_TEE_WORKER_THREADS) {
-			set_user_nice(l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1 - i],
-				MIN_NICE);
-			if (wake_up_process(
-			l_ctx.tee_worker[NQ_TEE_WORKER_THREADS
-							 - 1 - i]))
-				break;
-			i++;
+			/* The logic behind this strategy is to use as much as
+			 * possible the same worker thread. It is supposed to
+			 * improve non-SMP use cases by giving TEE more
+			 * "weight" (using one and the same thread) from
+			 * Linux scheduler point of view.
+			 */
+			while (i < NQ_TEE_WORKER_THREADS) {
+				if (wake_up_process(
+				l_ctx.tee_worker[NQ_TEE_WORKER_THREADS
+								 - 1 - i]))
+					break;
+				i++;
+			}
+			logging_run();
 		}
-		logging_run();
 	}
 
 	mutex_unlock(&l_ctx.notifications_mutex);
@@ -658,7 +696,11 @@ static void nq_dump_status(void)
 	}
 
 	mc_dev_info("Status dump:");
-	old_affinity = tee_set_affinity();
+	if (tee_set_affinity(&old_affinity) != 0) {
+		mc_dev_info("failed to get requested tee cpus");
+		return;
+	}
+
 	for (i = 0; i < (size_t)ARRAY_SIZE(status_map); i++) {
 		u32 info;
 
@@ -684,12 +726,17 @@ static void nq_dump_status(void)
 		}
 
 		for (j = 0; j < sizeof(info); j++) {
+#ifdef MTK_ADAPTED
 			ret = snprintf(&uuid_str[(i * sizeof(info) + j) * 2], 3,
 				 "%02x", (info >> (j * 8)) & 0xff);
 			if (ret < 0) {
 				mc_dev_info("  %-22s= %s", "mcExcep.uuid", "Failed to create uuid str");
 				return;
 			}
+#else
+			snprintf(&uuid_str[(i * sizeof(info) + j) * 2], 3,
+				 "%02x", (info >> (j * 8)) & 0xff);
+#endif
 		}
 	}
 	tee_restore_affinity(old_affinity);
@@ -713,6 +760,11 @@ static void nq_dump_status(void)
 
 static void nq_handle_tee_crash(void)
 {
+	/* Bypass tee_logging thread and force a dump of logs buffer
+	 * (should be safe, function has a mutex, worst case would be a
+	 * double print)
+	 */
+	logging_worker(NULL);
 	/*
 	 * Do not change the call order: the debugfs nq status file needs
 	 * to be created before requesting the Daemon to read it.
@@ -775,7 +827,7 @@ ssize_t nq_get_stop_message(char __user *buffer, size_t size)
 
 void nq_signal_tee_hung(void)
 {
-	mc_dev_devel("force stop the notification queue");
+	mc_dev_err(0, "force stop the notification queue");
 	/* Stop the tee_scheduler thread */
 	l_ctx.tee_hung = true;
 	l_ctx.tee_scheduler_run = false;
@@ -784,15 +836,27 @@ void nq_signal_tee_hung(void)
 
 static int nq_boot_tee(void)
 {
+#ifdef MTK_ADAPTED
 	struct irq_data *irq_d = NULL;
+#else
+#ifndef MC_FFA_NOTIFICATION
+	struct irq_data *irq_d = irq_get_irq_data(l_ctx.irq);
+#endif
+#endif
 	unsigned long timeout_jiffies;
 	int ret;
 	u64 tee_sched_buffer, mci_buffer = 0;
+	cpumask_t old_affinity;
 
 	/* Call the INIT fastcall to setup shared buffers */
-	cpumask_t old_affinity = tee_set_affinity();
+	ret = tee_set_affinity(&old_affinity);
+	if (ret != 0) {
+		mc_dev_devel("failed to get requested tee cpus");
+		goto out;
+	}
 
 	/* Set initialization values */
+#ifdef MTK_ADAPTED
 	if (!g_ctx.sel2_support) {
 		irq_d = irq_get_irq_data(l_ctx.irq);
 		l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_IRQ;
@@ -808,6 +872,19 @@ static int nq_boot_tee(void)
 		l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_FFA_NOTIFICATION;
 		l_ctx.tee_sched->init_values.irq = l_ctx.irq;
 	}
+#endif
+#else
+#ifdef MC_FFA_NOTIFICATION
+	l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_FFA_NOTIFICATION;
+	l_ctx.tee_sched->init_values.irq = l_ctx.irq;
+#else
+	l_ctx.tee_sched->init_values.flags |= MC_IV_FLAG_IRQ;
+#if defined(MC_INTR_SSIQ_SWD)
+	l_ctx.tee_sched->init_values.irq = MC_INTR_SSIQ_SWD;
+#endif
+	if (irq_d)
+		l_ctx.tee_sched->init_values.irq = irq_d->hwirq;
+#endif
 #endif
 
 #ifdef MC_FFA_FASTCALL
@@ -911,7 +988,9 @@ static int tee_wait_infinite(void)
 {
 	return wait_event_interruptible_exclusive(l_ctx.workers_wq,
 					!l_ctx.tee_scheduler_run ||
-					get_workers() < get_required_workers());
+					get_workers() <
+					get_required_workers() ||
+					get_timeout() > 0);
 }
 
 static int tee_wait_timeout(unsigned int timeout_ms)
@@ -919,7 +998,9 @@ static int tee_wait_timeout(unsigned int timeout_ms)
 	return wait_event_interruptible_timeout(l_ctx.workers_wq,
 						!l_ctx.tee_scheduler_run ||
 						get_workers() <
-						get_required_workers(),
+						get_required_workers() ||
+						((get_timeout() > 0) &&
+						(get_timeout() < timeout_ms)),
 						msecs_to_jiffies(timeout_ms));
 }
 
@@ -1011,12 +1092,20 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 	bool tee_halted;
 	u32 req_workers;
 	int ret, id = (int)arg;
+	cpumask_t old_affinity;
+
 	*timeout_ms = 0;
 
 	/* Adjust worker CPU affinity based on global TEE affinity.
 	 * No need to save it, we are running in our own kthread
 	 */
-	tee_set_affinity();
+	ret = tee_set_affinity(&old_affinity);
+	if (ret != 0) {
+		mc_dev_err(ret, "failed to get requested tee cpus");
+		nq_signal_tee_hung(); /* Signal other workers */
+		ret = -EIO;
+		goto exit;
+	}
 
 	while (true) {
 		/* If nq_stop or nq_signal_tee_hung called */
@@ -1028,8 +1117,10 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 		/* Check crash */
 		tee_halted = get_tee_flags() & MC_STATE_FLAG_TEE_HALT_MASK;
 		if (tee_halted) {
-			nq_signal_tee_hung(); /* Signal other workers */
 			ret = -EHOSTUNREACH;
+			mc_dev_err(ret, "[%d] got tee_halted state (0x%x)",
+				   id, get_tee_flags());
+			nq_signal_tee_hung(); /* Signal other workers */
 			goto exit;
 		}
 
@@ -1079,16 +1170,16 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 			break;
 
 		case MC_SMC_S_HALT:
-			mc_dev_devel("[%d] received TEE halt response.", id);
-			nq_signal_tee_hung(); /* Signal other workers */
 			ret = -EHOSTUNREACH;
+			mc_dev_err(ret, "[%d] received TEE halt response.", id);
+			nq_signal_tee_hung(); /* Signal other workers */
 			goto exit;
 
 		default:
-			mc_dev_devel("[%d] unknown TEE response (0x%x)", id,
-				     resp.resp);
-			nq_signal_tee_hung(); /* Signal other workers */
 			ret = -EIO;
+			mc_dev_err(ret, "[%d] unknown TEE response (0x%x)", id,
+				   resp.resp);
+			nq_signal_tee_hung(); /* Signal other workers */
 			goto exit;
 		}
 
@@ -1230,6 +1321,7 @@ int nq_start(void)
 	int ret, cnt;
 	u64 trace_buffer = 0;
 
+#ifdef MTK_ADAPTED
 	if (!g_ctx.sel2_support) {
 		/* Make sure we have the interrupt before going on */
 #if defined(CONFIG_OF)
@@ -1271,7 +1363,46 @@ int nq_start(void)
 		}
 	}
 #endif
+#else
+#ifdef MC_FFA_NOTIFICATION
+	l_ctx.irq = ffa_register_notif_handler(irq_handler);
+	if (l_ctx.irq < 0) {
+		ret = -EINVAL;
+		return ret;
+	}
+#else
+	/* Make sure we have the interrupt before going on */
+#if defined(CONFIG_OF)
+	l_ctx.irq = irq_of_parse_and_map(g_ctx.mcd->of_node, 0);
+#endif
+#if defined(MC_INTR_SSIQ)
+	if (l_ctx.irq <= 0)
+		l_ctx.irq = MC_INTR_SSIQ;
+#endif
 
+	if (l_ctx.irq <= 0) {
+		ret = -EINVAL;
+		mc_dev_err(ret, "No IRQ number, aborting");
+		return ret;
+	}
+
+	ret = request_irq(l_ctx.irq, irq_handler, IRQF_NO_SUSPEND,
+			  "trustonic", NULL);
+	if (ret)
+		return ret;
+
+#ifdef MC_DISABLE_IRQ_WAKEUP
+	mc_dev_info("irq_set_irq_wake on irq %u disabled", l_ctx.irq);
+#else
+	ret = irq_set_irq_wake(l_ctx.irq, 1);
+	if (ret) {
+		mc_dev_err(ret, "irq_set_irq_wake error on irq %u",
+			   l_ctx.irq);
+		return ret;
+	}
+#endif
+#endif
+#endif
 	/* Enable TEE clock */
 	mc_clock_enable();
 
@@ -1301,7 +1432,13 @@ int nq_start(void)
 
 	/* Logging */
 	if (l_ctx.log_buffer_size) {
-		cpumask_t old_affinity = tee_set_affinity();
+		cpumask_t old_affinity;
+
+		ret = tee_set_affinity(&old_affinity);
+		if (ret != 0) {
+			mc_dev_err(ret, "failed to get requested tee cpus");
+			return ret;
+		}
 
 #ifdef MC_FFA_FASTCALL
 		ret = ffa_share_trace_buffer(l_ctx.log_buffer,
@@ -1353,19 +1490,18 @@ int nq_start(void)
 	l_ctx.tee_scheduler_run = true;
 
 	for (cnt = 0; cnt < NQ_TEE_WORKER_THREADS; cnt++) {
+#ifdef MTK_ADAPTED
 		ret = snprintf(worker_name, 13, "tee_worker/%d", cnt);
 		if (ret < 0) {
 			mc_dev_info("Failed to create worker name");
 			return ret;
 		}
-
+#else
+		snprintf(worker_name, 13, "tee_worker/%d", cnt);
+#endif
 		l_ctx.tee_worker[cnt] = kthread_create(tee_worker,
 						       (void *)((uintptr_t)cnt),
 						       "%s", worker_name);
-
-#if defined(MC_BIG_CORE)
-		kthread_bind(l_ctx.tee_worker[cnt], MC_BIG_CORE);
-#endif
 
 		if (IS_ERR(l_ctx.tee_worker[cnt])) {
 			ret = PTR_ERR(l_ctx.tee_worker[cnt]);
@@ -1380,10 +1516,8 @@ int nq_start(void)
 	 * (in case of Embedded/StartOnBoot drivers
 	 * preventing tee_wait_infinite from blocking)
 	 */
-	for (cnt = 0; cnt < NQ_TEE_WORKER_THREADS; cnt++) {
-		set_user_nice(l_ctx.tee_worker[cnt], MIN_NICE);
+	for (cnt = 0; cnt < NQ_TEE_WORKER_THREADS; cnt++)
 		wake_up_process(l_ctx.tee_worker[cnt]);
-	}
 
 	/* Create worker debugfs entry */
 	debugfs_create_file("workers_counters", 0600, g_ctx.debug_dir, NULL,

@@ -685,15 +685,8 @@ int session_mc_open_session(struct tee_session *session,
 		/* Nothing to do */
 		obj = NULL;
 	} else if (info->type == TEE_MC_UUID) {
-		/* Get TA from registry */
-		obj = tee_object_get(info->uuid, false);
-		/* Tell SWd to load TA from SFS as not in registry */
-		if (IS_ERR(obj)) {
-			int ret = PTR_ERR(obj);
-
-			if ((ret == -ENOENT) || (ret == -ENOPROTOOPT))
-				obj = tee_object_select(info->uuid);
-		}
+		/* Load driver using only uuid */
+		obj = tee_object_select(info->uuid);
 	} else if (info->type == TEE_MC_DRIVER_UUID) {
 		/* Load driver using only uuid */
 		obj = tee_object_select(info->uuid);
@@ -1060,7 +1053,6 @@ int session_gp_open_session(struct tee_session *session,
 	int ret = 0;
 
 	memset(bufs, 0, sizeof(bufs));
-	memset(maps, 0, sizeof(maps));
 
 	ret = iwp_open_session_prepare(&session->iwp_session, operation, bufs,
 				       parents, gp_ret);
@@ -1142,7 +1134,6 @@ int session_gp_invoke_command(struct tee_session *session, u32 command_id,
 	int ret = 0;
 
 	memset(bufs, 0, sizeof(bufs));
-	memset(maps, 0, sizeof(maps));
 
 	ret = iwp_invoke_command_prepare(&session->iwp_session, command_id,
 					 operation, bufs, parents, gp_ret);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -64,7 +64,7 @@ static struct logging_ctx {
 	u32	line_len;		/* Log Line buffer current length */
 	u32	line_log_level;		/* Log Line log message level */
 	bool	dead;
-	u32	log_level;		/* Kinibi trace level */
+	u32	log_level;		/* TEE trace level */
 	bool	started;
 } log_ctx;
 
@@ -157,7 +157,7 @@ static inline int log_msg(void *data)
 	return sizeof(*msg);
 }
 
-static void logging_worker(struct kthread_work *work)
+void logging_worker(struct kthread_work *work)
 {
 	static DEFINE_MUTEX(local_mutex);
 
@@ -200,7 +200,12 @@ static int logging_set_trace_level(u32 log_level)
 		return 0;
 	}
 
-	old_affinity = tee_set_affinity();
+	ret = tee_set_affinity(&old_affinity);
+	if (ret != 0) {
+		mc_dev_err(ret, "failed to get requested tee cpus");
+		return ret;
+	}
+
 	ret = fc_trace_set_level(log_level);
 	tee_restore_affinity(old_affinity);
 
@@ -327,6 +332,10 @@ int logging_trace_level_init(void)
 	int ret = 0;
 
 	/* Trace level */
+	/* Initial value in TEE is LOG_DEBUG
+	 * in case the call logging_set_trace_level fails,
+	 * this variable is inline with value in TEE
+	 */
 	log_ctx.log_level = LOG_DEBUG;
 
 	ret = logging_set_trace_level(LOG_ERROR);
