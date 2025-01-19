@@ -138,6 +138,7 @@ mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/mfd:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/nvmem:ddk_makefiles".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/core:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_makefile".format(kernel_version),
 ]
 
@@ -157,6 +158,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/core:hf_manager".format(kernel_version),
     "//kernel_device_modules-{}/drivers/nvmem:nvmem_mtk-devinfo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
@@ -565,7 +567,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/sda/irq-dbg.ko",
     "drivers/misc/mediatek/sda/last_bus.ko",
     "drivers/misc/mediatek/sda/systracker.ko",
-    "drivers/misc/mediatek/sensor/2.0/core/hf_manager.ko",
     "drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko",
     "drivers/misc/mediatek/slbc/mmsram.ko",
     "drivers/misc/mediatek/slbc/mtk_slbc.ko",
