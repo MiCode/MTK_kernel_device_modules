@@ -36,6 +36,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk-mml-dpc.h"
 #include "mdp_dpc.h"
+#include <mt-plat/mtk_irq_mon.h>
 
 int dbg_runtime_ctrl;
 module_param(dbg_runtime_ctrl, int, 0644);
@@ -3824,6 +3825,7 @@ static void mtk_disp_vlp_vote_by_cpu_v1(unsigned int vote_set, unsigned int thre
 		i++;
 	} while (1);
 
+	irq_log_store();
 	/* check voter only, later will use another API to power on mminfra */
 	if (dbg_mmp)
 		dpc_mmp(cpu_vote, MMPROFILE_FLAG_PULSE, BIT(thread) | vote_set, val);
@@ -3882,9 +3884,12 @@ static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user user)
 	}
 	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 
+	irq_log_store();
 	mtk_disp_vlp_vote_by_cpu_v1(VOTE_CLR, user);
+	irq_log_store();
 
 	dpc_pm_ctrl(false, __func__);
+	irq_log_store();
 }
 
 static void dpc_dump_regs(unsigned int start, unsigned int end)
