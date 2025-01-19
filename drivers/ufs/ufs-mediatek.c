@@ -2880,6 +2880,12 @@ static void _ufs_mtk_clk_scale(struct ufs_hba *hba, bool scale_up)
 	bool clk_bind_vcore = false;
 	bool clk_fde_scale = false;
 
+	if (!hba->clk_scaling.is_initialized)
+		return;
+
+	if (!clki || !fde_clki)
+		return;
+
 	reg = host->mclk.reg_vcore;
 	volt = host->mclk.vcore_volt;
 	if (reg && volt != 0)
