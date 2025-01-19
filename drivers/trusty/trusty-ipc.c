@@ -61,6 +61,18 @@
 #define TRUSTY_IPC_REGISTER_SHRINKER_ARG
 #endif
 
+#if (KERNEL_VERSION(6, 4, 0) <= LINUX_VERSION_CODE)
+static struct class * __must_check trusty_ipc_class_create(const char *name)
+{
+	return class_create(name);
+}
+#else
+static struct class * __must_check trusty_ipc_class_create(const char *name)
+{
+	return class_create(THIS_MODULE, name);
+}
+#endif
+
 struct tipc_virtio_dev;
 
 struct tipc_dev_config {
@@ -319,9 +331,9 @@ static int vds_start_unmap(struct tipc_virtio_dev *vds,
 
 		if (vds->reuse_msgbuf) {
 			dev_dbg(&vds->vdev->dev,
-					"%s: reclaim in progress id= %llu sg= %p dev_addr= 0x%llx\n",
+					"%s: reclaim in progress id= %llu sg= %p dev_addr= %pad\n",
 					__func__, mb->buf_id, &mb->sg,
-					sg_dma_address(&mb->sg));
+					&sg_dma_address(&mb->sg));
 
 			/* move from local list to reclaim in progress list */
 			mutex_lock(&vds->reclaim_list_lock);
@@ -1500,8 +1512,9 @@ static int dn_share_fd(struct tipc_dn_chan *dn, int fd,
 	 */
 	if (!ret) {
 		/* Use shared memory ID owned by dma_buf */
-		if (transfer_kind != TRUSTY_SEND_SECURE) {
-			dev_err(dev, "transfer_kind: %d, must be TRUSTY_SEND_SECURE\n",
+		if (transfer_kind != TRUSTY_SEND_SECURE &&
+		    transfer_kind != TRUSTY_SEND_SECURE_OR_SHARE) {
+			dev_err(dev, "transfer_kind: %d, must be TRUSTY_SEND_SECURE{_OR_SHARE}\n",
 				transfer_kind);
 			ret = -EINVAL;
 			goto cleanup_handle;
@@ -1537,10 +1550,16 @@ static int dn_share_fd(struct tipc_dn_chan *dn, int fd,
 		goto cleanup_handle;
 	}
 
-	ret = trusty_transfer_memory(tipc_shared_handle_dev(shared_handle),
-				     &mem_id, shared_handle->sgt->sgl,
-				     shared_handle->sgt->orig_nents, prot, tag,
-				     lend);
+	if (lend)
+		ret = trusty_lend_memory(tipc_shared_handle_dev(shared_handle),
+					 &mem_id, shared_handle->sgt->sgl,
+					 shared_handle->sgt->orig_nents, prot,
+					 tag);
+	else
+		ret = trusty_share_memory(tipc_shared_handle_dev(shared_handle),
+					  &mem_id, shared_handle->sgt->sgl,
+					  shared_handle->sgt->orig_nents, prot,
+					  tag);
 
 	if (ret < 0) {
 		dev_dbg(dev, "Transferring memory failed: %d\n", ret);
@@ -1662,6 +1681,7 @@ static long filp_send_ioctl(struct file *filp,
 		case TRUSTY_SHARE:
 		case TRUSTY_LEND:
 		case TRUSTY_SEND_SECURE:
+		case TRUSTY_SEND_SECURE_OR_SHARE:
 			break;
 		default:
 			dev_err(dev, "Unknown transfer type: 0x%x\n",
@@ -2217,8 +2237,8 @@ static void _handle_unmap_rsp(struct tipc_virtio_dev *vds,
 		return;
 	}
 
-	dev_dbg(&vds->vdev->dev, "%s: calling reclaim on id= %llu sg= %p dev_addr= 0x%llx\n",
-			__func__, rsp->id, &mb->sg, sg_dma_address(&mb->sg));
+	dev_dbg(&vds->vdev->dev, "%s: calling reclaim on id= %llu sg= %p dev_addr= %pad\n",
+			__func__, rsp->id, &mb->sg, &sg_dma_address(&mb->sg));
 
 	vds_free_msg_buf(vds, mb);
 
@@ -2552,10 +2572,20 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	struct tipc_virtio_dev *vds;
 	struct tipc_dev_config config;
 	struct virtqueue *vqs[2];
-	struct virtqueue_info vqs_info[] = {
-		{ "rx", _rxvq_cb, NULL },
-		{ "tx", _txvq_cb, NULL },
+/*
+ * TODO: change to 6.11. The version here should be 6.11, but android-mainline
+ * is still on 6.10 with 6.11 some changes merged. Since there is no other
+ * 6.10 gki kernel temporarily treat 6.10 as 6.11.
+ */
+#if (KERNEL_VERSION(6, 10, 0) <= LINUX_VERSION_CODE)
+	static struct virtqueue_info vq_infos[] = {
+		{ .name = "rx", .callback = _rxvq_cb, .ctx = false },
+		{ .name = "tx", .callback = _txvq_cb, .ctx = false },
 	};
+#else
+	vq_callback_t *vq_cbs[] = {_rxvq_cb, _txvq_cb};
+	static const char * const vq_names[] = { "rx", "tx" };
+#endif
 
 	if (!is_google_real_driver()) {
 		dev_info(&vdev->dev, "%s: google trusty ipc dummy driver\n", __func__);
@@ -2596,7 +2626,18 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	vds->cdev_name[sizeof(vds->cdev_name)-1] = '\0';
 
 	/* find tx virtqueues (rx and tx and in this order) */
-	err = vdev->config->find_vqs(vdev, 2, vqs, vqs_info, NULL);
+	err = vdev->config->find_vqs(vdev, 2, vqs,
+/*
+ * TODO: change to 6.11. The version here should be 6.11, but android-mainline
+ * is still on 6.10 with 6.11 some changes merged. Since there is no other
+ * 6.10 gki kernel temporarily treat 6.10 as 6.11.
+ */
+#if (KERNEL_VERSION(6, 10, 0) <= LINUX_VERSION_CODE)
+				     vq_infos,
+#else
+				     vq_cbs, vq_names, NULL,
+#endif
+				     NULL);
 	if (err)
 		goto err_find_vqs;
 
@@ -2709,6 +2750,8 @@ static void tipc_virtio_remove(struct virtio_device *vdev)
 	kref_put(&vds->refcount, _free_vds);
 }
 
+// TODO (b/207176288) This needs to be sent upstream
+#define VIRTIO_ID_TRUSTY_IPC 13 /* virtio trusty ipc */
 static const struct virtio_device_id tipc_virtio_id_table[] = {
 	{ VIRTIO_ID_TRUSTY_IPC, VIRTIO_DEV_ANY_ID },
 	{ 0 },
@@ -2745,7 +2788,7 @@ static int __init tipc_init(void)
 	}
 
 	tipc_major = MAJOR(dev);
-	tipc_class = class_create(KBUILD_MODNAME);
+	tipc_class = trusty_ipc_class_create(KBUILD_MODNAME);
 	if (IS_ERR(tipc_class)) {
 		ret = PTR_ERR(tipc_class);
 		pr_err("%s: class_create failed: %d\n", __func__, ret);

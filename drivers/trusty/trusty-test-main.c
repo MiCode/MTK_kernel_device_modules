@@ -142,7 +142,8 @@ static int trusty_test_share_objs(struct trusty_test_state *s,
 		t1 = ktime_get();
 		tmpret = trusty_share_memory(s->trusty_dev, &obj->mem_id,
 					     obj->sgt.sgl, obj->sgt.nents,
-					     PAGE_KERNEL);
+					     PAGE_KERNEL,
+					     TRUSTY_DEFAULT_MEM_OBJ_TAG);
 		t2 = ktime_get();
 		if (tmpret) {
 			ret = tmpret;
@@ -348,9 +349,87 @@ static size_t trusty_test_get_arg(const char **buf, size_t default_val)
 	return ret;
 }
 
+#ifdef CONFIG_ARM64
+static ssize_t trusty_test_fpsimd(struct trusty_test_state *s)
+{
+	struct user_fpsimd_state old_state, new_state[2];
+	unsigned long flags;
+	int ret;
+
+	/*
+	 * Disable interrupts so we stay on the current CPU and
+	 * guarantee that nothing else touches the FP registers
+	 */
+	local_irq_save(flags);
+	trusty_fpsimd_save_state(&old_state);
+
+	ret = trusty_fast_call32(s->trusty_dev, SMC_FC_TEST_CLOBBER_FPSIMD_CLOBBER,
+				 0, 0, 0);
+	if (ret) {
+		dev_err(s->dev, "trusty fp clobber failed: %d\n", ret);
+		goto err;
+	}
+
+	trusty_fpsimd_save_state(&new_state[0]);
+	trusty_fpsimd_load_state(&old_state);
+
+	/*
+	 * Call into Trusty again so it can check
+	 * that we didn't clobber its registers
+	 */
+	ret = trusty_fast_call32(s->trusty_dev, SMC_FC_TEST_CLOBBER_FPSIMD_CHECK,
+				 1, 0, 0);
+	if (ret) {
+		dev_err(s->dev, "trusty fp check failed: %d\n", ret);
+		goto err;
+	}
+
+	/* Restore the old state */
+	trusty_fpsimd_save_state(&new_state[1]);
+	trusty_fpsimd_load_state(&old_state);
+	local_irq_restore(flags);
+
+	for (size_t i = 0; i < ARRAY_SIZE(new_state); i++) {
+		for (size_t j = 0; j < ARRAY_SIZE(old_state.vregs); j++) {
+			if (new_state[i].vregs[j] != old_state.vregs[j]) {
+				dev_err(s->dev, "vregs[%zu][%zu] mismatch\n",
+					i, j);
+				return -EIO;
+			}
+		}
+		if (new_state[i].fpcr != old_state.fpcr) {
+			dev_err(s->dev, "FPCR[%zu] mismatch: %x != %x\n",
+				i, new_state[i].fpcr, old_state.fpcr);
+			return -EIO;
+		}
+		if (new_state[i].fpsr != old_state.fpsr) {
+			dev_err(s->dev, "FPSR[%zu] mismatch: %x != %x\n",
+				i, new_state[i].fpsr, old_state.fpsr);
+			return -EIO;
+		}
+	}
+
+	return 0;
+
+err:
+	trusty_fpsimd_load_state(&old_state);
+	local_irq_restore(flags);
+	return -EIO;
+}
+#else
+static ssize_t trusty_test_fpsimd(struct trusty_test_state *s)
+{
+	/* This test is a no-op on other architectures, e.g., arm */
+	return 0;
+}
+#endif
+
 /*
  * Run tests described by a string in this format:
  * <obj_size>,<obj_count=1>,<repeat_share=1>,<repeat_access=3>
+ *
+ * Run FP tests with this alternative format:
+ * fpsimd:<count>
  */
 static ssize_t trusty_test_run_store(struct device *dev,
 				     struct device_attribute *attr,
@@ -365,6 +444,26 @@ static ssize_t trusty_test_run_store(struct device *dev,
 	int ret;
 	char *buf_next;
 
+	size = str_has_prefix(buf, "fpsimd:");
+	if (size) {
+		ret = kstrtoul(buf + size, 0, &obj_count);
+		if (ret) {
+			dev_err(s->dev, "invalid fpsimd test count: %d\n",
+				ret);
+			return ret;
+		}
+
+		dev_info(s->dev, "running trusty fpsimd tests %zu times...\n",
+			 obj_count);
+		for (size_t i = 0; i < obj_count; i++) {
+			ret = trusty_test_fpsimd(s);
+			if (ret)
+				return ret;
+		}
+
+		return count;
+	}
+
 	while (true) {
 		while (isspace(*buf))
 			buf++;
@@ -373,7 +472,7 @@ static ssize_t trusty_test_run_store(struct device *dev,
 			return count;
 		buf = buf_next;
 		obj_count = trusty_test_get_arg(&buf, 1);
-		repeat_share = trusty_test_get_arg(&buf, 1);
+		repeat_share = trusty_test_get_arg(&buf, 2);
 		repeat_access = trusty_test_get_arg(&buf, 3);
 
 		ret = trusty_test_run(s, DIV_ROUND_UP(size, PAGE_SIZE),
@@ -395,11 +494,6 @@ static int trusty_test_probe(struct platform_device *pdev)
 {
 	struct trusty_test_state *s;
 	int ret;
-
-	if (!is_google_real_driver()) {
-		dev_info(&pdev->dev, "%s: google trusty test dummy driver\n", __func__);
-		return 0;
-	}
 
 	ret = trusty_std_call32(pdev->dev.parent, SMC_SC_TEST_VERSION,
 				TRUSTY_STDCALLTEST_API_VERSION, 0, 0);
@@ -426,7 +520,7 @@ static void trusty_test_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id trusty_test_of_match[] = {
-	{ .compatible = "android,google-trusty-test-v1", },
+	{ .compatible = "android,trusty-test-v1", },
 	{},
 };
 
@@ -434,9 +528,9 @@ MODULE_DEVICE_TABLE(trusty, trusty_test_of_match);
 
 static struct platform_driver trusty_test_driver = {
 	.probe = trusty_test_probe,
-	.remove = trusty_test_remove,
+	.remove_new = trusty_test_remove,
 	.driver = {
-		.name = "google-trusty-test",
+		.name = "trusty-test",
 		.of_match_table = trusty_test_of_match,
 		.dev_groups = trusty_test_groups,
 	},

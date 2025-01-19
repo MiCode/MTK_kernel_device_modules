@@ -22,13 +22,17 @@ define_mgk_ddk_ko(
     name = "trusty-core",
     srcs = [
         "trusty.c",
+#        "trusty-ffa.c",
+#        "trusty-ffa.h",
         "trusty-irq.c",
         "trusty-irq.h",
         "trusty-irq-trace.h",
         "trusty-mem.c",
+        "trusty-private.h",
         "trusty-sched-share.c",
         "trusty-sched-share.h",
         "trusty-sched-share-api.h",
+        "trusty-smc.c",
         "trusty-smc.h",
         "trusty-smc-arm64.S",
         "trusty-trace.h",
@@ -59,7 +63,8 @@ define_mgk_ddk_ko(
 define_mgk_ddk_ko(
     name = "trusty-test",
     srcs = [
-        "trusty-test.c",
+        "trusty-test-arm64.S",
+        "trusty-test-main.c",
         "trusty-test.h",
     ],
     includes = ["."],

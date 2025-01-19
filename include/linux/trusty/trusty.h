@@ -15,6 +15,7 @@
 #include <linux/device.h>
 #include <linux/pagemap.h>
 
+#define TRUSTY_DEFAULT_MEM_OBJ_TAG	(0)
 
 /*
  * map Trusty priorities to Linux nice values (see trusty-sched-share.h)
@@ -63,9 +64,11 @@ u32 trusty_get_api_version(struct device *dev);
 bool trusty_get_panic_status(struct device *dev);
 
 struct ns_mem_page_info {
+#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
 	u64 paddr;
 	u8 ffa_mem_attr;
 	u8 ffa_mem_perm;
+#endif
 	u64 compat_attr;
 };
 
@@ -76,13 +79,13 @@ struct scatterlist;
 typedef u64 trusty_shared_mem_id_t;
 int trusty_share_memory(struct device *dev, trusty_shared_mem_id_t *id,
 			struct scatterlist *sglist, unsigned int nents,
-			pgprot_t pgprot);
+			pgprot_t pgprot, u64 tag);
 int trusty_share_memory_compat(struct device *dev, trusty_shared_mem_id_t *id,
 			       struct scatterlist *sglist, unsigned int nents,
 			       pgprot_t pgprot);
-int trusty_transfer_memory(struct device *dev, u64 *id,
-			   struct scatterlist *sglist, unsigned int nents,
-			   pgprot_t pgprot, u64 tag, bool lend);
+int trusty_lend_memory(struct device *dev, u64 *id,
+		       struct scatterlist *sglist, unsigned int nents,
+		       pgprot_t pgprot, u64 tag);
 int trusty_reclaim_memory(struct device *dev, trusty_shared_mem_id_t id,
 			  struct scatterlist *sglist, unsigned int nents);
 
@@ -92,7 +95,7 @@ u64 trusty_dma_buf_get_ffa_tag(struct dma_buf *dma_buf);
 #else
 static inline u64 trusty_dma_buf_get_ffa_tag(struct dma_buf *dma_buf)
 {
-	return 0;
+	return TRUSTY_DEFAULT_MEM_OBJ_TAG;
 }
 #endif
 
@@ -138,6 +141,7 @@ static inline void trusty_nop_init(struct trusty_nop *nop,
 
 void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop);
 void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop);
+int trusty_nop_nice_value(void);
 
 u32 is_google_real_driver(void);
 

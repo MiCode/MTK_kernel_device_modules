@@ -15,7 +15,6 @@
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <linux/string.h>
-#include <linux/trusty/arm_ffa.h>
 #include <linux/trusty/smcall.h>
 #include <linux/trusty/sm_err.h>
 #include <linux/trusty/trusty.h>
@@ -23,13 +22,18 @@
 #include <linux/scatterlist.h>
 #include <linux/dma-mapping.h>
 
+#if CONFIG_ARM64
+#include <asm/daifflags.h>
+#endif
+
+#ifdef CONFIG_TRUSTY_FFA_TRANSPORT
+#include "trusty-ffa.h"
+#endif
 #include "trusty-irq.h"
-#include "trusty-smc.h"
+#include "trusty-private.h"
 #include "trusty-trace.h"
 #include "trusty-sched-share-api.h"
 
-
-struct trusty_state;
 static struct platform_driver trusty_driver;
 static int trusty_cpuhp_slot = -1;
 
@@ -39,47 +43,10 @@ module_param(use_high_wq, bool, 0660);
 static int nop_nice_value = -20; /* default to highest */
 module_param(nop_nice_value, int, 0660);
 
+static u64 trusty_poll_period_ms = 100;
+module_param(trusty_poll_period_ms, ullong, 0660);
+
 static u32 real_drv;
-
-struct trusty_work {
-	struct trusty_state *s;
-	unsigned int cpu;
-	struct task_struct *nop_thread;
-	wait_queue_head_t nop_event_wait;
-	int signaled;
-};
-
-struct trusty_state {
-	struct mutex smc_lock;
-	struct atomic_notifier_head notifier;
-	struct completion cpu_idle_completion;
-	char *version_str;
-	u32 api_version;
-	bool trusty_panicked;
-	struct device *dev;
-	struct hlist_node cpuhp_node;
-	struct trusty_work __percpu *nop_works;
-	struct list_head nop_queue;
-	spinlock_t nop_lock; /* protects nop_queue */
-	struct device_dma_parameters dma_parms;
-	struct trusty_sched_share_state *trusty_sched_share_state;
-	void *ffa_tx;
-	void *ffa_rx;
-	u16 ffa_local_id;
-	u16 ffa_remote_id;
-	struct mutex share_memory_msg_lock; /* protects share_memory_msg */
-};
-
-static inline unsigned long smc(unsigned long r0, unsigned long r1,
-				unsigned long r2, unsigned long r3)
-{
-	unsigned long ret;
-
-	trace_trusty_smc(r0, r1, r2, r3);
-	ret = trusty_smc8(r0, r1, r2, r3, 0, 0, 0, 0).r0;
-	trace_trusty_smc_done(ret);
-	return ret;
-}
 
 s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
@@ -92,7 +59,7 @@ s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	if (WARN_ON(SMC_IS_SMC64(smcnr)))
 		return SM_ERR_INVALID_PARAMETERS;
 
-	return smc(smcnr, a0, a1, a2);
+	return s->call_ops->trusty_fast_call(dev, smcnr, a0, a1, a2);
 }
 EXPORT_SYMBOL(trusty_fast_call32);
 
@@ -108,7 +75,7 @@ s64 trusty_fast_call64(struct device *dev, u64 smcnr, u64 a0, u64 a1, u64 a2)
 	if (WARN_ON(!SMC_IS_SMC64(smcnr)))
 		return SM_ERR_INVALID_PARAMETERS;
 
-	return smc(smcnr, a0, a1, a2);
+	return s->call_ops->trusty_fast_call(dev, smcnr, a0, a1, a2);
 }
 EXPORT_SYMBOL(trusty_fast_call64);
 #endif
@@ -120,13 +87,16 @@ static unsigned long trusty_std_call_inner(struct device *dev,
 {
 	unsigned long ret;
 	int retry = 5;
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
 	dev_dbg(dev, "%s(0x%lx 0x%lx 0x%lx 0x%lx)\n",
 		__func__, smcnr, a0, a1, a2);
 	while (true) {
-		ret = smc(smcnr, a0, a1, a2);
+		ret = s->call_ops->trusty_std_call(dev, smcnr, a0, a1, a2);
 		while ((s32)ret == SM_ERR_FIQ_INTERRUPTED)
-			ret = smc(SMC_SC_RESTART_FIQ, 0, 0, 0);
+			ret = s->call_ops->trusty_std_call(dev,
+							   SMC_SC_RESTART_FIQ,
+							   0, 0, 0);
 		if ((int)ret != SM_ERR_BUSY || !retry)
 			break;
 
@@ -138,6 +108,32 @@ static unsigned long trusty_std_call_inner(struct device *dev,
 	return ret;
 }
 
+#if CONFIG_ARM64
+
+static void trusty_local_irq_disable_before_smc(void)
+{
+	local_daif_mask();
+}
+
+static void trusty_local_irq_enable_after_smc(void)
+{
+	local_daif_restore(DAIF_PROCCTX);
+}
+
+#else
+
+static void trusty_local_irq_disable_before_smc(void)
+{
+	local_irq_disable();
+}
+
+static void trusty_local_irq_enable_after_smc(void)
+{
+	local_irq_enable();
+}
+
+#endif
+
 static unsigned long trusty_std_call_helper(struct device *dev,
 					    unsigned long smcnr,
 					    unsigned long a0, unsigned long a1,
@@ -148,7 +144,7 @@ static unsigned long trusty_std_call_helper(struct device *dev,
 	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
 	while (true) {
-		local_irq_disable();
+		trusty_local_irq_disable_before_smc();
 
 		/* tell Trusty scheduler what the current priority is */
 		WARN_ON_ONCE(current->policy != SCHED_NORMAL);
@@ -176,7 +172,7 @@ static unsigned long trusty_std_call_helper(struct device *dev,
 			 */
 			trusty_enqueue_nop(dev, NULL);
 		}
-		local_irq_enable();
+		trusty_local_irq_enable_after_smc();
 
 		if ((int)ret != SM_ERR_BUSY)
 			break;
@@ -267,186 +263,37 @@ EXPORT_SYMBOL(trusty_std_call32);
 
 int trusty_share_memory(struct device *dev, u64 *id,
 			struct scatterlist *sglist, unsigned int nents,
-			pgprot_t pgprot)
-{
-	return trusty_transfer_memory(dev, id, sglist, nents, pgprot, 0,
-				      false);
-}
-EXPORT_SYMBOL(trusty_share_memory);
-
-int trusty_transfer_memory(struct device *dev, u64 *id,
-			   struct scatterlist *sglist, unsigned int nents,
-			   pgprot_t pgprot, u64 tag, bool lend)
+			pgprot_t pgprot, u64 tag)
 {
 	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 	int ret;
-	struct ns_mem_page_info pg_inf;
-	struct scatterlist *sg;
-	size_t count;
-	size_t i;
-	size_t len = 0;
-	u64 ffa_handle = 0;
-	size_t total_len;
-	size_t endpoint_count = 1;
-	struct ffa_mtd *mtd = s->ffa_tx;
-	size_t comp_mrd_offset = offsetof(struct ffa_mtd, emad[endpoint_count]);
-	struct ffa_comp_mrd *comp_mrd = s->ffa_tx + comp_mrd_offset;
-	struct ffa_cons_mrd *cons_mrd = comp_mrd->address_range_array;
-	size_t cons_mrd_offset = (void *)cons_mrd - s->ffa_tx;
-	struct smc_ret8 smc_ret;
-	u32 cookie_low;
-	u32 cookie_high;
 
 	if (WARN_ON(dev->driver != &trusty_driver.driver))
 		return -EINVAL;
 
-	if (WARN_ON(nents < 1))
-		return -EINVAL;
+	ret = s->mem_ops->trusty_share_memory(dev, id, sglist, nents, pgprot,
+					       tag);
 
-	if (nents != 1 && s->api_version < TRUSTY_API_VERSION_MEM_OBJ) {
-		dev_err(s->dev, "%s: old trusty version does not support non-contiguous memory objects\n",
-			__func__);
-		return -EOPNOTSUPP;
-	}
-
-	count = dma_map_sg(dev, sglist, nents, DMA_BIDIRECTIONAL);
-	if (count != nents) {
-		dev_err(s->dev, "failed to dma map sg_table\n");
-		return -EINVAL;
-	}
-
-	sg = sglist;
-	ret = trusty_encode_page_info(&pg_inf, phys_to_page(sg_dma_address(sg)),
-				      pgprot);
-	if (ret) {
-		dev_err(s->dev, "%s: trusty_encode_page_info failed\n",
-			__func__);
-		goto err_encode_page_info;
-	}
-
-	if (s->api_version < TRUSTY_API_VERSION_MEM_OBJ) {
-		*id = pg_inf.compat_attr;
-		return 0;
-	}
-
-	len = 0;
-	for_each_sg(sglist, sg, nents, i)
-		len += sg_dma_len(sg);
-
-	trace_trusty_share_memory(len, nents, lend);
-
-	mutex_lock(&s->share_memory_msg_lock);
-
-	mtd->sender_id = s->ffa_local_id;
-	mtd->memory_region_attributes = pg_inf.ffa_mem_attr;
-	mtd->reserved_3 = 0;
-	mtd->flags = 0;
-	mtd->handle = 0;
-	mtd->tag = tag;
-	mtd->reserved_24_27 = 0;
-	mtd->emad_count = endpoint_count;
-	for (i = 0; i < endpoint_count; i++) {
-		struct ffa_emad *emad = &mtd->emad[i];
-		/* TODO: support stream ids */
-		emad->mapd.endpoint_id = s->ffa_remote_id;
-		emad->mapd.memory_access_permissions = pg_inf.ffa_mem_perm;
-		emad->mapd.flags = 0;
-		emad->comp_mrd_offset = comp_mrd_offset;
-		emad->reserved_8_15 = 0;
-	}
-	comp_mrd->total_page_count = len / FFA_PAGE_SIZE;
-	comp_mrd->address_range_count = nents;
-	comp_mrd->reserved_8_15 = 0;
-
-	total_len = cons_mrd_offset + nents * sizeof(*cons_mrd);
-	sg = sglist;
-	while (count) {
-		size_t lcount =
-			min_t(size_t, count, (PAGE_SIZE - cons_mrd_offset) /
-			      sizeof(*cons_mrd));
-		size_t fragment_len = lcount * sizeof(*cons_mrd) +
-				      cons_mrd_offset;
-
-		for (i = 0; i < lcount; i++) {
-			cons_mrd[i].address = sg_dma_address(sg);
-			cons_mrd[i].page_count = sg_dma_len(sg) / FFA_PAGE_SIZE;
-			cons_mrd[i].reserved_12_15 = 0;
-			sg = sg_next(sg);
-		}
-		count -= lcount;
-		if (cons_mrd_offset) {
-			u32 smc = lend ? SMC_FC_FFA_MEM_LEND :
-					 SMC_FC_FFA_MEM_SHARE;
-			/* First fragment */
-			smc_ret = trusty_smc8(smc, total_len,
-					      fragment_len, 0, 0, 0, 0, 0);
-		} else {
-			smc_ret = trusty_smc8(SMC_FC_FFA_MEM_FRAG_TX,
-					      cookie_low, cookie_high,
-					      fragment_len, 0, 0, 0, 0);
-		}
-		if (smc_ret.r0 == SMC_FC_FFA_MEM_FRAG_RX) {
-			cookie_low = smc_ret.r1;
-			cookie_high = smc_ret.r2;
-			dev_dbg(s->dev, "cookie %x %x", cookie_low,
-				cookie_high);
-			if (!count) {
-				/*
-				 * We have sent all our descriptors. Expected
-				 * SMC_FC_FFA_SUCCESS, not a request to send
-				 * another fragment.
-				 */
-				dev_err(s->dev, "%s: fragment_len %zd/%zd, unexpected SMC_FC_FFA_MEM_FRAG_RX\n",
-					__func__, fragment_len, total_len);
-				ret = -EIO;
-				break;
-			}
-		} else if (smc_ret.r0 == SMC_FC_FFA_SUCCESS) {
-			ffa_handle = smc_ret.r2 | (u64)smc_ret.r3 << 32;
-			dev_dbg(s->dev, "%s: fragment_len %zu/%zu, got handle 0x%llx\n",
-				__func__, fragment_len, total_len,
-				ffa_handle);
-			if (count) {
-				/*
-				 * We have not sent all our descriptors.
-				 * Expected SMC_FC_FFA_MEM_FRAG_RX not
-				 * SMC_FC_FFA_SUCCESS.
-				 */
-				dev_err(s->dev, "%s: fragment_len %zu/%zu, unexpected SMC_FC_FFA_SUCCESS, count %zu != 0\n",
-					__func__, fragment_len, total_len,
-					count);
-				ret = -EIO;
-				break;
-			}
-		} else {
-			dev_err(s->dev, "%s: fragment_len %zu/%zu, SMC_FC_FFA_MEM_SHARE failed 0x%lx 0x%lx 0x%lx",
-				__func__, fragment_len, total_len,
-				smc_ret.r0, smc_ret.r1, smc_ret.r2);
-			ret = -EIO;
-			break;
-		}
-
-		cons_mrd = s->ffa_tx;
-		cons_mrd_offset = 0;
-	}
-
-	mutex_unlock(&s->share_memory_msg_lock);
-
-	if (!ret) {
-		*id = ffa_handle;
-		dev_dbg(s->dev, "%s: done\n", __func__);
-		goto done;
-	}
-
-	dev_err(s->dev, "%s: failed %d", __func__, ret);
-
-err_encode_page_info:
-	dma_unmap_sg(dev, sglist, nents, DMA_BIDIRECTIONAL);
-done:
-	trace_trusty_share_memory_done(len, nents, lend, ffa_handle, ret);
 	return ret;
 }
-EXPORT_SYMBOL(trusty_transfer_memory);
+EXPORT_SYMBOL(trusty_share_memory);
+
+int trusty_lend_memory(struct device *dev, u64 *id,
+		       struct scatterlist *sglist, unsigned int nents,
+		       pgprot_t pgprot, u64 tag)
+{
+	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
+	int ret;
+
+	if (WARN_ON(dev->driver != &trusty_driver.driver))
+		return -EINVAL;
+
+	ret = s->mem_ops->trusty_lend_memory(dev, id, sglist, nents, pgprot,
+					      tag);
+
+	return ret;
+}
+EXPORT_SYMBOL(trusty_lend_memory);
 
 /*
  * trusty_share_memory_compat - trusty_share_memory wrapper for old apis
@@ -462,7 +309,8 @@ int trusty_share_memory_compat(struct device *dev, u64 *id,
 	int ret;
 	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
 
-	ret = trusty_share_memory(dev, id, sglist, nents, pgprot);
+	ret = trusty_share_memory(dev, id, sglist, nents, pgprot,
+				  TRUSTY_DEFAULT_MEM_OBJ_TAG);
 	if (!ret && s->api_version < TRUSTY_API_VERSION_PHYS_MEM_OBJ)
 		*id &= 0x0000FFFFFFFFF000ull;
 
@@ -474,52 +322,15 @@ int trusty_reclaim_memory(struct device *dev, u64 id,
 			  struct scatterlist *sglist, unsigned int nents)
 {
 	struct trusty_state *s = platform_get_drvdata(to_platform_device(dev));
-	int ret = 0;
-	struct smc_ret8 smc_ret;
+	int ret;
 
 	if (WARN_ON(dev->driver != &trusty_driver.driver))
 		return -EINVAL;
 
-	if (WARN_ON(nents < 1))
-		return -EINVAL;
-
-	if (s->api_version < TRUSTY_API_VERSION_MEM_OBJ) {
-		if (nents != 1) {
-			dev_err(s->dev, "%s: not supported\n", __func__);
-			return -EOPNOTSUPP;
-		}
-
-		dma_unmap_sg(dev, sglist, nents, DMA_BIDIRECTIONAL);
-
-		dev_dbg(s->dev, "%s: done\n", __func__);
-		return 0;
-	}
-
 	trace_trusty_reclaim_memory(id);
-	mutex_lock(&s->share_memory_msg_lock);
 
-	smc_ret = trusty_smc8(SMC_FC_FFA_MEM_RECLAIM, (u32)id, id >> 32, 0, 0,
-			      0, 0, 0);
-	if (smc_ret.r0 != SMC_FC_FFA_SUCCESS) {
-		dev_err(s->dev, "%s: SMC_FC_FFA_MEM_RECLAIM failed 0x%lx 0x%lx 0x%lx",
-			__func__, smc_ret.r0, smc_ret.r1, smc_ret.r2);
-		if (smc_ret.r0 == SMC_FC_FFA_ERROR &&
-		    smc_ret.r2 == FFA_ERROR_DENIED)
-			ret = -EBUSY;
-		else
-			ret = -EIO;
-	}
+	ret = s->mem_ops->trusty_reclaim_memory(dev, id, sglist, nents);
 
-	mutex_unlock(&s->share_memory_msg_lock);
-
-	if (ret != 0)
-		goto err_ffa_mem_reclaim;
-
-	dma_unmap_sg(dev, sglist, nents, DMA_BIDIRECTIONAL);
-
-	dev_dbg(s->dev, "%s: done\n", __func__);
-
-err_ffa_mem_reclaim:
 	trace_trusty_reclaim_memory_done(id, ret);
 	return ret;
 }
@@ -572,126 +383,6 @@ const char *trusty_version_str_get(struct device *dev)
 }
 EXPORT_SYMBOL(trusty_version_str_get);
 
-static int trusty_init_msg_buf(struct trusty_state *s, struct device *dev)
-{
-	phys_addr_t tx_paddr;
-	phys_addr_t rx_paddr;
-	int ret;
-	struct smc_ret8 smc_ret;
-
-	if (s->api_version < TRUSTY_API_VERSION_MEM_OBJ)
-		return 0;
-
-	/* Get supported FF-A version and check if it is compatible */
-	smc_ret = trusty_smc8(SMC_FC_FFA_VERSION, FFA_CURRENT_VERSION, 0, 0,
-			      0, 0, 0, 0);
-	if (FFA_VERSION_TO_MAJOR(smc_ret.r0) != FFA_CURRENT_VERSION_MAJOR) {
-		dev_err(s->dev,
-			"%s: Unsupported FF-A version 0x%lx, expected 0x%x\n",
-			__func__, smc_ret.r0, FFA_CURRENT_VERSION);
-		ret = -EIO;
-		goto err_version;
-	}
-
-	/* Check that SMC_FC_FFA_MEM_SHARE is implemented */
-	smc_ret = trusty_smc8(SMC_FC_FFA_FEATURES, SMC_FC_FFA_MEM_SHARE, 0, 0,
-			      0, 0, 0, 0);
-	if (smc_ret.r0 != SMC_FC_FFA_SUCCESS) {
-		dev_err(s->dev,
-			"%s: SMC_FC_FFA_FEATURES(SMC_FC_FFA_MEM_SHARE) failed 0x%lx 0x%lx 0x%lx\n",
-			__func__, smc_ret.r0, smc_ret.r1, smc_ret.r2);
-		ret = -EIO;
-		goto err_features;
-	}
-
-	/*
-	 * Set FF-A endpoint IDs.
-	 *
-	 * Hardcode 0x8000 for the secure os.
-	 * TODO: Use FF-A call or device tree to configure this dynamically
-	 */
-	smc_ret = trusty_smc8(SMC_FC_FFA_ID_GET, 0, 0, 0, 0, 0, 0, 0);
-	if (smc_ret.r0 != SMC_FC_FFA_SUCCESS) {
-		dev_err(s->dev,
-			"%s: SMC_FC_FFA_ID_GET failed 0x%lx 0x%lx 0x%lx\n",
-			__func__, smc_ret.r0, smc_ret.r1, smc_ret.r2);
-		ret = -EIO;
-		goto err_id_get;
-	}
-
-	s->ffa_local_id = smc_ret.r2;
-	s->ffa_remote_id = 0x8000;
-
-	/*
-	 * The pKVM hypervisor uses the same page size as the host, including for
-	 * stage-2 mappings. So the rx/tx buffers need to be page-sized multiple,
-	 * and page-aligned.
-	 *
-	 * TODO: This can be made more generic by discovering the required size
-	 * through SMC_FC_FFA_FEATURES later.
-	 */
-	s->ffa_tx = kmalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!s->ffa_tx) {
-		ret = -ENOMEM;
-		goto err_alloc_tx;
-	}
-	tx_paddr = virt_to_phys(s->ffa_tx);
-	if (WARN_ON(tx_paddr & (PAGE_SIZE - 1))) {
-		ret = -EINVAL;
-		goto err_unaligned_tx_buf;
-	}
-
-	s->ffa_rx = kmalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!s->ffa_rx) {
-		ret = -ENOMEM;
-		goto err_alloc_rx;
-	}
-	rx_paddr = virt_to_phys(s->ffa_rx);
-	if (WARN_ON(rx_paddr & (PAGE_SIZE - 1))) {
-		ret = -EINVAL;
-		goto err_unaligned_rx_buf;
-	}
-
-	smc_ret = trusty_smc8(SMC_FCZ_FFA_RXTX_MAP, tx_paddr, rx_paddr,
-				PAGE_SIZE / FFA_PAGE_SIZE, 0, 0, 0, 0);
-	if (smc_ret.r0 != SMC_FC_FFA_SUCCESS) {
-		dev_err(s->dev, "%s: SMC_FCZ_FFA_RXTX_MAP failed 0x%lx 0x%lx 0x%lx\n",
-			__func__, smc_ret.r0, smc_ret.r1, smc_ret.r2);
-		ret = -EIO;
-		goto err_rxtx_map;
-	}
-
-	return 0;
-
-err_rxtx_map:
-err_unaligned_rx_buf:
-	kfree(s->ffa_rx);
-	s->ffa_rx = NULL;
-err_alloc_rx:
-err_unaligned_tx_buf:
-	kfree(s->ffa_tx);
-	s->ffa_tx = NULL;
-err_alloc_tx:
-err_id_get:
-err_features:
-err_version:
-	return ret;
-}
-
-static void trusty_free_msg_buf(struct trusty_state *s, struct device *dev)
-{
-	struct smc_ret8 smc_ret;
-
-	smc_ret = trusty_smc8(SMC_FC_FFA_RXTX_UNMAP, 0, 0, 0, 0, 0, 0, 0);
-	if (smc_ret.r0 != SMC_FC_FFA_SUCCESS) {
-		dev_err(s->dev, "%s: SMC_FC_FFA_RXTX_UNMAP failed 0x%lx 0x%lx 0x%lx\n",
-			__func__, smc_ret.r0, smc_ret.r1, smc_ret.r2);
-	} else {
-		kfree(s->ffa_rx);
-		kfree(s->ffa_tx);
-	}
-}
-
 static void trusty_init_version(struct trusty_state *s, struct device *dev)
 {
 	int ret;
@@ -740,12 +431,17 @@ bool trusty_get_panic_status(struct device *dev)
 }
 EXPORT_SYMBOL(trusty_get_panic_status);
 
-static int trusty_init_api_version(struct trusty_state *s, struct device *dev)
+int trusty_init_api_version(struct trusty_state *s, struct device *dev,
+			    u32 (*trusty_fast_call)(struct device *dev,
+						    unsigned long fid,
+						    unsigned long a0,
+						    unsigned long a1,
+						    unsigned long a2))
 {
 	u32 api_version;
 
-	api_version = trusty_fast_call32(dev, SMC_FC_API_VERSION,
-					 TRUSTY_API_VERSION_CURRENT, 0, 0);
+	api_version = trusty_fast_call(dev, SMC_FC_API_VERSION,
+				       TRUSTY_API_VERSION_CURRENT, 0, 0);
 	if (api_version == SM_ERR_UNDEFINED_SMC)
 		api_version = 0;
 
@@ -805,7 +501,12 @@ static bool dequeue_nop(struct trusty_state *s, u32 *args)
 	return ret;
 }
 
-static void locked_nop_work_func(struct trusty_work *tw)
+int trusty_nop_nice_value(void)
+{
+	return nop_nice_value;
+}
+
+static void locked_nop_work_func(struct trusty_work *tw, bool force)
 {
 	int ret;
 	struct trusty_state *s = tw->s;
@@ -870,7 +571,7 @@ static void trusty_adjust_nice_nopreempt(struct trusty_state *s, bool do_nop)
 	local_irq_restore(flags);
 }
 
-static void nop_work_func(struct trusty_work *tw)
+static void nop_work_func(struct trusty_work *tw, bool force)
 {
 	int ret;
 	bool do_nop;
@@ -878,7 +579,7 @@ static void nop_work_func(struct trusty_work *tw)
 	u32 last_arg0;
 	struct trusty_state *s = tw->s;
 
-	do_nop = dequeue_nop(s, args);
+	do_nop = force || dequeue_nop(s, args);
 
 	if (do_nop) {
 		/* we have been signaled or there's a nop so
@@ -984,8 +685,9 @@ static int trusty_nop_thread(void *context)
 {
 	struct trusty_work *tw = context;
 	struct trusty_state *s = tw->s;
-	void (*work_func)(struct trusty_work *tw);
+	void (*work_func)(struct trusty_work *tw, bool force);
 	int ret = 0;
+	long timeout;
 
 	DEFINE_WAIT_FUNC(wait, woken_wake_function);
 
@@ -999,13 +701,14 @@ static int trusty_nop_thread(void *context)
 		if (kthread_should_stop())
 			break;
 
-		wait_woken(&wait, TASK_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+		timeout = msecs_to_jiffies(trusty_poll_period_ms);
+		timeout = wait_woken(&wait, TASK_INTERRUPTIBLE, timeout);
 
 		if (kthread_should_park())
 			kthread_parkme();
 
 		/* process work */
-		work_func(tw);
+		work_func(tw, !timeout);
 	};
 	remove_wait_queue(&tw->nop_event_wait, &wait);
 
@@ -1040,6 +743,51 @@ static int trusty_cpu_down(unsigned int cpu, struct hlist_node *node)
 	return 0;
 }
 
+static int
+trusty_transports_setup(const struct trusty_transport_desc **transports,
+			struct device *dev)
+{
+	const struct trusty_transport_desc *transport;
+	int ret;
+	int transports_ret = -ENODEV;
+
+	if (!transports)
+		return -EINVAL;
+
+	for (; (transport = *transports); transports++) {
+		if (!transport || !transport->setup)
+			return -EINVAL;
+
+		ret = transport->setup(dev);
+		if (ret == -EPROBE_DEFER) {
+			dev_dbg(dev, "transport %s: defer probe\n",
+				transport->name);
+			return ret;
+		}
+		transports_ret &= ret;
+	}
+
+	/* One transport needs to complete setup without error. */
+	if (transports_ret < 0)
+		return -ENODEV;
+
+	return 0;
+}
+
+static void
+trusty_transports_cleanup(const struct trusty_transport_desc **transports,
+			  struct device *dev)
+{
+	const struct trusty_transport_desc *transport;
+
+	for (; (transport = *transports); transports++) {
+		if (!transport->cleanup)
+			continue;
+
+		transport->cleanup(dev);
+	}
+}
+
 u32 is_google_real_driver(void)
 {
 	return real_drv;
@@ -1052,6 +800,7 @@ static int trusty_probe(struct platform_device *pdev)
 	unsigned int cpu;
 	struct trusty_state *s;
 	struct device_node *node = pdev->dev.of_node;
+	const struct trusty_transport_desc **descs;
 
 	if (!node) {
 		dev_err(&pdev->dev, "of_node required\n");
@@ -1074,7 +823,9 @@ static int trusty_probe(struct platform_device *pdev)
 	spin_lock_init(&s->nop_lock);
 	INIT_LIST_HEAD(&s->nop_queue);
 	mutex_init(&s->smc_lock);
+#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
 	mutex_init(&s->share_memory_msg_lock);
+#endif
 	ATOMIC_INIT_NOTIFIER_HEAD(&s->notifier);
 	init_completion(&s->cpu_idle_completion);
 
@@ -1088,15 +839,16 @@ static int trusty_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, s);
 
+	/*
+	 * Initialize Trusty transport. Trusty msg and mem ops has to be
+	 * initialized as part of transport setup.
+	 */
+	descs = (const struct trusty_transport_desc **)of_device_get_match_data(&pdev->dev);
+	ret = trusty_transports_setup(descs, s->dev);
+	if (ret != 0 || !s->call_ops || !s->mem_ops)
+		goto err_transport_setup;
+
 	trusty_init_version(s, &pdev->dev);
-
-	ret = trusty_init_api_version(s, &pdev->dev);
-	if (ret < 0)
-		goto err_api_version;
-
-	ret = trusty_init_msg_buf(s, &pdev->dev);
-	if (ret < 0)
-		goto err_init_msg_buf;
 
 	s->nop_works = alloc_percpu(struct trusty_work);
 	if (!s->nop_works) {
@@ -1171,13 +923,14 @@ err_thread_create:
 	}
 	free_percpu(s->nop_works);
 err_alloc_works:
-	trusty_free_msg_buf(s, &pdev->dev);
-err_init_msg_buf:
-err_api_version:
-	s->dev->dma_parms = NULL;
 	kfree(s->version_str);
+	trusty_transports_cleanup(descs, s->dev);
+err_transport_setup:
+	s->dev->dma_parms = NULL;
 	device_for_each_child(&pdev->dev, NULL, trusty_remove_child);
+#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
 	mutex_destroy(&s->share_memory_msg_lock);
+#endif
 	mutex_destroy(&s->smc_lock);
 	kfree(s);
 err_allocate_state:
@@ -1188,6 +941,7 @@ static void trusty_remove(struct platform_device *pdev)
 {
 	unsigned int cpu;
 	struct trusty_state *s = platform_get_drvdata(pdev);
+	const struct trusty_transport_desc **descs;
 
 	trusty_unregister_sched_share(s->trusty_sched_share_state);
 
@@ -1204,16 +958,44 @@ static void trusty_remove(struct platform_device *pdev)
 
 	trusty_free_sched_share(s->trusty_sched_share_state);
 
+#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
 	mutex_destroy(&s->share_memory_msg_lock);
+#endif
+	/* call transport cleanup */
+	descs = (const struct trusty_transport_desc **)of_device_get_match_data(&pdev->dev);
+	trusty_transports_cleanup(descs, s->dev);
+
 	mutex_destroy(&s->smc_lock);
-	trusty_free_msg_buf(s, &pdev->dev);
 	s->dev->dma_parms = NULL;
 	kfree(s->version_str);
 	kfree(s);
 }
 
+/*
+ * Trusty probe will try all compiled in transports and will use the transport
+ * supported by the Trusty kernel.
+ *
+ * For Trusty API version < TRUSTY_API_VERSION_MEM_OBJ:
+ *     trusty_smc_transport used for messaging.
+ *
+ * For Trusty API version >= TRUSTY_API_VERSION_MEM_OBJ:
+ *     trusty_smc_transport used for messaging if direct messages are not supported.
+ *     trusty_ffa_transport used for messaging otherwise.
+ *     trusty_ffa_transport used for memory sharing.
+ *
+ */
+static const struct trusty_transport_desc *trusty_transports[] = {
+#ifdef CONFIG_TRUSTY_SMC_TRANSPORT
+	&trusty_smc_transport,
+#endif
+#ifdef CONFIG_TRUSTY_FFA_TRANSPORT
+	&trusty_ffa_transport,
+#endif
+	NULL,
+};
+
 static const struct of_device_id trusty_of_match[] = {
-	{ .compatible = "android,google-trusty-smc-v1", },
+	{ .compatible = "android,google-trusty-smc-v1", .data = trusty_transports },
 	{},
 };
 
@@ -1221,7 +1003,7 @@ MODULE_DEVICE_TABLE(trusty, trusty_of_match);
 
 static struct platform_driver trusty_driver = {
 	.probe = trusty_probe,
-	.remove = trusty_remove,
+	.remove_new = trusty_remove,
 	.driver	= {
 		.name = "google-trusty",
 		.of_match_table = trusty_of_match,
@@ -1233,13 +1015,19 @@ static int __init trusty_driver_init(void)
 {
 	int ret;
 
+#ifdef CONFIG_TRUSTY_FFA_TRANSPORT
+	ret = trusty_ffa_transport_init();
+	if (ret < 0)
+		goto err_ffa_transport_init;
+#endif
+
 	/*
 	 * Initialize trusty_irq_driver first since trusty_probe makes an
 	 * std-call at the end where interrupts might be needed.
 	 */
 	ret = trusty_irq_driver_init();
 	if (ret < 0)
-		return ret;
+		goto err_irq_driver_init;
 
 	/* allocate dynamic cpuhp state slot */
 	ret = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN,
@@ -1261,7 +1049,11 @@ err_driver_register:
 	cpuhp_remove_multi_state(trusty_cpuhp_slot);
 	trusty_cpuhp_slot = -1;
 err_cpuhp_setup:
-	trusty_irq_driver_exit();
+err_irq_driver_init:
+#ifdef CONFIG_TRUSTY_FFA_TRANSPORT
+	trusty_ffa_transport_exit();
+err_ffa_transport_init:
+#endif
 	return ret;
 }
 
@@ -1270,6 +1062,9 @@ static void __exit trusty_driver_exit(void)
 	platform_driver_unregister(&trusty_driver);
 	cpuhp_remove_multi_state(trusty_cpuhp_slot);
 	trusty_cpuhp_slot = -1;
+#ifdef CONFIG_TRUSTY_FFA_TRANSPORT
+	trusty_ffa_transport_exit();
+#endif
 	trusty_irq_driver_exit();
 }
 

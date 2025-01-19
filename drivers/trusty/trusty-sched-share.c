@@ -162,8 +162,9 @@ void trusty_register_sched_share(struct device *device,
 	}
 
 	/* share memory with Trusty */
-	result = trusty_share_memory(sched_share_state->dev, &mem_id, sched_share_state->sg,
-				     sched_share_state->num_pages, PAGE_KERNEL);
+	result = trusty_share_memory(sched_share_state->dev, &mem_id,
+				     sched_share_state->sg, sched_share_state->num_pages,
+				     PAGE_KERNEL, TRUSTY_DEFAULT_MEM_OBJ_TAG);
 	if (result != 0) {
 		dev_err(sched_share_state->dev, "trusty_share_memory failed: %d\n",
 			result);
@@ -250,6 +251,9 @@ static inline int map_trusty_prio_to_linux_nice(int trusty_prio)
 	int new_nice;
 
 	switch (trusty_prio) {
+	case TRUSTY_SHADOW_PRIORITY_IDLE:
+		new_nice = trusty_nop_nice_value();
+		break;
 	case TRUSTY_SHADOW_PRIORITY_HIGH:
 		new_nice = LINUX_NICE_FOR_TRUSTY_PRIORITY_HIGH;
 		break;
@@ -287,4 +291,12 @@ void trusty_set_actual_nice(unsigned int cpu_num,
 		new_prio = TRUSTY_SHADOW_PRIORITY_NORMAL;
 
 	trusty_get_trusty_percpu_data(tsh, cpu_num)->cur_shadow_priority = new_prio;
+}
+
+bool trusty_is_idle(unsigned int cpu_num, struct trusty_sched_share_state *tcpu_state)
+{
+	struct trusty_sched_shared *tsh = (struct trusty_sched_shared *)tcpu_state->sched_shared_vm;
+
+	return trusty_get_trusty_percpu_data(tsh, cpu_num)->ask_shadow_priority ==
+		TRUSTY_SHADOW_PRIORITY_IDLE;
 }

@@ -636,7 +636,7 @@ MODULE_DEVICE_TABLE(trusty, trusty_test_of_match);
 
 static struct platform_driver trusty_irq_driver = {
 	.probe = trusty_irq_probe,
-	.remove = trusty_irq_remove,
+	.remove_new = trusty_irq_remove,
 	.driver	= {
 		.name = "google-trusty-irq",
 		.of_match_table = trusty_test_of_match,

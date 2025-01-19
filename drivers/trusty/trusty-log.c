@@ -20,8 +20,11 @@
 #include <linux/miscdevice.h>
 #include <linux/poll.h>
 #include <linux/seq_file.h>
+#include <linux/version.h>
 #include <linux/vmalloc.h>
+#if (KERNEL_VERSION(5, 14, 0) <= LINUX_VERSION_CODE)
 #include <linux/panic_notifier.h>
+#endif
 #include <asm/page.h>
 #include "trusty-log.h"
 
@@ -981,7 +984,7 @@ MODULE_DEVICE_TABLE(trusty, trusty_test_of_match);
 
 static struct platform_driver trusty_log_driver = {
 	.probe = trusty_log_probe,
-	.remove = trusty_log_remove,
+	.remove_new = trusty_log_remove,
 	.driver = {
 		.name = "google-trusty-log",
 		.of_match_table = trusty_test_of_match,

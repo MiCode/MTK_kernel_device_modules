@@ -155,4 +155,66 @@
 #define SMC_SC_VDEV_KICK_VQ	SMC_STDCALL_NR(SMC_ENTITY_TRUSTED_OS, 24)
 #define SMC_NC_VDEV_KICK_VQ	SMC_STDCALL_NR(SMC_ENTITY_TRUSTED_OS, 25)
 
+/**
+ * TRUSTY_FFA_MSG_RUN_FASTCALL - Run a Trusty fastcall synchronously.
+ *
+ * @r3: The value of %TRUSTY_FFA_MSG_RUN_FASTCALL.
+ * @r4: The fid of the Trusty fastcall.
+ * @r5: The 1st argument of the fastcall.
+ * @r6: The 2nd argument of the fastcall.
+ * @r7: The 3rd argument of the fastcall.
+ *
+ * Execute a Trusty fastcall synchronously with interrupts disabled,
+ * blocking until it completes and returning its result directly
+ * as a direct message response.
+ */
+#define TRUSTY_FFA_MSG_RUN_FASTCALL	(0)
+
+/**
+ * TRUSTY_FFA_MSG_QUEUE_STDCALL - Asynchronously queue a Trusty stdcall.
+ *
+ * @r3: The value of %TRUSTY_FFA_MSG_QUEUE_STDCALL.
+ * @r4: The fid of the Trusty stdcall.
+ * @r5: The 1st argument of the stdcall.
+ * @r6: The 2nd argument of the stdcall.
+ * @r7: The 3rd argument of the stdcall.
+ *
+ * Queue a Trusty stdcall asynchronously for execution in the stdcall thread.
+ * The non-secure world should assign cycles to Trusty separately and
+ * call %TRUSTY_FFA_MSG_GET_STDCALL_RET to check if the call completed.
+ *
+ * Returns %SM_ERR_BUSY if Trusty has another queued stdcall.
+ */
+#define TRUSTY_FFA_MSG_QUEUE_STDCALL	(1)
+
+/**
+ * TRUSTY_FFA_MSG_GET_STDCALL_RET - Get the result of a Trusty stdcall.
+ *
+ * @r3: [out] The result of the call.
+ *
+ * The non-secure world should call this interface to retrieve the
+ * result of a previously queued stdcall, or one of the following
+ * error codes:
+ * * %SM_ERR_INTERRUPTED: The stdcall was preempted by a NS interrupt.
+ * * %SM_ERR_CPU_IDLE: All threads are blocked, including the stdcall one.
+ * * %SM_ERR_BUSY: The stdcall has not completed yet.
+ */
+#define TRUSTY_FFA_MSG_GET_STDCALL_RET	(2)
+
+/**
+ * TRUSTY_FFA_MSG_RUN_NOPCALL - Run the Trusty handler for a nopcall.
+ *
+ * @r3: The value of %TRUSTY_FFA_MSG_RUN_NOPCALL.
+ * @r4: The 1st argument of the nopcall.
+ * @r5: The 2nd argument of the nopcall.
+ * @r6: The 3rd argument of the nopcall.
+ *
+ * Execute a Trusty nopcall handler synchronously with interrupts disabled,
+ * blocking until it completes and returning its result directly
+ * as a direct message response. If Trusty should get more cycles to run
+ * the second half of the nopcall (triggered by the handler), the caller
+ * should schedule some using FFA_RUN.
+ */
+#define TRUSTY_FFA_MSG_RUN_NOPCALL	(3)
+
 #endif /* __LINUX_TRUSTY_SMCALL_H */
