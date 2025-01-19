@@ -1431,7 +1431,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 0,
 		.hwv_debug_history_ofs = 0x3F9C,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | MTK_SCPD_BYPASS_INIT_ON |
+			default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CSI_BS_RX] = {
 		.name = "csi-bs-rx",
@@ -1885,7 +1886,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 1,
 		.hwv_debug_history_ofs = 0x3F9C,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | MTK_SCPD_BYPASS_INIT_ON
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_IRQ_SAVE | MTK_SCPD_BYPASS_INIT_ON
 				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MM_INFRA1] = {
@@ -1897,7 +1898,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_done_ofs = 0x0144,
 		.hwv_shift = 2,
 		.sta_mask = 1,
-		.caps = MTK_SCPD_MMINFRA_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MM_INFRA_AO] = {
 		.name = "mm-infra-ao",
@@ -1910,7 +1911,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_disp_wa_data[] 
 		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 0,
 		.hwv_debug_history_ofs = 0x3F9C,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | MTK_SCPD_IRQ_SAVE | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CSI_BS_RX] = {
 		.name = "csi-bs-rx",
