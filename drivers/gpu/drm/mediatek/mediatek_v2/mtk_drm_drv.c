@@ -4949,6 +4949,11 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6993_addon_wdma1_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+	[BWM_COMP] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys_bwm0_data),
+		.module_data = mt6991_addon_ovlsys_bwm0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
 };
 
 static const enum mtk_ddp_comp_id mt6993_scaling_main[] = {
@@ -7316,6 +7321,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.sodi_apsrc_config = mt6993_mtk_sodi_apsrc_config,
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = true,
+	.need_emi_eff = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
 	.use_infra_mem_res = false,
@@ -11751,6 +11757,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt6993-dvo",
 	.data = (void *)MTK_DISP_DVO},
 	{.compatible = "mediatek,mt6991-disp-bwm",
+	 .data = (void *)MTK_DISP_BWM},
+	{.compatible = "mediatek,mt6993-disp-bwm",
 	 .data = (void *)MTK_DISP_BWM},
 	{.compatible = "mediatek,mt6897-dp-intf",
 	 .data = (void *)MTK_DP_INTF},

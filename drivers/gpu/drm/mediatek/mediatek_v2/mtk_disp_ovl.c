@@ -1399,45 +1399,26 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0)) {
-		unsigned int bw_monitor_config;
+		unsigned int bw_monitor_config, line_time, h;
 
 		/****************************************************************/
 		/*BURST_ACC_FBDC: 1/0:fbdc size/actual BW(fbdc+sBCH)            */
 		/*BURST_ACC_EN: 1: enable bw monitor 0: disable                 */
-		/*BURST_ACC_WIN_SIZE: check below table                         */
-		/*Scenario | 4AFBC line times(us) | Best fit to 200us MD window */
-		/*FHD+@60  | 22.0                 | 198(9w)                     */
-		/*FHD+@120 | 11.0                 | 198(18w)                    */
-		/*WQHD+@60 | 16.5                 | 198(12w)                    */
-		/*WQHD+@120| 8.26                 | 198(24w)                    */
+		/*BURST_ACC_WIN_SIZE:200us / (4AFBC line times(us) /1.2(Vblank))*/
 		/****************************************************************/
 		bw_monitor_config = REG_FLD_VAL(FLD_OVL_BURST_ACC_EN, 1);
 		bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_FBDC, 0);
-
 		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
 			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
-			fps =
-				mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
+			fps = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
 		else
 			fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		h = crtc->state->adjusted_mode.vdisplay;
+		line_time = 1000000 * 4 * 10 / fps / h / 12;
 
-		if (cfg->w <= 1080) {
-			if (fps <= 60) {
-				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 8);
-				ovl_win_size = 9;
-			} else {
-				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 17);
-				ovl_win_size = 18;
-			}
-		} else {
-			if (fps <= 60) {
-				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 11);
-				ovl_win_size = 12;
-			} else {
-				bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, 23);
-				ovl_win_size = 24;
-			}
-		}
+		ovl_win_size = (200 % line_time) ? (200 / line_time + 1) : (200 / line_time);
+		bw_monitor_config |= REG_FLD_VAL(FLD_OVL_BURST_ACC_WIN_SIZE, ovl_win_size - 1);
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_BURST_MON_CFG, bw_monitor_config, ~0);
 	}

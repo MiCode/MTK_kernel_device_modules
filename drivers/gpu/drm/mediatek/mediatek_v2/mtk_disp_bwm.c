@@ -60,6 +60,16 @@
 	#define FLD_BWM_L_SRC_W REG_FLD_MSB_LSB(12, 0)
 	#define FLD_BWM_L_SRC_H REG_FLD_MSB_LSB(28, 16)
 #define DISP_REG_BWM_RDMA0_CTRL				(0x070UL)
+#define DISP_REG_BWM_RDMA_ULTRA_SRC			(0x0A0UL)
+	#define FLD_PREULTRA_BUF_SRC REG_FLD_MSB_LSB(1, 0)
+	#define FLD_PREULTRA_RDMA_SRC REG_FLD_MSB_LSB(7, 6)
+	#define FLD_ULTRA_BUF_SRC REG_FLD_MSB_LSB(9, 8)
+	#define FLD_ULTRA_RDMA_SRC REG_FLD_MSB_LSB(15, 14)
+#define DISP_REG_BWM_RDMA0_BUF_LOW			(0x0A4UL)
+	#define FLD_PREULTRA_LOW_TH REG_FLD_MSB_LSB(11, 0)
+	#define FLD_ULTRA_LOW_TH REG_FLD_MSB_LSB(23, 12)
+#define DISP_REG_BWM_RDMA0_BUF_HIGH			(0x0A8UL)
+	#define FLD_PREULTRA_HIGH_TH REG_FLD_MSB_LSB(23, 12)
 #define DISP_REG_BWM_L_BURST_ACC(n)			(0x0E0UL + 0x4 * (n))
 #define DISP_REG_BWM_L_BURST_ACC_WIN_MAX(n)	(0x100UL + 0x4 * (n))
 #define DISP_REG_BWM_BURST_MON_CFG			(0x120UL)
@@ -85,7 +95,6 @@
 	(((module)->data->fmt_rgb565_is_0 == true) ? OVL_CON_CLRFMT_RGB : 0UL)
 #define OVL_CON_CLRFMT_UYVY(module) ((module)->data->fmt_uyvy)
 #define OVL_CON_CLRFMT_YUYV(module) ((module)->data->fmt_yuyv)
-
 
 
 struct mtk_disp_bwm {
@@ -222,70 +231,58 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	unsigned long crtc_idx = (unsigned long)drm_crtc_index(crtc);
 	int fps;
 	u32 value = 0, mask = 0;
+	struct mtk_disp_bwm *bwm = comp_to_bwm(comp);
+	unsigned int bw_monitor_config, line_time, h;
 
 	DDPINFO("bwm_enable:%s\n", mtk_dump_comp_str(comp));
 
-	SET_VAL_MASK(value, mask, 1, FLD_BWM_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_BWM_EN,
-		       value, mask);
+		       1, FLD_BWM_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BWM_RDMA0_CTRL, 0x1, 0x1);
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
-		(crtc_idx == 0)) {
-		unsigned int bw_monitor_config;
+	SET_VAL_MASK(value, mask, 0, FLD_PREULTRA_BUF_SRC);
+	SET_VAL_MASK(value, mask, 0, FLD_PREULTRA_RDMA_SRC);
+	SET_VAL_MASK(value, mask, 0, FLD_ULTRA_BUF_SRC);
+	SET_VAL_MASK(value, mask, 0, FLD_ULTRA_RDMA_SRC);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_BWM_RDMA_ULTRA_SRC, value, mask);
+	value = 0;
+	mask = 0;
+	//bwm always preultra
+	SET_VAL_MASK(value, mask, 0, FLD_ULTRA_LOW_TH);
+	SET_VAL_MASK(value, mask, 32, FLD_PREULTRA_LOW_TH);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_BWM_RDMA0_BUF_LOW, value, mask);
 
-		/****************************************************************/
-		/*BURST_ACC_FBDC: 1/0:fbdc size/actual BW(fbdc+sBCH)            */
-		/*BURST_ACC_EN: 1: enable bw monitor 0: disable                 */
-		/*BURST_ACC_WIN_SIZE: check below table                         */
-		/*Scenario | 4AFBC line times(us) | Best fit to 200us MD window */
-		/*FHD+@30  | 44.0                 | 198(5w)                     */
-		/*FHD+@60  | 22.0                 | 198(9w)                     */
-		/*FHD+@120 | 11.0                 | 198(18w)                    */
-		/*WQHD+@30 | 33.0				  | 198(6w)	      				*/
-		/*WQHD+@60 | 16.5                 | 198(12w)                    */
-		/*WQHD+@120| 8.26                 | 198(24w)                    */
-		/****************************************************************/
-		bw_monitor_config = REG_FLD_VAL(FLD_BWM_BURST_ACC_EN, 1);
-		bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_FBDC, 0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_BWM_RDMA0_BUF_HIGH,
+			64, FLD_PREULTRA_HIGH_TH);
 
-		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
-			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
-			fps =
-				mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
-		else
-			fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	/****************************************************************/
+	/*BURST_ACC_FBDC: 1/0:fbdc size/actual BW(fbdc+sBCH)            */
+	/*BURST_ACC_EN: 1: enable bw monitor 0: disable                 */
+	/*BURST_ACC_WIN_SIZE:200us / (4AFBC line times(us) /1.2(Vblank))*/
+	/****************************************************************/
+	bw_monitor_config = REG_FLD_VAL(FLD_BWM_BURST_ACC_EN, 1);
+	bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_FBDC, 0);
 
-		if (crtc->state->adjusted_mode.hdisplay <= 1080) {
-			if (fps == 30) {
-				bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_WIN_SIZE, 4);
-				ovl_win_size = 5;
-			} else if (fps == 60) {
-				bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_WIN_SIZE, 8);
-				ovl_win_size = 9;
-			} else {
-				bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_WIN_SIZE, 17);
-				ovl_win_size = 18;
-			}
-		} else {
-			if (fps == 30) {
-				bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_WIN_SIZE, 5);
-				ovl_win_size = 6;
-			} else if (fps == 60) {
-				bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_WIN_SIZE, 11);
-				ovl_win_size = 12;
-			} else {
-				bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_WIN_SIZE, 23);
-				ovl_win_size = 24;
-			}
-		}
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_BWM_BURST_MON_CFG, bw_monitor_config, ~0);
-	}
+	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
+		mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
+		fps = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
+	else
+		fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+	h = crtc->state->adjusted_mode.vdisplay;
+	line_time = 1000000 * 4 * 10 / fps / h / 12;
+
+	ovl_win_size = (200 % line_time) ? (200 / line_time + 1) : (200 / line_time);
+	bw_monitor_config |= REG_FLD_VAL(FLD_BWM_BURST_ACC_WIN_SIZE, ovl_win_size - 1);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_REG_BWM_BURST_MON_CFG, bw_monitor_config, ~0);
+
 }
 
 void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -320,11 +317,10 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 					all_layer_compress_ratio_table[i].average_ratio > 1024 ||
 					all_layer_compress_ratio_table[i].peak_ratio == 0 ||
 					all_layer_compress_ratio_table[i].peak_ratio > 1024) {
-					all_layer_compress_ratio_table[i].average_ratio = 1000;
-					all_layer_compress_ratio_table[i].peak_ratio = 1000;
 					if (aee_trigger) {
-						DDPPR_ERR("CRDISPATCH_KEY:BWM20 layer%d ratio error,avg%d peak%d\n",
-								i, all_layer_compress_ratio_table[i].average_ratio,
+						DDPPR_ERR("BWM20 layer%d ratio error,avg%d peak%d ar %d pr %d\n",
+								i,  avg_val, peak_val,
+								all_layer_compress_ratio_table[i].average_ratio,
 								all_layer_compress_ratio_table[i].peak_ratio);
 						aee_trigger = false;
 						mtk_bwm_dump(comp);
@@ -334,6 +330,8 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 							all_layer_compress_ratio_table[i].peak_ratio,
 							all_layer_compress_ratio_table[i].key_value);
 					}
+					all_layer_compress_ratio_table[i].average_ratio = 1000;
+					all_layer_compress_ratio_table[i].peak_ratio = 1000;
 				}
 				DDPDBG_BWM("%s i:%d j%d avl%d avg %d peak %d ar %d pr %d int 0x%x\n",
 					__func__, i, j, avail_layer, avg_val, peak_val,
@@ -411,8 +409,6 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	unsigned int modifier = 0;
 	unsigned long record0 = 0;
 	unsigned long record1 = 0;
-	unsigned long record2 = 0;
-	unsigned long record3 = 0;
 	s32 reg_val;
 	void __iomem *aid_sel_baddr = 0;
 	unsigned int aid_sel_offset = 0;
@@ -775,6 +771,8 @@ static const struct mtk_disp_bwm_data mt6993_bwm_driver_data = {
 static const struct of_device_id mtk_disp_bwm_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-disp-bwm",
 	 .data = &mt6991_bwm_driver_data},
+	{.compatible = "mediatek,mt6993-disp-bwm",
+	 .data = &mt6993_bwm_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_bwm_driver_dt_match);

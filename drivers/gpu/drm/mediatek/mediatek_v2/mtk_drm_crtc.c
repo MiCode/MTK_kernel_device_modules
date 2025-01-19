@@ -219,6 +219,14 @@ static unsigned int fn;
 unsigned int ovl_win_size;
 int bwm20_overlap;
 bool no_bwm20_layer;
+struct sort_list{
+	struct bwm_hrt_sort_entry entry[100];
+	int size;
+};
+#define AFBC_HEADER_PORT_OSTDL_MIN 5
+
+static struct sort_list mtk_bwm_sort_list;
+//#define BWM_DEBUG_LOG
 
 #define ALIGN_TO_32(x) ALIGN_TO(x, 32)
 
@@ -10335,20 +10343,11 @@ void update_layer_cap_for_bwm(struct drm_crtc *crtc,
 	}
 }
 
-#define MAX_SIZE 100
-struct sort_list{
-	struct bwm_hrt_sort_entry entry[MAX_SIZE];
-	int size;
-} ;
-
-static struct sort_list mtk_bwm_sort_list;
-//#define BWM_DEBUG_LOG
-
 bool insert_bwm_entry(struct sort_list *list, int idx, struct bwm_hrt_sort_entry sort_entry)
 {
 	int i;
 
-	if (list->size >= MAX_SIZE)
+	if (list->size >= 100)
 		return false;
 	if (idx < 0 || idx > list->size)
 		return false;
@@ -10364,7 +10363,7 @@ bool add_bwm_entry(struct sort_list *list, struct mtk_plane_state *plane_state,
 {
 	struct bwm_hrt_sort_entry begin, end;
 	struct mtk_plane_pending_state *pending = &plane_state->pending;
-	int idx = 0, i;
+	int idx = 0;
 
 	begin.pending = pending;
 	begin.key = pending->dst_y;
@@ -10481,6 +10480,8 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	if (tmp_srt > 0) {
 		unsigned int channel_sum = 0;
 
+		if (tmp_srt < (AFBC_HEADER_PORT_OSTDL_MIN-1)*16*8+1)
+			tmp_srt = (AFBC_HEADER_PORT_OSTDL_MIN-1)*16*8+1;
 		tmp_srt *= 1000000;
 		do_div(tmp_srt, 0x100000);
 		mtk_crtc->total_srt += tmp_srt;
@@ -10508,10 +10509,9 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *comp;
-	unsigned int i, j, plane_mask, bpp;
+	unsigned int i, plane_mask, bpp;
 	struct drm_plane *plane;
 	int overlap, weight;
-	static bool aee_trigger = true;
 	int overlap_sum = 0;
 
 	mtk_crtc = to_mtk_crtc(crtc);
@@ -12782,11 +12782,16 @@ void mtk_crtc_bwm_enable(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	bool flush = false;
+	unsigned int crtc_id = drm_crtc_index(crtc);
 
 	if (mtk_crtc)
 		priv = mtk_crtc->base.dev->dev_private;
+
+	if (crtc_id != 0)
+		return;
+
 	if (!handle) {
-		mtk_crtc_pkt_create(&handle, crtc, mtk_crtc->gce_obj.client[CLIENT_BWM]);
+		mtk_crtc_pkt_create(&handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
 		flush = true;
 	}
 	if (!handle) {
@@ -14746,7 +14751,8 @@ skip:
 		mtk_vidle_dvfs_set(0);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-			priv->data->mmsys_id == MMSYS_MT6991 && crtc_id == 0)
+			(priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6993) && crtc_id == 0)
 		mtk_crtc_stop_bwm_ratio_loop(crtc);
 
 	/* 6. stop trig loop  */
