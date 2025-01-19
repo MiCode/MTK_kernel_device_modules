@@ -5242,6 +5242,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			chn-num = <2>;
 			clear = <0x014>;
 			assert = <0>;
+			error-flags {
+				int-sts = <0xd40 0xd44 0xd84 0xd88>;
+				int-sts-msk = <0x7fffffff 0x7fffffff 0xffffffff 0xffffffff>;
+				int-sts-clr = <0x504 0x494>;
+				dbg-info-mux-sel = <0x50c>;
+				dbg-info-mux-vals = <18 19 20 21 22 23 24 25 26 27>;
+				dbg-data = <0xd48 0xd4c>;
+			};
 		};
 
 		ktf-emislc-test {
