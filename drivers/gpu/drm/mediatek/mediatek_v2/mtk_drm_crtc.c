@@ -634,7 +634,7 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 				config_regs_pa + addr, 0, ~0);
 		else
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-				config_regs_pa + addr, value, ~0);
+				config_regs_pa + addr, value, value);
 	}
 #else
 	if (value >= 0 && config_regs_pa > 0) {
@@ -710,7 +710,7 @@ void mtk_drm_crtc_blender_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 		if (value >= 0 && config_regs_pa > 0) {
 			if (mtk_crtc->last_blender->id == comp->id && !reset_flag)
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-							config_regs_pa + addr, value, ~0);
+							config_regs_pa + addr, value, value);
 			else
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 							config_regs_pa + addr, 0, ~0);
