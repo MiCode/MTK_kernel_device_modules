@@ -45,7 +45,9 @@
 #define PCIE_PEXTP_CG_0			0x14
 #define PEXTP_CLOCK_CON			0x20
 #define P0_LOWPOWER_CK_SEL		BIT(0)
+#define P0_VLP_AO_LP_CLK_CK_SEL		BIT(3)
 #define P1_LOWPOWER_CK_SEL		P0_LOWPOWER_CK_SEL
+#define P0P1_LOWPOWER_CK_SEL		BIT(0)
 #define P2_LOWPOWER_CK_SEL		BIT(3)
 #define PEXTP_RES_REQ_STA		0x34
 #define PEXTP1_RSV_1			0x3c
@@ -103,6 +105,9 @@
 #define PCI_CLASS(class)		(class << 8)
 
 #define PCIE_PCI_LPM			0xa4
+
+#define PCIE_PEX_SPC2_REG		0xd8
+#define PCIE_RECORD_CFG_ADDR_EN		BIT(0)
 
 #define PCIE_CFGNUM_REG			0x140
 #define PCIE_CFG_DEVFN(devfn)		((devfn) & GENMASK(7, 0))
@@ -742,15 +747,6 @@ static void mtk_pcie_clkbuf_force_26m(struct mtk_pcie_port *port, bool enable)
 	u32 val;
 
 	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
-
-	/* only port0 use BBCK2 in 6991 */
-	if (!port->port_num) {
-		/* keep BBCK2 request to 1 when swicth PMRC7 mode */
-		val |= PCIE_26M_REQ_FORCE_ON;
-		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
-		mtk_pcie_clkbuf_force_bbck2(port, enable);
-	}
-
 	if (enable)
 		val |= PCIE_26M_REQ_FORCE_ON;
 	else
@@ -3289,11 +3285,164 @@ static const struct mtk_pcie_data mt6991_data = {
 	.clkbuf_control = mtk_pcie_clkbuf_force_26m,
 };
 
+/*
+ * mtk_pcie_switch_to_lpclk() - switch low power clock flow
+ * @port: PCIe port information
+ * @enable: means to change the clock to low power clock
+ *
+ * true means switch to low power clock, false means exit low power clock
+ */
+static int mtk_pcie_switch_to_lpclk(struct mtk_pcie_port *port, bool enable)
+{
+	int err;
+	u32 val;
+
+	/* force mac sleep to 0 when switch lowpower clk */
+	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+	val |= PCIE_MAC_SLP_DIS;
+	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+	err = readl_poll_timeout(port->base + PCIE_RES_STATUS, val,
+				 ((val & ALL_RES_ACK) == ALL_RES_ACK),
+				 20, 1000);
+	if (err)
+		dev_info(port->dev, "Polling resource ack fail\n");
+
+	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+	if (enable) {
+		if (port->chipid == CHIP_VER_A0)
+			/* PCIe lowpower clock source bit[3] use normal SRCMUX */
+			val |= P0_VLP_AO_LP_CLK_CK_SEL;
+		else if (port->chipid == CHIP_VER_B0)
+			/* PCIe lowpower clock sel to 32K */
+			val |= P0_LOWPOWER_CK_SEL;
+	} else {
+		if (port->chipid == CHIP_VER_A0)
+			/* PCIe lowpower clock source bit[3] use normal GFMUX */
+			val &= ~P0_VLP_AO_LP_CLK_CK_SEL;
+		else if (port->chipid == CHIP_VER_B0)
+			/* PCIe lowpower clock sel to 26M */
+			val &= ~P0_LOWPOWER_CK_SEL;
+	}
+
+	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+	dev_info(port->dev, "%s mode Switch clock sel to %#x\n",
+		 enable ? "resume" : "suspend",
+		 readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON));
+
+	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+	val &= ~PCIE_MAC_SLP_DIS;
+	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+	return 0;
+}
+
+static int mtk_pcie_suspend_l12_6993(struct mtk_pcie_port *port)
+{
+	mtk_pcie_switch_to_lpclk(port, true);
+
+	return 0;
+}
+
+static int mtk_pcie_resume_l12_6993(struct mtk_pcie_port *port)
+{
+	mtk_pcie_switch_to_lpclk(port, false);
+
+	return 0;
+}
+
+static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	/* Make PCIe RC wait apsrc_ack signal before access EMI */
+	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
+	val |= PCIE_APSRC_ACK;
+	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
+
+	/* Don't let PCIe AXI0 port reply slave error */
+	val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+	val |= PCIE_AXI0_SLV_RESP_MASK;
+	writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
+
+	/* Enable cplto record config space address */
+	val = readl_relaxed(port->base + PCIE_PEX_SPC2_REG);
+	val |= PCIE_RECORD_CFG_ADDR_EN;
+	writel_relaxed(val, port->base + PCIE_PEX_SPC2_REG);
+
+	/* Set write completion timeout to 4ms */
+	writel_relaxed(WCPL_TIMEOUT_4MS, port->base + PCIE_WCPL_TIMEOUT);
+
+	/* Adjust SYS_CLK_RDY_TIME to 10us to avoid glitch*/
+	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
+	val &= ~SYS_CLK_RDY_TIME;
+	val |= SYS_CLK_RDY_TIME_TO_10US;
+	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
+
+	if ((port->chipid == CHIP_VER_B0) && (port->port_num < 2)) {
+		val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+		val &= ~P0P1_LOWPOWER_CK_SEL;
+		writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
+	}
+
+	if (port->port_num == 0) {
+		/* wifi request response data is all zero when completion timeout */
+		val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+		val |= SW_CPLTO_DATA_SEL;
+		writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
+		/* Detect Completion timeout before wifi on */
+		port->aer_detect = true;
+	}
+
+	return 0;
+}
+
+static int mtk_pcie_post_init_6993(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	if (port->port_num == 1) {
+		/*
+		 * Use bit[3:0] of reserved register record the msi group number sent to ADSP
+		 * ex: Group 2 of 6993 are sent to ADSP, write 1 to bit[2] and bit[3]
+		 */
+		val = readl_relaxed(port->base + PCIE_CFG_RSV_0);
+		val |= MSI_GRP2;
+		writel_relaxed(val, port->base + PCIE_CFG_RSV_0);
+
+		/* Enable aer report and reset error interrupt */
+		val = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
+		val |= PCIE_AER_EVT_EN;
+		writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
+
+		/* PCIe1 read completion timeout is adjusted to 10ms */
+		mtk_pcie_adjust_cplto_scale(port, PCIE_CPLTO_SCALE_10MS);
+
+		/* Mofify the PM capability to not support generating PME from D3hot state */
+		val = readw_relaxed(port->base + PCIE_PCI_LPM + PCI_PM_PMC);
+		val &= ~PCI_PM_CAP_PME_MASK;
+		val |= PCI_PM_CAP_PME_D0;
+		writew_relaxed(val, port->base + PCIE_PCI_LPM + PCI_PM_PMC);
+	}
+
+	return 0;
+}
+
+static const struct mtk_pcie_data mt6993_data = {
+	.pre_init = mtk_pcie_pre_init_6993,
+	.post_init = mtk_pcie_post_init_6993,
+	.suspend_l12 = mtk_pcie_suspend_l12_6993,
+	.resume_l12 = mtk_pcie_resume_l12_6993,
+	.control_vote = mtk_pcie_control_vote_v2,
+	.clkbuf_control = mtk_pcie_clkbuf_force_26m,
+};
+
 static const struct of_device_id mtk_pcie_of_match[] = {
 	{ .compatible = "mediatek,mt8192-pcie" },
 	{ .compatible = "mediatek,mt6985-pcie", .data = &mt6985_data },
 	{ .compatible = "mediatek,mt6989-pcie", .data = &mt6989_data },
 	{ .compatible = "mediatek,mt6991-pcie", .data = &mt6991_data },
+	{ .compatible = "mediatek,mt6993-pcie", .data = &mt6993_data },
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_pcie_of_match);
