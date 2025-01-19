@@ -6480,7 +6480,7 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 				comp, mtk_crtc, j,
 				k) {
 
-				if (comp->id != comp_state->comp_id)
+				if (!comp->id || comp->id != comp_state->comp_id)
 					continue;
 
 				DDPINFO("%s layer off comp %s lye %d ext lye %d bind comp %s\n",
