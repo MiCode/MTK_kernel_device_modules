@@ -384,22 +384,35 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 		}
 
 		/*
-		 * for 6992's axid work around
+		 * for 6993's axid work around
 		 */
 		if (mpu->get_axiid) {
 			get_axid = mtk_get_axiid(vio_type % 2);
 			msg_len += scnprintf(mpu->vio_msg + msg_len,
 					     MTK_SMPU_MAX_CMD_LEN - msg_len,
 					     "\nemimpu-axid:%x", get_axid);
-			pr_info("[SMPU] smpu's axid: [%x]%x || [%x]%x",
-				dump_reg[8].offset, dump_reg[8].value,
-				dump_reg[17].offset, dump_reg[17].value);
-			/* replace the write violation */
-			if (dump_reg[8].value != 0)
-				dump_reg[8].value = get_axid;
-			/* replace the read violation */
-			if (dump_reg[17].value != 0)
-				dump_reg[17].value = get_axid;
+			if (vio_type == VIO_TYPE_NSMPU || vio_type == VIO_TYPE_SSMPU){
+				pr_info("[SMPU] smpu's axid: [%x]%x || [%x]%x",
+					dump_reg[8].offset, dump_reg[8].value,
+					dump_reg[17].offset, dump_reg[17].value);
+				/* replace the write violation */
+				if (dump_reg[8].value != 0)
+					dump_reg[8].value = get_axid;
+				/* replace the read violation */
+				if (dump_reg[17].value != 0)
+					dump_reg[17].value = get_axid;
+			}
+			else{
+				pr_info("[SMPU] smpu_kp's axid: [%x]%x || [%x]%x",
+                                        dump_reg[3].offset, dump_reg[3].value,
+                                        dump_reg[7].offset, dump_reg[7].value);
+                                /* replace the write violation */
+                                if (dump_reg[3].value != 0)
+                                        dump_reg[3].value = get_axid;
+                                /* replace the read violation */
+                                if (dump_reg[7].value != 0)
+                                        dump_reg[7].value = get_axid;
+			}
 		}
 
 		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
