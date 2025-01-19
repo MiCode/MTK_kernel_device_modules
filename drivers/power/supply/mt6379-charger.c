@@ -1544,6 +1544,7 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 {
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
 	struct device *dev = cdata->dev;
+	enum mt6379_chip_rev rev;
 	int ret = 0;
 
 	ret = mt6379_enable_hm(cdata, true);
@@ -1552,10 +1553,26 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 		return ret;
 	}
 
-	/* enable pre-UV function */
-	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_DIG2, BIT(1), BIT(1));
-	if (ret)
-		dev_info(dev, "%s, Failed to set pre-UV function\n", __func__);
+	rev = mt6379_charger_get_chip_rev(cdata);
+	dev_info(dev, "%s, using setting rev: %d\n", __func__, rev);
+
+	/* Turn on Force base function */
+	if (rev >= MT6379_CHIP_REV_E2 && rev <= MT6379_CHIP_REV_E4) {
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_VDDA_SUPPLY, BIT(7), BIT(7));
+		if (ret)
+			dev_info(dev, "%s, Failed to turn on force base function\n", __func__);
+	}
+
+	/* Enable pre-UV function */
+	if (rev == MT6379_CHIP_REV_E2) {
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_DIG2, BIT(1), BIT(1));
+		if (ret)
+			dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
+	} else if (rev == MT6379_CHIP_REV_E3 || rev == MT6379_CHIP_REV_E4) {
+		ret = regmap_update_bits(cdata->rmap, MT6379_REG_BB_VOUT_SEL, BIT(7), BIT(7));
+		if (ret)
+			dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
+	}
 
 	ret = mt6379_enable_hm(cdata, false);
 	if (ret) {
