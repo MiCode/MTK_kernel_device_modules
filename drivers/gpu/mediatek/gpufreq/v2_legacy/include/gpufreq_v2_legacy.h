@@ -33,7 +33,7 @@
 #define GPUFREQ_LOGE(fmt, args...) \
 	pr_info(GPUFERQ_TAG"[ERROR]@%s: "fmt"\n", __func__, ##args)
 #define GPUFREQ_LOGW(fmt, args...) \
-	pr_info(GPUFERQ_TAG"[WARN]@%s: "fmt"\n", __func__, ##args)
+	pr_debug(GPUFERQ_TAG"[WARN]@%s: "fmt"\n", __func__, ##args)
 #define GPUFREQ_LOGI(fmt, args...) \
 	pr_info(GPUFERQ_TAG"[INFO]@%s: "fmt"\n", __func__, ##args)
 #define GPUFREQ_LOGB(buf, len, size, fmt, args...) \
@@ -48,8 +48,7 @@
 	#define GPUFREQ_LOGD(fmt, args...) \
 		pr_info(GPUFERQ_TAG"[DEBUG]@%s: "fmt"\n", __func__, ##args)
 #else
-	#define GPUFREQ_LOGD(fmt, args...) \
-		pr_info(GPUFERQ_TAG"[DEBUG]@%s: "fmt"\n", __func__, ##args)
+	#define GPUFREQ_LOGD(fmt, args...) {}
 #endif /* GPUFREQ_DEBUG_ENABLE */
 
 #if GPUFREQ_TRACE_ENABLE
