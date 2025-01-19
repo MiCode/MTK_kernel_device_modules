@@ -710,6 +710,9 @@ static int ree_service_threads(uint32_t cmd, uint32_t ree_cpu)
 			continue;
 
 		nop = vmalloc(sizeof(struct trusty_nop));
+		if (nop == NULL)
+			return -ENOMEM;
+
 		trusty_nop_init(nop, cmd, 0, 0);
 		trusty_enqueue_nop(tz_system_dev->dev.parent, nop, cpu);
 	}
@@ -768,6 +771,10 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 				   uint32_t paramTypes,
 				   union MTEEC_PARAM param[4])
 {
+#if IS_ENABLED(CONFIG_TEE)
+	int ret;
+#endif
+
 	/*
 	 * NOTE: Only support VALUE type gp parameters
 	 */
@@ -794,7 +801,6 @@ TZ_RESULT _Gz_KreeServiceCall_body(KREE_SESSION_HANDLE handle, uint32_t command,
 		break;
 
 #if IS_ENABLED(CONFIG_TEE)
-	int ret;
 	case REE_SERVICE_CMD_TEE_INIT_CTX:
 		ret = TEEC_InitializeContext(
 			(char *)param[0].mem.buffer,
