@@ -12,6 +12,10 @@
 #define LK_LVTS_MAGIC (0x0000555)
 #define TFA_LVTS_MAGIC (0x0000777)
 
+#define MAGIC_NUMBER1   (37124)
+#define MAGIC_NUMBER2   (25378)
+#define MAGIC_NUMBER3   (0xA5000000)
+
 #define DISABLE_THERMAL_HW_REBOOT (-274000)
 
 #define SCP_APPOINTED_CONTROLLER  (5)
@@ -24,6 +28,7 @@
 #define FEATURE_CK26M_ACTIVE	(BIT(1))
 #define FEATURE_SCP_OC		(BIT(2))
 #define FEATURE_6989_SCP_OC		(BIT(3))
+#define FEATURE_CHANGE_REBOOT_TEMP_IN_TFA  (BIT(4))
 #define SCP_OC_DUMP_LOG         (0)
 #define ENABLE_FEATURE(feature)		(lvts_data->feature_bitmap |= feature)
 #define DISABLE_FEATURE(feature)	(lvts_data->feature_bitmap &= (~feature))
@@ -245,7 +250,6 @@ struct lvts_data {
 	bool op_cali_support;
 	bool is_tsfdc_n3e_ver;
 	bool dump_wo_pause;
-	bool support_shutdown;
 	int  gpu_power_ctrl_id;
 	bool mcu_sensor_id_remap;
 	bool ap_domain_no_irq;
@@ -360,8 +364,8 @@ struct tag_chipid {
 #define LVTSMONINTSTS_0	0x010
 #define LVTSMONIDET0_0	0x014
 #define LVTSMONIDET1_0	0x018
-#define LVTSMONIDET2_0	0x01C
-#define LVTSMONIDET3_0	0x020
+#define LVTSMAXDVRDATA_0	0x01C
+#define LVTSMAXMSRDATA_0	0x020
 #define LVTSH2NTHRE_0	0x024
 #define LVTSHTHRE_0	0x028
 #define LVTSCTHRE_0	0x02C
@@ -481,5 +485,6 @@ struct tag_chipid {
 #define LVTS_DEBUG1_OFFSET          (0x0E0)
 #define LVTS_DEBUG2_OFFSET          (0x120)
 #define LVTS_DEBUG3_OFFSET          (0x0EC)
+#define LVTS_DEBUG4_OFFSET          (0x200)
 
 #endif /* __MTK_SOC_TEMP_LVTS_H__ */

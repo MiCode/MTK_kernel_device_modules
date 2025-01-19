@@ -4,6 +4,8 @@
  */
 
 #include <linux/delay.h>
+#include <linux/arm-smccc.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/of_irq.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
@@ -40,11 +42,6 @@
 
 static struct tag_chipid *chip_id;
 
-static void __iomem *toprgu_base;
-#define WDT_REQ_MODE   0x30
-#define WDT_STATUS_MCU_THERMAL_RST (1<<23)
-#define WDT_REQ_MODE_KEY    (0x33000000)
-
 static const unsigned int g_lvts_device_addrs[NUM_LVTS_DEVICE_REG] = {
 	RG_TSFM_DATA_0,
 	RG_TSFM_CTRL_1,
@@ -56,19 +53,18 @@ static const unsigned int g_lvts_device_addrs[NUM_LVTS_DEVICE_REG] = {
 	RG_DBG_FQMTR,
 	RG_DID_LVTS};
 
-static unsigned int g_lvts_device_value_b[LVTS_CONTROLLER_DEBUG_NUM]
-	[NUM_LVTS_DEVICE_REG];
 static unsigned int g_lvts_device_value_e[LVTS_CONTROLLER_DEBUG_NUM]
 	[NUM_LVTS_DEVICE_REG];
 
-#define NUM_LVTS_CONTROLLER_REG (32)
+#define NUM_LVTS_CONTROLLER_REG (33)
 static const unsigned int g_lvts_controller_addrs[NUM_LVTS_CONTROLLER_REG] = {
 	LVTSMONCTL0_0,
 	LVTSMONCTL1_0,
 	LVTSMONCTL2_0,
 	LVTSMONINT_0,
 	LVTSMONINTSTS_0,
-	LVTSMONIDET3_0,
+	LVTSMAXDVRDATA_0,
+	LVTSMAXMSRDATA_0,
 	LVTSMSRCTL0_0,
 	LVTSMSRCTL1_0,
 	LVTS_ID_0,
@@ -95,8 +91,6 @@ static const unsigned int g_lvts_controller_addrs[NUM_LVTS_CONTROLLER_REG] = {
 	LVTSPROTTC_0,
 	LVTSCLKEN_0,
 	LVTSSPARE3_0};
-static unsigned int g_lvts_controller_value_b[LVTS_CONTROLLER_DEBUG_NUM]
-	[NUM_LVTS_CONTROLLER_REG];
 static unsigned int g_lvts_controller_value_e[LVTS_CONTROLLER_DEBUG_NUM]
 	[NUM_LVTS_CONTROLLER_REG];
 #endif
@@ -105,8 +99,8 @@ static unsigned int g_lvts_controller_value_e[LVTS_CONTROLLER_DEBUG_NUM]
 static const unsigned int g_lvts_controller_debug1_addr[NUM_LVTS_DEBUG1_REG] = {
 	LVTSMONCTL0_0,
 	LVTS_ID_0,
-	LVTSMONIDET2_0,
-	LVTSMONIDET3_0};
+	LVTSMAXDVRDATA_0,
+	LVTSMAXMSRDATA_0};
 static unsigned int g_lvts_controller_debug1_value[NUM_LVTS_DEBUG1_REG];
 
 #define NUM_LVTS_DEBUG2_REG (8)
@@ -131,6 +125,15 @@ static const unsigned int g_lvts_controller_debug3_addr[NUM_LVTS_DEBUG3_REG] = {
 	LVTSOVSP3_0};
 static unsigned int g_lvts_controller_debug3_value[NUM_LVTS_DEBUG3_REG];
 
+#define NUM_LVTS_DEBUG4_REG (6)
+static const unsigned int g_lvts_controller_debug4_addr[NUM_LVTS_DEBUG4_REG] = {
+	LVTSEDATA00_0,
+	LVTSEDATA01_0,
+	LVTSEDATA02_0,
+	LVTSEDATA03_0,
+	LVTSMSROFT_0,
+	LVTSPROTTC_0};
+static unsigned int g_lvts_controller_debug4_value[NUM_LVTS_DEBUG4_REG];
 /*==================================================
  * LVTS local common code
  *==================================================
@@ -457,22 +460,6 @@ static void enable_all_sensing_points(struct lvts_data *lvts_data)
 }
 
 #ifdef DUMP_MORE_LOG
-static void read_controller_reg_before_active(struct lvts_data *lvts_data)
-{
-	int i, j, temp;
-	void __iomem *base;
-
-	for (i = 0; i < lvts_data->num_tc; i++) {
-		base = GET_BASE_ADDR(i);
-
-		for (j = 0; j < NUM_LVTS_CONTROLLER_REG; j++) {
-			temp = readl(LVTSMONCTL0_0 + g_lvts_controller_addrs[j]
-				+ base);
-			g_lvts_controller_value_b[i][j] = temp;
-		}
-	}
-}
-
 static void read_controller_reg_when_error(struct lvts_data *lvts_data)
 {
 	unsigned int i;
@@ -547,22 +534,6 @@ static void read_device_reg_when_error(struct lvts_data *lvts_data)
 	}
 }
 
-void clear_lvts_register_value_array(struct lvts_data *lvts_data)
-{
-	int i, j;
-
-	for (i = 0; i < lvts_data->num_tc; i++) {
-		for (j = 0; j < NUM_LVTS_CONTROLLER_REG; j++) {
-			g_lvts_controller_value_b[i][j] = 0;
-			g_lvts_controller_value_e[i][j] = 0;
-		}
-
-		for (j = 0; j < NUM_LVTS_DEVICE_REG; j++) {
-			g_lvts_device_value_b[i][j] = 0;
-			g_lvts_device_value_e[i][j] = 0;
-		}
-	}
-}
 
 static void dump_lvts_device_register_value(struct lvts_data *lvts_data)
 {
@@ -572,18 +543,6 @@ static void dump_lvts_device_register_value(struct lvts_data *lvts_data)
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		dev_info(dev, "[LVTS_ERROR][BEFROE][CONTROLLER_%d][DUMP]\n", i);
-		offset = snprintf(buffer, sizeof(buffer), "[LVTS_ERROR][BEFORE][DEVICE][DUMP] ");
-		if (offset < 0)
-			return;
-		for (j = 0; j < NUM_LVTS_DEVICE_REG; j++) {
-			offset += snprintf(buffer + offset, sizeof(buffer) - offset, "0x%x:%x ",
-				g_lvts_device_addrs[j], g_lvts_device_value_b[i][j]);
-		}
-		if (offset < 0)
-			return;
-
-		buffer[offset] = '\0';
-		dev_info(dev, "%s\n", buffer);
 
 
 		offset = snprintf(buffer, sizeof(buffer), "[LVTS_ERROR][AFTER][DEVICE][DUMP] ");
@@ -610,23 +569,6 @@ static void dump_lvts_controller_register_value(struct lvts_data *lvts_data)
 
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
-		dev_info(dev, "[LVTS_ERROR][BEFROE][CONTROLLER_%d]\n", i);
-
-		offset = snprintf(buffer, sizeof(buffer),
-			"[LVTS_ERROR][BEFORE][TC][DUMP] ");
-		if (offset < 0)
-			return;
-		for (j = 0; j < NUM_LVTS_CONTROLLER_REG; j++) {
-			offset += snprintf(buffer + offset,
-					sizeof(buffer) - offset, "(0x%x:%x)",
-					tc[i].addr_offset + g_lvts_controller_addrs[j],
-					g_lvts_controller_value_b[i][j]);
-		}
-		if (offset < 0)
-			return;
-
-		buffer[offset] = '\0';
-		dev_info(dev, "%s\n", buffer);
 
 
 		dev_info(dev, "[LVTS_ERROR][AFTER][CONTROLLER_%d]\n", i);
@@ -1018,6 +960,7 @@ static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
 	struct soc_temp_tz *lvts_tz = (struct soc_temp_tz *)tz->devdata;
 	struct lvts_data *lvts_data = lvts_tz->lvts_data;
 	const struct thermal_trip_desc *td;
+	struct arm_smccc_res res;
 
 	int ret;
 
@@ -1029,9 +972,24 @@ static int soc_temp_lvts_set_trip_temp(struct thermal_zone_device *tz,
 		return 0;
 
 	update_all_tc_hw_reboot_point(lvts_data, temp);
-	set_all_tc_hw_reboot(lvts_data);
+	if (IS_ENABLE(FEATURE_CHANGE_REBOOT_TEMP_IN_TFA) == 0)
+		set_all_tc_hw_reboot(lvts_data);
 
 	ret = set_reboot_temperature(temp);
+
+	if (IS_ENABLE(FEATURE_CHANGE_REBOOT_TEMP_IN_TFA)) {
+		if (temp != DISABLE_THERMAL_HW_REBOOT) {
+			arm_smccc_smc(MTK_SIP_KERNEL_THERMAL_CONTROL,
+				temp | MAGIC_NUMBER3,
+				MAGIC_NUMBER1, MAGIC_NUMBER2,
+				0, 0, 0, 0, &res);
+		} else {
+			arm_smccc_smc(MTK_SIP_KERNEL_THERMAL_CONTROL,
+				DISABLE_THERMAL_HW_REBOOT,
+				MAGIC_NUMBER1, MAGIC_NUMBER2,
+				0, 0, 0, 0, &res);
+		}
+	}
 
 	return ret;
 }
@@ -1437,7 +1395,7 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 		temp = readl(g_lvts_controller_debug1_addr[i] + base);
 		g_lvts_controller_debug1_value[i] = temp;
 	}
-	temp = ((g_lvts_controller_debug1_value[0] & 0x1FFFFF) | ((tc_id & 0x7) << 21));
+	temp = (g_lvts_controller_debug1_value[0] & 0x1FFFFF);
 	temp |= (g_lvts_controller_debug1_value[1] << 24);
 	writel( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET));
 	writel(g_lvts_controller_debug1_value[2],
@@ -1464,6 +1422,7 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x10));
 	writel(g_lvts_controller_debug2_value[7],
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x14));
+	writel(tc_id, (void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x18));
 
 	/* DEBUG3 for ATP info */
 	for (i = 0; i < NUM_LVTS_DEBUG3_REG; i++) {
@@ -1480,6 +1439,15 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 	temp = (g_lvts_controller_debug3_value[4] & 0xFFFF) |
 			((g_lvts_controller_debug3_value[5]&0xFFFF) << 16);
 	writel(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0xC));
+
+	/* DEBUG4 for EDATA & C & LVTSPROTTC */
+	for (i = 0; i < NUM_LVTS_DEBUG4_REG; i++) {
+		temp = readl(g_lvts_controller_debug4_addr[i] + base);
+		g_lvts_controller_debug4_value[i] = temp;
+
+		writel(g_lvts_controller_debug4_value[i],
+			(void __iomem *)(thermal_csram_base + LVTS_DEBUG4_OFFSET + (i << 2)));
+	}
 }
 
 static irqreturn_t irq_handler(int irq, void *dev_id)
@@ -1656,11 +1624,6 @@ static void check_runtime_log_from_dts(struct lvts_data *lvts_data,
 	}
 }
 
-static const struct of_device_id toprgu_of_match[] = {
-	{ .compatible = "mediatek,mt6589-wdt" },
-	{},
-};
-
 static int lvts_get_chipid(void)
 {
 	struct device_node *node;
@@ -1697,17 +1660,6 @@ static int lvts_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct lvts_data *lvts_data;
 	int ret;
-	struct device_node *np_toprgu;
-
-	for_each_matching_node(np_toprgu, toprgu_of_match) {
-		pr_info("%s: compatible node found: %s\n",
-			 __func__, np_toprgu->name);
-		break;
-	}
-
-	toprgu_base = of_iomap(np_toprgu, 0);
-	if (!toprgu_base)
-		pr_debug("toprgu iomap failed\n");
 
 	lvts_data = (struct lvts_data *) of_device_get_match_data(dev);
 	if (!lvts_data)	{
@@ -1728,10 +1680,6 @@ static int lvts_probe(struct platform_device *pdev)
 	if (lvts_data->mcu_sensor_id_remap)
 		lvts_get_chipid();
 
-#ifdef DUMP_MORE_LOG
-	clear_lvts_register_value_array(lvts_data);
-	read_controller_reg_before_active(lvts_data);
-#endif
 
 	ret = lvts_register_irq_handler(lvts_data);
 	if (ret)
@@ -1752,26 +1700,6 @@ static int lvts_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void lvts_shutdown(struct platform_device *pdev)
-{
-	struct lvts_data *lvts_data;
-	struct device *dev = &pdev->dev;
-	unsigned int val = 0;
-
-	lvts_data = (struct lvts_data *) dev_get_drvdata(dev);
-
-	if (lvts_data->support_shutdown) {
-		if (toprgu_base) {
-			val = ioread32(toprgu_base + WDT_REQ_MODE);
-			val &= ~(WDT_STATUS_MCU_THERMAL_RST);
-			val |= WDT_REQ_MODE_KEY;
-			iowrite32(val, toprgu_base + WDT_REQ_MODE);
-		}
-		dev_info(dev, "[Thermal/LVTS]%s(WDT_REQ:0x%x!)\n",
-			__func__, ioread32(toprgu_base + WDT_REQ_MODE));
-	}
-}
-
 static int lvts_suspend_noirq(struct device *dev)
 {
 	dev_info(dev, "[Thermal/LVTS]%s\n", __func__);
@@ -1781,15 +1709,8 @@ static int lvts_suspend_noirq(struct device *dev)
 
 static int lvts_resume_noirq(struct device *dev)
 {
-	struct lvts_data *lvts_data;
-
-	lvts_data = (struct lvts_data *) dev_get_drvdata(dev);
 	dev_info(dev, "[Thermal/LVTS]%s\n", __func__);
 
-#ifdef DUMP_MORE_LOG
-	clear_lvts_register_value_array(lvts_data);
-	read_controller_reg_before_active(lvts_data);
-#endif
 	return 0;
 }
 /*==================================================
@@ -6885,7 +6806,8 @@ static struct lvts_data mt6991_lvts_data = {
 		.check_cal_data = mt6991_check_cal_data,
 		.update_coef_data = mt6991_update_coef_data,
 	},
-	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK,
+	.feature_bitmap = FEATURE_DEVICE_AUTO_RCK |
+		FEATURE_CHANGE_REBOOT_TEMP_IN_TFA,
 	.num_efuse_addr = 24,
 	.num_efuse_block = 4,
 	.cal_data = {
@@ -6902,7 +6824,6 @@ static struct lvts_data mt6991_lvts_data = {
 	.op_cali_support = true,
 	.is_tsfdc_n3e_ver = true,
 	.dump_wo_pause = true,
-	.support_shutdown = true,
 	.gpu_power_ctrl_id = MT6991_LVTS_GPU_CTRL0,
 	.mcu_sensor_id_remap = true,
 	.ap_domain_no_irq = true,
@@ -6982,7 +6903,6 @@ MODULE_DEVICE_TABLE(of, lvts_of_match);
 static struct platform_driver soc_temp_lvts = {
 	.probe = lvts_probe,
 	.remove = lvts_remove,
-	.shutdown = lvts_shutdown,
 	.driver = {
 		.name = "mtk-soc-temp-lvts",
 		.of_match_table = lvts_of_match,
