@@ -2351,6 +2351,9 @@ static void core_update_config(struct mml_frame_config *cfg)
 		cfg->frame_tile_sz.width = src->width;
 		cfg->frame_tile_sz.height = src->height;
 	}
+
+	/* store frame crop size as init, maybe change later in rrot/rsz */
+	cfg->frame_in_hdr = cfg->frame_tile_sz;
 }
 
 void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task)

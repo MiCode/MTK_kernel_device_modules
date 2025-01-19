@@ -536,8 +536,8 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->for_func = tile_aal_for;
 	func->enable_flag = !aal_frm->relay_mode || aal_frm->alpha_r2y;
 
-	func->full_size_x_in = cfg->frame_tile_sz.width;
-	func->full_size_y_in = cfg->frame_tile_sz.height;
+	func->full_size_x_in = cfg->frame_in_hdr.width;
+	func->full_size_y_in = cfg->frame_in_hdr.height;
 	func->full_size_x_out = func->full_size_x_in;
 	func->full_size_y_out = func->full_size_y_in;
 
@@ -791,9 +791,9 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			&cfg->frame_in_crop[0],	MML_MAX_OUTPUTS * sizeof(struct mml_crop));
 
 		aal->frame_data.size_info.crop_size_s.width =
-			cfg->frame_tile_sz.width;
+			cfg->frame_in_hdr.width;
 		aal->frame_data.size_info.crop_size_s.height=
-			cfg->frame_tile_sz.height;
+			cfg->frame_in_hdr.height;
 		aal->frame_data.size_info.frame_size_s.width = cfg->frame_in.width;
 		aal->frame_data.size_info.frame_size_s.height = cfg->frame_in.height;
 		aal->jobid = task->job.jobid;
@@ -801,7 +801,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		if (task->config->dual)
 			aal->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
 		else
-			aal->cut_pos_x = task->config->frame_tile_sz.width;
+			aal->cut_pos_x = task->config->frame_in_hdr.width;
 
 		aal->dre_blk_width = aal_frm->dre_blk_width;
 		aal->dre_blk_height = aal_frm->dre_blk_height;
@@ -1178,7 +1178,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 		if (task->config->dual)
 			aal_frm->cut_pos_x = cfg->hist_div[ccfg->tile_eng_idx];
 		else
-			aal_frm->cut_pos_x = task->config->frame_tile_sz.width;
+			aal_frm->cut_pos_x = task->config->frame_in_hdr.width;
 		if (ccfg->pipe)
 			aal_frm->out_hist_xs = aal_frm->cut_pos_x;
 	}
@@ -1216,7 +1216,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	tile_pxl_x_start = tile->in.xs;
 	tile_pxl_x_end = tile->in.xe;
 
-	last_tile_x_flag = (tile->in.xe+1 >= task->config->frame_tile_sz.width) ? 1:0;
+	last_tile_x_flag = (tile->in.xe+1 >= task->config->frame_in_hdr.width) ? 1:0;
 
 	mml_pq_msg("%s %d: %d: %d: [tile_pxl] [xs, xe] = [%d, %d]",
 		__func__, task->job.jobid, comp->id, idx, tile_pxl_x_start, tile_pxl_x_end);
@@ -1226,7 +1226,7 @@ static s32 aal_config_tile(struct mml_comp *comp, struct mml_task *task,
 	tile_pxl_y_start = 0;
 	tile_pxl_y_end = tile->in.ye - tile->in.ys;
 
-	last_tile_y_flag = (tile_pxl_y_end+1 >= task->config->frame_tile_sz.height) ? 1:0;
+	last_tile_y_flag = (tile_pxl_y_end+1 >= task->config->frame_in_hdr.height) ? 1:0;
 	roi_x_start = 0;
 	roi_x_end = tile->in.xe - tile->in.xs;
 	roi_y_start = 0;
@@ -1916,8 +1916,8 @@ static bool aal_hist_check(struct mml_comp *comp, struct mml_task *task,
 	if (IS_ERR_OR_NULL(cfg) || IS_ERR_OR_NULL(aal_frm))
 		return false;
 
-	crop_width = cfg->frame_tile_sz.width;
-	crop_height = cfg->frame_tile_sz.height;
+	crop_width = cfg->frame_in_hdr.width;
+	crop_height = cfg->frame_in_hdr.height;
 	cut_pos_x = aal_frm->cut_pos_x;
 	dre_blk_width = aal_frm->dre_blk_width;
 	dre_blk_height = aal_frm->dre_blk_height;

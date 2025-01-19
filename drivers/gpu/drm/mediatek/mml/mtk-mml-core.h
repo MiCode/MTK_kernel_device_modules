@@ -501,10 +501,11 @@ struct mml_frame_config {
 	struct mml_frame_info info;
 	enum mml_sys_id sysid;		/* main mmlsys used for this config */
 	/* frame input pixel size after rrot binning and rotate */
-	struct mml_frame_size frame_in;
-	struct mml_frame_size rrot_out[MML_PIPE_CNT];
-	struct mml_crop frame_in_crop[MML_MAX_OUTPUTS];
-	struct mml_frame_size frame_tile_sz;
+	struct mml_frame_size frame_in;		/* source size, w/ rrot bin and rrot rotate */
+	struct mml_crop frame_in_crop[MML_MAX_OUTPUTS];	/* frame_in w/ crop */
+	struct mml_frame_size rrot_out[MML_PIPE_CNT];	/* dual rrot to merge split size */
+	struct mml_frame_size frame_in_hdr;	/* hdr/aal input frame size, maybe rsz out in dl */
+	struct mml_frame_size frame_tile_sz;	/* rdma/rrot to downstream tile size */
 	/* binning level config by: 2'd0: 1; 2'd1: 2; 2'd2: 4; 2'd3: 8 */
 	u8 bin_x;
 	u8 bin_y;
@@ -575,6 +576,7 @@ struct mml_frame_config {
 	bool dpc:1;
 	bool rrot_dual:1;
 	bool merge2p:1;
+	bool rsz_front:1;
 
 	/* tile */
 	struct mml_frame_tile *frame_tile[MML_PIPE_CNT];
