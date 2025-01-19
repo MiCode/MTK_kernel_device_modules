@@ -827,13 +827,19 @@ static int wait_for_bt_irq(struct mtk_btcvsd_snd *bt,
 
 		ktime_get_ts64(&ts64);
 		t2 = timespec64_to_ns(&ts64);
-		t2 = t2 - t1; /* in ns (10^9) */
 
-		if (t2 > timeout_limit) {
-			dev_warn(bt->dev, "%s(), stream %d, timeout %llu, limit %llu, ret %d, flag %d\n",
-				 __func__, bt_stream->stream,
-				 t2, timeout_limit, ret,
-				 bt_stream->wait_flag);
+		if (t1 > t2) {
+			dev_warn(bt->dev, "%s(), stream %d, potential underflow detected: t1 (%llu) > t2 (%llu)\n",
+					__func__, bt_stream->stream, t1, t2);
+		} else {
+			t2 = t2 - t1; /* in ns (10^9) */
+
+			if (t2 > timeout_limit) {
+				dev_warn(bt->dev, "%s(), stream %d, timeout %llu, limit %llu, ret %d, flag %d\n",
+					__func__, bt_stream->stream,
+					t2, timeout_limit, ret,
+					bt_stream->wait_flag);
+			}
 		}
 
 		if (ret < 0) {
