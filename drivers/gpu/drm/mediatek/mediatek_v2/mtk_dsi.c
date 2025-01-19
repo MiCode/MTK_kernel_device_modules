@@ -3545,6 +3545,10 @@ void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 		if (comp)
 			disp_aal_notify_backlight_changed(comp, csc_bl[con_index], csc_nits[con_index], -1, 0);
 
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_CCORR, 0);
+		if (comp)
+			disp_ccorr_notify_backlight_changed(comp, csc_bl[con_index], csc_nits[con_index], false);
+
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
 		if (comp && set_gamma)
 			disp_gamma_set_gain(comp, mtk_crtc_state->cmdq_handle,

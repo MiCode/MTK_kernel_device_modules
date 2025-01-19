@@ -1525,6 +1525,11 @@ struct mtk_drm_pq_caps_info {
 	struct drm_mtk_ccorr_caps ccorr_caps;
 };
 
+struct mtk_pq_disp_info {
+	int backlight;
+	int panel_nits;
+	unsigned int fps;
+};
 struct mtk_drm_oddmr_param {
 	__u32 head_id;
 	__u32 size;

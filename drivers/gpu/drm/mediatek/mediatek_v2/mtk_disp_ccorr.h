@@ -46,6 +46,9 @@ struct mtk_disp_ccorr_primary {
 	int old_pq_backlight;
 	int pq_backlight;
 	int pq_backlight_db;
+	int pq_panel_nits;
+	unsigned int fps;
+	unsigned int led_type;
 	atomic_t ccorr_is_init_valid;
 	struct mutex data_lock;
 	struct mutex bl_lock;
@@ -71,7 +74,7 @@ struct mtk_disp_ccorr {
 };
 
 inline struct mtk_disp_ccorr *comp_to_ccorr(struct mtk_ddp_comp *comp);
-void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024);
+void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024, int panel_nits, bool need_lock);
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int32_t matrix[16], int32_t hint, bool fte_flag, bool linear);
 int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,

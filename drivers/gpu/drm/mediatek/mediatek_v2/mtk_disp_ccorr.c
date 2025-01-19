@@ -476,7 +476,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 }
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
-static int disp_ccorr_copy_backlight_to_user(struct mtk_ddp_comp *comp, int *backlight)
+static int disp_ccorr_copy_backlight_to_user(struct mtk_ddp_comp *comp, struct mtk_pq_disp_info *disp_info)
 {
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
@@ -491,14 +491,17 @@ static int disp_ccorr_copy_backlight_to_user(struct mtk_ddp_comp *comp, int *bac
 
 	mutex_unlock(&primary_data->bl_lock);
 
-	memcpy(backlight, &primary_data->pq_backlight_db, sizeof(int));
+	memcpy(&disp_info->backlight, &primary_data->pq_backlight_db, sizeof(primary_data->pq_backlight_db));
+	memcpy(&disp_info->panel_nits, &primary_data->pq_panel_nits, sizeof(primary_data->pq_panel_nits));
+	memcpy(&disp_info->fps, &primary_data->fps, sizeof(primary_data->fps));
 
-	DDPINFO("%s: %d\n", __func__, ret);
+	DDPINFO("%s: bl:%d, nits:%d, fps:%d\n", __func__,
+		primary_data->pq_backlight_db, primary_data->pq_panel_nits, primary_data->fps);
 
 	return ret;
 }
 
-void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
+void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024, int panel_nits, bool need_lock)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -508,22 +511,26 @@ void disp_ccorr_notify_backlight_changed(struct mtk_ddp_comp *comp, int bl_1024)
 	mutex_lock(&primary_data->bl_lock);
 	primary_data->old_pq_backlight = primary_data->pq_backlight;
 	primary_data->pq_backlight = bl_1024;
+	primary_data->pq_panel_nits = panel_nits;
 	mutex_unlock(&primary_data->bl_lock);
 
 	if (atomic_read(&primary_data->ccorr_is_init_valid) != 1)
 		return;
 
-	DDPINFO("%s: %d\n", __func__, bl_1024);
+	DDPINFO("%s: bl:%d, nits:%d\n", __func__, bl_1024, panel_nits);
+
+	if (primary_data->led_type == TYPE_ATOMIC)
+		return;
 
 	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		if (primary_data->relay_state != 0) {
-			mtk_crtc_check_trigger(mtk_crtc, true, true);
+			mtk_crtc_check_trigger(mtk_crtc, true, need_lock);
 			DDPINFO("%s: trigger refresh when backlight changed", __func__);
 		}
 	} else {
 		if (primary_data->old_pq_backlight == 0 || bl_1024 == 0) {
 
-			mtk_crtc_check_trigger(mtk_crtc, true, true);
+			mtk_crtc_check_trigger(mtk_crtc, true, need_lock);
 			DDPINFO("%s: trigger refresh when backlight ON/Off", __func__);
 		}
 	}
@@ -572,7 +579,7 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		if (led_conf->led_type == LED_TYPE_ATOMIC)
 			break;
 
-		disp_ccorr_notify_backlight_changed(comp, trans_level);
+		disp_ccorr_notify_backlight_changed(comp, trans_level, -1, true);
 		DDPINFO("%s: brightness changed: %d(%d)\n",
 			__func__, trans_level, led_conf->cdev.brightness);
 		break;
@@ -580,10 +587,13 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		if (led_conf->led_type == LED_TYPE_ATOMIC)
 			break;
 
-		disp_ccorr_notify_backlight_changed(comp, 0);
+		disp_ccorr_notify_backlight_changed(comp, 0, -1, true);
 		break;
 	case LED_TYPE_CHANGED:
 		pr_info("[leds -> ccorr] led type changed: %d", led_conf->led_type);
+		struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+		struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
+		primary_data->led_type = (unsigned int)led_conf->led_type;
 		break;
 	default:
 		break;
@@ -728,7 +738,7 @@ int disp_ccorr_act_get_irq(struct mtk_ddp_comp *comp, void *data)
 	disp_ccorr_wait_irq(comp);
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
-	if (disp_ccorr_copy_backlight_to_user(comp, (int *) data) < 0) {
+	if (disp_ccorr_copy_backlight_to_user(comp, (struct mtk_pq_disp_info *) data) < 0) {
 		DDPPR_ERR("%s: failed", __func__);
 		ret = -EFAULT;
 	}
@@ -888,6 +898,9 @@ static void disp_ccorr_init_primary_data(struct mtk_ddp_comp *comp)
 	mutex_init(&primary_data->data_lock);
 	primary_data->ccorr_hw_valid = 0;
 	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
+	primary_data->pq_backlight = -1;
+	primary_data->pq_panel_nits = -1;
+	primary_data->fps = 0;
 }
 
 static int disp_ccorr_update_ccorr_base(struct mtk_ddp_comp *comp)
@@ -1021,6 +1034,18 @@ static int disp_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (comp->mtk_crtc->is_dual_pipe && data->companion) {
 			disp_ccorr_init_data(data->companion);
 			disp_ccorr_init_primary_data(data->companion);
+		}
+	}
+		break;
+	case NOTIFY_MODE_SWITCH:
+	{
+		if (comp->id == DDP_COMPONENT_CCORR0) {
+			struct mtk_modeswitch_param *modeswitch_param = (struct mtk_modeswitch_param *)params;
+			struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+
+			ccorr_data->primary_data->fps = modeswitch_param->fps;
+			DDPINFO("%s: compId: %d mode switched fps:%d\n",
+				__func__, comp->id, modeswitch_param->fps);
 		}
 	}
 		break;
@@ -1230,6 +1255,18 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 void disp_ccorr_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
+	struct drm_display_mode *mode;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
+
+	if (comp->id == DDP_COMPONENT_CCORR0) {
+		mode = mtk_crtc_get_display_mode_by_comp(__func__, &mtk_crtc->base, comp, false);
+		if ((mode != NULL) && (ccorr_data != NULL)) {
+			ccorr_data->primary_data->fps = drm_mode_vrefresh(mode);
+			DDPINFO("%s: first config set fps: %d\n", __func__, ccorr_data->primary_data->fps);
+		}
+	}
+
 	disp_ccorr_config(comp, cfg, handle);
 }
 
