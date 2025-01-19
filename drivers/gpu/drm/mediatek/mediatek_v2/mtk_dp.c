@@ -1552,6 +1552,8 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 			mdrv_DPTx_StopSentSDP(mtk_dp);
 			mhal_DPTx_AnalogPowerOnOff(mtk_dp, false);
 
+			DPTXMSG("unprepare dp clks\n");
+			mtk_dp_intf_unprepare_clk();
 			DPTXMSG("Power OFF %d", mtk_dp->bPowerOn);
 			pm_runtime_put_sync(mtk_dp->dev);
 			if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
