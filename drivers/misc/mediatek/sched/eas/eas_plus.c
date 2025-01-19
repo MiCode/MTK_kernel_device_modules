@@ -306,7 +306,7 @@ DEFINE_PER_CPU(cpumask_var_t, em_energy_mask);
 static inline
 unsigned long estimate_energy(struct em_perf_domain *pd,
 		int opp, unsigned long sum_util, struct energy_env *eenv,
-		unsigned long scale_cpu, unsigned long freq, unsigned long extern_volt)
+		unsigned long scale_cpu, unsigned long freq, unsigned long extern_volt, unsigned long max_util)
 {
 	int cpu, this_cpu, wl = 0;
 	unsigned long cap;
@@ -356,7 +356,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	energy = get_cpu_power(mtk_em, get_lkg, false, eenv->wl_cpu,
 		eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY,
 		this_cpu, cpu_temp, opp, cpus->bits[0],
-		data, output, pd, freq);
+		data, output, pd, freq, max_util);
 
 	if (get_lkg) {
 		for_each_cpu_and(cpu, pd_cpus, cpu_online_mask) {
@@ -402,7 +402,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long pd_freq, unsigned long sum_util,
 		unsigned long scale_cpu, struct energy_env *eenv,
-		unsigned long extern_volt)
+		unsigned long extern_volt, unsigned long max_util)
 {
 	unsigned long freq;
 	int cpu, opp = -1;
@@ -463,7 +463,7 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 	 *   pd_nrg = ------------------------                       (4)
 	 *                  scale_cpu
 	 */
-	return estimate_energy(pd, opp, sum_util, eenv, scale_cpu, freq, extern_volt);
+	return estimate_energy(pd, opp, sum_util, eenv, scale_cpu, freq, extern_volt, max_util);
 }
 
 #define OFFS_THERMAL_LIMIT_S 0x1208

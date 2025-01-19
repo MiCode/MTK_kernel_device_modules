@@ -30,10 +30,13 @@ EXPORT_SYMBOL(get_cpu_power_hook);
 unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 	int quant, int wl, int *val_s, int r_o, int caller,
 	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
-	unsigned long *data, unsigned long *output, struct em_perf_domain *pd, unsigned long freq)
+	unsigned long *data, unsigned long *output, struct em_perf_domain *pd,
+	unsigned long freq, unsigned long max_util)
 {
-	unsigned long sum_util, scale_cpu;
+	unsigned long sum_util;
 	struct em_perf_state *ps;
+	int i;
+
 	if (get_cpu_power_hook) {
 		unsigned long result;
 		int dpt_pwr_eff_val[5];
@@ -50,9 +53,11 @@ unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 	}
 
 	sum_util = data[0];
-	scale_cpu = data[3];
-	ps = em_pd_get_efficient_state(pd, freq);
-	return em_estimate_energy(ps->cost, sum_util, scale_cpu);
+	i = em_pd_get_efficient_state(pd->em_table->state, pd->nr_perf_states,
+				      max_util, pd->flags, pd->min_ps,
+				      pd->max_ps);
+	ps = &pd->em_table->state[i];
+	return ps->cost * sum_util;
 }
 
 unsigned long (*get_cpu_pwr_eff_hook)(int cpu, unsigned long pd_freq, int quant, int wl,

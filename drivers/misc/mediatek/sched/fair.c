@@ -493,19 +493,19 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
 			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
-					scale_cpu, eenv, extern_volt);
+					scale_cpu, eenv, extern_volt, pd_max_util);
 			shared_buck_mode = 1;
 		} else {
 			extern_volt = 0;
 			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
-					scale_cpu, eenv, extern_volt);
+					scale_cpu, eenv, extern_volt, pd_max_util);
 			energy = ((pd_volt) ? energy * max(gear_volt, dsu_volt) / pd_volt : energy);
 			shared_buck_mode = 2;
 		}
 	} else {
 		extern_volt = dsu_volt;
 		energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
-				scale_cpu, eenv, extern_volt);
+				scale_cpu, eenv, extern_volt, pd_max_util);
 		shared_buck_mode = 0;
 	}
 
