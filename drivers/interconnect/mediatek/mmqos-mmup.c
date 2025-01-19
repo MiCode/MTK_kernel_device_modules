@@ -7,7 +7,6 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include "mmqos-mmup.h"
-#include "vcp_helper.h"
 #include "vcp_status.h"
 #include "mtk-mm-monitor-controller.h"
 
@@ -189,7 +188,7 @@ int mmqos_mmup_init_thread(void *data)
 	retry = 0;
 	while (!is_vcp_ready_ex(MMQOS_MMUP_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
-			MMQOS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
+			MMQOS_ERR("VCP_A_ID not ready");
 			return -ETIMEDOUT;
 		}
 		mdelay(1);
