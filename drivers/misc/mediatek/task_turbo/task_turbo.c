@@ -367,7 +367,7 @@ static const struct kernel_param_ops enable_tgd_ops = {
 module_param_cb(enable_tgd, &enable_tgd_ops, &enable_tgd_param, 0664);
 MODULE_PARM_DESC(enable_tgd, "enable tgd to vip for debug");
 
-void (*set_tgd_hook)(int tgd);
+int (*set_tgd_hook)(int tgd);
 EXPORT_SYMBOL(set_tgd_hook);
 
 static int set_tgd_param;
@@ -401,7 +401,7 @@ static const struct kernel_param_ops set_tgd_ops = {
 module_param_cb(set_tgd, &set_tgd_ops, &set_tgd_param, 0664);
 MODULE_PARM_DESC(set_tgd, "set tgd to vip for debug");
 
-void (*unset_tgd_hook)(int tgd);
+int (*unset_tgd_hook)(int tgd);
 EXPORT_SYMBOL(unset_tgd_hook);
 
 static int unset_tgd_param;
@@ -503,7 +503,7 @@ static const struct kernel_param_ops unset_td_ops = {
 module_param_cb(unset_td, &unset_td_ops, &unset_td_param, 0664);
 MODULE_PARM_DESC(unset_td, "unset td to vip for debug");
 
-void (*set_tdtgd_hook)(struct task_struct *p);
+void (*set_tdtgd_hook)(int tgd);
 EXPORT_SYMBOL(set_tdtgd_hook);
 
 static int set_tdtgd_param;
@@ -524,8 +524,7 @@ static int set_tdtgd(const char *buf, const struct kernel_param *kp)
 	if (set_tdtgd_hook) {
 		rcu_read_lock();
 		p = find_task_by_vpid(set_tdtgd_param);
-		if (p)
-			set_tdtgd_hook(p);
+		set_tdtgd_hook(p->tgid);
 		rcu_read_unlock();
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG set: tdtgd_hook:",
 						set_tdtgd_param, "-1", INVALID_VAL, enforced_qualified_mask);
@@ -542,7 +541,7 @@ static const struct kernel_param_ops set_tdtgd_ops = {
 module_param_cb(set_tdtgd, &set_tdtgd_ops, &set_tdtgd_param, 0664);
 MODULE_PARM_DESC(set_tdtgd, "set tdtgd to vip for debug");
 
-void (*unset_tdtgd_hook)(struct task_struct *p);
+void (*unset_tdtgd_hook)(int tgd);
 EXPORT_SYMBOL(unset_tdtgd_hook);
 
 static int unset_tdtgd_param;
@@ -563,8 +562,7 @@ static int unset_tdtgd(const char *buf, const struct kernel_param *kp)
 	if (unset_tdtgd_hook) {
 		rcu_read_lock();
 		p = find_task_by_vpid(unset_tdtgd_param);
-		if (p)
-			unset_tdtgd_hook(p);
+		unset_tdtgd_hook(p->tgid);
 		rcu_read_unlock();
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG unset: tdtgd_hook:",
 						unset_tdtgd_param, "-1", INVALID_VAL, enforced_qualified_mask);
