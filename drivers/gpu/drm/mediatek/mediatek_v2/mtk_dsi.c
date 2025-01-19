@@ -2594,6 +2594,8 @@ static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
 	return rw_times;
 }
 
+unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_dsi *dsi, unsigned int ps_wc, int mode_idx);
 static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, int mode_idx);
 
@@ -2615,6 +2617,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	struct mtk_drm_private *priv = NULL;
 	int dli_relay_1tnp = 1;
 	int buf_con = 0;
+	u32 ps_wc, output_valid = 0;
+	struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
 
 	if (mtk_crtc && mtk_crtc->base.dev)
 		priv = mtk_crtc->base.dev->dev_private;
@@ -2711,20 +2715,11 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		/* check output valid threshold exceed FIFO size if FIFO size is pre-defined */
 		if (buf_con)
 			tmp = (tmp >= (buf_con - 1)) ? (buf_con - 1) : tmp;
+		output_valid = tmp;
 	}
 
 	rw_times = mtk_dsi_calculate_rw_times(dsi, width, height);
 
-	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
-		priv->data->mmsys_id == MMSYS_MT6993)
-		tmp = 0x4E9;
-
-	DDPINFO(
-		"%s,mode=0x%lx,valid_theshold=0x%x,lp_perline_en=%d,1t%dp,buf_con:%d\n",
-		__func__, dsi->mode_flags & MIPI_DSI_MODE_VIDEO, tmp,
-		ext->params->lp_perline_en, dli_relay_1tnp, buf_con);
-
-	mtk_dsi_mask(dsi, DSI_BUF_CON1(dsi->driver_data), 0x7fff, tmp);
 	if (dsi->driver_data->new_rst_dsi && !(dsi->ext->params->is_cphy))
 		mtk_dsi_mask(dsi, DSI_DEBUG_SEL(dsi->driver_data), MM_RST_SEL, 0);
 	else
@@ -2740,40 +2735,94 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	else
 		tmp = (readl(dsi->regs + DSI_BUF_CON1(dsi->driver_data)) >> 16) * sram_unit / buffer_unit;
 
-	if (dsi->ext->params->is_cphy) {
-		sodi_hi = tmp - (12 * (fill_rate - dsi->data_rate * 2 * dsi->lanes / 7
-				/ buffer_unit) / 10);
-		sodi_lo = (23 + 5) * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		preultra_hi = 36 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		preultra_lo = 35 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		ultra_hi = 26 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		ultra_lo = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		urgent_hi = urgent_hi_fifo_us * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-		urgent_lo = urgent_lo_fifo_us * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
-	} else {
-		sodi_hi = tmp - (12 * (fill_rate - dsi->data_rate * dsi->lanes / 8
-				/ buffer_unit) / 10);
-		/*dsi->driver_data*/
-		sodi_lo = (23 + 5) * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		preultra_hi = 36 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		preultra_lo = 35 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		ultra_hi = 26 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		ultra_lo = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		urgent_hi = urgent_hi_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
-		urgent_lo = urgent_lo_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+	if (dsc_params->enable)
+		ps_wc = dsc_params->chunk_size * (dsc_params->slice_mode + 1);
+	else {
+		if (dsc_params->bit_per_pixel == 10)
+			ps_wc = width * 30 / 8;
+		else
+			ps_wc = width * dsi_buf_bpp;
 	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6993) {
-		sodi_hi = 0xfffff;
-		sodi_lo = 0xfffff;
-		preultra_hi = 0xfffff;
-		preultra_lo = 0xfffff;
-		ultra_hi = 0xfffff;
-		ultra_lo = 0xfffff;
-		urgent_hi = 0xfffff;
-		urgent_lo = 0xfffff;
-		rw_times = 0x5eec0;
+		u32 image_time, line_time, consume_rate;
+		u32 ultra_high_fifo_us, ultra_low_fifo_us;
+		unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
+
+		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+			line_time = mtk_dsi_get_line_time(mtk_crtc, dsi, ps_wc, -1);
+		else
+			line_time = mtk_dsi_get_line_time_vdo(mtk_crtc, dsi, ps_wc);
+		if (line_time == 0) {
+			DDPPR_ERR("%s line_time calc error\n", __func__);
+			return;
+		}
+
+		if (dsi->ext->params->is_cphy) {
+			image_time = DIV_ROUND_UP(DIV_ROUND_UP(ps_wc, 2), dsi->lanes);
+			consume_rate = dsi->data_rate * 2 * dsi->lanes * image_time *
+				1000 / (7 * buffer_unit * line_time);
+		} else {
+			image_time = DIV_ROUND_UP(ps_wc, dsi->lanes);
+			consume_rate = dsi->data_rate * dsi->lanes * image_time * 1000 / (8 * buffer_unit * line_time);
+		}
+
+		fill_rate = mmsys_clk * 96 * dli_relay_1tnp * dsi_buf_bpp * 1000 / compress_rate / buffer_unit;
+
+		ultra_low_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 7, consume_rate * 10);
+		ultra_low_fifo_us = (ultra_low_fifo_us >= 35) ? ultra_low_fifo_us : 35;
+		ultra_high_fifo_us = ultra_low_fifo_us + 1;
+
+		sodi_hi = buf_con + 1;
+		sodi_lo = buf_con;
+		preultra_hi = buf_con + 1;
+		preultra_lo = buf_con;
+		ultra_hi = DIV_ROUND_UP(ultra_high_fifo_us * consume_rate, 1000);
+		ultra_lo = DIV_ROUND_UP(ultra_low_fifo_us * consume_rate, 1000);
+		urgent_hi = DIV_ROUND_UP(urgent_hi_fifo_us * consume_rate, 1000);
+		urgent_lo = DIV_ROUND_UP(urgent_lo_fifo_us * consume_rate, 1000);
+
+		ultra_hi = ultra_hi < (u32)buf_con ? ultra_hi : (u32)buf_con;
+		ultra_lo = ultra_lo < (u32)buf_con ? ultra_lo : (u32)buf_con;
+		urgent_hi = urgent_hi < (u32)buf_con ? urgent_hi : (u32)buf_con;
+		urgent_lo = urgent_lo < (u32)buf_con ? urgent_lo : (u32)buf_con;
+
+		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			output_valid_us = ultra_low_fifo_us + 10;
+			output_valid = DIV_ROUND_UP(output_valid_us * consume_rate, 1000);
+			output_valid = output_valid < (u32)buf_con ? output_valid : (u32)buf_con;
+		}
+	} else {
+		if (dsi->ext->params->is_cphy) {
+			sodi_hi = tmp - (12 * (fill_rate - dsi->data_rate * 2 * dsi->lanes / 7
+					/ buffer_unit) / 10);
+			sodi_lo = (23 + 5) * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+			preultra_hi = 36 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+			preultra_lo = 35 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+			ultra_hi = 26 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+			ultra_lo = 25 * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+			urgent_hi = urgent_hi_fifo_us * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+			urgent_lo = urgent_lo_fifo_us * dsi->data_rate * 2 * dsi->lanes / 7 / buffer_unit;
+		} else {
+			sodi_hi = tmp - (12 * (fill_rate - dsi->data_rate * dsi->lanes / 8
+					/ buffer_unit) / 10);
+			/*dsi->driver_data*/
+			sodi_lo = (23 + 5) * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+			preultra_hi = 36 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+			preultra_lo = 35 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+			ultra_hi = 26 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+			ultra_lo = 25 * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+			urgent_hi = urgent_hi_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+			urgent_lo = urgent_lo_fifo_us * dsi->data_rate * dsi->lanes / 8 / buffer_unit;
+		}
 	}
+
+	DDPINFO(
+		"%s,mode=0x%lx,valid_theshold=0x%x,lp_perline_en=%d,1t%dp,buf_con:%d\n",
+		__func__, dsi->mode_flags & MIPI_DSI_MODE_VIDEO, output_valid,
+		ext->params->lp_perline_en, dli_relay_1tnp, buf_con);
+
+	mtk_dsi_mask(dsi, DSI_BUF_CON1(dsi->driver_data), 0x7fff, output_valid);
 
 	writel((sodi_hi & 0xfffff), dsi->regs + DSI_BUF_SODI_HIGH(dsi->driver_data));
 	writel((sodi_lo & 0xfffff), dsi->regs + DSI_BUF_SODI_LOW(dsi->driver_data));
@@ -2794,7 +2843,11 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		struct drm_display_mode *mode = mtk_crtc_get_display_mode_by_comp(__func__,
 						&mtk_crtc->base, comp, false);
 
-		line_time_ns = mtk_dsi_get_line_time_ns(dsi, mtk_crtc, -1);
+		line_time_ns = mtk_dsi_get_line_time_vdo(mtk_crtc, dsi, ps_wc);
+		if (dsi->ext->params->is_cphy)
+			line_time_ns = line_time_ns * 1000 * 100 / (dsi->data_rate * 100 / 7);
+		else
+			line_time_ns = line_time_ns * 1000 * 100 / (dsi->data_rate * 100 / 8);
 		if (line_time_ns)
 			buf_preurgent_high = DIV_ROUND_UP(urgent_hi_fifo_us * 1000, line_time_ns);
 
@@ -2831,7 +2884,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		(dsi->driver_data->support_pre_urgent & PREURGENT_SUPPORT_CMD)) {
 		/* absolute timer mode for cmd mode */
 		u32 frame_time, rframe_time;
-		u32 ps_wc = 0, ps_wc_bits = 0, fps, urgent_threshold;
+		u32 ps_wc_bits = 0, fps, urgent_threshold;
 		int prefetch_time, urgent_time;
 		struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
 
@@ -2839,15 +2892,6 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		fps = fps > 0 ? fps : drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
 		if (fps == 0)
 			return;
-
-		if (dsc_params->enable)
-			ps_wc = dsc_params->chunk_size * (dsc_params->slice_mode + 1);
-		else {
-			if (dsc_params->bit_per_pixel == 10)
-				ps_wc = width * 30 / 8;
-			else
-				ps_wc = width * dsi_buf_bpp;
-		}
 
 		ps_wc_bits = ps_wc * 8; // byte -> bits
 		frame_time = 1000000 / fps;
@@ -11272,6 +11316,49 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 	return line_time;
 }
 
+unsigned int mtk_dsi_get_line_time_vdo(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_dsi *dsi, unsigned int ps_wc)
+{
+	unsigned int line_time;
+	unsigned int bllp_wc = 0;
+
+	//for FPS change,update dsi->ext
+	dsi->ext = find_panel_ext(dsi->panel);
+	bllp_wc = readl(dsi->regs + DSI_BLLP_WC(dsi->driver_data));
+
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+		return 0;
+
+	mtk_dsi_calc_vdo_timing(dsi);
+
+	if (dsi->ext->params->is_cphy) {
+		/* CPHY */
+		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE)
+			line_time = DIV_ROUND_UP(40 + DIV_ROUND_UP(dsi->hsa_byte, 2) + DIV_ROUND_UP(dsi->hbp_byte, 2) +
+					DIV_ROUND_UP(ps_wc, 2) + DIV_ROUND_UP(dsi->hfp_byte, 2), dsi->lanes) + 16;
+		else if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST)
+			line_time = DIV_ROUND_UP(34 + DIV_ROUND_UP(dsi->hbp_byte, 2) + DIV_ROUND_UP(ps_wc, 2) +
+					DIV_ROUND_UP(bllp_wc, 2) + DIV_ROUND_UP(dsi->hfp_byte, 2), dsi->lanes) + 14;
+		else
+			line_time = DIV_ROUND_UP(27 + DIV_ROUND_UP(dsi->hbp_byte, 2) +
+					DIV_ROUND_UP(ps_wc, 2) + DIV_ROUND_UP(dsi->hfp_byte, 2), dsi->lanes) + 11;
+	} else {
+		/* DPHY */
+		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE)
+			line_time = DIV_ROUND_UP(32 + dsi->hsa_byte + dsi->hbp_byte +
+						ps_wc + dsi->hfp_byte, dsi->lanes);
+		else if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST)
+			line_time = DIV_ROUND_UP(28 + dsi->hbp_byte + ps_wc + dsi->hfp_byte + bllp_wc, dsi->lanes);
+		else
+			line_time = DIV_ROUND_UP(22 + dsi->hbp_byte + ps_wc + dsi->hfp_byte, dsi->lanes);
+	}
+	/* LP per line */
+	if (!dsi->ext->params->vdo_keep_hs_perline)
+		line_time += dsi->data_phy_cycle;
+
+	return line_time;
+}
+
 /******************************************************************************
  * HRT BW = Overlap x vact x hact x vrefresh x 4 x (vtotal/vact)
  * In Video Mode , Using the Formula below:
@@ -14659,14 +14746,15 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.smi_dbg_disable = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
-	.urgent_lo_fifo_us = 11,
-	.urgent_hi_fifo_us = 12,
+	.urgent_lo_fifo_us = 30,
+	.urgent_hi_fifo_us = 31,
 	.output_valid_fifo_us = 35,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.bubble_rate = 115,
 	.n_verion = VER_N3,
 	.require_phy_reset = true,
+	.support_pre_urgent = PREURGENT_SUPPORT_VDO,
 	.reg_phy_base = 0x600,
 	.reg_20_ofs = 0x020,
 	.reg_30_ofs = 0x030,

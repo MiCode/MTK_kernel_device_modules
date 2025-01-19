@@ -226,4 +226,9 @@ int mtk_drm_dummy_cmd_on_ioctl(struct drm_device *dev, void *data,
 unsigned long long mtk_get_cur_backlight(struct drm_crtc *crtc);
 int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt, const struct mtk_dsi_cmd_msg *cmd_msg);
 
+unsigned int mtk_dsi_get_line_time_vdo(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_dsi *dsi, unsigned int ps_wc);
+unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi);
+
+
 #endif
