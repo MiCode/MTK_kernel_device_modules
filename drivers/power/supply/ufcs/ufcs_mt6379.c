@@ -7,13 +7,15 @@
  */
 
 #include <linux/bitfield.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/kernel.h>
+#include <linux/ktime.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
-#include <linux/pm_wakeirq.h>
 #include <linux/platform_device.h>
+#include <linux/pm_wakeirq.h>
 #include <linux/regmap.h>
 
 #include "ufcs_class.h"
@@ -65,11 +67,24 @@
 #define UFCS_MAX_RXBUFF_SIZE		63
 #define MT6379_DEV_ADDRID_MASK		BIT(1)
 
+/*
+ * A data packet includes multiple data frames.
+ * The IDLE state between Tx sending data packets
+ * needs to be greater than or equal to 2ms
+ * mt6379 send ack after data ready time is
+ * bud 115200 -> 0.59ms
+ * bud 57600  -> 1.16ms
+ * bud 38400  -> 1.72ms
+ * delay 4ms for stable, 1.72 + 2
+ */
+#define UFCS_MSG_TRANS_DELAY           4000 /* us */
+
 struct mt6379_data {
 	struct device *dev;
 	struct regmap *regmap;
 	struct ufcs_dev ufcs;
 	struct ufcs_port *port;
+	ktime_t last_rx_time;
 };
 
 static int mt6379_ufcs_init(struct ufcs_dev *ufcs)
@@ -135,8 +150,19 @@ static int mt6379_ufcs_transmit(struct ufcs_dev *ufcs, const struct ufcs_message
 	struct mt6379_data *data = container_of(ufcs, struct mt6379_data, ufcs);
 	struct regmap *regmap = data->regmap;
 	u16 header = be16_to_cpu(msg->header);
+	ktime_t guarantee_time, now;
 	bool to_emark = false;
+	s64 wait_time = 0;
 	int ret;
+
+	guarantee_time = ktime_add_us(data->last_rx_time, UFCS_MSG_TRANS_DELAY);
+	now = ktime_get();
+
+	if (!ktime_after(now, guarantee_time)) {
+		wait_time = ktime_us_delta(guarantee_time, now);
+		usleep_range(wait_time, wait_time * 150 / 100);
+		dev_dbg(data->dev, "%s delay = %lldus\n", __func__, wait_time);
+	}
 
 	to_emark = FIELD_GET(UFCS_HEADER_ROLE_MASK, header) == UFCS_EMARK;
 	ret = regmap_update_bits(regmap, MT6379_REG_UFCS_CTRL2, MT6379_DEV_ADDRID_MASK,
@@ -308,6 +334,7 @@ static irqreturn_t mt6379_ufcs_evt_handler(int irq, void *data)
 	}
 
 	if (events & MT6379_EVT_UFCS_DATA_READY) {
+		udata->last_rx_time = ktime_get();
 		ret = mt6379_get_message(udata, &msg);
 		if (!ret)
 			ufcs_rx_receive(udata->port, &msg);
