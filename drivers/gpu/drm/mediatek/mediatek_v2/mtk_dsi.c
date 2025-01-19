@@ -3284,51 +3284,6 @@ static void mtk_dsi_cmdq_size_sel(struct mtk_dsi *dsi)
 	mtk_dsi_mask(dsi, DSI_CMDQ_CON(dsi->driver_data), CMDQ_SIZE_SEL, CMDQ_SIZE_SEL);
 }
 
-u16 mtk_get_gpr(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct drm_crtc *crtc;
-	struct cmdq_client *client_dsi;
-	struct cmdq_client *client_trig_loop;
-	unsigned int mmsys_id;
-
-	if (!mtk_crtc || !handle)
-		return CMDQ_GPR_R07;
-
-	crtc = &mtk_crtc->base;
-	client_dsi = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
-	client_trig_loop = mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP];
-	mmsys_id = mtk_get_mmsys_id(crtc);
-
-	switch (mmsys_id) {
-	case MMSYS_MT6983:
-	case MMSYS_MT6985:
-	case MMSYS_MT6989:
-	case MMSYS_MT6897:
-	case MMSYS_MT6879:
-	case MMSYS_MT6895:
-	case MMSYS_MT6886:
-	case MMSYS_MT6835:
-	case MMSYS_MT6855:
-		if (handle->cl == (void *)client_dsi)
-			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
-		else
-			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
-	case MMSYS_MT6991:
-		if (handle->cl == (void *)client_dsi)
-			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
-		else if (handle->cl == (void *)client_trig_loop)
-			return CMDQ_GPR_R07;
-		else
-			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
-	default:
-		if (handle->cl == (void *)client_dsi)
-			return CMDQ_GPR_R14;
-		else
-			return CMDQ_GPR_R07;
-	}
-}
-
 static void mtk_dsi_cmdq_poll(struct mtk_ddp_comp *comp,
 			      struct cmdq_pkt *handle, unsigned int reg,
 			      unsigned int val, unsigned int mask)
@@ -3338,7 +3293,7 @@ static void mtk_dsi_cmdq_poll(struct mtk_ddp_comp *comp,
 	if (handle == NULL)
 		DDPPR_ERR("%s no cmdq handle\n", __func__);
 
-	gpr = mtk_get_gpr(comp, handle);
+	gpr = mtk_get_gpr(comp->mtk_crtc, handle);
 
 	cmdq_pkt_poll_timeout(handle, val, SUBSYS_NO_SUPPORT,
 				  reg, mask, 0xFFFF, gpr);
@@ -3399,7 +3354,7 @@ static void mtk_dsi_power_keep_gce(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 
 	if (keep)
 		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle,
-						 mtk_get_gpr(&dsi->ddp_comp, cmdq_handle));
+						 mtk_get_gpr(mtk_crtc, cmdq_handle));
 	else
 		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle);
 }
@@ -3520,60 +3475,62 @@ EXPORT_SYMBOL(mtk_get_cur_backlight);
 void mtk_dsi_set_backlight(struct mtk_dsi *dsi)
 {
 	struct mtk_connector_state *mtk_conn_state = NULL;
-	unsigned int index;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_crtc_state *mtk_crtc_state = NULL;
+	unsigned int con_index, crtc_index;
 	static unsigned long long csc_bl[MAX_CONNECTOR] = {0};
 	static unsigned long long csc_nits[MAX_CONNECTOR] = {0};
+	static unsigned int gamma_gain[MAX_CRTC][GAMMA_GAIN_MAX] = {0};
+	bool set_bl, set_gamma;
 
 	if (dsi == NULL) {
 		DDPINFO("%s, dsi is null\n", __func__);
 		return;
 	}
-
 	mtk_conn_state = to_mtk_connector_state(dsi->conn.state);
 	if (mtk_conn_state == NULL) {
 		DDPINFO("%s, mtk_conn_state is null\n", __func__);
 		return;
 	}
+	mtk_crtc = dsi->ddp_comp.mtk_crtc;
+	if (mtk_crtc == NULL) {
+		DDPPR_ERR("%s[%d]:mtk_crtc is NULL\n", __func__, __LINE__);
+		return;
+	}
+	mtk_crtc_state = to_mtk_crtc_state(mtk_crtc->base.state);
+	if (mtk_crtc_state == NULL) {
+		DDPPR_ERR("%s[%d]:mtk_crtc_state is NULL\n", __func__, __LINE__);
+		return;
+	}
 
-	index = dsi->conn.index;
-	if (csc_bl[index] != mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL] ||
-	    csc_nits[index] != mtk_conn_state->prop_val[index][CONNECTOR_PROP_PANEL_NITS]) {
+	con_index = dsi->conn.index;
+	crtc_index = drm_crtc_index(&mtk_crtc->base);
+	set_bl = csc_bl[con_index] != mtk_conn_state->prop_val[con_index][CONNECTOR_PROP_CSC_BL];
+	set_gamma = !!memcmp(gamma_gain[crtc_index], mtk_crtc_state->bl_sync_gamma_gain, sizeof(gamma_gain[0]));
+	/* atomic set bl */
+	if (set_bl || set_gamma) {
 		struct mtk_ddp_comp *comp;
-		struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
-		struct mtk_crtc_state *mtk_crtc_state = NULL;
-		struct pq_common_data *pq_data = NULL;
-		bool set_bl = csc_bl[index] != mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
 
-		if (mtk_crtc == NULL) {
-			DDPPR_ERR("%s[%d]:mtk_crtc is NULL\n", __func__, __LINE__);
-			return;
-		}
-
-		mtk_crtc_state = to_mtk_crtc_state(mtk_crtc->base.state);
-		if (mtk_crtc_state == NULL) {
-			DDPPR_ERR("%s[%d]:mtk_crtc_state is NULL\n", __func__, __LINE__);
-			return;
-		}
-
-		csc_bl[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_CSC_BL];
-		csc_nits[index] = mtk_conn_state->prop_val[index][CONNECTOR_PROP_PANEL_NITS];
-		DDPINFO("%s, csc_bl[%d] = %llu nits %llu\n", __func__, index, csc_bl[index], csc_nits[index]);
-		pq_data = mtk_crtc->pq_data;
-		if (pq_data)
-			DDPDBG("%s, DISP_PQ_CCORR_SILKY_BRIGHTNESS[%d]\n", __func__,
-			pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]);
+		DDPINFO("%s, con/crtc[%d/%d]: %llu,%llu,%u -> %llu,%llu,%u\n", __func__, con_index, crtc_index,
+			csc_nits[con_index], csc_bl[con_index], gamma_gain[crtc_index][0],
+			mtk_conn_state->prop_val[con_index][CONNECTOR_PROP_PANEL_NITS],
+			mtk_conn_state->prop_val[con_index][CONNECTOR_PROP_CSC_BL],
+			mtk_crtc_state->bl_sync_gamma_gain[0]);
+		csc_bl[con_index] = mtk_conn_state->prop_val[con_index][CONNECTOR_PROP_CSC_BL];
+		csc_nits[con_index] = mtk_conn_state->prop_val[con_index][CONNECTOR_PROP_PANEL_NITS];
+		memcpy(gamma_gain[crtc_index], mtk_crtc_state->bl_sync_gamma_gain, sizeof(gamma_gain[0]));
 
 		if (set_bl && dsi->driver_data && dsi->driver_data->support_bl_at_te)
-			mtk_drm_setbacklight_at_te(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL));
+			mtk_drm_setbacklight_at_te(&mtk_crtc->base, csc_bl[con_index], 0, (0X1<<SET_BACKLIGHT_LEVEL));
 		else if (set_bl)
-			mtk_drm_setbacklight(&mtk_crtc->base, csc_bl[index], 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
+			mtk_drm_setbacklight(&mtk_crtc->base, csc_bl[con_index], 0, (0X1<<SET_BACKLIGHT_LEVEL), 0);
 
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 		if (comp)
-			disp_aal_notify_backlight_changed(comp, csc_bl[index], csc_nits[index], -1, 0);
+			disp_aal_notify_backlight_changed(comp, csc_bl[con_index], csc_nits[con_index], -1, 0);
 
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
-		if (comp)
+		if (comp && set_gamma)
 			disp_gamma_set_gain(comp, mtk_crtc_state->cmdq_handle,
 				mtk_crtc_state->bl_sync_gamma_gain, /* index 0, 1, 2 are gamma gain */
 				mtk_crtc_state->bl_sync_gamma_gain[GAMMA_GAIN_RANGE]); /* index 3 is range */

@@ -12307,6 +12307,10 @@ static void _mtk_crtc_1tnp_setting(struct mtk_drm_crtc *mtk_crtc)
 
 int mtk_crtc_set_check_trigger_type(struct mtk_drm_crtc *mtk_crtc, int type)
 {
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return -1;
+	}
 	mtk_crtc->check_trigger_type = type;
 	return type;
 }
@@ -12314,17 +12318,22 @@ int mtk_crtc_set_check_trigger_type(struct mtk_drm_crtc *mtk_crtc, int type)
 void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		bool need_lock)
 {
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	int index = 0;
+	struct drm_crtc *crtc;
+	int index = 0, type = 0;
 	struct mtk_crtc_state *mtk_state;
 	struct mtk_panel_ext *panel_ext;
-	int type = mtk_crtc->check_trigger_type;
 
 	if (!mtk_crtc) {
-		DDPPR_ERR("%s:%d, invalid crtc:0x%p\n",
-				__func__, __LINE__, crtc);
+		DDPPR_ERR("%s:%d, invalid mtk_crtc\n",
+				__func__, __LINE__);
 		return;
 	}
+	crtc = &mtk_crtc->base;
+	if (!crtc) {
+		DDPPR_ERR("%s, crtc is NULL\n", __func__);
+		return;
+	}
+	type = mtk_crtc->check_trigger_type;
 
 	if (need_lock)
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
@@ -14986,7 +14995,7 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
-					 comp ? mtk_get_gpr(comp, cmdq_handle) : 0);
+					mtk_get_gpr(mtk_crtc, cmdq_handle));
 
 	/* mml need to power on InlineRotate and sync with mml */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
@@ -19703,6 +19712,49 @@ dma_addr_t mtk_get_gce_backup_slot_pa(struct mtk_drm_crtc *mtk_crtc,
 	return 0;
 }
 
+u16 mtk_get_gpr(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
+{
+	struct drm_crtc *crtc;
+	struct cmdq_client *client_dsi;
+	struct cmdq_client *client_trig_loop;
+	unsigned int mmsys_id;
+
+	if (!mtk_crtc || !handle)
+		return CMDQ_GPR_R07;
+
+	crtc = &mtk_crtc->base;
+	client_dsi = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
+	client_trig_loop = mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP];
+	mmsys_id = mtk_get_mmsys_id(crtc);
+
+	switch (mmsys_id) {
+	case MMSYS_MT6983:
+	case MMSYS_MT6985:
+	case MMSYS_MT6989:
+	case MMSYS_MT6897:
+	case MMSYS_MT6879:
+	case MMSYS_MT6895:
+	case MMSYS_MT6886:
+	case MMSYS_MT6835:
+	case MMSYS_MT6855:
+		if (handle->cl == (void *)client_dsi)
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
+		else
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
+	case MMSYS_MT6991:
+		if (handle->cl == (void *)client_dsi)
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
+		else if (handle->cl == (void *)client_trig_loop)
+			return CMDQ_GPR_R07;
+		else
+			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R04 : CMDQ_GPR_R06);
+	default:
+		if (handle->cl == (void *)client_dsi)
+			return CMDQ_GPR_R14;
+		else
+			return CMDQ_GPR_R07;
+	}
+}
 
 static int mtk_drm_cwb_copy_buf(struct drm_crtc *crtc,
 			  struct mtk_cwb_info *cwb_info,
