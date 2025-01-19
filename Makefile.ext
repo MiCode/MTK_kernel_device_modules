@@ -10,6 +10,8 @@ subdir-ccflags-y += -Werror \
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/memory/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/edac/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/iio/adc/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/mfd/

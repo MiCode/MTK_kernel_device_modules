@@ -299,6 +299,7 @@ mgk_64_device_modules = [
     "drivers/memory/mediatek/smpu.ko",
     "drivers/memory/mediatek/smpu-hook-v1.ko",
     "drivers/memory/mtk-smi.ko",
+    "drivers/edac/mediatek/mtk_edac_slc.ko",
     "drivers/mfd/mt6338-core.ko",
     "drivers/mfd/mt6360-core.ko",
     "drivers/mfd/mt6370.ko",

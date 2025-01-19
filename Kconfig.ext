@@ -10,6 +10,8 @@ config DEVICE_MODULES_ALLOW_BUILTIN
 
 source "$(KCONFIG_EXT_PREFIX)drivers/memory/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/edac/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/iio/adc/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/mfd/Kconfig"

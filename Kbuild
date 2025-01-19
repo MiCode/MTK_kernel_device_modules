@@ -10,6 +10,8 @@ subdir-ccflags-y += -Wall -Werror \
 
 obj-y += drivers/memory/
 
+obj-y += drivers/edac/
+
 obj-y += drivers/iio/adc/
 
 obj-y += drivers/mfd/
