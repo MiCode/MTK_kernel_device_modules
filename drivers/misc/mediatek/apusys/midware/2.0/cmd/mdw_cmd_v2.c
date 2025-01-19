@@ -71,8 +71,8 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 
 	c->end_ts = sched_clock();
 	c->einfos->c.total_us = (c->end_ts - c->start_ts) / 1000;
-	mdw_flw_debug("s(0x%llx) c(0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
-		(uint64_t)c->mpriv, c->uid, c->kid, c->rvid,
+	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
+		(uint64_t)c->mpriv, c->comm, c->uid, c->kid, c->rvid,
 		ret, c->einfos->c.sc_rets,
 		c->pid, c->tgid, task_pid_nr(current));
 
@@ -82,18 +82,21 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 			ret = -EIO;
 
 		mdw_cmd_check_rets(c, ret);
+	} else if (ret == -EBUSY) {
+		mdw_exception("AP/uP busy:%s:ret(%d/0x%llx)pid(%d/%d)\n",
+			c->comm, ret, c->einfos->c.sc_rets, c->pid, c->tgid);
 	}
 	c->einfos->c.ret = ret;
 
 	if (ret) {
-		mdw_drv_err("s(0x%llx) c(0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid, c->rvid,
+		mdw_drv_err("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
+			(uint64_t)c->mpriv, c->comm, c->uid, c->kid, c->rvid,
 			ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
 		dma_fence_set_error(&c->fence->base_fence, ret);
 	} else {
-		mdw_flw_debug("s(0x%llx) c(0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid, c->rvid,
+		mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
+			(uint64_t)c->mpriv, c->comm, c->uid, c->kid, c->rvid,
 			ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
 	}
@@ -144,11 +147,12 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	c->mpriv = mpriv;
 
 	/* setup cmd info */
-	c->pid = current->pid;
+	c->pid = task_pid_nr(current);
 	c->tgid = current->tgid;
 	c->kid = (uint64_t)c;
 	c->uid = in->exec.uid;
 	//c->usr_id = in->exec.usr_id;
+	get_task_comm(c->comm, current);
 	c->priority = in->exec.priority;
 	c->hardlimit = in->exec.hardlimit;
 	c->softlimit = in->exec.softlimit;
