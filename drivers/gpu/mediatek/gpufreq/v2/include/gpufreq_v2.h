@@ -457,6 +457,19 @@ struct gpufreq_preoc_info {
 	unsigned int scale_factor;
 };
 
+struct gpufreq_prbc_info {
+	unsigned int ondie_power;
+	unsigned int ondie_volt;
+	unsigned int ondie_current;
+	unsigned int spbm_power;
+	unsigned int spbm_current;
+	unsigned int hbvc_freq;
+	unsigned int prbc_freq;
+	unsigned int avg_freq;
+	unsigned int ratio;
+	unsigned int error;
+};
+
 struct gpufreq_slt2_bmodel {
 	unsigned int vgpu_h1;
 	unsigned int vgpu_h;
@@ -568,7 +581,7 @@ struct gpufreq_shared_status {
 	struct gpufreq_gpm3_info gpm3_table[GPUFREQ_MAX_GPM3_NUM];
 	struct gpufreq_ptp3_shared_status ptp3_status;
 	struct gpu_ptp3_info ptp3_info;
-	struct gpufreq_preoc_info preoc_info;
+	struct gpufreq_prbc_info prbc_info;
 	struct gpufreq_bus_tracker_info bus_slv_error[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_bus_tracker_info bus_slv_timeout[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_slt2_bmodel slt2_bmodel;

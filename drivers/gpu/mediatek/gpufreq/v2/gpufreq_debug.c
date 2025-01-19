@@ -196,21 +196,22 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		ptp3_status.hbvc_freq_ctrl_support ? "On" : "Off",
 		ptp3_status.hbvc_volt_ctrl_support ? "On" : "Off");
 	seq_printf(m,
-		"%-16s BRCAST: %s, DELSEL: %s, PreOC: %s (C=%d, T=%d, F=%d)\n",
+		"%-16s BRCAST: %s, DELSEL: %s, PreUVLO: %s, PRBC: %s\n",
 		"[PTP3 Config]",
 		(ptp3_status.brcast_mode == BRCAST_SW_REFILLED ? "SW_REFILLED" :
 		(ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" :
 		(ptp3_status.brcast_mode == BRCAST_SW_ONLY_ACK ? "SW_ONLY_ACK" : "Off"))),
 		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
-		ptp3_status.hbvc_preoc_mode ? "On" : "Off",
-		g_shared_status->preoc_info.count, g_shared_status->preoc_info.throttle_time,
-		g_shared_status->preoc_info.scale_factor);
+		ptp3_status.preuvlo_mode ? "On" : "Off",
+		ptp3_status.prbc_mode ? "On" : "Off");
 	seq_printf(m,
-		"%-16s SES_TOP: %s, SES_ST: %s, SES_Scheduler: %s\n",
+		"%-16s SES_TOP: %s, SES_ST: %s, SES_Scheduler: %s, FTRACKER: %s, VTRACKER: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.ses_top_mode ? "On" : "Off",
 		ptp3_status.ses_stack_mode ? "On" : "Off",
-		ptp3_status.ses_scheduler_mode ? "On" : "Off");
+		ptp3_status.ses_scheduler_mode ? "On" : "Off",
+		ptp3_status.freq_tracker_mode ? "On" : "Off",
+		ptp3_status.volt_tracker_mode ? "On" : "Off");
 	seq_printf(m,
 		"%-16s FLL: %s, ATMC: %s, Vmeter: %s, Tmeter: %s, CPmeter: %s, CTT: %s\n",
 		"[PTP3 Config]",
@@ -231,6 +232,17 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->ptp3_info.hw_cc, g_shared_status->ptp3_info.sw_cc,
 		g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc,
 		ptp3_status.brisket_safe_margin ? "Safe" : "Normal");
+	seq_printf(m,
+		"%-16s Internal_P/V/I: %d/%d/%d, External_P/I: %d/%d, Ratio: %d/1000\n",
+		"[PRBC Status]",
+		g_shared_status->prbc_info.ondie_power, g_shared_status->prbc_info.ondie_volt,
+		g_shared_status->prbc_info.ondie_current, g_shared_status->prbc_info.spbm_power,
+		g_shared_status->prbc_info.spbm_current, g_shared_status->prbc_info.ratio);
+	seq_printf(m,
+		"%-16s Freq_HBVC/PRBC/AVG: %d/%d/%d, Error: %d\n",
+		"[PRBC Status]",
+		g_shared_status->prbc_info.hbvc_freq, g_shared_status->prbc_info.prbc_freq,
+		g_shared_status->prbc_info.avg_freq, g_shared_status->prbc_info.error);
 
 	mutex_unlock(&gpufreq_debug_lock);
 
