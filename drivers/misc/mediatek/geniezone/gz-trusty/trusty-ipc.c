@@ -592,7 +592,7 @@ static void fill_msg_hdr(struct tipc_msg_buf *mb, u32 src, u32 dst)
 	hdr->reserved = 0;
 }
 
-struct tipc_chan *tipc_create_channel(struct device *dev,
+struct tipc_chan *gz_tipc_create_channel(struct device *dev,
 				      const struct tipc_chan_ops *ops,
 				      void *ops_arg)
 {
@@ -620,9 +620,9 @@ struct tipc_chan *tipc_create_channel(struct device *dev,
 	kref_put(&vds->refcount, _free_vds);
 	return chan;
 }
-EXPORT_SYMBOL(tipc_create_channel);
+EXPORT_SYMBOL(gz_tipc_create_channel);
 
-struct tipc_msg_buf *tipc_chan_get_rxbuf(struct tipc_chan *chan)
+struct tipc_msg_buf *gz_tipc_chan_get_rxbuf(struct tipc_chan *chan)
 {
 	/* sanity check */
 	if (unlikely(!virt_addr_valid(chan))) {
@@ -631,9 +631,9 @@ struct tipc_msg_buf *tipc_chan_get_rxbuf(struct tipc_chan *chan)
 	}
 	return vds_alloc_msg_buf(chan->vds);
 }
-EXPORT_SYMBOL(tipc_chan_get_rxbuf);
+EXPORT_SYMBOL(gz_tipc_chan_get_rxbuf);
 
-void tipc_chan_put_rxbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb)
+void gz_tipc_chan_put_rxbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 {
 	/* sanity check */
 	if (unlikely(!virt_addr_valid(chan)))
@@ -641,9 +641,9 @@ void tipc_chan_put_rxbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 	else
 		vds_free_msg_buf(chan->vds, mb);
 }
-EXPORT_SYMBOL(tipc_chan_put_rxbuf);
+EXPORT_SYMBOL(gz_tipc_chan_put_rxbuf);
 
-struct tipc_msg_buf *tipc_chan_get_txbuf_timeout(struct tipc_chan *chan,
+struct tipc_msg_buf *gz_tipc_chan_get_txbuf_timeout(struct tipc_chan *chan,
 						 long timeout)
 {
 	/* sanity check */
@@ -653,9 +653,9 @@ struct tipc_msg_buf *tipc_chan_get_txbuf_timeout(struct tipc_chan *chan,
 	}
 	return vds_get_txbuf(chan->vds, timeout);
 }
-EXPORT_SYMBOL(tipc_chan_get_txbuf_timeout);
+EXPORT_SYMBOL(gz_tipc_chan_get_txbuf_timeout);
 
-void tipc_chan_put_txbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb)
+void gz_tipc_chan_put_txbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 {
 	/* sanity check */
 	if (unlikely(!virt_addr_valid(chan)))
@@ -663,9 +663,9 @@ void tipc_chan_put_txbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 	else
 		vds_put_txbuf(chan->vds, mb);
 }
-EXPORT_SYMBOL(tipc_chan_put_txbuf);
+EXPORT_SYMBOL(gz_tipc_chan_put_txbuf);
 
-int tipc_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb)
+int gz_tipc_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 {
 	int err;
 
@@ -704,10 +704,10 @@ int tipc_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 
 	return err;
 }
-EXPORT_SYMBOL(tipc_chan_queue_msg);
+EXPORT_SYMBOL(gz_tipc_chan_queue_msg);
 
 
-int tipc_chan_connect(struct tipc_chan *chan, const char *name)
+int gz_tipc_chan_connect(struct tipc_chan *chan, const char *name)
 {
 	int err;
 	struct tipc_ctrl_msg *msg;
@@ -777,13 +777,13 @@ int tipc_chan_connect(struct tipc_chan *chan, const char *name)
 	mutex_unlock(&chan->lock);
 
 	if (txbuf)
-		tipc_chan_put_txbuf(chan, txbuf);	/* discard it */
+		gz_tipc_chan_put_txbuf(chan, txbuf);	/* discard it */
 
 	return err;
 }
-EXPORT_SYMBOL(tipc_chan_connect);
+EXPORT_SYMBOL(gz_tipc_chan_connect);
 
-int tipc_chan_shutdown(struct tipc_chan *chan)
+int gz_tipc_chan_shutdown(struct tipc_chan *chan)
 {
 	int err;
 	struct tipc_ctrl_msg *msg;
@@ -833,19 +833,19 @@ int tipc_chan_shutdown(struct tipc_chan *chan)
 
 	if (err) {
 		/* release buffer */
-		tipc_chan_put_txbuf(chan, txbuf);
+		gz_tipc_chan_put_txbuf(chan, txbuf);
 	}
 
 	return err;
 }
-EXPORT_SYMBOL(tipc_chan_shutdown);
+EXPORT_SYMBOL(gz_tipc_chan_shutdown);
 
-void tipc_chan_destroy(struct tipc_chan *chan)
+void gz_tipc_chan_destroy(struct tipc_chan *chan)
 {
 	vds_del_channel(chan->vds, chan);
 	kref_put(&chan->refcount, _free_chan);
 }
-EXPORT_SYMBOL(tipc_chan_destroy);
+EXPORT_SYMBOL(gz_tipc_chan_destroy);
 
 static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
 {
@@ -887,7 +887,7 @@ struct tipc_msg_buf *dn_handle_msg(void *data, struct tipc_msg_buf *rxbuf)
 	mutex_lock(&dn->lock);
 	if (dn->state == TIPC_CONNECTED) {
 		/* get new buffer */
-		newbuf = tipc_chan_get_rxbuf(dn->chan);
+		newbuf = gz_tipc_chan_get_rxbuf(dn->chan);
 		if (newbuf) {
 			/* queue an old buffer and return a new one */
 			list_add_tail(&rxbuf->node, &dn->rx_msg_queue);
@@ -1063,7 +1063,7 @@ static int dn_connect_ioctl(struct tipc_dn_chan *dn, char __user *usr_name)
 	name[sizeof(name) - 1] = '\0';
 
 	/* send connect request */
-	err = tipc_chan_connect(dn->chan, name);
+	err = gz_tipc_chan_connect(dn->chan, name);
 	if (err)
 		return err;
 
@@ -1177,7 +1177,7 @@ static ssize_t tipc_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 
 	ret = len;
 	list_del(&mb->node);
-	tipc_chan_put_rxbuf(dn->chan, mb);
+	gz_tipc_chan_put_rxbuf(dn->chan, mb);
 
 out:
 	mutex_unlock(&dn->lock);
@@ -1196,7 +1196,7 @@ static ssize_t tipc_write_iter(struct kiocb *iocb, struct iov_iter *iter)
 	if (filp->f_flags & O_NONBLOCK)
 		timeout = 0;
 
-	txbuf = tipc_chan_get_txbuf_timeout(dn->chan, timeout);
+	txbuf = gz_tipc_chan_get_txbuf_timeout(dn->chan, timeout);
 	if (IS_ERR(txbuf))
 		return PTR_ERR(txbuf);
 
@@ -1216,14 +1216,14 @@ static ssize_t tipc_write_iter(struct kiocb *iocb, struct iov_iter *iter)
 	}
 
 	/* queue message */
-	ret = tipc_chan_queue_msg(dn->chan, txbuf);
+	ret = gz_tipc_chan_queue_msg(dn->chan, txbuf);
 	if (ret)
 		goto err_out;
 
 	return len;
 
 err_out:
-	tipc_chan_put_txbuf(dn->chan, txbuf);
+	gz_tipc_chan_put_txbuf(dn->chan, txbuf);
 	return ret;
 }
 
@@ -1260,10 +1260,10 @@ static int tipc_release(struct inode *inode, struct file *filp)
 	_free_msg_buf_list(&dn->rx_msg_queue);
 
 	/* shutdown channel  */
-	tipc_chan_shutdown(dn->chan);
+	gz_tipc_chan_shutdown(dn->chan);
 
 	/* and destroy it */
-	tipc_chan_destroy(dn->chan);
+	gz_tipc_chan_destroy(dn->chan);
 
 	return 0;
 }
@@ -1295,7 +1295,7 @@ static char *strdup_s(const char *str)
 	return tmp;
 }
 
-int port_lookup_tid(const char *port, enum tee_id_t *o_tid)
+int gz_port_lookup_tid(const char *port, enum tee_id_t *o_tid)
 {
 	char *last_token, *str, *p;
 	const char *delim = ".";
@@ -1337,7 +1337,7 @@ int port_lookup_tid(const char *port, enum tee_id_t *o_tid)
 	kfree(str);
 	return 0;
 }
-EXPORT_SYMBOL(port_lookup_tid);
+EXPORT_SYMBOL(gz_port_lookup_tid);
 
 /* Search tipc_virtio_dev by first word of port name. See tee_routing_config.h
  * for detail rules.
@@ -1348,7 +1348,7 @@ static struct tipc_virtio_dev *port_lookup_vds(const char *port)
 	enum tee_id_t tee_id;
 	int ret;
 
-	ret = port_lookup_tid(port, &tee_id);
+	ret = gz_port_lookup_tid(port, &tee_id);
 
 	if (ret) {
 		pr_info("[%s] get tee_id failed %d ret %d, may cause failure\n",
@@ -1413,7 +1413,7 @@ err_vds_lookup:
 	return ret;
 }
 
-int tipc_k_connect(struct tipc_k_handle *h, const char *port)
+int gz_tipc_k_connect(struct tipc_k_handle *h, const char *port)
 {
 	int err;
 	struct tipc_dn_chan *dn = NULL;
@@ -1425,16 +1425,16 @@ int tipc_k_connect(struct tipc_k_handle *h, const char *port)
 	h->dn = dn;
 
 	/* send connect request */
-	err = tipc_chan_connect(dn->chan, port);
+	err = gz_tipc_chan_connect(dn->chan, port);
 	if (err)
 		return err;
 
 	/* and wait for reply */
 	return dn_wait_for_reply(dn, REPLY_TIMEOUT);
 }
-EXPORT_SYMBOL(tipc_k_connect);
+EXPORT_SYMBOL(gz_tipc_k_connect);
 
-int tipc_k_disconnect(struct tipc_k_handle *h)
+int gz_tipc_k_disconnect(struct tipc_k_handle *h)
 {
 	struct tipc_dn_chan *dn = NULL;
 
@@ -1452,19 +1452,19 @@ int tipc_k_disconnect(struct tipc_k_handle *h)
 	_free_msg_buf_list(&dn->rx_msg_queue);
 
 	/* shutdown channel  */
-	tipc_chan_shutdown(dn->chan);
+	gz_tipc_chan_shutdown(dn->chan);
 
 	/* and destroy it */
-	tipc_chan_destroy(dn->chan);
+	gz_tipc_chan_destroy(dn->chan);
 	/* data is now be free in dn_handle_release(..) */
 
 	/*kfree(dn);*/
 
 	return 0;
 }
-EXPORT_SYMBOL(tipc_k_disconnect);
+EXPORT_SYMBOL(gz_tipc_k_disconnect);
 
-ssize_t tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
+ssize_t gz_tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
 		    unsigned int flags)
 {
 	ssize_t ret;
@@ -1509,7 +1509,7 @@ ssize_t tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
 			if (!wait_event_interruptible_timeout(dn->readq, _got_rx(dn),
 			    msecs_to_jiffies(TIPC_READ_MAX_TIMEOUT_MS))) {
 				preempt_disable();
-				trusty_enqueue_nop(trusty_dev, NULL, smp_processor_id());
+				gz_trusty_enqueue_nop(trusty_dev, NULL, smp_processor_id());
 				preempt_enable();
 				continue;
 			}
@@ -1534,15 +1534,15 @@ ssize_t tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
 
 	ret = data_len;
 	list_del(&mb->node);
-	tipc_chan_put_rxbuf(dn->chan, mb);
+	gz_tipc_chan_put_rxbuf(dn->chan, mb);
 
 out:
 	mutex_unlock(&dn->lock);
 	return ret;
 }
-EXPORT_SYMBOL(tipc_k_read);
+EXPORT_SYMBOL(gz_tipc_k_read);
 
-ssize_t tipc_k_write(struct tipc_k_handle *h, void *buf, size_t len,
+ssize_t gz_tipc_k_write(struct tipc_k_handle *h, void *buf, size_t len,
 		     unsigned int flags)
 {
 	ssize_t ret;
@@ -1564,7 +1564,7 @@ ssize_t tipc_k_write(struct tipc_k_handle *h, void *buf, size_t len,
 		return -EFAULT;
 	}
 
-	txbuf = tipc_chan_get_txbuf_timeout(dn->chan, timeout);
+	txbuf = gz_tipc_chan_get_txbuf_timeout(dn->chan, timeout);
 	if (IS_ERR(txbuf))
 		return PTR_ERR(txbuf);
 
@@ -1580,17 +1580,17 @@ ssize_t tipc_k_write(struct tipc_k_handle *h, void *buf, size_t len,
 	dn->chan->cpu_affinity = dn->cpumask;
 
 	/* queue message */
-	ret = tipc_chan_queue_msg(dn->chan, txbuf);
+	ret = gz_tipc_chan_queue_msg(dn->chan, txbuf);
 	if (ret)
 		goto err_out;
 
 	return len;
 
 err_out:
-	tipc_chan_put_txbuf(dn->chan, txbuf);
+	gz_tipc_chan_put_txbuf(dn->chan, txbuf);
 	return ret;
 }
-EXPORT_SYMBOL(tipc_k_write);
+EXPORT_SYMBOL(gz_tipc_k_write);
 
 static void chan_trigger_event(struct tipc_chan *chan, int event)
 {
@@ -2061,7 +2061,7 @@ static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 	return 0;
 }
 
-int tipc_set_default_cpumask(uint32_t cpumask)
+int gz_tipc_set_default_cpumask(uint32_t cpumask)
 {
 	uint32_t cpu_possible_bitmap = 0;
 	int cpu, i;
@@ -2093,7 +2093,7 @@ int tipc_set_default_cpumask(uint32_t cpumask)
 
 	return cpumask_old;
 }
-EXPORT_SYMBOL(tipc_set_default_cpumask);
+EXPORT_SYMBOL(gz_tipc_set_default_cpumask);
 
 static int tipc_setup_cpumask(struct tipc_virtio_dev *vds)
 {
@@ -2101,7 +2101,7 @@ static int tipc_setup_cpumask(struct tipc_virtio_dev *vds)
 	struct device *trusty_dev = vds->vdev->dev.parent->parent;
 	u32 smcnr_get_cmask = MTEE_SMCNR(SMCF_FC_GET_CMASK, trusty_dev);
 
-	cpumask = trusty_fast_call32(trusty_dev, smcnr_get_cmask, 0, 0, 0);
+	cpumask = gz_trusty_fast_call32(trusty_dev, smcnr_get_cmask, 0, 0, 0);
 
 	dev_info(&vds->vdev->dev, "%s GET_CMASK ret 0x%x\n", __func__, cpumask);
 
@@ -2165,7 +2165,7 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	/* set multiple vqueue support */
 	vds->multi_vqueue =
 		((vdev->config->get_features(vdev) == TIPC_MULTIPLE_VQUEUE_FEATURE) &&
-		(trusty_get_api_version(vdev->dev.parent->parent) >=
+		(gz_trusty_get_api_version(vdev->dev.parent->parent) >=
 		TRUSTY_API_VERSION_MULTI_VQUEUE));
 
 	vds->rxvq_num = 1;

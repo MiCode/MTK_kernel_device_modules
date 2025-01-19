@@ -47,7 +47,7 @@ static int stress_trusty_thread(void *data)
 		a &= 0xDFFFFFFF;
 		get_random_bytes(&b, sizeof(s32));
 		b &= 0xDFFFFFF;
-		ret = trusty_std_call32(dev,
+		ret = gz_trusty_std_call32(dev,
 					MTEE_SMCNR(MT_SMCF_SC_ADD, dev),
 					a, b, 0);
 
@@ -87,7 +87,7 @@ static int stress_nebula_thread(void *data)
 		b &= 0xFF;
 		get_random_bytes(&c, sizeof(s32));
 		c &= 0xFF;
-		ret = trusty_std_call32(dev,
+		ret = gz_trusty_std_call32(dev,
 				MTEE_SMCNR(SMCF_SC_TEST_MULTIPLY, dev),
 				a, b, c);
 
@@ -263,7 +263,7 @@ static ssize_t trusty_add_show(struct device *dev,
 	a &= 0xFF;
 	get_random_bytes(&b, sizeof(s32));
 	b &= 0xFF;
-	ret = trusty_std_call32(dev, MTEE_SMCNR(MT_SMCF_SC_ADD, dev),
+	ret = gz_trusty_std_call32(dev, MTEE_SMCNR(MT_SMCF_SC_ADD, dev),
 				a, b, 0);
 	return scnprintf(buf, PAGE_SIZE, "%d + %d = %d, %s\n", a, b, ret,
 			 (a + b) == ret ? "PASS" : "FAIL");
@@ -281,9 +281,9 @@ static ssize_t trusty_threads_show(struct device *dev,
 		       struct device_attribute *attr, char *buf)
 {
 	/* Dump Trusty threads info to memlog */
-	trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_THREADS, dev), 0, 0, 0);
+	gz_trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_THREADS, dev), 0, 0, 0);
 	/* Dump threads info from memlog to kmsg */
-	trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
+	gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
 	return 0;
 }
 static ssize_t trusty_threads_store(struct device *dev,
@@ -298,10 +298,10 @@ static ssize_t trusty_threadstats_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
 {
 	/* Dump Trusty threads info to memlog */
-	trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_THREADSTATS, dev),
+	gz_trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_THREADSTATS, dev),
 			   0, 0, 0);
 	/* Dump threads info from memlog to kmsg */
-	trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
+	gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
 	return 0;
 }
 static ssize_t trusty_threadstats_store(struct device *dev,
@@ -316,10 +316,10 @@ static ssize_t trusty_threadload_show(struct device *dev,
 			  struct device_attribute *attr, char *buf)
 {
 	/* Dump Trusty threads info to memlog */
-	trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_THREADLOAD, dev),
+	gz_trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_THREADLOAD, dev),
 			   0, 0, 0);
 	/* Dump threads info from memlog to kmsg */
-	trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
+	gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
 	return 0;
 }
 static ssize_t trusty_threadload_store(struct device *dev,
@@ -334,9 +334,9 @@ static ssize_t trusty_heap_dump_show(struct device *dev,
 			 struct device_attribute *attr, char *buf)
 {
 	/* Dump Trusty threads info to memlog */
-	trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_HEAP_DUMP, dev), 0, 0, 0);
+	gz_trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_HEAP_DUMP, dev), 0, 0, 0);
 	/* Dump threads info from memlog to kmsg */
-	trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
+	gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
 	return 0;
 }
 static ssize_t trusty_heap_dump_store(struct device *dev,
@@ -351,9 +351,9 @@ static ssize_t trusty_apps_show(struct device *dev,
 		    struct device_attribute *attr, char *buf)
 {
 	/* Dump Trusty threads info to memlog */
-	trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_APPS, dev), 0, 0, 0);
+	gz_trusty_fast_call32(dev, MTEE_SMCNR(MT_SMCF_FC_APPS, dev), 0, 0, 0);
 	/* Dump threads info from memlog to kmsg */
-	trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
+	gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_NOP, dev), 0, 0, 0);
 	return 0;
 }
 static ssize_t trusty_apps_store(struct device *dev,
@@ -367,7 +367,7 @@ DEVICE_ATTR_RW(trusty_apps);
 static ssize_t trusty_vdev_reset_show(struct device *dev,
 			  struct device_attribute *attr, char *buf)
 {
-	trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_VDEV_RESET, dev), 0, 0, 0);
+	gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_VDEV_RESET, dev), 0, 0, 0);
 	return 0;
 }
 
@@ -456,7 +456,7 @@ static ssize_t vmm_fast_add_show(struct device *dev,
 	b &= 0xFF;
 	get_random_bytes(&c, sizeof(s32));
 	c &= 0xFF;
-	ret = trusty_fast_call32(dev, MTEE_SMCNR(SMCF_FC_TEST_ADD, dev),
+	ret = gz_trusty_fast_call32(dev, MTEE_SMCNR(SMCF_FC_TEST_ADD, dev),
 				 a, b, c);
 	return scnprintf(buf, PAGE_SIZE, "%d + %d + %d = %d, %s\n", a, b, c,
 			 ret, (a + b + c) == ret ? "PASS" : "FAIL");
@@ -481,7 +481,7 @@ ssize_t vmm_fast_multiply_show(struct device *dev,
 	b &= 0xFF;
 	get_random_bytes(&c, sizeof(s32));
 	c &= 0xFF;
-	ret = trusty_fast_call32(dev, MTEE_SMCNR(SMCF_FC_TEST_MULTIPLY, dev),
+	ret = gz_trusty_fast_call32(dev, MTEE_SMCNR(SMCF_FC_TEST_MULTIPLY, dev),
 				 a, b, c);
 	return scnprintf(buf, PAGE_SIZE, "%d * %d * %d = %d, %s\n", a, b, c,
 			 ret, (a * b * c) == ret ? "PASS" : "FAIL");
@@ -506,7 +506,7 @@ static ssize_t vmm_std_add_show(struct device *dev,
 	b &= 0xFF;
 	get_random_bytes(&c, sizeof(s32));
 	c &= 0xFF;
-	ret = trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_TEST_ADD, dev),
+	ret = gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_TEST_ADD, dev),
 						a, b, c);
 	return scnprintf(buf, PAGE_SIZE, "%d + %d + %d = %d, %s\n", a, b, c,
 			 ret, (a + b + c) == ret ? "PASS" : "FAIL");
@@ -531,7 +531,7 @@ static ssize_t vmm_std_multiply_show(struct device *dev,
 	b &= 0xFF;
 	get_random_bytes(&c, sizeof(s32));
 	c &= 0xFF;
-	ret = trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_TEST_MULTIPLY, dev),
+	ret = gz_trusty_std_call32(dev, MTEE_SMCNR(SMCF_SC_TEST_MULTIPLY, dev),
 				a, b, c);
 	return scnprintf(buf, PAGE_SIZE, "%d * %d * %d = %d, %s\n", a, b, c,
 			 ret, (a * b * c) == ret ? "PASS" : "FAIL");

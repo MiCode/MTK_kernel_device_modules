@@ -48,28 +48,28 @@ struct tipc_dn_chan {
 	int32_t cpumask;
 };
 
-int tipc_set_default_cpumask(uint32_t cpumask);
+int gz_tipc_set_default_cpumask(uint32_t cpumask);
 
-struct tipc_chan *tipc_create_channel(struct device *dev,
+struct tipc_chan *gz_tipc_create_channel(struct device *dev,
 				      const struct tipc_chan_ops *ops,
 				      void *cb_arg);
 
-int tipc_chan_connect(struct tipc_chan *chan, const char *port);
+int gz_tipc_chan_connect(struct tipc_chan *chan, const char *port);
 
-int tipc_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb);
+int gz_tipc_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb);
 
-int tipc_chan_shutdown(struct tipc_chan *chan);
+int gz_tipc_chan_shutdown(struct tipc_chan *chan);
 
-void tipc_chan_destroy(struct tipc_chan *chan);
+void gz_tipc_chan_destroy(struct tipc_chan *chan);
 
-struct tipc_msg_buf *tipc_chan_get_rxbuf(struct tipc_chan *chan);
+struct tipc_msg_buf *gz_tipc_chan_get_rxbuf(struct tipc_chan *chan);
 
-void tipc_chan_put_rxbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb);
+void gz_tipc_chan_put_rxbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb);
 
-struct tipc_msg_buf *tipc_chan_get_txbuf_timeout(struct tipc_chan *chan,
+struct tipc_msg_buf *gz_tipc_chan_get_txbuf_timeout(struct tipc_chan *chan,
 						 long timeout);
 
-void tipc_chan_put_txbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb);
+void gz_tipc_chan_put_txbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb);
 
 static inline size_t mb_avail_space(struct tipc_msg_buf *mb)
 {
@@ -102,21 +102,21 @@ static inline void *mb_get_data(struct tipc_msg_buf *mb, size_t len)
 struct tipc_k_handle {
 	struct tipc_dn_chan *dn;
 };
-int tipc_k_connect(struct tipc_k_handle *h, const char *port);
-int tipc_k_disconnect(struct tipc_k_handle *h);
-ssize_t tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
+int gz_tipc_k_connect(struct tipc_k_handle *h, const char *port);
+int gz_tipc_k_disconnect(struct tipc_k_handle *h);
+ssize_t gz_tipc_k_read(struct tipc_k_handle *h, void *buf, size_t buf_len,
 		    unsigned int flags);
-ssize_t tipc_k_write(struct tipc_k_handle *h, void *buf, size_t len,
+ssize_t gz_tipc_k_write(struct tipc_k_handle *h, void *buf, size_t len,
 		     unsigned int flags);
 
-/* port_lookup_tid() - indicate the tee_id from service port name.
+/* gz_port_lookup_tid() - indicate the tee_id from service port name.
  * @port: service name
  * @o_tid: output tee_id value, must be the value in enum tee_id_t
  *
  * Return 0 means no error.
- * port_lookup_tid will set a default tee_id value when errors happened, but
+ * gz_port_lookup_tid will set a default tee_id value when errors happened, but
  * still needs to check the returned err value.
  */
-int port_lookup_tid(const char *port, enum tee_id_t *o_tid);
+int gz_port_lookup_tid(const char *port, enum tee_id_t *o_tid);
 
 #endif				/* __LINUX_TRUSTY_TRUSTY_IPC_H */

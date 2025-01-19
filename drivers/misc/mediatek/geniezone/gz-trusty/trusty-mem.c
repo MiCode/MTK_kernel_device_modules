@@ -135,11 +135,11 @@ int trusty_call32_mem_buf(struct device *dev, u32 smcnr,
 		return ret;
 
 	if (SMC_IS_FASTCALL(smcnr)) {
-		return trusty_fast_call32(dev, smcnr,
+		return gz_trusty_fast_call32(dev, smcnr,
 					  (u32)pg_inf.attr,
 					  (u32)(pg_inf.attr >> 32), size);
 	} else {
-		return trusty_std_call32(dev, smcnr,
+		return gz_trusty_std_call32(dev, smcnr,
 					 (u32)pg_inf.attr,
 					 (u32)(pg_inf.attr >> 32), size);
 	}

@@ -212,7 +212,7 @@ irqreturn_t trusty_irq_handler(int irq, void *data)
 	}
 	spin_unlock(&is->normal_irqs_lock);
 
-	trusty_enqueue_nop(is->trusty_dev, NULL, smp_processor_id());
+	gz_trusty_enqueue_nop(is->trusty_dev, NULL, smp_processor_id());
 
 #ifdef IRQ_DEBUG_LOG_EN
 	dev_dbg(is->dev, "%s: irq %d done\n", __func__, irq);
@@ -528,7 +528,7 @@ err_request_percpu_irq:
 static int trusty_smc_get_next_irq(struct trusty_irq_state *is,
 				   unsigned long min_irq, bool per_cpu)
 {
-	return trusty_fast_call32(is->trusty_dev,
+	return gz_trusty_fast_call32(is->trusty_dev,
 			MTEE_SMCNR(SMCF_FC_GET_NEXT_IRQ, is->trusty_dev),
 			min_irq, per_cpu, is->tee_id);
 }
@@ -651,7 +651,7 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	}
 
 	is->trusty_call_notifier.notifier_call = trusty_irq_call_notify;
-	ret = trusty_call_notifier_register(is->trusty_dev,
+	ret = gz_trusty_call_notifier_register(is->trusty_dev,
 					    &is->trusty_call_notifier);
 	if (ret) {
 		dev_info(&pdev->dev,
@@ -681,7 +681,7 @@ err_add_cpuhp_instance:
 	trusty_irq_disable_irqset(is, &is->normal_irqs);
 	spin_unlock_irqrestore(&is->normal_irqs_lock, irq_flags);
 	trusty_irq_free_irqs(is);
-	trusty_call_notifier_unregister(is->trusty_dev,
+	gz_trusty_call_notifier_unregister(is->trusty_dev,
 					&is->trusty_call_notifier);
 err_trusty_call_notifier_register:
 	free_percpu(is->percpu_irqs);
@@ -712,7 +712,7 @@ static int trusty_irq_remove(struct platform_device *pdev)
 
 	trusty_irq_free_irqs(is);
 
-	trusty_call_notifier_unregister(is->trusty_dev,
+	gz_trusty_call_notifier_unregister(is->trusty_dev,
 					&is->trusty_call_notifier);
 	free_percpu(is->percpu_irqs);
 

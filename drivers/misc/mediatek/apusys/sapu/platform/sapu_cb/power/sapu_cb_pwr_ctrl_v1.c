@@ -136,12 +136,12 @@ int power_ctrl_v1(struct sapu_private *sapu, u32 power_on)
 			return ret;
 		}
 
-		ret = trusty_std_call32(pdev->dev.parent,
+		ret = gz_trusty_std_call32(pdev->dev.parent,
 				MTEE_SMCNR(MT_SMCF_SC_VPU,
 				pdev->dev.parent),
 				0, 1, 0);
 		if (ret) {
-			pr_info("[%s]trusty_std_call32 fail(0x%x), reset the power lock\n",
+			pr_info("[%s]gz_trusty_std_call32 fail(0x%x), reset the power lock\n",
 					__func__, ret);
 
 			ret = sapu_lock_ipi_send(0, &sapu->lock_ref_cnt);
@@ -152,12 +152,12 @@ int power_ctrl_v1(struct sapu_private *sapu, u32 power_on)
 			return ret;
 		}
 	} else {
-		ret = trusty_std_call32(pdev->dev.parent,
+		ret = gz_trusty_std_call32(pdev->dev.parent,
 				MTEE_SMCNR(MT_SMCF_SC_VPU,
 				pdev->dev.parent),
 				0, 0, 0);
 		if (ret) {
-			pr_info("[%s]trusty_std_call32 fail(0x%x)\n",
+			pr_info("[%s]gz_trusty_std_call32 fail(0x%x)\n",
 				__func__, ret);
 			return ret;
 		}

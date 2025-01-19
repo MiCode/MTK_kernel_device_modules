@@ -140,7 +140,7 @@ static ssize_t _tipc_k_read_retry(struct tipc_k_handle *h, void *buf,
 	int retry = 0;
 
 	do {
-		rc = tipc_k_read(h, (void *)buf, buf_len, flags);
+		rc = gz_tipc_k_read(h, (void *)buf, buf_len, flags);
 		retry++;
 	} while (_tipc_retry_check_and_wait(rc, retry, 0));
 
@@ -154,7 +154,7 @@ static ssize_t _tipc_k_write_retry(struct tipc_k_handle *h, void *buf,
 	int retry = 0;
 
 	do {
-		rc = tipc_k_write(h, (void *)buf, buf_len, flags);
+		rc = gz_tipc_k_write(h, (void *)buf, buf_len, flags);
 		retry++;
 	} while (_tipc_retry_check_and_wait(rc, retry, 1));
 
@@ -196,14 +196,14 @@ static int _tipc_k_connect_retry(struct tipc_k_handle *h, const char *port_name)
 				return 0;
 			}
 			KREE_DEBUG("%s: disconnect and retry!\n", __func__);
-			tipc_k_disconnect(h);
+			gz_tipc_k_disconnect(h);
 		}
-		rc = tipc_k_connect(h, port_name);
+		rc = gz_tipc_k_connect(h, port_name);
 		retry++;
 	} while (_tipc_retry_check_and_wait(rc, retry, 2));
 
 	if (rc != 0 && h)
-		tipc_k_disconnect(h);
+		gz_tipc_k_disconnect(h);
 
 	return rc;
 }
@@ -287,7 +287,7 @@ TZ_RESULT KREE_SessionToTID(KREE_SESSION_HANDLE session, enum tee_id_t *o_tid)
 		return TZ_RESULT_SUCCESS;
 	}
 
-	port_lookup_tid("com.default.tee_id", o_tid);
+	gz_port_lookup_tid("com.default.tee_id", o_tid);
 	pr_info("[%s] session %d to tee id failed, return default %d\n",
 		__func__, session, *o_tid);
 	return TZ_RESULT_ERROR_NO_DATA;
@@ -393,9 +393,9 @@ static TZ_RESULT KREE_CloseFd(int32_t Fd)
 		return TZ_RESULT_ERROR_BAD_PARAMETERS;
 	}
 
-	rc = tipc_k_disconnect(h);
+	rc = gz_tipc_k_disconnect(h);
 	if (rc) {
-		KREE_ERR("%s: tipc_k_disconnect failed\n", __func__);
+		KREE_ERR("%s: gz_tipc_k_disconnect failed\n", __func__);
 		ret = TZ_RESULT_ERROR_COMMUNICATION;
 	}
 
@@ -420,7 +420,7 @@ int _gz_client_cmd(int32_t Fd, int session, unsigned int cmd, void *param,
 	KREE_DEBUG(" ===> %s: command = %d.\n", __func__, cmd);
 	KREE_DEBUG(" ===> %s: param_size = %d.\n", __func__, param_size);
 	rc = _tipc_k_write_retry(handle, param, param_size, O_RDWR);
-	KREE_DEBUG(" ===> %s: tipc_k_write rc = %d.\n", __func__, (int)rc);
+	KREE_DEBUG(" ===> %s: gz_tipc_k_write rc = %d.\n", __func__, (int)rc);
 
 	return rc;
 }
@@ -438,11 +438,11 @@ int _gz_client_wait_ret(int32_t Fd, struct gz_syscall_cmd_param *data)
 		return -1;
 	}
 
-	KREE_DEBUG(" ===> %s: tipc_k_read\n", __func__);
+	KREE_DEBUG(" ===> %s: gz_tipc_k_read\n", __func__);
 	rc = _tipc_k_read_retry(handle, (void *)data,
 				sizeof(struct gz_syscall_cmd_param), O_RDWR);
 	size = data->payload_size;
-	KREE_DEBUG(" ===> %s: tipc_k_read(1) rc = %d.\n", __func__, (int)rc);
+	KREE_DEBUG(" ===> %s: gz_tipc_k_read(1) rc = %d.\n", __func__, (int)rc);
 	KREE_DEBUG(" ===> %s: data payload size = %d.\n", __func__, size);
 #if debugFg
 	if (size > GZ_MSG_DATA_MAX_LEN) {
@@ -714,7 +714,7 @@ static int ree_service_threads(uint32_t cmd, uint32_t ree_cpu)
 			return -ENOMEM;
 
 		trusty_nop_init(nop, cmd, 0, 0);
-		trusty_enqueue_nop(tz_system_dev->dev.parent, nop, cpu);
+		gz_trusty_enqueue_nop(tz_system_dev->dev.parent, nop, cpu);
 	}
 
 	return 0;
@@ -1274,7 +1274,7 @@ struct platform_driver tz_system_driver = {
 
 int tz_system_std_call32(u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
-	return trusty_std_call32(tz_system_dev->dev.parent,
+	return gz_trusty_std_call32(tz_system_dev->dev.parent,
 				smcnr, a0, a1, a2);
 }
 

@@ -202,7 +202,7 @@ static int get_gz_version(void *args)
 
 	trusty_dev = tz_system_dev->dev.parent;
 
-	ret = trusty_fast_call32(trusty_dev,
+	ret = gz_trusty_fast_call32(trusty_dev,
 				MTEE_SMCNR(SMCF_FC_GET_VERSION_STR, trusty_dev),
 				-1, 0, 0);
 	if (ret <= 0) {
@@ -217,7 +217,7 @@ static int get_gz_version(void *args)
 		return TZ_RESULT_ERROR_OUT_OF_MEMORY;
 
 	for (i = 0; i < version_str_len; i++) {
-		ret = trusty_fast_call32(trusty_dev,
+		ret = gz_trusty_fast_call32(trusty_dev,
 				MTEE_SMCNR(SMCF_FC_GET_VERSION_STR, trusty_dev),
 				i, 0, 0);
 		if (ret < 0)
@@ -417,7 +417,7 @@ int mtee_sdsp_enable(u32 on)
 		return TZ_RESULT_ERROR_NO_DATA;
 	}
 
-	return trusty_std_call32(tz_system_dev->dev.parent,
+	return gz_trusty_std_call32(tz_system_dev->dev.parent,
 			MTEE_SMCNR(MT_SMCF_SC_VPU, tz_system_dev->dev.parent),
 			on, 0, 0);
 }
@@ -882,7 +882,7 @@ int gz_adjust_task_attr(struct trusty_task_attr *manual_task_attr)
 		return -EINVAL;
 	}
 
-	return trusty_adjust_task_attr(tz_system_dev->dev.parent, manual_task_attr);
+	return gz_trusty_adjust_task_attr(tz_system_dev->dev.parent, manual_task_attr);
 }
 
 TZ_RESULT gz_manual_adjust_trusty_wq_attr(void __user *user_req)
@@ -915,7 +915,7 @@ TZ_RESULT gz_manual_adjust_trusty_wq_attr(void __user *user_req)
 		manual_task_attr.mask[TRUSTY_TASK_CHK_ID],
 		manual_task_attr.pri[TRUSTY_TASK_CHK_ID]);
 
-	tipc_set_default_cpumask(manual_task_attr.mask[TRUSTY_TASK_KICK_ID]);
+	gz_tipc_set_default_cpumask(manual_task_attr.mask[TRUSTY_TASK_KICK_ID]);
 
 	return gz_adjust_task_attr(&manual_task_attr);
 }
@@ -1105,7 +1105,7 @@ static void gz_devapc_vio_dump(void)
 		return;
 	}
 
-	trusty_fast_call32(tz_system_dev->dev.parent,
+	gz_trusty_fast_call32(tz_system_dev->dev.parent,
 		MTEE_SMCNR(MT_SMCF_FC_DEVAPC_VIO, tz_system_dev->dev.parent),
 		0, 0, 0);
 }

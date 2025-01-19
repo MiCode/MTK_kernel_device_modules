@@ -239,7 +239,7 @@ static void kick_vq(struct trusty_ctx *tctx,
 	dev_dbg(tctx->dev, "%s: vdev_id=%d: vq_id=%d\n",
 		__func__, tvdev->notifyid, tvr->notifyid);
 
-	ret = trusty_std_call32(tctx->trusty_dev, smcnr_kick_vq,
+	ret = gz_trusty_std_call32(tctx->trusty_dev, smcnr_kick_vq,
 				tvdev->notifyid, tvr->notifyid, 0);
 	if (ret) {
 		dev_info(tctx->dev, "vq notify (%d, %d) returned %d\n",
@@ -268,7 +268,7 @@ static void kick_vqs(struct trusty_ctx *tctx)
 static int trusty_vqueue_to_cpu(struct trusty_ctx *tctx, struct virtqueue *vq)
 {
 	struct trusty_vring *tvr = vq->priv;
-	u32 api_ver = trusty_get_api_version(tctx->trusty_dev);
+	u32 api_ver = gz_trusty_get_api_version(tctx->trusty_dev);
 	int cpu = -1;
 
 	if (unlikely(api_ver < TRUSTY_API_VERSION_MULTI_VQUEUE))
@@ -289,13 +289,13 @@ static bool trusty_virtio_notify(struct virtqueue *vq)
 	struct trusty_vring *tvr = vq->priv;
 	struct trusty_vdev *tvdev = tvr->tvdev;
 	struct trusty_ctx *tctx = tvdev->tctx;
-	u32 api_ver = trusty_get_api_version(tctx->trusty_dev);
+	u32 api_ver = gz_trusty_get_api_version(tctx->trusty_dev);
 
 	if (api_ver < TRUSTY_API_VERSION_SMP_NOP) {
 		atomic_set(&tvr->needs_kick, 1);
 		complete(&tctx->task_info[TRUSTY_TASK_KICK_ID].run);
 	} else {
-		trusty_enqueue_nop(tctx->trusty_dev, &tvr->kick_nop,
+		gz_trusty_enqueue_nop(tctx->trusty_dev, &tvr->kick_nop,
 				   trusty_vqueue_to_cpu(tctx, vq));
 	}
 
@@ -357,7 +357,7 @@ static int trusty_virtio_start(struct trusty_ctx *tctx, void *va, size_t sz)
 	/* Send NOP to secure world to init per-cpu resource */
 	for_each_online_cpu(cpu) {
 		dev_dbg(tctx->dev, "%s: init per cpu %d\n", __func__, cpu);
-		trusty_enqueue_nop(tctx->trusty_dev, NULL, cpu);
+		gz_trusty_enqueue_nop(tctx->trusty_dev, NULL, cpu);
 	}
 
 	return 0;
@@ -371,7 +371,7 @@ static void trusty_virtio_reset(struct virtio_device *vdev)
 
 	dev_dbg(&vdev->dev, "reset vdev_id=%d\n", tvdev->notifyid);
 
-	trusty_std_call32(tctx->trusty_dev, smcnr_vdev_reset,
+	gz_trusty_std_call32(tctx->trusty_dev, smcnr_vdev_reset,
 			  tvdev->notifyid, 0, 0);
 }
 
@@ -437,7 +437,7 @@ static void _del_vqs(struct virtio_device *vdev)
 
 	for (i = 0; i < tvdev->vring_num; i++, tvr++) {
 		/* dequeue kick_nop */
-		trusty_dequeue_nop(tvdev->tctx->trusty_dev, &tvr->kick_nop);
+		gz_trusty_dequeue_nop(tvdev->tctx->trusty_dev, &tvr->kick_nop);
 
 		/* delete vq */
 		if (tvr->vq) {
@@ -802,7 +802,7 @@ static int trusty_virtio_add_devices(struct trusty_ctx *tctx)
 	 * it may multiple tctx in other device,
 	 * in tipc scope there is one tctx
 	 */
-	ret = trusty_call_notifier_register(tctx->trusty_dev,
+	ret = gz_trusty_call_notifier_register(tctx->trusty_dev,
 					    &tctx->call_notifier);
 	if (ret) {
 		dev_info(tctx->dev, "%s: failed (%d) to register notifier\n",
@@ -810,7 +810,7 @@ static int trusty_virtio_add_devices(struct trusty_ctx *tctx)
 		goto err_register_notifier;
 	}
 
-	ret = trusty_callback_notifier_register(tctx->trusty_dev,
+	ret = gz_trusty_callback_notifier_register(tctx->trusty_dev,
 					    &tctx->callback_notifier);
 	if (ret) {
 		dev_info(tctx->dev, "%s: failed (%d) to register notifier\n",
@@ -833,10 +833,10 @@ static int trusty_virtio_add_devices(struct trusty_ctx *tctx)
 	return 0;
 
 err_start_virtio:
-	trusty_callback_notifier_unregister(tctx->trusty_dev,
+	gz_trusty_callback_notifier_unregister(tctx->trusty_dev,
 					&tctx->callback_notifier);
 err_register_callback:
-	trusty_call_notifier_unregister(tctx->trusty_dev, &tctx->call_notifier);
+	gz_trusty_call_notifier_unregister(tctx->trusty_dev, &tctx->call_notifier);
 err_register_notifier:
 err_parse_descr:
 	_remove_devices_locked(tctx);
@@ -868,7 +868,7 @@ static int trusty_task_kick(void *data)
 				&tctx->task_info[TRUSTY_TASK_KICK_ID].run, timeout);
 		if (atomic_read(&tctx->task_info[TRUSTY_TASK_KICK_ID].task_num)) {
 			kick_vqs(tctx);
-			trusty_dump_systrace(tctx->trusty_dev, NULL);
+			gz_trusty_dump_systrace(tctx->trusty_dev, NULL);
 		} else
 			timeout = msecs_to_jiffies(1000);
 	}
@@ -916,7 +916,7 @@ static void trusty_task_default_bind(struct trusty_ctx *tctx, int mode)
 		return;
 	}
 
-	mask = (u32)trusty_fast_call32(tctx->trusty_dev, smcnr_get_cmask,
+	mask = (u32)gz_trusty_fast_call32(tctx->trusty_dev, smcnr_get_cmask,
 			  0, 0, 0);
 	dev_info(tctx->dev, "%s mask=0x%x\n", __func__, mask);
 	if (mask == 0xffffffff)
@@ -1122,8 +1122,8 @@ static int trusty_virtio_remove(struct platform_device *pdev)
 	dev_info(&pdev->dev, "removing\n");
 
 	/* unregister call notifier and wait until workqueue is done */
-	trusty_call_notifier_unregister(tctx->trusty_dev, &tctx->call_notifier);
-	trusty_callback_notifier_unregister(tctx->trusty_dev,
+	gz_trusty_call_notifier_unregister(tctx->trusty_dev, &tctx->call_notifier);
+	gz_trusty_callback_notifier_unregister(tctx->trusty_dev,
 					&tctx->callback_notifier);
 
 	/* remove virtio devices */

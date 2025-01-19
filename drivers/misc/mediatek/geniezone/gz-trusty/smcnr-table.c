@@ -137,7 +137,7 @@ int init_smcnr_table(struct device *dev, enum tee_id_t tee_id)
 		return -EINVAL;
 	}
 
-	ver = trusty_fast_call32(dev, SMC_FC_GZ_API_VERSION,
+	ver = gz_trusty_fast_call32(dev, SMC_FC_GZ_API_VERSION,
 				 TRUSTY_API_VERSION_CURRENT, tee_id, 0);
 
 	if (ver == SMC_UNDEFINED)

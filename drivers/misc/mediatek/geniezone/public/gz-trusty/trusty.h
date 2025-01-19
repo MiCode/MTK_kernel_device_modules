@@ -13,8 +13,8 @@
 #include <linux/kthread.h>
 
 extern void handle_trusty_ipi(int ipinr);
-s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
-s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
+s32 gz_trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
+s32 gz_trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
 #if IS_ENABLED(CONFIG_64BIT)
 s64 trusty_fast_call64(struct device *dev, u64 smcnr, u64 a0, u64 a1, u64 a2);
 #endif	/* CONFIG_64BIT */
@@ -24,15 +24,15 @@ enum {
 	TRUSTY_CALL_PREPARE,
 	TRUSTY_CALL_RETURNED,
 };
-int trusty_call_notifier_register(struct device *dev, struct notifier_block *n);
-int trusty_call_notifier_unregister(struct device *dev,
+int gz_trusty_call_notifier_register(struct device *dev, struct notifier_block *n);
+int gz_trusty_call_notifier_unregister(struct device *dev,
 				    struct notifier_block *n);
-const char *trusty_version_str_get(struct device *dev);
-u32 trusty_get_api_version(struct device *dev);
+const char *gz_trusty_version_str_get(struct device *dev);
+u32 gz_trusty_get_api_version(struct device *dev);
 
-int trusty_callback_notifier_register(struct device *dev,
+int gz_trusty_callback_notifier_register(struct device *dev,
 				struct notifier_block *n);
-int trusty_callback_notifier_unregister(struct device *dev,
+int gz_trusty_callback_notifier_unregister(struct device *dev,
 				struct notifier_block *n);
 enum {
 	TRUSTY_TASK_KICK_ID,
@@ -44,7 +44,7 @@ struct trusty_task_attr {
 	uint32_t mask[TRUSTY_TASK_MAX_ID];
 	int pri[TRUSTY_TASK_MAX_ID];
 };
-int trusty_adjust_task_attr(struct device *dev,
+int gz_trusty_adjust_task_attr(struct device *dev,
 		struct trusty_task_attr *manual_task_attr);
 enum {
 	TRUSTY_CALLBACK_VIRTIO_WQ_ATTR = 1,
@@ -52,7 +52,7 @@ enum {
 };
 
 #define ENABLE_GZ_TRACE_DUMP (IS_ENABLED(CONFIG_FTRACE) & 0)
-int trusty_dump_systrace(struct device *dev, void *data);
+int gz_trusty_dump_systrace(struct device *dev, void *data);
 
 struct ns_mem_page_info {
 	uint64_t attr;
@@ -85,9 +85,9 @@ enum tee_id_t {
 	TEE_ID_END
 };
 
-void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop, int cpu);
+void gz_trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop, int cpu);
 
-void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop);
+void gz_trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop);
 
 #define is_trusty_tee(tee_id) ((tee_id) == TEE_ID_TRUSTY)
 

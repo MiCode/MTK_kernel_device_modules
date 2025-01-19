@@ -195,7 +195,7 @@ static int dram_fb_register(void)
 	higher_32_iova = (sapu->dram_fb_info.dram_dma_addr >> 32) & 0xFFFFFFFF;
 	lower_32_iova = sapu->dram_fb_info.dram_dma_addr & 0xFFFFFFFF;
 	pr_info("higher_32_iova = %x, lower_32_iova = %x\n", higher_32_iova , lower_32_iova);
-	ret = trusty_std_call32(pdev->dev.parent,
+	ret = gz_trusty_std_call32(pdev->dev.parent,
 				MTEE_SMCNR(MT_SMCF_SC_SAPU_DRAM_FB,
 					   pdev->dev.parent),
 				1, higher_32_iova, lower_32_iova);
@@ -255,7 +255,7 @@ static int dram_fb_unregister(void)
 
 	higher_32_iova = (sapu->dram_fb_info.dram_dma_addr >> 32) & 0xFFFFFFFF;
 	lower_32_iova = sapu->dram_fb_info.dram_dma_addr & 0xFFFFFFFF;
-	ret = trusty_std_call32(pdev->dev.parent,
+	ret = gz_trusty_std_call32(pdev->dev.parent,
 			MTEE_SMCNR(MT_SMCF_SC_SAPU_DRAM_FB,
 			pdev->dev.parent),
 			0, higher_32_iova, lower_32_iova);

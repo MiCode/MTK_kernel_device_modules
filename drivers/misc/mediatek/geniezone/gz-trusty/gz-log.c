@@ -274,7 +274,7 @@ static int trusty_log_panic_notify(struct notifier_block *nb,
 	 * though this is racy.
 	 */
 	pr_info("trusty-log panic notifier - trusty version %s",
-		trusty_version_str_get(gls->trusty_dev));
+		gz_trusty_version_str_get(gls->trusty_dev));
 	atomic_inc(&gls->gz_log_event_count);
 	wake_up_interruptible(&gls->gz_log_wq);
 	return NOTIFY_OK;
@@ -284,7 +284,7 @@ static bool trusty_supports_logging(struct device *device)
 {
 	int ret;
 
-	ret = trusty_std_call32(device,
+	ret = gz_trusty_std_call32(device,
 				MTEE_SMCNR(SMCF_SC_SHARED_LOG_VERSION, device),
 				TRUSTY_LOG_API_VERSION, 0, 0);
 	if (ret == SM_ERR_UNDEFINED_SMC) {
@@ -762,7 +762,7 @@ static int trusty_gz_send_ktime(struct platform_device *pdev)
 	diff_msb = (diff_all >> 32);
 	diff_lsb = (diff_all & U32_MAX);
 
-	trusty_fast_call32(pdev->dev.parent,
+	gz_trusty_fast_call32(pdev->dev.parent,
 		MTEE_SMCNR(MT_SMCF_FC_KTIME_ALIGN, pdev->dev.parent),
 		diff_msb, diff_lsb, 0);
 
@@ -814,7 +814,7 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 	 * DYNAMIC: add memlog as usual.
 	 */
 	if (glctx.flag == DYNAMIC) {
-		ret = trusty_std_call32(gls->trusty_dev,
+		ret = gz_trusty_std_call32(gls->trusty_dev,
 			MTEE_SMCNR(SMCF_SC_SHARED_LOG_ADD, gls->trusty_dev),
 			(u32)(glctx.paddr), (u32)((u64)glctx.paddr >> 32),
 			glctx.size);
@@ -836,7 +836,7 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 
 #if ENABLE_GZ_TRACE_DUMP
 	gls->callback_notifier.notifier_call = trusty_log_callback_notify;
-	ret = trusty_callback_notifier_register(gls->trusty_dev,
+	ret = gz_trusty_callback_notifier_register(gls->trusty_dev,
 					       &gls->callback_notifier);
 	if (ret < 0) {
 		dev_info(&pdev->dev,
@@ -858,7 +858,7 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 		goto error_trace_task_run;
 	}
 	set_user_nice(gls->trace_task_fd, 5);
-	mask = (u32)trusty_fast_call32(gls->trusty_dev,
+	mask = (u32)gz_trusty_fast_call32(gls->trusty_dev,
 					MTEE_SMCNR(SMCF_FC_GET_CMASK, gls->trusty_dev),
 					0, 0, 0);
 	dev_info(&pdev->dev, "%s mask=0x%x\n", __func__, mask);
@@ -886,7 +886,7 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&gls->gz_log_wq);
 	gls->call_notifier.notifier_call = trusty_log_call_notify;
-	ret = trusty_call_notifier_register(gls->trusty_dev,
+	ret = gz_trusty_call_notifier_register(gls->trusty_dev,
 					       &gls->call_notifier);
 	if (ret < 0) {
 		dev_info(&pdev->dev,
@@ -935,17 +935,17 @@ static int trusty_gz_log_probe(struct platform_device *pdev)
 	return 0;
 
 error_panic_notifier:
-	trusty_call_notifier_unregister(gls->trusty_dev, &gls->call_notifier);
+	gz_trusty_call_notifier_unregister(gls->trusty_dev, &gls->call_notifier);
 error_call_notifier:
 #if ENABLE_GZ_TRACE_DUMP
 	gls->trace_exit = true;
 	kthread_stop(gls->trace_task_fd);
 error_trace_task_run:
-	trusty_callback_notifier_unregister(gls->trusty_dev,
+	gz_trusty_callback_notifier_unregister(gls->trusty_dev,
 			&gls->callback_notifier);
 error_callback_notifier:
 #endif
-	trusty_std_call32(gls->trusty_dev,
+	gz_trusty_std_call32(gls->trusty_dev,
 			  MTEE_SMCNR(SMCF_SC_SHARED_LOG_RM, gls->trusty_dev),
 			  (u32)glctx.paddr, (u32)((u64)glctx.paddr >> 32), 0);
 error_std_call:
@@ -971,18 +971,18 @@ static int trusty_gz_log_remove(struct platform_device *pdev)
 	proc_remove(gls->proc_full);
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 					 &gls->panic_notifier);
-	trusty_call_notifier_unregister(gls->trusty_dev, &gls->call_notifier);
+	gz_trusty_call_notifier_unregister(gls->trusty_dev, &gls->call_notifier);
 
 #if ENABLE_GZ_TRACE_DUMP
 	gz_trace_free(&gls->gz_trace_dump_list, &gls->gz_trace_dump_mux);
 	gls->trace_exit = true;
 	complete_all(&gls->trace_dump_event);
 	kthread_stop(gls->trace_task_fd);
-	trusty_callback_notifier_unregister(gls->trusty_dev,
+	gz_trusty_callback_notifier_unregister(gls->trusty_dev,
 			&gls->callback_notifier);
 #endif
 
-	ret = trusty_std_call32(gls->trusty_dev,
+	ret = gz_trusty_std_call32(gls->trusty_dev,
 			MTEE_SMCNR(SMCF_SC_SHARED_LOG_RM, gls->trusty_dev),
 			(u32)glctx.paddr, (u32)((u64)glctx.paddr >> 32), 0);
 	if (ret)

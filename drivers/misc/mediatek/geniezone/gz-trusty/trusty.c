@@ -95,7 +95,7 @@ static inline ulong smc_asm(ulong r0, ulong r1, ulong r2, ulong r3)
 	return res.a0;
 }
 
-s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
+s32 gz_trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
 	struct trusty_state *s;
 
@@ -110,7 +110,7 @@ s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 
 	return smc_asm(smcnr, a0, a1, a2);
 }
-EXPORT_SYMBOL(trusty_fast_call32);
+EXPORT_SYMBOL(gz_trusty_fast_call32);
 
 #if IS_ENABLED(CONFIG_64BIT)
 s64 trusty_fast_call64(struct device *dev, u64 smcnr, u64 a0, u64 a1, u64 a2)
@@ -292,7 +292,7 @@ static int nebula_interrupted_loop(struct trusty_state *s, u32 smcnr, int ret)
 	return ret;
 }
 
-s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
+s32 gz_trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
 	int ret;
 	struct trusty_state *s;
@@ -335,9 +335,9 @@ s32 trusty_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 
 	return ret;
 }
-EXPORT_SYMBOL(trusty_std_call32);
+EXPORT_SYMBOL(gz_trusty_std_call32);
 
-int trusty_call_notifier_register(struct device *dev, struct notifier_block *n)
+int gz_trusty_call_notifier_register(struct device *dev, struct notifier_block *n)
 {
 	struct trusty_state *s;
 
@@ -347,9 +347,9 @@ int trusty_call_notifier_register(struct device *dev, struct notifier_block *n)
 	s = platform_get_drvdata(to_platform_device(dev));
 	return atomic_notifier_chain_register(&s->notifier, n);
 }
-EXPORT_SYMBOL(trusty_call_notifier_register);
+EXPORT_SYMBOL(gz_trusty_call_notifier_register);
 
-int trusty_call_notifier_unregister(struct device *dev,
+int gz_trusty_call_notifier_unregister(struct device *dev,
 				    struct notifier_block *n)
 {
 	struct trusty_state *s;
@@ -360,9 +360,9 @@ int trusty_call_notifier_unregister(struct device *dev,
 	s = platform_get_drvdata(to_platform_device(dev));
 	return atomic_notifier_chain_unregister(&s->notifier, n);
 }
-EXPORT_SYMBOL(trusty_call_notifier_unregister);
+EXPORT_SYMBOL(gz_trusty_call_notifier_unregister);
 
-int trusty_callback_notifier_register(struct device *dev,
+int gz_trusty_callback_notifier_register(struct device *dev,
 				struct notifier_block *n)
 {
 	struct trusty_state *s;
@@ -373,9 +373,9 @@ int trusty_callback_notifier_register(struct device *dev,
 	s = platform_get_drvdata(to_platform_device(dev));
 	return blocking_notifier_chain_register(&s->callback, n);
 }
-EXPORT_SYMBOL(trusty_callback_notifier_register);
+EXPORT_SYMBOL(gz_trusty_callback_notifier_register);
 
-int trusty_callback_notifier_unregister(struct device *dev,
+int gz_trusty_callback_notifier_unregister(struct device *dev,
 				struct notifier_block *n)
 {
 	struct trusty_state *s;
@@ -386,9 +386,9 @@ int trusty_callback_notifier_unregister(struct device *dev,
 	s = platform_get_drvdata(to_platform_device(dev));
 	return blocking_notifier_chain_unregister(&s->callback, n);
 }
-EXPORT_SYMBOL(trusty_callback_notifier_unregister);
+EXPORT_SYMBOL(gz_trusty_callback_notifier_unregister);
 
-int trusty_adjust_task_attr(struct device *dev,
+int gz_trusty_adjust_task_attr(struct device *dev,
 				struct trusty_task_attr *manual_task_attr)
 {
 	struct trusty_state *s;
@@ -403,9 +403,9 @@ int trusty_adjust_task_attr(struct device *dev,
 
 	return 0;
 }
-EXPORT_SYMBOL(trusty_adjust_task_attr);
+EXPORT_SYMBOL(gz_trusty_adjust_task_attr);
 
-int trusty_dump_systrace(struct device *dev, void *data)
+int gz_trusty_dump_systrace(struct device *dev, void *data)
 {
 #if ENABLE_GZ_TRACE_DUMP
 	struct trusty_state *s;
@@ -420,7 +420,7 @@ int trusty_dump_systrace(struct device *dev, void *data)
 #endif
 	return 0;
 }
-EXPORT_SYMBOL(trusty_dump_systrace);
+EXPORT_SYMBOL(gz_trusty_dump_systrace);
 
 static int trusty_remove_child(struct device *dev, void *data)
 {
@@ -465,12 +465,12 @@ static void init_gz_ramconsole(struct device *dev)
 
 	trusty_info(dev,
 		"ram console: send ram console PA from kernel to GZ\n");
-	trusty_std_call32(dev, MT_SMC_SC_SET_RAMCONSOLE, low, high, 0);
+	gz_trusty_std_call32(dev, MT_SMC_SC_SET_RAMCONSOLE, low, high, 0);
 }
 #endif
 #endif
 
-const char *trusty_version_str_get(struct device *dev)
+const char *gz_trusty_version_str_get(struct device *dev)
 {
 	struct trusty_state *s;
 
@@ -480,7 +480,7 @@ const char *trusty_version_str_get(struct device *dev)
 	s = platform_get_drvdata(to_platform_device(dev));
 	return s->version_str;
 }
-EXPORT_SYMBOL(trusty_version_str_get);
+EXPORT_SYMBOL(gz_trusty_version_str_get);
 
 static void trusty_init_version(struct trusty_state *s, struct device *dev)
 {
@@ -489,7 +489,7 @@ static void trusty_init_version(struct trusty_state *s, struct device *dev)
 	int version_str_len;
 	u32 smcnr_version = MTEE_SMCNR(SMCF_FC_GET_VERSION_STR, dev);
 
-	ret = trusty_fast_call32(dev, smcnr_version, -1, 0, 0);
+	ret = gz_trusty_fast_call32(dev, smcnr_version, -1, 0, 0);
 	if (ret <= 0)
 		goto err_get_size;
 
@@ -501,7 +501,7 @@ static void trusty_init_version(struct trusty_state *s, struct device *dev)
 		goto err_nomem;
 
 	for (i = 0; i < version_str_len; i++) {
-		ret = trusty_fast_call32(dev, smcnr_version, i, 0, 0);
+		ret = gz_trusty_fast_call32(dev, smcnr_version, i, 0, 0);
 		if (ret < 0)
 			goto err_get_char;
 		s->version_str[i] = ret;
@@ -525,7 +525,7 @@ err_get_size:
 	trusty_info(dev, "failed to get version: %d\n", ret);
 }
 
-u32 trusty_get_api_version(struct device *dev)
+u32 gz_trusty_get_api_version(struct device *dev)
 {
 	struct trusty_state *s;
 
@@ -535,14 +535,14 @@ u32 trusty_get_api_version(struct device *dev)
 	s = platform_get_drvdata(to_platform_device(dev));
 	return s->api_version;
 }
-EXPORT_SYMBOL(trusty_get_api_version);
+EXPORT_SYMBOL(gz_trusty_get_api_version);
 
 static int trusty_init_api_version(struct trusty_state *s, struct device *dev)
 {
 	u32 api_version;
 	uint32_t smcnr_api = MTEE_SMCNR(SMCF_FC_API_VERSION, dev);
 
-	api_version = trusty_fast_call32(dev, smcnr_api,
+	api_version = gz_trusty_fast_call32(dev, smcnr_api,
 					 TRUSTY_API_VERSION_CURRENT,
 					 s->tee_id, 0);
 	if (api_version == SM_ERR_UNDEFINED_SMC)
@@ -597,7 +597,7 @@ static void locked_nop_work_func(struct nop_task_info *nop_ti)
 	struct trusty_state *s = nop_ti->ts;
 	u32 smcnr_locked_nop = MTEE_SMCNR_TID(SMCF_SC_LOCKED_NOP, s->tee_id);
 
-	ret = trusty_std_call32(s->dev, smcnr_locked_nop, 0, 0, 0);
+	ret = gz_trusty_std_call32(s->dev, smcnr_locked_nop, 0, 0, 0);
 
 	if (ret != 0)
 		trusty_info(s->dev, "%s: SMC_SC_LOCKED_NOP failed %d\n",
@@ -621,7 +621,7 @@ static void nop_work_func(struct nop_task_info *nop_ti)
 		trusty_dbg(s->dev, "%s: %x %x %x\n",
 			   __func__, args[0], args[1], args[2]);
 
-		ret = trusty_std_call32(s->dev, smcnr_nop,
+		ret = gz_trusty_std_call32(s->dev, smcnr_nop,
 					args[0], args[1], args[2]);
 
 		if (ret == SM_ERR_NOP_INTERRUPTED)
@@ -651,7 +651,7 @@ static void nop_work_func(struct nop_task_info *nop_ti)
 
 }
 
-void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop, int cpu)
+void gz_trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop, int cpu)
 {
 	unsigned long flags;
 	struct nop_task_info *nop_ti;
@@ -682,9 +682,9 @@ void trusty_enqueue_nop(struct device *dev, struct trusty_nop *nop, int cpu)
 
 	return;
 }
-EXPORT_SYMBOL(trusty_enqueue_nop);
+EXPORT_SYMBOL(gz_trusty_enqueue_nop);
 
-void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop)
+void gz_trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop)
 {
 	unsigned long flags;
 	struct trusty_state *s;
@@ -704,7 +704,7 @@ void trusty_dequeue_nop(struct device *dev, struct trusty_nop *nop)
 	}
 	spin_unlock_irqrestore(&s->nop_lock, flags);
 }
-EXPORT_SYMBOL(trusty_dequeue_nop);
+EXPORT_SYMBOL(gz_trusty_dequeue_nop);
 
 static int trusty_task_nop(void *data)
 {
@@ -867,7 +867,7 @@ static void trusty_poll_work(struct kthread_work *work)
 	struct trusty_state *s = container_of(work, struct trusty_state, poll_work);
 	uint32_t cpu_mask;
 
-	cpu_mask = (uint32_t)trusty_fast_call32(s->dev,
+	cpu_mask = (uint32_t)gz_trusty_fast_call32(s->dev,
 						SMC_FC_GZ_GET_CPU_REQUEST,
 						0, 0, 0);
 
@@ -883,7 +883,7 @@ static void trusty_poll_work(struct kthread_work *work)
 			if ((cpu < 32) && (cpu_mask & (1 << cpu))) {
 				trusty_info(s->dev, "%s send nop for cpu %d\n",
 						__func__, cpu);
-				trusty_enqueue_nop(s->dev, NULL, cpu);
+				gz_trusty_enqueue_nop(s->dev, NULL, cpu);
 			}
 		}
 	}
@@ -896,7 +896,7 @@ static int trusty_poll_create(struct trusty_state *s)
 
 	s->poll_notifier.notifier_call = trusty_poll_notify;
 	s->poll_notifier.priority = -1;
-	/* ret = trusty_call_notifier_register(s->dev, &s->poll_notifier);
+	/* ret = gz_trusty_call_notifier_register(s->dev, &s->poll_notifier);
 	 *	if (ret) {
 	 *		trusty_info(s->dev,
 	 *			 "%s: failed (%d) to register notifier\n",
@@ -928,7 +928,7 @@ static int trusty_poll_free(struct trusty_state *s)
 	kthread_flush_worker(&s->poll_worker);
 	kthread_stop(s->poll_task);
 
-	trusty_call_notifier_unregister(s->dev, &s->poll_notifier);
+	gz_trusty_call_notifier_unregister(s->dev, &s->poll_notifier);
 
 	return 0;
 }
