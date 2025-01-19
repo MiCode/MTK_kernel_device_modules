@@ -1,4 +1,4 @@
-obj-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp.o
+# obj-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_helper.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_excep.o
 scp-$(CONFIG_MTK_TINYSYS_SCP_SUPPORT) += scp_wrapper_ipi.o
