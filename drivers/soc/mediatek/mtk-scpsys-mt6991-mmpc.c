@@ -444,7 +444,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_data[] = {
 			BUS_PROT_IGN(MMPC_TYPE, 0x174, 0x178, 0x170, 0x1B0,
 				MT6991_MMPC_PROT_EN_MMPC_BUS0_MM_INFRA0),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MM_INFRA1] = {
 		.name = "mm-infra1",
@@ -907,7 +908,8 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_hwv_data[] = {
 		.hwv_clr_sta_ofs = 0x1468,
 		.hwv_shift = 1,
 		.hwv_debug_history_ofs = 0x3F9C,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap,
+		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | MTK_SCPD_BYPASS_INIT_ON
+				| default_cap,
 	},
 	[MT6991_POWER_DOMAIN_MM_INFRA1] = {
 		.name = "mm-infra1",
