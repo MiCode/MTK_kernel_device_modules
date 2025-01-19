@@ -57,6 +57,7 @@ struct mml_mutex {
 
 	u16 event_pipe0_mml;
 	u16 event_pipe1_mml;
+	u16 event_stream_sof;
 
 	struct mutex_module modules[MML_MAX_COMPONENTS];
 };
@@ -148,6 +149,9 @@ static s32 mutex_disable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 		return -EINVAL;
 
 	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_EN(mutex_id), 0x0, U32_MAX);
+
+	mml_mmp(mutex_dis, MMPROFILE_FLAG_PULSE, mutex_id, path->mux_group);
+
 	return 0;
 }
 
@@ -199,21 +203,27 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 	return ret;
 }
 
-static s32 mutex_disconnect(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg)
+static s32 mutex_wait_sof(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 idx)
 {
-	struct mml_frame_config *cfg = task->config;
 	struct mml_mutex *mutex = comp_to_mutex(comp);
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK)
-		mutex_disable(mutex, task->pkts[ccfg->pipe], cfg->path[ccfg->pipe]);
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (mutex->event_stream_sof)
+			cmdq_pkt_wfe(pkt, mutex->event_stream_sof + path->mux_group);
+
+		mutex_disable(mutex, pkt, path);
+	}
 
 	return 0;
 }
 
 static const struct mml_comp_config_ops mutex_config_ops = {
 	.mutex = mutex_trigger,
-	.post = mutex_disconnect,
+	.wait_sof = mutex_wait_sof,
 };
 
 static void mutex_debug_dump(struct mml_comp *comp)
@@ -565,6 +575,9 @@ static int probe(struct platform_device *pdev)
 		mml_log("dl event event_pipe0_mml %u", priv->event_pipe0_mml);
 	if (!of_property_read_u16(dev->of_node, "event-pipe1-mml", &priv->event_pipe1_mml))
 		mml_log("dl event event_pipe1_mml %u", priv->event_pipe1_mml);
+
+	if (!of_property_read_u16(dev->of_node, "sof-event", &priv->event_stream_sof))
+		mml_log("stream0 sof event %u", priv->event_stream_sof);
 
 	ret = mml_ddp_comp_init(dev, &priv->ddp_comp, &priv->comp,
 				&ddp_comp_funcs);
