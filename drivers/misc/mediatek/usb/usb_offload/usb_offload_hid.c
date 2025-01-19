@@ -112,7 +112,7 @@ static int xhci_hid_ep_ctx_control(struct hid_ep_info *hid,
 static int xhci_hid_move_deq(struct hid_ep_info *hid,
 	struct xhci_segment *new_seg, union xhci_trb *new_deq, int new_cycle);
 static int xhci_stop_hid_ep(struct hid_ep_info *hid);
-static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum usb_offload_mem_id type);
+static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum uo_provider_type id);
 static struct xhci_ring *xhci_get_hid_tr_ring(struct hid_ep_info *hid);
 static struct xhci_virt_device *xhci_get_hid_virt_dev(struct hid_ep_info *hid);
 static struct xhci_ep_ctx *xhci_get_hid_ep_ctx(struct hid_ep_info *hid, bool in_ctx);
@@ -343,13 +343,13 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 	}
 	payload->actual_length = urb_complete->actual_length;
 
-	if ((unsigned long long)buf->dma_addr == urb_complete->urb_start_addr) {
+	if ((unsigned long long)buf->phys == urb_complete->urb_start_addr) {
 		payload->data = kzalloc(payload->actual_length, GFP_ATOMIC);
 		if (!payload->data) {
 			kfree(payload);
 			return -ENOMEM;
 		}
-		memcpy(payload->data, (void *)buf->dma_area, payload->actual_length);
+		memcpy(payload->data, (void *)buf->virt, payload->actual_length);
 		payload->status = 0;
 	} else {
 		hid_err("buffer unmatch, phy:0x%llx\n", urb_complete->urb_start_addr);
@@ -422,7 +422,7 @@ static void hid_giveback_urb(struct work_struct *work_struct)
 		hid_ring_lock(hid, "<Finish Giveback>");
 		xhci_stop_hid_ep(hid);
 		if (hid_tr_switch) {
-			xhci_realloc_hid_ring(hid, USB_OFFLOAD_MEM_DRAM_ID);
+			xhci_realloc_hid_ring(hid, UO_PROV_DRAM);
 		} else if (!dsp_abnormal && xhci_hid_move_enq(hid, hid->cur_enqueue, hid->cycle_state)) {
 			ring = xhci_get_hid_tr_ring(hid);
 			if (unlikely(!ring)) {
@@ -467,11 +467,11 @@ static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable
 	struct usb_offload_urb_msg msg = {0};
 	struct usb_offload_buffer *buf;
 	int ret = 0, urb_size;
-	enum usb_offload_mem_id type;
+	enum uo_provider_type type;
 	struct xhci_ring *ring;
 
 	type = uodev->adv_lowpwr ?
-		USB_OFFLOAD_MEM_SRAM_ID : USB_OFFLOAD_MEM_DRAM_ID;
+		UO_PROV_SRAM : UO_PROV_DRAM;
 
 	if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
 		hid_err("hid:%p does not need offloading\n", hid);
@@ -503,13 +503,13 @@ static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable
 		buf = &hid->buf_payload;
 		urb_size = (unsigned int)hid->urb->transfer_buffer_length;
 		ret = mtk_offload_alloc_mem(buf, urb_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
-					type, false);
+					type, UO_STRUCT_URB, false);
 		if (ret) {
 			hid_err("%s fail allocate hid-offload urb\n", hid->name);
 			goto error;
 		}
 		msg.urb_size = (unsigned int)hid->urb->transfer_buffer_length;
-		msg.urb_start_addr = (unsigned long long)buf->dma_addr;
+		msg.urb_start_addr = (unsigned long long)buf->phys;
 		msg.first_trb = (unsigned long long)ring->first_seg->dma;
 		msg.cycle_state = (unsigned char)ring->cycle_state;
 		hid_dump_xhci(hid, "<Start DSP>");
@@ -643,7 +643,7 @@ static void hid_reset(struct hid_ep_info *hid)
 	xhci_stop_hid_ep(hid);
 
 	if (hid_tr_switch) {
-		xhci_realloc_hid_ring(hid, USB_OFFLOAD_MEM_DRAM_ID);
+		xhci_realloc_hid_ring(hid, UO_PROV_DRAM);
 	} else {
 		if (!ret || hid_direct_reset) {
 			hid_info("reset whole ring, hid_direct_reset=%d\n", hid_direct_reset);
@@ -796,7 +796,7 @@ int usb_offload_hid_start(void)
 			if (!buf || hid_tr_switch) {
 				hid_info("hid transfer ring isn't under managed\n");
 				ret = xhci_realloc_hid_ring(hid, uodev->adv_lowpwr ?
-						USB_OFFLOAD_MEM_SRAM_ID : USB_OFFLOAD_MEM_DRAM_ID);
+						UO_PROV_SRAM : UO_PROV_DRAM);
 				if (ret)
 					hid_err("fail to re-allocate hid ring\n");
 			} else {
@@ -1008,9 +1008,9 @@ error:
 	return ret;
 }
 
-static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum usb_offload_mem_id type)
+static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum uo_provider_type id)
 {
-	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, type, false);
+	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, id, false);
 }
 
 static int xhci_get_ep_state(struct xhci_ep_ctx *ctx)

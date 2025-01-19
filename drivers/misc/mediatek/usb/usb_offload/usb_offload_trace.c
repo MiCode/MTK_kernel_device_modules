@@ -87,9 +87,9 @@ static inline struct stream_info *find_stream(struct trace_manager *mag, dma_add
 {
 	struct stream_info *stream;
 
-	if (mag->stream_in.memory && phys == mag->stream_in.memory->dma_addr)
+	if (mag->stream_in.memory && phys == mag->stream_in.memory->phys)
 		stream = &mag->stream_in;
-	else if (mag->stream_out.memory && phys == mag->stream_out.memory->dma_addr)
+	else if (mag->stream_out.memory && phys == mag->stream_out.memory->phys)
 		stream = &mag->stream_out;
 	else
 		stream = NULL;
@@ -154,7 +154,7 @@ void usb_offload_trace_ipi_recv(struct ipi_msg_t *ipi_msg)
 			break;
 		}
 
-		stream->transfer_buffer = (void *)stream->memory->dma_area;
+		stream->transfer_buffer = (void *)stream->memory->virt;
 		stream->actual_length = length;
 
 		if (stream->transfer_buffer)
@@ -302,7 +302,7 @@ void usb_offload_ipi_trace_handler(void *param)
 			break;
 		}
 
-		stream->transfer_buffer = (void *)stream->memory->dma_area;
+		stream->transfer_buffer = (void *)stream->memory->virt;
 		stream->actual_length = length;
 
 		if (stream->transfer_buffer)
@@ -388,14 +388,14 @@ void prepare_and_send_trace_ipi_msg(struct usb_audio_stream_msg *msg,
 	trace_buf = &stream->buf_trace;
 
 	if (enable) {
-		mem_id = USB_OFFLOAD_MEM_DRAM_ID;
+		mem_id = UO_PROV_DRAM;
 		desc = &msg->std_as_data_ep_desc;
 		slot = msg->slot_id;
 		ep = xhci_get_endpoint_index_(desc);
 		/* allocate trace buffer */
 		if (trace_buf->allocated && mtk_offload_free_mem(trace_buf))
 			trace_dbg(mag->dev, "fail to free trace_buffer, dir:%d", dir);
-		if (mtk_offload_alloc_mem(trace_buf, msg->urb_size, 64, mem_id, true))
+		if (mtk_offload_alloc_mem(trace_buf, msg->urb_size, 64, mem_id, UO_STRUCT_URB, true))
 			goto END_HANDLE_TRACE_MSG;
 		/* init trace_stream */
 		if (usb_offload_trace_stream_init(trace_buf, slot, ep, dir, desc)) {
@@ -407,8 +407,8 @@ void prepare_and_send_trace_ipi_msg(struct usb_audio_stream_msg *msg,
 		trace_msg.enable = 1;
 		trace_msg.disable_all = 0;
 		trace_msg.direction = dir;
-		trace_msg.buffer = (unsigned long long)trace_buf->dma_addr;
-		trace_msg.size = (unsigned int)trace_buf->dma_bytes;
+		trace_msg.buffer = (unsigned long long)trace_buf->phys;
+		trace_msg.size = (unsigned int)trace_buf->size;
 
 		/* send IPI_MSG(enable_trace:1) */
 		if (send_trace_ipi_msg_to_adsp(&trace_msg))
