@@ -736,7 +736,10 @@ static void dpc_enable_v3(const u8 en)
 		/* wla ddren ack */
 		// writel(1, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
 		// writel(0x3F3F0000, dpc_base + 0xBC); /* DISP_DPC_DDREN_URGENT_SW_CTRL */
-		writel(0x1, dpc_base + DISP_REG_DPC_DUMMY0); /* urgent from MML_DDREN_URG & DISP1_HRT_URG */
+
+		/* [0] urgent from 1:MML_DDREN_URG & DISP1_HRT_URG, 0:all subsys */
+		/* [1] disp_vcore controlled by 1:DPC_EN, 0:DUMMY1 */
+		writel(0x3, dpc_base + DISP_REG_DPC_DUMMY0);
 
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
@@ -754,6 +757,10 @@ static void dpc_enable_v3(const u8 en)
 		writel(0x13 | (en == 2 ? BIT(16) : 0), dpc_base + DISP_REG_DPC_EN);
 		dpc_mmp(config, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 	} else {
+		/* [0] disp_vcore SW_CTRL */
+		/* [1] disp_vcore SW_CTRL_VALUE */
+		writel(0x1, dpc_base + DISP_REG_DPC_DUMMY1);
+
 		/* disable inten to avoid burst irq */
 		// writel(0, dpc_base + DISP_REG_DPC_DISP_INTEN);
 		// writel(0, dpc_base + DISP_REG_DPC_MML_INTEN);
@@ -767,7 +774,7 @@ static void dpc_enable_v3(const u8 en)
 	}
 
 	/* enable gce event */
-	writel(en, dpc_base + DISP_REG_DPC_EVENT_EN);
+	writel(en, dpc_base + DISP_DPC_EVENT_CFG);
 
 	/* clear mask, move from dpc_config */
 	writel(0, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
@@ -926,7 +933,7 @@ u8 dpc_check_pll(void)
 	if (pll_mux[max_level] > ((readl(clk_disp_sel) & 0x0f000000) >> 24)) {
 		DPCDUMP("mismatch, level(%u) disp_sel(%#x) RC_STA(%#x) SW_REQ4(%#x)\n", max_level,
 			readl(clk_disp_sel),
-			readl(g_priv->vdisp_dvfsrc),
+			g_priv->vdisp_dvfsrc ? readl(g_priv->vdisp_dvfsrc) : 0,
 			vdisp_dvfsrc_sw_req4 ? readl(vdisp_dvfsrc_sw_req4) : 0);
 		ret = max_level;
 	}
@@ -1671,7 +1678,7 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	get_addr_byname("disp_sw_vote_clr", &priv->voter_clr_va, &priv->voter_clr_pa);
 	get_addr_byname("vcore_mode_set", &priv->vcore_mode_set_va, NULL);
 	get_addr_byname("vcore_mode_clr", &priv->vcore_mode_clr_va, NULL);
-	get_addr_byname("vdisp_dvfsrc", &priv->vdisp_dvfsrc, NULL);
+	// get_addr_byname("vdisp_dvfsrc", &priv->vdisp_dvfsrc, NULL);	/* TODO: need porting */
 	get_addr_byname("disp_vcore_pwr_chk", &priv->dispvcore_chk, NULL);
 	get_addr_byname("vdisp_ao_cg_con", &priv->vdisp_ao_cg_con, NULL);
 
@@ -2347,7 +2354,7 @@ static struct mtk_dpc mt6993_dpc_driver_data = {
 	.mtcmos_cfg = mt6993_mtcmos_cfg,
 	.subsys_cnt = DPC3_SUBSYS_CNT,
 	.ch_bw_cfg = mt6993_ch_bw_cfg,
-	.vdisp_dvfsrc_idle_mask = 0xc00000,
+	.vdisp_dvfsrc_idle_mask = 0xc00,
 	.dispvcore_chk_mask = BIT(29),
 	.mminfra_chk_mask = BIT(0),
 	.set_mtcmos = mt6991_set_mtcmos,
