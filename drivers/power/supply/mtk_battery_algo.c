@@ -88,7 +88,7 @@ int get_charger_exist(void)
 	if (psy != NULL) {
 		ret = power_supply_get_property(psy,
 			POWER_SUPPLY_PROP_ONLINE, &val);
-		if (val.intval == true)
+		if (val.intval == true && ret == 0)
 			return true;
 	}
 
@@ -96,7 +96,7 @@ int get_charger_exist(void)
 	if (psy != NULL) {
 		ret = power_supply_get_property(psy,
 			POWER_SUPPLY_PROP_ONLINE, &val);
-		if (val.intval == true)
+		if (val.intval == true && ret == 0)
 			return true;
 	}
 
@@ -469,11 +469,9 @@ void fg_construct_battery_profile_by_qmax(struct mtk_battery *gm,
 	struct fuelgauge_profile_struct *profile_p;
 	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, table_index);
 
 	if (profile_p == NULL) {
@@ -506,11 +504,9 @@ void fg_construct_battery_profile_by_vboot(struct mtk_battery *gm,
 	struct fuelgauge_profile_struct *profile_p;
 	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, table_index);
 
 	if (profile_p == NULL) {
@@ -613,11 +609,9 @@ static int fg_compensate_battery_voltage_from_low(
 	struct fuelgauge_profile_struct *profile_p;
 	int i = 0, size, high = 0;
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
 	profile_p = fg_get_profile(gm, tablei);
@@ -841,11 +835,9 @@ void fgr_update_quse(struct mtk_battery *gm, int caller)
 {
 	int aging_factor_cust = 0;
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
 	/* caller = 1 means update c table */
@@ -974,13 +966,9 @@ int SOC_to_OCV_c(struct mtk_battery *gm, int _soc)
 	int ret_vol = 0;
 	int i = 0, size, high;
 	int _dod = 10000 - _soc;
-	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
-	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
 		bm_err(gm, "[%s] fgauge get c table: fail !\n",
@@ -1023,13 +1011,9 @@ int DOD_to_OCV_c(struct mtk_battery *gm, int _dod)
 	struct fuelgauge_profile_struct *profile_p;
 	int ret_vol = 0;
 	int i = 0, size, high;
-	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
-	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
 		bm_err(gm, "[%s] fgauge get c table fail !\n",
@@ -1072,14 +1056,9 @@ int OCV_to_SOC_c(struct mtk_battery *gm, int _ocv)
 	struct fuelgauge_profile_struct *profile_p;
 	int ret_vol = 0;
 	int i = 0, size, high;
-	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
-	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
-
 
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
@@ -1127,13 +1106,9 @@ int OCV_to_DOD_c(struct mtk_battery *gm, int _ocv)
 	struct fuelgauge_profile_struct *profile_p;
 	int ret_vol = 0;
 	int i = 0, size, high;
-	struct mtk_battery_algo *algo;
 	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
-	algo = &gm->algo;
 	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 
 	profile_p = fg_get_profile(gm, ptable->temperature_tb1);
 	if (profile_p == NULL) {
@@ -1196,12 +1171,8 @@ void fgr_update_fg_bat_tmp_threshold_c(struct mtk_battery *gm)
 void fgr_update_c_dod(struct mtk_battery *gm)
 {
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 
 	algo->car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	fgr_update_quse(gm, 1);
@@ -1223,11 +1194,9 @@ void fgr_dod_init(struct mtk_battery *gm)
 	int con0_uisoc = gauge_get_int_property(gm, GAUGE_PROP_RTC_UI_SOC);
 
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
 	algo->rtc_ui_soc = UNIT_TRANS_100 * con0_uisoc;
@@ -1508,12 +1477,8 @@ void fgr_bat_int2_h_handler(struct mtk_battery *gm)
 	int _car;
 	int delta_car_bat0;
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 
 	_car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	delta_car_bat0 = abs(algo->prev_car_bat0 - _car);
@@ -1559,12 +1524,9 @@ void fgr_bat_int2_l_handler(struct mtk_battery *gm)
 	int _car;
 	int delta_car_bat0;
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
+
 	_car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	delta_car_bat0 = abs(algo->prev_car_bat0 - _car);
 	fgr_update_uisoc_threshold(gm);
@@ -1624,11 +1586,9 @@ void fgr_bat_int2_handler(struct mtk_battery *gm, int source)
 {
 	int _car = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
 	bm_debug(gm, "[%s]car:%d pre_car:%d ht:%d lt:%d u_type:%d source:%d\n",
@@ -1645,12 +1605,8 @@ void fgr_time_handler(struct mtk_battery *gm)
 {
 	int is_charger_exist = get_charger_exist();
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
-	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
-	pdata = &gm->fg_cust_data;
 
 	bm_debug(gm, "[%s][IN] chr:%d, low_tracking:%d ui_soc:%d\n",
 		__func__, is_charger_exist,
@@ -1695,11 +1651,9 @@ void fgr_vbat2_h_int_handler(struct mtk_battery *gm)
 void fgr_vbat2_l_int_handler(struct mtk_battery *gm)
 {
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 
 	if (algo->fg_vbat2_lt == pdata->vbat2_det_voltage1) {
@@ -1779,12 +1733,10 @@ void do_fg_algo(struct mtk_battery *gm, unsigned int intr_num)
 void fgr_set_int1(struct mtk_battery *gm)
 {
 	struct mtk_battery_algo *algo;
-	struct fuel_gauge_table_custom_data *ptable;
 	struct fuel_gauge_custom_data *pdata;
 	int car_now = gauge_get_int_property(gm, GAUGE_PROP_COULOMB);
 
 	algo = &gm->algo;
-	ptable = &gm->fg_table_cust_data;
 	pdata = &gm->fg_cust_data;
 	fgr_update_quse(gm, 1);
 	/* set c gap */

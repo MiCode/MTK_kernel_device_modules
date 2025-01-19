@@ -432,7 +432,7 @@ static int gauge_coulomb_thread(void *arg)
 			cs->coulomb_thread_timeout == true &&
 			!atomic_read(&cs->in_sleep));
 
-		if (atomic_read(&cs->in_sleep)) {
+		if (atomic_read(&cs->in_sleep) || ret < 0) {
 			__pm_relax(cs->wlock);
 			continue;
 		}
@@ -535,7 +535,7 @@ void gauge_coulomb_service_init(struct mtk_battery *gm)
 	cs->wlock = wakeup_source_register(NULL, "gauge coulomb wakelock");
 	init_waitqueue_head(&cs->wait_que);
 	atomic_set(&cs->in_sleep, 0);
-	kthread_run(gauge_coulomb_thread, cs, cs->name);
+	kthread_run(gauge_coulomb_thread, cs, "%s", cs->name);
 
 	cs->pm_nb.notifier_call = system_pm_notify;
 	ret = register_pm_notifier(&cs->pm_nb);

@@ -203,10 +203,12 @@ char *bat_get_gauge_name(struct mtk_battery *gm)
 	if (gm == NULL) {
 		pr_debug("[%s] can not get gauge name\n", __func__);
 		return "BATTERY";
+	} else if (gm->gauge == NULL) {
+		pr_debug("[%s] can not get gauge name\n", __func__);
+		return "BATTERY";
 	} else
 		return gm->gauge->name;
 }
-
 
 int gauge_set_property(struct mtk_battery *gm, enum gauge_property gp,
 	int val)
