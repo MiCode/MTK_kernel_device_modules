@@ -22,8 +22,8 @@
 #include "mtk-interconnect.h"
 #include <soc/mediatek/smi.h>
 
-#include "mdp_engine_mt6877.h"
-#include "mdp_base_mt6877.h"
+#include "mdp_engine_mt6781.h"
+#include "mdp_base_mt6781.h"
 
 /* support RDMA prebuilt access */
 int gCmdqRdmaPrebuiltSupport;
