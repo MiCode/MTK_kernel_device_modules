@@ -12,3 +12,5 @@ endif
 # add ddk device modules' Module.symvers
 # for example
 # EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/{ddk device module path}/*Module.symvers)
+
+EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/mfd/*Module.symvers)

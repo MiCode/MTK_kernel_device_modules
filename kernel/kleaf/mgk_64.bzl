@@ -135,14 +135,21 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/mfd:ddk_makefile".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
     # keep sorted
+    "//kernel_device_modules-{}/drivers/mfd:mt6360-core".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mfd:mt6370".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mfd:mt6375".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -346,10 +353,6 @@ mgk_64_device_modules = [
     "drivers/memory/mtk-smi.ko",
     "drivers/edac/mediatek/mtk_edac_slc.ko",
     "drivers/mfd/mt6338-core.ko",
-    "drivers/mfd/mt6360-core.ko",
-    "drivers/mfd/mt6370.ko",
-    "drivers/mfd/mt6375.ko",
-    "drivers/mfd/mt6379s.ko",
     "drivers/mfd/mt6397.ko",
     "drivers/mfd/mt63xx-debug.ko",
     "drivers/mfd/mt6681-core.ko",
@@ -357,7 +360,6 @@ mgk_64_device_modules = [
     "drivers/mfd/mt6685-core.ko",
     "drivers/mfd/mtk-spmi-pmic-debug.ko",
     "drivers/mfd/mtk-spmi-pmic.ko",
-    "drivers/mfd/rt9490.ko",
     "drivers/misc/mediatek/adsp/adsp.ko",
     "drivers/misc/mediatek/adsp/v1/adsp-v1.ko",
     "drivers/misc/mediatek/adsp/v2/adsp-v2.ko",
