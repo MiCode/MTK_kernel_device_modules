@@ -182,6 +182,11 @@ static void mtk_dpi_mask(struct mtk_dpi *dpi, u32 offset, u32 val, u32 mask)
 	writel(tmp, dpi->regs + offset);
 }
 
+static void mtk_dpi_write(struct mtk_dpi *dpi, u32 offset, u32 val)
+{
+	writel(val, dpi->regs + offset);
+}
+
 static void mtk_dpi_sw_reset(struct mtk_dpi *dpi, bool reset)
 {
 	mtk_dpi_mask(dpi, DPI_RET, reset ? RST : 0, RST);
@@ -530,31 +535,57 @@ err_refcount:
 	return ret;
 }
 
-static void mtk_dpi_set_golden_setting(struct mtk_dpi *dpi, u32 hsize, u32 vsize)
+static void mtk_dpi_set_golden_setting(struct mtk_dpi *dpi)
 {
-	u32 dp_buf_sodi_high = 5255;
-	u32 dp_buf_sodi_low = 3899;
+	unsigned int dp_buf_sodi_high, dp_buf_sodi_low;
+	unsigned int dp_buf_preultra_high, dp_buf_preultra_low;
+	unsigned int dp_buf_ultra_high, dp_buf_ultra_low;
+	unsigned int dp_buf_urgent_high, dp_buf_urgent_low;
+	unsigned int mmsys_clk, dp_clk; //{26000, 37125, 74250, 148500, 297000};
+	unsigned int twait = 12, twake = 5;
+	unsigned int fill_rate, consume_rate;
 
-	unsigned int rw_times = 0;
+	dp_clk = dpi->mode.clock / 4;
+	dp_clk = dp_clk > 0 ? dp_clk : 74250;
+	mmsys_clk = mtk_drm_get_mmclk(&dpi->ddp_comp.mtk_crtc->base, __func__) / 1000;
+	mmsys_clk = mmsys_clk > 0 ? mmsys_clk : 273000;
 
-	DDPMSG("HV:%d x %d, sodi_high:%d, sodi_low:%d\n",
-	       hsize, vsize,
-		dp_buf_sodi_high,
-		dp_buf_sodi_low);
+	fill_rate = mmsys_clk * 4 / 8;
+	consume_rate = dp_clk * 4 / 8;
+	dev_info(dpi->dev, "%s mmsys_clk=%d, dp_clk=%d, fill_rate=%d, consume_rate=%d\n",
+		 __func__, mmsys_clk, dp_clk, fill_rate, consume_rate);
 
-	mtk_dpi_mask(dpi, DPI_BUF_SODI_HIGH, dp_buf_sodi_high, 0xffffffff);
+	dp_buf_sodi_high = (5940000 - twait * 100 * fill_rate / 1000 - consume_rate) * 30 / 32000;
+	dp_buf_sodi_low = (25 + twake) * consume_rate * 30 / 32000;
 
-	mtk_dpi_mask(dpi, DPI_BUF_SODI_LOW, dp_buf_sodi_low, 0xffffffff);
+	dp_buf_preultra_high = 36 * consume_rate * 30 / 32000;
+	dp_buf_preultra_low = 35 * consume_rate * 30 / 32000;
 
-	if (hsize & 0x3)
-		rw_times = ((hsize >> 2) + 1) * vsize;
-	else
-		rw_times = (hsize >> 2) * vsize;
+	dp_buf_ultra_high = 26 * consume_rate * 30 / 32000;
+	dp_buf_ultra_low = 25 * consume_rate * 30 / 32000;
 
-	mtk_dpi_mask(dpi, DPI_BUF_RW_TIMES, rw_times, 0xffffffff);
-	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_EN, BUF_BUF_EN);
-	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK,
-		     BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK);
+	dp_buf_urgent_high = 12 * consume_rate * 30 / 32000;
+	dp_buf_urgent_low = 11 * consume_rate * 30 / 32000;
+
+	dev_info(dpi->dev, "dp_buf_sodi_high=%d, dp_buf_sodi_low=%d, dp_buf_preultra_high=%d, dp_buf_preultra_low=%d\n",
+		 dp_buf_sodi_high, dp_buf_sodi_low, dp_buf_preultra_high, dp_buf_preultra_low);
+
+	dev_info(dpi->dev, "dp_buf_ultra_high=%d, dp_buf_ultra_low=%d dp_buf_urgent_high=%d, dp_buf_urgent_low=%d\n",
+		 dp_buf_ultra_high, dp_buf_ultra_low, dp_buf_urgent_high, dp_buf_urgent_low);
+
+	mtk_dpi_write(dpi, DPI_BUF_SODI_HIGH, dp_buf_sodi_high);
+	mtk_dpi_write(dpi, DPI_BUF_SODI_LOW, dp_buf_sodi_low);
+
+	mtk_dpi_write(dpi, DPI_BUF_PREULTRA_HIGH, dp_buf_preultra_high);
+	mtk_dpi_write(dpi, DPI_BUF_PREULTRA_LOW, dp_buf_preultra_low);
+
+	mtk_dpi_write(dpi, DPI_BUF_ULTRA_HIGH, dp_buf_ultra_high);
+	mtk_dpi_write(dpi, DPI_BUF_ULTRA_LOW, dp_buf_ultra_low);
+
+	mtk_dpi_write(dpi, DPI_BUF_URGENT_HIGH, dp_buf_urgent_high);
+	mtk_dpi_write(dpi, DPI_BUF_URGENT_LOW, dp_buf_urgent_low);
+
+	mtk_dpi_write(dpi, DPI_MUTEX_VSYNC_SETTING, 0x1000F);
 }
 
 static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
@@ -570,6 +601,7 @@ static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
 	unsigned long pll_rate;
 	unsigned int factor;
 	unsigned int clksrc = TCK_26M;
+	unsigned int rw_times = 0;
 	int ret = 0;
 
 	/* let pll_rate can fix the valid range of tvdpll (1G~2GHz) */
@@ -657,7 +689,16 @@ static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
 	mtk_dpi_sw_reset(dpi, true);
 	mtk_dpi_config_pol(dpi, &dpi_pol);
 
-	mtk_dpi_set_golden_setting(dpi, vm.hactive, vm.vactive);
+	if (vm.hactive & 0x3)
+		rw_times = ((vm.hactive >> 2) + 1) * vm.vactive;
+	else
+		rw_times = (vm.hactive >> 2) * vm.vactive;
+
+	mtk_dpi_mask(dpi, DPI_BUF_RW_TIMES, rw_times, 0xffffffff);
+	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_EN, BUF_BUF_EN);
+	mtk_dpi_mask(dpi, DPI_BUF_CON0, BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK,
+		     BUF_BUF_FIFO_UNDERFLOW_DONT_BLOCK);
+	mtk_dpi_set_golden_setting(dpi);
 
 	mtk_dpi_config_hsync(dpi, &hsync);
 	mtk_dpi_config_vsync_lodd(dpi, &vsync_lodd);
@@ -757,8 +798,8 @@ static int mtk_dpi_bridge_atomic_check(struct drm_bridge *bridge,
 		if (dpi->conf->num_output_fmts)
 			out_bus_format = dpi->conf->output_fmts[0];
 
-	dev_info(dpi->dev, "dpintf, input format 0x%04x, output format 0x%04x\n",
-		 bridge_state->input_bus_cfg.format,
+	dev_dbg(dpi->dev, "dpintf, input format 0x%04x, output format 0x%04x\n",
+		bridge_state->input_bus_cfg.format,
 		bridge_state->output_bus_cfg.format);
 
 	dpi->output_fmt = out_bus_format;
@@ -1289,7 +1330,7 @@ static int mtk_dpi_probe(struct platform_device *pdev)
 	if (!dpi->conf->no_next_bridge) {
 		dpi->next_bridge = devm_drm_of_get_bridge(dev, dev->of_node, 0, 0);
 		if (IS_ERR(dpi->next_bridge)) {
-			dev_info(dev, "Can not find next_bridge");
+			dev_dbg(dev, "Can not find next_bridge");
 			return -EPROBE_DEFER;
 		}
 		dev_info(dev, "Found dp tx bridge node: %pOF\n", dpi->next_bridge->of_node);
