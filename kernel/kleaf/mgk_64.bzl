@@ -1101,7 +1101,6 @@ mgk_64_device_modules = [
     "sound/soc/codecs/snd-soc-mt6368.ko",
     "sound/soc/codecs/snd-soc-mt6681.ko",
     "sound/soc/codecs/tfa98xx/snd-soc-tfa98xx.ko",
-    "sound/soc/codecs/snd-soc-mt6359.ko",
     "sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko",
     "sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
     "sound/soc/mediatek/common/mtk-sp-spk-amp.ko",
@@ -1454,8 +1453,6 @@ mgk_64_platform_device_modules = {
     "sound/soc/mediatek/mt6991/snd-soc-mt6991-afe.ko": "mt6991",
     "sound/soc/mediatek/mt6993/mt6993-mt6681.ko": "mt6993",
     "sound/soc/mediatek/mt6993/snd-soc-mt6993-afe.ko": "mt6993",
-    "sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko": "mt6893",
-    "sound/soc/mediatek/mt6885/mt6885-mt6359p.ko": "mt6893",
 
 }
 
@@ -1785,10 +1782,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6989/snd-soc-mt6989-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6991/mt6991-mt6681.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6991/snd-soc-mt6991-afe.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/mt6885-mt6359p.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko")
-        mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6877/mt6877-mt6359.ko":"mt6877"})
-        mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6877/snd-soc-mt6877-afe.ko":"mt6877"})
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/mfb/camera_mfb_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/thermal/thermal_monitor.ko")
@@ -2314,7 +2307,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
         mgk_64_device_modules.remove("sound/soc/codecs/mt6681-accdet.ko")
-        mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6359.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_sram/usb_sram.ko")
 
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6886.ko")
@@ -2342,8 +2334,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6993.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/mt6885-mt6359p.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/soc/mediatek/devapc/device-apc-mt6833.ko")
@@ -2616,7 +2606,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/audio_ipi/audio_ipi.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
-        mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6359.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/mt6886-mt6368.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6897/mt6897-mt6368.ko")
@@ -2625,8 +2614,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6983/snd-soc-mt6983-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/mt6985-mt6338.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/mt6885-mt6359p.ko")
 
         mgk_64_device_modules.append("sound/soc/mediatek/codec/snd-mtk-soc-codec-6357.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-rt5509.ko")
@@ -3333,7 +3320,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/audio_ipi/audio_ipi.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vow/ver02/mtk-vow.ko")
-        mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6359.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/mt6886-mt6368.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6886/snd-soc-mt6886-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6897/mt6897-mt6368.ko")
@@ -3342,8 +3328,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6983/snd-soc-mt6983-afe.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/mt6985-mt6338.ko")
         mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/snd-soc-mt6885-afe.ko")
-        mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6885/mt6885-mt6359p.ko")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/isp_pspm:isp_pspm")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/scp/cm4/scp.ko")
@@ -3683,8 +3667,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cmdq/bridge/cmdq-bdg-test.ko")
 
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-rt5509.ko")
-        mgk_64_device_modules.append("sound/soc/mediatek/mt6833/snd-soc-mt6833-afe.ko")
-        mgk_64_device_modules.append("sound/soc/mediatek/mt6833/mt6833-mt6359p.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/adsp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/adsp/v1/adsp-v1.ko")
