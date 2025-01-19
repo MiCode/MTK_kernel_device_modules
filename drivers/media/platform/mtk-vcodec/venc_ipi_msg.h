@@ -537,8 +537,8 @@ struct venc_vcu_config {
 	__u32 target_bw_factor;
 	__u8 cpu_hint;
 	__u32 mlvec_mode;
-	struct mtk_color_desc color_desc;
-	struct mtk_venc_multi_ref multi_ref;
+	struct v4l2_mtk_color_desc color_desc;
+	struct v4l2_venc_multi_ref multi_ref;
 	struct mtk_venc_vui_info vui_info;
 	__s32 qpvbr_upper_enable;
 	__s32 qpvbr_qp_upper_threshold;
@@ -552,12 +552,12 @@ struct venc_vcu_config {
 	__s32 ifrm_q_ltr;
 	__s32 pfrm_q_ltr;
 	__s32 bfrm_q_ltr;
-	struct mtk_venc_visual_quality visual_quality;
-	struct mtk_venc_init_qp init_qp;
-	struct mtk_venc_frame_qp_range frame_qp_range;
-	struct mtk_venc_nal_length nal_length;
+	struct v4l2_venc_visual_quality visual_quality;
+	struct v4l2_venc_init_qp init_qp;
+	struct v4l2_venc_frame_qp_range frame_qp_range;
+	struct v4l2_venc_nal_length nal_length;
 	__u8 use_clean_gop;
-	struct mtk_venc_adab_info adab_info;
+	struct v4l2_venc_adab_info adab_info;
 };
 
 /**

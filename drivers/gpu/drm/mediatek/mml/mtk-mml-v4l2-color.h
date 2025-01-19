@@ -7,7 +7,7 @@
 #ifndef __MTK_MML_V4L2_COLOR_H__
 #define __MTK_MML_V4L2_COLOR_H__
 
-#include <mtk-v4l2-vcodec.h>
+#include <mtk-v4l2-controls.h>
 
 #include "mtk-mml-v4l2.h"
 #include "mtk-mml-color.h"

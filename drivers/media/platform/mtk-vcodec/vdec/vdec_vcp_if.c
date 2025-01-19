@@ -413,7 +413,7 @@ static void handle_query_cap_ack_msg(struct vdec_vcu_ipi_query_cap_ack *msg)
 			size * MTK_MAX_DEC_CODECS_SUPPORT);
 		break;
 	case GET_PARAM_VDEC_CAP_MAX_BUF_INFO:
-		size = sizeof(struct vdec_max_buf_info);
+		size = sizeof(struct v4l2_vdec_max_buf_info);
 		memcpy((void *)msg->ap_data_addr, data,
 			size);
 		break;
@@ -2046,7 +2046,7 @@ get_fb:
 	list->count--;
 }
 
-static void get_color_desc(struct vdec_inst *inst, struct mtk_color_desc *color_desc)
+static void get_color_desc(struct vdec_inst *inst, struct v4l2_mtk_color_desc *color_desc)
 {
 	inst->vcu.ctx = inst->ctx;
 	memcpy(color_desc, &inst->vsi->color_desc, sizeof(*color_desc));
@@ -2111,15 +2111,15 @@ static void get_res_info(struct vdec_inst *inst,
 }
 
 static void get_bandwidth_info(struct vdec_inst *inst,
-			  struct vdec_bandwidth_info *bandwidth_info)
+			  struct v4l2_vdec_bandwidth_info *bandwidth_info)
 {
 	if (inst->vsi != NULL)
 		memcpy(bandwidth_info, &inst->vsi->bandwidth_info,
-			 sizeof(struct vdec_bandwidth_info));
+			 sizeof(struct v4l2_vdec_bandwidth_info));
 }
 
 static void get_max_buf_sizes(struct vdec_inst *inst,
-	 struct vdec_max_buf_info *max_buf_info)
+	 struct v4l2_vdec_max_buf_info *max_buf_info)
 {
 	vdec_vcp_query_cap(inst, GET_PARAM_VDEC_CAP_MAX_BUF_INFO, (uintptr_t)max_buf_info);
 }

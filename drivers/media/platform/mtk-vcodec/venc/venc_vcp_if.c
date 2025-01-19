@@ -1645,7 +1645,7 @@ static void venc_get_free_buffers(struct venc_inst *inst,
 
 static void venc_get_resolution_change(struct venc_inst *inst,
 			     struct venc_vcu_config *Config,
-			     struct venc_resolution_change *pResChange)
+			     struct v4l2_venc_resolution_change *pResChange)
 {
 	pResChange->width = Config->pic_w;
 	pResChange->height = Config->pic_h;
@@ -2024,43 +2024,43 @@ static int venc_vcp_set_param(unsigned long handle,
 		if (enc_prm->visual_quality) {
 			memcpy(&inst->vsi->config.visual_quality,
 				enc_prm->visual_quality,
-				sizeof(struct mtk_venc_visual_quality));
+				sizeof(struct v4l2_venc_visual_quality));
 		}
 
 		if (enc_prm->init_qp) {
 			memcpy(&inst->vsi->config.init_qp,
 				enc_prm->init_qp,
-				sizeof(struct mtk_venc_init_qp));
+				sizeof(struct v4l2_venc_init_qp));
 		}
 
 		if (enc_prm->frame_qp_range) {
 			memcpy(&inst->vsi->config.frame_qp_range,
 				enc_prm->frame_qp_range,
-				sizeof(struct mtk_venc_frame_qp_range));
+				sizeof(struct v4l2_venc_frame_qp_range));
 		}
 
 		if (enc_prm->nal_length) {
 			memcpy(&inst->vsi->config.nal_length,
 				enc_prm->nal_length,
-				sizeof(struct mtk_venc_nal_length));
+				sizeof(struct v4l2_venc_nal_length));
 		}
 
 		if (enc_prm->adab_info) {
 			memcpy(&inst->vsi->config.adab_info,
 				enc_prm->adab_info,
-				sizeof(struct mtk_venc_adab_info));
+				sizeof(struct v4l2_venc_adab_info));
 		}
 
 		if (enc_prm->color_desc) {
 			memcpy(&inst->vsi->config.color_desc,
 				enc_prm->color_desc,
-				sizeof(struct mtk_color_desc));
+				sizeof(struct v4l2_mtk_color_desc));
 		}
 
 		if (enc_prm->multi_ref) {
 			memcpy(&inst->vsi->config.multi_ref,
 				enc_prm->multi_ref,
-				sizeof(struct mtk_venc_multi_ref));
+				sizeof(struct v4l2_venc_multi_ref));
 		}
 
 		if (enc_prm->vui_info) {
@@ -2116,7 +2116,7 @@ static int venc_vcp_set_param(unsigned long handle,
 			return -EINVAL;
 
 		memcpy(&inst->vsi->config.color_desc, enc_prm->color_desc,
-			sizeof(struct mtk_color_desc));
+			sizeof(struct v4l2_mtk_color_desc));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	case VENC_SET_PARAM_PROPERTY:
@@ -2137,21 +2137,21 @@ static int venc_vcp_set_param(unsigned long handle,
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		memcpy(&inst->vsi->config.visual_quality, enc_prm->visual_quality,
-			sizeof(struct mtk_venc_visual_quality));
+			sizeof(struct v4l2_venc_visual_quality));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	case VENC_SET_PARAM_INIT_QP:
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		memcpy(&inst->vsi->config.init_qp, enc_prm->init_qp,
-			sizeof(struct mtk_venc_init_qp));
+			sizeof(struct v4l2_venc_init_qp));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	case VENC_SET_PARAM_FRAME_QP_RANGE:
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		memcpy(&inst->vsi->config.frame_qp_range, enc_prm->frame_qp_range,
-			sizeof(struct mtk_venc_frame_qp_range));
+			sizeof(struct v4l2_venc_frame_qp_range));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	case VENC_SET_PARAM_CONFIG:
@@ -2159,7 +2159,7 @@ static int venc_vcp_set_param(unsigned long handle,
 			struct venc_common_vsi *venc_com_vsi;
 			venc_com_vsi = (struct venc_common_vsi *)inst->ctx->dev->com_vsi;
 			memcpy(venc_com_vsi->config_data, enc_prm->config_data,
-			sizeof(__u8)*VENC_CONFIG_LENGTH);
+				sizeof(__u8) * VENC_CONFIG_LENGTH);
 			ret = venc_set_config_data(inst);
 		}
 		break;
@@ -2167,7 +2167,7 @@ static int venc_vcp_set_param(unsigned long handle,
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		memcpy(&inst->vsi->config.adab_info, enc_prm->adab_info,
-			sizeof(struct mtk_venc_adab_info));
+			sizeof(struct v4l2_venc_adab_info));
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	default:

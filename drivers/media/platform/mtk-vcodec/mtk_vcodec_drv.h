@@ -31,7 +31,7 @@
 #include "vcodec_dvfs.h"
 #include "vcodec_bw.h"
 #include "slbc_ops.h"
-#include "mtk-v4l2-vcodec.h"
+#include "mtk-v4l2-controls.h"
 #include "mtk_vcodec_dec_slc.h"
 
 #define ENABLE_FENCE 0
@@ -383,8 +383,8 @@ struct mtk_enc_params {
 	unsigned int    bitratemode;
 	unsigned int    roion;
 	unsigned int    heif_grid_size;
-	struct mtk_color_desc color_desc; // data from userspace
-	struct mtk_venc_multi_ref multi_ref; //data from userspace
+	struct v4l2_mtk_color_desc color_desc; // data from userspace
+	struct v4l2_venc_multi_ref multi_ref; //data from userspace
 	unsigned int    max_w;
 	unsigned int    max_h;
 	unsigned int    slbc_ready;
@@ -431,12 +431,12 @@ struct mtk_enc_params {
 	int             bfrm_q_ltr;
 	unsigned int    mlvec_mode;
 	char            *config_data;
-	struct mtk_venc_visual_quality visual_quality;
-	struct mtk_venc_init_qp init_qp;
-	struct mtk_venc_frame_qp_range frame_qp_range;
-	struct mtk_venc_nal_length nal_length;
+	struct v4l2_venc_visual_quality visual_quality;
+	struct v4l2_venc_init_qp init_qp;
+	struct v4l2_venc_frame_qp_range frame_qp_range;
+	struct v4l2_venc_nal_length nal_length;
 	bool use_clean_gop;
-	struct mtk_venc_adab_info adab_info;
+	struct v4l2_venc_adab_info adab_info;
 };
 
 /*
@@ -479,7 +479,7 @@ struct venc_enc_param {
 	unsigned int roion;
 	unsigned int heif_grid_size;
 	// pointed to mtk_enc_params::color_desc
-	struct mtk_color_desc *color_desc;
+	struct v4l2_mtk_color_desc *color_desc;
 	unsigned int sizeimage[MTK_VCODEC_MAX_PLANES];
 	unsigned int max_w;
 	unsigned int max_h;
@@ -514,7 +514,7 @@ struct venc_enc_param {
 	unsigned int ctx_id;
 	unsigned int priority;
 	unsigned int codec_fmt;
-	struct mtk_venc_multi_ref *multi_ref;
+	struct v4l2_venc_multi_ref *multi_ref;
 	struct mtk_venc_vui_info *vui_info;
 	char *log;
 	int qpvbr_upper_enable;
@@ -531,12 +531,12 @@ struct venc_enc_param {
 	int bfrm_q_ltr;
 	unsigned int mlvec_mode;
 	char *config_data;
-	struct mtk_venc_visual_quality *visual_quality;
-	struct mtk_venc_init_qp *init_qp;
-	struct mtk_venc_frame_qp_range *frame_qp_range;
-	struct mtk_venc_nal_length *nal_length;
+	struct v4l2_venc_visual_quality *visual_quality;
+	struct v4l2_venc_init_qp *init_qp;
+	struct v4l2_venc_frame_qp_range *frame_qp_range;
+	struct v4l2_venc_nal_length *nal_length;
 	bool use_clean_gop;
-	struct mtk_venc_adab_info *adab_info;
+	struct v4l2_venc_adab_info *adab_info;
 };
 
 /*

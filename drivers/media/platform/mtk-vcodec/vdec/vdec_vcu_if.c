@@ -64,7 +64,7 @@ static void handle_query_cap_ack_msg(struct vdec_vcu_inst *vcu,
 			size * MTK_MAX_DEC_CODECS_SUPPORT);
 		break;
 	case GET_PARAM_VDEC_CAP_MAX_BUF_INFO:
-		size = sizeof(struct vdec_max_buf_info);
+		size = sizeof(struct v4l2_vdec_max_buf_info);
 		memcpy((void *)&mtk_vdec_max_buf_info, data,
 			size);
 		break;

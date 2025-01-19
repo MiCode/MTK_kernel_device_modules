@@ -789,7 +789,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			"V4L2_CID_MTK_VIDEO_COLOR_DESC: 0x%x",
 			ctrl->val);
 		memcpy(&p->color_desc, ctrl->p_new.p_u32,
-		sizeof(struct mtk_color_desc));
+		sizeof(struct v4l2_mtk_color_desc));
 		ctx->param_change |= MTK_ENCODE_PARAM_COLOR_DESC;
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_MAX_WIDTH:
@@ -899,7 +899,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			"V4L2_CID_MTK_VIDEO_ENC_MULTI_REF multi_ref_en: %d\n",
 			ctrl->p_new.p_u32[0]);
 		memcpy(&p->multi_ref, ctrl->p_new.p_u32,
-		sizeof(struct mtk_venc_multi_ref));
+		sizeof(struct v4l2_venc_multi_ref));
 		break;
 	case V4L2_CID_MPEG_VIDEO_H264_VUI_SAR_ENABLE:
 		mtk_v4l2_debug(2,
@@ -983,7 +983,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			"V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY: quant(%d), rd(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1]);
 		memcpy(&p->visual_quality, ctrl->p_new.p_s32,
-		sizeof(struct mtk_venc_visual_quality));
+			sizeof(struct v4l2_venc_visual_quality));
 		ctx->param_change |= MTK_ENCODE_PARAM_VISUAL_QUALITY;
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_INIT_QP:
@@ -992,7 +992,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1],
 			ctrl->p_new.p_s32[2], ctrl->p_new.p_s32[3]);
 		memcpy(&p->init_qp, ctrl->p_new.p_s32,
-		sizeof(struct mtk_venc_init_qp));
+			sizeof(struct v4l2_venc_init_qp));
 		ctx->param_change |= MTK_ENCODE_PARAM_INIT_QP;
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE:
@@ -1000,7 +1000,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			"V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE: Enable(%d), MAX(%d), MIN(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1], ctrl->p_new.p_s32[2]);
 		memcpy(&p->frame_qp_range, ctrl->p_new.p_s32,
-		sizeof(struct mtk_venc_frame_qp_range));
+			sizeof(struct v4l2_venc_frame_qp_range));
 		ctx->param_change |= MTK_ENCODE_PARAM_FRAMEQP_RANGE;
 		break;
 	case V4L2_CID_MTK_VIDEO_CALLING_PID:
@@ -1011,7 +1011,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			"V4L2_CID_MTK_VIDEO_ENC_SET_NAL_SIZE_LENGTH: Prefer(%d), Bytes(%d)",
 			ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1]);
 		memcpy(&p->nal_length, ctrl->p_new.p_u32,
-		sizeof(struct mtk_venc_nal_length));
+			sizeof(struct v4l2_venc_nal_length));
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_MLVEC_MODE:
 		mtk_v4l2_debug(2,
@@ -1033,7 +1033,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		mtk_v4l2_debug(2, "V4L2_CID_MTK_VIDEO_ENC_ADAB_INFO: buf(%ux%u), crop_size(%ux%u), format(%x)",
 			ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1],
 			ctrl->p_new.p_u32[2], ctrl->p_new.p_u32[3], ctrl->p_new.p_u32[4]);
-		memcpy(&p->adab_info, ctrl->p_new.p_u32, sizeof(struct mtk_venc_adab_info));
+		memcpy(&p->adab_info, ctrl->p_new.p_u32, sizeof(struct v4l2_venc_adab_info));
 		ctx->param_change |= MTK_ENCODE_PARAM_ADAB_INFO;
 		break;
 	default:
@@ -1050,7 +1050,7 @@ static int vidioc_venc_g_ctrl(struct v4l2_ctrl *ctrl)
 	struct mtk_vcodec_ctx *ctx = ctrl_to_ctx(ctrl);
 	int ret = 0;
 	int value = 0;
-	struct venc_resolution_change *reschange;
+	struct v4l2_venc_resolution_change *reschange;
 
 	switch (ctrl->id) {
 	case V4L2_CID_MTK_VIDEO_ENC_ROI_RC_QP:
@@ -1060,7 +1060,7 @@ static int vidioc_venc_g_ctrl(struct v4l2_ctrl *ctrl)
 		ctrl->val = value;
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_RESOLUTION_CHANGE:
-		reschange = (struct venc_resolution_change *)ctrl->p_new.p_u32;
+		reschange = (struct v4l2_venc_resolution_change *)ctrl->p_new.p_u32;
 		venc_if_get_param(ctx,
 			GET_PARAM_RESOLUTION_CHANGE,
 			reschange);
@@ -3465,7 +3465,7 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 				ctx->id,
 				mtkbuf->vb.vb2_buf.index,
 				enc_prm.visual_quality->quant,
-				enc_prm.visual_quality->rd);
+				enc_prm.visual_quality->psyrd);
 		ret |= venc_if_set_param(ctx,
 					VENC_SET_PARAM_VISUAL_QUALITY,
 					&enc_prm);
@@ -4196,7 +4196,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;
-	cfg.dims[0] = (sizeof(struct mtk_color_desc)/sizeof(u32));
+	cfg.dims[0] = (sizeof(struct v4l2_mtk_color_desc)/sizeof(u32));
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
@@ -4311,7 +4311,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 65535;
 	cfg.step = 1;
 	cfg.def = 0;
-	cfg.dims[0] = sizeof(struct mtk_venc_multi_ref)/sizeof(u32);
+	cfg.dims[0] = sizeof(struct v4l2_venc_multi_ref)/sizeof(u32);
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
@@ -4583,7 +4583,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;
-	cfg.dims[0] = sizeof(struct venc_resolution_change)/sizeof(u32);
+	cfg.dims[0] = sizeof(struct v4l2_venc_resolution_change)/sizeof(u32);
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
@@ -4665,7 +4665,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	ctx->enc_params.visual_quality.quant = -1;
-	ctx->enc_params.visual_quality.rd = -1;
+	ctx->enc_params.visual_quality.psyrd = -1;
 
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY;
@@ -4676,7 +4676,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 63;
 	cfg.step = 1;
 	cfg.def = -1;
-	cfg.dims[0] = (sizeof(struct mtk_venc_visual_quality)/sizeof(s32));
+	cfg.dims[0] = (sizeof(struct v4l2_venc_visual_quality)/sizeof(s32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
@@ -4694,7 +4694,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 51;
 	cfg.step = 1;
 	cfg.def = -1;
-	cfg.dims[0] = (sizeof(struct mtk_venc_init_qp)/sizeof(s32));
+	cfg.dims[0] = (sizeof(struct v4l2_venc_init_qp)/sizeof(s32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
@@ -4711,7 +4711,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 51;
 	cfg.step = 1;
 	cfg.def = -1;
-	cfg.dims[0] = (sizeof(struct mtk_venc_frame_qp_range)/sizeof(s32));
+	cfg.dims[0] = (sizeof(struct v4l2_venc_frame_qp_range)/sizeof(s32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
@@ -4726,7 +4726,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 5;
 	cfg.step = 1;
 	cfg.def = 0;
-	cfg.dims[0] = (sizeof(struct mtk_venc_nal_length)/sizeof(s32));
+	cfg.dims[0] = (sizeof(struct v4l2_venc_nal_length)/sizeof(s32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
@@ -4782,7 +4782,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.max = 0xFFFFFFFF;
 	cfg.step = 1;
 	cfg.def = 0;
-	cfg.dims[0] = (sizeof(struct mtk_venc_adab_info)/sizeof(u32));
+	cfg.dims[0] = (sizeof(struct v4l2_venc_adab_info)/sizeof(u32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

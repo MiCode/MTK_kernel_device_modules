@@ -1827,7 +1827,7 @@ static void mtk_vdec_pic_info_update(struct mtk_vcodec_ctx *ctx)
 {
 	unsigned int dpbsize = 0;
 	int ret;
-	struct mtk_color_desc color_desc = {.hdr_type = 0};
+	struct v4l2_mtk_color_desc color_desc = {.hdr_type = 0};
 
 	if (vdec_if_get_param(ctx, GET_PARAM_PIC_INFO, &ctx->last_decoded_picinfo)) {
 		mtk_v4l2_err("[%d]Error!! Cannot get param : GET_PARAM_PICTURE_INFO ERR",
@@ -3455,7 +3455,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	struct mtk_q_data *dst_q_data;
 	u32 fourcc;
 	int last_frame_type = 0;
-	struct mtk_color_desc color_desc;
+	struct v4l2_mtk_color_desc color_desc;
 	struct vb2_queue *dst_vq;
 	dma_addr_t new_dma_addr;
 	bool new_dma = false;
@@ -4141,7 +4141,7 @@ static void mtk_vdec_worker(struct mtk_vcodec_ctx *ctx)
 	struct mtk_video_dec_buf *dst_buf_info = NULL, *src_buf_info = NULL;
 	struct vb2_v4l2_buffer *src_vb2_v4l2;
 	unsigned int dpbsize = 0;
-	struct mtk_color_desc color_desc = {.hdr_type = 0};
+	struct v4l2_mtk_color_desc color_desc = {.hdr_type = 0};
 	struct vdec_fb drain_fb;
 
 	mutex_lock(&ctx->worker_lock);
@@ -4632,7 +4632,7 @@ static int mtk_vdec_g_v_ctrl(struct v4l2_ctrl *ctrl)
 {
 	struct mtk_vcodec_ctx *ctx = ctrl_to_ctx(ctrl);
 	int ret = 0;
-	struct mtk_color_desc *color_desc;
+	struct v4l2_mtk_color_desc *color_desc;
 
 	switch (ctrl->id) {
 	case V4L2_CID_MIN_BUFFERS_FOR_CAPTURE:
@@ -4644,7 +4644,7 @@ static int mtk_vdec_g_v_ctrl(struct v4l2_ctrl *ctrl)
 		}
 		break;
 	case V4L2_CID_MTK_VIDEO_COLOR_DESC:
-		color_desc = (struct mtk_color_desc *)ctrl->p_new.p_u32;
+		color_desc = (struct v4l2_mtk_color_desc *)ctrl->p_new.p_u32;
 		if (vdec_if_get_param(ctx, GET_PARAM_COLOR_DESC, color_desc)
 		    != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot get param", ctx->id);
@@ -4744,25 +4744,14 @@ static int mtk_vdec_g_v_ctrl(struct v4l2_ctrl *ctrl)
 	}
 	case V4L2_CID_MTK_VIDEO_DEC_BANDWIDTH_INFO: {
 		struct v4l2_vdec_bandwidth_info *info = ctrl->p_new.p;
-		struct vdec_bandwidth_info bandwidth_info;
-		int i;
 
-		if (vdec_if_get_param(ctx, GET_PARAM_BANDWIDTH_INFO, &bandwidth_info)) {
+		if (vdec_if_get_param(ctx, GET_PARAM_BANDWIDTH_INFO, info)) {
 			mtk_v4l2_err(
 				"[%d]Error!! Cannot get param : GET_PARAM_BANDWIDTH_INFO ERR",
 				ctx->id);
 			ret = -EINVAL;
 			break;
 		}
-
-		BUILD_BUG_ON((int)MTK_BW_COUNT != (int)V4L2_BW_COUNT);
-
-		for (i = 0; i < MTK_BW_COUNT; i++)
-			info->bandwidth_per_pixel[i] = bandwidth_info.bandwidth_per_pixel[i];
-
-		info->compress = bandwidth_info.compress;
-		info->vsd = bandwidth_info.vsd;
-		memcpy(&info->modifier, &bandwidth_info.modifier, sizeof(struct v4l2_vdec_fmt_modifier));
 		break;
 	}
 	case V4L2_CID_MTK_VIDEO_DEC_TRICK_MODE: {
@@ -5084,7 +5073,7 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;
-	cfg.dims[0] = (sizeof(struct mtk_color_desc)/sizeof(u32));
+	cfg.dims[0] = (sizeof(struct v4l2_mtk_color_desc)/sizeof(u32));
 	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));

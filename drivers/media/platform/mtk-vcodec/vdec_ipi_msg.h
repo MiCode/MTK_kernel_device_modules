@@ -502,7 +502,7 @@ struct vdec_vsi {
 	struct mtk_dec_params dec_params;
 	struct vdec_dec_info dec;
 	struct vdec_pic_info pic;
-	struct mtk_color_desc color_desc;
+	struct v4l2_mtk_color_desc color_desc;
 	struct v4l2_rect crop;
 	struct v4l2_fract time_per_frame;
 	__u32 aspect_ratio;
@@ -538,7 +538,7 @@ struct vdec_vsi {
 	__s32 target_freq;
 	__u32 is_active;
 	struct vdec_resource_info res_info;
-	struct vdec_bandwidth_info bandwidth_info;
+	struct v4l2_vdec_bandwidth_info bandwidth_info;
 };
 
 struct vdec_common_vsi {

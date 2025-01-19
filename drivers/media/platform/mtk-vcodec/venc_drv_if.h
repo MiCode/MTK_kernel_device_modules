@@ -68,19 +68,6 @@ struct venc_done_result {
 	__u32 flags;
 };
 
-/*
- * struct venc_resolution_change
- * @width: width resolution change to
- * @height: height resolution change to
- * @resolutionchange : if resolution change
- */
-struct venc_resolution_change {
-	__u32 width;
-	__u32 height;
-	__u32 framerate;
-	__u32 resolutionchange;
-};
-
 extern struct mtk_video_fmt
 	mtk_venc_formats[MTK_MAX_ENC_CODECS_SUPPORT];
 extern struct mtk_codec_framesizes

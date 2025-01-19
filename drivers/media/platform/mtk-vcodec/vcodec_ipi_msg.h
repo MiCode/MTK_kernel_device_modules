@@ -9,6 +9,7 @@
 
 #include <linux/videodev2.h>
 #include <linux/v4l2-controls.h>
+#include "mtk-v4l2-controls.h"
 
 #ifdef VIDEO_MAX_FRAME
 #undef VIDEO_MAX_FRAME
@@ -60,15 +61,6 @@ enum mtk_frame_type {
 	MTK_FRAME_I = 1,
 	MTK_FRAME_P = 2,
 	MTK_FRAME_B = 3,
-};
-
-enum mtk_bandwidth_type {
-	MTK_AV1_COMPRESS = 0,
-	MTK_AV1_NO_COMPRESS = 1,
-	MTK_HEVC_COMPRESS = 2,
-	MTK_HEVC_NO_COMPRESS = 3,
-	MTK_VSD = 4,
-	MTK_BW_COUNT = 5,
 };
 
 enum v4l2_vdec_trick_mode {
@@ -196,108 +188,11 @@ struct mtk_video_frame_frameintervals {
 	struct v4l2_frmival_stepwise stepwise;
 };
 
-struct mtk_color_desc {
-	__u32	color_primaries;
-	__u32	transform_character;
-	__u32	matrix_coeffs;
-	__u32	display_primaries_x[3];
-	__u32	display_primaries_y[3];
-	__u32	white_point_x;
-	__u32	white_point_y;
-	__u32	max_display_mastering_luminance;
-	__u32	min_display_mastering_luminance;
-	__u32	max_content_light_level;
-	__u32	max_pic_light_level;
-	__u32	hdr_type;
-	__u32	full_range;
-	__u32	reserved;
-};
-
-struct v4l2_vdec_hdr10_info {
-	__u8 matrix_coefficients;
-	__u8 bits_per_channel;
-	__u8 chroma_subsampling_horz;
-	__u8 chroma_subsampling_vert;
-	__u8 cb_subsampling_horz;
-	__u8 cb_subsampling_vert;
-	__u8 chroma_siting_horz;
-	__u8 chroma_siting_vert;
-	__u8 color_range;
-	__u8 transfer_characteristics;
-	__u8 colour_primaries;
-	__u16 max_CLL;  // CLL: Content Light Level
-	__u16 max_FALL; // FALL: Frame Average Light Level
-	__u16 primaries[3][2];
-	__u16 white_point[2];
-	__u32 max_luminance;
-	__u32 min_luminance;
-};
-
-struct v4l2_vdec_hdr10plus_data {
-	__u64 addr; // user pointer
-	__u32 size;
-};
-
 struct vdec_resource_info {
 	__u32 usage; /* unit is 1/1000 */
 	bool hw_used[MTK_VDEC_HW_NUM]; /* index MTK_VDEC_LAT is not used for now */
 	bool gce;
 	enum vdec_priority priority;
-};
-
-struct vdec_max_buf_info {
-	/* set by user*/
-	__u32 pixelformat;
-	__u32 max_width;
-	__u32 max_height;
-	/* report by vdec*/
-	__u32 max_internal_buf_size;
-	__u32 max_dpb_count;
-	__u32 max_frame_buf_size;
-};
-
-struct vdec_fmt_modifier {
-	union {
-		struct {
-			__u8 tile:1;
-			__u8 raster:1;
-			__u8 compress:1;
-			__u8 jump:1;
-			__u8 vsd_mode:3; /* enum fmt_modifier_vsd */
-			__u8 vsd_ce_mode:1;
-			__u8 is_vsd_buf_layout:1;
-			__u8 is_10bit:1;
-			__u8 compress_engine:2; /* 0 : no compress, 1 : ufo, 2 : mfc */
-			__u8 color_space_num:2; /* luma, chroma */
-			__u8 size_multiplier:3; /* mpeg2 new deblocking mode would double fb size*/
-			__u8 luma_target;  /* temp : 87 */
-			__u8 chroma_target; /* temp : 66 */
-		};
-		/* TODO: Reserve several bits in MSB for version control */
-		__u64 padding;
-	};
-};
-
-struct vdec_bandwidth_info {
-	/* unit is 1/1000 */
-	/*[0] : av1 compress, [1] : av1 no compress */
-	/*[2] : hevc compress, [3] : hevc no compress */
-	/*[4] : vsd*/
-	__u32 bandwidth_per_pixel[MTK_BW_COUNT];
-	bool compress;
-	bool vsd;
-	struct vdec_fmt_modifier modifier;
-};
-
-struct mtk_venc_multi_ref {
-	__u32	multi_ref_en;
-	__u32	intra_period;
-	__u32	superp_period;
-	__u32	superp_ref_type;
-	__u32	ref0_distance;
-	__u32	ref1_dsitance;
-	__u32	max_distance;
-	__u32	reserved;
 };
 
 struct mtk_venc_vui_info {
@@ -490,37 +385,6 @@ struct vcodec_mem_obj {
 	__u64 iova;
 	__u64 pa;
 	__u64 va;
-};
-
-struct mtk_venc_visual_quality {
-	__s32	quant;
-	__s32	rd;
-};
-
-struct mtk_venc_init_qp {
-	__s32	enable;
-	__s32	qpi;
-	__s32	qpp;
-	__s32	qpb;
-};
-
-struct mtk_venc_frame_qp_range {
-	__s32	enable;
-	__s32	max;
-	__s32	min;
-};
-
-struct mtk_venc_nal_length {
-	__u32	prefer;
-	__u32	bytes;
-};
-
-struct mtk_venc_adab_info {
-	__u32	buf_width;
-	__u32	buf_height;
-	__u32	crop_width;
-	__u32	crop_height;
-	__u32	pixelformat;
 };
 
 #endif

@@ -124,173 +124,189 @@
 	(V4L2_CTRL_CLASS_CODEC | 0x2200)
 
 #define V4L2_CID_MTK_VIDEO_COLOR_DESC \
-		(V4L2_CID_CODEC_MTK_BASE+0)
+	(V4L2_CID_CODEC_MTK_BASE+0)
 #define V4L2_CID_MTK_VIDEO_SEC_MODE \
-		(V4L2_CID_CODEC_MTK_BASE+1)
+	(V4L2_CID_CODEC_MTK_BASE+1)
 #define V4L2_CID_MTK_VIDEO_OPERATING_RATE \
-		(V4L2_CID_CODEC_MTK_BASE+2)
+	(V4L2_CID_CODEC_MTK_BASE+2)
 #define V4L2_CID_MTK_VIDEO_LOG \
-		(V4L2_CID_CODEC_MTK_BASE+3)
+	(V4L2_CID_CODEC_MTK_BASE+3)
 #define V4L2_CID_MTK_VIDEO_VCP_PROP \
-		(V4L2_CID_CODEC_MTK_BASE+4)
+	(V4L2_CID_CODEC_MTK_BASE+4)
 #define V4L2_CID_MTK_VIDEO_GET_LOG \
-		(V4L2_CID_CODEC_MTK_BASE+5)
+	(V4L2_CID_CODEC_MTK_BASE+5)
 #define V4L2_CID_MTK_VIDEO_GET_VCP_PROP \
-		(V4L2_CID_CODEC_MTK_BASE+6)
+	(V4L2_CID_CODEC_MTK_BASE+6)
 #define V4L2_CID_MTK_VIDEO_CALLING_PID \
-		(V4L2_CID_CODEC_MTK_BASE+7)
+	(V4L2_CID_CODEC_MTK_BASE+7)
 
 #define V4L2_CID_MTK_VIDEO_DEC_DECODE_MODE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+0)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+0)
 #define V4L2_CID_MTK_VIDEO_DEC_FIXED_MAX_FRAME_BUFFER \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+1)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+1)
 #define V4L2_CID_MTK_VIDEO_DEC_CRC_PATH \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+2)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+2)
 #define V4L2_CID_MTK_VIDEO_DEC_GOLDEN_PATH \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+3)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+3)
 #define V4L2_CID_MTK_VIDEO_DEC_SET_WAIT_KEY_FRAME \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+4)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+4)
 #define V4L2_CID_MTK_VIDEO_DEC_FIX_BUFFERS \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+5)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+5)
 #define V4L2_CID_MTK_VIDEO_DEC_INTERLACING \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+6)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+6)
 #define V4L2_CID_MTK_VIDEO_DEC_QUEUED_FRAMEBUF_COUNT \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+7)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+7)
 #define V4L2_CID_MTK_VIDEO_DEC_COMPRESSED_MODE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+8)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+8)
 #define V4L2_CID_MTK_VIDEO_DEC_REAL_TIME_PRIORITY \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+9)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+9)
 #define V4L2_CID_MTK_VIDEO_DEC_DETECT_TIMESTAMP \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+10)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+10)
 #define V4L2_CID_MTK_VIDEO_DEC_INTERLACING_FIELD_SEQ \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+11)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+11)
 #define V4L2_CID_MTK_VIDEO_DEC_HDR10_INFO \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+12)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+12)
 #define V4L2_CID_MTK_VIDEO_DEC_HDR10PLUS_DATA \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+13)
-	// Need to align different use case between mobile, tablet and tv.
+	(V4L2_CID_CODEC_MTK_DEC_BASE+13)
+// Need to align different use case between mobile, tablet and tv.
 #define V4L2_CID_MTK_VIDEO_DEC_TRICK_MODE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+14)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+14)
 #define V4L2_CID_MTK_VIDEO_DEC_NO_REORDER \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+15)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+15)
 #define V4L2_CID_MTK_VIDEO_DEC_SET_DECODE_ERROR_HANDLE_MODE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+16)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+16)
 #define V4L2_CID_MTK_VIDEO_DEC_SLC_SUPPORT_VER \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+17)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+17)
 #define V4L2_CID_MTK_VIDEO_DEC_SUBSAMPLE_MODE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+18)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+18)
 #define V4L2_CID_MTK_VIDEO_DEC_ACQUIRE_RESOURCE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+19)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+19)
 #define V4L2_CID_MTK_VIDEO_DEC_RESOURCE_METRICS \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+20)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+20)
 #define V4L2_CID_MTK_VIDEO_DEC_VPEEK_MODE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+21)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+21)
 #define V4L2_CID_MTK_VIDEO_DEC_PLUS_DROP_RATIO \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+22)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+22)
 #define V4L2_CID_MTK_VIDEO_DEC_CONTAINER_FRAMERATE \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+23)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+23)
 #define V4L2_CID_MTK_VIDEO_DEC_DISABLE_DEBLOCK \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+24)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+24)
 #define V4L2_CID_MTK_VIDEO_DEC_LOW_LATENCY \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+25)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+25)
 #define V4L2_CID_MTK_VIDEO_DEC_MAX_BUF_INFO \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+26)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+26)
 #define V4L2_CID_MTK_VIDEO_DEC_BANDWIDTH_INFO \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+27)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+27)
 #define V4L2_CID_MTK_VIDEO_DEC_LINECOUNT_THRESHOLD \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+28)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+28)
 #define V4L2_CID_MTK_VIDEO_DEC_INPUT_SLOT \
-		(V4L2_CID_CODEC_MTK_DEC_BASE+29)
+	(V4L2_CID_CODEC_MTK_DEC_BASE+29)
 
 #define V4L2_CID_MTK_VIDEO_ENC_SET_NAL_SIZE_LENGTH \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+0)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+0)
 #define V4L2_CID_MTK_VIDEO_ENC_SCENARIO \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+1)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+1)
 #define V4L2_CID_MTK_VIDEO_ENC_NONREFP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+2)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+2)
 #define V4L2_CID_MTK_VIDEO_ENC_NONREFP_FREQ \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+3)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+3)
 #define V4L2_CID_MTK_VIDEO_ENC_DETECTED_FRAMERATE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+4)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+4)
 #define V4L2_CID_MTK_VIDEO_ENC_RFS_ON \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+5)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+5)
 #define V4L2_CID_MTK_VIDEO_ENC_ROI_RC_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+6)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+6)
 #define V4L2_CID_MTK_VIDEO_ENC_ROI_ON \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+7)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+7)
 #define V4L2_CID_MTK_VIDEO_ENC_GRID_SIZE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+8)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+8)
 #define V4L2_CID_MTK_VIDEO_ENC_RESOLUTION_CHANGE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+9)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+9)
 #define V4L2_CID_MTK_VIDEO_ENC_MAX_WIDTH \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+10)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+10)
 #define V4L2_CID_MTK_VIDEO_ENC_MAX_HEIGHT \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+11)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+11)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_I_FRAME_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+12)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+12)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_P_FRAME_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+13)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+13)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_B_FRAME_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+14)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+14)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+15)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+15)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+16)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+16)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_I_P_QP_DELTA \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+17)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+17)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_QP_CONTROL_MODE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+18)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+18)
 #define V4L2_CID_MTK_VIDEO_ENC_RC_FRAME_LEVEL_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+19)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+19)
 #define V4L2_CID_MTK_VIDEO_ENC_ENABLE_TSVC \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+20)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+20)
 #define V4L2_CID_MTK_VIDEO_ENC_ENABLE_HIGHQUALITY \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+21)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+21)
 #define V4L2_CID_MTK_VIDEO_ENC_ENABLE_DUMMY_NAL \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+22)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+22)
 #define V4L2_CID_MTK_VIDEO_ENC_ENABLE_MLVEC_MODE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+23)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+23)
 #define V4L2_CID_MTK_VIDEO_ENC_MULTI_REF \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+24)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+24)
 #define V4L2_CID_MTK_VIDEO_ENC_WPP_MODE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+25)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+25)
 #define V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_MODE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+26)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+26)
 #define V4L2_CID_MTK_VIDEO_ENC_TEMPORAL_LAYER_COUNT \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+27)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+27)
 #define V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+28)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+28)
 #define V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_WFD \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+29)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+29)
 #define V4L2_CID_MTK_VIDEO_ENC_SLICE_CNT \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+30)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+30)
 #define V4L2_CID_MTK_VIDEO_ENC_QPVBR \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+31)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+31)
 #define V4L2_CID_MTK_VIDEO_ENC_CHROMA_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+32)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+32)
 #define V4L2_CID_MTK_VIDEO_ENC_MB_RC_TK_SPD \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+33)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+33)
 #define V4L2_CID_MTK_VIDEO_ENC_FRM_QP_LTR \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+34)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+34)
 #define V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+35)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+35)
 #define V4L2_CID_MTK_VIDEO_ENC_INIT_QP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+36)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+36)
 #define V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+37)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+37)
 #define V4L2_CID_MTK_VIDEO_ENC_CONFIG_DATA \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+38)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+38)
 #define V4L2_CID_MTK_VIDEO_ENC_GET_MAX_B_NUM \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+39)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+39)
 #define V4L2_CID_MTK_VIDEO_ENC_GET_MAX_TEMPORAL_LAYER \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+40)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+40)
 #define V4L2_CID_MTK_VIDEO_ENC_CLEAN_GOP \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+41)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+41)
 #define V4L2_CID_MTK_VIDEO_ENC_ADAB_INFO \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+42)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+42)
 #define V4L2_CID_MTK_VIDEO_ENC_GET_ADAB_CAPABILITY \
-		(V4L2_CID_CODEC_MTK_ENC_BASE+43)
+	(V4L2_CID_CODEC_MTK_ENC_BASE+43)
 
+// for V4L2_CID_MTK_VIDEO_DEC_DECODE_MODE
+enum v4l2_vdec_decode_mode {
+	V4L2_VDEC_DECODE_MODE_UNKNOWN = 0,		/* /< Unknown */
+	V4L2_VDEC_DECODE_MODE_NORMAL,			/* /< decode all frames (no drop) */
+	V4L2_VDEC_DECODE_MODE_I_ONLY,			/* /< skip P and B frame */
+	V4L2_VDEC_DECODE_MODE_B_SKIP,			/* /< skip B frame */
+	V4L2_VDEC_DECODE_MODE_LOW_LATENCY_DECODE,	/* /< low latency turn off low power mode */
+	V4L2_VDEC_DECODE_MODE_NO_REORDER,		/* /< output display ASAP without reroder */
+	V4L2_VDEC_DECODE_MODE_THUMBNAIL, 		/* /< thumbnail mode */
+
+	/* /< skip reference check mode - force decode and display from first frame */
+	V4L2_VDEC_DECODE_MODE_SKIP_REFERENCE_CHECK,
+	V4L2_VDEC_DECODE_MODE_DROP_ERROR_FRAME,
+};
+
+// for V4L2_CID_MTK_VIDEO_DEC_BANDWIDTH_INFO
 enum v4l2_vdec_bandwidth_type {
 	V4L2_AV1_COMPRESS = 0,
 	V4L2_AV1_NO_COMPRESS = 1,
@@ -300,12 +316,14 @@ enum v4l2_vdec_bandwidth_type {
 	V4L2_BW_COUNT = 5,
 };
 
+// for V4L2_CID_MTK_VIDEO_DEC_COMPRESSED_MODE
 enum v4l2_vdec_compressed_mode {
 	V4L2_VDEC_COMPRESSED_DEFAULT = 0,
 	V4L2_VDEC_COMPRESSED_ON,
 	V4L2_VDEC_COMPRESSED_OFF,
 };
 
+// for V4L2_CID_MTK_VIDEO_DEC_SUBSAMPLE_MODE
 enum v4l2_vdec_subsample_mode {
 	/*
 	 * VDEC could generate subsample according to internal condition
@@ -324,6 +342,67 @@ enum v4l2_vdec_subsample_mode {
 	V4L2_VDEC_SUBSAMPLE_ON,
 };
 
+// for V4L2_CID_MTK_VIDEO_ENC_SCENARIO
+enum v4l2_venc_scenario {
+	V4L2_VENC_SCENARIO_WFD,
+	V4L2_VENC_SCENARIO_TIMELAPSE,
+	V4L2_VENC_SCENARIO_SMVR,
+	V4L2_VENC_SCENARIO_LIVE_PHOTO,
+	V4L2_VENC_SCENARIO_VILTE,
+	V4L2_VENC_SCENARIO_WECHAT,
+	V4L2_VENC_SCENARIO_HDR,
+	V4L2_VENC_SCENARIO_HDR10PLUS,
+};
+
+// for V4L2_CID_MTK_VIDEO_COLOR_DESC
+/* shared with /vendor/mediatek/proprietary/hardware/dpframework/include/DpDataType.h
+ * DP_VDEC_DRV_COLORDESC_T must be sync
+ */
+struct v4l2_mtk_color_desc {
+	__u32	color_primaries;
+	__u32	transform_character;
+	__u32	matrix_coeffs;
+	__u32	display_primaries_x[3];
+	__u32	display_primaries_y[3];
+	__u32	white_point_x;
+	__u32	white_point_y;
+	__u32	max_display_mastering_luminance;
+	__u32	min_display_mastering_luminance;
+	__u32	max_content_light_level;
+	__u32	max_pic_light_level;
+	__u32	hdr_type;
+	__u32	full_range;
+	__u32	reserved;
+};
+
+// for V4L2_CID_MTK_VIDEO_DEC_HDR10_INFO
+struct v4l2_vdec_hdr10_info {
+	__u8 matrix_coefficients;
+	__u8 bits_per_channel;
+	__u8 chroma_subsampling_horz;
+	__u8 chroma_subsampling_vert;
+	__u8 cb_subsampling_horz;
+	__u8 cb_subsampling_vert;
+	__u8 chroma_siting_horz;
+	__u8 chroma_siting_vert;
+	__u8 color_range;
+	__u8 transfer_characteristics;
+	__u8 colour_primaries;
+	__u16 max_CLL;  // CLL: Content Light Level
+	__u16 max_FALL; // FALL: Frame Average Light Level
+	__u16 primaries[3][2];
+	__u16 white_point[2];
+	__u32 max_luminance;
+	__u32 min_luminance;
+};
+
+// V4L2_CID_MTK_VIDEO_DEC_HDR10PLUS_DATA
+struct v4l2_vdec_hdr10plus_data {
+	__u64 addr; // user pointer
+	__u32 size;
+};
+
+// for V4L2_CID_MTK_VIDEO_DEC_ACQUIRE_RESOURCE
 struct v4l2_vdec_resource_parameter {
 	__u32 width;
 	__u32 height;
@@ -331,23 +410,14 @@ struct v4l2_vdec_resource_parameter {
 	__u32 priority; /* Smaller value means higher priority */
 };
 
+// for V4L2_CID_MTK_VIDEO_DEC_RESOURCE_METRICS
 struct v4l2_vdec_resource_metrics {
 	__u32 core_used;  /* bit mask, if core-i is used, bit i is set */
 	__u32 core_usage; /* unit is 1/1000 */
 	__u8 gce;
 };
 
-struct v4l2_vdec_max_buf_info {
-	/* set by user*/
-	__u32 pixelformat;
-	__u32 max_width;
-	__u32 max_height;
-	/* report by vdec*/
-	__u32 max_internal_buf_size; /* hw buf and shm buf */
-	__u32 max_dpb_count; /* codec report dpb + 1(current decode) */
-	__u32 max_frame_buf_size; /* frame size */
-};
-
+// for V4L2_CID_MTK_VIDEO_DEC_LOW_LATENCY
 struct v4l2_vdec_low_latency_parameter {
 	/* TV Used */
 	/* Racing Display Only : slice_count = 1,  racing_display = 1 */
@@ -358,6 +428,18 @@ struct v4l2_vdec_low_latency_parameter {
 	/* Synergy with IMB */
 	__u16 threshold_numerator;
 	__u16 threshold_denominator;
+};
+
+// for V4L2_CID_MTK_VIDEO_DEC_MAX_BUF_INFO
+struct v4l2_vdec_max_buf_info {
+	/* set by user*/
+	__u32 pixelformat;
+	__u32 max_width;
+	__u32 max_height;
+	/* report by vdec*/
+	__u32 max_internal_buf_size; /* hw buf and shm buf */
+	__u32 max_dpb_count; /* codec report dpb + 1(current decode) */
+	__u32 max_frame_buf_size; /* frame size */
 };
 
 struct v4l2_vdec_fmt_modifier {
@@ -382,6 +464,7 @@ struct v4l2_vdec_fmt_modifier {
 	};
 };
 
+// for V4L2_CID_MTK_VIDEO_DEC_BANDWIDTH_INFO
 struct v4l2_vdec_bandwidth_info {
 	/* unit is 1/1000 */
 	/*[0] : av1 w/ compress, [1] : av1 w/o compress */
@@ -391,6 +474,62 @@ struct v4l2_vdec_bandwidth_info {
 	__u8 compress;
 	__u8 vsd;
 	struct v4l2_vdec_fmt_modifier modifier;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_SET_NAL_SIZE_LENGTH
+struct v4l2_venc_nal_length {
+	__u32	prefer;
+	__u32	bytes;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_RESOLUTION_CHANGE
+struct v4l2_venc_resolution_change {
+	__u32 width;
+	__u32 height;
+	__u32 framerate;
+	__u32 resolutionchange;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_MULTI_REF
+struct v4l2_venc_multi_ref {
+	__u32	multi_ref_en;
+	__u32	intra_period;
+	__u32	superp_period;
+	__u32	superp_ref_type;
+	__u32	ref0_distance;
+	__u32	ref1_dsitance;
+	__u32	max_distance;
+	__u32	reserved;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY
+struct v4l2_venc_visual_quality {
+	__s32	quant;
+	__s32	psyrd;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_INIT_QP
+struct v4l2_venc_init_qp {
+	__s32	enable;
+	__s32	qpi;
+	__s32	qpp;
+	__s32	qpb;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE
+struct v4l2_venc_frame_qp_range {
+	__s32	enable;
+	__s32	max;
+	__s32	min;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_ADAB_INFO
+struct v4l2_venc_adab_info {
+	__u32	buf_width;
+	__u32	buf_height;
+	__u32	crop_width;
+	__u32	crop_height;
+	__u32	pixelformat;
 };
 
 #endif // #ifndef __UAPI_MTK_V4L2_VCODEC_H__
