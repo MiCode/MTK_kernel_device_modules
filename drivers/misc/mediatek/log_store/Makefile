@@ -12,5 +12,6 @@
 #
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/
+subdir-ccflags-y += -I$(srctree)/kernel/
 
 obj-$(CONFIG_MTK_DRAM_LOG_STORE) += log_store.o

@@ -24,6 +24,7 @@
 #include <linux/uaccess.h>
 #include <linux/wait.h>
 #include <linux/vmalloc.h>
+#include <printk/printk_ringbuffer.h>
 #include "log_store_kernel.h"
 #include "mrdump_helper.h"
 
@@ -775,8 +776,6 @@ void log_store_bootup(void)
 	/* Boot up finish, don't save log to emmc in next boot.*/
 	store_log_to_emmc_enable(false);
 	set_boot_phase(BOOT_PHASE_ANDROID);
-	/* store printk log buff information to DRAM */
-	store_printk_buff();
 }
 EXPORT_SYMBOL_GPL(log_store_bootup);
 
@@ -972,7 +971,6 @@ int log_store_late_init(void)
 	if (register_reboot_notifier(&logstore_reboot_notify))
 		pr_warn("Failed to register reboot notifier for logstore\n");
 
-	set_boot_phase(BOOT_PHASE_KERNEL);
 	if (sram_dram_buff == NULL) {
 		pr_notice("log_store: sram header DRAM buff is null.\n");
 		dram_log_store_status = BUFF_ALLOC_ERROR;
@@ -1052,11 +1050,9 @@ int log_store_late_init(void)
 }
 EXPORT_SYMBOL_GPL(log_store_late_init);
 
-
 /* need mapping virtual address to phy address */
 void store_printk_buff(void)
 {
-	/*
 	struct printk_ringbuffer **pprb;
 	struct printk_ringbuffer *prb;
 	char *buff;
@@ -1076,8 +1072,6 @@ void store_printk_buff(void)
 	buff_size = (u32)(1 << prb->text_data_ring.size_bits);
 	sram_dram_buff->klog_addr = __virt_to_phys_nodebug(buff);
 	sram_dram_buff->klog_size = buff_size;
-	if (buff_size > expdb_logstore->logstore_size/4)
-		sram_dram_buff->klog_size = expdb_logstore->logstore_size/4;
 
 	if (!early_log_disable)
 		sram_dram_buff->flag |= BUFF_EARLY_PRINTK;
@@ -1085,7 +1079,6 @@ void store_printk_buff(void)
 		sram_dram_buff->klog_addr,
 		sram_dram_buff->klog_size,
 		sram_dram_buff->flag);
-	*/
 	return;
 }
 EXPORT_SYMBOL_GPL(store_printk_buff);
@@ -1176,6 +1169,9 @@ int log_store_sram_init(void)
 		sram_dram_buff = NULL;
 		return -1;
 	}
+
+	/* store printk log buff information to DRAM */
+	store_printk_buff();
 
 	pr_notice("sig 0x%x flag 0x%x add 0x%llx size 0x%x offsize 0x%x point 0x%x\n",
 		sram_dram_buff->sig, sram_dram_buff->flag,

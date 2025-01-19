@@ -8,7 +8,6 @@
 
 #include <linux/types.h>
 
-
 #define SRAM_HEADER_SIG (0xabcd1234)
 #define DRAM_HEADER_SIG (0x5678ef90)
 #define LOG_STORE_SIG (0xcdab3412)
@@ -25,8 +24,6 @@
 #define KEDUMP_DISABLE (0)
 
 #define MAX_DRAM_COUNT	2
-
-#define LOG_STORE_SIZE 0x40000	/*  DRAM buff 256KB*/
 
 #define CONFIG_LONG_POWERKEY_LOG_STORE
 
@@ -113,16 +110,20 @@ struct log_emmc_header {
 	/* [4] used to save boot step */
 	/* [5] expdb size version(0:2M,1:4M+1M)*/
 	/* [6] boot prof offset*/
+	/* [7] printk buf low address 32 bits*/
+	/* [8] printk buf size_bits 8 bits and high address 24 bits*/
 };
 
 enum EMMC_STORE_FLAG_TYPE {
 	UART_LOG = 0x00,
-	LOG_INDEX = 0X01,
-	PRINTK_RATELIMIT = 0X02,
+	LOG_INDEX = 0x01,
+	PRINTK_RATELIMIT = 0x02,
 	KEDUMP_CTL = 0x03,
 	BOOT_STEP = 0x04,
 	EXPDB_SIZE_VER = 0x05,
 	BOOT_PROF_OFFSET = 0x06,
+	KLOG_ADDR_LOW = 0x07,
+	KLOG_ADDR_HIGH = 0x08,
 	EMMC_STORE_FLAG_TYPE_NR,
 };
 
