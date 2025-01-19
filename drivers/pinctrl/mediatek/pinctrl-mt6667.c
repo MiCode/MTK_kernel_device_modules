@@ -79,17 +79,17 @@ static const struct mtk_pin_field_calc mt6667_pin_do_range[] = {
 };
 
 static const struct mtk_pin_field_calc mt6667_pin_di_range[] = {
-	PIN_SIMPLE_FIELD_BASE(1, 0xa7, 0, 1),
-	PIN_SIMPLE_FIELD_BASE(2, 0xa7, 1, 1),
-	PIN_SIMPLE_FIELD_BASE(3, 0xa7, 2, 1),
-	PIN_SIMPLE_FIELD_BASE(4, 0xa7, 3, 1),
+	PIN_SIMPLE_FIELD_BASE(1, 0x97, 0, 1),
+	PIN_SIMPLE_FIELD_BASE(2, 0x97, 1, 1),
+	PIN_SIMPLE_FIELD_BASE(3, 0x97, 2, 1),
+	PIN_SIMPLE_FIELD_BASE(4, 0x97, 3, 1),
 };
 
 static const struct mtk_pin_field_calc mt6667_pin_mode_range[] = {
-	PIN_SIMPLE_FIELD_BASE(1, 0x99, 3, 3),
-	PIN_SIMPLE_FIELD_BASE(2, 0x99, 0, 3),
-	PIN_SIMPLE_FIELD_BASE(3, 0x9c, 3, 3),
-	PIN_SIMPLE_FIELD_BASE(4, 0x9c, 0, 3),
+	PIN_SIMPLE_FIELD_BASE(1, 0x99, 0, 3),
+	PIN_SIMPLE_FIELD_BASE(2, 0x99, 3, 3),
+	PIN_SIMPLE_FIELD_BASE(3, 0x9c, 0, 3),
+	PIN_SIMPLE_FIELD_BASE(4, 0x9c, 3, 3),
 };
 
 #define MTK_RANGE(_a)		{ .range = (_a), .nranges = ARRAY_SIZE(_a), }
