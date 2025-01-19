@@ -17,7 +17,7 @@
 
 #define DISP_MUTEX_TOTAL (16)
 #define DISP_MUTEX_DDP_FIRST (0)
-#define DISP_MUTEX_DDP_LAST (5)
+#define DISP_MUTEX_DDP_LAST (6)
 #define DISP_MUTEX_DDP_COUNT (DISP_MUTEX_DDP_LAST - DISP_MUTEX_DDP_FIRST + 1)
 #define __DISP_MUTEX_INT_MSK ((1 << (DISP_MUTEX_DDP_COUNT)) - 1)
 #define DISP_MUTEX_INT_MSK                                                     \
@@ -433,6 +433,9 @@ char *mtk_ddp_get_mutex_sof_name(unsigned int regval);
 
 void mtk_ddp_rst_module(struct mtk_drm_crtc *mtk_crtc,
 	enum mtk_ddp_comp_id m, struct cmdq_pkt *handle);
+
+void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle, int mutex_id);
 
 int mtk_ddp_exdma_mout_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
 			   unsigned int *addr);
