@@ -38,7 +38,7 @@
 	ktime_get_ts64(&a##_e)
 
 #define VPU_TS_NS(a) \
-	((uint64_t)(timespec64_to_ns(&a##_e) - timespec64_to_ns(&a##_s)))
+	((uint64_t)((uint64_t)timespec64_to_ns(&a##_e) - (uint64_t)timespec64_to_ns(&a##_s)))
 
 #define VPU_TS_US(a) \
 	(VPU_TS_NS(a) / 1000)

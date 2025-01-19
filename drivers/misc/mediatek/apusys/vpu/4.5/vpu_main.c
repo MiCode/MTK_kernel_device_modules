@@ -380,8 +380,8 @@ int vpu_kbuf_alloc(struct vpu_device *vd)
 		return -ENOMEM;
 	}
 
-	period = ((uint64_t)(timespec64_to_ns(&end)
-		- timespec64_to_ns(&start)));
+	period = (uint64_t)((uint64_t)(timespec64_to_ns(&end)
+		- (uint64_t)timespec64_to_ns(&start)));
 
 	mops->sync_for_cpu(vd->dev, &vd->iova_kernel);
 
