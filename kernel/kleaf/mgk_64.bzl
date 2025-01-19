@@ -284,6 +284,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt35695b-auo-vdo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-sc-nt36672c-vdo-90hz-6382".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-td4320-fhdp-dsi-vdo-auo-rt5081".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_sync".format(kernel_version),
