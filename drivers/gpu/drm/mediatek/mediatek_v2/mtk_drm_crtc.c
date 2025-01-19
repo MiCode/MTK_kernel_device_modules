@@ -90,6 +90,9 @@ module_param(debug_merge_t, int, 0644);
 int debug_trigger_loop;
 module_param(debug_trigger_loop, int, 0644);
 
+int debug_pu_skip = 1;
+module_param(debug_pu_skip, int, 0644);
+
 static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "OVERLAP_LAYER_NUM", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "LAYERING_IDX", 0, ULONG_MAX, 0},
@@ -9370,6 +9373,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 
 	int session_id, id;
 	unsigned int ovl_status = 0;
+	unsigned int pu_status = 0;
 	/*Msync2.0 related*/
 	unsigned int is_vfp_period = 0;
 	unsigned int _dsi_state_dbg7 = 0;
@@ -9515,6 +9519,22 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			CRTC_MMP_MARK(id, dsi_dbg7_after_sof, _dsi_state_dbg7_2, 0);
 		}
 
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PARTIAL_UPDATE)) {
+			unsigned int *slot_va = mtk_get_gce_backup_slot_va(mtk_crtc,
+						DISP_SLOT_PU_STATUS);
+
+			if (slot_va) {
+				pu_status = readl(slot_va);
+				writel(0, slot_va);
+				if ((pu_status > WFE_CABC_START) &&
+					(pu_status < SET_CABC_END)) {
+					CRTC_MMP_MARK(id, pu_status_err,
+						pu_status, cb_data->pres_fence_idx);
+					DDPPR_ERR("pu status error:%d, pf id:%d\n",
+						pu_status, cb_data->pres_fence_idx);
+				}
+			}
+		}
 
 		if (atomic_read(&priv->need_recover))
 			atomic_set(&priv->need_recover, 0);
@@ -10569,6 +10589,24 @@ static void cmdq_pkt_reset_ovl(struct cmdq_pkt *cmdq_handle,
 
 #endif
 
+static void mtk_set_trig_stage(struct drm_crtc *crtc,
+	struct cmdq_pkt *handle, enum EVENT_TRIGGER_PT event)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	unsigned long crtc_id = (unsigned long)drm_crtc_index(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct cmdq_base *cmdq_base;
+	dma_addr_t slot;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PARTIAL_UPDATE) ||
+		crtc_id != 0)
+		return;
+
+	cmdq_base = mtk_crtc->gce_obj.base;
+	slot = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_STATUS);
+	cmdq_pkt_write(handle, cmdq_base, slot, event, ~0);
+}
+
 void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 {
 #ifdef DRM_CMDQ_DISABLE
@@ -10676,7 +10714,9 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		}
 
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+			mtk_set_trig_stage(crtc, cmdq_handle, WFE_CABC_START);
 			GCE_DO(wfe, EVENT_CABC_EOF);
+			mtk_set_trig_stage(crtc, cmdq_handle, WFE_CABC_END);
 			GCE_DO(wait_no_clear, EVENT_ESD_EOF);
 		}
 
@@ -10858,8 +10898,11 @@ skip_prete:
 			}
 		}
 
+		mtk_set_trig_stage(crtc, cmdq_handle, SET_CABC_START);
 		GCE_DO(set_event, EVENT_CABC_EOF);
+		mtk_set_trig_stage(crtc, cmdq_handle, SET_CABC_END);
 		GCE_DO(set_event, EVENT_STREAM_EOF);
+		mtk_set_trig_stage(crtc, cmdq_handle, SET_STREAM_EOF_END);
 
 		if (crtc_id == 0) {
 			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true) {
@@ -17967,6 +18010,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	unsigned int partial_enable = enable;
 	int i, j;
 	int ret = 0;
+	dma_addr_t slot1, slot2;
 
 	crtc_index = drm_crtc_index(crtc);
 	if (crtc_index) {
@@ -18104,7 +18148,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	if (mtk_rect_equal(&state->ovl_partial_roi,
 			&old_state->ovl_partial_roi) &&
 			(old_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
-			state->prop_val[CRTC_PROP_DISP_MODE_IDX])) {
+			state->prop_val[CRTC_PROP_DISP_MODE_IDX]) &&
+			debug_pu_skip) {
 		DDPDBG("skip because partial roi is equal to old\n");
 		return ret;
 	}
@@ -18121,6 +18166,10 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	if (debug_trigger_loop & BIT(4))
 		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 1);
+	slot1 = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_STATUS);
+	slot2 = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_PU_STATUS);
+	cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
+		slot1, slot2, CMDQ_THR_SPR_IDX3);
 	cmdq_pkt_wfe(cmdq_handle,
 		mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 	if (debug_trigger_loop & BIT(4))
