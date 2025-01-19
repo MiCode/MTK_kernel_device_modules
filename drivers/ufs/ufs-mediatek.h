@@ -369,8 +369,9 @@ enum {
 };
 
 enum ip_ver_legacy {
+	IP_LEGACY_VER_MT6781 = 0x10380000,
+	IP_LEGACY_VER_MT6879 = 0x10360000,
 	IP_LEGACY_VER_MT6893 = 0x20160706,
-
 };
 
 struct tag_bootmode {
