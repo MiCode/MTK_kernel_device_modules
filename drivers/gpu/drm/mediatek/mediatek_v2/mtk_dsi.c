@@ -5128,6 +5128,7 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 			DDPPR_ERR("failed to prepare the panel\n");
 			return;
 		}
+		CRTC_MMP_MARK(0, dsi_resume, 1, 1);
 		DDP_PROFILE("[PROFILE] %s panel init end\n", __func__);
 		mode_chg_index = mtk_crtc->mode_change_index;
 
@@ -6435,6 +6436,9 @@ int mtk_dsi_dump(struct mtk_ddp_comp *comp)
 	DDPDUMP("dsi shadow reg 0xc00:0x%x, 0xc04:0x%x\n",
 		readl(dsi->regs + DSI_SHADOW_DEBUG(dsi->driver_data)),
 		readl(dsi->regs + DSI_SHADOW_DEBUG(dsi->driver_data) + 0x4));
+	DDPDUMP("dsi test dummy reg 0x154:0x%x, 0x3FC:0x%x\n",
+		readl(dsi->regs + 0x154),
+		readl(dsi->regs + 0x3FC));
 	DDPDUMP("- DSI CMD REGS -\n");
 	for (k = 0; k < 512; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
@@ -6855,6 +6859,16 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + dsi->driver_data->reg_cmdq0_ofs,
 			       0x002c3909, ~0);
+		DDPMSG("dsi test dummy reg 0x154:0x%x, 0x3FC:0x%x\n",
+			readl(dsi->regs + 0x154),
+			readl(dsi->regs + 0x3FC));
+		/* Dummy test reg , need to remove*/
+		if (priv && priv->data && priv->data->mmsys_id == MMSYS_MT6991) {
+			writel(0, dsi->regs + 0x154);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + 0x154, 0x002c3909, ~0);
+		}
+
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMDQ_SIZE(dsi->driver_data),
 				1, CMDQ_SIZE);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMDQ_SIZE(dsi->driver_data),
@@ -6864,6 +6878,15 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			       comp->regs_pa + DSI_START, 0, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DSI_START, 1, ~0);
+
+		/* Dummy test reg , need to remove*/
+		if (priv && priv->data && priv->data->mmsys_id == MMSYS_MT6991) {
+			writel(0, dsi->regs + 0x3FC);
+			cmdq_pkt_mem_move(handle, comp->cmdq_base,
+				comp->regs_pa + dsi->driver_data->reg_cmdq0_ofs,
+				comp->regs_pa + 0x3FC, CMDQ_THR_SPR_IDX3);
+		}
+
 		if (priv && priv->data && (priv->data->mmsys_id != MMSYS_MT6768 &&
 						priv->data->mmsys_id != MMSYS_MT6765 &&
 						priv->data->mmsys_id != MMSYS_MT6761)) {
@@ -7439,6 +7462,7 @@ static void mtk_dsi_cmdq(struct mtk_dsi *dsi, const struct mipi_dsi_msg *msg)
 		cmdq_mask = CONFIG | DATA_ID;
 
 	mtk_dsi_mask(dsi, dsi->driver_data->reg_cmdq0_ofs, cmdq_mask, reg_val);
+
 	mtk_dsi_mask(dsi, DSI_CMDQ_SIZE(dsi->driver_data), CMDQ_SIZE, cmdq_size);
 	mtk_dsi_mask(dsi, DSI_CMDQ_SIZE(dsi->driver_data), CMDQ_SIZE_SEL, CMDQ_SIZE_SEL);
 }
