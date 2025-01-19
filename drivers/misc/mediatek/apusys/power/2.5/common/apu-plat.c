@@ -627,6 +627,94 @@ out:
 
 
 /**
+ * _bin_ub_lb() - binning and raising opp in upper/lower bound
+ * @dev: struct device, used for checking child numbers
+ *
+ * rm unnecessary opp by different segment info.
+ */
+static noinline int _bin_ub_lb(struct apu_dev *ad)
+{
+	struct dev_pm_opp *opp;
+	int ret = 0, idx = 0;
+	int bin_v = 0, raise_v = 0;
+	unsigned long bin_f = 0, raise_f = 0, tmp_f = 0, sign_v = 0;
+	const char *vb_mtd_name;
+
+	if (of_property_read_string(ad->dev->of_node, "vb_mtd", &vb_mtd_name))
+		goto out;
+
+	aprobe_info(ad->dev, "%s %d vb_mtd_name = %s\n", __func__, __LINE__, vb_mtd_name);
+
+	if (strncmp(vb_mtd_name, VB_MTD_UB_LB, VB_MTD_LEN))
+		goto out;
+
+	/* get bin voltage */
+	idx = _get_devinfo(ad, efuse_field[EFUSE_BIN]);
+	if (idx < 0)
+		goto out;
+	bin_v = __get_bin_raise_from_dts(ad, "bin", idx);
+	ad->bin_idx = idx;
+
+	/* get raise voltage */
+	idx = _get_devinfo(ad, efuse_field[EFUSE_RAISE]);
+	if (idx < 0)
+		goto out;
+	raise_v = __get_bin_raise_from_dts(ad, "raise", idx);
+	if ((bin_v == -ENODEV) && (raise_v == -ENODEV))
+		goto out;
+	else if (bin_v == -ENODEV)
+		bin_v = 0xDEADBEEF;
+	else if (raise_v == -ENODEV)
+		raise_v = 0xDEADBEEF;
+
+	aprobe_info(ad->dev, "%s: b_v/r_v = %d(0x%x)/%d(0x%x)\n",
+			__func__, bin_v, bin_v, raise_v, raise_v);
+	/* get bin/raise voltage/freq from opp table */
+	bin_f = ULONG_MAX;
+	raise_f = 0;
+	ret = __get_bin_raise_v_f(ad, &bin_v, &bin_f, &raise_v, &raise_f);
+	if (ret)
+		goto out;
+
+	aprobe_info(ad->dev, "%s: b_v/b_f/r_v/r_f = %d/%lu/%d/%lu\n",
+			__func__, bin_v, bin_f, raise_v, raise_f);
+
+	/* calculate other volt/bin except bin/raise points */
+	tmp_f = raise_f + 1;
+	opp = dev_pm_opp_find_freq_ceil(ad->dev, &tmp_f);
+	while (!IS_ERR(opp)) {
+		tmp_f = dev_pm_opp_get_freq(opp);
+		sign_v = dev_pm_opp_get_voltage(opp);
+		aprobe_info(ad->dev,
+				"%s: \"%s\",r_f/r_v/b_f/b_v/s_v = %lu/%d/%lu/%d/%lu\n",
+				__func__, VB_MTD_UB_LB,
+				raise_f, raise_v, bin_f, bin_v, sign_v);
+
+		/* change v if sign_v > bin_v */
+		if (sign_v > bin_v)
+			ret = dev_pm_opp_adjust_voltage(ad->dev, bin_v,
+								(ulong)bin_v,
+								(ulong)bin_v,
+								(ulong)bin_v);
+		/* change v if sign_v < raise_v */
+		if (sign_v < raise_v)
+			ret = dev_pm_opp_adjust_voltage(ad->dev, raise_v,
+								(ulong)raise_v,
+								(ulong)raise_v,
+								(ulong)raise_v);
+
+		if (ret)
+			goto out;
+		tmp_f ++;
+		opp = dev_pm_opp_find_freq_ceil(ad->dev, &tmp_f);
+	}
+
+	apu_dump_opp_table(ad, __func__, 1);
+out:
+	return ret;
+}
+
+/**
  * _segment_opp() - rm opp by different segment
  * @dev: struct device, used for checking child numbers
  *
@@ -715,6 +803,10 @@ static int apu_opp_init(struct apu_dev *ad)
 			goto out;
 
 		ret = _bin_3p_2l(ad);
+		if (ret)
+			goto out;
+
+		ret = _bin_ub_lb(ad);
 		if (ret)
 			goto out;
 	}

@@ -40,6 +40,11 @@ char *mt6893_mdla_tables[MT6893_MDLA_TBL_SZ] = {
 	"soc:apusys_power:APUMDLA"
 };
 
+#define MT6853_VPU_TBL_SZ   1
+char *mt6853_vpu_tables[MT6877_VPU_TBL_SZ] = {
+	"soc:APUCORE:APUCONN",
+};
+
 /* index 0: vpu low bound of 0.65v
  * index 1: mdla low bound of 0.65v
  */
@@ -363,6 +368,31 @@ out:
 	return err;
 }
 
+static int mt6853_vb_lb(struct device *dev)
+{
+	int err = 0, idx = 0;
+	struct device **ofdev0 = NULL;
+
+	ofdev0 = devm_kzalloc(dev, (sizeof(*ofdev0) * MT6853_VPU_TBL_SZ), GFP_KERNEL);
+	if (!ofdev0) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	/* get interpolate need devs */
+	for (idx = 0; idx < MT6853_VPU_TBL_SZ; idx++)
+		ofdev0[idx] = bus_find_device_by_name(&platform_bus_type,
+									NULL, mt6853_vpu_tables[idx]);
+
+	dev_info(dev, "Final opp table %s\n", dev_name(ofdev0[0]));
+	apu_dump_opp_table((struct apu_dev *)dev_get_drvdata(ofdev0[0]), "APUVB final", 1);
+	dev_info(dev, "APUVB final ----------------------\n");
+
+	devm_kfree(dev, ofdev0);
+out:
+	return err;
+}
+
 static int vb_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -403,9 +433,15 @@ static const struct apu_plat_data mt6877_vb_data = {
 	.vb_lb = mt6877_vb_lb,
 };
 
+static const struct apu_plat_data mt6853_vb_data = {
+	.user = APUVB,
+	.vb_lb = mt6853_vb_lb,
+};
+
 static const struct of_device_id vb_of_match[] = {
 	{ .compatible = "mtk6893,vb", .data = &mt6893_vb_data},
 	{ .compatible = "mtk6877,vb", .data = &mt6877_vb_data},
+	{ .compatible = "mtk6853,vb", .data = &mt6853_vb_data},
 	{ },
 };
 
