@@ -7124,7 +7124,7 @@
 };
 
 #include "mediatek/cust_mt6789_msdc.dtsi"
-#include "mediatek/mt6366.dtsi"
+#include "mediatek/mt6366_mt6789.dtsi"
 #include "mediatek/rt5133.dtsi"
 #include "mediatek/mt6789-clkitg.dtsi"
 #include "mediatek/mt6789-disable-unused.dtsi"
