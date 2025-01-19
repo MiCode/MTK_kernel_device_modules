@@ -1363,8 +1363,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 	pinctrl-names = "mode_te_te", "mode_te_te1";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
-
 	status = "okay";
+	pwr-handle = <&disp_pwr_dev>;
 //	enable-discrete-path = <1>;
 };
 
@@ -1570,6 +1570,74 @@ bootargs_ext = "rcu_nocbs=0-7";
 	ccf-one-step;
 };
 
+&vdisp_ao {
+	power-domains;
+};
+
+&disp1_mutex0 {
+	power-domains;
+};
+
+&dispsys_config {
+	power-domains;
+};
+
+&disp_ovl0_exdma3 {
+	power-domains;
+};
+
+&disp_ovl1_exdma3 {
+	power-domains;
+};
+
+&edp_tx {
+	power-domains;
+};
+
+&dp_tx {
+	power-domains;
+};
+
+&mipi_tx_config0 {
+	power-domains;
+};
+
+&disp_vcore_ctrl {
+	power-domains;
+	pwr-handle = <&disp_pwr_dev>;
+};
+
+&vdisp_ctrl_1 {
+	power-domains;
+};
+
+&vdisp_ctrl_2 {
+	power-domains;
+};
+
+&vdisp_ctrl_3 {
+	power-domains;
+};
+
+&vdisp_ctrl_4 {
+	power-domains;
+};
+
+&vdisp_ctrl_5 {
+	power-domains;
+};
+
+&vdisp_ctrl_6 {
+	power-domains;
+};
+
+&vdisp_ctrl_7 {
+	power-domains;
+};
+
+&vdisp_ctrl_8 {
+	power-domains;
+};
 
 &pio {
 	rptr_enable: rptr-enable {
