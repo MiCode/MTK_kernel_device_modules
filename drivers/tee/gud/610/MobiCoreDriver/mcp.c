@@ -322,8 +322,10 @@ static int mcp_cmd(union mcp_message *cmd,
 
 		cmd_info->uuid_str[0] = ' ';
 		for (i = 0; i < sizeof(uuid->value); i++) {
-			snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
+			ret = snprintf(&cmd_info->uuid_str[1 + i * 2], 3, "%02x",
 				 uuid->value[i]);
+			if (ret < 0)
+				return ret;
 		}
 	} else {
 		cmd_info->uuid_str[0] = '\0';
