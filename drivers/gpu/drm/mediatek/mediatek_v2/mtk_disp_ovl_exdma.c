@@ -2402,9 +2402,9 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 		return;
 	}
 
-	hdr_roi_stall = (125 * 100 + hdr_fifo_l * 10) / l_time / 10;
-	roi_stall = (125 * 100 + fifo_l * 10) / l_time / 10;
-	gmc_stall = 125 * 100 / l_time / 10;
+	hdr_roi_stall = (200 * 100 + hdr_fifo_l * 10) / l_time / 10;
+	roi_stall = (200 * 100 + fifo_l * 10) / l_time / 10;
+	gmc_stall = 200 * 100 / l_time / 10;
 	DDPDBG("%s, l_time=%d, fifo_l=%d, hdr_fifo_l=%d, hdr_roi_stall=%d, roi_stall=%d, gmc_stall=%d\n",
 		__func__, l_time, fifo_l, hdr_fifo_l, hdr_roi_stall, roi_stall, gmc_stall);
 
@@ -4143,7 +4143,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					stash_bw_val = bw_val / 256;
 
-				stash_bw_val = stash_bw_val > 17 ? stash_bw_val : 17; //set low bound
+				stash_bw_val = stash_bw_val > 49 ? stash_bw_val : 49; //set low bound
 			}
 
 			if (stash_bw_val != comp->last_stash_bw) {
@@ -4162,7 +4162,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					hdr_stash_bw_val = bw_val / 32 / 256;
 
-				hdr_stash_bw_val = hdr_stash_bw_val > 17 ? hdr_stash_bw_val : 17; //set low bound
+				hdr_stash_bw_val = hdr_stash_bw_val > 49 ? hdr_stash_bw_val : 49; //set low bound
 			}
 
 			if (hdr_stash_bw_val != comp->last_hdr_stash_bw) {
@@ -4257,7 +4257,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					stash_bw_val = bw_val / 256;
 
-				stash_bw_val = stash_bw_val > 17 ? stash_bw_val : 17; //set low bound
+				stash_bw_val = stash_bw_val > 49 ? stash_bw_val : 49; //set low bound
 			}
 
 			if (stash_bw_val > comp->last_stash_bw) {
@@ -4285,7 +4285,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					hdr_stash_bw_val = bw_val / 32 / 256;
 
-				hdr_stash_bw_val = hdr_stash_bw_val > 17 ? hdr_stash_bw_val : 17; //set low bound
+				hdr_stash_bw_val = hdr_stash_bw_val > 49 ? hdr_stash_bw_val : 49; //set low bound
 			}
 
 			if (hdr_stash_bw_val > comp->last_hdr_stash_bw) {
