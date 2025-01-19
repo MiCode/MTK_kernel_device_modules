@@ -135,6 +135,42 @@ config MTK_LENS_DW9718AF_SUPPORT
 	  lens driver for the camera sensor module
 	  Set as y if the driver is used in this project
 
+config MTK_LENS_DW9718TAF_SUPPORT
+	tristate "DW9718TAF Lens Driver"
+        depends on MTK_LENS
+	help
+	  DW9718TAF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_DW9718AF_SUPPORT
+	tristate "DW9718AF Lens Driver"
+        depends on MTK_LENS
+	help
+	  DW9718AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_GT9772AF_SUPPORT
+	tristate "GT9772AF Lens Driver"
+        depends on MTK_LENS
+	help
+	  GT9772AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_GT9768AF_SUPPORT
+	tristate "GT9768AF Lens Driver"
+        depends on MTK_LENS
+	help
+	  GT9768AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
 config MTK_LENS_DW9718SAF_SUPPORT
 	tristate "DW9718SAF Lens Driver"
         depends on MTK_LENS
