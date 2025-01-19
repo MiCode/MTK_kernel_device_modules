@@ -24,4 +24,3 @@ endif
 
 obj-$(CONFIG_MTK_AEE_FEATURE)	+= aed/
 obj-$(CONFIG_MTK_AEE_FEATURE)	+= mrdump/
-obj-$(CONFIG_MTK_AEE_HANGDET)   += hangdet/
