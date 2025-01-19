@@ -3917,7 +3917,7 @@
 					<0 0>, <0 0>;
 
 			/* vccq2 is ext ldo */
-			vcc-supply = <&mt6358_vemc_reg>;
+			/* vcc-supply = <&mt6358_vemc_reg>; */
 
 			resets = <&infracfg_rst 1>, <&infracfg_rst 2>,
 				<&infracfg_rst 3>;
@@ -3925,6 +3925,7 @@
 
 			bootmode = <&chosen>;
 			mediatek,ufs-qos;
+			mediatek,ufs-disable-mcq;
 		};
 
 		mmc0: mmc@11230000 {
