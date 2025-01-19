@@ -46,4 +46,6 @@
 #define REG_JPGDEC_LARB_F00(base, idx) ((base) + 0xF00 + (idx) * 4)
 #define REG_JPGDEC_LARB_F80(base, idx) ((base) + 0xF80 + (idx) * 4)
 
+#define REG_JPGDEC_VENC_318(base, idx) ((base) + 0x318 + (idx) * 4)
+
 #endif

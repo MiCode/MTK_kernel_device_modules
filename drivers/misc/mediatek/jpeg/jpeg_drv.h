@@ -76,6 +76,7 @@ struct JpegDeviceStruct {
 	struct icc_path *jpeg_path_wdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_bsdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_huff_offset[HW_CORE_NUMBER];
+	bool is_qos_16_level;
 	long ven0BaseVA;
 	long smiLarbBaseVA[JPEG_LARB_COUNT];
 	uint32_t axdomain[JPEG_LARB_COUNT];

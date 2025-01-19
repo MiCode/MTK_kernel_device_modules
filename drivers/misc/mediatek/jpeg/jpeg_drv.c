@@ -448,7 +448,7 @@ void jpeg_drv_hybrid_dec_end_dvfs(void)
 	}
 }
 
-static void jpeg_drv_prepare_bw_request(unsigned int id)
+static void jpeg_drv_prepare_qos_request(unsigned int id)
 {
 	unsigned int node_id = gJpegqDev.larb_idx_map[id];
 
@@ -458,24 +458,37 @@ static void jpeg_drv_prepare_bw_request(unsigned int id)
 								jpegdec_bsdma_name[id]);
 	gJpegqDev.jpeg_path_huff_offset[id] = of_mtk_icc_get(gJpegqDev.pDev[node_id],
 								jpegdec_huff_offset_name[id]);
-	JPEG_LOG(0, "bw prepare(%p, %p, %p)",
+	JPEG_LOG(0, "qos prepare(%p, %p, %p)",
 		    gJpegqDev.jpeg_path_wdma[id],
 		    gJpegqDev.jpeg_path_bsdma[id],
 		    gJpegqDev.jpeg_path_huff_offset[id]);
 }
 
-static void jpeg_drv_update_bw_request(unsigned int id)
+static void jpeg_drv_update_qos_request(unsigned int id)
 {
-	JPEG_LOG(1, "update bw request id: %d", id);
+	JPEG_LOG(1, "update qos request id: %d", id);
+
+	if (gJpegqDev.ven0BaseVA && gJpegqDev.is_qos_16_level) {
+		IMG_REG_WRITE(0x71,
+			      REG_JPGDEC_VENC_318(gJpegqDev.ven0BaseVA,
+						  gJpegqDev.larb_port[id][JPEG_DEC_WDMA]));
+		IMG_REG_WRITE(0x71,
+			      REG_JPGDEC_VENC_318(gJpegqDev.ven0BaseVA,
+						  gJpegqDev.larb_port[id][JPEG_DEC_BSDMA]));
+		IMG_REG_WRITE(0x71,
+			      REG_JPGDEC_VENC_318(gJpegqDev.ven0BaseVA,
+						  gJpegqDev.larb_port[id][JPEG_DEC_HUFF_OFFSET]));
+		IMG_REG_WRITE(0x8C, (gJpegqDev.ven0BaseVA + 0x39c));
+	}
 
 	mtk_icc_set_bw(gJpegqDev.jpeg_path_wdma[id], MBps_to_icc(960), 0);
 	mtk_icc_set_bw(gJpegqDev.jpeg_path_bsdma[id], MBps_to_icc(576), 0);
 	mtk_icc_set_bw(gJpegqDev.jpeg_path_huff_offset[id], MBps_to_icc(40), 0);
 }
 
-static void jpeg_drv_end_bw_request(unsigned int id)
+static void jpeg_drv_end_qos_request(unsigned int id)
 {
-	JPEG_LOG(1, "end bw request id: %d", id);
+	JPEG_LOG(1, "end qos request id: %d", id);
 
 	mtk_icc_set_bw(gJpegqDev.jpeg_path_wdma[id], 0, 0);
 	mtk_icc_set_bw(gJpegqDev.jpeg_path_bsdma[id], 0, 0);
@@ -532,7 +545,7 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	if (ret)
 		JPEG_LOG(0, "[%d] cg on failed %d", id, ret);
 
-	jpeg_drv_update_bw_request(id);
+	jpeg_drv_update_qos_request(id);
 
 	JPEG_LOG(1, "[%d] JPEG Hybrid Decoder Power On", id);
 }
@@ -541,7 +554,7 @@ void jpeg_drv_hybrid_dec_power_off(int id)
 {
 	int ret;
 
-	jpeg_drv_end_bw_request(id);
+	jpeg_drv_end_qos_request(id);
 
 	clk_disable_unprepare(gJpegqDev.jpegClk[id]);
 
@@ -1236,8 +1249,12 @@ static int jpeg_probe(struct platform_device *pdev)
 						gJpegqDev.larb_port[i][JPEG_DEC_HUFF_OFFSET]);
 			}
 
-			jpeg_drv_prepare_bw_request(i);
+			jpeg_drv_prepare_qos_request(i);
 		}
+
+		gJpegqDev.is_qos_16_level = of_property_read_bool(pdev->dev.of_node,
+								  "mmqos-16-level");
+		JPEG_LOG(0, "mmqos-16-level: 0x%x", gJpegqDev.is_qos_16_level);
 
 		jpeg_drv_hybrid_dec_prepare_dvfs();
 
@@ -1305,7 +1322,7 @@ static int jpeg_probe(struct platform_device *pdev)
 					gJpegqDev.larb_port[i][JPEG_DEC_HUFF_OFFSET]);
 		}
 
-		jpeg_drv_prepare_bw_request(i);
+		jpeg_drv_prepare_qos_request(i);
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node,
