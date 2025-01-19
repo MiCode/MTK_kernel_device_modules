@@ -165,6 +165,7 @@ static struct cmdq_client *dpe_clt;
 #define DVE_IS_BUSY     0x1
 #define WMFE_IS_BUSY    0x2
 
+static DEFINE_MUTEX(gDpeMutex);
 
 /* static irqreturn_t DPE_Irq_CAM_A(signed int  Irq,void *DeviceId); */
 static irqreturn_t ISP_Irq_DPE(signed int Irq, void *DeviceId);
@@ -4024,6 +4025,7 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 
 	log_dbg("- E. UserCount: %d.", DPEInfo.UserCount);
 
+	mutex_lock(&gDpeMutex);  /* Protect the Multi Process */
 
 	/*  */
 	spin_lock(&(DPEInfo.SpinLockDPERef));
@@ -4135,7 +4137,7 @@ static signed int DPE_open(struct inode *pInode, struct file *pFile)
 #endif
 	/*  */
 EXIT:
-
+	mutex_unlock(&gDpeMutex);
 	log_dbg("- X. Ret: %d. UserCount: %d.", Ret, DPEInfo.UserCount);
 	return Ret;
 
@@ -4155,6 +4157,9 @@ static signed int DPE_release(
 		kfree(pFile->private_data);
 		pFile->private_data = NULL;
 	}
+
+	mutex_lock(&gDpeMutex);  /* Protect the Multi Process */
+
 	/*  */
 	spin_lock(&(DPEInfo.SpinLockDPERef));
 	DPEInfo.UserCount--;
@@ -4186,7 +4191,7 @@ log_dbg("Curr UserCount(%d),(process, pid, tgid)=(%s, %d, %d), last user",
 	/*  */
 EXIT:
 
-
+	mutex_unlock(&gDpeMutex);
 	log_dbg("- X. UserCount: %d.", DPEInfo.UserCount);
 	return 0;
 }
