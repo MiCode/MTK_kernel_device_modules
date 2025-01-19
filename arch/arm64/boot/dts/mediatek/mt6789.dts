@@ -3412,6 +3412,7 @@
 			<14 100 0>;	/* spk process */
 
 			debug_dumptimeout = "enable"; /*core dump timeout debug*/
+			scp-protect = "disable";   /* enable scp protections */
 			secure-dump = "enable";	/* enable dump via secure world */
 			secure-dump-size = <0x200000>;
 
