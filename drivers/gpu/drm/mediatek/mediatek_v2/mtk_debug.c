@@ -3910,7 +3910,14 @@ static void process_dbg_opt(const char *opt)
 
 		disp_gamma_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "oddmr:", 4) == 0) {
-		mtk_disp_oddmr_debug(opt + 6);
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+		mtk_disp_oddmr_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "mtcmos:", 7) == 0) {
 		int ret;
 		unsigned int pd_id, on;

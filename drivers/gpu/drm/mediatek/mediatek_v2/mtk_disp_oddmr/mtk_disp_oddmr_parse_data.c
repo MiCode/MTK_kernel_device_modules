@@ -606,13 +606,13 @@ int mtk_oddmr_load_param(struct mtk_disp_oddmr *priv, struct mtk_drm_oddmr_param
 		} else {
 			memset(g_dmr_param.dmr_tables[table_idx], 0, size_alloc);
 		}
-		priv->dmr_state = ODDMR_INVALID;
+		priv->primary_data->dmr_state = ODDMR_INVALID;
 		ret = _mtk_oddmr_load_param(param);
 		if (ret == 0) {
 			if (0 == (g_dmr_param.valid_table & (1 << table_idx)))
 				g_dmr_param.valid_table_cnt += 1;
 			g_dmr_param.valid_table |= (1 << table_idx);
-			priv->dmr_state = ODDMR_LOAD_PARTS;
+			priv->primary_data->dmr_state = ODDMR_LOAD_PARTS;
 		}
 		DDPINFO("%s:%d, dmr table cnt %d, valid 0x%x\n",
 				__func__, __LINE__,
@@ -637,7 +637,7 @@ int mtk_oddmr_load_param(struct mtk_disp_oddmr *priv, struct mtk_drm_oddmr_param
 					__func__, __LINE__, table_idx);
 			return -EFAULT;
 		}
-		priv->od_state = ODDMR_INVALID;
+		priv->primary_data->od_state = ODDMR_INVALID;
 		size_alloc = sizeof(struct mtk_oddmr_od_table);
 		if (g_od_param.od_tables[table_idx] == NULL) {
 			DDPINFO("%s:%d, od_table%d is NULL\n",
@@ -662,7 +662,7 @@ int mtk_oddmr_load_param(struct mtk_disp_oddmr *priv, struct mtk_drm_oddmr_param
 			if (0 == (g_od_param.valid_table & (1 << table_idx)))
 				g_od_param.valid_table_cnt += 1;
 			g_od_param.valid_table |= (1 << table_idx);
-			priv->od_state = ODDMR_LOAD_PARTS;
+			priv->primary_data->od_state = ODDMR_LOAD_PARTS;
 		}
 		DDPINFO("%s:%d, od table cnt %d, valid 0x%x\n",
 				__func__, __LINE__,

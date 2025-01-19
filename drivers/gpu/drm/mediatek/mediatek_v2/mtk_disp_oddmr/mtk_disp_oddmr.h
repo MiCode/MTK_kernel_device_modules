@@ -409,6 +409,54 @@ struct mtk_disp_oddmr_parital_data_v {
 	unsigned int y_idx2_ini;
 	unsigned int y_remain2_ini;
 };
+
+struct work_struct_oddmr_data {
+	void *data;
+	struct work_struct task;
+};
+
+/**
+ * struct mtk_disp_oddmr_primary - DISP_oddmr driver structure for dualpipe common data
+ */
+struct mtk_disp_oddmr_primary {
+	bool od_support;
+	bool dmr_support;
+	bool dbi_support;
+	/*
+	 * od_weight_trigger is used to trigger od set pq
+	 * is used in resume, res switch flow frame 2
+	 * frame 1: od on weight = 0 (weight_trigger == 1)
+	 * frame 2: od on weight != 0 (weight_trigger == 0)
+	 */
+	atomic_t od_weight_trigger;
+	atomic_t frame_dirty;
+	atomic_t sof_irq_available;
+	/* 2: need oddmr hrt, 1: oddmr hrt done, 0:nothing to do */
+	atomic_t dmr_hrt_done;
+	atomic_t dbi_hrt_done;
+	atomic_t od_hrt_done;
+	struct mtk_oddmr_timing current_timing;
+	struct mtk_oddmr_panelid panelid;
+	struct task_struct *sof_irq_event_task;
+	struct wait_queue_head sof_irq_wq;
+	struct wait_queue_head hrt_wq;
+	struct mutex clock_lock;
+	struct mutex timing_lock;
+	struct mutex dbi_data_lock;
+	struct mutex dmr_data_lock;
+	enum ODDMR_STATE od_state;
+	enum ODDMR_STATE dmr_state;
+	enum ODDMR_STATE dbi_state;
+	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
+	struct mtk_drm_dmr_cfg_info dmr_multi_bin[MAX_BIN_NUM];
+	struct mtk_drm_oddmr_binset_cfg_info dmr_binset_cfg_info;
+	struct mtk_drm_oddmr_reg_tuning oddmr_reg_tuning_info;
+	struct mtk_drm_dbi_cfg_info dbi_cfg_info;
+	struct mtk_drm_dbi_cfg_info dbi_cfg_info_tb1;
+	struct workqueue_struct *oddmr_wq;
+	struct work_struct_oddmr_data update_table_work;
+};
+
 /**
  * struct mtk_disp_oddmr - DISP_oddmr driver structure
  * @ddp_comp - structure containing type enum and hardware resources
@@ -417,6 +465,9 @@ struct mtk_disp_oddmr {
 	struct mtk_ddp_comp	 ddp_comp;
 	const struct mtk_disp_oddmr_data *data;
 	bool is_right_pipe;
+	int path_order;
+	struct mtk_ddp_comp *companion;
+	struct mtk_disp_oddmr_primary *primary_data;
 	struct mtk_disp_oddmr_od_data od_data;
 	struct mtk_disp_oddmr_dmr_data dmr_data;
 	struct mtk_disp_oddmr_dbi_data dbi_data;
@@ -462,20 +513,7 @@ struct mtk_disp_oddmr {
 	uint32_t larb_dbir;
 	uint32_t larb_odr;
 	uint32_t larb_odw;
-	/* only use in pipe0 */
-	enum ODDMR_STATE od_state;
-	enum ODDMR_STATE dmr_state;
-	enum ODDMR_STATE dbi_state;
-	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
-	struct mtk_drm_dmr_cfg_info dmr_multi_bin[MAX_BIN_NUM];
-	struct mtk_drm_oddmr_binset_cfg_info dmr_binset_cfg_info;
-	struct mtk_drm_oddmr_reg_tuning oddmr_reg_tuning_info;
-	struct mtk_drm_dbi_cfg_info dbi_cfg_info;
-	struct mtk_drm_dbi_cfg_info dbi_cfg_info_tb1;
 	uint32_t od_user_gain;
-	/* workqueue */
-	struct workqueue_struct *oddmr_wq;
-	struct work_struct update_table_work;
 	/*user pq od bypass lock*/
 	uint32_t pq_od_bypass;
 	struct mtk_disp_oddmr_tile_overhead_v tile_overhead_v;
@@ -491,10 +529,10 @@ int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
 int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
-void mtk_oddmr_timing_chg(struct mtk_oddmr_timing *timing, struct cmdq_pkt *handle);
-void mtk_oddmr_bl_chg(uint32_t bl_level, struct cmdq_pkt *handle);
-int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt);
-void mtk_disp_oddmr_debug(const char *opt);
+void mtk_oddmr_timing_chg(struct mtk_ddp_comp *comp, struct mtk_oddmr_timing *timing, struct cmdq_pkt *handle);
+void mtk_oddmr_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, struct cmdq_pkt *handle);
+int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int *oddmr_hrt);
+void mtk_disp_oddmr_debug(struct drm_crtc *crtc, const char *opt);
 void mtk_oddmr_ddren(struct cmdq_pkt *cmdq_handle,
 	struct drm_crtc *crtc, int en);
 unsigned int check_oddmr_err_event(void);

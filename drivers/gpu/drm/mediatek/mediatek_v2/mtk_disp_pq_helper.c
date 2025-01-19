@@ -64,8 +64,8 @@ static struct pq_module_match pq_module_matches[MTK_DISP_PQ_TYPE_MAX] = {
 	{MTK_DISP_PQ_CHIST, MTK_DISP_CHIST}, // 5
 	{MTK_DISP_PQ_C3D, MTK_DISP_C3D},
 	{MTK_DISP_PQ_TDSHP, MTK_DISP_TDSHP},
-	{MTK_DISP_PQ_DMR, MTK_DISP_ODDMR},
-	{MTK_DISP_PQ_DBI, MTK_DISP_ODDMR},
+	{MTK_DISP_PQ_INVALID, MTK_DISP_ODDMR},
+	{MTK_DISP_PQ_ODDMR, MTK_DISP_ODDMR},
 };
 
 static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
@@ -513,36 +513,6 @@ int disp_pq_proxy_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *de
 	return ret;
 }
 
-bool disp_pq_is_cmd_need_pm(enum mtk_pq_frame_cfg_cmd cmd)
-{
-	bool ret = true;
-
-	switch (cmd) {
-	case PQ_AAL_GET_HIST:
-	case PQ_AAL_GET_SIZE:
-	case PQ_CCORR_GET_IRQ:
-	case PQ_C3D_GET_IRQ:
-	case PQ_TDSHP_GET_SIZE:
-	case PQ_VIRTUAL_GET_IRQ:
-	case PQ_DBI_LOAD_PARAM:
-	case PQ_DBI_LOAD_TB:
-	case PQ_DBI_REMAP_CHG:
-	case PQ_DBI_GET_HW_ID:
-	case PQ_DBI_GET_WIDTH:
-	case PQ_DBI_GET_HEIGHT:
-	case PQ_DBI_GET_DBV:
-	case PQ_DBI_GET_FPS:
-	case PQ_DBI_GET_SCP:
-	case PQ_VIRTUAL_GET_PIXEL_TYPE_BY_FENCE:
-	case PQ_DBI_GET_SCP_LIFECYCLE:
-		ret = false;
-		break;
-	default:
-		break;
-	}
-	return ret;
-}
-
 int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *file_priv)
 {
 	struct drm_crtc *crtc;
@@ -556,7 +526,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 	unsigned long long time;
 	int ret = -1;
 
-	if (!params || !params->size || !params->data) {
+	if (!params || (params->size && !params->data)) {
 		DDPPR_ERR("%s, null pointer!\n", __func__);
 		return -1;
 	}
@@ -589,7 +559,8 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 		return -1;
 	}
 
-	if (copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
+	if (params->data && params->size &&
+		copy_from_user(kdata, (void __user *)params->data, params->size) != 0)
 		goto err;
 
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {

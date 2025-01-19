@@ -2602,7 +2602,7 @@ static int calc_hrt_num(struct drm_device *dev,
 				false);
 	}
 	*/
-	mtk_oddmr_hrt_cal_notify(&comp_hrt_added);
+	mtk_oddmr_hrt_cal_notify(dev, &comp_hrt_added);
 
 	sum_overlap_w += comp_hrt_added;
 	if ((disp_idx == HRT_PRIMARY) && get_layering_opt(LYE_OPT_OVL_BW_MONITOR))
