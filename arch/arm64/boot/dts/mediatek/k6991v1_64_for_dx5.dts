@@ -749,7 +749,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &gpu_dvfs_mips {
-	reduce-mips-support = <1>;
+	reduce-mips-support = <2>;
 	soc-timer-unit = <13>;
 };
 
