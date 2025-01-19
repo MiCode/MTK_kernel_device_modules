@@ -1481,6 +1481,14 @@ static void mtu3_remove(struct platform_device *pdev)
 		ssusb_host_exit(ssusb);
 		break;
 	case USB_DR_MODE_UNKNOWN:
+		/*
+		 * This cannot happen because with dr_mode ==
+		 * USB_DR_MODE_UNKNOWN, .probe() doesn't succeed and so
+		 * .remove() wouldn't be called at all. However (little
+		 * surprising) the compiler isn't smart enough to see that, so
+		 * we explicitly have this case item to not make the compiler
+		 * wail about an unhandled enumeration value.
+		 */
 		break;
 	}
 
@@ -1730,7 +1738,7 @@ MODULE_DEVICE_TABLE(of, mtu3_of_match);
 
 static struct platform_driver mtu3_driver = {
 	.probe = mtu3_probe,
-	.remove = mtu3_remove,
+	.remove_new = mtu3_remove,
 	.shutdown = mtu3_shutdown,
 	.driver = {
 		.name = MTU3_DRIVER_NAME,
