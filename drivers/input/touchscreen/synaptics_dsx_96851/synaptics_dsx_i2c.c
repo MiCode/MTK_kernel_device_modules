@@ -277,7 +277,7 @@ static int synaptics_rmi4_i2c_alloc_buf(struct synaptics_rmi4_data *rmi4_data,
 static void synaptics_rmi4_i2c_check_addr(struct synaptics_rmi4_data *rmi4_data,
 		struct i2c_client *i2c)
 {
-	if (hw_if.board_data->ub_i2c_addr == -1)
+	if (hw_if.board_data->ub_i2c_addr == 0xFFFFFFFF)
 		return;
 
 	if (hw_if.board_data->i2c_addr == i2c->addr)

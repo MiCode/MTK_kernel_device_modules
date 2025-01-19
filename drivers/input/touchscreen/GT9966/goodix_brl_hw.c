@@ -1034,6 +1034,7 @@ static void goodix_parse_pen(struct goodix_pen_data *pen_data,
 		coor_data = &buf[IRQ_EVENT_HEAD_LEN];
 
 		id = (coor_data[0] >> 4) & 0x0F;
+		ts_debug(" the touch id is = %d", id);
 		pen_data->coords.x = le16_to_cpup((__le16 *)(coor_data + 2));
 		pen_data->coords.y = le16_to_cpup((__le16 *)(coor_data + 4));
 		pen_data->coords.p = le16_to_cpup((__le16 *)(coor_data + 6));
