@@ -2925,6 +2925,15 @@ err_set_param:
 		}
 	}
 
+	mutex_lock(&ctx->buf_lock);
+	if (q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+		while (v4l2_m2m_dst_buf_remove(ctx->m2m_ctx))
+			;
+	else
+		while (v4l2_m2m_src_buf_remove(ctx->m2m_ctx))
+			;
+	mutex_unlock(&ctx->buf_lock);
+
 	return ret;
 }
 
