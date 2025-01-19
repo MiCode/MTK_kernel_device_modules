@@ -512,6 +512,30 @@ void fg_daemon_get_data(struct mtk_battery *gm, int cmd,
 				prcv->idx);
 		}
 		break;
+	case FG_DAEMON_CMD_GET_RL_DATA:
+		{
+			char *ptr;
+
+			if (sizeof(struct rl_data_st)
+				!= prcv->total_size) {
+				bm_err(gm, "%s size is different %d %d\n",
+				__func__,
+				(int)sizeof(
+				struct rl_data_st),
+				prcv->total_size);
+			}
+
+			ptr = (char *)&gm->rl_data;
+			memcpy(pret->input, &ptr[prcv->idx],
+				pret->size);
+			bm_trace(gm,
+				"FG_DATA_TYPE_TABLE type:%d size:%d %d idx:%d\n",
+				FG_DAEMON_CMD_GET_BH_DATA,
+				prcv->total_size,
+				prcv->size,
+				prcv->idx);
+		}
+		break;
 	default:
 		bm_err(gm, "%s bad cmd:0x%x\n",
 			__func__, cmd);
@@ -1935,6 +1959,17 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		break;
 	case 812:
 		{
+			int val = param;
+
+			wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
+					FG_KERNEL_CMD_GET_RL_DATA, val);
+
+			bm_err(gm, "exe_BAT_EC cmd %d %d. test R learning\n",
+				cmd, val);
+		}
+		break;
+	case 813:
+		{
 			long long return_value;
 			int current_car;
 
@@ -1945,16 +1980,6 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 				return_value = current_car;
 			}
 			bm_err(gm, "return car without reset %lld\n", return_value);
-		}
-		break;
-	case 813:
-		{
-			int val = param;
-			wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
-					FG_KERNEL_CMD_GET_RL_DATA, val);
-
-			bm_err(gm, "exe_BAT_EC cmd %d %d. test R learning\n",
-				cmd, val);
 		}
 		break;
 	default:
@@ -2727,12 +2752,26 @@ static ssize_t BAT_SHUTDOWN_store(
 	char *s = buf_str, *pch;
 	/* char *ori = buf_str; */
 	int chr_size = 0;
-	int i = 0, count = 0, value[7], result = 0;
+	int i = 0, j=0, count = 0, value[7], result = 0;
 	struct mtk_battery *gm;
 	struct mtk_gauge *gauge;
 
 	gauge = dev_get_drvdata(dev);
 	gm = gauge->gm;
+
+	if (size > 50) {
+		bm_err(gm, "%s error, size mismatch\n", __func__);
+		return -1;
+	}
+
+	for (i = 0; i < strlen(buf); i++) {
+		if (buf[i] == ',')
+			j++;
+	}
+	if (j != 7) {
+		bm_err(gm, "%s error, invalid input\n", __func__);
+		return -1;
+	}
 
 	bm_err(gm, "%s, size =%zu, str=%s\n", __func__, size, buf);
 	strscpy(buf_str, buf, size);
@@ -2920,6 +2959,89 @@ static ssize_t BatteryNotify_store(struct device *dev,
 	return size;
 }
 
+static ssize_t RL_show(
+	struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return 0;
+}
+
+static ssize_t RL_store(
+	struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t size)
+{
+	char copy_str[7], buf_str[350];
+	char *s = buf_str, *pch;
+	/* char *ori = buf_str; */
+	int chr_size = 0;
+	int i = 0, j = 0, count = 0, value[11], result = 0;
+	struct mtk_battery *gm;
+	struct mtk_gauge *gauge;
+
+	gauge = dev_get_drvdata(dev);
+	gm = gauge->gm;
+
+	if (size > 70) {
+		bm_err(gm, "%s error, size mismatch\n", __func__);
+		return -1;
+	}
+
+	for (i = 0; i < strlen(buf); i++) {
+		if (buf[i] == ',')
+			j++;
+	}
+	if (j != 9) {
+		bm_err(gm, "%s error, invalid input\n", __func__);
+		return -1;
+	}
+
+	bm_err(gm, "%s, size =%zu, str=%s\n", __func__, size, buf);
+	strscpy(buf_str, buf, size);
+	bm_err(gm, "%s, copy str=%s\n", __func__, buf_str);
+
+	if (buf != NULL && size != 0) {
+		pch = strchr(s, ',');
+		while (pch != NULL) {
+			memset(copy_str, 0, sizeof(copy_str));
+
+			chr_size = pch - s;
+			strscpy(copy_str, s, chr_size+1);
+
+			result = kstrtoint(copy_str, 10, &value[count]);
+			if (result < 0)
+				bm_err(gm, "[%s]str:%s\n", __func__, copy_str);
+			else {
+				bm_err(gm, "::%s::count:%d,%d\n", copy_str, count, value[count]);
+				s = pch + 1;
+				pch = strchr(s, ',');
+				count++;
+			}
+		}
+	}
+
+	if (count == 9) {
+		for (i = 0; i < 9; i++)
+			gm->rl_data.data[i] = value[i];
+
+	gm->rl_data.data[9] = 0;
+	gm->rl_data.data[10] = 0;
+
+	bm_err(gm, "%s count=%d,temp=%d %d,v=%d,ag=%d %d\n",
+		__func__,
+		count, gm->rl_data.data[6], gm->rl_data.data[0], gm->rl_data.data[2],
+		gm->rl_data.data[7], gm->rl_data.data[8]);
+
+		wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
+			FG_KERNEL_CMD_GET_RL_DATA, 8);
+
+		mdelay(4);
+		bm_err(gm, "%s wakeup DONE~~~\n", __func__);
+	} else
+		bm_err(gm, "%s count=%d, number not match\n", __func__, count);
+
+
+	return size;
+}
+
 static DEVICE_ATTR_RW(Battery_Temperature);
 static DEVICE_ATTR_RW(UI_SOC);
 static DEVICE_ATTR_RW(uisoc_update_type);
@@ -2939,6 +3061,7 @@ static DEVICE_ATTR_RW(BAT_HEALTH);
 static DEVICE_ATTR_RW(BAT_NO_PROP_TIMEOUT);
 static DEVICE_ATTR_RW(BatteryNotify);
 static DEVICE_ATTR_RW(BAT_SHUTDOWN);
+static DEVICE_ATTR_RW(RL);
 
 static int mtk_battery_setup_files(struct platform_device *pdev)
 {
@@ -3018,6 +3141,10 @@ static int mtk_battery_setup_files(struct platform_device *pdev)
 		goto _out;
 
 	ret = device_create_file(&(pdev->dev), &dev_attr_BAT_SHUTDOWN);
+	if (ret)
+		goto _out;
+
+	ret = device_create_file(&(pdev->dev), &dev_attr_RL);
 	if (ret)
 		goto _out;
 
@@ -4681,6 +4808,17 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 	case FG_DAEMON_CMD_GET_BH_DATA:
 	{
 		bm_debug(gm, "FG_DAEMON_CMD_GET_BH_DATA\n");
+
+		fg_daemon_get_data(gm, msg->cmd, &msg->data[0],
+			&ret_msg->data[0]);
+		ret_msg->data_len =
+			sizeof(struct afw_data_param);
+
+	}
+	break;
+	case FG_DAEMON_CMD_GET_RL_DATA:
+	{
+		bm_debug(gm, "FG_DAEMON_CMD_GET_RL_DATA\n");
 
 		fg_daemon_get_data(gm, msg->cmd, &msg->data[0],
 			&ret_msg->data[0]);

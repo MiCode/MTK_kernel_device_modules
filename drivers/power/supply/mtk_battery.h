@@ -330,6 +330,7 @@ enum fg_daemon_cmds {
 	FG_DAEMON_CMD_SET_SELECT_ZCV,
 	FG_DAEMON_CMD_SET_SHOW_AGING_FACTOR,
 	FG_DAEMON_CMD_GET_ZCV_INTR_CAR,
+	FG_DAEMON_CMD_GET_RL_DATA,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 
@@ -1101,6 +1102,10 @@ struct ag_center_data_st {
 	struct timespec64 times[3];
 };
 
+struct rl_data_st {
+	int data[11];
+};
+
 struct shutdown_data {
 	int data[7];
 };
@@ -1181,6 +1186,7 @@ struct mtk_battery {
 
 	/*battery health*/
 	struct ag_center_data_st bh_data;
+	struct rl_data_st rl_data;
 
 	/*battery interrupt*/
 	/* coulomb interrupt */

@@ -146,7 +146,7 @@ int gauge_get_property_control(struct mtk_battery *gm, enum gauge_property gp,
 int get_charger_vbat(struct mtk_battery_manager *bm)
 {
 	struct power_supply *psy;
-	union power_supply_propval val;
+	union power_supply_propval val = {0};
 	int ret;
 
 	psy = power_supply_get_by_name("mtk-master-charger");
@@ -172,20 +172,25 @@ int get_charger_vbat(struct mtk_battery_manager *bm)
 
 int bm_get_vsys(struct mtk_battery_manager *bm)
 {
-	int ret, val = 0;
+	struct power_supply *psy;
+	union power_supply_propval val = {0};
+	int ret;
 
-	if (!IS_ERR(bm->chan_vsys)) {
-		ret = iio_read_channel_processed(bm->chan_vsys, &val);
-		if (ret < 0) {
+	psy = power_supply_get_by_name("mtk-master-charger");
+	if (psy) {
+		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_POWER_NOW, &val);
+		if (ret >= 0)
+			ret = val.intval / 1000;
+		else {
 			pr_err("[%s]read fail,ret=%d use chg_vbat\n", __func__, ret);
-			val = get_charger_vbat(bm);
+			ret = get_charger_vbat(bm);
 		}
 	} else {
 		pr_err("[%s]chan error use chg_vbat\n", __func__);
-		val = get_charger_vbat(bm);
+		ret = get_charger_vbat(bm);
 	}
 
-	return val;
+	return ret;
 }
 
 int bat_get_debug_level(struct mtk_battery *gm)

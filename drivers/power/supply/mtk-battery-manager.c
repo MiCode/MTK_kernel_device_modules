@@ -196,7 +196,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 		if (gm->disableGM30)
 			vbat = 4000;
 		else
-			vbat = gauge_get_int_property(gm, GAUGE_PROP_BATTERY_VOLTAGE);
+			vbat = bm_get_vsys(gm->bm);
 
 		sdu->batdata[sdu->batidx] = vbat;
 
@@ -1529,6 +1529,11 @@ void mtk_bm_send_to_user(struct mtk_battery_manager *bm, u32 pid,
 		return;
 
 	nlh = nlmsg_put(skb, pid, seq, 0, size, 0);
+	if (!nlh) {
+		kfree_skb(skb);
+		return;
+	}
+
 	data = NLMSG_DATA(nlh);
 	memcpy(data, reply_msg, size);
 	NETLINK_CB(skb).portid = 0;	/* from kernel */
@@ -1539,8 +1544,11 @@ void mtk_bm_send_to_user(struct mtk_battery_manager *bm, u32 pid,
 			(bm->mtk_bm_sk, skb, pid, MSG_DONTWAIT);
 		//pr_err("[%s]netlink_unicast , id:%d cmd:%d\n",
 		//	__func__, reply_msg->instance_id, reply_msg->cmd);
-	} else
+	} else {
 		pr_err("[%s]bm->mtk_bm_sk is  NULL\n", __func__);
+		kfree_skb(skb);
+	}
+
 	if (ret < 0) {
 		pr_err("[%s]send failed ret=%d pid=%d\n", __func__, ret, pid);
 		return;
