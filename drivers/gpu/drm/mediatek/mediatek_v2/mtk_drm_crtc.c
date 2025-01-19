@@ -4763,7 +4763,7 @@ enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int 
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
 	if (!addon_data || path >= addon_data->module_num) {
-		DDPPR_ERR("%s, Cannot find resizer component.\n", __func__);
+		DDPINFO("%s, Cannot find resizer component.\n", __func__);
 		return DDP_COMPONENT_ID_MAX;
 	}
 
@@ -4780,7 +4780,7 @@ enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int 
 	if (mtk_ddp_comp_get_type(attach_comp_id) == type)
 		return attach_comp_id;
 
-	DDPPR_ERR("%s, Cannot find the component\n", __func__);
+	DDPINFO("%s, Cannot find the component\n", __func__);
 	return DDP_COMPONENT_ID_MAX;
 }
 
