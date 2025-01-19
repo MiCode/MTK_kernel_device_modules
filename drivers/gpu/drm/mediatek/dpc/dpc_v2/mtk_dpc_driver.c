@@ -1683,7 +1683,7 @@ static void process_dbg_opt(const char *opt)
 		DPCDUMP("cap(0x%x->0x%x)", g_priv->vidle_mask, v1);
 		g_priv->vidle_mask = v1;
 	} else if (strncmp(opt, "avs:", 4) == 0) {
-		handshake_val = readl(MEM_VDISP_AVS_STEP(5));
+		handshake_val = readl(VDISP_SHRMEM_BITWISE);
 		if (strncmp(opt + 4, "off:", 4) == 0) {
 			ret = sscanf(opt, "avs:off:%u,%u\n", &v1, &v2);
 			/* opp(v1): max 5 level; step(v2) max 32 level; v1(5) is used to toggle AVS */
@@ -1692,8 +1692,8 @@ static void process_dbg_opt(const char *opt)
 				goto err;
 			}
 			/*Off avs*/
-			handshake_val |= BIT(0);
-			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+			handshake_val |= BIT(VDISP_AVS_DISABLE_BIT);
+			writel(handshake_val, VDISP_SHRMEM_BITWISE);
 			/*Set opp and step*/
 			writel(v2, MEM_VDISP_AVS_STEP(v1));
 			mmdvfs_force_step_by_vcp(2, 4 - v1);
@@ -1703,18 +1703,21 @@ static void process_dbg_opt(const char *opt)
 				DPCDUMP("[Waring]avs:t_ag sscanf not match");
 				goto err;
 			}
+			handshake_val &= ~BIT(VDISP_AVS_AGING_FAST_EN_BIT);
+			handshake_val |= (v3 << VDISP_AVS_AGING_FAST_EN_BIT);
+			writel(handshake_val, VDISP_SHRMEM_BITWISE);
 		} else if (strncmp(opt + 4, "on", 2) == 0) {
 			/*On avs*/
-			handshake_val &= ~BIT(0);
-			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+			handshake_val &= ~BIT(VDISP_AVS_DISABLE_BIT);
+			writel(handshake_val, VDISP_SHRMEM_BITWISE);
 		} else if (strncmp(opt + 4, "dbg:on", 6) == 0) {
 			/*On avs debug mode */
-			handshake_val |= BIT(1);
-			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+			handshake_val |= BIT(VDISP_AVS_DBG_MODE_BIT);
+			writel(handshake_val, VDISP_SHRMEM_BITWISE);
 		} else if (strncmp(opt + 4, "dbg:off", 7) == 0) {
 			/*Off avs debug mode*/
-			handshake_val &= ~BIT(1);
-			writel(handshake_val, MEM_VDISP_AVS_STEP(5));
+			handshake_val &= ~BIT(VDISP_AVS_DBG_MODE_BIT);
+			writel(handshake_val, VDISP_SHRMEM_BITWISE);
 		}
 	} else if (strncmp(opt, "vote:", 5) == 0) {
 		ret = sscanf(opt, "vote:%u\n", &v1);

@@ -91,6 +91,9 @@ struct mtk_vdisp {
 	int pm_ret;
 	u32 pwr_ack_wait_time;
 };
+const struct mtk_vdisp_data default_vdisp_driver_data = {
+	.avs = &default_vdisp_avs_driver_data,
+};
 static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
 static void __iomem *g_disp_voter;
@@ -497,11 +500,17 @@ static void mtk_vdisp_genpd_put(void)
 	VDISPDBG("%d mtcmos has been put", j);
 }
 
+static void mtk_vdisp_query_aging_val(void)
+{
+	mtk_vdisp_avs_query_aging_val(g_dev[DISP_PD_DISP_VCORE]);
+}
+
 static const struct mtk_vdisp_funcs funcs = {
 	.genpd_put = mtk_vdisp_genpd_put,
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
 	.sent_aod_scp_sema = mtk_sent_aod_scp_sema,
+	.query_aging_val = mtk_vdisp_query_aging_val,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -533,11 +542,14 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	struct mtk_vdisp *priv;
 	struct regulator *rgu;
 	struct resource *res;
+	const char *clkpropname = "vdisp-clock-names";
+	struct property *prop;
+	const char *clkname;
 	int ret = 0;
 	int support = 0;
 	u32 pd_id = 0;
 	struct clk *clk;
-	int i, clk_num;
+	int i = 0, clk_num;
 
 	vcp_node = of_find_node_by_name(NULL, "vcp");
 	if (vcp_node == NULL)
@@ -652,15 +664,15 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	clk_num = of_count_phandle_with_args(dev->of_node, "clocks", "#clock-cells");
+	clk_num = of_property_count_strings(dev->of_node, clkpropname);
 	if (clk_num > 0) {
 		priv->clk_num = clk_num;
 		priv->clks = devm_kmalloc_array(dev, priv->clk_num, sizeof(*priv->clks), GFP_KERNEL);
 
-		for (i = 0; i < priv->clk_num; i++) {
-			clk = of_clk_get(dev->of_node, i);
+		of_property_for_each_string(dev->of_node, clkpropname, prop, clkname) {
+			clk = devm_clk_get(dev, clkname);
 			if (IS_ERR(clk)) {
-				VDISPERR("%s get %d clk failed\n", __func__, i);
+				VDISPERR("%s get %s clk failed\n", __func__, clkname);
 				priv->clk_num = 0;
 				break;
 			}
@@ -668,12 +680,16 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 
 			ret = clk_prepare_enable(priv->clks[i]);
 			if (ret) {
-				VDISPERR("failed to enable pd(%d) clk(%d): %d", pd_id, i, ret);
+				VDISPERR("failed to enable pd(%d) clk(%s): %d", pd_id, clkname, ret);
 				return ret;
 			}
-			VDISPDBG("pd(%d) clk(%d) enable", pd_id, i);
+			VDISPDBG("pd(%d) clk(%s) enable", pd_id, clkname);
+			i++;
 		}
 	}
+
+	if (mtk_vdisp_avs_probe(pdev))
+		return -EINVAL;
 
 	priv->pd_nb.notifier_call = genpd_event_notifier;
 	priv->pd_id = pd_id;
@@ -722,7 +738,8 @@ static int mtk_vdisp_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id mtk_vdisp_driver_v2_dt_match[] = {
-	{.compatible = "mediatek,mt6991-vdisp-ctrl-v2"},
+	{.compatible = "mediatek,mt6991-vdisp-ctrl-v2",
+	 .data = &default_vdisp_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_vdisp_driver_v2_dt_match);
