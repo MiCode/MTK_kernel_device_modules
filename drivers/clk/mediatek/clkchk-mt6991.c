@@ -61,9 +61,9 @@
 #define HWV_IRQ_ADDR_HIS(idx)		(0x2B54 + (idx * 4))
 #define HWV_IRQ_DATA_HIS(idx)		(0x2B8C + (idx * 4))
 
-#define EVT_LEN				40
+#define EVT_LEN				100
 #define CLK_ID_SHIFT			0
-#define CLK_STA_SHIFT			8
+#define CLK_STA_SHIFT			16
 
 static DEFINE_SPINLOCK(clk_trace_lock);
 static unsigned int clk_event[EVT_LEN];
@@ -3761,6 +3761,16 @@ static enum chk_sys_id pll_dump_id[] = {
 	vlp_ck,
 	apmixed,
 	apmixed2,
+	mm_hwv,
+	mm_vcore_pm,
+	disp0_pm,
+	disp1_pm,
+	ovl0_pm,
+	ovl1_pm,
+	mml1_pm,
+	mml0_pm,
+	edptx_pm,
+	dptx_pm,
 	chk_sys_num,
 };
 

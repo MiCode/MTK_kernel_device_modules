@@ -327,12 +327,12 @@ static const struct mtk_gate mm_hwv_pds[] = {
 	[MT6991_PD_DISP_EDPTX] = PD_MM_HWV(MT6991_PD_DISP_EDPTX, "edptx",
 		/* parent */"disp_vcore", 29, RES_FRAMEWORK_VDISP),
 	[MT6991_PD_DISP_EDPTX_EDP_TX] = PD_HWV_V(MT6991_PD_DISP_EDPTX_EDP_TX, "disp_edptx_edp_tx",
-		/* parent */"disp_edptx"),
+		/* parent */"edptx"),
 	/* DISP_DPTX */
 	[MT6991_PD_DISP_DPTX] = PD_MM_HWV(MT6991_PD_DISP_DPTX, "dptx",
 		/* parent */"disp_vcore", 30, RES_FRAMEWORK_VDISP),
 	[MT6991_PD_DISP_DPTX_DP_TX] = PD_HWV_V(MT6991_PD_DISP_DPTX_DP_TX, "disp_dptx_dp_tx",
-		/* parent */"disp_dptx"),
+		/* parent */"dptx"),
 	/* MML0 */
 	[MT6991_PD_MML0] = PD_MM_HWV(MT6991_PD_MML0, "mml0",
 		/* parent */"disp_vcore", 31, RES_FRAMEWORK_VDISP),
