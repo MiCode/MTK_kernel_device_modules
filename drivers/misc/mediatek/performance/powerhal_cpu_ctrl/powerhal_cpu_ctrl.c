@@ -301,7 +301,7 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 		struct file *filp, const char *ubuf,
 		size_t cnt, loff_t *_data)
 {
-	int i = 0, j, policy, cpu, data;
+	int i = 0, j, policy, cpu = 0, data;
 	unsigned int arg_num = 3;
 	char *tok, *tmp;
 	char *buf = perfmgr_copy_from_user_for_proc(ubuf, cnt);
@@ -888,6 +888,8 @@ static int __init powerhal_cpu_ctrl_init(void)
 			for(i=cpu; i<=cpumask_last(policy->related_cpus); i++) {
 				pr_info("%s, cpu[%d]: policy: %d",
 					__func__, i, cpu_num);
+				if(i >= CORE_MAX)
+					break;
 				cpu_mapping_policy[i] = cpu_num;
 				cpu_mapping_cluster[i] = topology_cluster_id(cpu);
 			}
