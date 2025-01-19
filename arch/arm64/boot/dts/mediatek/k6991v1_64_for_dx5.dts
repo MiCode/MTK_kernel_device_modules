@@ -692,6 +692,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_disp_dram_sub_comm0 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
 		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -699,6 +701,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_disp_dram_sub_comm1 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
 		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -706,6 +710,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_mdp_dram_sub_comm2 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
 		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -713,6 +719,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_mdp_dram_sub_comm3 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
 		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -720,6 +728,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_sram_disp_sub_comm0 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
 		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -727,6 +737,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_sram_disp_sub_comm1 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DISP_VCORE_SMI>,
 		<&disp_vdisp_ao_config_clk CLK_MM_V_SMI_SUB_SOMM0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -734,6 +746,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb0 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
 		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -741,6 +755,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb1 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
 		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -748,6 +764,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb20 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
 		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -755,6 +773,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb21 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL0_SMI>,
 		<&ovlsys_config_clk CLK_OVL_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -762,6 +782,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb32 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DIS0_SMI>,
 		<&dispsys_config_clk CLK_MM_SMI_SUB_COMM0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -769,6 +791,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb33 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_DIS1_SMI>,
 		<&dispsys1_config_clk CLK_MM1_SMI_LARB0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -776,6 +800,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb34 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
 		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -783,6 +809,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb35 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
 		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -790,6 +818,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb36 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
 		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -797,6 +827,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb37 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_OVL1_SMI>,
 		<&ovlsys1_config_clk CLK_OVL1_SMI_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -804,6 +836,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb2 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_MML0_SMI>,
 		<&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
 	clock-names = "smi_pd", "apb";
@@ -811,6 +845,8 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &smi_larb3 {
+	power-domains;
+	no-pm-runtime;
 	clocks = <&mm_pd_clk MT6991_PD_MML1_SMI>,
 		<&mdpsys1_config_clk CLK_MDP1_SMI0_SMI>;
 	clock-names = "smi_pd", "apb";
