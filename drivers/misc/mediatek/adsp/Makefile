@@ -15,6 +15,7 @@ obj-${CONFIG_MTK_AUDIODSP_SUPPORT} += adsp.o
 obj-${CONFIG_MTK_ADSP_V0} += v0/
 obj-${CONFIG_MTK_ADSP_V1} += v1/
 obj-${CONFIG_MTK_ADSP_V2} += v2/
+obj-${CONFIG_MTK_ADSP_V3} += v3/
 
 adsp-objs += adsp_core.o
 adsp-objs += adsp_fs.o

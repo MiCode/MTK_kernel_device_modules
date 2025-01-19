@@ -189,8 +189,10 @@ int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 		start_time = ktime_get();
 		while (mtk_mbox_check_send_irq(mbdev, pin_send->mbox,
 						pin_send->pin_index)) {
+			/* if ipi_queue hasn't initiated, wait infinitely,
+			   else the wait timeout is 1ms */
 			time_ipc_us = ktime_us_delta(ktime_get(), start_time);
-			if (time_ipc_us > 1000) {/* 1 ms */
+			if (time_ipc_us > 1000 && ipi_queue_recv_msg_hanlder) {/* 1 ms */
 				pr_warn("%s, time_ipc_us > 1000", __func__);
 				break;
 			}

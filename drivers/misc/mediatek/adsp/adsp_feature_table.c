@@ -265,7 +265,7 @@ int adsp_register_feature(enum adsp_feature_id fid)
 	int ret = -1, cid;
 	bool flag = false;
 
-	if (get_adsp_type() == ADSP_TYPE_RV55)
+	if (get_adsp_type() == ADSP_TYPE_IN_SCP)
 		return 0; //RV55 noneed register feature
 
 	if (fid >= ADSP_NUM_FEATURE_ID)
@@ -296,7 +296,7 @@ int adsp_deregister_feature(enum adsp_feature_id fid)
 	int ret = -1, cid;
 	bool flag = false;
 
-	if (get_adsp_type() == ADSP_TYPE_RV55)
+	if (get_adsp_type() == ADSP_TYPE_IN_SCP)
 		return 0; //RV55 noneed register feature
 
 	if (fid >= ADSP_NUM_FEATURE_ID)

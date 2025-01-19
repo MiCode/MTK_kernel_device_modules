@@ -8,7 +8,9 @@
 
 #include <linux/notifier.h>
 
-//#define CFG_FPGA
+/* Should be undefined when running at real chip */
+// #define CFG_FPGA
+// #define BRINGUP_ADSP
 
 /* reset recovery feature kernel option*/
 #define CFG_RECOVERY_SUPPORT
@@ -186,9 +188,11 @@ enum adsp_irq_id {
 enum adsp_type {
 	ADSP_TYPE_UNKNOWN = -1,
 	ADSP_TYPE_NONE = 0,
-	ADSP_TYPE_HIFI3 = 1,
-	ADSP_TYPE_RV55 = 2,
+	ADSP_TYPE_STANDALONE = 1,
+	ADSP_TYPE_IN_SCP = 2,
 	ADSP_TYPE_NUM,
+	ADSP_TYPE_HIFI3 = ADSP_TYPE_STANDALONE,
+	ADSP_TYPE_RV55 = ADSP_TYPE_IN_SCP,
 };
 
 enum adsp_core_id {

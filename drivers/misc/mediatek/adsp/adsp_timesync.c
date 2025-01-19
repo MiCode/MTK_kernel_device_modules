@@ -36,6 +36,14 @@ struct timesync_control_s {
 
 static struct timesync_control_s timesync_ctrl;
 
+static int arch_counter_get_width(void)
+{
+	u64 min_cycles = (40ULL * 365 * 24 * 3600) * arch_timer_get_cntfrq();
+
+	/* guarantee the returned width is within the valid range */
+	return clamp_val(ilog2(min_cycles - 1) + 1, 56, 64);
+}
+
 static u64 adsp_ts_tick_read(const struct cyclecounter *cc)
 {
 	return arch_timer_read_counter();
@@ -85,7 +93,7 @@ int adsp_timesync_init(void)
 			       NSEC_PER_SEC, 3600);
 
 	timesync_ctrl.cc.read = adsp_ts_tick_read;
-	timesync_ctrl.cc.mask = CLOCKSOURCE_MASK(56);
+	timesync_ctrl.cc.mask = CLOCKSOURCE_MASK(arch_counter_get_width());
 	timesync_ctrl.cc.mult = multiplier;
 	timesync_ctrl.cc.shift = shifter;
 
@@ -100,7 +108,8 @@ int adsp_timesync_init(void)
 	timesync_ctrl.timer.function = adsp_timesync_refresh;
 	timesync_ctrl.period_ms = TIMESYNC_WRAP_TIME_MS;
 
-	pr_info("%s(), done", __func__);
+	pr_info("%s(), done, arch_timer_freq: %u MHz",
+			__func__, arch_timer_get_cntfrq() / 1000000);
 
 	return 0;
 }

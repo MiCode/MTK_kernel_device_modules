@@ -238,15 +238,28 @@ ssize_t adsp_reserve_memory_dump(char *buffer, int size)
 	return n;
 }
 
+/* Deprecated APIs: only support legacy platform of version 1 */
 void adsp_update_mpu_memory_info(struct adsp_priv *pdata)
 {
-	struct adsp_mpu_info_t mpu_info;
+	u32 info[2];
 
-	mpu_info.share_dram_addr = (u32)adsp_reserve_mem.phys_addr;
-	mpu_info.share_dram_size = (u32)adsp_reserve_mem.size;
+	info[0] = (u32)adsp_reserve_mem.phys_addr;
+	info[1] = (u32)adsp_reserve_mem.size;
 
-	pr_info("[ADSP] mpu info=(0x%x, 0x%x)\n",
-		 mpu_info.share_dram_addr, mpu_info.share_dram_size);
 	adsp_copy_to_sharedmem(pdata, ADSP_SHAREDMEM_MPUINFO,
-		&mpu_info, sizeof(struct adsp_mpu_info_t));
+			       info, sizeof(info));
+
+	pr_info("[ADSP] mpu info=(0x%x, 0x%x)\n", info[0], info[1]);
+}
+
+/* Deprecated APIs: only support legacy platform of version 1 */
+void adsp_update_c2c_memory_info(struct adsp_priv *pdata)
+{
+	u32 info[2];
+
+	info[0] = (u32)adsp_get_reserve_mem_phys(ADSP_C2C_MEM_ID);
+	info[1] = (u32)adsp_get_reserve_mem_size(ADSP_C2C_MEM_ID);
+
+	adsp_copy_to_sharedmem(pdata, ADSP_SHAREDMEM_C2C_BUFINFO,
+			       info, sizeof(info));
 }

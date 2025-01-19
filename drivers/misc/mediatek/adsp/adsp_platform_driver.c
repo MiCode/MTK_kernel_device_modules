@@ -29,31 +29,12 @@ static u32 adsp_pending_cnt;
 static bool resume_first_time = true;
 
 /* adsp operation */
-void adsp_update_c2c_memory_info(struct adsp_priv *pdata)
-{
-	struct adsp_c2c_share_dram_info_t c2c_info;
-
-	c2c_info.share_dram_addr = adsp_get_reserve_mem_phys(ADSP_C2C_MEM_ID);
-	c2c_info.share_dram_size = adsp_get_reserve_mem_size(ADSP_C2C_MEM_ID);
-
-	adsp_copy_to_sharedmem(pdata, ADSP_SHAREDMEM_C2C_BUFINFO,
-		&c2c_info, sizeof(struct adsp_c2c_share_dram_info_t));
-}
-
 int adsp_after_bootup(struct adsp_priv *pdata)
 {
 #ifdef BRINGUP_ADSP
 	/* disable adsp suspend by registering feature */
 	_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
 #endif
-
-	/*
-	 * To enable the a2dp feature on mt6878, we utilitze adsp register to issue IRQ to connsys.
-	 * Therefore, we register SYSTEM_ID since adsp bootup guarantees scp can access adsp reg.
-	 */
-	if (get_adsp_type() == ADSP_TYPE_RV55)
-		_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
-
 	/* force release slb buffer */
 	while (slb_memory_control(false) > 0)
 		;
@@ -354,6 +335,7 @@ static struct slbc_data slb_data = {
 
 static int slb_memory_control(bool en)
 {
+#ifndef CFG_FPGA
 	static DEFINE_MUTEX(lock);
 	static int use_cnt;
 	int ret = 0;
@@ -382,6 +364,9 @@ EXIT:
 			__func__, en, ret, use_cnt);
 	mutex_unlock(&lock);
 	return ret < 0 ? ret : use_cnt;
+#else
+	return 0;
+#endif
 }
 
 static void adsp_slb_init_handler(int id, void *data, unsigned int len)
@@ -498,34 +483,33 @@ int adsp_core1_init(struct adsp_priv *pdata)
 }
 EXPORT_SYMBOL(adsp_core1_init);
 
-/* -1: unparsed; 0: parsed, no adsp; 1: HIFI3; 2: RV55 */
+/* -1: unparsed; 0: parsed, no adsp; 1: STANDALONE(Hifi/RV); 2: IN_SCP(RV) */
 int get_adsp_type(void)
 {
 	static int adsp_type = ADSP_TYPE_UNKNOWN;
 	struct device_node *dsp_node;
-	const char *type_str = NULL;
-	int ret = 0;
 
 	if (adsp_type != ADSP_TYPE_UNKNOWN)
 		return adsp_type;
 
 	adsp_type = ADSP_TYPE_NONE;
-	dsp_node = of_find_node_by_name(NULL, "snd-audio-dsp");
+
+	dsp_node = of_find_node_by_name(NULL, "adspsys");
 	if (dsp_node) {
-		ret = of_property_read_string(dsp_node, "mtk-dsp-type", &type_str);
-		if (ret < 0) {
-			adsp_type = ADSP_TYPE_HIFI3;
+		if (of_device_is_available(dsp_node)) {
+			adsp_type = ADSP_TYPE_STANDALONE;
 			goto EXIT;
 		}
-
-		if (strncmp(type_str, "RV55", sizeof("RV55")) == 0)
-			adsp_type = ADSP_TYPE_RV55;
-		else if (strncmp(type_str, "HIFI", sizeof("HIFI")) == 0)
-			adsp_type = ADSP_TYPE_HIFI3;
 	}
 
+	dsp_node = of_find_node_by_name(NULL, "scp-audio-mbox");
+	if (dsp_node) {
+		if (of_device_is_available(dsp_node)) {
+			adsp_type = ADSP_TYPE_IN_SCP;
+			goto EXIT;
+		}
+	}
 EXIT:
-	pr_info("%s, adsp_type: %d\n", __func__, adsp_type);
 	return adsp_type;
 }
 EXPORT_SYMBOL(get_adsp_type);

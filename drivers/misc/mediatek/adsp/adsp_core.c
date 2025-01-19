@@ -537,18 +537,21 @@ static struct notifier_block adsp_pd_notifier_block = {
 
 void adsp_select_clock_mode(enum adsp_clk_mode mode)
 {
-	if (adspsys)
+	if (adspsys && adspsys->clk_ops.select)
 		adspsys->clk_ops.select(mode);
 }
 
 int adsp_enable_clock(void)
 {
-	return adspsys ? adspsys->clk_ops.enable() : 0;
+	if (adspsys && adspsys->clk_ops.enable)
+		return adspsys->clk_ops.enable();
+	else
+		return 0;
 }
 
 void adsp_disable_clock(void)
 {
-	if (adspsys)
+	if (adspsys && adspsys->clk_ops.disable)
 		adspsys->clk_ops.disable();
 }
 
@@ -805,7 +808,7 @@ int adsp_system_bootup(void)
 	register_devapc_power_callback(&devapc_power_handle);
 #endif
 
-	pr_info("%s done\n", __func__);
+	pr_info("%s done, dsp_type:%d\n", __func__, get_adsp_type());
 	return 0;
 
 ERROR:
