@@ -9,6 +9,133 @@
 
 #define WRAP_INFO "i3c_i2c_wrap"
 
+static struct i2c_dev_desc *mtk_i3c_master_find_i2c_dev_by_addr(
+	const struct i3c_master_controller *master, u16 addr)
+{
+	struct i2c_dev_desc *dev;
+
+	i3c_bus_for_each_i2cdev(&master->bus, dev) {
+		if (dev->addr == addr)
+			return dev;
+	}
+
+	return NULL;
+}
+
+struct i3c_i2c_device mtk_i3c_dev_find_i2c_dev_by_addr(
+	struct i3c_i2c_device *i3c_i2c_dev, u16 static_addr)
+{
+	struct i3c_i2c_device i3c_i2c_vir_dev;
+	struct i3c_master_controller *master = NULL;
+	struct i2c_dev_desc *i2c_desc = NULL;
+	struct i2c_client *i2c_vir_client = NULL;
+
+	memset(&i3c_i2c_vir_dev, 0, sizeof(i3c_i2c_vir_dev));
+	if (!i3c_i2c_dev) {
+		pr_info("[%s][%s] i3c_i2c_dev is NULL\n",
+			WRAP_INFO, __func__);
+		goto find_dev_done;
+	}
+	if (i3c_i2c_dev->protocol != I3C_PROTOCOL) {
+		pr_info("[%s][%s] i3c_i2c_dev->protocol=%u, not do anything.\n",
+			WRAP_INFO, __func__, i3c_i2c_dev->protocol);
+		goto find_dev_done;
+	}
+	if (!i3c_i2c_dev->i3c_dev || !i3c_i2c_dev->i3c_dev->desc) {
+		pr_info("[%s][%s] i3c_dev or desc is NULL,%p\n",
+			WRAP_INFO, __func__, i3c_i2c_dev->i3c_dev);
+		goto find_dev_done;
+	}
+	master = i3c_dev_get_master(i3c_i2c_dev->i3c_dev->desc);
+	if (!master) {
+		pr_info("[%s][%s] master is NULL\n", WRAP_INFO, __func__);
+		goto find_dev_done;
+	}
+	i2c_desc = mtk_i3c_master_find_i2c_dev_by_addr(master, static_addr);
+	if (!i2c_desc) {
+		pr_info("[%s][%s] i2c_desc is NULL\n", WRAP_INFO, __func__);
+		goto find_dev_done;
+	}
+	i2c_vir_client = i2c_desc->dev;
+	if (IS_ERR_OR_NULL(i2c_vir_client)) {
+		pr_info("[%s][%s] client IS_ERR_OR_NULL.\n", WRAP_INFO, __func__);
+		goto find_dev_done;
+	}
+	i3c_i2c_vir_dev.i2c_dev = i2c_vir_client;
+	i3c_i2c_vir_dev.protocol = I2C_PROTOCOL;
+
+find_dev_done:
+	pr_info("[%s][%s]addr=0x%x,i3c=%p,i2c=%p,id=%p,pro=%d\n",
+		WRAP_INFO, __func__, static_addr, i3c_i2c_vir_dev.i3c_dev,
+		i3c_i2c_vir_dev.i2c_dev, i3c_i2c_vir_dev.id,
+		i3c_i2c_vir_dev.protocol);
+	return i3c_i2c_vir_dev;
+}
+EXPORT_SYMBOL_GPL(mtk_i3c_dev_find_i2c_dev_by_addr);
+
+struct i3c_i2c_device mtk_i3c_i2c_new_client_device(
+	struct i3c_i2c_device *i3c_i2c_dev, u16 static_addr, u8 lvr)
+{
+	struct i3c_i2c_device i3c_i2c_vir_dev;
+	struct i2c_board_info vir_info;
+	struct i3c_master_controller *master = NULL;
+	struct i2c_client *i2c_vir_client = NULL;
+#ifdef I2C_NEW_CLIENT_M_LVR
+	struct i2c_dev_desc *i2c_desc = NULL;
+#endif
+
+	memset(&i3c_i2c_vir_dev, 0, sizeof(i3c_i2c_vir_dev));
+	if (!i3c_i2c_dev) {
+		pr_info("[%s][%s] i3c_i2c_dev is NULL\n",
+			WRAP_INFO, __func__);
+		goto new_client_done;
+	}
+	if (i3c_i2c_dev->protocol != I3C_PROTOCOL) {
+		pr_info("[%s][%s] i3c_i2c_dev->protocol=%u, not do anything.\n",
+			WRAP_INFO, __func__, i3c_i2c_dev->protocol);
+		goto new_client_done;
+	}
+	if (!i3c_i2c_dev->i3c_dev || !i3c_i2c_dev->i3c_dev->desc) {
+		pr_info("[%s][%s] i3c_dev or desc is NULL,%p\n",
+			WRAP_INFO, __func__, i3c_i2c_dev->i3c_dev);
+		goto new_client_done;
+	}
+	master = i3c_dev_get_master(i3c_i2c_dev->i3c_dev->desc);
+	if (!master) {
+		pr_info("[%s][%s] master is NULL\n", WRAP_INFO, __func__);
+		goto new_client_done;
+	}
+
+	memset(&vir_info, 0, sizeof(vir_info));
+	vir_info.addr = static_addr;
+	snprintf(vir_info.type, sizeof(vir_info.type), "%d-vir-%04x",
+		i2c_adapter_id(&master->i2c), static_addr);
+	i2c_vir_client = i2c_new_client_device(&master->i2c, &vir_info);
+	if (IS_ERR_OR_NULL(i2c_vir_client)) {
+		pr_info("[%s][%s] i2c_new_client fail.\n", WRAP_INFO, __func__);
+		goto new_client_done;
+	}
+	i3c_i2c_vir_dev.i2c_dev = i2c_vir_client;
+	i3c_i2c_vir_dev.protocol = I2C_PROTOCOL;
+
+#ifdef I2C_NEW_CLIENT_M_LVR
+	i2c_desc = mtk_i3c_master_find_i2c_dev_by_addr(master, static_addr);
+	if (i2c_desc) {
+		pr_info("[%s][%s] modify lvr:new=0x%x,old=0x%x.\n",
+			WRAP_INFO, __func__, lvr, i2c_desc->lvr);
+		i2c_desc->lvr = lvr;
+	} else
+		pr_info("[%s][%s] not find_i2c_desc\n", WRAP_INFO, __func__);
+#endif
+
+new_client_done:
+	pr_info("[%s][%s]addr=0x%x,lvr=0x%x,i3c=%p,i2c=%p,id=%p,pro=%d,type=%s\n",
+		WRAP_INFO, __func__, static_addr, lvr, i3c_i2c_vir_dev.i3c_dev,
+		i3c_i2c_vir_dev.i2c_dev, i3c_i2c_vir_dev.id,
+		i3c_i2c_vir_dev.protocol, vir_info.type);
+	return i3c_i2c_vir_dev;
+}
+EXPORT_SYMBOL_GPL(mtk_i3c_i2c_new_client_device);
 
 int i3c_i2c_transfer(struct i3c_i2c_device *i3c_i2c_dev,
 	struct i3c_i2c_xfer *xfers, int nxfers)
