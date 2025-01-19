@@ -202,8 +202,8 @@ enum {
 #define SRAM_VMM_VAL(y)		(SRAM_BASE + 4 * (326 + SRAM_OBJ_CNT * (y) + 2))
 
 /* VMM : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
-#define SRAM_VMM_HW_VAL(y)	(SRAM_BASE + 4 * (350 + SRAM_OBJ_CNT * (y) + 0))
-#define SRAM_VMM_VOLT(y)	(SRAM_BASE + 4 * (350 + SRAM_OBJ_CNT * (y) + 1))
+#define SRAM_VMM_HW_VAL(y)	(SRAM_BASE + 4 * (350 + SRAM_REC_CNT * 0 + (y)))
+#define SRAM_VMM_VOLT(y)	(SRAM_BASE + 4 * (350 + SRAM_REC_CNT * 1 + (y)))
 
 #define SRAM_VMM_EFUSE_HIGH	(SRAM_BASE + 4 * (372))
 #define SRAM_VMM_EFUSE_LOW	(SRAM_BASE + 4 * (373))
