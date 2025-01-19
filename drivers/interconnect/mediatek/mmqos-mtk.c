@@ -66,7 +66,7 @@
 #define MAX_RECORD_COMM_NUM	(2)
 #define MAX_RECORD_PORT_NUM	(9)
 #define VIRT_COMM_PORT_ID	(8)
-#define MAX_RECORD_LARB_NUM	(50)
+#define MAX_RECORD_LARB_NUM	(64)
 
 #define MAX_BW_VALUE_NUM	(24)
 #define MAX_REG_VALUE_NUM	(8)
