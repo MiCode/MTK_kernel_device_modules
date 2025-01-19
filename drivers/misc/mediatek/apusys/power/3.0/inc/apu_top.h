@@ -35,6 +35,8 @@ enum aputop_func_id {
 	APUTOP_FUNC_BOOT_HOST,	// to support multi-user
 	APUTOP_FUNC_GET_UP_DATA,// get remote data which send by apupw drv in uP
 	APUTOP_FUNC_GET_MBRAIN_DATA,
+	APUTOP_FUNC_FEATURE_OPTION_0, /* 12 */
+	APUTOP_FUNC_FEATURE_OPTION_1,
 	APUTOP_FUNC_MAX_ID,
 };
 
