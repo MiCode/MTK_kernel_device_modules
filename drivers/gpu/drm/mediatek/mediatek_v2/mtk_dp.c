@@ -236,10 +236,20 @@ int notify_uevent_user(struct notify_dev *sdev, int state)
 void dptx_shutdown(void)
 {
 	int ret;
+	void *base;
 
 	g_mtk_dp->shutdown = 1;
 	DPTXMSG("unprepare dptx shutdown\n");
 	if (g_mtk_dp->priv->pwr_node) {
+		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
+			// Sram setting
+			base = ioremap(0x3EFF1A10, 0x10);
+			writel(0x1, base + 0xC);
+			iounmap(base);
+			base = ioremap(0x3EFFC000, 0x100);
+			writel(0x20000, base + 0xA4);
+			iounmap(base);
+		}
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 		pm_runtime_put_sync(g_mtk_dp->dev);
@@ -259,6 +269,22 @@ void mtk_dp_set_delay(bool enable, unsigned int mode, unsigned int delay_time)
 	g_mtk_dp->info.delay_enable = enable;
 	g_mtk_dp->info.delay_mode = mode;
 	g_mtk_dp->info.delay_time = delay_time;
+}
+
+void mtk_dp_dpconnector_setting(void)
+{
+	void *base;
+
+	DPTXMSG("jayer dp connector setting\n");
+	base = ioremap(0x1002d400, 0x1000);
+
+	// set 0x1002d400 16 & 17 bit
+	writel(readl(base) | (1 << 16) | (1 << 17), base);
+
+	// set 0x1002d800 19 bit
+	writel(readl(base + 0x400) | (1 << 19), base + 0x400);
+
+	iounmap(base);
 }
 
 void dptx_dump_reg(void)
@@ -307,7 +333,10 @@ void mtk_dp_MacAudioPatternGenEn(bool enable)
 
 void mtk_dp_intfPatternGenEn(bool enable)
 {
-	mtk_dp_intf_PatternGenEn(enable);
+	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+		mtk_dp_dvo_PatternGenEn(enable);
+	else
+		mtk_dp_intf_PatternGenEn(enable);
 }
 
 void mtk_dp_force_timing(bool enable, unsigned int mode)
@@ -772,7 +801,11 @@ void mdrv_DPTx_SetDPTXOut(struct mtk_dp *mtk_dp)
 
 	switch (mtk_dp->info.input_src) {
 	case DPTX_SRC_PG:
-		mhal_DPTx_VideoClock(true, mtk_dp->info.resolution);
+		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+			mhal_DVO_VideoClock(true, mtk_dp->info.resolution);
+		else
+			mhal_DPTx_VideoClock(true, mtk_dp->info.resolution);
+
 		mhal_DPTx_PGEnable(mtk_dp, true);
 		mhal_DPTx_Set_MVIDx2(mtk_dp, false);
 		DPTXMSG("Set Pattern Gen output\n");
@@ -1666,6 +1699,15 @@ void mdrv_DPTx_put_device(void)
 	}
 	if(g_mtk_dp->shutdown == 0) {
 		if (g_mtk_dp->priv->pwr_node) {
+			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
+				// Sram setting
+				base = ioremap(0x3EFF1A10, 0x10);
+				writel(0x1, base + 0xC);
+				iounmap(base);
+				base = ioremap(0x3EFFC000, 0x100);
+				writel(0x20000, base + 0xA4);
+				iounmap(base);
+			}
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 			pm_runtime_put_sync(g_mtk_dp->dev);
@@ -1689,8 +1731,10 @@ void mdrv_DPTx_put_device(void)
 		}
 	} else {
 		if (g_mtk_dp->info.bPatternGen)
-			mhal_DPTx_VideoClock(false,
-				g_mtk_dp->info.resolution);
+			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+				mhal_DVO_VideoClock(false, g_mtk_dp->info.resolution);
+			else
+				mhal_DPTx_VideoClock(false, g_mtk_dp->info.resolution);
 	}
 
 	mtk_dp_vsvoter_clr(g_mtk_dp);
@@ -4353,7 +4397,8 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 				DPTXMSG("[DP DEBUG]delay_mode=0,delay_time=%d\n",g_mtk_dp->info.delay_time);
 				msleep(g_mtk_dp->info.delay_time*1000);
 			}
-			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
+			g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
 				if (g_mtk_dp->priv->dpc_dev) {
 					/* get mminfra before DPTX on */
 					if (g_mtk_dp->priv->pwr_node)
@@ -4366,19 +4411,37 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					}
 				}
 				if (g_mtk_dp->priv->pwr_node) {
+					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
+						base = ioremap(0x3EFFC000, 0x100);
+						writel(0x20000, base + 0xA8); // Set bit 0 to 1 (reset)
+						iounmap(base);
+					}
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 					pm_runtime_get_sync(g_mtk_dp->dev);
 				}
 				else
 					pm_runtime_get_sync(g_mtk_dp->dev);
-				// control slice(mac->phy)
-				base = ioremap(0x31b50000, 0x100);
-				writel(readl(base + 0x78) | (1 << 0), base + 0x78); // Set bit 0 to 1 (reset)
-				writel(readl(base + 0x78) & ~(1 << 4), base + 0x78); // Clear bit 4 (enable)
-				iounmap(base);
-				/* Enable 26M to enable aux */
-				mtk_dp_intf_prepare_clk();
+
+				if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
+					// control slice(mac->phy)
+					base = ioremap(0x31b50000, 0x100);
+					writel(readl(base + 0x78) | (1 << 0), base + 0x78); // Set bit 0 to 1 (reset)
+					writel(readl(base + 0x78) & ~(1 << 4), base + 0x78); // Clear bit 4 (enable)
+					iounmap(base);
+					mtk_dp_intf_prepare_clk();
+				} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
+					// Sram setting
+					base = ioremap(0x3EFF1A10, 0x10);
+					writel(0x0, base + 0xC);
+					iounmap(base);
+					// dvo CG setting
+					base = ioremap(0x3E900A70, 0x10);
+					writel(0xFFFFFFFF, base + 0x8);
+					iounmap(base);
+					/* Enable 26M to enable aux */
+					mtk_dp_dvo_prepare_clk();
+				}
 			} else {
 				pm_runtime_get_sync(g_mtk_dp->dev);
 			}

@@ -90,6 +90,7 @@ mediatek-drm-y += mtk_drm_dp/mtk_drm_dp_intf.o \
 	mtk_drm_dp/mtk_drm_dp_debug.o
 else
 mediatek-drm-y += mtk_dp_intf.o \
+	mtk_dvo.o \
 	mtk_dp.o \
 	mtk_dp_hal.o \
 	mtk_dp_debug.o

@@ -285,6 +285,8 @@ void mtk_dp_debug(const char *opt)
 		}
 		enable = (mute_enable!= 0);
 		dptx_mute_all_command(enable);
+	} else if (strncmp(opt, "dp_con", 6) == 0) {
+		mtk_dp_dpconnector_setting();
 	}
 }
 

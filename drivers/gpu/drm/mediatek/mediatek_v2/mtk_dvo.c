@@ -1,0 +1,1399 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+
+#include "mtk_drm_helper.h"
+#include <linux/clk.h>
+#include <linux/component.h>
+#include <linux/of_device.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
+#include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
+#include <drm/drm_atomic_helper.h>
+#include <drm/drm_crtc_helper.h>
+
+#ifndef DRM_CMDQ_DISABLE
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#else
+#include "mtk-cmdq-ext.h"
+#endif
+
+#include "mtk_drm_crtc.h"
+#include "mtk_drm_ddp_comp.h"
+#include "mtk_dump.h"
+#include "mtk_drm_mmp.h"
+#include "mtk_drm_gem.h"
+#include "mtk_drm_fb.h"
+#include "mtk_dp.h"
+
+#define DVO_EN						0x00
+#define EN							BIT(0)
+
+#define DVO_RET						0x04
+#define SWRST						BIT(0)
+
+#define DVO_INTEN					0x08
+#define INT_VFP_START_EN			BIT(0)
+#define INT_VSYNC_START_EN			BIT(1)
+#define INT_VSYNC_END_EN			BIT(2)
+#define INT_VDE_START_EN			BIT(3)
+#define INT_VDE_END_EN				BIT(4)
+#define INT_WR_INFOQ_REG_EN			BIT(5)
+#define INT_TARGET_LINE0_EN			BIT(6)
+#define INT_TARGET_LINE1_EN			BIT(7)
+#define INT_TARGET_LINE2_EN			BIT(8)
+#define INT_TARGET_LINE3_EN			BIT(9)
+#define INT_WR_INFOQ_START_EN		BIT(10)
+#define INT_WR_INFOQ_END_EN			BIT(11)
+#define EXT_VSYNC_START_EN			BIT(12)
+#define EXT_VSYNC_END_EN			BIT(13)
+#define EXT_VDE_START_EN			BIT(14)
+#define EXT_VDE_END_EN				BIT(15)
+#define EXT_VBLANK_END_EN			BIT(16)
+#define UNDERFLOW_EN				BIT(17)
+#define INFOQ_ABORT_EN				BIT(18)
+
+#define DVO_INTSTA					0x0C
+#define INT_VFP_START_STA			BIT(0)
+#define INT_VSYNC_START_STA			BIT(1)
+#define INT_VSYNC_END_STA			BIT(2)
+#define INT_VDE_START_STA			BIT(3)
+#define INT_VDE_END_STA				BIT(4)
+#define INT_WR_INFOQ_REG_STA		BIT(5)
+#define INT_TARGET_LINE0_STA		BIT(6)
+#define INT_TARGET_LINE1_STA		BIT(7)
+#define INT_TARGET_LINE2_STA		BIT(8)
+#define INT_TARGET_LINE3_STA		BIT(9)
+#define INT_WR_INFOQ_START_STA		BIT(10)
+#define INT_WR_INFOQ_END_STA		BIT(11)
+#define EXT_VSYNC_START_STA			BIT(12)
+#define EXT_VSYNC_END_STA			BIT(13)
+#define EXT_VDE_START_STA			BIT(14)
+#define EXT_VDE_END_STA				BIT(15)
+#define EXT_VBLANK_END_STA			BIT(16)
+#define INT_UNDERFLOW_STA			BIT(17)
+#define INFOQ_ABORT_STA				BIT(18)
+
+#define DVO_OUTPUT_SET				0x18
+#define DVO_OUT_1T1P_SEL			0x0
+#define DVO_OUT_1T2P_SEL			0x1
+#define DVO_OUT_1T4P_SEL			0x2
+#define OUT_NP_SEL_MASK				0x3
+
+#define BIT_SWAP					BIT(4)
+#define CH_SWAP_MASK				(0x7 << 5)
+#define CH_SWAP_SHIFT				0x5
+#define SWAP_RGB					0x00
+#define SWAP_GBR					0x01
+#define SWAP_BRG					0x02
+#define SWAP_RBG					0x03
+#define SWAP_GRB					0x04
+#define SWAP_BGR					0x05
+#define PXL_SWAP					BIT(8)
+#define R_MASK						BIT(12)
+#define G_MASK						BIT(13)
+#define B_MASK						BIT(14)
+#define DE_MASK						BIT(16)
+#define HS_MASK						BIT(17)
+#define VS_MASK						BIT(18)
+#define HS_INV						BIT(19)
+#define VS_INV						BIT(20)
+#define DE_POL						BIT(19)
+#define HSYNC_POL					BIT(20)
+#define VSYNC_POL					BIT(21)
+#define CK_POL						BIT(22)
+
+#define DVO_SRC_SIZE				0x20
+#define SRC_HSIZE					0
+#define SRC_HSIZE_MASK				(0xFFFF << 0)
+#define SRC_VSIZE					16
+#define SRC_VSIZE_MASK				(0xFFFF << 16)
+
+#define DVO_PIC_SIZE				0x24
+#define PIC_HSIZE					0
+#define PIC_HSIZE_MASK				(0xFFFF << 0)
+#define PIC_VSIZE					16
+#define PIC_VSIZE_MASK				(0xFFFF << 16)
+
+#define DVO_OUT_SIZE				0x28
+
+#define DVO_TGEN_H0					0x50
+#define HFP							0
+#define HFP_MASK					(0xFFFF << 0)
+#define HSYNC						16
+#define HSYNC_MASK					(0xFFFF << 16)
+
+#define DVO_TGEN_H1					0x54
+#define HSYNC2ACT					0
+#define HSYNC2ACT_MASK				(0xFFFF << 0)
+#define HACT						16
+#define HACT_MASK					(0xFFFF << 16)
+
+#define DVO_TGEN_V0					0x58
+#define VFP							0
+#define VFP_MASK					(0xFFFF << 0)
+#define VSYNC						16
+#define VSYNC_MASK					(0xFFFF << 16)
+
+#define DVO_TGEN_V1					0x5C
+#define VSYNC2ACT					0
+#define VSYNC2ACT_MASK				(0xFFFF << 0)
+#define VACT						16
+#define VACT_MASK					(0xFFFF << 16)
+
+#define DVO_TGEN_INFOQ_LATENCY		0x80
+#define INFOQ_START_LATENCY			0
+#define INFOQ_START_LATENCY_MASK	(0xFFFF << 0)
+#define INFOQ_END_LATENCY			16
+#define INFOQ_END_LATENCY_MASK		(0xFFFF << 16)
+
+#define DVO_MUTEX_VSYNC_SET			0x84
+#define MUTEX_VSYNC_SEL				BIT(0)
+
+#define DVO_MATRIX_SET				0x140
+#define CSC_EN						BIT(0)
+#define MATRIX_SEL_RGB_TO_JPEG      (0x0 << 4)
+#define MATRIX_SEL_RGB_TO_BT601     (0x2 << 4)
+#define MATRIX_SEL_RGB_TO_BT709     (0x3 << 4)
+#define INT_MTX_SEL					(0x2 << 4)
+#define INT_MTX_SEL_MASK            GENMASK(8, 4)
+
+#define DVO_YUV422_SET				0x170
+#define YUV422_EN					BIT(0)
+#define VYU_MAP						BIT(8)
+
+#define DVO_BUF_CON0				0x220
+#define DISP_BUF_EN					BIT(0)
+#define FIFO_UNDERFLOW_DONE_BLOCK	BIT(4)
+
+#define DVO_TGEN_V_LAST_TRAILING_BLANK	0x6c
+#define V_LAST_TRAILING_BLANK			0
+#define V_LAST_TRAILING_BLANK_MASK		(0xFFFF << 0)
+
+#define DVO_TGEN_OUTPUT_DELAY_LINE	0x7c
+#define EXT_TG_DLY_LINE				0
+#define EXT_TG_DLY_LINE_MASK		(0xFFFF << 0)
+
+#define DVO_PATTERN_CTRL			0x100
+#define PRE_PAT_EN					BIT(0)
+#define PRE_PAT_SEL_MASK			(0x7 << 4)
+#define COLOR_BAR					(0x4<<4)
+#define PRE_PAT_FORCE_ON			BIT(8)
+
+#define DVO_PATTERN_COLOR			0x104
+#define PAT_R						(0x3FF << 0)
+#define PAT_G						(0x3FF << 10)
+#define PAT_B						(0x3FF << 20)
+
+#define DVO_SHADOW_CTRL				0x190
+#define FORCE_COMMIT				BIT(0)
+#define BYPASS_SHADOW				BIT(1)
+#define READ_WRK_REG				BIT(2)
+
+#define DVO_BUF_RW_TIMES			0x22C
+#define DVO_BUF_SODI_HIGHT			0x230
+#define DVO_BUF_SODI_LOW			0x234
+#define DVO_BUF_VDE					0x256
+#define DISP_BUF_VDE_BLOCK_URGENT			BIT(0)
+#define DISP_BUF_NON_VDE_FORCE_PREULTRA		BIT(1)
+#define DISP_BUF_VDE_BLOCK_ULTRA				BIT(2)
+#define DVO_DISP_BUF_MASK			0xFFFFFFFF
+
+#define DVO_STATUS					0xE00
+
+
+static const struct of_device_id mtk_dvo_driver_dt_match[];
+/**
+ * struct mtk_dp_dvo - DP_dvo driver structure
+ * @ddp_comp - structure containing type enum and hardware resources
+ */
+struct mtk_dp_dvo {
+	struct mtk_ddp_comp	 ddp_comp;
+	struct device *dev;
+	struct mtk_dp_dvo_driver_data *driver_data;
+	struct drm_encoder encoder;
+	struct drm_connector conn;
+	struct drm_bridge *bridge;
+	void __iomem *regs;
+	struct clk *hf_fmm_ck;
+	struct clk *hf_fdp_ck;
+	struct clk *pclk;
+	struct clk *vcore_pclk;
+	struct clk *pclk_src[6];
+	int irq;
+	struct drm_display_mode mode;
+	int enable;
+	int res;
+};
+
+struct mtk_dp_dvo_resolution_cfg {
+	unsigned int clksrc;
+	unsigned int tvppll_clk;
+	unsigned int dp_clk;
+};
+
+enum TVDPLL_CLK {
+	TCK_26M = 0,
+	TVDPLL_D16 = 3,
+	TVDPLL_D8 = 1,
+	TVDPLL_D4 = 2,
+	TVDPLL_D2 = 4,
+	TVDPLL_PLL = 5,
+};
+
+static const struct mtk_dp_dvo_resolution_cfg resolution_cfg[SINK_MAX] = {
+	[SINK_640_480] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 25200000*4
+				},
+	[SINK_800_600] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 39822000*4
+				},
+	[SINK_848_480] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 33734000*4
+				},
+	[SINK_1280_720] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 74250000*4
+				},
+	[SINK_1280_800] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 83635000*4
+				},
+	[SINK_1280_960] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 108000000*4
+				},
+	[SINK_1280_1024] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 107806000*4
+				},
+	[SINK_1920_1080] = {
+					.clksrc = TVDPLL_D8,
+					.dp_clk = 37125,
+					.tvppll_clk = 148500000*2
+				},
+	[SINK_1920_1080_120] = {
+					.clksrc = TVDPLL_D8,
+					.dp_clk = 74250,
+					.tvppll_clk = 148500000*4
+				},
+	[SINK_1080_2460] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 174276000*4
+				},
+	[SINK_1920_1200] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 154440000*4
+				},
+	[SINK_1920_1440] = {
+					.clksrc = TVDPLL_D16,
+					.dp_clk = 37125,
+					.tvppll_clk = 234000000*4
+				},
+	[SINK_2048_1536] = {
+					.clksrc = TVDPLL_D8,
+					.dp_clk = 74250,
+					.tvppll_clk = 209510000*2
+				},
+	[SINK_2560_1440] = {
+					.clksrc = TVDPLL_D8,
+					.dp_clk = 74250,
+					.tvppll_clk = 241392000*2
+				},
+	[SINK_2560_1600] = {
+					.clksrc = TVDPLL_D8,
+					.dp_clk = 74250,
+					.tvppll_clk = 269683000*2
+				},
+	[SINK_3840_2160_30] = {
+					.clksrc = TVDPLL_D8,
+					.dp_clk = 74250,
+					.tvppll_clk = 297000000*2
+				},
+	[SINK_3840_2160] = {
+					.clksrc = TVDPLL_D4,
+					.dp_clk = 148500,
+					.tvppll_clk = 594000000
+				}, //htotal = 1500  //con1 = 0x83109D89; //htotal = 1600
+	[SINK_7680_4320] = {
+					.clksrc = 0,
+					.dp_clk = 0,
+					.tvppll_clk = 0
+				},
+};
+
+struct mtk_dp_dvo_video_clock {
+	const struct mtk_dp_dvo_resolution_cfg *resolution_cfg;
+};
+
+static const struct mtk_dp_dvo_video_clock dp_dvo_video_clock = {
+	.resolution_cfg = resolution_cfg
+};
+
+struct mtk_dp_dvo_driver_data {
+	const u32 reg_cmdq_ofs;
+	const u8 np_sel;
+	s32 (*poll_for_idle)(struct mtk_dp_dvo *dp_dvo,
+		struct cmdq_pkt *handle);
+	irqreturn_t (*irq_handler)(int irq, void *dev_id);
+	void (*get_pll_clk)(struct mtk_dp_dvo *dp_dvo);
+	const struct mtk_dp_dvo_video_clock *video_clock_cfg;
+};
+
+static int irq_intsa;
+static int irq_vdesa;
+static int irq_underflowsa;
+static int irq_tl;
+static unsigned long long dp_dvo_bw;
+static struct mtk_dp_dvo *g_dp_dvo;
+
+static inline struct mtk_dp_dvo *comp_to_dp_dvo(struct mtk_ddp_comp *comp)
+{
+	return container_of(comp, struct mtk_dp_dvo, ddp_comp);
+}
+
+static inline struct mtk_dp_dvo *encoder_to_dp_dvo(struct drm_encoder *e)
+{
+	return container_of(e, struct mtk_dp_dvo, encoder);
+}
+
+static inline struct mtk_dp_dvo *connector_to_dp_dvo(struct drm_connector *c)
+{
+	return container_of(c, struct mtk_dp_dvo, conn);
+}
+
+static void mtk_dp_dvo_mask(struct mtk_dp_dvo *dp_dvo, u32 offset,
+	u32 mask, u32 data)
+{
+	u32 temp = readl(dp_dvo->regs + offset);
+
+	writel((temp & ~mask) | (data & mask), dp_dvo->regs + offset);
+}
+
+void dp_dvo_dump_reg(void)
+{
+	u32 i, val[4], reg;
+
+	for (i = 0x0; i < 0x100; i += 16) {
+		reg = i;
+		val[0] = readl(g_dp_dvo->regs + reg);
+		val[1] = readl(g_dp_dvo->regs + reg + 4);
+		val[2] = readl(g_dp_dvo->regs + reg + 8);
+		val[3] = readl(g_dp_dvo->regs + reg + 12);
+		DPTXMSG("dp_dvo reg[0x%x] = 0x%x 0x%x 0x%x 0x%x\n",
+			reg, val[0], val[1], val[2], val[3]);
+	}
+}
+
+static void mtk_dp_dvo_destroy_conn_enc(struct mtk_dp_dvo *dp_dvo)
+{
+	drm_encoder_cleanup(&dp_dvo->encoder);
+	/* Skip connector cleanup if creation was delegated to the bridge */
+	if (dp_dvo->conn.dev)
+		drm_connector_cleanup(&dp_dvo->conn);
+}
+
+static void mtk_dp_dvo_start(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle)
+{
+	void __iomem *baddr = comp->regs;
+	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
+
+	DPTXFUNC();
+	DPTXMSG("%s dp dvo->pclk =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->pclk));
+	DPTXMSG("%s dp dvo->hf_fmm_ck =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->hf_fmm_ck));
+	DPTXMSG("%s dp dvo->hf_fdp_ck =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->hf_fdp_ck));
+	DPTXMSG("%s dp dvo->pclk_src[TCK_26M] =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->pclk_src[TCK_26M]));
+	DPTXMSG("%s dp dvo->pclk[TVDPLL_PLL] =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->pclk_src[TVDPLL_PLL]));
+
+	irq_intsa = 0;
+	irq_vdesa = 0;
+	irq_underflowsa = 0;
+	irq_tl = 0;
+	dp_dvo_bw = 0;
+
+	mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, 0xffffffff, 0);
+	mtk_ddp_write_mask(comp, 1,
+		DVO_RET, SWRST, handle);
+	mtk_ddp_write_mask(comp, 0,
+		DVO_RET, SWRST, handle);
+	mtk_ddp_write_mask(comp,
+			(UNDERFLOW_EN |
+			 INT_VDE_END_EN | INT_VSYNC_START_EN),
+			DVO_INTEN,
+			(UNDERFLOW_EN |
+			 INT_VDE_END_EN | INT_VSYNC_START_EN), handle);
+
+	//mtk_ddp_write_mask(comp, DP_PATTERN_EN,
+	//	DP_PATTERN_CTRL0, DP_PATTERN_EN, handle);
+	//mtk_ddp_write_mask(comp, DP_PATTERN_COLOR_BAR,
+	//	DP_PATTERN_CTRL0, DP_PATTERN_COLOR_BAR, handle);
+
+
+	//DVO function on
+	mtk_ddp_write_mask(comp, EN,
+		DVO_EN, EN, handle);
+
+	dp_dvo->enable = 1;
+}
+
+static void mtk_dp_dvo_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	DPTXFUNC();
+	//mtk_dp_video_trigger(video_mute<<16 | 0);
+	mtk_ddp_write_mask(comp, 0x0, DVO_EN, EN, handle);
+	irq_intsa = 0;
+	irq_vdesa = 0;
+	irq_underflowsa = 0;
+	irq_tl = 0;
+	dp_dvo_bw = 0;
+}
+
+static void mtk_dp_dvo_prepare(struct mtk_ddp_comp *comp)
+{
+	struct mtk_dp_dvo *dp_dvo = NULL;
+	int ret;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+
+	DPTXFUNC();
+	mtk_dp_poweron();
+
+	dp_dvo = comp_to_dp_dvo(comp);
+
+	/* Enable dp dvo clk */
+	if (dp_dvo != NULL) {
+		ret = clk_prepare_enable(dp_dvo->hf_fmm_ck);
+		if (ret < 0)
+			DPTXERR("%s Failed to enable hf_fmm_ck clock: %d\n",
+				__func__, ret);
+		ret = clk_prepare_enable(dp_dvo->hf_fdp_ck);
+		if (ret < 0)
+			DPTXERR("%s Failed to enable hf_fdp_ck clock: %d\n",
+				__func__, ret);
+		mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
+		priv = mtk_crtc->base.dev->dev_private;
+		ret = clk_prepare_enable(dp_dvo->pclk_src[TVDPLL_PLL]);
+		if (ret < 0)
+			DPTXERR("%s Failed to enable pll clock: %d\n",
+				__func__, ret);
+
+	} else
+		DPTXERR("Failed to enable dp_dvo clock\n");
+}
+
+void mtk_dp_dvo_unprepare_clk(void)
+{
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+
+	DPTXFUNC();
+	mtk_crtc = g_dp_dvo->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
+	/* disable dp dvo clk */
+	if (g_dp_dvo != NULL) {
+		clk_set_rate(g_dp_dvo->pclk_src[TVDPLL_PLL], 594000000);
+		clk_disable_unprepare(g_dp_dvo->pclk);
+		DPTXMSG("%s:succesed disable dp_dvo and DP sel clock\n", __func__);
+	} else
+		DPTXERR("Failed to disable dp_dvo clock\n");
+}
+EXPORT_SYMBOL(mtk_dp_dvo_unprepare_clk);
+
+void mtk_dp_dvo_PatternGenEn(bool enable)
+{
+	uint32_t reg_val;
+
+	if (enable) {
+		// pattern gen open
+		writel(0x141, g_dp_dvo->regs + DVO_PATTERN_CTRL);
+		DPTXMSG("[DP Debug]dp dvo pg enable\n");
+	} else {
+		// pattern gen close
+		writel(0x0, g_dp_dvo->regs + DVO_PATTERN_CTRL);
+		DPTXMSG("[DP Debug]dp dvo pg disable\n");
+	}
+}
+EXPORT_SYMBOL(mtk_dp_dvo_PatternGenEn);
+
+static void mtk_dp_dvo_unprepare(struct mtk_ddp_comp *comp)
+{
+	struct mtk_dp_dvo *dp_dvo = NULL;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+
+	DPTXFUNC();
+	dp_dvo = comp_to_dp_dvo(comp);
+
+	/* disable dp dvo clk */
+	if (dp_dvo != NULL) {
+		mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
+		if(mtk_crtc) {
+			priv = mtk_crtc->base.dev->dev_private;
+			if(atomic_read(&priv->kernel_pm.status) == KERNEL_SHUTDOWN)
+				dptx_shutdown();
+		}
+
+		mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
+		priv = mtk_crtc->base.dev->dev_private;
+		DPTXMSG("unprepare pixel clks\n");
+		mtk_dp_dvo_unprepare_clk();
+		clk_disable_unprepare(dp_dvo->hf_fmm_ck);
+		clk_disable_unprepare(dp_dvo->hf_fdp_ck);
+		clk_disable_unprepare(dp_dvo->pclk_src[TVDPLL_PLL]);
+		DPTXMSG("%s:succesed disable dp_dvo clock\n", __func__);
+		mdrv_DPTx_put_device();
+	} else
+		DPTXERR("Failed to disable dp_dvo clock\n");
+}
+
+void mtk_dvo_video_clock(struct mtk_dp_dvo *dp_dvo)
+{
+	unsigned int clksrc = TVDPLL_D2;
+	int ret = 0;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+	void *base;
+
+	DPTXFUNC();
+	if (dp_dvo == NULL) {
+		DPTXERR("%s:input error\n", __func__);
+		return;
+	}
+
+	if (dp_dvo->res >= SINK_MAX || dp_dvo->res < 0) {
+		DPTXERR("%s:input res error: %d\n", __func__, dp_dvo->res);
+		dp_dvo->res = SINK_1920_1080;
+	}
+
+	clksrc = dp_dvo->driver_data->video_clock_cfg->resolution_cfg[dp_dvo->res].clksrc;
+	mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
+	ret = clk_set_rate(dp_dvo->pclk_src[TVDPLL_PLL],
+	dp_dvo->driver_data->video_clock_cfg->resolution_cfg[dp_dvo->res].tvppll_clk);
+	if (ret)
+		DPTXMSG("%s clk_set_rate dp_dvo->pclk: err=%d\n",
+			__func__, ret);
+
+	ret = clk_set_parent(dp_dvo->pclk, dp_dvo->pclk_src[clksrc]);
+	if (ret)
+		DPTXMSG("%s clk_set_parent dp_dvo->pclk: err=%d\n",
+			__func__, ret);
+
+
+	// mux set hard code
+	base = ioremap(0x10040000, 0x100);
+	writel(0x7000000, base + 0x38);
+	writel(0x1000000, base + 0x34);
+	writel(0x800, base + 0x4);
+	iounmap(base);
+
+	DPTXMSG("%s set pclk2 and src %d\n", __func__, clksrc);
+}
+
+void mtk_dp_dvo_prepare_clk(void)
+{
+	int ret;
+
+	DPTXFUNC();
+	DPTXMSG("%s dp dvo->pclk =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->pclk));
+	DPTXMSG("%s dp dvo->hf_fmm_ck =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->hf_fmm_ck));
+	DPTXMSG("%s dp dvo->hf_fdp_ck =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->hf_fdp_ck));
+	DPTXMSG("%s dp dvo->pclk_src[TCK_26M] =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->pclk_src[TCK_26M]));
+	DPTXMSG("%s dp dvo->pclk[TVDPLL_PLL] =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->pclk_src[TVDPLL_PLL]));
+
+	ret = clk_prepare_enable(g_dp_dvo->pclk);
+	if (ret < 0)
+		DPTXMSG("%s Failed to enable pclk: %d\n",
+			__func__, ret);
+
+	ret = clk_set_parent(g_dp_dvo->pclk, g_dp_dvo->pclk_src[TCK_26M]);
+	if (ret < 0)
+		DPTXMSG("%s Failed to clk_set_parent: %d\n",
+			__func__, ret);
+
+	DPTXMSG("%s dpdvo->pclk =  %ld\n",
+		__func__, clk_get_rate(g_dp_dvo->pclk));
+}
+EXPORT_SYMBOL(mtk_dp_dvo_prepare_clk);
+
+/*
+ *static void mtk_dp_dvo_golden_setting(struct mtk_ddp_comp *comp,
+ *					    struct cmdq_pkt *handle)
+ *{
+ *	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
+ *	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+ *	unsigned int dp_buf_sodi_high, dp_buf_sodi_low;
+ *	unsigned int dp_buf_preultra_high, dp_buf_preultra_low;
+ *	unsigned int dp_buf_ultra_high, dp_buf_ultra_low;
+ *	unsigned int dp_buf_urgent_high, dp_buf_urgent_low;
+ *	unsigned int mmsys_clk, dp_clk; //{26000, 37125, 74250, 148500, 297000};
+ *	unsigned int twait = 12, twake = 5;
+ *	unsigned int fill_rate, consume_rate;
+ *
+ *	DPTXFUNC();
+ *	if (dp_dvo->res >= SINK_MAX || dp_dvo->res < 0) {
+ *		DPTXERR("%s:input res error: %d\n", __func__, dp_dvo->res);
+ *		dp_dvo->res = SINK_1920_1080;
+ *	}
+ *
+ *	dp_clk = dp_dvo->driver_data->video_clock_cfg->resolution_cfg[dp_dvo->res].dp_clk;
+ *	dp_clk = dp_clk > 0 ? dp_clk : 74250;
+ *	mmsys_clk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000;
+ *	mmsys_clk = mmsys_clk > 0 ? mmsys_clk : 273000;
+ *
+ *	fill_rate = mmsys_clk * 4 / 8;
+ *	consume_rate = dp_clk * 4 / 8;
+ *	DPTXMSG("%s mmsys_clk=%d, dp_dvo->res=%d, dp_clk=%d, fill_rate=%d, consume_rate=%d\n",
+ *		__func__, mmsys_clk, dp_dvo->res, dp_clk, fill_rate, consume_rate);
+ *
+ *	dp_buf_sodi_high = (5940000 - twait * 100 * fill_rate / 1000 - consume_rate) * 30 / 32000;
+ *	dp_buf_sodi_low = (25 + twake) * consume_rate * 30 / 32000;
+ *
+ *	dp_buf_preultra_high = 36 * consume_rate * 30 / 32000;
+ *	dp_buf_preultra_low = 35 * consume_rate * 30 / 32000;
+ *
+ *	dp_buf_ultra_high = 26 * consume_rate * 30 / 32000;
+ *	dp_buf_ultra_low = 25 * consume_rate * 30 / 32000;
+ *
+ *	dp_buf_urgent_high = 12 * consume_rate * 30 / 32000;
+ *	dp_buf_urgent_low = 11 * consume_rate * 30 / 32000;
+ *
+ *	DPTXDBG("dp_buf_sodi_high=%d, dp_buf_sodi_low=%d, dp_buf_preultra_high=%d, dp_buf_preultra_low=%d\n",
+ *			dp_buf_sodi_high, dp_buf_sodi_low, dp_buf_preultra_high, dp_buf_preultra_low);
+ *
+ *	DPTXDBG("dp_buf_ultra_high=%d, dp_buf_ultra_low=%d dp_buf_urgent_high=%d, dp_buf_urgent_low=%d\n",
+ *			dp_buf_ultra_high, dp_buf_ultra_low, dp_buf_urgent_high, dp_buf_urgent_low);
+ *
+ *	mtk_ddp_write_relaxed(comp, dp_buf_sodi_high, DP_BUF_SODI_HIGH, handle);
+ *	mtk_ddp_write_relaxed(comp, dp_buf_sodi_low, DP_BUF_SODI_LOW, handle);
+ *
+ *	mtk_ddp_write_relaxed(comp, dp_buf_preultra_high, DP_BUF_PREULTRA_HIGH, handle);
+ *	mtk_ddp_write_relaxed(comp, dp_buf_preultra_low, DP_BUF_PREULTRA_LOW, handle);
+ *
+ *	mtk_ddp_write_relaxed(comp, dp_buf_ultra_high, DP_BUF_ULTRA_HIGH, handle);
+ *	mtk_ddp_write_relaxed(comp, dp_buf_ultra_low, DP_BUF_ULTRA_LOW, handle);
+ *
+ *	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_URGENT_HIGH, handle);
+ *	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_URGENT_LOW, handle);
+ *
+ *}
+ */
+
+void mhal_DVO_VideoClock(bool enable, int resolution)
+{
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
+
+	mtk_crtc = g_dp_dvo->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
+	DPTXFUNC();
+	if (enable) {
+		g_dp_dvo->res = resolution;
+		mtk_dvo_video_clock(g_dp_dvo);
+	} else {
+		clk_set_rate(g_dp_dvo->pclk_src[TVDPLL_PLL], 594000000);
+		clk_disable_unprepare(g_dp_dvo->pclk);
+	}
+}
+
+static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
+				 struct mtk_ddp_config *cfg,
+				 struct cmdq_pkt *handle)
+{
+	/*u32 reg_val;*/
+	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
+	unsigned int hsize = 0, vsize = 0;
+	unsigned int hpw = 0;
+	unsigned int hfp = 0, hbp = 0;
+	unsigned int vpw = 0;
+	unsigned int vfp = 0, vbp = 0;
+	unsigned int vtotal = 0;
+	unsigned int bg_left = 0, bg_right = 0;
+	unsigned int bg_top = 0, bg_bot = 0;
+	unsigned int rw_times = 0;
+	u32 val = 0, line_time;
+	u32 dp_vfp_mutex = 0;
+
+	DPTXFUNC();
+	DPTXMSG("%s w %d, h, %d, clock %d, fps %d!\n",
+			__func__, cfg->w, cfg->h, cfg->clock, cfg->vrefresh);
+
+	hsize = cfg->w;
+	vsize = cfg->h;
+	if ((cfg->w == 640) && (cfg->h == 480)) {
+		dp_dvo->res = SINK_640_480;
+		hpw = 24;
+		hfp = 4;
+		hbp = 12;
+		vpw = 2;
+		vfp = 10;
+		vbp = 33;
+	} else if ((cfg->w == 1280) && (cfg->h == 720)
+	    && (cfg->vrefresh == 60)) {
+		dp_dvo->res = SINK_1280_720;
+		hpw = 10;
+		hfp = 28;
+		hbp = 55;
+		vpw = 5;
+		vfp = 5;
+		vbp = 20;
+	} else if ((cfg->w == 1920) && (cfg->h == 1080)
+		   && (cfg->vrefresh == 60)) {
+		dp_dvo->res = SINK_1920_1080;
+		hpw = 11;
+		hfp = 22;
+		hbp = 37;
+		vpw = 5;
+		vfp = 4;
+		vbp = 36;
+	} else if ((cfg->w == 1920) && (cfg->h == 1080)
+		   && (cfg->vrefresh == 120)) {
+		if (cfg->clock == 285500) {
+			dp_dvo->res = SINK_1920_1080_120_RB;
+			hpw = 8;
+			hfp = 12;
+			hbp = 20;
+			vpw = 5;
+			vfp = 3;
+			vbp = 56;
+		} else {
+			dp_dvo->res = SINK_1920_1080_120;
+			hpw = 11;
+			hfp = 22;
+			hbp = 37;
+			vpw = 5;
+			vfp = 4;
+			vbp = 36;
+		}
+	} else if ((cfg->w == 1080) && (cfg->h == 2460)
+			  && (cfg->vrefresh == 60)) {
+		dp_dvo->res = SINK_1080_2460;
+		hpw = 8;
+		hfp = 8; //30/4
+		hbp = 7; //30/4
+		vpw = 2;
+		vfp = 9;
+		vbp = 5;
+	} else if ((cfg->w == 1920) && (cfg->h == 1200)
+			  && (cfg->vrefresh == 60)) {
+		dp_dvo->res = SINK_1920_1200;
+		hpw = 8;
+		hfp = 12;
+		hbp = 20;
+		vpw = 6;
+		vfp = 3;
+		vbp = 26;
+	} else if ((cfg->w == 2560) && (cfg->h == 1440)
+		   && (cfg->vrefresh == 60)) {
+		dp_dvo->res = SINK_2560_1440;
+		hpw = 8;
+		hfp = 12;
+		hbp = 20;
+		vpw = 5;
+		vfp = 3;
+		vbp = 33;
+	} else if ((cfg->w == 2560) && (cfg->h == 1600)
+		   && (cfg->vrefresh == 60)) {
+		dp_dvo->res = SINK_2560_1600;
+		hpw = 8;
+		hfp = 12;
+		hbp = 20;
+		vpw = 6;
+		vfp = 3;
+		vbp = 37;
+	} else if ((cfg->w == 3840) && (cfg->h == 2160)
+		   && (cfg->vrefresh == 30)) {
+		dp_dvo->res = SINK_3840_2160_30;
+		hpw = 22;
+		hfp = 44;
+		hbp = 74;
+		vpw = 10;
+		vfp = 8;
+		vbp = 72;
+	} else if ((cfg->w == 3840) && (cfg->h == 2160)
+		   && (cfg->vrefresh == 60)) {
+		dp_dvo->res = SINK_3840_2160;
+		hpw = 22;
+		hfp = 44;
+		hbp = 74;
+		vpw = 10;
+		vfp = 8;
+		vbp = 72;
+	} else
+		DPTXERR("%s error, w %d, h, %d, fps %d!\n",
+			__func__, cfg->w, cfg->h, cfg->vrefresh);
+
+	mtk_dvo_video_clock(dp_dvo);
+
+	//video config setting
+	mtk_ddp_write_relaxed(comp, (vsize << SRC_VSIZE) | hsize, DVO_SRC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, (vsize << PIC_VSIZE) | hsize, DVO_PIC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, hsize, DVO_OUT_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, (hpw << HSYNC) | hfp, DVO_TGEN_H0, handle);
+	mtk_ddp_write_relaxed(comp, ((hsize / 4) << HACT) | (hbp + hpw), DVO_TGEN_H1, handle);
+	mtk_ddp_write_relaxed(comp, (vpw << VSYNC) | vfp, DVO_TGEN_V0, handle);
+	mtk_ddp_write_relaxed(comp, (vsize << VACT) | (vbp + vpw), DVO_TGEN_V1, handle);
+
+/*
+ *#ifdef IF_ZERO
+ *	mtk_ddp_write_mask(comp, DSC_UFOE_SEL,
+ *			DISP_REG_DSC_CON, DSC_UFOE_SEL, handle);
+ *	mtk_ddp_write_relaxed(comp,
+ *			(slice_group_width - 1) << 16 | slice_width,
+ *			DISP_REG_DSC_SLICE_W, handle);
+ *	mtk_ddp_write(comp, 0x20000c03, DISP_REG_DSC_PPS6, handle);
+ *#endif
+ */
+
+	if (hsize & 0x3)
+		rw_times = ((hsize >> 2) + 1) * vsize;
+	else
+		rw_times = (hsize >> 2) * vsize;
+
+	mtk_ddp_write_relaxed(comp, rw_times,
+			DVO_BUF_RW_TIMES, handle);
+	mtk_ddp_write_mask(comp, DISP_BUF_EN,
+			DVO_BUF_CON0, DISP_BUF_EN, handle);
+	mtk_ddp_write_mask(comp, FIFO_UNDERFLOW_DONE_BLOCK,
+			DVO_BUF_CON0, FIFO_UNDERFLOW_DONE_BLOCK, handle);
+	//DVO 1T4P select
+	mtk_ddp_write_relaxed(comp, DVO_OUT_1T4P_SEL,
+		DVO_OUTPUT_SET, handle);
+
+	//Golden setting need to check
+	//mtk_dp_dvo_golden_setting(comp, handle);
+	val = DISP_BUF_VDE_BLOCK_URGENT | DISP_BUF_NON_VDE_FORCE_PREULTRA | DISP_BUF_VDE_BLOCK_ULTRA;
+	mtk_ddp_write_relaxed(comp, val, DVO_BUF_VDE, handle);
+
+	// vtotal = vfp + vpw + vbp + cfg->h;
+	// line_time = 1000000 / (vtotal * cfg->vrefresh);
+	// val = (200 + line_time - 1) / line_time;
+	// val = val | MUTEX_VSYNC_SEL;
+	// mtk_ddp_write_relaxed(comp, val, DVO_MUTEX_VSYNC_SET, handle);
+
+	DPTXMSG("%s config done\n",
+			mtk_dump_comp_str(comp));
+
+	dp_dvo->enable = true;
+}
+
+/*
+ *int mtk_dp_intf_dump(struct mtk_ddp_comp *comp)
+ *{
+ *	void __iomem *baddr = NULL;
+ *
+ *	if (IS_ERR_OR_NULL(comp) || IS_ERR_OR_NULL(comp->regs)) {
+ *		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+ *		return 0;
+ *	}
+ *
+ *	baddr = comp->regs;
+ *
+ *	DDPDUMP("== %s REGS ==\n", mtk_dump_comp_str(comp));
+ *	DDPDUMP("(0x0000) DVO_EN                 =0x%x\n",
+ *			readl(baddr + DVO_EN));
+ *	DDPDUMP("(0x0004) DVO_RET                =0x%x\n",
+ *			readl(baddr + DVO_RET));
+ *	DDPDUMP("(0x0008) DVO_INTEN              =0x%x\n",
+ *			readl(baddr + DVO_INTEN));
+ *	DDPDUMP("(0x000C) DVO_INTSTA             =0x%x\n",
+ *			readl(baddr + DVO_INTSTA));
+ *	DDPDUMP("(0x0010) DP_CON                =0x%x\n",
+ *			readl(baddr + DP_CON));
+ *	DDPDUMP("(0x0014) DP_OUTPUT_SETTING     =0x%x\n",
+ *			readl(baddr + DP_OUTPUT_SETTING));
+ *	DDPDUMP("(0x0018) DP_SIZE               =0x%x\n",
+ *			readl(baddr + DP_SIZE));
+ *	DDPDUMP("(0x0020) DP_TGEN_HWIDTH        =0x%x\n",
+ *			readl(baddr + DP_TGEN_HWIDTH));
+ *	DDPDUMP("(0x0024) DP_TGEN_HPORCH        =0x%x\n",
+ *			readl(baddr + DP_TGEN_HPORCH));
+ *	DDPDUMP("(0x0028) DP_TGEN_VWIDTH        =0x%x\n",
+ *			readl(baddr + DP_TGEN_VWIDTH));
+ *	DDPDUMP("(0x002C) DP_TGEN_VPORCH        =0x%x\n",
+ *			readl(baddr + DP_TGEN_VPORCH));
+ *	DDPDUMP("(0x0030) DP_BG_HCNTL           =0x%x\n",
+ *			readl(baddr + DP_BG_HCNTL));
+ *	DDPDUMP("(0x0034) DP_BG_VCNTL           =0x%x\n",
+ *			readl(baddr + DP_BG_VCNTL));
+ *	DDPDUMP("(0x0038) DP_BG_COLOR           =0x%x\n",
+ *			readl(baddr + DP_BG_COLOR));
+ *	DDPDUMP("(0x003C) DP_FIFO_CTL           =0x%x\n",
+ *			readl(baddr + DP_FIFO_CTL));
+ *	DDPDUMP("(0x0040) DP_STATUS             =0x%x\n",
+ *			readl(baddr + DP_STATUS));
+ *	DDPDUMP("(0x004C) DP_DCM                =0x%x\n",
+ *			readl(baddr + DP_DCM));
+ *	DDPDUMP("(0x0050) DP_DUMMY              =0x%x\n",
+ *			readl(baddr + DP_DUMMY));
+ *	DDPDUMP("(0x0068) DP_TGEN_VWIDTH_LEVEN  =0x%x\n",
+ *			readl(baddr + DP_TGEN_VWIDTH_LEVEN));
+ *	DDPDUMP("(0x006C) DP_TGEN_VPORCH_LEVEN  =0x%x\n",
+ *			readl(baddr + DP_TGEN_VPORCH_LEVEN));
+ *	DDPDUMP("(0x0070) DP_TGEN_VWIDTH_RODD   =0x%x\n",
+ *			readl(baddr + DP_TGEN_VWIDTH_RODD));
+ *	DDPDUMP("(0x0074) DP_TGEN_VPORCH_RODD   =0x%x\n",
+ *			readl(baddr + DP_TGEN_VPORCH_RODD));
+ *	DDPDUMP("(0x0078) DP_TGEN_VWIDTH_REVEN  =0x%x\n",
+ *			readl(baddr + DP_TGEN_VWIDTH_REVEN));
+ *	DDPDUMP("(0x007C) DP_TGEN_VPORCH_REVEN  =0x%x\n",
+ *			readl(baddr + DP_TGEN_VPORCH_REVEN));
+ *	DDPDUMP("(0x00E0) DP_MUTEX_VSYNC_SETTING=0x%x\n",
+ *			readl(baddr + DP_MUTEX_VSYNC_SETTING));
+ *	DDPDUMP("(0x00E4) DP_SHEUDO_REG_UPDATE  =0x%x\n",
+ *			readl(baddr + DP_SHEUDO_REG_UPDATE));
+ *	DDPDUMP("(0x00E8) DP_INTERNAL_DCM_DIS   =0x%x\n",
+ *			readl(baddr + DP_INTERNAL_DCM_DIS));
+ *	DDPDUMP("(0x00F0) DP_TARGET_LINE        =0x%x\n",
+ *			readl(baddr + DP_TARGET_LINE));
+ *	DDPDUMP("(0x0100) DP_CHKSUM_EN          =0x%x\n",
+ *			readl(baddr + DP_CHKSUM_EN));
+ *	DDPDUMP("(0x0104) DP_CHKSUM0            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM0));
+ *	DDPDUMP("(0x0108) DP_CHKSUM1            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM1));
+ *	DDPDUMP("(0x010C) DP_CHKSUM2            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM2));
+ *	DDPDUMP("(0x0110) DP_CHKSUM3            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM3));
+ *	DDPDUMP("(0x0114) DP_CHKSUM4            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM4));
+ *	DDPDUMP("(0x0118) DP_CHKSUM5            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM5));
+ *	DDPDUMP("(0x011C) DP_CHKSUM6            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM6));
+ *	DDPDUMP("(0x0120) DP_CHKSUM7            =0x%x\n",
+ *			readl(baddr + DP_CHKSUM7));
+ *	DDPDUMP("(0x0210) DP_BUF_CON0      =0x%x\n",
+ *			readl(baddr + DP_BUF_CON0));
+ *	DDPDUMP("(0x0214) DP_BUF_CON1      =0x%x\n",
+ *			readl(baddr + DP_BUF_CON1));
+ *	DDPDUMP("(0x0220) DP_BUF_RW_TIMES      =0x%x\n",
+ *			readl(baddr + DP_BUF_RW_TIMES));
+ *	DDPDUMP("(0x0F00) DP_PATTERN_CTRL0      =0x%x\n",
+ *			readl(baddr + DP_PATTERN_CTRL0));
+ *	DDPDUMP("(0x0F04) DP_PATTERN_CTRL1      =0x%x\n",
+ *			readl(baddr + DP_PATTERN_CTRL1));
+ *
+ *	return 0;
+ *}
+ *
+ *int mtk_dp_intf_analysis(struct mtk_ddp_comp *comp)
+ *{
+ *	void __iomem *baddr = comp->regs;
+ *
+ *	if (!baddr) {
+ *		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+ *		return 0;
+ *	}
+ *
+ *	DDPDUMP("== %s ANALYSIS ==\n", mtk_dump_comp_str(comp));
+ *	DDPDUMP("en=%d, rst_sel=%d, rst=%d, bg_en=%d, intl_en=%d\n",
+ *	DISP_REG_GET_FIELD(CON_FLD_DVO_EN, baddr + DVO_EN),
+ *	DISP_REG_GET_FIELD(CON_FLD_DVO_RET_SEL, baddr + DVO_RET),
+ *	DISP_REG_GET_FIELD(CON_FLD_DVO_RET, baddr + DVO_RET),
+ *	DISP_REG_GET_FIELD(CON_FLD_DP_BG_EN, baddr + DP_CON),
+ *	DISP_REG_GET_FIELD(CON_FLD_DP_INTL_EN, baddr + DP_CON));
+ *	DDPDUMP("== End %s ANALYSIS ==\n", mtk_dump_comp_str(comp));
+ *
+ *	return 0;
+ *}
+ */
+
+unsigned long long mtk_dpdvo_get_frame_hrt_bw_base(
+		struct mtk_drm_crtc *mtk_crtc, struct mtk_dp_dvo *dp_dvo)
+{
+	unsigned long long base_bw;
+	unsigned int vtotal, htotal;
+	int vrefresh;
+	u32 bpp = 4;
+
+	DPTXFUNC();
+	/* for the case dpdvo not initialize yet, return 1 avoid treat as error */
+	if (!(mtk_crtc && mtk_crtc->base.state))
+		return 1;
+
+	htotal = mtk_crtc->base.state->adjusted_mode.htotal;
+	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+	base_bw = div_u64((unsigned long long)vtotal * htotal * vrefresh * bpp, 1000000);
+
+	if (dp_dvo_bw != base_bw) {
+		dp_dvo_bw = base_bw;
+		DPTXMSG("%s Frame Bw:%llu, htotal:%d, vtotal:%d, vrefresh:%d\n",
+			__func__, base_bw, htotal, vtotal, vrefresh);
+	}
+
+	return base_bw;
+}
+
+static unsigned long long mtk_dpdvo_get_frame_hrt_bw_base_by_mode(
+		struct mtk_drm_crtc *mtk_crtc, struct mtk_dp_dvo *dp_dvo)
+{
+	unsigned long long base_bw;
+	unsigned int vtotal, htotal;
+	unsigned int vrefresh;
+	u32 bpp = 4;
+
+	/* for the case dpdvo not initialize yet, return 1 avoid treat as error */
+	if (!(mtk_crtc && mtk_crtc->avail_modes))
+		return 1;
+
+	DPTXFUNC();
+	htotal = mtk_crtc->avail_modes->htotal ;
+	vtotal = mtk_crtc->avail_modes->vtotal;
+	vrefresh = drm_mode_vrefresh(mtk_crtc->avail_modes);
+	base_bw = div_u64((unsigned long long)vtotal * htotal * vrefresh * bpp, 1000000);
+
+	if (dp_dvo_bw != base_bw) {
+		dp_dvo_bw = base_bw;
+		DPTXMSG("%s Frame Bw:%llu, htotal:%d, vtotal:%d, vrefresh:%d\n",
+			__func__, base_bw, htotal, vtotal, vrefresh);
+	}
+
+	return base_bw;
+}
+
+static int mtk_dpdvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+			  enum mtk_ddp_io_cmd cmd, void *params)
+{
+	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
+
+	switch (cmd) {
+	case GET_FRAME_HRT_BW_BY_DATARATE:
+	{
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		unsigned long long *base_bw =
+			(unsigned long long *)params;
+
+		*base_bw = mtk_dpdvo_get_frame_hrt_bw_base(mtk_crtc, dp_dvo);
+	}
+		break;
+	case GET_FRAME_HRT_BW_BY_MODE:
+	{
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		unsigned long long *base_bw =
+			(unsigned long long *)params;
+
+		*base_bw = mtk_dpdvo_get_frame_hrt_bw_base_by_mode(mtk_crtc, dp_dvo);
+	}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static const struct mtk_ddp_comp_funcs mtk_dp_dvo_funcs = {
+	.config = mtk_dp_dvo_config,
+	.start = mtk_dp_dvo_start,
+	.stop = mtk_dp_dvo_stop,
+	.prepare = mtk_dp_dvo_prepare,
+	.unprepare = mtk_dp_dvo_unprepare,
+	.io_cmd = mtk_dpdvo_io_cmd,
+};
+
+static int mtk_dvo_bind(struct device *dev, struct device *master,
+				  void *data)
+{
+	struct mtk_dp_dvo *dp_dvo = dev_get_drvdata(dev);
+	struct drm_device *drm_dev = data;
+	int ret;
+
+	DPTXMSG("%s+\n", __func__);
+	ret = mtk_ddp_comp_register(drm_dev, &dp_dvo->ddp_comp);
+	if (ret < 0) {
+		dev_err(dev, "Failed to register component %s: %d\n",
+			dev->of_node->full_name, ret);
+		return ret;
+	}
+
+	DPTXMSG("%s-\n", __func__);
+	return 0;
+}
+
+static void mtk_dvo_unbind(struct device *dev, struct device *master,
+				 void *data)
+{
+	struct mtk_dp_dvo *dp_dvo = dev_get_drvdata(dev);
+	struct drm_device *drm_dev = data;
+
+	mtk_dp_dvo_destroy_conn_enc(dp_dvo);
+	mtk_ddp_comp_unregister(drm_dev, &dp_dvo->ddp_comp);
+}
+
+static const struct component_ops mtk_dvo_component_ops = {
+	.bind = mtk_dvo_bind,
+	.unbind = mtk_dvo_unbind,
+};
+
+static int mtk_dvo_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct mtk_dp_dvo *dp_dvo;
+	enum mtk_ddp_comp_id comp_id;
+	const struct of_device_id *of_id;
+	struct resource *mem;
+	int ret;
+	struct device_node *node;
+
+	DPTXMSG("%s+\n", __func__);
+	dp_dvo = devm_kzalloc(dev, sizeof(*dp_dvo), GFP_KERNEL);
+	if (!dp_dvo)
+		return -ENOMEM;
+	dp_dvo->dev = dev;
+
+	of_id = of_match_device(mtk_dvo_driver_dt_match, &pdev->dev);
+	if (!of_id) {
+		dev_err(dev, "DP_dvo device match failed\n");
+		return -ENODEV;
+	}
+	dp_dvo->driver_data = (struct mtk_dp_dvo_driver_data *)of_id->data;
+
+	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	dp_dvo->regs = devm_ioremap_resource(dev, mem);
+	if (IS_ERR(dp_dvo->regs)) {
+		ret = PTR_ERR(dp_dvo->regs);
+		dev_err(dev, "Failed to ioremap mem resource: %d\n", ret);
+		return ret;
+	}
+
+	/* Get dp dvo clk
+	 * Input pixel clock(hf_fmm_ck) frequency needs to be > hf_fdp_ck * 4
+	 * Otherwise FIFO will underflow
+	 */
+	dp_dvo->hf_fmm_ck = devm_clk_get(dev, "hf_fmm_ck");
+	if (IS_ERR(dp_dvo->hf_fmm_ck)) {
+		ret = PTR_ERR(dp_dvo->hf_fmm_ck);
+		dev_err(dev, "Failed to get hf_fmm_ck clock: %d\n", ret);
+		return ret;
+	}
+	dp_dvo->hf_fdp_ck = devm_clk_get(dev, "hf_fdp_ck");
+	if (IS_ERR(dp_dvo->hf_fdp_ck)) {
+		ret = PTR_ERR(dp_dvo->hf_fdp_ck);
+		dev_err(dev, "Failed to get hf_fdp_ck clock: %d\n", ret);
+		return ret;
+	}
+
+
+	if (dp_dvo->driver_data->get_pll_clk)
+		dp_dvo->driver_data->get_pll_clk(dp_dvo);
+	else {
+		dp_dvo->pclk = devm_clk_get(dev, "MUX_DP");
+		dp_dvo->pclk_src[1] = devm_clk_get(dev, "TVDPLL_D2");
+		dp_dvo->pclk_src[2] = devm_clk_get(dev, "TVDPLL_D4");
+		dp_dvo->pclk_src[3] = devm_clk_get(dev, "TVDPLL_D8");
+		dp_dvo->pclk_src[4] = devm_clk_get(dev, "TVDPLL_D16");
+		if (IS_ERR(dp_dvo->pclk)
+			|| IS_ERR(dp_dvo->pclk_src[0])
+			|| IS_ERR(dp_dvo->pclk_src[1])
+			|| IS_ERR(dp_dvo->pclk_src[2])
+			|| IS_ERR(dp_dvo->pclk_src[3])
+			|| IS_ERR(dp_dvo->pclk_src[4]))
+			dev_err(dev, "Failed to get pclk andr src clock !!!\n");
+	}
+
+	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DVO);
+	DPTXMSG("comp_id = %d\n",comp_id);
+	if ((int)comp_id < 0) {
+		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
+		return comp_id;
+	}
+
+	ret = mtk_ddp_comp_init(dev, dev->of_node, &dp_dvo->ddp_comp, comp_id,
+				&mtk_dp_dvo_funcs);
+	if (ret) {
+		dev_err(dev, "Failed to initialize component: %d\n", ret);
+		return ret;
+	}
+
+	/* Get dp dvo irq num and request irq */
+	dp_dvo->irq = platform_get_irq(pdev, 0);
+	dp_dvo->res = SINK_MAX;
+	if (dp_dvo->irq <= 0) {
+		dev_err(dev, "Failed to get irq: %d\n", dp_dvo->irq);
+		return -EINVAL;
+	}
+
+	irq_set_status_flags(dp_dvo->irq, IRQ_TYPE_LEVEL_HIGH);
+	ret = devm_request_irq(
+		&pdev->dev, dp_dvo->irq, dp_dvo->driver_data->irq_handler,
+		IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(&pdev->dev), dp_dvo);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to request mediatek dp dvo irq\n");
+		ret = -EPROBE_DEFER;
+		return ret;
+	}
+
+	platform_set_drvdata(pdev, dp_dvo);
+	pm_runtime_enable(dev);
+
+	ret = component_add(dev, &mtk_dvo_component_ops);
+	if (ret != 0) {
+		dev_err(dev, "Failed to add component: %d\n", ret);
+		pm_runtime_disable(dev);
+	}
+
+	g_dp_dvo = dp_dvo;
+	DPTXMSG("%s-\n", __func__);
+	return ret;
+}
+
+static void mtk_dvo_remove(struct platform_device *pdev)
+{
+	component_del(&pdev->dev, &mtk_dvo_component_ops);
+
+	pm_runtime_disable(&pdev->dev);
+}
+
+static s32 mtk_dp_dvo_poll_for_idle(struct mtk_dp_dvo *dp_dvo,
+	struct cmdq_pkt *handle)
+{
+	return 0;
+}
+
+static void mtk_dp_dvo_get_pll_clk(struct mtk_dp_dvo *dp_dvo)
+{
+	dp_dvo->pclk = devm_clk_get(dp_dvo->dev, "MUX_DP");
+	dp_dvo->pclk_src[TCK_26M] = devm_clk_get(dp_dvo->dev, "DPI_26M");
+	dp_dvo->pclk_src[TVDPLL_D2] = devm_clk_get(dp_dvo->dev, "TVDPLL_D2");
+	dp_dvo->pclk_src[TVDPLL_D4] = devm_clk_get(dp_dvo->dev, "TVDPLL_D4");
+	dp_dvo->pclk_src[TVDPLL_D8] = devm_clk_get(dp_dvo->dev, "TVDPLL_D8");
+	dp_dvo->pclk_src[TVDPLL_D16] = devm_clk_get(dp_dvo->dev, "TVDPLL_D16");
+	dp_dvo->pclk_src[TVDPLL_PLL] = devm_clk_get(dp_dvo->dev, "DPI_CK");
+
+	if (IS_ERR(dp_dvo->pclk)
+		|| IS_ERR(dp_dvo->pclk_src[TCK_26M])
+		|| IS_ERR(dp_dvo->pclk_src[TVDPLL_D4])
+		|| IS_ERR(dp_dvo->pclk_src[TVDPLL_D8])
+		|| IS_ERR(dp_dvo->pclk_src[TVDPLL_D16])
+		|| IS_ERR(dp_dvo->pclk_src[TVDPLL_PLL]))
+		DPTXERR("Failed to get pclk andr src clock, -%d-%d-%d-%d-%d-%d-\n",
+			IS_ERR(dp_dvo->pclk),
+			IS_ERR(dp_dvo->pclk_src[TCK_26M]),
+			IS_ERR(dp_dvo->pclk_src[TVDPLL_D4]),
+			IS_ERR(dp_dvo->pclk_src[TVDPLL_D8]),
+			IS_ERR(dp_dvo->pclk_src[TVDPLL_D16]),
+			IS_ERR(dp_dvo->pclk_src[TVDPLL_PLL]));
+}
+
+static irqreturn_t mtk_dp_dvo_irq_status(int irq, void *dev_id)
+{
+	struct mtk_dp_dvo *dp_dvo = dev_id;
+	u32 status = 0;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	int dpdvo_opt = 0;
+	irqreturn_t ret = IRQ_NONE;
+
+	mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
+	priv = mtk_crtc->base.dev->dev_private;
+	dpdvo_opt = mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE);
+
+	comp = &dp_dvo->ddp_comp;
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
+		DPTXMSG("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
+	if (!mtk_crtc) {
+		DPTXMSG("%s mtk_crtc is NULL\n", __func__);
+		goto out;
+	}
+	status = readl(dp_dvo->regs + DVO_INTSTA);
+	if (!status)
+		goto out;
+
+	DRM_MMP_MARK(dp_intf0, status, 0);
+
+	status &= 0xfffff;
+	if (status) {
+		mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, status, 0);
+		if (status & INT_VSYNC_START_STA) {
+			mtk_crtc_vblank_irq(&mtk_crtc->base);
+			irq_intsa++;
+			if (irq_intsa == 3)
+				mtk_dp_video_trigger(video_unmute << 16 | dp_dvo->res);
+		}
+
+		if (status & INT_VDE_END_STA)
+			irq_vdesa++;
+
+		if (status & INT_UNDERFLOW_STA) {
+			DPTXMSG("%s dpdvo_underflow!\n", __func__);
+			irq_underflowsa++;
+		}
+	}
+
+	if (dpdvo_opt && (status & INT_UNDERFLOW_STA) && (irq_underflowsa == 1)) {
+#if IS_ENABLED(CONFIG_ARM64)
+		DDPAEE("DVO underflow 0x%x. TS: 0x%08llx\n",
+			status, arch_timer_read_counter());
+#else
+		DDPAEE("DVO  0x%x\n",
+			status);
+#endif
+		mtk_drm_crtc_analysis(&(mtk_crtc->base));
+		mtk_drm_crtc_dump(&(mtk_crtc->base));
+	}
+
+	ret = IRQ_HANDLED;
+out:
+	mtk_drm_top_clk_isr_put(comp);
+	return ret;
+}
+
+static const struct mtk_dp_dvo_driver_data dp_dvo_driver_data = {
+	.reg_cmdq_ofs = 0x200,
+	.np_sel = 2,
+	.poll_for_idle = mtk_dp_dvo_poll_for_idle,
+	.irq_handler = mtk_dp_dvo_irq_status,
+	.video_clock_cfg = &dp_dvo_video_clock,
+	.get_pll_clk = mtk_dp_dvo_get_pll_clk,
+};
+
+static const struct of_device_id mtk_dvo_driver_dt_match[] = {
+	{ .compatible = "mediatek,mt6993-dvo",
+	.data = &dp_dvo_driver_data},
+	{},
+};
+MODULE_DEVICE_TABLE(of, mtk_dvo_driver_dt_match);
+
+struct platform_driver mtk_dvo_driver = {
+	.probe = mtk_dvo_probe,
+	.remove = mtk_dvo_remove,
+	.driver = {
+		.name = "mediatek-dvo",
+		.owner = THIS_MODULE,
+		.of_match_table = mtk_dvo_driver_dt_match,
+	},
+};
