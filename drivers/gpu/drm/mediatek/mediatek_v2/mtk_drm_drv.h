@@ -111,6 +111,7 @@ struct mtk_mmsys_driver_data {
 	const struct mtk_session_mode_tb *mode_tb;
 	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			struct cmdq_pkt *handle, void *data);
+	void (*wla_config)(struct drm_device *drm, struct cmdq_pkt *handle);
 	void (*sodi_apsrc_config)(struct drm_crtc *crtc,
 			struct cmdq_pkt *_cmdq_handle, bool first_init, bool check_reset,
 			unsigned int crtc_id, bool enable);

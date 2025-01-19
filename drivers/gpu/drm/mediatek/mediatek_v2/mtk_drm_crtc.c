@@ -16266,6 +16266,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 				priv->data->sodi_config(crtc->dev, comp->id, NULL, &en);
 		}
+		if (priv->data->wla_config)
+			priv->data->wla_config(crtc->dev, NULL);
 	}
 
 	mtk_crtc_vdisp_ao_config(crtc);

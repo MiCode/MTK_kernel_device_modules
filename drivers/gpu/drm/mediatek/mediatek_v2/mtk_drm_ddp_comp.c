@@ -3913,6 +3913,36 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	}
 }
 
+void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle)
+{
+	struct mtk_drm_private *priv = drm->dev_private;
+	unsigned int val, val_mask;
+
+	if (handle == NULL) {
+		if (priv->side_config_regs) {
+			val = 1;
+			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
+			writel_relaxed(val, priv->side_config_regs + DISPSYS1_WLA_CON);
+		}
+		if (priv->sys_b_config_regs) {
+			val = 1;
+			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
+			writel_relaxed(val, priv->sys_b_config_regs + DISPSYS1_WLA_CON);
+		}
+	} else {
+		if (priv->side_config_regs) {
+			val = 1;
+			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
+			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa + DISPSYS1_WLA_CON, val, ~0);
+		}
+		if (priv->sys_b_config_regs) {
+			val = 1;
+			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
+			cmdq_pkt_write(handle, NULL, priv->sys_b_config_regs_pa + DISPSYS1_WLA_CON, val, ~0);
+		}
+	}
+}
+
 void mt6895_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data)
 {

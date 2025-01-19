@@ -6991,6 +6991,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.mmsys_id = MMSYS_MT6993,
 	.mode_tb = mt6993_mode_tb,
 	.sodi_config = mt6993_mtk_sodi_config,
+	.wla_config = mt6993_mtk_wla_config,
 	.sodi_apsrc_config = mt6993_mtk_sodi_apsrc_config,
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = true,
@@ -7723,6 +7724,10 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 			atomic_read(&top_isr_ref));
 	if (priv->data->sodi_config)
 		priv->data->sodi_config(crtc->dev, DDP_COMPONENT_ID_MAX, NULL, &en);
+
+
+	if (priv->data->wla_config)
+		priv->data->wla_config(crtc->dev, NULL);
 
 	if (priv->data->disable_merge_irq)
 		priv->data->disable_merge_irq(crtc->dev);
