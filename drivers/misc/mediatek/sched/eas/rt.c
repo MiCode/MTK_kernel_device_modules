@@ -676,7 +676,7 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	/* check source_cpu status */
 	may_not_preempt = task_may_not_preempt(curr, source_cpu);
 
-	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p,
+	ret = cpupri_find_fitness(&task_rq(p)->rd->cpupri, p, p,
 				lowest_mask, rt_task_fits_capacity);
 
 	cpumask_andnot(lowest_mask, lowest_mask, cpu_pause_mask);
