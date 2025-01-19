@@ -46,6 +46,10 @@
 #include <linux/tracepoint.h>
 #include <linux/kallsyms.h>
 
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+#include <soc/mediatek/dramc.h>
+#endif /* CONFIG_MTK_DRAMC */
+
 #if IS_ENABLED(CONFIG_MTK_CM_IPI)
 #include "mtk_cm_ipi.h"
 #endif /* CONFIG_MTK_CM_IPI */
@@ -129,7 +133,12 @@ unsigned int dsu_perf;
 unsigned int cm_lmode;
 #endif
 #if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
+#define CM_MGR_EMI_OPP 6
 int debounce_times_reset_adb = 1;
+int x_ratio_enable = 1;
+int cm_mgr_camera_enable;
+unsigned int cpu_power_ratio_up_x_camera[CM_MGR_EMI_OPP] = {0, 0, 0, 0, 60, 60};
+unsigned int cpu_power_ratio_up_x[CM_MGR_EMI_OPP] = {0, 0, 0, 0, 0, 0};
 #else
 int debounce_times_reset_adb;
 #endif
@@ -565,10 +574,124 @@ void cm_mgr_set_dram_opp_floor(int opp)
 }
 EXPORT_SYMBOL_GPL(cm_mgr_set_dram_opp_floor);
 #endif
+
+#if !IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
 int __weak dbg_cm_mgr_platform_show(char *buff) { return 0; }
 
 void __weak dbg_cm_mgr_platform_write(int len, char *cmd, u32 val_1, u32 val_2)
 {}
+
+#else
+static int cm_mgr_get_dram_type(void)
+{
+	int cm_mgr_ddr_type = -1;
+
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+	int ddr_type;
+
+	ddr_type = mtk_dramc_get_ddr_type();
+	if (ddr_type == TYPE_LPDDR5)
+		cm_mgr_ddr_type = DDR_TYPE_LP5;
+	else
+		cm_mgr_ddr_type = DDR_TYPE_LP4;
+
+#endif /* CONFIG_MTK_DRAMC */
+	pr_info("#@# %s(%d) ddr_type 0x%x\n", __func__, __LINE__, cm_mgr_ddr_type);
+	return cm_mgr_ddr_type;
+};
+
+int dbg_cm_mgr_platform_show(char *buff)
+{
+	int i;
+	int len = 0;
+
+#define cm_mgr_print(...) \
+	snprintf(buff + len, (4096 - len) > 0 ? (4096 - len) : 0, __VA_ARGS__)
+	if (cm_mgr_get_dram_type() == DDR_TYPE_LP4)
+		return 0;
+	len += cm_mgr_print("cm_mgr_camera_enable %d\n", cm_mgr_camera_enable);
+	len += cm_mgr_print("x_ratio_enable %d\n", x_ratio_enable);
+
+	len += cm_mgr_print("cpu_power_ratio_up_x_camera");
+	for (i = 0; i < CM_MGR_EMI_OPP; i++)
+		len += cm_mgr_print(" %d", cpu_power_ratio_up_x_camera[i]);
+	len += cm_mgr_print("\n");
+
+	len += cm_mgr_print("cpu_power_ratio_up_x");
+	for (i = 0; i < CM_MGR_EMI_OPP; i++)
+		len += cm_mgr_print(" %d", cpu_power_ratio_up_x[i]);
+	len += cm_mgr_print("\n");
+	return len;
+}
+
+void dbg_cm_mgr_platform_write(int len, const char *cmd, u32 val_1, u32 val_2)
+{
+	unsigned int i;
+
+	if (cm_mgr_get_dram_type() == DDR_TYPE_LP4)
+		return;
+
+	if (!strcmp(cmd, "x_ratio_enable")) {
+		x_ratio_enable = val_1;
+		if (!x_ratio_enable) {
+			for (i = 0; i <  CM_MGR_EMI_OPP; i++) {
+				/* restore common setting */
+				cpu_power_ratio_up_x[i] = 0;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+				cm_mgr_to_sspm_command(
+					IPI_CM_MGR_CPU_POWER_RATIO_UP,
+					i << 16 | cpu_power_ratio_up[i]);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+			}
+		}
+	} else if (!strcmp(cmd, "cm_mgr_camera_enable") && x_ratio_enable) {
+		if (cm_mgr_camera_enable == val_1)
+			return;
+		if (val_1) {
+			for (i = 0; i <  CM_MGR_EMI_OPP; i++) {
+				if (cpu_power_ratio_up_x[i] ==
+					cpu_power_ratio_up_x_camera[i])
+					continue;
+				cpu_power_ratio_up_x[i] =
+					cpu_power_ratio_up_x_camera[i];
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+				if (cpu_power_ratio_up_x[i])
+					cm_mgr_to_sspm_command(
+					IPI_CM_MGR_CPU_POWER_RATIO_UP,
+					i << 16 | cpu_power_ratio_up_x[i]);
+				else
+					cm_mgr_to_sspm_command(
+					IPI_CM_MGR_CPU_POWER_RATIO_UP,
+					i << 16 | cpu_power_ratio_up[i]);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+			}
+		} else {
+			for (i = 0; i <  CM_MGR_EMI_OPP; i++) {
+				if (!cpu_power_ratio_up_x[i])
+					continue;
+				cpu_power_ratio_up_x[i] = 0;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+				cm_mgr_to_sspm_command(
+					IPI_CM_MGR_CPU_POWER_RATIO_UP,
+					i << 16 | cpu_power_ratio_up[i]);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+			}
+		}
+		cm_mgr_camera_enable = val_1;
+	} else if (!strcmp(cmd, "cpu_power_ratio_up_x")) {
+		if (len == 3 && val_1 < CM_MGR_EMI_OPP && x_ratio_enable) {
+			cpu_power_ratio_up_x[val_1] = val_2;
+			if (!val_2)
+				val_2 = cpu_power_ratio_up[val_1];
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+			cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_UP,
+				val_1 << 16 | val_2);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+		}
+	}
+}
+#endif
 
 static void cm_mgr_cpu_map_update_table(void)
 {

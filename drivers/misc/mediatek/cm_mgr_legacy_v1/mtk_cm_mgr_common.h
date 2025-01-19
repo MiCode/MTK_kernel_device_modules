@@ -118,4 +118,12 @@ extern void cm_mgr_set_dram_opp_ceiling(int opp);
 extern void cm_mgr_set_dram_opp_floor(int opp);
 
 extern void force_use_bcpu_weight(void);
+
+#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
+enum {
+	DDR_TYPE_LP4 = 0,
+	DDR_TYPE_LP5,
+	DDR_TYPE_MAX,
+};
+#endif
 #endif	/* __MTK_CM_MGR_H__ */
