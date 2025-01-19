@@ -12,9 +12,504 @@
 #include <dt-bindings/power/mt6991-power.h>
 #include <dt-bindings/memory/mt6991-smi-pd.h>
 #include <dt-bindings/mminfra/mminfra-mt6991.h>
+#include <dt-bindings/clock/mmdvfs-clk.h>
 
 &chosen {
 bootargs_ext = "rcu_nocbs=0-7";
+};
+
+&seninf_top {
+	ccf-apply;
+	clocks = <&cam_vcore_r1a_clk CLK_VCORE>,
+		<&cam_vcore_r1a_clk CLK_2MM0_SUBCOMMON_DCM_DIS_CAMRAW>,
+		<&cam_vcore_r1a_clk CLK_CAM_V_MM0_SUBCOMM_CAMRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_SENINF>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAM_SENINF>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_SENINF>,
+		//<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_ASG_CAM_SENINF>,
+		<&cksys_gp2_clk CLK_CK2_SENINF0_SEL>,
+		<&cksys_gp2_clk CLK_CK2_SENINF1_SEL>,
+		<&cksys_gp2_clk CLK_CK2_SENINF2_SEL>,
+		<&cksys_gp2_clk CLK_CK2_SENINF3_SEL>,
+		<&cksys_gp2_clk CLK_CK2_SENINF4_SEL>,
+		<&cksys_gp2_clk CLK_CK2_SENINF5_SEL>,
+		//<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>,
+		<&cksys_clk CLK_CK_OSC_D4>,
+		<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D4_D2>,
+		<&cksys_gp2_clk CLK_CK2_MAINPLL2_D6>,
+		<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D6>,
+		<&cksys_gp2_clk CLK_CK2_UNIVPLL2_D5>,
+		<&mmdvfs_mux MMDVFS_USER_CAM>,
+
+		// add  virtual power domain node
+		<&mm_pd_clk  MT6991_PD_CAM_VCORE_SENINF>,
+		<&mm_pd_clk  MT6991_PD_CAM_MAIN_SENINF>,
+		<&mm_pd_clk  MT6991_PD_CSI_BS_RX_SENINF>,
+		<&mm_pd_clk  MT6991_PD_CSI_LS_RX_SENINF>;
+
+	clock-names = "clk_cam_vcore_cg0",
+		"clk_cam_vcore_cg2",
+		"clk_cam_vcore_cg3",
+		"clk_cam_seninf",
+		"clk_cam_cam",
+		"clk_cam_camtg",
+		//"clk_cam_asg",
+		"clk_top_seninf",
+		"clk_top_seninf1",
+		"clk_top_seninf2",
+		"clk_top_seninf3",
+		"clk_top_seninf4",
+		"clk_top_seninf5",
+		//"clk_top_camtm", // already en by hw when cam_vcore en
+		"clk_top_aov_step0",
+		"clk_top_ap_step0",
+		"clk_top_ap_step1",
+		"clk_top_ap_step2",
+		"clk_top_ap_step3",
+		"mmdvfs_mux",
+
+		// add  virtual power domain node
+		"clk_virtual_cam_core",
+		"clk_virtual_cam_main",
+		"clk_virtual_csi_bs_rx",
+		"clk_virtual_csi_ls_rx";
+};
+
+&camisp_vcore {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_VCORE_CAMISP_VCORE>,
+		<&cksys_gp2_clk CLK_CK2_CAM>,
+		<&cksys_gp2_clk CLK_CK2_CAMTM>,
+		<&vlp_cksys_clk CLK_VLP_CK_CAMTG0_SEL>,
+		<&cam_vcore_r1a_clk CLK_VCORE_CAMRAW>,
+		<&cam_vcore_r1a_clk CLK_2MM0_SUBCOMMON_DCM_DIS_CAMRAW>,
+		<&cam_vcore_r1a_clk CLK_CAM_V_MM0_SUBCOMM_CAMRAW>;
+	clock-names = "camsys_pd_cam_vcore_camisp",
+		"topckgen_top_cam_sel",
+		"topckgen_top_camtm_sel",
+		"vlpckgen_vlp_camtg_sel",
+		"camsys_vcore",
+		"camsys_v_dcm_dis",
+		"camsys_v_mm0_subcomm";
+	ccf-apply;
+};
+
+&camisp {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_CAMISP>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_SENINF>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_ADLRD_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_ADLWR_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_QOF_CON_1_CAMRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBA_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBB_CAMRAWB>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBC_CAMRAWC>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMRAWA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMRAWA>,
+		<&mmdvfs_mux MMDVFS_USER_CAM>;
+	clock-names = "camsys_pd_cam_main_camisp",
+		"clk_cam_seninf",
+		"camsys_cam_cgpdn",
+		"camsys_camtg_cgpdn",
+		"camsys_adlrd_cgpdn",
+		"camsys_adlwr_cgpdn",
+		"camsys_qof_cgpdn",
+		"camsys_suba_cgpdn",
+		"camsys_subb_cgpdn",
+		"camsys_subc_cgpdn",
+		"camsys_cam2mm0_gals_cgpdn",
+		"camsys_cam2mm1_gals_cgpdn",
+		"camsys_cam2sys_gals_cgpdn",
+		"camsys_cam2mm2_gals_cgpdn",
+		"mmdvfs_mux";
+};
+
+&cam_bwr {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MAIN_CAM_BWR>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_BWR_CON_1_CAMBWR>;
+	clock-names = "camsys_pd_cam_main_bwr",
+		"camsys_cam_cgpdn",
+		"camsys_bwr_cgpdn";
+};
+
+&cam_raw_a {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWA_CAM_RAW_A>,
+		<&camsys_rawa_clk CLK_CAM_RA_LARBX_CAMRAWA>,
+		<&camsys_rawa_clk CLK_CAM_RA_CAM_CAMRAWA>,
+		<&camsys_rawa_clk CLK_CAM_RA_CAMTG_CAMRAWA>,
+		<&camsys_rawa_clk CLK_CAM_RA_RAW2MM_GALS_CAMRAWA>,
+		<&camsys_rawa_clk CLK_CAM_RA_YUV2RAW2MM_GALS_CAMRAWA>;
+	clock-names = "camsys_pd_cam_rawa",
+		"camsys_rawa_larbx_cgpdn",
+		"camsys_rawa_cam_cgpdn",
+		"camsys_rawa_camtg_cgpdn",
+		"camsys_rawa_raw2mm_gals_cgpdn",
+		"camsys_rawa_yuv2raw2mm_gals_cgpdn";
+};
+
+&cam_rms_a {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RMSA_CAM_RMSA>,
+		<&camsys_rmsa_clk CLK_CAMSYS_RMSA_LARBX_CAMRAWA>,
+		<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAM_CAMRAWA>,
+		<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAMTG_CAMRAWA>;
+	clock-names = "camsys_pd_cam_rmsa",
+		"camsys_rmsa_larbx_cgpdn",
+		"camsys_rmsa_cam_cgpdn",
+		"camsys_rmsa_camtg_cgpdn";
+};
+
+&cam_yuv_a {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWA_CAM_YUV_A>,
+		<&camsys_yuva_clk CLK_CAM_YA_LARBX_CAMRAWA>,
+		<&camsys_yuva_clk CLK_CAM_YA_CAM_CAMRAWA>,
+		<&camsys_yuva_clk CLK_CAM_YA_CAMTG_CAMRAWA>;
+	clock-names = "camsys_pd_cam_yuva",
+		"camsys_yuva_larbx_cgpdn",
+		"camsys_yuva_cam_cgpdn",
+		"camsys_yuva_camtg_cgpdn";
+};
+
+&cam_raw_b {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWB_CAM_RAW_B>,
+		<&camsys_rawb_clk CLK_CAM_RB_LARBX_CAMRAWB>,
+		<&camsys_rawb_clk CLK_CAM_RB_CAM_CAMRAWB>,
+		<&camsys_rawb_clk CLK_CAM_RB_CAMTG_CAMRAWB>,
+		<&camsys_rawb_clk CLK_CAM_RB_RAW2MM_GALS_CAMRAWB>,
+		<&camsys_rawb_clk CLK_CAM_RB_YUV2RAW2MM_GALS_CAMRAWB>;
+	clock-names = "camsys_pd_cam_rawb",
+		"camsys_rawb_larbx_cgpdn",
+		"camsys_rawb_cam_cgpdn",
+		"camsys_rawb_camtg_cgpdn",
+		"camsys_rawb_raw2mm_gals_cgpdn",
+		"camsys_rawb_yuv2raw2mm_gals_cgpdn";
+};
+
+&cam_rms_b {
+	clocks =  <&mm_pd_clk MT6991_PD_CAM_RMSB_CAM_RMSB>,
+		<&camsys_rmsb_clk CLK_CAMSYS_RMSB_LARBX_CAMRAWB>,
+		<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAM_CAMRAWB>,
+		<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAMTG_CAMRAWB>;
+	clock-names = "camsys_pd_cam_rmsb",
+		"camsys_rmsb_larbx_cgpdn",
+		"camsys_rmsb_cam_cgpdn",
+		"camsys_rmsb_camtg_cgpdn";
+};
+
+&cam_yuv_b {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWB_CAM_YUV_B>,
+		<&camsys_yuvb_clk CLK_CAM_YB_LARBX_CAMRAWB>,
+		<&camsys_yuvb_clk CLK_CAM_YB_CAM_CAMRAWB>,
+		<&camsys_yuvb_clk CLK_CAM_YB_CAMTG_CAMRAWB>;
+	clock-names = "camsys_pd_cam_yuvb",
+		"camsys_yuvb_larbx_cgpdn",
+		"camsys_yuvb_cam_cgpdn",
+		"camsys_yuvb_camtg_cgpdn";
+};
+
+&cam_raw_c {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWC_CAM_RAW_C>,
+		<&camsys_rawc_clk CLK_CAM_RC_LARBX_CAMRAWC>,
+		<&camsys_rawc_clk CLK_CAM_RC_CAM_CAMRAWC>,
+		<&camsys_rawc_clk CLK_CAM_RC_CAMTG_CAMRAWC>,
+		<&camsys_rawc_clk CLK_CAM_RC_RAW2MM_GALS_CAMRAWC>,
+		<&camsys_rawc_clk CLK_CAM_RC_YUV2RAW2MM_GALS_CAMRAWC>;
+	clock-names = "camsys_pd_cam_rawc",
+		"camsys_rawc_larbx_cgpdn",
+		"camsys_rawc_cam_cgpdn",
+		"camsys_rawc_camtg_cgpdn",
+		"camsys_rawc_raw2mm_gals_cgpdn",
+		"camsys_rawc_yuv2raw2mm_gals_cgpdn";
+};
+
+&cam_rms_c {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RMSC_CAM_RMSC>,
+		<&camsys_rmsc_clk CLK_CAMSYS_RMSC_LARBX_CAMRAWC>,
+		<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAM_CAMRAWC>,
+		<&camsys_rmsc_clk CLK_CAMSYS_RMSC_CAMTG_CAMRAWC>;
+	clock-names = "camsys_pd_cam_rmsc",
+		"camsys_rmsc_larbx_cgpdn",
+		"camsys_rmsc_cam_cgpdn",
+		"camsys_rmsc_camtg_cgpdn";
+};
+
+&cam_yuv_c {
+	clocks = <&mm_pd_clk MT6991_PD_CAM_RAWC_CAM_YUV_C>,
+		<&camsys_yuvc_clk CLK_CAM_YC_LARBX_CAMRAWC>,
+		<&camsys_yuvc_clk CLK_CAM_YC_CAM_CAMRAWC>,
+		<&camsys_yuvc_clk CLK_CAM_YC_CAMTG_CAMRAWC>;
+	clock-names = "camsys_pd_cam_yuvc",
+		"camsys_yuvc_larbx_cgpdn",
+		"camsys_yuvc_cam_cgpdn",
+		"camsys_yuvc_camtg_cgpdn";
+};
+
+&camsv1 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MAIN_CAMSV1>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB14_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_TOP_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_A_CON_1_CAMSV>;
+	clock-names = "cam_main_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_larb14_con",
+		"cam_main_camsv_top_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"cam_main_cam2sys_gals_con",
+		"cam_main_cam2mm2_gals_con",
+		"cam_main_camsv_a_con";
+};
+
+&camsv2 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MAIN_CAMSV2>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB13_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_TOP_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_B_CON_1_CAMSV>;
+	clock-names = "cam_main_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_larb13_con",
+		"cam_main_camsv_top_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"cam_main_cam2sys_gals_con",
+		"cam_main_cam2mm2_gals_con",
+		"cam_main_camsv_b_con";
+};
+
+&camsv3 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MAIN_CAMSV3>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_TOP_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_C_CON_1_CAMSV>;
+	clock-names = "cam_main_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_larb29_con",
+		"cam_main_camsv_top_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"cam_main_cam2sys_gals_con",
+		"cam_main_cam2mm2_gals_con",
+		"cam_main_camsv_c_con";
+};
+
+&camsv4 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MAIN_CAMSV4>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_TOP_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_D_CON_1_CAMSV>;
+	clock-names = "cam_main_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_larb29_con",
+		"cam_main_camsv_top_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"cam_main_cam2sys_gals_con",
+		"cam_main_cam2mm2_gals_con",
+		"cam_main_camsv_d_con";
+};
+
+&camsv5 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MAIN_CAMSV5>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_TOP_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_E_CON_1_CAMSV>;
+	clock-names = "cam_main_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_larb29_con",
+		"cam_main_camsv_top_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"cam_main_cam2sys_gals_con",
+		"cam_main_cam2mm2_gals_con",
+		"cam_main_camsv_e_con";
+};
+
+&camsv6 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MAIN_CAMSV6>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_LARB29_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_TOP_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2SYS_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM2_GALS_CAMSV>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAMSV_CON_1_CAMSV>;
+	clock-names = "cam_main_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_larb29_con",
+		"cam_main_camsv_top_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"cam_main_cam2sys_gals_con",
+		"cam_main_cam2mm2_gals_con",
+		"cam_main_camsv_f_con";
+};
+
+&mraw1 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MRAW_MRAW1>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_MRAW0_PDAF>;
+	clock-names = "cam_main_mraw_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_mraw_cg_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"camsys_mraw_larbx",
+		"camsys_mraw_gals",
+		"camsys_mraw_camtg",
+		"camsys_main_mraw0";
+};
+
+&mraw2 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MRAW_MRAW2>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_MRAW1_PDAF>;
+	clock-names = "cam_main_mraw_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_mraw_cg_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"camsys_mraw_larbx",
+		"camsys_mraw_gals",
+		"camsys_mraw_camtg",
+		"camsys_main_mraw1";
+};
+
+&mraw3 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MRAW_MRAW3>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_MRAW2_PDAF>;
+	clock-names = "cam_main_mraw_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_mraw_cg_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"camsys_mraw_larbx",
+		"camsys_mraw_gals",
+		"camsys_mraw_camtg",
+		"camsys_main_mraw2";
+};
+
+&mraw4 {
+	clocks =<&mm_pd_clk MT6991_PD_CAM_MRAW_MRAW4>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MRAW>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_GALS_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_CAMTG_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_MRAW3_PDAF>;
+	clock-names = "cam_main_mraw_pdn",
+		"cam_main_cam_cgpdn",
+		"cam_main_mraw_cg_con",
+		"cam_main_cam2mm0_gals_con",
+		"cam_main_cam2mm1_gals_con",
+		"camsys_mraw_larbx",
+		"camsys_mraw_gals",
+		"camsys_mraw_camtg",
+		"camsys_main_mraw3";
+};
+
+&pda {
+	ccf-apply;
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_PDA2>,
+		<&mm_pd_clk MT6991_PD_CAM_MRAW_PDA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>,
+		<&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>;
+	clock-names = "cam_mraw_pda2",
+		"cam_mraw_pda",
+		"cam_main_cam_cg_con",
+		"cam_main_cam2mm0_gals_cg_con",
+		"cam_main_cam2mm1_gals_cg_con",
+		"mraw_larbx",
+		"camsys_mraw_pda1",
+		"camsys_mraw_pda0";
+};
+
+&pda2 {
+	ccf-apply;
+	clocks = <&mm_pd_clk MT6991_PD_CAM_MRAW_PDA2>,
+		<&mm_pd_clk MT6991_PD_CAM_MRAW_PDA>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM0_GALS>,
+		<&cam_main_r1a_clk CLK_CAM_MAIN_CAM2MM1_GALS>,
+		<&camsys_mraw_clk CLK_CAM_MR_LARBX_PDAF>,
+		<&camsys_mraw_clk CLK_CAM_MR_PDA1_PDA>,
+		<&camsys_mraw_clk CLK_CAM_MR_PDA0_PDA>;
+	clock-names = "cam_mraw_pda2",
+		"cam_mraw_pda",
+		"cam_main_cam_cg_con",
+		"cam_main_cam2mm0_gals_cg_con",
+		"cam_main_cam2mm1_gals_cg_con",
+		"mraw_larbx",
+		"camsys_mraw_pda1",
+		"camsys_mraw_pda0";
+};
+
+&ccu_rproc {
+	ccf-apply;
+};
+
+&dvs {
+	ccf-apply;
+};
+
+&dvp {
+	ccf-apply;
+};
+
+&dvgf {
+	ccf-apply;
 };
 
 &disp_aal0 {

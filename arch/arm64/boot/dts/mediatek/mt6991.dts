@@ -12143,7 +12143,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"awbo_r1", "ipui_i1";
 		};
 
-		cam-rms-a@3a840000 {
+		cam_rms_a: cam-rms-a@3a840000 {
 			compatible = "mediatek,cam-rms";
 			reg =   <0 0x3a840000 0 0x8000>,
 				<0 0x3a848000 0 0x8000>;
@@ -12158,7 +12158,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_rmsa_camtg_cgpdn";
 		};
 
-		cam-yuv-a@3a880000 {
+		cam_yuv_a: cam-yuv-a@3a880000 {
 			compatible = "mediatek,cam-yuv";
 			reg =	<0 0x3a880000 0 0x8000>,
 				<0 0x3a888000 0 0x8000>,
@@ -12199,7 +12199,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
 		};
 
-		cam-raw-b@3a900000 {
+		cam_raw_b: cam-raw-b@3a900000 {
 			compatible = "mediatek,cam-raw";
 			reg =   <0 0x3a900000 0 0x8000>,
 				<0 0x3a908000 0 0x8000>,
@@ -12285,7 +12285,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"awbo_r1", "ipui_i1";
 		};
 
-		cam-rms-b@3a940000 {
+		cam_rms_b: cam-rms-b@3a940000 {
 			compatible = "mediatek,cam-rms";
 			reg =	<0 0x3a940000 0 0x8000>,
 						<0 0x3a948000 0 0x8000>;
@@ -12300,7 +12300,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_rmsb_camtg_cgpdn";
 		};
 
-		cam-yuv-b@3a980000 {
+		cam_yuv_b: cam-yuv-b@3a980000 {
 			compatible = "mediatek,cam-yuv";
 			reg =	<0 0x3a980000 0 0x8000>,
 				<0 0x3a988000 0 0x8000>,
@@ -12341,7 +12341,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
 		};
 
-		cam-raw-c@3aa00000 {
+		cam_raw_c: cam-raw-c@3aa00000 {
 			compatible = "mediatek,cam-raw";
 			reg =	<0 0x3aa00000 0 0x8000>,
 				<0 0x3aa08000 0 0x8000>,
@@ -12427,7 +12427,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"awbo_r1", "ipui_i1";
 		};
 
-		cam-rms-c@3aa40000 {
+		cam_rms_c: cam-rms-c@3aa40000 {
 			compatible = "mediatek,cam-rms";
 			reg =	<0 0x3aa40000 0 0x8000>,
 				<0 0x3aa48000 0 0x8000>;
@@ -12442,7 +12442,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"camsys_rmsc_camtg_cgpdn";
 		};
 
-		cam-yuv-c@3aa80000 {
+		cam_yuv_c: cam-yuv-c@3aa80000 {
 			compatible = "mediatek,cam-yuv";
 			reg =	<0 0x3aa80000 0 0x8000>,
 				<0 0x3aa88000 0 0x8000>,
@@ -12483,7 +12483,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"drzh2no_r1", "yuvo_r4", "drzh1no_r1";
 		};
 
-		camsv1@3a500000 {
+		camsv1: camsv1@3a500000 {
 			compatible = "mediatek,camsv";
 			reg = <0 0x3a500000 0 0x1000>,
 				<0 0x3a501000 0 0x1000>,
@@ -12551,7 +12551,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l14_stg1_mdp_a";
 		};
 
-		camsv2@3a510000 {
+		camsv2: camsv2@3a510000 {
 			compatible = "mediatek,camsv";
 			reg = <0 0x3a510000 0 0x1000>,
 				<0 0x3a511000 0 0x1000>,
@@ -12619,7 +12619,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l13_stg1_mdp_b";
 		};
 
-		camsv3@3a520000 {
+		camsv3: camsv3@3a520000 {
 			compatible = "mediatek,camsv";
 			reg = <0 0x3a520000 0 0x1000>,
 				<0 0x3a521000 0 0x1000>,
@@ -12668,7 +12668,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l29_stg_c";
 		};
 
-		camsv4@3a530000 {
+		camsv4: camsv4@3a530000 {
 			compatible = "mediatek,camsv";
 			reg = <0 0x3a530000 0 0x1000>,
 				<0 0x3a531000 0 0x1000>,
@@ -12717,7 +12717,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l29_stg_d";
 		};
 
-		camsv5@3a540000 {
+		camsv5:camsv5@3a540000 {
 			compatible = "mediatek,camsv";
 			reg = <0 0x3a540000 0 0x1000>,
 				<0 0x3a541000 0 0x1000>,
@@ -12766,7 +12766,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l29_stg_e";
 		};
 
-		camsv6@3a550000 {
+		camsv6: camsv6@3a550000 {
 			compatible = "mediatek,camsv";
 			reg = <0 0x3a550000 0 0x1000>,
 				<0 0x3a551000 0 0x1000>,
@@ -12815,7 +12815,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l29_stg_f";
 		};
 
-		mraw1@3a700000 {
+		mraw1: mraw1@3a700000 {
 			compatible = "mediatek,mraw";
 			reg = <0 0x3a700000 0 0x8000>,
 					<0 0x3a708000 0 0x8000>;
@@ -12857,7 +12857,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l25_stg_m1_0";
 		};
 
-		mraw2@3a710000 {
+		mraw2: mraw2@3a710000 {
 			compatible = "mediatek,mraw";
 			reg = <0 0x3a710000 0 0x8000>,
 					<0 0x3a718000 0 0x8000>;
@@ -12899,7 +12899,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l26_stg_m1_1";
 		};
 
-		mraw3@3a720000 {
+		mraw3: mraw3@3a720000 {
 			compatible = "mediatek,mraw";
 			reg = <0 0x3a720000 0 0x8000>,
 					<0 0x3a728000 0 0x8000>;
@@ -12941,7 +12941,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l25_stg_m1_2";
 		};
 
-		mraw4@3a730000 {
+		mraw4: mraw4@3a730000 {
 			compatible = "mediatek,mraw";
 			reg = <0 0x3a730000 0 0x8000>,
 					<0 0x3a738000 0 0x8000>;
