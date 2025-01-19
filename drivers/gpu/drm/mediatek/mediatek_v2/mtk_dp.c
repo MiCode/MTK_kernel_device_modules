@@ -243,9 +243,75 @@ void dptx_shutdown(void)
 		DRM_ERROR("Failed to disable power domain: %d\n", ret);
 }
 
+void mtk_dp_set_delay(bool enable, unsigned int mode, unsigned int delay_time)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	g_mtk_dp->info.delay_enable = enable;
+	g_mtk_dp->info.delay_mode = mode;
+	g_mtk_dp->info.delay_time = delay_time;
+}
+
 void dptx_dump_reg(void)
 {
 	mhal_dump_reg(g_mtk_dp);
+}
+
+void dptx_mute_all_command(bool enable)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	mdrv_DPTx_VideoMute(g_mtk_dp, enable);
+	mdrv_DPTx_AudioMute(g_mtk_dp, enable);
+	DPTXMSG("[DP DEBUG]Mute all\n");
+}
+
+void mtk_dp_reset_all(void)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	mhal_DPTx_reset_all(g_mtk_dp);
+	DPTXMSG("[DP DEBUG]Reset all\n");
+}
+
+void mtk_dp_MacVideoPatternGenEn(bool enable)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	mhal_DPTx_MacVideoPatternGenEn(g_mtk_dp, enable);
+}
+
+void mtk_dp_MacAudioPatternGenEn(bool enable)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	mhal_DPTx_MacAudioPatternGenEn(g_mtk_dp, enable);
+}
+
+void mtk_dp_intfPatternGenEn(bool enable)
+{
+	mtk_dp_intf_PatternGenEn(enable);
+}
+
+void mtk_dp_force_timing(bool enable, unsigned int mode)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	g_mtk_dp->info.force_resoultion_en = enable;
+	g_mtk_dp->info.force_resoultion_mode = mode;
+	DPTXMSG("[DP DEBUG]Force timing mode=%d\n",mode);
 }
 
 void dptx_write_reg(u32 offset, u32 val)
@@ -1867,6 +1933,10 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 
 		if (!bPassTPS1)	{
 			DPTXMSG("CR Training START\n");
+			if (g_mtk_dp->info.delay_enable==1 && g_mtk_dp->info.delay_mode==2){
+				DPTXMSG("[DP DEBUG]delay_mode=2,delay_time=%d\n",g_mtk_dp->info.delay_time);
+				msleep(g_mtk_dp->info.delay_time*1000);
+			}
 			mhal_DPTx_SetScramble(mtk_dp, false);
 
 			if (ubStatusControl == 0x0)	{
@@ -3908,7 +3978,22 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 	if (0x1fff > 0 && mode->vdisplay > 0x1fff)
 		return MODE_VIRTUAL_Y;
 
-	return MODE_OK;
+	if (g_mtk_dp->info.force_resoultion_en==1){
+		if (g_mtk_dp->info.force_resoultion_mode==1){
+			if (mode->hdisplay == 1920 && mode->vdisplay == 1080) {
+				DPTXMSG("[DP Debug]Force FHD timing");
+				return MODE_OK;
+			} else
+				return MODE_BAD_VSCAN;
+		} else{
+			if (mode->hdisplay == 640 && mode->vdisplay == 480) {
+				DPTXMSG("[DP Debug]Force safe-mode timing");
+				return MODE_OK;
+			} else
+				return MODE_BAD_VSCAN;
+		}
+	} else
+		return MODE_OK;
 }
 
 static const struct drm_connector_helper_funcs mtk_dp_connector_helper_funcs = {
@@ -4223,6 +4308,10 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 		if (bstatus == HPD_CONNECT) {
 			// delay to prevent from slow connecting
 			msleep(500);
+			if (g_mtk_dp->info.delay_enable==1 && g_mtk_dp->info.delay_mode==0){
+				DPTXMSG("[DP DEBUG]delay_mode=0,delay_time=%d\n",g_mtk_dp->info.delay_time);
+				msleep(g_mtk_dp->info.delay_time*1000);
+			}
 			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 				if (g_mtk_dp->priv->dpc_dev) {
 					/* get mminfra before DPTX on */
@@ -4247,6 +4336,10 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 			mhal_DPTx_USBC_HPD(g_mtk_dp, true);
 			g_mtk_dp->bPowerOn = true;
 		} else if (bstatus == HPD_DISCONNECT) {
+			if (g_mtk_dp->info.delay_enable==1 && g_mtk_dp->info.delay_mode==1){
+				DPTXMSG("[DP DEBUG]delay_mode=1,delay_time=%d\n",g_mtk_dp->info.delay_time);
+				msleep(g_mtk_dp->info.delay_time*1000);
+			}
 			mhal_DPTx_USBC_HPD(g_mtk_dp, false);
 			g_mtk_dp->bPowerOn = false;
 		}

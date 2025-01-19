@@ -247,17 +247,22 @@ struct DPTX_TRAINING_INFO {
 };
 
 struct DPTX_INFO {
+	struct DPTX_TIMING_PARAMETER DPTX_OUTBL;
 	uint8_t input_src;
 	uint8_t depth;
 	uint8_t format;
 	uint8_t resolution;
 	unsigned int audio_caps;
 	unsigned int audio_config;
-	struct DPTX_TIMING_PARAMETER DPTX_OUTBL;
 	unsigned int clk_debug;
 	unsigned int clksrc;
 	unsigned int con1;
-
+	unsigned int delay_mode;
+	unsigned int delay_time;
+	int force_resoultion;
+	int force_resoultion_mode;
+	bool delay_enable;
+	bool force_resoultion_en : 1;
 	bool bPatternGen : 1;
 	bool bSinkSSC_En : 1;
 	bool bSetAudioMute : 1;

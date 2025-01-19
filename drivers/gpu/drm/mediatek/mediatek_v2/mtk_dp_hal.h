@@ -251,7 +251,6 @@ void mtk_dp_phy_write(struct mtk_dp *mtk_dp, u32 offset, u32 val);
 extern void mdrv_DPTx_HPD_ISREvent(struct mtk_dp *mtk_dp);
 void mhal_DPTx_USBC_HPD(struct mtk_dp *mtk_dp, bool conn);
 void mhal_DPTx_Fake_Plugin(struct mtk_dp *mtk_dp, bool conn);
-void mhal_dump_reg(struct mtk_dp *mtk_dp);
 void mhal_DPTx_Verify_Clock(struct mtk_dp *mtk_dp);
 void mhal_DPTx_ISR(struct mtk_dp *mtk_dp);
 BYTE mhal_DPTx_GetColorBpp(struct mtk_dp *mtk_dp);
@@ -356,4 +355,8 @@ void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_Set_BS2BS_Cnt(struct mtk_dp *mtk_dp, bool bEnable, DWORD uiHTT);
 void mhal_DPTx_PhyTrainingConfig(struct mtk_dp *mtk_dp, u8 ubTargetLinkRate, u8 ubTargetLaneCount);
 
+void mhal_DPTx_reset_all(struct mtk_dp *mtk_dp);
+void mhal_dump_reg(struct mtk_dp *mtk_dp);
+void mhal_DPTx_MacVideoPatternGenEn(struct mtk_dp *mtk_dp, bool enable);
+void mhal_DPTx_MacAudioPatternGenEn(struct mtk_dp *mtk_dp, bool enable);
 #endif //__DRTX_HAL_H__

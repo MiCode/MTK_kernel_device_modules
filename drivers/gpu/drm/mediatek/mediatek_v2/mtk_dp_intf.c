@@ -866,6 +866,34 @@ void mtk_dp_intf_unprepare_clk(void)
 }
 EXPORT_SYMBOL(mtk_dp_intf_unprepare_clk);
 
+void mtk_dp_intf_PatternGenEn(bool enable)
+{
+	uint32_t reg_val;
+
+	if (enable) {
+		reg_val = readl(g_dp_intf->regs + 0xF00);
+		// Modify the specific bits
+		reg_val &= ~((0x7 << 4) | 0x1);  // Clear bits [0] and [4:6]
+		reg_val |= (1 << 0);             // Set bit [0] to 1
+		reg_val |= (0x4 << 4);           // Set bits [4:6] to 100 (binary for 4)
+
+		// Write the modified value back to the register
+		writel(reg_val, g_dp_intf->regs + 0xF00);
+		DPTXMSG("[DP Debug]dp intf pg enable\n");
+	} else {
+		reg_val = readl(g_dp_intf->regs + 0xF00);
+		// Modify the specific bits
+		reg_val &= ~((0x7 << 4) | 0x1);  // Clear bits [0] and [4:6]
+		reg_val |= (0 << 0);             // Set bit [0] to 0
+		reg_val |= (0x0 << 4);           // Set bits [4:6] to 000 (binary for 4)
+
+		// Write the modified value back to the register
+		writel(reg_val, g_dp_intf->regs + 0xF00);
+		DPTXMSG("[DP Debug]dp intf pg disable\n");
+	}
+}
+EXPORT_SYMBOL(mtk_dp_intf_PatternGenEn);
+
 static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dp_intf *dp_intf = NULL;

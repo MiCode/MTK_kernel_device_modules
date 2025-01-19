@@ -206,8 +206,85 @@ void mtk_dp_debug(const char *opt)
 			return;
 		}
 		mtk_dp_clock_debug(clksrc, con1);
+	} else if (strncmp(opt, "reset_all", 9) == 0) {
+		mtk_dp_reset_all();
+	} else if (strncmp(opt, "delay:", 6) == 0) {
+		unsigned int delay_enable;
+		unsigned int mode;
+		unsigned int delay_time;
+		bool enable;
+		int ret = 0;
+
+		ret = sscanf(opt, "delay:%d,%d,%d\n",&delay_enable, &mode, &delay_time);
+		if (ret != 3) {
+			DPTXERR("[DP Debug]invalid input, ret = %d\n", ret);
+			return;
+		}
+		enable = (delay_enable!= 0);
+		mtk_dp_set_delay(enable, mode, delay_time);
 	} else if (strncmp(opt, "dump:", 5) == 0) {
 		dptx_dump_reg();
+	} else if (strncmp(opt, "dptx_video_pg:", 14) == 0) {
+		int ret = 0;
+		unsigned int pg_enable;
+		bool enable;
+
+		ret = sscanf(opt, "dptx_video_pg:%d\n", &pg_enable);
+		if (ret != 1) {
+			DPTXERR("[DP Debug]invalid input, ret = %d\n", ret);
+			return;
+		}
+		enable = (pg_enable!= 0);
+		mtk_dp_MacVideoPatternGenEn(enable);
+	} else if (strncmp(opt, "dptx_audio_pg:", 14) == 0) {
+		int ret = 0;
+		unsigned int pg_enable;
+		int enable;
+
+		ret = sscanf(opt, "dptx_audio_pg:%d\n", &pg_enable);
+		if (ret != 1) {
+			DPTXERR("[DP Debug]invalid input, ret = %d\n", ret);
+			return;
+		}
+		enable = (pg_enable!= 0);
+		mtk_dp_MacAudioPatternGenEn(enable);
+	} else if (strncmp(opt, "dpintf_pg:", 10) == 0) {
+		int ret = 0;
+		unsigned int pg_enable;
+		bool enable;
+
+		ret = sscanf(opt, "dpintf_pg:%d\n", &pg_enable);
+		if (ret != 1) {
+			DPTXERR("[DP Debug]invalid input, ret = %d\n", ret);
+			return;
+		}
+		enable = (pg_enable!= 0);
+		mtk_dp_intfPatternGenEn(enable);
+	} else if (strncmp(opt, "force_timing:", 13) == 0) {
+		unsigned int ret = 0;
+		unsigned int force_timing_enable;
+		unsigned int mode;
+		bool enable;
+
+		ret = sscanf(opt, "force_timing:%d,%d\n", &force_timing_enable, &mode);
+		if (ret != 2) {
+			DPTXERR("[DP Debug]invalid input, ret = %d\n", ret);
+			return;
+		}
+		enable = (force_timing_enable!= 0);
+		mtk_dp_force_timing(enable, mode);
+	} else if (strncmp(opt, "mute_all", 8) == 0) {
+		int ret = 0;
+		unsigned int mute_enable;
+		bool enable;
+
+		ret = sscanf(opt, "mute_all:%d\n", &mute_enable);
+		if (ret != 1) {
+			DPTXERR("ret = %d\n", ret);
+			return;
+		}
+		enable = (mute_enable!= 0);
+		dptx_mute_all_command(enable);
 	}
 }
 

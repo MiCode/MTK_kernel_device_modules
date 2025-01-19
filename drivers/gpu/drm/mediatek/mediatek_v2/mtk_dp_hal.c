@@ -152,26 +152,52 @@ unsigned long mtk_dp_atf_call(unsigned int cmd, unsigned int para)
 void mhal_dump_reg(struct mtk_dp *mtk_dp)
 {
 	u32 i, val[4], reg;
+	u8  Data[5] = {0};
 
-	for (i = 0x0; i < 0x600; i += 16) {
+	for (i = 0x0; i < 0xE00; i += 16) {
 		reg = 0x3000 + i;
 		val[0] = msRead4Byte(mtk_dp, reg);
 		val[1] = msRead4Byte(mtk_dp, reg + 4);
 		val[2] = msRead4Byte(mtk_dp, reg + 8);
 		val[3] = msRead4Byte(mtk_dp, reg + 12);
-		DPTXMSG("aux reg[0x%x] = 0x%x 0x%x 0x%x 0x%x",
+		DPTXMSG("[DP Debug]dptx mac reg[0x%x] = 0x%x 0x%x 0x%x 0x%x",
 			reg, val[0], val[1], val[2], val[3]);
 	}
 
-	for (i = 0x0; i < 0x400; i += 16) {
-		reg = 0x1100 + i;
-		val[0] = msRead4Byte(mtk_dp, reg);
-		val[1] = msRead4Byte(mtk_dp, reg + 4);
-		val[2] = msRead4Byte(mtk_dp, reg + 8);
-		val[3] = msRead4Byte(mtk_dp, reg + 12);
-		DPTXMSG("aux reg[0x%x] = 0x%x 0x%x 0x%x 0x%x",
+	for (i = 0x0; i < 0x1500; i += 16) {
+		reg = 0x0000 + i;
+		val[0] = msPhyRead4Byte(mtk_dp, reg);
+		val[1] = msPhyRead4Byte(mtk_dp, reg + 4);
+		val[2] = msPhyRead4Byte(mtk_dp, reg + 8);
+		val[3] = msPhyRead4Byte(mtk_dp, reg + 12);
+		DPTXMSG("[DP Debug]dptx phy reg[0x%x] = 0x%x 0x%x 0x%x 0x%x",
 			reg, val[0], val[1], val[2], val[3]);
 	}
+	////////////////////////////////////////////////////////
+
+	Data[0]=0x2;
+	drm_dp_dpcd_write(&mtk_dp->aux, 0x10B, Data, 0x1);
+	drm_dp_dpcd_write(&mtk_dp->aux, 0x10C, Data, 0x1);
+	drm_dp_dpcd_write(&mtk_dp->aux, 0x10D, Data, 0x1);
+	drm_dp_dpcd_write(&mtk_dp->aux, 0x10E, Data, 0x1);
+
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x210, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 210 = 0x%x\n",Data[0]);
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x211, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 211 = 0x%x\n",Data[0]);
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x212, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 212 = 0x%x\n",Data[0]);
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x213, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 213 = 0x%x\n",Data[0]);
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x214, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 214 = 0x%x\n",Data[0]);
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x215, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 215 = 0x%x\n",Data[0]);
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x216, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 216 = 0x%x\n",Data[0]);
+	drm_dp_dpcd_read(&mtk_dp->aux, 0x217, Data, 0x1);
+	DPTXMSG("[DP Debug]DPCD 217 = 0x%x\n",Data[0]);
+
 }
 
 void mhal_DPTx_Verify_Clock(struct mtk_dp *mtk_dp)
@@ -2608,6 +2634,14 @@ void mhal_DPTx_phyd_power_off(struct mtk_dp *mtk_dp)
 			0x0, FORCE_PWR_STATE_VAL_FLDMASK);
 }
 
+void mhal_DPTx_reset_all(struct mtk_dp *mtk_dp)
+{
+	mhal_DPTx_PHYD_Reset(mtk_dp);
+	msWrite4ByteMask(mtk_dp, 0x2020, 0x0, 0x1);
+	mdelay(30);
+	msWrite4ByteMask(mtk_dp, 0x2020, 0x1, 0x1);
+}
+
 void mhal_DPTx_phy_param_init(struct mtk_dp *mtk_dp, UINT32 *buffer, UINT32 size)
 {
 	UINT32 i = 0;
@@ -3000,6 +3034,36 @@ void mhal_DPTx_DigitalSetting(struct mtk_dp *mtk_dp)
 	}
 }
 
+void mhal_DPTx_MacVideoPatternGenEn(struct mtk_dp *mtk_dp, bool enable)
+{
+	if(enable) {
+		msWrite4ByteMask(mtk_dp, REG_3038_DP_ENCODER0_P0, BIT(11), BIT(11));
+		DPTXMSG("[DP DEBUG]DPTX MAC VIDEO PG ENABLE\n");
+	} else {
+		msWrite4ByteMask(mtk_dp, REG_3038_DP_ENCODER0_P0, 0, BIT(11));
+		DPTXMSG("[DP DEBUG]DPTX MAC VIDEO PG DISABLE\n");
+	}
+}
+
+void mhal_DPTx_MacAudioPatternGenEn(struct mtk_dp *mtk_dp, bool enable)
+{
+	if(enable) {
+		msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+				 AU_GEN_EN_DP_ENCODER0_P0_FLDMASK,
+				 AU_GEN_EN_DP_ENCODER0_P0_FLDMASK);
+		// msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+		// 0x3 << AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK_POS
+		// , AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK);
+		DPTXMSG("[DP DEBUG]DPTX MAC AUDIO PG ENABLE\n");
+	} else {
+		msWrite2ByteMask(mtk_dp, REG_3088_DP_ENCODER0_P0,
+				 0, AU_GEN_EN_DP_ENCODER0_P0_FLDMASK);
+		// msWrite2ByteMask(mtk_dp, REG_3324_DP_ENCODER1_P0,
+		// 0x4 << AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK_POS
+		// , AUDIO_SOURCE_MUX_DP_ENCODER1_P0_FLDMASK);
+		DPTXMSG("[DP DEBUG]DPTX MAC AUDIO PG DISABLE\n");
+	}
+}
 
 void mhal_DPTx_DigitalSwReset(struct mtk_dp *mtk_dp)
 {
