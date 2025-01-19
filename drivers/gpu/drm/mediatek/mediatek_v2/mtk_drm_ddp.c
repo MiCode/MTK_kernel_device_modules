@@ -30888,7 +30888,8 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		DDPPR_ERR("%s private is null\n", __func__);
 		return IRQ_NONE;
 	}
-
+	if (!priv)
+		return IRQ_NONE;
 	irq_time[irq_time_index].comp = NULL;
 	irq_time[irq_time_index].time = sched_clock();
 	irq_time_index++;
