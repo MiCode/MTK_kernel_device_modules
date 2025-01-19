@@ -18,6 +18,7 @@ enum mm_power {
 	MM_0 = 0,
 	MM_1,
 	MM_AO,
+	MM_2,
 	MM_PWR_NR,
 };
 

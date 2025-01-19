@@ -1356,6 +1356,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 			dbg->dbg_sel_out_nr[MM_1] = tmp;
 		if (!of_property_read_u32_index(dev->of_node, "mm-dbg-out-sel-nr", MM_AO, &tmp))
 			dbg->dbg_sel_out_nr[MM_AO] = tmp;
+		if (!of_property_read_u32_index(dev->of_node, "mm-dbg-out-sel-nr", MM_2, &tmp))
+			dbg->dbg_sel_out_nr[MM_2] = tmp;
 	}
 
 	irq = platform_get_irq(pdev, 0);
@@ -1392,6 +1394,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 			dbg->mm_cfg_base[MM_1] = ioremap(tmp, 0x1000);
 		if (!of_property_read_u32_index(dev->of_node, "mm-cfg-base", MM_AO, &tmp))
 			dbg->mm_cfg_base[MM_AO] = ioremap(tmp, 0x1000);
+		if (!of_property_read_u32_index(dev->of_node, "mm-cfg-base", MM_2, &tmp))
+			dbg->mm_cfg_base[MM_2] = ioremap(tmp, 0x1000);
 
 		if (dbg->mm_mtcmos_base)
 			dbg->mminfra_mtcmos_base = ioremap(dbg->mm_mtcmos_base, 0x10);
