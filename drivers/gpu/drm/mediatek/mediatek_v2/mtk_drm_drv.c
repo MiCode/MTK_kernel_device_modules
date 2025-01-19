@@ -4109,7 +4109,25 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_mem_dp_wo_tdshp[] = {
 
 /* CRTC1 */
 static const enum mtk_ddp_comp_id mt6993_mtk_ddp_ext_dp[] = {
-
+	DDP_COMPONENT_OVL2_EXDMA2,
+	DDP_COMPONENT_OVL2_EXDMA_OUT_CB3,
+	DDP_COMPONENT_OVL2_BLENDER0,
+	DDP_COMPONENT_OVL2_EXDMA3,
+	DDP_COMPONENT_OVL2_BLENDER1,
+	DDP_COMPONENT_OVL2_EXDMA4,
+	DDP_COMPONENT_OVL2_BLENDER2,
+	DDP_COMPONENT_OVL2_EXDMA5,
+	DDP_COMPONENT_OVL2_BLENDER3,
+	DDP_COMPONENT_OVL2_OUTPROC0,
+	DDP_COMPONENT_OVLSYS2_DLO_ASYNC12,
+	DDP_COMPONENT_SYS_B_DLI_ASYNC2,
+	DDP_COMPONENT_SYS_B_PQ0_OUT_CB3,
+	DDP_COMPONENT_SYS_B_DLO_ASYNC0,
+	DDP_COMPONENT_SYS_B_DLI_ASYNC20,
+	DDP_COMPONENT_SYS_B_SPLITTER0_OUT_CB0,
+	DDP_COMPONENT_SYS_B_COMP0_OUT_CB0,
+	DDP_COMPONENT_SYS_B_MERGE0_OUT_CB0,
+	DDP_COMPONENT_SYS_B_DISP_DVO,
 };
 
 /* CRTC3 */
@@ -4935,6 +4953,17 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 
 static const enum mtk_ddp_comp_id mt6993_scaling_main[] = {
 	DDP_COMPONENT_MDP_RSZ0,
+};
+
+static const struct mtk_addon_scenario_data mt6993_addon_ext[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
 };
 
 static const enum mtk_ddp_comp_id mt6991_scaling_main[] = {
@@ -6115,14 +6144,14 @@ static const struct mtk_crtc_path_data mt6993_mtk_main_full_set_data = {
 };
 
 static const struct mtk_crtc_path_data mt6993_mtk_ext_path_data = {
-/*	.path[DDP_MAJOR][0] = mt6993_mtk_ddp_ext_dp,
+	.path[DDP_MAJOR][0] = mt6993_mtk_ddp_ext_dp,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6993_mtk_ddp_ext_dp),
 	.path_req_hrt[DDP_MAJOR][0] = true,
 	.addon_data = mt6993_addon_ext,
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	.is_exdma_dual_layer = true,
 #endif
-*/
+
 };
 
 static const struct mtk_crtc_path_data mt6993_mtk_dp_w_tdshp_path_data = {
@@ -9029,7 +9058,7 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 		if (type == MTK_DSI)
 			ret = mtk_drm_get_panel_info(dev, info, 1);
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
-		else if (type == MTK_DP_INTF)
+		else if (type == MTK_DP_INTF || type == MTK_DISP_DVO)
 			ret = mtk_drm_dp_get_info(dev, info);
 #endif
 		else {
@@ -11719,6 +11748,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DVO},
 	{.compatible = "mediatek,mt6993-edp-dvo",
 	 .data = (void *)MTK_DISP_DVO},
+	{.compatible = "mediatek,mt6993-dvo",
+	.data = (void *)MTK_DISP_DVO},
 	{.compatible = "mediatek,mt6991-disp-bwm",
 	 .data = (void *)MTK_DISP_BWM},
 	{.compatible = "mediatek,mt6897-dp-intf",
@@ -13114,8 +13145,8 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_dp_tx_driver,
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 	&mtk_dp_phy_driver,
-	&mtk_dvo_driver,
 #endif
+	&mtk_dvo_driver,
 	&mtk_disp_y2r_driver,
 	&mtk_disp_r2y_driver,
 	&mtk_disp_inlinerotate_driver,

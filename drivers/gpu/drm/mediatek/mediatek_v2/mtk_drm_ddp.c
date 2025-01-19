@@ -2371,26 +2371,18 @@
 #define MT6993_MUTEX_SOF_DSI0 1
 #define MT6993_MUTEX_SOF_DSI1 2
 #define MT6993_MUTEX_SOF_DSI2 4
-#define MT6993_MUTEX_SOF_DPI0 5
-#define MT6993_MUTEX_SOF_DPI1 6
-#define MT6993_MUTEX_SOF_DVO  7
+#define MT6993_MUTEX_SOF_DVO  5
 #define MT6993_MUTEX_EOF_DSI0 (MT6993_MUTEX_SOF_DSI0 << 7)
 #define MT6993_MUTEX_EOF_DSI1 (MT6993_MUTEX_SOF_DSI1 << 7)
 #define MT6993_MUTEX_EOF_DSI2 (MT6993_MUTEX_SOF_DSI2 << 7)
-#define MT6993_MUTEX_EOF_DPI0 (MT6993_MUTEX_SOF_DPI0 << 7)
-#define MT6993_MUTEX_EOF_DPI1 (MT6993_MUTEX_SOF_DPI1 << 7)
 #define MT6993_MUTEX_EOF_DVO (MT6993_MUTEX_SOF_DVO << 7)
 #define MT6993_MUTEX_OVLSYS_SOF_DSI0 1
 #define MT6993_MUTEX_OVLSYS_SOF_DSI1 2
 #define MT6993_MUTEX_OVLSYS_SOF_DSI2 4
-#define MT6993_MUTEX_OVLSYS_SOF_DPI0 5
-#define MT6993_MUTEX_OVLSYS_SOF_DPI1 6
-#define MT6993_MUTEX_OVLSYS_SOF_DVO 7
+#define MT6993_MUTEX_OVLSYS_SOF_DVO 5
 #define MT6993_MUTEX_OVLSYS_EOF_DSI0 (MT6993_MUTEX_OVLSYS_SOF_DSI0 << 7)
 #define MT6993_MUTEX_OVLSYS_EOF_DSI1 (MT6993_MUTEX_OVLSYS_SOF_DSI1 << 7)
 #define MT6993_MUTEX_OVLSYS_EOF_DSI2 (MT6993_MUTEX_OVLSYS_SOF_DSI2 << 7)
-#define MT6993_MUTEX_OVLSYS_EOF_DPI0 (MT6993_MUTEX_OVLSYS_SOF_DPI0 << 7)
-#define MT6993_MUTEX_OVLSYS_EOF_DPI1 (MT6993_MUTEX_OVLSYS_SOF_DPI1 << 7)
 #define MT6993_MUTEX_OVLSYS_EOF_DVO (MT6993_MUTEX_OVLSYS_SOF_DVO << 7)
 
 #define DISP_REG_CONFIG_OVLSYS_CG_CON0_MT6993 0xAC8
@@ -9188,10 +9180,6 @@ static const unsigned int mt6993_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6993_MUTEX_SOF_DSI1 | MT6993_MUTEX_EOF_DSI1,
 		[DDP_MUTEX_SOF_DSI2] =
 			MT6993_MUTEX_SOF_DSI2 | MT6993_MUTEX_EOF_DSI2,
-		[DDP_MUTEX_SOF_DPI0] =
-			MT6993_MUTEX_SOF_DPI0 | MT6993_MUTEX_EOF_DPI0,
-		[DDP_MUTEX_SOF_DPI1] =
-			MT6993_MUTEX_SOF_DPI1 | MT6993_MUTEX_EOF_DPI1,
 		[DDP_MUTEX_SOF_DVO] =
 			MT6993_MUTEX_SOF_DVO | MT6993_MUTEX_EOF_DVO,
 		[DDP_MUTEX_SOF_SINGLE_EOF_DSI0] =
@@ -9208,10 +9196,6 @@ static const unsigned int mt6993_mutex_ovlsys_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6993_MUTEX_OVLSYS_SOF_DSI1 | MT6993_MUTEX_OVLSYS_EOF_DSI1,
 		[DDP_MUTEX_SOF_DSI2] =
 			MT6993_MUTEX_OVLSYS_SOF_DSI2 | MT6993_MUTEX_OVLSYS_EOF_DSI2,
-		[DDP_MUTEX_SOF_DPI0] =
-			MT6993_MUTEX_OVLSYS_SOF_DPI0 | MT6993_MUTEX_OVLSYS_EOF_DPI0,
-		[DDP_MUTEX_SOF_DPI1] =
-			MT6993_MUTEX_OVLSYS_SOF_DPI1 | MT6993_MUTEX_OVLSYS_EOF_DPI1,
 		[DDP_MUTEX_SOF_DVO] =
 			MT6993_MUTEX_OVLSYS_SOF_DVO | MT6993_MUTEX_OVLSYS_EOF_DVO,
 };
@@ -17527,10 +17511,6 @@ char *mtk_ddp_get_mutex_sof_name_mt6993(unsigned int regval)
 		return "dsi1";
 	case MT6993_MUTEX_SOF_DSI2:
 		return "dsi2";
-	case MT6993_MUTEX_SOF_DPI0:
-		return "dpi0";
-	case MT6993_MUTEX_SOF_DPI1:
-		return "dpi1";
 	case MT6993_MUTEX_SOF_DVO:
 		return "dvo";
 	default:
@@ -26910,8 +26890,10 @@ static int mtk_ddp_ovl_rsz_in_cb_MT6993(enum mtk_ddp_comp_id cur, enum mtk_ddp_c
 		break;
 	case DDP_COMPONENT_OVL_EXDMA2:
 	case DDP_COMPONENT_OVL1_EXDMA2:
-	case DDP_COMPONENT_OVL2_EXDMA2:
 		*addr = MT6993_OVL_RSZ_IN_CROSSBAR2_MOUT_EN;	// OVL_MOUT = 0x1
+		break;
+	case DDP_COMPONENT_OVL2_EXDMA2:
+		*addr = MT6993_OVL_RSZ_IN_CROSSBAR3_MOUT_EN;	// OVL_MOUT = 0x2
 		break;
 	default:
 		value = -1;
@@ -26928,6 +26910,7 @@ static int mtk_ddp_ovl_rsz_in_cb_MT6993(enum mtk_ddp_comp_id cur, enum mtk_ddp_c
 		break;
 	case DDP_COMPONENT_OVL0_EXDMA_OUT_CB3:
 	case DDP_COMPONENT_OVL1_EXDMA_OUT_CB3:
+	case DDP_COMPONENT_OVL2_EXDMA_OUT_CB3:
 		value = MT6993_DISP_OVL_RSZ_IN_CB_TO_OVL_EXDMA_OUT_CB3;
 		break;
 	default:
@@ -27032,6 +27015,7 @@ static int mtk_ddp_ovl_exdma_out_cb_MT6993(enum mtk_ddp_comp_id cur, enum mtk_dd
 	case DDP_COMPONENT_OVL0_RSZ_IN_CB2:
 	case DDP_COMPONENT_OVL1_RSZ_IN_CB2:
 	case DDP_COMPONENT_OVL2_RSZ_IN_CB2:
+	case DDP_COMPONENT_OVL2_EXDMA_OUT_CB3:
 		*addr = MT6993_OVL_EXDMA_OUT_CROSSBAR3_MOUT_EN;
 		break;
 	case DDP_COMPONENT_OVL_EXDMA3:
@@ -28721,10 +28705,15 @@ static int mtk_ddp_mout_en_MT6993(const struct mtk_mmsys_reg_data *data,
 	}
 
 	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {
-		if (cur == DDP_COMPONENT_OVL_EXDMA2)
+		if (cur == DDP_COMPONENT_OVL_EXDMA2 || cur == DDP_COMPONENT_OVL2_EXDMA2)
 			value = mtk_ddp_ovl_rsz_in_cb_MT6993(cur, next, addr);
 		else
 			value = mtk_ddp_ovl_exdma_out_cb_MT6993(cur, next, addr);
+		return value;
+	}
+
+	if (cur == DDP_COMPONENT_OVL2_EXDMA_OUT_CB3) {
+		value = mtk_ddp_ovl_exdma_out_cb_MT6993(cur, next, addr);
 		return value;
 	}
 
@@ -31392,6 +31381,51 @@ void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_write(handle, cmdq_base,
 			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	}
+
+	if (ddp->ovlsys2_regs_pa) {
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	}
+
+	if (ddp->sys_b_regs_pa) {
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	}
+
+	if (ddp->sys_b_side_regs_pa) {
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+		cmdq_pkt_write(handle, cmdq_base,
+			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	}
 }
 
 void mtk_gce_event_config_MT6991(struct drm_device *drm)
@@ -31473,8 +31507,8 @@ void mtk_gce_event_config_MT6993(struct drm_device *drm)
 
 	DDPINFO("%s:%d\n", __func__, __LINE__);
 
-	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL0_DP_INTF,
-		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL0);
+	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL0_DVO,
+		priv->sys_b_side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL0);
 	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL1_DSI0_FRAME_DONE,
 		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL1);
 	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL2_DSI1_FRAME_DONE,
@@ -36152,14 +36186,22 @@ int mtk_disp_mutex_prepare(struct mtk_disp_mutex *mutex)
 	struct mtk_ddp *ddp =
 		container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
 
-	if (ddp->dispsys_num > 1)
+	if (ddp->dispsys_num > 1) {
 		clk_prepare_enable(ddp->side_clk);
+		if (ddp->sys_b_clk)
+			clk_prepare_enable(ddp->sys_b_clk);
+		if (ddp->sys_b_side_clk)
+			clk_prepare_enable(ddp->sys_b_side_clk);
+	}
 
 	if (ddp->ovlsys1_clk)
 		clk_prepare_enable(ddp->ovlsys1_clk);
 
 	if (ddp->ovlsys0_clk)
 		clk_prepare_enable(ddp->ovlsys0_clk);
+
+	if (ddp->ovlsys2_clk)
+		clk_prepare_enable(ddp->ovlsys2_clk);
 
 	return clk_prepare_enable(ddp->clk);
 }
@@ -36169,14 +36211,22 @@ void mtk_disp_mutex_unprepare(struct mtk_disp_mutex *mutex)
 	struct mtk_ddp *ddp =
 		container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
 
-	if (ddp->dispsys_num > 1)
+	if (ddp->dispsys_num > 1) {
 		clk_disable_unprepare(ddp->side_clk);
+		if (ddp->sys_b_clk)
+			clk_disable_unprepare(ddp->sys_b_clk);
+		if (ddp->sys_b_side_clk)
+			clk_disable_unprepare(ddp->sys_b_side_clk);
+	}
 
 	if (ddp->ovlsys1_clk)
 		clk_disable_unprepare(ddp->ovlsys1_clk);
 
 	if (ddp->ovlsys0_clk)
 		clk_disable_unprepare(ddp->ovlsys0_clk);
+
+	if (ddp->ovlsys2_clk)
+		clk_disable_unprepare(ddp->ovlsys2_clk);
 
 	clk_disable_unprepare(ddp->clk);
 }
@@ -36201,8 +36251,13 @@ void mtk_disp_mutex_add_comp(struct mtk_disp_mutex *mutex,
 
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
 		reg_addr = ddp->side_regs;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+		reg_addr = ddp->sys_b_side_regs;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+		reg_addr = ddp->sys_b_regs;
 	else
 		reg_addr = ddp->regs;
+
 
 	if (ddp->data->dispsys_map &&
 		ddp->data->dispsys_map[id] == OVLSYS1) {
@@ -36212,6 +36267,10 @@ void mtk_disp_mutex_add_comp(struct mtk_disp_mutex *mutex,
 				ddp->data->dispsys_map[id] == OVLSYS0) {
 		if (ddp->ovlsys0_regs)
 			reg_addr1 = ddp->ovlsys0_regs;
+	} else if (ddp->data->dispsys_map &&
+				ddp->data->dispsys_map[id] == OVLSYS2) {
+		if (ddp->ovlsys2_regs)
+			reg_addr1 = ddp->ovlsys2_regs;
 	}
 
 	if (ddp->data->mutex_mod[id] > 0) {
@@ -36324,7 +36383,7 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		id = comp->id;
 		type = mtk_ddp_comp_get_type(id);
-		if (type == MTK_DSI || type == MTK_DPI || type == MTK_DP_INTF)
+		if (type == MTK_DSI || type == MTK_DPI || type == MTK_DP_INTF || type == MTK_DISP_DVO)
 			break;
 	}
 
@@ -36345,7 +36404,7 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			val = DDP_MUTEX_SOF_DPI1;
 	} else if ((id == DDP_COMPONENT_DPI1) || (id == DDP_COMPONENT_DP_INTF1))
 		val = DDP_MUTEX_SOF_DPI1;
-	else if (id == DDP_COMPONENT_DISP_DVO)
+	else if ((id == DDP_COMPONENT_DISP_DVO) || (id == DDP_COMPONENT_SYS_B_DISP_DVO))
 		val = DDP_MUTEX_SOF_DVO;
 
 	DDPINFO("%s, id:%s, val:0x%x\n", __func__, mtk_dump_comp_str_id(id),
@@ -36361,6 +36420,34 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 			       ddp->ovlsys0_regs +
 			       DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
 	}
+
+	if (ddp->ovlsys2_regs) {
+		DDPINFO("%s, disp%d ovlsys2 id:%s, reg:0x%x, val:0x%x\n", __func__,
+			mutex->id, mtk_dump_comp_str_id(id), DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
+			ddp->data->mutex_ovlsys_sof[val]);
+		writel_relaxed(
+			ddp->data->mutex_ovlsys_sof[val],
+			ddp->ovlsys2_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+	}
+
+	if (ddp->sys_b_regs) {
+		DDPINFO("%s, crtc%d dispsys0B id:%s, reg:0x%x, val:0x%x\n", __func__,
+			mutex->id, mtk_dump_comp_str_id(id), DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
+			ddp->data->mutex_sof[val]);
+		writel_relaxed(
+			ddp->data->mutex_sof[val],
+			ddp->sys_b_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+	}
+
+	if (ddp->sys_b_side_regs) {
+		DDPINFO("%s, crtc%d dispsys1B id:%s, reg:0x%x, val:0x%x\n", __func__,
+			mutex->id, mtk_dump_comp_str_id(id), DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
+			ddp->data->mutex_sof[val]);
+		writel_relaxed(
+			ddp->data->mutex_sof[val],
+			ddp->sys_b_side_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+	}
+
 
 	if (ddp->data->dispsys_map && ddp->side_regs) {
 		if (ddp->ovlsys1_regs) {
@@ -36444,8 +36531,13 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
 		regs_pa = ddp->side_regs_pa;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+		regs_pa = ddp->sys_b_side_regs_pa;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+		regs_pa = ddp->sys_b_regs_pa;
 	else
 		regs_pa = ddp->regs_pa;
+
 
 	if (ddp->data->dispsys_map &&
 		ddp->data->dispsys_map[id] == OVLSYS1) {
@@ -36455,6 +36547,10 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				ddp->data->dispsys_map[id] == OVLSYS0) {
 		if (ddp->ovlsys0_regs)
 			ovlsys_regs_pa = ddp->ovlsys0_regs_pa;
+	} else if (ddp->data->dispsys_map &&
+				ddp->data->dispsys_map[id] == OVLSYS2) {
+		if (ddp->ovlsys2_regs)
+			ovlsys_regs_pa = ddp->ovlsys2_regs_pa;
 	}
 
 	reg = DDP_MUTEX_SOF_SINGLE_MODE;
@@ -36492,6 +36588,7 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			reg = DDP_MUTEX_SOF_DPI1;
 		break;
 	case DDP_COMPONENT_DISP_DVO:
+	case DDP_COMPONENT_SYS_B_DISP_DVO:
 		if (is_cmd_mode)
 			reg = DDP_MUTEX_SOF_SINGLE_MODE;
 		else
@@ -36567,14 +36664,19 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 	unsigned int reg, reg1;
 	void __iomem *reg_addr;
 	void __iomem *reg_addr1 = NULL;
+	unsigned int mmsys_id = 0;
 
 	if (&ddp->mutex[mutex->id] != mutex)
 		DDPAEE("%s:%d, invalid mutex:(%p,%p) id:%d\n",
 			__func__, __LINE__,
 			&ddp->mutex[mutex->id], mutex, mutex->id);
 
-	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == 1)
+	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
 		reg_addr = ddp->side_regs;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+		reg_addr = ddp->sys_b_side_regs;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+		reg_addr = ddp->sys_b_regs;
 	else
 		reg_addr = ddp->regs;
 
@@ -36586,6 +36688,10 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 				ddp->data->dispsys_map[id] == OVLSYS0) {
 		if (ddp->ovlsys0_regs)
 			reg_addr1 = ddp->ovlsys0_regs;
+	} else if (ddp->data->dispsys_map &&
+				ddp->data->dispsys_map[id] == OVLSYS2) {
+		if (ddp->ovlsys2_regs)
+			reg_addr1 = ddp->ovlsys2_regs;
 	}
 
 	switch (id) {
@@ -36596,6 +36702,7 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 	case DDP_COMPONENT_DPI1:
 	case DDP_COMPONENT_DP_INTF1:
 	case DDP_COMPONENT_DISP_DVO:
+	case DDP_COMPONENT_SYS_B_DISP_DVO:
 		writel_relaxed(
 			MUTEX_SOF_SINGLE_MODE,
 			reg_addr + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
@@ -36668,9 +36775,13 @@ void mtk_disp_mutex_remove_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 			__func__, __LINE__,
 			&ddp->mutex[mutex->id], mutex, mutex->id);
 
-	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == 1 &&
+	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1 &&
 			ddp->side_regs_pa)
 		regs_pa = ddp->side_regs_pa;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+		regs_pa = ddp->sys_b_side_regs_pa;
+	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+		regs_pa = ddp->sys_b_regs_pa;
 	else
 		regs_pa = ddp->regs_pa;
 
@@ -36682,6 +36793,10 @@ void mtk_disp_mutex_remove_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 				ddp->data->dispsys_map[id] == OVLSYS0) {
 		if (ddp->ovlsys0_regs)
 			ovlsys_regs_pa = ddp->ovlsys0_regs_pa;
+	} else if (ddp->data->dispsys_map &&
+				ddp->data->dispsys_map[id] == OVLSYS2) {
+		if (ddp->ovlsys2_regs)
+			ovlsys_regs_pa = ddp->ovlsys2_regs_pa;
 	}
 
 	switch (id) {
@@ -36692,6 +36807,7 @@ void mtk_disp_mutex_remove_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 	case DDP_COMPONENT_DPI1:
 	case DDP_COMPONENT_DP_INTF1:
 	case DDP_COMPONENT_DISP_DVO:
+	case DDP_COMPONENT_SYS_B_DISP_DVO:
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			       regs_pa +
 				       DISP_REG_MUTEX_SOF(ddp->data, mutex->id),
@@ -36792,6 +36908,27 @@ void mtk_disp_mutex_inten_enable(struct mtk_disp_mutex *mutex)
 		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->ovlsys1_regs + DISP_REG_MUTEX_INTEN);
 	}
+
+	if (ddp->ovlsys2_regs) {
+		val = readl_relaxed(ddp->ovlsys2_regs + DISP_REG_MUTEX_INTEN);
+		val |= (0x1 << (unsigned int)mutex->id);
+		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		writel_relaxed(val, ddp->ovlsys2_regs + DISP_REG_MUTEX_INTEN);
+	}
+
+	if (ddp->sys_b_regs) {
+		val = readl_relaxed(ddp->sys_b_regs + DISP_REG_MUTEX_INTEN);
+		val |= (0x1 << (unsigned int)mutex->id);
+		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		writel_relaxed(val, ddp->sys_b_regs + DISP_REG_MUTEX_INTEN);
+	}
+
+	if (ddp->sys_b_side_regs) {
+		val = readl_relaxed(ddp->sys_b_side_regs + DISP_REG_MUTEX_INTEN);
+		val |= (0x1 << (unsigned int)mutex->id);
+		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		writel_relaxed(val, ddp->sys_b_side_regs + DISP_REG_MUTEX_INTEN);
+	}
 }
 
 void mtk_disp_mutex_inten_enable_cmdq(struct mtk_disp_mutex *mutex,
@@ -36819,6 +36956,16 @@ void mtk_disp_mutex_inten_enable_cmdq(struct mtk_disp_mutex *mutex,
 	if (ddp->ovlsys1_regs_pa)
 		cmdq_pkt_write(handle, ddp->cmdq_base,
 			       ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+
+	if (ddp->ovlsys2_regs_pa)
+		cmdq_pkt_write(handle, ddp->cmdq_base,
+			       ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	if (ddp->sys_b_regs_pa)
+		cmdq_pkt_write(handle, ddp->cmdq_base,
+			       ddp->sys_b_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	if (ddp->sys_b_side_regs_pa)
+		cmdq_pkt_write(handle, ddp->cmdq_base,
+			       ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 }
 
 void mtk_disp_mutex_inten_disable_cmdq(struct mtk_disp_mutex *mutex,
@@ -36846,6 +36993,15 @@ void mtk_disp_mutex_inten_disable_cmdq(struct mtk_disp_mutex *mutex,
 	if (ddp->ovlsys1_regs_pa)
 		cmdq_pkt_write(handle, ddp->cmdq_base,
 				   ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_INTEN, 0, mask);
+	if (ddp->ovlsys2_regs_pa)
+		cmdq_pkt_write(handle, ddp->cmdq_base,
+				   ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_INTEN, 0, mask);
+	if (ddp->sys_b_regs_pa)
+		cmdq_pkt_write(handle, ddp->cmdq_base,
+				   ddp->sys_b_regs_pa + DISP_REG_MUTEX_INTEN, 0, mask);
+	if (ddp->sys_b_side_regs_pa)
+		cmdq_pkt_write(handle, ddp->cmdq_base,
+				   ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, 0, mask);
 }
 
 void mtk_disp_mutex_enable(struct mtk_disp_mutex *mutex)
@@ -36867,6 +37023,14 @@ void mtk_disp_mutex_enable(struct mtk_disp_mutex *mutex)
 		if (ddp->ovlsys1_regs)
 			writel(1, ddp->ovlsys1_regs + DISP_REG_MUTEX_EN(mutex->id));
 	}
+
+	if (ddp->ovlsys2_regs)
+		writel(1, ddp->ovlsys2_regs + DISP_REG_MUTEX_EN(mutex->id));
+	if (ddp->sys_b_regs)
+		writel(1, ddp->sys_b_regs + DISP_REG_MUTEX_EN(mutex->id));
+	if (ddp->sys_b_side_regs)
+		writel(1, ddp->sys_b_side_regs + DISP_REG_MUTEX_EN(mutex->id));
+
 	mtk_disp_mutex_inten_enable(mutex);
 }
 
@@ -36912,6 +37076,30 @@ void mtk_disp_mutex_enable_cmdq(struct mtk_disp_mutex *mutex,
 				   ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_EN(mutex->id), 1, ~0);
 		}
 	}
+	if (ddp->ovlsys2_regs_pa) {
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_CFG, 0, 0x1);
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex->id), 0, ~0);
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex->id), 1, ~0);
+	}
+	if (ddp->sys_b_regs_pa) {
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->sys_b_regs_pa + DISP_REG_MUTEX_CFG, 0, 0x1);
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex->id), 0, ~0);
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex->id), 1, ~0);
+	}
+	if (ddp->sys_b_side_regs_pa) {
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_CFG, 0, 0x1);
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex->id), 0, ~0);
+		cmdq_pkt_write(cmdq_handle, cmdq_base,
+				   ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex->id), 1, ~0);
+	}
 
 	mtk_disp_mutex_inten_enable_cmdq(mutex, cmdq_handle);
 }
@@ -36934,6 +37122,12 @@ void mtk_disp_mutex_disable(struct mtk_disp_mutex *mutex)
 	writel(0, ddp->regs + DISP_REG_MUTEX_EN(mutex->id));
 	if (ddp->ovlsys0_regs)
 		writel(0, ddp->ovlsys0_regs + DISP_REG_MUTEX_EN(mutex->id));
+	if (ddp->ovlsys2_regs)
+		writel(0, ddp->ovlsys2_regs + DISP_REG_MUTEX_EN(mutex->id));
+	if (ddp->sys_b_regs)
+		writel(0, ddp->sys_b_regs + DISP_REG_MUTEX_EN(mutex->id));
+	if (ddp->sys_b_side_regs)
+		writel(0, ddp->sys_b_side_regs + DISP_REG_MUTEX_EN(mutex->id));
 	if (mutex->id == 2) {
 		writel(1, ddp->regs + DISP_REG_MUTEX_RST(ddp->data, mutex->id));
 		if (ddp->ovlsys0_regs)
@@ -36982,6 +37176,18 @@ void mtk_disp_mutex_acquire(struct mtk_disp_mutex *mutex)
 		writel(1, ddp->ovlsys1_regs + DISP_REG_MUTEX_EN(mutex->id));
 		writel(1, ddp->ovlsys1_regs + DISP_REG_MUTEX(mutex->id));
 	}
+	if (ddp->ovlsys2_regs) {
+		writel(1, ddp->ovlsys2_regs + DISP_REG_MUTEX_EN(mutex->id));
+		writel(1, ddp->ovlsys2_regs + DISP_REG_MUTEX(mutex->id));
+	}
+	if (ddp->sys_b_regs) {
+		writel(1, ddp->sys_b_regs + DISP_REG_MUTEX_EN(mutex->id));
+		writel(1, ddp->sys_b_regs + DISP_REG_MUTEX(mutex->id));
+	}
+	if (ddp->sys_b_side_regs) {
+		writel(1, ddp->sys_b_side_regs + DISP_REG_MUTEX_EN(mutex->id));
+		writel(1, ddp->sys_b_side_regs + DISP_REG_MUTEX(mutex->id));
+	}
 	if (readl_poll_timeout_atomic(ddp->side_regs + DISP_REG_MUTEX(mutex->id),
 				      tmp, tmp & INT_MUTEX, 1, 10000))
 		DDPPR_ERR("could not acquire disp1 mutex %d\n", mutex->id);
@@ -37003,6 +37209,12 @@ void mtk_disp_mutex_release(struct mtk_disp_mutex *mutex)
 	writel(0, ddp->side_regs + DISP_REG_MUTEX(mutex->id));
 	if (ddp->ovlsys1_regs)
 		writel(0, ddp->ovlsys1_regs + DISP_REG_MUTEX(mutex->id));
+	if (ddp->ovlsys2_regs)
+		writel(0, ddp->ovlsys2_regs + DISP_REG_MUTEX(mutex->id));
+	if (ddp->sys_b_regs)
+		writel(0, ddp->sys_b_regs + DISP_REG_MUTEX(mutex->id));
+	if (ddp->sys_b_side_regs)
+		writel(0, ddp->sys_b_side_regs + DISP_REG_MUTEX(mutex->id));
 }
 
 void mtk_disp_mutex_submit_sof(struct mtk_disp_mutex *mutex)
@@ -37037,6 +37249,24 @@ void mtk_disp_mutex_submit_sof(struct mtk_disp_mutex *mutex)
 			writel(reg, ddp->ovlsys1_regs +
 					DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
 		}
+	}
+	if (ddp->ovlsys2_regs) {
+		reg = readl_relaxed(ddp->ovlsys2_regs
+				+ DISP_REG_MUTEX_SOF(ddp->data, mutex->id)) & 0XFFBF; //0xFFDF?
+		writel(reg, ddp->ovlsys2_regs +
+				DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+	}
+	if (ddp->sys_b_regs) {
+		reg = readl_relaxed(ddp->sys_b_regs
+				+ DISP_REG_MUTEX_SOF(ddp->data, mutex->id)) & 0XFFBF; //0xFFDF?
+		writel(reg, ddp->sys_b_regs +
+				DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+	}
+	if (ddp->sys_b_side_regs) {
+		reg = readl_relaxed(ddp->sys_b_side_regs
+				+ DISP_REG_MUTEX_SOF(ddp->data, mutex->id)) & 0XFFBF; //0xFFDF?
+		writel(reg, ddp->sys_b_side_regs +
+				DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
 	}
 }
 
@@ -37759,7 +37989,7 @@ REDUMP:
 		module_base = ddp->sys_b_regs;
 		regs_pa = ddp->sys_b_regs_pa;
 		goto REDUMP;
-	} else if (cnt == 0 && ddp->sys_b_side_regs != NULL) {
+	} else if (cnt == 2 && ddp->sys_b_side_regs != NULL) {
 		cnt = 3;
 		module_base = ddp->sys_b_side_regs;
 		regs_pa = ddp->sys_b_side_regs_pa;
@@ -38812,7 +39042,7 @@ REDUMP:
 		module_base = ddp->ovlsys1_regs;
 		regs_pa = ddp->ovlsys1_regs_pa;
 		goto REDUMP;
-	}  else if (cnt == 1 && ddp->side_regs != NULL) {
+	}  else if (cnt == 1 && ddp->ovlsys2_regs != NULL) {
 		cnt = 2;
 		module_base = ddp->ovlsys2_regs;
 		regs_pa = ddp->ovlsys2_regs_pa;
@@ -38865,7 +39095,7 @@ REDUMP:
 			DISP_REG_MUTEX_MOD(0, ddp->data, i));
 		for (j = 0; j < 32; j++) {
 			if ((mod0 & (1 << j))) {
-				if (!cnt) {
+				if (!(cnt%2)) {
 					len = sprintf(p, "%s,",
 						ddp_get_mutex_module0_0_name_mt6993(j));
 				} else {
@@ -38883,7 +39113,7 @@ REDUMP:
 			DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
 		for (j = 0; j < 32; j++) {
 			if ((mod1 & (1 << j))) {
-				if (!cnt) {
+				if (!(cnt%2)) {
 					len = sprintf(p, "%s,",
 						ddp_get_mutex_module0_1_name_mt6993(j));
 				} else {
@@ -38911,7 +39141,7 @@ REDUMP:
 		module_base = ddp->sys_b_regs;
 		regs_pa = ddp->sys_b_regs_pa;
 		goto REDUMP;
-	} else if (cnt == 0 && ddp->sys_b_side_regs != NULL) {
+	} else if (cnt == 2 && ddp->sys_b_side_regs != NULL) {
 		cnt = 3;
 		module_base = ddp->sys_b_side_regs;
 		regs_pa = ddp->sys_b_side_regs_pa;
@@ -43871,10 +44101,15 @@ int mtk_ddp_exdma_mout_MT6993(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id nex
 
 	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA ||
 		mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER) {
-		if (cur == DDP_COMPONENT_OVL_EXDMA2)
+		if (cur == DDP_COMPONENT_OVL_EXDMA2 || cur == DDP_COMPONENT_OVL2_EXDMA2)
 			value = mtk_ddp_ovl_rsz_in_cb_MT6993(cur, next, addr);
 		else
 			value = mtk_ddp_ovl_exdma_out_cb_MT6993(cur, next, addr);
+		return value;
+	}
+
+	if (cur == DDP_COMPONENT_OVL2_EXDMA_OUT_CB3) {
+		value = mtk_ddp_ovl_exdma_out_cb_MT6993(cur, next, addr);
 		return value;
 	}
 
@@ -43915,14 +44150,14 @@ int mtk_ddp_exdma_mout_reset_MT6993(enum mtk_ddp_comp_type type, int *offset,
 		}
 	} else if (crtc_id == 1) {
 		if (type == MTK_OVL_EXDMA) {
-			*addr_begin = MT6993_OVL_EXDMA_OUT_CROSSBAR7_MOUT_EN;
-			*addr_end = MT6993_OVL_EXDMA_OUT_CROSSBAR10_MOUT_EN;
+			*addr_begin = MT6993_OVL_EXDMA_OUT_CROSSBAR3_MOUT_EN;
+			*addr_end = MT6993_OVL_EXDMA_OUT_CROSSBAR6_MOUT_EN;
 			*offset = 8;
 		}
 
 		if (type ==  MTK_OVL_BLENDER) {
-			*addr_begin = MT6993_OVL_BLENDER_OUT_CROSSBAR5_MOUT_EN;
-			*addr_end = MT6993_OVL_BLENDER_OUT_CROSSBAR6_MOUT_EN;
+			*addr_begin = MT6993_OVL_BLENDER_OUT_CROSSBAR0_MOUT_EN;
+			*addr_end = MT6993_OVL_BLENDER_OUT_CROSSBAR3_MOUT_EN;
 			*offset = 4;
 		}
 	} else if (crtc_id == 2) {
@@ -43963,10 +44198,16 @@ void mtk_ddp_disable_merge_irq(struct drm_device *drm)
 		writel_relaxed(0, priv->ovlsys0_regs + OVLSYS_INTMERGE);
 	if (priv->ovlsys1_regs)
 		writel_relaxed(0, priv->ovlsys1_regs + OVLSYS_INTMERGE);
+	if (priv->ovlsys2_regs)
+		writel_relaxed(0, priv->ovlsys2_regs + OVLSYS_INTMERGE);
 	if (priv->config_regs)
 		writel_relaxed(0, priv->config_regs + DISPSYS_INTMERGE);
 	if (priv->side_config_regs)
 		writel_relaxed(0, priv->side_config_regs + DISPSYS_INTMERGE);
+	if (priv->sys_b_config_regs)
+		writel_relaxed(0, priv->sys_b_config_regs + DISPSYS_INTMERGE);
+	if (priv->sys_b_side_config_regs)
+		writel_relaxed(0, priv->sys_b_side_config_regs + DISPSYS_INTMERGE);
 }
 
 void mtk_ddp_disable_merge_irq_MT6993(struct drm_device *drm)
@@ -44130,13 +44371,13 @@ static int mtk_ddp_probe(struct platform_device *pdev)
 	ddp->sys_b_regs_pa = regs2->start;
 	ddp->sys_b_regs = devm_ioremap_resource(dev, regs2);
 	if (IS_ERR(ddp->sys_b_regs)) {
-		dev_err(dev, "Failed to map sys B mutex registers\n");
+		dev_err(dev, "Failed to map sys0 B mutex registers\n");
 		return PTR_ERR(ddp->sys_b_regs);
 	}
 
 	ddp->sys_b_clk = of_clk_get(dev->of_node, num_cnt);
 	if (IS_ERR(ddp->sys_b_clk))
-		DDPPR_ERR("Failed to get sys B Mutex clock\n");
+		DDPPR_ERR("Failed to get sys0 B Mutex clock\n");
 	num_cnt++;
 
 	regs3 = platform_get_resource(pdev, IORESOURCE_MEM, num_cnt);
@@ -44146,13 +44387,13 @@ static int mtk_ddp_probe(struct platform_device *pdev)
 	ddp->sys_b_side_regs_pa = regs3->start;
 	ddp->sys_b_side_regs = devm_ioremap_resource(dev, regs3);
 	if (IS_ERR(ddp->sys_b_side_regs)) {
-		dev_err(dev, "Failed to map mutex1 registers\n");
+		dev_err(dev, "Failed to map sys1 B mutex registers\n");
 		return PTR_ERR(ddp->sys_b_side_regs);
 	}
 
 	ddp->sys_b_side_clk = of_clk_get(dev->of_node, num_cnt);
 	if (IS_ERR(ddp->sys_b_side_clk))
-		DDPPR_ERR("Failed to get Mutex1 clock\n");
+		DDPPR_ERR("Failed to get sys1 B Mutex clock\n");
 	num_cnt++;
 
 SKIP_SIDE_DISP:
@@ -44202,12 +44443,12 @@ SKIP_SIDE_DISP:
 	ddp->ovlsys2_regs_pa = regs2->start;
 	ddp->ovlsys2_regs = devm_ioremap_resource(dev, regs2);
 	if (IS_ERR(ddp->ovlsys2_regs)) {
-		dev_err(dev, "Failed to map ovlsys mutex1 registers\n");
+		dev_err(dev, "Failed to map ovlsys2 mutex registers\n");
 		return PTR_ERR(ddp->ovlsys2_regs);
 	}
 	ddp->ovlsys2_clk = of_clk_get(dev->of_node, num_cnt);
-	if (IS_ERR(ddp->ovlsys1_clk))
-		DDPPR_ERR("Failed to get ovlsys mutex1 clock\n");
+	if (IS_ERR(ddp->ovlsys2_clk))
+		DDPPR_ERR("Failed to get ovlsys2 mutex clock\n");
 
 SKIP_OVLSYS_CONFIG:
 	ddp->data = of_device_get_match_data(dev);

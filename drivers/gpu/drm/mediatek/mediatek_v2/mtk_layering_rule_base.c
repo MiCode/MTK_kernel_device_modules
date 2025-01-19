@@ -3076,6 +3076,12 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 			exdma_comp = DDP_COMPONENT_OVL1_EXDMA6  + ((layer_idx - fun_lye) * 2);
 
 			return exdma_comp;
+		} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+			int exdma_comp = 0;
+
+			exdma_comp = DDP_COMPONENT_OVL2_EXDMA2  + ((layer_idx - fun_lye) * 2);
+
+			return exdma_comp;
 		}
 	} else if (disp_idx == 2) {
 		if (priv->data->mmsys_id == MMSYS_MT6991) {
@@ -3159,6 +3165,12 @@ static int mtk_lye_get_blender_comp_id(int disp_idx, int layer_idx,
 			int bld_comp = 0;
 
 			bld_comp = DDP_COMPONENT_OVL1_BLENDER5  + ((layer_idx - blender_lye) * 2);
+
+			return bld_comp;
+		} else if (priv->data->mmsys_id == MMSYS_MT6993) {
+			int bld_comp = 0;
+
+			bld_comp = DDP_COMPONENT_OVL2_BLENDER0  + ((layer_idx - blender_lye) * 2);
 
 			return bld_comp;
 		}
