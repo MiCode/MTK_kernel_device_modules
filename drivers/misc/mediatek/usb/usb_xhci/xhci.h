@@ -2014,8 +2014,11 @@ static inline bool xhci_has_one_roothub(struct xhci_hcd *xhci)
 	       (!xhci->usb2_rhub.num_ports || !xhci->usb3_rhub.num_ports);
 }
 
-#define xhci_dbg(xhci, fmt, args...) \
-	dev_dbg(xhci_to_hcd(xhci)->self.controller , fmt , ## args)
+extern unsigned int xhci_dev_dbg_log;
+#define xhci_dbg(xhci, fmt, args...) do { \
+		if (xhci_dev_dbg_log) \
+			dev_dbg(xhci_to_hcd(xhci)->self.controller, fmt, ## args); \
+	} while (0)
 #define xhci_err(xhci, fmt, args...) \
 	dev_err(xhci_to_hcd(xhci)->self.controller , fmt , ## args)
 #define xhci_warn(xhci, fmt, args...) \
