@@ -127,3 +127,13 @@ config MTK_DCM_MT6991
 	  neet to change mt6991 dcm setting. Setting will not keep after reboot
 	  Select "y" if you want to change mt6991 dcm setting.
 	  Select "n" if you do not need to change
+
+config MTK_DCM_MT6993
+	tristate "Mediatek MT6993 DCM control"
+	depends on ARCH_MEDIATEK && OF
+	select MTK_DCM_COMMON
+	help
+	  For Mediatek MT6993 Dynamic Clock Management HW control. Only enable when you
+	  neet to change mt6993 dcm setting. Setting will not keep after reboot
+	  Select "y" if you want to change mt6993 dcm setting.
+	  Select "n" if you do not need to change
