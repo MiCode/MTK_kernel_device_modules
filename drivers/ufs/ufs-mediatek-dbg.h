@@ -190,6 +190,8 @@ int ufs_mtk_dbg_tp_register(void);
 void ufs_mtk_dbg_tp_unregister(void);
 int ufs_mtk_dbg_register(struct ufs_hba *hba);
 extern void ufs_mtk_dbg_dump(u32 latest_cnt);
+int ufs_mtk_cali_hold(void);
+int ufs_mtk_cali_release(void);
 int ufs_mtk_dbg_cmd_hist_enable(void);
 int ufs_mtk_dbg_cmd_hist_disable(void);
 void ufs_mtk_eh_abort(unsigned int tag);
