@@ -149,6 +149,7 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_MBRC_TKSPD,
 	VENC_SET_PARAM_CONFIG,
 	VENC_SET_PARAM_ADAB_INFO,
+	VENC_SET_PARAM_I_FRM_SZ_CTRL,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -558,6 +559,7 @@ struct venc_vcu_config {
 	struct v4l2_venc_nal_length nal_length;
 	__u8 use_clean_gop;
 	struct v4l2_venc_adab_info adab_info;
+	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
 };
 
 /**

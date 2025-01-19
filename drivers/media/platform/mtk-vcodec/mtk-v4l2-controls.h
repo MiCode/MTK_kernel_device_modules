@@ -292,6 +292,8 @@
 	(V4L2_CID_CODEC_MTK_ENC_BASE+42)
 #define V4L2_CID_MTK_VIDEO_ENC_GET_ADAB_CAPABILITY \
 	(V4L2_CID_CODEC_MTK_ENC_BASE+43)
+#define V4L2_CID_MTK_VIDEO_ENC_I_FRAME_SIZE_CONTROL \
+	(V4L2_CID_CODEC_MTK_ENC_BASE+44)
 
 // for V4L2_CID_MTK_VIDEO_DEC_DECODE_MODE
 enum v4l2_vdec_decode_mode {
@@ -354,6 +356,7 @@ enum v4l2_venc_scenario {
 	V4L2_VENC_SCENARIO_WECHAT,
 	V4L2_VENC_SCENARIO_HDR,
 	V4L2_VENC_SCENARIO_HDR10PLUS,
+	V4L2_VENC_SDK_SCENARIO_BASED = 0xffff
 };
 
 // for V4L2_CID_MTK_VIDEO_COLOR_DESC
@@ -532,6 +535,12 @@ struct v4l2_venc_adab_info {
 	__u32	crop_width;
 	__u32	crop_height;
 	__u32	pixelformat;
+};
+
+// for V4L2_CID_MTK_VIDEO_ENC_I_FRAME_SIZE_CONTROL
+struct v4l2_venc_i_frame_size_control {
+	__s32   max_i_ratio;
+	__s32   shrink_i_ratio;
 };
 
 #endif // #ifndef __UAPI_MTK_V4L2_CONTROLS_H__

@@ -186,9 +186,10 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_VISUAL_QUALITY = (1 << 28),
 	MTK_ENCODE_PARAM_INIT_QP = (1 << 29),
 	MTK_ENCODE_PARAM_FRAMEQP_RANGE = (1 << 30),
-	MTK_ENCODE_PARAM_CHROMAQP = (1 << 31),
-	MTK_ENCODE_PARAM_MBRC_TKSPD = (1 << 32),
-	MTK_ENCODE_PARAM_ADAB_INFO = (1 << 33),
+	MTK_ENCODE_PARAM_CHROMAQP = ((u64)1 << 31),
+	MTK_ENCODE_PARAM_MBRC_TKSPD = ((u64)1 << 32),
+	MTK_ENCODE_PARAM_ADAB_INFO = ((u64)1 << 33),
+	MTK_ENCODE_PARAM_I_FRM_SZ_CTRL = ((u64)1 << 34),
 };
 
 /*
@@ -438,6 +439,7 @@ struct mtk_enc_params {
 	struct v4l2_venc_nal_length nal_length;
 	bool use_clean_gop;
 	struct v4l2_venc_adab_info adab_info;
+	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
 };
 
 /*
@@ -538,6 +540,7 @@ struct venc_enc_param {
 	struct v4l2_venc_nal_length *nal_length;
 	bool use_clean_gop;
 	struct v4l2_venc_adab_info *adab_info;
+	struct v4l2_venc_i_frame_size_control *i_frm_sz_ctrl;
 };
 
 /*

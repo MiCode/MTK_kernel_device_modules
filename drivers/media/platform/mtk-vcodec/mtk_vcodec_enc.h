@@ -31,7 +31,7 @@
 struct mtk_video_enc_buf {
 	struct vb2_v4l2_buffer vb;
 	struct list_head list;
-	u32 param_change;
+	u64 param_change;
 	struct mtk_enc_params enc_params;
 	enum eos_types lastframe;
 	int    flags;

@@ -514,6 +514,12 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.bfrm_q_ltr = enc_prm->bfrm_q_ltr;
 		inst->vsi->config.use_clean_gop = enc_prm->use_clean_gop;
 
+		if (enc_prm->i_frm_sz_ctrl) {
+			memcpy(&inst->vsi->config.i_frm_sz_ctrl,
+				enc_prm->i_frm_sz_ctrl,
+				sizeof(struct v4l2_venc_i_frame_size_control));
+		}
+
 		if (enc_prm->visual_quality) {
 			memcpy(&inst->vsi->config.visual_quality,
 				enc_prm->visual_quality,
@@ -644,6 +650,13 @@ static int venc_set_param(unsigned long handle,
 			return -EINVAL;
 		memcpy(&inst->vsi->config.adab_info, enc_prm->adab_info,
 			sizeof(struct v4l2_venc_adab_info));
+		ret = vcu_enc_set_param(&inst->vcu_inst, type, enc_prm);
+		break;
+	case VENC_SET_PARAM_I_FRM_SZ_CTRL:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		memcpy(&inst->vsi->config.i_frm_sz_ctrl, enc_prm->i_frm_sz_ctrl,
+			sizeof(struct v4l2_venc_i_frame_size_control));
 		ret = vcu_enc_set_param(&inst->vcu_inst, type, enc_prm);
 		break;
 	default:

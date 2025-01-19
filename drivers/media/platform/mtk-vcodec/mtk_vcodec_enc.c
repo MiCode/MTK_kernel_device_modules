@@ -704,9 +704,13 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		mtk_v4l2_debug(2,
 			"V4L2_CID_MTK_VIDEO_ENC_SCENARIO: %d",
 			ctrl->val);
-		p->scenario = ctrl->val;
+		if (ctrl->val > V4L2_VENC_SDK_SCENARIO_BASED) //high bit for sdk scenario
+			p->scenario = (p->scenario & V4L2_VENC_SDK_SCENARIO_BASED) + ctrl->val;
+		else
+			p->scenario = (p->scenario & (~V4L2_VENC_SDK_SCENARIO_BASED)) + ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_SCENARIO;
-		if (p->scenario == V4L2_VENC_SCENARIO_SMVR || p->scenario == V4L2_VENC_SCENARIO_WFD) {
+		if (((p->scenario & (~V4L2_VENC_SDK_SCENARIO_BASED)) == V4L2_VENC_SCENARIO_SMVR) ||
+		    ((p->scenario & (~V4L2_VENC_SDK_SCENARIO_BASED)) == V4L2_VENC_SCENARIO_WFD)) {
 			src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 				V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 			if (!src_vq) {
@@ -1035,6 +1039,13 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->p_new.p_u32[2], ctrl->p_new.p_u32[3], ctrl->p_new.p_u32[4]);
 		memcpy(&p->adab_info, ctrl->p_new.p_u32, sizeof(struct v4l2_venc_adab_info));
 		ctx->param_change |= MTK_ENCODE_PARAM_ADAB_INFO;
+		break;
+	case V4L2_CID_MTK_VIDEO_ENC_I_FRAME_SIZE_CONTROL:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MTK_VIDEO_ENC_I_FRAME_SIZE_CONTROL max_i_ratio(%d), shrink_i_ratio(%d)",
+			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1]);
+		memcpy(&p->i_frm_sz_ctrl, ctrl->p_new.p_s32, sizeof(struct v4l2_venc_i_frame_size_control));
+		ctx->param_change |= MTK_ENCODE_PARAM_I_FRM_SZ_CTRL;
 		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
@@ -1686,6 +1697,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->mlvec_mode = enc_params->mlvec_mode;
 	param->use_clean_gop = enc_params->use_clean_gop;
 	param->adab_info = &enc_params->adab_info;
+	param->i_frm_sz_ctrl = &enc_params->i_frm_sz_ctrl;
 	vcodec_trace_end();
 }
 
@@ -2846,7 +2858,7 @@ static void vb2ops_venc_buf_queue(struct vb2_buffer *vb)
 
 	if ((vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) &&
 	    (ctx->param_change != MTK_ENCODE_PARAM_NONE)) {
-		mtk_v4l2_debug(1, "[%d] Before id=%d encode parameter change %x",
+		mtk_v4l2_debug(1, "[%d] Before id=%d encode parameter change %lx",
 			       ctx->id,
 			       mtk_buf->vb.vb2_buf.index,
 			       ctx->param_change);
@@ -3492,8 +3504,7 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_ADJUST_QP_CONTROL_MODE, &enc_prm);
 	}
 
-	if (!ret &&
-	mtkbuf->param_change & MTK_ENCODE_PARAM_VISUAL_QUALITY) {
+	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_VISUAL_QUALITY) {
 		enc_prm.visual_quality = &mtkbuf->enc_params.visual_quality;
 		mtk_v4l2_err("[%d] idx=%d, quant=%d, rd=%d",
 				ctx->id,
@@ -3505,8 +3516,7 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 					&enc_prm);
 	}
 
-	if (!ret &&
-	mtkbuf->param_change & MTK_ENCODE_PARAM_INIT_QP) {
+	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_INIT_QP) {
 		enc_prm.init_qp = &mtkbuf->enc_params.init_qp;
 		mtk_v4l2_err("[%d] idx=%d, initial qp enable=%d, I(%d)P(%d)B(%d)",
 				ctx->id,
@@ -3520,8 +3530,7 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 					&enc_prm);
 	}
 
-	if (!ret &&
-	mtkbuf->param_change & MTK_ENCODE_PARAM_FRAMEQP_RANGE) {
+	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_FRAMEQP_RANGE) {
 		enc_prm.frame_qp_range = &mtkbuf->enc_params.frame_qp_range;
 		mtk_v4l2_err("[%d] idx=%d, frame qp range enable=%d, max(%d), min(%d)",
 				ctx->id,
@@ -3547,10 +3556,21 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 					&enc_prm);
 	}
 
+	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_I_FRM_SZ_CTRL) {
+		enc_prm.i_frm_sz_ctrl = &mtkbuf->enc_params.i_frm_sz_ctrl;
+		mtk_v4l2_err("[%d] idx=%d, i frm sz ctrl %d %d",
+				ctx->id,
+				mtkbuf->vb.vb2_buf.index,
+				enc_prm.i_frm_sz_ctrl->max_i_ratio, enc_prm.i_frm_sz_ctrl->shrink_i_ratio);
+		ret |= venc_if_set_param(ctx,
+					VENC_SET_PARAM_I_FRM_SZ_CTRL,
+					&enc_prm);
+	}
+
 	mtkbuf->param_change = MTK_ENCODE_PARAM_NONE;
 
 	if (ret) {
-		mtk_v4l2_err("[%d] venc_if_set_param %d failed=%d",
+		mtk_v4l2_err("[%d] venc_if_set_param %lld failed=%d",
 			ctx->id, mtkbuf->param_change, ret);
 		mtk_venc_error_handle(ctx);
 		return -1;
@@ -4119,8 +4139,8 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode scenario";
-	cfg.min = 0;
-	cfg.max = 32;
+	cfg.min = 0x00000000;
+	cfg.max = 0x7fffffff;
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;
@@ -4819,6 +4839,22 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.dims[0] = (sizeof(struct v4l2_venc_adab_info)/sizeof(u32));
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	ctx->enc_params.i_frm_sz_ctrl.max_i_ratio = -1;
+	ctx->enc_params.i_frm_sz_ctrl.shrink_i_ratio = -1;
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_I_FRAME_SIZE_CONTROL;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode I frame size control";
+	cfg.min = -1;
+	cfg.max = 255;
+	cfg.step = 1;
+	cfg.def = -1;
+	cfg.dims[0] = (sizeof(struct v4l2_venc_i_frame_size_control)/sizeof(s32));
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
