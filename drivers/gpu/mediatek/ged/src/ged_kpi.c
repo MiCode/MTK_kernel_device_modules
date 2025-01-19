@@ -2332,6 +2332,7 @@ static GED_ERROR ged_kpi_push_timestamp(
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS, tmp_multi.value);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS_BQ_LO, temp_ts.lo_bqid);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TARGET_FPS_BQ_HI, temp_ts.hi_bqid);
+				trace_tracing_mark_write(5566, "target_fps_fpsgo", tmp_multi.twoVar.var1);
 				break;
 			case GED_SET_PANEL_REFRESH_RATE:
 				target_FPS = i32FrameID;
