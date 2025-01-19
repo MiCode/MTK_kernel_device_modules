@@ -23,22 +23,6 @@ static unsigned int hid_debug;
 module_param(hid_debug, uint, 0644);
 MODULE_PARM_DESC(hid_debug, "Enable/Disable HID Offload debug log");
 
-unsigned int hid_disable_offload;
-module_param(hid_disable_offload, uint, 0644);
-MODULE_PARM_DESC(hid_disable_offload, "Disable HID Offload");
-
-static unsigned int hid_disable_sync;
-module_param(hid_disable_sync, uint, 0644);
-MODULE_PARM_DESC(hid_disable_sync, "Disable Sync of HID");
-
-unsigned int hid_direct_reset;
-module_param(hid_direct_reset, uint, 0644);
-MODULE_PARM_DESC(hid_direct_reset, "Direct Reset Ring");
-
-unsigned int hid_tr_switch = 1;
-module_param(hid_tr_switch, uint, 0644);
-MODULE_PARM_DESC(hid_tr_switch, "Transfer Ring Switch");
-
 #define hid_dbg(fmt, args...) do { \
 		if (hid_debug > 0) \
 			pr_info("UO, [HID] %s(%d) " fmt, __func__, __LINE__, ## args); \
@@ -65,7 +49,7 @@ struct hid_ep_info {
 	unsigned int slot_id;
 	unsigned int ep_id;
 	struct delayed_work giveback_work;
-	struct usb_offload_buffer buf_payload;
+	struct uo_buffer *buf_payload;
 
 	/* current ring info reported from dsp*/
 	union xhci_trb *cur_enqueue;
@@ -99,8 +83,6 @@ static struct wakeup_source *hid_wake_lock;
 static DECLARE_COMPLETION(hid_dequeue_done);
 
 static void xhci_mtk_trace_init(void);
-static int sned_payload_to_adsp(unsigned int msg_id,
-		void *payload, unsigned int length, int need_ack);
 
 static void hid_giveback_urb(struct work_struct *work_struct);
 static void hid_dump_ep(struct hid_ep_info *hid, const char *tag);
@@ -139,7 +121,7 @@ static struct hid_ep_info *get_hid_ep_safe(int dir, int slot, int ep)
 
 static void hid_ep_lock(struct hid_ep_info *hid, const char *tag)
 {
-	if (hid_disable_sync)
+	if (uodev->policy.hid_disable_sync)
 		return;
 
 	hid_dbg("%s wait lock\n", tag);
@@ -148,7 +130,7 @@ static void hid_ep_lock(struct hid_ep_info *hid, const char *tag)
 }
 static void hid_ep_unlock(struct hid_ep_info *hid, const char *tag)
 {
-	if (hid_disable_sync)
+	if (uodev->policy.hid_disable_sync)
 		return;
 
 	spin_unlock_irq(&hid->lock);
@@ -157,7 +139,7 @@ static void hid_ep_unlock(struct hid_ep_info *hid, const char *tag)
 
 static void hid_ring_lock(struct hid_ep_info *hid, const char *tag)
 {
-	if (hid_disable_sync)
+	if (uodev->policy.hid_disable_sync)
 		return;
 
 	hid_dbg("%s wait ring\n", tag);
@@ -167,7 +149,7 @@ static void hid_ring_lock(struct hid_ep_info *hid, const char *tag)
 
 static void hid_ring_unlock(struct hid_ep_info *hid, const char *tag)
 {
-	if (hid_disable_sync)
+	if (uodev->policy.hid_disable_sync)
 		return;
 
 	mutex_unlock(&hid->ring_lock);
@@ -217,7 +199,7 @@ static void hid_trace_dequeue(void *unused, struct urb *urb)
 	struct hid_ep_info *hid;
 	int dir, cnt;
 
-	if (hid_disable_offload)
+	if (uodev->policy.hid_disable_offload)
 		return;
 
 	if (!uodev->is_streaming) {
@@ -256,7 +238,7 @@ bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb)
 	int dir, ret;
 	bool skip = false, giveback;
 
-	if (hid_disable_offload)
+	if (uodev->policy.hid_disable_offload)
 		goto NOT_SKIP_URB;
 
 	dir = usb_endpoint_dir_in(&urb->ep->desc);
@@ -306,7 +288,7 @@ NOT_SKIP_URB:
 
 static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete *urb_complete)
 {
-	struct usb_offload_buffer *buf;
+	struct uo_buffer *buf;
 	struct dsp_payload *payload;
 	bool ap_queue;
 	int ret = 0;
@@ -316,7 +298,7 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 		return 0;
 	}
 
-	buf = &hid->buf_payload;
+	buf = hid->buf_payload;
 	hid_ep_lock(hid, "<DSP IRQ>");
 	hid->irq_total_cnt++;
 	if (urb_complete->more_complete)
@@ -421,7 +403,7 @@ static void hid_giveback_urb(struct work_struct *work_struct)
 		hid_clean_buf(hid->dir);
 		hid_ring_lock(hid, "<Finish Giveback>");
 		xhci_stop_hid_ep(hid);
-		if (hid_tr_switch) {
+		if (uodev->policy.hid_tr_switch) {
 			xhci_realloc_hid_ring(hid, UO_PROV_DRAM);
 		} else if (!dsp_abnormal && xhci_hid_move_enq(hid, hid->cur_enqueue, hid->cycle_state)) {
 			ring = xhci_get_hid_tr_ring(hid);
@@ -465,13 +447,11 @@ static void hid_update_ep_info(struct hid_ep_info *hid, struct usb_offload_xhci_
 static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable, int need_ack)
 {
 	struct usb_offload_urb_msg msg = {0};
-	struct usb_offload_buffer *buf;
 	int ret = 0, urb_size;
 	enum uo_provider_type type;
 	struct xhci_ring *ring;
 
-	type = uodev->adv_lowpwr ?
-		UO_PROV_SRAM : UO_PROV_DRAM;
+	type = uodev->policy.adv_lowpwr ? UO_PROV_SRAM : UO_PROV_DRAM;
 
 	if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
 		hid_err("hid:%p does not need offloading\n", hid);
@@ -500,16 +480,21 @@ static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable
 
 		hid->cur_enqueue = ring->enqueue;
 
-		buf = &hid->buf_payload;
+		hid->buf_payload = uob_get_empty(UO_STRUCT_URB);
+		if (!hid->buf_payload) {
+			ret = -ENOMEM;
+			goto error;
+		}
+
 		urb_size = (unsigned int)hid->urb->transfer_buffer_length;
-		ret = mtk_offload_alloc_mem(buf, urb_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
+		ret = mtk_offload_alloc_mem(hid->buf_payload, urb_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
 					type, UO_STRUCT_URB, false);
 		if (ret) {
 			hid_err("%s fail allocate hid-offload urb\n", hid->name);
 			goto error;
 		}
 		msg.urb_size = (unsigned int)hid->urb->transfer_buffer_length;
-		msg.urb_start_addr = (unsigned long long)buf->phys;
+		msg.urb_start_addr = (unsigned long long)hid->buf_payload->phys;
 		msg.first_trb = (unsigned long long)ring->first_seg->dma;
 		msg.cycle_state = (unsigned char)ring->cycle_state;
 		hid_dump_xhci(hid, "<Start DSP>");
@@ -524,7 +509,7 @@ static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable
 		msg.enable,	msg.direction, msg.slot_id,
 		msg.urb_start_addr,	msg.urb_size, msg.first_trb);
 
-	ret = sned_payload_to_adsp(AUD_USB_MSG_A2D_ENABLE_HID, &msg, sizeof(msg), need_ack);
+	ret = usb_offload_send_ipi_msg(UOI_ENABLE_HID, &msg, sizeof(struct usb_offload_urb_msg));
 	if (!ret) {
 		if (enable) {
 			hid_dump_ep(hid, "<Start DSP>");
@@ -642,11 +627,10 @@ static void hid_reset(struct hid_ep_info *hid)
 	hid_ring_lock(hid, "<HID Reset>");
 	xhci_stop_hid_ep(hid);
 
-	if (hid_tr_switch) {
+	if (uodev->policy.hid_tr_switch) {
 		xhci_realloc_hid_ring(hid, UO_PROV_DRAM);
 	} else {
-		if (!ret || hid_direct_reset) {
-			hid_info("reset whole ring, hid_direct_reset=%d\n", hid_direct_reset);
+		if (!ret) {
 			xhci_initialize_ring_info_(ring, 1);
 			hid->cur_enqueue = ring->enqueue;
 			hid->cycle_state = ring->cycle_state;
@@ -759,11 +743,11 @@ int usb_offload_hid_start(void)
 	struct hid_ep_info *hid;
 	struct xhci_ep_ctx *out_ep_ctx;
 	struct xhci_ring *ring;
-	struct usb_offload_buffer *buf;
+	struct uo_buffer *buf;
 	bool need_offload;
 	int i, ret;
 
-	if (hid_disable_offload)
+	if (uodev->policy.hid_disable_offload)
 		return 0;
 
 	if (!wait_for_completion_timeout(&hid_dequeue_done,
@@ -790,12 +774,12 @@ int usb_offload_hid_start(void)
 				continue;
 			}
 
-			buf = usb_offload_get_ring_buf(ring->first_seg->dma);
+			buf = uob_search(UO_STRUCT_TRRING, ring->first_seg->dma);
 			hid_ep_unlock(hid, "<AP Suspend>");
 			hid_ring_lock(hid, "<AP Suspend>");
-			if (!buf || hid_tr_switch) {
+			if (!buf || uodev->policy.hid_tr_switch) {
 				hid_info("hid transfer ring isn't under managed\n");
-				ret = xhci_realloc_hid_ring(hid, uodev->adv_lowpwr ?
+				ret = xhci_realloc_hid_ring(hid, uodev->policy.adv_lowpwr ?
 						UO_PROV_SRAM : UO_PROV_DRAM);
 				if (ret)
 					hid_err("fail to re-allocate hid ring\n");
@@ -828,7 +812,7 @@ void usb_offload_hid_finish(void)
 	int i, irq_total;
 	long timeout = 200000; /* 200ms */
 
-	if (hid_disable_offload)
+	if (uodev->policy.hid_disable_offload)
 		return;
 
 	for (i = 0; i < UO_HID_EP_NUM; i++) {
@@ -862,7 +846,7 @@ void usb_offload_hid_stop(void)
 	struct hid_ep_info *hid;
 	int i;
 
-	if (hid_disable_offload)
+	if (uodev->policy.hid_disable_offload)
 		return;
 
 	for (i = 0; i < UO_HID_EP_NUM; i++) {
@@ -926,7 +910,7 @@ static void hid_clean_buf(bool is_in)
 	if (!hid)
 		return;
 
-	if (mtk_offload_free_mem(&hid->buf_payload))
+	if (mtk_offload_free_mem(hid->buf_payload))
 		hid_err("fail freeing hid buf, dir:%d\n", is_in);
 }
 
@@ -1191,27 +1175,6 @@ static int xhci_stop_hid_ep(struct hid_ep_info *hid)
 error:
 	hid_dbg("ret:%d\n", ret);
 	return ret;
-}
-
-static int sned_payload_to_adsp(unsigned int msg_id, void *payload,
-	unsigned int length, int need_ack)
-{
-	int send_result = 0;
-	struct ipi_msg_t ipi_msg;
-
-	send_result = audio_send_ipi_msg(&ipi_msg, TASK_SCENE_USB_DL,
-		AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_DMA, need_ack,
-		msg_id, length, 0, payload);
-
-	if (send_result == 0)
-		send_result = ipi_msg.param2;
-
-	if (send_result != 0)
-		hid_err("USB Offload urb IPI msg send fail\n");
-	else
-		hid_info("USB Offload urb ipi msg send succeed\n");
-
-	return send_result;
 }
 
 static void xhci_mtk_trace_init(void)

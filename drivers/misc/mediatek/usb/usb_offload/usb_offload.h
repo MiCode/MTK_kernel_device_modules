@@ -36,16 +36,27 @@
 #define BUF_SEG_SIZE					(TR_MAX_SEG)
 #define ERST_SIZE						16
 #define ERST_NUMBER						EV_MAX_SEG
+#define BUF_URB_SIZE					5 /* hid*1, stream*2, trace*2 */
 #define USB_OFFLOAD_TRBS_PER_SEGMENT	256
 #define USB_OFFLOAD_TRB_SEGMENT_SIZE	(USB_OFFLOAD_TRBS_PER_SEGMENT*16)
 #define XHCI1_INTR_TARGET	1
 
 struct uo_provider;
 
+/* dram provider, main sram provider, secondary sram provider */
 enum uo_provider_type {
 	UO_PROV_DRAM = 0,
 	UO_PROV_SRAM = 1,
+	UO_PROV_SRAM_2 = 2,
 	UO_PROV_NUM,
+};
+
+/* dram source, afe sram source, usb sram source */
+enum uo_source_type {
+	UO_SOURCE_DRAM,
+	UO_SOURCE_USB_SRAM,
+	UO_SOURCE_AFE_SRAM,
+	UO_SOURCE_NUM,
 };
 
 enum uo_struct {
@@ -64,27 +75,44 @@ struct uo_rsv_region {
 	unsigned long long size;
 	bool is_valid;
 	struct gen_pool *pool;
-	struct uo_provider *provider;
 };
 
 struct uo_provider_ops {
-	int (*init)(struct device *dev);
-	void *(*alloc_dyn)(struct device *dev, dma_addr_t *phy, unsigned int size, int align);
-	int (*free_dyn)(struct device *dev, dma_addr_t addr);
-    int (*init_rsv)(struct device *dev, struct uo_rsv_region *rsv_region,
-                    unsigned int size, int min_order);
-    int (*deinit_rsv)(struct device *dev, struct uo_rsv_region *rsv_region);
-    void *(*alloc_rsv)(struct device *dev, struct uo_rsv_region *rsv_region,
-					dma_addr_t *phy, unsigned int size, int align);
-    int (*free_rsv)(struct device *dev, struct uo_rsv_region *rsv_region,
-                    void *vir, unsigned int size);
-	int (*power_ctrl)(struct device *dev, bool is_on);
+	/* init provider */
+	int (*init)(struct uo_provider *itself);
+
+	/* request region from allocated part */
+	void *(*alloc_dyn)(struct uo_provider *itself, dma_addr_t *phy, unsigned int size, int align);
+
+	/* release region fron allocated part */
+	int (*free_dyn)(struct uo_provider *itself, dma_addr_t addr);
+
+	/* init reserved part */
+	int (*init_rsv)(struct uo_provider *itself,	unsigned int size, int min_order);
+
+	/* deinit reserved part */
+	int (*deinit_rsv)(struct uo_provider *itself);
+
+	/* request region from reserved part */
+	void *(*alloc_rsv)(struct uo_provider *itself, dma_addr_t *phy, unsigned int size, int align);
+
+	/* release region from reserved part */
+	int (*free_rsv)(struct uo_provider *itself, void *vir, unsigned int size);
+
+	/* get region which should be set to uncacheable */
+	unsigned int (*mpu_region)(struct uo_provider *itself, dma_addr_t *phys);
+
+	/* control power of provider */
+	int (*power_ctrl)(struct uo_provider *itself, bool is_on);
+
+	/* get provider name*/
 	char *(*get_name)(void);
 };
 
 struct uo_provider {
 	struct device *dev;
 	enum uo_provider_type id;
+	enum uo_source_type type;
 	bool is_init;
 	u32 struct_cnt;
 	bool power;
@@ -92,37 +120,7 @@ struct uo_provider {
 	struct uo_provider_ops ops;
 };
 
-extern struct uo_provider_ops uo_dram_ops;
-extern struct uo_provider_ops uo_afe_sram_ops;
-extern struct uo_provider_ops uo_usb_sram_ops;
-
-int uop_register(struct device *dev, struct uo_provider *provider,
-	enum uo_provider_type type, struct uo_provider_ops *ops);
-int uop_init(struct uo_provider *provider);
-void *uop_alloc_dyn(struct uo_provider *provider, dma_addr_t *phy, unsigned int size, int align);
-int uop_free_dyn(struct uo_provider *provider, dma_addr_t phy_addr);
-int uop_pwr_ctrl(struct uo_provider *provider, bool is_on);
-int uop_init_rsv(struct uo_provider *provider, unsigned int size, int min_order);
-int uop_deinit_rsv(struct uo_provider *provider);
-void *uop_alloc_rsv(struct uo_provider *provider, dma_addr_t *phy, unsigned int size, int align);
-int uop_free_rsv(struct uo_provider *provider, void *vir, unsigned int size);
-char *uop_get_name(struct uo_provider *provider);
-char *uo_struct_name(enum uo_struct type);
-void uop_increase_cnt(struct uo_provider *provider, enum uo_struct type);
-void uop_decrease_cnt(struct uo_provider *provider,	enum uo_struct type);
-char *uo_provider_parse_count(struct uo_provider *provider);
-
-/* generic function of reserved region */
-void uo_rst_rsv_region(struct uo_rsv_region *rsv_region);
-int uo_init_rsv_pool(struct device *dev,
-    struct uo_rsv_region *rsv_region, int min_alloc_order);
-void uo_deinit_rsv_pool(struct device *dev, struct uo_rsv_region *rsv_region);
-void *uo_generic_alloc_rsv(struct device *dev, struct uo_rsv_region *rsv_region,
-	dma_addr_t *phy, unsigned int size, int align);
-int uo_generic_free_rsv(struct device *dev, struct uo_rsv_region *rsv_region,
-    void *vir, unsigned int size);
-
-struct usb_offload_buffer {
+struct uo_buffer {
 	struct uo_provider *provider;
 	void *virt;
 	dma_addr_t phys;
@@ -130,7 +128,11 @@ struct usb_offload_buffer {
 	bool allocated;
 	bool is_rsv;
 	enum uo_struct type;
-	struct list_head list;
+};
+
+struct uo_buffer_array {
+	struct uo_buffer *first_buf;
+	int length;
 };
 
 enum {
@@ -308,33 +310,40 @@ struct usb_audio_dev {
 	struct intf_info *info;
 };
 
-/* struct usb_offload_dev
- * @event_ring: event ring for interrupter target 1.
- * @erst: event ring segment table for interrupter target 1.
- * @num_entries_in_use: number of entry of erst.
- * @enable_adv_lowpwr: if platform supports sram mode.
- * @adv_lowpwr: in this round, if it's under sram mode.
- * @smc_ctrl: if platform needs specific action in tfa.
- * @smc_suspned/resume: identifier of suspend/resume smc case.
- */
+struct usb_offload_stream {
+	bool direction;
+	bool streaming;
+	struct uo_buffer *urb;
+};
+
+struct usb_offload_policy {
+	bool adv_lowpwr;
+	bool adv_lowpwr_dl_only;
+	bool force_on_secondary;
+	bool support_fb;
+	bool support_hub;
+	bool hid_disable_offload;
+	bool hid_disable_sync;
+	bool hid_tr_switch;
+	int smc_suspend;
+	int smc_resume;
+	enum uo_source_type main_sram;
+	enum uo_source_type secondary_sram;
+	u32 reserved_size;
+};
+
+#define UO_MAX_DEVICE    10
 struct usb_offload_dev {
 	struct device *dev;
-	struct usb_device *uac_dev;
+	struct usb_device *valid_device[UO_MAX_DEVICE];
 	struct xhci_hcd *xhci;
 	struct xhci_sideband_ *sb;
 	unsigned int num_entries_in_use;
 	u32 intr_num;
 	unsigned long card_slot;
 	unsigned int card_num;
-	bool smc_ctrl;
-	int smc_suspend;
-	int smc_resume;
-	bool enable_adv_lowpwr;
 	bool adv_lowpwr;
-	bool adv_lowpwr_dl_only;
 	bool is_streaming;
-	bool tx_streaming;
-	bool rx_streaming;
 	bool adsp_inited;
 	bool connected;
 	bool opened;
@@ -344,7 +353,10 @@ struct usb_offload_dev {
 	struct ssusb_offload *ssusb_offload_notify;
 	struct mutex dev_lock;
 	void *tracer;
+	struct usb_offload_stream stream[2];
 	struct uo_provider provider[UO_PROV_NUM];
+	struct uo_buffer_array buf_array[UO_STRUCT_NUM];
+	struct usb_offload_policy policy;
 };
 
 extern int ssusb_offload_register(struct ssusb_offload *offload);
@@ -379,42 +391,115 @@ extern unsigned int debug_memory_log;
 		pr_info("UD, %s(%d) " fmt, __func__, __LINE__, ## args); \
 	} while (0)
 
-extern u32 sram_version;
-extern struct usb_offload_buffer *usb_offload_get_ring_buf(dma_addr_t phy);
-extern int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
+int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	enum uo_provider_type id, bool is_rsv);
-extern u32 mtk_offload_get_cnt(enum uo_provider_type id);
-extern int mtk_offload_provider_register(struct device *dev, enum uo_provider_type id);
-extern u32 mtk_offload_provider_get_cnt(enum uo_provider_type id);
-extern int mtk_offload_init_rsv(enum uo_provider_type id);
-extern void mtk_offload_deinit_rsv(enum uo_provider_type id);
-extern unsigned int mtk_offload_get_rsv_region(enum uo_provider_type id, dma_addr_t *phys);
-extern void mtk_offload_provider_power(enum uo_provider_type id, bool is_on);
-extern int mtk_offload_alloc_mem(struct usb_offload_buffer *buf, unsigned int size,
+
+/****
+ * mmemory manager exported api
+ ****/
+u32 mtk_offload_get_cnt(enum uo_provider_type id);
+int mtk_offload_provider_register(struct usb_offload_dev *udev, enum uo_provider_type id);
+u32 mtk_offload_provider_get_cnt(enum uo_provider_type id);
+int mtk_offload_init_rsv(struct usb_offload_dev *udev, enum uo_provider_type id);
+void mtk_offload_deinit_rsv(enum uo_provider_type id);
+unsigned int mtk_offload_get_mpu_region(enum uo_provider_type id, dma_addr_t *phys);
+void mtk_offload_provider_power(enum uo_provider_type id, bool is_on);
+int mtk_offload_alloc_mem(struct uo_buffer *buf, unsigned int size,
 	int align, enum uo_provider_type id, enum uo_struct type, bool is_rsv);
-extern int mtk_offload_free_mem(struct usb_offload_buffer *buf);
-extern bool mtk_offload_is_advlowpwr(struct usb_offload_dev *udev);
-extern char *mtk_offload_parse_buffer(struct usb_offload_buffer *buf);
-extern char *mtk_offload_provider_parse_count(enum uo_provider_type id);
+int mtk_offload_free_mem(struct uo_buffer *buf);
+char *mtk_offload_parse_buffer(struct uo_buffer *buf);
+char *mtk_offload_provider_parse_count(enum uo_provider_type id);
+bool mtk_offload_hold_apsrc(void);
+bool mtk_offload_hold_vcore(void);
+
+/****
+ * buffer array management api
+ ****/
+struct uo_buffer *uob_get_empty(enum uo_struct type);
+struct uo_buffer *uob_get_first(enum uo_struct type);
+struct uo_buffer *uob_search(enum uo_struct type, dma_addr_t phy);
+void uob_assign_array(enum uo_struct type, void *first_buffer, int length);
+int uob_init(enum uo_struct type);
+void uob_deinit(enum uo_struct type);
+
+/****
+ * provider access & control api
+ ****/
+int uop_register(struct device *dev, struct uo_provider *provider,
+	enum uo_provider_type type, struct uo_provider_ops *ops);
+int uop_init(struct uo_provider *provider);
+void *uop_alloc_dyn(struct uo_provider *provider, dma_addr_t *phy, unsigned int size, int align);
+int uop_free_dyn(struct uo_provider *provider, dma_addr_t phy_addr);
+int uop_pwr_ctrl(struct uo_provider *provider, bool is_on);
+int uop_init_rsv(struct uo_provider *provider, unsigned int size, int min_order);
+int uop_deinit_rsv(struct uo_provider *provider);
+void *uop_alloc_rsv(struct uo_provider *provider, dma_addr_t *phy, unsigned int size, int align);
+int uop_free_rsv(struct uo_provider *provider, void *vir, unsigned int size);
+unsigned int uop_mpu_region(struct uo_provider *provider, dma_addr_t *phy);
+char *uop_get_name(struct uo_provider *provider);
+char *uo_struct_name(enum uo_struct type);
+u32 uo_get_cnt_power_sensitive(struct uo_provider *provider);
+void uop_increase_cnt(struct uo_provider *provider, enum uo_struct type);
+void uop_decrease_cnt(struct uo_provider *provider,	enum uo_struct type);
+char *uo_provider_parse_count(struct uo_provider *provider);
 int mtk_register_usb_sram_ops(
 	void *(*allocate)(dma_addr_t *phys_addr, unsigned int size, int align),
 	int (*free)(dma_addr_t phys_addr));
+/****
+ * provider instance
+ ****/
+extern struct uo_provider_ops uo_dram_ops;
+extern struct uo_provider_ops uo_afe_sram_ops;
+extern struct uo_provider_ops uo_usb_sram_ops;
 
-extern unsigned int hid_disable_offload;
-extern void usb_offload_hid_probe(void);
-extern int usb_offload_hid_start(void);
-extern void usb_offload_hid_finish(void);
-extern void usb_offload_hid_stop(void);
-extern bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb);
-extern void usb_offload_register_ipi_recv(void);
+/****
+ * generic api of reserved region
+ ****/
+void uo_rst_rsv_region(struct uo_rsv_region *rsv_region);
+int uo_init_rsv_pool(struct uo_provider *itself, int min_alloc_order);
+void uo_deinit_rsv_pool(struct uo_provider *itself);
+void *uo_generic_alloc_rsv(struct uo_provider *itself, dma_addr_t *phy, unsigned int size, int align);
+int uo_generic_free_rsv(struct uo_provider *itself, void *vir, unsigned int size);
+unsigned int uo_generic_mpu_region(struct uo_provider *itself, dma_addr_t *phys);
 
-extern int usb_offload_debug_init(struct usb_offload_dev *udev);
-extern int usb_offload_debug_deinit(struct usb_offload_dev *udev);
-extern int usb_offload_trace_stream_init(struct usb_offload_buffer *trace_buffer,
-	u16 slot, u16 ep, bool is_in, struct usb_endpoint_descriptor *desc);
+/****
+ * hid offload control api
+ ****/
+void usb_offload_hid_probe(void);
+int usb_offload_hid_start(void);
+void usb_offload_hid_finish(void);
+void usb_offload_hid_stop(void);
+bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb);
 
+/****
+ * ipi senter & receiver related
+ ****/
+enum usb_offload_ipi_msg {
+	UOI_INIT_ADSP = 0,
+	UOI_DEINIT_ADSP,
+	UOI_ENABLE_STREAM,
+	UOI_DISABLE_STREAM,
+	UOI_ENABLE_HID,
+	UOI_ENABLE_TRACE,
+	UOI_DISABLE_TRACE,
+	UOI_NUM,
+};
+void usb_offload_register_ipi_recv(void);
+int usb_offload_send_ipi_msg(enum usb_offload_ipi_msg msg_type, void *data, size_t size);
 void usb_offload_ipi_hid_handler(void *param);
 void usb_offload_ipi_trace_handler(void *param);
-void prepare_and_send_trace_ipi_msg(struct usb_audio_stream_msg *msg,
-	bool enable, bool disable_all);
+
+/****
+ * platform policy
+ ****/
+void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_policy *policy);
+
+/****
+ * raw data dump related
+ ****/
+int usb_offload_debug_init(struct usb_offload_dev *udev);
+int usb_offload_debug_deinit(struct usb_offload_dev *udev);
+void usb_offload_trace_start(struct usb_audio_stream_msg *msg);
+void usb_offload_trace_stop(int dir);
+void usb_offload_trace_stop_all(void);
 #endif /* __USB_OFFLOAD_H__ */

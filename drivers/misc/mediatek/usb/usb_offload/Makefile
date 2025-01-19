@@ -47,6 +47,7 @@ usb_offload-y += usb_offload_hid.o
 usb_offload-y += usb_offload_trace.o
 usb_offload-y += usb_offload_ipi.o
 usb_offload-y += usb_offload_provider.o
+usb_offload-y += usb_offload_policy.o
 usb_offload-y += provider_dram.o
 usb_offload-y += provider_afe_sram.o
 usb_offload-y += provider_usb_sram.o

@@ -1,0 +1,251 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * MTK USB Offload Platform Policy Control
+ * *
+ * Copyright (c) 2024 MediaTek Inc.
+ * Author: Yu-chen.Liu <yu-chen.liu@mediatek.com>
+ */
+
+#include <linux/platform_device.h>
+#include <linux/of_platform.h>
+#include <linux/of_device.h>
+#include <linux/string.h>
+#include "usb_offload.h"
+
+enum offload_smc_request {
+    OFFLOAD_SMC_AUD_SUSPEND = 6,
+    OFFLOAD_SMC_AUD_RESUME = 7,
+};
+
+char *usb_offload_sram_source_string(enum uo_source_type id)
+{
+	switch (id) {
+	case UO_SOURCE_USB_SRAM:
+		return "usb-sram";
+	case UO_SOURCE_AFE_SRAM:
+		return "afe-sram";
+	default:
+		return "unknown";
+	}
+}
+
+enum uo_source_type usb_offload_sram_source_id(const char *buf)
+{
+	if (!strncmp(buf, "usb-sram", 8))
+		return UO_SOURCE_USB_SRAM;
+	else if (!strncmp(buf, "afe-sram", 8))
+		return UO_SOURCE_AFE_SRAM;
+	else
+		return UO_SOURCE_NUM;
+}
+
+#define MAX_INPUT_NUM   50
+static ssize_t flow_ctrl_store(struct device *dev,
+    struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct usb_offload_policy *policy = &uodev->policy;
+	char buffer[MAX_INPUT_NUM];
+	char *input = buffer;
+	const char *field1, *field2;
+	const char * const delim = " \0\n\t";
+	bool enable;
+
+	strscpy(buffer, buf, sizeof(buffer) <= count ? sizeof(buffer) : count);
+	field1 = strsep(&input, delim);
+	field2 = strsep(&input, delim);
+	if (!field1 || !field2)
+		return -EINVAL;
+
+	if (kstrtobool(field2, &enable))
+		return -EINVAL;
+
+	if (!strncmp(field1, "adv_lowpwr", 10))
+		policy->adv_lowpwr = enable;
+	else if (!strncmp(field1, "force_on_secondary", 18))
+		policy->force_on_secondary = enable;
+	else if (!strncmp(field1, "support_fb", 10))
+		policy->support_fb = enable;
+	else if (!strncmp(field1, "support_hub", 11))
+		policy->support_hub = enable;
+	else if (!strncmp(field1, "hid_disable_offload", 19))
+		policy->hid_disable_offload = enable;
+	else if (!strncmp(field1, "hid_disable_sync", 16))
+		policy->hid_disable_sync = enable;
+	else if (!strncmp(field1, "hid_tr_switch", 13))
+		policy->hid_tr_switch = enable;
+	else
+		return -EINVAL;
+
+	return count;
+}
+
+static ssize_t flow_ctrl_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct usb_offload_policy *policy = &uodev->policy;
+
+	return sprintf(buf, "adv_lowpwr:%d\n"
+			"force_on_secondary:%d\n"
+			"hid_disable_offload:%d\n"
+			"hid_disable_sync:%d\n"
+			"hid_tr_switch:%d\n"
+			"support_fb:%d\n"
+			"support_hub:%d\n",
+			policy->adv_lowpwr,
+			policy->force_on_secondary,
+			policy->hid_disable_offload,
+			policy->hid_disable_sync,
+			policy->hid_tr_switch,
+			policy->support_fb,
+			policy->support_hub);
+}
+
+static DEVICE_ATTR_RW(flow_ctrl);
+
+static ssize_t sram_source_store(struct device *dev,
+    struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct usb_offload_policy *policy = &uodev->policy;
+	enum uo_source_type id;
+	char buffer[MAX_INPUT_NUM];
+	char *input = buffer, *field1, *field2;
+	const char * const delim = " \0\n\t";
+
+	strscpy(buffer, buf, sizeof(buffer) <= count ? sizeof(buffer) : count);
+	field1 = strsep(&input, delim);
+	field2 = strsep(&input, delim);
+	if (!field1 || !field2)
+		return -EINVAL;
+
+	id = usb_offload_sram_source_id(field2);
+	if (!strncmp(field2, "main", 4))
+		policy->main_sram = id;
+	else if (!strncmp(field2, "secondary", 9))
+		policy->secondary_sram = id;
+	else
+		return -EINVAL;
+
+	return count;
+}
+
+static ssize_t sram_source_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	struct usb_offload_policy *policy = &uodev->policy;
+	char *main_string, *secondary_string;
+
+	main_string = usb_offload_sram_source_string(policy->main_sram);
+	secondary_string = usb_offload_sram_source_string(policy->secondary_sram);
+
+	return sprintf(buf, "main:%s secondary:%s\n", main_string, secondary_string);
+}
+
+static DEVICE_ATTR_RW(sram_source);
+
+static struct attribute *usb_offload_attrs[] = {
+	&dev_attr_sram_source.attr,
+	&dev_attr_flow_ctrl.attr,
+	NULL,
+};
+
+static const struct attribute_group usb_offload_group = {
+	.attrs = usb_offload_attrs,
+};
+
+static void usb_offload_link_mtu3(struct device *uo_dev, struct usb_offload_policy *policy)
+{
+	struct device_node *node;
+	struct device *mtu3_dev;
+	struct device_link *link;
+	struct platform_device *pdev = NULL;
+
+	node = of_find_node_by_name(NULL, "usb0");
+	if (node) {
+		pdev = of_find_device_by_node(node);
+		if (!pdev) {
+			USB_OFFLOAD_ERR("no device found by ssusb node!\n");
+			policy->hid_disable_offload = true;
+			goto put_node;
+		}
+
+		mtu3_dev = &pdev->dev;
+
+		link =  device_link_add(uo_dev, mtu3_dev,
+						DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+		if (!link) {
+			USB_OFFLOAD_ERR("fail to link mtu3\n");
+			policy->hid_disable_offload = true;
+		} else {
+			USB_OFFLOAD_ERR("success to link mtu3\n");
+			policy->hid_disable_offload = false;
+		}
+put_node:
+		of_node_put(node);
+	} else {
+		USB_OFFLOAD_ERR("no 'usb0' node!\n");
+		policy->hid_disable_offload = true;
+	}
+}
+
+void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_policy *policy)
+{
+	struct device_node *node = dev->of_node;
+	const char *sram_source;
+	enum uo_source_type id;
+
+	policy->force_on_secondary = false;
+	policy->support_fb = of_property_read_bool(node, "mediatek,explicit-feedback");
+	policy->support_hub = of_property_read_bool(node, "mediatek,hub-offload");
+
+	policy->hid_disable_sync = false;
+	policy->hid_tr_switch = true;
+
+	usb_offload_link_mtu3(dev, policy);
+	USB_OFFLOAD_INFO("hid_disable_sync:%d hid_tr_switch:%d hid_disable_offload:%d\n",
+		policy->hid_disable_sync, policy->hid_tr_switch, policy->hid_disable_offload);
+
+	if (of_property_read_bool(node, "mediatek,smc-ctrl")) {
+		policy->smc_suspend = OFFLOAD_SMC_AUD_SUSPEND;
+		policy->smc_resume = OFFLOAD_SMC_AUD_RESUME;
+	} else {
+		policy->smc_suspend = -1;
+		policy->smc_resume = -1;
+	}
+
+	USB_OFFLOAD_INFO("smc_suspend:%d smc_resume:%d\n", policy->smc_suspend, policy->smc_resume);
+
+	/* advanced power mode was enabled as long as main-sram was defined */
+	if (!of_property_read_string(node, "mediatek,main-sram", &sram_source)) {
+		policy->adv_lowpwr = true;
+
+		id = usb_offload_sram_source_id(sram_source);
+		policy->main_sram = id;
+		policy->adv_lowpwr = id != UO_SOURCE_NUM ? true : false;
+
+	} else {
+		USB_OFFLOAD_ERR("main sram wasn't defined\n");
+		policy->adv_lowpwr = false;
+	}
+
+	if (policy->adv_lowpwr) {
+		if (!of_property_read_string(node, "mediatek,secondary-sram", &sram_source)) {
+			id = usb_offload_sram_source_id(sram_source);
+			policy->secondary_sram = id;
+		} else
+			USB_OFFLOAD_ERR("secondary sram wasn't defined\n");
+	}
+
+	if (of_property_read_u32(node, "mediatek,reserved-sram-size", &policy->reserved_size)) {
+		USB_OFFLOAD_ERR("size of reserved part on main sram wasn't defined\n");
+		policy->adv_lowpwr= false;
+	}
+
+	policy->adv_lowpwr_dl_only = of_property_read_bool(node, "adv-lowpower-dl-only");
+
+	USB_OFFLOAD_INFO("adv_lowpwr:%d(dl_only:%d) main-sram:%d secondary-sram:%d rsv_size:%d\n",
+		policy->adv_lowpwr, policy->adv_lowpwr_dl_only,
+		policy->main_sram, policy->secondary_sram, policy->reserved_size);
+
+	if (sysfs_create_group(&dev->kobj, &usb_offload_group))
+		USB_OFFLOAD_ERR("fail to create sysfs attribtues\n");
+}

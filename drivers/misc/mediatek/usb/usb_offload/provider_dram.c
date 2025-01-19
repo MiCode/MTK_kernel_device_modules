@@ -59,44 +59,30 @@ static char *dram_get_name(void)
 	return "DRAM";
 }
 
-static int dram_init(struct device *dev)
+static int dram_init(struct uo_provider *itself)
 {
-	USB_OFFLOAD_MEM_DBG("(%s) unnecessary to init dram\n", dram_get_name());
+	itself->type = UO_SOURCE_DRAM;
 	return 0;
 }
 
-static void *dram_alloc_dyn(struct device *dev,
-	dma_addr_t *phys_addr, unsigned int size, int align)
+static int dram_power_ctrl(struct uo_provider *itself, bool is_on)
 {
-	USB_OFFLOAD_ERR("(%s) doesn't support dynamic alloc\n", dram_get_name());
-	return NULL;
-}
-
-static int dram_free_dyn(struct device *dev, dma_addr_t addr)
-{
-	USB_OFFLOAD_ERR("(%s) not support dynamic free\n", dram_get_name());
-	return -EOPNOTSUPP;
-}
-
-static int dram_power_ctrl(struct device *dev, bool is_on)
-{
-	USB_OFFLOAD_MEM_DBG("(%s) unnecessary to control dram power\n", dram_get_name());
 	return 0;
 }
 
-static int dram_init_rsv(struct device *dev,
-	struct uo_rsv_region *rsv_region, unsigned int size, int min_order)
+static int dram_init_rsv(struct uo_provider *itself, unsigned int size, int min_order)
 {
+	struct uo_rsv_region *rsv_region = &itself->rsv_region;
 	int ret = 0, dsp_type;
 
 	dsp_type = get_adsp_type();
 	switch (dsp_type) {
 	case ADSP_TYPE_HIFI3:
-		ret = from_adsp(dev, rsv_region);
+		ret = from_adsp(itself->dev, rsv_region);
 		break;
 #if 0
     case ADSP_TYPE_RV55:
-		ret = from_scp(dev, rsv_region);
+		ret = from_scp(itself, rsv_region);
 		break;
 #endif
     default:
@@ -107,27 +93,28 @@ static int dram_init_rsv(struct device *dev,
     }
 
 	if (!ret)
-		ret = uo_init_rsv_pool(dev, rsv_region, min_order);
+		ret = uo_init_rsv_pool(itself, min_order);
 
 	return ret;
 }
 
 
-static int dram_deinit_rsv(struct device *dev, struct uo_rsv_region *rsv_region)
+static int dram_deinit_rsv(struct uo_provider *itself)
 {
-	uo_deinit_rsv_pool(dev, rsv_region);
-	uo_rst_rsv_region(rsv_region);
+	uo_deinit_rsv_pool(itself);
+	uo_rst_rsv_region(&itself->rsv_region);
 	return 0;
 }
 
 struct uo_provider_ops uo_dram_ops = {
 	.get_name   = dram_get_name,
 	.init       = dram_init,
-	.alloc_dyn  = dram_alloc_dyn,
-	.free_dyn   = dram_free_dyn,
+	.alloc_dyn  = NULL,
+	.free_dyn   = NULL,
 	.power_ctrl = dram_power_ctrl,
 	.init_rsv   = dram_init_rsv,
 	.deinit_rsv = dram_deinit_rsv,
 	.alloc_rsv  = uo_generic_alloc_rsv,
 	.free_rsv   = uo_generic_free_rsv,
+	.mpu_region = uo_generic_mpu_region,
 };
