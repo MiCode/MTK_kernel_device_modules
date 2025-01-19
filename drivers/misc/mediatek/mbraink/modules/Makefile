@@ -9,3 +9,7 @@ endif
 ifeq ($(CONFIG_MTK_MBRAINK_MT6899),m)
 obj-$(CONFIG_MTK_MBRAINK_MT6899) += v6899/
 endif
+
+ifeq ($(CONFIG_MTK_MBRAINK_MT6993),m)
+obj-$(CONFIG_MTK_MBRAINK_MT6993) += v6993/
+endif
