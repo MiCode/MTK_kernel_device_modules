@@ -15961,6 +15961,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		bus-debug-num-ports = <25>;
 		vcp-pwr-status = <0x1c004e60>;
 		vcp-clk-sys = <0x1000c000>;
+		suspend-gipc-bit = <19>;
+		resume-gipc-bit = <19>;
 
 		/* id, mbox, send_size*/
 		send-table =
