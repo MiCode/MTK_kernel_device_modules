@@ -1164,6 +1164,14 @@ static ssize_t mssv_test_proc_write(struct file *file,
 			target = TARGET_MSSV_TOP_DELSEL;
 		else if (sysfs_streq(cmd, "stackdelsel"))
 			target = TARGET_MSSV_STACK_DELSEL;
+		else if (sysfs_streq(cmd, "hw_fgpu"))
+			target = TARGET_MSSV_HW_FGPU;
+		else if (sysfs_streq(cmd, "hw_vgpu"))
+			target = TARGET_MSSV_HW_VGPU;
+		else if (sysfs_streq(cmd, "hw_fstack"))
+			target = TARGET_MSSV_HW_FSTACK;
+		else if (sysfs_streq(cmd, "hw_vstack"))
+			target = TARGET_MSSV_HW_VSTACK;
 		else {
 			GPUFREQ_LOGE("invalid MSSV cmd: %s", cmd);
 			ret = GPUFREQ_EINVAL;
