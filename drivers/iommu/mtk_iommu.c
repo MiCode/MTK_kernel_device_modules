@@ -214,8 +214,8 @@
 #define SKIP_CFG_PORT			BIT(14)
 /* For IOMMU EP/bring up phase: CLK AO */
 #define IOMMU_CLK_AO_EN			BIT(15)
-/* For IOMMU EP/bring up phase: smi not ready */
-#define IOMMU_EN_PRE			BIT(16)
+/* For SMI not ready in IOMMU EP/bring up phase, or no need SMI device link */
+#define SMI_DEV_LINK_SKIP		BIT(16)
 /* Debug: Skip register IRQ */
 #define IOMMU_NO_IRQ			BIT(17)
 #define GET_DOM_ID_LEGACY		BIT(18)
@@ -2022,7 +2022,7 @@ static void mtk_iommu_release_device(struct device *dev)
 	data = dev_iommu_priv_get(dev);
 
 	if(data->plat_data->iommu_type == MM_IOMMU &&
-	   MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_EN_PRE))
+	   MTK_IOMMU_HAS_FLAG(data->plat_data, SMI_DEV_LINK_SKIP))
 		return;
 
 	if(data->plat_data->iommu_type == APU_IOMMU &&
@@ -2972,7 +2972,7 @@ out:
 	}
 
 	if (data->plat_data->iommu_type != MM_IOMMU ||
-	    MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_EN_PRE)) {
+	    MTK_IOMMU_HAS_FLAG(data->plat_data, SMI_DEV_LINK_SKIP)) {
 		dev_info(dev, "skip smi\n");
 		goto skip_smi;
 	}
@@ -3101,7 +3101,7 @@ skip_smi:
 	}
 
 	if (data->plat_data->iommu_type == MM_IOMMU &&
-	    !MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_EN_PRE)) {
+	    !MTK_IOMMU_HAS_FLAG(data->plat_data, SMI_DEV_LINK_SKIP)) {
 		ret = component_master_add_with_match(dev, &mtk_iommu_com_ops,
 						      match);
 		if (ret)
@@ -3968,7 +3968,7 @@ static const struct mtk_iommu_plat_data mt6899_data_disp = {
 	.m4u_plat	= M4U_MT6899,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
-			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | IOMMU_EN_PRE |
+			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | SMI_DEV_LINK_SKIP |
 			  /*HAS_BCLK |*/ HAS_SMI_SUB_COMM | SAME_SUBSYS/* | PGTABLE_PA_35_EN*/,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
@@ -3985,7 +3985,7 @@ static const struct mtk_iommu_plat_data mt6899_data_mdp = {
 	.m4u_plat	= M4U_MT6899,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | /*IOMMU_SEC_EN |*/
-			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | IOMMU_EN_PRE |
+			  SKIP_CFG_PORT | IOVA_34_EN | IOMMU_CLK_AO_EN | SMI_DEV_LINK_SKIP |
 			  /*HAS_BCLK | */HAS_SMI_SUB_COMM | SAME_SUBSYS/* | PGTABLE_PA_35_EN*/,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
