@@ -4378,6 +4378,34 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 			written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
 				     mtk_crtc->usage_ovl_compr[i]);
 		DDPINFO("%s\n", dbg_msg);
+
+		memset(dbg_msg, 0, sizeof(dbg_msg));
+		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_x = ", __func__);
+		for (int i = 0; i < MAX_LAYER_NR ; i++)
+			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+				     mtk_crtc->usage_ovl_roi[i].x);
+		DDPQOS("%s\n", dbg_msg);
+
+		memset(dbg_msg, 0, sizeof(dbg_msg));
+		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_y = ", __func__);
+		for (int i = 0; i < MAX_LAYER_NR ; i++)
+			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+				     mtk_crtc->usage_ovl_roi[i].y);
+		DDPQOS("%s\n", dbg_msg);
+
+		memset(dbg_msg, 0, sizeof(dbg_msg));
+		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_w = ", __func__);
+		for (int i = 0; i < MAX_LAYER_NR ; i++)
+			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+				     mtk_crtc->usage_ovl_roi[i].width);
+		DDPQOS("%s\n", dbg_msg);
+
+		memset(dbg_msg, 0, sizeof(dbg_msg));
+		written = scnprintf(dbg_msg, 512, "%s usage_ovl_roi_h = ", __func__);
+		for (int i = 0; i < MAX_LAYER_NR ; i++)
+			written += scnprintf(dbg_msg + written, 512 - written, "[%4d]",
+				     mtk_crtc->usage_ovl_roi[i].height);
+		DDPQOS("%s\n", dbg_msg);
 	}
 }
 
@@ -5852,6 +5880,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		bw_base = mtk_drm_primary_frame_bw(crtc);
 		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 		priv->data->update_channel_hrt(mtk_crtc, bw_base, channel_hrt);
+		DDPINFO("%s channel[%u][%u][%u][%u]\n", __func__,
+			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3]);
 		CRTC_MMP_MARK(0, atomic_begin, (unsigned long)cmdq_handle, __LINE__);
 
 		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
@@ -7234,6 +7264,8 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 						sizeof(mtk_crtc->usage_ovl_fmt));
 					memset(mtk_crtc->usage_ovl_compr, 0,
 						sizeof(mtk_crtc->usage_ovl_compr));
+					memset(mtk_crtc->usage_ovl_roi, 0,
+						sizeof(mtk_crtc->usage_ovl_roi));
 					mtk_crtc_update_ovl_hrt_usage(crtc);
 				}
 
@@ -13040,6 +13072,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	/* 9. restore OVL setting */
 	memset(mtk_crtc->usage_ovl_fmt, 0, sizeof(mtk_crtc->usage_ovl_fmt));
 	memset(mtk_crtc->usage_ovl_compr, 0, sizeof(mtk_crtc->usage_ovl_compr));
+	memset(mtk_crtc->usage_ovl_roi, 0, sizeof(mtk_crtc->usage_ovl_roi));
 	if (!only_output)
 		mtk_crtc_restore_plane_setting(mtk_crtc);
 
