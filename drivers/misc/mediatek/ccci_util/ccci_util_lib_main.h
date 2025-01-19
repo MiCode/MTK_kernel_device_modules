@@ -266,10 +266,8 @@ struct md_check_header_v6 {
 	 * each region has 4 control bits
 	 */
 	unsigned int  domain_attr[4];
-
-	unsigned int  arm7_img_offset;
-	unsigned int  arm7_img_size;
-
+	unsigned int  default_gear_id;
+	unsigned int  gear_list_version;
 	struct _free_padding_block padding_blk[8];
 
 	unsigned int  ap_md_smem_size;

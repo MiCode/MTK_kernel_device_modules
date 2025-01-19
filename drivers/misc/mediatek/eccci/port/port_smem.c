@@ -18,103 +18,62 @@
 #include "port_smem.h"
 #include "ccci_hif.h"
 
+
 #define TAG SMEM
 
-#define DUMMY_PAGE_SIZE (128)
-#define DUMMY_PADDING_CNT (5)
-
-#define CTRL_PAGE_SIZE (1024)
-#define CTRL_PAGE_NUM (32)
-
-#define MD_EX_PAGE_SIZE (20*1024)
-#define MD_EX_PAGE_NUM  (6)
-
-
-/*
- *  Note : Moidy this size will affect dhl frame size in this page
- *  Minimum : 352B to reserve 256B for header frame
- */
-#define MD_HW_PAGE_SIZE (512)
-
-/* replace with HW page */
-#define MD_BUF1_PAGE_SIZE (MD_HW_PAGE_SIZE)
-#define MD_BUF1_PAGE_NUM  (72)
-#define AP_BUF1_PAGE_SIZE (1024)
-#define AP_BUF1_PAGE_NUM  (32)
-
-#define MD_BUF2_0_PAGE_SIZE (MD_HW_PAGE_SIZE)
-#define MD_BUF2_1_PAGE_SIZE (MD_HW_PAGE_SIZE)
-#define MD_BUF2_2_PAGE_SIZE (MD_HW_PAGE_SIZE)
-
-#define MD_BUF2_0_PAGE_NUM (64)
-#define MD_BUF2_1_PAGE_NUM (64)
-#define MD_BUF2_2_PAGE_NUM (256)
-
-#define MD_MDM_PAGE_SIZE (MD_HW_PAGE_SIZE)
-#define MD_MDM_PAGE_NUM  (32)
-
-#define AP_MDM_PAGE_SIZE (1024)
-#define AP_MDM_PAGE_NUM  (16)
-
-#define MD_META_PAGE_SIZE (65*1024)
-#define MD_META_PAGE_NUM (8)
-
-#define AP_META_PAGE_SIZE (65*1024)
-#define AP_META_PAGE_NUM (8)
-
-struct ccci_ccb_config ccb_configs[] = {
-	{SMEM_USER_CCB_DHL, P_CORE, CTRL_PAGE_SIZE,
-			CTRL_PAGE_SIZE, CTRL_PAGE_SIZE*CTRL_PAGE_NUM,
-			CTRL_PAGE_SIZE*CTRL_PAGE_NUM}, /* Ctrl */
-	{SMEM_USER_CCB_DHL, P_CORE, MD_EX_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, MD_EX_PAGE_SIZE*MD_EX_PAGE_NUM,
-			DUMMY_PAGE_SIZE},			/* exception */
-	{SMEM_USER_CCB_DHL, P_CORE, MD_BUF1_PAGE_SIZE,
-	 AP_BUF1_PAGE_SIZE, (MD_BUF1_PAGE_SIZE*MD_BUF1_PAGE_NUM),
-			AP_BUF1_PAGE_SIZE*AP_BUF1_PAGE_NUM},/* PS */
-	{SMEM_USER_CCB_DHL, P_CORE, MD_BUF2_0_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, MD_BUF2_0_PAGE_SIZE*MD_BUF2_0_PAGE_NUM,
-			DUMMY_PAGE_SIZE},     /* HWLOGGER1 */
-	{SMEM_USER_CCB_DHL, P_CORE, MD_BUF2_1_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, MD_BUF2_1_PAGE_SIZE*MD_BUF2_1_PAGE_NUM,
-			DUMMY_PAGE_SIZE},     /* HWLOGGER2  */
-	{SMEM_USER_CCB_DHL, P_CORE, MD_BUF2_2_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, MD_BUF2_2_PAGE_SIZE*MD_BUF2_2_PAGE_NUM,
-			DUMMY_PAGE_SIZE},     /* HWLOGGER3 */
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_DHL, P_CORE, DUMMY_PAGE_SIZE,
-		 DUMMY_PAGE_SIZE, DUMMY_PAGE_SIZE*DUMMY_PADDING_CNT,
-		DUMMY_PAGE_SIZE},
-	{SMEM_USER_CCB_MD_MONITOR, P_CORE, MD_MDM_PAGE_SIZE,
-		 AP_MDM_PAGE_SIZE, MD_MDM_PAGE_SIZE*MD_MDM_PAGE_NUM,
-		AP_MDM_PAGE_SIZE*AP_MDM_PAGE_NUM},     /* MDM */
-	{SMEM_USER_CCB_META, P_CORE, MD_META_PAGE_SIZE,
-		AP_META_PAGE_SIZE, MD_META_PAGE_SIZE*MD_META_PAGE_NUM,
-		AP_META_PAGE_SIZE*AP_META_PAGE_NUM},   /* META */
+/* ccb_configs_table_2M size: 2M */
+struct ccci_ccb_config ccb_configs_table_2M[] = {
+	/****user_id****cure_id****dl_page_szie****ul_page_szie****dl_buf_szie****ul_buf_szie****/
+	{SMEM_USER_CCB_DHL,        P_CORE,  1024,    1024,    1024*32,   1024*32}, /* Ctrl */
+	{SMEM_USER_CCB_DHL,        P_CORE,  20*1024, 128,     20*1024*6, 128},	  /* exception */
+	{SMEM_USER_CCB_DHL,        P_CORE,  512,     1024,    512*72,    1024*32}, /* PS */
+	{SMEM_USER_CCB_DHL,        P_CORE,  512,     128,     512*64,    128},     /* HWLOGGER1 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  512,     128,     512*64,    128},     /* HWLOGGER2  */
+	{SMEM_USER_CCB_DHL,        P_CORE,  512,     128,     512*256,   128},     /* HWLOGGER3 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128*5,     128},
+	{SMEM_USER_CCB_MD_MONITOR, P_CORE,  512,     1024,    512*32,    1024*16},   /* MDM */
+	{SMEM_USER_CCB_META,       P_CORE,  65*1024, 65*1024, 65*1024*8, 65*1024*8}, /* META */
 };
-unsigned int ccb_configs_len =
-			sizeof(ccb_configs)/sizeof(struct ccci_ccb_config);
+
+/* ccb_configs_table_1M size: 1M */
+struct ccci_ccb_config ccb_configs_table_1M[] = {
+	/****user_id****cure_id****dl_page_szie****ul_page_szie****dl_buf_szie****ul_buf_szie****/
+	{SMEM_USER_CCB_DHL,        P_CORE,  1024,    1024,    1024*16,   1024*16},   /* Ctrl */
+	{SMEM_USER_CCB_DHL,        P_CORE,  20*1024, 128,     1024*20*6, 128},       /* Exception */
+	{SMEM_USER_CCB_DHL,        P_CORE,  512,     1024,    512*296,   1024*32},   /* BUF log */
+	{SMEM_USER_CCB_DHL,        P_CORE,  512,     128,     512*8,     128},       /* CMD */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV1 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV2 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV3 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV4 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV5 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV6 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV7 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV8 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV9 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV10 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV11 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV12 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128},       /* RSV13 */
+	{SMEM_USER_CCB_DHL,        P_CORE,  128,     128,     128,       128*3},     /* RSV14 */
+	{SMEM_USER_CCB_MD_MONITOR, P_CORE,  512,     1024,    512*32,    1024*16},   /* MDM */
+	{SMEM_USER_CCB_META,       P_CORE,  65*1024, 65*1024, 65*1024*4, 65*1024*4}, /* META */
+};
+
+struct ccci_ccb_config *ccb_configs = ccb_configs_table_2M;
+
+unsigned int ccb_configs_len = sizeof(ccb_configs_table_2M)/sizeof(struct ccci_ccb_config);
 
 static int ccci_md_send_ccb_tx_notify(int core_id)
 {
@@ -156,18 +115,15 @@ static void collect_ccb_info(struct ccci_smem_port *smem_port)
 			/* calculate length */
 			for (j = 0; j < ccb_configs_len; j++) {
 				/* search for first present */
-				if (smem_port->user_id ==
-					ccb_configs[j].user_id)
+				if (smem_port->user_id == ccb_configs[j].user_id)
 					break;
 			}
 			smem_port->ccb_ctrl_offset = j;
 			for ( ; j < ccb_configs_len; j++) {
 				/* traverse to last present */
-				if (smem_port->user_id !=
-					ccb_configs[j].user_id)
+				if (smem_port->user_id != ccb_configs[j].user_id)
 					break;
-				len = ccb_configs[j].dl_buff_size +
-				ccb_configs[j].ul_buff_size;
+				len = ccb_configs[j].dl_buff_size + ccb_configs[j].ul_buff_size;
 				curr_size += len;
 			}
 			/* align to 4k */
@@ -207,7 +163,7 @@ static void collect_ccb_info(struct ccci_smem_port *smem_port)
 					prev->base_md_view_phy + prev->size;
 				curr->offset = prev->offset + prev->size;
 				CCCI_BOOTUP_LOG(0, TAG,
-				"CCB user %d: offset=%d, size=%d, base_ap = 0x%x, base_md = 0x%x\n",
+				"CCB user %d: offset=0x%x, size=0x%x, base_ap = 0x%x, base_md = 0x%x\n",
 				i, curr->offset, curr->size,
 				(unsigned int)curr->base_ap_view_phy,
 				(unsigned int)curr->base_md_view_phy);

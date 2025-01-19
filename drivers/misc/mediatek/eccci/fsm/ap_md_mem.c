@@ -34,8 +34,9 @@
 #include "mt-plat/mtk_ccci_common.h"
 
 #define TAG "md"
+#define CCB_CACHE_CTRL_SIZE    (2 * 1024 * 1024)
+#define CCB_CACHE_CTRL_SIZE_1M  (1 * 1024 * 1024)
 
-#define CCB_CACHE_MIN_SIZE    (2 * 1024 * 1024)
 static struct ccci_smem_region *md1_legacy_noncacheable;
 static struct ccci_smem_region *md1_legacy_cacheable;
 
@@ -125,11 +126,11 @@ static struct ccci_smem_region md1_6293_noncacheable[] = {
  * aware of that CCB user's size will be aligned to 4KB.
  */
 static struct ccci_smem_region md1_6293_cacheable[] = {
-	{SMEM_USER_CCB_DHL,	0*1024*1024,	CCB_CACHE_MIN_SIZE,	0, },
-	{SMEM_USER_CCB_MD_MONITOR,	0*1024*1024,	CCB_CACHE_MIN_SIZE,	0, },
-	{SMEM_USER_CCB_META,	0*1024*1024,	CCB_CACHE_MIN_SIZE,	0, },
-	{SMEM_USER_RAW_DHL,	CCB_CACHE_MIN_SIZE,	20*1024*1024,	0, },
-	{SMEM_USER_RAW_MDM,	CCB_CACHE_MIN_SIZE,	20*1024*1024,	0, },
+	{SMEM_USER_CCB_DHL,	0*1024*1024,	CCB_CACHE_CTRL_SIZE,	0, },
+	{SMEM_USER_CCB_MD_MONITOR,	0*1024*1024,	CCB_CACHE_CTRL_SIZE,	0, },
+	{SMEM_USER_CCB_META,	0*1024*1024,	CCB_CACHE_CTRL_SIZE,	0, },
+	{SMEM_USER_RAW_DHL,	CCB_CACHE_CTRL_SIZE,	20*1024*1024,	0, },
+	{SMEM_USER_RAW_MDM,	CCB_CACHE_CTRL_SIZE,	20*1024*1024,	0, },
 	{SMEM_USER_RAW_UDC_DESCTAB,	0*1024*1024,	0*1024*1024,	0, },
 	{SMEM_USER_RAW_MD_CONSYS,	0*1024*1024,	0*1024*1024, SMF_NCLR_FIRST, },
 	{SMEM_USER_RAW_USIP,	0*1024*1024,	0*1024, SMF_NCLR_FIRST, },
@@ -161,11 +162,11 @@ static struct ccci_smem_region md1_6295_noncacheable[] = {
 };
 
 static struct ccci_smem_region md1_6295_cacheable[] = {
-	{SMEM_USER_CCB_DHL,	0,	CCB_CACHE_MIN_SIZE,	0, },
-	{SMEM_USER_CCB_MD_MONITOR,	0,	CCB_CACHE_MIN_SIZE,	0, },
-	{SMEM_USER_CCB_META,	0,	CCB_CACHE_MIN_SIZE,	0, },
-	{SMEM_USER_RAW_DHL,	CCB_CACHE_MIN_SIZE,	20*1024*1024,	0, },
-	{SMEM_USER_RAW_MDM,	CCB_CACHE_MIN_SIZE,	20*1024*1024,	0, },
+	{SMEM_USER_CCB_DHL,	0,	CCB_CACHE_CTRL_SIZE,	0, },
+	{SMEM_USER_CCB_MD_MONITOR,	0,	CCB_CACHE_CTRL_SIZE,	0, },
+	{SMEM_USER_CCB_META,	0,	CCB_CACHE_CTRL_SIZE,	0, },
+	{SMEM_USER_RAW_DHL,	CCB_CACHE_CTRL_SIZE,	20*1024*1024,	0, },
+	{SMEM_USER_RAW_MDM,	CCB_CACHE_CTRL_SIZE,	20*1024*1024,	0, },
 	{SMEM_USER_RAW_UDC_DESCTAB,	0,	0,	0, },
 	{SMEM_USER_RAW_MD_CONSYS,	0,	0, SMF_NCLR_FIRST, },
 	{SMEM_USER_RAW_USIP,	0,	0, SMF_NCLR_FIRST, },
@@ -235,35 +236,57 @@ static void clear_smem_region(struct ccci_smem_region *regions, int first_boot)
 
 static void post_cfg_for_ccb(void)
 {
-	unsigned int ccb_size = 0, section_a_size = 0, section_b_size = 0;
-	unsigned int i = 0;
+	unsigned int ccb_size = 0, section_ccb_ctrl_size = 0, section_ccb_raw_data_size = 0;
+	unsigned int i = 0, md_offset = 0, md1_ccb_gear_ver = 0;
+	int ret, ctrl_mem_size;
 	void __iomem *ccb_ap_vir = NULL;
 	phys_addr_t ccb_ap_phy = 0, ccb_md_phy = 0;
-	unsigned int md_offset = 0;
+	struct device_node *node = NULL;
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,mddriver");
+	if (!node)
+		CCCI_ERROR_LOG(0, TAG, "mddriver node not support\n");
+	else {
+		ret = of_property_read_u32(node, "md1_ccb_gear_ver", &md1_ccb_gear_ver);
+		if (ret < 0)
+			CCCI_ERROR_LOG(0, TAG, "md1_ccb_gear_ver not support\n");
+		CCCI_NORMAL_LOG(0, TAG, "get CCB gear_list_version %d\n",
+			md1_ccb_gear_ver);
+	}
+
+	if (md1_ccb_gear_ver == 1) {
+		/* update ccb_configs value to new */
+		ctrl_mem_size = CCB_CACHE_CTRL_SIZE_1M;
+		ccb_configs = ccb_configs_table_1M;
+	} else {
+		ctrl_mem_size = CCB_CACHE_CTRL_SIZE;
+		ccb_configs = ccb_configs_table_2M;
+		CCCI_NORMAL_LOG(0, TAG, "use default ccb_configs tabe %d\n",
+			md1_ccb_gear_ver);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(md1_cacheable_tbl); i++) {
 		switch (md1_cacheable_tbl[i].id) {
 		case SMEM_USER_CCB_DHL:
 			ccb_size = md1_cacheable_tbl[i].size;
-			if (ccb_size > CCB_CACHE_MIN_SIZE) {
-				section_a_size = CCB_CACHE_MIN_SIZE;
-				section_b_size = ccb_size - CCB_CACHE_MIN_SIZE;
+			if (ccb_size > ctrl_mem_size) {
+				section_ccb_ctrl_size = ctrl_mem_size;
+				section_ccb_raw_data_size = ccb_size - ctrl_mem_size;
 			} else {
-				section_a_size = 0;
-				section_b_size = 0;
+				section_ccb_ctrl_size = 0;
+				section_ccb_raw_data_size = 0;
 			}
-			md1_cacheable_tbl[i].size = section_a_size;
+			md1_cacheable_tbl[i].size = section_ccb_ctrl_size;
 			ccb_ap_vir = md1_cacheable_tbl[i].base_ap_view_vir;
 			ccb_ap_phy = md1_cacheable_tbl[i].base_ap_view_phy;
 			ccb_md_phy = md1_cacheable_tbl[i].base_md_view_phy;
 			md_offset = md1_cacheable_tbl[i].offset;
-			CCCI_BOOTUP_LOG(0, TAG,
-				"ccb totoal :offset = 0x%x, size = 0x%x\n", md_offset, ccb_size);
+			CCCI_BOOTUP_LOG(0, TAG, "ccb totoal :offset = 0x%x, size = 0x%x\n", md_offset, ccb_size);
 			break;
 
 		case SMEM_USER_CCB_MD_MONITOR:
 		case SMEM_USER_CCB_META:
-			md1_cacheable_tbl[i].size = section_a_size;
+			md1_cacheable_tbl[i].size = section_ccb_ctrl_size;
 			md1_cacheable_tbl[i].offset = md_offset;
 			md1_cacheable_tbl[i].base_ap_view_vir = ccb_ap_vir;
 			md1_cacheable_tbl[i].base_ap_view_phy = ccb_ap_phy;
@@ -271,15 +294,15 @@ static void post_cfg_for_ccb(void)
 			break;
 		case SMEM_USER_RAW_DHL:
 		case SMEM_USER_RAW_MDM:
-			md1_cacheable_tbl[i].size = section_b_size;
-			if (section_b_size) {
-				md1_cacheable_tbl[i].offset = md_offset + section_a_size;
+			md1_cacheable_tbl[i].size = section_ccb_raw_data_size;
+			if (section_ccb_raw_data_size) {
+				md1_cacheable_tbl[i].offset = md_offset + section_ccb_ctrl_size;
 				md1_cacheable_tbl[i].base_ap_view_vir
-						= ccb_ap_vir + section_a_size;
+						= ccb_ap_vir + section_ccb_ctrl_size;
 				md1_cacheable_tbl[i].base_ap_view_phy
-						= ccb_ap_phy + section_a_size;
+						= ccb_ap_phy + section_ccb_ctrl_size;
 				md1_cacheable_tbl[i].base_md_view_phy
-						= ccb_md_phy + section_a_size;
+						= ccb_md_phy + section_ccb_ctrl_size;
 			} else {
 				md1_cacheable_tbl[i].offset = md_offset;
 				md1_cacheable_tbl[i].base_ap_view_vir = ccb_ap_vir;
@@ -356,9 +379,9 @@ static void ccci_get_ccb_raw_size(unsigned int *buf_size)
 		udc_noncache_size,udc_cache_size);
 
 	if (ccci_get_ap_plat() == 6768)
-		*buf_size = ccb_cache_size- CCB_CACHE_MIN_SIZE - udc_cache_size;
+		*buf_size = ccb_cache_size- CCB_CACHE_CTRL_SIZE - udc_cache_size;
 	else
-		*buf_size = ccb_cache_size- CCB_CACHE_MIN_SIZE;
+		*buf_size = ccb_cache_size- CCB_CACHE_CTRL_SIZE;
 
 }
 
@@ -452,7 +475,7 @@ void ccci_md_config_layout_for_legacy(struct ccci_mem_layout *mem_layout)
 
 	}
 	/* Runtime adjust cacheable size */
-	if (md_bank4_cacheable_total_size >= CCB_CACHE_MIN_SIZE) {
+	if (md_bank4_cacheable_total_size >= CCB_CACHE_CTRL_SIZE) {
 		/*
 		* 2M is control part size,
 		* md1_legacy_cacheable[0].size
@@ -466,7 +489,7 @@ void ccci_md_config_layout_for_legacy(struct ccci_mem_layout *mem_layout)
 			case SMEM_USER_RAW_DHL:
 			case SMEM_USER_RAW_MDM:
 				ccci_get_ccb_raw_size(&cal_cache_size);
-				md1_legacy_cacheable[i].offset = CCB_CACHE_MIN_SIZE;
+				md1_legacy_cacheable[i].offset = CCB_CACHE_CTRL_SIZE;
 				md1_legacy_cacheable[i].size = cal_cache_size;
 				break;
 			case SMEM_USER_RAW_UDC_DESCTAB:
@@ -517,6 +540,7 @@ void ap_md_mem_init_for_legacy(struct ccci_mem_layout *mem_layout)
 	/* setup memory layout */
 	mem_layout->md_bank0.base_ap_view_phy = md_resv_mem_addr;
 	mem_layout->md_bank0.size = md_resv_mem_size;
+
 	/* do not remap whole region, consume too much vmalloc space */
 	/* Share memory */
 	/*

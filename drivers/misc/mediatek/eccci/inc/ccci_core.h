@@ -91,7 +91,9 @@ struct ccb_ctrl_info {
 };
 
 extern unsigned int ccb_configs_len;
-extern struct ccci_ccb_config ccb_configs[];
+extern struct ccci_ccb_config *ccb_configs;
+extern struct ccci_ccb_config ccb_configs_table_2M[];
+extern struct ccci_ccb_config ccb_configs_table_1M[];
 
 
 /* ======================================================================= */
