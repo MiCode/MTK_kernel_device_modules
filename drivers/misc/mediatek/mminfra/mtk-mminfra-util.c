@@ -171,6 +171,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 		pr_notice("%s: power(%d) on_off(%d) fail, type(%d)\n",
 			__func__, mm_pwr, on_off, mm_type);
 		clkchk_external_dump();
+		BUG_ON(1);
 	}
 
 	spin_unlock_irqrestore(&mminfra_pd_lock, flags);
