@@ -18488,7 +18488,7 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 	unsigned int last_fence, cur_fence, sub;
 	dma_addr_t addr;
 
-	if (plane_state->pending.enable &&
+	if (plane->state->visible &&
 	    plane_state->pending.format != DRM_FORMAT_C8)
 		sub = 1;
 	else
