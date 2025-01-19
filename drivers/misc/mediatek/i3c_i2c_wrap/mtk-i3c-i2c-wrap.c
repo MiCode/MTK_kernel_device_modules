@@ -198,24 +198,25 @@ int i3c_i2c_transfer(struct i3c_i2c_device *i3c_i2c_dev,
 }
 EXPORT_SYMBOL_GPL(i3c_i2c_transfer);
 
-//void mtk_i3c_i2c_device_get_info(struct i3c_i2c_device *i3c_i2c_dev,
-//	struct i3c_device_info *info)
-//{
-//	if (!i3c_i2c_dev) {
-//		pr_info("[%s][%s] i3c_i2c_dev is NULL,%p\n",
-//			WRAP_INFO, __func__, i3c_i2c_dev);
-//		return;
-//	}
-//	if (i3c_i2c_dev->protocol == I3C_PROTOCOL) {
-//		if (!i3c_i2c_dev->i3c_dev || !info) {
-//			pr_info("[%s][%s] i3c_dev or info is NULL,%p\n",
-//				WRAP_INFO, __func__, info);
-//			return;
-//		}
-//		i3c_device_get_info(i3c_i2c_dev->i3c_dev, info);
-//	}
-//}
-//EXPORT_SYMBOL_GPL(mtk_i3c_i2c_device_get_info);
+int mtk_i3c_i2c_device_get_info(struct i3c_i2c_device *i3c_i2c_dev,
+	struct i3c_device_info *info)
+{
+	if (!i3c_i2c_dev) {
+		pr_info("[%s][%s] i3c_i2c_dev is NULL,%p\n",
+			WRAP_INFO, __func__, i3c_i2c_dev);
+		return -EINVAL;
+	}
+	if (i3c_i2c_dev->protocol == I3C_PROTOCOL) {
+		if (!i3c_i2c_dev->i3c_dev || !info) {
+			pr_info("[%s][%s] i3c_dev or info is NULL,%p\n",
+				WRAP_INFO, __func__, info);
+			return -EINVAL;
+		}
+		i3c_device_get_info(i3c_i2c_dev->i3c_dev, info);
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_i3c_i2c_device_get_info);
 
 int mtk_i3c_i2c_device_set_info(struct i3c_i2c_device *i3c_i2c_dev,
 	const struct i3c_device_info *info)

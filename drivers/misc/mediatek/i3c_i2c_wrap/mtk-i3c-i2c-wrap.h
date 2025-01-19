@@ -98,8 +98,8 @@ struct i3c_i2c_device mtk_i3c_i2c_new_client_device(
 	struct i3c_i2c_device *i3c_i2c_dev, u16 static_addr, u8 lvr);
 int i3c_i2c_transfer(struct i3c_i2c_device *i3c_i2c_dev,
 	struct i3c_i2c_xfer *xfers, int nxfers);
-//void mtk_i3c_i2c_device_get_info(struct i3c_i2c_device *i3c_i2c_dev,
-//	struct i3c_device_info *info);
+int mtk_i3c_i2c_device_get_info(struct i3c_i2c_device *i3c_i2c_dev,
+	struct i3c_device_info *info);
 int mtk_i3c_i2c_device_set_info(struct i3c_i2c_device *i3c_i2c_dev,
 	const struct i3c_device_info *info);
 int mtk_i3c_i2c_device_disec(struct i3c_i2c_device *i3c_i2c_dev,
