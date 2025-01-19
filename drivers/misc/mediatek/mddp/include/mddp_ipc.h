@@ -15,7 +15,10 @@
 // Configuration.
 // -----------------------------------------------------------------------------
 #define MDDP_IPC_TTY_NAME			"ccci_0_200"
-#define MDFPM_TTY_BUF_SZ            256
+#define MDFPM_TTY_BUF_SZ_OLD        256
+#define MDFPM_TTY_BUF_SZ            2048
+#define WIFI_STATE_DEFAULT          (1<<0)
+#define WIFI_STATE_LEN2B            (1<<1)
 
 //------------------------------------------------------------------------------
 // Enum. definition.
@@ -115,6 +118,15 @@ struct check_feature_req {
 	uint32_t        wifi_feature;
 };
 
+// Adding additional member for kernel_version in align with check_feature_req
+// To help modem maintain compatibility with the old structure too
+struct check_feature_req_k66 {
+	uint16_t        android_version;   // major version
+	uint16_t        minor_version;     // reserved
+	uint32_t        wifi_feature;
+	uint32_t        kernel_version;    // new
+};
+
 struct mddp_f_set_ct_timeout_req_t {
 	uint32_t                udp_ct_timeout;
 	uint32_t                tcp_ct_timeout;
@@ -127,10 +139,12 @@ struct mddp_md_msg_t {
 	uint32_t                        data_len;
 	struct_group(data,
 		struct check_feature_req ap_info;
+		struct check_feature_req_k66 ap_info_k66;
 		struct mddp_u_warning_and_data_limit_t wlimit;
 		struct mddp_u_data_limit_t limit;
 		struct mddpw_txd_t txd;
 		struct mddpw_drv_notify_info_t wifi_notify;
+		struct mddpw_drv_notify_info_t_v1 wifi_notify_v1;
 		struct mddp_f_set_ct_timeout_req_t ct_req;
 		struct mddp_dev_ipv4_conntrack_event_t v4_event;
 		struct mddp_dev_ipv6_conntrack_event_t v6_event;

@@ -53,8 +53,6 @@ static struct mddp_ipc_rx_msg_entry_t mddp_rx_msg_table_s[] = {
 		sizeof(struct wfpm_enable_md_func_rsp_t) },
 	{ IPC_MSG_ID_WFPM_DEACTIVATE_MD_FAST_PATH_RSP,
 		sizeof(struct wfpm_deactivate_md_func_rsp_t) },
-	{ IPC_MSG_ID_WFPM_MD_NOTIFY,
-		sizeof(struct mddpw_md_notify_info_t) },
 	{ IPC_MSG_ID_MDFPM_SUSPEND_TAG_IND,
 		0 },
 	{ IPC_MSG_ID_MDFPM_RESUME_TAG_IND,
@@ -130,9 +128,9 @@ static int32_t mddp_ipc_open_port(void)
 /*
  * Rx kthread used to receive ctrl_msg from MD.
  */
+struct mdfpm_ctrl_msg_t rx_ctrl_msg;
 static int32_t mddp_md_msg_hdlr(void *arg)
 {
-	struct mdfpm_ctrl_msg_t     ctrl_msg;
 	int32_t                     rx_count;
 
 	allow_signal(SIGTERM);
@@ -147,15 +145,15 @@ static int32_t mddp_md_msg_hdlr(void *arg)
 		}
 
 		rx_count = mtk_ccci_read_data(mddp_ipc_tty_port_s,
-				(char *)&(ctrl_msg), sizeof(ctrl_msg));
+				(char *)&(rx_ctrl_msg), sizeof(rx_ctrl_msg));
 
 		if (signal_pending(current))
 			break;
 
 		if (rx_count > 0 && rx_count >= MDFPM_CTRL_MSG_HEADER_SZ) {
 			// OK. Forward to dest_user.
-			mddp_sm_msg_hdlr(ctrl_msg.dest_user_id, ctrl_msg.msg_id,
-					&(ctrl_msg.buf), ctrl_msg.buf_len);
+			mddp_sm_msg_hdlr(rx_ctrl_msg.dest_user_id, rx_ctrl_msg.msg_id,
+					&(rx_ctrl_msg.buf), rx_ctrl_msg.buf_len);
 		} else {
 			// NG. Error to read TTY port!
 			MDDP_C_LOG(MDDP_LL_DEBUG,
@@ -176,6 +174,7 @@ static int32_t mddp_md_msg_hdlr(void *arg)
 /*
  * Tx API used to send ctrl_msg to MD.
  */
+struct mdfpm_ctrl_msg_t tx_ctrl_msg;
 int32_t mddp_ipc_send_md(
 	void *in_app,
 	struct mddp_md_msg_t *msg,
@@ -183,7 +182,7 @@ int32_t mddp_ipc_send_md(
 {
 	struct mddp_app_t      *app;
 	int32_t                 ret;
-	struct mdfpm_ctrl_msg_t ctrl_msg = {0};
+	int32_t buf_sz = MDFPM_TTY_BUF_SZ_OLD;
 
 	if (!in_app)
 		app = mddp_get_default_app_inst();
@@ -194,20 +193,24 @@ int32_t mddp_ipc_send_md(
 		kfree(msg);
 		return -ENODEV;
 	}
-	if (msg->data_len > MDFPM_TTY_BUF_SZ) {
+
+	if (mddp_check_subfeature(MF_ID_COMMON, COM_LEN2B))
+		buf_sz = MDFPM_TTY_BUF_SZ;
+
+	if (msg->data_len > buf_sz) {
 		kfree(msg);
 		return -EFAULT;
 	}
-	ctrl_msg.dest_user_id = (dest_user == MDFPM_USER_ID_NULL)
+	tx_ctrl_msg.dest_user_id = (dest_user == MDFPM_USER_ID_NULL)
 		? (app->md_cfg.ipc_md_user_id) : (dest_user);
 
-	ctrl_msg.msg_id = msg->msg_id;
-	ctrl_msg.buf_len = msg->data_len;
+	tx_ctrl_msg.msg_id = msg->msg_id;
+	tx_ctrl_msg.buf_len = msg->data_len;
 
 	if (msg->data_len > 0)
-		memcpy(ctrl_msg.buf, &msg->data, msg->data_len);
+		memcpy(tx_ctrl_msg.buf, &msg->data, msg->data_len);
 
-	ret = mtk_ccci_send_data(mddp_ipc_tty_port_s, (char *)&ctrl_msg,
+	ret = mtk_ccci_send_data(mddp_ipc_tty_port_s, (char *)&tx_ctrl_msg,
 			MDFPM_CTRL_MSG_HEADER_SZ + msg->data_len);
 
 	kfree(msg);

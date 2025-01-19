@@ -110,9 +110,25 @@ struct mddpw_drv_info_t {
 	uint8_t         info[];
 };
 
+struct mddpw_drv_info_t_v1 {
+	uint8_t         info_id;
+	uint8_t         reserve;
+	uint16_t        info_len;
+	uint8_t         info[];
+};
+
 struct mddpw_drv_notify_info_t {
 	uint8_t         version;
 	uint8_t         buf_len;
+	uint8_t         info_num;
+	uint8_t         buf[];
+};
+
+struct mddpw_drv_notify_info_t_v1 {
+	uint8_t         version;
+	uint8_t         reserve_1;
+	uint16_t        buf_len;
+	uint8_t         reserve_2;
 	uint8_t         info_num;
 	uint8_t         buf[];
 };
@@ -170,6 +186,8 @@ typedef int32_t (*mddpw_cbf_get_md_rx_reorder_buf_t)(
 		struct mddpw_md_reorder_sync_table_t **);
 typedef int32_t (*mddpw_cbf_notify_drv_info_t)(
 		struct mddpw_drv_notify_info_t *);
+typedef int32_t (*mddpw_cbf_notify_drv_info_t_v1)(
+		struct mddpw_drv_notify_info_t_v1 *);
 typedef int32_t (*mddpw_cbf_get_net_stat_ext_t)(struct mddpw_net_stat_ext_t *);
 typedef int32_t (*mddpw_cbf_get_sys_stat_t)(struct mddpw_sys_stat_t **);
 typedef int32_t (*mddpw_cbf_get_mddp_feature_t)(void);
@@ -182,11 +200,15 @@ enum mddp_vc_mf_id_e {
 	MF_ID_NUM,
 }; // mddp version control main feature enum.
 
-enum mddp_f_com_v1_e {
+enum mddp_f_com_v2_e {
 	COM_V1_LLS,
 	COM_V1_MAWD,
 	COM_V1_SHM_SYNC,
-	COM_V1_NUM,
+	COM_V1_NUM,   // keeping this for legacy compatibility
+	COM_QOX_CTRL,
+	COM_TRAS,
+	COM_AQM,
+	COM_LEN2B,
 };
 
 enum mddp_f_wfc_v1_e {
@@ -200,7 +222,7 @@ enum mddp_f_mddp_wh_v1_e {
 	MDDP_WH_V1_NUM,
 };
 
-#define COM_NUM COM_V1_NUM
+#define COM_NUM COM_LEN2B
 #define WFC_NUM WFC_V1_NUM
 #define MDDP_WH_NUM MDDP_WH_V1_NUM
 
@@ -223,6 +245,7 @@ struct mddpw_drv_handle_t {
 	mddpw_cbf_get_ap_rx_reorder_buf_t      get_ap_rx_reorder_buf;
 	mddpw_cbf_get_md_rx_reorder_buf_t      get_md_rx_reorder_buf;
 	mddpw_cbf_notify_drv_info_t            notify_drv_info;
+	mddpw_cbf_notify_drv_info_t_v1         notify_drv_info_v1;
 	mddpw_cbf_get_net_stat_ext_t           get_net_stat_ext;
 	mddpw_cbf_get_sys_stat_t               get_sys_stat;
 	mddpw_cbf_get_mddp_feature_t           get_mddp_feature;

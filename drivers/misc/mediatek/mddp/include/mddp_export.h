@@ -68,6 +68,7 @@ int32_t mddp_drv_attach(
 	struct mddp_drv_conf_t *conf, struct mddp_drv_handle_t *handle);
 void mddp_drv_detach(
 	struct mddp_drv_conf_t *conf, struct mddp_drv_handle_t *handle);
+bool mddp_check_subfeature(int type, int feat);
 
 //------------------------------------------------------------------------------
 // Public function definition - For HIDL

@@ -17,7 +17,6 @@
 #define MDDP_ABNORMAL_CCCI_SEND_FAILED                      (1U << 0)
 #define MDDP_ABNORMAL_CHECK_FEATURE_ABSENT                  (1U << 1)
 #define MDDP_ABNORMAL_WIFI_DRV_GET_FEATURE_BEFORE_MD_READY  (1U << 2)
-#define MDFPM_TTY_BUF_SZ 256
 #define MDFPM_SEND_LOG_HEADER 3
 #define MDFPM_SEND_LOG_BUF_SZ (MDFPM_TTY_BUF_SZ - MDFPM_SEND_LOG_HEADER)
 //------------------------------------------------------------------------------

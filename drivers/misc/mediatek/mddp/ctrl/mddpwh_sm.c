@@ -744,6 +744,45 @@ static int32_t mddpw_drv_notify_info(
 	return 0;
 }
 
+static int32_t mddpw_drv_notify_info_v1(
+	struct mddpw_drv_notify_info_t_v1 *wifi_notify_v1)
+{
+	struct mddp_md_msg_t    *md_msg;
+	struct mddp_app_t       *app;
+	int32_t                 ipc_send_status = 0;
+
+	// Send WIFI Notify to MD
+	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
+
+	if (!app->is_config || !is_smem_layout_config) {
+		MDDP_S_LOG(MDDP_LL_ERR,
+			"%s: app_type(MDDP_APP_TYPE_WH) not configured! smem status - %d]\n",
+				__func__, is_smem_layout_config);
+		return -ENODEV;
+	}
+
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
+		sizeof(struct mddpw_drv_notify_info_t_v1) +
+		wifi_notify_v1->buf_len, GFP_ATOMIC);
+
+	if (unlikely(!md_msg))
+		return -ENOMEM;
+
+	md_msg->msg_id = IPC_MSG_ID_WFPM_DRV_NOTIFY;
+	md_msg->data_len = sizeof(struct mddpw_drv_notify_info_t_v1) +
+		wifi_notify_v1->buf_len;
+	memcpy(&md_msg->data, wifi_notify_v1, md_msg->data_len);
+	ipc_send_status = mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
+	if (ipc_send_status != 0) {
+		// Notify error to wlan driver for maintaining their wifi status
+		MDDP_S_LOG(MDDP_LL_ERR,
+			"%s: ipc_send_status = %d\n",__func__, ipc_send_status);
+		return ipc_send_status;
+	}
+
+	return 0;
+}
+
 static int32_t mddpw_drv_get_mddp_feature(void)
 {
 	struct mddp_app_t       *app;
@@ -805,6 +844,7 @@ static int32_t mddpw_drv_reg_callback(struct mddp_drv_handle_t *handle)
 	wifi_handle->get_ap_rx_reorder_buf = mddpw_drv_get_ap_rx_reorder_buf;
 	wifi_handle->get_md_rx_reorder_buf = mddpw_drv_get_md_rx_reorder_buf;
 	wifi_handle->notify_drv_info = mddpw_drv_notify_info;
+	wifi_handle->notify_drv_info_v1 = mddpw_drv_notify_info_v1;
 	wifi_handle->get_net_stat_ext = mddpw_drv_get_net_stat_ext;
 	wifi_handle->get_sys_stat = mddpw_drv_get_sys_stat;
 	wifi_handle->get_mddp_feature = mddpw_drv_get_mddp_feature;
@@ -833,6 +873,7 @@ static int32_t mddpw_drv_dereg_callback(struct mddp_drv_handle_t *handle)
 	wifi_handle->get_ap_rx_reorder_buf = NULL;
 	wifi_handle->get_md_rx_reorder_buf = NULL;
 	wifi_handle->notify_drv_info = NULL;
+	wifi_handle->notify_drv_info_v1 = NULL;
 	wifi_handle->get_net_stat_ext = NULL;
 	wifi_handle->get_sys_stat = NULL;
 	wifi_handle->get_mddp_feature = NULL;

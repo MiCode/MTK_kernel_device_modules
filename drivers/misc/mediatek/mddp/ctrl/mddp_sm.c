@@ -5,6 +5,7 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
+#include <linux/version.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
 
@@ -73,10 +74,11 @@ void mddp_check_feature(void)
 {
 	struct mddp_md_msg_t *md_msg;
 	struct mddp_app_t *app;
-	struct check_feature_req ap_info = {
-		.major_version = 13,
+	struct check_feature_req_k66 ap_info_k66 = {
+		.android_version = 15,
 		.minor_version = 0,
-		.wifi_feature = 1
+		.wifi_feature = WIFI_STATE_LEN2B,
+		.kernel_version = KERNEL_VERSION(6, 12, 0),
 	};
 
 	md_msg = kzalloc(sizeof(struct mddp_md_msg_t),
@@ -87,11 +89,15 @@ void mddp_check_feature(void)
 		return;
 	}
 
+	MDDP_S_LOG(MDDP_LL_DEBUG,
+			"%s:, android_version [%d], wifi_feature [%d], kernel_version [%d]",
+			__func__, ap_info_k66.android_version,
+			ap_info_k66.wifi_feature, ap_info_k66.kernel_version);
 	md_msg->msg_id = IPC_MSG_ID_MDFPM_CHECK_FEATURE_REQ;
-	md_msg->data_len = sizeof(struct check_feature_req);
+	md_msg->data_len = sizeof(struct check_feature_req_k66);
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 	app->abnormal_flags |= MDDP_ABNORMAL_CHECK_FEATURE_ABSENT;
-	memcpy(&md_msg->data, &ap_info, md_msg->data_len);
+	memcpy(&md_msg->data, &ap_info_k66, md_msg->data_len);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_MDFPM);
 }
 
@@ -130,6 +136,10 @@ static void mddp_handshake_done(void *buf, uint32_t buf_len)
 				default:
 					break;
 				}
+				MDDP_S_LOG(MDDP_LL_DEBUG,
+					"%s[%d] Sub featureset: common[%d], wfc[%d], wh[%d]",
+					__func__, i, app->mddp_feat.common,
+					app->mddp_feat.wfc, app->mddp_feat.wh);
 			}
 		} else
 			MDDP_S_LOG(MDDP_LL_ERR, "MD response size(%d) error, num(%d)",
@@ -155,6 +165,7 @@ bool mddp_check_subfeature(int type, int feat)
 		return 0;
 	}
 }
+EXPORT_SYMBOL(mddp_check_subfeature);
 
 char operate[4][14] = {
 	"Add dl filter",
@@ -209,10 +220,10 @@ uint32_t printV6Msg(struct mdfpm_log *mdfpm_log_buf, int action_id_t, char *str_
 	return size;
 }
 
+char buffer[MDFPM_SEND_LOG_BUF_SZ];
 uint32_t print_unexpected_id(struct mdfpm_log *mdfpm_log_buf, uint32_t buf_len, char *str_dstate)
 {
 	uint32_t i, size, idx = 0;
-	char buffer[MDFPM_SEND_LOG_BUF_SZ];
 
 	for (i = 0; i < buf_len; i++)
 		idx += snprintf(&buffer[idx], buf_len-idx, "%u", mdfpm_log_buf->buf[i]);
@@ -222,11 +233,11 @@ uint32_t print_unexpected_id(struct mdfpm_log *mdfpm_log_buf, uint32_t buf_len, 
 	return size;
 }
 
+char str_dstate[MDFPM_SEND_LOG_BUF_SZ];
 static void mddp_print_mdfpm_log(struct mdfpm_log *buf, uint32_t buf_len)
 {
 	uint32_t size = 0;
 	struct mdfpm_log *mdfpm_log_buf;
-	char str_dstate[MDFPM_SEND_LOG_BUF_SZ];
 
 	if (buf_len >= MDFPM_SEND_LOG_HEADER) {
 		mdfpm_log_buf = (struct mdfpm_log *)buf;
