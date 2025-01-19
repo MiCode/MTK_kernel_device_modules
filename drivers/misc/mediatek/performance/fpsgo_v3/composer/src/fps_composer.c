@@ -1143,6 +1143,10 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 
 	mutex_lock(&f_render->ux_mlock);
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, frame_start_time, 1);
+	if (!frame_info) {
+		fpsgo_systrace_c_fbt(pid, identifier, frameID, "[ux]start_malloc_fail");
+		fpsgo_systrace_c_fbt(pid, identifier, 0, "[ux]start_malloc_fail");
+	}
 	ux_frame_cnt = fpsgo_ux_count_frame_info(f_render, 2);
 	fpsgo_systrace_c_fbt(pid, identifier, ux_frame_cnt, "[ux]ux_frame_cnt");
 	mutex_unlock(&f_render->ux_mlock);
@@ -2253,7 +2257,6 @@ static ssize_t set_ui_ctrl_store(struct kobject *kobj,
 {
 	char *acBuffer = NULL;
 	int arg;
-	int ret = 0;
 
 	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
@@ -2266,9 +2269,9 @@ static ssize_t set_ui_ctrl_store(struct kobject *kobj,
 			fpsgo_systrace_c_fbt(arg > 0 ? arg : -arg,
 				0, arg > 0, "force_ctrl");
 			if (arg > 0)
-				ret = switch_ui_ctrl(arg, 1);
+				switch_ui_ctrl(arg, 1);
 			else
-				ret = switch_ui_ctrl(-arg, 0);
+				switch_ui_ctrl(-arg, 0);
 		}
 	}
 
@@ -2324,7 +2327,6 @@ static ssize_t fpsgo_control_pid_store(struct kobject *kobj,
 {
 	char *acBuffer = NULL;
 	int pid = 0, value = 0;
-	int ret = 0;
 
 	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
@@ -2333,7 +2335,7 @@ static ssize_t fpsgo_control_pid_store(struct kobject *kobj,
 	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (sscanf(acBuffer, "%d %d", &pid, &value) == 2)
-				ret = switch_fpsgo_control_pid(pid, !!value);
+				switch_fpsgo_control_pid(pid, !!value);
 		}
 	}
 

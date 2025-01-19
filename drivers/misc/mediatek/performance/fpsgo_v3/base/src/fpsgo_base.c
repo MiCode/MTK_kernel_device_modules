@@ -4046,9 +4046,7 @@ void fpsgo_ktf_test_read_node(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf,
 	ssize_t (*target_func)(struct kobject *, struct kobj_attribute *, char *))
 {
-	int ret = 0;
-
-	ret = target_func(kobj, attr, buf);
+	target_func(kobj, attr, buf);
 	memset(buf, '\0' , FPSGO_SYSFS_MAX_BUFF_SIZE * sizeof(char));
 }
 
@@ -4057,14 +4055,13 @@ void fpsgo_ktf_test_write_node(struct kobject *kobj,
 	ssize_t (*target_func)(struct kobject *, struct kobj_attribute *, const char *, size_t))
 {
 	char *acBuffer = NULL;
-	int ret = 0;
 
 	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
 		goto out;
 
 	if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf))
-		ret = target_func(kobj, attr, acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE - 1);
+		target_func(kobj, attr, acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE - 1);
 
 out:
 	kfree(acBuffer);

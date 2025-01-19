@@ -3153,8 +3153,6 @@ static int fbt_print_rescue_info(int pid, int buffer_id,
 	unsigned long long q_end_ts,
 	int quota, int scn, int num, int policy, int blc_wt, int last_blw)
 {
-	int blc_changed = 0;
-
 	switch (policy) {
 	case FPSGO_JERK_ONLY_CEILING_WAIT_ENQ:
 		fpsgo_systrace_c_fbt(pid, buffer_id, num, "wait_enqueue");
@@ -3169,7 +3167,6 @@ static int fbt_print_rescue_info(int pid, int buffer_id,
 	case FPSGO_JERK_NEED:
 		fpsgo_systrace_c_fbt(pid, buffer_id, num, "jerk_need");
 		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "jerk_need");
-		blc_changed = 1;
 		break;
 
 	case FPSGO_JERK_POSTPONE:
@@ -3716,7 +3713,7 @@ static int fbt_filter_frame(long loading, unsigned int target_fps,
 	struct fbt_loading_info *filter_loading, long *filtered_loading,
 	int render_pid, unsigned long long buffer_id, int window_size, int filter_kmin)
 {
-	int pre_iter = 0, next_iter = 0, cur_iter = 0;
+	int pre_iter = 0, cur_iter = 0;
 	int i = 0, tmp_index = 0;
 	int ret = FPSGO_FILTER_ACTIVE;
 	struct fbt_loading_info *sorted_loading;
@@ -3741,7 +3738,6 @@ static int fbt_filter_frame(long loading, unsigned int target_fps,
 
 	cur_iter = *filter_index;
 	pre_iter = (*filter_index - 1 + FBT_FILTER_MAX_WINDOW) % FBT_FILTER_MAX_WINDOW;
-	next_iter = (*filter_index + 1 + FBT_FILTER_MAX_WINDOW) % FBT_FILTER_MAX_WINDOW;
 
 	filter_loading[*filter_index].target_fps = fbt_get_var_fps(target_fps);
 
@@ -5033,7 +5029,6 @@ static int fbt_boost_policy(
 	int active_jerk_id = 0;
 	long long rescue_target_t, qr_quota_adj;
 	int isolation_cap = 100, limit_max_cap = 100, limit_sys_max_cap = 100;
-	int getcap_ret = 0, filter_ret = 0, get_aa_ret = 0;
 	long aa_n, aa_b, aa_m;
 	long aa_l = 0;
 	int is_filter_frame_active;
@@ -5131,13 +5126,13 @@ static int fbt_boost_policy(
 		mutex_unlock(&blc_mlock);
 	}
 
-	get_aa_ret = fbt_get_aa(loading, boost_info->cl_loading, cluster_num, t1, t_Q2Q,
+	fbt_get_aa(loading, boost_info->cl_loading, cluster_num, t1, t_Q2Q,
 		separate_aa_final, max_cap_cluster, sec_cap_cluster, &aa_n, &aa_b, &aa_m);
 	thread_info->frame_aa = loading;
 	thread_info->dep_aa = aa_n;
 
 	if (boost_info->cl_loading && cluster_num > 1)
-		get_aa_ret = fbt_cal_aa(boost_info->cl_loading[min_cap_cluster], t1, t_Q2Q, &aa_l);
+		fbt_cal_aa(boost_info->cl_loading[min_cap_cluster], t1, t_Q2Q, &aa_l);
 
 	if (aal_clamp && aa_m < aa_l)
 		aa_m = aa_l;
@@ -5145,7 +5140,7 @@ static int fbt_boost_policy(
 	if (aa_b < aa_m)
 		aa_b = aa_m;
 
-	filter_ret = fbt_get_filter_frame_aa(is_filter_frame_active, separate_aa_final,
+	fbt_get_filter_frame_aa(is_filter_frame_active, separate_aa_final,
 		ff_obj, pid, buffer_id, target_fps, ff_window_size, ff_kmin, aa_n, aa_b, aa_m,
 		&filtered_aa_n, &filtered_aa_b, &filtered_aa_m);
 
@@ -5201,7 +5196,7 @@ static int fbt_boost_policy(
 		t2 = target_time;
 	t2 = nsec_to_100usec_ull(t2);
 
-	getcap_ret = fbt_get_separatecap(separate_aa_final, filtered_aa_n, filtered_aa_b,
+	fbt_get_separatecap(separate_aa_final, filtered_aa_n, filtered_aa_b,
 		filtered_aa_m, t2, t_Q2Q, aa_retarget, last_blc_wt, last_blc_wt_b, last_blc_wt_m,
 		&blc_wt, &blc_wt_b, &blc_wt_m);
 
@@ -7091,7 +7086,7 @@ long fbt_xgff_get_loading_by_cluster(struct xgf_thread_loading *ploading, unsign
 	unsigned int prefer_cluster, int skip, long *area)
 {
 	int i;
-	unsigned long long new_ts_100us, ret = 0;
+	unsigned long long new_ts_100us;
 	unsigned long long loading = 0L;
 
 	new_ts_100us = nsec_to_100usec_ull(ts);
@@ -7103,7 +7098,7 @@ long fbt_xgff_get_loading_by_cluster(struct xgf_thread_loading *ploading, unsign
 		if (area && !skip) {
 			for (i = 0; i < cluster_num; i++) {
 				loading = 0L;
-				ret = fbt_get_cl_loading_from_buffer(ploading->pid,
+				fbt_get_cl_loading_from_buffer(ploading->pid,
 					ploading->buffer_id, ploading->last_cb_ts,
 					&loading, new_ts_100us, i);
 				area[i] = (long)loading;
@@ -7111,12 +7106,10 @@ long fbt_xgff_get_loading_by_cluster(struct xgf_thread_loading *ploading, unsign
 					loading, "q2q_loading_cl[%d]", i);
 			}
 		} else
-			ret = fbt_get_cl_loading_from_buffer(ploading->pid, ploading->buffer_id,
+			fbt_get_cl_loading_from_buffer(ploading->pid, ploading->buffer_id,
 				ploading->last_cb_ts, &loading, new_ts_100us, prefer_cluster);
-	} else {
+	} else
 		xgf_trace("[XGFF][%s] !ploading", __func__);
-		ret = 1;
-	}
 
 out:
 	if (ploading) {
@@ -8065,7 +8058,6 @@ static ssize_t llf_task_policy_store(struct kobject *kobj,
 		const char *buf, size_t count)
 {
 	int val = 0;
-	int orig_policy;
 	char *acBuffer = NULL;
 	int arg;
 
@@ -8098,7 +8090,6 @@ static ssize_t llf_task_policy_store(struct kobject *kobj,
 		goto out;
 	}
 
-	orig_policy = llf_task_policy;
 	llf_task_policy = val;
 	fpsgo_main_trace("fpsgo set llf_task_policy %d",
 		llf_task_policy);

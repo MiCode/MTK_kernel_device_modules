@@ -223,7 +223,6 @@ static int fbt_ux_cal_perf(
 {
 	unsigned int blc_wt = 0U;
 	unsigned int last_blc_wt = 0U;
-	unsigned long long cur_ts;
 	struct fbt_boost_info *boost_info;
 	int pid;
 	unsigned long long buffer_id;
@@ -235,7 +234,6 @@ static int fbt_ux_cal_perf(
 		return 0;
 	}
 
-	cur_ts = fpsgo_get_time();
 	pid = thread_info->pid;
 	buffer_id = thread_info->buffer_id;
 	boost_info = &(thread_info->boost_info);
@@ -871,7 +869,6 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 	int result = -1;
 	int scroll_count = 0;
 	unsigned long long rescue_target_time = 0LLU;
-	int pid = -1;
 
 	if (!sbe_dy_rescue_enable || !thr || IS_ERR_OR_NULL(&thr->scroll_list))
 		return result;
@@ -887,7 +884,6 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 		rescue_target_time = target_time >> 1;
 	}
 
-	pid = thr->pid;
 	scroll_count = get_ux_list_length(&thr->scroll_list);
 
 	if (scroll_cnt > 0 && scroll_count < scroll_cnt) {
@@ -897,8 +893,7 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 	}
 
 	list_for_each_entry (scroll_info, &thr->scroll_list, queue_list) {
-		if (!scroll_info
-				|| IS_ERR_OR_NULL(&scroll_info->frame_list)
+		if (IS_ERR_OR_NULL(&scroll_info->frame_list)
 				|| scroll_info->jank_count <= 0) {
 			continue;
 		}
@@ -927,15 +922,13 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 		int max_monitor_drop_frame = RESCUE_MAX_MONITOR_DROP_ARR_SIZE - 1;
 		long long new_dur;
 		long long old_tmp;
-		int *oldScore;
 		int benifit_f_up = 0;
 		int benifit_f_down = 1;
 		int threshold = sbe_dy_frame_threshold > 0 ? sbe_dy_frame_threshold : 0;
 		int tempScore[RESCUE_MAX_MONITOR_DROP_ARR_SIZE];
 
 		list_for_each_entry (scroll_info, &thr->scroll_list, queue_list) {
-			if (!scroll_info
-					|| IS_ERR_OR_NULL(&scroll_info->frame_list)
+			if (IS_ERR_OR_NULL(&scroll_info->frame_list)
 					|| scroll_info->jank_count <= 0) {
 				continue;
 			}
@@ -951,7 +944,6 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 				int after = clamp((hwui_info->perf_idx + new_enhance), 0, 100);
 
 				if (new_enhance > last_enhance && hwui_info->dur_ts <= target_time) {
-					new_dur = hwui_info->dur_ts;
 					tempScore[0] += 1;
 					drop = 0;
 				} else {
@@ -993,7 +985,6 @@ int fpsgo_sbe_dy_enhance(struct render_info *thr)
 					}
 				}
 			}
-			oldScore = scroll_info->score;
 
 			if (benifit_f_up > threshold || !benifit_f_down) {
 				//already meet condition
@@ -1404,9 +1395,11 @@ void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct render
 	if (!sbe_dy_rescue_enable)
 		return;
 
-	new_node = kmem_cache_alloc(ux_scroll_info_cachep, GFP_KERNEL);
+	if (!thr)
+		return;
 
-	if (!new_node || !thr)
+	new_node = kmem_cache_alloc(ux_scroll_info_cachep, GFP_KERNEL);
+	if (!new_node)
 		return;
 
 	new_node->score = kmalloc(

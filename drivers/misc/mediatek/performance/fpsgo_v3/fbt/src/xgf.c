@@ -813,10 +813,9 @@ static void xgf_setup_render_dep_list(int *dep_list, int dep_list_num,
 	struct xgf_render_if *render, int type)
 {
 	int i;
-	struct xgf_dep *iter;
 
 	for (i = 0; i < dep_list_num; i++)
-		iter = xgf_add_dep_task(dep_list[i], render, type, 1);
+		xgf_add_dep_task(dep_list[i], render, type, 1);
 }
 
 static void xgf_del_pid2prev_dep(struct xgf_render_if *render, int type, int tid)
@@ -1428,8 +1427,6 @@ int xgf_get_logical_tid(int rpid, int tgid, int *l_tid,
 	if (gtsk) {
 		get_task_struct(gtsk);
 		for_each_thread(gtsk, sib) {
-			tmp_runtime = 0;
-
 			get_task_struct(sib);
 			if (sib->pid == rpid) {
 				put_task_struct(sib);
