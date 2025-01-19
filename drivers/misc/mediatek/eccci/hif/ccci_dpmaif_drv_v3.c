@@ -44,53 +44,32 @@ static struct dpmaif_clk_node g_clk_tbs[] = {
 
 static int drv_sram_init_v1(void)
 {
-	unsigned int reg_value = 0;
 	unsigned int count = 0;
+	unsigned int i;
+	unsigned int sram_init[][2] = {
+		{0xFFFF0100, 0x8033F000}, /* 0 */
+		{0xFFFF0200, 0x801DF000}, /* 1 */
+		{0xFFFF0400, 0x805FF000}, /* 2 */
+		{0xFFFF1000, 0x8033F000}, /* 4 */
+		{0xFFFF4000, 0x80443000}, /* 6 */
+		{0xFFFF8000, 0x80177000}, /* 7 */
+	};
 
-	/* clr SRAM 2/6/7 */
-	/* 2 */
-	reg_value = (1 << (8 + 2)) | (0xFFFF << 16);
-	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET1, reg_value);
+	/* clr SRAM 0/1/2/4/6/7 */
+	for (i = 0; i < ARRAY_SIZE(sram_init); i++) {
+		DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET1, sram_init[i][0]);
 
-	reg_value = (0x5FF << 12) | (1 << 31);
-	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0, reg_value);
-	/* polling status */
-	while ((DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0) & (1 << 31))) {
-		if (count++ >= 1600000) {
-			CCCI_ERROR_LOG(0, TAG, "[%s] error: 1st reg timeout\n", __func__);
-			return HW_REG_TIME_OUT;
+		DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0, sram_init[i][1]);
+		/* polling status */
+		count = 0;
+		while ((DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0) & (1 << 31))) {
+			if (count++ >= 1600000) {
+				CCCI_ERROR_LOG(0, TAG, "[%s] error: %u reg timeout\n", __func__, i);
+				return HW_REG_TIME_OUT;
+			}
 		}
 	}
 
-	/* 6 */
-	reg_value = (1 << (8 + 6)) | (0xFFFF << 16);
-	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET1, reg_value);
-
-	reg_value = (0x443 << 12) | (1 << 31);
-	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0, reg_value);
-	/* polling status */
-	count = 0;
-	while ((DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0) & (1 << 31))) {
-		if (count++ >= 1600000) {
-			CCCI_ERROR_LOG(0, TAG, "[%s] error: 2nd reg timeout\n", __func__);
-			return HW_REG_TIME_OUT;
-		}
-	}
-
-	/* 7 */
-	reg_value = (1 << (8 + 7)) | (0xFFFF << 16);
-	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET1, reg_value);
-
-	reg_value = (0x177 << 12) | (1 << 31);
-	DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0, reg_value);
-	/* polling status */
-	count = 0;
-	while ((DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_SRAM_INIT_SET0) & (1 << 31))) {
-		if (count++ >= 1600000) {
-			CCCI_ERROR_LOG(0, TAG, "[%s] error: 3rd reg timeout\n", __func__);
-			return HW_REG_TIME_OUT;
-		}
-	}
 	return 0;
 }
 
