@@ -481,8 +481,10 @@ static int jpeg_drv_hybrid_dec_lock(int *hwid)
 	int id = 0;
 
 	mutex_lock(&jpeg_hybrid_dec_lock);
-	if (gJpegqDev.is_suspending) {
-		JPEG_LOG(0, "jpeg dec is suspending");
+	if (gJpegqDev.is_suspending || gJpegqDev.is_shutdowning) {
+		JPEG_LOG(0, "jpeg dec is suspending or shutdowning, %d, %d",
+			    gJpegqDev.is_suspending,
+			    gJpegqDev.is_shutdowning);
 		*hwid = -1;
 		mutex_unlock(&jpeg_hybrid_dec_lock);
 		return -EBUSY;
@@ -1192,6 +1194,7 @@ static int jpeg_probe(struct platform_device *pdev)
 		gJpegqDev.pm_notifier.notifier_call = jpeg_drv_hybrid_dec_suspend_notifier;
 		register_pm_notifier(&gJpegqDev.pm_notifier);
 		gJpegqDev.is_suspending = 0;
+		gJpegqDev.is_shutdowning = 0;
 		memset(_jpeg_hybrid_dec_int_status, 0, HW_CORE_NUMBER);
 		proc_create("mtk_jpeg", 0x644, NULL, &jpeg_fops);
 
@@ -1233,12 +1236,28 @@ static int jpeg_remove(struct platform_device *pdev)
 static void jpeg_shutdown(struct platform_device *pdev)
 {
 	int i;
+	int wait_cnt = 0;
 	JPEG_LOG(0, "JPEG Codec shutdown");
 
+	mutex_lock(&jpeg_hybrid_dec_lock);
+	gJpegqDev.is_shutdowning = true;
 	for (i = 0 ; i < HW_CORE_NUMBER; i++) {
-		if (dec_hwlocked[i] && dec_hw_enable[i])
-			JPEG_LOG(0, "jpeg dec %d is enabled!!", i);
+		if (dec_hw_enable[i]) {
+			while (dec_hwlocked[i]) {
+				JPEG_LOG(1, "jpeg dec sn core %d locked. wait...", i);
+				usleep_range(10000, 20000);
+				wait_cnt++;
+				if (wait_cnt > 5) {
+					JPEG_LOG(0, "jpeg dec sn unlock core %d", i);
+					_jpeg_drv_hybrid_dec_unlock(i);
+					break;
+				}
+			}
+			dec_hw_enable[i] = false;
+			JPEG_LOG(0, "jpeg dec shutdown core %d", i);
+		}
 	}
+	mutex_unlock(&jpeg_hybrid_dec_lock);
 }
 
 /* PM suspend */

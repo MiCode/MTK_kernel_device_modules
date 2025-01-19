@@ -64,6 +64,7 @@ struct JpegDeviceStruct {
 	struct clk *jpeg_dvfs[JPEG_LARB_COUNT];
 	struct notifier_block pm_notifier;
 	bool is_suspending;
+	bool is_shutdowning;
 	struct icc_path *jpeg_path_wdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_bsdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_huff_offset[HW_CORE_NUMBER];
