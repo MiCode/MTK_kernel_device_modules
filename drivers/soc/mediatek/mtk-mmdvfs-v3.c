@@ -309,6 +309,7 @@ get_bootmode_err:
 static int mmdvfs_vcp_ipi_send_ex(const u8 func, const u8 idx, const u8 opp, u32 *data, const bool vcp)
 {
 	const u32 feature_id = vcp ? MMDVFS_VCP_FEATURE_ID : MMDVFS_MMUP_FEATURE_ID;
+	struct mtk_ipi_device *vcp_ipi_dev;
 	struct mmdvfs_ipi_data slot = {func, idx, opp,
 		(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova) >> 32, (u32)(vcp ? mmdvfs_vcp_iova : mmdvfs_mmup_iova)};
 	int gen, ret = 0, retry = 0;
@@ -393,7 +394,11 @@ static int mmdvfs_vcp_ipi_send_ex(const u8 func, const u8 idx, const u8 opp, u32
 	}
 	mutex_unlock(&mmdvfs_vcp_cb_mutex);
 
-	ret = mtk_ipi_send(vcp_get_ipidev(feature_id), vcp ? IPI_OUT_MMDVFS_VCP : IPI_OUT_MMDVFS_MMUP,
+	vcp_ipi_dev = vcp_get_ipidev(feature_id);
+	if (!vcp_ipi_dev)
+		goto ipi_lock_end;
+
+	ret = mtk_ipi_send(vcp_ipi_dev, vcp ? IPI_OUT_MMDVFS_VCP : IPI_OUT_MMDVFS_MMUP,
 		IPI_SEND_WAIT, &slot, PIN_OUT_SIZE_MMDVFS, IPI_TIMEOUT_MS);
 	if (ret != IPI_ACTION_DONE)
 		goto ipi_lock_end;
@@ -666,7 +671,7 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 	if (enable) {
 		if (!vmm_power) {
 			ret = mmdvfs_v3_dev ? pm_runtime_resume_and_get(mmdvfs_v3_dev) :
-				mmdvfs_vcp_ipi_send_ex(FUNC_VMM_BUCK_ENABLE, VMM_USR_VDE, enable ? 1 : 0, NULL, true);
+				mmdvfs_vcp_ipi_send_ex(FUNC_VMM_BUCK_ENABLE, VMM_USR_VDE, 1, NULL, true);
 			if (ret)
 				goto enable_vmm_end;
 		}
@@ -678,7 +683,7 @@ static int mtk_mmdvfs_enable_vmm(const bool enable)
 		}
 		if (vmm_power == 1) {
 			ret = mmdvfs_v3_dev ? pm_runtime_put_sync(mmdvfs_v3_dev) :
-				mmdvfs_vcp_ipi_send_ex(FUNC_VMM_BUCK_ENABLE, VMM_USR_VDE, enable ? 1 : 0, NULL, true);
+				mmdvfs_vcp_ipi_send_ex(FUNC_VMM_BUCK_ENABLE, VMM_USR_VDE, 0, NULL, true);
 			if (ret)
 				goto enable_vmm_end;
 		}
@@ -1583,7 +1588,7 @@ static inline void mmdvfs_reset_vcp(void)
 
 static void mmdvfs_v3_release_step(bool enable_vcp)
 {
-	int last, i;
+	int last, i, ret = 0;
 
 	if (enable_vcp)
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_VOTE);
@@ -1620,7 +1625,9 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 			last_test_ap_set_opp[i] = -1;
 		}
 		if (last_test_ap_set_rate[i] != -1) {
-			clk_set_rate(mmdvfs_user_clk[i], mmdvfs_mux[mux_idx].freq[0]);
+			ret = clk_set_rate(mmdvfs_user_clk[i], mmdvfs_mux[mux_idx].freq[0]);
+			if (ret)
+				MMDVFS_ERR("ret:%d user:%d freq:%llu", ret, i, mmdvfs_mux[mux_idx].freq[0]);
 			last_test_ap_set_rate[i] = -1;
 		}
 	}
