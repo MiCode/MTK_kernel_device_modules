@@ -84,13 +84,9 @@ static int pkvm_mtee_alloc(u32 alignment, u32 size, u32 *refcount, u64 *sec_hand
 	if (is_ffa_enabled()) {
 		ret = tmem_ffa_region_alloc(mtee_dev_desc->mtee_chunks_id,
 				size, alignment, sec_handle);
-		if (*sec_handle == 0) {
+		if (ret != 0) {
 			pr_info("tmem_ffa_region_alloc,  out of memory, ret=%d!\n",  ret);
 			return -ENOMEM;
-		} else if (ret != 0) {
-			pr_info("[%d] tmem_ffa_region_alloc failed:%d\n",
-			       mtee_dev_desc->kern_tmem_type, ret);
-			return TMEM_KPOOL_ALLOC_CHUNK_FAILED;
 		}
 		*refcount = 1;
 	}
@@ -403,13 +399,9 @@ static int mtee_alloc(u32 alignment, u32 size, u32 *refcount, u64 *sec_handle,
 	if (is_ffa_enabled()) {
 		ret = tmem_ffa_region_alloc(mtee_dev_desc->mtee_chunks_id,
 				size, alignment, sec_handle);
-		if (*sec_handle == 0) {
+		if (ret != 0) {
 			pr_info("tmem_ffa_region_alloc,  out of memory, ret=%d!\n",  ret);
 			return -ENOMEM;
-		} else if (ret != 0) {
-			pr_info("[%d] tmem_ffa_region_alloc failed:%d\n",
-			       mtee_dev_desc->kern_tmem_type, ret);
-			return TMEM_KPOOL_ALLOC_CHUNK_FAILED;
 		}
 		*refcount = 1;
 	} else {
