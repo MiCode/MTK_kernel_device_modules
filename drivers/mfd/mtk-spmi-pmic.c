@@ -510,6 +510,18 @@ static const struct mfd_cell mt6661_devs[] = {
 		.name = "mt6661-3-consys",
 		.of_compatible = "mediatek,mt6661-3-consys",
 	}, {
+		.name = "mt6661-3-pinctrl",
+		.of_compatible = "mediatek,mt6661-3-pinctrl",
+	}, {
+		.name = "mt6661-4-pinctrl",
+		.of_compatible = "mediatek,mt6661-4-pinctrl",
+	}, {
+		.name = "mt6661-5-pinctrl",
+		.of_compatible = "mediatek,mt6661-5-pinctrl",
+	}, {
+		.name = "mt6661-6-pinctrl",
+		.of_compatible = "mediatek,mt6661-6-pinctrl",
+	}, {
 		.name = "mtk-pmic-keys",
 		.num_resources = ARRAY_SIZE(mt6661_keys_resources),
 		.resources = mt6661_keys_resources,
@@ -550,6 +562,18 @@ static const struct mfd_cell mt6667_devs[] = {
 	}, {
 		.name = "mt6667-13-pmic",
 		.of_compatible = "mediatek,spmi-pmic-13-debug",
+	}, {
+		.name = "mt6667-7-pinctrl",
+		.of_compatible = "mediatek,mt6667-7-pinctrl",
+	}, {
+		.name = "mt6667-8-pinctrl",
+		.of_compatible = "mediatek,mt6667-8-pinctrl",
+	}, {
+		.name = "mt6667-12-pinctrl",
+		.of_compatible = "mediatek,mt6667-12-pinctrl",
+	}, {
+		.name = "mt6667-13-pinctrl",
+		.of_compatible = "mediatek,mt6667-13-pinctrl",
 	},
 };
 
