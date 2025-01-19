@@ -1,0 +1,70 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mt6357-accdet",
+    srcs = [
+        "mt6357-accdet.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6358-accdet",
+    srcs = [
+        "mt6358-accdet.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6359p-accdet",
+    srcs = [
+        "mt6359p-accdet.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "mt6359p-accdet.h",
+        "mt6338-accdet.h",
+        "mt6357-accdet.h",
+        "mt6358-accdet.h",
+        "mt6368-accdet.h",
+        "mt6681-accdet.h",
+        "mt6681-private.h",
+    ],
+)
+
