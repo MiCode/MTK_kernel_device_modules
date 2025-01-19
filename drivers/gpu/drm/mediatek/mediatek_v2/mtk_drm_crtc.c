@@ -13171,6 +13171,15 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	cfg.w = crtc->mode.hdisplay;
 	cfg.h = crtc->mode.vdisplay;
 	cfg.bpc = mtk_crtc->bpc;
+
+	if (output_comp && output_comp->id == DDP_COMPONENT_DSI0) {
+		DDPMSG("%s DSI_STATE_DGB6-9[%u %u %u %u]\n", __func__,
+			readl(output_comp->regs + 0x274),
+			readl(output_comp->regs + 0x278),
+			readl(output_comp->regs + 0x27C),
+			readl(output_comp->regs + 0x280));
+	}
+
 	if (output_comp && drm_crtc_index(crtc) == 0) {
 		cfg.w = mtk_ddp_comp_io_cmd(output_comp, NULL,
 					DSI_GET_VIRTUAL_WIDTH, NULL);
@@ -13446,6 +13455,14 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 
 	/*store total overhead data*/
 	mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
+
+	if (output_comp && output_comp->id == DDP_COMPONENT_DSI0) {
+		DDPMSG("%s DSI_STATE_DGB6-9[%u %u %u %u]\n", __func__,
+			readl(output_comp->regs + 0x274),
+			readl(output_comp->regs + 0x278),
+			readl(output_comp->regs + 0x27C),
+			readl(output_comp->regs + 0x280));
+	}
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
