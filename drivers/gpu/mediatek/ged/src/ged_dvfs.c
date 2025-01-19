@@ -2459,9 +2459,14 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 			gpu_busy_cycle : busy_cycle_cur;
 	}
 
-	if(fb_rsf_policy_enable)
-		gpu_busy_cycle = rsf_busy_cycle[(cur_rsf_frame_idx+(GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM-fb_rsf_policy_enable))%GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM];
+	if (fb_rsf_policy_enable) {
+		int rsf_gpu_busy_cycle = 0;
+		int last_rsf_frame_idx = (cur_rsf_frame_idx + (GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM - fb_rsf_policy_enable)) % GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM;
 
+		for (i = 0; i < GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM; i++)
+			rsf_gpu_busy_cycle += rsf_busy_cycle[(last_rsf_frame_idx + (GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM - ((fb_rsf_policy_enable + 1) * i))) % GED_DVFS_RSF_BUSY_CYCLE_MONITORING_WINDOW_NUM];
+		gpu_busy_cycle = rsf_gpu_busy_cycle / GED_DVFS_BUSY_CYCLE_MONITORING_WINDOW_NUM;
+	}
 
 	trace_GPU_DVFS__Policy__Frame_based__Workload((busy_cycle_cur * 100),
 		(gpu_busy_cycle * 100), (ap_workload_real * 100),
