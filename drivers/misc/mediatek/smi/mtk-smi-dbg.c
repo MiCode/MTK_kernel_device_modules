@@ -1956,7 +1956,7 @@ int smi_ostdl_change_type(const char *val, const struct kernel_param *kp)
 	u32		result, larb_id, ostdl_type;
 
 	result = sscanf(val, "%d %d", &larb_id, &ostdl_type);
-	if (result != 2 || larb_id < 0 || larb_id >= MTK_SMI_NR_MAX || ostdl_type > 1) {
+	if (result != 2 || larb_id >= MTK_SMI_NR_MAX || ostdl_type > 1) {
 		pr_notice("SMI ostdl type%d change fail: %d\n", ostdl_type, result);
 		return result;
 	}
@@ -1985,7 +1985,7 @@ int smi_larb_set(const char *val, const struct kernel_param *kp)
 	int offset, value;
 
 	result = sscanf(val, "%d %x %x", &larb_id, &offset, &value);
-	if (result != 3 || larb_id < 0 || larb_id >= MTK_SMI_NR_MAX) {
+	if (result != 3 || larb_id >= MTK_SMI_NR_MAX) {
 		pr_notice("SMI larb%d offset:%#x value:%#x set fail\n",
 				larb_id, offset, value);
 		return result;
@@ -2010,7 +2010,7 @@ MODULE_PARM_DESC(smi_larb_set, "modify smi larb setting");
 int smi_comm_set(const char *val, const struct kernel_param *kp)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	u32 result, comm_id;
+	u32 result, comm_id = 0;
 	int offset, value;
 
 	result = sscanf(val, "%d %x %x", &comm_id, &offset, &value);
@@ -2039,16 +2039,16 @@ MODULE_PARM_DESC(smi_comm_set, "modify smi comm setting");
 int smi_larb_clear(const char *val, const struct kernel_param *kp)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	u32 result, larb_id;
+	u32 result, larb_id = 0;
 	int i;
 
 	result = kstrtoint(val, 0, &larb_id);
-	if (result != 1 || larb_id < 0) {
+	if (result != 1) {
 		pr_notice("%s: SMI larb%d clear fail\n", __func__, larb_id);
 		return result;
 	}
 
-	if (larb_id >= ARRAY_SIZE(smi->larb)) {
+	if (larb_id >= ARRAY_SIZE(smi->larb) && larb_id < MTK_SMI_NR_MAX) {
 		for (i = 0; i < ARRAY_SIZE(smi->larb); i++)
 			if (smi->larb[larb_id].dev)
 				mtk_smi_clear_larb_set_value(smi->larb[larb_id].dev);
@@ -2072,16 +2072,16 @@ MODULE_PARM_DESC(smi_larb_clear, "clear smi larb setting");
 int smi_comm_clear(const char *val, const struct kernel_param *kp)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
-	u32 result, comm_id;
+	u32 result, comm_id = 0;
 	int i;
 
 	result = kstrtoint(val, 0, &comm_id);
-	if (result != 1 || comm_id < 0) {
+	if (result != 1) {
 		pr_notice("%s: SMI comm%d clear fail\n", __func__, comm_id);
 		return result;
 	}
 
-	if (comm_id >= ARRAY_SIZE(smi->comm)) {
+	if (comm_id >= ARRAY_SIZE(smi->comm) && comm_id < MTK_SMI_NR_MAX) {
 		for (i = 0; i < ARRAY_SIZE(smi->comm); i++)
 			if (smi->comm[comm_id].dev)
 				mtk_smi_clear_comm_set_value(smi->comm[comm_id].dev);
