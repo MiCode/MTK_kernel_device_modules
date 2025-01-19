@@ -36251,9 +36251,9 @@ void mtk_disp_mutex_add_comp(struct mtk_disp_mutex *mutex,
 
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
 		reg_addr = ddp->side_regs;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_1)
 		reg_addr = ddp->sys_b_side_regs;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_0)
 		reg_addr = ddp->sys_b_regs;
 	else
 		reg_addr = ddp->regs;
@@ -36531,9 +36531,9 @@ void mtk_disp_mutex_add_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
 		regs_pa = ddp->side_regs_pa;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_1)
 		regs_pa = ddp->sys_b_side_regs_pa;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_0)
 		regs_pa = ddp->sys_b_regs_pa;
 	else
 		regs_pa = ddp->regs_pa;
@@ -36673,9 +36673,9 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 
 	if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS1)
 		reg_addr = ddp->side_regs;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_1)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_1)
 		reg_addr = ddp->sys_b_side_regs;
-	else if (ddp->data->dispsys_map[id] == DISPSYS_B_0)
+	else if (ddp->data->dispsys_map && ddp->data->dispsys_map[id] == DISPSYS_B_0)
 		reg_addr = ddp->sys_b_regs;
 	else
 		reg_addr = ddp->regs;
