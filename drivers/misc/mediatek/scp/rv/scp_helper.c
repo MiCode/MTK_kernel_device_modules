@@ -1719,17 +1719,6 @@ static int scp_reserve_memory_ioremap(struct platform_device *pdev)
 		(unsigned int)scp_mem_base_phys,
 		(unsigned int)scp_mem_size);
 
-	if ((scp_mem_base_phys >= (0x90000000ULL)) ||
-			 (scp_mem_base_phys <= 0x0)) {
-		/* The scp remapped region is fixed, only
-		 * 0x4000_0000ULL ~ 0x8FFF_FFFFULL is accessible.
-		 */
-		pr_notice("[SCP] Error: Wrong Address (0x%llx)\n",
-			    (uint64_t)scp_mem_base_phys);
-		BUG_ON(1);
-		return -1;
-	}
-
 	/* Set reserved memory table */
 	scp_mem_num = of_property_count_u32_elems(
 				pdev->dev.of_node,

@@ -135,7 +135,6 @@ int scp_awake_lock(void *_scp_id)
 			break;
 		}
 		udelay(10);
-
 	}
 	/* clear status */
 	if (scpreg.scpsys_regmap_en)
@@ -145,15 +144,12 @@ int scp_awake_lock(void *_scp_id)
 		writel(0xA0 | (1 << AP_AWAKE_LOCK), INFRA_IRQ_CLEAR);
 
 	/* scp lock awake success*/
-	if (ret != -1) {
+	if (ret != -1)
 		*scp_awake_count = *scp_awake_count + 1;
-		scp_smc_awake_ctrl(IS_AWAKE_LOCK);
-	}
 	spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
 
 	if (ret == -1) {
 		pr_notice("%s: awake %s fail.., %dus\n", __func__, core_id, count*10);
-		scp_smc_awake_ctrl(IS_AWAKE_FAIL);
 #if SCP_RECOVERY_SUPPORT
 		/*
 		 * It's OK without critical section for below code flow,
@@ -298,14 +294,11 @@ int scp_awake_unlock(void *_scp_id)
 
 		if (*scp_awake_count > 0)
 			*scp_awake_count = *scp_awake_count - 1;
-
-		scp_smc_awake_ctrl(IS_AWAKE_UNLOCK);
 	}
 	spin_unlock_irqrestore(&scp_awake_spinlock, spin_flags);
 
 	if (ret == -1) {
 		pr_notice("%s: awake %s fail.., %dus\n", __func__, core_id, count*10);
-		scp_smc_awake_ctrl(IS_AWAKE_FAIL);
 #if SCP_RECOVERY_SUPPORT
 		/*
 		 * It's OK without critical section for below code flow,

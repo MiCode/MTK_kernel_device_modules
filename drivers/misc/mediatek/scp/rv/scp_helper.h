@@ -115,12 +115,6 @@ enum SCP_DUMP_TYPE {
 	DO_DUMP = 1,
 };
 
-enum SCP_AWAKE_STATUS {
-	IS_AWAKE_UNLOCK = 0,
-	IS_AWAKE_LOCK = 1,
-	IS_AWAKE_FAIL = 2,
-};
-
 struct scp_bus_tracker_status {
 	u32 dbg_con;
 	u32 dbg_r[32];
@@ -319,7 +313,6 @@ enum MTK_TINYSYS_SCP_KERNEL_OP {
 	MTK_TINYSYS_SCP_KERNEL_OP_GPR_CLEAR,
 	MTK_TINYSYS_SCP_KERNEL_OP_DRAM_REQ,
 	MTK_TINYSYS_SCP_KERNEL_OP_DRAM_REL,
-	MTK_TINYSYS_SCP_KERNEL_OP_AWAKE_CTRL,
 	MTK_TINYSYS_SCP_KERNEL_OP_NUM,
 };
 
@@ -441,16 +434,6 @@ static inline uint64_t scp_lpm_rel_dram(void)
 	arm_smccc_smc(MTK_SIP_TINYSYS_SCP_CONTROL,
 			MTK_TINYSYS_SCP_KERNEL_OP_DRAM_REL,
 			0, 0, 0, 0, 0, 0, &res);
-	return res.a0;
-}
-
-static inline uint64_t scp_smc_awake_ctrl(uint8_t awakeStatus)
-{
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(MTK_SIP_TINYSYS_SCP_CONTROL,
-			MTK_TINYSYS_SCP_KERNEL_OP_AWAKE_CTRL,
-			awakeStatus, 0, 0, 0, 0, 0, &res);
 	return res.a0;
 }
 #endif
