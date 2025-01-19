@@ -313,7 +313,7 @@ static int scpsys_bus_protect_enable(struct scp_domain *scpd)
 static void scpsys_extb_iso_down(struct scp_domain *scpd)
 {
 	struct scp *scp;
-	void __iomem *ctl_addr;
+	void __iomem *ctl_addr = NULL;
 
 	if (!scpd->data->extb_iso_offs)
 		return;
@@ -321,20 +321,29 @@ static void scpsys_extb_iso_down(struct scp_domain *scpd)
 	scp = scpd->scp;
 	ctl_addr = scp->base + scpd->data->extb_iso_offs;
 
-	pr_notice("extiso off 0x%x\n", scpd->data->extb_iso_bits);
+	if (ctl_addr) {
+		pr_notice("extiso off extb_iso_bits = 0x%x\n", scpd->data->extb_iso_bits);
+		pr_notice("extiso off extb_iso_offs = 0x%x\n", scpd->data->extb_iso_offs);
+	} else
+		pr_notice("extiso off ctl_addr is NULL\n");
 }
 
 static void scpsys_extb_iso_up(struct scp_domain *scpd)
 {
 	struct scp *scp;
-	void __iomem *ctl_addr;
+	void __iomem *ctl_addr = NULL;
 
 	if (!scpd->data->extb_iso_offs)
 		return;
 
 	scp = scpd->scp;
 	ctl_addr = scp->base + scpd->data->extb_iso_offs;
-	pr_notice("extiso on 0x%x\n", scpd->data->extb_iso_bits);
+
+	if (ctl_addr) {
+		pr_notice("extiso on extb_iso_bits = 0x%x\n", scpd->data->extb_iso_bits);
+		pr_notice("extiso on extb_iso_offs = 0x%x\n", scpd->data->extb_iso_offs);
+	} else
+		pr_notice("extiso on ctl_addr is NULL\n");
 }
 
 static int scpsys_power_on(struct generic_pm_domain *genpd)

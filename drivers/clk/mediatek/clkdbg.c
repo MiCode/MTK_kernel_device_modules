@@ -307,6 +307,10 @@ static void proc_fclk_freq(fn_fclk_freq_proc proc, void *data)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return;
+
 	name = strsep(&c, " ");
 
 	fclk = get_all_fmeter_clks();
@@ -370,6 +374,10 @@ static int clkdbg_clkop_int_ckname(int (*clkop)(struct clk *clk),
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	clk_name = strsep(&c, " ");
 
 	if (clk_name == NULL)
@@ -425,6 +433,10 @@ static int clkdbg_clkop_void_ckname(void (*clkop)(struct clk *clk),
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	clk_name = strsep(&c, " ");
 
 	if (clk_name == NULL)
@@ -548,6 +560,10 @@ static void clkpvdop(void (*pvdop)(const char *), const char *clkpvdop_name,
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return;
+
 	pvd_name = strsep(&c, " ");
 
 	if (pvd_name == NULL)
@@ -584,6 +600,10 @@ static int clkdbg_set_parent(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	clk_name = strsep(&c, " ");
 	parent_name = strsep(&c, " ");
 
@@ -635,6 +655,10 @@ static int clkdbg_set_rate(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	clk_name = strsep(&c, " ");
 	rate_str = strsep(&c, " ");
 
@@ -688,6 +712,10 @@ static int clkdbg_clk_notify(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	notify_str = strsep(&c, " ");
 	notify_val_str = strsep(&c, " ");
 
@@ -775,6 +803,10 @@ static int parse_reg_val_from_cmd(void __iomem **preg, unsigned long *pval)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	reg_str = strsep(&c, " ");
 	val_str = strsep(&c, " ");
 
@@ -1070,6 +1102,10 @@ static int clkdbg_pm_runtime_enable(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	dev_name = strsep(&c, " ");
 
 	if (dev_name == NULL)
@@ -1100,6 +1136,10 @@ static int clkdbg_pm_runtime_disable(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	dev_name = strsep(&c, " ");
 
 	if (dev_name == NULL)
@@ -1132,6 +1172,10 @@ static int clkdbg_pm_runtime_get_sync(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	dev_name = strsep(&c, " ");
 
 	if (dev_name == NULL)
@@ -1183,6 +1227,10 @@ static int clkdbg_pm_runtime_put_sync(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	dev_name = strsep(&c, " ");
 
 	if (dev_name == NULL)
@@ -1232,6 +1280,10 @@ static int clkdbg_pm_runtime_resume_and_get(struct seq_file *s, void *v)
 	strscpy(cmd, last_cmd, sizeof(cmd));
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	dev_name = strsep(&c, " ");
 
 	if (dev_name == NULL)
@@ -1443,6 +1495,10 @@ static int clkdbg_reg_pdrv(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	pd_name = strsep(&c, " ");
 
 	if (pd_name == NULL)
@@ -1464,6 +1520,10 @@ static int clkdbg_unreg_pdrv(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	if (ign == NULL)
+		return 0;
+
 	pd_name = strsep(&c, " ");
 
 	if (pd_name == NULL)
