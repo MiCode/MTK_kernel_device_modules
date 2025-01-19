@@ -2893,7 +2893,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		resource-ctrl = <&bus26m &infra &syspll>,
 				<&dram_s0 &dram_s1 &spm_emi>,
 				<&spm_pmic &spm_vcore>;
-		constraints = <&rc_vcore &rc_bus26m &rc_syspll>;
+		constraints = <&rc_vcore &rc_bus26m>;
 		lpm-gov-enable = <1>;
 		cpu-gov-info = <&cpul &cpum &cpub>;
 		cg-shift = <0>; // cg blocking index
@@ -3016,12 +3016,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 		constraint-list {
-			rc_syspll: rc-syspll {
-				rc-name = "syspll";
-				id = <0x00000002>;
-				value = <1>;
-				cond-info = <1>;
-			};
 			rc_bus26m: rc-bus26m {
 				rc-name = "bus26m";
 				id = <0x00000001>;
