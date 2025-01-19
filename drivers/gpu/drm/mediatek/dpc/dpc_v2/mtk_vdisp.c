@@ -61,20 +61,6 @@
 #define HW_CCF_BACKUP1_SET_STATUS	(0x1484)
 #define HW_CCF_BACKUP1_CLR_STATUS	(0x1488)
 
-/* This id is only for disp internal use */
-enum disp_pd_id {
-	DISP_PD_DISP_VCORE,
-	DISP_PD_DISP1,
-	DISP_PD_DISP0,
-	DISP_PD_OVL1,
-	DISP_PD_OVL0,
-	DISP_PD_MML1,
-	DISP_PD_MML0,
-	DISP_PD_EDP,
-	DISP_PD_DPTX,
-	DISP_PD_NUM,
-};
-
 struct mtk_vdisp {
 	void __iomem *spm_base;
 	void __iomem *vlp_base;
@@ -95,6 +81,7 @@ const struct mtk_vdisp_data default_vdisp_driver_data = {
 	.avs = &default_vdisp_avs_driver_data,
 };
 static struct device *g_dev[DISP_PD_NUM];
+static struct device *g_parent_dev;
 static void __iomem *g_vlp_base;
 static void __iomem *g_disp_voter;
 static atomic_t g_mtcmos_cnt = ATOMIC_INIT(0);
@@ -414,6 +401,53 @@ fail:
 		readl(SPM_SEMA_AP), i);
 }
 
+static int mtk_vdisp_link_parent_power(bool to_link)
+{
+	static bool linked;
+	int ret = 0;
+	struct generic_pm_domain *gpm, *parent;
+
+	if (IS_ERR_OR_NULL(g_dev[DISP_PD_DISP_VCORE]) ||
+	    IS_ERR_OR_NULL(g_dev[DISP_PD_DISP_VCORE]->pm_domain) ||
+	    IS_ERR_OR_NULL(g_parent_dev) ||
+	    IS_ERR_OR_NULL(g_parent_dev->pm_domain)) {
+		VDISPERR("device or parent device is NULL");
+		return -EINVAL;
+	}
+
+	gpm = pd_to_genpd(g_dev[DISP_PD_DISP_VCORE]->pm_domain);
+	parent = pd_to_genpd(g_parent_dev->pm_domain);
+
+	if (!linked && to_link) {
+		/* parent must be powered on before link */
+		pm_runtime_get_sync(g_parent_dev);
+		ret = pm_genpd_add_subdomain(parent, gpm);
+		if (ret == 0)
+			linked = true;
+		else {
+			VDISPDBG("failed to add subdomain ret(%d)", ret);
+			if (!list_empty(&gpm->parent_links))
+				VDISPDBG("parent_link is not empty");
+			if (gpm->device_count)
+				VDISPDBG("device_count(%d) not zero", gpm->device_count);
+		}
+		pm_runtime_put_sync(g_parent_dev);
+	} else if (linked && !to_link) {
+		ret = pm_genpd_remove_subdomain(parent, gpm);
+		if (ret == 0)
+			linked = false;
+		else {
+			VDISPDBG("failed to remove subdomain ret(%d)", ret);
+			if (!list_empty(&gpm->parent_links))
+				VDISPDBG("parent_link is not empty");
+			if (gpm->device_count)
+				VDISPDBG("device_count(%d) not zero", gpm->device_count);
+		}
+	}
+
+	return ret;
+}
+
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static void mtk_vdisp_wk_lock(u32 crtc_index, bool get, const char *func, int line)
@@ -636,17 +670,19 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *vcp_node;
+	struct device_node *chosen_node;
+	struct tag_bootmode *tag_boot;
 	struct mtk_vdisp *priv;
 	struct regulator *rgu;
 	struct resource *res;
 	const char *clkpropname = "vdisp-clock-names";
-	struct property *prop;
 	const char *clkname;
+	struct property *prop;
+	struct clk *clk;
 	int ret = 0;
 	int support = 0;
 	u32 pd_id = 0;
-	struct clk *clk;
-	int i = 0, clk_num;
+	int i = 0, clk_num = 0, genpd_num = 0, pair_size = 0;
 
 	vcp_node = of_find_node_by_name(NULL, "vcp");
 	if (vcp_node == NULL)
@@ -788,12 +824,20 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (mtk_vdisp_avs_probe(pdev))
 		return -EINVAL;
 
-	priv->pd_nb.notifier_call = genpd_event_notifier;
-	priv->pd_id = pd_id;
-	g_dev[pd_id] = dev;
-
 	// Vote on when probe for sync status
 	vdisp_hwccf_ctrl(priv, true);
+
+	priv->pd_id = pd_id;
+	priv->pd_nb.notifier_call = genpd_event_notifier;
+
+	/* count power-domains pairs and attach to g_dev */
+	genpd_num = of_count_phandle_with_args(dev->of_node, "power-domains", NULL);
+	of_property_read_u32(dev->of_node, "disp-power-pair-size", &pair_size);
+	if (pair_size > 0)
+		genpd_num /= pair_size;
+	else
+		genpd_num = 0;
+	g_dev[pd_id] = genpd_num <= 1 ? dev : dev_pm_domain_attach_by_id(dev, 0);
 
 	if (pd_id == DISP_PD_DISP_VCORE) {
 		g_vdisp_wake_lock = wakeup_source_create("vdisp_wakelock");
@@ -803,15 +847,34 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		g_smi_disp_dram_sub_comm[1] = ioremap(0x3e820400, 0x40);
 		g_smi_disp_dram_sub_comm[2] = ioremap(0x3e830400, 0x40);
 		g_smi_disp_dram_sub_comm[3] = ioremap(0x3e840400, 0x40);
+
+		if (genpd_num > 1) {
+			VDISPDBG("pd(%d) power domains num > 1\n", pd_id);
+			g_parent_dev = dev_pm_domain_attach_by_id(dev, 1);
+			if (!pm_runtime_enabled(g_parent_dev))
+				pm_runtime_enable(g_parent_dev);
+		}
+
+		/* if not normal mode, link parent power */
+		chosen_node = of_find_node_by_path("/chosen");
+		if (chosen_node) {
+			tag_boot = (struct tag_bootmode *)of_get_property(chosen_node, "atag,boot", NULL);
+			if (tag_boot) {
+				if (tag_boot->bootmode != 0) {
+					VDISPDBG("bootmode(%u), link parent power", tag_boot->bootmode);
+					mtk_vdisp_link_parent_power(true);
+				}
+			}
+		}
 	}
 
-	if (!pm_runtime_enabled(dev))
-		pm_runtime_enable(dev);
-	ret = dev_pm_genpd_add_notifier(dev, &priv->pd_nb);
+	if (!pm_runtime_enabled(g_dev[pd_id]))
+		pm_runtime_enable(g_dev[pd_id]);
+	ret = dev_pm_genpd_add_notifier(g_dev[pd_id], &priv->pd_nb);
 	if (ret)
 		VDISPERR("dev_pm_genpd_add_notifier fail(%d)", ret);
 
-	pm_runtime_get_sync(dev);
+	pm_runtime_get_sync(g_dev[pd_id]);
 	VDISPDBG("get pd(%d)", pd_id);
 	atomic_inc(&g_mtcmos_cnt);
 	mtk_vdisp_register(&funcs, VDISP_VER2);
