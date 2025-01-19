@@ -1206,6 +1206,21 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6989-vcodec".format(kernel_version): "mt6989",
 
 
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-fmeter-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-chk-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-dbg-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:pd-chk-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-adsp".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-cam".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-img".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-mmsys".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-peri".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-bus".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-mdpsys".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-vcodec".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-ccu".format(kernel_version): "mt6895",
+
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6768".format(kernel_version): "mt6768",
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6991".format(kernel_version): "mt6991",
