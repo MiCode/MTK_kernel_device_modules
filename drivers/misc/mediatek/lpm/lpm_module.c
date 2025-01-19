@@ -30,6 +30,7 @@
 #define LPM_CPUIDLE_DRIVER	0xD0
 #define LPM_MODLE		0xD1
 #define LPM_SYS_ISSUER		0xD2
+#define COMMON_SODI_DTS_NAME "common-sodi"
 
 DEFINE_SPINLOCK(__lpm_sys_sync_lock);
 
@@ -621,7 +622,23 @@ static int __init lpm_init(void)
 	spin_lock_irqsave(&lpm_mod_locker, flags);
 
 	if (lpm_node) {
+		int ret = 0;
 		const char *pMethod = NULL;
+		unsigned int common_sodi_enable;
+
+		ret = of_property_read_u32(lpm_node, COMMON_SODI_DTS_NAME, &common_sodi_enable);
+
+		if (ret == 0) {
+			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
+					MT_LPM_SMC_ACT_SET,
+					common_sodi_enable, 0);
+		} else {
+			common_sodi_enable = 0;
+		}
+
+		pr_info("[name:mtk_lpm][P] - common sodi5 = %d (%s:%d)\n",
+				common_sodi_enable, __func__, __LINE__);
+
 
 		of_property_read_string(lpm_node, "suspend-method", &pMethod);
 

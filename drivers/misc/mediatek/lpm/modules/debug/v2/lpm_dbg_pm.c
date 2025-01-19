@@ -22,7 +22,6 @@ static int lpm_dbg_probe(struct platform_device *pdev)
 }
 
 #define LPM_KERNEL_SUSPEND "lpm-kernel-suspend"
-#define COMMON_SODI_DTS_NAME "common-sodi"
 
 int kernel_suspend_only;
 
@@ -67,7 +66,6 @@ int lpm_dbg_pm_init(void)
 
 	unsigned int val = 0;
 	struct device_node *lpm_node;
-	unsigned int common_sodi_enable;
 
 	ret = platform_driver_register(&lpm_dbg_driver);
 
@@ -85,22 +83,9 @@ int lpm_dbg_pm_init(void)
 		else
 			kernel_suspend_only = 0;
 
-		ret = of_property_read_u32(lpm_node, COMMON_SODI_DTS_NAME, &common_sodi_enable);
-
-		if (ret == 0)
-			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_COMMON_SODI5_CTRL,
-					MT_LPM_SMC_ACT_SET,
-					common_sodi_enable, 0);
-		else
-			common_sodi_enable = 0;
-
 		of_node_put(lpm_node);
-	} else {
-		common_sodi_enable = 0;
 	}
 
-	pr_info("[name:mtk_lpm][P] - common sodi5 = %d (%s:%d)\n",
-					common_sodi_enable, __func__, __LINE__);
 	pr_info("[name:mtk_lpm][P] - kernel suspend only = %d (%s:%d)\n",
 					kernel_suspend_only, __func__, __LINE__);
 
