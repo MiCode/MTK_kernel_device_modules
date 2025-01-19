@@ -7,6 +7,7 @@
 #include <linux/file.h>
 
 #include <linux/atomic.h>
+#include <linux/hashtable.h>
 
 #include <linux/vmalloc.h>
 #include <linux/mutex.h>
@@ -33,8 +34,6 @@ static struct mme_header_t mme_header = {
 	.pid_info_size = sizeof(struct pid_info_t),
 	.unit_size = sizeof(struct mme_unit_t),
 };
-
-static char *p_mme_invalid_addr = "mme-error-invalid-addr";
 
 bool mme_debug_on;
 
@@ -77,7 +76,91 @@ unsigned long long mmevent_log(unsigned int length, unsigned long long flag,
 	return 0;
 }
 EXPORT_SYMBOL(mmevent_log);
+// ------------------------------ hash table ---------------------------------------------------
 
+#define STR_HASH_BITS 10
+
+DECLARE_HASHTABLE(str_hash_table, STR_HASH_BITS);
+
+void add_hash_entry(unsigned long key, char *value)
+{
+	struct str_hash_entry *entry;
+
+	entry = kmalloc(sizeof(struct str_hash_entry), GFP_ATOMIC);
+	if (!entry)
+		return;
+
+	entry->key = key;
+	entry->value = value;
+
+	MMEINFO("key: %lx, value: %s", key, value);
+	hash_add(str_hash_table, &entry->hnode, key);
+}
+
+char *get_hash_value(unsigned long key)
+{
+	struct str_hash_entry *entry;
+	char *value = NULL;
+
+	hash_for_each_possible(str_hash_table, entry, hnode, key) {
+		if (entry->key == key) {
+			value = entry->value;
+			break;
+		}
+	}
+	return value;
+}
+
+char *hash_table_to_char_array(unsigned int *p_buffer_size)
+{
+	struct str_hash_entry *entry;
+	unsigned int bkt;
+	unsigned int total_size = 0;
+	char *array, *ptr;
+	int ret;
+
+	hash_for_each(str_hash_table, bkt, entry, hnode) {
+		total_size += 16 + strlen(entry->value) + 2;
+	}
+
+	MMEMSG("total_size:%d", total_size);
+	if (total_size == 0) {
+		MMEERR("total_size is 0");
+		return NULL;
+	}
+
+	array = kmalloc(total_size, GFP_ATOMIC);
+	if (!array) {
+		MMEERR("kmalloc failed, array is null");
+		return NULL;
+	}
+
+	ptr = array;
+	hash_for_each(str_hash_table, bkt, entry, hnode) {
+		ret = snprintf(ptr, total_size - (ptr - array), "%lx:", entry->key);
+		if (ret < 0) {
+			MMEERR("snprintf failed, ret:%d", ret);
+			kfree(array);
+			return NULL;
+		}
+		ptr += ret;
+
+		ret = snprintf(ptr, total_size - (ptr - array), "%s", entry->value);
+		if (ret < 0) {
+			MMEERR("snprintf failed, ret:%d", ret);
+			kfree(array);
+			return NULL;
+		}
+		ptr += ret;
+		*ptr = '\0';
+		ptr += 1;
+	}
+	if (ptr != array)
+		*(ptr - 1) = '\0';
+
+	*p_buffer_size = total_size;
+	return array;
+}
 
 // ------------------------------ buffer init ---------------------------------------------------
 
@@ -95,7 +178,12 @@ EXPORT_SYMBOL(mme_globals);
 
 #define MME_MRDUMP_BUFFER_SIZE (3*1024*1024)
 #define MAX_MODULE_BUFFER_SIZE (10*1024*1024)
+
+#if !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE)
 #define DBG_BUFFER_INIT_SIZE (2880*1024)
+#elif
+#define DBG_BUFFER_INIT_SIZE (4096+67*256)
+#endif
 
 char *g_mrdump_buffer;
 char *g_dbg_buffer;
@@ -110,7 +198,7 @@ bool mme_register_buffer(unsigned int module, char *module_buf_name, unsigned in
 	unsigned long pa;
 	char module_aee_name[256];
 	unsigned long flags = 0;
-	unsigned int module_buf_size = ((buffer_size + (PAGE_SIZE - 1)) & (~(PAGE_SIZE - 1)));
+	unsigned int module_buf_size = buffer_size;
 
 	DEFINE_SPINLOCK(t_spinlock);
 
@@ -303,6 +391,8 @@ EXPORT_SYMBOL(mme_register_dump_callback);
 static unsigned char mme_dump_block[MME_DUMP_BLOCK_SIZE];
 static unsigned int s_str_buffer_dump_pointer;
 static struct pid_info_t *p_pid_buffer;
+static char *p_str_buffer;
+unsigned int g_str_buffer_size;
 static char *p_dump_buffer[MME_MODULE_MAX] = {0};
 
 static unsigned int mme_fill_dump_block(void *p_src, void *p_dst,
@@ -419,8 +509,10 @@ static bool is_valid_index(unsigned int index, struct mme_unit_t *p_ring_buffer,
 {
 	unsigned int i, sum = 0;
 
-	if (index >= (buffer_units - MME_HEADER_UNIT_SIZE))
+	if (index >= (buffer_units - MME_HEADER_UNIT_SIZE)) {
+		MMEERR("invalid index %d,buffer_units:%d", index, buffer_units);
 		return false;
+	}
 
 	if (p_ring_buffer[index].data == 0 && p_ring_buffer[index+1].data == 0) {
 		for (i=index+2; i<MIN(buffer_units, index+20); i++)
@@ -429,113 +521,6 @@ static bool is_valid_index(unsigned int index, struct mme_unit_t *p_ring_buffer,
 		return (sum != 0);
 	}
 	return true;
-}
-
-static int get_string_buffer(unsigned int index, char *p_buffer, unsigned int *p_buf_pos,
-							unsigned int *p_mme_unit_size, struct mme_unit_t *p_ring_buffer,
-							unsigned int buffer_units)
-{
-	unsigned int data_size = 0, unit_size = 0, src_pos = 0;
-	unsigned int code_region_num = 0, i = 0, flag_error_token = 0;
-	unsigned long long flag = 0, time=0, p = 0;
-	char *p_str;
-
-	*p_buf_pos = 0;
-
-	if (!(is_valid_index(index, p_ring_buffer, buffer_units))) {
-		*p_mme_unit_size = buffer_units - index;
-		MMEINFO("invalid index, index:%d,unit_size:%d", index, unit_size);
-		return INVALIDE_EVENT;
-	}
-
-	time = p_ring_buffer[index].data;
-	flag = p_ring_buffer[index + 1].data;
-
-	unit_size = (flag & FLAG_UNIT_NUM_MASK) >> FLAG_UNIT_NUM_OFFSET;
-	MMEINFO("dump string index:%d, flag:%llX,unit_size:%d, buffer_units:0x%x",
-			index, flag, unit_size, buffer_units);
-
-	if (time==0 ||
-		!check_log_flag(flag, &code_region_num, &flag_error_token) ||
-		(index + unit_size) >= buffer_units) {
-		MMEINFO("invalid event, index:%d,flag:%llX,time:%lld,unit_size:%d",
-				index, flag, time, unit_size);
-		if (mme_debug_on &&
-			(flag_error_token==INVALID_MISMATCH_UNIT_SIZE ||
-			flag_error_token==INVALID_FLAG_TYPE)) {
-			// print format for debug
-			p = (unsigned long long)&(p_ring_buffer[index + MME_HEADER_UNIT_SIZE]);
-			p +=  MME_PID_SIZE; // PID
-			p_str = *((char **)p);
-			if (is_valid_addr(p_str))
-				MMEINFO("format addr:%p, format:%s, len:%zu", p_str, p_str, strlen(p_str));
-		}
-		*p_mme_unit_size = 1;
-		return INVALIDE_EVENT;
-	}
-
-	p = (unsigned long long)&(p_ring_buffer[index + MME_HEADER_UNIT_SIZE]);
-	p +=  MME_PID_SIZE; // PID
-	data_size += MME_PID_SIZE;
-	// dump format
-	p_str = *((char **)p);
-	if (!is_valid_addr(p_str)) {
-		*p_mme_unit_size = 2;
-		MMEERR("invalid format p_str, index:%d, p_str:%p", index, p_str);
-		return INVALIDE_EVENT;
-	}
-	MMEINFO("format addr:%p, format:%s, len:%zu", p_str, p_str, strlen(p_str));
-	mme_fill_dump_block(p_str, p_buffer, &src_pos, p_buf_pos, strlen(p_str), STRING_BUFFER_LEN);
-	*p_buf_pos += 1; // string end with 0
-	data_size += sizeof(char *);
-	p += sizeof(char *);
-
-	if (code_region_num == 0) {
-		*p_mme_unit_size = unit_size;
-		return SUCCESS;
-	}
-
-	// dump code region string data
-	for (i=0; i< MME_DATA_MAX; i++) {
-		unsigned int shift = g_flag_shifts[i];
-		unsigned int type = (flag >> shift) & 0x7;
-		int type_size = data_size_table[type];
-
-		if (type == DATA_FLAG_INVALID)
-			break;
-
-		if (type == DATA_FLAG_CODE_REGION_STRING) {
-			p_str = *((char **)p);
-			src_pos = 0;
-			if (is_valid_addr(p_str)) {
-				MMEINFO("str data addr:%p, str data:%s, len:%zu",
-						p_str, p_str, strlen(p_str));
-				mme_fill_dump_block(p_str, p_buffer, &src_pos, p_buf_pos, strlen(p_str),
-									STRING_BUFFER_LEN);
-			} else {
-				MMEERR("invalid code region addr, index:%d, p_str:%p, i:%d", index, p_str, i);
-				mme_fill_dump_block(p_mme_invalid_addr, p_buffer, &src_pos, p_buf_pos,
-									strlen(p_mme_invalid_addr), STRING_BUFFER_LEN);
-			}
-			*p_buf_pos += 1; // string end with 0
-		}
-
-		if (type == DATA_FLAG_STACK_REGION_STRING) {
-			p_str = (char *)p;
-			if (is_valid_addr(p_str))
-				type_size = _ALIGN_4_BYTES(strlen(p_str)+1);
-			else
-				MMEERR("invalid stack region addr, index:%d, p_str:%p, i:%d", index, p_str, i);
-		}
-
-		data_size += type_size;
-		p += type_size;
-	}
-
-	*p_mme_unit_size = _MME_UNIT_NUM(data_size);
-	MMEINFO("END, data_size = %d, unit size = %d, buf_pos:%d",
-			data_size, *p_mme_unit_size, *p_buf_pos);
-	return SUCCESS;
 }
 
 /**
@@ -571,51 +556,114 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 {
 	unsigned long long flag = 0, time=0, p = 0;
 	unsigned int code_region_num = 0, unit_size = 0, index=0, flag_error_token = 0;
-	unsigned int pid, i;
+	unsigned int pid, pid_index, i, data_size = 0;
+	char *p_str;
 
 	for (index = 0; index < buffer_units;) {
-		if (!(is_valid_index(index, p_ring_buffer, buffer_units)))
+		if (!(is_valid_index(index, p_ring_buffer, buffer_units))) {
+			MMEINFO("invalid index, index:%d,buffer_units:%d", index, buffer_units);
 			break;
+		}
 
 		time = p_ring_buffer[index].data;
 		flag = p_ring_buffer[index + 1].data;
 		unit_size = (flag & FLAG_UNIT_NUM_MASK) >> FLAG_UNIT_NUM_OFFSET;
 
 		if (time==0 ||
-			!check_log_flag(flag, &code_region_num, &flag_error_token) ||
-			(index + unit_size) >= buffer_units) {
+			((index + unit_size) >= buffer_units) ||
+			!check_log_flag(flag, &code_region_num, &flag_error_token)) {
 			index += 1;
+			MMEINFO("invalid event, index:%d,unit_size:%d,buffer_units:%d", index, unit_size, buffer_units);
 			continue;
 		}
 
 		p = (unsigned long long)&(p_ring_buffer[index + MME_HEADER_UNIT_SIZE]);
 		pid = *((unsigned int *)p);
-		if (pid >= 0) {
-			for (i = 0; i < *p_pid_count; i++) {
-				if (p_pid_buffer[i].pid == pid)
-					break;
-			}
-			if (i == *p_pid_count) {
+
+		for (pid_index = 0; pid_index < *p_pid_count; pid_index++) {
+			if (p_pid_buffer[pid_index].pid == pid)
+				break;
+		}
+		if (pid_index == *p_pid_count) {
+			if (*p_pid_count < MAX_PID_COUNT) {
 				struct task_struct *task;
 				unsigned int cpu;
 
-				p_pid_buffer[i].pid = pid;
+				p_pid_buffer[pid_index].pid = pid;
 				if (pid == 0) {
 					for_each_possible_cpu(cpu) {
-						sprintf(p_pid_buffer[i].name, "swapper/%d", cpu);
+						sprintf(p_pid_buffer[pid_index].name, "swapper/%d", cpu);
 						break;
 					}
 				} else {
 					task = find_task_by_vpid(pid);
 					if (task != NULL)
-						get_task_comm(p_pid_buffer[i].name, task);
+						get_task_comm(p_pid_buffer[pid_index].name, task);
 				}
 
-				MMEINFO("pid:%d, pid_name:%s", pid, p_pid_buffer[i].name);
+				MMEINFO("pid:%d, pid_name:%s", pid, p_pid_buffer[pid_index].name);
 				*p_pid_count += 1;
 			}
 		}
-		index += unit_size;
+
+		p +=  MME_PID_SIZE; // PID
+		data_size = MME_PID_SIZE;
+		// format
+		p_str = *((char **)p);
+		if (!is_valid_addr(p_str)) {
+			MMEERR("invalid format p_str, index:%d, p_str:%p", index, p_str);
+			index += 2;
+			continue;
+		}
+		MMEINFO("format addr:%p, format:%s, len:%zu,index:%d,unit_size:%d,flag:%llx",
+				p_str, p_str, strlen(p_str), index, unit_size, flag);
+
+		if (!get_hash_value((unsigned long)p_str))
+			add_hash_entry((unsigned long)p_str, p_str);
+
+		data_size += sizeof(char *);
+		p += sizeof(char *);
+
+		if (code_region_num == 0) {
+			index += unit_size;
+			continue;
+		}
+
+		// dump code region string data
+		for (i=0; i< MME_DATA_MAX; i++) {
+			unsigned int shift = g_flag_shifts[i];
+			unsigned int type = (flag >> shift) & 0x7;
+			int type_size = data_size_table[type];
+
+			if (type == DATA_FLAG_INVALID)
+				break;
+
+			if (type == DATA_FLAG_CODE_REGION_STRING) {
+				p_str = *((char **)p);
+				if (is_valid_addr(p_str)) {
+					MMEINFO("str data addr:%p, str data:%s, len:%zu",
+							p_str, p_str, strlen(p_str));
+
+					if (!get_hash_value((unsigned long)p_str))
+						add_hash_entry((unsigned long)p_str, p_str);
+				}
+			}
+
+			if (type == DATA_FLAG_STACK_REGION_STRING) {
+				p_str = (char *)p;
+				if (is_valid_addr(p_str))
+					type_size = _ALIGN_4_BYTES(strlen(p_str)+1);
+				else
+					MMEERR("invalid stack region addr, index:%d, p_str:%p, i:%d", index, p_str, i);
+			}
+
+			data_size += type_size;
+			p += type_size;
+		}
+
+		index += _MME_UNIT_NUM(data_size);
+		MMEINFO("END, data_size = %d, unit size = %d, index:%d",
+				data_size, unit_size, index);
 	}
 }
 
@@ -626,70 +674,11 @@ static void mme_init_process_info(struct pid_info_t *p_pid_buffer, unsigned int 
 	for (module=0; module<MME_MODULE_MAX; module++) {
 		if (mme_globals[module].enable) {
 			for (type=0; type<MME_BUFFER_INDEX_MAX; type++) {
-				get_pid_info(p_mme_ring_buffer[module][type], mme_globals[module].buffer_bytes[type],
+				get_pid_info(p_mme_ring_buffer[module][type], mme_globals[module].buffer_units[type],
 							p_pid_buffer, p_pid_count);
 			}
 		}
 	}
-}
-
-/**
- * @p_dst: destination buffer
- * @dst_size: size of destination buffer
- * @p_ring_buffer: pointer to ring buffer
- * @buffer_units: number of units in ring buffer
- * @p_total_index: total index of ring buffer in file
- * @p_base_index: total index in front
- * @p_dst_pos: current position in destination buffer
- */
-static void mme_dump_buffer_string(void *p_dst, unsigned int dst_size,
-					struct mme_unit_t *p_ring_buffer,
-					unsigned int buffer_units, unsigned int *p_total_index,
-					unsigned int *p_base_index, unsigned int *p_dst_pos)
-{
-	char buffer[STRING_BUFFER_LEN];
-	unsigned int src_pos = 0;
-	unsigned int buffer_size = 0;
-	unsigned int mme_unit_size = 0;
-	unsigned int index;
-
-	if (*p_total_index < (*p_base_index + buffer_units)) {
-		for(index = (*p_total_index - *p_base_index); index < buffer_units;) {
-			mme_unit_size = 0;
-			src_pos = 0;
-			buffer_size = 0;
-			memset(buffer, 0, STRING_BUFFER_LEN);
-
-			get_string_buffer(index, buffer, &buffer_size, &mme_unit_size, p_ring_buffer, buffer_units);
-			MMEINFO("index:%d,buffer_size:%d,mme_unit_size:%d,dst_pos:%d",
-					index, buffer_size, mme_unit_size, *p_dst_pos);
-
-			if (buffer_size > 0) {
-				if (*p_dst_pos + buffer_size > dst_size) {
-					MMEINFO("not enough space in dump block,index:%d,dst_pos:%d,buffer_size:%d",
-							index, *p_dst_pos, buffer_size);
-					*p_dst_pos = dst_size;
-					return;
-				}
-
-				mme_fill_dump_block(buffer,
-						p_dst,
-						&src_pos, p_dst_pos,
-						buffer_size,
-						dst_size);
-
-				if (*p_dst_pos == dst_size) {
-					MMEINFO("block_pos == dst_size,index:%d", index);
-					s_str_buffer_dump_pointer += mme_unit_size;
-					return;
-				}
-			}
-			index += mme_unit_size;
-			s_str_buffer_dump_pointer += mme_unit_size;
-		}
-		*p_total_index = *p_base_index + buffer_units;
-	}
-	*p_base_index += buffer_units;
 }
 
 static void mme_init_android_time(void)
@@ -715,33 +704,43 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 {
 	unsigned int total_pos = start;
 	unsigned int total_index = 0;
-	unsigned int base_index = 0;
 	unsigned int block_pos = 0;
 	unsigned int region_base = 0;
 	unsigned int module, type;
 	unsigned int pid_count = 0;
 
+	*p_copy_size = 0;
 	if (!p_block_buf || block_buf_size==0) {
-		*p_copy_size = 0;
+		MMEERR("ERROR: NULL p_block_buf, p_block_buf:%p, block_buf_size:%u",
+				p_block_buf, block_buf_size);
 		return;
 	}
-
-	*p_copy_size = block_buf_size;
 
 	if (total_pos == 0) {
 		unsigned int dump_size = 0;
 
 		mme_init_android_time();
-		p_pid_buffer = kcalloc(MME_PROCESS_SIZE, sizeof(struct pid_info_t), GFP_KERNEL);
-		if (p_pid_buffer) {
-			mme_init_process_info(p_pid_buffer, &pid_count);
-			mme_header.pid_number = ALIGN(pid_count, 4);
+		p_pid_buffer = kcalloc(MAX_PID_COUNT, sizeof(struct pid_info_t), GFP_ATOMIC);
+		if (!p_pid_buffer) {
+			MMEERR("ERROR: allocate memory for pid_buffer failed");
+			return;
+		}
+
+		mme_init_process_info(p_pid_buffer, &pid_count);
+		mme_header.pid_number = ALIGN(pid_count, 4);
+
+		g_str_buffer_size = 0;
+		p_str_buffer = hash_table_to_char_array(&g_str_buffer_size);
+		if (!p_str_buffer || g_str_buffer_size == 0) {
+			MMEERR("ERROR: allocate p_str_buffer failed, p_str_buffer:%p, g_str_buffer_size:%d",
+				p_str_buffer, g_str_buffer_size);
+			return;
 		}
 
 		for (module=0; module<MME_MODULE_MAX; module++) {
 			if (mme_globals[module].enable) {
 				if (dump_callback_table[module]) {
-					p_dump_buffer[module] = kzalloc(MME_MODULE_DUMP_SIZE, GFP_KERNEL);
+					p_dump_buffer[module] = kzalloc(MME_MODULE_DUMP_SIZE, GFP_ATOMIC);
 					if (p_dump_buffer[module]) {
 						dump_size = 0;
 						dump_callback_table[module](p_dump_buffer[module],
@@ -754,6 +753,8 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 			}
 		}
 	}
+
+	*p_copy_size = block_buf_size;
 
 	mme_dump_buffer(&mme_header, p_block_buf, sizeof(mme_header),
 					block_buf_size, &total_pos, &region_base, &block_pos);
@@ -799,22 +800,12 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 		}
 	}
 
-	total_index = s_str_buffer_dump_pointer;
-	MMEINFO("dump string, total_pos:%d, region_base:%d, total_index:0x%x", total_pos, region_base, total_index);
+	MMEINFO("p_str_buffer:%px, g_str_buffer_size:%d", p_str_buffer, g_str_buffer_size);
+	mme_dump_buffer(p_str_buffer, p_block_buf, g_str_buffer_size,
+					block_buf_size, &total_pos, &region_base, &block_pos);
+	if (block_pos == block_buf_size)
+		return;
 
-	for (module=0; module<MME_MODULE_MAX; module++) {
-		if (mme_globals[module].enable) {
-			for (type=0; type<MME_BUFFER_INDEX_MAX; type++) {
-				MMEINFO("dump buffer string, module:%d, type:%d", module, type);
-				mme_dump_buffer_string(p_block_buf, block_buf_size,
-										p_mme_ring_buffer[module][type],
-										mme_globals[module].buffer_units[type],
-										&total_index, &base_index, &block_pos);
-				if (block_pos == block_buf_size)
-					return;
-			}
-		}
-	}
 	*p_copy_size = block_pos;
 }
 
@@ -1018,6 +1009,7 @@ static int mmevent_probe(void)
 		return ret;
 	}
 	mme_log_start();
+	hash_init(str_hash_table);
 	return 0;
 }
 

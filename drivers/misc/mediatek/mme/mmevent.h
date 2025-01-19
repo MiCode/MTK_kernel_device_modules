@@ -167,7 +167,7 @@ extern unsigned long long mmevent_log(
 
 #define STRING_BUFFER_SIZE 512
 
-#define MME_PROCESS_SIZE 160
+#define MAX_PID_COUNT 480
 
 #define MME_MAX_UNIT_NUM 128
 
@@ -237,6 +237,12 @@ static inline void mme_vsprintf(char *buf, const char *fmt, ...)
 	vsnprintf(buf, STRING_BUFFER_SIZE, fmt, args);
 	va_end(args);
 }
+
+struct str_hash_entry {
+	unsigned long key;
+	char *value;
+	struct hlist_node hnode;
+};
 
 #ifdef __cplusplus
 }
