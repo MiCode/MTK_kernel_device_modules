@@ -201,17 +201,25 @@ enum {
 #define SRAM_VMM_USEC(y)	(SRAM_BASE + 4 * (326 + SRAM_OBJ_CNT * (y) + 1))
 #define SRAM_VMM_VAL(y)		(SRAM_BASE + 4 * (326 + SRAM_OBJ_CNT * (y) + 2))
 
+/* VMM : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
+#define SRAM_VMM_HW_VAL(y)	(SRAM_BASE + 4 * (350 + SRAM_OBJ_CNT * (y) + 0))
+#define SRAM_VMM_VOLT(y)	(SRAM_BASE + 4 * (350 + SRAM_OBJ_CNT * (y) + 1))
+
+#define SRAM_VMM_EFUSE_HIGH	(SRAM_BASE + 4 * (372))
+#define SRAM_VMM_EFUSE_LOW	(SRAM_BASE + 4 * (373))
+
+
 /* VDISP : SRAM_OBJ_CNT * SRAM_REC_CNT = 24 */
-#define SRAM_REC_CNT_VDISP	(SRAM_BASE + 4 * (350))
-#define SRAM_VDISP_SEC(y)	(SRAM_BASE + 4 * (351 + SRAM_OBJ_CNT * (y) + 0))
-#define SRAM_VDISP_USEC(y)	(SRAM_BASE + 4 * (351 + SRAM_OBJ_CNT * (y) + 1))
-#define SRAM_VDISP_VAL(y)	(SRAM_BASE + 4 * (351 + SRAM_OBJ_CNT * (y) + 2))
+#define SRAM_REC_CNT_VDISP	(SRAM_BASE + 4 * (374))
+#define SRAM_VDISP_SEC(y)	(SRAM_BASE + 4 * (375 + SRAM_OBJ_CNT * (y) + 0))
+#define SRAM_VDISP_USEC(y)	(SRAM_BASE + 4 * (375 + SRAM_OBJ_CNT * (y) + 1))
+#define SRAM_VDISP_VAL(y)	(SRAM_BASE + 4 * (375 + SRAM_OBJ_CNT * (y) + 2))
 
-#define SRAM_MUX_MIN(x)		(SRAM_BASE + 4 * (375 + (x))) // SRAM_MUX_CNT(16)
-#define SRAM_PWR_GEAR(x)	(SRAM_BASE + 4 * (391 + (x))) // SRAM_PWR_CNT
-#define SRAM_VMM_CEIL		(SRAM_BASE + 4 * (394))
+#define SRAM_MUX_MIN(x)		(SRAM_BASE + 4 * (399 + (x))) // SRAM_MUX_CNT
+#define SRAM_PWR_GEAR(x)	(SRAM_BASE + 4 * (415 + (x))) // SRAM_PWR_CNT
+#define SRAM_VMM_CEIL		(SRAM_BASE + 4 * (418))
 
-// next : 395
+// next : 419
 
 /* mbrain : u64(2) * SRAM_PWR_CNT * OPP_NUM(8) = 64 */
 #define SRAM_PWR_TOTAL(x, y)	(SRAM_BASE + 4 * (570 + 2 * ((y) + (x) * 8)))

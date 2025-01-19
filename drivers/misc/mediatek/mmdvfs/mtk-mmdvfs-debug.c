@@ -483,11 +483,14 @@ sram_dump:
 	// vmm
 	i = readl(SRAM_REC_CNT_VMM);
 	for (j = i; j < SRAM_REC_CNT; j++)
-		mmdvfs_debug_dump_line(file, "[%5u.%3u] vmm:%u",
-			readl(SRAM_VMM_SEC(j)), readl(SRAM_VMM_USEC(j)),readl(SRAM_VMM_VAL(j)));
+		mmdvfs_debug_dump_line(file, "[%5u.%3u] vmm val:%u hw:%u volt:%u",
+			readl(SRAM_VMM_SEC(j)), readl(SRAM_VMM_USEC(j)),
+			readl(SRAM_VMM_VAL(j)), readl(SRAM_VMM_HW_VAL(j)), readl(SRAM_VMM_VOLT(j)));
 	for (j = 0; j < i; j++)
-		mmdvfs_debug_dump_line(file, "[%5u.%3u] vmm:%u",
-			readl(SRAM_VMM_SEC(j)), readl(SRAM_VMM_USEC(j)),readl(SRAM_VMM_VAL(j)));
+		mmdvfs_debug_dump_line(file, "[%5u.%3u] vmm val:%u hw:%u volt:%u",
+			readl(SRAM_VMM_SEC(j)), readl(SRAM_VMM_USEC(j)),
+			readl(SRAM_VMM_VAL(j)), readl(SRAM_VMM_HW_VAL(j)), readl(SRAM_VMM_VOLT(j)));
+	mmdvfs_debug_dump_line(file, "vmm efuse high:%u low:%u", readl(SRAM_VMM_EFUSE_HIGH), readl(SRAM_VMM_EFUSE_LOW));
 
 	// vdisp
 	i = readl(SRAM_REC_CNT_VDISP);
