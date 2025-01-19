@@ -111,6 +111,7 @@ EXPORT_SYMBOL(g_ovl_bwm_debug);
 bool g_vidle_apsrc_debug;
 EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_profile_log;
+bool g_qos_log;
 
 bool g_irq_log;
 unsigned int mipi_volt;
@@ -3063,6 +3064,11 @@ static void process_dbg_opt(const char *opt)
 			g_profile_log = 1;
 		else if (strncmp(opt + 8, "off", 3) == 0)
 			g_profile_log = 0;
+	} else if (strncmp(opt, "qos:", 4) == 0) {
+		if (strncmp(opt + 4, "on", 2) == 0)
+			g_qos_log = 1;
+		else if (strncmp(opt + 4, "off", 3) == 0)
+			g_qos_log = 0;
 	} else if (strncmp(opt, "trace:", 6) == 0) {
 		if (strncmp(opt + 6, "on", 2) == 0) {
 			g_trace_log = 1;

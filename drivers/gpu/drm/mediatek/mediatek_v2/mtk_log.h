@@ -93,6 +93,15 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
+#define DDPQOS(fmt, arg...)                                                    \
+	do {                                                                   \
+		if (!g_qos_log && !g_detail_log)                               \
+			break;                                                 \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);     \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);                  \
+	} while (0)
+
 #define DDPMSG(fmt, arg...)                                                    \
 	do {                                                                   \
 		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
@@ -156,6 +165,15 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
 		if (g_mobile_log)                                              \
 			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+#define DDPQOS(fmt, arg...)                                                    \
+	do {                                                                   \
+		if (!g_qos_log && !g_detail_log)                               \
+			break;                                                 \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
+		if (g_mobile_log)                                              \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);                  \
 	} while (0)
 
 #define DDPMSG(fmt, arg...)                                                    \
@@ -375,6 +393,7 @@ extern bool g_gpuc_direct_push;
 extern bool g_ovl_bwm_debug;
 extern bool g_vidle_apsrc_debug;
 extern bool g_profile_log;
+extern bool g_qos_log;
 extern bool g_y2r_en;
 extern unsigned long long g_pf_time;
 #endif
