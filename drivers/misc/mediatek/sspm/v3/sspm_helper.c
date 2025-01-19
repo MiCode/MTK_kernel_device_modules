@@ -33,6 +33,7 @@
 #include "sspm_sysfs.h"
 #include "sspm_reservedmem.h"
 #include "sspm_timesync.h"
+#include "tinysys-scmi.h"
 
 struct sspm_regs sspmreg;
 struct platform_device *sspm_pdev;
@@ -120,6 +121,9 @@ static int __init sspm_device_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct device *dev = &pdev->dev;
+#if SSPM_PLT_SERV_SUPPORT
+	struct scmi_tinysys_info_st *tinfo = get_scmi_tinysys_info();
+#endif
 	unsigned int fake_sspm;
 	int ret;
 
@@ -134,7 +138,19 @@ static int __init sspm_device_probe(struct platform_device *pdev)
 		return 0;
 	}
 
+#if SSPM_PLT_SERV_SUPPORT
+	if (!tinfo) {
+		pr_err("[SSPM]: tinfo is Null!! probe retry...\n");
+		return -EPROBE_DEFER;
+	}
+#endif
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cfgreg");
+	if (!res) {
+		pr_err("[SSPM] Failed to get memory resource\n");
+		return -1;
+	}
+
 	sspmreg.cfg = devm_ioremap_resource(dev, res);
 
 	if (IS_ERR((void const *) sspmreg.cfg)) {
