@@ -48,5 +48,13 @@
 				xo-id = <11>;
 			};
 		};
+
+		mt6877_connv3: mt6877-connv3 {
+			compatible = "mediatek,mt6687-connv3";
+		};
+
+		mt6877_consys: mt6877-consys {
+			compatible = "mediatek,mt6687-consys";
+		};
 	};
 };
