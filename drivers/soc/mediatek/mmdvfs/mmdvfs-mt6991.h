@@ -19,15 +19,20 @@
 #define RC_XPU2_MUX_SEL_CLR		0x20000
 #define RC_XPU3_MUX_SEL_CLR		0x30000
 #define RC_XPU9_MUX_SEL_CLR		0x72000
-#define RC_XPU10_MUX_SEL_CLR	0x73000
-#define RC_XPU12_MUX_SEL_CLR	0x75000
+#define RC_XPU10_MUX_SEL_CLR		0x73000
+#define RC_XPU12_MUX_SEL_CLR		0x75000
 
 #define RC_XPU0_MUX_SEL			0x10000
 #define RC_XPU0_MUX_SEL_PRE		0x100D0
 
+#define RC_CURRENT_LEVEL		0x005C4
+#define RC_LEVEL_HEX			0x005F0
+#define RC_MUX_SEL_ENABLE		0x10234
+#define RC_MUX_SEL_CURR_ENABLE		0x10264
+
 static struct mmdvfs_rc mmdvfs_rc[MMDVFS_V5_PWR_NUM] = {
 	[MMDVFS_V5_PWR_VMM] = {MMDVFS_V5_PWR_VMM, VMMRC_APB_BASE, 6, MMDVFS_V5_AP_CAM},
-	[MMDVFS_V5_PWR_VDISP] = {MMDVFS_V5_PWR_VDISP, VDISPRC_APB_BASE, 5, MMDVFS_V5_AP_MML},
+	[MMDVFS_V5_PWR_VDISP] = {MMDVFS_V5_PWR_VDISP, VDISPRC_APB_BASE, 6, MMDVFS_V5_AP_MML},
 	[MMDVFS_V5_PWR_VCORE] = {MMDVFS_V5_PWR_VCORE, MMRC_APB_BASE, 7, MMDVFS_V5_AP_VEN},
 };
 
@@ -90,9 +95,11 @@ static struct mmdvfs_user mmdvfs_user[MMDVFS_V5_USER_NUM] = {
 };
 
 int mmdvfs_mt6993_dfs_vote_by_xpu(const u8 user_id, const u8 level);
+int mmdvfs_mt6993_dvfsrc_rg_dump(void);
 
 static struct mmdvfs_ops mmdvfs_mt6993_ops = {
 	.dfs_vote_by_xpu = mmdvfs_mt6993_dfs_vote_by_xpu,
+	.dvfsrc_rg_dump = mmdvfs_mt6993_dvfsrc_rg_dump,
 };
 
 static struct mmdvfs_data mmdvfs_data_mt6993 = {

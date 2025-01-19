@@ -128,9 +128,23 @@ inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp)
 	mux = mmdvfs_data->user[idx].mux;
 	lvl = OPP2LEVEL(mmdvfs_data->mux[mux].rc, opp);
 
+	MMDVFS_DBG("idx:%hhd opp:%hhd mux:%hhd lvl:%hhd freq:%llu",
+		idx, opp, mux, lvl, mmdvfs_data->mux[mux].freq[lvl]);
+
 	return mmdvfs_data->mux[mux].freq[lvl];
 }
 EXPORT_SYMBOL_GPL(mmdvfs_user_get_freq_by_opp);
+
+int mmdvfs_dump_dvfsrc_rg(void)
+{
+	if(mmdvfs_data->ops->dvfsrc_rg_dump)
+		return mmdvfs_data->ops->dvfsrc_rg_dump();
+
+	MMDVFS_ERR("get dvfsrc_rg_dump ops failed");
+
+	return -1;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_dump_dvfsrc_rg);
 
 int mmdvfs_user_dfs_vote_by_opp(const u8 idx, const s8 opp, const bool force)
 {
@@ -378,13 +392,13 @@ static int mmdvfs_vcp_init(void)
 	mmup_ena = is_mmup_enable_ex();
 	MMDVFS_DBG("mmup_ena:%d", mmup_ena);
 
-	while (!mmdebug_is_init_done()) {
+	/*while (!mmdebug_is_init_done()) {
 		if (++retry > 100) {
 			MMDVFS_ERR("mmdebug is not ready yet");
 			return -ETIMEDOUT;
 		}
 		ssleep(1);
-	}
+	}*/
 
 	retry = 0;
 	while (!is_vcp_ready_ex(MMDVFS_HFRP_FEATURE_ID)) {

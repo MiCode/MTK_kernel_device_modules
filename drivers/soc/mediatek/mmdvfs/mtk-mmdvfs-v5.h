@@ -71,6 +71,7 @@ struct mmdvfs_user {
 
 struct mmdvfs_ops {
 	int (*dfs_vote_by_xpu)(const u8 user_id, const u8 level);
+	int (*dvfsrc_rg_dump)(void);
 };
 
 struct mmdvfs_data {
@@ -91,4 +92,5 @@ inline void mmdvfs_mmup_cb_mutex_unlock(void);
 
 inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp);
 int mmdvfs_user_dfs_vote_by_opp(const u8 idx, const s8 opp, const bool force);
+int mmdvfs_dump_dvfsrc_rg(void);
 #endif /* __DRV_CLK_MMDVFS_V5_H */

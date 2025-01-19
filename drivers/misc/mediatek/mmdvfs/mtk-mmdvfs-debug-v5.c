@@ -151,6 +151,8 @@ static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 		mmdvfs_seq_print(file, "fmeter:%d id:%hhu type:%hhu freq:%u", i, fmeter_id[i], fmeter_type[i], val);
 	}
 
+	mmdvfs_dump_dvfsrc_rg();
+
 	return 0;
 }
 
@@ -477,7 +479,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	register_pm_notifier(&mmdvfs_debug_pm_notifier_block);
 	mmdvfs_debug_ops_set(&mmdvfs_debug_v5_ops);
 
-	mtk_mmdebug_status_dump_register_notifier(&mmdebug_nb);
+	//mtk_mmdebug_status_dump_register_notifier(&mmdebug_nb);
 	mtk_smi_dbg_register_notifier(&smi_dbg_nb);
 
 	task = kthread_run(mmdvfs_debug_kthread, NULL, "mmdvfs-debug-kthread");
