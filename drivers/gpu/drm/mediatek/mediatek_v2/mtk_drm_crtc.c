@@ -3615,7 +3615,7 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (comp->id == plane_state->comp_state.comp_id) {
-			DDPINFO("%s Match comp[%d %s]", __func__, comp->id,
+			DDPINFO("%s Match comp[%d %s]\n", __func__, comp->id,
 				mtk_dump_comp_str_id(comp->id));
 			return comp;
 		}
