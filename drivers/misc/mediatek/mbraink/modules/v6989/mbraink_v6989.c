@@ -80,6 +80,7 @@ static int mbraink_v6989_probe(struct platform_device *pdev)
 	ret = mbraink_v6989_gpu_init();
 	if (ret)
 		pr_notice("[MBK_v6989] mbraink v6989 gpu init failed.\n");
+
 	return ret;
 }
 

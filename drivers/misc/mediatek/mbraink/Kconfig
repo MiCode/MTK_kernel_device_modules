@@ -61,3 +61,12 @@ config MTK_MBRAINK_MT6993
 	  for android MBrain feature.
 	  Set Y to select this feature for specific platform-mt6993.
 	  If unsure, set N to disable.
+
+config MTK_MBRAINK_PERF
+	tristate "Specify Mediatek MBRAINK PERF"
+	depends on MTK_MBRAINK
+	help
+	  Select MediaTek MBraink PERF Module
+	  for android MBrain feature.
+	  Set Y to select this feature for specific mbraink perf.
+	  If unsure, set N to disable.

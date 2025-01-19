@@ -61,7 +61,7 @@
 
 #define MBRAINK_LANDING_FEATURE_CHECK 1
 
-#define MBRAINK_PMU_INST_SPEC_EN	(1<<0UL)
+#define MBRAINK_PMU_EN	(1<<0UL)
 
 #define MBRAINK_FEATURE_GPU_EN		(1<<0UL)
 #define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
@@ -278,12 +278,24 @@ struct mbraink_pmu_en {
 enum pmu_options {
 	E_PMU_INST_SPEC = 0,
 	E_PMU_CPU_CYCLES = 1,
+	E_PMU_CPU_L1_CACHE_ACCESS = 2,
+	E_PMU_CPU_L1_CACHE_REFILL = 3,
+	E_PMU_CPU_L2_CACHE_ACCESS = 4,
+	E_PMU_CPU_L2_CACHE_REFILL = 5,
+	E_PMU_CPU_L3_CACHE_ACCESS = 6,
+	E_PMU_CPU_L3_CACHE_REFILL = 7,
 };
 
 struct mbraink_pmu_info {
 	unsigned long pmu_options;
 	unsigned long pmu_data_inst_spec[MAX_CPU_CORE_NUM];
 	unsigned long pmu_data_cpu_cycles[MAX_CPU_CORE_NUM];
+	unsigned long pmu_data_cpu_l1_cache_access[MAX_CPU_CORE_NUM];
+	unsigned long pmu_data_cpu_l1_cache_refill[MAX_CPU_CORE_NUM];
+	unsigned long pmu_data_cpu_l2_cache_access[MAX_CPU_CORE_NUM];
+	unsigned long pmu_data_cpu_l2_cache_refill[MAX_CPU_CORE_NUM];
+	unsigned long pmu_data_cpu_l3_cache_access[MAX_CPU_CORE_NUM];
+	unsigned long pmu_data_cpu_l3_cache_refill[MAX_CPU_CORE_NUM];
 };
 
 struct mbraink_power_spm_raw {

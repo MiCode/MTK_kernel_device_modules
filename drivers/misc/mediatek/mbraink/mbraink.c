@@ -214,20 +214,20 @@ static long handlePmuEn(unsigned long arg, void *mbraink_data)
 	mutex_lock(&pmu_lock);
 	if (mbraink_priv.pmu_en != pmuEnInfo->pmu_en) {
 		pr_notice("mbraink pmu_en enable.\n");
-		if ((pmuEnInfo->pmu_en & MBRAINK_PMU_INST_SPEC_EN) == MBRAINK_PMU_INST_SPEC_EN) {
-			pr_notice("mbraink feature enable pmu inst spec.\n");
-			ret = mbraink_enable_pmu_inst_spec(true);
+		if ((pmuEnInfo->pmu_en & MBRAINK_PMU_EN) == MBRAINK_PMU_EN) {
+			pr_notice("mbraink feature enable pmu.\n");
+			ret = mbraink_set_pmu_enable(true);
 			if (ret)
-				pr_notice("mbraink pmu inst spec enabled failed.\n");
+				pr_notice("mbraink pmu enabled failed.\n");
 			else
-				mbraink_priv.pmu_en |= MBRAINK_PMU_INST_SPEC_EN;
+				mbraink_priv.pmu_en |= MBRAINK_PMU_EN;
 		} else {
-			pr_notice("mbraink feature disable pmu inst spec.\n");
-			ret = mbraink_enable_pmu_inst_spec(false);
+			pr_notice("mbraink feature disable pmu.\n");
+			ret = mbraink_set_pmu_enable(false);
 			if (ret)
-				pr_notice("mbraink pmu inst spec enabled failed.\n");
+				pr_notice("mbraink pmu enabled failed.\n");
 			else
-				mbraink_priv.pmu_en ^= MBRAINK_PMU_INST_SPEC_EN;
+				mbraink_priv.pmu_en ^= MBRAINK_PMU_EN;
 		}
 
 		pr_notice("mbraink en set (%d) to (%d)\n",
@@ -2343,6 +2343,10 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink usb init failed.\n");
 
+	ret = mbraink_pmu_init();
+	if (ret)
+		pr_notice("mbraink pmu init failed.\n");
+
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	ret = mbraink_auto_init();
 	if (ret)
@@ -2404,6 +2408,7 @@ static void mbraink_exit(void)
 	mbraink_gps_deinit();
 	mbraink_wifi_deinit();
 	mbraink_usb_deinit();
+	mbraink_pmu_deinit();
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	mbraink_auto_deinit();
 #endif

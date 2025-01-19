@@ -91,6 +91,10 @@ static int mbraink_v6993_probe(struct platform_device *pdev)
 	if (ret)
 		pr_notice("[MBK_v6993] mbraink v6993 camera init failed.\n");
 
+	ret = mbraink_v6993_pmu_init();
+	if (ret)
+		pr_notice("[MBK_v6993] mbraink v6993 pmu init failed.\n");
+
 	return ret;
 }
 
@@ -108,6 +112,7 @@ static void mbraink_v6993_remove(struct platform_device *pdev)
 	mbraink_v6993_gps_deinit();
 	mbraink_v6993_wifi_deinit();
 	mbraink_v6993_camera_deinit();
+	mbraink_v6993_pmu_deinit();
 }
 
 static const struct of_device_id mtk_mbraink_v6993_of_ids[] = {

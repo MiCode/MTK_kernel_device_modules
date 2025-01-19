@@ -93,4 +93,12 @@ struct mbraink_wifi_ops {
 };
 int register_mbraink_wifi_ops(struct mbraink_wifi_ops *ops);
 int unregister_mbraink_wifi_ops(void);
+
+/*PMU*/
+struct mbraink_pmu_ops {
+	int (*set_pmu_enable)(bool enable);
+	int (*get_pmu_info)(struct mbraink_pmu_info *pmuInfo);
+};
+int register_mbraink_pmu_ops(struct mbraink_pmu_ops *ops);
+int unregister_mbraink_pmu_ops(void);
 #endif //MBRAINK_MODULES_OPS_STRUCT_H
