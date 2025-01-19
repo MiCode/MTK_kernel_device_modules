@@ -15,7 +15,7 @@
 #include "../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "pkvm_smmu_host.h"
 
-int __kvm_nvhe_smmu_hyp_init(const struct pkvm_module_ops *ops);
+int kvm_nvhe_sym(smmu_hyp_init)(const struct pkvm_module_ops *ops);
 
 static unsigned long pkvm_module_token;
 #define ksym_ref_addr_nvhe(x) \
@@ -566,16 +566,16 @@ void smmu_device_probe(void)
 void smmu_setup_hvc(void)
 {
 	add_smmu_device_handler = pkvm_register_el2_mod_call(
-		__kvm_nvhe_add_smmu_device, pkvm_module_token);
+		kvm_nvhe_sym(add_smmu_device), pkvm_module_token);
 
 	smmu_vm_info_probe_handler = pkvm_register_el2_mod_call(
-		__kvm_nvhe_setup_vm, pkvm_module_token);
+		kvm_nvhe_sym(setup_vm), pkvm_module_token);
 
 	mtk_iommu_init_handler = pkvm_register_el2_mod_call(
-		__kvm_nvhe_mtk_iommu_init, pkvm_module_token);
+		kvm_nvhe_sym(mtk_iommu_init), pkvm_module_token);
 
 	smmu_finalise_handler = pkvm_register_el2_mod_call(
-		__kvm_nvhe_smmu_finalise, pkvm_module_token);
+		kvm_nvhe_sym(smmu_finalise), pkvm_module_token);
 
 }
 
@@ -584,35 +584,35 @@ void smmu_host_hvc(void)
 	struct arm_smccc_res res;
 
 	smmu_s2_protect_mapping = pkvm_register_el2_mod_call(
-		__kvm_nvhe_mtk_smmu_secure_v2, pkvm_module_token);
+		kvm_nvhe_sym(mtk_smmu_secure_v2), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_SMMU_SEC_MAP,
 			  smmu_s2_protect_mapping, 0, 0, 0, 0, &res);
 
 	smmu_s2_protect_unmapping = pkvm_register_el2_mod_call(
-		__kvm_nvhe_mtk_smmu_unsecure_v2, pkvm_module_token);
+		kvm_nvhe_sym(mtk_smmu_unsecure_v2), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, smmu_s2_protect_unmapping, 0, 0, 0, 0, &res);
 
 	smmu_s2_protect_region_mapping = pkvm_register_el2_mod_call(
-		__kvm_nvhe_mtk_smmu_secure, pkvm_module_token);
+		kvm_nvhe_sym(mtk_smmu_secure), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_REGION_MAP,
 			  smmu_s2_protect_region_mapping, 0, 0, 0, 0, &res);
 
 	smmu_s2_protect_region_unmapping = pkvm_register_el2_mod_call(
-		__kvm_nvhe_mtk_smmu_unsecure, pkvm_module_token);
+		kvm_nvhe_sym(mtk_smmu_unsecure), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_REGION_UNMAP,
 			  smmu_s2_protect_region_unmapping, 0, 0, 0, 0, &res);
 
-	smmu_share = pkvm_register_el2_mod_call(__kvm_nvhe_mtk_smmu_share,
+	smmu_share = pkvm_register_el2_mod_call(kvm_nvhe_sym(mtk_smmu_share),
 						pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_MEM_SHARE, smmu_share, 0, 0, 0,
 			  0, &res);
 
 	smmu_host_debug = pkvm_register_el2_mod_call(
-		__kvm_nvhe_mtk_smmu_host_debug, pkvm_module_token);
+		kvm_nvhe_sym(mtk_smmu_host_debug), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_DEBUG_DUMP, smmu_host_debug, 0,
 			  0, 0, 0, &res);
@@ -743,7 +743,7 @@ static int __init smmu_nvhe_init(void)
 		pr_info("Skip pKVM smmu init, cause pKVM is not enabled\n");
 		return 0;
 	}
-	ret = pkvm_load_el2_module(__kvm_nvhe_smmu_hyp_init,
+	ret = pkvm_load_el2_module(kvm_nvhe_sym(smmu_hyp_init),
 				   &pkvm_module_token);
 
 	if (ret) {
