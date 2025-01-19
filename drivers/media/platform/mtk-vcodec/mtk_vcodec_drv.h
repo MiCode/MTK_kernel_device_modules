@@ -16,6 +16,7 @@
 #include <linux/types.h>
 #include <linux/list.h>
 #include <linux/clk.h>
+#include <linux/bitmap.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
@@ -708,8 +709,9 @@ struct mtk_vcodec_ctx {
 	u64 timestamp;
 	s64 input_max_ts;
 	struct mtk_detect_ts_param detect_ts_param;
-	int input_slot;
 	bool has_first_input;
+	int input_slot; // input slot count
+	unsigned long *output_slot_map; // bitmap
 
 	bool waiting_fmt; // after resolution change need wait g_fmt
 	bool is_flushing;

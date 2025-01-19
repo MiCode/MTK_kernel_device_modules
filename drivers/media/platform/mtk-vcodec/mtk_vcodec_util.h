@@ -453,18 +453,23 @@ extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
 extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
 #endif
 
+static inline u64 bitmap_to_u64(unsigned long *bitmap, unsigned int nbits)
+{
+	u64 arr = 0;
+
+	if (bitmap)
+		bitmap_to_arr64(&arr, bitmap, MIN(nbits, 64));
+
+	return arr;
+}
+
 static inline unsigned int vb2_get_max_num_bufs(struct vb2_queue *q)
 {
 	return q->max_num_buffers;
 }
 static inline u64 vb2_get_bufmap_u64(struct vb2_queue *q)
 {
-	u64 arr = 0;
-
-	if (q->bufs_bitmap)
-		bitmap_to_arr64(&arr, q->bufs_bitmap, 64);
-
-	return arr;
+	return bitmap_to_u64(q->bufs_bitmap, q->max_num_buffers);
 }
 
 #endif /* _MTK_VCODEC_UTIL_H_ */

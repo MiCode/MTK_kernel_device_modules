@@ -14,6 +14,7 @@
 #include <linux/jiffies.h>
 #include <linux/sched.h>
 #include <linux/overflow.h>
+#include <linux/limits.h>
 #include <mtk_heap.h>
 
 #include "mtk_heap.h"
@@ -1209,11 +1210,13 @@ static struct vb2_v4l2_buffer *get_free_buffer(struct mtk_vcodec_ctx *ctx, bool 
 					goto err_in_rdyq;
 				mtk_vdec_trigger_set_frame(ctx);
 			} else {
-				mtk_v4l2_debug(4, "[%d]status=%x reference free queue id=%d %d %d",
+				bitmap_clear(ctx->output_slot_map, vb->index, 1);
+				mtk_v4l2_debug(4, "[%d]status=%x reference free queue id=%d %d %d, slot 0x%llx",
 					ctx->id, free_frame_buffer->status,
 					dstbuf->vb.vb2_buf.index,
 					dstbuf->queued_in_vb2,
-					dstbuf->queued_in_v4l2);
+					dstbuf->queued_in_v4l2,
+					bitmap_to_u64(ctx->output_slot_map, VB2_MAX_FRAME));
 			}
 		} else if ((dstbuf->queued_in_vb2 == false) &&
 				   (dstbuf->queued_in_v4l2 == true)) {
@@ -1245,11 +1248,13 @@ static struct vb2_v4l2_buffer *get_free_buffer(struct mtk_vcodec_ctx *ctx, bool 
 			 * When this buffer q from user space, it could
 			 * directly q to vb2 buffer
 			 */
-			mtk_v4l2_debug(4, "[%d]status=%x reference free queue id=%d %d %d",
+			bitmap_clear(ctx->output_slot_map, vb->index, 1);
+			mtk_v4l2_debug(4, "[%d]status=%x reference free queue id=%d %d %d, slot 0x%llx",
 				ctx->id, free_frame_buffer->status,
 				dstbuf->vb.vb2_buf.index,
 				dstbuf->queued_in_vb2,
-				dstbuf->queued_in_v4l2);
+				dstbuf->queued_in_v4l2,
+				bitmap_to_u64(ctx->output_slot_map, VB2_MAX_FRAME));
 		}
 		vcodec_trace_end();
 	}
@@ -1896,6 +1901,7 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 			dstbuf->frame_buffer.status,
 			&dstbuf->frame_buffer, (unsigned long)(&dstbuf->frame_buffer));
 	}
+	bitmap_zero(ctx->output_slot_map, VB2_MAX_FRAME);
 	mutex_unlock(&ctx->buf_lock);
 	ctx->is_flushing = false;
 }
@@ -2189,10 +2195,13 @@ static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_
 	}
 
 	ret = vdec_if_init(ctx, q_data->fmt->fourcc);
+
 	v4l2_m2m_set_dst_buffered(ctx->m2m_ctx, ctx->input_driven != NON_INPUT_DRIVEN);
 	if (ctx->input_driven == INPUT_DRIVEN_CB_FRM)
 		init_waitqueue_head(&ctx->fm_wq);
-	if (ret) {
+	ctx->output_slot_map = bitmap_zalloc(VB2_MAX_FRAME, GFP_KERNEL);
+
+	if (ret || !ctx->output_slot_map) {
 		mtk_v4l2_err("[%d]: vdec_if_init() fail ret=%d", ctx->id, ret);
 		if (ret == -EIO)
 			mtk_vdec_error_handle(ctx, "init");
@@ -2232,6 +2241,9 @@ void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 	}
 	memset(ctx->dma_meta_list, 0, sizeof(struct dma_meta_buf) * MAX_META_BUF_CNT);
 #endif
+
+	if (ctx->output_slot_map)
+		bitmap_free(ctx->output_slot_map);
 
 	mtk_vdec_cgrp_deinit(ctx);
 }
@@ -3544,8 +3556,9 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		return;
 
 	vcodec_trace_begin("%s-%d(%s)(%d)", __func__, ctx->id, is_cap ? "out" : "in", vb->index);
-	mtk_v4l2_debug(4, "[%d] (%d) id=%d %s, vb=%p",
-		ctx->id, vb->vb2_queue->type, vb->index, is_cap ? "FB" : "BS", vb);
+	mtk_v4l2_debug(4, "[%d] (%d) id=%d %s, vb=%p (slot 0x%llx)",
+		ctx->id, vb->vb2_queue->type, vb->index, is_cap ? "FB" : "BS",
+		vb, bitmap_to_u64(ctx->output_slot_map, VB2_MAX_FRAME));
 
 	ret = mtk_vcodec_dec_init(ctx, mtk_vdec_get_q_data(ctx, vb->vb2_queue->type));
 	if (ret) {
@@ -3576,6 +3589,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 		mutex_lock(&ctx->buf_lock);
 		if (buf->used == false) {
+			bitmap_set(ctx->output_slot_map, vb->index, 1);
 			vb->timestamp = 0;
 			v4l2_m2m_buf_queue_check(ctx->m2m_ctx, vb2_v4l2);
 			buf->queued_in_vb2 = true;
@@ -4158,6 +4172,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 		if (dst_vb->state == VB2_BUF_STATE_ACTIVE)
 			vb2_buffer_done(dst_vb, VB2_BUF_STATE_ERROR);
 	}
+	bitmap_zero(ctx->output_slot_map, VB2_MAX_FRAME);
 	mutex_unlock(&ctx->buf_lock);
 
 	vcodec_trace_begin("dvfs(stream_off)");
@@ -4796,6 +4811,12 @@ static int mtk_vdec_g_v_ctrl(struct v4l2_ctrl *ctrl)
 		}
 		break;
 	}
+	case V4L2_CID_MTK_VIDEO_DEC_OUTPUT_SLOT_MAP: {
+		mutex_lock(&ctx->buf_lock);
+		*(ctrl->p_new.p_s64) = (s64)bitmap_to_u64(ctx->output_slot_map, VB2_MAX_FRAME);
+		mutex_unlock(&ctx->buf_lock);
+		break;
+	}
 	case V4L2_CID_MTK_VIDEO_DEC_TRICK_MODE: {
 		enum vdec_get_param_type type = CID2GetParam(ctrl->id);
 
@@ -5125,6 +5146,18 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.name = "MTK vdec SLC support ver";
 	cfg.min = 0;
 	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_OUTPUT_SLOT_MAP;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER64;
+	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
+	cfg.name = "MTK vdec Avaliable Output Slot map";
+	cfg.min = S64_MIN;
+	cfg.max = S64_MAX;
 	cfg.step = 1;
 	cfg.def = 0;
 	cfg.ops = ops;
