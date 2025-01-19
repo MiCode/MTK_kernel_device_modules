@@ -296,27 +296,6 @@ static void vcp_disable_irqs(void)
 	pr_debug("[VCP] VCP IRQ disabled\n");
 }
 
-static int vcp_ipi_dbg_resume_noirq(struct device *dev)
-{
-	int i = 0;
-	int ret = 0;
-	bool state = false;
-
-	if (is_suspending)
-		return 0;
-
-	for (i = 0; i < IRQ_NUMBER; i++) {
-		ret = irq_get_irqchip_state(vcp_ipi_irqs[i].irq_no,
-			IRQCHIP_STATE_PENDING, &state);
-		if (!ret && state) {
-			pr_info("[VCP] ipc%d wakeup\n", i);
-			break;
-		}
-	}
-
-	return 0;
-}
-
 static void vcp_wait_awake_count(void)
 {
 	int i = 0;
@@ -872,20 +851,6 @@ uint32_t vcp_wait_ready_sync(void)
 {
 	int i = 0;
 	int j = 0;
-	unsigned long C0_H0 = CORE_REBOOT_OK;
-	unsigned long C0_H1 = CORE_REBOOT_OK;
-	unsigned long C1_H0 = CORE_REBOOT_OK;
-	unsigned long C1_H1 = CORE_REBOOT_OK;
-
-	C0_H0 = readl(VCP_GPR_C0_H0_REBOOT);
-	if (vcpreg.twohart)
-		C0_H1 = readl(VCP_GPR_C0_H1_REBOOT);
-
-	if (vcpreg.core_nums == 2) {
-		C1_H0 = readl(VCP_GPR_C1_H0_REBOOT);
-		if (vcpreg.twohart_core1)
-			C1_H1 = readl(VCP_GPR_C1_H1_REBOOT);
-	}
 
 	while (!is_vcp_ready_by_coreid(VCP_CORE_TOTAL)) {
 		i += 5;
@@ -984,7 +949,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 	}
 	mutex_unlock(&vcp_pw_clk_mutex);
 
-	return 0;
+	return ret;
 }
 
 static int vcp_pm_event(struct notifier_block *notifier
@@ -1231,7 +1196,8 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
-	unsigned int i, ret;
+	unsigned int i;
+	int ret = IPI_ACTION_DONE;
 	struct slp_ctrl_data ipi_data;
 
 	if (!buf || count == 0)
@@ -1257,6 +1223,8 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
 						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
 		}
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[VCP] %s send ipi fail %d\n", __func__, ret);
 	}
 
 	return count;
@@ -1267,7 +1235,7 @@ static inline ssize_t vcp_deregister_off_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
-	unsigned int ret;
+	int ret = IPI_ACTION_DONE;
 	struct slp_ctrl_data ipi_data;
 
 	if (!buf || count == 0)
@@ -1281,6 +1249,9 @@ static inline ssize_t vcp_deregister_off_store(struct device *kobj
 			ipi_data.feature = RTOS_FEATURE_ID;
 			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
 						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+
+			if (ret != IPI_ACTION_DONE)
+				pr_notice("[VCP] %s send ipi fail %d\n", __func__, ret);
 		}
 	}
 	return count;
@@ -1536,7 +1507,7 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 {
 	unsigned int opt, i;
 	u64 timetick;
-	int ret;
+	int ret = IPI_ACTION_DONE;
 	struct vcp_ipi_profile cmd;
 
 	if (kstrtouint(buf, 10, &opt) != 0)
@@ -1598,6 +1569,9 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 		pr_info("cmd '%d' is not supported.\n", opt);
 		break;
 	}
+
+	if (ret != IPI_ACTION_DONE)
+		pr_notice("[VCP] opt %u send ipi fail %d\n", opt, ret);
 
 	return n;
 }
@@ -3142,10 +3116,6 @@ static int mtk_vcp_resume(struct device *pdev)
 static const struct dev_pm_ops mtk_vcp_pm_ops = {
 	.suspend = mtk_vcp_suspend,
 	.resume = mtk_vcp_resume,
-};
-
-static const struct dev_pm_ops vcp_ipi_dbg_pm_ops = {
-	.resume_noirq = vcp_ipi_dbg_resume_noirq,
 };
 
 static const struct of_device_id vcp_of_ids[] = {

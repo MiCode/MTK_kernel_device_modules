@@ -107,8 +107,6 @@ EXPORT_SYMBOL_GPL(driver_init_done);
 /*vcp awake variable*/
 int vcp_awake_counts[VCP_CORE_TOTAL];
 
-unsigned int vcp_recovery_flag[VCP_CORE_TOTAL];
-#define VCP_A_RECOVERY_OK	0x44
 /*  vcp_reset_status
  *  0: vcp not in reset status
  *  1: vcp in reset status
@@ -711,7 +709,6 @@ static void vcp_A_notify_ws(struct work_struct *ws)
 	unsigned int vcp_notify_flag = sws->flags;
 	int ret = 0;
 
-	vcp_recovery_flag[VCP_A_ID] = VCP_A_RECOVERY_OK;
 	ret = vcp_turn_mminfra_on();
 	if (ret < 0)
 		return;
@@ -1524,7 +1521,8 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
-	unsigned int i, ret;
+	unsigned int i;
+	int ret = IPI_ACTION_DONE;
 	struct slp_ctrl_data ipi_data;
 
 	if (!buf || count == 0)
@@ -1550,6 +1548,8 @@ static inline ssize_t vcp_register_on_store(struct device *kobj
 			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
 						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
 		}
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[VCP] %s send ipi fail %d\n", __func__, ret);
 	}
 
 	return count;
@@ -1560,7 +1560,7 @@ static inline ssize_t vcp_deregister_off_store(struct device *kobj
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
-	unsigned int ret;
+	int ret = IPI_ACTION_DONE;
 	struct slp_ctrl_data ipi_data;
 
 	if (!buf || count == 0)
@@ -1574,6 +1574,9 @@ static inline ssize_t vcp_deregister_off_store(struct device *kobj
 			ipi_data.feature = RTOS_FEATURE_ID;
 			ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
 						IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
+
+			if (ret != IPI_ACTION_DONE)
+				pr_notice("[VCP] %s send ipi fail %d\n", __func__, ret);
 		}
 	}
 	return count;
@@ -1796,7 +1799,7 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 {
 	unsigned int opt, i;
 	u64 timetick;
-	int ret;
+	int ret = IPI_ACTION_DONE;
 	struct vcp_ipi_profile cmd;
 
 	if (kstrtouint(buf, 10, &opt) != 0)
@@ -1842,6 +1845,9 @@ static inline ssize_t vcp_ipi_test_store(struct device *kobj
 		pr_info("cmd '%d' is not supported.\n", opt);
 		break;
 	}
+
+	if (ret != IPI_ACTION_DONE)
+		pr_notice("[VCP] opt %u send ipi fail %d\n", opt, ret);
 
 	return n;
 }
@@ -1923,27 +1929,6 @@ DEVICE_ATTR_WO(vcp_reset);
  * trigger wdt manually
  * debug use
  */
-
-static ssize_t recovery_flag_show(struct device *dev
-			, struct device_attribute *attr, char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%d\n", vcp_recovery_flag[VCP_A_ID]);
-}
-static ssize_t recovery_flag_store(struct device *dev
-		, struct device_attribute *attr, const char *buf, size_t count)
-{
-	int ret, tmp;
-
-	ret = kstrtoint(buf, 10, &tmp);
-	if (kstrtoint(buf, 10, &tmp) < 0) {
-		pr_debug("vcp_recovery_flag error\n");
-		return count;
-	}
-	vcp_recovery_flag[VCP_A_ID] = tmp;
-	return count;
-}
-
-DEVICE_ATTR_RW(recovery_flag);
 #endif  //  CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 #endif
 
@@ -2050,10 +2035,6 @@ static int create_files(void)
 	if (unlikely(ret != 0))
 		return ret;
 
-	ret = device_create_file(vcp_device.this_device
-					, &dev_attr_recovery_flag);
-	if (unlikely(ret != 0))
-		return ret;
 #endif  // VCP_RECOVERY_SUPPORT
 	ret = device_create_file(vcp_device.this_device,
 					&dev_attr_vcp_register_on);
@@ -2230,7 +2211,6 @@ static int vcp_reserve_memory_ioremap(struct platform_device *pdev, struct devic
 	unsigned int num = (unsigned int)(sizeof(vcp_reserve_mblock)
 			/ sizeof(vcp_reserve_mblock[0]));
 	enum vcp_reserve_mem_id_t id;
-	unsigned int accumlate_memory_size = 0;
 	unsigned int vcp_mem_num = 0;
 	unsigned int i = 0, m_idx = 0, m_size = 0;
 	unsigned int alloc_mem_size = 0;
@@ -2399,8 +2379,6 @@ static int vcp_reserve_memory_ioremap(struct platform_device *pdev, struct devic
 				pr_notice("[VCP] alloc iova fail for %d\n", id);
 				return ret;
 			}
-
-			accumlate_memory_size += alloc_mem_size;
 
 			if (vcp_reserve_mblock[id].start_phys < iova_lower)
 				iova_lower = vcp_reserve_mblock[id].start_phys;
