@@ -592,7 +592,6 @@ void mtk_btag_earaio_init_mictx(
 	enum mtk_btag_storage_type storage_type,
 	struct proc_dir_entry *btag_proc_root)
 {
-	struct proc_dir_entry *proc_entry;
 	int ret;
 
 	if (!vops->earaio_enabled)
@@ -621,12 +620,11 @@ void mtk_btag_earaio_init_mictx(
 	/* Disable Full Logging for earaio by default */
 	mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
 
-	if (mtk_btag_earaio_init(btag_proc_root) < 0) {
+	if (mtk_btag_earaio_init(btag_proc_root) < 0)
 		earaio_ctrl.enabled = false;
-	} else {
-		proc_entry = proc_create("earaio_ctrl", S_IFREG | 0444,
-			btag_proc_root, &mtk_btag_earaio_ctrl_sub_fops);
-	}
+	else
+		proc_create("earaio_ctrl", S_IFREG | 0444, btag_proc_root,
+			    &mtk_btag_earaio_ctrl_sub_fops);
 }
 
 #else
