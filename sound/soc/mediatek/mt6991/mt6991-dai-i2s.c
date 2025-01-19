@@ -4869,9 +4869,9 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.word_length_mask,
 				       get_etdm_wlen(format),
 				       etdm_data.word_length_shift);
-
-		dev_info(afe->dev, "%s(), i2s_priv->slave_mode: %d, etdm_data.slave_mode_reg:%d\n",
-			 __func__, i2s_priv->slave_mode, etdm_data.slave_mode_reg);
+		if(i2s_priv != NULL)
+			dev_info(afe->dev, "%s(), i2s_priv->slave_mode: %d, etdm_data.slave_mode_reg:%d\n",
+				 __func__, i2s_priv->slave_mode, etdm_data.slave_mode_reg);
 		/* ---etdm cowork --- */
 		if (etdm_data.slave_mode_reg == -1 ||
 			((etdm_data.slave_mode_reg != -1) &&
