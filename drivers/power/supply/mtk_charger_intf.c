@@ -64,9 +64,9 @@
 
 int get_uisoc(struct mtk_charger *info)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 
 	bat_psy = info->bat_manager_psy;
 
@@ -102,9 +102,9 @@ int get_chg_output_vbat(struct mtk_charger *info, int *vbat)
 
 int get_battery_voltage(struct mtk_charger *info)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 
 	bat_psy = info->bat_psy;
 
@@ -130,10 +130,10 @@ int get_battery_voltage(struct mtk_charger *info)
 
 int get_cs_side_battery_voltage(struct mtk_charger *info, int *vbat)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
-	int tmp_ret;
+	int ret = 0;
+	int tmp_ret = 0;
 
 	bat_psy = info->bat2_psy;
 
@@ -164,7 +164,7 @@ int get_cs_side_battery_voltage(struct mtk_charger *info, int *vbat)
 
 int get_battery_temperature(struct mtk_charger *info)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
 	int ret = 0;
 	int tmp_ret = 0;
@@ -193,7 +193,7 @@ int get_battery_temperature(struct mtk_charger *info)
 
 int get_battery_current(struct mtk_charger *info)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
 	int ret = 0;
 	int tmp_ret = 0;
@@ -222,7 +222,7 @@ int get_battery_current(struct mtk_charger *info)
 
 int get_cs_side_battery_current(struct mtk_charger *info, int *ibat)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
 	int ret = 0;
 	int tmp_ret = 0;
@@ -256,12 +256,11 @@ int get_cs_side_battery_current(struct mtk_charger *info, int *ibat)
 
 static int get_pmic_vbus(struct mtk_charger *info, int *vchr)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	static struct power_supply *chg_psy;
 	int ret;
 
-	if (chg_psy == NULL)
-		chg_psy = power_supply_get_by_name("mtk_charger_type");
+	chg_psy = power_supply_get_by_name("mtk_charger_type");
 	if (chg_psy == NULL || IS_ERR(chg_psy)) {
 		chr_err("%s Couldn't get chg_psy\n", __func__);
 		ret = -1;
@@ -324,7 +323,7 @@ int get_ibus(struct mtk_charger *info)
 
 bool is_battery_exist(struct mtk_charger *info)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
 	int ret = 0;
 	int tmp_ret = 0;
@@ -353,9 +352,9 @@ bool is_battery_exist(struct mtk_charger *info)
 
 bool is_charger_exist(struct mtk_charger *info)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	static struct power_supply *chg_psy;
-	int ret;
+	int ret = 0;
 	int tmp_ret = 0;
 
 	chg_psy = info->chg_psy;

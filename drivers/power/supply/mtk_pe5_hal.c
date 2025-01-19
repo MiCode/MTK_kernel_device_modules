@@ -526,6 +526,8 @@ int pe50_hal_is_adapter_ready(struct chg_alg_device *alg)
 	}
 
 	hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	chg_psy = power_supply_get_by_name("mtk-master-charger");
 	if (chg_psy == NULL || IS_ERR(chg_psy))
 		pr_notice("%s Couldn't get chg_psy\n", __func__);
 	else {

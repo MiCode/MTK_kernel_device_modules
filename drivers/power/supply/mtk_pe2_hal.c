@@ -121,9 +121,9 @@ int pe2_hal_set_efficiency_table(struct chg_alg_device *alg)
 
 int pe2_hal_get_uisoc(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe20 *pe2;
 
 	if (alg == NULL)
@@ -302,7 +302,7 @@ int pe2_hal_reset_ta(struct chg_alg_device *alg, enum chg_idx chgidx)
 
 static int get_pmic_vbus(int *vchr)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	static struct power_supply *chg_psy;
 	int ret;
 
@@ -344,7 +344,7 @@ int pe2_hal_get_vbus(struct chg_alg_device *alg)
 
 int pe2_hal_get_vbat(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
 	int ret;
 	struct mtk_pe20 *pe2;
@@ -378,9 +378,9 @@ int pe2_hal_get_vbat(struct chg_alg_device *alg)
 
 int pe2_hal_get_ibat(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe20 *pe2;
 
 	if (alg == NULL)

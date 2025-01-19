@@ -510,18 +510,18 @@ static int do_algorithm(struct mtk_charger *info)
 				dev_name(&alg->dev),
 				chg_alg_state_to_str(ret), ret);
 
-			if (ret == ALG_INIT_FAIL || ret == ALG_TA_NOT_SUPPORT) {
+			if (ret == (int) ALG_INIT_FAIL || ret == (int) ALG_TA_NOT_SUPPORT) {
 				/* try next algorithm */
 				continue;
-			} else if (ret == ALG_WAIVER) {
+			} else if (ret == (int) ALG_WAIVER) {
 				if (info->alg_new_arbitration)
 					continue; /* try next algorithm */
 				else {
 					is_basic = true;
 					break;
 				}
-			} else if (ret == ALG_TA_CHECKING || ret == ALG_DONE ||
-						ret == ALG_NOT_READY) {
+			} else if (ret == (int) ALG_TA_CHECKING || ret == (int) ALG_DONE ||
+						ret == (int) ALG_NOT_READY) {
 				/* wait checking , use basic first */
 				is_basic = true;
 				if (info->alg_new_arbitration && !info->alg_unchangeable &&
@@ -530,7 +530,7 @@ static int do_algorithm(struct mtk_charger *info)
 						chg_alg_stop_algo(info->alg[lst_rnd_alg_idx]);
 				}
 				break;
-			} else if (ret == ALG_READY || ret == ALG_RUNNING) {
+			} else if (ret == (int) ALG_READY || ret == (int) ALG_RUNNING) {
 				is_basic = false;
 				if (info->alg_new_arbitration && !info->alg_unchangeable &&
 					(lst_rnd_alg_idx > -1)) {
@@ -539,7 +539,7 @@ static int do_algorithm(struct mtk_charger *info)
 				}
 				chg_alg_start_algo(alg);
 				chr_err("%s: %d, %d.\n", __func__, ret, info->cs_hw_disable);
-				if (ret == ALG_RUNNING && info->cschg1_dev && !info->cs_hw_disable) {
+				if (ret == (int) ALG_RUNNING && info->cschg1_dev && !info->cs_hw_disable) {
 					ret = charger_dev_set_charging_current(info->cschg1_dev, info->cs_cc_now);
 					if (ret < 0)
 						chr_err("%s: failed to set cs1 cc to: 1500mA.\n", __func__);
@@ -619,9 +619,9 @@ static int do_algorithm(struct mtk_charger *info)
 		ret2 = chg_alg_is_algo_ready(alg);
 		alg = get_chg_alg_by_name("hvbp");
 		ret3 = chg_alg_is_algo_ready(alg);
-		if (!(ret == ALG_READY || ret == ALG_RUNNING) &&
-			!(ret2 == ALG_READY || ret2 == ALG_RUNNING) &&
-			!(ret3 == ALG_READY || ret3 == ALG_RUNNING))
+		if (!(ret == (int) ALG_READY || ret == (int) ALG_RUNNING) &&
+			!(ret2 == (int) ALG_READY || ret2 == (int) ALG_RUNNING) &&
+			!(ret3 == (int) ALG_READY || ret3 == (int) ALG_RUNNING))
 			charger_dev_enable(info->chg1_dev, true);
 	}
 

@@ -263,7 +263,7 @@ static int pd_set_cap(struct adapter_device *dev, enum adapter_cap_type type,
 		      int mV, int mA)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
-	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret = (int) MTK_ADAPTER_ERROR, active_idx = 0;
 
 	if (info == NULL)
 		return ret;
@@ -370,7 +370,7 @@ static int pd_get_cap(struct adapter_device *dev, enum adapter_cap_type type,
 		      struct adapter_power_cap *cap)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
-	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret = (int) MTK_ADAPTER_ERROR, active_idx = 0;
 	struct pd_source_cap_ext src_cap_ext;
 
 	if (info == NULL)
@@ -505,7 +505,7 @@ stop_repeat:
 	data->ita_gap_per_vstep = 200;
 	ret = tcpm_dpm_pd_get_source_cap_ext(info->tcpc[active_idx],
 					     NULL, &src_cap_ext);
-	if (ret == TCP_DPM_RET_SUCCESS) {
+	if (ret == (int) TCP_DPM_RET_SUCCESS) {
 		data->pdp = src_cap_ext.source_pdp;
 		if (data->pdp > 0 && !data->pwr_lmt)
 			data->pwr_lmt = true;
@@ -533,7 +533,7 @@ stop_repeat:
 	    ita_meas == PPS_STATUS_ITA_NOTSUPP) {
 		data->support_meas_cap = false;
 		data->support_cc = false;
-		ret = MTK_ADAPTER_OK;
+		// ret = MTK_ADAPTER_OK;
 	}
 	ret = pd_get_status(dev, &status);
 	if (ret == MTK_ADAPTER_NOT_SUPPORT) {
@@ -554,7 +554,7 @@ out:
 static int pd_is_cc(struct adapter_device *dev, bool *cc)
 {
 	struct mtk_pd_adapter_info *info = adapter_dev_get_drvdata(dev);
-	int ret = MTK_ADAPTER_ERROR, active_idx = 0;
+	int ret = (int) MTK_ADAPTER_ERROR, active_idx = 0;
 	struct pd_pps_status pps_status;
 
 	if (info == NULL)
@@ -566,7 +566,7 @@ static int pd_is_cc(struct adapter_device *dev, bool *cc)
 
 	ret = tcpm_dpm_pd_get_pps_status(info->tcpc[active_idx], NULL,
 					 &pps_status);
-	if (ret == TCP_DPM_RET_SUCCESS)
+	if (ret == (int) TCP_DPM_RET_SUCCESS)
 		*cc = !!(pps_status.real_time_flags & PD_PPS_FLAGS_CFF);
 
 	return to_mtk_adapter_ret(ret);

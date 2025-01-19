@@ -102,7 +102,7 @@ int pe_hal_init_hardware(struct chg_alg_device *alg)
 
 static int get_pmic_vbus(int *vchr)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	static struct power_supply *chg_psy;
 	int ret;
 
@@ -146,9 +146,9 @@ int pe_hal_get_vbus(struct chg_alg_device *alg)
 
 int pe_hal_get_ibat(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe *pe;
 
 	if (alg == NULL)
@@ -240,9 +240,9 @@ int pe_hal_set_mivr(struct chg_alg_device *alg, enum chg_idx chgidx, int uV)
 
 int pe_hal_get_uisoc(struct chg_alg_device *alg)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0};
 	struct power_supply *bat_psy = NULL;
-	int ret;
+	int ret = 0;
 	struct mtk_pe *pe;
 
 	if (alg == NULL)
