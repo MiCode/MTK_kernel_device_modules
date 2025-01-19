@@ -4505,7 +4505,7 @@
 		/* reserved for overlay by odm */
 	};
 
-	regulator_vibrator: regulator_vibrator {
+	regulator_vibrator: regulator-vibrator {
 		compatible = "regulator-vibrator";
 		label = "vibrator";
 		min-volt = <2800000>;
