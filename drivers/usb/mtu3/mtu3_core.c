@@ -26,10 +26,7 @@
 #include <linux/usb/typec.h>
 #include "class.h"
 
-/* workaroud for build ddk */
-/* #include "mtk_charger.h" */
-#define USB_CURRENT_MASK 0x80000000
-#define UNLIMIT_CURRENT_MASK 0x10000000
+#include "mtk_charger.h"
 
 static int ep_fifo_alloc(struct mtu3_ep *mep, u32 seg_size)
 {

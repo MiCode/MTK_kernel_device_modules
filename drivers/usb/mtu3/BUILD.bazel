@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
 
 package(
 
@@ -32,6 +33,11 @@ define_mgk_ddk_ko(
         "mtu3_plat.c",
         "mtu3_host.c",
         "mtu3_qmu.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/power/supply:adapter_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
     ],
     hdrs = glob(["**/*.h"]),
     includes = ["."],
