@@ -4277,8 +4277,8 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max width";
 	cfg.min = 0;
-	cfg.max = 3840;
-	cfg.step = 16;
+	cfg.max = 7680;
+	cfg.step = 2;
 	cfg.def = 0;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
@@ -4289,8 +4289,8 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max height";
 	cfg.min = 0;
-	cfg.max = 3840;
-	cfg.step = 16;
+	cfg.max = 7680;
+	cfg.step = 2;
 	cfg.def = 0;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
