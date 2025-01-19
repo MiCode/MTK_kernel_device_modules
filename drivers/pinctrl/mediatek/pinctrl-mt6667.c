@@ -44,10 +44,10 @@ static const struct mtk_pin_field_calc mt6667_pin_smt_range[] = {
 };
 
 static const struct mtk_pin_field_calc mt6667_pin_drv_range[] = {
-	PIN_SIMPLE_FIELD_BASE(1, 0xa7, 0, 4),
-	PIN_SIMPLE_FIELD_BASE(2, 0xa7, 4, 4),
-	PIN_SIMPLE_FIELD_BASE(3, 0xa8, 0, 4),
-	PIN_SIMPLE_FIELD_BASE(4, 0xa8, 4, 4),
+	PIN_SIMPLE_FIELD_BASE(1, 0xa7, 0, 2),
+	PIN_SIMPLE_FIELD_BASE(2, 0xa7, 4, 2),
+	PIN_SIMPLE_FIELD_BASE(3, 0xa8, 0, 2),
+	PIN_SIMPLE_FIELD_BASE(4, 0xa8, 4, 2),
 };
 
 static const struct mtk_pin_field_calc mt6667_pin_dir_range[] = {
