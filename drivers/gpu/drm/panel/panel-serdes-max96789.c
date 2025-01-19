@@ -378,8 +378,8 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	ctx->ext_params.pll_clk = ctx->pll;
-	ctx->ext_params.vdo_per_frame_lp_enable = ctx->lppf;
-	pr_debug("pll_clk=%d, lppf=%d\n", ctx->ext_params.pll_clk, ctx->ext_params.vdo_per_frame_lp_enable);
+	ctx->ext_params.vdo_keep_hs_perline = ctx->lppf;
+	pr_debug("pll_clk=%d, lppf=%d\n", ctx->ext_params.pll_clk, ctx->ext_params.vdo_keep_hs_perline);
 	if (ctx->ext_params.crop_width[0] && ctx->ext_params.crop_width[1]) {
 		pr_debug("super frame![%d*%d]+[%d*%d]=[%d*%d]\n", ctx->ext_params.crop_width[0],
 			ctx->ext_params.crop_height[1],

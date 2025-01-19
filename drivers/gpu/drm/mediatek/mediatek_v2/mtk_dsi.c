@@ -844,19 +844,19 @@ CONFIG_REG:
 	dsi->data_phy_cycle = lpx + da_hs_exit + da_hs_prep + da_hs_zero + 2;
 
 	dsi_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
-	if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+	if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline &&
 		!(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
 		dsi->hfp_minimum_dphy = DIV_ROUND_UP(2 + 4 + (da_hs_trail + 1 + dsi->data_phy_cycle) * dsi->lanes + 4, dsi_buf_bpp);
-	else if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+	else if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline &&
 		(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
 		dsi->hfp_minimum_dphy = DIV_ROUND_UP(2 + 4 + (da_hs_trail + 1 + clk_hs_post + 1 + clk_hs_trail + clk_hs_exit + 1 +
 										lpx + clk_hs_prep + clk_hs_zero + dsi->data_phy_cycle) * dsi->lanes + 4, dsi_buf_bpp);
 	else
 		dsi->hfp_minimum_dphy = DIV_ROUND_UP(2 + 4 + 2 + 2, dsi_buf_bpp);
-	if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+	if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline &&
 		!(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
 		dsi->hfp_minimum_wc_dphy = (da_hs_trail + 1) * dsi->lanes - 2;
-	else if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+	else if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline &&
 		(dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS))
 		dsi->hfp_minimum_wc_dphy = (da_hs_trail + 1 + clk_hs_post + 1 + clk_hs_trail + clk_hs_exit + 1 +
 										lpx + clk_hs_prep + clk_hs_zero) * dsi->lanes - 2;
@@ -3000,7 +3000,7 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 
 			ps_wc = mtk_dsi_get_ps_wc(mtk_crtc, dsi);
 			bllp_wc = readl(dsi->regs + DSI_BLLP_WC(dsi->driver_data));
-			if (dsi->ext && dsi->ext->params->vdo_per_frame_lp_enable) {
+			if (dsi->ext && dsi->ext->params->vdo_keep_hs_perline) {
 				if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE)
 					total_bytes = (dsi->lanes + 3) * 4 + dsi->lanes + DIV_ROUND_UP(horizontal_sync_active_byte, 2) + 1 +
 								(dsi->lanes + 3) * 4 + dsi->lanes + DIV_ROUND_UP(horizontal_backporch_byte, 2) + 1 +
@@ -3049,7 +3049,7 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 		}
 
 		horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12;
-		if (dsi->ext && !dsi->ext->params->vdo_per_frame_lp_enable &&
+		if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline &&
 			dsi->driver_data->n_verion >= VER_N3) {
 			if (t_hfp * dsi_tmp_buf_bpp - 12 > dsi->data_phy_cycle * dsi->lanes)
 				horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12 - dsi->data_phy_cycle * dsi->lanes;
@@ -3075,7 +3075,7 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 
 			ps_wc = mtk_dsi_get_ps_wc(mtk_crtc, dsi);
 			bllp_wc = readl(dsi->regs + DSI_BLLP_WC(dsi->driver_data));
-			if (dsi->ext && dsi->ext->params->vdo_per_frame_lp_enable) {
+			if (dsi->ext && dsi->ext->params->vdo_keep_hs_perline) {
 				if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE)
 					total_bytes = 4 + (4 + horizontal_sync_active_byte + 2) + 4 + (4 + horizontal_backporch_byte + 2) +
 								(4 + ps_wc + 2) + (4 + horizontal_frontporch_byte + 2);
@@ -3271,7 +3271,7 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 	writel(dsi->hfp_byte, dsi->regs + DSI_HFP_WC(dsi->driver_data));
 	DDPDUMP("%s, 0x58=0x%x\n", __func__, readl(dsi->regs + DSI_HFP_WC(dsi->driver_data)));
 
-	if (dsi->ext && dsi->ext->params->vdo_per_frame_lp_enable) {
+	if (dsi->ext && dsi->ext->params->vdo_keep_hs_perline) {
 		unsigned int lpx = 0, da_hs_exit = 0, da_hs_prep = 0;
 		unsigned int da_hs_zero = 0, ps_wc = 0, hs_vb_ps_wc = 0;
 		unsigned int value = 0;
