@@ -198,7 +198,7 @@ static ssize_t proc_generate_wdt_write(struct file *file,
 		if (len < 0)
 			pr_notice("%s: snprintf failed\n", __func__);
 		pr_notice("[WDK]thread name: %s\n", name);
-		wk_tsk[i] = kthread_create(kwdt_thread_test, NULL, name);
+		wk_tsk[i] = kthread_create(kwdt_thread_test, NULL, "%s", name);
 		if (IS_ERR(wk_tsk[i])) {
 			int ret = PTR_ERR(wk_tsk[i]);
 
