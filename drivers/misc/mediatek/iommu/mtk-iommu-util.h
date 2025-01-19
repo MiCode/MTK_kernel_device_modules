@@ -13,6 +13,7 @@
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC) && IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 int mtk_iommu_set_ops(const struct mtk_iommu_ops *ops);
 int mtk_iommu_update_pm_status(u32 iommu_type, u32 iommu_id, bool pm_sta);
+void mtk_iommu_set_pm_ops(const struct mtk_iommu_mm_pm_ops *ops);
 #else /* CONFIG_DEVICE_MODULES_MTK_IOMMU */
 static inline int mtk_iommu_set_ops(const struct mtk_iommu_ops *ops)
 {
@@ -23,6 +24,12 @@ static inline int mtk_iommu_update_pm_status(u32 iommu_type, u32 iommu_id, bool 
 {
 	return -1;
 }
+
+static inline void mtk_iommu_set_pm_ops(const struct mtk_iommu_mm_pm_ops *ops)
+{
+	return;
+}
+
 #endif /* CONFIG_DEVICE_MODULES_MTK_IOMMU */
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC) && IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
