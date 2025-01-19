@@ -3,8 +3,8 @@
  * Copyright (c) 2022 MediaTek Inc.
  */
 
-#ifndef __UAPI_MTK_V4L2_VCODEC_H__
-#define __UAPI_MTK_V4L2_VCODEC_H__
+#ifndef __UAPI_MTK_V4L2_CONTROLS_H__
+#define __UAPI_MTK_V4L2_CONTROLS_H__
 
 #include <linux/v4l2-controls.h>
 #include <linux/videodev2.h>
@@ -532,4 +532,4 @@ struct v4l2_venc_adab_info {
 	__u32	pixelformat;
 };
 
-#endif // #ifndef __UAPI_MTK_V4L2_VCODEC_H__
+#endif // #ifndef __UAPI_MTK_V4L2_CONTROLS_H__
