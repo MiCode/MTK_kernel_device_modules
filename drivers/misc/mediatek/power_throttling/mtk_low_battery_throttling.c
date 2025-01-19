@@ -33,8 +33,7 @@
 #define MIN_LBAT_VOLT 2000
 #define LBAT_PMIC_MAX_LEVEL LOW_BATTERY_LEVEL_3
 #define LBAT_PMIC_LEVEL_NUM (LOW_BATTERY_LEVEL_3+1)
-#define VOLT_L_STR "thd-volts-l"
-#define VOLT_H_STR "thd-volts-h"
+#define MAX_TABLES 6
 
 struct lbat_intr_tbl {
 	unsigned int volt;
@@ -105,11 +104,26 @@ struct low_battery_callback_table {
 	void *data;
 };
 
+struct voltage_table {
+	u32 low[LBAT_PMIC_MAX_LEVEL * 4];
+	u32 high[LBAT_PMIC_MAX_LEVEL * 4];
+};
+
+struct lbat_voltage_table {
+	struct voltage_table tables[MAX_TABLES];
+	int selected_table;
+};
+
 static struct notifier_block lbat_nb;
 static struct notifier_block bp_nb;
 static struct lbat_thl_priv *lbat_data;
 static struct low_battery_callback_table lbcb_tb[LBCB_MAX_NUM] = { {0}, {0} };
+static struct lbat_voltage_table *voltage_table_data;
 static low_battery_mbrain_callback lb_mbrain_cb;
+static int lbat_tb_num;
+static bool switch_pt;
+const char *VOLT_L_STR;
+const char *VOLT_H_STR;
 static DEFINE_MUTEX(exe_thr_lock);
 
 static int rearrange_volt(struct lbat_intr_tbl *intr_info, unsigned int *volt_l, unsigned int *volt_h,
@@ -473,6 +487,141 @@ static int lbat_thd_to_lv(unsigned int thd, unsigned int temp_stage, enum LOW_BA
 	return level;
 }
 
+static int get_temp_stage(void)
+{
+	struct power_supply *psy;
+	union power_supply_propval val;
+	int ret, temp, temp_stage = 0, temp_thd;
+	static int last_temp = MAX_INT;
+	bool loop;
+
+	if (!lbat_data)
+		return temp_stage;
+
+	if (!lbat_data->psy)
+		return temp_stage;
+
+	psy = lbat_data->psy;
+
+	if (strcmp(psy->desc->name, "battery") != 0)
+		return temp_stage;
+
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_TEMP, &val);
+	if (ret)
+		return temp_stage;
+
+	temp = val.intval / 10;
+#ifdef LBAT2_ENABLE
+	temp = val.intval; // because of battery bug, remove me if battery driver fix
+#endif
+	lbat_data->lbat_mbrain_info.bat_temp = temp;
+	temp_stage = lbat_data->temp_cur_stage;
+
+	do {
+		loop = false;
+		if (temp < last_temp) {
+			if (temp_stage < lbat_data->temp_max_stage) {
+				temp_thd = lbat_data->temp_thd[temp_stage];
+				if (temp < temp_thd) {
+					temp_stage++;
+					loop = true;
+				}
+			}
+		} else if (temp > last_temp) {
+			if (temp_stage > 0) {
+				temp_thd = lbat_data->temp_thd[temp_stage-1];
+				if (temp >= temp_thd) {
+					temp_stage--;
+					loop = true;
+				}
+			}
+		}
+	} while (loop);
+
+	last_temp = temp;
+
+	return temp_stage;
+
+}
+
+static int get_aging_stage(void)
+{
+	int ret, cycle = 0, i, aging_stage = 0;
+	struct power_supply *psy;
+	union power_supply_propval val;
+
+	if (!lbat_data)
+		return aging_stage;
+
+	if (!lbat_data->psy)
+		return aging_stage;
+
+	psy = lbat_data->psy;
+
+	if (strcmp(psy->desc->name, "battery") != 0)
+		return aging_stage;
+
+	if (lbat_data->aging_max_stage > 0) {
+		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CYCLE_COUNT, &val);
+		if (!ret)
+			cycle = val.intval;
+
+		for (i = 0; i < lbat_data->aging_max_stage; i++) {
+			if (cycle < lbat_data->aging_thd[i])
+				break;
+		}
+		aging_stage = i;
+	}
+	return aging_stage;
+}
+
+static void update_thresholds(int temp_stage, int aging_stage)
+{
+	struct lbat_thd_tbl *thd_info;
+	unsigned int ag_offset;
+	int i;
+
+	if (aging_stage == 0)
+		ag_offset = 0;
+	else
+		ag_offset = lbat_data->aging_volts[lbat_data->aging_max_stage * temp_stage + aging_stage - 1];
+
+	thd_info = &lbat_data->lbat_thd[INTR_1][temp_stage];
+	mutex_lock(&exe_thr_lock);
+	for (i = 0; i < thd_info->thd_volts_size; i++) {
+		thd_info->ag_thd_volts[i] = thd_info->thd_volts[i] + ag_offset;
+		thd_info->lbat_intr_info[i].ag_volt = thd_info->lbat_intr_info[i].volt + ag_offset;
+	}
+	mutex_unlock(&exe_thr_lock);
+
+	lbat_data->temp_reg_stage = temp_stage;
+	lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_1],
+		thd_info->ag_thd_volts, thd_info->thd_volts_size);
+	dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
+#ifdef LBAT2_ENABLE
+	if (lbat_data->lbat_intr_num == 2) {
+		thd_info = &lbat_data->lbat_thd[INTR_2][temp_stage];
+		if (aging_stage == 0)
+			ag_offset = 0;
+		else
+			ag_offset = lbat_data->aging_volts[lbat_data->aging_max_stage * temp_stage + aging_stage - 1];
+		mutex_lock(&exe_thr_lock);
+		for (i = 0; i < thd_info->thd_volts_size; i++) {
+			thd_info->ag_thd_volts[i] = thd_info->thd_volts[i] + ag_offset;
+			thd_info->lbat_intr_info[i].ag_volt = thd_info->lbat_intr_info[i].volt + ag_offset;
+		}
+		mutex_unlock(&exe_thr_lock);
+		dual_lbat_user_modify_thd_ext_locked(
+			lbat_data->lbat_pt[INTR_2], thd_info->ag_thd_volts,
+			thd_info->thd_volts_size);
+		dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
+	}
+#endif
+	lbat_data->temp_cur_stage = temp_stage;
+	lbat_data->lbat_mbrain_info.temp_stage = temp_stage;
+	lbat_data->aging_cur_stage = aging_stage;
+}
+
 void exec_low_battery_callback(unsigned int thd)
 {
 	unsigned int lbat_lv = 0;
@@ -537,7 +686,7 @@ static ssize_t low_battery_throttle_cnt_show(
 	}
 
 	for (i = 0; i < ARRAY_SIZE(user); i++) {
-		len += snprintf(buf + len, PAGE_SIZE, "user%d: ",i);
+		len += snprintf(buf + len, PAGE_SIZE, "user%d: ", i);
 		for ( j = 0; j < LOW_BATTERY_LEVEL_NUM; j++)
 			len += snprintf(buf + len, PAGE_SIZE, "%d ", lbat_data->thl_cnt[i][j]);
 	}
@@ -647,19 +796,20 @@ static ssize_t low_battery_modify_threshold_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct lbat_thd_tbl *thd_info;
-	int len = 0, i;
+	int len = 0, i, j;
 
 	len += snprintf(buf + len, PAGE_SIZE, "modify enable: %d\n", lbat_data->lbat_thd_modify);
 
-	for (i = 0; i < lbat_data->lbat_intr_num; i++) {
-		thd_info = &lbat_data->lbat_thd[i][0];
-		len += snprintf(buf + len, PAGE_SIZE - len, "volts intr%d: %d %d %d %d\n",
-			i + 1, thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_0],
-			thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_1],
-			thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_2],
-			thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_3]);
+	for (j = 0; j < 4; j++) {
+		for (i = 0; i < lbat_data->lbat_intr_num; i++) {
+			thd_info = &lbat_data->lbat_thd[i][j];
+			len += snprintf(buf + len, PAGE_SIZE - len, "volts intr%d: %d %d %d %d\n",
+				i + 1, thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_0],
+				thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_1],
+				thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_2],
+				thd_info->ag_thd_volts[LOW_BATTERY_LEVEL_3]);
+		}
 	}
-
 	return len;
 }
 
@@ -667,56 +817,91 @@ static ssize_t low_battery_modify_threshold_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
 {
-	int volt_t_size = 0, j = 0;
-	unsigned int thd_0, thd_1, thd_2, thd_3;
+	int volt_t_size = 0, j = 0, i = 0;
+	unsigned int thd_0[4], thd_1[4], thd_2[4], thd_3[4];
 	unsigned int volt_l[LBAT_PMIC_MAX_LEVEL], volt_h[LBAT_PMIC_MAX_LEVEL];
 	int intr_no;
 	struct lbat_thd_tbl *thd_info;
+	int temp_stage, aging_stage;
+	u32 thd_volts_tbl[12];
 
-	if (sscanf(buf, "%u %u %u %u %u\n", &intr_no, &thd_0, &thd_1, &thd_2, &thd_3) != 5) {
+	if (sscanf(buf, "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+		&intr_no, &thd_0[0], &thd_1[0], &thd_2[0], &thd_3[0], &thd_0[1], &thd_1[1], &thd_2[1], &thd_3[1],
+		&thd_0[2], &thd_1[2], &thd_2[2], &thd_3[2], &thd_0[3], &thd_1[3], &thd_2[3], &thd_3[3]) != 17) {
 		dev_info(dev, "parameter number not correct\n");
 		return -EINVAL;
 	}
 
-	if (thd_0 <= 0 || thd_1 <= 0 || thd_2 <= 0 || thd_3 <= 0 || intr_no < 1 || intr_no > INTR_MAX_NUM) {
+	if (thd_0[0] <= 0 || thd_1[0] <= 0 || thd_2[0] <= 0 || thd_3[0] <= 0 ||
+		thd_0[1] <= 0 || thd_1[1] <= 0 || thd_2[1] <= 0 || thd_3[1] <= 0 ||
+		thd_0[2] <= 0 || thd_1[2] <= 0 || thd_2[2] <= 0 || thd_3[2] <= 0 ||
+		thd_0[3] <= 0 || thd_1[3] <= 0 || thd_2[3] <= 0 || thd_3[3] <= 0 ||
+		intr_no < 1 || intr_no > INTR_MAX_NUM || intr_no != lbat_data->lbat_intr_num) {
 		dev_info(dev, "invalid input\n");
 		return -EINVAL;
 	}
+	for (i = 0; i < 4 ; i++) {
+		volt_l[0] = thd_1[i];
+		volt_l[1] = thd_2[i];
+		volt_l[2] = thd_3[i];
+		volt_h[0] = thd_0[i];
+		volt_h[1] = thd_1[i];
+		volt_h[2] = thd_2[i];
+		mutex_lock(&exe_thr_lock);
 
-	volt_l[0] = thd_1;
-	volt_l[1] = thd_2;
-	volt_l[2] = thd_3;
-	volt_h[0] = thd_0;
-	volt_h[1] = thd_1;
-	volt_h[2] = thd_2;
+		thd_info = &lbat_data->lbat_thd[intr_no-1][i];
+		volt_t_size = rearrange_volt(thd_info->lbat_intr_info, &volt_l[0], &volt_h[0], LBAT_PMIC_MAX_LEVEL);
 
-	thd_info = &lbat_data->lbat_thd[intr_no-1][0];
-	volt_t_size = rearrange_volt(thd_info->lbat_intr_info, &volt_l[0], &volt_h[0], LBAT_PMIC_MAX_LEVEL);
+		if (volt_t_size <= 0) {
+			dev_notice(dev, "[%s] Failed to rearrange_volt\n", __func__);
+			mutex_unlock(&exe_thr_lock);
+			return -ENODATA;
+		}
 
-	if (volt_t_size <= 0) {
-		dev_notice(dev, "[%s] Failed to rearrange_volt\n", __func__);
-		return -ENODATA;
+		thd_info->thd_volts_size = volt_t_size;
+		for (j = 0; j < volt_t_size; j++) {
+			thd_info->thd_volts[j] = thd_info->lbat_intr_info[j].volt;
+			thd_info->ag_thd_volts[j] = thd_info->lbat_intr_info[j].ag_volt;
+			dev_notice(dev, "j:%d, thd_volts: %d, ag_thd_volts:%d\n", j,
+				thd_info->thd_volts[j], thd_info->ag_thd_volts[j]);
+		}
+		mutex_unlock(&exe_thr_lock);
+
+		dump_thd_volts(dev, thd_info->ag_thd_volts, thd_info->thd_volts_size);
 	}
 
-	thd_info->thd_volts_size = volt_t_size;
-	for (j = 0; j < volt_t_size; j++)
-		thd_info->ag_thd_volts[j] = thd_info->lbat_intr_info[j].ag_volt;
+	if (switch_pt){
+		// Fill thd_volts_tbx_l
+		for (i = 0; i < 4; i++) {
+			thd_volts_tbl[i*3] = thd_1[i];
+			thd_volts_tbl[i*3 + 1] = thd_2[i];
+			thd_volts_tbl[i*3 + 2] = thd_3[i];
+		}
+		memcpy(voltage_table_data->tables[voltage_table_data->selected_table].low,
+			thd_volts_tbl, sizeof(thd_volts_tbl));
 
-	dump_thd_volts(dev, thd_info->ag_thd_volts, thd_info->thd_volts_size);
+		// Fill thd_volts_tbx_h
+		for (i = 0; i < 4; i++) {
+			thd_volts_tbl[i*3] = thd_0[i];
+			thd_volts_tbl[i*3 + 1] = thd_1[i];
+			thd_volts_tbl[i*3 + 2] = thd_2[i];
+		}
+		memcpy(voltage_table_data->tables[voltage_table_data->selected_table].high,
+			thd_volts_tbl, sizeof(thd_volts_tbl));
+	}
+	temp_stage = get_temp_stage();
+	aging_stage = get_aging_stage();
+	thd_info = &lbat_data->lbat_thd[intr_no-1][temp_stage];
 
-	if (intr_no == 2 && lbat_data->lbat_intr_num == 2) {
-#ifdef LBAT2_ENABLE
-		dual_lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[intr_no-1],
-			thd_info->ag_thd_volts, thd_info->thd_volts_size);
-#endif
-	} else if (intr_no == 1) {
-		lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[intr_no-1],
-			thd_info->ag_thd_volts, thd_info->thd_volts_size);
+	dev_notice(dev, "temp_stage: %d, aging_stage: %d\n", temp_stage, aging_stage);
+
+	if ((temp_stage <= lbat_data->temp_max_stage) ||
+	(aging_stage <= lbat_data->aging_max_stage)) {
+		if (!lbat_data->lbat_thd_modify)
+			update_thresholds(temp_stage, aging_stage);
 	}
 
 	lbat_data->lbat_thd_modify = 0;
-	lbat_data->temp_cur_stage = 0;
-	lbat_data->temp_reg_stage = 0;
 	dev_notice(dev, "modify_enable: %d, temp_cur_stage = %d\n", lbat_data->lbat_thd_modify,
 		lbat_data->temp_cur_stage);
 
@@ -913,8 +1098,7 @@ static void psy_handler(struct work_struct *work)
 	int ret, temp, temp_stage, temp_thd, cycle = 0, i, aging_stage = 0;
 	static int last_temp = MAX_INT;
 	bool loop;
-	struct lbat_thd_tbl *thd_info;
-	unsigned int pre_thl_lv, cur_thl_lv, ag_offset, thl_lv_idx;
+	unsigned int pre_thl_lv, cur_thl_lv, thl_lv_idx;
 
 	if (!lbat_data)
 		return;
@@ -986,43 +1170,7 @@ static void psy_handler(struct work_struct *work)
 				decide_and_throttle(LBAT_INTR_1, lbat_data->lbat_lv[INTR_1], 0);
 			}
 
-			if (aging_stage == 0)
-				ag_offset = 0;
-			else
-				ag_offset = lbat_data->aging_volts[lbat_data->aging_max_stage * temp_stage +
-					aging_stage-1];
-
-			thd_info = &lbat_data->lbat_thd[INTR_1][temp_stage];
-			for (i = 0; i < thd_info->thd_volts_size; i++) {
-				thd_info->ag_thd_volts[i] = thd_info->thd_volts[i] + ag_offset;
-				thd_info->lbat_intr_info[i].ag_volt = thd_info->lbat_intr_info[i].volt + ag_offset;
-			}
-
-			lbat_data->temp_reg_stage = temp_stage;
-			lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_1],
-				thd_info->ag_thd_volts, thd_info->thd_volts_size);
-			dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
-#ifdef LBAT2_ENABLE
-			if (lbat_data->lbat_intr_num == 2) {
-				thd_info = &lbat_data->lbat_thd[INTR_2][temp_stage];
-				if (aging_stage == 0)
-					ag_offset = 0;
-				else
-					ag_offset = lbat_data->aging_volts[lbat_data->aging_max_stage * temp_stage +
-						aging_stage-1];
-
-				for (i = 0; i < thd_info->thd_volts_size; i++) {
-					thd_info->ag_thd_volts[i] = thd_info->thd_volts[i] + ag_offset;
-					thd_info->lbat_intr_info[i].ag_volt =
-						thd_info->lbat_intr_info[i].volt + ag_offset;
-				}
-
-				dual_lbat_user_modify_thd_ext_locked(
-					lbat_data->lbat_pt[INTR_2], thd_info->ag_thd_volts,
-					thd_info->thd_volts_size);
-				dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
-			}
-#endif
+			update_thresholds(temp_stage, aging_stage);
 		}
 		lbat_data->temp_cur_stage = temp_stage;
 		lbat_data->lbat_mbrain_info.temp_stage = temp_stage;
@@ -1060,7 +1208,7 @@ static int fill_thd_info(struct platform_device *pdev, struct lbat_thl_priv *pri
 	int last_volt_t_size = 0;
 
 	if (intr_no < 0 || intr_no >= INTR_MAX_NUM) {
-		dev_notice(&pdev->dev, "[%s] invalid intr_no %d\n", __func__, intr_no);
+		pr_notice("%s: invalid intr_no %d\n", __func__, intr_no);
 		return -EINVAL;
 	}
 
@@ -1075,51 +1223,54 @@ static int fill_thd_info(struct platform_device *pdev, struct lbat_thl_priv *pri
 		ret = check_duplicate(volt_l);
 		ret |= check_duplicate(volt_h);
 		if (ret < 0) {
-			dev_notice(&pdev->dev, "[%s] check duplicate error, %d\n", __func__, ret);
+			pr_notice("%s: check duplicate error\n", __func__);
 			return -EINVAL;
 		}
 
 		thd_info = &priv->lbat_thd[intr_no][i];
-		thd_info->thd_volts_size = max_thr_lv * 2;
-		thd_info->lbat_intr_info = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
-			sizeof(struct lbat_thd_tbl), GFP_KERNEL);
-		if (!thd_info->lbat_intr_info)
-			return -ENOMEM;
+		if (pdev!=NULL){
+			thd_info->thd_volts_size = max_thr_lv * 2;
+			thd_info->lbat_intr_info = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
+				sizeof(struct lbat_thd_tbl), GFP_KERNEL);
+			if (!thd_info->lbat_intr_info)
+				return -ENOMEM;
+		}
 
 		volt_t_size = rearrange_volt(thd_info->lbat_intr_info, &volt_l[0], &volt_h[0], max_thr_lv);
-
 		if (volt_t_size <= 0) {
-			dev_notice(&pdev->dev, "[%s] Failed to rearrange_volt\n", __func__);
+			pr_notice("[%s] Failed to rearrange_volt\n", __func__);
 			return -ENODATA;
 		}
 
 		// different temp stage volt size should be the same
 		if (i != 0 && last_volt_t_size != volt_t_size) {
-			dev_notice(&pdev->dev, "[%s] volt size should be the same, force trigger kernel panic\n",
-				__func__);
+			pr_notice("[%s] volt size should be the same, force trigger kernel panic\n", __func__);
 			BUG_ON(1);
 		}
 		last_volt_t_size = volt_t_size;
 
-		thd_info->thd_volts_size = volt_t_size;
-		thd_info->thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
-			sizeof(u32), GFP_KERNEL);
-		if (!thd_info->thd_volts)
-			return -ENOMEM;
+		if(pdev!=NULL){
+			thd_info->thd_volts_size = volt_t_size;
+			thd_info->thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
+				sizeof(u32), GFP_KERNEL);
+			if (!thd_info->thd_volts)
+				return -ENOMEM;
 
-		thd_info->ag_thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
-			sizeof(u32), GFP_KERNEL);
-		if (!thd_info->ag_thd_volts)
-			return -ENOMEM;
-
+			thd_info->ag_thd_volts = devm_kmalloc_array(&pdev->dev, thd_info->thd_volts_size,
+				sizeof(u32), GFP_KERNEL);
+			if (!thd_info->ag_thd_volts)
+				return -ENOMEM;
+		}
+		mutex_lock(&exe_thr_lock);
 		for (j = 0; j < volt_t_size; j++) {
 			thd_info->thd_volts[j] = thd_info->lbat_intr_info[j].volt;
 			thd_info->ag_thd_volts[j] = thd_info->lbat_intr_info[j].volt;
 		}
+		mutex_unlock(&exe_thr_lock);
 
-		dump_thd_volts(&pdev->dev, thd_info->thd_volts, thd_info->thd_volts_size);
+		dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
+
 	}
-
 	return 0;
 }
 
@@ -1289,6 +1440,143 @@ static int low_battery_thd_setting(struct platform_device *pdev, struct lbat_thl
 	return 0;
 }
 
+static int low_battery_thd_tbl_init(struct platform_device *pdev, struct lbat_thl_priv *priv)
+{
+	int ret, i;
+	struct device_node *np = pdev->dev.of_node;
+	char prop_name[64];
+
+	if (!np) {
+		switch_pt = false;
+		return -EINVAL;
+	}
+
+	voltage_table_data = devm_kzalloc(&pdev->dev, sizeof(struct lbat_voltage_table), GFP_KERNEL);
+	if (!voltage_table_data){
+		switch_pt = false;
+		return -ENOMEM;
+	}
+	voltage_table_data->selected_table = 0;
+
+	for (i = 0; i < lbat_tb_num; i++) {
+		int volt_size = LBAT_PMIC_MAX_LEVEL * (priv->temp_max_stage + 1);
+
+		// Read low voltage array
+		snprintf(prop_name, sizeof(prop_name), "bat%d-thd-volts-tb%d-l", priv->bat_type, i);
+		ret = of_property_read_u32_array(np, prop_name,
+						voltage_table_data->tables[i].low,
+						volt_size);
+		if (ret) {
+			pr_notice("Failed to read thd-volts-tb%d-l. Error: %d\n", i, ret);
+			switch_pt = false;
+			devm_kfree(&pdev->dev, voltage_table_data);
+			return -ENOMEM;
+		}
+		// Read high voltage array
+		snprintf(prop_name, sizeof(prop_name), "bat%d-thd-volts-tb%d-h", priv->bat_type, i);
+		ret = of_property_read_u32_array(np, prop_name,
+						voltage_table_data->tables[i].high,
+						volt_size);
+		if (ret) {
+			pr_notice("Failed to read thd-volts-tb%d-h. Error: %d\n", i, ret);
+			switch_pt = false;
+			devm_kfree(&pdev->dev, voltage_table_data);
+			return -ENOMEM;
+		}
+	}
+	switch_pt = true;
+	return 0;
+}
+
+static void switch_voltage_table(int table)
+{
+	struct lbat_thl_priv *priv = lbat_data;
+	u32 *volt_thd;
+	int volt_size, ret;
+	int temp_stage = get_temp_stage();
+	struct lbat_thd_tbl *thd_info;
+
+	volt_size = 2 * LBAT_PMIC_MAX_LEVEL * (priv->temp_max_stage + 1);
+	volt_thd = kmalloc_array(volt_size, sizeof(u32), GFP_KERNEL);
+
+	if (!volt_thd)
+		return;
+
+	// Copy low voltage thresholds
+	memcpy(volt_thd,
+		voltage_table_data->tables[table].low,
+		LBAT_PMIC_MAX_LEVEL * (priv->temp_max_stage + 1) * sizeof(u32));
+
+	// Copy high voltage thresholds
+	memcpy(volt_thd + LBAT_PMIC_MAX_LEVEL * (priv->temp_max_stage + 1),
+		voltage_table_data->tables[table].high,
+		LBAT_PMIC_MAX_LEVEL * (priv->temp_max_stage + 1) * sizeof(u32));
+
+#ifdef LBAT2_ENABLE
+	ret = fill_thd_info(NULL, priv, volt_thd, INTR_2);
+	thd_info = &lbat_data->lbat_thd[INTR_2][temp_stage];
+	lbat_data->temp_reg_stage = temp_stage;
+	lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_2],
+			thd_info->ag_thd_volts, thd_info->thd_volts_size);
+#else
+	ret = fill_thd_info(NULL, priv, volt_thd, INTR_1);
+	thd_info = &lbat_data->lbat_thd[INTR_1][temp_stage];
+	lbat_data->temp_reg_stage = temp_stage;
+	lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_1],
+			thd_info->ag_thd_volts, thd_info->thd_volts_size);
+#endif
+
+	dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
+	lbat_data->lbat_thd_modify = 0;
+
+	if (ret)
+		pr_info("Failed to switch voltage table. Error: %d\n", ret);
+	else
+		pr_info("Switched to voltage table %d\n", table);
+
+	kfree(volt_thd);
+}
+
+/*****************************************************************************
+ * switch low battery threshold table
+ ******************************************************************************/
+static ssize_t voltage_table_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	if (switch_pt == false) {
+		dev_info(dev, "not support switch_pt\n");
+		return -EINVAL;
+	}
+	return sprintf(buf, "%d\n", voltage_table_data->selected_table);
+}
+
+static ssize_t voltage_table_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int table;
+	char keyword[10];
+
+	if (switch_pt == false) {
+		dev_info(dev, "not support switch_pt\n");
+		return -EINVAL;
+	}
+	if (sscanf(buf, "%9s %d", keyword, &table) == 2) {
+		if (strcmp(keyword, "table_idx") == 0) {
+			if (table >= 0 && table < lbat_tb_num) {
+				voltage_table_data->selected_table = table;
+				switch_voltage_table(table);
+			} else {
+				pr_info("Invalid voltage table index.\n");
+			}
+		} else {
+			pr_info("Invalid keyword.\n");
+		}
+	} else {
+		pr_info("Invalid input format.\n");
+	}
+	return count;
+}
+
+static DEVICE_ATTR_RW(voltage_table);
+
 static int low_battery_register_setting(struct platform_device *pdev,
 		struct lbat_thl_priv *priv, enum LOW_BATTERY_INTR_TAG intr_type,
 		unsigned int temp_stage)
@@ -1336,6 +1624,13 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 	struct lbat_thl_priv *priv;
 	struct device_node *np = pdev->dev.of_node;
 
+	switch_pt = true;
+	ret = of_property_read_u32(np, "lbat-max-tb-num", &lbat_tb_num);
+	if (ret || lbat_tb_num < 0 || lbat_tb_num > MAX_TABLES) {
+		pr_notice("%s: get lbat_tb_num %d fail set to default %d\n", __func__, lbat_tb_num, ret);
+		lbat_tb_num = 1;
+		switch_pt = false;
+	}
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -1356,12 +1651,26 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 			"[%s] failed to get vbat-thd-enable ret=%d\n", __func__, ret);
 		vbat_thd_enable = 1;
 	}
-
+	if (switch_pt) {
+		VOLT_L_STR = "thd-volts-tb0-l";
+		VOLT_H_STR = "thd-volts-tb0-h";
+	} else {
+		VOLT_L_STR = "thd-volts-l";
+		VOLT_H_STR = "thd-volts-h";
+	}
 	if (vbat_thd_enable) {
 		ret = low_battery_thd_setting(pdev, priv);
 		if (ret) {
 			pr_info("[%s] low_battery_thd_setting error, ret=%d\n", __func__, ret);
 			return ret;
+		}
+
+		if(switch_pt != false){
+			ret = low_battery_thd_tbl_init(pdev, priv);
+			if (ret) {
+				pr_info("[%s] low_battery_thd_tbl_init error, ret=%d\n", __func__, ret);
+				switch_pt = false;
+			}
 		}
 
 		for (i = 0; i < priv->lbat_intr_num; i++) {
@@ -1423,6 +1732,8 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 		&dev_attr_low_battery_modify_threshold);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_low_battery_throttle_cnt);
+	ret |= device_create_file(&(pdev->dev),
+		&dev_attr_voltage_table);
 	if (ret) {
 		dev_notice(&pdev->dev, "create file error ret=%d\n", ret);
 		return ret;
