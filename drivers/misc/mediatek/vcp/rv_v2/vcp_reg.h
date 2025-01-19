@@ -219,4 +219,8 @@
 	#define VCP_AP_SUSPEND              (1U << 1)
 	#define MMUP_WARM_BOOT              (1U << 2)
 	#define VCP_WARM_BOOT               (1U << 3)
+
+/* vcp rdy */
+#define VLP_AO_RSVD7                    (vcpreg.vcp_vlp_ao_rsvd7)
+	#define READY_BIT                   (1U << 1)
 #endif
