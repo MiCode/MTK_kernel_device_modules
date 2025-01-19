@@ -12,7 +12,7 @@
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
-#include "../../misc/mediatek/smi/mtk-smi-dbg.h"
+#include "mtk-smi-dbg.h"
 
 #include <soc/mediatek/mmdvfs_v3.h>
 #define MAX_OPP_NUM (6)
@@ -20,7 +20,7 @@
 #define MAX_HOPPING_CLK_NUM (2)
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
-#include "../../misc/mediatek/mmp/mmprofile.h"
+#include "mmprofile.h"
 
 struct mmdvfs_mmp_events_t {
 	mmp_event mmdvfs;

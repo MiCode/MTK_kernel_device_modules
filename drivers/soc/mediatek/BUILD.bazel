@@ -144,3 +144,41 @@ define_platform_scpsys_ko("mt6983")
 define_platform_scpsys_ko("mt6985")
 define_platform_scpsys_ko("mt6989")
 define_platform_scpsys_ko("mt6855")
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs",
+    srcs = ["mtk-mmdvfs.c"],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs-v3",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_MMDVFS_VCP": {
+            True: ["mtk-mmdvfs-v3.c"],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:mtk-mmdebug-vcp-stub".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:v3_public_headers".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)

@@ -28,7 +28,7 @@
 
 #include "mtk-mmdvfs-v3-memory.h"
 
-#include "../../misc/mediatek/smi/mtk-smi-dbg.h"
+#include "mtk-smi-dbg.h"
 #include "mtk-smmu-v3.h"
 #include "mtk-mmdebug-vcp.h"
 

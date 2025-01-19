@@ -16,7 +16,7 @@
 #include <soc/mediatek/smi.h>
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-#include <aee.h>
+#include <mt-plat/aee.h>
 #endif
 
 #include "vcp_status.h"

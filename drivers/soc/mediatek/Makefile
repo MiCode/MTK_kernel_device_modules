@@ -6,6 +6,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdebug/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/
 ccflags-y += -I$(srctree)/drivers/soc/mediatek/
 obj-$(CONFIG_MTK_CMDQ) += mtk-cmdq-helper.o
@@ -26,9 +28,5 @@ obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS_MMSYS) += mtk-mmsys.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_DEVAPC) += devapc/
 obj-$(CONFIG_MTK_DEVMPU) += devmpu/
 obj-$(CONFIG_MTK_MMDVFS) += mmdvfs/
-obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs.o
-ifneq ($(filter y m,$(CONFIG_MTK_MMDVFS_VCP)),)
-obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs-v3.o
-endif
 obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS_MUTEX) += mtk-mutex.o
 obj-$(CONFIG_MTK_SOCINFO) += mtk-socinfo.o

@@ -36,7 +36,11 @@ struct mmdvfs_res_mbrain_debug_ops {
 	int (*get_data)(void *address, uint32_t size);
 };
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void);
+#else
+static inline struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void) { return NULL; }
+#endif
 void mtk_mmdvfs_debug_release_step0(void);
 void mtk_mmdvfs_debug_ulposc_enable(const bool enable);
 int mtk_mmdvfs_debug_force_vcore_notify(const u32 val);

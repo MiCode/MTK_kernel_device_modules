@@ -1,4 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
     default_visibility = [
@@ -18,14 +20,70 @@ filegroup(
 
 define_mgk_ddk_ko(
     name = "mtk-mmdvfs-debug",
-    srcs = [
-        "mtk-mmdvfs-debug.c",
+    srcs = ["mtk-mmdvfs-debug.c"],
+    hdrs = ["mtk-mmdvfs-debug.h"],
+    includes = ["."],
+)
+
+ddk_headers(
+    name = "v3_public_headers",
+    hdrs = ["mtk-mmdvfs-v3-memory.h"],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs-debug-v3",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_VCP_SUPPORT": {
+            True: ["mtk-mmdvfs-debug-v3.c"],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:mtk-mmdebug-vcp-stub".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-ftrace".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),
     ],
-    hdrs = [
-        "mtk-mmdvfs-debug.h",
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
-    includes = [
-        ".",
+)
+
+ddk_headers(
+    name = "v5_public_headers",
+    hdrs = ["mtk-mmdvfs-v5-memory.h"],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs-debug-v5",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_VCP_SUPPORT": {
+            True: ["mtk-mmdvfs-debug-v5.c"],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:mtk-mmdebug-vcp-stub".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-ftrace".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
 )
 
@@ -35,10 +93,6 @@ define_mgk_ddk_ko(
         "mtk-mmdvfs-ftrace.h",
         "mtk-mmdvfs-ftrace.c",
     ],
-    hdrs = [
-        "mmdvfs_events.h",
-    ],
-    includes = [
-        ".",
-    ],
+    hdrs = ["mmdvfs_events.h"],
+    includes = ["."],
 )
