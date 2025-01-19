@@ -11,6 +11,7 @@
 #include <linux/sysfs.h>
 #include <linux/printk.h>
 #include <linux/dev_printk.h>
+#include <linux/delay.h>
 
 #define inf_printf(fmt, args...)	pr_info("[edma][inf] " fmt, ##args)
 #define dbg_printf(fmt, args...)	pr_info("[edma][dbg][%s] " fmt, __func__, ##args)
@@ -78,7 +79,9 @@ static void val_update(int type, u32 val)
 static int edma_ipi_send(int type, u32 val)
 {
 	static struct edma_ipi_data ipi_data;
+	int i;
 	int ret;
+	int retry_cnt = 10;
 
 	if (!edma_tx_rpm_dev.ept)
 		return 0;
@@ -96,7 +99,17 @@ static int edma_ipi_send(int type, u32 val)
 		goto exit;
 	}
 
-	ret = rpmsg_send(edma_tx_rpm_dev.ept, &ipi_data, sizeof(ipi_data));
+	for (i=0 ; i<retry_cnt ; i++) {
+		ret = rpmsg_send(edma_tx_rpm_dev.ept, &ipi_data, sizeof(ipi_data));
+
+		if (ret == -EBUSY || ret == -EAGAIN) {
+			pr_info("%s: re-send ipi(retry_cnt = %d/%d)\n", __func__, i, retry_cnt);
+			mdelay(50);
+			continue;
+		}
+		break;
+	}
+
 	if (ret) {
 		int res;
 
