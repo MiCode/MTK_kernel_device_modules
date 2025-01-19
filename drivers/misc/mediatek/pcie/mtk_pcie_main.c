@@ -1435,7 +1435,7 @@ static int __init mtk_pcie_test_init(void)
 {
 	struct cdev *dev_ctx;
 	struct device_node *np;
-	dev_t dev;
+	dev_t dev = 0;
 	int ret, size, i, j;
 
 	pcie_smt = kzalloc(sizeof(*pcie_smt), GFP_KERNEL);

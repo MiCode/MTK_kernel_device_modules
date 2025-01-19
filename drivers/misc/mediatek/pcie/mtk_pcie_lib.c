@@ -139,7 +139,7 @@ static int mtk_pcie_change_speed(struct pci_dev *dev, int speed)
 	int pos = 0, ori_speed = 0, ret = 0;
 	u16 linksta = 0;
 
-	if (speed >= MTK_SPEED_MAX) {
+	if (speed >= MTK_SPEED_MAX || speed < 0) {
 		pr_info("change speed %d exceeds maximum %d\n", speed, MTK_SPEED_MAX);
 		return -EINVAL;
 	}
