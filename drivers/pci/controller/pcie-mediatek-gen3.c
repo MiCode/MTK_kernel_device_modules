@@ -207,6 +207,9 @@
 
 #define PCIE_AXI_IF_CTRL		0x1a8
 #define PCIE_AXI0_SLV_RESP_MASK		BIT(12)
+#define PCIE_CPLTO_SCALE_R2_L		16
+#define PCIE_CPLTO_SCALE_R5_L		20
+#define PCIE_SW_CPLTO_TIMER		GENMASK(25, 16)
 #define CPLTO_ALWAYS_EN			BIT(26)
 #define WR_CPLTO_ALWAYS_EN		BIT(27)
 
@@ -246,8 +249,11 @@
 /* pcie read completion timeout */
 #define PCIE_CONF_DEV2_CTL_STS		0x10a8
 #define PCIE_DCR2_CPL_TO		GENMASK(3, 0)
+#define PCIE_CPL_TIMEOUT_50MS		0x0
 #define PCIE_CPL_TIMEOUT_64US		0x1
 #define PCIE_CPL_TIMEOUT_4MS		0x2
+#define PCIE_CPL_TIMEOUT_32MS		0x5
+#define PCIE_CPLTO_SCALE_29MS		29
 
 #define PCIE_CONF_EXP_LNKCTL2_REG	0x10b0
 
@@ -745,6 +751,53 @@ static void mtk_pcie_clkbuf_force_26m(struct mtk_pcie_port *port, bool enable)
 	mtk_pcie_dump_pextp_info(port);
 }
 
+/*
+ * mtk_pcie_adjust_cplto_scale() - Adujst cplto timeout
+ * @port: PCIe port information
+ * @cplto: modify the Completion Timeout value(ms)
+ * R2_1MS_10M/R5_16MS_55MS: the two ranges have adjustable precision by 0x1a8.
+ */
+static void mtk_pcie_adjust_cplto_scale(struct mtk_pcie_port *port, u32 cplto)
+{
+	u32 range = 0, scale = 0, value = 0;
+
+	if (!port)
+		return;
+
+	if (cplto >= 1 && cplto <= 10) {
+		range = R2_1MS_10MS;
+	} else if (cplto >= 16 && cplto <= 55) {
+		range = R5_16MS_55MS;
+	} else {
+		dev_info(port->dev, "Completion timeout value %d out of range\n", cplto);
+		return;
+	}
+
+	value = readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS);
+	value &= ~PCIE_DCR2_CPL_TO;
+	scale = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+	scale &= ~PCIE_SW_CPLTO_TIMER;
+
+	switch (range) {
+	case R2_1MS_10MS:
+		value |= PCIE_CPL_TIMEOUT_4MS;
+		scale |= cplto << PCIE_CPLTO_SCALE_R2_L;
+		break;
+	case R5_16MS_55MS:
+		value |= PCIE_CPL_TIMEOUT_32MS;
+		scale |= cplto << PCIE_CPLTO_SCALE_R5_L;
+		break;
+	default:
+		dev_info(port->dev, "Undefined range: %d\n", range);
+	}
+
+	writel_relaxed(value, port->base + PCIE_CONF_DEV2_CTL_STS);
+	writel_relaxed(scale, port->base + PCIE_AXI_IF_CTRL);
+	dev_info(port->dev, "PCIe RC control 2 register=%#x, precision of timeout=%#x\n",
+		readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS),
+		readl_relaxed(port->base + PCIE_AXI_IF_CTRL));
+}
+
 static int mtk_pcie_set_link_speed(struct mtk_pcie_port *port)
 {
 	u32 val;
@@ -870,15 +923,8 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	val |= PCIE_AXI_POST_ERR_ENABLE;
 	writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
 
-	if (port->pextpcfg) {
-		/* PCIe read completion timeout is adjusted to 4ms */
-		val = readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS);
-		val &= ~PCIE_DCR2_CPL_TO;
-		val |= PCIE_CPL_TIMEOUT_4MS;
-		writel_relaxed(val, port->base + PCIE_CONF_DEV2_CTL_STS);
-		dev_info(port->dev, "PCIe RC control 2 register=%#x",
-			readl_relaxed(port->base + PCIE_CONF_DEV2_CTL_STS));
-	}
+	/* PCIe read completion timeout is adjusted to 4ms */
+	mtk_pcie_adjust_cplto_scale(port, PCIE_CPL_TIMEOUT_4MS);
 
 	if (port->data && port->data->post_init) {
 		err = port->data->post_init(port);
@@ -3032,6 +3078,9 @@ static int mtk_pcie_post_init_6991(struct mtk_pcie_port *port)
 		val = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
 		val |= PCIE_AER_EVT_EN;
 		writel_relaxed(val, port->base + PCIE_INT_ENABLE_REG);
+
+		/* Adujst port1 completion timeout to 29ms */
+		mtk_pcie_adjust_cplto_scale(port, PCIE_CPLTO_SCALE_29MS);
 	}
 
 	return 0;
