@@ -99,7 +99,7 @@ static void timesync_sync_base_internal(unsigned int flag)
 {
 	u64 tick, ts;
 	unsigned long irq_flags = 0;
-	int freeze, unfreeze;
+	int freeze;
 
 	spin_lock_irqsave(&timesync_ctx.lock, irq_flags);
 
@@ -110,7 +110,6 @@ static void timesync_sync_base_internal(unsigned int flag)
 	timesync_ctx.base_ts = ts;
 
 	freeze = (flag & TIMESYNC_FLAG_FREEZE) ? 1 : 0;
-	unfreeze = (flag & TIMESYNC_FLAG_UNFREEZE) ? 1 : 0;
 
 	/* sync with mcupm */
 	mcupm_ts_update(freeze, tick, ts);
