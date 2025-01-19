@@ -3,6 +3,7 @@
  * Copyright (c) 2022 MediaTek Inc.
  */
 
+#undef pr_fmt
 #define pr_fmt(fmt) "[touch_boost]"fmt
 
 #include <linux/proc_fs.h>
