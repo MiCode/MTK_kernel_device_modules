@@ -356,6 +356,30 @@ static int region_base_free(struct secure_heap_region *sec_heap,
 		 atomic64_read(&sec_heap->total_size));
 	return ret;
 }
+/* Merge SMMU normal VM page table into large page, when exit secure feature */
+static void pkvm_smmu_merge_page_table(void)
+{
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
+	struct arm_smccc_res res;
+	static uint32_t hvc_id_merge_table;
+	int ret = 0;
+
+	if (!hvc_id_merge_table) {
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_SMMU_PAGE_TABLE_MERGE, 0, 0,
+				  0, 0, 0, 0, &res);
+		hvc_id_merge_table = res.a1;
+	}
+
+	if (hvc_id_merge_table != 0) {
+		ret = pkvm_el2_mod_call(hvc_id_merge_table);
+
+		if (ret != 0)
+			pr_info("hvc_id=%#x smmu_ret=%x\n", hvc_id_merge_table,
+				ret);
+	} else
+		pr_info("%s hvc is invalid\n", __func__);
+#endif
+}
 
 static int page_base_free_v2(struct secure_heap_page *sec_heap,
 			     struct mtk_sec_heap_buffer *buffer)
@@ -437,8 +461,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 				pr_debug("%#4x: %#32x ", i, bitmap[i]);
 		}
 		if (is_pkvm_enabled()) {
-			/* pkvm doesn't need to merge cpu pgtbl, so directly do nothing */
-			pr_info("%s: pkvm already merged the cpu pgtbl\n", __func__);
+			pkvm_smmu_merge_page_table();
 		} else {
 			arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
 					0, 0, 0, 0, 0, 0, &smc_res);

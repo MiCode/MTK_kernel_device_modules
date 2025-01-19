@@ -39,6 +39,8 @@ static int smmu_vm_info_probe_handler;
 static int mtk_iommu_init_handler;
 /* SMMU finalise */
 static int smmu_finalise_handler;
+/* SMMU page table merge */
+static int smmu_page_table_merge;
 
 unsigned int smmu_device_num;
 
@@ -582,40 +584,46 @@ void smmu_setup_hvc(void)
 void smmu_host_hvc(void)
 {
 	struct arm_smccc_res res;
-
+	/* register page base smmu mapping function into HYP */
 	smmu_s2_protect_mapping = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(mtk_smmu_secure_v2), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_SMMU_SEC_MAP,
 			  smmu_s2_protect_mapping, 0, 0, 0, 0, &res);
-
+	/* register page base smmu unmapping function into HYP */
 	smmu_s2_protect_unmapping = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(mtk_smmu_unsecure_v2), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_UNMAP, smmu_s2_protect_unmapping, 0, 0, 0, 0, &res);
-
+	/* register region base smmu mapping function into HYP */
 	smmu_s2_protect_region_mapping = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(mtk_smmu_secure), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_REGION_MAP,
 			  smmu_s2_protect_region_mapping, 0, 0, 0, 0, &res);
-
+	/* register region base smmu unmapping function into HYP */
 	smmu_s2_protect_region_unmapping = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(mtk_smmu_unsecure), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_SEC_REGION_UNMAP,
 			  smmu_s2_protect_region_unmapping, 0, 0, 0, 0, &res);
-
+	/* register function of host share smmu structure to hyp into HYP */
 	smmu_share = pkvm_register_el2_mod_call(kvm_nvhe_sym(mtk_smmu_share),
 						pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_MEM_SHARE, smmu_share, 0, 0, 0,
 			  0, &res);
-
+	/* register host smmu debug function into HYP */
 	smmu_host_debug = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(mtk_smmu_host_debug), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_DEBUG_DUMP, smmu_host_debug, 0,
 			  0, 0, 0, &res);
+	/* register merge smmu s2 page table function into HYP */
+	smmu_page_table_merge = pkvm_register_el2_mod_call(
+		__kvm_nvhe_smmu_merge_s2_table, pkvm_module_token);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+			  SMC_ID_MTK_PKVM_SMMU_PAGE_TABLE_MERGE,
+			  smmu_page_table_merge, 0, 0, 0, 0, &res);
 }
 
 void smmu_alloc_memory(struct mpt *mpt, unsigned long long target_page_counts,
