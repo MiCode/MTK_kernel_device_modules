@@ -931,11 +931,18 @@ static void mtk_jpeg_dvfs_end(struct mtk_jpeg_ctx *ctx)
 		}
 		pr_info("%s  volt: %d --\n", __func__, volt);
 	} else if (jpeg->jpegenc_mmdvfs_clk) {
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(true, jpeg->mmdvfs_vcp_idx);
+
 		ret = clk_set_rate(jpeg->jpegenc_mmdvfs_clk, active_freq);
 		if (ret) {
 			pr_info("%s Failed to set freq %lu\n",
 				 __func__, active_freq);
 		}
+
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(false, jpeg->mmdvfs_vcp_idx);
+
 		pr_info("%s  freq: %lu\n", __func__, active_freq);
 	}
 }
