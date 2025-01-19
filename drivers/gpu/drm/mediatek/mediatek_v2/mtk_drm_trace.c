@@ -54,23 +54,38 @@ void mtk_drm_print_trace(char *fmt, ...)
 	tracing_mark_write(buf);
 }
 
+/*bool drm_trace_is_on(void)
+{
+	return g_trace_log && tracing_is_on();
+}*/
+
 void drm_trace_tag_start(const char *tag)
 {
 	if (g_trace_log)
-		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 1);
+		mtk_drm_print_trace("C|%d|%s|1\n", DRM_TRACE_ID, tag);
 }
 
 void drm_trace_tag_end(const char *tag)
 {
 	if (g_trace_log)
-		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
+		mtk_drm_print_trace("C|%d|%s|0\n", DRM_TRACE_ID, tag);
+}
+
+void drm_trace_tag_start_byid(const char *tag, int id)
+{
+	mtk_drm_print_trace("C|%d|%s%d|1\n", DRM_TRACE_ID, tag, id);
+}
+
+void drm_trace_tag_end_byid(const char *tag, int id)
+{
+	mtk_drm_print_trace("C|%d|%s%d|0\n", DRM_TRACE_ID, tag, id);
 }
 
 void drm_trace_tag_mark(const char *tag)
 {
 	if (g_trace_log) {
-		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 1);
-		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
+		mtk_drm_print_trace("C|%d|%s|1\n", DRM_TRACE_ID, tag);
+		mtk_drm_print_trace("C|%d|%s|0\n", DRM_TRACE_ID, tag);
 	}
 }
 
@@ -78,7 +93,65 @@ void drm_trace_tag_value(const char *tag, unsigned long value)
 {
 	if (g_trace_log) {
 		mtk_drm_print_trace("C|%d|%s|%lu\n", DRM_TRACE_ID, tag, value);
-		mtk_drm_print_trace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
+		mtk_drm_print_trace("C|%d|%s|0\n", DRM_TRACE_ID, tag);
+	}
+}
+
+void drm_trace_tag_value_byid(const char *tag, unsigned long value, int id)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s%d|%lu\n", DRM_TRACE_ID, tag, id, value);
+		mtk_drm_print_trace("C|%d|%s%d|0\n", DRM_TRACE_ID, tag, id);
+	}
+}
+
+void drm_trace_tag_value_state(const char *tag, unsigned long value)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s|%lu\n", DRM_TRACE_ID, tag, value);
+	}
+}
+
+void drm_trace_tag_value_state_byid(const char *tag, unsigned long value, int id)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s%d|%lu\n", DRM_TRACE_ID, tag, id, value);
+	}
+}
+
+void drm_trace_tag_value64(const char *tag, unsigned long long value)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s|%llu\n", DRM_TRACE_ID, tag, value);
+		mtk_drm_print_trace("C|%d|%s|0\n", DRM_TRACE_ID, tag);
+	}
+}
+
+void drm_trace_tag_value64_state(const char *tag, unsigned long long value)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s|%llu\n", DRM_TRACE_ID, tag, value);
+	}
+}
+
+void drm_trace_tag_value64_state_byid(const char *tag, unsigned long long value, int id)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("C|%d|%s%d|%llu\n", DRM_TRACE_ID, tag, id, value);
+	}
+}
+
+void drm_trace_tag_name_begin(const char *name)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("B|%d|%s\n", DRM_TRACE_ID, name);
+	}
+}
+
+void drm_trace_tag_name_end(const char */*name*/)
+{
+	if (g_trace_log) {
+		mtk_drm_print_trace("E|%d\n", DRM_TRACE_ID);
 	}
 }
 

@@ -52,11 +52,22 @@ extern unsigned int g_trace_log;
 } while (0)
 
 void mtk_drm_print_trace(char *fmt, ...);
+//bool drm_trace_is_on(void);
 void drm_trace_tag_start(const char *tag);
 void drm_trace_tag_end(const char *tag);
+void drm_trace_tag_start_byid(const char *tag, int id);
+void drm_trace_tag_end_byid(const char *tag, int id);
 void drm_trace_tag_mark(const char *tag);
 void drm_trace_tag_mark_bycrtc(const char *tag, int crtc_index);
 void drm_trace_tag_value(const char *tag, unsigned long value);
+void drm_trace_tag_value_byid(const char *tag, unsigned long value, int id);
+void drm_trace_tag_value_state(const char *tag, unsigned long value);
+void drm_trace_tag_value_state_byid(const char *tag, unsigned long value, int id);
+void drm_trace_tag_value64(const char *tag, unsigned long long value);
+void drm_trace_tag_value64_state(const char *tag, unsigned long long value);
+void drm_trace_tag_value64_state_byid(const char *tag, unsigned long long value, int id);
+void drm_trace_tag_name_begin(const char *name);
+void drm_trace_tag_name_end(const char *name);
 void mtk_drm_refresh_tag_start(struct mtk_ddp_comp *ddp_comp);
 void mtk_drm_refresh_tag_end(struct mtk_ddp_comp *ddp_comp);
 void MMPathTraceDRM(struct mtk_ddp_comp *ddp_comp);
