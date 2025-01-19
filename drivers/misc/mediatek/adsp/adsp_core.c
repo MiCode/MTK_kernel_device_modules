@@ -15,7 +15,7 @@
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
-// #include <mt-plat/mtk_irq_mon.h>
+#include <mt-plat/mtk_irq_mon.h>
 #include "adsp_clk.h"
 #include "adsp_timesync.h"
 #include "adsp_semaphore.h"
@@ -301,13 +301,13 @@ static irqreturn_t adsp_irq_top_handler(int irq, void *data)
 	pdata->clear_irq(pdata->cid);
 
 #ifndef CFG_FPGA
-	// irq_log_store();
+	irq_log_store();
 #endif
 	if (pdata->irq_cb)
 		pdata->irq_cb(irq, pdata->data, pdata->cid);
 
 #ifndef CFG_FPGA
-	// irq_log_store();
+	irq_log_store();
 #endif
 	/* wake up bottom half if necessary */
 	return pdata->thread_fn ? IRQ_WAKE_THREAD : IRQ_HANDLED;

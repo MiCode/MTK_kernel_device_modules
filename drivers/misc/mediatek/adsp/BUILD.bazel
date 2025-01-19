@@ -63,9 +63,10 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
-	],
+    ],
 )

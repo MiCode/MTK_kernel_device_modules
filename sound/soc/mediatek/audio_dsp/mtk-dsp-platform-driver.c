@@ -23,7 +23,7 @@
 #include "mtk-dsp-platform-driver.h"
 #include "mtk-base-afe.h"
 
-// #include <mt-plat/mtk_irq_mon.h>
+#include <mt-plat/mtk_irq_mon.h>
 #include <linux/tracepoint.h>
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
 #include "mtk-dsp-platform-driver-auto.h"
@@ -1064,13 +1064,13 @@ static void mtk_dsp_dl_consume_handler(struct mtk_base_dsp *dsp,
 	dump_rbuf_s("dl_consume after sync", &dsp->dsp_mem[id].ring_buf);
 #endif
 	/* notify subsream */
-	// irq_log_store();
+	irq_log_store();
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_VHOST_ADSP)
 	guest_adsp_irq_notify(0, get_dspscene_by_dspdaiid(id), 0);
 #else
 	snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
 #endif
-	// irq_log_store();
+	irq_log_store();
 }
 
 static void mtk_dsp_ul_handler(struct mtk_base_dsp *dsp,
@@ -1540,11 +1540,11 @@ static int mtk_dsp_stop(struct snd_pcm_substream *substream,
 	/* Avoid print log in alsa stop. If underflow happens,
 	 * log will be printed in ISR.
 	 */
-	// irq_log_store();
+	irq_log_store();
 	ret = mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_MSG_ONLY,
 			       AUDIO_IPI_MSG_DIRECT_SEND, AUDIO_DSP_TASK_STOP,
 			       1, 0, NULL);
-	// irq_log_store();
+	irq_log_store();
 	return ret;
 }
 
