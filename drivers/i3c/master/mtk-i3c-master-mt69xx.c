@@ -18,6 +18,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/spinlock.h>
 #include <linux/timekeeping.h>
 
 #define I3C_M_RD                      BIT(0)
@@ -131,6 +132,7 @@
 
 /* Reference to core layer timeout (ns) */
 #define I3C_POLLING_TIMEOUT (50000000)
+#define I3C_ENTDAA_TIMEOUT  (2000000)
 
 #ifdef I3C_ADDR_SLOT_STATUS_BITS
 #define MTK_I3C_ADDR_SLOT_STATUS_BITS (I3C_ADDR_SLOT_STATUS_BITS)
@@ -374,6 +376,7 @@ struct mtk_i3c_master {
 	bool fifo_use_pulling;
 	bool priv_xfer_wo7e;
 	bool no_hdr_exit;
+	bool entdaa_use_irq;
 	struct mtk_i3c_speed_reg i2c_speed;
 	struct mtk_i3c_speed_reg b_ccc_speed;
 	struct mtk_i3c_speed_reg with7e_speed;
@@ -382,6 +385,7 @@ struct mtk_i3c_master {
 	struct mtk_i3c_xfer xfer;
 	struct rt_mutex bus_lock;
 	struct completion msg_complete;
+	spinlock_t entdaa_lock;
 	int timeout; /* in jiffies */
 	u8 entdaa_last_addr;
 	u32 entdaa_count;
@@ -417,6 +421,9 @@ LIST_HEAD(g_mtk_i3c_list);
 		}	\
 	} while (0)
 
+
+static int mtk_i3c_master_send_ccc_locked_checked(struct mtk_i3c_master *i3c,
+				      struct i3c_ccc_cmd *cmd);
 
 static inline struct mtk_i3c_master *
 to_mtk_i3c_master(struct i3c_master_controller *master)
@@ -1729,14 +1736,17 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 	u32 control_reg = 0;
 	u32 traffic_reg = 0;
 	u32 shape_reg = 0;
-	u32 start_reg = 0;
 
 	if (mtk_i3c_readl(i3c, OFFSET_TIMING) == 0)
 		mtk_i3c_init_hw(i3c);
 	else if (xfer->dma_en) {
 		writel(I3C_DMA_RST_HANDSHAKE, i3c->pdmabase + OFFSET_RST);
+		/* make sure I3C_DMA_RST_HANDSHAKE complete */
+		mb();
 		writel(I3C_DMA_RST_CLR, i3c->pdmabase + OFFSET_RST);
 		mtk_i3c_writel(i3c, I3C_RST_HANDSHAKE, OFFSET_SOFTRESET);
+		/* make sure I3C_RST_HANDSHAKE complete */
+		mb();
 		mtk_i3c_writel(i3c, I3C_RST_CLR, OFFSET_SOFTRESET);
 		udelay(1);
 	}
@@ -1936,14 +1946,72 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 	}
 	/* All register must be prepared before setting the start bit [SMP] */
 	mb();
-	if ((xfer->mode == MTK_I3C_CCC_MODE) && (xfer->ccc_id == I3C_CCC_ENTDAA))
-		start_reg = I3C_START_TRANSAC | I3C_START_RS_MUL_CONFIG | I3C_START_RS_MUL_TRIG;
-	else
-		start_reg = I3C_START_TRANSAC;
-	mtk_i3c_writel(i3c, start_reg, OFFSET_START);
-	/* make sure start complete */
-	mb();
 	return 0;
+}
+
+static unsigned long wait_for_entdaa_timeout(struct mtk_i3c_master *i3c)
+{
+	unsigned long time_left = 0;
+	u64 cur_time = 0;
+	u32 intr_mask = 0;
+	int free_addr = 0;
+	u8 def_da = 0;
+
+	if (i3c->entdaa_count == 0)
+		intr_mask = I3C_INTR_RS| I3C_INTR_IBI | I3C_INTR_HS_ACKERR |
+			I3C_INTR_ACKERR | I3C_INTR_COMP;
+	else
+		intr_mask = I3C_INTR_COMP | I3C_INTR_IBI | I3C_INTR_RS;
+	//polling
+	cur_time = ktime_get_ns();
+	while (!(mtk_i3c_readl(i3c, OFFSET_INTR_STAT) & intr_mask) &&
+		((ktime_get_ns() - cur_time) < I3C_ENTDAA_TIMEOUT))
+		cpu_relax();
+	/* make sure memory order */
+	mb();
+	i3c->irq_stat = mtk_i3c_readl(i3c, OFFSET_INTR_STAT);
+	mtk_i3c_writel(i3c, i3c->irq_stat, OFFSET_INTR_STAT);
+	if (i3c->irq_stat & I3C_INTR_RS) {
+		/* judgment ackerr to deal last 7e nack */
+		if (i3c->irq_stat & (I3C_INTR_ACKERR | I3C_INTR_COMP)) {
+			i3c->state = MTK_I3C_MASTER_IDLE;
+			return 1;
+		}
+		if (i3c->entdaa_count >= (MTK_I3C_MAX_DEVS - 1)) {
+			I3C_DUMP_BUF(i3c->entdaa_addr, MTK_I3C_MAX_DEVS,
+				"poll_entdaa_count=%u,addr:", i3c->entdaa_count);
+			I3C_DUMP_BUF(i3c->addrs, MTK_I3C_MAX_DEVS,
+				"poll_free_pos=0x%x,addr:", i3c->free_pos);
+			return 0;
+		}
+		mtk_i3c_writel(i3c, I3C_FIFO_CLR_ALL, OFFSET_FIFO_ADDR_CLR);
+		free_addr = i3c_master_get_free_addr(&i3c->base, i3c->entdaa_last_addr + 1);
+		if (free_addr < 0) {
+			mtk_i3c_init_hw(i3c);
+			dev_info(i3c->dev, "[%s] poll entdaa get_free_addr fail! addr=0x%x.\n",
+				__func__, i3c->entdaa_last_addr);
+			return 0;
+		}
+		def_da = free_addr & 0x7f;
+		i3c->entdaa_addr[i3c->entdaa_count++] = def_da;
+		i3c->entdaa_last_addr = def_da;
+		mtk_i3c_writel(i3c, I3C_DEFDA_DAA_SLV_PARITY | I3C_DEFDA_USE_DEF_DA |
+			def_da, OFFSET_DEF_DA);
+		/* make sure register ready before start */
+		mb();
+		mtk_i3c_writel(i3c, I3C_START_TRANSAC | I3C_START_RS_MUL_CONFIG |
+			I3C_START_RS_MUL_TRIG, OFFSET_START);
+		/* make sure start complete */
+		mb();
+		return wait_for_entdaa_timeout(i3c);
+	}
+	if (i3c->irq_stat & (I3C_INTR_IBI))
+		return 1;
+	if (i3c->irq_stat & (I3C_INTR_COMP))
+		time_left = 1;
+	i3c->state = MTK_I3C_MASTER_IDLE;
+
+	return time_left;
 }
 
 static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *xfer)
@@ -1952,7 +2020,10 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 	u32 read_mask = 0;
 	int ret = 0;
 	unsigned long time_left = 0;
+	unsigned long flags;
 	u64 cur_time = 0;
+	u64 entdaa_spin_lock_time = 0;
+	u64 entdaa_spin_unlock_time = 0;
 
 	i3c->irq_stat = 0;
 	xfer->error = I3C_ERROR_UNKNOWN;
@@ -1987,17 +2058,35 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 	//if (xfer->dma_en)
 	//	intr_mask_reg |= I3C_INTR_DMA;
 
-	//ENTDAA using irq mode
 	if ((xfer->mode == MTK_I3C_CCC_MODE) && (xfer->ccc_id == I3C_CCC_ENTDAA)) {
-		mtk_i3c_writel(i3c, intr_mask_reg | I3C_INTR_RS, OFFSET_INTR_MASK);
-		time_left = wait_for_completion_timeout(&i3c->msg_complete, i3c->timeout);
+		if (i3c->entdaa_use_irq) {
+			mtk_i3c_writel(i3c, I3C_START_TRANSAC | I3C_START_RS_MUL_CONFIG |
+				I3C_START_RS_MUL_TRIG, OFFSET_START);
+			/* make sure start complete */
+			mb();
+			mtk_i3c_writel(i3c, intr_mask_reg | I3C_INTR_RS, OFFSET_INTR_MASK);
+			time_left = wait_for_completion_timeout(&i3c->msg_complete, i3c->timeout);
+		} else {
+			spin_lock_irqsave(&i3c->entdaa_lock, flags);
+			entdaa_spin_lock_time = ktime_get_ns();
+			mtk_i3c_writel(i3c, I3C_START_TRANSAC | I3C_START_RS_MUL_CONFIG |
+				I3C_START_RS_MUL_TRIG, OFFSET_START);
+			/* make sure start complete */
+			mb();
+			time_left = wait_for_entdaa_timeout(i3c);
+			entdaa_spin_unlock_time = ktime_get_ns();
+			spin_unlock_irqrestore(&i3c->entdaa_lock, flags);
+		}
+
 		read_mask = mtk_i3c_readl(i3c, OFFSET_INTR_MASK);
 		/* make sure read intr_mask done */
 		mb();
 		mtk_i3c_writel(i3c, 0, OFFSET_INTR_MASK);
-		dev_info(i3c->dev, "[%s] irq_stat=0x%x,mask=0x%x,0x%x,daa_cnt=%u,last_addr=0x%x\n",
+		dev_info(i3c->dev, "[%s] sta=0x%x,msk=0x%x,0x%x,cnt=%u,ladd=0x%x,spin_t=%llu,%llu\n",
 			__func__, i3c->irq_stat, intr_mask_reg, read_mask,
-			i3c->entdaa_count, i3c->entdaa_last_addr);
+			i3c->entdaa_count, i3c->entdaa_last_addr,
+			(entdaa_spin_unlock_time - entdaa_spin_lock_time) / 1000,
+			entdaa_spin_lock_time / 1000);
 		if ((time_left == 0) || (i3c->irq_stat & I3C_INTR_IBI)) {
 			I3C_DUMP_BUF(i3c->entdaa_addr, MTK_I3C_MAX_DEVS,
 				"entdaa_count=%u,addr:", i3c->entdaa_count);
@@ -2026,6 +2115,9 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 		}
 		mtk_i3c_init_hw(i3c);
 	} else {
+		mtk_i3c_writel(i3c, I3C_START_TRANSAC, OFFSET_START);
+		/* make sure start complete */
+		mb();
 		mtk_i3c_writel(i3c, intr_mask_reg, OFFSET_INTR_MASK);
 		if (intr_mask_reg) {
 			time_left = wait_for_completion_timeout(&i3c->msg_complete, i3c->timeout);
@@ -2259,6 +2351,9 @@ static void mtk_i3c_master_detach_i3c_dev(struct i3c_dev_desc *dev)
 static int mtk_i3c_master_daa(struct i3c_master_controller *m)
 {
 	struct mtk_i3c_master *i3c = to_mtk_i3c_master(m);
+	struct i3c_ccc_cmd_dest dest;
+	struct i3c_ccc_cmd cmd;
+	int disec_ret = 0;
 	int ret = 0;
 	u32 pos = 0;
 	u8 daa_data[9];
@@ -2284,16 +2379,32 @@ static int mtk_i3c_master_daa(struct i3c_master_controller *m)
 	i3c->entdaa_last_addr = 0;
 	i3c->entdaa_count = 0;
 	ret = mtk_i3c_do_transfer(i3c, &(i3c->xfer));
-	mtk_i3c_unlock_bus(i3c);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s] error! ret=%d\n", __func__, ret);
+		//Send Direct DISEC
+		for (pos = 0; pos < i3c->entdaa_count; pos++) {
+			i3c_ccc_cmd_dest_init(&dest, i3c->entdaa_addr[pos], 0);
+			i3c_ccc_cmd_init(&cmd, false, I3C_CCC_RSTDAA(false), &dest, 1);
+			disec_ret = mtk_i3c_master_send_ccc_locked_checked(i3c, &cmd);
+			dev_info(i3c->dev, "[%s] disec_ret=%d,pos=%u,addr=0x%x,cnt=%u\n",
+				__func__, disec_ret, pos, i3c->entdaa_addr[pos], i3c->entdaa_count);
+			if (disec_ret) {
+				disec_ret = mtk_i3c_master_send_ccc_locked_checked(i3c, &cmd);
+				dev_info(i3c->dev, "[%s] try_ret=%d,pos=%u,addr=0x%x,cnt=%u\n",
+					__func__, disec_ret, pos, i3c->entdaa_addr[pos],
+					i3c->entdaa_count);
+			}
+			i3c_ccc_cmd_dest_cleanup(&dest);
+		}
+		mtk_i3c_unlock_bus(i3c);
 		return ret;
 	}
+	mtk_i3c_unlock_bus(i3c);
 
 	for (pos = 0; pos < i3c->entdaa_count; pos++) {
 		ret = i3c_master_add_i3c_dev_locked(m, i3c->entdaa_addr[pos]);
 		if (ret) {
-			dev_info(i3c->dev, "[%s] add_i3c_dev error! pos=%d,addr=0x%x,count=%d\n",
+			dev_info(i3c->dev, "[%s] add_i3c_dev error! pos=%u,addr=0x%x,count=%u\n",
 				__func__, pos, i3c->entdaa_addr[pos], i3c->entdaa_count);
 			return ret;
 		}
@@ -2380,21 +2491,11 @@ static bool mtk_i3c_master_supports_ccc_cmd(struct i3c_master_controller *m,
 	return true;
 }
 
-static int mtk_i3c_master_send_ccc_cmd(struct i3c_master_controller *m,
+static int mtk_i3c_master_send_ccc_locked_checked(struct mtk_i3c_master *i3c,
 				      struct i3c_ccc_cmd *cmd)
 {
-	struct mtk_i3c_master *i3c = to_mtk_i3c_master(m);
 	int ret = 0;
 	u8 ccc_daa_data[9];
-
-	mtk_i3c_lock_bus(i3c);
-	ret = mtk_i3c_check_suspended(i3c);
-	if (ret) {
-		dev_info(i3c->dev, "[%s] Transfer while suspended.ccc=0x%x,addr=0x%x\n",
-			__func__, cmd->id, cmd->dests->addr);
-		mtk_i3c_unlock_bus(i3c);
-		return ret;
-	}
 
 	i3c->xfer.mode = MTK_I3C_CCC_MODE;
 	i3c->xfer.addr = cmd->dests->addr;
@@ -2434,7 +2535,7 @@ static int mtk_i3c_master_send_ccc_cmd(struct i3c_master_controller *m,
 		u64 boardinfo_pid = 0;
 		int idx = 0;
 
-		i3c_bus_for_each_i3cdev(&m->bus, i3cdev) {
+		i3c_bus_for_each_i3cdev(&i3c->base.bus, i3cdev) {
 			if (i3cdev->info.dyn_addr == cmd->dests->addr)
 				break;
 		}
@@ -2450,6 +2551,24 @@ static int mtk_i3c_master_send_ccc_cmd(struct i3c_master_controller *m,
 	}
 
 	cmd->err = i3c->xfer.error;
+	return ret;
+}
+
+static int mtk_i3c_master_send_ccc_cmd(struct i3c_master_controller *m,
+				      struct i3c_ccc_cmd *cmd)
+{
+	struct mtk_i3c_master *i3c = to_mtk_i3c_master(m);
+	int ret = 0;
+
+	mtk_i3c_lock_bus(i3c);
+	ret = mtk_i3c_check_suspended(i3c);
+	if (ret) {
+		dev_info(i3c->dev, "[%s] Transfer while suspended.ccc=0x%x,addr=0x%x\n",
+			__func__, cmd->id, cmd->dests->addr);
+		mtk_i3c_unlock_bus(i3c);
+		return ret;
+	}
+	ret = mtk_i3c_master_send_ccc_locked_checked(i3c, cmd);
 	mtk_i3c_unlock_bus(i3c);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s] error! ret=%d\n", __func__, ret);
@@ -2831,8 +2950,10 @@ static int mtk_i3c_parse_dt(struct device_node *np, struct mtk_i3c_master *i3c)
 	i3c->priv_xfer_wo7e = of_property_read_bool(np, "mediatek,priv-xfer-without7e");
 	i3c->fifo_use_pulling = of_property_read_bool(np, "mediatek,fifo-use-pulling");
 	i3c->no_hdr_exit = of_property_read_bool(np, "mediatek,no-hdr-exit");
-	dev_info(i3c->dev, "[%s] priv_xfer_wo7e=%d,fifo_use_pulling=%d,no_hdr_exit=%d\n",
-		__func__, i3c->priv_xfer_wo7e, i3c->fifo_use_pulling, i3c->no_hdr_exit);
+	i3c->entdaa_use_irq = of_property_read_bool(np, "mediatek,entdaa-use-irq");
+	dev_info(i3c->dev, "[%s] without7e=%d,fifo_pull=%d,no_hdr_exit=%d,entdaa_irq=%d\n",
+		__func__, i3c->priv_xfer_wo7e, i3c->fifo_use_pulling, i3c->no_hdr_exit,
+		i3c->entdaa_use_irq);
 
 	return 0;
 }
@@ -2849,6 +2970,7 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 	i3c->dev = &pdev->dev;
 	init_completion(&i3c->msg_complete);
 	rt_mutex_init(&i3c->bus_lock);
+	spin_lock_init(&i3c->entdaa_lock);
 	i3c->suspended = false;
 	i3c->timeout = HZ / 5;
 	i3c->dev_comp = of_device_get_match_data(&pdev->dev);
