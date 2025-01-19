@@ -715,9 +715,12 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		DDPINFO("%s wait cfg_done %d!\n", __func__, atomic_read(&pq_data->cfg_done));
 		ret = wait_event_interruptible_timeout(pq_data->cfg_done_wq,
 				atomic_cmpxchg(&pq_data->cfg_done, 1, 0) == 1, msecs_to_jiffies(1000));
+		if (ret == -ERESTARTSYS)
+			DDPMSG("%s cfg_done wakeup by signal\n", __func__);
+		else
+			DDPINFO("%s cfg_done wakeup %d %d\n", __func__, ret, atomic_read(&pq_data->cfg_done));
 		CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle,
 				0xF0000000 | atomic_read(&pq_data->cfg_done));
-		DDPINFO("%s cfg_done wakeup %d %d\n", __func__, ret, atomic_read(&pq_data->cfg_done));
 		atomic_set(&pq_data->cfg_done, 0);
 	}
 
@@ -922,9 +925,10 @@ int disp_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_orde
 						comp_type, _path_order);
 		if (!_companion)
 			ret = -1;
-		if (_companion)
+		if (_companion) {
 			*companion = _companion;
-		DDPMSG("%s companion %s\n", __func__, mtk_dump_comp_str(_companion));
+			DDPMSG("%s companion %s\n", __func__, mtk_dump_comp_str(_companion));
+		}
 	}
 
 	if (!_is_right_pipe) {
@@ -1124,19 +1128,23 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
-	if (wait_config_done) {
+	while (wait_config_done) {
 		if (atomic_read(&pq_data->pq_hw_relay_cfg_done) == 0) {
 			DDPDBG("%s: wait_event_interruptible ++\n", __func__);
 			ret = wait_event_interruptible(pq_data->pq_hw_relay_cb_wq,
 				(atomic_read(&pq_data->pq_hw_relay_cfg_done) == 1));
-			if (ret >= 0)
+			if (ret == -ERESTARTSYS) {
+				DDPMSG("%s: interrupted unexpected by signal\n", __func__);
+				continue;
+			}
+
+			if (ret == 0)
 				DDPDBG("%s: wait_event_interruptible --\n", __func__);
-			else
-				DDPDBG("%s: interrupted unexpected\n", __func__);
 		} else
 			DDPDBG("%s(%d)\n", __func__, atomic_read(&pq_data->pq_hw_relay_cfg_done));
 
 		atomic_set(&pq_data->pq_hw_relay_cfg_done, 0);
+		wait_config_done = false;
 	}
 
 	return 0;
