@@ -1042,7 +1042,7 @@ mgk_64_device_modules = [
 
 mgk_64_platform_device_modules = {
     # keep sorted
-    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6789 mt6833 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899",
+    "drivers/clk/mediatek/clk-bringup.ko": "mt6781 mt6789 mt6833 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899 mt6993",
     "drivers/clk/mediatek/clk-chk-mt6789.ko": "mt6789",
     "drivers/clk/mediatek/clk-chk-mt6886.ko": "mt6886",
     "drivers/clk/mediatek/clk-chk-mt6897.ko": "mt6897",
@@ -1194,7 +1194,9 @@ mgk_64_platform_device_modules = {
     "drivers/clk/mediatek/clk-mt6993-mmsys.ko" : "mt6993",
     "drivers/clk/mediatek/clk-mt6993-img.ko" : "mt6993",
     "drivers/clk/mediatek/clk-mt6993-peri.ko" : "mt6993",
+    "drivers/clk/mediatek/clk-mt6993-ifrao.ko" : "mt6993",
     "drivers/clk/mediatek/clk-mt6993-cam.ko" : "mt6993",
+    "drivers/clk/mediatek/clk-mt6993-pd.ko" : "mt6993",
     #"drivers/clk/mediatek/clk-mt8188.ko": "mt8188",
     #"drivers/clk/mediatek/clk-mt8188-audio_src.ko": "mt8188",
     #"drivers/clk/mediatek/clk-mt8188-cam.ko": "mt8188",
