@@ -1960,14 +1960,16 @@ static bool mtk_smmu_dvm_support(struct arm_smmu_device *smmu)
 static inline bool mtk_smmu_dvm_connect_done(struct arm_smmu_device *smmu)
 {
 	unsigned int val;
+	void __iomem *wp_base = smmu->wp_base;
 
-	val = smmu_read_field(smmu->base, SMMU_TCU_CTL4_DVM, (DVM_EN_ACK | DVM_EN_REQ));
+	val = smmu_read_field(wp_base, SMMU_TCU_CTL4_DVM, (DVM_EN_ACK | DVM_EN_REQ));
 	return val == (DVM_EN_ACK | DVM_EN_REQ);
 }
 
 static void mtk_smmu_dvm_connect(struct arm_smmu_device *smmu)
 {
 	unsigned int attempts = 0;
+	void __iomem *wp_base = smmu->wp_base;
 
 	if (mtk_smmu_dvm_connect_done(smmu)) {
 		/* SMMU has already connected with DVM */
@@ -1975,7 +1977,7 @@ static void mtk_smmu_dvm_connect(struct arm_smmu_device *smmu)
 	}
 
 	/* SMMU connect with DVM MI */
-	smmu_write_field(smmu->base, SMMU_TCU_CTL4_DVM, DVM_EN_REQ, DVM_EN_REQ);
+	smmu_write_field(wp_base, SMMU_TCU_CTL4_DVM, DVM_EN_REQ, DVM_EN_REQ);
 	while (attempts++ < SMMU_POLL_MAX_ATTEMPTS) {
 		if (mtk_smmu_dvm_connect_done(smmu)) {
 			/* SMMU has already connected with DVM */
