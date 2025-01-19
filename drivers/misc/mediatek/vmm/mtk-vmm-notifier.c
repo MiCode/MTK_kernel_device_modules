@@ -80,13 +80,17 @@ static int vmm_locked_isp_open(bool genpd_update)
 {
 	if (genpd_update) {
 		vmm_genpd_user_counter++;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 		if (vmm_genpd_user_counter == 1)
 			mtk_mmdvfs_genpd_notify(VMM_USR_CAM, true);
+#endif
 	}
 
 	vmm_user_counter++;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (vmm_user_counter == 1)
 		mtk_mmdvfs_camera_notify(true);
+#endif
 	return 0;
 }
 
@@ -96,8 +100,10 @@ static int vmm_locked_isp_close(bool genpd_update)
 		if (vmm_genpd_user_counter == 0)
 			return 0;
 		vmm_genpd_user_counter--;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 		if (vmm_genpd_user_counter == 0)
 			mtk_mmdvfs_genpd_notify(VMM_USR_CAM, false);
+#endif
 	}
 
 	/* no need to counter down at probe stage */
@@ -105,17 +111,20 @@ static int vmm_locked_isp_close(bool genpd_update)
 		return 0;
 
 	vmm_user_counter--;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (vmm_user_counter == 0)
 		mtk_mmdvfs_camera_notify(false);
+#endif
 	return 0;
 }
 
 static int vmm_locked_vde_open(void)
 {
 	vde_user_counter++;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (vde_user_counter == 1)
 		mtk_mmdvfs_genpd_notify(VMM_USR_VDE, true);
-
+#endif
 	return 0;
 }
 
@@ -126,9 +135,10 @@ static int vmm_locked_vde_close(void)
 		return 0;
 
 	vde_user_counter--;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (vde_user_counter == 0)
 		mtk_mmdvfs_genpd_notify(VMM_USR_VDE, false);
-
+#endif
 	return 0;
 }
 

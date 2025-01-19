@@ -2431,6 +2431,7 @@ out:
 	dpc_pm_ctrl(false, __func__);
 }
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 static void mtk_dpc_mmdvfs_settings_backup(void)
 {
 	unsigned int i = 0;
@@ -2470,6 +2471,7 @@ static void mtk_dpc_mmdvfs_settings_restore(void)
 
 	mtk_dpc_mmdvfs_settings_dirty = 0;
 }
+#endif
 
 static void mtk_dpc_mmdvfs_settings_update(unsigned int addr, unsigned int value)
 {
@@ -2491,6 +2493,7 @@ static void mtk_dpc_mmdvfs_settings_update(unsigned int addr, unsigned int value
 		mtk_dpc_mmdvfs_settings_value[i], mtk_dpc_mmdvfs_settings_dirty);
 }
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 static int mtk_dpc_mmdvfs_notifier(const bool enable, const bool wdt)
 {
 	static bool dead;
@@ -2530,6 +2533,7 @@ out:
 
 	return ret;
 }
+#endif
 
 static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level, bool mmdvfs_state)
 {
@@ -4363,7 +4367,9 @@ static void process_dbg_opt(const char *opt)
 		if (ret != 2)
 			goto err;
 		writel(v2, MEM_VDISP_AVS_STEP(v1));
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 		mmdvfs_force_step_by_vcp(2, 4 - v1);
+#endif
 	} else if (strncmp(opt, "vdo", 3) == 0) {
 		writel(DISP_DPC_EN|DISP_DPC_DT_EN|DISP_DPC_VDO_MODE, dpc_base + DISP_REG_DPC_EN);
 	}
@@ -4577,8 +4583,10 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	mml_dpc_register(&funcs_v1, DPC_VER1);
 	mdp_dpc_register(&funcs_v1, DPC_VER1);
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (priv->mmdvfs_settings_count > 0)
 		mmdvfs_rc_enable_set_fp(&mtk_dpc_mmdvfs_notifier);
+#endif
 
 	init_waitqueue_head(&priv->dpc_state_wq);
 	atomic_set(&priv->dpc_state, DPC_STATE_NULL);

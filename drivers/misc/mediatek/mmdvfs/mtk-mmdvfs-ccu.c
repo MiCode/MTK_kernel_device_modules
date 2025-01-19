@@ -15,7 +15,7 @@
 #define MMDVFS_DBG(fmt, args...) \
 	pr_notice("[mmdvfs_ccu][dbg]%s: "fmt"\n", __func__, ##args)
 
-
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 static int mmdvfs_call_ccu(struct platform_device *pdev,
 	enum mtk_ccu_feature_type featureType,
 	uint32_t msgId, void *inDataPtr, uint32_t inDataSize)
@@ -27,15 +27,18 @@ static int mmdvfs_call_ccu(struct platform_device *pdev,
 
 	return ret;
 }
+#endif
 
 static int mmdvfs_ccu_probe(struct platform_device *pdev)
 {
 	MMDVFS_DBG("is called!!!!!!");
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	mmdvfs_call_ccu_set_fp(mmdvfs_call_ccu);
-
+#else
+	MMDVFS_DBG("not supported in project!!!!!!");
+#endif
 	return 0;
 }
-
 
 static const struct of_device_id of_mmdvfs_ccu_match_tbl[] = {
 	{
