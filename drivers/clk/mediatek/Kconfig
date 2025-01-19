@@ -1715,5 +1715,87 @@ config COMMON_CLK_MTK_FREQ_HOPPING_GPUEB
 	  Otherwise, say N.
 	  Enabling this config will auto set COMMON_CLK_MTK_FREQ_HOPPING_SUBSYS
 
+config COMMON_CLK_MT6899
+	tristate "Clock driver for MediaTek MT6899"
+	depends on ARM64 || COMPILE_TEST
+	select DEVICE_MODULES_COMMON_CLK_MEDIATEK
+	default MACH_MT6899
+	help
+	  This driver supports MediaTek MT6899 basic clocks,
+	  which is used to control basic clock output.
+	  If you wish to use clock resources from the MT6899 SOC,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_ADSP
+	tristate "Clock driver for MediaTek MT6899 adsp"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 adsp clocks,
+	  which is used to control adsp clock output.
+	  If you wish to use clock resources from the adsp device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_CAM
+	tristate "Clock driver for MediaTek MT6899 cam"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 cam clocks,
+	  which is used to control cam clock output.
+	  If you wish to use clock resources from the cam device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_IMG
+	tristate "Clock driver for MediaTek MT6899 img"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 img clocks,
+	  which is used to control img clock output.
+	  If you wish to use clock resources from the img device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_MMSYS
+	tristate "Clock driver for MediaTek MT6899 mmsys"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 mmsys clocks,
+	  which is used to control mmsys clock output.
+	  If you wish to use clock resources from the mmsys device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_PERI
+	tristate "Clock driver for MediaTek MT6899 peri"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 peri clocks,
+	  which is used to control peri clock output.
+	  If you wish to use clock resources from the peri device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_INFRA_INFRACFG_AO_REG
+	tristate "Clock driver for MediaTek MT6899 infra_infracfg_ao_reg"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 infra_infracfg_ao_reg clocks,
+	  which is used to control infra_infracfg_ao_reg clock output.
+	  If you wish to use clock resources from the infra_infracfg_ao_reg device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_MDPSYS
+	tristate "Clock driver for MediaTek MT6899 mdpsys"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 mdpsys clocks,
+	  which is used to control mdpsys clock output.
+	  If you wish to use clock resources from the mdpsys device,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6899_VCODEC
+	tristate "Clock driver for MediaTek MT6899 vcodec"
+	depends on COMMON_CLK_MT6899
+	help
+	  This driver supports MediaTek MT6899 vcodec clocks,
+	  which is used to control vcodec clock output.
+	  If you wish to use clock resources from the vcodec device,
+	  say Y. Otherwise, say N.
 
 endmenu
