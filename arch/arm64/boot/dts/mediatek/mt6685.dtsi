@@ -74,5 +74,9 @@
 				bits = <6 1>;
 			};
 		};
+
+		mt6685_audclk: mt6685-audclk {
+			compatible = "mediatek,mt6685-audclk";
+		};
 	};
 };
