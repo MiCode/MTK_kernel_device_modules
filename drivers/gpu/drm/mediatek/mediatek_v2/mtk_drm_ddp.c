@@ -27321,7 +27321,7 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 					     enum mtk_ddp_comp_id next,
 					     struct cmdq_pkt *handle)
 {
-	unsigned int addr, mask = 0;
+	unsigned int addr = 0, mask = 0;
 	int value;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	const struct mtk_mmsys_reg_data *reg_data  = mtk_crtc->mmsys_reg_data;
