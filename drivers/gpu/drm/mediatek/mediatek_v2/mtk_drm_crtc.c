@@ -1228,23 +1228,30 @@ static void mtk_drm_crtc_addon_analysis(struct drm_crtc *crtc,
 }
 void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
 {
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	int crtc_id = drm_crtc_index(crtc);
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	int crtc_id = 0;
 
-	if (!crtc || !priv) {
-		DDPMSG("%s: Invalid crtc or priv\n", __func__);
+	if (!crtc) {
+		DDPMSG("%s: Invalid crtc\n", __func__);
 		return;
 	}
 
+	crtc_id = drm_crtc_index(crtc);
 	if (crtc_id < 0) {
 		DDPMSG("%s: Invalid crtc_id:%d\n", __func__, crtc_id);
+		return;
+	}
+	priv = crtc->dev->dev_private;
+	if (!priv) {
+		DDPMSG("%s: Invalid priv\n", __func__);
 		return;
 	}
 
 	if (priv->data->mmsys_id != MMSYS_MT6991)
 		return;
 
+	mtk_crtc = to_mtk_crtc(crtc);
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
