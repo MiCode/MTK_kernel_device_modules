@@ -2613,34 +2613,6 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en, unsigned int need
 			ret = -EINVAL;
 			goto out;
 		}
-
-		if (mtk_crtc->spr_is_on)
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-				mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_PANEL_SPR_EN), 1, ~0);
-		else
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-				mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_PANEL_SPR_EN), 2, ~0);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-
-		cb_data->crtc = crtc;
-		cb_data->cmdq_handle = cmdq_handle;
-		atomic_set(&mtk_crtc->spr_switching, 1);
-		atomic_set(&mtk_crtc->spr_switch_cb_done, 0);
-		if (cmdq_pkt_flush_threaded(cmdq_handle, mtk_drm_spr_switch_cb, cb_data) < 0) {
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			DDPMSG("ERROR: failed to flush write_back\n");
-			cmdq_pkt_destroy(cb_data->cmdq_handle);
-			kfree(cb_data);
-			return -EINVAL;
-		}
-	}
-
-	if (mtk_crtc->mml_prefer_dc) {
-		mtk_crtc->mml_prefer_dc = false;
-		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
 	}
 
 	if (mtk_crtc->mml_prefer_dc) {
@@ -2673,7 +2645,6 @@ out:
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	drm_trace_tag_end("switching_spr");
 	return ret;
-
 }
 
 int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
