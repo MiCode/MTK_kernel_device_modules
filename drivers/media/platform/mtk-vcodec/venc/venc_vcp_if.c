@@ -846,6 +846,146 @@ static void venc_vcp_set_vcu(struct venc_vcu_inst *vcu)
 		vcu->abort = false;
 }
 
+extern struct VENC_SLB_CB_T mtk_venc_slb_cb;
+
+static int venc_vcp_suspend_release_slbc(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx;
+	struct venc_inst *inst;
+	int curr_daemon_pid = vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv");
+
+	list_for_each_entry(ctx, &dev->ctx_list, list) {
+		if (ctx != NULL && ctx->drv_handle != 0 && ctx != &dev->dev_ctx) {
+			inst = (struct venc_inst *)ctx->drv_handle;
+			if (inst->vcu_inst.init_done && !inst->vcu_inst.abort &&
+			    inst->vcu_inst.daemon_pid == curr_daemon_pid) {
+				if (ctx->use_slbc == 1)
+					slbc_release(&ctx->sram_data);
+				if (ctx->use_slbc_extra == 1)
+					slbc_release(&ctx->sram_data_extra);
+			}
+		}
+	}
+	return 0;
+}
+
+static int venc_vcp_resume_request_slbc(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx;
+	struct venc_ap_ipi_msg_set_param out_slb;
+	int curr_daemon_pid = vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv");
+	struct venc_inst *inst;
+	unsigned int ret_slb;
+	bool need_notify_driver = false;
+	unsigned int slbc_addr_backup = 0;
+
+	list_for_each_entry(ctx, &dev->ctx_list, list) {
+		if (ctx != NULL && ctx->drv_handle != 0 && ctx != &dev->dev_ctx) {
+			inst = (struct venc_inst *)ctx->drv_handle;
+			if (inst->vcu_inst.init_done && !inst->vcu_inst.abort &&
+			    inst->vcu_inst.daemon_pid == curr_daemon_pid) {
+
+				slbc_addr_backup = ctx->slbc_addr;
+				need_notify_driver = false;
+
+				if (ctx->use_slbc == 1) {
+					ctx->sram_data.uid = UID_MM_VENC;
+					ctx->sram_data.type = TP_BUFFER;
+					ctx->sram_data.size = 0;
+					ctx->sram_data.flag = FG_POWER;
+					if (slbc_request(&ctx->sram_data) >= 0) {
+						ctx->use_slbc = 1;
+						ctx->slbc_addr =
+							(unsigned int)(unsigned long)ctx->sram_data.paddr;
+					} else {
+						mtk_v4l2_debug(0, "[%d]slbc_request fail", ctx->id);
+						ctx->use_slbc = 0;
+						ctx->slbc_addr = 0;
+						need_notify_driver = true;
+					}
+					if (ctx->slbc_addr % 256 != 0 || ctx->slbc_addr == 0) {
+						mtk_v4l2_debug(0, "[%d]slbc_addr error 0x%x", ctx->id, ctx->slbc_addr);
+						ctx->use_slbc = 0;
+						ctx->slbc_addr = 0;
+						need_notify_driver = true;
+					}
+				}
+
+				if (ctx->use_slbc_extra == 1) {
+					ctx->sram_data_extra.uid = UID_MM_VENC_EXT;
+					ctx->sram_data_extra.type = TP_BUFFER;
+					ctx->sram_data_extra.size = 0;
+					ctx->sram_data_extra.flag = FG_POWER;
+					if (slbc_request(&ctx->sram_data_extra) >= 0) {
+						ctx->use_slbc_extra = 1;
+						ctx->slbc_addr_extra =
+							(unsigned int)(unsigned long)ctx->sram_data_extra.paddr;
+					} else {
+						mtk_v4l2_debug(0, "[%d]slbc_request_extra fail", ctx->id);
+						ctx->use_slbc_extra = 0;
+						ctx->slbc_addr = 0;
+						need_notify_driver = true;
+					}
+
+					if (ctx->slbc_addr_extra % 256 != 0 || ctx->slbc_addr_extra == 0) {
+						mtk_v4l2_debug(0, "[%d]slbc_addr_extra error 0x%x",
+							ctx->id, ctx->slbc_addr_extra);
+						ctx->use_slbc_extra = 0;
+						need_notify_driver = true;
+					}
+
+					if (ctx->use_slbc_extra) {
+						// use extra slbc address as slbc start address
+						ctx->slbc_addr = ctx->slbc_addr_extra;
+					} else if (ctx->use_slbc) { // request extra slbc fail, release all
+						mtk_v4l2_debug(0, "[%d]request extra slbc fail and release all slbc %p",
+							ctx->id, &ctx->sram_data);
+						slbc_release(&ctx->sram_data);
+						ctx->use_slbc = 0;
+						ctx->slbc_addr = 0;
+						mtk_v4l2_debug(0, "[%d]request extra slbc fail and release all slbc ref %d",
+							ctx->id, ctx->sram_data.ref);
+						if (ctx->sram_data.ref <= 0)
+							atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
+						need_notify_driver = true;
+					}
+				}
+
+				if (slbc_addr_backup != ctx->slbc_addr) {
+					mtk_v4l2_debug(0, "[%d] %d %d slbc_addr changed, need notify driver 0x%x -> 0x%x",
+						ctx->id, ctx->use_slbc, ctx->use_slbc_extra, slbc_addr_backup,
+						ctx->slbc_addr);
+					need_notify_driver = true;
+				}
+
+				if (need_notify_driver) {
+					//send ipi to notify slbc addr change
+					memset(&out_slb, 0, sizeof(out_slb));
+					out_slb.msg_id = AP_IPIMSG_ENC_SET_PARAM;
+					out_slb.vcu_inst_addr = inst->vcu_inst.inst_addr;
+					out_slb.ctx_id = inst->ctx->id;
+					out_slb.param_id = VENC_SET_PARAM_RELEASE_SLB;
+					out_slb.data_item = 2;
+					out_slb.data[0] = !ctx->use_slbc;
+					out_slb.data[1] = ctx->slbc_addr;
+					ret_slb = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb),
+						false, false, false);
+
+					if (ret_slb) {
+						mtk_v4l2_debug(0, "[%d]set VENC_SET_PARAM_RELEASE_SLB fail %d",
+							ctx->id, ret_slb);
+					}
+
+				} else {
+					mtk_v4l2_debug(0, "[%d] slbc status remain the same, no update %d 0x%x",
+						ctx->id, ctx->use_slbc, ctx->slbc_addr);
+				}
+			}
+		}
+	}
+	return 0;
+}
+
 static int venc_vcp_backup(struct venc_inst *inst)
 {
 	struct venc_ap_ipi_msg_indp msg;
@@ -969,6 +1109,7 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 		mutex_unlock(&dev->ctx_mutex);
 		if (need_backup) {
 			venc_vcp_backup((struct venc_inst *)dev->dev_ctx.drv_handle);
+			venc_vcp_suspend_release_slbc(dev);
 			dev->has_backup = true;
 		}
 
@@ -985,6 +1126,7 @@ static int vcp_venc_notify_callback(struct notifier_block *this,
 		// send backup ipi to vcp by dev_ctx if vcp has inst
 		if (dev->has_backup) {
 			venc_vcp_resume((struct venc_inst *)dev->dev_ctx.drv_handle);
+			venc_vcp_resume_request_slbc(dev);
 			dev->has_backup = false;
 		}
 		dev->is_codec_suspending = 0;
