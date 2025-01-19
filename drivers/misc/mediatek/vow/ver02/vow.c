@@ -618,6 +618,7 @@ static void vow_ipi_reg_ok(short keyword,
 	/* vowserv.scp_command_id = vowserv.vow_speaker_model[slot].id; */
 	vowserv.scp_command_keywordid = keyword;
 	vowserv.confidence_level = confidence_lv;
+
 	if (extradata_len <= VOW_EXTRA_DATA_SIZE)
 		vowserv.extradata_bytelen = extradata_len;
 	else
@@ -3332,7 +3333,7 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg_da
 			buffer_bound = VOW_VOICEDATA_SIZE;
 		}
 		if ((payload.return_payloaddump_addr == 0) ||
-		    (payload.max_payloaddump_size != buffer_bound)) {
+		    (payload.max_payloaddump_size > buffer_bound)) {
 			VOWDRV_DEBUG("vow check payload fail: addr_0x%x, size_0x%x\n",
 			     (unsigned int)payload.return_payloaddump_addr,
 			     (unsigned int)payload.max_payloaddump_size);
@@ -3648,6 +3649,10 @@ static ssize_t VowDrv_read(struct file *fp,
 	read_count = copy_to_user((void __user *)data,
 				  &vowserv.vow_eint_data_struct,
 				  sizeof(struct vow_eint_data_struct_t));
+
+	/* for payload dump feature(data from scp) */
+	vow_service_ReadPayloadDumpData(vowserv.payloaddump_length);
+
 	if (dsp_inform_tx_flag) {
 		/* int i; */
 		mutex_lock(&vow_extradata_mutex);
@@ -3664,11 +3669,9 @@ static ssize_t VowDrv_read(struct file *fp,
 			goto exit;
 		if (vowserv.vow_speaker_model[slot].rx_inform_addr == 0)
 			goto exit;
+
 		VOWDRV_DEBUG("%s(), copy to user, extra data len=%d\n",
 		     __func__, vowserv.extradata_bytelen);
-
-		/* for payload dump feature(data from scp) */
-		vow_service_ReadPayloadDumpData(vowserv.payloaddump_length);
 
 		/* copy extra data from DRAM */
 		mutex_lock(&vow_extradata_mutex);
