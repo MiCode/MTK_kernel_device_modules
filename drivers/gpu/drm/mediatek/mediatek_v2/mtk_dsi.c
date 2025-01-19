@@ -13700,7 +13700,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case DSI_GET_LINE_TIME_NS_BY_MODE:
 	{
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-		unsigned long long *line_time = (unsigned long long *)params;
+		unsigned int *line_time = (unsigned int *)params;
 		int mode_idx = (int)*line_time;
 
 		*line_time = mtk_dsi_get_line_time_ns(dsi, mtk_crtc, mode_idx);
