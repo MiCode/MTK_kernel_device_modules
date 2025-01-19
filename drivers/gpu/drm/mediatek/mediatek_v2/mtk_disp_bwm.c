@@ -238,11 +238,13 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 
 	DDPINFO("bwm_enable:%s\n", mtk_dump_comp_str(comp));
 
+	SET_VAL_MASK(value, mask, 1, FLD_BWM_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_BWM_EN,
-		       1, FLD_BWM_EN);
+		       value, mask);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BWM_RDMA0_CTRL, 0x1, 0x1);
-
+	value = 0;
+	mask = 0;
 	SET_VAL_MASK(value, mask, 0, FLD_PREULTRA_BUF_SRC);
 	SET_VAL_MASK(value, mask, 0, FLD_PREULTRA_RDMA_SRC);
 	SET_VAL_MASK(value, mask, 0, FLD_ULTRA_BUF_SRC);
@@ -256,10 +258,12 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(value, mask, 32, FLD_PREULTRA_LOW_TH);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BWM_RDMA0_BUF_LOW, value, mask);
-
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, 64, FLD_PREULTRA_HIGH_TH);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BWM_RDMA0_BUF_HIGH,
-			64, FLD_PREULTRA_HIGH_TH);
+			value, mask);
 
 	/****************************************************************/
 	/*BURST_ACC_FBDC: 1/0:fbdc size/actual BW(fbdc+sBCH)            */
@@ -313,9 +317,7 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 				if ((all_layer_compress_ratio_table[i].peak_ratio != 0) &&
 					(all_layer_compress_ratio_table[i].average_ratio == 0))
 					all_layer_compress_ratio_table[i].average_ratio = 10;
-				if (all_layer_compress_ratio_table[i].average_ratio == 0 ||
-					all_layer_compress_ratio_table[i].average_ratio > 1024 ||
-					all_layer_compress_ratio_table[i].peak_ratio == 0 ||
+				if (all_layer_compress_ratio_table[i].average_ratio > 1024 ||
 					all_layer_compress_ratio_table[i].peak_ratio > 1024) {
 					if (aee_trigger) {
 						DDPPR_ERR("BWM20 layer%d ratio error,avg%d peak%d ar %d pr %d\n",

@@ -10508,7 +10508,7 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		j++;
 	}
 	tmp_srt = comp->qos_bw;
-	if (tmp_srt > 0) {
+	if (tmp_srt > 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		unsigned int channel_sum = 0;
 
 		if (tmp_srt < (AFBC_HEADER_PORT_OSTDL_MIN-1)*16*8+1)
@@ -10522,8 +10522,10 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		for (j = 0; j < MAX_CRTC; j++)
 			channel_sum += priv->srt_channel_bw_sum[j][1];
 		channel_sum += tmp_srt;
-		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
-			mtk_vidle_channel_bw_set(channel_sum, (1 * 4)); //0, 4, 8, 12
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			mtk_vidle_channel_bw_set(channel_sum, (1 * 4));
+		else if (priv->data->mmsys_id == MMSYS_MT6993)
+			mtk_vidle_channel_bw_set(channel_sum, (3 * 4));
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, tmp_srt, 0,
 						    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 
@@ -10559,10 +10561,23 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_CALC_RATIO,
 				NULL);
 	//clear srt bw
-	mtk_crtc->total_srt -= comp->qos_bw;
-	mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
-	__mtk_disp_set_module_srt(comp->qos_req, comp->id, 0, 0,
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		mtk_crtc->total_srt -= comp->qos_bw;
+		mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
+		__mtk_disp_set_module_srt(comp->qos_req, comp->id, 0, 0,
 					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+	}
+
+	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
+			all_layer_compress_ratio_table[i].frame_idx,
+			all_layer_compress_ratio_table[i].key_value,
+			all_layer_compress_ratio_table[i].average_ratio,
+			all_layer_compress_ratio_table[i].peak_ratio,
+			all_layer_compress_ratio_table[i].valid,
+			all_layer_compress_ratio_table[i].active);
+	}
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		struct mtk_plane_state *plane_state =
@@ -10616,19 +10631,8 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 		if (overlap_sum > bwm20_overlap)
 			bwm20_overlap = overlap_sum;
 	}
-
+	DDPDBG_BWM("BWMT all_layer overlap %d\n", bwm20_overlap);
 	CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 6);
-	DDPDBG_BWM("BWMT===== all_layer_compress_ratio_tb ===== overlap %d\n", bwm20_overlap);
-	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
-	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-			DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
-				all_layer_compress_ratio_table[i].frame_idx,
-				all_layer_compress_ratio_table[i].key_value,
-				all_layer_compress_ratio_table[i].average_ratio,
-				all_layer_compress_ratio_table[i].peak_ratio,
-				all_layer_compress_ratio_table[i].valid,
-				all_layer_compress_ratio_table[i].active);
-	}
 	if (mtk_crtc->cur_lyeblob) {
 		mtk_crtc_update_hrt_state(crtc, 0, mtk_crtc->cur_lyeblob, cmdq_handle);
 		mtk_crtc->cur_lyeblob = NULL;
