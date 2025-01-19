@@ -491,6 +491,18 @@ config MTK_HOST_DRV_WWAN_SUPPORT
 	  please use netlink API or 'ip' command.
 	  Say Y here if need to enable WWAN port in host driver.
 	  If unsure, say N.
+
+config MTK_MEMLOG_EVENT_SUPPORT
+	bool "Support memlog event in Thin MD host driver"
+	help
+	  Used to control the memlog event feature of the Thin MD host driver.
+	  When this option is enabled, host dirver will print the
+	  specified log in binary format.
+	  The logs printed in binary format need to be parsed into
+	  plain  text using a post-processing tools.
+	  Say Y here if need to enable memlog event in host driver.
+	  If unsure, say N.
+
 endmenu # Host Driver
 
 config MTK_AUTO_SUPPORT
