@@ -49,6 +49,7 @@ module_param(debug_recover, int, 0644);
 #define VOTE_DELAY_US 2
 #define POLL_DELAY_US 10
 #define TIMEOUT_300MS 300000
+#define TIMEOUT_30MS 30000
 
 #define HW_CCF_AP_VOTER_BIT			(0)
 #define HW_CCF_XPU0_BACKUP1_SET		(0x230)
@@ -153,10 +154,12 @@ static s32 mtk_vdisp_poll_power_cnt(s32 val)
 {
 	s32 ret, tmp;
 
-	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
+	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_30MS);
 	if (ret < 0) {
 		u32 idx, mtcmos_cnt;
 		u64 begin = sched_clock();
+		static u32 fail_cnt, recover_cnt;
+		u32 fail_mtcmos = tmp;
 
 		/* get power from lower bit to higher bit, so disp_vcore is the first one */
 		mtcmos_cnt = tmp;
@@ -175,8 +178,9 @@ static s32 mtk_vdisp_poll_power_cnt(s32 val)
 			pm_runtime_put_sync(g_dev[idx]);
 		}
 
-		ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
+		ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_30MS);
 		if (ret == 0) {
+			recover_cnt++;
 			if (unlikely(debug_recover))
 				VDISPAEE("mtcmos_cnt(%#x) recovery success, cost(%llu)", tmp,
 					 sched_clock() - begin);
@@ -184,6 +188,9 @@ static s32 mtk_vdisp_poll_power_cnt(s32 val)
 				VDISPDBG("mtcmos_cnt(%#x) recovery success, cost(%llu)", tmp,
 					 sched_clock() - begin);
 		}
+
+		fail_cnt++;
+		VDISPDBG("mtcmos(%#x) fail_recover(%u,%u)", fail_mtcmos, fail_cnt, recover_cnt);
 	}
 
 	return ret;
@@ -441,7 +448,6 @@ static int mtk_vdisp_link_parent_power(bool to_link)
 	return ret;
 }
 
-
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 static void mtk_vdisp_wk_lock(u32 crtc_index, bool get, const char *func, int line)
 {
@@ -574,7 +580,6 @@ static int genpd_event_notifier(struct notifier_block *nb,
 			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
 
 		mminfra_hwv_pwr_ctrl(priv, false);
-
 		if (priv->pd_id == DISP_PD_DISP_VCORE) {
 			vdisp_set_aod_scp_semaphore(0); //protect AOD SCP flow
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
@@ -633,7 +638,7 @@ static const struct mtk_vdisp_funcs funcs = {
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
 	.sent_aod_scp_sema = mtk_sent_aod_scp_sema,
-	.set_aod_scp_semaphore = vdisp_set_aod_scp_semaphore,
+	.set_clk = mtk_vdisp_set_clk,
 	.query_aging_val = mtk_vdisp_query_aging_val,
 	.debug_mtcmos_ctrl = mtk_vdisp_debug_mtcmos_ctrl,
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
@@ -686,6 +691,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		pr_info("failed to find vcp_node @ %s\n", __func__);
 	else {
 		ret = of_property_read_u32(vcp_node, "warmboot-support", &support);
+		of_node_put(vcp_node);
 
 		if (ret || support == 0) {
 			pr_info("%s vcp_warmboot_support is disabled: %d\n", __func__, ret);
@@ -856,6 +862,7 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		chosen_node = of_find_node_by_path("/chosen");
 		if (chosen_node) {
 			tag_boot = (struct tag_bootmode *)of_get_property(chosen_node, "atag,boot", NULL);
+			of_node_put(chosen_node);
 			if (tag_boot) {
 				if (tag_boot->bootmode != 0) {
 					VDISPDBG("bootmode(%u), link parent power", tag_boot->bootmode);
