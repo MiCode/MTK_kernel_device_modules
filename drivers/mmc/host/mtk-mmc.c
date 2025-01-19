@@ -641,6 +641,7 @@ static const struct mtk_mmc_compatible mt6989_compat = {
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
 		.enable = true,
+		.work_mode = MSDC_SPM_SW_MODE,
 		.infra_ack_bit = BIT(14),
 		.infra_ack_paddr = 0x1c001104,
 	},
@@ -669,8 +670,39 @@ static const struct mtk_mmc_compatible mt6991_compat = {
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
 		.enable = true,
+		.work_mode = MSDC_SPM_SW_MODE,
 		.infra_ack_bit = BIT(14),
 		.infra_ack_paddr = 0x1c004104,
+	},
+};
+
+static const struct mtk_mmc_compatible mt6993_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 1,
+		.pop_cnt = 2,
+	},
+	.enhance_rx = true,
+	.support_64g = true,
+	.clock_set = {
+		.need_gate_cg = true,
+		.set_type = MSDC_CLK_SET_V1,
+	},
+	.new_tx_ver = MSDC_NEW_TX_V2,
+	.new_rx_ver = MSDC_NEW_RX_V1,
+	.infra_check = {
+		.enable = false,
+		.work_mode = MSDC_SPM_SW_MODE,
+		/* soc26m/inframtcmos/buspll/ddrsrc/emi/ddren */
+		.infra_ack_bit = (BIT(2) | BIT(3) | BIT(4) | BIT(5) | BIT(6) | BIT(7)),
+		.infra_ack_paddr = 0x1c00DA4C,
 	},
 };
 
@@ -698,6 +730,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt6853-mmc", .data = &mt6853_compat},
 	{ .compatible = "mediatek,mt6781-mmc", .data = &mt6781_compat},
 	{ .compatible = "mediatek,mt6765-mmc", .data = &mt6765_compat},
+	{ .compatible = "mediatek,mt6993-mmc", .data = &mt6993_compat},
 	{}
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
@@ -2508,6 +2541,26 @@ static void msdc_init_hw(struct msdc_host *host)
 		host->saved_tune_para.pad_tune = readl(host->base + tune_reg);
 	}
 
+#if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
+	/*
+	 * disable hw wait spm ack, otherwise dma timeout
+	 * case1: when hw supports spm-msdc mechanism and sw mode is used.
+	 * case2: when hw supports spm-msdc mechanism, but the sw disables
+	 * the spm-msdc flow during bringup, and hw spm enable bit may not
+	 * be ready during bringup.
+	 */
+	if ((host->msdc_spm_hw_supp &&
+		 host->dev_comp->infra_check.enable &&
+		 host->dev_comp->infra_check.work_mode == MSDC_SPM_SW_MODE) ||
+		(host->msdc_spm_hw_supp &&
+		 host->dev_comp->infra_check.enable == false))
+		sdr_set_bits(host->base, SDC_STS_NOT_WAIT_ACK);
+#else
+	/* SPM module maybe not ready in FPGA stage, so disable hw wait spm ack */
+	if (host->msdc_spm_hw_supp == true)
+		sdr_set_bits(host->base, SDC_STS_NOT_WAIT_ACK);
+#endif
+
 	host->need_tune = false;
 	host->retune_times = 0;
 
@@ -4064,6 +4117,10 @@ static void msdc_of_property_parse(struct platform_device *pdev,
 	else
 		host->sdcard_aggressive_pm = false;
 
+	if (of_property_read_bool(pdev->dev.of_node, "msdc-spm-hw-supp"))
+		host->msdc_spm_hw_supp = true;
+	else
+		host->msdc_spm_hw_supp = false;
 
 	/* default value is TFA version, indicate tf-a is used */
 	host->tf_ver = MMC_MTK_TFA_VERSION;
@@ -4766,6 +4823,12 @@ static int infra_req_ack_check(struct msdc_host *host)
 
 	int cnt = 200;
 	u32 val = 0;
+	u32 expect_ack;
+
+	if (host->dev_comp->infra_check.work_mode == MSDC_SPM_HW_MODE)
+		return 0;
+
+	expect_ack = host->dev_comp->infra_check.infra_ack_bit;
 
 	mmc_mtk_infra_req(res, host->id);
 	if (res.a0) {
@@ -4780,28 +4843,31 @@ static int infra_req_ack_check(struct msdc_host *host)
 		return 1;
 	}
 
-	while(!val && cnt-- > 0) {
+	while((val & expect_ack) != expect_ack && cnt-- > 0) {
 		/* It takes close to 1ms for infra ack ready */
 		udelay(10);
-		sdr_get_field(host->infra_ack_vaddr,
-			host->dev_comp->infra_check.infra_ack_bit, &val);
+		val = readl(host->infra_ack_vaddr);
 	}
 
-	if (val == 0)
-		pr_info("mmc%d infra ack polling timeout\n", host->id);
+	if ((val & expect_ack) != expect_ack)
+		pr_info("mmc%d infra ack polling timeout, ack 0x%x\n", host->id, val);
 
-	return val ? 0 : 1;
+	return (val & expect_ack) == expect_ack ? 0 : 1;
 }
 
 static int infra_req_release(struct msdc_host *host)
 {
 	struct arm_smccc_res res;
 
-	mmc_mtk_infra_req_release(res, host->id);
-	if (res.a0) {
-		pr_info("%s: infra request release fail, err: %lu\n",
-			 __func__, res.a0);
-		return 1;
+	if (host->dev_comp->infra_check.work_mode == MSDC_SPM_HW_MODE) {
+		sdr_set_bits(host->base + SDC_STS, SDC_STS_RES_RELEASE);
+	} else {
+		mmc_mtk_infra_req_release(res, host->id);
+		if (res.a0) {
+			pr_info("%s: infra request release fail, err: %lu\n",
+				 __func__, res.a0);
+			return 1;
+		}
 	}
 
 	return 0;

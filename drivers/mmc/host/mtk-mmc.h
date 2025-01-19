@@ -244,6 +244,10 @@
 /* SDC_STS mask */
 #define SDC_STS_SDCBUSY         (0x1 << 0)	/* RW */
 #define SDC_STS_CMDBUSY         (0x1 << 1)	/* RW */
+#define SDC_STS_RES_RELEASE	(0x1 << 3)      /* W1C */
+#define SDC_STS_SPM_ACK		(0x1F << 6)	/* RO */
+#define SDC_STS_SPM_REQ		(0x1F << 11)    /* RO */
+#define SDC_STS_NOT_WAIT_ACK	(0x1 << 30)	/* RW */
 #define SDC_STS_SWR_COMPL       (0x1 << 31)	/* RW */
 
 #define SDC_DAT1_IRQ_TRIGGER	(0x1 << 19)	/* RW */
@@ -467,8 +471,14 @@ struct stop_clock_type {
 	u8 pop_cnt;
 };
 
+enum msdc_spm_work_mode {
+	MSDC_SPM_SW_MODE,
+	MSDC_SPM_HW_MODE,
+};
+
 struct msdc_infra_check {
 	bool enable;
+	enum msdc_spm_work_mode work_mode;	// sw/hw mode
 	u32 infra_ack_bit;
 	u32 infra_ack_paddr;
 };
@@ -627,6 +637,7 @@ struct msdc_host {
 	struct regulator *dvfsrc_vcore_power;
 	bool use_cmd_intr;
 	bool sdcard_aggressive_pm;
+	bool msdc_spm_hw_supp;
 	struct pm_qos_request pm_qos_req;
 	u8 tf_ver; /* save trust frameware version. e.g: atf, tf-a */
 	struct err_info_bag err_bag;
