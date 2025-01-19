@@ -812,6 +812,8 @@ static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 		}
 		clk_disable_unprepare(dp_intf->hf_fmm_ck);
 		clk_disable_unprepare(dp_intf->hf_fdp_ck);
+		if (priv->data->mmsys_id == MMSYS_MT6989)
+			clk_disable_unprepare(dp_intf->pclk);
 		mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
 		priv = mtk_crtc->base.dev->dev_private;
 		if (priv->data->mmsys_id == MMSYS_MT6989)
