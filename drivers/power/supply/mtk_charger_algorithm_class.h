@@ -207,6 +207,6 @@ extern int chg_alg_set_current_limit(struct chg_alg_device *alg_dev,
 extern int chg_alg_notifier_call(struct chg_alg_device *alg_dev,
 	struct chg_alg_notify *notify);
 extern char *chg_alg_state_to_str(int state);
-extern const char *const
+extern const char *
 chg_alg_notify_evt_tostring(enum chg_alg_notifier_events evt);
 #endif /* __MTK_CHARGER_ALGORITHM_CLASS_H__ */

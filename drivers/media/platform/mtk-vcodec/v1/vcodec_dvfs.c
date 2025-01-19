@@ -17,6 +17,7 @@
 #include "vcodec_dvfs.h"
 #include <linux/time.h>
 #include <linux/ktime.h>
+#include <linux/vmalloc.h>
 #include "mtk_vcodec_drv.h"
 
 #define WP_SCENARIO 6

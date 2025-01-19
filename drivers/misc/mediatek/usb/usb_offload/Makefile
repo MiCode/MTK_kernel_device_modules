@@ -37,7 +37,7 @@ endif
 ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common/
 
 # define_trace.h needs to know how to find our header
-CFLAGS_usb_offload_trace.o	:= -I$(srctree)/$(src)
+CFLAGS_usb_offload_trace.o	:= -I$(src)
 
 obj-$(CONFIG_MTK_USB_OFFLOAD)	+= usb_offload.o
 ifneq ($(CONFIG_MTK_USB_OFFLOAD), )

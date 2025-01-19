@@ -27,7 +27,7 @@ TRACE_EVENT(musb_log,
 		__dynamic_array(char, msg, MUSB_MSG_MAX)
 	),
 	TP_fast_assign(
-		__assign_str(name, dev_name(musb->controller));
+		__assign_str(name);
 		vsnprintf(__get_str(msg), MUSB_MSG_MAX, vaf->fmt, *vaf->va);
 	),
 	TP_printk("%s: %s", __get_str(name), __get_str(msg))
@@ -139,7 +139,7 @@ TRACE_EVENT(musb_isr,
 		__field(u16, int_rx)
 	),
 	TP_fast_assign(
-		__assign_str(name, dev_name(musb->controller));
+		__assign_str(name);
 		__entry->int_usb = musb->int_usb;
 		__entry->int_tx = musb->int_tx;
 		__entry->int_rx = musb->int_rx;
@@ -163,7 +163,7 @@ DECLARE_EVENT_CLASS(musb_urb,
 		__field(u32, actual_len)
 	),
 	TP_fast_assign(
-		__assign_str(name, dev_name(musb->controller));
+		__assign_str(name);
 		__entry->urb = urb;
 		__entry->pipe = urb->pipe;
 		__entry->status = urb->status;
@@ -310,7 +310,7 @@ DECLARE_EVENT_CLASS(musb_log_ep,
 		__field(unsigned int, direction)
 	),
 	TP_fast_assign(
-		__assign_str(name, musb_ep->name);
+		__assign_str(name);
 		__entry->type = musb_ep->type;
 		__entry->maxp = musb_ep->end_point.maxpacket;
 		__entry->mult = musb_ep->end_point.mult;

@@ -6,6 +6,7 @@
 
 #include <linux/sched.h>
 #include <linux/time64.h>
+#include <linux/vmalloc.h>
 #include <uapi/linux/sched/types.h>
 
 #include "mtk-mml-adaptor.h"

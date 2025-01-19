@@ -20,6 +20,7 @@
 #include <linux/spinlock.h>
 #include <linux/sysfs.h>
 #include <linux/tracepoint.h>
+#include <linux/vmalloc.h>
 #include <sched/sched.h>
 #include "governor.h"
 #include "ufshcd-priv.h"

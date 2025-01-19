@@ -4,7 +4,7 @@
 #
 
 # tell define_trace.h where to find the xhci trace header
-CFLAGS_xhci-trace.o := -I$(srctree)/$(src)
+CFLAGS_xhci-trace.o := -I$(src)
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_offload
 ccflags-y += -I$(srctree)/sound/usb

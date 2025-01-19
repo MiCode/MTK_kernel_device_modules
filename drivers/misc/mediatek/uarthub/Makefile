@@ -35,7 +35,7 @@ ifneq ($(KERNELRELEASE),)
     $(MODULE_NAME)-objs += common/uarthub_drv_ut_test.o
     $(MODULE_NAME)-objs += common/uarthub_drv_export.o
 
-PATH_TO_UARTHUB_DRV := $(srctree)/$(src)
+PATH_TO_UARTHUB_DRV := $(src)
 ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6985/mt6985.c),)
     $(MODULE_NAME)-objs += common/platform/6985/mt6985.o
 endif

@@ -229,7 +229,7 @@ TRACE_EVENT(sched_em_cpu_energy,
 		__entry->wl        = wl;
 		__entry->idx        = idx;
 		__entry->freq       = freq;
-		__assign_str(cost_type, cost_type);
+		__assign_str(cost_type);
 		__entry->cost       = cost;
 		__entry->scale_cpu  = scale_cpu;
 		__entry->dyn_pwr    = dyn_pwr;
@@ -1173,7 +1173,7 @@ TRACE_EVENT(sched_cgrp_to_fltgrp,
 	TP_fast_assign(
 		__entry->cgrp_id	= cgrp_id;
 		__entry->grp_id	= grp_id;
-		__assign_str(caller0, caller0);
+		__assign_str(caller0);
 		),
 
 	TP_printk("cgrp_id[%d] to flt grp[%d] caller =%s",
@@ -2019,7 +2019,7 @@ TRACE_EVENT(sugov_ext_ta_ctrl_caller,
 		),
 
 	TP_fast_assign(
-		__assign_str(caller0, caller0);
+		__assign_str(caller0);
 		),
 
 	TP_printk("caller =%s",

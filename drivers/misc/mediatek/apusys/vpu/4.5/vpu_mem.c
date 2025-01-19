@@ -14,6 +14,7 @@
 #include <linux/list_sort.h>
 #include <linux/seq_file.h>
 #include <linux/sched/clock.h>
+#include <linux/vmalloc.h>
 
 #include "apu_bmap.h"
 #include "vpu_cfg.h"

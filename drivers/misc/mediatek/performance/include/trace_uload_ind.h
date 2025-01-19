@@ -22,8 +22,8 @@ TP_STRUCT__entry(
 ),
 
 TP_fast_assign(
-	__assign_str(str1, str1);
-	__assign_str(str2, str2);
+	__assign_str(str1);
+	__assign_str(str2);
 ),
 
 TP_printk("%s%s", __get_str(str1), __get_str(str2))

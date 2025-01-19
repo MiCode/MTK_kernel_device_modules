@@ -10,6 +10,7 @@
 #include <linux/dma-buf.h>
 #include <linux/fs.h>
 #include <linux/module.h>
+#include <linux/vmalloc.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/sched/clock.h>

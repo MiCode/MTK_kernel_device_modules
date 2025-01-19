@@ -8,7 +8,7 @@ DTC_INCLUDE += $(DEVICE_MODULES_PATH)/arch/$(SRCARCH)/boot/dts $(DEVICE_MODULES_
 
 # for cust.dtsi
 #DTC_INCLUDE += $(DEVICE_MODULES_REL_PATH)/arch/$(SRCARCH)/boot/dts
-DTC_INCLUDE += $(dir $(src))
+DTC_INCLUDE += $(dir $(obj))
 
 # for devicetree overlay
 DTC_FLAGS += -@

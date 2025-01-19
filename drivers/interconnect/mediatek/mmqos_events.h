@@ -24,8 +24,8 @@ TRACE_EVENT(mmqos__larb_port_avg_bw,
 		__field(int, chn)
 	),
 	TP_fast_assign(
-		__assign_str(r_w_type, r_w_type);
-		__assign_str(dev_name, dev_name);
+		__assign_str(r_w_type);
+		__assign_str(dev_name);
 		__entry->larb = larb;
 		__entry->port = port;
 		__entry->avg_bw = avg_bw;
@@ -54,8 +54,8 @@ TRACE_EVENT(mmqos__larb_port_peak_bw,
 		__field(int, chn)
 	),
 	TP_fast_assign(
-		__assign_str(r_w_type, r_w_type);
-		__assign_str(dev_name, dev_name);
+		__assign_str(r_w_type);
+		__assign_str(dev_name);
 		__entry->larb = larb;
 		__entry->port = port;
 		__entry->peak_bw = peak_bw;
@@ -81,8 +81,8 @@ TRACE_EVENT(mmqos__larb_port_ostdl,
 		__field(int, ostdl)
 	),
 	TP_fast_assign(
-		__assign_str(r_w_type, r_w_type);
-		__assign_str(dev_name, dev_name);
+		__assign_str(r_w_type);
+		__assign_str(dev_name);
 		__entry->larb = larb;
 		__entry->port = port;
 		__entry->ostdl = ostdl;
@@ -105,8 +105,8 @@ TRACE_EVENT(mmqos__comm_port_ostdl,
 		__field(int, ostdl)
 	),
 	TP_fast_assign(
-		__assign_str(r_w_type, r_w_type);
-		__assign_str(dev_name, dev_name);
+		__assign_str(r_w_type);
+		__assign_str(dev_name);
 		__entry->comm = comm;
 		__entry->chn = chn;
 		__entry->ostdl = ostdl;
@@ -131,8 +131,8 @@ TRACE_EVENT(mmqos__larb_avg_bw,
 		__field(int, chn)
 	),
 	TP_fast_assign(
-		__assign_str(r_w_type, r_w_type);
-		__assign_str(dev_name, dev_name);
+		__assign_str(r_w_type);
+		__assign_str(dev_name);
 		__entry->bw = bw;
 		__entry->comm = comm;
 		__entry->chn = chn;
@@ -156,8 +156,8 @@ TRACE_EVENT(mmqos__larb_peak_bw,
 		__field(int, chn)
 	),
 	TP_fast_assign(
-		__assign_str(r_w_type, r_w_type);
-		__assign_str(dev_name, dev_name);
+		__assign_str(r_w_type);
+		__assign_str(dev_name);
 		__entry->bw = bw;
 		__entry->comm = comm;
 		__entry->chn = chn;
@@ -245,7 +245,7 @@ TRACE_EVENT(mmqos__mmpc_subsys_chnn_bw,
 		__field(int, bw2)
 	),
 	TP_fast_assign(
-		__assign_str(sub_name, sub_name);
+		__assign_str(sub_name);
 		__entry->i = i;
 		__entry->bw0 = bw0;
 		__entry->bw1 = bw1;
@@ -283,7 +283,7 @@ TRACE_EVENT(mmqos__mmpc_subsys_dram_bw,
 		__field(int, srt)
 	),
 	TP_fast_assign(
-		__assign_str(sub_name, sub_name);
+		__assign_str(sub_name);
 		__entry->hrt = hrt;
 		__entry->srt = srt;
 	),

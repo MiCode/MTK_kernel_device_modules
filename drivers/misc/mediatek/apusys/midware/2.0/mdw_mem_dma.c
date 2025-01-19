@@ -9,6 +9,7 @@
 #include <linux/slab.h>
 #include <linux/of_device.h>
 #include <linux/highmem.h>
+#include <linux/vmalloc.h>
 
 #include "mdw_mem_rsc.h"
 #include "mdw_cmn.h"

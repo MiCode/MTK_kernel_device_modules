@@ -23,7 +23,7 @@ TRACE_EVENT(mtk_mbox_isr_entry,
 	),
 
 	TP_fast_assign(
-		__assign_str(name, name);
+		__assign_str(name);
 		__entry->irq_status = irq_status;
 	),
 
@@ -42,7 +42,7 @@ TRACE_EVENT(mtk_mbox_isr_exit,
 	),
 
 	TP_fast_assign(
-		__assign_str(name, name);
+		__assign_str(name);
 		__entry->irq_status = irq_status;
 	),
 
@@ -62,7 +62,7 @@ TRACE_EVENT(mtk_mbox_polling,
 	),
 
 	TP_fast_assign(
-		__assign_str(name, name);
+		__assign_str(name);
 		__entry->irq_status = irq_status;
 		__entry->recv_pin_index = recv_pin_index;
 	),

@@ -21,12 +21,12 @@ ccflags-y += \
 	-Wno-unused-variable \
 	-Wno-unused-function
 
-ifneq ($(wildcard $(srctree)/$(src)/gpu_iommu_mt6989.c),)
+ifneq ($(wildcard $(src)/gpu_iommu_mt6989.c),)
 mtk_gpu_iommu_mt6989-y := gpu_iommu_mt6989.o
 obj-$(CONFIG_MTK_GPU_MT6989_SUPPORT) += mtk_gpu_iommu_mt6989.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/gpu_iommu_mt6991.c),)
+ifneq ($(wildcard $(src)/gpu_iommu_mt6991.c),)
 mtk_gpu_iommu_mt6991-y := gpu_iommu_mt6991.o
 obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpu_iommu_mt6991.o
 endif

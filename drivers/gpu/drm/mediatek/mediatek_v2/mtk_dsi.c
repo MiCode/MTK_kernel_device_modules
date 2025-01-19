@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <video/mipi_display.h>
 #include <video/videomode.h>
+#include <linux/vmalloc.h>
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #else

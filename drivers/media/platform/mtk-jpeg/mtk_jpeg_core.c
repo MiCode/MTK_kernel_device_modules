@@ -929,7 +929,7 @@ static int mtk_jpeg_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	}
 
 	vq = v4l2_m2m_get_vq(fh->m2m_ctx, buf->type);
-	if (buf->index >= vq->num_buffers) {
+	if (buf->index >= vq->max_num_buffers) {
 		pr_info("%s %d buf num is over %d\n", __func__, __LINE__, buf->index);
 		return -EINVAL;
 	}

@@ -221,12 +221,12 @@ apusys-objs += pbm/apu_power_budget.o
 
 # mdla
 MDLA=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys
-ccflags-y += -I$(srctree)/$(src)/mdla/
+ccflags-y += -I$(src)/mdla/
 apusys-objs += $(shell cd $(MDLA) && find mdla -name "*.c" | sed 's/\.c/\.o/g')
 
 # vpu
 VPU = vpu/$(APUSYS_VERSION_VPU)
-ccflags-y += -I$(srctree)/$(src)/$(VPU)
+ccflags-y += -I$(src)/$(VPU)
 ifeq ($(CONFIG_MTK_APUSYS_VPU_DEBUG),y)
 apusys-objs += $(VPU)/vpu_tag.o
 apusys-objs += $(VPU)/vpu_met.o

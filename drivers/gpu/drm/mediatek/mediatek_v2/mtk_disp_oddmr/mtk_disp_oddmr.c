@@ -10,6 +10,7 @@
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
+#include <linux/vmalloc.h>
 #include <linux/workqueue.h>
 #include <linux/delay.h>
 #include <linux/time.h>

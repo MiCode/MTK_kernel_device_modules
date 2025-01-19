@@ -40,13 +40,13 @@ mtk_ghpm_swwa-y := \
 	ghpm_swwa.o \
 
 ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-ifneq ($(wildcard $(srctree)/$(src)/ghpm.c),)
+ifneq ($(wildcard $(src)/ghpm.c),)
 obj-$(CONFIG_MTK_GHPM_SUPPORT) += mtk_ghpm.o
 endif
 endif
 
 ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-ifneq ($(wildcard $(srctree)/$(src)/ghpm_swwa.c),)
+ifneq ($(wildcard $(src)/ghpm_swwa.c),)
 obj-$(CONFIG_MTK_GHPM_SUPPORT) += mtk_ghpm_swwa.o
 endif
 endif

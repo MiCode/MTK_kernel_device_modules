@@ -520,7 +520,7 @@ static int mtk_vdec_get_lpw_start_limit(struct mtk_vcodec_ctx *ctx)
 	if (dst_vq == NULL)
 		return ctx->dpb_size;
 
-	return dst_vq->num_buffers + 1;
+	return vb2_get_num_buffers(dst_vq) + 1;
 }
 
 static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
@@ -1764,14 +1764,14 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 
 		if (ret == -EIO) {
 			mutex_lock(&ctx->buf_lock);
-			for (i = 0; i < dstq->num_buffers; i++) {
+			for (i = 0; i < vb2_get_num_buffers(dstq); i++) {
 				dst_vb2_v4l2 = container_of(
 					dstq->bufs[i], struct vb2_v4l2_buffer, vb2_buf);
 				dstbuf = container_of(
 					dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
 				// codec exception handling
 				mtk_v4l2_debug(8, "[%d]num_buffers %d status=%x queue id=%d %p %lx q_cnt %d %d %d %d state %d",
-					ctx->id, dstq->num_buffers, dstbuf->frame_buffer.status,
+					ctx->id, vb2_get_num_buffers(dstq), dstbuf->frame_buffer.status,
 					dstbuf->vb.vb2_buf.index, &dstbuf->frame_buffer,
 					(unsigned long)(&dstbuf->frame_buffer),
 					atomic_read(&dstq->owned_by_drv_count),
@@ -1786,7 +1786,7 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 				V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, false, -atomic_read(&ctx->output_cnt_in_driver));
 			mutex_unlock(&ctx->buf_lock);
 
-			for (i = 0; i < srcq->num_buffers; i++) {
+			for (i = 0; i < vb2_get_num_buffers(srcq); i++) {
 				src_vb2_v4l2 = container_of(
 					srcq->bufs[i], struct vb2_v4l2_buffer, vb2_buf);
 				srcbuf = container_of(
@@ -1805,13 +1805,13 @@ static void mtk_vdec_reset_decoder(struct mtk_vcodec_ctx *ctx, bool is_drain,
 
 	/* check buffer status */
 	mutex_lock(&ctx->buf_lock);
-	for (i = 0; i < dstq->num_buffers; i++) {
+	for (i = 0; i < vb2_get_num_buffers(dstq); i++) {
 		dst_vb2_v4l2 = container_of(
 			dstq->bufs[i], struct vb2_v4l2_buffer, vb2_buf);
 		dstbuf = container_of(
 			dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
 		mtk_v4l2_debug(4, "[%d]num_buffers %d status=%x queue id=%d %p %lx q_cnt %d %d %d %d",
-			ctx->id, dstq->num_buffers, dstbuf->frame_buffer.status,
+			ctx->id, vb2_get_num_buffers(dstq), dstbuf->frame_buffer.status,
 			dstbuf->vb.vb2_buf.index, &dstbuf->frame_buffer,
 			(unsigned long)(&dstbuf->frame_buffer),
 			atomic_read(&dstq->owned_by_drv_count),
@@ -2836,7 +2836,7 @@ static int vidioc_vdec_reqbufs(struct file *file, void *priv, struct v4l2_reques
 	bool cap_req_0 = false;
 	int ret;
 
-	if (rb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE && rb->count == 0 && vq != NULL && vq->num_buffers > 0)
+	if (rb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE && rb->count == 0 && vq != NULL && vb2_get_num_buffers(vq) > 0)
 		cap_req_0 = true;
 
 	mtk_v4l2_debug(cap_req_0 ? 0 : 1, "[%d] reqbufs count %d, type %d, ctx state %d",
@@ -2876,9 +2876,9 @@ static int vidioc_vdec_qbuf(struct file *file, void *priv, struct v4l2_buffer *b
 		mtk_v4l2_err("Error! vq is NULL!");
 		return -EINVAL;
 	}
-	if (buf->index >= vq->num_buffers) {
+	if (buf->index >= vq->max_num_buffers) {
 		mtk_v4l2_err("[%d] buffer index %d out of range %d",
-			ctx->id, buf->index, vq->num_buffers);
+			ctx->id, buf->index, vq->max_num_buffers);
 		return -EINVAL;
 	}
 	if (IS_ERR_OR_NULL(buf->m.planes) || buf->length == 0) {
@@ -2977,9 +2977,9 @@ static int vidioc_vdec_dqbuf(struct file *file, void *priv,
 			mtk_v4l2_err("Error! vq is NULL!");
 			return -EINVAL;
 		}
-		if (buf->index >= vq->num_buffers) {
+		if (buf->index >= vq->max_num_buffers) {
 			mtk_v4l2_err("[%d] buffer index %d out of range %d",
-				ctx->id, buf->index, vq->num_buffers);
+				ctx->id, buf->index, vq->max_num_buffers);
 			return -EINVAL;
 		}
 		vb = vq->bufs[buf->index];
@@ -4316,7 +4316,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 
 		// SET_PARAM_TOTAL_FRAME_BUFQ_COUNT for SW DEC(VDEC_DRV_DECODER_MTK_SOFTWARE=1)
 		if (!mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-			total_frame_bufq_count = q->num_buffers;
+			total_frame_bufq_count = vb2_get_num_buffers(q);
 			if (vdec_if_set_param(ctx,
 				SET_PARAM_TOTAL_FRAME_BUFQ_COUNT,
 				&total_frame_bufq_count)) {
@@ -4353,7 +4353,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		if (!mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
 			// set SET_PARAM_TOTAL_BITSTREAM_BUFQ_COUNT for
 			// error handling when framing
-			total_frame_bufq_count = q->num_buffers;
+			total_frame_bufq_count = vb2_get_num_buffers(q);
 			if (vdec_if_set_param(ctx,
 				SET_PARAM_TOTAL_BITSTREAM_BUFQ_COUNT,
 				&total_frame_bufq_count)) {
@@ -4410,12 +4410,12 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 				v4l2_m2m_buf_done(src_vb2_v4l2, VB2_BUF_STATE_ERROR);
 
 		/* check all buffer status */
-		for (i = 0; i < q->num_buffers; i++)
+		for (i = 0; i < vb2_get_num_buffers(q); i++)
 			if (q->bufs[i]->state == VB2_BUF_STATE_ACTIVE) {
 				src_vb2_v4l2 = container_of(q->bufs[i], struct vb2_v4l2_buffer, vb2_buf);
 				srcbuf = container_of(src_vb2_v4l2, struct mtk_video_dec_buf, vb);
 				mtk_v4l2_err("[%d] src num_buffers %d q_cnt %d queue id=%d state %d %d %d %d",
-					ctx->id, q->num_buffers,
+					ctx->id, vb2_get_num_buffers(q),
 					atomic_read(&q->owned_by_drv_count),
 					srcbuf->vb.vb2_buf.index,
 					q->bufs[i]->state, srcbuf->queued_in_vb2,
@@ -4469,13 +4469,13 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 			v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_ERROR);
 	}
 	/* check all buffer status */
-	for (i = 0; i < q->num_buffers; i++) {
+	for (i = 0; i < vb2_get_num_buffers(q); i++) {
 		dst_vb2_buf = q->bufs[i];
 		dst_vb2_v4l2 = container_of(q->bufs[i], struct vb2_v4l2_buffer, vb2_buf);
 		dstbuf = container_of(dst_vb2_v4l2, struct mtk_video_dec_buf, vb);
 		mtk_v4l2_debug((dst_vb2_buf->state == VB2_BUF_STATE_ACTIVE) ? 0 : 4,
 			"[%d] dst num_buffers %d q_cnt %d status=%x queue id=%d %p %lx state %d %d %d %d",
-			ctx->id, q->num_buffers, atomic_read(&q->owned_by_drv_count),
+			ctx->id, vb2_get_num_buffers(q), atomic_read(&q->owned_by_drv_count),
 			dstbuf->frame_buffer.status,
 			dst_vb2_buf->index, &dstbuf->frame_buffer,
 			(unsigned long)(&dstbuf->frame_buffer),

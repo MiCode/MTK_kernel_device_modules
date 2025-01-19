@@ -8,6 +8,7 @@
 
 #include <linux/ioctl.h>
 #include <linux/types.h>
+#include <linux/vmalloc.h>
 
 #define APUSYS_MAGICNO 'A'
 

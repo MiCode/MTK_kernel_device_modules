@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
 #include <soc/mediatek/mmdvfs_v3.h>
+#include <linux/vmalloc.h>
 #include <soc/mediatek/smi.h>
 
 #include "mtk_vcodec_enc_pm.h"

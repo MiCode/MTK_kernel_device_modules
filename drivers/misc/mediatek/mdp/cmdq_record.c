@@ -4,6 +4,7 @@
  */
 
 #include <linux/sched/clock.h>
+#include <linux/vmalloc.h>
 
 #include "cmdq_record.h"
 #include "cmdq_reg.h"

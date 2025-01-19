@@ -63,7 +63,7 @@ TRACE_EVENT(mkp_trace_event_test,
 	),
 
 	TP_fast_assign(
-		__assign_str(test, test);
+		__assign_str(test);
 	),
 
 	TP_printk("mkp_test: %s\n", __print_mkp_array())

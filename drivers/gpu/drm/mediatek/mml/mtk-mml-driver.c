@@ -16,6 +16,7 @@
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include <linux/debugfs.h>
+#include <linux/vmalloc.h>
 #include <linux/minmax.h>
 #include <linux/dma-mapping.h>
 

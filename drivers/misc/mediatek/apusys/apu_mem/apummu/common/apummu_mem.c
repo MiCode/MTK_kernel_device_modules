@@ -13,6 +13,7 @@
 #include <linux/of_device.h>
 #include <linux/highmem.h>
 #include <linux/list.h>
+#include <linux/vmalloc.h>
 
 #include "apummu_cmn.h"
 #include "apummu_mem.h"

@@ -28,6 +28,7 @@
 #include <linux/poll.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/vmalloc.h>
 #include <sensors_io.h>
 
 #define ALSPS_TAG "<ALS/PS> "

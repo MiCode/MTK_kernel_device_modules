@@ -20,7 +20,7 @@
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
 #include <linux/suspend.h>
-
+#include <linux/vmalloc.h>
 
 #include "mbraink_power.h"
 #include "mbraink_video.h"

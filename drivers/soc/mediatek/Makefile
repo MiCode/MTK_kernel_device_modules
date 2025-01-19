@@ -18,58 +18,58 @@ ifneq ($(filter m,$(CONFIG_DEVICE_MODULES_MTK_SCPSYS)),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += scpsys-dummy.o
 scpsys-dummy-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-dummy.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6768.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6768.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6768.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6761.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6761.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6761.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6765.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6765.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6765.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6781.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6781.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6781.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6833.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6833.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6833.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6853.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6853.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6853.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6877.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6877.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6877.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6886.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6886.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6886.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6893.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6893.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6893.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6897.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6897.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6897.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6899.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6899.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6899.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6983.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6983.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6983.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6985.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6985.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6985.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6989.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6989.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6989.o mtk-scpsys-bringup.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6991-spm.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6991-spm.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6991-spm.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6991-mmpc.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6991-mmpc.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6991-mmpc.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6991-ivi.c),)
+ifneq ($(wildcard $(src)/mtk-scpsys-mt6991-ivi.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_IVI) += mtk-scpsys-mt6991-ivi.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt8188-pm-domains.h),)
+ifneq ($(wildcard $(src)/mt8188-pm-domains.h),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS) += mtk-pm-domains.o
 endif
 obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS) += mtk-mmsys.o

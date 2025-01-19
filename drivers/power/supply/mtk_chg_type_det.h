@@ -28,7 +28,7 @@ static const char *const attach_type_names[ATTACH_TYPE_MAX] = {
 	[ATTACH_TYPE_PD_NONSTD] = "PD - Non-Standard",
 };
 
-static inline const char *const get_attach_type_name(enum attach_type attach_type)
+static inline const char * get_attach_type_name(enum attach_type attach_type)
 {
 	if (attach_type >= ATTACH_TYPE_MAX || attach_type == ATTACH_TYPE_PD)
 		return "Invalid Type";

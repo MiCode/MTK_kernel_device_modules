@@ -23,7 +23,7 @@ TRACE_EVENT(powerhal_cpu_freq_user_setting,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -43,7 +43,7 @@ TRACE_EVENT(powerhal_adpf,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",

@@ -23,6 +23,7 @@
 #include <linux/sched/clock.h>
 #include <linux/reboot.h>	/*kernel_power_off*/
 #include <linux/suspend.h>
+#include <linux/vmalloc.h>
 #include <net/sock.h>
 
 #include "mtk_battery.h"

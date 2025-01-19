@@ -30,31 +30,31 @@ endif
 
 # driver module
 obj-y := camera_pda_dummy.o
-ifneq ($(wildcard $(srctree)/$(src)/isp_71/camera_pda.c),)
+ifneq ($(wildcard $(src)/isp_71/camera_pda.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += isp_71/camera_pda.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_71/camera_pda_mt6879.c),)
+ifneq ($(wildcard $(src)/isp_71/camera_pda_mt6879.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6879.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_71/camera_pda_mt6895.c),)
+ifneq ($(wildcard $(src)/isp_71/camera_pda_mt6895.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6895.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_6s/pda_mt6855.c),)
+ifneq ($(wildcard $(src)/isp_6s/pda_mt6855.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6855.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_7s/pda_mt6985.c),)
+ifneq ($(wildcard $(src)/isp_7s/pda_mt6985.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6985.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_7s/pda_mt6886.c),)
+ifneq ($(wildcard $(src)/isp_7s/pda_mt6886.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6886.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_7sp/pda_mt6897.c),)
+ifneq ($(wildcard $(src)/isp_7sp/pda_mt6897.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6897.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_7sp/pda_mt6989.c),)
+ifneq ($(wildcard $(src)/isp_7sp/pda_mt6989.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6989.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/isp_7sp/pda_mt6878.c),)
+ifneq ($(wildcard $(src)/isp_7sp/pda_mt6878.c),)
 obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6878.o
 endif
 

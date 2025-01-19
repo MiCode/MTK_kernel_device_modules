@@ -37,6 +37,7 @@
 #include <linux/suspend.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <linux/sched/clock.h>
+#include <linux/vmalloc.h>
 #ifdef CMDQ_USE_LEGACY
 #include <mach/mt_boot.h>
 #endif

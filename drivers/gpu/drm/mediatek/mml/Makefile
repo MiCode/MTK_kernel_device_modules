@@ -81,42 +81,42 @@ ifneq (,$(strip $(CONFIG_MMPROFILE)))
 mtk-mml-objs += mtk-mml-mmp.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6983.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6983.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6983.o
 mtk-mml-mt6983-objs := mtk-mml-tp-mt6983.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6985.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6985.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6985.o
 mtk-mml-mt6985-objs := mtk-mml-tp-mt6985.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6886.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6886.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6886.o
 mtk-mml-mt6886-objs := mtk-mml-tp-mt6886.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6897.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6897.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6897.o
 mtk-mml-mt6897-objs := mtk-mml-tp-mt6897.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6899.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6899.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6899.o
 mtk-mml-mt6899-objs := mtk-mml-tp-mt6899.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6989.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6989.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6989.o
 mtk-mml-mt6989-objs := mtk-mml-tp-mt6989.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6878.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6878.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6878.o
 mtk-mml-mt6878-objs := mtk-mml-tp-mt6878.o
 endif
 
-ifneq ($(wildcard $(srctree)/$(src)/mtk-mml-tp-mt6991.c),)
+ifneq ($(wildcard $(src)/mtk-mml-tp-mt6991.c),)
 obj-$(CONFIG_MTK_MML) += mtk-mml-mt6991.o
 mtk-mml-mt6991-objs := mtk-mml-tp-mt6991.o
 endif

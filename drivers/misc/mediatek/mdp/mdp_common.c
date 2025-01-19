@@ -33,6 +33,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/sched/clock.h>
 #include <linux/timekeeping.h>
+#include <linux/vmalloc.h>
 //#include <linux/interconnect-provider.h>
 #include "mtk-interconnect.h"
 #include <linux/pm_opp.h>
@@ -3434,7 +3435,7 @@ static u32 mdp_get_dummy_wpe(void)
 	return 0;
 }
 
-static const char **const mdp_get_engine_group_name(void)
+static const char ** mdp_get_engine_group_name(void)
 {
 	return NULL;
 }

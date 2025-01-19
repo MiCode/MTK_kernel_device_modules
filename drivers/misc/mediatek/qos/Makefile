@@ -17,7 +17,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi
 ccflags-y += -DMTK_SCMI
 endif
 
-ccflags-y += -I$(srctree)/$(src)
+ccflags-y += -I$(src)
 
 ifeq ($(CONFIG_MTK_QOS_LEGACY),y)
 obj-$(CONFIG_MTK_QOS_FRAMEWORK) += mtk_qos_legacy.o

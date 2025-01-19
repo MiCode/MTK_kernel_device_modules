@@ -7,6 +7,7 @@
 #include <linux/dma-fence.h>
 #include <linux/err.h>
 #include <linux/module.h>
+#include <linux/vmalloc.h>
 #include <linux/of.h>
 #include <soc/mediatek/smi.h>
 #include <cmdq-util.h>

@@ -44,6 +44,7 @@
 #include <linux/arm-smccc.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/string.h>
+#include <linux/vmalloc.h>
 
 #define enable_code 0 /*replace #if 0*/
 

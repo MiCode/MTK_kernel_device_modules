@@ -176,7 +176,7 @@ char *chg_alg_state_to_str(int state)
 }
 EXPORT_SYMBOL(chg_alg_state_to_str);
 
-extern const char *const
+extern const char *
 chg_alg_notify_evt_tostring(enum chg_alg_notifier_events evt)
 {
 	if ((int)evt >= (int)EVT_MAX || (int)evt < 0) {

@@ -45,7 +45,7 @@ static inline void _apupw_separte(struct seq_file *s, char *separate)
  *
  * Based on wiki's document, transfer real dvfs_user.
  */
-static const enum DVFS_USER _apupw_dbg_id2user(int dbg_id)
+static enum DVFS_USER _apupw_dbg_id2user(int dbg_id)
 {
 	static const int ids[] = {
 		[0] = VPU0,

@@ -7,6 +7,7 @@
 #include <linux/time.h>
 #include <linux/delay.h>
 #include <linux/wait.h>
+#include <linux/vmalloc.h>
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 #include <linux/debugfs.h>
 #include <mt-plat/mrdump.h>

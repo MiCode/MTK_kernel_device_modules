@@ -15,6 +15,7 @@
 #include <linux/delay.h>
 #include <linux/time.h>
 #include <linux/sched.h>
+#include <linux/vmalloc.h>
 #include <uapi/linux/sched/types.h>
 
 #ifndef DRM_CMDQ_DISABLE

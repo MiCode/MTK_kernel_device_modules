@@ -55,67 +55,67 @@ obj-$(CONFIG_MTK_CMDQ_MBOX_EXT_MT6768) += cmdq-platform-mt6768.o
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT_MT6761) += cmdq-platform-mt6761.o
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT_MT6765) += cmdq-platform-mt6765.o
 else
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6833.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6833.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6833.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6873.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6873.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6873.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6853.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6853.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6853.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6885.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6885.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6885.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6893.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6893.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6893.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6983.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6983.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6983.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6879.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6879.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6879.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6895.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6895.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6895.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6855.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6855.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6855.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6985.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6985.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6985.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6886.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6886.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6886.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6897.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6897.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6897.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6989.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6989.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6989.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6878.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6878.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6878.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6768.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6768.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6768.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6761.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6761.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6761.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6991.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6991.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6991.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6877.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6877.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6877.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6765.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6765.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6765.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6781.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6781.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6781.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6899.c),)
+ifneq ($(wildcard $(src)/cmdq-platform-mt6899.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6899.o
 endif
 endif

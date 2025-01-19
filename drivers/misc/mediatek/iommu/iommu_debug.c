@@ -21,6 +21,7 @@
 #include <linux/stacktrace.h>
 #endif
 #include <linux/export.h>
+#include <linux/vmalloc.h>
 #include <dt-bindings/memory/mtk-memory-port.h>
 #include <trace/hooks/iommu.h>
 

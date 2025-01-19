@@ -295,8 +295,6 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 			/*buffer is full this time*/
 			break;
 		}
-		/*move to the next pid and reset the current tid*/
-		current_tid = 1;
 	}
 
 	pr_info("%s: current_tid = %u, current_pid_idx = %u, count = %u, current_count=%u\n",

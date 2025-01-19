@@ -69,40 +69,40 @@ mtk_gpufreq_mt6991-y := \
 	gpufreq_mt6991.o
 
 obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpufreq_wrapper.o
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6886.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6886.c),)
+ifneq ($(wildcard $(src)/gpufreq_mt6886.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6886.c),)
 obj-$(CONFIG_MTK_GPU_MT6886_SUPPORT) += mtk_gpufreq_mt6886.o
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6897.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6897.c),)
+ifneq ($(wildcard $(src)/gpufreq_mt6897.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6897.c),)
 obj-$(CONFIG_MTK_GPU_MT6897_SUPPORT) += mtk_gpufreq_mt6897.o
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6899.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6899.c),)
+ifneq ($(wildcard $(src)/gpufreq_mt6899.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6899.c),)
 obj-$(CONFIG_MTK_GPU_MT6899_SUPPORT) += mtk_gpufreq_mt6899.o
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6985.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6985.c),)
+ifneq ($(wildcard $(src)/gpufreq_mt6985.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6985.c),)
 obj-$(CONFIG_MTK_GPU_MT6985_SUPPORT) += mtk_gpufreq_mt6985.o
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6989_fpga.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6989_fpga.c),)
+ifneq ($(wildcard $(src)/gpufreq_mt6989_fpga.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6989_fpga.c),)
 obj-$(CONFIG_MTK_GPU_MT6989_SUPPORT) += mtk_gpufreq_mt6989_fpga.o
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6989.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6989.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpu_smmu_mt6989.c),)
+ifneq ($(wildcard $(src)/gpufreq_mt6989.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6989.c),)
+ifneq ($(wildcard $(src)/gpu_smmu_mt6989.c),)
 obj-$(CONFIG_MTK_GPU_MT6989_SUPPORT) += mtk_gpufreq_mt6989.o
 endif
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_mt6991.c),)
-ifneq ($(wildcard $(srctree)/$(src)/gpufreq_history_mt6991.c),)
+ifneq ($(wildcard $(src)/gpufreq_mt6991.c),)
+ifneq ($(wildcard $(src)/gpufreq_history_mt6991.c),)
 obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpufreq_mt6991.o
 endif
 endif

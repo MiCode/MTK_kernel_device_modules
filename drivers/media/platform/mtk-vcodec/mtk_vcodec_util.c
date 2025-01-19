@@ -15,6 +15,7 @@
 #include <mtk_heap.h>
 #include <linux/sched.h>
 #include <uapi/linux/sched/types.h>
+#include <linux/vmalloc.h>
 
 #include "mtk_vcodec_fence.h"
 #include "mtk_vcodec_drv.h"

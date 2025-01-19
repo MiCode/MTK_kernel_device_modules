@@ -33,7 +33,7 @@ TRACE_EVENT(u_logger_log,
 	TP_fast_assign(
 		int n;
 
-		__assign_str(name, dev_name(dev));
+		__assign_str(name);
 		n = vsnprintf(__get_str(msg), U_LOGGER_MSG_MAX, vaf->fmt, *vaf->va);
 		if (!n)
 			dev_info(dev, "weird assignment, n:%d\n", n);

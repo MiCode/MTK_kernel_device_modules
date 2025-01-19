@@ -80,7 +80,7 @@ const void *irq_to_handler(int irq)
 }
 
 #if !IS_ENABLED(CONFIG_ARM64)
-const int desc_to_ipi_type(struct irq_desc *desc)
+int desc_to_ipi_type(struct irq_desc *desc)
 {
 	int temp_irq = 0;
 	int num = 0;
@@ -99,7 +99,7 @@ const int desc_to_ipi_type(struct irq_desc *desc)
 	return -1;
 }
 #else
-const int desc_to_ipi_type(struct irq_desc *desc)
+int desc_to_ipi_type(struct irq_desc *desc)
 {
 	struct irq_desc **ipi_desc = ipi_desc_get();
 	int nr_ipi = nr_ipi_get();
@@ -112,7 +112,7 @@ const int desc_to_ipi_type(struct irq_desc *desc)
 }
 #endif
 
-const int irq_to_ipi_type(unsigned int irq)
+int irq_to_ipi_type(unsigned int irq)
 {
 	struct irq_desc *desc = irq_to_desc(irq);
 

@@ -5,6 +5,7 @@
 
 #include <linux/poll.h>
 #include <linux/proc_fs.h>
+#include <linux/vmalloc.h>
 
 #include "ccci_dpmaif_debug.h"
 #include "ccci_dpmaif_com.h"

@@ -9,6 +9,7 @@
 #include <linux/of_fdt.h>	/*of_dt API*/
 #endif
 #include <linux/platform_device.h>
+#include <linux/vmalloc.h>
 #include <linux/reboot.h>	/*kernel_power_off*/
 #include <linux/skbuff.h>	/* netlink */
 #include <linux/socket.h>	/* netlink */

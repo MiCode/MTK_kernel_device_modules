@@ -22,7 +22,7 @@ TRACE_EVENT(irq_mon_msg,
 	),
 
 	TP_fast_assign(
-		__assign_str(buf, buf);
+		__assign_str(buf);
 	),
 
 	TP_printk("%s", __get_str(buf))

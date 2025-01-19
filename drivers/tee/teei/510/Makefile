@@ -10,15 +10,15 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 
-subdir-ccflags-y  += -I$(srctree)/$(src)/common/include
+subdir-ccflags-y  += -I$(src)/common/include
 #ccflags-y  += -I$(src)/common/include
 subdir-ccflags-y  += \
-	-I$(srctree)/$(src)/tz_dcih \
-	-I$(srctree)/$(src)/public \
-	-I$(srctree)/$(src)/tz_driver/include
+	-I$(src)/tz_dcih \
+	-I$(src)/public \
+	-I$(src)/tz_driver/include
 
 ifneq ($(filter y m, $(CONFIG_MTPROF)),)
-subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/mtprof/
+subdir-ccflags-y += -I$(src)/../../../drivers/misc/mediatek/mtprof/
 endif
 
 $(info "=----------------1---------------------------")

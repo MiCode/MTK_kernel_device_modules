@@ -8,6 +8,7 @@
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
+#include <linux/vmalloc.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 

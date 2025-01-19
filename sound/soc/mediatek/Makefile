@@ -1,45 +1,45 @@
 # SPDX-License-Identifier: GPL-2.0
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MEDIATEK) += common/
-ifneq ($(wildcard $(srctree)/$(src)/mt6853/Makefile),)
+ifneq ($(wildcard $(src)/mt6853/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6853) += mt6853/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6873/Makefile),)
+ifneq ($(wildcard $(src)/mt6873/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6873) += mt6873/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6885/Makefile),)
+ifneq ($(wildcard $(src)/mt6885/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6885) += mt6885/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt8188/Makefile),)
+ifneq ($(wildcard $(src)/mt8188/Makefile),)
 obj-$(CONFIG_SND_SOC_MT8188) += mt8188/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6983/Makefile),)
+ifneq ($(wildcard $(src)/mt6983/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6983) += mt6983/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6985/Makefile),)
+ifneq ($(wildcard $(src)/mt6985/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6985) += mt6985/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6886/Makefile),)
+ifneq ($(wildcard $(src)/mt6886/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6886) += mt6886/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6897/Makefile),)
+ifneq ($(wildcard $(src)/mt6897/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6897) += mt6897/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6989/Makefile),)
+ifneq ($(wildcard $(src)/mt6989/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6989) += mt6989/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6768/Makefile),)
+ifneq ($(wildcard $(src)/mt6768/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6768) += mt6768/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6877/Makefile),)
+ifneq ($(wildcard $(src)/mt6877/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6877) += mt6877/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6991/Makefile),)
+ifneq ($(wildcard $(src)/mt6991/Makefile),)
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6991) += mt6991/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6781/Makefile),)
+ifneq ($(wildcard $(src)/mt6781/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6781) += mt6781/
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mt6833/Makefile),)
+ifneq ($(wildcard $(src)/mt6833/Makefile),)
 obj-$(CONFIG_SND_SOC_MT6833) += mt6833/
 endif
 # vow related code

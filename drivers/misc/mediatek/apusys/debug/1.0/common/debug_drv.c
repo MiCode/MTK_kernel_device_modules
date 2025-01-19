@@ -18,7 +18,7 @@
 #include <linux/io.h>
 #include <linux/string.h>
 #include <linux/device.h>
-
+#include <linux/vmalloc.h>
 
 #if IS_ENABLED(CONFIG_OF)
 #include <linux/cpu.h>

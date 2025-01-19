@@ -22,7 +22,7 @@ TRACE_EVENT(fpsgo_main_systrace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -42,7 +42,7 @@ TRACE_EVENT(fbt_systrace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -62,7 +62,7 @@ TRACE_EVENT(fstb_systrace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -82,7 +82,7 @@ TRACE_EVENT(xgf_systrace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -102,7 +102,7 @@ TRACE_EVENT(fbt_ctrl_systrace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -122,7 +122,7 @@ TRACE_EVENT(fpsgo_main_trace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -142,7 +142,7 @@ TRACE_EVENT(xgf_trace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",
@@ -162,7 +162,7 @@ TRACE_EVENT(minitop_trace,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",

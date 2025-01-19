@@ -7,6 +7,7 @@
 #include <linux/atomic.h>
 #include <linux/file.h>
 #include <linux/module.h>
+#include <linux/vmalloc.h>
 #include <linux/sync_file.h>
 #include <linux/time64.h>
 #include <linux/sched.h>

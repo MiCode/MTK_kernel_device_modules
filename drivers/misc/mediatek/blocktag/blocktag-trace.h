@@ -81,7 +81,7 @@ TRACE_EVENT(blocktag_mictx_get_data,
 	),
 
 	TP_fast_assign(
-		__assign_str(name, name);
+		__assign_str(name);
 		__entry->duration  = iostat->duration;
 		__entry->tp_req_r  = iostat->tp_req_r;
 		__entry->tp_req_w  = iostat->tp_req_w;

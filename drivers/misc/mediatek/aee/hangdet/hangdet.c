@@ -510,7 +510,7 @@ static void kwdt_time_sync(void)
 }
 
 #if IS_ENABLED(CONFIG_ARM64)
-static const int irq_to_ipi_type(int irq)
+static int irq_to_ipi_type(int irq)
 {
 	struct irq_desc **ipi_desc = ipi_desc_get();
 	struct irq_desc *desc = irq_to_desc(irq);
@@ -526,7 +526,7 @@ static const int irq_to_ipi_type(int irq)
 	return -1;
 }
 #else
-static const int irq_to_ipi_type(int irq)
+static int irq_to_ipi_type(int irq)
 {
 	int temp_irq = 0;
 	int num = 0;

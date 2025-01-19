@@ -13,6 +13,7 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 #include "clkbuf-util.h"
 #include "clkbuf-ctrl.h"
 #include "clkbuf-pmic.h"

@@ -18,6 +18,7 @@
 #include <linux/uaccess.h>
 #include <linux/poll.h>
 #include <linux/workqueue.h>
+#include <linux/vmalloc.h>
 
 #include "msg_thread.h"
 #include "conap_scp.h"

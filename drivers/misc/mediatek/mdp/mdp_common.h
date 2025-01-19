@@ -136,7 +136,7 @@ typedef void (*MdpQosClearAll) (u32 thread_id);
 
 typedef u32 (*MdpGetGroup) (void);
 
-typedef const char **const (*MdpGetEngineGroupName) (void);
+typedef const char ** (*MdpGetEngineGroupName) (void);
 
 typedef phys_addr_t *(*MdpGetEngineBase) (void);
 

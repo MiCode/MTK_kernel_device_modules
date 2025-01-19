@@ -1362,7 +1362,7 @@ static u32 mdp_get_group_mdp(void)
 	return CMDQ_GROUP_MDP;
 }
 
-static const char **const mdp_get_engine_group_name(void)
+static const char ** mdp_get_engine_group_name(void)
 {
 	static const char *const engineGroupName[] = {
 		CMDQ_FOREACH_GROUP(GENERATE_STRING)

@@ -1132,7 +1132,7 @@ static const struct proc_ops jpeg_fops = {
 	.proc_lseek = no_llseek,
 };
 
-const long jpeg_dev_get_hybrid_decoder_base_VA(int id)
+long jpeg_dev_get_hybrid_decoder_base_VA(int id)
 {
 	return gJpegqDev.hybriddecRegBaseVA[id];
 }

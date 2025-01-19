@@ -23,7 +23,7 @@ TRACE_EVENT(touch_boost,
 	),
 
 	TP_fast_assign(
-	__assign_str(buf, buf);
+	__assign_str(buf);
 	),
 
 	TP_printk("%s",

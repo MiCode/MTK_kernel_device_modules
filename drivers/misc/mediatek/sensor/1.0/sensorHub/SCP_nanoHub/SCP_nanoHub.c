@@ -24,6 +24,7 @@
 #include <linux/pm_wakeup.h>
 #include <linux/suspend.h>
 #include <linux/time.h>
+#include <linux/vmalloc.h>
 #include "include/scp.h"
 #include "cust_sensorHub.h"
 #include "hwmsensor.h"

@@ -6,6 +6,7 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/rtc.h>
+#include <linux/vmalloc.h>
 #include <linux/sched/clock.h>
 #include <linux/regulator/consumer.h>
 #include <mtk_low_battery_throttling.h>

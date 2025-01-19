@@ -20,6 +20,7 @@
 #include <linux/random.h>
 #include <linux/seq_file.h>
 #include <linux/pm_runtime.h>
+#include <linux/vmalloc.h>
 #include <mboot_params.h>
 
 #include "gpueb_ipi.h"

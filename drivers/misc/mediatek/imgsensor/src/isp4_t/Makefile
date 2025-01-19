@@ -40,7 +40,7 @@ endif
 
 define add_subdrv
 $(eval subdrv-rpath = $1)
-$(eval include $(srctree)/$(src)/$1/Makefile)
+$(eval include $(src)/$1/Makefile)
 endef
 
 define FILTER_DRV

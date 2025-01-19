@@ -36,6 +36,7 @@
 #include <linux/uaccess.h>
 #include <linux/unistd.h>
 #include <linux/version.h>
+#include <linux/vmalloc.h>
 #include <net/genetlink.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>

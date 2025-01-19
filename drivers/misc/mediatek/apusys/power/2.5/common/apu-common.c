@@ -53,7 +53,7 @@ _dump:
  *
  * only use for mt6877
  */
-const int apu_dev2_domain(enum DVFS_USER user)
+int apu_dev2_domain(enum DVFS_USER user)
 {
 	enum DVFS_VOLTAGE_DOMAIN {
 		V_VPU0 = 0,

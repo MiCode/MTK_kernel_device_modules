@@ -6,6 +6,7 @@
 #include <linux/of.h>
 #include <linux/io.h>
 #include <linux/of_irq.h>
+#include <linux/vmalloc.h>
 /* mmup mbox/ipi related */
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>

@@ -9,6 +9,7 @@
 #include <linux/io.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
+#include <linux/vmalloc.h>
 #include "scp_helper.h"
 #include "sap.h"
 

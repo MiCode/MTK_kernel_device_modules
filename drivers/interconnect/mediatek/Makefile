@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0
 
-ccflags-y += -I$(srctree)/$(src)
+ccflags-y += -I$(src)
 ccflags-y += -I$(srctree)/drivers/interconnect
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect
@@ -16,48 +16,48 @@ mmqos-common-objs += mmqos-mtk.o mmqos-hrt.o mmqos-test.o
 ifneq ($(filter y m,$(CONFIG_MTK_MMQOS_VCP)),)
 mmqos-common-objs += mmqos-vcp.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6873.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6873.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6873) += mmqos-mt6873.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6853.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6853.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6853) += mmqos-mt6853.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6886.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6886.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6886) += mmqos-mt6886.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6893.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6893.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6893) += mmqos-mt6893.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6897.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6897.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6897) += mmqos-mt6897.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6983.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6983.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6983) += mmqos-mt6983.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6985.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6985.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6985) += mmqos-mt6985.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6989.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6989.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6989) += mmqos-mt6989.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6768.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6768.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6768) += mmqos-mt6768.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6761.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6761.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6761) += mmqos-mt6761.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6991.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6991.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6991) += mmqos-mt6991.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6765.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6765.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6765) += mmqos-mt6765.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6877.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6877.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6877) += mmqos-mt6877.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6781.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6781.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6781) += mmqos-mt6781.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mmqos-mt6833.c),)
+ifneq ($(wildcard $(src)/mmqos-mt6833.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_V6833) += mmqos-mt6833.o
 endif

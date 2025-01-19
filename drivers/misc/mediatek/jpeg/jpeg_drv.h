@@ -73,7 +73,7 @@ struct JpegDeviceStruct {
 	uint32_t axdomain[JPEG_LARB_COUNT];
 };
 
-const long jpeg_dev_get_hybrid_decoder_base_VA(int id);
+long jpeg_dev_get_hybrid_decoder_base_VA(int id);
 
 struct dmabuf_info {
 	struct dma_buf *i_dbuf;

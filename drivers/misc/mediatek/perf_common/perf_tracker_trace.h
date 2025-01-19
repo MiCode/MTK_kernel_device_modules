@@ -210,7 +210,7 @@ TRACE_EVENT(perf_index_sbin,
 		__field(u32, ctl)
 	),
 	TP_fast_assign(
-		__assign_str(data, raw_data);
+		__assign_str(data);
 		__entry->lens = lens;
 		__entry->ctl = controls;
 	),
@@ -240,8 +240,8 @@ TRACE_EVENT(freq_qos_user_setting,
 		__entry->cid = cid;
 		__entry->type = type;
 		__entry->value = value;
-		__assign_str(caller, caller);
-		__assign_str(caller2, caller2);
+		__assign_str(caller);
+		__assign_str(caller2);
 	),
 
 	TP_printk("cid=%d type=%d value=%d caller=%s caller2=%s",
@@ -274,7 +274,7 @@ TRACE_EVENT(cpu_pmu_debug,
 
 	TP_fast_assign(
 		__entry->cpu = cpu;
-		__assign_str(pmu_name, pmu_name);
+		__assign_str(pmu_name);
 		__entry->valid = valid;
 		__entry->cur = cur;
 		__entry->diff = diff;

@@ -25,7 +25,7 @@ obj-$(CONFIG_CHARGER_MT6379)	+= mt6379-chg.o
 mt6379-chg-objs := mt6379-charger.o mt6379-chgdev.o
 obj-$(CONFIG_GAUGE_MT6375)	+= mt6375-battery.o
 mt6375-battery-objs := mtk_battery_coulomb_service.o mtk_battery.o mtk_battery_algo.o mt6375-gauge.o mtk_battery_daemon.o
-ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64_alpha),)
+ifneq ($(wildcard $(src)/k6985v1_64_alpha),)
 obj-$(CONFIG_GAUGE_BQ28Z610)      += k6985v1_64_alpha/
 endif
 mtk_battery_manager-objs := mtk-battery-manager.o mtk_battery_interface.o

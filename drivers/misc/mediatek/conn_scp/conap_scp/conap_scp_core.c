@@ -12,6 +12,7 @@
 #include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/workqueue.h>
+#include <linux/vmalloc.h>
 
 #include "conap_scp.h"
 #include "conap_scp_priv.h"

@@ -18,6 +18,7 @@
 #include "linux/module.h"
 #include <linux/of_reserved_mem.h>
 #include <mt-plat/mrdump.h>
+#include <linux/vmalloc.h>
 
 #include "cmdq-util.h"
 

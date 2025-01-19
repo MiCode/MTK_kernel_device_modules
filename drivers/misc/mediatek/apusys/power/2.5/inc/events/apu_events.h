@@ -107,9 +107,9 @@ TRACE_EVENT(apupwr_dvfs,
 		__field(ulong, freq)
 	),
 	TP_fast_assign(
-		__assign_str(gov_name, gov_name);
-		__assign_str(p_name, p_name);
-		__assign_str(c_name, c_name);
+		__assign_str(gov_name);
+		__assign_str(p_name);
+		__assign_str(c_name);
 		__entry->opp = opp;
 		__entry->freq = freq;
 	),

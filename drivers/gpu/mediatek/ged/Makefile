@@ -10,7 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-
 GED_TOP = $(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged
 MTK_TOP = $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/
 GPU_TOP = $(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/

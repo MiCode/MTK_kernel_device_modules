@@ -22,6 +22,7 @@
 #include <linux/pm_runtime.h>
 #include <mboot_params.h>
 #include <linux/of_reserved_mem.h>
+#include <linux/vmalloc.h>
 
 #include "gpueb_helper.h"
 #include "gpueb_reserved_mem.h"

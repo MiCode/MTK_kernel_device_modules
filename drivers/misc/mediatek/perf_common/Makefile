@@ -1,4 +1,4 @@
-ccflags-y += -I$(srctree)/$(src)              # needed for trace events
+ccflags-y += -I$(src)              # needed for trace events
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos/
 
 ccflags-y += -Wno-frame-address

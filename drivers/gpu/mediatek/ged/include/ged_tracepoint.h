@@ -26,7 +26,7 @@ TRACE_EVENT(tracing_mark_write,
 
 	TP_fast_assign(
 		__entry->pid = pid;
-		__assign_str(name, name);
+		__assign_str(name);
 		__entry->value = value;
 	),
 
@@ -1202,7 +1202,7 @@ TRACE_EVENT(GPU_DVFS__Policy__EB_RINBUFFER,
 		__field(unsigned int, t7)
 	),
 	TP_fast_assign(
-		__assign_str(name, name);
+		__assign_str(name);
 		__entry->u0 = arg[0];
 		__entry->u1 = arg[1];
 		__entry->u2 = arg[2];
@@ -1833,6 +1833,6 @@ TRACE_EVENT(GPU_DVFS__EBRB_PREOC,
 
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH ../../drivers/gpu/mediatek/ged/include
+#define TRACE_INCLUDE_PATH .
 #define TRACE_INCLUDE_FILE ged_tracepoint
 #include <trace/define_trace.h>

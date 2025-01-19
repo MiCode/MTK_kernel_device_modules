@@ -24,7 +24,7 @@ void __iomem *spm_reg;
 void __iomem *tclk_reg;
 struct mutex rpc_lock;
 
-const int _apu_rpc_engid(enum DVFS_USER user)
+int _apu_rpc_engid(enum DVFS_USER user)
 {
 	static const int ids[] = {
 		[VPU0] = RPC_VPU0_WAKE_ID,

@@ -316,7 +316,7 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		),
 
 	TP_fast_assign(
-		__assign_str(type, type);
+		__assign_str(type);
 		__entry->best_cpu        = best_cpu;
 		__entry->new_cpu        = new_cpu;
 		__entry->replace        = replace;
@@ -580,7 +580,7 @@ TRACE_EVENT(sched_max_util,
 		),
 
 	TP_fast_assign(
-		__assign_str(domain_name, domain_name);
+		__assign_str(domain_name);
 		__entry->idx   = idx;
 		__entry->dst_cpu    = dst_cpu;
 		__entry->dst_idx    = dst_idx;
@@ -1007,7 +1007,7 @@ TRACE_EVENT(sched_set_vip,
 	TP_fast_assign(
 		__entry->id       = id;
 		__entry->done       = done;
-		__assign_str(type, type);
+		__assign_str(type);
 		__entry->vip_prio       = vip_prio;
 		__entry->throttle_time  = throttle_time;
 		__entry->slot_id  = slot_id;
@@ -1033,7 +1033,7 @@ TRACE_EVENT(sched_unset_vip,
 	TP_fast_assign(
 		__entry->id       = id;
 		__entry->done       = done;
-		__assign_str(type, type);
+		__assign_str(type);
 		__entry->slot_id       = slot_id;
 	),
 

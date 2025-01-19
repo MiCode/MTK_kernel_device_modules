@@ -6,7 +6,7 @@ obj-m += tui-common.o
 TOUCH_LISTS := $(subst ",,$(CONFIG_TOUCHSCREEN_MTK_TOUCH))
 obj-y += $(foreach TOUCH,$(TOUCH_LISTS),$(TOUCH)/)
 
-ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64_alpha),)
+ifneq ($(wildcard $(src)/k6985v1_64_alpha),)
 obj-$(CONFIG_TOUCHSCREEN_MT6985_ALPHA_SUPPORT) += k6985v1_64_alpha/
 endif
 

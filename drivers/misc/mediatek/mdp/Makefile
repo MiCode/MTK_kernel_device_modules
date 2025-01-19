@@ -77,46 +77,46 @@ obj-$(CONFIG_MTK_MDP_MT6768) += mdp_drv_mt6768.o
 obj-$(CONFIG_MTK_MDP_MT6761) += mdp_drv_mt6761.o
 obj-$(CONFIG_MTK_MDP_MT6765) += mdp_drv_mt6765.o
 else
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6886.c),)
+ifneq ($(wildcard $(src)/mdp_mt6886.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6886.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6893.c),)
+ifneq ($(wildcard $(src)/mdp_mt6893.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6893.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6897.c),)
+ifneq ($(wildcard $(src)/mdp_mt6897.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6897.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6983.c),)
+ifneq ($(wildcard $(src)/mdp_mt6983.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6983.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6985.c),)
+ifneq ($(wildcard $(src)/mdp_mt6985.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6985.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6989.c),)
+ifneq ($(wildcard $(src)/mdp_mt6989.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6989.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6991.c),)
+ifneq ($(wildcard $(src)/mdp_mt6991.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6991.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6768.c),)
+ifneq ($(wildcard $(src)/mdp_mt6768.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6768.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6877.c),)
+ifneq ($(wildcard $(src)/mdp_mt6877.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6877.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6761.c),)
+ifneq ($(wildcard $(src)/mdp_mt6761.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6761.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6765.c),)
+ifneq ($(wildcard $(src)/mdp_mt6765.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6765.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6781.c),)
+ifneq ($(wildcard $(src)/mdp_mt6781.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6781.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6853.c),)
+ifneq ($(wildcard $(src)/mdp_mt6853.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6853.o
 endif
-ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6833.c),)
+ifneq ($(wildcard $(src)/mdp_mt6833.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6833.o
 endif
 endif
