@@ -1526,16 +1526,16 @@ static int pe4_dcs_set_charger(struct chg_alg_device *alg)
 
 static void _pe4_set_current(struct chg_alg_device *alg)
 {
-	int ret_value;
+	int ret_value = 0;
 
 	if (alg->config == DUAL_CHARGERS_IN_SERIES) {
 		if (pe4_dcs_set_charger(alg) != 0) {
-			ret_value = ALG_DONE;
+			ret_value = (int) ALG_DONE;
 			//goto out;
 		}
 	} else {
 		if (pe4_sc_set_charger(alg) != 0) {
-			ret_value = ALG_DONE;
+			ret_value = (int) ALG_DONE;
 			//goto out;
 		}
 	}

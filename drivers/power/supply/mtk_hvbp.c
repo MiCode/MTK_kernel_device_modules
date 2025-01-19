@@ -3378,8 +3378,8 @@ out_unlock:
 
 static int hvbp_is_algo_ready(struct chg_alg_device *alg)
 {
-	int ret;
-	int soc;
+	int ret = 0;
+	int soc = 0;
 	struct hvbp_algo_info *info = chg_alg_dev_get_drvdata(alg);
 	struct hvbp_algo_data *data = info->data;
 	struct hvbp_algo_desc *desc = info->desc;

@@ -394,9 +394,14 @@ static DEVICE_ATTR_RW(mtk_2p_charger_registers);
 
 static void mtk_2p_charger_create_device_node(struct device *dev)
 {
+	int ret = 0;
 	if (!dev)
 		return;
-	device_create_file(dev, &dev_attr_mtk_2p_charger_registers);
+	ret = device_create_file(dev, &dev_attr_mtk_2p_charger_registers);
+	if (ret) {
+		dev_info(dev, "Failed to get 2p: %d\n", ret);
+		return;
+	}
 }
 
 static int mtk_2p_charger_parse_dt(struct mtk_2p_charger_chip *sc, struct device *dev)
@@ -672,7 +677,6 @@ static int mtk_2p_charger_init_setting(struct charger_device *chg_dev)
 
 	if (!sc) {
 		dev_info(&(chg_dev->dev), "mtk_2p_charger init failed\n");
-		sc->disable_cs = 1;
 		return -1;
 	}
 
