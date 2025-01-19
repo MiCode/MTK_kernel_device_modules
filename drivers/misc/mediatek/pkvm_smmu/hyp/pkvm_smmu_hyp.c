@@ -585,7 +585,7 @@ unsigned long smmu_ste_content_info_by_row(uint8_t smmu_type, uint32_t row,
 	uint64_t host_ste[STE_SIZE_DW];
 	smmu_device_t *smmu_dev = NULL;
 
-	if (row > STE_SIZE_DW) {
+	if (row >= STE_SIZE_DW) {
 		pkvm_smmu_ops->puts("row is bigger than STE total rows");
 		return INVALID_STE_ROW_BIT;
 	}
@@ -685,9 +685,20 @@ void add_smmu_device(struct kvm_cpu_context *ctx)
 
 	cpu_reg(ctx, 0) = SMCCC_RET_SUCCESS;
 	smmu_dev = (smmu_device_t *)malloc(sizeof(smmu_device_t));
+	if (!smmu_dev) {
+		pkvm_smmu_ops->puts("add_smmu_device: smmu_dev malloc failed");
+		return;
+	}
+
 	smmu_dev->smmu_id = ctx->regs.regs[4];
 	smmu_dev->smmuv3 =
 		(struct smmuv3_driver *)malloc(sizeof(struct smmuv3_driver));
+	if (!smmu_dev->smmuv3) {
+		pkvm_smmu_ops->puts("add_smmu_device: smmu_dev->smmuv3 malloc failed");
+		free(smmu_dev);
+		return;
+	}
+
 	smmu_dev->reg_base_pa_addr = ctx->regs.regs[1];
 	smmu_dev->reg_size = ctx->regs.regs[2];
 	smmu_dev->dma_coherent = ctx->regs.regs[3];
@@ -723,8 +734,11 @@ static void write_smmu_cmdq_base_addr(smmu_device_t *dev, uint64_t cmdq_regval)
 		/* store guest cmdq base address setting */
 		dev->guest_cmdq_regval = cmdq_regval;
 		dev->guest_cmdq_pa = cmdq_pa;
-		if (!smmuv3)
+		if (!smmuv3) {
 			pkvm_smmu_ops->puts("alloc smmuv3 structure fail");
+			return;
+		}
+
 		smmuv3->prop.cmdq_entries_log2 = MTK_SMMU_HOST_CMDQ_ENTRY;
 		smmuv3->cmd_queue.prod_reg_base =
 			(void *)(dev->reg_base_va_addr + CMDQ_PROD);
@@ -761,8 +775,11 @@ static void write_smmu_strtab_cfg_reg(smmu_device_t *dev, uint32_t guest_reg)
 
 	/* Create once */
 	if (dev->guest_strtab_base_pa) {
-		if (!smmuv3)
+		if (!smmuv3) {
 			pkvm_smmu_ops->puts("alloc smmuv3 structure fail");
+			return;
+		}
+
 		smmuv3->prop.stream_n_bits =
 			(MTK_SMMU_STE_SIZE_MASK & guest_reg);
 		/* Write host strtab_cfg reg value */
