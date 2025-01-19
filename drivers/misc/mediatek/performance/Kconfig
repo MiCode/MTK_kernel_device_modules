@@ -8,6 +8,15 @@ config MTK_FPSGO_V3
 	  FPSGO_V3 include AI performance and low power.
 	  If you are not sure about this, set n.
 
+config MTK_FPSGO_V8
+	tristate "Support FPSGO_V8 framework"
+	help
+	  Support FPSGO_V8 common framework for most FPS performance and
+	  low power balance. As a perquisite to ensure FPS performance,
+	  FPSGO_V8 provide general API for scenario to achieve lower power
+	  consumption.
+	  If you are not sure about this, set n.
+
 config MTK_PERFORMANCE_MODULE
 	tristate "Mediatek Performance Module"
 	help
@@ -17,7 +26,6 @@ config MTK_PERFORMANCE_MODULE
 
 config MTK_FRS
 	tristate "Mediatek Frame Rate Smoother"
-	depends on MTK_FPSGO_V3
 	help
 	  Support Frame Rate Smoother kernel intergface. It will adjustment
 	  target fps by thermal.

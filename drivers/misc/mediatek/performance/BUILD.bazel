@@ -36,8 +36,8 @@ define_mgk_ddk_ko(
     name = "mtk_perf_ioctl_magt",
     srcs = [
         "perf_ioctl/perf_ioctl_magt.c",
-        "fpsgo_v3/base/include/fpsgo_frame_info.h",
-        "fpsgo_v3/base/include/fpsgo_base.h",
+        "fpsgo_v8/base/include/fpsgo_frame_info.h",
+        "fpsgo_v8/base/include/fpsgo_base.h",
     ],
     includes = [
         ".",
@@ -47,7 +47,24 @@ define_mgk_ddk_ko(
     ],
     copts = [
         "-I$(srctree)/kernel/",
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/base/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_perf_ioctl",
+    srcs = [
+        "perf_ioctl/perf_ioctl.c",
+        "fpsgo_v8/base/include/fpsgo_frame_info.h",
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "perf_ioctl/perf_ioctl.h",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/",
     ],
 )
 
