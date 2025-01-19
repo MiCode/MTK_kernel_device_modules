@@ -899,8 +899,8 @@ void record_sched_pd_opp2cap(int cpu, int opp, int quant, int wl,
 	int val_1, int val_2, int val_r, int *val_s, int r_o, int caller)
 {
 	if (trace_sched_pd_opp2cap_enabled())  {
-		int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
-
+		int val_s_0 = val_s == NULL ? (curr_collab_state == NULL ? -1 :
+						curr_collab_state[0].state) : val_s[0];
 		trace_sched_pd_opp2cap(cpu, opp, quant, get_eas_wl(wl),
 				val_1, val_2, val_r, val_s_0, val_m, r_o, caller);
 	}
@@ -931,8 +931,8 @@ void record_sched_pd_opp2pwr_eff(int cpu, int opp, int quant, int wl,
 	int r_o, int caller)
 {
 	if (trace_sched_pd_opp2pwr_eff_enabled()) {
-		int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
-
+		int val_s_0 = val_s == NULL ? (curr_collab_state == NULL ? -1 :
+						curr_collab_state[0].state) : val_s[0];
 		trace_sched_pd_opp2pwr_eff(cpu, opp, quant, get_eas_wl(wl),
 				val_1, val_2, val_3, val_r1, val_r2, val_s_0, r_o, caller);
 	}
@@ -970,8 +970,8 @@ int pd_opp2dyn_pwr(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int
 		result = mtk_opp2dyn_pwr_hook(cpu, opp, quant, get_eas_wl(wl),
 			&val_1, &val_r, val_s, val_m, r_o);
 		if (trace_sched_pd_opp2dyn_pwr_enabled()) {
-			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
-
+			int val_s_0 = val_s == NULL ? (curr_collab_state == NULL ? -1 :
+							curr_collab_state[0].state) : val_s[0];
 			trace_sched_pd_opp2dyn_pwr(cpu, opp, quant, wl,
 				val_1, val_r, val_s_0, val_m, r_o, caller);
 		}
@@ -1014,8 +1014,8 @@ int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, int c
 		result = mtk_util2opp_hook(cpu, util, quant, get_eas_wl(wl),
 			&val_1, &val_2, &val_3, &val_4, &val_r, val_s, val_m, r_o);
 		if(trace_sched_pd_util2opp_enabled()) {
-			int val_s_0 = val_s == NULL ? curr_collab_state[0].state : val_s[0];
-
+			int val_s_0 = val_s == NULL ? (curr_collab_state == NULL ? -1 :
+							curr_collab_state[0].state) : val_s[0];
 			trace_sched_pd_util2opp(cpu, quant, wl,
 				val_1, val_2, val_3, val_4, val_r, val_s_0, val_m, r_o, caller);
 		}
