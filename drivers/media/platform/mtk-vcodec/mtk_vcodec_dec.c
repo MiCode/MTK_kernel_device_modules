@@ -2134,12 +2134,12 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 		ctx->is_active = 1;
 		mtk_vdec_dvfs_update_dvfs_params(ctx);
 		kfree(caws);
-		mtk_v4l2_debug(0, "[VDVFS] %s [%d] is active/update_params now", __func__, ctx->id);
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS] %s [%d] is active/update_params now", __func__, ctx->id);
 	} else { // timer trigger case
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			inst = list_entry(item, struct vcodec_inst, list);
 			ctx = inst->ctx;
-			mtk_v4l2_debug(8, "[VDVFS] ctx:%d, active:%d, decoded_cnt:%d, last_decoded_cnt:%d",
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS] ctx:%d, active:%d, decoded_cnt:%d, last_decoded_cnt:%d",
 				ctx->id, ctx->is_active, ctx->decoded_frame_cnt,
 				ctx->last_decoded_frame_cnt);
 			if (!mtk_vcodec_is_state(ctx, MTK_STATE_ABORT)) {
@@ -2149,19 +2149,19 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 						need_update = true;
 						ctx->is_active = 0;
 						mtk_vdec_dvfs_update_dvfs_params(ctx);
-						mtk_v4l2_debug(0, "[VDVFS] ctx %d inactive", ctx->id);
+						mtk_vcodec_dvfs_qos_log(false, "[VDVFS] ctx %d inactive", ctx->id);
 					}
 				} else {
 					if (!ctx->is_active) {
 						need_update = true;
 						ctx->is_active = 1;
 						mtk_vdec_dvfs_update_dvfs_params(ctx);
-						mtk_v4l2_debug(0, "[VDVFS] ctx %d active", ctx->id);
+						mtk_vcodec_dvfs_qos_log(false, "[VDVFS] ctx %d active", ctx->id);
 					}
 					ctx->last_decoded_frame_cnt = ctx->decoded_frame_cnt;
 				}
 			} else
-				mtk_v4l2_err("[VDVFS] ctx: %d is abort", ctx->id);
+				mtk_vcodec_dvfs_qos_err("[VDVFS] ctx: %d is abort", ctx->id);
 		}
 	}
 
@@ -2172,9 +2172,9 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 			ctx = valid_ctx;
 			ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
 			if (ret != 0)
-				mtk_v4l2_err("[VDVFS][%d] alive ipi fail, ret %d", ctx->id, ret);
+				mtk_vcodec_dvfs_qos_err("[VDVFS][%d] alive ipi fail, ret %d", ctx->id, ret);
 			mtk_vdec_dvfs_sync_vsi_data(ctx);
-			mtk_v4l2_debug(0, "[VDVFS] check alive: freq: %d, op: %d",
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS] check alive: freq: %d, op: %d",
 				ctx->dev->vdec_dvfs_params.target_freq,
 				ctx->dec_params.operating_rate);
 		} else {
@@ -3582,7 +3582,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		retrigger_ctx_work->ctx = ctx;
 		retrigger_ctx_work->dev = ctx->dev;
 		queue_work(ctx->dev->check_alive_workqueue, &retrigger_ctx_work->work);
-		mtk_v4l2_debug(4, "%s [VDVFS] retrigger ctx work: %d", __func__, ctx->id);
+		mtk_vcodec_dvfs_qos_log(false, "%s [VDVFS] retrigger ctx work: %d", __func__, ctx->id);
 		ctx->is_active = 1;
 	}
 #endif
@@ -4219,13 +4219,13 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 		mtk_vcodec_slc_wce_ctrl(ctx, false);
 		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
 		if (ret != 0)
-			mtk_v4l2_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
+			mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
 		mtk_vdec_dvfs_sync_vsi_data(ctx);
-		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS (UP): freq:%d, op:%d",
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d(%d)] stop DVFS (UP): freq:%d, op:%d",
 			ctx->id, mtk_vcodec_get_state(ctx), ctx->dev->vdec_dvfs_params.target_freq,
 			ctx->dec_params.operating_rate);
 	} else {
-		mtk_v4l2_debug(0, "[%d][VDVFS][VDEC] stop ctrl DVFS in AP", ctx->id);
+		mtk_vcodec_dvfs_qos_log(true, "[%d][VDVFS][VDEC] stop ctrl DVFS in AP", ctx->id);
 		mtk_vdec_dvfs_end_inst(ctx);
 	}
 	mtk_vdec_pmqos_end_inst(ctx);
@@ -4269,14 +4269,14 @@ static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 		mtk_vdec_prepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
 		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
 		if (ret != 0)
-			mtk_v4l2_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);
+			mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);
 		mtk_vdec_dvfs_sync_vsi_data(ctx);
-		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP): freq:%d, op:%d",
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d(%d)] start DVFS(UP): freq:%d, op:%d",
 			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->vdec_dvfs_params.target_freq,
 			ctx->dec_params.operating_rate);
 	} else {
-		mtk_v4l2_debug(0, "[%d][VDVFS][VDEC] start ctrl DVFS in AP", ctx->id);
+		mtk_vcodec_dvfs_qos_log(true, "[%d][VDVFS][VDEC] start ctrl DVFS in AP", ctx->id);
 		mtk_vdec_dvfs_begin_inst(ctx);
 	}
 	mtk_vdec_pmqos_begin_inst(ctx);
@@ -5833,4 +5833,3 @@ int mtk_vdec_lock(struct mtk_vcodec_ctx *ctx, u32 hw_id)
 
 MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
-

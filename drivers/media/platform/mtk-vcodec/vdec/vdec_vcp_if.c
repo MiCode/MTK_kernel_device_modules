@@ -30,7 +30,7 @@
 #if IS_ENABLED(CONFIG_MTK_ENG_BUILD)
 #define IPI_TIMEOUT_MS          (10000U)
 #else
-#define IPI_TIMEOUT_MS          (5000U + ((mtk_vcodec_dbg | mtk_v4l2_dbg_level) ? 5000U : 0U))
+#define IPI_TIMEOUT_MS          (5000U + ((mtk_vcodec_dbg | mtk_v4l2_dbg_level | mtk_vcodec_dvfs_qos_log_en) ? 5000U : 0U))
 #endif
 #define IPI_SEND_TIMEOUT_MS	1000U
 #define IPI_FIRST_DEC_START_TIMEOUT_MS     (60000U)

@@ -33,7 +33,7 @@
 #ifdef CONFIG_MTK_ENG_BUILD
 #define IPI_TIMEOUT_MS          (10000U)
 #else
-#define IPI_TIMEOUT_MS          (5000U + ((mtk_vcodec_dbg | mtk_v4l2_dbg_level) ? 5000U : 0U))
+#define IPI_TIMEOUT_MS          (5000U + ((mtk_vcodec_dbg | mtk_v4l2_dbg_level | mtk_vcodec_dvfs_qos_log_en) ? 5000U : 0U))
 #endif
 #define IPI_SEND_TIMEOUT_MS	1000U
 #define IPI_FIRST_VENC_SETPARAM_TIMEOUT_MS    (60000U)
@@ -1000,7 +1000,7 @@ static int venc_vcp_backup(struct venc_inst *inst)
 	msg.ap_inst_addr = (uintptr_t)&inst->vcu_inst;
 	msg.ctx_id = inst->ctx->id;
 	venc_vcp_set_vcu(&inst->vcu_inst);
-	mtk_v4l2_debug(0, "[VDVFS] VENC suspend");
+	mtk_vcodec_dvfs_qos_log(true, "[VDVFS] VENC suspend");
 	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);
 
 	mtk_vcodec_debug(inst, "- ret=%d", err);
@@ -1023,7 +1023,7 @@ static int venc_vcp_resume(struct venc_inst *inst)
 	msg.ap_inst_addr = (uintptr_t)&inst->vcu_inst;
 	msg.ctx_id = inst->ctx->id;
 	venc_vcp_set_vcu(&inst->vcu_inst);
-	mtk_v4l2_debug(0, "[VDVFS] VENC resume");
+	mtk_vcodec_dvfs_qos_log(true, "[VDVFS] VENC resume");
 	err = venc_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);
 	mtk_vcodec_debug(inst, "- ret=%d", err);
 
@@ -2061,7 +2061,7 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		out.data_item = 1;
 		out.data[0] = enc_param->venc_dvfs_state;
 		has_lock_dvfs = true;
-		mtk_v4l2_debug(4, "[VDVFS][VENC] data VENC_SET_PARAM_MMDVFS");
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS][VENC] data VENC_SET_PARAM_MMDVFS");
 		break;
 	case VENC_SET_PARAM_VISUAL_QUALITY:
 		out.data_item = 0; // passed via vsi
@@ -2291,7 +2291,7 @@ static int venc_vcp_set_param(unsigned long handle,
 	case VENC_SET_PARAM_MMDVFS:
 		if (inst->vsi == NULL)
 			return -EINVAL;
-		mtk_v4l2_debug(4, "[VDVFS][VENC] VENC_SET_PARAM_MMDVFS");
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS][VENC] VENC_SET_PARAM_MMDVFS");
 		ret = vcp_enc_set_param(inst, type, enc_prm);
 		break;
 	case VENC_SET_PARAM_VISUAL_QUALITY:

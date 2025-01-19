@@ -187,6 +187,7 @@ extern int mtk_vdec_lpw_level;
 extern bool mtk_vcodec_dbg;
 extern bool mtk_vcodec_perf;
 extern bool mtk_vcodec_trace_enable;
+extern bool mtk_vcodec_dvfs_qos_log_en;
 extern int mtk_vcodec_vcp;
 extern char *mtk_vdec_property;
 extern char *mtk_venc_property;
@@ -305,6 +306,20 @@ void vcodec_trace(const char *fmt, ...);
 		if (mtk_vcodec_perf)                          \
 			pr_info("[MTK_PERF] " fmt "\n", ##args);        \
 	} while (0)
+
+#define mtk_vcodec_dvfs_qos_log(def_en, fmt, args...)				\
+	do {															\
+		if (mtk_vcodec_dvfs_qos_log_en || def_en) {					\
+			vcodec_trace_begin("mtk_v4l2_dvfs_qos");				\
+			pr_notice("[MTK_V4L2_DVFS_QOS] %s(),%d: " fmt "\n",		\
+				__func__, __LINE__, ##args);						\
+			vcodec_trace_end();										\
+		}															\
+	} while (0)
+
+#define mtk_vcodec_dvfs_qos_err(fmt, args...)						\
+	pr_notice("[MTK_V4L2_DVFS_QOS][err] %s(),%d: " fmt "\n",				\
+				__func__, __LINE__, ##args);
 
 
 #define mtk_vcodec_err(h, fmt, args...)                                 \

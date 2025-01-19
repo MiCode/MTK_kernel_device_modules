@@ -75,7 +75,7 @@ static void mtk_vcodec_alive_checker_init(struct mtk_vcodec_ctx *ctx)
 	/* Only support vdec check alive now */
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER) && ctx->type == MTK_INST_DECODER) {
 		if (!dev->vdec_dvfs_params.has_timer) {
-			mtk_v4l2_debug(4, "[%d][VDVFS][VDEC] init vdec alive checker...", ctx->id);
+			mtk_vcodec_dvfs_qos_log(false, "[%d][VDVFS][VDEC] init vdec alive checker...", ctx->id);
 			timer_setup(&dev->vdec_dvfs_params.vdec_active_checker,
 				mtk_vcodec_check_alive, 0);
 			dev->vdec_dvfs_params.vdec_active_checker.expires =
@@ -100,7 +100,7 @@ static void mtk_vcodec_alive_checker_deinit(struct mtk_vcodec_ctx *ctx, bool is_
 			del_timer_sync(&dev->vdec_dvfs_params.vdec_active_checker);
 			flush_workqueue(dev->check_alive_workqueue);
 			dev->vdec_dvfs_params.has_timer = 0;
-			mtk_v4l2_debug(4, "[%d][VDVFS][VDEC] deinit vdec alive checker...",
+			mtk_vcodec_dvfs_qos_log(false, "[%d][VDVFS][VDEC] deinit vdec alive checker...",
 				ctx->id);
 		}
 	}
@@ -134,6 +134,10 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_trace_enable);
 /* For vcodec vcp debug */
 int mtk_vcodec_vcp;
 EXPORT_SYMBOL_GPL(mtk_vcodec_vcp);
+
+/* For vdec & dvfs & qos log info */
+bool mtk_vcodec_dvfs_qos_log_en;
+EXPORT_SYMBOL_GPL(mtk_vcodec_dvfs_qos_log_en);
 
 /* For vdec set property */
 char *mtk_vdec_property = "";
@@ -608,7 +612,7 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 			mtk_vcodec_set_uclamp(enable, ctx_id, cpu_caller_pid);
 
 		dev->cpu_hint_ref_cnt++;
-		mtk_v4l2_debug(0, " [VDVFS][%d][%s] enable CPU hint by %s (ref cnt %d, mode %d)",
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d][%s] enable CPU hint by %s (ref cnt %d, mode %d)",
 			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC",
 			debug_str, dev->cpu_hint_ref_cnt, dev->cpu_hint_mode);
 	} else {
@@ -623,7 +627,7 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 		if (dev->cpu_hint_mode & (1 << MTK_UCLAMP_MODE))
 			mtk_vcodec_set_uclamp(enable, ctx_id, cpu_caller_pid);
 
-		mtk_v4l2_debug(0, "[VDVFS][%d][%s] disable CPU hint by %s (ref cnt %d mode %d)",
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d][%s] disable CPU hint by %s (ref cnt %d mode %d)",
 			ctx_id, (type == MTK_INST_DECODER) ? "VDEC" : "VENC", debug_str,
 			dev->cpu_hint_ref_cnt, dev->cpu_hint_mode);
 	}
@@ -1564,6 +1568,11 @@ void mtk_vcodec_set_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 				mtk_v4l2_dbg_level = temp_val;
 				mtk_v4l2_debug(0, "mtk_v4l2_dbg_level: %d\n", mtk_v4l2_dbg_level);
 			}
+		} else if (strcmp("-mtk_vcodec_dvfs_qos_log_en", argv[i]) == 0) {
+			if (kstrtol(argv[i+1], 0, &temp_val) == 0) {
+				mtk_vcodec_dvfs_qos_log_en = temp_val;
+				mtk_v4l2_debug(0, "mtk_vcodec_dvfs_qos_log_en: %d\n", mtk_vcodec_dvfs_qos_log_en);
+			}
 		} else {
 			// uP path
 			if ((dev->vfd_dec && mtk_vcodec_is_vcp(MTK_INST_DECODER))
@@ -1667,6 +1676,11 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 		if (len < LOG_PROPERTY_SIZE)
 			SNPRINTF(val + len, LOG_PROPERTY_SIZE - len,
 				" %s %d", "-mtk_v4l2_dbg_level", mtk_v4l2_dbg_level);
+
+		len = strlen(val);
+		if (len < LOG_PROPERTY_SIZE)
+			SNPRINTF(val + len, LOG_PROPERTY_SIZE - len,
+				" %s %d", "-mtk_vcodec_dvfs_qos_log_en", mtk_vcodec_dvfs_qos_log_en);
 	}
 
 	mtk_v4l2_debug(0, "val: %s, log_index: %d", val, log_index);
@@ -1675,4 +1689,3 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_get_log);
 
 MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
-

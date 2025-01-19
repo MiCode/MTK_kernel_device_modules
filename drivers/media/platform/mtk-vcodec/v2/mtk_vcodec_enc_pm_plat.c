@@ -57,7 +57,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-op-rate-thresh", &nmax);
 	if (ret)
-		mtk_v4l2_debug(0, "[VENC] Cannot get op rate thresh, default 0");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get op rate thresh, default 0");
 
 	dev->venc_dvfs_params.per_frame_adjust_op_rate = nmax;
 	dev->venc_dvfs_params.per_frame_adjust = 1;
@@ -65,13 +65,13 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-min", &nmin);
 	if (ret) {
 		nmin = STD_VENC_FREQ;
-		mtk_v4l2_debug(0, "[VENC] Cannot get min, default %u", nmin);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get min, default %u", nmin);
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-normal-max", &nmax);
 	if (ret) {
 		nmax = STD_VENC_FREQ;
-		mtk_v4l2_debug(0, "[VENC] Cannot get normal max, default %u", nmax);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get normal max, default %u", nmax);
 	}
 	dev->venc_dvfs_params.codec_type = MTK_INST_ENCODER;
 	dev->venc_dvfs_params.min_freq = nmin;
@@ -83,32 +83,32 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				"throughput-table") / tp_item_num;
 
 	if (!dev->venc_tput_cnt) {
-		mtk_v4l2_debug(0, "[VENC] throughput table not exist");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] throughput table not exist");
 		return false;
 	}
 
 	dev->venc_tput = vzalloc(sizeof(struct vcodec_perf) * dev->venc_tput_cnt);
 	if (!dev->venc_tput) {
-		/* mtk_v4l2_debug(0, "[VENC] vzalloc venc_tput table failed"); */
+		/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_tput table failed"); */
 		return false;
 	}
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-config-offset", &offset);
 	if (ret)
-		mtk_v4l2_debug(0, "[VENC] Cannot get config-offset, default 0");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config-offset, default 0");
 
 	for (i = 0; i < dev->venc_tput_cnt; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num, &dev->venc_tput[i].codec_fmt);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get codec_fmt");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get codec_fmt");
 			return false;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 1, (u32 *)&dev->venc_tput[i].config);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get config");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config");
 			return false;
 		}
 		dev->venc_tput[i].config -= offset;
@@ -116,31 +116,31 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 2, &dev->venc_tput[i].cy_per_mb_1);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get cycle per mb 1");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cycle per mb 1");
 			return false;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 3, &dev->venc_tput[i].cy_per_mb_2);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get cycle per mb 2");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cycle per mb 2");
 			return false;
 		}
 		dev->venc_tput[i].codec_type = 1;
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 4, &dev->venc_tput[i].base_freq);
-		mtk_v4l2_debug(0, "[VENC][tput] get base_freq: %d", dev->venc_tput[i].base_freq);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC][tput] get base_freq: %d", dev->venc_tput[i].base_freq);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get base_freq");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base_freq");
 			return false;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 5, &dev->venc_tput[i].bw_factor);
-		mtk_v4l2_debug(0, "[VENC][tput] get bw_factor: %d", dev->venc_tput[i].bw_factor);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC][tput] get bw_factor: %d", dev->venc_tput[i].bw_factor);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get bw_factor");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get bw_factor");
 			return false;
 		}
 	}
@@ -150,39 +150,39 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				"config-table") / cfg_item_num;
 
 	if (!dev->venc_cfg_cnt) {
-		mtk_v4l2_debug(0, "[VENC] config table not exist");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] config table not exist");
 		return false;
 	}
 
 	dev->venc_cfg = vzalloc(sizeof(struct vcodec_config) * dev->venc_cfg_cnt);
 	if (!dev->venc_cfg) {
-		/* mtk_v4l2_debug(0, "[VENC] vzalloc venc_cfg table failed"); */
+		/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_cfg table failed"); */
 		return false;
 	}
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-config-offset", &offset);
 	if (ret)
-		mtk_v4l2_debug(0, "[VENC] Cannot get config-offset, default 0");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config-offset, default 0");
 
 	for (i = 0; i < dev->venc_cfg_cnt; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num, &dev->venc_cfg[i].codec_fmt);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get cfg codec_fmt");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cfg codec_fmt");
 			return false;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num + 1, (u32 *)&dev->venc_cfg[i].mb_thresh);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get mb_thresh");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get mb_thresh");
 			return false;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num + 2, &dev->venc_cfg[i].config_1);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get config 1");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config 1");
 			return false;
 		}
 		dev->venc_cfg[i].config_1 -= offset;
@@ -190,7 +190,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num + 3, &dev->venc_cfg[i].config_2);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get config 2");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config 2");
 			return false;
 		}
 		dev->venc_cfg[i].config_2 -= offset;
@@ -202,19 +202,19 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				"bandwidth-table") / bw_item_num;
 
 	if (dev->venc_larb_cnt > MTK_VENC_LARB_NUM) {
-		mtk_v4l2_debug(0, "[VENC] venc larb over limit %d > %d",
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] venc larb over limit %d > %d",
 				dev->venc_larb_cnt, MTK_VENC_LARB_NUM);
 		dev->venc_larb_cnt = MTK_VENC_LARB_NUM;
 	}
 
 	if (!dev->venc_larb_cnt) {
-		mtk_v4l2_debug(0, "[VENC] bandwidth table not exist");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] bandwidth table not exist");
 		return false;
 	}
 
 	dev->venc_larb_bw = vzalloc(sizeof(struct vcodec_larb_bw) * dev->venc_larb_cnt);
 	if (!dev->venc_larb_bw) {
-		/* mtk_v4l2_debug(0, "[VENC] vzalloc venc_larb_bw table failed"); */
+		/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_larb_bw table failed"); */
 		return false;
 	}
 
@@ -222,21 +222,21 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 				i * bw_item_num, (u32 *)&dev->venc_larb_bw[i].larb_id);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get bw port type");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get bw port type");
 			return false;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 				i * bw_item_num + 1, &dev->venc_larb_bw[i].larb_type);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get base bw");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
 			return false;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 				i * bw_item_num + 2, &dev->venc_larb_bw[i].larb_base_bw);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get base bw");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
 			return false;
 		}
 	}
@@ -244,11 +244,11 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	mtk_venc_pmqos_monitor_init(dev);
 
 #ifdef VENC_PRINT_DTS_INFO
-	mtk_v4l2_debug(0, "[VENC] tput_cnt %d, cfg_cnt %d, larb_cnt %d\n",
+	mtk_vcodec_dvfs_qos_log(true, "[VENC] tput_cnt %d, cfg_cnt %d, larb_cnt %d\n",
 		dev->venc_tput_cnt, dev->venc_cfg_cnt, dev->venc_larb_cnt);
 
 	for (i = 0; i < dev->venc_tput_cnt; i++) {
-		mtk_v4l2_debug(0, "[VENC] tput fmt %u, cfg %d, cy1 %u, cy2 %u",
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] tput fmt %u, cfg %d, cy1 %u, cy2 %u",
 			dev->venc_tput[i].codec_fmt,
 			dev->venc_tput[i].config,
 			dev->venc_tput[i].cy_per_mb_1,
@@ -256,7 +256,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	}
 
 	for (i = 0; i < dev->venc_cfg_cnt; i++) {
-		mtk_v4l2_debug(0, "[VENC] config fmt %u, mb_thresh %u, cfg1 %d, cfg2 %d",
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] config fmt %u, mb_thresh %u, cfg1 %d, cfg2 %d",
 			dev->venc_cfg[i].codec_fmt,
 			dev->venc_cfg[i].mb_thresh,
 			dev->venc_cfg[i].config_1,
@@ -264,7 +264,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	}
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		mtk_v4l2_debug(0, "[VENC] larb %u type %d, bw %u",
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] larb %u type %d, bw %u",
 			dev->venc_larb_bw[i].larb_id
 			dev->venc_larb_bw[i].larb_type,
 			dev->venc_larb_bw[i].larb_base_bw);
@@ -307,17 +307,17 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 
 	ret = of_property_read_s32(pdev->dev.of_node, "venc-mmdvfs-in-vcp", &venc_req);
 	if (ret)
-		mtk_v4l2_debug(0, "[VENC] Faile get venc-mmdvfs-in-vcp, default %d", venc_req);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Faile get venc-mmdvfs-in-vcp, default %d", venc_req);
 	dev->venc_dvfs_params.mmdvfs_in_vcp = venc_req;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "venc-mmdvfs-in-adaptive", &venc_req);
 	if (ret)
-		mtk_v4l2_debug(0, "[VENC] no need venc-mmdvfs-in-adaptive");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] no need venc-mmdvfs-in-adaptive");
 	dev->venc_dvfs_params.mmdvfs_in_adaptive = venc_req;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "venc-cpu-hint-mode", &flag);
 	if (ret) {
-		mtk_v4l2_debug(0, "[VENC] no need venc-cpu-hint-mode");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] no need venc-cpu-hint-mode");
 		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
 	} else
 		dev->cpu_hint_mode = flag;
@@ -327,23 +327,23 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {
 		dev->venc_reg = 0;
-		mtk_v4l2_debug(0, "[VENC] Failed to get opp table (%d)", ret);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Failed to get opp table (%d)", ret);
 		return;
 	}
 
 	dev->venc_reg = devm_regulator_get_optional(&dev->plat_dev->dev,
 						"mmdvfs-dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(dev->venc_reg)) {
-		mtk_v4l2_debug(0, "[VENC] Failed to get regulator");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Failed to get regulator");
 		dev->venc_reg = 0;
 		dev->venc_mmdvfs_clk = devm_clk_get(&dev->plat_dev->dev, "mmdvfs_clk");
 		if (IS_ERR_OR_NULL(dev->venc_mmdvfs_clk)) {
-			mtk_v4l2_debug(0, "[VENC] Failed to mmdvfs_clk");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Failed to mmdvfs_clk");
 			dev->venc_mmdvfs_clk = 0;
 		} else
-			mtk_v4l2_debug(0, "[VENC] get venc_mmdvfs_clk successfully");
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] get venc_mmdvfs_clk successfully");
 	} else {
-		mtk_v4l2_debug(0, "[VENC] get regulator successfully");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] get regulator successfully");
 	}
 
 	dev->venc_freq_cnt = dev_pm_opp_get_opp_count(&dev->plat_dev->dev);
@@ -381,7 +381,7 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 
 	ret = of_property_read_u32(pdev->dev.of_node, "interconnect-num", &larb_num);
 	if (ret) {
-		mtk_v4l2_debug(0, "[VENC] Cannot get interconnect num, skip");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get interconnect num, skip");
 		return;
 	}
 
@@ -389,21 +389,21 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 		path_strs, larb_num);
 
 	if (ret < 0) {
-		mtk_v4l2_debug(0, "[VENC] Cannot get interconnect names, skip");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get interconnect names, skip");
 		return;
 	} else if (ret != (int)larb_num) {
-		mtk_v4l2_debug(0, "[VENC] Interconnect name count not match %u %d", larb_num, ret);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Interconnect name count not match %u %d", larb_num, ret);
 	}
 
 	if (larb_num > MTK_VENC_LARB_NUM) {
-		mtk_v4l2_debug(0, "[VENC] venc larb over limit %u > %d",
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] venc larb over limit %u > %d",
 				larb_num, MTK_VENC_LARB_NUM);
 		larb_num = MTK_VENC_LARB_NUM;
 	}
 
 	for (i = 0; i < larb_num; i++) {
 		dev->venc_qos_req[i] = of_mtk_icc_get(&pdev->dev, path_strs[i]);
-		mtk_v4l2_debug(0, "[VENC] %d %p %s", i, dev->venc_qos_req[i], path_strs[i]);
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] %d %p %s", i, dev->venc_qos_req[i], path_strs[i]);
 	}
 #endif
 }
@@ -435,14 +435,14 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 						freq_64);
 			}
 			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_VENC);
-			mtk_v4l2_debug(8, "[VENC] freq %u, find_freq %lu", freq, freq_64);
+			mtk_vcodec_dvfs_qos_log(false, "[VENC] freq %u, find_freq %lu", freq, freq_64);
 		} else if (dev->venc_reg) {
 			ret = regulator_set_voltage(dev->venc_reg, volt, INT_MAX);
 			if (ret) {
 				mtk_v4l2_err("[VENC] Failed to set regulator voltage %d\n",
 						volt);
 			}
-			mtk_v4l2_debug(8, "[VENC] freq %u, voltage %d", freq, volt);
+			mtk_vcodec_dvfs_qos_log(false, "[VENC] freq %u, voltage %d", freq, volt);
 		}
 	}
 #endif
@@ -481,10 +481,10 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
 	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->config.cpu_hint);
 	if (inst->vsi->config.cpu_hint) {
-		mtk_v4l2_debug(0, "[VENC] enable ct to TA");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] enable ct to TA");
 		//enforce_ct_to_vip(1, 3);
 	} else {
-		mtk_v4l2_debug(0, "[VENC] disable ct to TA");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] disable ct to TA");
 		//enforce_ct_to_vip(0, 3);
 	}
 }
@@ -493,11 +493,11 @@ void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_vcodec_dev *dev = ctx->dev;
 
-	mtk_v4l2_debug(8, "[VENC] ctx = %p",  ctx);
+	mtk_vcodec_dvfs_qos_log(false, "[VENC] ctx = %p",  ctx);
 
 	if (need_update(ctx)) {
 		update_freq(dev, MTK_INST_ENCODER);
-		mtk_v4l2_debug(4, "[VENC] freq %u", dev->venc_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VENC] freq %u", dev->venc_dvfs_params.target_freq);
 		if (dev->venc_dvfs_params.mmdvfs_in_adaptive) {
 			dev->venc_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
 			dev->venc_dvfs_params.init_boost = 1;
@@ -511,11 +511,11 @@ void mtk_venc_dvfs_end_inst(struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_vcodec_dev *dev = ctx->dev;
 
-	mtk_v4l2_debug(8, "[VENC] ctx = %p",  ctx);
+	mtk_vcodec_dvfs_qos_log(false, "[VENC] ctx = %p",  ctx);
 
 	if (remove_update(ctx)) {
 		update_freq(dev, MTK_INST_ENCODER);
-		mtk_v4l2_debug(4, "[VENC] freq %u", dev->venc_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VENC] freq %u", dev->venc_dvfs_params.target_freq);
 		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
 	}
 }
@@ -535,7 +535,7 @@ void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 		return;
 
 	cur_in_timestamp = jiffies_to_msecs(jiffies);
-	mtk_v4l2_debug(8, "[VDVFS] cur_time:%u, last_boost_time:%u",
+	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cur_time:%u, last_boost_time:%u",
 		cur_in_timestamp, dev->venc_dvfs_params.last_boost_time);
 
 	if (cur_in_timestamp - dev->venc_dvfs_params.last_boost_time >=
@@ -543,7 +543,7 @@ void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 		mutex_lock(&dev->enc_dvfs_mutex);
 		dev->venc_dvfs_params.init_boost = 0;
 		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
-		mtk_v4l2_debug(0, "[VDVFS][VENC] stop boost, set freq %u", dev->venc_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] stop boost, set freq %u", dev->venc_dvfs_params.target_freq);
 		mutex_unlock(&dev->enc_dvfs_mutex);
 	}
 #endif
@@ -557,7 +557,7 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 	u32 target_bw = 0;
 
 	dev = ctx->dev;
-	mtk_v4l2_debug(4, "[VENC] ctx:%p", ctx);
+	mtk_vcodec_dvfs_qos_log(false, "[VENC] ctx:%p", ctx);
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
 		target_bw = (u64) dev->venc_larb_bw[i].larb_base_bw
@@ -565,10 +565,10 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 		if (dev->venc_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
 			mtk_icc_set_bw(dev->venc_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
-			mtk_v4l2_debug(8, "[VENC] set larb%d: %dMB/s",
+			mtk_vcodec_dvfs_qos_log(false, "[VENC] set larb%d: %dMB/s",
 				dev->venc_larb_bw[i].larb_id, target_bw);
 		} else {
-			mtk_v4l2_debug(8, "[VENC] unknown port type %d\n",
+			mtk_vcodec_dvfs_qos_log(false, "[VENC] unknown port type %d\n",
 					dev->venc_larb_bw[i].larb_type);
 		}
 		if (!dev->venc_qos.need_smi_monitor && !venc_smi_monitor_mode)
@@ -596,10 +596,10 @@ void mtk_venc_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
 		if (dev->venc_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
 			mtk_icc_set_bw(dev->venc_qos_req[i],
 					MBps_to_icc((u32)target_bw), 0);
-			mtk_v4l2_debug(8, "[VENC] set larb %d: %dMB/s",
+			mtk_vcodec_dvfs_qos_log(false, "[VENC] set larb %d: %dMB/s",
 					dev->venc_larb_bw[i].larb_id, target_bw);
 		} else {
-			mtk_v4l2_debug(8, "[VENC] unknown port type %d\n",
+			mtk_vcodec_dvfs_qos_log(false, "[VENC] unknown port type %d\n",
 					dev->venc_larb_bw[i].larb_type);
 		}
 	}
@@ -634,7 +634,7 @@ void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 
 	switch (state) {
 	case VCODEC_SMI_MONITOR_START:
-		mtk_v4l2_debug(8, "[VQOS] start to monitor BW...\n");
+		mtk_vcodec_dvfs_qos_log(false, "[VQOS] start to monitor BW...\n");
 		smi_monitor_start(qos->dev, qos->common_id[SMI_COMMON_ID_0],
 			qos->commlarb_id[SMI_COMMON_ID_0], qos->rw_flag,
 			qos->monitor_id[SMI_COMMON_ID_0]);
@@ -657,10 +657,10 @@ void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 		// qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ] += data_comm1[2];
 		// qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE] += data_comm1[3];
 
-		mtk_v4l2_debug(8, "[VQOS] frm_cnt %d: Acquire: (%d, %d, %d, %d)\n",
+		mtk_vcodec_dvfs_qos_log(false, "[VQOS] frm_cnt %d: Acquire: (%d, %d, %d, %d)\n",
 			qos->monitor_ring_frame_cnt,
 			data_comm0[0], data_comm0[1], data_comm1[0], data_comm1[1]);
-		mtk_v4l2_debug(8, "[VQOS] Total bytes: (%llu, %llu, %llu, %llu)\n",
+		mtk_vcodec_dvfs_qos_log(false, "[VQOS] Total bytes: (%llu, %llu, %llu, %llu)\n",
 			qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ],
 			qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE],
 			qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ],
@@ -669,11 +669,11 @@ void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 		if (++qos->monitor_ring_frame_cnt >= qos->max_mon_frm_cnt)
 			qos->apply_monitor_config = true;
 
-		mtk_v4l2_debug(8, "[VQOS] stop to monitor BW: frm_cnt: %d...\n",
+		mtk_vcodec_dvfs_qos_log(false, "[VQOS] stop to monitor BW: frm_cnt: %d...\n",
 			qos->monitor_ring_frame_cnt);
 		break;
 	default:
-		mtk_v4l2_debug(0, "[VQOS] unknown smi monitor state...\n");
+		mtk_vcodec_dvfs_qos_log(true, "[VQOS] unknown smi monitor state...\n");
 		break;
 	}
 #endif
@@ -691,11 +691,11 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
 
 	ret = of_property_read_s32(pdev->dev.of_node, "need-smi-monitor", &need_smi_monitor);
 	if (ret) {
-		mtk_v4l2_debug(0, "[VENC] Cannot smi monitor flag, default 0");
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot smi monitor flag, default 0");
 		return;
 	}
 
-	mtk_v4l2_debug(0, "[VQOS] init pmqos monitor, %d", need_smi_monitor);
+	mtk_vcodec_dvfs_qos_log(true, "[VQOS] init pmqos monitor, %d", need_smi_monitor);
 
 	memset((void *)qos, 0, sizeof(struct vcodec_dev_qos));
 	qos->dev = dev->v4l2_dev.dev;
@@ -707,27 +707,27 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "common-id",
 			i, &qos->common_id[i]);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get common_id: %d, default 0", i);
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get common_id: %d, default 0", i);
 			break;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "monitor-id",
 			i, &qos->monitor_id[i]);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get monitor_id: %d, default 0", i);
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get monitor_id: %d, default 0", i);
 			break;
 		}
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "commlarb-id",
 				i, &commlarb_id);
 		if (ret) {
-			mtk_v4l2_debug(0, "[VENC] Cannot get commlarb_id: %d, default 0", i);
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get commlarb_id: %d, default 0", i);
 			break;
 		}
 		for (j = 0; j < MTK_SMI_MAX_MON_REQ; j++)
 			qos->commlarb_id[i][j] = commlarb_id;
 
-		mtk_v4l2_debug(0, "[VQOS] comm: %d, monitor_id: %d, commlarb_id: (%d, %d, %d, %d)",
+		mtk_vcodec_dvfs_qos_log(true, "[VQOS] comm: %d, monitor_id: %d, commlarb_id: (%d, %d, %d, %d)",
 			qos->common_id[i], qos->monitor_id[i],
 			qos->commlarb_id[i][0], qos->commlarb_id[i][1],
 			qos->commlarb_id[i][2], qos->commlarb_id[i][3]);
@@ -736,7 +736,7 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
 	for (i = 0; i < MTK_SMI_MAX_MON_REQ; i += 2) {
 		qos->rw_flag[i] = SMI_MON_READ + 1;
 		qos->rw_flag[i+1] = SMI_MON_WRITE + 1;
-		mtk_v4l2_debug(0, "[VQOS] rw_flag %d (%d, %d)",
+		mtk_vcodec_dvfs_qos_log(true, "[VQOS] rw_flag %d (%d, %d)",
 			i, qos->rw_flag[i], qos->rw_flag[i+1]);
 	}
 
@@ -746,7 +746,7 @@ void mtk_venc_pmqos_monitor_deinit(struct mtk_vcodec_dev *dev)
 {
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 
-	mtk_v4l2_debug(0, "[VQOS] deinit pmqos monitor\n");
+	mtk_vcodec_dvfs_qos_log(true, "[VQOS] deinit pmqos monitor\n");
 	qos->monitor_ring_frame_cnt = 0;
 	qos->apply_monitor_config = false;
 };
@@ -756,11 +756,11 @@ void mtk_venc_pmqos_monitor_reset(struct mtk_vcodec_dev *dev)
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 
 	if (unlikely(!qos->need_smi_monitor || !venc_smi_monitor_mode)) {
-		mtk_v4l2_debug(0, "[VQOS] no smi monitor:(%d, %d)",
+		mtk_vcodec_dvfs_qos_log(true, "[VQOS] no smi monitor:(%d, %d)",
 			qos->need_smi_monitor, venc_smi_monitor_mode);
 		return;
 	}
-	mtk_v4l2_debug(0, "[VQOS] smi monitor is enable (%d, %d), reset config",
+	mtk_vcodec_dvfs_qos_log(true, "[VQOS] smi monitor is enable (%d, %d), reset config",
 		qos->need_smi_monitor, venc_smi_monitor_mode);
 
 	qos->max_mon_frm_cnt = (venc_smi_monitor_mode > 1) ? venc_max_mon_frm : MTK_SMI_MAX_MON_FRM;
@@ -777,7 +777,7 @@ static void mtk_venc_pmqos_monitor_debugger(struct mtk_vcodec_dev *dev, u32 *cur
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
 		if ((dev->venc_qos.prev_comm_bw[i] * 3 / 2) < cur_common_bw[i])
-			mtk_v4l2_debug(0, "[VQOS] BW increase 1.5 times, smi monitor may fail");
+			mtk_vcodec_dvfs_qos_log(true, "[VQOS] BW increase 1.5 times, smi monitor may fail");
 		dev->venc_qos.prev_comm_bw[i] = cur_common_bw[i];
 	}
 }
@@ -815,7 +815,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
 		mtk_icc_set_bw(dev->venc_qos_req[i], MBps_to_icc(common_bw[i]), 0);
-		mtk_v4l2_debug(8, "[VQOS] set larb%d: %dMB/s",
+		mtk_vcodec_dvfs_qos_log(false, "[VQOS] set larb%d: %dMB/s",
 			dev->venc_larb_bw[i].larb_id, common_bw[i]);
 	}
 #endif
@@ -860,7 +860,7 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 		ctx->input_buf_cnt = 0;
 		cur_op = ctx->op_rate_adaptive;
 
-		mtk_v4l2_debug(4, "[VDVFS][VENC][ADAPTIVE][%d] prev_op: %d, moni_op: %d, cur_adp_op: %d",
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS][VENC][ADAPTIVE][%d] prev_op: %d, moni_op: %d, cur_adp_op: %d",
 			ctx->id, prev_op, ctx->last_monitor_op, cur_op);
 
 		if (prev_op <= 0)
@@ -876,7 +876,7 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 		if (update_op) {
 			mutex_lock(&dev->enc_dvfs_mutex);
 			ctx->op_rate_adaptive = tmp_op;
-			mtk_v4l2_debug(0, "[VDVFS][VENC][ADAPTIVE][%d] op: user:%d, adaptive:%d->%d",
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC][ADAPTIVE][%d] op: user:%d, adaptive:%d->%d",
 				ctx->id, ctx->enc_params.operationrate, cur_op, tmp_op);
 
 			ctx->enc_params.operationrate_adaptive = ctx->op_rate_adaptive;
@@ -886,7 +886,7 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 				if (inst) {
 					if(need_update(ctx)) {
 						update_freq(dev, MTK_INST_ENCODER);
-						mtk_v4l2_debug(0, "[VDVFS][VENC][ADAPTIVE][%d] set freq %u",
+						mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC][ADAPTIVE][%d] set freq %u",
 							ctx->id, dev->venc_dvfs_params.target_freq);
 						set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
 						dev->venc_dvfs_params.init_boost = 0;

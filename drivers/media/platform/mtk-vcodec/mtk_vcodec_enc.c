@@ -3043,9 +3043,9 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_venc_prepare_vcp_dvfs_data(ctx, &param);
 		ret = venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param);
 		if (ret != 0)
-			mtk_v4l2_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);
+			mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);
 		mtk_venc_dvfs_sync_vsi_data(ctx);
-		mtk_v4l2_debug(0, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
 			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->venc_dvfs_params.target_freq,
 			ctx->dev->venc_dvfs_params.target_bw_factor);
@@ -3057,7 +3057,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_venc_pmqos_monitor_reset(ctx->dev);
 		mutex_unlock(&ctx->dev->enc_qos_mutex);
 	} else {
-		mtk_v4l2_debug(0, "[%d][VDVFS][VENC] start ctrl DVFS in AP", ctx->id);
+		mtk_vcodec_dvfs_qos_log(true, "[%d][VDVFS][VENC] start ctrl DVFS in AP", ctx->id);
 		mtk_venc_dvfs_begin_inst(ctx);
 		mtk_venc_pmqos_begin_inst(ctx);
 		mtk_venc_pmqos_monitor_reset(ctx->dev);
@@ -3178,9 +3178,9 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 			mtk_venc_unprepare_vcp_dvfs_data(ctx, &param);
 			ret = venc_if_set_param(ctx, VENC_SET_PARAM_MMDVFS, &param);
 			if (ret != 0)
-				mtk_v4l2_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
+				mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
 			mtk_venc_dvfs_sync_vsi_data(ctx);
-			mtk_v4l2_debug(0, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
 				ctx->id, mtk_vcodec_get_state(ctx),
 				ctx->dev->venc_dvfs_params.target_freq,
 				ctx->dev->venc_dvfs_params.target_bw_factor);
@@ -3191,7 +3191,7 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 			mtk_venc_pmqos_monitor_reset(ctx->dev);
 			mutex_unlock(&ctx->dev->enc_qos_mutex);
 		} else {
-			mtk_v4l2_debug(0, "[%d][VDVFS][VENC] stop ctrl DVFS in AP", ctx->id);
+			mtk_vcodec_dvfs_qos_log(true, "[%d][VDVFS][VENC] stop ctrl DVFS in AP", ctx->id);
 			mtk_venc_dvfs_end_inst(ctx);
 			mtk_venc_pmqos_end_inst(ctx);
 			mtk_venc_pmqos_monitor_reset(ctx->dev);
@@ -5087,4 +5087,3 @@ void mtk_vcodec_enc_release(struct mtk_vcodec_ctx *ctx)
 
 MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
-

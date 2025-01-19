@@ -35,6 +35,7 @@
 module_param(mtk_v4l2_dbg_level, int, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_dbg, bool, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_vcodec_vcp, int, 0644); //S_IRUGO | S_IWUSR
+module_param(mtk_vcodec_dvfs_qos_log_en, bool, 0644); //S_IRUGO | S_IWUSR
 module_param(mtk_venc_acp_enable, bool, 0644);
 module_param(mtk_venc_input_acp_enable, bool, 0644);
 char mtk_venc_property_prev[LOG_PROPERTY_SIZE];
