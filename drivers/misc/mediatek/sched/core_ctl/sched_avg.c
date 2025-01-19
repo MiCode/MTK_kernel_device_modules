@@ -29,7 +29,6 @@ struct over_thres_stats {
 	int nr_over_up_thres;
 	int dn_thres;
 	int up_thres;
-	int nr_running_diff;
 	atomic_long_t max_task_util;
 	u64 nr_over_dn_thres_prod_sum;
 	u64 nr_over_up_thres_prod_sum;
@@ -145,7 +144,6 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
 	s64 diff;
 	u64 curr_time;
 	unsigned long flags;
-	struct over_thres_stats *cpu_over_thres;
 
 	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
 	curr_time = sched_clock();
@@ -163,8 +161,6 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
 		per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
 	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
 	spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
-	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
-	cpu_over_thres->nr_running_diff = nr_running - cpu_over_thres->nr_over_dn_thres;
 	spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 }
 
@@ -293,37 +289,6 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 		return NO_OVER_THRES;
 }
 
-static DEFINE_SPINLOCK(deferrable_lock);
-static void sched_avg_deferred_func(struct work_struct *work)
-{
-	over_thresh_chg_notify();
-	pr_info("%s reset\n", TAG);
-}
-static DECLARE_WORK(sched_avg_deferred_work, sched_avg_deferred_func);
-
-#if IS_ENABLED(CONFIG_ARM64)
-#define DEFERRED_WORK_DEBOUNCE_TIME	(5 * NSEC_PER_SEC)
-#else
-#define DEFERRED_WORK_DEBOUNCE_TIME	(5LL * NSEC_PER_SEC)
-#endif
-
-static void reset_over_thre_deferred(u64 curr_time)
-{
-	static s64 deferred_work_last_update;
-	s64 diff;
-
-	spin_lock(&deferrable_lock);
-	diff = (s64) (curr_time - deferred_work_last_update);
-	if (diff < DEFERRED_WORK_DEBOUNCE_TIME) {
-		spin_unlock(&deferrable_lock);
-		return;
-	}
-	deferred_work_last_update = curr_time;
-	spin_unlock(&deferrable_lock);
-
-	schedule_work(&sched_avg_deferred_work);
-}
-
 int get_max_nr_running(int cpu)
 {
 	int max_nr = 0;
@@ -351,7 +316,6 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	int cpu = 0;
 	int cluster_nr;
 	struct cpumask cls_cpus;
-	bool reset = false;
 
 	/* Need to make sure initialization done. */
 	if (!init_thres) {
@@ -393,21 +357,6 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 			break;
 		}
 
-		if (cpu_over_thres->nr_over_dn_thres < 0 ||
-		    cpu_over_thres->nr_over_up_thres < 0 ||
-			cpu_over_thres->nr_running_diff < 0) {
-			int nr_over_dn_thres_abnormal, nr_over_up_thres_abnormal, nr_running_diff_abnormal;
-			reset = true;
-			nr_over_dn_thres_abnormal = cpu_over_thres->nr_over_dn_thres;
-			nr_over_up_thres_abnormal = cpu_over_thres->nr_over_up_thres;
-			nr_running_diff_abnormal = cpu_over_thres->nr_running_diff;
-			spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
-
-			pr_info("%s: nr_over_dn_thres: %d nr_over_up_thres:%d nr_running_diff:%d\n",
-					TAG, nr_over_dn_thres_abnormal,
-					nr_over_up_thres_abnormal, nr_running_diff_abnormal);
-			break;
-		}
 		/* get sum of nr_over_thres */
 		*sum_nr_over_dn_thres += cpu_over_thres->nr_over_dn_thres;
 		*sum_nr_over_up_thres += cpu_over_thres->nr_over_up_thres;
@@ -431,9 +380,6 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 
 		spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 	}
-
-	if (reset)
-		reset_over_thre_deferred(curr_time);
 
 	if (clk_faulty) {
 		*dn_avg = *up_avg = 0;
@@ -539,7 +485,6 @@ static void over_thresh_chg_notify(void)
 		cpu_over_thres->nr_over_dn_thres = nr_over_dn_thres;
 		cpu_over_thres->nr_over_dn_thres_prod_sum = 0;
 		cpu_over_thres->dn_last_update_time = curr_time;
-		cpu_over_thres->nr_running_diff = 0;
 
 		spin_unlock(&per_cpu(nr_over_thres_lock, cpu));
 		raw_spin_unlock_irqrestore(&cpu_rq(cpu)->__lock, flags);
