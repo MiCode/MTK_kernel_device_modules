@@ -15,7 +15,7 @@ static struct mtk_audio_usb_offload *afe_intf;
  * 1: adsp sram
  * 2: slb sram
  */
-int dyn_cnt[MEM_TYPE_NUM];
+static bool allow_type[MEM_TYPE_NUM] = {true, false, false};
 
 struct afe_memory {
 	dma_addr_t phys_addr;
@@ -81,7 +81,7 @@ static char *afe_get_name(void)
 
 static int afe_init(struct uo_provider *itself)
 {
-	int i, ret = 0;
+	int ret = 0;
 
 	afe_intf = mtk_audio_usb_offload_register_ops(itself->dev);
 	if (!afe_intf) {
@@ -91,9 +91,6 @@ static int afe_init(struct uo_provider *itself)
 	}
 
 	itself->type = UO_SOURCE_AFE_SRAM;
-
-	for (i = 0; i < MEM_TYPE_NUM; i++)
-		dyn_cnt[i] = 0;
 error:
 	return ret;
 }
@@ -101,7 +98,6 @@ error:
 static int afe_free_dyn(struct uo_provider *itself, dma_addr_t addr)
 {
 	struct afe_memory *afe;
-	int type;
 
 	if (!afe_intf || !afe_intf->ops->free_sram) {
 		USB_OFFLOAD_ERR("[%s] not support dynamic free\n", afe_get_name());
@@ -122,9 +118,7 @@ static int afe_free_dyn(struct uo_provider *itself, dma_addr_t addr)
 	USB_OFFLOAD_MEM_DBG("[%s] free [afe:%p virt:%p phys:0x%llx size:%d]\n",
 		afe_get_name(), afe, afe->vir_addr, afe->phys_addr, afe->size);
 	iounmap((void *)afe->vir_addr);
-	type = remove_afe_memory(addr);
-	if (type >= 0 && type < MEM_TYPE_NUM)
-		dyn_cnt[type]--;
+	remove_afe_memory(addr);
 
 	return 0;
 }
@@ -149,11 +143,14 @@ static void *afe_alloc_dyn(struct uo_provider *itself,
 		return NULL;
 	}
 
+	type = audio_mem->type;
+	if (!allow_type[type]) {
+		USB_OFFLOAD_ERR("[%s] invalid type:%d\n", afe_get_name(), type);
+		goto allocate_fail;
+	}
+
 	afe = new_afe_memory(audio_mem->phys_addr, audio_mem->type);
 	if (afe) {
-		type = audio_mem->type;
-		if (type >= 0 && type < MEM_TYPE_NUM)
-			dyn_cnt[type]++;
 		*phys_addr = audio_mem->phys_addr;
 		vir = (unsigned char *)ioremap_wc(audio_mem->phys_addr, size);
 		afe->vir_addr = vir;
@@ -161,11 +158,12 @@ static void *afe_alloc_dyn(struct uo_provider *itself,
 		USB_OFFLOAD_MEM_DBG("[%s] allocate [afe:%p virt:%p phys:0x%llx size:%d]\n",
 			afe_get_name(), afe, afe->vir_addr, afe->phys_addr, afe->size);
 		return afe->vir_addr;
-	} else {
+	} else
 		USB_OFFLOAD_ERR("[%s] fail creating afe\n", afe_get_name());
-		afe_free_dyn(itself, audio_mem->phys_addr);
-		return NULL;
-	}
+
+allocate_fail:
+	afe_free_dyn(itself, audio_mem->phys_addr);
+	return NULL;
 }
 
 static int afe_power_ctrl(struct uo_provider *itself, bool is_on)
@@ -178,7 +176,7 @@ static int afe_power_ctrl(struct uo_provider *itself, bool is_on)
 	}
 
 	for (i = 0; i < MEM_TYPE_NUM; i++) {
-		if (dyn_cnt[i])
+		if (allow_type[i])
 			ret |= afe_intf->ops->pm_runtime_control(i, is_on);
 	}
 

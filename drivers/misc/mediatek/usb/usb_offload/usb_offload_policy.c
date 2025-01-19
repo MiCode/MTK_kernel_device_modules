@@ -195,9 +195,61 @@ static ssize_t sram_source_show(struct device *dev,
 
 static DEVICE_ATTR_RW(sram_source);
 
+static u32 source_status_output;
+static ssize_t source_status_store(struct device *dev,
+    struct device_attribute *attr, const char *buf, size_t count)
+{
+	char buffer[MAX_INPUT_NUM];
+	char *input = buffer;
+	const char *field1, *field2;
+	const char * const delim = " \0\n\t";
+	struct uo_provider *provider;
+	enum uo_provider_type id;
+
+	strscpy(buffer, buf, sizeof(buffer) <= count ? sizeof(buffer) : count);
+	field1 = strsep(&input, delim);
+	field2 = strsep(&input, delim);
+	if (!field1 || !field2)
+		return -EINVAL;
+
+	if (!strncmp(field1, "dram", 4))
+		id = UO_PROV_DRAM;
+	else if (!strncmp(field1, "main-sram", 9))
+		id = UO_PROV_SRAM;
+	else if (!strncmp(field1, "secondary-sram", 14))
+		id = UO_PROV_SRAM_2;
+	else
+		goto error;
+
+	provider = &uodev->provider[id];
+	if (!provider || !provider->is_init)
+		goto error;
+
+	if (!strncmp(field2, "power", 5))
+		source_status_output = provider->power;
+	else if (!strncmp(field2, "count", 5))
+		source_status_output = provider->struct_cnt;
+	else
+		goto error;
+
+	return count;
+error:
+	source_status_output = 0;
+	return -EINVAL;
+}
+
+static ssize_t source_status_show(struct device *dev,
+    struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", source_status_output);
+}
+
+static DEVICE_ATTR_RW(source_status);
+
 static struct attribute *usb_offload_attrs[] = {
 	&dev_attr_sram_source.attr,
 	&dev_attr_flow_ctrl.attr,
+	&dev_attr_source_status.attr,
 	NULL,
 };
 
