@@ -686,6 +686,8 @@ struct mml_task {
 	u32 rdma_crc_idx[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
 	u32 dpc_srt_bw[mml_max_sys];
 	u32 dpc_hrt_bw[mml_max_sys];
+	u32 dpc_srt_write_bw[mml_max_sys];
+	u32 dpc_hrt_write_bw[mml_max_sys];
 
 	/* mml context */
 	struct mml_ctx *ctx;
