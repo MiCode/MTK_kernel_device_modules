@@ -484,13 +484,13 @@ static void mdw_plat_v6_delete_msg(struct mdw_mem_map *rv_cb)
 static int mdw_plat_v6_register_device(struct apusys_device *adev)
 {
 	mdw_drv_debug("\n");
-	return -EINVAL;
+	return 0;
 }
 
 static int mdw_plat_v6_unregister_device(struct apusys_device *adev)
 {
 	mdw_drv_debug("\n");
-	return -EINVAL;
+	return 0;
 }
 
 static int mdw_plat_v6_create_session(struct mdw_fpriv *mpriv)

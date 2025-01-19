@@ -111,7 +111,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 
 delete_allocator:
 	if (apu_sysmem_delete_allocator(mpriv->mem_allocator))
-		mdw_exception("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
+		mdw_drv_err("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
 put_mpriv:
 	mpriv->put_ref(mpriv);
 out:
@@ -129,7 +129,7 @@ static int mdw_drv_close(struct inode *inode, struct file *filp)
 	mdw_mem_release_session(mpriv);
 	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
 	if (apu_sysmem_delete_allocator(mpriv->mem_allocator))
-		mdw_exception("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
+		mdw_drv_err("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
 	mutex_unlock(&mpriv->mtx);
 	mpriv->put_ref(mpriv);
 
