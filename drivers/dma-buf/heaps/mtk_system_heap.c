@@ -718,8 +718,10 @@ static void *system_heap_do_vmap(struct system_heap_buffer *buffer)
 	pages = vmalloc(sizeof(struct page *) * npages);
 	tmp = pages;
 
-	if (!pages)
+	if (!pages) {
+		pr_info("%s vmalloc %d pages fail!", __func__, npages);
 		return ERR_PTR(-ENOMEM);
+	}
 
 	if (buffer->uncached)
 		pgprot = pgprot_writecombine(PAGE_KERNEL);

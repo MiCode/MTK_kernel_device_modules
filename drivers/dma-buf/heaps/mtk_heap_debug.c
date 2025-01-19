@@ -2488,12 +2488,12 @@ static int heap_stats_proc_show(struct seq_file *s, void *v)
 
 static int dma_heap_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, dma_heap_proc_show, pde_data(inode));
+	return single_open_size(file, dma_heap_proc_show, pde_data(inode), SZ_512K);
 }
 
 static int all_heaps_dump_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, all_heaps_proc_show, pde_data(inode));
+	return single_open_size(file, all_heaps_proc_show, pde_data(inode), SZ_512K);
 }
 
 static int heap_stats_proc_open(struct inode *inode, struct file *file)
@@ -2774,15 +2774,15 @@ static int __init mtk_dma_heap_debug(void)
 
 	pr_info("GM-T %s\n", __func__);
 
-	oom_nb_status = register_oom_notifier(&dma_heap_oom_nb);
-	if (oom_nb_status)
-		pr_info("register_oom_notifier failed:%d\n", oom_nb_status);
-
 	ret = dma_buf_init_procfs();
 	if (ret) {
 		pr_info("%s fail\n", __func__);
 		return ret;
 	}
+
+	oom_nb_status = register_oom_notifier(&dma_heap_oom_nb);
+	if (oom_nb_status)
+		pr_info("register_oom_notifier failed:%d\n", oom_nb_status);
 
 #if IS_ENABLED(CONFIG_MTK_HANG_DETECT) && \
 		IS_ENABLED(CONFIG_MTK_HANG_DETECT_DB) && \
