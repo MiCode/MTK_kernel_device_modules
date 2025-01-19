@@ -1541,12 +1541,12 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo)
 	ret = send_uas_ipi_msg_to_adsp(&msg);
 	USB_OFFLOAD_INFO("send_ipi_msg_to_adsp msg, ret: %d\n", ret);
 	/* wait response */
-	if (!uainfo->enable || ret == -ENODEV)
+	if (!uainfo->enable || ret < 0)
 		mtk_usb_offload_free_allocated(uainfo->direction == SNDRV_PCM_STREAM_CAPTURE);
 
 done:
 	if ((!uainfo->enable && ret != -EINVAL && ret != -ENODEV) ||
-		(uainfo->enable && ret == -ENODEV)) {
+		(uainfo->enable && ret < 0)) {
 		mutex_lock(&uodev->dev_lock);
 		if (info_idx >= 0) {
 			if (!uadev[pcm_card_num].info) {
