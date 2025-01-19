@@ -22,7 +22,8 @@ enum ddr_freq {
 	DDR_7500,
 	DDR_8533,
 	DDR_8533_9600,
-	NR_DDR_FREQ = 10,
+	DDR_10677,
+	NR_DDR_FREQ = 11,
 };
 
 /* dram voltage/freq index */
