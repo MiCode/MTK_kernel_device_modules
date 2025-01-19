@@ -15,6 +15,9 @@
 #include <linux/timer.h>
 #include <linux/delay.h>
 
+#if !IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+#include <linux/mmdebug.h>
+#endif
 #include <iommu_debug.h>
 #ifdef CMDQ_DCACHE_INVAL
 #include <asm/cacheflush.h>
@@ -3035,6 +3038,9 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 	s32 thread_id = cmdq_mbox_chan_id(client->chan);
 	u32 hwid = cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(client->chan));
 	static u8 err_num[CMDQ_HW_MAX];
+#if !IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+	struct page *page;
+#endif
 
 	cmdq_msg("%s pkt:%p", __func__, pkt);
 
@@ -3075,7 +3081,12 @@ static void cmdq_pkt_err_irq_dump(struct cmdq_pkt *pkt)
 				&buf->iova_base, buf->alloc_time, buf->use_pool);
 			cmdq_buf_cmd_parse(buf->va_base, CMDQ_NUM_CMD(size),
 				CMDQ_BUF_ADDR(buf), pc, NULL, client->chan);
-
+#if !IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+			page = phys_to_page((unsigned long)buf->pa_base);
+			cmdq_msg("%s dump page pa:%pa page:%p", __func__, &buf->pa_base,
+				page);
+			dump_page(page, "cmdq_curruption");
+#endif
 			break;
 		}
 	}
@@ -3120,8 +3131,12 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 
 	if (data.err == -EINVAL) {
 		cmdq_pkt_err_irq_dump(pkt);
+#if !IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 		if (error_irq_bug_on)
 			BUG_ON(1);
+#else
+		BUG_ON(1);
+#endif
 	}
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
