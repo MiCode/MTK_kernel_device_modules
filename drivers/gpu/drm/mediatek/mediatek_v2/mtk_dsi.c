@@ -11259,7 +11259,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
 {
 	struct mtk_panel_ext **ext;
-	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+	struct mtk_dsi *dsi = NULL;
 	void **out_params;
 	struct mtk_panel_ext *panel_ext = NULL;
 	struct drm_display_mode **mode;
@@ -11267,6 +11267,16 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	unsigned int vfp_low_power = 0;
 	int ret;
 	unsigned int vfp_lp_dyn = 0;
+
+	if (!comp) {
+		pr_info("%s: error, comp=NULL!\n", __func__);
+		return 0;
+	}
+	if(mtk_ddp_comp_get_type(comp->id) != MTK_DSI) {
+		pr_info("%s: comp = %s, return!\n", __func__, mtk_dump_comp_str(comp));
+		return 0;
+	}
+	dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
 	switch (cmd) {
 	case REQ_PANEL_EXT:
