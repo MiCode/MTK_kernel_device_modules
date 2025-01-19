@@ -508,13 +508,18 @@ static int mtk_vdec_get_lpw_limit(struct mtk_vcodec_ctx *ctx)
 
 static int mtk_vdec_get_lpw_start_limit(struct mtk_vcodec_ctx *ctx)
 {
+	struct vb2_queue *dst_vq = v4l2_m2m_get_vq(ctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+
 	if (mtk_vdec_lpw_start > 0)
 		return mtk_vdec_lpw_start;
 
 	if (mtk_vdec_lpw_start < 0)
 		return ctx->dpb_size + mtk_vdec_lpw_start;
 
-	return ctx->dpb_size;
+	if (dst_vq == NULL)
+		return ctx->dpb_size;
+
+	return dst_vq->num_buffers + 1;
 }
 
 static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
@@ -564,70 +569,73 @@ static void mtk_vdec_lpw_set_ts(struct mtk_vcodec_ctx *ctx, u64 ts)
 		return;
 
 	spin_lock_irqsave(&ctx->lpw_lock, flags);
-	if (ctx->lpw_set_start_ts) {
-		ctx->group_start_ts = ctx->group_end_ts = ts;
-		ctx->lpw_set_start_ts = false;
-	} else
-		ctx->group_end_ts = MAX(ts, ctx->group_end_ts);
-
-	ctx->lpw_ts_diff = ts - ctx->lpw_last_disp_ts;
-	ctx->lpw_last_disp_ts = ts;
+	if (ctx->lpw_start_time == 0) {
+		ctx->lpw_start_time = jiffies_to_nsecs(jiffies);
+		ctx->lpw_start_ts = ctx->lpw_last_disp_ts = ts;
+	}
+	if (ts >= ctx->lpw_last_disp_ts)
+		ctx->lpw_ts_diff = ts - ctx->lpw_last_disp_ts;
+	ctx->lpw_last_disp_ts = MAX(ts, ctx->lpw_last_disp_ts);
 	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 }
 
+#define T_T "%lld.%06d" // time of ms.ns
+#define TMNS(x) NS_TO_MS(x), NS_MOD_MS(x) // ms, ns
+
 static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 {
-	u64 time_diff = 0, curr_time, group_time, dec_time, delay_time, limit_time; // ns
+	u64 timeout = 0, curr_time, group_time, dec_time, delay_time, limit_time; // ns
+	u64 limit_time_g, limit_time_s = 0, ts_diff_s, time_diff; // ns
 	unsigned int limit_cnt = mtk_vdec_get_lpw_limit(ctx);
 	unsigned int delay_cnt = limit_cnt / 2;
+	bool use_default = false, use_group = true;
 
 	if (!ctx->low_pw_mode || ctx->dynamic_low_latency)
 		return;
 
-	if (!ctx->in_group) {
-		limit_time = ctx->lpw_ts_diff * ctx->group_dec_cnt;
-		if (!ctx->lpw_timer_wait) {
-			curr_time = jiffies_to_nsecs(jiffies);
-			if (curr_time <= ctx->group_start_time) {
-				dec_time = MS_TO_NS(10); // 10ms
-				group_time = dec_time * ctx->group_dec_cnt;
-				delay_time = dec_time * delay_cnt;
-				mtk_lpw_err("[%d] curr_time %lld.%06d <= group_start_time %lld.%06d not valid, set dec_time to default %lld ms",
-					ctx->id, NS_TO_MS(curr_time), NS_MOD_MS(curr_time),
-					NS_TO_MS(ctx->group_start_time),
-					NS_MOD_MS(ctx->group_start_time), NS_TO_MS(dec_time));
-			} else {
-				group_time = curr_time - ctx->group_start_time;
-				dec_time = div_u64(group_time, ctx->group_dec_cnt);
-				delay_time = dec_time * delay_cnt;
-			}
-
-			if (limit_time > delay_time)
-				time_diff = MIN(MS_TO_NS(mtk_vdec_lpw_timeout), limit_time - delay_time);
-			else {
-				time_diff = MS_TO_NS(mtk_vdec_lpw_timeout);
-				mtk_lpw_debug(1, "[%d] ts_diff %lld.%06d * group_dec_cnt %d = %lld.%06d <= delay_time %lld.%06d(dec_time %lld.%06d (= group_time %lld.%06d / group_dec_cnt %d) * delay_cnt %d), use default timeout(%lld.%06d)",
-					ctx->id,
-					NS_TO_MS(ctx->lpw_ts_diff), NS_MOD_MS(ctx->lpw_ts_diff),
-					ctx->group_dec_cnt, NS_TO_MS(limit_time), NS_MOD_MS(limit_time),
-					NS_TO_MS(delay_time), NS_MOD_MS(delay_time),
-					NS_TO_MS(dec_time), NS_MOD_MS(dec_time),
-					NS_TO_MS(group_time), NS_MOD_MS(group_time),
-					ctx->group_dec_cnt, delay_cnt,
-					NS_TO_MS(time_diff), NS_MOD_MS(time_diff));
-			}
+	if (ctx->lpw_state == VDEC_LPW_WAIT && !ctx->lpw_timer_wait) {
+		curr_time = jiffies_to_nsecs(jiffies);
+		if (curr_time <= ctx->group_start_time) {
+			dec_time = MS_TO_NS(10); // 10ms
+			group_time = dec_time * ctx->group_dec_cnt;
+			mtk_lpw_err("[%d] curr_time "T_T" <= group_start_time "T_T" not valid, set dec_time to default %lld ms",
+				ctx->id, TMNS(curr_time), TMNS(ctx->group_start_time), NS_TO_MS(dec_time));
+		} else {
+			group_time = curr_time - ctx->group_start_time;
+			dec_time = div_u64(group_time, ctx->group_dec_cnt);
 		}
-		if (time_diff > 0) {
-			mtk_lpw_debug(2, "[%d] start lpw_timer with timeout %lld.%06d (ts_diff %lld.%06d * group_dec_cnt %d = %lld.%06d, delay_time %lld.%06d = dec_time %lld.%06d (= group_time %lld.%06d / group_dec_cnt %d) * delay_cnt %d)",
-				ctx->id, NS_TO_MS(time_diff), NS_MOD_MS(time_diff),
-				NS_TO_MS(ctx->lpw_ts_diff), NS_MOD_MS(ctx->lpw_ts_diff),
-				ctx->group_dec_cnt, NS_TO_MS(limit_time), NS_MOD_MS(limit_time),
-				NS_TO_MS(delay_time), NS_MOD_MS(delay_time),
-				NS_TO_MS(dec_time), NS_MOD_MS(dec_time),
-				NS_TO_MS(group_time), NS_MOD_MS(group_time),
-				ctx->group_dec_cnt, delay_cnt);
+		delay_time = dec_time * delay_cnt;
+		limit_time_g = ctx->lpw_ts_diff * ctx->group_dec_cnt; // limit form group
+
+		ts_diff_s = ctx->lpw_last_disp_ts - ctx->lpw_start_ts;
+		time_diff = curr_time - ctx->lpw_start_time;
+		if (ts_diff_s > time_diff + delay_time)
+			limit_time_s = ts_diff_s - time_diff - delay_time; // limit from start
+
+		if (limit_time_g >= limit_time_s) {
+			limit_time = limit_time_g;
+			use_group = true;
+		} else {
+			limit_time = limit_time_s;
+			use_group = false;
+		}
+
+		if (limit_time > delay_time && (limit_time - delay_time) <= MS_TO_NS(mtk_vdec_lpw_timeout))
+			timeout = limit_time - delay_time;
+		else {
+			timeout = MS_TO_NS(mtk_vdec_lpw_timeout);
+			use_default = true;
+		}
+
+		mtk_lpw_debug(1, "[%d] lpw_timer timeout %s "T_T" (g limit: "T_T" = "T_T" * %d, s limit: "T_T" = "T_T" - "T_T" - "T_T", delay_time: "T_T" = "T_T" (= "T_T" / %d) * %d)",
+			ctx->id, use_default ? "default" : (use_group ? " group " : " start "), TMNS(timeout),
+			TMNS(limit_time_g), TMNS(ctx->lpw_ts_diff), ctx->group_dec_cnt,
+			TMNS(limit_time_s), TMNS(ts_diff_s), TMNS(time_diff), TMNS(delay_time),
+			TMNS(delay_time), TMNS(dec_time), TMNS(group_time), ctx->group_dec_cnt, delay_cnt);
+
+		if (timeout > 0) {
 			ctx->lpw_timer_wait = true;
-			mod_timer(&ctx->lpw_timer, jiffies + nsecs_to_jiffies(time_diff));
+			mod_timer(&ctx->lpw_timer, jiffies + nsecs_to_jiffies(timeout));
 		}
 	}
 }
@@ -2112,7 +2120,6 @@ static void mtk_vdec_worker(struct work_struct *work)
 		if (!ctx->in_group) {
 			ctx->in_group = true;
 			ctx->group_start_time = jiffies_to_nsecs(jiffies);
-			ctx->lpw_set_start_ts = true;
 			ctx->group_dec_cnt = 0;
 		}
 		ctx->group_dec_cnt++;
@@ -4279,10 +4286,11 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_vdec_lpw_stop_timer(ctx, false);
 		ctx->lpw_state = VDEC_LPW_DEC;
 		ctx->lpw_dec_start_cnt = mtk_vdec_get_lpw_start_limit(ctx);
-		ctx->in_group = true;
+		ctx->in_group = false;
 		ctx->dynamic_low_latency = false;
 		ctx->prev_no_input = false;
-		ctx->lpw_last_disp_ts = 0;
+		ctx->lpw_start_time = 0;
+		ctx->lpw_start_ts = ctx->lpw_last_disp_ts = 0;
 		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 
 		// SET_PARAM_TOTAL_FRAME_BUFQ_COUNT for SW DEC(VDEC_DRV_DECODER_MTK_SOFTWARE=1)
