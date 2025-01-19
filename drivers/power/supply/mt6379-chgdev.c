@@ -118,6 +118,7 @@ static int mt6379_charger_set_cv(struct mt6379_charger_data *cdata, u32 uV)
 	u32 enabled = 0;
 	int ret = 0;
 
+	val.intval = POWER_SUPPLY_STATUS_UNKNOWN;
 	mutex_lock(&cdata->cv_lock);
 
 	if (cdata->batprotect_en) {
@@ -435,6 +436,7 @@ static int mt6379_is_charge_done(struct charger_device *chgdev, bool *done)
 	union power_supply_propval val;
 	int ret = 0;
 
+	val.intval = POWER_SUPPLY_STATUS_UNKNOWN;
 	ret = power_supply_get_property(cdata->psy, POWER_SUPPLY_PROP_STATUS, &val);
 	if (ret) {
 		*done = false;
@@ -1025,8 +1027,8 @@ static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata
 					       enum mt6379_batpro_src src, bool en)
 {
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
-	u32 vbat = 0, cv = 0, vbat_mon_en_field, adc_chan, stat;
-	u16 batend_code;
+	u32 vbat = 0, cv = 0, vbat_mon_en_field = 0, adc_chan = 0, stat = 0;
+	u16 batend_code = 0;
 	int ret = 0;
 
 	mutex_lock(&cdata->cv_lock);
