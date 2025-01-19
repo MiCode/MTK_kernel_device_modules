@@ -22,6 +22,7 @@
 #include <linux/time.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <asm/io.h>
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 #include <linux/scmi_protocol.h>
@@ -249,8 +250,8 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 		if (!pmsr_rt_logbuf)
 				return;
 
-		timestamp = pmsr_tool_val->timestamp_h;
-		timestamp = (timestamp << 32) | (pmsr_tool_val->timestamp_l);
+		timestamp = readl(&pmsr_tool_val->timestamp_h);
+		timestamp = (timestamp << 32) | readl(&pmsr_tool_val->timestamp_l);
 		p = pmsr_rt_logbuf;
 		p[0] = '\0';
 		/* prepare the log header */
