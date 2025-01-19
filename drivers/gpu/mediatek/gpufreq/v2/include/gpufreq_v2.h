@@ -171,11 +171,12 @@ enum gpufreq_config_value {
 	STRESS_MAX_MIN     = 6,
 	STRESS_ASCENDING   = 7,
 	STRESS_DESCENDING  = 8,
-	PTP3_SAFE_MARGIN   = 9,
-	DATA_UPDATE        = 10,
-	DATA_LEVEL_0       = 11,
-	DATA_LEVEL_1       = 12,
-	DATA_LEVEL_2       = 13,
+	STRESS_SLT2        = 9,
+	PTP3_SAFE_MARGIN   = 10,
+	DATA_UPDATE        = 11,
+	DATA_LEVEL_0       = 12,
+	DATA_LEVEL_1       = 13,
+	DATA_LEVEL_2       = 14,
 };
 
 enum gpufreq_chip_type {
