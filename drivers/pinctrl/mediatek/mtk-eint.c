@@ -829,10 +829,6 @@ static const struct mtk_eint_compatible default_compat = {
 	.regs = &mtk_generic_eint_regs,
 };
 
-static const struct of_device_id eint_compatible_ids[] = {
-	{ }
-};
-
 int mtk_eint_do_init(struct mtk_eint *eint)
 {
 	int i, matrix_number = 0;
