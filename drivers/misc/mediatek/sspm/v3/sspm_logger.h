@@ -10,6 +10,6 @@
 
 extern int scmi_plt_id;
 
-unsigned int __init sspm_logger_init(phys_addr_t start, phys_addr_t limit);
-int __init sspm_logger_init_done(void);
+unsigned int sspm_logger_init(phys_addr_t start, phys_addr_t limit);
+int sspm_logger_init_done(void);
 #endif

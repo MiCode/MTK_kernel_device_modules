@@ -26,5 +26,5 @@
 
 void sspm_timesync_suspend(void);
 void sspm_timesync_resume(void);
-unsigned int __init sspm_timesync_init(void);
+unsigned int sspm_timesync_init(void);
 #endif // _SSPM_TIMESYNC_H_

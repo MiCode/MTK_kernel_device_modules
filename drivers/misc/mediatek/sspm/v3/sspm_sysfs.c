@@ -83,7 +83,7 @@ static struct miscdevice sspm_log_device = {
 	.fops = &sspm_log_file_ops
 };
 
-int __init sspm_sysfs_init(void)
+int sspm_sysfs_init(void)
 {
 	int ret;
 

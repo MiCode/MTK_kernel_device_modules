@@ -164,7 +164,7 @@ static void timesync_ws(struct work_struct *ws)
 	timesync_sync_base(TIMESYNC_FLAG_SYNC);
 }
 
-unsigned int __init sspm_timesync_init(void)
+unsigned int sspm_timesync_init(void)
 {
 	timesync_workqueue = create_workqueue("sspm_ts_wq");
 	if (!timesync_workqueue) {

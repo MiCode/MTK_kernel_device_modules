@@ -70,7 +70,7 @@ static ssize_t sspm_alive_show(struct device *kobj,
 }
 DEVICE_ATTR_RO(sspm_alive);
 
-int __init sspm_plt_init(void)
+int sspm_plt_init(void)
 {
 	phys_addr_t phys_addr, virt_addr, mem_sz;
 	struct plt_msg_s msg_data;
