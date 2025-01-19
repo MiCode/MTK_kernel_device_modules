@@ -432,11 +432,6 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		if (disp_dpc_driver.dpc_vidle_power_keep)
 			priv->pm_ret = disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
 
-		if (priv->pm_ret) {
-			VDISPERR("pd(%d) pre off power keep failed(%d)", priv->pd_id, priv->pm_ret);
-			break;
-		}
-
 		if (priv->pd_id == DISP_PD_DISP_VCORE)
 			check_subcomm_status();
 

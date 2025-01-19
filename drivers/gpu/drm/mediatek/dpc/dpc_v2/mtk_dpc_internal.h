@@ -333,10 +333,12 @@ struct mtk_dpc {
 	struct device *dev;
 	struct device *pd_dev;
 	struct notifier_block pm_nb;
+	struct notifier_block vcp_nb;
 	int disp_irq;
 	int mml_irq;
 	resource_size_t dpc_pa;
 	void __iomem *mminfra_hangfree;
+	bool vcp_is_alive;
 	bool skip_force_power;
 	spinlock_t skip_force_power_lock;
 	spinlock_t mtcmos_cfg_lock;
