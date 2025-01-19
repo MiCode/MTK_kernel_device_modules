@@ -377,7 +377,7 @@ static long vl53l4_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void
 	{
 		struct mtk_tof_info *info = arg;
 		struct TofInformation tof_info;
-		struct VL53LX_MultiRangingData_t MultiRangingData;
+		struct VL53LX_MultiRangingData_t MultiRangingData = {};
 		struct VL53LX_MultiRangingData_t *pMultiRangingData = &MultiRangingData;
 		int i = 0;
 
