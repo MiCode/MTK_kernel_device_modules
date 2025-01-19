@@ -43,27 +43,27 @@ endif
 ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6879.c),)
 obj-${CONFIG_MTK_CM_MGR_MT6879} += mtk_cm_mgr_mt6879.o
 endif
-ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6886.c),)
-obj-${CONFIG_MTK_CM_MGR_MT6886} += mtk_cm_mgr_mt6886.o
-endif
+#ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6886.c),)
+#obj-${CONFIG_MTK_CM_MGR_MT6886} += mtk_cm_mgr_mt6886.o
+#endif
 ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6893.c),)
 obj-${CONFIG_MTK_CM_MGR_MT6893} += mtk_cm_mgr_mt6893.o
 endif
 ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6895.c),)
 obj-${CONFIG_MTK_CM_MGR_MT6895} += mtk_cm_mgr_mt6895.o
 endif
-ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6897.c),)
-obj-${CONFIG_MTK_CM_MGR_MT6897} += mtk_cm_mgr_mt6897.o
-endif
-ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6983.c),)
-obj-${CONFIG_MTK_CM_MGR_MT6983} += mtk_cm_mgr_mt6983.o
-endif
-ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6985.c),)
-obj-${CONFIG_MTK_CM_MGR_MT6985} += mtk_cm_mgr_mt6985.o
-endif
-ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6989.c),)
-obj-${CONFIG_MTK_CM_MGR_MT6989} += mtk_cm_mgr_mt6989.o
-endif
+#ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6897.c),)
+#obj-${CONFIG_MTK_CM_MGR_MT6897} += mtk_cm_mgr_mt6897.o
+#endif
+#ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6983.c),)
+#obj-${CONFIG_MTK_CM_MGR_MT6983} += mtk_cm_mgr_mt6983.o
+#endif
+#ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6985.c),)
+#obj-${CONFIG_MTK_CM_MGR_MT6985} += mtk_cm_mgr_mt6985.o
+#endif
+#ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6989.c),)
+#obj-${CONFIG_MTK_CM_MGR_MT6989} += mtk_cm_mgr_mt6989.o
+#endif
 ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6991.c),)
 obj-${CONFIG_MTK_CM_MGR_MT6991} += mtk_cm_mgr_mt6991.o
 endif
