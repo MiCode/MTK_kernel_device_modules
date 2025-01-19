@@ -948,6 +948,43 @@ static struct kobj_type sugov_tunables_ktype = {
 
 /********************** cpufreq governor interface *********************/
 
+#if IS_ENABLED(CONFIG_ENERGY_MODEL)
+static DEFINE_MUTEX(sched_energy_mutex);
+static bool sched_energy_update;
+extern void rebuild_sched_domains(void);
+
+void rebuild_sched_domains_energy(void)
+{
+	mutex_lock(&sched_energy_mutex);
+	sched_energy_update = true;
+	rebuild_sched_domains();
+	sched_energy_update = false;
+	mutex_unlock(&sched_energy_mutex);
+}
+
+static void rebuild_sd_workfn(struct work_struct *work)
+{
+	rebuild_sched_domains_energy();
+}
+static DECLARE_WORK(rebuild_sd_work, rebuild_sd_workfn);
+
+/*
+ * EAS shouldn't be attempted without sugov, so rebuild the sched_domains
+ * on governor changes to make sure the scheduler knows about it.
+ */
+static void sugov_eas_rebuild_sd(void)
+{
+	/*
+	 * When called from the cpufreq_register_driver() path, the
+	 * cpu_hotplug_lock is already held, so use a work item to
+	 * avoid nested locking in rebuild_sched_domains().
+	 */
+	schedule_work(&rebuild_sd_work);
+}
+#else
+static inline void sugov_eas_rebuild_sd(void) { };
+#endif
+
 struct cpufreq_governor mtk_gov;
 
 static struct sugov_policy *sugov_policy_alloc(struct cpufreq_policy *policy)
@@ -1103,6 +1140,8 @@ static int sugov_init(struct cpufreq_policy *policy)
 	if (ret)
 		goto fail;
 
+	sugov_eas_rebuild_sd();
+
 	policy->dvfs_possible_from_any_cpu = 1;
 
 out:
@@ -1146,6 +1185,8 @@ static void sugov_exit(struct cpufreq_policy *policy)
 	sugov_kthread_stop(sg_policy);
 	sugov_policy_free(sg_policy);
 	cpufreq_disable_fast_switch(policy);
+
+	sugov_eas_rebuild_sd();
 }
 
 static int sugov_start(struct cpufreq_policy *policy)
@@ -1171,10 +1212,6 @@ static int sugov_start(struct cpufreq_policy *policy)
 		memset(sg_cpu, 0, sizeof(*sg_cpu));
 		sg_cpu->cpu			= cpu;
 		sg_cpu->sg_policy		= sg_policy;
-	}
-
-	for_each_cpu(cpu, policy->cpus) {
-		struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
 
 		cpufreq_add_update_util_hook(cpu, &sg_cpu->update_util,
 					     policy_is_shared(policy) ?
