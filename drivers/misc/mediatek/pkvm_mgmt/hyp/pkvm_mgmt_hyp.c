@@ -5,8 +5,10 @@
 
 #include <asm/alternative-macros.h>
 #include <asm/kvm_pkvm_module.h>
+#include <linux/arm-smccc.h>
 
 #include "../../include/pkvm_mgmt/pkvm_mgmt.h"
+#include "../../../../arch/arm64/kvm/hyp/include/nvhe/ffa.h"
 #include "../../../../arch/arm64/kvm/hyp/include/nvhe/spinlock.h"
 #include "pkvm_ctrl.h"
 
@@ -48,12 +50,28 @@ int lookup_hvc(u64 smc_id)
 	return -1;
 }
 
+static bool is_ffa_call(u64 func_id)
+{
+	/* remove maximum bit from the function num field */
+	func_id &= ~0x8000UL;
+
+	return ARM_SMCCC_IS_FAST_CALL(func_id) &&
+	       ARM_SMCCC_OWNER_NUM(func_id) == ARM_SMCCC_OWNER_STANDARD &&
+	       ARM_SMCCC_FUNC_NUM(func_id) >= FFA_MIN_FUNC_NUM &&
+	       ARM_SMCCC_FUNC_NUM(func_id) <= FFA_MAX_FUNC_NUM;
+}
+
 bool mtk_smc_handler(struct user_pt_regs *ctxt)
 {
 	u64 smc_id = ctxt->regs[0] & ~ARM_SMCCC_CALL_HINTS;
 	u64 smc_key_id;
 	int hvc_id;
 	size_t i = 0;
+
+	if (is_ffa_call(smc_id)) {
+		ctxt->regs[0] &= ~0x8000UL;
+		return false;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(el2_smc_id_list); i++) {
 		if (smc_id == el2_smc_id_list[i])
