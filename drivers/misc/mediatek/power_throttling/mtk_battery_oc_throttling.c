@@ -322,7 +322,10 @@ static ssize_t battery_oc_protect_ut_write(struct file *fp,
 	if (val < BATTERY_OC_LEVEL_NUM) {
 		dev_info(priv->dev, "[%s] your input is %d\n", __func__, val);
 		mutex_lock(&exe_thr_lock);
+		g_battery_oc_stop = 0;
+		bat_oc.oc_cur_level = val;
 		exec_battery_oc_callback(val);
+		g_battery_oc_stop = 1;
 		mutex_unlock(&exe_thr_lock);
 	} else {
 		dev_info(priv->dev, "[%s] wrong number (%d)\n", __func__, val);

@@ -11,3 +11,4 @@ endif
 
 obj-$(CONFIG_MTK_MD_POWER_THROTTLING) += mtk_md_power_throttling.o
 obj-$(CONFIG_MTK_GPU_POWER_THROTTLING) += mtk_gpu_power_throttling.o
+obj-$(CONFIG_MTK_APU_POWER_THROTTLING) += mtk_apu_power_throttling.o

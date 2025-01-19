@@ -23,6 +23,7 @@ static bool bp_hpt_notify_only_flag;
 static bool bp_md_notify_flag;
 static DECLARE_WAIT_QUEUE_HEAD(bp_notify_waiter);
 static struct wakeup_source *bp_notify_lock;
+static DEFINE_MUTEX(exe_thr_lock);
 struct bp_thl_callback_table {
 	void (*bpcb)(enum BATTERY_PERCENT_LEVEL_TAG);
 };
@@ -154,9 +155,8 @@ static ssize_t bp_thl_ut_show(
 		struct device *dev, struct device_attribute *attr, char *buf)
 {
 	/*show_battery_percent_protect_ut */
-	pr_info("[%s] g_bp_thl_lv=%d\n",
-		__func__, bp_thl_data->bp_thl_lv);
-	return sprintf(buf, "%u\n", bp_thl_data->bp_thl_lv);
+	pr_info("[%s] g_bp_thl_lv=%d\n", __func__, bp_thl_data->bp_thl_lv);
+	return sprintf(buf, "level:%u, stop:%d\n", bp_thl_data->bp_thl_lv, bp_thl_data->bp_thl_stop);
 }
 
 static ssize_t bp_thl_ut_store(
@@ -169,11 +169,24 @@ static ssize_t bp_thl_ut_store(
 		dev_info(dev, "parameter number not correct\n");
 		return -EINVAL;
 	}
+
 	if (strncmp(cmd, "Utest", 5))
 		return -EINVAL;
+
+	if (!bp_thl_data) {
+		pr_info("[%s] Failed to create bp_thl_data\n", __func__);
+		return -EINVAL;
+	}
+
 	if (val < BATTERY_PERCENT_LEVEL_NUM) {
 		pr_info("[%s] your input is %d\n", __func__, val);
-		exec_bp_thl_callback(val);
+		mutex_lock(&exe_thr_lock);
+		bp_thl_data->bp_thl_lv = val;
+		bp_thl_data->bp_thl_stop = 0;
+		exec_bp_thl_callback(bp_thl_data->bp_thl_lv);
+		bp_thl_data->bp_thl_stop = 1;
+
+		mutex_unlock(&exe_thr_lock);
 	} else {
 		pr_info("[%s] wrong number (%d)\n", __func__, val);
 	}
@@ -205,7 +218,9 @@ static ssize_t bp_thl_stop_store(
 		return -EINVAL;
 	if ((val != 0) && (val != 1))
 		val = 0;
+	mutex_lock(&exe_thr_lock);
 	bp_thl_data->bp_thl_stop = val;
+	mutex_unlock(&exe_thr_lock);
 	pr_info("[%s] bp_thl_data->bp_thl_stop=%d\n",
 		__func__, bp_thl_data->bp_thl_stop);
 	return size;
@@ -240,11 +255,15 @@ int bp_notify_handler(void *unused)
 			(bp_md_notify_flag == true));
 		__pm_stay_awake(bp_notify_lock);
 		if (bp_notify_flag) {
+			mutex_lock(&exe_thr_lock);
 			exec_bp_thl_callback(bp_thl_data->bp_thl_lv);
+			mutex_unlock(&exe_thr_lock);
 			bp_notify_flag = false;
 		}
 		if (bp_md_notify_flag) {
+			mutex_lock(&exe_thr_lock);
 			exec_bp_thl_md_callback(md_bp_data->md_thl_lv);
+			mutex_unlock(&exe_thr_lock);
 			bp_md_notify_flag = false;
 		}
 		__pm_relax(bp_notify_lock);

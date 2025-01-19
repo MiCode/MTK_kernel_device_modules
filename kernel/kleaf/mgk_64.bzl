@@ -883,6 +883,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/pmic_protect/mtk-pmic-oc-debug.ko",
     "drivers/misc/mediatek/pmsr/v3/pmsr_v3.ko",
     "drivers/misc/mediatek/power_throttling/mtk_gpu_power_throttling.ko",
+    "drivers/misc/mediatek/power_throttling/mtk_apu_power_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
     "drivers/misc/mediatek/qos/mtk_qos.ko",
     "drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
