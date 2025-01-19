@@ -1716,6 +1716,24 @@ static void mmdvfs_fmeter_dump(void)
 			mt_get_fmeter_freq(fmeter_id[i], fmeter_type[i]));
 }
 
+inline void mmdvfs_vcp_cb_mutex_lock(void)
+{
+	mutex_lock(&mmdvfs_vcp_cb_mutex);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_vcp_cb_mutex_lock);
+
+inline void mmdvfs_vcp_cb_mutex_unlock(void)
+{
+	mutex_unlock(&mmdvfs_vcp_cb_mutex);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_vcp_cb_mutex_unlock);
+
+inline bool mmdvfs_vcp_cb_ready_get(void)
+{
+	return mmdvfs_vcp_cb_ready;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_vcp_cb_ready_get);
+
 static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	static bool sram_init;
