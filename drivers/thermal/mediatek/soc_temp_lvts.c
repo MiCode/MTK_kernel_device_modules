@@ -906,7 +906,7 @@ static void set_tc_hw_reboot_threshold(struct lvts_data *lvts_data,
 	int trip_point, int tc_id)
 {
 	struct tc_settings *tc = lvts_data->tc;
-	unsigned int msr_raw, cur_msr_raw, temp, config, ts_name, d_index, i;
+	unsigned int msr_raw, cur_msr_raw, temp, config, d_index, i;
 	void __iomem *base;
 	struct platform_ops *ops = &lvts_data->ops;
 
@@ -917,7 +917,6 @@ static void set_tc_hw_reboot_threshold(struct lvts_data *lvts_data,
 
 	temp = readl(LVTSPROTCTL_0 + base);
 	if (d_index == ALL_SENSING_POINTS) {
-		ts_name = 0;
 		/* Maximum of 4 sensing points */
 		config = (0x1 << 16);
 		writel(config | temp, LVTSPROTCTL_0 + base);
@@ -928,7 +927,6 @@ static void set_tc_hw_reboot_threshold(struct lvts_data *lvts_data,
 				msr_raw = cur_msr_raw;
 		}
 	} else {
-		ts_name = tc[tc_id].sensor_map[d_index];
 		/* Select protection sensor */
 		config = ((d_index << 2) + 0x2) << 16;
 		writel(config | temp, LVTSPROTCTL_0 + base);
