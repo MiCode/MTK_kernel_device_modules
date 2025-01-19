@@ -642,22 +642,22 @@ void cmdq_mdp_init_module_base_VA(void)
 	memset(&gCmdqMdpModuleBaseVA, 0, sizeof(struct CmdqMdpModuleBaseVA));
 
 	gCmdqMdpModuleBaseVA.MDP_RDMA0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp_rdma0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp-rdma0");
 	gCmdqMdpModuleBaseVA.MDP_RSZ0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp_rsz0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp-rsz0");
 	gCmdqMdpModuleBaseVA.MDP_RSZ1 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp_rsz1");
+		cmdq_dev_alloc_reference_VA_by_name("mdp-rsz1");
 	gCmdqMdpModuleBaseVA.MDP_WROT0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp_wrot0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp-wrot0");
 	gCmdqMdpModuleBaseVA.MDP_WROT1 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp_wrot1");
+		cmdq_dev_alloc_reference_VA_by_name("mdp-wrot1");
 	gCmdqMdpModuleBaseVA.MDP_TDSHP0 =
-		cmdq_dev_alloc_reference_VA_by_name("mdp_tdshp0");
+		cmdq_dev_alloc_reference_VA_by_name("mdp-tdshp0");
 	gCmdqMdpModuleBaseVA.MDP_AAL0 =
-		cmdq_dev_alloc_reference_by_name("mdp_aal0",
+		cmdq_dev_alloc_reference_by_name("mdp-aal0",
 		&mdp_module_pa.aal0);
 	gCmdqMdpModuleBaseVA.MDP_HDR0 =
-		cmdq_dev_alloc_reference_by_name("mdp_hdr0",
+		cmdq_dev_alloc_reference_by_name("mdp-hdr0",
 		&mdp_module_pa.hdr0);
 	gCmdqMdpModuleBaseVA.VENC =
 		cmdq_dev_alloc_reference_VA_by_name("venc");
