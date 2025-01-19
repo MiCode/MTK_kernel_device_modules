@@ -11,6 +11,7 @@
 # GNU General Public License for more details.
 #
 
+$(info "isp 6s dip")
 $(info $(DEVICE_MODULES_PATH))
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/

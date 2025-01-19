@@ -1356,6 +1356,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/geniezone/gz_main_mod.ko",
     #"drivers/misc/mediatek/i3c_i2c_wrap/mtk-i3c-i2c-wrap.ko",
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
+    "drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko",
     "drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko",
     "drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm.ko",

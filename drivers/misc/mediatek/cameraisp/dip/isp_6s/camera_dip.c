@@ -7523,7 +7523,7 @@ EXIT:
 /**************************************************************
  * Called when the device is being detached from the driver
  **************************************************************/
-static signed int DIP_remove(struct platform_device *pDev)
+static void DIP_remove(struct platform_device *pDev)
 {
 	/*    struct resource *pRes;*/
 	signed int IrqNum;
@@ -7547,8 +7547,7 @@ static signed int DIP_remove(struct platform_device *pDev)
 	/*  */
 	class_destroy(pIspClass);
 	pIspClass = NULL;
-	/*  */
-	return 0;
+
 }
 
 static signed int DIP_suspend(
