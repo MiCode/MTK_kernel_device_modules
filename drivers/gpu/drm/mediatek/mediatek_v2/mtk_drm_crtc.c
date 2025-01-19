@@ -14694,7 +14694,6 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
 		priv->data->mmsys_id == MMSYS_MT6768 ||
-		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6853 ||
