@@ -11,6 +11,7 @@
 
 #include "mdw_trace.h"
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
 #include "apummu_export.h"
@@ -28,6 +29,149 @@
 #define MDW_CMD_GEN_SYNC_INFO(vid, cbfc_en, hse_en) ((vid << 32) | ( cbfc_en << 16) \
 	 | (hse_en))
 
+int mdw_cmd_get_cmdbufs_with_apummu(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
+{
+	unsigned int i = 0, j = 0, ofs = 0;
+	int ret = -EINVAL;
+	struct mdw_subcmd_kinfo *ksubcmd = NULL;
+	struct mdw_mem *m = NULL;
+	struct apusys_cmdbuf *acbs = NULL;
+
+	mdw_trace_begin("apumdw:cbs_get|c:0x%llx num_subcmds:%u num_cmdbufs:%u",
+		c->kid, c->num_subcmds, c->num_cmdbufs);
+
+	if (!c->size_cmdbufs || c->cmdbufs)
+		goto out;
+
+	c->cmdbufs = mdw_mem_pool_alloc(&mpriv->cmd_buf_pool, c->size_cmdbufs,
+		MDW_DEFAULT_ALIGN);
+	if (!c->cmdbufs) {
+		mdw_drv_err("s(0x%llx)c(0x%llx) alloc buffer for duplicate fail\n",
+		(uint64_t) mpriv, c->kid);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* alloc mem for duplicated cmdbuf */
+	for (i = 0; i < c->num_subcmds; i++) {
+		mdw_cmd_debug("sc(0x%llx-%u) #cmdbufs(%u)\n",
+			c->kid, i, c->ksubcmds[i].info->num_cmdbufs);
+
+		acbs = kcalloc(c->ksubcmds[i].info->num_cmdbufs, sizeof(*acbs), GFP_KERNEL);
+		if (!acbs)
+			goto free_cmdbufs;
+
+		ksubcmd = &c->ksubcmds[i];
+		for (j = 0; j < ksubcmd->info->num_cmdbufs; j++) {
+			/* calc align */
+			if (ksubcmd->cmdbufs[j].align)
+				ofs = MDW_ALIGN(ofs, ksubcmd->cmdbufs[j].align);
+			else
+				ofs = MDW_ALIGN(ofs, MDW_DEFAULT_ALIGN);
+
+			mdw_cmd_debug("sc(0x%llx-%u) cb#%u offset(%u)\n",
+				c->kid, i, j, ofs);
+
+			/* get mem from handle */
+			m = mdw_mem_get(mpriv, ksubcmd->cmdbufs[j].handle);
+			if (!m) {
+				mdw_drv_err("sc(0x%llx-%u) cb#%u(%llu) get fail\n",
+					c->kid, i, j,
+					ksubcmd->cmdbufs[j].handle);
+				ret = -EINVAL;
+				goto free_cmdbufs;
+			}
+			/* check mem boundary */
+			if (m->vaddr == NULL ||
+				ksubcmd->cmdbufs[j].size != m->size) {
+				mdw_drv_err("sc(0x%llx-%u) cb#%u invalid range(%p/%u/%llu)\n",
+					c->kid, i, j, m->vaddr,
+					ksubcmd->cmdbufs[j].size,
+					m->size);
+				ret = -EINVAL;
+				goto free_cmdbufs;
+			}
+
+			/* cmdbuf copy in */
+			if (ksubcmd->cmdbufs[j].direction != MDW_CB_OUT) {
+				mdw_trace_begin("apumdw:cbs_copy_in|cb:%u-%u size:%u type:%u",
+					i, j,
+					ksubcmd->cmdbufs[j].size,
+					ksubcmd->info->type);
+				memcpy(c->cmdbufs->vaddr + ofs,
+					m->vaddr,
+					ksubcmd->cmdbufs[j].size);
+				mdw_trace_end();
+			}
+
+			/* record buffer info */
+			ksubcmd->ori_cbs[j] = m;
+			ksubcmd->kvaddrs[j] =
+				(uint64_t)(c->cmdbufs->vaddr + ofs);
+			ksubcmd->daddrs[j] =
+				(uint64_t)(c->cmdbufs->device_va + ofs);
+			ofs += ksubcmd->cmdbufs[j].size;
+
+			mdw_cmd_debug("sc(0x%llx-%u) cb#%u (0x%llx/0x%llx/%u)\n",
+				c->kid, i, j,
+				ksubcmd->kvaddrs[j],
+				ksubcmd->daddrs[j],
+				ksubcmd->cmdbufs[j].size);
+
+			acbs[j].kva = (void *)ksubcmd->kvaddrs[j];
+			acbs[j].size = ksubcmd->cmdbufs[j].size;
+		}
+
+		mdw_trace_begin("apumdw:dev validation|c:0x%llx type:%u",
+			c->kid, ksubcmd->info->type);
+		ret = mdw_dev_validation(mpriv, ksubcmd->info->type,
+			c, acbs, ksubcmd->info->num_cmdbufs);
+		mdw_trace_end();
+		kfree(acbs);
+		acbs = NULL;
+		if (ret) {
+			mdw_drv_err("sc(0x%llx-%u) dev(%u) validate cb(%u) fail(%d)\n",
+				c->kid, i, ksubcmd->info->type, ksubcmd->info->num_cmdbufs, ret);
+			goto free_cmdbufs;
+		}
+	}
+
+	/* handle apummu table */
+	ofs = MDW_ALIGN(ofs, MDW_DEFAULT_ALIGN);
+	if ((c->size_apummutable + ofs) == c->size_cmdbufs) {
+		mdw_cmd_debug("apummu table kva(0x%llx) copy to cmdbuf tail kva(0x%llx)\n",
+		 (uint64_t)c->tbl_kva, (uint64_t)c->cmdbufs->vaddr + ofs);
+		mdw_trace_begin("apumdw:apummutable_copy_in|size:%u",
+			c->size_apummutable);
+		memcpy(c->cmdbufs->vaddr + ofs,
+			c->tbl_kva,
+			c->size_apummutable);
+		c->cmdbufs->tbl_daddr = (uint32_t)(long)(c->cmdbufs->device_va + ofs);
+		mdw_trace_end();
+		mdw_cmd_debug("apummu table copy done tbl iova(0x%x) cmdbuf tail iova(0x%llx)\n",
+		 c->cmdbufs->tbl_daddr, (uint64_t)c->cmdbufs->device_va + ofs);
+	} else {
+		mdw_drv_err("c->size_apummutable(%u) + ofs(%u) != c->size_cmdbufs(%u), tbl_kva(0x%llx)\n",
+		 c->size_apummutable, ofs, c->size_cmdbufs, (uint64_t)c->tbl_kva);
+	}
+
+	/* flush cmdbufs */
+	if (mdw_mem_flush(mpriv, c->cmdbufs))
+		mdw_drv_warn("s(0x%llx) c(0x%llx) flush cmdbufs(%llu) fail\n",
+			(uint64_t)mpriv, c->kid, c->cmdbufs->size);
+
+	ret = 0;
+	goto out;
+
+free_cmdbufs:
+	mdw_cmd_put_cmdbufs(mpriv, c);
+	kfree(acbs);
+out:
+	mdw_cmd_debug("ret(%d)\n", ret);
+	mdw_trace_end();
+	return ret;
+}
+
 static void mdw_cmd_update_einfos(struct mdw_cmd *c)
 {
 	c->end_ts = sched_clock();
@@ -41,7 +185,7 @@ static void mdw_cmd_execinfo_out(struct mdw_cmd *c)
 	struct mdw_device *mdev = c->mpriv->mdev;
 
 	/* copy exec info */
-	mdev->dev_funcs->cp_execinfo(c);
+	mdev->plat_funcs->cp_execinfo(c);
 
 	/* copy cmdbuf to user */
 	mdw_cmd_cmdbuf_out(mpriv, c);
@@ -100,7 +244,7 @@ static void mdw_cmd_poll_cmd(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	struct mdw_device *mdev = mpriv->mdev;
 	bool poll_ret = false;
 
-	poll_ret = mdev->dev_funcs->poll_cmd(c);
+	poll_ret = mdev->plat_funcs->poll_cmd(c);
 
 	if (poll_ret) {
 		c->cmd_state = MDW_PERF_CMD_DONE;
@@ -119,11 +263,11 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	mdw_cmd_show(c, mdw_cmd_debug);
 
 	/* get power budget */
-	mdev->dev_funcs->pb_get(c->power_plcy, 0);
+	mdev->plat_funcs->pb_get(c->power_plcy, 0);
 
 	c->start_ts = sched_clock();
 	atomic_inc(&mdev->cmd_running);
-	ret = mdev->dev_funcs->run_cmd(mpriv, c);
+	ret = mdev->plat_funcs->run_cmd(mpriv, c);
 	if (ret) {
 		mdw_drv_err("s(0x%llx) run cmd(0x%llx) fail(%d)\n",
 			(uint64_t) c->mpriv, c->kid, ret);
@@ -140,11 +284,11 @@ static int mdw_cmd_run(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 		atomic_dec(&mdev->cmd_running);
 		c->end_ts = sched_clock();
 		mdw_flw_debug("power off by user dtime(%u)\n", c->power_dtime);
-		power_ret = mdev->dev_funcs->dtime_handle(c);
+		power_ret = mdev->plat_funcs->dtime_handle(c);
 		if (power_ret && power_ret != -EOPNOTSUPP)
 			mdw_drv_err("rpmsg_sendto(power) fail(%d)\n", power_ret);
 		/*  put power budget */
-		mdev->dev_funcs->pb_put(c->power_plcy);
+		mdev->plat_funcs->pb_put(c->power_plcy);
 	} else {
 		mdw_flw_debug("s(0x%llx) cmd(0x%llx) run\n",
 			(uint64_t)c->mpriv, c->kid);
@@ -496,7 +640,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	c->enter_complt_time = ts2 - ts1;
 
 	/*  put power budget */
-	mdev->dev_funcs->pb_put(c->power_plcy);
+	mdev->plat_funcs->pb_put(c->power_plcy);
 	ts1 = sched_clock();
 	c->pb_put_time = ts1 - ts2;
 
@@ -592,7 +736,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 			mdw_flw_debug("trigger fast power off directly\n");
 			g_mdw_pwroff_cnt++;
 			mdw_trace_begin("apumdw:power_off|pwroff_cnt(%u)", g_mdw_pwroff_cnt);
-			ret = mdev->dev_funcs->power_onoff(mdev, MDW_APU_POWER_OFF);
+			ret = mdev->plat_funcs->power_onoff(mdev, MDW_APU_POWER_OFF);
 			mdw_trace_end();
 			goto power_out;
 		}
@@ -600,7 +744,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 
 	/* dtime handle */
 	mdw_flw_debug("power off by user dtime(%u)\n", c->power_dtime);
-	ret = mdev->dev_funcs->dtime_handle(c);
+	ret = mdev->plat_funcs->dtime_handle(c);
 
 power_out:
 	if (ret && ret != -EOPNOTSUPP)
@@ -619,7 +763,7 @@ out:
 	ts1 = sched_clock();
 	c->enter_mpriv_release_time = ts1 - ts2;
 	atomic_dec(&mpriv->active_cmds);
-	mdw_cmd_mpriv_release(mpriv);
+	mdev->plat_funcs->release_cmd(mpriv);
 	ts2 = sched_clock();
 	c->mpriv_release_time = ts2 - ts1;
 	mutex_unlock(&mpriv->mtx);
@@ -838,7 +982,7 @@ static void mdw_cmd_ch_tbl_sc_check(struct mdw_cmd_history_tbl *ch_tbl,
 	}
 }
 
-int mdw_cmd_ioctl_run_v4(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
+static int mdw_cmd_ioctl_run_v4(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 {
 	struct mdw_cmd_in *in = (struct mdw_cmd_in *)args;
 	struct mdw_cmd *c = NULL, *priv_c = NULL;

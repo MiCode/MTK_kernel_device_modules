@@ -12,6 +12,7 @@
 
 #include "apusys_device.h"
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_mem.h"
 #include "mdw_mem_rsc.h"
 #include "mdw_trace.h"
@@ -414,7 +415,7 @@ static int mdw_mem_map_create(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		goto unmap_dbuf;
 	}
 
-	if (mpriv->mdev->uapi_ver < 4) {
+	if (mpriv->mdev->mdw_ver < 4) {
 		m->device_va = m->device_iova;
 		goto skip_iova2eva;
 	}
@@ -596,7 +597,7 @@ int mdw_mem_map(struct mdw_fpriv *mpriv, struct mdw_mem *m)
 		m->map->put(m->map);
 		goto out;
 	} else {
-		if (mpriv->mdev->uapi_ver < 4)
+		if (mpriv->mdev->mdw_ver < 4)
 			goto skip_iova2eva;
 		/* handle iova2eva */
 		mdw_trace_begin("apummu:iova2eva|iova:0x%llx,size:%llu btype(%d)",

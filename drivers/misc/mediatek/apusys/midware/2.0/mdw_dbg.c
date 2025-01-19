@@ -31,14 +31,14 @@ static int min_etime_set(void *data, u64 val)
 {
 	struct mdw_device *mdev = (struct mdw_device *)data;
 
-	mdev->dev_funcs->set_param(mdev, MDW_INFO_MIN_ETIME, val);
+	mdev->plat_funcs->set_param(mdev, MDW_INFO_MIN_ETIME, val);
 	return 0;
 }
 static int min_etime_get(void *data, u64 *val)
 {
 	struct mdw_device *mdev = (struct mdw_device *)data;
 
-	*val = mdev->dev_funcs->get_info(mdev, MDW_INFO_MIN_ETIME);
+	*val = mdev->plat_funcs->get_info(mdev, MDW_INFO_MIN_ETIME);
 	return 0;
 }
 
@@ -47,14 +47,14 @@ static int min_dtime_set(void *data, u64 val)
 	struct mdw_device *mdev = (struct mdw_device *)data;
 
 	dbg_min_dtime = val;
-	mdev->dev_funcs->set_param(mdev, MDW_INFO_MIN_DTIME, val);
+	mdev->plat_funcs->set_param(mdev, MDW_INFO_MIN_DTIME, val);
 	return 0;
 }
 static int min_dtime_get(void *data, u64 *val)
 {
 	struct mdw_device *mdev = (struct mdw_device *)data;
 
-	*val = mdev->dev_funcs->get_info(mdev, MDW_INFO_MIN_DTIME);
+	*val = mdev->plat_funcs->get_info(mdev, MDW_INFO_MIN_DTIME);
 	return 0;
 }
 
@@ -63,7 +63,7 @@ static int max_dtime_set(void *data, u64 val)
 	struct mdw_device *mdev = (struct mdw_device *)data;
 
 	dbg_max_dtime = val;
-	mdev->dev_funcs->set_param(mdev, MDW_INFO_MAX_DTIME, val);
+	mdev->plat_funcs->set_param(mdev, MDW_INFO_MAX_DTIME, val);
 	return 0;
 }
 
@@ -71,7 +71,7 @@ static int max_dtime_get(void *data, u64 *val)
 {
 	struct mdw_device *mdev = (struct mdw_device *)data;
 
-	*val = mdev->dev_funcs->get_info(mdev, MDW_INFO_MAX_DTIME);
+	*val = mdev->plat_funcs->get_info(mdev, MDW_INFO_MAX_DTIME);
 	return 0;
 }
 

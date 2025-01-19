@@ -48,9 +48,17 @@ static struct miscdevice mdw_ext_misc_dev = {
 };
 
 //----------------------------------------
-int mdw_ext_init(void)
+int mdw_ext_init(struct mdw_device *mdw_dev)
 {
 	int ret = -EINVAL;
+
+	/* check support ext by version */
+	if (mdw_dev) {
+		if (mdw_dev->mdw_ver < 4) {
+			ret = 0;
+			goto out;
+		}
+	}
 
 	pr_info("%s register misc...\n", __func__);
 	if (misc_register(&mdw_ext_misc_dev)) {

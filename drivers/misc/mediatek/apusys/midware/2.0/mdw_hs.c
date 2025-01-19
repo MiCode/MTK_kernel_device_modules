@@ -19,7 +19,7 @@ int mdw_hs_ioctl(struct mdw_fpriv *mpriv, void *data)
 	case MDW_HS_IOCTL_OP_BASIC:
 		/* assign basic infos */
 		memset(args, 0, sizeof(*args));
-		args->out.basic.version = mdev->uapi_ver;
+		args->out.basic.version = mdev->mdw_ver;
 		memcpy(&args->out.basic.dev_bitmask,
 			mdev->dev_mask, sizeof(mdev->dev_mask));
 		memcpy(&args->out.basic.mem_bitmask,

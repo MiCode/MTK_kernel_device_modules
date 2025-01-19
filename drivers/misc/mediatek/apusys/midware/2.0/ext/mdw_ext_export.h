@@ -8,7 +8,7 @@
 
 #include "mdw.h"
 
-int mdw_ext_init(void);
+int mdw_ext_init(struct mdw_device *mdw_dev);
 void mdw_ext_deinit(void);
 
 void mdw_ext_lock(void);

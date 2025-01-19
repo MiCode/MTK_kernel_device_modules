@@ -11,6 +11,7 @@
 
 #include "mdw_trace.h"
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
 #include "apummu_export.h"
@@ -18,16 +19,6 @@
 #include "mdw_ext_export.h"
 #include "apu_mem_export.h"
 #include "apu_mem_def.h"
-
-#define mdw_cmd_show(c, f) \
-	f("cmd(0x%llx/0x%llx/0x%llx/0x%llx/%d/%u)param(%u/%u/%u/%u/"\
-	"%u/%u/%u/%u/%u/%llu)subcmds(%u/%pK/%u/%u)pid(%d/%d)(%d)\n", \
-	(uint64_t) c->mpriv, c->uid, c->kid, c->rvid, c->id, kref_read(&c->ref), \
-	c->priority, c->hardlimit, c->softlimit, \
-	c->power_save, c->power_plcy, c->power_dtime, \
-	c->app_type, c->inference_ms, c->tolerance_ms, c->is_dtime_set, \
-	c->num_subcmds, c->cmdbufs, c->num_cmdbufs, c->size_cmdbufs, \
-	c->pid, c->tgid, task_pid_nr(current))
 
 void mdw_cmd_cmdbuf_out(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 {
@@ -201,27 +192,6 @@ int mdw_cmd_get_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 		}
 	}
 
-	if (mpriv->mdev->uapi_ver < 4)
-		goto flush_cmdbuf;
-	/* handle apummu table */
-	ofs = MDW_ALIGN(ofs, MDW_DEFAULT_ALIGN);
-	if ((c->size_apummutable + ofs) == c->size_cmdbufs) {
-		mdw_cmd_debug("apummu table kva(0x%llx) copy to cmdbuf tail kva(0x%llx)\n",
-		 (uint64_t)c->tbl_kva, (uint64_t)c->cmdbufs->vaddr + ofs);
-		mdw_trace_begin("apumdw:apummutable_copy_in|size:%u",
-			c->size_apummutable);
-		memcpy(c->cmdbufs->vaddr + ofs,
-			c->tbl_kva,
-			c->size_apummutable);
-		c->cmdbufs->tbl_daddr = (uint32_t)(long)(c->cmdbufs->device_va + ofs);
-		mdw_trace_end();
-		mdw_cmd_debug("apummu table copy done tbl iova(0x%x) cmdbuf tail iova(0x%llx)\n",
-		 c->cmdbufs->tbl_daddr, (uint64_t)c->cmdbufs->device_va + ofs);
-	} else {
-		mdw_drv_err("c->size_apummutable(%u) + ofs(%u) != c->size_cmdbufs(%u), tbl_kva(0x%llx)\n",
-		 c->size_apummutable, ofs, c->size_cmdbufs, (uint64_t)c->tbl_kva);
-	}
-flush_cmdbuf:
 	/* flush cmdbufs */
 	if (mdw_mem_flush(mpriv, c->cmdbufs))
 		mdw_drv_warn("s(0x%llx) c(0x%llx) flush cmdbufs(%llu) fail\n",
@@ -376,7 +346,7 @@ int mdw_cmd_create_infos(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 		goto free_cmdbufs;
 	}
 
-	ret = mdw_cmd_get_cmdbufs(mpriv, c);
+	ret = mpriv->mdev->plat_funcs->get_cmdbuf(mpriv, c);
 	if (ret)
 		goto free_cmdbufs;
 
@@ -430,15 +400,6 @@ void mdw_cmd_delete_infos(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
 	}
 }
 
-void mdw_cmd_mpriv_release_v2(struct mdw_fpriv *mpriv)
-{
-	if (!atomic_read(&mpriv->active) &&
-		list_empty_careful(&mpriv->cmds_list)) {
-		mdw_flw_debug("s(0x%llx) release mem\n", (uint64_t)mpriv);
-		mdw_mem_mpriv_release(mpriv);
-	}
-}
-
 void mdw_cmd_history_reset(struct mdw_fpriv *mpriv)
 {
 	struct mdw_device *mdev = mpriv->mdev;
@@ -470,11 +431,6 @@ void mdw_cmd_mpriv_release(struct mdw_fpriv *mpriv)
 {
 	struct mdw_cmd *c = NULL;
 	uint32_t id = 0;
-
-	if (mpriv->mdev->uapi_ver == 2) {
-		mdw_cmd_mpriv_release_v2(mpriv);
-		return;
-	}
 
 	if (!atomic_read(&mpriv->active) && !atomic_read(&mpriv->active_cmds)) {
 		mdw_flw_debug("s(0x%llx) release cmd\n", (uint64_t)mpriv);

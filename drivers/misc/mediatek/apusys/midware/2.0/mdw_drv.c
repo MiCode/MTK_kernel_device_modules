@@ -11,7 +11,7 @@
 #include <linux/rpmsg.h>
 
 #include "apusys_core.h"
-#include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_mem.h"
 #include "mdw_mem_pool.h"
 #include "mdw_ext_export.h"
@@ -82,7 +82,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	kref_init(&mpriv->ref);
 
 	if (!atomic_read(&g_inited)) {
-		ret = mdw_dev->dev_funcs->sw_init(mdw_dev);
+		ret = mdw_dev->plat_funcs->sw_init(mdw_dev);
 		if (ret) {
 			mdw_drv_err("mdw sw init fail(%d)\n", ret);
 			goto put_mpriv;
@@ -91,8 +91,8 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	}
 
 	/* get normal power budget */
-	if (mdw_dev->uapi_ver > 3)
-		mdw_dev->dev_funcs->pb_get(MDW_POWERPOLICY_DEFAULT, MDW_PB_DEBOUNCE_MS);
+	if (mdw_dev->plat_funcs->pb_get != NULL)
+		mdw_dev->plat_funcs->pb_get(MDW_POWERPOLICY_DEFAULT, MDW_PB_DEBOUNCE_MS);
 
 	ret = mdw_mem_pool_create(mpriv, &mpriv->cmd_buf_pool,
 		MDW_MEM_TYPE_MAIN, MDW_MEM_POOL_CHUNK_SIZE,
@@ -121,7 +121,7 @@ static int mdw_drv_close(struct inode *inode, struct file *filp)
 	mdw_flw_debug("mpriv(0x%llx)\n", (uint64_t)mpriv);
 	mutex_lock(&mpriv->mtx);
 	atomic_set(&mpriv->active, 0);
-	mdw_cmd_mpriv_release(mpriv);
+	mpriv->mdev->plat_funcs->release_cmd(mpriv);
 	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
 	mutex_unlock(&mpriv->mtx);
 	mpriv->put(mpriv);
@@ -146,6 +146,7 @@ static struct miscdevice mdw_misc_dev = {
 //----------------------------------------
 static int mdw_platform_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct mdw_device *mdev = NULL;
 	int ret = 0;
 
@@ -159,7 +160,7 @@ static int mdw_platform_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	/* get parameter from dts */
-	of_property_read_u32(pdev->dev.of_node, "uapi-ver", &mdev->uapi_ver);
+	of_property_read_u32(pdev->dev.of_node, "version", &mdev->mdw_ver);
 	of_property_read_u32(pdev->dev.of_node, "dsp_mask", &mdev->dsp_mask);
 	of_property_read_u32(pdev->dev.of_node, "dla_mask", &mdev->dla_mask);
 	of_property_read_u32(pdev->dev.of_node, "dma_mask", &mdev->dma_mask);
@@ -180,7 +181,7 @@ static int mdw_platform_probe(struct platform_device *pdev)
 
 	mdw_dbg_init(g_info);
 
-	ret = mdw_dev_init(mdev);
+	ret = mdw_dev_init(dev, mdev);
 	if (ret)
 		goto deinit_dbg;
 
@@ -208,7 +209,7 @@ static int mdw_platform_remove(struct platform_device *pdev)
 {
 	struct mdw_device *mdev = platform_get_drvdata(pdev);
 
-	mdev->dev_funcs->sw_deinit(mdev);
+	mdev->plat_funcs->sw_deinit(mdev);
 	mdw_dev_deinit(mdev);
 	mdw_cmd_history_deinit(mdev);
 	mdw_dbg_deinit();
@@ -222,7 +223,7 @@ static int mdw_platform_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id mdw_of_match[] = {
-	{ .compatible = "mediatek, apu_mdw", },
+	{ .compatible = "mediatek, apu_mdw", .data = &ap_plat_drv_v1},
 	{},
 };
 
@@ -230,7 +231,7 @@ static struct platform_driver mdw_platform_driver = {
 	.driver = {
 		.name = "apusys",
 		.owner = THIS_MODULE,
-		.of_match_table = mdw_of_match,
+		.of_match_table = of_match_ptr(mdw_of_match),
 	},
 	.probe = mdw_platform_probe,
 	.remove = mdw_platform_remove,
@@ -254,7 +255,7 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 		return -ENOMEM;
 
 	/* get parameter from dts */
-	of_property_read_u32(rpdev->dev.of_node, "uapi-ver", &mdev->uapi_ver);
+	of_property_read_u32(rpdev->dev.of_node, "version", &mdev->mdw_ver);
 	of_property_read_u32(rpdev->dev.of_node, "dsp_mask", &mdev->dsp_mask);
 	of_property_read_u32(rpdev->dev.of_node, "dla_mask", &mdev->dla_mask);
 	of_property_read_u32(rpdev->dev.of_node, "dma_mask", &mdev->dma_mask);
@@ -275,7 +276,7 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 
 	mdw_dbg_init(g_info);
 
-	ret = mdw_dev_init(mdev);
+	ret = mdw_dev_init(dev, mdev);
 	if (ret)
 		goto deinit_dbg;
 
@@ -304,7 +305,7 @@ static void mdw_rpmsg_remove(struct rpmsg_device *rpdev)
 {
 	struct mdw_device *mdev = dev_get_drvdata(&rpdev->dev);
 
-	mdev->dev_funcs->sw_deinit(mdev);
+	mdev->plat_funcs->sw_deinit(mdev);
 	mdw_dev_deinit(mdev);
 	mdw_cmd_history_deinit(mdev);
 	mdw_dbg_deinit();
@@ -316,7 +317,10 @@ static void mdw_rpmsg_remove(struct rpmsg_device *rpdev)
 }
 
 static const struct of_device_id mdw_rpmsg_of_match[] = {
-	{ .compatible = "mediatek,apu-mdw-rpmsg", },
+	{ .compatible = "mediatek,apu-mdw-rpmsg-v2", .data = &rv_plat_drv_v2},
+	{ .compatible = "mediatek,apu-mdw-rpmsg-v3", .data = &rv_plat_drv_v3},
+	{ .compatible = "mediatek,apu-mdw-rpmsg-v4", .data = &rv_plat_drv_v4},
+	{ .compatible = "mediatek,apu-mdw-rpmsg-v5", .data = &rv_plat_drv_v4},
 	{ },
 };
 
@@ -324,7 +328,7 @@ static struct rpmsg_driver mdw_rpmsg_driver = {
 	.drv = {
 		.name = "apu-mdw-rpmsg",
 		.owner = THIS_MODULE,
-		.of_match_table = mdw_rpmsg_of_match,
+		.of_match_table = of_match_ptr(mdw_rpmsg_of_match),
 	},
 	.probe = mdw_rpmsg_probe,
 	.remove = mdw_rpmsg_remove,
@@ -364,7 +368,7 @@ int mdw_init(struct apusys_core_info *info)
 	}
 
 	/* init apu ext function */
-	ret = mdw_ext_init();
+	ret = mdw_ext_init(mdw_dev);
 	if (ret) {
 		pr_info("failed to do ext init\n");
 		goto unregister_rpmsg_driver;

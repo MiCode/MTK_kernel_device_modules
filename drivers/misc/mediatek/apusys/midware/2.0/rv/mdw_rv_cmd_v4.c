@@ -5,6 +5,7 @@
 
 #include "mdw_rv.h"
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_mem_pool.h"
 #include "mdw_trace.h"
 
