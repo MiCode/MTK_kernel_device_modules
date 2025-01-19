@@ -616,10 +616,7 @@ static int mdw_plat_v6_run_cmd(struct mdw_cmd *c)
 	struct mdw_rv_cmd *rc = (struct mdw_rv_cmd *)c->plat_priv;
 	struct mdw_rv_msg_cmd *rmc = NULL;
 
-	if (rc == NULL)
-		return -EINVAL;
-
-	if (rc->cb == NULL)
+	if (rc == NULL || rc->cb == NULL || rc->cb->vaddr == NULL)
 		return -EINVAL;
 
 	/* assign rv msg */

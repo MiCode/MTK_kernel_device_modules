@@ -125,6 +125,7 @@ int apusys_request_cmdbuf_appendix(enum apu_appendix_cb_owner owner, cb_apu_appe
 	cb_apu_appendix_cmdbuf_process cb_process)
 {
 	struct cb_appendix_info *acb_info = NULL;
+	int ret = 0;
 
 	mdw_cb_appendix_init();
 
@@ -146,8 +147,11 @@ int apusys_request_cmdbuf_appendix(enum apu_appendix_cb_owner owner, cb_apu_appe
 	acb_info->idx = g_idx_count;
 	mdw_flw_debug("add acb_info #-%u, owner(%u)\n", acb_info->idx, acb_info->owner);
 	hash_add(g_acb_hash, &acb_info->hash_node, acb_info->idx);
-	g_idx_count++;
+	if (check_add_overflow(g_idx_count, 1, &g_idx_count)) {
+		mdw_drv_err("request number overflow\n");
+		ret = -EOVERFLOW;
+	}
 	mutex_unlock(&g_acb_mtx);
 
-	return 0;
+	return ret;
 }

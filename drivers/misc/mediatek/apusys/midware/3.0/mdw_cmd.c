@@ -949,11 +949,20 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 	c->is_dtime_set = in->exec.is_dtime_set;
 	c->num_links = in->exec.num_links;
 	c->predecessors_num = in->exec.predecessors_num;
-	c->predecessors_size = c->predecessors_num * sizeof(*c->predecessors);
+	if (check_mul_overflow(c->predecessors_num, sizeof(*c->predecessors), &c->predecessors_size)) {
+		mdw_drv_err("predecessors_num overflow\n");
+		goto free_cmd;
+	}
 	c->pack_friends_num = in->exec.pack_friends_num;
-	c->pack_friends_size = c->pack_friends_num * sizeof(*c->pack_friends);
+	if (check_mul_overflow(c->pack_friends_num, sizeof(*c->pack_friends), &c->pack_friends_size)) {
+		mdw_drv_err("pack_friends_num overflow\n");
+		goto free_cmd;
+	}
 	c->end_vertices_num = in->exec.end_vertices_num;
-	c->end_vertices_size = c->end_vertices_num * sizeof(*c->end_vertices);
+	if (check_mul_overflow(c->end_vertices_num, sizeof(*c->end_vertices), &c->end_vertices_size)) {
+		mdw_drv_err("end_vertices_num overflow\n");
+		goto free_cmd;
+	}
 	c->need_dtime_handle = false;
 	/* callback functions */
 	c->complete = mdw_cmd_complete;
