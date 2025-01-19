@@ -126,7 +126,9 @@ struct flashlight_dev_arg {
 
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 #define FLASHLIGHT_COOLER_MAX_STATE 4
+#define MAX_FLASHLIGHT_COOLER_NAME_LEN 20
 struct flashlight_cooling_device {
+	char name[MAX_FLASHLIGHT_COOLER_NAME_LEN];
 	unsigned long target_state;
 	unsigned long max_state;
 	struct thermal_cooling_device *cdev;

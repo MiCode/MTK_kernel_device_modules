@@ -1824,6 +1824,7 @@ static int flashlight_probe(struct platform_device *pdev)
 {
 #if IS_ENABLED(CONFIG_MTK_FLASHLIGHT_THERMAL)
 	struct flashlight_cooling_device *flash_cdev;
+	int ret;
 #endif
 	pr_debug("Probe start\n");
 
@@ -1832,11 +1833,15 @@ static int flashlight_probe(struct platform_device *pdev)
 	if (flash_cdev == NULL)
 		return -ENOMEM;
 
+	ret = snprintf(flash_cdev->name, sizeof(flash_cdev->name), "%s", "flashlight_cooler");
+	if (ret < 0 || ret >= sizeof(flash_cdev->name))
+		return -EINVAL;
+
 	flash_cdev->max_state = FLASHLIGHT_COOLER_MAX_STATE;
 	flash_cdev->target_state = 0;
 
 	flash_cdev->cdev = thermal_of_cooling_device_register(pdev->dev.of_node,
-			"flashlight_cooler", flash_cdev, &flashlight_cooling_ops);
+			flash_cdev->name, flash_cdev, &flashlight_cooling_ops);
 	if (IS_ERR(flash_cdev->cdev))
 		pr_info("register thermal failed\n");
 
