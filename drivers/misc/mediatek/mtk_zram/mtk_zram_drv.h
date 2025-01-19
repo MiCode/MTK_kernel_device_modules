@@ -17,6 +17,7 @@
 #include <linux/rwsem.h>
 #include <linux/zsmalloc.h>
 #include <linux/crypto.h>
+#include <linux/kfifo.h>
 
 #include "mtk_zcomp.h"
 
@@ -98,6 +99,7 @@ struct zram_stats {
 #endif
 
 #define MAX_KCOMPRESSD_NUM	4
+#define INIT_KFIFO_SIZE	4096
 
 struct zram {
 	struct zram_table_entry *table;
@@ -126,10 +128,9 @@ struct zram {
 #ifdef CONFIG_ZRAM_MEMORY_TRACKING
 	struct dentry *debugfs_dir;
 #endif
-	spinlock_t reclaim_lock;
-	unsigned int nr_pending;
-	struct bio_list reclaiming_list;
 	wait_queue_head_t kcompressd_wait[MAX_KCOMPRESSD_NUM];
 	struct task_struct *kcompressd[MAX_KCOMPRESSD_NUM];
+	struct kfifo bio_fifo[MAX_KCOMPRESSD_NUM];
+	atomic_t next_hid;
 };
 #endif
