@@ -293,6 +293,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/remoteproc:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/spi:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:srcs".format(kernel_version),
 ]
@@ -393,6 +394,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v1:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/spi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:ddk_kconfigs".format(kernel_version),
 ]
@@ -692,6 +694,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:mkp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:trace_mmstat".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/spi:spi-mt65xx".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:mme".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
 ]
@@ -1052,7 +1055,6 @@ mgk_64_device_modules = [
     "drivers/soc/mediatek/mtk-pmic-wrap.ko",
     "drivers/soc/mediatek/mtk-scpsys.ko",
     "drivers/soc/mediatek/mtk-socinfo.ko",
-    "drivers/spi/spi-mt65xx.ko",
     "drivers/spmi/spmi-mtk-mpu.ko",
     "drivers/spmi/spmi-mtk-pmif.ko",
     "drivers/tee/gud/700/MobiCoreDriver/mcDrvModule.ko",

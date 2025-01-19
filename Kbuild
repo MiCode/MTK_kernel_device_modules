@@ -60,8 +60,6 @@ obj-y += drivers/i3c/master/
 
 obj-y += drivers/pwm/
 
-obj-y += drivers/spi/
-
 obj-y += drivers/iommu/
 
 obj-y += drivers/mmc/host/
