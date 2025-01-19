@@ -34,3 +34,13 @@ define_mgk_ddk_ko(
         "mtk-ise-mailbox.h",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "mtk-mbox-mailbox",
+    srcs = [
+        "mtk-mbox-mailbox.c",
+    ],
+    includes = [
+        ".",
+    ],
+)
