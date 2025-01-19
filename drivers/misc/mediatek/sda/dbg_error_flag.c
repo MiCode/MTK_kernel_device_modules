@@ -24,7 +24,9 @@
 #include <linux/workqueue.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
-#include <mt-plat/aee.h>
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include "mt-plat/aee.h"
+#endif
 #include "sda.h"
 #include "dbg_error_flag.h"
 
