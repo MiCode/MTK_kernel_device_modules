@@ -106,6 +106,9 @@ GED_ERROR ged_kpi_query_gpu_dvfs_info(struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO 
 GED_ERROR ged_kpi_hint_frame_info(struct GED_BRIDGE_OUT_HINT_FRAME_INFO *out);
 GED_ERROR ged_kpi_set_gift_status(int mode);
 GED_ERROR ged_kpi_set_gift_target_pid(int pid);
+/* promotion use */
+GED_ERROR ged_kpi_target_fps_hint(int promotion_enable, int target_fps);
+
 unsigned long long ged_kpi_get_fb_timestamp(void);
 unsigned long ged_kpi_get_fb_ulMask(void);
 void update_fb_timer_set_count(void);

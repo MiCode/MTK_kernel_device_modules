@@ -81,6 +81,8 @@ extern unsigned int g_ged_apo_support;
 extern unsigned int g_ged_frame_base_optimize;
 extern unsigned int g_ged_pre_fence_chk;
 extern unsigned int g_default_log_level;
+extern int prom_enable;
+extern int g_target_fps_vsync;
 
 extern u64 fb_timeout;
 extern u64 lb_timeout;

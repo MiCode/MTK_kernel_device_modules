@@ -142,6 +142,12 @@ int ged_bridge_gpu_timestamp(
 					psGpuBeginINT->i32FrameID,
 					psGpuBeginINT->fence_fd,
 					psGpuBeginINT->isSF);
+		} else if (psGpuBeginINT->fence_fd == -1 &&
+				   psGpuBeginINT->i32FrameID == -1 &&
+				   psGpuBeginINT->isSF == -3 &&
+				   psGpuBeginINT->pid == -1 ) {
+			psGpuBeginOUT->eError =
+				ged_kpi_target_fps_hint(psGpuBeginINT->ullWnd, psGpuBeginINT->QedBuffer_length);
 		} else if (psGpuBeginINT->QedBuffer_length != -1) {
 			psGpuBeginOUT->eError =
 				ged_kpi_queue_buffer_ts(psGpuBeginINT->pid,
