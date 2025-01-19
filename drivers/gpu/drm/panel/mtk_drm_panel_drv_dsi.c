@@ -1760,7 +1760,7 @@ static unsigned int mtk_lcm_find_1st_min_fps_switch(
 static int mtk_panel_msync_te_level_switch(void *dsi, dcs_write_gce cb,
 		void *handle, unsigned int fps_level)
 {
-	struct mipi_dsi_device *dsi_dev = NULL;
+	struct mipi_dsi_device *dsi_dev __maybe_unused = NULL;
 	struct mtk_lcm_mode_dsi *mode_node = NULL;
 	const struct mtk_panel_cust *cust = NULL;
 	struct mtk_lcm_ops_table *table = NULL;
@@ -1920,7 +1920,7 @@ static int mtk_panel_msync_te_level_switch_grp(void *dsi, dcs_grp_write_gce cb,
 		void *handle, struct drm_panel *panel, unsigned int fps_level)
 {
 	struct mtk_lcm_mode_dsi *mode_node = NULL;
-	struct mipi_dsi_device *dsi_dev = NULL;
+	struct mipi_dsi_device *dsi_dev __maybe_unused = NULL;
 	struct mtk_lcm_ops_table *table = NULL;
 	struct mtk_lcm_ops_dsi *ops = NULL;
 	char owner[MAX_PANEL_OPERATION_NAME] = {0};
@@ -2094,8 +2094,8 @@ static int mtk_panel_msync_cmd_set_min_fps(void *dsi, dcs_write_gce cb,
 	unsigned int fps_level = (flag & 0xFFFF0000) >> 16;
 	unsigned int min_fps = flag & 0xFFFF;
 	struct mtk_lcm_mode_dsi *mode_node;
-	struct mtk_lcm_ops_dsi *ops = NULL;
-	struct mipi_dsi_device *dsi_dev = NULL;
+	struct mtk_lcm_ops_dsi *ops __maybe_unused = NULL;
+	struct mipi_dsi_device *dsi_dev __maybe_unused = NULL;
 	struct mtk_lcm_ops_input_packet input;
 	int ret = 0;
 	const struct mtk_panel_cust *cust = NULL;
@@ -2303,7 +2303,7 @@ static int mtk_panel_set_bl_elvss_cmdq(void *dsi, dcs_grp_write_gce cb,
 {
 	struct mtk_lcm_ops_dsi *ops = NULL;
 	struct mtk_lcm_ops_table *table = NULL;
-	struct mipi_dsi_device *dsi_dev = NULL;
+	struct mipi_dsi_device *dsi_dev __maybe_unused = NULL;
 	struct mtk_lcm_ops_input_packet input;
 	const struct mtk_panel_cust *cust = NULL;
 	u8 *data = NULL;

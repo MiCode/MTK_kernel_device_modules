@@ -1004,7 +1004,7 @@ static unsigned int mt6899_get_sys_status(enum dpc_sys_status_id id, unsigned in
 static int mtk_dpc_vidle_timeout_monitor_thread(void *data)
 {
 	unsigned int value = 0;
-	int ret = 0;
+	int ret __maybe_unused = 0;
 
 	while (!kthread_should_stop()) {
 		ret = wait_event_interruptible(
@@ -4290,7 +4290,7 @@ static const struct dpc_funcs funcs_v1 = {
 
 static int mtk_dpc_state_monitor_thread(void *data)
 {
-	int ret = 0;
+	int ret __maybe_unused = 0;
 	bool off = false;
 
 	while (!kthread_should_stop()) {

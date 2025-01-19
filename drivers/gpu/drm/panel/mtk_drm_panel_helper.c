@@ -1024,7 +1024,7 @@ static void mtk_get_func_name(char func, char *out)
 	if (ret < 0 || ret >= MTK_LCM_NAME_LENGTH)
 		DDPMSG("%s, %d, snprintf failed\n", __func__, __LINE__);
 
-	ret = snprintf(out, MTK_LCM_NAME_LENGTH - 1, &name[0]);
+	ret = snprintf(out, MTK_LCM_NAME_LENGTH - 1, "%s", &name[0]);
 	if (ret < 0 || ret >= MTK_LCM_NAME_LENGTH)
 		DDPMSG("%s, %d, snprintf failed\n", __func__, __LINE__);
 }
@@ -1140,7 +1140,7 @@ static void mtk_get_type_name(unsigned int type, char *out)
 	if (ret < 0 || ret >= MTK_LCM_NAME_LENGTH)
 		DDPMSG("%s, %d, snprintf failed\n", __func__, __LINE__);
 
-	ret = snprintf(out, MTK_LCM_NAME_LENGTH - 1, &name[0]);
+	ret = snprintf(out, MTK_LCM_NAME_LENGTH - 1, "%s", &name[0]);
 	if (ret < 0 || ret >= MTK_LCM_NAME_LENGTH)
 		DDPMSG("%s, %d, snprintf failed\n", __func__, __LINE__);
 }
@@ -1381,7 +1381,7 @@ void dump_lcm_ops_table(struct mtk_lcm_ops_table *table,
 	if (IS_ERR_OR_NULL(owner))
 		ret = snprintf(&owner_tmp[0], MTK_LCM_NAME_LENGTH - 1, "unknown");
 	else
-		ret = snprintf(&owner_tmp[0], MTK_LCM_NAME_LENGTH - 1, owner);
+		ret = snprintf(&owner_tmp[0], MTK_LCM_NAME_LENGTH - 1, "%s", owner);
 	if (ret < 0 || ret >= MTK_LCM_NAME_LENGTH)
 		DDPMSG("%s, %d, snprintf failed\n", __func__, __LINE__);
 
@@ -1695,7 +1695,7 @@ int mtk_panel_execute_callback(void *dsi, dcs_write_gce cb,
 	if (IS_ERR_OR_NULL(master))
 		ret = snprintf(owner, MTK_LCM_NAME_LENGTH - 1, "unknown");
 	else
-		ret = snprintf(owner, MTK_LCM_NAME_LENGTH - 1, master);
+		ret = snprintf(owner, MTK_LCM_NAME_LENGTH - 1, "%s", master);
 	if (ret < 0 || ret >= MTK_LCM_NAME_LENGTH)
 		DDPMSG("%s, failed at snprintf, %d", __func__, ret);
 	ret = 0;
@@ -1797,7 +1797,7 @@ int mtk_panel_execute_callback_group(void *dsi, dcs_grp_write_gce cb,
 	if (IS_ERR_OR_NULL(master))
 		ret = snprintf(owner, MTK_LCM_NAME_LENGTH - 1, "unknown");
 	else
-		ret = snprintf(owner, MTK_LCM_NAME_LENGTH - 1, master);
+		ret = snprintf(owner, MTK_LCM_NAME_LENGTH - 1, "%s", master);
 	if (ret < 0 || ret >= MTK_LCM_NAME_LENGTH)
 		DDPMSG("%s, failed at snprintf, %d", __func__, ret);
 	ret = 0;

@@ -484,7 +484,7 @@ static const struct drm_display_mode default_mode = {
 	.vtotal = FRAME_HEIGHT + MODE0_VFP + MODE0_VSA + MODE0_VBP,
 };
 
-static const struct drm_display_mode middle_mode = {
+static const struct drm_display_mode middle_mode __maybe_unused = {
 	.clock = 347526,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE2_HFP,
@@ -1224,7 +1224,7 @@ static int msync_te_level_switch_grp(void *dsi, dcs_grp_write_gce cb,
 		void *handle, struct drm_panel *panel, unsigned int fps_level)
 {
 	int ret = 0;
-	struct lcm *ctx = NULL;
+	struct lcm *ctx __maybe_unused = NULL;
 
 	ctx = panel_to_lcm(panel);
 
