@@ -109,15 +109,12 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 {
 	uint64_t rc;
 	struct mpu_record *rec = &pkvm_mpu_rec[zone_id];
-	uint64_t region_pfn_start, region_pfn_total, i;
 
 	if (is_enable) {
-		tmem_ops->puts("pkvm_tmem: host_donate_hyp\n");
-//		rc = tmem_ops->host_donate_hyp(addr>>ONE_PAGE_OFFSET, size/ONE_PAGE_SIZE, false);
-//		if (rc) {
-//			tmem_ops->puts("failed to CPU EL1 Stage2 unmap");
-//			return TZ_RESULT_ERROR_GENERIC;
-//		}
+		/*
+		 * EL1S2 unmap
+		 */
+		tmem_ops->host_stage2_mod_prot(addr >> ONE_PAGE_OFFSET, 0, size/ONE_PAGE_SIZE, 0);
 
 		tmem_ops->puts("pkvm_tmem: platform_mpu_set\n");
 		rc = platform_mpu_set(zone_id, addr, size, tmem_ops);
@@ -126,39 +123,17 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 			return TZ_RESULT_ERROR_GENERIC;
 		}
 	} else {
-		tmem_ops->puts("pkvm_tmem: hyp_donate_host\n");
-//		tmem_ops->hyp_donate_host(rec->addr>>ONE_PAGE_OFFSET, rec->size/ONE_PAGE_SIZE);
-
+		tmem_ops->puts("pkvm_tmem: platform_mpu_clr\n");
 		rc = platform_mpu_clr(zone_id, rec->addr, rec->size, tmem_ops);
 		if (rc) {
 			tmem_ops->puts("failed to Disable MPU protection\n");
 			return TZ_RESULT_ERROR_GENERIC;
 		}
 
-		region_pfn_start = rec->addr >> PAGE_SHIFT;
-		region_pfn_total = rec->size >> PAGE_SHIFT;
-		for (i = 0; i < region_pfn_total; i++) {
-			rc = tmem_ops->host_share_hyp(region_pfn_start + i);
-			if (rc) {
-				tmem_ops->puts("failed to host_share_hyp\n");
-				return TZ_RESULT_ERROR_GENERIC;
-			}
-		}
-		tmem_ops->pin_shared_mem(((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)),
-			((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)) + rec->size);
 		/*
-		 * clear secure memory content
+		 * EL1S2 map
 		 */
-		memset(((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)), 0, rec->size);
-		tmem_ops->unpin_shared_mem(((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr)),
-			((void *)tmem_ops->hyp_va((phys_addr_t)rec->addr) + rec->size));
-		for (i = 0; i < region_pfn_total; i++) {
-			rc = tmem_ops->host_unshare_hyp(region_pfn_start + i);
-			if (rc) {
-				tmem_ops->puts("failed to host_unshare_hyp\n");
-				return TZ_RESULT_ERROR_GENERIC;
-			}
-		}
+		tmem_ops->host_stage2_mod_prot(rec->addr >> ONE_PAGE_OFFSET, 7, rec->size/ONE_PAGE_SIZE, 0);
 	}
 
 	if (is_enable) {
