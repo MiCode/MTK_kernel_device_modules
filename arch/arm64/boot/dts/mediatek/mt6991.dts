@@ -1132,6 +1132,20 @@
 		cksys2-regmap = <&cksys_gp2_clk>;
 	};
 
+	ap_pd_clk: clock-controller@14500000 {
+		compatible = "mediatek,mt6991-ap-pd", "syscon";
+		reg = <0 0x14500000 0 0x6000>;
+		hw-voter-regmap = <&hwv>;
+		#clock-cells = <1>;
+	};
+
+	mm_pd_clk: clock-controller@31b00000 {
+		compatible = "mediatek,mt6991-mm-pd", "syscon";
+		reg = <0 0x31b00000 0 0x6000>;
+		mm-hw-ccf-regmap = <&mm_hwv>;
+		#clock-cells = <1>;
+	};
+
 	mfgpll_pll_ctrl_clk: syscon@4b810000 {
 		compatible = "mediatek,mt6991-mfgpll_pll_ctrl", "syscon";
 		reg = <0 0x4b810000 0 0x0400>;
