@@ -305,10 +305,37 @@ static int mt6688_vdig18_get_voltage_sel(struct regulator_dev *rdev)
 	return selector;
 }
 
+static int mt6688_vdig18_e2_set_voltage_sel(struct regulator_dev *rdev, unsigned int selector)
+{
+	return regmap_write(rdev_get_regmap(rdev), rdev->desc->vsel_reg, selector);
+}
+
+static int mt6688_vdig18_e2_get_voltage_sel(struct regulator_dev *rdev)
+{
+	unsigned int selector;
+	int ret;
+
+	ret = regmap_read(rdev_get_regmap(rdev), rdev->desc->vsel_reg, &selector);
+	if (ret)
+		return ret;
+
+	return selector;
+}
+
 static const struct regulator_ops mt6688_regulator_vdig18_ctrl = {
 	.list_voltage = mt6688_vdig18_list_voltage,
 	.set_voltage_sel = mt6688_vdig18_set_voltage_sel,
 	.get_voltage_sel = mt6688_vdig18_get_voltage_sel,
+	.enable = regulator_enable_regmap,
+	.disable = regulator_disable_regmap,
+	.is_enabled = regulator_is_enabled_regmap,
+	.get_error_flags = mt6688_ldo_get_error_flags,
+};
+
+static const struct regulator_ops mt6688_regulator_vdig18_e2_ctrl = {
+	.list_voltage = mt6688_vdig18_list_voltage,
+	.set_voltage_sel = mt6688_vdig18_e2_set_voltage_sel,
+	.get_voltage_sel = mt6688_vdig18_e2_get_voltage_sel,
 	.enable = regulator_enable_regmap,
 	.disable = regulator_disable_regmap,
 	.is_enabled = regulator_is_enabled_regmap,
@@ -354,7 +381,7 @@ static const unsigned int mt6688_vdig18_e2_volt_table[] = {
 	1800000, 1800000, 1800000, 1800000, 1800000, 1800000, 1800000, 1800000,
 };
 
-#define MT6688_ALL_REGULATOR_DESC(_vck18_aux18_table, _vdig18_table) \
+#define MT6688_ALL_REGULATOR_DESC(_vck18_aux18_table, _vdig18_table, _vdig18_regulator_ops) \
 {\
 	{\
 		.name = "mt6688-vbst",\
@@ -427,7 +454,7 @@ static const unsigned int mt6688_vdig18_e2_volt_table[] = {
 		.supply_name = "vbb",\
 		.regulators_node = "regulators",\
 		.id = MT6688_REGULATOR_VDIG18,\
-		.ops = &mt6688_regulator_vdig18_ctrl,\
+		.ops = &_vdig18_regulator_ops,\
 		.type = REGULATOR_VOLTAGE,\
 		.owner = THIS_MODULE,\
 		.n_voltages = 256,\
@@ -452,10 +479,12 @@ static const unsigned int mt6688_vdig18_e2_volt_table[] = {
 }
 
 static const struct regulator_desc mt6688_e1_regulator_desc[MT6688_MAX_REGULATOR] =
-	MT6688_ALL_REGULATOR_DESC(mt6688_vck18_aux18_e1_volt_table, mt6688_vdig18_e1_volt_table);
+	MT6688_ALL_REGULATOR_DESC(mt6688_vck18_aux18_e1_volt_table, mt6688_vdig18_e1_volt_table,
+				  mt6688_regulator_vdig18_ctrl);
 
 static const struct regulator_desc mt6688_e2_regulator_desc[MT6688_MAX_REGULATOR] =
-	MT6688_ALL_REGULATOR_DESC(mt6688_vck18_aux18_e2_volt_table, mt6688_vdig18_e2_volt_table);
+	MT6688_ALL_REGULATOR_DESC(mt6688_vck18_aux18_e2_volt_table, mt6688_vdig18_e2_volt_table,
+				  mt6688_regulator_vdig18_e2_ctrl);
 
 static int mt6688_probe(struct spmi_device *sdev)
 {
