@@ -35,7 +35,6 @@
 #endif
 
 #include "goodix_ts_core.h"
-#include "ts_scp_core.h"
 #define CREATE_TRACE_POINTS
 #include "touch_trace.h"
 
@@ -775,10 +774,6 @@ int goodix_ts_power_off_force(struct goodix_ts_core *cd)
 	return ret;
 }
 
-static void goodix_ts_irq_enable(bool enable)
-{
-	ts_core->hw_ops->irq_enable(ts_core, enable);
-}
 
 /* enable/disable irq */
 static ssize_t goodix_ts_irq_info_store(struct device *dev,
@@ -1361,7 +1356,6 @@ void goodix_ts_report_finger(struct input_dev *dev,
 	unsigned int touch_num = touch_data->touch_num;
 	int i;
 	int64_t ktime_now_ns, ktime_irq_ns, ktime_diff_ns;
-	struct ts_scp_cmd cmd_data;
 
 	ts_core->finger_down = touch_data->touch_num > 0;
 	mutex_lock(&dev->mutex);
@@ -1405,13 +1399,6 @@ void goodix_ts_report_finger(struct input_dev *dev,
 		trace_touch_event(ktime_now_ns, ktime_irq_ns, ktime_diff_ns);
 	}
 
-	if ((ts_scp_enable == true) && (ts_core->need_retry_offload) && (!ts_core->finger_down)) {
-		cmd_data.touch_type = TS_TYPE_PRIMARY;
-		cmd_data.command = TOUCH_COMM_CTRL_SCP_HANDLE_CMD;
-		ts_scp_cmd_handler_async(&cmd_data);
-		ts_core->need_retry_offload = false;
-		ts_info("Now no finger on touch, try to change touch offload.");
-	}
 #ifdef GOODIX_TZ
 	if ((atomic_read(&delayed_reset) == 1) && (touch_num == 0)) {
 		struct goodix_ts_hw_ops *hw_ops = ts_core->hw_ops;
@@ -1432,24 +1419,6 @@ void goodix_ts_report_finger(struct input_dev *dev,
 #endif
 
 	mutex_unlock(&dev->mutex);
-}
-
-static void goodix_offload_report_input_event(void *data)
-{
-	struct goodix_ts_event *ts_event = &ts_core->ts_event;
-	struct ts_scp_data *ts_scp_data = (struct ts_scp_data *)data;
-	struct goodix_touch_offload_data *tp_data = NULL;
-
-	if (ts_scp_data->touch_type != TS_TYPE_PRIMARY)
-		return;
-
-	tp_data = (struct goodix_touch_offload_data *)ts_scp_data->data;
-	ts_event->touch_data.touch_num = tp_data->touch_num;
-	memcpy(ts_event->touch_data.coords, tp_data->coords, sizeof(struct goodix_ts_coords) * GOODIX_MAX_TOUCH);
-
-	atomic64_set(&ts_core->timestamp, ts_scp_generate_timestamp(tp_data->scp_timestamp, tp_data->scp_archcounter));
-	goodix_ts_report_finger(ts_core->input_dev,
-		&ts_event->touch_data);
 }
 
 static int goodix_ts_request_handle(struct goodix_ts_core *cd,
@@ -2040,14 +2009,6 @@ void goodix_ts_esd_off(struct goodix_ts_core *cd)
 	ts_info("Esd off, esd work state %d", ret);
 }
 
-static void goodix_ts_esd_control(bool enable)
-{
-	if (enable)
-		goodix_ts_esd_on(ts_core);
-	else
-		goodix_ts_esd_off(ts_core);
-}
-
 /**
  * goodix_esd_notifier_callback - notification callback
  *  under certain condition, we need to turn off/on the esd
@@ -2110,7 +2071,7 @@ int goodix_ts_esd_init(struct goodix_ts_core *cd)
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-static int goodix_ts_ap_power_on_reinit(void)
+static int goodix_ts_power_on_reinit(void)
 {
 	struct goodix_ts_hw_ops *hw_ops;
 	int r;
@@ -2146,29 +2107,6 @@ static int goodix_ts_ap_power_on_reinit(void)
 	hw_ops->irq_enable(ts_core, true);
 
 	ts_info("%s end!\n", __func__);
-
-	return 0;
-}
-
-static int goodix_ts_power_on_reinit(void)
-{
-	int ret;
-	struct ts_scp_cmd cmd_data;
-
-    if (ts_core == NULL) {
-		ts_err("ts_core is NULL");
-		return -EINVAL;
-	}
-	if (ts_scp_enable && !ts_scp_offload_check_status(TS_TYPE_PRIMARY)) {
-		cmd_data.touch_type = TS_TYPE_PRIMARY;
-		cmd_data.command = TOUCH_COMM_CTRL_REINIT_CMD;
-		ret = ts_scp_cmd_handler_sync(&cmd_data);
-		if (ret < 0) {
-			ret = goodix_ts_ap_power_on_reinit();
-		}
-	} else {
-		ret = goodix_ts_ap_power_on_reinit();
-	}
 
 	return 0;
 }
@@ -2358,8 +2296,6 @@ static int goodix_ts_disp_notifier_callback(struct notifier_block *nb,
 	struct goodix_ts_core *core_data =
 		container_of(nb, struct goodix_ts_core, disp_notifier);
 	int *data = (int *)v;
-	int ret;
- 	struct ts_scp_cmd cmd_data;
 
 	if (core_data && v) {
 		if (value == MTK_DISP_EVENT_BLANK) {
@@ -2367,24 +2303,9 @@ static int goodix_ts_disp_notifier_callback(struct notifier_block *nb,
 			ts_info("%s IN", __func__);
 			if (*data == MTK_DISP_BLANK_UNBLANK) {
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
-				if (!atomic_read(&gt9895_tui_flag)) {
+				if (!atomic_read(&gt9895_tui_flag))
 #endif
-					if ((ts_scp_enable == true) && (!ts_scp_offload_check_status(TS_TYPE_PRIMARY))) {
-						cmd_data.touch_type = TS_TYPE_PRIMARY;
-						cmd_data.command = TOUCH_COMM_CTRL_RESUME_CMD;
-						ret = ts_scp_cmd_handler_sync(&cmd_data);
-						if (ret < 0) {
-							goodix_ts_resume(core_data);
-						} else {
-							atomic_set(&core_data->suspended, 0);
-							core_data->power_on = 1;
-						}
-					} else {
-						goodix_ts_resume(core_data);
-					}
-#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
-				}
-#endif
+					goodix_ts_resume(core_data);
 			}
 			ts_info("%s OUT", __func__);
 		} else if (value == MTK_DISP_EARLY_EVENT_BLANK) {
@@ -2396,24 +2317,9 @@ static int goodix_ts_disp_notifier_callback(struct notifier_block *nb,
 			if (*data == MTK_DISP_BLANK_POWERDOWN) {
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
-				if (!atomic_read(&gt9895_tui_flag)) {
+				if (!atomic_read(&gt9895_tui_flag))
 #endif
-					if ((ts_scp_enable == true) && (!ts_scp_offload_check_status(TS_TYPE_PRIMARY))) {
-						cmd_data.touch_type = TS_TYPE_PRIMARY;
-						cmd_data.command = TOUCH_COMM_CTRL_SUSPEND_CMD;
-						ret = ts_scp_cmd_handler_sync(&cmd_data);
-						if (ret < 0) {
-							goodix_ts_suspend(core_data);
-						} else {
-							atomic_set(&core_data->suspended, 1);
-							core_data->power_on = 0;
-						}
-					} else {
-					    goodix_ts_suspend(core_data);
-					}
-#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
-				}
-#endif
+					goodix_ts_suspend(core_data);
 			}
 			ts_info("%s OUT", __func__);
 		}
@@ -2654,55 +2560,6 @@ static int goodix_start_later_init(struct goodix_ts_core *ts_core)
 	return 0;
 }
 
-static int goodix_offload_scp(struct tp_offload_scp *tp, bool enable)
-{
-	int ret = 0;
-	struct goodix_ts_core *core_data = tp->private_data;
-
-	if (enable == true) {
-		/*1.check env to chang scp mode*/
-#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
-		if (atomic_read(&gt9895_tui_flag))
-			return -EFAULT;
-#endif
-		if (core_data->finger_down) {
-			core_data->need_retry_offload = true;
-			ts_info("Now finger on touch, try to change touch offload later.");
-			return -EFAULT;
-		}
-
-		/*2.disable irq*/
-		goodix_ts_irq_enable(false);
-		/*3.disable esd*/
-		goodix_ts_esd_control(false);
-		/*4.change spi mode to scp*/
-		ret = pinctrl_select_state(core_data->pinctrl,
-					core_data->pin_touch_mode_scp);
-		if (ret < 0)
-			ts_err("Failed to select spi scp pinstate, ret:%d", ret);
-
-	} else if (enable == false) {
-		/*1.enable irq*/
-		goodix_ts_irq_enable(true);
-		/*2.enable esd*/
-		goodix_ts_esd_control(true);
-		/*3.change spi mode to ap*/
-		ret = pinctrl_select_state(core_data->pinctrl,
-					core_data->pin_touch_mode_ap);
-		if (ret < 0)
-			ts_err("Failed to select spi default ap pinstate, ret:%d", ret);
-	}
-
-	return ret;
-}
-
-static struct tp_offload_scp goodix_tp_offload = {
-	.name = "GT9895",
-	.touch_type = TS_TYPE_PRIMARY,
-	.touch_id = TOUCH_ID_GT9895,
-	.offload_scp = goodix_offload_scp,
-	.report_func = goodix_offload_report_input_event,
-};
 
 /**
  * goodix_ts_probe - called by kernel when Goodix touch
@@ -2850,10 +2707,6 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	}
 #endif
 
-	if (ts_scp_enable == true) {
-		goodix_tp_offload.private_data = core_data;
-		ts_scp_request_offload(&goodix_tp_offload);
-	}
 
 	return 0;
 
@@ -2901,10 +2754,6 @@ static void goodix_ts_remove(struct platform_device *pdev)
 		goodix_ts_power_off(core_data);
 	}
 
-	if (ts_scp_enable == true) {
-		goodix_tp_offload.private_data = NULL;
-		ts_scp_release_offload(&goodix_tp_offload);
-	}
 }
 
 #if IS_ENABLED(CONFIG_PM)
