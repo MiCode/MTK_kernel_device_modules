@@ -3,19 +3,20 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
+#include <linux/cpu.h>
+#include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
-#include <linux/wait.h>
-#include <linux/lockdep.h>
-#include <linux/time64.h>
 #include <linux/kernel.h>
-#include <linux/ratelimit.h>
+#include <linux/lockdep.h>
 #include <linux/pm_runtime.h>
-#include <linux/rpmsg.h>
-#include <linux/delay.h>
 #include <linux/random.h>
+#include <linux/ratelimit.h>
+#include <linux/rpmsg.h>
 #include <linux/sched/clock.h>
+#include <linux/time64.h>
+#include <linux/wait.h>
 
 #include "apusys_rv_trace.h"
 
@@ -1875,6 +1876,12 @@ int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 	}
 
 	hw_ops->irq_affin_init(apu);
+	if (hw_ops->irq_affin_online && hw_ops->irq_affin_offline) {
+		apu->cpuhp_state = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
+				"apu_ipi:online",
+				hw_ops->irq_affin_online,
+				hw_ops->irq_affin_offline);
+	}
 
 	apu_mbox_hw_init(apu);
 
@@ -1895,6 +1902,8 @@ void apu_ipi_remove(struct mtk_apu *apu)
 	apu_mbox_hw_exit(apu);
 	apu_remove_rpmsg_subdev(apu);
 	apu_ipi_unregister(apu, APU_IPI_INIT);
+	if (apu->cpuhp_state)
+		cpuhp_remove_state(apu->cpuhp_state);
 	if (hw_ops->irq_affin_clear)
 		hw_ops->irq_affin_clear(apu);
 	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)

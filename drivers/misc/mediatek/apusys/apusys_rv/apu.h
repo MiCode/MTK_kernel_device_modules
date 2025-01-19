@@ -45,6 +45,8 @@ struct mtk_apu_hw_ops {
 	int (*irq_affin_set)(struct mtk_apu *apu);
 	int (*irq_affin_unset)(struct mtk_apu *apu);
 	int (*irq_affin_clear)(struct mtk_apu *apu);
+	int (*irq_affin_online)(unsigned int cpu);
+	int (*irq_affin_offline)(unsigned int cpu);
 
 	/* apmcu and apusys_rv timesync */
 	void (*timesync_update)(struct mtk_apu *apu);
@@ -268,6 +270,8 @@ struct mtk_apu {
 	uint32_t wake_lock_ref_cnt;
 	uint32_t ipi_pwr_ref_cnt[APU_IPI_MAX];
 	uint32_t ipi_wake_lock_ref_cnt[APU_IPI_MAX];
+
+	uint32_t cpuhp_state;
 
 	bool disable_ke;
 	s8 fw_ver[APU_FW_VER_LEN];
