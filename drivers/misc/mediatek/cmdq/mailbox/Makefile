@@ -123,4 +123,7 @@ endif
 ifneq ($(wildcard $(src)/cmdq-platform-mt6993.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6993.o
 endif
+ifneq ($(wildcard $(src)/cmdq-platform-mt6789.c),)
+obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6789.o
+endif
 endif
