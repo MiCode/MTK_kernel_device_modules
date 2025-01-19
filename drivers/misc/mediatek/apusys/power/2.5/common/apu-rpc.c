@@ -125,7 +125,7 @@ static int _rpc_power_switch(struct apu_dev *ad, int engid, bool enable)
 		alive = _check_if_rpc_alive(ad);
 		_dump_topclk_info(ad);
 		_dump_spm_status(ad);
-		arpc_err(ad->dev, "[RPC fifo full] rpc_top = 0x%x\n", val);
+		arpc_err(ad->dev, "[RPC fifo full] rpc_top = 0x%x alive = %d\n", val, alive);
 		goto out;
 	}
 

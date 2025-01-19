@@ -392,7 +392,7 @@ unsigned long apu_opp2volt(struct apu_dev *ad, int opp)
 unsigned long apu_opp2freq_n_df(struct apu_dev *ad, int opp)
 {
 	int max_st = 0, ret = 0;
-	unsigned long freq = ULONG_MAX, ret_f = 0;
+	unsigned long freq = ULONG_MAX;
 	struct dev_pm_opp *pm_opp = NULL;
 
 	if (IS_ERR(ad) || IS_ERR_OR_NULL(ad->dev))
@@ -409,7 +409,6 @@ unsigned long apu_opp2freq_n_df(struct apu_dev *ad, int opp)
 		pm_opp = dev_pm_opp_find_freq_floor(ad->dev, &freq);
 		if (IS_ERR(pm_opp))
 			break;
-		ret_f = dev_pm_opp_get_freq(pm_opp);
 		dev_pm_opp_put(pm_opp);
 		if (ret == opp)
 			break;
