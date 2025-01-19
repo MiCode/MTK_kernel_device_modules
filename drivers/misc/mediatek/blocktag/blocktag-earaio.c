@@ -300,6 +300,8 @@ static int earaio_try_boost(bool boost)
 
 	/* Establish threshold for top app read, write */
 	for_each_valid_mictx_id(mictx_id, index) {
+		top_r = 0;
+		top_w = 0;
 		mtk_btag_mictx_get_top_rw(mictx_id, &top_r, &top_w);
 		if (top_r >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
 		    top_w >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
