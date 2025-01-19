@@ -92,6 +92,12 @@ static bool is_devapc_subsys_enabled(int devapc_type)
 		return false;
 	}
 
+	/* Bypass other devapc as a workaround to avoid system reboot issue */
+	if (devapc_type >= DEVAPC_TYPE_MMINFRA) {
+		pr_info(PFX "%s:%d, bypass devapc\n", __func__, __LINE__);
+		return 0;
+	}
+
 	return mtk_devapc_ctx->subsys_enabled[devapc_type];
 }
 
@@ -928,7 +934,8 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 	struct devapc_vio_callbacks *viocb;
 	char dispatch_key[48] = {0};
 	enum infra_subsys_id id;
-	uint32_t ret_cb = 0;
+	/* To bypass clkmgr cb KE issue, we change the init value from 0 to DEVAPC_NOT_KE */
+	uint32_t ret_cb = DEVAPC_NOT_KE;
 
 	dbg_stat = mtk_devapc_ctx->soc->dbg_stat;
 	vio_info = mtk_devapc_ctx->soc->vio_info;

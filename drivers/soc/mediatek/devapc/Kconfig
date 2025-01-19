@@ -197,3 +197,14 @@ config DEVAPC_MT6991
 	  Device APC driver.
 	  This driver is combined with DEVAPC_ARCH_MULTI for
 	  common handle flow.
+
+config DEVAPC_MT6993
+	tristate "Mediatek MT6993 Device APC driver"
+	select DEVICE_MODULES_MTK_DEVAPC
+	select DEVAPC_ARCH_MULTI
+	help
+	  Say yes here to enable support Mediatek MT6993
+	  Device APC driver.
+	  This driver is combined with DEVAPC_ARCH_MULTI for
+	  common handle flow.
+
