@@ -143,7 +143,7 @@ static int hrt_lp_switch;
 static struct completion cwb_cmp;
 
 static bool partial_roi_highlight;
-static bool partial_force_roi;
+static int partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 
@@ -858,7 +858,8 @@ int mtkfb_set_partial_update(unsigned int y_offset, unsigned int height)
 {
 	int ret = 0;
 
-	mtkfb_set_force_partial_roi(1);
+	if (partial_force_roi != 2)
+		mtkfb_set_force_partial_roi(1);
 	partial_y_offset = y_offset;
 	partial_height = height;
 
@@ -873,7 +874,7 @@ void mtkfb_set_force_partial_roi(int en)
 EXPORT_SYMBOL(mtkfb_set_force_partial_roi);
 
 
-bool mtkfb_is_force_partial_roi(void)
+int mtkfb_is_force_partial_roi(void)
 {
 	return partial_force_roi;
 }

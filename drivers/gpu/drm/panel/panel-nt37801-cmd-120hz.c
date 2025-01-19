@@ -26,6 +26,7 @@
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
 #include "../mediatek/mediatek_v2/mtk_corner_pattern/nt37801_cmd_120hz_rc.h"
 
+//#define ROUND_CORNER_PUTEST
 #define CONFIG_MTK_PANEL_EXT
 #if defined(CONFIG_MTK_PANEL_EXT)
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
@@ -950,11 +951,20 @@ static struct mtk_panel_params ext_params = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
-			.round_corner_en = 1,
-			.corner_pattern_height = ROUND_CORNER_H_TOP,
-			.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-			.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
-			.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.round_corner_en = 1,
+#ifndef ROUND_CORNER_PUTEST
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
+	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_top_pattern_l_size_per_line,
+#else
+	.corner_pattern_height = ROUND_CORNER_H_TOP_PUTEST,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT_PUTEST,
+	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_pattern_putest),
+	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_pattern_putest,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_pattern_size_per_line_putest,
+#endif
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
 };
@@ -1027,11 +1037,20 @@ static struct mtk_panel_params ext_params_90hz = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
-			.round_corner_en = 1,
-			.corner_pattern_height = ROUND_CORNER_H_TOP,
-			.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-			.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
-			.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.round_corner_en = 1,
+#ifndef ROUND_CORNER_PUTEST
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
+	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_top_pattern_l_size_per_line,
+#else
+	.corner_pattern_height = ROUND_CORNER_H_TOP_PUTEST,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT_PUTEST,
+	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_pattern_putest),
+	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_pattern_putest,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_pattern_size_per_line_putest,
+#endif
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 11111,
 	.mode_switch_delay = 2,
@@ -1106,11 +1125,20 @@ static struct mtk_panel_params ext_params_60hz = {
 	.dyn_fps = {
 		.vact_timing_fps = 120,
 	},
-			.round_corner_en = 1,
-			.corner_pattern_height = ROUND_CORNER_H_TOP,
-			.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-			.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
-			.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.round_corner_en = 1,
+#ifndef ROUND_CORNER_PUTEST
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_top_pattern_l),
+	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_top_pattern_l,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_top_pattern_l_size_per_line,
+#else
+	.corner_pattern_height = ROUND_CORNER_H_TOP_PUTEST,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT_PUTEST,
+	.corner_pattern_tp_size = sizeof(nt37801_cmd_120hz_pattern_putest),
+	.corner_pattern_lt_addr = (void *)nt37801_cmd_120hz_pattern_putest,
+	.corner_pattern_size_per_line = (void *)nt37801_cmd_120hz_pattern_size_per_line_putest,
+#endif
 	.mode_switch_cmdq = MODE_SWITCH_CMDQ_ENABLE,
 	.real_te_duration = 8333,
 };

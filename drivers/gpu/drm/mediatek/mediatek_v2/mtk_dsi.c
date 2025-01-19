@@ -339,6 +339,26 @@
 #define TARGET_NL	REG_FLD_MSB_LSB(14, 0)
 #define TARGET_NL_EN BIT(16)
 
+#define DSI_PU_CON0	0x350
+#define PU_EN	REG_FLD_MSB_LSB(0, 0)
+#define PU_SISO	REG_FLD_MSB_LSB(1, 1)
+#define PU_HS_EXT_EN	REG_FLD_MSB_LSB(2, 2)
+#define PU_HS_EXT_WC_AUTO	REG_FLD_MSB_LSB(3, 3)
+#define PU_NUM	REG_FLD_MSB_LSB(6, 4)
+#define PU_CROP_THRPT_DEC_FACTOR	REG_FLD_MSB_LSB(11, 8)
+#define DSI_PU_SIZE1	0x354
+#define PU_WIDTH	REG_FLD_MSB_LSB(14, 0)
+#define PU_HEIGHT	REG_FLD_MSB_LSB(30, 16)
+#define DSI_PU_XROI1	0x36C
+#define PU_X_START	REG_FLD_MSB_LSB(14, 0)
+#define PU_X_END	REG_FLD_MSB_LSB(30, 16)
+#define DSI_PU_YROI1	0x384
+#define PU_Y_START	REG_FLD_MSB_LSB(14, 0)
+#define PU_Y_END	REG_FLD_MSB_LSB(30, 16)
+#define DSI_PU_PS_WC1_2	0x39C
+#define PU_PS_WC1	REG_FLD_MSB_LSB(14, 0)
+#define PU_PS_WC2	REG_FLD_MSB_LSB(30, 16)
+
 #define DSI_BUF_CON0(data)	(data->dsi_buf_con_base ? data->dsi_buf_con_base : 0x400)
 #define BUF_BUF_EN BIT(0)
 #define BUF_VDE_BLOCK_URGENT BIT(3)
@@ -6873,7 +6893,7 @@ int mtk_dsi_dump(struct mtk_ddp_comp *comp)
 	DDPDUMP("state9 LINE_COUNTER(cmd mode):%u\n", reg_val);
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	for (k = 0; k < 0x2b0; k += 16) {
+	for (k = 0; k < 0x400; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(dsi->regs + k),
 			readl(dsi->regs + k + 0x4),
@@ -14217,14 +14237,15 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	struct mtk_panel_ext *panel_ext = mtk_dsi_get_panel_ext(comp);
 	unsigned int rw_times = 0;
 	struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+	unsigned int full_width = mtk_crtc_get_width_by_comp(__func__,
+						&comp->mtk_crtc->base, comp, true);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
+	u32 val = 0, mask = 0;
+	unsigned int ps_wc = 0;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
-
-	//cmdq_pkt_wfe(handle,
-		//crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 	CRTC_MMP_MARK(0, pu_ddic_cmd, 0, 0);
 
@@ -14232,6 +14253,16 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 		dsi->set_partial_update = enable;
 		dsi->roi_y_offset = partial_roi.y;
 		dsi->roi_height = partial_roi.height;
+	}
+
+	// reset pu_con0
+	if (dsi->driver_data->support_pu_con) {
+		SET_VAL_MASK(val, mask, 0, PU_EN);
+		SET_VAL_MASK(val, mask, 0, PU_SISO);
+		SET_VAL_MASK(val, mask, 0, PU_NUM);
+		SET_VAL_MASK(val, mask, 0, PU_CROP_THRPT_DEC_FACTOR);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_PU_CON0, val, mask);
 	}
 
 	if (dsi->set_partial_update == 1) {
@@ -14254,6 +14285,47 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			full_height << 16, 0xffff0000);
 
 		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, full_height);
+
+		// PU BISO mode
+		if (dsi->set_partial_update == 2 &&
+			dsi->driver_data->support_pu_con &&
+			panel_ext->params->lp_perline_en == 1) {
+			DDPDBG("%s, %s PU BISO mode, height:%d, enable:%d\n",
+					__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
+
+			SET_VAL_MASK(val, mask, 1, PU_EN);
+			SET_VAL_MASK(val, mask, 0, PU_SISO);
+			SET_VAL_MASK(val, mask, 1, PU_NUM);
+			SET_VAL_MASK(val, mask, 3, PU_CROP_THRPT_DEC_FACTOR);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_PU_CON0, val, mask);
+
+			val = mask = 0;
+			ps_wc = mtk_dsi_get_ps_wc(crtc, dsi);
+			SET_VAL_MASK(val, mask, ps_wc, PU_PS_WC1);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_PU_PS_WC1_2, val, mask);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask, 1, PU_X_START);
+			SET_VAL_MASK(val, mask, full_width, PU_X_END);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_PU_XROI1, val, mask);
+
+			val = mask = 0;
+			SET_VAL_MASK(val, mask, dsi->roi_y_offset + 1, PU_Y_START);
+			SET_VAL_MASK(val, mask, (dsi->roi_y_offset + dsi->roi_height), PU_Y_END);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_PU_YROI1, val, mask);
+
+			//TODO: handle cmd mode wait data every line enable
+			//if (mtk_crtc_is_frame_trigger_mode(&crtc->base)) {
+				//cmdq_pkt_write(handle, comp->cmdq_base,
+				//comp->regs_pa + DSI_CON_CTRL(dsi->driver_data),
+				//DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
+				//DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN);
+			//}
+		}
 	}
 
 	// update dsi buf rw_times
@@ -14265,36 +14337,31 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 		struct mtk_dsi_cmd_option cmd_opt;
 
 		cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
-		if (dsi->set_partial_update == 1)
+		if (dsi->set_partial_update == 1 ||
+			(dsi->set_partial_update == 2 &&
+			dsi->driver_data->support_pu_con &&
+			panel_ext->params->lp_perline_en == 1))
 			panel_ext->funcs->lcm_update_roi_cmdq_v2(dsi,
 			mtk_mipi_dsi_cmd, handle, 0, dsi->roi_y_offset,
-			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
-				comp, true), dsi->roi_height, &cmd_opt);
+			full_width, dsi->roi_height, &cmd_opt);
 		else
 			panel_ext->funcs->lcm_update_roi_cmdq_v2(dsi,
 			mtk_mipi_dsi_cmd, handle, 0, 0,
-			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
-				comp, true),
-			mtk_crtc_get_height_by_comp(__func__, &crtc->base,
-				comp, true), &cmd_opt);
+			full_width, full_height, &cmd_opt);
 	} else if (panel_ext && panel_ext->funcs
 		&& panel_ext->funcs->lcm_update_roi_cmdq) {
-		if (dsi->set_partial_update == 1)
+		if (dsi->set_partial_update == 1 ||
+			(dsi->set_partial_update == 2 &&
+			dsi->driver_data->support_pu_con &&
+			panel_ext->params->lp_perline_en == 1))
 			panel_ext->funcs->lcm_update_roi_cmdq(dsi,
 			mipi_dsi_dcs_write_gce, handle, 0, dsi->roi_y_offset,
-			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
-				comp, true), dsi->roi_height);
+			full_width, dsi->roi_height);
 		else
 			panel_ext->funcs->lcm_update_roi_cmdq(dsi,
 			mipi_dsi_dcs_write_gce, handle, 0, 0,
-			mtk_crtc_get_width_by_comp(__func__, &crtc->base,
-				comp, true),
-			mtk_crtc_get_height_by_comp(__func__, &crtc->base,
-				comp, true));
+			full_width, full_height);
 	}
-
-	//cmdq_pkt_set_event(handle,
-		//crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 	return 0;
 }
@@ -14662,6 +14729,7 @@ static const struct mtk_dsi_driver_data mt6989_dsi_driver_data = {
 	.require_phy_reset = true,
 	.dsi_ltpo_vdo_con = 0xAC,
 	.dsi_ltpo_vdo_sq0 = 0xB4,
+	.support_pu_con = false,
 };
 
 static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
@@ -14725,6 +14793,7 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.dsi_cmd_v2_en = true,
 	.support_512byte_rx = 1,
 	.support_rd_cmdq = 1,
+	.support_pu_con = false,
 };
 
 static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
@@ -14783,6 +14852,7 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.dsi_rx_trig_sta = 0x0B8,
 	.dsi_rx_con = 0x0A0,
 	.con_offset = 0x004,
+	.support_pu_con = true,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {

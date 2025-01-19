@@ -18010,29 +18010,23 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	mtk_crtc_update_ddp_state(crtc, old_crtc_state, mtk_crtc_state,
 				  mtk_crtc_state->cmdq_handle);
 
-	if (priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991 ||
-		priv->data->mmsys_id == MMSYS_MT6993) {
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_PARTIAL_UPDATE)) {
-#if defined(DRM_PARTIAL_UPDATE)
-			partial_enable =
-				mtk_crtc_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
-			if (mtkfb_is_force_partial_roi() && !partial_enable)
-				partial_enable = 1;
-#endif
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_PARTIAL_UPDATE)) {
+		partial_enable =
+			mtk_crtc_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
+		if (mtkfb_is_force_partial_roi() && !partial_enable)
+			partial_enable = mtkfb_is_force_partial_roi();
 
-			DDPDBG("partial_enable: %d\n", partial_enable);
-			if (!partial_enable &&
-			    !old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] &&
-			    (!mtk_crtc_state->disp_mode_changed ||
-			    (mtk_crtc_state->disp_mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
-				DDPDBG("partial update is disable and equal to old\n");
-			else
-				/* set partial update */
-				mtk_drm_crtc_set_partial_update(crtc, old_crtc_state,
-						mtk_crtc_state->cmdq_handle, partial_enable);
-		}
+		DDPDBG("partial_enable: %d\n", partial_enable);
+		if (!partial_enable &&
+		    !old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] &&
+		    (!mtk_crtc_state->disp_mode_changed ||
+		    (mtk_crtc_state->disp_mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
+			DDPDBG("partial update is disable and equal to old\n");
+		else
+			/* set partial update */
+			mtk_drm_crtc_set_partial_update(crtc, old_crtc_state,
+					mtk_crtc_state->cmdq_handle, partial_enable);
 	}
 
 	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
@@ -20160,8 +20154,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	}
 
 	if (mtk_crtc->capturing == true) {
-		DDPDBG("skip because cwb is enable\n");
-		partial_enable = 0;
+		DDPDBG("skip or switch to BISO because cwb is enable\n");
+		partial_enable = 2;
 	}
 
 	if (mtk_crtc->recovery_flg == true) {
@@ -20170,7 +20164,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = 0;
 	}
 
-	if (partial_enable == 1)
+	if (partial_enable != 0)
 		mtk_crtc_partial_compute_ovl_roi(crtc, &partial_roi);
 	else
 		_assign_full_lcm_roi(crtc, &partial_roi, true);
@@ -20189,7 +20183,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	_assign_full_lcm_roi(crtc, &full_roi, true);
 
 	/* disable partial update if partial roi overlap with round corner */
-	if (mtk_crtc->panel_ext->params->round_corner_en &&
+	if (partial_enable == 1 &&
+		mtk_crtc->panel_ext->params->round_corner_en &&
 		!(mtk_crtc->panel_ext->params->corner_pattern_size_per_line) &&
 		((partial_roi.y < mtk_crtc->panel_ext->params->corner_pattern_height) ||
 		(partial_roi.y + partial_roi.height >= full_roi.height -
@@ -20199,7 +20194,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = 0;
 	}
 
-	if (!_is_equal_full_lcm(crtc, &partial_roi)) {
+	if (partial_enable == 1 &&
+		!_is_equal_full_lcm(crtc, &partial_roi)) {
 		memset(&tile_overhead_v, 0, sizeof(tile_overhead_v));
 		/* calculate total overhead vertical */
 		for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
@@ -20214,7 +20210,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	}
 
 	/* disable partial update if total overhead_v exceed the bounds */
-	if (partial_roi.y < mtk_crtc->tile_overhead_v.overhead_v ||
+	if (partial_enable == 1 &&
+		partial_roi.y < mtk_crtc->tile_overhead_v.overhead_v ||
 		partial_roi.y + partial_roi.height >=
 		full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
 		mtk_crtc->tile_overhead_v.overhead_v = 0;
@@ -20233,8 +20230,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	state->ovl_partial_roi = partial_roi;
 
-	/* set ovl_partial_dirty if roi is full lcm */
-	if (_is_equal_full_lcm(crtc, &partial_roi))
+	/* set ovl_partial_dirty if roi is full lcm or BISO mode */
+	if (_is_equal_full_lcm(crtc, &partial_roi) || partial_enable == 2)
 		state->ovl_partial_dirty = 0;
 	else
 		state->ovl_partial_dirty = 1;
@@ -20242,12 +20239,12 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* bwm skip ratio get if enable SISO PU */
 	update_layer_cap_for_bwm(crtc, old_crtc_state, partial_enable);
 
-	/* skip if ovl partial dirty is disable and equal to old */
-	if (!state->ovl_partial_dirty &&
-		!old_state->ovl_partial_dirty &&
+	/* skip if partial roi is full lcm and equal to old */
+	if (_is_equal_full_lcm(crtc, &state->ovl_partial_roi) &&
+		_is_equal_full_lcm(crtc, &old_state->ovl_partial_roi) &&
 		(old_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
 			state->prop_val[CRTC_PROP_DISP_MODE_IDX])) {
-		DDPDBG("skip because partial dirty is disable and equal to old\n");
+		DDPDBG("skip because partial roi is full lcm and equal to old\n");
 		return ret;
 	}
 
@@ -20256,6 +20253,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 			&old_state->ovl_partial_roi) &&
 			(old_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
 			state->prop_val[CRTC_PROP_DISP_MODE_IDX]) &&
+			(state->ovl_partial_dirty == old_state->ovl_partial_dirty) &&
 			debug_pu_skip) {
 		DDPDBG("skip because partial roi is equal to old\n");
 		return ret;
@@ -22534,11 +22532,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_OVL_BW_MONITOR))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_BW_MONITOR;
-#if defined(DRM_PARTIAL_UPDATE)
+
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
-					MTK_DRM_OPT_PARTIAL_UPDATE))
+					MTK_DRM_OPT_PARTIAL_UPDATE)) {
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
-#endif
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE_BISO;
+			}
 
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_UNION_FENCE))

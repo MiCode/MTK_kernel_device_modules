@@ -101,7 +101,7 @@ void mtk_dprec_snapshot(void);
 void mtkfb_set_partial_roi_highlight(int en);
 bool mtkfb_is_partial_roi_highlight(void);
 void mtkfb_set_force_partial_roi(int en);
-bool mtkfb_is_force_partial_roi(void);
+int mtkfb_is_force_partial_roi(void);
 int mtkfb_force_partial_y_offset(void);
 int mtkfb_force_partial_height(void);
 

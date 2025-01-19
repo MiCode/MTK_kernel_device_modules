@@ -109,6 +109,7 @@ struct mtk_dsi_driver_data {
 	const u32 con_offset;
 	const u32 dsi_cmdq_size;
 	const u32 dsi_cmdq_page;
+	bool support_pu_con;
 };
 
 struct mtk_dsi {

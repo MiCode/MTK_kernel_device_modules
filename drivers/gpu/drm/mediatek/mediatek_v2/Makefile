@@ -80,7 +80,6 @@ mediatek-drm-y += mtk_drm_debugfs.o
 endif
 
 ccflags-y += -DDISP_STASH_ENABLE
-ccflags-y += -DDRM_PARTIAL_UPDATE
 
 ifeq ($(CONFIG_DRM_MEDIATEK_DPTX_AUTO),y)
 mediatek-drm-y += mtk_drm_dp/mtk_drm_dp_intf.o \
