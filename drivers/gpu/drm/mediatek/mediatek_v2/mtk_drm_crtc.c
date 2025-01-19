@@ -16160,10 +16160,16 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		/* update DT timer to avoid mismatch between real TE and DT timer */
-		if (crtc->state->active_changed && crtc->state->active &&
-		    !mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
-			mtk_vidle_update_dt_by_type(crtc,
-					mtk_dsi_is_cmd_mode(output_comp) ? PANEL_TYPE_CMD : PANEL_TYPE_VDO);
+		if (crtc->state->active && !mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			if (crtc->state->active_changed ||
+			    (old_mtk_state->doze_changed != mtk_crtc_state->doze_changed)) {
+				DDPINFO("crtc active_changed(%u) doze_changed(%u->%u)\n",
+					(bool)crtc->state->active_changed,
+					old_mtk_state->doze_changed, mtk_crtc_state->doze_changed);
+				mtk_vidle_update_dt_by_type(crtc, mtk_dsi_is_cmd_mode(output_comp) ?
+							    PANEL_TYPE_CMD : PANEL_TYPE_VDO);
+			}
+		}
 
 		/* keep power on to avoid extra TE during mode switch process */
 		if (mode_changed)
