@@ -31,9 +31,9 @@ endif
 
 
 #mtk-swpm fs source files
-include $(SWPM_BUILD_FOLDER)/mtk_swpm_fs/Makefile
-ccflags-y += -I$(SWPM_BUILD_FOLDER)/mtk_swpm_fs/
-MTK_SWPM_FS = $(mtk_swpm_fs_objs:%.o=mtk_swpm_fs/%.o)
+#include $(SWPM_BUILD_FOLDER)/mtk_swpm_fs/Makefile
+#ccflags-y += -I$(SWPM_BUILD_FOLDER)/mtk_swpm_fs/
+#MTK_SWPM_FS = $(mtk_swpm_fs_objs:%.o=mtk_swpm_fs/%.o)
 
 
 #mtk-swpm platform source files
@@ -51,16 +51,16 @@ MTK_SWPM_FS = $(mtk_swpm_fs_objs:%.o=mtk_swpm_fs/%.o)
 
 
 #mtk-swpm common source files
-SWPM_MODULE += swpm_module.o
-SWPM_MODULE += swpm_module_psp.o
+#SWPM_MODULE += swpm_module.o
+#SWPM_MODULE += swpm_module_psp.o
 #SWPM_MODULE += swpm_call.o
 #SWPM_MODULE += swpm_registry.o
 
 
 #Generic build
-SWPM_SRC = $(SWPM_MODULE) $(MTK_SWPM_FS)
-obj-$(CONFIG_MTK_SWPM_MODULE) += mtk-swpm.o
-mtk-swpm-objs := $(SWPM_SRC)
+#SWPM_SRC = $(SWPM_MODULE) $(MTK_SWPM_FS)
+#obj-$(CONFIG_MTK_SWPM_MODULE) += mtk-swpm.o
+#mtk-swpm-objs := $(SWPM_SRC)
 
 
 #Generic subdir build
