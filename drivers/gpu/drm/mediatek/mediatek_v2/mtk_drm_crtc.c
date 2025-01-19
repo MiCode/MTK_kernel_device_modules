@@ -11500,6 +11500,8 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	int index = drm_crtc_index(crtc);
 	struct mtk_crtc_state *mtk_state;
+	ktime_t last_te_time = 0, cur_time = 0;
+	unsigned int pass_time = 0, next_te_duration = 0, te_duration = 0;
 
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	CRTC_MMP_EVENT_START(index, check_trigger, 0, 0);
@@ -11514,6 +11516,31 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
+	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
+		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
+			&& mtk_crtc->panel_ext->params->real_te_duration)
+			te_duration = mtk_crtc->panel_ext->params->real_te_duration;
+		else
+			te_duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
+
+		last_te_time = mtk_crtc->pf_time;
+		cur_time = ktime_get();
+		if (cur_time > last_te_time) {
+			pass_time = (cur_time - last_te_time) / 1000;  //ns to us
+
+			if (te_duration > pass_time)
+				next_te_duration = te_duration - pass_time;
+
+			if (next_te_duration > 1000) {
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+				CRTC_MMP_MARK(index, check_trigger, next_te_duration, 1);
+				usleep_range(next_te_duration - 1000 , next_te_duration - 900);
+				DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+			}
+		}
+	}
+
+	CRTC_MMP_MARK(index, check_trigger, next_te_duration, 0);
 	mtk_state = to_mtk_crtc_state(crtc->state);
 	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ||
 		(mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] &&
@@ -11537,7 +11564,6 @@ static int _mtk_crtc_check_trigger(void *data)
 
 	sched_setscheduler(current, SCHED_RR, &param);
 
-	atomic_set(&mtk_crtc->trig_event_act, 0);
 	while (1) {
 		ret = wait_event_interruptible(mtk_crtc->trigger_event,
 			atomic_read(&mtk_crtc->trig_event_act));
@@ -11546,6 +11572,8 @@ static int _mtk_crtc_check_trigger(void *data)
 		atomic_set(&mtk_crtc->trig_event_act, 0);
 
 		__mtk_check_trigger(mtk_crtc);
+
+		atomic_set(&mtk_crtc->trig_event_act, 0);
 
 		if (kthread_should_stop())
 			break;
