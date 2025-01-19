@@ -13,27 +13,6 @@
 #include "scp_helper.h"
 #include "sap.h"
 
-#define B_SAP_CACHE_DBG_EN		(1 << 30)
-
-enum MDUMP_t {
-	MDUMP_START,
-	MDUMP_L1CACHE,
-	MDUMP_REGDUMP,
-	MDUMP_TBUF,
-	MDUMP_TOTAL,
-};
-
-struct reg_save_st {
-	uint32_t addr;
-	uint32_t size;
-};
-
-struct sap_coredump {
-	uint8_t *buf;
-	uint32_t size;
-	uint32_t prefix[MDUMP_TOTAL];
-};
-
 struct sap_status_reg {
 	uint32_t status;
 	uint32_t pc;
@@ -47,131 +26,14 @@ struct sap_status_reg {
 struct sap_device {
 	bool enable;
 	uint8_t core_id;
-	uint32_t l2tcm_offset;
-	uint32_t secure_dump_size;
-	struct scp_region_info_st *region_info;
-	struct scp_region_info_st region_info_copy;
-	void __iomem *loader_virt;
-	void __iomem *regdump_virt;
-	void __iomem *sram_start_virt;
 	void __iomem *reg_cfg;
-	void __iomem *l1cache;
-
 	struct mtk_mbox_device mbox_dev;
-	struct sap_coredump coredump;
 	struct sap_status_reg status_reg;
-};
-
-static const struct reg_save_st reg_save_list[] = {
-	{0x00040000, 0x180},
-	{0x00042000, 0x260},
-	{0x00043000, 0x120},
 };
 
 static struct sap_device sap_dev;
 struct mtk_ipi_device sap_ipidev;
 EXPORT_SYMBOL(sap_ipidev);
-
-static uint8_t *get_MDUMP_addr(enum MDUMP_t type)
-{
-	struct sap_coredump *coredump = &sap_dev.coredump;
-
-	return coredump->buf + coredump->prefix[type - 1];
-}
-
-static uint32_t get_MDUMP_size(enum MDUMP_t type)
-{
-	struct sap_coredump *coredump = &sap_dev.coredump;
-
-	return coredump->prefix[type] - coredump->prefix[type - 1];
-}
-
-static void sap_l1cache_dump(uint8_t *out, uint8_t *out_end)
-{
-	uint32_t sec_ctrl_value = 0;
-	uint32_t dump_size = out_end - out;
-
-	sec_ctrl_value = readl(R_SEC_CTRL);
-	writel(sec_ctrl_value | B_SAP_CACHE_DBG_EN, R_SEC_CTRL);
-	memcpy_from_scp((void *)out, sap_dev.l1cache, dump_size);
-	writel(sec_ctrl_value, R_SEC_CTRL);
-}
-
-static void sap_register_dump(uint8_t *out, uint8_t *out_end)
-{
-	int i = 0;
-	void *from = NULL;
-	uint32_t *buf = (uint32_t *)out;
-	int size_limit = sizeof(reg_save_list) / sizeof(struct reg_save_st);
-
-	for (i = 0; i < size_limit; i++) {
-		if (((void *)buf + reg_save_list[i].size
-			+ sizeof(struct reg_save_st)) > (void *)out_end) {
-			pr_notice("%s overflow\n", __func__);
-			break;
-		}
-		*buf = reg_save_list[i].addr;
-		buf++;
-		*buf = reg_save_list[i].size;
-		buf++;
-		from = sap_dev.regdump_virt + (reg_save_list[i].addr & 0xfffff);
-		memcpy_from_scp(buf, from, reg_save_list[i].size);
-		buf += (reg_save_list[i].size / sizeof(uint32_t));
-	}
-}
-
-void sap_trace_buffer_dump(uint8_t *out, uint8_t *out_end)
-{
-	uint32_t *buf = (uint32_t *)out;
-	uint32_t tmp, index, offset, wbuf_ptr;
-	void __iomem *cfg_base = sap_dev.reg_cfg;
-	int i = 0;
-
-	wbuf_ptr = readl(cfg_base + CFG_TBUF_WPTR_OFFSET);
-	tmp = readl(cfg_base + CFG_DBG_CTRL_OFFSET) & (~M_CORE_TBUF_DBG_SEL);
-	for (i = 0; i < 16; i++) {
-		index = (wbuf_ptr + i) / 2;
-		offset = ((wbuf_ptr + i) % 2) * 0x8;
-		writel(tmp | (index << S_CORE_TBUF_DBG_SEL),
-			cfg_base + CFG_DBG_CTRL_OFFSET);
-		*(buf) = readl(cfg_base + CFG_TBUF_DATA31_0_OFFSET + offset);
-		*(buf + 1) = readl(cfg_base + CFG_TBUF_DATA63_32_OFFSET + offset);
-		pr_notice("tbuf:%02d:0x%08x::0x%08x\n",	i, *buf, *(buf + 1));
-		buf += 2;
-	}
-}
-
-uint32_t sap_get_coredump_size(void)
-{
-	struct sap_device *dev = &sap_dev;
-
-	return dev->coredump.size;
-}
-
-uint32_t sap_crash_dump(uint8_t *dump_buf)
-{
-	struct sap_device *dev = &sap_dev;
-	uint8_t *dump_start = NULL, *dump_end = NULL;
-
-	if (!dev->enable)
-		return 0;
-
-	dev->coredump.buf = dump_buf;
-
-	dump_start = get_MDUMP_addr(MDUMP_L1CACHE);
-	dump_end = dump_start + get_MDUMP_size(MDUMP_L1CACHE);
-	sap_l1cache_dump(dump_start, dump_end);
-
-	dump_start = get_MDUMP_addr(MDUMP_REGDUMP);
-	dump_end = dump_start + get_MDUMP_size(MDUMP_REGDUMP);
-	sap_register_dump(dump_start, dump_end);
-
-	dump_start = get_MDUMP_addr(MDUMP_TBUF);
-	dump_end = dump_start + get_MDUMP_size(MDUMP_TBUF);
-	sap_trace_buffer_dump(dump_start, dump_end);
-
-	return dev->coredump.size;
-}
 
 void sap_dump_last_regs(void)
 {
@@ -238,7 +100,6 @@ uint32_t sap_print_last_regs(char *buf, uint32_t size)
 	return len;
 }
 
-
 uint32_t sap_dump_detail_buff(uint8_t *buff, uint32_t size)
 {
 	struct sap_device *dev = &sap_dev;
@@ -288,38 +149,11 @@ bool sap_enabled(void)
 }
 EXPORT_SYMBOL_GPL(sap_enabled);
 
-void sap_cfg_reg_write(uint32_t reg_offset, uint32_t value)
-{
-	void __iomem *cfg_base = sap_dev.reg_cfg;
-
-	writel(value, cfg_base + reg_offset);
-}
-
 uint32_t sap_cfg_reg_read(uint32_t reg_offset)
 {
 	void __iomem *cfg_base = sap_dev.reg_cfg;
 
 	return readl(cfg_base + reg_offset);
-}
-
-void sap_wdt_reset(void)
-{
-	struct sap_device *dev = &sap_dev;
-
-	if (!READ_ONCE(dev->enable))
-		return;
-
-	sap_cfg_reg_write(CFG_WDT_CFG_OFFSET, V_INSTANT_WDT);
-}
-
-void sap_wdt_clear(void)
-{
-	struct sap_device *dev = &sap_dev;
-
-	if (!dev->enable)
-		return;
-
-	sap_cfg_reg_write(CFG_WDT_CFG_OFFSET, B_WDT_IRQ);
 }
 
 static void sap_setup_pin_table(struct mtk_mbox_device *mbox_dev, uint8_t mbox)
@@ -370,7 +204,6 @@ static void sap_setup_pin_table(struct mtk_mbox_device *mbox_dev, uint8_t mbox)
 		} else if (mbox < recv_tbl[i].mbox)
 			break; /* no need to search the rest ipi */
 	}
-
 
 	if (last_idx > 32 ||
 		(last_ofs + last_slot) > (info_tbl[mbox].is64d + 1) * 32) {
@@ -535,6 +368,12 @@ static bool sap_parse_ipi_table(struct mtk_mbox_device *mbox_dev,
 		if (mtk_mbox_probe(pdev, mbox_info[i].mbdev, i) < 0)
 			continue;
 
+		ret = enable_irq_wake(mbox_info[i].irq_num);
+		if (ret < 0) {
+			pr_notice("[SCP]mbox%d enable irq fail\n", i);
+			continue;
+		}
+
 		sap_setup_pin_table(mbox_dev, i);
 	}
 
@@ -546,10 +385,7 @@ static int sap_device_probe(struct platform_device *pdev)
 	struct sap_device *dev = &sap_dev;
 	const char *sap_status = NULL;
 	uint8_t core_id = 0;
-	uint32_t l2tcm_offset = 0;
-	struct sap_coredump *coredump = &dev->coredump;
 	struct resource *res = NULL;
-	uint8_t i = 0;
 	int ret = 0;
 
 	ret = of_property_read_string(pdev->dev.of_node, "status", &sap_status);
@@ -561,49 +397,31 @@ static int sap_device_probe(struct platform_device *pdev)
 	ret = of_property_read_u8(pdev->dev.of_node, "core-id", &core_id);
 	if (ret < 0) {
 		pr_err("invalid core_id res, %d\n", ret);
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32(pdev->dev.of_node,
-		"l2tcm-offset", &l2tcm_offset);
-	if (ret < 0 || !l2tcm_offset) {
-		pr_err("invalid l2tcm offset\n");
-		return -EINVAL;
+		return ret;
 	}
 
 	WRITE_ONCE(dev->enable, true);
 	dev->core_id = core_id;
-	dev->l2tcm_offset = l2tcm_offset;
-	dev->sram_start_virt = SCP_TCM + l2tcm_offset;
-	dev->region_info = dev->sram_start_virt + SCP_REGION_INFO_OFFSET;
-	memcpy_from_scp(&dev->region_info_copy,
-		dev->region_info, sizeof(dev->region_info_copy));
 
-	dev->loader_virt = ioremap_wc(dev->region_info_copy.ap_loader_start,
-		dev->region_info_copy.ap_loader_size);
-
-	dev->regdump_virt = ioremap_wc(dev->region_info_copy.regdump_start,
-		dev->region_info_copy.regdump_size);
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -ENOMEM;
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,  "sap_cfg_reg");
+	if (!res) {
+		pr_err("platform_get_resource fail\n");
+		ret = -EINVAL;
+		goto err_res;
+	}
 
 	dev->reg_cfg = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR((void const *)dev->reg_cfg))
-		return -EINVAL;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!res)
-		return -ENOMEM;
-
-	dev->l1cache = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR((void const *)dev->l1cache))
-		return -EINVAL;
+	if (IS_ERR((void const *)dev->reg_cfg)) {
+		pr_err("devm_ioremap_resource fail\n");
+		ret = -EIO;
+		goto err_res;
+	}
 
 	dev->mbox_dev.name = "sap_mboxdev";
-	if (!sap_parse_ipi_table(&dev->mbox_dev, pdev))
-		return -EINVAL;
+	if (!sap_parse_ipi_table(&dev->mbox_dev, pdev)) {
+		ret = -EINVAL;
+		goto err_ipi;
+	}
 
 	sap_ipidev.name = "sap_ipidev";
 	sap_ipidev.id = IPI_DEV_SAP;
@@ -615,27 +433,26 @@ static int sap_device_probe(struct platform_device *pdev)
 		&dev->mbox_dev, SAP_IPI_COUNT);
 	if (ret < 0) {
 		pr_err("register ipi fail %d\n", ret);
-		return ret;
+		goto err_ipi;
 	}
 
-	for (i = MDUMP_L1CACHE; i < MDUMP_TOTAL; ++i) {
-		ret = of_property_read_u32_index(pdev->dev.of_node,
-			"memorydump", i - 1, &coredump->prefix[i]);
-		if (ret) {
-			pr_notice("Cannot get memorydump size(%d)\n", i - 1);
-			return -EINVAL;
-		}
-		coredump->prefix[i] += coredump->prefix[i - 1];
-	}
-
-	coredump->size = coredump->prefix[MDUMP_TOTAL - 1];
-	pr_notice("cordump total size %u\n", coredump->size);
 	return 0;
+
+err_ipi:
+	devm_release_mem_region(&pdev->dev, res->start, resource_size(res));
+err_res:
+	WRITE_ONCE(dev->enable, false);
+	return ret;
 }
 
-static void sap_device_remove(struct platform_device *dev)
+static void sap_device_remove(struct platform_device *pdev)
 {
+	struct sap_device *dev = &sap_dev;
 
+	if (!READ_ONCE(dev->enable))
+		return;
+
+	WRITE_ONCE(dev->enable, false);
 }
 
 static const struct of_device_id sap_of_ids[] = {
@@ -655,28 +472,21 @@ static struct platform_driver mtk_sap_device = {
 	},
 };
 
-void sap_restore_l2tcm(void)
+void sap_init(void)
+{
+	struct sap_device *dev = &sap_dev;
+
+	WRITE_ONCE(dev->enable, false);
+	if (platform_driver_register(&mtk_sap_device))
+		pr_err("register fail\n");
+}
+
+void sap_exit(void)
 {
 	struct sap_device *dev = &sap_dev;
 
 	if (!READ_ONCE(dev->enable))
 		return;
 
-	memcpy_to_scp(dev->sram_start_virt, (const void *)dev->loader_virt,
-		dev->region_info_copy.ap_loader_size);
-
-	memcpy_to_scp(dev->region_info, (const void *)&dev->region_info_copy,
-		sizeof(dev->region_info_copy));
-}
-
-void sap_init(void)
-{
-	struct sap_device *dev = &sap_dev;
-
-	dev->enable = false;
-	dev->secure_dump_size = 0;
-	dev->coredump.buf = NULL;
-	dev->coredump.size = 0;
-	if (platform_driver_register(&mtk_sap_device))
-		pr_err("[SCP] scp probe fail\n");
+	platform_driver_unregister(&mtk_sap_device);
 }

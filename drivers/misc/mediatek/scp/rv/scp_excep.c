@@ -613,9 +613,6 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 			scp_ap_dram_virt, dram_size);
 		scp_dump_size += roundup(dram_size, 4);
 	}
-
-	scp_dump_size += sap_crash_dump(
-		(uint8_t *)get_MDUMP_addr(MDUMP_DRAM) + scp_dump_size);
 	}
 
 	dsb(SY); /* may take lot of time */
@@ -882,8 +879,7 @@ int scp_excep_init(void)
 #else
 	{
 #endif
-	scp_dump.ramdump = vmalloc(get_MDUMP_size_accumulate(MDUMP_DRAM)
-		+ sap_get_coredump_size());
+	scp_dump.ramdump = vmalloc(get_MDUMP_size_accumulate(MDUMP_DRAM));
 	if (!scp_dump.ramdump)
 		return -1;
 	}

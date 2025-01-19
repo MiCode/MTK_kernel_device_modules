@@ -87,8 +87,6 @@ static void scp_A_wdt_handler(struct tasklet_struct *t)
 			scp_wdt_clear(0);
 		if (reg1)
 			scp_wdt_clear(1);
-		if (reg_sap)
-			sap_cfg_reg_write(CFG_WDT_IRQ_OFFSET, B_WDT_IRQ);
 	}
 	enable_irq(t->data);
 }

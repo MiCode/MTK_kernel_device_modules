@@ -1333,9 +1333,6 @@ void scp_wdt_reset(int cpu_id)
 
 	scp_write_reset_register_with_retry(cpu_id);
 
-	if (sap_enabled() && cpu_id == sap_get_core_id())
-		sap_wdt_reset();
-
 	}
 
 	if(scp_awake_flag == 0) {
@@ -2211,14 +2208,9 @@ void scp_sys_reset_ws(struct work_struct *ws)
 		/* stop scp */
 		writel(1, R_CORE0_SW_RSTN_SET);
 		writel(1, R_CORE1_SW_RSTN_SET);
-		if (sap_enabled())
-			sap_cfg_reg_write(CFG_SW_RSTN_OFFSET, 1);
 		dsb(SY); /* may take lot of time */
 		pr_notice("[SCP] rstn core0 %x core1 %x\n",
 			readl(R_CORE0_SW_RSTN_SET), readl(R_CORE1_SW_RSTN_SET));
-		if (sap_enabled())
-			pr_notice("[SCP] rstn sap %x\n",
-				sap_cfg_reg_read(CFG_SW_RSTN_OFFSET));
 	} else {
 		/* reset type scp WDT or CMD*/
 		/* make sure scp is in idle state */
@@ -2227,16 +2219,9 @@ void scp_sys_reset_ws(struct work_struct *ws)
 		writel(1, R_CORE1_SW_RSTN_SET);
 		writel(CORE_REBOOT_OK, SCP_GPR_CORE0_REBOOT);
 		writel(CORE_REBOOT_OK, SCP_GPR_CORE1_REBOOT);
-		if (sap_enabled()) {
-			sap_cfg_reg_write(CFG_SW_RSTN_OFFSET, 1);
-			sap_cfg_reg_write(CFG_GPR5_OFFSET, CORE_REBOOT_OK);
-		}
 		dsb(SY); /* may take lot of time */
 		pr_notice("[SCP] rstn core0 %x core1 %x\n",
 		readl(R_CORE0_SW_RSTN_SET), readl(R_CORE1_SW_RSTN_SET));
-		if (sap_enabled())
-			pr_notice("[SCP] rstn sap %x\n",
-				sap_cfg_reg_read(CFG_SW_RSTN_OFFSET));
 	}
 	}
 
@@ -3584,7 +3569,7 @@ static void __exit scp_exit(void)
 	free_irq(scpreg.irq1, NULL);
 	misc_deregister(&scp_device);
 	scp_chre_manager_exit();
-
+	sap_exit();
 	flush_workqueue(scp_workqueue);
 	destroy_workqueue(scp_workqueue);
 
