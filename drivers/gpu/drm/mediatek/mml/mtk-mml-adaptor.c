@@ -65,7 +65,7 @@ struct mml_frame_config *frame_config_find_reuse(struct mml_ctx *ctx,
 done:
 	if (cfg && idx) {
 		if (mode != cfg->info.mode)
-			mml_log("[adpt]mode change to %hhu", cfg->info.mode);
+			mml_msg("[adpt]mode change to %hhu", cfg->info.mode);
 		list_rotate_to_front(&cfg->entry, &ctx->configs);
 	}
 

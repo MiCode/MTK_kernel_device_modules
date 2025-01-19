@@ -1811,7 +1811,10 @@ static void core_taskdone(struct work_struct *work)
 			CMDQ_TICK_TO_US(hw_time);
 		}
 	}
-	mml_mmp(exec, MMPROFILE_FLAG_END, jobid, hw_time);
+	if (mml_isdc(cfg->info.mode))
+		mml_mmp(exec, MMPROFILE_FLAG_END, jobid, hw_time);
+	else
+		mml_mmp(exec_couple, MMPROFILE_FLAG_END, jobid, hw_time);
 
 	if (task->pkts[0])
 		core_taskdone_comp(task, 0);
@@ -2237,8 +2240,12 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	ret = cmdq_pkt_flush_async(pkt, core_taskdone_cb, (void *)task->pkts[pipe]);
 
 	/* only start at pipe 0 and end at receive both pipe irq */
-	if (pipe == 0)
-		mml_mmp(exec, MMPROFILE_FLAG_START, task->job.jobid, 0);
+	if (pipe == 0) {
+		if (mml_isdc(cfg->info.mode))
+			mml_mmp(exec, MMPROFILE_FLAG_START, task->job.jobid, 0);
+		else
+			mml_mmp(exec_couple, MMPROFILE_FLAG_START, task->job.jobid, 0);
+	}
 	mml_trace_ex_end();
 
 	mml_trace_ex_end();

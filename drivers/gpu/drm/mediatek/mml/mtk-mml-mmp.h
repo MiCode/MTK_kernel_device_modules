@@ -47,6 +47,7 @@ struct mml_mmp_events_t {
 	mmp_event submit_cb;
 	mmp_event taskdone;
 	mmp_event exec;
+	mmp_event exec_couple;
 	mmp_event irq;
 	mmp_event couple;
 	mmp_event kick;

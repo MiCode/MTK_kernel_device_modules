@@ -32,6 +32,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.submit_cb = mmprofile_register_event(parent, "submit_cb");
 	mml_mmp_events.taskdone = mmprofile_register_event(parent, "taskdone");
 	mml_mmp_events.exec = mmprofile_register_event(parent, "exec");
+	mml_mmp_events.exec_couple = mmprofile_register_event(parent, "exec_couple");
 	mml_mmp_events.irq = mmprofile_register_event(parent, "IRQ");
 	mml_mmp_events.couple = mmprofile_register_event(parent, "couple");
 	mml_mmp_events.kick = mmprofile_register_event(parent, "kick");
