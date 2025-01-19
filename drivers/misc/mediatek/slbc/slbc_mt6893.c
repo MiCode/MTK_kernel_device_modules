@@ -1085,6 +1085,9 @@ static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 {
 	unsigned int uid = d->uid;
 
+	if (d->uid <= UID_ZERO || d->uid >= UID_MAX)
+		return;
+
 	seq_printf(m, "ID %s\t", slbc_uid_str[uid]);
 
 	if (slbc_test_bit(uid, &slbc_uid_used))

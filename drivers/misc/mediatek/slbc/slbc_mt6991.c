@@ -168,6 +168,7 @@ static DEFINE_MUTEX(slbc_ops_lock);
 static DEFINE_MUTEX(slbc_req_lock);
 static DEFINE_MUTEX(slbc_rel_lock);
 static DEFINE_MUTEX(slbc_ref_lock);
+static DEFINE_MUTEX(slbc_sram_lock);
 DECLARE_WAIT_QUEUE_HEAD(slbc_wq);
 
 /* 1 in bit is from request done to relase done */
@@ -248,6 +249,8 @@ static struct task_struct *slbc_deactivate_task[ARRAY_SIZE(p_config)];
 
 u32 slbc_sram_read(u32 offset)
 {
+	u32 ret = 0;
+
 	if (!slbc_sram_enable)
 		return 0;
 
@@ -256,7 +259,11 @@ u32 slbc_sram_read(u32 offset)
 
 	/* pr_info("#@# %s(%d) regs 0x%x 0%x\n", __func__, __LINE__, slbc->regs, offset); */
 
-	return readl(slbc->sram_vaddr + offset);
+	mutex_lock(&slbc_sram_lock);
+	ret = readl(slbc->sram_vaddr + offset);
+	mutex_unlock(&slbc_sram_lock);
+
+	return ret;
 }
 
 void slbc_sram_write(u32 offset, u32 val)
@@ -269,7 +276,9 @@ void slbc_sram_write(u32 offset, u32 val)
 
 	/* pr_info("#@# %s(%d) regs 0x%x 0%x\n", __func__, __LINE__, slbc->regs, offset); */
 
+	mutex_lock(&slbc_sram_lock);
 	writel(val, slbc->sram_vaddr + offset);
+	mutex_unlock(&slbc_sram_lock);
 }
 
 void slbc_sram_init(struct mtk_slbc *slbc)
@@ -1011,9 +1020,14 @@ void slbc_update_mm_bw(unsigned int bw)
 void slbc_update_mic_num(unsigned int num)
 {
 	int i;
+	int sid;
 
 	slbc_mic_num = num;
 	slbc_mic_num_cmd(num);
+
+	sid = slbc_get_sid_by_uid(UID_HIFI3);
+	if (sid != SID_NOT_FOUND)
+		uid_ref[UID_HIFI3] = slbc_read_debug_sram(sid);
 
 	if (!uid_ref[UID_HIFI3]) {
 		for (i = 0; i < ARRAY_SIZE(p_config); i++) {
@@ -1592,6 +1606,7 @@ static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 
 	seq_printf(m, "ID %s\t", slbc_uid_str[uid]);
 
+	slbc_uid_used = slbc_sram_read(SLBC_UID_USED);
 	if (slbc_test_bit(uid, &slbc_uid_used))
 		seq_puts(m, " activate\n");
 	else
@@ -2411,14 +2426,17 @@ static int slbc_suspend_cb(struct device *dev)
 
 	for (i = 0; i < UID_MAX; i++) {
 		sid = slbc_get_sid_by_uid(i);
+		if (sid != SID_NOT_FOUND)
+			uid_ref[i] = slbc_read_debug_sram(sid);
+
 		if (sid != SID_NOT_FOUND && uid_ref[i]) {
-			if (sid == UID_HIFI3) {
+			if (i == UID_HIFI3) {
 				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
 						"uid_ref %s %x",
 						slbc_uid_str[i], uid_ref[i]);
-			} else if (sid == UID_AOV |
-					sid == UID_AOV_DC |
-					sid == UID_AOV_APU) {
+			} else if (i == UID_AOV |
+					i == UID_AOV_DC |
+					i == UID_AOV_APU) {
 				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
 						"uid_ref %s %x, screen off user",
 						slbc_uid_str[i], uid_ref[i]);
@@ -2441,14 +2459,17 @@ static int slbc_resume_cb(struct device *dev)
 
 	for (i = 0; i < UID_MAX; i++) {
 		sid = slbc_get_sid_by_uid(i);
+		if (sid != SID_NOT_FOUND)
+			uid_ref[i] = slbc_read_debug_sram(sid);
+
 		if (sid != SID_NOT_FOUND && uid_ref[i]) {
-			if (sid == UID_HIFI3) {
+			if (i == UID_HIFI3) {
 				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
 						"uid_ref %s %x",
 						slbc_uid_str[i], uid_ref[i]);
-			} else if (sid == UID_AOV |
-					sid == UID_AOV_DC |
-					sid == UID_AOV_APU) {
+			} else if (i == UID_AOV |
+					i == UID_AOV_DC |
+					i == UID_AOV_APU) {
 				SLBC_TRACE_REC(LVL_QOS, TYPE_N, 0, 0,
 						"uid_ref %s %x, screen off user",
 						slbc_uid_str[i], uid_ref[i]);

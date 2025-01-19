@@ -86,6 +86,7 @@ static struct slbc_data test_d;
 
 static LIST_HEAD(slbc_ops_list);
 static DEFINE_MUTEX(slbc_ops_lock);
+static DEFINE_MUTEX(slbc_sram_lock);
 
 /* 1 in bit is from request done to relase done */
 static unsigned long slbc_uid_used;
@@ -108,8 +109,7 @@ static struct slbc_config p_config[] = {
 
 u32 slbc_sram_read(u32 offset)
 {
-	if (!slbc_enable)
-		return 0;
+	u32 ret = 0;
 
 	if (!slbc_sram_enable)
 		return 0;
@@ -119,14 +119,15 @@ u32 slbc_sram_read(u32 offset)
 
 	/* pr_info("#@# %s(%d) regs 0x%x 0%x\n", __func__, __LINE__, slbc->regs, offset); */
 
-	return readl(slbc->sram_vaddr + offset);
+	mutex_lock(&slbc_sram_lock);
+	ret = readl(slbc->sram_vaddr + offset);
+	mutex_unlock(&slbc_sram_lock);
+
+	return ret;
 }
 
 void slbc_sram_write(u32 offset, u32 val)
 {
-	if (!slbc_enable)
-		return;
-
 	if (!slbc_sram_enable)
 		return;
 
@@ -135,7 +136,9 @@ void slbc_sram_write(u32 offset, u32 val)
 
 	/* pr_info("#@# %s(%d) regs 0x%x 0%x\n", __func__, __LINE__, slbc->regs, offset); */
 
+	mutex_lock(&slbc_sram_lock);
 	writel(val, slbc->sram_vaddr + offset);
+	mutex_unlock(&slbc_sram_lock);
 }
 
 void slbc_sram_init(struct mtk_slbc *slbc)
@@ -197,6 +200,17 @@ static int slbc_get_sid_by_uid(enum slbc_uid uid)
 	}
 
 	return SID_NOT_FOUND;
+}
+
+static u32 slbc_read_debug_sram(int sid)
+{
+	if (sid < 0 || sid >= ARRAY_SIZE(p_config) || sid >= 16)
+		return SID_NOT_FOUND;
+
+	if (sid < 8)
+		return slbc_sram_read(SLBC_DEBUG_0 + sid * 4);
+	else
+		return slbc_sram_read(SLBC_DEBUG_8 + (sid - 8) * 4);
 }
 
 void slbc_force_cmd(unsigned int force)
@@ -572,9 +586,14 @@ void slbc_update_mm_bw(unsigned int bw)
 void slbc_update_mic_num(unsigned int num)
 {
 	int i;
+	int sid;
 
 	slbc_mic_num = num;
 	slbc_mic_num_cmd(num);
+
+	sid = slbc_get_sid_by_uid(UID_HIFI3);
+	if (sid != SID_NOT_FOUND)
+		uid_ref[UID_HIFI3] = slbc_read_debug_sram(sid);
 
 	if (!uid_ref[UID_HIFI3]) {
 		for (i = 0; i < ARRAY_SIZE(p_config); i++) {
