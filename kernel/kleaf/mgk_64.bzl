@@ -317,6 +317,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_v1:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:ddk_kconfigs".format(kernel_version),
@@ -468,6 +469,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccu/src/isp6s:ccu_isp6s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:cpuqos_v3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:cpudvfs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mtk_dcm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:mtk-composite".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-main".format(kernel_version),
@@ -665,6 +667,11 @@ mgk_64_kleaf_device_modules = [
 mgk_64_kleaf_platform_modules = {
     # keep sorted
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-bringup".format(kernel_version): "mt6781 mt6789 mt6833 mt6877 mt6897 mt6886 mt6893 mt6983 mt6985 mt6989 mt8192 mt8188 mt6899 mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6897_dcm".format(kernel_version): "mt6897",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6899_dcm".format(kernel_version): "mt6899",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6985_dcm".format(kernel_version): "mt6985",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6989_dcm".format(kernel_version): "mt6989",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6991_dcm".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/mt6991:mtk-lpm-dbg-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/v6993:mtk-lpm-dbg-v6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6789".format(kernel_version): "mt6789",
@@ -841,7 +848,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/conn_scp/connscp.ko",
     "drivers/misc/mediatek/cci_lite/ccidvfs.ko",
     "drivers/misc/mediatek/cross_sched/cross_sched.ko",
-    "drivers/misc/mediatek/dcm/mtk_dcm.ko",
     #"drivers/misc/mediatek/dvfsrc/mtk-dvfsrc-helper.ko",
     "drivers/misc/mediatek/eccci/ccci_auxadc.ko",
     "drivers/misc/mediatek/eccci/ccci_md_all.ko",
@@ -1314,11 +1320,6 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6991.ko": "mt6991",
-    "drivers/misc/mediatek/dcm/mt6897_dcm.ko": "mt6897",
-    "drivers/misc/mediatek/dcm/mt6899_dcm.ko": "mt6899",
-    "drivers/misc/mediatek/dcm/mt6985_dcm.ko": "mt6985",
-    "drivers/misc/mediatek/dcm/mt6989_dcm.ko": "mt6989",
-    "drivers/misc/mediatek/dcm/mt6991_dcm.ko": "mt6991",
     #"drivers/misc/mediatek/lpm/modules/debug/mt6886/mtk-lpm-dbg-mt6886.ko": "mt6886",
     #"drivers/misc/mediatek/lpm/modules/debug/mt6897/mtk-lpm-dbg-mt6897.ko": "mt6897",
     #"drivers/misc/mediatek/lpm/modules/debug/mt6983/mtk-lpm-dbg-mt6983.ko": "mt6983",
@@ -1681,7 +1682,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.update("//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:generic_debugfs".format(kernel_version))
         mgk_64_kleaf_device_modules.update("//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:mt6360-dbg".format(kernel_version))
         mgk_64_platform_device_modules.update({"drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr_mt6877.ko":"mt6877"})
-        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/dcm/mt6877_dcm.ko":"mt6877"})
+        mgk_64_kleaf_platform_modules.update({"//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6877_dcm".format(kernel_version):"mt6877"})
         #mgk_64_platform_device_modules.pop("drivers/misc/mediatek/lpm/modules/debug/mt6989/mtk-lpm-dbg-mt6989.ko")
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/mt6991:mtk-lpm-dbg-mt6991".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/misc/mediatek/slbc/slbc_mt6886.ko")
@@ -1978,7 +1979,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuhotplug/mtk_cpuhp.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuidle/mtk_cpuidle.ko")
 
-        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6768_dcm.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6768_dcm".format(kernel_version))
 
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:dvfsrc-opp-mt6768".format(kernel_version))
 
@@ -2555,7 +2556,7 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/mdpm/mtk_mdpm.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/mdpm_v1/mtk_mdpm_v1.ko")
-        mgk_64_platform_device_modules.update({"drivers/misc/mediatek/dcm/mt6761_dcm.ko":"mt6761"})
+        mgk_64_kleaf_platform_modules.update({"//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6761_dcm".format(kernel_version):"mt6761"})
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/widevine_drm/widevine_driver.ko")
 
@@ -2709,7 +2710,7 @@ def get_overlay_modules_list():
         mgk_64_common_userdebug_modules.append("drivers/mfd/mt6360-core.ko")
         mgk_64_common_user_modules.append("drivers/mfd/mt6360-core.ko")
 
-        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6885_dcm.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6885_dcm".format(kernel_version))
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/wpe/isp_6s/camera_wpe_isp6s.ko")
@@ -3209,7 +3210,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mcupm/v3/mcupm_v3.ko")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/cpufreq_cus:cpu_freq")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/cpufreq_int:cpu_hwtest")
-        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6765_dcm.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6765_dcm".format(kernel_version))
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6765")
 
@@ -3376,7 +3377,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/pd-chk-mt6833.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-fmeter-mt6833.ko")
         mgk_64_kleaf_platform_modules.update({"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6833".format(kernel_version): "mt6833"})
-        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6833_dcm.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6833_dcm".format(kernel_version))
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-v2.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-fake-eng.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi.ko")
