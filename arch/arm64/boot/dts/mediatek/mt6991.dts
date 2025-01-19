@@ -6840,9 +6840,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x300c0000 0 0x80000>;
 			virtio-supply = <&trusty_virtio>;
 			#mbox-cells = <3>;
-			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
 			mboxes = <&gce 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
 		};
 
 		gce_m: gce@30140000 {
@@ -6894,9 +6894,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x30140000 0 0x80000>;
 			#mbox-cells = <3>;
 			virtio-supply = <&trusty_virtio>;
-			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
 			mboxes = <&gce_m 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
 		};
 
 		cmdq_test: cmdq-test@0 {

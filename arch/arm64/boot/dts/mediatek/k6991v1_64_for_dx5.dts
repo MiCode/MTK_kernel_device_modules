@@ -15,6 +15,7 @@
 #include <dt-bindings/mmdvfs/mmdvfs-clk-mt6991.h>
 #include <dt-bindings/mminfra/mminfra-mt6991.h>
 #include <dt-bindings/clock/mmdvfs-clk.h>
+#include <dt-bindings/mminfra/mminfra-mt6991.h>
 
 &chosen {
 bootargs_ext = "rcu_nocbs=0-7";
@@ -2113,6 +2114,24 @@ bootargs_ext = "rcu_nocbs=0-7";
 	power-domains;
 };
 
+
+&gce {
+	mediatek,mminfra-supply = <&mminfra_util>;
+	mminfra-all-on-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
+};
+
+&gce_sec {
+	mminfra-all-on-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
+};
+
+&gce_m {
+	mediatek,mminfra-supply = <&mminfra_util>;
+	mminfra-all-on-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
+};
+
+&gce_m_sec {
+	mminfra-all-on-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
+};
 
 &connfem {
 	sku {
