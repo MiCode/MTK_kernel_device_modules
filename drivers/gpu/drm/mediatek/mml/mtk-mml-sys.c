@@ -1006,10 +1006,12 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 static s32 sys_done(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg)
 {
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, 0, GENMASK(21, 12));
+
 	if (task->config->dpc && (mml_dl_dpc & MML_DPC_PKT_VOTE)) {
 #ifndef MML_FPGA
-		struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-
 		mml_dpc_power_release_gce(comp->sysid, pkt);
 #endif
 	}
