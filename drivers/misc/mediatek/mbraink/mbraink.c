@@ -1595,6 +1595,7 @@ static int mbraink_post_suspend(void)
 	char netlink_buf[MAX_BUF_SZ] = {'\0'};
 	long long last_resume_ktime = 0;
 	struct mbraink_battery_data resume_battery_buffer;
+	int n = 0;
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 	struct lpm_logger_mbrain_dbg_ops *logger_mbrain_ops = NULL;
@@ -1627,33 +1628,36 @@ static int mbraink_post_suspend(void)
 	wakeup_event = 0;
 #endif
 
-	snprintf(netlink_buf, MAX_BUF_SZ,
-			"%s %lld:%lld:%lld:%lld:%lld %d:%d:%d:%d:%d:%d:%d:%d %d:%d:%d:%d:%d:%d:%d:%d",
-			NETLINK_EVENT_SYSRESUME,
-			mbraink_priv.last_suspend_timestamp,
-			mbraink_priv.last_resume_timestamp,
-			mbraink_priv.last_suspend_ktime,
-			last_resume_ktime,
-			wakeup_event,
-			mbraink_priv.suspend_battery_buffer.quse,
-			mbraink_priv.suspend_battery_buffer.qmaxt,
-			mbraink_priv.suspend_battery_buffer.precise_soc,
-			mbraink_priv.suspend_battery_buffer.precise_uisoc,
-			mbraink_priv.suspend_battery_buffer.quse2,
-			mbraink_priv.suspend_battery_buffer.qmaxt2,
-			mbraink_priv.suspend_battery_buffer.precise_soc2,
-			mbraink_priv.suspend_battery_buffer.precise_uisoc2,
-			resume_battery_buffer.quse,
-			resume_battery_buffer.qmaxt,
-			resume_battery_buffer.precise_soc,
-			resume_battery_buffer.precise_uisoc,
-			resume_battery_buffer.quse2,
-			resume_battery_buffer.qmaxt2,
-			resume_battery_buffer.precise_soc2,
-			resume_battery_buffer.precise_uisoc2
+	n = snprintf(netlink_buf, MAX_BUF_SZ,
+		"%s %lld:%lld:%lld:%lld:%lld %d:%d:%d:%d:%d:%d:%d:%d %d:%d:%d:%d:%d:%d:%d:%d",
+		NETLINK_EVENT_SYSRESUME,
+		mbraink_priv.last_suspend_timestamp,
+		mbraink_priv.last_resume_timestamp,
+		mbraink_priv.last_suspend_ktime,
+		last_resume_ktime,
+		wakeup_event,
+		mbraink_priv.suspend_battery_buffer.quse,
+		mbraink_priv.suspend_battery_buffer.qmaxt,
+		mbraink_priv.suspend_battery_buffer.precise_soc,
+		mbraink_priv.suspend_battery_buffer.precise_uisoc,
+		mbraink_priv.suspend_battery_buffer.quse2,
+		mbraink_priv.suspend_battery_buffer.qmaxt2,
+		mbraink_priv.suspend_battery_buffer.precise_soc2,
+		mbraink_priv.suspend_battery_buffer.precise_uisoc2,
+		resume_battery_buffer.quse,
+		resume_battery_buffer.qmaxt,
+		resume_battery_buffer.precise_soc,
+		resume_battery_buffer.precise_uisoc,
+		resume_battery_buffer.quse2,
+		resume_battery_buffer.qmaxt2,
+		resume_battery_buffer.precise_soc2,
+		resume_battery_buffer.precise_uisoc2
 	);
 
-	mbraink_netlink_send_msg(netlink_buf);
+	if (n < 0 || n > MAX_BUF_SZ)
+		pr_info("%s : snprintf error n = %d\n", __func__, n);
+	else
+		mbraink_netlink_send_msg(netlink_buf);
 
 	last_resume_timestamp = mbraink_priv.last_resume_timestamp;
 	mbraink_priv.last_resume_timestamp = 0;
@@ -1670,34 +1674,38 @@ static void mbraink_post_suspend_get_spm(void)
 	int ret;
 	char netlink_buf[MAX_BUF_SZ] = {'\0'};
 	long long spm_l1_info[SPM_L1_DATA_NUM];
+	int n = 0;
 
 	memset(spm_l1_info, 0, sizeof(spm_l1_info));
 	ret = mbraink_power_get_spm_l1_info(spm_l1_info, SPM_L1_DATA_NUM);
 	if (ret)
 		return;
 
-	snprintf(netlink_buf, MAX_BUF_SZ,
-			"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
-			NETLINK_EVENT_SYSNOTIFIER_PS,
-			last_resume_timestamp,
-			spm_l1_info[0],
-			spm_l1_info[1],
-			spm_l1_info[2],
-			spm_l1_info[3],
-			spm_l1_info[4],
-			spm_l1_info[5],
-			spm_l1_info[6],
-			spm_l1_info[7],
-			spm_l1_info[8],
-			spm_l1_info[9],
-			spm_l1_info[10],
-			spm_l1_info[11],
-			spm_l1_info[12],
-			spm_l1_info[13]
+	n = snprintf(netlink_buf, MAX_BUF_SZ,
+		"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
+		NETLINK_EVENT_SYSNOTIFIER_PS,
+		last_resume_timestamp,
+		spm_l1_info[0],
+		spm_l1_info[1],
+		spm_l1_info[2],
+		spm_l1_info[3],
+		spm_l1_info[4],
+		spm_l1_info[5],
+		spm_l1_info[6],
+		spm_l1_info[7],
+		spm_l1_info[8],
+		spm_l1_info[9],
+		spm_l1_info[10],
+		spm_l1_info[11],
+		spm_l1_info[12],
+		spm_l1_info[13]
 	);
 
 	last_resume_timestamp = 0;
-	mbraink_netlink_send_msg(netlink_buf);
+	if (n < 0 || n > MAX_BUF_SZ)
+		pr_info("%s : snprintf error n = %d\n", __func__, n);
+	else
+		mbraink_netlink_send_msg(netlink_buf);
 }
 
 static int mbraink_sys_res_pm_event(struct notifier_block *notifier,
