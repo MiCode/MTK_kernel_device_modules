@@ -206,8 +206,10 @@ int mrdump_common_die(int reboot_reason, const char *msg,
 	} else if (atomic_read(&first_cpu) != cpu_tmp) {
 		pr_info("mrdump: first crash cpu %d, second crash cpu %d\n",
 			atomic_read(&first_cpu), cpu_tmp);
-		while (1)
-			cpu_relax();
+		if(reboot_reason != AEE_REBOOT_MODE_WDT) {
+			while (1)
+				cpu_relax();
+		}
 	}
 
 	last_step = aee_rr_curr_fiq_step();
