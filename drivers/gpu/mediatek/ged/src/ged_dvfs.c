@@ -3975,11 +3975,24 @@ void ged_dvfs_reset_opp_cost(int oppsize)
 	}
 }
 
+static unsigned long long transfer_soc_timer_to_ktime(unsigned long long soc_ts)
+{
+	unsigned long long cur_soc_ts = 0, soc_diff_us = 0, cur_ktime_us = 0;
+	struct timespec64 tv = {0};
+
+	ktime_get_real_ts64(&tv);
+	cur_ktime_us = tv.tv_sec * 1000000 + div_u64(tv.tv_nsec, 1000);
+	cur_soc_ts = mtk_gpueb_read_soc_timer();
+	soc_diff_us = cur_soc_ts > soc_ts ? (cur_soc_ts - soc_ts) / soc_timer_unit : 0;
+	return (cur_ktime_us - soc_diff_us) / 1000;  // us to ms
+}
+
 int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
 		int i32NumOpp, bool bStript, u64 *last_ts)
 {
 	unsigned int real_opp_num = gpufreq_get_opp_num(TARGET_DEFAULT);
 	int report_idx = 0;
+	unsigned long long last_soc_ts = 0;
 
 	if (ged_kpi_enabled() && g_aOppStat != NULL && psReport &&
 		i32NumOpp > 0 && i32NumOpp <= g_real_oppfreq_num &&
@@ -3993,8 +4006,9 @@ int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
 					report_idx = i;
 				psReport[report_idx] = mtk_gpueb_mbrain_read(i);
 			}
-			*last_ts = (unsigned long long)mtk_gpueb_sysram_read(SYSRAM_GPU_OPP_COST_TS1) +
+			last_soc_ts = (unsigned long long)mtk_gpueb_sysram_read(SYSRAM_GPU_OPP_COST_TS1) +
 					((unsigned long long)mtk_gpueb_sysram_read(SYSRAM_GPU_OPP_COST_TS2) << 32);
+			*last_ts = transfer_soc_timer_to_ktime(last_soc_ts);
 		} else {
 			*last_ts = g_last_opp_cost_update_ts_ms;
 			memcpy(psReport, g_aOppStat,
