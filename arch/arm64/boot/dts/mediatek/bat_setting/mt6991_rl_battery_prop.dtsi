@@ -74,6 +74,7 @@
 	record-log = <(5813)>;
 	enable-r-learning = <(1)>;
 	rl-enable-aging = <(0)>;
+	aging-factor-min = <(60)>;
 #include "mt6991_rl_battery_table.dtsi"
 #include "mt6991_rl_battery_prop_dim2_ext.dtsi"
 };
