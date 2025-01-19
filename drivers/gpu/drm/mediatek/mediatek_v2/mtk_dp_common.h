@@ -341,6 +341,8 @@ struct mtk_dp {
 	u32 vsv_reg;
 	u32 vsv_mask;
 	u32 vsv_vers;
+	unsigned long long starttime;
+	bool trigger_db_flag;
 };
 
 #endif /*__DRTX_TYPE_H__*/

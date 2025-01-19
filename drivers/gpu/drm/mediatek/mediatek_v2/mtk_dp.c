@@ -380,6 +380,11 @@ bool mdrv_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 	DPTXERR("Aux Write Fail: cmd = %d, addr = 0x%x, len = %lu\n",
 		ubCmd, usDPCDADDR, ubLength);
 
+	if (abs(sched_clock() - mtk_dp->starttime) > DPTX_TIMEOUT_THRESHOLD && mtk_dp->trigger_db_flag == false) {
+		DDPAEE("Aux write fail\n");
+		dptx_dump_reg();
+		mtk_dp->trigger_db_flag = TRUE;
+	}
 	return false;
 }
 
@@ -453,6 +458,11 @@ bool mdrv_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 	DPTXERR("Aux Read Fail: cmd = %d, addr = 0x%x, len = %lu\n",
 		ubCmd, usDPCDADDR, ubLength);
 
+	if (abs(sched_clock() - mtk_dp->starttime) > DPTX_TIMEOUT_THRESHOLD && mtk_dp->trigger_db_flag == false) {
+		DDPAEE("Aux read fail\n");
+		dptx_dump_reg();
+		mtk_dp->trigger_db_flag = TRUE;
+	}
 	return false;
 }
 
@@ -563,7 +573,7 @@ void mdrv_DPTx_InitVariable(struct mtk_dp *mtk_dp)
 	mtk_dp->has_fec   = false;
 	mtk_dp->dsc_enable = false;
 	mtk_dp->fake_comeplete_irq = false;
-
+	mtk_dp->trigger_db_flag = false;
 	// for customer requirement(set max link rate)
 	//mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_HBR;
 
@@ -2471,8 +2481,12 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 			mhal_DPTx_EnableFEC(mtk_dp, mtk_dp->has_fec);
 		} else if (ret == DPTX_RETRANING) {
 			ret = DPTX_NOERR;
-		} else
+		} else {
 			DPTXERR("Handle Training Fail 6 times\n");
+			DDPAEE("Link training fail\n");
+			dptx_dump_reg();
+			mtk_dp->trigger_db_flag = TRUE;
+		}
 		break;
 	case DPTX_NTSTATE_CHECKTIMING:
 		mtk_dp->training_state = DPTX_NTSTATE_NORMAL;
@@ -3026,11 +3040,17 @@ static void mdrv_DPTx_main_handle(struct work_struct *data)
 {
 	struct mtk_dp *mtk_dp = container_of(data, struct mtk_dp, dptx_work);
 	unsigned long long starttime = sched_clock();
+	mtk_dp->starttime = starttime;
 
 	do {
-		if (abs(sched_clock() - starttime) > 10000000000ULL) {
+		if (abs(sched_clock() - starttime) > DPTX_TIMEOUT_THRESHOLD && mtk_dp->trigger_db_flag == false) {
 			DPTXERR("Handle time over 10s\n");
-			break;
+			if (mtk_dp->training_state != DPTX_NTSTATE_NORMAL) {
+				DDPAEE("connection fail\n");
+				dptx_dump_reg();
+				mtk_dp->trigger_db_flag = TRUE;
+				break;
+			}
 		}
 
 		if (mdrv_DPTx_HPD_HandleInThread(mtk_dp) != DPTX_NOERR)
