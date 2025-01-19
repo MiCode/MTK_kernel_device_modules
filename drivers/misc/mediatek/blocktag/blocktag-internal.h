@@ -321,6 +321,7 @@ void mtk_btag_mictx_init(struct mtk_blocktag *btag);
 void mtk_btag_earaio_init(struct proc_dir_entry *root);
 void mtk_btag_earaio_register(struct mtk_blocktag *btag);
 void mtk_btag_earaio_clear_data(void);
+void mtk_btag_earaio_check_window(void);
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size);
 
 /* seq file operations */

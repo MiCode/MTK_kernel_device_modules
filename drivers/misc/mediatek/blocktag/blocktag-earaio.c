@@ -192,7 +192,7 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 }
 
 #define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> PAGE_SHIFT)
-static void mtk_btag_earaio_try_boost(bool boost)
+static void earaio_try_boost(bool boost)
 {
 	unsigned long flags;
 	int changed = 0; // 0: not try, 1: try and success, 2: try but fail
@@ -276,10 +276,10 @@ static void mtk_btag_eara_start_collect(void)
 static void mtk_btag_eara_stop_collect(void)
 {
 	/*
-	 * Set earaio_ctrl.start_collect as false in mtk_btag_earaio_try_boost()
+	 * Set earaio_ctrl.start_collect as false in earaio_try_boost()
 	 * to avoid get earaio_ctrl.lock twice
 	 */
-	mtk_btag_earaio_try_boost(false);
+	earaio_try_boost(false);
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 }
@@ -450,7 +450,7 @@ static ssize_t earaio_control_write(struct file *file, const char __user *ubuf,
 	cmd[count - 1] = 0;
 
 	if (!strcmp(cmd, "0")) {
-		mtk_btag_earaio_try_boost(false);
+		earaio_try_boost(false);
 		earaio_ctrl.enabled = false;
 		pr_info("EARA-IO QoS Disable\n");
 	} else if (!strcmp(cmd, "1")) {
@@ -517,14 +517,17 @@ static const struct proc_ops earaio_control_fops = {
 	.proc_write		= earaio_control_write,
 };
 
+void mtk_btag_earaio_check_window(void)
+{
+	if ((sched_clock() - earaio_ctrl.pwd_begin) >= PWD_WIDTH_NS)
+		earaio_try_boost(true);
+}
+
 void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
 {
 	int early_notification = 0;
 	unsigned long flags;
 	__u32 *top = earaio_ctrl.pwd_top_pages;
-
-	if (type == BTAG_IO_FUSE)
-		goto try_boost;
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 
@@ -562,11 +565,8 @@ void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 size)
 
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 
-try_boost:
-	if (!early_notification) {
-		if ((sched_clock() - earaio_ctrl.pwd_begin) >= PWD_WIDTH_NS)
-			mtk_btag_earaio_try_boost(true);
-	}
+	if (!early_notification)
+		mtk_btag_earaio_check_window();
 }
 
 void mtk_btag_earaio_register(struct mtk_blocktag *btag)

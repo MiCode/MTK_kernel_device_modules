@@ -260,7 +260,7 @@ static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 
 		spin_unlock_irqrestore(&stat_lock, flags);
 
-		mtk_btag_earaio_update_pwd(BTAG_IO_FUSE, 0);
+		mtk_btag_earaio_check_window();
 	}
 
 	if (!opname(opcode))
