@@ -65,6 +65,20 @@ ifeq ($(BUILD_UT), 6991)
 endif
 endif
 
+ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6993/mt6993.c),)
+    $(MODULE_NAME)-objs += common/platform/6993/mt6993.o
+    $(MODULE_NAME)-objs += common/platform/6993/mt6993_debug.o
+ifeq ($(BUILD_UT), 6993)
+    include $(PATH_TO_UARTHUB_DRV)/common/platform/6993/test/build.mk
+    UARTHUB_TEST = $(uarthub_drv_test_objs:%.o=common/platform/6993/test/%.o)
+    UARTHUB_UT_TC = $(uarthub_drv_ut_tc_objs:%.o=common/platform/6993/test/ut/%.o)
+    UARTHUB_IT_TC = $(uarthub_drv_it_tc_objs:%.o=common/platform/6993/test/it/%.o)
+    $(MODULE_NAME)-objs += $(UARTHUB_TEST)
+    $(MODULE_NAME)-objs += $(UARTHUB_UT_TC)
+    $(MODULE_NAME)-objs += $(UARTHUB_IT_TC)
+endif
+endif
+
 # Otherwise we were called directly from the command line;
 # invoke the kernel build system.
 else

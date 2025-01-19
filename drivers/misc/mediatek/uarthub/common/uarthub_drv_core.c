@@ -81,6 +81,7 @@ struct uarthub_ops_struct __weak undef_plat_data = {};
 struct uarthub_ops_struct __weak mt6985_plat_data = {};
 struct uarthub_ops_struct __weak mt6989_plat_data = {};
 struct uarthub_ops_struct __weak mt6991_plat_data = {};
+struct uarthub_ops_struct __weak mt6993_plat_data = {};
 
 const struct of_device_id apuarthub_of_ids[] = {
 	{ .compatible = "mediatek,mt6835-uarthub", .data = &undef_plat_data },
@@ -90,6 +91,7 @@ const struct of_device_id apuarthub_of_ids[] = {
 	{ .compatible = "mediatek,mt6985-uarthub", .data = &mt6985_plat_data },
 	{ .compatible = "mediatek,mt6989-uarthub", .data = &mt6989_plat_data },
 	{ .compatible = "mediatek,mt6991-uarthub", .data = &mt6991_plat_data },
+	{ .compatible = "mediatek,mt6993-uarthub", .data = &mt6993_plat_data },
 	{}
 };
 #endif
