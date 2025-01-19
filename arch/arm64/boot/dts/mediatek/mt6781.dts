@@ -2446,6 +2446,7 @@
 			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 			mediatek,larb = <&smi_larb13>;
 			mediatek,platform = "mt6781";
+			#clock-cells = <1>;
 
 			power-domains = <&scpsys MT6781_POWER_DOMAIN_CAM>;
 
@@ -2468,9 +2469,9 @@
 				<&topckgen TOP_MUX_CAMTM>;
 			clock-names = "CAMSYS_CAM_CGPDN",
 				"CAMSYS_CAMTG_CGPDN",
-				"CAMSYS_CAMSV0_CGPDN",
 				"CAMSYS_CAMSV1_CGPDN",
 				"CAMSYS_CAMSV2_CGPDN",
+				"CAMSYS_CAMSV3_CGPDN",
 				"CAMSYS_LARB13_CGPDN",
 				"CAMSYS_LARB14_CGPDN",
 				"CAMSYS_SENINF_CGPDN",
@@ -2521,6 +2522,7 @@
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsys_rawa_legacy";
 			reg = <0 0x1a04f000 0 0x1000>;
+			#clock-cells = <1>;
 		};
 
 		cam2_legacy: cam2_legacy@1a050000 {
@@ -2560,6 +2562,7 @@
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsys_rawb_legacy";
 			reg = <0 0x1a06f000 0 0x1000>;
+			#clock-cells = <1>;
 		};
 
 		/* Dummy */
@@ -2581,6 +2584,7 @@
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsys_rawc_legacy";
 			reg = <0 0x1a08f000 0 0x1000>;
+			#clock-cells = <1>;
 		};
 
 		camsv2_legacy: camsv2_legacy@1a092000 {
