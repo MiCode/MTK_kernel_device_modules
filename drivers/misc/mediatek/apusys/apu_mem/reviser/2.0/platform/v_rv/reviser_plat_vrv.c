@@ -14,7 +14,7 @@
 #include "reviser_hw_mgt.h"
 #include "reviser_hw_cmn.h"
 
-int reviser_vrv_init(struct platform_device *pdev)
+int reviser_vrv_init(struct platform_device *pdev, void *rplat)
 {
 	struct reviser_dev_info *rdv = platform_get_drvdata(pdev);
 	struct reviser_hw_ops *hw_cb;

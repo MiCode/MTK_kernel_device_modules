@@ -60,7 +60,6 @@ struct reviser_platform {
 	uint32_t ctx_max;
 
 	uint32_t slb_wait_time;
-
 };
 struct reviser_lock {
 	struct mutex mutex_tcm;

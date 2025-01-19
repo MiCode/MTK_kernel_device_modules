@@ -31,52 +31,20 @@
 #define VP6_CORE0_BASE_0         (0x0100)
 #define VP6_CORE0_BASE_1         (0x0108)
 
-#define VLM_REMAP_TABLE_BASE     (0x0300)
-#define VLM_DEFAULT_MVA          (VLM_REMAP_TABLE_BASE + 0x00)
-#define VLM_REMAP_TABLE_0        (VLM_REMAP_TABLE_BASE + 0x04)
-#define VLM_REMAP_TABLE_1        (VLM_REMAP_TABLE_BASE + 0x08)
-#define VLM_REMAP_TABLE_2        (VLM_REMAP_TABLE_BASE + 0x0C)
-#define VLM_REMAP_TABLE_3        (VLM_REMAP_TABLE_BASE + 0x10)
-#define VLM_REMAP_TABLE_4        (VLM_REMAP_TABLE_BASE + 0x14)
-#define VLM_REMAP_TABLE_5        (VLM_REMAP_TABLE_BASE + 0x18)
-#define VLM_REMAP_TABLE_6        (VLM_REMAP_TABLE_BASE + 0x1C)
-#define VLM_REMAP_TABLE_7        (VLM_REMAP_TABLE_BASE + 0x20)
-#define VLM_REMAP_TABLE_8        (VLM_REMAP_TABLE_BASE + 0x24)
-#define VLM_REMAP_TABLE_9        (VLM_REMAP_TABLE_BASE + 0x28)
-#define VLM_REMAP_TABLE_A        (VLM_REMAP_TABLE_BASE + 0x2C)
-#define VLM_REMAP_TABLE_B        (VLM_REMAP_TABLE_BASE + 0x30)
-#define VLM_REMAP_TABLE_C        (VLM_REMAP_TABLE_BASE + 0x34)
-#define VLM_REMAP_TABLE_D        (VLM_REMAP_TABLE_BASE + 0x38)
-#define VLM_REMAP_TABLE_E        (VLM_REMAP_TABLE_BASE + 0x3C)
-#define VLM_REMAP_TABLE_F        (VLM_REMAP_TABLE_BASE + 0x40)
-#define VLM_REMAP_TABLE_10       (VLM_REMAP_TABLE_BASE + 0x44)
-#define VLM_REMAP_TABLE_11       (VLM_REMAP_TABLE_BASE + 0x48)
-#define VLM_REMAP_TABLE_12       (VLM_REMAP_TABLE_BASE + 0x4C)
-#define VLM_REMAP_TABLE_13       (VLM_REMAP_TABLE_BASE + 0x50)
-#define VLM_REMAP_TABLE_14       (VLM_REMAP_TABLE_BASE + 0x54)
-#define VLM_REMAP_TABLE_15       (VLM_REMAP_TABLE_BASE + 0x58)
-#define VLM_REMAP_TABLE_16       (VLM_REMAP_TABLE_BASE + 0x5C)
-#define VLM_REMAP_TABLE_17       (VLM_REMAP_TABLE_BASE + 0x60)
-#define VLM_REMAP_TABLE_18       (VLM_REMAP_TABLE_BASE + 0x64)
-#define VLM_REMAP_TABLE_19       (VLM_REMAP_TABLE_BASE + 0x68)
-#define VLM_REMAP_TABLE_1A       (VLM_REMAP_TABLE_BASE + 0x6C)
-#define VLM_REMAP_TABLE_1B       (VLM_REMAP_TABLE_BASE + 0x70)
+#define VLM_DEFAULT_MVA(VLM_remap_table_base) (VLM_remap_table_base + 0x00)
 
+#define VLM_CTXT_MDLA_MAX         (1)
+#define VLM_CTXT_MDLA_0(ctx_base) (ctx_base + 0x08)
+#define VLM_CTXT_MDLA_1(ctx_base) (ctx_base + 0x0C)
 
-#define VLM_CTXT_BASE            (0x0100)
+#define VLM_CTXT_VPU_MAX          (2)
+#define VLM_CTXT_VPU_0(ctx_base)  (ctx_base + 0x14)
+#define VLM_CTXT_VPU_1(ctx_base)  (ctx_base + 0x1C)
+#define VLM_CTXT_VPU_2(ctx_base)  (ctx_base + 0x24)
 
-#define VLM_CTXT_MDLA_MAX        (1)
-#define VLM_CTXT_MDLA_0          (VLM_CTXT_BASE + 0x08)
-#define VLM_CTXT_MDLA_1          (VLM_CTXT_BASE + 0x0C)
-
-#define VLM_CTXT_VPU_MAX         (2)
-#define VLM_CTXT_VPU_0           (VLM_CTXT_BASE + 0x14)
-#define VLM_CTXT_VPU_1           (VLM_CTXT_BASE + 0x1C)
-#define VLM_CTXT_VPU_2           (VLM_CTXT_BASE + 0x24)
-
-#define VLM_CTXT_EDMA_MAX        (1)
-#define VLM_CTXT_EDMA_0          (VLM_CTXT_BASE + 0x40) //Ch5
-#define VLM_CTXT_EDMA_1          (VLM_CTXT_BASE + 0x60) //Ch5
+#define VLM_CTXT_EDMA_MAX         (1)
+#define VLM_CTXT_EDMA_0(ctx_base) (ctx_base + 0x40) //Ch5
+#define VLM_CTXT_EDMA_1(ctx_base) (ctx_base + 0x60) //Ch5
 
 #define VLM_CTXT_UP_MAX          (0)
 
@@ -93,10 +61,6 @@
 #define VLM_REMAP_VALID_OFFSET   (31)
 #define VLM_REMAP_CTX_ID         (0x03E00000)
 #define VLM_REMAP_CTX_ID_OFFSET  (21)
-#define VLM_REMAP_CTX_SRC        (0x001E0000)
-#define VLM_REMAP_CTX_SRC_OFFSET (17)
-#define VLM_REMAP_CTX_DST        (0x0001F000)
-#define VLM_REMAP_CTX_DST_OFFSET (12)
 
 #define VLM_CTXT_BDY_SELECT      (0x00000003)
 #define VLM_CTXT_BDY_SELECT_MAX  (3)
@@ -109,9 +73,8 @@
 							VLM_CTXT_EDMA_MAX + \
 							VLM_CTXT_UP_MAX)
 
-#define VLM_REMAP_TABLE_SRC_MAX  (0xF)
-#define VLM_REMAP_TABLE_DST_MAX  (0x14)
-#define VLM_REMAP_TABLE_MAX      (0xD)
+#define VLM_REMAP_TABLE_MAX  (0xD)
+
 
 uint32_t  reviser_get_remap_offset(uint32_t index);
 uint32_t  reviser_get_contex_offset_MDLA(uint32_t index);
@@ -119,5 +82,8 @@ uint32_t  reviser_get_contex_offset_VPU(uint32_t index);
 uint32_t  reviser_get_contex_offset_EDMA(uint32_t index);
 uint32_t  reviser_get_default_offset(void);
 uint32_t  reviser_get_int_offset(void);
+void reviser_reg_init_v10(uint32_t vlm_remap_table_base, uint32_t remap_table_dst_max,
+	uint32_t MDLA_ctxt_0, uint32_t MDLA_ctxt_1, uint32_t VPU_ctxt_0, uint32_t VPU_ctxt_1,
+	uint32_t VPU_ctxt_2, uint32_t EDMA_ctxt_0, uint32_t EDMA_ctxt_1);
 
 #endif

@@ -34,4 +34,8 @@ int reviser_enable_interrupt(void *drvinfo, uint8_t enable);
 
 int reviser_check_int_valid(void *drvinfo);
 int reviser_init_ip(void);
+void reviser_hw_init_v10(uint32_t vlm_remap_table_base, uint32_t vlm_remap_ctx_src,
+	uint32_t vlm_remap_ctx_src_ofst,uint32_t vlm_remap_ctx_dst,
+	uint32_t vlm_remap_ctx_dst_ofst, uint32_t remap_table_src_max,
+	uint32_t remap_table_dst_max);
 #endif

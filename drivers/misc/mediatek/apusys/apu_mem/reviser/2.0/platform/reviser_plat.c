@@ -51,7 +51,7 @@ int reviser_plat_init(struct platform_device *pdev)
 	rdv->plat.device[REVISER_DEVICE_EDMA] = rplat->edma_max;
 	rdv->plat.device[REVISER_DEVICE_SECURE_MD32] = rplat->up_max;
 
-	return rplat->init(pdev);
+	return rplat->init(pdev, rplat);
 }
 int reviser_plat_uninit(struct platform_device *pdev)
 {

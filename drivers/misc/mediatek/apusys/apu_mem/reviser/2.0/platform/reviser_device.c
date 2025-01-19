@@ -19,6 +19,24 @@ static struct reviser_plat mt6893_drv = {
 	.edma_max				= 2,
 	.up_max					= 1,
 	.slb_wait_time				= 0,
+
+	.vlm_remap_table_base   = 0x200,
+	.vlm_CTX_base           = 0x300,
+	.vlm_remap_ctx_src      = 0x001C0000,
+	.vlm_remap_ctx_src_ofst = 18,
+	.vlm_remap_ctx_dst      = 0x0003C000,
+	.vlm_remap_ctx_dst_ofst = 14,
+	.vlm_remap_tlb_src_max  = 0x7,
+	.vlm_remap_tlb_dst_max  = 0xC,
+
+	.mva_base = 0x4000000,
+	.MDLA_ctxt_0 = 0x308,
+	.MDLA_ctxt_1 = 0x30C,
+	.VPU_ctxt_0  = 0x310,
+	.VPU_ctxt_1  = 0x314,
+	.VPU_ctxt_2  = 0x318,
+	.EDMA_ctxt_0 = 0x31C,
+	.EDMA_ctxt_1 = 0x320,
 };
 
 static struct reviser_plat mt6885_drv = {
@@ -31,6 +49,24 @@ static struct reviser_plat mt6885_drv = {
 	.edma_max				= 2,
 	.up_max					= 1,
 	.slb_wait_time				= 0,
+
+	.vlm_remap_table_base   = 0x200,
+	.vlm_CTX_base           = 0x300,
+	.vlm_remap_ctx_src      = 0x001C0000,
+	.vlm_remap_ctx_src_ofst = 18,
+	.vlm_remap_ctx_dst      = 0x0003C000,
+	.vlm_remap_ctx_dst_ofst = 14,
+	.vlm_remap_tlb_src_max  = 0x7,
+	.vlm_remap_tlb_dst_max  = 0xC,
+
+	.mva_base = 0x4000000,
+	.MDLA_ctxt_0 = 0x308,
+	.MDLA_ctxt_1 = 0x30C,
+	.VPU_ctxt_0  = 0x310,
+	.VPU_ctxt_1  = 0x314,
+	.VPU_ctxt_2  = 0x318,
+	.EDMA_ctxt_0 = 0x31C,
+	.EDMA_ctxt_1 = 0x320,
 };
 
 static struct reviser_plat mt6873_drv = {
@@ -43,6 +79,24 @@ static struct reviser_plat mt6873_drv = {
 	.edma_max				= 1,
 	.up_max					= 1,
 	.slb_wait_time				= 0,
+
+	.vlm_remap_table_base   = 0x200,
+	.vlm_CTX_base           = 0x300,
+	.vlm_remap_ctx_src      = 0x001C0000,
+	.vlm_remap_ctx_src_ofst = 18,
+	.vlm_remap_ctx_dst      = 0x0003C000,
+	.vlm_remap_ctx_dst_ofst = 14,
+	.vlm_remap_tlb_src_max  = 0x7,
+	.vlm_remap_tlb_dst_max  = 0xC,
+
+	.mva_base = 0x4000000,
+	.MDLA_ctxt_0 = 0x308,
+	.MDLA_ctxt_1 = 0x30C,
+	.VPU_ctxt_0  = 0x310,
+	.VPU_ctxt_1  = 0x314,
+	.VPU_ctxt_2  = 0x318,
+	.EDMA_ctxt_0 = 0x31C,
+	.EDMA_ctxt_1 = 0x320,
 };
 
 static struct reviser_plat mt6853_drv = {
@@ -55,6 +109,24 @@ static struct reviser_plat mt6853_drv = {
 	.edma_max				= 0,
 	.up_max					= 1,
 	.slb_wait_time				= 0,
+
+	.vlm_remap_table_base   = 0x200,
+	.vlm_CTX_base           = 0x300,
+	.vlm_remap_ctx_src      = 0x001C0000,
+	.vlm_remap_ctx_src_ofst = 18,
+	.vlm_remap_ctx_dst      = 0x0003C000,
+	.vlm_remap_ctx_dst_ofst = 14,
+	.vlm_remap_tlb_src_max  = 0x7,
+	.vlm_remap_tlb_dst_max  = 0xC,
+
+	.mva_base = 0x4000000,
+	.MDLA_ctxt_0 = 0x308,
+	.MDLA_ctxt_1 = 0x30C,
+	.VPU_ctxt_0  = 0x310,
+	.VPU_ctxt_1  = 0x314,
+	.VPU_ctxt_2  = 0x318,
+	.EDMA_ctxt_0 = 0x31C,
+	.EDMA_ctxt_1 = 0x320,
 };
 
 static struct reviser_plat mt6877_drv = {
@@ -67,6 +139,24 @@ static struct reviser_plat mt6877_drv = {
 	.edma_max				= 1,
 	.up_max					= 1,
 	.slb_wait_time				= 0,
+
+	.vlm_remap_table_base   = 0x300,
+	.vlm_CTX_base           = 0x100,
+	.vlm_remap_ctx_src      = 0x001E0000,
+	.vlm_remap_ctx_src_ofst = 17,
+	.vlm_remap_ctx_dst      = 0x0001F000,
+	.vlm_remap_ctx_dst_ofst = 12,
+	.vlm_remap_tlb_src_max  = 0xF,
+	.vlm_remap_tlb_dst_max  = 0x14,
+
+	.mva_base = 0x8000000,
+	.MDLA_ctxt_0 = 0x108,
+	.MDLA_ctxt_1 = 0x10C,
+	.VPU_ctxt_0  = 0x114,
+	.VPU_ctxt_1  = 0x11C,
+	.VPU_ctxt_2  = 0x124,
+	.EDMA_ctxt_0 = 0x140,
+	.EDMA_ctxt_1 = 0x160,
 };
 
 static struct reviser_plat mt6886_drv = {
