@@ -40,20 +40,23 @@
  * that the output was truncated, thus be careful of "more"
  * case.
  */
-#define BTAG_PRINTF(buff, size, evt, fmt, args...) \
+#define BTAG_PRINTF(buff, size, seq, fmt, args...) \
 do { \
-	if ((buff) && (size) && *(size)) { \
-		unsigned long var = snprintf(*(buff), *(size), fmt, ##args); \
+	char **__buff = buff; \
+	unsigned long *__size = size; \
+	struct seq_file *__seq = seq; \
+	if ((__buff) && (__size) && *(__size)) { \
+		unsigned long var = snprintf(*(__buff), *(__size), fmt, ##args); \
 		if (var > 0) { \
-			if (var > *(size)) \
-				var = *(size); \
-			*(size) -= var; \
-			*(buff) += var; \
+			if (var > *(__size)) \
+				var = *(__size); \
+			*(__size) -= var; \
+			*(__buff) += var; \
 		} \
 	} \
-	if (evt) \
-		seq_printf(evt, fmt, ##args); \
-	if (!(buff) && !(evt)) { \
+	if (__seq) \
+		seq_printf(__seq, fmt, ##args); \
+	if (!(__buff) && !(__seq)) { \
 		pr_info(fmt, ##args); \
 	} \
 } while (0)
