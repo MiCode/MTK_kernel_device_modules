@@ -55,11 +55,11 @@ static void smap_init(struct mtk_smap *smap)
 	smap_write(smap, 0x064, 0x67);
 	smap_write(smap, 0x5A0, 0x67);
 	if ((smap->mode == MODE_TEST1) || (smap->mode == MODE_TEST2))
-		smap_write(smap, 0x08C, 0x28);
+		smap_write(smap, 0x08C, 0x5028);
 	else
-		smap_write(smap, 0x08C, 0x72);
+		smap_write(smap, 0x08C, 0xE472);
 
-	smap_write(smap, 0x638, 0xC8);
+	smap_write(smap, 0x638, 0x190C8);
 	smap_write(smap, 0x448, 0xFFFF);
 	smap_write(smap, 0x44C, 0xFFFF);
 	smap_write(smap, 0x5A4, 0xFFFF);
@@ -73,11 +73,11 @@ static void smap_init(struct mtk_smap *smap)
 	smap_write(smap, 0x600, 0x1FFFF);
 	smap_write(smap, 0x604, 0x1FFFF);
 	if ((smap->mode == MODE_TEST1) || (smap->mode == MODE_TEST2)){
-		smap_write(smap, 0x464, 0x6);
-		smap_write(smap, 0x5B4, 0x6);
+		smap_write(smap, 0x464, 0xB6E);
+		smap_write(smap, 0x5B4, 0xB6E);
 	} else {
-		smap_write(smap, 0x464, 0x2);
-		smap_write(smap, 0x5B4, 0x2);
+		smap_write(smap, 0x464, 0xB6A);
+		smap_write(smap, 0x5B4, 0xB6E);
 	}
 	smap_write(smap, 0x5C4, 0x3);
 	smap_write(smap, 0x5C8, 0x3);
@@ -86,16 +86,16 @@ static void smap_init(struct mtk_smap *smap)
 	smap_write(smap, 0x5D4, 0x3);
 	smap_write(smap, 0x5D8, 0x3);
 	smap_write(smap, 0x5E8, 0x3);
-	smap_write(smap, 0x5EC, 0x3);
+	smap_write(smap, 0x5EC, 0x2);
 	smap_write(smap, 0x5F0, 0x3);
 	smap_write(smap, 0x5F4, 0x3);
-	smap_write(smap, 0x5F8, 0x0);
+	smap_write(smap, 0x5F8, 0x2);
 	smap_write(smap, 0x5FC, 0x3);
 	smap_write(smap, 0x468, 0xFADFFE33);
 	smap_write(smap, 0x64C, 0x33333333);
 	smap_write(smap, 0x650, 0x3);
-	smap_write(smap, 0x658, 0x55555555);
-	smap_write(smap, 0x65C, 0x5);
+	smap_write(smap, 0x658, 0x33333333);
+	smap_write(smap, 0x65C, 0x3);
 	smap_write(smap, 0x504, 0x88);
 	smap_write(smap, 0x508, 0x88);
 	smap_write(smap, 0x50C, 0x88);
