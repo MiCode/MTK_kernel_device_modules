@@ -3230,8 +3230,8 @@
 		compatible = "mediatek,mmdvfs-debug";
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		disp-dev = <&dispsys_config>;
-		force-step0 = <1>;
-		release-step0 = <1>;
+		force-step0 = <1>;	/* 0:opp0,  1:opp1, ... */
+		release-step0 = <1>;	/* 0:disable,  1:enable */
 	};
 
 	mmdvfs {
@@ -3386,8 +3386,8 @@
 		compatible = "mediatek,mt6833-mmqos";
 		#mtk-interconnect-cells = <1>;
 		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb4
-					&smi_larb7 &smi_larb9 &smi_larb13 &smi_larb14
-					&smi_larb16 &smi_larb17 &smi_larb19 &smi_larb20>;
+				&smi_larb7 &smi_larb9 &smi_larb13 &smi_larb14
+				&smi_larb16 &smi_larb17 &smi_larb19 &smi_larb20>;
 		mediatek,commons-supply = <&smi_disp_common>;
 		mmqos-state = <0x7>;
 		mmqos-log-level = <0>;
@@ -3860,6 +3860,18 @@
 			<&dispsys_config_clk CLK_MM_SMI_GALS>,
 			<&dispsys_config_clk CLK_MM_SMI_IOMMU>;
 		clock-names = "apb", "smi", "gals0", "gals1";
+	};
+
+	smi-dbg {
+		compatible = "mediatek,mtk-smi-dbg";
+		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb4
+			&smi_larb7 &smi_larb9 &smi_larb11 &smi_larb13 &smi_larb14
+			&smi_larb16 &smi_larb17 &smi_larb19 &smi_larb20>;
+		mediatek-common-supply = <&smi_disp_common
+			&disp_smi_2x1_sub_common_u0 &disp_smi_2x1_sub_common_u1
+			&img1_smi_2x1_sub_common &img0_smi_2x1_sub_common
+			&ipe_smi_2x1_sub_common &cam_smi_3x1_sub_common1
+			&cam_smi_4x1_sub_common0>;
 	};
 
 	smi_larb0: smi-larb0@14003000 {
