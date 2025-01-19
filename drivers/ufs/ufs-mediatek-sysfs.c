@@ -17,6 +17,7 @@
 #include "ufs-mediatek-dbg.h"
 #include "ufs-mediatek-mimic.h"
 #include "ufs-mediatek-priv.h"
+#include "ufs-mediatek-sysfs.h"
 
 
 #define MPHY_RX_LANE0_INDEX 4
@@ -719,7 +720,8 @@ static ssize_t clkscale_control_store(struct device *dev,
 	if (!strncmp(buf, "powerhal_set: ", 14))
 		opcode = buf + 14;
 
-	if (kstrtou32(opcode, 0, &value) || value > 5)
+	if (kstrtou32(opcode, 0, &value) ||
+	    value > CLK_SCALE_OP_FREE_RUN_UNLOCK)
 		return -EINVAL;
 
 	/* Only UFS 4.0 device need  */
@@ -728,32 +730,35 @@ static ssize_t clkscale_control_store(struct device *dev,
 
 	down(&hba->host_sem);
 
-	atomic_set(&host->clkscale_control, value);
+	/* If locked, operation mode cannot change */
+	if ((host->clk_scale_forbid == false) ||
+	    (value == CLK_SCALE_OP_FREE_RUN_UNLOCK))
+		atomic_set(&host->clkscale_control, value);
 
 	switch (value) {
-	case 0: /* free run */
+	case CLK_SCALE_OP_FREE_RUN:
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
 		break;
 
-	case 1: /* scale down */
+	case CLK_SCALE_OP_SCALE_DOWN:
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_DOWN);
 		break;
 
-	case 2: /* scale up */
+	case CLK_SCALE_OP_SCALE_UP:
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_UP);
 		break;
 
-	case 3: /* scale down and not allow change anymore */
+	case CLK_SCALE_OP_SCALE_DOWN_LOCK:
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_DOWN);
 		host->clk_scale_forbid = true;
 		break;
 
-	case 4: /* scale up and not allow change anymore */
+	case CLK_SCALE_OP_SCALE_UP_LOCK:
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_FORCE_SCALE_UP);
 		host->clk_scale_forbid = true;
 		break;
 
-	case 5: /* free run and allow change */
+	case CLK_SCALE_OP_FREE_RUN_UNLOCK:
 		host->clk_scale_forbid = false;
 		ufs_mtk_dynamic_clock_scaling(hba, CLK_SCALE_FREE_RUN);
 		break;
