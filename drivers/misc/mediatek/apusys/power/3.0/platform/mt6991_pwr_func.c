@@ -22,8 +22,10 @@ static const char * const pll_name[] = {
 				"PLL_CONN", "PLL_RV33", "PLL_MVPU", "PLL_MDLA"};
 static const char * const buck_name[] = {
 				"BUCK_VAPU", "BUCK_VSRAM", "BUCK_VCORE"};
+#if !SERROR_LIMIT
 static const char * const cluster_name[] = {
 				"D_ACX", "ACX0", "ACX1", "ACX2", "RCX"};
+#endif
 #define _OPP_LMT_TBL(_opp_lmt_reg) {    \
 	.opp_lmt_reg = _opp_lmt_reg,    \
 }

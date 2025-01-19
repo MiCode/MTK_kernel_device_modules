@@ -118,7 +118,6 @@ static void aputop_dump_pll_data(void)
 	int offset_arr_size = sizeof(pll_offset_arr) / sizeof(uint32_t);
 	int pll_idx;
 	int ofs_idx;
-	uint32_t phy_addr = 0x0;
 	char buf[256];
 	int ret = 0;
 
@@ -127,10 +126,6 @@ static void aputop_dump_pll_data(void)
 		memset(buf, 0, sizeof(buf));
 
 		for (ofs_idx = 0 ; ofs_idx < offset_arr_size ; ofs_idx++) {
-
-			phy_addr = apupw.phy_addr[apu_pll] +
-				pll_base_arr[pll_idx] +
-				pll_offset_arr[ofs_idx];
 
 			ret = snprintf(buf + strlen(buf),
 					sizeof(buf) - strlen(buf),
