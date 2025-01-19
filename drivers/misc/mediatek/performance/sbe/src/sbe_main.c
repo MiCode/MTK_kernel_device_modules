@@ -552,6 +552,8 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 		if (test_bit(SBE_CPU_CONTROL, &mask)) {
 			switch_fpsgo_control(1, final_pid_arr[i], start, final_bufID_arr[i]);
 			sbe_systrace_c(final_pid_arr[i], final_bufID_arr[i], start, "[ux]sbe_set_ctrl");
+			if (!start)
+				fpsgo_other2comp_control_pause(final_pid_arr[i], final_bufID_arr[i]);
 		}
 		if (test_bit(SBE_DISPLAY_TARGET_FPS, &mask))
 			fpsgo_other2fstb_set_target(1, final_pid_arr[i],
