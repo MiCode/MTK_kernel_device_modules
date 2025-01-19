@@ -251,7 +251,7 @@ static const struct file_operations g_fsm_misc_ops = {
 #if defined(CONFIG_COMPAT)
 	.compat_ioctl = fsm_misc_compat_ioctl,
 #endif
-	.llseek	= no_llseek,
+	.llseek	= noop_llseek,
 	.read	= fsm_misc_read,
 	.write	= fsm_misc_write,
 };
