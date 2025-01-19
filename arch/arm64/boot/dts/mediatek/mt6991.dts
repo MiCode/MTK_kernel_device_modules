@@ -1622,6 +1622,23 @@
 			"wl_tbl_base";
 	};
 
+	dfg_info: dfg-info@c2cc6e4 {
+		compatible = "mediatek,dfg-info";
+		dfg-support = <0>;
+		reg = <0 0xc2cc6e4 0 0x1>, /*tcm sram base, get value from EB*/
+			<0 0x0c2cc6e5 0 0x1>, /*get value from EB BCPU*/
+			<0 0x0c2cc6e6 0 0x1>, /*get value from EB MCPU*/
+			<0 0x0c2cc6e7 0 0x1>, /*get value from EB LCPU*/
+			<0 0x0c2cc6e8 0 0x1>; /*tcm sram base, pass value to EB*/
+
+		reg-names = "dfg_sram_base",
+			"dfg_bcpu_base",
+			"dfg_mcpu_base",
+			"dfg_lcpu_base",
+			"dfg_crtl_base";
+	};
+
+
 	dpt_info: dpt-info@c2be120 {
 		compatible = "mediatek,dpt-info";
 		reg = <0 0xc2be120 0 0x5dc>;
