@@ -508,6 +508,8 @@
 	#define MT6991_REG_DMR_ULTRA_RE_FRCE				REG_FLD_MSB_LSB(3, 3)
 	#define MT6991_REG_DMR_POACH_CFG_OFF				REG_FLD_MSB_LSB(4, 4)
 	#define MT6991_REG_DMR_RE_ULTRA_MODE				REG_FLD_MSB_LSB(11, 8)
+#define MT6991_ODDMR_SMI_SB_FLG_ODR_3					0x070
+	#define MT6991_REG_DMR_GUSER_CTRL_1					REG_FLD_MSB_LSB(15, 0)
 #define MT6991_DISP_ODDMR_UDMA_DMR_CTRL21				0xC54
 	#define MT6991_REG_DMR_REQ_PREULTRA_RISE_LV			REG_FLD_MSB_LSB(6, 0)
 	#define MT6991_REG_DMR_REQ_PREULTRA_FORCE_HIGH		REG_FLD_MSB_LSB(7, 7)
@@ -4265,6 +4267,10 @@ static void mtk_oddmr_dmr_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 		smi_level = MT6991_ODDMR_DMR_ULTRA_FAIL_LV(buf_size);//ultra fail level
 		SET_VAL_MASK(value, mask, smi_level, MT6991_REG_DMR_REQ_ULTRA_FAIL_LV);
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_DMR_CTRL22,
+			mask, pkg);
+		value = 0; mask = 0;
+		SET_VAL_MASK(value, mask, 0x8000, MT6991_REG_DMR_GUSER_CTRL_1);
+		mtk_oddmr_write_mask(comp, value, MT6991_ODDMR_SMI_SB_FLG_ODR_3,
 			mask, pkg);
 	} else {
 		SET_VAL_MASK(value, mask, 4, REG_DMR_RE_ULTRA_MODE);
