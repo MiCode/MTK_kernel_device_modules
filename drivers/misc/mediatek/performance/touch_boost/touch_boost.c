@@ -718,7 +718,7 @@ static ssize_t perfmgr_boost_cluster_1_proc_write(struct file *filp,
 	if (ret < 0)
 		return ret;
 
-	if (policy_num >= 1 && cpu_opp_tbl != NULL && cpu_opp_tbl[1] != NULL
+	if (policy_num >= 2 && cpu_opp_tbl != NULL && cpu_opp_tbl[1] != NULL
 		&& value >= 0 && value < cpu_opp_tbl[1][0])
 			boost_cluster[1] = value;
 
@@ -756,7 +756,7 @@ static ssize_t perfmgr_boost_cluster_2_proc_write(struct file *filp,
 	if (ret < 0)
 		return ret;
 
-	if (policy_num >= 1 && cpu_opp_tbl != NULL && cpu_opp_tbl[2] != NULL
+	if (policy_num >= 3 && cpu_opp_tbl != NULL && cpu_opp_tbl[2] != NULL
 		&& value >= 0 && value < cpu_opp_tbl[2][0])
 			boost_cluster[2] = value;
 
