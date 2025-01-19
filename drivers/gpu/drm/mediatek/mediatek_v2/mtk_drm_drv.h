@@ -19,8 +19,11 @@
 #include "mtk_drm_helper.h"
 #include "../mml/mtk-mml-drm-adaptor.h"
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#define MAX_CONNECTOR 7
+#else
 #define MAX_CONNECTOR 3
-
+#endif
 //#define CONFIG_MTK_DISP_NO_LK
 //#define DRM_BYPASS_PQ
 //#define DRM_OVL_SELF_PATTERN
