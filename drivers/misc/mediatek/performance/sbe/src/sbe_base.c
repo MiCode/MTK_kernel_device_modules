@@ -374,7 +374,8 @@ int sbe_check_render_info_status(void)
 	rbn = rb_first(&sbe_render_info_tree);
 	while (rbn) {
 		iter = rb_entry(rbn, struct sbe_render_info, entry);
-		if (cur_ts - iter->latest_use_ts > NSEC_PER_SEC) {
+		if ((cur_ts - iter->latest_use_ts > NSEC_PER_SEC)
+			&& (!iter->scroll_status)) {
 			sbe_delete_render_info(iter);
 			rbn = rb_first(&sbe_render_info_tree);
 		} else {

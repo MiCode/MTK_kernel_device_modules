@@ -481,8 +481,10 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 	}
 
 	for (i = 0; i < final_pid_arr_idx; i++) {
-		if (test_bit(SBE_CPU_CONTROL, &mask))
+		if (test_bit(SBE_CPU_CONTROL, &mask)) {
 			switch_fpsgo_control(1, final_pid_arr[i], start, final_bufID_arr[i]);
+			sbe_systrace_c(final_pid_arr[i], final_bufID_arr[i], start, "[ux]sbe_set_ctrl");
+		}
 		if (test_bit(SBE_DISPLAY_TARGET_FPS, &mask))
 			fpsgo_other2fstb_set_target(1, final_pid_arr[i],
 				start, 0, start ? sbe_get_display_rate() : 0, 0, final_bufID_arr[i]);
@@ -490,6 +492,7 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 		sbe_get_tree_lock(__func__);
 		thr = sbe_get_render_info(final_pid_arr[i], final_bufID_arr[i], 1);
 		if (!thr) {
+			sbe_systrace_c(final_pid_arr[i], final_bufID_arr[i], -1, "[ux]sbe_set_ctrl");
 			sbe_put_tree_lock(__func__);
 			continue;
 		}
@@ -498,6 +501,7 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 		thr->target_time = div_u64(NSEC_PER_SEC, sbe_get_display_rate());
 		thr->dep_self_ctrl = 0;
 		thr->latest_use_ts = ts;
+		thr->scroll_status = start;
 
 		if (test_bit(SBE_CLEAR_SCROLLING_INFO, &mask) && thr != NULL) {
 			clear_ux_info(thr);
