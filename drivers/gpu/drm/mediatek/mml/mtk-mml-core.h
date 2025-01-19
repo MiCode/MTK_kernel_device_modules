@@ -42,6 +42,7 @@ extern int mml_rrot_msg;
 extern int mml_dl_dpc;
 extern int mml_stash;
 extern int rdma_stash_leading;
+extern int mml_irq;
 
 /* see mml_qos in mtk-mml-core.c */
 #define MML_QOS_EN_MASK			0x1

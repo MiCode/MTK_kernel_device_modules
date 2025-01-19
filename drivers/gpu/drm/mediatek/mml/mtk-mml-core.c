@@ -40,6 +40,13 @@ int mtk_mml_hrt_mode;
 EXPORT_SYMBOL(mtk_mml_hrt_mode);
 module_param(mtk_mml_hrt_mode, int, 0644);
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+int mml_irq = 1;
+#else
+int mml_irq;
+#endif
+module_param(mml_irq, int, 0644);
+
 int mml_hrt_bound = 2500;
 module_param(mml_hrt_bound, int, 0644);
 

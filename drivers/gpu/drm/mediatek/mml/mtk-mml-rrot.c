@@ -31,6 +31,8 @@
 /* RROT register offset */
 #define RROT_EN				0x000
 #define RROT_RESET			0x008
+#define RROT_INTERRUPT_ENABLE		0x010
+#define RROT_INTERRUPT_STATUS		0x018
 #define RROT_VCSEL			0x01c
 #define RROT_CON			0x020
 #define RROT_SHADOW_CTRL		0x024
@@ -301,6 +303,7 @@ struct mml_comp_rrot {
 	phys_addr_t smi_larb_con;
 
 	u8 pipe;	/* separate rrot and rrot_2nd */
+	bool irq;
 };
 
 struct rrot_offset {
@@ -1203,6 +1206,9 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (rrot->data->vcsel)
 		cmdq_pkt_write(pkt, NULL, base_pa + RROT_VCSEL,
 			mml_iscouple(cfg->info.mode) ? 0x3 : 0x0, U32_MAX);
+
+	if (mml_irq && rrot->irq)
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_INTERRUPT_ENABLE, 0x5, U32_MAX);
 
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))
@@ -2676,6 +2682,38 @@ static const struct component_ops mml_comp_ops = {
 	.unbind = mml_unbind,
 };
 
+#define rrot_pipe_mmp(_pipe, flag, v1, v2) do { \
+	if (_pipe == 0) \
+		mml_mmp(rrot0, flag, v1, v2); \
+	else \
+		mml_mmp(rrot1, flag, v1, v2); \
+} while (0)
+
+#define RROT_IRQ_UNDERRUN		(BIT(2))
+#define RROT_IRQ_FRAME_COMPLETE		(BIT(0))
+
+static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
+{
+	struct mml_comp_rrot *rrot = dev_id;
+	struct mml_comp *comp = &rrot->comp;
+	void __iomem *base = comp->base;
+	unsigned long irq_status = readl(base + RROT_INTERRUPT_STATUS);
+
+	rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
+
+	if (!irq_status)
+		return IRQ_NONE;
+
+	writel(0, base + RROT_INTERRUPT_STATUS);
+
+	if (irq_status & RROT_IRQ_FRAME_COMPLETE)
+		rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_END, comp->id, 0);
+	else if (irq_status & RROT_IRQ_UNDERRUN)
+		mml_mmp(underrun, MMPROFILE_FLAG_PULSE, comp->id, 0);
+
+	return IRQ_HANDLED;
+}
+
 static struct mml_comp_rrot *dbg_probed_components[4];
 static int dbg_probed_count;
 
@@ -2684,6 +2722,7 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_rrot *priv;
 	s32 ret;
+	int irq;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -2724,6 +2763,17 @@ static int probe(struct platform_device *pdev)
 		mml_err("read pipe fail");
 
 	of_property_read_u16(dev->of_node, "event-frame-done", &priv->event_eof);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		mml_log("fail to get rrot%u irq %d", priv->pipe, irq);
+	else {
+		ret = devm_request_irq(dev, irq, mml_rrot_irq_handler,
+			IRQF_SHARED, dev_name(dev), priv);
+		priv->irq = true;
+		mml_log("register rrot%u irq %s %d irq %d",
+			priv->pipe, ret ? "fail" : "success", ret, irq);
+	}
 
 	/* assign ops */
 	priv->comp.tile_ops = &rrot_tile_ops;
