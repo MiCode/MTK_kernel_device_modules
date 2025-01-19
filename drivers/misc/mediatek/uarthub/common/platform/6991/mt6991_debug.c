@@ -452,7 +452,7 @@ int uarthub_dump_intfhub_debug_info_mt6991(const char *tag)
 			len += ret;
 	}
 
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",UART/HUB_CLK=[%d/%d]",
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART_CLK=[%d/%d]",
 		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
 		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
 	if (ret > 0)
@@ -1261,7 +1261,7 @@ int uarthub_dump_debug_clk_info_mt6991(const char *tag)
 			len += ret;
 	}
 
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",UART/HUB_CLK=[%d/%d]",
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART_CLK=[%d/%d]",
 		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
 		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
 	if (ret > 0)
@@ -1422,7 +1422,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6991(const char *tag)
 			len += ret;
 	}
 
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",UART/HUB_CLK=[%d/%d]",
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART_CLK=[%d/%d]",
 		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
 		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
 	if (ret > 0)
