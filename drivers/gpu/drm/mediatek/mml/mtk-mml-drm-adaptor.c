@@ -414,8 +414,13 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 
 		infos[i].mode = mode;
 
-		if (mode == MML_MODE_DIRECT_LINK || mode == MML_MODE_RACING)
-			couple_used = true;
+		if (mode == MML_MODE_DIRECT_LINK || mode == MML_MODE_RACING) {
+			if (unlikely(couple_used)) {
+				mml_err("[drm][query]layer %u skip multi couple layer", i);
+				mode = MML_MODE_NOT_SUPPORT;
+			} else
+				couple_used = true;
+		}
 
 		mml_mmp(query_layer, MMPROFILE_FLAG_PULSE,
 			i << 16 | (atomic_read(&dctx->ctx.job_serial) & 0xffff), mode);
