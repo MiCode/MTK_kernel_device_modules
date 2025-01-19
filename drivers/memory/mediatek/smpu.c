@@ -92,16 +92,22 @@ char *smpu_clear_md_violation(void)
 	/*
 	 * get the violation log after 6897
 	 */
+
 	if ((global_nsmpu && (global_nsmpu->dump_md_cnt > 0)) ||
-	(global_ssmpu && (global_ssmpu->dump_md_cnt > 0))) {
+	    (global_ssmpu && (global_ssmpu->dump_md_cnt > 0))) {
 		/*
 		 * check violation from the North/South MPU
 		 */
+		if (!global_nsmpu)
+			return ret0;
+
 		smpu = global_nsmpu;
 		mpu_base = smpu->mpu_base;
 		dump_reg = smpu->dump_md_reg;
-		smpu = (readl(mpu_base + dump_reg[0].offset) > 0x2) ||
-		(readl(mpu_base + dump_reg[9].offset) > 0x2) ? global_nsmpu:global_ssmpu;
+		smpu = (readl(mpu_base + dump_reg[0].offset) >
+			0x2) || (readl(mpu_base + dump_reg[9].offset) > 0x2) ?
+			       global_nsmpu :
+			       global_ssmpu;
 		mpu_base = smpu->mpu_base;
 		dump_reg = smpu->dump_md_reg;
 
@@ -127,7 +133,7 @@ char *smpu_clear_md_violation(void)
 					dump_reg[i].value);
 		}
 
-		if( (dump_reg[0].value > 0x2) || (dump_reg[9].value > 0x2 )){
+		if ((dump_reg[0].value > 0x2) || (dump_reg[9].value > 0x2)) {
 			ret2 = smpu->vio_msg;
 			pr_info("%s: %s", __func__, smpu->vio_msg);
 		}
@@ -430,7 +436,7 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 	int ns_cpu_aid = 241;
 	int hyp_cpu_aid = 243;
 	/* for new SLC work around*/
-	int WCE_bypass[2] = {244,245};
+	int WCE_bypass[2] = { 244, 245 };
 	bool WCE_flag = false;
 	bool slc_enable = mpu->slc_b_mode;
 	int i;
@@ -457,7 +463,7 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 		/* check whether cpu type master lead this smpu violation */
 		if (!(strcmp(mpu->name, "nsmpu")) ||
 		    !(strcmp(mpu->name, "ssmpu"))) {
-			for(i = 0; i < 2; i++)
+			for (i = 0; i < 2; i++)
 				if (mpu->dump_reg[5].value == WCE_bypass[i])
 					WCE_flag = true;
 			/* check smpu write violation aid reg */
@@ -466,22 +472,28 @@ static void smpu_clean_cpu_write_vio(struct smpu *mpu)
 			    (mpu->dump_reg[5].value == hyp_cpu_aid) ||
 			    (WCE_flag == true)) {
 				if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
-					prefetch = mtk_clear_smpu_log(vio_type % 2);
-					mpu->is_prefetch = prefetch == 1 ? true : false;
-					msg_len += scnprintf(mpu->vio_msg + msg_len,
-					     MTK_SMPU_MAX_CMD_LEN - msg_len,
-					     "\ncpu-prefetch:%d", prefetch);
-					msg_len += scnprintf(mpu->vio_msg + msg_len,
-					     MTK_SMPU_MAX_CMD_LEN - msg_len,
-					     "\n[SMPU]%s\n", mpu->name);
+					prefetch = mtk_clear_smpu_log(vio_type %
+								      2);
+					mpu->is_prefetch =
+						prefetch == 1 ? true : false;
+					msg_len += scnprintf(
+						mpu->vio_msg + msg_len,
+						MTK_SMPU_MAX_CMD_LEN - msg_len,
+						"\ncpu-prefetch:%d", prefetch);
+					msg_len += scnprintf(
+						mpu->vio_msg + msg_len,
+						MTK_SMPU_MAX_CMD_LEN - msg_len,
+						"\n[SMPU]%s\n", mpu->name);
 				}
 				for (i = 0; i < mpu->dump_cnt; i++) {
 					if (msg_len < MTK_SMPU_MAX_CMD_LEN)
 						msg_len += scnprintf(
-						mpu->vio_msg + msg_len,
-						MTK_SMPU_MAX_CMD_LEN - msg_len,
-						"[%x]%x;", dump_reg[i].offset,
-						dump_reg[i].value);
+							mpu->vio_msg + msg_len,
+							MTK_SMPU_MAX_CMD_LEN -
+								msg_len,
+							"[%x]%x;",
+							dump_reg[i].offset,
+							dump_reg[i].value);
 				}
 				pr_info("%s: %s", __func__, mpu->vio_msg);
 				clear_violation(mpu);
@@ -640,24 +652,27 @@ static int smpu_probe(struct platform_device *pdev)
 		 */
 		size = of_property_count_elems_of_size(smpu_node, "dump-md",
 						       sizeof(char));
-		if (size <= 0){
+		if (size <= 0) {
 			pr_debug("No smpu node dump-md\n");
 			mpu->dump_md_cnt = 0;
-		}else{
+		} else {
 			dump_list = devm_kmalloc(&pdev->dev, size, GFP_KERNEL);
 			if (!dump_list)
 				return -ENXIO;
 
 			size >>= 2;
 			mpu->dump_md_cnt = size;
-			ret = of_property_read_u32_array(smpu_node, "dump-md", dump_list, size);
+			ret = of_property_read_u32_array(smpu_node, "dump-md",
+							 dump_list, size);
 			if (ret) {
 				pr_debug("no smpu dump-md\n");
 				return -ENXIO;
 			}
 
 			mpu->dump_md_reg = devm_kmalloc(
-				&pdev->dev, size * sizeof(struct smpu_reg_info_t), GFP_KERNEL);
+				&pdev->dev,
+				size * sizeof(struct smpu_reg_info_t),
+				GFP_KERNEL);
 			if (!(mpu->dump_md_reg))
 				return -ENOMEM;
 
