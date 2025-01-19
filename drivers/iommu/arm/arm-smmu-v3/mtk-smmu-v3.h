@@ -15,6 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/rbtree.h>
+#include <linux/suspend.h>
 #include <soc/mediatek/smi.h>
 
 #include <dt-bindings/memory/mtk-memory-port.h>
@@ -684,6 +685,10 @@ struct mtk_smmu_data {
 	bool				dvm_support;
 	void __iomem			*pmu_reg[SMMU_TXU_CNT_MAX];
 	void __iomem			*pmu_reloc[SMMU_TXU_CNT_MAX];
+	bool				power_awake;
+	atomic_t			is_suspend;
+	struct notifier_block		pm_nb;
+	struct wakeup_source		*suspend_lock;
 };
 
 enum mtk_smmu_tfm_type {

@@ -1039,6 +1039,26 @@ static void mtk_smmu_device_reset(struct arm_smmu_device *smmu)
 	}
 }
 
+static int mtk_smmu_wakelock_get(struct mtk_smmu_data *data)
+{
+	if (unlikely(!data->power_awake))
+		return 0;
+
+	if (atomic_read(&data->is_suspend))
+		return -1;
+
+	/* wake lock AP*/
+	__pm_stay_awake(data->suspend_lock);
+
+	return 0;
+}
+
+static void mtk_smmu_wakelock_put(struct mtk_smmu_data *data)
+{
+	if (data->power_awake)
+		__pm_relax(data->suspend_lock);
+}
+
 static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -1059,7 +1079,13 @@ static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 		}
 	}
 
+	ret = mtk_smmu_wakelock_get(data);
+	if (ret)
+		return ret;
+
 	ret = mtk_smmu_pm_get(plat_data->smmu_type);
+	if (ret)
+		mtk_smmu_wakelock_put(data);
 
 	return ret;
 }
@@ -1085,6 +1111,7 @@ static int mtk_smmu_power_put(struct arm_smmu_device *smmu)
 	}
 
 	ret = mtk_smmu_pm_put(plat_data->smmu_type);
+	mtk_smmu_wakelock_put(data);
 
 	return ret;
 }
@@ -2768,6 +2795,51 @@ static const struct mtk_smmu_ops mtk_smmu_ops = {
 	.smmu_power_put		= mtk_smmu_power_put,
 };
 
+static int mtk_smmu_suspend_pm_event(struct notifier_block *notifier,
+				     unsigned long pm_event, void *unused)
+{
+	struct mtk_smmu_data *data = container_of(notifier,
+						  struct mtk_smmu_data, pm_nb);
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		atomic_set(&data->is_suspend, 1);
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:
+		atomic_set(&data->is_suspend, 0);
+		return NOTIFY_DONE;
+	}
+
+	return NOTIFY_OK;
+}
+
+static void mtk_smmu_register_power_awake(struct mtk_smmu_data *data)
+{
+	struct arm_smmu_device *smmu = &data->smmu;
+	int ret;
+
+	if (!data->power_awake)
+		return;
+
+	data->pm_nb.notifier_call = mtk_smmu_suspend_pm_event;
+	ret = register_pm_notifier(&data->pm_nb);
+	if (ret) {
+		dev_info(smmu->dev, "register_pm_notifier failed %d\n", ret);
+		data->power_awake = false;
+		return;
+	}
+
+	data->suspend_lock = wakeup_source_register(NULL, "smmu wakelock");
+	if (!data->suspend_lock) {
+		dev_info(smmu->dev, "wakeup_source_register failed\n");
+		unregister_pm_notifier(&data->pm_nb);
+		data->power_awake = false;
+		return;
+	}
+
+	dev_info(smmu->dev, "register power awake\n");
+}
+
 static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
@@ -2830,6 +2902,10 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 
 	if (of_property_read_bool(smmu->dev->of_node, "mtk,smmu-ela"))
 		data->ela_support = true;
+
+	if (of_property_read_bool(smmu->dev->of_node, "mtk,power-awake") &&
+	    !MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_CLK_AO_EN))
+		data->power_awake = true;
 }
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
@@ -2945,6 +3021,8 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 	mtk_smmu_config_translation(data);
 
 	mtk_smmu_register_hang_detect(data);
+
+	mtk_smmu_register_power_awake(data);
 
 	populate_iommu_groups(data, dev->of_node);
 
