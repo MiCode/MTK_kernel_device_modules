@@ -371,15 +371,18 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 		goto _return;
 	}
 
+	mutex_lock(&primary_data->data_lock);
 	if (disp_gamma_write_sram(comp, 0, config) < 0) {
 		DDPPR_ERR("%s: failed\n", __func__);
 		ret = -EFAULT;
+		mutex_unlock(&primary_data->data_lock);
 		goto _return;
 	}
 	if ((comp->mtk_crtc != NULL) && comp->mtk_crtc->is_dual_pipe) {
 		if (disp_gamma_write_sram(gamma->companion, 0, config) < 0) {
 			DDPPR_ERR("%s: comp_gamma1 failed\n", __func__);
 			ret = -EFAULT;
+			mutex_unlock(&primary_data->data_lock);
 			goto _return;
 		}
 	}
@@ -388,6 +391,7 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	disp_gamma_flip_sram(comp, handle);
 	if (comp->mtk_crtc->is_dual_pipe && companion)
 		disp_gamma_flip_sram(companion, handle);
+	mutex_unlock(&primary_data->data_lock);
 
 	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
 		atomic_set(&primary_data->gamma_sram_hw_init, 1);
