@@ -101,6 +101,7 @@ static u32 eemg_irq_number;
 unsigned int gpu_vb;
 unsigned int gpu_vb_volt;
 unsigned int gpu_vb_turn_pt;
+unsigned int bank_num;
 
 DEFINE_MUTEX(gpu_mutex_g);
 
@@ -148,6 +149,11 @@ static int get_devinfo(struct platform_device *pdev)
 	}
 
 	node = pdev->dev.of_node;
+	ret = of_property_read_u32(node, "thermal-bank", &bank_num);
+	if(ret) {
+		eemg_error("thermal-bank property does not exist in dts\n");
+		bank_num = 0;
+	}
 	ret = of_property_read_u32(node, "gpu-vb", &efuse);
 	if (efuse == 1) {
 		gpu_vb = 1;
@@ -801,11 +807,11 @@ int base_ops_get_temp_gpu(struct eemg_det *det)
 	enum thermal_bank_name ts_bank;
 
 	if (det_to_id(det) == EEMG_DET_GPU)
-		ts_bank = THERMAL_BANK4;
+		ts_bank = bank_num;
 	else if (det_to_id(det) == EEMG_DET_GPU_HI)
-		ts_bank = THERMAL_BANK4;
+		ts_bank = bank_num;
 	else
-		ts_bank = THERMAL_BANK4;
+		ts_bank = bank_num;
 	return tscpu_get_temp_by_bank(ts_bank);
 #else
 	return 0;
@@ -1096,7 +1102,6 @@ static void get_volt_table_in_thread(struct eemg_det *det)
 		ndet->isTempInv = EEM_HIGH_T;
 	else
 		ndet->isTempInv = 0;
-	ndet->isTempInv = 0; // TODO Thermal config CONFIG_MTK_LEGACY_THERMAL is disabled currently.
 	if (ndet->ctrl_id == EEMG_CTRL_GPU) {
 		if ((ndet->isTempInv == EEM_EXTRALOW_T) ||
 			(ndet->isTempInv == EEM_LOW_T)) {
@@ -2416,11 +2421,11 @@ void mt_eemg_opp_status(enum eemg_det_id id, unsigned int *temp,
 
 #ifdef CONFIG_THERMAL
 	if (id == EEMG_DET_GPU)
-		*temp = tscpu_get_temp_by_bank(THERMAL_BANK4);
+		*temp = tscpu_get_temp_by_bank(bank_num);
 	else if (id == EEMG_DET_GPU_HI)
-		*temp = tscpu_get_temp_by_bank(THERMAL_BANK4);
+		*temp = tscpu_get_temp_by_bank(bank_num);
 	else
-		*temp = tscpu_get_temp_by_bank(THERMAL_BANK4);
+		*temp = tscpu_get_temp_by_bank(bank_num);
 #else
 		*temp = 0;
 #endif
