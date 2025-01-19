@@ -66,6 +66,7 @@
 #define VDEC_FPS_INFO			'L'
 
 #define POWER_SCP_TASK_INFO		'M'
+#define NETLINK_TRIGGER_RECV	'O'
 
 
 /*Mbrain Delegate IOCTL List*/
@@ -174,6 +175,7 @@
 
 #define RO_POWER_SCP_TASK_INFO	_IOR(IOC_MAGIC, POWER_SCP_TASK_INFO, \
 						struct mbraink_power_scp_task_info*)
+#define WO_NETLINK_TRIGGER_RECV		_IOW(IOC_MAGIC, NETLINK_TRIGGER_RECV, char*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

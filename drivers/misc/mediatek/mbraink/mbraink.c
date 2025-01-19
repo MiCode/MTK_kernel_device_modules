@@ -1158,6 +1158,14 @@ static long handle_vdec_fps_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_netlink_trigger_recv(unsigned long arg)
+{
+	long ret = 0;
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	ret = mbraink_netlink_send_msg(netlink_buf); // dummy data for trigger only
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1544,6 +1552,11 @@ static long mbraink_ioctl(struct file *filp,
 			goto End;
 		ret = handleLpmStateInfo(arg, mbraink_data);
 		kfree(mbraink_data);
+		break;
+	}
+	case WO_NETLINK_TRIGGER_RECV:
+	{
+		ret = handle_netlink_trigger_recv(arg);
 		break;
 	}
 
