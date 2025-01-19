@@ -583,10 +583,12 @@ void mtk_smi_set_hrt_perm(struct device *dev, const u32 port, bool is_hrt)
 			mtk_smi_larb_bw_thr(larb->smi.dev, port, false);
 		}
 	} else {
-		//enable dis_ultra
-		mtk_smi_larb_port_dis_ultra(larb->smi.dev, port, true);
-		//enable bw thr
-		mtk_smi_larb_bw_thr(larb->smi.dev, port, true);
+		if (atomic_read(&larb->smi.ref_count)) {
+			//enable dis_ultra
+			mtk_smi_larb_port_dis_ultra(larb->smi.dev, port, true);
+			//enable bw thr
+			mtk_smi_larb_bw_thr(larb->smi.dev, port, true);
+		}
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_smi_set_hrt_perm);
