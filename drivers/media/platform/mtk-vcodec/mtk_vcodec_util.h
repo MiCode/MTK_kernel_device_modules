@@ -238,12 +238,26 @@ enum mtk_vcodec_debug_level {
 			} \
 		} while (0)
 
+#define vcodec_trace_count_fmt(count, fmt, args...) do { \
+				if (mtk_vdec_trace_enable) { \
+					vcodec_trace("C|%d|"fmt"|%d\n", current->tgid, ##args, count); \
+				} \
+			} while (0)
+
+#define vcodec_trace_tid_count(tid, count, fmt, args...) do { \
+				if (mtk_vdec_trace_enable) { \
+					vcodec_trace("C|%d|"fmt"|%d\n", tid, ##args, count); \
+				} \
+			} while (0)
+
 void vcodec_trace(const char *fmt, ...);
 #else
 #define vcodec_trace_begin(fmt, args...)
 #define vcodec_trace_begin_func()
 #define vcodec_trace_end()
 #define vcodec_trace_count(name, count)
+#define vcodec_trace_count_fmt(count, fmt, args...)
+#define vcodec_trace_tid_count(tid, count, fmt, args...)
 #endif
 
 #if defined(DEBUG)
@@ -366,6 +380,8 @@ int mtk_vcodec_set_state_from(struct mtk_vcodec_ctx *ctx, int target, int from);
 int mtk_vcodec_set_state(struct mtk_vcodec_ctx *ctx, int target);
 int mtk_vcodec_set_state_except(struct mtk_vcodec_ctx *ctx, int target, int except_state);
 
+void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_type, bool in_kernel, int add_diff);
+
 void __iomem *mtk_vcodec_get_dec_reg_addr(struct mtk_vcodec_ctx *data,
 	unsigned int reg_idx);
 void __iomem *mtk_vcodec_get_enc_reg_addr(struct mtk_vcodec_ctx *data,
@@ -382,8 +398,9 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx);
 struct mtk_vcodec_mem *mtk_vcodec_get_bs(struct mtk_vcodec_ctx *ctx);
 int mtk_vdec_put_fb(struct mtk_vcodec_ctx *ctx, enum mtk_put_buffer_type type, bool no_need_put);
 void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx);
-int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
-		void *vbuf);
+int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx, void *vbuf);
+struct vb2_v4l2_buffer *v4l2_m2m_src_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx);
+struct vb2_v4l2_buffer *v4l2_m2m_dst_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx);
 int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 	struct device *dev, unsigned int size,
 	enum dma_data_direction direction);

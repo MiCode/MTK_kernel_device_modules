@@ -48,6 +48,8 @@ int mtk_venc_lock(struct mtk_vcodec_ctx *ctx, u32 hw_id, bool sec);
 void mtk_venc_queue_error_event(struct mtk_vcodec_ctx *ctx);
 int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	struct vb2_queue *dst_vq);
+void venc_worker_probe(struct mtk_vcodec_dev *dev);
+void venc_worker_remove(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_enc_empty_queues(struct file *file, struct mtk_vcodec_ctx *ctx);
 void mtk_vcodec_enc_release(struct mtk_vcodec_ctx *ctx);
 int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx);

@@ -148,6 +148,10 @@ static int fops_vcodec_open(struct file *file)
 #endif
 	spin_lock_init(&ctx->state_lock);
 	spin_lock_init(&ctx->lpw_lock);
+	atomic_set(&ctx->output_cnt_in_driver, 0);
+
+	INIT_LIST_HEAD(&ctx->worker_node);
+	ctx->trace_count_tgid = current->tgid;
 
 	ctx->type = MTK_INST_DECODER;
 	ret = mtk_vcodec_dec_ctrls_setup(ctx);
@@ -608,15 +612,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		goto err_dec_mem_init;
 	}
 
-	dev->decode_workqueue =
-		alloc_ordered_workqueue(MTK_VCODEC_DEC_NAME,
-			WQ_MEM_RECLAIM | WQ_FREEZABLE);
-	if (!dev->decode_workqueue) {
-		mtk_v4l2_err("Failed to create decode workqueue");
-		ret = -EINVAL;
-		goto err_event_workq;
-	}
-
+	vdec_worker_probe(dev);
 
 #ifdef VDEC_CHECK_ALIVE
 	/*Init workqueue for vdec alive checker*/
@@ -741,8 +737,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	return 0;
 
 err_dec_reg:
-	destroy_workqueue(dev->decode_workqueue);
-err_event_workq:
+	kthread_stop(dev->worker_thread);
 	v4l2_m2m_release(dev->m2m_dev_dec);
 err_dec_mem_init:
 	video_unregister_device(vfd_dec);
@@ -786,16 +781,13 @@ static int mtk_vcodec_dec_remove(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev = platform_get_drvdata(pdev);
 
-	vdec_if_dev_ctx_deinit(dev);
-
 	flush_workqueue(dev->vdec_buf_wq);
 	destroy_workqueue(dev->vdec_buf_wq);
 
+	vdec_worker_remove(dev);
+
 	mtk_unprepare_vdec_emi_bw(dev);
 	mtk_unprepare_vdec_dvfs(dev);
-
-	flush_workqueue(dev->decode_workqueue);
-	destroy_workqueue(dev->decode_workqueue);
 
 	flush_workqueue(dev->check_alive_workqueue);
 	destroy_workqueue(dev->check_alive_workqueue);
@@ -813,6 +805,8 @@ static int mtk_vcodec_dec_remove(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_remove(dev);
 #endif
+	vdec_if_dev_ctx_deinit(dev);
+
 	return 0;
 }
 

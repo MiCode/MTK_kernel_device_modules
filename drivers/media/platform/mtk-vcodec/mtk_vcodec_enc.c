@@ -35,7 +35,6 @@
 #define DFT_CFG_WIDTH   MTK_VENC_MIN_W
 #define DFT_CFG_HEIGHT  MTK_VENC_MIN_H
 
-static void mtk_venc_worker(struct work_struct *work);
 struct mtk_video_fmt
 	mtk_venc_formats[MTK_MAX_ENC_CODECS_SUPPORT] = { {0} };
 struct mtk_codec_framesizes
@@ -3480,10 +3479,8 @@ void mtk_venc_check_queue_cnt(struct mtk_vcodec_ctx *ctx, struct vb2_queue *vq)
  * This means v4l2 ioctls and mtk_venc_worker() can run at the same time.
  * mtk_venc_worker() should be carefully implemented to avoid bugs.
  */
-static void mtk_venc_worker(struct work_struct *work)
+static void mtk_venc_worker(struct mtk_vcodec_ctx *ctx)
 {
-	struct mtk_vcodec_ctx *ctx = container_of(work, struct mtk_vcodec_ctx,
-					encode_work);
 	struct vb2_buffer *src_buf, *dst_buf;
 	struct venc_frm_buf *pfrm_buf;
 	struct mtk_vcodec_mem *pbs_buf;
@@ -3694,6 +3691,80 @@ static void mtk_venc_worker(struct work_struct *work)
 	mutex_unlock(&ctx->worker_lock);
 }
 
+static void queue_enc_work(struct mtk_vcodec_ctx *ctx)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->worker_mq.lock, flags);
+	list_add_tail(&ctx->worker_node, &dev->worker_mq.head);
+	atomic_inc(&dev->worker_mq.cnt);
+	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
+	wake_up(&dev->worker_mq.wq);
+}
+
+static struct mtk_vcodec_ctx *dequeue_enc_work(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->worker_mq.lock, flags);
+	ctx = list_entry(dev->worker_mq.head.next, struct mtk_vcodec_ctx, worker_node);
+	list_del(&ctx->worker_node);
+	atomic_dec(&dev->worker_mq.cnt);
+	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
+
+	return ctx;
+}
+
+static int mtk_venc_worker_loop(void *arg)
+{
+	struct mtk_vcodec_dev *dev = (struct mtk_vcodec_dev *)arg;
+	struct mtk_vcodec_ctx *ctx;
+	int ret;
+
+	// non-rt thread priority, MAX_NICE(+19)(low priority) to MIN_NICE(-20)(high priority) (+120)
+	set_user_nice(current, MIN_NICE + 2);
+
+	do {
+		ret = wait_event_interruptible(dev->worker_mq.wq, atomic_read(&dev->worker_mq.cnt) > 0);
+		if (ret < 0) {
+			mtk_v4l2_debug(0, "wait event return %d (suspending %d)\n",
+				ret, atomic_read(&dev->worker_mq.cnt));
+			continue;
+		}
+
+		ctx = dequeue_enc_work(dev);
+		mtk_venc_worker(ctx);
+	} while (!kthread_should_stop());
+
+	return 0;
+}
+
+void venc_worker_probe(struct mtk_vcodec_dev *dev)
+{
+	INIT_LIST_HEAD(&dev->worker_mq.head);
+	spin_lock_init(&dev->worker_mq.lock);
+	init_waitqueue_head(&dev->worker_mq.wq);
+	atomic_set(&dev->worker_mq.cnt, 0);
+	dev->worker_thread = kthread_run(mtk_venc_worker_loop, dev, "venc_worker");
+}
+
+void venc_worker_remove(struct mtk_vcodec_dev *dev)
+{
+	int timeout = 0;
+
+	while (atomic_read(&dev->worker_mq.cnt)) {
+		timeout++;
+		mdelay(1);
+		if (timeout > WAIT_REMOVE_TIMEOUT_MS) {
+			mtk_v4l2_err("wait worker msgq empty timeout\n");
+			break;
+		}
+	}
+	kthread_stop(dev->worker_thread);
+}
+
 static void m2mops_venc_device_run(void *priv)
 {
 	struct mtk_vcodec_ctx *ctx = priv;
@@ -3708,11 +3779,11 @@ static void m2mops_venc_device_run(void *priv)
 	    mtk_vcodec_is_state(ctx, MTK_STATE_INIT)) {
 		/* encode h264 sps/pps header */
 		mtk_venc_encode_header(ctx);
-		queue_work(ctx->dev->encode_workqueue, &ctx->encode_work);
+		queue_enc_work(ctx);
 		return;
 	}
 
-	queue_work(ctx->dev->encode_workqueue, &ctx->encode_work);
+	queue_enc_work(ctx);
 }
 
 static int m2mops_venc_job_ready(void *m2m_priv)
@@ -3765,7 +3836,6 @@ void mtk_vcodec_enc_set_default_params(struct mtk_vcodec_ctx *ctx)
 	ctx->m2m_ctx->q_lock = &ctx->q_mutex;
 	ctx->fh.m2m_ctx = ctx->m2m_ctx;
 	ctx->fh.ctrl_handler = &ctx->ctrl_hdl;
-	INIT_WORK(&ctx->encode_work, mtk_venc_worker);
 
 	ctx->colorspace = V4L2_COLORSPACE_REC709;
 	ctx->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;

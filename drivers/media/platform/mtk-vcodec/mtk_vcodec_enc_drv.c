@@ -124,6 +124,7 @@ static int fops_vcodec_open(struct file *file)
 	mutex_init(&ctx->init_lock);
 	mutex_init(&ctx->ipi_use_lock);
 	mutex_init(&ctx->gen_buf_list_lock);
+	INIT_LIST_HEAD(&ctx->worker_node);
 
 	ctx->type = MTK_INST_ENCODER;
 	ret = mtk_vcodec_enc_ctrls_setup(ctx);
@@ -587,15 +588,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		goto err_enc_mem_init;
 	}
 
-	dev->encode_workqueue =
-		alloc_ordered_workqueue(MTK_VCODEC_ENC_NAME,
-								WQ_MEM_RECLAIM |
-								WQ_FREEZABLE);
-	if (!dev->encode_workqueue) {
-		mtk_v4l2_err("Failed to create encode workqueue");
-		ret = -EINVAL;
-		goto err_event_workq;
-	}
+	venc_worker_probe(dev);
 
 	ret = video_register_device(vfd_enc, VFL_TYPE_VIDEO, -1);
 	if (ret) {
@@ -666,8 +659,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	return 0;
 
 err_enc_reg:
-	destroy_workqueue(dev->encode_workqueue);
-err_event_workq:
+	kthread_stop(dev->worker_thread);
 	v4l2_m2m_release(dev->m2m_dev_enc);
 err_enc_mem_init:
 	video_unregister_device(vfd_enc);
@@ -710,14 +702,12 @@ static int mtk_vcodec_enc_remove(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev = platform_get_drvdata(pdev);
 
-	venc_if_dev_ctx_deinit(dev);
+	venc_worker_remove(dev);
 
 	mtk_unprepare_venc_emi_bw(dev);
 	mtk_unprepare_venc_dvfs(dev);
 
 	mtk_v4l2_debug_enter();
-	flush_workqueue(dev->encode_workqueue);
-	destroy_workqueue(dev->encode_workqueue);
 	if (dev->m2m_dev_enc)
 		v4l2_m2m_release(dev->m2m_dev_enc);
 
@@ -731,6 +721,8 @@ static int mtk_vcodec_enc_remove(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		venc_vcp_remove(dev);
 #endif
+	venc_if_dev_ctx_deinit(dev);
+
 	return 0;
 }
 

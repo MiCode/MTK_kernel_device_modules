@@ -353,6 +353,28 @@ void vcodec_trace(const char *fmt, ...)
 EXPORT_SYMBOL(vcodec_trace);
 #endif
 
+void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_type, bool in_kernel, int add_diff)
+{
+	bool is_input = V4L2_TYPE_IS_OUTPUT(buf_type);
+	int trace_count;
+
+	if (in_kernel) {
+		trace_count = is_input ?
+			v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx) : v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx);
+	} else {
+		if (is_input) {
+			mtk_v4l2_debug(8, "[WARNING][%d] not counting input bufs in driver", ctx->id);
+			return;
+		}
+		trace_count = atomic_add_return(add_diff, &ctx->output_cnt_in_driver);
+	}
+
+	vcodec_trace_tid_count(ctx->trace_count_tgid, trace_count,
+		"%s-%d-%s_buf-in_%s", ctx->type == MTK_INST_DECODER ? "VDEC" : "VENC", ctx->id,
+		is_input ? "in" : "out", in_kernel ? "kernel" : "driver");
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_in_out_trace_count);
+
 void __iomem *mtk_vcodec_get_dec_reg_addr(struct mtk_vcodec_ctx *data,
 	unsigned int reg_idx)
 {
@@ -650,7 +672,7 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 
 	mutex_lock(&ctx->buf_lock);
 	if (ctx->input_driven)
-		dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
+		dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove_check(ctx->m2m_ctx);
 	else
 		dst_vb2_v4l2 = v4l2_m2m_next_dst_buf(ctx->m2m_ctx);
 
@@ -756,6 +778,7 @@ int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
 		void *vbuf)
 {
 	struct v4l2_m2m_buffer *b;
+	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)m2m_ctx->priv;
 
 	if (vbuf == NULL) {
 		mtk_v4l2_err("Invalid arguments, m2m_ctx=0x%lx, vbuf=0x%lx",
@@ -775,12 +798,37 @@ int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
 			LIST_POISON1, LIST_POISON2);
 		return -1;
 	}
-	vcodec_trace_begin_func();
+	vcodec_trace_begin("%s(ts=%lld)", __func__, b->vb.vb2_buf.timestamp);
 	v4l2_m2m_buf_queue(m2m_ctx, vbuf);
 	vcodec_trace_end();
+	mtk_vcodec_in_out_trace_count(ctx, b->vb.vb2_buf.type, true, 1);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(v4l2_m2m_buf_queue_check);
+
+struct vb2_v4l2_buffer *v4l2_m2m_src_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx)
+{
+	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)m2m_ctx->priv;
+	struct vb2_v4l2_buffer *buf;
+
+	buf = v4l2_m2m_src_buf_remove(m2m_ctx);
+	if (buf != NULL)
+		mtk_vcodec_in_out_trace_count(ctx, buf->vb2_buf.type, true, -1);
+	return buf;
+}
+EXPORT_SYMBOL_GPL(v4l2_m2m_src_buf_remove_check);
+
+struct vb2_v4l2_buffer *v4l2_m2m_dst_buf_remove_check(struct v4l2_m2m_ctx *m2m_ctx)
+{
+	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)m2m_ctx->priv;
+	struct vb2_v4l2_buffer *buf;
+
+	buf = v4l2_m2m_dst_buf_remove(m2m_ctx);
+	if (buf != NULL)
+		mtk_vcodec_in_out_trace_count(ctx, buf->vb2_buf.type, true, -1);
+	return buf;
+}
+EXPORT_SYMBOL_GPL(v4l2_m2m_dst_buf_remove_check);
 
 int mtk_dma_sync_sg_range(const struct sg_table *sgt,
 	struct device *dev, unsigned int size,

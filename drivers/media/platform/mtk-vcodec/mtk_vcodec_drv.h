@@ -48,6 +48,7 @@
 #define MTK_SLOWMOTION_GCE_TH   120
 #define MTK_VCODEC_MAX_PLANES   3
 #define WAIT_INTR_TIMEOUT_MS    500
+#define WAIT_REMOVE_TIMEOUT_MS  1000
 #define SUSPEND_TIMEOUT_CNT     5000
 #define MTK_MAX_CTRLS_HINT      64
 #define V4L2_BUF_FLAG_OUTPUT_NOT_GENERATED 0x02000000
@@ -708,8 +709,7 @@ struct mtk_vcodec_ctx {
 	unsigned int irq_status;
 
 	struct v4l2_ctrl_handler ctrl_hdl;
-	struct work_struct decode_work;
-	struct work_struct encode_work;
+	struct list_head worker_node;
 	struct vdec_pic_info last_decoded_picinfo;
 	struct mtk_video_dec_buf *dec_flush_buf;
 	struct mtk_video_enc_buf *enc_flush_buf;
@@ -719,6 +719,10 @@ struct mtk_vcodec_ctx {
 	unsigned int *ipi_blocked;
 	enum vdec_input_driven_mode input_driven;
 	bool output_async;
+
+	/* for trace*/
+	pid_t trace_count_tgid;
+	atomic_t output_cnt_in_driver;
 
 	/* for vdec low power mode */
 	spinlock_t lpw_lock;
@@ -890,8 +894,6 @@ struct mtk_vcodec_dev {
 
 	unsigned long id_counter;
 
-	struct workqueue_struct *decode_workqueue;
-	struct workqueue_struct *encode_workqueue;
 	struct workqueue_struct *check_alive_workqueue;
 	struct vdec_check_alive_work_struct check_alive_work;
 
@@ -903,6 +905,8 @@ struct mtk_vcodec_dev {
 	struct mutex ipi_mutex_res;
 	struct mutex cap_mutex;
 	struct mtk_vcodec_msgq mq;
+	struct mtk_vcodec_msgq worker_mq;
+	struct task_struct *worker_thread;
 
 	int dec_irq[MTK_VDEC_IRQ_NUM];
 	int enc_irq[MTK_VENC_HW_NUM];

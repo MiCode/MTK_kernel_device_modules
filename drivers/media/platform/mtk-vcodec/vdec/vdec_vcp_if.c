@@ -852,7 +852,7 @@ return_vdec_ipi_ack:
 				break;
 			case VCU_IPIMSG_DEC_PUT_FRAME_BUFFER:
 				inst->put_frame_async = false;
-				vcodec_trace_begin("vdec_ipi(PUT_FRAME_BUFFER)");
+				vcodec_trace_begin("vdec_ipi-%d(PUT_FRAME_BUFFER)", ctx->id);
 				check_error_code(inst, MTK_VDEC_CORE);
 				mtk_vdec_put_fb(vcu->ctx, PUT_BUFFER_CALLBACK, msg->data != 0);
 				msg->msg_id = AP_IPIMSG_DEC_PUT_FRAME_BUFFER_DONE;
@@ -861,7 +861,7 @@ return_vdec_ipi_ack:
 				break;
 			case VCU_ASYNCIPIMSG_DEC_PUT_FRAME_BUFFER:
 				inst->put_frame_async = true;
-				vcodec_trace_begin("vdec_ipi(ASYNC_PUT_FRAME_BUFFER)");
+				vcodec_trace_begin("vdec_ipi-%d(ASYNC_PUT_FRAME_BUFFER)", ctx->id);
 				check_error_code(inst, MTK_VDEC_CORE);
 				vdec_get_fb_list(inst,
 					&inst->vsi->list_disp, &inst->list_disp_fb, &inst->list_disp_fb_lock);
@@ -872,7 +872,7 @@ return_vdec_ipi_ack:
 				vcodec_trace_end();
 				break;
 			case VCU_IPIMSG_DEC_MEM_ALLOC:
-				vcodec_trace_begin("vdec_ipi(MEM_ALLOC)");
+				vcodec_trace_begin("vdec_ipi-%d(MEM_ALLOC)", ctx->id);
 				handle_vdec_mem_alloc((void *)obj->share_buf);
 				msg->msg_id = AP_IPIMSG_DEC_MEM_ALLOC_DONE;
 				vdec_vcp_ipi_send(inst, msg,
@@ -880,7 +880,7 @@ return_vdec_ipi_ack:
 				vcodec_trace_end();
 				break;
 			case VCU_IPIMSG_DEC_MEM_FREE:
-				vcodec_trace_begin("vdec_ipi(MEM_FREE)");
+				vcodec_trace_begin("vdec_ipi-%d(MEM_FREE)", ctx->id);
 				handle_vdec_mem_free((void *)obj->share_buf);
 				msg->msg_id = AP_IPIMSG_DEC_MEM_FREE_DONE;
 				vdec_vcp_ipi_send(inst, msg,
@@ -1367,7 +1367,7 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 
 	mtk_vcodec_add_ctx_list(ctx);
 
-	vcodec_trace_begin("%s(ipi)", __func__);
+	vcodec_trace_begin("%s-%d(ipi)", __func__, ctx->id);
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 	vcodec_trace_end();
 
@@ -1419,7 +1419,7 @@ static void vdec_vcp_deinit(unsigned long h_vdec)
 	msg.ctx_id = inst->ctx->id;
 	msg.vcu_inst_addr = inst->vcu.inst_addr;
 
-	vcodec_trace_begin("%s(ipi)", __func__);
+	vcodec_trace_begin("%s-%d(ipi)", __func__, inst->ctx->id);
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 	vcodec_trace_end();
 	mtk_vcodec_debug(inst, "- ret=%d", err);
@@ -1467,7 +1467,7 @@ int vdec_vcp_reset(struct vdec_inst *inst, enum vdec_reset_type drain_type)
 	msg.vcu_inst_addr = inst->vcu.inst_addr;
 	msg.drain_type = drain_type;
 
-	vcodec_trace_begin("%s(drain_type %d)", __func__, drain_type);
+	vcodec_trace_begin("%s-%d(drain_type %d)", __func__, inst->ctx->id, drain_type);
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 	vcodec_trace_end();
 	mtk_vcodec_debug(inst, "- ret=%d", err);
@@ -1546,6 +1546,7 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 			inst->vsi->general_buf_size = 0;
 			mtk_vcodec_debug(inst, "no general buf dmabuf");
 		}
+		mtk_vcodec_in_out_trace_count(inst->ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, false, 1);
 	}
 
 	inst->vsi->dec.timestamp = inst->ctx->timestamp;
@@ -1562,7 +1563,8 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	msg.data[0] = (unsigned int)bs->size;
 	msg.data[1] = (unsigned int)bs->length;
 	msg.data[2] = (unsigned int)bs->flags;
-	vcodec_trace_begin("%s(ipi)", __func__);
+	vcodec_trace_begin("%s-%d(ipi)(ts=%lld)(%d)",
+		__func__, inst->ctx->id, inst->ctx->timestamp, (fb != NULL) ? fb->index : 0);
 	ret = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 	vcodec_trace_end();
 
@@ -1692,8 +1694,14 @@ static int set_frame_buffer(struct vdec_inst *inst, void *fb)
 		}
 
 		if (pfb != NULL || fb == NULL) {
+			if (pfb != NULL) {
+				mtk_vcodec_in_out_trace_count(inst->ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, false, 1);
+				vcodec_trace_begin("%s-%d(ipi)(%d)", __func__, inst->ctx->id, pfb->index);
+			}
 			memcpy(msg.data, &ipi_fb, sizeof(struct vdec_ipi_fb));
 			err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
+			if (pfb != NULL)
+				vcodec_trace_end();
 			if (err < 0)
 				break;
 		}

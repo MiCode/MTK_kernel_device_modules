@@ -104,6 +104,8 @@ void mtk_vdec_unlock(struct mtk_vcodec_ctx *ctx, u32 hw_id);
 int mtk_vdec_lock(struct mtk_vcodec_ctx *ctx, u32 hw_id);
 int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	struct vb2_queue *dst_vq);
+void vdec_worker_probe(struct mtk_vcodec_dev *dev);
+void vdec_worker_remove(struct mtk_vcodec_dev *dev);
 void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx);
 void mtk_vcodec_dec_empty_queues(struct file *file, struct mtk_vcodec_ctx *ctx);
 void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx);
