@@ -515,6 +515,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &imgsys_fw {
+	compatible = "mediatek,imgsys-isp8-mt6991-swrgo";
 	ccf-apply;
 	clocks = <&mm_pd_clk MT6991_PD_ISP_MAIN_IMGSYS_FW>,
 		<&img_vcore_d1a_clk CLK_IMG_VCORE_GALS_DISP_CAMERA_P2>,
