@@ -2684,6 +2684,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mcupm/v2/mcupm.ko")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/cpufreq_cus:cpu_freq")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/cpufreq_int:cpu_hwtest")
+        mgk_64_device_modules.append("drivers/misc/mediatek/dcm/mt6765_dcm.ko")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6765")
 
