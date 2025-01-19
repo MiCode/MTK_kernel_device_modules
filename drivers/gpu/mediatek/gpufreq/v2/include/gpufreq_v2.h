@@ -505,6 +505,7 @@ struct gpufreq_shared_status {
 	unsigned int sb_version;
 	unsigned int ptp_version;
 	unsigned int dbg_version;
+	unsigned int kdbg_version;
 	unsigned int gpm1_mode;
 	unsigned int gpm3_mode;
 	unsigned int dfd_mode;
