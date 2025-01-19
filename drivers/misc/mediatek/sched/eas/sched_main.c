@@ -1410,26 +1410,17 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_update_rt_rq_load_avg_internal hooks failed, returned %d\n", ret);
 
-	/* need kernel-mainline temp patch support */
-#if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)
 	ret = register_trace_android_rvh_attach_entity_load_avg(mtk_attach_entity_load_avg, NULL);
 	if (ret)
 		pr_info("register mtk_attach_entity_load_avg hooks failed, returned %d\n", ret);
-#endif
 
-	/* need kernel-mainline temp patch support */
-#if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)
 	ret = register_trace_android_rvh_detach_entity_load_avg(mtk_detach_entity_load_avg, NULL);
 	if (ret)
 		pr_info("register mtk_detach_entity_load_avg hooks failed, returned %d\n", ret);
-#endif
 
-	/* need kernel-mainline temp patch support */
-#if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)
 	ret = register_trace_android_rvh_remove_entity_load_avg(mtk_remove_entity_load_avg, NULL);
 	if (ret)
 		pr_info("register mtk_remove_entity_load_avg hooks failed, returned %d\n", ret);
-#endif
 out_wq:
 	return ret;
 
