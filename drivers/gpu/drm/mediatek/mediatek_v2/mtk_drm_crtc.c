@@ -10709,7 +10709,6 @@ skip_prete:
 
 		GCE_DO(set_event, EVENT_CABC_EOF);
 		GCE_DO(set_event, EVENT_STREAM_EOF);
-		GCE_DO(wait_no_clear, EVENT_STREAM_EOF);
 
 		if (crtc_id == 0) {
 			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true) {
@@ -14469,8 +14468,14 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 
 	/* mml need to power on InlineRotate and sync with mml */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
-		need_sync_mml)
+		need_sync_mml) {
+		if (mtk_crtc->is_mml_dl) {
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+			CRTC_MMP_MARK(0, set_dirty, 0xFFFFFFFF , (unsigned long)cmdq_handle);
+		}
 		mml_cmdq_pkt_init(crtc, cmdq_handle);
+	}
 
 	/*Msync 2.0 change to check vfp period token instead of EOF*/
 	if (!mtk_crtc_is_frame_trigger_mode(crtc) &&
