@@ -1,4 +1,3 @@
-
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2021 MediaTek Inc.
@@ -398,7 +397,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c1: i2c@11ed1000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -409,8 +407,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
-        };
+	};
 	i2c2: i2c@11ed2000 {
 		compatible = "mediatek,mt6983-i2c";
 		reg = <0 0x11ed2000 0 0x1000>,
@@ -420,8 +417,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
-        };
+	};
 	i2c3: i2c@11db0000 {
 		compatible = "mediatek,mt6983-i2c";
 		reg = <0 0x11db0000 0 0x1000>,
@@ -431,7 +427,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c4: i2c@11ed3000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -442,7 +437,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c5: i2c@11b20000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -453,7 +447,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c6: i2c@11db1000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -464,7 +457,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c7: i2c@11db2000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -475,7 +467,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c8: i2c@11db3000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -486,7 +477,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c9: i2c@11ed4000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -497,7 +487,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c10: i2c@11db4000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -508,7 +497,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	i2c11: i2c@11280000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -519,7 +507,6 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-                mediatek,control-rs-stop;
 	};
 	mrdump_ext_rst: mrdump_ext_rst {
 		compatible = "mediatek, mrdump_ext_rst-eint";
@@ -551,9 +538,12 @@
 			clock-frequency = <2000000000>;
 			capacity-dmips-mhz = <407>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * commented for safety from reboot during shell
+			 *cpu-idle-states = <&cpuoff_l &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu1: cpu@001 {
 			device_type = "cpu";
@@ -564,9 +554,11 @@
 			clock-frequency = <2000000000>;
 			capacity-dmips-mhz = <407>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * cpu-idle-states = <&cpuoff_l &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu2: cpu@002 {
 			device_type = "cpu";
@@ -577,9 +569,11 @@
 			clock-frequency = <2000000000>;
 			capacity-dmips-mhz = <407>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * cpu-idle-states = <&cpuoff_l &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu3: cpu@003 {
 			device_type = "cpu";
@@ -590,9 +584,11 @@
 			clock-frequency = <2000000000>;
 			capacity-dmips-mhz = <407>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * cpu-idle-states = <&cpuoff_l &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu4: cpu@004 {
 			device_type = "cpu";
@@ -603,9 +599,11 @@
 			clock-frequency = <2000000000>;
 			capacity-dmips-mhz = <407>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * cpu-idle-states = <&cpuoff_l &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu5: cpu@005 {
 			device_type = "cpu";
@@ -616,9 +614,11 @@
 			clock-frequency = <2000000000>;
 			capacity-dmips-mhz = <407>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_l &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * cpu-idle-states = <&cpuoff_l &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu6: cpu@100 {
 			device_type = "cpu";
@@ -629,9 +629,11 @@
 			clock-frequency = <2200000000>;
 			capacity-dmips-mhz = <1024>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_b &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * cpu-idle-states = <&cpuoff_b &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu7: cpu@101 {
 			device_type = "cpu";
@@ -642,9 +644,11 @@
 			clock-frequency = <2200000000>;
 			capacity-dmips-mhz = <1024>;
 			#cooling-cells = <2>;
-			cpu-idle-states = <&cpuoff_b &mcusysoff
-						&system_mem &system_pll &system_bus
-						&s2idle>;
+			/*
+			 * cpu-idle-states = <&cpuoff_b &mcusysoff
+			 *			&system_mem &system_pll &system_bus
+			 *			&s2idle>;
+			 */
 		};
 		cpu-map {
 			cluster0 {
@@ -3587,7 +3591,7 @@
 				<0 0>;
 			power-domains = <&scpsys MT6855_POWER_DOMAIN_UFS0_SHUTDOWN>;
 			/* no buck on mt6855 */
-			vcc-supply = <&mt6363_vemc>;
+			/* vcc-supply = <&mt6363_vemc>; */
 			/* porting vccq/vccq2 to disable unused vufs */
 			/* Disable vcc/vccq2 to give control to spm to handle lpm state */
 			/* vccq-supply = <&mt6363_vufs12>; */
@@ -3602,6 +3606,7 @@
 				"hci_rst";
 			bootmode = <&chosen>;
 			mediatek,ufs-qos;
+			mediatek,ufs-disable-mcq;
 		};
 		apdma: dma-controller@11300900 {
 			compatible = "mediatek,mt6779-uart-dma";
@@ -4992,7 +4997,7 @@
 			max-volt = <3500000>;
 			vib-supply = <&mt6369_vibr>;
 			};
-		mtk_leds: mtk_leds {
+		mtk_leds: mtk-leds {
 			backlight {
 				label = "lcd-backlight";
 				max-brightness = <255>;
