@@ -127,6 +127,7 @@ struct md_ccif_ctrl {
 	unsigned int ccif_hw_reset_ver;
 	unsigned int ccif_hw_reset_bit;
 	void __iomem *ccif_hw_reset_addr;
+	unsigned int ccif_hw_reset_addr_offset;
 	void __iomem *infracfg_base;
 	unsigned int ccif_clk_free_run;
 };
