@@ -289,12 +289,13 @@ static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *m
 
 	fill_rate = ((u64)mmsys_clk * MTK_DVO_INPUT_MODE * 30) / (32 * MTK_DISP_BUF_SRAM_UNIT_SIZE);
 	fill_rate = div64_u64_rem(mmsys_clk * MTK_DVO_INPUT_MODE * 30,
-						(u64)32 * MTK_DISP_BUF_SRAM_UNIT_SIZE, &fill_rate_rem);
+				(u64)32 * MTK_DISP_BUF_SRAM_UNIT_SIZE, &fill_rate_rem);
 
 	data_rate = (u64)mode->hdisplay * mode->vdisplay *
 				((u64)mode->clock * 1000 / (mode->htotal * mode->vtotal));
-	consume_rate = div64_u64_rem((data_rate * 30 * MTK_BLANKING_RATIO),
-						(u64)(8 * 32 * 1000000), &consume_rate_rem);
+	/* consume_rate = data_rate *  MTK_BLANKING_RATIO * 30 /(8 * 32 * 1000000) */
+	consume_rate = div64_u64_rem(((data_rate * 30 * 5) / 4),
+					(u64)(8 * 32 * 1000000), &consume_rate_rem);
 	dev_info(dvo->dev, "[eDPTX] data_rate:%llu consume_rate_rem: %llu", data_rate, consume_rate_rem);
 	total_bit = (u64)MTK_DVO_EDP_MAX_CLK * MTK_DVO_OUTPUT_MODE * 30 * MTK_DISP_LINE_BUF_DVO_US;
 
@@ -309,12 +310,10 @@ static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *m
 
 	if (sodi_high_rem < tmp) {
 		u64 total = (u64)8 * 32 * 1000000 * 32 * MTK_DISP_BUF_SRAM_UNIT_SIZE;
-
 		fill_rate -= 1;
 		sodi_high_rem = (total + sodi_high_rem - tmp) * 32 * 6 / total;
 	} else {
 		u64 total = (u64)8 * 32 * 1000000 * 32 * MTK_DISP_BUF_SRAM_UNIT_SIZE;
-
 		sodi_high_rem = (sodi_high_rem - tmp) * 32 * 6 / total;
 	}
 
