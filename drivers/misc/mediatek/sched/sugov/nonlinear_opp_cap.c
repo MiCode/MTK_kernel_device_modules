@@ -2341,13 +2341,13 @@ void alloc_dpt_v2_linear_table(void)
 	int quant, gear_idx, nr_opp, cpu, nr_gears = get_nr_gears();
 
 	/* [gearless, legacy] * [nr_gears] * [max_nr_opp] */
-	opp2cap_linear_table = kcalloc(2, sizeof(int**), GFP_ATOMIC);
+	opp2cap_linear_table = kcalloc(2, sizeof(int**), GFP_KERNEL);
 	for (quant = 0; quant < 2; quant++) {
-		opp2cap_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_ATOMIC);
+		opp2cap_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_KERNEL);
 		for (gear_idx = 0; gear_idx < nr_gears; gear_idx++) {
 			cpu = cpumask_first(get_gear_cpumask(gear_idx));
 			nr_opp = pd_util2opp(cpu, 0, quant, 0, NULL, true, 0);
-			opp2cap_linear_table[quant][gear_idx] = kcalloc(nr_opp+1, sizeof(int), GFP_ATOMIC);
+			opp2cap_linear_table[quant][gear_idx] = kcalloc(nr_opp+1, sizeof(int), GFP_KERNEL);
 			/* pr_info("init opp2cap linear table quant=%d gear_idx=%d opp=%d\n", quant, gear_idx, nr_opp+1); */
 		}
 	}
@@ -2355,16 +2355,18 @@ void alloc_dpt_v2_linear_table(void)
 		pr_info("init opp2cap_linear_table failed\n"); */
 
 	/* [gearless, legacy] * [nr_gears] * [1025] */
-	cap2freq_linear_table = kcalloc(2, sizeof(int**), GFP_ATOMIC);
+	cap2freq_linear_table = kcalloc(2, sizeof(int**), GFP_KERNEL);
 	for (quant = 0; quant < 2; quant++) {
-		cap2freq_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_ATOMIC);
+		cap2freq_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_KERNEL);
 		for (gear_idx = 0; gear_idx < nr_gears; gear_idx++) {
-			cap2freq_linear_table[quant][gear_idx] = kcalloc(SCHED_CAPACITY_SCALE+1, sizeof(int), GFP_ATOMIC);
+			cap2freq_linear_table[quant][gear_idx] = kcalloc(SCHED_CAPACITY_SCALE+1, sizeof(int), GFP_KERNEL);
 			/* pr_info("init cap2freq linear table quant=%d gear_idx=%d cap_length=%ld\n", quant, gear_idx, SCHED_CAPACITY_SCALE+1); */
 		}
 	}
 	/* if (!cap2freq_linear_table)
 		pr_info("init cap2freq_linear_table failed\n"); */
+
+	pr_info("alloc_dpt_v2_linear_table done\n");
 }
 
 void init_dpt_v2_driver(void)
@@ -2391,7 +2393,6 @@ void init_dpt_v2_driver(void)
 		dpt_rq->min_ltime[S_COEF2] = coef2_min_ltime;
 	}
 
-    alloc_dpt_v2_linear_table();
 	set_dpt_v2_linear_table_hook(opp2cap_linear_table, cap2freq_linear_table);
 	/* pr_info("set_dpt_v2_linear_table_hook done\n"); */
 
@@ -2693,6 +2694,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 	init_dpt_rq();
 
+	alloc_dpt_v2_linear_table();
+
 	if (legacy_api_support_get()) {
 		for (int i = 0; i < MAX_NR_CPUS; i++) {
 			set_target_margin(i, 20);
@@ -2729,6 +2732,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	init_adaptive_margin();
 
 	register_fpsgo_sugov_hooks();
+
+	init_uclamp_involve();
 
 	return ret;
 }

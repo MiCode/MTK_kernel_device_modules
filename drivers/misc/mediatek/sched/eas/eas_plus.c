@@ -622,8 +622,9 @@ void mtk_tick_entry(void *data, struct rq *rq)
 
 	irq_log_store();
 
-	if (!get_init_driver_after_vendor_init_done())
-		init_driver_after_vendor_init();
+	/* if (!get_init_driver_after_vendor_init_done())
+	 *	init_driver_after_vendor_init();
+	 */
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	/* WL & DPT need update here.
