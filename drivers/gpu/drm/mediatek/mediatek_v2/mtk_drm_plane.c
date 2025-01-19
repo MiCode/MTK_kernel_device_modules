@@ -506,8 +506,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		struct mml_submit *cfg = mtk_plane_state->pending.mml_cfg;
 		uint32_t width, height, pitch;
 
-		width = cfg->info.dest[0].crop.r.width;
-		height = cfg->info.dest[0].crop.r.height;
+		width = crtc_state->mml_src_roi[0].width;
+		height = crtc_state->mml_src_roi[0].height;
 		pitch = cfg->info.src.y_stride;
 
 		mtk_plane_state->pending.enable = plane->state->visible;
