@@ -26,7 +26,9 @@
 
 #include "sched_avg.h"
 #include <sched_sys_common.h>
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
+#endif
 #include <eas/eas_plus.h>
 #include "core_ctl.h"
 
@@ -2257,7 +2259,9 @@ static long core_ioctl(struct file *filp,
 
 static const struct proc_ops core_ctl_Fops = {
 	.proc_ioctl = core_ioctl,
+#if IS_ENABLED(CONFIG_COMPAT)
 	.proc_compat_ioctl = core_ioctl,
+#endif
 	.proc_open = core_ctl_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
