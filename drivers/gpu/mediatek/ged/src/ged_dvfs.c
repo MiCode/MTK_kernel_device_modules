@@ -920,7 +920,7 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 	if (ged_dvfs_cal_gpu_utilization_ex_fp != NULL) {
 		ged_dvfs_cal_gpu_utilization_ex_fp(pui32Loading, pui32Block,
 			pui32Idle, (void *) Util_Ex);
-		Util_Ex->freq = ged_get_cur_freq();
+		Util_Ex->freq = ged_get_cur_stack_freq();
 
 		gpu_util_history_update(Util_Ex);
 
