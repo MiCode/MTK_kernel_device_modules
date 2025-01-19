@@ -596,7 +596,7 @@ static inline int load_token(struct mc_admin_load_info *token)
 {
 	struct tee_mmu *mmu;
 	struct mcp_buffer_map map;
-	struct mc_ioctl_buffer buf;
+	struct mc_ioctl_buffer buf = {0};
 	int ret;
 
 	buf.va = (uintptr_t)token->address;
