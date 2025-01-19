@@ -3380,17 +3380,27 @@ static int cmdq_probe(struct platform_device *pdev)
 		return PTR_ERR(cmdq->base);
 	}
 
+	if (of_property_read_u32(dev->of_node, "gce-hwid", &hwid))
+		hwid = gce_hw_cnt;
+	g_cmdq[hwid] = cmdq;
+	cmdq->hwid = (u8)hwid;
+
+	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
+	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
+	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
+	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
 	of_property_read_u32(dev->of_node, "cmdq-print-debug", &cmdq_print_debug);
+
+	cmdq_msg("hwid:%d dump_buf_size %d error irq %d proc_debug_off:%d print_debug:%d",
+		cmdq->hwid, cmdq_dump_buf_size,
+		error_irq_bug_on,
+		cmdq_proc_debug_off,
+		cmdq_print_debug);
 	if (gce_hw_cnt == 0 && cmdq_print_debug) {
 		cmdq_proc_create();
 		if (cmdq_print_debug)
 			cmdq_util_reserved_memory_lookup(dev);
 	}
-
-	if (of_property_read_u32(dev->of_node, "gce-hwid", &hwid))
-		hwid = gce_hw_cnt;
-	g_cmdq[hwid] = cmdq;
-	cmdq->hwid = (u8)hwid;
 	gce_hw_cnt++;
 
 	/* cmdq irq */
@@ -3459,17 +3469,6 @@ static int cmdq_probe(struct platform_device *pdev)
 			cmdq->event_dump_range[0], cmdq->event_dump_range[1],
 			cmdq->event_clr_range[0], cmdq->event_clr_range[1]);
 	}
-
-	of_property_read_u32(dev->of_node, "cmdq-dump-buf-size", &cmdq_dump_buf_size);
-	of_property_read_u32(dev->of_node, "error-irq-bug-on", &error_irq_bug_on);
-	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
-	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
-
-	cmdq_msg("hwid:%d dump_buf_size %d error irq %d proc_debug_off:%d print_debug:%d",
-		cmdq->hwid, cmdq_dump_buf_size,
-		error_irq_bug_on,
-		cmdq_proc_debug_off,
-		cmdq_print_debug);
 
 	cmdq_mmp_init();
 
