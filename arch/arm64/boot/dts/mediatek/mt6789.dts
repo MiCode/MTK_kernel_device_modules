@@ -6172,6 +6172,7 @@
 				nvmem-cells = <&u2_phy_data>;
 				nvmem-cell-names = "intr_cal";
 				nvmem-cell-masks = <0x1f>;
+				mediatek,set-efuse-v1;
 				status = "okay";
 			};
 		};
