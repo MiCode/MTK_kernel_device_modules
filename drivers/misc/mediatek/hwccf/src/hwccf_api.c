@@ -136,6 +136,9 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 			ret = -HWV_VOTE_TIMEOUT;
 			goto ERR;
 		}
+	} else if (!is_set) {
+		/* delay 100us for stable status */
+		udelay(100);
 	}
 
 	if (setclr_sta_ofs != 0) {
