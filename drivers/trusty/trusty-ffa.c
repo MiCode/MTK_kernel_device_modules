@@ -10,12 +10,12 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/trusty/smcall.h>
-#include <linux/arm_ffa.h>
 #include <linux/trusty/trusty.h>
 
 #include <linux/scatterlist.h>
 #include <linux/dma-mapping.h>
 
+#include "ffa_v11/arm_ffa.h"
 #include "trusty-ffa.h"
 #include "trusty-private.h"
 #include "trusty-sched-share-api.h"
@@ -28,6 +28,14 @@ extern const struct bus_type ffa_bus_type;
 
 /* string representation of trusty UUID used for partition info get call */
 static const char *trusty_uuid = "40ee25f0-a2bc-304c-8c4c-a173c57d8af1";
+
+struct ffa_device *g_ffa_dev;
+
+struct ffa_device *trusty_ffa_get_dev(void)
+{
+	return g_ffa_dev;
+}
+EXPORT_SYMBOL(trusty_ffa_get_dev);
 
 static u32 trusty_ffa_nop_call(struct device *dev, unsigned long a0,
 			       unsigned long a1, unsigned long a2)
@@ -404,6 +412,7 @@ static int trusty_ffa_probe(struct ffa_device *ffa_dev)
 	ffa_dev_set_drvdata(ffa_dev, s);
 
 	ffa_dev->ops->msg_ops->mode_32bit_set(ffa_dev);
+	g_ffa_dev = ffa_dev;
 
 	return 0;
 }

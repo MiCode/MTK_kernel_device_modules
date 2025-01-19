@@ -12,7 +12,8 @@
 
 #include <linux/types.h>
 #include <linux/uuid.h>
-#include <linux/arm_ffa.h>
+
+#include "ffa_v11/arm_ffa.h"
 
 /**
  * DOC: FF-A driver version requirements

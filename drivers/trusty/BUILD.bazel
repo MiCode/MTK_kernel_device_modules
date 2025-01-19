@@ -4,6 +4,7 @@
 #
 
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
 
 package(
     default_visibility = [
@@ -22,8 +23,8 @@ define_mgk_ddk_ko(
     name = "trusty-core",
     srcs = [
         "trusty.c",
-#        "trusty-ffa.c",
-#        "trusty-ffa.h",
+        "trusty-ffa.c",
+        "trusty-ffa.h",
         "trusty-irq.c",
         "trusty-irq.h",
         "trusty-irq-trace.h",
@@ -38,6 +39,12 @@ define_mgk_ddk_ko(
         "trusty-trace.h",
     ],
     includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa_hdrs".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version),
+    ],
 )
 
 define_mgk_ddk_ko(

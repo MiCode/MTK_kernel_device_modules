@@ -3,6 +3,7 @@
 # Makefile for trusty components
 #
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/trusty
 
 obj-$(CONFIG_TRUSTY)		+= trusty-core.o
