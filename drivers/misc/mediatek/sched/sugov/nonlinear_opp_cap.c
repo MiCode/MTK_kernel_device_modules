@@ -715,7 +715,8 @@ void hook_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 		min_f_scale, max_f_scale);
 	*capacity = min_t(unsigned long, *capacity, capacity_orig - __thermal_pressure);
 
-	update_dpt_v2_cpu_capacity(cpu, freq_for_debug);
+	if (is_dpt_v2_support())
+		update_dpt_v2_cpu_capacity(cpu, freq_for_debug);
 
 	if (trace_sched_update_cpu_capacity_enabled()) {
 		trace_sched_update_cpu_capacity(cpu, cpu_rq(cpu), orig_cap_of, gear_umax, min_f_scale, max_f_scale, __thermal_pressure,
