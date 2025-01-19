@@ -7717,7 +7717,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			default-glb-pwroff-timeout-us = <10>;
 			autosuspend-delay-ms = <10>;
 			adaptive-power-policy = <2>;
-			exception-mask = <0x5>;
 			reset-exception-mask = <0x0>;
 			iter-trace-enable = <1>;
 			gpu-frame-base-optimize = <1>;
