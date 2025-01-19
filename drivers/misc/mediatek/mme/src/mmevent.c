@@ -512,12 +512,6 @@ static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_
 		if (type == DATA_FLAG_INVALID)
 			break;
 
-		if (type == DATA_FLAG_RESERVED) {
-			MMEERR("Invalid flag type: DATA_FLAG_RESERVED");
-			*p_error_token = INVALID_FLAG_TYPE;
-			return false;
-		}
-
 		if (type == DATA_FLAG_CODE_REGION_STRING)
 			code_region_num++;
 
