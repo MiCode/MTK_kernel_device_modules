@@ -4269,9 +4269,6 @@ GED_ERROR ged_dvfs_system_init(void)
 		get_min_oppidx = ged_get_min_oppidx();
 		GED_LOGI("dts support gpueb dvfs v2, min_oppidx=%u", get_min_oppidx);
 		mtk_set_fastdvfs_mode(POLICY_MODE_V2);
-		if (ged_get_eb_default_policy_mode() != POLICY_MODE_V2)
-			aee_kernel_exception("GPU DVFS", "EB policy mode mismatch: AP_set(%u) EB_default(%u)",
-				POLICY_MODE_V2, ged_get_eb_default_policy_mode());
 	} else if (eb_policy_dts_flag == 1) {
 		get_min_oppidx = ged_get_min_oppidx();
 		GED_LOGI("dts support gpueb dvfs v1, min_oppidx=%u", get_min_oppidx);
