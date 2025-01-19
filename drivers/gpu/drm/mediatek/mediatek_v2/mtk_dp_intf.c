@@ -1748,6 +1748,8 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 			// mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
 			mtk_crtc_vblank_irq(&mtk_crtc->base);
 			irq_intsa++;
+			if (irq_intsa == 3)
+				mtk_dp_video_trigger(video_unmute << 16 | dp_intf->res);
 		}
 
 		if (status & INTSTA_VDE)
@@ -1761,9 +1763,6 @@ static irqreturn_t mtk_dp_intf_irq_status(int irq, void *dev_id)
 		if (status & INTSTA_TARGET_LINE)
 			irq_tl++;
 	}
-
-	if (irq_intsa == 3)
-		mtk_dp_video_trigger(video_unmute << 16 | dp_intf->res);
 
 	if (dpintf_opt && (status & INTSTA_UNDERFLOW) && (irq_underflowsa == 1)) {
 #if IS_ENABLED(CONFIG_ARM64)
