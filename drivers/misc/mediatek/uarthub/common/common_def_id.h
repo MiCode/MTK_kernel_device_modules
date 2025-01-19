@@ -122,6 +122,7 @@ enum uarthub_pkt_fmt_type {
 #define UARTHUB_ERR_MUTEX_LOCK_FAIL        (-105)
 #define UARTHUB_ERR_PARA_WRONG             (-106)
 #define UARTHUB_ERR_PORT_NO_NOT_SUPPORT    (-107)
+#define UARTHUB_ERR_BT_NOT_AWAKE           (-108)
 
 /* UARTHUB UT CASE ERROR ID */
 #define UARTHUB_UT_ERR_HUB_READY_STA       (-1000)

@@ -175,12 +175,15 @@ struct uarthub_core_ops_struct mt6991_plat_core_data = {
 	.uarthub_plat_inband_irq_mask_ctrl = uarthub_inband_irq_mask_ctrl_mt6991,
 	.uarthub_plat_inband_irq_clear_ctrl = uarthub_inband_irq_clear_ctrl_mt6991,
 	.uarthub_plat_inband_irq_get_sta = uarthub_inband_irq_get_sta_mt6991,
-	.uarthub_plat_inband_get_esc_sta = uarthub_inband_get_esc_sta_mt6991,
-	.uarthub_plat_inband_clear_esc_sta = uarthub_inband_clear_esc_sta_mt6991,
+	.uarthub_plat_inband_get_received_sta = uarthub_inband_get_received_sta_mt6991,
+	.uarthub_plat_inband_clear_received_sta = uarthub_inband_clear_received_sta_mt6991,
 	.uarthub_plat_inband_set_esc_char = uarthub_inband_set_esc_char_mt6991,
-	.uarthub_plat_inband_set_esc_sta = uarthub_inband_set_esc_sta_mt6991,
+	.uarthub_plat_inband_set_sta_char = uarthub_inband_set_sta_char_mt6991,
+	.uarthub_plat_inband_get_sta_char = uarthub_inband_get_sta_char_mt6991,
 	.uarthub_plat_inband_is_tx_complete = uarthub_inband_is_tx_complete_mt6991,
 	.uarthub_plat_inband_trigger_ctrl = uarthub_inband_trigger_ctrl_mt6991,
+	.uarthub_plat_inband_is_support = uarthub_inband_is_support_mt6991,
+	.uarthub_plat_is_enable_fw_flow_ctrl_with_inband = uarthub_is_enable_fw_flow_ctrl_with_inband_mt6991,
 
 	.uarthub_plat_get_bt_sleep_flow_hw_mech_en = uarthub_get_bt_sleep_flow_hw_mech_en_mt6991,
 	.uarthub_plat_set_bt_sleep_flow_hw_mech_en = uarthub_set_bt_sleep_flow_hw_mech_en_mt6991,
@@ -1921,12 +1924,12 @@ int uarthub_inband_irq_get_sta_mt6991(void)
 	return ((state_inband_irq == 0x0 && state_uarthub2ap_irq == 0x0) ? 0x1 : 0x0);
 }
 
-unsigned char uarthub_inband_get_esc_sta_mt6991(void)
+unsigned char uarthub_inband_get_received_sta_mt6991(void)
 {
 	return INB_STA_GET_INB_STA(INB_STA_ADDR(uartip_base_map_mt6991[uartip_id_cmm]));
 }
 
-int uarthub_inband_clear_esc_sta_mt6991(void)
+int uarthub_inband_clear_received_sta_mt6991(void)
 {
 	INB_IRQ_CTL_SET_INB_STA_CLR(INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), 0x1);
 	return 0;
@@ -1938,10 +1941,15 @@ int uarthub_inband_set_esc_char_mt6991(unsigned char esc_char)
 	return 0;
 }
 
-int uarthub_inband_set_esc_sta_mt6991(unsigned char esc_sta)
+int uarthub_inband_set_sta_char_mt6991(unsigned char sta_char)
 {
-	INB_STA_CHAR_SET_INB_STA_CHAR(INB_STA_CHAR_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), esc_sta);
+	INB_STA_CHAR_SET_INB_STA_CHAR(INB_STA_CHAR_ADDR(uartip_base_map_mt6991[uartip_id_cmm]), sta_char);
 	return 0;
+}
+
+unsigned char uarthub_inband_get_sta_char_mt6991(void)
+{
+	return INB_STA_CHAR_GET_INB_STA_CHAR(INB_STA_CHAR_ADDR(uartip_base_map_mt6991[uartip_id_cmm]));
 }
 
 int uarthub_inband_is_tx_complete_mt6991(void)
@@ -1955,32 +1963,42 @@ int uarthub_inband_trigger_ctrl_mt6991(void)
 	return 0;
 }
 
-int uarthub_inband_trigger_with_esc_sta_mt6991(unsigned char esc_sta)
+int uarthub_inband_trigger_with_sta_char_mt6991(unsigned char sta_char)
 {
 	int retry = 0;
 	int val = 0;
 
-	uarthub_inband_set_esc_sta_mt6991(esc_sta);
+	uarthub_inband_set_sta_char_mt6991(sta_char);
 	uarthub_inband_trigger_ctrl_mt6991();
 
 	retry = 200;
 	while (retry-- > 0) {
 		val = uarthub_inband_is_tx_complete_mt6991();
 		if (val == 1) {
-			pr_info("[%s] inband_is_tx_complete pass, esc_sta=[0x%x], retry=[%d]\n",
-				__func__, esc_sta, retry);
+			pr_info("[%s] inband_is_tx_complete pass, sta_char=[0x%x], retry=[%d]\n",
+				__func__, sta_char, retry);
 			break;
 		}
 		udelay(20);
 	}
 
 	if (val == 0) {
-		pr_notice("[%s] inband_is_tx_complete fail, esc_sta=[0x%x], retry=[%d]\n",
-			__func__, esc_sta, retry);
+		pr_notice("[%s] inband_is_tx_complete fail, sta_char=[0x%x], retry=[%d]\n",
+			__func__, sta_char, retry);
 		uarthub_core_debug_info("inband_trigger_fail");
 	}
 
 	return (val == 0) ? -1 : 0;
+}
+
+int uarthub_inband_is_support_mt6991(void)
+{
+	return 1;
+}
+
+int uarthub_is_enable_fw_flow_ctrl_with_inband_mt6991(void)
+{
+	return INB_IRQ_CTL_GET_INB_EN(INB_IRQ_CTL_ADDR(uartip_base_map_mt6991[uartip_id_cmm]));
 }
 
 int uarthub_get_bt_sleep_flow_hw_mech_en_mt6991(void)

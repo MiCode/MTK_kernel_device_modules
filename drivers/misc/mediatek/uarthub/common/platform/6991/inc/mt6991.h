@@ -107,15 +107,18 @@ int uarthub_inband_enable_ctrl_mt6991(int enable);
 int uarthub_inband_irq_mask_ctrl_mt6991(int mask);
 int uarthub_inband_irq_clear_ctrl_mt6991(void);
 int uarthub_inband_irq_get_sta_mt6991(void);
-unsigned char uarthub_inband_get_esc_sta_mt6991(void);
-int uarthub_inband_clear_esc_sta_mt6991(void);
+unsigned char uarthub_inband_get_received_sta_mt6991(void);
+int uarthub_inband_clear_received_sta_mt6991(void);
 int uarthub_inband_set_esc_char_mt6991(unsigned char esc_char);
-int uarthub_inband_set_esc_sta_mt6991(unsigned char esc_sta);
+int uarthub_inband_set_sta_char_mt6991(unsigned char sta_char);
+unsigned char uarthub_inband_get_sta_char_mt6991(void);
 int uarthub_inband_is_tx_complete_mt6991(void);
 int uarthub_inband_trigger_ctrl_mt6991(void);
-int uarthub_inband_trigger_with_esc_sta_mt6991(unsigned char esc_sta);
+int uarthub_inband_trigger_with_sta_char_mt6991(unsigned char esc_sta);
 int uarthub_get_bt_on_count_mt6991(void);
 int uarthub_bt_on_count_inc_mt6991(void);
+int uarthub_inband_is_support_mt6991(void);
+int uarthub_is_enable_fw_flow_ctrl_with_inband_mt6991(void);
 
 /* debug API */
 int uarthub_get_intfhub_base_addr_mt6991(void);
