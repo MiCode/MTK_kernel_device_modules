@@ -1418,7 +1418,23 @@ static struct platform_driver mtk_rtc_driver = {
 	.shutdown = mtk_rtc_shutdown,
 };
 
-module_platform_driver(mtk_rtc_driver);
+static int __init mtk_rtc_init(void)
+{
+	return platform_driver_register(&mtk_rtc_driver);
+}
+
+#if IS_BUILTIN(CONFIG_DEVICE_MODULES_RTC_DRV_MT6397)
+subsys_initcall(mtk_rtc_init);
+#else
+module_init(mtk_rtc_init);
+#endif
+
+static void __exit mtk_rtc_exit(void)
+{
+	platform_driver_unregister(&mtk_rtc_driver);
+}
+
+module_exit(mtk_rtc_exit);
 
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Tianping Fang <tianping.fang@mediatek.com>");
