@@ -750,6 +750,10 @@ void mtk_vidle_config_ff(bool en)
 	if (en && !mtk_disp_vidle_flag.vidle_en)
 		return;
 
+	/* only allow in single CRTC, usually limits only CRTC0 to call */
+	if (en && (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) != 1))
+		return;
+
 	disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
 
 	atomic_set(&g_ff_enabled, en);
