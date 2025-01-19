@@ -110,6 +110,8 @@
 #define PCIE_CFG_OFFSET_ADDR		0x1000
 #define PCIE_CFG_HEADER(bus, devfn) \
 	(PCIE_CFG_BUS(bus) | PCIE_CFG_DEVFN(devfn))
+#define PCIE_RC_CFG \
+	(PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) | PCIE_CFG_HEADER(0, 0))
 
 #define PCIE_RST_CTRL_REG		0x148
 #define PCIE_MAC_RSTB			BIT(0)
@@ -204,6 +206,8 @@
 
 #define PCIE_AXI_IF_CTRL		0x1a8
 #define PCIE_AXI0_SLV_RESP_MASK		BIT(12)
+#define CPLTO_ALWAYS_EN			BIT(26)
+#define WR_CPLTO_ALWAYS_EN		BIT(27)
 
 #define PCIE_ISTATUS_PENDING_ADT	0x1d4
 
@@ -436,6 +440,8 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 				int where, int size, u32 *val)
 {
 	struct mtk_pcie_port *port = bus->sysdata;
+	int ret_val;
+	u32 reg;
 
 	if (port->soft_off)
 		return 0;
@@ -448,7 +454,27 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 
 	mtk_pcie_config_tlp_header(bus, devfn, where, size);
 
-	return pci_generic_config_read32(bus, devfn, where, size, val);
+	ret_val = pci_generic_config_read32(bus, devfn, where, size, val);
+	if (ret_val)
+		return ret_val;
+
+	/*
+	 * PCIe cannot read the config space of EP when an AER event occurs,
+	 * If rxerr, block PCIe data transmission and avoid system hang.
+	 */
+	reg = readl_relaxed(port->base + PCIE_INT_STATUS_REG);
+	if (reg & PCIE_AER_EVT) {
+		writel_relaxed(PCIE_RC_CFG, port->base + PCIE_CFGNUM_REG);
+		reg = readl_relaxed(port->base + PCIE_AER_CO_STATUS);
+		if (reg & AER_CO_RE) {
+			mtk_pcie_dump_link_info(port->port_num);
+			reg = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+			reg |= (CPLTO_ALWAYS_EN | WR_CPLTO_ALWAYS_EN);
+			writel_relaxed(reg, port->base + PCIE_AXI_IF_CTRL);
+		}
+	}
+
+	return 0;
 }
 
 static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
@@ -1874,7 +1900,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x5c, 0x5d, 0x5e, 0x0));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, phy err=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, phy err=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -1894,6 +1920,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_ERR_ADDR_L),
 		readl_relaxed(port->base + PCIE_ERR_ADDR_H),
 		readl_relaxed(port->base + PCIE_ERR_INFO),
+		readl_relaxed(port->base + PCIE_AXI_IF_CTRL),
 		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0));
 
 	/* Clear LTSSM record info after dump */
