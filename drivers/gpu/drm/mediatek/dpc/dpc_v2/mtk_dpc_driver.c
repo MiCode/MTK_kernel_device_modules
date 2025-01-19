@@ -1570,7 +1570,7 @@ static void dpc_analysis(void)
 		readl(dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG));
-	DPCDUMP("%s", msg);
+	mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s", msg);
 
 	if (g_priv->mmsys_id == MMSYS_MT6991) {
 		int i;
@@ -1590,7 +1590,7 @@ static void dpc_analysis(void)
 			if (g_priv->dpc2_dt_usage[i].en)
 				written += scnprintf(msg + written, 512 - written, "[%d]%u ",
 					i, g_priv->dpc2_dt_usage[i].val);
-		DPCDUMP("%s", msg);
+		mtk_dprec_logger_pr(DPREC_LOGGER_STATUS, "%s", msg);
 	}
 
 	dpc_pm_ctrl(false);
