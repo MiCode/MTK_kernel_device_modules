@@ -13308,7 +13308,7 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.dsi_ltpo_vdo_con = 0x1A8,
 	.dsi_ltpo_vdo_sq0 = 0x1AC,
 	.support_bl_at_te = 1,
-	.support_512byte_rx = 1,
+	.support_512byte_rx = 0,
 	.dsi_rx_trig_sta = 0x0B8,
 	.dsi_rx_con = 0x0A0,
 };
