@@ -34,8 +34,6 @@ int apummu_init(struct apusys_core_info *info);
 void apummu_exit(void);
 int devapc_init(struct apusys_core_info *info);
 void devapc_exit(void);
-int apumem_init(struct apusys_core_info *info);
-void apumem_exit(void);
 int sw_logger_init(struct apusys_core_info *info);
 void sw_logger_exit(void);
 int hw_logger_init(struct apusys_core_info *info);
@@ -46,6 +44,8 @@ int apu_smmu_device_init(struct apusys_core_info *info);
 void apu_smmu_device_exit(void);
 int apu_pbm_drv_init(struct apusys_core_info *info);
 void apu_pbm_drv_exit(void);
+int apu_sysmem_init(struct apusys_core_info *info);
+void apu_sysmem_exit(void);
 
 /*
  * init function at other modulses
@@ -60,7 +60,7 @@ static int (*apusys_init_func[])(struct apusys_core_info *) = {
 	mnoc_init,
 	reviser_init,
 	apummu_init,
-	apumem_init,
+	apu_sysmem_init,
 	mdw_init,
 	edma_init,
 	aps_init,
@@ -96,7 +96,7 @@ static void (*apusys_exit_func[])(void) = {
 	edma_exit,
 	aps_exit,
 	mdw_exit,
-	apumem_exit,
+	apu_sysmem_exit,
 	reviser_exit,
 	apummu_exit,
 	mnoc_exit,

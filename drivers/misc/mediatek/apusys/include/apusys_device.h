@@ -161,6 +161,39 @@ struct apusys_device {
 int apusys_register_device(struct apusys_device *dev);
 int apusys_unregister_device(struct apusys_device *dev);
 
+/**
+ * apusys_request_cmdbuf_appendix - request appendix cmdbufs for private used
+ * arguments:
+ *   @process_flags: [in] bitmap for appendix cmdbuf support process type
+ *   @size_sb: [in] callback for size, middleware will callback for size at cmd create time
+ *   @size_process: [in] callback for process, middleware will refer process_flags to callback at indicated time
+ * return:
+ *   0: success
+ *   < 0: failed
+ */
+enum apu_appendix_cb_owner {
+        APU_APPENDIX_CB_OWNER_NONE,
+
+        APU_APPENDIX_CB_OWNER_AMMU,
+        APU_APPENDIX_CB_OWNER_HDS,
+        APU_APPENDIX_CB_OWNER_DVFS_POLICY,
+
+        APU_APPENDIX_CB_OWNER_MAX,
+};
+
+enum apu_appendix_cb_type {
+        APU_APPENDIX_CB_CREATE,
+        APU_APPENDIX_CB_PREPROCESS,
+        APU_APPENDIX_CB_POSTPROCESS,
+        APU_APPENDIX_CB_POSTPROCESS_LATE, // after signal user
+        APU_APPENDIX_CB_DELETE,
+};
+typedef uint32_t (*cb_apu_appendix_cmdbuf_size)(uint32_t num_subcmds);
+typedef int (*cb_apu_appendix_cmdbuf_process)(enum apu_appendix_cb_type process_type,
+        uint64_t session_id, uint64_t cmd_uid, uint32_t num_subcmds, void *va, uint32_t size);
+int apusys_request_cmdbuf_appendix(enum apu_appendix_cb_owner owner, cb_apu_appendix_cmdbuf_size cb_size,
+        cb_apu_appendix_cmdbuf_process cb_process);
+
 /* only used in cmd validation */
 int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t size);
 /* query kva from session */
