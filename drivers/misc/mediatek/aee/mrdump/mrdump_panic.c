@@ -191,7 +191,10 @@ int mrdump_common_die(int reboot_reason, const char *msg,
 
 	if (!mrdump_cblock) {
 		pr_notice("%s: ipanic: mrdump is disable\n", __func__);
-		panic(msg);
+		if (msg)
+			panic("%s", msg);
+		else
+			panic("Unknown error");
 		return 0;
 	}
 
