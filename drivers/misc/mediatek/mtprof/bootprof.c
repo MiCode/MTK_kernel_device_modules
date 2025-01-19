@@ -57,6 +57,23 @@ struct initcall_list_t {
 	u64 timestamp;
 	struct list_head dev_entry;
 };
+
+/**
+ * Data structures to store bootloader time info
+ */
+struct bldr_time {
+    int pre_pl;
+    int pl;
+    int lk;
+    int logo;
+    int bl2ext;
+    int tfa;
+    int sec_os;
+    int gz;
+    int bl2ext_st;
+    int lk_st;
+};
+
 static void tp_deinit(void);
 
 /* Parameters */
@@ -65,8 +82,8 @@ static unsigned long log_count;
 static DEFINE_SPINLOCK(bootprof_lock);
 
 static bool enabled;
-static int bf_lk_t, bf_pl_t, bf_logo_t;
-static int bf_bl2ext_t, bf_gz_t, bf_tfa_t, bf_sec_os_t;
+
+static u64 bf_start_time;
 static u64 timestamp_on, timestamp_off;
 static bool boot_finish;
 
@@ -74,10 +91,15 @@ static struct list_head initcall_list;
 static DEFINE_SPINLOCK(initcall_lock);
 atomic_t initcall_num = ATOMIC_INIT(0);
 
+#ifndef MODULE
+/*Build-in*/
+static unsigned int bf_lk_t, bf_pl_t, bf_logo_t;
+
 /*Get info form cmdline*/
 module_param_named(pl_t, bf_pl_t, int, 0644);
 module_param_named(lk_t, bf_lk_t, int, 0644);
 module_param_named(logo_t, bf_logo_t, int, 0644);
+#endif
 
 bool mt_boot_finish(void)
 {
@@ -184,27 +206,44 @@ out:
 }
 EXPORT_SYMBOL_GPL(bootprof_log_boot);
 
+static void get_bldr_time(struct bldr_time *bldr)
+{
+	struct device_node *bl_node;
+
+#ifndef MODULE
+	bldr->pl = bf_lk_t;
+	bldr->lk = bf_pl_t;
+	bldr->logo = bf_logo_t;
+#endif
+
+	bl_node = of_find_node_by_name(NULL, "bootprof");
+	if (bl_node) {
+		of_property_read_u32(bl_node, "pre_pl_t", &bldr->pre_pl);
+		of_property_read_u32(bl_node, "pl_t", &bldr->pl);
+		of_property_read_u32(bl_node, "lk_t", &bldr->lk);
+
+		if (of_property_read_u32(bl_node, "logo_t", &bldr->logo))
+			of_property_read_u32(bl_node, "lk_logo_t", &bldr->logo);
+		of_property_read_u32(bl_node, "bl2_ext_t", &bldr->bl2ext);
+		of_property_read_u32(bl_node, "tfa_t", &bldr->tfa);
+		of_property_read_u32(bl_node, "sec_os_t", &bldr->sec_os);
+		of_property_read_u32(bl_node, "gz_t", &bldr->gz);
+
+		of_property_read_u32(bl_node, "lk_st", &bldr->lk_st);
+		of_property_read_u32(bl_node, "bl2_ext_st", &bldr->bl2ext_st);
+		of_node_put(bl_node);
+	}
+}
 static void bootprof_bootloader(void)
 {
-	struct device_node *node;
+	struct bldr_time bldr_t = {0,0,0,0,0,0,0,0,0,0};
 
-	node = of_find_node_by_name(NULL, "bootprof");
-	if (node) {
-		of_property_read_s32(node, "pl_t", &bf_pl_t);
-		of_property_read_s32(node, "lk_t", &bf_lk_t);
+	get_bldr_time(&bldr_t);
 
-		if (of_property_read_s32(node, "logo_t", &bf_logo_t))
-			of_property_read_s32(node, "lk_logo_t", &bf_logo_t);
-		of_property_read_s32(node, "logo_t", &bf_logo_t);
-		of_property_read_s32(node, "bl2_ext_t", &bf_bl2ext_t);
-		of_property_read_s32(node, "tfa_t", &bf_tfa_t);
-		of_property_read_s32(node, "sec_os_t", &bf_sec_os_t);
-		of_property_read_s32(node, "gz_t", &bf_gz_t);
-
-		pr_info("BOOTPROF: pl=%d, bl2ext=%d ,lk=%d, logo=%d, tfa=%d, sec_os=%d, gz=%d\n",
-			bf_pl_t, bf_bl2ext_t, bf_lk_t, bf_logo_t, bf_tfa_t,
-			bf_sec_os_t,  bf_gz_t);
-	}
+	pr_info("BOOTPROF: pre_pl=%u,pl=%u,bl2ext=%u(st=%u),lk=%u(st:%u),logo=%u,"
+		"tfa=%u,sec_os=%u,gz=%d\n",bldr_t.pre_pl, bldr_t.pl, bldr_t.bl2ext,
+		bldr_t.bl2ext_st, bldr_t.lk, bldr_t.lk_st, bldr_t.logo, bldr_t.tfa,
+		bldr_t.sec_os, bldr_t.gz);
 }
 
 void bootprof_initcall(initcall_t fn, unsigned long long ts)
@@ -248,15 +287,14 @@ void bootprof_probe(unsigned long long ts, struct device *dev,
 
 	if (drv) {
 		len = scnprintf(msgbuf + pos, sizeof(msgbuf) - pos,
-				" drv=%s(%ps)", drv->name ? drv->name : "",
-				(void *)drv);
+				" drv=%s", drv->name ? drv->name : "");
 		if (len >= 0)
 			pos += len;
 	}
 
 	if (dev && dev->init_name) {
 		len = scnprintf(msgbuf + pos, sizeof(msgbuf) - pos,
-				" dev=%s(%ps)", dev->init_name, (void *)dev);
+				" dev=%s", dev->init_name);
 		if (len >= 0)
 			pos += len;
 	}
@@ -278,8 +316,8 @@ void bootprof_pdev_register(unsigned long long ts, struct platform_device *pdev)
 		return;
 	msec_rem = do_div(ts, NSEC_PER_MSEC);
 	len = scnprintf(msgbuf, sizeof(msgbuf),
-			"probe: pdev=%s(%ps) %5llu.%06lums",
-			pdev->name, (void *)pdev, ts, msec_rem);
+			"probe: pdev=%s %5llu.%06lums",
+			pdev->name, ts, msec_rem);
 	if (len < 0)
 		pr_info("BOOTPROF: pdev - Invalid argument.\n");
 
@@ -466,9 +504,10 @@ static void mt_bootprof_switch(int on)
 	spin_unlock(&bootprof_lock);
 
 	if (tmp) {
-		pr_info("BOOTPROF:%10lld.%06ld: %s%lld)\n",
+		pr_info("BOOTPROF:%10lld.%06ld: %s%lld)(TS:%llu)\n",
 			msec_high(ts), msec_low(ts), on ? "ON (TH:" : "OFF (KO:",
-			on ? msec_high(BOOTPROF_THRESHOLD) : (long long)atomic_read(&initcall_num));
+			on ? msec_high(BOOTPROF_THRESHOLD) : (long long)atomic_read(&initcall_num),
+			bf_start_time);
 
 		if (on) {
 			timestamp_on = ts;
@@ -518,6 +557,50 @@ mt_bootprof_write(struct file *filp, const char *ubuf, size_t cnt, loff_t *data)
 	return cnt;
 }
 
+
+static void mt_bootprof_bldr_show(struct seq_file *m)
+{
+	struct bldr_time bldr = {0,0,0,0,0,0,0,0,0,0};
+
+	get_bldr_time(&bldr);
+
+	if(bldr.bl2ext > 0) {
+		/*Support bl2ext arch.*/
+		if(bldr.pre_pl > 0) {
+			seq_printf(m, "%10u %6s : %s\n", bldr.pre_pl, "", "pre-bldr");
+			seq_puts(m, "----------------------------------------\n");
+		}
+
+		if(bldr.lk_st > 0 || bldr.bl2ext_st > 0)
+			seq_printf(m, "%10u %6u : %s\n", bldr.pl, 0, "preloader");
+		else
+			seq_printf(m, "%10u %6s : %s\n", bldr.pl, "", "preloader");
+
+		if(bldr.bl2ext_st > 0)
+			seq_printf(m, "%10d %6u : %s (%s: %d)\n", bldr.bl2ext, bldr.bl2ext_st,
+						"bl2_ext", "Start->Show logo", bldr.logo);
+		else
+			seq_printf(m, "%10d %6s : %s (%s: %d)\n", bldr.bl2ext, "",
+						"bl2_ext", "Start->Show logo", bldr.logo);
+		if(bldr.tfa > 0)
+			seq_printf(m, "%10u %6s : %s\n", bldr.tfa, "", "tfa");
+		if(bldr.sec_os > 0)
+			seq_printf(m, "%10u %6s : %s\n", bldr.sec_os, "", "sec_os");
+		if(bldr.gz > 0)
+			seq_printf(m, "%10u %6s : %s\n", bldr.gz, "", "gz");
+
+		if(bldr.lk_st > 0)
+			seq_printf(m, "%10u %6u : %s\n", bldr.lk, bldr.lk_st, "lk");
+		else
+			seq_printf(m, "%10u %6s : %s\n", bldr.lk, "", "lk");
+	} else {
+		seq_printf(m, "%10d        : %s\n", bldr.pl, "preloader");
+		seq_printf(m, "%10u        : %s (%s: %u)\n", bldr.lk,
+                                    "lk", "Start->Show logo", bldr.logo);
+	}
+	return;
+}
+
 static int mt_bootprof_show(struct seq_file *m, void *v)
 {
 	unsigned long i;
@@ -531,30 +614,12 @@ static int mt_bootprof_show(struct seq_file *m, void *v)
 	seq_printf(m, "%-10d BOOT PROF (unit:msec)\n", enabled);
 	seq_printf(m, "%-10d Kernel Module Total\n", atomic_read(&initcall_num));
 	seq_puts(m, "----------------------------------------\n");
-
-	seq_printf(m, "%10d        : %s\n", bf_pl_t, "preloader");
-
-	if (bf_bl2ext_t > 0) {
-		seq_printf(m, "%10d        : %s (%s: %d)\n", bf_bl2ext_t,
-						"bl2_ext", "Start->Show logo", bf_logo_t);
-		if (bf_tfa_t > 0)
-			seq_printf(m, "%10d        : %s\n", bf_tfa_t, "tfa");
-		if (bf_sec_os_t > 0)
-			seq_printf(m, "%10d        : %s\n", bf_sec_os_t, "sec_os");
-		if (bf_gz_t > 0)
-			seq_printf(m, "%10d        : %s\n", bf_gz_t, "gz");
-
-		seq_printf(m, "%10d        : %s\n", bf_lk_t, "lk");
-	} else {
-		seq_printf(m, "%10d        : %s (%s: %d)\n", bf_lk_t,
-						"lk", "Start->Show logo", bf_logo_t);
-	}
-
+	mt_bootprof_bldr_show(m);
 	seq_puts(m, "----------------------------------------\n");
 
-	seq_printf(m, "%10lld.%06ld : ON (Threshold:%5lldms)\n",
+	seq_printf(m, "%10lld.%06ld : ON (TH:%5lldms)(TS: %llu)\n",
 		   msec_high(timestamp_on), msec_low(timestamp_on),
-		   msec_high(BOOTPROF_THRESHOLD));
+		   msec_high(BOOTPROF_THRESHOLD), bf_start_time);
 
 	for (i = 0; i < log_count; i++) {
 		p = &bootprof[i / LOGS_PER_BUF][i % LOGS_PER_BUF];
@@ -591,6 +656,8 @@ static const struct proc_ops mt_bootprof_fops = {
 static int __init bootprof_init(void)
 {
 	struct proc_dir_entry *pe;
+
+	bf_start_time = div64_u64(arch_timer_read_counter() * 1000, arch_timer_get_cntfrq()); //ms
 
 	memset(bootprof, 0, sizeof(struct log_t *) * BUF_COUNT);
 	bootprof[0] = kcalloc(LOGS_PER_BUF, sizeof(struct log_t),
