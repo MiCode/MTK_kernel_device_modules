@@ -311,7 +311,7 @@ static void mdw_ch_handle_fast_power_onoff(struct mdw_ch_tbl *ch_tbl, struct mdw
 	/* apply power on/off by conditions */
 	if (predict_idle > mdev->power_gain_time_us &&
 		mdev->support_power_fast_on_off == true &&
-		atomic_read(&mdev->cmd_running) &&
+		!atomic_read(&mdev->cmd_running) &&
 		(c->power_dtime > MDW_CH_DEFAULT_DETIME_MS || !c->is_dtime_set)) {
 		mdw_flw_debug("apply fast power off, time(%llu/%u), activated cmd(%u) dtime(%u/0x%llx)\n",
 			predict_idle, mdev->power_gain_time_us, atomic_read(&mdev->cmd_running),

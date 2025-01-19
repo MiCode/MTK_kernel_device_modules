@@ -68,6 +68,10 @@ extern const struct mdw_plat_func ap_plat_drv_v1;
 enum mdw_cmd_state {
 	MDW_CMD_STATE_IDLE,
 	MDW_CMD_STATE_RUN,
+	MDW_CMD_STATE_POSTPROCESS_DONE,
+	MDW_CMD_STATE_ERROR,
+
+	MDW_CMD_STATE_MAX,
 };
 
 enum mdw_power_type {

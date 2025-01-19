@@ -28,7 +28,8 @@ static void mdw_cmd_cmdbuf_out(struct mdw_cmd *c)
 	struct mdw_fpriv *mpriv = c->mpriv;
 	unsigned int i = 0, j = 0;
 
-	if (!c->cmdbufs)
+	if (!c->cmdbufs || c->cmd_state == MDW_CMD_STATE_ERROR
+		|| c->cmd_state == MDW_CMD_STATE_POSTPROCESS_DONE)
 		return;
 
 	/* flush cmdbufs and execinfos */
@@ -73,24 +74,33 @@ static int mdw_cmd_preprocess(struct mdw_cmd *c)
 	return ret;
 }
 
-static void mdw_cmd_postprocess(struct mdw_cmd *c, bool done)
+static void mdw_cmd_update_einfos(struct mdw_cmd *c)
 {
-	struct mdw_device *mdev = c->mpriv->mdev;
-
-	c->cmd_state = MDW_CMD_STATE_IDLE;
-
-	if (done == false)
+	if (c->cmd_state == MDW_CMD_STATE_POSTPROCESS_DONE)
 		return;
 
-	mdw_cmd_debug("\n");
 	c->end_ts = sched_clock();
 	c->einfos->c.total_us = (c->end_ts - c->start_ts) / 1000;
 	c->einfos->c.inference_id = c->inference_id;
+}
 
+static void mdw_cmd_postprocess(struct mdw_cmd *c)
+{
+	struct mdw_device *mdev = c->mpriv->mdev;
+
+	mdw_cmd_debug("\n");
+
+	/* post process such as copy exec info */
 	if (mdev->plat_funcs->postprocess_cmd(c))
 		mdw_drv_err("cmd postprocess failed\n");
 
+	/* copy cmdbuf to user */
 	mdw_cmd_cmdbuf_out(c);
+
+	/* update einfos */
+	mdw_cmd_update_einfos(c);
+
+	c->cmd_state = MDW_CMD_STATE_POSTPROCESS_DONE;
 }
 
 static void mdw_cmd_late_postprocess(struct mdw_cmd *c)
@@ -765,7 +775,8 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 		ret = mdev->plat_funcs->run_cmd(c);
 		if (ret < 0) {
 			mdw_drv_err("run cmd fail, ret(%d)\n", ret);
-			mdw_cmd_postprocess(c, false);
+			c->cmd_state = MDW_CMD_STATE_ERROR;
+			mdw_cmd_postprocess(c);
 
 			/* setup fence return value */
 			dma_fence_set_error(f, ret);
@@ -805,7 +816,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	mutex_lock(&c->mtx);
 
 	/* handle cmdbuf for user */
-	mdw_cmd_postprocess(c, true);
+	mdw_cmd_postprocess(c);
 
 	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
 		(uint64_t)mpriv, c->comm, c->uid, c->kid, c->inference_id,
@@ -853,6 +864,9 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	/* late post process */
 	mdw_cmd_late_postprocess(c);
 
+	/* reset cmd state */
+	c->cmd_state = MDW_CMD_STATE_IDLE;
+
 	mdw_flw_debug("c(0x%llx) complete done\n", c->kid);
 	up(&c->exec_sem);
 	mutex_unlock(&c->mtx);
@@ -885,7 +899,8 @@ static void mdw_cmd_trigger_func(struct work_struct *wk)
 	ret = mdev->plat_funcs->run_cmd(c);
 	if (ret < 0) {
 		mdw_drv_err("run cmd fail\n");
-		mdw_cmd_postprocess(c, false);
+		c->cmd_state = MDW_CMD_STATE_ERROR;
+		mdw_cmd_postprocess(c);
 	}
 	mutex_unlock(&c->mtx);
 }
@@ -1193,7 +1208,7 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 			goto put_sync_file;
 		} else if (run_ret > 0) {
 			mdw_cmd_debug("poll done, ret(%d)\n", run_ret);
-			mdw_cmd_postprocess(c, true);
+			mdw_cmd_postprocess(c);
 		}
 
 		/* assign sync file to fd */

@@ -651,6 +651,7 @@ static int mdw_plat_v6_preprocess_cmd(struct mdw_cmd *c)
 	mdw_drv_debug("msg(%pK) sync id (%lld)\n", &rc->s_msg.msg, rc->s_msg.msg.sync_id);
 	mdw_pb_get(c->power_plcy, 0);
 	rc->start_ts_ns = c->start_ts;
+	atomic_inc(&c->mpriv->mdev->cmd_running);
 
 	return 0;
 }
@@ -662,7 +663,19 @@ static int mdw_plat_v6_postprocess_cmd(struct mdw_cmd *c)
 	int ret = 0;
 
 	mdw_drv_debug("msg(%pK) sync id (%lld)\n", &rc->s_msg.msg, rc->s_msg.msg.sync_id);
+
+	if (c->cmd_state == MDW_CMD_STATE_POSTPROCESS_DONE) {
+		mdw_drv_debug("cmd already postprocess done\n");
+		goto out;
+	}
+
 	mdw_pb_put(c->power_plcy);
+	atomic_dec(&c->mpriv->mdev->cmd_running);
+
+	if (c->cmd_state == MDW_CMD_STATE_ERROR) {
+		c->need_dtime_handle = true;
+		goto dtime_handle;
+	}
 
 	/* copy exec info out */
 	/* invalidate */
@@ -691,10 +704,12 @@ static int mdw_plat_v6_postprocess_cmd(struct mdw_cmd *c)
 	/* update cmd history */
 	mdw_ch_cmd_exec_update(c);
 
+dtime_handle:
 	/* handle dtime */
 	if (c->need_dtime_handle == true)
 		mdw_rv_dev_dtime_handle((struct mdw_rv_dev *)c->mpriv->mdev->dev_specific, c);
 
+out:
 	return ret;
 }
 
