@@ -990,6 +990,7 @@ typedef struct {
  GEN("Gpu_kpi_fps_freq", GPU_KPI_FPS_FREQ, 2, "kpi_fps_freq") \
  GEN("Gpu_kpi_cpu_time", GPU_KPI_CPU_TIME, 1, "kpi_cpu_time") \
  GEN("Gpu_kpi_gpu_time", GPU_KPI_GPU_TIME, 1, "kpi_gpu_time") \
+ GEN("Gpu_loading", GPU_LOADING, 1, "gpu_loading") \
  GEN("Gpu_debug_5566", GPU_DEBUG1, 1, "5566_debug1") \
  GEN("Gpu_debug_5566", GPU_DEBUG2, 1, "5566_debug2") \
  GEN("Gpu_debug_5566", GPU_DEBUG3, 1, "5566_debug3") \

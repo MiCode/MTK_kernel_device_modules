@@ -3822,6 +3822,9 @@ unsigned int ged_dvfs_get_gpu_loading(void)
 	unsigned int loading = 0;
 
 	loading = (unsigned int)atomic_read(&g_gpu_loading_log);
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		loading = mtk_gpueb_sysram_read(SYSRAM_GPU_LOADING);
+	}
 
 	return loading;
 }

@@ -2202,7 +2202,8 @@ static GED_ERROR ged_kpi_push_timestamp(
 			return GED_ERROR_OOM;
 		}
 
-		if (eTimeStampType == GED_TIMESTAMP_TYPE_2) {
+		if (eTimeStampType == GED_TIMESTAMP_TYPE_2 &&
+			!(is_fdvfs_enable() & POLICY_MODE_V2)) {
 			spin_lock_irqsave(&gsGpuUtilLock, ui32IRQFlags);
 
 			if (!ged_kpi_get_fallback_mode() && pid != pid_sf) {

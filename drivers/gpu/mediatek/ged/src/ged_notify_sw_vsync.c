@@ -333,13 +333,18 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_LOADING));
 	}
 
-	// LB async ratio on EB
+
 	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT) {
+		// LB async ratio on EB
 		apply_lb_async = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_APPLY_LB_ASYNC);
 		if (apply_lb_async) {
 			trace_tracing_mark_write(5566, "async_perf_high",
 				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
 		}
+		// show LB loading for V2
+		if ((is_fdvfs_enable() & POLICY_MODE_V2))
+			trace_GPU_DVFS__Loading(ged_dvfs_get_gpu_loading(), 0,
+					0, 0, 0, 0, ged_dvfs_get_gpu_loading());
 	}
 	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {
 		trace_tracing_mark_write(5566, "async_opp_diff",
@@ -408,6 +413,10 @@ void ged_eb_dvfs_frame_done_dump(void)
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU));
 	trace_tracing_mark_write(5566, "t_gpu_target",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU_TARGET));
+
+	// loading
+	trace_GPU_DVFS__Loading(ged_dvfs_get_gpu_loading(), 0,
+		0, 0, 0, 0, ged_dvfs_get_gpu_loading());
 
 	// sample code for APO
 	//if (is_fdvfs_enable() & POLICY_MODE_V2) {
