@@ -29,6 +29,7 @@ ddk_headers(
     name = "smmu_public_headers",
     hdrs = glob([
         "arm-smmu-v3.h",
+        "arm-smmu-v3-common.h",
         "mtk-smmu-v3.h",
     ]),
     includes = ["."],
@@ -53,8 +54,11 @@ define_mgk_ddk_ko(
     name = "arm_smmu_v3",
     srcs = [
         "arm-smmu-v3.c",
+        "arm-smmu-v3-common.c",
         "arm-smmu-v3-impl.c",
+        "io-pgtable-arm-common.c",
         "mtk-io-pgtable-arm.c",
+        "mtk-io-pgtable-arm.h",
         "mtk-smmu-ssid.c",
         "mtk-smmu-ssid.h",
         "mtk-smmu-v3.c",

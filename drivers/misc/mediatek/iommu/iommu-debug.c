@@ -11,7 +11,7 @@
 #include <linux/bitfield.h>
 #include <linux/bits.h>
 #include <linux/iova.h>
-#include <linux/io-pgtable.h>
+#include <linux/io-pgtable-arm.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
@@ -31,7 +31,6 @@
 #include "mtk_iommu.h"
 #include "iommu_debug.h"
 #include "iommu_port.h"
-#include "io-pgtable-arm.h"
 #include "mtk-smmu-ela.h"
 #include "smmu_reg.h"
 
@@ -1121,78 +1120,9 @@ EXPORT_SYMBOL_GPL(mtk_smmu_wpreg_dump);
 //=====================================================
 // SMMU private data for Dump Page Table start
 //=====================================================
-#define ARM_LPAE_MAX_LEVELS		4
-
-/* Struct accessors */
-#define io_pgtable_to_data(x)						\
-	container_of((x), struct arm_lpae_io_pgtable, iop)
-
-#define io_pgtable_ops_to_data(x)					\
-	io_pgtable_to_data(io_pgtable_ops_to_pgtable(x))
-
-/*
- * Calculate the right shift amount to get to the portion describing level l
- * in a virtual address mapped by the pagetable in d.
- */
-#define ARM_LPAE_LVL_SHIFT(l, d)					\
-	(((ARM_LPAE_MAX_LEVELS - (l)) * (d)->bits_per_level) +		\
-	ilog2(sizeof(arm_lpae_iopte)))
-
-#define ARM_LPAE_GRANULE(d)						\
-	(sizeof(arm_lpae_iopte) << (d)->bits_per_level)
-#define ARM_LPAE_PGD_SIZE(d)						\
-	(sizeof(arm_lpae_iopte) << (d)->pgd_bits)
-
-/*
- * Calculate the index at level l used to map virtual address a using the
- * pagetable in d.
- */
-#define ARM_LPAE_PGD_IDX(l, d)						\
-	((l) == (d)->start_level ? (d)->pgd_bits - (d)->bits_per_level : 0)
-
-#define ARM_LPAE_LVL_IDX(a, l, d)					\
-	(((u64)(a) >> ARM_LPAE_LVL_SHIFT(l, d)) &			\
-	 ((1 << ((d)->bits_per_level + ARM_LPAE_PGD_IDX(l, d))) - 1))
-
-/* Calculate the block/page mapping size at level l for pagetable in d. */
-#define ARM_LPAE_BLOCK_SIZE(l,d)	(1ULL << ARM_LPAE_LVL_SHIFT(l,d))
-
-/* Page table bits */
-#define ARM_LPAE_PTE_TYPE_SHIFT		0
-#define ARM_LPAE_PTE_TYPE_MASK		0x3
-
-#define ARM_LPAE_PTE_TYPE_BLOCK		1
-#define ARM_LPAE_PTE_TYPE_TABLE		3
-#define ARM_LPAE_PTE_TYPE_PAGE		3
-
-#define ARM_LPAE_PTE_ADDR_MASK		GENMASK_ULL(47, 12)
 
 /* IOPTE accessors */
-#define iopte_deref(pte, d) __va(iopte_to_paddr(pte, d))
-
-#define iopte_type(pte)					\
-	(((pte) >> ARM_LPAE_PTE_TYPE_SHIFT) & ARM_LPAE_PTE_TYPE_MASK)
-
-struct arm_lpae_io_pgtable {
-	struct io_pgtable	iop;
-
-	int			pgd_bits;
-	int			start_level;
-	int			bits_per_level;
-
-	void			*pgd;
-};
-
-typedef u64 arm_lpae_iopte;
-
-static inline bool iopte_leaf(arm_lpae_iopte pte, int lvl,
-			      enum io_pgtable_fmt fmt)
-{
-	if (lvl == (ARM_LPAE_MAX_LEVELS - 1) && fmt != ARM_MALI_LPAE)
-		return iopte_type(pte) == ARM_LPAE_PTE_TYPE_PAGE;
-
-	return iopte_type(pte) == ARM_LPAE_PTE_TYPE_BLOCK;
-}
+#define iopte_deref(pte, d) __arm_lpae_phys_to_virt(iopte_to_paddr(pte, d))
 
 static phys_addr_t iopte_to_paddr(arm_lpae_iopte pte,
 				  struct arm_lpae_io_pgtable *data)
@@ -1206,40 +1136,121 @@ static phys_addr_t iopte_to_paddr(arm_lpae_iopte pte,
 	return (paddr | (paddr << (48 - 12))) & (ARM_LPAE_PTE_ADDR_MASK << 4);
 }
 
+struct iova_to_phys_data {
+	arm_lpae_iopte pte;
+	int lvl;
+};
+
+static int visit_iova_to_phys(struct io_pgtable_walk_data *walk_data, int lvl,
+			      arm_lpae_iopte *ptep, size_t size)
+{
+	struct io_pgtable_walk_common *walker = walk_data->data;
+	struct iova_to_phys_data *data = walker->data;
+
+	data->pte = *ptep;
+	data->lvl = lvl;
+	return 0;
+}
+
+static int arm_lpae_iopte_walk(struct arm_lpae_io_pgtable *data,
+			       struct io_pgtable_walk_data *walk_data,
+			       arm_lpae_iopte *ptep,
+			       int lvl);
+
+static int io_pgtable_visit(struct arm_lpae_io_pgtable *data,
+			    struct io_pgtable_walk_data *walk_data,
+			    arm_lpae_iopte *ptep, int lvl)
+{
+	struct io_pgtable *iop = &data->iop;
+	struct io_pgtable_cfg *cfg = &iop->cfg;
+	arm_lpae_iopte pte = READ_ONCE(*ptep);
+	struct io_pgtable_walk_common *walker = walk_data->data;
+	arm_lpae_iopte *old_ptep = ptep;
+	bool is_leaf, is_table;
+
+	size_t size = ARM_LPAE_BLOCK_SIZE(lvl, data);
+	int ret = walk_data->visit(walk_data, lvl, ptep, size);
+
+	if (ret)
+		return ret;
+
+	if (cfg->quirks & IO_PGTABLE_QUIRK_UNMAP_INVAL) {
+		/* Visitng invalid tables as it still have enteries. */
+		is_table = pte && iopte_table(pte | ARM_LPAE_PTE_VALID, lvl);
+		is_leaf = pte && iopte_leaf(pte | ARM_LPAE_PTE_VALID, lvl, iop->fmt);
+	} else {
+		is_table = iopte_table(pte, lvl);
+		is_leaf = iopte_leaf(pte, lvl, iop->fmt);
+	}
+
+	if (is_leaf) {
+		if (walker->visit_leaf)
+			walker->visit_leaf(iopte_to_paddr(pte, data), size, walker, ptep);
+		walk_data->addr += size;
+		return 0;
+	}
+
+	if (!is_table)
+		return -EINVAL;
+
+	ptep = iopte_deref(pte, data);
+	ret = arm_lpae_iopte_walk(data, walk_data, ptep, lvl + 1);
+
+	if (walk_data->visit_post_table)
+		walk_data->visit_post_table(walk_data, old_ptep, lvl);
+
+	return ret;
+}
+
+static int arm_lpae_iopte_walk(struct arm_lpae_io_pgtable *data,
+			       struct io_pgtable_walk_data *walk_data,
+			       arm_lpae_iopte *ptep,
+			       int lvl)
+{
+	u32 idx;
+	int max_entries, ret;
+
+	if (WARN_ON(lvl == ARM_LPAE_MAX_LEVELS))
+		return -EINVAL;
+
+	if (lvl == data->start_level)
+		max_entries = ARM_LPAE_PGD_SIZE(data) / sizeof(arm_lpae_iopte);
+	else
+		max_entries = ARM_LPAE_PTES_PER_TABLE(data);
+
+	for (idx = ARM_LPAE_LVL_IDX(walk_data->addr, lvl, data);
+	     (idx < max_entries) && (walk_data->addr < walk_data->end); ++idx) {
+		ret = io_pgtable_visit(data, walk_data, ptep + idx, lvl);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 static u64 arm_lpae_iova_to_iopte(struct io_pgtable_ops *ops, unsigned long iova)
 {
 	struct arm_lpae_io_pgtable *data = io_pgtable_ops_to_data(ops);
-	arm_lpae_iopte pte, *ptep = data->pgd;
-	int lvl = data->start_level;
+	struct iova_to_phys_data d;
+	struct io_pgtable_walk_common walker = {
+		.data = &d,
+	};
+	struct io_pgtable_walk_data walk_data = {
+		.data = &walker,
+		.visit = visit_iova_to_phys,
+		.addr = iova,
+		.end = iova + 1,
+	};
+	int ret;
 
-	do {
-		/* Valid IOPTE pointer? */
-		if (!ptep)
-			return 0;
+	ret = arm_lpae_iopte_walk(data, &walk_data, data->pgd, data->start_level);
+	if (ret)
+		return 0;
 
-		/* Grab the IOPTE we're interested in */
-		ptep += ARM_LPAE_LVL_IDX(iova, lvl, data);
-		pte = READ_ONCE(*ptep);
-
-		/* Valid entry? */
-		if (!pte)
-			return 0;
-
-		/* Leaf entry? */
-		if (iopte_leaf(pte, lvl, data->iop.fmt))
-			goto found_translation;
-
-		/* Take it to the next level */
-		ptep = iopte_deref(pte, data);
-	} while (++lvl < ARM_LPAE_MAX_LEVELS);
-
-	/* Ran out of page tables to walk */
-	return 0;
-
-found_translation:
 	pr_info("%s, iova:0x%lx, pte:0x%llx, lvl:%d, iopte_type:%llu, fmt:%u\n",
-		__func__, iova, pte, lvl, iopte_type(pte), data->iop.fmt);
-	return pte;
+		__func__, iova, d.pte, d.lvl, iopte_type(d.pte), data->iop.fmt);
+
+	return d.pte;
 }
 
 static void arm_lpae_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops)

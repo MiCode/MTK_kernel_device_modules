@@ -36,6 +36,7 @@
 #endif
 
 #include "arm-smmu-v3.h"
+#include "mtk-io-pgtable-arm.h"
 #include "mtk-smmu-v3.h"
 #include "mtk-smmu-ssid.h"
 
