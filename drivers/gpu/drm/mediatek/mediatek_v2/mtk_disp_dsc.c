@@ -310,9 +310,9 @@ struct mtk_panel_dsc_params *mtk_dsc_default_setting(void)
 		.rc_tgt_offset_hi = 3,
 		.rc_tgt_offset_lo = 3,
 	};
-
-	mtk_dp_get_dsc_capability(dsc_cap);
-	dsc_params.bp_enable = dsc_cap[6];
+	DDPINFO("dsc parameter set");
+	//mtk_dp_get_dsc_capability(dsc_cap);
+	//dsc_params.bp_enable = dsc_cap[6];
 	//dsc_params.ver = dsc_cap[1];
 
 	return &dsc_params;
