@@ -155,16 +155,19 @@ static int ise_call_notify(struct notifier_block *nb,
 	struct trusty_ctx *tctx;
 	unsigned long vring = 1; /* ise rx */
 
-	if (action != TRUSTY_CALL_RETURNED)
-		return NOTIFY_DONE;
-
 	tctx = container_of(nb, struct trusty_ctx, ise_call_notifier);
-
-	dev_info(tctx->dev, "%s: queue_work vring %lu\n", __func__, vring);
-	tctx->vring_dbg = vring;
-	queue_work(tctx->kick_wq_dbg, &tctx->kick_vqs_dbg);
-
-	return NOTIFY_OK;
+	if (action == TRUSTY_CALL_RETURNED) {
+		dev_info(tctx->dev, "%s: queue_work vring %lu\n", __func__, vring);
+		tctx->vring_dbg = vring;
+		queue_work(tctx->kick_wq_dbg, &tctx->kick_vqs_dbg);
+		return NOTIFY_OK;
+	} else if (action == TRUSTY_CALL_CHECK_VQS) {
+		dev_info(tctx->dev, "%s: check vring interrupt\n", __func__);
+		queue_work(tctx->check_wq, &tctx->check_vqs);
+		return NOTIFY_OK;
+	} else {
+		return NOTIFY_DONE;
+	}
 }
 
 static void kick_vq(struct trusty_ctx *tctx,
