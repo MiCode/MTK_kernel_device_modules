@@ -608,7 +608,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	ktime_t cmd_start, cmd_now, cmd_duration;
 
 	if (ipi_data != NULL &&
-		g_fast_dvfs_ipi_channel >= 0 && g_fdvfs_event_ipi_channel >= 0) {
+		g_fast_dvfs_ipi_channel >= 0 && g_fdvfs_event_ipi_channel >= 0 && g_ged_gpu_freq_notify_support) {
 		ipi_data->cmd = cmd;
 	} else {
 		GPUFDVFS_LOGI("(%d), Can't send cmd(%d) ipi_data:%p, ch:(%d)(%d)\n",
