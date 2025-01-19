@@ -548,7 +548,6 @@ EXPORT_SYMBOL(kicker_pbm_by_flash);
 
 static void pbm_thread_handle(struct work_struct *work)
 {
-	int g_dlpt_state_sync = 0;
 	unsigned int gpu_cur_pb = 0, gpu_cur_volt = 0;
 	struct cpu_pbm_policy *pbm_policy;
 	unsigned int req_total_power = 0;
@@ -576,7 +575,6 @@ static void pbm_thread_handle(struct work_struct *work)
 	if (g_dlpt_need_do == 1 && g_pbm_update == true) {
 		g_pbm_update = false;
 		pbm_allocate_budget_manager();
-		g_dlpt_state_sync = 0;
 	}
 	pbm_timer_add(g_start_polling);
 	mutex_unlock(&pbm_mutex);
