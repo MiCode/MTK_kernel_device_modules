@@ -178,7 +178,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		compatible = "jdi,nt36672e,vdo,120hz";
 		reg = <1>;
 		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 9 0>;
+		reset-gpios = <&pio 5 0>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -191,7 +191,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		compatible = "jdi,nt36672e,cphy,vdo";
 		reg = <2>;
 		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 9 0>;
+		reset-gpios = <&pio 5 0>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -204,7 +204,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		compatible = "jdi,nt36672e,vdo,60hz";
 		reg = <3>;
 		pm-enable-gpios = <&pio 215 0>;
-		reset-gpios = <&pio 9 0>;
+		reset-gpios = <&pio 5 0>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -245,11 +245,13 @@ bootargs_ext = "rcu_nocbs=0-7";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	panel1@0 {
-		compatible = "jdi,nt36672e,vdo,120hz";
+		compatible = "truly,td4330,cmd";
 		reg = <0>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
-		res-switch = <2>;
+		swap-from-dts;
+		lane-swap-setting = <1 2 0 3 4 2>;
+		pn-swap-setting = <1 1 1 1 1 1>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -259,10 +261,11 @@ bootargs_ext = "rcu_nocbs=0-7";
 		};
 	};
 	panel2@1 {
-		compatible = "truly,td4330,cmd";
+		compatible = "jdi,nt36672e,vdo,120hz";
 		reg = <1>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -272,11 +275,10 @@ bootargs_ext = "rcu_nocbs=0-7";
 		};
 	};
 	panel3@2 {
-		compatible = "nt37801,cmd,fhd";
+		compatible = "truly,td4330,cmd";
 		reg = <2>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
-		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -286,7 +288,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		};
 	};
 	panel4@3 {
-		compatible = "nt37801,cmd,fhd,plus";
+		compatible = "nt37801,cmd,fhd";
 		reg = <3>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
@@ -300,7 +302,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 		};
 	};
 	panel5@4 {
-		compatible = "jdi,nt36672e,cphy,vdo";
+		compatible = "nt37801,cmd,fhd,plus";
 		reg = <4>;
 		pm-enable-gpios = <&pio 174 0>;
 		reset-gpios = <&pio 90 0>;
@@ -310,6 +312,21 @@ bootargs_ext = "rcu_nocbs=0-7";
 		port {
 			panel_in5: endpoint {
 				remote-endpoint = <&dsi_out5>;
+			};
+		};
+	};
+
+	panel6@5 {
+		compatible = "jdi,nt36672e,cphy,vdo";
+		reg = <5>;
+		pm-enable-gpios = <&pio 174 0>;
+		reset-gpios = <&pio 90 0>;
+		res-switch = <2>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in6: endpoint {
+				remote-endpoint = <&dsi_out6>;
 			};
 		};
 	};
@@ -335,12 +352,15 @@ bootargs_ext = "rcu_nocbs=0-7";
 			dsi_out5: endpoint@4 {
 				remote-endpoint = <&panel_in5>;
 			};
+
+			dsi_out6: endpoint@5 {
+				remote-endpoint = <&panel_in6>;
+			};
 		};
 	};
 };
 
 &pio {
-
 	rptr_enable: rptr-enable {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO72__FUNC_GPIO72>;
@@ -354,7 +374,6 @@ bootargs_ext = "rcu_nocbs=0-7";
 			output-low;
 		};
 	};
-
 };
 
 &ssusb {
