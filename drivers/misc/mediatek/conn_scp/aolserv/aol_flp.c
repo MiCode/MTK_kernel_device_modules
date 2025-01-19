@@ -502,7 +502,7 @@ static ssize_t mtk_aol_flp_write(struct file *filp, const char __user *buf,
 	int copy_size = 0, idx = 0;
 
 	down(&wr_mtx);
-	if (count > 0) {
+	if (count >= (2 * sizeof(u32))) {
 		copy_size = (count < MAX_BUF_LEN) ? count : MAX_BUF_LEN;
 		if (copy_from_user(&g_tmp_buf[0], &buf[0], copy_size)) {
 			retval = -EFAULT;
@@ -510,9 +510,9 @@ static ssize_t mtk_aol_flp_write(struct file *filp, const char __user *buf,
 			goto out;
 		}
 	} else {
-		retval = -EFAULT;
-		pr_info("[%s] packet length:%zd is not allowed, retval = %d",
-					__func__, count, retval);
+		pr_info("[%s] packet length:%zd is not allowed", __func__, count);
+		up(&wr_mtx);
+		return -EFAULT;
 	}
 
 	memcpy(&msg_id, &g_tmp_buf[0], sizeof(u32));
