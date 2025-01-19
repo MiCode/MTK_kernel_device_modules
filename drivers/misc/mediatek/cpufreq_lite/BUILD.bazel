@@ -17,6 +17,7 @@ filegroup(
     name = "srcs",
     srcs = glob([
           "**/*.h",
+          "**/*.c",
     ]),
 )
 

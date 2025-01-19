@@ -32,6 +32,7 @@ EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/input/touchscreen/N
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/leds/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/nvmem/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/atf/*Module.symvers)
+EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/cpufreq_lite/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/dvfsrc/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/log_store/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mmdebug/*Module.symvers)
