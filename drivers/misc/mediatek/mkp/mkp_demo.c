@@ -1064,7 +1064,7 @@ int __init mkp_demo_init(void)
 	int ret = 0, ret_erri_line;
 	unsigned long size = 0x100000;
 	struct device_node *node;
-	u32 mkp_policy_default = 0x0001fffb; // disable selinux_state policy as default
+	u32 mkp_policy_default = 0x0001ffe3;
 	u32 mkp_policy = 0x0001ffff;
 	const char *mkp_panic;
 
