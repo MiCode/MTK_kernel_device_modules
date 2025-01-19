@@ -118,6 +118,7 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_DPDM_CTRL4		(0x606)
 
 #define MT6379_REG_FGADC_SYS_INFO_CON0	(0x7F9)
+#define MT6379_REG_FGADC_SYS_INFO_CON2	(0x7FD)
 
 
 #define MT6720_REG_VSYS_INTB		(0x19)

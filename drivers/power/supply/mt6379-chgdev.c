@@ -1245,8 +1245,10 @@ static int mt6379_enable_usbid_floating(struct charger_device *chgdev, bool en)
 	return mt6379_charger_field_set(cdata, F_USBID_FLOATING, en);
 }
 
-#define BOOT_TIMES_MASK         0xC0
-#define BOOT_TIMES_SHIFT        6
+#define BOOT_TIMES_CON0_MASK         0xC0
+#define BOOT_TIMES_CON0_SHIFT        6
+#define BOOT_TIMES_CON2_MASK         0x03
+#define BOOT_TIMES_CON2_SHIFT        0
 static int mt6379_set_boot_volt_times(struct charger_device *chgdev, u32 val)
 {
 	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
@@ -1258,10 +1260,23 @@ static int mt6379_set_boot_volt_times(struct charger_device *chgdev, u32 val)
 		return ret;
 	}
 
-	data &= ~BOOT_TIMES_MASK;
-	data |= (val << BOOT_TIMES_SHIFT & BOOT_TIMES_MASK);
+	data &= ~BOOT_TIMES_CON0_MASK;
+	data |= (val << BOOT_TIMES_CON0_SHIFT & BOOT_TIMES_CON0_MASK);
 
 	ret = regmap_bulk_write(cdata->rmap, MT6379_REG_FGADC_SYS_INFO_CON0, &data, sizeof(data));
+	if (ret)
+		dev_info(cdata->dev, "%s, Failed to write boot_times\n", __func__);
+
+	ret = regmap_bulk_read(cdata->rmap, MT6379_REG_FGADC_SYS_INFO_CON2, &data, sizeof(data));
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to get boot_times\n", __func__);
+		return ret;
+	}
+
+	data &= ~BOOT_TIMES_CON2_MASK;
+	data |= (val << BOOT_TIMES_CON2_SHIFT & BOOT_TIMES_CON2_MASK);
+
+	ret = regmap_bulk_write(cdata->rmap, MT6379_REG_FGADC_SYS_INFO_CON2, &data, sizeof(data));
 	if (ret)
 		dev_info(cdata->dev, "%s, Failed to write boot_times\n", __func__);
 
