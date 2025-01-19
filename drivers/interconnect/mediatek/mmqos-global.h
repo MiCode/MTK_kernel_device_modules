@@ -50,6 +50,7 @@ enum mmqos_state_level {
 	SRT_DATA_BW = BIT(14),
 	SMMU_TCU_BW = BIT(15),
 	VDEC_COMM_PORT_OSTDL = BIT(16),
+	MMPC_V2_ENABLE = BIT(17),
 };
 extern u32 mmqos_state;
 
