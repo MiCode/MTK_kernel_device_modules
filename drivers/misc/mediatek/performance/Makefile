@@ -13,6 +13,3 @@ obj-$(CONFIG_MTK_FPSGO_V8) += fpsgo_v8/
 obj-$(CONFIG_MTK_FRS) += frs/
 obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += powerhal_cpu_ctrl/
 obj-$(CONFIG_MTK_SBE) += sbe/
-
-obj-$(CONFIG_MTK_LOAD_TRACKER) += load_track/
-obj-$(CONFIG_MTK_LOAD_TRACKER) += uload_ind/

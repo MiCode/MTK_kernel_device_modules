@@ -753,6 +753,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_hwz".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_zram".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance:load_track".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance:uload_ind".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1003,9 +1005,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/perf_common/mtk_perf_common.ko",
     "drivers/misc/mediatek/performance/fpsgo_v8/mtk_fpsgo_v8.ko",
     "drivers/misc/mediatek/performance/frs/frs.ko",
-    "drivers/misc/mediatek/performance/load_track/load_track.ko",
     "drivers/misc/mediatek/performance/powerhal_cpu_ctrl/powerhal_cpu_ctrl.ko",
-    "drivers/misc/mediatek/performance/uload_ind/uload_ind.ko",
     "drivers/misc/mediatek/performance/sbe/mtk_sbe.ko",
     #"drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
     #"drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
