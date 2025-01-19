@@ -18,6 +18,7 @@
 #define MT6360_REG_BUCK1_SEQOFFDLY	0x107
 #define MT6360_REG_LDO5CTRL0		0x20C
 
+#define MT6360_MASK_SDCARD_HLACT	BIT(7)
 #define MT6360_MASK_SDCARD_DET_EN	BIT(6)
 
 #define MT6360_NUMS_OF_PWROFF_CHAN	4
@@ -445,7 +446,8 @@ static int mt6360_regulator_probe(struct platform_device *pdev)
 {
 	struct mt6360_regulator_data *mrd;
 	struct regulator_config config = {};
-	struct device_node *np = pdev->dev.parent->of_node;
+	struct fwnode_handle *fwnode;
+	u32 sdcard_hlact = 1;
 	int i, ret;
 
 	mrd = devm_kzalloc(&pdev->dev, sizeof(*mrd), GFP_KERNEL);
@@ -461,10 +463,20 @@ static int mt6360_regulator_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	np = of_get_child_by_name(np, "regulator");
-	if (np && of_property_read_u8_array(np, "pwr_off_seq", mrd->pwr_off_seq,
-					    MT6360_NUMS_OF_PWROFF_CHAN))
-		dev_notice(&pdev->dev, "Failed to parse pwr_off_seq\n");
+	fwnode = device_get_named_child_node(pdev->dev.parent, "regulator");
+	if (fwnode && fwnode_property_read_u8_array(fwnode, "pwr-off-seq", mrd->pwr_off_seq,
+						    MT6360_NUMS_OF_PWROFF_CHAN))
+		dev_info(mrd->dev, "Failed to parse pwr-off-seq\n");
+
+	if (fwnode && fwnode_property_read_u32(fwnode, "sdcard-hlact", &sdcard_hlact))
+		dev_info(mrd->dev, "Failed to parse sdcard-hlact, keep default(1: hlact)\n");
+
+	ret = regmap_update_bits(mrd->regmap, MT6360_REG_LDO5CTRL0, MT6360_MASK_SDCARD_HLACT,
+				 sdcard_hlact ? MT6360_MASK_SDCARD_HLACT : 0);
+	if (ret)
+		dev_info(mrd->dev, "Failed to wrtie sdcard_hlact to %d\n", sdcard_hlact);
+	else
+		dev_info(mrd->dev, "%s, sdcard_hlact: %d\n", __func__, sdcard_hlact);
 
 	config.dev = pdev->dev.parent;
 	config.driver_data = mrd;
