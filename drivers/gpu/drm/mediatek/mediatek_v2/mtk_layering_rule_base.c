@@ -3033,12 +3033,6 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 			else
 				exdma_comp = DDP_COMPONENT_OVL1_EXDMA3 + layer_idx
 									- DISP_EXDMA_LAYER_LIMIT - fun_lye;
-			/* WA: chaneg exdma6/7 order for balance channel bw */
-			if (exdma_comp == DDP_COMPONENT_OVL_EXDMA6)
-				exdma_comp = DDP_COMPONENT_OVL_EXDMA7;
-			else if (exdma_comp == DDP_COMPONENT_OVL_EXDMA7)
-				exdma_comp = DDP_COMPONENT_OVL_EXDMA6;
-
 			return exdma_comp;
 		}
 	} else if (disp_idx == 1) {
@@ -3389,7 +3383,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			lyeblob_ids->fbt_gles_tail = disp_info->gles_tail[HRT_PRIMARY];
 		}
 	}
-	DDPMSG("layer_num = %d\n",disp_info->layer_num[idx]);
+	DDPINFO("layer_num = %d\n",disp_info->layer_num[idx]);
 	for (i = 0; i < disp_info->layer_num[idx]; i++) {
 
 		layer_info = &disp_info->input_config[idx][i];

@@ -574,7 +574,7 @@ void mtk_drm_crtc_rsz_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 			&addr_rsz);
 	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
 		value = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL0_MDP_RSZ0, next_blender, &addr);
-		value_rsz = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL0_RSZ_IN_CB1, next_blender,
+		value_rsz = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL0_RSZ_IN_CB2, next_blender,
 			&addr_rsz);
 	}
 
@@ -997,11 +997,6 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 	unsigned int addr = 0;
 	int value = 0;
 
-	if (priv->data->mmsys_id == MMSYS_MT6993) {
-		// return for 6993 bring up, need to remove
-		return;
-	}
-
 	if (mtk_crtc->first_blender)
 		DDPMSG("reset path first: %d\n",mtk_crtc->first_blender->id);
 
@@ -1018,7 +1013,10 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 		 *				ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
 		 *				0, 0xfffff);
 		 */
-		mask = 0xfffff;
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			mask = 0xfffff;
+		else if (priv->data->mmsys_id == MMSYS_MT6993)
+			mask = 0xffff;
 
 		reg = readl_relaxed(ovl_mutex_regs) & (unsigned int)(~mask);
 		writel_relaxed(reg, ovl_mutex_regs);
@@ -1169,7 +1167,11 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 		 *				ovl0_mutex_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
 		 *				0, 0xfffff);
 		 */
-		mask = 0x3ff;
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			mask = 0x3ff;
+		else if (priv->data->mmsys_id == MMSYS_MT6993)
+			mask = 0xff;
+
 		if (mtk_crtc->crtc_blank)
 			mask &= ~ mtk_crtc->tui_ovl_stat.mutex_bit;
 		if (mtk_drm_dal_enable())

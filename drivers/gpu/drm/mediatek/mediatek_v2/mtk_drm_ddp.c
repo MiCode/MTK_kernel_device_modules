@@ -43408,11 +43408,10 @@ int mtk_ddp_exdma_mout_MT6993(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id nex
 		cur == DDP_COMPONENT_MML_MUTEX0 || cur == DDP_COMPONENT_MML_MUTEX1)
 		return 0;
 
-	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {
-		if (cur == DDP_COMPONENT_OVL_EXDMA2 && next == DDP_COMPONENT_OVL0_MDP_RSZ0)
+	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA ||
+		mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER) {
+		if (cur == DDP_COMPONENT_OVL_EXDMA2)
 			value = mtk_ddp_ovl_rsz_in_cb_MT6993(cur, next, addr);
-		else if (cur == DDP_COMPONENT_OVL_EXDMA2)
-			value = mtk_ddp_ovl_exdma_out_cb_MT6993(DDP_COMPONENT_OVL0_MDP_RSZ0, next, addr);
 		else
 			value = mtk_ddp_ovl_exdma_out_cb_MT6993(cur, next, addr);
 		return value;
@@ -43444,7 +43443,13 @@ int mtk_ddp_exdma_mout_reset_MT6993(enum mtk_ddp_comp_type type, int *offset,
 
 		if (type ==  MTK_OVL_BLENDER) {
 			*addr_begin = MT6993_OVL_BLENDER_OUT_CROSSBAR0_MOUT_EN;
-			*addr_end = MT6993_OVL_BLENDER_OUT_CROSSBAR6_MOUT_EN;
+			*addr_end = MT6993_OVL_BLENDER_OUT_CROSSBAR7_MOUT_EN;
+			*offset = 4;
+		}
+
+		if (type ==  MTK_DISP_MDP_RSZ) {
+			*addr_begin = MT6993_OVL_RSZ_IN_CROSSBAR0_MOUT_EN;
+			*addr_end = MT6993_OVL_RSZ_IN_CROSSBAR3_MOUT_EN;
 			*offset = 4;
 		}
 	} else if (crtc_id == 1) {

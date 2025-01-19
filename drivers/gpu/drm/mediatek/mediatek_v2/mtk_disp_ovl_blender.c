@@ -267,11 +267,9 @@ int mtk_ovl_blender_dump(struct mtk_ddp_comp *comp)
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	/* STA, INTEN, INTSTA, DCM_CTRL, DATAPATH_CON*/
-	mtk_serial_dump_reg(baddr, 0x00, 4);
-	mtk_serial_dump_reg(baddr, 0x10, 1);
 
-	for (i = 0; i < 15; i++) {
-		offset = 0x20 + (i * 0x10);
+	for (i = 0; i < 17; i++) {
+		offset = 0x0 + (i * 0x10);
 		if (offset == 0x060 || offset == 0x090 || offset == 0x0c0 || offset == 0x0f0)
 			continue;
 		mtk_serial_dump_reg(baddr, offset, 4);

@@ -1656,6 +1656,8 @@ static const struct of_device_id mtk_disp_mdp_rsz_driver_dt_match[] = {
 	 .data = &mt6989_mdp_rsz_driver_data},
 	{.compatible = "mediatek,mt6991-disp-mdp-rsz",
 	 .data = &mt6991_mdp_rsz_driver_data},
+	{.compatible = "mediatek,mt6993-disp-mdp-rsz",
+	 .data = &mt6991_mdp_rsz_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_mdp_rsz_driver_dt_match);
