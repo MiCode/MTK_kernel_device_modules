@@ -129,7 +129,7 @@ phys_addr_t vcp_mem_size;
 phys_addr_t vcp_mem_logger_size;
 bool vcp_hwvoter_support = true;
 bool is_vcp_shutdown;
-struct vcp_regs vcpreg;
+struct vcp_regs vcpreg = {0};
 
 static struct workqueue_struct *vcp_workqueue;
 
@@ -3003,6 +3003,11 @@ static int vcp_device_probe(struct platform_device *pdev)
 		vcpreg.vcp_clk_sys = ioremap(temp_value, 0x1000);
 	if (IS_ERR((void const *) vcpreg.vcp_clk_sys))
 		pr_notice("[VCP] vcpreg.vcp_clk_sys error\n");
+
+	of_property_read_u32(pdev->dev.of_node, "vcp-clk-sys-pdn", &vcpreg.vcp_clk_sys_pdn);
+	of_property_read_u32(pdev->dev.of_node, "vcp-clk-sys-fenc", &vcpreg.vcp_clk_sys_fenc);
+	pr_notice("[VCP] PDN offset %x FENC offset %x\n",
+		vcpreg.vcp_clk_sys_pdn, vcpreg.vcp_clk_sys_fenc);
 
 	temp_value = 0;
 	of_property_read_u32(pdev->dev.of_node, "vcp-pwr-status", &temp_value);

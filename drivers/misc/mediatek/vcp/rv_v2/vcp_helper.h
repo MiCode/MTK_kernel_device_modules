@@ -122,6 +122,8 @@ struct vcp_regs {
 	unsigned int bus_debug_num_ports;
 	unsigned int suspend_gipc;
 	unsigned int resume_gipc;
+	unsigned int vcp_clk_sys_pdn;
+	unsigned int vcp_clk_sys_fenc;
 };
 
 struct vcp_ipi_profile {
