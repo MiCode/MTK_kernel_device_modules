@@ -143,7 +143,6 @@ obj-$(CONFIG_MTK_PPM_V3) += ppm_v3/
 obj-$(CONFIG_MTK_MT6382_BDG) += spi_slave_drv/
 obj-$(CONFIG_MTK_PKVM_TMEM) += pkvm_tmem/
 obj-$(CONFIG_DEVICE_MODULES_PCIE_MEDIATEK_SMT) += pcie/
-obj-$(CONFIG_MTK_SMAP) += smap/
 obj-$(CONFIG_MTK_WLA) += wla/
 obj-$(CONFIG_MTK_SPM_CAREVENT) += carevent/
 obj-$(CONFIG_ARM) += arm_div/
