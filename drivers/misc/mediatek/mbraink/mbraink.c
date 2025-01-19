@@ -970,6 +970,11 @@ static long handle_power_mode_en(unsigned long arg, void *mbraink_data)
 		return -EPERM;
 	}
 
+	if (operation_mode->opMode > mbraink_op_mode_max) {
+		pr_notice("power mode: Invalid idx %u\n", operation_mode->opMode);
+		return -EINVAL;
+	}
+
 	mbraink_gpu_setOpMode(operation_mode->opMode);
 	return ret;
 }
@@ -1021,6 +1026,11 @@ static long handle_wifi_rate_info(unsigned long arg, void *mbraink_data)
 			sizeof(struct mbraink_wifi2mbr_lls_rate_data))) {
 		pr_notice("copy mbraink_wifi2mbr_lls_rate_data data from user Err!\n");
 		return -EPERM;
+	}
+
+	if (wifi_rate_buf->idx > 2147483647) {
+		pr_notice("wifi rate info: Invalid idx %u\n", wifi_rate_buf->idx);
+		return -EINVAL;
 	}
 
 	mbraink_get_wifi_rate_data(wifi_rate_buf->idx, wifi_rate_buf);
@@ -1127,6 +1137,11 @@ static long handle_wifi_txtimeout_info(unsigned long arg, void *mbraink_data)
 			sizeof(struct mbraink_wifi2mbr_txtimeout_data))) {
 		pr_notice("copy mbraink_wifi2mbr_txtimeout_data data from user Err!\n");
 		return -EPERM;
+	}
+
+	if (wifi_txtimeout_buf->idx > 2147483647) {
+		pr_notice("wifi txtimeout info: Invalid idx %u\n", wifi_txtimeout_buf->idx);
+		return -EINVAL;
 	}
 
 	mbraink_get_wifi_txtimeout_data(wifi_txtimeout_buf->idx, wifi_txtimeout_buf);

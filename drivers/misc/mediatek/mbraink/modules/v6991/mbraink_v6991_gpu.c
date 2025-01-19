@@ -328,8 +328,8 @@ void fpsgo2mbrain_hint_perfinfo(unsigned long cmd, struct render_frame_info *ite
 	int pid = 0;
 	unsigned long long bufID = 0;
 	int perf_idx = 0;
-	int sbe_ctrl = 0;
 	unsigned long long ts = 0;
+	int sbe_ctrl = 0;
 
 	if (iter == NULL) {
 		pr_info("perf notify is null pointer\n");
@@ -347,7 +347,7 @@ void fpsgo2mbrain_hint_perfinfo(unsigned long cmd, struct render_frame_info *ite
 	perf_idx = iter->blc;
 	ts = fpsgo_get_time();
 
-	opMode = (sbe_ctrl > 0) ? mbraink_op_mode_sbe : mbraink_v6991_gpu_getOpMode();
+	opMode = mbraink_v6991_gpu_getOpMode();
 
 	mutex_lock(&mbk_g_perfidx_lock);
 
