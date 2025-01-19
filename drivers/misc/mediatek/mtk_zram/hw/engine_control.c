@@ -134,6 +134,9 @@ int engine_control_init(struct platform_device *pdev, struct engine_control_t *c
 	ctrl->zram_enc_res_sz = 0x38c;
 #endif
 
+	/* Set default IRQ as off */
+	engine_set_irq_off(ctrl);
+
 	dev_info(dev, "%s done\n", __func__);
 
 	return 0;

@@ -169,7 +169,6 @@ static atomic_t comp_main_status = ATOMIC_INIT(0);
 static atomic_t comp_second_status = ATOMIC_INIT(0);
 static atomic_t dcomp_status = ATOMIC_INIT(0);
 
-
 static irqreturn_t comp_irq_handler(int irq, void *data)
 {
 	struct zram_engine_t *hwz = data;
@@ -182,6 +181,13 @@ static irqreturn_t comp_irq_handler(int irq, void *data)
 #ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s\n", __func__);
 #endif
+
+	if (engine_irq_off(&hwz->ctrl)) {
+#ifdef ZRAM_ENGINE_DEBUG
+		pr_info("%s: irq is off!\n", __func__);
+#endif
+		return IRQ_HANDLED;
+	}
 
 	status = engine_get_enc_irq_status(&hwz->ctrl);
 
@@ -213,6 +219,13 @@ static irqreturn_t dcomp_irq_handler(int irq, void *data)
 #ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s\n", __func__);
 #endif
+
+	if (engine_irq_off(&hwz->ctrl)) {
+#ifdef ZRAM_ENGINE_DEBUG
+		pr_info("%s: irq is off!\n", __func__);
+#endif
+		return IRQ_HANDLED;
+	}
 
 	status = engine_get_dec_irq_status(&hwz->ctrl);
 
@@ -247,6 +260,13 @@ static irqreturn_t smmu_irq_handler(int irq, void *data)
 
 	if (!hwz)
 		return IRQ_HANDLED;
+
+	if (engine_irq_off(&hwz->ctrl)) {
+#ifdef ZRAM_ENGINE_DEBUG
+		pr_info("%s: irq is off!\n", __func__);
+#endif
+		return IRQ_HANDLED;
+	}
 
 	/* TODO: handle translation fault */
 
@@ -659,6 +679,10 @@ static int dcomp_post_process(void *data)
 			finish_wait(&hwz->dcomp_wait, &wait);
 		}
 
+#ifndef FPGA_EMULATION
+		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+#endif
+
 		/* Processing cmds */
 		for (cpu = MAX_DCOMP_NR - 1; cpu >= 0; cpu--) {
 			fifo = &hwz->dcomp_fifo[cpu];
@@ -680,6 +704,14 @@ static int dcomp_post_process(void *data)
 
 			fifo->pp_prev_end = end;
 		}
+
+#ifndef FPGA_EMULATION
+		/*
+		 * Disable clock for zram engine -
+		 * Paired with the one in dcomp_post_process.
+		 */
+		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
 	}
 
 	return 0;
@@ -724,6 +756,10 @@ static int comp_second_post_process(void *data)
 			finish_wait(&hwz->comp_wait, &wait);
 		}
 
+#ifndef FPGA_EMULATION
+		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+#endif
+
 		/* Acquire the range for post-processing */
 		start = fifo->complete_idx;
 		end = comp_fifo_2_HtS_complete_index(fifo);
@@ -732,6 +768,14 @@ static int comp_second_post_process(void *data)
 
 		/* The wake up is premature */
 		if (start == end) {
+
+#ifndef FPGA_EMULATION
+			/*
+			 * Disable clock for zram engine -
+			 * Paired with the one in comp_second_post_process.
+			 */
+			engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
 
 			prepare_to_wait(&hwz->comp_wait, &wait, TASK_IDLE);
 
@@ -744,6 +788,10 @@ static int comp_second_post_process(void *data)
 			}
 
 			finish_wait(&hwz->comp_wait, &wait);
+
+#ifndef FPGA_EMULATION
+			WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+#endif
 
 			/* Update end for newly finished request. */
 			end = comp_fifo_2_HtS_complete_index(fifo);
@@ -771,6 +819,14 @@ static int comp_second_post_process(void *data)
 		}
 
 		fifo->pp_prev_end = end;
+
+#ifndef FPGA_EMULATION
+		/*
+		 * Disable clock for zram engine -
+		 * Paired with the one in comp_second_post_process.
+		 */
+		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
 	}
 
 	return 0;
@@ -809,6 +865,10 @@ static int comp_post_process(void *data)
 
 		finish_wait(&hwz->comp_wait, &wait);
 
+#ifndef FPGA_EMULATION
+		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+#endif
+
 		/* Acquire the range for post-processing */
 		start = fifo->complete_idx;
 		end = comp_fifo_1_HtS_complete_index(fifo);
@@ -817,6 +877,14 @@ static int comp_post_process(void *data)
 
 		/* The wake up is premature */
 		if (start == end) {
+
+#ifndef FPGA_EMULATION
+			/*
+			 * Disable clock for zram engine -
+			 * Paired with the one in comp_post_process.
+			 */
+			engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
 
 			prepare_to_wait(&hwz->comp_wait, &wait, TASK_IDLE);
 
@@ -829,6 +897,10 @@ static int comp_post_process(void *data)
 			}
 
 			finish_wait(&hwz->comp_wait, &wait);
+
+#ifndef FPGA_EMULATION
+			WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+#endif
 
 			/* Update end for newly finished request. */
 			end = comp_fifo_1_HtS_complete_index(fifo);
@@ -856,6 +928,14 @@ static int comp_post_process(void *data)
 		}
 
 		fifo->pp_prev_end = end;
+
+#ifndef FPGA_EMULATION
+		/*
+		 * Disable clock for zram engine -
+		 * Paired with the one in comp_second_post_process.
+		 */
+		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
 	}
 
 	return 0;
@@ -2471,9 +2551,26 @@ static int get_hwe_ctrl(char *buf, const struct kernel_param *kp)
 		goto exit;
 	}
 
+#ifndef FPGA_EMULATION
+	/* Enable clock for zram engine */
+	retval = engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+	if (retval) {
+		pr_info("%s: engine_gear_enable_clock fail: (%d)\n", __func__, retval);
+		goto exit;
+	}
+#endif
+
 	retval = engine_get_reg_status(&hwz->ctrl, buf);
 	retval = dump_fifo_idx(hwz, buf, retval);
 exit:
+#ifndef FPGA_EMULATION
+	/*
+	 * Disable clock for zram engine -
+	 * Paired with the one in get_hwe_ctrl.
+	 */
+	engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
+
 	mutex_unlock(&hwz_mutex);
 	return retval;
 }

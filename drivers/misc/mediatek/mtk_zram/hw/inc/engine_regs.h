@@ -24,6 +24,9 @@ struct engine_control_t {
 	void __iomem *zram_dec_base;
 	void __iomem *zram_enc_base;
 
+	/* Control by gear enable/disable clock */
+	atomic_t irq_status;
+
 #if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 	/* Register size range */
 	resource_size_t zram_config_res_sz;
@@ -188,6 +191,24 @@ int engine_compare_all_registers(struct engine_control_t *ctrl);
 #endif
 
 int engine_get_reg_status(struct engine_control_t *ctrl, char *buf);
+
+/* Whether IRQ is available */
+#define ENGINE_IRQ_ON	(0x1)	// Set when clk is enabled
+#define ENGINE_IRQ_OFF	(0x0)	// Set when clk is disabled
+static inline bool engine_irq_off(struct engine_control_t *ctrl)
+{
+	return (atomic_read(&ctrl->irq_status) == ENGINE_IRQ_OFF);
+}
+
+static inline void engine_set_irq_on(struct engine_control_t *ctrl)
+{
+	atomic_set(&ctrl->irq_status, ENGINE_IRQ_ON);
+}
+
+static inline void engine_set_irq_off(struct engine_control_t *ctrl)
+{
+	atomic_set(&ctrl->irq_status, ENGINE_IRQ_OFF);
+}
 
 /* ENC Interrupt Type */
 #define ZRAM_ENC_BATCH_INTR_MASK	(1UL << 0)

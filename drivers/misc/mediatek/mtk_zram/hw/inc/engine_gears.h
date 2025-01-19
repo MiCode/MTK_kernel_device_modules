@@ -78,9 +78,22 @@ static inline int engine_gear_power_on(struct engine_control_t *ctrl,
 
 	spin_lock(&gear_ctrl->lock);
 
-	ret = engine_power_on(ctrl);
-	if (!ret)
-		gear_ctrl->power_on = true;
+	/* Engine is powered on already, just return */
+	if (gear_ctrl->power_on == true) {
+		spin_unlock(&gear_ctrl->lock);
+		return 0;
+	}
+
+	/* Enable clk for engine access */
+	ret = clk_enable(gear_ctrl->clk_mux);
+	if (!ret) {
+		ret = engine_power_on(ctrl);
+		if (!ret)
+			gear_ctrl->power_on = true;
+
+		/* No more access, disable clk */
+		clk_disable(gear_ctrl->clk_mux);
+	}
 
 	spin_unlock(&gear_ctrl->lock);
 
@@ -95,16 +108,30 @@ static inline int engine_gear_power_off(struct engine_control_t *ctrl,
 
 	spin_lock(&gear_ctrl->lock);
 
+	/* Engine is powered off already, just return */
+	if (gear_ctrl->power_on == false) {
+		spin_unlock(&gear_ctrl->lock);
+		return 0;
+	}
+
+	/* It's allowed to power off engine when no more requests */
 	if (gear_ctrl->clk_usage == 0) {
 
-		/* Wait for HW lat_fifo empty */
-		engine_enc_wait_idle(ctrl);
-		engine_dec_wait_idle(ctrl);
+		/* Enable clk for engine access */
+		ret = clk_enable(gear_ctrl->clk_mux);
+		if (!ret) {
+			/* Wait for HW lat_fifo empty */
+			engine_enc_wait_idle(ctrl);
+			engine_dec_wait_idle(ctrl);
 
-		/* Ok. It's safe to power off engine */
-		engine_power_off(ctrl);
-		gear_ctrl->power_on = false;
-		ret = 0;
+			/* Ok. It's safe to power off engine */
+			engine_power_off(ctrl);
+			gear_ctrl->power_on = false;
+			ret = 0;
+
+			/* No more access, disable clk */
+			clk_disable(gear_ctrl->clk_mux);
+		}
 	}
 
 	spin_unlock(&gear_ctrl->lock);
@@ -120,17 +147,20 @@ static inline int engine_gear_enable_clock(struct engine_control_t *ctrl,
 
 	spin_lock(&gear_ctrl->lock);
 
-	/* Sequence: power on -> enable clock */
+	/* Sequence: enable clock -> power on */
 	if (gear_ctrl->clk_usage++ == 0) {
 
-		if (engine_power_efficiency_enabled()) {
+		ret = clk_enable(gear_ctrl->clk_mux);
+
+		if (engine_power_efficiency_enabled() && !ret) {
 			ret = engine_power_on(ctrl);
 			if (!ret)
 				gear_ctrl->power_on = true;
 		}
 
+		/* IRQ is available now */
 		if (!ret)
-			ret = clk_enable(gear_ctrl->clk_mux);
+			engine_set_irq_on(ctrl);
 	}
 
 	spin_unlock(&gear_ctrl->lock);
@@ -140,6 +170,8 @@ static inline int engine_gear_enable_clock(struct engine_control_t *ctrl,
 
 /* Disable clk mux for engine (can be called in atomic context) */
 void engine_gear_disable_clock(struct engine_control_t *ctrl, struct engine_gear_control_t *gear_ctrl);
+void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl, uint32_t cnt);
 
 /* Gear up or down */
 bool engine_try_to_gear_up(struct engine_gear_control_t *gear_ctrl, bool enc_wish);

@@ -8,6 +8,7 @@
 #include <inc/engine_regs.h>
 #include <inc/engine_gears.h>
 
+/* Return 0 if success */
 static int engine_setup_gear(struct engine_gear_control_t *gear_ctrl, uint32_t level, bool gear_up)
 {
 	int ret;
@@ -31,7 +32,7 @@ static int engine_setup_gear(struct engine_gear_control_t *gear_ctrl, uint32_t l
 	} else {
 
 		/*
-		 * Now change clk & voltage to the higher one (May sleep).
+		 * Now change clk & voltage to the lower one (May sleep).
 		 * (Update clk first)
 		 */
 		ret = clk_set_parent(gear_ctrl->clk_mux, gear_ctrl->clk_pll[level]);
@@ -129,26 +130,65 @@ int engine_gear_init(struct platform_device *pdev, struct engine_gear_control_t 
 	return 0;
 }
 
-/* Disable clk mux for engine */
+/* Disable clk mux for engine (can be called in atomic context) */
 void engine_gear_disable_clock(struct engine_control_t *ctrl,
 		struct engine_gear_control_t *gear_ctrl)
 {
 	spin_lock(&gear_ctrl->lock);
 
-	/* Sequence: disable clock -> power off */
+	BUG_ON(gear_ctrl->clk_usage == 0);
+
+	/* Sequence: power off -> disable clock */
 	if (--gear_ctrl->clk_usage == 0) {
 
 		/* Wait for HW lat_fifo empty */
 		engine_enc_wait_idle(ctrl);
 		engine_dec_wait_idle(ctrl);
 
-		/* It's safe to disable clock now */
-		clk_disable(gear_ctrl->clk_mux);
+		/* IRQ is not available now */
+		engine_set_irq_off(ctrl);
 
+		/* Try to power off HW engine */
 		if (engine_power_efficiency_enabled()) {
 			engine_power_off(ctrl);
 			gear_ctrl->power_on = false;
 		}
+
+		/* It's safe to disable clock now */
+		clk_disable(gear_ctrl->clk_mux);
+	}
+
+	spin_unlock(&gear_ctrl->lock);
+}
+
+/* Disable clk mux for engine by cnt (can be called in atomic context) */
+void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl, uint32_t cnt)
+{
+	spin_lock(&gear_ctrl->lock);
+
+	BUG_ON(gear_ctrl->clk_usage < cnt);
+
+	gear_ctrl->clk_usage -= cnt;
+
+	/* Sequence: power off -> disable clock */
+	if (gear_ctrl->clk_usage == 0) {
+
+		/* Wait for HW lat_fifo empty */
+		engine_enc_wait_idle(ctrl);
+		engine_dec_wait_idle(ctrl);
+
+		/* IRQ is not available now */
+		engine_set_irq_off(ctrl);
+
+		/* Try to power off HW engine */
+		if (engine_power_efficiency_enabled()) {
+			engine_power_off(ctrl);
+			gear_ctrl->power_on = false;
+		}
+
+		/* It's safe to disable clock now */
+		clk_disable(gear_ctrl->clk_mux);
 	}
 
 	spin_unlock(&gear_ctrl->lock);
