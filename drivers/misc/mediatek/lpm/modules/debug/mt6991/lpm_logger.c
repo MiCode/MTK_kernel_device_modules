@@ -17,21 +17,18 @@
 #include <linux/spinlock.h>
 
 #include <lpm.h>
-#include <lpm_module.h>
 #include <lpm_spm_comm.h>
 #include <lpm_pcm_def.h>
 #include <lpm_dbg_common_v2.h>
 #include <lpm_dbg_fs_common.h>
 #include <lpm_dbg_trace_event.h>
 #include <lpm_dbg_logger.h>
-#include <lpm_trace_event/lpm_trace_event.h>
 #include <spm_reg.h>
 #include <pwr_ctrl.h>
 #include <lpm_timer.h>
 #include <mtk_lpm_sysfs.h>
 #include <mtk_cpupm_dbg.h>
 #if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
-#include <lpm_sys_res.h>
 #include <lpm_sys_res_plat.h>
 #endif
 

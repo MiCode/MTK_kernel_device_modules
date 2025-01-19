@@ -32,7 +32,7 @@
 #include <lpm_call.h>
 #include <lpm_type.h>
 #include <lpm_call_type.h>
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 
 #include "lpm_plat.h"
 #include "lpm_plat_comm.h"

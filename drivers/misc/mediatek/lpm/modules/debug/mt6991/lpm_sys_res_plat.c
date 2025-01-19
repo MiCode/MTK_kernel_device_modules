@@ -27,7 +27,7 @@
 #include <lpm_trace_event/lpm_trace_event.h>
 #include <spm_reg.h>
 #include <pwr_ctrl.h>
-#include <mt-plat/mtk_ccci_common.h>
+//#include <mt-plat/mtk_ccci_common.h>
 #include <lpm_timer.h>
 #include <mtk_lpm_sysfs.h>
 #include <mtk_cpupm_dbg.h>
@@ -475,7 +475,9 @@ int lpm_sys_res_plat_init(void)
 
 	res_mapping_len = sizeof(sys_res_mapping) / sizeof(struct sys_res_mapping);
 	for(i=0; i<res_mapping_len; i++) {
-		ret = get_res_group_id(i, 0, 0, &sys_res_mapping[i].id, NULL, NULL);
+		/* ToDo: need swpm module to finish ddk */
+		pr_info("[name:spm&][SPM] get_res_group_id not supported yet\n");
+		//ret = get_res_group_id(i, 0, 0, &sys_res_mapping[i].id, NULL, NULL);
 		if (ret) {
 			pr_info("[name:spm&][SPM] sys_res_mapping init fail\n");
 			return ret;

@@ -165,6 +165,7 @@ int mtk_lp_proc_root_put(void)
 }
 #endif
 
+#if 0 /* to avoid ddk build error: duplicate symbol */
 int mtk_lp_sysfs_entry_create_plat(const char *name,
 		int mode, struct mtk_lp_sysfs_handle *parent,
 		struct mtk_lp_sysfs_handle *handle)
@@ -276,3 +277,4 @@ int mtk_lp_sysfs_entry_group_create_plat(const char *name,
 
 	return bRet;
 }
+#endif /* to avoid ddk build error: duplicate symbol */

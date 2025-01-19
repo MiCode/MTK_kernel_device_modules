@@ -39,7 +39,9 @@ int spm_common_dbg_dump(void)
 
 	if (mtk_suspend_debug_flag & MTK_DUMP_GPIO) {
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_PINCTRL_MTK_PARIS)
-		gpio_dump_regs();
+		/* ToDo: need pinctrl module to finish ddk */
+		//gpio_dump_regs();
+		pr_info("[LPM] gpio dump not supported.\n");
 #else
 		pr_info("[LPM] gpio dump not supported.\n");
 #endif

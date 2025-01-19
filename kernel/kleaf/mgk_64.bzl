@@ -177,6 +177,8 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:ddk_srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -226,6 +228,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -381,6 +384,10 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-btcvsd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mm-fake-engine".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:mtk-ise-mailbox".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:mtk-lpm".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:mtk-lpm-dbg-common-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/platform/v2:mtk-lpm-plat-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/mt6991:mtk-lpm-dbg-mt6991".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -660,11 +667,8 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/lens/vcm/v4l2/sub_vcm/sub_vcm.ko",
     "drivers/misc/mediatek/log_store/log_store.ko",
     "drivers/misc/mediatek/lpm/governors/MHSP/lpm-gov-MHSP.ko",
-    "drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko",
-    "drivers/misc/mediatek/lpm/modules/debug/v2/mtk-lpm-dbg-common-v2.ko",
-    "drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko",
-    "drivers/misc/mediatek/lpm/modules/platform/v2/mtk-lpm-plat-v2.ko",
-    "drivers/misc/mediatek/lpm/mtk-lpm.ko",
+    #"drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko",
+    #"drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko",
     "drivers/misc/mediatek/wla/version/v1/wla-v1.ko",
     "drivers/misc/mediatek/wla/version/v1/wla-v1-dbg.ko",
     "drivers/misc/mediatek/masp/sec.ko",
@@ -1135,12 +1139,11 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/dcm/mt6985_dcm.ko": "mt6985",
     "drivers/misc/mediatek/dcm/mt6989_dcm.ko": "mt6989",
     "drivers/misc/mediatek/dcm/mt6991_dcm.ko": "mt6991",
-    "drivers/misc/mediatek/lpm/modules/debug/mt6886/mtk-lpm-dbg-mt6886.ko": "mt6886",
-    "drivers/misc/mediatek/lpm/modules/debug/mt6897/mtk-lpm-dbg-mt6897.ko": "mt6897",
-    "drivers/misc/mediatek/lpm/modules/debug/mt6983/mtk-lpm-dbg-mt6983.ko": "mt6983",
-    "drivers/misc/mediatek/lpm/modules/debug/mt6985/mtk-lpm-dbg-mt6985.ko": "mt6985",
-    "drivers/misc/mediatek/lpm/modules/debug/mt6989/mtk-lpm-dbg-mt6989.ko": "mt6989",
-    "drivers/misc/mediatek/lpm/modules/debug/mt6991/mtk-lpm-dbg-mt6991.ko": "mt6991",
+    #"drivers/misc/mediatek/lpm/modules/debug/mt6886/mtk-lpm-dbg-mt6886.ko": "mt6886",
+    #"drivers/misc/mediatek/lpm/modules/debug/mt6897/mtk-lpm-dbg-mt6897.ko": "mt6897",
+    #"drivers/misc/mediatek/lpm/modules/debug/mt6983/mtk-lpm-dbg-mt6983.ko": "mt6983",
+    #"drivers/misc/mediatek/lpm/modules/debug/mt6985/mtk-lpm-dbg-mt6985.ko": "mt6985",
+    #"drivers/misc/mediatek/lpm/modules/debug/mt6989/mtk-lpm-dbg-mt6989.ko": "mt6989",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6761.ko": "mt6761",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6765.ko": "mt6765",
     "drivers/misc/mediatek/mdp/mdp_drv_mt6768.ko": "mt6768",

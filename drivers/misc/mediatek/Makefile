@@ -40,7 +40,6 @@ obj-$(CONFIG_MTK_FLASHLIGHT) += flashlight/
 obj-$(CONFIG_MTK_V4L2_FLASHLIGHT) += flashlight/v4l2/
 obj-$(CONFIG_MTK_DCM_COMMON) += dcm/
 obj-$(CONFIG_MMSTAT_TRACER) += mmstat/
-obj-$(CONFIG_MTK_LOW_POWER_MODULE) += lpm/
 obj-$(CONFIG_MTK_CPU_IDLE_GOV) += lpm/governors/
 obj-$(CONFIG_MTK_LPM_LEGACY) += lpm_legacy/
 obj-$(CONFIG_MTK_SSC_MODULE) += ssc/

@@ -20,9 +20,6 @@ static int __init dbg_early_initcall(void)
 {
 	return 0;
 }
-#ifndef MTK_LPM_MODE_MODULE
-subsys_initcall(dbg_early_initcall);
-#endif
 
 static int __init dbg_device_initcall(void)
 {
@@ -37,16 +34,11 @@ static int __init dbg_late_initcall(void)
 	lpm_logger_init();
 	return 0;
 }
-#ifndef MTK_LPM_MODE_MODULE
-late_initcall_sync(dbg_late_initcall);
-#endif
 
 int __init lpm_dbg_init(void)
 {
 	int ret = 0;
-#ifdef MTK_LPM_MODE_MODULE
 	ret = dbg_early_initcall();
-#endif
 	if (ret)
 		goto dbg_init_fail;
 
@@ -55,9 +47,7 @@ int __init lpm_dbg_init(void)
 	if (ret)
 		goto dbg_init_fail;
 
-#ifdef MTK_LPM_MODE_MODULE
 	ret = dbg_late_initcall();
-#endif
 
 	if (ret)
 		goto dbg_init_fail;
