@@ -1050,7 +1050,7 @@ int get_session_ssid(uint64_t session, uint32_t *ssid)
 exit:
 	return ret;
 }
-#if 0
+
 static uint32_t ammu_appendix_cb_size(uint32_t num_subcmds)
 {
 	return sizeof(struct ammu_stable_info);
@@ -1104,11 +1104,10 @@ static int ammu_appendix_cb_process(enum apu_appendix_cb_type type, uint64_t ses
 
 	return ret;
 }
-#endif
+
 /* Init lust head, lock */
 int apummu_mgt_init(void)
 {
-#if 0
 	int ret;
 
 	ret = apusys_request_cmdbuf_appendix(APU_APPENDIX_CB_OWNER_AMMU, ammu_appendix_cb_size, ammu_appendix_cb_process);
@@ -1116,7 +1115,7 @@ int apummu_mgt_init(void)
 		AMMU_LOG_ERR("apusys_request_cmdbuf_appendix fail: %d\n", ret);
 		goto exit;
 	}
-#endif
+
 	g_ammu_table_set.is_VLM_info_IPI_sent = false;
 	g_ammu_table_set.is_SLB_set = false;
 	g_ammu_table_set.is_work_canceled = true;
@@ -1130,12 +1129,8 @@ int apummu_mgt_init(void)
 	ammu_workq = alloc_ordered_workqueue("ammu_dram_free", WQ_MEM_RECLAIM);
 	bitmap_fill(ssid_bitmap, AMMU_SSID_MAX);
 	__clear_bit(0, ssid_bitmap);
-#if 0
 exit:
 	return ret;
-#else
-	return 0;
-#endif
 }
 
 /* apummu_mgt_destroy session table set */
