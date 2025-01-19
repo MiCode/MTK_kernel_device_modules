@@ -15305,7 +15305,7 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 		atomic_dec(&priv->kernel_pm.wakelock_cnt);
 	}
 
-	DDPMSG("CRTC%d %s wakelock %s %d cnt(%u)\n",
+	DDPMSG("CRTC%d %s wakelock %s %d cnt(%d)\n",
 		drm_crtc_index(crtc), (get ? "hold" : "release"),
 		func, line, atomic_read(&priv->kernel_pm.wakelock_cnt));
 
@@ -15526,14 +15526,10 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 		vdisp_func.genpd_put = NULL;
 		mtk_dump_mminfra_ck(priv);
 
-		if (atomic_read(&priv->kernel_pm.wakelock_cnt) == 1) {
-			atomic_set(&priv->kernel_pm.wakelock_cnt, 0);
-
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-			if (vdisp_func.wk_lock)
-				vdisp_func.wk_lock(index, 0, __func__, __LINE__);
+		if (vdisp_func.wk_lock)
+			vdisp_func.wk_lock(index, 0, __func__, __LINE__);
 #endif
-		}
 	}
 
 	CRTC_MMP_EVENT_START((int) index, resume,

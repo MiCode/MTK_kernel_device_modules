@@ -11890,7 +11890,7 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
-	atomic_set(&private->kernel_pm.wakelock_cnt, 0);
+	atomic_set(&private->kernel_pm.wakelock_cnt, -1);
 	atomic_set(&private->kernel_pm.status, KERNEL_PM_RESUME);
 	init_waitqueue_head(&private->kernel_pm.wq);
 	/* The priority must be higher than VCP to have the opportunity to interrupt its suspend flow */
