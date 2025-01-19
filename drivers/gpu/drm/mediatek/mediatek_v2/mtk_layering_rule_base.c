@@ -4904,6 +4904,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	/* Initial HRT conditions */
 	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6853 ||
+		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885))
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
@@ -5028,6 +5030,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	/* adjust scenario after dispatch gles range */
 	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6853 ||
+		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6885)) {
 		scale_num = get_scale_cnt(&layering_info);
