@@ -5539,6 +5539,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			hub-baud = <24000000>;
 			wakeup-irq-support = <1>;
 			rtff-support = <1>;
+			apdma-peri-cg = <0x16640014>;
 		};
 
 		spi0: spi0@16110000 {
