@@ -7071,7 +7071,11 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 		}
 	}
 	/*set_hrt_bw for pan display ,set 4 for two RGB layer*/
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (hrt_valid == false) {
+#else
 	if ((index == 0 || mtk_crtc->path_data->is_discrete_path) && hrt_valid == false) {
+#endif
 		if (mtk_drm_helper_get_opt(mtk_drm->helper_opt, MTK_DRM_OPT_HRT))
 			DDPMSG("%s frame:%u correct invalid hrt to:%u, mode:%llu->%llu\n",
 				__func__, prop_lye_idx, pan_disp_frame_weight,
