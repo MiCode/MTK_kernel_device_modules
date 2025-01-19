@@ -301,6 +301,7 @@ static void mdw_ch_handle_fast_power_onoff(struct mdw_ch_tbl *ch_tbl, struct mdw
 	predict_start_ts = mdw_ch_get_next_cmd_in_ts(c);
 	if (!predict_start_ts) {
 		mdw_flw_debug("no valid predict cmd in heap\n");
+		c->need_dtime_handle = true;
 		return;
 	}
 
