@@ -546,6 +546,7 @@ static void mtk_vdec_lpw_timer_handler(struct timer_list *timer)
 
 	spin_lock_irqsave(&ctx->lpw_lock, flags);
 	if (ctx->lpw_timer_wait) {
+		vcodec_trace_tid_count(ctx->trace_count_tgid, 0, "VDEC-%d-timer", ctx->id);
 		if (ctx->lpw_state == VDEC_LPW_WAIT) {
 			GET_BUF_PAIRS(ctx->m2m_ctx, src_cnt, dst_cnt, pair_cnt);
 			mtk_lpw_debug(1, "[%d] timer timeup, switch lpw_state(%d) to DEC(%d)(pair cnt %u(%u,%u))",
@@ -694,6 +695,8 @@ static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 
 	if (timeout > 0) {
 		ctx->lpw_timer_wait = true;
+		vcodec_trace_tid_count(ctx->trace_count_tgid,
+			(int)div_u64(timeout, NSEC_PER_MSEC), "VDEC-%d-timer", ctx->id);
 		mod_timer(&ctx->lpw_timer, jiffies + nsecs_to_jiffies(timeout));
 	} else {
 		mtk_lpw_debug(2, "[%d] calculate timer timeout = 0, directly switch lpw_state(%d) to DEC(%d)",
@@ -716,6 +719,7 @@ static void mtk_vdec_lpw_stop_timer(struct mtk_vcodec_ctx *ctx, bool need_lock)
 	if (ctx->lpw_timer_wait) {
 		del_timer(&ctx->lpw_timer);
 		ctx->lpw_timer_wait = false;
+		vcodec_trace_tid_count(ctx->trace_count_tgid, 0, "VDEC-%d-timer", ctx->id);
 	}
 
 	if (need_lock)
@@ -741,8 +745,7 @@ static void mtk_vdec_lpw_switch_reset(struct mtk_vcodec_ctx *ctx, bool need_lock
 		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 }
 
-static bool mtk_vdec_lpw_check_dec_start(struct mtk_vcodec_ctx *ctx,
-	bool need_lock, bool is_EOS, char *debug_str)
+static bool mtk_vdec_lpw_check_dec_start(struct mtk_vcodec_ctx *ctx, bool is_EOS, char *debug_str)
 {
 	unsigned int src_cnt, dst_cnt, pair_cnt, limit_cnt;
 	unsigned long flags;
@@ -751,8 +754,7 @@ static bool mtk_vdec_lpw_check_dec_start(struct mtk_vcodec_ctx *ctx,
 	if (!ctx->low_pw_mode)
 		return has_switch;
 
-	if (need_lock)
-		spin_lock_irqsave(&ctx->lpw_lock, flags);
+	spin_lock_irqsave(&ctx->lpw_lock, flags);
 
 	if (ctx->lpw_state != VDEC_LPW_WAIT && !is_EOS)
 		goto check_lpw_start_done;
@@ -774,8 +776,7 @@ static bool mtk_vdec_lpw_check_dec_start(struct mtk_vcodec_ctx *ctx,
 			ctx->id, debug_str, pair_cnt, src_cnt, dst_cnt, limit_cnt, ctx->lpw_state);
 
 check_lpw_start_done:
-	if (need_lock)
-		spin_unlock_irqrestore(&ctx->lpw_lock, flags);
+	spin_unlock_irqrestore(&ctx->lpw_lock, flags);
 	return has_switch;
 }
 
@@ -828,7 +829,8 @@ static void mtk_vdec_lpw_update_before_dec(struct mtk_vcodec_ctx *ctx)
 	// set in group
 	if (!ctx->in_group) {
 		ctx->in_group = true;
-		vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
+		vcodec_trace_tid_count(ctx->trace_count_tgid,
+			(int)ctx->in_group + (int)ctx->in_start_group, "VDEC-%d-in_group", ctx->id);
 		ctx->group_start_jiffies = jiffies;
 		ctx->group_dec_cnt = 0;
 	}
@@ -873,7 +875,8 @@ static void mtk_vdec_lpw_update_before_dec(struct mtk_vcodec_ctx *ctx)
 	// check in group for stop task base power
 	if (ctx->in_group && (ctx->dynamic_low_latency || is_group_end)) {
 		ctx->in_group = false;
-		vcodec_trace_count_fmt(ctx->in_group, "VDEC-%d-in_group", ctx->id);
+		vcodec_trace_tid_count(ctx->trace_count_tgid,
+			(int)ctx->in_group + (int)ctx->in_start_group, "VDEC-%d-in_group", ctx->id);
 	}
 	if (vdec_if_set_param(ctx, SET_PARAM_VDEC_IN_GROUP, (void *)ctx->in_group) != 0)
 		mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_VDEC_IN_GROUP(%d)",
@@ -3653,7 +3656,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 		mtk_vdec_set_frame(ctx, buf);
 
-		mtk_vdec_lpw_check_dec_start(ctx, true, false, "qbuf dst");
+		mtk_vdec_lpw_check_dec_start(ctx, false, "qbuf dst");
 
 		vcodec_trace_end();
 		return;
@@ -3662,7 +3665,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	buf->used = false;
 	v4l2_m2m_buf_queue_check(ctx->m2m_ctx, to_vb2_v4l2_buffer(vb));
 
-	mtk_vdec_lpw_check_dec_start(ctx, true, (buf->lastframe != NON_EOS), "qbuf src");
+	mtk_vdec_lpw_check_dec_start(ctx, (buf->lastframe != NON_EOS), "qbuf src");
 
 	if (!mtk_vcodec_is_state(ctx, MTK_STATE_INIT)) {
 		mtk_v4l2_debug(8, "[%d] already init driver %d",

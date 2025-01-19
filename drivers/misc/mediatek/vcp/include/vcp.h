@@ -113,9 +113,9 @@ enum VCP_IOMMU_DEV {
 	VCP_IOMMU_UBE_LAT = 4,
 	VCP_IOMMU_UBE_CORE = 5,
 	VCP_IOMMU_SEC = 6,
-	VCP_IOMMU_ACP_VDEC = 7,
-	VCP_IOMMU_ACP_VENC = 8,
-	VCP_IOMMU_ACP_CODEC = 9,
+	VCP_IOMMU_ACP_VDEC = 7,  // coherence for vdec which hfrp can touch
+	VCP_IOMMU_ACP_VENC = 8,  // coherence for venc which hfrp can touch
+	VCP_IOMMU_ACP_CODEC = 9, // coherence which hfrp can not touch
 #if IS_ENABLED(CONFIG_MTK_SENTRY_MODE)
 	VCP_IOMMU_SENTRY_MODE = 10,
 	VCP_IOMMU_SENTRY_MODE_EXTRA = 11,
