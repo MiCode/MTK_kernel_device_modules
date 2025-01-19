@@ -244,6 +244,9 @@ static long memory_send(bool share, bool involve_sp,
 
 	struct ffa_mem_record_table *new_node;
 
+	if (!g_ffa_dev || !g_ffa_ops)
+		return -ENODEV;
+
 	new_node = kzalloc(sizeof(struct ffa_mem_record_table), GFP_KERNEL);
 	if (unlikely(!new_node)) {
 		FFA_ERR("Out of memory. %s:%d\n", __FILE__, __LINE__);
@@ -569,6 +572,9 @@ static int gz_ffa_memory_reclaim(struct args *args)
 	struct ffa_mem_record_table *mem_record;
 	struct ffa_mem_list_head *prev_node, *next_node;
 
+	if (!g_ffa_dev || !g_ffa_ops)
+		return -ENODEV;
+
 	flags = args->arg[1];
 	handle = args->arg[2];
 
@@ -640,6 +646,11 @@ static int gz_ffa_partition_info(struct args *args)
 	int ret = 0;
 	char target_uuid[VM_UUID_LENGTH + 1] = {0};
 	struct ffa_partition_info *buffer = kzalloc(PAGE_SIZE, GFP_KERNEL);
+
+	if (!g_ffa_dev || !g_ffa_ops) {
+		kfree(buffer);
+		return -ENODEV;
+	}
 
 	memcpy(target_uuid, args, VM_UUID_LENGTH);
 
