@@ -134,6 +134,7 @@ struct CRTC_MMP_Events {
 	mmp_event cwb_dump;
 	mmp_event discrete;
 	mmp_event discrete_fill;
+	mmp_event mml_job_status;
 	/*Msync 2.0 mmp start*/
 	mmp_event ovl_status_err;
 	mmp_event vfp_period;
