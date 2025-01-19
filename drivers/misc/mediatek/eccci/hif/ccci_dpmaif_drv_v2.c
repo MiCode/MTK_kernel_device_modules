@@ -1271,31 +1271,53 @@ static void drv2_dump_register(int buf_type)
 static void drv2_hw_reset(void)
 {
 	unsigned int reg_value;
+	int ret;
 
 	/* pre- DPMAIF HW reset: bus-protect */
 	reg_value = dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0);
 	reg_value &= ~INFRA_PROT_DPMAIF_BIT;
 	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0, reg_value);
 	CCCI_BOOTUP_LOG(0, TAG, "%s:set prot:0x%x\n", __func__, reg_value);
+	udelay(500);
 
 	/* DPMAIF HW reset */
 	CCCI_BOOTUP_LOG(0, TAG, "%s:rst dpmaif\n", __func__);
 	/* reset dpmaif hw: AO Domain */
 	reg_value = DPMAIF_AO_RST_MASK;/* so only this bit effective */
-	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_AO, reg_value);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_AO, reg_value);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG,
+			"[%s]-%d error: write INFRA_RST0_REG_AO ret=%d\n",
+			__func__, __LINE__, ret);
+	udelay(500);
 
 	CCCI_BOOTUP_LOG(0, TAG, "%s:clear reset\n", __func__);
 	/* reset dpmaif clr */
-	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_AO, reg_value);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_AO, reg_value);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG,
+			"[%s]-%d error: write INFRA_RST1_REG_AO ret=%d\n",
+			__func__, __LINE__, ret);
 	CCCI_BOOTUP_LOG(0, TAG, "%s:done. reg_value: %x\n", __func__, reg_value);
+	udelay(500);
 
 	/* reset dpmaif hw: PD Domain */
 	reg_value = DPMAIF_PD_RST_MASK;
-	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_PD, reg_value);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST0_REG_PD, reg_value);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG,
+			"[%s]-%d error: write INFRA_RST0_REG_PD ret=%d\n",
+			__func__, __LINE__, ret);
 	CCCI_BOOTUP_LOG(0, TAG, "%s:clear reset\n", __func__);
+	udelay(500);
 
 	/* reset dpmaif clr */
-	regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_PD, reg_value);
+	ret = regmap_write(g_dpmaif_ctrl->infra_ao_base, INFRA_RST1_REG_PD, reg_value);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG,
+		"[%s]-%d error: write INFRA_RST1_REG_PD ret=%d\n",
+		__func__, __LINE__, ret);
+
 	CCCI_BOOTUP_LOG(0, TAG, "[%s]:done. reg_value: %x\n", __func__, reg_value);
 }
 
