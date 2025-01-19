@@ -160,7 +160,7 @@ bool system_has_many_heavy_task(void)
 		struct task_struct *curr_task = READ_ONCE(rq->curr);
 
 		if (curr_task &&
-			!task_fits_capacity(curr_task, READ_ONCE(rq->cpu_capacity),
+			!task_fits_capacity(curr_task, READ_ONCE(rq->cpu_capacity), i,
 						get_adaptive_margin(i)))
 			heavy_task += 1;
 

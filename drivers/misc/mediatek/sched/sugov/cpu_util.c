@@ -18,18 +18,6 @@
 
 static bool runnable_boost_enable = DEFAULT_RUNNABLE_BOOST;
 
-/* cloned from kmainline task_util() */
-static inline unsigned long task_util(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-/* cloned from kmainline _task_util_est() */
-static inline unsigned long _task_util_est(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
-}
-
 bool is_runnable_boost_enable(void)
 {
 	return runnable_boost_enable;

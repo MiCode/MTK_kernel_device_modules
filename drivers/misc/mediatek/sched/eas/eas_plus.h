@@ -67,6 +67,12 @@ DECLARE_PER_CPU(unsigned long, min_freq);
  * @pd_cap:         Entire perf domain capacity. (pd->nr_cpus * cpu_cap).
  */
 #define MAX_NR_CPUS CONFIG_MAX_NR_CPUS
+
+typedef struct {
+	unsigned int cpu_util_local;
+	unsigned int total_util_local;
+	int IPC_scaling_factor;
+} dpt_v2_cap_params_struct;
 struct energy_env {
 
 	unsigned long task_busy_time;     /* task util*/
@@ -75,14 +81,14 @@ struct energy_env {
 
 	int dst_cpu;
 	unsigned int gear_idx;
-	unsigned long pds_busy_time[MAX_NR_CPUS];
-	unsigned long cpu_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
-	unsigned long gear_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
-	unsigned long pds_cpu_cap[MAX_NR_CPUS];
-	unsigned long pds_cap[MAX_NR_CPUS];
-	unsigned long pd_base_max_util[MAX_NR_CPUS];
+	unsigned int pds_busy_time[MAX_NR_CPUS];
+	unsigned int cpu_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned int gear_max_util[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned int pds_cpu_cap[MAX_NR_CPUS];
+	unsigned int pds_cap[MAX_NR_CPUS];
+	unsigned int pd_base_max_util[MAX_NR_CPUS];
 	unsigned long pd_base_freq[MAX_NR_CPUS];
-	unsigned long total_util;
+	unsigned int total_util;
 
 	/* temperature for each cpu*/
 	int cpu_temp[MAX_NR_CPUS];
@@ -93,6 +99,19 @@ struct energy_env {
 	unsigned int wl_dsu; /* wl for DSU */
 
 	int val_s[10];
+
+	/* dpt v2 */
+	int dpt_v2_support;
+	unsigned int dpt_v2_freq[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned int dpt_v2_gear_max_freq[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
+	int dpt_v2_swpm_support;
+	int dpt_v2_gear_max_freq_cpu[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned int dpt_v2_sratio[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
+	u16 dpt_v2_cpu_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
+	u16 dpt_v2_coef1_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
+	u16 dpt_v2_coef2_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
+	unsigned int local_capacity_of[MAX_NR_CPUS];
+	dpt_v2_cap_params_struct dpt_v2_cap_params[MAX_NR_CPUS][2]; /* cpu * NUM_DST_CPU_TYPE * {cpu_util_local, total_util_local, IPC_scaling_factor}*/
 
 	ANDROID_VENDOR_DATA_ARRAY(1, 32);
 };
@@ -119,9 +138,9 @@ struct rt_energy_aware_output {
  */
 #define fits_capacity(cap, max, margin) ((cap) * margin < (max) * 1024)
 unsigned long capacity_of(int cpu);
-#endif
+#endif //CONFIG_SMP
 
-extern int task_fits_capacity(struct task_struct *p, long capacity, unsigned int margin);
+extern int task_fits_capacity(struct task_struct *p, long capacity, int cpu, unsigned int margin);
 extern struct perf_domain *find_pd(struct perf_domain *pd, int cpu);
 
 #if IS_ENABLED(CONFIG_MTK_EAS)
@@ -157,18 +176,20 @@ unsigned long get_dsu_pwr(int wl, int dst_cpu, unsigned long task_util,
 extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 		unsigned long pd_freq, unsigned long sum_util,
 		unsigned long scale_cpu, struct energy_env *eenv,
-		unsigned long extern_volt, unsigned long max_util);
+		unsigned long extern_volt, unsigned long max_util, int candidate_cpu,
+		unsigned int dpt_v2_sratio, dpt_v2_cap_params_struct dpt_v2_cap_params);
 extern unsigned int new_idle_balance_interval_ns;
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
 extern int sort_thermal_headroom(struct cpumask *cpus, int *cpu_order, bool in_irq);
 extern unsigned int thermal_headroom_interval_tick;
-#endif
+#endif //CONFIG_MTK_THERMAL_AWARE_SCHEDULING
 
 extern void mtk_freq_limit_notifier_register(void);
 extern int init_sram_info(void);
 extern int init_share_buck(void);
 extern void mtk_tick_entry(void *data, struct rq *rq);
 extern void mtk_set_wake_flags(void *data, int *wake_flags, unsigned int *mode);
+extern unsigned long cpu_freq_ceiling(int cpu);
 extern unsigned long cpu_cap_ceiling(int cpu);
 extern void mtk_pelt_rt_tp(void *data, struct rq *rq);
 extern void mtk_sched_switch(void *data, struct task_struct *prev,
@@ -297,14 +318,15 @@ extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)
 extern void hook_sched_balance_newidle(void *data, struct rq *this_rq,
 		struct rq_flags *rf, int *pulled_task, int *done);
-#endif
+#endif //CONFIG_MTK_NEWIDLE_BALANCE
 
 extern unsigned long calc_pwr(int cpu, unsigned long task_util);
-extern unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s);
+extern unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s, int dpt_v2_support, dpt_v2_cap_params_struct dpt_v2_cap_params);
 extern unsigned long shared_buck_calc_pwr_eff(struct energy_env *eenv,
 		int cpu, struct task_struct *p, unsigned long max_util, struct cpumask *cpus,
-		bool is_dsu_pwr_triggered, unsigned long min, unsigned long max);
-#endif
+		bool is_dsu_pwr_triggered, unsigned long min, unsigned long max,
+		int dpt_v2_support, dpt_v2_cap_params_struct dpt_v2_cap_params);
+#endif // CONFIG_MTK_EAS
 
 extern int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 		int reason);
@@ -316,7 +338,7 @@ extern void rotat_after_enqueue_task(void *data, struct rq *rq, struct task_stru
 extern void rotat_task_stats(void *data, struct task_struct *p);
 extern void rotat_task_newtask(void __always_unused *data, struct task_struct *p,
 				unsigned long clone_flags);
-#endif
+#endif //CONFIG_MTK_SCHED_BIG_TASK_ROTATE
 extern void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags);
 extern void mtk_select_task_rq_rt(void *data, struct task_struct *p, int cpu, int sd_flag,
@@ -328,6 +350,18 @@ extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask
 
 extern void throttled_rt_tasks_debug(void *unused, int cpu, u64 clock,
 				ktime_t rt_period, u64 rt_runtime, s64 rt_period_timer_expires);
+
+extern void mtk_update_rq_clock_pelt(void *unused, struct rq *rq, s64 delta, int *ret);
+extern void mtk_update_load_avg_blocked_se(void *unused, u64 now, struct sched_entity *se, int *ret);
+extern void mtk_update_load_avg_se(void *unused, u64 now, struct cfs_rq *cfs_rq, struct sched_entity *se, int *ret);
+extern void mtk_update_load_avg_cfs_rq(void *unused, u64 now, struct cfs_rq *cfs_rq, int *ret);
+extern void mtk_update_rt_rq_load_avg_internal(void *unused, u64 now, struct rq *rq, int running, int *ret);
+extern void mtk_attach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sched_entity *se);
+extern void mtk_detach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sched_entity *se);
+extern void mtk_enqueue_task_fair(void *unused, struct rq *rq, struct task_struct *p, int flags);
+extern void mtk_dequeue_task_fair(void *unused, struct rq *rq, struct task_struct *p, int flags);
+extern void mtk_remove_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sched_entity *se);
+extern void sched_task_util_est_hook(void *data, struct sched_entity *se);
 
 extern bool sched_skip_hiIRQ_enable_get(void);
 extern bool sched_rt_aggre_preempt_enable_get(void);
@@ -354,7 +388,7 @@ extern struct cpumask __cpu_pause_mask;
 extern void sched_pause_init(void);
 #else
 #define cpu_paused(cpu) 0
-#endif
+#endif // CONFIG_MTK_CORE_PAUSE
 #define DPT_TURN_ON (is_dpt_support_driver_hook != NULL && is_dpt_support_driver_hook())
 extern int set_target_margin(int gearid, int margin);
 extern int set_turn_point_freq(int gearid, unsigned long turn_freq);
@@ -368,4 +402,13 @@ extern struct share_buck_info share_buck;
 extern int get_share_buck(void);
 extern int sched_cgroup_state(struct task_struct *p, int subsys_id);
 extern int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask);
-#endif
+
+extern inline int util_fits_capacity_dpt_v2(unsigned long cpu_util_without_uclamp_local, unsigned long coef1_util_local,
+	unsigned long coef2_util_local, unsigned long uclamp_min, unsigned long uclamp_max, unsigned long local_capacity_of, int cpu, unsigned long *cpu_util_uclamped);
+extern unsigned long mtk_em_cpu_energy_v2(struct em_perf_domain *pd,
+		struct energy_env *eenv, unsigned long pd_freq, int cpu, unsigned long ipc_p, unsigned long cycle_p);
+extern inline unsigned long eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
+		 struct task_struct *p, int dst_cpu, unsigned long *min, unsigned long *max);
+extern void __iomem *(*get_dpt_v2_cs_counter_addr_hook)(int cpu);
+
+#endif //_EAS_PLUS_H

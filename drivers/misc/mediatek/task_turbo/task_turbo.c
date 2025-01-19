@@ -1416,16 +1416,6 @@ cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost)
 	return min(util, arch_scale_cpu_capacity(cpu));
 }
 
-static inline unsigned long task_util(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-static inline unsigned long _task_util_est(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
-}
-
 int find_best_turbo_cpu(struct task_struct *p)
 {
 	struct hmp_domain *domain;

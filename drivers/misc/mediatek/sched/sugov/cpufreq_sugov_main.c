@@ -60,6 +60,11 @@ struct sugov_cpu {
 #if IS_ENABLED(CONFIG_NO_HZ_COMMON)
 	unsigned long		saved_idle_calls;
 #endif
+
+	/* DPT v2 data */
+	unsigned int dpt_v2_cpu_util_local;
+	unsigned int dpt_v2_coef1_util_local;
+	unsigned int dpt_v2_coef2_util_local;
 };
 
 static DEFINE_PER_CPU(struct sugov_cpu, sugov_cpu);
@@ -121,6 +126,13 @@ bool is_dsu_idle_enable(void)
 	return dsu_idle_enable;
 }
 EXPORT_SYMBOL(is_dsu_idle_enable);
+
+/* dptv2*/
+inline struct cpufreq_policy *get_cpufreq_policy(int cpu)
+{
+	return (per_cpu(sugov_cpu, cpu).sg_policy) ? (per_cpu(sugov_cpu, cpu).sg_policy->policy) : NULL;
+}
+EXPORT_SYMBOL(get_cpufreq_policy);
 
 /************************ Governor internals ***********************/
 
@@ -210,6 +222,29 @@ static void sugov_deferred_update(struct sugov_policy *sg_policy)
 	}
 }
 
+static unsigned int get_next_freq_dpt_v2(struct sugov_policy *sg_policy, int cpu, unsigned int cpu_util_local, unsigned int coef1_util_local, unsigned int coef2_util_local,
+	unsigned long *capacity_result, unsigned long min, unsigned long max)
+{
+	struct cpufreq_policy *policy = sg_policy->policy;
+	unsigned int freq = policy->cpuinfo.max_freq;
+	unsigned long next_freq = 0;
+
+	mtk_map_util_freq_dpt_v2((void *)sg_policy, cpu, &next_freq, capacity_result, policy->related_cpus, cpu_util_local, coef1_util_local, coef2_util_local, min, max);
+
+	if (next_freq)
+		freq = next_freq;
+	/* else {
+	 * 	freq = map_util_freq((cpu_util_local+coef1_util_local+coef2_util_local), freq, cap);
+	 * 	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
+	 * 		return sg_policy->next_freq;
+	 * 	sg_policy->cached_raw_freq = freq;
+	 * 	freq = cpufreq_driver_resolve_freq(policy, freq);
+	 * }
+	 */
+
+	return freq;
+}
+
 /**
  * get_next_freq - Compute a new frequency for a given cpufreq policy.
  * @sg_policy: schedutil policy object to compute the new frequency for.
@@ -275,7 +310,7 @@ inline int curr_clamp(struct rq *rq, unsigned long *util)
 	struct task_struct *curr_task;
 	int u_min = 0, u_max = 1024;
 	int cpu = rq->cpu;
-	unsigned long util_ori = *util;
+	unsigned long util_debug, util_ori = *util;
 	struct curr_uclamp_hint *cu_ht;
 
 	rcu_read_lock();
@@ -300,9 +335,11 @@ inline int curr_clamp(struct rq *rq, unsigned long *util)
 	rcu_read_unlock();
 
 	*util = clamp_val(*util, u_min, u_max);
+	util_debug = *util;
+
 	if (trace_sugov_ext_curr_uclamp_enabled())
 		trace_sugov_ext_curr_uclamp(cpu, curr_task->pid,
-		util_ori, *util, u_min, u_max);
+		util_ori, util_debug, u_min, u_max);
 	return 0;
 }
 
@@ -467,6 +504,183 @@ skip_rq_uclamp:
 }
 EXPORT_SYMBOL(mtk_effective_cpu_util);
 
+unsigned long mtk_effective_cpu_util_dpt_v2(unsigned int cpu, unsigned long *cpu_util_local,
+	unsigned long *coef1_util_local, unsigned long *coef2_util_local, struct task_struct *p,
+    unsigned long *min, unsigned long *max)
+{
+	unsigned long util, irq, scale, orig_umin, orig_umax;
+	struct rq *rq = cpu_rq(cpu);
+	unsigned long orig_cpu_util = *cpu_util_local, orig_coef1_util = *coef1_util_local, orig_coef2_util = *coef2_util_local;
+	int curr_ipc_scaling_factor = get_task_ipc_scaling_factor(rcu_dereference(rq->curr), topology_cluster_id(cpu));
+
+	*coef1_util_local += cpu_util_rt_dpt_v2(rq, COEF1_UTIL);
+	*coef2_util_local += cpu_util_rt_dpt_v2(rq, COEF2_UTIL);
+	scale = DPT_V2_MAX_RUNNING_TIME_LOCAL;
+
+	/*
+	 * Early check to see if IRQ/steal time saturates the CPU, can be
+	 * because of inaccuracies in how we track these -- see
+	 * update_irq_load_avg().
+	 */
+	irq = (cpu_util_irq(rq) << __get_scaling_factor_shift_bit()) / curr_ipc_scaling_factor;
+	if (unlikely(irq >= scale)) {
+		if (min)
+			*min = scale;
+		if (max)
+			*max = scale;
+
+		util = scale;
+		if (trace_sugov_ext_util_debug_dpt_v2_enabled()) {
+			unsigned long utils_debug[10] = {*cpu_util_local, *coef1_util_local, *coef2_util_local, orig_cpu_util,
+				orig_coef1_util, orig_coef2_util, scale, scale, uclamp_rq_get(rq, UCLAMP_MIN), uclamp_rq_get(rq, UCLAMP_MAX)};
+
+			trace_sugov_ext_util_debug_dpt_v2(cpu, cpu_rq(cpu), util, utils_debug, 0,
+					irq, 0, 1, curr_ipc_scaling_factor);
+		}
+		return util;
+	}
+
+	if (min) {
+		/*
+		 * The minimum utilization returns the highest level between:
+		 * - the computed DL bandwidth needed with the IRQ pressure which
+		 *   steals time to the deadline task.
+		 * - The minimum performance requirement for CFS and/or RT.
+		 */
+		*min = max(irq + ((cpu_bw_dl(rq) << __get_scaling_factor_shift_bit()) / curr_ipc_scaling_factor), uclamp_rq_get(rq, UCLAMP_MIN));
+		/*
+		 * When an RT task is runnable and uclamp is not used, we must
+		 * ensure that the task will run at maximum compute capacity.
+		 */
+		if (!uclamp_is_used() && rt_rq_is_runnable(&rq->rt))
+			*min = max(*min, scale);
+	}
+
+	/*
+	 * Because the time spend on RT/DL tasks is visible as 'lost' time to
+	 * CFS tasks and we use the same metric to track the effective
+	 * utilization (PELT windows are synchronized) we can directly add them
+	 * to obtain the CPU's actual utilization.
+	 *
+	 */
+
+	*cpu_util_local += cpu_util_rt_dpt_v2(rq, CPU_UTIL);
+
+	if (min && max) {
+		bool sbb_trigger = false;
+		struct sbb_cpu_data *sbb_data = per_cpu(sbb, cpu);
+
+		if (sbb_data->active &&
+				p == (struct task_struct *)UINTPTR_MAX) {
+
+			sbb_trigger = is_sbb_trigger(rq);
+
+			if (sbb_trigger)
+				*cpu_util_local = *cpu_util_local * sbb_data->boost_factor;
+		}
+
+		if (p == (struct task_struct *)UINTPTR_MAX) {
+			unsigned long umin, umax;
+			struct sugov_rq_data *sugov_data_ptr;
+
+			umin = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
+			umax = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+			sugov_data_ptr = &per_cpu(rq_data, cpu)->sugov_data;
+			WRITE_ONCE(sugov_data_ptr->uclamp[UCLAMP_MIN], umin);
+			WRITE_ONCE(sugov_data_ptr->uclamp[UCLAMP_MAX], umax);
+			p = NULL;
+			if (cu_ctrl && curr_clamp(rq, cpu_util_local) == 0) /* not fully support curr_uclamp for now */
+				goto skip_rq_uclamp;
+			else if (gu_ctrl) {
+				unsigned long umax_with_gear;
+
+				umax_with_gear = min_t(unsigned long,
+					umax, get_cpu_gear_uclamp_max(cpu));
+				*max = umax_with_gear;
+
+				if (trace_sugov_ext_gear_uclamp_dpt_v2_enabled())
+					trace_sugov_ext_gear_uclamp_dpt_v2(cpu, *cpu_util_local,
+						umin, umax, (orig_cpu_util+cpu_util_rt_dpt_v2(rq, CPU_UTIL)), get_cpu_gear_uclamp_max(cpu), *cpu_util_local, *coef1_util_local, *coef2_util_local);
+				goto skip_rq_uclamp;
+			}
+		}
+skip_rq_uclamp:
+		if (sbb_trigger && trace_sugov_ext_sbb_enabled()) {
+			int pid = -1;
+			struct task_struct *curr;
+
+			rcu_read_lock();
+			curr = rcu_dereference(rq->curr);
+			if (curr)
+				pid = curr->pid;
+			rcu_read_unlock();
+
+			trace_sugov_ext_sbb(cpu, pid,
+				sbb_data->boost_factor, (orig_cpu_util+cpu_util_rt_dpt_v2(rq, CPU_UTIL)), *cpu_util_local,
+				sbb_data->cpu_utilize,
+				get_sbb_active_ratio_gear(topology_cluster_id(cpu)));
+		}
+	}
+
+	*cpu_util_local += (cpu_util_dl(rq)  << __get_scaling_factor_shift_bit()) / curr_ipc_scaling_factor;
+
+	if (max)
+		*max = min(scale, uclamp_rq_get(rq, UCLAMP_MAX));
+
+	/*
+	 * The maximum hint is a soft bandwidth requirement, which can be lower
+	 * than the actual utilization because of uclamp_max requirements.
+	 */
+	orig_umin = min ? *min : 9999;
+	orig_umax = max ? *max : 9999;
+	dpt_v2_uclamp2local_cap_hook(cpu, false, min, max);
+
+	/*
+	 * There is still idle time; further improve the number by using the
+	 * irq metric. Because IRQ/steal time is hidden from the task clock we
+	 * need to scale the task numbers:
+	 *
+	 *              max - irq
+	 *   U' = irq + --------- * U
+	 *                 max
+	 */
+
+
+	*cpu_util_local = scale_irq_capacity(*cpu_util_local, irq, scale);
+	*cpu_util_local += irq;
+
+	util = *cpu_util_local + *coef1_util_local + *coef2_util_local;
+
+	if (trace_sugov_ext_util_debug_dpt_v2_enabled()) {
+		unsigned long utils_debug[10] = {*cpu_util_local, *coef1_util_local, *coef2_util_local, orig_cpu_util,
+			orig_coef1_util, orig_coef2_util, orig_umin, orig_umax, uclamp_rq_get(rq, UCLAMP_MIN), uclamp_rq_get(rq, UCLAMP_MAX)};
+
+		trace_sugov_ext_util_debug_dpt_v2(cpu, cpu_rq(cpu), util, utils_debug, cpu_util_dl(rq),
+				irq, cpu_bw_dl(rq), 2, curr_ipc_scaling_factor);
+	}
+
+	return util;
+}
+EXPORT_SYMBOL(mtk_effective_cpu_util_dpt_v2);
+
+static void sugov_get_util_dpt_v2(struct sugov_cpu *sg_cpu, unsigned long boost, unsigned long *min, unsigned long *max)
+{
+	unsigned long cpu_util_local = 0, coef1_util_local = 0, coef2_util_local = 0;
+
+	mtk_cpu_util_cfs_boost_dpt_v2(sg_cpu->cpu, &cpu_util_local, &coef1_util_local, &coef2_util_local);
+	mtk_effective_cpu_util_dpt_v2(sg_cpu->cpu, &cpu_util_local, &coef1_util_local, &coef2_util_local,
+							(struct task_struct *)UINTPTR_MAX,
+							min, max);
+
+	sg_cpu->bw_min = *min;
+	// sg_cpu->max = arch_scale_cpu_capacity(sg_cpu->cpu);
+	// sg_cpu->util = max(sg_cpu->util, boost); /* TODO: not sure how to apply io boost*/
+
+	sg_cpu->dpt_v2_cpu_util_local = cpu_util_local;
+	sg_cpu->dpt_v2_coef1_util_local = coef1_util_local;
+	sg_cpu->dpt_v2_coef2_util_local = coef2_util_local;
+}
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 void (*sugov_grp_awr_update_cpu_tar_util_hook)(int cpu);
 EXPORT_SYMBOL(sugov_grp_awr_update_cpu_tar_util_hook);
@@ -601,7 +815,7 @@ static unsigned long sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 	 * sg_cpu->util is already in capacity scale; convert iowait_boost
 	 * into the same scale so we can compare.
 	 */
-	 return (sg_cpu->iowait_boost * max_cap) >> SCHED_CAPACITY_SHIFT;
+	return (sg_cpu->iowait_boost * max_cap) >> SCHED_CAPACITY_SHIFT;
 }
 
 /*
@@ -676,7 +890,10 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	int this_cpu = smp_processor_id();
 	struct sugov_rq_data *sugov_data_ptr;
 	unsigned long boost;
-	max_cap = arch_scale_cpu_capacity(sg_cpu->cpu);
+	int dpt_v2_support = is_dpt_v2_support();
+	unsigned long capacity_result = 0;
+
+	max_cap = dpt_v2_support ? DPT_V2_MAX_RUNNING_TIME_LOCAL : arch_scale_cpu_capacity(sg_cpu->cpu);
 
 	raw_spin_lock(&sg_policy->update_lock);
 
@@ -696,18 +913,37 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	/* Critical Task aware thermal throttling, notify thermal */
 	mtk_set_cpu_min_opp_single(sg_cpu);
 	boost = sugov_iowait_apply(sg_cpu, time, max_cap);
-	sugov_get_util(sg_cpu, boost,&min, &max);
-	umin = min;
-	umax = max;
-	if (gu_ctrl)
-		umax = min_t(unsigned long,
-			umax, get_cpu_gear_uclamp_max(sg_cpu->cpu));
+	if (dpt_v2_support) {
+		sugov_get_util_dpt_v2(sg_cpu, boost, &min, &max);
+		umin = min;
+		umax = max;
+		if (gu_ctrl)
+			umax = min_t(unsigned long,
+				umax, get_cpu_gear_uclamp_max(sg_cpu->cpu));
 
-	if (trace_sugov_ext_util_enabled()) {
-		trace_sugov_ext_util(sg_cpu->cpu, sg_cpu->util, umin, umax, 0);
+		next_f = get_next_freq_dpt_v2(sg_policy, sg_cpu->cpu, sg_cpu->dpt_v2_cpu_util_local,
+			sg_cpu->dpt_v2_coef1_util_local, sg_cpu->dpt_v2_coef2_util_local, &capacity_result, umin, umax);
+
+		if (trace_sugov_ext_util_dpt_v2_enabled() && dpt_v2_support)
+			trace_sugov_ext_util_dpt_v2(sg_cpu->cpu, next_f, capacity_result, sg_cpu->dpt_v2_cpu_util_local,
+				sg_cpu->dpt_v2_coef1_util_local, sg_cpu->dpt_v2_coef2_util_local);
+
+		if (trace_sugov_ext_util_enabled()) /* only for chrome trace debug */
+			trace_sugov_ext_util(sg_cpu->cpu, capacity_result, 0, 1024, 0);
+	} else {
+		sugov_get_util(sg_cpu, boost, &min, &max);
+		umin = min;
+		umax = max;
+		if (gu_ctrl)
+			umax = min_t(unsigned long,
+				umax, get_cpu_gear_uclamp_max(sg_cpu->cpu));
+
+		if (trace_sugov_ext_util_enabled()) {
+			trace_sugov_ext_util(sg_cpu->cpu, sg_cpu->util, umin, umax, 0);
+		}
+
+		next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max, umin, umax);
 	}
-
-	next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max, umin, umax);
 
 	if (!sugov_update_next_freq(sg_policy, time, next_f)) {
 		raw_spin_unlock(&sg_policy->update_lock);
@@ -727,6 +963,60 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		sugov_deferred_update(sg_policy);
 
 	raw_spin_unlock(&sg_policy->update_lock);
+}
+
+static unsigned int sugov_next_freq_shared_dpt_v2(struct sugov_cpu *sg_cpu, u64 time)
+{
+	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
+	struct cpufreq_policy *policy = sg_policy->policy;
+	struct rq *rq;
+	struct sugov_rq_data *sugov_data_ptr;
+	unsigned long umin, umax;
+	unsigned long max_cap, max_freq = 0;
+	unsigned int j, freq;
+	int idle = 0;
+	bool _ignore_idle_ctrl = ignore_idle_ctrl;
+	unsigned long capacity_result = 0;
+
+	max_cap = DPT_V2_MAX_RUNNING_TIME_LOCAL;
+
+	for_each_cpu(j, policy->cpus) {
+		struct sugov_cpu *j_sg_cpu = &per_cpu(sugov_cpu, j);
+		unsigned long boost, min, max;
+
+		boost = sugov_iowait_apply(j_sg_cpu, time, max_cap);
+		sugov_get_util_dpt_v2(j_sg_cpu, boost, &min, &max);
+
+		if (_ignore_idle_ctrl) {
+			sugov_data_ptr = &per_cpu(rq_data, j)->sugov_data;
+			idle = (mtk_available_idle_cpu(j)
+				&& ((READ_ONCE(sugov_data_ptr->enq_ing) == 0) ? 1 : 0));
+		}
+
+		freq = get_next_freq_dpt_v2(sg_policy, j_sg_cpu->cpu, j_sg_cpu->dpt_v2_cpu_util_local,
+			j_sg_cpu->dpt_v2_coef1_util_local, j_sg_cpu->dpt_v2_coef2_util_local, &capacity_result, min, max);
+
+		if (trace_sugov_ext_util_dpt_v2_enabled() && is_dpt_v2_support())
+			trace_sugov_ext_util_dpt_v2(j, freq, capacity_result, j_sg_cpu->dpt_v2_cpu_util_local, j_sg_cpu->dpt_v2_coef1_util_local, j_sg_cpu->dpt_v2_coef2_util_local);
+
+		if (trace_sugov_ext_util_enabled()) {
+			rq = cpu_rq(j);
+
+			umin = is_dpt_v2_support() ? 0 : rq->uclamp[UCLAMP_MIN].value;
+			umax = is_dpt_v2_support() ? 1024 : rq->uclamp[UCLAMP_MAX].value;
+			if (gu_ctrl)
+				umax = min_t(unsigned long,
+					umax, get_cpu_gear_uclamp_max(j));
+			trace_sugov_ext_util(j, idle ? 0 : capacity_result, umin, umax, idle);
+		}
+
+		if (idle)
+			continue;
+
+		max_freq = max(freq, max_freq);
+	}
+
+	return max_freq;
 }
 
 static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
@@ -790,7 +1080,11 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 	ignore_dl_rate_limit(sg_cpu);
 
 	if (sugov_should_update_freq(sg_policy, time)) {
-		next_f = sugov_next_freq_shared(sg_cpu, time);
+		if (is_dpt_v2_support())
+			next_f = sugov_next_freq_shared_dpt_v2(sg_cpu, time);
+		else
+			next_f = sugov_next_freq_shared(sg_cpu, time);
+
 
 		if (!sugov_update_next_freq(sg_policy, time, next_f))
 			goto unlock;
@@ -1213,6 +1507,7 @@ static int sugov_start(struct cpufreq_policy *policy)
 							sugov_update_shared :
 							sugov_update_single);
 	}
+
 	return 0;
 }
 

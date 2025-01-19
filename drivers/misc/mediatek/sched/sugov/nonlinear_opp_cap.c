@@ -26,7 +26,7 @@
 #include "mtk_energy_model/v3/energy_model.h"
 #else
 #include "mtk_energy_model/v1/energy_model.h"
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 #include "mediatek-cpufreq-hw_fdvfs.h"
 #include "sugov/cpu_util.h"
 #include "dsu_interface.h"
@@ -35,11 +35,9 @@
 #include "sched_version_ctrl.h"
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
-#endif
-
+#endif // CONFIG_MTK_THERMAL_INTERFACE
 DEFINE_PER_CPU(struct sbb_cpu_data *, sbb);
 EXPORT_SYMBOL(sbb);
-
 static void __iomem *l3ctl_sram_base_addr;
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO)
 static struct resource *csram_res;
@@ -48,27 +46,31 @@ static int *cpu2cluster_id;
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static void __iomem *sram_base_addr_freq_scaling;
 static bool freq_scaling_disabled = true;
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 static int pd_count;
 static int busy_tick_boost_all;
 static int sbb_active_ratio[MAX_NR_CPUS] = {
 	[0 ... MAX_NR_CPUS - 1] = 100 };
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static unsigned int wl_delay_update_tick = 2;
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 
 static int fpsgo_boosting; //0 : disable, 1 : enable
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 void (*flt_get_fpsgo_boosting)(int fpsgo_flag);
 EXPORT_SYMBOL(flt_get_fpsgo_boosting);
-#endif
+#endif // CONFIG_MTK_SCHED_FAST_LOAD_TRACKING
 
+#define CHECK_ADDR(addr, msg) \
+    if (!(addr)) { pr_info(msg); return -EIO; }
 #define wl_valid(wl) (wl >= 0 && wl < nr_wl)
 int get_wl_dsu(void);
 
 /* DPT */
 static void __iomem *dpt_sram_base;
-static void __iomem *collab_type_0_sram_base;
+static void __iomem *coef1_sratio_addr, *coef2_sratio_addr, *cpu_sratio_addr;
+static void __iomem *coef1_ltime_addr, *coef2_ltime_addr;
+
 static unsigned long last_jiffies_dpt;
 static DEFINE_SPINLOCK(update_dpt_lock);
 struct curr_collab_state_struct *curr_collab_state;
@@ -81,9 +83,94 @@ EXPORT_SYMBOL(change_dpt_support_driver_hook);
 int val_m = 1;
 EXPORT_SYMBOL_GPL(val_m);
 int dpt_default_status;
+bool __dpt_init_done;
+
+/* DPT v2 */
+int coef1_min_ltime, coef1_max_ltime, coef2_min_ltime, coef2_max_ltime;
+int init_dpt_v2_driver_done;
+int scaling_factor_shift_bit;
+
+void update_dpt_v2_info(void);
+inline int is_dpt_v2_support (void);
+
+void (*dpt_v2_uclamp2local_cap_hook)(int cpu, int quant, unsigned long *umin, unsigned long *umax);
+EXPORT_SYMBOL_GPL(dpt_v2_uclamp2local_cap_hook);
+void (*set_dpt_v2_linear_table_hook)(int ***opp2cap_linear_table, int ***cap2freq_linear_table_driver);
+EXPORT_SYMBOL_GPL(set_dpt_v2_linear_table_hook);
+void (*get_coef1_min_max_ltime_hook)(int *min_ltime, int *max_ltime);
+EXPORT_SYMBOL_GPL(get_coef1_min_max_ltime_hook);
+void (*get_coef2_min_max_ltime_hook)(int *min_ltime, int *max_ltime);
+EXPORT_SYMBOL_GPL(get_coef2_min_max_ltime_hook);
+unsigned long (*dpt_v2_opp2pwr_eff_hook)(int quant, int cpu, int opp, unsigned int cpu_util_local, unsigned int total_util_local, int IPC_scaling_factor, int value_debug[6]);
+EXPORT_SYMBOL_GPL(dpt_v2_opp2pwr_eff_hook);
+unsigned long (*dpt_v2_linear_local_cap2opp_hook)(int cpu, int quant, unsigned long util);
+EXPORT_SYMBOL_GPL(dpt_v2_linear_local_cap2opp_hook);
+unsigned long (*dpt_v2_opp2global_cap_hook)(int quant, int gear_idx, int opp, unsigned long cpu_util_local, unsigned long total_util_local, int IPC_scaling_factor);
+EXPORT_SYMBOL_GPL(dpt_v2_opp2global_cap_hook);
+int (*get_scaling_factor_shift_bit_hook)(void);
+EXPORT_SYMBOL_GPL(get_scaling_factor_shift_bit_hook);
+void __iomem *(*get_dpt_v2_cs_counter_addr_hook)(int cpu);
+EXPORT_SYMBOL_GPL(get_dpt_v2_cs_counter_addr_hook);
+unsigned long (*dpt_v2_linear_local_cap2freq_hook)(int cpu, int quant, unsigned int util, unsigned long umin, unsigned long umax, int rescale_linearly);
+EXPORT_SYMBOL_GPL(dpt_v2_linear_local_cap2freq_hook);
+void (*get_cpu_perf_scaling_factor_hook)(int cpu, perf_scaling_factor_arr *task_perf_scaling_factor);
+EXPORT_SYMBOL_GPL(get_cpu_perf_scaling_factor_hook);
+void (*get_cpu_power_scaling_factor_hook)(int cpu, int *task_power_scaling_factor);
+EXPORT_SYMBOL_GPL(get_cpu_power_scaling_factor_hook);
+void (*check_cpu_perf_scaling_factor_hook)(int cpu, perf_scaling_factor_arr *task_perf_scaling_factor);
+EXPORT_SYMBOL_GPL(check_cpu_perf_scaling_factor_hook);
+void (*check_cpu_power_scaling_factor_hook)(int cpu, int *task_power_scaling_factor);
+EXPORT_SYMBOL_GPL(check_cpu_power_scaling_factor_hook);
+unsigned long (*rescale_cpu_util_upscale_hook)(int cpu, int quant, unsigned long cpu_util, unsigned long freq);
+EXPORT_SYMBOL_GPL(rescale_cpu_util_upscale_hook);
+unsigned long (*dpt_v2_util2cap_needed_local_hook)(unsigned long cpu_util_local, unsigned long coef1_util_local, unsigned long coef2_util_local);
+EXPORT_SYMBOL(dpt_v2_util2cap_needed_local_hook);
+void (*change_dpt_v2_support_hook) (int status);
+EXPORT_SYMBOL(change_dpt_v2_support_hook);
+void (*set_dpt_v2_default_status_hook) (int status);
+EXPORT_SYMBOL(set_dpt_v2_default_status_hook);
+int (*get_dpt_v2_default_status_hook) (void);
+EXPORT_SYMBOL(get_dpt_v2_default_status_hook);
+int (*is_dpt_v2_support_hook) (void);
+EXPORT_SYMBOL(is_dpt_v2_support_hook);
+unsigned long (*rescale_coef1_util_or_ratio_hook) (unsigned long coef1_val, int type);
+EXPORT_SYMBOL(rescale_coef1_util_or_ratio_hook);
+unsigned long (*rescale_coef2_util_or_ratio_hook) (unsigned long coef2_val, int type);
+EXPORT_SYMBOL(rescale_coef2_util_or_ratio_hook);
+unsigned long (*dpt_v2_freq2linear_cap_local_hook) (int quant, int cpu, unsigned long freq);
+EXPORT_SYMBOL(dpt_v2_freq2linear_cap_local_hook);
+void (*update_coef1_ltime_perf_model_hook) (unsigned long curr_coef1_ltime);
+EXPORT_SYMBOL(update_coef1_ltime_perf_model_hook);
+void (*update_coef2_ltime_perf_model_hook) (unsigned long curr_coef2_ltime);
+EXPORT_SYMBOL(update_coef2_ltime_perf_model_hook);
+unsigned long (*get_coef1_ltime_perf_model_result_hook) (void);
+EXPORT_SYMBOL(get_coef1_ltime_perf_model_result_hook);
+unsigned long (*get_coef2_ltime_perf_model_result_hook) (void);
+EXPORT_SYMBOL(get_coef2_ltime_perf_model_result_hook);
+void (*dpt_v2_init_done_hook) (void);
+EXPORT_SYMBOL(dpt_v2_init_done_hook);
+
+DEFINE_PER_CPU(dpt_rq_t, __dpt_rq);
+EXPORT_PER_CPU_SYMBOL(__dpt_rq);
+DEFINE_PER_CPU(unsigned long, max_freq) = 0;
+EXPORT_PER_CPU_SYMBOL(max_freq);
+DEFINE_PER_CPU(unsigned long, thermal_freq); /* to sync with thermal_pressure */
+EXPORT_PER_CPU_SYMBOL(thermal_freq);
+DEFINE_PER_CPU(unsigned long, freq_ceiling);
+EXPORT_PER_CPU_SYMBOL(freq_ceiling);
+DEFINE_PER_CPU(unsigned long, freq_floor);
+EXPORT_PER_CPU_SYMBOL(freq_floor);
+DEFINE_PER_CPU(unsigned long, thermal_freq_ceiling_ratio) = 1 << FREQ_CEILING_RATIO_BIT;
+EXPORT_PER_CPU_SYMBOL(thermal_freq_ceiling_ratio);
+DEFINE_PER_CPU(unsigned long, freq_ceiling_ratio) = 1 << FREQ_CEILING_RATIO_BIT;
+EXPORT_PER_CPU_SYMBOL(freq_ceiling_ratio);
+DEFINE_PER_CPU(unsigned long, dpt_v2_cpu_capacity_all_util_local) = DPT_V2_MAX_RUNNING_TIME;
+EXPORT_PER_CPU_SYMBOL(dpt_v2_cpu_capacity_all_util_local);
 /* End of DPT */
 
-#define MAX_PD_COUNT 3
+#define MAX_PD_COUNT				3
+#define COEF1_COEF2_S_PER_CPU_SIZE	0x1
+#define CPU_S_PER_CPU_SIZE		0x4
 
 struct pd_capacity_info {
 	int nr_caps;
@@ -323,7 +410,7 @@ skip_single_idle_cpu:
 /* Check wheather uclamp will influence OPP to determind uclamp set.
  * uclamp_min/max: uclamp_min/max after multiply by margin
  */
-unsigned long sys_second_min_cap = UINT_MAX, sys_second_max_cap = 0;
+unsigned long sys_min_cap = UINT_MAX, sys_second_max_cap = 0;
 int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max, int is_multiply_by_margin)
 {
 	if (!is_multiply_by_margin) {
@@ -333,13 +420,14 @@ int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max, int i
 			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
 	}
 
-	if ((uclamp_min >= sys_second_min_cap) || (uclamp_max <= sys_second_max_cap))
+	if ((uclamp_min > sys_min_cap) || (uclamp_max <= sys_second_max_cap))
 		return true;
 
 	return false;
 }
 EXPORT_SYMBOL_GPL(mtk_uclamp_involve);
 
+int init_uclamp_involve_done;
 void init_uclamp_involve(void)
 {
 	unsigned int gear_idx = 0;
@@ -347,19 +435,21 @@ void init_uclamp_involve(void)
 	for (; gear_idx < pd_count; gear_idx++) {
 		unsigned int cpu = cpumask_first(&pd_cpumask[gear_idx]);
 		unsigned int min_opp = pd_util2opp(cpu, 0, 0, 0, NULL, true, DPT_CALL_INIT_UCLAMP_INVOLVE);
-		unsigned long second_min_cap = pd_opp2cap(cpu, min_opp - 1, false, 0, NULL, true,
+		unsigned long min_cap = pd_opp2cap(cpu, min_opp, false, 0, NULL, true,
 			DPT_CALL_INIT_UCLAMP_INVOLVE);
 		unsigned long second_max_cap = pd_opp2cap(cpu, 1, false, 0, NULL, true, DPT_CALL_INIT_UCLAMP_INVOLVE);
 
-		if (second_min_cap < sys_second_min_cap)
-			sys_second_min_cap = second_min_cap;
+		if (min_cap < sys_min_cap)
+			sys_min_cap = min_cap;
 
 		if (second_max_cap > sys_second_max_cap)
 			sys_second_max_cap = second_max_cap;
 	}
 
-	pr_info("%s, sys_second_min_cap=%lu sys_second_max_cap=%lu\n",
-		__func__, sys_second_min_cap, sys_second_max_cap);
+	/* pr_info("%s, sys_min_cap=%lu sys_second_max_cap=%lu\n",
+		__func__, sys_min_cap, sys_second_max_cap); */
+
+	init_uclamp_involve_done = 1;
 }
 
 int wl_cpu_delay_ch_cnt = 1; // change counter
@@ -377,7 +467,7 @@ static int wl_dsu_delay_cnt;
 static int last_wl_dsu;
 static unsigned long last_jiffies;
 static DEFINE_SPINLOCK(update_wl_tbl_lock);
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 
 int get_nr_wl(void)
 {
@@ -400,7 +490,7 @@ int get_cpu_type(int type)
 		return -1;
 }
 EXPORT_SYMBOL_GPL(get_cpu_type);
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 void set_wl_manual(int val)
@@ -432,7 +522,7 @@ void set_wl_dsu_manual(int val)
 		wl_dsu_manual = -1;
 }
 EXPORT_SYMBOL_GPL(set_wl_dsu_manual);
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 
 int get_wl_manual(void)
 {
@@ -529,20 +619,108 @@ void mtk_update_cpu_capacity(int cpu, unsigned long cap_orig, int wl, int caller
 		capacity = 1;
 	
 	cpu_rq(cpu)->cpu_capacity = capacity;
+}
 
-	if (trace_sched_update_cpu_capacity_enabled())
-		trace_sched_update_cpu_capacity(cpu, cpu_rq(cpu), wl, caller);
+inline unsigned long get_thermal_freq_ceiling_ratio(int cpu)
+{
+	return per_cpu(thermal_freq_ceiling_ratio, cpu);
+}
+EXPORT_SYMBOL(get_thermal_freq_ceiling_ratio);
+
+inline unsigned long get_freq_ceiling_ratio(int cpu)
+{
+	return per_cpu(freq_ceiling_ratio, cpu);
+}
+EXPORT_SYMBOL(get_freq_ceiling_ratio);
+
+inline unsigned long dpt_v2_local_capacity_all_util_of(int cpu)
+{
+	return per_cpu(dpt_v2_cpu_capacity_all_util_local, cpu);
+}
+EXPORT_SYMBOL(dpt_v2_local_capacity_all_util_of);
+
+unsigned long dpt_v2_scaling_irq(int cpu, unsigned long irq_util)
+{
+	return irq_util;
+}
+
+unsigned long dpt_v2_scailing_dl(int cpu, unsigned long dl_util)
+{
+	return dl_util;
+}
+
+static unsigned long mtk_scale_rt_capacity_dpt_v2(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+	unsigned long max = DPT_V2_MAX_RUNNING_TIME;
+	unsigned long used, free;
+	unsigned long irq;
+
+	irq = dpt_v2_scaling_irq(cpu, cpu_util_irq(rq));
+
+	if (unlikely(irq >= max))
+		return 1;
+
+	used = cpu_util_rt_dpt_v2(rq, TOTAL_UTIL);
+	used += dpt_v2_scailing_dl(cpu, READ_ONCE(rq->avg_dl.util_avg));
+	// used += thermal_load_avg(rq);
+
+	if (unlikely(used >= max))
+		return 1;
+
+	free = max - used;
+
+	return scale_irq_capacity(free, irq, max);
+}
+
+int pd_util2freq_r_o(unsigned int cpu, int util, bool quant, int wl);
+void update_dpt_v2_cpu_capacity(int cpu, unsigned long *freq_for_debug)
+{
+	unsigned long gear_umax_freq = get_cpu_gear_uclamp_max_capacity(cpu, GU_RET_FREQ), __thermal_freq = per_cpu(thermal_freq, cpu);
+	unsigned long min_f = per_cpu(min_freq, cpu), max_f = per_cpu(max_freq, cpu);
+	unsigned long dpt_v2_capacity_local = mtk_scale_rt_capacity_dpt_v2(cpu);
+	unsigned long __freq_ceiling, restricted_perf_ratio;
+
+	__freq_ceiling = min(gear_umax_freq, max_f);
+	__freq_ceiling = min(__freq_ceiling, __thermal_freq);
+	per_cpu(freq_ceiling, cpu) = __freq_ceiling;
+	per_cpu(freq_floor, cpu) = min_f;
+
+	per_cpu(thermal_freq_ceiling_ratio, cpu) = (__thermal_freq << FREQ_CEILING_RATIO_BIT) / get_cpu_max_freq(cpu);
+
+	restricted_perf_ratio = (__freq_ceiling << FREQ_CEILING_RATIO_BIT) / get_cpu_max_freq(cpu);
+	per_cpu(freq_ceiling_ratio, cpu) = restricted_perf_ratio;
+
+	per_cpu(dpt_v2_cpu_capacity_all_util_local, cpu) = min(dpt_v2_capacity_local, DPT_V2_MAX_RUNNING_TIME * restricted_perf_ratio >> FREQ_CEILING_RATIO_BIT);
+
+	freq_for_debug[0] = __freq_ceiling;
+	freq_for_debug[1] = gear_umax_freq;
+	freq_for_debug[2] = max_f;
+	freq_for_debug[3] = __thermal_freq;
+	freq_for_debug[4] = min_f;
+	freq_for_debug[5] = per_cpu(dpt_v2_cpu_capacity_all_util_local, cpu);
 }
 
 /* hooked from k66 update_cpu_capacity() */
 void hook_update_cpu_capacity(void *data, int cpu, unsigned long *capacity)
 {
-	unsigned long cap_ceiling, capacity_orig = arch_scale_cpu_capacity(cpu);
+	unsigned long cap_ceiling, capacity_orig = arch_scale_cpu_capacity(cpu), orig_cap_of = *capacity;
+	unsigned long gear_umax = get_cpu_gear_uclamp_max_capacity(cpu, GU_RET_UTIL);
+	unsigned long min_f_scale = READ_ONCE(per_cpu(min_freq_scale, cpu)), max_f_scale = READ_ONCE(per_cpu(max_freq_scale, cpu));
+	unsigned long __thermal_pressure = READ_ONCE(per_cpu(hw_pressure, cpu));
+	unsigned long freq_for_debug[6] = {[0 ... 5] = 0};
 
-	cap_ceiling = min_t(unsigned long, *capacity, get_cpu_gear_uclamp_max_capacity(cpu));
+	cap_ceiling = min_t(unsigned long, *capacity, gear_umax);
 	*capacity = clamp_t(unsigned long, cap_ceiling,
-		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
-	*capacity = min_t(unsigned long, *capacity, capacity_orig - READ_ONCE(per_cpu(hw_pressure, cpu)));
+		min_f_scale, max_f_scale);
+	*capacity = min_t(unsigned long, *capacity, capacity_orig - __thermal_pressure);
+
+	update_dpt_v2_cpu_capacity(cpu, freq_for_debug);
+
+	if (trace_sched_update_cpu_capacity_enabled()) {
+		trace_sched_update_cpu_capacity(cpu, cpu_rq(cpu), orig_cap_of, gear_umax, min_f_scale, max_f_scale, __thermal_pressure,
+			freq_for_debug);
+	}
 }
 
 /*kernel mainline get_acutual_cpu_capacity()*/
@@ -574,7 +752,7 @@ void update_wl_cpu_dsu_separately(int wl_tcm, int type, int is_manual, int *wl_c
 
 		for (gear_idx = 0; gear_idx < pd_count; gear_idx++) {
 			for_each_cpu(cpu, &pd_cpumask[gear_idx])
-				mtk_update_cpu_capacity(cpu, pd_opp2cap(cpu, 0, true, *wl_curr, NULL, true,
+				mtk_update_cpu_capacity(cpu, pd_opp2cap(cpu, 0, true, 0, NULL, true,
 						DPT_CALL_UPDATE_WL_TBL), *wl_curr, CAP_UPDATED_BY_WL);
 		}
 	}
@@ -617,7 +795,11 @@ void update_wl_tbl(unsigned int cpu, bool *is_cpu_to_update_thermal)
 			}
 
 			*is_cpu_to_update_thermal = true;
-			update_curr_collab_state(is_cpu_to_update_thermal);
+
+			if (is_dpt_v2_support())
+				update_dpt_v2_info();
+			else
+				update_curr_collab_state(is_cpu_to_update_thermal);
 		} else
 			spin_unlock(&update_wl_tbl_lock);
 	}
@@ -724,18 +906,54 @@ void init_sys_max_cap_cpu(void)
 		if (arch_scale_cpu_capacity(cpu) > sys_max_cap) {
 			sys_max_cap = arch_scale_cpu_capacity(cpu);
 			sys_max_cap_cluster = topology_cluster_id(cpu);
-		}
+	}
+}
+
+unsigned long *cpu_max_freq;
+unsigned long *cpu_min_freq;
+
+inline unsigned long get_cpu_max_freq(int cpu)
+{
+	return cpu_max_freq[cpu];
+}
+EXPORT_SYMBOL(get_cpu_max_freq);
+
+inline unsigned long get_cpu_min_freq(int cpu)
+{
+	return cpu_min_freq[cpu];
+}
+EXPORT_SYMBOL(get_cpu_min_freq);
+
+void init_freq_ceiling_floor(void)
+{
+	unsigned long __max_freq, min_freq;
+	int cpu;
+
+	cpu_max_freq = kcalloc(MAX_NR_CPUS, sizeof(unsigned long), GFP_KERNEL);
+	cpu_min_freq = kcalloc(MAX_NR_CPUS, sizeof(unsigned long), GFP_KERNEL);
+	for_each_possible_cpu(cpu) {
+		min_freq = pd_util2freq(cpu, 0, false, 0);
+		__max_freq = pd_util2freq(cpu, SCHED_CAPACITY_SCALE, false, 0);
+		WRITE_ONCE(per_cpu(max_freq, cpu), __max_freq);
+		WRITE_ONCE(per_cpu(freq_ceiling, cpu), __max_freq);
+		WRITE_ONCE(per_cpu(freq_floor, cpu), min_freq);
+
+		cpu_max_freq[cpu] = __max_freq;
+		cpu_min_freq[cpu] = min_freq;
+	}
 }
 
 #define is_bit_set(value, bit) (((value) & (1 << (bit))) != 0)
-#define USING_LAST_STATE -1
+#define USING_LAST_STATE 	-1
+#define SCALING_FACTOR_MAX	(64LL << SCHED_CAPACITY_SHIFT)	/* TEMP */
+#define SCALING_FACTOR_MIN	0								/* TEMP */
 void update_curr_collab_state(bool *is_cpu_to_update_thermal)
 {
 	int collab_type = 0, curr_state = 0;
 	int cpu = 0;
 	unsigned long cap, sys_max_cap = 0, __sys_max_cap_cluster;
 	bool need_update_capacity_orig = false;
-	int wl = get_em_wl();
+	int wl = get_curr_wl(); /* should we use wl_curr? */
 
 	if (spin_trylock(&update_dpt_lock)) {
 		unsigned long tmp_jiffies_dpt = jiffies;
@@ -757,13 +975,8 @@ void update_curr_collab_state(bool *is_cpu_to_update_thermal)
 
 
 			for_each_collab_type(collab_type) {
-				if (curr_collab_state_manual[collab_type] != -1)
-					curr_state = curr_collab_state_manual[collab_type];
-				else
-					curr_state = curr_collab_state[collab_type].ret_function();
-
-				if (curr_state != USING_LAST_STATE)
-					curr_collab_state[collab_type].state = curr_state;
+				curr_state = curr_collab_state[collab_type].ret_function(DPT_V1);
+				curr_collab_state[collab_type].state = curr_state;
 
 				if (!need_update_capacity_orig)
 					need_update_capacity_orig = is_bit_set(
@@ -1290,12 +1503,13 @@ void record_sched_pd_opp2cap(int cpu, int opp, int quant, int wl,
 EXPORT_SYMBOL_GPL(record_sched_pd_opp2cap);
 
 int (*mtk_opp2cap_hook)(int cpu, int opp, int quant, int wl,
-	int *val_1, int *val_2, int *val_r, int *val_s, int val_m, int r_o);
+	unsigned long *val_1, unsigned long *val_2, unsigned long *val_r, int *val_s, int val_m, int r_o);
 EXPORT_SYMBOL(mtk_opp2cap_hook);
 int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
 	if (mtk_opp2cap_hook) {
-		int result, val_1, val_2, val_r;
+		int result;
+		unsigned long val_1, val_2, val_r;
 
 		result = mtk_opp2cap_hook(cpu, opp, quant, get_eas_wl(wl),
 			&val_1, &val_2, &val_r, val_s, val_m, r_o);
@@ -1309,14 +1523,16 @@ int pd_opp2cap(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int cal
 EXPORT_SYMBOL_GPL(pd_opp2cap);
 
 void record_sched_pd_opp2pwr_eff(int cpu, int opp, int quant, int wl,
-	int val_1, int val_2, int val_3, int val_r1, int val_r2, int *val_s,
+	int val_1, int val_2, int val_3, int val_r1, int val_r2, int val_r3, int *val_s,
 	int r_o, int caller)
 {
 	if (trace_sched_pd_opp2pwr_eff_enabled()) {
 		int val_s_0 = val_s == NULL ? (curr_collab_state == NULL ? -1 :
 						curr_collab_state[0].state) : val_s[0];
+		int vals[3] = {val_r1, val_r2, val_r3};
+
 		trace_sched_pd_opp2pwr_eff(cpu, opp, quant, get_eas_wl(wl),
-				val_1, val_2, val_3, val_r1, val_r2, val_s_0, r_o, caller);
+				val_1, val_2, val_3, vals, val_s_0, r_o, caller);
 	}
 }
 EXPORT_SYMBOL_GPL(record_sched_pd_opp2pwr_eff);
@@ -1327,13 +1543,13 @@ EXPORT_SYMBOL(mtk_opp2pwr_eff_hook);
 int pd_opp2pwr_eff(int cpu, int opp, int quant, int wl, int *val_s, int r_o, int caller)
 {
 	if (mtk_opp2pwr_eff_hook) {
-		int result, val_1, val_2, val_3, val_r1, val_r2;
+		int result, val_1, val_2, val_3, val_r1, val_r2, val_r3 = 0;
 
 		result = mtk_opp2pwr_eff_hook(cpu, opp, quant, get_eas_wl(wl),
 			&val_1, &val_2, &val_3, &val_r1, &val_r2, val_s, val_m, r_o);
 
 		record_sched_pd_opp2pwr_eff(cpu, opp, quant, wl, val_1, val_2, val_3,
-				val_r1, val_r2, val_s, r_o, caller);
+				val_r1, val_r2, val_r3, val_s, r_o, caller);
 
 		return result;
 	} else
@@ -1395,7 +1611,7 @@ int pd_util2opp(int cpu, int util, int quant, int wl, int *val_s, int r_o, int c
 
 		result = mtk_util2opp_hook(cpu, util, quant, get_eas_wl(wl),
 			&val_1, &val_2, &val_3, &val_4, &val_r, val_s, val_m, r_o);
-		if(trace_sched_pd_util2opp_enabled()) {
+		if(trace_sched_pd_util2opp_enabled() && !r_o) {
 			int val_s_0 = val_s == NULL ? (curr_collab_state == NULL ? -1 :
 							curr_collab_state[0].state) : val_s[0];
 			trace_sched_pd_util2opp(cpu, quant, wl,
@@ -1514,6 +1730,16 @@ int pd_freq2util(unsigned int cpu, int freq, bool quant, int wl, int *val_s, int
 }
 EXPORT_SYMBOL_GPL(pd_freq2util);
 
+int pd_util2freq_r_o(unsigned int cpu, int util, bool quant, int wl)
+{
+	int opp;
+
+	wl = get_eas_wl(wl);
+	opp = pd_util2opp(cpu, util, quant, wl, NULL, true, DPT_CALL_PD_UTIL2FREQ);
+	return pd_opp2freq(cpu, opp, quant, wl);
+}
+EXPORT_SYMBOL_GPL(pd_util2freq_r_o);
+
 int pd_util2freq(unsigned int cpu, int util, bool quant, int wl)
 {
 	int opp;
@@ -1571,6 +1797,15 @@ unsigned long pd_get_freq_opp_legacy_type(int wl, unsigned int cpu, unsigned lon
 	return pd_freq2opp(cpu, freq, true, wl);
 }
 EXPORT_SYMBOL_GPL(pd_get_freq_opp_legacy_type);
+
+unsigned long pd_get_freq_util_legacy(unsigned int cpu, unsigned long freq)
+{
+	int wl = get_eas_wl(-1);
+	int opp = pd_freq2opp(cpu, freq, true, wl);
+
+	return pd_opp2cap(cpu, opp, true, wl, NULL, false, DPT_CALL_PD_GET_FRE_UTIL);
+}
+EXPORT_SYMBOL_GPL(pd_get_freq_util_legacy);
 
 unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq)
 {
@@ -1691,7 +1926,7 @@ void Adaptive_module_bypass(int fpsgo_flag)
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (flt_get_fpsgo_boosting)
 		flt_get_fpsgo_boosting(!fpsgo_boosting);
-#endif
+#endif // CONFIG_MTK_SCHED_FAST_LOAD_TRACKING
 }
 EXPORT_SYMBOL_GPL(Adaptive_module_bypass);
 
@@ -1712,8 +1947,8 @@ static void register_fpsgo_sugov_hooks(void)
 #define em_scale_power(p) ((p) * 1000)
 #else
 #define em_scale_power(p) (p)
-#endif
-#endif
+#endif // CONFIG_64BIT
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 
 bool cu_ctrl;
 bool get_curr_uclamp_ctrl(void)
@@ -1814,16 +2049,24 @@ int get_cpu_gear_uclamp_max(unsigned int cpu)
 }
 EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max);
 
-int get_cpu_gear_uclamp_max_capacity(unsigned int cpu)
+int get_cpu_gear_uclamp_max_capacity(unsigned int cpu, int ret_type)
 {
 	unsigned long capacity, freq;
 
-	if (gu_ctrl == false)
-		return SCHED_CAPACITY_SCALE;
+	if (gu_ctrl == false) {
+		if (ret_type == GU_RET_FREQ)
+			return get_cpu_max_freq(cpu);
+		else
+			return SCHED_CAPACITY_SCALE;
+	}
 
 	capacity = get_cpu_util_with_margin(cpu, (gear_uclamp_max[topology_cluster_id(cpu)]));
 	freq = pd_get_util_freq(cpu, capacity);
-	return pd_get_freq_util(cpu, freq);
+
+	if (ret_type == GU_RET_FREQ)
+		return freq;
+	else
+		return pd_get_freq_util(cpu, freq);
 }
 EXPORT_SYMBOL_GPL(get_cpu_gear_uclamp_max_capacity);
 
@@ -1895,9 +2138,15 @@ EXPORT_SYMBOL(get_dpt_sram_base);
 
 int init_dpt_io(void)
 {
+	int i;
 	struct device_node *dev_node;
 	struct platform_device *pdev_temp;
 	struct resource *sram_res;
+	void **addrs[] = {&coef2_ltime_addr,
+					&coef1_ltime_addr,
+					&coef2_sratio_addr,
+					&coef1_sratio_addr,
+					&cpu_sratio_addr};
 
 	/* init dpt io*/
 	dev_node = of_find_node_by_name(NULL, "dpt-info");
@@ -1942,49 +2191,390 @@ int init_dpt_io(void)
 		return -EINVAL;
 	}
 
-	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
-	if (sram_res) {
-		collab_type_0_sram_base = ioremap(sram_res->start,
-				resource_size(sram_res));
-		pr_info("init collab_type_0_sram_base over\n");
-	} else {
-		pr_info("%s can't get collab_type_0-info resource\n", __func__);
-		return -EINVAL;
+	for (i = 0; i < sizeof(addrs)/sizeof(addrs[0]); i++)
+	{
+		sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, i);
+		if (sram_res)
+		{
+			*(addrs[i]) = ioremap(sram_res->start, resource_size(sram_res));
+			pr_info("init %p over\n", *(addrs[i]));
+		}
+		else
+		{
+			pr_info("init_dpt_io can't get %d\n", i);
+			return -EINVAL;
+		}
 	}
 
-	if (!collab_type_0_sram_base) {
-		pr_info("collab_type_0-info failed\n");
-		return -EIO;
-	}
+	CHECK_ADDR(coef2_ltime_addr,     "coef2 ltime addr init fail\n")
+	CHECK_ADDR(coef1_ltime_addr,      "coef1 ltime addr init fail\n")
+	CHECK_ADDR(coef2_sratio_addr,  "coef2 s addr init fail\n")
+	CHECK_ADDR(coef1_sratio_addr,   "coef1 s addr init fail\n")
+	CHECK_ADDR(cpu_sratio_addr,  "cpu s addr init fail\n")
+
 	pr_info("collab_type_0-info init done\n");
 	return 0;
 }
 
-#define VAL1_OFFSET 0x0
-#define VAL2_OFFSET 0x4
-int collab_type_0_ret_function(void)
+void init_dpt_rq(void)
 {
-	unsigned int val1, val2, status = 0;
+	int cpu;
 
-	if (collab_type_0_sram_base == NULL)
+	for_each_possible_cpu(cpu) {
+		dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu);
+
+		/* clock */
+		dpt_rq->local_clock[NON_S] = 0;
+		dpt_rq->local_clock[S_COEF1] = 0;
+		dpt_rq->local_clock[S_COEF2] = 0;
+		dpt_rq->global_clock[NON_S] = 0;
+		dpt_rq->global_clock[S_COEF1] = 0;
+		dpt_rq->global_clock[S_COEF2] = 0;
+		dpt_rq->local_clock_ratio[NON_S] = 1024;
+		dpt_rq->local_clock_ratio[S_COEF1] = 0;
+		dpt_rq->local_clock_ratio[S_COEF2] = 0;
+		dpt_rq->global_clock_ratio[NON_S] = 1024;
+		dpt_rq->global_clock_ratio[S_COEF1] = 0;
+		dpt_rq->global_clock_ratio[S_COEF2] = 0;
+
+		/* arch scale */
+		dpt_rq->arch_s_scale[NON_S] = 1024;
+		dpt_rq->arch_s_scale[S_COEF1] = 0;
+		dpt_rq->arch_s_scale[S_COEF2] = 0;
+		dpt_rq->arch_ltime_scale[S_COEF1] = 0;
+		dpt_rq->arch_ltime_scale[S_COEF2] = 0;
+
+		/* sratio info */
+		dpt_rq->sratio[NON_S] = 100;
+		dpt_rq->sratio[S_COEF1] = 0;
+		dpt_rq->sratio[S_COEF2] = 0;
+
+		/* cpu info */
+		dpt_rq->cpu_cap_ratio = 0;
+		dpt_rq->cpu_freq_ratio = 0;
+
+		/* Manual setting */
+		dpt_rq->coef2_ltime_manual = -1;
+		dpt_rq->coef1_ltime_manual = -1;
+		dpt_rq->cpu_sratio_manual = -1;
+		dpt_rq->coef1_sratio_manual = -1;
+		dpt_rq->coef2_sratio_manual = -1;
+
+		dpt_rq->dpt_v2_total_util = 0;
+		dpt_rq->dpt_v2_cpu_util = 0;
+		dpt_rq->dpt_v2_coef1_util = 0;
+		dpt_rq->dpt_v2_coef2_util = 0;
+		dpt_rq->cfs_cpu_util = 0;
+		dpt_rq->cfs_coef1_util = 0;
+		dpt_rq->cfs_coef2_util = 0;
+		dpt_rq->rt_cpu_util = 0;
+		dpt_rq->rt_coef1_util = 0;
+		dpt_rq->rt_coef2_util = 0;
+
+		/* util info */
+		dpt_rq->local_clock_pelt = cpu_rq(cpu)->clock_pelt;
+	}
+}
+
+inline struct dpt_rq_struct *get_dpt_rq(int cpu)
+{
+	return &per_cpu(__dpt_rq, cpu);
+}
+EXPORT_SYMBOL_GPL(get_dpt_rq);
+
+void set_dpt_v2_info_manual(int cpu, int type, int val)
+{
+    struct dpt_rq_struct *dpt_rq = &per_cpu(__dpt_rq, cpu);
+	int tmp_cpu;
+
+	if (type == DPT_V2_TYPE_COEF2_LTIME) {
+        for_each_possible_cpu(tmp_cpu) {
+            struct dpt_rq_struct *tmp_dpt_rq = &per_cpu(__dpt_rq, tmp_cpu);
+			tmp_dpt_rq->coef2_ltime_manual = max(val, coef2_min_ltime);
+        }
+    }
+	else if (type == DPT_V2_TYPE_COEF1_LTIME) {
+        for_each_possible_cpu(tmp_cpu) {
+            struct dpt_rq_struct *tmp_dpt_rq = &per_cpu(__dpt_rq, tmp_cpu);
+			tmp_dpt_rq->coef1_ltime_manual = max(val, coef1_min_ltime);
+        }
+    }
+	else if (type == DPT_V2_TYPE_COEF1_RATIO)
+		dpt_rq->coef1_sratio_manual = val;
+	else if (type == DPT_V2_TYPE_COEF2_RATIO)
+		dpt_rq->coef2_sratio_manual = val;
+	else if (type == DPT_V2_TYPE_CPU_RATIO)
+		dpt_rq->cpu_sratio_manual = val;
+	else if (type == DPT_V2_TYPE_TOTAL_UTIL)
+		dpt_rq->dpt_v2_total_util = val;
+	else if (type == DPT_V2_TYPE_CPU_UTIL)
+		dpt_rq->dpt_v2_cpu_util = val;
+	else if (type == DPT_V2_TYPE_COEF1_UTIL)
+		dpt_rq->dpt_v2_coef1_util = val;
+	else if (type == DPT_V2_TYPE_COEF2_UTIL)
+		dpt_rq->dpt_v2_coef2_util = val;
+}
+EXPORT_SYMBOL_GPL(set_dpt_v2_info_manual);
+
+#define check_sratio_sanity(ratio) (ratio == 0xdeadbeef) ? USING_LAST_STATE : ratio
+#define SET_VALUE(target, min, max, value) \
+    if ( min <= value && value <= max) \
+        (target) = (value);
+
+int get_dpt_v2_driver_init_status(void)
+{
+	return init_dpt_v2_driver_done;
+}
+EXPORT_SYMBOL(get_dpt_v2_driver_init_status);
+
+int ***opp2cap_linear_table;
+int ***cap2freq_linear_table;
+void alloc_dpt_v2_linear_table(void)
+{
+	int quant, gear_idx, nr_opp, cpu, nr_gears = get_nr_gears();
+
+	/* [gearless, legacy] * [nr_gears] * [max_nr_opp] */
+	opp2cap_linear_table = kcalloc(2, sizeof(int**), GFP_ATOMIC);
+	for (quant = 0; quant < 2; quant++) {
+		opp2cap_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_ATOMIC);
+		for (gear_idx = 0; gear_idx < nr_gears; gear_idx++) {
+			cpu = cpumask_first(get_gear_cpumask(gear_idx));
+			nr_opp = pd_util2opp(cpu, 0, quant, 0, NULL, true, 0);
+			opp2cap_linear_table[quant][gear_idx] = kcalloc(nr_opp+1, sizeof(int), GFP_ATOMIC);
+			/* pr_info("init opp2cap linear table quant=%d gear_idx=%d opp=%d\n", quant, gear_idx, nr_opp+1); */
+		}
+	}
+	/* if (!opp2cap_linear_table)
+		pr_info("init opp2cap_linear_table failed\n"); */
+
+	/* [gearless, legacy] * [nr_gears] * [1025] */
+	cap2freq_linear_table = kcalloc(2, sizeof(int**), GFP_ATOMIC);
+	for (quant = 0; quant < 2; quant++) {
+		cap2freq_linear_table[quant] = kcalloc(nr_gears, sizeof(int*), GFP_ATOMIC);
+		for (gear_idx = 0; gear_idx < nr_gears; gear_idx++) {
+			cap2freq_linear_table[quant][gear_idx] = kcalloc(SCHED_CAPACITY_SCALE+1, sizeof(int), GFP_ATOMIC);
+			/* pr_info("init cap2freq linear table quant=%d gear_idx=%d cap_length=%ld\n", quant, gear_idx, SCHED_CAPACITY_SCALE+1); */
+		}
+	}
+	/* if (!cap2freq_linear_table)
+		pr_info("init cap2freq_linear_table failed\n"); */
+}
+
+void init_dpt_v2_driver(void)
+{
+	int dpt_v2_default_status, cpu;
+	dpt_rq_t *dpt_rq;
+
+    dpt_v2_default_status = sched_dpt_v2_enable_get();
+
+    change_dpt_v2_support_hook(dpt_v2_default_status);
+    set_dpt_v2_default_status_hook(dpt_v2_default_status);
+
+    scaling_factor_shift_bit = get_scaling_factor_shift_bit_hook();
+    /* pr_info("dpt v2 driver receive shift bit=%d\n", scaling_factor_shift_bit); */
+
+    get_coef1_min_max_ltime_hook(&coef1_min_ltime, &coef1_max_ltime);
+    get_coef2_min_max_ltime_hook(&coef2_min_ltime, &coef2_max_ltime);
+	/* pr_info("dpt v2 driver receive coef1 min/max=%d/%d coef2 min/max=%d/%d\n", coef1_min_ltime, coef1_max_ltime, coef2_min_ltime, coef2_max_ltime); */
+	/* Latency info */
+	for_each_possible_cpu(cpu) {
+		dpt_rq = &per_cpu(__dpt_rq, cpu);
+
+		dpt_rq->min_ltime[S_COEF1] = coef1_min_ltime;
+		dpt_rq->min_ltime[S_COEF2] = coef2_min_ltime;
+	}
+
+    alloc_dpt_v2_linear_table();
+	set_dpt_v2_linear_table_hook(opp2cap_linear_table, cap2freq_linear_table);
+	/* pr_info("set_dpt_v2_linear_table_hook done\n"); */
+
+    init_dpt_v2_driver_done = 1;
+}
+
+static DEFINE_SPINLOCK(init_driver_affter_vendor_init_lock);
+int init_driver_after_vendor_init_done;
+inline int get_init_driver_after_vendor_init_done(void)
+{
+	return init_driver_after_vendor_init_done;
+}
+EXPORT_SYMBOL(get_init_driver_after_vendor_init_done);
+
+static unsigned long last_jiffies_init_driver;
+void init_driver_after_vendor_init(void)
+{
+	if (spin_trylock(&init_driver_affter_vendor_init_lock)) {
+		unsigned long tmp_jiffies = jiffies;
+
+		if (last_jiffies_init_driver !=  tmp_jiffies) {
+			last_jiffies_init_driver =  tmp_jiffies;
+			spin_unlock(&init_driver_affter_vendor_init_lock);
+
+			if (!get_dpt_v2_driver_init_status() && dpt_v2_init_done_hook)
+				init_dpt_v2_driver();
+
+			if (!init_uclamp_involve_done)
+				init_uclamp_involve();
+
+			if (init_dpt_v2_driver_done && init_uclamp_involve_done)
+				init_driver_after_vendor_init_done = 1;
+		}
+	}
+}
+EXPORT_SYMBOL(init_driver_after_vendor_init);
+
+inline int __get_scaling_factor_shift_bit(void)
+{
+	return scaling_factor_shift_bit;
+}
+EXPORT_SYMBOL(__get_scaling_factor_shift_bit);
+
+void record_scaling_factor_dpt_v2(int cpu, struct dpt_task_struct *dts)
+{
+	int c, s;
+
+	if (get_cpu_perf_scaling_factor_hook) {
+		get_cpu_perf_scaling_factor_hook(cpu, &dts->perf_scaling_factor);
+
+		if (check_cpu_perf_scaling_factor_hook)
+			check_cpu_perf_scaling_factor_hook(cpu, &dts->perf_scaling_factor);
+	}
+
+	if (get_cpu_power_scaling_factor_hook) {
+		get_cpu_power_scaling_factor_hook(cpu, &dts->power_scaling_factor);
+
+		if (check_cpu_power_scaling_factor_hook)
+			check_cpu_power_scaling_factor_hook(cpu, &dts->power_scaling_factor);
+	}
+	
+	for (c = 0; c < NUM_CONVERT_TYPE; c++)
+		for (s = 0; s < NUM_SCALING_TYPE; s++)
+			dts->inv_perf_scaling_factor[c][s] = scale_ratio(1 << __get_scaling_factor_shift_bit(), dts->perf_scaling_factor[c][s]);
+}
+
+void update_dpt_v2_info(void)
+{
+	dpt_rq_t *dpt_rq;
+	int cpu, status = 0;
+	u64 global_clock_sum = 0, local_clock_sum = 0;
+	unsigned int cpu_coef1_sratio[MAX_NR_CPUS], cpu_coef2_sratio[MAX_NR_CPUS], cpu_sratio[MAX_NR_CPUS];
+	int coef2_ltime = (coef2_ltime_addr) ? ioread32(coef2_ltime_addr) : USING_LAST_STATE;
+	int coef1_ltime = (coef1_ltime_addr) ? ioread32(coef1_ltime_addr)  : USING_LAST_STATE;
+	unsigned int coef1_s, coef2_s, total_s;
+	unsigned long cpu_util[MAX_NR_CPUS], coef1_util[MAX_NR_CPUS], coef2_util[MAX_NR_CPUS];
+
+	if (!init_dpt_v2_driver_done)
+		return;
+
+	for_each_possible_cpu(cpu) {
+		dpt_rq = &per_cpu(__dpt_rq, cpu);
+
+		coef1_s = (coef1_sratio_addr) ? ioread8(coef1_sratio_addr + (COEF1_COEF2_S_PER_CPU_SIZE * cpu)) : USING_LAST_STATE;
+		coef2_s = (coef2_sratio_addr) ? ioread8(coef2_sratio_addr + (COEF1_COEF2_S_PER_CPU_SIZE * cpu)) : USING_LAST_STATE;
+		total_s = (cpu_sratio_addr) ? ioread32(cpu_sratio_addr + (CPU_S_PER_CPU_SIZE * cpu)) : USING_LAST_STATE;
+
+		SET_VALUE(dpt_rq->cur_ltime[S_COEF1], coef1_min_ltime, coef1_max_ltime, coef1_ltime);
+		SET_VALUE(dpt_rq->cur_ltime[S_COEF1], coef1_min_ltime, coef1_max_ltime, dpt_rq->coef1_ltime_manual);
+		SET_VALUE(dpt_rq->cur_ltime[S_COEF2], coef2_min_ltime, coef2_max_ltime, coef2_ltime);
+		SET_VALUE(dpt_rq->cur_ltime[S_COEF2], coef2_min_ltime, coef2_max_ltime, dpt_rq->coef2_ltime_manual);
+
+		/* Stall ratio info */
+		SET_VALUE(dpt_rq->sratio[S_COEF1], 0, 100, coef1_s);
+		SET_VALUE(dpt_rq->sratio[S_COEF1], 0, 100, dpt_rq->coef1_sratio_manual);
+		SET_VALUE(dpt_rq->sratio[S_COEF2], 0, 100, coef2_s);
+		SET_VALUE(dpt_rq->sratio[S_COEF2], 0, 100, dpt_rq->coef2_sratio_manual);
+		SET_VALUE(dpt_rq->sratio[S_TOTAL], 0, 100, total_s);
+		SET_VALUE(dpt_rq->sratio[S_TOTAL], 0, 100, dpt_rq->cpu_sratio_manual);
+		SET_VALUE(dpt_rq->sratio[NON_S], 0, 100, (100 - dpt_rq->sratio[S_COEF1] - dpt_rq->sratio[S_COEF2]));
+
+		record_scaling_factor_dpt_v2(cpu, &dpt_rq->util_cfs);
+
+		/**
+		* Updates `arch_s_scale` by considering ltime, sratio and CPU
+		* scaling_factor to accurately calculate for DPT v2.
+		* This value will be used to compute `rq_clock_pelt`
+		*/
+		arch_set_non_s_dpt_v2(cpu, dpt_rq->sratio[NON_S]);
+		arch_set_coef1_s_scale_dpt_v2(cpu, dpt_rq->sratio[S_COEF1]);
+		arch_set_coef1_ltime_scale_dpt_v2(cpu, dpt_rq->min_ltime[S_COEF1], dpt_rq->cur_ltime[S_COEF1]);
+		arch_set_coef2_s_scale_dpt_v2(cpu, dpt_rq->sratio[S_COEF2]);
+		arch_set_coef2_ltime_scale_dpt_v2(cpu, dpt_rq->min_ltime[S_COEF2], dpt_rq->cur_ltime[S_COEF2]);
+
+		/* To calculate the sum of local/global CPU non-s and sratios, we must compute the sum first */
+		local_clock_sum = dpt_rq->local_clock[NON_S] + dpt_rq->local_clock[S_COEF1] + dpt_rq->local_clock[S_COEF2];
+		global_clock_sum = dpt_rq->global_clock[NON_S] + dpt_rq->global_clock[S_COEF1] + dpt_rq->global_clock[S_COEF2];
+
+		/* Update `local` CPU non-s/sratios for the current window, used for task/rq util updates */
+		dpt_rq->local_clock_ratio[S_COEF1] = (local_clock_sum) ? scale_ratio_u64(dpt_rq->local_clock[S_COEF1], local_clock_sum): 0;
+		dpt_rq->local_clock_ratio[S_COEF2] = (local_clock_sum) ? scale_ratio_u64(dpt_rq->local_clock[S_COEF2], local_clock_sum): 0;
+		dpt_rq->local_clock_ratio[NON_S] = SCHED_CAPACITY_SCALE - dpt_rq->local_clock_ratio[S_COEF1] - dpt_rq->local_clock_ratio[S_COEF2];
+
+		/* Update `global` CPU non-s/sratios for the current window, used for task/rq util updates */
+		dpt_rq->global_clock_ratio[S_COEF1] = (global_clock_sum) ? scale_ratio_u64(dpt_rq->global_clock[S_COEF1], global_clock_sum): 0;
+		dpt_rq->global_clock_ratio[S_COEF2] = (global_clock_sum) ? scale_ratio_u64(dpt_rq->global_clock[S_COEF2], global_clock_sum): 0;
+		dpt_rq->global_clock_ratio[NON_S] = SCHED_CAPACITY_SCALE - dpt_rq->global_clock_ratio[S_COEF1] - dpt_rq->global_clock_ratio[S_COEF2];
+
+		/* Reset the clock sum for next update */
+		dpt_rq->local_clock[NON_S] = dpt_rq->local_clock[S_COEF1] = dpt_rq->local_clock[S_COEF2] = 0;
+		dpt_rq->global_clock[NON_S] = dpt_rq->global_clock[S_COEF1] = dpt_rq->global_clock[S_COEF2] = 0;
+
+		mtk_cpu_util_next_dpt_v2(cpu, NULL, -1, 0, &cpu_util[cpu], &coef1_util[cpu], &coef2_util[cpu]);
+
+		cpu_coef1_sratio[cpu] = dpt_rq->sratio[S_COEF1];
+		cpu_coef2_sratio[cpu] = dpt_rq->sratio[S_COEF2];
+		cpu_sratio[cpu] = dpt_rq->sratio[S_TOTAL];
+	}
+
+	update_coef1_ltime_perf_model_hook(dpt_rq->cur_ltime[S_COEF1]);
+	update_coef2_ltime_perf_model_hook(dpt_rq->cur_ltime[S_COEF2]);
+
+	/* update capacity_orig_of */
+	for_each_possible_cpu(cpu) {
+		mtk_update_cpu_capacity(cpu, pd_opp2cap(cpu, 0, true, 0, NULL, true,
+						DPT_CALL_UPDATE_WL_TBL), 0, CAP_UPDATED_BY_DPT);
+	}
+
+
+	if (trace_collab_type_1_ret_function_enabled()) {
+		if (is_dpt_support_driver_hook)
+			status = is_dpt_support_driver_hook();
+		trace_collab_type_1_ret_function(dpt_rq->cur_ltime[S_COEF2], dpt_rq->cur_ltime[S_COEF1], cpu_coef1_sratio, cpu_coef2_sratio, cpu_sratio, status);
+	}
+}
+
+int prev_val = 0;
+int collab_type_0_ret_function(int version)
+{
+	unsigned int val, status = 0;
+	int result;
+
+	if (coef2_ltime_addr == NULL)
 		return 0;
 
-	val1 = ioread32(collab_type_0_sram_base + VAL1_OFFSET);
-	val2 = ioread32(collab_type_0_sram_base + VAL2_OFFSET);
+	if (version == DPT_V1 && curr_collab_state_manual[0] != -1)
+		return curr_collab_state_manual[0];
+	else if (version == DPT_V2) {
+		struct dpt_rq_struct *dpt_rq = &per_cpu(__dpt_rq, 0); /* writting CPU0 is not a good design */
+
+		if (dpt_rq->coef2_ltime_manual != -1)
+			return dpt_rq->coef2_ltime_manual;
+	}
+
+	val = ioread32(coef2_ltime_addr);
 
 	if (trace_collab_type_0_ret_function_enabled()) {
 		if (is_dpt_support_driver_hook)
 			status = is_dpt_support_driver_hook();
-		trace_collab_type_0_ret_function(val1/val2, val1, val2, status);
+		trace_collab_type_0_ret_function(val, status);
 	}
 
-	if (val1 == 0 || val2 == 0)
-		return USING_LAST_STATE;
+	if (val == 0 || val == 0xdeadbeef)
+		result = prev_val;
+	else
+		result = val;
 
-	if (val1 == 0xdeadbeef || val2 == 0xdeadbeef)
-		return USING_LAST_STATE;
+	prev_val = result;
 
-	return val1/val2;
+	return result;
 }
 
 int get_nr_collab_type(void)
@@ -2047,7 +2637,7 @@ static int init_feature_status(void)
 	}
 	if (readl_relaxed(sram_base_addr_freq_scaling))
 		freq_scaling_disabled = false;
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 	return 0;
 }
 
@@ -2085,12 +2675,16 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	nr_wl = mtk_mapping.total_type;
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 	init_sys_max_cap_cpu();
+
+	init_freq_ceiling_floor();
 
 	ret = init_dpt_io();
 	if (ret)
 		pr_info("init_dpt_io fail, return=%d\n", ret);
+
+	init_dpt_rq();
 
 	if (legacy_api_support_get()) {
 		for (int i = 0; i < MAX_NR_CPUS; i++) {
@@ -2119,7 +2713,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 		dsu_freq_init();
 	}
-#endif
+#endif // CONFIG_MTK_GEARLESS_SUPPORT
 
 	init_grp_dvfs();
 
@@ -2128,8 +2722,6 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	init_adaptive_margin();
 
 	register_fpsgo_sugov_hooks();
-
-	init_uclamp_involve();
 
 	return ret;
 }
@@ -2219,6 +2811,9 @@ void mtk_arch_set_freq_scale(void *data, const struct cpumask *cpus,
 	int cpu = cpumask_first(cpus);
 	unsigned long cap, max_cap;
 	struct cpufreq_policy *policy;
+
+	if(is_dpt_v2_support())
+		return;
 
 	irq_log_store();
 
@@ -2462,7 +3057,7 @@ unsigned long (*flt_get_cpu_util_hook)(int cpu);
 EXPORT_SYMBOL(flt_get_cpu_util_hook);
 int (*get_group_hint_hook)(int group);
 EXPORT_SYMBOL(get_group_hint_hook);
-#endif
+#endif // CONFIG_MTK_SCHED_FAST_LOAD_TRACKING
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 int group_aware_dvfs_util(struct cpumask *cpumask)
@@ -2502,7 +3097,7 @@ skip_idle:
 #endif
 	return -1;
 }
-#endif
+#endif // CONFIG_MTK_SCHED_GROUP_AWARE
 
 inline int update_cpu_active_ratio(int cpu_idx)
 {
@@ -2613,9 +3208,18 @@ void set_grp_high_freq(int cluster_id, bool set)
 }
 EXPORT_SYMBOL(set_grp_high_freq);
 
+void check_update_adaptive_margin_disabled(struct cpumask *cpumask)
+{
+	int i;
+
+	if (am_ctrl == 0 || am_ctrl == 9)
+		for_each_cpu(i, cpumask)
+			WRITE_ONCE(adaptive_margin[i], util_scale);
+}
+
 inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 				unsigned int cpu, unsigned long *next_freq, struct cpumask *cpumask,
-				unsigned long min, unsigned long max)
+                unsigned long min, unsigned long max)
 {
 	int gearid __maybe_unused = topology_cluster_id(cpu), i;
 	unsigned int first_cpu = cpumask_first(cpumask);
@@ -2631,11 +3235,13 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	int flg_curr_task = -1, flg_exit_state = -1, flg_pid = -1;
 	unsigned long max_util_curr_eff = ULONG_MAX;
 	unsigned long umax = 0;
-	int curr_task_uclamp = 0;
+	int curr_task_uclamp = 0, uclamp_involved;
+	int util2freq_mapping_dpt_v2 = is_dpt_v2_support(), dpt_v2_aware_curr_uclamp = 0;
 
 	rq = cpu_rq(cpu);
 	rq_uclamp_min = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
 	rq_uclamp_max = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+	uclamp_involved = mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max, 0);
 	curr_task_uclamp = get_curr_task_uclamp_ctrl();
 
 	if (data != NULL) {
@@ -2655,7 +3261,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 		flt_util = group_aware_dvfs_util(cpumask);
 	if (grp_dvfs_ctrl_mode == 9)
 		flt_util = 0;
-#endif
+#endif // CONFIG_MTK_SCHED_FAST_LOAD_TRACKING
 
 	if (am_ctrl == 0 || am_ctrl == 9)
 		for_each_cpu(i, cpumask)
@@ -2663,10 +3269,13 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	pelt_util_with_margin =
 		(util * READ_ONCE(adaptive_margin[first_cpu])) >> SCHED_CAPACITY_SHIFT;
 
-	if(mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max, 0))
+	if (uclamp_involved)
 		util = (util * util_scale) >> SCHED_CAPACITY_SHIFT;
-	else
+	else {
+		if (flt_util > pelt_util_with_margin)
+			util2freq_mapping_dpt_v2 = false;
 		util = max_t(int, pelt_util_with_margin, flt_util);
+	}
 
 	if (curr_task_uclamp) {
 		rcu_read_lock();
@@ -2689,16 +3298,28 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 		umax = min_t(unsigned long, max_util_curr, rq->uclamp[UCLAMP_MAX].value);
 		umax = (umax * util_scale) >> SCHED_CAPACITY_SHIFT;
 
-		util = min_t(unsigned long, util, umax);
+		if (!util2freq_mapping_dpt_v2)
+			util = min_t(unsigned long, util, umax);
+
+		dpt_v2_aware_curr_uclamp = 1;
 
 		if (trace_sugov_ext_curr_task_uclamp_enabled())
 			trace_sugov_ext_curr_task_uclamp(cpu, flg_pid, flg_curr_task, flg_exit_state,
 				max_util_curr, max_util_curr_eff, rq->uclamp[UCLAMP_MAX].value);
 	}
-	else{
+	else if (!util2freq_mapping_dpt_v2) {
 		util = sugov_effective_cpu_perf_clamp(util, min, max);
 	}
-	*next_freq = pd_get_util_freq(cpu, util);
+
+	if (util2freq_mapping_dpt_v2) {
+		*next_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util, min, max, false);
+
+		if (dpt_v2_aware_curr_uclamp)
+			*next_freq = min_t(unsigned long, *next_freq, pd_get_util_freq(cpu, umax));
+	}
+	else
+		*next_freq = pd_get_util_freq(cpu, util);
+
 	if (trace_sugov_ext_util_freq_enabled()) {
 		trace_sugov_ext_util_freq(cpu, util, min, max, *next_freq);
 	}
@@ -2714,6 +3335,230 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 	}
 }
 
+
+inline int is_dpt_v2_support (void) {
+	return (is_dpt_v2_support_hook && is_dpt_v2_support_hook() && dpt_v2_init_done_hook);
+}
+EXPORT_SYMBOL(is_dpt_v2_support);
+
+void dpt_v2_change_config(int turn_on)
+{
+	pr_info("turn_on=%d\n", turn_on);
+	change_dpt_v2_support_hook(turn_on);
+}
+EXPORT_SYMBOL(dpt_v2_change_config);
+
+int dpt_v2_get_config(void)
+{
+	return is_dpt_v2_support();
+}
+EXPORT_SYMBOL(dpt_v2_get_config);
+
+// TODO
+void check_update_adaptive_margin(int cpu, struct cpufreq_policy *policy, struct cpumask *cpumask)
+{
+	u64 wall_time_stamp;
+
+	if (grp_dvfs_ctrl_mode == 0 || grp_trigger == false) {
+		get_cpu_idle_time(cpu, &wall_time_stamp, 1);
+		if (wall_time_stamp - last_wall_time_stamp[cpu] > am_wind_dura)
+			update_active_ratio_policy(cpumask);
+	}
+	update_adaptive_margin(policy);
+}
+unsigned long get_freq_margin(int cpu, unsigned long util)
+{
+	struct cpufreq_policy *policy = get_cpufreq_policy(cpu);
+	struct cpumask *cpumask;
+	unsigned int first_cpu;
+	struct rq *rq;
+	unsigned long rq_uclamp_min, rq_uclamp_max, margin = util_scale;
+	int margin_id = -1;
+
+	if(!policy)
+		return 0;
+
+	cpumask = policy->related_cpus;
+	first_cpu = cpumask_first(cpumask);
+
+	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
+
+		/* using default marign when uclamp involved */
+		rq = cpu_rq(cpu);
+		rq_uclamp_min = READ_ONCE(rq->uclamp[UCLAMP_MIN].value);
+		rq_uclamp_max = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+		if (mtk_uclamp_involve(rq_uclamp_min, rq_uclamp_max, 0)) {
+			margin = util_scale;
+			margin_id = 0;
+			goto done;
+		}
+
+		/* using adaptive margin */
+		check_update_adaptive_margin(cpu, policy, cpumask); // TODO
+		check_update_adaptive_margin_disabled(cpumask); {
+			margin = adaptive_margin[first_cpu];
+			margin_id = 1;
+			goto done;
+		}
+	}
+
+	/* using turning point margin */
+	if (turn_point_util[cpu] &&
+		util >= turn_point_util[cpu]) {
+		margin = target_margin[cpu];
+		margin_id = 2;
+	} else if (turn_point_util[cpu] &&
+		util < turn_point_util[cpu]) {
+		margin = target_margin_low[cpu];
+		margin_id = 3;
+	}
+
+done:
+	if (trace_sugov_get_freq_margin_enabled())
+		trace_sugov_get_freq_margin(cpu, margin, margin_id);
+
+	return margin;
+}
+
+/* dpt_v2_get_uclamped_cpu_util - get uclamped dpt v2 cpu_util.
+ *
+ * DPT v2 depends on cpu_util & coef1_util & coef2_util to influence the frequency.
+ * uclamp on total_util will not change the above util, and coef1_util & coef2_util is fixed.
+ * Therefore the target of uclamp should effect cpu_util.
+ *
+ * First we have to check if original the frequency calculated by the original util is between umin_freq & umax_freq.
+ * If not, calculate the target_cap via target_freq, then fix taget_cap & coef1_util & coef2_util to get cpu_util_prime,
+ * replace the original cpu_util by cpu_util_prime.
+ */
+__always_inline
+unsigned long dpt_v2_get_uclamped_cpu_util(int cpu, unsigned long max_util, unsigned long min_util,
+	unsigned long cpu_util_local, unsigned long coef1_util_local, unsigned long coef2_util_local, int quant, int *using_uclamp_freq)
+{
+	unsigned long target_freq, target_cap = 0, cpu_util_prime = 0, result;
+	unsigned long umin_freq = 0, umax_freq = 0, __umin = min_util, __umax = max_util;
+	unsigned long util = 0, util_freq = 0, __margin;
+	int wl_for_uclamp = get_eas_wl(0);
+
+	/* k6.12 uclamp不需要*1.25倍, user調整前先暫時保留 */
+	if (mtk_uclamp_involve(min_util, max_util, 0)) {
+		min_util = clamp((min_util * DEFAULT_MARGIN) >> SCHED_CAPACITY_SHIFT,
+			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+		max_util = clamp((max_util * DEFAULT_MARGIN) >> SCHED_CAPACITY_SHIFT,
+			0UL, (unsigned long) SCHED_CAPACITY_SCALE);
+	} else {
+		result = cpu_util_local;
+		goto done;
+	}
+
+	umin_freq = pd_opp2freq(cpu, pd_util2opp(cpu, min_util, quant, wl_for_uclamp, NULL, true, DPT_CALL_PD_UTIL2FREQ), quant, wl_for_uclamp);
+	umax_freq = pd_opp2freq(cpu, pd_util2opp(cpu, max_util, quant, wl_for_uclamp, NULL, true, DPT_CALL_PD_UTIL2FREQ), quant, wl_for_uclamp);
+
+	util = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local);
+
+	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
+	util = affect_cpu_util_ratio_at_util(util, cpu_util_local, (cpu_util_local+coef1_util_local+coef2_util_local), 1 << scaling_factor_shift_bit, scaling_factor_shift_bit);
+
+	__margin = get_freq_margin(cpu, util);
+	util_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util * __margin >> SCHED_CAPACITY_SHIFT, __umin, __umax, true);
+
+	/* (Mainline comment)
+	 * Since CPU's {min,max}_util clamps are MAX aggregated considering
+	 * RUNNABLE tasks with _different_ clamps, we can end up with an
+	 * inversion. Fix it now when the clamps are applied.
+	 */
+	if (unlikely(umin_freq >= umax_freq))
+		target_freq = umin_freq;
+	else if (util_freq < umin_freq)
+		target_freq = umin_freq;
+	else if (util_freq > umax_freq)
+		target_freq = umax_freq;
+	else {
+		result = cpu_util_local;
+		goto done;
+	}
+
+	target_cap = dpt_v2_freq2linear_cap_local_hook(quant, cpu, target_freq);
+	cpu_util_prime = clamp(target_cap * (DPT_V2_MAX_RUNNING_TIME - rescale_coef1_util_or_ratio_hook(coef1_util_local, RESCALE_UTIL) - \
+		rescale_coef2_util_or_ratio_hook(coef2_util_local, RESCALE_UTIL)) / DPT_V2_MAX_RUNNING_TIME, 0, DPT_V2_MAX_RUNNING_TIME);
+	result = cpu_util_prime;
+
+	if (using_uclamp_freq)
+		*using_uclamp_freq = 1;
+
+done:
+	if (trace_sugov_ext_dpt_v2_get_uclamped_cpu_util_enabled()) {
+		unsigned long arr_debug[4];
+
+		arr_debug[0] = umin_freq;
+		arr_debug[1] = umax_freq;
+		arr_debug[2] = util_freq;
+		trace_sugov_ext_dpt_v2_get_uclamped_cpu_util(cpu, min_util, max_util, cpu_util_prime, cpu_util_local, coef1_util_local, coef2_util_local,
+			target_cap, util, arr_debug, result);
+	}
+
+	return result;
+}
+EXPORT_SYMBOL(dpt_v2_get_uclamped_cpu_util);
+
+void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, unsigned long *capacity_result, struct cpumask *cpumask,
+	unsigned int cpu_util_local, unsigned int coef1_util_local, unsigned int coef2_util_local, unsigned long min, unsigned long max)
+{
+	unsigned long util;
+	int orig_util, util_before_cpu_util_ratio;
+
+	if (!is_dpt_v2_support())
+		return;
+
+	if (!dpt_v2_util2cap_needed_local_hook || !dpt_v2_linear_local_cap2freq_hook)
+		return;
+
+	util = util_before_cpu_util_ratio = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local);
+
+	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
+	util = affect_cpu_util_ratio_at_util(util, cpu_util_local, (cpu_util_local+coef1_util_local+coef2_util_local),  (1 << scaling_factor_shift_bit), scaling_factor_shift_bit);
+
+	orig_util = util;
+	*capacity_result = util;
+
+	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
+		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask, min, max);
+
+		if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
+			trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, cpu_util_local, coef1_util_local, coef2_util_local, util_before_cpu_util_ratio, min, max);
+		return;
+	}
+
+	if (turn_point_util[cpu] &&
+		orig_util >= turn_point_util[cpu])
+		util = max(turn_point_util[cpu], orig_util * target_margin[cpu]
+					>> SCHED_CAPACITY_SHIFT);
+	else if (turn_point_util[cpu] &&
+		orig_util < turn_point_util[cpu])
+		util = min(turn_point_util[cpu], orig_util * target_margin_low[cpu]
+					>> SCHED_CAPACITY_SHIFT);
+
+	*next_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util, 0, 1024, false);
+	if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
+		trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, cpu_util_local, coef1_util_local, coef2_util_local, util_before_cpu_util_ratio, min, max);
+
+	if (data != NULL) {
+		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
+		struct cpufreq_policy *policy = sg_policy->policy;
+
+		WRITE_ONCE(policy->cached_target_freq, *next_freq);
+		policy->cached_resolved_idx = pd_X2Y(cpu, *next_freq, FREQ, OPP, true, DPT_CALL_MTK_MAP_UTIL_FREQ);
+		sg_policy->cached_raw_freq = *next_freq;
+	}
+
+	if (trace_sugov_ext_turn_point_margin_enabled() && turn_point_util[cpu]) {
+		orig_util = (orig_util * util_scale) >> SCHED_CAPACITY_SHIFT;
+		trace_sugov_ext_turn_point_margin(cpu, orig_util, util,
+			turn_point_util[cpu], target_margin[cpu], target_margin_low[cpu]);
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_map_util_freq_dpt_v2);
+
+
 void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 		unsigned long *next_freq, unsigned long min, unsigned long max)
 {
@@ -2725,7 +3570,7 @@ void mtk_map_util_freq(void *data, unsigned long util, struct cpumask *cpumask,
 	cpu = cpumask_first(cpumask);
 
 	if (!turn_point_util[cpu] && (am_ctrl || grp_dvfs_ctrl_mode)) {
-		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask,min,max);
+		mtk_map_util_freq_adap_grp(data, util, cpu, next_freq, cpumask, min, max);
 		return;
 	}
 
@@ -2766,3 +3611,215 @@ EXPORT_SYMBOL_GPL(mtk_map_util_freq);
 static int init_opp_cap_info(struct proc_dir_entry *dir) { return 0; }
 
 #endif
+
+#define lsub_positive(_ptr, _val) do {				\
+	typeof(_ptr) ptr = (_ptr);				\
+	*ptr -= min_t(typeof(*ptr), *ptr, _val);		\
+} while (0)
+
+unsigned long mtk_cpu_util_next_dpt_v2(int cpu, struct task_struct *p, int dst_cpu, int boost, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util)
+{
+	dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu);
+	struct dpt_task_struct *util_cfs = &dpt_rq->util_cfs;
+	unsigned long __cpu_util = cpu_util_cfs_dpt_v2(cpu_rq(cpu), CPU_UTIL);
+	unsigned long __coef1_util = cpu_util_cfs_dpt_v2(cpu_rq(cpu), COEF1_UTIL);
+	unsigned long __coef2_util = cpu_util_cfs_dpt_v2(cpu_rq(cpu), COEF2_UTIL);
+	unsigned long local_util_cpu_avg, local_util_coef1_avg, local_util_coef2_avg;
+	unsigned int local_util_cpu_est, local_util_coef1_est, local_util_coef2_est;
+	/* unsigned long runnable; */
+
+	/* if (is_runnable_boost_enable() && boost) {
+	 * 	runnable = READ_ONCE(cfs_rq->avg.runnable_avg);
+	 * 	util = max(util, runnable);
+	 * }
+	 */
+	if (p)
+		task_global_to_local_dpt_v2(cpu, p, &local_util_cpu_avg, &local_util_coef1_avg, &local_util_coef2_avg, &local_util_cpu_est, &local_util_coef1_est, &local_util_coef2_est);
+
+	if (p && task_cpu(p) == cpu && dst_cpu != cpu) {
+		lsub_positive(&__cpu_util, local_util_cpu_avg);
+		lsub_positive(&__coef1_util, local_util_coef1_avg);
+		lsub_positive(&__coef2_util, local_util_coef2_avg);
+	}
+	else if (p && task_cpu(p) != cpu && dst_cpu == cpu) {
+		__cpu_util += local_util_cpu_avg;
+		__coef1_util += local_util_coef1_avg;
+		__coef2_util += local_util_coef2_avg;
+	}
+
+	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
+		unsigned long cpu_util_est, coef1_util_est, coef2_util_est;
+
+		cpu_util_est = READ_ONCE(util_cfs->util_cpu_est) & UTIL_EST_MASK;
+		coef1_util_est = READ_ONCE(util_cfs->util_coef1_est) & UTIL_EST_MASK;
+		coef2_util_est = READ_ONCE(util_cfs->util_coef2_est) & UTIL_EST_MASK;
+
+		if (dst_cpu == cpu) {
+			cpu_util_est += local_util_cpu_est;
+			coef1_util_est += local_util_coef1_est;
+			coef2_util_est += local_util_coef2_est;
+		}
+		else if (p && unlikely(task_on_rq_queued(p) || current == p)) {
+			lsub_positive(&cpu_util_est, local_util_cpu_est);
+			lsub_positive(&coef1_util_est, local_util_coef1_est);
+			lsub_positive(&coef2_util_est, local_util_coef2_est);
+		}
+
+		*cpu_util = max(__cpu_util, cpu_util_est);
+		*coef1_util = max(__coef1_util, coef1_util_est);
+		*coef2_util = max(__coef2_util, coef2_util_est);
+	}
+
+	/* if (trace_sched_runnable_boost_enabled())
+	 * 	trace_sched_runnable_boost(is_runnable_boost_enable(), boost, cfs_rq->avg.util_avg,
+	 * 			cfs_rq->avg.util_est, runnable, util);
+     */
+	return min(*cpu_util + *coef1_util + *coef2_util, DPT_V2_MAX_RUNNING_TIME);
+}
+EXPORT_SYMBOL_GPL(mtk_cpu_util_next_dpt_v2);
+
+unsigned long mtk_cpu_util_cfs_dpt_v2(int cpu, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util)
+{
+	return mtk_cpu_util_next_dpt_v2(cpu, NULL, -1, 0, cpu_util, coef1_util, coef2_util);
+}
+EXPORT_SYMBOL_GPL(mtk_cpu_util_cfs_dpt_v2);
+
+/* cloned from k66 cpu_util_cfs_boost() */
+unsigned long mtk_cpu_util_cfs_boost_dpt_v2(int cpu, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util)
+{
+	return mtk_cpu_util_next_dpt_v2(cpu, NULL, -1, 1, cpu_util, coef1_util, coef2_util);
+}
+EXPORT_SYMBOL_GPL(mtk_cpu_util_cfs_boost_dpt_v2);
+
+/* modified from k66 cpu_util() */
+// unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int boost)
+// {
+// 	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
+// 	unsigned long util = READ_ONCE(cfs_rq->avg.util_avg);
+// 	unsigned long runnable;
+
+// 	if (is_runnable_boost_enable() && boost) {
+// 		runnable = READ_ONCE(cfs_rq->avg.runnable_avg);
+// 		util = max(util, runnable);
+// 	}
+
+// 	if (p && task_cpu(p) == cpu && dst_cpu != cpu)
+// 		lsub_positive(&util, task_util(p));
+// 	else if (p && task_cpu(p) != cpu && dst_cpu == cpu)
+// 		util += task_util(p);
+
+// 	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
+// 		unsigned long util_est;
+
+// 		util_est = READ_ONCE(cfs_rq->avg.util_est);
+
+// 		if (dst_cpu == cpu)
+// 			util_est += _task_util_est(p);
+// 		else if (p && unlikely(task_on_rq_queued(p) || current == p))
+// 			lsub_positive(&util_est, _task_util_est(p));
+
+// 		util = max(util, util_est);
+// 	}
+
+// 	if (trace_sched_runnable_boost_enabled())
+// 		trace_sched_runnable_boost(is_runnable_boost_enable(), boost, cfs_rq->avg.util_avg,
+// 				cfs_rq->avg.util_est, runnable, util);
+
+// 	return min(util, arch_scale_cpu_capacity(cpu) + 1);
+// }
+// EXPORT_SYMBOL_GPL(mtk_cpu_util_next);
+
+/* cloned from k66 cpu_util_cfs() */
+// unsigned long mtk_cpu_util_cfs(int cpu)
+// {
+// 	return mtk_cpu_util_next(cpu, NULL, -1, 0);
+// }
+// EXPORT_SYMBOL_GPL(mtk_cpu_util_cfs);
+
+/* cloned from k66 cpu_util_cfs_boost() */
+// unsigned long mtk_cpu_util_cfs_boost(int cpu)
+// {
+// 	return mtk_cpu_util_next(cpu, NULL, -1, 1);
+// }
+// EXPORT_SYMBOL_GPL(mtk_cpu_util_cfs_boost);
+
+void mtk_cpu_util_cfs_boost_hook(void *data, int cpu, unsigned long *util)
+{
+	*util = mtk_cpu_util_cfs_boost(cpu);
+}
+EXPORT_SYMBOL_GPL(mtk_cpu_util_cfs_boost_hook);
+
+void topology_set_non_s_scale_dpt_v2(int cpu, unsigned int non_sratio)
+{
+	per_cpu(__dpt_rq, cpu).arch_s_scale[NON_S] = scale_ratio(non_sratio, 100);
+}
+EXPORT_SYMBOL_GPL(topology_set_non_s_scale_dpt_v2);
+
+void topology_set_coef1_s_scale_dpt_v2(int cpu, unsigned int sratio)
+{
+	per_cpu(__dpt_rq, cpu).arch_s_scale[S_COEF1] = scale_ratio(sratio, 100);
+}
+EXPORT_SYMBOL_GPL(topology_set_coef1_s_scale_dpt_v2);
+
+void topology_set_coef1_ltime_scale_dpt_v2(int cpu, unsigned int min_ltime, unsigned int cur_ltime)
+{
+	per_cpu(__dpt_rq, cpu).arch_ltime_scale[S_COEF1] = scale_ratio(min_ltime, cur_ltime);
+}
+EXPORT_SYMBOL_GPL(topology_set_coef1_ltime_scale_dpt_v2);
+
+
+void topology_set_coef2_s_scale_dpt_v2(int cpu, unsigned int sratio)
+{
+	per_cpu(__dpt_rq, cpu).arch_s_scale[S_COEF2] = scale_ratio(sratio, 100);
+}
+EXPORT_SYMBOL_GPL(topology_set_coef2_s_scale_dpt_v2);
+
+void topology_set_coef2_ltime_scale_dpt_v2(int cpu, unsigned int min_ltime, unsigned int cur_ltime)
+{
+	per_cpu(__dpt_rq, cpu).arch_ltime_scale[S_COEF2] = scale_ratio(min_ltime, cur_ltime);
+}
+EXPORT_SYMBOL_GPL(topology_set_coef2_ltime_scale_dpt_v2);
+
+void task_global_to_local_dpt_v2(int cpu, struct task_struct *p,
+	unsigned long *local_util_cpu_avg, unsigned long *local_util_coef1_avg, unsigned long *local_util_coef2_avg,
+	unsigned int *local_util_cpu_est, unsigned int *local_util_coef1_est, unsigned int *local_util_coef2_est)
+{
+	int cpu_scaling_factor, coef1_scaling_factor, coef2_scaling_factor;
+	int gear;
+
+	if (!p)
+		return;
+
+	cpu_scaling_factor = coef1_scaling_factor = coef2_scaling_factor = 1024;
+
+	if (!p) {
+		pr_info("cpu=%d task is null when switch global to local\n", cpu);
+		return;
+	}
+
+	for (gear = 0; gear < get_nr_gears() - 1; gear++)
+	{
+		if (cpumask_test_cpu(cpu, get_gear_cpumask(gear)))
+		{
+			const int covert_type = get_scaling_factor_convert_type(gear);
+			SET_VALUE(cpu_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX, task_inv_scaling_dpt_v2(p, covert_type, CPU_COMPUTING_CYCLE_SCALING));
+			SET_VALUE(coef1_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX, task_inv_scaling_dpt_v2(p, covert_type, COEF1_S_SCALING));
+			SET_VALUE(coef2_scaling_factor, SCALING_FACTOR_MIN, SCALING_FACTOR_MAX, task_inv_scaling_dpt_v2(p, covert_type, COEF2_S_SCALING));
+			break;
+		}
+	}
+
+	if (local_util_cpu_avg)
+		*local_util_cpu_avg = (task_util_dpt_v2(p, CPU_UTIL) * cpu_scaling_factor) >> scaling_factor_shift_bit;
+	if (local_util_coef1_avg)
+		*local_util_coef1_avg = (task_util_dpt_v2(p, COEF1_UTIL) * coef1_scaling_factor) >> scaling_factor_shift_bit;
+	if (local_util_coef2_avg)
+		*local_util_coef2_avg = (task_util_dpt_v2(p, COEF2_UTIL) * coef2_scaling_factor) >> scaling_factor_shift_bit;
+	if (local_util_cpu_est)
+		*local_util_cpu_est = (_task_util_est_dpt_v2(p, CPU_UTIL) * cpu_scaling_factor) >> scaling_factor_shift_bit;
+	if (local_util_coef1_est)
+		*local_util_coef1_est = (_task_util_est_dpt_v2(p, COEF1_UTIL) * coef1_scaling_factor) >> scaling_factor_shift_bit;
+	if (local_util_coef2_est)
+		*local_util_coef2_est = (_task_util_est_dpt_v2(p, COEF2_UTIL) * coef2_scaling_factor) >> scaling_factor_shift_bit;
+}
+EXPORT_SYMBOL_GPL(task_global_to_local_dpt_v2);

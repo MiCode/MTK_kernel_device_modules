@@ -54,22 +54,6 @@ char *cgrp_map_str[CGRP_NUM] = {
 	"system-background"
 };
 
-static inline unsigned long task_util(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-/* cloned from kmainline _task_util_est() */
-static inline unsigned long _task_util_est(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
-}
-
-static inline unsigned long task_util_est(struct task_struct *p)
-{
-	return max(task_util(p), _task_util_est(p));
-}
-
 inline struct grp *lookup_grp(int grp_id)
 {
 	if (grp_id >= GROUP_ID_RECORD_MAX || grp_id < 0)

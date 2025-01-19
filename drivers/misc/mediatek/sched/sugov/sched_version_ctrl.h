@@ -21,3 +21,6 @@ extern bool sched_rt_aggre_preempt_enable_get(void);
 extern bool sched_post_init_util_enable_get(void);
 extern bool sched_percore_l3_bw_get(void);
 extern bool sched_dsu_pwr_enable_get(void);
+extern bool sched_dpt_v2_enable_get(void);
+extern unsigned int sched_dpt_v2_swpm_mode_get(void);
+extern void sched_dpt_v2_swpm_mode_set(unsigned int);

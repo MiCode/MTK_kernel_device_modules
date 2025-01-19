@@ -171,21 +171,6 @@ void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
 	sched_update_nr_prod(cpu_of(rq), rq->nr_running, count);
 }
 
-static inline unsigned long task_util(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-static inline unsigned long _task_util_est(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
-}
-
-static inline unsigned long task_util_est(struct task_struct *p)
-{
-	return max(task_util(p), _task_util_est(p));
-}
-
 int arch_get_nr_clusters(void)
 {
 	int __arch_nr_clusters = -1;

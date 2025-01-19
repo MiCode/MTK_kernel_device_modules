@@ -75,6 +75,21 @@ static inline void sched_asym_cpucapacity_init(void)
 		mtk_sched_asym_cpucapacity = 0;
 }
 
+/*
+static void sched_cfs_util_hook(void *data, struct cfs_rq *cfs_rq)
+{
+	int cpu;
+	if(!is_dpt_v2_support())
+		return;
+
+	if(cfs_rq->tg->parent)
+		return;
+
+	cpu = cpu_of(rq_of(cfs_rq));
+	trace_printk("cpu=%d util_sum=%u util_avg=%lu\n", cpu, cfs_rq->avg.util_sum, cfs_rq->avg.util_avg);
+}
+*/
+
 static void sched_task_util_hook(void *data, struct sched_entity *se)
 {
 	if (!get_eas_hook())
@@ -233,7 +248,7 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 		trace_sched_queue_task(cpu, p->pid, type, util,
 				rq->uclamp[UCLAMP_MIN].value, rq->uclamp[UCLAMP_MAX].value,
 				p->uclamp[UCLAMP_MIN].value, p->uclamp[UCLAMP_MAX].value,
-				p->cpus_ptr->bits[0]);
+				p->cpus_ptr->bits[0], p);
 	}
 
 	irq_log_store();
@@ -405,20 +420,51 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 	}
 
 	/*other hack...*/
-	freq = pd_opp2freq(cpu, 0, false, 0);
-	desired_cpufreq = (freq >> 2) + (freq >> 3);
-	desired_cpu_scale = pd_get_freq_util(cpu, desired_cpufreq);
-	desired_util_avg = (desired_cpu_scale * 819) >> 10;
+	if (is_dpt_v2_support())
+	{
+		unsigned long local_cpu_util, local_coef1_util, local_coef2_util;
+		unsigned long cpu_scale, coef1_scale, coef2_scale;
+		unsigned long desired_cpu_avg, desired_coef1_avg, desired_coef2_avg;
+		dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu);
+		struct dpt_task_struct *util_task = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
 
-	/* suppressed to desired freq when fork*/
-	if (sa->util_avg > (unsigned long)desired_util_avg) {
-		ori = sa->util_avg;
-		sa->util_avg = desired_util_avg;
-		if (trace_sched_post_init_entity_util_avg_enabled()) {
-			trace_sched_post_init_entity_util_avg(p, ori, sa->util_avg,
-				se->load.weight, freq, desired_cpufreq, cpu);
+		mtk_cpu_util_next_dpt_v2(cpu, NULL, -1, 0, &local_cpu_util, &local_coef1_util, &local_coef2_util);
+		coef1_scale = div_u64(local_coef1_util * dpt_rq->cur_ltime[S_COEF1], dpt_rq->min_ltime[S_COEF1]);
+		coef2_scale = div_u64(local_coef2_util * dpt_rq->cur_ltime[S_COEF2], dpt_rq->min_ltime[S_COEF2]);
+		cpu_scale = 1024 - coef1_scale - coef2_scale;
+		desired_cpu_avg = (cpu_scale >> 2) + (cpu_scale >> 3);
+		desired_coef1_avg = (coef1_scale >> 2) + (coef1_scale >> 3);
+		desired_coef2_avg = (coef2_scale >> 2) + (coef2_scale >> 3);
+
+		if (trace_sched_post_init_entity_util_avg_dpt_v2_enabled())
+			trace_sched_post_init_entity_util_avg_dpt_v2(cpu, task_pid_nr(p), util_task, desired_cpu_avg, desired_coef1_avg, desired_coef2_avg);
+
+		if (task_util_dpt_v2(p, CPU_UTIL) > desired_cpu_avg)
+			util_task->util_cpu_avg = desired_cpu_avg;
+		if (task_util_dpt_v2(p, COEF1_UTIL) > desired_coef1_avg)
+			util_task->util_coef1_avg = desired_coef1_avg;
+		if (task_util_dpt_v2(p, COEF2_UTIL) > desired_coef2_avg)
+			util_task->util_coef2_avg = desired_coef2_avg;
+
+		if (trace_sched_post_init_entity_util_avg_dpt_v2_enabled())
+			trace_sched_post_init_entity_util_avg_dpt_v2(cpu, task_pid_nr(p), util_task, desired_cpu_avg, desired_coef1_avg, desired_coef2_avg);
+	}
+	else
+	{
+		freq = pd_opp2freq(cpu, 0, false, 0);
+		desired_cpufreq = (freq >> 2) + (freq >> 3);
+		desired_cpu_scale = pd_get_freq_util(cpu, desired_cpufreq);
+		desired_util_avg = (desired_cpu_scale * 819) >> 10;
+
+		/* suppressed to desired freq when fork*/
+		if (sa->util_avg > (unsigned long)desired_util_avg) {
+			ori = sa->util_avg;
+			sa->util_avg = desired_util_avg;
+			sa->runnable_avg = sa->util_avg;
+
+			if (trace_sched_post_init_entity_util_avg_enabled())
+				trace_sched_post_init_entity_util_avg(p, ori, sa->util_avg, se->load.weight, freq, desired_cpufreq, cpu);
 		}
-		sa->runnable_avg = sa->util_avg;
 	}
 }
 
@@ -467,9 +513,19 @@ static void mtk_sched_trace_init(void)
 	if (ret)
 		pr_info("register android_rvh_dequeue_task failed!\n");
 
+	/*
+	ret = register_trace_pelt_cfs_tp(sched_cfs_util_hook, NULL);
+	if (ret)
+		pr_info("register sched_cfs_util_hook failed!\n");
+	*/
+
 	ret = register_trace_pelt_se_tp(sched_task_util_hook, NULL);
 	if (ret)
 		pr_info("register sched_task_util_hook failed!\n");
+
+	ret = register_trace_sched_util_est_se_tp(sched_task_util_est_hook, NULL);
+	if (ret)
+		pr_info("register sched_task_util_est_hook failed!\n");
 
 	ret = register_trace_pelt_se_tp(sched_task_uclamp_hook, NULL);
 	if (ret)
@@ -490,6 +546,7 @@ static void mtk_sched_trace_exit(void)
 	unregister_trace_pelt_se_tp(sched_task_util_hook, NULL);
 	unregister_trace_pelt_se_tp(sched_task_uclamp_hook, NULL);
 	unregister_trace_sched_util_est_cfs_tp(sched_rq_load_hook, NULL);
+	unregister_trace_sched_util_est_se_tp(sched_task_util_est_hook, NULL);
 }
 
 static unsigned long easctl_copy_from_user(void *pvTo,
@@ -1217,6 +1274,48 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_set_cpus_allowed_ptr hooks failed, returned %d\n", ret);
 
+	ret = register_trace_android_rvh_update_rq_clock_pelt(mtk_update_rq_clock_pelt, NULL);
+	if (ret)
+		pr_info("register mtk_update_rq_clock_pelt hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_update_load_avg_blocked_se(mtk_update_load_avg_blocked_se, NULL);
+	if (ret)
+		pr_info("register mtk_update_load_avg_blocked_se hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_update_load_avg_se(mtk_update_load_avg_se, NULL);
+	if (ret)
+		pr_info("register mtk_update_load_avg_se hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_update_load_avg_cfs_rq(mtk_update_load_avg_cfs_rq, NULL);
+	if (ret)
+		pr_info("register mtk_update_load_avg_cfs_rq hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_update_rt_rq_load_avg_internal(mtk_update_rt_rq_load_avg_internal, NULL);
+	if (ret)
+		pr_info("register mtk_update_rt_rq_load_avg_internal hooks failed, returned %d\n", ret);
+
+	/* need kernel-mainline temp patch support */
+	ret = register_trace_android_rvh_attach_entity_load_avg(mtk_attach_entity_load_avg, NULL);
+	if (ret)
+		pr_info("register mtk_attach_entity_load_avg hooks failed, returned %d\n", ret);
+
+	/* need kernel-mainline temp patch support */
+	ret = register_trace_android_rvh_detach_entity_load_avg(mtk_detach_entity_load_avg, NULL);
+	if (ret)
+		pr_info("register mtk_detach_entity_load_avg hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_enqueue_task_fair(mtk_enqueue_task_fair, NULL);
+	if (ret)
+		pr_info("register mtk_enqueue_task_fair hooks failed, returned %d\n", ret);
+
+	ret = register_trace_android_rvh_dequeue_task_fair(mtk_dequeue_task_fair, NULL);
+	if (ret)
+		pr_info("register mtk_dequeue_task_fair hooks failed, returned %d\n", ret);
+
+	/* need kernel-mainline temp patch support */
+	ret = register_trace_android_rvh_remove_entity_load_avg(mtk_remove_entity_load_avg, NULL);
+	if (ret)
+		pr_info("register mtk_remove_entity_load_avg hooks failed, returned %d\n", ret);
 out_wq:
 	return ret;
 

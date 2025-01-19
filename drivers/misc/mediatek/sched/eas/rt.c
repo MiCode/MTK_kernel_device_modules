@@ -79,24 +79,6 @@ static inline bool task_may_not_preempt(struct task_struct *task, int cpu)
 #endif /* CONFIG_RT_SOFTINT_OPTIMIZATION */
 
 #if IS_ENABLED(CONFIG_SMP)
-static inline unsigned long task_util(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-/* cloned from kmainline _task_util_est() */
-static inline unsigned long _task_util_est(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
-}
-
-static inline unsigned long task_util_est(struct task_struct *p)
-{
-	if (sched_feat(UTIL_EST) && is_util_est_enable())
-		return max(task_util(p), _task_util_est(p));
-	return task_util(p);
-}
-
 static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 					bool sync)
 {
@@ -118,13 +100,6 @@ static inline bool should_honor_rt_sync(struct rq *rq, struct task_struct *p,
 #endif
 
 #if IS_ENABLED(CONFIG_UCLAMP_TASK)
-static inline unsigned long uclamp_task_util(struct task_struct *p)
-{
-	return clamp(rt_task(p) ? 0 : task_util_est(p),
-		     uclamp_eff_value(p, UCLAMP_MIN),
-		     uclamp_eff_value(p, UCLAMP_MAX));
-}
-
 /*
  * Verify the fitness of task @p to run on @cpu taking into account the uclamp
  * settings.
@@ -139,6 +114,8 @@ static inline unsigned long uclamp_task_util(struct task_struct *p)
  * Note that uclamp_min will be clamped to uclamp_max if uclamp_min
  * > uclamp_max.
  */
+
+/* should we change here? */
 static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 {
 	unsigned int min_cap;
@@ -157,11 +134,6 @@ static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 	return cpu_cap >= min(min_cap, max_cap);
 }
 #else
-static inline unsigned long uclamp_task_util(struct task_struct *p)
-{
-	return rt_task(p) ? 0 : task_util_est(p);
-}
-
 static inline bool rt_task_fits_capacity(struct task_struct *p, int cpu)
 {
 	return true;
@@ -447,6 +419,8 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	unsigned long pwr_eff, this_pwr_eff;
 	struct perf_domain *target_pd, *pd;
 	bool _rt_aggre_preempt_enable = rt_ea_output->rt_aggre_preempt_enable;
+	int dpt_v2_support = is_dpt_v2_support();
+	dpt_v2_cap_params_struct dpt_v2_cap_params[MAX_NR_CPUS];
 
 	irq_log_store();
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
@@ -512,7 +486,35 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 			/* record best non-idle cpu in gear if gear don't have idle cpus */
 			irq_log_store();
-			cpu_util_cum = mtk_sched_max_util(p, cpu, min_cap, max_cap);
+			if (dpt_v2_support) {
+				unsigned long dpt_v2_cpu_util_local = 0, dpt_v2_coef1_util_local = 0, dpt_v2_coef2_util_local = 0, min, max;
+				int IPC_scaling_factor = get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
+
+				mtk_cpu_util_cfs_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local);
+				mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local, p, &min, &max);
+				cpu_util_cum = dpt_v2_util2cap_needed_local_hook(dpt_v2_cpu_util_local, dpt_v2_coef1_util_local, dpt_v2_coef2_util_local);
+				cpu_util_cum = affect_cpu_util_ratio_at_util(cpu_util_cum, dpt_v2_cpu_util_local, (dpt_v2_cpu_util_local+dpt_v2_coef1_util_local+dpt_v2_coef2_util_local),
+					IPC_scaling_factor, __get_scaling_factor_shift_bit());
+				dpt_v2_uclamp2local_cap_hook(cpu, false, &min, &max);
+				dpt_v2_uclamp2local_cap_hook(cpu, false, &min_cap, &max_cap);
+
+				min = max(min, min_cap);
+				/*
+				* If there is no active max uclamp constraint,
+				* directly use task's one, otherwise keep max.
+				*/
+				if (uclamp_rq_is_idle(cpu_rq(cpu)))
+					max = max_cap;
+				else
+					max = max(max, max_cap);
+
+				cpu_util_cum = sugov_effective_cpu_perf_clamp(cpu_util_cum, min, max);
+
+				dpt_v2_cap_params[cpu].cpu_util_local = dpt_v2_cpu_util_local;
+				dpt_v2_cap_params[cpu].total_util_local = (dpt_v2_cpu_util_local+dpt_v2_coef1_util_local+dpt_v2_coef2_util_local);
+				dpt_v2_cap_params[cpu].IPC_scaling_factor = IPC_scaling_factor;
+			} else
+				cpu_util_cum = mtk_sched_max_util(p, cpu, min_cap, max_cap);
 			irq_log_store();
 
 			util_cum[cpu] = cpu_util_cum;
@@ -587,7 +589,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 		for_each_cpu(cpu, &candidates) {
 			cpu_util_cum = util_cum[cpu];
 			irq_log_store();
-			this_pwr_eff = calc_pwr_eff(wl, cpu, cpu_util_cum, NULL);
+			this_pwr_eff = calc_pwr_eff(wl, cpu, cpu_util_cum, NULL, dpt_v2_support, dpt_v2_cap_params[cpu]);
 			irq_log_store();
 
 			if (trace_sched_aware_energy_rt_enabled()) {

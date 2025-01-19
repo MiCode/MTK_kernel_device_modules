@@ -11,6 +11,7 @@
 #include <linux/types.h>
 #include <linux/tracepoint.h>
 #include <linux/compat.h>
+#include "common.h"
 
 #ifdef CREATE_TRACE_POINTS
 int sched_cgroup_state(struct task_struct *p, int subsys_id)
@@ -301,10 +302,10 @@ TRACE_EVENT(sched_find_best_candidates,
 TRACE_EVENT(sched_target_max_spare_cpu,
 
 	TP_PROTO(const char *type, int best_cpu, int new_cpu, int replace,
-		long spare_cap, long target_max_spare_cap),
+		long spare_cap, long target_max_spare_cap, unsigned long cpu_cap, unsigned long cpu_util),
 
 	TP_ARGS(type, best_cpu, new_cpu, replace,
-		spare_cap, target_max_spare_cap),
+		spare_cap, target_max_spare_cap, cpu_cap, cpu_util),
 
 	TP_STRUCT__entry(
 		__string(type, type)
@@ -313,6 +314,8 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__field(int, replace)
 		__field(long, spare_cap)
 		__field(long, target_max_spare_cap)
+		__field(unsigned long, cpu_cap)
+		__field(unsigned long, cpu_util)
 		),
 
 	TP_fast_assign(
@@ -322,26 +325,28 @@ TRACE_EVENT(sched_target_max_spare_cpu,
 		__entry->replace        = replace;
 		__entry->spare_cap        = spare_cap;
 		__entry->target_max_spare_cap        = target_max_spare_cap;
+		__entry->cpu_cap        = cpu_cap;
+		__entry->cpu_util        = cpu_util;
 		),
 
-	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d spare_cap=%ld target_max_spare_cap=%ld",
+	TP_printk("type=%s best_cpu=%d new_cpu=%d replace=%d spare_cap=%ld target_max_spare_cap=%ld cpu_cap=%lu cpu_util=%lu",
 		__get_str(type),
 		__entry->best_cpu,
 		__entry->new_cpu,
 		__entry->replace,
 		__entry->spare_cap,
-		__entry->target_max_spare_cap)
+		__entry->target_max_spare_cap,
+		__entry->cpu_cap,
+		__entry->cpu_util)
 );
 
 TRACE_EVENT(sched_select_task_rq,
 
 	TP_PROTO(struct task_struct *tsk, bool in_irq,
 		int policy, int backup_reason, int prev_cpu, int target_cpu,
-		int task_util, int task_util_est, int boost, bool prefer,
-		int sync_flag, struct cpumask *effective_softmask),
+		int vip_prio, bool prefer, int sync_flag, struct cpumask *effective_softmask),
 
-	TP_ARGS(tsk, in_irq, policy, backup_reason, prev_cpu, target_cpu, task_util, task_util_est,
-		boost, prefer, sync_flag, effective_softmask),
+	TP_ARGS(tsk, in_irq, policy, backup_reason, prev_cpu, target_cpu, vip_prio, prefer, sync_flag, effective_softmask),
 
 	TP_STRUCT__entry(
 		__field(pid_t, pid)
@@ -354,6 +359,13 @@ TRACE_EVENT(sched_select_task_rq,
 		__field(int, task_util)
 		__field(int, task_util_est)
 		__field(int, boost)
+		__field(unsigned long, task_cpu_util)
+		__field(unsigned long, task_coef1_util)
+		__field(unsigned long, task_coef2_util)
+		__field(unsigned long, task_cpu_util_est)
+		__field(unsigned long, task_coef1_util_est)
+		__field(unsigned long, task_coef2_util_est)
+		__field(int, vip_prio)
 		__field(long, task_mask)
 		__field(long, effective_softmask)
 		__field(bool, prefer)
@@ -370,9 +382,16 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->backup_reason     = backup_reason;
 		__entry->prev_cpu   = prev_cpu;
 		__entry->target_cpu = target_cpu;
-		__entry->task_util      = task_util;
-		__entry->task_util_est  = task_util_est;
-		__entry->boost          = boost;
+		__entry->task_util      = task_util(tsk);
+		__entry->task_util_est  = task_util_est(tsk);
+		__entry->boost          = uclamp_task_util(tsk);
+		__entry->task_cpu_util = task_util_dpt_v2(tsk, CPU_UTIL);
+		__entry->task_cpu_util_est = task_util_est_dpt_v2(tsk, CPU_UTIL);
+		__entry->task_coef1_util = task_util_dpt_v2(tsk, COEF1_UTIL);
+		__entry->task_coef1_util_est = task_util_est_dpt_v2(tsk, COEF1_UTIL);
+		__entry->task_coef2_util = task_util_dpt_v2(tsk, COEF2_UTIL);
+		__entry->task_coef2_util_est = task_util_est_dpt_v2(tsk, COEF2_UTIL);
+		__entry->vip_prio       = vip_prio;
 		__entry->task_mask      = tsk->cpus_ptr->bits[0];
 		__entry->effective_softmask = effective_softmask->bits[0];
 		__entry->prefer         = prefer;
@@ -382,7 +401,7 @@ TRACE_EVENT(sched_select_task_rq,
 		),
 
 	TP_printk(
-		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
+		"pid=%4d 32-bit=%d in_irq=%d policy=0x%08x backup_reason=0x%04x pre-cpu=%d target=%d util=%d util_est=%d uclamp=%d cpu_util=%lu cpu_util_est=%lu coef1_util=%lu coef1_util_est=%lu coef2_util=%lu coef2_util_est=%lu vip_prio=%d mask=0x%lx eff_softmask=0x%lx latency_sensitive=%d sync=%d cpuctl=%d cpuset=%d",
 		__entry->pid,
 		__entry->compat_thread,
 		__entry->in_irq,
@@ -393,6 +412,13 @@ TRACE_EVENT(sched_select_task_rq,
 		__entry->task_util,
 		__entry->task_util_est,
 		__entry->boost,
+		__entry->task_cpu_util,
+		__entry->task_cpu_util_est,
+		__entry->task_coef1_util,
+		__entry->task_coef1_util_est,
+		__entry->task_coef2_util,
+		__entry->task_coef2_util_est,
+		__entry->vip_prio,
 		__entry->task_mask,
 		__entry->effective_softmask,
 		__entry->prefer,
@@ -561,6 +587,30 @@ TRACE_EVENT(sched_per_core_BW,
 		__entry->sum_bw)
 );
 
+TRACE_EVENT(sched_per_core_base_sratio,
+
+	TP_PROTO(int dpt_v2_support, int cpu, unsigned int dpt_v2_sratio),
+
+	TP_ARGS(dpt_v2_support, cpu, dpt_v2_sratio),
+
+	TP_STRUCT__entry(
+		__field(int, dpt_v2_support)
+		__field(int, cpu)
+		__field(unsigned int, dpt_v2_sratio)
+		),
+
+	TP_fast_assign(
+		__entry->dpt_v2_support        = dpt_v2_support;
+		__entry->cpu         = cpu;
+		__entry->dpt_v2_sratio     = dpt_v2_sratio;
+		),
+
+	TP_printk("dpt_v2_support=%d cpu=%d sratio_base=%u",
+		__entry->dpt_v2_support,
+		__entry->cpu,
+		__entry->dpt_v2_sratio)
+);
+
 TRACE_EVENT(sched_max_util,
 
 	TP_PROTO(const char *domain_name, int idx, int dst_cpu, int dst_idx,
@@ -602,6 +652,53 @@ TRACE_EVENT(sched_max_util,
 		__entry->util,
 		__entry->cpu_util)
 );
+
+TRACE_EVENT(sched_max_util_dpt_v2_sratio,
+
+	TP_PROTO(int dst_cpu, int dst_idx, int pd_idx, int pd_max_util_cpu,
+		unsigned int dst_sratio, unsigned int base_sratio,
+		unsigned long dpt_v2_cpu_util, unsigned long dpt_v2_coef1_util, unsigned long dpt_v2_coef2_util),
+
+	TP_ARGS(dst_cpu, dst_idx, pd_idx, pd_max_util_cpu, dst_sratio, base_sratio,
+			dpt_v2_cpu_util, dpt_v2_coef1_util, dpt_v2_coef2_util),
+
+	TP_STRUCT__entry(
+
+		__field(int, dst_cpu)
+		__field(int, dst_idx)
+		__field(int, pd_idx)
+		__field(int, pd_max_util_cpu)
+		__field(unsigned int, dst_sratio)
+		__field(unsigned int, base_sratio)
+		__field(unsigned long, dpt_v2_cpu_util)
+		__field(unsigned long, dpt_v2_coef1_util)
+		__field(unsigned long, dpt_v2_coef2_util)
+		),
+
+	TP_fast_assign(
+		__entry->dst_cpu    = dst_cpu;
+		__entry->dst_idx    = dst_idx;
+		__entry->pd_idx   = pd_idx;
+		__entry->pd_max_util_cpu        = pd_max_util_cpu;
+		__entry->dst_sratio       = dst_sratio;
+		__entry->base_sratio   = base_sratio;
+		__entry->dpt_v2_cpu_util        = dpt_v2_cpu_util;
+		__entry->dpt_v2_coef1_util       = dpt_v2_coef1_util;
+		__entry->dpt_v2_coef2_util   = dpt_v2_coef2_util;
+		),
+
+	TP_printk("dst_cpu=%d dst_idx=%d pd_idx=%d pd_max_util_cpu=%d dst_sratio=%u base_sratio=%u rescaled_cpu_util=%lu rescaled_coef1_util=%lu rescaled_coef2_util=%lu",
+		__entry->dst_cpu,
+		__entry->dst_idx,
+		__entry->pd_idx,
+		__entry->pd_max_util_cpu,
+		__entry->dst_sratio,
+		__entry->base_sratio,
+		__entry->dpt_v2_cpu_util,
+		__entry->dpt_v2_coef1_util,
+		__entry->dpt_v2_coef2_util)
+);
+
 
 TRACE_EVENT(sched_compute_energy,
 
@@ -1066,8 +1163,667 @@ TRACE_EVENT(sched_vip_throttled,
 		  __entry->pid, __entry->cpu, __entry->vip_prio,
 		  __entry->throttle_time, __entry->exec_time)
 );
-
 #endif /* CONFIG_MTK_SCHED_VIP_TASK */
+
+TRACE_EVENT(sched_update_rq_clock_pelt,
+	TP_PROTO(int cpu, u64 clock_pelt,
+		s64 local_cpu_delta, s64 local_coef1_delta, s64 local_coef2_delta,
+		s64 global_cpu_delta, s64 global_coef1_delta, s64 global_coef2_delta,
+	dpt_rq_t *dpt_rq, int ret),
+	TP_ARGS(cpu, clock_pelt,
+		local_cpu_delta, local_coef1_delta, local_coef2_delta,
+		global_cpu_delta, global_coef1_delta, global_coef2_delta,
+		dpt_rq, ret),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(u64, clock_pelt)
+		__field(u64, local_clock_pelt)
+		__field(s64, local_cpu_delta)
+		__field(s64, local_coef1_delta)
+		__field(s64, local_coef2_delta)
+		__field(s64, global_cpu_delta)
+		__field(s64, global_coef1_delta)
+		__field(s64, global_coef2_delta)
+		__field(unsigned int, sratio_non)
+		__field(unsigned int, sratio_coef1)
+		__field(unsigned int, sratio_coef2)
+		__field(u64, local_clock_non)
+		__field(u64, local_clock_coef1)
+		__field(u64, local_clock_coef2)
+		__field(u64, global_clock_non)
+		__field(u64, global_clock_coef1)
+		__field(u64, global_clock_coef2)
+		__field(int, ret)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->clock_pelt = clock_pelt;
+		__entry->local_clock_pelt = dpt_rq->local_clock_pelt;
+		__entry->local_cpu_delta = local_cpu_delta;
+		__entry->local_coef1_delta = local_coef1_delta;
+		__entry->local_coef2_delta = local_coef2_delta;
+		__entry->global_cpu_delta = global_cpu_delta;
+		__entry->global_coef1_delta = global_coef1_delta;
+		__entry->global_coef2_delta = global_coef2_delta;
+		__entry->sratio_non = dpt_rq->sratio[NON_S];
+		__entry->sratio_coef1 = dpt_rq->sratio[S_COEF1];
+		__entry->sratio_coef2 = dpt_rq->sratio[S_COEF2];
+		__entry->local_clock_non = dpt_rq->local_clock[NON_S];
+		__entry->local_clock_coef1 = dpt_rq->local_clock[S_COEF1];
+		__entry->local_clock_coef2 = dpt_rq->local_clock[S_COEF2];
+		__entry->global_clock_non = dpt_rq->global_clock[NON_S];
+		__entry->global_clock_coef1 = dpt_rq->global_clock[S_COEF1];
+		__entry->global_clock_coef2 = dpt_rq->global_clock[S_COEF2];
+		__entry->ret = ret;
+	),
+
+	TP_printk(
+		"cpu=%d clock_pelt=%llu local_clock_pelt=%llu local_cpu_delta=%lld local_coef1_delta=%lld local_coef2_delta=%lld global_cpu_delta=%lld global_coef1_delta=%lld global_coef2_delta=%lld sratio_non=%u sratio_coef1=%u sratio_coef2=%u local_clock_non=%llu local_clock_coef1=%llu local_clock_coef2=%llu global_clock_non=%llu global_clock_coef1=%llu global_clock_coef2=%llu ret=%d",
+		__entry->cpu, __entry->clock_pelt, __entry->local_clock_pelt,
+		__entry->local_cpu_delta, __entry->local_coef1_delta, __entry->local_coef2_delta,
+		__entry->global_cpu_delta, __entry->global_coef1_delta, __entry->global_coef2_delta,
+		__entry->sratio_non, __entry->sratio_coef1, __entry->sratio_coef2,
+		__entry->local_clock_non, __entry->local_clock_coef1, __entry->local_clock_coef2,
+		__entry->global_clock_non, __entry->global_clock_coef1, __entry->global_clock_coef2,
+		__entry->ret
+	)
+);
+
+TRACE_EVENT(sched_update_load_avg_blocked_se,
+	TP_PROTO(int cpu, pid_t pid, struct sched_avg *sa, struct dpt_task_struct *util_task, dpt_rq_t *dpt_rq),
+	TP_ARGS(cpu, pid, sa, util_task, dpt_rq),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(pid_t, pid)
+		__field(u32, util_sum)
+		__field(u32, util_cpu_sum)
+		__field(u32, util_coef1_sum)
+		__field(u32, util_coef2_sum)
+		__field(unsigned long, util_avg)
+		__field(unsigned long, util_cpu_avg)
+		__field(unsigned long, util_coef1_avg)
+		__field(unsigned long, util_coef2_avg)
+		__field(unsigned int, local_clock_cpu_ratio)
+		__field(unsigned int, local_clock_coef1_ratio)
+		__field(unsigned int, local_clock_coef2_ratio)
+		__field(unsigned int, global_clock_cpu_ratio)
+		__field(unsigned int, global_clock_coef1_ratio)
+		__field(unsigned int, global_clock_coef2_ratio)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->util_sum = sa->util_sum;
+		__entry->util_cpu_sum = util_task ? (util_task->util_cpu_sum) : 0;
+		__entry->util_coef1_sum = util_task ? (util_task->util_coef1_sum) : 0;
+		__entry->util_coef2_sum = util_task ? (util_task->util_coef2_sum) : 0;
+		__entry->util_avg = sa->util_avg;
+		__entry->util_cpu_avg = util_task ? (util_task->util_cpu_avg) : 0;
+		__entry->util_coef1_avg = util_task ? (util_task->util_coef1_avg) : 0;
+		__entry->util_coef2_avg = util_task ? (util_task->util_coef2_avg) : 0;
+		__entry->local_clock_cpu_ratio = dpt_rq->local_clock_ratio[NON_S];
+		__entry->local_clock_coef1_ratio = dpt_rq->local_clock_ratio[S_COEF1];
+		__entry->local_clock_coef2_ratio = dpt_rq->local_clock_ratio[S_COEF2];
+		__entry->global_clock_cpu_ratio = dpt_rq->global_clock_ratio[NON_S];
+		__entry->global_clock_coef1_ratio = dpt_rq->global_clock_ratio[S_COEF1];
+		__entry->global_clock_coef2_ratio = dpt_rq->global_clock_ratio[S_COEF2];
+	),
+
+	TP_printk(
+		"cpu=%d pid=%d util_sum=%u util_cpu_sum=%u util_coef1_sum=%u util_coef2_sum=%u util_avg=%lu util_cpu_avg=%lu util_coef1_avg=%lu util_coef2_avg=%lu local_clock_cpu_ratio=%u local_clock_coef1_ratio=%u local_clock_coef2_ratio=%u global_clock_cpu_ratio=%u global_clock_coef1_ratio=%u global_clock_coef2_ratio=%u",
+		__entry->cpu,
+		__entry->pid,
+		__entry->util_sum,
+		__entry->util_cpu_sum,
+		__entry->util_coef1_sum,
+		__entry->util_coef2_sum,
+		__entry->util_avg,
+		__entry->util_cpu_avg,
+		__entry->util_coef1_avg,
+		__entry->util_coef2_avg,
+		__entry->local_clock_cpu_ratio,
+		__entry->local_clock_coef1_ratio,
+		__entry->local_clock_coef2_ratio,
+		__entry->global_clock_cpu_ratio,
+		__entry->global_clock_coef1_ratio,
+		__entry->global_clock_coef2_ratio
+	)
+);
+
+TRACE_EVENT(sched_update_load_avg_se,
+	TP_PROTO(int cpu, pid_t pid, struct sched_avg *sa, struct dpt_task_struct *util_task, dpt_rq_t *dpt_rq),
+	TP_ARGS(cpu, pid, sa, util_task, dpt_rq),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(pid_t, pid)
+		__field(u32, util_sum)
+		__field(u32, util_cpu_sum)
+		__field(u32, util_coef1_sum)
+		__field(u32, util_coef2_sum)
+		__field(unsigned long, util_avg)
+		__field(unsigned long, util_cpu_avg)
+		__field(unsigned long, util_coef1_avg)
+		__field(unsigned long, util_coef2_avg)
+		__field(unsigned int, local_clock_cpu_ratio)
+		__field(unsigned int, local_clock_coef1_ratio)
+		__field(unsigned int, local_clock_coef2_ratio)
+		__field(unsigned int, global_clock_cpu_ratio)
+		__field(unsigned int, global_clock_coef1_ratio)
+		__field(unsigned int, global_clock_coef2_ratio)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->util_sum = sa->util_sum;
+		__entry->util_cpu_sum = util_task ? (util_task->util_cpu_sum) : 0;
+		__entry->util_coef1_sum = util_task ? (util_task->util_coef1_sum) : 0;
+		__entry->util_coef2_sum = util_task ? (util_task->util_coef2_sum) : 0;
+		__entry->util_avg = sa->util_avg;
+		__entry->util_cpu_avg = util_task ? (util_task->util_cpu_avg) : 0;
+		__entry->util_coef1_avg = util_task ? (util_task->util_coef1_avg) : 0;
+		__entry->util_coef2_avg = util_task ? (util_task->util_coef2_avg) : 0;
+		__entry->local_clock_cpu_ratio = dpt_rq->local_clock_ratio[NON_S];
+		__entry->local_clock_coef1_ratio = dpt_rq->local_clock_ratio[S_COEF1];
+		__entry->local_clock_coef2_ratio = dpt_rq->local_clock_ratio[S_COEF2];
+		__entry->global_clock_cpu_ratio = dpt_rq->global_clock_ratio[NON_S];
+		__entry->global_clock_coef1_ratio = dpt_rq->global_clock_ratio[S_COEF1];
+		__entry->global_clock_coef2_ratio = dpt_rq->global_clock_ratio[S_COEF2];
+	),
+
+	TP_printk(
+		"cpu=%d pid=%d util_sum=%u util_cpu_sum=%u util_coef1_sum=%u util_coef2_sum=%u util_avg=%lu util_cpu_avg=%lu util_coef1_avg=%lu util_coef2_avg=%lu local_clock_cpu_ratio=%u local_clock_coef1_ratio=%u local_clock_coef2_ratio=%u global_clock_cpu_ratio=%u global_clock_coef1_ratio=%u global_clock_coef2_ratio=%u",
+		__entry->cpu, __entry->pid,
+		__entry->util_sum, __entry->util_cpu_sum, __entry->util_coef1_sum, __entry->util_coef2_sum,
+		__entry->util_avg, __entry->util_cpu_avg, __entry->util_coef1_avg, __entry->util_coef2_avg,
+		__entry->local_clock_cpu_ratio, __entry->local_clock_coef1_ratio, __entry->local_clock_coef2_ratio,
+		__entry->global_clock_cpu_ratio, __entry->global_clock_coef1_ratio, __entry->global_clock_coef2_ratio
+	)
+);
+
+TRACE_EVENT(sched_update_load_avg_cfs_rq,
+	TP_PROTO(int cpu, struct sched_avg *sa, struct dpt_task_struct *util_cfs, dpt_rq_t *dpt_rq),
+	TP_ARGS(cpu, sa, util_cfs, dpt_rq),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(u32, util_sum)
+		__field(u32, util_cpu_sum)
+		__field(u32, util_coef1_sum)
+		__field(u32, util_coef2_sum)
+		__field(unsigned long, util_avg)
+		__field(unsigned long, util_cpu_avg)
+		__field(unsigned long, util_coef1_avg)
+		__field(unsigned long, util_coef2_avg)
+		__field(unsigned int, local_clock_cpu_ratio)
+		__field(unsigned int, local_clock_coef1_ratio)
+		__field(unsigned int, local_clock_coef2_ratio)
+		__field(unsigned int, global_clock_cpu_ratio)
+		__field(unsigned int, global_clock_coef1_ratio)
+		__field(unsigned int, global_clock_coef2_ratio)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->util_sum = sa->util_sum;
+		__entry->util_cpu_sum = util_cfs ? (util_cfs->util_cpu_sum) : 0;
+		__entry->util_coef1_sum = util_cfs ? (util_cfs->util_coef1_sum) : 0;
+		__entry->util_coef2_sum = util_cfs ? (util_cfs->util_coef2_sum) : 0;
+		__entry->util_avg = sa->util_avg;
+		__entry->util_cpu_avg = util_cfs ? (util_cfs->util_cpu_avg) : 0;
+		__entry->util_coef1_avg = util_cfs ? (util_cfs->util_coef1_avg) : 0;
+		__entry->util_coef2_avg = util_cfs ? (util_cfs->util_coef2_avg) : 0;
+		__entry->local_clock_cpu_ratio = dpt_rq->local_clock_ratio[NON_S];
+		__entry->local_clock_coef1_ratio = dpt_rq->local_clock_ratio[S_COEF1];
+		__entry->local_clock_coef2_ratio = dpt_rq->local_clock_ratio[S_COEF2];
+		__entry->global_clock_cpu_ratio = dpt_rq->global_clock_ratio[NON_S];
+		__entry->global_clock_coef1_ratio = dpt_rq->global_clock_ratio[S_COEF1];
+		__entry->global_clock_coef2_ratio = dpt_rq->global_clock_ratio[S_COEF2];
+	),
+
+	TP_printk(
+		"cpu=%d util_sum=%u util_cpu_sum=%u util_coef1_sum=%u util_coef2_sum=%u util_avg=%lu util_cpu_avg=%lu util_coef1_avg=%lu util_coef2_avg=%lu local_clock_cpu_ratio=%u local_clock_coef1_ratio=%u local_clock_coef2_ratio=%u global_clock_cpu_ratio=%u global_clock_coef1_ratio=%u global_clock_coef2_ratio=%u",
+		__entry->cpu,
+		__entry->util_sum, __entry->util_cpu_sum, __entry->util_coef1_sum, __entry->util_coef2_sum,
+		__entry->util_avg, __entry->util_cpu_avg, __entry->util_coef1_avg, __entry->util_coef2_avg,
+		__entry->local_clock_cpu_ratio, __entry->local_clock_coef1_ratio, __entry->local_clock_coef2_ratio,
+		__entry->global_clock_cpu_ratio, __entry->global_clock_coef1_ratio, __entry->global_clock_coef2_ratio
+	)
+);
+
+TRACE_EVENT(sched_update_rt_rq_load_avg_internal,
+	TP_PROTO(int cpu, struct sched_avg *sa, struct dpt_task_struct *util_rt, dpt_rq_t *dpt_rq),
+	TP_ARGS(cpu, sa, util_rt, dpt_rq),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(u32, util_sum)
+		__field(u32, util_cpu_sum)
+		__field(u32, util_coef1_sum)
+		__field(u32, util_coef2_sum)
+		__field(unsigned long, util_avg)
+		__field(unsigned long, util_cpu_avg)
+		__field(unsigned long, util_coef1_avg)
+		__field(unsigned long, util_coef2_avg)
+		__field(unsigned int, local_clock_cpu_ratio)
+		__field(unsigned int, local_clock_coef1_ratio)
+		__field(unsigned int, local_clock_coef2_ratio)
+		__field(unsigned int, global_clock_cpu_ratio)
+		__field(unsigned int, global_clock_coef1_ratio)
+		__field(unsigned int, global_clock_coef2_ratio)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->util_sum = sa->util_sum;
+		__entry->util_cpu_sum = util_rt->util_cpu_sum;
+		__entry->util_coef1_sum = util_rt->util_coef1_sum;
+		__entry->util_coef2_sum = util_rt->util_coef2_sum;
+		__entry->util_avg = sa->util_avg;
+		__entry->util_cpu_avg = util_rt->util_cpu_avg;
+		__entry->util_coef1_avg = util_rt->util_coef1_avg;
+		__entry->util_coef2_avg = util_rt->util_coef2_avg;
+		__entry->local_clock_cpu_ratio = dpt_rq->local_clock_ratio[NON_S];
+		__entry->local_clock_coef1_ratio = dpt_rq->local_clock_ratio[S_COEF1];
+		__entry->local_clock_coef2_ratio = dpt_rq->local_clock_ratio[S_COEF2];
+		__entry->global_clock_cpu_ratio = dpt_rq->global_clock_ratio[NON_S];
+		__entry->global_clock_coef1_ratio = dpt_rq->global_clock_ratio[S_COEF1];
+		__entry->global_clock_coef2_ratio = dpt_rq->global_clock_ratio[S_COEF2];
+	),
+
+	TP_printk(
+		"cpu=%d util_sum=%u util_cpu_sum=%u util_coef1_sum=%u util_coef2_sum=%u util_avg=%lu util_cpu_avg=%lu util_coef1_avg=%lu util_coef2_avg=%lu local_clock_cpu_ratio=%u local_clock_coef1_ratio=%u local_clock_coef2_ratio=%u global_clock_cpu_ratio=%u global_clock_coef1_ratio=%u global_clock_coef2_ratio=%u",
+		__entry->cpu,
+		__entry->util_sum, __entry->util_cpu_sum, __entry->util_coef1_sum, __entry->util_coef2_sum,
+		__entry->util_avg, __entry->util_cpu_avg, __entry->util_coef1_avg, __entry->util_coef2_avg,
+		__entry->local_clock_cpu_ratio, __entry->local_clock_coef1_ratio, __entry->local_clock_coef2_ratio,
+		__entry->global_clock_cpu_ratio, __entry->global_clock_coef1_ratio, __entry->global_clock_coef2_ratio
+	)
+);
+
+TRACE_EVENT(sched_attach_entity_load_avg,
+	TP_PROTO(int cpu, pid_t pid, struct dpt_task_struct *util_cfs, struct dpt_task_struct *util_task),
+	TP_ARGS(cpu, pid, util_cfs, util_task),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(pid_t, pid)
+		__field(u32, util_cfs_cpu_sum)
+		__field(u32, util_cfs_coef1_sum)
+		__field(u32, util_cfs_coef2_sum)
+		__field(unsigned long, util_cfs_cpu_avg)
+		__field(unsigned long, util_cfs_coef1_avg)
+		__field(unsigned long, util_cfs_coef2_avg)
+		__field(u32, util_task_cpu_sum)
+		__field(u32, util_task_coef1_sum)
+		__field(u32, util_task_coef2_sum)
+		__field(unsigned long, util_task_cpu_avg)
+		__field(unsigned long, util_task_coef1_avg)
+		__field(unsigned long, util_task_coef2_avg)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->util_cfs_cpu_sum = util_cfs->util_cpu_sum;
+		__entry->util_cfs_coef1_sum = util_cfs->util_coef1_sum;
+		__entry->util_cfs_coef2_sum = util_cfs->util_coef2_sum;
+		__entry->util_cfs_cpu_avg = util_cfs->util_cpu_avg;
+		__entry->util_cfs_coef1_avg = util_cfs->util_coef1_avg;
+		__entry->util_cfs_coef2_avg = util_cfs->util_coef2_avg;
+		__entry->util_task_cpu_sum = util_task->util_cpu_sum;
+		__entry->util_task_coef1_sum = util_task->util_coef1_sum;
+		__entry->util_task_coef2_sum = util_task->util_coef2_sum;
+		__entry->util_task_cpu_avg = util_task->util_cpu_avg;
+		__entry->util_task_coef1_avg = util_task->util_coef1_avg;
+		__entry->util_task_coef2_avg = util_task->util_coef2_avg;
+	),
+
+	TP_printk(
+		"cpu=%d pid=%d util_cfs_cpu_sum=%u util_cfs_coef1_sum=%u util_cfs_coef2_sum=%u util_cfs_cpu_avg=%lu util_cfs_coef1_avg=%lu util_cfs_coef2_avg=%lu util_task_cpu_sum=%u util_task_coef1_sum=%u util_task_coef2_sum=%u util_task_cpu_avg=%lu util_task_coef1_avg=%lu util_task_coef2_avg=%lu",
+		__entry->cpu, __entry->pid,
+		__entry->util_cfs_cpu_sum, __entry->util_cfs_coef1_sum, __entry->util_cfs_coef2_sum,
+		__entry->util_cfs_cpu_avg, __entry->util_cfs_coef1_avg, __entry->util_cfs_coef2_avg,
+		__entry->util_task_cpu_sum, __entry->util_task_coef1_sum, __entry->util_task_coef2_sum,
+		__entry->util_task_cpu_avg, __entry->util_task_coef1_avg, __entry->util_task_coef2_avg
+	)
+);
+
+TRACE_EVENT(sched_detach_entity_load_avg,
+	TP_PROTO(int cpu, pid_t pid, struct dpt_task_struct *util_cfs, struct dpt_task_struct *util_task),
+	TP_ARGS(cpu, pid, util_cfs, util_task),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(pid_t, pid)
+		__field(u32, util_cfs_cpu_sum)
+		__field(u32, util_cfs_coef1_sum)
+		__field(u32, util_cfs_coef2_sum)
+		__field(unsigned long, util_cfs_cpu_avg)
+		__field(unsigned long, util_cfs_coef1_avg)
+		__field(unsigned long, util_cfs_coef2_avg)
+		__field(u32, util_task_cpu_sum)
+		__field(u32, util_task_coef1_sum)
+		__field(u32, util_task_coef2_sum)
+		__field(unsigned long, util_task_cpu_avg)
+		__field(unsigned long, util_task_coef1_avg)
+		__field(unsigned long, util_task_coef2_avg)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->util_cfs_cpu_sum = util_cfs->util_cpu_sum;
+		__entry->util_cfs_coef1_sum = util_cfs->util_coef1_sum;
+		__entry->util_cfs_coef2_sum = util_cfs->util_coef2_sum;
+		__entry->util_cfs_cpu_avg = util_cfs->util_cpu_avg;
+		__entry->util_cfs_coef1_avg = util_cfs->util_coef1_avg;
+		__entry->util_cfs_coef2_avg = util_cfs->util_coef2_avg;
+		__entry->util_task_cpu_sum = util_task->util_cpu_sum;
+		__entry->util_task_coef1_sum = util_task->util_coef1_sum;
+		__entry->util_task_coef2_sum = util_task->util_coef2_sum;
+		__entry->util_task_cpu_avg = util_task->util_cpu_avg;
+		__entry->util_task_coef1_avg = util_task->util_coef1_avg;
+		__entry->util_task_coef2_avg = util_task->util_coef2_avg;
+	),
+
+	TP_printk(
+		"cpu=%d pid=%d util_cfs_cpu_sum=%u util_cfs_coef1_sum=%u util_cfs_coef2_sum=%u util_cfs_cpu_avg=%lu util_cfs_coef1_avg=%lu util_cfs_coef2_avg=%lu util_task_cpu_sum=%u util_task_coef1_sum=%u util_task_coef2_sum=%u util_task_cpu_avg=%lu util_task_coef1_avg=%lu util_task_coef2_avg=%lu",
+		__entry->cpu, __entry->pid,
+		__entry->util_cfs_cpu_sum, __entry->util_cfs_coef1_sum, __entry->util_cfs_coef2_sum,
+		__entry->util_cfs_cpu_avg, __entry->util_cfs_coef1_avg, __entry->util_cfs_coef2_avg,
+		__entry->util_task_cpu_sum, __entry->util_task_coef1_sum, __entry->util_task_coef2_sum,
+		__entry->util_task_cpu_avg, __entry->util_task_coef1_avg, __entry->util_task_coef2_avg
+	)
+);
+
+TRACE_EVENT(sched_max_util_dpt_v2,
+
+	TP_PROTO(const char *domain_name, int idx, int dst_cpu, int dst_idx,
+		unsigned long max_freq, int cpu, unsigned long cpu_util, unsigned long coef1_util, unsigned long coef2_util),
+
+	TP_ARGS(domain_name, idx, dst_cpu, dst_idx, max_freq, cpu, cpu_util, coef1_util, coef2_util),
+
+	TP_STRUCT__entry(
+		__string(domain_name, domain_name)
+		__field(int, idx)
+		__field(int, dst_cpu)
+		__field(int, dst_idx)
+		__field(unsigned long, max_freq)
+		__field(int, cpu)
+		__field(unsigned long, cpu_util)
+		__field(unsigned long, coef1_util)
+		__field(unsigned long, coef2_util)
+		),
+
+	TP_fast_assign(
+		__assign_str(domain_name);
+		__entry->idx   = idx;
+		__entry->dst_cpu    = dst_cpu;
+		__entry->dst_idx    = dst_idx;
+		__entry->max_freq   = max_freq;
+		__entry->cpu        = cpu;
+		__entry->cpu_util   = cpu_util;
+		__entry->coef1_util   = coef1_util;
+		__entry->coef2_util = coef2_util;
+		),
+
+	TP_printk("%s_idx=%d dst_cpu=%d dst_idx=%d %s_max_freq[%s_idx][dst_idx]=%lu cpu=%d cpu_util=%ld coef1_util=%ld coef2_util=%ld",
+		__get_str(domain_name),
+		__entry->idx,
+		__entry->dst_cpu,
+		__entry->dst_idx,
+		__get_str(domain_name),
+		__get_str(domain_name),
+		__entry->max_freq,
+		__entry->cpu,
+		__entry->cpu_util,
+		__entry->coef1_util,
+		__entry->coef2_util)
+);
+
+TRACE_EVENT(sched_enqueue_task_fair,
+	TP_PROTO(int cpu, pid_t pid, struct dpt_task_struct *util_cfs, struct dpt_task_struct *util_task),
+	TP_ARGS(cpu, pid, util_cfs, util_task),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(pid_t, pid)
+		__field(unsigned int, util_cfs_cpu_est)
+		__field(unsigned int, util_cfs_coef1_est)
+		__field(unsigned int, util_cfs_coef2_est)
+		__field(unsigned int, util_task_cpu_est)
+		__field(unsigned int, util_task_coef1_est)
+		__field(unsigned int, util_task_coef2_est)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->util_cfs_cpu_est = util_cfs->util_cpu_est & UTIL_EST_MASK;
+		__entry->util_cfs_coef1_est = util_cfs->util_coef1_est & UTIL_EST_MASK;
+		__entry->util_cfs_coef2_est = util_cfs->util_coef2_est & UTIL_EST_MASK;
+		__entry->util_task_cpu_est = util_task->util_cpu_est & UTIL_EST_MASK;
+		__entry->util_task_coef1_est = util_task->util_coef1_est & UTIL_EST_MASK;
+		__entry->util_task_coef2_est = util_task->util_coef2_est & UTIL_EST_MASK;
+	),
+
+	TP_printk(
+		"cpu=%d pid=%d util_cfs_cpu_est=%u util_cfs_coef1_est=%u util_cfs_coef2_est=%u util_task_cpu_est=%u util_task_coef1_est=%u util_task_coef2_est=%u",
+		__entry->cpu, __entry->pid,
+		__entry->util_cfs_cpu_est, __entry->util_cfs_coef1_est, __entry->util_cfs_coef2_est,
+		__entry->util_task_cpu_est, __entry->util_task_coef1_est, __entry->util_task_coef2_est
+	)
+);
+
+TRACE_EVENT(sched_dequeue_task_fair,
+	TP_PROTO(int cpu, pid_t pid, struct dpt_task_struct *util_cfs, struct dpt_task_struct *util_task),
+	TP_ARGS(cpu, pid, util_cfs, util_task),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(pid_t, pid)
+		__field(unsigned int, util_cfs_cpu_est)
+		__field(unsigned int, util_cfs_coef1_est)
+		__field(unsigned int, util_cfs_coef2_est)
+		__field(unsigned int, util_task_cpu_est)
+		__field(unsigned int, util_task_coef1_est)
+		__field(unsigned int, util_task_coef2_est)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = pid;
+		__entry->util_cfs_cpu_est = util_cfs->util_cpu_est & UTIL_EST_MASK;
+		__entry->util_cfs_coef1_est = util_cfs->util_coef1_est & UTIL_EST_MASK;
+		__entry->util_cfs_coef2_est = util_cfs->util_coef2_est & UTIL_EST_MASK;
+		__entry->util_task_cpu_est = util_task->util_cpu_est & UTIL_EST_MASK;
+		__entry->util_task_coef1_est = util_task->util_coef1_est & UTIL_EST_MASK;
+		__entry->util_task_coef2_est = util_task->util_coef2_est & UTIL_EST_MASK;
+	),
+
+	TP_printk(
+		"cpu=%d pid=%d util_cfs_cpu_est=%u util_cfs_coef1_est=%u util_cfs_coef2_est=%u util_task_cpu_est=%u util_task_coef1_est=%u util_task_coef2_est=%u",
+		__entry->cpu, __entry->pid,
+		__entry->util_cfs_cpu_est, __entry->util_cfs_coef1_est, __entry->util_cfs_coef2_est,
+		__entry->util_task_cpu_est, __entry->util_task_coef1_est, __entry->util_task_coef2_est
+	)
+);
+
+TRACE_EVENT(sched_remove_entity_load_avg,
+	TP_PROTO(int cpu, pid_t pid, dpt_rq_t *dpt_rq, struct dpt_task_struct *util_task),
+	TP_ARGS(cpu, pid, dpt_rq, util_task),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(pid_t, pid)
+		__field(int, removed_nr)
+		__field(unsigned long, removed_util_cpu_avg)
+		__field(unsigned long, removed_util_coef1_avg)
+		__field(unsigned long, removed_util_coef2_avg)
+		__field(unsigned long, util_cpu_avg)
+		__field(unsigned long, util_coef1_avg)
+		__field(unsigned long, util_coef2_avg)
+	),
+	TP_fast_assign(
+		__entry->cpu					= cpu;
+		__entry->pid					= pid;
+		__entry->removed_nr				= dpt_rq->removed_nr;
+		__entry->removed_util_cpu_avg	= dpt_rq->removed_util_cpu_avg;
+		__entry->removed_util_coef1_avg	= dpt_rq->removed_util_coef1_avg;
+		__entry->removed_util_coef2_avg	= dpt_rq->removed_util_coef2_avg;
+		__entry->util_cpu_avg			= util_task->util_cpu_avg;
+		__entry->util_coef1_avg			= util_task->util_coef1_avg;
+		__entry->util_coef2_avg			= util_task->util_coef2_avg;
+	),
+
+	TP_printk(
+		"cpu=%d pid=%d removed_nr=%d removed_util_cpu_avg=%lu removed_util_coef1_avg=%lu removed_util_coef2_avg=%lu util_cpu_avg=%lu util_coef1_avg=%lu util_coef2_avg=%lu",
+		__entry->cpu,
+		__entry->pid,
+		__entry->removed_nr,
+		__entry->removed_util_cpu_avg,
+		__entry->removed_util_coef1_avg,
+		__entry->removed_util_coef2_avg,
+		__entry->util_cpu_avg, __entry->util_coef1_avg, __entry->util_coef2_avg
+	)
+);
+
+TRACE_EVENT(sched_util_est_update,
+	TP_PROTO(pid_t pid, unsigned int util_est, struct dpt_task_struct *util_task),
+	TP_ARGS(pid, util_est, util_task),
+	TP_STRUCT__entry(
+		__field(pid_t, pid)
+		__field(unsigned int, util_est)
+		__field(unsigned int, util_cpu_est)
+		__field(unsigned int, util_coef1_est)
+		__field(unsigned int, util_coef2_est)
+	),
+	TP_fast_assign(
+		__entry->pid				= pid;
+		__entry->util_est			= util_est;
+		__entry->util_cpu_est			= util_task->util_cpu_est & UTIL_EST_MASK;
+		__entry->util_coef1_est			= util_task->util_coef1_est & UTIL_EST_MASK;
+		__entry->util_coef2_est			= util_task->util_coef2_est & UTIL_EST_MASK;
+	),
+
+	TP_printk(
+		"pid=%d util_est=%u util_cpu_est=%u util_coef1_est=%u util_coef2_est=%u",
+		__entry->pid,
+		__entry->util_est & ~UTIL_AVG_UNCHANGED,
+		__entry->util_cpu_est, __entry->util_coef1_est, __entry->util_coef2_est
+	)
+);
+
+TRACE_EVENT(sched_dpt_v2_spare_capacity,
+
+	TP_PROTO(int cpu, 
+		long spare_cap, unsigned long cpu_cap, unsigned long cpu_util, unsigned long cpu_util_local, unsigned long total_util_local,
+		long spare_cap_without_p, unsigned long cpu_cap_without_p, unsigned long cpu_util_without_p, unsigned long cpu_util_local_without_p, unsigned long total_util_local_withuot_p,
+		int *values_for_debug),
+
+	TP_ARGS(cpu, spare_cap, cpu_cap, cpu_util, cpu_util_local, total_util_local,
+		spare_cap_without_p, cpu_cap_without_p, cpu_util_without_p, cpu_util_local_without_p, total_util_local_withuot_p, values_for_debug),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(long, spare_cap)
+		__field(unsigned long, cpu_cap)
+		__field(unsigned long, cpu_util)
+		__field(unsigned long, cpu_util_local)
+		__field(unsigned long, total_util_local)
+		__field(unsigned long, total_util_global)
+		__field(int, IPC_scaling_factor)
+		__field(int, ceiling)
+		__field(long, spare_cap_without_p)
+		__field(unsigned long, cpu_cap_without_p)
+		__field(unsigned long, cpu_util_without_p)
+		__field(unsigned long, cpu_util_local_without_p)
+		__field(unsigned long, total_util_local_withuot_p)
+		__field(unsigned long, total_util_global_without_p)
+		),
+
+	TP_fast_assign(
+		__entry->cpu        = cpu;
+		__entry->spare_cap        = spare_cap;
+		__entry->cpu_cap        = cpu_cap;
+		__entry->cpu_util        = cpu_util;
+		__entry->cpu_util_local        = cpu_util_local;
+		__entry->total_util_local        = total_util_local;
+		__entry->total_util_global        = values_for_debug[1];
+		__entry->IPC_scaling_factor        = values_for_debug[0];
+		__entry->ceiling        = values_for_debug[3];
+		__entry->spare_cap_without_p        = spare_cap_without_p;
+		__entry->cpu_cap_without_p        = cpu_cap_without_p;
+		__entry->cpu_util_without_p        = cpu_util_without_p;
+		__entry->cpu_util_local_without_p        	= cpu_util_local_without_p;
+		__entry->total_util_local_withuot_p        = total_util_local_withuot_p;
+		__entry->total_util_global_without_p        = values_for_debug[2];
+		),
+
+	TP_printk("cpu=%d spare_cap=%ld cpu_cap=%lu cpu_util=%lu cpu_util_local=%lu total_util_local=%lu total_util_global=%lu IPC_scaling_factor=%d ceiling_shift10=%d spare_cap_without_p=%ld cpu_cap_without_p=%lu cpu_util_without_p=%lu cpu_util_local_without_p=%lu total_util_local_withuot_p=%lu total_util_global_without_p=%lu",
+		__entry->cpu,
+		__entry->spare_cap,
+		__entry->cpu_cap,
+		__entry->cpu_util,
+		__entry->cpu_util_local,
+		__entry->total_util_local,
+		__entry->total_util_global,
+		__entry->IPC_scaling_factor,
+		__entry->ceiling,
+		__entry->spare_cap_without_p,
+		__entry->cpu_cap_without_p,
+		__entry->cpu_util_without_p,
+		__entry->cpu_util_local_without_p,
+		__entry->total_util_local_withuot_p,
+		__entry->total_util_global_without_p)
+);
+
+TRACE_EVENT(sched_util_fits_capacity_dpt_v2,
+	TP_PROTO(int cpu, int fit, unsigned long capacity, unsigned int sugov_margin,
+	unsigned long cpu_util_prime, unsigned long uclamp_min, unsigned long uclamp_max,
+	unsigned long *utils_for_debug, unsigned long updown_ceiling, unsigned long orig_capacity),
+	TP_ARGS(cpu, fit, capacity, sugov_margin, cpu_util_prime, uclamp_min, uclamp_max, utils_for_debug, updown_ceiling, orig_capacity),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, fit)
+		__field(unsigned long, capacity)
+		__field(unsigned int, sugov_margin)
+		__field(unsigned long, cpu_util_prime)
+		__field(unsigned long, rescaled_coef1)
+		__field(unsigned long, rescaled_coef2)
+		__field(unsigned long, uclamp_min)
+		__field(unsigned long, uclamp_max)
+		__field(unsigned long, cpu_util)
+		__field(unsigned long, cpu_util_uclamped)
+		__field(unsigned long, coef1_util)
+		__field(unsigned long, coef2_util)
+		__field(unsigned long, updown_ceiling)
+		__field(unsigned long, orig_capacity)
+	),
+	TP_fast_assign(
+		__entry->cpu					= cpu;
+		__entry->fit			= fit;
+		__entry->capacity			= capacity;
+		__entry->sugov_margin			= sugov_margin;
+		__entry->cpu_util_prime			= cpu_util_prime;
+		__entry->rescaled_coef1			= rescale_coef1_util_or_ratio_hook ? rescale_coef1_util_or_ratio_hook(utils_for_debug[2], RESCALE_UTIL) : 0;
+		__entry->rescaled_coef2			= rescale_coef2_util_or_ratio_hook ? rescale_coef2_util_or_ratio_hook(utils_for_debug[3], RESCALE_UTIL) : 0;
+		__entry->uclamp_min			= uclamp_min;
+		__entry->uclamp_max			= uclamp_max;
+		__entry->cpu_util			= utils_for_debug[0];
+		__entry->cpu_util_uclamped			= utils_for_debug[1];
+		__entry->coef1_util			= utils_for_debug[2];
+		__entry->coef2_util			= utils_for_debug[3];
+		__entry->updown_ceiling		= updown_ceiling;
+		__entry->orig_capacity			= orig_capacity;
+	),
+
+	TP_printk(
+		"cpu=%d fit=%d capacity=%lu sugov_margin=%u cpu_util_prime=%lu rescaled_coef1=%lu rescaled_coef2=%lu uclamp_min=%lu uclamp_max=%lu cpu_util=%lu cpu_util_uclamped=%lu coef1_util=%lu coef2_util=%lu updown_ceiling=%lu orig_capacity=%lu",
+		__entry->cpu,
+		__entry->fit,
+		__entry->capacity,
+		__entry->sugov_margin,
+		__entry->cpu_util_prime,
+		__entry->rescaled_coef1,
+		__entry->rescaled_coef2,
+		__entry->uclamp_min,
+		__entry->uclamp_max,
+		__entry->cpu_util,
+		__entry->cpu_util_uclamped,
+		__entry->coef1_util,
+		__entry->coef2_util,
+		__entry->updown_ceiling,
+		__entry->orig_capacity
+	)
+);
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

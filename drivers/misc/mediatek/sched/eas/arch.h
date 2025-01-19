@@ -10,6 +10,13 @@
 #include <thermal_interface.h>
 #endif
 
+void (*init_swpm_pwr_coef_by_gear_hook) (int mode, unsigned int gear_id);
+EXPORT_SYMBOL(init_swpm_pwr_coef_by_gear_hook);
+void (*set_swpm_pwr_coef_hook) (unsigned int gear_id, unsigned int *vals, unsigned int vals_size);
+EXPORT_SYMBOL(set_swpm_pwr_coef_hook);
+void (*get_swpm_pwr_coef_hook) (unsigned int gear_id, unsigned int *vals, unsigned int vals_size);
+EXPORT_SYMBOL(get_swpm_pwr_coef_hook);
+
 unsigned long (*get_freq_volt_hook)(int cpu, unsigned long freq, int quant, int wl);
 EXPORT_SYMBOL(get_freq_volt_hook);
 
@@ -21,17 +28,35 @@ unsigned long pd_get_freq_volt(int cpu, unsigned long freq, int quant, int wl)
 	return 0;
 }
 
+unsigned long (*get_pwr_scale_hook)(void __iomem *base, unsigned int cpu);
+EXPORT_SYMBOL(get_pwr_scale_hook);
+
+int get_pwr_scale(int cpu)
+{
+	int power_scaling_factor = -1;
+
+	if (get_cpu_power_scaling_factor_hook) {
+		get_cpu_power_scaling_factor_hook(cpu, &power_scaling_factor);
+		// trace_printk("cpu=%d power_scaling_factor=0x%x\n", cpu, power_scaling_factor);
+		return power_scaling_factor;
+	}
+
+	return -1;
+}
+
 unsigned long (*get_cpu_power_hook)(unsigned int mtk_em, unsigned int get_lkg,
 	int quant, int wl, int *dpt_pwr_eff_val, int *val_s, int val_m, int r_o,
 	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
-	unsigned long *data, unsigned long *output);
+	unsigned long *data, unsigned long *output, int *swpm_vars,
+	unsigned long cpu_util_local, unsigned long total_util_local, int IPC_scaling_factor);
 EXPORT_SYMBOL(get_cpu_power_hook);
 
 unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 	int quant, int wl, int *val_s, int r_o, int caller,
 	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
 	unsigned long *data, unsigned long *output, struct em_perf_domain *pd,
-	unsigned long freq, unsigned long max_util)
+	unsigned long freq, unsigned long max_util,
+	int dpt_v2_swpm_support, unsigned int dpt_v2_sratio, dpt_v2_cap_params_struct dpt_v2_cap_params)
 {
 	unsigned long sum_util;
 	struct em_perf_state *ps;
@@ -39,15 +64,35 @@ unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 
 	if (get_cpu_power_hook) {
 		unsigned long result;
-		int dpt_pwr_eff_val[5];
+		int dpt_pwr_eff_val[6];
+		int swpm_vars[10];
+
+		swpm_vars[7] = dpt_v2_swpm_support;
+		swpm_vars[8] = dpt_v2_sratio;
+		if (sched_dpt_v2_swpm_mode_get() == 2)
+			swpm_vars[2] = get_pwr_scale(this_cpu);
 
 		result = get_cpu_power_hook(mtk_em, get_lkg, quant, wl,
 				dpt_pwr_eff_val, val_s, val_m, r_o,
-				this_cpu, cpu_temp, opp, cpumask_val, data, output);
+				this_cpu, cpu_temp, opp, cpumask_val, data, output, swpm_vars,
+				dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local, dpt_v2_cap_params.IPC_scaling_factor);
+
+		// TODO
+		// if (trace_sched_dptv2_swpm_enabled()) { 
+		// 	if (sched_dpt_v2_swpm_mode_get() == 1)
+		// 		trace_sched_dptv2_swpm(this_cpu, swpm_vars, "act_pwr", "idle_pwr", "dc_term");
+		// 	else if (sched_dpt_v2_swpm_mode_get() == 2)
+		// 		trace_sched_dptv2_swpm(this_cpu, swpm_vars, "dhrystone_pwr", "cache_miss_pwr", "pwr_scale");
+		// 	else
+		// 		trace_sched_dptv2_swpm(this_cpu, swpm_vars, "undefined", "undefined", "undefined");
+		// }
+
+		// trace_printk("dpt_v2_swpm_support=%lu act_pwr=%d idle_pwr=%d dc_term=%d freq=%d volt=%d capacity=%d dyn_pwr=%d pwr_eff=%d orig_pwr_eff=%d\n",
+		// 	data[5], swpm_vars[0], swpm_vars[1], swpm_vars[2], swpm_vars[3], swpm_vars[4], swpm_vars[5], swpm_vars[6], swpm_vars[6]/swpm_vars[5], swpm_vars[9]);
 
 		record_sched_pd_opp2pwr_eff(this_cpu, opp, quant, wl,
 			dpt_pwr_eff_val[0], dpt_pwr_eff_val[1], dpt_pwr_eff_val[2],
-			dpt_pwr_eff_val[3], dpt_pwr_eff_val[4], val_s, r_o, caller);
+			dpt_pwr_eff_val[3], dpt_pwr_eff_val[4], dpt_pwr_eff_val[5], val_s, r_o, caller);
 
 		return result;
 	}
@@ -60,29 +105,31 @@ unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 }
 
 unsigned long (*get_cpu_pwr_eff_hook)(int cpu, unsigned long pd_freq, int quant, int wl,
-	int *dpt_opp_val, int *dpt_pwr_eff_val, int *val_s, int val_m, int r_o,
-	int temperature, unsigned long extern_volt, unsigned long *output);
+	unsigned long  *dpt_opp_val, int *dpt_pwr_eff_val, int *val_s, int val_m, int r_o,
+	int temperature, unsigned long extern_volt, unsigned long *output,
+	int dpt_v2_support, dpt_v2_cap_params_struct dpt_v2_cap_params);
 EXPORT_SYMBOL(get_cpu_pwr_eff_hook);
 
 unsigned long get_cpu_pwr_eff(int cpu, unsigned long pd_freq,
 	int quant, int wl, int *val_s, int r_o, int caller,
-	int temperature, unsigned long extern_volt, unsigned long *output)
+	int temperature, unsigned long extern_volt, unsigned long *output,
+	int dpt_v2_support, dpt_v2_cap_params_struct dpt_v2_cap_params)
 {
 	if (get_cpu_pwr_eff_hook) {
 		unsigned long result;
-		int dpt_opp_val[3];
-		int dpt_pwr_eff_val[5];
+		unsigned long dpt_opp_val[3];
+		int dpt_pwr_eff_val[6];
 
 		result = get_cpu_pwr_eff_hook(cpu, pd_freq, quant, wl,
 				dpt_opp_val, dpt_pwr_eff_val, val_s, val_m, r_o,
-				temperature, extern_volt, output);
+				temperature, extern_volt, output, dpt_v2_support, dpt_v2_cap_params);
 
 		record_sched_pd_opp2cap(cpu, output[0], quant, wl,
 			dpt_opp_val[0], dpt_opp_val[1], dpt_opp_val[2], val_s, r_o, caller);
 
 		record_sched_pd_opp2pwr_eff(cpu, output[0], quant, wl,
 			dpt_pwr_eff_val[0], dpt_pwr_eff_val[1], dpt_pwr_eff_val[2],
-			dpt_pwr_eff_val[3], dpt_pwr_eff_val[4], val_s, r_o, caller);
+			dpt_pwr_eff_val[3], dpt_pwr_eff_val[4], dpt_pwr_eff_val[5], val_s, r_o, caller);
 
 		return result;
 	}

@@ -231,7 +231,7 @@ int find_vip_backup_cpu(struct task_struct *p, struct cpumask *allowed_cpu_mask,
 		if (cpu == target)
 			break;
 
-		if (task_fits_capacity(p, cpu_cap, get_adaptive_margin(cpu)))
+		if (task_fits_capacity(p, cpu_cap, cpu, get_adaptive_margin(cpu)))
 			return cpu;
 
 		if (cpu_cap > best_cap) {
@@ -1217,10 +1217,23 @@ void init_task_gear_hints(struct task_struct *p)
 	ghts->reverse    = 0;
 }
 
+void init_dpt_v2_task_struct(struct task_struct *p)
+{
+	struct dpt_task_struct *dts = &((struct mtk_task *) p->android_vendor_data1)->dpt_task;
+
+	dts->util_cpu_sum = 0;
+	dts->util_coef2_sum = 0;
+	dts->util_cpu_avg = 0;
+	dts->util_coef2_avg = 0;
+	dts->util_cpu_est = 0;
+	dts->util_coef2_est = 0;
+}
+
 void vip_new_tasks(void *unused, struct task_struct *new)
 {
 	init_vip_task_struct(new);
 	init_task_gear_hints(new);
+	init_dpt_v2_task_struct(new);
 }
 
 void __init_vip_group(struct cgroup_subsys_state *css)
@@ -1375,6 +1388,7 @@ void vip_init(void)
 	for_each_process_thread(g, p) {
 		init_vip_task_struct(p);
 		init_task_gear_hints(p);
+		init_dpt_v2_task_struct(p);
 	}
 	read_unlock(&tasklist_lock);
 
@@ -1396,6 +1410,7 @@ void vip_init(void)
 		 * so initial it's value to prevent KE.
 		 */
 		init_vip_task_struct(cpu_rq(cpu)->idle);
+		init_dpt_v2_task_struct(cpu_rq(cpu)->idle);
 	}
 
 	tgid_vip_status = 0;

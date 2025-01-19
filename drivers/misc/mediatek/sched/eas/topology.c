@@ -33,9 +33,11 @@ static int freq_limit_max_notifier_call(struct notifier_block *nb,
 	}
 
 	for_each_possible_cpu(cpu) {
-		if (topology_cluster_id(cpu) == gear_idx)
+		if (topology_cluster_id(cpu) == gear_idx) {
+			per_cpu(max_freq, cpu) = freq_limit_max;
 			WRITE_ONCE(per_cpu(max_freq_scale, cpu),
-				pd_get_freq_util(cpu, freq_limit_max));
+				pd_freq2util(cpu, freq_limit_max, true, 0, NULL, true));
+		}
 	}
 
 	return 0;
@@ -56,7 +58,7 @@ static int freq_limit_min_notifier_call(struct notifier_block *nb,
 		if (topology_cluster_id(cpu) == gear_idx) {
 			per_cpu(min_freq, cpu) = freq_limit_min;
 			WRITE_ONCE(per_cpu(min_freq_scale, cpu),
-				pd_get_freq_util(cpu, freq_limit_min));
+				pd_freq2util(cpu, freq_limit_min, true, 0, NULL, true));
 		}
 	}
 
@@ -102,12 +104,22 @@ void mtk_freq_limit_notifier_register(void)
 	}
 }
 
+unsigned long cpu_freq_ceiling(int cpu)
+{
+	unsigned long freq_ceiling;
+
+	freq_ceiling = min_t(unsigned long, get_cpu_max_freq(cpu),
+		get_cpu_gear_uclamp_max_capacity(cpu, GU_RET_FREQ));
+	return clamp_t(unsigned long, freq_ceiling,
+		READ_ONCE(per_cpu(min_freq, cpu)), READ_ONCE(per_cpu(max_freq, cpu)));
+}
+
 unsigned long cpu_cap_ceiling(int cpu)
 {
 	unsigned long cap_ceiling;
 
 	cap_ceiling = min_t(unsigned long, arch_scale_cpu_capacity(cpu),
-		get_cpu_gear_uclamp_max_capacity(cpu));
+		get_cpu_gear_uclamp_max_capacity(cpu, GU_RET_UTIL));
 	return clamp_t(unsigned long, cap_ceiling,
 		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
 }

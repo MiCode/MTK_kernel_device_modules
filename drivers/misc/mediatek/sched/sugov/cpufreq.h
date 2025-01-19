@@ -127,7 +127,7 @@ extern int val_m;
 extern void record_sched_pd_opp2cap(int cpu, int opp, int quant, int wl,
 		int val_1, int val_2, int val_r, int *val_s, int r_o, int caller);
 extern void record_sched_pd_opp2pwr_eff(int cpu, int opp, int quant, int wl,
-		int val_1, int val_2, int val_3, int val_r1, int val_r2, int *val_s,
+		int val_1, int val_2, int val_3, int val_r1, int val_r2, int val_r3, int *val_s,
 		int r_o, int caller);
 
 extern int get_eas_hook(void);
@@ -152,6 +152,7 @@ extern unsigned long pd_get_opp_capacity_legacy(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq(unsigned int cpu, int opp);
 extern unsigned long pd_get_opp_freq_legacy(unsigned int cpu, int opp);
 
+extern unsigned long pd_get_freq_util_legacy(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_util(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_opp(unsigned int cpu, unsigned long freq);
 extern unsigned long pd_get_freq_pwr_eff(unsigned int cpu, unsigned long freq);
@@ -194,7 +195,7 @@ extern bool get_gear_uclamp_ctrl(void);
 extern void set_gear_uclamp_ctrl(int val);
 extern int get_gear_uclamp_max(int gearid);
 extern int get_cpu_gear_uclamp_max(unsigned int cpu);
-extern int get_cpu_gear_uclamp_max_capacity(unsigned int cpu);
+extern int get_cpu_gear_uclamp_max_capacity(unsigned int cpu, int ret_type);
 extern void set_gear_uclamp_max(int gearid, int val);
 #endif
 #endif
@@ -255,11 +256,12 @@ DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 DECLARE_PER_CPU(struct mtk_rq *, rq_data);
 
 #define DEFAULT_MARGIN 1280
+#define NO_MARGIN 1024
 extern int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max, int is_multiply_by_margin);
 /* DPT */
 struct curr_collab_state_struct {
 	int state;
-	int (*ret_function)(void);
+	int (*ret_function)(int);
 };
 
 void hook_update_cpu_capacity(void *data, int cpu, unsigned long *capacity);
@@ -275,7 +277,7 @@ extern void (*change_dpt_support_driver_hook) (int turn_on);
 extern int (*is_dpt_support_driver_hook) (void);
 extern void (*set_v_driver_hook)(int v);
 #define for_each_collab_type(collab_type) for (collab_type = 0; collab_type < nr_collab_type; collab_type++)
-int collab_type_0_ret_function(void);
+int collab_type_0_ret_function(int);
 extern int get_sys_max_cap_cluster(void);
 extern void set_curr_task_uclamp_ctrl(int set);
 extern void unset_curr_task_uclamp_ctrl(void);
@@ -313,6 +315,70 @@ extern int get_curr_task_uclamp_ctrl(void);
 #define DPT_CALL_DEBUG1 98
 #define DPT_CALL_DEBUG2 99
 
+/* DPT v2 */
+enum DPT_V2_INDEX_ID {
+	DPT_V2_TYPE_COEF1_LTIME,
+	DPT_V2_TYPE_COEF2_LTIME,
+	DPT_V2_TYPE_COEF1_RATIO,
+	DPT_V2_TYPE_COEF2_RATIO,
+	DPT_V2_TYPE_CPU_RATIO,
+	DPT_V2_TYPE_COEF1_UTIL,
+	DPT_V2_TYPE_COEF2_UTIL,
+	DPT_V2_TYPE_CPU_UTIL,
+	DPT_V2_TYPE_TOTAL_UTIL,
+	DPT_V2_NR_TYPES,
+};
+
+enum dpt_version_ID {
+	DPT_V1,
+	DPT_V2,
+};
+
+extern void set_dpt_v2_info_manual(int cpu, int type, int val);
+extern inline struct dpt_rq_struct *get_dpt_rq(int cpu);
+extern void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, unsigned long *capacity_result, struct cpumask *cpumask,
+	unsigned int cpu_util_local, unsigned int coef1_util_local, unsigned int coef2_util_local, unsigned long min, unsigned long max);
+extern int dpt_v2_get_config(void);
+extern void dpt_v2_change_config(int turn_on);
+extern void (*check_freq2cap_cap2freq_hook) (int gear_idx);
+extern int (*dpt_v2_cap2freq_hook) (int cpu, int quant, int capacity);
+extern void (*dpt_v2_init_done_hook) (void);
+extern void init_driver_after_vendor_init(void);
+extern inline int get_init_driver_after_vendor_init_done(void);
+extern int get_dpt_v2_driver_init_status(void);
+extern unsigned long (*dpt_v2_util2cap_needed_local_hook)(unsigned long cpu_util_local, unsigned long coef1_util_local, unsigned long coef2_util_local);
+extern unsigned long (*rescale_cpu_util_upscale_hook)(int cpu, int quant, unsigned long cpu_util, unsigned long freq);
+extern inline struct cpufreq_policy *get_cpufreq_policy(int cpu);
+extern inline unsigned long get_cpu_min_freq(int cpu);
+extern inline unsigned long get_cpu_max_freq(int cpu);
+extern int pd_util2freq_r_o(unsigned int cpu, int util, bool quant, int wl);
+extern inline unsigned long get_freq_ceiling_ratio(int cpu);
+extern inline unsigned long get_thermal_freq_ceiling_ratio(int cpu);
+extern inline int __get_scaling_factor_shift_bit(void);
+extern void (*dpt_v2_uclamp2local_cap_hook)(int cpu, int quant, unsigned long *umin, unsigned long *umax);
+
+DECLARE_PER_CPU(unsigned long, max_freq);
+DECLARE_PER_CPU(unsigned long, thermal_freq); /* to sync with thermal_pressure */
+DECLARE_PER_CPU(unsigned long, freq_ceiling);
+
+#define DPT_V2_MAX_RUNNING_TIME 1024
+#define DPT_V2_MAX_RUNNING_TIME_LOCAL 1024
+
+/* the method of util2freq mapping is
+* max_capacity = 1024 * cpu_util_local / total_util_local * IPC_scaling_factor
+* util = 1024 * cpu_util / (1024 - normalized_to_curr_lat(coef1_util_local), normalized_to_curr_lat(coef2_util_local))
+* target_freq / util = max_freq / max_capacity => target_freq = util * max_freq / max_capacity.
+* However the target_freq is not a legal freq (e.g. 1.0319G), we need mapping it to the legal freq, which may causing MIPs overhead.
+* Therefore, change the equation to below, which retains the max_capacity = 1024, we can then utilize an pre-calculated util2freq O(1) mapping table.
+* the process is demonstrated as below:
+* 1. Expand target_freq = util * max_freq / [max_capacity] => target_freq = util * max_freq / [1024 * cpu_util_local / total_util_local * IPC_scaling_factor ]
+* 2. target_freq = util * max_freq / [1024 * cpu_util_local / total_util_local * IPC_scaling_factor]
+* 3. target_freq = util * max_freq / 1024 / cpu_util_local * total_util_local / IPC_scaling_factor
+* 4. util' = util / cpu_util_local * total_util_local / IPC_scaling_factor
+* 5. target_freq = util' * max_freq / 1024
+* 6. target_freq / util' = max_freq / 1024 => we can now utilize the pre-calculated mapping table to find the target_freq.
+*/
+ #define affect_cpu_util_ratio_at_util(util, cpu_util_local, total_util_local, IPC_scaling_factor, shift_bit) ((util * total_util_local << shift_bit) / (cpu_util_local * IPC_scaling_factor))
 /* End of DPT */
 
 #endif /* __CPUFREQ_H__ */

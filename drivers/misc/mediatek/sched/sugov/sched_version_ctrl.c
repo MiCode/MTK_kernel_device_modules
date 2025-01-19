@@ -24,6 +24,8 @@ bool _post_init_util_ctl;
 bool _percore_l3_bw;
 bool _dsu_pwr_enable;
 bool _legacy_api_support;
+bool _dpt_v2_enable;
+unsigned int _dpt_v2_swpm_mode;
 
 int init_sched_ctrl(void)
 {
@@ -61,6 +63,8 @@ int init_sched_ctrl(void)
 		_post_init_util_ctl = false;
 		_percore_l3_bw = false;
 		_dsu_pwr_enable = false;
+		_dpt_v2_enable = false;
+		_dpt_v2_swpm_mode = 0;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -74,6 +78,8 @@ int init_sched_ctrl(void)
 		_post_init_util_ctl = false;
 		_percore_l3_bw = false;
 		_dsu_pwr_enable = false;
+		_dpt_v2_enable = false;
+		_dpt_v2_swpm_mode = 0;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -87,6 +93,8 @@ int init_sched_ctrl(void)
 		_post_init_util_ctl = true;
 		_percore_l3_bw = false;
 		_dsu_pwr_enable = true;
+		_dpt_v2_enable = false;
+		_dpt_v2_swpm_mode = 0;
 		break;
 	case EAS_6_5:
 		am_support = 1;
@@ -100,6 +108,8 @@ int init_sched_ctrl(void)
 		_post_init_util_ctl = true;
 		_percore_l3_bw = true;
 		_dsu_pwr_enable = true;
+		_dpt_v2_enable = false;
+		_dpt_v2_swpm_mode = 2;
 		break;
 	case EAS_6_12:
 		am_support = 1;
@@ -125,10 +135,30 @@ int init_sched_ctrl(void)
 		_vip_enable = false;
 		_post_init_util_ctl = false;
 		_percore_l3_bw = false;
+		_dpt_v2_enable = false;
+		_dpt_v2_swpm_mode = 0;
 		break;
 	}
 	return 0;
 }
+
+unsigned int sched_dpt_v2_swpm_mode_get(void)
+{
+	return _dpt_v2_swpm_mode;
+}
+EXPORT_SYMBOL_GPL(sched_dpt_v2_swpm_mode_get);
+
+void sched_dpt_v2_swpm_mode_set(unsigned int mode)
+{
+	_dpt_v2_swpm_mode = mode;
+}
+EXPORT_SYMBOL_GPL(sched_dpt_v2_swpm_mode_set);
+
+bool sched_dpt_v2_enable_get(void)
+{
+	return _dpt_v2_enable;
+}
+EXPORT_SYMBOL_GPL(sched_dpt_v2_enable_get);
 
 bool legacy_api_support_get(void)
 {
