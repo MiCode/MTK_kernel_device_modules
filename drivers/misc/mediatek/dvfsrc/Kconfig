@@ -70,6 +70,15 @@ config MTK_DVFSRC_LEGACY
 	  When enable this option, it support compatibility with MTK legacy chip.
 	  If unsure, say N.
 
+config MTK_DVFSRC_MT6873_IP
+	tristate "MTK DVFSRC for MT6873 IP"
+	help
+	  Enable DVFSRC support for the MT6873 IP core.
+          This feature dynamically adjusts voltage and frequency for optimal power
+          and performance.
+          Recommended for systems using the MT6873 IP core;
+          If unsure, say N.
+
 config MTK_DVFSRC_DEBUGFS
 	tristate "MTK DVFSRC DEBUGFS Support"
 	depends on MTK_DVFSRC_HELPER

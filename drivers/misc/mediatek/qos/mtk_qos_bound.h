@@ -6,7 +6,12 @@
 #ifndef __MTK_QOS_BOUND_H__
 #define __MTK_QOS_BOUND_H__
 
+#if IS_ENABLED(CONFIG_MTK_QOS_MT6877)
+#define QOS_BOUND_BUF_SIZE		64
+#else
 #define QOS_BOUND_BUF_SIZE		16
+#endif
+
 #define QOS_BOUND_VER_TAG		0xA3
 
 #define QOS_BOUND_BW_FREE		0x1
@@ -28,19 +33,57 @@ enum qos_emibm_type {
 	NR_QOS_EMIBM_TYPE
 };
 
+#if IS_ENABLED(CONFIG_MTK_QOS_MT6877)
+
+enum qos_smibm_type {
+	QOS_SMIBM_VENC,
+	QOS_SMIBM_CAM,
+	QOS_SMIBM_IMG,
+	QOS_SMIBM_MDP,
+	QOS_SMIBM_GPU,
+	QOS_SMIBM_APU,
+	QOS_SMIBM_VPU0,
+	QOS_SMIBM_VPU1,
+	QOS_SMIBM_MDLA0,
+	QOS_SMIBM_EDMA0,
+	QOS_SMIBM_XPU,
+
+	NR_QOS_SMIBM_TYPE
+};
+
+enum qos_lat_type {
+	QOS_LAT_CPU,
+	QOS_LAT_VPU0,
+	QOS_LAT_VPU1,
+	QOS_LAT_MDLA0,
+	QOS_LAT_EDMA0,
+	QOS_LAT_XPU,
+
+	NR_QOS_LAT_TYPE
+};
+
+#else
+
 enum qos_smibm_type {
 	QOS_SMIBM_GPU,
 	QOS_SMIBM_APU,
 
 	NR_QOS_SMIBM_TYPE
 };
+#endif
 
 struct qos_bound_stat {
 	unsigned short num;
 	unsigned short event;
 	unsigned short emibw_mon[NR_QOS_EMIBM_TYPE];
 	unsigned short smibw_mon[NR_QOS_SMIBM_TYPE];
+#if IS_ENABLED(CONFIG_MTK_QOS_MT6877)
+	unsigned short emibw_req[NR_QOS_EMIBM_TYPE];
+	unsigned short smibw_req[NR_QOS_SMIBM_TYPE];
+	unsigned short lat_mon[NR_QOS_LAT_TYPE];
+#endif
 };
+
 
 struct qos_bound {
 	unsigned short ver;
