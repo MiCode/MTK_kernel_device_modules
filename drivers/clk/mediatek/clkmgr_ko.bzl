@@ -31,11 +31,21 @@ def define_platform_clkmgr_ko(platform, subsys):
             srcs = [
                 "clkchk-" + platform + ".c",
             ],
+            header_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+            ],
             ko_deps = [
                 "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
             ],
             includes = ["."],
-            copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/"],
+            copts = [
+                "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+                "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/",
+            ],
             hdrs = native.glob(["**/*.h"]),
         )
         define_mgk_ddk_ko(
@@ -64,6 +74,11 @@ def define_platform_clkmgr_ko(platform, subsys):
             name = "pd-chk-" + platform,
             srcs = [
                 "mtk-pd-chk-" + platform + ".c",
+            ],
+            header_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/soc/mediatek:soc_mediatek_headers".format(kernel_version),
             ],
             ko_deps = [
                 "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),

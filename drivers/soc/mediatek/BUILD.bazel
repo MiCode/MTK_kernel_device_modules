@@ -125,7 +125,7 @@ define_mgk_ddk_ko(
 ddk_headers (
         name = "soc_mediatek_headers",
         hdrs = glob(["**/*.h"]),
-        includes = ["include"],
+        includes = ["."],
 );
 
 define_platform_scpsys_ko("mt6761")
