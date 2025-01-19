@@ -15,9 +15,12 @@ filegroup(
 
 define_mgk_ddk_ko(
     name = "mtk_wdt",
-    srcs = [
-        "mtk_wdt.c"
-    ],
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_DEVICE_MODULES_MEDIATEK_WATCHDOG": {
+            True:["mtk_wdt.c"],
+        },
+    },
     includes = [
         "include",
     ],
