@@ -444,10 +444,12 @@ obj-$(CONFIG_COMMON_CLK_MT6991) += clk-dbg-mt6991.o
 clk-dbg-mt6991-$(CONFIG_COMMON_CLK_MT6991) += clkdbg-mt6991.o
 endif
 endif
-ifneq ($(wildcard $(srctree)/$(src)/clk-mt6993.c),)
+ifneq ($(wildcard $(src)/clk-mt6993.c),)
 obj-$(CONFIG_COMMON_CLK_MT6993) += clk-chk-mt6993.o
 clk-chk-mt6993-$(CONFIG_COMMON_CLK_MT6993) += clkchk-mt6993.o
 obj-$(CONFIG_COMMON_CLK_MT6993) += clk-fmeter-mt6993.o
+obj-$(CONFIG_COMMON_CLK_MT6993) += pd-chk-mt6993.o
+pd-chk-mt6993-$(CONFIG_COMMON_CLK_MT6993) += mtk-pd-chk-mt6993.o
 ifeq ($(CONFIG_DEBUG_FS), y)
 obj-$(CONFIG_COMMON_CLK_MT6993) += clk-dbg-mt6993.o
 clk-dbg-mt6993-$(CONFIG_COMMON_CLK_MT6993) += clkdbg-mt6993.o

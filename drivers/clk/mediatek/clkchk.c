@@ -29,7 +29,7 @@
 #include "clkchk.h"
 #include "mt-plat/aee.h"
 
-#define MAX_CLK_NUM			2048
+#define MAX_CLK_NUM			3072
 #define CLK_LEN				25
 #define INV_MSK				0xFFFFFFFF
 #define PWR_STA_BIT			BIT(30)
