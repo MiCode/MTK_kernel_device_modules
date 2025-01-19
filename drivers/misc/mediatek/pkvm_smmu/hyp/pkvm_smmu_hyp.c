@@ -372,10 +372,9 @@ void mtk_smmu_secure_v2(struct user_pt_regs *regs)
 {
 	uint32_t entry, order, i;
 	uint32_t *pmm_page;
-	phys_addr_t pfn, paddr;
+	phys_addr_t pfn;
 	uint64_t pglist_pfn;
 	uint32_t count;
-	uint32_t size;
 	void *pglist_pa;
 	int ret = 0;
 
@@ -401,22 +400,21 @@ void mtk_smmu_secure_v2(struct user_pt_regs *regs)
 			entry = pmm_page[i];
 			if (entry == 0)
 				break;
+
 			order = GET_PMM_ENTRY_ORDER(entry);
 			pfn = GET_PMM_ENTRY_PFN(entry);
-			paddr = (pfn << ONE_PAGE_OFFSET);
-			size = (PAGE_SIZE << order);
-			/*   isolate the page from Linux, and let it be accessible in protected VM
-			 *    ___________________________
-			 *   | Linux        | Protected  |
-			 *   | VM 0 (unmap) | VM 1 (rwx) |
-			 *   |___________________________|
+			/*
+			 *	Using host_donate_hyp() will trigger smmu idmap, and as a result,
+			 *	The permission of the page would be like,
+			 *	isolate the page from Linux, and let it be accessible in
+			 *	protected VM.
+			 *	 ___________________________
+			 *	| Linux        | Protected  |
+			 *	| VM 0 (unmap) | VM 1 (rwx) |
+			 *	|___________________________|
 			 */
-			hyp_spin_lock(&smmu_all_vm_lock);
-			smmu_lazy_free();
-			smmu_vm_unmap(0, paddr, size);
-			smmu_vm_map(1, paddr, size,
-				    MM_MODE_R | MM_MODE_W | MM_MODE_X);
-			hyp_spin_unlock(&smmu_all_vm_lock);
+			ret = pkvm_smmu_ops->host_donate_hyp(pfn, 1 << order,
+							     false);
 		}
 		mtk_smmu_sync();
 	} else {
@@ -438,10 +436,9 @@ void mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 {
 	uint32_t entry, order, i;
 	uint32_t *pmm_page;
-	phys_addr_t pfn, paddr;
+	phys_addr_t pfn;
 	uint64_t pglist_pfn;
 	uint32_t count;
-	uint32_t size;
 	void *pglist_pa;
 	int ret = 0;
 
@@ -461,27 +458,24 @@ void mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 		if (ret)
 			pkvm_smmu_ops->puts(
 				"mtk_smmu_unsecure_v2 : pin mem fail");
-		/* VM0,VM1 map to default mode */
-		/*   retrieve the page from protected VM back to linux VM
-		 *    ___________________________
-		 *   | Linux        | Protected  |
-		 *   | VM 0 (rwx)   | VM 1 (ro)  |
-		 *   |___________________________|
-		 */
+
 		for (i = 0; i < count; i++) {
 			entry = pmm_page[i];
 			if (entry == 0)
 				break;
+
 			order = GET_PMM_ENTRY_ORDER(entry);
 			pfn = GET_PMM_ENTRY_PFN(entry);
-			paddr = (pfn << ONE_PAGE_OFFSET);
-			size = (PAGE_SIZE << order);
-			hyp_spin_lock(&smmu_all_vm_lock);
-			smmu_lazy_free();
-			smmu_vm_map(0, paddr, size,
-				    MM_MODE_R | MM_MODE_W | MM_MODE_X);
-			smmu_vm_map(1, paddr, size, MM_MODE_R);
-			hyp_spin_unlock(&smmu_all_vm_lock);
+			/*
+			 *	Using hyp_donate_host() will trigger smmu idmap, and as a result,
+			 *	retrieve the page from protected VM back to linux VM. Therefore,
+			 *	VM0,VM1 map the memory back to default mode
+			 *	 ___________________________
+			 *	| Linux        | Protected  |
+			 *	| VM 0 (rwx)   | VM 1 (ro)  |
+			 *	|___________________________|
+			 */
+			ret = pkvm_smmu_ops->hyp_donate_host(pfn, 1 << order);
 		}
 		mtk_smmu_sync();
 	} else {
@@ -1420,6 +1414,8 @@ bool kvm_iommu_idmap_range_check(phys_addr_t start, phys_addr_t end,
 }
 /* Flush TLB in every 5000 times SMMU idmap, which trigger from pVM launched */
 unsigned long tlbi_counter;
+/* According to snapshot status, change protected VM permission mapping */
+static bool snapshot_done;
 
 static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 				       phys_addr_t start, phys_addr_t end,
@@ -1437,10 +1433,27 @@ static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 
 	hyp_spin_lock(&smmu_all_vm_lock);
 	smmu_lazy_free();
+
 	if (!prot) {
 		/* unmap vm */
 		smmu_vm_unmap(0, paddr, size);
-		smmu_vm_unmap(1, paddr, size);
+		/*
+		 * Using snapshot status to distinctive iommu idmap stage.
+		 * Before snapshot done, iommu idmap have to unmap both VM
+		 * to protect Hypervisor memory. After snapshot done, smmu no
+		 * longer have to unmap protected VM, because
+		 * 1. The memory operated by this function is not much critical
+		 * for Hypervisor.
+		 * 2. It is difficult to distinguish the memory used by Hypervisor
+		 * or VM.
+		 */
+		if (!snapshot_done)
+			/* unamp memory from protected VM to protect Hypervisor memory */
+			smmu_vm_unmap(1, paddr, size);
+		else
+			smmu_vm_map(1, paddr, size,
+				    MM_MODE_R | MM_MODE_W | MM_MODE_X);
+
 	} else {
 		/* return page */
 		if ((prot & KVM_PGTABLE_PROT_R) ||
@@ -1468,6 +1481,7 @@ void smmu_finalise(struct user_pt_regs *regs)
 
 	ret = kvm_iommu_snapshot_host_stage2(NULL);
 	regs->regs[0] = ret;
+	snapshot_done = true;
 }
 
 struct kvm_iommu_ops smmu_ops = {
