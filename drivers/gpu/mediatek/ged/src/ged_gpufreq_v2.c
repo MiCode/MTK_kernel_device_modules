@@ -87,6 +87,11 @@ static int ged_get_top_idx_by_freq(int gpu_freq_tar, int minfreq_idx)
 	return minfreq_idx;
 }
 
+unsigned int ged_gpufreq_bringup(void)
+{
+	return gpufreq_bringup();
+}
+
 GED_ERROR ged_gpufreq_init(void)
 {
 	int i, j, k = 0;
@@ -98,7 +103,7 @@ GED_ERROR ged_gpufreq_init(void)
 	/* top/stack ratio for 1-on-1 mapping (w/o min stack freq), Ex: 2 */
 	int async_ratio_all;
 
-	if (gpufreq_bringup())
+	if (ged_gpufreq_bringup())
 		return GED_OK;
 
 	GED_LOGI("%s: start to init GPU Freq\n", __func__);
@@ -1094,11 +1099,6 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 
 	/* TODO: return value handling */
 	return ret;
-}
-
-unsigned int ged_gpufreq_bringup(void)
-{
-	return gpufreq_bringup();
 }
 
 unsigned int ged_gpufreq_get_power_state(void)
