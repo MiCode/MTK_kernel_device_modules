@@ -29,6 +29,16 @@ struct core_ctl_notif_data {
 	unsigned int online_mask;
 };
 
+enum{
+	CLEARED_FORCE_PAUSE  		= 0,
+	UNKNOWN_FORCE_PAUSE  		= 1,
+	CLIENT_KERNEL_FORCE_PAUSE 	= 2,
+	POWERHAL_FORCE_PAUSE 		= 4,
+	POWER_THROTTLE_FORCE_PAUSE	= 8,
+	THERMAL_FORCE_PAUSE  		= 16,
+	MAX_FORCE_PAUSE_TYPE	= 32,
+};
+
 #define CORE_CTL_FORCE_RESUME_CPU               _IOW('g', 1,  struct _CORE_CTL_PACKAGE)
 #define CORE_CTL_FORCE_PAUSE_CPU                _IOW('g', 2,  struct _CORE_CTL_PACKAGE)
 #define CORE_CTL_SET_OFFLINE_THROTTLE_MS        _IOW('g', 3,  struct _CORE_CTL_PACKAGE)

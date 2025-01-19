@@ -96,6 +96,7 @@ struct cpu_data {
 	unsigned int cpu_util_pct;
 	unsigned int is_busy;
 	struct cluster_data *cluster;
+	unsigned int force_pause_req;
 };
 
 #define ENABLE		1
@@ -728,26 +729,40 @@ int core_ctl_set_up_thres(int cid, unsigned int val)
 EXPORT_SYMBOL(core_ctl_set_up_thres);
 
 /*
- *  core_ctl_force_pause_cpu - force pause or resume cpu
+ *  core_ctl_force_pause_request - force pause or resume cpu by request caller
  *  @cpu: cpu number
  *  @is_pause: set true if pause, set false if resume.
+ *  @request_mask: caller of this pause request
  *
  *  return 0 if success, else return errno
  */
-static bool test_disable_cpu(unsigned int cpu);
+ static bool test_disable_cpu(unsigned int cpu);
 static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause);
-int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
+int core_ctl_force_pause_request(unsigned int cpu, bool is_pause, unsigned int request_mask)
 {
-	int ret;
+	int ret = 0;
 	unsigned long flags;
-	struct cpu_data *c;
+	unsigned int test_req_mask;
+	struct cpu_data *cpu_stat;
 	struct cluster_data *cluster;
+	unsigned int force_paused_req;
 
 	if (cpu > nr_cpu_ids)
 		return -EINVAL;
 
 	if (!cpu_online(cpu))
 		return -EBUSY;
+
+	if (!request_mask)
+		return -EINVAL;
+
+	if (request_mask & (request_mask - 1))
+		return -EINVAL;
+
+	if (request_mask >= MAX_FORCE_PAUSE_TYPE) {
+		pr_info("%s:invaild force pause request %u", TAG, request_mask);
+		return -EINVAL;
+	}
 
 	/* Avoid hotplug change online mask */
 	cpu_hotplug_disable();
@@ -757,61 +772,85 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 		return -EBUSY;
 	}
 
-	c = &per_cpu(cpu_state, cpu);
-	cluster = c->cluster;
-
-	if(is_pause)
-		ret = core_ctl_pause_cpu(cpu);
-	else
-		ret = core_ctl_resume_cpu(cpu);
-
-	/* error occurs */
-	if (ret)
-		goto print_out;
-
-	/* Update cpu state */
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
-	c->force_paused = is_pause;
-	/* Handle conflict with original policy */
-	if (c->paused_by_cc) {
-		c->paused_by_cc = false;
-		cluster->nr_paused_cpus--;
-	}
-	cluster->active_cpus = get_active_cpu_count(cluster);
+	cpu_stat = &per_cpu(cpu_state, cpu);
+	cluster = cpu_stat->cluster;
+	force_paused_req = cpu_stat->force_pause_req;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
-	core_ctl_call_notifier(cpu, is_pause);
 
-print_out:
+	if (is_pause){
+		test_req_mask = force_paused_req | request_mask;
+		ret = core_ctl_pause_cpu(cpu);
+	}
+	else {
+		test_req_mask = force_paused_req & (~request_mask);
+		if (test_req_mask == 0)
+			ret = core_ctl_resume_cpu(cpu);
+		else
+			pr_info("%s: others still need paused CPU#%d", TAG, cpu);
+	}
+
+	if (ret < 0)
+		goto no_update_request_mask;
+	else if (!ret) {
+		/* Update cpu state */
+		spin_lock_irqsave(&core_ctl_state_lock, flags);
+		cpu_stat->force_paused = is_pause;
+		/* Handle conflict with original policy */
+		if (cpu_stat->paused_by_cc) {
+			cpu_stat->paused_by_cc = false;
+			cluster->nr_paused_cpus--;
+		}
+		cluster->active_cpus = get_active_cpu_count(cluster);
+		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+		core_ctl_call_notifier(cpu, is_pause);
+	}
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	cpu_stat->force_pause_req = test_req_mask;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+no_update_request_mask:
+	cpu_hotplug_enable();
 	if (is_pause){
 		if (ret < 0){
-			pr_info("[Core Force Pause] Pause request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+			pr_info("[Core Force Pause] Pause request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else if (ret){
-			pr_info("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+			pr_info("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
-			pr_info("[Core Force Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+			pr_info("[Core Force Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		}
 	} else {
 		if (ret < 0){
-			pr_info("[Core Force Pause] Resume request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+			pr_info("[Core Force Pause] Resume request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else if (ret){
-			pr_info("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+			pr_info("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
-			pr_info("[Core Force Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+			pr_info("[Core Force Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		}
 	}
-	cpu_hotplug_enable();
+	return ret;
+}
+EXPORT_SYMBOL(core_ctl_force_pause_request);
+
+/*
+ *  core_ctl_force_pause_cpu - force pause or resume cpu
+ *  @cpu: cpu number
+ *  @is_pause: set true if pause, set false if resume.
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
+{
+	int ret = 0;
+	pr_info("We recommend use core_ctl_force_pause_request instead of this API.\
+		This API will be removed in the future.\n");
+	ret = core_ctl_force_pause_request(cpu, is_pause, UNKNOWN_FORCE_PAUSE);
 	return ret;
 }
 EXPORT_SYMBOL(core_ctl_force_pause_cpu);
@@ -1946,6 +1985,7 @@ static int cluster_init(const struct cpumask *mask)
 		state = &per_cpu(cpu_state, cpu);
 		state->cluster = cluster;
 		state->cpu = cpu;
+		state->force_pause_req = CLEARED_FORCE_PAUSE;
 	}
 
 	cluster->cpu_busy_up_thres = 80;
@@ -2199,7 +2239,7 @@ static long core_ioctl_impl(struct file *filp,
 			return -1;
 
 		bval = !!msgKM.is_pause;
-		ret = core_ctl_force_pause_cpu(msgKM.cpu, bval);
+		ret = core_ctl_force_pause_request(msgKM.cpu, bval, POWERHAL_FORCE_PAUSE);
 		break;
 	case CORE_CTL_SET_OFFLINE_THROTTLE_MS:
 		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
@@ -2321,7 +2361,6 @@ static int __init core_ctl_init(void)
 	}
 
 	/* init core_ctl ioctl */
-
 	pr_info("%s: start to init core_ioctl driver\n", TAG);
 	parent = proc_mkdir("cpumgr", NULL);
 	pe = proc_create("core_ioctl", 0660, parent, &core_ctl_Fops);
