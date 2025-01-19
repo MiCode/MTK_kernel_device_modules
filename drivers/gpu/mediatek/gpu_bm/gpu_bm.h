@@ -13,6 +13,7 @@
 #define GPU_BM_PEAK_PERF_MODE           (4)
 #define GPU_BM_PEAK_PERF_MODE_LIMIT     (5)
 #define GPU_BW_MLP_MODE                 (6)
+#define GPU_BW_FB_PRED_MODE             (7)
 
 #define GPU_BW_RATIO_CEIL               (300)
 #define GPU_BW_RATIO_FLOOR              (10)
@@ -20,8 +21,8 @@
 #define GPU_BW_NO_PRED_RATIO_FLOOR      (2010)
 #define GPU_BW_MLP_RATIO_CEIL           (6300)
 #define GPU_BW_MLP_RATIO_FLOOR          (6010)
-
-#define GPU_BM_PEAK_INDEX_TOP_LIMIT      (1)
+#define GPU_BW_FB_PRED_RATIO_CEIL       (7300)
+#define GPU_BW_FB_PRED_RATIO_FLOOR      (7010)
 
 #define GPU_BM_PEAK_INDEX_TOP_LIMIT      (1)
 

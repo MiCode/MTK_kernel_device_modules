@@ -35,6 +35,7 @@ static int gpu_bm_freq_inited;
 static int gpu_bm_idx_inited;
 static int gpu_opp_num;
 static int gpu_opp_high;
+static int setting_priority;
 
 static void _mgq_proc_show_v1(struct seq_file *m)
 {
@@ -112,9 +113,17 @@ _mgq_proc_write(struct file *file, const char __user *buffer,
 		else if (mode >= GPU_BW_NO_PRED_RATIO_FLOOR && mode <= GPU_BW_NO_PRED_RATIO_CEIL) {
 			g_mode = GPU_BW_NO_PRED_MODE;
 			g_value = mode;
+		} else if (mode >= GPU_BW_FB_PRED_RATIO_FLOOR && mode <= GPU_BW_FB_PRED_RATIO_CEIL) {
+			g_mode = GPU_BW_FB_PRED_MODE;
+			g_value = mode;
 		} else
 			pr_info("@%s: wrong input: %d\n", __func__, mode);
 	}
+
+	if (mode != 0)
+		setting_priority = 1;
+	else
+		setting_priority = 0;
 
 	if (mode != 1)
 		g_mode_sport_flag = 0;
@@ -229,6 +238,8 @@ void MTKGPUQoS_mode(int seg_flag)
 
 	if (!gpu_bm_idx_inited) {
 		gpu_opp_num = gpufreq_get_opp_num(TARGET_DEFAULT);
+		if(gpu_opp_num <= 0)
+			return;
 		min_idx = gpu_opp_num - 1;
 		if (gpu_opp_high != -1)
 			high_idx = gpu_opp_high;
@@ -250,6 +261,8 @@ void MTKGPUQoS_mode(int seg_flag)
 
 	if (!gpu_bm_idx_inited) {
 		gpu_opp_num = mt_gpufreq_get_dvfs_table_num();
+		if(gpu_opp_num <= 0)
+			return;
 		min_idx = gpu_opp_num - 1;
 		if (gpu_opp_high != -1)
 			high_idx = gpu_opp_high;
@@ -303,7 +316,7 @@ void MTKGPUQoS_mode(int seg_flag)
 #endif
 	}
 
-	/* default avg prediction */
+	/* default prediction */
 	if (g_mode == GPU_BW_DEFAULT_MODE) {
 		/*
 		 * if gpu loading < 40% and gpu freq is lowest,
@@ -381,6 +394,13 @@ void MTKGPUQoS_mode(int seg_flag)
 		return;
 	}
 
+	/* fallback bw prediction */
+	if (g_value >= GPU_BW_FB_PRED_RATIO_FLOOR && g_value <= GPU_BW_FB_PRED_RATIO_CEIL) {
+		/* apply a ratio for bw prediction */
+		gpu_info_buf->freq = g_value;
+		return;
+	}
+
 }
 EXPORT_SYMBOL(MTKGPUQoS_mode);
 
@@ -396,6 +416,11 @@ void MTKGPUQoS_mode_ratio(int mode)
 
 	if(gpu_bm_inited != 1)
 		return;
+
+	if(setting_priority == 1) {
+		pr_info("@%s: powerhal setting enable mode: %d\n", __func__, g_value);
+		return;
+	}
 
 	mutex_lock(&g_GPU_BM_lock);
 
@@ -417,6 +442,9 @@ void MTKGPUQoS_mode_ratio(int mode)
 		g_mode = GPU_BW_NO_PRED_MODE;
 	else if (mode >= GPU_BW_NO_PRED_RATIO_FLOOR && mode <= GPU_BW_NO_PRED_RATIO_CEIL) {
 		g_mode = GPU_BW_NO_PRED_MODE;
+		g_value = mode;
+	} else if (mode >= GPU_BW_FB_PRED_RATIO_FLOOR && mode <= GPU_BW_FB_PRED_RATIO_CEIL) {
+		g_mode = GPU_BW_FB_PRED_MODE;
 		g_value = mode;
 	} else
 		pr_info("@%s: wrong input: %d\n", __func__, mode);
@@ -493,6 +521,7 @@ void MTKGPUQoS_setup(struct v1_data *v1, phys_addr_t phyaddr, size_t size)
 	gpu_bm_idx_inited = 0;
 	g_mode_sport_flag = 0;
 	g_mode_hmlp_flag = 0;
+	setting_priority = 0;
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 	idx_freq = min_freq = high_freq = low_freq = peak_perf_limit_freq = -1;
 	gpu_bm_freq_inited = 0;
