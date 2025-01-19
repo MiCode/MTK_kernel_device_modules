@@ -744,6 +744,15 @@ bootargs_ext = "rcu_nocbs=0-7";
 	flavor-bin = "dx5";
 };
 
+&gpu_dvfs_mode {
+	dvfs-loading-mode = <6>;
+};
+
+&gpu_dvfs_mips {
+	reduce-mips-support = <1>;
+	soc-timer-unit = <13>;
+};
+
 #include <k6991v1_64_for_dx5/cust.dtsi>
 #include "mediatek/cust_k6991_connfem_triband.dtsi"
 
