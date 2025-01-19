@@ -152,6 +152,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/rps:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/usb/mtu3:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_src".format(kernel_version),
 ]
 
@@ -175,6 +176,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/power/supply:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/usb/mtu3:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:ddk_kconfigs".format(kernel_version),
 ]
@@ -245,6 +247,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/usb/mtu3:mtu3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_touch_boost".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_powerhal".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:mtk_wdt".format(kernel_version),
@@ -822,7 +825,6 @@ mgk_64_device_modules = [
     "drivers/thermal/mediatek/vtskin_temp.ko",
     "drivers/thermal/mediatek/wifi_cooling.ko",
     "drivers/tty/serial/8250/8250_mtk.ko",
-    "drivers/usb/mtu3/mtu3.ko",
     "sound/soc/codecs/mt6338-accdet.ko",
     "sound/soc/codecs/mt6357-accdet.ko",
     "sound/soc/codecs/mt6358-accdet.ko",

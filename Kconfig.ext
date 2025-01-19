@@ -92,7 +92,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/gpu/mediatek/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/media/platform/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/usb/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/usb/mtu3/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/net/ethernet/stmicro/Kconfig"
 

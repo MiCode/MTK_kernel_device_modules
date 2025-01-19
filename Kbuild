@@ -88,8 +88,6 @@ obj-y += drivers/gpu/mediatek/
 
 obj-y += drivers/media/platform/
 
-obj-y += drivers/usb/
-
 obj-y += drivers/net/ethernet/stmicro/
 
 obj-y += drivers/net/phy/
