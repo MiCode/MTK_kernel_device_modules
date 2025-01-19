@@ -136,11 +136,13 @@ mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_mod
 mgk_64_kleaf_device_modules_srcs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/mfd:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_makefile".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/mfd:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -151,6 +153,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -273,7 +276,6 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-hx83112b-auo-vdo-60hz-rt5081.ko",
     "drivers/gpu/drm/panel/panel-td4320-fhdp-dsi-vdo-auo-rt5081.ko",
     "drivers/gpu/drm/panel/panel-sc-nt36672c-vdo-90hz-6382.ko",
-    "drivers/gpu/drm/panel/panel-aw37501-i2c.ko",
     "drivers/gpu/drm/panel/panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe.ko",
     "drivers/gpu/drm/panel/panel-nt35521_hd_dsi_vdo_truly_rt5081.ko",
     "drivers/gpu/drm/panel/panel-nt35695_fhd_dsi_vdo_auo_rt5081_hdp.ko",
