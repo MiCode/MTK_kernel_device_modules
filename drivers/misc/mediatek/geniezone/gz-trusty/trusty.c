@@ -212,7 +212,10 @@ static ulong trusty_std_call_helper(struct device *dev, ulong smcnr,
 		trusty_dbg(dev,
 			   "%s(0x%lx 0x%lx 0x%lx 0x%lx) busy, wait %d ms\n",
 			   __func__, smcnr, a0, a1, a2, sleep_time);
-		msleep(sleep_time);
+		if (sleep_time < 10)
+			usleep_range(sleep_time * 500, sleep_time * 1000);
+		else
+			msleep(sleep_time);
 		if (sleep_time < 1000)
 			sleep_time <<= 1;
 
@@ -577,6 +580,12 @@ static bool dequeue_nop(struct trusty_state *s, u32 *args, struct list_head *nop
 	}
 
 	spin_unlock_irqrestore(&s->nop_lock, flags);
+
+	if (nop != NULL && nop->args[0] == REE_SERVICE_CMD_NEW_THREAD) {
+		vfree(nop);
+		nop = NULL;
+		usleep_range(250, 350);
+	}
 
 	return nop;
 }

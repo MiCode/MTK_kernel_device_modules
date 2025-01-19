@@ -158,6 +158,23 @@ struct trusty_state {
 	struct kthread_work poll_work;
 };
 
+/* GZ Ree service
+ */
+enum GZ_ReeServiceCommand {
+
+	REE_SERVICE_CMD_BASE = 0x0,
+	REE_SERVICE_CMD_ADD,
+	REE_SERVICE_CMD_MUL,
+	REE_SERVICE_CMD_NEW_THREAD,
+	REE_SERVICE_CMD_KICK_SEM,
+	REE_SERVICE_CMD_TEE_INIT_CTX,
+	REE_SERVICE_CMD_TEE_FINAL_CTX,
+	REE_SERVICE_CMD_TEE_OPEN_SE,
+	REE_SERVICE_CMD_TEE_CLOSE_SE,
+	REE_SERVICE_CMD_TEE_INVOK_CMD,
+	REE_SERVICE_CMD_END
+};
+
 #if IS_ENABLED(CONFIG_MT_GZ_TRUSTY_DEBUGFS)
 void mtee_create_debugfs(struct trusty_state *s, struct device *dev);
 #endif
