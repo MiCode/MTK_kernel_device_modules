@@ -10,10 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-MFD_TOP = $(DEVICE_MODULES_PATH)/drivers/mfd
-ccflags-y += -I$(MFD_TOP)/
 
-obj-$(CONFIG_MTK_CLKBUF_CTRL) += clkbuf.o
+#MFD_TOP = $(DEVICE_MODULES_PATH)/drivers/mfd
+#ccflags-y += -I$(MFD_TOP)/
+#obj-$(CONFIG_MTK_CLKBUF_CTRL) += clkbuf.o
+
 clkbuf-y += src/clkbuf-ctrl.o
 clkbuf-y += src/clkbuf-pmic.o
 clkbuf-y += src/srclken.o
