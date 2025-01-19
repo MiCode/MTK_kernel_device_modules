@@ -4226,9 +4226,19 @@ static int msdc_of_clock_parse(struct platform_device *pdev,
 	if (IS_ERR(host->bus_clk))
 		host->bus_clk = NULL;
 
+	host->src_parent_clk = devm_clk_get(&pdev->dev, "source_parent");
+	if (IS_ERR(host->src_parent_clk))
+		host->src_parent_clk = NULL;
 	host->macro_clk = devm_clk_get_optional(&pdev->dev, "macro");
 	if (IS_ERR(host->macro_clk))
 		host->macro_clk = NULL;
+	if (!IS_ERR_OR_NULL(host->src_clk) && !IS_ERR_OR_NULL(host->src_parent_clk)) {
+		ret = clk_set_parent(host->src_clk, host->src_parent_clk);
+		if (ret < 0) {
+			dev_info(&pdev->dev, "src clk set parent failed, ret %d\n", ret);
+			return ret;
+		}
+	}
 
 	host->crypto_clk = devm_clk_get_optional(&pdev->dev, "crypto_clk");
 	if (IS_ERR(host->crypto_clk)) {
