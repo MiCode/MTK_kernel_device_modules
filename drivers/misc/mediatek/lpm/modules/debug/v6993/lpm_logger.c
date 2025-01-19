@@ -953,16 +953,6 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 		goto end;
 	}
 
-	if (wakesrc->r12 & R12_PCM_TIMER_B) {
-		if (IS_WAKE_MISC(WAKE_MISC_PCM_TIMER_EVENT)) {
-			local_ptr = " PCM_TIMER";
-			if (IS_LOGBUF(buf, local_ptr))
-				strncat(buf, local_ptr,
-					strlen(local_ptr));
-			wr = WR_PCM_TIMER;
-		}
-	}
-
 	if (wakesrc->r12 & R12_TWAM_PMSR_DVFSRC) {
 		if (IS_WAKE_MISC(WAKE_MISC_SRCLKEN_RC_ERR_INT)) {
 			local_ptr = " SRCLKEN_RC_ERR_INT";
@@ -1070,7 +1060,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 			wr = WR_SPM_ACK_CHK;
 		}
 	}
-	for (i = 1; i < 32; i++) {
+	for (i = 0; i < 32; i++) {
 		if (wakesrc->r12 & (1U << i)) {
 			if (IS_LOGBUF(buf, wakesrc_str[i]))
 				strncat(buf, wakesrc_str[i],
@@ -1107,12 +1097,15 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 	log_size += scnprintf(log_buf + log_size,
 		LOG_BUF_OUT_SZ - log_size,
-		"req_sta =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x"
-		" | 0x%x 0x%x 0x%x 0x%x | 0x%x, 0x%x, ",
+		"req_sta =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x",
 		wakesrc->req_sta0, wakesrc->req_sta1, wakesrc->req_sta2,
 		wakesrc->req_sta3, wakesrc->req_sta4, wakesrc->req_sta5,
 		wakesrc->req_sta6, wakesrc->req_sta7, wakesrc->req_sta8,
-		wakesrc->req_sta9, wakesrc->req_sta10, wakesrc->req_sta11,
+		wakesrc->req_sta9, wakesrc->req_sta10, wakesrc->req_sta11);
+
+	log_size += scnprintf(log_buf + log_size,
+		LOG_BUF_OUT_SZ - log_size,
+		" | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x, ",
 		wakesrc->req_sta12, wakesrc->req_sta13, wakesrc->req_sta14,
 		wakesrc->req_sta15, wakesrc->req_sta16, wakesrc->req_sta17);
 
@@ -1126,7 +1119,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 	log_size += scnprintf(log_buf + log_size,
 		LOG_BUF_OUT_SZ - log_size,
-		"debug_spare3 =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x, | 0x%x, ",
+		"debug_spare3 =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x, ",
 		wakesrc->debug_spare3, wakesrc->debug_spare4, wakesrc->debug_spare5,
 		wakesrc->debug_spare6, wakesrc->debug_spare7, wakesrc->debug_spare8,
 		wakesrc->debug_spare9, wakesrc->debug_spare10, wakesrc->debug_spare11,
