@@ -3183,9 +3183,9 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 		inten = BUFFER_UNDERRUN_INT_FLAG | INP_UNFINISH_INT_EN;
 	}
 
+	priv = mtk_crtc->base.dev->dev_private;
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		inten |= FRAME_DONE_INT_FLAG;
-		priv = mtk_crtc->base.dev->dev_private;
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 						priv->data->mmsys_id == MMSYS_MT6991))
 			inten |= TARGET_LINE_INT_FLAG;
@@ -3194,8 +3194,12 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 			inten |= TE_RDY_INT_FLAG | INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG;
 			inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 		}
-	} else
+	} else {
 		inten |= TE_RDY_INT_FLAG;
+		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
+						priv->data->mmsys_id == MMSYS_MT6991))
+			inten |= TARGET_LINE_INT_FLAG;
+	}
 
 	writel(0, dsi->regs + DSI_INTSTA);
 	writel(inten, dsi->regs + DSI_INTEN);
@@ -3916,8 +3920,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 		if (status & TARGET_LINE_INT_FLAG) {
 			if (mtk_crtc && mtk_crtc->esd_ctx) {
-				if (!mtk_dsi_is_cmd_mode(comp) &&
-					(comp->id == DDP_COMPONENT_DSI0 ||
+				if ((comp->id == DDP_COMPONENT_DSI0 ||
 					 comp->id == DDP_COMPONENT_DSI1 ||
 					 comp->id == DDP_COMPONENT_DSI2) &&
 					(priv->data->mmsys_id == MMSYS_MT6989 ||
@@ -3931,10 +3934,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 		if (status & FRAME_DONE_INT_FLAG) {
 			if (mtk_crtc && mtk_crtc->esd_ctx) {
-				if (!mtk_dsi_is_cmd_mode(comp) &&
-					(comp->id == DDP_COMPONENT_DSI0 ||
+				if (comp->id == DDP_COMPONENT_DSI0 ||
 					 comp->id == DDP_COMPONENT_DSI1 ||
-					 comp->id == DDP_COMPONENT_DSI2)) {
+					 comp->id == DDP_COMPONENT_DSI2) {
 					CRTC_MMP_MARK(index, target_time, comp->id, 0xffff0000);
 					atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
 				}
