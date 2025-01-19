@@ -13,7 +13,7 @@
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 typedef void (*util_dump_dbg_reg)(void *chan);
-typedef u8 (*util_track_ctrl)(void *cmdq, phys_addr_t base, bool sec);
+typedef void (*util_track_ctrl)(void *cmdq, phys_addr_t base, bool sec, u8 hwid);
 typedef bool (*util_thread_ddr_module)(const s32 thread);
 typedef bool (*util_check_tf)(struct device	*dev,
 	u32 sid, u32 tbu, u32 *axids);
@@ -150,6 +150,15 @@ enum cmdq_irq_type {
 	mtk_cmdq_mpu = 7,
 	mtk_cmdq_aux = 8,
 	mtk_cmdq_irq_max = 9,
+};
+
+enum CMDQ_HW_FLAGS {
+	APPEND_BY_EVENT = 0,
+	GCE_MMINFRA = 1,
+	GCE_SHIFT_BIT = 2,
+	SPR3_TIMER = 3,
+	POLL_SLEEP_BIT32 = 4,
+	CMDQ_HW_FLAGS_MAX,
 };
 
 typedef int (*cmdq_aee_cb)(struct cmdq_cb_data data);
@@ -458,9 +467,7 @@ void cmdq_event_timeout_dump_and_clr(void *chan, u16 event_id);
 u32 cmdq_mbox_get_tpr(void *chan);
 dma_addr_t cmdq_reg_shift_addr(dma_addr_t addr, void *chan);
 dma_addr_t cmdq_reg_revert_addr(dma_addr_t addr, void *chan);
-unsigned long long cmdq_get_gce_mminfra(void *chan);
-int cmdq_get_gce_shift_bit(void *chan);
-bool cmdq_get_append_by_event(void *chan);
+unsigned long long cmdq_get_hw_flags(void *chan, enum CMDQ_HW_FLAGS);
 bool cmdq_is_hw_trace_thread(struct mbox_chan *chan);
 bool cmdq_get_hw_trace_built_in(u8 hwid);
 void cmdq_set_hw_trace_built_in(u8 hwid, bool built_in);

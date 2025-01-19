@@ -254,8 +254,11 @@ void cmdq_util_set_fp(struct cmdq_util_platform_fp *cust_cmdq_platform)
 	helper_fp.hw_trace_thread = cmdq_platform->hw_trace_thread;
 	helper_fp.dump_error_irq_debug = cmdq_platform->dump_error_irq_debug;
 	controller_fp.check_tf = cmdq_platform->check_tf;
-	for (i = 0; i < util.mbox_cnt; i++)
+	for (i = 0; i < CMDQ_MBOX_NUM; i++) {
+		if (!util.cmdq_mbox[i])
+			continue;
 		cmdq_mbox_set_hw_id(util.cmdq_mbox[i]);
+	}
 }
 EXPORT_SYMBOL(cmdq_util_set_fp);
 
@@ -274,8 +277,11 @@ void cmdq_util_reset_fp(struct cmdq_util_platform_fp *cust_cmdq_platform)
 	helper_fp.thread_module_dispatch = NULL;
 	helper_fp.hw_trace_thread = NULL;
 	helper_fp.dump_error_irq_debug = NULL;
-	for (i = 0; i < util.mbox_cnt; i++)
+	for (i = 0; i < CMDQ_MBOX_NUM; i++) {
+		if (!util.cmdq_mbox[i])
+			continue;
 		cmdq_mbox_reset_hw_id(util.cmdq_mbox[i]);
+	}
 }
 EXPORT_SYMBOL(cmdq_util_reset_fp);
 
@@ -489,8 +495,11 @@ static int cmdq_util_status_print(struct seq_file *seq, void *data)
 	}
 
 	seq_puts(seq, "[cmdq] dump all thread current status\n");
-	for (i = 0; i < util.mbox_cnt; i++)
+	for (i = 0; i < CMDQ_MBOX_NUM; i++) {
+		if (!util.cmdq_mbox[i])
+			continue;
 		cmdq_thread_dump_all_seq(util.cmdq_mbox[i], seq);
+	}
 
 	return 0;
 }
@@ -740,7 +749,12 @@ EXPORT_SYMBOL(cmdq_util_prebuilt_set_client);
 
 bool cmdq_util_is_secure_client(struct cmdq_client *client)
 {
-	s32 thread_id = cmdq_mbox_chan_id(client->chan);
+	s32 thread_id;
+
+	if (!client)
+		return false;
+
+	thread_id = cmdq_mbox_chan_id(client->chan);
 
 	if (thread_id >= 8 && thread_id <= 12)
 		return true;
@@ -811,6 +825,7 @@ void cmdq_util_disp_smc_cmd(u32 crtc_idx, u32 cmd)
 }
 EXPORT_SYMBOL(cmdq_util_disp_smc_cmd);
 
+//todo
 void cmdq_util_pkvm_disable(void)
 {
 	struct arm_smccc_res res;
@@ -1347,15 +1362,16 @@ void cmdq_util_dump_fast_mtcmos(void)
 }
 EXPORT_SYMBOL(cmdq_util_dump_fast_mtcmos);
 
-u8 cmdq_util_track_ctrl(void *cmdq, phys_addr_t base, bool sec)
+void cmdq_util_track_ctrl(void *cmdq, phys_addr_t base, bool sec, u8 hwid)
 {
 	cmdq_msg("%s cmdq:%p sec:%s", __func__, cmdq, sec ? "true" : "false");
-	if (sec)
-		util.cmdq_sec_mbox[util.mbox_sec_cnt++] = cmdq;
-	else
-		util.cmdq_mbox[util.mbox_cnt++] = cmdq;
-
-	return (u8)cmdq_util_get_hw_id((u32)base);
+	if (sec) {
+		util.cmdq_sec_mbox[hwid] = cmdq;
+		util.mbox_sec_cnt++;
+	} else {
+		util.cmdq_mbox[hwid] = cmdq;
+		util.mbox_cnt++;
+	}
 }
 EXPORT_SYMBOL(cmdq_util_track_ctrl);
 

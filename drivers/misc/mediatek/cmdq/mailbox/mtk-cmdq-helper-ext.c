@@ -926,7 +926,7 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 		return NULL;
 	}
 	mbox_dev = cl->chan->mbox->dev;
-	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
+	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 
 	va = cmdq_mbox_buf_alloc_dev(cl->share_dev, &pa);
 	if (!va) {
@@ -970,7 +970,7 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 		return;
 	}
 
-	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
+	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 	cmdq_mbox_buf_free_dev(cl->share_dev, va, pa - gce_mminfra);
 	cmdq_set_buffer_size(cl, false);
 	cmdq_set_thrd_pkt_buf(cl, CMDQ_THRD_PKT_ARR_MAX - 1, false);
@@ -1349,7 +1349,8 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 	if (client)
 		cmdq_pkt_perf_begin(pkt);
 
-	if (!cmdq_util_is_prebuilt_client(client))
+	if (!cmdq_util_is_prebuilt_client(client) &&
+		!cmdq_util_is_secure_client(client))
 		cmdq_pkt_hw_trace(pkt, 0);
 #endif
 	pkt->task_alive = true;
@@ -2121,7 +2122,7 @@ s32 cmdq_pkt_copy(struct cmdq_pkt *dst, struct cmdq_pkt *src)
 
 	if (cmdq_pkt_is_finalized(src)) {
 		reduce_size += 2 * CMDQ_INST_SIZE;
-		if (cmdq_get_append_by_event(client ? client->chan : NULL)
+		if ((bool)cmdq_get_hw_flags(client ? client->chan : NULL, APPEND_BY_EVENT)
 			&& !src->sec_data)
 			reduce_size += 2 * CMDQ_INST_SIZE;
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
@@ -2270,7 +2271,7 @@ s32 cmdq_pkt_write_dummy(struct cmdq_pkt *pkt, dma_addr_t addr)
 	if (!cl)
 		return 0;
 
-	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
+	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 	dummy_addr = (u32)cmdq_mbox_get_dummy_reg(cl->chan);
 	if (addr > (dma_addr_t)gce_mminfra) {
 		/* assign bit 47:16 to spr temp */
@@ -2391,7 +2392,7 @@ s32 cmdq_pkt_jump(struct cmdq_pkt *pkt, s32 offset)
 	if (!cl)
 		return 0;
 
-	gce_shift_bit = cmdq_get_gce_shift_bit(cl->chan);
+	gce_shift_bit = (int)cmdq_get_hw_flags(cl->chan, GCE_SHIFT_BIT);
 	off = offset >> gce_shift_bit;
 
 	return cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(off),
@@ -2861,7 +2862,7 @@ void cmdq_pkt_perf_begin(struct cmdq_pkt *pkt)
 	if (!cl)
 		return;
 
-	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
+	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 	pa = cmdq_pkt_get_pa_by_offset(pkt, 0) + CMDQ_DBG_PERFBEGIN;
 	cmdq_pkt_write_indriect(pkt, NULL, pa + gce_mminfra, CMDQ_TPR_ID, ~0);
 
@@ -2887,7 +2888,7 @@ void cmdq_pkt_perf_end(struct cmdq_pkt *pkt)
 	if (!cl)
 		return;
 
-	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
+	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 	pa = cmdq_pkt_get_pa_by_offset(pkt, 0) + CMDQ_DBG_PERFEND;
 	cmdq_pkt_write_indriect(pkt, NULL, pa + gce_mminfra, CMDQ_TPR_ID, ~0);
 
@@ -2976,7 +2977,8 @@ int cmdq_pkt_wfe(struct cmdq_pkt *pkt, u16 event)
 		CMDQ_GET_ARG_B(arg_b), event,
 		0, 0, 0, 0, CMDQ_CODE_WFE);
 
-	if (cmdq_pkt_hw_trace_event(pkt, event))
+	if (cmdq_pkt_hw_trace_event(pkt, event) &&
+		!cmdq_util_is_secure_client(pkt->cl))
 		cmdq_pkt_hw_trace(pkt, event);
 	return ret;
 }
@@ -3002,7 +3004,8 @@ int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event)
 		CMDQ_GET_ARG_B(arg_b), event,
 		0, 0, 0, 0, CMDQ_CODE_WFE);
 
-	if (cmdq_pkt_hw_trace_event(pkt, event))
+	if (cmdq_pkt_hw_trace_event(pkt, event) &&
+		!cmdq_util_is_secure_client(pkt->cl))
 		cmdq_pkt_hw_trace(pkt, event);
 
 	if (event == CMDQ_TOKEN_PAUSE_TASK_32)
@@ -3101,7 +3104,7 @@ s32 cmdq_pkt_finalize(struct cmdq_pkt *pkt)
 #endif
 #endif	/* end of CONFIG_MTK_CMDQ_MBOX_EXT */
 
-	if (cmdq_get_append_by_event(cl ? cl->chan : NULL)
+	if ((bool)cmdq_get_hw_flags(cl ? cl->chan : NULL, APPEND_BY_EVENT)
 		&& !pkt->sec_data) {
 		err = cmdq_pkt_wait_no_clear(pkt, CMDQ_TOKEN_PAUSE_TASK_32);
 		if (err < 0)
@@ -3156,7 +3159,7 @@ s32 cmdq_pkt_refinalize(struct cmdq_pkt *pkt)
 	if (inst->op != CMDQ_CODE_JUMP || inst->arg_a != 1)
 		return 0;
 
-	gce_shift_bit = cmdq_get_gce_shift_bit(cl->chan);
+	gce_shift_bit = (int)cmdq_get_hw_flags(cl->chan, GCE_SHIFT_BIT);
 	off = CMDQ_JUMP_PASS >> gce_shift_bit;
 	inst->arg_a = 0;
 	inst->arg_c = CMDQ_GET_ARG_C(off);
@@ -3636,7 +3639,7 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 		return -EINVAL;
 	}
 
-	if (cmdq_get_append_by_event(client->chan)
+	if ((bool)cmdq_get_hw_flags(client ? client->chan : NULL, APPEND_BY_EVENT)
 		&& pkt->pause_offset) {
 		struct cmdq_instruction *cmdq_inst, inst;
 		cmdq_inst = (void *)cmdq_pkt_get_va_by_offset(pkt,

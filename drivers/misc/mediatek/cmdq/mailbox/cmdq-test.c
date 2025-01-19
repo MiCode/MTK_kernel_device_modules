@@ -342,7 +342,7 @@ u32 *cmdq_test_mbox_polling_timeout_unit(struct cmdq_pkt *pkt,
 	if (!cl)
 		return 0;
 
-	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
+	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 	buf = list_last_entry(&pkt->buf, typeof(*buf), list_entry);
 	// last 1k as output buffer
 	out_pa = CMDQ_BUF_ADDR(buf) + 3096 + gce_mminfra;
@@ -1558,7 +1558,7 @@ static void cmdq_test_tf(struct cmdq_test *test)
 	if (!clt)
 		return;
 
-	gce_mminfra = cmdq_get_gce_mminfra(clt->chan);
+	gce_mminfra = cmdq_get_hw_flags(clt->chan, GCE_MMINFRA);
 	pkt = cmdq_pkt_create(clt);
 	cmdq_pkt_write(pkt, NULL, gce_mminfra + 0, ~0, ~0);
 

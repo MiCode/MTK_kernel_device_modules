@@ -264,7 +264,7 @@ void cmdq_util_hw_trace_mode_update(const u16 hwid,const bool built_in);
 void cmdq_util_mminfra_cmd(const u8 type);
 void cmdq_util_track(struct cmdq_pkt *pkt);
 void cmdq_util_dump_smi(void);
-u8 cmdq_util_track_ctrl(void *cmdq, phys_addr_t base, bool sec);
+void cmdq_util_track_ctrl(void *cmdq, phys_addr_t base, bool sec, u8 hwid);
 void cmdq_util_set_first_err_mod(void *chan, const char *mod);
 const char *cmdq_util_get_first_err_mod(void *chan);
 struct cmdq_thread *cmdq_client_get_thread(struct cmdq_client *client);

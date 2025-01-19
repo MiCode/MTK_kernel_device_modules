@@ -151,7 +151,12 @@ struct cmdq_sec {
 	struct mbox_controller	mbox;
 	void __iomem		*base;
 	phys_addr_t		base_pa;
+	int	gce_shift_bit;
+	unsigned long long	gce_mminfra;
 	u8			hwid;
+	bool	append_by_event;
+	bool		spr3_timer;
+	bool		poll_sleep_bit32;
 	// u32			irq;
 	struct cmdq_base	*clt_base;
 	struct cmdq_client	*clt;
@@ -185,8 +190,8 @@ struct cmdq_sec {
 static atomic_t cmdq_path_res = ATOMIC_INIT(0);
 static atomic_t cmdq_path_res_mtee = ATOMIC_INIT(0);
 
-static u32 g_cmdq_cnt;
-static struct cmdq_sec *g_cmdq[2];
+u32 g_cmdq_cnt;
+static struct cmdq_sec *g_cmdq[4];
 
 static const s32 cmdq_max_task_in_secure_thread[
 	CMDQ_MAX_SECURE_THREAD_COUNT] = {10, 10, 4, 10, 10};
@@ -465,7 +470,7 @@ s32 cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
 	right.value = 1;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, xpr, &left, &right);
 
-	gce_mminfra = cmdq_get_gce_mminfra(cl->chan);
+	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 	if (!cpr_not_support_cookie)
 		err = cmdq_pkt_write_indriect(pkt, NULL,
 			cmdq->shared_mem->mva + CMDQ_SEC_SHARED_THR_CNT_OFFSET +
@@ -937,6 +942,8 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	u32 i;
 	int gce_shift_bit;
 	struct cmdq_client *cl = task->pkt->cl;
+	struct cmdq_sec *cmdq =
+		container_of(cl->chan->mbox, typeof(*cmdq), mbox);
 
 	if (!data->mtee) {
 		iwc_msg = (struct iwcCmdqMessage_t *)context->iwc_msg;
@@ -985,6 +992,7 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	}
 
 	iwc_msg->command.thread = thrd_idx;
+	iwc_msg->command.hwid = cmdq->hwid;
 	iwc_msg->command.scenario = task->scenario;
 	iwc_msg->command.priority = task->pkt->priority;
 	iwc_msg->command.engineFlag = task->engineFlag;
@@ -992,7 +1000,7 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	if (data->mtee)
 		iwc_msg->command.sec_id = data->sec_id;
 #endif
-	gce_shift_bit = cmdq_get_gce_shift_bit(cl->chan);
+	gce_shift_bit = (int)cmdq_get_hw_flags(cl->chan, GCE_SHIFT_BIT);
 	last = list_last_entry(&task->pkt->buf, typeof(*last), list_entry);
 	list_for_each_entry(buf, &task->pkt->buf, list_entry) {
 		if (buf == last)
@@ -1095,7 +1103,7 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 	memset(iwc_msg, 0, sizeof(*iwc_msg));
 	iwc_msg->cmd = iwc_cmd;
 	iwc_msg->command.thread = thrd_idx;
-	iwc_msg->cmdq_id = cmdq_util_get_hw_id(cmdq->base_pa);
+	iwc_msg->cmdq_id = cmdq->hwid;
 	iwc_msg->debug.logLevel =
 		cmdq_util_is_feature_en(CMDQ_LOG_FEAT_SECURE);
 
@@ -1312,8 +1320,8 @@ cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 	bool dump_err = false;
 	struct cmdq_pkt *pkt = task ? task->pkt : NULL;
 
-	cmdq_log("task:%p iwc_cmd:%u cmdq:%p thrd-idx:%u tgid:%u",
-		task, iwc_cmd, cmdq, thrd_idx, current->tgid);
+	cmdq_log("%s task:%p iwc_cmd:%u cmdq:%p thrd-idx:%u tgid:%u",
+		__func__, task, iwc_cmd, cmdq, thrd_idx, current->tgid);
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_log_ex(cmdq->mmp.submit, MMPROFILE_FLAG_PULSE,
@@ -1922,6 +1930,7 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	s32 i, err;
+	u32 hwid;
 	const char *pkvm_status = NULL;
 	struct device_node *pkvm_node;
 	unsigned long flags;
@@ -2057,14 +2066,24 @@ cmdq_sec_probe_mtee_end:
 	} else
 		pm_runtime_enable(dev);
 
-	cmdq->hwid = cmdq_util_track_ctrl(cmdq, cmdq->base_pa, true);
+	if (of_property_read_u32(dev->of_node, "gce-hwid", &hwid))
+		hwid = g_cmdq_cnt;
+	g_cmdq[hwid] = cmdq;
+	cmdq->hwid = (u8)hwid;
+	g_cmdq_cnt++;
+	cmdq_util_track_ctrl(cmdq, cmdq->base_pa, true, (u8)hwid);
+
+	cmdq->gce_mminfra = cmdq_get_hw_flags(NULL, GCE_MMINFRA);
+	cmdq->gce_shift_bit = (int)cmdq_get_hw_flags(NULL, GCE_SHIFT_BIT);
+	cmdq->append_by_event = (bool)cmdq_get_hw_flags(NULL, APPEND_BY_EVENT);
+	cmdq->spr3_timer = (bool)cmdq_get_hw_flags(NULL, SPR3_TIMER);
+	cmdq->poll_sleep_bit32 = (bool)cmdq_get_hw_flags(NULL, POLL_SLEEP_BIT32);
 
 	cmdq_mmp_init(cmdq);
 
 	cmdq_msg("cmdq:%p(%u) va:%p pa:%pa",
 		cmdq, cmdq->hwid, cmdq->base, &cmdq->base_pa);
 
-	g_cmdq[g_cmdq_cnt++] = cmdq;
 #ifdef CMDQ_SECURE_SUPPORT
 	cmdq_sec_helper_set_fp(&sec_helper_fp);
 #endif
@@ -2097,9 +2116,9 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 
 	do {
 		msleep(10000);
+		if (!g_cmdq[i])
+			continue;
 		cmdq = g_cmdq[i];
-		if (!cmdq)
-			break;
 		cmdq_msg("g_cmdq_cnt:%u g_cmdq:%u pa:%pa",
 			g_cmdq_cnt, i, &cmdq->base_pa);
 

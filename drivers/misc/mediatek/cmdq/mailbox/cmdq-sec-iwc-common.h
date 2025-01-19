@@ -249,6 +249,7 @@ struct iwcCmdqCommand_t {
 	uint32_t commandSize;
 	uint64_t engineFlag;
 	uint32_t pVABase[CMDQ_IWC_MAX_CMD_LENGTH];
+	uint8_t hwid;
 
 	/* exec order data */
 	uint32_t waitCookie; /* [IN] index in thread's task list,
@@ -275,7 +276,6 @@ struct iwcCmdqCommand_t {
 	struct readback_engine readback_engs[CMDQ_MAX_READBACK_ENG];
 	uint32_t readback_cnt;
 	int32_t sec_id;
-
 };
 
 enum cmdq_sec_meta_type {

@@ -209,7 +209,6 @@ struct cmdq_hw_trace_bit {
 	uint32_t unused : 28;
 };
 
-
 struct cmdq_task {
 	struct cmdq		*cmdq;
 	struct list_head	list_entry;
@@ -252,8 +251,11 @@ struct cmdq {
 	phys_addr_t		base_pa;
 	int	gce_shift_bit;
 	unsigned long long	gce_mminfra;
-	u32	gce_thread_nr;
 	u8			hwid;
+	bool	append_by_event;
+	bool		spr3_timer;
+	bool		poll_sleep_bit32;
+	u32	gce_thread_nr;
 	int			irq[mtk_cmdq_irq_max];
 	struct list_head	irq_removes;
 	spinlock_t		irq_removes_lock;
@@ -309,15 +311,12 @@ struct cmdq {
 	void __iomem	*mminfra_ao_base;
 	bool		error_irq_sw_req;
 	bool		gce_vm;
-	bool		spr3_timer;
-	bool		poll_sleep_bit32;
 	bool		ao_ctrl_by_mminfra;
 	struct device	*pd_mminfra_1;
 	struct device	*pd_mminfra_ao;
 	bool		gce_ddr_sel_wla;
 	unsigned int	dbg3;
 	u32	cmdq_dbg_type;
-	bool	append_by_event;
 	u32		hw_trace_disable[CMDQ_THR_MAX_COUNT];
 	u32		hw_trace_disable_thread;
 	bool	hw_trace_built_in;
@@ -452,7 +451,7 @@ void cmdq_set_hw_trace_built_in(u8 hwid, bool built_in)
 }
 EXPORT_SYMBOL(cmdq_set_hw_trace_built_in);
 
-bool cmdq_get_append_by_event(void *chan)
+unsigned long long cmdq_get_hw_flags(void *chan, enum CMDQ_HW_FLAGS type)
 {
 	struct cmdq *cmdq;
 
@@ -461,35 +460,23 @@ bool cmdq_get_append_by_event(void *chan)
 	else
 		cmdq = container_of(((struct mbox_chan *)chan)->mbox, typeof(*cmdq), mbox);
 
-	return cmdq->append_by_event;
+	switch (type) {
+	case APPEND_BY_EVENT:
+		return (unsigned long long)cmdq->append_by_event;
+	case GCE_MMINFRA:
+		return cmdq->gce_mminfra;
+	case GCE_SHIFT_BIT:
+		return (unsigned long long)cmdq->gce_shift_bit;
+	case SPR3_TIMER:
+		return (unsigned long long)cmdq->spr3_timer;
+	case POLL_SLEEP_BIT32:
+		return (unsigned long long)cmdq->poll_sleep_bit32;
+	default:
+		break;
+	}
+	return 0;
 }
-EXPORT_SYMBOL(cmdq_get_append_by_event);
-
-unsigned long long cmdq_get_gce_mminfra(void *chan)
-{
-	struct cmdq *cmdq;
-
-	if (!chan)
-		cmdq = g_cmdq[0];
-	else
-		cmdq = container_of(((struct mbox_chan *)chan)->mbox, typeof(*cmdq), mbox);
-
-	return cmdq->gce_mminfra;
-}
-EXPORT_SYMBOL(cmdq_get_gce_mminfra);
-
-int cmdq_get_gce_shift_bit(void *chan)
-{
-	struct cmdq *cmdq;
-
-	if (!chan)
-		cmdq = g_cmdq[0];
-	else
-		cmdq = container_of(((struct mbox_chan *)chan)->mbox, typeof(*cmdq), mbox);
-
-	return cmdq->gce_shift_bit;
-}
-EXPORT_SYMBOL(cmdq_get_gce_shift_bit);
+EXPORT_SYMBOL(cmdq_get_hw_flags);
 
 dma_addr_t cmdq_reg_shift_addr(dma_addr_t addr, void *chan)
 {
@@ -3628,7 +3615,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	}
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-	cmdq_util_controller->track_ctrl(cmdq, cmdq->base_pa, false);
+	cmdq_util_controller->track_ctrl(cmdq, cmdq->base_pa, false, hwid);
 #endif
 	cmdq->prebuilt_clt = cmdq_mbox_create(&pdev->dev, 0);
 	cmdq->hw_trace_clt = cmdq_mbox_create(&pdev->dev, 1);
