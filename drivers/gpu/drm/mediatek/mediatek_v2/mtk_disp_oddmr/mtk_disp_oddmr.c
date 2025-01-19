@@ -1531,9 +1531,12 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 	SET_VAL_MASK(reg_value, reg_mask, 1, REG_DE_ALIGN8_EN);
 	SET_VAL_MASK(reg_value, reg_mask, is_h_2x4x_sel, REG_HSD_2X4X_SEL);
 	if (oddmr_priv->data->od_version == MTK_OD_V2) {
-		if (oddmr_priv->spr_format == MTK_PANEL_RGBG_BGRG_TYPE ||
-					oddmr_priv->spr_format == MTK_PANEL_BGRG_RGBG_TYPE)
+		if (oddmr_priv->spr_enable == 1 && oddmr_priv->spr_relay == 0 &&
+				(oddmr_priv->spr_format == MTK_PANEL_RGBG_BGRG_TYPE ||
+				oddmr_priv->spr_format == MTK_PANEL_BGRG_RGBG_TYPE))
 			SET_VAL_MASK(reg_value, reg_mask, 1, MT6991_REG_SPR_RGBG_MODE);
+		else
+			SET_VAL_MASK(reg_value, reg_mask, 0, MT6991_REG_SPR_RGBG_MODE);
 		mtk_oddmr_write_mask(comp, reg_value, MT6991_DISP_ODDMR_OD_SCALING_6, reg_mask, pkg);
 	} else
 		mtk_oddmr_write_mask(comp, reg_value, DISP_ODDMR_OD_SCALING_6, reg_mask, pkg);
