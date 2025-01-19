@@ -10258,6 +10258,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,dvfs-req-dis;
 			mediatek,suspend-mode-l12;
 			pextpcfg = <&pextp0cfg_ao_clk>;
+			pmrc = <&srclken_rc>;
 
 			clocks = <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_REF_PCIE>,
 				 <&pextp0cfg_ao_clk CLK_PEXT_PEXTP_MAC_P0_PL_P_PCIE>,
