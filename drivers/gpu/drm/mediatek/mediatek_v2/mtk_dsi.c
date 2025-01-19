@@ -327,7 +327,7 @@
 #define DSI_BYPASS_SHADOW BIT(1)
 #define DSI_READ_WORKING BIT(2)
 
-#define DSI_INPUT_DBG		0x1d4
+#define DSI_INPUT_DBG(data)	(data->reg_dsi_input_dbg_ofs ? data->reg_dsi_input_dbg_ofs : 0x1d4)
 #define DSI_DBG_FLD_ROI_X	REG_FLD_MSB_LSB(12, 0)
 #define DSI_DBG_FLD_ROI_Y	REG_FLD_MSB_LSB(28, 16)
 
@@ -3536,15 +3536,20 @@ void mtk_dsi_cur_pos_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr;
 	unsigned int reg_val;
+	unsigned long offset;
+	struct mtk_dsi *dsi;
 
 	if(!comp)
 		return;
+
 	baddr = comp->regs;
 	if (!baddr) {
 		DDPINFO("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
 		return;
 	}
-	reg_val = readl(DSI_INPUT_DBG + baddr);
+
+	dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+	reg_val = readl(DSI_INPUT_DBG(dsi->driver_data) + baddr);
 	DDPINFO("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
 		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_X, reg_val),
 		REG_FLD_VAL_GET(DSI_DBG_FLD_ROI_Y, reg_val));
@@ -6473,13 +6478,16 @@ int mtk_dsi_dump(struct mtk_ddp_comp *comp)
 	DDPDUMP("state9 LINE_COUNTER(cmd mode):%u\n", reg_val);
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	for (k = 0; k < 0x1f0; k += 16) {
+	for (k = 0; k < 0x2b0; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
 			readl(dsi->regs + k),
 			readl(dsi->regs + k + 0x4),
 			readl(dsi->regs + k + 0x8),
 			readl(dsi->regs + k + 0xc));
 	}
+
+	DDPDUMP("0x%04x: 0x%08x\n",
+		DSI_INPUT_DBG(dsi->driver_data), readl(dsi->regs + DSI_INPUT_DBG(dsi->driver_data)));
 
 	for (k = DSI_BUF_CON0(dsi->driver_data); k < DSI_BUF_CON0(dsi->driver_data) + 0x40; k += 16) {
 		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", k,
@@ -13190,6 +13198,7 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.reg_vm_cmd_data10_ofs = 0x128,
 	.reg_vm_cmd_data20_ofs = 0x138,
 	.reg_vm_cmd_data30_ofs = 0x148,
+	.reg_dsi_input_dbg_ofs = 0x244,
 	.poll_for_idle = mtk_dsi_poll_for_idle,
 	.irq_handler = mtk_dsi_irq_status,
 	.esd_eint_compat = "mediatek, DSI_TE-eint",
