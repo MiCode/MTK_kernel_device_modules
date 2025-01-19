@@ -1224,15 +1224,6 @@ static inline void ccmni_dev_init(struct net_device *dev)
 	__dev_addr_set(dev, addr, ETH_ALEN);
 }
 
-#ifdef CCCI_CCMNI_MODULE
-const struct header_ops ccmni_eth_header_ops ____cacheline_aligned = {
-	.create		= eth_header,
-	.parse		= eth_header_parse,
-	.cache		= eth_header_cache,
-	.cache_update	= eth_header_cache_update,
-};
-#endif
-
 static u32 ccmni_get_capability_from_dts_node(unsigned int hw_type)
 {
 	u32 capability = 0;

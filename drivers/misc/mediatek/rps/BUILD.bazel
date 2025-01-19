@@ -1,35 +1,40 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
-    default_visibility = [
-        "//visibility:public",
-    ],
+	default_visibility = [
+		"//visibility:public",
+	],
 )
 
 filegroup(
-    name = "ddk_kconfigs",
-    srcs = glob([
-        "**/Kconfig",
-    ]),
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
 )
 
 filegroup(
-    name = "srcs",
-    srcs = glob([
-	"**/*.h",
-    ]),
+	name = "srcs",
+	srcs = glob([
+		"**/*.h",
+	]),
+)
+
+ddk_headers(
+	name = "rps_header",
+	hdrs = ["rps_perf.h"],
+	includes = ["."],
 )
 
 define_mgk_ddk_ko(
-    name = "rps_perf",
-    hdrs = [
-	"rps_perf.h",
-    ],
-    includes = ["include"],
-    srcs = [],
-    conditional_srcs = {
-      "CONFIG_MTK_NET_RPS": {
-        True: ["rps_perf.c"],
-      },
-    },
+	name = "rps_perf",
+	hdrs = ["rps_perf.h"],
+	includes = ["."],
+	srcs = [],
+	conditional_srcs = {
+		"CONFIG_MTK_NET_RPS": {
+		True: ["rps_perf.c"],
+		},
+	},
 )
