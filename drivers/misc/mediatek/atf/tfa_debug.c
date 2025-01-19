@@ -131,15 +131,11 @@ static int is_debug_buf_info_valid(void)
 
 static int generic_open(struct inode *inode, struct file *file)
 {
-	int ret;
 	struct tfa_debug_instance *inst_p = NULL;
 
-	ret = nonseekable_open(inode, file);
-	if (unlikely(ret))
-		return ret;
-	inst_p = kmalloc(sizeof(struct tfa_debug_instance),
-		GFP_KERNEL);
-	if (IS_ERR(inst_p)) {
+	nonseekable_open(inode, file);
+	inst_p = kmalloc(sizeof(*inst_p), GFP_KERNEL);
+	if (!inst_p) {
 		file->private_data = NULL;
 		pr_notice("Fail to kmalloc:%ld\n", PTR_ERR(inst_p));
 		return -ENOMEM;
