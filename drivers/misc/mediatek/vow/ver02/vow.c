@@ -178,6 +178,7 @@ static struct
 	unsigned long        scp_recover_user_return_size_addr;
 	unsigned int         delay_wakeup_time;
 	unsigned int         payloaddump_cb_type;
+	unsigned int         digital_gain_val;
 	unsigned int         chre_status;
 } vowserv;
 
@@ -830,6 +831,8 @@ static void vow_service_Init(void)
 		vowserv.scp_recover_user_return_size_addr = 0;
 		vowserv.delay_wakeup_time = 0;
 		vowserv.payloaddump_cb_type = PAYLOADDUMP_OFF;
+		/* set default value */
+		vowserv.digital_gain_val = (VOW_GAIN_0DB << 6) + VOW_GAIN_0DB; // CH2 | CH1
 		/* set meaningless default value to platform identifier and version */
 		memset(vowserv.google_engine_arch, 0, VOW_ENGINE_INFO_LENGTH_BYTE);
 		if (sprintf(vowserv.google_engine_arch, "12345678-1234-1234-1234-123456789012") < 0)
@@ -1679,6 +1682,19 @@ static bool vow_service_SetPayloaddump_callback(unsigned int arg)
 	return true;
 }
 
+static bool vow_service_SetDigitalGain(unsigned int arg)
+{
+	uint32_t vow_gain_ch1;
+	uint32_t vow_gain_ch2;
+
+	vow_gain_ch1 = arg & 0x3F;
+	vow_gain_ch2 = (arg >> 6) & 0x3F;
+	VOWDRV_DEBUG("VOW SetDigitalGain:Ch1=%d,Ch2=%d", vow_gain_ch1, vow_gain_ch2);
+	VowDrv_SetFlag(VOW_FLAG_DIGITAL_GAIN, arg);
+
+	return true;
+}
+
 static int vow_service_ReadVoiceData_Internal(void)
 {
 	int stop_condition = 0;
@@ -2493,7 +2509,7 @@ static bool VowDrv_SetProviderType(unsigned int type)
 static bool VowDrv_CheckProviderType(unsigned int type, bool enable)
 {
 	unsigned int provider_id = type & 0x0F;
-	unsigned int ch_num = (type >> 4) & 0x0F;
+	unsigned int ch_num = (type >> 4) & 0x07;
 	unsigned int scp_dmic_ch_sel = (type >> 13) & 0x7;
 	unsigned int magic = (type >> 16) & 0xFFFF;
 	unsigned int ch = 0;
@@ -3373,6 +3389,12 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg_da
 		if (vow_service_SetPayloaddump_callback((unsigned int)arg) == false)
 			ret = -EFAULT;
 		break;
+	case VOW_SET_VOW_DIGITAL_GAIN:
+		VOWDRV_DEBUG("VOW_SET_VOW_DIGITAL_GAIN(%lu)", arg);
+		vowserv.digital_gain_val = (unsigned int)arg;
+		if (vow_service_SetDigitalGain((unsigned int)arg) == false)
+			ret = -EFAULT;
+		break;
 	default:
 		VOWDRV_DEBUG("vow WrongParameter(%lu)", arg);
 		break;
@@ -3417,6 +3439,7 @@ static long VowDrv_compat_ioctl(struct file *fp,
 	case VOW_NOTIFY_CHRE_STATUS:
 	case VOW_SET_VOW_DELAY_WAKEUP:
 	case VOW_SET_VOW_PAYLOAD_CALLBACK:
+	case VOW_SET_VOW_DIGITAL_GAIN:
 		ret = fp->f_op->unlocked_ioctl(fp, cmd, (unsigned long)&arg_info);
 		break;
 	case VOW_MODEL_START:
@@ -3828,6 +3851,8 @@ static int vow_scp_recover_event(struct notifier_block *this,
 			VOWDRV_DEBUG("fail: vow_SetDelayWakeupTime\n");
 		if (vow_service_SetPayloaddump_callback(vowserv.payloaddump_cb_type) == false)
 			VOWDRV_DEBUG("fail: vow_SetPayloaddump\n");
+		if (vow_service_SetDigitalGain(vowserv.digital_gain_val) == false)
+			VOWDRV_DEBUG("fail: vow_SetDigitalGain\n");
 
 		/* if vow is not enable, then return */
 		if (VowDrv_GetHWStatus() != VOW_PWR_ON) {

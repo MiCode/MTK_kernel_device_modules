@@ -134,6 +134,7 @@
 #define VOW_NOTIFY_CHRE_STATUS        _IOW(VOW_IOC_MAGIC, 0x1B, unsigned int)
 #define VOW_SET_VOW_DELAY_WAKEUP      _IOW(VOW_IOC_MAGIC, 0x1C, unsigned int)
 #define VOW_SET_VOW_PAYLOAD_CALLBACK  _IOW(VOW_IOC_MAGIC, 0x1D, unsigned int)
+#define VOW_SET_VOW_DIGITAL_GAIN      _IOW(VOW_IOC_MAGIC, 0x1E, unsigned int)
 
 #ifdef VOW_ECHO_SW_SRC
 #define VOW_BARGEIN_AFE_MEMIF_SIZE        (0x1E00)
@@ -150,6 +151,7 @@
 #define MAGIC_IOCTL_NUMBER                (0xDEADBEEF)  /* set meaningless default value */
 
 #define REC_QUEUE_NUM                     (10)
+#define VOW_GAIN_0DB                      (16)
 
 enum { /* dump_data_t */
 	DUMP_AECOUT = 0,
@@ -233,6 +235,7 @@ enum vow_flag_type_t {
 	VOW_FLAG_CHRE_STATUS,
 	VOW_FLAG_WAKEUP_DELAY_TIME,
 	VOW_FLAG_PAYLOADDUMP_CB_TYPE,
+	VOW_FLAG_DIGITAL_GAIN,
 	NUM_OF_VOW_FLAG_TYPE
 };
 
