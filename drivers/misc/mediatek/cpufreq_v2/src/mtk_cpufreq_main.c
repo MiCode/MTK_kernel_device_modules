@@ -7,6 +7,7 @@
 #include <linux/random.h>
 #include <linux/pm_opp.h>
 #include <linux/energy_model.h>
+#include <trace/events/power.h>
 /*
 #ifdef MET_READY
 #include <mt-plat/met_drv.h>
@@ -1142,8 +1143,16 @@ static int _mt_cpufreq_target(struct cpufreq_policy *policy,
 {
 	struct mt_cpu_dvfs *p;
 	unsigned int new_opp_idx;
-
+#ifdef POLICY_FREQ_LIMIT_CHECK
+	int cpu;
+#endif
 	p = id_to_cpu_dvfs(_get_cpu_dvfs_id(policy->cpu));
+
+#ifdef POLICY_FREQ_LIMIT_CHECK
+	for_each_cpu(cpu, p->mt_policy->cpus)
+		trace_cpu_frequency(target_freq, cpu);
+#endif
+
 	if (!p)
 		return -EINVAL;
 
@@ -1158,6 +1167,9 @@ static int _mt_cpufreq_target(struct cpufreq_policy *policy,
 	_mt_cpufreq_dvfs_request_wrapper(p, new_opp_idx, MT_CPU_DVFS_NORMAL,
 									NULL);
 
+#ifdef POLICY_FREQ_LIMIT_CHECK
+	p->mt_policy->cur = target_freq;
+#endif
 	return 0;
 }
 
