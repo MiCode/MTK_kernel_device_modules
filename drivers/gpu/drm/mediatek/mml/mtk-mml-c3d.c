@@ -165,14 +165,14 @@ static void c3d_relay(struct mml_comp *comp, struct cmdq_pkt *pkt,
 	mml_pq_msg("%s relay[%d]", __func__, relay);
 	if (relay)
 		cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_CFG],
-			0x21, U32_MAX);
+			0x27, U32_MAX);
 	else {
 		if (alpha)
 			cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_CFG],
-				0x26, U32_MAX);
+				0x66, U32_MAX);
 		else
 			cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_CFG],
-				0x06, U32_MAX);
+				0x46, U32_MAX);
 	}
 }
 
