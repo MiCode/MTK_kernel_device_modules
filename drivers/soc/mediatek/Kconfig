@@ -103,6 +103,14 @@ config MTK_MBOX
 	  or 256 bytes SRAM and 32 bit irq. The driver does read/write
 	  SRAM and IRQ handling.
 
+config MTK_MMDVFS_VCP
+	tristate "MediaTek MMDVFS vcp Support"
+	help
+	  Say yes here to add support for the MediaTek Multimedia DVFS (MMDVFS)
+	  vcp driver. The MMDVFS is used to set clk for Mediatek multimedia hardwares
+	  , such as display, camera, mdp and video codec. Say no if your device
+	  does not need to do DVFS for Multimedia hardwares.
+
 menu "Security"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/soc/mediatek/devapc/Kconfig"
