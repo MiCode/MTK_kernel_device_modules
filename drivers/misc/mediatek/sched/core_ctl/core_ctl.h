@@ -51,5 +51,15 @@ enum{
 
 extern void core_ctl_notifier_register(struct notifier_block *n);
 extern void core_ctl_notifier_unregister(struct notifier_block *n);
+extern int core_ctl_get_min_cpus(unsigned int cid);
+extern int core_ctl_set_min_cpus(unsigned int cid, unsigned int min, int requester, unsigned int have_demand);
+extern int core_ctl_get_max_cpus(unsigned int cid);
+extern int core_ctl_set_max_cpus(unsigned int cid, unsigned int max, int requester, unsigned int have_demand);
+
+enum {
+	SYSNODE = 0,
+	POWERHAL,
+	CAMERA
+};
 
 #endif /* _CORE_CTL_H */
