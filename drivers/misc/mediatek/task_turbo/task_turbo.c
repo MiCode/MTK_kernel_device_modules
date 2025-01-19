@@ -32,6 +32,7 @@
 #include <trace/hooks/sys.h>
 
 #include <task_turbo.h>
+#include <task_turbo_v.h>
 #include <eas/vip.h>
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 #include <fstb.h>
@@ -523,7 +524,8 @@ static int set_tdtgd(const char *buf, const struct kernel_param *kp)
 	if (set_tdtgd_hook) {
 		rcu_read_lock();
 		p = find_task_by_vpid(set_tdtgd_param);
-		set_tdtgd_hook(p);
+		if (p)
+			set_tdtgd_hook(p);
 		rcu_read_unlock();
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG set: tdtgd_hook:",
 						set_tdtgd_param, "-1", INVALID_VAL, enforced_qualified_mask);
@@ -561,7 +563,8 @@ static int unset_tdtgd(const char *buf, const struct kernel_param *kp)
 	if (unset_tdtgd_hook) {
 		rcu_read_lock();
 		p = find_task_by_vpid(unset_tdtgd_param);
-		unset_tdtgd_hook(p);
+		if (p)
+			unset_tdtgd_hook(p);
 		rcu_read_unlock();
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG unset: tdtgd_hook:",
 						unset_tdtgd_param, "-1", INVALID_VAL, enforced_qualified_mask);
