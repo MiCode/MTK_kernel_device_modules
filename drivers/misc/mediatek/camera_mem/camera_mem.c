@@ -360,6 +360,7 @@ static bool cam_mem_get_secure_handle(struct ION_BUFFER *mmu,
 	buf = dma_buf_get(IonNode->memID);
 
 	mmu->dmaBuf = buf;
+#if IS_ENABLED(CONFIG_MTK_CAMERA_MEM_SECURE_SUPPORT)
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
 	IonNode->sec_handle = dmabuf_to_secure_handle(mmu->dmaBuf);
@@ -368,6 +369,7 @@ static bool cam_mem_get_secure_handle(struct ION_BUFFER *mmu,
 		return false;
 	}
 	#endif
+#endif
 #endif
 	return true;
 }
@@ -391,6 +393,7 @@ static bool cam_mem_mmu_get_dma_buffer(
 		return false;
 	}
 	mmu->dmaBuf = buf;
+#if IS_ENABLED(CONFIG_MTK_CAMERA_MEM_SECURE_SUPPORT)
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
 	if (IonNode->need_sec_handle) {
@@ -401,6 +404,7 @@ static bool cam_mem_mmu_get_dma_buffer(
 		}
 	}
 	#endif
+#endif
 #endif
 	mmu->attach = dma_buf_attach(mmu->dmaBuf, cam_mem_dev.dev);
 	if (IS_ERR(mmu->attach)) {
