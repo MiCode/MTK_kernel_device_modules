@@ -12,6 +12,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/seq_file.h>
 #include <linux/spinlock_types.h>
+#include <linux/workqueue.h>
 
 #include <clk-fmeter.h>
 #include <mt-plat/mrdump.h>
@@ -34,6 +35,11 @@
 //static DEFINE_SPINLOCK(lock);
 
 #define OPP_NAG	(-1)
+
+struct seq_file *seq_file;
+
+struct workqueue_struct *workq;
+struct work_struct work;
 
 struct regulator *reg_vcore;
 struct regulator *reg_vmm;
@@ -161,22 +167,30 @@ static struct kernel_param_ops mmdvfs_debug_freerun_ops = {
 module_param_cb(freerun, &mmdvfs_debug_freerun_ops, NULL, 0644);
 MODULE_PARM_DESC(freerun, "freerun by rc id");
 
+static void mmdvfs_debug_work(struct work_struct *work)
+{
+	if (!IS_ERR_OR_NULL(reg_vcore))
+		mmdvfs_seq_print(seq_file, "vcore enabled:%d voltage:%d",
+			regulator_is_enabled(reg_vcore), regulator_get_voltage(reg_vcore));
+
+	if (!IS_ERR_OR_NULL(reg_vmm))
+		mmdvfs_seq_print(seq_file, "vmm enabled:%d voltage:%d",
+			regulator_is_enabled(reg_vmm), regulator_get_voltage(reg_vmm));
+
+	if (!IS_ERR_OR_NULL(reg_vdisp))
+		mmdvfs_seq_print(seq_file, "vdisp enabled:%d voltage:%d",
+			regulator_is_enabled(reg_vdisp), regulator_get_voltage(reg_vdisp));
+}
+
 static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 {
 	u32 val;
 	int i;
 
-	if (!IS_ERR_OR_NULL(reg_vcore))
-		mmdvfs_seq_print(file, "vcore enabled:%d voltage:%d",
-			regulator_is_enabled(reg_vcore), regulator_get_voltage(reg_vcore));
-
-	if (!IS_ERR_OR_NULL(reg_vmm))
-		mmdvfs_seq_print(file, "vmm enabled:%d voltage:%d",
-			regulator_is_enabled(reg_vmm), regulator_get_voltage(reg_vmm));
-
-	if (!IS_ERR_OR_NULL(reg_vdisp))
-		mmdvfs_seq_print(file, "vdisp enabled:%d voltage:%d",
-			regulator_is_enabled(reg_vdisp), regulator_get_voltage(reg_vdisp));
+	if (!work_pending(&work))
+		queue_work(workq, &work);
+	else
+		MMDVFS_DBG("mmdvfs_debug_work fail : cannot dump regulator");
 
 	for (i = 0; i < mux_count; i++)
 		mmdvfs_seq_print(file, "mux:%d [%#x]=%#x",
@@ -199,8 +213,6 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 
 	ret = mmdvfs_debug_dump_volt_freq(file);
 	ret = mmdvfs_dump_dvfsrc_record();
-
-	// TODO : dram, reg
 
 	mmdvfs_mmup_cb_mutex_lock();
 	ret = mmdvfs_mmup_cb_ready_get();
@@ -294,6 +306,8 @@ struct notifier_block smi_dbg_nb = {mmdvfs_debug_smi_cb};
 
 static int mmdvfs_debug_show(struct seq_file *file, void *data)
 {
+	seq_file = file;
+
 	return mmdvfs_debug_status_dump(file);
 }
 
@@ -518,6 +532,9 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 	register_pm_notifier(&mmdvfs_debug_pm_notifier_block);
 	mmdvfs_debug_ops_set(&mmdvfs_debug_v5_ops);
+
+	workq = create_singlethread_workqueue("mmdvfs-debug-workq");
+	INIT_WORK(&work, mmdvfs_debug_work);
 
 	//mtk_mmdebug_status_dump_register_notifier(&mmdebug_nb);
 	mtk_smi_dbg_register_notifier(&smi_dbg_nb);
