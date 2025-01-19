@@ -511,6 +511,7 @@ struct vdec_vsi {
 	__u32 codec_type;
 	__u8 input_driven;
 	__u8 output_async;
+	__u8 output_async_handling;
 	__u8 low_pw_mode;
 	__u8 in_group;
 	__u8 cpu_hint;

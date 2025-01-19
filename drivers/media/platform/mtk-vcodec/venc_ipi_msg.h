@@ -647,6 +647,7 @@ struct venc_vsi {
 	__u32 meta_size;
 	__u64 meta_addr;
 	__u32 meta_offset;
+	__u8  put_async_handling;
 	__u8  is_aosp_qpmap;
 	__u32 qpmap_size;
 	__u64 qpmap_addr;

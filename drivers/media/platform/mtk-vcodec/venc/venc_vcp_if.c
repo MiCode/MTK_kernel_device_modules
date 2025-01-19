@@ -12,6 +12,7 @@
 #include <soc/mediatek/smi.h>
 #include <media/v4l2-mem2mem.h>
 #include <linux/sched.h>
+#include <linux/vmalloc.h>
 #include <uapi/linux/sched/types.h>
 
 #include "../mtk_vcodec_drv.h"
@@ -697,6 +698,7 @@ return_venc_ipi_ack:
 			break;
 		case VCU_ASYNCIPIMSG_ENC_PUT_FRAME_BUFFER:
 			inst->put_bs_async = 1;
+			inst->vsi->put_async_handling = 0;
 			vcodec_trace_begin("venc_ipi(ASYNC_PUT_FRAME_BUFFER)");
 			venc_get_bs_list(inst);
 			mtk_enc_put_buf(ctx);
@@ -831,8 +833,19 @@ static int venc_vcp_ipi_isr(unsigned int id, void *prdata, void *data, unsigned 
 			obj->id, msg->msg_id, atomic_read(&dev->mq.cnt));
 		wake_up(&dev->mq.wq);
 	} else {
+		struct share_obj *obj;
+		struct venc_vcu_ipi_msg_common *msg;
+		int i = 0;
+
+		mtk_v4l2_err("mq no free nodes, ml_cnt %d", atomic_read(&dev->mq.cnt));
+		list_for_each_entry(mq_node, &dev->mq.head, list) {
+			obj = &mq_node->ipi_data;
+			msg = (struct venc_vcu_ipi_msg_common *)obj->share_buf;
+			mtk_v4l2_err("msg q idx %d [%d] msg_id %X, vcu %lx, status %d",
+				i, msg->ctx_id, msg->msg_id, (unsigned long)msg->ap_inst_addr, msg->status);
+			i++;
+		}
 		spin_unlock_irqrestore(&dev->mq.lock, flags);
-		mtk_v4l2_err("mq no free nodes\n");
 	}
 
 	return 0;
@@ -1148,8 +1161,11 @@ void venc_vcp_probe(struct mtk_vcodec_dev *dev)
 
 	INIT_LIST_HEAD(&dev->mq.nodes);
 	for (i = 0; i < MTK_VCODEC_MAX_MQ_NODE_CNT; i++) {
-		mq_node = kmalloc(sizeof(struct mtk_vcodec_msg_node), GFP_DMA | GFP_ATOMIC);
-		list_add(&mq_node->list, &dev->mq.nodes);
+		mq_node = vzalloc(sizeof(struct mtk_vcodec_msg_node));
+		if (mq_node)
+			list_add(&mq_node->list, &dev->mq.nodes);
+		else
+			mtk_v4l2_err("mq_node %d vzalloc fail", i);
 	}
 
 	if (!VCU_FPTR(vcu_load_firmware))
