@@ -233,13 +233,12 @@ static void irq_mon_dump_stack_trace(unsigned int out, struct preemptirq_stat *p
 }
 
 /* irq: 1 = irq, 0 = preempt */
-static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, int irq)
+static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, struct irq_mon_tracer *tracer)
 {
-	struct irq_mon_tracer *tracer =
-		(irq) ? &irq_off_tracer : &preempt_off_tracer;
 	unsigned long long duration;
 	unsigned int out;
 	char msg[MAX_MSG_LEN];
+	bool irq;
 
 	/* skip <idle-0> task */
 	if (current->pid == 0)
@@ -249,7 +248,7 @@ static void check_preemptirq_stat(struct preemptirq_stat *pi_stat, int irq)
 	out = check_threshold(duration, tracer);
 	if (!out)
 		return;
-
+	irq = !strncmp(tracer->name, "irq", 3);
 	scnprintf(msg, sizeof(msg), "%s off, duration %llu ms, from %llu ns to %llu ns on CPU:%d",
 		  irq ? "irq" : "preempt",
 		  msec_high(duration),
@@ -365,17 +364,17 @@ static int trace_stat_end(struct irq_mon_tracer *tracer)
 
 /* probe functions */
 
-static void probe_irq_handler_entry(void *ignore, int irq,
+static void probe_irq_handler_entry(void *data, int irq,
 				    struct irqaction *action)
 {
-	trace_stat_start(&irq_handler_tracer);
+	trace_stat_start((struct irq_mon_tracer *)data);
 	irq_log_start();
 }
 
-static void probe_irq_handler_exit(void *ignore, int irq,
+static void probe_irq_handler_exit(void *data, int irq,
 				   struct irqaction *action, int ret)
 {
-	struct irq_mon_tracer *tracer = &irq_handler_tracer;
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
 	unsigned long long duration;
 	unsigned int out;
@@ -452,14 +451,14 @@ static void probe_irq_handler_exit(void *ignore, int irq,
 	stat->tracing = 0;
 }
 
-static void probe_softirq_entry(void *ignore, unsigned int vec_nr)
+static void probe_softirq_entry(void *data, unsigned int vec_nr)
 {
-	trace_stat_start(&softirq_tracer);
+	trace_stat_start((struct irq_mon_tracer *)data);
 }
 
-static void probe_softirq_exit(void *ignore, unsigned int vec_nr)
+static void probe_softirq_exit(void *data, unsigned int vec_nr)
 {
-	struct irq_mon_tracer *tracer = &softirq_tracer;
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
 	unsigned long long duration;
 	unsigned int out;
@@ -481,15 +480,15 @@ static void probe_softirq_exit(void *ignore, unsigned int vec_nr)
 	stat->tracing = 0;
 }
 
-static void probe_ipi_entry(void *ignore, const char *reason)
+static void probe_ipi_entry(void *data, const char *reason)
 {
-	trace_stat_start(&ipi_tracer);
+	trace_stat_start((struct irq_mon_tracer *)data);
 }
 
 
-static void probe_ipi_exit(void *ignore, const char *reason)
+static void probe_ipi_exit(void *data, const char *reason)
 {
-	struct irq_mon_tracer *tracer = &ipi_tracer;
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
 	unsigned long long duration;
 	unsigned int out;
@@ -510,11 +509,11 @@ static void probe_ipi_exit(void *ignore, const char *reason)
 	stat->tracing = 0;
 }
 
-static void probe_irq_disable(void *ignore,
-		unsigned long ip, unsigned long parent_ip)
+static void probe_irq_disable(void *data, unsigned long ip,
+			      unsigned long parent_ip)
 {
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct preemptirq_stat *pi_stat = raw_cpu_ptr(irq_pi_stat);
-	struct irq_mon_tracer *tracer = &irq_off_tracer;
 	unsigned long long ts;
 
 	if (!tracer->tracing)
@@ -532,9 +531,10 @@ static void probe_irq_disable(void *ignore,
 	irq_mon_save_stack_trace(pi_stat);
 }
 
-static void probe_irq_enable(void *ignore,
-		unsigned long ip, unsigned long parent_ip)
+static void probe_irq_enable(void *data, unsigned long ip,
+			     unsigned long parent_ip)
 {
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct preemptirq_stat *pi_stat = raw_cpu_ptr(irq_pi_stat);
 	unsigned long long ts;
 
@@ -549,17 +549,17 @@ static void probe_irq_enable(void *ignore,
 	this_cpu_write(irq_pi_stat->enable_ip, ip);
 	this_cpu_write(irq_pi_stat->enable_parent_ip, parent_ip);
 
-	check_preemptirq_stat(pi_stat, 1);
+	check_preemptirq_stat(pi_stat, tracer);
 
 	this_cpu_write(irq_pi_stat->enable_locked, 0);
 	this_cpu_write(irq_pi_stat->tracing, 0);
 }
 
-static void probe_preempt_disable(void *ignore
-		, unsigned long ip, unsigned long parent_ip)
+static void probe_preempt_disable(void *data, unsigned long ip,
+				  unsigned long parent_ip)
 {
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct preemptirq_stat *pi_stat = raw_cpu_ptr(preempt_pi_stat);
-	struct irq_mon_tracer *tracer = &preempt_off_tracer;
 	unsigned long long ts;
 
 	if (!tracer->tracing)
@@ -577,9 +577,10 @@ static void probe_preempt_disable(void *ignore
 	irq_mon_save_stack_trace(pi_stat);
 }
 
-static void probe_preempt_enable(void *ignore,
-		unsigned long ip, unsigned long parent_ip)
+static void probe_preempt_enable(void *data, unsigned long ip,
+				 unsigned long parent_ip)
 {
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct preemptirq_stat *pi_stat = raw_cpu_ptr(preempt_pi_stat);
 	unsigned long long ts;
 
@@ -594,24 +595,24 @@ static void probe_preempt_enable(void *ignore,
 	this_cpu_write(preempt_pi_stat->enable_ip, ip);
 	this_cpu_write(preempt_pi_stat->enable_parent_ip, parent_ip);
 
-	check_preemptirq_stat(pi_stat, 0);
+	check_preemptirq_stat(pi_stat, tracer);
 
 	this_cpu_write(preempt_pi_stat->enable_locked, 0);
 	this_cpu_write(preempt_pi_stat->tracing, 0);
 }
 
-static void probe_hrtimer_expire_entry(void *ignore,
+static void probe_hrtimer_expire_entry(void *data,
 				       struct hrtimer *hrtimer, ktime_t *now)
 {
 	if (!irqs_disabled())
 		return;
-	trace_stat_start(&hrtimer_expire_tracer);
+	trace_stat_start((struct irq_mon_tracer *)data);
 }
 
 /* ignore irq_count_tracer_fn hrtimer long */
-static void probe_hrtimer_expire_exit(void *ignore, struct hrtimer *hrtimer)
+static void probe_hrtimer_expire_exit(void *data, struct hrtimer *hrtimer)
 {
-	struct irq_mon_tracer *tracer = &hrtimer_expire_tracer;
+	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
 	struct trace_stat *stat = raw_cpu_ptr(tracer->stat);
 	unsigned long long duration;
 	unsigned int out;
