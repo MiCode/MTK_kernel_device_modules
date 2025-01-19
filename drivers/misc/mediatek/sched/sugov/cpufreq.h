@@ -221,6 +221,12 @@ extern void set_dsu_ctrl(bool set);
 extern struct cpu_dsu_freq_state *get_dsu_freq_state(void);
 bool enq_force_update_freq(struct sugov_policy *sg_policy);
 extern bool is_dsu_idle_enable(void);
+/* dsu fine-grained ctrl */
+extern int get_dsu_fine_ctrl_enable(void);
+extern void set_dsu_fine_ctrl_enable(int set);
+extern bool get_dsu_fine_ctrl(void);
+extern int get_fine_value_pct_cpu(int cpu);
+extern int get_fine_value_pct_gear(int gearid);
 
 /* adaptive margin */
 extern int am_support;

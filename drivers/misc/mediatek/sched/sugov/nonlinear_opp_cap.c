@@ -255,9 +255,11 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	int i, cpu, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
 	unsigned int wl = get_wl_dsu();
+	//dsu_fine_crtrl_enabled - 0:turn off dsu_fine_ctrl, 1: turn on dsu_fine_ctrl
+	int dsu_fine_ctrl_enabled = get_dsu_fine_ctrl_enable();
+	//dsu_fine_ctrl - tcm value (0: legacy, 1: fine-grained)
+	bool dsu_fine_ctrl = get_dsu_fine_ctrl();
 	struct cpufreq_mtk *c = policy->driver_data;
-	unsigned int gov_cpu = policy->cpu;
-	int gearid = topology_cluster_id(gov_cpu);
 	unsigned int freq_thermal = 0;
 	struct sugov_rq_data *sugov_data_ptr;
 	bool dsu_idle_ctrl = is_dsu_idle_enable();
@@ -271,6 +273,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 			freq_state.dsu_freq_vote[i] = 0;
 			continue;
 		}
+
 		cpu = cpumask_first(&pd_cpumask[i]);
 		max_freq_in_gear = 0;
 		for_each_cpu(cpu_idx, &pd_cpumask[i]) {
@@ -300,18 +303,14 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		if(max_freq_in_gear > freq_thermal)
 			cpu_freq_with_thermal = freq_thermal;
 #endif
-		freq_state.dsu_freq_vote[i]
-			= dsu_freq_agg(cpu, cpu_freq_with_thermal, false, wl, &dsu_target_freq);
+		freq_state.dsu_freq_vote[i] =
+		dsu_freq_agg(cpu, cpu_freq_with_thermal, false, wl, &dsu_target_freq);
 
-#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-		freq_thermal = get_cpu_ceiling_freq(gearid);
-		if(dsu_target_freq > freq_thermal)
-			dsu_target_freq = freq_thermal;
-#endif
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
 			trace_sugov_ext_dsu_freq_vote(wl, i, dsu_idle_ctrl,
-					max_freq_in_gear, freq_state.dsu_freq_vote[i], freq_thermal);
+				max_freq_in_gear, freq_state.dsu_freq_vote[i] ,freq_thermal, 
+				dsu_fine_ctrl_enabled, dsu_fine_ctrl, get_fine_value_pct_gear(i));
 	}
 
 	freq_state.dsu_target_freq = dsu_target_freq;
@@ -2116,6 +2115,8 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 		l3ctl_sram_base_addr = get_l3ctl_sram_base_addr();
 
 		init_eas_dsu_ctrl();
+
+		dsu_freq_init();
 	}
 #endif
 
@@ -2160,6 +2161,8 @@ EXPORT_SYMBOL_GPL(get_curr_cap);
 static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned int target_freq)
 {
 	unsigned int cpu = policy->cpu;
+	int dsu_fine_ctrl_enabled = get_dsu_fine_ctrl_enable();
+	bool dsu_fine_ctrl = get_dsu_fine_ctrl();
 	bool dsu_idle_ctrl = is_dsu_idle_enable();
 
 	irq_log_store();
@@ -2189,7 +2192,8 @@ static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned i
 			c->sb_ch = -1;
 			if (trace_sugov_ext_dsu_freq_vote_enabled())
 				trace_sugov_ext_dsu_freq_vote(UINT_MAX, topology_cluster_id(cpu),
-						dsu_idle_ctrl, target_freq, UINT_MAX, 0);
+					dsu_idle_ctrl, target_freq, UINT_MAX, 0,
+					dsu_fine_ctrl_enabled,dsu_fine_ctrl,0);
 		}
 	}
 

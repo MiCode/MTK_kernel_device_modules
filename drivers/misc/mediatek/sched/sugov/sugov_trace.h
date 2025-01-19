@@ -232,8 +232,10 @@ TRACE_EVENT(sugov_ext_wl,
 
 TRACE_EVENT(sugov_ext_dsu_freq_vote,
 	TP_PROTO(unsigned int wl, unsigned int gear_id, bool dsu_idle_ctrl,
-		unsigned int cpu_freq, unsigned int dsu_freq_vote, unsigned int freq_thermal),
-	TP_ARGS(wl, gear_id, dsu_idle_ctrl, cpu_freq, dsu_freq_vote, freq_thermal),
+		unsigned int cpu_freq, unsigned int dsu_freq_vote, unsigned int freq_thermal,
+                bool dsu_fine_ctrl_enabled, bool dsu_fine_crtl, unsigned int dsu_fine_val_pct),
+	TP_ARGS(wl, gear_id, dsu_idle_ctrl, cpu_freq, dsu_freq_vote, freq_thermal,
+                dsu_fine_ctrl_enabled, dsu_fine_crtl, dsu_fine_val_pct),
 	TP_STRUCT__entry(
 		__field(unsigned int, wl)
 		__field(unsigned int, gear_id)
@@ -241,6 +243,10 @@ TRACE_EVENT(sugov_ext_dsu_freq_vote,
 		__field(unsigned int, cpu_freq)
 		__field(unsigned int, dsu_freq_vote)
 		__field(unsigned int, freq_thermal)
+		__field(bool, dsu_fine_ctrl_enabled)
+		__field(bool, dsu_fine_crtl)
+		__field(unsigned int, dsu_fine_val_pct)
+		__field(unsigned int, cpu_div_dsu_freq)
 	),
 	TP_fast_assign(
 		__entry->wl = wl;
@@ -249,15 +255,23 @@ TRACE_EVENT(sugov_ext_dsu_freq_vote,
 		__entry->cpu_freq = cpu_freq;
 		__entry->dsu_freq_vote = dsu_freq_vote;
 		__entry->freq_thermal = freq_thermal;
+		__entry->dsu_fine_ctrl_enabled = dsu_fine_ctrl_enabled;
+		__entry->dsu_fine_crtl = dsu_fine_crtl;
+		__entry->dsu_fine_val_pct = dsu_fine_val_pct;
+		__entry->cpu_div_dsu_freq = dsu_freq_vote * 100 / cpu_freq ;
 	),
 	TP_printk(
-		"wl=%u gear_id=%u dsu_idle_ctrl=%d cpu_freq=%u dsu_freq_vote=%u freq_thermal=%u",
+		"wl=%u gear_id=%u dsu_idle_ctrl=%d cpu_freq=%u dsu_freq_vote=%u freq_thermal=%u dsu_fine_ctrl_enabled=%d dsu_fine_crtl=%d, dsu_fine_val_pct=%d, cpu_div_dsu_freq=%d",
 		__entry->wl,
 		__entry->gear_id,
 		__entry->dsu_idle_ctrl,
 		__entry->cpu_freq,
 		__entry->dsu_freq_vote,
-		__entry->freq_thermal)
+		__entry->freq_thermal,
+		__entry->dsu_fine_ctrl_enabled,
+		__entry->dsu_fine_crtl,
+		__entry->dsu_fine_val_pct,
+		__entry->cpu_div_dsu_freq)
 );
 
 TRACE_EVENT(sugov_ext_gear_state,
