@@ -59,6 +59,8 @@
 #define MBRAINK_FEATURE_GPU_EN		(1<<0UL)
 #define MBRAINK_FEATURE_AUDIO_EN	(1<<1UL)
 
+#define DATA_HD_SZ 8
+
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
 #define MAX_POWER_MMDVFS_SEC_SZ (264)
 
@@ -71,6 +73,10 @@
 #define SPM_L2_LS_SZ (32)
 
 #define SCP_SZ (200)
+
+#define SCP_TASK_DATA_SZ (1824)
+#define SCP_TASK_SZ (DATA_HD_SZ+SCP_TASK_DATA_SZ)
+
 
 #define MD_HD_SZ 8
 #define MD_MDHD_SZ 8
@@ -558,4 +564,11 @@ struct mbraink_vdec_fps {
 	unsigned short pid;
 	int vdec_fps;
 };
+
+struct mbraink_power_scp_task_info {
+	unsigned int pos;
+	unsigned int size;
+	unsigned char scp_task_data[SCP_TASK_SZ];
+};
+
 #endif

@@ -19,6 +19,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getSpmL1Info = NULL;
 	_mbraink_power_ops.getSpmL2Info = NULL;
 	_mbraink_power_ops.getScpInfo = NULL;
+	_mbraink_power_ops.getScpTaskInfo = NULL;
 	_mbraink_power_ops.getModemInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
@@ -41,6 +42,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getSpmL1Info = NULL;
 	_mbraink_power_ops.getSpmL2Info = NULL;
 	_mbraink_power_ops.getScpInfo = NULL;
+	_mbraink_power_ops.getScpTaskInfo = NULL;
 	_mbraink_power_ops.getModemInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
@@ -68,6 +70,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getSpmL1Info = ops->getSpmL1Info;
 	_mbraink_power_ops.getSpmL2Info = ops->getSpmL2Info;
 	_mbraink_power_ops.getScpInfo = ops->getScpInfo;
+	_mbraink_power_ops.getScpTaskInfo = ops->getScpTaskInfo;
 	_mbraink_power_ops.getModemInfo = ops->getModemInfo;
 	_mbraink_power_ops.getSpmiInfo = ops->getSpmiInfo;
 	_mbraink_power_ops.getUvloInfo = ops->getUvloInfo;
@@ -93,6 +96,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getSpmL1Info = NULL;
 	_mbraink_power_ops.getSpmL2Info = NULL;
 	_mbraink_power_ops.getScpInfo = NULL;
+	_mbraink_power_ops.getScpTaskInfo = NULL;
 	_mbraink_power_ops.getModemInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
@@ -236,6 +240,24 @@ int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
 
 	return ret;
 }
+
+int mbraink_power_get_scp_task_info(struct mbraink_power_scp_task_info *scp_info)
+{
+	int ret = 0;
+
+	if (scp_info == NULL) {
+		pr_info("%s: power scp task info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getScpTaskInfo)
+		ret = _mbraink_power_ops.getScpTaskInfo(scp_info);
+	else
+		pr_info("%s: Do not support ioctl get power scp task info query.\n", __func__);
+
+	return ret;
+}
+
 
 int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
 {

@@ -789,6 +789,7 @@ static struct mbraink_power_ops mbraink_v6989_power_ops = {
 	.getSpmL1Info = mbraink_v6989_power_get_spm_l1_info,
 	.getSpmL2Info = mbraink_v6989_power_get_spm_l2_info,
 	.getScpInfo = mbraink_v6989_power_get_scp_info,
+	.getScpTaskInfo = NULL,
 	.getModemInfo = mbraink_v6989_power_get_modem_info,
 	.getSpmiInfo = mbraink_v6989_power_get_spmi_info,
 	.getUvloInfo = mbraink_v6989_power_get_uvlo_info,

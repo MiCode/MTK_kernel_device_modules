@@ -65,6 +65,9 @@
 #define WIFI_TXTIMEOUT_INFO		'K'
 #define VDEC_FPS_INFO			'L'
 
+#define POWER_SCP_TASK_INFO		'M'
+
+
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
 							struct mbraink_auto_ioctl_info*)
@@ -119,9 +122,8 @@
 #define RO_POWER_SPM_L2_INFO	_IOR(IOC_MAGIC, POWER_SPM_L2_INFO, \
 						struct mbraink_power_spm_l2_info*)
 
-
 #define RO_POWER_SCP_INFO	_IOR(IOC_MAGIC, POWER_SCP_INFO, \
-						struct mbraink_power_scp_raw*)
+						struct mbraink_power_scp_info*)
 #define RO_POWER_SPMI_INFO	_IOR(IOC_MAGIC, POWER_SPMI_INFO, \
 						struct mbraink_spmi_struct_data*)
 #define RO_POWER_UVLO_INFO	_IOR(IOC_MAGIC, POWER_UVLO_INFO, \
@@ -166,8 +168,12 @@
 #define RO_WIFI_TXTIMEOUT_INFO	_IOR(IOC_MAGIC, WIFI_TXTIMEOUT_INFO, \
 					struct mbraink_wifi2mbr_txtimeout_data*)
 
+
 #define RO_VDEC_FPS		_IOR(IOC_MAGIC, VDEC_FPS_INFO, \
 					struct mbraink_vdec_fps*)
+
+#define RO_POWER_SCP_TASK_INFO	_IOR(IOC_MAGIC, POWER_SCP_TASK_INFO, \
+						struct mbraink_power_scp_task_info*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

@@ -25,6 +25,7 @@ int mbraink_power_get_spm_l1_info(long long *spm_l1_array, int spm_l1_size);
 int mbraink_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info);
 
 int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info);
+int mbraink_power_get_scp_task_info(struct mbraink_power_scp_task_info *scp_info);
 
 int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer);
 

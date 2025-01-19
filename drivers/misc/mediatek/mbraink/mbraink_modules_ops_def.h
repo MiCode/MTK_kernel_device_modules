@@ -42,6 +42,7 @@ struct mbraink_power_ops {
 	int (*getSpmL1Info)(long long *spm_l1_array, int spm_l1_size);
 	int (*getSpmL2Info)(struct mbraink_power_spm_l2_info *spm_l2_info);
 	int (*getScpInfo)(struct mbraink_power_scp_info *scp_info);
+	int (*getScpTaskInfo)(struct mbraink_power_scp_task_info *scp_task_info);
 	int (*getModemInfo)(struct mbraink_modem_raw *modem_buffer);
 	int (*getSpmiInfo)(struct mbraink_spmi_struct_data *mbraink_spmi_data);
 	int (*getUvloInfo)(struct mbraink_uvlo_struct_data *mbraink_uvlo_data);

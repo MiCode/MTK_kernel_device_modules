@@ -829,6 +829,30 @@ static long handle_power_scp_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_power_scp_task_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_power_scp_task_info *power_scp_task_buffer =
+		(struct mbraink_power_scp_task_info *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(power_scp_task_buffer,
+			(struct mbraink_power_scp_task_info *) arg,
+			sizeof(struct mbraink_power_scp_task_info))) {
+		pr_notice("Data write mbraink_power_scp_task_info from UserSpace Err!\n");
+		return -EPERM;
+	}
+
+	mbraink_power_get_scp_task_info(power_scp_task_buffer);
+
+	if (copy_to_user((struct mbraink_power_scp_task_info *) arg,
+			power_scp_task_buffer,
+			sizeof(struct mbraink_power_scp_task_info))) {
+		pr_notice("Copy power_scp_task_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long handle_power_spmi_info(unsigned long arg, void *mbraink_data)
 {
 	struct mbraink_spmi_struct_data *power_spmi_buffer =
@@ -1366,6 +1390,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_power_scp_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_POWER_SCP_TASK_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_scp_task_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_scp_task_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

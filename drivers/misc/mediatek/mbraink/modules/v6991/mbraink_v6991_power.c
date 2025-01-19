@@ -521,6 +521,45 @@ End:
 	return 0;
 }
 
+static int mbraink_v6991_power_get_scp_task_info(struct mbraink_power_scp_task_info *scp_task_info)
+{
+	unsigned char *g_scp_raw = NULL;
+	unsigned int g_data_size = 0;
+	struct scp_res_mbrain_dbg_ops *scp_tmon_mbrain_ops = NULL;
+
+	if (scp_task_info == NULL)
+		return -1;
+
+	scp_tmon_mbrain_ops = get_scp_mbrain_tmon_ops();
+	if (scp_tmon_mbrain_ops) {
+
+		g_data_size = scp_tmon_mbrain_ops->get_length();
+		g_data_size += DATA_HD_SZ;
+
+		if (g_data_size && (g_data_size < (SCP_TASK_SZ * 20) + DATA_HD_SZ)) {
+			g_scp_raw = vmalloc(g_data_size);
+			if (g_scp_raw) {
+				memset(g_scp_raw, 0, g_data_size);
+				if (scp_tmon_mbrain_ops->get_data(g_scp_raw, g_data_size) == 0) {
+					if (((scp_task_info->pos + scp_task_info->size)
+						<= g_data_size) && scp_task_info->size <= sizeof(
+						scp_task_info->scp_task_data)) {
+						memcpy(scp_task_info->scp_task_data, g_scp_raw
+							+ scp_task_info->pos, scp_task_info->size);
+					} else
+						pr_info("[Mbraink][SPM] scp tmon get data fail\n");
+				}
+				vfree(g_scp_raw);
+
+			} else {
+				pr_notice("[Mbraink][SPM] malloc fail\n");
+			}
+		}
+	}
+	return 0;
+}
+
+
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 static int mbraink_v6991_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
 {
@@ -971,6 +1010,7 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getSpmL1Info = mbraink_v6991_power_get_spm_l1_info,
 	.getSpmL2Info = mbraink_v6991_power_get_spm_l2_info,
 	.getScpInfo = mbraink_v6991_power_get_scp_info,
+	.getScpTaskInfo = mbraink_v6991_power_get_scp_task_info,
 	.getModemInfo = mbraink_v6991_power_get_modem_info,
 	.getSpmiInfo = mbraink_v6991_power_get_spmi_info,
 	.getUvloInfo = mbraink_v6991_power_get_uvlo_info,
