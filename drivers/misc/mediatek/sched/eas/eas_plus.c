@@ -23,6 +23,11 @@
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 #include "vip.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+#include "group.h"
+#include "flt_cal.h"
+#endif
+
 #include <mt-plat/mtk_irq_mon.h>
 #include "arch.h"
 
@@ -1094,6 +1099,10 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	vip_sched_switch(prev, next, rq);
 #endif /* CONFIG_MTK_SCHED_VIP_TASK */
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	flt_android_rvh_schedule(data, prev, next, rq);
+#endif
 }
 
 void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, bool *need_update)

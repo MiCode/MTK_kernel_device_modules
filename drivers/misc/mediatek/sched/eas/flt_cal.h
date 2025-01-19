@@ -67,5 +67,7 @@ void flt_rvh_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags);
 void flt_rvh_dequeue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags);
+void flt_android_rvh_schedule(void *unused,
+				struct task_struct *prev, struct task_struct *next, struct rq *rq);
 void flt_set_grp_ctrl(int set);
 #endif /* _FLT_H */
