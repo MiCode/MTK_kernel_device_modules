@@ -1234,10 +1234,7 @@ static int mt63xx_pinconf_get(struct pinctrl_dev *pctldev,
 {
 	struct mtk_pinctrl *hw = pinctrl_dev_get_drvdata(pctldev);
 	u32 param = pinconf_to_config_param(*config);
-	const struct mtk_pin_desc *desc;
 	int err, ret = 1, pullup;
-
-	desc = (const struct mtk_pin_desc *)&hw->soc->pins[pin];
 
 	switch (param) {
 	case PIN_CONFIG_BIAS_DISABLE:
@@ -1319,10 +1316,7 @@ static int mt63xx_pinconf_set(struct pinctrl_dev *pctldev, unsigned int pin,
 			   enum pin_config_param param, u32 arg)
 {
 	struct mtk_pinctrl *hw = pinctrl_dev_get_drvdata(pctldev);
-	const struct mtk_pin_desc *desc;
 	int err = 0;
-
-	desc = (const struct mtk_pin_desc *)&hw->soc->pins[pin];
 
 	switch ((u32)param) {
 	case PIN_CONFIG_BIAS_DISABLE:

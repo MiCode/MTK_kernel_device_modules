@@ -272,7 +272,6 @@ static ssize_t mtk_gpio_write(struct file *file, const char __user *ubuf,
 {
 	const struct mtk_pin_desc *desc;
 	struct mtk_pinctrl *hw;
-	struct gpio_chip *chip;
 	int i, gpio, val, val2, vals[12];
 	int pullup = 0, pullen = 0;
 	char attrs[12], buf[64];
@@ -293,8 +292,6 @@ static ssize_t mtk_gpio_write(struct file *file, const char __user *ubuf,
 		mt63xx = 1;
 	else
 		mt63xx = 0;
-
-	chip = &hw->chip;
 
 	if (count == 0)
 		return -1;
