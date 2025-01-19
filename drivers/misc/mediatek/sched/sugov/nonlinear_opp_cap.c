@@ -121,7 +121,8 @@ void (*check_cpu_power_scaling_factor_hook)(int cpu, int *task_power_scaling_fac
 EXPORT_SYMBOL(check_cpu_power_scaling_factor_hook);
 unsigned long (*rescale_cpu_util_upscale_hook)(int cpu, int quant, unsigned long cpu_util, unsigned long freq);
 EXPORT_SYMBOL(rescale_cpu_util_upscale_hook);
-unsigned long (*dpt_v2_util2cap_needed_local_hook)(unsigned long cpu_util_local, unsigned long coef1_util_local, unsigned long coef2_util_local);
+unsigned long (*dpt_v2_util2cap_needed_local_hook)(unsigned long cpu_util_local, unsigned long coef1_util_local,
+	unsigned long coef2_util_local, unsigned long *coefs);
 EXPORT_SYMBOL(dpt_v2_util2cap_needed_local_hook);
 void (*change_dpt_v2_support_hook) (int status);
 EXPORT_SYMBOL(change_dpt_v2_support_hook);
@@ -3600,7 +3601,7 @@ unsigned long dpt_v2_get_uclamped_cpu_util(int cpu, unsigned long max_util, unsi
 {
 	unsigned long target_freq, target_cap = 0, cpu_util_prime = 0, result;
 	unsigned long umin_freq = 0, umax_freq = 0, __umin = min_util, __umax = max_util;
-	unsigned long util = 0, util_freq = 0, __margin;
+	unsigned long util = 0, util_freq = 0, __margin, coefs[2];
 	int wl_for_uclamp = get_eas_wl(0);
 
 	/* k6.12 uclamp不需要*1.25倍, user調整前先暫時保留 */
@@ -3617,7 +3618,7 @@ unsigned long dpt_v2_get_uclamped_cpu_util(int cpu, unsigned long max_util, unsi
 	umin_freq = pd_opp2freq(cpu, pd_util2opp(cpu, min_util, quant, wl_for_uclamp, NULL, true, DPT_CALL_PD_UTIL2FREQ), quant, wl_for_uclamp);
 	umax_freq = pd_opp2freq(cpu, pd_util2opp(cpu, max_util, quant, wl_for_uclamp, NULL, true, DPT_CALL_PD_UTIL2FREQ), quant, wl_for_uclamp);
 
-	util = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local);
+	util = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local, coefs);
 
 	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
 
@@ -3666,8 +3667,7 @@ EXPORT_SYMBOL(dpt_v2_get_uclamped_cpu_util);
 void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, unsigned long *capacity_result, struct cpumask *cpumask,
 	unsigned int cpu_util_local, unsigned int coef1_util_local, unsigned int coef2_util_local, unsigned long min, unsigned long max)
 {
-	unsigned long util;
-	int util_before_cpu_util_ratio;
+	unsigned long util, coefs[2];
 
 	if (!is_dpt_v2_support())
 		return;
@@ -3675,7 +3675,7 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 	if (!dpt_v2_util2cap_needed_local_hook || !dpt_v2_linear_local_cap2freq_hook)
 		return;
 
-	util = util_before_cpu_util_ratio = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local);
+	util = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local, coefs);
 
 	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
 
@@ -3685,7 +3685,8 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 
 	*next_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util, 0, 1024, false);
 	if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
-		trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, cpu_util_local, coef1_util_local, coef2_util_local, util_before_cpu_util_ratio, min, max);
+		trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, cpu_util_local,
+			coef1_util_local, coef2_util_local, min, max, coefs);
 
 	if (data != NULL) {
 		struct sugov_policy *sg_policy = (struct sugov_policy *)data;

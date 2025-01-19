@@ -347,7 +347,8 @@ extern void (*dpt_v2_init_done_hook) (void);
 extern void init_driver_after_vendor_init(void);
 extern inline int get_init_driver_after_vendor_init_done(void);
 extern int get_dpt_v2_driver_init_status(void);
-extern unsigned long (*dpt_v2_util2cap_needed_local_hook)(unsigned long cpu_util_local, unsigned long coef1_util_local, unsigned long coef2_util_local);
+extern unsigned long (*dpt_v2_util2cap_needed_local_hook)(unsigned long cpu_util_local, unsigned long coef1_util_local,
+	unsigned long coef2_util_local, unsigned long *coefs);
 extern unsigned long (*rescale_cpu_util_upscale_hook)(int cpu, int quant, unsigned long cpu_util, unsigned long freq);
 extern inline struct cpufreq_policy *get_cpufreq_policy(int cpu);
 extern inline unsigned long get_cpu_min_freq(int cpu);
