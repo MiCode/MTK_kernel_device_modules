@@ -1067,10 +1067,10 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		return ret;
 
-	ret = register_trace_android_rvh_find_busiest_group(
+	ret = register_trace_android_rvh_sched_balance_find_src_group(
 			hook_sched_balance_find_src_group, NULL);
 	if (ret)
-		pr_info("register android_rvh_find_busiest_group failed\n");
+		pr_info("register android_rvh_sched_balance_find_src_group failed\n");
 
 	ret = register_trace_android_rvh_can_migrate_task(
 			mtk_can_migrate_task, NULL);
