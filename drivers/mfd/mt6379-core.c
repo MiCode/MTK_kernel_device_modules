@@ -46,8 +46,8 @@ static irqreturn_t mt6379_irq_threaded_handler(int irq, void *d)
 	const struct irq_ind_rg_map *map;
 	unsigned int evt_offs = 0, rg_cnt = 0, ind_val = 0;
 	u8 evts[MT6379_MAX_IRQ_REG] = {};
-	int i, j, ret;
 	long long t1 = 0, t2 = 0;
+	int i, j, ret;
 
 	t1 = local_clock();
 	ret = regmap_read(regmap, MT6379_REG_IRQ_IND, &ind_val);
@@ -106,6 +106,12 @@ static irqreturn_t mt6379_irq_threaded_handler(int irq, void *d)
 			virq = irq_find_mapping(data->irq_domain, hwirq);
 			handle_nested_irq(virq);
 		}
+	}
+
+	/* For dispatch to eusb */
+	if (ind_val & MT6379_INDM_BASE) {
+		dev_info_ratelimited(dev, "%s, Dispatch to EUSB handler\n", __func__);
+		handle_nested_irq(irq_find_mapping(data->irq_domain, MT6379_DUMMY_EVT_EUSB));
 	}
 
 	ret = regmap_write(regmap, MT6379_REG_SPMI_TXDRV2, MT6379_RCS_INT_DONE);
