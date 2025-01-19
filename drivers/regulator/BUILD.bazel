@@ -29,6 +29,7 @@ SIMPLE_MODULE_NAME = [
     "mt6315-regulator",
     "mt6316-regulator",
     "mt6359p-regulator",
+    "mt6358-regulator",
     "mt6360-regulator",
     "mt6363-regulator",
     "mt6368-regulator",

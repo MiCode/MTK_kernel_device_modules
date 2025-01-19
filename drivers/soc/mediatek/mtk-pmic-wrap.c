@@ -38,6 +38,7 @@
 
 /* macro for pmif */
 #define PMIF_GET_SWINF_2_FSM(x)		(((x) >> 1) & 0x00000007)
+#define PWRAP_GET_SWINF_2_FSM(x)	(((x) >> 1) & 0x00000007)
 #define PMIF_GET_MONITOR_REC_0_CHAN(x)	(((x) >> 27) & 0x0000001f)
 #define PMIF_GET_MONITOR_REC_0_CMD(x)	(((x) >> 25) & 0x00000003)
 #define PMIF_GET_MONITOR_REC_0_WRITE(x)	(((x) >> 24) & 0x00000001)
@@ -107,6 +108,7 @@
 #define PWRAP_CAP_SYS_CLK	BIT(12)
 #define PWRAP_CAP_MPU_V2	BIT(13)
 #define PWRAP_CAP_MPU_V3	BIT(14)
+#define PWRAP_CAP_ARB	BIT(15)
 #define pwrap_wake_lock(lock)	__pm_stay_awake(lock)
 #define pwrap_wake_unlock(lock)	__pm_relax(lock)
 struct task_struct *pwrap_thread_handle;
@@ -294,6 +296,22 @@ static const u32 mt6358_regs[] = {
 	[PWRAP_DEW_RG_CMD_ALERT_CLR] =	0x0448,
 	[PWRAP_DEW_SPISLV_KEY] =	0x044a,
 };
+
+static const u32 mt6366_regs[] = {
+	[PWRAP_DEW_DIO_EN] =		0x040c,
+	[PWRAP_DEW_READ_TEST] =		0x040e,
+	[PWRAP_DEW_WRITE_TEST] =	0x0410,
+	[PWRAP_DEW_CRC_EN] =		0x0414,
+	[PWRAP_DEW_CRC_VAL] =		0x0416,
+	[PWRAP_DEW_CIPHER_KEY_SEL] =	0x0418,
+	[PWRAP_DEW_CIPHER_IV_SEL] =	0x041a,
+	[PWRAP_DEW_CIPHER_EN] =		0x041c,
+	[PWRAP_DEW_CIPHER_RDY] =	0x041e,
+	[PWRAP_DEW_CIPHER_MODE] =	0x0420,
+	[PWRAP_DEW_CIPHER_SWRST] =	0x0422,
+	[PWRAP_DEW_RDDMY_NO] =		0x0424,
+};
+
 
 static const u32 mt6359_regs[] = {
 	[PWRAP_DEW_RG_EN_RECORD] =	0x040a,
@@ -3107,6 +3125,23 @@ void pwrap_dump_all_register(void)
 		wrp->master->regs[PWRAP_MD_ADCINF_1_STA_1], rdata);
 }
 
+static void pwrap_swinf_info_v1(struct pmic_wrapper *wrp)
+{
+	static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 5);
+
+	if (__ratelimit(&ratelimit)) {
+		dev_dbg(wrp->dev, "Dump SWINF Info\n");
+		dev_dbg(wrp->dev, "PWRAP_WACS2_CMD=0x%x\n",
+			pwrap_readl(wrp, PWRAP_WACS2_CMD));
+		dev_dbg(wrp->dev, "PWRAP_SWINF_2_WDATA_31_0=0x%x\n",
+			pwrap_readl(wrp, PWRAP_SWINF_2_WDATA_31_0));
+		dev_dbg(wrp->dev, "PWRAP_SWINF_2_RDATA_31_0=0x%x\n",
+			pwrap_readl(wrp, PWRAP_SWINF_2_RDATA_31_0));
+		dev_dbg(wrp->dev, "PWRAP_WACS2_RDATA=0x%x\n",
+			pwrap_readl(wrp, PWRAP_WACS2_RDATA));
+	}
+}
+
 static void pwrap_swinf_info(void)
 {
 	static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 5);
@@ -3364,7 +3399,11 @@ static bool pwrap_is_fsm_idle(struct pmic_wrapper *wrp)
 		ret = (PMIF_GET_SWINF_2_FSM(val) == PWRAP_WACS_FSM_IDLE);
 	} else {
 		val = pwrap_readl(wrp, PWRAP_WACS2_RDATA);
-		ret = (PWRAP_GET_WACS_FSM(val) == PWRAP_WACS_FSM_IDLE);
+		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))
+			ret = (PWRAP_GET_SWINF_2_FSM(val) == PWRAP_WACS_FSM_IDLE);
+		else
+			ret = (PWRAP_GET_WACS_FSM(val) == PWRAP_WACS_FSM_IDLE);
+
 	}
 	return ret;
 }
@@ -3379,7 +3418,10 @@ static bool pwrap_is_fsm_vldclr(struct pmic_wrapper *wrp)
 		ret = (PMIF_GET_SWINF_2_FSM(val) == PWRAP_WACS_FSM_WFVLDCLR);
 	} else {
 		val = pwrap_readl(wrp, PWRAP_WACS2_RDATA);
-		ret = (PWRAP_GET_WACS_FSM(val) == PWRAP_WACS_FSM_WFVLDCLR);
+		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))
+			ret = (PWRAP_GET_SWINF_2_FSM(val) == PWRAP_WACS_FSM_WFVLDCLR);
+		else
+			ret = (PWRAP_GET_WACS_FSM(val) == PWRAP_WACS_FSM_WFVLDCLR);
 	}
 	return ret;
 }
@@ -3445,60 +3487,82 @@ static int pwrap_timeout_ns(unsigned long long start_time_ns,
 	return 0;
 }
 
+
+
 static int pwrap_wait_for_state(struct pmic_wrapper *wrp,
 		bool (*fp)(struct pmic_wrapper *))
 {
+
 	unsigned long long start_time_ns = 0, timeout_ns = 0;
 	u32 vio_addr, vio_offset;
 
-	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
-		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_MPU_V3))
-			vio_addr = PMIF_SPI_PMIF_PMIC_ALL_ACC_VIO_INFO_0;
-		else
-			vio_addr = PMIF_SPI_PMIF_PMIC_ACC_VIO_INFO_0;
-		vio_offset = 0x80000000;
-	} else {
-		vio_addr = PWRAP_MPU_PMIC_ACC_VIO_INFO_0;
-		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_MPU_V1))
-			vio_offset = 0x80000000;
-		else
-			vio_offset = 0x20000000;
-	}
+	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB)) {
+		start_time_ns = sched_clock();
+		timeout_ns = 10000 * 1000;  /* 10000us */
 
-	start_time_ns = sched_clock();
-	timeout_ns = 10000 * 1000;  /* 10000us */
-
-	do {
-		if (pwrap_timeout_ns(start_time_ns, timeout_ns)) {
+		do {
+			if (pwrap_timeout_ns(start_time_ns, timeout_ns)) {
+				if (fp(wrp) == 0) {
+					dev_dbg(wrp->dev, "[PWRAP] FSM Timeout\n");
+					pwrap_swinf_info_v1(wrp);
+				}
+				return fp(wrp) ? 0 : -ETIMEDOUT;
+			}
 			if (fp(wrp))
 				return 0;
-			else if ((pwrap_readl(wrp, vio_addr) &
-				vio_offset) != 0) {
-				/* check if timeout is caused by mpu vio */
-				dev_notice(wrp->dev,
-					"[PWRAP] FSM Timeout MPU Violation\n");
-				return 1;
-			} else if (fp(wrp) == 0) {
-				dev_notice(wrp->dev, "[PWRAP] FSM Timeout\n");
+		} while (1);
+	}
 
-				if (HAS_CAP(wrp->master->caps,
-					PWRAP_CAP_ARB_V3)) {
-					pwrap_swinf_info();
-					pwrap_monitor_info();
-					pwrap_sw_monitor_clr();
-				} else {
-					pwrap_logging_at_isr();
-					pwrap_dump_ap_register();
-				}
+	else{
+		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
+			if (HAS_CAP(wrp->master->caps, PWRAP_CAP_MPU_V3))
+				vio_addr = PMIF_SPI_PMIF_PMIC_ALL_ACC_VIO_INFO_0;
+			else
+				vio_addr = PMIF_SPI_PMIF_PMIC_ACC_VIO_INFO_0;
+			vio_offset = 0x80000000;
+		} else {
+			vio_addr = PWRAP_MPU_PMIC_ACC_VIO_INFO_0;
+			if (HAS_CAP(wrp->master->caps, PWRAP_CAP_MPU_V1))
+				vio_offset = 0x80000000;
+			else
+				vio_offset = 0x20000000;
 
-				aee_kernel_warning("PWRAP:FSM Timeout",
-						   "PWRAP");
-				return -ETIMEDOUT;
-			}
 		}
-		if (fp(wrp))
-			return 0;
-	} while (1);
+		start_time_ns = sched_clock();
+		timeout_ns = 10000 * 1000;  /* 10000us */
+
+		do {
+			if (pwrap_timeout_ns(start_time_ns, timeout_ns)) {
+				if (fp(wrp))
+					return 0;
+				else if ((pwrap_readl(wrp, vio_addr) &
+					vio_offset) != 0) {
+					/* check if timeout is caused by mpu vio */
+					dev_notice(wrp->dev,
+						"[PWRAP] FSM Timeout MPU Violation\n");
+					return 1;
+				} else if (fp(wrp) == 0) {
+					dev_notice(wrp->dev, "[PWRAP] FSM Timeout\n");
+
+					if ((HAS_CAP(wrp->master->caps,
+						PWRAP_CAP_ARB_V3))) {
+						pwrap_swinf_info();
+						pwrap_monitor_info();
+						pwrap_sw_monitor_clr();
+					} else {
+						pwrap_logging_at_isr();
+						pwrap_dump_ap_register();
+					}
+
+					aee_kernel_warning("PWRAP:FSM Timeout",
+							   "PWRAP");
+					return -ETIMEDOUT;
+				}
+			}
+			if (fp(wrp))
+				return 0;
+		} while (1);
+	}
 }
 
 static int pwrap_read16(struct pmic_wrapper *wrp, u32 adr, u32 *rdata)
@@ -3510,8 +3574,9 @@ static int pwrap_read16(struct pmic_wrapper *wrp, u32 adr, u32 *rdata)
 		pwrap_leave_fsm_vldclr(wrp);
 		return ret;
 	}
-
-	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3))
+	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))
+		pwrap_writel(wrp, adr, PWRAP_WACS2_CMD);
+	else if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3))
 		pwrap_writel(wrp, adr, PMIF_SPI_PMIF_SWINF_2_ACC);
 	else
 		pwrap_writel(wrp, (adr >> 1) << 16, PWRAP_WACS2_CMD);
@@ -3520,7 +3585,12 @@ static int pwrap_read16(struct pmic_wrapper *wrp, u32 adr, u32 *rdata)
 	if (ret)
 		return ret;
 
-	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
+	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB)) {
+		*rdata = PWRAP_GET_WACS_RDATA(pwrap_readl(wrp,
+					      PWRAP_SWINF_2_RDATA_31_0));
+		pwrap_writel(wrp, 1, PWRAP_WACS2_VLDCLR);
+	}
+	else if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
 		*rdata = PWRAP_GET_WACS_RDATA(pwrap_readl(wrp,
 					     PMIF_SPI_PMIF_SWINF_2_RDATA_31_0));
 		pwrap_writel(wrp, 1, PMIF_SPI_PMIF_SWINF_2_VLD_CLR);
@@ -3581,7 +3651,10 @@ static int pwrap_write16(struct pmic_wrapper *wrp, u32 adr, u32 wdata)
 		return ret;
 	}
 
-	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
+	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB)) {
+		pwrap_writel(wrp, wdata, PWRAP_SWINF_2_WDATA_31_0);
+		pwrap_writel(wrp, (1 << 29) | adr, PWRAP_WACS2_CMD);
+	} else if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
 		pwrap_writel(wrp, wdata, PMIF_SPI_PMIF_SWINF_2_WDATA_31_0);
 		pwrap_writel(wrp, (1 << 29) | adr, PMIF_SPI_PMIF_SWINF_2_ACC);
 	} else {
@@ -4492,7 +4565,7 @@ static const struct pwrap_slv_type pmic_mt6359p = {
 };
 
 static const struct pwrap_slv_type pmic_mt6366 = {
-	.dew_regs = mt6358_regs,
+	.dew_regs = mt6366_regs,
 	.type = PMIC_MT6366,
 	.regmap = &pwrap_regmap_config16,
 	.caps = 0,
@@ -4701,7 +4774,7 @@ static const struct pmic_wrapper_type pwrap_mt6789 = {
 	.int1_en_all = 0,
 	.spi_w = PWRAP_MAN_CMD_SPI_WRITE,
 	.wdt_src = PWRAP_WDT_SRC_MASK_ALL,
-	.caps = PWRAP_CAP_ARB_V3,
+	.caps = PWRAP_CAP_ARB | PWRAP_CAP_ULPOSC_CLK,
 	.init_done = PWRAP_STATE_INIT_DONE0_V3,
 	.init_reg_clock = pwrap_common_init_reg_clock,
 	.init_soc_specific = NULL,
@@ -5045,7 +5118,7 @@ static int pwrap_probe(struct platform_device *pdev)
 	struct resource *res;
 
 	if (!of_id) {
-		dev_notice(&pdev->dev, "Error: No device match found\n");
+		dev_notice(&pdev->dev,"Error: No device match found\n");
 		return -ENODEV;
 	}
 
@@ -5053,7 +5126,7 @@ static int pwrap_probe(struct platform_device *pdev)
 		of_slave_id = of_match_node(of_slave_match_tbl,
 					    pdev->dev.of_node->child);
 	if (!of_slave_id) {
-		dev_notice(&pdev->dev, "slave pmic should be defined in dts\n");
+		dev_notice(&pdev->dev,"slave pmic should be defined in dts\n");
 		return -EINVAL;
 	}
 
@@ -5070,7 +5143,10 @@ static int pwrap_probe(struct platform_device *pdev)
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pwrap");
 	wrp->base = devm_ioremap_resource(wrp->dev, res);
 	if (IS_ERR(wrp->base))
+	{
+		dev_notice(&pdev->dev,"pwrap resource");
 		return PTR_ERR(wrp->base);
+	}
 
 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
 		res = platform_get_resource_byname(pdev,
@@ -5078,7 +5154,9 @@ static int pwrap_probe(struct platform_device *pdev)
 		wrp->base1 = devm_ioremap_resource(wrp->dev, res);
 		if (IS_ERR(wrp->base1))
 			return PTR_ERR(wrp->base1);
+
 	}
+
 
 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_RESET)) {
 		wrp->rstc = devm_reset_control_get(wrp->dev, "pwrap");
@@ -5115,7 +5193,7 @@ static int pwrap_probe(struct platform_device *pdev)
 
 	wrp->clk_wrap = devm_clk_get(wrp->dev, "wrap");
 	if (IS_ERR(wrp->clk_wrap)) {
-		dev_notice(wrp->dev, "failed to get clock: %ld\n",
+		dev_notice(wrp->dev,"failed to get clock: %ld\n",
 			PTR_ERR(wrp->clk_wrap));
 		return PTR_ERR(wrp->clk_wrap);
 	}
@@ -5123,15 +5201,15 @@ static int pwrap_probe(struct platform_device *pdev)
 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ULPOSC_CLK)) {
 		wrp->clk_ulposc = devm_clk_get(wrp->dev, "ulposc");
 		if (IS_ERR(wrp->clk_ulposc)) {
-			dev_notice(wrp->dev, "failed to get clock: %ld\n",
+			dev_notice(wrp->dev,"failed to get clock: %ld\n",
 				PTR_ERR(wrp->clk_ulposc));
 			return PTR_ERR(wrp->clk_ulposc);
 		}
 
-		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) {
+		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3) || HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB)) {
 			wrp->clk_ulposc_osc = devm_clk_get(wrp->dev, "ulposc_osc");
 			if (IS_ERR(wrp->clk_ulposc_osc)) {
-				dev_notice(wrp->dev, "failed to get clock: %ld\n",
+				dev_notice(wrp->dev,"failed to get clock: %ld\n",
 				PTR_ERR(wrp->clk_ulposc_osc));
 				return PTR_ERR(wrp->clk_ulposc_osc);
 			}
@@ -5141,14 +5219,15 @@ static int pwrap_probe(struct platform_device *pdev)
 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_SYS_CLK)) {
 		wrp->clk_wrap_sys = devm_clk_get(wrp->dev, "wrap_sys");
 		if (IS_ERR(wrp->clk_wrap_sys)) {
-			dev_notice(wrp->dev, "failed to get clock: %ld\n",
+			dev_notice(wrp->dev,"failed to get clock: %ld\n",
 				PTR_ERR(wrp->clk_wrap_sys));
 			return PTR_ERR(wrp->clk_wrap_sys);
 		}
 
+
 		wrp->clk_wrap_tmr = devm_clk_get(wrp->dev, "wrap_tmr");
 		if (IS_ERR(wrp->clk_wrap_tmr)) {
-			dev_notice(wrp->dev, "failed to get clock: %ld\n",
+			dev_notice(wrp->dev,"failed to get clock: %ld\n",
 				PTR_ERR(wrp->clk_wrap_tmr));
 			return PTR_ERR(wrp->clk_wrap_tmr);
 		}
@@ -5204,12 +5283,14 @@ static int pwrap_probe(struct platform_device *pdev)
 	 */
 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3))
 		rdata = pwrap_readl(wrp, PMIF_SPI_PMIF_INIT_DONE);
+	else if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))
+		rdata = pwrap_readl(wrp, PWRAP_INIT_DONE2);
 	else
 		rdata = pwrap_readl(wrp, PWRAP_INIT_DONE2);
 	if (!rdata)  {
 		ret = pwrap_init(wrp);
 		if (ret) {
-			dev_notice(wrp->dev, "init failed with %d\n", ret);
+			dev_notice(wrp->dev,"init failed with %d\n", ret);
 			goto err_out_clk;
 		}
 	}
@@ -5221,7 +5302,7 @@ static int pwrap_probe(struct platform_device *pdev)
 	}
 
 	/* Initialize watchdog, may not be done by the bootloader */
-	if (!(HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3))) {
+	if (!(HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3)) || !(HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))) {
 		if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V2))
 			pwrap_writel(wrp, 0x3f, PWRAP_WDT_CTRL);
 		else
@@ -5240,6 +5321,8 @@ static int pwrap_probe(struct platform_device *pdev)
 		pwrap_writel(wrp, 0x1, PWRAP_TIMER_CTRL);
 	else if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB_V3))
 		pwrap_writel(wrp, 0x3, PMIF_SPI_PMIF_TIMER_CTRL);
+	else if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB))
+		pwrap_writel(wrp, 0x3, PWRAP_TIMER_EN);
 	else
 		pwrap_writel(wrp, 0x1, PWRAP_TIMER_EN);
 
@@ -5276,7 +5359,7 @@ static int pwrap_probe(struct platform_device *pdev)
 
 	ret = of_platform_populate(np, NULL, NULL, wrp->dev);
 	if (ret) {
-		dev_notice(wrp->dev, "failed to create child devices at %pOF\n",
+		dev_notice(wrp->dev,"failed to create child devices at %pOF\n",
 				np);
 		goto err_out_clk;
 	}
@@ -5287,10 +5370,10 @@ static int pwrap_probe(struct platform_device *pdev)
 	    pwrap_read(wrp, wrp->slave->dew_regs[PWRAP_DEW_WRITE_TEST],
 		       &rdata) ||
 	    (rdata != PWRAP_DEW_WRITE_TEST_VAL)) {
-		dev_notice(wrp->dev, "pwrap rdata=0x%04X\n", rdata);
+		dev_notice(wrp->dev,"pwrap rdata=0x%04X\n", rdata);
 		goto err_out_clk;
 	} else
-		dev_notice(wrp->dev, "[PWRAP] Write Test pass\n");
+		dev_notice(wrp->dev,"[PWRAP] Write Test pass\n");
 
 	pr_info("pwrap probe success............\n");
 	return 0;
