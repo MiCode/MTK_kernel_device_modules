@@ -501,8 +501,8 @@ static s32 aal_prepare(struct mml_comp *comp, struct mml_task *task,
 	aal_frm->relay_mode = !dest->pq_config.en_dre ||
 		crop->r.width < aal->data->min_tile_width;
 	/* Enable alpha r2y when resize but not RROT */
-	mml_msg("%s alpha_pq_r2y:%d alpha:%d format:0x%08x mode:%d pq:%d dre:%d",
-		__func__, aal->data->alpha_pq_r2y, cfg->alpharsz,
+	mml_msg("%s alpha_pq_r2y:%d alpha:%d relay: %d format:0x%08x mode:%d pq:%d dre:%d",
+		__func__, aal->data->alpha_pq_r2y, cfg->alpharsz, aal_frm->relay_mode,
 		dest->data.format, cfg->info.mode, dest->pq_config.en, dest->pq_config.en_dre);
 	aal_frm->alpha_r2y = aal->data->alpha_pq_r2y && cfg->alpharsz &&
 		dest->data.format == MML_FMT_YUVA8888 && cfg->info.mode != MML_MODE_DIRECT_LINK;
@@ -553,7 +553,7 @@ static s32 aal_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 		func->l_tile_loss = 0;
 		func->r_tile_loss = 0;
 	}
-	if (!aal_frm->relay_mode)
+	if (!aal_frm->relay_mode || aal_frm->alpha_r2y)
 		func->in_min_width = max(min(aal->data->min_hist_width, (u32)func->full_size_x_in),
 			aal->data->min_tile_width);
 
