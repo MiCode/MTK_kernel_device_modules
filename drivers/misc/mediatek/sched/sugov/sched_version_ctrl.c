@@ -96,7 +96,7 @@ int init_sched_ctrl(void)
 		_updown_migration_enable = true;
 		_skip_hiIRQ_enable = true;
 		_rt_aggre_preempt_enable = false;
-		_vip_enable = true;
+		_vip_enable = false;
 		_post_init_util_ctl = true;
 		_percore_l3_bw = true;
 		_dsu_pwr_enable = true;

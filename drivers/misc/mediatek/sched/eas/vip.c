@@ -1459,5 +1459,5 @@ void vip_init(void)
 
 	/* init vip related value to newly forked tasks */
 	//register_vip_hooks();
-	vip_enable = sched_vip_enable_get();
+	//vip_enable = sched_vip_enable_get();
 }
