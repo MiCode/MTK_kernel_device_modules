@@ -129,7 +129,21 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/mkp/mkp_ait:ktf_mkp_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mkp/mkp_it:ktf_mkp_it",
     "//vendor/mediatek/tests/ktf/kernel:ktf_ddk",
-
+    "//vendor/mediatek/tests/kernel/ktf_testcase/atf_fuzzer:atf_fuzzer",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait_fuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/dma_buf/dma_buf_ait:ktf_dma_buf_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/i2c/i2c_ait:ktf_i2c_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/typec:ktf_i2c_suspend",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/iommu/iommu_ait:ktf_iommu_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/pw_charger:ktf_pw_charger",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/pw_gauge:ktf_pw_gauge_it",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/selinux:ktf_selinux",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/sensorhub/sensorhub_ait:ktf_sensorhub_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/smi/smi_ait:ktf_smi_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/trusted_mem/trusted_mem_ait:ktf_trusted_mem_ait",
 ]
 
 mgk_64_kleaf_userdebug_modules = [
@@ -139,7 +153,21 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/mkp/mkp_ait:ktf_mkp_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mkp/mkp_it:ktf_mkp_it",
     "//vendor/mediatek/tests/ktf/kernel:ktf_ddk",
-
+    "//vendor/mediatek/tests/kernel/ktf_testcase/atf_fuzzer:atf_fuzzer",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/accdet/accdet_ait:accdet_ait_fuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/dma_buf/dma_buf_ait:ktf_dma_buf_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/i2c/i2c_ait:ktf_i2c_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/typec:ktf_i2c_suspend",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/iommu/iommu_ait:ktf_iommu_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/pw_charger:ktf_pw_charger",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/pw_gauge:ktf_pw_gauge_it",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/selinux:ktf_selinux",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/sensorhub/sensorhub_ait:ktf_sensorhub_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/smi/smi_ait:ktf_smi_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/trusted_mem/trusted_mem_ait:ktf_trusted_mem_ait",
 ]
 
 mgk_64_kleaf_user_modules = [
