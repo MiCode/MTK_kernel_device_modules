@@ -2348,12 +2348,12 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 							(dpt_v2_cpu_util_local_without_p+dpt_v2_coef1_util_local_without_p+dpt_v2_coef2_util_local_without_p), values_for_debug);
 				}
 			} else {
-                cpu_cap = capacity_of(cpu);
+				cpu_util = mtk_cpu_util_next(cpu, p, cpu, 0);
 				cpu_util_without_uclamp = cpu_util;
+				cpu_util_without_p = mtk_cpu_util_next(cpu, p, -1, 0);
+				cpu_cap = capacity_of(cpu);
 				spare_cap = cpu_cap;
 				spare_cap_without_p = cpu_cap;
-				cpu_util = mtk_cpu_util_next(cpu, p, cpu, 0);
-				cpu_util_without_p = mtk_cpu_util_next(cpu, p, -1, 0);
 				lsub_positive(&spare_cap, cpu_util);
 				lsub_positive(&spare_cap_without_p, cpu_util_without_p);
 			}
