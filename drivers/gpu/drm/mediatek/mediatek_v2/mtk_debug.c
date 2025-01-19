@@ -5330,7 +5330,7 @@ static void process_dbg_opt(const char *opt)
 		struct mtk_dsi_cmd_msg test_cmd = { 0 };
 		struct mipi_dsi_msg msg = { 0 };
 
-		ret = sscanf(opt, "new_read_ddic:%x,%d,%d,%d,%d\n", &flags, &slot,
+		ret = sscanf(opt, "new_read_ddic:%x,%d,%d,%d,%x\n", &flags, &slot,
 			&idx, &rx_len, &addr);
 		if (ret <= 0) {
 			DDPPR_ERR("new_read_ddic fail, ret=%d\n", ret);
@@ -5362,9 +5362,38 @@ static void process_dbg_opt(const char *opt)
 
 		rx_buf = (char *)test_cmd.cmd_msg->rx_buf;
 		for (i = 0; i < rx_len; i++)
-			DDPMSG("new_read_ddic, rx_data[%d]:0x%x, ret=%d\n", rx_buf[i], ret);
+			DDPMSG("new_read_ddic, addr=0x%x, rx_data[%d]:0x%x, ret=%d\n", addr, i, rx_buf[i], ret);
 
 		vfree(msg.rx_buf);
+	} else if (strncmp(opt, "new_write_ddic:", 15) == 0) {
+		int flags = 0, tx_len = 0, mode = 0;
+		char tx_buf[5];
+		int i, ret;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		struct mtk_dsi_cmd_msg test_cmd = { 0 };
+		struct mipi_dsi_msg msg = { 0 };
+
+		ret = sscanf(opt, "new_write_ddic:%x,%d,%d,%x,%x,%x,%x,%x\n", &flags, &mode, &tx_len,
+				&tx_buf[0], &tx_buf[1], &tx_buf[2], &tx_buf[3], &tx_buf[4]);
+		if (ret <= 0) {
+			DDPPR_ERR("new_write_ddic fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("new_write_ddic %d, flags=0x%x,len=%d,tx_buf={0x%x,0x%x,0x%x,0x%x,0x%x},ret=%d\n", __LINE__,
+			flags, tx_len, tx_buf[0], tx_buf[1], tx_buf[2], tx_buf[3], tx_buf[4], ret);
+
+		msg.tx_len = tx_len;
+		msg.tx_buf = tx_buf;
+		test_cmd.cmd_num = 1;
+		test_cmd.transfer_mode = mode;
+		test_cmd.cmd_msg= &msg;
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("new_write_ddic ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		DDPMSG("new_write_ddic --\n");
 	}
 }
 
