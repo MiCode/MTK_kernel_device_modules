@@ -53,6 +53,9 @@ endif
 ifneq ($(wildcard $(src)/mmqos-mt6765.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6765) += mmqos-mt6765.o
 endif
+ifneq ($(wildcard $(src)/mmqos-mt6993.c),)
+obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6993) += mmqos-mt6993.o
+endif
 ifneq ($(wildcard $(src)/mmqos-mt6877.c),)
 obj-$(CONFIG_INTERCONNECT_MTK_MMQOS_MT6877) += mmqos-mt6877.o
 endif

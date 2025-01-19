@@ -294,8 +294,8 @@ static void mmqos_update_setting(struct mtk_mmqos *mmqos)
 	struct common_port_node *comm_port;
 
 	list_for_each_entry(comm_node, &mmqos->comm_list, list) {
-		comm_node->freq = clk_get_rate(comm_node->clk)/1000000;
 		if (mmqos_state & BWL_ENABLE) {
+			comm_node->freq = clk_get_rate(comm_node->clk)/1000000;
 			list_for_each_entry(comm_port,
 						&comm_node->comm_port_list, list) {
 				mutex_lock(&comm_port->bw_lock);
@@ -2061,6 +2061,9 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	freq_mode = mmqos_desc->freq_mode ? mmqos_desc->freq_mode : freq_mode;
 	MMQOS_DBG("freq_mode:%d", freq_mode);
 
+	of_property_read_u32(pdev->dev.of_node, "mmqos-state", &mmqos_state);
+	pr_notice("[mmqos] mmqos probe state: %#x\n", mmqos_state);
+
 	data = devm_kzalloc(&pdev->dev,
 		sizeof(*data) + mmqos_desc->num_nodes * sizeof(node),
 		GFP_KERNEL);
@@ -2098,17 +2101,19 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 				goto err;
 			}
 			//INIT_WORK(&comm_node->work, set_comm_icc_bw_handler);
-			comm_node->clk = devm_clk_get(&pdev->dev,
-				mmqos_desc->comm_muxes[MASK_8(node->id)]);
-			if (IS_ERR(comm_node->clk)) {
-				dev_notice(&pdev->dev, "get clk fail:%s\n",
-					mmqos_desc->comm_muxes[
-						MASK_8(node->id)]);
-				ret = -EINVAL;
-				goto err;
-			}
+			if (mmqos_state & BWL_ENABLE) {
+				comm_node->clk = devm_clk_get(&pdev->dev,
+					mmqos_desc->comm_muxes[MASK_8(node->id)]);
+				if (IS_ERR(comm_node->clk)) {
+					dev_notice(&pdev->dev, "get clk fail:%s\n",
+						mmqos_desc->comm_muxes[
+							MASK_8(node->id)]);
+					ret = -EINVAL;
+					goto err;
+				}
 
-			comm_node->freq = clk_get_rate(comm_node->clk)/1000000;
+				comm_node->freq = clk_get_rate(comm_node->clk)/1000000;
+			}
 			INIT_LIST_HEAD(&comm_node->list);
 			list_add_tail(&comm_node->list, &mmqos->comm_list);
 			INIT_LIST_HEAD(&comm_node->comm_port_list);
@@ -2246,9 +2251,6 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		mmqos->max_disp_ostdl = mmqos_desc->max_ratio;
 	else
 		mmqos->max_disp_ostdl = mmqos_desc->max_disp_ostdl;
-
-	of_property_read_u32(pdev->dev.of_node, "mmqos-state", &mmqos_state);
-	pr_notice("[mmqos] mmqos probe state: %#x\n", mmqos_state);
 
 	of_property_read_u32(pdev->dev.of_node, "mmqos-log-level", &log_level);
 	pr_notice("[mmqos] mmqos log level: %#x\n", log_level);
