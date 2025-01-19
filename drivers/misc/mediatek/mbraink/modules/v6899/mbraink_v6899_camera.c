@@ -8,9 +8,9 @@
 #include <mbraink_ioctl_struct_def.h>
 #include <mbraink_modules_ops_def.h>
 #include <bridge/mbraink_bridge_camera.h>
-#include "mbraink_v6991_camera.h"
+#include "mbraink_v6899_camera.h"
 
-static int mbraink_v6991_set_camera_hw_info(struct ht_mbrain ht_data_to_mbrain)
+static int mbraink_v6899_set_camera_hw_info(struct ht_mbrain ht_data_to_mbrain)
 {
 	int req_fd = ht_data_to_mbrain.req_fd;
 	int req_no = ht_data_to_mbrain.req_no;
@@ -47,15 +47,15 @@ static int mbraink_v6991_set_camera_hw_info(struct ht_mbrain ht_data_to_mbrain)
 	return 0;
 }
 
-static struct bridge2platform_ops mbraink_bridge_v6991_camera_ops = {
-	.set_data = mbraink_v6991_set_camera_hw_info,
+static struct bridge2platform_ops mbraink_bridge_v6899_camera_ops = {
+	.set_data = mbraink_v6899_set_camera_hw_info,
 };
 
-int mbraink_v6991_camera_init(void)
+int mbraink_v6899_camera_init(void)
 {
 	int ret = 0;
 
-	ret = register_mbraink_bridge_platform_camera_ops(&mbraink_bridge_v6991_camera_ops);
+	ret = register_mbraink_bridge_platform_camera_ops(&mbraink_bridge_v6899_camera_ops);
 	if (ret != 0) {
 		pr_info("register platform callback to bridge failed by: %d", ret);
 		return ret;
@@ -63,7 +63,7 @@ int mbraink_v6991_camera_init(void)
 	return ret;
 }
 
-int mbraink_v6991_camera_deinit(void)
+int mbraink_v6899_camera_deinit(void)
 {
 	int ret = 0;
 

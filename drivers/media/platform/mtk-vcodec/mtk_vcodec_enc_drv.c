@@ -655,6 +655,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	}
 
 	dev_ptr = dev;
+	mtk_vcodec_set_dev(dev, MTK_INST_ENCODER);
 
 	return 0;
 

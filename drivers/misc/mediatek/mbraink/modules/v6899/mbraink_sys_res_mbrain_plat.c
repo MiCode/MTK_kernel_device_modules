@@ -163,7 +163,9 @@ static int mbraink_get_sys_res_data(void *address, uint32_t size)
 							sys_res_group_info[j].group_num);
 		}
 	}
+
 	spin_unlock_irqrestore(sys_res_ops->lock, flag);
+
 	return ret;
 }
 
@@ -328,11 +330,10 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 			sig_info = (void *)sys_res_ops->get_detail(sys_res_last_suspend_record,
 								   MBRAINK_SYS_RES_SIG_ADDR,
 								   sig_index);
-			if (sig_info) {
+			if (sig_info)
 				ptr = sys_res_data_copy(ptr,
 							sig_info,
 							sizeof(struct mbraink_sys_res_sig_info));
-			}
 		}
 		k++;
 	}

@@ -4,8 +4,6 @@
  */
 
 #include <linux/module.h>
-#include <linux/vmalloc.h>
-
 #include "mbraink_power.h"
 #include <mbraink_modules_ops_def.h>
 

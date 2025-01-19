@@ -20,7 +20,7 @@
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
 #include <linux/suspend.h>
-#include <linux/vmalloc.h>
+
 
 #include "mbraink_power.h"
 #include "mbraink_video.h"
@@ -34,6 +34,7 @@
 #include "mbraink_pmu.h"
 #include "mbraink_gps.h"
 #include "mbraink_wifi.h"
+#include "mbraink_usb.h"
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 
@@ -42,13 +43,23 @@
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-#include "mbraink_auto_hv.h"
+#include "mbraink_auto.h"
 #endif
 
 static DEFINE_MUTEX(power_lock);
 static DEFINE_MUTEX(pmu_lock);
 struct mbraink_data mbraink_priv;
 long long last_resume_timestamp;
+
+
+#define MAX_LOGMISCDATA_LOG_SIZE 256
+#define MAX_LOGMISCDATA_VALUE_NUM 8
+#define LogMiscDataToken     "__LMD&"
+
+struct mbraink_logmiscdata_buffer {
+	long long value[MAX_LOGMISCDATA_VALUE_NUM];
+	char buffer[MAX_LOGMISCDATA_LOG_SIZE];
+};
 
 static int mbraink_genetlink_recv_msg(struct sk_buff *skb, struct genl_info *info);
 
@@ -1058,73 +1069,6 @@ static long handleLpmStateInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-static long handle_cpu_loading_info(unsigned long arg, void *mbraink_data)
-{
-	struct nbl_trace_buf_trans *cpu_loading_buf = (struct nbl_trace_buf_trans *)(mbraink_data);
-	long ret = 0;
-
-	if (copy_from_user(cpu_loading_buf, (struct nbl_trace_buf_trans *) arg,
-			sizeof(struct nbl_trace_buf_trans))) {
-		pr_notice("copy nbl_trace_buf_trans data from user Err!\n");
-		return -EPERM;
-	}
-
-	if (cpu_loading_buf != NULL) {
-		switch (cpu_loading_buf->trans_type) {
-		case 0:
-		{
-			ret = mbraink_auto_set_vcpu_record(0);
-			break;
-		}
-		case 1:
-		{
-			ret = mbraink_auto_set_vcpu_record(1);
-			break;
-		}
-		case 2:
-		{
-			if (cpu_loading_buf->length == 0) {
-				pr_notice("length is 0. no need do anything\n");
-			} else {
-				void *vcpu_buffer = vmalloc(cpu_loading_buf->length *
-								sizeof(struct trace_vcpu_rec));
-
-				if (vcpu_buffer == NULL)
-					return -ENOMEM;
-				ret = mbraink_auto_get_vcpu_record(cpu_loading_buf, vcpu_buffer);
-
-				if (copy_to_user((struct nbl_trace_buf_trans *)arg,
-						cpu_loading_buf,
-						sizeof(struct nbl_trace_buf_trans))) {
-					pr_notice("Copy cpu_loading_buf to user error!\n");
-					vfree(vcpu_buffer);
-					return -EPERM;
-				}
-				if (copy_to_user(cpu_loading_buf->vcpu_data,
-						vcpu_buffer,
-						cpu_loading_buf->length *
-						sizeof(struct trace_vcpu_rec))) {
-					pr_notice("Copy vcpu_data to user error!\n");
-					vfree(vcpu_buffer);
-					return -EPERM;
-				}
-
-				vfree(vcpu_buffer);
-			}
-			break;
-		}
-		default:
-		{
-			pr_info("unknown vcpu type %d\n", cpu_loading_buf->trans_type);
-			ret = -1;
-		}
-		}
-	}
-	return ret;
-}
-#endif
-
 static long handle_ufs_info(unsigned long arg, void *mbraink_data)
 {
 	struct mbraink_ufs_info *ufs_info_buffer =
@@ -1163,6 +1107,30 @@ static long handle_wifi_txtimeout_info(unsigned long arg, void *mbraink_data)
 		pr_notice("Copy wifi_txtimeout_buf to UserSpace error!\n");
 		return -EPERM;
 	}
+	return ret;
+}
+
+static long handle_vdec_fps_info(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_vdec_fps *vdec_fps_buffer =
+		(struct mbraink_vdec_fps *)(mbraink_data);
+
+	if (copy_from_user(vdec_fps_buffer,
+		(struct mbraink_vdec_fps *) arg,
+		sizeof(struct mbraink_vdec_fps))) {
+		pr_notice("copy vdec_fps_buffer data from user Err!\n");
+		return -EPERM;
+	}
+	vdec_fps_buffer->vdec_fps = mbraink_get_vdec_fps_info(vdec_fps_buffer->pid);
+
+	if (copy_to_user((struct mbraink_vdec_fps *) arg,
+		vdec_fps_buffer, sizeof(struct mbraink_vdec_fps))) {
+		pr_notice("%s: Copy vdec_fps_buffer to UserSpace error!\n",
+			__func__);
+		return -EPERM;
+	}
+
 	return ret;
 }
 
@@ -1546,26 +1514,24 @@ static long mbraink_ioctl(struct file *filp,
 		break;
 	}
 
-	case RO_AUTO_CPULOAD_INFO:
+	case AUTO_IOCTL_INFO:
 	{
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-		mbraink_data = kmalloc(sizeof(struct nbl_trace_buf_trans), GFP_KERNEL);
+		mbraink_data = kmalloc(sizeof(struct mbraink_auto_ioctl_info), GFP_KERNEL);
 		if (!mbraink_data)
 			goto End;
-		ret = handle_cpu_loading_info(arg, mbraink_data);
+		ret = mbraink_auto_ioctl(arg, mbraink_data);
 		kfree(mbraink_data);
 #endif
 		break;
 	}
 	case RO_UFS_INFO:
 	{
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 		mbraink_data = kmalloc(sizeof(struct mbraink_ufs_info), GFP_KERNEL);
 		if (!mbraink_data)
 			goto End;
 		ret = handle_ufs_info(arg, mbraink_data);
 		kfree(mbraink_data);
-#endif
 		break;
 	}
 	case RO_WIFI_TXTIMEOUT_INFO:
@@ -1576,6 +1542,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_wifi_txtimeout_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_VDEC_FPS:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_vdec_fps), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_vdec_fps_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
@@ -2036,6 +2011,58 @@ int mbraink_netlink_send_msg(const char *msg)
 }
 EXPORT_SYMBOL_GPL(mbraink_netlink_send_msg);
 
+int logmiscdata2mbrain(long long *value, unsigned int value_num, char *buf, unsigned int buf_size)
+{
+	struct mbraink_logmiscdata_buffer logmiscdata;
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	if (value == NULL || buf == NULL) {
+		pr_info("[MBK_INFO] %s: Mbraink value or buf is null.\n", __func__);
+		return -1;
+	}
+
+	if (value_num > MAX_LOGMISCDATA_VALUE_NUM) {
+		pr_info("[MBK_INFO] %s: Mbraink value_num(%d) error.\n", __func__, value_num);
+		return -1;
+	}
+
+	if (buf_size > MAX_LOGMISCDATA_LOG_SIZE) {
+		pr_info("[MBK_INFO] %s: Mbraink buf_size(%d) error.\n", __func__, buf_size);
+		return -1;
+	}
+
+	memset(&logmiscdata, 0, sizeof(struct mbraink_logmiscdata_buffer));
+	memcpy(logmiscdata.value, value, sizeof(long long)*value_num);
+	memcpy(logmiscdata.buffer, buf, buf_size);
+
+	//MSG Format : __LMD&:0:1:2:3:4:5:6:7:string:__LMD&
+	n = scnprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				"%s:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%s:%s",
+				LogMiscDataToken,
+				logmiscdata.value[0],
+				logmiscdata.value[1],
+				logmiscdata.value[2],
+				logmiscdata.value[3],
+				logmiscdata.value[4],
+				logmiscdata.value[5],
+				logmiscdata.value[6],
+				logmiscdata.value[7],
+				logmiscdata.buffer,
+				LogMiscDataToken);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return -1;
+
+	mbraink_netlink_send_msg(netlink_buf);
+	return 0;
+
+}
+EXPORT_SYMBOL_GPL(logmiscdata2mbrain);
+
+
 static int mbraink_genetlink_recv_msg(struct sk_buff *skb, struct genl_info *info)
 {
 	struct nlmsghdr *nlhdr = NULL;
@@ -2062,6 +2089,7 @@ static int mbraink_genetlink_init(void)
 
 	return ret;
 }
+
 
 static int mbraink_init(void)
 {
@@ -2111,11 +2139,16 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink wifi init failed.\n");
 
+	ret = mbraink_usb_init();
+	if (ret)
+		pr_notice("mbraink usb init failed.\n");
+
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-	ret = mbraink_auto_cpuload_init();
+	ret = mbraink_auto_init();
 	if (ret)
 		pr_notice("mbraink auto cpu load init failed.\n");
 #endif
+
 	return ret;
 }
 
@@ -2170,9 +2203,11 @@ static void mbraink_exit(void)
 	mbraink_power_deinit();
 	mbraink_gps_deinit();
 	mbraink_wifi_deinit();
+	mbraink_usb_deinit();
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
-	mbraink_auto_cpuload_deinit();
+	mbraink_auto_deinit();
 #endif
+
 }
 
 module_init(mbraink_init);

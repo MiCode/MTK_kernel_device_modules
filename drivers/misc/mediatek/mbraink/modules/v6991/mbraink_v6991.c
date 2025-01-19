@@ -58,58 +58,38 @@ static int mbraink_v6991_probe(struct platform_device *pdev)
 
 	ret = device_create_file(mbraink_v6991_device, &dev_attr_mbraink_platform_info);
 	pr_info("[MBK_v6991] %s: device create file mbraink info ret = %d\n", __func__, ret);
-	if (ret) {
-		device_remove_file(mbraink_v6991_device, &dev_attr_mbraink_platform_info);
-		return ret;
-	}
 
 	ret = mbraink_v6991_memory_init(mbraink_v6991_device);
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 memory init failed.\n");
-		return ret;
-	}
 
 	ret = mbraink_v6991_audio_init();
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 audio init failed.\n");
-		return ret;
-	}
 
 	ret = mbraink_v6991_battery_init(mbraink_v6991_device);
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 battery init failed.\n");
-		return ret;
-	}
 
 	ret = mbraink_v6991_power_init();
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 power init failed.\n");
-		return ret;
-	}
 
 	ret = mbraink_v6991_gpu_init();
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 gpu init failed.\n");
-		return ret;
-	}
 
 	ret = mbraink_v6991_gps_init();
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 gps init failed.\n");
-		return ret;
-	}
 
 	ret = mbraink_v6991_wifi_init();
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 wifi init failed.\n");
-		return ret;
-	}
 
 	ret = mbraink_v6991_camera_init();
-	if (ret) {
+	if (ret)
 		pr_notice("[MBK_v6991] mbraink v6991 camera init failed.\n");
-		return ret;
-	}
 
 	return ret;
 }

@@ -37,3 +37,21 @@ int mbraink_get_video_info(char *buffer)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC)
+#include <mtk_vcodec_drv.h>
+int mtk_vcodec_get_op_by_pid(enum mtk_instance_type type, int pid);
+
+int mbraink_get_vdec_fps_info(unsigned short pid)
+{
+	int fps = 0;
+
+	fps = mtk_vcodec_get_op_by_pid(0, (int)(pid));
+	pr_info("%s: pid=%u, fps = %d\n", __func__, pid, fps);
+	return fps;
+}
+#else
+int mbraink_get_vdec_fps_info(unsigned short pid)
+{
+	return 0;
+}
+#endif

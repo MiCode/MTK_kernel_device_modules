@@ -14,7 +14,7 @@
 #include <mtk_peak_power_budget_mbrain.h>
 #include <mtk-mmdvfs-debug.h>
 #include <mbraink_modules_ops_def.h>
-#include "mbraink_v6991_power.h"
+#include "mbraink_v6899_power.h"
 
 #include <scp_mbrain_dbg.h>
 
@@ -62,7 +62,7 @@ unsigned int g_md_read_count;
 void lpm_get_suspend_event_info(struct lpm_dbg_lp_info *info);
 #endif
 
-static int mbraink_v6991_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo)
+static int mbraink_v6899_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo)
 {
 	int ret = 0;
 	int i = 0;
@@ -149,7 +149,7 @@ End:
 	return ret;
 }
 
-static void mbraink_v6991_get_power_wakeup_info(
+static void mbraink_v6899_get_power_wakeup_info(
 	struct mbraink_power_wakeup_data *wakeup_info_buffer)
 {
 	struct wakeup_source *ws = NULL;
@@ -230,7 +230,7 @@ static void mbraink_v6991_get_power_wakeup_info(
 }
 
 #if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
-static int mbraink_v6991_power_get_spm_l1_info(long long *out_spm_l1_array, int spm_l1_size)
+static int mbraink_v6899_power_get_spm_l1_info(long long *out_spm_l1_array, int spm_l1_size)
 {
 	int ret = -1;
 	int i = 0;
@@ -276,7 +276,7 @@ static int mbraink_v6991_power_get_spm_l1_info(long long *out_spm_l1_array, int 
 	return ret;
 }
 
-static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
+static int mbraink_v6899_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
 {
 	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
 	uint32_t thr[4];
@@ -376,7 +376,7 @@ End:
 	return 0;
 }
 
-static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
+static int mbraink_v6899_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 {
 	bool bfree = false;
 	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
@@ -464,24 +464,24 @@ End:
 }
 #else
 
-static int mbraink_v6991_power_get_spm_l1_info(long long *out_spm_l1_array, int spm_l1_size)
+static int mbraink_v6899_power_get_spm_l1_info(long long *out_spm_l1_array, int spm_l1_size)
 {
 	pr_info("[Mbraink][SPM][%s] SWPM not support\n", __func__);
 }
 
-static int mbraink_v6991_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
+static int mbraink_v6899_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info)
 {
 	pr_info("[Mbraink][SPM][%s] SWPM not support\n", __func__);
 }
 
-static int mbraink_v6991_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
+static int mbraink_v6899_power_get_spm_info(struct mbraink_power_spm_raw *spm_buffer)
 {
 	pr_info("[Mbraink][SPM][%s] SWPM not support\n", __func__);
 }
 
 #endif
 
-static int mbraink_v6991_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
+static int mbraink_v6899_power_get_scp_info(struct mbraink_power_scp_info *scp_info)
 {
 	struct scp_res_mbrain_dbg_ops *scp_res_mbrain_ops = NULL;
 	unsigned int data_size = 0;
@@ -522,7 +522,7 @@ End:
 }
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
-static int mbraink_v6991_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
+static int mbraink_v6899_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
 {
 	int shm_size = 0;
 	void __iomem *shm_addr = NULL;
@@ -613,7 +613,7 @@ static int mbraink_v6991_power_get_modem_info(struct mbraink_modem_raw *modem_bu
 
 #else
 
-static int mbraink_v6991_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
+static int mbraink_v6899_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
 {
 	pr_notice("not support eccci modem interface\n");
 	return 0;
@@ -621,7 +621,7 @@ static int mbraink_v6991_power_get_modem_info(struct mbraink_modem_raw *modem_bu
 
 #endif
 
-static void mbraink_v6991_power_get_voting_info(
+static void mbraink_v6899_power_get_voting_info(
 	struct mbraink_voting_struct_data *mbraink_vcorefs_src)
 {
 	unsigned int *mbraink_voting_ret = NULL;
@@ -648,7 +648,7 @@ static void mbraink_v6991_power_get_voting_info(
 	}
 }
 
-static int mbraink_v6991_power_get_spmi_info(
+static int mbraink_v6899_power_get_spmi_info(
 	struct mbraink_spmi_struct_data *mbraink_spmi_data)
 {
 	unsigned int Buf[MAX_SPMI_SLVID] = {0};
@@ -668,7 +668,7 @@ static int mbraink_v6991_power_get_spmi_info(
 	return ret;
 }
 
-static int mbraink_v6991_power_get_uvlo_info(
+static int mbraink_v6899_power_get_uvlo_info(
 	struct mbraink_uvlo_struct_data *mbraink_uvlo_data)
 {
 	int num = 0;
@@ -695,7 +695,7 @@ static int mbraink_v6991_power_get_uvlo_info(
 	return ret;
 }
 
-static int mbraink_v6991_power_get_pmic_voltage_info(
+static int mbraink_v6899_power_get_pmic_voltage_info(
 	struct mbraink_pmic_voltage_info *pmicVoltageInfo)
 {
 	unsigned int vcore = 0;
@@ -705,17 +705,17 @@ static int mbraink_v6991_power_get_pmic_voltage_info(
 	struct regulator *reg_vcore;
 	struct regulator *reg_vsram_core;
 
-	reg_vcore = regulator_get(NULL, "8_vbuck1");
+	reg_vcore = regulator_get(NULL, "mt6363_vbuck2");
 	if (IS_ERR(reg_vcore)) {
 		err = PTR_ERR(reg_vcore);
-		pr_notice("Failed to get '8_vbuck1' regulator: %d\n", err);
+		pr_notice("Failed to get 'mt6363_vbuck2' regulator: %d\n", err);
 	} else {
 		ret = regulator_get_voltage(reg_vcore);
 		if (ret > 0) {
 			vcore = ret;
-			pr_info("get 8_vbuck1, vcore: %d", vcore);
+			pr_info("get mt6363_vbuck2, vcore: %d", vcore);
 		} else {
-			pr_info("failed to get 8_vbuck1, vcore: %d", vcore);
+			pr_info("failed to get mt6363_vbuck2, vcore: %d", vcore);
 		}
 		regulator_put(reg_vcore);
 	}
@@ -741,7 +741,7 @@ static int mbraink_v6991_power_get_pmic_voltage_info(
 	return 0;
 }
 
-static int mbraink_v6991_power_sys_res_init(void)
+static int mbraink_v6899_power_sys_res_init(void)
 {
 	mbraink_sys_res_plat_init();
 	mbraink_sys_res_mbrain_plat_init();
@@ -749,7 +749,7 @@ static int mbraink_v6991_power_sys_res_init(void)
 	return 0;
 }
 
-static int mbraink_v6991_power_sys_res_deinit(void)
+static int mbraink_v6899_power_sys_res_deinit(void)
 {
 	mbraink_sys_res_plat_deinit();
 	mbraink_sys_res_mbrain_plat_deinit();
@@ -757,7 +757,7 @@ static int mbraink_v6991_power_sys_res_deinit(void)
 	return 0;
 }
 
-static void mbraink_v6991_power_suspend_prepare(void)
+static void mbraink_v6899_power_suspend_prepare(void)
 {
 	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
 
@@ -769,7 +769,7 @@ static void mbraink_v6991_power_suspend_prepare(void)
 	}
 }
 
-static void mbraink_v6991_power_post_suspend(void)
+static void mbraink_v6899_power_post_suspend(void)
 {
 	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
 
@@ -781,7 +781,7 @@ static void mbraink_v6991_power_post_suspend(void)
 	}
 }
 
-static int mbraink_v6991_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
+static int mbraink_v6899_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
 {
 	unsigned int mmdvfs_data_size = 0;
 	int ret = 0;
@@ -889,7 +889,7 @@ void pt2mbrain_ppb_notify_func(void)
 	mbraink_netlink_send_msg(netlink_buf);
 }
 
-static int mbraink_v6991_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_data *power_throttle_hw_data)
+static int mbraink_v6899_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_data *power_throttle_hw_data)
 {
 	int ret = 0;
 	struct ppb_mbrain_data *res_ppb_mbrain_data = NULL;
@@ -933,7 +933,7 @@ End:
 	return ret;
 }
 
-static int mbraink_v6991_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo)
+static int mbraink_v6899_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo)
 {
 	int ret = 0;
 	struct lpm_dbg_lp_info lpm_info;
@@ -962,33 +962,32 @@ static int mbraink_v6991_power_get_lpmstate_info(struct mbraink_lpm_state_data *
 	return ret;
 }
 
-static struct mbraink_power_ops mbraink_v6991_power_ops = {
-	.getVotingInfo = mbraink_v6991_power_get_voting_info,
+static struct mbraink_power_ops mbraink_v6899_power_ops = {
+	.getVotingInfo = mbraink_v6899_power_get_voting_info,
 	.getPowerInfo = NULL,
-	.getVcoreInfo = mbraink_v6991_power_getVcoreInfo,
-	.getWakeupInfo = mbraink_v6991_get_power_wakeup_info,
-	.getSpmInfo = mbraink_v6991_power_get_spm_info,
-	.getSpmL1Info = mbraink_v6991_power_get_spm_l1_info,
-	.getSpmL2Info = mbraink_v6991_power_get_spm_l2_info,
-	.getScpInfo = mbraink_v6991_power_get_scp_info,
-	.getModemInfo = mbraink_v6991_power_get_modem_info,
-	.getSpmiInfo = mbraink_v6991_power_get_spmi_info,
-	.getUvloInfo = mbraink_v6991_power_get_uvlo_info,
-	.getPmicVoltageInfo = mbraink_v6991_power_get_pmic_voltage_info,
-	.suspendprepare = mbraink_v6991_power_suspend_prepare,
-	.postsuspend = mbraink_v6991_power_post_suspend,
-	.getMmdvfsInfo = mbraink_v6991_power_get_mmdfvs_info,
-	.getPowerThrottleHwInfo = mbraink_v6991_power_get_power_throttle_hw_info,
-	.getLpmStateInfo = mbraink_v6991_power_get_lpmstate_info,
+	.getVcoreInfo = mbraink_v6899_power_getVcoreInfo,
+	.getWakeupInfo = mbraink_v6899_get_power_wakeup_info,
+	.getSpmInfo = mbraink_v6899_power_get_spm_info,
+	.getSpmL1Info = mbraink_v6899_power_get_spm_l1_info,
+	.getSpmL2Info = mbraink_v6899_power_get_spm_l2_info,
+	.getScpInfo = mbraink_v6899_power_get_scp_info,
+	.getModemInfo = mbraink_v6899_power_get_modem_info,
+	.getSpmiInfo = mbraink_v6899_power_get_spmi_info,
+	.getUvloInfo = mbraink_v6899_power_get_uvlo_info,
+	.getPmicVoltageInfo = mbraink_v6899_power_get_pmic_voltage_info,
+	.suspendprepare = mbraink_v6899_power_suspend_prepare,
+	.postsuspend = mbraink_v6899_power_post_suspend,
+	.getMmdvfsInfo = mbraink_v6899_power_get_mmdfvs_info,
+	.getPowerThrottleHwInfo = mbraink_v6899_power_get_power_throttle_hw_info,
+	.getLpmStateInfo = mbraink_v6899_power_get_lpmstate_info,
 };
 
-int mbraink_v6991_power_init(void)
+int mbraink_v6899_power_init(void)
 {
 	int ret = 0;
 
-	ret = register_mbraink_power_ops(&mbraink_v6991_power_ops);
-
-	mbraink_v6991_power_sys_res_init();
+	ret = register_mbraink_power_ops(&mbraink_v6899_power_ops);
+	mbraink_v6899_power_sys_res_init();
 	ret = register_low_battery_mbrain_cb(pt2mbrain_hint_low_battery_volt_throttle);
 	if (ret != 0) {
 		pr_info("register low battery callback failed by: %d", ret);
@@ -1008,12 +1007,12 @@ int mbraink_v6991_power_init(void)
 	return ret;
 }
 
-int mbraink_v6991_power_deinit(void)
+int mbraink_v6899_power_deinit(void)
 {
 	int ret = 0;
 
 	ret = unregister_mbraink_power_ops();
-	mbraink_v6991_power_sys_res_deinit();
+	mbraink_v6899_power_sys_res_deinit();
 	ret = unregister_ppb_mbrian_cb();
 	if (ret != 0) {
 		pr_info("ppb unregister callback failed by: %d", ret);

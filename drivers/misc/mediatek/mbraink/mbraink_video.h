@@ -17,5 +17,6 @@ extern int mbraink_vcp_is_power_on;
 #endif
 
 int mbraink_get_video_info(char *buffer);
+int mbraink_get_vdec_fps_info(unsigned short pid);
 
 #endif /*end of MBRAINK_VIDEO_H*/

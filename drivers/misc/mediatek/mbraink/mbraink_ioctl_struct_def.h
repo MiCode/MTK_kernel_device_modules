@@ -47,6 +47,7 @@
 #define NETLINK_EVENT_BATTERY_OVER_CURRENT_THROTTLE		"NLEvent_BOCThro"
 #define NETLINK_EVENT_PPB_NOTIFY "NLEvent_PPBNotify"
 #define NETLINK_EVENT_UFS_NOTIFY "NLEvent_UFSNotify"
+#define NETLINK_EVENT_USB_ENUM "NLEvent_USBEnum"
 #define NETLINK_EVENT_IMGSYS_NOTIFY "NLEvent_IMGSYSNotify"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
@@ -532,25 +533,6 @@ struct mbraink_lpm_state_data {
 	struct mbraink_lpm_state_info lpm_state_info[MAX_LPM_STATE_NUM];
 };
 
-struct trace_vcpu_rec {
-	u64 vmid : 2;
-#define TRACE_YOCTO_VMID      0
-#define TRACE_ANDROID_VMID    1
-	u64 vcpu : 5;
-	u64 pcpu : 5;
-	u64 flag : 2;
-	u64 timestamp : 50;
-};
-
-struct nbl_trace_buf_trans {
-	u32 trans_type;
-	u32 length;
-	u64 current_time;
-	u64 cntcvt;
-	u64 cntfrq;
-	void *vcpu_data;
-};
-
 struct mbraink_ufs_info {
 	unsigned char model[MAX_UFS_INFO_NUM];
 	unsigned char rev[MAX_UFS_INFO_NUM];
@@ -570,5 +552,10 @@ struct mbraink_wifi2mbr_txtimeout_data {
 	u16 count;
 	u32 idx;
 	struct mbraink_wifi2mbr_txtimeout_struct txtimeout_data[MAX_WIFI_TXTIMEOUT_SZ];
+};
+
+struct mbraink_vdec_fps {
+	unsigned short pid;
+	int vdec_fps;
 };
 #endif

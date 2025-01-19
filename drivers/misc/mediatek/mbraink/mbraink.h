@@ -12,12 +12,14 @@
 #include <linux/pid.h>
 
 #include "mbraink_ioctl_struct_def.h"
+#include <mbraink_auto_ioctl_struct_def.h>
 
 #define IOC_MAGIC	'k'
 
 #define MAX_BUF_SZ			1024
 
 /*Mbrain Delegate Info List*/
+#define AUTO_IOCTL				'0'
 #define POWER_INFO				'1'
 #define VIDEO_INFO				'2'
 #define POWER_SUSPEND_EN		'3'
@@ -59,11 +61,13 @@
 #define WIFI_LP_INFO			'F'
 #define POWER_THROTTLE_HW_INFO	'G'
 #define LPM_STATE_INFO			'H'
-#define AUTO_CPULOAD_INFO		'I'
 #define UFS_INFO				'J'
 #define WIFI_TXTIMEOUT_INFO		'K'
+#define VDEC_FPS_INFO			'L'
 
 /*Mbrain Delegate IOCTL List*/
+#define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
+							struct mbraink_auto_ioctl_info*)
 #define RO_POWER				_IOR(IOC_MAGIC, POWER_INFO, char*)
 #define RO_VIDEO				_IOR(IOC_MAGIC, VIDEO_INFO, char*)
 #define WO_SUSPEND_POWER_EN		_IOW(IOC_MAGIC, POWER_SUSPEND_EN, char*)
@@ -157,14 +161,13 @@
 #define RO_LPM_STATE_INFO		_IOR(IOC_MAGIC, LPM_STATE_INFO, \
 						struct mbraink_lpm_state_data*)
 
-#define RO_AUTO_CPULOAD_INFO	_IOR(IOC_MAGIC, AUTO_CPULOAD_INFO, \
-								struct nbl_trace_buf_trans*)
-
 #define RO_UFS_INFO	_IOR(IOC_MAGIC, UFS_INFO, \
 								struct mbraink_ufs_info*)
 #define RO_WIFI_TXTIMEOUT_INFO	_IOR(IOC_MAGIC, WIFI_TXTIMEOUT_INFO, \
 					struct mbraink_wifi2mbr_txtimeout_data*)
 
+#define RO_VDEC_FPS		_IOR(IOC_MAGIC, VDEC_FPS_INFO, \
+					struct mbraink_vdec_fps*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
@@ -202,5 +205,7 @@ struct mbraink_data {
 };
 
 int mbraink_netlink_send_msg(const char *msg);
+int logmiscdata2mbrain(long long *value, unsigned int value_num, char *buf, unsigned int buf_size);
+
 
 #endif /*end of MBRAINK_H*/
