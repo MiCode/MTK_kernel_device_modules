@@ -154,6 +154,8 @@ struct scp_regs {
 	unsigned int read_infra_irq_sta_en;
 	unsigned int scpsys_regmap_en;
 	unsigned int mbrain;
+	unsigned int recovery_wfi_detect;
+	unsigned int ipi_timeout_bugon;
 	struct scp_bus_tracker_status tracker_status;
 };
 

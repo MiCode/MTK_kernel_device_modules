@@ -2088,7 +2088,8 @@ void scp_reset_wait_timeout(void)
 
 	if (timeout == 0) {
 		pr_notice("[SCP] reset timeout...\n");
-		BUG_ON(1);
+		if (scpreg.recovery_wfi_detect)
+			BUG_ON(1);
 	}
 
 }
@@ -2820,6 +2821,8 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_scpsys_regmap_en = NULL;
 	const char *scp_mbrain = NULL;
 	const char *scp_thermal_wq = NULL;
+	const char *scp_recovery_wfi_detect = NULL;
+	const char *scp_ipi_timeout_bugon = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -3039,6 +3042,26 @@ static int scp_device_probe(struct platform_device *pdev)
 		if (!strncmp(scp_mbrain, "enable", strlen("enable"))) {
 			pr_notice("[SCP] scp_mbrain enabled\n");
 			scpreg.mbrain = 1;
+		}
+	}
+
+	/* scp recovery wfi detect */
+	scpreg.recovery_wfi_detect = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-recovery-wfi-detect", &scp_recovery_wfi_detect)){
+		if (!strncmp(scp_recovery_wfi_detect, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_recovery_wfi_detect enabled\n");
+			scpreg.recovery_wfi_detect = 1;
+		}
+	}
+
+	/* scp ipi timeout retry > N times bugon */
+	scpreg.ipi_timeout_bugon = 0;
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-ipi-timeout-bugon", &scp_ipi_timeout_bugon)){
+		if (!strncmp(scp_ipi_timeout_bugon, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_ipi_timeout_bugon enabled\n");
+			scpreg.ipi_timeout_bugon = 1;
 		}
 	}
 
@@ -3539,6 +3562,8 @@ void scp_plat_ipi_timeout_cb(int ipi_id)
 	if (scp_pin_dump[ipi_id].count > SCP_IPI_DUMP_TIMEOUT) {
 		scp_dump_function();
 		scp_pin_dump[ipi_id].count = 0;
+		if (scpreg.ipi_timeout_bugon)
+			BUG_ON(1);
 	}
 	spin_unlock_irqrestore(&scp_ipidev.lock_monitor, flags);
 }
