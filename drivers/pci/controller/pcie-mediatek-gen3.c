@@ -1598,7 +1598,6 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	}
 
 	reset_control_deassert(port->phy_reset);
-	reset_control_deassert(port->mac_reset);
 
 	/* PHY power on and enable pipe clock */
 	err = phy_init(port->phy);
@@ -1829,12 +1828,6 @@ static int mtk_pcie_remove(struct platform_device *pdev)
 	pci_unlock_rescan_remove();
 
 	mtk_pcie_irq_teardown(port);
-
-	if (port->pextpcfg)
-		iounmap(port->pextpcfg);
-
-	if (port->vlpcfg)
-		iounmap(port->vlpcfg);
 
 	err = pinctrl_pm_select_sleep_state(&pdev->dev);
 	if (err)
@@ -2934,7 +2927,6 @@ int mtk_pcie_soft_off(struct pci_bus *bus)
 	mtk_pcie_save_restore_cfg(port, true);
 	mtk_pcie_irq_save(port);
 	port->soft_off = true;
-	mtk_pcie_power_down(port);
 
 	if (port->port_num == PCIE_PORT_NUM_1)
 		mtk_pcie_pinmux_select(PCIE_PORT_NUM_1, PCIE_PINMUX_HIZ);

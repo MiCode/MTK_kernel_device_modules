@@ -1,23 +1,3 @@
-obj-$(CONFIG_MTK_SCHEDULER) += scheduler.o
-scheduler-y += eas/sched_main.o
-scheduler-y += eas/sched_sys_common.o
-scheduler-y += eas/eas_plus.o
-scheduler-y += eas/rt.o
-scheduler-y += eas/topology.o
-scheduler-y += eas/eas_adpf.o
-scheduler-y += common.o
-scheduler-y += fair.o
-scheduler-$(CONFIG_MTK_CORE_PAUSE)+= eas/core_pause.o
-scheduler-$(CONFIG_MTK_SCHED_BIG_TASK_ROTATE)+= eas/rotate.o
-scheduler-$(CONFIG_MTK_SCHED_VIP_TASK)+= eas/vip.o
-scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_init.o
-scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_api.o
-scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/group.o
-scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_utility_v2.o
-scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_utility_v3.o
-scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_utility_v4.o
-scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_cal_build_utility.o
-
 obj-$(CONFIG_MTK_CPUFREQ_SUGOV_EXT) += cpufreq_sugov_ext.o
 cpufreq_sugov_ext-y += sugov/cpufreq_sugov_main.o
 ifeq ($(CONFIG_MTK_GEARLESS_SUPPORT),y)

@@ -1202,8 +1202,6 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		dbg->comm_dev[comm_nr++] = &comm_pdev->dev;
 	}
 
-	mtk_smi_dbg_register_pwr_ctrl_cb(&mminfra_pwr_ctrl);
-
 	node = pdev->dev.of_node;
 	of_property_read_u32(node, "mminfra-bkrs", &mminfra_bkrs);
 

@@ -2171,9 +2171,6 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	if (!get_eas_hook())
 		return;
 
-	if (!get_eas_hook())
-		return;
-
 	cpumask_clear(&allowed_cpu_mask);
 
 	irq_log_store();

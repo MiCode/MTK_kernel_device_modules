@@ -374,9 +374,6 @@ void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 	if (iommu_globals.iova_evt_enable == 0)
 		return;
 
-	if (iommu_globals.iova_evt_enable == 0)
-		return;
-
 	if (id >= MTK_IOVA_SPACE_NUM) {
 		pr_err("out of iova space: 0x%llx\n", iova);
 		return;
