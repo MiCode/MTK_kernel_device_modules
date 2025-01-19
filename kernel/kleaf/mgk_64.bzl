@@ -108,8 +108,8 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
     "//vendor/mediatek/kernel_modules/sched_int:sched_int",
     "//vendor/mediatek/kernel_modules/mtkcam/img_frm_sync:mtk-img-frm-sync",
-    #"//vendor/mediatek/kernel_modules/task_turbo_cus:task_turbo_cus",
-    #"//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
+    "//vendor/mediatek/kernel_modules/task_turbo_cus:task_turbo_cus",
+    "//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
 ]
 
 mgk_64_kleaf_eng_modules = [
@@ -764,7 +764,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-isp-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/mtk-swpm.ko",
-    #"drivers/misc/mediatek/task_turbo/task_turbo.ko",
+    "drivers/misc/mediatek/task_turbo/task_turbo.ko",
     "drivers/misc/mediatek/tinysys_scmi/tinysys-scmi.ko",
     "drivers/misc/mediatek/trusted_mem/tmem_ffa.ko",
     "drivers/misc/mediatek/trusted_mem/trusted_mem.ko",
