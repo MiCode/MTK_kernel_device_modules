@@ -271,7 +271,7 @@ static ssize_t swpm_pmsr_sig_sel_write(char *FromUser, size_t sz, void *priv)
 	}
 
 out:
-	return sz;
+	return ret;
 }
 
 static const struct mtk_swpm_sysfs_op swpm_pmsr_sig_sel_fops = {
