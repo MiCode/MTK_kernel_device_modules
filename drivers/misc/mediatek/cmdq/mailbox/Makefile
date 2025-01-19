@@ -34,7 +34,7 @@ ccflags-y += -DCMDQ_SECURE_MTEE_SUPPORT
 
 ccflags-y += -DCMDQ_SECURE_SUPPORT
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-sec-drv.o
-cmdq-sec-drv-y := cmdq_sec_mtee.o cmdq-sec-mailbox.o cmdq-sec-helper.o
+cmdq-sec-drv-y := cmdq_sec_mtee.o cmdq_sec_pkvm.o cmdq-sec-mailbox.o cmdq-sec-helper.o
 
 ccflags-y += -DCMDQ_SECURE_CPR_SUPPORT
 endif
