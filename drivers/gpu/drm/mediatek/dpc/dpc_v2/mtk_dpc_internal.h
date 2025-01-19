@@ -361,6 +361,9 @@ struct mtk_dpc {
 	void __iomem *dispvcore_chk;
 	u32 dispvcore_chk_mask;
 
+	void __iomem *mminfra_chk;
+	u32 mminfra_chk_mask;
+
 	resource_size_t voter_set_pa;
 	resource_size_t voter_clr_pa;
 	void __iomem *voter_set_va;
@@ -370,7 +373,6 @@ struct mtk_dpc {
 
 	void __iomem *rtff_pwr_con;
 	void __iomem *vdisp_ao_cg_con;
-	void __iomem *mminfra_chk;
 	void __iomem *mminfra_voter;
 
 	struct mtk_dpc_mtcmos_cfg *mtcmos_cfg;

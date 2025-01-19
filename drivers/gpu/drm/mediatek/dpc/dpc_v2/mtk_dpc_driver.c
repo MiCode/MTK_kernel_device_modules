@@ -1007,8 +1007,8 @@ static void dpc_disp_group_enable(bool en)
 			if (ret < 0)
 				DPCERR("vote mminfra voter timeout");
 
-			ret = readl_poll_timeout_atomic(g_priv->mminfra_chk,
-							value, value & BIT(1), 10, 700);
+			ret = readl_poll_timeout_atomic(g_priv->mminfra_chk, value,
+							value & g_priv->mminfra_chk_mask, 10, 700);
 			if (ret < 0)
 				DPCERR("wait mminfra power timeout");
 		}
@@ -1331,6 +1331,7 @@ static int dpc_res_init(struct mtk_dpc *priv)
 	get_addr_byname("vdisp_dvfsrc", &priv->vdisp_dvfsrc, NULL);
 	get_addr_byname("disp_vcore_pwr_chk", &priv->dispvcore_chk, NULL);
 	get_addr_byname("mminfra_pwr_chk", &priv->mminfra_chk, NULL);
+	get_addr_byname("mminfra_voter", &priv->mminfra_voter, NULL);
 	get_addr_byname("dis0_pwr_chk",
 			&priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_va,
 			&priv->mtcmos_cfg[DPC_SUBSYS_DIS0].chk_pa);
@@ -1356,7 +1357,6 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		/* use for gced, modify for access mmup inside mminfra */
 		priv->voter_set_pa -= 0x800000;
 		priv->voter_clr_pa -= 0x800000;
-		priv->mminfra_voter = ioremap(0x31a80130, 0x4);
 	}
 
 	return IS_ERR_OR_NULL(dpc_base);
@@ -1443,14 +1443,12 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
 
 	if (user & VOTER_ONLY) {
 		mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
-
+		return VOTER_ONLY;
+	} else if ((user & DISP_VIDLE_USER_MASK) == DISP_VIDLE_USER_TOP_CLK_ISR) {
 		/* skip pm_get to fix unstable DSI TE, mminfra power is held by DPC usually */
 		/* but if no power at this time, the user should call pm_get to ensure power */
-		if (((user & DISP_VIDLE_USER_MASK) == DISP_VIDLE_USER_TOP_CLK_ISR) &&
-		     !mminfra_is_power_on())
-			return VOTER_PM_LATER;
-
-		return VOTER_ONLY;
+		mtk_disp_vlp_vote(VOTE_SET, user & DISP_VIDLE_USER_MASK);
+		return mminfra_is_power_on() ? VOTER_ONLY : VOTER_PM_LATER;
 	}
 
 	if (dpc_pm_ctrl(true))
@@ -1470,7 +1468,7 @@ static void dpc_vidle_power_release(const enum mtk_vidle_voter_user user)
 {
 	mtk_disp_vlp_vote(VOTE_CLR, user & DISP_VIDLE_USER_MASK);
 
-	if (user & VOTER_ONLY)
+	if ((user & VOTER_ONLY) || ((user & DISP_VIDLE_USER_MASK) == DISP_VIDLE_USER_TOP_CLK_ISR))
 		return;
 
 	dpc_pm_ctrl(false);
@@ -1512,7 +1510,9 @@ static bool mminfra_is_power_on(void)
 	if (!g_priv->mminfra_chk)
 		return true;
 
-	return readl(g_priv->mminfra_chk) & BIT(1);
+	/* subsys pm 0x31ac03dc bit1 */
+	/* VLP_AO RSVD6(0x918) MM1_DONE bit0 */
+	return readl(g_priv->mminfra_chk) & g_priv->mminfra_chk_mask;
 }
 
 static void dpc_analysis(void)
@@ -1927,6 +1927,7 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.mtcmos_cfg = mt6991_mtcmos_cfg,
 	.vdisp_dvfsrc_idle_mask = 0xc00000,
 	.dispvcore_chk_mask = BIT(29),
+	.mminfra_chk_mask = BIT(0),
 	.set_mtcmos = mt6991_set_mtcmos,
 	.disp_irq_handler = mt6991_irq_handler,
 	.dt_follow_cfg = 0x3f3c,
