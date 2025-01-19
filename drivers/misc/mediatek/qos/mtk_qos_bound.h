@@ -23,6 +23,21 @@
 
 #define QOS_BOUND_EMI_CH		2
 
+enum triggerReason {
+    TRI_BW_TOTAL,
+    TRI_DRAM_TOTAL,
+    TRI_OPP_CHG,
+    TRI_NEAR_FULL,
+    TRI_SW_EMI,
+    TRI_SW_LTR,
+    TRI_SW_MET,
+    TRI_SW_CM,
+    TRI_SW_SLBC,
+    TRI_SW_SWPM,
+    TRI_SW_PMQOS,
+    NR_TRI
+};
+
 enum qos_emibm_type {
 	QOS_EMIBM_TOTAL,
 	QOS_EMIBM_CPU,
@@ -104,6 +119,7 @@ extern int is_qos_bound_enabled(void);
 extern void qos_bound_enable(int enable);
 extern int is_qos_bound_stress_enabled(void);
 extern void qos_bound_stress_enable(int enable);
+extern void qos_force_polling_mode(int enable, unsigned int userID);
 extern int is_qos_bound_log_enabled(void);
 extern void qos_bound_log_enable(int enable);
 extern unsigned int get_qos_bound_count(void);

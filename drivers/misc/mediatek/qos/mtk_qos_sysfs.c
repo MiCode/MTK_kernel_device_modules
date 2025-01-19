@@ -28,6 +28,26 @@ static ssize_t qos_bound_enable_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(qos_bound_enable);
 
+static ssize_t qos_force_polling_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, " test\n");
+}
+
+static ssize_t qos_force_polling_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int val = 0;
+
+	if (kstrtoint(buf, 10, &val))
+		return -EINVAL;
+
+	qos_force_polling_mode(val, TRI_SW_LTR);
+
+	return count;
+}
+static DEVICE_ATTR_RW(qos_force_polling);
+
 static ssize_t qos_bound_stress_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -83,6 +103,7 @@ static struct attribute *qos_attrs[] = {
 	&dev_attr_qos_bound_stress_enable.attr,
 	&dev_attr_qos_bound_log_enable.attr,
 	&dev_attr_qos_bound_status.attr,
+	&dev_attr_qos_force_polling.attr,
 	NULL,
 };
 

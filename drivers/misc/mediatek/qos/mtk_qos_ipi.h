@@ -41,7 +41,7 @@ enum {
 	QOS_IPI_QOS_PREFETCH_CPU_OPP,
 	QOS_IPI_QOS_PREFETCH_POWER_RATIO_UP,
 	QOS_IPI_QOS_PREFETCH_POWER_RATIO_DN,
-
+	QOS_IPI_FORCE_POLLING,
 	NR_QOS_IPI,
 };
 
@@ -106,6 +106,10 @@ struct qos_ipi_data {
 			unsigned int dram_addr;
 			unsigned int dram_size;
 		} qos_share_init;
+		struct {
+			unsigned int userID;
+			unsigned int enable;
+		} qos_force_polling;
 	} u;
 };
 
