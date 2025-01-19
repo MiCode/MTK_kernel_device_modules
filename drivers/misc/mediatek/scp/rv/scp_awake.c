@@ -111,10 +111,10 @@ int scp_awake_lock(void *_scp_id)
 		if (scpreg.scpsys_regmap_en) {
 
 			if(scpreg.read_infra_irq_sta_en)
-				ret = regmap_read(scpreg.scpsys_regmap,
+				regmap_read(scpreg.scpsys_regmap,
 						INFRA_IRQ_STA_OFS, &tmp);
 			else
-				ret = regmap_read(scpreg.scpsys_regmap,
+				regmap_read(scpreg.scpsys_regmap,
 						INFRA_IRQ_SET_OFS, &tmp);
 
 		} else {
@@ -257,10 +257,10 @@ int scp_awake_unlock(void *_scp_id)
 		if (scpreg.scpsys_regmap_en) {
 
 			if(scpreg.read_infra_irq_sta_en)
-				ret = regmap_read(scpreg.scpsys_regmap,
+				regmap_read(scpreg.scpsys_regmap,
 						INFRA_IRQ_STA_OFS, &tmp);
 			else
-				ret = regmap_read(scpreg.scpsys_regmap,
+				regmap_read(scpreg.scpsys_regmap,
 						INFRA_IRQ_SET_OFS, &tmp);
 
 		} else {
