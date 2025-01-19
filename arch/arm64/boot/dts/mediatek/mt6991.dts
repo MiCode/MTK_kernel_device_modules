@@ -15058,6 +15058,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		scp-mbrain = "enable";
 		scp-recovery-wfi-detect = "enable";
 		scp-ipi-timeout-bugon = "enable";
+		scp-task-monitor-dbg = "enable";
 
 		//scp_aovmem_key = "mediatek,scp_aov_reserved";
 		scp-mem-key = "mediatek,reserve-memory-scp_share";
@@ -15079,7 +15080,8 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<15 0x10000 0x0>, /* aod */
 			<17 0x8000 0x0>, /* scp chre from */
 			<18 0x8000 0x0>, /* scp chre to */
-			<19 0x200 0x0>;  /* low power debug */
+			<19 0x200 0x0>,  /* low power debug */
+			<21 0x1800 0x0>; /* task monitor debug */
 
 #if 0
 		scp-resource-dump = "disable";   /* enable dump scp related resource */
