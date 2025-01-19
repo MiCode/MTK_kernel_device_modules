@@ -5,9 +5,9 @@
 
 #include <linux/io.h>
 #include <linux/genalloc.h>
-#include <linux/trusty/trusty.h>
-#include <linux/trusty/trusty_shm.h>
-#include <linux/trusty/smcall.h>
+#include <linux/trusty/ise_trusty.h>
+#include <linux/trusty/ise_trusty_shm.h>
+#include <linux/trusty/ise_smcall.h>
 
 static struct gen_pool *gpool;
 static struct device *gdev;

@@ -13,7 +13,7 @@
 #include <mobicore_driver_api.h>
 
 /* Trusty DCI of iSE */
-#include "trusty-dci.h"
+#include "ise-trusty-dci.h"
 
 static struct mc_uuid_t ise_tdrv_gp_uuid = ISE_TDRV_UUID;
 static struct mc_session_handle ise_tdrv_gp_session = {0};

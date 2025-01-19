@@ -16,17 +16,17 @@
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <linux/string.h>
-#include <linux/trusty/smcall.h>
-#include <linux/trusty/sm_err.h>
-#include <linux/trusty/trusty.h>
-#include <linux/trusty/trusty_shm.h>
+#include <linux/trusty/ise_smcall.h>
+#include <linux/trusty/ise_sm_err.h>
+#include <linux/trusty/ise_trusty.h>
+#include <linux/trusty/ise_trusty_shm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
 #include <linux/soc/mediatek/mtk_ise.h>
 #include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 
 #if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
-#include "trusty-dci.h"
+#include "ise-trusty-dci.h"
 #endif
 
 struct trusty_state;
@@ -140,7 +140,7 @@ s64 trusty_fast_call64(struct device *dev, u64 smcnr, u64 a0, u64 a1, u64 a2)
 }
 #endif
 
-#if !IS_ENABLED(CONFIG_TRUSTY)
+#if !IS_ENABLED(CONFIG_ISE_TRUSTY)
 static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 				   ulong a0, ulong a1, ulong a2)
 {
@@ -224,7 +224,7 @@ s32 ise_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 	BUG_ON(SMC_IS_FASTCALL(smcnr));
 	BUG_ON(SMC_IS_SMC64(smcnr));
 
-#if IS_ENABLED(CONFIG_TRUSTY)
+#if IS_ENABLED(CONFIG_ISE_TRUSTY)
 	ret = smc(smcnr, a0, a1, a2);
 	atomic_notifier_call_chain(&s->notifier, TRUSTY_CALL_RETURNED, NULL);
 	return ret;

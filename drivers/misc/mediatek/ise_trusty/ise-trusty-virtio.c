@@ -14,9 +14,9 @@
 #include <linux/remoteproc.h>
 
 #include <linux/platform_device.h>
-#include <linux/trusty/smcall.h>
-#include <linux/trusty/trusty.h>
-#include <linux/trusty/trusty_shm.h>
+#include <linux/trusty/ise_smcall.h>
+#include <linux/trusty/ise_trusty.h>
+#include <linux/trusty/ise_trusty_shm.h>
 
 #include <linux/virtio.h>
 #include <linux/virtio_config.h>
@@ -86,7 +86,7 @@ static uint32_t apmcu_ack;
 
 static void __iomem *infracfg_base;
 
-#if !IS_ENABLED(CONFIG_TRUSTY)
+#if !IS_ENABLED(CONFIG_ISE_TRUSTY)
 static uint32_t trusty_read(uint32_t offset)
 {
 	void __iomem *reg = infracfg_base + offset;
@@ -95,7 +95,7 @@ static uint32_t trusty_read(uint32_t offset)
 }
 #endif
 
-#if !IS_ENABLED(CONFIG_TRUSTY)
+#if !IS_ENABLED(CONFIG_ISE_TRUSTY)
 static void trusty_write(uint32_t offset, uint32_t value)
 {
 	void __iomem *reg = infracfg_base + offset;
@@ -112,7 +112,7 @@ static void trusty_setbits(uint32_t offset, uint32_t bits)
 	writel(value, reg);
 }
 
-#if !IS_ENABLED(CONFIG_TRUSTY)
+#if !IS_ENABLED(CONFIG_ISE_TRUSTY)
 static void trusty_clrbits(uint32_t offset, uint32_t bits)
 {
 	void __iomem *reg = infracfg_base + offset;

@@ -4,9 +4,9 @@
  */
 
 #include <linux/platform_device.h>
-#include <linux/trusty/smcall.h>
-#include <linux/trusty/trusty.h>
-#include <linux/trusty/trusty_shm.h>
+#include <linux/trusty/ise_smcall.h>
+#include <linux/trusty/ise_trusty.h>
+#include <linux/trusty/ise_trusty_shm.h>
 #include <linux/panic_notifier.h>
 #include <linux/slab.h>
 #include <linux/mm.h>
@@ -14,7 +14,7 @@
 #include <linux/log2.h>
 #include <linux/mod_devicetable.h>
 #include <asm/page.h>
-#include "trusty-log.h"
+#include "ise-trusty-log.h"
 
 #define TRUSTY_LOG_SIZE (PAGE_SIZE * 2)
 #define TRUSTY_LINE_BUFFER_SIZE 256

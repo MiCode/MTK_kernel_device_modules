@@ -7,13 +7,13 @@
 #define __LINUX_TRUSTY_TRUSTY_H
 
 #include <linux/kernel.h>
-#include <linux/trusty/sm_err.h>
+#include <linux/trusty/ise_sm_err.h>
 #include <linux/device.h>
 #include <linux/pagemap.h>
 
 #define VIRTIO_ID_TRUSTY_IPC	14 /* virtio trusty ipc */
 
-#if IS_ENABLED(CONFIG_TRUSTY)
+#if IS_ENABLED(CONFIG_ISE_TRUSTY)
 s32 ise_std_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
 s32 ise_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2);
 #if IS_ENABLED(CONFIG_64BIT)

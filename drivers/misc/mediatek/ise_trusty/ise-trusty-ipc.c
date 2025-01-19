@@ -23,13 +23,13 @@
 #include <linux/virtio_ids.h>
 #include <linux/virtio_config.h>
 
-#include <linux/trusty/smcall.h>
-#include <linux/trusty/trusty.h>
-#include <linux/trusty/trusty_ipc.h>
-#include <linux/trusty/trusty_shm.h>
+#include <linux/trusty/ise_smcall.h>
+#include <linux/trusty/ise_trusty.h>
+#include <linux/trusty/ise_trusty_ipc.h>
+#include <linux/trusty/ise_trusty_shm.h>
 #include <linux/bug.h>
 
-#include <uapi/linux/trusty/ipc.h>
+#include <uapi/linux/trusty/ise_ipc.h>
 
 #define MAX_DEVICES			4
 
@@ -766,7 +766,7 @@ static int dn_wait_for_reply(struct tipc_dn_chan *dn, int timeout)
 		dn->state = TIPC_STALE;
 		pr_err("%s: Met time-out!! empty %d in iSE\n", __func__,
 					list_empty(&dn->rx_msg_queue));
-#if IS_ENABLED(CONFIG_TRUSTY_BUG_ON_WARN)
+#if IS_ENABLED(CONFIG_ISE_TRUSTY_BUG_ON_WARN)
 		BUG_ON(1);
 #else
 		WARN_ON(1);

@@ -5,8 +5,8 @@
 
 #include <linux/types.h>
 #include <linux/printk.h>
-#include <linux/trusty/trusty.h>
-#include <linux/trusty/smcall.h>
+#include <linux/trusty/ise_trusty.h>
+#include <linux/trusty/ise_smcall.h>
 
 static int get_mem_attr(struct page *page, pgprot_t pgprot)
 {
