@@ -317,17 +317,18 @@ struct cpu_dsu_freq_state *get_dsu_freq_state(void)
 }
 EXPORT_SYMBOL_GPL(get_dsu_freq_state);
 
-int (*mtk_dsu_freq_agg_hook)(int cpu, int max_freq_in_gear, int quant,
-		int wl, int *dsu_target_freq);
+int (*mtk_dsu_freq_agg_hook)(int cpu, int max_freq_in_gear, int quant, int wl,
+		int dsu_fine_ctrl_enabled, int dsu_fine_ctrl_tcm, int dsu_fine_pct, int *dsu_target_freq);
 EXPORT_SYMBOL(mtk_dsu_freq_agg_hook);
-int dsu_freq_agg(int cpu, int max_freq_in_gear, int quant, int wl, int *dsu_target_freq)
+int dsu_freq_agg(int cpu, int max_freq_in_gear, int quant, int wl,
+		int dsu_fine_ctrl_enabled, int dsu_fine_ctrl_tcm, int dsu_fine_pct, int *dsu_target_freq)
 {
 	int dsu_freq;
 
-	if (mtk_dsu_freq_agg_hook)
-		return mtk_dsu_freq_agg_hook(cpu, max_freq_in_gear,
-					quant, wl, dsu_target_freq);
-
+	if (mtk_dsu_freq_agg_hook){
+		return mtk_dsu_freq_agg_hook(cpu, max_freq_in_gear, quant, wl, dsu_fine_ctrl_enabled,
+				dsu_fine_ctrl_tcm, dsu_fine_pct, dsu_target_freq);
+	}
 	// if mtk_dsu_freq_agg_hook not ready yet
 	dsu_freq = max_freq_in_gear > 1;
 	if (*dsu_target_freq < dsu_freq)
@@ -341,10 +342,9 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	int i, cpu, dsu_target_freq = 0, max_freq_in_gear, cpu_idx;
 	unsigned int wl = get_wl_dsu();
-	//dsu_fine_crtrl_enabled - 0:turn off dsu_fine_ctrl, 1: turn on dsu_fine_ctrl
 	int dsu_fine_ctrl_enabled = get_dsu_fine_ctrl_enable();
-	//dsu_fine_ctrl - tcm value (0: legacy, 1: fine-grained)
-	bool dsu_fine_ctrl = get_dsu_fine_ctrl();
+	bool dsu_fine_ctrl_tcm = get_dsu_fine_ctrl();
+	unsigned int dsu_fine_pct = 0;
 	struct cpufreq_mtk *c = policy->driver_data;
 	unsigned int freq_thermal = 0;
 	struct sugov_rq_data *sugov_data_ptr;
@@ -362,6 +362,8 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 
 		cpu = cpumask_first(&pd_cpumask[i]);
 		max_freq_in_gear = 0;
+		if (dsu_fine_ctrl_enabled!=0 && dsu_fine_ctrl_tcm!=0)
+			dsu_fine_pct = get_fine_value_pct_gear(i);
 		for_each_cpu(cpu_idx, &pd_cpumask[i]) {
 			if(dsu_idle_ctrl) {
 				if (freq_state.cpu_freq[cpu_idx] > max_freq_in_gear &&
@@ -389,14 +391,14 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 		if(max_freq_in_gear > freq_thermal)
 			cpu_freq_with_thermal = freq_thermal;
 #endif
-		freq_state.dsu_freq_vote[i] =
-		dsu_freq_agg(cpu, cpu_freq_with_thermal, false, wl, &dsu_target_freq);
+		freq_state.dsu_freq_vote[i] = dsu_freq_agg(cpu, cpu_freq_with_thermal, false, wl,
+			dsu_fine_ctrl_enabled, dsu_fine_ctrl_tcm, dsu_fine_pct, &dsu_target_freq);
 
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
 			trace_sugov_ext_dsu_freq_vote(wl, i, dsu_idle_ctrl,
-				max_freq_in_gear, freq_state.dsu_freq_vote[i] ,freq_thermal, 
-				dsu_fine_ctrl_enabled, dsu_fine_ctrl, get_fine_value_pct_gear(i));
+				max_freq_in_gear, freq_state.dsu_freq_vote[i] ,freq_thermal,
+				dsu_fine_ctrl_enabled, dsu_fine_ctrl_tcm, dsu_fine_pct);
 	}
 
 	freq_state.dsu_target_freq = dsu_target_freq;
@@ -2726,8 +2728,6 @@ EXPORT_SYMBOL_GPL(get_curr_cap);
 static void cpufreq_update_target_freq(struct cpufreq_policy *policy, unsigned int target_freq)
 {
 	unsigned int cpu = policy->cpu;
-	// int dsu_fine_ctrl_enabled = get_dsu_fine_ctrl_enable();
-	// bool dsu_fine_ctrl = get_dsu_fine_ctrl();
 	bool dsu_idle_ctrl = is_dsu_idle_enable();
 
 	irq_log_store();

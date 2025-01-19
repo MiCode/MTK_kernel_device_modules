@@ -240,9 +240,8 @@ int get_dsu_fine_ctrl_enable(void)
 {
 	int dsu_fine_ctrl_enable = 0;
 
-#if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
-	dsu_fine_ctrl_enable = ioread8(dsu_fine_ctrl_enabled_addr);
-#endif
+	if (dsu_fine_ctrl_enabled_addr)
+		dsu_fine_ctrl_enable = ioread8(dsu_fine_ctrl_enabled_addr);
 
 	return dsu_fine_ctrl_enable;
 }
