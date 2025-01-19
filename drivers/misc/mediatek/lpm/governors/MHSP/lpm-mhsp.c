@@ -19,7 +19,8 @@
 #include <linux/time.h>
 #include <linux/topology.h>
 
-#include <lpm.h>
+//#include <lpm.h>
+#define MTK_LPM_DTS_COMPATIBLE          "mediatek,mtk-lpm"
 #include <trace/events/ipi.h>
 #include <trace/hooks/cpuidle.h>
 #define CREATE_TRACE_POINTS
