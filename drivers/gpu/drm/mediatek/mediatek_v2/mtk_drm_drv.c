@@ -971,6 +971,7 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 	}
 
 	if (!crtc->state->active && prepare) {
+		mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
 		if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
 			ulps_wakeup_prd = mtk_drm_aod_scp_get_dsi_ulps_wakeup_prd(crtc);
 			aod_scp_ipi.module_backup(crtc, ulps_wakeup_prd);
