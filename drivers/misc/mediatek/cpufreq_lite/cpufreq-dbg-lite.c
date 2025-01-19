@@ -29,6 +29,7 @@
 #include "cpufreq-dbg-lite.h"
 #include "sugov/cpufreq.h"
 #include "mtk_freq_qos.h"
+#include "pf_ctrl.h"
 
 #ifdef pr_fmt
 #undef pr_fmt
@@ -188,6 +189,7 @@ static int mtk_cpudvfs_init(void)
 	user_ctrl_mode = 0;
 
 	mtk_freq_qos_init();
+	mtk_pf_ctrl_init();
 
 	return 0;
 }
@@ -195,6 +197,7 @@ module_init(mtk_cpudvfs_init);
 
 static void mtk_cpudvfs_exit(void)
 {
+	mtk_pf_ctrl_exit();
 }
 module_exit(mtk_cpudvfs_exit);
 
