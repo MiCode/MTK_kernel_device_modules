@@ -486,7 +486,7 @@
 		io-channel-names = "pmic_hpofs_cal";
 		nvmem = <&pmic_efuse>;
 		nvmem-names = "pmic-hp-efuse";
-		reg_vaud28-supply = <&mt_pmic_vaud28_ldo_reg>;
+		reg-vaud28-supply = <&mt_pmic_vaud28_ldo_reg>;
 	};
 	mt6358_consys: mt6358_consys {
 		compatible = "mediatek,mt6358-consys";
