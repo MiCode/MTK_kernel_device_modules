@@ -468,6 +468,10 @@ static void ged_eb_sysram_debug_data_write(void)
 					} else if (fdvfs_v2_rb_table[dbg_cnt].data_count == 2) {
 						dbg_data[i] = tmp_multi.twoVar.var1;
 						dbg_data2[i] = tmp_multi.twoVar.var2;
+					} if (fdvfs_v2_rb_table[dbg_cnt].data_count == 3) {
+						dbg_data[i] = tmp_multi.thrVar.var1;
+						dbg_data2[i] = tmp_multi.thrVar.var2;
+						dbg_data3[i] = tmp_multi.thrVar.var3;
 					}
 					break;
 				case GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET2:
@@ -498,7 +502,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				trace_GPU_DVFS__EBRB_Policy_Common(dbg_data, dbg_data2);
 				break;
 			case GPU_EB_LOG_DUMP_COMMIT_REASON1:
-				trace_GPU_DVFS__EBRB_Commit_Reason(dbg_data, dbg_data2);
+				trace_GPU_DVFS__EBRB_Commit_Reason(dbg_data, dbg_data2, dbg_data3);
 				break;
 			case GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET3:
 				trace_GPU_DVFS__EBRB_2ND_GPU_TIME(

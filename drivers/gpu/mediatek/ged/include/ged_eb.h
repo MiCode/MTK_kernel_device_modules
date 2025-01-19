@@ -947,7 +947,7 @@ typedef struct {
 // RB for debug
 #define GPU_FDVFS_V2_RB_LOG_LIST \
  GEN("Policy__Common", GPU_EB_LOG_DUMP_POLICY_COMMON, 2, "policy_state | eb_commit_type") \
- GEN("Policy__Common__Commit_Reason", GPU_EB_LOG_DUMP_COMMIT_REASON1, 2, "same | diff") \
+ GEN("Policy__Common__Commit_Reason", GPU_EB_LOG_DUMP_COMMIT_REASON1, 3, "same | diff | is_offscreen") \
  GEN("Policy__Frame_based__Frequency", GPU_EB_LOG_DUMP_FB_FREQ, 2, "target | target_opp") \
  GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD1, 2, "cur | avg") \
  GEN("Policy__Frame_based__Workload", GPU_EB_LOG_DUMP_FB_WORKLOAD2, 2, "real | pipe") \
@@ -1040,7 +1040,8 @@ typedef struct {
  GEN("g_lowpwr_mode", GPU_LOWPWR_ENABLE, 1, "g_lowpwr_mode") \
  GEN("silence", GPU_LOWPWR_TRACE, 1, "silence") \
  GEN("g_debug", GPU_DEBUG, 1, "g_debug") \
- GEN("fb_mfrc", GPU_FB_MFRC, 1, "fb_mfrc")
+ GEN("fb_mfrc", GPU_FB_MFRC, 1, "fb_mfrc") \
+ GEN("is_offscreen", GPU_IS_OFFSCREEN, 1, "is_offscreen")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

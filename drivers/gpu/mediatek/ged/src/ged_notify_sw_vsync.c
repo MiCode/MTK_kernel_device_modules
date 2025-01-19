@@ -239,6 +239,7 @@ void ged_eb_dvfs_trace_dump(void)
 	int eb_policy_state = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_POLICY_STATE);
 	int ged_policy_state =  ged_get_policy_state();
 	int freq_id = ged_get_cur_oppidx();
+	unsigned int is_offscreen = 0;
 	static int pre_eb_policy_state;
 	static int pre_ged_policy_state;
 	static int pre_freq_id;
@@ -248,6 +249,7 @@ void ged_eb_dvfs_trace_dump(void)
 	struct cmd_info custom_ceiling_info ={0};
 	struct cmd_info custom_boost_info ={0};
 	union combineData tmp_multi = {0};
+	static unsigned int pre_is_offscreen;
 
 	//struct GpuUtilization_Ex util_ex;
 
@@ -369,6 +371,13 @@ void ged_eb_dvfs_trace_dump(void)
 	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {
 		trace_tracing_mark_write(5566, "async_opp_diff",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
+	}
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		is_offscreen = mtk_gpueb_sysram_read(SYSRAM_GPU_IS_OFFSCREEN);
+		if (is_offscreen || pre_is_offscreen) {
+			trace_tracing_mark_write(5566, "is_offscreen", is_offscreen);
+			pre_is_offscreen = is_offscreen;
+		}
 	}
 
 	if (eb_policy_state == GED_DVFS_LOADING_BASE_COMMIT)
