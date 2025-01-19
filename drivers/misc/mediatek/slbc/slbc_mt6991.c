@@ -317,6 +317,13 @@ static int slbc_shared_dram_init(struct platform_device *pdev)
 	return 0;
 }
 
+static int slbc_test_bit(unsigned long nr , unsigned long *_addr)
+{
+	unsigned long addr[1] = {*_addr};
+
+	return test_bit(nr, addr);
+}
+
 static void slbc_set_sram_data(struct slbc_data *d)
 {
 	SLBC_TRACE_REC(LVL_NORM, TYPE_B, d->uid, 0,
@@ -494,7 +501,7 @@ static int slbc_deactivate_thread(void *arg)
 
 			/* trigger wait sid to wakeup */
 			for (i = 0; i < ARRAY_SIZE(p_config); i++) {
-				if (test_bit(i, &slbc_sid_wait_q) &&
+				if (slbc_test_bit(i, &slbc_sid_wait_q) &&
 					(p_config[i].res_slot & p_config[sid].res_slot)) {
 					set_bit(i, &slbc_sid_wait_fail);
 				}
@@ -531,7 +538,7 @@ void slbc_buffer_cb_notify(u32 res, u32 sid, u32 sid_list)
 			if ((sid_list & (1UL << i)) == 0)
 				continue;
 
-			if (test_bit(i, &slbc_sid_wait_q))
+			if (slbc_test_bit(i, &slbc_sid_wait_q))
 				set_bit(i, &slbc_sid_wait_done);
 			else if (ops_config[i].activate)
 				slbc_activate_task[i] = kthread_run(slbc_activate_thread,
@@ -550,7 +557,7 @@ void slbc_buffer_cb_notify(u32 res, u32 sid, u32 sid_list)
 			}
 		}
 
-		if (!fail && test_bit(sid, &slbc_sid_wait_q)) {
+		if (!fail && slbc_test_bit(sid, &slbc_sid_wait_q)) {
 			for (i = 0; i < ARRAY_SIZE(p_config); i++) {
 				if (sid_list & (1UL << i)) {
 					slbc_deactivate_task[i] =
@@ -670,15 +677,15 @@ static int slbc_cb_timeout(int err, struct slbc_data *d)
 			"%s start to wait slb, timeout %ums", slbc_uid_str[uid], d->timeout);
 #ifdef SLBC_CB_SLEEP
 	ret = wait_event_timeout(slbc_wq,
-			test_bit(d->sid, &slbc_sid_wait_done) ||
-			test_bit(d->sid, &slbc_sid_wait_fail),
+			slbc_test_bit(d->sid, &slbc_sid_wait_done) ||
+			slbc_test_bit(d->sid, &slbc_sid_wait_fail),
 			msecs_to_jiffies(d->timeout));
 #else /* SLBC_CB_SLEEP */
 	ret = 0;
 	for (i = 0; i < d->timeout; i++) {
 		mdelay(1);
-		if (test_bit(d->sid, &slbc_sid_wait_done) ||
-			test_bit(d->sid, &slbc_sid_wait_fail)) {
+		if (slbc_test_bit(d->sid, &slbc_sid_wait_done) ||
+			slbc_test_bit(d->sid, &slbc_sid_wait_fail)) {
 			ret = 1;
 			break;
 		}
@@ -689,7 +696,7 @@ static int slbc_cb_timeout(int err, struct slbc_data *d)
 			slbc_uid_str[uid], slbc_sid_wait_done, slbc_sid_wait_fail);
 
 	if (ret) {
-		if (test_bit(d->sid, &slbc_sid_wait_done)) {
+		if (slbc_test_bit(d->sid, &slbc_sid_wait_done)) {
 			SLBC_TRACE_REC(LVL_QOS, TYPE_B, uid, 0,
 					"%s wait slb success", slbc_uid_str[uid]);
 			ret = _slbc_request_buffer_scmi(d);
@@ -1572,7 +1579,7 @@ static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 
 	seq_printf(m, "ID %s\t", slbc_uid_str[uid]);
 
-	if (test_bit(uid, &slbc_uid_used))
+	if (slbc_test_bit(uid, &slbc_uid_used))
 		seq_puts(m, " activate\n");
 	else
 		seq_puts(m, " deactivate\n");
@@ -1823,7 +1830,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 				if (d == NULL)
 					continue;
 
-				if (test_bit(d->uid, &slbc_uid_used) && ops_config[i].deactivate)
+				if (slbc_test_bit(d->uid, &slbc_uid_used) && ops_config[i].deactivate)
 					ops_config[i].deactivate(d);
 			}
 			mutex_unlock(&slbc_ops_lock);

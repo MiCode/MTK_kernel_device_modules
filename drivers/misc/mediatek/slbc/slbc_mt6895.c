@@ -152,6 +152,13 @@ void slbc_sram_init(struct mtk_slbc *slbc)
 		writel(0x0, slbc->sram_vaddr + i);
 }
 
+static int slbc_test_bit(unsigned long nr , unsigned long *_addr)
+{
+	unsigned long addr[1] = {*_addr};
+
+	return test_bit(nr, addr);
+}
+
 static void slbc_set_sram_data(struct slbc_data *d)
 {
 	pr_info("slbc: set pa:%lx va:%lx\n",
@@ -599,7 +606,7 @@ static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 
 	seq_printf(m, "ID %s\t", slbc_uid_str[uid]);
 
-	if (test_bit(uid, &slbc_uid_used))
+	if (slbc_test_bit(uid, &slbc_uid_used))
 		seq_puts(m, " activate\n");
 	else
 		seq_puts(m, " deactivate\n");
@@ -753,7 +760,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 				struct slbc_data *d = ops->data;
 				unsigned int uid = d->uid;
 
-				if (test_bit(uid, &slbc_uid_used))
+				if (slbc_test_bit(uid, &slbc_uid_used))
 					ops->deactivate(d);
 			}
 			mutex_unlock(&slbc_ops_lock);
