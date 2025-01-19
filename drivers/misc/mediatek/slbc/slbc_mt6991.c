@@ -319,11 +319,11 @@ static int slbc_shared_dram_init(struct platform_device *pdev)
 	slbc_mem_size = sspm_reserve_mem_get_size(SLBC_MEM_ID);
 
 	if (slbc_mem_phys_addr == 0 || slbc_mem_virt_addr == 0 || slbc_mem_size == 0 ) {
-		pr_err("[SLBC] phys_addr/virt_addr/mem_size of sspm shared dram init fail\n");
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, 0, "sspm shared dram init fail");
 		return -1;
 	}
-	pr_info("[SLBC] sspm_mem_phys_addr=0x%llx, sspm_mem_virt_addr=0x%llx, size=0x%llx\n",
-		slbc_mem_phys_addr,slbc_mem_virt_addr,slbc_mem_size);
+	SLBC_TRACE_REC(LVL_NORM, TYPE_N, 0, 0, "sspm_mem_phys_addr=0x%llx, sspm_mem_virt_addr=0x%llx, size=0x%llx",
+					slbc_mem_phys_addr,slbc_mem_virt_addr,slbc_mem_size);
 
 	/* Clear data in shared memory */
 	byte_ptr = (unsigned char *) (uintptr_t)slbc_mem_virt_addr;

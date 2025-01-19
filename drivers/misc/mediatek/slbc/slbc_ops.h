@@ -141,6 +141,8 @@ enum slc_ach_uid {
 	ID_DMR,
 	ID_OD,
 	ID_DBI,
+	ID_NPU_ADL_DC,
+	ID_NPU,
 	ID_MAX,
 };
 

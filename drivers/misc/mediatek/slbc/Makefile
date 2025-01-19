@@ -60,5 +60,10 @@ endif
 ifneq ($(wildcard $(src)/slbc_mt6991.c),)
 obj-${CONFIG_MTK_SLBC_MT6991} += slbc_mt6991.o
 endif
+
+ifneq ($(wildcard $(src)/slbc_mt6993.c),)
+obj-${CONFIG_MTK_SLBC_MT6993} += slbc_mt6993.o
+endif
+
 obj-${CONFIG_MTK_SLBC_MMSRAM} += mmsram.o
 

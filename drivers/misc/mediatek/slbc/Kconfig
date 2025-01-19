@@ -87,6 +87,15 @@ config MTK_SLBC_MT6991
 	  and power.
 	  If unsure, say N.
 
+config MTK_SLBC_MT6993
+	tristate "MTK SLBC MT6993"
+	depends on MTK_SLBC
+	help
+	  This kernel config can be used to enable SLBC at mt6993. When enable
+	  this option, we will use system buffer to improve performance
+	  and power.
+	  If unsure, say N.
+
 config MTK_SLBC_IPI
 	tristate "MTK SLBC use IPI"
 	help
