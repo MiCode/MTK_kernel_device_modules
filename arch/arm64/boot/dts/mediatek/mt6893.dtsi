@@ -3039,7 +3039,6 @@ cpus {
 			bootmode = <&chosen>;
 
 			mediatek,ufs-disable-ah8;
-			mediatek,ufs-qos;
 			mediatek,ufs-broken-vcc;
 			mediatek,ufs-perf-huristic;
 
