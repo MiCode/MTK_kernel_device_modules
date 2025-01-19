@@ -14,6 +14,7 @@
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
 #include "mtk_cpu_power_throttling.h"
+#include "core_ctl.h"
 
 #if !IS_BUILTIN(CONFIG_MTK_CPU_POWER_THROTTLING)
 #define CREATE_TRACE_POINTS
@@ -37,7 +38,7 @@ struct cpu_pt_priv {
 };
 
 struct cpu_pause_tbl {
-	int (*pause_func)(unsigned int cpu, bool is_pause);
+	int (*pause_func)(unsigned int cpu, bool is_pause, unsigned int request_mask);
 };
 
 static struct cpu_pt_priv cpu_pt_info[POWER_THROTTLING_TYPE_MAX] = {
@@ -79,7 +80,7 @@ static int pt_set_cpu_active(unsigned int cpu, bool active)
 
 	if (cicb.pause_func) {
 		pause = (active == false) ? true : false;
-		ret = cicb.pause_func(cpu, pause);
+		ret = cicb.pause_func(cpu, pause, POWER_THROTTLE_FORCE_PAUSE);
 	}
 
 	if (ret >= 0) {
