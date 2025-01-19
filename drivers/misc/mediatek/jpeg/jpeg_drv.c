@@ -411,6 +411,8 @@ static void jpeg_drv_end_bw_request(unsigned int id)
 void jpeg_drv_hybrid_dec_power_on(int id)
 {
 	int ret;
+	unsigned int ven_res;
+	int cnt = 0;
 
 	if (!dec_hwlocked[(id+1)%HW_CORE_NUMBER] && !dec_hwlocked[(id+2)%HW_CORE_NUMBER]) {
 		if (gJpegqDev.jpegLarb[0]) {
@@ -428,6 +430,20 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 		if (ret)
 			JPEG_LOG(0, "clk MT_CG_VENC_JPGDEC_C1 failed %d",
 					ret);
+		if (gJpegqDev.ven0BaseVA) {
+			IMG_REG_WRITE((BIT(0)), (gJpegqDev.ven0BaseVA + 0x10));
+			ven_res = IMG_REG_READ((gJpegqDev.ven0BaseVA + 0x15C));
+			while (!(ven_res & BIT(31))) {
+				cnt++;
+				if (cnt > 10000) {
+					JPEG_LOG(0, "[Error] venc ddrsrc ack timeout 0x%08x",
+						    ven_res);
+					break;
+				}
+				udelay(10);
+				ven_res = IMG_REG_READ((gJpegqDev.ven0BaseVA + 0x15C));
+			}
+		}
 	}
 
 	if (id == 2) {
@@ -1066,6 +1082,7 @@ static int jpeg_probe(struct platform_device *pdev)
 	struct device_node *node = NULL, *larbnode = NULL;
 	struct platform_device *larbdev;
 	int i, node_index, ret;
+	unsigned int ven0_base_idx;
 
 	JPEG_LOG(0, "JPEG Probe");
 	atomic_inc(&nodeCount);
@@ -1114,6 +1131,18 @@ static int jpeg_probe(struct platform_device *pdev)
 			of_clk_get_by_name(node, "MT_CG_VENC_JPGDEC_C1");
 		if (IS_ERR(gJpegqDev.jpegClk.clk_venc_jpgDec_c1))
 			JPEG_LOG(0, "get MT_CG_VENC_JPGDEC_C1 clk error!");
+
+		ret = of_property_read_u32(pdev->dev.of_node,
+					   "jpeg-set-resource",
+					   &ven0_base_idx);
+		if (ret == 0) {
+			gJpegqDev.ven0BaseVA = (unsigned long)of_iomap(node, ven0_base_idx);
+			JPEG_LOG(0, "jpeg enable ven0 resource set, base: 0x%lx",
+				    gJpegqDev.ven0BaseVA);
+		} else {
+			gJpegqDev.ven0BaseVA = 0;
+			JPEG_LOG(0, "jpeg disable ven0 resource set, %d", ret);
+		}
 	} else {
 		i = HW_CORE_NUMBER - 1;
 
