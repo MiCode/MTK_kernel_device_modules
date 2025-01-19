@@ -1223,6 +1223,7 @@ static int filter_by_ovl_cnt(struct drm_device *dev,
 static struct hrt_sort_entry *x_entry_list, *y_entry_list;
 static struct hrt_sort_entry *x_entry_list_for_compare, *y_entry_list_for_compare;
 
+
 #ifdef HRT_DEBUG_LEVEL2
 static int dump_entry_list(bool sort_by_y)
 {
@@ -2549,7 +2550,7 @@ static int check_is_force_gpu(struct drm_device *dev,
 }
 
 static int calc_hrt_num(struct drm_device *dev,
-			struct drm_mtk_layering_info *disp_info)
+			struct drm_mtk_layering_info *disp_info, struct mtk_drm_lyeblob_ids *lyeblob_ids)
 {
 	int emi_hrt_level;
 	int sum_overlap_w = 0;
@@ -2587,6 +2588,10 @@ static int calc_hrt_num(struct drm_device *dev,
 		sum_overlap_w =
 			_calc_hrt_num(dev, disp_info, HRT_PRIMARY, HRT_TYPE_EMI,
 				      scan_overlap, l_rule_info->dal_enable, need_gpu_cache);
+		lyeblob_ids->overlap_ovl = sum_overlap_w;
+		lyeblob_ids->overlap_ovl_of_bwm = sum_overlap_w_of_bwm;
+		DDPMSG("%s overlap%d bwm%d\n", __func__, lyeblob_ids->overlap_ovl,
+			lyeblob_ids->overlap_ovl_of_bwm);
 	}
 	if (has_hrt_limit(disp_info, HRT_SECONDARY)) {
 		sum_overlap_w_of_second_disp =
@@ -5064,6 +5069,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	ret = filter_by_ovl_cnt(dev, &layering_info);
 	check_gles_change(&dbg_gles, __LINE__, false);
 
+	lyeblob_ids = kzalloc(sizeof(struct mtk_drm_lyeblob_ids), GFP_KERNEL);
+
 	/*
 	 * 2.Overlapping
 	 * Calculate overlap number of available input layers.
@@ -5074,7 +5081,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	if (l_rule_ops->fbdc_adjust_layout)
 		l_rule_ops->fbdc_adjust_layout(&layering_info,
 					       ADJUST_LAYOUT_OVERLAP_CAL);
-	overlap_num = calc_hrt_num(dev, &layering_info);
+	overlap_num = calc_hrt_num(dev, &layering_info, lyeblob_ids);
 	layering_info.hrt_weight = overlap_num;
 	DDPINFO("overlap_num %u of frame %u\n", layering_info.hrt_weight,
 		layering_info.frame_idx[HRT_PRIMARY]);
@@ -5155,8 +5162,6 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		}
 	}
 	check_gles_change(&dbg_gles, __LINE__, false);
-
-	lyeblob_ids = kzalloc(sizeof(struct mtk_drm_lyeblob_ids), GFP_KERNEL);
 
 	dispatch_gles_range(&layering_info, dev);
 	check_gles_change(&dbg_gles, __LINE__, false);

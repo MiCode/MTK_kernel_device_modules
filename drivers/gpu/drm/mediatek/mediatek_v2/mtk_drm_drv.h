@@ -119,6 +119,8 @@ struct mtk_drm_lyeblob_ids {
 	int fbt_gles_tail;
 	int fbt_layer_id;
 	bool hrt_valid;
+	uint32_t overlap_ovl;
+	uint32_t overlap_ovl_of_bwm;
 	struct list_head list;
 };
 
@@ -439,6 +441,13 @@ enum disp_pm_action {
 	DISP_PM_CHECK,
 };
 
+struct bwm_hrt_sort_entry {
+	struct bwm_hrt_sort_entry *head, *tail;
+	struct mtk_plane_pending_state *pending;
+	int key;
+	int overlap_w;
+};
+
 static const struct mtk_addon_module_data addon_rsz_data[] = {
 	{DISP_RSZ, ADDON_BETWEEN, DDP_COMPONENT_OVL0_2L},
 };
@@ -515,6 +524,7 @@ extern struct platform_driver mtk_disp_dli_async_driver;
 extern struct platform_driver mtk_disp_inlinerotate_driver;
 extern struct platform_driver mtk_mmlsys_bypass_driver;
 extern struct platform_driver mtk_disp_postalign_driver;
+extern struct platform_driver mtk_disp_bwm_driver;
 extern struct mtk_drm_disp_sec_cb disp_sec_cb;
 extern struct mtk_aod_scp_cb aod_scp_ipi;
 extern struct mtk_vdisp_funcs vdisp_func;
@@ -536,10 +546,13 @@ fbt_layer_compress_ratio_tb[MAX_FRAME_RATIO_NUMBER];
 extern struct layer_compress_ratio_item
 unchanged_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
 extern struct layer_compress_ratio_item
+all_layer_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
+extern struct layer_compress_ratio_item
 fbt_compress_ratio_table[MAX_FRAME_RATIO_NUMBER];
 extern unsigned int ovl_win_size;
 extern unsigned int default_emi_eff;
 extern unsigned int emi_eff_tb[MAX_EMI_EFF_LEVEL];
+extern unsigned int bwm20_overlap;
 extern int aod_scp_flag;
 extern int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag);

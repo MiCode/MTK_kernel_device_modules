@@ -621,6 +621,7 @@ enum MTK_CRTC_COLOR_FMT {
 	EXPR(CLIENT_PQ_EOF)                                                        \
 	EXPR(CLIENT_PQ)                                                    \
 	EXPR(CLIENT_BWM_LOOP)                                                    \
+	EXPR(CLIENT_BWM)                                                    \
 	EXPR(CLIENT_TYPE_MAX)
 
 enum CRTC_GCE_CLIENT_TYPE { DECLARE_GCE_CLIENT(DECLARE_NUM) };
@@ -1576,6 +1577,8 @@ void mtk_crtc_mml_racing_stop_sync(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq
 bool mtk_crtc_alloc_sram(struct mtk_drm_crtc *mtk_crtc, unsigned int hrt_idx);
 int mtk_crtc_attach_ddp_comp(struct drm_crtc *crtc, int ddp_mode, bool is_attach);
 void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc, struct cmdq_pkt *handle);
+void mtk_crtc_bwm_enable(struct drm_crtc *crtc,
+	struct cmdq_pkt *handle);
 
 void mtk_crtc_store_total_overhead(struct mtk_drm_crtc *mtk_crtc,
 	struct total_tile_overhead info);
@@ -1689,6 +1692,9 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 
 void mtk_crtc_gce_event_config(struct drm_crtc *crtc);
 void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
+void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc, struct drm_atomic_state *state);
+void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
+	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle);
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,

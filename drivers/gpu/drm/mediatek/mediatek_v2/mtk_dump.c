@@ -289,6 +289,9 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_ODDMR1:
 		mtk_oddmr_dump(comp);
 		break;
+	case DDP_COMPONENT_BWM0:
+		mtk_bwm_dump(comp);
+		break;
 	default:
 		return 0;
 	}

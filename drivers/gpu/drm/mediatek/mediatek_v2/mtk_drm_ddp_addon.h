@@ -39,6 +39,7 @@ enum addon_scenario {
 	MML_SRAM_ONLY, /* MML Inline Rotate */
 	DSC_COMP, /* describe which DSC module would apply in this CRTC */
 	WDMA_WRITE_BACK_MID,
+	BWM_COMP,
 	ADDON_SCN_NR,
 };
 
@@ -86,6 +87,7 @@ enum addon_module {
 	DSC_0,
 	DSC_1,
 	DISP_WDMA_MID,
+	DISP_OVLSYS_BWM0,
 	ADDON_MODULE_NUM,
 };
 

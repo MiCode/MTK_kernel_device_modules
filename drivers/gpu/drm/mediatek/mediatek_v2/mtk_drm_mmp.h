@@ -124,6 +124,7 @@ struct CRTC_MMP_Events {
 	mmp_event check_trigger;
 	mmp_event kick_trigger;
 	mmp_event atomic_commit;
+	mmp_event bwm20;
 	mmp_event pu_ddic_cmd;
 	mmp_event pu_final_roi;
 	mmp_event pu_status_err;

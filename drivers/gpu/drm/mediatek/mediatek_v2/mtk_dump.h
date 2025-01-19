@@ -68,6 +68,7 @@ int mtk_dlo_async_analysis(struct mtk_ddp_comp *comp);
 int mtk_y2r_analysis(struct mtk_ddp_comp *comp);
 int mtk_mmlsys_bypass_analysis(struct mtk_ddp_comp *comp);
 int mtk_oddmr_analysis(struct mtk_ddp_comp *comp);
+int mtk_bwm_dump(struct mtk_ddp_comp *comp);
 
 void mtk_dump_cur_pos(struct mtk_ddp_comp *comp);
 void mtk_ovl_cur_pos_dump(struct mtk_ddp_comp *comp);

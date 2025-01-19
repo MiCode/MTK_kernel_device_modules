@@ -262,6 +262,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "kick_trigger");
 		g_CRTC_MMP_Events[i].atomic_commit = mmprofile_register_event(
 			crtc_mmp_root, "atomic_commit");
+		g_CRTC_MMP_Events[i].bwm20 = mmprofile_register_event(
+			crtc_mmp_root, "bwm20");
 		g_CRTC_MMP_Events[i].pu_ddic_cmd = mmprofile_register_event(
 			crtc_mmp_root, "pu_ddic_cmd");
 		g_CRTC_MMP_Events[i].pu_final_roi = mmprofile_register_event(

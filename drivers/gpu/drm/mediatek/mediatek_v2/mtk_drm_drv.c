@@ -2257,6 +2257,12 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 	drm_atomic_state_get(state);
 	mtk_atomic_check_res_switch(private, state);
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+		drm_crtc_index(crtc) == 0 && atomic_read(&private->kernel_pm.wakelock_cnt) != 0 &&
+		mtk_crtc->enabled) {
+		mtk_drm_idlemgr_kick(__func__, crtc, false);
+		mtk_bwm_calc_hrt_bw(crtc, state);
+	}
 
 #ifdef IF_ZERO /*TODO: use async atomic_commit would occur crtc_state and crtc race condition */
 	if (async)
@@ -3935,6 +3941,11 @@ static const struct mtk_addon_module_data mt6985_addon_ovlsys_wdma2_data[] = {
 	{DISP_OVLSYS_WDMA2, ADDON_AFTER, DDP_COMPONENT_OVL6_2L},
 };
 
+static const struct mtk_addon_module_data mt6991_addon_ovlsys_bwm0_data[] = {
+	{DISP_OVLSYS_BWM0, ADDON_EMBED, DDP_COMPONENT_ID_MAX},
+};
+
+
 /* mt6886 is the same as mt6895 */
 static const struct mtk_addon_module_data mt6895_addon_wdma0_data[] = {
 	{DISP_WDMA0, ADDON_AFTER, DDP_COMPONENT_SPR0},
@@ -4444,7 +4455,11 @@ static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6991_addon_ovlsys_wdma0_dl_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
-
+	[BWM_COMP] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys_bwm0_data),
+		.module_data = mt6991_addon_ovlsys_bwm0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
 };
 
 static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
@@ -10819,6 +10834,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DVO},
 	{.compatible = "mediatek,mt6993-edp-dvo",
 	 .data = (void *)MTK_DISP_DVO},
+	{.compatible = "mediatek,mt6991-disp-bwm",
+	 .data = (void *)MTK_DISP_BWM},
 	{.compatible = "mediatek,mt6897-dp-intf",
 	 .data = (void *)MTK_DP_INTF},
 	{.compatible = "mediatek,mt6895-dp-intf",
@@ -11933,7 +11950,7 @@ SKIP_OVLSYS_CONFIG:
 		    || comp_type == MTK_DISP_Y2R || comp_type == MTK_DISP_INLINE_ROTATE
 		    || comp_type == MTK_DISP_DLI_ASYNC || comp_type == MTK_DISP_DLO_ASYNC
 		    || comp_type == MTK_DISP_R2Y
-		    || comp_type == MTK_DISP_DVO
+		    || comp_type == MTK_DISP_DVO || comp_type == MTK_DISP_BWM
 		) {
 			dev_info(dev, "Adding component match for %s, comp_id:%d\n",
 				 node->full_name, comp_id);
@@ -12283,7 +12300,8 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_dlo_async_driver,
 	&mtk_disp_dli_async_driver,
 	&mtk_mmlsys_bypass_driver,
-	&mtk_disp_merge_driver
+	&mtk_disp_merge_driver,
+	&mtk_disp_bwm_driver
 };
 
 static int __init mtk_drm_init(void)

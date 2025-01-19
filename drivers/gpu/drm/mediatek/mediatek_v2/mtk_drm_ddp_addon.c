@@ -311,6 +311,10 @@ static const int disp_dsc1_path[] = {
 	DDP_COMPONENT_DSC1,
 };
 
+static const int disp_bwm0_path[] = {
+	DDP_COMPONENT_BWM0,
+};
+
 static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_RSZ] = {
 				.path = disp_rsz_path,
@@ -483,6 +487,10 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DSC_1] = {
 				.path = disp_dsc1_path,
 				.path_len = ARRAY_SIZE(disp_dsc1_path),
+			},
+		[DISP_OVLSYS_BWM0] = {
+				.path = disp_bwm0_path,
+				.path_len = ARRAY_SIZE(disp_bwm0_path),
 			},
 };
 

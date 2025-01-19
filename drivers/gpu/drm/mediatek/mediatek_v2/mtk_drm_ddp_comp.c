@@ -375,6 +375,7 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_DISP_DLO_ASYNC] = "dlo-async",
 	[MTK_DISP_DLI_ASYNC] = "dli-async",
 	[MTK_DISP_INLINE_ROTATE] = "inlinerotate",
+	[MTK_DISP_BWM] = "bwm",
 	[MTK_MMLSYS_BYPASS] = "mmlsys_bypass",
 	[MTK_MML_RSZ] = "mml_rsz",
 	[MTK_MML_HDR] = "mml_hdr",
@@ -904,7 +905,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVL1_OUTPROC3, MTK_OVL_OUTPROC, 9, NULL, 0},
 	{DDP_COMPONENT_OVL1_OUTPROC4, MTK_OVL_OUTPROC, 10, NULL, 0},
 	{DDP_COMPONENT_OVL1_OUTPROC5, MTK_OVL_OUTPROC, 11, NULL, 0},
-	{DDP_COMPONENT_OVL_BWM0, MTK_DISP_VIRTUAL, -1, NULL, 0},
+	{DDP_COMPONENT_BWM0, MTK_DISP_BWM, 0, NULL, 0},
 	{DDP_COMPONENT_OVL1_BWM0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVL0_OUTPROC_OUT_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
@@ -1400,7 +1401,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB10, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
-	{DDP_COMPONENT_SYS_B_RSZ0, MTK_DISP_RSZ, 6, NULL, 0},
+/*995*/	{DDP_COMPONENT_SYS_B_RSZ0, MTK_DISP_RSZ, 6, NULL, 0},
 };
 
 bool mtk_ddp_comp_is_output(struct mtk_ddp_comp *comp)
@@ -1704,7 +1705,7 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 	/* check if this module need larb_dev */
 	if (type != MTK_DISP_OVL && type != MTK_DISP_RDMA && type != MTK_DISP_WDMA &&
 		type != MTK_DISP_POSTMASK && type != MTK_DISP_MDP_RDMA && type != MTK_DISP_ODDMR &&
-		type != MTK_OVL_EXDMA)
+		type != MTK_OVL_EXDMA && type != MTK_DISP_BWM)
 		return;
 
 	count = of_property_count_u32_elems(node, "mediatek,larb");

@@ -186,6 +186,10 @@ fbt_layer_compress_ratio_tb[MAX_FRAME_RATIO_NUMBER];
 
 struct layer_compress_ratio_item
 unchanged_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
+
+struct layer_compress_ratio_item
+all_layer_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
+
 struct layer_compress_ratio_item
 fbt_compress_ratio_table[MAX_FRAME_RATIO_NUMBER];
 #define MT6991_MAX_EXDMA_NUM 8
@@ -204,6 +208,7 @@ static unsigned int fn;
 #endif
 /* overlay bandwidth monitor BURST ACC Window size */
 unsigned int ovl_win_size;
+unsigned int bwm20_overlap;
 
 #define ALIGN_TO_32(x) ALIGN_TO(x, 32)
 
@@ -1782,6 +1787,18 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 			(state->lye_state.mml_dl_lye && priv->data->mmsys_id == MMSYS_MT6993)){
 			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
 					MML_DL);
+			mtk_drm_crtc_addon_dump(crtc, addon_data);
+		}
+	}
+
+	if (!crtc->state)
+		DDPDUMP("%s dump nothing for null state\n", __func__);
+	else {
+		state = to_mtk_crtc_state(crtc->state);
+		if (priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6993){
+			addon_data = mtk_addon_get_scenario_data(__func__, crtc,
+					BWM_COMP);
 			mtk_drm_crtc_addon_dump(crtc, addon_data);
 		}
 	}
@@ -6586,38 +6603,63 @@ static unsigned int overlap_to_bw(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int crtc_idx = drm_crtc_index(crtc);
 	unsigned int bw_base = mtk_drm_primary_frame_bw(crtc);
-	unsigned int bw = 0;
+	unsigned int bw = 0, tmp_overlap_of_bwm;
 	unsigned int ori_overlap_num = overlap_num;
 	int discount = hrt_lp_switch_get();
 
-	if (discount >= 200) {
-		if (discount > overlap_num)
-			DDPINFO("overlap_num discount:%d > original:%d\n",
-				discount, overlap_num);
-		else {
-			overlap_num -= discount;
+	if (overlap_num == 0 && (bwm20_overlap != 0) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+		(crtc_idx == 0) && lyeblob_ids) {
+		overlap_num = overlap_num - lyeblob_ids->overlap_ovl + bwm20_overlap;
 
-			if (overlap_num < 400) {
-				DDPINFO("overlap_num of discount < 400, change to 400\n");
-				overlap_num  = 400;
-			}
+		bw = bw_base * overlap_num / 400;
+
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
+			(crtc_idx == 0) && lyeblob_ids &&
+			(lyeblob_ids->frame_weight_of_bwm != 0)) {
+			if ((bwm20_overlap != 0) &&
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
+
+			tmp_overlap_of_bwm = lyeblob_ids->frame_weight_of_bwm -
+				lyeblob_ids->overlap_ovl_of_bwm	+ bwm20_overlap;
+
+			bw = bw_base * tmp_overlap_of_bwm / 400;
+				}
+			DDPDBG("%s:%d BWM20 bw_base:%u overlap:%u bw:%u\n", __func__, __LINE__,
+					bw_base, lyeblob_ids->frame_weight_of_bwm, bw);
 		}
+		bwm20_overlap = 0;
+	} else {
+		if (discount >= 200) {
+			if (discount > overlap_num)
+				DDPINFO("overlap_num discount:%d > original:%d\n",
+					discount, overlap_num);
+			else {
+				overlap_num -= discount;
 
-		DDPINFO("%s:%d ori overlap_num=%u, after discount overlap_num=%u\n",
-			__func__, __LINE__, ori_overlap_num, overlap_num);
-	}
+				if (overlap_num < 400) {
+					DDPINFO("overlap_num of discount < 400, change to 400\n");
+					overlap_num  = 400;
+				}
+			}
 
-	bw = bw_base * overlap_num / 400;
+			DDPINFO("%s:%d ori overlap_num=%u, after discount overlap_num=%u\n",
+				__func__, __LINE__, ori_overlap_num, overlap_num);
+		}
+		CRTC_MMP_MARK((int) drm_crtc_index(crtc), bwm20, 4, 0);
 
-	DDPDBG("%s:%d bw_base:%u overlap:%u bw:%u\n", __func__, __LINE__,
-		bw_base, overlap_num, bw);
+		bw = bw_base * overlap_num / 400;
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
-		(crtc_idx == 0) && lyeblob_ids &&
-		(lyeblob_ids->frame_weight_of_bwm != 0)) {
-		bw = bw_base * lyeblob_ids->frame_weight_of_bwm / 400;
-		DDPDBG("%s:%d BWM bw_base:%u overlap:%u bw:%u\n", __func__, __LINE__,
-				bw_base, lyeblob_ids->frame_weight_of_bwm, bw);
+		DDPDBG("%s:%d bw_base:%u overlap:%u bw:%u\n", __func__, __LINE__,
+			bw_base, overlap_num, bw);
+
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
+			(crtc_idx == 0) && lyeblob_ids &&
+			(lyeblob_ids->frame_weight_of_bwm != 0)) {
+			bw = bw_base * lyeblob_ids->frame_weight_of_bwm / 400;
+			DDPDBG("%s:%d BWM bw_base:%u overlap:%u bw:%u\n", __func__, __LINE__,
+					bw_base, lyeblob_ids->frame_weight_of_bwm, bw);
+		}
 	}
 
 	if ((crtc_idx == 0) && (mtk_crtc->scaling_ctx.scaling_en)) {
@@ -6694,7 +6736,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	struct drm_display_mode *mode = NULL;
 	unsigned int max_fps = 0;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	int en = 0;
+	int en = 0, ret;
 	bool opt_mmqos = 0;
 	bool opt_mmdvfs = 0, channel_bw_chk = 0;
 	bool is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
@@ -6786,7 +6828,12 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			       bw, ~0);
 	}
 
-	mtk_crtc->qos_ctx->last_hrt_req = bw;
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
+		if (frame_weight == 0)
+			mtk_crtc->qos_ctx->last_hrt_req = bw;
+	} else
+		mtk_crtc->qos_ctx->last_hrt_req = bw;
+
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_BY_LARB) &&
 		priv->data->mmsys_id == MMSYS_MT6989) {
@@ -9259,7 +9306,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 			need_skip = true;
 		}
 
-		DDPDBG_BWM("BWM: need skip:%d\n", need_skip);
+		DDPDBG("BWM: need skip:%d\n", need_skip);
 
 		if ((plane_index < MAX_LAYER_RATIO_NUMBER) &&
 			(plane_state->pending.enable) && (!need_skip) && (index >= 0)) {
@@ -9291,7 +9338,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 		DDPDBG_BWM("BWM: frame idx:%d alloc_id:%llu plane_index:%u enable:%u\n",
 				frame_idx, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
 				plane_index, plane_state->pending.enable);
-		DDPDBG_BWM("BWM: fn:%u index:%d is_gpu_cached:%d\n",
+		DDPDBG("BWM: fn:%u index:%d is_gpu_cached:%d\n",
 				fn, index, is_gpu_cached);
 	}
 }
@@ -9817,6 +9864,10 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				display_compress_ratio_table[i].key_value,
 				*(display_compress_ratio_table[i].average_ratio),
 				*(display_compress_ratio_table[i].peak_ratio));
+				if (*(display_compress_ratio_table[i].average_ratio) == 0)
+					*(display_compress_ratio_table[i].average_ratio) = 1000;
+				if (*(display_compress_ratio_table[i].peak_ratio) == 0)
+					*(display_compress_ratio_table[i].peak_ratio) = 1000;
 			}
 			normal_layer_compress_ratio_tb[index].frame_idx =
 				display_compress_ratio_table[i].frame_idx;
@@ -9867,7 +9918,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 
 /* This section is for debugging */
 #ifndef BWMT_DEBUG
-	DDPDBG_BWM("BWM: fn:%u frame_idx:%u\n", fn, frame_idx);
+	/*DDPDBG_BWM("BWM: fn:%u frame_idx:%u\n", fn, frame_idx);
 
 	DDPDBG_BWM("BWMT===== normal_layer_compress_ratio_tb =====\n");
 	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
@@ -9893,7 +9944,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				fbt_layer_compress_ratio_tb[i].peak_ratio,
 				fbt_layer_compress_ratio_tb[i].valid,
 				fbt_layer_compress_ratio_tb[i].active);
-	}
+	}*/
 	DDPDBG_BWM("BWMT===== unchanged_compress_ratio_table =====\n");
 	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
@@ -9944,6 +9995,7 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *comp = NULL;
 	int type;
 	int i, j;
+	unsigned int comp_id = DDP_COMPONENT_ID_MAX;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	DDPDBG_BWM("%s +\n", __func__);
@@ -10060,6 +10112,445 @@ void update_layer_cap_for_bwm(struct drm_crtc *crtc,
 				plane_state->comp_state.layer_caps &= ~BWM_CAPS_MASK;
 		}
 	}
+}
+
+static struct bwm_hrt_sort_entry *x_entry_list, *y_entry_list;
+
+static int insert_entry(struct bwm_hrt_sort_entry **head,
+			struct bwm_hrt_sort_entry *sort_entry)
+{
+	struct bwm_hrt_sort_entry *temp;
+
+	temp = *head;
+	while (temp) {
+		if (sort_entry->key < temp->key ||
+		    ((sort_entry->key == temp->key) &&
+		     (sort_entry->overlap_w > 0))) {
+			sort_entry->head = temp->head;
+			sort_entry->tail = temp;
+			if (temp->head != NULL)
+				temp->head->tail = sort_entry;
+			else
+				*head = sort_entry;
+			temp->head = sort_entry;
+			break;
+		}
+
+		if (temp->tail == NULL) {
+			temp->tail = sort_entry;
+			sort_entry->head = temp;
+			sort_entry->tail = NULL;
+			break;
+		}
+		temp = temp->tail;
+	}
+
+	return 0;
+}
+
+static int dump_entry_list(bool sort_by_y)
+{
+	struct bwm_hrt_sort_entry *temp;
+	struct mtk_plane_pending_state *pending;
+
+	if (sort_by_y)
+		temp = y_entry_list;
+	else
+		temp = x_entry_list;
+
+	DDPDBG_BWM("%s, sort_by_y:%d, addr:0x%p\n", __func__, sort_by_y, temp);
+	while (temp) {
+		pending = temp->pending;
+		DDPDBG_BWM("key:%d, offset(%d, %d), w/h(%d, %d), overlap_w:%d\n",
+		       temp->key, pending->dst_x,
+		       pending->dst_y, pending->width,
+		       pending->height, temp->overlap_w);
+		temp = temp->tail;
+	}
+	DDPDBG_BWM("%s end\n", __func__);
+	return 0;
+}
+
+static int free_all_layer_entry(bool sort_by_y)
+{
+	struct bwm_hrt_sort_entry *cur_entry, *next_entry;
+
+	if (sort_by_y)
+		cur_entry = y_entry_list;
+	else
+		cur_entry = x_entry_list;
+
+	while (cur_entry) {
+		next_entry = cur_entry->tail;
+		kfree(cur_entry);
+		cur_entry = next_entry;
+	}
+
+	if (sort_by_y)
+		y_entry_list = NULL;
+	else
+		x_entry_list = NULL;
+
+	return 0;
+}
+
+static int add_layer_entry(struct mtk_plane_state *plane_state, bool sort_by_y,
+			   int overlap_w)
+{
+	struct bwm_hrt_sort_entry *begin_t, *end_t;
+	struct bwm_hrt_sort_entry **p_entry;
+	struct mtk_plane_pending_state *pending = &plane_state->pending;
+
+	begin_t = kzalloc(sizeof(struct bwm_hrt_sort_entry), GFP_KERNEL);
+	end_t = kzalloc(sizeof(struct bwm_hrt_sort_entry), GFP_KERNEL);
+
+	begin_t->head = NULL;
+	begin_t->tail = NULL;
+	end_t->head = NULL;
+	end_t->tail = NULL;
+	if (sort_by_y) {
+		begin_t->key = pending->dst_y;
+		end_t->key = pending->dst_y + pending->height - 1;
+		p_entry = &y_entry_list;
+	} else {
+		begin_t->key = pending->dst_x;
+		end_t->key = pending->dst_x + pending->width - 1;
+		p_entry = &x_entry_list;
+	}
+
+	begin_t->overlap_w = overlap_w;
+	begin_t->pending = pending;
+	end_t->overlap_w = -overlap_w;
+	end_t->pending = pending;
+
+	if (*p_entry == NULL) {
+		*p_entry = begin_t;
+		begin_t->head = NULL;
+		begin_t->tail = end_t;
+		end_t->head = begin_t;
+		end_t->tail = NULL;
+	} else {
+		/* Inser begin entry */
+		insert_entry(p_entry, begin_t);
+
+		//DDPDBG_BWM("Insert key:%d\n", begin_t->key);
+		//dump_entry_list(sort_by_y);
+
+		/* Inser end entry */
+		insert_entry(p_entry, end_t);
+
+		//DDPDBG_BWM("Insert key:%d\n", end_t->key);
+		//dump_entry_list(sort_by_y);
+	}
+
+	return 0;
+}
+
+static int scan_y_overlap(void)
+{
+	struct bwm_hrt_sort_entry *tmp_entry;
+	int overlap_w_sum = 0;
+	int max_overlap = 0;
+
+	tmp_entry = y_entry_list;
+	while (tmp_entry) {
+		overlap_w_sum += tmp_entry->overlap_w;
+		tmp_entry = tmp_entry->tail;
+		if(overlap_w_sum > max_overlap)
+			max_overlap = overlap_w_sum;
+	}
+
+	return max_overlap;
+}
+
+static void bwm_trigger_cmdq_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
+
+void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
+	struct drm_atomic_state *state)
+{
+	struct drm_plane *plane;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	unsigned int plane_mask = 0, i, j = 0, k, bpp;
+	struct mtk_ddp_comp *comp;
+	unsigned int active_index = 0, channel_sum = 0;
+	unsigned long tmp_srt = 0;
+	struct cmdq_pkt *cmdq_handle;
+	const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
+	const struct mtk_addon_path_data *addon_path;
+	unsigned int comp_id;
+	struct mtk_drm_private *priv = NULL;
+	struct drm_framebuffer *fb = NULL;
+	struct mtk_cmdq_cb_data *bwm20_cb_data;
+	struct drm_plane_state *old_plane_state;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	plane_mask = crtc->state->plane_mask;
+	priv = mtk_crtc->base.dev->dev_private;
+	if (!priv)
+		return;
+
+	mtk_crtc_pkt_create(&cmdq_handle, crtc,
+				mtk_crtc->gce_obj.client[CLIENT_BWM]);
+	bwm20_cb_data = kmalloc(sizeof(*bwm20_cb_data), GFP_KERNEL);
+	if (!bwm20_cb_data) {
+		DDPPR_ERR("%s cb data creation failed\n", __func__);
+		return;
+	}
+
+	mtk_addon_get_module(BWM_COMP, mtk_crtc, &addon_module[0], &addon_module[1]);
+	if (addon_module[0] == NULL)
+		return;
+	addon_path = mtk_addon_module_get_path(addon_module[0]->module);
+	if (!addon_path)
+		return;
+
+	comp_id = addon_path->path[0];
+	if (comp_id >= DDP_COMPONENT_ID_MAX) {
+		DDPPR_ERR("%s invalid comp_id %u\n", __func__, comp_id);
+		return;
+	}
+	comp = priv->ddp_comp[comp_id];
+	if (!comp) {
+		DDPMSG("%s %d\n", __func__, __LINE__);
+		return;
+	}
+	comp->mtk_crtc = mtk_crtc;
+	comp->qos_bw = 0;
+	memset(all_layer_compress_ratio_table, 0, sizeof(all_layer_compress_ratio_table));
+
+	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
+		struct mtk_plane_state *plane_state =
+			to_mtk_plane_state(plane->state);
+		unsigned int is_compress =
+			plane_state->prop_val[PLANE_PROP_COMPRESS];
+		struct drm_framebuffer *fb = plane->state->fb;
+
+		if (!fb) {
+			DDPMSG("%s fb is NULL\n", __func__);
+			continue;
+		}
+
+		bpp = mtk_get_format_bpp(fb->format->format);
+		CRTC_MMP_MARK(0, bwm20, is_compress, 1);
+		if (!is_compress || (mtk_fb_get_dma(fb) == 0) ||
+			fb->format->format == DRM_FORMAT_C8 ||
+			plane_state->mml_mode == MML_MODE_DIRECT_LINK ||
+			plane_state->mml_mode == MML_MODE_RACING)
+			DDPDBG_BWM("%s not compress layer alloc_id:%d\n", __func__,
+				(unsigned int)plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID]);
+		else if ((drm_rect_height(&plane->state->src) >> 16) < 8)
+			DDPDBG_BWM("%s too little layer,h:%d alloc_id:%d\n", __func__,
+				(unsigned int)plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID]);
+		else if (plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) {
+			for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+				if (plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] ==
+					unchanged_compress_ratio_table[i].key_value) {
+					DDPDBG_BWM("%s get unchanged ratio avg:%d peak:%d alloc_id:%llu\n", __func__,
+					unchanged_compress_ratio_table[i].average_ratio,
+					unchanged_compress_ratio_table[i].peak_ratio,
+					unchanged_compress_ratio_table[i].key_value);
+					all_layer_compress_ratio_table[j].valid = 1;
+					all_layer_compress_ratio_table[j].key_value =
+						unchanged_compress_ratio_table[i].key_value;
+					all_layer_compress_ratio_table[j].average_ratio =
+						unchanged_compress_ratio_table[i].average_ratio;
+					all_layer_compress_ratio_table[j].peak_ratio =
+						unchanged_compress_ratio_table[i].peak_ratio;
+					break;
+				}
+			}
+		} else if (is_compress && bpp && active_index < 8) {
+			all_layer_compress_ratio_table[j].active = 1;
+			all_layer_compress_ratio_table[j].valid = 1;
+			all_layer_compress_ratio_table[j].key_value =
+				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
+
+			//set layer config to bwm
+			mtk_ddp_comp_layer_config(comp, active_index, plane_state, cmdq_handle);
+
+			DDPDBG_BWM("%s acvite layer srt:%d alloc_id:%llu idx:%u\n", __func__, comp->qos_bw,
+				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID], active_index);
+			active_index ++;
+		}
+		j++;
+	}
+	tmp_srt = comp->qos_bw;
+	if (tmp_srt > 0) {
+		tmp_srt *= 1000000;
+		do_div(tmp_srt, 1024);
+		do_div(tmp_srt, 1024);
+		mtk_crtc->total_srt += tmp_srt;
+		DDPDBG_BWM("%s %d srt:%lu\n", __func__, __LINE__, tmp_srt);
+		//set srt bw
+		mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
+		for (j = 0; j < MAX_CRTC; j++)
+			channel_sum += priv->srt_channel_bw_sum[j][1];
+		channel_sum += tmp_srt;
+		mtk_vidle_channel_bw_set(channel_sum, (1 * 4)); //0, 4, 8, 12
+		__mtk_disp_set_module_srt(comp->qos_req, comp->id, tmp_srt, 0,
+						    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+
+		//trig bwm
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle, MTK_IO_CMD_BWM_TRIG, NULL);
+		CRTC_MMP_MARK(0, bwm20, (unsigned long)cmdq_handle, 2);
+		bwm20_cb_data->cmdq_handle = cmdq_handle;
+		cmdq_pkt_flush_threaded(cmdq_handle, bwm_trigger_cmdq_cb, bwm20_cb_data);
+	}
+
+	return;
+}
+void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
+	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle)
+{
+	unsigned int channel_sum = 0;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *comp;
+	const struct mtk_addon_module_data *addon_module[2] = {NULL, NULL};
+	const struct mtk_addon_path_data *addon_path;
+	unsigned int comp_id, crtc_idx, i, j, k, plane_mask, bpp, prop_lye_idx;
+	struct drm_plane *plane;
+	int overlap, weight;
+	struct mtk_drm_lyeblob_ids *lyeblob_ids, *next;
+	struct list_head *lyeblob_head;
+	int sphrt_enable;
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	static bool aee_trigger = true;
+
+	CRTC_MMP_MARK(0, bwm20, 0, 3);
+	mtk_crtc = to_mtk_crtc(crtc);
+	crtc_idx = drm_crtc_index(crtc);
+	plane_mask = crtc->state->plane_mask;
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) ||
+		(crtc_idx != 0))
+		return;
+
+	mtk_addon_get_module(BWM_COMP, mtk_crtc, &addon_module[0], &addon_module[1]);
+	if (addon_module[0] == NULL)
+		return;
+	addon_path = mtk_addon_module_get_path(addon_module[0]->module);
+	if (!addon_path)
+		return;
+
+	comp_id = addon_path->path[0];
+	if (comp_id >= DDP_COMPONENT_ID_MAX) {
+		DDPPR_ERR("%s invalid comp_id %u\n", __func__, comp_id);
+		return;
+	}
+	comp = priv->ddp_comp[comp_id];
+	if (!comp) {
+		DDPMSG("%s cannot get bwm comp\n", __func__);
+		return;
+	}
+	if (!comp->qos_bw)
+		return;
+	else {
+		mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_CALC_RATIO,
+					NULL);
+		//clear srt bw
+		DDPINFO("%s qos bw:%d\n", __func__, comp->qos_bw);
+		mtk_crtc->total_srt -= comp->qos_bw;
+		mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
+		for (j = 0; j < MAX_CRTC; j++)
+			channel_sum += priv->srt_channel_bw_sum[j][1];
+		channel_sum -= comp->qos_bw;
+		mtk_vidle_channel_bw_set(channel_sum, (1 * 4)); //0, 4, 8, 12
+		__mtk_disp_set_module_srt(comp->qos_req, comp->id, 0, 0,
+						    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
+		//calc overlap
+		CRTC_MMP_MARK(0, bwm20, 0, 4);
+
+		drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
+			struct mtk_plane_state *plane_state =
+				to_mtk_plane_state(plane->state);
+
+			if (plane_state->pending.enable == 0)
+				continue;
+			weight = HRT_UINT_WEIGHT;
+			bpp = mtk_drm_format_plane_cpp(plane_state->pending.format, 0);
+
+			if (plane_state->pending.prop_val[PLANE_PROP_COMPRESS] && bpp) {
+				for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+					if ((plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] ==
+						all_layer_compress_ratio_table[i].key_value) &&
+						all_layer_compress_ratio_table[i].valid) {
+						if ((all_layer_compress_ratio_table[i].peak_ratio > 1024 ||
+							all_layer_compress_ratio_table[i].peak_ratio == 0 ||
+							all_layer_compress_ratio_table[i].average_ratio > 1024 ||
+							all_layer_compress_ratio_table[i].average_ratio == 0) &&
+							aee_trigger) {
+							DDPPR_ERR("bwm20 layer%d ratio error,avg%d peak%d\n", i,
+								all_layer_compress_ratio_table[i].average_ratio,
+								all_layer_compress_ratio_table[i].peak_ratio);
+							aee_trigger = false;
+							DDPMSG("BWMT===== all_layer_compress_ratio_tb =====\n");
+							DDPMSG("BWMT===== Item Frame Key avg peak valid active=====\n");
+							for (k = 0; k < MAX_LAYER_RATIO_NUMBER; k++) {
+								DDPMSG("BWMT===== %4d %u %llu %u %u %u  %u =====\n", i,
+									all_layer_compress_ratio_table[k].frame_idx,
+									all_layer_compress_ratio_table[k].key_value,
+									all_layer_compress_ratio_table[k].average_ratio,
+									all_layer_compress_ratio_table[k].peak_ratio,
+									all_layer_compress_ratio_table[k].valid,
+									all_layer_compress_ratio_table[k].active);
+							}
+							all_layer_compress_ratio_table[i].peak_ratio = 1000;
+							all_layer_compress_ratio_table[i].average_ratio = 1000;
+						}
+						weight *= all_layer_compress_ratio_table[i].peak_ratio;
+						do_div(weight, 1000);
+						break;
+					}
+				}
+			}
+			overlap = div_u64((weight * bpp * 10000), default_emi_eff);
+			CRTC_MMP_MARK(0, bwm20, overlap, 5);
+
+			add_layer_entry(plane_state, true, overlap);
+		}
+		bwm20_overlap = scan_y_overlap();
+		if (mtk_drm_dal_enable()) {
+			weight = HRT_UINT_WEIGHT;
+			bpp = HRT_AEE_WEIGHT / HRT_UINT_WEIGHT;
+			bwm20_overlap += weight * bpp;
+		}
+		free_all_layer_entry(true);
+		CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 6);
+	}
+	DDPDBG_BWM("BWMT===== all_layer_compress_ratio_tb =====\n");
+	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+			DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
+				all_layer_compress_ratio_table[i].frame_idx,
+				all_layer_compress_ratio_table[i].key_value,
+				all_layer_compress_ratio_table[i].average_ratio,
+				all_layer_compress_ratio_table[i].peak_ratio,
+				all_layer_compress_ratio_table[i].valid,
+				all_layer_compress_ratio_table[i].active);
+	}
+	DDPDBG_BWM("%s %d bw%d\n", __func__, __LINE__, bwm20_overlap);
+	mutex_lock(&priv->lyeblob_list_mutex);
+	prop_lye_idx = mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX];
+	sphrt_enable = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT);
+	lyeblob_head = (sphrt_enable == 0) ? (&priv->lyeblob_head) : (&mtk_crtc->lyeblob_head);
+	list_for_each_entry_safe(lyeblob_ids, next, lyeblob_head, list) {
+		if (lyeblob_ids->lye_idx > prop_lye_idx) {
+			DDPINFO("%s lyeblob lost ID:%d\n", __func__, prop_lye_idx);
+			bwm20_overlap = lyeblob_ids->frame_weight;
+			mtk_crtc_update_hrt_state(crtc, 0, lyeblob_ids, cmdq_handle);
+			bwm20_overlap = 0;
+			break;
+		} else if (lyeblob_ids->lye_idx == prop_lye_idx) {
+			mtk_crtc_update_hrt_state(crtc, 0, lyeblob_ids, cmdq_handle);
+		}
+	}
+	mutex_unlock(&priv->lyeblob_list_mutex);
+	return;
 }
 
 #endif
@@ -12140,6 +12631,42 @@ int mtk_crtc_update_ddp_sw_status(struct drm_crtc *crtc, int enable)
 	return 0;
 }
 
+void mtk_crtc_bwm_enable(struct drm_crtc *crtc,
+	struct cmdq_pkt *handle)
+{
+	struct mtk_ddp_comp *comp;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	bool flush = false;
+
+	if (mtk_crtc)
+		priv = mtk_crtc->base.dev->dev_private;
+	if (!handle) {
+		mtk_crtc_pkt_create(&handle, crtc, mtk_crtc->gce_obj.client[CLIENT_BWM]);
+		flush = true;
+	}
+	if (!handle) {
+		DDPPR_ERR("%s:%d NULL handle\n", __func__, __LINE__);
+		return;
+	}
+	comp = priv->ddp_comp[DDP_COMPONENT_BWM0];
+	if (comp)
+		mtk_ddp_comp_io_cmd(comp, handle, MTK_IO_CMD_BWM_ENABLE, NULL);
+	else
+		DDPMSG("%s comp is null\n", __func__);
+  	
+	if (flush) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
+			mtk_drm_idle_async_flush(crtc,
+					USER_ADDON_CONNECT_CONNECTOR, handle);
+		} else {
+			cmdq_pkt_flush(handle);
+			cmdq_pkt_destroy(handle);
+		}
+	}
+}
+
 static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 	struct cmdq_pkt *handle)
 {
@@ -12433,6 +12960,9 @@ void mtk_crtc_connect_addon_module(struct drm_crtc *crtc, bool skip_cwb)
 					      &crtc_state->lye_state, handle, skip_cwb);
 
 	mtk_crtc_addon_connector_connect(crtc, handle);
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
+		mtk_crtc_bwm_enable(crtc, handle);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -15518,6 +16048,10 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 				MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
 			mtk_ddp_comp_io_cmd(comp, cmdq_handle, PMQOS_UPDATE_BW, NULL);
 		}
+	}
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)){
+		mtk_crtc_bwm_enable(crtc, cmdq_handle);
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ) &&
@@ -18793,6 +19327,9 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if (ret)
 			DDPMSG("Wait event result ret %d\n", ret);
 	}
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+		(crtc_index == 0))
+		mtk_bwm_get_compress_ratio(crtc, priv, cmdq_handle);
 
 #ifdef MTK_DRM_CMDQ_ASYNC
 #ifdef MTK_DRM_ASYNC_HANDLE
