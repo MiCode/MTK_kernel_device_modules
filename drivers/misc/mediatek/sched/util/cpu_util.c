@@ -109,6 +109,7 @@ EXPORT_SYMBOL_GPL(mtk_cpu_util_next);
 
 int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, int runnable_boost,
 		unsigned long *min, unsigned long *max,
+		unsigned long *tsk_min_clp, unsigned long *tsk_max_clp,
 		struct cpumask *sg_cpumask, unsigned long cpu_util_iowait, int curr_task_uclamp)
 {
 	int cpu_util_cfs, cpu_util_eff, cpu_util_mgn, cpu_util_clp, cpu_util_tal;
@@ -158,12 +159,12 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 	}
 
 	if (tsk && uclamp_is_used()) { /* normal rt */
-		*min = max(*min, uclamp_eff_value(p, UCLAMP_MIN));
+		*min = max(*min, *tsk_min_clp);
 
 		if (uclamp_rq_is_idle(cpu_rq(cpu)))
-			*max = uclamp_eff_value(p, UCLAMP_MAX);
+			*max = *tsk_max_clp;
 		else
-			*max = max(*max, uclamp_eff_value(p, UCLAMP_MAX));
+			*max = max(*max, *tsk_max_clp);
 	}
 
 	/* modified from kmainline sugov_effective_cpu_perf() */

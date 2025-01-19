@@ -150,7 +150,7 @@ inline unsigned long mtk_sched_cpu_util(int cpu)
 	unsigned long util;
 
 	irq_log_store();
-	util = mtk_effective_cpu_util_total(cpu, NULL, -1, 0, NULL, NULL, NULL, 0, false);
+	util = mtk_effective_cpu_util_total(cpu, NULL, -1, 0, NULL, NULL, NULL, NULL, NULL, 0, false);
 	irq_log_store();
 
 	return util;
@@ -162,7 +162,8 @@ inline unsigned long mtk_sched_max_util(struct task_struct *p, int cpu,
 	unsigned long min, max, util;
 
 	irq_log_store();
-	util = mtk_effective_cpu_util_total(cpu, p, -1, 1, &min, &max, NULL, 0, false);
+	util = mtk_effective_cpu_util_total(cpu, p, -1, 1, &min, &max,
+			&min_cap, &max_cap, NULL, 0, false);
 	irq_log_store();
 
 	return util;
@@ -436,7 +437,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	if (!pd)
 		goto unlock;
 
-	compress_cpu = compress_to_cpu(p, order_index);
+	compress_cpu = compress_to_cpu(p, &min_cap, &max_cap, order_index);
 
 	if (compress_cpu >= 0) {
 		rt_ea_output->select_reason = rt_ea_output->shortcut = LB_SHORTCUT_COMPRESS;

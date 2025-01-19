@@ -21,8 +21,8 @@ void compress_init(void);
 void update_shortcut_compress_relax_enough_cpu_util(int cluster_idx);
 void update_shortcut_compress_relax_enough_tsk_util(int cluster_idx);
 
-int compress_to_cpu(struct task_struct *p, int order_index);
-int compress_to_cpu_pro(struct task_struct *p, int order_index);
+int compress_to_cpu(struct task_struct *p, unsigned long *tsk_min_clp, unsigned long *tsk_max_clp, int order_index);
+int compress_to_cpu_pro(struct task_struct *p, unsigned long *tsk_min_clp, unsigned long *tsk_max_clp, int order_index);
 int compress_to_cpu_air(struct task_struct *p, int order_index);
 
 void set_shortcut_compress_rate(int rate);

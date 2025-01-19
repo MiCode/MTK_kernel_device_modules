@@ -734,7 +734,7 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu, struct cpumask *sg_cpumask,
 #endif
 
 	sg_cpu->util = mtk_effective_cpu_util_total(sg_cpu->cpu, NULL, -1, 1, min, max,
-			sg_cpumask, boost, curr_task_uclamp);
+			NULL, NULL, sg_cpumask, boost, curr_task_uclamp);
 }
 
 /**

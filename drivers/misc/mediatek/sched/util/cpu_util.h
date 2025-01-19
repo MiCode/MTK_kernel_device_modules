@@ -25,6 +25,7 @@ int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
 
 int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, int runnable_boost,
 		unsigned long *min, unsigned long *max,
+		unsigned long *tsk_min_clp, unsigned long *tsk_max_clp,
 		struct cpumask *sg_cpumask, unsigned long cpu_util_iowait, int curr_task_uclamp);
 
 #endif /* _CPU_UTIL_H */

@@ -197,7 +197,7 @@ static inline void eenv_pd_busy_time(struct energy_env *eenv,
 	/*        }*/
 	/*} else {*/
 	for_each_cpu(cpu, pd_cpus)
-		busy_time += mtk_effective_cpu_util_total(cpu, p, -1, 0, NULL, NULL, NULL, 0, false);
+		busy_time += mtk_effective_cpu_util_total(cpu, p, -1, 0, NULL, NULL, NULL, NULL, NULL, 0, false);
 	/*}*/
 
 	eenv->pds_busy_time[pd_idx] = min(eenv->pds_cap[pd_idx], busy_time);
@@ -362,7 +362,8 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 		dst_idx = (cpu == dst_cpu) ? 1 : 0;
 		if (eenv->cpu_max_util[cpu][dst_idx] == -1)
 			cpu_util = eenv->cpu_max_util[cpu][dst_idx]
-				= mtk_effective_cpu_util_total(cpu, p, dst_cpu, 1, min, max, NULL, 0, false);
+				= mtk_effective_cpu_util_total(cpu, p, dst_cpu, 1, min, max,
+						&eenv->min_cap, &eenv->max_cap, NULL, 0, false);
 		else
 			cpu_util = eenv->cpu_max_util[cpu][dst_idx];
 
@@ -377,7 +378,8 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 		/*get dst_cpu base utilization*/
 		if (cpu == dst_cpu)
 			eenv->cpu_max_util[cpu][0] =
-				mtk_effective_cpu_util_total(cpu, p, -1, 1, min, max, NULL, 0, false);
+				mtk_effective_cpu_util_total(cpu, p, -1, 1, min, max,
+						&eenv->min_cap, &eenv->max_cap, NULL, 0, false);
 	}
 
 	dst_idx = (dst_cpu != -1) ? 1 : 0;
@@ -2164,7 +2166,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	int dpt_v2_support = eenv->dpt_v2_support;
 
 	if (!latency_sensitive && !is_vip) {
-		int compress_cpu = compress_to_cpu(p, order_index);
+		int compress_cpu = compress_to_cpu(p, &eenv->min_cap, &eenv->max_cap, order_index);
 
 		if (compress_cpu >= 0) {
 			fbc_params->fbc_reason = fbc_params->shortcut = LB_SHORTCUT_COMPRESS;

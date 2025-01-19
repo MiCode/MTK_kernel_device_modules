@@ -66,12 +66,12 @@ void update_shortcut_compress_relax_enough_tsk_util(int cluster_idx)
 	relax_enough_tsk_util[cluster_idx].util = DEFAULT_RELAX_ENOUGH_TSK_UTIL;
 }
 
-int compress_to_cpu(struct task_struct *p, int order_index)
+int compress_to_cpu(struct task_struct *p, unsigned long *tsk_min_clp, unsigned long *tsk_max_clp, int order_index)
 {
-	return compress_to_cpu_pro(p, order_index);
+	return compress_to_cpu_pro(p, tsk_min_clp, tsk_max_clp, order_index);
 }
 
-int compress_to_cpu_pro(struct task_struct *p, int order_index)
+int compress_to_cpu_pro(struct task_struct *p, unsigned long *tsk_min_clp, unsigned long *tsk_max_clp, int order_index)
 {
 	cpumask_t unpaused_cpus, unpaused_cluster_cpus;
 	int candidate_cpu = -1, compress_cpu = -1;
@@ -97,9 +97,11 @@ int compress_to_cpu_pro(struct task_struct *p, int order_index)
 		candidate_rq = cpu_rq(cpu_idx);
 
 		if (rt_task(p))
-			cpu_util_tal = mtk_effective_cpu_util_total(cpu_idx, p, -1, 1, &min, &max, NULL, 0, false);
+			cpu_util_tal = mtk_effective_cpu_util_total(cpu_idx, p, -1, 1,
+					&min, &max, tsk_min_clp, tsk_max_clp, NULL, 0, false);
 		else
-			cpu_util_tal = mtk_effective_cpu_util_total(cpu_idx, p, cpu_idx, 1, &min, &max, NULL, 0, false);
+			cpu_util_tal = mtk_effective_cpu_util_total(cpu_idx, p, cpu_idx, 1,
+					&min, &max, tsk_min_clp, tsk_max_clp, NULL, 0, false);
 
 		tsk_util_clp = uclamp_task_util(p);
 
