@@ -418,6 +418,8 @@
 
 
 #define OV48B_SENSOR_ID                         0x564842
+#define OV50D_SENSOR_ID                         0x565044
+#define OV50DDUAL_SENSOR_ID                     0x565045
 #define OV64B_SENSOR_ID                         0x566442
 #define S5K3P9SP_SENSOR_ID                      0x3109
 #define GC8054_SENSOR_ID                        0x8054
@@ -679,6 +681,8 @@
 #define SENSOR_DRVNAME_IMX686_MIPI_RAW          "imx686_mipi_raw"
 #define SENSOR_DRVNAME_IMX616_MIPI_RAW          "imx616_mipi_raw"
 #define SENSOR_DRVNAME_OV48B_MIPI_RAW           "ov48b_mipi_raw"
+#define SENSOR_DRVNAME_OV50D_MIPI_RAW           "ov50d_mipi_raw"
+#define SENSOR_DRVNAME_OV50DDUAL_MIPI_RAW       "ov50ddual_mipi_raw"
 #define SENSOR_DRVNAME_OV64B_MIPI_RAW           "ov64b_mipi_raw"
 #define SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW        "s5k3p9sp_mipi_raw"
 #define SENSOR_DRVNAME_GC8054_MIPI_RAW          "gc8054_mipi_raw"
