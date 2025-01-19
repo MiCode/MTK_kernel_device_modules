@@ -629,7 +629,6 @@ static void uaudio_disconnect_cb(struct snd_usb_audio *chip)
 		mutex_unlock(&uodev->dev_lock);
 
 		msg.status = USB_AUDIO_STREAM_REQ_STOP;
-		msg.status_valid = 1;
 
 		/* write to audio ipi*/
 		ret = usb_offload_send_ipi_msg(UOI_DEINIT_ADSP, NULL, 0);
@@ -799,8 +798,6 @@ static int usb_offload_prepare_msg(struct snd_usb_substream *subs,
 	card_num = uainfo->pcm_card_num;
 
 	msg->direction = uainfo->direction;
-	msg->pcm_dev_num = uainfo->pcm_dev_num;
-	msg->pcm_card_num = uainfo->pcm_card_num;
 
 	alts = &iface->altsetting[altset_idx];
 	altsd = get_iface_desc(alts);
@@ -847,22 +844,17 @@ static int usb_offload_prepare_msg(struct snd_usb_substream *subs,
 			goto err;
 		}
 		msg->data_path_delay = as->bDelay;
-		msg->data_path_delay_valid = 1;
 		fmt_v1 = (struct uac_format_type_i_discrete_descriptor *)fmt;
 		msg->usb_audio_subslot_size = fmt_v1->bSubframeSize;
-		msg->usb_audio_subslot_size_valid = 1;
 
 		msg->usb_audio_spec_revision = le16_to_cpu(uac1_hdr->bcdADC);
-		msg->usb_audio_spec_revision_valid = 1;
 	} else if (protocol == UAC_VERSION_2) {
 		struct uac2_ac_header_descriptor *uac2_hdr = hdr_ptr;
 
 		fmt_v2 = (struct uac_format_type_i_ext_descriptor *)fmt;
 		msg->usb_audio_subslot_size = fmt_v2->bSubslotSize;
-		msg->usb_audio_subslot_size_valid = 1;
 
 		msg->usb_audio_spec_revision = le16_to_cpu(uac2_hdr->bcdADC);
-		msg->usb_audio_spec_revision_valid = 1;
 	} else if (protocol == UAC_VERSION_3) {
 		if (assoc->bFunctionSubClass ==
 					UAC3_FUNCTION_SUBCLASS_FULL_ADC_3_0) {
@@ -893,7 +885,6 @@ static int usb_offload_prepare_msg(struct snd_usb_substream *subs,
 			ret = -EINVAL;
 			goto err;
 		}
-		msg->usb_audio_subslot_size_valid = 1;
 	} else {
 		USB_OFFLOAD_ERR("unknown protocol version %x\n", protocol);
 		ret = -ENODEV;
@@ -901,10 +892,8 @@ static int usb_offload_prepare_msg(struct snd_usb_substream *subs,
 	}
 
 	msg->slot_id = subs->dev->slot_id;
-	msg->slot_id_valid = 1;
 
 	memcpy(&msg->std_as_opr_intf_desc, &alts->desc, sizeof(alts->desc));
-	msg->std_as_opr_intf_desc_valid = 1;
 
 	ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
 	if (!ep) {
@@ -914,8 +903,8 @@ static int usb_offload_prepare_msg(struct snd_usb_substream *subs,
 		goto err;
 	}
 	data_ep_pipe = subs->data_endpoint->pipe;
-	memcpy(&msg->std_as_data_ep_desc, &ep->desc, sizeof(ep->desc));
-	msg->std_as_data_ep_desc_valid = 1;
+	memcpy(&msg->data_ep_info.desc, &ep->desc, sizeof(ep->desc));
+	msg->flag |= STREAM_FLAG_DATA_EP;
 
 	if (subs->sync_endpoint) {
 		ep = usb_pipe_endpoint(subs->dev, subs->sync_endpoint->pipe);
@@ -924,27 +913,22 @@ static int usb_offload_prepare_msg(struct snd_usb_substream *subs,
 			goto skip_sync_ep;
 		}
 		sync_ep_pipe = subs->sync_endpoint->pipe;
-		memcpy(&msg->std_as_sync_ep_desc, &ep->desc, sizeof(ep->desc));
-		msg->std_as_sync_ep_desc_valid = 1;
+		memcpy(&msg->sync_ep_info.desc, &ep->desc, sizeof(ep->desc));
+		msg->flag |= STREAM_FLAG_SYNC_EP;
 	}
 
 skip_sync_ep:
-	msg->interrupter_num = uodev->intr_num;
-	msg->interrupter_num_valid = 1;
-	msg->controller_num_valid = 0;
+	USB_OFFLOAD_INFO("data_ep:%p sync_ep:%p msg->flag:0x%x\n",
+		subs->data_endpoint, subs->sync_endpoint, msg->flag);
 	ret = usb_get_controller_id(subs->dev);
-	if (ret >= 0) {
+	if (ret >= 0)
 		msg->controller_num = ret;
-		msg->controller_num_valid = 1;
-	}
 
 	msg->speed_info = get_speed_info(subs->dev->speed);
 	if (msg->speed_info == USB_AUDIO_DEVICE_SPEED_INVALID) {
 		ret = -ENODEV;
 		goto err;
 	}
-
-	msg->speed_info_valid = 1;
 
 	if (!atomic_read(&uadev[card_num].in_use)) {
 		kref_init(&uadev[card_num].kref);
@@ -1083,7 +1067,7 @@ static int usb_offload_prepare_msg_ext(
 	dma_addr_t phy_addr;
 	void *vir_addr;
 	int ret, i;
-	bool expend_tr;
+	bool expend_tr, has_sync_ep = false;
 	enum uo_provider_type type;
 
 	stream->urb = uob_get_empty(UO_STRUCT_URB);
@@ -1093,7 +1077,7 @@ static int usb_offload_prepare_msg_ext(
 		return -ENOMEM;
 	}
 
-	/* calculate urb */
+	/* calculate urb size of data endpoint */
 	urb_info = mtk_usb_offload_calculate_urb(uainfo, subs);
 	USB_OFFLOAD_INFO("[urb_info] align_size:%d size:%d nurbs:%d packs:%d\n",
 		urb_info.align_size, urb_info.urb_size, urb_info.urb_num, urb_info.urb_packs);
@@ -1105,7 +1089,14 @@ static int usb_offload_prepare_msg_ext(
 	if (expend_tr)
 		total_size += USB_OFFLOAD_TRB_SEGMENT_SIZE + align;
 
-	USB_OFFLOAD_INFO("total_size:%d direction:%d\n", total_size, uainfo->direction);
+	/* check if there's sync ep */
+	if (msg->flag & STREAM_FLAG_SYNC_EP) {
+		has_sync_ep = true;
+		total_size += (SYNC_URBS * (4 + align));
+	}
+
+	USB_OFFLOAD_INFO("total_size:%d direction:%d (has_sync_ep:%d expand_tr:%d)\n",
+		total_size, uainfo->direction, has_sync_ep, expend_tr);
 
 	type = lowpwr_mem_type_ex(uainfo->direction);
 
@@ -1131,19 +1122,36 @@ static int usb_offload_prepare_msg_ext(
 		}
 	}
 
-	/* assign memory for urbs */
-	phy_addr = (phy_addr + align) & (~align);
-	msg->urb_start_addr = (unsigned long long)phy_addr;
-	msg->urb_size = urb_info.urb_size;
-	msg->urb_num = urb_info.urb_num;
-	msg->urb_packs = urb_info.urb_packs;
+	/* assign memory for sync ep's urbs */
+	/* always 4 urbs for sync and length=4 for each */
+	if (has_sync_ep) {
+		phy_addr = (phy_addr + align) & (~align);
+		msg->sync_ep_info.urb_start_addr = (unsigned long long)phy_addr;
+		msg->sync_ep_info.urb_size = 4;
+		msg->sync_ep_info.urb_num = SYNC_URBS;
+		msg->sync_ep_info.urb_packs = 1;
 
-	for (i = 0; i < msg->urb_num; i++) {
+		for (i = 0; i < msg->sync_ep_info.urb_num; i++) {
+			USB_OFFLOAD_INFO("[sync urb%d] phys:0x%llx size:%d\n",
+				i, phy_addr, msg->sync_ep_info.urb_size);
+			phy_addr += msg->sync_ep_info.urb_size;
+			phy_addr = (phy_addr + align) & (~align);
+		}
+	}
+
+	/* assign memory for data ep's urbs */
+	phy_addr = (phy_addr + align) & (~align);
+	msg->data_ep_info.urb_start_addr = (unsigned long long)phy_addr;
+	msg->data_ep_info.urb_size = urb_info.urb_size;
+	msg->data_ep_info.urb_num = urb_info.urb_num;
+	msg->data_ep_info.urb_packs = urb_info.urb_packs;
+
+	for (i = 0; i < msg->data_ep_info.urb_num; i++) {
 		USB_OFFLOAD_INFO("[urb(%s)%d] phys:0x%llx size:%d\n",
 			uainfo->direction == SNDRV_PCM_STREAM_CAPTURE ? "in" : "out",
-			i, phy_addr, msg->urb_size);
+			i, phy_addr, msg->data_ep_info.urb_size);
 
-		phy_addr += msg->urb_size;
+		phy_addr += msg->data_ep_info.urb_size;
 		phy_addr = (phy_addr + align) & (~align);
 	}
 
@@ -1160,7 +1168,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo,
 	struct intf_info *info;
 	struct usb_host_endpoint *ep;
 	u8 pcm_card_num, pcm_dev_num, direction;
-	int info_idx = -EINVAL, datainterval = -EINVAL, ret = 0;
+	int info_idx = -EINVAL, ret = 0;
 	int interface;
 
 	direction = uainfo->direction;
@@ -1236,9 +1244,6 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo,
 			mutex_unlock(&uodev->dev_lock);
 			goto done;
 		}
-
-		datainterval = ret;
-		USB_OFFLOAD_INFO("data interval %u\n", datainterval);
 	}
 
 	uadev[pcm_card_num].ctrl_intf = chip->ctrl_intf;
@@ -1280,23 +1285,23 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo,
 
 	if (uainfo->enable) {
 		ret = usb_offload_prepare_msg(subs, uainfo, &msg, info_idx);
-		USB_OFFLOAD_INFO("prepare msg, ret: %d\n", ret);
 		if (ret < 0) {
+			USB_OFFLOAD_ERR("fail to prepare message, ret:%d\n", ret);
 			mutex_unlock(&uodev->dev_lock);
 			return ret;
 		}
 
 		ret = usb_offload_prepare_msg_ext(&msg, uainfo, subs, stream);
-		USB_OFFLOAD_INFO("prepare msg ext, ret: %d\n", ret);
 		if (ret < 0) {
+			USB_OFFLOAD_ERR("fail to prepare message ext, ret:%d\n", ret);
 			mutex_unlock(&uodev->dev_lock);
 			return ret;
 		}
 
-		/* re-placing trasnfer ring on rsv_sram/dram */
+		/* re-placing trasnfer ring for both data and sync endpoint */
 		ret = xhci_mtk_realloc_isoc_ring(subs);
-		USB_OFFLOAD_INFO("re-alloc transfer ring, ret: %d\n", ret);
 		if (ret != 0) {
+			USB_OFFLOAD_ERR("fail to reallocate transfer ring, ret:%d\n", ret);
 			mutex_unlock(&uodev->dev_lock);
 			return ret;
 		}
@@ -1818,102 +1823,149 @@ static struct xhci_ring *xhci_mtk_alloc_transfer_ring(struct xhci_hcd *xhci,
 	return xhci_ring_alloc_(xhci, 2, 1, ring_type, max_packet, mem_flags);;
 }
 
+static int xhci_mtk_ep_ctx_control(struct xhci_hcd *xhci, struct xhci_virt_device *virt_dev,
+	u32 ep_id, struct xhci_ep_ctx *new_ctx, bool reconfigure)
+{
+	struct xhci_input_control_ctx *ctrl_ctx;
+	struct xhci_ep_ctx *in_ep_ctx;
+	struct usb_hcd *hcd;
+	int ret;
+
+	if (!xhci || !new_ctx || !virt_dev)
+		return -EINVAL;
+
+	hcd = xhci->main_hcd;
+	in_ep_ctx = xhci_get_ep_ctx__(xhci, virt_dev->in_ctx, ep_id);
+	if (!in_ep_ctx)
+		return -EINVAL;
+
+	in_ep_ctx->ep_info = new_ctx->ep_info;
+	in_ep_ctx->ep_info2 = new_ctx->ep_info2;
+	in_ep_ctx->deq = new_ctx->deq;
+	in_ep_ctx->tx_info = new_ctx->tx_info;
+	if (xhci->quirks & XHCI_MTK_HOST) {
+		in_ep_ctx->reserved[0] = new_ctx->reserved[0];
+		in_ep_ctx->reserved[1] = new_ctx->reserved[1];
+	}
+
+	ctrl_ctx = (struct xhci_input_control_ctx *)virt_dev->in_ctx->bytes;
+	ctrl_ctx->add_flags = cpu_to_le32(BIT(ep_id + 1));
+	if (reconfigure) {
+		/* command: RECONFIGURE_ENDPOINT */
+		ctrl_ctx->drop_flags = cpu_to_le32(BIT(ep_id + 1));
+		ret = xhci_check_bandwidth_(hcd, virt_dev->udev);
+	} else {
+		/* command: EVALUATE_CONTEXT */
+		ctrl_ctx->drop_flags = 0;
+		ret = -EOPNOTSUPP;
+	}
+
+	return ret;
+}
+
 /* realloc transfer ring, placing on adsp/ap-view memory (sram or dram) */
 int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	enum uo_provider_type type, bool is_rsv)
 {
 	struct xhci_hcd *xhci = uodev->xhci;
 	struct xhci_virt_device *virt_dev;
-	struct xhci_ep_ctx *out_ep_ctx, *in_ep_ctx;
-	struct xhci_input_control_ctx *ctrl_ctx;
-	struct usb_hcd *hcd = xhci->main_hcd;
-	struct xhci_ring *ring;
+	struct xhci_ep_ctx *out_ep_ctx;
+	struct xhci_ring *new_ring, *old_ring;
 	int num_segs = 1, max_packet;
-	int cycle_state = 1;
+	int cycle_state = 1, ret;
 	enum xhci_ring_type ring_type;
 
 	virt_dev = xhci->devs[slot_id];
 	if (!virt_dev) {
 		USB_OFFLOAD_ERR("(slot:%d) virtual device is NULL\n", slot_id);
-		return -1;
+		ret = -EINVAL;
+		goto error;
 	}
 
-	USB_OFFLOAD_INFO("(slot:%d ep:%d) virt_dev:%p\n", slot_id, ep_id, virt_dev);
-
 	out_ep_ctx = xhci_get_ep_ctx__(xhci, virt_dev->out_ctx, ep_id);
-	in_ep_ctx = xhci_get_ep_ctx__(xhci, virt_dev->in_ctx, ep_id);
-	if (!out_ep_ctx || !in_ep_ctx) {
+	if (!out_ep_ctx) {
 		USB_OFFLOAD_ERR("(slot:%d ep:%d) endpoint context is NULL\n", slot_id, ep_id);
-		return -1;
+		ret = -EINVAL;
+		goto error;
 	}
 
 	/* 1. create new ring
-	 * note that it's unnecessary to free old ring, because as long as we pull
-	 * high drop_flag, xhci_check_bandwidth_() would free old one.
-	 *
-	 * virt_dev->eps[ep_id].ring is the ring which xhci currently uses.
-	 * virt_dev->eps[ep_id].new_ring is the temp buffer where we place new ring.
-	 * xhci_check_bandwidth_() would assign (ring = new_ring).
+	 * we only need to provide new ring on virt_dev->eps[ep_id].new_ring,
+	 * old ring would be freed automatically if RECONFIURE_ENDPOINT was successful.
 	 */
-	max_packet = virt_dev->eps[ep_id].ring->bounce_buf_len;
-	ring_type = virt_dev->eps[ep_id].ring->type;
-	ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state, ring_type,
+	old_ring = virt_dev->eps[ep_id].ring;
+	max_packet = old_ring->bounce_buf_len;
+	ring_type = old_ring->type;
+	new_ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state, ring_type,
 		max_packet, GFP_NOIO, type, is_rsv);
-
-	if (!ring) {
-		USB_OFFLOAD_ERR("ring is NULL\n");
-		return -1;
+	if (!new_ring) {
+		USB_OFFLOAD_ERR("fail to allocate ring\n");
+		ret = -ENOMEM;
+		goto error;
 	}
-	virt_dev->eps[ep_id].new_ring = ring;
-	USB_OFFLOAD_INFO("(slot:%d ep:%d) create new ring, ring:%p va:%p phy:0x%llx\n",
-		slot_id, ep_id, virt_dev->eps[ep_id].new_ring,
-		virt_dev->eps[ep_id].new_ring->first_seg->trbs,
-		virt_dev->eps[ep_id].new_ring->first_seg->dma);
+	USB_OFFLOAD_INFO("[slot:%d ep:%d] new_ring:(phy:0x%llx) old_ring:(phy:0x%llx)\n",
+		slot_id, ep_id, new_ring->first_seg->dma, old_ring->first_seg->dma);
+	virt_dev->eps[ep_id].new_ring = new_ring;
 
 	/* 2. update dequeue pointer of output ep context */
 	out_ep_ctx->deq = cpu_to_le64(virt_dev->eps[ep_id].new_ring->first_seg->dma |
 					virt_dev->eps[ep_id].new_ring->cycle_state);
 
-	/* 3. copy output endpoint context to input endpoint context */
-	in_ep_ctx->ep_info = out_ep_ctx->ep_info;
-	in_ep_ctx->ep_info2 = out_ep_ctx->ep_info2;
-	in_ep_ctx->deq = out_ep_ctx->deq;
-	in_ep_ctx->tx_info = out_ep_ctx->tx_info;
-	if (xhci->quirks & XHCI_MTK_HOST) {
-		in_ep_ctx->reserved[0] = out_ep_ctx->reserved[0];
-		in_ep_ctx->reserved[1] = out_ep_ctx->reserved[1];
+	/* 3. send command: RECONFIGURE_ENDPOINT*/
+	ret = xhci_mtk_ep_ctx_control(xhci, virt_dev, ep_id, out_ep_ctx, true);
+	if (ret) {
+		USB_OFFLOAD_ERR("fail to send RECONFIGURE_ENDPOINT\n");
+		goto error;
 	}
-
-	/* 4. pull high both add and drop flag to reconfigure ep
-	 * note ep_id is actully the index of virt_dev->eps
-	 * for input control context, it should be (ep_id + 1)
-	 */
-	ctrl_ctx = (struct xhci_input_control_ctx *)virt_dev->in_ctx->bytes;
-	ctrl_ctx->add_flags = cpu_to_le32(BIT(ep_id + 1));
-	ctrl_ctx->drop_flags = cpu_to_le32(BIT(ep_id + 1));
-
-	/* 5. inform XHC to reconfigure endoint */
-	return xhci_check_bandwidth_(hcd, virt_dev->udev);
+	return ret;
+error:
+	USB_OFFLOAD_ERR("fail to reallocate, ring was still on AP viewed only\n");
+	return ret;
 }
 
 static int xhci_mtk_realloc_isoc_ring(struct snd_usb_substream *subs)
 {
-	struct usb_host_endpoint *ep;
+	struct usb_host_endpoint *data_ep, *sync_ep;
 	unsigned int slot_id, ep_id;
 	enum uo_provider_type type;
+	int ret;
 
-	ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
-	if (!ep) {
+	data_ep  = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
+	if (!data_ep ) {
 		USB_OFFLOAD_ERR("host endpoint is NULL\n");
 		return -EINVAL;
 	}
 
 	slot_id = subs->dev->slot_id;
-	ep_id = xhci_get_endpoint_index_(&ep->desc);
+	ep_id = xhci_get_endpoint_index_(&data_ep->desc);
+	type = lowpwr_mem_type_ex(usb_endpoint_dir_in(&data_ep ->desc));
+	ret = xhci_mtk_realloc_transfer_ring(slot_id, ep_id, type, true);
+	if (!ret)
+		USB_OFFLOAD_INFO("success to reallocate data-ep's"
+			"(slot:%d ep:%d) transfer ring\n", slot_id, ep_id);
+	else {
+		USB_OFFLOAD_ERR("fail to reallocate data-ep's"
+			"(slot:%d ep:%d) transfer ring\n", slot_id, ep_id);
+		return ret;
+	}
 
-	type = lowpwr_mem_type_ex(usb_endpoint_dir_in(&ep->desc));
+	if (subs->data_endpoint->sync_source) {
+		sync_ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->sync_source->pipe);
+		if (!sync_ep) {
+			USB_OFFLOAD_ERR("sync endpoint is NULL\n");
+			return -EINVAL;
+		}
+		ep_id = xhci_get_endpoint_index_(&sync_ep->desc);
+		ret = xhci_mtk_realloc_transfer_ring(slot_id, ep_id, type, true);
+		if (!ret)
+			USB_OFFLOAD_INFO("success to reallocate sync-ep's"
+				"(slot:%d ep:%d) transfer ring\n", slot_id, ep_id);
+		else
+			USB_OFFLOAD_ERR("fail to reallocate sync-ep's"
+				"(slot:%d ep:%d) transfer ring\n", slot_id, ep_id);
+	}
 
-	return xhci_mtk_realloc_transfer_ring(slot_id, ep_id, type, true);
+	return ret;
 }
 
 static void xhci_mtk_free_transfer_ring(struct xhci_hcd *xhci,
@@ -2185,17 +2237,17 @@ static int check_usb_offload_quirk(int vid, int pid)
 {
 	if (vid == 0x046D && pid == 0x0A38) {
 		USB_OFFLOAD_INFO("Logitech USB Headset H340 NOT SUPPORT!!\n");
-		return -1;
+		return -EOPNOTSUPP;
 	}
 
 	if (vid == 0x3302 && pid == 0x00c0) {
 		USB_OFFLOAD_INFO("TTGK Audio (GSI) NOT SUPPORT!!\n");
-		return -1;
+		return -EOPNOTSUPP;
 	}
 
 	if (vid == 0x0BDA && pid == 0x4BD1) {
 		USB_OFFLOAD_INFO("JOWOYE MH339 NOT SUPPORT!!\n");
-		return -1;
+		return -EOPNOTSUPP;
 	}
 	return 0;
 }
@@ -2215,7 +2267,6 @@ int usb_offload_cleanup(void)
 	uodev->speed = USB_SPEED_UNKNOWN;
 
 	msg.status = USB_AUDIO_STREAM_REQ_STOP;
-	msg.status_valid = 1;
 
 	/* write to audio ipi*/
 	ret = usb_offload_send_ipi_msg(UOI_DEINIT_ADSP, NULL, 0);
@@ -2242,7 +2293,7 @@ static void check_valid_device(struct usb_device *udev, bool *support, bool *byp
 	struct usb_endpoint_descriptor *epd;
 	int vid, pid, device_class;
 	int intf_idx, alt_idx, ep_idx;
-	bool has_valid_ep = false, has_invalid_ep = false;
+	bool has_valid_ep = false, has_invalid_ep = false, valid = false;
 	u8 ep_usage, class, subclass;
 
 	*bypass = false;
@@ -2251,7 +2302,7 @@ static void check_valid_device(struct usb_device *udev, bool *support, bool *byp
 	vid = udev->descriptor.idVendor;
 	pid = udev->descriptor.idProduct;
 	if (check_usb_offload_quirk(vid, pid)) {
-		USB_OFFLOAD_INFO("(vid:0x%x pid:0x%x) wasn't supported device\n", vid, pid);
+		USB_OFFLOAD_INFO("(vid:0x%x pid:0x%x) in unsupport quirk table\n", vid, pid);
 		goto error;
 	}
 
@@ -2261,22 +2312,24 @@ static void check_valid_device(struct usb_device *udev, bool *support, bool *byp
 	config = udev->actconfig;
 	device_class = udev->descriptor.bDeviceClass;
 
-	/* if it's not audio device, directly bypass it*/
+	/* step1. check device class */
 	if (device_class != USB_CLASS_PER_INTERFACE && device_class != USB_CLASS_MISC) {
 		*bypass = true;
-		USB_OFFLOAD_INFO("(vid:0x%x pid:0x%x class:0x%x) wasn't audio device\n",
+		USB_OFFLOAD_INFO("(vid:0x%x pid:0x%x bDeviceClass:0x%x) wasn't audio device\n",
 			vid, pid, device_class);
 		goto error;
 	}
 
-	USB_OFFLOAD_INFO("vid:0x%x pid:0x%x class:0x%x\n", vid, pid, device_class);
-
-	/* (in)valid ep: endpoint with (in)valid usage inside audio interface */
+	/* step2. check every interfaces*/
 	for (intf_idx = 0; intf_idx < config->desc.bNumInterfaces; intf_idx++) {
 		intf = config->interface[intf_idx];
 		if (unlikely(!intf))
 			continue;
 
+		/* step3. check every alternative setting
+		 * [valid alt_setting]:   audio streaming interface class
+		 * [invalid alt_setting]: others (hid class, audio control class etc)
+		 */
 		for (alt_idx = 0; alt_idx < intf->num_altsetting; alt_idx++) {
 			hostif = &intf->altsetting[alt_idx];
 			if (unlikely(!hostif))
@@ -2288,29 +2341,46 @@ static void check_valid_device(struct usb_device *udev, bool *support, bool *byp
 			class = intfd->bInterfaceClass;
 			subclass = intfd->bInterfaceSubClass;
 
-			/* if it's not audio interface (ex hid), continue to check others */
 			if (!(class == USB_CLASS_AUDIO && subclass == USB_SUBCLASS_AUDIOSTREAMING)) {
-				USB_OFFLOAD_INFO("(intf:%d alt:%d class:0x%d) wasn't audio intface, skip it\n",
-					intf_idx, alt_idx, class);
+				USB_OFFLOAD_INFO("(intf:%d alt:%d bInterfaceClass:0x%x "
+					"bInterfaceSubClass:0x%x)wasn't stream intface\n",
+					intf_idx, alt_idx, class, subclass);
 				continue;
 			}
 
+			/* step4. check every endpoints
+			 * [valid ep]:   endpoint with valid usage
+			 * [invalid ep]: endpoint with invalid usage
+			 */
 			for (ep_idx = 0; ep_idx < intfd->bNumEndpoints; ep_idx++) {
 				epd = get_endpoint(hostif, ep_idx);
 				if (unlikely(!epd))
 					continue;
 				ep_usage = epd->bmAttributes & USB_ENDPOINT_USAGE_MASK;
 
-				/* todo: add sync usage */
-				if (ep_usage == USB_ENDPOINT_USAGE_DATA) {
-					USB_OFFLOAD_INFO("(intf:%d alt:%d ep:%d usage:0x%x) valid ep\n",
-						intf_idx, alt_idx, ep_idx, ep_usage);
+				switch (ep_usage) {
+				/* 0x00: data usage */
+				case USB_ENDPOINT_USAGE_DATA:
+					valid = true;
 					has_valid_ep = true;
-				} else {
-					USB_OFFLOAD_INFO("(intf:%d alt:%d ep:%d usage:0x%x) invalid ep\n",
-						intf_idx, alt_idx, ep_idx, ep_usage);
+					break;
+				/* 0x10: explicit feedback*/
+				case USB_ENDPOINT_USAGE_FEEDBACK:
+					if (uodev->policy.support_fb) {
+						valid = true;
+						has_valid_ep = true;
+						break;
+					}
+					fallthrough;
+				/* 0x20: implicit feedback */
+				default:
+					valid = false;
 					has_invalid_ep = true;
+					break;
 				}
+				USB_OFFLOAD_INFO("(intf:%d alt:%d bInterfaceClass:0x%x "
+					"ep:%d usage:0x%02x) %s ep\n", intf_idx, alt_idx, class,
+					ep_idx, ep_usage, valid ? "valid" : "invalid");
 			}
 		}
 	}
@@ -2326,8 +2396,8 @@ static void check_valid_device(struct usb_device *udev, bool *support, bool *byp
 	}
 
 error:
-	USB_OFFLOAD_INFO("has_valid_ep:%d has_invalid_ep:%d support:%d bypass:%d\n",
-		has_valid_ep, has_invalid_ep, *support, *bypass);
+	USB_OFFLOAD_INFO("has_valid_ep:%d has_invalid_ep:%d\n", has_valid_ep, has_invalid_ep);
+	USB_OFFLOAD_INFO("vid:0x%x pid:0x%x support:%d bypass:%d\n", vid, pid, *support, *bypass);
 }
 
 static int usb_offload_open(struct inode *ip, struct file *fp)
@@ -2384,25 +2454,31 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 			continue;
 
 		if (support) {
+			/* it's valid device, continue to check other devices*/
 			if ((valid_device + 1) < UO_MAX_DEVICE) {
 				uodev->valid_device[valid_device] = udev;
 				valid_device++;
 			}
-		} else
-			/* there's invalid endpoint inside audio interface */
+		} else {
+			/* it's invalid device, direcly return unsupported regardless other devices */
+			USB_OFFLOAD_ERR("unsupport endpoint usage type\n");
 			goto NOT_SUPPORT_OFFLOAD;
+		}
 	}
 
 	USB_OFFLOAD_INFO("total_device:%d valid_device:%d\n", total_device, valid_device);
 
-	/* todo: remove this when we support hub offload */
-	if (total_device >= 2) {
-		USB_OFFLOAD_INFO("Multiple Devices - NOT SUPPORT USB OFFLOAD!!\n");
-		mutex_unlock(&uodev->dev_lock);
-		return -1;
+	if (unlikely(!valid_device)) {
+		USB_OFFLOAD_ERR("no valid device\n");
+		goto NOT_SUPPORT_OFFLOAD;
 	}
 
-	USB_OFFLOAD_INFO("SUPPORT USB OFFLOAD!!\n");
+	if (!uodev->policy.support_hub && total_device >= 2) {
+		USB_OFFLOAD_ERR("unsupport hub offloading\n");
+		goto NOT_SUPPORT_OFFLOAD;
+	}
+
+	USB_OFFLOAD_INFO("support offloading!!\n");
 	uodev->opened = true;
 	uodev->speed = udev->speed;
 	mutex_unlock(&uodev->dev_lock);
@@ -2410,6 +2486,7 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 
 NOT_SUPPORT_OFFLOAD:
 GET_OF_NODE_FAIL:
+	USB_OFFLOAD_INFO("unsupport offloading!!\n");
 	mutex_unlock(&uodev->dev_lock);
 	return -1;
 }
@@ -2475,20 +2552,13 @@ static long usb_offload_ioctl(struct file *fp,
 				goto fail;
 			}
 
-			/* we create ir during enable_stream */
-			xhci_mem->erst_table = 0;
-			xhci_mem->ev_ring = 0;
-
 		} else {
 			xhci_mem->adv_lowpwr = false;
 			xhci_mem->rsv_dram_addr = 0;
 			xhci_mem->rsv_dram_size = 0;
 			xhci_mem->rsv_sram_addr = 0;
 			xhci_mem->rsv_sram_size = 0;
-			xhci_mem->erst_table = 0;
-			xhci_mem->ev_ring = 0;
 		}
-		xhci_mem->sram_version = 0x3;
 
 		USB_OFFLOAD_INFO("adsp_exception:%d, adsp_ready:%d\n",
 				uodev->adsp_exception, uodev->adsp_ready);
@@ -2845,6 +2915,7 @@ static int __maybe_unused usb_offload_suspend(struct device *dev)
 		return 0;
 
 	usb_offload_hid_start();
+	print_all_memory();
 
 	/* if it's streaming, call to TFA if it's required */
 	return usb_offload_smc_ctrl(uodev->policy.smc_suspend);
@@ -2859,6 +2930,7 @@ static int __maybe_unused usb_offload_resume(struct device *dev)
 		return 0;
 
 	usb_offload_hid_finish();
+	print_all_memory();
 
 	return usb_offload_smc_ctrl(uodev->policy.smc_resume);
 }
@@ -2875,6 +2947,7 @@ static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
 		return 0;
 
 	usb_offload_hid_start();
+	print_all_memory();
 
 	return usb_offload_smc_ctrl(uodev->policy.smc_suspend);
 }
@@ -2891,6 +2964,7 @@ static int __maybe_unused usb_offload_runtime_resume(struct device *dev)
 		return 0;
 
 	usb_offload_hid_finish();
+	print_all_memory();
 
 	return usb_offload_smc_ctrl(uodev->policy.smc_resume);
 }

@@ -172,13 +172,10 @@ enum usb_audio_device_speed {
 
 struct mem_info_xhci {
 	bool adv_lowpwr;
-	unsigned int sram_version;
 	unsigned long long rsv_dram_addr;
 	unsigned int rsv_dram_size;
 	unsigned long long rsv_sram_addr;
 	unsigned int rsv_sram_size;
-	unsigned long long ev_ring;
-	unsigned long long erst_table;
 };
 
 struct usb_audio_stream_info {
@@ -204,43 +201,30 @@ struct usb_audio_stream_info {
 	snd_pcm_format_t audio_format;
 };
 
-struct usb_audio_stream_msg {
-	unsigned char status_valid;
-	enum usb_audio_stream_status status;
-	unsigned char internal_status_valid;
-	unsigned int internal_status;
-	unsigned char slot_id_valid;
-	unsigned int slot_id;
-	unsigned char usb_token_valid;
-	unsigned int usb_token;
-	unsigned char pcm_card_num_valid;
-	unsigned char pcm_card_num;
-	unsigned char pcm_dev_num_valid;
-	unsigned char pcm_dev_num;
-	unsigned char direction_valid;
-	unsigned char direction;
-	unsigned char std_as_opr_intf_desc_valid;
-	struct usb_interface_descriptor std_as_opr_intf_desc;
-	unsigned char std_as_data_ep_desc_valid;
-	struct usb_endpoint_descriptor std_as_data_ep_desc;
-	unsigned char std_as_sync_ep_desc_valid;
-	struct usb_endpoint_descriptor std_as_sync_ep_desc;
-	unsigned char usb_audio_spec_revision_valid;
-	u16 usb_audio_spec_revision;
-	unsigned char data_path_delay_valid;
-	unsigned char data_path_delay;
-	unsigned char usb_audio_subslot_size_valid;
-	unsigned char usb_audio_subslot_size;
-	unsigned char interrupter_num_valid;
-	unsigned char interrupter_num;
-	unsigned char speed_info_valid;
-	enum usb_audio_device_speed speed_info;
-	unsigned char controller_num_valid;
-	unsigned char controller_num;
+struct usb_endpoint_info {
+	struct usb_endpoint_descriptor desc;
 	unsigned long long urb_start_addr;
 	unsigned int urb_size;
 	unsigned int urb_num;
 	unsigned int urb_packs;
+};
+
+#define STREAM_FLAG_DATA_EP	(0x1)
+#define STREAM_FLAG_SYNC_EP	(0x2)
+
+struct usb_audio_stream_msg {
+	unsigned char flag;
+	enum usb_audio_stream_status status;
+	unsigned int slot_id;
+	unsigned char direction;
+	struct usb_interface_descriptor std_as_opr_intf_desc;
+	struct usb_endpoint_info data_ep_info;
+	struct usb_endpoint_info sync_ep_info;
+	u16 usb_audio_spec_revision;
+	unsigned char data_path_delay;
+	unsigned char usb_audio_subslot_size;
+	enum usb_audio_device_speed speed_info;
+	unsigned char controller_num;
 	struct usb_audio_stream_info uainfo;
 };
 

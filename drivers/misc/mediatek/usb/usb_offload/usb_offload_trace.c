@@ -272,7 +272,7 @@ void usb_offload_trace_start(struct usb_audio_stream_msg *msg)
 		goto error;
 	}
 
-	desc = &msg->std_as_data_ep_desc;
+	desc = &msg->data_ep_info.desc;
 	slot = msg->slot_id;
 	ep = xhci_get_endpoint_index_(desc);
 
@@ -285,7 +285,7 @@ void usb_offload_trace_start(struct usb_audio_stream_msg *msg)
 	}
 
 	/* allocate trace buffer */
-	if (mtk_offload_alloc_mem(trace_buffer, msg->urb_size, 64,
+	if (mtk_offload_alloc_mem(trace_buffer, msg->data_ep_info.urb_size, 64,
 			UO_PROV_DRAM, UO_STRUCT_URB, true)) {
 		USB_OFFLOAD_ERR("fail to allocate trace_buffer, dir:%d\n", dir);
 		goto error;
