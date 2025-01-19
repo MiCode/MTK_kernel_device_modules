@@ -32,6 +32,19 @@ struct mtk_btag_mictx_id {
 	char name[BTAG_NAME_LEN];
 };
 
+enum mtk_btag_io_type {
+	BTAG_IO_READ = 0,
+	BTAG_IO_WRITE,
+	BTAG_IO_FUSE,
+	BTAG_IO_TYPE_NR,
+	BTAG_IO_UNKNOWN
+};
+
+struct mtk_btag_mictx_vops {
+	void (*top_io_notify)(enum mtk_btag_io_type type, __u32 top_pages_r,
+			      __u32 top_pages_w, __u32 top_rnd_cnt);
+};
+
 /*
  * public structure to provide IO statistics
  */
@@ -56,7 +69,8 @@ struct mtk_btag_mictx_iostat_struct {
 int mtk_btag_mictx_get_data(
 	struct mtk_btag_mictx_id mictx_id,
 	struct mtk_btag_mictx_iostat_struct *iostat);
-int mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id, bool enable);
+int mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id,
+			  struct mtk_btag_mictx_vops *vops, bool enable);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,

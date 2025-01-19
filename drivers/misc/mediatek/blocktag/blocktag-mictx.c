@@ -186,12 +186,12 @@ void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 		mictx->avg_qd.depth++;
 		spin_unlock_irqrestore(&mictx->avg_qd.lock, flags);
 #endif
+
+		if (top_len && mictx->vops && mictx->vops->top_io_notify)
+			mictx->vops->top_io_notify(io_type, top_pages_r,
+						   top_pages_w, top_rnd_cnt);
 	}
 	rcu_read_unlock();
-
-	if (top_len && btag->vops->earaio_enabled)
-		mtk_btag_earaio_update_pwd(io_type, top_pages_r, top_pages_w,
-					   top_rnd_cnt);
 }
 
 void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
@@ -513,7 +513,7 @@ static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
 			goto ret_ioctl;
 		}
 
-		ret = mtk_btag_mictx_enable(&info.mictx_id, 1);
+		ret = mtk_btag_mictx_enable(&info.mictx_id, NULL, 1);
 		if (ret) {
 			pr_notice("%s: mictx enable failed %d\n",
 				  __func__, ret);
@@ -537,7 +537,7 @@ static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
 			goto ret_ioctl;
 		}
 
-		ret = mtk_btag_mictx_enable(&info.mictx_id, 0);
+		ret = mtk_btag_mictx_enable(&info.mictx_id, NULL, 0);
 		if (ret) {
 			pr_notice("%s: mictx enable failed %d\n",
 				  __func__, ret);
@@ -646,7 +646,8 @@ unlock:
 	mutex_unlock(&entry_lock);
 }
 
-static int mictx_alloc(enum mtk_btag_storage_type type)
+static int mictx_alloc(enum mtk_btag_storage_type type,
+		       struct mtk_btag_mictx_vops *vops)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
@@ -682,6 +683,7 @@ static int mictx_alloc(enum mtk_btag_storage_type type)
 	for (qid = 0; qid < btag->ctx.count; qid++)
 		spin_lock_init(&q[qid].lock);
 	mictx->q = q;
+	mictx->vops = vops;
 
 	spin_lock_irqsave(&btag->ctx.mictx.list_lock, flags);
 	mictx->id = btag->ctx.mictx.last_unused_id;
@@ -740,12 +742,13 @@ void mtk_btag_mictx_free_all(struct mtk_blocktag *btag)
 	}
 }
 
-int mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id, bool enable)
+int mtk_btag_mictx_enable(struct mtk_btag_mictx_id *mictx_id,
+			  struct mtk_btag_mictx_vops *vops, bool enable)
 {
 	int ret;
 
 	if (enable) {
-		ret = mictx_alloc(mictx_id->storage);
+		ret = mictx_alloc(mictx_id->storage, vops);
 		if (ret < 0)
 			return ret;
 		mictx_id->id = ret;

@@ -564,8 +564,8 @@ void mtk_btag_earaio_check_window(void)
 		earaio_reset_data();
 }
 
-void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 top_pages_r,
-				__u32 top_pages_w, __u32 top_rnd_cnt)
+static void earaio_top_io_notify(enum mtk_btag_io_type type, __u32 top_pages_r,
+				 __u32 top_pages_w, __u32 top_rnd_cnt)
 {
 	int early_notification = 0;
 	unsigned long flags;
@@ -602,6 +602,10 @@ void mtk_btag_earaio_update_pwd(enum mtk_btag_io_type type, __u32 top_pages_r,
 		mtk_btag_earaio_check_window();
 }
 
+static struct mtk_btag_mictx_vops mictx_earaio_vops = {
+	.top_io_notify = earaio_top_io_notify,
+};
+
 void mtk_btag_earaio_register(struct mtk_blocktag *btag)
 {
 	int ret;
@@ -619,7 +623,7 @@ void mtk_btag_earaio_register(struct mtk_blocktag *btag)
 	}
 
 	/* Enable mictx by default if EARA-IO is enabled*/
-	ret = mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, 1);
+	ret = mtk_btag_mictx_enable(&earaio_ctrl.mictx_id, &mictx_earaio_vops, 1);
 	if (ret) {
 		pr_notice("earaio mictx enable failed: %d\n", ret);
 		return;

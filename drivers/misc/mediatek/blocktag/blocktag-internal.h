@@ -65,14 +65,6 @@ do { \
 extern void *extmem_malloc_page_align(size_t bytes);
 #endif
 
-enum mtk_btag_io_type {
-	BTAG_IO_READ = 0,
-	BTAG_IO_WRITE,
-	BTAG_IO_FUSE,
-	BTAG_IO_TYPE_NR,
-	BTAG_IO_UNKNOWN
-};
-
 struct page_pidlogger {
 	__s16 pid;
 };
@@ -148,6 +140,7 @@ struct mtk_btag_mictx {
 		enum mtk_btag_io_type io_type;
 		__u32 len;
 	} tags[BTAG_MAX_TAG];
+	struct mtk_btag_mictx_vops *vops;
 	__u16 queue_nr;
 	__s8 id;
 	bool full_logging;
