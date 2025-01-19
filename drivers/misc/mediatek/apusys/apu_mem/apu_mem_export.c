@@ -138,7 +138,7 @@ int apu_mem_rvs_get_pool_size(uint32_t type, uint32_t *size)
 
 /* APUMMU only API */
 int apu_mem_map_iova(uint32_t type, uint64_t session, uint64_t device_va,
-			uint32_t buf_size, uint64_t *eva)
+			uint64_t buf_size, uint64_t *eva)
 {
 	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_map_iova == NULL)
 		return -EOPNOTSUPP;
@@ -155,7 +155,7 @@ int apu_mem_iova_decode(uint64_t eva, uint64_t *iova)
 	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_iova_decode(eva, iova);
 }
 
-int apu_mem_unmap_iova(uint64_t session, uint64_t device_va, uint32_t buf_size)
+int apu_mem_unmap_iova(uint64_t session, uint64_t device_va, uint64_t buf_size)
 {
 	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_unmap_iova == NULL)
 		return -EOPNOTSUPP;
@@ -169,6 +169,14 @@ int apu_mem_table_get(uint64_t session, void **tbl_kva, uint32_t *size)
 		return -EOPNOTSUPP;
 
 	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_table_get(session, tbl_kva, size);
+}
+
+int apu_mem_table_alloc(uint64_t session)
+{
+	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_table_alloc == NULL)
+		return -EOPNOTSUPP;
+
+	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_table_alloc(session);
 }
 
 int apu_mem_table_free(uint64_t session)
@@ -187,3 +195,12 @@ int apu_mem_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_n
 	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_DRAM_FB_alloc(session,
 		vlm_size, subcmd_num);
 }
+
+int apu_mem_ssid_get(uint64_t session, uint32_t *ssid)
+{
+	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_ssid_get == NULL)
+		return -EOPNOTSUPP;
+
+	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_ssid_get(session, ssid);
+}
+

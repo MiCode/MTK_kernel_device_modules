@@ -31,8 +31,10 @@ static struct apu_mem_export_ops apummu_export_ops = {
 	.apu_mem_iova_decode   = apummu_eva2iova,
 	.apu_mem_unmap_iova    = apummu_buffer_remove,
 	.apu_mem_table_get     = apummu_table_get,
+	.apu_mem_table_alloc   = apummu_table_alloc,
 	.apu_mem_table_free    = apummu_table_free,
-	.apu_mem_DRAM_FB_alloc = apummu_DRAM_FB_alloc
+	.apu_mem_DRAM_FB_alloc = apummu_DRAM_FB_alloc,
+	.apu_mem_ssid_get      = apummu_ssid_get
 };
 
 int apummu_alloc_mem(uint32_t type, uint32_t size, uint64_t *addr, uint32_t *sid)
@@ -369,7 +371,7 @@ err:
  *  for apummu, we also record translate info into session table
  */
 int apummu_iova2eva(uint32_t type, uint64_t session, uint64_t device_va,
-		uint32_t buf_size, uint64_t *eva)
+		uint64_t buf_size, uint64_t *eva)
 {
 	return addr_encode_and_write_stable(type, session, device_va, buf_size, eva);
 }
@@ -394,7 +396,7 @@ int apummu_eva2iova(uint64_t eva, uint64_t *iova)
  * @description:
  *  remove the mapping setting of the given buffer
  */
-int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size)
+int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint64_t buf_size)
 {
 	return apummu_stable_buffer_remove(session, device_va, buf_size);
 }
@@ -410,6 +412,11 @@ int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size
 int apummu_table_get(uint64_t session, void **tbl_kva, uint32_t *size)
 {
 	return get_session_table(session, tbl_kva, size);
+}
+
+int apummu_table_alloc(uint64_t session)
+{
+	return session_table_alloc(session);
 }
 
 /**
@@ -428,6 +435,10 @@ int apummu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_nu
 	return ammu_DRAM_FB_alloc(session, vlm_size, subcmd_num);
 }
 
+int apummu_ssid_get(uint64_t session, uint32_t *ssid)
+{
+	return get_session_ssid(session, ssid);
+}
 
 int apummu_export_API_init(void)
 {

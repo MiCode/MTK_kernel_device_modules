@@ -57,9 +57,6 @@ static int apummu_suspend_release_flag;
 /* function declaration */
 static int apummu_open(struct inode *, struct file *);
 static int apummu_release(struct inode *, struct file *);
-#if !(DRAM_FALL_BACK_IN_RUNTIME)
-static int apummu_memory_func(void *arg);
-#endif
 static int apummu_map_dts(struct platform_device *pdev);
 static int apummu_create_node(struct platform_device *pdev);
 static int apummu_delete_node(void *drvinfo);
@@ -131,36 +128,11 @@ static struct rpmsg_driver apu_ipi_apummu_rx_rpmsg_driver = {
 	.callback = apu_ipi_apummu_rx_rpmsg_cb,
 };
 
-#if !(DRAM_FALL_BACK_IN_RUNTIME)
-/* alloc DRAM for fallback */
-static int apummu_memory_func(void *arg)
-{
-	int ret = 0;
-	struct apummu_dev_info *adv;
-
-	adv = (struct apummu_dev_info *) arg;
-
-	ret = apummu_dram_remap_alloc(adv);
-	if (ret) {
-		AMMU_LOG_ERR("Could not set memory for apummu\n");
-		ret = -ENOMEM;
-		goto out;
-	}
-	AMMU_LOG_INFO("apummu memory init\n");
-
-out:
-	return ret;
-}
-#endif
-
 /* RV HS and set RV DRAM fallback */
 static int apummu_rprmsg_memory_func(void *arg)
 {
 	struct apummu_dev_info *adv;
 	int ret = 0;
-#if !(DRAM_FALL_BACK_IN_RUNTIME)
-	uint32_t i;
-#endif
 
 	adv = (struct apummu_dev_info *) arg;
 
@@ -169,22 +141,6 @@ static int apummu_rprmsg_memory_func(void *arg)
 		AMMU_LOG_ERR("Remote Handshake fail %d\n", ret);
 		goto out;
 	}
-
-#if !(DRAM_FALL_BACK_IN_RUNTIME)
-	ret = apummu_memory_func(arg);
-	if (ret) {
-		AMMU_LOG_ERR("apummu memory fail\n");
-		goto out;
-	}
-
-	for (i = 0; i < adv->remote.dram_max; i++) {
-		ret = apummu_remote_set_hw_default_iova(adv, i, adv->remote.dram[i]);
-		if (ret) {
-			AMMU_LOG_ERR("apummu_remote_set_hw_default_iova fail %d\n", ret);
-			goto out;
-		}
-	}
-#endif
 
 	AMMU_LOG_INFO("apummu rprmsg remote init done\n");
 
@@ -248,6 +204,7 @@ static int apummu_release(struct inode *inode, struct file *filp)
 
 static int apummu_map_dts(struct platform_device *pdev)
 {
+	uint32_t ssid_max = 255;
 	int ret = 0;
 	struct apummu_dev_info *adv = platform_get_drvdata(pdev);
 
@@ -264,6 +221,15 @@ static int apummu_map_dts(struct platform_device *pdev)
 
 	/* boundary can also take from HS */
 	adv->plat.boundary = 0;
+
+	/* smmu ssid maximum */
+	of_property_read_u32(pdev->dev.of_node, "smmu-ssid-max", &ssid_max);
+	if (!ssid_max || ssid_max > 255) {
+		AMMU_LOG_ERR("Invalid ssid max: %u\n", ssid_max);
+		ret = -EINVAL;
+		goto out;
+	}
+	adv->plat.ssid_max = ssid_max;
 
 #if SLB_NODE
 	slb_node = of_find_compatible_node(
@@ -381,8 +347,8 @@ static int apummu_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, adv);
 	dev_set_drvdata(dev, adv);
 
-	// add for VLM DRAM 4-16G
-	ret = dma_set_mask_and_coherent(adv->dev, DMA_BIT_MASK(34));
+	// add for VLM DRAM 4-64G
+	ret = dma_set_mask_and_coherent(adv->dev, DMA_BIT_MASK(36));
 	if (ret) {
 		AMMU_LOG_ERR("dma_set_mask_and_coherent fail\n");
 		goto out;
@@ -410,7 +376,12 @@ static int apummu_probe(struct platform_device *pdev)
 
 	apummu_dbg_init(adv, g_apusys->dbg_root);
 
-	apummu_mgt_init();
+	ret = apummu_mgt_init();
+	if (ret) {
+		AMMU_LOG_ERR("apummu_mgt_init fail: %d\n", ret);
+		goto free_node;
+	}
+
 	apummu_mem_init();
 	if (apummu_export_API_init()) {
 		AMMU_LOG_ERR("export API init fail\n");
@@ -435,12 +406,9 @@ static void apummu_remove(struct platform_device *pdev)
 
 	apummu_dbg_destroy(adv);
 	apummu_mgt_destroy();
-	if (mem_task) {
-	#if !(DRAM_FALL_BACK_IN_RUNTIME)
-		apummu_dram_remap_free(adv);
-	#endif
+	if (mem_task)
 		mem_task = NULL;
-	}
+
 	apummu_delete_node(adv);
 
 	g_adv = NULL;
@@ -458,14 +426,15 @@ static int apusys_apummu_resume(struct device *dev)
 		.type = TP_BUFFER,
 	};
 
-	mutex_lock(&g_ammu_table_set.table_lock);
-	if (g_adv->plat.is_general_SLB_support)
+	if (g_adv->plat.is_general_SLB_support) {
+		mutex_lock(&g_ammu_table_set.gtable_lock);
 		if (!g_ammu_table_set.is_SLB_alloc
 			&& apummu_suspend_release_flag) {
 			ret = slbc_request(&slb_data);
 			if (ret) {
 				AMMU_LOG_ERR("general SLB alloc fail in resume...\n");
 				apusys_ammu_exception("Alloc SLB fail in resume\n");
+				mutex_unlock(&g_ammu_table_set.gtable_lock);
 				goto out;
 			}
 
@@ -473,8 +442,10 @@ static int apusys_apummu_resume(struct device *dev)
 			apummu_suspend_release_flag = false;
 		}
 
+		mutex_unlock(&g_ammu_table_set.gtable_lock);
+	}
+
 out:
-	mutex_unlock(&g_ammu_table_set.table_lock);
 	return ret;
 }
 
@@ -487,13 +458,14 @@ static int apusys_apummu_suspend(struct device *dev)
 		.type = TP_BUFFER,
 	};
 
-	mutex_lock(&g_ammu_table_set.table_lock);
-	if (g_adv->plat.is_general_SLB_support)
+	if (g_adv->plat.is_general_SLB_support) {
+		mutex_lock(&g_ammu_table_set.gtable_lock);
 		if (g_ammu_table_set.is_SLB_alloc) {
 			ret = slbc_release(&slb_data);
 			if (ret) {
 				AMMU_LOG_ERR("general SLB free fail in suspend...\n");
 				apusys_ammu_exception("Free SLB fail in suspend\n");
+				mutex_unlock(&g_ammu_table_set.gtable_lock);
 				goto out;
 			}
 
@@ -501,8 +473,10 @@ static int apusys_apummu_suspend(struct device *dev)
 			g_ammu_table_set.is_SLB_alloc = false;
 		}
 
+		mutex_unlock(&g_ammu_table_set.gtable_lock);
+	}
+
 out:
-	mutex_unlock(&g_ammu_table_set.table_lock);
 	return ret;
 }
 

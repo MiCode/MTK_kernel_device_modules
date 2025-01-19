@@ -9,6 +9,7 @@
 #include <linux/platform_device.h>
 
 #include "apummu_cmn.h"
+#include "apummu_tbl.h"
 #include "apummu_plat.h"
 #include "apummu_drv.h"
 
@@ -34,11 +35,19 @@ int apummu_plat_init(struct platform_device *pdev)
 
 	/* get platform data */
 	AMMU_LOG_INFO("slb_wait_time: %d\n", aplat->slb_wait_time);
+	AMMU_LOG_INFO("encode_offset: 0x%x\n", aplat->encode_offset);
+	AMMU_LOG_INFO("address_bits: %d\n", aplat->address_bits);
 	AMMU_LOG_INFO("is_general_SLB_support: %d\n", aplat->is_general_SLB_support);
+	AMMU_LOG_INFO("is_ASE_support: %d\n", aplat->is_ASE_support);
 
 	adv->plat.slb_wait_time = aplat->slb_wait_time;
+	adv->plat.encode_offset = aplat->encode_offset;
+	adv->plat.address_bits = aplat->address_bits;
 	adv->plat.is_general_SLB_support = aplat->is_general_SLB_support;
 	adv->plat.alloc_DRAM_FB_in_session_create = aplat->alloc_DRAM_FB_in_session_create;
+	adv->plat.is_ASE_support = aplat->is_ASE_support;
+	adv->plat.reserved_session_num = aplat->reserved_session_num;
+	ammu_set_hw_ops(aplat->hw_ops);
 	mutex_init(&adv->plat.slb_mtx);
 
 out:

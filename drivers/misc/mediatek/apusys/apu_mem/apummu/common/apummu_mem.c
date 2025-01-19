@@ -13,7 +13,6 @@
 #include <linux/of_device.h>
 #include <linux/highmem.h>
 #include <linux/list.h>
-#include <linux/vmalloc.h>
 
 #include "apummu_cmn.h"
 #include "apummu_mem.h"
@@ -499,51 +498,6 @@ heap_alloc_err:
 	return ret;
 }
 
-#if !(DRAM_FALL_BACK_IN_RUNTIME)
-int apummu_dram_remap_alloc(void *drvinfo)
-{
-	struct apummu_dev_info *adv = NULL;
-	unsigned int i = 0;
-	int ret = 0;
-
-	if (drvinfo == NULL) {
-		AMMU_LOG_ERR("invalid argument\n");
-		ret = -EINVAL;
-		goto out;
-	}
-	adv = (struct apummu_dev_info *)drvinfo;
-
-	g_mem_sys.size = (uint64_t) adv->remote.vlm_size * adv->remote.dram_max;
-	ret = apummu_mem_alloc(adv->dev, &g_mem_sys);
-	if (ret) {
-		AMMU_LOG_ERR("DRAM FB mem alloc fail\n");
-		goto out;
-	}
-
-	adv->rsc.vlm_dram.base = (void *) g_mem_sys.kva;
-	adv->rsc.vlm_dram.size = g_mem_sys.size;
-	for (i = 0; i < adv->remote.dram_max; i++)
-		adv->remote.dram[i] = g_mem_sys.iova + adv->remote.vlm_size * (uint64_t) i;
-
-out:
-	return ret;
-}
-
-int apummu_dram_remap_free(void *drvinfo)
-{
-	struct apummu_dev_info *adv = NULL;
-
-	if (drvinfo == NULL) {
-		AMMU_LOG_ERR("invalid argument\n");
-		return -EINVAL;
-	}
-	adv = (struct apummu_dev_info *)drvinfo;
-
-	apummu_mem_free(adv->dev, &g_mem_sys);
-	adv->rsc.vlm_dram.base = NULL;
-	return 0;
-}
-#else
 int apummu_dram_remap_runtime_alloc(void *drvinfo)
 {
 	struct apummu_dev_info *adv = NULL;
@@ -709,7 +663,6 @@ int apummu_dram_remap_runtime_free_whole_list(void *drvinfo)
 out:
 	return ret;
 }
-#endif
 
 int apummu_alloc_general_SLB(void *drvinfo)
 {

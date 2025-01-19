@@ -112,8 +112,14 @@ apusys-objs += edma/edma_rv.o
 
 # apu_mem driver makefile
 APU_MEM_ROOT=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apu_mem
+ccflags-y   += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/
+ccflags-y   += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/
 ccflags-y   += -I$(APU_MEM_ROOT)
 apusys-objs += apu_mem/apu_mem_export.o
+apusys-objs += apu_mem/apu_sysmem_drv.o
+apusys-objs += apu_mem/apu_sysmem_dmaheap.o
+apusys-objs += apu_mem/apu_sysmem_pages.o
+apusys-objs += apu_mem/apu_sysmem_aram.o
 
 # reviser driver makefile
 REVISER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/
@@ -154,7 +160,10 @@ ccflags-y += -I$(APUMMU_ROOT)/$(APUMMU_COMN)
 
 # apummu boot api
 apusys-objs += $(APUMMU_COMN)/apummu_boot.o
-apusys-objs += $(APUMMU_COMN)/apummu_rvbt.o
+ifneq ($(wildcard $(APUMMU_ROOT)/$(APUMMU_COMN)/mt6993_boot.c),)
+subdir-ccflags-y += -DMT6993_APUMMU_PLAT_DATA
+apusys-objs += $(APUMMU_COMN)/mt6993_boot.o
+endif
 
 apusys-objs += $(APUMMU_COMN)/apummu_drv.o
 apusys-objs += $(APUMMU_COMN)/apummu_dbg.o

@@ -14,14 +14,8 @@
 #include <linux/device.h>
 #include <linux/wait.h>
 
-/* config define */
-#define DRAM_FALL_BACK_IN_RUNTIME	(1)
-
 /* for RV data*/
 struct apummu_remote_data {
-#if !(DRAM_FALL_BACK_IN_RUNTIME)
-	uint64_t dram[32];
-#endif
 	uint32_t dram_max;
 
 	uint32_t vlm_size;
@@ -39,6 +33,10 @@ struct apummu_remote_data {
 struct apummu_platform {
 	uint32_t slb_wait_time;
 	uint32_t boundary;
+	uint32_t ssid_max;
+
+	uint32_t encode_offset;
+	uint32_t address_bits;
 
 	uint32_t internal_SLB_cnt;
 	uint32_t external_SLB_cnt;
@@ -46,6 +44,9 @@ struct apummu_platform {
 
 	bool is_general_SLB_support;
 	bool alloc_DRAM_FB_in_session_create; // add for DRAM FB alloc time check
+	bool is_ASE_support;
+
+	uint8_t reserved_session_num;
 };
 
 struct apummu_resource {

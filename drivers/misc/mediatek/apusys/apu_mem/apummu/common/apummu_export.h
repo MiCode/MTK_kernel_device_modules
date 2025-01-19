@@ -31,7 +31,7 @@ int apummu_unmap_mem(uint64_t session, uint32_t sid);
  *  for apummu, we also record translate info into session table
  */
 int apummu_iova2eva(uint32_t type, uint64_t session, uint64_t device_va,
-			uint32_t buf_size, uint64_t *eva);
+			uint64_t buf_size, uint64_t *eva);
 
 int apummu_eva2iova(uint64_t eva, uint64_t *iova);
 
@@ -43,7 +43,7 @@ int apummu_eva2iova(uint64_t eva, uint64_t *iova);
  * @description:
  *  remove the mapping setting of the given buffer
  */
-int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size);
+int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint64_t buf_size);
 
 /**
  * @para:
@@ -54,6 +54,8 @@ int apummu_buffer_remove(uint64_t session, uint64_t device_va, uint32_t buf_size
  *  return the session table accroding to session
  */
 int apummu_table_get(uint64_t session, void **tbl_kva, uint32_t *size);
+
+int apummu_table_alloc(uint64_t session);
 
 /**
  * @para:
@@ -72,6 +74,15 @@ int apummu_table_free(uint64_t session);
  *  VLM DRAM FB allocated according to vlm_size and subcmd_num
  */
 int apummu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
+
+/**
+ * @para:
+ *  session		-> hint for searching target session table
+ *  ssid		-> returned session ssid
+ * @description:
+ *  return the session ssid accroding to session
+ */
+int apummu_ssid_get(uint64_t session, uint32_t *ssid);
 
 int apummu_export_API_init(void);
 #endif

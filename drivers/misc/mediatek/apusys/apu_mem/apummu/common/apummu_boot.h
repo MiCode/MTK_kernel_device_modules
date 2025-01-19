@@ -18,6 +18,6 @@ struct mtk_apu_ammudata {
 	struct ammu_hw_ops ops;
 };
 
-extern const struct mtk_apu_ammudata mt6899_ammudata;
+extern const struct mtk_apu_ammudata mt6993_ammudata;
 
 #endif /* __APUMMU_BOOT_H__ */

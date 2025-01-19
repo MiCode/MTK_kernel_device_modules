@@ -15,7 +15,7 @@
 #include "mdw_cmn.h"
 #include "mdw_mem.h"
 
-struct apusys_core_info *g_apusys_core;
+extern struct apusys_core_info *g_apusys_core;
 
 static int apumem_probe(struct platform_device *pdev)
 {

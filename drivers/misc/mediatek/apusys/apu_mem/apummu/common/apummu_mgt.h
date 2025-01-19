@@ -41,6 +41,7 @@ struct ammu_stable_info {
 	/* NOTE: No EXT_SLB_size since size is not important */
 	uint8_t RSV_S_SLB_page_array_start;	// SLB PA for RSV_S
 	uint8_t RSV_S_SLB_page;	// SLB size for RSV_S, shift by 512M
+	uint8_t SMMU_SSID;      // SSID for ASE
 };
 
 /* apummu iova-eva mapping table */
@@ -53,33 +54,39 @@ struct apummu_session_tbl {
 	uint32_t DRAM_4_16G_mask_cnter[32];
 	uint32_t subcmd_num_for_DRAM_FB;
 
+	bool ssid_need_free;
+
+	struct mutex stable_lock; // session table lock
 	struct list_head list;
 };
 
 struct apummu_tbl {
+	struct mutex gtable_lock; // global table lock
 	struct list_head g_stable_head;
-	struct kref session_tbl_cnt;
-	struct mutex table_lock;
+	uint32_t session_tbl_cnt;
+	bool is_work_canceled;
+	bool is_free_job_set;
+
 	struct mutex DRAM_FB_lock;
 	uint16_t subcmd_refcnt;
 	uint8_t alloc_subcmd_refcnt;
 	bool is_VLM_info_IPI_sent; // to set VLM DRAM FB or clean setting
 	bool is_SLB_set;
-	bool is_work_canceled;
-	bool is_free_job_set;
 	bool is_SLB_alloc; // Since SLB state might not sync with APU
 };
 
 int ammu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
 int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session,
-			uint64_t iova, uint32_t buf_size, uint64_t *eva);
+			uint64_t iova, uint64_t buf_size, uint64_t *eva);
 int apummu_eva_decode(uint64_t eva, uint64_t *iova, enum AMMU_BUF_TYPE type);
 int apummu_stable_buffer_remove(uint64_t session, uint64_t device_va,
-			uint32_t buf_size);
+			uint64_t buf_size);
 int get_session_table(uint64_t session, void **tbl_kva, uint32_t *size);
+int session_table_alloc(uint64_t session);
 int session_table_free(uint64_t session);
 void dump_session_table_set(void);
-void apummu_mgt_init(void);
+int get_session_ssid(uint64_t session, uint32_t *ssid);
+int apummu_mgt_init(void);
 void apummu_mgt_destroy(void);
 
 int ammu_session_table_add_SLB(uint64_t session, uint32_t type);
