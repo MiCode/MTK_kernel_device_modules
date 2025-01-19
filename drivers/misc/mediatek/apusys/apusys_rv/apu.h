@@ -47,6 +47,7 @@ struct mtk_apu_hw_ops {
 	int (*irq_affin_clear)(struct mtk_apu *apu);
 	int (*irq_affin_online)(unsigned int cpu);
 	int (*irq_affin_offline)(unsigned int cpu);
+	void (*ipi_clamp)(struct mtk_apu *apu);
 
 	/* apmcu and apusys_rv timesync */
 	void (*timesync_update)(struct mtk_apu *apu);
@@ -280,6 +281,8 @@ struct mtk_apu {
 
 	dma_addr_t debug_memory_iova;
 	uint32_t debug_memory[PAGE_SIZE/4] __attribute__((aligned(PAGE_SIZE)));
+
+	uint32_t ipi_boost_value;
 };
 
 #define CONFIG_SIZE (round_up(sizeof(struct config_v1), PAGE_SIZE))

@@ -584,6 +584,9 @@ static irqreturn_t apu_ipi_handler(int irq, void *priv)
 	uint32_t vm_id = 0;
 #endif
 
+	if (hw_ops->ipi_clamp)
+		hw_ops->ipi_clamp(apu);
+
 	id = apu->hdr.id;
 	len = apu->hdr.len;
 	ipi = &apu->ipi_desc[id];
