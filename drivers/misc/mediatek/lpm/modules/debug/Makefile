@@ -37,3 +37,9 @@ ifneq ($(wildcard $(src)/mt6991),)
 obj-$(CONFIG_MTK_LPM_MT6991) += mt6991/
 endif
 endif
+
+ifeq ($(CONFIG_MTK_LPM_MT6993),m)
+ifneq ($(wildcard $(src)/v6993),)
+obj-$(CONFIG_MTK_LPM_MT6993) += v6993/
+endif
+endif

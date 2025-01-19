@@ -101,6 +101,16 @@ config MTK_LPM_MT6991
 	  Set Y to select this feature for specific platform-mt6991.
 	  If unsure, set N to disable.
 
+config MTK_LPM_MT6993
+	tristate "Specify Mediatek LPM Platform is MT6993"
+	depends on MTK_LOW_POWER_MODULE
+	select MTK_LPM_DBG_COMMON
+	help
+	  Select MediaTek Low Power Module Platform is MT6993
+	  for power management.
+	  Set Y to select this feature for specific platform-mt6993.
+	  If unsure, set N to disable.
+
 config MTK_SYS_RES_DBG_SUPPORT
 	tristate "Meditaek System Resource Debug Info Support"
 	help
