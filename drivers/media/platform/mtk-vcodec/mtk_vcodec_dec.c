@@ -599,7 +599,7 @@ static void mtk_vdec_lpw_start_timer(struct mtk_vcodec_ctx *ctx)
 		if (curr_time <= ctx->group_start_time) {
 			dec_time = MS_TO_NS(10); // 10ms
 			group_time = dec_time * ctx->group_dec_cnt;
-			mtk_lpw_err("[%d] curr_time "T_T" <= group_start_time "T_T" not valid, set dec_time to default %lld ms",
+			mtk_lpw_debug(0, "[%d][warning] curr_time "T_T" <= group_start_time "T_T" not valid, set dec_time to default %lld ms",
 				ctx->id, TMNS(curr_time), TMNS(ctx->group_start_time), NS_TO_MS(dec_time));
 		} else {
 			group_time = curr_time - ctx->group_start_time;
@@ -2802,7 +2802,7 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 		}
 	}
 
-	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+	if (f->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE && !mtk_vcodec_is_state(ctx, MTK_STATE_FREE))
 		if (vdec_if_set_param(ctx, SET_PARAM_FB_NUM_PLANES, (void *) &q_data->fmt->num_planes))
 			mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_FB_NUM_PLANES", ctx->id);
 
@@ -3612,6 +3612,12 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		  ((char *)src_mem->va)[6], ((char *)src_mem->va)[7], ((char *)src_mem->va)[8]);
 	}
 
+	// sw lib needs decode mode to choose sw lib, so need set decode mode before init sw lib
+	if (!mtk_vcodec_is_vcp(MTK_INST_DECODER) && (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DECODE_MODE)) {
+		if (vdec_if_set_param(ctx, SET_PARAM_DECODE_MODE, &ctx->dec_params.decode_mode))
+			mtk_v4l2_err("[%d] Error!! Cannot set param SET_PARAM_DECODE_MODE", ctx->id);
+	}
+
 	ret = vdec_if_decode(ctx, src_mem, NULL, &src_chg);
 	mtk_vdec_set_param(ctx);
 
@@ -3640,7 +3646,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 
 		src_vb2_v4l2 = v4l2_m2m_src_buf_remove_check(ctx->m2m_ctx);
 		if (!src_vb2_v4l2) {
-			mtk_v4l2_err("[%d]Error!!src_buf is NULL!", ctx->id);
+			mtk_v4l2_err("[%d] Error!! src_buf is NULL!", ctx->id);
 			goto err_buf_prepare;
 		}
 		src_buf = &src_vb2_v4l2->vb2_buf;
@@ -3657,11 +3663,11 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		 * bitdepth, level, we need to stop to play it
 		 */
 		if (need_seq_header) {
-			mtk_v4l2_debug(2, "[%d]Error!! Need seq header! (cnt %d)",
+			mtk_v4l2_debug(2, "[%d] Need seq header! (cnt %d)",
 						 ctx->id, ctx->init_cnt);
 			mtk_vdec_queue_noseqheader_event(ctx);
 		} else if (mtk_vcodec_unsupport || last_frame_type != NON_EOS) {
-			mtk_v4l2_err("[%d]Error!! Codec driver not support the file!",
+			mtk_v4l2_err("[%d] Error!! Codec driver not support the file!",
 						 ctx->id);
 			mtk_vdec_set_unsupport(ctx);
 		} else if (ret == -EIO) {
@@ -3688,7 +3694,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	ret = vdec_if_get_param(ctx, GET_PARAM_PIC_INFO,
 		&ctx->last_decoded_picinfo);
 	if (ret) {
-		mtk_v4l2_err("[%d]Error!! Cannot get param : GET_PARAM_PICTURE_INFO ERR",
+		mtk_v4l2_err("[%d] Error!! Cannot get param : GET_PARAM_PICTURE_INFO ERR",
 					 ctx->id);
 		goto err_buf_prepare;
 	}
