@@ -1623,8 +1623,8 @@ static struct regbase rb[] = {
 	[cam_mraw_pm] = REGBASE_V(0x3C812000, cam_mraw_pm, MT6991_CHK_PD_CAM_VCORE, CLK_NULL),
 	[cam_main_pm] = REGBASE_V(0x3C811000, cam_main_pm, MT6991_CHK_PD_CAM_VCORE, CLK_NULL),
 	[cam_ccu_pm] = REGBASE_V(0x3C810000, cam_ccu_pm, MT6991_CHK_PD_CAM_VCORE, CLK_NULL),
-	[mminfra_hwvote] = REGBASE_V(0x31A80000, mminfra_hwvote, MT6991_CHK_PD_MM_PROC, CLK_NULL),
-	[irq_step_debug] = REGBASE_V(0x31B03000, irq_step_debug, MT6991_CHK_PD_MM_PROC, CLK_NULL),
+	[mminfra_hwvote] = REGBASE_V(0x31A80000, mminfra_hwvote, PD_NULL, CLK_NULL),
+	[irq_step_debug] = REGBASE_V(0x31B03000, irq_step_debug, PD_NULL, CLK_NULL),
 	{},
 };
 

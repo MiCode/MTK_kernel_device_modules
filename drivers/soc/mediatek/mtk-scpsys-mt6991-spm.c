@@ -245,18 +245,6 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
-	[MT6991_POWER_DOMAIN_MM_PROC_DORMANT] = {
-		.name = "mm-proc-dormant",
-		.ctl_offs = 0xE60,
-		.sram_slp_bits = GENMASK(9, 9),
-		.sram_slp_ack_bits = GENMASK(13, 13),
-		.bp_table = {
-			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
-				MT6991_SPM_PROT_EN_BUS_MM_PROC),
-		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IRQ_SAVE | MTK_SCPD_SRAM_SLP |
-			MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
-	},
 	[MT6991_POWER_DOMAIN_SSR] = {
 		.name = "ssrsys",
 		.ctl_offs = 0xE84,
@@ -445,18 +433,6 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 				MT6991_SPM_PROT_EN_BUS_ADSP_AO),
 		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
-	},
-	[MT6991_POWER_DOMAIN_MM_PROC_DORMANT] = {
-		.name = "mm-proc-dormant",
-		.hwv_comp = "hw-voter-regmap",
-		.hwv_set_ofs = 0x0218,
-		.hwv_clr_ofs = 0x021C,
-		.hwv_done_ofs = 0x141C,
-		.hwv_en_ofs = 0x1410,
-		.hwv_set_sta_ofs = 0x146C,
-		.hwv_clr_sta_ofs = 0x1470,
-		.hwv_shift = 0,
-		.caps = MTK_SCPD_HWV_OPS | MTK_SCPD_IRQ_SAVE | default_cap | MTK_SCPD_INFRA_REQ_OPT,
 	},
 	[MT6991_POWER_DOMAIN_SSR] = {
 		.name = "ssrsys",
@@ -743,21 +719,6 @@ static struct platform_driver mt6991_scpsys_spm_drv = {
 		.of_match_table = of_match_ptr(of_scpsys_spm_match_tbl),
 	},
 };
-
-struct generic_pm_domain *mt6991_mmup_get_power_domain(void)
-{
-
-	if (pd_data->num_domains == MT6991_SPM_POWER_DOMAIN_NR)
-		return pd_data->domains[MT6991_POWER_DOMAIN_MM_PROC_DORMANT];
-	else if (pd_data->num_domains == MT6991_NONPBUS_POWER_DOMAIN_NR)
-		return pd_data->domains[MT6991_NONPBUS_POWER_DOMAIN_MM_PROC_DORMANT];
-	else {
-		pr_err("%s: Unexpected pd_data->num_domains(%d)\n", __func__, pd_data->num_domains);
-		BUG_ON(1);
-	}
-
-}
-EXPORT_SYMBOL_GPL(mt6991_mmup_get_power_domain);
 
 module_platform_driver(mt6991_scpsys_spm_drv);
 MODULE_LICENSE("GPL");

@@ -1076,15 +1076,12 @@ static const struct of_device_id of_scpsys_mmpc_match_tbl[] = {
 	}
 };
 
-extern struct generic_pm_domain *mt6991_mmup_get_power_domain(void);
-
 static int mt6991_scpsys_mmpc_probe(struct platform_device *pdev)
 {
 	const struct scp_subdomain *sd;
 	const struct scp_soc_data *soc;
 	struct scp *scp;
 	struct genpd_onecell_data *pd_data;
-	struct generic_pm_domain *mmup_pd;
 	int i, ret;
 
 	soc = of_device_get_match_data(&pdev->dev);
@@ -1100,59 +1097,6 @@ static int mt6991_scpsys_mmpc_probe(struct platform_device *pdev)
 		return ret;
 
 	pd_data = &scp->pd_data;
-	/* add mmup as parent of mminfra&disp vcore */
-	mmup_pd = mt6991_mmup_get_power_domain();
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_MM_INFRA_AO]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
-			ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_MM_INFRA0]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n", ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_MM_INFRA1]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n", ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_DISP_VCORE]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n", ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_CSI_BS_RX]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
-			ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_CSI_LS_RX]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
-			ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_DSI_PHY0]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
-			ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_DSI_PHY1]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
-			ret);
-		return ret;
-	}
-	ret = pm_genpd_add_subdomain(mmup_pd, pd_data->domains[MT6991_POWER_DOMAIN_DSI_PHY2]);
-	if (ret && IS_ENABLED(CONFIG_PM)) {
-		dev_err(&pdev->dev, "Failed to add subdomain: %d\n",
-			ret);
-		return ret;
-	}
 
 	for (i = 0, sd = soc->subdomains; i < soc->num_subdomains; i++, sd++) {
 		ret = pm_genpd_add_subdomain(pd_data->domains[sd->origin],
