@@ -24,14 +24,12 @@
 
 #include <trace/hooks/vendor_hooks.h>
 #include <trace/hooks/sched.h>
-#if 0
 #include <trace/hooks/binder.h>
 #include <trace/hooks/rwsem.h>
 #include <trace/hooks/futex.h>
 #include <trace/hooks/dtask.h>
 #include <trace/hooks/cgroup.h>
 #include <trace/hooks/sys.h>
-#endif
 
 #include <task_turbo.h>
 #include <task_turbo_v.h>
@@ -43,17 +41,14 @@
 #define CREATE_TRACE_POINTS
 #include <trace_task_turbo.h>
 
-#if 0
 LIST_HEAD(hmp_domains);
 
 /*TODO: find the magic bias number */
-#define TOP_APP_GROUP_ID	((4-1)*10)
+#define TOP_APP_GROUP_ID	40
 #define TURBO_PID_COUNT		8
 #define INHERITED_RWSEM_COUNT	4
 #define RENDER_THREAD_NAME	"RenderThread"
-#endif
 #define TAG			"Task-Turbo"
-#if 0
 #define TURBO_ENABLE		1
 #define TURBO_DISABLE		0
 #define INHERIT_THRESHOLD	4
@@ -109,9 +104,6 @@ LIST_HEAD(hmp_domains);
 #define RWSEM_WRITER_MASK	RWSEM_WRITER_LOCKED
 
 DEFINE_PER_CPU(struct hmp_domain *, hmp_cpu_domain);
-#if IS_ENABLED(CONFIG_ARM64)
-DEFINE_PER_CPU(unsigned long, cpu_scale) = SCHED_CAPACITY_SCALE;
-#endif
 
 static uint32_t latency_turbo = SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 				SUB_FEAT_SCHED;
@@ -119,31 +111,26 @@ static uint32_t launch_turbo =  SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 				SUB_FEAT_SCHED | SUB_FEAT_FLAVOR_BIGCORE;
 static DEFINE_SPINLOCK(TURBO_SPIN_LOCK);
 static DEFINE_SPINLOCK(RWSEM_SPIN_LOCK);
-#endif
 static DEFINE_SPINLOCK(check_lock);
 static DEFINE_MUTEX(cpu_lock);
 static DEFINE_MUTEX(cpu_loading_lock);
 static DEFINE_MUTEX(wi_lock);
 static DEFINE_MUTEX(enforced_qualified_lock);
-#if 0
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 static struct task_struct *inherited_rwsem_owners[INHERITED_RWSEM_COUNT] = {NULL};
 
 static bool is_turbo_task(struct task_struct *p);
-static void set_load_weight(struct task_struct *p, bool update_load);
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem);
 static void rwsem_list_add(struct task_struct *task, struct list_head *entry,
 				struct list_head *head);
 static bool binder_start_turbo_inherit(struct task_struct *from,
 					struct task_struct *to);
 static void binder_stop_turbo_inherit(struct task_struct *p);
-#endif
 void (*binder_start_vip_inherit_hook)(int to_pid, int inherited_vip_prio) = NULL;
 EXPORT_SYMBOL(binder_start_vip_inherit_hook);
 void (*binder_stop_vip_inherit_hook)(int pid, int inherited_vip_prio) = NULL;
 EXPORT_SYMBOL(binder_stop_vip_inherit_hook);
-#if 0
 static inline struct task_struct *rwsem_owner(struct rw_semaphore *sem);
 static inline bool rwsem_test_oflags(struct rw_semaphore *sem, long flags);
 static inline bool is_rwsem_reader_owned(struct rw_semaphore *sem);
@@ -173,7 +160,6 @@ static void init_turbo_attr(struct task_struct *p);
 static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost);
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
-#endif
 static int avg_cpu_loading;
 static int cpu_loading_thres = 95;
 static int tt_vip_enable = 1;
@@ -245,14 +231,7 @@ static int get_cpu_loading(struct cpu_info *_ci)
 	return 0;
 }
 
-#if 0
 inline bool launch_turbo_enable(void);
-#else
-inline bool launch_turbo_enable(void)
-{
-	return false;
-}
-#endif
 
 void exp_trace_turbo_vip(const char *desc, int pid)
 {
@@ -997,7 +976,6 @@ static struct input_handler tt_input_handler = {
 	.id_table = tt_input_ids,
 };
 
-#if 0
 static void probe_android_rvh_prepare_prio_fork(void *ignore, struct task_struct *p)
 {
 	struct task_turbo_t *turbo_data;
@@ -1073,16 +1051,13 @@ static void probe_android_rvh_rtmutex_prepare_setprio(void *ignore, struct task_
 }
 
 static void probe_android_rvh_set_user_nice(void *ignore, struct task_struct *p,
-						long *nice, bool *allowed)
+						long *nice)
 {
 	struct task_turbo_t *turbo_data;
 	bool p_turbo;
 
-	if ((*nice < MIN_NICE || *nice > MAX_NICE) && !task_turbo_nice(*nice)) {
-		*allowed = false;
+	if ((*nice < MIN_NICE || *nice > MAX_NICE) && !task_turbo_nice(*nice))
 		return;
-	} else
-		*allowed = true;
 
 
 	turbo_data = get_task_turbo_t(p);
@@ -1276,9 +1251,7 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 	*already_on_hb = false;
 }
 
-static void probe_android_rvh_select_task_rq_fair(void *ignore, struct task_struct *p,
-							int prev_cpu, int sd_flag,
-							int wake_flags, int *target_cpu)
+void task_turbo_select_task_rq_fair(struct task_struct *p, int *target_cpu)
 {
 	/* skip if p is vip */
 	if (get_vip_task_prio(p) != NOT_VIP)
@@ -1440,7 +1413,7 @@ cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost)
 		util = max(util, util_est);
 	}
 
-	return min(util, capacity_orig_of(cpu));
+	return min(util, arch_scale_cpu_capacity(cpu));
 }
 
 static inline unsigned long task_util(struct task_struct *p)
@@ -1515,30 +1488,27 @@ int select_turbo_cpu(struct task_struct *p)
 }
 
 /* copy from sched/core.c */
-static void set_load_weight(struct task_struct *p, bool update_load)
+void set_load_weight(struct task_struct *p, bool update_load)
 {
 	int prio = p->static_prio - MAX_RT_PRIO;
-	struct load_weight *load = &p->se.load;
+	struct load_weight lw;
 
-	/*
-	 * SCHED_IDLE tasks get minimal weight:
-	 */
 	if (task_has_idle_policy(p)) {
-		load->weight = scale_load(WEIGHT_IDLEPRIO);
-		load->inv_weight = WMULT_IDLEPRIO;
-		return;
+		lw.weight = scale_load(WEIGHT_IDLEPRIO);
+		lw.inv_weight = WMULT_IDLEPRIO;
+	} else {
+		lw.weight = scale_load(sched_prio_to_weight[prio]);
+		lw.inv_weight = sched_prio_to_wmult[prio];
 	}
 
 	/*
 	 * SCHED_OTHER tasks have to update their load when changing their
 	 * weight
 	 */
-	if (update_load && p->sched_class == &fair_sched_class) {
-		reweight_task(p, prio);
-	} else {
-		load->weight = scale_load(sched_prio_to_weight[prio]);
-		load->inv_weight = sched_prio_to_wmult[prio];
-	}
+	if (update_load && p->sched_class->reweight_task)
+		p->sched_class->reweight_task(task_rq(p), p, &lw);
+	else
+		p->se.load = lw;
 }
 
 #if IS_ENABLED(CONFIG_ARM64)
@@ -2336,7 +2306,6 @@ static void sys_set_turbo_task(struct task_struct *p)
 	turbo_data->render = 1;
 	add_turbo_list(p);
 }
-#endif
 
 int init_cpu_time(void)
 {
@@ -2421,8 +2390,6 @@ static void tt_tick(void *data, struct rq *rq)
 
 static int __init init_task_turbo(void)
 {
-	int ret;
-#if 0
 	int ret, ret_erri_line;
 
 	ret = register_trace_android_rvh_rtmutex_prepare_setprio(
@@ -2530,13 +2497,6 @@ static int __init init_task_turbo(void)
 		goto failed;
 	}
 
-	ret = register_trace_android_rvh_select_task_rq_fair(
-			probe_android_rvh_select_task_rq_fair, NULL);
-	if (ret) {
-		ret_erri_line = __LINE__;
-		goto failed;
-	}
-
 	ret = register_trace_android_vh_cgroup_set_task(
 			probe_android_vh_cgroup_set_task, NULL);
 	if (ret) {
@@ -2552,7 +2512,7 @@ static int __init init_task_turbo(void)
 	}
 
 	init_hmp_domains();
-#endif
+	task_turbo_select_task_rq_fair_hook = task_turbo_select_task_rq_fair;
 
 	/* register tracepoint of scheduler_tick */
 	ret = register_trace_android_vh_scheduler_tick(tt_tick, NULL);
@@ -2573,13 +2533,11 @@ static int __init init_task_turbo(void)
 
 	task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
 
-#if 0
 failed:
 	if (ret)
 		pr_err("register hooks failed, ret %d line %d\n", ret, ret_erri_line);
 
 	return ret;
-#endif
 
 register_failed:
 	unregister_trace_android_vh_scheduler_tick(tt_tick, NULL);

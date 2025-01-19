@@ -73,6 +73,7 @@ struct cpu_info {
 	int *cpu_loading;
 };
 
+extern void (*task_turbo_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu);
 extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
 extern inline int get_vip_task_prio(struct task_struct *p);
 
