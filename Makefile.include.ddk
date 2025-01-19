@@ -176,7 +176,10 @@ EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/ufs/*Module.symvers
 
 # Please don't modify below lines
 extra_symbols_temp := $(EXTRA_SYMBOLS)
-extra_symbols :=
-$(foreach file, $(extra_symbols_temp), $(if $(filter 0,$(shell wc -c < $(file))),,$(eval extra_symbols += $(file))))
+extmod_suffix := $(shell openssl rand -base64 32 | md5sum | cut -d " " -f 1)
+sum_Module_symvers_tmp := $(DEVICE_MODULES_FOLDER)/sum.Module.symvers.$(extmod_suffix)
 
-EXTRA_SYMBOLS := $(extra_symbols)
+$(foreach x, $(extra_symbols_temp), $(shell cat $(x) >> $(sum_Module_symvers_tmp)))
+#$(shell sort $(sum_Module_symvers_tmp) | uniq > $(sum_Module_symvers_tmp).tmp && mv $(sum_Module_symvers_tmp).tmp $(sum_Module_symvers_tmp))
+
+EXTRA_SYMBOLS := $(sum_Module_symvers_tmp)
