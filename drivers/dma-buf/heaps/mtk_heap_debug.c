@@ -245,6 +245,19 @@ static unsigned int egl_pid_cnt;
 static struct pid_map *egl_pid_map;
 static DEFINE_SPINLOCK(egl_cache_lock);
 
+#define to_dma_buf_entry_from_kobj(x) container_of(x, struct dma_buf_sysfs_entry, kobj)
+#define to_kset_from_kobj(x) container_of(x, struct kset, kobj)
+typedef int (*pfun_dma_buf_each_cb)(const struct dma_buf *dmabuf, void *private);
+typedef int (*pfun_dma_buf_get_each)(pfun_dma_buf_each_cb dmabuf_cb, void *private);
+
+struct dump_dmabuf_kset {
+	struct kernfs_node *dmabuf;
+	struct kernfs_node *buffers;
+	struct kset *dmabuf_kset;
+	pfun_dma_buf_get_each kset_dma_buf_get_each;
+};
+static struct dump_dmabuf_kset dump_kset;
+
 struct heap_status_s debug_heap_list[] = {
 	{"mtk_mm", NULL, 0},
 	{"system", NULL, 0},
@@ -766,13 +779,73 @@ static inline int mtk_is_dma_buf_file(struct file *file)
 	return (dma_buf_file_fops && file->f_op == dma_buf_file_fops);
 }
 
-#if (!IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG))
-int dma_buf_get_each(int (*callback)(const struct dma_buf *dmabuf,
-		     void *private), void *private)
+static inline int mtk_dma_buf_get_each(pfun_dma_buf_each_cb dmabuf_cb, void *private)
 {
-	return -1;
+	if (dump_kset.kset_dma_buf_get_each)
+		return dump_kset.kset_dma_buf_get_each(dmabuf_cb, private);
+
+	return -ENOENT;
 }
-#endif
+
+static int dma_buf_get_each_by_kset(pfun_dma_buf_each_cb dmabuf_cb, void *private)
+{
+	struct kset *dmabuf_kset = dump_kset.dmabuf_kset;
+	struct dma_buf_sysfs_entry *dma_buf_entry;
+	struct kobject *kobj;
+	unsigned long flags;
+	int ret = 0;
+
+	if (!dmabuf_kset)
+		return -ENOENT;
+
+	spin_lock_irqsave(&dmabuf_kset->list_lock, flags);
+	list_for_each_entry(kobj, &dmabuf_kset->list, entry) {
+		dma_buf_entry = to_dma_buf_entry_from_kobj(kobj);
+		ret = dmabuf_cb(dma_buf_entry->dmabuf, private);
+		if (ret)
+			break;
+	}
+	spin_unlock_irqrestore(&dmabuf_kset->list_lock, flags);
+	return ret;
+}
+
+static void dump_dmabuf_kset_init(void)
+{
+	struct kernfs_node *dmabuf, *buffers;
+	struct kobject *kobj;
+
+	dmabuf = kernfs_find_and_get(kernel_kobj->sd, "dmabuf");
+	if (!dmabuf) {
+		pr_info("%s not find /sys/kernel/dmabuf\n", __func__);
+		return;
+	}
+
+	buffers = kernfs_find_and_get(dmabuf, "buffers");
+	if (!buffers) {
+		kernfs_put(dmabuf);
+		pr_info("%s not find /sys/kernel/dmabuf/buffers\n", __func__);
+		return;
+	}
+	dump_kset.dmabuf = dmabuf;
+	dump_kset.buffers = buffers;
+
+	kobj = (struct kobject *)buffers->priv;
+	dump_kset.dmabuf_kset = to_kset_from_kobj(kobj);
+	dump_kset.kset_dma_buf_get_each = dma_buf_get_each_by_kset;
+}
+
+static void dump_dmabuf_kset_deinit(void)
+{
+	if (dump_kset.buffers) {
+		kernfs_put(dump_kset.buffers);
+		dump_kset.buffers = NULL;
+	}
+	if (dump_kset.dmabuf) {
+		kernfs_put(dump_kset.dmabuf);
+		dump_kset.dmabuf = NULL;
+	}
+	dump_kset.dmabuf_kset = NULL;
+}
 
 static inline struct dump_fd_data *
 fd_const_to_dump_fd_data(const struct fd_const *d)
@@ -1513,7 +1586,7 @@ static long get_dma_heap_buffer_total(struct dma_heap *heap)
 	dump_info.heap = heap;
 	dump_info.ret = 0; /* used to record total size */
 
-	dma_buf_get_each(dma_heap_total_cb, (void *)&dump_info);
+	mtk_dma_buf_get_each(dma_heap_total_cb, (void *)&dump_info);
 
 	return dump_info.ret;
 }
@@ -1708,7 +1781,7 @@ struct dump_fd_data *dmabuf_rbtree_add_all(struct dma_heap *heap,
 	spin_lock_init(&fddata->splock);
 
 	if (pid > 0) {
-		dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
+		mtk_dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
 		dmabuf_rbtree_add_all_pid(fddata, heap, s, pid, flag);
 		return fddata;
 	}
@@ -1746,7 +1819,7 @@ struct dump_fd_data *dmabuf_rbtree_add_all(struct dma_heap *heap,
 		dmabuf_dump(s, "%s: time:%llu max:%d count:%d\n", __func__,
 			    cur_ts2 - cur_ts1, pid_max, pid_count);
 
-	dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
+	mtk_dma_buf_get_each(dmabuf_rbtree_dbg_add_cb, fddata);
 	while (pid_count) {
 		dmabuf_rbtree_add_all_pid(fddata, heap, s, pids[pid_count-1], flag);
 		pid_count--;
@@ -2807,6 +2880,7 @@ static int __init mtk_dma_heap_debug(void)
 	if (!egl_pid_map)
 		pr_info("%s create egl_pid_map fail\n", __func__);
 
+	dump_dmabuf_kset_init();
 #ifdef EGL_MTRACK_BY_KPROBE
 	register_kprobe_handle();
 #endif
@@ -2843,6 +2917,7 @@ static void __exit mtk_dma_heap_debug_exit(void)
 
 	kfree(egl_pid_map);
 	dma_buf_uninit_procfs();
+	dump_dmabuf_kset_deinit();
 }
 module_init(mtk_dma_heap_debug);
 module_exit(mtk_dma_heap_debug_exit);
