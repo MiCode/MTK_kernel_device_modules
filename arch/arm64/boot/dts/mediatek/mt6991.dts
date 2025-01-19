@@ -16573,11 +16573,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		bootmode = <&chosen>;
 		gauge = <&mtk_gauge>;
 		reg = <0 0x00117700 0 0x100>,
-			<0 0x13020170 0 0xc>,
 			<0 0x4b840c18 0 0x8>,
 			<0 0x0c220c04 0 0x20>;
 		reg-names = "ppb_sram",
-			"hpt_ctrl", "gpu_dbg", "cpu_dbg";
+			"gpu_dbg", "cpu_dbg";
 
 		ppb-version = <2>;
 		soc-error = <2500>;
