@@ -10224,7 +10224,7 @@ struct sort_list{
 } ;
 
 static struct sort_list mtk_bwm_sort_list;
-#define BWM_DEBUG_LOG
+//#define BWM_DEBUG_LOG
 
 bool insert_bwm_entry(struct sort_list *list, int idx, struct bwm_hrt_sort_entry sort_entry)
 {
@@ -10465,7 +10465,6 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	}
 
 	CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 6);
-#ifdef BWM_DEBUG_LOG
 	DDPDBG_BWM("BWMT===== all_layer_compress_ratio_tb ===== overlap %d\n", bwm20_overlap);
 	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
@@ -10477,7 +10476,6 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 				all_layer_compress_ratio_table[i].valid,
 				all_layer_compress_ratio_table[i].active);
 	}
-#endif
 	if (mtk_crtc->cur_lyeblob) {
 		mtk_crtc_update_hrt_state(crtc, 0, mtk_crtc->cur_lyeblob, cmdq_handle);
 		mtk_crtc->cur_lyeblob = NULL;
