@@ -9947,7 +9947,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		disp_dpc: disp-dpc@3e8f0000 {
-			compatible = "mediatek,mt6991-disp-dpc-v2";
+			compatible = "mediatek,mt6991-disp-dpc-v3";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>; /* for apb access, not real parent */
 			disp-power-pair-size = <2>;                               /* power domain pair size */
 			reg =
@@ -13063,7 +13063,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	disp_vcore_ctrl: disp-vcore-vdisp-ctrl@0 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>,
 				<&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA0>; /* parent */
 		disp-power-pair-size = <2>;                               /* power domain pair size */
@@ -13101,7 +13101,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	disp1-vdisp-ctrl@1 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS1_DORMANT>;
 		reg =
 			<0 0x3e8f2050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
@@ -13112,7 +13112,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	disp0-vdisp-ctrl@2 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DIS0_DORMANT>;
 		reg =
 			<0 0x3e8f1050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
@@ -13123,7 +13123,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	ovl1-vdisp-ctrl@3 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL1_DORMANT>;
 		reg =
 			<0 0x3e8f4050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
@@ -13134,7 +13134,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	ovl0-vdisp-ctrl@4 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_OVL0_DORMANT>;
 		reg =
 			<0 0x3e8f3050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
@@ -13145,7 +13145,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	mml1-vdisp-ctrl@5 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML1_SHUTDOWN>;
 		reg =
 			<0 0x3e8f5050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
@@ -13156,7 +13156,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	mml0-vdisp-ctrl@6 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MML0_SHUTDOWN>;
 		reg =
 			<0 0x3e8f6050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
@@ -13167,7 +13167,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	edp-vdisp-ctrl@7 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
 		reg =
 			<0 0x3e8f7050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
@@ -13178,7 +13178,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 
 	dptx-vdisp-ctrl@8 {
-		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
+		compatible = "mediatek,mt6991-vdisp-ctrl-v3";
 		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_DPTX_DORMANT>;
 		reg =
 			<0 0x3e8f8050 0 0x4>;             /* SUBSYS_PM_PWR_ACK_WAIT_TIME */
