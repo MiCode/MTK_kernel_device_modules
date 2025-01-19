@@ -2669,8 +2669,8 @@ static const struct mtk_disp_wdma_data mt6877_wdma_driver_data = {
 };
 
 static const struct mtk_disp_wdma_data mt6781_wdma_driver_data = {
-	.fifo_size_1plane = 578,
-	.fifo_size_uv_1plane = 29,
+	.fifo_size_1plane = 410,
+	.fifo_size_uv_1plane = 200,
 	.fifo_size_2plane = 402,
 	.fifo_size_uv_2plane = 201,
 	.fifo_size_3plane = 402,

@@ -6254,6 +6254,7 @@ static const struct mtk_mmsys_driver_data mt6779_mmsys_driver_data = {
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = false,
 	.can_compress_rgb565 = false,
+	.use_infra_mem_res = false,
 };
 
 const struct mtk_mmsys_driver_data mt6761_mmsys_driver_data = {
@@ -6265,6 +6266,7 @@ const struct mtk_mmsys_driver_data mt6761_mmsys_driver_data = {
 	.mode_tb = mt6761_mode_tb,
 	.sodi_config = mt6768_mtk_sodi_config,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 const struct mtk_mmsys_driver_data mt6765_mmsys_driver_data = {
@@ -6276,6 +6278,7 @@ const struct mtk_mmsys_driver_data mt6765_mmsys_driver_data = {
 	.mode_tb = mt6765_mode_tb,
 	.sodi_config = mt6768_mtk_sodi_config,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 const struct mtk_mmsys_driver_data mt6768_mmsys_driver_data = {
@@ -6287,6 +6290,7 @@ const struct mtk_mmsys_driver_data mt6768_mmsys_driver_data = {
 	.mode_tb = mt6768_mode_tb,
 	.sodi_config = mt6768_mtk_sodi_config,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6885_mmsys_driver_data = {
@@ -6300,6 +6304,7 @@ static const struct mtk_mmsys_driver_data mt6885_mmsys_driver_data = {
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6983_mmsys_driver_data = {
@@ -6316,6 +6321,7 @@ static const struct mtk_mmsys_driver_data mt6983_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6985_mmsys_driver_data = {
@@ -6334,6 +6340,7 @@ static const struct mtk_mmsys_driver_data mt6985_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };
@@ -6356,6 +6363,7 @@ static const struct mtk_mmsys_driver_data mt6989_mmsys_driver_data = {
 	.need_emi_eff = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
@@ -6377,6 +6385,7 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.gce_event_config = mtk_gce_event_config_MT6991,
 	.vdisp_ao_irq_config = mtk_vdisp_ao_irq_config_MT6991,
@@ -6398,6 +6407,7 @@ static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };
@@ -6414,6 +6424,7 @@ static const struct mtk_mmsys_driver_data mt6895_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = true,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6886_mmsys_driver_data = {
@@ -6434,6 +6445,7 @@ static const struct mtk_mmsys_driver_data mt6886_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = true,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6873_mmsys_driver_data = {
@@ -6447,6 +6459,7 @@ static const struct mtk_mmsys_driver_data mt6873_mmsys_driver_data = {
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = false,
 	.can_compress_rgb565 = true,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6853_mmsys_driver_data = {
@@ -6460,6 +6473,7 @@ static const struct mtk_mmsys_driver_data mt6853_mmsys_driver_data = {
 	.has_smi_limitation = true,
 	.doze_ctrl_pmic = false,
 	.can_compress_rgb565 = true,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6833_mmsys_driver_data = {
@@ -6471,6 +6485,7 @@ static const struct mtk_mmsys_driver_data mt6833_mmsys_driver_data = {
 	.mode_tb = mt6833_mode_tb,
 	.sodi_config = mt6833_mtk_sodi_config,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 	.has_smi_limitation = true,
 	.doze_ctrl_pmic = false,
 	.can_compress_rgb565 = false,
@@ -6485,6 +6500,7 @@ static const struct mtk_mmsys_driver_data mt6877_mmsys_driver_data = {
 	.mode_tb = mt6877_mode_tb,
 	.sodi_config = mt6877_mtk_sodi_config,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 	.has_smi_limitation = true,
 	.doze_ctrl_pmic = false,
 	.can_compress_rgb565 = false,
@@ -6502,6 +6518,7 @@ static const struct mtk_mmsys_driver_data mt6781_mmsys_driver_data = {
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = false,
 	.can_compress_rgb565 = false,
+	.use_infra_mem_res = true,
 };
 
 static const struct mtk_mmsys_driver_data mt6879_mmsys_driver_data = {
@@ -6516,6 +6533,7 @@ static const struct mtk_mmsys_driver_data mt6879_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 static const struct mtk_mmsys_driver_data mt6855_mmsys_driver_data = {
@@ -6530,6 +6548,7 @@ static const struct mtk_mmsys_driver_data mt6855_mmsys_driver_data = {
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
+	.use_infra_mem_res = false,
 };
 
 #ifdef MTK_DRM_FENCE_SUPPORT
@@ -9342,6 +9361,7 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6877) {
@@ -10288,6 +10308,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DSC},
 	{.compatible = "mediatek,mt6877-disp-dsc",
 	 .data = (void *)MTK_DISP_DSC},
+	{.compatible = "mediatek,mt6781-disp-dsc",
+	 .data = (void *)MTK_DISP_DSC},
 	{.compatible = "mediatek,mt6885-disp-merge",
 	 .data = (void *)MTK_DISP_MERGE},
 	{.compatible = "mediatek,mt6983-disp-merge",
@@ -10796,7 +10818,8 @@ SKIP_SIDE_DISP:
 
 SKIP_OVLSYS_CONFIG:
 
-	if (private->data->bypass_infra_ddr_control) {
+	if (private->data->bypass_infra_ddr_control &&
+		!private->data->use_infra_mem_res) {
 		struct device_node *infra_node;
 		struct platform_device *infra_pdev;
 		struct device *infra_dev;
@@ -10817,6 +10840,32 @@ SKIP_OVLSYS_CONFIG:
 			infra_mem = platform_get_resource(infra_pdev, IORESOURCE_MEM, 0);
 			private->infra_regs_pa = infra_mem->start;
 			private->infra_regs = devm_ioremap_resource(infra_dev, infra_mem);
+			if (IS_ERR(private->infra_regs))
+				DDPPR_ERR("%s: infra_ao_base of_iomap failed\n", __func__);
+			else
+				DDPMSG("%s, infra_regs:0x%p, infra_regs_pa:0x%pa\n",
+					__func__, (void *)private->infra_regs,
+					&private->infra_regs_pa);
+		}
+		of_node_put(infra_node);
+	}
+	if (private->data->bypass_infra_ddr_control &&
+		private->data->use_infra_mem_res) {
+		struct device_node *infra_node;
+		struct resource infra_mem_res;
+
+		infra_node = of_find_compatible_node(NULL, NULL, "mediatek,infracfg_ao");
+		if (infra_node == NULL) {
+			DDPPR_ERR("mediatek,infracfg_ao is not found\n");
+		} else {
+			if (of_address_to_resource(infra_node, 0, &infra_mem_res) != 0) {
+				DDPPR_ERR("%s: missing reg in %s node\n",
+						__func__, infra_node->full_name);
+				of_node_put(infra_node);
+				return -EPROBE_DEFER;
+			}
+			private->infra_regs_pa = infra_mem_res.start;
+			private->infra_regs = of_iomap(infra_node, 0);
 			if (IS_ERR(private->infra_regs))
 				DDPPR_ERR("%s: infra_ao_base of_iomap failed\n", __func__);
 			else
