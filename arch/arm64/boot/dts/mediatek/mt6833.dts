@@ -1113,8 +1113,7 @@
 			msf_token =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_MSF>;
 			mediatek,larb = <&smi_larb11>, <&smi_larb9>;
-			power-domains = <&scpsys MT6833_POWER_DOMAIN_ISP2>,
-					<&scpsys MT6833_POWER_DOMAIN_ISP>;
+			power-domains = <&scpsys MT6833_POWER_DOMAIN_ISP2>;
 			clocks =
 				<&imgsys2_clk CLK_IMGSYS2_LARB9>,
 				<&imgsys2_clk CLK_IMGSYS2_MSS>,
@@ -1176,6 +1175,11 @@
 			/bits/ 16 <CMDQ_EVENT_GCE_IMG2_EVENT23>;
 			mss_token =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_MSS>;
+		};
+
+		imgsys-mfb@15820000 {
+			compatible = "mediatek,imgsys_mfb";
+			reg = <0 0x15820000 0 0x1000>;
 		};
 
 		mdpsys_config: mdpsys_config@1f000000 {
@@ -1613,13 +1617,12 @@
 			clock-names = "apb", "smi", "gals0", "gals1";
 		};
 
-		imgsys_config: imgsys_config@15020000 {
+	imgsys_config: imgsys_config@15020000 {
 			compatible = "mediatek,imgsys", "syscon";
 			reg = <0 0x15020000 0 0x1000>;
 			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
 			mediatek,larb = <&smi_larb9>, <&smi_larb11>;
-			power-domains = <&scpsys MT6833_POWER_DOMAIN_ISP>,
-				<&scpsys MT6833_POWER_DOMAIN_ISP2>;
+			power-domains = <&scpsys MT6833_POWER_DOMAIN_ISP>;
 			iommus = <&iommu0 M4U_PORT_L9_IMG_IMGI_D1>,
 			<&iommu0 M4U_PORT_L9_IMG_IMGBI_D1>,
 			<&iommu0 M4U_PORT_L9_IMG_DMGI_D1>,
@@ -1634,30 +1637,7 @@
 			<&iommu0 M4U_PORT_L9_IMG_SMTI_D5>,
 			<&iommu0 M4U_PORT_L9_IMG_TIMGO_D1>,
 			<&iommu0 M4U_PORT_L9_IMG_UFBC_W0>,
-			<&iommu0 M4U_PORT_L9_IMG_UFBC_R0>,
-			<&iommu0 M4U_PORT_L11_IMG_IMGI_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_IMGBI_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_DMGI_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_DEPI_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_ICE_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_SMTI_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_SMTO_D2>,
-			<&iommu0 M4U_PORT_L11_IMG_SMTO_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_CRZO_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_IMG3O_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_VIPI_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_SMTI_D5>,
-			<&iommu0 M4U_PORT_L11_IMG_TIMGO_D1>,
-			<&iommu0 M4U_PORT_L11_IMG_UFBC_W0>,
-			<&iommu0 M4U_PORT_L11_IMG_UFBC_R0>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA0>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA1>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA2>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA3>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA4>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA5>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA0>,
-			<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA1>;
+			<&iommu0 M4U_PORT_L9_IMG_UFBC_R0>;
 
 			clocks =
 				<&imgsys1_clk CLK_IMGSYS1_LARB9>,
@@ -1678,6 +1658,33 @@
 			compatible = "mediatek,dip1";
 			reg = <0 0x15021000 0 0xc000>;
 			interrupts = <GIC_SPI 346 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		mssdl@15812000 {
+			compatible = "mediatek,mssdl";
+			reg = <0 0x15812000 0 0x1000>;
+			interrupts = <GIC_SPI 434 IRQ_TYPE_LEVEL_HIGH 0>;
+			dma-ranges = <0x2 0x0 0x2 0x0 0x1 0x0>;
+			iommus =
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA0>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA1>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA2>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA3>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA4>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_RDMA5>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA0>,
+				<&iommu0 M4U_PORT_L11_IMG_MFB_WDMA1>;
+		};
+
+		msfdl@15810000 {
+			compatible = "mediatek,msfdl";
+			reg = <0 0x15810000 0 0x1000>;
+			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		imgsys2_config: imgsys2_config@15820000 {
+			compatible = "mediatek,imgsys2", "syscon";
+			reg = <0 0x15820000 0 0x1000>;
 		};
 
 		dip_a1@15022000 {
@@ -1797,8 +1804,7 @@
 					 <&ipesys_clk CLK_IPE_LARB20>;
 			clock-names = "aie",
 					 "FDVT_CLK_IPE_LARB20";
-			mboxes = <&gce 14 0 CMDQ_THR_PRIO_1>,
-					 <&gce_sec 11 0 CMDQ_THR_PRIO_1>;
+			mboxes = <&gce 14 0 CMDQ_THR_PRIO_1>;
 			iommus = <&iommu0 M4U_PORT_L20_IPE_FDVT_RDA>,
 					 <&iommu0 M4U_PORT_L20_IPE_FDVT_RDB>,
 					 <&iommu0 M4U_PORT_L20_IPE_FDVT_WRA>,
