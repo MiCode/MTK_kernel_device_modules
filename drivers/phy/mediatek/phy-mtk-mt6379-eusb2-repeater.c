@@ -16,6 +16,8 @@
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
+#include <linux/pm_wakeup.h>
+#include <linux/pm_wakeirq.h>
 
 #include "phy-mtk-io.h"
 
@@ -685,6 +687,7 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_DBG_CR0_1, RG_EUSB_LOGRST, 0);
 		} else {
 			regmap_update_bits(rptr->regmap, rptr->base + 0x92, 0x7, 0x7);
+			regmap_update_bits(rptr->regmap, rptr->base + 0x94, 0x2, 0x2);
 
 			/* off */
 			/* RG_USB_EN_SRC_SEL = 0x1 */
@@ -1397,6 +1400,17 @@ static void mtk_rptr_procfs_init_worker(struct work_struct *data)
 	rptr_procfs_init(rptr);
 }
 
+static irqreturn_t mt6379_eusb_evt_handler(int irq, void *data)
+{
+	struct eusb2_repeater *rptr = data;
+
+	/* 1. Mask all IRQ */
+	/* RG_USB20_HSTX_SRCTRL[1] 1'b0 */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_2, RG_USB20_HSTX_SRCTRL, 0);
+
+	return IRQ_HANDLED;
+}
+
 static int eusb2_repeater_probe(struct platform_device *pdev)
 {
 	struct eusb2_repeater *rptr;
@@ -1404,7 +1418,7 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 	struct phy_provider *phy_provider;
 	struct device_node *np = dev->of_node;
 	u32 res;
-	int ret;
+	int ret, irq;
 
 	rptr = devm_kzalloc(dev, sizeof(*rptr), GFP_KERNEL);
 	if (!rptr)
@@ -1432,6 +1446,27 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 	}
 
 	phy_set_drvdata(rptr->phy, rptr);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_info(dev, "%s, Failed to get eusb irq\n", __func__);
+		return irq;
+	}
+
+	ret = devm_request_threaded_irq(rptr->dev, irq, NULL, mt6379_eusb_evt_handler,
+					IRQF_ONESHOT, dev_name(rptr->dev), rptr);
+	if (ret) {
+		dev_info(dev, "%s, Failed to request irq\n", __func__);
+		return ret;
+	}
+
+	dev_pm_set_wake_irq(rptr->dev, irq);
+
+	ret = regmap_update_bits(rptr->regmap, 0x0E, BIT(1), 0);
+	if (ret) {
+		dev_info(dev, "%s, Failed to unmask eusb irq\n", __func__);
+		return ret;
+	}
 
 	/* create rptr workqueue */
 	rptr->wq = create_singlethread_workqueue("rptr_phy");

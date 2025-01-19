@@ -1596,20 +1596,16 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 		goto clks_err;
 
 	ssusb_set_power_state(ssusb, MTU3_STATE_RESUME);
-
-	if (ssusb->host_dev) {
-		dev_info(ssusb->dev, "%s device connected\n", __func__);
-		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
-		PHY_MODE_SUSPEND_DEV);
-	} else {
-		dev_info(ssusb->dev, "%s no device connected\n", __func__);
-		phy_set_mode_ext(ssusb->phys[0], PHY_MODE_USB_HOST,
-		PHY_MODE_SUSPEND_NO_DEV);
-	}
-
 	ret = ssusb_phy_power_on(ssusb);
 	if (ret)
 		goto phy_err;
+
+	if (!ssusb->host_dev) {
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3")) {
+			ssusb_host_disable(ssusb);
+			ssusb_host_enable(ssusb);
+		}
+	}
 
 	ret = resume_ip_and_ports(ssusb, msg);
 
