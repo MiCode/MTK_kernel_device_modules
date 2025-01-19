@@ -365,7 +365,7 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 			} else if (dev->venc_ports[core_id].ram_type[i] > 1) {
 				ret =  mtk_smi_sysram_set(pm->larbvencs[core_id],
 					MTK_M4U_ID(larb_id, i),
-					(dev->venc_ports[core_id].ram_type[i] & 0xf) << 16,
+					(unsigned int)(dev->venc_ports[core_id].ram_type[i] & 0xf) << 16,
 					"LARB_VENC");
 				if (ret) {
 					mtk_v4l2_err("%#x mtk_smi_sysram_set err: %#x\n",
@@ -743,22 +743,29 @@ static int mtk_venc_translation_fault_callback(
 	int port, dma_addr_t mva, void *data)
 {
 	struct mtk_vcodec_dev *dev = (struct mtk_vcodec_dev *)data;
-	int larb_id = port >> 5;
+	int larb_id = MTK_M4U_TO_LARB(port);
 	void __iomem *reg_base = NULL;
-	int hw_id = 0;
+	int hw_id = -1;
 	unsigned long flags;
+	unsigned int hw_idx, port_idx;
 
-	mtk_v4l2_err("larb port %d of m4u port %d", larb_id, port & 0x1F);
+	mtk_v4l2_err("larb port %d of m4u port %d", larb_id, MTK_M4U_TO_PORT(port));
 
-	if (larb_id == 7) {
-		reg_base = dev->enc_reg_base[VENC_SYS];
-		hw_id = MTK_VENC_CORE_0;
-	} else if (larb_id == 8) {
-		reg_base = dev->enc_reg_base[VENC_C1_SYS];
-		hw_id = MTK_VENC_CORE_1;
-	} else if ((larb_id == 37) || (larb_id == 24)) {
-		reg_base = dev->enc_reg_base[VENC_C2_SYS];
-		hw_id = MTK_VENC_CORE_2;
+	for (hw_idx = 0; hw_idx < MTK_VENC_MAX_HW_NUM; hw_idx++) {
+		for (port_idx = 0; port_idx < dev->venc_ports[hw_idx].total_port_num; port_idx++) {
+			if (port == dev->venc_ports[hw_idx].port_id[port_idx]) {
+				hw_id = hw_idx;
+				break;
+			}
+		}
+		if (hw_id >= 0)
+			break;
+	}
+	if (hw_id < 0) { // hw_id not found from port table
+		if (larb_id == 7)
+			hw_id = MTK_VENC_CORE_0;
+		else if (larb_id == 8)
+			hw_id = MTK_VENC_CORE_1;
 	}
 
 	if (dev->tf_info != NULL) {
@@ -768,8 +775,11 @@ static int mtk_venc_translation_fault_callback(
 		dev->tf_info->has_tf = 1;
 		mtk_v4l2_err("TF set tf_info 0x%lx hw_id %d port %d mva 0x%llx",
 			(unsigned long)dev->tf_info, dev->tf_info->hw_id,
-			dev->tf_info->port & 0x1F, dev->tf_info->tf_mva);
+			MTK_M4U_TO_PORT(dev->tf_info->port), dev->tf_info->tf_mva);
 	}
+
+	if (dev->power_in_vcp)
+		return 0;
 
 	spin_lock_irqsave(&dev->enc_power_lock[hw_id], flags);
 	if (dev->enc_is_power_on[hw_id] == false) {
@@ -777,6 +787,13 @@ static int mtk_venc_translation_fault_callback(
 		spin_unlock_irqrestore(&dev->enc_power_lock[hw_id], flags);
 		return -1;
 	}
+
+	if (hw_id == MTK_VENC_CORE_0)
+		reg_base = dev->enc_reg_base[VENC_SYS];
+	else if (hw_id == MTK_VENC_CORE_1)
+		reg_base = dev->enc_reg_base[VENC_C1_SYS];
+	else if (hw_id == MTK_VENC_CORE_2)
+		reg_base = dev->enc_reg_base[VENC_C2_SYS];
 
 	if (reg_base != NULL) {
 		mtk_v4l2_err("venc tf callback =>");
@@ -817,11 +834,11 @@ static int mtk_venc_translation_fault_callback(
 			readl(reg_base + 0x13c), readl(reg_base + 0x484), readl(reg_base + 0x568));
 
 		//soc base address as VENC_SYS
-		if (larb_id == 7) {
+		if (hw_id == MTK_VENC_CORE_0) {
 			mtk_v4l2_err("0x4064: 0x%x, 0x406c : 0x%x, 0x4074: 0x%x, 0x52c0: 0x%x",
 				readl(reg_base + 0x4064), readl(reg_base + 0x406c),
 				readl(reg_base + 0x4074), readl(reg_base + 0x52c0));
-		} else if (larb_id == 8 || larb_id == 37) {
+		} else { // core 1 or core 2
 			reg_base = dev->enc_reg_base[VENC_SYS];
 			spin_lock_irqsave(&dev->enc_power_lock[MTK_VENC_CORE_0], flags);
 			if (dev->enc_is_power_on[MTK_VENC_CORE_0] == false) {
@@ -867,7 +884,7 @@ void mtk_venc_translation_fault_callback_setting(
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 	int core_id, i;
 
-	for (core_id = 0; core_id < MTK_VENC_HW_NUM; core_id++) {
+	for (core_id = 0; core_id < MTK_VENC_MAX_HW_NUM; core_id++) {
 		for (i = 0; i < dev->venc_ports[core_id].total_port_num; i++) {
 			mtk_iommu_register_fault_callback(dev->venc_ports[core_id].port_id[i],
 				mtk_venc_translation_fault_callback, (void *)dev, false);

@@ -61,9 +61,9 @@
 
 #define MAX_CODEC_FREQ_STEP	10
 #define MTK_VDEC_PORT_NUM	64
-#define MTK_VENC_PORT_NUM	128
-#define MTK_VDEC_LARB_NUM	20
-#define MTK_VENC_LARB_NUM	40
+#define MTK_VENC_PORT_NUM	64
+#define MTK_VDEC_LARB_NUM	20 // for qos
+#define MTK_VENC_LARB_NUM	40 // for qos
 #define MTK_MAX_METADATA_NUM	8
 
 #define MAX_GEN_BUF_CNT		64
@@ -844,8 +844,8 @@ struct mtk_vcodec_ctx {
  */
 struct venc_larb_port {
 	unsigned int total_port_num;
-	unsigned int port_id[MTK_VENC_PORT_NUM];
-	unsigned int ram_type[MTK_VENC_PORT_NUM];
+	int port_id[MTK_VENC_PORT_NUM];
+	unsigned char ram_type[MTK_VENC_PORT_NUM];
 };
 
 struct vdec_vp_mode_buf {
@@ -982,8 +982,8 @@ struct mtk_vcodec_dev {
 
 	struct plist_head vdec_rlist[MTK_VDEC_HW_NUM];
 	struct plist_head venc_rlist[MTK_VENC_HW_NUM];
-	struct icc_path *vdec_qos_req[MTK_VDEC_PORT_NUM];
-	struct icc_path *venc_qos_req[MTK_VENC_PORT_NUM];
+	struct icc_path *vdec_qos_req[MTK_VDEC_LARB_NUM];
+	struct icc_path *venc_qos_req[MTK_VENC_LARB_NUM];
 
 	int vdec_freq_cnt;
 	int venc_freq_cnt;
@@ -992,7 +992,7 @@ struct mtk_vcodec_dev {
 
 	struct regulator *vdec_reg;
 	struct regulator *venc_reg;
-	struct venc_larb_port venc_ports[MTK_VENC_HW_NUM];
+	struct venc_larb_port venc_ports[MTK_VENC_MAX_HW_NUM];
 	struct workqueue_struct *vdec_buf_wq;
 	struct work_struct vdec_buf_work;
 

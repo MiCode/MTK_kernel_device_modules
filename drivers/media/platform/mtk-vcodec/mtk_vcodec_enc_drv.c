@@ -413,7 +413,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	struct video_device *vfd_enc;
 	struct resource *res;
 	int i = 0, reg_index = 0, ret, slb_cpu_used_pref, slb_extra, slb_extra_res_thresh;
-	int port_num[MTK_VENC_HW_NUM] = {0};
+	int port_num[MTK_VENC_MAX_HW_NUM] = {0};
 	const char *name = NULL;
 	int port_args_num = 0, port_data_len = 0, total_port_num = 0;
 	unsigned int offset = 0;
@@ -542,6 +542,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_res;
 
+	/* get venc_ports table */
 	ret = of_property_read_u32(pdev->dev.of_node, "port-arg-num", &port_args_num);
 	if (ret != 0)
 		dev_info(&pdev->dev, "Failed to get port_arg_num!");
@@ -571,17 +572,18 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 			goto err_res;
 		}
 
-		if (core_id < MTK_VENC_HW_NUM) {
-			dev->venc_ports[core_id].port_id[port_num[core_id]] = port_id;
-			dev->venc_ports[core_id].ram_type[port_num[core_id]] = ram_type;
+		if (core_id < MTK_VENC_MAX_HW_NUM) {
+			dev->venc_ports[core_id].port_id[port_num[core_id]] = (int)port_id;
+			dev->venc_ports[core_id].ram_type[port_num[core_id]] = (unsigned char)ram_type;
 			port_num[core_id]++;
 		}
 	}
-	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
+	for (i = 0; i < MTK_VENC_MAX_HW_NUM; i++) {
 		dev->venc_ports[i].total_port_num = port_num[i];
 		pr_info("after get port-def  port num [%d] %d\n", i, port_num[i]);
 	}
 
+	/* get slb params */
 	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-cpu-used-perf", &slb_cpu_used_pref);
 	if (ret != 0)
 		dev_info(&pdev->dev, "Failed to get venc-slb-cpu-used-perf!");
