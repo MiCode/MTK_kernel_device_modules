@@ -227,7 +227,7 @@ static void ppb_allocate_budget_manager(void)
 	trace_peak_power_budget(&ppb);
 }
 
-static int get_xpu_debug_info(struct xpu_dbg_t *data)
+static int __used get_xpu_debug_info(struct xpu_dbg_t *data)
 {
 	unsigned int val;
 
@@ -253,7 +253,7 @@ static int get_xpu_debug_info(struct xpu_dbg_t *data)
 	return 0;
 }
 
-static void ppb_print_dbg_log(struct timer_list *timer)
+static void __used ppb_print_dbg_log(struct timer_list *timer)
 {
 	unsigned long duration, time;
 	struct xpu_dbg_t dbg_data;
@@ -384,7 +384,7 @@ static int __used notify_gpueb(void)
 }
 #endif
 
-static bool ppb_func_enable_check(void)
+static bool __used ppb_func_enable_check(void)
 {
 	if (!ppb_ctrl.ppb_drv_done)
 		return false;
@@ -779,8 +779,9 @@ static void bat_handler(struct work_struct *work)
 	struct power_supply *psy = pb.psy, *psy_mtk;
 	union power_supply_propval val;
 	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
-	unsigned int temp_stage;
-	int ret = 0, soc, temp, volt, qmax;
+	static unsigned int last_aging_stage;
+	unsigned int temp_stage, aging_stage = 0;
+	int ret = 0, soc, temp, volt, qmax, cycle, bat_rdc, i;
 	bool loop;
 
 	if (!pb.psy)
@@ -819,6 +820,13 @@ static void bat_handler(struct work_struct *work)
 	temp = val.intval / 10;
 	temp_stage = pb.temp_cur_stage;
 
+	cycle = 0;
+	if (pb.aging_max_stage > 0) {
+		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CYCLE_COUNT, &val);
+		if (!ret)
+			cycle = val.intval;
+	}
+
 	if (temp != last_temp) {
 		do {
 			loop = false;
@@ -840,7 +848,15 @@ static void bat_handler(struct work_struct *work)
 		update_ocv_table(temp, qmax);
 	}
 
-	if (temp != last_temp || soc != last_soc) {
+	if (pb.version >= 2) {
+		for (i = 0; i < pb.aging_max_stage; i++) {
+			if (cycle < pb.aging_thd[i])
+				break;
+		}
+		aging_stage = i;
+	}
+
+	if (temp != last_temp || soc != last_soc || aging_stage != last_aging_stage) {
 		if (timer_pending(&ppb_dbg_timer)) {
 			del_timer_sync(&ppb_dbg_timer);
 			ppb_print_dbg_log(NULL);
@@ -848,8 +864,17 @@ static void bat_handler(struct work_struct *work)
 
 		volt = soc_to_ocv(soc * 100, 0, pb.soc_err);
 		pb.ocv = volt / 10;
-		if (pb.version >= 2)
-			pb.cur_rdc = soc_to_rdc(soc * 100, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
+
+		if (pb.version >= 2) {
+			bat_rdc = soc_to_rdc(soc * 100, 0) / 10;
+
+			if (aging_stage > 0 && aging_stage <= pb.aging_max_stage)
+				pb.aging_rdc = bat_rdc * pb.aging_multi[aging_stage-1] / 1000;
+			else
+				pb.aging_rdc = 0;
+
+			pb.cur_rdc = bat_rdc + pb.circuit_rdc + pb.aging_rdc;
+		}
 		pb.sys_power = get_sys_power_budget(pb.ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
 
 		volt = soc_to_ocv(soc * 100, 0, 0);
@@ -860,20 +885,22 @@ static void bat_handler(struct work_struct *work)
 		pb.sys_power_noerr = get_sys_power_budget(pb.ocv_noerr, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
 		pb.soc = soc;
 		pb.temp = temp;
+		pb.aging_cur_stage = aging_stage;
 		kicker_ppb_request_power(KR_BUDGET, pb.sys_power);
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 		notify_gpueb();
 #endif
-		pr_info("%s: update vsys-er[p,v]=%d,%d vsys[p,v]=%d,%d soc=%d R[C,A,dc,ac]=%d,%d,%d,%d T[t,s]=%d,%d\n",
+		pr_info("%s: update vsys-er[p,v]=%d,%d vsys[p,v]=%d,%d soc=%d R[C,A,dc,ac]=%d,%d,%d,%d T[t,s]=%d,%d A[c,s]=%d,%d\n",
 			__func__, pb.sys_power, pb.ocv, pb.sys_power_noerr,
 			pb.ocv_noerr, soc, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
-			pb.cur_rac, temp, pb.temp_cur_stage);
+			pb.cur_rac, temp, pb.temp_cur_stage, cycle, pb.aging_cur_stage);
 
 		if (pb.sys_power_noerr <= MBRAIN_NOTIFY_BUDGET_THD && soc != last_soc && cb_func)
 			cb_func();
 
 		last_temp = temp;
 		last_soc = soc;
+		last_aging_stage = aging_stage;
 	}
 }
 
@@ -1104,9 +1131,11 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 	if (read_dts_val(np, "soc-error", &pb.soc_err, 1))
 		pb.soc_err = SOC_ERROR;
 
-	read_dts_val(np, "max-temperature-stage", &num, 1);
-	if (num > 4 || num < 0)
+	num = of_property_count_u32_elems(np, "temperature-threshold");
+	if (num > 6 || num < 0) {
+		pr_info("wrong temp_max_stage number %d, set to 0\n", num);
 		num = 0;
+	}
 
 	if (num > 0)
 		of_property_read_u32_array(np, "temperature-threshold", &pb.temp_thd[0], num);
@@ -1139,25 +1168,58 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 			pb.rac[i] = BAT_PATH_DEFAULT_RAC;
 	}
 
+	ret = snprintf(str, STR_SIZE, "bat%d-aging-threshold", fg_data.bat_type);
+	if (ret < 0)
+		pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+
+	num = of_property_count_u32_elems(np, str);
+	if (num > 10 || num < 0) {
+		pr_info("wrong aging_max_stage number %d, set to 0\n", num);
+		num = 0;
+	}
+
+	pb.aging_max_stage = num;
+
+	if (num > 0)
+		of_property_read_u32_array(np, str, &pb.aging_thd[0], num);
+
+	ret = snprintf(str, STR_SIZE, "bat%d-aging-multiples", fg_data.bat_type);
+	if (ret < 0)
+		pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+
+	if (num > 0)
+		of_property_read_u32_array(np, str, &pb.aging_multi[0], num);
+
 	read_dts_val(np, "system-ocp", &pb.ocp, 1);
 	read_dts_val(np, "system-uvlo", &pb.uvlo, 1);
 
-	ret = snprintf(str, STR_SIZE, "ocp=%d uvlo=%d temp_max_stage=%d",
-		pb.ocp, pb.uvlo, pb.temp_max_stage);
+	ret = snprintf(str, STR_SIZE, "ocp=%d uvlo=%d temp_max_s=%d aging_max_s=%d ",
+		pb.ocp, pb.uvlo, pb.temp_max_stage,  pb.aging_max_stage);
 	if (ret < 0)
 		pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 	else
 		offset += ret;
 
 	for (i = 0; i <= pb.temp_max_stage; i++) {
-		ret = snprintf(str + offset, STR_SIZE - offset, "[%d](rdc, rac)=(%d, %d)",
+		ret = snprintf(str + offset, STR_SIZE - offset, "[%d](Rdc,Rac)=(%d,%d) ",
 			i, pb.rdc[i], pb.rac[i]);
 		if (ret < 0) {
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 			break;
-		} else
-			offset += ret;
+		}
+		offset += ret;
 	}
+
+	for (i = 0; i < pb.aging_max_stage; i++) {
+		ret = snprintf(str + offset, STR_SIZE - offset, "[%d]AG(t,m)=(%u,%u) ",
+			i, pb.aging_thd[i], pb.aging_multi[i]);
+		if (ret < 0) {
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+			break;
+		}
+		offset += ret;
+	}
+
 	pr_info("%s\n", str);
 
 	ret = read_dts_val(np, "bat-ocv-table-num", &fg_data.fg_info_size, 1);

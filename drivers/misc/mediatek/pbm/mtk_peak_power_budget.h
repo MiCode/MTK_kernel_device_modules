@@ -87,11 +87,15 @@ struct power_budget_t {
 	unsigned int soc_err;
 	unsigned int temp_cur_stage;
 	unsigned int temp_max_stage;
-	int temp_thd[4];
+	int temp_thd[6];
+	unsigned int aging_cur_stage;
+	unsigned int aging_max_stage;
 	unsigned int circuit_rdc;
+	unsigned int rdc[7];
+	unsigned int rac[7];
+	unsigned int aging_thd[10];
+	unsigned int aging_multi[10];
 	unsigned int aging_rdc;
-	unsigned int rdc[5];
-	unsigned int rac[5];
 	unsigned int uvlo;
 	unsigned int ocp;
 	unsigned int cur_rdc;
