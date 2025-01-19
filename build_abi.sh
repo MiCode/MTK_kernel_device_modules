@@ -11,14 +11,20 @@ result=$(echo ${KLEAF_SUPPORTED_PROJECTS} | grep -wo ${PROJECT}) || result=""
 if [[ ${result} != "" ]]
 then # run kleaf commands
 
+build_scope=internal
+if [ ! -d "vendor/mediatek/tests/kernel" ]
+then
+  build_scope=customer
+fi
+
 KLEAF_OUT=("--output_user_root=${OUT_DIR} --output_base=${OUT_DIR}/bazel/output_user_root/output_base")
-KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} --experimental_writable_outputs")
+KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} --experimental_writable_outputs --noenable_bzlmod")
 
 set -x
 (
   tools/bazel ${KLEAF_OUT} run ${KLEAF_ARGS} \
 	--//build/bazel_mgk_rules:kernel_version=${KERNEL_VERSION_NUM} \
-	//${DEVICE_MODULES_DIR}:${PROJECT}.user_abi_update_symbol_list
+	//${DEVICE_MODULES_DIR}:${PROJECT}.user_${build_scope}_abi_update_symbol_list
   tools/bazel ${KLEAF_OUT} run ${KLEAF_ARGS} //${KERNEL_VERSION}:kernel_aarch64_abi_update
 )
 
