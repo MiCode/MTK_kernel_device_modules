@@ -85,6 +85,7 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 	#define INIEN_ROI_TIMING_0 REG_FLD_MSB_LSB(15, 15)
 #define DISP_REG_OVL_INTSTA			(0x0008)
 #define DISP_REG_OVL_EN_CON			(0x000CUL)
+	#define OP_8_BIT_MODE			BIT(4)
 	#define EN_FLD_BLOCK_EXT_ULTRA			REG_FLD_MSB_LSB(18, 18)
 	#define EN_FLD_BLOCK_EXT_PREULTRA		REG_FLD_MSB_LSB(19, 19)
 #define DISP_REG_OVL_EN				(0x0020UL)
@@ -2456,6 +2457,13 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		con |= REG_FLD_VAL(L_CON_FLD_MTX_EN, 1);
 		/* if format is DRM_FORMAT_Y410, enable Y2R inside OVL */
 	}
+
+	if (fmt == DRM_FORMAT_Y410)
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN_CON,
+			OP_8_BIT_MODE, OP_8_BIT_MODE);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_EN_CON,
+			0x0, OP_8_BIT_MODE);
 
 	if (ext_lye_idx != LYE_NORMAL) {
 		unsigned int id = ext_lye_idx - 1;
