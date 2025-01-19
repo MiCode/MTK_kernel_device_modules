@@ -23,6 +23,7 @@
  *		Support up to 64 GIDs and share with non-discardable list.
  * @out.gid_list_non_disc: available non-discardable GID list for user
  *    with bit-mask expression. Mutally exclusive with gid_list_discardable.
+ * @out.sw_ver: Indicate sw version by kernel driver
  */
 
 struct pdma_hw_lock {
@@ -40,6 +41,7 @@ struct pdma_hw_lock {
 		unsigned int hw_sem_offset;
 		unsigned long long gid_list_discardable;
 		unsigned long long gid_list_non_disc;
+		unsigned int sw_ver;
 	} out;
 };
 

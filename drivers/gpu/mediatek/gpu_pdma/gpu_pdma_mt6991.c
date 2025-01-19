@@ -51,6 +51,7 @@ static unsigned long long g_gid_list_non_disc;
 static void __iomem *g_pdma_reg_base_kva;
 static void __iomem *g_pdma_hw_sem_base_kva;
 static struct pdma_sram *g_pdma_sram_base_kva;
+static unsigned int g_sw_ver;
 
 /* Define */
 #define CCMD_STATUS_CH0						0x20
@@ -66,7 +67,42 @@ static struct pdma_sram *g_pdma_sram_base_kva;
 #define CCMD_CONFIG_MODE_GPUEB		0
 #define CCMD_PAGE_SIZE_4K					0x1000
 #define POLICY_TEX_CACHE_LSC_ALLOC	0x4
+#define CCMD_POWER_ON							1
+#define CCMD_POWER_OFF						0
 
+
+struct tag_chipid {
+	uint32_t size;
+	uint32_t hw_code;
+	uint32_t hw_subcode;
+	uint32_t hw_ver;
+	uint32_t sw_ver;
+};
+
+static int pdma_get_chipid(void)
+{
+	struct tag_chipid *chip_id;
+	struct device_node *node = of_find_node_by_path("/chosen");
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (!node) {
+		pr_notice("chosen node not found in device tree\n");
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", NULL);
+	if (!chip_id) {
+		pr_notice("could not found atag,chipid in chosen\n");
+		return -ENODEV;
+	}
+
+	g_sw_ver = chip_id->sw_ver;
+
+	return 0;
+}
 
 /* Must be called with hw lock held */
 static void request_gid_list(void)
@@ -80,8 +116,81 @@ static void release_gid_list(void)
 		g_gid_list_discardable = 0;
 		g_gid_list_non_disc = 0;
 }
+
+static int ccmd_power_control(int power)
+{
+	int ret = 0;
+
+	if (power == CCMD_POWER_ON) {
+		/* On mfg0 and gpueb */
+		ret = gpueb_ctrl(GHPM_ON, MFG1_OFF, SUSPEND_POWER_ON);
+		if (ret) {
+			pr_err("[CCMD] gpueb on fail, return value=%d\n", ret);
+			return ret;
+		}
+		/* on,off/ SWCG(BG3D)/ MTCMOS/ BUCK */
+		if (gpufreq_power_control(GPU_PWR_ON) < 0) {
+			pr_err("[CCMD] Power On Failed\n");
+			return 1;
+		}
+
+		/* Control runtime active-sleep state of GPU */
+		if (gpufreq_active_sleep_control(GPU_PWR_ON) < 0) {
+			pr_err("[CCMD] Active Failed (on)\n");
+			return 1;
+		}
+	} else if (power == CCMD_POWER_OFF) {
+		/* Control runtime active-sleep state of GPU */
+		if (gpufreq_active_sleep_control(GPU_PWR_OFF) < 0) {
+			pr_err("[CCMD] Sleep Failed (off)\n");
+			return 1;
+		}
+
+		/* on,off/ SWCG(BG3D)/ MTCMOS/ BUCK */
+		if (gpufreq_power_control(GPU_PWR_OFF) < 0){
+			pr_err( "[CCMD] Power Off Failed\n");
+			return 1;
+		}
+
+		/* Off mfg0 and gpueb */
+		ret = gpueb_ctrl(GHPM_OFF, MFG1_OFF, SUSPEND_POWER_OFF);
+		if (ret) {
+			pr_err("[CCMD] gpueb off fail, return value=%d\n", ret);
+			return ret;
+		}
+	} else {
+		pr_err("%s Unexpected power state %d\n", __func__, power);
+		ret = 2;
+	}
+	return ret;
+}
+
+/* Must be called with power on */
+static void ccmd_reset_hw(void)
+{
+	int *ringbuf_pa0_setting_l;
+	unsigned int pdma_status;
+
+	if (g_sw_ver == 0)
+		return;
+
+	ringbuf_pa0_setting_l = g_pdma_reg_base_kva + CCMD_RING_BUFFER_PA_0_L;
+
+	/* Disable and poll Ch0*/
+	writel((readl(ringbuf_pa0_setting_l) & 0xFFFFFFFE), ringbuf_pa0_setting_l);
+	pdma_status = readl((g_pdma_reg_base_kva + CCMD_STATUS_CH0));
+	if (!pdma_status)
+		pr_info("[CCMD] autoDMA ch0 not completed\n");
+
+	/* reset HW */
+	writel(0x3, (g_pdma_reg_base_kva + CCMD_RING_BUFFER_CONTROL));
+
+	/* Enable ch0*/
+	writel((readl(ringbuf_pa0_setting_l) | 0x1), ringbuf_pa0_setting_l);
+}
+
 /* Must be called with hw lock held */
-static int setup_ccmd_ring_buffer_pa(void)
+static int init_ccmd_hw(void)
 {
 	unsigned long ringbuf_pa;
 	int *ringbuf_pa_setting_l, *ringbuf_pa_setting_h;
@@ -94,23 +203,8 @@ static int setup_ccmd_ring_buffer_pa(void)
 	ringbuf_pa = virt_to_phys((void *)g_ringbuf_addr);
 	pr_debug("PDMA Ring buffer addr PA0 0x%lx\n", ringbuf_pa);
 
-	/* On mfg0 and gpueb */
-	ret = gpueb_ctrl(GHPM_ON, MFG1_OFF, SUSPEND_POWER_ON);
-	if (ret) {
-		pr_err("gpueb on fail, return value=%d\n", ret);
-		return ret;
-	}
-	/* on,off/ SWCG(BG3D)/ MTCMOS/ BUCK */
-	if (gpufreq_power_control(GPU_PWR_ON) < 0) {
-		pr_err("Power On Failed\n");
+	if (ccmd_power_control(CCMD_POWER_ON))
 		return 1;
-	}
-
-	/* Control runtime active-sleep state of GPU */
-	if (gpufreq_active_sleep_control(GPU_PWR_ON) < 0) {
-		pr_err("Active Failed (on)\n");
-		return 1;
-	}
 
 	for (page_num = 0; page_num < (1 << g_page_order); page_num++) {
 		ringbuf_pa_setting_l =
@@ -132,26 +226,11 @@ static int setup_ccmd_ring_buffer_pa(void)
 			ringbuf_pa += CCMD_PAGE_SIZE_4K;
 	}
 	/* reset HW */
-	writel(0x3, (g_pdma_reg_base_kva + CCMD_RING_BUFFER_CONTROL));
+	//writel(0x3, (g_pdma_reg_base_kva + CCMD_RING_BUFFER_CONTROL));
+	ccmd_reset_hw();
 
-	/* Control runtime active-sleep state of GPU */
-	if (gpufreq_active_sleep_control(GPU_PWR_OFF) < 0) {
-		pr_err("Sleep Failed (off)\n");
-		return 1;
-	}
-
-	/* on,off/ SWCG(BG3D)/ MTCMOS/ BUCK */
-	if (gpufreq_power_control(GPU_PWR_OFF) < 0){
-		pr_err( "Power Off Failed\n");
-		return 1;
-	}
-
-	/* Off mfg0 and gpueb */
-	ret = gpueb_ctrl(GHPM_OFF, MFG1_OFF, SUSPEND_POWER_OFF);
-	if (ret) {
-		pr_err("gpueb off fail, return value=%d\n", ret);
-		return ret;
-	}
+	if (ccmd_power_control(CCMD_POWER_OFF))
+		return 2;
 
 	return ret;
 }
@@ -235,7 +314,7 @@ static long gpu_pdma_unlocked_ioctl(struct file *file, unsigned int cmd,
 		mutex_lock(&gHwLockMutex);
 		if (g_pdma_hw_lock == 0) {
 			/* Config HW */
-			if (setup_ccmd_ring_buffer_pa()) {
+			if (init_ccmd_hw()) {
 				pr_err("Config ring buffer PA fail. pid/tid: %d/%d (%d)\n",
 					current->tgid, current->pid, hw_lock.in.kctx_id);
 				return -EFAULT;
@@ -253,8 +332,9 @@ static long gpu_pdma_unlocked_ioctl(struct file *file, unsigned int cmd,
 			request_gid_list();
 			hw_lock.out.gid_list_discardable = g_gid_list_discardable;
 			hw_lock.out.gid_list_non_disc = g_gid_list_non_disc;
-			pr_info("LockHW success by pid/tid: %d/%d, (%d)\n",
-				current->pid, current->tgid, hw_lock.in.kctx_id);
+			hw_lock.out.sw_ver = g_sw_ver;
+			pr_info("LockHW success by pid/tid: %d/%d, (%d)(%u)\n",
+				current->tgid, current->pid, hw_lock.in.kctx_id, g_sw_ver);
 
 			if (hw_lock.in.mode == 1){
 				g_dynamic_mode = ged_gpu_slc_get_dynamic_mode();
@@ -569,6 +649,10 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	if (ret)
 		pr_err("@%s: __create_files failed\n", __func__);
 
+	ret =	pdma_get_chipid();
+	if (ret)
+		pr_err("@%s: __get sw version fail\n", __func__);
+
 	return ret;
 }
 
@@ -618,7 +702,7 @@ void pdma_lock_reclaim(u32 kctx_id)
 {
 	mutex_lock(&gHwLockMutex);
 	if (g_pdma_hw_lock == 0) {
-		pr_info("[PDMA] HW is not locked.\n");
+		pr_debug("[PDMA] HW is not locked.\n");
 		mutex_unlock(&gHwLockMutex);
 		return;
 	}
@@ -627,7 +711,6 @@ void pdma_lock_reclaim(u32 kctx_id)
 		/* release lock and reset HW */
 		g_pdma_hw_lock = 0;
 		g_pdma_lock_kctx_id = 0xFFFFFFFF;
-		/* TODO reset HW */
 		/* return gid */
 		pr_info("%s reclaim done and kctx %u release lock\n", __func__, kctx_id);
 	}
