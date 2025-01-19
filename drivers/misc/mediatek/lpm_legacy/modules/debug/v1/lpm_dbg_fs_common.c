@@ -28,7 +28,6 @@
 #include <gs/v1/lpm_power_gs.h>
 #endif
 
-
 #undef lpm_dbg_log
 #define lpm_dbg_log(fmt, args...) \
 	do { \

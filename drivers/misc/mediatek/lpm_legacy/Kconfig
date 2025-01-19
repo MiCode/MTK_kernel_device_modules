@@ -60,3 +60,14 @@ config MTK_LPM_MT6853
 	  for power management.
 	  Set Y to select this feature for specific platform-mt6853.
 	  If unsure, set N to disable.
+
+config MTK_LPM_MT6833
+	tristate "Specify Mediatek LPM Platform is mt6833"
+	depends on MTK_LOW_POWER_MODULE
+	select MTK_LPM_DBG_COMMON
+	help
+	  This configuration option enables support for the MediaTek Low Power Module (LPM)
+	  specifically for the mt6833 platform. The LPM is responsible for managing power
+	  consumption and optimizing power usage across various components of the system.
+	  Select 'Y' to include this support in the kernel, or 'M'
+	  to build it as a loadable module.
