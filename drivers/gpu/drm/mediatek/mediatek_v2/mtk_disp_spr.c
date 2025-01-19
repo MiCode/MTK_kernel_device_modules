@@ -2398,6 +2398,14 @@ static const struct mtk_disp_spr_data mt6991_spr_driver_data = {
 	.mtk_spr_ip_addr_offset = 0x10000,
 };
 
+static const struct mtk_disp_spr_data mt6993_spr_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.version = MTK_SPR_V3,
+	.shrink_cfg = true,
+	.mtk_spr_ip_addr_offset = 0x10000,
+};
+
 static const struct of_device_id mtk_disp_spr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6853-disp-spr",
 	  .data = &mt6853_spr_driver_data},
@@ -2417,6 +2425,8 @@ static const struct of_device_id mtk_disp_spr_driver_dt_match[] = {
 	  .data = &mt6879_spr_driver_data},
 	{ .compatible = "mediatek,mt6991-disp-spr",
 	  .data = &mt6991_spr_driver_data},
+	{ .compatible = "mediatek,mt6993-disp-spr",
+	  .data = &mt6993_spr_driver_data},
 	{},
 };
 

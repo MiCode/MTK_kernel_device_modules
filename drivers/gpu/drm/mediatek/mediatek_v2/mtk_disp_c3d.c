@@ -44,6 +44,9 @@
 #define C3D_SRAM_PINGPONG                  (0x08C)
 #define C3D_R2Y_09                         (0x0C0)
 #define C3D_Y2R_09                         (0x0E8)
+#define C3D_SRAM_RW_IF_4                   (0x15C)
+#define C3D_SRAM_RW_IF_5                   (0x160)
+#define C3D_SRAM_CFG2			   (0x164)
 /* ----------------------------------------------- */
 
 #define C3D_RELAY_MODE BIT(0)
@@ -1278,6 +1281,14 @@ static const struct mtk_disp_c3d_data mt6991_c3d_driver_data = {
 	.def_sram_end_addr = 19648,
 };
 
+static const struct mtk_disp_c3d_data mt6993_c3d_driver_data = {
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.def_bin_num = 17,
+	.def_sram_start_addr = 0,
+	.def_sram_end_addr = 19648,
+};
+
 static const struct of_device_id mtk_disp_c3d_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6983-disp-c3d",
 	  .data = &mt6983_c3d_driver_data},
@@ -1297,6 +1308,8 @@ static const struct of_device_id mtk_disp_c3d_driver_dt_match[] = {
 	  .data = &mt6878_c3d_driver_data},
 	{ .compatible = "mediatek,mt6991-disp-c3d",
 	  .data = &mt6991_c3d_driver_data},
+	{ .compatible = "mediatek,mt6993-disp-c3d",
+	  .data = &mt6993_c3d_driver_data},
 	{},
 };
 

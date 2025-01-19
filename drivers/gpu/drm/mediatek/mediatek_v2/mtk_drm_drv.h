@@ -36,6 +36,8 @@
 #endif
 #define MTK_DRM_ASYNC_HANDLE
 
+#define PQ_PATH_11
+
 struct device;
 struct device_node;
 struct drm_crtc;
@@ -551,6 +553,7 @@ extern struct platform_driver mtk_disp_inlinerotate_driver;
 extern struct platform_driver mtk_mmlsys_bypass_driver;
 extern struct platform_driver mtk_disp_postalign_driver;
 extern struct platform_driver mtk_disp_bwm_driver;
+extern struct platform_driver mtk_disp_relay_driver;
 extern struct mtk_drm_disp_sec_cb disp_sec_cb;
 extern struct mtk_aod_scp_cb aod_scp_ipi;
 extern struct mtk_vdisp_funcs vdisp_func;

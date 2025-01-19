@@ -1647,6 +1647,12 @@ static const struct mtk_disp_mdp_rsz_data mt6991_mdp_rsz_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_mdp_rsz_data mt6993_mdp_rsz_driver_data = {
+	.tile_length = 1660, .in_max_height = 4096,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct of_device_id mtk_disp_mdp_rsz_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6985-disp-mdp-rsz",
 	 .data = &mt6985_mdp_rsz_driver_data},
@@ -1657,7 +1663,7 @@ static const struct of_device_id mtk_disp_mdp_rsz_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-disp-mdp-rsz",
 	 .data = &mt6991_mdp_rsz_driver_data},
 	{.compatible = "mediatek,mt6993-disp-mdp-rsz",
-	 .data = &mt6991_mdp_rsz_driver_data},
+	 .data = &mt6993_mdp_rsz_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_mdp_rsz_driver_dt_match);

@@ -126,8 +126,9 @@ void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle
 	case MMSYS_MT6989:
 	case MMSYS_MT6991:
 	case MMSYS_MT6897:
+	case MMSYS_MT6993:
 		addr = DISP_REG_PQ_PATH_SEL;
-		value = pq_path_sel > 0 ? pq_path_sel : 1;
+		value = pq_path_sel >= 0 ? pq_path_sel : 1;
 		value = value | value << 8;
 		break;
 	default:

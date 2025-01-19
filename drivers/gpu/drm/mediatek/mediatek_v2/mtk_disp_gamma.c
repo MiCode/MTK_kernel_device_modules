@@ -38,6 +38,9 @@
 #endif
 
 #define DISP_GAMMA_EN		0x0000
+#define DISP_GAMMA_INTEN	0x0008
+#define DISP_GAMMA_INTSTA	0x000C
+#define DISP_GAMMA_STATUS	0x0010
 #define DISP_GAMMA_SHADOW_SRAM	0x0014
 #define DISP_GAMMA_CFG		0x0020
 #define DISP_GAMMA_SIZE		0x0030
@@ -1248,6 +1251,11 @@ struct mtk_disp_gamma_data mt6991_driver_data = {
 	.gamma_gain_range = 16384,
 };
 
+struct mtk_disp_gamma_data mt6993_driver_data = {
+	.support_gamma_gain = true,
+	.gamma_gain_range = 16384,
+};
+
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6761-disp-gamma",
 	  .data = &legacy_driver_data,},
@@ -1287,6 +1295,8 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	  .data = &mt6878_driver_data,},
 	{ .compatible = "mediatek,mt6991-disp-gamma",
 	  .data = &mt6991_driver_data,},
+	{ .compatible = "mediatek,mt6993-disp-gamma",
+	  .data = &mt6993_driver_data,},
 	{},
 };
 

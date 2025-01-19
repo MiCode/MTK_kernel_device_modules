@@ -56,6 +56,7 @@ mediatek-drm-y := mtk_drm_drv.o \
 		  mtk_disp_y2r0.o \
 		  mtk_disp_dlo_async.o \
 		  mtk_disp_dli_async.o \
+		  mtk_disp_relay.o\
 		  mtk_disp_inlinerotate.o \
 		  mtk_mmlsys_bypass_mode.o \
 		  mtk_lease.o \

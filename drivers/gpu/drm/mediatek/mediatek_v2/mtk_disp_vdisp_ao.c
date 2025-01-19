@@ -110,6 +110,10 @@
 #define DISP_REG_VDISP_AO_INT_SEL_G4_MT6993	0x024
 #define DISP_REG_VDISP_AO_INT_SEL_G5_MT6993	0x028
 #define DISP_REG_VDISP_AO_INT_SEL_G6_MT6993	0x02C
+#define DISP_REG_VDISP_AO_INT_SEL_G7_MT6993	0x030
+#define DISP_REG_VDISP_AO_INT_SEL_G8_MT6993	0x034
+#define DISP_REG_VDISP_AO_INT_SEL_G9_MT6993	0x038
+#define DISP_REG_VDISP_AO_INT_SEL_G10_MT6993	0x03C
 
 #define CPU_INTSEL_BIT_MT6993_L		REG_FLD_MSB_LSB(8, 0)
 #define CPU_INTSEL_BIT_MT6993_H		REG_FLD_MSB_LSB(24, 16)
@@ -130,6 +134,15 @@
 #define FLD_MMQOS_PREULTRA_R	REG_FLD_MSB_LSB(23, 20)
 #define FLD_MMQOS_ULTRA_W		REG_FLD_MSB_LSB(27, 24)
 #define FLD_MMQOS_ULTRA_R		REG_FLD_MSB_LSB(31, 28)
+
+#define IRQ_TABLE_DISP0B_DITHER0_MT6993         (235)    //471 -> BIT14
+#define IRQ_TABLE_DISP0A_DITHER0_MT6993         (212)    //470 -> BIT13
+#define IRQ_TABLE_DISP0B_DITHER1_MT6993         (236)    //473 -> BIT16
+#define IRQ_TABLE_DISP0A_DITHER1_MT6993         (213)    //472 -> BIT15
+#define IRQ_TABLE_DISP1A_CHIST1_MT6993          (253)    //475 -> BIT18
+#define IRQ_TABLE_DISP1A_CHIST0_MT6993          (252)    //474 -> BIT17
+#define IRQ_TABLE_DISP0B_AAL0_MT6993            (229)    //477 -> BIT20
+#define IRQ_TABLE_DISP0A_AAL0_MT6993            (206)    //476 -> BIT19
 
 static void __iomem *vdisp_ao_base;
 
@@ -409,12 +422,75 @@ static void mtk_vdisp_ao_int_sel_g1_MT6993(void)
 	DDPINFO("%s,%d,value:%#x\n", __func__, __LINE__, value);
 }
 
+static void mtk_vdisp_ao_int_sel_g6_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0A_DITHER0_MT6993, CPU_INTSEL_BIT_MT6993_H);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G6_MT6993);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
+static void mtk_vdisp_ao_int_sel_g7_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0B_DITHER0_MT6993, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0A_DITHER1_MT6993, CPU_INTSEL_BIT_MT6993_H);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G7_MT6993);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
+static void mtk_vdisp_ao_int_sel_g8_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0B_DITHER1_MT6993, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP1A_CHIST0_MT6993, CPU_INTSEL_BIT_MT6993_H);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G8_MT6993);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
+static void mtk_vdisp_ao_int_sel_g9_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP1A_CHIST1_MT6993, CPU_INTSEL_BIT_MT6993_L);
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0A_AAL0_MT6993, CPU_INTSEL_BIT_MT6993_H);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G9_MT6993);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
+static void mtk_vdisp_ao_int_sel_g10_MT6993(void)
+{
+	int value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP0B_AAL0_MT6993, CPU_INTSEL_BIT_MT6993_L);
+
+	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G10_MT6993);
+
+	DDPINFO("%s,%d,value:0x%x\n", __func__, __LINE__, value);
+}
+
 void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 {
 	DDPINFO("%s:%d\n", __func__, __LINE__);
 
 	mtk_vdisp_ao_int_sel_g0_MT6993();
 	mtk_vdisp_ao_int_sel_g1_MT6993();
+	mtk_vdisp_ao_int_sel_g6_MT6993();
+	mtk_vdisp_ao_int_sel_g7_MT6993();
+	mtk_vdisp_ao_int_sel_g8_MT6993();
+	mtk_vdisp_ao_int_sel_g9_MT6993();
+	mtk_vdisp_ao_int_sel_g10_MT6993();
 }
 
 static int __mtk_vdisp_ao_qos_config_MT6993(bool hrt_read, bool hrt_write)

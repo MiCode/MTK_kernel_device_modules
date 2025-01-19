@@ -159,6 +159,7 @@ static bool debug_irq_log;
 #define DISP_AAL_OUTPUT_OFFSET                  (0x4dc)
 #define DISP_Y_HISTOGRAM_00                     (0x504)
 #define DISP_CMB_MAIN_0                         (0x604)
+#define DISP_AAL_CG_CTRL			(0x9C4)
 #define NEW_CBOOST_EN	BIT(13)
 
 /* common */
@@ -179,6 +180,8 @@ static bool debug_irq_log;
 #define DISP_AAL_DRE_BLOCK_INFO_06              (0x4b8)
 
 /* DRE 3.0 */
+#define DMDP_AAL_INTEN				(0x008)
+#define DMDP_AAL_INTSTA				(0x00C)
 #define DMDP_AAL_CFG_MAIN                       (0x200)
 #define DMDP_AAL_SRAM_CFG                       (0x0c4)
 #define REG_HIST_SRAM_PP_HALT     REG_FLD_MSB_LSB(1, 1)
@@ -202,6 +205,7 @@ static bool debug_irq_log;
 #define DMDP_AAL_SRAM_RW_IF_1                   (0x0d0)
 #define DMDP_AAL_SRAM_RW_IF_2                   (0x0d4)
 #define DMDP_AAL_SRAM_RW_IF_3                   (0x0d8)
+#define DMDP_AAL_SRAM_SHADOW			(0x0DC)
 #define DMDP_AAL_CURVE_SRAM_RW_IF_0              (0x690)
 #define DMDP_AAL_CURVE_SRAM_RW_IF_1              (0x694)
 #define DMDP_AAL_CURVE_SRAM_RW_IF_2              (0x698)
@@ -3978,6 +3982,19 @@ static const struct mtk_disp_aal_data mt6991_aal_driver_data = {
 	.bitShift = 16,
 };
 
+static const struct mtk_disp_aal_data mt6993_aal_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+	.aal_dre_hist_start = 1536,
+	.aal_dre_hist_end   = 4604,
+	.aal_dre_gain_start = 4608,
+	.aal_dre_gain_end   = 6780,
+	.aal_dre3_curve_sram = true,
+	.aal_dre3_auto_inc = true,
+	.mdp_aal_ghist_support = true,
+	.bitShift = 16,
+};
+
 static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6768-disp-aal", .data = &mt6768_aal_driver_data},
 	{ .compatible = "mediatek,mt6761-disp-aal", .data = &mt6761_aal_driver_data},
@@ -3998,6 +4015,7 @@ static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6989-disp-aal", .data = &mt6989_aal_driver_data},
 	{ .compatible = "mediatek,mt6878-disp-aal", .data = &mt6878_aal_driver_data},
 	{ .compatible = "mediatek,mt6991-disp-aal", .data = &mt6991_aal_driver_data},
+	{ .compatible = "mediatek,mt6993-disp-aal", .data = &mt6993_aal_driver_data},
 	{},
 };
 

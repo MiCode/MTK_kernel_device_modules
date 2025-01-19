@@ -390,6 +390,7 @@ struct mtk_drm_dbi_share_info {
 enum mtk_dbi_version {
 	MTK_DBI_V1,
 	MTK_DBI_V2,
+	MTK_DBI_V3,
 };
 
 enum mtk_dmr_version {
@@ -613,6 +614,7 @@ struct mtk_disp_oddmr {
 	uint32_t qos_srt_odw;
 	uint32_t last_qos_srt_odw;
 	uint32_t last_hrt_dmrr;
+	uint32_t last_hrt_dmrr_stash;
 	uint32_t last_hrt_dbir;
 	uint32_t last_hrt_odrw;
 	struct icc_path *qos_req_dmrr;
@@ -620,6 +622,7 @@ struct mtk_disp_oddmr {
 	struct icc_path *qos_req_odr;
 	struct icc_path *qos_req_odw;
 	struct icc_path *qos_req_dmrr_hrt;
+	struct icc_path *qos_req_dmrr_stash_hrt;
 	struct icc_path *qos_req_dbir_hrt;
 	struct icc_path *qos_req_odr_hrt;
 	struct icc_path *qos_req_odw_hrt;
