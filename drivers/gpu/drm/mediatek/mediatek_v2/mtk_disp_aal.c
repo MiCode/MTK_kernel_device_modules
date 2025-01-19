@@ -609,6 +609,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 		if (led_conf->led_type == LED_TYPE_ATOMIC)
 			break;
 
+		led_conf->aal_enable = 1;
 		aal_data = comp_to_aal(comp);
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] &&
 			((aal_data->primary_data->relay_state == 0))) {
@@ -630,7 +631,6 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 
 		AALAPI_LOG("brightness changed: %d(%d)\n",
 			trans_level, led_conf->cdev.brightness);
-		led_conf->aal_enable = 1;
 		break;
 	case LED_STATUS_SHUTDOWN:
 		if (led_conf->led_type == LED_TYPE_ATOMIC)
