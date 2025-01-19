@@ -2077,7 +2077,7 @@
 
 #define MT6993_DISPSYS_VERSION 0xFFC
 
-#define MT6993_DISPSYS1_BYPASS_MUX_SHADOW 0xCF8
+#define MT6993_DISPSYS1_BYPASS_MUX_SHADOW 0x2E0
 
 #define MT6993_INSIDE_PC_CROSSBAR0_MOUT_EN 0xED4
 #define MT6993_INSIDE_PC_CROSSBAR1_MOUT_EN 0xED8
@@ -44200,16 +44200,10 @@ void mtk_ddp_disable_merge_irq(struct drm_device *drm)
 		writel_relaxed(0, priv->ovlsys0_regs + OVLSYS_INTMERGE);
 	if (priv->ovlsys1_regs)
 		writel_relaxed(0, priv->ovlsys1_regs + OVLSYS_INTMERGE);
-	if (priv->ovlsys2_regs)
-		writel_relaxed(0, priv->ovlsys2_regs + OVLSYS_INTMERGE);
 	if (priv->config_regs)
 		writel_relaxed(0, priv->config_regs + DISPSYS_INTMERGE);
 	if (priv->side_config_regs)
 		writel_relaxed(0, priv->side_config_regs + DISPSYS_INTMERGE);
-	if (priv->sys_b_config_regs)
-		writel_relaxed(0, priv->sys_b_config_regs + DISPSYS_INTMERGE);
-	if (priv->sys_b_side_config_regs)
-		writel_relaxed(0, priv->sys_b_side_config_regs + DISPSYS_INTMERGE);
 }
 
 void mtk_ddp_disable_merge_irq_MT6993(struct drm_device *drm)
