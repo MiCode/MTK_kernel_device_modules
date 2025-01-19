@@ -8709,6 +8709,13 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 		return;
 	}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (!mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]) {
+		DDPMSG("%s CRTC%d has no bwm ratio loop client\n", __func__, crtc_id);
+		return;
+	}
+#endif
+
 	mtk_crtc->bwm_loop_cmdq_handle = cmdq_pkt_create(
 			mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]);
 	bwm_handle = mtk_crtc->bwm_loop_cmdq_handle;
@@ -8774,6 +8781,13 @@ void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc)
 		DDPDBG("%s: bwm_loop already stopped\n", __func__);
 		return;
 	}
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	if (!mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]) {
+		DDPMSG("%s CRTC%d has no bwm ratio loop client\n", __func__, drm_crtc_index(crtc));
+		return;
+	}
+#endif
 
 	cmdq_mbox_stop(mtk_crtc->gce_obj.client[CLIENT_BWM_LOOP]);
 	cmdq_pkt_destroy(mtk_crtc->bwm_loop_cmdq_handle);
