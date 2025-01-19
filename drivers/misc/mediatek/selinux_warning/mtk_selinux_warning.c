@@ -355,6 +355,13 @@ static size_t gen_avc_audit_pre_log(char *data, size_t size, struct selinux_audi
 	return len;
 }
 
+static noinline void __selinux_aee(const char *file, const int line,
+				   const int db_opt, const char *module,
+				   const char *msg)
+{
+	aee_kernel_warning_api(__FILE__, __LINE__, db_opt, module, msg);
+}
+
 static void selinux_aee(struct selinux_audit_data *sad, char *scontext,
 			char *tcontext, const char *tclass)
 {
@@ -377,8 +384,7 @@ static void selinux_aee(struct selinux_audit_data *sad, char *scontext,
 		 MOD, pname);
 
 	trigger_debugger();
-	aee_kernel_warning_api(__FILE__, __LINE__,
-			       DB_OPT_DEFAULT, printbuf, data);
+	__selinux_aee(__FILE__, __LINE__, DB_OPT_DEFAULT, printbuf, data);
 }
 
 static bool scontext_filter(char *scontext)
