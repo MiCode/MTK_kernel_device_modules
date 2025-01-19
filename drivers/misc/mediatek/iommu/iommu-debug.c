@@ -3457,12 +3457,40 @@ static const u32 default_smmu_common_ids[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX] = {
 	},
 };
 
+static const u32 mt6993_smmu_common_ids[SMMU_TYPE_NUM][SMMU_TBU_CNT_MAX] = {
+	[MM_SMMU] = {
+		MM_SMMU_DISP,
+		MM_SMMU_DISP,
+		MM_SMMU_MDP,
+		MM_SMMU_MDP,
+	},
+	[APU_SMMU] = {
+		APU_SMMU_M0,
+		APU_SMMU_M0,
+		APU_SMMU_M0,
+		APU_SMMU_M0,
+	},
+	[SOC_SMMU] = {
+		SOC_SMMU_M4,
+		SOC_SMMU_M6,
+		SOC_SMMU_M7,
+	},
+};
+
 static int default_smmu_common_id(u32 smmu_type, u32 tbu_id)
 {
 	if (smmu_type >= SMMU_TYPE_NUM || tbu_id >= SMMU_TBU_CNT(smmu_type))
 		return -1;
 
 	return default_smmu_common_ids[smmu_type][tbu_id];
+}
+
+static int mt6993_smmu_common_id(u32 smmu_type, u32 tbu_id)
+{
+	if (smmu_type >= SMMU_TYPE_NUM || tbu_id >= SMMU_TBU_CNT(smmu_type))
+		return -1;
+
+	return mt6993_smmu_common_ids[smmu_type][tbu_id];
 }
 
 static const struct mtk_m4u_plat_data mt6761_data = {
@@ -3643,7 +3671,7 @@ static const struct mtk_m4u_plat_data mt6993_smmu_data = {
 	.port_nr[APU_SMMU]   = ARRAY_SIZE(apu_port_mt6993),
 	.get_valid_tf_id = mt6993_get_valid_tf_id,
 	.mm_tf_is_gce_videoup = mt6993_tf_is_gce_videoup,
-	.smmu_common_id = default_smmu_common_id,
+	.smmu_common_id = mt6993_smmu_common_id,
 	.smmu_port_name = mt6993_smmu_soc_port_name,
 };
 
