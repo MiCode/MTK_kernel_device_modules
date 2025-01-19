@@ -2572,6 +2572,8 @@ static const struct snd_kcontrol_new memif_ul5_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH1", AFE_CONN028_1,
 				    I_DL5_CH1, 1, 0),
 #endif
+	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH1", AFE_CONN028_0,
+				    I_CONNSYS_I2S_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul5_ch2_mix[] = {
@@ -2605,6 +2607,8 @@ static const struct snd_kcontrol_new memif_ul5_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH2", AFE_CONN029_1,
 				    I_DL5_CH2, 1, 0),
 #endif
+	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH2", AFE_CONN029_0,
+				    I_CONNSYS_I2S_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul6_ch1_mix[] = {
@@ -3916,6 +3920,8 @@ static const struct snd_soc_dapm_route mt6991_memif_routes[] = {
 	{"UL5_CH2", "DL5_CH2", "Hostless_UL5 UL"},
 	{"Hostless_UL5 UL", NULL, "UL5_VIRTUAL_INPUT"},
 #endif
+	{"UL5_CH1", "CONNSYS_I2S_CH1", "Connsys I2S"},
+	{"UL5_CH2", "CONNSYS_I2S_CH2", "Connsys I2S"},
 
 	{"UL6", NULL, "UL6_CH1"},
 	{"UL6", NULL, "UL6_CH2"},
