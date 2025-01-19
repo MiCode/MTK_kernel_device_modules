@@ -4782,19 +4782,21 @@ static int fdvt_suspend_pm_event(struct notifier_block *notifier,
 	case PM_POST_HIBERNATION:
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE: /*enter suspend*/
-		log_dbg("bPass1_On_In_Resume_TG1(%d)\n", bPass1_On_In_Resume_TG1);
+		log_inf("+PM_SUSPEND_PREPARE:clock_enable_count(%d), fdvt_count(%d)\n", clock_enable_count, fdvt_count);
 		bPass1_On_In_Resume_TG1 = 0;
 		if (clock_enable_count > 0) {
 			fdvt_enable_clock(MFALSE);
 			fdvt_count++;
 		}
+		log_inf("-PM_SUSPEND_PREPARE:clock_enable_count(%d), fdvt_count(%d)\n", clock_enable_count, fdvt_count);
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:    /*after resume*/
-		log_dbg("bPass1_On_In_Resume_TG1(%d).\n", bPass1_On_In_Resume_TG1);
+		log_inf("+PM_POST_SUSPEND:clock_enable_count(%d), fdvt_count(%d)\n", clock_enable_count, fdvt_count);
 		if (fdvt_count > 0) {
 			fdvt_enable_clock(MTRUE);
 			fdvt_count--;
 		}
+		log_inf("-PM_POST_SUSPEND:clock_enable_count(%d), fdvt_count(%d)\n", clock_enable_count, fdvt_count);
 		return NOTIFY_DONE;
 }
 	return NOTIFY_OK;
