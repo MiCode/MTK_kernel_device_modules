@@ -6202,8 +6202,9 @@
 				mediatek,eye-vrt = <4>;
 				mediatek,eye-term = <4>;
 				mediatek,rev4 = <1>;
-				mediatek,rx_sqth = <5>;
+				mediatek,rx-sqth = <5>;
 				mediatek,discth = <7>;
+				mediatek,disc-host = <7>;
 				nvmem-cells = <&u2_phy_data>;
 				nvmem-cell-names = "intr_cal";
 				nvmem-cell-masks = <0x1f>;
@@ -6228,16 +6229,16 @@
 			};
 		};
 
-		usb_boost: usb_boost_manager {
-			compatible = "mediatek,usb_boost", "mediatek,mt6789-usb_boost";
+		usb_boost: usb-boost-manager {
+			compatible = "mediatek,usb-boost", "mediatek,mt6789-usb-boost";
 			interconnects = <&dvfsrc MT6873_MASTER_USB &dvfsrc MT6873_SLAVE_DDR_EMI>;
 			interconnect-names = "icc-bw";
 			required-opps = <&dvfsrc_freq_opp0>;
 			small-core = <1300000>;
 		};
 
-		usb_meta: usb_meta {
-			compatible = "mediatek,usb_meta";
+		usb_meta: usb-meta {
+			compatible = "mediatek,usb-meta";
 			udc = <&usb>;
 		};
 
