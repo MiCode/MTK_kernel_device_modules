@@ -15554,7 +15554,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		fmeter-ck = <24>;	/* clk table fmeter f_fmmup_ck */
 		fmeter-type = <5>;	/* fmeter type */
 		mbox-count = <3>;
-		vcp-ee-enable = <0>;
+		vcp-excep-mode = <1>;
 		bus-debug-num-ports = <25>;
 		/*res-req-status = <0x1c00186c>;*/
 		/* id, mbox, send_size*/
