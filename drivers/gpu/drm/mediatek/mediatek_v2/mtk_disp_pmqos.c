@@ -738,83 +738,6 @@ void mtk_disp_total_srt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 	mtk_vidle_srt_bw_set(total_srt_sum);
 }
 
-void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base)
-{
-	static u32 pre_rpo_lye;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	struct mtk_ddp_comp *comp;
-	int i, j, ret = 0;
-
-	if (mtk_crtc == NULL)
-		return;
-
-	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-		return;
-
-	for (i = 0; i < DDP_PATH_NR; i++) {
-		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-			continue;
-		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
-			continue;
-
-		if ((priv->data->mmsys_id == MMSYS_MT6991) && mtk_crtc_state->lye_state.rpo_lye) {
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-				NULL, PMQOS_SET_HRT_BW, &bw_base);
-		} else if ((priv->data->mmsys_id == MMSYS_MT6991) && pre_rpo_lye) { //exit RPO
-			unsigned int bw_zero = 0;
-
-			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-				NULL, PMQOS_SET_HRT_BW, &bw_zero);
-		}
-		pre_rpo_lye = mtk_crtc_state->lye_state.rpo_lye;
-
-		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
-			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-						   &bw_base);
-		}
-		if (!mtk_crtc->is_dual_pipe)
-			continue;
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
-			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW,
-					&bw_base);
-	}
-}
-
-void mtk_disp_clr_module_hrt(struct mtk_drm_crtc *mtk_crtc)
-{
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	struct mtk_ddp_comp *comp;
-	int i, j, ret = 0;
-
-	if (mtk_crtc == NULL)
-		return;
-
-	if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-		return;
-
-	for (i = 0; i < DDP_PATH_NR; i++) {
-		if (mtk_crtc->ddp_mode >= DDP_MODE_NR)
-			continue;
-		if (!(mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[i]))
-			continue;
-
-		mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2],
-			NULL, PMQOS_CLR_HRT_BW, NULL);
-
-		for_each_comp_in_crtc_target_path(comp, mtk_crtc, j, i) {
-			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_CLR_HRT_BW, NULL);
-		}
-		if (!mtk_crtc->is_dual_pipe)
-			continue;
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, j, i)
-			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_CLR_HRT_BW, NULL);
-	}
-}
-
 int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -837,7 +760,7 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		priv->data->mmsys_id == MMSYS_MT6765) {
 		DDPMSG("%s: no need to set module hrt bw for legacy!\n", __func__);
 	} else if (!priv->data->respective_ostdl)
-		mtk_disp_set_module_hrt(mtk_crtc, bw);
+		mtk_disp_set_module_hrt(mtk_crtc, bw, NULL, PMQOS_SET_HRT_BW);
 
 	/* skip same HRT BW */
 	if (priv->req_hrt[crtc_idx] == tmp)
@@ -1010,7 +933,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 
 	if (priv->data->respective_ostdl) {
 		bw_base = mtk_drm_primary_frame_bw(crtc);
-		mtk_disp_set_module_hrt(mtk_crtc, bw_base);
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base, NULL, PMQOS_SET_HRT_BW);
 	}
 }
 

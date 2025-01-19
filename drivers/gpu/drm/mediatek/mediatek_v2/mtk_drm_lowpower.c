@@ -2287,7 +2287,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 
 	if (priv->data->respective_ostdl) {
 		bw_base = mtk_drm_primary_frame_bw(crtc);
-		mtk_disp_set_module_hrt(mtk_crtc, bw_base);
+		mtk_disp_set_module_hrt(mtk_crtc, bw_base, NULL, PMQOS_SET_HRT_BW);
 	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
