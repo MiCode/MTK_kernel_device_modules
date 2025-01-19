@@ -207,6 +207,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/log_store:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/monitor_hang:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pcie:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/rps:srcs".format(kernel_version),
@@ -288,6 +289,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprintk:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ips:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pcie:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pidmap:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pmsr:ddk_kconfigs".format(kernel_version),
@@ -418,11 +420,14 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:mtk_mdpm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/monitor_hang:monitor_hang".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprintk:mtk_printk_ctrl".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_pbm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pcie:mtk_pcie_smt".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pidmap:pidmap".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_cpu_power_throttling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_dynamic_loading_throttling".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_dual_lbat_service".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lvsys_notify".format(kernel_version),
@@ -534,6 +539,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc-start".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-pm-domain-disable-unused".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/thermal/mediatek:backlight_cooling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:board_temp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:charger_cooling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:pmic_temp".format(kernel_version),
@@ -812,7 +818,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mmp/src/mmprofile.ko",
     "drivers/misc/mediatek/mme/src/mme.ko",
     "drivers/misc/mediatek/mmqos/mmqos_wrapper.ko",
-    "drivers/misc/mediatek/pbm/mtk_pbm.ko",
     "drivers/misc/mediatek/pbm/mtk_peak_power_budget.ko",
     "drivers/misc/mediatek/cg_ppt/mtk_cg_peak_power_throttling.ko",
     "drivers/misc/mediatek/perf_common/mtk_perf_common.ko",
@@ -828,9 +833,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/pkvm_mkp/pkvm_mkp.ko",
     "drivers/misc/mediatek/pmic_protect/mtk-pmic-oc-debug.ko",
     "drivers/misc/mediatek/pmsr/v3/pmsr_v3.ko",
-    "drivers/misc/mediatek/power_throttling/mtk_cpu_power_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_gpu_power_throttling.ko",
-    "drivers/misc/mediatek/power_throttling/mtk_low_battery_throttling.ko",
     "drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
     "drivers/misc/mediatek/qos/mtk_qos.ko",
     "drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
@@ -966,7 +969,6 @@ mgk_64_device_modules = [
     "drivers/tee/teei/510/isee.ko",
     "drivers/tee/teei/510/isee-ffa.ko",
     "drivers/tee/teeperf/teeperf.ko",
-    "drivers/thermal/mediatek/backlight_cooling.ko",
     "drivers/thermal/mediatek/md_cooling_all.ko",
     "drivers/thermal/mediatek/soc_temp_lvts.ko",
     "drivers/thermal/mediatek/thermal_interface.ko",
@@ -2039,7 +2041,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")
 
-        mgk_64_device_modules.remove("drivers/thermal/mediatek/backlight_cooling.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:backlight_cooling".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:board_temp".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:charger_cooling".format(kernel_version))
         if "drivers/thermal/mediatek/md_cooling_all.ko" in mgk_64_device_modules:

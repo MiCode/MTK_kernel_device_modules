@@ -1,4 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
 
 package(
     default_visibility = [
@@ -23,24 +25,31 @@ filegroup(
     ]),
 )
 
+ddk_headers(
+	name = "mdpm_headers",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+)
+
 define_mgk_ddk_ko(
     name = "mtk_mdpm",
     srcs = [
         "mtk_mdpm.c",
-    ],
-    hdrs = [
-        "mtk_mdpm.h",
         "mtk_mdpm_platform.h",
         "mtk_mdpm_platform_data.h",
         "mtk_mdpm_platform_table.h",
     ],
+    hdrs = [
+        "mtk_mdpm.h",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+    ],
     includes = [
-        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
-        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm",
+        ".",
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm",
     ],
 )
 

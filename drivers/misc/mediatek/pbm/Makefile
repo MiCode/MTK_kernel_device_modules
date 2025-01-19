@@ -25,5 +25,4 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm_v1/inc/
 endif
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 
-obj-$(CONFIG_MTK_PBM) += mtk_pbm.o
 obj-$(CONFIG_MTK_PEAK_POWER_BUDGET) += mtk_peak_power_budget.o

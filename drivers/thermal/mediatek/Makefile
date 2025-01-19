@@ -25,8 +25,6 @@ obj-$(CONFIG_MTK_MD_THERMAL)	+= md_cooling_all.o
 md_cooling_all-y 		+= md_cooling.o
 md_cooling_all-$(CONFIG_DEBUG_FS) += md_cooling_debugfs.o
 
-obj-$(CONFIG_MTK_BACKLIGHT_THERMAL) += backlight_cooling.o
-
 obj-$(CONFIG_MTK_THERMAL_TRACE) += thermal_trace.o
 
 obj-$(CONFIG_MTK_THERMAL_IPI)	+= thermal_ipi.o

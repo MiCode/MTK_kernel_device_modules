@@ -18,7 +18,7 @@
 
 #define CREATE_TRACE_POINTS
 #include "mtk_low_battery_throttling_trace.h"
-#include "../mbraink/mbraink_ioctl_struct_def.h"
+#include "mbraink_ioctl_struct_def.h"
 
 #define LBCB_MAX_NUM 16
 #define TEMP_MAX_STAGE_NUM 6
