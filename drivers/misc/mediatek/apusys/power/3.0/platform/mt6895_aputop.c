@@ -1413,16 +1413,19 @@ static int init_reg_base(struct platform_device *pdev)
 
 static int mt6895_apu_top_pb(struct platform_device *pdev)
 {
+	int ret = 0;
 #if APU_POWER_INIT
 	int ret_clk = 0;
-	int ret = 0;
 #endif
-
 	pr_info("%s fpga_type : %d\n", __func__, fpga_type);
 
 	init_reg_base(pdev);
 
-	init_plat_pwr_res(pdev);
+	ret = init_plat_pwr_res(pdev);
+	if (ret == -ENOENT) {
+		pr_info("%s fail to init plat pwr res : %d\n", __func__, ret);
+		return -ENOENT;
+	}
 
 #if APU_POWER_INIT
 	// enable vapu buck
