@@ -9719,11 +9719,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		atomic_set(&private->crtc_frame_done[i], 0);
 		atomic_set(&private->crtc_dbi_count[i], 0);
 	}
-	//mt6789 force GPU
-	if (private->data->mmsys_id == MMSYS_MT6789)
-		atomic_set(&private->rollback_all, 1);
-	else
-		atomic_set(&private->rollback_all, 0);
+	atomic_set(&private->rollback_all, 0);
 	mtk_drm_svp_init(drm);
 
 	DDPINFO("%s-\n", __func__);
@@ -10308,6 +10304,7 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
+		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6877) {
 		mml_caps->mode_caps = MTK_MML_DISP_MDP_LAYER;
 		return 0;
