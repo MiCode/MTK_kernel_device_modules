@@ -5,6 +5,7 @@ COMMON_GKI_MODULES_LIST = get_gki_modules_list("arm64") + get_kunit_modules_list
 mgk_module_outs = COMMON_GKI_MODULES_LIST
 
 mgk_module_ext_outs = [
+    "drivers/firmware/arm_ffa/ffa-core.ko",
     "drivers/firmware/arm_ffa/ffa-module.ko",
     "drivers/gpu/drm/display/drm_display_helper.ko",
     "drivers/gpu/drm/drm_dma_helper.ko",
