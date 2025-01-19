@@ -17,12 +17,9 @@ enum pmsr_power_state {
 /* #define NR_POWER_STATE (3) */
 
 enum xpu_ip_state {
-	XPU_IP_DISP0,
-	XPU_IP_DISP1,
-	XPU_IP_VENC0,
-	XPU_IP_VENC1,
-	XPU_IP_VDEC0,
-	XPU_IP_SCP,
+	XPU_IP_DISP,
+	XPU_IP_VENC,
+	XPU_IP_VDEC,
 	XPU_IP_ADSP,
 	XPU_IP_MCU,
 

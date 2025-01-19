@@ -36,8 +36,6 @@
 #define SUSPEND_SRAM (share_idx_ref_ext->suspend)
 #define DURATION_SRAM (share_idx_ref_ext->duration)
 
-#define OPP_FREQ_TO_DDR(x) \
-	((x == 1066 || x == 1333 || x == 4266) ? (x * 2 + 1) : (x * 2))
 
 static DEFINE_SPINLOCK(swpm_sp_spinlock);
 /* share sram for extension index */
@@ -88,7 +86,7 @@ static ktime_t last_req_data_time;
 struct mutex swpm_get_sram_data_mutex = __MUTEX_INITIALIZER(swpm_get_sram_data_mutex);
 
 static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
-	"DISP0", "DISP1", "VENC0", "VENC1", "VDEC0", "SCP", "ADSP", "MCU",
+	"DISP", "VENC", "VDEC", "ADSP", "MCU",
 };
 /* ddr bw ip (total r/total w/cpu/gpu/mm/md) */
 static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
@@ -737,7 +735,7 @@ void swpm_v6993_ext_init(void)
 	for (i = 0; share_ddr_opp_freq && (i < swpm_ddr_freq) && ddr_act_duration; i++) {
 		ddr_act_duration[i].active_time = 0;
 		ddr_act_duration[i].freq =
-		OPP_FREQ_TO_DDR(readl(&share_ddr_opp_freq[i]));
+		readl(&share_ddr_opp_freq[i]);
 	}
 
 	/* ddr sr pd duration initialize */
@@ -755,7 +753,7 @@ void swpm_v6993_ext_init(void)
 			     (j < swpm_ddr_freq); j++) {
 				ddr_ip_stats[i].bc_stats[j].value = 0;
 				ddr_ip_stats[i].bc_stats[j].freq =
-				OPP_FREQ_TO_DDR(readl(&share_ddr_opp_freq[j]));
+				readl(&share_ddr_opp_freq[j]);
 			}
 		}
 	}
