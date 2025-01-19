@@ -1174,7 +1174,6 @@ s32 cmdq_task_reset(struct cmdqRecStruct *handle)
 
 s32 cmdq_task_set_secure(struct cmdqRecStruct *handle, const bool is_secure)
 {
-
 	if (handle == NULL)
 		return -EFAULT;
 
@@ -2983,7 +2982,6 @@ s32 cmdq_op_if(struct cmdqRecStruct *handle, CMDQ_VARIABLE arg_b,
 		return -EFAULT;
 
 	do {
-
 		logic_pos  = handle->pkt->cmd_buf_size;
 
 		/* append conditional jump instruction */
@@ -3133,7 +3131,6 @@ s32 cmdq_op_while(struct cmdqRecStruct *handle, CMDQ_VARIABLE arg_b,
 		return -EFAULT;
 
 	do {
-
 		/* keep index of logic cmd */
 		logic_pos = handle->pkt->cmd_buf_size;
 

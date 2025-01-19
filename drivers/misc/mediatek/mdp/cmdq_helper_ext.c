@@ -2787,7 +2787,6 @@ static void cmdq_core_dump_error_handle(const struct cmdqRecStruct *handle,
 
 		CMDQ_ERR("========= [CMDQ] Error Task Status =========\n");
 		cmdq_core_dump_handle(handle, "ERR");
-
 	}
 
 	if (cmdq_ctx.errNum > 1)
@@ -4239,7 +4238,6 @@ static void cmdq_pkt_flush_handler(struct cmdq_cb_data data)
 
 		return;
 	}
-
 
 	if (data.err == -ETIMEDOUT) {
 		/* error dump may processed on error handler */
