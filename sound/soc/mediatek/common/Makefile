@@ -27,6 +27,3 @@ obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-afe-external.o
 
 # speaker dynamic detect
 obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-sp-spk-amp.o
-
-# BT CVSD driver
-obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MTK_BTCVSD) += mtk-btcvsd.o

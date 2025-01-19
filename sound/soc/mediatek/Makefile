@@ -60,7 +60,6 @@ subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm
 subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/
 # New architecture
 ifeq ($(CONFIG_MTK_SND_SOC_NEW_ARCH),y)
-obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common/
 # flags for not ready feature, uncomment after ready
 subdir-ccflags-y += -DAUDIO_USING_WRAP_DRIVER
 subdir-ccflags-y += -D_MT_IDLE_HEADER

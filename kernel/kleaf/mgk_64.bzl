@@ -163,6 +163,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/usb/mtu3:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/common:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -197,6 +198,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -285,6 +287,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_powerhal".format(kernel_version),
     "//kernel_device_modules-{}/drivers/watchdog:mtk_wdt".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:bootprof".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-btcvsd".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -860,7 +863,6 @@ mgk_64_device_modules = [
     "sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko",
     "sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
     "sound/soc/mediatek/common/mtk-afe-external.ko",
-    "sound/soc/mediatek/common/mtk-btcvsd.ko",
     "sound/soc/mediatek/common/mtk-sp-spk-amp.ko",
     "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
     "sound/soc/mediatek/ultrasound/ultra_common/mtk-scp-ultra.ko",
