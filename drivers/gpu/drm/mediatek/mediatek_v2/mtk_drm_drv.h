@@ -99,6 +99,7 @@ struct mtk_mmsys_driver_data {
 	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int bw_base, unsigned int channel_bw[]);
 	unsigned int (*get_channel_idx)(enum CHANNEL_TYPE type, unsigned int i);
+	bool ct_wiat_cmdq_event;
 };
 
 struct mtk_drm_lyeblob_ids {

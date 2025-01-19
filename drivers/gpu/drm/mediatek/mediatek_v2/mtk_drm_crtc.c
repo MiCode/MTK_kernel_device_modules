@@ -6180,6 +6180,11 @@ void mtk_crtc_skip_merge_trigger(struct mtk_drm_crtc *mtk_crtc)
 {
 #define NUM_SKIP_FRAME 2
 	struct cmdq_pkt *handle;
+	struct mtk_drm_private *priv;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	if (priv && priv->data && priv->data->ct_wiat_cmdq_event)
+		return;
 
 	handle = cmdq_pkt_create(
 			mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP]);
@@ -9878,8 +9883,9 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	unsigned long crtc_id = (unsigned long)drm_crtc_index(crtc);
 	unsigned int cur_fps = 0;
 	unsigned int dsi_pll_check_off_offset = CMDQ_US_TO_TICK(500);
-	unsigned int skip_merge_trigger_offset = CMDQ_US_TO_TICK(1000);
+	unsigned int skip_merge_trigger_offset = CMDQ_US_TO_TICK(500);
 	unsigned int v_idle_power_off_offset = CMDQ_US_TO_TICK(300);
+	unsigned int pre_mt_offset = CMDQ_US_TO_TICK(100);
 	unsigned int merge_trigger_offset = CMDQ_US_TO_TICK(debug_merge_t);
 	unsigned int prefetch_te_offset = CMDQ_US_TO_TICK(150);
 	unsigned int frame_time = 0;
@@ -10043,7 +10049,14 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 			var1);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
 		{
-			GCE_SLEEP(frame_time);
+			if (!priv->data->ct_wiat_cmdq_event)
+				GCE_SLEEP(frame_time);
+			else {
+				GCE_SLEEP(frame_time - pre_mt_offset);
+				/* fixme: use new cmdq event */
+				GCE_DO(set_event, EVENT_SYNC_TOKEN_PREFETCH_TE);
+				GCE_SLEEP(pre_mt_offset);
+			}
 			GCE_DO(clear_event, EVENT_SYNC_TOKEN_TE);
 
 			if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en) {
@@ -11727,6 +11740,62 @@ static void set_dirty_cmdq_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
+static bool mtk_crtc_is_ct_use_event(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (IS_ERR_OR_NULL(priv))
+		return false;
+
+	if (mtk_crtc_with_event_loop(&mtk_crtc->base) &&
+		mtk_crtc->event_loop_cmdq_handle &&
+		priv->data->ct_wiat_cmdq_event)
+		return true;
+
+	return false;
+}
+
+struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct cmdq_pkt *cmdq_handle;
+
+	// Temp code. This flow will only enter by debug command
+	// (CMD mode will enter MML IR by debug command), we don't
+	// have to worry about it will effect the original flow.
+	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
+		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger)) {
+		return NULL;
+	}
+
+	drm_trace_tag_mark("crtc_set_dirty_wait");
+
+	/* todo: use new cmdq client */
+	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+		mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		return NULL;
+	}
+
+	CRTC_MMP_MARK(0, set_dirty, SET_DIRTY, (unsigned long)cmdq_handle);
+
+	if (mtk_crtc_is_ct_use_event(mtk_crtc)) {
+		/* fixme: use new cmdq event */
+		cmdq_pkt_clear_event(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
+		cmdq_pkt_wfe(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_PREFETCH_TE]);
+	}
+
+	cmdq_pkt_set_event(cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+	return cmdq_handle;
+}
+
 void mtk_crtc_set_dirty(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct cmdq_pkt *cmdq_handle;
@@ -11775,6 +11844,8 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 	ktime_t last_te_time = 0, cur_time = 0;
 	unsigned int pass_time = 0, next_te_duration = 0, te_duration = 0;
 	int vrefresh = 0;
+	uint64_t doze_active;
+	struct cmdq_pkt *cmdq_handle;
 
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	CRTC_MMP_EVENT_START(index, check_trigger, 0, 0);
@@ -11788,6 +11859,9 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
 	if (!mtk_crtc_is_frame_trigger_mode(crtc))
+		goto out_unlock;
+
+	if (mtk_crtc_is_ct_use_event(mtk_crtc))
 		goto do_set_dirty;
 
 	last_te_time = mtk_crtc->pf_time;
@@ -11828,10 +11902,25 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 
 do_set_dirty:
 	mtk_state = to_mtk_crtc_state(crtc->state);
-	if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ||
-	    (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE] && atomic_read(&mtk_crtc->already_config)))
-		mtk_crtc_set_dirty(mtk_crtc);
-	else
+	doze_active = mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE];
+	if (!doze_active ||
+		(doze_active &&	atomic_read(&mtk_crtc->already_config))) {
+		if (!mtk_crtc_is_ct_use_event(mtk_crtc))
+			mtk_crtc_set_dirty(mtk_crtc);
+		else {
+			cmdq_handle = mtk_crtc_set_dirty_wait(mtk_crtc);
+			if (cmdq_handle) {
+				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock,
+					__func__, __LINE__, mtk_crtc->enabled);
+				cmdq_pkt_flush(cmdq_handle);
+				cmdq_pkt_destroy(cmdq_handle);
+				CRTC_MMP_EVENT_END(index, check_trigger, 0, 0);
+				drm_trace_tag_end("check_trigger");
+
+				return 0;
+			}
+		}
+	} else
 		DDPINFO("%s skip mtk_crtc_set_dirty\n", __func__);
 
 	CRTC_MMP_EVENT_END(index, check_trigger, 0, 0);
