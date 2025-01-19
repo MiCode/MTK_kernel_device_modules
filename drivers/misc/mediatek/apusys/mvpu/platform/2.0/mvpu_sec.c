@@ -26,7 +26,7 @@
 
 #include "mdw_trace.h"
 
-#include "mvpu_plat_device.h"
+#include "mvpu_plat.h"
 #include "mvpu_sysfs.h"
 #include "mvpu_ipi.h"
 #include "mvpu_cmd_data.h"
@@ -234,7 +234,6 @@ void get_ker_info(uint32_t hash, uint32_t *ker_bin_offset, uint32_t *ker_bin_num
 		//ker_size_offset = ker_size_offset + 4 - (ker_size_offset % 4);
 	}
 
-	return;
 }
 
 void set_ker_iova(uint32_t ker_bin_offset, uint32_t ker_bin_num, uint32_t *ker_bin_each_iova)
@@ -616,14 +615,14 @@ int update_hash_pool(void *session,
 		return PTR_ERR(hash_pool[session_id]->hash_dma_buf[hash_id]);
 	}
 
-	if (mvpu_dev == NULL) {
-		pr_info("[MVPU][Sec] mvpu_dev is NULL\n");
+	if (g_mvpu_platdata->pdev == NULL) {
+		pr_info("[MVPU][Sec] mvpu_plat_dev is NULL\n");
 		return -1;
 	}
 
 	hash_pool[session_id]->attach[hash_id] =
 		dma_buf_attach(hash_pool[session_id]->hash_dma_buf[hash_id],
-		mvpu_dev);
+		&g_mvpu_platdata->pdev->dev);
 
 	if (IS_ERR(hash_pool[session_id]->attach[hash_id])) {
 		pr_info("[MVPU][Sec] attach fail, return\n");
@@ -1699,11 +1698,10 @@ int region_mpu_set(uint32_t session_id,
 			buf_io_cnt = buf_io_cnt + TCM_END_SFT + 2;
 
 	} else {
-		if (protect_phase == true) {
+		if (protect_phase == true)
 			buf_io_cnt = buf_io_cnt + POOL_END_SFT;
-		} else {
+		else
 			buf_io_cnt = buf_io_cnt + TCM_END_SFT;
-		}
 	}
 
 	if (mvpu_loglvl_sec >= APUSYS_MVPU_LOG_ALL) {
@@ -2053,7 +2051,7 @@ END:
 	return ret;
 }
 
-int mvpu_load_img(struct device *dev)
+int mvpu20_load_img(struct device *dev)
 {
 	int ret = 0;
 #ifndef MVPU_ALGO_IMG_DISABLE
@@ -2128,13 +2126,11 @@ END:
 	return ret;
 }
 
-int mvpu_sec_init(struct device *dev)
+int mvpu20_sec_init(struct device *dev)
 {
 	int ret = 0;
 	uint32_t session_id = 0;
 	uint32_t hash_id = 0;
-
-	mvpu_dev = dev;
 
 	//image settings
 	mvpu_algo_iova = 0x0;
@@ -2151,14 +2147,14 @@ int mvpu_sec_init(struct device *dev)
 		saved_session[session_id] = 0xFFFFFFFFFFFFFFFF;
 
 /*
-		saved_session[session_id] = kmalloc(sizeof(uint64_t), GFP_KERNEL);
-		if (!saved_session[session_id]) {
-			ret = -ENOMEM;
-			goto END;
-		} else {
-			memset(saved_session[session_id], 0xFFFFFFFFFFFFFFFF, sizeof(uint64_t));
-		}
-*/
+ *		saved_session[session_id] = kmalloc(sizeof(uint64_t), GFP_KERNEL);
+ *		if (!saved_session[session_id]) {
+ *			ret = -ENOMEM;
+ *			goto END;
+ *		} else {
+ *			memset(saved_session[session_id], 0xFFFFFFFFFFFFFFFF, sizeof(uint64_t));
+ *		}
+ */
 
 		hash_pool[session_id] = kvzalloc(sizeof(struct mvpu_hash_pool), GFP_KERNEL);
 		if (!hash_pool[session_id]) {
@@ -2174,6 +2170,58 @@ int mvpu_sec_init(struct device *dev)
 
 END:
 	return ret;
+}
+
+
+static uint64_t ptn_total_size;
+static uint64_t kerbin_total_size;
+
+static ssize_t mvpu_img_show(struct kobject *kobj, struct kobj_attribute *attr,
+			 char *buf)
+{
+	int ret = 0;
+
+	if (ptn_total_size == 0)
+		ptn_total_size = get_ptn_total_size();
+	else
+		pr_info("[MVPU] already get ptn_total_size: 0x%llx\n", ptn_total_size);
+
+	if (kerbin_total_size == 0)
+		kerbin_total_size = get_kerbin_total_size();
+	else
+		pr_info("[MVPU] already get kerbin_total_size: 0x%llx\n", kerbin_total_size);
+
+	ret = sprintf(buf, "0x%llx", ptn_total_size + kerbin_total_size + 32);
+	if (ret < 0) {
+		pr_info("[MVPU] %s, sprintf error\n", __func__);
+		return ret;
+	}
+
+	pr_info("[MVPU] %s, ptn_size = 0x%x, kerbin_size = 0x%x, mvpu_img_sz = 0x%x\n",
+		__func__, (uint32_t)ptn_total_size, (uint32_t)kerbin_total_size,
+		(uint32_t)(ptn_total_size + kerbin_total_size + 32));
+
+	return ret;
+}
+
+static ssize_t mvpu_img_store(struct kobject *kobj, struct kobj_attribute *attr,
+			  const char *cmd, size_t count)
+{
+	return count;
+}
+
+static struct kobj_attribute get_mvpu_img = {
+	.attr = {
+		.name = "mvpu_img_sz",
+		.mode = 0644,
+	},
+	.show = mvpu_img_show,
+	.store = mvpu_img_store,
+};
+
+int mvpu20_sec_sysfs_init(struct kobject *root_dir)
+{
+	return sysfs_create_file(root_dir, &get_mvpu_img.attr);
 }
 
 MODULE_IMPORT_NS(DMA_BUF);

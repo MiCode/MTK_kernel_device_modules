@@ -319,12 +319,23 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/sw_logger/
 apusys-objs += sw_logger/sw_logger.o
 
 # mvpu
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/
-apusys-objs += mvpu/mvpu_driver.o
-apusys-objs += mvpu/mvpu_plat_device.o
-apusys-objs += mvpu/mvpu_ipi.o
-apusys-objs += mvpu/mvpu_sysfs.o
-apusys-objs += mvpu/mvpu_sec.o
+
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/common/
+
+apusys-objs += mvpu/common/mvpu_driver.o
+apusys-objs += mvpu/common/mvpu_plat.o
+apusys-objs += mvpu/common/mvpu_sysfs.o
+apusys-objs += mvpu/common/mvpu_config.o
+
+ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/2.0/mvpu_platdata.c),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/mvpu/platform/2.0/
+subdir-ccflags-y += -DMVPU_V2_PLAT_DATA
+apusys-objs += mvpu/platform/2.0/mvpu_ipi.o
+apusys-objs += mvpu/platform/2.0/mvpu_sec.o
+apusys-objs += mvpu/platform/2.0/mvpu_platdata.o
+apusys-objs += mvpu/platform/2.0/mvpu_valid.o
+apusys-objs += mvpu/platform/2.0/mvpu_handler.o
+endif
 
 # aps
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/aps/
