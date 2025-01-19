@@ -4268,7 +4268,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	if (eb_policy_dts_flag == 2) {
 		get_min_oppidx = ged_get_min_oppidx();
 		GED_LOGI("dts support gpueb dvfs v2, min_oppidx=%u", get_min_oppidx);
-		mtk_set_fastdvfs_mode(POLICY_MODE_V2);
+		mtk_set_fastdvfs_mode(POLICY_MODE);  // WA set V1
 	} else if (eb_policy_dts_flag == 1) {
 		get_min_oppidx = ged_get_min_oppidx();
 		GED_LOGI("dts support gpueb dvfs v1, min_oppidx=%u", get_min_oppidx);
