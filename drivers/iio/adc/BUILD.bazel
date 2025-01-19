@@ -32,6 +32,7 @@ MODULE_NAME = [
     "mt6379-adc",
     "mtk-spmi-pmic-adc",
     "rt9490-adc",
+    "mt6338-auxadc",
 ]
 
 [define_mgk_ddk_ko(

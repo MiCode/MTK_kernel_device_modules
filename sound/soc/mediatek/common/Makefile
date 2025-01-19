@@ -23,7 +23,7 @@ snd-soc-mtk-common-$(CONFIG_SND_SOC_MTK_SRAM) += mtk-sram-manager.o
 snd-soc-mtk-common-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-sp-pcm-ops.o mtk-afe-debug.o
 
 # functions for external modules
-obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-afe-external.o
+#obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-afe-external.o
 
 # speaker dynamic detect
 obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-sp-spk-amp.o

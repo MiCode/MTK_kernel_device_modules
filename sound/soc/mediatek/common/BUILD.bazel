@@ -14,6 +14,14 @@ define_mgk_ddk_ko(
     ],
 )
 
+define_mgk_ddk_ko(
+    name = "mtk-afe-external",
+        srcs = [
+            "mtk-afe-external.c",
+            "mtk-afe-external.h",
+    ],
+)
+
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([
