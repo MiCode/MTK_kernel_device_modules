@@ -4,7 +4,6 @@
 # project.
 
 DEVICE_MODULES_FOLDER := $(OUT_DIR)/$(DEVICE_MODULES_REL_DIR)
-$(warning DEVICE_MODULES_FOLDER: $(DEVICE_MODULES_FOLDER))
 ifeq ($(wildcard $(DEVICE_MODULES_FOLDER)),)
 DEVICE_MODULES_FOLDER := $(OUT_DIR)/$(subst kernel/,,$(DEVICE_MODULES_REL_DIR))
 endif
@@ -74,3 +73,12 @@ EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/lpm/*
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/lpm/modules/debug/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mkp/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mmstat/*Module.symvers)
+
+
+
+# Please don't modify below lines
+extra_symbols_temp := $(EXTRA_SYMBOLS)
+extra_symbols :=
+$(foreach file, $(extra_symbols_temp), $(if $(filter 0,$(shell wc -c < $(file))),,$(eval extra_symbols += $(file))))
+
+EXTRA_SYMBOLS := $(extra_symbols)
