@@ -538,6 +538,7 @@ struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
 {
 	struct mtk_blocktag *btag;
 	__u32 nr_tag = tag_per_queue * nr_queue;
+	char buf[BTAG_NAME_LEN];
 
 	if (!host)
 		return ERR_PTR(-EINVAL);
@@ -547,11 +548,10 @@ struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
 	    nr_tag > BTAG_UFS_MAX_TAG || nr_tag > BTAG_MAX_TAG)
 		return ERR_PTR(-EINVAL);
 
-	btag = mtk_btag_alloc("ufs",
-			      BTAG_STORAGE_UFS,
-			      BTAG_UFS_RINGBUF_MAX,
-			      sizeof(struct btag_ufs_ctx),
-			      nr_queue, &btag_ufs_vops);
+	snprintf(buf, BTAG_NAME_LEN, "ufs%u", host->host_id);
+	btag = mtk_btag_alloc(buf, BTAG_STORAGE_UFS, BTAG_UFS_RINGBUF_MAX,
+			      sizeof(struct btag_ufs_ctx), nr_queue,
+			      &btag_ufs_vops);
 	if (IS_ERR_OR_NULL(btag)) {
 		pr_notice("%s: btag alloc fail %ld\n", __func__, PTR_ERR(btag));
 		return btag;
@@ -562,8 +562,8 @@ struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
 	btag->tag_per_queue = tag_per_queue;
 	btag->nr_tag = nr_tag;
 
-	btag->wq = alloc_workqueue("ufs_mtk_btag",
-					  WQ_FREEZABLE | WQ_UNBOUND, 1);
+	snprintf(buf, BTAG_NAME_LEN, "ufs_mtk_btag_%u", host->host_id);
+	btag->wq = alloc_workqueue(buf, WQ_FREEZABLE | WQ_UNBOUND, 1);
 	INIT_WORK(&btag->worker, btag_ufs_work);
 
 	mtk_btag_earaio_register(btag->name);
@@ -574,8 +574,11 @@ EXPORT_SYMBOL_GPL(mtk_btag_ufs_init);
 
 void mtk_btag_ufs_exit(struct mtk_blocktag *btag)
 {
-	if (btag)
+	if (btag) {
+		if (btag->wq)
+			destroy_workqueue(btag->wq);
 		mtk_btag_free(btag);
+	}
 }
 EXPORT_SYMBOL_GPL(mtk_btag_ufs_exit);
 

@@ -488,7 +488,7 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 		if (val && !perf_tracker_on) {
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
-			mtk_btag_mictx_register(&ufs_mictx_id, "ufs",
+			mtk_btag_mictx_register(&ufs_mictx_id, "ufs0",
 						"perf_tracker", NULL);
 #endif
 			insert_freq_qos_hook();
