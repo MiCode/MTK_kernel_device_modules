@@ -5,7 +5,7 @@
 
 #include <linux/io.h>
 #include "adsp_core.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_semaphore.h"
 
 struct adsp_sem_info {
@@ -57,8 +57,8 @@ int get_adsp_semaphore(unsigned int sem_id)
 
 	spin_lock_irqsave(&sem_info.lock, spin_flags);
 
-	while (!adsp_mt_get_semaphore(sem_bit)) {
-		adsp_mt_toggle_semaphore(sem_bit);
+	while (!adsp_get_semaphore(sem_bit)) {
+		adsp_toggle_semaphore(sem_bit);
 
 		if (retry-- <= 0) {
 			ret = ADSP_SEMAPHORE_BUSY;
@@ -90,12 +90,11 @@ int release_adsp_semaphore(unsigned int sem_id)
 
 	spin_lock_irqsave(&sem_info.lock, spin_flags);
 
-	if (adsp_mt_get_semaphore(sem_bit))
-		adsp_mt_toggle_semaphore(sem_bit);
+	if (adsp_get_semaphore(sem_bit))
+		adsp_toggle_semaphore(sem_bit);
 
 	spin_unlock_irqrestore(&sem_info.lock, spin_flags);
 
 	return ret;
 }
 EXPORT_SYMBOL_GPL(release_adsp_semaphore);
-

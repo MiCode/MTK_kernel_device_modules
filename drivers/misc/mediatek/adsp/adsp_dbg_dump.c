@@ -9,7 +9,7 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_platform_driver.h"
 #include "adsp_feature_define.h"
 #include "adsp_core.h"
@@ -194,4 +194,3 @@ bool adsp_check_adsppll_freq(unsigned int adsp_meter_type)
 	return freq_check;
 }
 EXPORT_SYMBOL(adsp_check_adsppll_freq);
-

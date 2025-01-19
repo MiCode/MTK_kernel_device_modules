@@ -141,6 +141,8 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	/* register syscore if adsp on infra */
 	//register_syscore_ops(&adsp_syscore_ops);
 
+	adsp_hardware_init(adspsys);
+
 	register_adspsys(adspsys);
 
 	pr_info("%s, success\n", __func__);
@@ -329,4 +331,3 @@ module_exit(platform_adsp_exit);
 MODULE_AUTHOR("Chien-Wei Hsu <Chien-Wei.Hsu@mediatek.com>");
 MODULE_DESCRIPTION("MTK AUDIO DSP PLATFORM Device Driver");
 MODULE_LICENSE("GPL v2");
-

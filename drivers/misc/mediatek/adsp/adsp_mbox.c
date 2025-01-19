@@ -7,7 +7,7 @@
 #include <linux/interrupt.h>
 #include <linux/sched/clock.h>
 #include "adsp_core.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_mbox.h"
 
 #include "adsp_platform_driver.h"
@@ -262,7 +262,7 @@ static int adsp_mbox_pin_cb(unsigned int id, void *prdata, void *buf,
 		pr_notice("%s() invalid core_id %u\n", __func__, core_id);
 		return ADSP_IPI_ERROR;
 	}
-	adsp_mt_clr_spm(core_id);
+	adsp_clear_spm(core_id);
 
 	if (id >= ADSP_NR_IPI) {
 		pr_notice("%s() invalid ipi_id %d\n", __func__, id);
@@ -429,4 +429,3 @@ enum adsp_ipi_status adsp_ipi_unregistration(enum adsp_ipi_id id)
 		return ADSP_IPI_ERROR;
 }
 EXPORT_SYMBOL_GPL(adsp_ipi_unregistration);
-

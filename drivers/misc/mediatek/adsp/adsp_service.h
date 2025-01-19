@@ -8,7 +8,6 @@
 
 #include <linux/notifier.h>
 #include <linux/interrupt.h>
-#include "adsp_reg.h"
 #include "adsp_feature_define.h"
 #include "adsp_ipi.h"
 

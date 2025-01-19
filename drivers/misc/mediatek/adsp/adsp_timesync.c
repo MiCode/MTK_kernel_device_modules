@@ -14,7 +14,7 @@
 #include <asm/arch_timer.h>
 #include <asm/timex.h>
 #include "adsp_core.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_timesync.h"
 
 struct timesync_info_s {
@@ -125,4 +125,3 @@ void adsp_timesync_resume(void)
 	/* kick start the timer immediately */
 	hrtimer_start(&timesync_ctrl.timer, 0, HRTIMER_MODE_REL);
 }
-

@@ -15,8 +15,7 @@
 #include "adsp_timesync.h"
 #include "adsp_semaphore.h"
 #include "adsp_excep.h"
-#include "adsp_reg.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_platform_driver.h"
 #include "adsp_core.h"
 

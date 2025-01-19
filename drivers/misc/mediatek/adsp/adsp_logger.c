@@ -9,7 +9,7 @@
 #include <linux/mutex.h>
 #include <linux/io.h>
 #include <linux/slab.h>
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_platform_driver.h"
 #include "adsp_feature_define.h"
 #include "adsp_core.h"
@@ -286,4 +286,3 @@ ssize_t adsp_dump_log_state(struct log_ctrl_s *ctrl, char *buf, int size)
 			r_pos, w_pos);
 	return n;
 }
-

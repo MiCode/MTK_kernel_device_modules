@@ -10,9 +10,9 @@
 #include "adsp_core.h"
 #include "adsp_feature_define.h"
 #include "adsp_reserved_mem.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_platform_driver.h"
-#include "adsp_reg.h"
+
 #include "adsp_ipic.h"
 #include "adsp_dbg_dump.h"
 
@@ -40,7 +40,7 @@ static int adsp_send_sys_event(struct adsp_sysevent_ctrl *ctrl,
 		return ADSP_IPI_BUSY;
 	}
 
-	if (adsp_mt_check_swirq(ctrl->pdata->id)) {
+	if (adsp_check_swirq(ctrl->pdata->id)) {
 		mutex_unlock(&ctrl->lock);
 		return ADSP_IPI_BUSY;
 	}
@@ -48,11 +48,11 @@ static int adsp_send_sys_event(struct adsp_sysevent_ctrl *ctrl,
 	adsp_copy_to_sharedmem(ctrl->pdata, ADSP_SHAREDMEM_WAKELOCK,
 				&event, sizeof(event));
 
-	adsp_mt_set_swirq(ctrl->pdata->id);
+	adsp_set_swirq(ctrl->pdata->id);
 
 	if (wait) {
 		start_time = ktime_get();
-		while (adsp_mt_check_swirq(ctrl->pdata->id)) {
+		while (adsp_check_swirq(ctrl->pdata->id)) {
 			time_ipc_us = ktime_us_delta(ktime_get(), start_time);
 			if (time_ipc_us > 1000) /* 1 ms */
 				break;
@@ -93,7 +93,7 @@ int adsp_pre_wake_lock(u32 cid)
 
 	spin_lock_irqsave(&pdata->wakelock, flags);
 	if (pdata->prelock_cnt == 0) {
-		ret = adsp_mt_pre_lock(cid);
+		ret = adsp_pre_lock(cid);
 		if (ret <= 0)
 			pr_warn("%s(%d) fail to set lock\n", __func__, cid);
 	}
@@ -109,7 +109,7 @@ int adsp_pre_wake_lock(u32 cid)
 				__func__, cid, ret);
 		}
 	} else
-		adsp_mt_set_swirq(cid);
+		adsp_set_swirq(cid);
 
 	/* polling adsp status */
 	while (!check_core_active(cid) && --retry) {
@@ -151,7 +151,7 @@ int adsp_pre_wake_unlock(u32 cid)
 		pdata->prelock_cnt --;
 
 	if (pdata->prelock_cnt == 0) {
-		ret = adsp_mt_pre_unlock(cid);
+		ret = adsp_pre_unlock(cid);
 		if (ret != 0)
 			pr_warn("%s(%d) fail to clear lock\n", __func__, cid);
 	}
@@ -231,4 +231,3 @@ ERROR:
 
 	return ret;
 }
-

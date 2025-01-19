@@ -10,7 +10,7 @@
 #include <linux/workqueue.h>
 #include <linux/interrupt.h>
 #include <linux/kfifo.h>
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_clk.h"
 #include "adsp_helper.h"
 
@@ -116,6 +116,7 @@ struct adspsys_priv {
 	struct workqueue_struct *workq;
 
 	struct adsp_clk_operations clk_ops;
+	struct adsp_hardware_operations hw_ops;
 
 	const struct adspsys_description *desc;
 };

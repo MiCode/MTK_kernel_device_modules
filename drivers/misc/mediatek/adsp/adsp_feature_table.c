@@ -7,7 +7,7 @@
 #include <linux/workqueue.h>
 #include <linux/kernel.h>
 #include "adsp_feature_define.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_core.h"
 
 struct adsp_feature_tb {

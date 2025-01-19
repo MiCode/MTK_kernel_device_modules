@@ -14,3 +14,4 @@ obj-${CONFIG_MTK_ADSP_V0} += adsp-$(VERSION).o
 
 adsp-$(VERSION)-objs += adsp_driver_$(VERSION).o
 adsp-$(VERSION)-objs += adsp_clk_tinysys.o
+adsp-$(VERSION)-objs += adsp_platform.o

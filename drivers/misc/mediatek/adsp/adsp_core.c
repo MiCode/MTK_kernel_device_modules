@@ -19,7 +19,7 @@
 #include "adsp_clk.h"
 #include "adsp_timesync.h"
 #include "adsp_semaphore.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_platform_driver.h"
 #include "adsp_excep.h"
 #include "adsp_mbox.h"
@@ -294,7 +294,7 @@ static irqreturn_t adsp_irq_top_handler(int irq, void *data)
 {
 	struct irq_t *pdata = (struct irq_t *)data;
 
-	adsp_mt_clr_spm(pdata->cid);
+	adsp_clear_spm(pdata->cid);
 	if (!pdata->clear_irq)
 		return IRQ_NONE;
 
@@ -688,8 +688,6 @@ static int adsp_system_init(void)
 
 	if (!adspsys)
 		return -EFAULT;
-
-	adsp_hardware_init(adspsys);
 
 	/* ipi of ready/suspend ack */
 	adsp_ipi_registration(ADSP_IPI_ADSP_A_READY,

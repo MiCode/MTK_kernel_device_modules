@@ -13,3 +13,4 @@ obj-${CONFIG_MTK_ADSP_V2} += adsp-$(VERSION).o
 
 adsp-$(VERSION)-objs += adsp_driver_$(VERSION).o
 adsp-$(VERSION)-objs += adsp_clk_audio.o
+adsp-$(VERSION)-objs += adsp_platform.o

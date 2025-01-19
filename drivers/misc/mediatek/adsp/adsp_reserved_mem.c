@@ -12,7 +12,7 @@
 #include <soc/mediatek/emi.h>
 #endif
 #include "adsp_reserved_mem.h"
-#include "adsp_platform.h"
+#include "adsp_platform_interface.h"
 #include "adsp_core.h"
 
 

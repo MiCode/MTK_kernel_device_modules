@@ -25,7 +25,6 @@
 #include <soc/mediatek/emi.h>
 #endif
 #include <aed.h>
-#include "adsp_reg.h"
 #include "adsp_core.h"
 #include "adsp_clk.h"
 #include "adsp_platform_driver.h"
@@ -423,12 +422,9 @@ void adsp_aed_worker(struct work_struct *ws)
 		mtk_emidbg_dump();
 #endif
 		pr_info("%s, adsp dead, wait dump dead body", __func__);
-		if (is_infrabus_timeout())
-			BUG(); /* reboot for bus dump */
-		else
-			aee_kernel_exception_api(__FILE__, __LINE__, DB_OPT_DEFAULT,
-						 "[ADSP]",
-						 "ASSERT: ADSP DEAD! Recovery Fail");
+		aee_kernel_exception_api(__FILE__, __LINE__, DB_OPT_DEFAULT,
+						"[ADSP]",
+						"ASSERT: ADSP DEAD! Recovery Fail");
 	}
 #endif
 	adsp_disable_clock();
@@ -707,4 +703,3 @@ struct attribute_group adsp_excep_attr_group = {
 	.attrs = adsp_excep_attrs,
 	.bin_attrs = adsp_excep_bin_attrs,
 };
-
