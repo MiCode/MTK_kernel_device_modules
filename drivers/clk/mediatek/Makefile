@@ -145,6 +145,9 @@ endif
 #obj-$(CONFIG_COMMON_CLK_MT6989_VLP) += clk-mt6989-vlp.o
 #obj-$(CONFIG_COMMON_CLK_MT6989_VCODEC) += clk-mt6989-vcodec.o
 #endif
+ifneq ($(wildcard $(srctree)/$(src)/clk-mt6991.c),)
+obj-$(CONFIG_COMMON_CLK_MT6991_IVI) += clk-mt6991-ivi.o
+endif
 #ifneq ($(wildcard $(src)/clk-mt6993.c),)
 #obj-$(CONFIG_COMMON_CLK_MT6993) += clk-mt6993.o
 #obj-$(CONFIG_COMMON_CLK_MT6993_PD) += clk-mt6993-pd.o

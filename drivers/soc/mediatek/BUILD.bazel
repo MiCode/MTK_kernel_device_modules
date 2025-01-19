@@ -128,6 +128,38 @@ ddk_headers (
         includes = ["."],
 );
 
+define_mgk_ddk_ko(
+        name = "mtk-scpsys-mt6991-spm",
+
+        srcs = [
+            "mtk-scpsys-mt6991-spm.c",
+        ],
+
+        includes = ["."],
+
+        hdrs = glob(["**/*.h"]),
+
+        ko_deps = [
+            "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys".format(kernel_version),
+        ],
+)
+
+define_mgk_ddk_ko(
+        name = "mtk-scpsys-mt6991-mmpc",
+
+        srcs = [
+            "mtk-scpsys-mt6991-mmpc.c",
+        ],
+
+        includes = ["."],
+
+        hdrs = glob(["**/*.h"]),
+
+        ko_deps = [
+            "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys".format(kernel_version),
+        ],
+)
+
 define_platform_scpsys_ko("mt6761")
 define_platform_scpsys_ko("mt6765")
 define_platform_scpsys_ko("mt6768")

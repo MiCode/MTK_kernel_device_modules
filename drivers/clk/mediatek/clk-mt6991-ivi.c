@@ -10,7 +10,6 @@
 #include <linux/platform_device.h>
 
 #include "clk-mtk.h"
-#include "clk-pll.h"
 #include "clk-gate.h"
 #include "clk-mux.h"
 #include <dt-bindings/clock/mt6991-ivi-clk.h>
