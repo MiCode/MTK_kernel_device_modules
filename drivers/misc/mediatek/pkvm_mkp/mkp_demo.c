@@ -330,24 +330,6 @@ protect_krn_fail:
 #endif
 #endif
 
-static void probe_android_rvh_set_module_permit_before_init(void *ignore,
-	const struct module *mod)
-{
-	if (mod == THIS_MODULE && policy_ctrl[MKP_POLICY_MKP] != 0) {
-		module_enable_ro(mod, false, MKP_POLICY_MKP);
-		module_enable_nx(mod, MKP_POLICY_MKP);
-		module_enable_x(mod, MKP_POLICY_MKP);
-		return;
-	}
-	if (mod != THIS_MODULE && policy_ctrl[MKP_POLICY_DRV] != 0) {
-		if (drv_skip((char *)mod->name))
-			return;
-		module_enable_ro(mod, false, MKP_POLICY_DRV);
-		module_enable_nx(mod, MKP_POLICY_DRV);
-		module_enable_x(mod, MKP_POLICY_DRV);
-	}
-}
-
 static void probe_android_rvh_commit_creds(void *ignore, const struct task_struct *task,
 	const struct cred *new)
 {
@@ -910,11 +892,6 @@ static void mkp_task_newtask(void *ignore, struct task_struct *task, unsigned lo
 	MKP_HOOK_END(__func__);
 }
 
-static void mkp_module_load(void *ignore, struct module *mod)
-{
-	probe_android_rvh_set_module_permit_before_init(NULL, mod);
-}
-
 static void mkp_module_free(void *ignore, struct module *mod)
 {
 	if (policy_ctrl[MKP_POLICY_DRV] != 0 || policy_ctrl[MKP_POLICY_KERNEL_PAGES] != 0 ||
@@ -925,9 +902,17 @@ static void mkp_module_free(void *ignore, struct module *mod)
 
 static struct tracepoints_table mkp_tracepoints[] = {
 {.name = "task_newtask", .func = mkp_task_newtask, .tp = NULL, .policy = MKP_POLICY_TASK_CRED},
+{.name = "module_free", .func = mkp_module_free, .tp = NULL, .policy = MKP_POLICY_DRV},
+};
+
+/* Beacause there are some issue for module_load tracepoint, we bypass this as a workaround */
+/*
+static struct tracepoints_table mkp_tracepoints[] = {
+{.name = "task_newtask", .func = mkp_task_newtask, .tp = NULL, .policy = MKP_POLICY_TASK_CRED},
 {.name = "module_load", .func = mkp_module_load, .tp = NULL, .policy = MKP_POLICY_DRV},
 {.name = "module_free", .func = mkp_module_free, .tp = NULL, .policy = MKP_POLICY_DRV},
 };
+*/
 
 #define FOR_EACH_INTEREST(i) \
 	for (i = 0; i < sizeof(mkp_tracepoints) / sizeof(struct tracepoints_table); i++)
@@ -974,8 +959,8 @@ static void __init mkp_hookup_tracepoints(void)
 	// Probing found tracepoints
 	FOR_EACH_INTEREST(i) {
 		if (policy_ctrl[i] != 0 && mkp_tracepoints[i].tp != NULL) {
-			ret = tracepoint_probe_register(mkp_tracepoints[0].tp,
-							mkp_tracepoints[0].func,  NULL);
+			ret = tracepoint_probe_register(mkp_tracepoints[i].tp,
+							mkp_tracepoints[i].func,  NULL);
 			if (ret) {
 				MKP_ERR("Failed to register %s for policy %d\n",
 					mkp_tracepoints[i].name, mkp_tracepoints[i].policy);
