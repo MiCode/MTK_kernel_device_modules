@@ -6,6 +6,7 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include "apusys_trace.h"
+#include "mdw_cmn.h"
 
 #if IS_ENABLED(CONFIG_FTRACE)
 extern u8 cfg_apusys_trace;
@@ -15,10 +16,14 @@ extern u8 cfg_apusys_trace;
 #define _mdw_trace_begin(format, args...) \
 	{ \
 		char buf[256]; \
+		int len; \
 		if (cfg_apusys_trace) { \
-			snprintf(buf, sizeof(buf), \
-				format "%s", args); \
-			trace_tag_begin(buf); \
+			len = snprintf(buf, sizeof(buf), format "%s", args); \
+			if (len >= sizeof(buf) || len < 0) { \
+				pr_info(" %s snprintf fail(%d)\n", __func__, __LINE__); \
+			} else { \
+				trace_tag_begin(buf); \
+			} \
 		} \
 	}
 
