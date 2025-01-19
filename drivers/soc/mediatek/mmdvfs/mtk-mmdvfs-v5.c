@@ -22,8 +22,6 @@
 #include "clk-fmeter.h"
 #include "clk-mtk.h"
 
-#include "vcp_helper.h"
-#include "vcp_reg.h"
 #include "vcp_status.h"
 
 #include "mtk-smmu-v3.h"
@@ -424,7 +422,7 @@ static int mmdvfs_vcp_init(void)
 	retry = 0;
 	while (!is_vcp_ready_ex(MMDVFS_HFRP_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
-			MMDVFS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
+			MMDVFS_ERR("VCP not ready");
 			return -ETIMEDOUT;
 		}
 		mdelay(1);

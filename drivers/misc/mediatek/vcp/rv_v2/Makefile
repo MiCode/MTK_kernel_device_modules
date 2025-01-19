@@ -1,6 +1,3 @@
-obj-$(CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT) += vcp_status_v2.o
-vcp_status_v2-$(CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT) += vcp_status.o
-
 obj-$(CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT) += vcp_v2.o
 vcp_v2-$(CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT) += vcp_helper.o
 vcp_v2-$(CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT) += vcp_excep.o

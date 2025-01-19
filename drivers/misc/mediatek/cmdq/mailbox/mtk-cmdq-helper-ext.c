@@ -25,7 +25,6 @@
 #endif
 #include "vcp.h"
 #include "vcp_status.h"
-#include "vcp_reg.h"
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 #include "cmdq.h"
 #endif
@@ -745,7 +744,7 @@ s32 cmdq_pkt_readback(struct cmdq_pkt *pkt, enum CMDQ_VCP_ENG_ENUM engine,
 	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	/* vcp irq B_GIPC2_SETCLR_0 */
-	cmdq_pkt_write(pkt, NULL, VCP_TO_SPM_REG_PA, B_GIPC2_SETCLR_0, B_GIPC2_SETCLR_0);
+	//cmdq_pkt_write(pkt, NULL, VCP_TO_SPM_REG_PA, B_GIPC2_SETCLR_0, B_GIPC2_SETCLR_0);
 #endif
 	cmdq_pkt_poll_timeout_reuse(pkt, 0, SUBSYS_NO_SUPPORT,
 		addr, ~0, U16_MAX, reg_gpr, poll_reuse);

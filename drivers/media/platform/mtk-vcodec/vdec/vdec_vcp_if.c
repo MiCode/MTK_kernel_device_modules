@@ -17,7 +17,6 @@
 #include "mtk_vcodec_dec.h"
 #include "mtk_vcodec_drv.h"
 #include "vdec_drv_if.h"
-#include "vcp_ipi_pin.h"
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
 #endif
@@ -315,7 +314,7 @@ wait_ack:
 		mtk_vcodec_err(inst, "wait vcp ipi %X ack time out! %d %d",
 			msg_cmd->msg_id, ret, inst->vcu.failure);
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-		dump_vcp_irq_status();
+		dump_vcp_irq_status_ex();
 #endif
 		goto ipi_err_wait_and_unlock;
 	} else if (-ERESTARTSYS == ret) {

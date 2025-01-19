@@ -1,0 +1,23 @@
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = [
+        "vcp.h",
+    ],
+)
+
+ddk_headers(
+    name = "vcp_public_headers",
+    hdrs = [
+        "vcp.h",
+    ],
+    includes = ["."],
+)

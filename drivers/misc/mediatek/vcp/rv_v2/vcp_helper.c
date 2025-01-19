@@ -254,6 +254,7 @@ struct vcp_status_fp vcp_helper_fp = {
 	.get_ipidev                 = get_ipidev,
 	.vcp_get_io_device          = vcp_get_io_device,
 	.vcp_register_mminfra_cb    = vcp_register_mminfra_cb,
+	.dump_vcp_irq_status_cb     = dump_vcp_irq_status,
 };
 
 #undef pr_debug
@@ -3178,7 +3179,6 @@ void dump_vcp_irq_status(void)
 		dump_mmup_irq_status();
 
 }
-EXPORT_SYMBOL_GPL(dump_vcp_irq_status);
 
 static void vcp_device_remove(struct platform_device *pdev)
 {

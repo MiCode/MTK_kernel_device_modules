@@ -164,6 +164,15 @@ struct device *vcp_get_io_device_ex(enum VCP_IOMMU_DEV io_num)
 }
 EXPORT_SYMBOL_GPL(vcp_get_io_device_ex);
 
+void dump_vcp_irq_status_ex(void)
+{
+	if(!vcp_fp || !vcp_fp->dump_vcp_irq_status_cb)
+		return;
+
+	vcp_fp->dump_vcp_irq_status_cb();
+}
+EXPORT_SYMBOL_GPL(dump_vcp_irq_status_ex);
+
 static void __exit mtk_vcp_status_exit(void)
 {
 }

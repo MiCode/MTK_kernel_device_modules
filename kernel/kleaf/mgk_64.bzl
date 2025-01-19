@@ -280,6 +280,9 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v1:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/remoteproc:srcs".format(kernel_version),
 ]
@@ -547,6 +550,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20/musb_main:musb_main".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm-perf-arm-pmu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v1:mtk-swpm-isp-wrapper".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla-v1-dbg".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-fpgaphy".format(kernel_version),
@@ -975,9 +980,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/usb/usb_logger/usb_logger.ko",
     "drivers/misc/mediatek/usb/usb_sram/usb_sram.ko",
     "drivers/misc/mediatek/vcp/rv/vcp.ko",
-    "drivers/misc/mediatek/vcp/rv/vcp_status.ko",
     "drivers/misc/mediatek/vcp/rv_v2/vcp_v2.ko",
-    "drivers/misc/mediatek/vcp/rv_v2/vcp_status_v2.ko",
     "drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko",
     "drivers/misc/mediatek/vmm/mtk-vmm-notifier.ko",
     "drivers/misc/mediatek/vmm_spm/mtk-vmm-spm.ko",
@@ -1623,7 +1626,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6899/mtk_mbraink_v6899.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")
@@ -1827,7 +1830,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6993.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")
         mgk_64_device_modules.remove("drivers/soc/mediatek/mtk-mmdvfs-v3.ko")
@@ -2095,7 +2098,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
 
@@ -2413,7 +2416,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/videocodec/vcodec_kernel_common_driver.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/videocodec/vcodec_kernel_driver-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")
@@ -2800,7 +2803,7 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v1.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v1.ko")
@@ -3020,7 +3023,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
         mgk_64_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:dvfsrc-opp-mt6765".format(kernel_version))
 
@@ -3418,7 +3421,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")
@@ -3623,7 +3626,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/vcp/rv/vcp_status.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")

@@ -24,8 +24,6 @@
 #include "clk-mtk.h"
 #include "mtk-mmdvfs-v3.h"
 
-#include "vcp_helper.h"
-#include "vcp_reg.h"
 #include "vcp_status.h"
 
 #include "mtk-mmdvfs-v3-memory.h"
@@ -886,7 +884,7 @@ int mmdvfs_set_ccu_ipi(const char *val, const struct kernel_param *kp)
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_CCU);
 	while (!is_vcp_ready_ex(MMDVFS_HFRP_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
-			MMDVFS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
+			MMDVFS_ERR("VCP not ready");
 			return -ETIMEDOUT;
 		}
 		mdelay(1);
@@ -1951,7 +1949,7 @@ static int mmdvfs_vcp_init_thread(void *data)
 	retry = 0;
 	while (!is_vcp_ready_ex(MMDVFS_HFRP_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
-			MMDVFS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
+			MMDVFS_ERR("VCP not ready");
 			return -ETIMEDOUT;
 		}
 		mdelay(1);

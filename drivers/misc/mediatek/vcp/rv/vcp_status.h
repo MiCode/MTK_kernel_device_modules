@@ -8,6 +8,10 @@
 
 #include "vcp.h"
 
+#define VCP_PACK_IOVA(addr)     ((uint32_t)((addr) | (((addr) >> 32) & 0xF)))
+#define VCP_UNPACK_IOVA(addr)   \
+	((uint64_t)(addr & 0xFFFFFFF0) | (((uint64_t)(addr) & 0xF) << 32))
+
 typedef int (*mminfra_pwr_ptr)(void);
 typedef void (*mminfra_dump_ptr)(void);
 typedef phys_addr_t (*vcp_get_reserve_mem_phys_fp)(enum vcp_reserve_mem_id_t id);
@@ -28,6 +32,7 @@ typedef struct mtk_ipi_device *(*get_ipidev_fp)(enum feature_id id);
 typedef struct device *(*vcp_get_io_device_fp)(enum VCP_IOMMU_DEV io_num);
 typedef int (*vcp_register_mminfra_cb_fp)(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func);
+typedef void(*dump_vcp_irq_status_fp)(void);
 
 struct vcp_status_fp {
 	vcp_get_reserve_mem_phys_fp vcp_get_reserve_mem_phys;
@@ -47,6 +52,7 @@ struct vcp_status_fp {
 	get_ipidev_fp               get_ipidev;
 	vcp_get_io_device_fp        vcp_get_io_device;
 	vcp_register_mminfra_cb_fp  vcp_register_mminfra_cb;
+	dump_vcp_irq_status_fp      dump_vcp_irq_status_cb;
 };
 
 
@@ -69,5 +75,6 @@ unsigned int is_vcp_ao_ex(void);
 int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func);
 struct device *vcp_get_io_device_ex(enum VCP_IOMMU_DEV io_num);
+void dump_vcp_irq_status_ex(void);
 
 #endif

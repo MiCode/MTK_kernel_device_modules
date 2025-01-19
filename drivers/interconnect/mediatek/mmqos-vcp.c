@@ -11,7 +11,6 @@
 #include <linux/rpmsg/mtk_rpmsg.h>
 #include "mmqos-vcp.h"
 #include "mmqos-test.h"
-#include "vcp_helper.h"
 #include "vcp_status.h"
 
 static phys_addr_t mmqos_memory_iova;
@@ -223,7 +222,7 @@ int mmqos_vcp_init_thread(void *data)
 	retry = 0;
 	while (!is_vcp_ready_ex(MMQOS_FEATURE_ID)) {
 		if (++retry > VCP_SYNC_TIMEOUT_MS) {
-			MMQOS_ERR("VCP_A_ID:%d not ready", VCP_A_ID);
+			MMQOS_ERR("VCP not ready");
 			return -ETIMEDOUT;
 		}
 		mdelay(1);
