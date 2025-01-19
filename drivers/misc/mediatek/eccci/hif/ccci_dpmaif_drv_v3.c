@@ -955,7 +955,16 @@ static irqreturn_t drv3_isr(int irq, void *data)
 /* reset flow: drv3_hw_reset_v1_1 + drv3_glitch_prot_off */
 static void drv3_hw_reset_v1_1(void)
 {
-	/* CG on by clk_prepare, glitch on, ao & pd reset set */
+	/* CG on by clk_unprepare, glitch on, ao & pd reset set */
+	if (!g_dpmaif_ctrl->infra_ao_mem_base) {
+		CCCI_ERROR_LOG(0, TAG, "infra_ao_mem_base is NULL\n");
+		return;
+	}
+	if (!g_dpmaif_ctrl->infra_reset_pd_base) {
+		CCCI_ERROR_LOG(0, TAG, "infra_reset_pd_base is NULL\n");
+		return;
+	}
+
 	/* glitch protect on */
 	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC28, (1<<30));
 	CCCI_BOOTUP_LOG(0, TAG, "%s:glitch prot on: 0x%x\n", __func__,
@@ -988,7 +997,11 @@ static void drv3_hw_reset_v1_1(void)
 
 static void drv3_glitch_prot_off(void)
 {
-	/* CG off by clk_unprepare, glitch off */
+	/* CG off by clk_prepare, glitch off */
+	if (!g_dpmaif_ctrl->infra_ao_mem_base) {
+		CCCI_ERROR_LOG(0, TAG, "infra_ao_mem_base is NULL\n");
+		return;
+	}
 	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC24, (1<<30));
 	CCCI_BOOTUP_LOG(0, TAG, "%s:glitch prot off: 0x%x\n", __func__,
 		dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC20));
@@ -1483,7 +1496,7 @@ static void drv3_dump_register(int buf_type)
 
 	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
 		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991 ||
-		g_plat_inf == 6899) {
+		g_plat_inf == 6899 || g_plat_inf == 6993) {
 		len = DPMAIF_AO_UL_CHNL3_STA_6985 - DPMAIF_AO_UL_CHNL0_STA_6985 + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
@@ -1969,7 +1982,7 @@ int ccci_dpmaif_drv3_init(void)
 
 	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
 		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991 ||
-		g_plat_inf == 6899) {
+		g_plat_inf == 6899 || g_plat_inf == 6993) {
 		ops.drv_ul_get_rwidx = &drv3_ul_get_rwidx_6985;
 		ops.drv_ul_get_rdidx = &drv3_ul_get_rdidx_6985;
 	} else {

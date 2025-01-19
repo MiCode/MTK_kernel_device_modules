@@ -3216,7 +3216,7 @@ static int dpmaif_init_register(struct device *dev)
 		return -1;
 	}
 
-	if (g_dpmf_ver == 2 || g_plat_inf == 6991) {
+	if (g_dpmf_ver == 2 || g_plat_inf == 6991 || g_plat_inf == 6993) {
 		if (dpmaif_read_infra_ao_mem_base(dev))
 			return -1;
 	}
