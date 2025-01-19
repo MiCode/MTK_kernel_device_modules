@@ -5207,6 +5207,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		}
 	}
 
+	mtk_vidle_force_power_ctrl_by_cpu(true);
+
 	if (dsi->output_en) {
 		if (mtk_dsi_doze_status_change(dsi)) {
 			mtk_dsi_pre_cmd(dsi, crtc);
@@ -5214,21 +5216,21 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 			mtk_dsi_post_cmd(dsi, crtc);
 		} else
 			DDPINFO("dsi is initialized\n");
-		return;
+		goto out;
 	}
 
 	if (dsi->slave_dsi) {
 		ret = mtk_preconfig_dsi_enable(dsi->slave_dsi);
 		if (ret < 0) {
 			dev_err(dsi->dev, "config slave dsi fail: %d", ret);
-			return;
+			goto out;
 		}
 	}
 
 	ret = mtk_preconfig_dsi_enable(dsi);
 	if (ret < 0) {
 		dev_err(dsi->dev, "config dsi fail: %d", ret);
-		return;
+		goto out;
 	}
 
 	if (dsi->panel) {
@@ -5236,7 +5238,7 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		if (((!dsi->doze_enabled && !dsi->pending_switch) || force_lcm_update)
 			&& drm_panel_prepare(dsi->panel)) {
 			DDPPR_ERR("failed to prepare the panel\n");
-			return;
+			goto out;
 		}
 		CRTC_MMP_MARK(0, dsi_resume, 1, 1);
 		DDP_PROFILE("[PROFILE] %s panel init end\n", __func__);
@@ -5357,16 +5359,21 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp)
 		&& dsi->ext && dsi->ext->is_connected == -1)
 		check_panel_connection(crtc, dsi);
+
 	DDPINFO("%s -\n", __func__);
 
 	dsi->pending_switch = false;
 	dsi->output_en = true;
 	dsi->doze_enabled = new_doze_state;
 
+out:
+	mtk_vidle_force_power_ctrl_by_cpu(false);
 	return;
+
 err_dsi_power_off:
 	mtk_dsi_stop(dsi);
 	mtk_dsi_poweroff(dsi);
+	mtk_vidle_force_power_ctrl_by_cpu(false);
 }
 
 static int mtk_dsi_stop_vdo_mode(struct mtk_dsi *dsi, void *handle);
@@ -5465,6 +5472,8 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 		goto SKIP_WAIT_FRAME_DONE;
 	}
 
+	mtk_vidle_force_power_ctrl_by_cpu(true);
+
 	/* 2. If VDO mode, stop it and set to CMD mode */
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		mtk_dsi_stop_vdo_mode(dsi, cmdq_handle);
@@ -5534,6 +5543,9 @@ SKIP_WAIT_FRAME_DONE:
 	}
 	dsi->output_en = false;
 	dsi->doze_enabled = new_doze_state;
+
+	mtk_vidle_force_power_ctrl_by_cpu(false);
+
 	DDPINFO("%s-\n", __func__);
 }
 

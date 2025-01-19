@@ -1428,6 +1428,7 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 	u32 ack = vote_set ? BIT(thread) : 0;
 	u32 val = 0;
 	u16 i = 0;
+	static atomic_t has_begin = ATOMIC_INIT(0);
 
 	if (!voter_va)
 		return;
@@ -1451,6 +1452,14 @@ static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread)
 	/* check voter only, later will use another API to power on mminfra */
 
 	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, BIT(thread) | vote_set, val);
+
+	if (val != 0 && atomic_read(&has_begin) == 0) {
+		atomic_set(&has_begin, 1);
+		dpc_mmp(vlp_vote, MMPROFILE_FLAG_START, 0, val);
+	} else if (val == 0 && atomic_read(&has_begin) == 1) {
+		atomic_set(&has_begin, 0);
+		dpc_mmp(vlp_vote, MMPROFILE_FLAG_END, 0, 0);
+	}
 }
 
 static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user user)
