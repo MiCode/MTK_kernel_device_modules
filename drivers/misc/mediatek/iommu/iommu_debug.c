@@ -2343,6 +2343,7 @@ static void mtk_iommu_iova_alloc_dump_top(
 	int smmu_id = -1, stream_id = -1;
 	u64 tab_id = 0;
 	u32 dom_id = 0;
+	unsigned long flags;
 
 	if (iommu_globals.iova_evt_enable == 0)
 		return;
@@ -2372,7 +2373,7 @@ static void mtk_iommu_iova_alloc_dump_top(
 	}
 
 	/* count iova size by device */
-	spin_lock(&iova_list.lock);
+	spin_lock_irqsave(&iova_list.lock, flags);
 	list_for_each_entry_safe(plist, n, &iova_list.head, list_node) {
 		size = (unsigned long) (plist->size / 1024);
 		if (dev == NULL ||
@@ -2384,7 +2385,7 @@ static void mtk_iommu_iova_alloc_dump_top(
 		total_size += size;
 		total_cnt++;
 	}
-	spin_unlock(&iova_list.lock);
+	spin_unlock_irqrestore(&iova_list.lock, flags);
 
 	spin_lock(&count_list.lock);
 	/* sort count iova size by device */
@@ -2507,6 +2508,7 @@ static int mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 	int dump_count = 0;
 	u64 tab_id = 0;
 	u32 dom_id = 0;
+	unsigned long flags;
 
 	if (iommu_globals.iova_evt_enable == 0 || iommu_globals.iova_alloc_list == 0)
 		return 0;
@@ -2534,7 +2536,7 @@ static int mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 			   (iova_list.count - iova_list.list_only_count));
 	mtk_iommu_iova_alloc_title_dump(s);
 
-	spin_lock(&iova_list.lock);
+	spin_lock_irqsave(&iova_list.lock, flags);
 	list_for_each_entry_safe(plist, n, &iova_list.head, list_node)
 		if (dev == NULL ||
 		    (plist->dom_id == dom_id && plist->tab_id == tab_id)) {
@@ -2546,7 +2548,7 @@ static int mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 
 	if (iommu_globals.iova_alloc_rbtree == 1)
 		mtk_iommu_iova_alloc_dump_rbtree(s, dev, tab_id, dom_id);
-	spin_unlock(&iova_list.lock);
+	spin_unlock_irqrestore(&iova_list.lock, flags);
 	return dump_count;
 }
 
@@ -2556,6 +2558,7 @@ static int mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id)
 	struct iova_info *plist = NULL;
 	struct iova_info *n = NULL;
 	int dump_count = 0;
+	unsigned long flags;
 
 	if (iommu_globals.iova_evt_enable == 0 || iommu_globals.iova_alloc_list == 0)
 		return 0;
@@ -2569,7 +2572,7 @@ static int mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id)
 	iommu_dump(s, "iova dump:\n");
 	mtk_iommu_iova_alloc_title_dump(s);
 
-	spin_lock(&iova_list.lock);
+	spin_lock_irqsave(&iova_list.lock, flags);
 	list_for_each_entry_safe(plist, n, &iova_list.head, list_node)
 		if (to_smmu_hw_id(plist->tab_id) == tab_id &&
 			    iova <= (plist->iova + plist->size) &&
@@ -2579,7 +2582,7 @@ static int mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id)
 			if (s == NULL && dump_count >= IOVA_DUMP_LOG_MAX)
 				break;
 		}
-	spin_unlock(&iova_list.lock);
+	spin_unlock_irqrestore(&iova_list.lock, flags);
 	return dump_count;
 }
 
@@ -2660,8 +2663,9 @@ int __maybe_unused test_check_iova_count_in_rbtree(void)
 	struct rb_node *tmp_rb;
 	u64 rbtree_count = 0;
 	int ret = -1;
+	unsigned long flags;
 
-	spin_lock(&iova_list.lock);
+	spin_lock_irqsave(&iova_list.lock, flags);
 	for (tmp_rb = rb_first(root); tmp_rb; tmp_rb = rb_next(tmp_rb))
 		rbtree_count++;
 
@@ -2670,7 +2674,7 @@ int __maybe_unused test_check_iova_count_in_rbtree(void)
 	else
 		pr_info("%s iova_count:%llu, list_only_count:%llu rbtree_count:%llu\n",
 			__func__, iova_list.count, iova_list.list_only_count, rbtree_count);
-	spin_unlock(&iova_list.lock);
+	spin_unlock_irqrestore(&iova_list.lock, flags);
 	return ret;
 }
 
@@ -2800,6 +2804,7 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	u64 tab_id = 0;
 	u32 dom_id = 0;
+	unsigned long flags;
 
 	if (iommu_globals.iova_evt_enable == 0)
 		return;
@@ -2839,9 +2844,9 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 	}
 
 	if (iommu_globals.iova_alloc_list == 0) {
-		spin_lock(&iova_list.lock);
+		spin_lock_irqsave(&iova_list.lock, flags);
 		mtk_iova_count_inc();
-		spin_unlock(&iova_list.lock);
+		spin_unlock_irqrestore(&iova_list.lock, flags);
 		goto iova_trace;
 	}
 
@@ -2860,10 +2865,10 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 	if (iommu_globals.iova_stack_trace == 1)
 		mtk_iova_add_trace_info(iova_buf);
 #endif
-	spin_lock(&iova_list.lock);
+	spin_lock_irqsave(&iova_list.lock, flags);
 	mtk_iova_count_inc();
 	mtk_iova_add(iova_buf);
-	spin_unlock(&iova_list.lock);
+	spin_unlock_irqrestore(&iova_list.lock, flags);
 
 iova_trace:
 	mtk_iommu_iova_trace(IOMMU_ALLOC, iova, size, tab_id, dev);
@@ -2877,18 +2882,19 @@ static void mtk_iova_dbg_free(
 	struct iova_info *plist;
 	struct device *dev = NULL;
 	u64 tab_id = 0;
+	unsigned long flags;
 
 	if (iommu_globals.iova_evt_enable == 0)
 		return;
 
 	if (iommu_globals.iova_alloc_list == 0) {
-		spin_lock(&iova_list.lock);
+		spin_lock_irqsave(&iova_list.lock, flags);
 		mtk_iova_count_dec();
-		spin_unlock(&iova_list.lock);
+		spin_unlock_irqrestore(&iova_list.lock, flags);
 		goto iova_trace;
 	}
 
-	spin_lock(&iova_list.lock);
+	spin_lock_irqsave(&iova_list.lock, flags);
 	start_t = sched_clock();
 	plist = mtk_iova_del(iovad, iova);
 	if (plist) {
@@ -2902,7 +2908,7 @@ static void mtk_iova_dbg_free(
 		mtk_iova_count_dec();
 	}
 	end_t = sched_clock();
-	spin_unlock(&iova_list.lock);
+	spin_unlock_irqrestore(&iova_list.lock, flags);
 
 	if ((end_t - start_t) > FIND_IOVA_TIMEOUT_NS)
 		pr_info_ratelimited("%s, dev:%s, find iova:[0x%llx 0x%llx 0x%zx] %llu time:%llu\n",
