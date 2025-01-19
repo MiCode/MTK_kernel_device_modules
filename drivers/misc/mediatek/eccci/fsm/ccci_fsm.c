@@ -713,14 +713,17 @@ static void config_ap_side_feature(struct ccci_modem *md,
 		CCCI_FEATURE_NOT_SUPPORT;
 #endif
 
-	if (md->hw_info->plat_val->md_gen >= 6297) {
+	if ((md->hw_info->plat_val->md_gen >= 6297) || (ccci_get_ap_plat() == 6789)) {
 		md_feature->feature_set[AMMS_DRDI_COPY].support_mask =
 			CCCI_FEATURE_MUST_SUPPORT;
-		md_feature->feature_set[MD_MEM_AP_VIEW_INF].support_mask =
-			CCCI_FEATURE_OPTIONAL_SUPPORT;
 	} else
 		md_feature->feature_set[AMMS_DRDI_COPY].support_mask =
 			CCCI_FEATURE_NOT_SUPPORT;
+
+	if (md->hw_info->plat_val->md_gen >= 6297) {
+		md_feature->feature_set[MD_MEM_AP_VIEW_INF].support_mask =
+			CCCI_FEATURE_OPTIONAL_SUPPORT;
+	}
 	md_feature->feature_set[SPM_MD_PARA].support_mask =
 		CCCI_FEATURE_OPTIONAL_SUPPORT;
 	md_feature->feature_set[LOW_POWER_SHARE_MEMORY].support_mask =
@@ -734,6 +737,13 @@ static void config_ap_side_feature(struct ccci_modem *md,
 	md_feature->feature_set[AP_DEBUG_LEVEL].support_mask =
 		CCCI_FEATURE_MUST_SUPPORT;
 #endif
+	region = ccci_md_get_smem_by_user_id(SMEM_USER_MD_DATA);
+	if (region && (region->size > 0)) {
+		md_feature->feature_set[MD_DATA_SMEM_INF].support_mask =
+				CCCI_FEATURE_OPTIONAL_SUPPORT;
+	} else
+		md_feature->feature_set[MD_DATA_SMEM_INF].support_mask =
+				CCCI_FEATURE_NOT_SUPPORT;
 }
 
 static void ccci_sib_region_set_runtime(struct ccci_runtime_feature *rt_feature,
@@ -1102,6 +1112,16 @@ static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 					&rt_feature, &rt_shm);
 				append_runtime_feature(&rt_data,
 				&rt_feature, &rt_shm);
+				break;
+			case MD_DATA_SMEM_INF:
+				region = ccci_md_get_smem_by_user_id(SMEM_USER_MD_DATA);
+				if (region && (region->size > 0)) {
+					ccci_smem_region_set_runtime(
+						SMEM_USER_MD_DATA,
+						&rt_feature, &rt_shm);
+					append_runtime_feature(&rt_data,
+						&rt_feature, &rt_shm);
+				}
 				break;
 			case MULTI_MD_MPU:
 				CCCI_BOOTUP_LOG(0, FSM,

@@ -1158,7 +1158,7 @@ void ccci_md_config(struct ccci_modem *md)
 		md->per_md_data.config.setting |= MD_SETTING_ENABLE;
 	else
 		md->per_md_data.config.setting &= ~MD_SETTING_ENABLE;
-	if (md_cd_plat_val_ptr.md_gen <= 6295)
+	if ((md_cd_plat_val_ptr.md_gen <= 6295) && (ccci_get_ap_plat() != 6789))
 		ap_md_mem_init_for_legacy(&md->mem_layout);
 	else
 		ap_md_mem_init(&md->mem_layout);

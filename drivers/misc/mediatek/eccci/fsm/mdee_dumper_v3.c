@@ -776,8 +776,8 @@ static void mdee_dumper_v3_dump_ee_info(struct ccci_fsm_ee *mdee,
 				"\n[Others] MD_BOOT_UP_FAIL(HS%d)\n", 2);
 			/* Handshake 2 fail */
 			CCCI_MEM_LOG_TAG(0, FSM, "Dump MD EX log\n");
-			if ((md_dbg_dump_flag & (1U << MD_DBG_DUMP_SMEM)) && (mdss_dbg != NULL) &&
-				(mdccci_dbg != NULL)) {
+			if ((md_dbg_dump_flag & (1U << MD_DBG_DUMP_SMEM)) && (mdss_dbg != NULL)
+				&& (mdccci_dbg != NULL)) {
 				ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
 					mdccci_dbg->base_ap_view_vir,
 						mdccci_dbg->size);
@@ -800,7 +800,8 @@ static void mdee_dumper_v3_dump_ee_info(struct ccci_fsm_ee *mdee,
 		}
 	} else if (level == MDEE_DUMP_LEVEL_STAGE1) {
 		CCCI_MEM_LOG_TAG(0, FSM, "Dump MD EX log\n");
-		if ((md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) && (mdss_dbg != NULL) && (mdccci_dbg != NULL)) {
+		if ((md_dbg_dump_flag & (1 << MD_DBG_DUMP_SMEM)) && (mdss_dbg != NULL)
+			&& (mdccci_dbg != NULL)) {
 			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,
 				mdccci_dbg->base_ap_view_vir, mdccci_dbg->size);
 			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,

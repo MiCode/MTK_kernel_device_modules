@@ -66,6 +66,7 @@ static struct ccci_smem_region md1_noncacheable_tbl[] = {
 	{SMEM_USER_RAW_PHY_CAP,		0,	0,	SMF_NCLR_FIRST,},
 	{SMEM_USER_RAW_AMMS_POS,	0,	0,	SMF_NCLR_FIRST,},
 	{SMEM_USER_RAW_ALIGN_PADDING,	0,	0,	0},
+	{SMEM_USER_MD_DATA,		0,	0,	SMF_NCLR_FIRST, },/*5*1024*1024*/
 	{SMEM_USER_MAX, }, /* tail guard */
 };
 
@@ -728,6 +729,18 @@ struct ccci_smem_region *ccci_md_get_smem_by_user_id(enum SMEM_USER_ID user_id)
 	return curr;
 }
 EXPORT_SYMBOL(ccci_md_get_smem_by_user_id);
+
+phys_addr_t ccci_get_md_view_phy_addr_by_user_id(enum SMEM_USER_ID user_id)
+{
+	struct ccci_smem_region *curr = NULL;
+
+	curr = ccci_md_get_smem_by_user_id(user_id);
+	if (curr)
+		return curr->base_md_view_phy;
+
+	return 0;
+}
+EXPORT_SYMBOL(ccci_get_md_view_phy_addr_by_user_id);
 
 void ccci_md_clear_smem(int first_boot)
 {
