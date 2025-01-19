@@ -2825,9 +2825,15 @@ static int mtk_smmu_suspend_pm_event(struct notifier_block *notifier,
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		atomic_set(&data->is_suspend, 1);
+#ifdef MTK_SMMU_DEBUG
+		mtk_iommu_pm_trace(IOMMU_SUSPEND, data->plat_data->smmu_type, 0, 0, NULL);
+#endif
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
 		atomic_set(&data->is_suspend, 0);
+#ifdef MTK_SMMU_DEBUG
+		mtk_iommu_pm_trace(IOMMU_RESUME, data->plat_data->smmu_type, 0, 0, NULL);
+#endif
 		return NOTIFY_DONE;
 	default:
 		return NOTIFY_OK;
@@ -2842,6 +2848,7 @@ static void mtk_smmu_register_power_awake(struct mtk_smmu_data *data)
 	if (!data->power_awake)
 		return;
 
+	atomic_set(&data->is_suspend, 0);
 	data->pm_nb.notifier_call = mtk_smmu_suspend_pm_event;
 	ret = register_pm_notifier(&data->pm_nb);
 	if (ret) {
