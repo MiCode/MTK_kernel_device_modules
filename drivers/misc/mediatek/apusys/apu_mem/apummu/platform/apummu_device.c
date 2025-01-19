@@ -12,9 +12,6 @@
 #include "apummu_plat.h"
 #include "apummu_device.h"
 
-#ifndef MT6993_APUMMU_PLAT_DATA
-const struct mtk_apu_ammudata mt6993_ammudata;
-#endif
 
 static struct apummu_plat mt6897_drv = {
 	.slb_wait_time                   = 0,

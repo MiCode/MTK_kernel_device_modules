@@ -155,10 +155,7 @@ ccflags-y += -I$(APUMMU_ROOT)/$(APUMMU_COMN)
 
 # apummu boot api
 apusys-objs += $(APUMMU_COMN)/apummu_boot.o
-ifneq ($(wildcard $(APUMMU_ROOT)/$(APUMMU_COMN)/mt6993_boot.c),)
-subdir-ccflags-y += -DMT6993_APUMMU_PLAT_DATA
-apusys-objs += $(APUMMU_COMN)/mt6993_boot.o
-endif
+apusys-objs += $(APUMMU_COMN)/smmu00_boot.o
 
 apusys-objs += $(APUMMU_COMN)/apummu_drv.o
 apusys-objs += $(APUMMU_COMN)/apummu_dbg.o
