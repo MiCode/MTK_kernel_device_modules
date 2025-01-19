@@ -80,6 +80,21 @@ EXPORT_SYMBOL_GPL(val_m);
 int dpt_default_status;
 /* End of DPT */
 
+#define MAX_PD_COUNT 3
+
+struct pd_capacity_info {
+	int nr_caps;
+	unsigned int *util_opp;
+	unsigned int *util_freq;
+	unsigned long *caps;
+	struct cpumask cpus;
+};
+
+static int entry_count;
+static int legacy_pd_count;
+static struct pd_capacity_info *pd_capacity_tbl;
+static int legacy_pd_enable;
+
 /* group aware dvfs */
 int grp_dvfs_support_mode;
 int grp_dvfs_ctrl_mode;
@@ -892,6 +907,170 @@ inline int get_eas_wl_dsu(int wl)
 	return wl;
 }
 
+static void free_capacity_table(void)
+{
+	int i;
+
+	if (!pd_capacity_tbl)
+		return;
+
+	for (i = 0; i < legacy_pd_count; i++) {
+		kfree(pd_capacity_tbl[i].caps);
+		kfree(pd_capacity_tbl[i].util_opp);
+		kfree(pd_capacity_tbl[i].util_freq);
+	}
+	kfree(pd_capacity_tbl);
+	pd_capacity_tbl = NULL;
+	legacy_pd_enable = 0;
+}
+
+static int alloc_capacity_table(void)
+{
+	int i;
+	int ret = 0;
+	int cur_tbl = 0;
+
+	pd_capacity_tbl = kcalloc(MAX_PD_COUNT, sizeof(struct pd_capacity_info),
+			GFP_KERNEL);
+	if (!pd_capacity_tbl)
+		return -ENOMEM;
+
+	for (i = 0; i < nr_cpu_ids; i++) {
+		int nr_caps;
+		struct em_perf_domain *pd;
+
+		pd = em_cpu_get(i);
+		if (!pd) {
+			pr_info("em_cpu_get return NULL for cpu#%d", i);
+			continue;
+		}
+		if (i != cpumask_first(to_cpumask(pd->cpus)))
+			continue;
+
+		WARN_ON(cur_tbl >= MAX_PD_COUNT);
+
+		nr_caps = pd->nr_perf_states;
+		pd_capacity_tbl[cur_tbl].nr_caps = nr_caps;
+		cpumask_copy(&pd_capacity_tbl[cur_tbl].cpus, to_cpumask(pd->cpus));
+		pd_capacity_tbl[cur_tbl].caps = kcalloc(nr_caps, sizeof(unsigned long),
+							GFP_KERNEL);
+		if (!pd_capacity_tbl[cur_tbl].caps)
+			goto nomem;
+
+		pd_capacity_tbl[cur_tbl].util_opp = NULL;
+		pd_capacity_tbl[cur_tbl].util_freq = NULL;
+
+		entry_count += nr_caps;
+
+		cur_tbl++;
+	}
+
+	legacy_pd_count = cur_tbl;
+
+	return 0;
+
+nomem:
+	ret = -ENOMEM;
+	free_capacity_table();
+
+	return ret;
+}
+
+int init_legacy_capacity_table(void)
+{
+	int ret;
+	int i, j, cpu;
+	int count = 0;
+	unsigned long cap;
+	long next_cap, k;
+	struct pd_capacity_info *pd_info;
+	struct em_perf_domain *pd;
+	struct upower_tbl *tbl = NULL;
+
+	ret = alloc_capacity_table();
+	if (ret)
+		return ret;
+
+	for (i = 0; i < legacy_pd_count; i++) {
+		pd_info = &pd_capacity_tbl[i];
+		cpu = cpumask_first(&pd_info->cpus);
+		pd = em_cpu_get(cpu);
+		if (!pd)
+			goto err;
+
+#if IS_ENABLED(CONFIG_MTK_UNIFIED_POWER)
+		tbl = upower_get_core_tbl(cpu);
+#endif
+		if (!tbl)
+			goto err;
+
+		for (j = 0; j < pd_info->nr_caps; j++) {
+			cap = tbl->row[pd_info->nr_caps - j - 1].cap;
+			if (j == pd_info->nr_caps - 1)
+				next_cap = -1;
+			else
+				next_cap = tbl->row[pd_info->nr_caps - j - 2].cap;
+
+			if (cap == 0 || next_cap == 0)
+				goto err;
+
+			pd_info->caps[j] = cap;
+
+			if (!pd_info->util_opp) {
+				pd_info->util_opp = kcalloc(cap + 1, sizeof(unsigned int),
+										GFP_KERNEL);
+				if (!pd_info->util_opp)
+					goto nomem;
+			}
+
+			if (!pd_info->util_freq) {
+				pd_info->util_freq = kcalloc(cap + 1, sizeof(unsigned int),
+										GFP_KERNEL);
+				if (!pd_info->util_freq)
+					goto nomem;
+			}
+
+			if (j == pd_info->nr_caps - 1)
+				next_cap = -1;
+
+			for (k = cap; k > next_cap; k--) {
+				pd_info->util_opp[k] = j;
+				pd_info->util_freq[k] =
+					pd->table[pd->nr_perf_states - j - 1].frequency;
+			}
+
+			count += 1;
+		}
+
+		for_each_cpu(cpu, &pd_info->cpus) {
+			if (per_cpu(cpu_scale, cpu) != tbl->row[tbl->row_num - 1].cap) {
+				pr_info("err: cpu=%d, cpu_scale=%lu, upower_info_cap=%llu\n",
+					cpu, per_cpu(cpu_scale, cpu), tbl->row[tbl->row_num - 1].cap);
+				per_cpu(cpu_scale, cpu) = tbl->row[tbl->row_num - 1].cap;
+			} else {
+				pr_info("match: cpu=%d, cpu_scale=%lu, upower_info_cap=%llu\n",
+					cpu, per_cpu(cpu_scale, cpu), tbl->row[tbl->row_num - 1].cap);
+			}
+		}
+	}
+
+	if (entry_count != count)
+		goto err;
+
+	legacy_pd_enable = 1;
+
+	return 0;
+
+nomem:
+	pr_info("allocate util mapping table failed\n");
+err:
+	pr_info("count %d does not match entry_count %d\n", count, entry_count);
+
+	free_capacity_table();
+
+	return -ENOENT;
+}
+
 /* em */
 int em_opp2freq(int cpu, int opp)
 {
@@ -912,24 +1091,42 @@ int em_opp2freq(int cpu, int opp)
 int em_opp2cap(int cpu, int opp)
 {
 	struct em_perf_domain *pd;
-	int cap;
+	struct pd_capacity_info *pd_info;
+	int i;
+	int cap = 0;
 	int opp_freq;
 	int max_freq;
 
-	pd = em_cpu_get(cpu);
-	if (!pd) {
-		pr_info("error, pd = NULL, %s\n", __func__);
-		return 1;
-	}
-	opp = clamp_val(opp, 0, pd->nr_perf_states - 1);
-	if (pd->table[0].frequency > pd->table[1].frequency) {
-		max_freq = pd->table[0].frequency;
-		opp_freq = pd->table[opp].frequency;
+	if (legacy_pd_enable) {
+		for (i = 0; i < legacy_pd_count; i++) {
+			pd_info = &pd_capacity_tbl[i];
+
+			if (!cpumask_test_cpu(cpu, &pd_info->cpus))
+				continue;
+
+			/* Return max capacity if opp is not valid */
+			if (opp < 0 || opp >= pd_info->nr_caps)
+				return pd_info->caps[0];
+
+			opp = clamp_val(opp, 0, pd_info->nr_caps - 1);
+			return pd_info->caps[opp];
+		}
 	} else {
-		max_freq = pd->table[pd->nr_perf_states - 1].frequency;
-		opp_freq = pd->table[pd->nr_perf_states - 1 - opp].frequency;
+		pd = em_cpu_get(cpu);
+		if (!pd) {
+			pr_info("error, pd = NULL, %s\n", __func__);
+			return 1;
+		}
+		opp = clamp_val(opp, 0, pd->nr_perf_states - 1);
+		if (pd->table[0].frequency > pd->table[1].frequency) {
+			max_freq = pd->table[0].frequency;
+			opp_freq = pd->table[opp].frequency;
+		} else {
+			max_freq = pd->table[pd->nr_perf_states - 1].frequency;
+			opp_freq = pd->table[pd->nr_perf_states - 1 - opp].frequency;
+		}
+		cap = (opp_freq * per_cpu(cpu_scale, cpu)) / max_freq;
 	}
-	cap = (opp_freq * per_cpu(cpu_scale, cpu)) / max_freq;
 	return cap;
 }
 
@@ -968,16 +1165,31 @@ int em_freq2opp(int cpu, int freq)
 int em_util2opp(int cpu, int util)
 {
 	struct em_perf_domain *pd;
+	struct pd_capacity_info *pd_info;
 	int i;
+	if (legacy_pd_enable) {
+		for (i = 0; i < legacy_pd_count; i++) {
+			pd_info = &pd_capacity_tbl[i];
 
-	pd = em_cpu_get(cpu);
-	if (!pd) {
-		pr_info("error, pd = NULL, %s\n", __func__);
-		return 1;
-	}
-	for (i = pd->nr_perf_states - 1; i >= 0; i--) {
-		if (util <= em_opp2cap(cpu, i))
-			return i;
+			if (!cpumask_test_cpu(cpu, &pd_info->cpus))
+				continue;
+
+			/* Return max opp if util is not valid */
+			if (util < 0 || util >= pd_info->caps[0])
+				return 0;
+
+			return pd_info->util_opp[util];
+		}
+	} else {
+		pd = em_cpu_get(cpu);
+		if (!pd) {
+			pr_info("error, pd = NULL, %s\n", __func__);
+			return 1;
+		}
+		for (i = pd->nr_perf_states - 1; i >= 0; i--) {
+			if (util <= em_opp2cap(cpu, i))
+				return i;
+		}
 	}
 	return 0;
 }
@@ -1818,8 +2030,10 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	if (ret)
 		return ret;
 
-	if (legacy_api_support_get())
+	if (legacy_api_support_get()) {
 		rebuild_sched_domains();
+		init_legacy_capacity_table();
+	}
 
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 	nr_wl = mtk_mapping.total_type;
