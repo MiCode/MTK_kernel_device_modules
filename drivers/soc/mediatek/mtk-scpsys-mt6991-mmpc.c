@@ -1137,7 +1137,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 10,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VEN1] = {
 		.name = "ven1",
@@ -1149,7 +1149,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 11,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_VEN2] = {
 		.name = "ven2",
@@ -1161,7 +1161,7 @@ static const struct scp_domain_data scp_domain_mt6991_mmpc_swrgo_data[] = {
 		.hwv_set_sta_ofs = 0x146C,
 		.hwv_clr_sta_ofs = 0x1470,
 		.hwv_shift = 12,
-		.caps = MTK_SCPD_HWV_OPS | default_cap,
+		.caps = MTK_SCPD_DUMMY_OPS | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_CAM_MRAW] = {
 		.name = "cam-mraw",
@@ -1525,9 +1525,6 @@ static const struct scp_subdomain scp_subdomain_mt6991_mmpc_swrgo[] = {
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_EIS},
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_TNR},
 	{MT6991_POWER_DOMAIN_ISP_MAIN, MT6991_POWER_DOMAIN_ISP_WPE_LITE},
-	{MT6991_POWER_DOMAIN_MM_INFRA1, MT6991_POWER_DOMAIN_VEN0},
-	{MT6991_POWER_DOMAIN_VEN0, MT6991_POWER_DOMAIN_VEN1},
-	{MT6991_POWER_DOMAIN_VEN1, MT6991_POWER_DOMAIN_VEN2},
 	{MT6991_POWER_DOMAIN_CAM_MAIN, MT6991_POWER_DOMAIN_CAM_MRAW},
 	{MT6991_POWER_DOMAIN_CAM_MAIN, MT6991_POWER_DOMAIN_CAM_RAWA},
 	{MT6991_POWER_DOMAIN_CAM_MAIN, MT6991_POWER_DOMAIN_CAM_RAWB},
