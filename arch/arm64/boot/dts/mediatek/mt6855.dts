@@ -6572,7 +6572,7 @@
 					  "mbox4";
 			core-0 = "enable";
 			scp-hwvoter = "disable";
-			scp_sramSize = <0x00100000>;
+			scp-sram-size = <0x00100000>;
 			core-nums = <1>;	/* core number */
 			twohart = <1>;		/* two hart arch */
 			mbox-count = <4>;
