@@ -519,6 +519,10 @@ int apu_ipi_register(struct mtk_apu *apu, u32 id,
 	apu->ipi_desc[id].top_handler = top_handler;
 	apu->ipi_desc[id].handler = handler;
 	apu->ipi_desc[id].priv = priv;
+
+	/* to inform rv side that apu initiated ipi is ready */
+	apu->conf_buf->ipi_krn_cb_rdy[id/32] |= BIT(id % 32);
+
 	mutex_unlock(&apu->ipi_desc[id].lock);
 
 	return 0;

@@ -6,6 +6,8 @@
 #ifndef APU_CONFIG_H
 #define APU_CONFIG_H
 
+#include "apu_ipi.h"
+
 struct mtk_apu;
 
 struct apu_ipi_config {
@@ -102,6 +104,7 @@ struct config_v1 {
 	u64 time_diff_cycle;
 	u32 debug_memory_iova;
 	u32 chip_sw_ver;
+	u32 ipi_krn_cb_rdy[(APU_IPI_MAX+31)/32];
 	/* system related config end */
 
 	/* entry table */
