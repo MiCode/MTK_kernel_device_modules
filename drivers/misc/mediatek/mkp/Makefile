@@ -20,22 +20,8 @@ subdir-ccflags-y += -I$(srctree)/drivers/android/ # use debug_kinfo
 subdir-ccflags-y += -Wno-unused-but-set-variable
 
 ccflags-y += -I$(srctree)/$(src)              # needed for trace events
-ccflags-y += -DTEXT_OFFSET=$(TEXT_OFFSET)
 ccflags-y += -I$(srctree)/arch/arm/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mkp
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump
 ccflags-y += -I$(srctree)/security/selinux/include/
-obj-$(CONFIG_MTK_MKP) += mkp.o
-mkp-$(CONFIG_MTK_MKP) := mkp_main.o
-mkp-$(CONFIG_MTK_MKP) += policy.o
-mkp-$(CONFIG_MTK_MKP) += mkp_hvc.o
-mkp-$(CONFIG_MTK_MKP) += mkp_api.o
-mkp-$(CONFIG_MTK_MKP) += ksym.o
-ifdef demo_mkp
-mkp-$(CONFIG_MTK_MKP) += mkp_demo.o
-mkp-$(CONFIG_MTK_MKP) += mkp_rbtree.o
-mkp-$(CONFIG_MTK_MKP) += helper.o
-mkp-$(CONFIG_MTK_MKP) += mkp_module.o
-endif
-mkp-$(CONFIG_MTK_MKP) += ext/mkp_pcpu.o

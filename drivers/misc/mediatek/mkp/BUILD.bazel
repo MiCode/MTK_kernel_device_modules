@@ -1,0 +1,64 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mkp",
+    srcs = [
+        "mkp_main.c",
+        "policy.c",
+        "mkp_hvc.c",
+        "mkp_api.c",
+        "ksym.c",
+        "mkp_demo.c",
+        "mkp_rbtree.c",
+        "helper.c",
+        "mkp_module.c",
+        "ext/mkp_pcpu.c",
+    ],
+    header_deps = [
+    	"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:headers".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+    	"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+    includes = ["."],
+    copts = [
+    	"-Wno-unused-but-set-variable",
+	"-I$(srctree)/drivers/android",
+	"-I$(srctree)/$(src)",
+	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/geniezone/public",
+	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mkp",
+	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump",
+	"-I$(srctree)/security/selinux/include",
+    ],
+    local_defines = [
+    	"DEMO_MKP",
+	"DEBUG_MKP_ENABLED",
+    ],
+)
+
