@@ -1228,6 +1228,11 @@ void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int crtc_id = drm_crtc_index(crtc);
 
+	if (!crtc || !priv) {
+		DDPMSG("%s: Invalid crtc or priv\n", __func__);
+		return;
+	}
+
 	if (crtc_id < 0) {
 		DDPMSG("%s: Invalid crtc_id:%d\n", __func__, crtc_id);
 		return;

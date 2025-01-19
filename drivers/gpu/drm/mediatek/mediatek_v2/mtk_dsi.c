@@ -3726,7 +3726,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			int underrun_int_en = 0;
 
 			dump_cur_pos(mtk_crtc);
-			mtk_drm_crtc_dump_vr_rg(dsi->encoder.crtc);
+			if (dsi->encoder.crtc)
+				mtk_drm_crtc_dump_vr_rg(dsi->encoder.crtc);
 
 			if (aee_cooldown && !dsi_underrun_called) {
 				dsi_underrun_called = 1;
