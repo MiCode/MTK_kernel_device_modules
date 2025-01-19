@@ -251,7 +251,9 @@ create_mtee_mchunk_device(enum TRUSTED_MEM_TYPE mem_type,
 
 	t_device->dev_desc = dev_desc;
 
-	snprintf(t_device->name, MAX_DEVICE_NAME_LEN, "%s", dev_name);
+	ret = snprintf(t_device->name, MAX_DEVICE_NAME_LEN, "%s", dev_name);
+	if (ret)
+		pr_debug("snprintf fail\n");
 	t_device->ssmr_feature_id = ssmr_feat_id;
 	t_device->mem_type = mem_type;
 
