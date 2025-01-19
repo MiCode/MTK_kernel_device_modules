@@ -332,6 +332,8 @@ extern void get_most_powerful_pd_and_util_Th(void);
 #define EAS_RESET_SHORTCUT_COMPRESS_RELAX_ENOUGH_TSK_UTIL _IOW('g', 81, int)
 #define EAS_SET_GH_GATHERING_TH                           _IOW('g', 82, int)
 #define EAS_RESET_GH_GATHERING_TH                         _IOW('g', 83, int)
+#define EAS_RUNNABLE_BOOST_UTIL_EST_SET                   _IOW('g', 84, int)
+#define EAS_RUNNABLE_BOOST_UTIL_EST_UNSET                 _IOW('g', 85, int)
 
 extern void update_curr_collab_state(bool *is_cpu_to_update_thermal);
 #if IS_ENABLED(CONFIG_MTK_NEWIDLE_BALANCE)

@@ -23,6 +23,7 @@ scheduler-y += eas/shortcut/compress.o
 scheduler-y += eas/shortcut/gather.o
 scheduler-y += eas/topology.o
 scheduler-y += eas/eas_adpf.o
+scheduler-y += util/tsk_util.o
 scheduler-y += common.o
 scheduler-y += fair.o
 scheduler-$(CONFIG_MTK_CORE_PAUSE)+= eas/core_pause.o

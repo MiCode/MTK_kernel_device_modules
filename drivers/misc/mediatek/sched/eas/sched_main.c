@@ -24,6 +24,7 @@
 #include "shortcut/compress.h"
 #include "shortcut/gather.h"
 #include "sched_sys_common.h"
+#include "util/tsk_util.h"
 #include "util/cpu_util.h"
 #include "sugov/cpufreq.h"
 #include "eas_adpf.h"
@@ -973,6 +974,21 @@ static long eas_ioctl_impl(struct file *filp,
 		unset_dsu_idle_enable();
 		break;
 #endif
+
+	case EAS_RUNNABLE_BOOST_UTIL_EST_SET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+
+		set_runnable_boost_util_est_enable(val);
+		break;
+
+	case EAS_RUNNABLE_BOOST_UTIL_EST_UNSET:
+		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
+			return -1;
+
+		reset_runnable_boost_util_est_enable();
+		break;
+
 	case EAS_RUNNABLE_BOOST_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
@@ -1309,6 +1325,10 @@ static int __init mtk_scheduler_init(void)
 	}
 
 #endif
+
+	ret = register_trace_android_rvh_util_est_update(hook_mtk_util_est_update, NULL);
+	if (ret)
+		pr_info("register hook_mtk_util_est_update hooks failed, returned %d\n", ret);
 
 	ret = register_trace_android_rvh_cpu_util_cfs_boost(hook_cpu_util_cfs_boost, NULL);
 	if (ret)

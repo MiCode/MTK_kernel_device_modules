@@ -577,6 +577,36 @@ TRACE_EVENT(sched_task_util,
 		__entry->util_enqueued)
 );
 
+TRACE_EVENT(sched_task_uest,
+	TP_PROTO(int pid, unsigned int dequeued, unsigned int ewma, unsigned int util_est,
+		unsigned long runnable_avg, bool runnable_aware),
+	TP_ARGS(pid, dequeued, ewma, util_est, runnable_avg, runnable_aware),
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(unsigned int, dequeued)
+		__field(unsigned int, ewma)
+		__field(unsigned int, util_est)
+		__field(unsigned long, runnable_avg)
+		__field(bool, runnable_aware)
+	),
+	TP_fast_assign(
+		__entry->pid = pid;
+		__entry->dequeued = dequeued;
+		__entry->ewma = ewma;
+		__entry->util_est = util_est;
+		__entry->runnable_avg = runnable_avg;
+		__entry->runnable_aware = runnable_aware;
+	),
+	TP_printk(
+		"pid=%d dequeued=%u ewma=%u util_est=%u runnable_avg=%lu, runnable_aware=%d",
+		__entry->pid,
+		__entry->dequeued,
+		__entry->ewma,
+		__entry->util_est,
+		__entry->runnable_avg,
+		__entry->runnable_aware)
+);
+
 TRACE_EVENT(sched_task_uclamp,
 	TP_PROTO(int pid, unsigned long util,
 		unsigned int active,
