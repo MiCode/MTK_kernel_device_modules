@@ -1538,8 +1538,10 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
-		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &line_time);
+	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
+		line_time = crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS_BY_MODE, &line_time);
+	}
 	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].compose.height;
 
 #define _ATOMIC_MML_FMT \

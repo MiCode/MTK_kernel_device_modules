@@ -4557,8 +4557,10 @@ static void check_is_mml_layer(const int disp_idx,
 					/* Check line time and slbc state once per HRT */
 					mutex_lock(&priv->commit.lock);
 					output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-					if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
-						mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &ns);
+					if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
+						ns = disp_info->disp_mode_idx[0];
+						mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS_BY_MODE, &ns);
+					}
 
 					mutex_unlock(&priv->commit.lock);
 				}
