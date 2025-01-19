@@ -8,7 +8,6 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/pinctrl/mt6853-pinfunc.h>
-#include <dt-bindings/clock/mt6873-clk.h>
 
 &mtkheap_region_svp {
 	status = "ok";
