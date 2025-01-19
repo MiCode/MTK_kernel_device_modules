@@ -251,6 +251,9 @@ struct mtk_pinctrl;
 #define FLAG_MT63XX		0x00000008
 #define FLAG_MT66XX		0x00000010
 
+#define SIZE_LOCK_FLAGS PINCTRL_PIN_REG_MAX/sizeof(u32) + \
+			((PINCTRL_PIN_REG_MAX%sizeof(u32)) ? 1 : 0)
+
 /* struct mtk_pin_soc - the structure that holds SoC-specific data */
 struct mtk_pin_soc {
 	const struct mtk_pin_reg_calc	*reg_cal;
@@ -266,6 +269,7 @@ struct mtk_pin_soc {
 	u8				gpio_m;
 	bool				ies_present;
 	u32				capability_flags;
+	u32				field_lock_flags[SIZE_LOCK_FLAGS];
 	const char * const		*base_names;
 	unsigned int			nbase_names;
 	const unsigned int		*pull_type;
@@ -305,6 +309,8 @@ struct mtk_pin_soc {
 	int (*adv_drive_get)(struct mtk_pinctrl *hw,
 			     const struct mtk_pin_desc *desc, u32 *val);
 
+	int (*field_lock_ops)(struct mtk_pinctrl *hw,
+			      int field, int enable);
 	/* Specific driver data */
 	void				*driver_data;
 };

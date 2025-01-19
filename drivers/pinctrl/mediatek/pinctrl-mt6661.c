@@ -9,6 +9,7 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 
 #include "pinctrl-mtk-common-v2.h"
 #include "pinctrl-paris.h"
@@ -55,15 +56,15 @@ static const struct mtk_pin_field_calc mt6661_pin_smt_range[] = {
 };
 
 static const struct mtk_pin_field_calc mt6661_pin_drv_range[] = {
-	PIN_SIMPLE_FIELD_BASE(3, 0xca, 4, 2),
-	PIN_SIMPLE_FIELD_BASE(4, 0xcb, 0, 2),
-	PIN_SIMPLE_FIELD_BASE(5, 0xcb, 4, 2),
-	PIN_SIMPLE_FIELD_BASE(6, 0xcc, 0, 2),
-	PIN_SIMPLE_FIELD_BASE(7, 0xcc, 4, 2),
-	PIN_SIMPLE_FIELD_BASE(8, 0xcd, 0, 2),
-	PIN_SIMPLE_FIELD_BASE(9, 0xcd, 4, 2),
-	PIN_SIMPLE_FIELD_BASE(10, 0xce, 0, 2),
-	PIN_SIMPLE_FIELD_BASE(11, 0xce, 4, 2),
+	PIN_SIMPLE_FIELD_BASE(3, 0xca, 4, 4),
+	PIN_SIMPLE_FIELD_BASE(4, 0xcb, 0, 4),
+	PIN_SIMPLE_FIELD_BASE(5, 0xcb, 4, 4),
+	PIN_SIMPLE_FIELD_BASE(6, 0xcc, 0, 4),
+	PIN_SIMPLE_FIELD_BASE(7, 0xcc, 4, 4),
+	PIN_SIMPLE_FIELD_BASE(8, 0xcd, 0, 4),
+	PIN_SIMPLE_FIELD_BASE(9, 0xcd, 4, 4),
+	PIN_SIMPLE_FIELD_BASE(10, 0xce, 0, 4),
+	PIN_SIMPLE_FIELD_BASE(11, 0xce, 4, 4),
 };
 
 static const struct mtk_pin_field_calc mt6661_pin_dir_range[] = {
@@ -134,8 +135,8 @@ static const struct mtk_pin_field_calc mt6661_pin_mode_range[] = {
 	PIN_SIMPLE_FIELD_BASE(7, 0xb3, 3, 3),
 	PIN_SIMPLE_FIELD_BASE(8, 0xb6, 0, 3),
 	PIN_SIMPLE_FIELD_BASE(9, 0xb6, 3, 3),
-	PIN_SIMPLE_FIELD_BASE(10, 0xb9, 3, 3),
-	PIN_SIMPLE_FIELD_BASE(11, 0xb9, 0, 3),
+	PIN_SIMPLE_FIELD_BASE(10, 0xb9, 0, 3),
+	PIN_SIMPLE_FIELD_BASE(11, 0xb9, 3, 3),
 };
 
 static const struct mtk_pin_field_calc mt6661_pin_ad_sw_switch_range[] = {
@@ -167,6 +168,31 @@ static const struct mtk_pin_reg_calc mt6661_reg_cals[PINCTRL_PIN_REG_MAX] = {
 	[PINCTRL_PIN_REG_AD_SW_SWITCH] = MTK_RANGE(mt6661_pin_ad_sw_switch_range),
 };
 
+static int mt6661_lock(struct mtk_pinctrl *hw, int field, int enable)
+{
+	struct regmap *pinctrl_regmap;
+	int err = 0;
+
+	pinctrl_regmap = (struct regmap *)hw->base[0];
+	if (field == PINCTRL_PIN_REG_SMT) {
+		if (!enable) {
+			err = regmap_write(pinctrl_regmap, 0x3b4, 0x9e);
+			if (err)
+				return err;
+
+			err = regmap_write(pinctrl_regmap, 0x3b5, 0x99);
+		} else {
+			err = regmap_write(pinctrl_regmap, 0x3b4, 0);
+			if (err)
+				return err;
+
+			err = regmap_write(pinctrl_regmap, 0x3b5, 0);
+		}
+	}
+
+	return err;
+}
+
 static const struct mtk_pin_soc mt6661_data = {
 	.reg_cal = mt6661_reg_cals,
 	.pins = mtk_pins_mt6661,
@@ -176,6 +202,8 @@ static const struct mtk_pin_soc mt6661_data = {
 	.gpio_m = 0,
 	.real_pin_start_idx = 3,
 	.capability_flags = FLAG_MT66XX,
+	.field_lock_flags[0] = 1 << PINCTRL_PIN_REG_SMT,
+	.field_lock_ops = mt6661_lock,
 };
 
 static int mt6661_pinctrl_probe(struct platform_device *pdev)

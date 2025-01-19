@@ -1150,10 +1150,20 @@ int mt63xx_hw_set_value(struct mtk_pinctrl *hw, unsigned int pin,
 {
 	struct mtk_pin_field_calc c = {0};
 	struct regmap *pinctrl_regmap;
+	bool field_locked = false;
+	int ret, field_lock_flags;
 	u32 mask;
-	int ret;
 
 	pinctrl_regmap = (struct regmap *)hw->base[0];
+
+	if (hw->soc->field_lock_ops) {
+		field_lock_flags = hw->soc->field_lock_flags[field/32];
+		if (field_lock_flags & (1 << (field%32))) {
+			field_locked = true;
+			hw->soc->field_lock_ops(hw, field, 0);
+		}
+	}
+
 	ret = mt63xx_lookup_field(hw, pin, field, &c);
 	if (ret)
 		return ret;
@@ -1161,6 +1171,10 @@ int mt63xx_hw_set_value(struct mtk_pinctrl *hw, unsigned int pin,
 	mask = ((1 << c.x_bits) - 1) << c.s_bit;
 	ret = regmap_update_bits(pinctrl_regmap, c.s_addr, mask,
 			value << c.s_bit);
+
+	if (field_locked) {
+		hw->soc->field_lock_ops(hw, field, 1);
+	}
 
 	return ret;
 }
@@ -1645,18 +1659,18 @@ int mt63xx_pinctrl_probe(struct platform_device *pdev,
 	 *  1. gpio ranges in devicetree: start from 0 and add 1 to pin count,
 	 *       e.g., gpio-ranges = <&mt6373_pio 1 1 13> is changed as
 	 *             gpio-ranges = <&mt6373_pio 0 0 14>;
-	 *  2. hw->soc->npins and hw->soc->ngrps: added by 1, so that checking
-	 *       valid pin range can always using ">= hw->soc->npins"
+	 *  2. soc->npins and soc->ngrps: added by 1, so that checking
+	 *       valid pin range can always using ">= soc->npins"
 	 *  3. devm_pinctrl_register_and_init(): use actual pin count
-	 *  4. mt63xx_build_gpiochip: use hw->soc->pins to register gpiochip
+	 *  4. mt63xx_build_gpiochip: use soc->pins to register gpiochip
 	 *  5. at end of static const struct mtk_pin_desc mtk_pins_mtXXXX[],
 	 *       add a dummy pin declaration:
 	 *       MTK_SIMPLE_PIN(0xFFFFFFFF, "DUMMY", MTK_FUNCTION(0, NULL))
 	 */
-	if (hw->soc->capability_flags & FLAG_GPIO_START_IDX_1)
-		npins = hw->soc->npins - 1;
+	if (soc->capability_flags & FLAG_GPIO_START_IDX_1)
+		npins = soc->npins - 1;
 	else
-		npins = hw->soc->npins;
+		npins = soc->npins;
 
 	/* Copy from internal struct mtk_pin_desc to register to the core */
 	pins = devm_kmalloc_array(&pdev->dev, npins, sizeof(*pins),
@@ -1665,8 +1679,8 @@ int mt63xx_pinctrl_probe(struct platform_device *pdev,
 		return -ENOMEM;
 
 	for (i = 0; i < npins; i++) {
-		pins[i].number = hw->soc->pins[i].number;
-		pins[i].name = hw->soc->pins[i].name;
+		pins[i].number = soc->pins[i].number;
+		pins[i].name = soc->pins[i].name;
 	}
 
 	desc = kzalloc(sizeof(mtk_desc_mt63xx), GFP_KERNEL);
