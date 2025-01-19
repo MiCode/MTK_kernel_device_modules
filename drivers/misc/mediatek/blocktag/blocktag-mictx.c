@@ -27,23 +27,23 @@ static struct mtk_btag_mictx *mictx_find(struct mtk_blocktag *btag, __u32 id)
 	return xa_load(&btag->ctx.mictx_xa, id);
 }
 
-void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id)
+void mtk_btag_mictx_reset(struct mtk_btag_mictx_id *mictx_id)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 	unsigned long flags;
 	int qid;
 
-	if (!mictx_id.id || !mictx_id.btag_id)
+	if (!mictx_id || !mictx_id->id || !mictx_id->btag_id)
 		return;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_id(mictx_id.btag_id);
+	btag = mtk_btag_find_by_id(mictx_id->btag_id);
 	if (!btag)
 		return;
 
-	mictx = mictx_find(btag, mictx_id.id);
+	mictx = mictx_find(btag, mictx_id->id);
 	if (!mictx)
 		return;
 
@@ -88,23 +88,26 @@ void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id)
 	spin_unlock_irqrestore(&mictx->top.lock, flags);
 }
 
-void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
+void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id *mictx_id,
 			       __u32 *top_pages_r, __u32 *top_pages_w)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 	unsigned long flags;
 
+	if (!mictx_id || !mictx_id->id || !mictx_id->btag_id)
+		return;
+
 	if (!top_pages_r || !top_pages_w)
 		return;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_id(mictx_id.btag_id);
+	btag = mtk_btag_find_by_id(mictx_id->btag_id);
 	if (!btag)
 		return;
 
-	mictx = mictx_find(btag, mictx_id.id);
+	mictx = mictx_find(btag, mictx_id->id);
 	if (!mictx)
 		return;
 
@@ -399,22 +402,22 @@ static void mictx_evaluate_avg_qd(struct mtk_btag_mictx *mictx,
 }
 #endif
 
-int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
+int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id *mictx_id,
 			    struct mtk_btag_mictx_iostat_struct *iostat)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
-	if (!iostat || !mictx_id.id || !mictx_id.btag_id)
+	if (!iostat || !mictx_id || !mictx_id->id || !mictx_id->btag_id)
 		return -EINVAL;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_id(mictx_id.btag_id);
+	btag = mtk_btag_find_by_id(mictx_id->btag_id);
 	if (!btag)
 		return -ENODEV;
 
-	mictx = mictx_find(btag, mictx_id.id);
+	mictx = mictx_find(btag, mictx_id->id);
 	if (!mictx)
 		return -ENOENT;
 
@@ -432,42 +435,42 @@ int mtk_btag_mictx_get_data(struct mtk_btag_mictx_id mictx_id,
 }
 EXPORT_SYMBOL_GPL(mtk_btag_mictx_get_data);
 
-void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id mictx_id,
+void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id *mictx_id,
 				     bool enable)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
-	if (!mictx_id.id || !mictx_id.btag_id)
+	if (!mictx_id || !mictx_id->id || !mictx_id->btag_id)
 		return;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_id(mictx_id.btag_id);
+	btag = mtk_btag_find_by_id(mictx_id->btag_id);
 	if (!btag)
 		return;
 
-	mictx = mictx_find(btag, mictx_id.id);
+	mictx = mictx_find(btag, mictx_id->id);
 	if (!mictx)
 		return;
 	mictx->full_logging = enable;
 }
 
-int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id)
+int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id *mictx_id)
 {
 	struct mtk_blocktag *btag;
 	struct mtk_btag_mictx *mictx;
 
-	if (!mictx_id.id || !mictx_id.btag_id)
+	if (!mictx_id || !mictx_id->id || !mictx_id->btag_id)
 		return -1;
 
 	guard(rcu)();
 
-	btag = mtk_btag_find_by_id(mictx_id.id);
+	btag = mtk_btag_find_by_id(mictx_id->id);
 	if (!btag)
 		return -1;
 
-	mictx = mictx_find(btag, mictx_id.id);
+	mictx = mictx_find(btag, mictx_id->id);
 	if (!mictx)
 		return -1;
 	return mictx->full_logging;
@@ -548,7 +551,7 @@ static long mictx_proc_ioctl(struct file *filp, unsigned int cmd,
 			goto ret_ioctl;
 		}
 
-		ret = mtk_btag_mictx_get_data(input.mictx_id, &output.iostat);
+		ret = mtk_btag_mictx_get_data(&input.mictx_id, &output.iostat);
 		if (ret) {
 			pr_notice("%s: mictx get data failed %d\n",
 				  __func__, ret);
@@ -699,6 +702,9 @@ int mtk_btag_mictx_register(struct mtk_btag_mictx_id *mictx_id,
 	struct mtk_blocktag *btag;
 	int ret;
 
+	if (!mictx_id)
+		return -EINVAL;
+
 	mictx_id->id = 0;
 	mictx_id->btag_id = 0;
 
@@ -722,6 +728,9 @@ EXPORT_SYMBOL_GPL(mtk_btag_mictx_register);
 void mtk_btag_mictx_unregister(struct mtk_btag_mictx_id *mictx_id)
 {
 	struct mtk_blocktag *btag;
+
+	if (!mictx_id || !mictx_id->id || !mictx_id->btag_id)
+		return;
 
 	guard(rcu)();
 

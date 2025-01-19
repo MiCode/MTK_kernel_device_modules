@@ -284,19 +284,19 @@ void mtk_btag_free(struct mtk_blocktag *btag);
 
 void mtk_btag_get_aee_buffer(unsigned long *vaddr, unsigned long *size);
 
-void mtk_btag_mictx_reset(struct mtk_btag_mictx_id mictx_id);
-void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id mictx_id,
+void mtk_btag_mictx_reset(struct mtk_btag_mictx_id *mictx_id);
+void mtk_btag_mictx_get_top_rw(struct mtk_btag_mictx_id *mictx_id,
 			       __u32 *top_pages_r, __u32 *top_pages_w);
 void mtk_btag_mictx_send_command(struct mtk_blocktag *btag, __u64 start_t,
 				 enum mtk_btag_io_type io_type, __u64 tot_len,
 				 __u64 top_len, __u32 tid, __u16 qid);
 void mtk_btag_mictx_complete_command(struct mtk_blocktag *btag, __u64 end_t,
 				     __u32 tid, __u16 qid);
-void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id mictx_id,
+void mtk_btag_mictx_set_full_logging(struct mtk_btag_mictx_id *mictx_id,
 				     bool enable);
 void mtk_btag_mictx_ioctl_create(struct proc_dir_entry *btag_root);
 void mtk_btag_mictx_ioctl_remove(void);
-int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id mictx_id);
+int mtk_btag_mictx_full_logging(struct mtk_btag_mictx_id *mictx_id);
 void mtk_btag_mictx_free_all(struct mtk_blocktag *btag);
 void mtk_btag_mictx_init(struct mtk_blocktag *btag);
 

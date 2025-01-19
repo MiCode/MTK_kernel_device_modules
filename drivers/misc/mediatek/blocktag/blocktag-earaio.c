@@ -188,7 +188,7 @@ static void earaio_reset_data(void)
 {
 	unsigned long flags;
 
-	mtk_btag_mictx_reset(earaio_ctrl.mictx_id);
+	mtk_btag_mictx_reset(&earaio_ctrl.mictx_id);
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	earaio_get_fuse_count(&earaio_ctrl.fuse_total_prev,
@@ -205,7 +205,7 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 
 	WARN_ON(!mutex_is_locked(&eara_ioctl_lock));
 
-	mtk_btag_mictx_get_data(earaio_ctrl.mictx_id, &iostat);
+	mtk_btag_mictx_get_data(&earaio_ctrl.mictx_id, &iostat);
 	data->io_wl = iostat.wl;
 	data->io_top = iostat.top;
 	data->io_reqc_r = iostat.reqcnt_r;
@@ -273,7 +273,7 @@ static int earaio_try_boost(bool boost)
 	}
 
 	/* Establish threshold for top app read, write */
-	mtk_btag_mictx_get_top_rw(earaio_ctrl.mictx_id, &top_r, &top_w);
+	mtk_btag_mictx_get_top_rw(&earaio_ctrl.mictx_id, &top_r, &top_w);
 	if (top_r >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
 	    top_w >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
 		goto need_boost;
@@ -494,10 +494,10 @@ static ssize_t earaio_control_write(struct file *file, const char __user *ubuf,
 		earaio_ctrl.enabled = true;
 		pr_info("EARA-IO QoS Enable\n");
 	} else if (!strcmp(cmd, "2")) {
-		mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
+		mtk_btag_mictx_set_full_logging(&earaio_ctrl.mictx_id, false);
 		pr_info("EARA-IO Full Logging Disable\n");
 	} else if (!strcmp(cmd, "3")) {
-		mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, true);
+		mtk_btag_mictx_set_full_logging(&earaio_ctrl.mictx_id, true);
 		pr_info("EARA-IO Full Logging Enable\n");
 	} else {
 		pr_info("proc_write: invalid cmd %s\n", cmd);
@@ -526,7 +526,7 @@ static int earaio_control_show(struct seq_file *s, void *data)
 	seq_printf(s, "  EARA-IO Control     : %s\n",
 		   earaio_ctrl.enabled ? "Enable" : "Disable");
 	seq_printf(s, "  EARA-IO Full Loging : %s\n",
-		   mtk_btag_mictx_full_logging(earaio_ctrl.mictx_id) ?
+		   mtk_btag_mictx_full_logging(&earaio_ctrl.mictx_id) ?
 		   "Enable" : "Disable");
 	seq_puts(s, "Commands: echo n > earaio_ctrl, n presents\n");
 	seq_puts(s, "  Disable EARA-IO QoS  : 0\n");
@@ -632,7 +632,7 @@ void mtk_btag_earaio_register(const char *btag_name)
 	}
 
 	/* Disable Full Logging for earaio by default */
-	mtk_btag_mictx_set_full_logging(earaio_ctrl.mictx_id, false);
+	mtk_btag_mictx_set_full_logging(&earaio_ctrl.mictx_id, false);
 }
 
 void mtk_btag_earaio_init(struct proc_dir_entry *root)

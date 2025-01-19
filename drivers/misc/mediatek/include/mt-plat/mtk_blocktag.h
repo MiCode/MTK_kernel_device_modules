@@ -66,7 +66,7 @@ struct mtk_btag_mictx_iostat_struct {
 };
 
 int mtk_btag_mictx_get_data(
-	struct mtk_btag_mictx_id mictx_id,
+	struct mtk_btag_mictx_id *mictx_id,
 	struct mtk_btag_mictx_iostat_struct *iostat);
 int mtk_btag_mictx_register(struct mtk_btag_mictx_id *mictx_id,
 			    const char *btag_name, const char *mictx_name,

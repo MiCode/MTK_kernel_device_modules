@@ -424,7 +424,7 @@ void perf_tracker(u64 wallclock,
 
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	/* If getting I/O stat fail, fallback to zero value. */
-	if (mtk_btag_mictx_get_data(ufs_mictx_id, iostat_ptr))
+	if (mtk_btag_mictx_get_data(&ufs_mictx_id, iostat_ptr))
 		memset(iostat_ptr, 0,
 			sizeof(struct mtk_btag_mictx_iostat_struct));
 #endif
