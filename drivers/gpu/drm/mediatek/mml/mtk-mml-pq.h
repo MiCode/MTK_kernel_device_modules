@@ -203,10 +203,10 @@ struct mml_pq_dc_readback_job {
 		struct mml_pq_aal_readback_job)
 #define MML_PQ_IOC_HDR_READBACK _IOWR(MML_PQ_IOC_MAGIC, 3,\
 		struct mml_pq_hdr_readback_job)
-#define MML_PQ_IOC_WROT_CALLBACK _IOWR(MML_PQ_IOC_MAGIC, 4,\
+#define MML_PQ_IOC_WROT_CALLBACK _IOWR(MML_PQ_IOC_MAGIC, 5,\
 		struct mml_pq_wrot_callback_job)
-#define MML_PQ_IOC_CLARITY_READBACK _IOWR(MML_PQ_IOC_MAGIC, 5,\
+#define MML_PQ_IOC_CLARITY_READBACK _IOWR(MML_PQ_IOC_MAGIC, 6,\
 		struct mml_pq_clarity_readback_job)
-#define MML_PQ_IOC_DC_READBACK _IOWR(MML_PQ_IOC_MAGIC, 6,\
+#define MML_PQ_IOC_DC_READBACK _IOWR(MML_PQ_IOC_MAGIC, 7,\
 		struct mml_pq_dc_readback_job)
 #endif	/* __MTK_MML_PQ_H__ */
