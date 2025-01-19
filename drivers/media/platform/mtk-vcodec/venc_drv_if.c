@@ -177,7 +177,7 @@ void venc_encode_prepare(void *ctx_prepare,
 {
 	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_prepare;
 
-	if (ctx == NULL || core_id >= MTK_VENC_HW_NUM)
+	if (ctx == NULL || core_id >= MTK_VENC_HW_NUM || ctx->dev->power_in_vcp)
 		return;
 
 	mutex_lock(&ctx->hw_status);
@@ -210,7 +210,7 @@ void venc_encode_unprepare(void *ctx_unprepare,
 {
 	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_unprepare;
 
-	if (ctx == NULL || core_id >= MTK_VENC_HW_NUM)
+	if (ctx == NULL || core_id >= MTK_VENC_HW_NUM || ctx->dev->power_in_vcp)
 		return;
 
 	mutex_lock(&ctx->hw_status);

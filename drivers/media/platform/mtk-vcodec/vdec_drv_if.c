@@ -258,7 +258,7 @@ void vdec_decode_prepare(void *ctx_prepare,
 	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_prepare;
 	int ret;
 
-	if (ctx == NULL || hw_id >= MTK_VDEC_HW_NUM)
+	if (ctx == NULL || hw_id >= MTK_VDEC_HW_NUM || ctx->dev->power_in_vcp)
 		return;
 
 	mutex_lock(&ctx->hw_status);
@@ -283,7 +283,7 @@ void vdec_decode_unprepare(void *ctx_unprepare,
 {
 	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_unprepare;
 
-	if (ctx == NULL || hw_id >= MTK_VDEC_HW_NUM)
+	if (ctx == NULL || hw_id >= MTK_VDEC_HW_NUM || ctx->dev->power_in_vcp)
 		return;
 
 	mutex_lock(&ctx->hw_status);

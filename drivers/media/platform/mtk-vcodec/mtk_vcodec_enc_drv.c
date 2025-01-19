@@ -556,18 +556,17 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 
 	for (i = 0; i < total_port_num; i++) {
 		offset = i * port_args_num;
-		if (of_property_read_u32_index(pdev->dev.of_node, "port-def",
-					offset, &core_id)) {
+		if (of_property_read_u32_index(pdev->dev.of_node, "port-def", offset, &core_id)) {
 			dev_info(&pdev->dev, "fail core id offset %d i %d!", offset, i);
 			goto err_res;
 		}
-		if (of_property_read_u32_index(pdev->dev.of_node, "port-def",
-					offset + 1, &port_id)) {
+		if (port_args_num > 1 &&
+		    of_property_read_u32_index(pdev->dev.of_node, "port-def", offset + 1, &port_id)) {
 			dev_info(&pdev->dev, "fail port id offset %d i %d!", offset, i);
 			goto err_res;
 		}
-		if (of_property_read_u32_index(pdev->dev.of_node, "port-def",
-					offset + 2, &ram_type)) {
+		if (port_args_num > 2 &&
+		    of_property_read_u32_index(pdev->dev.of_node, "port-def", offset + 2, &ram_type)) {
 			dev_info(&pdev->dev, "fail ram type offset %d i %d!", offset, i);
 			goto err_res;
 		}
@@ -577,7 +576,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 			dev->venc_ports[core_id].ram_type[port_num[core_id]] = ram_type;
 			port_num[core_id]++;
 		}
-
 	}
 	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
 		dev->venc_ports[i].total_port_num = port_num[i];
