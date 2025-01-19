@@ -1639,6 +1639,7 @@
 
 	dpt_info: dpt-info@c2be120 {
 		compatible = "mediatek,dpt-info";
+		dpt-v2-support = <0>;
 		reg = <0 0xc2be120 0 0x5dc>;
 	};
 
