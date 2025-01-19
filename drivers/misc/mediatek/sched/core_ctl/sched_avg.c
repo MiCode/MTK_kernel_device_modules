@@ -55,12 +55,11 @@ static int init_thres;
 static int global_task_util;
 
 /* pelt.h */
-#define OVER_THRES_SIZE			2
 #define MAX_CLUSTER_NR			3
 #define MAX_UTIL_TRACKER_PERIODIC_MS	8
 
 static int init_thres_table(void);
-static unsigned int over_thres[OVER_THRES_SIZE] = {80, 50};
+static unsigned int over_thres[MAX_CLUSTER_NR] = {50, 50, 50};
 static struct cluster_over_thres_stats cluster_over_thres_table[MAX_CLUSTER_NR];
 
 void sched_max_util_task(int *util)
@@ -213,7 +212,7 @@ EXPORT_SYMBOL(arch_get_cluster_cpus);
 
 unsigned int get_over_threshold(int index)
 {
-	if (index >= 0 && index <= OVER_THRES_SIZE)
+	if (index >= 0 && index <= MAX_CLUSTER_NR)
 		return over_thres[index];
 	return 100;
 }
@@ -231,7 +230,7 @@ EXPORT_SYMBOL(get_max_capacity);
 static void over_thresh_chg_notify(void);
 int set_over_threshold(unsigned int index, unsigned int val)
 {
-	if (index >= OVER_THRES_SIZE || val > 100)
+	if (index >= MAX_CLUSTER_NR || val > 100)
 		return -EINVAL;
 
 	over_thres[index] = (int)val;
@@ -856,7 +855,7 @@ static ssize_t show_over_util(struct kobject *kobj,
 	unsigned int len = 0, i;
 	unsigned int max_len = 4096;
 
-	for (i = 0; i < OVER_THRES_SIZE; i++) {
+	for (i = 0; i < MAX_CLUSTER_NR; i++) {
 		len += snprintf(buf+len,
 			max_len-len, "over_util threshold[%u]=%d max=100\n",
 				i, over_thres[i]);

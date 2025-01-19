@@ -89,6 +89,8 @@ struct cluster_data {
 	unsigned int nr_paused_cpus;
 	unsigned int cpu_busy_up_thres;
 	unsigned int cpu_busy_down_thres;
+	unsigned int nr_task_thres;
+	unsigned int active_loading_thres;
 	cpumask_t cpu_mask;
 	bool pending;
 	spinlock_t pending_lock;
@@ -126,6 +128,8 @@ static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 2, 0};
 ATOMIC_NOTIFIER_HEAD(core_ctl_notifier);
 static unsigned int busy_up_thres[MAX_CLUSTERS] = {60, 60, 60};
 static unsigned int busy_down_thres[MAX_CLUSTERS] = {30, 30, 30};
+static unsigned int nr_task_thres[MAX_CLUSTERS] = {4, 4, 4};
+static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
 
 /* ==================== module parameter ======================== */
 
@@ -640,6 +644,30 @@ static void set_cpu_busy_down_thres(struct cluster_data *cluster, unsigned int v
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 }
 
+static void set_cpu_nr_task_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->nr_task_thres;
+	if (old_thresh != val)
+		cluster->nr_task_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+static void set_cpu_active_loading_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->active_loading_thres;
+	if (old_thresh != val)
+		cluster->active_loading_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
 /*
  * get_cpu_active_loading - Calculates the CPU loading for each CPU
  *
@@ -1086,6 +1114,48 @@ int core_ctl_set_cpu_busy_down_thres(unsigned int cid, unsigned int pct)
 }
 EXPORT_SYMBOL(core_ctl_set_cpu_busy_down_thres);
 
+/*
+ *  core_ctl_set_cpu_nr_task_thres - set threshold of cpu busy state
+ *  @cid: cluster id
+ *  @nr task: number of cpu task
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_cpu_nr_task_thres(unsigned int cid, unsigned int nr_task)
+{
+	struct cluster_data *cluster;
+
+	if (cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_cpu_nr_task_thres(cluster, nr_task);
+
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_cpu_nr_task_thres);
+
+/*
+ *  core_ctl_set_cpu_active_loading - set threshold of cpu busy state
+ *  @cid: cluster id
+ *  @loading: percentage of cpu loading(0-100).
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_cpu_active_loading_thres(unsigned int cid, unsigned int loading)
+{
+	struct cluster_data *cluster;
+
+	if (loading > 100 || cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_cpu_active_loading_thres(cluster, loading);
+
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_cpu_active_loading_thres);
+
 void core_ctl_notifier_register(struct notifier_block *n)
 {
 	atomic_notifier_chain_register(&core_ctl_notifier, n);
@@ -1163,10 +1233,6 @@ static ssize_t store_up_thres(struct cluster_data *state,
 	unsigned int val;
 
 	if (sscanf(buf, "%u\n", &val) != 1)
-		return -EINVAL;
-
-	/* No need to change up_thres for the last cluster */
-	if (state->cluster_id >= num_clusters-1)
 		return -EINVAL;
 
 	if (val > MAX_BTASK_THRESH)
@@ -1313,6 +1379,40 @@ static ssize_t show_cpu_busy_down_thres(const struct cluster_data *state, char *
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->cpu_busy_down_thres);
 }
 
+static ssize_t store_cpu_nr_task_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_cpu_nr_task_thres(state, val);
+	return count;
+}
+
+static ssize_t show_cpu_nr_task_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->nr_task_thres);
+}
+
+static ssize_t store_cpu_active_loading_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_cpu_active_loading_thres(state, val);
+	return count;
+}
+
+static ssize_t show_cpu_active_loading_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->active_loading_thres);
+}
+
 static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->thermal_up_thres);
@@ -1396,6 +1496,8 @@ core_ctl_attr_ro(global_state);
 core_ctl_attr_rw(thermal_up_thres);
 core_ctl_attr_rw(cpu_busy_up_thres);
 core_ctl_attr_rw(cpu_busy_down_thres);
+core_ctl_attr_rw(cpu_nr_task_thres);
+core_ctl_attr_rw(cpu_active_loading_thres);
 
 static struct attribute *default_attrs[] = {
 	&min_cpus.attr,
@@ -1409,6 +1511,8 @@ static struct attribute *default_attrs[] = {
 	&thermal_up_thres.attr,
 	&cpu_busy_up_thres.attr,
 	&cpu_busy_down_thres.attr,
+	&cpu_nr_task_thres.attr,
+	&cpu_active_loading_thres.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(default);
@@ -1491,7 +1595,12 @@ static void get_busy_cpus(void)
 		cpu_count = 0;
 		for_each_cpu(i, &cluster->cpu_mask) {
 			cpu_stat = &per_cpu(cpu_state, i);
-			if (cpu_stat->is_busy && get_max_nr_running(i) > MAX_NR_RUNNING_THRESHOLD)
+			idx = cpu_stat->win_idx;
+
+			if (cpu_stat->is_busy && max_nr_state[i] > cluster->nr_task_thres)
+				cpu_count++;
+			else if (busy_state[i] > cluster->cpu_busy_up_thres &&
+				cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres)
 				cpu_count++;
 		}
 		cluster->need_spread_cpus = cpu_count;
@@ -1686,24 +1795,20 @@ static inline void core_ctl_main_algo(void)
 	for_each_cluster(cluster, index) {
 		int temp_need_cpus = 0;
 
-		if (index == 0) {
-			cluster->nr_assist = cluster->nr_up;
-			cluster->nr_assist += cluster->need_spread_cpus;
-			cluster->new_need_cpus = cluster->num_cpus;
-			continue;
-		}
-
 		temp_need_cpus += cluster->nr_up;
 		temp_need_cpus += cluster->nr_down;
 		temp_need_cpus += cluster->need_spread_cpus;
 		temp_need_cpus += get_prev_cluster_nr_assist(index);
 
+		if (index == L_CLUSTER_ID)
+			cluster->nr_assist = cluster->nr_up + cluster->need_spread_cpus;
+		else {
+			/* nr_assist(i) = max(0, need_cpus(i) - max_cpus(i)) */
+			cluster->nr_assist =
+				(temp_need_cpus > cluster->max_cpus ?
+				(temp_need_cpus - cluster->max_cpus) : 0);
+		}
 		cluster->new_need_cpus = temp_need_cpus;
-
-		/* nr_assist(i) = max(0, need_cpus(i) - max_cpus(i)) */
-		cluster->nr_assist =
-			(temp_need_cpus > cluster->max_cpus ?
-			 (temp_need_cpus - cluster->max_cpus) : 0);
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
@@ -2178,18 +2283,11 @@ static int cluster_init(const struct cpumask *mask)
 	cluster->nr_down = 0;
 	cluster->nr_up = 0;
 	cluster->nr_assist = 0;
-
 	cluster->min_cpus = default_min_cpus[cluster->cluster_id];
-
-	if (cluster->cluster_id ==
-			(arch_get_nr_clusters() - 1))
-		cluster->up_thres = INT_MAX;
-	else
-		cluster->up_thres =
-			get_over_threshold(cluster->cluster_id);
+	cluster->up_thres = get_over_threshold(cluster->cluster_id);
 
 	if (cluster->cluster_id == 0)
-		cluster->down_thres = INT_MAX;
+		cluster->down_thres = 0;
 	else
 		cluster->down_thres =
 			get_over_threshold(cluster->cluster_id - 1);
@@ -2216,6 +2314,8 @@ static int cluster_init(const struct cpumask *mask)
 
 	cluster->cpu_busy_up_thres = busy_up_thres[cluster->cluster_id];
 	cluster->cpu_busy_down_thres = busy_down_thres[cluster->cluster_id];
+	cluster->nr_task_thres = nr_task_thres[cluster->cluster_id];
+	cluster->active_loading_thres = active_loading_thres[cluster->cluster_id];
 
 	cluster->next_offline_time =
 		ktime_to_ms(ktime_get()) + cluster->offline_throttle_ms;
