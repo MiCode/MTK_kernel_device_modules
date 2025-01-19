@@ -60,6 +60,10 @@
 #define PIN_OUT_SIZE_SCP_NPU		 4
 #define PIN_OUT_SIZE_HOST_SCP_CHRE	 2
 #define PIN_IN_SIZE_SCP_HOST_CHRE	 2
+#define PIN_OUT_SIZE_TOUCH_CTRL         2
+#define PIN_IN_SIZE_TOUCH_CTRL          2
+#define PIN_OUT_SIZE_TOUCH_NOTIFY       2
+#define PIN_IN_SIZE_TOUCH_NOTIFY       58
 
 /* scp Core ID definition */
 enum scp_core_id {
@@ -121,6 +125,10 @@ enum {
 	IPI_IN_KASAN_CHECK	  = 49,
 	IPI_OUT_CAMFE_SCP_CAMBE   = 50,
 	IPI_IN_SCP_CAMBE_CAMFE    = 51,
+	IPI_OUT_TOUCH_CTRL       = 52,
+	IPI_IN_TOUCH_CTRL        = 53,
+	IPI_OUT_TOUCH_NOTIFY     = 54,
+	IPI_IN_TOUCH_NOTIFY      = 55,
 	SCP_IPI_COUNT
 };
 
