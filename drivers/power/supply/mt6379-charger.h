@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * mt6379-charger.h -- Mediatek MT6379 Charger Driver Header
+ * mt6379-charger.h -- Mediatek MT6379/MT6720 compatible Charger Driver Header
  *
  * Copyright (c) 2023 MediaTek Inc.
  *
@@ -18,6 +18,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/workqueue.h>
 #include <linux/regmap.h>
+#include <linux/alarmtimer.h>
 
 #include "charger_class.h"
 #include "mtk_charger.h"
@@ -58,6 +59,8 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_CHG_STAT0		(0x70)
 #define MT6379_REG_CHG_STAT1		(0x71)
 #define MT6379_REG_CHG_STAT2		(0x72)
+#define MT6379_REG_CHG_STAT3		(0x73)
+#define MT6379_REG_CHRDET_STAT		(0x78)
 #define MT6379_REG_USBID_STAT		(0x89)
 
 #define MT6379_REG_CHG_BATPRO_SLE	(0x100)
@@ -79,6 +82,7 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_CHG_AICC		(0x116)
 #define MT6379_REG_CHG_IPREC		(0x117)
 #define MT6379_REG_CHG_AICC_RPT		(0x118)
+#define MT6379_REG_THR_REGU1		(0x119)
 #define MT6379_REG_CHG_OTG_LBP		(0x11B)
 #define MT6379_REG_CHG_OTG_CV_MSB	(0x11C)
 #define MT6379_REG_CHG_OTG_C		(0x11E)
@@ -96,6 +100,13 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_ADC_ZCV_RPT		(0x17F)
 #define MT6379_REG_USBID_CTRL1		(0x190)
 #define MT6379_REG_USBID_CTRL2		(0x191)
+#define MT6379_REG_CHRD_CTRL2		(0x194)
+
+/* For store icc calibrated result */
+#define MT6379_REG_WAFER_ID		(0x307)
+#define MT6379_REG_TM_SAVED_ICC_ORIGIN	(0x380)
+#define MT6379_REG_TM_TBTAD		(0x3CB)
+#define MT6379_REG_TM_ICC_OFFSET	(0x3E1)
 
 #define MT6379_REG_PD_SYS_CTRL3		(0x4B0)
 #define MT6379_REG_TYPECOTP_CTRL	(0x4CD)
@@ -108,31 +119,46 @@ extern unsigned int dbg_log_level;
 
 #define MT6379_REG_FGADC_SYS_INFO_CON0	(0x7F9)
 
+
+#define MT6720_REG_VSYS_INTB		(0x19)
+#define MT6720_REG_CHG_IBUS_AICR	(0x10A)
+#define MT6720_REG_CHG_BYPASS_IQ	(0x146)
+
 #define MT6379_CHIP_REV_MSK		GENMASK(3, 0)
-#define MT6379_CHG_RAMPUP_COMP_MSK	GENMASK(7, 6)
-#define MT6379_CHG_IEOC_FLOW_RB_MSK	BIT(4)
+
+enum {
+	CHARGER_ID_MT6379,
+	CHARGER_ID_MT6720,
+	CHARGER_ID_MAX,
+};
 
 enum mt6379_charger_reg_field {
 	/* MT6379_REG_CORE_CTRL0 */
 	F_MREN,
+	/* MT6379_REG_RST1 */
+	F_REG_RST,
 	/* MT6379_REG_CHG_BATPRO_SLE */
 	F_BATPROTECT_SOURCE,
 	/* MT6379_REG_CORE_CTRL2 */
 	F_SHIP_RST_DIS, F_PD_MDEN,
+	/* MT6379_REG_BB_VOUT_SEL */
+	F_PREUV_EN,
 	/* MT6379_REG_CHG_STAT0 */
 	F_ST_PWR_RDY,
 	/* MT6379_REG_CHG_STAT1 */
 	F_ST_MIVR,
 	/* MT6379_REG_CHG_STAT2 */
 	F_ST_AICC_DONE,
+	/* MT6379_REG_CHRDET_STAT */
+	F_CHRDET_EXT,
 	/* MT6379_REG_USBID_STAT */
 	F_ST_USBID,
 	/* MT6379_REG_CHG_BATPRO */
 	F_BATINT, F_BATPROTECT_EN,
 	/* MT6379_REG_CHG_TOP1 */
-	F_PP_PG_FLAG, F_BATFET_DIS, F_BATFET_DISDLY, F_QON_RST_EN,
+	F_PP_PG_FLAG, F_BATFET_DIS, F_QON_RST_EN,
 	/* MT6379_REG_CHG_TOP2 */
-	F_UUG_FULLON, F_CHG_BYPASS,
+	F_UUG_FULLON, F_CHG_OCP, F_CHG_BYPASS,
 	/* MT6379_REG_CHG_IBUS_AICR */
 	F_IBUS_AICR,
 	/* MT6379_REG_CHG_WLIN_AICR */
@@ -163,6 +189,8 @@ enum mt6379_charger_reg_field {
 	F_IPREC,
 	/* MT6379_REG_CHG_AICC_RPT */
 	F_AICC_RPT,
+	/* MT6379_REG_THR_REGU1 */
+	F_DIG_THREG_EN,
 	/* MT6379_REG_CHG_OTG_LBP */
 	F_OTG_LBP,
 	/* MT6379_REG_CHG_OTG_C */
@@ -170,17 +198,35 @@ enum mt6379_charger_reg_field {
 	/* MT6379_REG_CHG_COMP1 */
 	F_IRCMP_EN, F_IRCMP_R,
 	/* MT6379_REG_CHG_COMP2 */
-	F_IRCMP_V,
+	F_BATFET_DISDLY, F_IRCMP_V,
 	/* MT6379_REG_CHG_STAT */
 	F_IC_STAT,
 	/* MT6379_REG_CHG_HD_TOP1 */
 	F_FORCE_VBUS_SINK,
+	/* MT6379_REG_CHG_HD_BUBO5 */
+	F_CHG_RAMP_UP_COMP,
+	/* MT6379_REG_CHG_HD_TRIM6 */
+	F_IEOC_FLOW_RB,
 	/* MT6379_REG_ADC_CONFG1 */
 	F_VBAT_MON_EN, F_VBAT_MON2_EN,
 	/* MT6379_REG_USBID_CTRL1 */
 	F_IS_TDET, F_ID_RUPSEL, F_USBID_EN,
 	/* MT6379_REG_USBID_CTRL2 */
 	F_USBID_FLOATING,
+	/* MT6379_REG_CHRD_CTRL2 */
+	F_CHRD_UV, F_CHRD_OV,
+	/* MT6379_REG_WAFER_ID */
+	F_WAFER_ID,
+	/* MT6379_REG_TM_SAVED_ICC_ORIGIN */
+	F_ICC_ORIGIN,
+	/* MT6379_REG_TM_TBTAD */
+	F_ICC_TRIMMED,
+	/* MT6379_REG_TM_ICC_OFFSET */
+	F_ICC_OFFSET,
+	/* MT6379_REG_PD_SYS_CTRL3 */
+	F_PD_SWRST,
+	/* MT6379_REG_TYPECOTP_CTRL */
+	F_PD_OTP_HWEN,
 	/* MT6379_REG_BC12_FUNC */
 	F_BC12_EN,
 	/* MT6379_REG_BC12_STAT */
@@ -288,9 +334,24 @@ enum {
 	MT6379_CHGIN_OV_22_5V,
 };
 
+enum mt6379_chip_rev {
+	MT6379_CHIP_REV_E0 = 0,
+	MT6379_CHIP_REV_E1,
+	MT6379_CHIP_REV_E2,
+	MT6379_CHIP_REV_E3,
+	MT6379_CHIP_REV_E4,
+	MT6379_CHIP_REV_E5,
+	MT6379_CHIP_REV_MAX
+};
+
 enum mt6379_batpro_src {
 	MT6379_BATPRO_SRC_VBAT_MON = 0,
 	MT6379_BATPRO_SRC_VBAT_MON2
+};
+
+struct rt_charger_data {
+	const char *name;
+	u8 id;
 };
 
 struct mt6379_charger_platform_data {
@@ -323,15 +384,21 @@ struct mt6379_charger_data {
 	struct device *dev;
 	struct regmap *rmap;
 	struct regmap_field *rmap_fields[F_MAX];
+	const struct rt_charger_data *charger_data;
 	struct regulator_dev *rdev;
 	struct regulator *otg_regu;
 	struct workqueue_struct *wq;
 	struct work_struct bc12_work;
 	struct delayed_work switching_work;
+	struct delayed_work icc_cali_work;
+	struct delayed_work icc_check_work;
 	struct power_supply *psy;
+	struct power_supply *bat;
 	struct power_supply_desc psy_desc;
 	struct iio_channel *iio_adcs;
 	struct charger_device *chgdev;
+	struct work_struct fsw_control_work;
+	struct alarm alarm;
 	struct mutex attach_lock;
 	struct mutex cv_lock;
 	struct mutex tm_lock;
@@ -341,12 +408,14 @@ struct mt6379_charger_data {
 	bool batprotect_en;
 	int tm_use_cnt;
 	int vbat0_flag;
+	int fsw_check_nr;
 	atomic_t tchg;
 	atomic_t eoc_cnt;
 	atomic_t no_6pin_used;
 	bool non_switching;
 	u32 zcv;
 	u32 cv;
+	u32 vbat;
 	u8 bypass_mode_entered;
 
 	struct ufcs_port *ufcs;
@@ -358,15 +427,16 @@ struct mt6379_charger_data {
 	enum power_supply_usb_type *psy_usb_type;
 	atomic_t *attach;
 	bool *bc12_dn;
-};
 
-enum mt6379_chip_rev {
-	MT6379_CHIP_REV_E0 = 0,
-	MT6379_CHIP_REV_E1,
-	MT6379_CHIP_REV_E2,
-	MT6379_CHIP_REV_E3,
-	MT6379_CHIP_REV_E4,
-	MT6379_CHIP_REV_MAX
+	bool enable_fsw;
+	bool icc_calibrated;
+	bool icc_trimmed;
+	int icc_offset;
+	int saved_icc_offset;
+
+	enum mt6379_chip_rev rev;
+	u32 waferid;
+	u8 id; /* mt6379 or mt6720 */
 };
 
 extern int mt6379_charger_init_chgdev(struct mt6379_charger_data *cdata);
@@ -377,11 +447,15 @@ extern int mt6379_charger_field_get(struct mt6379_charger_data *cdata,
 extern int mt6379_charger_fsw_control(struct mt6379_charger_data *cdata);
 extern int mt6379_charger_set_non_switching_setting(struct mt6379_charger_data *cdata);
 
-
 static inline int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en)
 {
-	const u8 tm_pascode[] = { 0x69, 0x96, 0x63, 0x79 };
+	u8 tm_pascode[] = { 0x69, 0x96, 0x63, 0x79 };
 	int ret = 0;
+
+	if (cdata->id == CHARGER_ID_MT6720) {
+		tm_pascode[2] = 0x67;
+		tm_pascode[3] = 0x20;
+	}
 
 	mutex_lock(&cdata->tm_lock);
 	if (en) {

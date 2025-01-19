@@ -469,13 +469,15 @@ static int mt6379_enable_buck(struct charger_device *chgdev, bool en)
 		dev_info(dev, "%s, Failed to %s BUCK_EN\n",
 			 __func__, en ? "enable" : "disable");
 
-	if (en) {
-		schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
-	} else {
-		cancel_delayed_work(&cdata->switching_work);
-		ret = mt6379_charger_set_non_switching_setting(cdata);
-		if (ret)
-			dev_info(dev, "%s, set non switching ramp failed\n", __func__);
+	if (cdata->id == CHARGER_ID_MT6379) {
+		if (en) {
+			schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
+		} else {
+			cancel_delayed_work(&cdata->switching_work);
+			ret = mt6379_charger_set_non_switching_setting(cdata);
+			if (ret)
+				dev_info(dev, "%s, set non switching ramp failed\n", __func__);
+		}
 	}
 
 	return ret;
@@ -890,18 +892,18 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 
 	for (i = 0; i < ARRAY_SIZE(settings); i++) {
 		ret = mt6379_charger_field_get(cdata, settings[i].fd, &val);
-		if (ret) {
-			dev_info(dev, "%s, Failed to get %s\n", __func__, settings[i].name);
-			return ret;
+		if (ret)
+			dev_dbg(dev, "%s, Failed to get %s\n", __func__, settings[i].name);
+		else {
+			val = U_TO_M(val);
+			if (i % 4 == 0)
+				offset += scnprintf(buf + offset, DUMP_REG_BUF_SIZE - offset, "%s%s, ",
+						    i != 0 ? "\n" : "", __func__);
+
+			/* -1 means field is not registered */
+			offset += scnprintf(buf + offset, DUMP_REG_BUF_SIZE - offset, "%s = %d%s, ",
+					    settings[i].name, val, settings[i].unit);
 		}
-
-		val = U_TO_M(val);
-		if (i % 4 == 0)
-			offset += scnprintf(buf + offset, DUMP_REG_BUF_SIZE - offset, "%s%s, ",
-					    i != 0 ? "\n" : "", __func__);
-
-		offset += scnprintf(buf + offset, DUMP_REG_BUF_SIZE - offset, "%s = %d%s, ",
-				    settings[i].name, val, settings[i].unit);
 	}
 
 	offset += scnprintf(buf + offset, DUMP_REG_BUF_SIZE - offset, "\n");
@@ -950,10 +952,6 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 				    "%s = 0x%02x, ", regs[i].name, val);
 	}
 
-	ret = mt6379_charger_fsw_control(cdata);
-	if (ret)
-		dev_info(dev, "%s, fsw control failed\n", __func__);
-
 	dev_info(dev, "%s", buf);
 	return 0;
 }
@@ -994,6 +992,11 @@ static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata
 	u16 batend_code = 0;
 	int ret = 0;
 
+	if (cdata->id != CHARGER_ID_MT6379 && src == MT6379_BATPRO_SRC_VBAT_MON2) {
+		dev_info(cdata->dev, "%s, MT6720 no support dual BAT\n", __func__);
+		return -EINVAL;
+	}
+
 	mutex_lock(&cdata->cv_lock);
 
 	vbat_mon_en_field = src == MT6379_BATPRO_SRC_VBAT_MON2 ? F_VBAT_MON2_EN : F_VBAT_MON_EN;
@@ -1012,12 +1015,14 @@ static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata
 	if (atomic_read(&cdata->no_6pin_used) == 1)
 		goto dis_pro;
 
-	/* Select the source of batprotect */
-	ret =  mt6379_charger_field_set(cdata, F_BATPROTECT_SOURCE, src);
-	if (ret) {
-		dev_info(cdata->dev, "%s, Failed to select the source of batprotect(ret:%d)!\n",
-			 __func__, ret);
-		goto dis_pro;
+	if (cdata->id == CHARGER_ID_MT6379) {
+		/* Select the source of batprotect */
+		ret =  mt6379_charger_field_set(cdata, F_BATPROTECT_SOURCE, src);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to select the source of batprotect(ret:%d)!\n",
+					__func__, ret);
+			goto dis_pro;
+		}
 	}
 
 	/* Enable vbat mon */
@@ -1042,7 +1047,7 @@ static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata
 		goto dis_mon;
 	}
 
-	mt_dbg(cdata->dev, "%s, vbat = %dmV, cv = %dmV\n", __func__, vbat / 1000, cv / 1000);
+	mt_dbg(cdata->dev, "%s, vbat = %dmV, cv = %dmV\n", __func__, U_TO_M(vbat), U_TO_M(1000));
 
 	if (vbat >= cv) {
 		mt_dbg(cdata->dev, "%s, vbat(%d) >= cv(%d), should not start\n",
