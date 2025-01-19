@@ -8660,7 +8660,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				(*(display_compress_ratio_table[i].average_ratio) == 0 ||
 				*(display_compress_ratio_table[i].peak_ratio) == 0)) {
 				DDPPR_ERR("bwm ratio is 0\n");
-				DDPMSG("%s i:%d,frame_idx:%d,key value:%d avg%d peak%d\n", __func__,
+				DDPMSG("%s i:%d,frame_idx:%d,key value:%lld avg%d peak%d\n", __func__,
 				i, normal_layer_compress_ratio_tb[i].frame_idx,
 				display_compress_ratio_table[i].key_value,
 				*(display_compress_ratio_table[i].average_ratio),
@@ -11594,6 +11594,7 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_crtc_state *mtk_state;
 	ktime_t last_te_time = 0, cur_time = 0;
 	unsigned int pass_time = 0, next_te_duration = 0, te_duration = 0;
+	int vrefresh = 0;
 
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, mtk_crtc->enabled);
 	CRTC_MMP_EVENT_START(index, check_trigger, 0, 0);
@@ -11617,9 +11618,13 @@ static int __mtk_check_trigger(struct mtk_drm_crtc *mtk_crtc)
 	if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
 		&& mtk_crtc->panel_ext->params->real_te_duration)
 		te_duration = mtk_crtc->panel_ext->params->real_te_duration;
-	else
-		te_duration = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
-
+	else {
+		vrefresh = drm_mode_vrefresh(&crtc->state->adjusted_mode);
+		if (vrefresh != 0)
+			te_duration = 1000000 / vrefresh;
+		else
+			DDPPR_ERR("vrefresh is ZERO\n");
+	}
 	pass_time = (cur_time - last_te_time) / 1000;  //ns to us
 	if (te_duration > pass_time)
 		next_te_duration = te_duration - pass_time;
