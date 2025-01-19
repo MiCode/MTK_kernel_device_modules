@@ -13,6 +13,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/pm_wakeup.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sched/clock.h>
 
 #include "mtk_vdisp.h"
 #include "mtk_disp_vidle.h"
@@ -22,11 +23,8 @@
 #include <aee.h>
 #endif
 
-#define VDISPDBG(fmt, args...) \
-	pr_info("[vdisp] %s:%d " fmt "\n", __func__, __LINE__, ##args)
-
-#define VDISPERR(fmt, args...) \
-	pr_info("[vdisp][err] %s:%d " fmt "\n", __func__, __LINE__, ##args)
+int debug_recover;
+module_param(debug_recover, int, 0644);
 
 #define SPM_MML0_PWR_CON 0xE90
 #define SPM_MML1_PWR_CON 0xE94
@@ -100,9 +98,7 @@ static void __iomem *g_smi_disp_dram_sub_comm[4];
 static void check_subcomm_status(void)
 {
 	int i = 0, offset = 0;
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	bool trigger_aee = false;
-#endif
 
 	for (i = 0; i < 4; i++) {
 		if (readl(g_smi_disp_dram_sub_comm[i] + 0x40) != 0x1) {
@@ -114,19 +110,16 @@ static void check_subcomm_status(void)
 		}
 	}
 
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	if (trigger_aee)
-		aee_kernel_warning_api(__FILE__, __LINE__, DB_OPT_DEFAULT | DB_OPT_MMPROFILE_BUFFER,
-					__func__, "subcomm busy");
-#endif
+		VDISPAEE("subcomm busy");
 }
 
-static int check_sub_devices(void)
+static int check_sub_devices(enum disp_pd_id pd_id)
 {
 	struct device *d;
 	struct pm_domain_data *pdd;
-	struct generic_pm_domain *gpd = pd_to_genpd(g_dev[DISP_PD_DISP_VCORE]->pm_domain);
-	int i = 0, total_usage_count = 0;
+	struct generic_pm_domain *gpd = pd_to_genpd(g_dev[pd_id]->pm_domain);
+	int total_usage_count = 0;
 
 	mutex_lock(&g_mtcmos_cnt_lock);
 	list_for_each_entry(pdd, &gpd->dev_list, list_node) {
@@ -135,32 +128,16 @@ static int check_sub_devices(void)
 			continue;
 
 		total_usage_count += atomic_read(&d->power.usage_count);
-		VDISPDBG("\t%c (%-80s %3d %3d %3d %3d %3d status:%3d)",
-			pm_runtime_active(d) ? '+' : '-',
-			dev_name(d),
-			atomic_read(&d->power.usage_count),
-			d->power.is_noirq_suspended,
-			d->power.syscore,
-			d->power.direct_complete,
-			d->power.must_resume,
-			d->power.runtime_status);
-	}
-
-	for (i = 1; i < DISP_PD_NUM; i++) {
-		d = g_dev[i];
-		if (!d)
-			continue;
-
-		total_usage_count += atomic_read(&d->power.usage_count);
-		VDISPDBG("\t%c (%-80s %3d %3d %3d %3d %3d status:%3d)",
-			pm_runtime_active(d) ? '+' : '-',
-			dev_name(d),
-			atomic_read(&d->power.usage_count),
-			d->power.is_noirq_suspended,
-			d->power.syscore,
-			d->power.direct_complete,
-			d->power.must_resume,
-			d->power.runtime_status);
+		if (d->power.runtime_status != RPM_SUSPENDED) {
+			VDISPDBG("\t+ (%-80s %3d %3d %3d %3d %3d status:%3d)",
+				dev_name(d),
+				atomic_read(&d->power.usage_count),
+				d->power.is_noirq_suspended,
+				d->power.syscore,
+				d->power.direct_complete,
+				d->power.must_resume,
+				d->power.runtime_status);
+		}
 	}
 	mutex_unlock(&g_mtcmos_cnt_lock);
 
@@ -178,18 +155,34 @@ static s32 mtk_vdisp_poll_power_cnt(s32 val)
 
 	ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
 	if (ret < 0) {
-		tmp = check_sub_devices();
-		VDISPERR("poll power cnt timeout, mtcmos_mask(%#x) total_usage_count(%d)",
-			 atomic_read(&g_mtcmos_cnt), tmp);
-		if (tmp == 0) {
-			pm_runtime_get_sync(g_dev[DISP_PD_DISP_VCORE]);
-			pm_runtime_put_sync(g_dev[DISP_PD_DISP_VCORE]);
-			ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-			if (ret == 0)
-				aee_kernel_warning_api(__FILE__, __LINE__, DB_OPT_DEFAULT | DB_OPT_MMPROFILE_BUFFER,
-					__func__, "False alarm, recovery success");
-#endif
+		u32 idx, mtcmos_cnt;
+		u64 begin = sched_clock();
+
+		/* get power from lower bit to higher bit, so disp_vcore is the first one */
+		mtcmos_cnt = tmp;
+		while (mtcmos_cnt) {
+			idx = __builtin_ffs(mtcmos_cnt) - 1;
+			mtcmos_cnt &= ~BIT(idx);
+			check_sub_devices(idx);
+			pm_runtime_get_sync(g_dev[idx]);
+		}
+
+		/* put power from higher bit to lower bit */
+		mtcmos_cnt = tmp;
+		while (mtcmos_cnt) {
+			idx = 31 - __builtin_clz(mtcmos_cnt);
+			mtcmos_cnt &= ~BIT(idx);
+			pm_runtime_put_sync(g_dev[idx]);
+		}
+
+		ret = readx_poll_timeout(mtk_vdisp_get_power_cnt, , tmp, tmp == val, 100, TIMEOUT_300MS);
+		if (ret == 0) {
+			if (unlikely(debug_recover))
+				VDISPAEE("mtcmos_cnt(%#x) recovery success, cost(%llu)", tmp,
+					 sched_clock() - begin);
+			else
+				VDISPDBG("mtcmos_cnt(%#x) recovery success, cost(%llu)", tmp,
+					 sched_clock() - begin);
 		}
 	}
 
