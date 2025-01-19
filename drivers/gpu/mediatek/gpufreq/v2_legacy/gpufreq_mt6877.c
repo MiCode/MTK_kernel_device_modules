@@ -2010,9 +2010,7 @@ static int __gpufreq_volt_scale_gpu(
 	unsigned int t_settle_vsram = 0;
 	unsigned int t_settle = 0;
 	int ret = GPUFREQ_SUCCESS;
-	ktime_t start, end;
-	s64 time_diff;
-	unsigned int last_volt = 0;
+
 	GPUFREQ_TRACE_START("vgpu_old=%d, vgpu_new=%d, vsram_old=%d, vsram_new=%d",
 		vgpu_old, vgpu_new, vsram_old, vsram_new);
 
@@ -2083,29 +2081,10 @@ static int __gpufreq_volt_scale_gpu(
 	udelay(t_settle);
 
 	g_gpu.cur_volt = __gpufreq_get_real_vgpu();
-	start = ktime_get();
-	last_volt = g_gpu.cur_volt;
-	while (unlikely(g_gpu.cur_volt != vgpu_new)) {
-		udelay(1000);
-		end = ktime_get();
-		time_diff = ktime_to_us(ktime_sub(end, start));
+	if (unlikely(g_gpu.cur_volt != vgpu_new))
+		__gpufreq_abort("inconsistent scaled Vgpu, cur_volt: %d, target_volt: %d, vgpu_old: %d",
+		g_gpu.cur_volt, vgpu_new, vgpu_old);
 
-		g_gpu.cur_volt = __gpufreq_get_real_vgpu();
-		if(g_gpu.cur_volt != last_volt) {
-			last_volt = g_gpu.cur_volt;
-			GPUFREQ_LOGE("update cur_volt: %d",g_gpu.cur_volt);
-		}
-		if (g_gpu.cur_volt == vgpu_new) {
-			__gpufreq_abort("consistent scaled Vgpu, cur_volt: %d, target_volt: %d used %lld microseconds",
-			g_gpu.cur_volt, vgpu_new, time_diff);
-		}
-		//timeout is 1s
-		if(time_diff > 1*1000*1000) {
-			GPUFREQ_LOGE("timeout time_diff > 1s");
-			__gpufreq_abort("scaled Vgpu timeout, cur_volt: %d, target_volt: %d used %lld microseconds",
-			g_gpu.cur_volt, vgpu_new, time_diff);
-		}
-	}
 	g_gpu.cur_vsram = __gpufreq_get_real_vsram();
 	if (unlikely(g_gpu.cur_vsram != vsram_new))
 		__gpufreq_abort("inconsistent scaled Vsram, cur_vsram: %d, target_vsram: %d, vsram_old: %d",
