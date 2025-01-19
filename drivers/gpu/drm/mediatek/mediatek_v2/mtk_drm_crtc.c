@@ -2443,7 +2443,7 @@ static void mtk_drm_spr_switch_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
-int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
+int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en, unsigned int need_lock)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *mtk_state;
@@ -2454,13 +2454,14 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 	struct mtk_cmdq_cb_data *cb_data;
 	unsigned int hrt_idx = 0;
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (need_lock)
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	drm_trace_tag_mark("start_switch_spr");
 
 	if (!crtc->state) {
 		DDPMSG("%s, crtc->state is NULL\n", __func__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	mtk_state = to_mtk_crtc_state(crtc->state);
@@ -2469,40 +2470,40 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 		DDPMSG("%s: crtc state=%d, doze state=%lld\n", __func__,
 			crtc->state->active,
 			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (!(mtk_crtc->enabled)) {
 		mtk_crtc->spr_is_on = en;
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (params && (params->spr_params.enable == 0 || params->spr_params.relay == 1)) {
 		mtk_crtc->spr_is_on = params->spr_params.enable;
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
-	if (en == mtk_crtc->spr_is_on) {
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		return ret;
-	}
+	if (en == mtk_crtc->spr_is_on)
+		goto out;
 
 	if (atomic_read(&mtk_crtc->spr_switching) == 1) {
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		DDPMSG("ERROR: previous spr switing is unfinished\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
 		hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(crtc));
 		hrt_idx++;
 		mtk_crtc->mml_prefer_dc = true;
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (need_lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		mtk_disp_hrt_repaint_blocking(hrt_idx);	/* must not in lock */
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (need_lock)
+			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 	if(params && params->is_support_dbi)
 		atomic_set(&mtk_crtc->get_data_type, DBI_GET_RAW_TYPE_FRAME_NUM);
@@ -2515,15 +2516,15 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 				cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 		if (!cmdq_handle) {
 			DDPMSG("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 		if (!cb_data) {
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 			DDPMSG("ERROR: cb data creation failed\n");
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 
 		mtk_crtc->spr_is_on = en;
@@ -2555,11 +2556,11 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 		atomic_set(&mtk_crtc->spr_switching, 1);
 		atomic_set(&mtk_crtc->spr_switch_cb_done, 0);
 		if (cmdq_pkt_flush_threaded(cmdq_handle, mtk_drm_spr_switch_cb, cb_data) < 0) {
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 			DDPMSG("ERROR: failed to flush write_back\n");
 			cmdq_pkt_destroy(cb_data->cmdq_handle);
 			kfree(cb_data);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto out;
 		}
 	}
 
@@ -2568,27 +2569,29 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en)
 		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
 	}
 
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	if (need_lock)
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	drm_trace_tag_start("switching_spr");
 
 	//wait switch done
 	if (!wait_event_timeout(mtk_crtc->spr_switch_wait_queue,
 		(atomic_read(&mtk_crtc->spr_switch_cb_done) == 1 &&
 		atomic_read(&mtk_crtc->spr_switching) == 0), msecs_to_jiffies(50))) {
-		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		if (need_lock)
+			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 		if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
 			atomic_set(&mtk_crtc->spr_switching, 0);
 			atomic_set(&mtk_crtc->spr_switch_cb_done, 0);
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 			goto out;
 		}
 		DDPMSG("%s:%d switch time\n", __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 		ret = -EINVAL;
 		goto out;
 	}
 
 out:
+	if (need_lock)
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	drm_trace_tag_end("switching_spr");
 	return ret;
 
@@ -12963,6 +12966,16 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 			_acquire_wrot_resource(CMDQ_EVENT_MDP_RDMA0_SOF);
 	}
 #endif
+
+	// restore SPR when quit AOD-SCP
+	if (aod_scp_flag && crtc && crtc->state && crtc->state->active && mtk_state &&
+		(!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])) {
+		if (mtk_crtc->aod_scp_spr_switch == 1) {
+			mtk_crtc->aod_scp_spr_switch = 0;
+			mtk_drm_switch_spr(crtc, 1, 0);
+		}
+	}
+
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
