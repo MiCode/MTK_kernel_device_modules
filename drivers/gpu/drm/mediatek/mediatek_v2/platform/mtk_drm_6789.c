@@ -1515,6 +1515,7 @@ const struct mtk_mipitx_data mt6789_mipitx_data = {
 	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6789,
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6789,
 	.dsi_get_pcw = _dsi_get_pcw,
+	.dsi_get_data_rate = _dsi_get_data_rate,
 	.backup_mipitx_impedance = backup_mipitx_impedance,
 	.refill_mipitx_impedance = refill_mipitx_impedance,
 	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en,
@@ -1543,6 +1544,7 @@ const struct mtk_mipitx_data mt6789_mipitx_cphy_data = {
 	.pll_prepare = mtk_mipi_tx_pll_cphy_prepare_mt6789,
 	.pll_unprepare = mtk_mipi_tx_pll_cphy_unprepare_mt6789,
 	.dsi_get_pcw = _dsi_get_pcw,
+	.dsi_get_data_rate = _dsi_get_data_rate,
 	.backup_mipitx_impedance = backup_mipitx_impedance,
 	.refill_mipitx_impedance = refill_mipitx_impedance,
 };
