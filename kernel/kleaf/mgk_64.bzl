@@ -124,12 +124,14 @@ mgk_64_kleaf_modules = [
 
 mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mmc:ktf_mmc_ut",
     "//vendor/mediatek/tests/ktf/kernel:ktf_ddk",
 
 ]
 
 mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mmc:ktf_mmc_ut",
     "//vendor/mediatek/tests/ktf/kernel:ktf_ddk",
 
 ]
@@ -189,6 +191,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mmc/host:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/rps:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply/ufcs:ddk_src".format(kernel_version),
@@ -264,6 +267,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mmc/host:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply/ufcs:ddk_kconfigs".format(kernel_version),
