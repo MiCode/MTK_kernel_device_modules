@@ -11,7 +11,7 @@
 # GNU General Public License for more details.
 #
 
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
-subdir-ccflags-y += -I$(srctree)/kernel/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
+#subdir-ccflags-y += -I$(srctree)/kernel/
 
-obj-$(CONFIG_MTK_PRINTK) += mtk_printk_ctrl.o
+#obj-$(CONFIG_MTK_PRINTK) += mtk_printk_ctrl.o
