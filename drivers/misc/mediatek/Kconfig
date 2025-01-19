@@ -266,13 +266,13 @@ config MTK_VM_DEBUG
 	  Say Y here if you need debug kernel memory management.
 	  If unsure, say N
 
-config MTK_WIFI_PRODUCT
-	bool "Code for product version Wi-Fi driver"
-	default y
+config MTK_WIFI_DEBUG
+	bool "debug version build variant for Wi-Fi driver"
+	default n
 	help
-	  This is used for product version Wi-Fi driver, which equals to
-	  distinguishing user load and eng/userdebug load.
-	  Say Y if this is user load.
+	  This is used for Wi-Fi driver to distinguishing user load and
+	  eng/userdebug load.
+	  Say Y if this is eng/userdebug load.
 	  If not, say N.
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/blocktag/Kconfig"
