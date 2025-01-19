@@ -1398,6 +1398,10 @@ int DPE_Config_DVS(struct DPE_Config *pDpeConfig,
 	pDpeConfig->Dpe_InBuf_SrcImg_Y_L, pDpeConfig->Dpe_InBuf_SrcImg_Y_R,
 	pDpeConfig->Dpe_InBuf_ValidMap_L, pDpeConfig->Dpe_InBuf_ValidMap_R,
 	pDpeConfig->Dpe_OutBuf_CONF, pDpeConfig->Dpe_OutBuf_OCC);
+	if ((frmWidth == 0) || (frmHeight == 0)) {
+		LOG_ERR("frame width or height is zero w(%d)/h(%d)\n", frmWidth, frmHeight);
+		return -1;
+	}
 	if ((frmWidth % 16 != 0)) {
 		LOG_ERR("frame width is not 16 byte align w(%d)\n", frmWidth);
 		return -1;
@@ -2249,24 +2253,33 @@ signed int CmdqDPEHW(struct frame *frame)
 
 	if (pDpeUserConfig->Dpe_engineSelect == MODE_DVS_DVP_BOTH) {
 		result = DPE_Config_DVS(pDpeUserConfig, pDpeConfig);
-		if (result != 0)
+		if (result != 0) {
+			kfree(records);
 			return -1;
+		}
 		result = DPE_Config_DVP(pDpeUserConfig, pDpeConfig);
-		if (result != 0)
+		if (result != 0) {
+			kfree(records);
 			return -1;
+		}
 		pDpeConfig->DPE_MODE = 0;
 	} else if (pDpeUserConfig->Dpe_engineSelect == MODE_DVS_ONLY) {
 		result = DPE_Config_DVS(pDpeUserConfig, pDpeConfig);
-		if (result != 0)
+		if (result != 0) {
+			kfree(records);
 			return -1;
+		}
 		pDpeConfig->DPE_MODE = 1;
 	} else if (pDpeUserConfig->Dpe_engineSelect == MODE_DVP_ONLY) {
 		result = DPE_Config_DVP(pDpeUserConfig, pDpeConfig);
-		if (result != 0)
+		if (result != 0) {
+			kfree(records);
 			return -1;
+		}
 		pDpeConfig->DPE_MODE = 2;
 	} else {
 		LOG_ERR("Dpe_engineSelect fail(%d)\n", pDpeUserConfig->Dpe_engineSelect);
+		kfree(records);
 		return -1;
 	}
 
@@ -3994,7 +4007,7 @@ static int compat_get_DPE_read_register_data(
 	struct DPE_REG_IO_STRUCT *data)
 {
 	long ret = -1;
-	struct compat_DPE_REG_IO_STRUCT data32;
+	struct compat_DPE_REG_IO_STRUCT data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_REG_IO_STRUCT));
@@ -4016,7 +4029,7 @@ static int compat_put_DPE_read_register_data(
 {
 	long ret = -1;
 
-	struct compat_DPE_REG_IO_STRUCT data32;
+	struct compat_DPE_REG_IO_STRUCT data32 = {0};
 	data32.Count = (compat_uint_t)(data->Count);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -4033,7 +4046,7 @@ static int compat_get_DPE_enque_req_data(
 {
 
 	long ret = -1;
-	struct compat_DPE_Request data32;
+	struct compat_DPE_Request data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_Request));
@@ -4055,7 +4068,7 @@ static int compat_put_DPE_enque_req_data(
 {	
 	long ret = -1;
 
-	struct compat_DPE_Request data32;
+	struct compat_DPE_Request data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -4071,7 +4084,7 @@ static int compat_get_DPE_deque_req_data(
 	struct DPE_Request *data)
 {
 	long ret = -1;
-	struct compat_DPE_Request data32;
+	struct compat_DPE_Request data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_DPE_Request));
@@ -4093,7 +4106,7 @@ static int compat_put_DPE_deque_req_data(
 {	
 	long ret = -1;
 
-	struct compat_DPE_Request data32;
+	struct compat_DPE_Request data32 = {0};
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
