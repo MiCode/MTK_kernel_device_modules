@@ -516,15 +516,14 @@ out:
 static int rpmb_req_get_wc_ufs(u8 region, u8 *keybytes, u32 *wc, u8 *frame)
 {
 	struct rpmb_data rpmbdata;
-	struct rpmb_dev *rawdev_ufs_rpmb;
 	u8 nonce[RPMB_SZ_NONCE] = {0};
 	u8 hmac[RPMB_SZ_MAC] = {0};
 	int ret, i;
-
-	MSG(INFO, "%s start!!!\n", __func__);
+#ifndef __RPMB_KERNEL_NL_SUPPORT
+	struct rpmb_dev *rawdev_ufs_rpmb;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
-
+#endif
 	do {
 		/*
 		 * Initial frame buffers
@@ -580,11 +579,11 @@ static int rpmb_req_get_wc_ufs(u8 region, u8 *keybytes, u32 *wc, u8 *frame)
 
 		rpmbdata.ocmd.nframes = 1;
 
-		#ifdef __RPMB_KERNEL_NL_SUPPORT
+#ifdef __RPMB_KERNEL_NL_SUPPORT
 		ret = nl_rpmb_cmd_req(&rpmbdata, region);
-		#else
+#else
 		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, region);
-		#endif
+#endif
 
 		if (ret) {
 			MSG(ERR, "%s, nl_rpmb_cmd_req IO error!!!(0x%x)\n",
@@ -737,11 +736,12 @@ out:
 static int rpmb_req_read_data_ufs(u8 *frame, u32 blk_cnt)
 {
 	struct rpmb_data rpmbdata;
-	struct rpmb_dev *rawdev_ufs_rpmb;
 	int ret;
+#ifndef __RPMB_KERNEL_NL_SUPPORT
+	struct rpmb_dev *rawdev_ufs_rpmb;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
-
+#endif
 	MSG(DBG_INFO, "%s: blk_cnt: %d\n", __func__, blk_cnt);
 
 	rpmbdata.req_type = RPMB_READ_DATA;
@@ -757,11 +757,11 @@ static int rpmb_req_read_data_ufs(u8 *frame, u32 blk_cnt)
 	rpmbdata.ocmd.nframes = blk_cnt;
 	rpmbdata.ocmd.frames = (struct rpmb_frame *)frame;
 
-	#ifdef __RPMB_KERNEL_NL_SUPPORT
+#ifdef __RPMB_KERNEL_NL_SUPPORT
 	ret = nl_rpmb_cmd_req(&rpmbdata, 0);
-	#else
+#else
 	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
-	#endif
+#endif
 
 	if (ret)
 		MSG(ERR, "%s: nl_rpmb_cmd_req IO error, ret %d (0x%x)\n",
@@ -776,14 +776,15 @@ static int rpmb_req_read_data_ufs(u8 *frame, u32 blk_cnt)
 static int rpmb_req_write_data_ufs(u8 *frame, u32 blk_cnt)
 {
 	struct rpmb_data rpmbdata;
-	struct rpmb_dev *rawdev_ufs_rpmb;
 	int ret;
 #ifdef __RPMB_MTK_DEBUG_HMAC_VERIFY
 	u8 *key_mac;
 #endif
+#ifndef __RPMB_KERNEL_NL_SUPPORT
+	struct rpmb_dev *rawdev_ufs_rpmb;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
-
+#endif
 	MSG(DBG_INFO, "%s: blk_cnt: %d\n", __func__, blk_cnt);
 
 	/*
@@ -818,11 +819,11 @@ static int rpmb_req_write_data_ufs(u8 *frame, u32 blk_cnt)
 	kfree(key_mac);
 #endif
 
-	#ifdef __RPMB_KERNEL_NL_SUPPORT
+#ifdef __RPMB_KERNEL_NL_SUPPORT
 	ret = nl_rpmb_cmd_req(&rpmbdata, 0);
-	#else
+#else
 	ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
-	#endif
+#endif
 
 	if (ret)
 		MSG(ERR, "%s: nl_rpmb_cmd_req IO error, ret %d (0x%x)\n",
@@ -852,10 +853,11 @@ static int rpmb_req_purge_enable(u8 region, u8 *frame)
 {
 	int ret = 0;
 	struct rpmb_data data;
+#ifndef __RPMB_KERNEL_NL_SUPPORT
 	struct rpmb_dev *rawdev_ufs_rpmb;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
-
+#endif
 	data.ocmd.nframes = 1;
 	data.ocmd.frames = rpmb_alloc_frames(1);
 
@@ -894,10 +896,11 @@ static int rpmb_req_read_purge_status(u8 region, u8 *frame)
 {
 	int ret = 0;
 	struct rpmb_data data;
+#ifndef __RPMB_KERNEL_NL_SUPPORT
 	struct rpmb_dev *rawdev_ufs_rpmb;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
-
+#endif
 	data.ocmd.nframes = 1;
 	data.ocmd.frames = rpmb_alloc_frames(1);
 
@@ -934,11 +937,12 @@ static int rpmb_req_read_purge_status(u8 region, u8 *frame)
 static int rpmb_req_program_key_ufs(u8 region, u8 *frame)
 {
 	struct rpmb_data data;
-	struct rpmb_dev *rawdev_ufs_rpmb;
 	int ret;
+#ifndef __RPMB_KERNEL_NL_SUPPORT
+	struct rpmb_dev *rawdev_ufs_rpmb;
 
 	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
-
+#endif
 	/*
 	 * Alloc output frame to avoid overwriting input frame
 	 * buffer provided by TEE
@@ -988,7 +992,6 @@ static int rpmb_req_program_key_ufs(u8 region, u8 *frame)
 static int rpmb_req_ioctl_write_data_ufs(struct rpmb_ioc_param *param)
 {
 	struct rpmb_data rpmbdata;
-	struct rpmb_dev *rawdev_ufs_rpmb;
 	u32 i, tran_size, left_size = param->data_len;
 	u32 wc = 0xFFFFFFFFU;
 	u16 iCnt, tran_blkcnt, left_blkcnt;
@@ -999,7 +1002,11 @@ static int rpmb_req_ioctl_write_data_ufs(struct rpmb_ioc_param *param)
 	size_t size_for_hmac;
 	int ret = 0;
 	u8 user_param_data;
+#ifndef __RPMB_KERNEL_NL_SUPPORT
+	struct rpmb_dev *rawdev_ufs_rpmb;
 
+	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
+#endif
 	MSG(DBG_INFO, "%s start!!!\n", __func__);
 
 	ret = get_user(user_param_data, param->databytes);
@@ -1010,7 +1017,6 @@ static int rpmb_req_ioctl_write_data_ufs(struct rpmb_ioc_param *param)
 	if (ret != 0)
 		return -EFAULT;
 
-	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
 
 	/* copy key first */
 	ret = copy_from_user(rpmb_key, param->keybytes, RPMB_SZ_KEY);
@@ -1160,11 +1166,11 @@ static int rpmb_req_ioctl_write_data_ufs(struct rpmb_ioc_param *param)
 		/*
 		 * Send write data request.
 		 */
-		#ifdef __RPMB_KERNEL_NL_SUPPORT
+#ifdef __RPMB_KERNEL_NL_SUPPORT
 		ret = nl_rpmb_cmd_req(&rpmbdata, 0);
-		#else
+#else
 		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
-		#endif
+#endif
 
 		if (ret) {
 			MSG(ERR, "%s, nl_rpmb_cmd_req IO error!!!(0x%x)\n",
@@ -1235,7 +1241,6 @@ out:
 static int rpmb_req_ioctl_read_data_ufs(struct rpmb_ioc_param *param)
 {
 	struct rpmb_data rpmbdata;
-	struct rpmb_dev *rawdev_ufs_rpmb;
 	u32 i, tran_size, left_size = param->data_len;
 	u16 iCnt, tran_blkcnt, left_blkcnt;
 	u16 blkaddr;
@@ -1246,7 +1251,11 @@ static int rpmb_req_ioctl_read_data_ufs(struct rpmb_ioc_param *param)
 	size_t size_for_hmac;
 	int ret = 0;
 	u8 user_param_data;
+#ifndef __RPMB_KERNEL_NL_SUPPORT
+	struct rpmb_dev *rawdev_ufs_rpmb;
 
+	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
+#endif
 	MSG(DBG_INFO, "%s start!!!\n", __func__);
 
 	ret = get_user(user_param_data, param->databytes);
@@ -1256,8 +1265,6 @@ static int rpmb_req_ioctl_read_data_ufs(struct rpmb_ioc_param *param)
 	ret = get_user(user_param_data, param->keybytes);
 	if (ret != 0)
 		return -EFAULT;
-
-	rawdev_ufs_rpmb = ufs_mtk_rpmb_get_raw_dev();
 
 	/* copy key first */
 	ret = copy_from_user(rpmb_key, param->keybytes, RPMB_SZ_KEY);
@@ -1335,11 +1342,11 @@ static int rpmb_req_ioctl_read_data_ufs(struct rpmb_ioc_param *param)
 
 		rpmbdata.ocmd.nframes = tran_blkcnt;
 
-		#ifdef __RPMB_KERNEL_NL_SUPPORT
+#ifdef __RPMB_KERNEL_NL_SUPPORT
 		ret = nl_rpmb_cmd_req(&rpmbdata, 0);
-		#else
+#else
 		ret = rpmb_cmd_req(rawdev_ufs_rpmb, &rpmbdata, 0);
-		#endif
+#endif
 
 		if (ret) {
 			MSG(ERR, "%s, nl_rpmb_cmd_req IO error!!!(0x%x)\n",
@@ -1452,23 +1459,21 @@ out:
 #if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
 static enum mc_result rpmb_gp_execute_ufs(u32 cmdId)
 {
-	int ret;
-
 	switch (cmdId) {
 
 	case DCI_RPMB_CMD_READ_DATA:
 		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_READ_DATA\n", __func__);
-		ret = rpmb_req_read_data_ufs(rpmb_gp_dci->request.frame,
+		rpmb_req_read_data_ufs(rpmb_gp_dci->request.frame,
 					rpmb_gp_dci->request.blks);
 		break;
 	case DCI_RPMB_CMD_GET_WCNT:
 		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_GET_WCNT\n", __func__);
-		ret = rpmb_req_get_wc_ufs(rpmb_gp_dci->request.region,
+		rpmb_req_get_wc_ufs(rpmb_gp_dci->request.region,
 					NULL, NULL, rpmb_gp_dci->request.frame);
 		break;
 	case DCI_RPMB_CMD_WRITE_DATA:
 		MSG(DBG_INFO, "%s: DCI_RPMB_CMD_WRITE_DATA\n", __func__);
-		ret = rpmb_req_write_data_ufs(rpmb_gp_dci->request.frame,
+		rpmb_req_write_data_ufs(rpmb_gp_dci->request.frame,
 					rpmb_gp_dci->request.blks);
 		break;
 	case DCI_RPMB_CMD_PURGE_EN:
@@ -1484,8 +1489,8 @@ static enum mc_result rpmb_gp_execute_ufs(u32 cmdId)
 		rpmb_dump_frame((struct rpmb_frame *)rpmb_gp_dci->request.frame);
 
 		/* program both region 0 and region 1 key */
-		ret = rpmb_req_program_key_ufs(RPMB_REGION1, rpmb_gp_dci->request.frame);
-		ret = rpmb_req_program_key_ufs(RPMB_REGION0, rpmb_gp_dci->request.frame);
+		rpmb_req_program_key_ufs(RPMB_REGION1, rpmb_gp_dci->request.frame);
+		rpmb_req_program_key_ufs(RPMB_REGION0, rpmb_gp_dci->request.frame);
 
 		break;
 	default:
