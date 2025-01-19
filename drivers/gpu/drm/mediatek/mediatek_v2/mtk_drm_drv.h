@@ -180,6 +180,7 @@ struct mtk_drm_private {
 	struct device *side_ovlsys_dev;
 	struct device *dpc_dev;
 	struct device *dsi_phy0_dev;
+	struct device *dsi_phy1_dev;
 
 	struct drm_crtc *crtc[MAX_CRTC];
 	unsigned int pre_defined_bw[MAX_CRTC];
