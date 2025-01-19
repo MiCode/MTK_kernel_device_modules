@@ -538,7 +538,7 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 		return -ENOMEM;
 
 	/* TODO: use an independent flag to replace mml mode */
-	if (mml_isdc(cfg->info.mode))
+	if (cfg->rrot_no_rot_binning)
 		return 0;
 	rrot_frm = rrot_frm_data(ccfg);
 	rrot_frm->rotate = cfg->info.dest[0].rotate;

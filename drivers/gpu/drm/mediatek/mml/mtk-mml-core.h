@@ -618,6 +618,7 @@ struct mml_frame_config {
 	bool rrot_dual:1;
 	bool merge2p:1;
 	bool rsz_front:1;
+	bool rrot_no_rot_binning:1;
 
 	/* tile */
 	struct mml_frame_tile *frame_tile[MML_PIPE_CNT];
