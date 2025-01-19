@@ -2323,13 +2323,13 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-61 = "SSPM_SLBC_SLOT",
 				"buffer_used,cached_used";
 			node-62 = "SSPM_SLBC_REF",
-				"aov_dc,sh_p1,sh_apu,venc_8k,venc,aov_apu,ainr,apu";
+				"aov_dc,sh_p1,sh_apu,venc_ext,venc,aov_apu,ainr,apu";
 			node-63 = "SSPM_SLBC_BW",
 				"mm,apu,mm_est";
 			node-64 = "SSPM_SLBC_PMU",
 				"hit,miss,apu_r,apu_w,mm_r,mm_w";
 			node-65 = "SSPM_SLBC_WAY",
-				"aov_dc,sh_p1,sh_apu,venc_8k,venc,aov_apu,ainr,apu,",
+				"aov_dc,sh_p1,sh_apu,venc_ext,venc,aov_apu,ainr,apu,",
 				"slb,slc,left";
 			node-66 = "SSPM_SWPM_CPU__DSU_PMU",
 				 "dsu_cycles";
