@@ -1676,5 +1676,7 @@ void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 						  struct mtk_plane_state *plane_state);
 #endif
+struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn);
+enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state);
 
 #endif /* MTK_DRM_CRTC_H */

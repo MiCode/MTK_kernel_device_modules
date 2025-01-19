@@ -1720,6 +1720,23 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 		goto golden_setting;
 	}
 
+	// WDMA bandwidth setting
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		bpp = mtk_get_format_bpp(comp->fb->format->format);
+		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+		bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
+		bw_base = div_u64(bw_base, 1000) * 2;
+
+		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+		comp->hrt_bw = bw_base;
+	}
+
+	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
+	mtk_ddp_comp_iommu_enable(comp, handle);
+
 	write_dst_addr(comp, handle, 0, addr);
 
 	con = wdma_fmt_convert(comp->fb->format->format);
@@ -2235,6 +2252,37 @@ int MMPathTraceWDMA(struct mtk_ddp_comp *ddp_comp, char *str,
 	return n;
 }
 
+struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn)
+{
+	const struct mtk_addon_scenario_data *addon_data = NULL;
+	const struct mtk_addon_module_data *addon_module = NULL;
+	const struct mtk_addon_path_data *path_data = NULL;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+
+	if (IS_ERR_OR_NULL(crtc))
+		return NULL;
+
+	priv = crtc->dev->dev_private;
+	if (IS_ERR_OR_NULL(priv))
+		return NULL;
+
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
+	if (IS_ERR_OR_NULL(addon_data))
+		return NULL;
+
+	addon_module = &addon_data->module_data[0];
+	path_data = mtk_addon_module_get_path(addon_module->module);
+	comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
+
+	if (IS_ERR_OR_NULL(comp)) {
+		DDPMSG("%s, invalid wdma comp for scn:%d\n", __func__, scn);
+		return NULL;
+	}
+
+	return comp;
+}
+
 static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
 {
@@ -2321,6 +2369,30 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_ddp_write(comp, inten, offset, handle);
 		break;
 	}
+	case PMQOS_GET_LARB_PORT_HRT_BW: {
+		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
+
+		data->larb_id = -1;
+		data->bw = 0;
+		if (data->type != CHANNEL_HRT_RW && data->type != CHANNEL_HRT_WRITE)
+			break;
+
+		if (comp->larb_num == 1)
+			data->larb_id = comp->larb_id;
+		else if (comp->larb_num > 1)
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0) {
+			DDPMSG("%s, comp:%d, invalid larb id:%d, num:%d\n",
+				__func__, comp->id, data->larb_id, comp->larb_num);
+			break;
+		}
+		data->bw = comp->hrt_bw;
+		if (data->bw > 0)
+			DDPDBG("%s, wdma comp:%d, larb:%d, bw:%d\n",
+				__func__, comp->id, data->larb_id, data->bw);
+		break;
+	}
 	case PMQOS_SET_HRT_BW: {
 		unsigned int bw = *(unsigned int *)params;
 		unsigned int ostdl_bw = 0;
@@ -2339,9 +2411,7 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (!IS_ERR(comp->hrt_qos_req))
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, ostdl_bw,
 					priv->data->respective_ostdl);
-			if (wdma->data->hrt_channel)
-				mtk_vidle_channel_bw_set(bw, wdma->data->hrt_channel(comp));
-		}
+			}
 		ret = WDMA_REQ_HRT;
 		break;
 	}

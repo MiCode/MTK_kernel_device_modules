@@ -294,6 +294,7 @@ enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state)
 
 	return scn;
 }
+EXPORT_SYMBOL(mtk_crtc_wb_get_scn);
 
 static void mtk_drm_crtc_finish_page_flip(struct mtk_drm_crtc *mtk_crtc)
 {

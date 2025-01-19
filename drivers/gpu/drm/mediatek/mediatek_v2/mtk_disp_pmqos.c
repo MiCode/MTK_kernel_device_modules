@@ -597,8 +597,11 @@ void mtk_disp_update_channel_hrt_write_MT6991(struct mtk_drm_crtc *mtk_crtc,
 {
 	int i = 0, j;
 	unsigned int subcomm_bw_sum[4] = {0};
-	int oddmr_hrt = 0;
+	int oddmr_hrt = 0, wdma_hrt = 0;
 	struct mtk_ddp_comp *comp;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
+	enum addon_scenario scn;
 
 	if (!mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[DDP_FIRST_PATH])
 		return;
@@ -606,6 +609,27 @@ void mtk_disp_update_channel_hrt_write_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)
 			oddmr_hrt += mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_WRITE);
+	}
+
+	/* update wdma total bw for cwb */
+	if (crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
+		scn = mtk_crtc_wb_get_scn(crtc_state);
+		comp = mtk_disp_get_wdma_comp_by_scn(crtc, scn);
+		if (comp)
+			wdma_hrt += mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_WRITE);
+		if (wdma_hrt > 0) {
+			switch (comp->id) {
+			case DDP_COMPONENT_OVLSYS_WDMA1:
+				subcomm_bw_sum[1] += wdma_hrt;
+				break;
+			case DDP_COMPONENT_WDMA1:
+			case DDP_COMPONENT_WDMA4:
+				subcomm_bw_sum[2] += wdma_hrt;
+				break;
+			default:
+				break;
+			}
+		}
 	}
 
 	if (oddmr_hrt > 0)
