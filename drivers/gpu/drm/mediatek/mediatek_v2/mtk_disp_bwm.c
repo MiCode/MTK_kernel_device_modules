@@ -75,7 +75,6 @@
 #define DISP_REG_BWM_L_BURST_ACC_WIN_MAX(n)	(0x100UL + 0x4 * (n))
 
 #define MT6991_OVL_BWM0_L0_AID_SETTING		(0xBB8UL)
-#define MT6991_BWM_LAYER_OFFEST (0x4)
 
 #define OVL_CON_CLRFMT_RGB (1UL)
 #define OVL_CON_CLRFMT_RGBA8888 (2)
@@ -104,6 +103,26 @@ void __iomem *mtk_bwm_mmsys_mapping_MT6991(struct mtk_ddp_comp *comp)
 	switch (comp->id) {
 	case DDP_COMPONENT_BWM0:
 		return priv->ovlsys0_regs;
+	default:
+		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
+		return 0;
+	}
+}
+
+void __iomem *mtk_vdisp_ao_mapping_MT6993(struct mtk_ddp_comp *comp)
+{
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_ddp_comp *vdisp_ao_comp;
+
+	vdisp_ao_comp = mtk_ddp_comp_find_by_id(&comp->mtk_crtc->base, DDP_COMPONENT_VDISP_AO);
+	if (!vdisp_ao_comp) {
+		DDPPR_ERR("%s failed to get vdisp_ao_comp\n", __func__);
+		return 0;
+	}
+
+	switch (comp->id) {
+	case DDP_COMPONENT_BWM0:
+		return vdisp_ao_comp->regs;
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
@@ -525,10 +544,10 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 
 		if (is_sec && addr) {
 			writel(BIT(0), aid_sel_baddr + aid_sel_offset
-				+ MT6991_BWM_LAYER_OFFEST * idx);
+				+ bwm->data->aid_lye_ofs * idx);
 		} else {
 			writel(0x0, aid_sel_baddr + aid_sel_offset
-				+ MT6991_BWM_LAYER_OFFEST * idx);
+				+ bwm->data->aid_lye_ofs * idx);
 		}
 	}
 
@@ -739,6 +758,18 @@ static const struct mtk_disp_bwm_data mt6991_bwm_driver_data = {
 	.fmt_yuyv = 5U,
 	.aid_sel_mapping = &mtk_ovl_bwm_aid_sel_MT6991,
 	.aid_sel_baddr_mapping = &mtk_bwm_mmsys_mapping_MT6991,
+	.aid_lye_ofs = 0x4,
+};
+
+static const struct mtk_disp_bwm_data mt6993_bwm_driver_data = {
+	.is_support_34bits = true,
+	.compr_info = &bwm_compr_info_mt6991,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U,
+	.fmt_yuyv = 5U,
+	.aid_sel_mapping = &mtk_ovl_bwm_aid_sel_MT6991,
+	.aid_sel_baddr_mapping = &mtk_vdisp_ao_mapping_MT6993,
+	.aid_lye_ofs = 0x4,
 };
 
 static const struct of_device_id mtk_disp_bwm_driver_dt_match[] = {

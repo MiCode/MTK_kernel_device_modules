@@ -20,6 +20,7 @@ struct mtk_disp_bwm_data {
 	unsigned int fmt_yuyv;
 	unsigned int (*aid_sel_mapping)(struct mtk_ddp_comp *comp);
 	void __iomem *(*aid_sel_baddr_mapping)(struct mtk_ddp_comp *comp);
+	const u32 aid_lye_ofs;
 };
 
 struct compress_info {
