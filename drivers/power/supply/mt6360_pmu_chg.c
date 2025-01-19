@@ -3224,8 +3224,7 @@ static int mt6360_pmu_chg_probe(struct platform_device *pdev)
 #endif /* CONFIG_MTK_CHARGER */
 
 	mci->mivr_task = kthread_run(mt6360_chg_mivr_task_threadfn, mci,
-				      devm_kasprintf(mci->dev, GFP_KERNEL,
-				      "mivr_thread.%s", dev_name(mci->dev)));
+				     "mivr_thread.%s", dev_name(mci->dev));
 	ret = PTR_ERR_OR_ZERO(mci->mivr_task);
 	if (ret < 0) {
 		dev_dbg(mci->dev, "create mivr handling thread fail\n");
