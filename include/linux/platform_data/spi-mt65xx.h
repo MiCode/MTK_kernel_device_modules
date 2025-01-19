@@ -9,6 +9,7 @@
 #ifndef ____LINUX_PLATFORM_DATA_SPI_MTK_H
 #define ____LINUX_PLATFORM_DATA_SPI_MTK_H
 
+extern void mt_irq_dump_status(unsigned int irq);
 /* Board specific platform_data */
 struct mtk_chip_config {
 	u32 sample_sel;
