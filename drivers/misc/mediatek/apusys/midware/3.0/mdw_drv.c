@@ -184,11 +184,11 @@ static int mdw_platform_probe(struct platform_device *pdev)
 
 	mdw_dbg_init(g_info);
 
+	mdev->support_power_fast_on_off = false;
+
 	ret = mdw_dev_init(dev, mdev);
 	if (ret)
 		goto deinit_dbg;
-
-	mdev->support_power_fast_on_off = false;
 
 	pr_info("%s +\n", __func__);
 
@@ -267,12 +267,13 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 
 	mdw_dbg_init(g_info);
 
+	mdev->support_power_fast_on_off = true;
+	mdev->power_state = MDW_APU_POWER_OFF;
+
 	ret = mdw_dev_init(dev, mdev);
 	if (ret)
 		goto deinit_dbg;
 
-	mdev->support_power_fast_on_off = true;
-	mdev->power_state = MDW_APU_POWER_OFF;
 
 	pr_info("%s -\n", __func__);
 
