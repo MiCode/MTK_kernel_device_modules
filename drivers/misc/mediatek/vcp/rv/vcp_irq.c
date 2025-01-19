@@ -76,7 +76,6 @@ static void vcp_A_wdt_handler(struct tasklet_struct *t)
 	wait_vcp_ready_to_reboot();
 	/* Wakeup mobile_log_d after vcp flush the log */
 	vcp_logger_wakeup_handler(0, NULL, NULL, 0);
-	vcp_dump_last_regs(mmup_enable_count());
 #if VCP_RECOVERY_SUPPORT
 	if (vcp_set_reset_status() == RESET_STATUS_STOP) {
 		pr_debug("[VCP] start to reset vcp...\n");

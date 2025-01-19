@@ -1704,35 +1704,35 @@ static inline ssize_t vcp_A_db_test_store(struct device *kobj
 
 DEVICE_ATTR_WO(vcp_A_db_test);
 
-static ssize_t vcp_ee_enable_show(struct device *kobj
+static ssize_t vcp_excep_mode_show(struct device *kobj
 	, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%d\n", vcp_ee_enable);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", vcp_excep_mode);
 }
 
-static ssize_t vcp_ee_enable_store(struct device *kobj
+static ssize_t vcp_excep_mode_store(struct device *kobj
 	, struct device_attribute *attr, const char *buf, size_t n)
 {
 	unsigned int value = 0;
 
 	if (kstrtouint(buf, 10, &value) == 0) {
-		if (value == 0)
-			vcp_ee_enable = 0;
-		else if (value == 1)
-			vcp_ee_enable = 1;
-		else if (value == 2)
+		if (value == VCP_NO_EXCEP)
+			vcp_excep_mode = VCP_NO_EXCEP;
+		else if (value == VCP_KE_ENABLE)
+			vcp_excep_mode = VCP_KE_ENABLE;
+		else if (value == VCP_EE_ENABLE)
+			vcp_excep_mode = VCP_EE_ENABLE;
+		else if (value == 100)
 			vcp_dbg_log = 0;
-		else if (value == 3)
+		else if (value == 101)
 			vcp_dbg_log = 1;
-		else
-			vcp_ee_enable = value;
 
-		pr_debug("[VCP] vcp_ee_enable = %d, vcp_dbg_log = %d (1:enable, 0:disable)\n"
-				, vcp_ee_enable, vcp_dbg_log);
+		pr_debug("[VCP] vcp_excep_mode = %d, vcp_dbg_log = %d (1:enable, 0:disable)\n"
+				, vcp_excep_mode, vcp_dbg_log);
 	}
 	return n;
 }
-DEVICE_ATTR_RW(vcp_ee_enable);
+DEVICE_ATTR_RW(vcp_excep_mode);
 
 static inline ssize_t vcp_A_awake_lock_show(struct device *kobj
 			, struct device_attribute *attr, char *buf)
@@ -2007,7 +2007,7 @@ static int create_files(void)
 		return ret;
 
 	ret = device_create_file(vcp_device.this_device
-					, &dev_attr_vcp_ee_enable);
+					, &dev_attr_vcp_excep_mode);
 	if (unlikely(ret != 0))
 		return ret;
 
@@ -2604,7 +2604,7 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	__pm_stay_awake(vcp_reset_lock);
 
 	/*workqueue for vcp ee, vcp reset by cmd will not trigger vcp ee*/
-	if (vcp_reset_by_cmd == 0 && vcp_ee_enable) {
+	if (vcp_reset_by_cmd == 0 && vcp_excep_mode != VCP_NO_EXCEP) {
 		vcp_aed(vcp_reset_type, VCP_A_ID);
 		/* vcp_aee_print("[VCP] %s(): vcp_reset_type %d remain %x times, encnt %d\n",
 		 *	__func__, vcp_reset_type, vcp_reset_counts, mmup_enable_count());
@@ -3195,15 +3195,15 @@ static int vcp_device_probe(struct platform_device *pdev)
 						, &vcpreg.twohart);
 	pr_notice("[VCP] vcpreg.twohart = %d\n", vcpreg.twohart);
 
-	vcp_ee_enable = 0;
+	vcp_excep_mode = VCP_NO_EXCEP;
 	vcpreg.secure_dump = 0;
 	of_property_read_u32(pdev->dev.of_node, "vcp-secure-dump"
 						, &vcpreg.secure_dump);
-	of_property_read_u32(pdev->dev.of_node, "vcp-ee-enable"
-						, &vcp_ee_enable);
+	of_property_read_u32(pdev->dev.of_node, "vcp-excep-mode"
+						, &vcp_excep_mode);
 
-	pr_notice("[VCP] vcpreg.secure_dump = %d, vcp_ee_enable = %d\n",
-			vcpreg.secure_dump, vcp_ee_enable);
+	pr_notice("[VCP] vcpreg.secure_dump = %d, vcp_excep_mode = %d\n",
+			vcpreg.secure_dump, vcp_excep_mode);
 
 	vcpreg.bus_debug_num_ports = 0;
 	of_property_read_u32(pdev->dev.of_node, "bus-debug-num-ports"
