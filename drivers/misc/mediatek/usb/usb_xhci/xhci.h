@@ -18,7 +18,6 @@
 #include <linux/timer.h>
 #include <linux/kernel.h>
 #include <linux/usb/hcd.h>
-#include <linux/usb/xhci-sideband.h>
 #include <linux/io-64-nonatomic-lo-hi.h>
 #include <linux/io-64-nonatomic-hi-lo.h>
 #include <linux/android_kabi.h>
@@ -39,7 +38,7 @@
 #define MAX_HC_PORTS		127
 
 struct snd_usb_audio;
-
+struct xhci_sideband_;
 /*
  * xHCI register interface.
  * This corresponds to the eXtensible Host Controller Interface (xHCI)
@@ -987,7 +986,7 @@ struct xhci_virt_ep {
 	/* Use new Isoch TRB layout needed for extended TBC support */
 	bool			use_extended_tbc;
 	/* set if this endpoint is controlled via sideband access*/
-	struct xhci_sideband            *sideband;
+	struct xhci_sideband_            *sideband;
 };
 
 enum xhci_overhead_type {
@@ -1052,7 +1051,7 @@ struct xhci_virt_device {
 	/* Used for the debugfs interfaces. */
 	void				*debugfs_private;
 	/* set if this device is registered for sideband access */
-	struct xhci_sideband            *sideband;
+	struct xhci_sideband_            *sideband;
 };
 
 /*
@@ -2314,22 +2313,30 @@ void xhci_kill_endpoint_urbs(struct xhci_hcd *xhci,
 		int slot_id, int ep_index);
 
 /* xhci sideband */
-struct xhci_sideband *xhci_sideband_register_(struct usb_device *udev);
-void xhci_sideband_unregister_(struct xhci_sideband *sb);
-int xhci_sideband_add_endpoint_(struct xhci_sideband *sb,
+struct xhci_sideband_ {
+    struct xhci_hcd                 *xhci;
+    struct xhci_virt_device         *vdev;
+    struct xhci_virt_ep             *eps[EP_CTX_PER_DEV];
+    struct xhci_interrupter         *ir;
+    struct mutex            mutex;
+};
+
+struct xhci_sideband_ *xhci_sideband_register_(struct usb_device *udev);
+void xhci_sideband_unregister_(struct xhci_sideband_ *sb);
+int xhci_sideband_add_endpoint_(struct xhci_sideband_ *sb,
 	struct usb_host_endpoint *host_ep);
-int xhci_sideband_remove_endpoint_(struct xhci_sideband *sb,
+int xhci_sideband_remove_endpoint_(struct xhci_sideband_ *sb,
 	struct usb_host_endpoint *host_ep);
-int xhci_sideband_stop_endpoint_(struct xhci_sideband *sb,
+int xhci_sideband_stop_endpoint_(struct xhci_sideband_ *sb,
 	struct usb_host_endpoint *host_ep);
-struct sg_table *xhci_sideband_get_endpoint_buffer_(struct xhci_sideband *sb,
+struct sg_table *xhci_sideband_get_endpoint_buffer_(struct xhci_sideband_ *sb,
 	struct usb_host_endpoint *host_ep);
-struct sg_table *xhci_sideband_get_event_buffer_(struct xhci_sideband *sb);
-int xhci_sideband_enable_interrupt_(struct xhci_sideband *sb, u32 imod_interval);
-int xhci_sideband_create_interrupter_(struct xhci_sideband *sb, int num_seg,
+struct sg_table *xhci_sideband_get_event_buffer_(struct xhci_sideband_ *sb);
+int xhci_sideband_enable_interrupt_(struct xhci_sideband_ *sb, u32 imod_interval);
+int xhci_sideband_create_interrupter_(struct xhci_sideband_ *sb, int num_seg,
 	int intr_num, bool ip_autoclear);
-void xhci_sideband_remove_interrupter_(struct xhci_sideband *sb);
-int xhci_sideband_interrupter_id_(struct xhci_sideband *sb);
+void xhci_sideband_remove_interrupter_(struct xhci_sideband_ *sb);
+int xhci_sideband_interrupter_id_(struct xhci_sideband_ *sb);
 
 static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
 								struct urb *urb)

@@ -179,7 +179,7 @@ static int xhci_mtk_update_erst(struct usb_offload_dev *udev,
 	struct xhci_segment *first,	struct xhci_segment *last, unsigned int num_segs);
 static int xhci_mtk_realloc_isoc_ring(struct snd_usb_substream *subs);
 static int xhci_mtk_create_sideband(struct usb_device *udev);
-static void xhci_mtk_remove_sideband(struct xhci_sideband *sb);
+static void xhci_mtk_remove_sideband(struct xhci_sideband_ *sb);
 static union xhci_trb *xhci_mtk_dma_to_trb(struct xhci_ring *ring,
 	struct xhci_segment **segment, dma_addr_t phy);
 static void fake_sram_pwr_ctrl(bool power);
@@ -2374,7 +2374,7 @@ NOT_UNDER_MANAGED:
 
 static int xhci_mtk_create_sideband(struct usb_device *udev)
 {
-	struct xhci_sideband *sb;
+	struct xhci_sideband_ *sb;
 	int ret = 0;
 
 	/* register a sideband for this usb device */
@@ -2413,7 +2413,7 @@ error:
 	return ret;
 }
 
-static void xhci_mtk_remove_sideband(struct xhci_sideband *sb)
+static void xhci_mtk_remove_sideband(struct xhci_sideband_ *sb)
 {
 	struct xhci_hcd *xhci = uodev->xhci;
 	struct xhci_interrupter *ir;

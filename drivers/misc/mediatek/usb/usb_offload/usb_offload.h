@@ -261,7 +261,7 @@ struct usb_offload_dev {
 	struct device *dev;
 	struct usb_device *uac_dev;
 	struct xhci_hcd *xhci;
-	struct xhci_sideband *sb;
+	struct xhci_sideband_ *sb;
 	struct xhci_erst_entry *backup_erst;
 	unsigned char *backup_ev_ring;
 	unsigned int num_entries_in_use;

@@ -7,14 +7,13 @@
  * Author: Mathias Nyman
  */
 
-#include <linux/usb/xhci-sideband.h>
 #include <linux/dma-direct.h>
 
 #include "xhci.h"
 
 /* sideband internal helpers */
 static struct sg_table *
-xhci_ring_to_sgtable(struct xhci_sideband *sb, struct xhci_ring *ring)
+xhci_ring_to_sgtable(struct xhci_sideband_ *sb, struct xhci_ring *ring)
 {
 	struct xhci_segment *seg;
 	struct sg_table	*sgt;
@@ -68,7 +67,7 @@ xhci_ring_to_sgtable(struct xhci_sideband *sb, struct xhci_ring *ring)
 }
 
 static void
-__xhci_sideband_remove_endpoint(struct xhci_sideband *sb, struct xhci_virt_ep *ep)
+__xhci_sideband_remove_endpoint(struct xhci_sideband_ *sb, struct xhci_virt_ep *ep)
 {
 	/*
 	 * Issue a stop endpoint command when an endpoint is removed.
@@ -95,7 +94,7 @@ __xhci_sideband_remove_endpoint(struct xhci_sideband *sb, struct xhci_virt_ep *e
  * Return: 0 on success, negative error otherwise.
  */
 int
-xhci_sideband_add_endpoint_(struct xhci_sideband *sb,
+xhci_sideband_add_endpoint_(struct xhci_sideband_ *sb,
 			   struct usb_host_endpoint *host_ep)
 {
 	struct xhci_virt_ep *ep;
@@ -144,7 +143,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_add_endpoint_);
  * Return: 0 on success, negative error otherwise.
  */
 int
-xhci_sideband_remove_endpoint_(struct xhci_sideband *sb,
+xhci_sideband_remove_endpoint_(struct xhci_sideband_ *sb,
 			      struct usb_host_endpoint *host_ep)
 {
 	struct xhci_virt_ep *ep;
@@ -168,7 +167,7 @@ xhci_sideband_remove_endpoint_(struct xhci_sideband *sb,
 EXPORT_SYMBOL_GPL(xhci_sideband_remove_endpoint_);
 
 int
-xhci_sideband_stop_endpoint_(struct xhci_sideband *sb,
+xhci_sideband_stop_endpoint_(struct xhci_sideband_ *sb,
 			    struct usb_host_endpoint *host_ep)
 {
 	struct xhci_virt_ep *ep;
@@ -198,7 +197,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_stop_endpoint_);
  * Return: struct sg_table * if successful. NULL otherwise.
  */
 struct sg_table *
-xhci_sideband_get_endpoint_buffer_(struct xhci_sideband *sb,
+xhci_sideband_get_endpoint_buffer_(struct xhci_sideband_ *sb,
 			      struct usb_host_endpoint *host_ep)
 {
 	struct xhci_virt_ep *ep;
@@ -227,7 +226,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_get_endpoint_buffer_);
  * Return: struct sg_table * if successful. NULL otherwise.
  */
 struct sg_table *
-xhci_sideband_get_event_buffer_(struct xhci_sideband *sb)
+xhci_sideband_get_event_buffer_(struct xhci_sideband_ *sb)
 {
 	if (!sb || !sb->ir)
 		return NULL;
@@ -247,7 +246,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_get_event_buffer_);
  *
  * Returns 0 on success, negative error otherwise
  */
-int xhci_sideband_enable_interrupt_(struct xhci_sideband *sb, u32 imod_interval)
+int xhci_sideband_enable_interrupt_(struct xhci_sideband_ *sb, u32 imod_interval)
 {
 	if (!sb || !sb->ir)
 		return -ENODEV;
@@ -276,7 +275,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_enable_interrupt_);
  * Returns 0 on success, negative error otherwise
  */
 int
-xhci_sideband_create_interrupter_(struct xhci_sideband *sb, int num_seg,
+xhci_sideband_create_interrupter_(struct xhci_sideband_ *sb, int num_seg,
 				 int intr_num, bool ip_autoclear)
 {
 	int ret = 0;
@@ -316,7 +315,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_create_interrupter_);
  * sideband users to utilize this interrupter.
  */
 void
-xhci_sideband_remove_interrupter_(struct xhci_sideband *sb)
+xhci_sideband_remove_interrupter_(struct xhci_sideband_ *sb)
 {
 	if (!sb || !sb->ir)
 		return;
@@ -344,7 +343,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_remove_interrupter_);
  * Returns interrupter id on success, negative error othgerwise
  */
 int
-xhci_sideband_interrupter_id_(struct xhci_sideband *sb)
+xhci_sideband_interrupter_id_(struct xhci_sideband_ *sb)
 {
 	if (!sb || !sb->ir)
 		return -ENODEV;
@@ -362,13 +361,13 @@ EXPORT_SYMBOL_GPL(xhci_sideband_interrupter_id_);
  *
  * Return: pointer to a new xhci_sideband instance if successful. NULL otherwise.
  */
-struct xhci_sideband *
+struct xhci_sideband_ *
 xhci_sideband_register_(struct usb_device *udev)
 {
 	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	struct xhci_virt_device *vdev;
-	struct xhci_sideband *sb;
+	struct xhci_sideband_ *sb;
 
 	/* make sure the usb device is connected to a xhci controller */
 	if (!udev->slot_id)
@@ -414,7 +413,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_register_);
  * the buffers.
  */
 void
-xhci_sideband_unregister_(struct xhci_sideband *sb)
+xhci_sideband_unregister_(struct xhci_sideband_ *sb)
 {
 	struct xhci_hcd *xhci = sb->xhci;
 	int i;
