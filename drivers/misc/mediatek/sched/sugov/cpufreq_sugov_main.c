@@ -43,6 +43,7 @@
 #define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
 #define DEFAULT_DSU_IDLE		true
 #define DEFAULT_CURR_TASK_UCLAMP	false
+#define DEFAULT_HOLD_FREQ	false
 
 struct sugov_cpu {
 	struct update_util_data	update_util;
@@ -133,6 +134,28 @@ inline struct cpufreq_policy *get_cpufreq_policy(int cpu)
 	return (per_cpu(sugov_cpu, cpu).sg_policy) ? (per_cpu(sugov_cpu, cpu).sg_policy->policy) : NULL;
 }
 EXPORT_SYMBOL(get_cpufreq_policy);
+
+/* HOLD FREQ ctrl */
+static bool hold_freq_enable = DEFAULT_HOLD_FREQ;
+
+void set_hold_freq_enable(bool set)
+{
+	hold_freq_enable = set;
+}
+EXPORT_SYMBOL(set_hold_freq_enable);
+
+void unset_hold_freq_enable(void)
+{
+	dsu_idle_enable = DEFAULT_DSU_IDLE;
+}
+EXPORT_SYMBOL(unset_hold_freq_enable);
+
+bool is_hold_freq_enable(void)
+{
+	return hold_freq_enable;
+}
+EXPORT_SYMBOL(is_hold_freq_enable);
+
 
 /************************ Governor internals ***********************/
 
@@ -881,7 +904,65 @@ void mtk_set_cpu_min_opp_shared(struct sugov_cpu *sg_cpu)
 
 #endif
 
-static void sugov_update_single(struct update_util_data *hook, u64 time,
+/* Is the rq being capped/throttled by uclamp_max? */
+static inline bool mtk_uclamp_rq_is_capped(struct rq *rq)
+{
+	unsigned long rq_util;
+	unsigned long max_util;
+
+	if (!static_branch_likely(&sched_uclamp_used))
+		return false;
+
+	rq_util = mtk_cpu_util_cfs(cpu_of(rq)) + cpu_util_rt(rq);
+	max_util = READ_ONCE(rq->uclamp[UCLAMP_MAX].value);
+
+	return max_util != SCHED_CAPACITY_SCALE && rq_util >= max_util;
+}
+
+static bool sugov_hold_freq(struct sugov_cpu *sg_cpu)
+{
+	unsigned long idle_calls;
+	bool ret;
+
+	if(!hold_freq_enable)
+		return false;
+
+	/** The heuristics in this function is for the fair class. For SCX, the
+	* performance target comes directly from the BPF scheduler. Let's just
+	* follow it.
+	*/
+	if (scx_switched_all())
+		return false;
+
+	/* if capped by uclamp_max, always update to be in compliance */
+	if (mtk_uclamp_rq_is_capped(cpu_rq(sg_cpu->cpu)))
+		return false;
+
+	/*
+	* Maintain the frequency if the CPU has not been idle recently, as
+	* reduction is likely to be premature.
+	*/
+	idle_calls = tick_nohz_get_idle_calls_cpu(sg_cpu->cpu);
+	ret = idle_calls == sg_cpu->saved_idle_calls;
+	sg_cpu->saved_idle_calls = idle_calls;
+
+	return ret;
+}
+
+static inline bool sugov_update_single_common(struct sugov_cpu *sg_cpu, u64 time, unsigned long max_cap,
+				unsigned int flags, unsigned long *min, unsigned long *max)
+{
+	sugov_iowait_boost(sg_cpu, time, flags);
+	sg_cpu->last_update = time;
+	ignore_dl_rate_limit(sg_cpu);
+
+	if (!sugov_should_update_freq(sg_cpu->sg_policy, time))
+		return false;
+
+	return true;
+}
+
+static void sugov_update_single_freq(struct update_util_data *hook, u64 time,
 				unsigned int flags)
 {
 	struct sugov_cpu *sg_cpu = container_of(hook, struct sugov_cpu, update_util);
@@ -889,25 +970,16 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 	unsigned long min, max;
 	unsigned long umin, umax, max_cap;
 	unsigned int next_f;
-	int this_cpu = smp_processor_id();
-	struct sugov_rq_data *sugov_data_ptr;
 	unsigned long boost;
 	int dpt_v2_support = is_dpt_v2_support();
 	unsigned long capacity_result = 0;
+	unsigned int cached_freq = sg_policy->cached_raw_freq;
 
 	max_cap = dpt_v2_support ? DPT_V2_MAX_RUNNING_TIME_LOCAL : arch_scale_cpu_capacity(sg_cpu->cpu);
 
 	raw_spin_lock(&sg_policy->update_lock);
 
-	sugov_data_ptr = &per_cpu(rq_data, this_cpu)->sugov_data;
-	WRITE_ONCE(sugov_data_ptr->enq_dvfs, false);
-
-	sugov_iowait_boost(sg_cpu, time, flags);
-	sg_cpu->last_update = time;
-
-	ignore_dl_rate_limit(sg_cpu);
-
-	if (!sugov_should_update_freq(sg_policy, time)) {
+	if (!sugov_update_single_common(sg_cpu, time, max_cap, flags, &umin, &umax)) {
 		raw_spin_unlock(&sg_policy->update_lock);
 		return;
 	}
@@ -945,6 +1017,12 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		}
 
 		next_f = get_next_freq(sg_policy, sg_cpu->util, sg_cpu->max, umin, umax);
+
+		if (sugov_hold_freq(sg_cpu) && next_f < sg_policy->next_freq &&	!sg_policy->need_freq_update) {
+			next_f = sg_policy->next_freq;
+			/* Restore cached freq as next_freq has changed */
+			sg_policy->cached_raw_freq = cached_freq;
+		}
 	}
 
 	if (!sugov_update_next_freq(sg_policy, time, next_f)) {
@@ -965,6 +1043,34 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		sugov_deferred_update(sg_policy);
 
 	raw_spin_unlock(&sg_policy->update_lock);
+}
+
+static void sugov_update_single_perf(struct update_util_data *hook, u64 time, unsigned int flags)
+{
+	int this_cpu = smp_processor_id();
+	struct sugov_rq_data *sugov_data_ptr;
+
+	sugov_data_ptr = &per_cpu(rq_data, this_cpu)->sugov_data;
+	WRITE_ONCE(sugov_data_ptr->enq_dvfs, false);
+
+	/** Fall back to the "frequency" path if frequency invariance is not
+	* supported, because the direct mapping between the utilization and
+	* the performance levels depends on the frequency invariance.
+	*/
+	sugov_update_single_freq(hook, time, flags);
+
+	/**
+	* MTK environment does not use condition:(!arch_scale_freq_invariant()),
+	* so the following situation does not exist.
+	*	max_cap = arch_scale_cpu_capacity(sg_cpu->cpu);
+	if (!sugov_update_single_common(sg_cpu, time, max_cap, flags))
+	return;
+
+	if (sugov_hold_freq(sg_cpu) && sg_cpu->util < prev_util)
+		sg_cpu->util = prev_util;
+		cpufreq_driver_adjust_perf(sg_cpu->cpu, sg_cpu->bw_min,	sg_cpu->util, max_cap);
+		sg_cpu->sg_policy->last_freq_update_time = time;
+	*/
 }
 
 static unsigned int sugov_next_freq_shared_dpt_v2(struct sugov_cpu *sg_cpu, u64 time)
@@ -1507,7 +1613,7 @@ static int sugov_start(struct cpufreq_policy *policy)
 		cpufreq_add_update_util_hook(cpu, &sg_cpu->update_util,
 					     policy_is_shared(policy) ?
 							sugov_update_shared :
-							sugov_update_single);
+							sugov_update_single_perf);
 	}
 
 	return 0;
