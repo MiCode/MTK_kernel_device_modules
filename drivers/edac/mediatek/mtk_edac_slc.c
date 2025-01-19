@@ -91,6 +91,7 @@ static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsi
 	int port_idx, chn_idx, cs_idx;
 	int ecc_idx, ecc_count;
 	int ecc_position_idx;
+	int dump_success;
 	enum error_type partial_error_type = NO_ERROR;
 	enum error_type total_error_type = NO_ERROR;
 	char ecc_position[40] = {0};
@@ -111,16 +112,18 @@ static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsi
 						++ecc_count;
 				}
 
+				dump_success = 0;
 				ecc_position_idx = snprintf(ecc_position, sizeof(ecc_position),
 					"emi: %d, port: %d, chn: %d, cs: %d", emi_idx, port_idx, chn_idx, cs_idx);
-
+				if (ecc_position_idx > 0 && ecc_position_idx < sizeof(ecc_position))
+					dump_success = 1;
 				if (ecc_count == 1) {
 					partial_error_type = CORRECTABLE_ERROR;
-					if (ecc_position_idx)
+					if (dump_success)
 						edac_device_handle_ce_count(dci, ecc_count, 0, 0, ecc_position);
 				} else if (ecc_count > 1) {
 					partial_error_type = UNCORRECTABLE_ERROR;
-					if (ecc_position_idx)
+					if (dump_success)
 						edac_device_handle_ue_count(dci, ecc_count, 0, 0, ecc_position);
 				}
 
@@ -157,8 +160,6 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 	enum error_type partial_error_type = NO_ERROR;
 	enum error_type total_error_type = NO_ERROR;
 	int dump_log;
-	char ecc_mesg[40] = {0};
-	int ecc_mesg_idx = 0;
 	char slc_err_mesg[SLC_BUF_SIZE] = {0};
 	int slc_err_mesg_idx = 0;
 	unsigned long long parity_err_tol;
@@ -172,7 +173,10 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 		parity_err_ext_value = readl(drvdata->base[emi_idx] + drvdata->parity_err_ext_offset);
         	parity_err_tol = parity_err_value + ((unsigned long long)parity_err_ext_value << 32);
 		if (parity_err_tol > 0)
-			ecc_mesg_idx = snprintf(ecc_mesg + ecc_mesg_idx, sizeof(ecc_mesg) - ecc_mesg_idx, "emi: %d, overall: %llx\n", emi_idx, parity_err_tol);
+			if (slc_err_mesg_idx < SLC_BUF_SIZE)
+				slc_err_mesg_idx += snprintf(slc_err_mesg + slc_err_mesg_idx,
+					sizeof(slc_err_mesg) - slc_err_mesg_idx, "emi: %d, overall: %llx\n",
+					emi_idx, parity_err_tol);
 	}
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		partial_error_type = read_parity_status(dci, emi_idx);
@@ -189,10 +193,11 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 	}
 	if (total_error_type == UNCORRECTABLE_ERROR) {
 		pr_info("error type: %d bit error\n", total_error_type);
-		if (ecc_mesg_idx)
-			aee_kernel_exception("SLC_PARITY", ecc_mesg);
+		if (slc_err_mesg_idx)
+			aee_kernel_exception("SLC_PARITY", slc_err_mesg);
 	}
 	//error flag
+	slc_err_mesg_idx = 0;
 	total_error_type = NO_ERROR;
 	if (drvdata->error_flags_enable == 1) {
 		if (slc_err_mesg_idx < SLC_BUF_SIZE)
@@ -336,7 +341,7 @@ static void dfd_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_
 			for (tag_idx = 0; tag_idx < dfd->tag_num; ++tag_idx) {
 				if (((reg_val>>tag_idx) & 0x1) == 1) {
 					arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_DFD_TAG_SELECT,
-							emi_idx, chn_idx, data_idx, 0, 0, 0, &smc_res);
+							emi_idx, chn_idx, tag_idx, 0, 0, 0, &smc_res);
 					if (smc_res.a0) {
 						pr_info("%s:%d MTK_SLC_DFD_SELECT failed, ret=0x%lx\n",
 							__func__, __LINE__, smc_res.a0);
