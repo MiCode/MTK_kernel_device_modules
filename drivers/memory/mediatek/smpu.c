@@ -24,6 +24,8 @@
 #include <linux/delay.h>
 
 extern int mtk_clear_smpu_log(unsigned int emi_id);
+extern unsigned int mtk_get_axiid(unsigned int emi_id);
+
 //static struct kthread_worker *smpu_kworker;
 struct smpu *global_ssmpu;
 EXPORT_SYMBOL_GPL(global_ssmpu);
@@ -249,7 +251,6 @@ static irqreturn_t smpu_violation_thread(int irq, void *dev_id)
 	/*
 	 * CPU will cause WCE violation
 	 */
-	struct device_node *smpu_node = of_find_node_by_name(NULL, "smpu");
 	int by_pass_aid[3] = { 240, 241, 243 };
 	int by_pass_region[10] = { 22, 28, 39, 41, 44, 45, 57, 59, 61, 62 };
 	int i, j, by_pass_flag = 0;
@@ -297,10 +298,7 @@ static irqreturn_t smpu_violation_thread(int irq, void *dev_id)
 		    (mpu->dump_reg[9].value & prefetch_mask) ||
 		    (mpu->is_prefetch == true)) {
 			pr_info("%s:Prefetch without KERNEL_API!!\n", __func__);
-		} else if (by_pass_flag >
-				   0 && // by pass WCE, this will be temp patch
-			   of_property_count_elems_of_size(
-				   smpu_node, "bypass-wce", sizeof(char))) {
+		} else if (by_pass_flag > 0 && mpu->slc_b_mode) {
 			pr_info("%s:AID == 0x%x && region = 0x%x without KERNEL_API!!\n",
 				__func__, mpu->dump_reg[5].value,
 				mpu->dump_reg[7].value);
@@ -324,7 +322,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 	struct smpu *mpu = (struct smpu *)dev_id;
 	struct smpu_reg_info_t *dump_reg = mpu->dump_reg;
 	void __iomem *mpu_base;
-	int i, vio_dump_idx, vio_dump_pos, prefetch;
+	int i, vio_dump_idx, vio_dump_pos, prefetch, get_axid;
 	int vio_type = 6;
 	bool violation;
 	ssize_t msg_len = 0;
@@ -385,6 +383,25 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 			}
 		}
 
+		/*
+		 * for 6992's axid work around
+		 */
+		if (mpu->get_axiid) {
+			get_axid = mtk_get_axiid(vio_type % 2);
+			msg_len += scnprintf(mpu->vio_msg + msg_len,
+					     MTK_SMPU_MAX_CMD_LEN - msg_len,
+					     "\nemimpu-axid:%x", get_axid);
+			pr_info("[SMPU] smpu's axid: [%x]%x || [%x]%x",
+				dump_reg[8].offset, dump_reg[8].value,
+				dump_reg[17].offset, dump_reg[17].value);
+			/* replace the write violation */
+			if (dump_reg[8].value != 0)
+				dump_reg[8].value = get_axid;
+			/* replace the read violation */
+			if (dump_reg[17].value != 0)
+				dump_reg[17].value = get_axid;
+		}
+
 		if (msg_len < MTK_SMPU_MAX_CMD_LEN) {
 			prefetch = mtk_clear_smpu_log(vio_type % 2);
 			mpu->is_prefetch = prefetch == 1 ? true : false;
@@ -408,7 +425,7 @@ static irqreturn_t smpu_violation(int irq, void *dev_id)
 
 clear_violation:
 	mask_irq(mpu);
-	/*for chip before 6989/6897 */
+	/* for chip before 6989/6897 */
 	if (vio_type == VIO_TYPE_NKP || vio_type == VIO_TYPE_SKP)
 		clear_kp_violation(vio_type % 2);
 
@@ -802,6 +819,14 @@ static int smpu_probe(struct platform_device *pdev)
 
 	if (of_property_read_bool(smpu_node, "mediatek,slc-b-mode"))
 		mpu->slc_b_mode = true;
+
+	/*
+	 * mt6992 will remaping the axiid for SNOC usage,
+	 * so we need to get the original axiid.
+	 */
+	if (of_property_read_bool(smpu_node, "mediatek,original-axiid"))
+		mpu->get_axiid = true;
+	pr_info("[SMPU] smpu probe axid: %d\n", mpu->get_axiid);
 
 	smpu_clean_cpu_write_vio(mpu);
 

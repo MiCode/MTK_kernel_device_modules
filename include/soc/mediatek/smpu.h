@@ -98,6 +98,7 @@ struct smpu {
 	unsigned int bypass_axi_num;
 	/* As SLC B mode enable */
 	bool slc_b_mode;
+	bool get_axiid;
 };
 extern struct smpu *global_nsmpu, *global_ssmpu;
 //static struct smpu *global_ssmpu, *global_nsmpu, *global_skp, *global_nkp;
