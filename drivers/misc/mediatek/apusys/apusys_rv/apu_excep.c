@@ -206,6 +206,7 @@ static const char * const apusys_assert_module_name[assert_module_max] = {
 	"APUSYS_QOS",
 	"APUSYS_APS",
 	"APUSYS_CE",
+	"APUSYS_HDS",
 };
 
 static void apu_do_tcmdump(struct mtk_apu *apu)
@@ -385,10 +386,10 @@ static void __apu_coredump_work_func(struct mtk_apu *apu)
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_RAMDUMP, 0);
 
-		apusys_rv_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_RV_TBUFDUMP, 0);
-
 		if ((apu->platdata->flags & F_COREDUMP_RV55) == 0) {
+			apusys_rv_smc_call(dev,
+				MTK_APUSYS_KERNEL_OP_APUSYS_RV_TBUFDUMP, 0);
+
 			if ((apu->platdata->flags & F_TCM_WA) == 0) {
 				/* ungate md32 cg for debug apb connection */
 				apusys_rv_smc_call(dev,

@@ -1038,6 +1038,7 @@ enum {
 	CMD_PWR_TIME_PROFILE_INTERNAL,
 	CMD_UT_IPI_OUTBOX_FUZZ_WRITE,
 	CMD_S5_IDEL_DBG,
+	CMD_DEEP_IDEL_DBG,
 	MAX_CMD_UT_ID,
 };
 
@@ -1484,6 +1485,14 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 		d.data[2] = args[2];
 		ret = apu_ipi_ut_send(&d, false);
 		break;
+	case CMD_DEEP_IDEL_DBG:
+		apu_ipi_ut_val = args[0];
+		d.cmd_id = cmd;
+		d.data[0] = args[0];
+		d.data[1] = args[1];
+		d.data[2] = args[2];
+		ret = apu_ipi_ut_send(&d, false);
+		break;
 	default:
 		pr_info("%s: unknown cmd %d\n", __func__, cmd);
 		ret = -EINVAL;
@@ -1547,6 +1556,8 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		cmd = CMD_UT_IPI_OUTBOX_FUZZ_WRITE;
 	} else if (strcmp(token, "s5_idle_dbg") == 0) {
 		cmd = CMD_S5_IDEL_DBG;
+	} else if (strcmp(token, "deep_idle_dbg") == 0) {
+		cmd = CMD_DEEP_IDEL_DBG;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
