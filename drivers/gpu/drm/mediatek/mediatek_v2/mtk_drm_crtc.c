@@ -15990,7 +15990,12 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 							0, cmdq_handle);
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
 				} else {
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
+#else
+					comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+					mtk_ddp_comp_layer_off(comp, plane_index, 0, cmdq_handle);
+#endif
 				}
 			}
 		}
