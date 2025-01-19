@@ -27,11 +27,11 @@ struct vtskin_tz_param {
 	unsigned int ref_num;
 	struct vtskin_coef vtskin_ref[MAX_VTSKIN_REF_NUM];
 	struct thermal_zone_device *tzd[MAX_VTSKIN_REF_NUM];
+	struct mutex lock;
 };
 
 struct vtskin_data {
 	struct device *dev;
-	struct mutex lock;
 	int num_sensor;
 	struct vtskin_tz_param *params;
 };
