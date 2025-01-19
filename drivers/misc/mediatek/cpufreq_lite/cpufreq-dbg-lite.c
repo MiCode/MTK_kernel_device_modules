@@ -41,7 +41,6 @@ u32 *g_cpufreq_debug;
 
 unsigned int cpufreq_debug_cpu;
 unsigned int user_ctrl_mode;
-bool dsu_ctrl_deubg_enable;
 
 static int cpufreq_debug_proc_show(struct seq_file *m, void *v)
 {
@@ -160,66 +159,6 @@ static int create_cpufreq_debug_fs(void)
 	return 0;
 }
 
-void set_cci_mode(unsigned int mode)
-{
-	/* mode = 0(Normal as 50%) mode = 1(Perf as 70%) */
-	csram_write(OFFS_CCI_TBL_MODE, mode);
-}
-
-unsigned int cpufreq_get_cci_mode(void)
-{
-	unsigned int mode;
-
-	/* Normal mode: 0, Perf mode: 1*/
-	mode = csram_read(OFFS_CCI_TBL_MODE);
-
-	if (mode > 1)
-		return -1;
-
-	return mode;
-}
-
-int cpufreq_set_cci_mode(unsigned int mode)
-{
-	if (mode > 1) {
-		pr_info("%s: invalid input value: %d.\n", __func__, mode);
-		return -EINVAL;
-	}
-
-	user_ctrl_mode = mode;
-	set_cci_mode(user_ctrl_mode);
-	if (dsu_ctrl_deubg_enable) {
-		pr_info("%s: debug mode.\n", __func__);
-		return 0;
-	}
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-	if (user_ctrl_mode)
-		set_eas_dsu_ctrl(0);
-	else
-		set_eas_dsu_ctrl(1);
-#endif
-	return 0;
-}
-EXPORT_SYMBOL_GPL(cpufreq_set_cci_mode);
-
-int set_dsu_ctrl_debug(unsigned int eas_ctrl_mode, bool debug_enable)
-{
-#if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-	dsu_ctrl_deubg_enable = debug_enable;
-
-	if (dsu_ctrl_deubg_enable)
-		set_eas_dsu_ctrl(eas_ctrl_mode);
-	else {
-		if (user_ctrl_mode)
-			set_eas_dsu_ctrl(0);
-		else
-			set_eas_dsu_ctrl(1);
-	}
-#endif
-	return 0;
-}
-EXPORT_SYMBOL_GPL(set_dsu_ctrl_debug);
-
 static int mtk_cpudvfs_init(void)
 {
 	struct device_node *dvfs_node;
@@ -246,7 +185,6 @@ static int mtk_cpudvfs_init(void)
 		pr_notice("failed to map csram_base @ %s\n", __func__);
 		return -EINVAL;
 	}
-	dsu_ctrl_deubg_enable = false;
 	user_ctrl_mode = 0;
 
 	mtk_freq_qos_init();
