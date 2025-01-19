@@ -5,12 +5,32 @@
 
 #define pr_fmt(fmt)    "iommu_engine: test " fmt
 
+#include <linux/iopoll.h>
+
 #include "iommu_engine.h"
 
-static struct dma_engine_data *dma_engine_datas[DMA_ENGINE_NUM];
+#define F_BIT_SET(bit)			(1<<(bit))
+#define F_BIT_VAL(val, bit)		((!!(val))<<(bit))
+
+#define CQDMA_EN			(0x8)
+#define CQDMA_EN_BIT			F_BIT_SET(0)
+
+#define CQDMA_RST			(0xC)
+#define CQDMA_RST_WARM			F_BIT_SET(0)
+#define CQDMA_RST_HARD			F_BIT_SET(1)
+
+#define CQDMA_SRC_ADDR			(0x1C)
+#define CQDMA_SRC_ADDR2			(0x60)
+
+#define CQDMA_DST_ADDR			(0x20)
+#define CQDMA_DST_ADDR2			(0x64)
+
+#define CQDMA_LEN			(0x24)
 
 #define TOP_ADDRESS(addr) ((unsigned int)((addr >> 32) & 0xf))
 #define LOW_ADDRESS(addr) ((unsigned int)(addr & 0xffffffff))
+
+static struct dma_engine_data *dma_engine_datas[DMA_ENGINE_NUM];
 
 static void dump_char(char *str, unsigned char *pa)
 {
@@ -22,19 +42,29 @@ static void cqdma_set(unsigned long long src, unsigned long long dst,
 		      unsigned int sz)
 {
 	void __iomem *cqdma_reg_base = dma_engine_datas[DMA_ENGINE_CQDMA]->reg_base;
+	u32 reg = 0;
+	int ret = 0;
 
 	pr_info("%s, src=0x%llx, dst=0x%llx, sz=%d\n", __func__, src, dst, sz);
 
 	/* src */
-	writel_relaxed(TOP_ADDRESS(src), cqdma_reg_base + 0x60);
-	writel_relaxed(LOW_ADDRESS(src), cqdma_reg_base + 0x1c);
+	writel_relaxed(TOP_ADDRESS(src), cqdma_reg_base + CQDMA_SRC_ADDR2);
+	writel_relaxed(LOW_ADDRESS(src), cqdma_reg_base + CQDMA_SRC_ADDR);
 	/* dst */
-	writel_relaxed(TOP_ADDRESS(dst), cqdma_reg_base + 0x64);
-	writel_relaxed(LOW_ADDRESS(dst), cqdma_reg_base + 0x20);
+	writel_relaxed(TOP_ADDRESS(dst), cqdma_reg_base + CQDMA_DST_ADDR2);
+	writel_relaxed(LOW_ADDRESS(dst), cqdma_reg_base + CQDMA_DST_ADDR);
 	/* len */
-	writel_relaxed(sz, cqdma_reg_base + 0x24);
+	writel_relaxed(sz, cqdma_reg_base + CQDMA_LEN);
 	/* trigger */
-	writel_relaxed(0x1, cqdma_reg_base + 0x8);
+	writel_relaxed(CQDMA_EN_BIT, cqdma_reg_base + CQDMA_EN);
+
+	/* poll 20s until timeout */
+	ret = readl_relaxed_poll_timeout(cqdma_reg_base + CQDMA_EN, reg,
+					 FIELD_GET(CQDMA_EN_BIT, reg) == 0,
+					 100, 20000000);
+
+	pr_info("%s, ret:%d, enble reg:0x%x=0x%x", __func__, ret,
+		CQDMA_EN, readl_relaxed(cqdma_reg_base + CQDMA_EN));
 }
 
 static void cqdma_access(unsigned long long dma0addr, void *va00,
