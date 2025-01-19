@@ -450,12 +450,33 @@ static int mt6379_is_charge_done(struct charger_device *chgdev, bool *done)
 static int mt6379_enable_buck(struct charger_device *chgdev, bool en)
 {
 	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+	struct device *dev = cdata->dev;
 	int ret = 0;
+	u32 buck_en = 0;
+
+	dev_info(cdata->dev, "%s, en = %d\n", __func__, en);
+	ret = mt6379_charger_field_get(cdata, F_BUCK_EN, &buck_en);
+	if (ret) {
+		dev_info(dev, "%s, Failed to get BUCK_EN\n", __func__);
+		return ret;
+	}
+
+	if (en == buck_en)
+		return 0;
 
 	ret = mt6379_charger_field_set(cdata, F_BUCK_EN, en);
 	if (ret)
-		dev_info(cdata->dev, "%s, Failed to %s BUCK_EN\n",
+		dev_info(dev, "%s, Failed to %s BUCK_EN\n",
 			 __func__, en ? "enable" : "disable");
+
+	if (en) {
+		schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
+	} else {
+		cancel_delayed_work(&cdata->switching_work);
+		ret = mt6379_charger_set_non_switching_setting(cdata);
+		if (ret)
+			dev_info(dev, "%s, set non switching ramp failed\n", __func__);
+	}
 
 	return ret;
 }
@@ -753,7 +774,7 @@ static int mt6379_enable_discharge(struct charger_device *chgdev, bool en)
 	u32 val = 0;
 
 	dev_info(cdata->dev, "%s, en = %d\n", __func__, en);
-	hm_ret = mt6379_enable_hm(cdata, true);
+	hm_ret = mt6379_enable_tm(cdata, true);
 	if (hm_ret) {
 		dev_info(cdata->dev, "%s, Failed to enable hm\n", __func__);
 		return hm_ret;
@@ -786,7 +807,7 @@ static int mt6379_enable_discharge(struct charger_device *chgdev, bool en)
 		}
 	}
 out:
-	hm_ret = mt6379_enable_hm(cdata, false);
+	hm_ret = mt6379_enable_tm(cdata, false);
 	if (hm_ret) {
 		dev_info(cdata->dev, "%s, Failed to disable hm\n", __func__);
 		return hm_ret;
@@ -823,7 +844,7 @@ enum {
 static int mt6379_dump_registers(struct charger_device *chgdev)
 {
 	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
-	int i = 0, ret = 0, vbus = 0, ibus = 0, offset = 0;
+	int i = 0, ret = 0, offset = 0;
 	char buf[DUMP_REG_BUF_SIZE] = "\0";
 	struct device *dev = cdata->dev;
 	u32 val = 0;
@@ -901,68 +922,6 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 				    adcs[i].name, adcs[i].value, adcs[i].unit);
 	}
 
-	/* set fsw_control by vbus & ibus */
-	vbus = adcs[ADC_DUMP_VBUS].value;
-	ibus = adcs[ADC_DUMP_IBUS].value;
-	if (vbus <= 5500 && ibus >= 500) {
-		if (!cdata->fsw_control) {
-			ret = mt6379_enable_hm(cdata, true);
-			if (ret) {
-				dev_info(dev, "%s, Failed to enable hm\n", __func__);
-				return ret;
-			}
-
-			val = FIELD_PREP(MT6379_CHG_RAMPUP_COMP_MSK, 0x3);
-			ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_BUBO5,
-						 MT6379_CHG_RAMPUP_COMP_MSK, val);
-			if (ret)
-				dev_info(dev, "%s, Failed to set chg_ramp_up_comp to 240kOhm\n",
-					 __func__);
-
-			ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_TRIM6,
-						 MT6379_CHG_IEOC_FLOW_RB_MSK, 0);
-			if (ret)
-				dev_info(dev, "%s, Failed to set no fccm in eoc flow\n", __func__);
-
-			ret = mt6379_enable_hm(cdata, false);
-			if (ret) {
-				dev_info(dev, "%s, Failed to disable hm\n", __func__);
-				return ret;
-			}
-
-			cdata->fsw_control = true;
-		}
-	} else {
-		if (cdata->fsw_control) {
-			ret = mt6379_enable_hm(cdata, true);
-			if (ret) {
-				dev_info(dev, "%s, Failed to enable hm\n", __func__);
-				return ret;
-			}
-
-			val = FIELD_PREP(MT6379_CHG_RAMPUP_COMP_MSK, 0x1);
-			ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_BUBO5,
-						 MT6379_CHG_RAMPUP_COMP_MSK, val);
-			if (ret)
-				dev_info(dev, "%s, Failed to set chg_ramp_up_comp to 400kOhm\n",
-					 __func__);
-
-			ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_TRIM6,
-						 MT6379_CHG_IEOC_FLOW_RB_MSK,
-						 MT6379_CHG_IEOC_FLOW_RB_MSK);
-			if (ret)
-				dev_info(dev, "%s, Failed to set fccm in eoc flow\n", __func__);
-
-			ret = mt6379_enable_hm(cdata, false);
-			if (ret) {
-				dev_info(dev, "%s, Failed to disable hm\n", __func__);
-				return ret;
-			}
-
-			cdata->fsw_control = false;
-		}
-	}
-
 	if (cdata->batprotect_en) {
 		ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VBATMON], &val);
 		if (ret) {
@@ -990,6 +949,10 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 		offset += scnprintf(buf + offset, DUMP_REG_BUF_SIZE - offset,
 				    "%s = 0x%02x, ", regs[i].name, val);
 	}
+
+	ret = mt6379_charger_fsw_control(cdata);
+	if (ret)
+		dev_info(dev, "%s, fsw control failed\n", __func__);
 
 	dev_info(dev, "%s", buf);
 	return 0;

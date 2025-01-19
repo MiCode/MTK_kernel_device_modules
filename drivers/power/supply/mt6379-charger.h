@@ -257,6 +257,9 @@ enum {
 	MT6379_IRQ_BC12_DN,
 	MT6379_ADC_VBAT_MON,
 	MT6379_USBID_EVT,
+	MT6379_IRQ_OTP0,
+	MT6379_IRQ_OTP1,
+	MT6379_IRQ_OTP2,
 	MT6379_IRQ_MAX
 };
 
@@ -324,22 +327,24 @@ struct mt6379_charger_data {
 	struct regulator *otg_regu;
 	struct workqueue_struct *wq;
 	struct work_struct bc12_work;
+	struct delayed_work switching_work;
 	struct power_supply *psy;
 	struct power_supply_desc psy_desc;
 	struct iio_channel *iio_adcs;
 	struct charger_device *chgdev;
 	struct mutex attach_lock;
 	struct mutex cv_lock;
-	struct mutex hm_lock;
+	struct mutex tm_lock;
 	struct mutex pe_lock;
+	struct mutex ramp_lock;
 	unsigned int irq_nums[MT6379_IRQ_MAX];
 	bool batprotect_en;
-	bool fsw_control;
-	int hm_use_cnt;
+	int tm_use_cnt;
 	int vbat0_flag;
 	atomic_t tchg;
 	atomic_t eoc_cnt;
 	atomic_t no_6pin_used;
+	bool non_switching;
 	u32 zcv;
 	u32 cv;
 	u8 bypass_mode_entered;
@@ -369,32 +374,35 @@ extern int mt6379_charger_field_set(struct mt6379_charger_data *cdata,
 				    enum mt6379_charger_reg_field fd, unsigned int val);
 extern int mt6379_charger_field_get(struct mt6379_charger_data *cdata,
 				    enum mt6379_charger_reg_field fd, u32 *val);
+extern int mt6379_charger_fsw_control(struct mt6379_charger_data *cdata);
+extern int mt6379_charger_set_non_switching_setting(struct mt6379_charger_data *cdata);
 
-static inline int mt6379_enable_hm(struct mt6379_charger_data *cdata, bool en)
+
+static inline int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en)
 {
+	const u8 tm_pascode[] = { 0x69, 0x96, 0x63, 0x79 };
 	int ret = 0;
 
-	mutex_lock(&cdata->hm_lock);
+	mutex_lock(&cdata->tm_lock);
 	if (en) {
-		if (cdata->hm_use_cnt == 0) {
-			ret = regmap_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1,
-					   0x69);
+		if (cdata->tm_use_cnt == 0) {
+			ret = regmap_bulk_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1,
+						tm_pascode, ARRAY_SIZE(tm_pascode));
 			if (ret < 0)
 				goto out;
 		}
-		cdata->hm_use_cnt++;
+		cdata->tm_use_cnt++;
 	} else {
-		if (cdata->hm_use_cnt == 1) {
-			ret = regmap_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1,
-					   0);
+		if (cdata->tm_use_cnt == 1) {
+			ret = regmap_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1, 0);
 			if (ret < 0)
 				goto out;
 		}
-		if (cdata->hm_use_cnt > 0)
-			cdata->hm_use_cnt--;
+		if (cdata->tm_use_cnt > 0)
+			cdata->tm_use_cnt--;
 	}
 out:
-	mutex_unlock(&cdata->hm_lock);
+	mutex_unlock(&cdata->tm_lock);
 	return ret;
 }
 
