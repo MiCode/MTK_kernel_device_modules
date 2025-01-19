@@ -174,7 +174,9 @@ enum DPTx_PREEMPHASIS_NUM {
 enum DP_VIDEO_TIMING_TYPE {
 	SINK_640_480 = 0,
 	SINK_800_600,
+	SINK_848_480,
 	SINK_1280_720,
+	SINK_1280_800,
 	SINK_1280_960,
 	SINK_1280_1024,
 	SINK_1920_1080,
@@ -183,6 +185,7 @@ enum DP_VIDEO_TIMING_TYPE {
 	SINK_1080_2460,
 	SINK_1920_1200,
 	SINK_1920_1440,
+	SINK_2048_1536,
 	SINK_2560_1440,
 	SINK_2560_1600,
 	SINK_3840_2160_30,
@@ -281,6 +284,7 @@ int mtk_dp_phy_getInfo(char *buffer, int size);
 #endif
 void mdrv_DPTx_reAuthentication(struct mtk_dp *mtk_dp);
 void mdrv_DPTx_PatternSet(bool enable, int resolution);
+void mdrv_DPTx_ColorSet(int bpc, int format);
 void mdrv_DPTx_set_maxlinkrate(bool enable, int maxlinkrate);
 void mtk_dp_SWInterruptSet(int bstatus);
 void mtk_dp_aux_swap_enable(bool enable);

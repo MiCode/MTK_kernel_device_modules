@@ -136,6 +136,8 @@ struct mtk_dp_intf_resolution_cfg {
 	unsigned int clksrc;
 	unsigned int con1;
 	unsigned int clk;
+	unsigned int tvppll_clk;
+	unsigned int dp_clk;
 };
 
 enum TVDPLL_CLK {
@@ -489,77 +491,110 @@ static const struct mtk_dp_intf_resolution_cfg mt6991_resolution_cfg[SINK_MAX] =
 	[SINK_640_480] = {
 					.clksrc = MT6991_TVDPLL_D16,
 					.con1 = 0x840F81F8,
-					.clk = 37125
+					.dp_clk = 37125,
+					.tvppll_clk = 25200000*4
 				},
 	[SINK_800_600] = {
-					.clksrc = MT6991_TCK_26M,
-					.con1 = 0,
-					.clk = 26000
+					.clksrc = MT6991_TVDPLL_D16,
+					.con1 = 0x84187E07,
+					.dp_clk = 37125,
+					.tvppll_clk = 39822000*4
+				},
+	[SINK_848_480] = {
+					.clksrc = MT6991_TVDPLL_D16,
+					.con1 = 0x8414C4EC,
+					.dp_clk = 37125,
+					.tvppll_clk = 33734000*4
 				},
 	[SINK_1280_720] = {
-					.clksrc = MT6991_TVDPLL_D8,
-					.con1 = 0x8416DFB4,
-					.clk = 74250
+					.clksrc = MT6991_TVDPLL_D16,
+					.con1 = 0x8316D89D,
+					.dp_clk = 37125,
+					.tvppll_clk = 74250000*4
+				},
+	[SINK_1280_800] = {
+					.clksrc = MT6991_TVDPLL_D16,
+					.con1 = 0x8315D89D,
+					.dp_clk = 37125,
+					.tvppll_clk = 83635000*4
 				},
 	[SINK_1280_960] = {
-					.clksrc = MT6991_TCK_26M,
-					.con1 = 0,
-					.clk = 26000
+					.clksrc = MT6991_TVDPLL_D16,
+					.con1 = 0x82109D89,
+					.dp_clk = 37125,
+					.tvppll_clk = 108000000*4
 				},
 	[SINK_1280_1024] = {
-					.clksrc = MT6991_TCK_26M,
-					.con1 = 0,
-					.clk = 26000
+					.clksrc = MT6991_TVDPLL_D16,
+					.con1 = 0x820F6276,
+					.dp_clk = 37125,
+					.tvppll_clk = 107806000*4
 				},
 	[SINK_1920_1080] = {
 					.clksrc = MT6991_TVDPLL_D16,
 					.con1 = 0x8216D89D,
-					.clk = 37125
+					.dp_clk = 37125,
+					.tvppll_clk = 148500000*4
 				},
 	[SINK_1920_1080_120] = {
 					.clksrc = MT6991_TVDPLL_D8,
 					.con1 = 0x8216D89D,
-					.clk = 74250
+					.dp_clk = 74250,
+					.tvppll_clk = 148500000*4
 				},
 	[SINK_1080_2460] = {
 					.clksrc = MT6991_TVDPLL_D16,
-					.con1 = 0x821AC941,
-					.clk = 37125
+					.con1 = 0x821AC955,
+					.dp_clk = 37125,
+					.tvppll_clk = 174276000*4
 				},
 	[SINK_1920_1200] = {
 					.clksrc = MT6991_TVDPLL_D16,
 					.con1 = 0x8217B645,
-					.clk = 37125
+					.dp_clk = 37125,
+					.tvppll_clk = 154440000*4
 				},
 	[SINK_1920_1440] = {
-					.clksrc = MT6991_TCK_26M,
-					.con1 = 0,
-					.clk = 26000
+					.clksrc = MT6991_TVDPLL_D16,
+					.con1 = 0x82240000,
+					.dp_clk = 37125,
+					.tvppll_clk = 234000000*4
+				},
+	[SINK_2048_1536] = {
+					.clksrc = MT6991_TVDPLL_D8,
+					.con1 = 0x821293B1,
+					.dp_clk = 74250,
+					.tvppll_clk = 209510000*2
 				},
 	[SINK_2560_1440] = {
 					.clksrc = MT6991_TVDPLL_D8,
 					.con1 = 0x821293B1,
-					.clk = 74250
+					.dp_clk = 74250,
+					.tvppll_clk = 241392000*2
 				},
 	[SINK_2560_1600] = {
 					.clksrc = MT6991_TVDPLL_D8,
-					.con1 = 0x8214A762,
-					.clk = 74250
+					.con1 = 0x8214A9E3,
+					.dp_clk = 74250,
+					.tvppll_clk = 269683000*2
 				},
 	[SINK_3840_2160_30] = {
 					.clksrc = MT6991_TVDPLL_D8,
 					.con1 = 0x8216D89D,
-					.clk = 74250
+					.dp_clk = 74250,
+					.tvppll_clk = 297000000*2
 				},
 	[SINK_3840_2160] = {
 					.clksrc = MT6991_TVDPLL_D4,
 					.con1 = 0x8216D89D,
-					.clk = 148500
+					.dp_clk = 148500,
+					.tvppll_clk = 594000000
 				}, //htotal = 1500  //con1 = 0x83109D89; //htotal = 1600
 	[SINK_7680_4320] = {
-					.clksrc = MT6991_TCK_26M,
+					.clksrc = 0,
 					.con1 = 0,
-					.clk = 26000
+					.dp_clk = 0,
+					.tvppll_clk = 0
 				},
 };
 
@@ -777,6 +812,8 @@ static void mtk_dp_intf_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dp_intf *dp_intf = NULL;
 	int ret;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
 
 	DPTXFUNC();
 	mtk_dp_poweron();
@@ -793,11 +830,19 @@ static void mtk_dp_intf_prepare(struct mtk_ddp_comp *comp)
 		if (ret < 0)
 			DPTXERR("%s Failed to enable hf_fdp_ck clock: %d\n",
 				__func__, ret);
+		mtk_crtc = dp_intf->ddp_comp.mtk_crtc;
+		priv = mtk_crtc->base.dev->dev_private;
+		if (priv->data->mmsys_id == MMSYS_MT6991) {
+			ret = clk_prepare_enable(dp_intf->pclk_src[MT6991_TVDPLL_PLL]);
+			if (ret < 0)
+				DPTXERR("%s Failed to enable pll clock: %d\n",
+					__func__, ret);
+		}
 		//ret = clk_prepare_enable(dp_intf->pclk);
 		//if (ret < 0)
 		//	DPTXERR("%s Failed to enable pclk clock: %d\n",
 		//		__func__, ret);
-		DPTXMSG("%s:succesed enable dp_intf clock\n", __func__);
+		//DPTXMSG("%s:succesed enable dp_intf clock\n", __func__);
 	} else
 		DPTXERR("Failed to enable dp_intf clock\n");
 }
@@ -839,7 +884,10 @@ static void mtk_dp_intf_unprepare(struct mtk_ddp_comp *comp)
 		}
 		clk_disable_unprepare(dp_intf->hf_fmm_ck);
 		clk_disable_unprepare(dp_intf->hf_fdp_ck);
-		if (priv->data->mmsys_id == MMSYS_MT6989){
+
+		if (priv->data->mmsys_id == MMSYS_MT6991){
+			clk_disable_unprepare(dp_intf->pclk_src[MT6991_TVDPLL_PLL]);
+		} else {
 			clk_disable_unprepare(dp_intf->pclk);
 			clk_disable_unprepare(dp_intf->vcore_pclk);
 		}
@@ -914,7 +962,9 @@ void mtk_dp_inf_video_clock(struct mtk_dp_intf *dp_intf)
 		if (ret)
 			DPTXMSG("%s clk_prepare_enable dp_intf->pclk: err=%d\n",
 				__func__, ret);
-	}
+	} else
+		ret = clk_set_rate(dp_intf->pclk_src[MT6991_TVDPLL_PLL],
+		dp_intf->driver_data->video_clock_cfg->resolution_cfg[dp_intf->res].tvppll_clk);
 
 	ret = clk_set_parent(dp_intf->pclk, dp_intf->pclk_src[clksrc]);
 	if (ret)
@@ -967,7 +1017,7 @@ static void mtk_dp_intf_golden_setting(struct mtk_ddp_comp *comp,
 		dp_intf->res = SINK_1920_1080;
 	}
 
-	dp_clk = dp_intf->driver_data->video_clock_cfg->resolution_cfg[dp_intf->res].clk;
+	dp_clk = dp_intf->driver_data->video_clock_cfg->resolution_cfg[dp_intf->res].dp_clk;
 	dp_clk = dp_clk > 0 ? dp_clk : 74250;
 	mmsys_clk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000;
 	mmsys_clk = mmsys_clk > 0 ? mmsys_clk : 273000;
