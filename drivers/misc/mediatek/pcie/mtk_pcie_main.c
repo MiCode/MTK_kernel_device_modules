@@ -1301,7 +1301,7 @@ static ssize_t cli_store(struct kobject *kobj, struct kobj_attribute *attr,
 #define pcie_test_attr(_name) \
 	static struct kobj_attribute _name##_attr = {   \
 		.attr	= {.name = __stringify(_name),  \
-			   .mode = 0644,                \
+			   .mode = 0600,                \
 		},                                      \
 		.show	= _name##_show,                 \
 		.store	= _name##_store,                \
