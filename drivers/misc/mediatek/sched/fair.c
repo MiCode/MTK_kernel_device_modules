@@ -398,7 +398,8 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 	}
 
 	if (eenv->wl_support) {
-		unsigned int output[6] = {0}, val[MAX_NR_CPUS];
+		unsigned int output[8] = {[0 ... 7] = -1};
+		unsigned int val[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = -1};
 
 		if (is_dsu_pwr_triggered(eenv->wl)) {
 			eenv_dsu_init(eenv->android_vendor_data1, false, eenv->wl,
@@ -422,11 +423,11 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 
 		if (trace_sched_eenv_init_enabled())
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
-			trace_sched_eenv_init(output[1], output[2],
+			trace_sched_eenv_init(output[1], output[2], output[6], output[7],
 					output[3], output[4], output[5],
 					share_buck.gear_idx);
 #else
-			trace_sched_eenv_init(output[1], output[2],
+			trace_sched_eenv_init(output[1], output[2], output[6], output[7],
 					0, output[4], output[5], share_buck.gear_idx);
 #endif
 	}

@@ -17,6 +17,7 @@
 static void __iomem *clkg_sram_base_addr;
 static void __iomem *wlc_sram_base_addr;
 static void __iomem *l3ctl_sram_base_addr;
+static void __iomem *cdsu_sram_base_addr;
 
 void __iomem *get_clkg_sram_base_addr(void)
 {
@@ -29,6 +30,12 @@ void __iomem *get_l3ctl_sram_base_addr(void)
 	return l3ctl_sram_base_addr;
 }
 EXPORT_SYMBOL_GPL(get_l3ctl_sram_base_addr);
+
+void __iomem *get_cdsu_sram_base_addr(void)
+{
+	return cdsu_sram_base_addr;
+}
+EXPORT_SYMBOL_GPL(get_cdsu_sram_base_addr);
 
 int dsu_pwr_swpm_init(void)
 {
@@ -99,6 +106,16 @@ int dsu_pwr_swpm_init(void)
 
 	if (sram_res)
 		clkg_sram_base_addr = ioremap(sram_res->start,
+				resource_size(sram_res));
+	else {
+		pr_info("%s can't get cpuhvfs resource\n", __func__);
+		return -ENODEV;
+	}
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+
+	if (sram_res)
+		cdsu_sram_base_addr = ioremap(sram_res->start,
 				resource_size(sram_res));
 	else {
 		pr_info("%s can't get cpuhvfs resource\n", __func__);
