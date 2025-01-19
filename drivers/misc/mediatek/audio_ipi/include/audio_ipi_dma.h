@@ -64,8 +64,8 @@ void deinit_audio_ipi_dma(void);
 
 /* dsp */
 int audio_ipi_dma_init_dsp(const uint32_t dsp_id);
-
-
+bool is_ipi_dma_inited(const uint32_t dsp_id);
+void set_ipi_dma_flag(const uint32_t dsp_id, const bool status);
 
 /*
  * =============================================================================

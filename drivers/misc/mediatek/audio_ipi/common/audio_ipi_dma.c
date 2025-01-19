@@ -126,6 +126,7 @@ static struct gen_pool *g_dma_pool[NUM_OPENDSP_TYPE];
 
 static bool g_dsp_init_flag[NUM_OPENDSP_TYPE];
 static bool g_region_reg_flag[TASK_SCENE_SIZE];
+static DEFINE_MUTEX(dsp_init_lock);
 static DEFINE_MUTEX(region_lock);
 
 static struct hal_dma_queue_t g_hal_dma_queue;
@@ -430,6 +431,9 @@ int audio_ipi_dma_init_dsp(const uint32_t dsp_id)
 		      0,
 		      &payload);
 
+	if (ret == 0)
+		set_ipi_dma_flag(dsp_id, true);
+
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 	if (is_audio_use_adsp(dsp_id))
 		adsp_deregister_feature(AUDIO_CONTROLLER_FEATURE_ID);
@@ -438,6 +442,31 @@ int audio_ipi_dma_init_dsp(const uint32_t dsp_id)
 	return ret;
 }
 
+bool is_ipi_dma_inited(const uint32_t dsp_id)
+{
+	if (dsp_id >= NUM_OPENDSP_TYPE) {
+		pr_info("dsp_id(%u) invalid. return", dsp_id);
+		return false;
+	}
+
+	mutex_lock(&dsp_init_lock);
+	bool flag = g_dsp_init_flag[dsp_id];
+	mutex_unlock(&dsp_init_lock);
+
+	return flag;
+}
+
+void set_ipi_dma_flag(const uint32_t dsp_id, const bool status)
+{
+	if (dsp_id >= NUM_OPENDSP_TYPE) {
+		pr_info("dsp_id(%u) invalid. return", dsp_id);
+		return;
+	}
+
+	mutex_lock(&dsp_init_lock);
+	g_dsp_init_flag[dsp_id] = status;
+	mutex_unlock(&dsp_init_lock);
+}
 
 void *get_audio_ipi_dma_vir_addr(uint32_t dsp_id,
 				 phys_addr_t phy_addr_val)
@@ -489,10 +518,8 @@ int audio_ipi_dma_alloc(
 		pr_info("arg err, %p, %p, %u", phy_addr, virt_addr, size);
 		return -EINVAL;
 	}
-	if (g_dsp_init_flag[dsp_id] == false) {
-		g_dsp_init_flag[dsp_id] = true;
+	if (is_ipi_dma_inited(dsp_id) == false)
 		audio_ipi_dma_init_dsp(dsp_id);
-	}
 
 	new_addr = gen_pool_alloc(g_dma_pool[dsp_id], size);
 	if (new_addr == 0) {
@@ -622,10 +649,8 @@ int audio_ipi_dma_alloc_region(const uint8_t task,
 		return -ENODEV;
 	}
 
-	if (g_dsp_init_flag[dsp_id] == false) {
-		g_dsp_init_flag[dsp_id] = true;
+	if (is_ipi_dma_inited(dsp_id) == false)
 		audio_ipi_dma_init_dsp(dsp_id);
-	}
 
 	mutex_lock(&region_lock);
 	if (g_region_reg_flag[task] == true) {

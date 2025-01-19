@@ -1236,9 +1236,18 @@ static int dsp_send_msg_to_dsp(
 		return -ENODEV;
 
 	audio_ipi_id = audio_get_audio_ipi_id_by_dsp(dsp_id);
+	p_ipi_msg = (struct ipi_msg_t *)p_dsp_msg->buf;
 
 	/* IPC */
 	for (try_cnt = 0; try_cnt < k_max_try_cnt; try_cnt++) {
+		if (p_ipi_msg->data_type == AUDIO_IPI_DMA && !is_ipi_dma_inited(dsp_id)) {
+			if (try_cnt == 0) /* only dump log once */
+				DUMP_IPC_MSG("IPI DMA is not initialized, retry", p_dsp_msg);
+			ret = -EAGAIN;
+			usleep_range(k_sleep_min_us, k_sleep_max_us);
+			continue;
+		}
+
 		if (is_audio_use_scp(dsp_id))
 			ret = audio_ipi_send_msg_to_scp(p_dsp_msg, dsp_id);
 		else if (is_audio_use_adsp(dsp_id))
@@ -1252,7 +1261,6 @@ static int dsp_send_msg_to_dsp(
 		if (ret == 0) { /* pass */
 			start_flag[dsp_id] = true;
 			if (p_dsp_msg->ipi_id == audio_ipi_id) {
-				p_ipi_msg = (struct ipi_msg_t *)p_dsp_msg->buf;
 				if (check_print_msg_info(p_ipi_msg) &&
 				    !retry_flag)
 					DUMP_IPI_MSG("pass", p_ipi_msg);
@@ -1297,7 +1305,7 @@ static int dsp_send_msg_to_dsp(
 		pr_notice("ret: %d not handle!!", ret);
 	}
 
-	if (retry_flag == true) {
+	if (retry_flag == true || try_cnt >= k_max_try_cnt) {
 		if (ret == 0) {
 			n = snprintf(dump_str, sizeof(dump_str),
 				     "dsp_id %u retry %u pass", dsp_id, try_cnt);
