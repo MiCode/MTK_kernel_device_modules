@@ -1027,7 +1027,7 @@ static long filp_send_ioctl(struct file *filp,
 	if (copy_from_user(&req, arg, sizeof(req)))
 		return -EFAULT;
 
-	if (req.shm_cnt > U16_MAX)
+	if (req.shm_cnt > U16_MAX || req.iov_cnt > U16_MAX)
 		return -E2BIG;
 
 	dev_dbg(dev, "%s: req.shm_cnt 0x%llx\n", __func__, req.shm_cnt);
@@ -1082,6 +1082,7 @@ static long filp_send_ioctl(struct file *filp,
 			   ARRAY_SIZE(fast_iovs), &iov, &iter);
 	if (ret < 0) {
 		dev_err(dev, "Failed to import iovec\n");
+		ret = -EINVAL;
 		goto iov_import_failed;
 	}
 
