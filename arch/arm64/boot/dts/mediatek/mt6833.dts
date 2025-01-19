@@ -3476,8 +3476,9 @@
 		interconnect-names = "fpsgo-perf-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
 
-		fbt-cpu-mask = <255 192 63 63>;
+		fbt-cpu-mask = <255 192 63 63 192 63>;
 		sbe-resceue-enable = <1>;
+		boost-dram = <2>;
 	};
 
 	disp_pwm: disp_pwm0@1100e000 {
