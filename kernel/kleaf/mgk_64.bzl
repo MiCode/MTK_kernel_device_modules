@@ -1001,7 +1001,6 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/panel/panel-samsung-ana6705-cmd.ko",
     "drivers/gpu/drm/panel/panel-samsung-ana6705-cmd-fhdp.ko",
     "drivers/gpu/drm/panel/panel-samsung-s68fc01-vdo-aod.ko",
-    "drivers/gpu/drm/panel/ocp2138_i2c.ko",
     "drivers/gpu/mediatek/ged/ged.ko",
     "drivers/gpu/mediatek/gpu_bm/mtk_gpu_qos.ko",
     "drivers/gpu/mediatek/gpueb/mtk_gpueb.ko",
