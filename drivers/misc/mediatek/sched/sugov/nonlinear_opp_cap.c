@@ -3172,10 +3172,10 @@ void update_active_ratio_all(void)
 }
 EXPORT_SYMBOL(update_active_ratio_all);
 
-inline void update_adaptive_margin(struct cpufreq_policy *policy)
+inline void update_adaptive_margin(struct cpumask *sg_cpumask)
 {
 	unsigned int i;
-	unsigned int first_cpu = cpumask_first(policy->related_cpus);
+	unsigned int first_cpu = cpumask_first(sg_cpumask);
 	unsigned int adaptive_margin_tmp;
 
 	if (policy_update_active_ratio_cnt_last[first_cpu]
@@ -3205,7 +3205,7 @@ inline void update_adaptive_margin(struct cpufreq_policy *policy)
 			adaptive_margin_tmp = util_scale;
 			WRITE_ONCE(ramp_up[first_cpu], ramp_up[first_cpu] - 1);
 		}
-		for_each_cpu(i, policy->related_cpus)
+		for_each_cpu(i, sg_cpumask)
 			WRITE_ONCE(adaptive_margin[i], adaptive_margin_tmp);
 
 		if (trace_sugov_ext_adaptive_margin_enabled())
@@ -3236,25 +3236,18 @@ void check_update_adaptive_margin_disabled(struct cpumask *cpumask)
 			WRITE_ONCE(adaptive_margin[i], util_scale);
 }
 
-int mtk_effective_cpu_util_with_margin_from_adap_grp(int util, int cpu, void *data, int source)
+int mtk_effective_cpu_util_with_margin_from_adap_grp(int util, int cpu, struct cpumask *sg_cpumask, int source)
 {
 	u64 wall_time_stamp;
 	int pelt_util = util;
 	int gearid __maybe_unused = topology_cluster_id(cpu), i;
 	unsigned long flt_util = 0, pelt_util_with_margin = 0;
-	int first_cpu;
 	struct cpumask *cpumask;
-	struct cpumask _cpumask;
+	struct cpumask mask;
+	int first_cpu;
 
-	if (data != NULL) {
-		struct sugov_policy *sg_policy = (struct sugov_policy *)data;
-		struct cpufreq_policy *policy = sg_policy->policy;
-
-		cpumask = policy->related_cpus;
-
-		if (!cpumask)
-			return util;
-
+	if (sg_cpumask) {
+		cpumask = sg_cpumask;
 		first_cpu = cpumask_first(cpumask);
 
 		if (grp_dvfs_ctrl_mode == 0 || grp_trigger == false) {
@@ -3264,15 +3257,12 @@ int mtk_effective_cpu_util_with_margin_from_adap_grp(int util, int cpu, void *da
 				update_active_ratio_policy(cpumask);
 		}
 
-		update_adaptive_margin(policy);
+		update_adaptive_margin(cpumask);
 	} else {
-		cpumask_clear(&_cpumask);
-		cpumask_set_cpu(cpu, &_cpumask);
-		cpumask = &_cpumask;
+		cpumask_clear(&mask);
+		cpumask_set_cpu(cpu, &mask);
 
-		if (!cpumask)
-			return util;
-
+		cpumask = &mask;
 		first_cpu = cpu;
 	}
 
@@ -3322,12 +3312,12 @@ int mtk_effective_cpu_util_with_margin_from_turn_point(int util, int cpu)
 }
 
 /* modified from kmainline map_uitl_perf() */
-int mtk_effective_cpu_util_with_margin(int util, int cpu, void *data, int source)
+int mtk_effective_cpu_util_with_margin(int util, int cpu, struct cpumask *sg_cpumask, int source)
 {
 	if (turn_point_util[cpu])
 		util = mtk_effective_cpu_util_with_margin_from_turn_point(util, cpu);
 	else if (am_ctrl || grp_dvfs_ctrl_mode)
-		util = mtk_effective_cpu_util_with_margin_from_adap_grp(util, cpu, data, source);
+		util = mtk_effective_cpu_util_with_margin_from_adap_grp(util, cpu, sg_cpumask, source);
 	else
 		util = map_util_perf(util);
 
@@ -3417,7 +3407,7 @@ inline void mtk_map_util_freq_adap_grp(void *data, unsigned long util,
 			if (wall_time_stamp - last_wall_time_stamp[cpu] > am_wind_dura)
 				update_active_ratio_policy(cpumask);
 		}
-		update_adaptive_margin(policy);
+		update_adaptive_margin(cpumask);
 	}
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -3529,7 +3519,7 @@ void check_update_adaptive_margin(int cpu, struct cpufreq_policy *policy, struct
 		if (wall_time_stamp - last_wall_time_stamp[cpu] > am_wind_dura)
 			update_active_ratio_policy(cpumask);
 	}
-	update_adaptive_margin(policy);
+	update_adaptive_margin(cpumask);
 }
 unsigned long get_freq_margin(int cpu, unsigned long util)
 {
@@ -3681,7 +3671,10 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 
 	*capacity_result = util;
 
-	util = mtk_effective_cpu_util_with_margin(util, cpu, data, 3);
+	if (data)
+		util = mtk_effective_cpu_util_with_margin(util, cpu, cpumask, 3);
+	else
+		util = mtk_effective_cpu_util_with_margin(util, cpu, NULL, 3);
 
 	*next_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util, 0, 1024, false);
 	if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())

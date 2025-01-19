@@ -18,13 +18,13 @@ unsigned long mtk_cpu_util_cfs_boost(int cpu);
 unsigned long mtk_cpu_util_next(int cpu, struct task_struct *p, int dst_cpu, int boost);
 
 int mtk_effective_cpu_util_with_margin(int util, int cpu,
-		void *data, int source);
+		struct cpumask *sg_cpumask, int source);
 
 int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
 		unsigned long min, unsigned long max, int curr_task_uclamp);
 
 int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, int runnable_boost,
 		unsigned long *min, unsigned long *max,
-		void *data, unsigned long cpu_util_iowait, int curr_task_uclamp);
+		struct cpumask *sg_cpumask, unsigned long cpu_util_iowait, int curr_task_uclamp);
 
 #endif /* _CPU_UTIL_H */

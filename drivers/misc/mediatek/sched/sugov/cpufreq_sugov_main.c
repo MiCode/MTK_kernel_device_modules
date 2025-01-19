@@ -723,7 +723,7 @@ void (*sugov_grp_awr_update_cpu_tar_util_hook)(int cpu);
 EXPORT_SYMBOL(sugov_grp_awr_update_cpu_tar_util_hook);
 #endif
 
-static void sugov_get_util(struct sugov_cpu *sg_cpu, unsigned long boost,
+static void sugov_get_util(struct sugov_cpu *sg_cpu, struct cpumask *sg_cpumask, unsigned long boost,
 		unsigned long *min,unsigned long *max, int curr_task_uclamp)
 {
 	sg_cpu->bw_min = *min;
@@ -734,7 +734,7 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu, unsigned long boost,
 #endif
 
 	sg_cpu->util = mtk_effective_cpu_util_total(sg_cpu->cpu, NULL, -1, 1, min, max,
-			(void *)sg_cpu->sg_policy, boost, curr_task_uclamp);
+			sg_cpumask, boost, curr_task_uclamp);
 }
 
 /**
@@ -1019,7 +1019,7 @@ static void sugov_update_single_freq(struct update_util_data *hook, u64 time,
 		if (trace_sugov_ext_util_enabled()) /* only for chrome trace debug */
 			trace_sugov_ext_util(sg_cpu->cpu, capacity_result, 0, 1024, 0);
 	} else {
-		sugov_get_util(sg_cpu, boost, &min, &max, curr_task_uclamp);
+		sugov_get_util(sg_cpu, sg_policy->policy->related_cpus, boost, &min, &max, curr_task_uclamp);
 		umin = min;
 		umax = max;
 		if (gu_ctrl)
@@ -1161,7 +1161,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		unsigned long min, max;
 
 		boost = sugov_iowait_apply(j_sg_cpu, time, max_cap);
-		sugov_get_util(j_sg_cpu, boost, &min, &max, curr_task_uclamp);
+		sugov_get_util(j_sg_cpu, policy->related_cpus, boost, &min, &max, curr_task_uclamp);
 
 		if (_ignore_idle_ctrl) {
 			sugov_data_ptr = &per_cpu(rq_data, j)->sugov_data;

@@ -109,14 +109,14 @@ EXPORT_SYMBOL_GPL(mtk_cpu_util_next);
 
 int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, int runnable_boost,
 		unsigned long *min, unsigned long *max,
-		void *data, unsigned long cpu_util_iowait, int curr_task_uclamp)
+		struct cpumask *sg_cpumask, unsigned long cpu_util_iowait, int curr_task_uclamp)
 {
 	int cpu_util_cfs, cpu_util_eff, cpu_util_mgn, cpu_util_clp, cpu_util_tal;
 	struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
 	int source = -1;
 
 	if (trace_sched_cpu_util_enabled()) {
-		if (data) /* sugov */
+		if (sg_cpumask) /* sugov */
 			source = 0;
 		else if (p && !rt_task(p)) { /* fair */
 			if (min && max)
@@ -131,7 +131,7 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 		}
 	}
 
-	if (data) { /* sugov */
+	if (sg_cpumask) { /* sugov */
 		cpu_util_cfs = scx_cpuperf_target(cpu);
 
 		if (!scx_switched_all())
@@ -145,7 +145,7 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 	cpu_util_eff = effective_cpu_util(cpu, cpu_util_cfs, min, max);
 #endif
 
-	if (data) /* sugov */
+	if (sg_cpumask) /* sugov */
 		cpu_util_eff = max(cpu_util_eff, (int)cpu_util_iowait);
 
 	if (tsk && uclamp_is_used()) { /* normal rt */
@@ -159,7 +159,7 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 
 	/* modified from kmainline sugov_effective_cpu_perf() */
 	if (min && max) { /* sugov, normal max_util, rt max_util */
-		cpu_util_mgn = mtk_effective_cpu_util_with_margin(cpu_util_eff, cpu, data, source);
+		cpu_util_mgn = mtk_effective_cpu_util_with_margin(cpu_util_eff, cpu, sg_cpumask, source);
 		cpu_util_clp = mtk_effective_cpu_util_with_uclamp(cpu_util_mgn, cpu, *min, *max, curr_task_uclamp);
 		cpu_util_tal = cpu_util_clp;
 	} else { /* normal sum_util, rt sum_util */
