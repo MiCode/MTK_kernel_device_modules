@@ -28,8 +28,13 @@ static struct wakeup_source *wakeup_src;
 /* arch counter is 13M, mult is 161319385, shift is 21 */
 static inline int64_t arch_counter_to_ns(int64_t cyc)
 {
+#define ARCH_TIMER_FREQ_1GHZ (1000000000)
+#define ARCH_TIMER_MULT_1GHZ (2097152)
 #define ARCH_TIMER_MULT 161319385
 #define ARCH_TIMER_SHIFT 21
+
+	if (arch_timer_get_cntfrq() == ARCH_TIMER_FREQ_1GHZ)
+		return (cyc * ARCH_TIMER_MULT_1GHZ) >> ARCH_TIMER_SHIFT;
 
 	return (cyc * ARCH_TIMER_MULT) >> ARCH_TIMER_SHIFT;
 }
