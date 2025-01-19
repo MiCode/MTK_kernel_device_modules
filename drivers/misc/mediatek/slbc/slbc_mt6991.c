@@ -1875,17 +1875,17 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		temp = val_2;
 		test_gid_d.dma_size = val_3;
 		test_gid_d.sign = SLC_DATA_MAGIC;
-		slbc_gid_request(val_1, &temp, &test_gid_d);
+		slbc_gid_request((enum slc_ach_uid)val_1, &temp, &test_gid_d);
 	} else if (!strcmp(cmd, "slbc_gid_release")) {
-		slbc_gid_release(val_1, val_2);
+		slbc_gid_release((enum slc_ach_uid)val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_validate")) {
-		slbc_validate(val_1, (int)val_2);
+		slbc_validate((enum slc_ach_uid)val_1, (int)val_2);
 	} else if (!strcmp(cmd, "slbc_invalidate")) {
-		slbc_invalidate(val_1, (int)val_2);
+		slbc_invalidate((enum slc_ach_uid)val_1, (int)val_2);
 	} else if (!strcmp(cmd, "slbc_read_invalidate")) {
-		slbc_read_invalidate(val_1, val_2, val_3);
+		slbc_read_invalidate((enum slc_ach_uid)val_1, val_2, val_3);
 	} else if (!strcmp(cmd, "slbc_ceil")) {
-		slbc_ceil(val_1, val_2);
+		slbc_ceil((enum slc_ach_uid)val_1, val_2);
 	} else if (!strcmp(cmd, "slbc_total_ceil")) {
 		slbc_total_ceil(val_1);
 	} else if (!strcmp(cmd, "slbc_window")) {
