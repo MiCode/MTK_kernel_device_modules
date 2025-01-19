@@ -384,7 +384,6 @@ struct ssheap_buf_info *ssheap_alloc_non_contig(u32 req_size, u32 prefer_align,
 	struct ssheap_buf_info *info;
 	unsigned long allocated_size = 0;
 	unsigned long elems = 0;
-	unsigned long attrs = 0;
 	void *cpu_addr = NULL;
 	struct ssheap_block *block, *temp;
 	unsigned long retry_count = 0;
@@ -443,7 +442,6 @@ struct ssheap_buf_info *ssheap_alloc_non_contig(u32 req_size, u32 prefer_align,
 		goto out_err;
 	}
 
-	attrs = DMA_ATTR_NO_KERNEL_MAPPING;
 	info->mem_type = mem_type;
 
 	while (allocated_size < aligned_req_size) {
@@ -513,7 +511,6 @@ static int create_pmm_msg(struct ssheap_buf_info *info)
 	unsigned int order = get_order(PAGE_SIZE);
 	struct page *page;
 	void *kaddr;
-	phys_addr_t paddr;
 	int i;
 	struct scatterlist *sg;
 	uint64_t dma_addr;
@@ -525,7 +522,6 @@ static int create_pmm_msg(struct ssheap_buf_info *info)
 
 	info->pmm_msg_page = page;
 	kaddr = page_address(page);
-	paddr = page_to_phys(page);
 	pmm_msg_entry = (uint64_t *)kaddr;
 
 	for_each_sg(info->table->sgl, sg, info->table->nents, i) {
@@ -572,7 +568,6 @@ unsigned long mtee_unassign_buffer(struct ssheap_buf_info *info,
 {
 	struct arm_smccc_res smc_res;
 	phys_addr_t paddr;
-	uint64_t pmm_attr;
 	uint32_t count;
 
 	if (!info || !info->pmm_msg_page)
@@ -580,7 +575,6 @@ unsigned long mtee_unassign_buffer(struct ssheap_buf_info *info,
 
 	paddr = page_to_phys(info->pmm_msg_page);
 	count = info->elems;
-	pmm_attr = PGLIST_SET_ATTR(paddr, mem_type);
 	// pr_debug("pmm_msg_page paddr=%pa\n", &paddr);
 	arm_smccc_smc(HYP_PMM_UNASSIGN_BUFFER, lower_32_bits(paddr),
 		      upper_32_bits(paddr), count, 0, 0, 0, 0, &smc_res);
