@@ -102,6 +102,7 @@ static int is_guest_dsp_task[AUDIO_TASK_DAI_NUM] = {
 #endif
 };
 
+#ifdef DEBUG_VERBOSE
 static unsigned long long get_cntpct(void)
 {
 	unsigned long long cval;
@@ -109,6 +110,7 @@ static unsigned long long get_cntpct(void)
 	asm volatile("mrs %0, cntpct_el0" : "=r" (cval));
 	return cval;
 }
+#endif
 
 void mtk_dsp_register_event_cb(adsp_evt_cb_func cb, void *data)
 {
@@ -334,7 +336,6 @@ snd_pcm_uframes_t guest_get_pcm_pointer(int dsp_scene, int *xrun)
 {
 	int id = 0;
 	struct mtk_base_dsp *dsp = get_dsp_base();
-	struct mtk_base_dsp_mem *dsp_mem = NULL;
 	snd_pcm_uframes_t ptr = 0;
 
 	if (!dsp) {
@@ -350,7 +351,6 @@ snd_pcm_uframes_t guest_get_pcm_pointer(int dsp_scene, int *xrun)
 		pr_info("%s(), is_adsp_ready send false\n", __func__);
 		return 0;
 	}
-	dsp_mem = &dsp->dsp_mem[id];
 
 	if (!dsp->dsp_mem[id].substream) {
 		pr_info_ratelimited("%s substream NULL id[%d]\n", __func__, id);
@@ -391,7 +391,9 @@ int32_t guest_pcm_copy_dl(int dsp_scene, uint64_t phy_addr, uint64_t copy_size)
 	struct RingBuf *ringbuf;
 	struct ringbuf_bridge *buf_bridge;
 	const char *buf = phys_to_virt(phy_addr);
+#ifdef DEBUG_VERBOSE
 	unsigned long long cntpct_b, cntpct_e;
+#endif
 
 	if (!dsp) {
 		pr_info("%s dsp NULL", __func__);
@@ -459,13 +461,16 @@ int32_t guest_pcm_copy_dl(int dsp_scene, uint64_t phy_addr, uint64_t copy_size)
 		ack_type = AUDIO_IPI_MSG_NEED_ACK;
 	else
 		ack_type = AUDIO_IPI_MSG_BYPASS_ACK;
+#ifdef DEBUG_VERBOSE
 	cntpct_b = get_cntpct();
+#endif
 	ret = mtk_scp_ipi_send(
 			get_dspscene_by_dspdaiid(id), AUDIO_IPI_PAYLOAD,
 			ack_type, AUDIO_DSP_TASK_DLCOPY,
 			sizeof(dsp_mem->msg_atod_share_buf.phy_addr),
 			0,
 			(char *)&dsp_mem->msg_atod_share_buf.phy_addr);
+#ifdef DEBUG_VERBOSE
 	cntpct_e = get_cntpct();
 	/*
 	 * trace_printk("[VADSP]%s(), taskid=%d, phy_addr:0x%llx,
@@ -473,7 +478,7 @@ int32_t guest_pcm_copy_dl(int dsp_scene, uint64_t phy_addr, uint64_t copy_size)
 	 * __func__, task_id, phy_addr, copy_size, cntpct_b,
 	 * cntpct_e - cntpct_b);
 	 */
-
+#endif
 	return ret;
 }
 EXPORT_SYMBOL(guest_pcm_copy_dl);
@@ -488,9 +493,10 @@ int32_t guest_pcm_copy_ul(int dsp_scene, uint64_t phy_addr, uint64_t copy_size)
 	unsigned long flags = 0;
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
 	struct RingBuf *ringbuf;
-	struct ringbuf_bridge *buf_bridge;
 	char *buf = phys_to_virt(phy_addr);
+#ifdef DEBUG_VERBOSE
 	unsigned long long cntpct_b, cntpct_e;
+#endif
 
 	if (!dsp) {
 		pr_info("%s dsp NULL", __func__);
@@ -506,11 +512,7 @@ int32_t guest_pcm_copy_ul(int dsp_scene, uint64_t phy_addr, uint64_t copy_size)
 		return 0;
 	}
 	dsp_mem = &dsp->dsp_mem[id];
-
 	ringbuf = &(dsp_mem->ring_buf);
-	buf_bridge =
-		&(dsp_mem->adsp_buf.aud_buffer.buf_bridge);
-
 
 #ifdef DEBUG_VERBOSE
 	dump_rbuf_s(__func__, &dsp_mem->ring_buf);
@@ -543,26 +545,29 @@ int32_t guest_pcm_copy_ul(int dsp_scene, uint64_t phy_addr, uint64_t copy_size)
 	memcpy((void *)ipi_audio_buf, (void *)&dsp_mem->adsp_buf,
 		sizeof(struct audio_hw_buffer));
 
+#ifdef DEBUG_VERBOSE
 	cntpct_b = get_cntpct();
+#endif
 	ret = mtk_scp_ipi_send(
 			get_dspscene_by_dspdaiid(id), AUDIO_IPI_PAYLOAD,
 			AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_ULCOPY,
 			sizeof(dsp_mem->msg_atod_share_buf.phy_addr),
 			0,
 			(char *)&dsp_mem->msg_atod_share_buf.phy_addr);
-	cntpct_e = get_cntpct();
 #ifdef DEBUG_VERBOSE
+	cntpct_e = get_cntpct();
 	dump_rbuf_bridge_s("1 mtk_dsp_ul_handler",
 				&dsp_mem->adsp_buf.aud_buffer.buf_bridge);
 	dump_rbuf_s("1 mtk_dsp_ul_handler",
 				&dsp_mem->ring_buf);
-#endif
+
 	/*
 	 * trace_printk("[VADSP]%s(), taskid=%d, phy_addr:0x%llx,
 	 * copy_size:%llu ipi cntpct_b:%llu, cntpct_diff:%llu\n",
 	 * __func__, task_id, phy_addr, copy_size,
 	 * cntpct_b, cntpct_e - cntpct_b);
 	 */
+#endif
 	return ret;
 }
 EXPORT_SYMBOL(guest_pcm_copy_ul);
