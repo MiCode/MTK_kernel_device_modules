@@ -1597,11 +1597,6 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 		ret = rtc_update_bits(rtc, TOP2_ELR1, TOP2_ELR1_MASK, 1);
 		if (ret < 0)
 			dev_info(&pdev->dev, "check mt6685 TOP2_ELR1\n");
-	} else if (rtc->data->chip_version == MT6687_SERIES) {
-		/*Normal sequence power off when PON falling*/
-		ret = rtc_update_bits(rtc, MT6687_TOP2_ELR1, TOP2_ELR1_MASK, 1);
-		if (ret < 0)
-			dev_info(&pdev->dev, "check mt6687 TOP2_ELR1\n");
 	}
 
 	if (rtc->cali_is_supported)
