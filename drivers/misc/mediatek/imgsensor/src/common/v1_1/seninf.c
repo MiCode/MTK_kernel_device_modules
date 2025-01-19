@@ -191,7 +191,9 @@ static MINT32 seninf_open(struct inode *pInode, struct file *pFile)
 	struct SENINF *pseninf = &gseninf;
 
 #ifdef SENINF_USE_RPM
-	if (IS_MT6855(pseninf->clk.g_platform_id) || IS_MT6781(pseninf->clk.g_platform_id) )
+	if (IS_MT6855(pseninf->clk.g_platform_id) ||
+		IS_MT6781(pseninf->clk.g_platform_id) ||
+		IS_MT6877(pseninf->clk.g_platform_id))
 		seninf_pm_runtime_get_sync(pseninf);
 	else
 		pm_runtime_get_sync(pseninf->dev);
@@ -229,7 +231,9 @@ static MINT32 seninf_release(struct inode *pInode, struct file *pFile)
 	mutex_unlock(&pseninf->seninf_mutex);
 
 #ifdef SENINF_USE_RPM
-	if (IS_MT6855(pseninf->clk.g_platform_id) || IS_MT6781(pseninf->clk.g_platform_id) )
+	if (IS_MT6855(pseninf->clk.g_platform_id) ||
+		IS_MT6781(pseninf->clk.g_platform_id) ||
+		IS_MT6877(pseninf->clk.g_platform_id))
 		seninf_pm_runtime_put_sync(pseninf);
 	else
 		pm_runtime_put_sync(pseninf->dev);
@@ -601,7 +605,9 @@ static MINT32 seninf_probe(struct platform_device *pDev)
 	PK_DBG("get seninf platform id: %x\n", pseninf->clk.g_platform_id);
 
 #if SENINF_USE_RPM && SENINF_CLK_CONTROL
-	if (IS_MT6855(pseninf->clk.g_platform_id) || IS_MT6781(pseninf->clk.g_platform_id) )
+	if (IS_MT6855(pseninf->clk.g_platform_id) ||
+		IS_MT6781(pseninf->clk.g_platform_id) ||
+		IS_MT6877(pseninf->clk.g_platform_id))
 		seninf_pm_runtime_enable(pseninf);
 	else
 		pm_runtime_enable(pseninf->dev);
@@ -656,7 +662,9 @@ static MINT32 seninf_remove(struct platform_device *pDev)
 	PK_DBG("- E.");
 
 #if SENINF_USE_RPM && SENINF_CLK_CONTROL
-	if (IS_MT6855(pseninf->clk.g_platform_id) || IS_MT6781(pseninf->clk.g_platform_id) )
+	if (IS_MT6855(pseninf->clk.g_platform_id) ||
+		IS_MT6781(pseninf->clk.g_platform_id) ||
+		IS_MT6877(pseninf->clk.g_platform_id))
 		seninf_pm_runtime_disable(pseninf);
 #endif
 
