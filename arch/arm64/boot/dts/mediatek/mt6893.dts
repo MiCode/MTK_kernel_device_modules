@@ -719,6 +719,7 @@
 	mtk_ctd: mtk_ctd {
 		compatible = "mediatek,mtk_ctd";
 		nr-port = <1>;
+		chg-name-port0 = "primary_chg";
 		bc12-sel-port0 = <MTK_CTD_BY_SUBPMIC>;
 		bc12-psy-port0 = <&mt6360_chg>;
 	};
