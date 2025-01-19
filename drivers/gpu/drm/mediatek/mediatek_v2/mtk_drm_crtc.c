@@ -21981,16 +21981,25 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len)
 {
 	int len = 0;
+	int mode_idx = 0;
 
 	struct drm_crtc *crtc = priv->crtc[0];
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_crtc_state *mtk_state;
 	struct mtk_ddp_comp *comp;
+	struct drm_display_mode *adjust_mode;
 	char *panel_name;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (unlikely(!comp))
 		DDPPR_ERR("%s:invalid output comp\n", __func__);
+
+	if (!mtk_crtc || !mtk_crtc->avail_modes) {
+		DDPPR_ERR("%s:mtk_crtc or avail_modes is NULL\n", __func__);
+		return 0;
+	}
+
+	mode_idx = mtk_crtc->mode_idx;
+	adjust_mode = &(mtk_crtc->avail_modes[mode_idx]);
 
 	mtk_ddp_comp_io_cmd(comp, NULL, GET_PANEL_NAME,
 				    &panel_name);
@@ -21998,23 +22007,18 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 	len += scnprintf(stringbuf + len, buf_len - len,
 			 "==========    Primary Display Info    ==========\n");
 
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-	mtk_state = to_mtk_crtc_state(crtc->state);
-
 	len += scnprintf(stringbuf + len, buf_len - len,
 			 "LCM Driver=[%s] Resolution=%ux%u, Connected:%s\n",
-			  panel_name, crtc->state->adjusted_mode.hdisplay,
-			  crtc->state->adjusted_mode.vdisplay,
+			  panel_name, adjust_mode->hdisplay,
+			  adjust_mode->vdisplay,
 			  (mtk_drm_lcm_is_connect(mtk_crtc) ? "Y" : "N"));
 
 	len += scnprintf(stringbuf + len, buf_len - len,
-			 "FPS = %d, display mode idx = %llu, %s mode %d\n",
-			 drm_mode_vrefresh(&crtc->state->adjusted_mode),
-			 mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
+			 "FPS = %d, display mode idx = %d, %s mode %d\n",
+			 drm_mode_vrefresh(adjust_mode),
+			 mode_idx,
 			 (mtk_crtc_is_frame_trigger_mode(crtc) ?
 			  "cmd" : "vdo"), hrt_lp_switch_get());
-
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	len += scnprintf(stringbuf + len, buf_len - len,
 		"================================================\n\n");
