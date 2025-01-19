@@ -36,7 +36,11 @@
 
 #ifdef FW_UPDATE
 #include "OIS_DW9781D_FW_v0C.F0_d0601_set_Word_Format.h"
+#include "OIS_DW9781D_FW_v8C.A8_d0220_set_Word_Format.h"
 #endif
+
+#define FW_VERSION_SZ 2
+const unsigned int FW_VERSION[FW_VERSION_SZ] = {0x0601, 0x0220};
 
 #define DW9781D_CTRL_DELAY_US			5000
 
@@ -176,6 +180,7 @@ static int32_t ois_hall_warn;
 static int32_t ois_debug_en;
 static int32_t ois_hfmgr_test;
 static int32_t ois_gyro_offset_cali;
+static int32_t ois_fw_0601_update;
 static u16 dw_ois_mode;
 
 static struct hf_manager_event hf_mgr_event;
@@ -416,7 +421,10 @@ void GenerateFirmwareContexts(void)
 	g_firmwareContext.version = 0x0624;
 	g_firmwareContext.size = 10240; /* size: word */
 	g_firmwareContext.driverIc = 0x9781;
-	g_firmwareContext.fwContentPtr = DW9781_Flash_Buf;
+	if (ois_fw_0601_update == 1)
+		g_firmwareContext.fwContentPtr = DW9781_Flash_Buf_0601;
+	else
+		g_firmwareContext.fwContentPtr = DW9781_Flash_Buf_0220;
 }
 
 unsigned short buf_temp[10240];
@@ -476,6 +484,17 @@ static int FlashDownload_Seq(void)
 }
 #endif
 
+static bool is_fw_version_support_ois(u16 fwdate)
+{
+	int i = 0;
+
+	for (i = 0; i < FW_VERSION_SZ; i++) {
+		if (fwdate == FW_VERSION[i])
+			return true;
+	}
+	return false;
+}
+
 static int dw9781d_init(struct dw9781d_device *dw9781d)
 {
 	// Initial parameters
@@ -521,7 +540,7 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 #ifdef FW_UPDATE
 	if (ois_fw_update > 0) {
 		// firmware update
-		if (i2cret_date != 0x0601) {
+		if (i2cret_date != (ois_fw_0601_update == 1 ? 0x0601 : 0x0220)) {
 			// Update firmware
 			if (FlashDownload_Seq() < 0) {
 				LOG_INF("FlashDownload_Seq fail!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -599,7 +618,8 @@ static int dw9781d_init(struct dw9781d_device *dw9781d)
 	ret = ois_i2c_rd_u16(client, DW9781D_REG_GYRO_INIT, &i2c_readvalue);
 	LOG_INF("after open gyro data reading, REG_GYRO_INIT = 0x%x\n", i2c_readvalue);
 
-	if (i2cret_date != 0x0601) {
+
+	if (is_fw_version_support_ois(i2cret_date) == false) {
 		LOG_INF("The version doesn't match, so the OIS is locked");
 		fixmode(0, 0);
 	} else {
@@ -1210,13 +1230,14 @@ static ssize_t ois_debug_store(struct device *dev,
 	ois_debug_en = (val >> 4) & 0x1;
 	ois_hfmgr_test = (val >> 5) & 0x1;
 	ois_gyro_offset_cali = (val >> 6) & 0x1;
+	ois_fw_0601_update = (val >> 8) & 0x1;
 
 	if (ois_hall_check)
 		ois_hall_warn = 1;
 
-	LOG_INF("gyroOffset(%d) hfmgr(%d) dbg(%d) hall(%d) fw(%d) log(%d), data(%d), buf:%s\n",
-		ois_gyro_offset_cali, ois_hfmgr_test, ois_debug_en, ois_hall_check, ois_fw_update,
-		ois_log_dbg_en, ois_data_dbg_en, buf);
+	LOG_INF("fw0601(%d) gyroOffset(%d) hfmgr(%d) dbg(%d) hall(%d) fw(%d) log(%d), data(%d), buf:%s\n",
+		ois_fw_0601_update, ois_gyro_offset_cali, ois_hfmgr_test, ois_debug_en,
+		ois_hall_check, ois_fw_update, ois_log_dbg_en, ois_data_dbg_en, buf);
 
 	return size;
 }
