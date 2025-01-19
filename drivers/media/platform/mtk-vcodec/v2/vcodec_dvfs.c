@@ -24,6 +24,14 @@
 #endif
 #include "pf_ctrl.h"
 #include "slbc_sdk.h"
+#include <sched/sched.h>
+#include "common.h"
+#include "cpu_util.h"
+
+int get_target_margin_low(int cpu);
+
+int codec_margin_change;
+int codec_runnable_boost_disable;
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -492,13 +500,21 @@ static bool mtk_vcodec_has_active_inst(struct mtk_vcodec_dev *dev, int codec_typ
 {
 	struct list_head *item = 0;
 	struct vcodec_inst *inst;
+	struct list_head *dvfs_inst;
 
 	if (codec_type == MTK_INST_DECODER) {
-		if (!list_empty(&dev->vdec_dvfs_inst)){
-			list_for_each(item, &dev->vdec_dvfs_inst) {
+		dvfs_inst = &dev->vdec_dvfs_inst;
+	} else if(codec_type == MTK_INST_ENCODER) {
+		dvfs_inst = &dev->venc_dvfs_inst;
+	}
+
+	{
+		if (!list_empty(dvfs_inst)){
+			list_for_each(item, dvfs_inst) {
 				if(IS_ERR_OR_NULL(item)) {
-					mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
-					INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
+					mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][%s] find null in item in list!\n",
+						__func__, (codec_type == MTK_INST_DECODER)?"VDEC":"VENC");
+					INIT_LIST_HEAD(dvfs_inst);
 					break;
 				}
 				inst = list_entry(item, struct vcodec_inst, list);
@@ -506,9 +522,41 @@ static bool mtk_vcodec_has_active_inst(struct mtk_vcodec_dev *dev, int codec_typ
 					return true;
 			}
 		}
-	} else if(codec_type == MTK_INST_ENCODER) {
-		return !list_empty(&dev->venc_dvfs_inst);
 	}
+
+	return false;
+}
+
+
+
+static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_type, unsigned int op_rate)
+{
+	struct list_head *item = 0;
+	struct vcodec_inst *inst;
+	struct list_head *dvfs_inst;
+	int count = 0;
+
+	if (codec_type == MTK_INST_DECODER)
+		dvfs_inst = &dev->vdec_dvfs_inst;
+	else if(codec_type == MTK_INST_ENCODER)
+		dvfs_inst = &dev->venc_dvfs_inst;
+
+	if (!list_empty(dvfs_inst)){
+		list_for_each(item, dvfs_inst) {
+			if(IS_ERR_OR_NULL(item)) {
+				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][%s] find null in item in list!\n",
+					__func__, (codec_type == MTK_INST_DECODER)?"VDEC":"VENC");
+				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
+				break;
+			}
+			count++;
+			inst = list_entry(item, struct vcodec_inst, list);
+
+		}
+	}
+
+	if(count == 1 && inst != NULL && inst->op_rate <= op_rate)
+		return true;
 
 	return false;
 }
@@ -791,3 +839,49 @@ void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
 		mtk_v4l2_debug(0, "%s [VDVFS] slc wce %s\n", __func__, off?"disable":"enable");
 	}
 }
+
+void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
+{
+	int margin = get_target_margin_low(0);
+
+	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
+		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER)) {
+		set_turn_point_freq(0, 1000);
+		set_target_margin(0, 20);
+		set_target_margin_low(0, 0);
+		codec_margin_change++;
+	} else {
+		if (codec_margin_change > 0) {
+			set_turn_point_freq(0, 0);
+			unset_target_margin(0);
+			unset_target_margin_low(0);
+			codec_margin_change--;
+		}
+	}
+
+	mtk_v4l2_debug(0, "%s [VDVFS] cpu margin change %d to %d, count: %d\n", __func__,
+		margin, get_target_margin_low(0), codec_margin_change);
+
+}
+
+void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
+{
+	int boost = is_runnable_boost_enable();
+
+	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
+		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER)) {
+		set_runnable_boost_enable(0);
+		codec_runnable_boost_disable++;
+	} else {
+		if (codec_runnable_boost_disable > 0) {
+			unset_runnable_boost_enable();
+			codec_runnable_boost_disable--;
+		}
+	}
+
+	mtk_v4l2_debug(0, "%s [VDVFS] cpu runnable boost change %d to %d, count: %d\n", __func__,
+		boost, is_runnable_boost_enable(), codec_runnable_boost_disable);
+
+
+}
+

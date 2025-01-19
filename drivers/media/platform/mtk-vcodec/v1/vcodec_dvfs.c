@@ -740,3 +740,14 @@ void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
 {
 
 }
+
+void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
+{
+
+}
+
+void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
+{
+
+}
+

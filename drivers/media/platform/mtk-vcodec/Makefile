@@ -77,4 +77,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas
 ccflags-y += -I$(DEVICE_MODULES_PATH)/include/soc/mediatek
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_lite/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/util
+ccflags-y += -I$(srctree)/kernel/
 #endif
