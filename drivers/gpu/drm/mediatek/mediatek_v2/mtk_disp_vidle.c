@@ -749,6 +749,10 @@ void mtk_vidle_channel_bw_set(const u32 bw_in_mb, const u32 idx)
 		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
 
 }
+u8 mtk_vidle_check_pll(void)
+{
+	return disp_dpc_driver.dpc_check_pll ? disp_dpc_driver.dpc_check_pll() : 0;
+}
 
 void mtk_vidle_config_ff(bool en)
 {

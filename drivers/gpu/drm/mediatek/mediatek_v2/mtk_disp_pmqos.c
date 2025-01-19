@@ -1422,3 +1422,10 @@ unsigned long mtk_drm_get_mmclk(struct drm_crtc *crtc, const char *caller)
 	return freq;
 }
 
+void mtk_drm_check_mmclk(void)
+{
+	u8 level = mtk_vidle_check_pll();
+
+	if (level)
+		vdisp_func.set_clk(g_freq_steps[level]);
+}

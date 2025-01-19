@@ -328,6 +328,7 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 static bool dpc_is_power_on(void);
 static bool mminfra_is_power_on(void);
 static u8 bw_to_level(const u32 total_bw);
+static void dpc_analysis(void);
 
 struct mtk_dpc {
 	struct platform_device *pdev;

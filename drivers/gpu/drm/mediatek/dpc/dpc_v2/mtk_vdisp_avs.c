@@ -276,6 +276,42 @@ release_vcp:
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
 }
 
+void mtk_vdisp_set_clk(unsigned long rate)
+{
+	int ret = 0;
+	ktime_t start_time, end_time;
+	static unsigned long last_rate;
+
+	if (rate == last_rate)
+		return;
+
+	if (!g_mmdvfs_clk) {
+		VDISPDBG("g_mmdvfs_clk uninitialized, skip");
+		return;
+	}
+
+	start_time = ktime_get();
+	if (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP)) {
+		VDISPDBG("request mmdvfs disp fail");
+		return;
+	}
+
+	if (!vcp_is_alive) {
+		VDISPDBG("vcp is not alive, skip");
+		goto release_vcp;
+	}
+
+	ret = clk_set_rate(g_mmdvfs_clk, rate);
+	if (ret)
+		VDISPDBG("set rate(%lu) failed ret(%d)", rate, ret);
+
+release_vcp:
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
+
+	end_time = ktime_get();
+	VDISPDBG("execution %lld us", ktime_us_delta(end_time, start_time));
+}
+
 int mtk_vdisp_avs_dbg_opt(const char *opt)
 {
 	int ret = 0;

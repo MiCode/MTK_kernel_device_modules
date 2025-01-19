@@ -59,6 +59,7 @@ void mtk_vidle_set_all_flag(unsigned int en, unsigned int stop);
 void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop);
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb);
 void mtk_vidle_srt_bw_set(const u32 bw_in_mb);
+u8 mtk_vidle_check_pll(void);
 void mtk_vidle_dvfs_set(const u8 level);
 void mtk_vidle_dvfs_bw_set(const u32 bw_in_mb);
 void mtk_vidle_dvfs_trigger(const char *caller);

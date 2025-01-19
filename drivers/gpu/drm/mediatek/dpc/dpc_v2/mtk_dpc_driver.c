@@ -75,6 +75,8 @@ static struct mtk_dpc *g_priv;
 static void __iomem *mmpc_emi_req;
 static void __iomem *mmpc_ddrsrc_req;
 static void __iomem *spm_ddr_emi_req;
+static void __iomem *vdisp_dvfsrc_sw_req4;
+static void __iomem *clk_disp_sel;
 
 static const char trace_buf_mml_on[] = "C|-65536|MML1_power|1\n";
 static const char trace_buf_mml_off[] = "C|-65536|MML1_power|0\n";
@@ -754,10 +756,41 @@ static void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 	       dpc_base + DISP_REG_DPC_DISP_SW_SRT_BW);
 }
 
+u8 dpc_check_pll(void)
+{
+	u8 ret = 0, max_level;
+	static const u8 pll_mux[] = {2, 3, 5, 7, 8};	/* from lowest to highest */
+
+	if (!clk_disp_sel)
+		return 0;
+
+	mutex_lock(&g_priv->dvfs_bw.lock);
+	max_level = dpc_max_dvfs_level();
+	mutex_unlock(&g_priv->dvfs_bw.lock);
+
+	if (pll_mux[max_level] > ((readl(clk_disp_sel) & 0x0f000000) >> 24)) {
+		DPCDUMP("mismatch, level(%u) disp_sel(%#x) RC_STA(%#x) SW_REQ4(%#x)\n", max_level,
+			readl(clk_disp_sel),
+			readl(g_priv->vdisp_dvfsrc),
+			vdisp_dvfsrc_sw_req4 ? readl(vdisp_dvfsrc_sw_req4) : 0);
+		ret = max_level;
+	}
+
+	return ret;
+}
+
 static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 {
 	int ret = 0;
-	u32 value = 0;
+	u32 value = 0, swreq = 0;
+
+	if (vdisp_dvfsrc_sw_req4) {
+		swreq = readl(vdisp_dvfsrc_sw_req4);
+		if (swreq & 0x70) {
+			DPCFUNC("clear SW_REQ4(%#x) before vote level(%u)", swreq, level);
+			writel(swreq & ~0x70, vdisp_dvfsrc_sw_req4);
+		}
+	}
 
 	/* polling vdisp dvfsrc idle */
 	if (g_priv->vdisp_dvfsrc) {
@@ -767,6 +800,12 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 			DPCERR("subsys(%d) wait vdisp dvfsrc idle timeout", subsys);
 	}
 	writel(level, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
+
+	if (debug_dvfs)
+		DPCFUNC("level(%u) disp_sel(%#x) RC_STA(%#010x) SW_REQ4(%#x)\n", level,
+			clk_disp_sel ? readl(clk_disp_sel) : 0,
+			readl(g_priv->vdisp_dvfsrc),
+			vdisp_dvfsrc_sw_req4 ? ((readl(vdisp_dvfsrc_sw_req4) & 0x70) >> 4) : 0);
 
 	return ret;
 }
@@ -1454,6 +1493,8 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		mmpc_emi_req = ioremap(0x31b5103c, 0x4);
 		mmpc_ddrsrc_req = ioremap(0x31b5101c, 0x4);
 		spm_ddr_emi_req = ioremap(0x1c00488c, 0x4);
+		vdisp_dvfsrc_sw_req4 = ioremap(0x31a9101c, 0x4);
+		clk_disp_sel = ioremap(0x1000c050, 0x4);
 	}
 
 	return IS_ERR_OR_NULL(dpc_base);
@@ -1719,11 +1760,13 @@ static void dpc_analysis(void)
 		readl(dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_MML0].cfg));
 
 	written += scnprintf(msg + written, 512 - written,
-		"vdisp[cfg val](%#04x %#04x)(%#04x %#04x) ",
+		"vdisp[cfg val](%#04x %#04x)(%#04x %#04x) swreq4(%#x) disp_sel(%#x) ",
 		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG),
 		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
-		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
+		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL),
+		vdisp_dvfsrc_sw_req4 ? (readl(vdisp_dvfsrc_sw_req4) & 0x70) >> 4 : 0,
+		clk_disp_sel ? (readl(clk_disp_sel) & 0x0f000000) >> 24 : 0);
 
 	written += scnprintf(msg + written, 512 - written,
 		"hrt[cfg val](%#010x %#06x)(%#010x %#06x) ",
@@ -1764,7 +1807,6 @@ static void dpc_analysis(void)
 	dpc_pm_ctrl(false);
 }
 
-#if IS_ENABLED(CONFIG_DEBUG_FS)
 static void dpc_dump(void)
 {
 	u32 i = 0;
@@ -1786,7 +1828,6 @@ static void dpc_dump(void)
 	}
 	dpc_pm_ctrl(false);
 }
-#endif
 
 static int dpc_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
@@ -1864,7 +1905,6 @@ static struct smi_user_pwr_ctrl dpc_smi_pwr_funcs = {
 	 .smi_user_put = dpc_smi_pwr_put,
 };
 
-#if IS_ENABLED(CONFIG_DEBUG_FS)
 static void process_dbg_opt(const char *opt)
 {
 	int ret = 0;
@@ -1892,6 +1932,12 @@ static void process_dbg_opt(const char *opt)
 			writel(0xffffffff, g_priv->voter_clr_va);
 		else
 			writel(0xffffffff, g_priv->voter_set_va);
+	} else if (strncmp(opt, "swreq:", 6) == 0) {
+		ret = sscanf(opt, "swreq:%u\n", &v1);
+		if (ret != 1)
+			goto err;
+		if (vdisp_dvfsrc_sw_req4)
+			writel(v1 << 4, vdisp_dvfsrc_sw_req4);
 	}
 
 	if (!dpc_is_power_on()) {
@@ -2019,6 +2065,8 @@ static void process_dbg_opt(const char *opt)
 err:
 	DPCERR();
 }
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 static ssize_t fs_write(struct file *file, const char __user *ubuf, size_t count, loff_t *ppos)
 {
 	const u32 debug_bufmax = 512 - 1;
@@ -2064,6 +2112,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_vidle_power_release_by_gce = dpc_vidle_power_release_by_gce,
 	.dpc_hrt_bw_set = dpc_hrt_bw_set,
 	.dpc_srt_bw_set = dpc_srt_bw_set,
+	.dpc_check_pll = dpc_check_pll,
 	.dpc_dvfs_set = dpc_dvfs_set,
 	.dpc_dvfs_trigger = dpc_dvfs_trigger,
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx,
