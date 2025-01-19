@@ -19803,26 +19803,44 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		}
 
 		dirty_roi_num = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_NUM];
-		/* skip if roi num euals 0 */
-		if (dirty_roi_num == 0 && plane->state->visible) {
-			DDPDBG("layer %d dirty roi num is 0\n", i);
-			disable_layer++;
-			continue;
-		}
 
-		if (dirty_roi_num) {
-			/* 1. compute picture dirty roi*/
-			layer_roi.x = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X];
-			layer_roi.y = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y];
-			layer_roi.width = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W];
-			layer_roi.height = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H];
-			mtk_rect_join(&layer_roi, &layer_total_roi,
-				&layer_total_roi);
+		/* set rpo layer as full layer dirty*/
+		if (plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) {
+			dirty_roi_num = 1;
 
-			/* 2. convert picture dirty to ovl dirty */
-			if (!mtk_rect_is_empty(&layer_total_roi))
-				_convert_picture_to_ovl_dirty(&src_roi,
-					&dst_roi, &layer_total_roi, &layer_total_roi);
+			layer_total_roi.x = dst_roi.x;
+			layer_total_roi.y = dst_roi.y;
+			layer_total_roi.width = dst_roi.width;
+			layer_total_roi.height = dst_roi.height;
+
+			DDPINFO("rpo plane[%d]en:(%d) roi_num:(%llu) roi:(%llu,%llu,%llu,%llu)\n",
+			i, plane->state->visible, dirty_roi_num,
+			layer_total_roi.x,
+			layer_total_roi.y,
+			layer_total_roi.width,
+			layer_total_roi.height);
+		} else {
+			/* skip if roi num euals 0 */
+			if (dirty_roi_num == 0 && plane->state->visible) {
+				DDPDBG("layer %d dirty roi num is 0\n", i);
+				disable_layer++;
+				continue;
+			}
+
+			if (dirty_roi_num) {
+				/* 1. compute picture dirty roi*/
+				layer_roi.x = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_X];
+				layer_roi.y = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_Y];
+				layer_roi.width = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_W];
+				layer_roi.height = plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H];
+				mtk_rect_join(&layer_roi, &layer_total_roi,
+					&layer_total_roi);
+
+				/* 2. convert picture dirty to ovl dirty */
+				if (!mtk_rect_is_empty(&layer_total_roi))
+					_convert_picture_to_ovl_dirty(&src_roi,
+						&dst_roi, &layer_total_roi, &layer_total_roi);
+			}
 		}
 
 		/* 3. deal with other cases:layer disable, dim layer*/
@@ -19995,11 +20013,13 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	if (!(mtk_crtc->enabled))
 		DDPDBG("Sleep State set partial update enable --crtc not ebable\n");
 
+#ifdef IF_ZERO
 	/* disable partial update if rpo lye is exist */
 	if (state->lye_state.rpo_lye && partial_enable) {
 		DDPDBG("skip because rpo lye is exist\n");
 		partial_enable = 0;
 	}
+#endif
 
 	/* disable partial update if mml_ir lye is exist */
 	if (state->lye_state.mml_ir_lye && partial_enable) {

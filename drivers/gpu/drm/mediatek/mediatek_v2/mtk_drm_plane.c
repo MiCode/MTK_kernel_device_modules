@@ -588,7 +588,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 
 	if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 		priv->data->mmsys_id == MMSYS_MT6991) &&
-			crtc_state->ovl_partial_dirty) {
+		crtc_state->ovl_partial_dirty) {
 		struct mtk_rect layer_roi = {0, 0, 0, 0};
 		struct mtk_rect ovl_partial_roi = {0, 0, 0, 0};
 		struct mtk_rect layer_partial_roi = {0, 0, 0, 0};
@@ -611,6 +611,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 
 		if (mtk_plane_state->pending.mml_mode == MML_MODE_DIRECT_LINK)
 			layer_roi = crtc_state->mml_dst_roi;
+		else if (mtk_plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER)
+			layer_roi = crtc_state->rsz_dst_roi;
 		else {
 			layer_roi.x = dst_x;
 			layer_roi.y = dst_y;
@@ -624,14 +626,16 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 					layer_partial_roi.x - ovl_partial_roi.x;
 			mtk_plane_state->pending.dst_y =
 					layer_partial_roi.y - ovl_partial_roi.y;
-			mtk_plane_state->pending.width =
-					layer_partial_roi.width;
-			mtk_plane_state->pending.height =
-					layer_partial_roi.height;
-			mtk_plane_state->pending.src_x =
-					src_x + layer_partial_roi.x - dst_x;
-			mtk_plane_state->pending.src_y =
-					src_y + layer_partial_roi.y - dst_y;
+			if (!(mtk_plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER)) {
+				mtk_plane_state->pending.width =
+						layer_partial_roi.width;
+				mtk_plane_state->pending.height =
+						layer_partial_roi.height;
+				mtk_plane_state->pending.src_x =
+						src_x + layer_partial_roi.x - dst_x;
+				mtk_plane_state->pending.src_y =
+						src_y + layer_partial_roi.y - dst_y;
+			}
 
 			mtk_plane_state->pending.offset =
 					mtk_plane_state->pending.dst_y << 16 |
