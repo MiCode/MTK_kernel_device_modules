@@ -1198,6 +1198,7 @@ struct mtk_ddp_comp {
 	struct icc_path *hrt_qos_req;
 	struct icc_path *hdr_qos_req;
 	struct icc_path *stash_qos_req;
+	struct icc_path *hdr_stash_qos_req;
 	struct icc_path *hrt_qos_req_other;
 	bool blank_mode;
 	u32 qos_bw;
@@ -1211,6 +1212,7 @@ struct mtk_ddp_comp {
 	u32 last_hrt_bw_other;
 	u32 last_hdr_bw;
 	u32 last_stash_bw;
+	u32 last_hdr_stash_bw;
 	bool in_scaling_path;
 	struct mtk_ddp_comp *bind_comp;
 	int pm_ret;

@@ -3764,6 +3764,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
+		u32 hdr_stash_bw_val = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -3787,7 +3788,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		if (bw_val != comp->last_hrt_bw) {
 			DDPDBG("%s/%d bw_val %u -> %u\n",
-				mtk_dump_comp_str_id(comp->id),	comp->last_hrt_bw, bw_val);
+				mtk_dump_comp_str_id(comp->id), comp->last_hrt_bw, bw_val);
 			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			comp->last_hrt_bw = bw_val;
@@ -3799,7 +3800,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 			if (hdr_bw_val != comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw_val %u -> %u\n",
-					mtk_dump_comp_str_id(comp->id),	comp->last_hdr_bw, hdr_bw_val);
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw, hdr_bw_val);
 				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
 					priv->data->respective_ostdl);
 				comp->last_hdr_bw = hdr_bw_val;
@@ -3818,10 +3819,29 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 			if (stash_bw_val != comp->last_stash_bw) {
 				DDPDBG("%s stash_bw_val %u -> %u\n",
-					mtk_dump_comp_str_id(comp->id),	comp->last_stash_bw, stash_bw_val);
+					mtk_dump_comp_str_id(comp->id), comp->last_stash_bw, stash_bw_val);
 				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
 					priv->data->respective_ostdl);
 				comp->last_stash_bw = stash_bw_val;
+			}
+		}
+
+		if (!IS_ERR(comp->hdr_stash_qos_req)) {
+			if (bw_val) {
+				if (usage_ovl_compr)
+					hdr_stash_bw_val = bw_val * 2 / 32 / 256;
+				else
+					hdr_stash_bw_val = bw_val / 32 / 256;
+
+				hdr_stash_bw_val = hdr_stash_bw_val > 17 ? hdr_stash_bw_val : 17; //set low bound
+			}
+
+			if (hdr_stash_bw_val != comp->last_hdr_stash_bw) {
+				DDPDBG("%s hdr_stash_bw_val %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_stash_bw, hdr_stash_bw_val);
+				__mtk_disp_set_module_hrt(comp->hdr_stash_qos_req, comp->id, hdr_stash_bw_val,
+					priv->data->respective_ostdl);
+				comp->last_hdr_stash_bw = hdr_stash_bw_val;
 			}
 		}
 
@@ -3835,6 +3855,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
+		u32 hdr_stash_bw_val = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -3863,7 +3884,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		if (bw_val > comp->last_hrt_bw) {
 			DDPDBG("%s bw_val fast up %u -> %u\n",
-					mtk_dump_comp_str_id(comp->id),	comp->last_hrt_bw, bw_val);
+				mtk_dump_comp_str_id(comp->id), comp->last_hrt_bw, bw_val);
 			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
@@ -3871,7 +3892,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				NO_PENDING_HRT, ~0);
 		} else if (bw_val < comp->last_hrt_bw) {
 			DDPDBG("%s bw_val will slow down %u -> %u\n",
-				mtk_dump_comp_str_id(comp->id),	comp->last_hrt_bw, bw_val);
+				mtk_dump_comp_str_id(comp->id), comp->last_hrt_bw, bw_val);
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_BW_VAL(phy_id)),
 				bw_val, ~0);
@@ -3884,7 +3905,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 			if (hdr_bw_val > comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw fast up %u -> %u\n",
-					mtk_dump_comp_str_id(comp->id),	comp->last_hdr_bw, hdr_bw_val);
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw, hdr_bw_val);
 				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, hdr_bw_val,
 					priv->data->respective_ostdl);
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
@@ -3892,7 +3913,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 					NO_PENDING_HRT, ~0);
 			} else if (hdr_bw_val < comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw_val will slow down %u -> %u\n",
-					mtk_dump_comp_str_id(comp->id),	comp->last_hdr_bw, hdr_bw_val);
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw, hdr_bw_val);
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_BW_VAL(phy_id)),
 					hdr_bw_val, ~0);
@@ -3912,7 +3933,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 			if (stash_bw_val > comp->last_stash_bw) {
 				DDPDBG("%s stash_bw_val fast up %u -> %u\n",
-						mtk_dump_comp_str_id(comp->id), comp->last_stash_bw, stash_bw_val);
+					mtk_dump_comp_str_id(comp->id), comp->last_stash_bw, stash_bw_val);
 				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, stash_bw_val,
 					priv->data->respective_ostdl);
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
@@ -3920,12 +3941,40 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 					NO_PENDING_HRT, ~0);
 			} else if (stash_bw_val < comp->last_stash_bw) {
 				DDPDBG("%s stash_bw_val will slow down %u -> %u\n",
-						mtk_dump_comp_str_id(comp->id),	comp->last_stash_bw, stash_bw_val);
+					mtk_dump_comp_str_id(comp->id), comp->last_stash_bw, stash_bw_val);
 				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_STASH_BW_VAL(phy_id)),
 					stash_bw_val, ~0);
 			}
 			comp->last_stash_bw = stash_bw_val;
+		}
+
+		if (!IS_ERR(comp->hdr_stash_qos_req)) {
+			if (bw_val) {
+				if (usage_ovl_compr)
+					hdr_stash_bw_val = bw_val * 2 / 32 / 256;
+				else
+					hdr_stash_bw_val = bw_val / 32 / 256;
+
+				hdr_stash_bw_val = hdr_stash_bw_val > 17 ? hdr_stash_bw_val : 17; //set low bound
+			}
+
+			if (hdr_stash_bw_val > comp->last_hdr_stash_bw) {
+				DDPDBG("%s hdr_stash_bw_val fast up %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_stash_bw, hdr_stash_bw_val);
+				__mtk_disp_set_module_hrt(comp->hdr_stash_qos_req, comp->id, hdr_stash_bw_val,
+					priv->data->respective_ostdl);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_STASH_BW_VAL(phy_id)),
+					NO_PENDING_HRT, ~0);
+			} else if (hdr_stash_bw_val < comp->last_hdr_stash_bw) {
+				DDPDBG("%s hdr_stash_bw_val will slow down %u -> %u\n",
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_stash_bw, hdr_stash_bw_val);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HDR_STASH_BW_VAL(phy_id)),
+					hdr_stash_bw_val, ~0);
+			}
+			comp->last_hdr_stash_bw = hdr_stash_bw_val;
 		}
 
 		ret = OVL_REQ_HRT;
@@ -3938,6 +3987,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
+		u32 hdr_stash_bw_val = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -3967,11 +4017,11 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				DISP_SLOT_CUR_HDR_BW_VAL(phy_id));
 			if (hdr_bw_val != NO_PENDING_HRT && hdr_bw_val <= comp->last_hdr_bw) {
 				DDPINFO("%s hdr_bw_val slow down to %u\n",
-						mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw);
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw);
 				__mtk_disp_set_module_hrt(comp->hdr_qos_req, comp->id, comp->last_hdr_bw,
 					priv->data->respective_ostdl);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
-					DISP_SLOT_CUR_HDR_BW_VAL(phy_id)) =	NO_PENDING_HRT;
+					DISP_SLOT_CUR_HDR_BW_VAL(phy_id)) = NO_PENDING_HRT;
 			}
 		}
 
@@ -3980,11 +4030,24 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				DISP_SLOT_CUR_STASH_BW_VAL(phy_id));
 			if (stash_bw_val != NO_PENDING_HRT && stash_bw_val <= comp->last_stash_bw) {
 				DDPINFO("%s stash_bw_val slow down to %u\n",
-						mtk_dump_comp_str_id(comp->id), comp->last_stash_bw);
+					mtk_dump_comp_str_id(comp->id), comp->last_stash_bw);
 				__mtk_disp_set_module_hrt(comp->stash_qos_req, comp->id, comp->last_stash_bw,
 					priv->data->respective_ostdl);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 					DISP_SLOT_CUR_STASH_BW_VAL(phy_id)) = NO_PENDING_HRT;
+			}
+		}
+
+		if (!IS_ERR(comp->hdr_stash_qos_req)) {
+			hdr_stash_bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_CUR_HDR_STASH_BW_VAL(phy_id));
+			if (hdr_stash_bw_val != NO_PENDING_HRT && hdr_stash_bw_val <= comp->last_hdr_stash_bw) {
+				DDPINFO("%s hdr_stash_bw_val slow down to %u\n",
+					mtk_dump_comp_str_id(comp->id), comp->last_hdr_stash_bw);
+				__mtk_disp_set_module_hrt(comp->hdr_stash_qos_req, comp->id, comp->last_hdr_stash_bw,
+					priv->data->respective_ostdl);
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_HDR_STASH_BW_VAL(phy_id)) = NO_PENDING_HRT;
 			}
 		}
 
@@ -4817,6 +4880,12 @@ static int mtk_disp_ovl_exdma_bind(struct device *dev, struct device *master,
 						&priv->ddp_comp, "stash_qos");
 		priv->ddp_comp.stash_qos_req = of_mtk_icc_get(dev, buf);
 		if (!IS_ERR(priv->ddp_comp.stash_qos_req))
+			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
+
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&priv->ddp_comp, "hdr_stash_qos");
+		priv->ddp_comp.hdr_stash_qos_req = of_mtk_icc_get(dev, buf);
+		if (!IS_ERR(priv->ddp_comp.hdr_stash_qos_req))
 			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
 
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
