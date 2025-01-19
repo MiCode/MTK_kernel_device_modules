@@ -398,6 +398,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c1: i2c@11ed1000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -408,7 +409,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-	};
+                mediatek,control-rs-stop;
+        };
 	i2c2: i2c@11ed2000 {
 		compatible = "mediatek,mt6983-i2c";
 		reg = <0 0x11ed2000 0 0x1000>,
@@ -418,7 +420,8 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
-	};
+                mediatek,control-rs-stop;
+        };
 	i2c3: i2c@11db0000 {
 		compatible = "mediatek,mt6983-i2c";
 		reg = <0 0x11db0000 0 0x1000>,
@@ -428,6 +431,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c4: i2c@11ed3000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -438,6 +442,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c5: i2c@11b20000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -448,6 +453,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c6: i2c@11db1000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -458,6 +464,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c7: i2c@11db2000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -468,6 +475,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c8: i2c@11db3000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -478,6 +486,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c9: i2c@11ed4000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -488,6 +497,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c10: i2c@11db4000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -498,6 +508,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	i2c11: i2c@11280000 {
 		compatible = "mediatek,mt6983-i2c";
@@ -508,6 +519,7 @@
 			<&pericfg_ao_clk CLK_PERAOP_APDMA>;
 		clock-names = "main", "dma";
 		clock-div = <1>;
+                mediatek,control-rs-stop;
 	};
 	mrdump_ext_rst: mrdump_ext_rst {
 		compatible = "mediatek, mrdump_ext_rst-eint";
