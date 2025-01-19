@@ -2239,10 +2239,8 @@ int uarthub_get_host_bt_awake_sta_mt6991(int dev_index)
 {
 	int state = 0;
 
-	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
-		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
+	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST)
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
-	}
 
 	if (dev_index == 0)
 		state = DEV0_STA_GET_dev0_bt_awake_sta(DEV0_STA_ADDR);

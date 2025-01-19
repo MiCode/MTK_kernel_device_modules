@@ -386,13 +386,10 @@ int uarthub_core_inband_trigger_ctrl(void)
 		  g_plat_ic_core_ops->uarthub_plat_get_host_bt_awake_sta == NULL)
 		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
 
-	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
-		pr_notice("[%s] apb bus clk disable\n", __func__);
-		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
-	}
-
 	if (g_plat_ic_core_ops->uarthub_plat_get_host_bt_awake_sta(0) == 0) {
+#if UARTHUB_DEBUG_LOG
 		pr_notice("[%s] dev0_bt_awake_sta is equal to 0, not allow to trigger inband IRQ\n", __func__);
+#endif
 		return UARTHUB_ERR_BT_NOT_AWAKE;
 	}
 
