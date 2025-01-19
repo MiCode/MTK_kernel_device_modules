@@ -162,3 +162,12 @@ config MTK_ISP_PSPM
 	  camera MW colloct the index,
 	  and pass the index to swpm by ioctl,
 	  the index is for estimating isp power consumption.
+
+config MTK_SENTRY_MODE
+	tristate "Support MTK sentry mode feature"
+	help
+	  Select this option to enable support for the MediaTek Sentry Mode.
+	  When enable this config,
+	  sentry mode will be supported.
+	  When disable this config,
+	  sentry mode code will be not compiled.
