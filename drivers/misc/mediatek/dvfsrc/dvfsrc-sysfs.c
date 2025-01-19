@@ -14,6 +14,7 @@
 #include <linux/pm_opp.h>
 #include "dvfsrc-common.h"
 #include "dvfsrc-helper.h"
+#include <linux/soc/mediatek/mtk_dvfsrc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/sysfs.h>
 
@@ -300,6 +301,35 @@ static inline ssize_t dvfsrc_qos_mode_store(struct device *dev,
 }
 DEVICE_ATTR_RW(dvfsrc_qos_mode);
 
+static inline ssize_t dvfsrc_qosmm_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%x\n", dvfsrc->qos_mm_mode);
+}
+
+static inline ssize_t dvfsrc_qosmm_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int mode = 0;
+	struct arm_smccc_res ares;
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	if (kstrtou32(buf, 16, &mode))
+		return -EINVAL;
+
+	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_QOS_MODE,
+		mode, 0, 0, 0, 0, 0,
+		&ares);
+
+	if (!ares.a0)
+		dvfsrc->qos_mm_mode = mode;
+
+	return count;
+}
+DEVICE_ATTR_RW(dvfsrc_qosmm_mode);
+
 static ssize_t dvfsrc_md_floor_table_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -378,6 +408,30 @@ static inline ssize_t dvfsrc_force_ddr_opp_store(struct device *dev,
 }
 DEVICE_ATTR_WO(dvfsrc_force_ddr_opp);
 
+static ssize_t dvfsrc_req_emi_opp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int magic = 0, emi_opp = 0, val = 0;
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	if (sscanf(buf, "%x %d", &magic, &emi_opp) != 2)
+		return -EINVAL;
+
+	if (magic != 0xEEEE)
+		return -EINVAL;
+
+	if (emi_opp < dvfsrc->opp_desc->num_emi_opp)
+		val = dvfsrc->opp_desc->num_emi_opp - emi_opp - 1;
+
+	mtk_dvfsrc_send_request(dvfsrc->dev->parent,
+		MTK_DVFSRC_CMD_EMICLK_REQUEST,
+		val);
+
+	return count;
+
+}
+static DEVICE_ATTR_WO(dvfsrc_req_emi_opp);
+
 static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_dvfsrc_req_bw.attr,
 	&dev_attr_dvfsrc_req_hrtbw.attr,
@@ -393,8 +447,6 @@ static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_spm_timer_latch_dump.attr,
 	&dev_attr_dvfsrc_qos_mode.attr,
 	&dev_attr_dvfsrc_md_floor_table.attr,
-	&dev_attr_dvfsrc_ceiling_opp.attr,
-	&dev_attr_dvfsrc_force_ddr_opp.attr,
 	NULL,
 };
 
@@ -404,11 +456,38 @@ static struct attribute_group dvfsrc_sysfs_attr_group = {
 
 int dvfsrc_register_sysfs(struct device *dev)
 {
-	int ret;
+	int ret, err;
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
 
 	ret = sysfs_create_group(&dev->kobj, &dvfsrc_sysfs_attr_group);
 	if (ret)
 		return ret;
+
+	if (dvfsrc->ceil_ddr_support) {
+		err = sysfs_add_file_to_group(&dev->kobj,
+			      &dev_attr_dvfsrc_ceiling_opp.attr, NULL);
+		if (err)
+			dev_info(dvfsrc->dev, "can't create ceiling_opp sysfs file\n");
+
+		err = sysfs_add_file_to_group(&dev->kobj,
+			      &dev_attr_dvfsrc_force_ddr_opp.attr, NULL);
+		if (err)
+			dev_info(dvfsrc->dev, "can't create force_ddr_opp sysfs file\n");
+	}
+
+	if (dvfsrc->dvd->qos_mm_mode_en) {
+		err = sysfs_add_file_to_group(&dev->kobj,
+			      &dev_attr_dvfsrc_qosmm_mode.attr, NULL);
+		if (err)
+			dev_info(dvfsrc->dev, "can't create mmqos sysfs file\n");
+	}
+
+	if (dvfsrc->dvd->emi_opp_req_enmode) {
+		err = sysfs_add_file_to_group(&dev->kobj,
+			      &dev_attr_dvfsrc_req_emi_opp.attr, NULL);
+		if (err)
+			dev_info(dvfsrc->dev, "can't create emi_req sysfs file\n");
+	}
 
 	ret = sysfs_create_link(&dev->parent->kobj, &dev->kobj,
 		"helio-dvfsrc");
