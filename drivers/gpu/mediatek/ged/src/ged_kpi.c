@@ -1929,6 +1929,7 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 		if (g_force_gpu_dvfs_fallback) {   // main producer ratio < thresh (LB)
 			// use LB policy
 			ged_set_policy_state(POLICY_STATE_LB);
+			ged_eb_dvfs_task(EB_UPDATE_POLICY_STATE, GED_DVFS_LOADING_BASE_COMMIT);
 			set_lb_timeout(psKPI->t_gpu_target);
 		} else {   // main producer ratio >= thresh (FB)
 			if (main_head == psHead) {   // is main head
