@@ -101,10 +101,6 @@ static struct reg_dump_info range_table_mt6853[] = {
 	{"md32_sysCtrl_PMU",    0x19001800, 0x800 },
 	{"md32_wdt",            0x19002000, 0x1000},
 	{"apu_iommu0_r0",       0x19010000, 0x1000},
-	{"apu_iommu0_r1",       0x19011000, 0x1000},
-	{"apu_iommu0_r2",       0x19012000, 0x1000},
-	{"apu_iommu0_r3",       0x19013000, 0x1000},
-	{"apu_iommu0_r4",       0x19014000, 0x1000},
 	{"apu_conn_config",     0x19020000, 0x1000},
 	{"apu_sema_stimer",     0x19022000, 0x1000},
 	{"emi_config",          0x19023000, 0x1000},
@@ -122,7 +118,6 @@ static struct reg_dump_info range_table_mt6853[] = {
 	{"apu_rpc(DVFS)",       0x190F1000, 0x1000},
 	{"apu_ao_ctrl",         0x190F2000, 0x1000},
 	{"apb_dapc_ap_wrapper", 0x190F8000, 0x4000},
-	{"noc_dapc_ap_wrapper", 0x190FC000, 0x4000},
 };
 #define SEGMENT_COUNT_MT6853 \
 	(sizeof(range_table_mt6853) / sizeof(struct reg_dump_info))
