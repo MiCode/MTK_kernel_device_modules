@@ -1925,6 +1925,9 @@ static int venc_vcp_set_param(unsigned long handle,
 		inst->vsi->config.qpvbr_upper_enable = enc_prm->qpvbr_upper_enable;
 		inst->vsi->config.qpvbr_qp_upper_threshold = enc_prm->qpvbr_qp_upper_threshold;
 		inst->vsi->config.qpvbr_qp_max_brratio = enc_prm->qpvbr_qp_max_brratio;
+		inst->vsi->config.qpvbr_lower_enable = enc_prm->qpvbr_lower_enable;
+		inst->vsi->config.qpvbr_qp_lower_threshold = enc_prm->qpvbr_qp_lower_threshold;
+		inst->vsi->config.qpvbr_qp_min_brratio = enc_prm->qpvbr_qp_min_brratio;
 		inst->vsi->config.cb_qp_offset = enc_prm->cb_qp_offset;
 		inst->vsi->config.cr_qp_offset = enc_prm->cr_qp_offset;
 		inst->vsi->config.mbrc_tk_spd = enc_prm->mbrc_tk_spd;

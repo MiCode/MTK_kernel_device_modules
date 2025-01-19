@@ -539,6 +539,9 @@ struct venc_vcu_config {
 	__s32 qpvbr_upper_enable;
 	__s32 qpvbr_qp_upper_threshold;
 	__s32 qpvbr_qp_max_brratio;
+	__s32 qpvbr_lower_enable;
+	__s32 qpvbr_qp_lower_threshold;
+	__s32 qpvbr_qp_min_brratio;
 	__s32 cb_qp_offset;
 	__s32 cr_qp_offset;
 	__s32 mbrc_tk_spd;
