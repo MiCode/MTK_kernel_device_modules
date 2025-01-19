@@ -42,11 +42,13 @@ EXPORT_SYMBOL(g_flag_shifts);
 
 unsigned long long mmevent_log(unsigned int length, unsigned long long flag,
 								unsigned int module, unsigned int type,
-								unsigned int log_level)
+								unsigned int log_level, unsigned int log_type)
 {
 	unsigned int unit_size = _MME_UNIT_NUM(length);
 	unsigned long flags = 0;
 	bool condition = (unit_size < MME_MAX_UNIT_NUM) && mme_globals[module].start;
+	unsigned int cpu_id;
+	bool is_irq;
 
 	if (condition) {
 		struct mme_unit_t *p_ring_buffer = p_mme_ring_buffer[module][type];
@@ -66,8 +68,15 @@ unsigned long long mmevent_log(unsigned int length, unsigned long long flag,
 		p_ring_buffer[index].data = sched_clock();
 		p_ring_buffer[index + 1].data = (flag | ((unsigned long long)unit_size<<FLAG_UNIT_NUM_OFFSET) |
 								FLAG_HEADER_DATA |
-								((unsigned long long)log_level<<FLAG_LOG_LEVEL_OFFSET) |
-								((unsigned long long)module<<FLAG_MODULE_TOKEN_OFFSET));
+								((unsigned long long)log_level<<FLAG_LOG_LEVEL_OFFSET));
+
+		if (log_type == LOG_TYPE_CPU_ID) {
+			cpu_id = raw_smp_processor_id() & 0xF;
+			is_irq = (bool)in_irq();
+			p_ring_buffer[index + 1].data |= (((unsigned long long)is_irq<<FLAG_IRQ_TOKEN_OFFSET) |
+								((unsigned long long)cpu_id<<FLAG_CPU_ID_OFFSET));
+		}
+
 		return (unsigned long long)(&(p_ring_buffer[index + MME_HEADER_UNIT_SIZE]));
 	}
 
@@ -188,6 +197,7 @@ EXPORT_SYMBOL(mme_globals);
 char *g_mrdump_buffer;
 char *g_dbg_buffer;
 unsigned int g_dbg_buffer_pos;
+static struct pid_info_t *p_pid_buffer;
 
 static DEFINE_SPINLOCK(g_register_spinlock);
 
@@ -238,6 +248,14 @@ bool mme_register_buffer(unsigned int module, char *module_buf_name, unsigned in
 				MMEERR("Failed to allocate g_mrdump_buffer");
 		}
 #endif
+	}
+
+	if (!p_pid_buffer) {
+		p_pid_buffer = kcalloc(MAX_PID_COUNT, sizeof(struct pid_info_t), GFP_KERNEL);
+		if (!p_pid_buffer) {
+			MMEERR("ERROR: allocate memory for pid_buffer failed");
+			return false;
+		}
 	}
 
 	MMEMSG("module:%d,module_buf_name:%s,type:%d,module_buf_size:%d, g_dbg_buffer_pos:%d",
@@ -378,30 +396,37 @@ static void mme_scale_buffer(unsigned int module, unsigned int scale_value)
 }
 
 // -------------------------------------- Register Dump callback -----------------------------------
+#define MME_MODULE_DUMP_SIZE (1024*6)
 
+static char *p_dump_buffer[MME_MODULE_MAX] = {0};
 static mme_dump_callback dump_callback_table[MME_MODULE_MAX] = {0};
 
 void mme_register_dump_callback(unsigned int module, mme_dump_callback func)
 {
 	MMEMSG("module:%d", module);
-	if (module < MME_MODULE_MAX)
-		dump_callback_table[module] = func;
+	if (module >= MME_MODULE_MAX) {
+		MMEERR("unsupport module:%d", module);
+		return;
+	}
+	dump_callback_table[module] = func;
+	if (!p_dump_buffer[module]) {
+		p_dump_buffer[module] = kzalloc(MME_MODULE_DUMP_SIZE, GFP_KERNEL);
+		if (!p_dump_buffer[module])
+			MMEERR("Failed to allocate memory for p_dump_buffer,module:%d", module);
+	}
 }
 EXPORT_SYMBOL(mme_register_dump_callback);
 // ---------------------------------------- Dump section -------------------------------------------
 
 #define MME_DUMP_BLOCK_SIZE (1024*4)
-#define MME_MODULE_DUMP_SIZE (1024*6)
 #define STRING_BUFFER_LEN 1024
 #define INVALIDE_EVENT -1
 #define SUCCESS 1
 
 static unsigned char mme_dump_block[MME_DUMP_BLOCK_SIZE];
-static unsigned int s_str_buffer_dump_pointer;
-static struct pid_info_t *p_pid_buffer;
 static char *p_str_buffer;
 unsigned int g_str_buffer_size;
-static char *p_dump_buffer[MME_MODULE_MAX] = {0};
+
 
 static unsigned int mme_fill_dump_block(void *p_src, void *p_dst,
 	unsigned int *p_src_pos, unsigned int *p_dst_pos,
@@ -409,6 +434,9 @@ static unsigned int mme_fill_dump_block(void *p_src, void *p_dst,
 {
 	unsigned int src_left = src_size - *p_src_pos;
 	unsigned int dst_left = dst_size - *p_dst_pos;
+
+	if (!p_src || !p_dst)
+		return 0;
 
 	if ((src_left == 0) || (dst_left == 0))
 		return 0;
@@ -432,7 +460,7 @@ static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_
 							unsigned int *p_error_token)
 {
 	unsigned int unit_size = (flag & FLAG_UNIT_NUM_MASK) >> FLAG_UNIT_NUM_OFFSET;
-	unsigned int module = (flag & FLAG_MODULE_TOKEN_MASK) >> FLAG_MODULE_TOKEN_OFFSET;
+	unsigned int cpu_id = (flag & FLAG_CPU_ID_MASK) >> FLAG_CPU_ID_OFFSET;
 	unsigned int log_level = (flag & FLAG_LOG_LEVEL_MASK) >> FLAG_LOG_LEVEL_OFFSET;
 	unsigned int data_size = sizeof(char *) + MME_PID_SIZE;
 	unsigned int data_unit_size = 0;
@@ -446,8 +474,8 @@ static bool check_log_flag(unsigned long long flag, unsigned int *p_code_region_
 		return false;
 	}
 
-	if (module >= MME_MODULE_MAX) {
-		MMEMSG("invalid flag module token, flag:%lld", flag);
+	if (cpu_id >= MME_CPU_ID_MAX) {
+		MMEMSG("invalid flag cpu id, flag:%lld, cpu_id:%d", flag, cpu_id);
 		*p_error_token = INVALID_MODULE_TOKEN;
 		return false;
 	}
@@ -554,7 +582,6 @@ static void mme_dump_buffer(void *p_src, void *p_dst, unsigned int src_size, uns
 					src_size,
 					dst_size);
 		*p_total_pos = *p_region_base + src_size;
-		s_str_buffer_dump_pointer = 0; // init as zero
 	}
 	*p_region_base += src_size;
 }
@@ -595,16 +622,14 @@ static void get_pid_info(struct mme_unit_t *p_ring_buffer, unsigned int buffer_u
 		}
 		if (pid_index == *p_pid_count && *p_pid_count < MAX_PID_COUNT) {
 			struct task_struct *task;
-			unsigned int cpu;
+			unsigned int cpu_id = (flag & FLAG_CPU_ID_MASK) >> FLAG_CPU_ID_OFFSET;
 
 			p_pid_buffer[pid_index].pid = pid;
 			if (pid == 0) {
-				for_each_possible_cpu(cpu) {
-					ret = sprintf(p_pid_buffer[pid_index].name, "swapper/%d", cpu);
-					if (ret < 0)
-						MMEERR("pid buf name sprintf error,ret:%d", ret);
-					break;
-					}
+				memset(p_pid_buffer[pid_index].name, 0, TASK_COMM_LEN);
+				ret = sprintf(p_pid_buffer[pid_index].name, "swapper/%d", cpu_id);
+				if (ret < 0)
+					MMEERR("pid buf name sprintf error,ret:%d", ret);
 			} else {
 				task = find_task_by_vpid(pid);
 				if (task != NULL)
@@ -729,11 +754,6 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 		unsigned int dump_size = 0;
 
 		mme_init_android_time();
-		p_pid_buffer = kcalloc(MAX_PID_COUNT, sizeof(struct pid_info_t), GFP_ATOMIC);
-		if (!p_pid_buffer) {
-			MMEERR("ERROR: allocate memory for pid_buffer failed");
-			return;
-		}
 
 		mme_init_process_info(p_pid_buffer, &pid_count);
 		mme_header.pid_number = ALIGN(pid_count, 4);
@@ -749,9 +769,9 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 		for (module=0; module<MME_MODULE_MAX; module++) {
 			if (mme_globals[module].enable) {
 				if (dump_callback_table[module]) {
-					p_dump_buffer[module] = kzalloc(MME_MODULE_DUMP_SIZE, GFP_ATOMIC);
 					if (p_dump_buffer[module]) {
 						dump_size = 0;
+						memset(p_dump_buffer[module], 0, MME_MODULE_DUMP_SIZE);
 						dump_callback_table[module](p_dump_buffer[module],
 								MME_MODULE_DUMP_SIZE, &dump_size);
 						mme_globals[module].module_dump_bytes = ALIGN(dump_size, 16);
@@ -780,19 +800,12 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 	if (block_pos == block_buf_size)
 		return;
 
-	kfree(p_pid_buffer);
-	p_pid_buffer = 0;
-
-
 	for (module=0; module<MME_MODULE_MAX; module++) {
 		if (mme_globals[module].enable) {
 			mme_dump_buffer(p_dump_buffer[module], p_block_buf, mme_globals[module].module_dump_bytes,
 							block_buf_size, &total_pos, &region_base, &block_pos);
 			if (block_pos == block_buf_size)
 				return;
-
-			kfree(p_dump_buffer[module]);
-			p_dump_buffer[module] = 0;
 
 			// If is_mrdump = true, there is no need to dump the contents of p_mme_ring_buffer.
 			if (!is_mrdump) {
