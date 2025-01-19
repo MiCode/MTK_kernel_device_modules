@@ -30,6 +30,8 @@
 
 static struct mdla_dev *mdla_plat_devices;
 
+static DEFINE_MUTEX(dbg_mem_mutex);
+
 #define DEFINE_IPI_DBGFS_ATTRIBUTE(name, TYPE_0, TYPE_1, fmt)		\
 static int name ## _set(void *data, u64 val)				\
 {									\
@@ -314,9 +316,6 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 				MDLA_IPI_INFO_CMDBUF);
 	seq_printf(s, "\t%d: show profiling result\n", MDLA_IPI_INFO_PROF);
 
-	seq_puts(s, "\n----------- allocate debug memory -----------\n");
-	seq_printf(s, "echo [size(dec)] > /d/mdla/%s\n", DBGFS_MEM_NAME);
-
 	seq_puts(s, "\n----------- set debug options -----------\n");
 	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
 	seq_puts(s, "\tDisable preemption                               = 0x0001\n");
@@ -419,7 +418,9 @@ static int mdla_plat_send_addr_info(void *arg)
 	}
 
 	if (get_major_num(mdla_plat_get_version()) == 6) {
-		u64 size = 0;
+		u64 size = 0, ver = 0;
+
+		/* allocate debug buffer */
 		mdla_ipi_recv(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, &size);
 		if (size) {
 			mdla_plat_alloc_mem(&dbg_mem, (u32)size);
@@ -428,6 +429,11 @@ static int mdla_plat_send_addr_info(void *arg)
 				mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
 			}
 		}
+
+		/* get HW IP version */
+		mdla_ipi_recv(MDLA_IPI_INFO, MDLA_IPI_INFO_HW_VER, &ver);
+		if (get_major_num(ver) != 0)
+			mdla_dbg_set_version((u32)ver);
 	} else if (dbg_mem.da) {
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
@@ -467,12 +473,14 @@ static ssize_t mdla_rv_dbg_mem_write(struct file *flip,
 	if (size > 0x200000 || size < 0x10)
 		goto out;
 
+	mutex_lock(&dbg_mem_mutex);
 	mdla_plat_free_mem(&dbg_mem);
 
 	if (mdla_plat_alloc_mem(&dbg_mem, size) == 0) {
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA, (u64)dbg_mem.da);
 		mdla_ipi_send(MDLA_IPI_ADDR, MDLA_IPI_ADDR_DBG_DATA_SZ, (u64)dbg_mem.size);
 	}
+	mutex_unlock(&dbg_mem_mutex);
 
 out:
 	kfree(buf);
@@ -517,8 +525,8 @@ static void mdla_plat_dbgfs_init(struct device *dev, struct dentry *parent)
 			debugfs_create_file(file->str, file->mode, parent, &file->val, file->fops);
 	}
 
-	debugfs_create_file(DBGFS_MEM_NAME, 0644, parent, NULL,
-				&mdla_rv_dbg_mem_fops);
+	if (hw_ip_ver != 6)
+		debugfs_create_file(DBGFS_MEM_NAME, 0644, parent, NULL, &mdla_rv_dbg_mem_fops);
 }
 
 static void mdla_plat_memory_show(struct seq_file *s)
