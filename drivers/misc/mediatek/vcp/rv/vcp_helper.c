@@ -33,7 +33,6 @@
 #include <linux/pm_runtime.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
-#include <linux/cpuidle.h>
 //#include <mt-plat/sync_write.h>
 //#include <mt-plat/aee.h>
 #include <linux/delay.h>
@@ -1370,11 +1369,9 @@ static int vcp_pm_event(struct notifier_block *notifier
 				vcp_enable_dapc();
 				vcp_enable_irqs();
 #if VCP_RECOVERY_SUPPORT
-				cpuidle_pause_and_lock();
 				reset_vcp(VCP_ALL_SUSPEND);
 				is_suspending = false;
 				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
-				cpuidle_resume_and_unlock();
 #endif
 			} else {
 				ret = vcp_turn_mminfra_on();
@@ -1383,10 +1380,8 @@ static int vcp_pm_event(struct notifier_block *notifier
 					return NOTIFY_BAD;
 				}
 #if VCP_RECOVERY_SUPPORT
-				cpuidle_pause_and_lock();
 				is_suspending = false;
 				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
-				cpuidle_resume_and_unlock();
 #endif
 				vcp_turn_mminfra_off();
 			}
