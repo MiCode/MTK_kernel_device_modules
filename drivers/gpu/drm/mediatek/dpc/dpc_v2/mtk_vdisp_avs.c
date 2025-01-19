@@ -8,8 +8,9 @@
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/ktime.h>
-#include <soc/mediatek/mmdvfs_v3.h>
+#include <soc/mediatek/mmdvfs_public.h>
 
+#include "mtk-mmdvfs-debug.h"
 #include "mtk-mmdvfs-v3-memory.h"
 #include "vcp_status.h"
 #include "mtk_vdisp.h"
@@ -295,7 +296,7 @@ int mtk_vdisp_avs_dbg_opt(const char *opt)
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_EN, 0);
 		if (ret)
 			return ret;
-		ret = mmdvfs_force_step_by_vcp(2, 4 - v1);
+		ret = mmdvfs_debug_force_step(2, 4 - v1);
 	} else if (strncmp(opt + 4, "off", 3) == 0) {
 		/*Off avs*/
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_EN, 0);

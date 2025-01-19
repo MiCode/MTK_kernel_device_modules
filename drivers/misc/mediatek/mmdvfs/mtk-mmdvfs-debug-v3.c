@@ -109,7 +109,19 @@ void mtk_mmdvfs_debug_release_step0(void)
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
 
-int mmdvfs_debug_set_force_step(const char *val, const struct kernel_param *kp)
+int mmdvfs_debug_force_step(const u8 pwr_idx, const s8 opp)
+{
+	return mtk_mmdvfs_v3_set_force_step(pwr_idx, opp, false);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_debug_force_step);
+
+int mmdvfs_debug_vote_step(const u8 pwr_idx, const s8 opp)
+{
+	return mtk_mmdvfs_v3_set_vote_step(pwr_idx, opp, false);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_debug_vote_step);
+
+static int mmdvfs_debug_v3_set_force_step(const char *val, const struct kernel_param *kp)
 {
 	u8 idx = 0;
 	s8 opp = 0;
@@ -135,9 +147,8 @@ int mmdvfs_debug_set_force_step(const char *val, const struct kernel_param *kp)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mmdvfs_debug_set_force_step);
 
-int mmdvfs_debug_set_vote_step(const char *val, const struct kernel_param *kp)
+static int mmdvfs_debug_v3_set_vote_step(const char *val, const struct kernel_param *kp)
 {
 	u8 idx = 0;
 	s8 opp = 0;
@@ -163,7 +174,6 @@ int mmdvfs_debug_set_vote_step(const char *val, const struct kernel_param *kp)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(mmdvfs_debug_set_vote_step);
 
 #ifndef CONFIG_64BIT
 static inline u64 readq(const void __iomem *addr)
@@ -198,13 +208,13 @@ static void mmdvfs_debug_record_opp(const u8 opp)
 	spin_unlock_irqrestore(&g_mmdvfs->lock, flags);
 }
 
-void mmdvfs_debug_status_dump(struct seq_file *file)
+static int mmdvfs_debug_v3_status_dump(struct seq_file *file)
 {
 	unsigned long flags;
 	u32 i, j, k, val;
 
 	if (!g_mmdvfs)
-		return;
+		return 0;
 
 	spin_lock_irqsave(&g_mmdvfs->lock, flags);
 	for (i = 0; i < g_mmdvfs->clk_count; i++)
@@ -229,7 +239,7 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 
 	/* MMDVFS_DBG_VER3 */
 	if (!MEM_BASE)
-		return;
+		return 0;
 
 	mmdvfs_debug_dump_line(file, "VER3: mux controlled by vcp:");
 
@@ -390,7 +400,7 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 			readl(MEM_REC_VMM_SEC(j)), readl(MEM_REC_VMM_NSEC(j)),
 			readl(MEM_REC_VMM_VOLT(j)),
 			readl(MEM_REC_VMM_TEMP(j)), readl(MEM_REC_VMM_AVS(j)));
-	return;
+	return 0;
 
 sram_dump:
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
@@ -398,7 +408,7 @@ sram_dump:
 	if (!mmdvfs_vcp_cb_ready_get()) {
 		mmdvfs_vcp_cb_mutex_unlock();
 		MMDVFS_DBG("cb_ready:%d", mmdvfs_vcp_cb_ready_get());
-		return;
+		return 0;
 	}
 
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp sram:%#lx", (unsigned long)(void *)SRAM_BASE);
@@ -506,8 +516,9 @@ sram_dump:
 
 	mmdvfs_vcp_cb_mutex_unlock();
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
+
+	return 0;
 }
-EXPORT_SYMBOL_GPL(mmdvfs_debug_status_dump);
 
 static int mmdvfs_debug_opp_show(struct seq_file *file, void *data)
 {
@@ -1065,6 +1076,12 @@ static int mmdvfs_debug_parse_clk(void)
 	return ret;
 }
 
+static struct mmdvfs_debug_ops mmdvfs_debug_v3_ops = {
+	.force_step_fp = mmdvfs_debug_v3_set_force_step,
+	.vote_step_fp = mmdvfs_debug_v3_set_vote_step,
+	.status_dump_fp = mmdvfs_debug_v3_status_dump,
+};
+
 static int mmdvfs_debug_probe(struct platform_device *pdev)
 {
 	struct proc_dir_entry *dir, *proc;
@@ -1142,6 +1159,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		if (IS_ERR(kthr))
 			MMDVFS_DBG("create kthread mmdvfs_v3_debug_thread failed");
 	}
+
+	mmdvfs_debug_ops_set(&mmdvfs_debug_v3_ops);
 
 	g_mmdvfs->workq = create_singlethread_workqueue("mmdvfs_debug_workq");
 	INIT_WORK(&g_mmdvfs->work, mmdvfs_debug_work);

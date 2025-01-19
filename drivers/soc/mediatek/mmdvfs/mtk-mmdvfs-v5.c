@@ -48,6 +48,9 @@ static phys_addr_t mmdvfs_vcp_iova;
 static phys_addr_t mmdvfs_vcp_pa;
 static void *mmdvfs_vcp_va;
 
+static bool mmdvfs_mmup_sram;
+static void __iomem *mmdvfs_mmup_sram_va;
+
 static bool mmdvfs_mmup_cb_ready;
 static u64 mmup_cb_tick[VCP_EVENT_RESUME + 1];
 static u64 pm_cb_tick[2];
@@ -84,6 +87,36 @@ void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 	return mmdvfs_vcp_va;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_vcp_base);
+
+bool mmdvfs_get_mmup_sram_enable(void)
+{
+	return mmdvfs_mmup_sram;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mmup_sram_enable);
+
+void __iomem *mmdvfs_get_mmup_sram(void)
+{
+	return mmdvfs_mmup_sram_va;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mmup_sram);
+
+inline bool mmdvfs_mmup_cb_ready_get(void)
+{
+	return mmdvfs_mmup_cb_ready;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_mmup_cb_ready_get);
+
+inline void mmdvfs_mmup_cb_mutex_lock(void)
+{
+	mutex_lock(&mmdvfs_mmup_cb_mutex);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_mmup_cb_mutex_lock);
+
+inline void mmdvfs_mmup_cb_mutex_unlock(void)
+{
+	mutex_unlock(&mmdvfs_mmup_cb_mutex);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_mmup_cb_mutex_unlock);
 
 int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 {
@@ -278,6 +311,19 @@ ipi_send_end:
 	return ret;
 }
 
+static inline void mmdvfs_mmup_sram_init(void)
+{
+	static bool sram_init;
+
+	if (unlikely(!sram_init) && mmdvfs_mmup_sram) {
+		mmdvfs_mmup_sram_va = vcp_get_sram_virt_ex() + readl(MEM_SRAM_OFFSET);
+		sram_init = true;
+		MMDVFS_DBG("sram_init:%d virt:%#lx offset:%#x va:%#lx",
+			sram_init, (unsigned long)(void *)vcp_get_sram_virt_ex(),
+			readl(MEM_SRAM_OFFSET), (unsigned long)(void *)mmdvfs_mmup_sram_va);
+	}
+}
+
 static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	switch (action) {
@@ -285,6 +331,7 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		MMDVFS_DBG("VCP_EVENT_READY in");
 		mmup_cb_tick[VCP_EVENT_READY] = sched_clock();
 		mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_INIT, 0, 0, NULL, false);
+		mmdvfs_mmup_sram_init();
 		mutex_lock(&mmdvfs_mmup_cb_mutex);
 		mmdvfs_mmup_cb_ready = true;
 		mutex_unlock(&mmdvfs_mmup_cb_mutex);
@@ -614,6 +661,8 @@ int mmdvfs_v5_mux_probe(struct platform_device *pdev)
 	mmdvfs_data = mmdvfs_get_mmdvfs_data(dev);
 	if(!mmdvfs_data)
 		return -EINVAL;
+
+	mmdvfs_mmup_sram = of_property_read_bool(node, "mediatek,mmup-sram");
 
 	ret = mmdvfs_parse_mmdvfs_mux(node, mmdvfs_data);
 	ret = mmdvfs_parse_mmdvfs_clk(node, mmdvfs_data);
