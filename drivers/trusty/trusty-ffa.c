@@ -396,6 +396,11 @@ static int trusty_ffa_probe(struct ffa_device *ffa_dev)
 	struct trusty_ffa_state *s;
 	u32 ffa_drv_version;
 
+	if (!is_google_real_driver()) {
+		dev_info(&ffa_dev->dev, "%s: google trusty ffa dummy driver\n", __func__);
+		return 0;
+	}
+
 	/* check ffa driver version compatibility */
 	ffa_drv_version = ffa_dev->ops->info_ops->api_version_get();
 	if (TO_TRUSTY_FFA_MAJOR(ffa_drv_version) != TRUSTY_FFA_VERSION_MAJOR ||

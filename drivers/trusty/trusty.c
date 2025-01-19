@@ -802,15 +802,14 @@ static int trusty_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	const struct trusty_transport_desc **descs;
 
+	if (!is_google_real_driver()) {
+		dev_info(&pdev->dev, "%s: google trusty dummy driver\n", __func__);
+		return 0;
+	}
+
 	if (!node) {
 		dev_err(&pdev->dev, "of_node required\n");
 		return -EINVAL;
-	}
-
-	ret = of_property_read_u32(node, "google,real-drv", &real_drv);
-	if (ret || !real_drv) {
-		dev_info(&pdev->dev, "%s: google trusty dummy driver\n", __func__);
-		return 0;
 	}
 
 	s = kzalloc(sizeof(*s), GFP_KERNEL);
@@ -1014,11 +1013,24 @@ static struct platform_driver trusty_driver = {
 static int __init trusty_driver_init(void)
 {
 	int ret;
+	struct device_node *node;
+
+	node = of_find_compatible_node(NULL, NULL, "android,google-trusty-smc-v1");
+	if (node) {
+		ret = of_property_read_u32(node, "google,real-drv", &real_drv);
+		if (ret || !real_drv)
+			pr_info("%s: use google trusty dummy driver\n", __func__);
+	} else {
+		pr_info("%s: of_node required\n", __func__);
+		return -EINVAL;
+	}
 
 #ifdef CONFIG_TRUSTY_FFA_TRANSPORT
-	ret = trusty_ffa_transport_init();
-	if (ret < 0)
-		goto err_ffa_transport_init;
+	if (is_google_real_driver()) {
+		ret = trusty_ffa_transport_init();
+		if (ret < 0)
+			goto err_ffa_transport_init;
+	}
 #endif
 
 	/*
