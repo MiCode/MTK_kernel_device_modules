@@ -1537,8 +1537,17 @@ static int dpc_vidle_power_keep(const enum mtk_vidle_voter_user _user)
 	case DISP_VIDLE_USER_MML0:
 		mtk_disp_wait_pwr_ack(DPC_SUBSYS_MML0);
 		break;
-	case DISP_VIDLE_USER_CRTC:
 	case DISP_VIDLE_USER_PQ:
+		if (g_priv->root_dev) {
+			/* can only be used by USER_PQ, as it will not be used within ISR */
+			pm_runtime_get_sync(g_priv->root_dev);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
+			mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS0);
+			pm_runtime_put_sync(g_priv->root_dev);
+		} else
+			udelay(post_vlp_delay);
+		break;
+	case DISP_VIDLE_USER_CRTC:
 	case DISP_VIDLE_USER_DISP_DPC_CFG:
 	case DISP_VIDLE_USER_DPC_DUMP:
 	case DISP_VIDLE_USER_SMI_DUMP:
@@ -2123,6 +2132,16 @@ static int mtk_dpc_probe(struct platform_device *pdev)
 		if (!pm_runtime_enabled(priv->pd_dev))
 			pm_runtime_enable(priv->pd_dev);
 		pm_runtime_irq_safe(priv->pd_dev);
+	}
+
+	if (of_find_property(dev->of_node, "root-dev", NULL)) {
+		struct device_node *node = of_parse_phandle(dev->of_node, "root-dev", 0);
+		struct platform_device *pdev = NULL;
+
+		if (node)
+			pdev = of_find_device_by_node(node);
+		if (pdev)
+			priv->root_dev = &pdev->dev;
 	}
 
 #if defined(DISP_VIDLE_ENABLE)
