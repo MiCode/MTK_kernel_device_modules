@@ -2590,8 +2590,6 @@ static int calc_hrt_num(struct drm_device *dev,
 				      scan_overlap, l_rule_info->dal_enable, need_gpu_cache);
 		lyeblob_ids->overlap_ovl = sum_overlap_w;
 		lyeblob_ids->overlap_ovl_of_bwm = sum_overlap_w_of_bwm;
-		DDPMSG("%s overlap%d bwm%d\n", __func__, lyeblob_ids->overlap_ovl,
-			lyeblob_ids->overlap_ovl_of_bwm);
 	}
 	if (has_hrt_limit(disp_info, HRT_SECONDARY)) {
 		sum_overlap_w_of_second_disp =
@@ -3388,7 +3386,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			lyeblob_ids->fbt_gles_tail = disp_info->gles_tail[HRT_PRIMARY];
 		}
 	}
-	DDPMSG("layer_num = %d\n",disp_info->layer_num[idx]);
+	DDPINFO("layer_num = %d\n",disp_info->layer_num[idx]);
 	for (i = 0; i < disp_info->layer_num[idx]; i++) {
 
 		layer_info = &disp_info->input_config[idx][i];
