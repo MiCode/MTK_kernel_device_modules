@@ -15,12 +15,14 @@
 #include <dt-bindings/soc/mediatek,boot-mode.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/iio/adc/mediatek,mt6375_adc.h>
+#include <dt-bindings/iio/adc/mediatek,mt6375_auxadc.h>
 #include <dt-bindings/mfd/mt6375.h>
 #include <dt-bindings/interconnect/mtk,mt6873-emi.h>
 #include <dt-bindings/memory/mt6789-larb-port.h>
 #include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/power/mtk-charger.h>
 
 / {
 	model = "MT6789";
@@ -6403,31 +6405,31 @@
 		spm_twam_last_sta3 = <0x1dc>;
 	};
 
-	lk_charger: lk_charger {
+	lk_charger: lk-charger {
 		compatible = "mediatek,lk_charger";
-		enable_anime;
-		/* enable_pe_plus; */
-		enable_pd20_reset;
-		power_path_support;
-		max_charger_voltage = <6500000>;
-		fast_charge_voltage = <3000000>;
+		enable-anime;
+		/* enable-pe-plus; */
+		enable-pd20-reset;
+		power-path-support;
+		max-charger-voltage = <6500000>;
+		fast-charge-voltage = <3000000>;
 
 		/* charging current */
-		usb_charger_current = <500000>;
-		ac_charger_current = <2050000>;
-		ac_charger_input_current = <3200000>;
-		non_std_ac_charger_current = <500000>;
-		charging_host_charger_current = <1500000>;
-		ta_ac_charger_current = <3000000>;
-		pd_charger_current = <500000>;
+		usb-charger-current = <500000>;
+		ac-charger-current = <2050000>;
+		ac-charger-input-current = <3200000>;
+		non-std-ac-charger-current = <500000>;
+		charging-host-charger-current = <1500000>;
+		ta-ac-charger-current = <3000000>;
+		pd-charger-current = <500000>;
 
 		/* battery temperature protection */
-		temp_t4_threshold = <50>;
-		temp_t3_threshold = <45>;
-		temp_t1_threshold = <0>;
+		temp-t4-threshold = <50>;
+		temp-t3-threshold = <45>;
+		temp-t1-threshold = <0>;
 
 		/* enable check vsys voltage */
-		enable_check_vsys;
+		enable-check-vsys;
 	};
 
 	pe: pe {
@@ -6599,6 +6601,7 @@
 		compatible = "mediatek,charger";
 		gauge = <&mtk_gauge>;
 		charger = <&mt6375_chg>;
+		bc12-psy = <&mt6375_chg>;
 		bootmode = <&chosen>;
 
 		algorithm-name = "Basic";
@@ -6657,8 +6660,9 @@
 		compatible = "mediatek,rt-pd-manager";
 	};
 
-	pd_adapter: pd_adapter {
+	pd_adapter: pd-adapter {
 		compatible = "mediatek,pd_adapter";
+		nr-port = <1>;
 		boot_mode = <&chosen>;
 		adapter_name = "pd_adapter";
 		force_cv;
@@ -6666,10 +6670,12 @@
 		phy-names = "usb2-phy";
 	};
 
-	mtk_ctd: mtk_ctd {
+	mtk_ctd: mtk-ctd {
 		compatible = "mediatek,mtk_ctd";
-		bc12 = <&mt6375_chg>;
-		bc12_sel = <0>;
+		nr-port = <1>;
+		chg-name-port0 = "primary_chg";
+		bc12-sel-port0 = <MTK_CTD_BY_SUBPMIC>;
+		bc12-psy-port0 = <&mt6375_chg>;
 	};
 
 	subpmic_pmu_eint: subpmic_pmu_eint {
@@ -7028,7 +7034,8 @@
 			chg_tmr = <10>;
 			chg_tmr_en;
 			dcdt_sel = <600>;
-			bc12_sel = <&mtk_ctd>;
+			nr-port = <1>;
+			bc12-sel = <MTK_CTD_BY_SUBPMIC>;
 			boot_mode = <&chosen>;
 			phys = <&u2port0 PHY_TYPE_USB2>;
 			phy-names = "usb2-phy";
