@@ -1449,7 +1449,7 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 		if (oddmr_priv->spr_format == MTK_PANEL_RGBG_BGRG_TYPE ||
 					oddmr_priv->spr_format == MTK_PANEL_BGRG_RGBG_TYPE)
 			SET_VAL_MASK(reg_value, reg_mask, 1, MT6991_REG_SPR_RGBG_MODE);
-			mtk_oddmr_write_mask(comp, reg_value, MT6991_DISP_ODDMR_OD_SCALING_6, reg_mask, pkg);
+		mtk_oddmr_write_mask(comp, reg_value, MT6991_DISP_ODDMR_OD_SCALING_6, reg_mask, pkg);
 	} else
 		mtk_oddmr_write_mask(comp, reg_value, DISP_ODDMR_OD_SCALING_6, reg_mask, pkg);
 	ODDMRAPI_LOG("w %u, h %u, comp_w %u ln_h_v %u, %u, %u, spr_format %d, OD_SCALING_6 0x%x\n",
@@ -9001,8 +9001,8 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 				mtk_oddmr_dmr_ddren_en(comp, handle, 0);
 		}
 
-		if (!mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_ODDMR_OD_AEE))
+		if (priv && (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_ODDMR_OD_AEE)))
 			break;
 		mtk_oddmr_odr_get_status(comp, handle);
 	}
