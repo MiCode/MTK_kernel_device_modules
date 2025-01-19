@@ -309,6 +309,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_makefile".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -419,6 +420,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -743,6 +745,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_hwz".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_zram".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {

@@ -1,0 +1,912 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2024 MediaTek Inc.
+ */
+
+#include <linux/printk.h>
+#include <linux/vmalloc.h>
+#include <inc/engine_fifo.h>
+#include <inc/engine_regs.h>
+
+#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
+/* Empty operations */
+#define zram_writel(val, reg) \
+	do { (void)(val); (void)(reg);} while (0)
+#define zram_readl(reg)	\
+	({ (void)(reg); uint32_t __v = ((1UL << 32) - 1); __v;})
+#else
+#define zram_writel(val, reg) \
+	writel(val, reg)
+#define zram_readl(reg)	\
+	readl(reg)
+#endif
+
+void engine_control_deinit(struct platform_device *pdev, struct engine_control_t *ctrl)
+{
+	struct device *dev = &pdev->dev;
+
+	dev_info(dev, "%s\n", __func__);
+}
+
+/* Initialize register base addresses. Return 0 if success */
+int engine_control_init(struct platform_device *pdev, struct engine_control_t *ctrl)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *res = NULL;
+
+	dev_info(dev, "%s\n", __func__);
+
+	if (!dev) {
+		pr_info("%s: fail to find mtk hwzram device.\n", __func__);
+		return -ENOENT;
+	}
+
+	/********************************/
+	/* Set up register base address */
+	/********************************/
+
+	/* ZRAM_PM */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "zram_pm");
+	if (!res) {
+		pr_info("%s: fail to get resource ZRAM_PM.\n", __func__);
+		return -ENOENT;
+	}
+	ctrl->zram_pm_base = devm_ioremap(dev, res->start, resource_size(res));
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("ZRAM_PM: 0x%llx, 0x%llx (iomem: %llx)\n",
+			res->start, resource_size(res), (unsigned long long)ctrl->zram_pm_base);
+#endif
+	if (!ctrl->zram_pm_base) {
+		pr_info("fail to ioremap ZRAM_PM: 0x%llx", res->start);
+		return -ENOMEM;
+	}
+
+	/* ZRAM_CONFIG */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "zram_config");
+	if (!res) {
+		pr_info("%s: fail to get resource ZRAM_CONFIG.\n", __func__);
+		return -ENOENT;
+	}
+	ctrl->zram_config_base = devm_ioremap(dev, res->start, resource_size(res));
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("ZRAM_CONFIG: 0x%llx, 0x%llx (iomem: %llx)\n",
+			res->start, resource_size(res), (unsigned long long)ctrl->zram_config_base);
+#endif
+	if (!ctrl->zram_config_base) {
+		pr_info("fail to ioremap ZRAM_CONFIG: 0x%llx", res->start);
+		return -ENOMEM;
+	}
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	ctrl->zram_config_res_sz = resource_size(res);
+#endif
+
+	/* ZRAM_SMMU */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "zram_smmu");
+	if (!res) {
+		pr_info("%s: fail to get resource ZRAM_SMMU.\n", __func__);
+		return -ENOENT;
+	}
+	ctrl->zram_smmu_base = devm_ioremap(dev, res->start, resource_size(res));
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("ZRAM_SMMU: 0x%llx, 0x%llx (iomem: %llx)\n",
+			res->start, resource_size(res), (unsigned long long)ctrl->zram_smmu_base);
+#endif
+	if (!ctrl->zram_smmu_base) {
+		pr_info("fail to ioremap ZRAM_SMMU: 0x%llx", res->start);
+		return -ENOMEM;
+	}
+
+	/* ZRAM_DEC */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "zram_dec");
+	if (!res) {
+		pr_info("%s: fail to get resource ZRAM_DEC.\n", __func__);
+		return -ENOENT;
+	}
+	ctrl->zram_dec_base = devm_ioremap(dev, res->start, resource_size(res));
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("ZRAM_DEC: 0x%llx, 0x%llx (iomem: %llx)\n",
+			res->start, resource_size(res), (unsigned long long)ctrl->zram_dec_base);
+#endif
+	if (!ctrl->zram_dec_base) {
+		pr_info("fail to ioremap ZRAM_DEC: 0x%llx", res->start);
+		return -ENOMEM;
+	}
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	ctrl->zram_dec_res_sz = 0x4c0;
+#endif
+
+	/* ZRAM_ENC */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "zram_enc");
+	if (!res) {
+		pr_info("%s: fail to get resource ZRAM_ENC.\n", __func__);
+		return -ENOENT;
+	}
+	ctrl->zram_enc_base = devm_ioremap(dev, res->start, resource_size(res));
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("ZRAM_ENC: 0x%llx, 0x%llx (iomem: %llx)\n",
+			res->start, resource_size(res), (unsigned long long)ctrl->zram_enc_base);
+#endif
+	if (!ctrl->zram_enc_base) {
+		pr_info("fail to ioremap ZRAM_ENC: 0x%llx", res->start);
+		return -ENOMEM;
+	}
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	ctrl->zram_enc_res_sz = 0x38c;
+#endif
+
+	dev_info(dev, "%s done\n", __func__);
+
+	return 0;
+}
+
+/* For LDVT stress with SMMU S1. Should be removed later? (TODO) */
+int engine_smmu_setup(struct platform_device *pdev, struct engine_control_t *ctrl)
+{
+	struct device *dev = &pdev->dev;
+	struct device_node *dev_node = dev_of_node(dev);
+	struct iommu_domain *domain;
+	u64 reg[2] = {0, 0};
+	unsigned long iova;
+	size_t size;
+	phys_addr_t phys;
+	int prot = IOMMU_READ | IOMMU_WRITE;
+	int ret;
+
+	domain = iommu_get_domain_for_dev(dev);
+	if (!domain) {
+		dev_info(dev, "no IOMMU domain found for ZRAM\n");
+		return -ENOENT;
+	}
+
+	ret = of_property_read_u64_array(dev_node, "mtk,iommu-dma-range", reg, 2);
+	if (ret < 0) {
+		pr_info("%s - of_property_read_u64_array err : %d\n", __func__, ret);
+		return -EINVAL;
+	}
+
+	iova = reg[0];
+	size = reg[1];
+	phys = reg[0];
+	pr_info("%s - Setup identical IOMMU mapping from IOVA(0x%lx) to PA(0x%llx) with the range of (0x%lx)\n",
+		__func__, iova, phys, size);
+
+	/* Support coherence */
+	if (!engine_coherence_disabled())
+		prot |= IOMMU_CACHE;
+
+	/* Create identical mapping for ZRAM with SMMU S1 */
+	ret = iommu_map(domain, iova, phys, size, prot, GFP_KERNEL);
+	if (ret) {
+		pr_info("%s - iommu_map err : %d\n", __func__, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+/* For LDVT stress with SMMU S1. Should be removed later (TODO) */
+void engine_smmu_destroy(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct device_node *dev_node = dev_of_node(dev);
+	struct iommu_domain *domain;
+	u64 reg[2] = {0, 0};
+	unsigned long iova;
+	size_t size;
+	int ret;
+
+	domain = iommu_get_domain_for_dev(dev);
+	if (!domain) {
+		dev_info(dev, "no IOMMU domain found for ZRAM\n");
+		return;
+	}
+
+	ret = of_property_read_u64_array(dev_node, "mtk,iommu-dma-range", reg, 2);
+	if (ret < 0) {
+		pr_info("%s - of_property_read_u64_array err : %d\n", __func__, ret);
+		return;
+	}
+
+	iova = reg[0];
+	size = reg[1];
+	pr_info("%s - Destroy identical IOMMU mapping for IOVA(0x%lx) with the range of (0x%lx)\n",
+		__func__, iova, size);
+
+	/* Create identical mapping for ZRAM with SMMU S1 */
+	size = iommu_unmap(domain, iova, size);
+	pr_info("%s - iommu_unmap size (0x%lx)\n", __func__, size);
+}
+
+void engine_free_interrupts(struct platform_device *pdev, struct engine_control_t *ctrl,
+		struct engine_irq_t *irqs, unsigned int count)
+{
+	struct device *dev = &pdev->dev;
+	int i;
+
+	dev_info(dev, "%s\n", __func__);
+
+	if (!dev) {
+		pr_info("%s: fail to find mtk hwzram device.\n", __func__);
+		return;
+	}
+
+	/* Don't exceed the max possible count of engine interrupts */
+	if (count > ENGINE_MAX_IRQ_COUNT)
+		return;
+
+	for (i = 0; i < count; i++) {
+		// TODO: wait & clear irq status (?)
+
+		devm_free_irq(dev, irqs[i].irq, irqs[i].priv);
+	}
+}
+
+/* Return 0 if success */
+int engine_request_interrupts(struct platform_device *pdev, struct engine_control_t *ctrl,
+		struct engine_irq_t *irqs, unsigned int count)
+{
+	struct device *dev = &pdev->dev;
+	int i, irq_id;
+	int ret;
+
+	dev_info(dev, "%s\n", __func__);
+
+	if (!dev) {
+		pr_info("%s: fail to find mtk hwzram device.\n", __func__);
+		return -ENOENT;
+	}
+
+	/* Don't exceed the max possible count of engine interrupts */
+	if (count > ENGINE_MAX_IRQ_COUNT)
+		return -EINVAL;
+
+	for (i = 0; i < count; i++) {
+		irq_id = platform_get_irq_byname(pdev, irqs[i].name);
+		if (irq_id < 0) {
+			pr_info("%s: failed to get irq for (%s), err(%d)\n",
+					__func__, irqs[i].name, irq_id);
+			return -ENOENT;
+		}
+
+		ret = devm_request_irq(dev, irq_id, irqs[i].handler, irqs[i].flags,
+				pdev->name, irqs[i].priv);
+		if (ret) {
+			pr_info("%s: failed to request irq for (%s:%d), err(%d)\n",
+					__func__, irqs[i].name, irq_id, ret);
+			return -ENOMEM;
+		}
+
+		irqs[i].irq = irq_id;
+	}
+
+	return 0;
+}
+
+/* Power on only - no reference count */
+#define ZRAM_SSYS_PWR_ON_OFF	(0x1UL << 4)
+#define ZRAM_SSYS_RTFF_GRP_EN	(0xFUL << 8)
+#define ZRAM_SSYS_PWR_ACK	(0x1UL << 31)
+int engine_power_on(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_pm_base + ZRAM_SSYSPM_CON;
+	uint32_t reg_val = zram_readl(reg);
+
+	/* POWER on */
+	reg_val |= ZRAM_SSYS_PWR_ON_OFF;
+	zram_writel(reg_val, reg);
+
+	/* Waiting for ACK */
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_SSYS_PWR_ACK) != ZRAM_SSYS_PWR_ACK);
+
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	return 0;
+}
+
+/* Power off only - no reference count */
+#define ZRAM_SSYS_SRAM_DORMANT_MASK	(~(0x7UL << 13))
+void engine_power_off(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_pm_base + ZRAM_SSYSPM_CON;
+	uint32_t reg_val = zram_readl(reg);
+
+	/* POWER off */
+	reg_val |= ZRAM_SSYS_RTFF_GRP_EN;
+	zram_writel(reg_val, reg);
+
+	reg_val &= ZRAM_SSYS_SRAM_DORMANT_MASK;
+	zram_writel(reg_val, reg);
+
+	reg_val &= (~ZRAM_SSYS_PWR_ON_OFF);
+	zram_writel(reg_val, reg);
+
+	/* Waiting for ACK */
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_SSYS_PWR_ACK) == ZRAM_SSYS_PWR_ACK);
+
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+#define RSC_BUS_PLL_REQ	(1UL << 14)
+#define RSC_INFRA_REQ	(1UL << 15)
+#define RSC_26M_REQ	(1UL << 16)
+#define RSC_PMIC_REQ	(1UL << 17)
+#define RSC_VCORE_REQ	(1UL << 18)
+#define RSC_REQ_MASK	(RSC_BUS_PLL_REQ | RSC_INFRA_REQ | RSC_26M_REQ | RSC_PMIC_REQ | RSC_VCORE_REQ)
+
+#define RSC_BUS_PLL_ACK	(1UL << 19)
+#define RSC_INFRA_ACK	(1UL << 20)
+#define RSC_26M_ACK	(1UL << 21)
+#define RSC_PMIC_ACK	(1UL << 22)
+#define RSC_VCORE_ACK	(1UL << 23)
+#define RSC_ACK_MASK	(RSC_BUS_PLL_ACK | RSC_INFRA_ACK | RSC_26M_ACK | RSC_PMIC_ACK | RSC_VCORE_ACK)
+
+/* Request vcore, pmic, 26m, infra, bus_pll */
+int engine_request_resource(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_enc_base + ZRAM_ENC_RESOURCE_SETTING;
+	uint32_t reg_val, ack_status = 0x0;
+
+	reg_val = zram_readl(reg);
+	reg_val |= RSC_REQ_MASK;
+	zram_writel(reg_val, reg);
+
+	do {
+		reg_val = zram_readl(reg);
+		ack_status |= (reg_val & RSC_ACK_MASK);
+	} while (ack_status != RSC_ACK_MASK);
+
+	return 0;
+}
+
+/* Release vcore, pmic, 26m, infra, bus_pll */
+void engine_release_resource(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_enc_base + ZRAM_ENC_RESOURCE_SETTING;
+	uint32_t reg_val, ack_status = RSC_ACK_MASK;
+
+	reg_val = zram_readl(reg);
+	reg_val &= ~RSC_REQ_MASK;
+	zram_writel(reg_val, reg);
+
+	do {
+		reg_val = zram_readl(reg);
+		ack_status &= (reg_val & RSC_ACK_MASK);
+	} while (ack_status != 0x0);
+}
+
+#define ZRAM_CFG_CLK_GATING_MASK	((uint32_t)~0UL)
+int engine_clock_init(struct engine_control_t *ctrl)
+{
+	/* No HW DCM */
+	zram_writel(ZRAM_CFG_CLK_GATING_MASK, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_CLR0);
+	zram_writel(ZRAM_CFG_CLK_GATING_MASK, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_CLR1);
+	zram_writel(ZRAM_CFG_CLK_GATING_MASK, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_CLR2);
+	zram_writel(ZRAM_CFG_CLK_GATING_MASK, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_CLR3);
+	zram_writel(ZRAM_CFG_CLK_GATING_MASK, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_CLR4);
+	return 0;
+}
+
+/* (TODO) will be removed */
+#define ZRAM_SMMU_S_GLB_CTL3	(0x1000C)
+void engine_smmu_join(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_smmu_base + ZRAM_SMMU_S_GLB_CTL3;
+	uint32_t reg_val;
+
+	zram_writel(0x0, reg);
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+void engine_smmu_bypass(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_smmu_base + ZRAM_SMMU_S_GLB_CTL3;
+	uint32_t reg_val;
+
+	zram_writel(0x1, reg);
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+#ifdef REFERENCE_ONLY	/* For Reference Only */
+#define ZRAM_SEC_CONFIG_SW0_RST	(0xD00)
+#define ZRAM_RST_RELEASE_MASK	((uint32_t)~(0UL))
+#define ZRAM_ENC_RST_MASK	((uint32_t)~(1UL << 2))
+void engine_enc_reset(struct engine_control_t *ctrl)
+{
+
+#ifdef USE_SEC_REG	/* (TODO) will be removed */
+	zram_writel(ZRAM_ENC_RST_MASK, ctrl->zram_sec_config_base + ZRAM_SEC_CONFIG_SW0_RST);
+	zram_writel(ZRAM_RST_RELEASE_MASK, ctrl->zram_sec_config_base + ZRAM_SEC_CONFIG_SW0_RST);
+#endif
+
+	/* Reset write index to 0 */
+	zram_writel(0, ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_WRITE_INDEX);
+	zram_writel(0, ctrl->zram_enc_base + ZRAM_ENC_CMD_SECOND_FIFO_WRITE_INDEX);
+
+	/* After reset, write and complete indices will be 0 */
+}
+
+#define ZRAM_DEC_RST_MASK	((uint32_t)~(1UL << 1))
+void engine_dec_reset(struct engine_control_t *ctrl)
+{
+	unsigned int i;
+
+#ifdef USE_SEC_REG	/* (TODO) will be removed */
+	zram_writel(ZRAM_DEC_RST_MASK, ctrl->zram_sec_config_base + ZRAM_SEC_CONFIG_SW0_RST);
+	zram_writel(ZRAM_RST_RELEASE_MASK, ctrl->zram_sec_config_base + ZRAM_SEC_CONFIG_SW0_RST);
+#endif
+
+	/* Reset write index to 0 */
+	for (i = 0; i < MAX_DCOMP_NR; i++)
+		zram_writel(0, ctrl->zram_dec_base + ZRAM_DEC_CMD_FIFO_0_WRITE_INDEX + (i * 4));
+
+	/* After reset, write and complete indices will be 0 */
+}
+#endif
+
+/* Wait for ENC Idle */
+#define ZRAM_ENC_STATUS_IDLE_MASK	(0x1)
+void engine_enc_wait_idle(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_enc_base + ZRAM_ENC_STATUS;
+	uint32_t reg_val;
+
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_ENC_STATUS_IDLE_MASK) != ZRAM_ENC_STATUS_IDLE_MASK);
+}
+
+/* Wait for DEC Idle */
+#define ZRAM_DEC_STATUS_IDLE_MASK	(0x1)
+void engine_dec_wait_idle(struct engine_control_t *ctrl)
+{
+	void __iomem *reg = ctrl->zram_dec_base + ZRAM_DEC_STATUS;
+	uint32_t reg_val;
+
+	do {
+		reg_val = zram_readl(reg);
+	} while ((reg_val & ZRAM_DEC_STATUS_IDLE_MASK) != ZRAM_DEC_STATUS_IDLE_MASK);
+}
+
+#define ZRAM_ENC_CFG_DST_STASHING_EN	(1UL << 4)
+void engine_enc_init(struct engine_control_t *ctrl, bool dst_copy)
+{
+	uint32_t reg_val;
+
+	/* Setting for engine without coherence */
+	if (engine_coherence_disabled()) {
+		zram_writel(0x7, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_READ_INSTN);
+		zram_writel(0x7, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_READ_DATA);
+		zram_writel(0x7, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_WRITE_INSTN);
+		zram_writel(0x7, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_WRITE_DATA);
+		goto next;
+	}
+
+	/* Setting for engine with coherence */
+	zram_writel(0x2007, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_READ_INSTN);
+	zram_writel(0x2007, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_READ_DATA);
+	zram_writel(0x2007, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_WRITE_INSTN);
+
+	/* DST stashing */
+	if (dst_copy)
+		zram_writel(0x2007, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_WRITE_DATA);
+	else
+		zram_writel(0x7, ctrl->zram_enc_base + ZRAM_ENC_GMCIF_CON_WRITE_DATA);
+
+next:
+	/* General config setting */
+	zram_writel(0xf00, ctrl->zram_enc_base + ZRAM_ENC_SW_LIMIT);
+
+	reg_val = ENGINE_COMP_BATCH_INTR_CNT_BITS;
+	if (dst_copy) {
+		pr_info("%s: it needs dst copy!\n", __func__);
+		/* CURRENTLY only for ENGINE_BUF_ENABLE == 0x40. */
+		reg_val |= ZRAM_ENC_CFG_DST_STASHING_EN;
+	}
+	zram_writel(reg_val, ctrl->zram_enc_base + ZRAM_ENC_CFG);
+
+	/* FIFO Threshold setting */
+	zram_writel(0x12561256, ctrl->zram_enc_base + ZRAM_ENC_FIFO_THRESHOLD_READ_INSTN_PREULTRA);
+	zram_writel(0x005a01b2, ctrl->zram_enc_base + ZRAM_ENC_FIFO_THRESHOLD_READ_DATA_PREULTRA_0);
+	zram_writel(0x005a01b2, ctrl->zram_enc_base + ZRAM_ENC_FIFO_THRESHOLD_READ_DATA_PREULTRA_1);
+	zram_writel(0x005a01b2, ctrl->zram_enc_base + ZRAM_ENC_FIFO_THRESHOLD_READ_DATA_PREULTRA_2);
+	zram_writel(0x005a01b2, ctrl->zram_enc_base + ZRAM_ENC_FIFO_THRESHOLD_READ_DATA_PREULTRA_3);
+	zram_writel(0x002400ad, ctrl->zram_enc_base + ZRAM_ENC_FIFO_THRESHOLD_WRITE_INSTN_PREULTRA);
+	zram_writel(0x00b40364, ctrl->zram_enc_base + ZRAM_ENC_FIFO_THRESHOLD_WRITE_PAGE_PREULTRA);
+
+	/* DDREN HW mode setting */
+	zram_writel(0x0006c040, ctrl->zram_enc_base + ZRAM_ENC_RESOURCE_SETTING);
+
+	/* IRQ setting (No CMD interrupt enabled by default) */
+	if (engine_async_mode_disabled())
+		reg_val = ZRAM_ENC_ERROR_INTR_MASK;
+	else
+		reg_val = ZRAM_ENC_BATCH_INTR_MASK | ZRAM_ENC_IDLE_INTR_MASK | ZRAM_ENC_ERROR_INTR_MASK;
+
+	zram_writel(reg_val, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
+}
+
+#define ZRAM_DEC_CFG_DST_SNOOPING_EN	(1UL << 4)
+void engine_dec_init(struct engine_control_t *ctrl, bool src_snoop)
+{
+	uint32_t reg_val;
+
+	/* Setting for engine without coherence */
+	if (engine_coherence_disabled()) {
+		zram_writel(0x7, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_READ_CMD);
+		zram_writel(0x7, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_READ_DATA);
+		zram_writel(0x7, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_WRITE_CMD);
+		zram_writel(0x7, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_WRITE_DATA);
+		goto next;
+	}
+
+	/* Setting these configurations according to src_snoop */
+	if (src_snoop) {
+		reg_val = zram_readl(ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_READ_DATA);
+		zram_writel(reg_val | 0x2007, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_READ_DATA);
+	} else {
+		zram_writel(0x7, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_READ_DATA);
+	}
+
+	reg_val = zram_readl(ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_READ_CMD);
+	zram_writel(reg_val | 0x2007, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_READ_CMD);
+
+	reg_val = zram_readl(ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_WRITE_DATA);
+	zram_writel(reg_val | 0x2007, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_WRITE_DATA);
+
+	reg_val = zram_readl(ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_WRITE_CMD);
+	zram_writel(reg_val | 0x2007, ctrl->zram_dec_base + ZRAM_DEC_GMCIF_CON_WRITE_CMD);
+
+next:
+	/* General config setting */
+	reg_val = ENGINE_DCOMP_BATCH_INTR_CNT_BITS;
+	if (src_snoop) {
+		pr_info("%s: it needs src snoop for dst copy!\n", __func__);
+		/* CURRENTLY only for ENGINE_BUF_ENABLE == 0x40. */
+		reg_val |= ZRAM_DEC_CFG_DST_SNOOPING_EN;
+	}
+	zram_writel(reg_val, ctrl->zram_dec_base + ZRAM_DEC_CFG);
+
+	/*
+	 * IRQ setting (No CMD interrupt enabled by default) -
+	 * No dec batch or idle interrupts for engine w/o coherence (using sync mode).
+	 */
+	if (engine_coherence_disabled() || engine_async_mode_disabled())
+		reg_val = ZRAM_DEC_ERROR_INTR_MASK;
+	else
+		reg_val = ZRAM_DEC_BATCH_INTR_MASK | ZRAM_DEC_IDLE_INTR_MASK | ZRAM_DEC_ERROR_INTR_MASK;
+
+	reg_val |= ZRAM_DEC_FIFO_CMD_INTR_MASK;
+	reg_val |= ZRAM_DEC_ERROR_FIFO_ID_INTR_MASK;
+	reg_val |= ZRAM_DEC_KERNEL_HANG_INTR_MASK;
+	zram_writel(reg_val, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
+}
+
+void engine_setup_enc_main_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	if (!IS_ALIGNED(addr, SZ_4K)) {
+		pr_info("%s: addr (0x%llx) is not 4K aligned.\n", __func__, addr);
+		return;
+	}
+
+	if (sz_bits > ENGINE_COMP_FIFO_MAX_ENTRY_BITS) {
+		pr_info("%s: sz_bits (%u) is too large.\n", __func__, sz_bits);
+		return;
+	}
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_CONFIG;
+	reg_val = (addr >> 7) | sz_bits;
+	zram_writel(reg_val, reg);
+
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+void engine_setup_enc_second_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	if (!IS_ALIGNED(addr, SZ_4K)) {
+		pr_info("%s: addr (0x%llx) is not 4K aligned.\n", __func__, addr);
+		return;
+	}
+
+	if (sz_bits > ENGINE_COMP_FIFO_MAX_ENTRY_BITS) {
+		pr_info("%s: sz_bits (%u) is too large.\n", __func__, sz_bits);
+		return;
+	}
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_CMD_SECOND_FIFO_CONFIG;
+	reg_val = (addr >> 7) | sz_bits;
+	zram_writel(reg_val, reg);
+
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+void engine_setup_dec_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	if (!IS_ALIGNED(addr, SZ_4K)) {
+		pr_info("%s: addr (0x%llx) is not 4K aligned.\n", __func__, addr);
+		return;
+	}
+
+	if (sz_bits > ENGINE_DCOMP_FIFO_MAX_ENTRY_BITS) {
+		pr_info("%s: sz_bits (%u) is too large.\n", __func__, sz_bits);
+		return;
+	}
+
+	if (id >= MAX_DCOMP_NR) {
+		pr_info("%s: id (%u) is too large.\n", __func__, id);
+		return;
+	}
+
+	reg = ctrl->zram_dec_base + ZRAM_DEC_CMD_FIFO_CONFIG_0 + (id * 4);
+	reg_val = (addr >> 7) | sz_bits;
+	zram_writel(reg_val, reg);
+
+	pr_info("%s: ID(%u) REG(%lx) VAL(%x)\n", __func__, id, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+void engine_enc_debug_sel(struct engine_control_t *ctrl, uint32_t reg_val)
+{
+	void __iomem *reg = ctrl->zram_enc_base + ZRAM_ENC_DEBUG_CON;
+
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+	zram_writel(reg_val, reg);
+}
+
+void engine_enc_debug_show(struct engine_control_t *ctrl)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_DEBUG_REG;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+void engine_enc_debug_show_more(struct engine_control_t *ctrl)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_COMPLETE_INDEX;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_CMD_SECOND_FIFO_COMPLETE_INDEX;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_DBG_1;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_DBG_2;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_DBG_3;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_IRQ_STATUS;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_ERROR_TYPE_INST;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_ERROR_TYPE_APB;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_enc_base + ZRAM_ENC_RESOURCE_SETTING;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+void engine_dec_debug_sel(struct engine_control_t *ctrl, uint32_t reg_val)
+{
+	void __iomem *reg = ctrl->zram_dec_base + ZRAM_DEC_DEBUG_CON;
+
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+	zram_writel(reg_val, reg);
+}
+
+void engine_dec_debug_show(struct engine_control_t *ctrl)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	reg = ctrl->zram_dec_base + ZRAM_DEC_DEBUG_REG;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+void engine_dec_debug_show_more(struct engine_control_t *ctrl)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	reg = ctrl->zram_dec_base + ZRAM_CONFIG_ZRAM_CG_CON0;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_dec_base + ZRAM_CONFIG_ZRAM_CG_CON1;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_dec_base + ZRAM_CONFIG_ZRAM_CG_CON2;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_dec_base + ZRAM_CONFIG_ZRAM_CG_CON3;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+
+	reg = ctrl->zram_dec_base + ZRAM_CONFIG_ZRAM_CG_CON4;
+	reg_val = zram_readl(reg);
+	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+}
+
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+static struct {
+	uint32_t offset;
+	uint32_t reg_val;
+} *register_dump = NULL;
+
+void engine_dump_all_registers(struct engine_control_t *ctrl)
+{
+	resource_size_t total_res_sz;
+	int i, j = 0;
+	void __iomem *reg;
+
+	if (register_dump == NULL) {
+
+		/* Total register range */
+		total_res_sz = ctrl->zram_config_res_sz +
+			ctrl->zram_dec_res_sz +
+			ctrl->zram_enc_res_sz;
+
+		register_dump = vzalloc(sizeof(*register_dump) * (total_res_sz / sizeof(uint32_t)));
+		if (!register_dump) {
+			pr_info("%s: no memory.\n", __func__);
+			return;
+		}
+	}
+
+	/* Record register values */
+	for (i = 0; i < ctrl->zram_config_res_sz; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_config_base + i;
+		register_dump[j].reg_val = i;
+		register_dump[j].reg_val = zram_readl(reg);
+		j++;
+	}
+	for (i = 0; i < ctrl->zram_dec_res_sz; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_dec_base + i;
+		register_dump[j].reg_val = i;
+		register_dump[j].reg_val = zram_readl(reg);
+		j++;
+	}
+	for (i = 0; i < ctrl->zram_enc_res_sz; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_enc_base + i;
+		register_dump[j].reg_val = i;
+		register_dump[j].reg_val = zram_readl(reg);
+		j++;
+	}
+
+	pr_info("%s: Record done.\n", __func__);
+}
+
+/* Return 0 if comparison pass */
+int engine_compare_all_registers(struct engine_control_t *ctrl)
+{
+	resource_size_t total_res_sz;
+	int i, j = 0, mismatch = 0, ret = 0;
+	void __iomem *reg;
+	uint32_t reg_val;
+
+	if (register_dump == NULL)
+		return -ENOMEM;
+
+	/* Total register range */
+	total_res_sz = ctrl->zram_config_res_sz +
+		ctrl->zram_dec_res_sz +
+		ctrl->zram_enc_res_sz;
+
+	/* Start comparison with existing records */
+	for (i = 0; i < ctrl->zram_config_res_sz; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_config_base + i;
+		reg_val = zram_readl(reg);
+		if (reg_val != register_dump[j].reg_val) {
+			pr_info("%s:[0x%x] is (%u), not (%u)\n", "zram_config", i, reg_val, register_dump[j].reg_val);
+			mismatch++;
+		}
+		j++;
+	}
+
+	for (i = 0; i < ctrl->zram_dec_res_sz; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_dec_base + i;
+		reg_val = zram_readl(reg);
+		if (reg_val != register_dump[j].reg_val) {
+			pr_info("%s:[0x%x] is (%u), not (%u)\n", "zram_dec", i, reg_val, register_dump[j].reg_val);
+			mismatch++;
+		}
+		j++;
+	}
+
+	for (i = 0; i < ctrl->zram_enc_res_sz; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_enc_base + i;
+		reg_val = zram_readl(reg);
+		if (reg_val != register_dump[j].reg_val) {
+			pr_info("%s:[0x%x] is (%u), not (%u)\n", "zram_enc", i, reg_val, register_dump[j].reg_val);
+			mismatch++;
+		}
+		j++;
+	}
+
+	/* Dump final result */
+	if (j != (total_res_sz / sizeof(uint32_t))) {
+		pr_info("%s: (%d) compared, not equal to total_res (%llu)\n",
+			__func__, j, (total_res_sz / sizeof(uint32_t)));
+		ret = -1;
+		goto exit;
+	}
+
+	pr_info("%s: (%d) compared\n", __func__, j);
+
+	if (mismatch != 0) {
+		pr_info("%s: Fail. (%d) mismatches\n", __func__, mismatch);
+		ret = -2;
+		goto exit;
+	}
+
+	pr_info("%s: Pass.\n", __func__);
+
+exit:
+	return ret;
+}
+#endif
+
+int engine_get_reg_status(struct engine_control_t *ctrl, char *buf)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+	int i;
+	int copied = 0;
+
+	for (i = 0; i < 0x100; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_enc_base + i;
+		reg_val = zram_readl(reg);
+		copied += snprintf(buf + copied, PAGE_SIZE - copied, "0x%-3x:0x%-8x", i, reg_val);
+		if (((i + sizeof(uint32_t)) % 0x20) == 0)
+			copied += snprintf(buf + copied, PAGE_SIZE - copied, "\n");
+		else
+			copied += snprintf(buf + copied, PAGE_SIZE - copied, "  ");
+	}
+
+	for (i = 0; i < 0x100; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_dec_base + i;
+		reg_val = zram_readl(reg);
+		copied += snprintf(buf + copied, PAGE_SIZE - copied, "0x%-3x:0x%-8x", i, reg_val);
+		if (((i + sizeof(uint32_t)) % 0x20) == 0)
+			copied += snprintf(buf + copied, PAGE_SIZE - copied, "\n");
+		else
+			copied += snprintf(buf + copied, PAGE_SIZE - copied, "  ");
+	}
+
+	return copied;
+}
