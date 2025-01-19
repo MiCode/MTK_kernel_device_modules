@@ -24,7 +24,6 @@
 #include "../mtk_drm_fb.h"
 #include "../mtk_dsi.h"
 
-
 #define OD_TABLE_MAX 4
 #define DMR_TABLE_MAX 2
 #define DMR_GAIN_MAX 15
@@ -38,6 +37,29 @@
 #define MAX_BINSET_NUM 32
 #define DMR_LINE_BUFFER 19
 #define MAX_PID_LENGTH 256
+
+#define ODDMR_SECTION_WHOLE 0
+#define ODDMR_SECTION_END 0xFEFE
+//MTK_ODDMR_OD_BASIC_SUB_ID
+#define OD_BASIC_WHOLE ODDMR_SECTION_WHOLE
+#define OD_BASIC_PARAM 0x0100
+#define OD_BASIC_PQ 0x0200
+#define OD_BASIC_END ODDMR_SECTION_END
+
+//MTK_ODDMR_OD_TABLE_SUB_ID
+#define OD_TABLE_WHOLE ODDMR_SECTION_WHOLE
+#define OD_TABLE_BASIC_INFO 0x0100
+#define OD_TABLE_GAIN_TABLE 0x0200
+#define OD_TABLE_PQ_OD 0x0300
+#define OD_TABLE_FPS_GAIN_TABLE 0x0400
+#define OD_TABLE_DBV_GAIN_TABLE 0x0500
+#define OD_TABLE_DATA 0x0600
+#define OD_TABLE_END ODDMR_SECTION_END
+
+enum MTK_ODDMR_PARAM_DATA_TYPE {
+	ODDMR_OD_BASIC_INFO = 0x03,
+	ODDMR_OD_TABLE = 0x04,
+};
 
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
@@ -95,6 +117,82 @@ enum MTK_ODDMR_DMR_MODE_TYPE {
 	DMR_MODE_TYPE_RGB7X8Q = 8,
 };
 
+/***************** file parsing ******************/
+struct mtk_oddmr_pq_pair {
+	uint32_t addr;
+	uint32_t value;
+};
+
+struct mtk_oddmr_pq_param {
+	uint32_t counts;
+	struct mtk_oddmr_pq_pair *param;
+};
+
+struct mtk_oddmr_table_raw {
+	/* size unit 1 byte */
+	uint32_t size;
+	uint8_t *value;
+};
+
+struct mtk_oddmr_table_gain {
+	uint32_t item;
+	uint32_t value;
+};
+
+/***************** od param ******************/
+/* od alloc table pq gain_table */
+/* od table */
+struct mtk_oddmr_od_table_basic_info {
+	uint32_t width;
+	uint32_t height;
+	uint32_t fps;
+	uint32_t dbv;
+	uint32_t min_fps;
+	uint32_t max_fps;
+	uint32_t min_dbv;
+	uint32_t max_dbv;
+	uint32_t reserved;
+};
+struct mtk_oddmr_od_table {
+	struct mtk_oddmr_od_table_basic_info table_basic_info;
+	uint8_t *gain_table_raw;
+	struct mtk_oddmr_pq_param pq_od;
+	uint32_t fps_cnt;
+	struct mtk_oddmr_table_gain fps_table[OD_GAIN_MAX];
+	uint32_t bl_cnt;
+	struct mtk_oddmr_table_gain bl_table[OD_GAIN_MAX];
+	struct mtk_oddmr_table_raw raw_table;
+};
+struct mtk_oddmr_od_basic_param {
+	struct mtk_oddmr_panelid panelid;
+	/* 0:AP 1:ddic */
+	uint32_t resolution_switch_mode;
+	uint32_t panel_width;
+	uint32_t panel_height;
+	uint32_t table_cnt;
+	uint32_t od_mode;
+	/* 0:no_dither 1:12to11 2:12to10 */
+	uint32_t dither_sel;
+	uint32_t dither_ctl;
+	/* bit(0) hscaling, bit(1) vscaling */
+	uint32_t scaling_mode;
+	uint32_t od_hsk_2;
+	uint32_t od_hsk_3;
+	uint32_t od_hsk_4;
+	uint32_t reserved;
+};
+/* od basic info */
+struct mtk_oddmr_od_basic_info {
+	struct mtk_oddmr_od_basic_param basic_param;
+	struct mtk_oddmr_pq_param basic_pq;
+};
+struct mtk_oddmr_od_param {
+	struct mtk_oddmr_od_basic_info od_basic_info;
+	struct mtk_oddmr_od_table *od_tables[OD_TABLE_MAX];
+	uint32_t valid_table;
+	int valid_table_cnt;
+	int updata_dram_table;
+};
 
 struct mtk_drm_dmr_basic_info {
 	unsigned int panel_id_len;
@@ -447,6 +545,8 @@ struct mtk_disp_oddmr_primary {
 	enum ODDMR_STATE od_state;
 	enum ODDMR_STATE dmr_state;
 	enum ODDMR_STATE dbi_state;
+	struct mtk_oddmr_od_param od_param;
+	int od_basic_info_loaded;
 	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
 	struct mtk_drm_dmr_cfg_info dmr_multi_bin[MAX_BIN_NUM];
 	struct mtk_drm_oddmr_binset_cfg_info dmr_binset_cfg_info;
@@ -538,6 +638,6 @@ void mtk_oddmr_ddren(struct cmdq_pkt *cmdq_handle,
 unsigned int check_oddmr_err_event(void);
 void clear_oddmr_err_event(void);
 void mtk_oddmr_scp_status(bool enable);
-
+int mtk_oddmr_load_param(struct mtk_disp_oddmr *priv, struct mtk_drm_oddmr_param *param);
 
 #endif
