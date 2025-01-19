@@ -179,6 +179,9 @@ void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
 	if (!core_ctl_get_policy())
 		return;
 
+	if (rq == NULL)
+		return;
+
 	if (rq)
 		rt_rq = &rq->rt;
 
@@ -1015,7 +1018,8 @@ static void unregister_core_ctl_freq_qos_notifier(void)
 		if (ret)
 			pr_info("%s: freq_qos_min_notifier unregister failed with policy#%d\n", TAG, policy_idx);
 		policy_idx++;
-		cpu = cpumask_last(policy->related_cpus);
+		if (!cpumask_empty(policy->related_cpus))
+			cpu = cpumask_last(policy->related_cpus);
 		cpufreq_cpu_put(policy);
 	}
 }
@@ -1049,7 +1053,8 @@ static int init_core_ctl_freq_qos_notifier(void)
 			}
 		}
 		policy_idx++;
-		cpu = cpumask_last(policy->related_cpus);
+		if (!cpumask_empty(policy->related_cpus))
+			cpu = cpumask_last(policy->related_cpus);
 		cpufreq_cpu_put(policy);
 	}
 	pr_info("%s: core_ctl_freq_qos_notifier registered, nr_policy=%d\n", TAG, nr_policy);

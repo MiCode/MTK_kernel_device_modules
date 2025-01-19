@@ -850,7 +850,7 @@ static int get_cpu_active_loading(void)
 
 		cpu_stat->win_idx = ((cpu_stat->win_idx + 1) % WIN_SIZE);
 		idx = cpu_stat->win_idx;
-		if (idx >= 0 && idx < WIN_SIZE) {
+		if (idx < WIN_SIZE) {
 			cpu_stat->cpu_active_loading[idx] = cpu_active_loading;
 			cpu_stat->cpu_util_pct[idx] = get_cpu_util_pct(cpu, false);
 		}
@@ -1741,7 +1741,9 @@ static void get_busy_cpus(void)
 	struct cluster_data *cluster;
 	struct cpu_data *cpu_stat;
 	int cpu = 0, cid = 0, i = 0, cpu_count = 0, idx = 0;
-	unsigned int busy_state[MAX_NR_CPUS], max_nr_state[MAX_NR_CPUS], max_rt_nr_state[MAX_NR_CPUS];
+	unsigned int busy_state[MAX_NR_CPUS] = {0};
+	unsigned int max_nr_state[MAX_NR_CPUS] = {0};
+	unsigned int max_rt_nr_state[MAX_NR_CPUS] = {0};
 
 	/* check CPU is busy or not */
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
