@@ -176,6 +176,9 @@ static struct arch_timer_caller_history_struct
 	burst_hrtimer_history[BURST_HRTIMER_HIS_ARRAY_SIZE];
 static DEFINE_PER_CPU(struct hrtimer_count_struct[HRTIMER_COUNT_ARRAY_SIZE], hrtimer_func_counts);
 static DEFINE_PER_CPU(uint64_t, hrtimer_func_counts_last_time);
+static DEFINE_PER_CPU(struct hrtimer_wakeup_count_struct[HRTIMER_COUNT_ARRAY_SIZE], wakeup_comm_counts);
+static DEFINE_PER_CPU(uint64_t, wakeup_comm_counts_last_time);
+
 static uint64_t usleep_range_count;
 static uint64_t hrtimer_count;
 
@@ -185,6 +188,7 @@ static DEFINE_SPINLOCK(hrtimer_lock);
 static int aee_kernel_warning_api_func_pre(struct kprobe *p, struct pt_regs *regs);
 static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs);
 static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs);
+static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs);
 
 static struct kprobe kp_aee_kernel_warning_api_func = {
 	.symbol_name = "aee_kernel_warning_api_func",
@@ -199,6 +203,11 @@ static struct kprobe kp_usleep_range_state = {
 static struct kprobe kp_hrtimer_expire_entry = {
 	.symbol_name = "__run_hrtimer",
 	.pre_handler = hrtimer_expire_entry_pre,
+};
+
+static struct kprobe kp_hrtimer_wakeup_entry = {
+	.symbol_name = "hrtimer_wakeup",
+	.pre_handler = hrtimer_wakeup_entry_pre,
 };
 
 static void dump_usleep_range_history(void)
@@ -220,6 +229,7 @@ static void dump_hrtimer_burst_history(void)
 	int i, cpu;
 	unsigned long flags = 0;
 	struct hrtimer_count_struct *cpu_counts;
+	struct hrtimer_wakeup_count_struct *comm_counts;
 
 	spin_lock_irqsave(&hrtimer_lock, flags);
 	for (i = 0; i < BURST_HRTIMER_HIS_ARRAY_SIZE; i++) {
@@ -246,6 +256,19 @@ static void dump_hrtimer_burst_history(void)
 					cpu_counts[i].last_time,
 					cpu);
 	}
+
+	for_each_online_cpu(cpu) {
+		comm_counts = per_cpu_ptr(wakeup_comm_counts, cpu);
+		for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++)
+			if (comm_counts[i].count >= 200)
+				pr_info("comm_counts[%d].comm %s, count: %llu, start_time: %lld, last_time: %lld cpu=%d",
+					i, comm_counts[i].comm,
+					comm_counts[i].count,
+					comm_counts[i].start_time,
+					comm_counts[i].last_time,
+					cpu);
+	}
+
 	spin_unlock_irqrestore(&hrtimer_lock, flags);
 }
 
@@ -1622,6 +1645,62 @@ static int hrtimer_expire_entry_pre(struct kprobe *p, struct pt_regs *regs)
 
 	return 0;
 }
+
+static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	struct hrtimer *hrtimer_t = (struct hrtimer *)regs->regs[0];
+	struct hrtimer_sleeper *t =
+		container_of(hrtimer_t, struct hrtimer_sleeper, timer);
+	u64 temp_count = 0;
+	unsigned long flags = 0;
+	int i;
+
+	spin_lock_irqsave(&hrtimer_lock, flags);
+
+	struct hrtimer_wakeup_count_struct *cpu_counts = this_cpu_ptr(wakeup_comm_counts);
+	uint64_t *last_time_ptr = this_cpu_ptr(&wakeup_comm_counts_last_time);
+
+	if (sched_clock() - *last_time_ptr > 2000000000) {
+		for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
+			strscpy(cpu_counts[i].comm, "N/A", TASK_COMM_LEN);
+			cpu_counts[i].count = 0;
+			cpu_counts[i].start_time = 0;
+			cpu_counts[i].last_time = 0;
+		}
+		*last_time_ptr = sched_clock();
+	}
+
+
+	for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
+		if (strcmp(cpu_counts[i].comm, t->task->comm) == 0) {
+			cpu_counts[i].count++;
+			cpu_counts[i].last_time = sched_clock();
+			if (cpu_counts[i].count > 0 && cpu_counts[i].count % 5000 == 0) {
+				hrtimer_count++;
+				temp_count = hrtimer_count % BURST_HRTIMER_HIS_ARRAY_SIZE;
+				burst_hrtimer_history[temp_count].timer_caller_ip = (unsigned long)hrtimer_t->function;
+				burst_hrtimer_history[temp_count].last_time = cpu_counts[i].last_time;
+				burst_hrtimer_history[temp_count].start_time = cpu_counts[i].start_time;
+				burst_hrtimer_history[temp_count].now = 666;
+				burst_hrtimer_history[temp_count].caller_cpu = smp_processor_id();
+				burst_hrtimer_history[temp_count].count = cpu_counts[i].count;
+				strscpy(burst_hrtimer_history[temp_count].comm, t->task->comm, TASK_COMM_LEN);
+			}
+			break;
+		} else if (strcmp(cpu_counts[i].comm, "N/A") == 0) {
+			strscpy(cpu_counts[i].comm, t->task->comm, TASK_COMM_LEN);
+			cpu_counts[i].count = 1;
+			cpu_counts[i].start_time = sched_clock();
+			cpu_counts[i].last_time = cpu_counts[i].start_time;
+			break;
+		}
+	}
+
+	spin_unlock_irqrestore(&hrtimer_lock, flags);
+
+	return 0;
+}
+
 #endif
 #endif
 
@@ -1771,6 +1850,13 @@ static int __init hangdet_init(void)
 		pr_info("Planted kprobe at %p for hrtimer_expire_entry\n",
 			kp_hrtimer_expire_entry.addr);
 
+	res = register_kprobe(&kp_hrtimer_wakeup_entry);
+	if (res < 0)
+		pr_info("hrtimer_wakeup_entry kprobe failed %d\n", res);
+	else
+		pr_info("Planted kprobe at %p for hrtimer_wakeup_entry\n",
+			kp_hrtimer_wakeup_entry.addr);
+
 #endif
 #endif
 
@@ -1791,6 +1877,7 @@ static void __exit hangdet_exit(void)
 	unregister_kprobe(&kp_aee_kernel_warning_api_func);
 	unregister_kprobe(&kp_usleep_range_state);
 	unregister_kprobe(&kp_hrtimer_expire_entry);
+        unregister_kprobe(&kp_hrtimer_wakeup_entry);
 #endif
 #endif
 	unregister_pm_notifier(&wdt_pm_nb);

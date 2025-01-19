@@ -44,6 +44,13 @@ struct hrtimer_count_struct {
 	ktime_t last_time;
 };
 
+struct hrtimer_wakeup_count_struct {
+	char comm[TASK_COMM_LEN];
+	u64 count;
+	ktime_t start_time;
+	ktime_t last_time;
+};
+
 #endif
 
 #endif
