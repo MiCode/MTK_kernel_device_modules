@@ -26999,7 +26999,7 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 				   enum mtk_ddp_comp_id cur,
 				   enum mtk_ddp_comp_id next)
 {
-	unsigned int addr, reg, mask = 0;
+	unsigned int addr = 0, reg, mask = 0;
 	int value;
 	void __iomem *config_regs = NULL;
 	const struct mtk_mmsys_reg_data *reg_data  = NULL;
