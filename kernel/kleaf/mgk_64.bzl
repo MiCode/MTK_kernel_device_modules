@@ -148,6 +148,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/nvmem:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/keyboard:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -162,6 +163,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/nvmem:nvmem_mtk-devinfo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/keyboard:mtk-kpd".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/keyboard:mtk-pmic-keys".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_device_modules = {
@@ -309,8 +312,6 @@ mgk_64_device_modules = [
     "drivers/iio/adc/mt6681-auxadc.ko",
     "drivers/iio/adc/mtk-spmi-pmic-adc.ko",
     "drivers/iio/adc/rt9490-adc.ko",
-    "drivers/input/keyboard/mtk-kpd.ko",
-    "drivers/input/keyboard/mtk-pmic-keys.ko",
     "drivers/input/touchscreen/BoTai_Multi_Touch/BoTai_touch_one/botai_touch_one.ko",
     "drivers/input/touchscreen/BoTai_Multi_Touch/BoTai_touch_two/botai_touch_two.ko",
     "drivers/input/touchscreen/GT9886/gt9886.ko",
