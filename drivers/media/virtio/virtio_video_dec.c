@@ -159,7 +159,7 @@ static int virtio_video_dec_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 	}
 
 #if IS_ENABLED(CONFIG_VIRTIO_VIDEO_MTK_EXTENSION)
-	case V4L2_CID_MPEG_MTK_COLOR_DESC: {
+	case V4L2_CID_MTK_VIDEO_COLOR_DESC: {
 		ret = virtio_video_cmd_get_control_mtk_u32(
 			vv, stream, ctrl->id, ctrl->p_new.p_u32,
 			sizeof(struct mtk_color_desc));
@@ -170,10 +170,10 @@ static int virtio_video_dec_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 		}
 		break;
 	}
-	case V4L2_CID_VDEC_SLC_SUPPORT_VER:
-	case V4L2_CID_MPEG_MTK_FIX_BUFFERS:
-	case V4L2_CID_MPEG_MTK_INTERLACING_FIELD_SEQ:
-	case V4L2_CID_MPEG_MTK_INTERLACING: {
+	case V4L2_CID_MTK_VIDEO_DEC_SLC_SUPPORT_VER:
+	case V4L2_CID_MTK_VIDEO_DEC_FIX_BUFFERS:
+	case V4L2_CID_MTK_VIDEO_DEC_INTERLACING_FIELD_SEQ:
+	case V4L2_CID_MTK_VIDEO_DEC_INTERLACING: {
 		ret = virtio_video_cmd_get_control_mtk_integer(
 			vv, stream, ctrl->id, &ctrl->val);
 		if (ret < 0) {
@@ -202,8 +202,8 @@ static int virtio_video_dec_s_ctrl(struct v4l2_ctrl *ctrl)
 	virtio_v4l2_debug_enter();
 
 	switch (ctrl->id) {
-	case V4L2_CID_MPEG_MTK_CRC_PATH:
-	case V4L2_CID_MPEG_MTK_GOLDEN_PATH:
+	case V4L2_CID_MTK_VIDEO_DEC_CRC_PATH:
+	case V4L2_CID_MTK_VIDEO_DEC_GOLDEN_PATH:
 		ret = virtio_video_cmd_set_control_mtk_string(
 			vv, stream->stream_id, ctrl->id, ctrl->p_new.p_char);
 		if (ret < 0) {
@@ -212,14 +212,14 @@ static int virtio_video_dec_s_ctrl(struct v4l2_ctrl *ctrl)
 			ret = -EINVAL;
 		}
 		break;
-	case V4L2_CID_MPEG_MTK_DECODE_MODE:
-	case V4L2_CID_MPEG_MTK_SEC_DECODE:
-	case V4L2_CID_MPEG_MTK_SET_DECODE_ERROR_HANDLE_MODE:
-	case V4L2_CID_MPEG_MTK_FIXED_MAX_FRAME_BUFFER:
-	case V4L2_CID_MPEG_MTK_SET_WAIT_KEY_FRAME:
-	case V4L2_CID_MPEG_MTK_OPERATING_RATE:
-	case V4L2_CID_MPEG_MTK_QUEUED_FRAMEBUF_COUNT:
-	case V4L2_CID_MPEG_MTK_REAL_TIME_PRIORITY:
+	case V4L2_CID_MTK_VIDEO_DEC_DECODE_MODE:
+	case V4L2_CID_MTK_VIDEO_SEC_MODE:
+	case V4L2_CID_MTK_VIDEO_DEC_SET_DECODE_ERROR_HANDLE_MODE:
+	case V4L2_CID_MTK_VIDEO_DEC_FIXED_MAX_FRAME_BUFFER:
+	case V4L2_CID_MTK_VIDEO_DEC_SET_WAIT_KEY_FRAME:
+	case V4L2_CID_MTK_VIDEO_OPERATING_RATE:
+	case V4L2_CID_MTK_VIDEO_DEC_QUEUED_FRAMEBUF_COUNT:
+	case V4L2_CID_MTK_VIDEO_DEC_REAL_TIME_PRIORITY:
 		ret = virtio_video_cmd_set_control_mtk_integer(
 			vv, stream->stream_id, ctrl->id, ctrl->val);
 		if (ret < 0) {
@@ -266,7 +266,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 
 	/* g_volatile_ctrl */
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_FIX_BUFFERS;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_FIX_BUFFERS;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "Video fix buffers";
@@ -278,7 +278,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_INTERLACING;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_INTERLACING;
 	cfg.type = V4L2_CTRL_TYPE_BOOLEAN;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "MTK Query Interlacing";
@@ -290,7 +290,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_INTERLACING_FIELD_SEQ;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_INTERLACING_FIELD_SEQ;
 	cfg.type = V4L2_CTRL_TYPE_BOOLEAN;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "MTK Query Interlacing FieldSeq";
@@ -302,7 +302,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_COLOR_DESC;
+	cfg.id = V4L2_CID_MTK_VIDEO_COLOR_DESC;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "MTK vdec Color Description for HDR";
@@ -315,7 +315,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_VDEC_SLC_SUPPORT_VER;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_SLC_SUPPORT_VER;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "MTK vdec SLC support ver";
@@ -328,7 +328,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 
 	/* s_ctrl */
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_DECODE_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_DECODE_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video decode mode";
@@ -340,7 +340,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_SEC_DECODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_SEC_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video Sec Decode path";
@@ -352,7 +352,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_FIXED_MAX_FRAME_BUFFER;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_FIXED_MAX_FRAME_BUFFER;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video fixed maximum frame size";
@@ -366,7 +366,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_CRC_PATH;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_CRC_PATH;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video crc path";
@@ -378,7 +378,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_GOLDEN_PATH;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_GOLDEN_PATH;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video golden path";
@@ -390,7 +390,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_SET_WAIT_KEY_FRAME;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_SET_WAIT_KEY_FRAME;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Wait key frame";
@@ -402,7 +402,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_SET_DECODE_ERROR_HANDLE_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_SET_DECODE_ERROR_HANDLE_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Decode Error Handle Mode";
@@ -414,7 +414,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_OPERATING_RATE;
+	cfg.id = V4L2_CID_MTK_VIDEO_OPERATING_RATE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Vdec Operating Rate";
@@ -426,7 +426,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_REAL_TIME_PRIORITY;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_REAL_TIME_PRIORITY;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Vdec Real Time Priority";
@@ -438,7 +438,7 @@ static int mtk_dec_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_dec_custom_ctrls_check(handler, &cfg);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_QUEUED_FRAMEBUF_COUNT;
+	cfg.id = V4L2_CID_MTK_VIDEO_DEC_QUEUED_FRAMEBUF_COUNT;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video queued frame buf count";

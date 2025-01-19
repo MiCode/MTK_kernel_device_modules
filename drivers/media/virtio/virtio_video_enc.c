@@ -120,47 +120,47 @@ static int virtio_video_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME:
 	case V4L2_CID_MPEG_VIDEO_H264_MAX_QP:
 	case V4L2_CID_MPEG_VIDEO_H264_MIN_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_GRID_SIZE:
+	case V4L2_CID_MTK_VIDEO_ENC_GRID_SIZE:
 	case V4L2_CID_MPEG_VIDEO_B_FRAMES:
 	case V4L2_CID_MPEG_VIDEO_BITRATE_MODE:
 	case V4L2_CID_MPEG_VIDEO_FRAME_RC_ENABLE:
 	case V4L2_CID_MPEG_VIDEO_MB_RC_ENABLE:
 	case V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB:
-	case V4L2_CID_MPEG_MTK_ENCODE_SCENARIO:
-	case V4L2_CID_MPEG_MTK_ENCODE_NONREFP:
-	case V4L2_CID_MPEG_MTK_ENCODE_NONREFP_FREQ:
-	case V4L2_CID_MPEG_MTK_ENCODE_DETECTED_FRAMERATE:
-	case V4L2_CID_MPEG_MTK_ENCODE_RFS_ON:
+	case V4L2_CID_MTK_VIDEO_ENC_SCENARIO:
+	case V4L2_CID_MTK_VIDEO_ENC_NONREFP:
+	case V4L2_CID_MTK_VIDEO_ENC_NONREFP_FREQ:
+	case V4L2_CID_MTK_VIDEO_ENC_DETECTED_FRAMERATE:
+	case V4L2_CID_MTK_VIDEO_ENC_RFS_ON:
 	case V4L2_CID_MPEG_VIDEO_PREPEND_SPSPPS_TO_IDR:
-	case V4L2_CID_MPEG_MTK_ENCODE_OPERATION_RATE:
-	case V4L2_CID_MPEG_MTK_ENCODE_ROI_ON:
-	case V4L2_CID_MPEG_MTK_MAX_WIDTH:
-	case V4L2_CID_MPEG_MTK_MAX_HEIGHT:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_I_FRAME_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_P_FRAME_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_B_FRAME_QP:
-	case V4L2_CID_MPEG_MTK_SEC_ENCODE:
-	case V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES:
-	case V4L2_CID_MPEG_MTK_ENCODE_WPP_MODE:
-	case V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_MODE:
-	case V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD:
-	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_HIGHQUALITY:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_MAX_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_MIN_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_I_P_QP_DELTA:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_FRAME_LEVEL_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_QP_CONTROL_MODE:
-	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_DUMMY_NAL:
-	case V4L2_CID_MPEG_MTK_CALLING_PID:
-	case V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT:
-	case V4L2_CID_MPEG_MTK_ENCODE_QPVBR:
-	case V4L2_CID_MPEG_MTK_ENCODE_CHROMA_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_MB_RC_TK_SPD:
-	case V4L2_CID_MPEG_MTK_ENCODE_FRM_QP_LTR:
-	case V4L2_CID_MPEG_MTK_ENCODE_VISUAL_QUALITY:
-	case V4L2_CID_MPEG_MTK_ENCODE_INIT_QP:
-	case V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE:
-	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE:
+	case V4L2_CID_MTK_VIDEO_OPERATING_RATE:
+	case V4L2_CID_MTK_VIDEO_ENC_ROI_ON:
+	case V4L2_CID_MTK_VIDEO_ENC_MAX_WIDTH:
+	case V4L2_CID_MTK_VIDEO_ENC_MAX_HEIGHT:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_I_FRAME_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_P_FRAME_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_B_FRAME_QP:
+	case V4L2_CID_MTK_VIDEO_SEC_MODE:
+	case V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES:
+	case V4L2_CID_MTK_VIDEO_ENC_WPP_MODE:
+	case V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_MODE:
+	case V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_WFD:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_HIGHQUALITY:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_I_P_QP_DELTA:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_FRAME_LEVEL_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_QP_CONTROL_MODE:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_DUMMY_NAL:
+	case V4L2_CID_MTK_VIDEO_CALLING_PID:
+	case V4L2_CID_MTK_VIDEO_ENC_SLICE_CNT:
+	case V4L2_CID_MTK_VIDEO_ENC_QPVBR:
+	case V4L2_CID_MTK_VIDEO_ENC_CHROMA_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_MB_RC_TK_SPD:
+	case V4L2_CID_MTK_VIDEO_ENC_FRM_QP_LTR:
+	case V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY:
+	case V4L2_CID_MTK_VIDEO_ENC_INIT_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_MLVEC_MODE:
 		ret = virtio_video_cmd_set_control_mtk_integer(
 			vv, stream->stream_id, ctrl->id, ctrl->val);
 		if (ret < 0) {
@@ -169,11 +169,11 @@ static int virtio_video_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ret = -EINVAL;
 		}
 		break;
-	case V4L2_CID_MPEG_MTK_COLOR_DESC:
+	case V4L2_CID_MTK_VIDEO_COLOR_DESC:
 	case V4L2_CID_MPEG_VIDEO_H264_VUI_SAR_ENABLE:
-	case V4L2_CID_MPEG_VIDEO_ENABLE_TSVC:
-	case V4L2_CID_MPEG_MTK_ENCODE_MULTI_REF:
-	case V4L2_CID_MPEG_MTK_ENCODE_TEMPORAL_LAYER_COUNT:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_TSVC:
+	case V4L2_CID_MTK_VIDEO_ENC_MULTI_REF:
+	case V4L2_CID_MTK_VIDEO_ENC_TEMPORAL_LAYER_COUNT:
 		ret = virtio_video_cmd_set_control_mtk_u32(vv,
 				stream->stream_id,
 				ctrl->id, ctrl->p_new.p_u32,
@@ -184,8 +184,8 @@ static int virtio_video_enc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ret = -EINVAL;
 		}
 		break;
-	case V4L2_CID_MPEG_MTK_LOG:
-	case V4L2_CID_MPEG_MTK_VCP_PROP:
+	case V4L2_CID_MTK_VIDEO_LOG:
+	case V4L2_CID_MTK_VIDEO_VCP_PROP:
 		ret = virtio_video_cmd_set_control_mtk_string(
 			vv, stream->stream_id, ctrl->id, ctrl->p_new.p_char);
 		if (ret < 0) {
@@ -258,7 +258,7 @@ static int virtio_video_enc_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->val = 0;
 		break;
 #if IS_ENABLED(CONFIG_VIRTIO_VIDEO_MTK_EXTENSION)
-	case V4L2_CID_MPEG_MTK_RESOLUTION_CHANGE:
+	case V4L2_CID_MTK_VIDEO_ENC_RESOLUTION_CHANGE:
 		ret = virtio_video_cmd_get_control_mtk_u32(
 			vv, stream, ctrl->id, ctrl->p_new.p_u32,
 			sizeof(struct venc_resolution_change));
@@ -268,7 +268,7 @@ static int virtio_video_enc_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 			ret = -EINVAL;
 		}
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_ROI_RC_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_ROI_RC_QP:
 		ret = virtio_video_cmd_get_control_mtk_integer(
 			vv, stream, ctrl->id, &ctrl->val);
 		if (ret < 0) {
@@ -277,8 +277,8 @@ static int virtio_video_enc_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
 			ret = -EINVAL;
 		}
 		break;
-	case V4L2_CID_MPEG_MTK_GET_LOG:
-	case V4L2_CID_MPEG_MTK_GET_VCP_PROP:
+	case V4L2_CID_MTK_VIDEO_GET_LOG:
+	case V4L2_CID_MTK_VIDEO_GET_VCP_PROP:
 		ret = virtio_video_cmd_get_control_mtk_string(
 			vv, stream, ctrl->id, ctrl->p_new.p_char);
 		if (ret < 0) {
@@ -395,7 +395,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler,&mtk_enc_vui_sar_ctrl, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_SCENARIO;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_SCENARIO;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode scenario";
@@ -407,7 +407,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_NONREFP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_NONREFP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode nonrefp";
@@ -419,7 +419,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_NONREFP_FREQ;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_NONREFP_FREQ;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode nonrefp";
@@ -431,7 +431,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_DETECTED_FRAMERATE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_DETECTED_FRAMERATE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode detect framerate";
@@ -443,7 +443,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RFS_ON;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RFS_ON;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode slice loss indication";
@@ -467,7 +467,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_OPERATION_RATE;
+	cfg.id = V4L2_CID_MTK_VIDEO_OPERATING_RATE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode operation rate";
@@ -479,7 +479,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ROI_ON;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ROI_ON;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode roi switch";
@@ -491,7 +491,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_GRID_SIZE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_GRID_SIZE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode heif grid size";
@@ -503,7 +503,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_COLOR_DESC;
+	cfg.id = V4L2_CID_MTK_VIDEO_COLOR_DESC;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode color description for HDR";
@@ -516,7 +516,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_MAX_WIDTH;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MAX_WIDTH;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max width";
@@ -528,7 +528,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_MAX_HEIGHT;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MAX_HEIGHT;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max height";
@@ -540,7 +540,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_I_FRAME_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_I_FRAME_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "I-Frame QP Value";
@@ -552,7 +552,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_P_FRAME_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_P_FRAME_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "P-Frame QP Value";
@@ -564,7 +564,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_B_FRAME_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_B_FRAME_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "B-Frame QP Value";
@@ -576,7 +576,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_SEC_ENCODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_SEC_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video Sec Encode path";
@@ -588,7 +588,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode qp control mode";
@@ -600,7 +600,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_VIDEO_ENABLE_TSVC;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_TSVC;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode tsvc";
@@ -613,7 +613,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_MULTI_REF;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MULTI_REF;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode multi ref";
@@ -626,7 +626,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_WPP_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_WPP_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "encode wpp";
@@ -638,7 +638,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "encode low latency";
@@ -650,7 +650,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_HIGHQUALITY;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_HIGHQUALITY;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable highquality";
@@ -662,7 +662,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_MAX_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max qp";
@@ -674,7 +674,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_MIN_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode min qp";
@@ -686,7 +686,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_I_P_QP_DELTA;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_I_P_QP_DELTA;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode ip qp delta";
@@ -698,7 +698,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_FRAME_LEVEL_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_FRAME_LEVEL_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode frame level qp";
@@ -710,7 +710,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_QP_CONTROL_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_QP_CONTROL_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode qp control mode";
@@ -722,7 +722,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_DUMMY_NAL;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_DUMMY_NAL;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable dummynal";
@@ -734,7 +734,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_WFD;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable lowlatencywfd";
@@ -746,7 +746,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_LOG;
+	cfg.id = V4L2_CID_MTK_VIDEO_LOG;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video Log";
@@ -758,7 +758,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_VCP_PROP;
+	cfg.id = V4L2_CID_MTK_VIDEO_VCP_PROP;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video VCP Property";
@@ -770,7 +770,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_GET_LOG;
+	cfg.id = V4L2_CID_MTK_VIDEO_GET_LOG;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "Get Video Log";
@@ -782,7 +782,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_GET_VCP_PROP;
+	cfg.id = V4L2_CID_MTK_VIDEO_GET_VCP_PROP;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "Get Video VCP Property";
@@ -794,7 +794,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_TEMPORAL_LAYER_COUNT;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_TEMPORAL_LAYER_COUNT;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video temporal layer count";
@@ -807,7 +807,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_CALLING_PID;
+	cfg.id = V4L2_CID_MTK_VIDEO_CALLING_PID;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video Caller Proccess ID";
@@ -820,7 +820,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 
 	/* g_volatile_ctrl */
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ROI_RC_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ROI_RC_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_VOLATILE |
 		V4L2_CTRL_FLAG_READ_ONLY;
@@ -833,7 +833,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_RESOLUTION_CHANGE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RESOLUTION_CHANGE;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_VOLATILE |
 		V4L2_CTRL_FLAG_READ_ONLY;
@@ -847,7 +847,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_SLICE_CNT;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode set slice count";
@@ -859,7 +859,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_QPVBR;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_QPVBR;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode QPVBR";
@@ -873,7 +873,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_CHROMA_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_CHROMA_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Chroma QP";
@@ -886,7 +886,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_MB_RC_TK_SPD;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MB_RC_TK_SPD;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode MB RC Tracking Speed";
@@ -898,7 +898,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_FRM_QP_LTR;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_FRM_QP_LTR;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Frame QP limiter";
@@ -912,7 +912,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_VISUAL_QUALITY;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Visual Quality";
@@ -925,7 +925,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_INIT_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_INIT_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Initial QP";
@@ -938,7 +938,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Frame QP Range";
@@ -951,7 +951,7 @@ static void mtk_enc_ctrls_setup(struct virtio_video_stream *stream)
 	virtio_video_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_MLVEC_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode inputDyanmicCtrl";

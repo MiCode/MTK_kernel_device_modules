@@ -580,7 +580,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->bitrate = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_BITRATE;
 		break;
-	case V4L2_CID_MPEG_MTK_SEC_ENCODE: {
+	case V4L2_CID_MTK_VIDEO_SEC_MODE: {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		struct vb2_queue *dst_vq;
 
@@ -600,7 +600,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 #endif
 		p->svp_mode = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_SEC_ENCODE;
-		mtk_v4l2_debug(0, "[%d] V4L2_CID_MPEG_MTK_SEC_ENCODE id %d val %d array[0] %d array[1] %d",
+		mtk_v4l2_debug(0, "[%d] V4L2_CID_MTK_VIDEO_SEC_MODE id %d val %d array[0] %d array[1] %d",
 			ctx->id, ctrl->id, ctrl->val,
 		ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1]);
 		break;
@@ -700,9 +700,9 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->force_intra = 1;
 		ctx->param_change |= MTK_ENCODE_PARAM_FORCE_INTRA;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_SCENARIO:
+	case V4L2_CID_MTK_VIDEO_ENC_SCENARIO:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_SCENARIO: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_SCENARIO: %d",
 			ctrl->val);
 		p->scenario = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_SCENARIO;
@@ -720,31 +720,31 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 #endif
 		}
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_NONREFP:
+	case V4L2_CID_MTK_VIDEO_ENC_NONREFP:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_NONREFP: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_NONREFP: %d",
 			ctrl->val);
 		p->nonrefp = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_NONREFP;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_NONREFP_FREQ:
+	case V4L2_CID_MTK_VIDEO_ENC_NONREFP_FREQ:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_NONREFP_FREQ: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_NONREFP_FREQ: %d",
 			ctrl->val);
 		p->nonrefpfreq = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_NONREFPFREQ;
 		break;
 
-	case V4L2_CID_MPEG_MTK_ENCODE_DETECTED_FRAMERATE:
+	case V4L2_CID_MTK_VIDEO_ENC_DETECTED_FRAMERATE:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_DETECTED_FRAMERATE: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_DETECTED_FRAMERATE: %d",
 			ctrl->val);
 		p->detectframerate = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_DETECTED_FRAMERATE;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RFS_ON:
+	case V4L2_CID_MTK_VIDEO_ENC_RFS_ON:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_RFS_ON: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_RFS_ON: %d",
 			ctrl->val);
 		p->rfs = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_RFS_ON;
@@ -756,9 +756,9 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->prependheader = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_PREPEND_SPSPPS_TO_IDR;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_OPERATION_RATE:
+	case V4L2_CID_MTK_VIDEO_OPERATING_RATE:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_OPERATION_RATE: %d",
+			"V4L2_CID_MTK_VIDEO_OPERATING_RATE: %d",
 			ctrl->val);
 		p->operationrate = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_OPERATION_RATE;
@@ -770,67 +770,67 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->bitratemode = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_BITRATE_MODE;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_ROI_ON:
+	case V4L2_CID_MTK_VIDEO_ENC_ROI_ON:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_ROI_ON: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_ROI_ON: %d",
 			ctrl->val);
 		p->roion = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_ROI_ON;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_GRID_SIZE:
+	case V4L2_CID_MTK_VIDEO_ENC_GRID_SIZE:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_GRID_SIZE: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_GRID_SIZE: %d",
 			ctrl->val);
 		p->heif_grid_size = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_GRID_SIZE;
 		break;
-	case V4L2_CID_MPEG_MTK_COLOR_DESC:
+	case V4L2_CID_MTK_VIDEO_COLOR_DESC:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_COLOR_DESC: 0x%x",
+			"V4L2_CID_MTK_VIDEO_COLOR_DESC: 0x%x",
 			ctrl->val);
 		memcpy(&p->color_desc, ctrl->p_new.p_u32,
 		sizeof(struct mtk_color_desc));
 		ctx->param_change |= MTK_ENCODE_PARAM_COLOR_DESC;
 		break;
-	case V4L2_CID_MPEG_MTK_MAX_WIDTH:
+	case V4L2_CID_MTK_VIDEO_ENC_MAX_WIDTH:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_MAX_WIDTH: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_MAX_WIDTH: %d",
 			ctrl->val);
 		p->max_w = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_MAX_HEIGHT:
+	case V4L2_CID_MTK_VIDEO_ENC_MAX_HEIGHT:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_MAX_HEIGHT: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_MAX_HEIGHT: %d",
 			ctrl->val);
 		p->max_h = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_I_FRAME_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_I_FRAME_QP:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_RC_I_FRAME_QP val = %d",
+			"V4L2_CID_MTK_VIDEO_ENC_RC_I_FRAME_QP val = %d",
 			ctrl->val);
 		p->i_qp = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_P_FRAME_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_P_FRAME_QP:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_RC_P_FRAME_QP val = %d",
+			"V4L2_CID_MTK_VIDEO_ENC_RC_P_FRAME_QP val = %d",
 			ctrl->val);
 		p->p_qp = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_B_FRAME_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_RC_B_FRAME_QP:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_RC_B_FRAME_QP val = %d",
+			"V4L2_CID_MTK_VIDEO_ENC_RC_B_FRAME_QP val = %d",
 			ctrl->val);
 		p->b_qp = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_WPP_MODE:
+	case V4L2_CID_MTK_VIDEO_ENC_WPP_MODE:
 		mtk_v4l2_debug(0,
-			"V4L2_CID_MPEG_MTK_ENCODE_WPP_MODE: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_WPP_MODE: %d",
 			ctrl->val);
 		p->wpp_mode = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_MODE:
+	case V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_MODE:
 		mtk_v4l2_debug(0,
-			"V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_MODE: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_MODE: %d",
 			ctrl->val);
 		p->low_latency_mode = ctrl->val;
 		if (p->low_latency_mode == 1) {
@@ -839,64 +839,64 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		} else
 			p->use_irq = 0;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_HIGHQUALITY:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_HIGHQUALITY:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_ENABLE_HIGHQUALITY: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_ENABLE_HIGHQUALITY: %d",
 			ctrl->val);
 		p->highquality = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_HIGHQUALITY;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_MAX_QP:
-		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_RC_MAX_QP");
+	case V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP:
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP");
 		p->max_qp = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_MAXQP;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_MIN_QP:
-		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_RC_MIN_QP");
+	case V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP:
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP");
 		p->min_qp = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_MINQP;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_I_P_QP_DELTA:
-		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_RC_I_P_QP_DELTA");
+	case V4L2_CID_MTK_VIDEO_ENC_RC_I_P_QP_DELTA:
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_I_P_QP_DELTA");
 		p->ip_qpdelta = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_IP_QPDELTA;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_FRAME_LEVEL_QP:
-		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_RC_FRAME_LEVEL_QP");
+	case V4L2_CID_MTK_VIDEO_ENC_RC_FRAME_LEVEL_QP:
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_FRAME_LEVEL_QP");
 		p->framelvl_qp = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_FRAMELVLQP;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_RC_QP_CONTROL_MODE:
-		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_RC_QP_CONTROL_MODE");
+	case V4L2_CID_MTK_VIDEO_ENC_RC_QP_CONTROL_MODE:
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_QP_CONTROL_MODE");
 		p->qp_control_mode = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_QP_CTRL_MODE;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_DUMMY_NAL:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_DUMMY_NAL:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_ENABLE_DUMMY_NAL: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_ENABLE_DUMMY_NAL: %d",
 			ctrl->val);
 		p->dummynal = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_DUMMY_NAL;
 		break;
-	case V4L2_CID_MPEG_MTK_LOG:
+	case V4L2_CID_MTK_VIDEO_LOG:
 		mtk_vcodec_set_log(
 			ctx, ctx->dev, ctrl->p_new.p_char,
 			MTK_VCODEC_LOG_INDEX_LOG, set_vcu_vpud_log);
 		break;
-	case V4L2_CID_MPEG_MTK_VCP_PROP:
+	case V4L2_CID_MTK_VIDEO_VCP_PROP:
 		mtk_vcodec_set_log(
 			ctx, ctx->dev, ctrl->p_new.p_char, MTK_VCODEC_LOG_INDEX_PROP, NULL);
 		break;
-	case V4L2_CID_MPEG_VIDEO_ENABLE_TSVC:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_TSVC:
 		mtk_v4l2_debug(0,
-			"V4L2_CID_MPEG_VIDEO_ENABLE_TSVC layer: %d, type: %d\n",
+			"V4L2_CID_MTK_VIDEO_ENC_ENABLE_TSVC layer: %d, type: %d\n",
 			ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1]);
 		p->hier_ref_layer = ctrl->p_new.p_u32[0];
 		p->hier_ref_type = ctrl->p_new.p_u32[1];
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_MULTI_REF:
+	case V4L2_CID_MTK_VIDEO_ENC_MULTI_REF:
 		mtk_v4l2_debug(0,
-			"V4L2_CID_MPEG_MTK_ENCODE_MULTI_REF multi_ref_en: %d\n",
+			"V4L2_CID_MTK_VIDEO_ENC_MULTI_REF multi_ref_en: %d\n",
 			ctrl->p_new.p_u32[0]);
 		memcpy(&p->multi_ref, ctrl->p_new.p_u32,
 		sizeof(struct mtk_venc_multi_ref));
@@ -914,39 +914,39 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->val);
 		p->slice_header_spacing = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_TEMPORAL_LAYER_COUNT:
+	case V4L2_CID_MTK_VIDEO_ENC_TEMPORAL_LAYER_COUNT:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_TEMPORAL_LAYER_COUNT temporal_layer_pcount: %d, temporal_layer_bcount: %d\n",
+			"V4L2_CID_MTK_VIDEO_ENC_TEMPORAL_LAYER_COUNT temporal_layer_pcount: %d, temporal_layer_bcount: %d\n",
 			ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1]);
 		p->temporal_layer_pcount = ctrl->p_new.p_u32[0];
 		p->temporal_layer_bcount = ctrl->p_new.p_u32[1];
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES:
+	case V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES val = %d",
+			"V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES val = %d",
 			ctrl->val);
 		p->max_ltr_num = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD:
+	case V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_WFD:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_WFD: %d",
 			ctrl->val);
 		p->lowlatencywfd = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_LOW_LATENCY_WFD;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT:
+	case V4L2_CID_MTK_VIDEO_ENC_SLICE_CNT:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_SLICE_CNT: %d",
 			ctrl->val);
 		p->slice_count = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_SLICE_CNT;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_QPVBR:
+	case V4L2_CID_MTK_VIDEO_ENC_QPVBR:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_QPVBR: upper_enable(%d) maxqp(%d) maxbrratio(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_QPVBR: upper_enable(%d) maxqp(%d) maxbrratio(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1], ctrl->p_new.p_s32[2]);
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_QPVBR: lower_enable(%d) minqp(%d) minbrratio(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_QPVBR: lower_enable(%d) minqp(%d) minbrratio(%d)",
 			ctrl->p_new.p_s32[3], ctrl->p_new.p_s32[4], ctrl->p_new.p_s32[5]);
 		p->qpvbr_upper_enable = ctrl->p_new.p_s32[0];
 		p->qpvbr_qp_upper_threshold = ctrl->p_new.p_s32[1];
@@ -955,77 +955,77 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->qpvbr_qp_lower_threshold = ctrl->p_new.p_s32[4];
 		p->qpvbr_qp_min_brratio = ctrl->p_new.p_s32[5];
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_CHROMA_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_CHROMA_QP:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_CHROMA_QP: cbqp(%d) crqp(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_CHROMA_QP: cbqp(%d) crqp(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1]);
 		p->cb_qp_offset = ctrl->p_new.p_s32[0];
 		p->cr_qp_offset = ctrl->p_new.p_s32[1];
 		ctx->param_change |= MTK_ENCODE_PARAM_CHROMAQP;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_MB_RC_TK_SPD:
+	case V4L2_CID_MTK_VIDEO_ENC_MB_RC_TK_SPD:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_MB_RC_TK_SPD: %d",
+			"V4L2_CID_MTK_VIDEO_ENC_MB_RC_TK_SPD: %d",
 			ctrl->val);
 		p->mbrc_tk_spd = ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_MBRC_TKSPD;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_FRM_QP_LTR:
+	case V4L2_CID_MTK_VIDEO_ENC_FRM_QP_LTR:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_FRM_QP_LTR: I(%d), P(%d), B(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_FRM_QP_LTR: I(%d), P(%d), B(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1], ctrl->p_new.p_s32[2]);
 		p->ifrm_q_ltr = ctrl->p_new.p_s32[0];
 		p->pfrm_q_ltr = ctrl->p_new.p_s32[1];
 		p->bfrm_q_ltr = ctrl->p_new.p_s32[2];
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_VISUAL_QUALITY:
+	case V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_VISUAL_QUALITY: quant(%d), rd(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY: quant(%d), rd(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1]);
 		memcpy(&p->visual_quality, ctrl->p_new.p_s32,
 		sizeof(struct mtk_venc_visual_quality));
 		ctx->param_change |= MTK_ENCODE_PARAM_VISUAL_QUALITY;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_INIT_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_INIT_QP:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_INIT_QP: enable(%d), I(%d), P(%d), B(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_INIT_QP: enable(%d), I(%d), P(%d), B(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1],
 			ctrl->p_new.p_s32[2], ctrl->p_new.p_s32[3]);
 		memcpy(&p->init_qp, ctrl->p_new.p_s32,
 		sizeof(struct mtk_venc_init_qp));
 		ctx->param_change |= MTK_ENCODE_PARAM_INIT_QP;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE:
+	case V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE: Enable(%d), MAX(%d), MIN(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE: Enable(%d), MAX(%d), MIN(%d)",
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1], ctrl->p_new.p_s32[2]);
 		memcpy(&p->frame_qp_range, ctrl->p_new.p_s32,
 		sizeof(struct mtk_venc_frame_qp_range));
 		ctx->param_change |= MTK_ENCODE_PARAM_FRAMEQP_RANGE;
 		break;
-	case V4L2_CID_MPEG_MTK_CALLING_PID:
+	case V4L2_CID_MTK_VIDEO_CALLING_PID:
 		ctx->cpu_caller_pid = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH:
+	case V4L2_CID_MTK_VIDEO_ENC_SET_NAL_SIZE_LENGTH:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH: Prefer(%d), Bytes(%d)",
+			"V4L2_CID_MTK_VIDEO_ENC_SET_NAL_SIZE_LENGTH: Prefer(%d), Bytes(%d)",
 			ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1]);
 		memcpy(&p->nal_length, ctrl->p_new.p_u32,
 		sizeof(struct mtk_venc_nal_length));
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE:
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_MLVEC_MODE:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE val = %d",
+			"V4L2_CID_MTK_VIDEO_ENC_ENABLE_MLVEC_MODE val = %d",
 			ctrl->val);
 		p->mlvec_mode = ctrl->val;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA:
-		mtk_v4l2_debug(0, "V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA");
+	case V4L2_CID_MTK_VIDEO_ENC_CONFIG_DATA:
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_CONFIG_DATA");
 		ret = mtk_vcodec_enc_set_config_data(ctx, ctrl->p_new.p_u8);
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_CLEAN_GOP:
+	case V4L2_CID_MTK_VIDEO_ENC_CLEAN_GOP:
 		mtk_v4l2_debug(2,
-			"V4L2_CID_MPEG_MTK_ENCODE_CLEAN_GOP val = %d",
+			"V4L2_CID_MTK_VIDEO_ENC_CLEAN_GOP val = %d",
 			ctrl->val);
 		p->use_clean_gop = ctrl->val;
 		break;
@@ -1046,31 +1046,31 @@ static int vidioc_venc_g_ctrl(struct v4l2_ctrl *ctrl)
 	struct venc_resolution_change *reschange;
 
 	switch (ctrl->id) {
-	case V4L2_CID_MPEG_MTK_ENCODE_ROI_RC_QP:
+	case V4L2_CID_MTK_VIDEO_ENC_ROI_RC_QP:
 		venc_if_get_param(ctx,
 			GET_PARAM_ROI_RC_QP,
 			&value);
 		ctrl->val = value;
 		break;
-	case V4L2_CID_MPEG_MTK_RESOLUTION_CHANGE:
+	case V4L2_CID_MTK_VIDEO_ENC_RESOLUTION_CHANGE:
 		reschange = (struct venc_resolution_change *)ctrl->p_new.p_u32;
 		venc_if_get_param(ctx,
 			GET_PARAM_RESOLUTION_CHANGE,
 			reschange);
 		break;
-	case V4L2_CID_MPEG_MTK_GET_LOG:
+	case V4L2_CID_MTK_VIDEO_GET_LOG:
 		mtk_vcodec_get_log(
 			ctx, ctx->dev, ctrl->p_new.p_char,
 			MTK_VCODEC_LOG_INDEX_LOG, get_vcu_vpud_log);
 		break;
-	case V4L2_CID_MPEG_MTK_GET_VCP_PROP:
+	case V4L2_CID_MTK_VIDEO_GET_VCP_PROP:
 		mtk_vcodec_get_log(
 			ctx, ctx->dev, ctrl->p_new.p_char, MTK_VCODEC_LOG_INDEX_PROP, NULL);
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_B_NUM:
+	case V4L2_CID_MTK_VIDEO_ENC_GET_MAX_B_NUM:
 		ctrl->val = mtk_venc_cap_common.max_b;
 		break;
-	case V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_TEMPORAL_LAYER:
+	case V4L2_CID_MTK_VIDEO_ENC_GET_MAX_TEMPORAL_LAYER:
 		ctrl->val = mtk_venc_cap_common.max_temporal_layer;
 		break;
 	default:
@@ -4026,7 +4026,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 		&mtk_enc_vui_sar_ctrl, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_SCENARIO;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_SCENARIO;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode scenario";
@@ -4038,7 +4038,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_NONREFP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_NONREFP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode nonrefp";
@@ -4050,7 +4050,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_NONREFP_FREQ;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_NONREFP_FREQ;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode nonrefp";
@@ -4062,7 +4062,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_DETECTED_FRAMERATE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_DETECTED_FRAMERATE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode detect framerate";
@@ -4074,7 +4074,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RFS_ON;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RFS_ON;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode slice loss indication";
@@ -4098,7 +4098,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_OPERATION_RATE;
+	cfg.id = V4L2_CID_MTK_VIDEO_OPERATING_RATE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode operation rate";
@@ -4110,7 +4110,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ROI_ON;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ROI_ON;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode roi switch";
@@ -4122,7 +4122,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_GRID_SIZE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_GRID_SIZE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode heif grid size";
@@ -4134,7 +4134,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_COLOR_DESC;
+	cfg.id = V4L2_CID_MTK_VIDEO_COLOR_DESC;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode color description for HDR";
@@ -4147,7 +4147,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_MAX_WIDTH;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MAX_WIDTH;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max width";
@@ -4159,7 +4159,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_MAX_HEIGHT;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MAX_HEIGHT;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max height";
@@ -4172,7 +4172,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.i_qp = 51;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_I_FRAME_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_I_FRAME_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "I-Frame QP Value";
@@ -4185,7 +4185,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.p_qp = 51;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_P_FRAME_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_P_FRAME_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "P-Frame QP Value";
@@ -4198,7 +4198,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.b_qp = 51;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_B_FRAME_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_B_FRAME_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "B-Frame QP Value";
@@ -4210,7 +4210,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_SEC_ENCODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_SEC_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video Sec Encode path";
@@ -4222,7 +4222,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode qp control mode";
@@ -4233,11 +4233,11 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 	if (handler->error)
-		mtk_v4l2_debug(0, "Adding control failed V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES %x %d",
-			 V4L2_CID_MPEG_MTK_ENCODE_MAX_LTR_FRAMES, handler->error);
+		mtk_v4l2_debug(0, "Adding control failed V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES %x %d",
+			 V4L2_CID_MTK_VIDEO_ENC_MAX_LTR_FRAMES, handler->error);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_VIDEO_ENABLE_TSVC;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_TSVC;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode tsvc";
@@ -4250,7 +4250,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_MULTI_REF;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MULTI_REF;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode multi ref";
@@ -4263,7 +4263,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_WPP_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_WPP_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "encode wpp";
@@ -4275,7 +4275,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "encode low latency";
@@ -4286,9 +4286,9 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
-        ctx->enc_params.highquality = -1;
+	ctx->enc_params.highquality = -1;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_HIGHQUALITY;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_HIGHQUALITY;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable highquality";
@@ -4301,7 +4301,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.max_qp = -1;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_MAX_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode max qp";
@@ -4314,7 +4314,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.min_qp = -1;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_MIN_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode min qp";
@@ -4327,7 +4327,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.ip_qpdelta = -1;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_I_P_QP_DELTA;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_I_P_QP_DELTA;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode ip qp delta";
@@ -4340,7 +4340,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.framelvl_qp = -1;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_FRAME_LEVEL_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_FRAME_LEVEL_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode frame level qp";
@@ -4352,7 +4352,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_RC_QP_CONTROL_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_QP_CONTROL_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode qp control mode";
@@ -4364,7 +4364,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_DUMMY_NAL;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_DUMMY_NAL;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable dummynal";
@@ -4376,7 +4376,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_LOW_LATENCY_WFD;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_LOW_LATENCY_WFD;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode enable lowlatencywfd";
@@ -4388,7 +4388,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_LOG;
+	cfg.id = V4L2_CID_MTK_VIDEO_LOG;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video Log";
@@ -4400,7 +4400,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_VCP_PROP;
+	cfg.id = V4L2_CID_MTK_VIDEO_VCP_PROP;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video VCP Property";
@@ -4412,7 +4412,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_GET_LOG;
+	cfg.id = V4L2_CID_MTK_VIDEO_GET_LOG;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "Get Video Log";
@@ -4424,7 +4424,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_GET_VCP_PROP;
+	cfg.id = V4L2_CID_MTK_VIDEO_GET_VCP_PROP;
 	cfg.type = V4L2_CTRL_TYPE_STRING;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "Get Video VCP Property";
@@ -4436,7 +4436,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_TEMPORAL_LAYER_COUNT;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_TEMPORAL_LAYER_COUNT;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video temporal layer count";
@@ -4449,7 +4449,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_CALLING_PID;
+	cfg.id = V4L2_CID_MTK_VIDEO_CALLING_PID;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video Caller Proccess ID";
@@ -4461,7 +4461,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_B_NUM;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_GET_MAX_B_NUM;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "Get Video Encoder Max B Number";
@@ -4473,7 +4473,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_GET_MAX_TEMPORAL_LAYER;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_GET_MAX_TEMPORAL_LAYER;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
 	cfg.name = "Get Video Encoder Max Temporal Layer";
@@ -4495,7 +4495,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	/* g_volatile_ctrl */
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ROI_RC_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ROI_RC_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_VOLATILE |
 		V4L2_CTRL_FLAG_READ_ONLY;
@@ -4508,7 +4508,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_RESOLUTION_CHANGE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RESOLUTION_CHANGE;
 	cfg.type = V4L2_CTRL_TYPE_U32;
 	cfg.flags = V4L2_CTRL_FLAG_VOLATILE |
 		V4L2_CTRL_FLAG_READ_ONLY;
@@ -4522,7 +4522,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_SLICE_CNT;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_SLICE_CNT;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode set slice count";
@@ -4541,7 +4541,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.qpvbr_qp_min_brratio  = -1;
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_QPVBR;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_QPVBR;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode QPVBR";
@@ -4557,7 +4557,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.cr_qp_offset = 99;
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_CHROMA_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_CHROMA_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Chroma QP";
@@ -4571,7 +4571,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 
 	ctx->enc_params.mbrc_tk_spd = -1;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_MB_RC_TK_SPD;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_MB_RC_TK_SPD;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode MB RC Tracking Speed";
@@ -4587,7 +4587,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.bfrm_q_ltr = -1;
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_FRM_QP_LTR;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_FRM_QP_LTR;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Frame QP limiter";
@@ -4603,7 +4603,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.visual_quality.rd = -1;
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_VISUAL_QUALITY;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_VISUAL_QUALITY;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Visual Quality";
@@ -4621,7 +4621,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.init_qp.qpb = -1;
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_INIT_QP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_INIT_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Initial QP";
@@ -4638,7 +4638,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.frame_qp_range.min = -1;
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_FRAME_QP_RANGE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_FRAME_QP_RANGE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Frame QP Range";
@@ -4653,7 +4653,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	ctx->enc_params.nal_length.prefer = 0;
 	ctx->enc_params.nal_length.bytes = 0;
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_SET_NAL_SIZE_LENGTH;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_SET_NAL_SIZE_LENGTH;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode Nal Length";
@@ -4666,7 +4666,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_ENABLE_MLVEC_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_MLVEC_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode inputDyanmicCtrl";
@@ -4678,7 +4678,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_CONFIG_DATA;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_CONFIG_DATA;
 	cfg.type = V4L2_CTRL_TYPE_U8;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode config data";
@@ -4691,7 +4691,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MPEG_MTK_ENCODE_CLEAN_GOP;
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_CLEAN_GOP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Video encode clean GOP";
