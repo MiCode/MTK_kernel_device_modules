@@ -657,11 +657,12 @@ static int mtk_cpufreq_hw_driver_probe(struct platform_device *pdev)
 		pr_notice("%s: cpufreq hardware enable\n", __func__);
 	}
 
-	if (readl_relaxed(csram_base + REG_FREQ_SCALING)){
+	if (readl_relaxed(csram_base + REG_FREQ_SCALING))
 		freq_scaling_disabled = false;
-		iounmap(csram_base);
-		release_mem_region(csram_res->start, resource_size(csram_res));
-	}
+
+	iounmap(csram_base);
+	release_mem_region(csram_res->start, resource_size(csram_res));
+
 	fdvfs_enabled = check_fdvfs_support() == 1 ? true : false;
 	per_core_enabled = check_per_core_enabled();
 
