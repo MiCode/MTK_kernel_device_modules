@@ -1515,10 +1515,20 @@ static int gt9896s_fw_update_init(struct gt9896s_ts_core *core_data,
 			sizeof(gt9896s_fw_update_ctrl.fw_name));
 	else {
 		if (gt9896s_find_touch_node == 1) {
-			strncat(panel_firmware_buf, ".bin", 4);
-			strncpy(gt9896s_fw_update_ctrl.fw_name,
-				panel_firmware_buf,
-				sizeof(gt9896s_fw_update_ctrl.fw_name));
+			/*check if panel_firmware_buf has enough space to append ".bin" and a null terminator*/
+			if (strlen(panel_firmware_buf) + strlen(".bin") < sizeof(panel_firmware_buf))
+				strncat(panel_firmware_buf, ".bin", strlen(".bin"));
+			else
+				ts_err("No enough space in panel_firmware_buf, len:%lu",strlen(panel_firmware_buf));
+
+			/*Check if gt9896s_fw_update_ctrl.fw_name has enough space to contain panel_firmware_buf*/
+			if (strlen(panel_firmware_buf) < sizeof(gt9896s_fw_update_ctrl.fw_name)) {
+				strscpy(gt9896s_fw_update_ctrl.fw_name, panel_firmware_buf, strlen(panel_firmware_buf));
+				gt9896s_fw_update_ctrl.fw_name[strlen(panel_firmware_buf)] = '\0';
+			} else {
+				ts_err("string in panel_firmware_buf is too long, len:%lu, size:%lu",
+				strlen(panel_firmware_buf), sizeof(gt9896s_fw_update_ctrl.fw_name));
+			}
 		} else {
 			ret = snprintf(gt9896s_fw_update_ctrl.fw_name,
 				sizeof(gt9896s_fw_update_ctrl.fw_name),
