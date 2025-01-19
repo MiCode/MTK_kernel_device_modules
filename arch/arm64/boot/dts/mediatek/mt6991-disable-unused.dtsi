@@ -173,27 +173,9 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x95>;
 		clocks =
-			<&cksys_gp2_clk CLK_CK2_SENINF0_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF1_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF2_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF3_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF4_SEL>,
-			<&cksys_gp2_clk CLK_CK2_SENINF5_SEL>,
-			<&cksys_gp2_clk CLK_CK2_CAM_SEL>,
-			<&cksys_gp2_clk CLK_CK2_CAMTM_SEL>,
-			<&cksys_gp2_clk CLK_CK2_DPE_SEL>,
-			<&cksys_gp2_clk CLK_CK2_VDEC_SEL>,
-			<&cksys_gp2_clk CLK_CK2_CCUSYS_SEL>,
-			<&cksys_gp2_clk CLK_CK2_CCUTM_SEL>,
-			<&cksys_gp2_clk CLK_CK2_VENC_SEL>,
 			<&cksys_gp2_clk CLK_CK2_DP1_SEL>,
 			<&cksys_gp2_clk CLK_CK2_DP0_SEL>,
-			<&cksys_gp2_clk CLK_CK2_DISP_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MDP_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MMINFRA_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MMINFRA_SNOC_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MMUP_SEL>,
-			<&cksys_gp2_clk CLK_CK2_MMINFRA_AO_SEL>;
+			<&cksys_gp2_clk CLK_CK2_MMUP_SEL>;
 	};
 
 	disable-unused-clk-cksys@96 {
