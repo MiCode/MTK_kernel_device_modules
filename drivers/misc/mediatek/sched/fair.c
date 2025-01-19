@@ -277,11 +277,12 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 		if (cpu == dst_cpu) {
 			unsigned long dpt_v2_cpu_util_base_local, dpt_v2_coef1_util_base_local, dpt_v2_coef2_util_base_local, freq_base;
 
-			mtk_cpu_util_next_dpt_v2(cpu, p, -1, -1, &dpt_v2_cpu_util_base_local, &dpt_v2_coef1_util_base_local, &dpt_v2_coef2_util_base_local);
+			mtk_cpu_util_next_dpt_v2(cpu, p, -1, -1, &dpt_v2_cpu_util_base_local,
+				&dpt_v2_coef1_util_base_local, &dpt_v2_coef2_util_base_local);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-			mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local,
-				NULL, min, max);
+			mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util_base_local, &dpt_v2_coef1_util_base_local,
+				&dpt_v2_coef2_util_base_local, NULL, min, max);
 #else
 			// effective_cpu_util(cpu, util, FREQUENCY_UTIL, tsk);
 #endif // CONFIG_MTK_CPUFREQ_SUGOV_EXT
