@@ -3119,8 +3119,6 @@ static void ufs_mtk_config_scsi_dev(struct scsi_device *sdev)
 	struct ufs_hba *hba = shost_priv(sdev->host);
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	sdev->broken_fua = 1;
-
 	dev_dbg(hba->dev, "lu %llu slave configured", sdev->lun);
 
 	blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, sdev->request_queue);
