@@ -10251,6 +10251,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,smi-id = <32>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_hdcp_disp>;
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L32_P4_DISP_POSTMASK0)
+					 &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_POSTMASK0_hrt_qos";
 		};
 
 		disp_postmask1: disp-postmask1@32190000 {
