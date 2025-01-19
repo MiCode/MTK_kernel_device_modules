@@ -3005,8 +3005,8 @@ static const struct mtk_smmu_plat_data mt6991_data_gpu = {
 static const struct mtk_smmu_plat_data mt6993_data_mm = {
 	.smmu_plat		= SMMU_MT6993,
 	.smmu_type		= MM_SMMU,
-	.flags			= SMMU_DELAY_HW_INIT | /* SMMU_SEC_EN | SMMU_HYP_EN | */
-				  SMMU_EXTRA_DCM_EN | /* SMMU_HANG_DETECT | */SMMU_CLK_AO_EN,
+	.flags			= SMMU_DELAY_HW_INIT | SMMU_SEC_EN |/* SMMU_HYP_EN | */
+				  SMMU_EXTRA_DCM_EN | SMMU_HANG_DETECT | SMMU_CLK_AO_EN,
 };
 
 static const struct mtk_smmu_plat_data mt6993_data_apu = {
