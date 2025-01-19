@@ -1,0 +1,72 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ * Author: Anthony Huang <anthony.huang@mediatek.com>
+ */
+
+#ifndef _DT_BINDINGS_MMDVFS_CLK_MT6991_H
+#define _DT_BINDINGS_MMDVFS_CLK_MT6991_H
+
+/* v5 */
+#define MMDVFS_V5_MUX_CAM	0
+#define MMDVFS_V5_MUX_CAMTM	1
+#define MMDVFS_V5_MUX_VDE	2
+#define MMDVFS_V5_MUX_IMG	3
+#define MMDVFS_V5_MUX_IPE	4
+#define MMDVFS_V5_MUX_DIS	5
+#define MMDVFS_V5_MUX_MDP	6
+#define MMDVFS_V5_MUX_SMI	7
+#define MMDVFS_V5_MUX_VEN	8
+#define MMDVFS_V5_MUX_VEN_MDP	9
+#define MMDVFS_V5_MUX_NUM	10
+
+
+#define MMDVFS_V5_USER_CAM	0
+#define MMDVFS_V5_USER_IMG	1
+#define MMDVFS_V5_USER_VDEC	2
+#define MMDVFS_V5_USER_DISP	3
+#define MMDVFS_V5_USER_MML	4
+#define MMDVFS_V5_USER_SMI	5
+#define MMDVFS_V5_USER_MDP	6
+#define MMDVFS_V5_USER_JPEGDEC	7
+#define MMDVFS_V5_USER_JPEGENC	8
+#define MMDVFS_V5_USER_VENC	9
+#define MMDVFS_V5_USER_ADAB	10
+#define MMDVFS_V5_USER_VCP_SMI	11
+#define MMDVFS_V5_USER_IMG_SMI	12
+
+#define MMDVFS_V5_USER_CPC	13
+#define MMDVFS_V5_USER_DPC	14
+#define MMDVFS_V5_USER_MMPC	15
+
+#define MMDVFS_V5_AP_CAM	16
+#define MMDVFS_V5_AP_VDE	17
+#define MMDVFS_V5_AP_IMG	18
+#define MMDVFS_V5_AP_IPE	19
+#define MMDVFS_V5_AP_DIS	20
+#define MMDVFS_V5_AP_MML	21
+#define MMDVFS_V5_AP_SMI	22
+#define MMDVFS_V5_AP_VEN	23
+#define MMDVFS_V5_AP_MDP	24
+
+#define MMDVFS_V5_VCP_CAM	25
+#define MMDVFS_V5_VCP_VDE	26
+#define MMDVFS_V5_VCP_IMG	27
+#define MMDVFS_V5_VCP_IPE	28
+#define MMDVFS_V5_VCP_DIS	29
+#define MMDVFS_V5_VCP_MML	30
+#define MMDVFS_V5_VCP_SMI	31
+#define MMDVFS_V5_VCP_VEN	32
+#define MMDVFS_V5_VCP_MDP	33
+/* next MMDVFS_USER */
+
+#define MMDVFS_V5_USER_NUM	34
+
+
+#define MMDVFS_V5_PWR_VCORE	0
+#define MMDVFS_V5_PWR_VMM	1
+#define MMDVFS_V5_PWR_VDISP	2
+#define MMDVFS_V5_PWR_NUM	3
+
+#endif /* _DT_BINDINGS_MMDVFS_CLK_MT6991_H */
+
