@@ -54,6 +54,7 @@ static char *dsp_task_dsp_name[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_PRIMARY_ID]     = "mtk-dsp-primary",
 	[AUDIO_TASK_OFFLOAD_ID]     = "mtk-dsp-offload",
 	[AUDIO_TASK_DEEPBUFFER_ID]  = "mtk-dsp-deep",
+	[AUDIO_TASK_DYNAMIC_ID]     = "mtk-dsp-dynamic",
 	[AUDIO_TASK_PLAYBACK_ID]    = "mtk-dsp-playback",
 	[AUDIO_TASK_MUSIC_ID]       = "mtk-dsp-music",
 	[AUDIO_TASK_CAPTURE_UL1_ID] = "mtk-dsp-capture1",

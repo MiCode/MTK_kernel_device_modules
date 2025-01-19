@@ -167,6 +167,10 @@ bool check_print_msg_info(const struct ipi_msg_t *p_ipi_msg)
 	    p_ipi_msg->msg_id == AUDIO_DSP_TASK_DLCOPY)
 		return false;
 
+	if (p_ipi_msg->task_scene == TASK_SCENE_DYNAMIC &&
+	    p_ipi_msg->msg_id == AUDIO_DSP_TASK_DLCOPY)
+		return false;
+
 	if (p_ipi_msg->task_scene == TASK_SCENE_VOIP &&
 	    p_ipi_msg->msg_id == AUDIO_DSP_TASK_DLCOPY)
 		return false;

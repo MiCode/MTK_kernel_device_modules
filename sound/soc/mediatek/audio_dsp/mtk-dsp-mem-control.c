@@ -74,6 +74,18 @@ static struct audio_dsp_dram
 };
 
 static struct audio_dsp_dram
+	adsp_sharemem_dynamic_mblock[ADSP_TASK_SHAREMEM_NUM] = {
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+		{
+			.size = 0x400, /* 1024 bytes */
+			.phy_addr = 0,
+		},
+};
+
+static struct audio_dsp_dram
 	adsp_sharemem_voip_mblock[ADSP_TASK_SHAREMEM_NUM] = {
 		{
 			.size = 0x400, /* 1024 bytes */
@@ -641,6 +653,8 @@ static struct mtk_adsp_task_attr adsp_task_attr[AUDIO_TASK_DAI_NUM] = {
 				   OFFLOAD_FEATURE_ID, false},
 	[AUDIO_TASK_DEEPBUFFER_ID] = {false, -1, -1, -1,
 				      DEEPBUF_FEATURE_ID, false},
+	[AUDIO_TASK_DYNAMIC_ID] = {false, -1, -1, -1,
+				      DYNAMIC_FEATURE_ID, false},
 	[AUDIO_TASK_PLAYBACK_ID] = {false, -1, -1, -1,
 				    AUDIO_PLAYBACK_FEATURE_ID, false},
 	[AUDIO_TASK_MUSIC_ID] = {false, -1, -1, -1,
@@ -758,6 +772,8 @@ static struct audio_dsp_dram *mtk_get_adsp_sharemem_block(int audio_task_id)
 		return adsp_sharemem_offload_mblock;
 	case AUDIO_TASK_DEEPBUFFER_ID:
 		return adsp_sharemem_deepbuffer_mblock;
+	case AUDIO_TASK_DYNAMIC_ID:
+		return adsp_sharemem_dynamic_mblock;
 	case AUDIO_TASK_PLAYBACK_ID:
 		return adsp_sharemem_playback_mblock;
 	case AUDIO_TASK_CAPTURE_UL1_ID:
