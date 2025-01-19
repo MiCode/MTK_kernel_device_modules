@@ -7573,6 +7573,19 @@ cpus {
 				<0>; /*MTK_DRM_OPT_SHARE_SRAM*/
 		};
 
+		disp_mtee_sec: disp_mtee_sec {
+			compatible = "mediatek,disp_mtee";
+
+			mediatek,mailbox-gce = <&gce>;
+			mboxes = <&gce_sec 8 0 CMDQ_THR_PRIO_3>,
+				<&gce_sec 9 0 CMDQ_THR_PRIO_3>,
+				<&gce_sec 9 0 CMDQ_THR_PRIO_3>;
+
+			gce-client-names = "CLIENT_SEC_CFG0",
+					"CLIENT_SEC_CFG1",
+					"CLIENT_SEC_CFG2";
+		};
+
 		disp_mutex0: disp-mutex@14117000 {
 			compatible = "mediatek,disp_mutex0",
 						"mediatek,mt6885-disp-mutex";
