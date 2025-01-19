@@ -1155,24 +1155,6 @@ static struct notifier_block cmdq_pm_notifier_block = {
 	.priority = 5,
 };
 
-
-static int cmdq_create_debug_entries(void)
-{
-	struct proc_dir_entry *debugDirEntry = NULL;
-
-	debugDirEntry = proc_mkdir(MDP_DRIVER_DEVICE_NAME "_debug", NULL);
-	if (debugDirEntry) {
-		struct proc_dir_entry *entry = NULL;
-
-		entry = proc_create("status", 0440, debugDirEntry,
-			&cmdqDebugStatusOp);
-		entry = proc_create("record", 0440, debugDirEntry,
-			&cmdqDebugRecordOp);
-	}
-
-	return 0;
-}
-
 void mdp_mme_init(void)
 {
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG) && IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
@@ -1183,7 +1165,6 @@ void mdp_mme_init(void)
 static int cmdq_probe(struct platform_device *pDevice)
 {
 	int status;
-	struct device *object;
 
 	/* mdp mme log init */
 	mdp_mme_init();
@@ -1223,13 +1204,10 @@ static int cmdq_probe(struct platform_device *pDevice)
 	status = cdev_add(gMdpCDev, gMdpDevNo, 1);
 
 	gMDPClass = class_create(MDP_DRIVER_DEVICE_NAME);
-	object = device_create(gMDPClass, NULL, gMdpDevNo, NULL,
-		MDP_DRIVER_DEVICE_NAME);
 
 	/* mtk-cmdq-mailbox will register the irq */
 
 	/* proc debug access point */
-	cmdq_create_debug_entries();
 
 	mdp_limit_dev_create(pDevice);
 
