@@ -124,6 +124,8 @@ void do_charger_detect(struct mtk_chr_det *info, bool en)
 
 	ret = power_supply_set_property(info->bc12_psy,
 			POWER_SUPPLY_PROP_ONLINE, &prop_online);
+	if (ret)
+		pr_info("%s: Failed to set online property\n", __func__);
 }
 
 static int mtk_chr_det_pm_event(struct notifier_block *notifier,
@@ -159,7 +161,7 @@ static void get_charger_type(struct mtk_chr_det *info, bool en)
 			POWER_SUPPLY_PROP_TYPE, &prop_type);
 	ret = power_supply_get_property(info->bc12_psy,
 			POWER_SUPPLY_PROP_USB_TYPE, &prop_usb_type);
-	pr_notice("type:%d usb_type:%d\n", prop_type.intval, prop_usb_type.intval);
+	pr_notice("type:%d usb_type:%d ret:%d\n", prop_type.intval, prop_usb_type.intval, ret);
 	if ((prop_type.intval == POWER_SUPPLY_TYPE_USB) &&
 			(prop_usb_type.intval == POWER_SUPPLY_USB_TYPE_DCP) && info->det_cnt < 10) {
 		pr_notice("%s: det_cnt:%d\n", __func__, info->det_cnt);

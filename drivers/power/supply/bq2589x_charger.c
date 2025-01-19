@@ -1884,14 +1884,6 @@ static int bq2589x_set_boost_ilmt(struct charger_device *chg_dev, u32 curr)
 	return ret;
 }
 
-static enum power_supply_usb_type bq2589x_chg_psy_usb_types[] = {
-	POWER_SUPPLY_USB_TYPE_UNKNOWN,
-	POWER_SUPPLY_USB_TYPE_SDP,
-	POWER_SUPPLY_USB_TYPE_CDP,
-	POWER_SUPPLY_USB_TYPE_DCP,
-};
-
-
 static enum power_supply_property bq2589x_chg_psy_properties[] = {
 	POWER_SUPPLY_PROP_MANUFACTURER,
 	POWER_SUPPLY_PROP_ONLINE,
@@ -2165,8 +2157,10 @@ static char *bq2589x_psy_supplied_to[] = {
 
 static const struct power_supply_desc bq2589x_psy_desc = {
 	.type = POWER_SUPPLY_TYPE_USB,
-	.usb_types = bq2589x_chg_psy_usb_types,
-	.num_usb_types = ARRAY_SIZE(bq2589x_chg_psy_usb_types),
+	.usb_types = BIT(POWER_SUPPLY_USB_TYPE_UNKNOWN) |
+				  BIT(POWER_SUPPLY_USB_TYPE_SDP) |
+				  BIT(POWER_SUPPLY_USB_TYPE_CDP) |
+				  BIT(POWER_SUPPLY_USB_TYPE_DCP),
 	.properties = bq2589x_chg_psy_properties,
 	.num_properties = ARRAY_SIZE(bq2589x_chg_psy_properties),
 	.property_is_writeable = bq2589x_chg_property_is_writeable,
