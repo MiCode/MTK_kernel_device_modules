@@ -29,7 +29,14 @@ subdir-ccflags-y += \
 	-DNO_I2C_MTK -DNO_CLK_METER -DIMGSENSOR_USE_RPM -DIMGSENSOR_DFS_CTRL_ENABLE -DSENINF_USE_WAKE_LOCK
 
 #For isp4_t ref only
+
+
+ifeq ($(CONFIG_CAMEREA_TB8786P2), m)
+subdir-ccflags-y += -DIMGSENSOR_TB8786P2
+else
 subdir-ccflags-y += -DIMGSENSOR_ISP4_T_REF
+endif
+
 
 define add_subdrv
 $(eval subdrv-rpath = $1)

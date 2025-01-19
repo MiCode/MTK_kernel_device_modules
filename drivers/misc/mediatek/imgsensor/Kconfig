@@ -22,6 +22,14 @@ config MTK_IMGSENSOR_ISP4_T
 	  To compile this driver as a module, choose M here: the
 	  module will be called imgsensor_isp4_t.
 
+config CONFIG_CAMEREA_TB8786P2
+	tristate "MediaTek image sensor support"
+	help
+	  This is a driver for the MediaTek
+	  image sensors.
+	  To compile this driver as a module, choose M here: the
+	  module will be called CONFIG_CAMEREA_TB8786P2.
+
 config MTK_IMGSENSOR_ISP4_C
 	tristate "MediaTek image sensor support"
 	help
