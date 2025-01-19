@@ -2137,7 +2137,7 @@ static struct dpc_funcs funcs_v3 = {
 	.dpc_dvfs_set = dpc_dvfs_set_v3,
 	.dpc_dvfs_trigger = dpc_dvfs_trigger,
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx_v3,
-	.dpc_analysis = dpc_analysis_v3,
+	// .dpc_analysis = dpc_analysis_v3,
 	.dpc_debug_cmd = process_dbg_opt,
 };
 
