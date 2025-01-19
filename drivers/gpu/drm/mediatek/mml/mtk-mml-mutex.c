@@ -715,6 +715,10 @@ const struct of_device_id mml_mutex_driver_dt_match[] = {
 		.data = &mt6983_mutex_data
 	},
 	{
+		.compatible = "mediatek,mt6899-mml_mutex",
+		.data = &mt6983_mutex_data,
+	},
+	{
 		.compatible = "mediatek,mt6989-mml_mutex",
 		.data = &mt6983_mutex_data,
 	},

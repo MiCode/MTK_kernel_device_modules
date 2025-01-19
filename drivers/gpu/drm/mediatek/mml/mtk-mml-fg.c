@@ -234,6 +234,14 @@ static const struct fg_data mt6897_fg_data = {
 	.reg_table = fg_reg_table_mt6897,
 };
 
+static const struct fg_data mt6899_mmlf_fg_data = {
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.reg_table = fg_reg_table_mt6989, // fg reg table update ?
+	.tile_width = 3520,
+	.sram_pp = true,
+	.hw_ar = true,
+};
+
 static const struct fg_data mt6989_fg_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.reg_table = fg_reg_table_mt6989,
@@ -984,6 +992,10 @@ const struct of_device_id mml_fg_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6897-mml_fg",
 		.data = &mt6897_fg_data
+	},
+	{
+		.compatible = "mediatek,mt6899-mml_fg",
+		.data = &mt6899_mmlf_fg_data
 	},
 	{
 		.compatible = "mediatek,mt6989-mml_fg",
