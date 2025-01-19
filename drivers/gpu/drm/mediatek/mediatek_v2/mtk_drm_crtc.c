@@ -13338,9 +13338,6 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 			break;
 		}
 
-		if (!con_plane_state->pending.enable)
-			continue;
-
 		if (priv->data->ovl_exdma_rule)
 			mtk_drm_crtc_check_blender_connect(mtk_crtc, cmdq_handle, con_plane_state, i);
 	}
