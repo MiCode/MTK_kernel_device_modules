@@ -9,14 +9,42 @@
 #include "apu_sysmem.h"
 
 /* log definition */
+
+static uint32_t g_apu_sysmem_klog = 0x3;
+
+enum {
+	APU_SYSMEM_ERR = 0x1,
+	APU_SYSMEM_WRN = 0x2,
+	APU_SYSMEM_INFO = 0x4,
+	APU_SYSMEM_DBG = 0x8,
+	APU_SYSMEM_VERBO = 0x10,
+};
+
+static inline int apu_sysmem_log_level_check(int log_level)
+{
+	return g_apu_sysmem_klog & log_level;
+}
+
 #define apu_sysmem_err(x, args...) \
-	pr_info("[error][%s/%d]" x, __func__, __LINE__, ##args)
+	do { \
+		if (apu_sysmem_log_level_check(APU_SYSMEM_ERR)) \
+			pr_info("[error][%s/%d]" x, __func__, __LINE__, ##args); \
+	} while (0)
 #define apu_sysmem_warn(x, args...) \
-	pr_info("[warn][%s/%d]" x, __func__, __LINE__, ##args)
+	do { \
+		if (apu_sysmem_log_level_check(APU_SYSMEM_WRN)) \
+			pr_info("[warn][%s/%d]" x, __func__, __LINE__, ##args); \
+	} while (0)
 #define apu_sysmem_info(x, args...) \
-	pr_info("[info][%s/%d]" x, __func__, __LINE__, ##args)
+	do { \
+		if (apu_sysmem_log_level_check(APU_SYSMEM_INFO)) \
+			pr_info("[info][%s/%d]" x, __func__, __LINE__, ##args); \
+	} while (0)
 #define apu_sysmem_debug(x, args...) \
-	pr_info("[debug][%s/%d]" x, __func__, __LINE__, ##args)
+	do { \
+		if (apu_sysmem_log_level_check(APU_SYSMEM_DBG)) \
+			pr_info("[debug][%s/%d]" x, __func__, __LINE__, ##args); \
+	} while (0)
 
 /* support allocation type */
 struct dma_buf *apu_sysmem_dmaheap_alloc(uint64_t size, uint64_t flags);
