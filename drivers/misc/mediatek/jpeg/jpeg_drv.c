@@ -343,6 +343,7 @@ void jpeg_drv_hybrid_dec_prepare_dvfs(void)
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
 	int i = 0;
+	struct of_phandle_args spec;
 
 	ret = dev_pm_opp_of_add_table(gJpegqDev.pDev[0]);
 	if (ret < 0) {
@@ -380,6 +381,18 @@ void jpeg_drv_hybrid_dec_prepare_dvfs(void)
 		gJpegqDev.dvfs_opp_level = gJpegqDev.jpeg_freq_cnt - 1;
 	}
 	JPEG_LOG(0, "dvfs opp level: %d", gJpegqDev.dvfs_opp_level);
+
+	if (mmdvfs_get_version() >= MMDVFS_VER_V5) {
+		i = of_property_match_string(gJpegqDev.pDev[0]->of_node,
+						 "clock-names", "mmdvfs_clk");
+		ret = of_parse_phandle_with_args(gJpegqDev.pDev[0]->of_node,
+							"clocks", "#clock-cells", i, &spec);
+		if (!ret)
+			gJpegqDev.mmdvfs_vcp_idx = spec.args[0];
+	} else if (mmdvfs_get_version()) {
+		gJpegqDev.mmdvfs_vcp_idx = VCP_PWR_USR_JPEGDEC;
+	}
+	JPEG_LOG(0, "mmdvfs_vcp_idx: %d", gJpegqDev.mmdvfs_vcp_idx);
 }
 
 void jpeg_drv_hybrid_dec_unprepare_dvfs(void)
@@ -409,7 +422,7 @@ void jpeg_drv_hybrid_dec_start_dvfs(void)
 		JPEG_LOG(1, "request freq %lu",
 				gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
 		if (mmdvfs_get_version())
-			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_JPEGDEC);
+			mtk_mmdvfs_enable_vcp(true, gJpegqDev.mmdvfs_vcp_idx);
 		ret = clk_set_rate(gJpegqDev.jpeg_dvfs,
 			gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
 		if (ret) {
@@ -417,7 +430,7 @@ void jpeg_drv_hybrid_dec_start_dvfs(void)
 			gJpegqDev.jpeg_freqs[gJpegqDev.dvfs_opp_level]);
 		}
 		if (mmdvfs_get_version())
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_JPEGDEC);
+			mtk_mmdvfs_enable_vcp(false, gJpegqDev.mmdvfs_vcp_idx);
 	}
 
 }
@@ -442,9 +455,13 @@ void jpeg_drv_hybrid_dec_end_dvfs(void)
 		}
 	} else if (gJpegqDev.jpeg_dvfs) {
 		JPEG_LOG(1, "request freq 0");
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(true, gJpegqDev.mmdvfs_vcp_idx);
 		ret = clk_set_rate(gJpegqDev.jpeg_dvfs, 0);
 		if (ret)
 			JPEG_LOG(0, "Failed to set freq 0");
+		if (mmdvfs_get_version())
+			mtk_mmdvfs_enable_vcp(false, gJpegqDev.mmdvfs_vcp_idx);
 	}
 }
 
