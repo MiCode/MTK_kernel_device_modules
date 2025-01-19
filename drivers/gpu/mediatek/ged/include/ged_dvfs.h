@@ -42,6 +42,8 @@
 #define GED_DVFS_INPUT_BOOST_COMMIT     7
 #define GED_DVFS_DCS_STRESS_COMMIT      8
 #define GED_DVFS_EB_DESIRE_COMMIT       9
+#define GED_DVFS_LOWPWR_COMMIT          10
+#define GED_DVFS_LOWPWR_REJECT_COMMIT   11
 
 #define GED_DVFS_COMMIT_TYPE            int
 

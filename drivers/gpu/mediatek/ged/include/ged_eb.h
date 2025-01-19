@@ -1037,6 +1037,8 @@ typedef struct {
  GEN("t_gpu_target_us", GPU_T_TARGET_US, 1, "t_gpu_target_us") \
  GEN("dcs_gov_core_num", DCS_GOV_CORE_NUM, 1, "dcs_gov_core_num") \
  GEN("dcs_gov_core_mask", DCS_GOV_CORE_MASK, 1, "dcs_gov_core_mask") \
+ GEN("g_lowpwr_mode", GPU_LOWPWR_ENABLE, 1, "g_lowpwr_mode") \
+ GEN("silence", GPU_LOWPWR_TRACE, 1, "silence") \
  GEN("g_debug", GPU_DEBUG, 1, "g_debug") \
  GEN("fb_mfrc", GPU_FB_MFRC, 1, "fb_mfrc")
 

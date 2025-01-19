@@ -247,6 +247,7 @@ void ged_eb_dvfs_trace_dump(void)
 	int top_freq_diff = 0, sc_freq_diff = 0;
 	struct cmd_info custom_ceiling_info ={0};
 	struct cmd_info custom_boost_info ={0};
+	union combineData tmp_multi = {0};
 
 	//struct GpuUtilization_Ex util_ex;
 
@@ -323,6 +324,13 @@ void ged_eb_dvfs_trace_dump(void)
 
 		trace_tracing_mark_write(5566, "26m_replace",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_26M_REPLACE));
+		if ((is_fdvfs_enable() & POLICY_MODE_V2)) {
+			tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_LOWPWR_TRACE].addr);
+			trace_GPU_DVFS__EB_LOWPWR(tmp_multi.fourVar.var1, tmp_multi.fourVar.var2,
+										tmp_multi.fourVar.var3, tmp_multi.fourVar.var4);
+			if(tmp_multi.fourVar.var4 == 1)
+				trace_tracing_mark_write(5566, "silence", tmp_multi.fourVar.var1);
+		}
 	}
 
 	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {

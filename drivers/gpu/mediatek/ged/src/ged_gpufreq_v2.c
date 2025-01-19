@@ -772,6 +772,19 @@ int ged_set_limit_floor(int limiter, int floor)
 			LIMIT_POWERHAL, GPUPPM_KEEP_IDX, floor);
 }
 
+int ged_check_ceil_in_min_working_opp(void)
+{
+	int ui32CeilingID, ui32MinWorkingFreqID;
+	ui32MinWorkingFreqID = ged_get_min_oppidx_real();
+
+	ui32CeilingID = gpufreq_get_cur_limit_idx(TARGET_DEFAULT, GPUPPM_CEILING);
+
+	if (ui32CeilingID == ui32MinWorkingFreqID)
+		return 1;
+
+	return 0;
+}
+
 void ged_set_ud_mask_bit(unsigned int ud_mask_bit)
 {
 	mutex_lock(&g_ud_DCS_lock);
@@ -870,12 +883,16 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 			}
 		}
 
-		dcs_set_core_mask(core_mask_tar, core_num_tar);
+		dcs_set_core_mask(core_mask_tar, core_num_tar, commit_type);
 
 		// write current core num to sysram
 		ged_eb_dvfs_task(EB_DCS_CORE_NUM, core_num_tar);
-	} else
+	} else {
 		dcs_restore_max_core_mask();
+		if (g_max_core_num > 0) {
+			ged_eb_dvfs_task(EB_DCS_CORE_NUM, g_max_core_num);
+		}
+	}
 
 	if (freqScaleUpFlag) /* freq scale up: set core_mask --> commit freq. */
 		ged_dvfs_gpu_freq_commit_fp(oppidx_tar, commit_type, bCommited);
@@ -989,12 +1006,16 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 			}
 		}
 
-		dcs_set_core_mask(core_mask_tar, core_num_tar);
+		dcs_set_core_mask(core_mask_tar, core_num_tar, commit_type);
 
 		// write current core num to sysram
 		ged_eb_dvfs_task(EB_DCS_CORE_NUM, core_num_tar);
-	} else
+	} else {
 		dcs_restore_max_core_mask();
+		if (g_max_core_num > 0) {
+			ged_eb_dvfs_task(EB_DCS_CORE_NUM, g_max_core_num);
+		}
+	}
 
 	/* freq scale up: set core_mask --> commit freq. */
 	if (freqScaleUpFlag && commit_type != GED_DVFS_EB_DESIRE_COMMIT)

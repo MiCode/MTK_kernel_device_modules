@@ -878,24 +878,26 @@ TRACE_EVENT(GPU_DVFS__Policy__Loading_based__Async_Ratio__Policy,
 /* DCS tracepoints */
 TRACE_EVENT(GPU_DVFS__Policy__DCS,
 
-	TP_PROTO(int max_core, int current_core, unsigned int fix_core),
+	TP_PROTO(int max_core, int current_core, unsigned int fix_core, int lowpwr),
 
-	TP_ARGS(max_core, current_core, fix_core),
+	TP_ARGS(max_core, current_core, fix_core, lowpwr),
 
 	TP_STRUCT__entry(
 		__field(int, max_core)
 		__field(int, current_core)
 		__field(int, fix_core)
+		__field(int, lowpwr)
 	),
 
 	TP_fast_assign(
 		__entry->max_core = max_core;
 		__entry->current_core = current_core;
 		__entry->fix_core = fix_core;
+		__entry->lowpwr = lowpwr;
 	),
 
-	TP_printk("max_core=%d, current_core=%d fix_core=%u",
-	__entry->max_core, __entry->current_core, __entry->fix_core)
+	TP_printk("max_core=%d, current_core=%d fix_core=%u lowpwr=%d",
+	__entry->max_core, __entry->current_core, __entry->fix_core, __entry->lowpwr)
 );
 
 TRACE_EVENT(GPU_DVFS__Policy__DCS__Detail,
@@ -1967,6 +1969,28 @@ TRACE_EVENT(GPU_DVFS__EBRB_2ND_GPU_TIME,
 		__entry->u5, __entry->r5, __entry->v5, __entry->c5, __entry->q5,
 		__entry->u6, __entry->r6, __entry->v6, __entry->c6, __entry->q6,
 		__entry->u7, __entry->r7, __entry->v7, __entry->c7, __entry->q7)
+);
+
+TRACE_EVENT(GPU_DVFS__EB_LOWPWR,
+	TP_PROTO(unsigned int silence, unsigned int dcs, unsigned int fix_in_min, unsigned int low_pwr),
+	TP_ARGS(silence, dcs, fix_in_min, low_pwr),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, silence)
+		__field(unsigned int, dcs)
+		__field(unsigned int, fix_in_min)
+		__field(unsigned int, low_pwr)
+	),
+
+	TP_fast_assign(
+		__entry->silence = silence;
+		__entry->dcs = dcs;
+		__entry->fix_in_min = fix_in_min;
+		__entry->low_pwr = low_pwr;
+	),
+
+	TP_printk("slience=%u dcs=%u, fix_in_min=%u, pwr=%u",
+		__entry->silence, __entry->dcs, __entry->fix_in_min, __entry->low_pwr)
 );
 
 

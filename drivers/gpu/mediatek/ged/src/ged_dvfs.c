@@ -1258,6 +1258,23 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		if (ui32NewFreqID > ui32FloorID)
 			ui32NewFreqID = ui32FloorID;
 
+		if (dcs_get_lowpwr()) {
+			if (is_fix_dvfs <= 1) {
+				if (ged_check_ceil_in_min_working_opp()) {
+					ui32NewFreqID = ged_get_min_oppidx();
+					trace_tracing_mark_write(5566, "silence", dcs_get_lowpwr());
+					eCommitType = GED_DVFS_LOWPWR_COMMIT;
+				} else {
+					trace_tracing_mark_write(5566, "silence", 2);
+					eCommitType = GED_DVFS_LOWPWR_REJECT_COMMIT;
+				}
+			}
+			else {
+				trace_tracing_mark_write(5566, "silence", 3);
+				eCommitType = GED_DVFS_LOWPWR_REJECT_COMMIT;
+			}
+		}
+
 		ged_eb_dvfs_task(EB_UPDATE_DESIRE_FREQ_ID, ui32NewFreqID);
 		g_ulCommitFreq = ged_get_freq_by_idx(ui32NewFreqID);
 		ged_commit_freq = ui32NewFreq;
@@ -1408,6 +1425,24 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 
 	if (topNewFreqID > ui32FloorID)
 		topNewFreqID = ui32FloorID;
+
+	if (dcs_get_lowpwr()) {
+		if (is_fix_dvfs <= 1) {
+			if (ged_check_ceil_in_min_working_opp()) {
+				stackNewFreqID = ged_get_min_oppidx();
+				topNewFreqID = ged_get_min_oppidx();
+				trace_tracing_mark_write(5566, "silence", dcs_get_lowpwr());
+				eCommitType = GED_DVFS_LOWPWR_COMMIT;
+			} else {
+				trace_tracing_mark_write(5566, "silence", 2);
+				eCommitType = GED_DVFS_LOWPWR_REJECT_COMMIT;
+			}
+		}
+		else {
+			trace_tracing_mark_write(5566, "silence", 3);
+			eCommitType = GED_DVFS_LOWPWR_REJECT_COMMIT;
+		}
+	}
 
 	ged_eb_dvfs_task(EB_UPDATE_DESIRE_FREQ_ID, stackNewFreqID);
 	g_ulCommitFreq = ged_get_freq_by_idx(stackNewFreqID);

@@ -10,6 +10,7 @@
 
 #include <ged_base.h>
 #include <ged_dcs.h>
+#include <ged_dvfs.h>
 #include <ged_log.h>
 #include "ged_tracepoint.h"
 #include "ged_eb.h"
@@ -34,6 +35,8 @@ static int g_dcs_stress;
 unsigned int g_fix_core_num;
 unsigned int g_fix_core_mask;
 bool g_setting_dirty;
+
+int g_lowpwr_mode;
 
 // adjust dcs_performance
 static unsigned int g_adjust_dcs_support;
@@ -97,6 +100,8 @@ GED_ERROR ged_dcs_init_platform_info(void)
 	g_adjust_dcs_fr_cnt = 20;
 	g_adjust_dcs_non_dcs_th = 20;
 
+	g_lowpwr_mode = 0;
+
 	mutex_init(&g_DCS_lock);
 
 	dcs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_dcs");
@@ -113,6 +118,13 @@ GED_ERROR ged_dcs_init_platform_info(void)
 	if (!g_dcs_support) {
 		GED_LOGE("DCS policy not support");
 		return ret;
+	}
+
+	if(g_dcs_opp_setting == 0) {
+		g_max_core_num = gpufreq_get_core_num();
+		g_dcs_opp_setting = 1 << (g_max_core_num - 1);
+		opp_setting = g_dcs_opp_setting;
+		GED_LOGI("DCS repair opp setting %x", g_dcs_opp_setting);
 	}
 
 	while (opp_setting) {
@@ -225,12 +237,19 @@ int dcs_get_avail_mask_num(void)
 	return g_avail_mask_num;
 }
 
-int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num)
+int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num, int commit_type)
 {
 	int ret = GED_OK;
 
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
+	}
+
 	mutex_lock(&g_DCS_lock);
 
+	if (g_gov_enable)
+		goto done_unlock;
 
 	if ((!g_dcs_enable || g_cur_core_num == core_num) && !g_setting_dirty)
 		goto done_unlock;
@@ -241,7 +260,7 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num)
 		goto done_unlock;
 	}
 
-	if (g_fix_core_num > 0)
+	if (g_fix_core_num > 0 && commit_type != GED_DVFS_LOWPWR_COMMIT)
 		ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
 	else
 		ged_dvfs_set_gpu_core_mask_fp(core_mask);
@@ -249,10 +268,7 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num)
 	g_setting_dirty = g_dcs_stress;
 	g_cur_core_num = core_num;
 
-	if (is_fdvfs_enable() & POLICY_MODE_V2) {
-		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
-	}
-	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num);
+	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 	trace_GPU_DVFS__Policy__DCS__Detail(core_mask);
 	/* TODO: set return error */
 	if (ret) {
@@ -271,6 +287,9 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 
 	mutex_lock(&g_DCS_lock);
 
+	if (g_gov_enable)
+		goto done_unlock;
+
 	if (ged_dvfs_set_gpu_core_mask_fp != NULL)
 		ged_dvfs_set_gpu_core_mask_fp(core_mask);
 	else
@@ -278,7 +297,7 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 
 	g_setting_dirty = true;
 
-	trace_GPU_DVFS__Policy__DCS(config, g_cur_core_num, g_fix_core_num);
+	trace_GPU_DVFS__Policy__DCS(config, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 	trace_GPU_DVFS__Policy__DCS__Detail(core_mask);
 	/* TODO: set return error */
 	if (ret) {
@@ -365,7 +384,15 @@ int dcs_restore_max_core_mask(void)
 {
 	int ret = GED_OK;
 
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
+	}
+
 	mutex_lock(&g_DCS_lock);
+
+	if (g_gov_enable)
+		goto done_unlock;
 
 	if ((!g_dcs_enable || g_cur_core_num == g_max_core_num) && !g_setting_dirty)
 		goto done_unlock;
@@ -386,7 +413,7 @@ int dcs_restore_max_core_mask(void)
 	}
 
 	g_cur_core_num = g_max_core_num;
-	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num);
+	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 	trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 
 done_unlock:
@@ -417,7 +444,7 @@ void dcs_enable(int enable)
 			ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
 		g_cur_core_num = g_max_core_num;
 		g_dcs_enable = 0;
-		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_mask);
+		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_mask, g_lowpwr_mode);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 	}
 
@@ -532,6 +559,73 @@ void dcs_set_gov_enable(unsigned int enable) {
 
 	g_has_gov_support = ipi_data.u.set_para.arg[0];
 	g_gov_enable = ipi_data.u.set_para.arg[1];
+
+	if (g_gov_enable) {
+
+		if (g_core_mask_table == NULL)
+			return;
+
+		mutex_lock(&g_DCS_lock);
+
+		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+		g_cur_core_num = g_max_core_num;
+		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_mask, g_lowpwr_mode);
+		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
+
+		mutex_unlock(&g_DCS_lock);
+
+	}
 }
 
+int dcs_get_lowpwr(void)
+{
+	return g_lowpwr_mode;
+}
+
+void dcs_set_lowpwr(int enable)
+{
+	if (g_core_mask_table == NULL)
+		return;
+
+	if (g_avail_mask_table == NULL)
+		return;
+
+	mutex_lock(&g_DCS_lock);
+	g_lowpwr_mode = enable;
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
+	}
+
+	if(!g_dcs_enable)
+		goto done_unlock;
+
+	if (g_gov_enable)
+		goto done_unlock;
+
+	if (enable) {
+		int	is_fix_dvfs = ged_is_fix_dvfs();
+		if (is_fix_dvfs <= 1) {
+			if (ged_check_ceil_in_min_working_opp()) {
+				int max_avail_idx = g_avail_mask_num - 1;
+				if (max_avail_idx >= 0) {
+					ged_dvfs_set_gpu_core_mask_fp(g_avail_mask_table[max_avail_idx].mask);
+					g_cur_core_num = g_avail_mask_table[max_avail_idx].num;
+					trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num,
+												g_fix_core_mask, g_lowpwr_mode);
+					trace_GPU_DVFS__Policy__DCS__Detail(g_avail_mask_table[max_avail_idx].mask);
+					trace_tracing_mark_write(5566, "silence", g_lowpwr_mode);
+				}
+			} else
+				trace_tracing_mark_write(5566, "silence", 2);
+		} else
+			trace_tracing_mark_write(5566, "silence", 3);
+	} else {
+		trace_tracing_mark_write(5566, "silence", g_lowpwr_mode);
+		g_setting_dirty = true;
+	}
+
+done_unlock:
+	mutex_unlock(&g_DCS_lock);
+}
 

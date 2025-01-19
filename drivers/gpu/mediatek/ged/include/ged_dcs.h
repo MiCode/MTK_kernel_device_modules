@@ -42,7 +42,7 @@ int dcs_get_dcs_opp_setting(void);
 int dcs_get_cur_core_num(void);
 int dcs_get_max_core_num(void);
 int dcs_get_avail_mask_num(void);
-int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num);
+int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num, int commit_type);
 int dcs_restore_max_core_mask(void);
 int is_dcs_enable(void);
 void dcs_enable(int enable);
@@ -72,5 +72,7 @@ unsigned int dcs_get_adjust_non_dcs_th(void);
 unsigned int dcs_get_gov_support(void);
 unsigned int dcs_get_gov_enable(void);
 void dcs_set_gov_enable(unsigned int enable);
+int dcs_get_lowpwr(void);
+void dcs_set_lowpwr(int enable);
 
 #endif /* __GED_DCS_H__ */

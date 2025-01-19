@@ -1539,10 +1539,11 @@ static ssize_t gov_mask_show(struct kobject *kobj,
 		char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE,
-			"support:%d enable:%d (enable will restore to 0 if platform not support) %d(%d)\n",
+			"support:%d enable:%d (enable will restore to 0 if platform not support) %d(%d), ap(%d)\n",
 			dcs_get_gov_support(), dcs_get_gov_enable(),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID));
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DCS_CORE_NUM));
 }
 
 static ssize_t gov_mask_store(struct kobject *kobj,
@@ -1568,8 +1569,51 @@ static ssize_t gov_mask_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(gov_mask);
 
-//-----------------------------------------------------------------------------
+static ssize_t lowpwr_mode_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
 
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"%d\n", dcs_get_lowpwr());
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		union combineData tmp_multi = {0};
+
+		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_LOWPWR_TRACE].addr);
+
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"v2: %d\n",	 mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr));
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+					"(%u)s:%u d:%u fix:%u l:%u\n",
+					tmp_multi.value, tmp_multi.fourVar.var1, tmp_multi.fourVar.var2,
+					tmp_multi.fourVar.var3, tmp_multi.fourVar.var4);
+	}
+
+	return pos;
+}
+
+static ssize_t lowpwr_mode_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value <= 0)
+					dcs_set_lowpwr(0);
+				else
+					dcs_set_lowpwr(i32Value);
+			}
+		}
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(lowpwr_mode);
 
 #endif /* GED_DCS_POLICY */
 //-----------------------------------------------------------------------------
@@ -2723,6 +2767,10 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create gov_mask entry!\n");
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_lowpwr_mode);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create lowpwr_mode entry!\n");
+
 #endif /* GED_DCS_POLICY */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
@@ -2980,6 +3028,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_support);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_fr_cnt);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gov_mask);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_lowpwr_mode);
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fw_idle);

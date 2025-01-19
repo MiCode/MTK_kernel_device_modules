@@ -39,6 +39,7 @@ unsigned int ged_get_cur_limiter_ceil(void);
 unsigned int ged_get_cur_limiter_floor(void);
 int ged_set_limit_ceil(int limiter, int ceil);
 int ged_set_limit_floor(int limiter, int floor);
+int ged_check_ceil_in_min_working_opp(void);
 void ged_set_ud_mask_bit(unsigned int ud_mask_bit);
 unsigned int ged_get_ud_mask_bit(void);
 
