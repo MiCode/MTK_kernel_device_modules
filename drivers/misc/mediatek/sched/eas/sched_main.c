@@ -227,6 +227,13 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 				WRITE_ONCE(sugov_data_ptr->enq_dvfs, true);
 			}
 		}
+		if (p->prio >= MAX_RT_PRIO && !is_idle_task(p))
+			mtk_enqueue_task_fair(data, rq, p, flags);
+	}
+
+	if (type == dequeue) {
+		if (p->prio >= MAX_RT_PRIO && !is_idle_task(p))
+			mtk_dequeue_task_fair(data, rq, p, flags);
 	}
 
 	if (trace_sched_queue_task_enabled()) {
@@ -1416,14 +1423,6 @@ static int __init mtk_scheduler_init(void)
 	if (ret)
 		pr_info("register mtk_detach_entity_load_avg hooks failed, returned %d\n", ret);
 #endif
-
-	ret = register_trace_android_rvh_enqueue_task_fair(mtk_enqueue_task_fair, NULL);
-	if (ret)
-		pr_info("register mtk_enqueue_task_fair hooks failed, returned %d\n", ret);
-
-	ret = register_trace_android_rvh_dequeue_task_fair(mtk_dequeue_task_fair, NULL);
-	if (ret)
-		pr_info("register mtk_dequeue_task_fair hooks failed, returned %d\n", ret);
 
 	/* need kernel-mainline temp patch support */
 #if IS_ENABLED(CONFIG_MTK_ORIGIN_CHANGE)

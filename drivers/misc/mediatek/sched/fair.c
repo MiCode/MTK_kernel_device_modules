@@ -3446,6 +3446,9 @@ void mtk_enqueue_task_fair(void *unused, struct rq *rq, struct task_struct *p, i
 	if (!sched_feat(UTIL_EST))
 		return;
 
+	if (p->se.sched_delayed && (task_on_rq_migrating(p) || (flags & ENQUEUE_RESTORE)))
+		return;
+
 	cpu = cpu_of(rq);
 	util_task = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 	util_cfs = &per_cpu(__dpt_rq, cpu).util_cfs;
@@ -3489,6 +3492,9 @@ void mtk_dequeue_task_fair(void *unused, struct rq *rq, struct task_struct *p, i
 		return;
 
 	if (!p) /* catch null task after migrate to kmainline */
+		return;
+
+	if (p->se.sched_delayed && (task_on_rq_migrating(p) || (flags & DEQUEUE_SAVE)))
 		return;
 
 	cpu = cpu_of(rq);
