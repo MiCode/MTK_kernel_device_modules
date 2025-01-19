@@ -694,6 +694,10 @@
 	#define MT6991_REG_SPR_DELTA_X_POS                                 REG_FLD_MSB_LSB(14, 13)
 	#define MT6991_REG_SPR_DELTA_Y_POS                                 BIT(15)
 
+#define DISP_MTK_SPR_SHADOW_CTRL               0x140
+	#define BYPASS_SHADOW                      REG_FLD_MSB_LSB(1, 1)
+	#define SR2WRK_CG_ON                       REG_FLD_MSB_LSB(3, 3)
+
 //MT6991 DISPSYS Config
 #define MT6991_DISPSYS_SPR_SEL                 0x030
 	#define MT6991_DISP_SPR_SEL                BIT(0)
@@ -814,7 +818,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 
 	DDPINFO("%s+\n", __func__);
 
-	if (!comp || !comp->mtk_crtc ||	!comp->mtk_crtc->panel_ext)
+	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
 		return;
 
 	mtk_ddp_comp_clk_prepare(comp);
@@ -1330,6 +1334,10 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
 		return;
 
+	spr = comp_to_spr(comp);
+	if (spr == NULL || spr->data == NULL)
+		return;
+
 	priv = comp->mtk_crtc->base.dev->dev_private;
 	if (priv == NULL)
 		return;
@@ -1337,7 +1345,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 
 	if (comp->id == DDP_COMPONENT_SPR0) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 			config_regs = postalign_comp->regs;
 			config_regs_pa = postalign_comp->regs_pa;
@@ -1351,8 +1359,6 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	}
 
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
-	spr = comp_to_spr(comp);
-
 	if (comp->mtk_crtc->is_dual_pipe == true) {
 		postalign_width = cfg->w / 2;
 		width = cfg->w / 2;
@@ -1404,7 +1410,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			crop_voffset = comp_overhead_v;
 		}
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			mtk_ddp_write_mask(comp, width << 0,
 				MT6989_DISP_REG_SPR_CROP_SIZE, REG_FLD_MASK(MT6989_CROP_OUT_HSIZE), handle);
 			mtk_ddp_write_mask(comp, out_height << 16,
@@ -1426,7 +1432,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		DISP_REG_V2_SPR_ROI_SIZE, handle);
 
 	//relay mode: roi size, crop_out_size, spr_en, spr_lut_en
-	if (disp_spr_bypass && priv->data->mmsys_id != MMSYS_MT6991) {
+	if (disp_spr_bypass && spr->data->version < MTK_SPR_V3) {
 		mtk_ddp_write_mask(comp, SPR_EN, DISP_REG_SPR_EN,
 			SPR_EN, handle);
 		mtk_ddp_write_mask(comp, SPR_LUT_EN, DISP_REG_SPR_EN,
@@ -1473,7 +1479,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1) {
 		//postalign config
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
 				handle);
 			if (spr->data) {
@@ -1564,7 +1570,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 		}
 
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			mtk_ddp_write_relaxed(postalign_comp, reg_val,
 				MT6989_DISP_REG_POSTALIGN0_ARRANGE, handle);
 		} else {
@@ -1614,7 +1620,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 
 		//disable postalign
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			mtk_ddp_write_relaxed(postalign_comp, 1, MT6989_DISP_REG_POSTALIGN0_EN,
 				handle);
 			if (spr->data) {
@@ -1780,6 +1786,9 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		mtk_ddp_write_relaxed(comp, reg_val,
 			MT6991_DISP_MTK_SPR_REG_SPR_EN + offset, handle);
 	}
+	mtk_ddp_write_mask(comp, 1, DISP_MTK_SPR_SHADOW_CTRL, SR2WRK_CG_ON, handle);
+	if (spr->data->need_bypass_shadow)
+		mtk_ddp_write_mask(comp, 1, DISP_MTK_SPR_SHADOW_CTRL, BYPASS_SHADOW, handle);
 
 	//postalign size&type config
 	mtk_ddp_write_relaxed(postalign_comp, 1,
@@ -1912,7 +1921,7 @@ void mtk_spr_dump(struct mtk_ddp_comp *comp)
 	if (spr->data->version == MTK_SPR_V2)
 		num = 0x50;
 	if (spr->data->version == MTK_SPR_V3)
-		num = 0x130;
+		num = 0x150;
 	else
 		num = 0x350;
 
@@ -2118,15 +2127,14 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 	// SPR & Postallign reg config
 	if (comp->id == DDP_COMPONENT_SPR0) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991)
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR))
 			postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
 		else
 			config_regs_pa = comp->mtk_crtc->config_regs_pa;
 	} else
 		config_regs_pa = comp->mtk_crtc->side_config_regs_pa;
 
-	if (spr->data && spr->data->version == MTK_SPR_V3 &&
-		spr->spr_ip_type == DISP_MTK_SPR) {
+	if (spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_MTK_SPR) {
 		offset = spr->data->mtk_spr_ip_addr_offset;
 		if (spr->set_partial_update == 1) {
 			//input size config
@@ -2161,7 +2169,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	if (spr->set_partial_update == 1) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			mtk_ddp_write_mask(comp, crop_height << 16,
 				MT6989_DISP_REG_SPR_CROP_SIZE,
 				REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
@@ -2195,7 +2203,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 			DISP_REG_SPR_CK_ON, 0xff000000, handle);
 	} else {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6991) {
+			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			mtk_ddp_write_mask(comp, full_height << 16,
 				MT6989_DISP_REG_SPR_CROP_SIZE,
 				REG_FLD_MASK(MT6989_CROP_OUT_VSIZE), handle);
