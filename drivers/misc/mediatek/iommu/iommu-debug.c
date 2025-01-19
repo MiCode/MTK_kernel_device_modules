@@ -157,6 +157,7 @@ struct peri_iommu_data {
 
 static struct mtk_m4u_data *m4u_data;
 static bool smmu_v3_enable;
+static bool smmu_ssid_dump_enable;
 
 /**********iommu trace**********/
 #define IOMMU_EVENT_COUNT_MAX		(8000)
@@ -1289,6 +1290,9 @@ static void dump_pgtable_ops(struct seq_file *s, struct arm_smmu_master *master)
 		   sid, master->domain->cd.asid);
 	arm_lpae_ops_dump(s, master->domain->pgtbl_ops);
 
+	if (!smmu_ssid_dump_enable)
+		return;
+
 	/* ssid page table OPS dump */
 	rbtree_postorder_for_each_entry_safe(ssid_domain,
 					     next,
@@ -1405,6 +1409,9 @@ static void dump_ste_cd_info(struct seq_file *s,
 			   dev_name(master->dev));
 		return;
 	}
+
+	if (!smmu_ssid_dump_enable)
+		return;
 
 	/* ssid cd dump */
 	rbtree_postorder_for_each_entry_safe(ssid_domain,
@@ -1658,6 +1665,9 @@ static void dump_io_pgtable(struct seq_file *s, struct arm_smmu_master *master)
 		steptr = smmu_ops->get_step_ptr(smmu, sid);
 
 	dump_io_pgtable_s2(s, domain, sid, ssid, steptr);
+
+	if (!smmu_ssid_dump_enable)
+		return;
 
 	/* ssid page table dump */
 	rbtree_postorder_for_each_entry_safe(ssid_domain,
@@ -3156,6 +3166,7 @@ static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 
 	smmu_v3_enable = smmu_v3_enabled();
 	pr_info("%s start, smmu_v3_enable:%d\n", __func__, smmu_v3_enable);
+	smmu_ssid_dump_enable = false;
 
 	m4u_data = devm_kzalloc(dev, sizeof(struct mtk_m4u_data), GFP_KERNEL);
 	if (!m4u_data)
