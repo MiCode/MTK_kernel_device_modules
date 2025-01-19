@@ -68,5 +68,9 @@ unsigned int dcs_get_adjust_ratio_th(void);
 unsigned int dcs_get_adjust_fr_cnt(void);
 unsigned int dcs_get_adjust_non_dcs_th(void);
 
+//gov
+unsigned int dcs_get_gov_support(void);
+unsigned int dcs_get_gov_enable(void);
+void dcs_set_gov_enable(unsigned int enable);
 
 #endif /* __GED_DCS_H__ */

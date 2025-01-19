@@ -691,6 +691,7 @@ enum {
 enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_SET_DTS_INIT_DCS = 1,
 	GPUFDVFS_IPI_SET_DCS_STRESS = 2,
+	GPUFDVFS_IPI_SET_GOV_ENABLE = 3,
 	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
 };
 
@@ -1019,6 +1020,8 @@ typedef struct {
  GEN("fb_busy_cycle_cur", GPU_FB_BUSY_CYCLE_CUR, 1, "fb_busy_cycle_cur") \
  GEN("fb_busy_cycle", GPU_FB_BUSY_CYCLE, 1, "fb_busy_cycle") \
  GEN("t_gpu_target_us", GPU_T_TARGET_US, 1, "t_gpu_target_us") \
+ GEN("dcs_gov_core_num", DCS_GOV_CORE_NUM, 1, "dcs_gov_core_num") \
+ GEN("dcs_gov_core_mask", DCS_GOV_CORE_MASK, 1, "dcs_gov_core_mask") \
  GEN("g_debug", GPU_DEBUG, 1, "g_debug") \
  GEN("fb_mfrc", GPU_FB_MFRC, 1, "fb_mfrc")
 

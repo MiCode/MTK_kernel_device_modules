@@ -681,15 +681,11 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 			FDVFS_IPI_DATA_LEN,
 			FASTDVFS_IPI_TIMEOUT);
 
-		if (ret != 0) {
-			GPUFDVFS_LOGI("(%d), cmd: %u, ret: %d, data: %p,"FDVFS_IPI_ATTR"\n",
-				__LINE__, cmd, ret, ipi_data,
-				get_gpueb_ipidev(),
-				g_fast_dvfs_ipi_channel,
-				FDVFS_IPI_DATA_LEN, FASTDVFS_IPI_TIMEOUT);
-		} else {
-			ret = fdvfs_ipi_rcv_msg.u.set_para.arg[0];
-		}
+		ipi_data->u.set_para.arg[0] = fdvfs_ipi_rcv_msg.u.set_para.arg[0];
+		ipi_data->u.set_para.arg[1] = fdvfs_ipi_rcv_msg.u.set_para.arg[1];
+		ipi_data->u.set_para.arg[2] = fdvfs_ipi_rcv_msg.u.set_para.arg[2];
+		ipi_data->u.set_para.arg[3] = fdvfs_ipi_rcv_msg.u.set_para.arg[3];
+		ipi_data->u.set_para.arg[4] = fdvfs_ipi_rcv_msg.u.set_para.arg[4];
 	break;
 
 	default:

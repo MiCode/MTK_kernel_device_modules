@@ -41,6 +41,10 @@ static unsigned int g_adjust_dcs_ratio_th; //freq max/min threshold (ex:20(2 tim
 static unsigned int g_adjust_dcs_fr_cnt;   // store frame cnt
 static unsigned int g_adjust_dcs_non_dcs_th; // none dcs threshold (ex: 20(20%))
 
+// gov core mask
+int g_has_gov_support;
+int g_gov_enable;
+
 
 struct gpufreq_core_mask_info *g_core_mask_table;
 struct gpufreq_core_mask_info *g_avail_mask_table;
@@ -187,6 +191,9 @@ void dcs_init_dts_with_eb(void)
 			GED_LOGD("%s err:%d\n", __func__, ret);
 
 		has_init = true;
+
+		g_has_gov_support = ipi_data.u.set_para.arg[0];
+		g_gov_enable = ipi_data.u.set_para.arg[1];
 	}
 }
 
@@ -197,6 +204,14 @@ int dcs_get_dcs_opp_setting(void)
 
 int dcs_get_cur_core_num(void)
 {
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		if (g_gov_enable) {
+			unsigned int gov_mask_num = mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr);
+
+			if (gov_mask_num > 0)
+				return gov_mask_num;
+		}
+	}
 	return g_cur_core_num;
 }
 
@@ -495,4 +510,28 @@ unsigned int dcs_get_adjust_non_dcs_th(void)
 	return g_adjust_dcs_non_dcs_th;
 }
 EXPORT_SYMBOL(dcs_get_adjust_non_dcs_th);
+
+unsigned int dcs_get_gov_support(void) {
+	return g_has_gov_support;
+}
+
+unsigned int dcs_get_gov_enable(void) {
+	return g_gov_enable;
+}
+
+void dcs_set_gov_enable(unsigned int enable) {
+	struct fdvfs_ipi_data ipi_data = {0};
+	int ret = 0;
+
+	ipi_data.u.set_para.arg[0] = GPUFDVFS_IPI_SET_GOV_ENABLE;
+	ipi_data.u.set_para.arg[1] = enable;
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
+
+	if (ret)
+		GED_LOGD("%s err:%d\n", __func__, ret);
+
+	g_has_gov_support = ipi_data.u.set_para.arg[0];
+	g_gov_enable = ipi_data.u.set_para.arg[1];
+}
+
 

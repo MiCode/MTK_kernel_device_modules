@@ -1525,6 +1525,43 @@ static ssize_t dcs_adjust_fr_cnt_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(dcs_adjust_fr_cnt);
 
+static ssize_t gov_mask_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE,
+			"support:%d enable:%d (enable will restore to 0 if platform not support) %d(%d)\n",
+			dcs_get_gov_support(), dcs_get_gov_enable(),
+			mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID));
+}
+
+static ssize_t gov_mask_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	int i32Value;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
+				if (i32Value <= 0)
+					dcs_set_gov_enable(0);
+				else
+					dcs_set_gov_enable(i32Value);
+			}
+		}
+	}
+
+
+	return count;
+}
+static KOBJ_ATTR_RW(gov_mask);
+
+//-----------------------------------------------------------------------------
+
+
 #endif /* GED_DCS_POLICY */
 //-----------------------------------------------------------------------------
 
@@ -2673,6 +2710,10 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create dcs_adjust_fr_cnt entry!\n");
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_gov_mask);
+	if (unlikely(err != GED_OK))
+		GED_LOGE("Failed to create gov_mask entry!\n");
+
 #endif /* GED_DCS_POLICY */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
@@ -2929,6 +2970,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_support);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_adjust_fr_cnt);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gov_mask);
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_fw_idle);
