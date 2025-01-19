@@ -83,6 +83,10 @@ static ssize_t adsp_ap_debug_write(struct file *filp, const char __user *buffer,
 	char *nl;
 
 	buf_size = min(count, (sizeof(last_cmd) - 1UL));
+
+	if (unlikely(buf_size == 0))
+		return -EFAULT;
+
 	if (copy_from_user(last_cmd, buffer, buf_size))
 		return -EFAULT;
 
