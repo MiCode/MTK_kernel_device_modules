@@ -18,6 +18,7 @@
 #include "mtk_vdisp.h"
 #include "mtk_disp_vidle.h"
 #include "mtk-smi-dbg.h"
+#include "clk-mtk.h"
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <aee.h>
@@ -85,8 +86,11 @@ static void __iomem *g_vlp_base;
 static void __iomem *g_disp_voter;
 static atomic_t g_mtcmos_cnt = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_mtcmos_cnt_lock);
+static atomic_t g_vdisp_ctrl_cnt = ATOMIC_INIT(0);
+static DEFINE_MUTEX(g_vdisp_ctrl_cnt_lock);
 static struct dpc_funcs disp_dpc_driver;
 struct wakeup_source *g_vdisp_wake_lock;
+struct mtk_vdisp *g_priv;
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 atomic_t g_vdisp_wakelock_cnt;
@@ -352,6 +356,80 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 		if (ret < 0)
 			VDISPERR("failed to power on mminfra");
 	}
+}
+
+void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
+{
+	int i = 0;
+
+	mutex_lock(&g_vdisp_ctrl_cnt_lock);
+
+	if (on_off == 1) {
+		if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
+			/* PRE ON */
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+			__pm_stay_awake(g_vdisp_wake_lock);
+#endif
+
+			vdisp_hwccf_ctrl(g_priv, true);
+		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
+			/* POST ON */
+
+			for (i = 0; i < g_priv->clk_num; i++)
+				clk_prepare_enable(g_priv->clks[i]);
+
+			/* clr vdisp_ao bus prot */
+			if (g_priv->mmpc_bus_prot_gp1)
+				writel(0x80, g_priv->mmpc_bus_prot_gp1 + 0x8);
+
+			/* clr dpc cg */
+			if (g_priv->vdisp_ao_cg_con)
+				writel(BIT(16), g_priv->vdisp_ao_cg_con + 0x8);
+
+			// if (disp_dpc_driver.dpc_group_enable)
+			// 	disp_dpc_driver.dpc_group_enable(DPC_SUBSYS_DISP, false);
+		}
+		atomic_inc(&g_vdisp_ctrl_cnt);
+
+	} else if (on_off == 0) {
+		atomic_dec(&g_vdisp_ctrl_cnt);
+
+		if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
+			/* PRE OFF */
+
+			/* enable vdisp_ao merge irq, to fix burst irq when mtcmos on */
+			if (g_priv->vdisp_ao_merge_irq)
+				writel(0, g_priv->vdisp_ao_merge_irq);
+
+			/* set vdisp_ao bus prot */
+			if (g_priv->mmpc_bus_prot_gp1)
+				writel(0x80, g_priv->mmpc_bus_prot_gp1 + 0x4);
+
+			for (i = 0; i < g_priv->clk_num; i++)
+				clk_disable_unprepare(g_priv->clks[i]);
+		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
+			/* POST OFF */
+			vdisp_hwccf_ctrl(g_priv, false);
+
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+			__pm_relax(g_vdisp_wake_lock);
+#endif
+		}
+	}
+	mutex_unlock(&g_vdisp_ctrl_cnt_lock);
+}
+EXPORT_SYMBOL(mtk_vdisp_ctrl);
+
+int vdisp_ctrl(struct cb_params *cb_para)
+{
+	VDISPDBG("%s: name(%s) on_off(%d) vote_bit(%d)\n", __func__,
+		cb_para->name, cb_para->onoff, cb_para->vote_bit);
+
+	mtk_vdisp_ctrl(cb_para->onoff,
+		cb_para->name, 0,
+		cb_para->vote_bit);
+
+	return 0;
 }
 
 static void __iomem *SPM_SEMA_AP;
@@ -827,6 +905,9 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	if (mtk_vdisp_avs_probe(pdev))
 		return -EINVAL;
 
+	if (pd_id == 0)
+		g_priv = priv;
+
 	// Vote on when probe for sync status
 	vdisp_hwccf_ctrl(priv, true);
 
@@ -886,6 +967,11 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 	mtk_smi_set_disp_ops(&smi_funcs);
 #endif
+
+	ret = register_mtk_clk_external_api_cb(CLK_REQUEST_VDISP_CB, &vdisp_ctrl, NULL);
+	if (ret < 0) {
+		VDISPERR("register_mtk_clk_external_api_cb fail(%d)", ret);
+	}
 
 	return ret;
 }

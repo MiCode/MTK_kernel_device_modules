@@ -49,6 +49,7 @@ enum disp_pd_id {
 };
 
 void mtk_vdisp_dpc_register(const struct dpc_funcs *funcs);
+void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit);
 
 struct tag_bootmode {
 	u32 size;
