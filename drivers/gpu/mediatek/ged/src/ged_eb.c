@@ -1222,18 +1222,20 @@ int mtk_gpueb_sysram_read(int offset)
 {
 	if (!mtk_gpueb_dvfs_sysram_base_addr)
 		return -1;
-	if (!mtk_gpueb_dvfs_sysram_base_addr_swrgo)
-		return -1;
 
 	if ((offset % 4) != 0)
 		return -1;
 
-	// legacy 2 KB space
-	if (offset < 0x800)
+	if (mtk_gpueb_dvfs_sysram_base_addr_swrgo) {
+		// legacy 2 KB space
+		if (offset < 0x800)
+			return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + offset));
+		// new space for swrgo and Jayer
+		else
+			return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset));
+	} else {
 		return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + offset));
-	// new space for swrgo and Jayer
-	else
-		return (int)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset));
+	}
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_read);
 
@@ -1286,18 +1288,20 @@ int mtk_gpueb_sysram_write(int offset, int val)
 {
 	if (!mtk_gpueb_dvfs_sysram_base_addr)
 		return -EADDRNOTAVAIL;
-	if (!mtk_gpueb_dvfs_sysram_base_addr_swrgo)
-		return -EADDRNOTAVAIL;
 
 	if ((offset % 4) != 0)
 		return -EINVAL;
 
-	// legacy 2 KB space
-	if (offset < 0x800)
+	if (mtk_gpueb_dvfs_sysram_base_addr_swrgo) {
+		// legacy 2 KB space
+		if (offset < 0x800)
+			__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + offset);
+		// new space for swrgo and Jayer
+		else
+			__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset);
+	} else {
 		__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr + offset);
-	// new space for swrgo and Jayer
-	else
-		__raw_writel(val, mtk_gpueb_dvfs_sysram_base_addr_swrgo - AP_FDVFS_TMP_NEGATIVE_OFFSET + offset);
+	}
 	mb(); /* make sure register access in order */
 
 	if (val != mtk_gpueb_sysram_read(offset))
@@ -2002,8 +2006,7 @@ void fdvfs_init(void)
 		_gpu_fastdvfs_of_ioremap("mediatek,gpu_fdvfs_swrgo");
 
 	if (mtk_gpueb_dvfs_sysram_base_addr_swrgo == NULL) {
-		GPUFDVFS_LOGE("can't find fdvfs sysram swrgo");
-		return;
+		GPUFDVFS_LOGI("can't find fdvfs sysram swrgo");
 	}
 
 	/* init sysram for debug */
