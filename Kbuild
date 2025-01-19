@@ -58,8 +58,6 @@ obj-y += drivers/i2c/busses/
 
 obj-y += drivers/pwm/
 
-obj-y += drivers/iommu/
-
 obj-y += drivers/mmc/host/
 
 obj-y += drivers/tee/

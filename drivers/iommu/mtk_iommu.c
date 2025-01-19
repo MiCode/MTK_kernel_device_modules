@@ -3,6 +3,9 @@
  * Copyright (c) 2015-2016 MediaTek Inc.
  * Author: Yong Wu <yong.wu@mediatek.com>
  */
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt)    "mtk_iommu: " fmt
 
 #include <linux/bitfield.h>
