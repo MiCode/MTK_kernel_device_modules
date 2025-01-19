@@ -22,6 +22,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
 		mt6661_4_efuse: mt6661-4-efuse {
@@ -296,6 +299,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
 		mt6661_3_efuse: mt6661-3-efuse {
@@ -550,6 +556,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
                 mt6661_5_auxadc: mt6661-5-auxadc {
@@ -1000,6 +1009,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
                 mt6661_6_auxadc: mt6661-6-auxadc {

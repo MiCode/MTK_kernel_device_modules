@@ -18,6 +18,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
 		mt6667_7_pio: mt6667-7-pinctrl {
@@ -59,6 +62,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
 		mt6667_8_pio: mt6667-8-pinctrl {
@@ -91,6 +97,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
 		mt6667_12_pio: mt6667-12-pinctrl {
@@ -123,6 +132,9 @@
 			spmi-glitch-sta-sel = <0x474>;
 			spmi-glitch-sts = <0x476>;
 			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
 		};
 
 		mt6667_13_pio: mt6667-13-pinctrl {
