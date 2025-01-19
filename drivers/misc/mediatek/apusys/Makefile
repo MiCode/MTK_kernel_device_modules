@@ -252,7 +252,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/
 apusys-objs += apusys_rv/apu_config.o
 apusys-objs += apusys_rv/apu_coredump.o
 apusys-objs += apusys_rv/apu_excep.o
-apusys-objs += apusys_rv/apu_ce_excep.o
 apusys-objs += apusys_rv/apu_ipi.o
 apusys-objs += apusys_rv/apu_mbox.o
 apusys-objs += apusys_rv/apu_mem.o
@@ -309,6 +308,14 @@ ifneq ($(wildcard $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_rv/
 subdir-ccflags-y += -DMT6991_APUSYS_RV_PLAT_DATA
 apusys-objs += apusys_rv/3.0/mt6991_plat.o
 endif
+
+# apusys ce
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_ce/
+apusys-objs += apusys_ce/apu_ce_excep.o
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_ce/1.0/
+apusys-objs += apusys_ce/1.0/apu_ce_excep_v1.o
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/apusys_ce/2.0/
+apusys-objs += apusys_ce/2.0/apu_ce_excep_v2.o
 
 # ipi
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/ipi/

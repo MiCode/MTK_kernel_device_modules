@@ -16,7 +16,7 @@
 #include <platform/mdla_plat_api.h>
 
 #include "../../apusys_rv/apu.h"
-#include "../../apusys_rv/apu_ce_excep.h"
+#include "../../apusys_ce/apu_ce_excep.h"
 
 /*
  * type0: Distinguish pwr_time, timeout, klog, or CX
