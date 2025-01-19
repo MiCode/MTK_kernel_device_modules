@@ -2,6 +2,14 @@
 /* Copyright (c) 2023 MediaTek Inc. */
 #include <dt-bindings/clock/mt6991-clk.h>
 
+&aov {
+	depend-on = <&seninf_csi_port_0>,
+		<&seninf_csi_port_1>,
+		<&seninf_csi_port_2>,
+		<&seninf_csi_port_3>,
+		<&seninf_csi_port_4>;
+};
+
 &seninf_top {
 		seninf_csi_port_0: seninf-csi-port-0 {
 			compatible = "mediatek,seninf";
