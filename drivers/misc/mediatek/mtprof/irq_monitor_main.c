@@ -75,7 +75,10 @@ struct irq_mon_tracer {
 	unsigned int th3_ms;          /* aee */
 	unsigned int aee_limit;
 	unsigned int aee_debounce_ms;
-	struct trace_stat __percpu *stat;
+	union {
+		struct trace_stat __percpu *stat;
+		struct preemptirq_stat __percpu *pi_stat;
+	};
 };
 
 #define OVERRIDE_TH1_MS 50
@@ -196,7 +199,7 @@ struct trace_stat {
 };
 
 struct preemptirq_stat {
-	bool tracing;
+	bool tracing; /* need to put at same position as the tracing in trace_stat.*/
 	bool enable_locked;
 	unsigned long long disable_timestamp;
 	unsigned long disable_ip;
@@ -208,9 +211,6 @@ struct preemptirq_stat {
 	int nr_entries;
 	unsigned long trace_entries[MAX_STACK_TRACE_DEPTH];
 };
-
-static struct preemptirq_stat __percpu *irq_pi_stat;
-static struct preemptirq_stat __percpu *preempt_pi_stat;
 
 static void irq_mon_save_stack_trace(struct preemptirq_stat *pi_stat)
 {
@@ -513,19 +513,16 @@ static void probe_irq_disable(void *data, unsigned long ip,
 			      unsigned long parent_ip)
 {
 	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
-	struct preemptirq_stat *pi_stat = raw_cpu_ptr(irq_pi_stat);
-	unsigned long long ts;
+	struct preemptirq_stat *pi_stat = raw_cpu_ptr(tracer->pi_stat);
 
 	if (!tracer->tracing)
 		return;
-
-	if (__this_cpu_cmpxchg(irq_pi_stat->tracing, 0, 1))
+	if (pi_stat->tracing)
 		return;
-
-	ts = sched_clock();
-	this_cpu_write(irq_pi_stat->disable_timestamp, ts);
-	this_cpu_write(irq_pi_stat->disable_ip, ip);
-	this_cpu_write(irq_pi_stat->disable_parent_ip, parent_ip);
+	pi_stat->tracing = 1;
+	pi_stat->disable_timestamp = sched_clock();
+	pi_stat->disable_ip = ip;
+	pi_stat->disable_parent_ip = parent_ip;
 
 	/* high overhead */
 	irq_mon_save_stack_trace(pi_stat);
@@ -535,43 +532,36 @@ static void probe_irq_enable(void *data, unsigned long ip,
 			     unsigned long parent_ip)
 {
 	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
-	struct preemptirq_stat *pi_stat = raw_cpu_ptr(irq_pi_stat);
-	unsigned long long ts;
+	struct preemptirq_stat *pi_stat = raw_cpu_ptr(tracer->pi_stat);
 
-	if (!__this_cpu_read(irq_pi_stat->tracing))
+	if (!pi_stat->tracing)
 		return;
-
-	if (__this_cpu_cmpxchg(irq_pi_stat->enable_locked, 0, 1))
-		return;
-
-	ts = sched_clock();
-	this_cpu_write(irq_pi_stat->enable_timestamp, ts);
-	this_cpu_write(irq_pi_stat->enable_ip, ip);
-	this_cpu_write(irq_pi_stat->enable_parent_ip, parent_ip);
+	BUG_ON(pi_stat->enable_locked);
+	pi_stat->enable_locked = 1;
+	pi_stat->enable_timestamp = sched_clock();
+	pi_stat->enable_ip = ip;
+	pi_stat->enable_parent_ip = parent_ip;
 
 	check_preemptirq_stat(pi_stat, tracer);
 
-	this_cpu_write(irq_pi_stat->enable_locked, 0);
-	this_cpu_write(irq_pi_stat->tracing, 0);
+	pi_stat->enable_locked = 0;
+	pi_stat->tracing = 0;
 }
 
 static void probe_preempt_disable(void *data, unsigned long ip,
 				  unsigned long parent_ip)
 {
 	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
-	struct preemptirq_stat *pi_stat = raw_cpu_ptr(preempt_pi_stat);
-	unsigned long long ts;
+	struct preemptirq_stat *pi_stat = raw_cpu_ptr(tracer->pi_stat);
 
 	if (!tracer->tracing)
 		return;
-
-	if (__this_cpu_cmpxchg(preempt_pi_stat->tracing, 0, 1))
+	if (pi_stat->tracing)
 		return;
-
-	ts = sched_clock();
-	this_cpu_write(preempt_pi_stat->disable_timestamp, ts);
-	this_cpu_write(preempt_pi_stat->disable_ip, ip);
-	this_cpu_write(preempt_pi_stat->disable_parent_ip, parent_ip);
+	pi_stat->tracing = 1;
+	pi_stat->disable_timestamp = sched_clock();
+	pi_stat->disable_ip = ip;
+	pi_stat->disable_parent_ip = parent_ip;
 
 	/* high overhead */
 	irq_mon_save_stack_trace(pi_stat);
@@ -581,24 +571,20 @@ static void probe_preempt_enable(void *data, unsigned long ip,
 				 unsigned long parent_ip)
 {
 	struct irq_mon_tracer *tracer = (struct irq_mon_tracer *)data;
-	struct preemptirq_stat *pi_stat = raw_cpu_ptr(preempt_pi_stat);
-	unsigned long long ts;
+	struct preemptirq_stat *pi_stat = raw_cpu_ptr(tracer->pi_stat);
 
-	if (!__this_cpu_read(preempt_pi_stat->tracing))
+	if (!pi_stat->tracing)
 		return;
-
-	if (__this_cpu_cmpxchg(preempt_pi_stat->enable_locked, 0, 1))
-		return;
-
-	ts = sched_clock();
-	this_cpu_write(preempt_pi_stat->enable_timestamp, ts);
-	this_cpu_write(preempt_pi_stat->enable_ip, ip);
-	this_cpu_write(preempt_pi_stat->enable_parent_ip, parent_ip);
+	BUG_ON(pi_stat->enable_locked);
+	pi_stat->enable_locked = 1;
+	pi_stat->enable_timestamp = sched_clock();
+	pi_stat->enable_ip = ip;
+	pi_stat->enable_parent_ip = parent_ip;
 
 	check_preemptirq_stat(pi_stat, tracer);
 
-	this_cpu_write(preempt_pi_stat->enable_locked, 0);
-	this_cpu_write(preempt_pi_stat->tracing, 0);
+	pi_stat->enable_locked = 0;
+	pi_stat->tracing = 0;
 }
 
 static void probe_hrtimer_expire_entry(void *data,
@@ -973,7 +959,6 @@ static int irq_mon_tracer_probe(struct irq_mon_tracer *tracer)
 static int irq_mon_tracer_unprobe(struct irq_mon_tracer *tracer)
 {
 	struct irq_mon_tracepoint *t;
-	struct preemptirq_stat *p_stat = NULL;
 	int cpu;
 
 	for (t = irq_mon_tracepoint_table; t->name; t++) {
@@ -990,20 +975,13 @@ static int irq_mon_tracer_unprobe(struct irq_mon_tracer *tracer)
 
 	/*
 	 * clear trace_stat or preemptirq_stat. no data race here
-	 * because all probes are unregistered
+	 * because all probes are unregistered.
+	 * for preemptirq_stat, tracing is put at the same position
+	 * as trace_stat.
 	 */
-	if (tracer == &irq_off_tracer)
-		p_stat = irq_pi_stat;
-	else if (tracer == &preempt_off_tracer)
-		p_stat = preempt_pi_stat;
-
 	if (tracer->stat) {
 		for_each_possible_cpu(cpu) {
 			per_cpu(tracer->stat->tracing, cpu) = 0;
-		}
-	} else if (p_stat) {
-		for_each_possible_cpu(cpu) {
-			per_cpu(p_stat->tracing, cpu) = 0;
 		}
 	}
 
@@ -1234,14 +1212,14 @@ static int __init irq_monitor_init(void)
 {
 	int ret = 0;
 
-	irq_pi_stat = alloc_percpu(struct preemptirq_stat);
-	if (!irq_pi_stat) {
-		pr_info("Failed to alloc irq_pi_stat\n");
+	irq_off_tracer.pi_stat = alloc_percpu(struct preemptirq_stat);
+	if (!irq_off_tracer.pi_stat) {
+		pr_info("Failed to alloc irq_off_tracer pi_stat\n");
 		return -ENOMEM;
 	}
-	preempt_pi_stat = alloc_percpu(struct preemptirq_stat);
-	if (!preempt_pi_stat) {
-		pr_info("Failed to alloc preempt_pi_stat\n");
+	preempt_off_tracer.pi_stat = alloc_percpu(struct preemptirq_stat);
+	if (!preempt_off_tracer.pi_stat) {
+		pr_info("Failed to alloc preempt_off_tracer pi_stat\n");
 		return -ENOMEM;
 	}
 	irq_handler_tracer.stat = alloc_percpu(struct trace_stat);
@@ -1313,8 +1291,8 @@ static void __exit irq_monitor_exit(void)
 	irq_mon_kprobes_exit();
 	irq_log_exit();
 
-	free_percpu(irq_pi_stat);
-	free_percpu(preempt_pi_stat);
+	free_percpu(irq_off_tracer.pi_stat);
+	free_percpu(preempt_off_tracer.pi_stat);
 	free_percpu(irq_handler_tracer.stat);
 	free_percpu(softirq_tracer.stat);
 	free_percpu(ipi_tracer.stat);
