@@ -15,6 +15,8 @@
 #include <ged_eb.h>
 #include "ged_log.h"
 #include <mt-plat/mtk_gpu_utility.h>
+#include "ged_tracepoint.h"
+
 
 static int g_max_core_num;             /* core_num */
 static int g_avail_mask_num;           /* mask_num */
@@ -65,6 +67,7 @@ struct gpufreq_opp_info *g_working_table;		// real opp table from eb
 struct gpufreq_opp_info *g_virtual_table;		// real opp table + DCS opp [stack]
 struct gpufreq_opp_info *g_working_top_table;		// real opp table from eb
 struct gpufreq_opp_info *g_virtual_top_table;	// real opp table + DCS opp [top]
+struct dcs_virtual_opp *g_virtual_stack_info_table; // store more info about DCS
 struct ged_opp_info *g_virtual_async_table;		// async ratio's own opp table [top & stack]
 
 
@@ -226,8 +229,20 @@ GED_ERROR ged_gpufreq_init(void)
 		GED_LOGE("%s Failed to init virtual opp table", __func__);
 		return GED_ERROR_FAIL;
 	}
-	for (i = 0; i < g_working_oppnum; i++)
+
+	if (g_avail_mask_num > 2) {
+		g_virtual_stack_info_table = kcalloc(g_virtual_oppnum,
+				sizeof(struct dcs_virtual_opp), GFP_KERNEL);
+	}
+
+	for (i = 0; i < g_working_oppnum; i++) {
 		*(g_virtual_table + i) = *(opp_table + i);
+		if (g_virtual_stack_info_table) {
+			g_virtual_stack_info_table[i].core_num = g_max_core_num;
+			g_virtual_stack_info_table[i].idx = i;
+			g_virtual_stack_info_table[i].mask_id = 0;
+		}
+	}
 
 	/*Async ratio*/
 	if (g_async_virtual_table_support) {
@@ -316,6 +331,12 @@ GED_ERROR ged_gpufreq_init(void)
 				gpufreq_get_freq_by_idx(TARGET_GPU, i - g_oppnum_eachmask);
 			g_virtual_top_table[i].volt = k;
 			g_virtual_top_table[i].vsram = 0;
+			if (g_virtual_stack_info_table) {
+				g_virtual_top_table[i].freq =
+					gpufreq_get_freq_by_idx(TARGET_GPU, g_working_oppnum + k - g_oppnum_eachmask);
+				g_virtual_top_table[i].volt = g_working_oppnum + k - g_oppnum_eachmask;
+				g_virtual_stack_info_table[i].idx = g_virtual_top_table[i].volt;
+			}
 		}
 	}
 
@@ -328,14 +349,28 @@ GED_ERROR ged_gpufreq_init(void)
 		freq_scale = min_freq * g_mask_table[j].num / g_max_core_num;
 
 		g_virtual_table[i].freq =  freq_scale;
-		g_virtual_table[i].volt = 0;
+		g_virtual_table[i].volt = j;
 		g_virtual_table[i].vsram = 0;
+		if (g_virtual_stack_info_table) {
+			g_virtual_stack_info_table[i].mask_id = g_virtual_table[i].volt;
+			g_virtual_stack_info_table[i].core_num = g_mask_table[j].num;
+			if (!g_async_ratio_support)
+				g_virtual_stack_info_table[i].idx = g_min_stack_oppidx;
+		}
 	}
 
 	for (i = 0; i < g_virtual_oppnum; i++) {
 		GED_LOGD("[%02d*] Freq: %d, Volt: %d, Vsram: %d",
 			i, g_virtual_table[i].freq, g_virtual_table[i].volt,
 			g_virtual_table[i].vsram);
+	}
+
+	if (g_virtual_top_table) {
+		for (i = 0; i < g_virtual_oppnum; i++) {
+			GED_LOGD("[%02d*] Freq: %d, Volt: %d, Vsram: %d",
+				i, g_virtual_top_table[i].freq, g_virtual_top_table[i].volt,
+				g_virtual_top_table[i].vsram);
+		}
 	}
 
 	return GED_OK;
@@ -432,6 +467,18 @@ int ged_get_top_freq_by_virt_opp(int oppidx)
 		oppidx = g_min_working_oppidx;
 
 	return g_working_top_table[oppidx].freq;
+}
+
+int ged_get_sc_core_by_virt_opp(int oppidx)
+{
+	// check oppidx is valid
+	if (oppidx < 0 || oppidx < g_working_oppnum || oppidx >= g_virtual_oppnum)
+		return 0;
+
+	if (is_dcs_enable() && g_virtual_stack_info_table)
+		return g_virtual_stack_info_table[oppidx].core_num;
+
+	return 0;
 }
 
 unsigned int ged_get_cur_top_freq(void)
@@ -818,11 +865,21 @@ int ged_gpufreq_commit(int oppidx, int commit_type, int *bCommited)
 
 	/* convert virtual opp to working opp with corresponding core mask */
 	if (oppidx > g_min_working_oppidx && g_async_ratio_support) {
-		mask_idx = g_avail_mask_num - 1;
-		oppidx_tar = g_min_working_oppidx - (g_min_virtual_oppidx - oppidx);
+		if (g_virtual_stack_info_table && oppidx < g_virtual_oppnum) {
+			mask_idx = g_virtual_stack_info_table[oppidx].mask_id;
+			oppidx_tar = g_virtual_stack_info_table[oppidx].idx;
+		} else {
+			mask_idx = g_avail_mask_num - 1;
+			oppidx_tar = g_min_working_oppidx - (g_min_virtual_oppidx - oppidx);
+		}
 	} else if (oppidx > g_min_working_oppidx) {
-		mask_idx = g_avail_mask_num - 1;
-		oppidx_tar = g_min_stack_oppidx;
+		if (g_virtual_stack_info_table && oppidx < g_virtual_oppnum) {
+			mask_idx = g_virtual_stack_info_table[oppidx].mask_id;
+			oppidx_tar = g_virtual_stack_info_table[oppidx].idx;
+		} else {
+			mask_idx = g_avail_mask_num - 1;
+			oppidx_tar = g_min_working_oppidx;
+		}
 	} else {
 		mask_idx = 0;
 		oppidx_tar = oppidx;
@@ -927,19 +984,33 @@ int ged_gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx, int commit_type, i
 
 	/* convert virtual opp to working opp with corresponding core mask */
 	if (stack_oppidx > g_min_working_oppidx && g_async_ratio_support) {
-		mask_idx = g_avail_mask_num - 1;
-		oppidx_tar = g_min_working_oppidx - (g_min_virtual_oppidx - stack_oppidx);
+		if (g_virtual_stack_info_table && stack_oppidx < g_virtual_oppnum) {
+			mask_idx = g_virtual_stack_info_table[stack_oppidx].mask_id;
+			oppidx_tar = g_virtual_stack_info_table[stack_oppidx].idx;
+		} else {
+			mask_idx = g_avail_mask_num - 1;
+			oppidx_tar = g_min_working_oppidx - (g_min_virtual_oppidx - stack_oppidx);
+		}
 	} else if (stack_oppidx > g_min_working_oppidx) {
-		mask_idx = g_avail_mask_num - 1;
-		oppidx_tar = g_min_stack_oppidx;
+		if (g_virtual_stack_info_table && stack_oppidx < g_virtual_oppnum) {
+			mask_idx = g_virtual_stack_info_table[stack_oppidx].mask_id;
+			oppidx_tar = g_virtual_stack_info_table[stack_oppidx].idx;
+		} else {
+			mask_idx = g_avail_mask_num - 1;
+			oppidx_tar = g_min_stack_oppidx;
+		}
 	} else {
 		mask_idx = 0;
 		oppidx_tar = stack_oppidx;
 	}
 
 	/* convert top virtual opp to working opp but neglecting core mask */
-	if (gpu_oppidx > g_min_working_oppidx)
-		gpu_oppidx = g_min_working_oppidx - (g_min_virtual_oppidx - gpu_oppidx);
+	if (gpu_oppidx > g_min_working_oppidx) {
+		if (g_virtual_stack_info_table && gpu_oppidx < g_virtual_oppnum)
+			gpu_oppidx = g_virtual_stack_info_table[gpu_oppidx].idx;
+		else
+			gpu_oppidx = g_min_working_oppidx - (g_min_virtual_oppidx - gpu_oppidx);
+	}
 
 	// replace virtual opp with real opp if g_async_virtual_table_support
 	if (g_async_virtual_table_support && g_virtual_async_table) {

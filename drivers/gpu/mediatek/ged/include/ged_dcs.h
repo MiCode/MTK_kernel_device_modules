@@ -21,6 +21,7 @@ struct dcs_virtual_opp {
 	unsigned int freq;
 	unsigned int freq_real;
 	int core_num;
+	int mask_id;
 };
 
 // supported notify target
