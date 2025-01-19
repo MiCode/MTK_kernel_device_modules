@@ -4751,8 +4751,10 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 
 	if (i2s_priv)
 		i2s_priv->rate = rate;
-	else
+	else {
 		AUDIO_AEE("i2s_priv == NULL");
+		return -EINVAL;
+	}
 
 	if (is_etdm_in_pad_top(id)) {
 		pad_top = 0x3;
@@ -4869,17 +4871,15 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.word_length_mask,
 				       get_etdm_wlen(format),
 				       etdm_data.word_length_shift);
-		if(i2s_priv != NULL)
-			dev_info(afe->dev, "%s(), i2s_priv->slave_mode: %d, etdm_data.slave_mode_reg:%d\n",
-				 __func__, i2s_priv->slave_mode, etdm_data.slave_mode_reg);
+
 		/* ---etdm cowork --- */
 		if (etdm_data.slave_mode_reg == -1 ||
 			((etdm_data.slave_mode_reg != -1) &&
 			(i2s_priv->slave_mode == 0)))
 			mtk_regmap_update_bits(afe->regmap, etdm_data.cowork_reg,
-						etdm_data.cowork_mask,
-						etdm_data.cowork_val,
-						etdm_data.cowork_shift);
+				       etdm_data.cowork_mask,
+				       etdm_data.cowork_val,
+				       etdm_data.cowork_shift);
 
 		/* i2s with pad top setting */
 		if (is_etdm_in_pad_top(id) && etdm_data.pad_top_ck_en_reg != -1) {
@@ -4975,7 +4975,10 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.word_length_shift);
 
 		/* ---etdm cowork --- */
-		mtk_regmap_update_bits(afe->regmap, etdm_data.cowork_reg,
+		if (etdm_data.slave_mode_reg == -1 ||
+			((etdm_data.slave_mode_reg != -1) &&
+			(i2s_priv->slave_mode == 0)))
+			mtk_regmap_update_bits(afe->regmap, etdm_data.cowork_reg,
 				       etdm_data.cowork_mask,
 				       etdm_data.cowork_val,
 				       etdm_data.cowork_shift);
