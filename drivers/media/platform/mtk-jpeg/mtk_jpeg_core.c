@@ -1205,11 +1205,11 @@ static void mtk_jpeg_buf_finish(struct vb2_buffer *vb)
 		buf_att = dma_buf_attach(vb->planes[0].dbuf,
 			ctx->jpeg->smmu_dev);
 
-		sgt = dma_buf_map_attachment(buf_att, DMA_TO_DEVICE);
+		sgt = dma_buf_map_attachment_unlocked(buf_att, DMA_TO_DEVICE);
 		dma_buf_begin_cpu_access_partial(vb->planes[0].dbuf,
 			DMA_FROM_DEVICE, vb->planes[0].data_offset,
 			vb->planes[0].bytesused);
-		dma_buf_unmap_attachment(buf_att, sgt, DMA_TO_DEVICE);
+		dma_buf_unmap_attachment_unlocked(buf_att, sgt, DMA_TO_DEVICE);
 		dma_buf_detach(vb->planes[0].dbuf, buf_att);
 	}
 
