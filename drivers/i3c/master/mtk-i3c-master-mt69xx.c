@@ -1731,8 +1731,7 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 	u32 shape_reg = 0;
 	u32 start_reg = 0;
 
-	if ((mtk_i3c_readl(i3c, OFFSET_TIMING) == 0) ||
-		(readl(i3c->pdmabase + OFFSET_CON) == I3C_DMA_CON_DEFAULT_VALUE))
+	if (mtk_i3c_readl(i3c, OFFSET_TIMING) == 0)
 		mtk_i3c_init_hw(i3c);
 	else if (xfer->dma_en) {
 		writel(I3C_DMA_RST_HANDSHAKE, i3c->pdmabase + OFFSET_RST);
