@@ -1120,6 +1120,13 @@ static void kwdt_process_kick(int local_bit, int cpu,
 
 		if (ret >= 0)
 			pr_info("%s", msg_buf);
+
+
+		/* trigger HWT */
+		crash_setup_regs(&saved_regs, NULL);
+		if (apwdt_en)
+			mrdump_common_die(AEE_REBOOT_MODE_WDT, "HWT", &saved_regs);
+
 		return;
 	}
 
