@@ -122,6 +122,25 @@ static int mt6991_compress_info_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int mt6991_ipm_info_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int ipm_info = 0;
+	int ret = 0;
+	struct snd_soc_card *card = &mt6991_mt6681_soc_card;
+
+	/* get hw IPM version */
+	ret = of_property_read_u32(card->dev->of_node, "mediatek,ipm", &ipm_info);
+	if (ret) {
+		dev_info(card->dev,
+			 "%s(), get mediatek,ipm fail, use defalut 0\n", __func__);
+		ipm_info = 0;
+	}
+	pr_debug("%s() = %u\n", __func__, ipm_info);
+	ucontrol->value.integer.value[0] = ipm_info;
+	return 0;
+}
+
 static int mt6991_compress_info_get(struct snd_kcontrol *kcontrol,
 				    unsigned int __user *data, unsigned int size)
 {
@@ -233,6 +252,9 @@ static const struct snd_kcontrol_new mt6991_mt6681_controls[] = {
 		     mt6991_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6991_spk_type_enum[1],
 		     mt6991_spk_i2s_in_type_get, NULL),
+	SOC_SINGLE_EXT("MTK_IPM_INFO_GET", SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_ipm_info_get,
+		       NULL),
 	SND_SOC_BYTES_TLV("MTK_COMPRESS_INFO",
 			  sizeof(struct mt6991_compress_info),
 			  mt6991_compress_info_get, mt6991_compress_info_set),
