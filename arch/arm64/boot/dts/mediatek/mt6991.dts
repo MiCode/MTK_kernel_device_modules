@@ -3322,6 +3322,29 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		interrupts = <245 IRQ_TYPE_EDGE_FALLING>;
 	};
 
+	google-trusty {
+		compatible = "android,google-trusty-smc-v1";
+		ranges = <0x0>;
+		#address-cells = <0x2>;
+		#size-cells = <0x2>;
+
+		virtio {
+			compatible = "android,google-trusty-virtio-v1";
+		};
+
+		test {
+			compatible = "android,google-trusty-test-v1";
+		};
+
+		log {
+			compatible = "android,google-trusty-log-v1";
+		};
+
+		irq {
+			compatible = "android,google-trusty-irq-v1";
+		};
+	};
+
 	ise_lpm: ise-lpm {
 		 compatible = "mediatek,ise-lpm";
 		 ise-wakelock = <0>;
