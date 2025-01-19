@@ -106,7 +106,7 @@ static const int disp_wdma0_path_v5[] = {
 static const int disp_wdma0_path_v6[] = {
 	DDP_COMPONENT_COMP0_OUT_CB9,
 	DDP_COMPONENT_MERGE0_OUT_CB8,
-	DDP_COMPONENT_WDMA1,
+	DDP_COMPONENT_WDMA4,
 };
 
 static const int disp_mid_wdma_path[] = {

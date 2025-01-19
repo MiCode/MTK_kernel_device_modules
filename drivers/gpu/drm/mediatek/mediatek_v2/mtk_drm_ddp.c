@@ -25746,6 +25746,8 @@ void mtk_gce_event_config_MT6991(struct drm_device *drm)
 		priv->side_config_regs + MT6991_DISP1_GCE_FRAME_DONE_SEL4);
 	writel(MT6991_DISP1_GCE_FRAME_DONE_SEL5_WDMA3_FRAME_DONE,
 		priv->side_config_regs + MT6991_DISP1_GCE_FRAME_DONE_SEL5);
+	writel(MT6991_DISP1_GCE_FRAME_DONE_SEL7_WDMA4_FRAME_DONE,
+		priv->side_config_regs + MT6991_DISP1_GCE_FRAME_DONE_SEL7);
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	writel(MT6991_DISP1_GCE_FRAME_DONE_SEL6_DSI2_FRAME_DONE,
@@ -25755,7 +25757,7 @@ void mtk_gce_event_config_MT6991(struct drm_device *drm)
 			off <= MT6991_DISP1_GCE_FRAME_DONE_SEL15; off += 0x4)
 		writel(~0, priv->side_config_regs + off);
 #else
-	for (off = MT6991_DISP1_GCE_FRAME_DONE_SEL6;
+	for (off = MT6991_DISP1_GCE_FRAME_DONE_SEL8;
 			off <= MT6991_DISP1_GCE_FRAME_DONE_SEL15; off += 0x4)
 		writel(~0, priv->side_config_regs + off);
 
@@ -30212,6 +30214,11 @@ void mtk_disp_mutex_src_set(struct mtk_drm_crtc *mtk_crtc, bool is_cmd_mode)
 					ddp->data->mutex_sof[val],
 					ddp->ovlsys1_regs +
 					DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+			if (priv->data->mmsys_id == MMSYS_MT6991) {
+				writel_relaxed(
+					MT6991_MUTEX_EOF_DSI0,
+					ddp->side_regs + DISP_REG_MUTEX_SOF(ddp->data, mutex->id));
+			}
 		}
 		return;
 	}

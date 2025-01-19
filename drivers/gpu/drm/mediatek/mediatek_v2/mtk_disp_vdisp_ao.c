@@ -84,6 +84,8 @@
 #define	IRQ_TABLE_DISP_DP_INTF0_MT6991		(43)	//460
 #define	IRQ_TABLE_DISP_DVO0_MT6991		(56)	//461
 
+#define IRQ_TABLE_DISP_DISP1_WDMA4_MT6991	(72)  //462
+
 #define	IRQ_TABLE_DISP_DP_INTF1_MT6991		(44)	//464
 
 #define IRQ_TABLE_DISP_DITHER2_MT6991          (39)    //469
@@ -243,6 +245,7 @@ static void mtk_vdisp_ao_int_sel_g3_MT6991(void)
 {
 	int value = 0, mask = 0;
 
+	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DISP1_WDMA4_MT6991, CPU_INTSEL_BIT_12);
 	SET_VAL_MASK(value, mask, IRQ_TABLE_DISP_DP_INTF1_MT6991, CPU_INTSEL_BIT_14);
 
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_INT_SEL_G3_MT6991);
