@@ -21,9 +21,12 @@
 #include <linux/version.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/notifier.h>
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include "scp_rv.h"
+#endif
+#if IS_ENABLED(CONFIG_MTK_SENSORHUB)
 #include "timesync.h"
-
+#endif
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 38)
 #include <linux/input/mt.h>
 #define INPUT_TYPE_B_PROTOCOL
@@ -46,8 +49,9 @@ struct ts_scp_device {
     struct task_struct *task_cmd;
     struct task_struct *task_data;
     struct input_dev *input_dev;
+#if IS_ENABLED(CONFIG_MTK_SENSORHUB)
     struct timesync_filter filter;
-
+#endif
     int ts_scp_major;
     struct class *ts_scp_class;
     struct device *device;
@@ -326,6 +330,7 @@ static const struct file_operations ts_scp_fops = {
     .compat_ioctl   = ts_scp_ioctl,
 };
 
+#if IS_ENABLED(CONFIG_MTK_SENSORHUB)
 int64_t ts_scp_generate_timestamp(int64_t scp_timestamp, int64_t scp_archcounter)
 {
     int64_t origin_boottime, origin_ktime, result_timestamp;
@@ -341,6 +346,12 @@ int64_t ts_scp_generate_timestamp(int64_t scp_timestamp, int64_t scp_archcounter
 
     return ktime_ns;
 }
+#else
+int64_t ts_scp_generate_timestamp(int64_t scp_timestamp, int64_t scp_archcounter)
+{
+    return 0;
+}
+#endif
 EXPORT_SYMBOL(ts_scp_generate_timestamp);
 
 static void ts_scp_data_notify_func(struct touch_comm_notify *n,
@@ -455,6 +466,7 @@ static void ts_scp_clear_tp_status(uint8_t touch_type, unsigned int state)
     ts_scp_cmd_handler_async(&cmd_data);
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 static void ts_scp_set_scp_status(unsigned int state)
 {
     struct ts_scp_device *dev = &ts_scp_dev;
@@ -474,6 +486,7 @@ static void ts_scp_set_scp_status(unsigned int state)
         }
     }
 }
+#endif
 
 static void ts_scp_clear_scp_status(unsigned int state)
 {
@@ -494,7 +507,7 @@ static void ts_scp_clear_scp_status(unsigned int state)
         }
     }
 }
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 static void ts_scp_reset_update_status(void)
 {
     struct ts_scp_device *dev = &ts_scp_dev;
@@ -521,7 +534,7 @@ static void ts_scp_reset_update_status(void)
         }
     }
 }
-
+#endif
 static int ts_scp_get_tp_status(uint8_t touch_type)
 {
     struct ts_scp_device *dev = &ts_scp_dev;
@@ -762,7 +775,7 @@ static enum hrtimer_restart ts_after_scp_reset_timer_func(struct hrtimer *timer)
     atomic_set(&dev->scp_crash_num, 0);
     return HRTIMER_NORESTART;
 }
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 static int scp_platform_ready_notifier_call(struct notifier_block *this,
         unsigned long event, void *ptr)
 {
@@ -790,7 +803,7 @@ static int scp_platform_ready_notifier_call(struct notifier_block *this,
 static struct notifier_block scp_platform_ready_notifier = {
     .notifier_call = scp_platform_ready_notifier_call,
 };
-
+#endif
 static int ts_scp_parse_dts(struct ts_scp_device *dev, struct device_node *node)
 {
     dev->ts_scp_common_enable = of_property_read_bool(node, "tp-offload-scp-common-enable");
@@ -840,7 +853,7 @@ static int ts_scp_probe(struct platform_device *pdev)
         }
 
         ts_scp_info("ts_scp_init node create");
-
+#if IS_ENABLED(CONFIG_MTK_SENSORHUB)
         ts_scp_dev.filter.max_diff = 10000000000LL;
         ts_scp_dev.filter.min_diff = 10000000LL;
         ts_scp_dev.filter.bufsize = 16;
@@ -850,6 +863,7 @@ static int ts_scp_probe(struct platform_device *pdev)
             ts_scp_err("timesync filter init fail %d", ret);
             goto err_task;
         }
+#endif
         spin_lock_init(&dev->core_state.lock);
         dev->core_state.scp_state = STAT_NONE;
         ret = touch_comm_init();
@@ -886,9 +900,9 @@ static int ts_scp_probe(struct platform_device *pdev)
 
         touch_comm_notify_handler_register(TOUCH_COMM_NOTIFY_READY_CMD,
             ts_scp_ready_notify_func, dev);
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
         scp_A_register_notify(&scp_platform_ready_notifier);
-
+#endif
         ts_scp_info("ts_scp_init success");
         return 0;
 
@@ -909,8 +923,9 @@ static int ts_scp_probe(struct platform_device *pdev)
 static void ts_scp_remove(struct platform_device *pdev)
 {
     struct ts_scp_device *dev = &ts_scp_dev;
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
     scp_A_unregister_notify(&scp_platform_ready_notifier);
+#endif
     device_destroy(dev->ts_scp_class, MKDEV(dev->ts_scp_major, 0));
     class_destroy(dev->ts_scp_class);
     unregister_chrdev(dev->ts_scp_major, "ts_scp");

@@ -10,8 +10,9 @@
 #include <linux/spinlock.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include "scp_rv.h"
+#endif
 #include "touch_ipi_comm.h"
 
 struct ipi_controller {
@@ -36,16 +37,20 @@ struct ipi_hw_transfer {
 	void *context;
 };
 
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 #define ipi_len(x) (((x) + MBOX_SLOT_SIZE - 1) / MBOX_SLOT_SIZE)
+#endif
 
 static struct ipi_controller controller;
 static struct ipi_hw_transfer hw_transfer;
 static DEFINE_SPINLOCK(hw_transfer_lock);
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 static uint8_t ctrl_payload[PIN_IN_SIZE_TOUCH_CTRL * MBOX_SLOT_SIZE];
 static uint8_t notify_payload[PIN_IN_SIZE_TOUCH_NOTIFY * MBOX_SLOT_SIZE];
-
+#endif
 static inline int ipi_retry_transfer(int id, void *tx, int tx_len)
 {
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 	int ret = 0, retry = 0;
 
 	do {
@@ -59,7 +64,7 @@ static inline int ipi_retry_transfer(int id, void *tx, int tx_len)
 				usleep_range(1000, 2000);
 		}
 	} while (ret == IPI_PIN_BUSY);
-
+#endif
 	return 0;
 }
 
@@ -227,7 +232,11 @@ int ipi_comm_async(struct ipi_message *m)
 
 unsigned int ipi_comm_size(unsigned int size)
 {
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 	return roundup(size, MBOX_SLOT_SIZE);
+#else
+    return 0;
+#endif
 }
 
 int ipi_comm_noack(int id, unsigned char *tx, unsigned int n_tx)
@@ -235,6 +244,7 @@ int ipi_comm_noack(int id, unsigned char *tx, unsigned int n_tx)
 	return ipi_retry_transfer(id, tx, n_tx);
 }
 
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 static void ipi_comm_complete(unsigned char *buffer, unsigned int len)
 {
 	struct ipi_hw_transfer *hw = &hw_transfer;
@@ -268,15 +278,23 @@ static int ipi_comm_notify_handler(unsigned int id, void *prdata,
 		controller.notify_callback(id, data, len);
 	return 0;
 }
-
+#endif
 int get_ctrl_id(void)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	return IPI_OUT_TOUCH_CTRL;
+#else
+    return -1;
+#endif
 }
 
 int get_notify_id(void)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	return IPI_OUT_TOUCH_NOTIFY;
+#else
+    return -1;
+#endif
 }
 
 void ipi_comm_notify_handler_register(
@@ -292,8 +310,9 @@ void ipi_comm_notify_handler_unregister(void)
 
 int ipi_comm_init(void)
 {
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 	int ret = 0;
-
+#endif
 	init_completion(&hw_transfer.done);
 	INIT_WORK(&controller.work, ipi_work);
 	INIT_LIST_HEAD(&controller.head);
@@ -304,6 +323,7 @@ int ipi_comm_init(void)
 		pr_info("create workqueue fail\n");
 		return -1;
 	}
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 	ret = mtk_ipi_register(&scp_ipidev, IPI_IN_TOUCH_CTRL,
 		ipi_comm_ctrl_handler, NULL, ctrl_payload);
 	if (ret < 0)
@@ -312,13 +332,16 @@ int ipi_comm_init(void)
 		ipi_comm_notify_handler, NULL, notify_payload);
 	if (ret < 0)
 		pr_info("register ipi %u fail %d\n", IPI_IN_TOUCH_NOTIFY, ret);
+#endif
 	return 0;
 }
 
 void ipi_comm_exit(void)
 {
+#if (IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT) && !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT))
 	mtk_ipi_unregister(&scp_ipidev, IPI_IN_TOUCH_CTRL);
 	mtk_ipi_unregister(&scp_ipidev, IPI_IN_TOUCH_NOTIFY);
+#endif
 	flush_workqueue(controller.workqueue);
 	destroy_workqueue(controller.workqueue);
 }
