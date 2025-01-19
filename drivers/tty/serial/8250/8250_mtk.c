@@ -30,6 +30,7 @@
 #ifdef CONFIG_SERIAL_8250_DMA
 #include "../../../dma/mediatek/mtk-uart-apdma.h"
 #endif
+extern int mtk8250_uart_tx_dma(struct uart_8250_port *);
 
 static struct uarthub_drv_cbs uarthub_drv_cbs;
 
@@ -633,6 +634,99 @@ static void mtk8250_uart_get_apdma_rpt(struct dma_chan *chan, unsigned int *rpt)
 	#endif
 }
 #endif
+
+static void mtk8250_uart_tx_complete(void *param)
+{
+    struct uart_8250_port	*p = param;
+    struct uart_8250_dma	*dma = p->dma;
+    struct tty_port		*tport = &p->port.state->port;
+    unsigned long	flags;
+    int		ret;
+
+    dma_sync_single_for_cpu(dma->txchan->device->dev, dma->tx_addr,
+                UART_XMIT_SIZE, DMA_TO_DEVICE);
+
+    uart_port_lock_irqsave(&p->port, &flags);
+
+    dma->tx_running = 0;
+
+    uart_xmit_advance(&p->port, dma->tx_size);
+
+    if (kfifo_len(&tport->xmit_fifo) < WAKEUP_CHARS)
+        uart_write_wakeup(&p->port);
+
+    ret = mtk8250_uart_tx_dma(p);
+    if (ret || !dma->tx_running)
+        serial8250_set_THRI(p);
+
+    uart_port_unlock_irqrestore(&p->port, flags);
+}
+
+int mtk8250_uart_tx_dma(struct uart_8250_port *p)
+{
+    struct uart_8250_dma	*dma = p->dma;
+    struct tty_port			*tport = &p->port.state->port;
+    struct dma_async_tx_descriptor	*desc;
+    struct uart_port		*up = &p->port;
+    struct scatterlist sg;
+    int ret;
+
+    if (dma->tx_running) {
+        if (up->x_char) {
+            dmaengine_pause(dma->txchan);
+            uart_xchar_out(up, UART_TX);
+            dmaengine_resume(dma->txchan);
+        }
+        return 0;
+    } else if (up->x_char) {
+        uart_xchar_out(up, UART_TX);
+    }
+
+    if (uart_tx_stopped(&p->port) || kfifo_is_empty(&tport->xmit_fifo)) {
+        /* We have been called from __dma_tx_complete() */
+        return 0;
+    }
+
+    serial8250_do_prepare_tx_dma(p);
+
+    sg_init_table(&sg, 1);
+    /* kfifo can do more than one sg, we don't (quite yet) */
+    ret = kfifo_dma_out_prepare_mapped(&tport->xmit_fifo, &sg, 1,
+                       UART_XMIT_SIZE, dma->tx_addr);
+
+    /* we already checked empty fifo above, so there should be something */
+    if (WARN_ON_ONCE(ret != 1))
+        return 0;
+
+    dma->tx_size = sg_dma_len(&sg);
+
+    desc = dmaengine_prep_slave_sg(dma->txchan, &sg, 1,
+                       DMA_MEM_TO_DEV,
+                       DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+    if (!desc) {
+        ret = -EBUSY;
+        goto err;
+    }
+
+    dma->tx_running = 1;
+    desc->callback = mtk8250_uart_tx_complete;
+    desc->callback_param = p;
+
+    dma->tx_cookie = dmaengine_submit(desc);
+
+    dma_sync_single_for_device(dma->txchan->device->dev, dma->tx_addr,
+                   UART_XMIT_SIZE, DMA_TO_DEVICE);
+
+    dma_async_issue_pending(dma->txchan);
+    serial8250_clear_THRI(p);
+    dma->tx_err = 0;
+
+    return 0;
+err:
+    dma->tx_err = 1;
+    return ret;
+}
+
 
 static void mtk_save_uart_reg(struct uart_8250_port *up, unsigned int *reg_buf)
 {
@@ -2926,7 +3020,8 @@ static int mtk8250_probe(struct platform_device *pdev)
 	/* Disable Rate Fix function */
 	writel(0x0, uart.port.membase +
 			(MTK_UART_RATE_FIX << uart.port.regshift));
-
+	if (uart.dma)
+		uart.dma->tx_dma = mtk8250_uart_tx_dma;
 	err = serial8250_register_8250_port(&uart);
 	if (err < 0) {
 		pr_info("probe: err: %d: serial8250 register 8250 port fail!!!", err);
