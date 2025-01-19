@@ -1734,19 +1734,20 @@ EXPORT_SYMBOL_IF_KUNIT(arm_smmu_make_s2_domain_ste);
  * This can safely directly manipulate the STE memory without a sync sequence
  * because the STE table has not been installed in the SMMU yet.
  */
-static void arm_smmu_init_initial_stes(struct arm_smmu_ste *strtab,
+static void arm_smmu_init_initial_stes(struct arm_smmu_device *smmu,
+				       struct arm_smmu_ste *strtab,
 				       unsigned int nent)
 {
 	unsigned int i;
 	__le64 *ste = strtab->data;
 
 	for (i = 0; i < nent; ++i) {
-		arm_smmu_make_abort_ste(strtab);
+		arm_smmu_make_bypass_ste(smmu, strtab);
 		strtab++;
 	}
 
-	pr_info("[%s] ste0:0x%lx, nent:%d\n", __func__, (unsigned long)ste[0],
-		nent);
+	dev_info(smmu->dev, "[%s] ste0:0x%lx, nent:%d\n", __func__,
+		 (unsigned long)ste[0], nent);
 }
 
 static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
@@ -1772,7 +1773,7 @@ static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
 		return -ENOMEM;
 	}
 
-	arm_smmu_init_initial_stes(desc->l2ptr, 1 << STRTAB_SPLIT);
+	arm_smmu_init_initial_stes(smmu, desc->l2ptr, 1 << STRTAB_SPLIT);
 	arm_smmu_write_strtab_l1_desc(strtab, l2ptr_dma);
 	return 0;
 }
@@ -4075,7 +4076,7 @@ static int arm_smmu_init_strtab_linear(struct arm_smmu_device *smmu)
 	reg |= FIELD_PREP(STRTAB_BASE_CFG_LOG2SIZE, smmu->sid_bits);
 	cfg->strtab_base_cfg = reg;
 
-	arm_smmu_init_initial_stes(strtab, cfg->num_l1_ents);
+	arm_smmu_init_initial_stes(smmu, strtab, cfg->num_l1_ents);
 	return 0;
 }
 
