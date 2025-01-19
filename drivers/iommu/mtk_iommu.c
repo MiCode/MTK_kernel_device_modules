@@ -3769,7 +3769,7 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu0 = {
 	.m4u_plat        = M4U_MT6893,
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
 			   HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY | SHARE_PGTABLE |
-			   IOMMU_SEC_EN | LEGACY_MULTI_LARB,
+			   IOMMU_SEC_EN | HAS_SMI_SUB_COMM | LEGACY_MULTI_LARB,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
@@ -3785,7 +3785,8 @@ static const struct mtk_iommu_plat_data mt6893_data_iommu1 = {
 	.m4u_plat        = M4U_MT6893,
 	.flags           = NOT_STD_AXI_MODE | HAS_SUB_COMM | OUT_ORDER_WR_EN |
 			   WR_THROT_EN | HAS_BCLK | IOVA_34_EN | GET_DOM_ID_LEGACY |
-			   SHARE_PGTABLE | IOMMU_SEC_EN | LEGACY_MULTI_LARB,
+			   SHARE_PGTABLE | IOMMU_SEC_EN | HAS_SMI_SUB_COMM |
+			   LEGACY_MULTI_LARB,
 	/* not use larbid_remap */
 	.larbid_remap    = {{0}, {1}, {4, 5}, {7}, {2}, {9, 11, 19, 20},
 			    {0, 14, 16}, {0, 13, 18, 17}},
