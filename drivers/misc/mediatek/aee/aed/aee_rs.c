@@ -54,9 +54,6 @@ DEFINE_SEMAPHORE(aed_rs_sem,1);
 static long aedrs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
-	struct aee_dal_show *dal_show;
-	struct aee_dal_setcolor dal_setcolor;
-
 	if (aee_get_mode() >= AEE_MODE_CUSTOMER_ENG) {
 		pr_info("cmd(%d) not allowed (mode %d)\n",
 				cmd, aee_get_mode());
@@ -68,69 +65,11 @@ static long aedrs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case AEEIOCTL_DAL_SHOW:
-		/* It's troublesome to allocate more than
-		 * 1KB size on stack
-		 */
-		dal_show = kzalloc(sizeof(struct aee_dal_show), GFP_KERNEL);
-		if (!dal_show) {
-			ret = -EFAULT;
-			goto EXIT;
-		}
-
-		if (copy_from_user(dal_show,
-				(struct aee_dal_show __user *)arg,
-				sizeof(struct aee_dal_show))) {
-			ret = -EFAULT;
-			goto OUT;
-		}
-
-		/* Try to prevent overrun */
-		dal_show->msg[sizeof(dal_show->msg) - 1] = 0;
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-		pr_debug("AEE CALL DAL_Printf now\n");
-		DAL_Printf("%s", dal_show->msg);
-#else
-		pr_info("AEE DAL_SHOW failed: drm module not enabled\n");
-#endif
-
- OUT:
-		kfree(dal_show);
-		dal_show = NULL;
 		goto EXIT;
 	case AEEIOCTL_DAL_CLEAN:
-		/* set default bgcolor to red,
-		 * it will be used in DAL_Clean
-		 */
-		dal_setcolor.foreground = 0x00ff00;	/*green */
-		dal_setcolor.background = 0xff0000;	/*red */
-
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-		pr_debug("AEE CALL DAL_SetColor now\n");
-		DAL_SetColor(dal_setcolor.foreground,
-				dal_setcolor.background);
-		pr_debug("AEE CALL DAL_Clean now\n");
-		DAL_Clean();
-#else
-		pr_info("AEE DAL_CLEAN failed: drm module not enabled\n");
-#endif
-		break;
+		goto EXIT;
 	case AEEIOCTL_SETCOLOR:
-		if (copy_from_user(&dal_setcolor,
-				(struct aee_dal_setcolor __user *)arg,
-				sizeof(struct aee_dal_setcolor))) {
-			ret = -EFAULT;
-			goto EXIT;
-		}
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
-		pr_debug("AEE CALL DAL_SetColor now\n");
-		DAL_SetColor(dal_setcolor.foreground,
-				dal_setcolor.background);
-		pr_debug("AEE CALL DAL_SetScreenColor now\n");
-		DAL_SetScreenColor(dal_setcolor.screencolor);
-#else
-		pr_info("AEE DAL_SETCOLOR failed: drm module not enabled\n");
-#endif
-		break;
+		goto EXIT;
 	default:
 		ret = -EINVAL;
 	}
