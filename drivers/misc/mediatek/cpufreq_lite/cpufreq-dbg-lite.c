@@ -28,6 +28,7 @@
 #include "../mcupm/include/mcupm_ipi_id.h"
 #include "cpufreq-dbg-lite.h"
 #include "sugov/cpufreq.h"
+#include "mtk_freq_qos.h"
 
 #ifdef pr_fmt
 #undef pr_fmt
@@ -247,6 +248,8 @@ static int mtk_cpudvfs_init(void)
 	}
 	dsu_ctrl_deubg_enable = false;
 	user_ctrl_mode = 0;
+
+	mtk_freq_qos_init();
 
 	return 0;
 }
