@@ -108,8 +108,11 @@ struct i3c_i2c_device mtk_i3c_i2c_new_client_device(
 
 	memset(&vir_info, 0, sizeof(vir_info));
 	vir_info.addr = static_addr;
-	snprintf(vir_info.type, sizeof(vir_info.type), "%d-vir-%04x",
-		i2c_adapter_id(&master->i2c), static_addr);
+	if (snprintf(vir_info.type, sizeof(vir_info.type), "%d-vir-%04x",
+		i2c_adapter_id(&master->i2c), static_addr) < 0) {
+		pr_info("[%s][%s] snprintf fail.\n", WRAP_INFO, __func__);
+		goto new_client_done;
+	}
 	i2c_vir_client = i2c_new_client_device(&master->i2c, &vir_info);
 	if (IS_ERR_OR_NULL(i2c_vir_client)) {
 		pr_info("[%s][%s] i2c_new_client fail.\n", WRAP_INFO, __func__);
