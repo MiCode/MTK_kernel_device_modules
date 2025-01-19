@@ -46,6 +46,21 @@ struct _EARA_IOCTL_PACKAGE {
 #define ACCEL_SEQ                    4
 #define ACCEL_FUSE                   5
 
+struct eara_iostat {
+	int io_wl;
+	int io_top;
+	int io_reqc_r;
+	int io_reqc_w;
+	int io_q_dept;
+	int io_reqsz_top_r;
+	int io_reqsz_top_w;
+	int io_reqc_rand;
+	int fuse_req_cnt;
+	int fuse_unlink_cnt;
+	unsigned short hot_pid;
+	unsigned short hot_tgid;
+};
+
 /* mini context for major embedded storage only */
 #define MICTX_PROC_CMD_BUF_SIZE (16)
 #define PWD_WIDTH_NS 100000000 /* 100ms */
@@ -141,19 +156,47 @@ static void mtk_btag_earaio_boost_fill(int boost)
 		wake_up(&earaio_ctrl.msg_readable);
 }
 
+#if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
+static inline void earaio_get_fuse_count(u64 *total, u64 *unlink)
+{
+#if IS_ENABLED(CONFIG_CGROUP_SCHED)
+	*total = mtk_btag_fuse_get_req_cnt_top(0);
+	*unlink = mtk_btag_fuse_get_req_cnt_top(FUSE_UNLINK);
+#else
+	*total = mtk_btag_fuse_get_req_cnt(0);
+	*unlink = mtk_btag_fuse_get_req_cnt(FUSE_UNLINK);
+#endif
+}
+
+static void earaio_set_fuse_data(struct eara_iostat *data)
+{
+	unsigned long flags;
+	u64 total, unlink;
+
+	earaio_get_fuse_count(&total, &unlink);
+	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+	data->fuse_req_cnt = (int)(total - earaio_ctrl.fuse_total_prev);
+	data->fuse_unlink_cnt = (int)(unlink - earaio_ctrl.fuse_unlink_prev);
+	earaio_ctrl.fuse_total_prev = total;
+	earaio_ctrl.fuse_unlink_prev = unlink;
+	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
+	mtk_btag_fuse_get_hot_pid(&data->hot_pid, &data->hot_tgid);
+}
+#endif
+
 void mtk_btag_earaio_clear_data(void)
 {
 	unsigned long flags;
 
-#if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
-	mtk_btag_fuse_clear_req_cnt();
-#endif
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
+#if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
+	earaio_get_fuse_count(&earaio_ctrl.fuse_total_prev,
+			      &earaio_ctrl.fuse_unlink_prev);
+#endif
 	earaio_ctrl.pwd_begin = sched_clock();
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
-#if IS_ENABLED(CONFIG_CGROUP_SCHED)
 static void mtk_btag_eara_get_data(struct eara_iostat *data)
 {
 	struct mtk_btag_mictx_iostat_struct iostat = {0};
@@ -171,7 +214,7 @@ static void mtk_btag_eara_get_data(struct eara_iostat *data)
 	data->io_reqsz_top_r = iostat.top_pages_r << PAGE_SHIFT;
 	data->io_reqsz_top_w = iostat.top_pages_w << PAGE_SHIFT;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
-	mtk_btag_eara_get_fuse_data(data);
+	earaio_set_fuse_data(data);
 #endif
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
 	earaio_ctrl.pwd_begin = sched_clock();
@@ -199,7 +242,7 @@ static int earaio_try_boost(bool boost)
 	__u32 top_r, top_w;
 	int ret = 1;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
-	int fuse_req_cnt = 0, fuse_unlink_cnt = 0;
+	u64 fuse_total, fuse_unlink;
 #endif
 
 	spin_lock_irqsave(&earaio_ctrl.lock, flags);
@@ -236,9 +279,9 @@ static int earaio_try_boost(bool boost)
 
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	/* Establish threshold for top app fuse request count */
-	mtk_btag_fuse_get_req_cnt(&fuse_req_cnt, &fuse_unlink_cnt);
-	if (((fuse_req_cnt > earaio_ctrl.fuse_threshold) && (top_r || top_w)) ||
-	    (fuse_unlink_cnt > earaio_ctrl.fuse_unlink_threshold))
+	earaio_get_fuse_count(&fuse_total, &fuse_unlink);
+	if (((fuse_total > earaio_ctrl.fuse_threshold) && (top_r || top_w)) ||
+	    (fuse_unlink > earaio_ctrl.fuse_unlink_threshold))
 		goto need_boost;
 #endif
 
@@ -623,8 +666,3 @@ void mtk_btag_earaio_init(struct proc_dir_entry *root)
 	earaio_ctrl.earaio_boost_entry = proc_entry;
 	init_waitqueue_head(&earaio_ctrl.msg_readable);
 }
-
-#else
-#define mtk_btag_earaio_init_mictx(...)
-
-#endif

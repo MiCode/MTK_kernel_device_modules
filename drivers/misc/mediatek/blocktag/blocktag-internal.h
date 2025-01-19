@@ -182,6 +182,8 @@ struct mtk_btag_earaio_control {
 	int rand_rw_threshold;
 	int seq_r_threshold; /* in # of pages */
 	int seq_w_threshold; /* in # of pages */
+	u64 fuse_total_prev;
+	u64 fuse_unlink_prev;
 	int fuse_threshold;
 	int fuse_unlink_threshold;
 };
@@ -265,21 +267,6 @@ struct mtk_btag_vops {
 		const char __user *ubuf, size_t count);
 	bool    boot_device;
 	bool    earaio_enabled;
-};
-
-struct eara_iostat {
-	int io_wl;
-	int io_top;
-	int io_reqc_r;
-	int io_reqc_w;
-	int io_q_dept;
-	int io_reqsz_top_r;
-	int io_reqsz_top_w;
-	int io_reqc_rand;
-	int fuse_req_cnt;
-	int fuse_unlink_cnt;
-	unsigned short hot_pid;
-	unsigned short hot_tgid;
 };
 
 struct mtk_blocktag *mtk_btag_find_by_type(

@@ -66,14 +66,14 @@ u64 btag_fuse_pstat_get_last(void);
 u64 btag_fuse_pstat_get_max(void);
 u64 btag_fuse_pstat_get_distribution(u32 idx);
 
+u64 mtk_btag_fuse_get_req_cnt(u32 opcode);
+#if IS_ENABLED(CONFIG_CGROUP_SCHED)
+u64 mtk_btag_fuse_get_req_cnt_top(u32 opcode);
+#endif
+void mtk_btag_fuse_get_hot_pid(unsigned short *pid, unsigned short *tgid);
 void mtk_btag_fuse_req_hist_show(char **buff, unsigned long *size,
 				 struct seq_file *seq);
 
 void mtk_btag_fuse_init(struct proc_dir_entry *btag_root);
 void mtk_btag_fuse_exit(void);
-
-void mtk_btag_eara_get_fuse_data(struct eara_iostat *data);
-void mtk_btag_fuse_get_req_cnt(int *total_cnt, int *unlink_cnt);
-void mtk_btag_fuse_clear_req_cnt(void);
-
 #endif /* _BLOCKTAG_FUSE_TRACE_H */

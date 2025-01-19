@@ -174,23 +174,20 @@ static enum hrtimer_restart pstat_timer_fn(struct hrtimer *timer)
  */
 #define TEMP_PID_CNT 32768
 struct pid_fuse_stat_entry {
-	unsigned short req_cnt;
+	u64 req_cnt;
 	unsigned short tgid;
-};
+} *pid_stat;
+static unsigned short hot_pid;
 static struct btag_fuse_req_hist fuse_log;
 static struct btag_fuse_req_stat stat[FUSE_MAXOP];
 static u64 total_req_cnt;
-static struct pid_fuse_stat_entry *pid_fuse_stats;
-static unsigned short fuse_req_max_cnt;
-static unsigned short fuse_req_max_cnt_pid;
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
-static u64 total_top_cnt, prev_total_top_cnt;
-static u64 total_top_unlink_cnt, prev_total_top_unlink_cnt;
-#else
-static u64 prev_total_req_cnt;
-static u64 total_unlink_cnt, prev_total_unlink_cnt;
+static struct btag_fuse_req_stat top_stat[FUSE_MAXOP];
+static u64 total_req_cnt_top;
 #endif
 static DEFINE_SPINLOCK(stat_lock);
+static DEFINE_SPINLOCK(top_stat_lock);
+static DEFINE_SPINLOCK(pid_stat_lock);
 
 static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 {
@@ -227,7 +224,7 @@ static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 
 	fuse_pstat_inc();
 
-	if (opcode) {
+	if (opcode && opcode < FUSE_MAXOP) {
 		spin_lock_irqsave(&stat_lock, flags);
 		stat[opcode].count++;
 //		if (filter & FUSE_PREFILTER)
@@ -235,30 +232,31 @@ static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 //		if (filter & FUSE_POSTFILTER)
 //			stat[opcode].postfilter++;
 		total_req_cnt++;
+		spin_unlock_irqrestore(&stat_lock, flags);
 
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
-		total_top_cnt++;
 		rcu_read_lock();
 		grp = task_cgroup(current, cpuset_cgrp_id);
-		rcu_read_unlock();
-		if (opcode == FUSE_UNLINK) {
-			if (grp->kn->name && !strcmp("top-app", grp->kn->name))
-				total_top_unlink_cnt++;
+		if (grp->kn->name && !strcmp("top-app", grp->kn->name)) {
+			spin_lock_irqsave(&top_stat_lock, flags);
+			top_stat[opcode].count++;
+//			if (filter & FUSE_PREFILTER)
+//				top_stat[opcode].prefilter++;
+//			if (filter & FUSE_POSTFILTER)
+//				top_stat[opcode].postfilter++;
+			total_req_cnt_top++;
+			spin_unlock_irqrestore(&top_stat_lock, flags);
 		}
-
-#else
-		if (opcode == FUSE_UNLINK)
-			total_unlink_cnt++;
+		rcu_read_unlock();
 #endif
 
-		pid_fuse_stats[current->pid].req_cnt++;
-		pid_fuse_stats[current->pid].tgid = current->tgid;
-		if (pid_fuse_stats[current->pid].req_cnt > fuse_req_max_cnt) {
-			fuse_req_max_cnt = pid_fuse_stats[current->pid].req_cnt;
-			fuse_req_max_cnt_pid = current->pid;
-		}
-
-		spin_unlock_irqrestore(&stat_lock, flags);
+		spin_lock_irqsave(&pid_stat_lock, flags);
+		pid_stat[current->pid].req_cnt++;
+		pid_stat[current->pid].tgid = current->tgid;
+		if (current->pid != hot_pid &&
+		    pid_stat[current->pid].req_cnt > pid_stat[hot_pid].req_cnt)
+			hot_pid = current->pid;
+		spin_unlock_irqrestore(&pid_stat_lock, flags);
 
 		mtk_btag_earaio_check_window();
 	}
@@ -268,6 +266,59 @@ static void btag_fuse_request_send(void *data, const struct fuse_req *rq)
 
 	if (!filtername(filter))
 		pr_err("unknown filter, rq->in.h.opcode=%u\n", rq->in.h.opcode);
+}
+
+/**
+ * mtk_btag_fuse_get_req_cnt - Get the cumulatvie number of fuse requests
+ * @opcode: Specifies to get the count for, 0 for total request count
+ *
+ * Return the cumulative request count. 0 if the opcode is invalid.
+ */
+u64 mtk_btag_fuse_get_req_cnt(u32 opcode)
+{
+	unsigned long flags;
+	u64 ret;
+
+	if (opcode >= FUSE_MAXOP)
+		return 0;
+
+	spin_lock_irqsave(&stat_lock, flags);
+	ret = opcode ? stat[opcode].count : total_req_cnt;
+	spin_unlock_irqrestore(&stat_lock, flags);
+
+	return ret;
+}
+
+#if IS_ENABLED(CONFIG_CGROUP_SCHED)
+/**
+ * This function is similar to mtk_btag_fuse_get_req_cnt but retrieves the
+ * request count from the top app.
+ */
+u64 mtk_btag_fuse_get_req_cnt_top(u32 opcode)
+{
+	unsigned long flags;
+	u64 ret = 0;
+
+	if (opcode < FUSE_MAXOP) {
+		spin_lock_irqsave(&top_stat_lock, flags);
+		ret = opcode ? top_stat[opcode].count : total_req_cnt_top;
+		spin_unlock_irqrestore(&top_stat_lock, flags);
+	}
+
+	return ret;
+}
+#endif
+
+void mtk_btag_fuse_get_hot_pid(unsigned short *pid, unsigned short *tgid)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&top_stat_lock, flags);
+	*pid = hot_pid;
+	*tgid = pid_stat[hot_pid].tgid;
+	memset(pid_stat, 0, sizeof(struct pid_fuse_stat_entry) * TEMP_PID_CNT);
+	hot_pid = 0;
+	spin_unlock_irqrestore(&top_stat_lock, flags);
 }
 
 void mtk_btag_fuse_req_hist_show(char **buff, unsigned long *size,
@@ -347,14 +398,13 @@ static void clean_up_stat(void)
 	spin_lock_irqsave(&stat_lock, flags);
 	memset(stat, 0, sizeof(stat));
 	total_req_cnt = 0;
-#if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	total_top_unlink_cnt = 0;
-	prev_total_top_unlink_cnt = 0;
-#else
-	total_unlink_cnt = 0;
-	prev_total_unlink_cnt = 0;
-#endif
 	spin_unlock_irqrestore(&stat_lock, flags);
+#if IS_ENABLED(CONFIG_CGROUP_SCHED)
+	spin_lock_irqsave(&top_stat_lock, flags);
+	memset(top_stat, 0, sizeof(top_stat));
+	total_req_cnt_top = 0;
+	spin_unlock_irqrestore(&top_stat_lock, flags);
+#endif
 }
 
 /*
@@ -604,7 +654,8 @@ void mtk_btag_fuse_init(struct proc_dir_entry *btag_root)
 	fuse_log.enable = 1;
 #endif
 
-	pid_fuse_stats = kzalloc(sizeof(struct pid_fuse_stat_entry)*TEMP_PID_CNT, GFP_KERNEL);
+	pid_stat = kzalloc(sizeof(struct pid_fuse_stat_entry) * TEMP_PID_CNT,
+			   GFP_KERNEL);
 
 	ret = install_tracepoints();
 	if (ret) {
@@ -676,62 +727,5 @@ void mtk_btag_fuse_exit(void)
 	proc_remove(req_hist_e);
 	proc_remove(fuse_root);
 	uninstall_tracepoints();
-	kfree(pid_fuse_stats);
-}
-
-void mtk_btag_fuse_get_req_cnt(int *total_cnt, int *unlink_cnt)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&stat_lock, flags);
-#if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	*total_cnt = (int)(total_top_cnt - prev_total_top_cnt);
-	*unlink_cnt = (int)(total_top_unlink_cnt - prev_total_top_unlink_cnt);
-#else
-	*total_cnt = (int)(total_req_cnt - prev_total_req_cnt);
-	*unlink_cnt = (int)(total_unlink_cnt - prev_total_unlink_cnt);
-#endif
-	spin_unlock_irqrestore(&stat_lock, flags);
-}
-
-void mtk_btag_eara_get_fuse_data(struct eara_iostat *data)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&stat_lock, flags);
-#if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	data->fuse_req_cnt = (int)(total_top_cnt - prev_total_top_cnt);
-	data->fuse_unlink_cnt = (int)(total_top_unlink_cnt - prev_total_top_unlink_cnt);
-#else
-	data->fuse_req_cnt = (int)(total_req_cnt - prev_total_req_cnt);
-	data->fuse_unlink_cnt = (int)(total_unlink_cnt - prev_total_unlink_cnt);
-#endif
-
-	data->hot_pid = fuse_req_max_cnt_pid;
-	data->hot_tgid = pid_fuse_stats[fuse_req_max_cnt_pid].tgid;
-	memset(pid_fuse_stats, 0, sizeof(struct pid_fuse_stat_entry)*TEMP_PID_CNT);
-	fuse_req_max_cnt = 0;
-	fuse_req_max_cnt_pid = 0;
-
-#if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	prev_total_top_cnt = total_top_cnt;
-	prev_total_top_unlink_cnt = total_top_unlink_cnt;
-#else
-	prev_total_req_cnt = total_req_cnt;
-	prev_total_unlink_cnt = total_unlink_cnt;
-#endif
-	spin_unlock_irqrestore(&stat_lock, flags);
-}
-
-void mtk_btag_fuse_clear_req_cnt(void)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&stat_lock, flags);
-#if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	prev_total_top_cnt = total_top_cnt;
-#else
-	prev_total_req_cnt = total_req_cnt;
-#endif
-	spin_unlock_irqrestore(&stat_lock, flags);
+	kfree(pid_stat);
 }
