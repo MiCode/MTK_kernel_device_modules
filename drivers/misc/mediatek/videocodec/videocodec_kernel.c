@@ -84,12 +84,10 @@ unsigned long pmem_user_v2p_video(unsigned long va)
 	pte = pte_alloc_kernel(pmd, va);
 	if (pte_present(*pte)) {
 		pa = (pte_val(*pte) & PHYS_MASK & (PAGE_MASK)) | pageOffset;
-		pte_unmap(pte);
 		spin_unlock(&current->mm->page_table_lock);
 		return pa;
 	}
 
-	pte_unmap(pte);
 	pr_info("[ERROR] v2p, va=0x%lx, pte invalid!\n", va);
 	spin_unlock(&current->mm->page_table_lock);
 	return 0;
