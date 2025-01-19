@@ -1904,7 +1904,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-mpu.ko")
         mgk_64_device_modules.remove("drivers/spmi/spmi-mtk-pmif.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
-        mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/ffa_v11.ko")
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-vcodec.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clkdbg-mt6761.ko":"mt6761"})
@@ -1963,6 +1962,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/smmu_secure.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/iommu/iommu_secure.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
+        mgk_64_device_modules.remove("drivers/tee/gud/610/TlcTui/t-base-tui.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/mmsram.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/slbc/mtk_slbc.ko")
