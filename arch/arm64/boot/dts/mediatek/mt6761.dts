@@ -590,10 +590,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		idle-states {
 			entry-method = "arm,psci";
 
-			STANDBY: standby {
+			STANDBY: standby-wfi {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00000001>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <600>;
 				exit-latency-us = <600>;
 				min-residency-us = <1200>;
 				local-timer-stop;
@@ -602,7 +602,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 			MCDI_CPU: mcdi-cpu {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010001>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <600>;
 				exit-latency-us = <600>;
 				min-residency-us = <1200>;
 				local-timer-stop;
@@ -611,7 +611,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 			MCDI_CLUSTER: mcdi-cluster {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <600>;
 				exit-latency-us = <600>;
 				min-residency-us = <1200>;
 				local-timer-stop;
@@ -620,7 +620,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 			SODI: sodi {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010002>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;
@@ -629,7 +629,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 			SODI3: sodi3 {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010003>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;
@@ -638,7 +638,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 			DPIDLE: dpidle {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010004>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;
@@ -647,7 +647,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 			SUSPEND: suspend {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010005>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;

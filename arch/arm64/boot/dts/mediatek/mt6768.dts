@@ -809,10 +809,10 @@ transparent_hugepage=never";
 		idle-states {
 			entry-method = "arm,psci";
 
-			STANDBY: standby {
+			STANDBY: standby-wfi {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00000001>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <600>;
 				exit-latency-us = <600>;
 				min-residency-us = <1200>;
 				local-timer-stop;
@@ -821,7 +821,7 @@ transparent_hugepage=never";
 			MCDI_CPU: mcdi-cpu {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x00010001>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <600>;
 				exit-latency-us = <600>;
 				min-residency-us = <1200>;
 				local-timer-stop;
@@ -830,7 +830,7 @@ transparent_hugepage=never";
 			MCDI_CLUSTER: mcdi-cluster {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010001>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <600>;
 				exit-latency-us = <600>;
 				min-residency-us = <1200>;
 				local-timer-stop;
@@ -839,7 +839,7 @@ transparent_hugepage=never";
 			idledram: idledram {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010002>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;
@@ -849,7 +849,7 @@ transparent_hugepage=never";
 			idlesyspll: idlesyspll {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010003>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;
@@ -859,7 +859,7 @@ transparent_hugepage=never";
 			idlebus26m: idlebus26m {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010004>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;
@@ -869,7 +869,7 @@ transparent_hugepage=never";
 			SUSPEND: suspend {
 				compatible = "arm,idle-state";
 				arm,psci-suspend-param = <0x01010005>;
-				entry-latency-us = <3000000000>;
+				entry-latency-us = <800>;
 				exit-latency-us = <1000>;
 				min-residency-us = <2000>;
 				local-timer-stop;
