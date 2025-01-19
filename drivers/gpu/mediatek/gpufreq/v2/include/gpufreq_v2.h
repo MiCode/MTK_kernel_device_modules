@@ -424,6 +424,13 @@ struct gpufreq_preoc_info {
 	unsigned int scale_factor;
 };
 
+struct gpufreq_slt2_bmodel {
+	unsigned int vgpu_h;
+	unsigned int vgpu_l;
+	unsigned int vstack_h;
+	unsigned int vstack_l;
+};
+
 /**************************************************
  * Shared Status
  **************************************************/
@@ -526,6 +533,7 @@ struct gpufreq_shared_status {
 	struct gpufreq_preoc_info preoc_info;
 	struct gpufreq_bus_tracker_info bus_slv_error[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_bus_tracker_info bus_slv_timeout[GPUFREQ_MAX_BUSTRK_NUM];
+	struct gpufreq_slt2_bmodel slt2_bmodel;
 };
 
 /**************************************************

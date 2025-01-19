@@ -812,6 +812,12 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 			g_shared_status->profile_time[i][PROF_IDX_MIN]);
 	}
 
+	seq_puts(m, "\n[GPU BModel]\n");
+	seq_printf(m, "VSYS_SEARCH_GPUTOP_DVFS_H,%d\n", g_shared_status->slt2_bmodel.vgpu_h);
+	seq_printf(m, "VSYS_SEARCH_GPUTOP_DVFS_L,%d\n", g_shared_status->slt2_bmodel.vgpu_l);
+	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_H,%d\n", g_shared_status->slt2_bmodel.vstack_h);
+	seq_printf(m, "VSYS_SEARCH_GPUSTACK_DVFS_L,%d\n", g_shared_status->slt2_bmodel.vstack_l);
+
 	mutex_unlock(&gpufreq_debug_lock);
 
 	return GPUFREQ_SUCCESS;
