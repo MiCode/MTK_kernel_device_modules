@@ -383,18 +383,6 @@ eenv_pd_max_util(struct energy_env *eenv, struct cpumask *pd_cpus,
 	if (trace_sched_max_util_enabled())
 		trace_sched_max_util("pd", pd_idx, dst_cpu, dst_idx, max_util, pd_cpu, -1, -1);
 
-    /* Double check with Peter for patch:9622215 */
-    if (pd_cpu != -1) {
-		eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx] = pd_cpu;
-		if (dst_idx)
-			eenv->dpt_v2_sratio[pd_cpu][dst_idx] = eenv->dpt_v2_sratio[pd_cpu][0];
-
-		if (trace_sched_max_util_dpt_v2_sratio_enabled())
-			trace_sched_max_util_dpt_v2_sratio(dst_cpu, dst_idx, pd_idx, pd_cpu, eenv->dpt_v2_sratio[pd_cpu][dst_idx], eenv->dpt_v2_sratio[pd_cpu][0],
-				0, 0, 0);
-	}
-
-
 	eenv->gear_max_util[eenv->gear_idx][dst_idx] = min(gear_max_util,
 					eenv->pds_cpu_cap[pd_idx]);
 
@@ -611,6 +599,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	unsigned long dsu_volt = -1, pd_volt = -1, gear_volt = -1;
 	int dst_idx, shared_buck_mode;
 	unsigned long pd_freq = 0, gear_freq, scale_cpu;
+	unsigned int dpt_v2_sratio = 0;
 
 	scale_cpu = arch_scale_cpu_capacity(pd_idx);
 
@@ -639,6 +628,9 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	}
 
 	dst_idx = (dst_cpu >= 0) ? 1 : 0;
+	if (eenv->dpt_v2_support)
+		dpt_v2_sratio = eenv->dpt_v2_sratio[eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx]][dst_idx];
+
 	/* dvfs power overhead */
 	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx))) {
 		/* dvfs Vin/Vout */
@@ -657,13 +649,13 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 			extern_volt = max(gear_volt, dsu_volt);
 			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
 					scale_cpu, eenv, extern_volt, pd_max_util, candidate_cpu,
-					eenv->dpt_v2_sratio[eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx]][dst_idx], eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
+					dpt_v2_sratio, eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
 			shared_buck_mode = 1;
 		} else {
 			extern_volt = 0;
 			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
 					scale_cpu, eenv, extern_volt, pd_max_util, candidate_cpu,
-					eenv->dpt_v2_sratio[eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx]][dst_idx], eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
+					dpt_v2_sratio, eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
 			energy = ((pd_volt) ? energy * max(gear_volt, dsu_volt) / pd_volt : energy);
 			shared_buck_mode = 2;
 		}
@@ -671,7 +663,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		extern_volt = dsu_volt;
 		energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
 				scale_cpu, eenv, extern_volt, pd_max_util, candidate_cpu,
-				eenv->dpt_v2_sratio[eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx]][dst_idx], eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
+				dpt_v2_sratio, eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
 		shared_buck_mode = 0;
 	}
 
