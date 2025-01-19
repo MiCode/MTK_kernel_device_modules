@@ -187,12 +187,11 @@ void cmdq_thrd_irq_history_record(u8 hwid ,u8 thread_idx)
 void cmdq_dump_thrd_irq_history(u8 hwid)
 {
 #define txt_sz 128
-	u16 arr_idx, thrd_irq_cnt[CMDQ_THR_MAX_COUNT], offset;
+	u16 arr_idx, thrd_irq_cnt[CMDQ_THR_MAX_COUNT];
+	u16 offset, len;
 	u8 thrd_idx, i;
-	s16 len;
 	char text[txt_sz];
 
-	memset(text, 0, sizeof(text));
 	for(arr_idx = 0; arr_idx < CMDQ_IRQ_HISTORY_MAX_SIZE; arr_idx++) {
 		thrd_idx = util.cmdq_irq_thrd_history[hwid][arr_idx];
 		if(thrd_idx < CMDQ_THR_MAX_COUNT)

@@ -1449,6 +1449,7 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 	struct cmdq_sec *cmdq =
 		container_of(task->thread->chan->mbox, struct cmdq_sec, mbox);
 	struct cmdq_sec_data *data;
+	struct cmdq_pkt_buffer *buf;
 	unsigned long flags;
 	s32 err, max_task;
 
@@ -1456,6 +1457,8 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 		__func__, (unsigned long)cmdq->base_pa, task, task->pkt,
 		task->thread->idx);
 
+	buf = list_first_entry(
+		&task->pkt->buf, struct cmdq_pkt_buffer, list_entry);
 	data = (struct cmdq_sec_data *)task->pkt->sec_data;
 
 	WARN_ON(cmdq->suspended);
