@@ -67,33 +67,42 @@ static struct timer_list check_isu_timer;
 
 static DEFINE_MUTEX(emiisu_ctrl_mutex);
 
+/**
+ * Updates ISU control state based on source value.
+ *
+ * @param src Source of ISU control update
+ * @return Updated ISU control state
+ */
 static unsigned int set_isu_ctrl_flag(unsigned int src)
 {
 	unsigned int isu_ctrl_ret = ISU_CTRL_UNKNOWN;
 	int i = 0;
 
-	pr_info("%s: lsu_ctrl_flag_last: 0x%x\n", __func__, isu_ctrl_flag_last);
-
 	if ((isu_ctrl_flag_last == KERN_REC_ON_ISU_BUF_READ) && (src == KERN_REC_ON_ISU_BUF_READ)) {
-		pr_info("%s: during iSU_BUF_READ, skip to update cur_ctrl_trace\n", __func__);
-	} else {
-		pr_info("%s: cur_ctrl_trace_idx=%u\n", __func__, cur_ctrl_trace_idx);
+		//pr_info("%s: during iSU_BUF_READ, skip to update cur_ctrl_trace\n", __func__);
+		return ISU_CTRL_ENABLED_RECORDING;
+	}
 
-		isu_ctrl_trace[cur_ctrl_trace_idx].ts = sched_clock();
-		isu_ctrl_trace[cur_ctrl_trace_idx].val = src;
+	// Log current state
+	pr_info("%s: lsu_ctrl_flag_last: 0x%x\n", __func__, isu_ctrl_flag_last);
+	pr_info("%s: cur_ctrl_trace_idx=%u\n", __func__, cur_ctrl_trace_idx);
 
-		if (global_emi_isu && global_emi_isu->con_addr)
-			isu_ctrl_trace[cur_ctrl_trace_idx].readback = readl(global_emi_isu->con_addr);
-		else
-			isu_ctrl_trace[cur_ctrl_trace_idx].readback = ISU_CTRL_UNKNOWN;
+	// Update control trace
+	isu_ctrl_trace[cur_ctrl_trace_idx].ts = sched_clock();
+	isu_ctrl_trace[cur_ctrl_trace_idx].val = src;
 
-		cur_ctrl_trace_idx = (cur_ctrl_trace_idx + 1) % ISU_CTRL_TRACE_MAX;
+	if (global_emi_isu && global_emi_isu->con_addr)
+		isu_ctrl_trace[cur_ctrl_trace_idx].readback = readl(global_emi_isu->con_addr);
+	else
+		isu_ctrl_trace[cur_ctrl_trace_idx].readback = ISU_CTRL_UNKNOWN;
 
-		for (i = 0; i < ISU_CTRL_TRACE_MAX; i++) {
-			if (isu_ctrl_trace[i].ts != 0ULL) {
-				pr_info("%s: isu_ctrl_trace[%d]: ts=%llu, val=%x, readback=%x\n", __func__,
-					i, isu_ctrl_trace[i].ts, isu_ctrl_trace[i].val, isu_ctrl_trace[i].readback);
-			}
+	cur_ctrl_trace_idx = (cur_ctrl_trace_idx + 1) % ISU_CTRL_TRACE_MAX;
+
+	// Log updated trace
+	for (i = 0; i < ISU_CTRL_TRACE_MAX; i++) {
+		if (isu_ctrl_trace[i].ts != 0ULL) {
+			pr_info("%s: isu_ctrl_trace[%d]: ts=%llu, val=%x, readback=%x\n", __func__,
+				i, isu_ctrl_trace[i].ts, isu_ctrl_trace[i].val, isu_ctrl_trace[i].readback);
 		}
 	}
 
@@ -227,8 +236,8 @@ void mtk_emiisu_record_on(void)
 
 	writel(ISU_CTRL_ENABLED_RECORDING, isu->con_addr);
 	dsb(sy);
-	pr_info("%s: Turn on EMIISU dump\n", __func__);
-	dump_stack();
+	//pr_info("%s: Turn on EMIISU dump\n", __func__);
+	//dump_stack();
 }
 EXPORT_SYMBOL(mtk_emiisu_record_on);
 
