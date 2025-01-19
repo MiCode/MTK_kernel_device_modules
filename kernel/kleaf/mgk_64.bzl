@@ -348,6 +348,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/governors:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmstat:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v1:ddk_kconfigs".format(kernel_version),
@@ -591,6 +592,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mailbox:mtk-ise-mailbox".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:mtk-mbox-mailbox".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:mtk-lpm".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/governors:lpm-gov-MHSP".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:mtk-lpm-dbg-common-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/platform/v2:mtk-lpm-plat-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mkp:mkp".format(kernel_version),
@@ -833,7 +835,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/lens/tof/stmvl53l4.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/media/camera_af_media.ko",
     "drivers/misc/mediatek/lens/vcm/v4l2/sub_vcm/sub_vcm.ko",
-    "drivers/misc/mediatek/lpm/governors/MHSP/lpm-gov-MHSP.ko",
     #"drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko",
     #"drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko",
     "drivers/misc/mediatek/masp/sec.ko",
@@ -2163,7 +2164,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-virtio.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/governors/MHSP/lpm-gov-MHSP.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/lpm/governors:lpm-gov-MHSP".format(kernel_version))
         #mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:mtk-lpm-dbg-common-v2".format(kernel_version))
         #mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko")
@@ -2349,7 +2350,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-virtio.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/governors/MHSP/lpm-gov-MHSP.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/lpm/governors:lpm-gov-MHSP".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/debug/v2/mtk-lpm-dbg-common-v2.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko")
@@ -2799,7 +2800,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-virtio.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/governors/MHSP/lpm-gov-MHSP.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/lpm/governors:lpm-gov-MHSP".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/debug/v1/mtk-lpm-dbg-common-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/debug/v2/mtk-lpm-dbg-common-v2.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/lpm/modules/platform/v1/mtk-lpm-plat-v1.ko")

@@ -2,6 +2,8 @@
 /*
  * Copyright (c) 2023 MediaTek Inc.
  */
+#define MTK_LPM_DTS_COMPATIBLE	"mediatek,mtk-lpm"
+
 #define MAXSAMPLES 5
 #define MAX_IPI2IDLE	(500 * NSEC_PER_MSEC)
 #define PRED_NS_SUB	(1 * NSEC_PER_USEC)

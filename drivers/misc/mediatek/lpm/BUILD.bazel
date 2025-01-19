@@ -19,11 +19,6 @@ filegroup(
     srcs = [
         "inc/lpm.h",
         "modules/include/lpm_dbg_common_v2.h",
-        "governors/Makefile",
-        "governors/MHSP/Makefile",
-        "governors/MHSP/lpm_gov_trace_event.h",
-        "governors/MHSP/lpm-mhsp.h",
-        "governors/MHSP/lpm-mhsp.c",
     ],
 )
 

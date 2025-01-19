@@ -93,6 +93,7 @@ EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mminf
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/tinysys_scmi/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/mailbox/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/lpm/*Module.symvers)
+EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/lpm/governors/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/lpm/modules/debug/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mkp/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mmstat/*Module.symvers)

@@ -48,4 +48,3 @@ mtk-lpm-objs += $(LPM_SRC)
 
 #Generic subdir build
 obj-$(CONFIG_MTK_LOW_POWER_MODULE) += modules/
-#obj-$(CONFIG_MTK_CPU_IDLE_GOV) += governors/
