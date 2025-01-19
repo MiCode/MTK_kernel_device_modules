@@ -414,6 +414,11 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 #define MT6993_OVL_EXDMA6_L0_AID_SETTING	(0xE6CUL)
 #define MT6993_OVL_EXDMA7_L0_AID_SETTING	(0xE7CUL)
 
+#define MT6993_OVL_DDREN_CFG				(0xB04UL)
+	#define INTEN_FLD_CFG_DDR_EN_MAN REG_FLD_MSB_LSB(0, 0)
+	#define INTEN_FLD_CFG_OUT_DDR_EN REG_FLD_MSB_LSB(4, 4)
+	#define INTEN_FLD_CFG_DDREN_ACT_SEL REG_FLD_MSB_LSB(9, 8)
+
 #define MT6985_OVL_LAYER_OFFEST				(0x4)
 
 #define OVL_MOUT	(0xFF0UL)
@@ -1061,9 +1066,14 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_EN);
 	else if (drm_crtc_index(crtc) == 1)
 		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_EN);
+	else if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
+		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_EN);
 	else
 		SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
-	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
+	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
+		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
+	else
+		SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_RDMA_BURST_CON1,
 		       value, mask);
@@ -3666,8 +3676,13 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + OVL_MOUT, 0x2, 0x3);
 
 	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_BURST16_EN);
-	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
-	SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
+	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL) {
+		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_EN);
+		SET_VAL_MASK(value, mask, 0, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
+	} else {
+		SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_EN);
+		SET_VAL_MASK(value, mask, 1, FLD_RDMA_BURST_CON1_DDR_ACK_EN);
+	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_RDMA_BURST_CON1,
 		       value, mask);
@@ -3828,6 +3843,41 @@ static int mtk_ovl_exdma_golden_setting(struct mtk_ddp_comp *comp,
 		 (gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] << 19);
 	cmdq_pkt_write(handle, comp->cmdq_base, baddr + DISP_REG_OVL_EN_CON,
 		       regval, 0x3 << 18);
+
+	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL) {
+		struct mtk_drm_crtc *mtk_crtc;
+		struct drm_crtc *crtc;
+		struct mtk_drm_private *priv;
+		unsigned int inten;
+
+		mtk_crtc = comp->mtk_crtc;
+		crtc = &mtk_crtc->base;
+		priv = mtk_crtc->base.dev->dev_private;
+
+		switch (priv->data->mmsys_id) {
+			case MMSYS_MT6993:
+				inten = REG_FLD_VAL(INTEN_FLD_CFG_DDR_EN_MAN, 1) |
+						REG_FLD_VAL(INTEN_FLD_CFG_OUT_DDR_EN, 1) |
+						REG_FLD_VAL(INTEN_FLD_CFG_DDREN_ACT_SEL, 1);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MT6993_OVL_DDREN_CFG,
+					inten, ~0);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_STASH_CFG1,
+					1 , ~0);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + 0xAF0,
+					0 , ~0);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + 0xAF4,
+					0 , ~0);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + 0xAF8,
+					0 , ~0);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + 0xAFC,
+					0 , ~0);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + 0x30C,
+					0 , ~0);
+				break;
+			default:
+				break;
+		}
+	}
 
 	return 0;
 }
