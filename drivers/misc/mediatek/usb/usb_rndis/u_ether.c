@@ -1640,7 +1640,7 @@ void mtk_gether_disconnect(struct gether *link)
 	rndis_test_tx_usb_out = 0;
 	rndis_test_tx_complete = 0;
 
-	netif_device_detach(dev->net);
+	netif_stop_queue(dev->net);
 	netif_carrier_off(dev->net);
 
 	/* disable endpoints, forcing (synchronous) completion
