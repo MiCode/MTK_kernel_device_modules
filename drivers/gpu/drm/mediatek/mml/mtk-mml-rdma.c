@@ -819,7 +819,6 @@ struct rdma_frame_data {
 	u16 crop_off_l;		/* crop offset left */
 	u16 crop_off_t;		/* crop offset top */
 	u32 gmcif_con;
-	u32 crc_inst_offset;
 
 	/* dvfs */
 	struct mml_frame_size max_size;
@@ -2191,16 +2190,15 @@ static void rdma_backup_crc(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	const phys_addr_t crc_reg = MML_FMT_COMPRESS(task->config->info.src.format) ?
 		(comp->base_pa + RDMA_MON_STA_0 + 27 * 8) : (comp->base_pa + RDMA_CHKS_EXTR);
+	int ret;
 
 	if (likely(!mml_rdma_crc))
 		return;
 
-	rdma_frm->crc_inst_offset = mml_backup_crc(task, ccfg,
-		crc_reg, &task->rdma_crc_idx[ccfg->pipe]);
-	if (!rdma_frm->crc_inst_offset) {
+	ret = cmdq_pkt_backup(task->pkts[ccfg->pipe], crc_reg, &task->backup_crc_rdma[ccfg->pipe]);
+	if (ret) {
 		mml_err("%s fail to backup CRC", __func__);
 		mml_rdma_crc = 0;
 	}
@@ -2211,13 +2209,10 @@ static void rdma_backup_crc_update(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
-
-	if (!mml_rdma_crc || !rdma_frm->crc_inst_offset)
+	if (!mml_rdma_crc || !task->backup_crc_rdma[ccfg->pipe].inst_offset)
 		return;
 
-	mml_backup_crc_update(task, ccfg, rdma_frm->crc_inst_offset,
-		&task->rdma_crc_idx[ccfg->pipe]);
+	cmdq_pkt_backup_update(task->pkts[ccfg->pipe], &task->backup_crc_rdma[ccfg->pipe]);
 #endif
 }
 
@@ -2396,13 +2391,14 @@ static void rdma_store_crc(struct mml_comp *comp, struct mml_task *task,
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	const u32 pipe = ccfg->pipe;
 
-	if (!mml_rdma_crc)
+	if (!mml_rdma_crc || !task->backup_crc_rdma[pipe].inst_offset)
 		return;
 
-	task->src_crc[pipe] = mml_backup_crc_get(task, ccfg, task->rdma_crc_idx[pipe]);
-	mml_msg("%s rdma component %u job %u pipe %u crc %#010x idx %u",
-		__func__, comp->id, task->job.jobid, ccfg->pipe, task->src_crc[ccfg->pipe],
-		task->rdma_crc_idx[pipe]);
+	task->src_crc[ccfg->pipe] =
+		cmdq_pkt_backup_get(task->pkts[pipe], &task->backup_crc_rdma[pipe]);
+	mml_msg("%s rdma  component %2u job %u pipe %u crc %#010x idx %u",
+		__func__, comp->id, task->job.jobid, ccfg->pipe, task->src_crc[pipe],
+		task->backup_crc_rdma[pipe].val_idx);
 #endif
 }
 

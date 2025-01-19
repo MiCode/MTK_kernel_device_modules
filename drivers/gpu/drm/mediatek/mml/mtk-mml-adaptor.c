@@ -495,6 +495,11 @@ dup_command:
 		sizeof(*task->reuse[pipe].label_mods), GFP_KERNEL);
 	task->reuse[pipe].label_check = kcalloc(cfg->cache[pipe].label_cnt,
 		sizeof(*task->reuse[pipe].label_check), GFP_KERNEL);
+	memcpy(&task->backup_crc_rdma, &src->backup_crc_rdma, sizeof(task->backup_crc_rdma));
+	memcpy(&task->backup_crc_wdma, &src->backup_crc_wdma, sizeof(task->backup_crc_wdma));
+	task->perf_prete = src->perf_prete;
+	task->perf_dispready = src->perf_dispready;
+	task->perf_sof = src->perf_sof;
 	if (task->reuse[pipe].labels && task->reuse[pipe].label_mods &&
 		task->reuse[pipe].label_check) {
 		memcpy(task->reuse[pipe].labels, src->reuse[pipe].labels,
