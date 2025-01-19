@@ -17,6 +17,8 @@
 
 static enum DISP_HELPER_STAGE disp_global_stage;
 
+static const char *help_info_desc_empty = "MTK_DRM_OPT_NONE";
+
 static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_STAGE, 0, "MTK_DRM_OPT_STAGE"},       /* must enable */
 	{MTK_DRM_OPT_USE_CMDQ, 0, "MTK_DRM_OPT_USE_CMDQ"}, /* must enable */
@@ -135,14 +137,11 @@ void disp_helper_set_stage(enum DISP_HELPER_STAGE stage)
 static const char *mtk_drm_helper_opt_spy(struct mtk_drm_helper *helper_opt,
 					  enum MTK_DRM_HELPER_OPT option)
 {
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(help_info); i++) {
-		if (helper_opt[i].opt == option)
-			return helper_opt[i].desc;
+	if (unlikely(option >= MTK_DRM_OPT_NUM)) {
+		return "unknown option!!";
 	}
 
-	return "unknown option!!";
+	return helper_opt[option].desc;
 }
 
 enum MTK_DRM_HELPER_OPT
@@ -163,22 +162,16 @@ mtk_drm_helper_name_to_opt(struct mtk_drm_helper *helper_opt, const char *name)
 int mtk_drm_helper_set_opt(struct mtk_drm_helper *helper_opt,
 			   enum MTK_DRM_HELPER_OPT option, int value)
 {
-	unsigned int i;
-
-	if (option >= MTK_DRM_OPT_NUM) {
+	if (unlikely(option >= MTK_DRM_OPT_NUM)) {
 		DDPINFO("wrong option: %d\n", option);
 		return -EINVAL;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(help_info); i++) {
-		if (helper_opt[i].opt == option && helper_opt[i].val != value) {
-			DDPMSG("Set Option %d(%s) from (%d) to (%d)\n", option,
-			       mtk_drm_helper_opt_spy(helper_opt, option),
-			       mtk_drm_helper_get_opt(helper_opt, option),
-			       value);
+	if (helper_opt[option].val != value) {
+		DDPMSG("Set Option %d(%s) from (%d) to (%d)\n",
+			option, helper_opt[option].desc, helper_opt[option].val, value);
 
-			helper_opt[i].val = value;
-		}
+		helper_opt[option].val = value;
 	}
 
 	return 0;
@@ -199,20 +192,12 @@ int mtk_drm_helper_set_opt_by_name(struct mtk_drm_helper *helper_opt,
 int mtk_drm_helper_get_opt(struct mtk_drm_helper *helper_opt,
 			   enum MTK_DRM_HELPER_OPT option)
 {
-	int ret = 0;
-	int i;
-
-	if (option >= MTK_DRM_OPT_NUM) {
+	if (unlikely(option >= MTK_DRM_OPT_NUM)) {
 		DDPINFO("%s: option invalid %d\n", __func__, option);
 		return -1;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(help_info); i++) {
-		if (helper_opt[i].opt == option)
-			return helper_opt[i].val;
-	}
-
-	return ret;
+	return helper_opt[option].val;
 }
 
 void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
@@ -220,18 +205,30 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 	int i, value, index1, index2, ret;
 	struct mtk_drm_helper *tmp_opt;
 
-	tmp_opt = kmalloc(sizeof(help_info), GFP_KERNEL);
+	tmp_opt = kmalloc(sizeof(struct mtk_drm_helper) * MTK_DRM_OPT_NUM, GFP_KERNEL);
 	if (!tmp_opt) {
 		DDPPR_ERR("helper info creation failed\n");
 		return;
 	}
 
-	memcpy(tmp_opt, help_info, sizeof(help_info));
+	for (i = 0; i < MTK_DRM_OPT_NUM; i++) {
+		tmp_opt[i].opt = i;
+		tmp_opt[i].val = 0;
+		tmp_opt[i].desc = help_info_desc_empty;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(help_info); i++) {
+		int opt = help_info[i].opt;
+		if (opt < MTK_DRM_OPT_NUM) {
+			memcpy(&tmp_opt[opt], &help_info[i], sizeof(struct mtk_drm_helper));
+		}
+	}
+
 	for (i = 0; i < MTK_DRM_OPT_NUM; i++) {
 		index1 = of_property_match_string(dev->of_node, "helper-name",
-						 help_info[i].desc);
+						 tmp_opt[i].desc);
 		index2 = of_property_match_string(dev->of_node, "helper-name-proj",
-						 help_info[i].desc);
+						 tmp_opt[i].desc);
 
 		if (index1 < 0)
 			value = 0;
@@ -275,7 +272,7 @@ int mtk_drm_helper_get_opt_list(struct mtk_drm_helper *helper_opt,
 	int len = 0;
 	int i = 0;
 
-	for (i = 0; i < ARRAY_SIZE(help_info); i++) {
+	for (i = 0; i < MTK_DRM_OPT_NUM; i++) {
 		if (stringbuf != NULL && buf_len > 0)
 			len += scnprintf(stringbuf + len, buf_len - len,
 					 "Option: [%d][%s] Value: [%d]\n", i,
