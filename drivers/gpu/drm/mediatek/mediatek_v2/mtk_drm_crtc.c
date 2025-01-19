@@ -2988,6 +2988,13 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 		return -EINVAL;
 	}
 
+	if (is_frame_mode) {
+		cmdq_pkt_clear_event(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+		cmdq_pkt_wfe(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	}
+
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
 
@@ -3027,6 +3034,11 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 
 	}
 	if (is_frame_mode) {
+		cmdq_pkt_set_event(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		cmdq_pkt_set_event(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+
 		/* Record Vblank end timestamp and calculate duration */
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
