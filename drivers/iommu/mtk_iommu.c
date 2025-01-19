@@ -3621,7 +3621,7 @@ static const struct mtk_iommu_plat_data mt6789_data = {
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			 NOT_STD_AXI_MODE | IOVA_34_EN | SHARE_PGTABLE |
 			 IOMMU_SEC_EN | HAS_SMI_SUB_COMM | WR_THROT_EN |
-			 PGTABLE_PA_35_EN | HAS_BCLK,
+			 PGTABLE_PA_35_EN | SKIP_CFG_PORT | HAS_BCLK,
 	.inv_sel_reg   = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= DISP_IOMMU,
 	.iommu_type     = MM_IOMMU,
