@@ -75,10 +75,12 @@ void wla_set_enable(unsigned int enable)
 						WLAPM_RGU_GRP_EN);
 	if (enable && !bypass_mode_only) {
 		/* dis bypass mode */
+		wla_write_field(WLAPM_CLK_CTRL0, 0x0, BIT(0));
 		wla_write_field(WLAPM_DDREN_CTRL0, 0,
 							WLAPM_DDREN_BYPASS_FSM_CTRL);
 	} else {
 		/* bypass mode */
+		wla_write_field(WLAPM_CLK_CTRL0, 0x1, BIT(0));
 		wla_write_field(WLAPM_DDREN_CTRL0, 1,
 							WLAPM_DDREN_BYPASS_FSM_CTRL);
 	}
@@ -358,6 +360,7 @@ static int get_chipid(void)
 
 static void __wla_bypass_mode_init(void)
 {
+	wla_write_field(WLAPM_CLK_CTRL0, 0x1, BIT(0));
 	wla_write_field(WLAPM_CLK_CTRL1, 0x1, WLAPM_CKCTRL_DBG_CK_EN);
 	wla_write_field(WLAPM_DDREN_CTRL0, 0x0, WLAPM_DDREN_FROM_LEGACY_MODE);
 	wla_write_field(WLAPM_DDREN_CTRL0, 0x0, WLAPM_DDREN_FORCE_ON);
