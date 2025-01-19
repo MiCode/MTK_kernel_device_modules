@@ -6,6 +6,7 @@
 #define IOMMU_DEBUG_H
 
 #include <linux/ioctl.h>
+#include <linux/iova.h>
 #include <linux/fs.h>
 #include <linux/of.h>
 #include <linux/proc_fs.h>
@@ -72,6 +73,12 @@ int mtk_iommu_register_fault_callback(int port,
 
 /* port: comes from "include/dt-binding/memort/mtxxx-larb-port.h" */
 int mtk_iommu_unregister_fault_callback(int port, bool is_vpu);
+void mtk_iova_alloc(struct device *dev, u32 ssid,
+		    struct iova_domain *iovad,
+		    dma_addr_t iova, size_t size);
+void mtk_iova_free(struct device *dev, u32 ssid,
+		   struct iova_domain *iovad,
+		   dma_addr_t iova, size_t size);
 void mtk_iova_map(u64 tab_id, u64 iova, size_t size);
 void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size);
 int mtk_iova_map_dump(u64 iova, u64 tab_id);

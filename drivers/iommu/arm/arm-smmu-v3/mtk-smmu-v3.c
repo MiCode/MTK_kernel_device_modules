@@ -35,6 +35,7 @@
 
 #include "arm-smmu-v3.h"
 #include "mtk-smmu-v3.h"
+#include "mtk-smmu-ssid.h"
 
 #define LINK_WITH_APU			BIT(0)
 /* For SMMU EP/bring up phase: smi not ready */
@@ -88,6 +89,7 @@
 #define SMI_COM_OFFSET3_START		(0x440)
 #define SMI_COM_OFFSET3_LEN		(2)
 
+static const char *IOMMU_DMA_RANGE_PROP_NAME = "mtk,iommu-dma-range";
 static const char *IOMMU_GROUP_PROP_NAME = "mtk,iommu-group";
 static const char *SMMU_MPAM_CONFIG = "mtk,mpam-cfg";
 static const char *SMMU_MPAM_CMAX = "mtk,mpam-cmax";
@@ -356,7 +358,7 @@ static u64 get_smmu_tab_id_by_domain(struct iommu_domain *domain)
 	smmu_id = data->plat_data->smmu_type;
 	asid = smmu_domain->cd.asid;
 
-	return smmu_id << 32 | asid;
+	return (smmu_id << SMMU_ID_SHIFT) | asid;
 }
 
 static int mtk_smmu_map_pages(struct arm_smmu_domain *smmu_domain,
@@ -1073,8 +1075,6 @@ static int invert_dma_regions(struct device *dev,
 	size_t rsv_size;
 	int ret = 0;
 
-	dev_info(dev, "[%s] !master:%d\n", __func__, !master);
-
 	if (!master || !master->domain)
 		return -EINVAL;
 
@@ -1160,22 +1160,21 @@ out_err:
 	return ret;
 }
 
-int collect_smmu_dma_regions(struct device *dev, struct list_head *head)
+int collect_smmu_dma_regions(struct device *dev,
+			     struct device_node *region_node,
+			     struct list_head *head)
 {
-	const char *propname = "mtk,iommu-dma-range";
 	const __be32 *p, *property_end;
 	int ret, len, naddr, nsize;
-	struct device_node *np;
+	struct device_node *np = region_node;
 	int err;
 
 	dev_info(dev, "[%s], dev:%s\n", __func__, dev_name(dev));
 
-	/* Repalce with iommu-group np if exist */
-	np = parse_iommu_group_phandle(dev);
 	if (!np)
 		return -EINVAL;
 
-	p = of_get_property(np, propname, &len);
+	p = of_get_property(np, IOMMU_DMA_RANGE_PROP_NAME, &len);
 	if (!p)
 		return -ENODEV;
 
@@ -1189,8 +1188,8 @@ int collect_smmu_dma_regions(struct device *dev, struct list_head *head)
 
 	if (!naddr || !nsize || len % (naddr + nsize)) {
 		pr_info("%s err:%d, p:%s, len:%d, naddr:%d, nsize:%d, dev:%s, np:%s\n",
-			__func__, err, propname, len, naddr, nsize, dev_name(dev),
-			np->full_name);
+			__func__, err, IOMMU_DMA_RANGE_PROP_NAME, len, naddr, nsize,
+			dev_name(dev), np->full_name);
 		return -EINVAL;
 	}
 	property_end = p + len;
@@ -1207,17 +1206,33 @@ int collect_smmu_dma_regions(struct device *dev, struct list_head *head)
 	return 0;
 }
 
-static void mtk_get_resv_regions(struct device *dev, struct list_head *head)
+int mtk_collect_smmu_dma_regions(struct device *dev, u32 ssid, struct list_head *head)
+{
+	struct device_node *np = NULL;
+
+	/* For ssid support */
+	if (ssid != SMMU_NO_SSID)
+		np = mtk_parse_dma_region_ssid(dev, ssid);
+
+	/* Repalce with iommu-group np if exist */
+	if (!np)
+		np = parse_iommu_group_phandle(dev);
+
+	return collect_smmu_dma_regions(dev, np, head);
+}
+
+void mtk_get_smmu_resv_regions(struct device *dev, u32 ssid, struct list_head *head)
 {
 	LIST_HEAD(resv_regions);
 	LIST_HEAD(dma_regions);
 	int ret;
 
-	dev_info(dev, "[%s], dev:%s\n", __func__, dev_name(dev));
-
-	ret = collect_smmu_dma_regions(dev, &dma_regions);
-	if (ret)
+	ret = mtk_collect_smmu_dma_regions(dev, ssid, &dma_regions);
+	if (ret) {
+		dev_dbg(dev, "[%s], ssid:%u, no reserved regions ret:%d\n",
+			__func__, ssid, ret);
 		return;
+	}
 
 	ret = invert_dma_regions(dev, &dma_regions, &resv_regions);
 	iommu_put_resv_regions(dev, &dma_regions);
@@ -1225,6 +1240,16 @@ static void mtk_get_resv_regions(struct device *dev, struct list_head *head)
 		return;
 
 	list_splice(&resv_regions, head);
+}
+
+static void mtk_get_resv_regions(struct device *dev, struct list_head *head)
+{
+	mtk_get_smmu_resv_regions(dev, 0, head);
+}
+
+static void mtk_get_resv_regions_ssid(struct device *dev, u32 ssid, struct list_head *head)
+{
+	mtk_get_smmu_resv_regions(dev, ssid, head);
 }
 
 static bool is_dev_bypass_smmu_s1_enabled(struct device *dev)
@@ -2056,20 +2081,41 @@ static void mtk_hyp_smmu_reg_dump(struct arm_smmu_device *smmu)
 				HYP_SMMU_REG_DUMP_EVT, 0);
 }
 
-static u64 smmu_iova_to_iopte(struct arm_smmu_master *master, u64 iova)
+static u64 smmu_iova_to_iopte(struct arm_smmu_master *master, u64 iova, u32 ssid)
 {
 	if (!master || !master->domain || !master->domain->pgtbl_ops)
 		return 0;
 
-	return mtk_smmu_iova_to_iopte(master->domain->pgtbl_ops, iova);
+	if (ssid == SMMU_NO_SSID)
+		return mtk_smmu_iova_to_iopte(master->domain->pgtbl_ops, iova);
+	else
+		return mtk_smmu_iova_to_iopte_ssid(master->dev, iova, ssid);
 }
 
-static phys_addr_t smmu_iova_to_phys(struct arm_smmu_master *master, u64 iova)
+static phys_addr_t smmu_iova_to_phys(struct arm_smmu_master *master, u64 iova, u32 ssid)
 {
 	if (!master || !master->domain || !master->domain->pgtbl_ops)
 		return 0;
 
-	return master->domain->pgtbl_ops->iova_to_phys(master->domain->pgtbl_ops, iova);
+	if (ssid == SMMU_NO_SSID)
+		return master->domain->pgtbl_ops->iova_to_phys(master->domain->pgtbl_ops, iova);
+	else
+		return mtk_smmu_iova_to_phys_ssid(master->dev, iova, ssid);
+}
+
+static u64 smmu_tab_id(struct arm_smmu_master *master, u32 ssid)
+{
+	u64 tab_id;
+
+	if (!master || !master->domain || !master->dev)
+		return 0;
+
+	if (ssid == SMMU_NO_SSID)
+		tab_id = get_smmu_tab_id_by_domain(&master->domain->domain);
+	else
+		tab_id = get_smmu_tab_id_for_dev_ssid(master->dev, ssid);
+
+	return tab_id;
 }
 
 static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
@@ -2084,15 +2130,15 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 	if (master == NULL)
 		return;
 
-	tab_id = get_smmu_tab_id_by_domain(&master->domain->domain);
+	tab_id = smmu_tab_id(master, ssid);
 
 	pr_info("smmu pgtable dump:\n");
 	for (i = 0, tf_iova_tmp = fault_iova; i < SMMU_TF_IOVA_DUMP_NUM; i++) {
 		if (i > 0)
 			tf_iova_tmp -= SZ_4K;
 
-		pte = smmu_iova_to_iopte(master, tf_iova_tmp);
-		fault_pa = smmu_iova_to_phys(master, tf_iova_tmp);
+		pte = smmu_iova_to_iopte(master, tf_iova_tmp, ssid);
+		fault_pa = smmu_iova_to_phys(master, tf_iova_tmp, ssid);
 
 		pr_info("\ttab_id:0x%llx, index:%d, pte:0x%llx, fault_iova:0x%llx, fault_pa:0x%llx\n",
 			tab_id, i, pte, tf_iova_tmp, fault_pa);
@@ -2160,7 +2206,7 @@ static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 	}
 
 	master = arm_smmu_find_master(smmu, sid);
-	fault_pa = smmu_iova_to_phys(master, fault_iova);
+	fault_pa = smmu_iova_to_phys(master, fault_iova, (ssid_valid ? ssid : SMMU_NO_SSID));
 
 	if (fault_param)
 		fault_param->fault_pa = fault_pa;
@@ -2427,6 +2473,16 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.smmu_mem_share = mtk_smmu_share_mem_to_hyp,
 	.smmu_dvm_support = mtk_smmu_dvm_support,
 	.smmu_dvm_connect = mtk_smmu_dvm_connect,
+	.enable_ssid = mtk_enable_smmu_ssid,
+	.disable_ssid = mtk_disable_smmu_ssid,
+	.release_ssids = mtk_release_smmu_ssids,
+	.get_resv_regions_ssid = mtk_get_resv_regions_ssid,
+	.map_pages_ssid = mtk_smmu_map_pages_ssid,
+	.unmap_pages_ssid = mtk_smmu_unmap_pages_ssid,
+	.map_sg_ssid = mtk_smmu_map_sg_ssid,
+	.unmap_sg_ssid = mtk_smmu_unmap_sg_ssid,
+	.iova_to_phys_ssid = mtk_smmu_iova_to_phys_ssid,
+	.get_tab_id_ssid = mtk_smmu_get_tab_id_ssid,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
@@ -2504,7 +2560,7 @@ static const struct mtk_smmu_ops mtk_smmu_ops = {
 static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
-	u32 prefetch, irq_disable;
+	u32 prefetch, irq_disable, ssid_enable;
 	int ret;
 
 	/* parse tcu prefetch config */
@@ -2535,6 +2591,15 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 		data->irq_disable = true;
 	} else {
 		data->irq_disable = false;
+	}
+
+	ret = of_property_read_u32(smmu->dev->of_node, "ssid-enable", &ssid_enable);
+	if (!ret && ssid_enable == 1) {
+		data->ssid_enabled = true;
+		smmu->features |= ARM_SMMU_FEAT_SSID;
+		dev_info(smmu->dev, "parse ssid-enable:%d\n", ssid_enable);
+	} else {
+		data->ssid_enabled = false;
 	}
 }
 
@@ -2968,13 +3033,13 @@ static bool smmuwp_tbu_read_fault(struct arm_smmu_device *smmu,
 	va35_32 = FIELD_GET(RTFM1_FAULT_VA_35_32, regval);
 	fault_iova = (u64)(regval & RTFM1_FAULT_VA_31_12);
 	fault_iova |= (u64)va35_32 << 32;
-	fault_pa = smmu_iova_to_phys(master, fault_iova);
 
 	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_RTFM2(tbu));
 	sid = FIELD_GET(RTFM2_FAULT_SID, regval);
 	ssid = FIELD_GET(RTFM2_FAULT_SSID, regval);
 	ssidv = FIELD_GET(RTFM2_FAULT_SSIDV, regval);
 	secsidv = FIELD_GET(RTFM2_FAULT_SECSID, regval);
+	fault_pa = smmu_iova_to_phys(master, fault_iova, (ssidv ? ssid : SMMU_NO_SSID));
 
 	dev_info(smmu->dev,
 		 "TBU%d %s read TF, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",
@@ -3019,13 +3084,13 @@ static bool smmuwp_tbu_write_fault(struct arm_smmu_device *smmu,
 	va35_32 = FIELD_GET(WTFM1_FAULT_VA_35_32, regval);
 	fault_iova = (u64)(regval & WTFM1_FAULT_VA_31_12);
 	fault_iova |= (u64)va35_32 << 32;
-	fault_pa = smmu_iova_to_phys(master, fault_iova);
 
 	regval = smmu_read_reg(wp_base, SMMUWP_TBUx_WTFM2(tbu));
 	sid = FIELD_GET(WTFM2_FAULT_SID, regval);
 	ssid = FIELD_GET(WTFM2_FAULT_SSID, regval);
 	ssidv = FIELD_GET(WTFM2_FAULT_SSIDV, regval);
 	secsidv = FIELD_GET(WTFM2_FAULT_SECSID, regval);
+	fault_pa = smmu_iova_to_phys(master, fault_iova, (ssidv ? ssid : SMMU_NO_SSID));
 
 	dev_info(smmu->dev,
 		 "TBU%d %s write TF, iova:0x%llx, fault_id:0x%x, sid:%d, ssid:%d, ssidv:%d, secsidv:%d\n",

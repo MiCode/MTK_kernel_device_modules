@@ -39,7 +39,7 @@ module_param(disable_msipolling, bool, 0444);
 MODULE_PARM_DESC(disable_msipolling,
 	"Disable MSI-based polling for CMD_SYNC completion.");
 
-static struct iommu_ops arm_smmu_ops;
+static struct mtk_smmuv3_ops arm_smmu_ops;
 static struct iommu_dirty_ops arm_smmu_dirty_ops;
 
 enum arm_smmu_msi_index {
@@ -2439,6 +2439,9 @@ struct arm_smmu_domain *arm_smmu_domain_alloc(void)
 	INIT_LIST_HEAD(&smmu_domain->devices);
 	spin_lock_init(&smmu_domain->devices_lock);
 
+	smmu_domain->ssid_domains = RB_ROOT;
+	spin_lock_init(&smmu_domain->ssid_lock);
+
 	return smmu_domain;
 }
 
@@ -3315,7 +3318,7 @@ arm_smmu_domain_alloc_user(struct device *dev, u32 flags,
 		return ERR_PTR(-ENOMEM);
 
 	smmu_domain->domain.type = IOMMU_DOMAIN_UNMANAGED;
-	smmu_domain->domain.ops = arm_smmu_ops.default_domain_ops;
+	smmu_domain->domain.ops = arm_smmu_ops.iommu_ops.default_domain_ops;
 	ret = arm_smmu_domain_finalise(smmu_domain, master->smmu, flags);
 	if (ret)
 		goto err_free;
@@ -3873,37 +3876,159 @@ static int arm_smmu_def_domain_type(struct device *dev)
 	return 0;
 }
 
-static struct iommu_ops arm_smmu_ops = {
-	.identity_domain	= &arm_smmu_identity_domain,
-	.blocked_domain		= &arm_smmu_blocked_domain,
-	.capable		= arm_smmu_capable,
-	.domain_alloc_paging    = arm_smmu_domain_alloc_paging,
-	.domain_alloc_sva       = arm_smmu_sva_domain_alloc,
-	.domain_alloc_user	= arm_smmu_domain_alloc_user,
-	.probe_device		= arm_smmu_probe_device,
-	.release_device		= arm_smmu_release_device,
-	.device_group		= arm_smmu_device_group,
-	.of_xlate		= arm_smmu_of_xlate,
-	.get_resv_regions	= arm_smmu_get_resv_regions,
-	.remove_dev_pasid	= arm_smmu_remove_dev_pasid,
-	.dev_enable_feat	= arm_smmu_dev_enable_feature,
-	.dev_disable_feat	= arm_smmu_dev_disable_feature,
-	.page_response		= arm_smmu_page_response,
-	.def_domain_type	= arm_smmu_def_domain_type,
-	.pgsize_bitmap		= -1UL, /* Restricted during device attach */
-	.owner			= THIS_MODULE,
-	.default_domain_ops = &(const struct iommu_domain_ops) {
-		.attach_dev		= arm_smmu_attach_dev,
-		.set_dev_pasid		= arm_smmu_s1_set_dev_pasid,
-		.map_pages		= arm_smmu_map_pages,
-		.unmap_pages		= arm_smmu_unmap_pages,
-		.flush_iotlb_all	= arm_smmu_flush_iotlb_all,
-		.iotlb_sync		= arm_smmu_iotlb_sync,
-		.iotlb_sync_map		= arm_smmu_iotlb_sync_map,
-		.iova_to_phys		= arm_smmu_iova_to_phys,
-		.enable_nesting		= arm_smmu_enable_nesting,
-		.free			= arm_smmu_domain_free_paging,
-	}
+static inline struct arm_smmu_device *get_smmu_device(struct device *dev)
+{
+	struct arm_smmu_master *master;
+
+	if (!dev)
+		return NULL;
+
+	master = dev_iommu_priv_get(dev);
+	if (!master || !master->smmu)
+		return NULL;
+
+	return master->smmu;
+}
+
+int arm_smmu_set_dev_ssid(struct iommu_domain *domain,
+			  struct device *dev, u32 ssid)
+{
+	return arm_smmu_s1_set_dev_pasid(domain, dev, ssid);
+}
+
+void arm_smmu_remove_dev_ssid(struct device *dev, u32 ssid,
+			      struct iommu_domain *domain)
+{
+	arm_smmu_remove_dev_pasid(dev, ssid, domain);
+}
+
+static int arm_smmu_enable_ssid(struct device *dev, u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->enable_ssid)
+		return smmu->impl->enable_ssid(dev, ssid);
+	else
+		return -EPERM;
+}
+
+static int arm_smmu_disable_ssid(struct device *dev, u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->disable_ssid)
+		return smmu->impl->disable_ssid(dev, ssid);
+	else
+		return -EPERM;
+}
+
+static dma_addr_t arm_smmu_map_pages_ssid(struct device *dev, struct page *page,
+					  unsigned long offset, size_t size,
+					  enum dma_data_direction dir,
+					  unsigned long attrs, u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->map_pages_ssid)
+		return smmu->impl->map_pages_ssid(dev, page, offset, size, dir, attrs, ssid);
+	else
+		return -EPERM;
+}
+
+static void arm_smmu_unmap_pages_ssid(struct device *dev, dma_addr_t dma_addr,
+				      size_t size, enum dma_data_direction dir,
+				      unsigned long attrs, u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->unmap_pages_ssid)
+		smmu->impl->unmap_pages_ssid(dev, dma_addr, size, dir, attrs, ssid);
+}
+
+static int arm_smmu_map_sg_ssid(struct device *dev, struct scatterlist *sg,
+				int nents, enum dma_data_direction dir,
+				unsigned long attrs, u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->map_sg_ssid)
+		return smmu->impl->map_sg_ssid(dev, sg, nents, dir, attrs, ssid);
+	else
+		return -EPERM;
+}
+
+static void arm_smmu_unmap_sg_ssid(struct device *dev, struct scatterlist *sg,
+				   int nents, enum dma_data_direction dir,
+				   unsigned long attrs, u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->unmap_sg_ssid)
+		smmu->impl->unmap_sg_ssid(dev, sg, nents, dir, attrs, ssid);
+}
+
+static dma_addr_t arm_smmu_iova_to_phys_ssid(struct device *dev, dma_addr_t iova,
+					     u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->iova_to_phys_ssid)
+		return smmu->impl->iova_to_phys_ssid(dev, iova, ssid);
+	else
+		return -EPERM;
+}
+
+static u64 arm_smmu_get_tab_id_ssid(struct device *dev, u32 ssid)
+{
+	struct arm_smmu_device *smmu = get_smmu_device(dev);
+
+	if (smmu && smmu->impl && smmu->impl->get_tab_id_ssid)
+		return smmu->impl->get_tab_id_ssid(dev, ssid);
+	else
+		return 0;
+}
+
+static struct mtk_smmuv3_ops arm_smmu_ops = {
+	.iommu_ops = {
+		.identity_domain	= &arm_smmu_identity_domain,
+		.blocked_domain		= &arm_smmu_blocked_domain,
+		.capable		= arm_smmu_capable,
+		.domain_alloc_paging    = arm_smmu_domain_alloc_paging,
+		.domain_alloc_sva       = arm_smmu_sva_domain_alloc,
+		.domain_alloc_user	= arm_smmu_domain_alloc_user,
+		.probe_device		= arm_smmu_probe_device,
+		.release_device		= arm_smmu_release_device,
+		.device_group		= arm_smmu_device_group,
+		.of_xlate		= arm_smmu_of_xlate,
+		.get_resv_regions	= arm_smmu_get_resv_regions,
+		.remove_dev_pasid	= arm_smmu_remove_dev_pasid,
+		.dev_enable_feat	= arm_smmu_dev_enable_feature,
+		.dev_disable_feat	= arm_smmu_dev_disable_feature,
+		.page_response		= arm_smmu_page_response,
+		.def_domain_type	= arm_smmu_def_domain_type,
+		.pgsize_bitmap		= -1UL, /* Restricted during device attach */
+		.owner			= THIS_MODULE,
+		.default_domain_ops = &(const struct iommu_domain_ops) {
+			.attach_dev		= arm_smmu_attach_dev,
+			.set_dev_pasid		= arm_smmu_s1_set_dev_pasid,
+			.map_pages		= arm_smmu_map_pages,
+			.unmap_pages		= arm_smmu_unmap_pages,
+			.flush_iotlb_all	= arm_smmu_flush_iotlb_all,
+			.iotlb_sync		= arm_smmu_iotlb_sync,
+			.iotlb_sync_map		= arm_smmu_iotlb_sync_map,
+			.iova_to_phys		= arm_smmu_iova_to_phys,
+			.enable_nesting		= arm_smmu_enable_nesting,
+			.free			= arm_smmu_domain_free_paging,
+		}
+	},
+	.enable_ssid		= arm_smmu_enable_ssid,
+	.disable_ssid		= arm_smmu_disable_ssid,
+	.map_pages_ssid		= arm_smmu_map_pages_ssid,
+	.unmap_pages_ssid	= arm_smmu_unmap_pages_ssid,
+	.map_sg_ssid		= arm_smmu_map_sg_ssid,
+	.unmap_sg_ssid		= arm_smmu_unmap_sg_ssid,
+	.iova_to_phys_ssid	= arm_smmu_iova_to_phys_ssid,
+	.get_tab_id_ssid	= arm_smmu_get_tab_id_ssid,
 };
 
 static struct iommu_dirty_ops arm_smmu_dirty_ops = {
@@ -4727,10 +4852,10 @@ static int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
 		smmu->oas = 48;
 	}
 
-	if (arm_smmu_ops.pgsize_bitmap == -1UL)
-		arm_smmu_ops.pgsize_bitmap = smmu->pgsize_bitmap;
+	if (arm_smmu_ops.iommu_ops.pgsize_bitmap == -1UL)
+		arm_smmu_ops.iommu_ops.pgsize_bitmap = smmu->pgsize_bitmap;
 	else
-		arm_smmu_ops.pgsize_bitmap |= smmu->pgsize_bitmap;
+		arm_smmu_ops.iommu_ops.pgsize_bitmap |= smmu->pgsize_bitmap;
 
 	/* Set the DMA mask for our table walker */
 	if (dma_set_mask_and_coherent(smmu->dev, DMA_BIT_MASK(smmu->oas)))
@@ -5029,7 +5154,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = iommu_device_register(&smmu->iommu, &arm_smmu_ops, dev);
+	ret = iommu_device_register(&smmu->iommu, &arm_smmu_ops.iommu_ops, dev);
 	if (ret) {
 		dev_err(dev, "Failed to register iommu\n");
 		iommu_device_sysfs_remove(&smmu->iommu);

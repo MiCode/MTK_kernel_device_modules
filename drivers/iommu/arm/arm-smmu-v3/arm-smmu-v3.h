@@ -705,6 +705,7 @@ struct arm_smmu_device {
 #define ARM_SMMU_FEAT_MPAM		(1 << ARM_SMMU_FEAT_IMPL(0))
 #define ARM_SMMU_FEAT_TCU_PF		(1 << ARM_SMMU_FEAT_IMPL(1))
 #define ARM_SMMU_FEAT_DIS_EVTQ		(1 << ARM_SMMU_FEAT_IMPL(2))
+#define ARM_SMMU_FEAT_SSID		(1 << ARM_SMMU_FEAT_IMPL(3))
 	u32				features;
 
 #define ARM_SMMU_OPT_SKIP_PREFETCH	(1 << 0)
@@ -798,6 +799,9 @@ struct arm_smmu_domain {
 	spinlock_t			devices_lock;
 
 	struct mmu_notifier		mmu_notifier;
+
+	struct rb_root			ssid_domains;
+	spinlock_t			ssid_lock;
 };
 
 /* The following are exposed for testing purposes. */
@@ -842,6 +846,32 @@ static inline struct arm_smmu_domain *to_smmu_domain(struct iommu_domain *dom)
 {
 	return container_of(dom, struct arm_smmu_domain, domain);
 }
+
+struct mtk_smmuv3_ops {
+	struct iommu_ops iommu_ops;
+
+	/* Add ops function to support ssid */
+	int (*enable_ssid)(struct device *dev, u32 ssid);
+	int (*disable_ssid)(struct device *dev, u32 ssid);
+	int (*map_sg_ssid)(struct device *dev, struct scatterlist *sg,
+			   int nents, enum dma_data_direction dir,
+			   unsigned long attrs, u32 ssid);
+	void (*unmap_sg_ssid)(struct device *dev, struct scatterlist *sg,
+			      int nents, enum dma_data_direction dir,
+			      unsigned long attrs, u32 ssid);
+	dma_addr_t (*map_pages_ssid)(struct device *dev, struct page *page,
+				     unsigned long offset, size_t size,
+				     enum dma_data_direction dir,
+				     unsigned long attrs, u32 ssid);
+	void (*unmap_pages_ssid)(struct device *dev, dma_addr_t dma_addr,
+				 size_t size, enum dma_data_direction dir,
+				 unsigned long attrs, u32 ssid);
+	phys_addr_t (*iova_to_phys_ssid)(struct device *dev, dma_addr_t iova,
+					 u32 ssid);
+	u64 (*get_tab_id_ssid)(struct device *dev, u32 ssid);
+};
+
+#define to_mtk_smmu_ops(x) (container_of(x, struct mtk_smmuv3_ops, iommu_ops))
 
 struct arm_smmu_impl {
 	struct iommu_group* (*device_group)(struct device *dev);
@@ -893,6 +923,29 @@ struct arm_smmu_impl {
 			       unsigned int mem_type);
 	bool (*smmu_dvm_support)(struct arm_smmu_device *smmu);
 	void (*smmu_dvm_connect)(struct arm_smmu_device *smmu);
+
+	/* Add ops function to implement support ssid */
+	int (*enable_ssid)(struct device *dev, u32 ssid);
+	int (*disable_ssid)(struct device *dev, u32 ssid);
+	int (*release_ssids)(struct device *dev);
+	void (*get_resv_regions_ssid)(struct device *dev, u32 ssid,
+				      struct list_head *head);
+	int (*map_sg_ssid)(struct device *dev, struct scatterlist *sg,
+			   int nents, enum dma_data_direction dir,
+			   unsigned long attrs, u32 ssid);
+	void (*unmap_sg_ssid)(struct device *dev, struct scatterlist *sg,
+			      int nents, enum dma_data_direction dir,
+			      unsigned long attrs, u32 ssid);
+	dma_addr_t (*map_pages_ssid)(struct device *dev, struct page *page,
+				     unsigned long offset, size_t size,
+				     enum dma_data_direction dir,
+				     unsigned long attrs, u32 ssid);
+	void (*unmap_pages_ssid)(struct device *dev, dma_addr_t dma_addr,
+				 size_t size, enum dma_data_direction dir,
+				 unsigned long attrs, u32 ssid);
+	phys_addr_t (*iova_to_phys_ssid)(struct device *dev, dma_addr_t iova,
+					 u32 ssid);
+	u64 (*get_tab_id_ssid)(struct device *dev, u32 ssid);
 };
 
 struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);
@@ -940,6 +993,11 @@ struct arm_smmu_master *arm_smmu_find_master(struct arm_smmu_device *smmu,
 					     u32 sid);
 struct arm_smmu_ste *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu,
 					       u32 sid);
+
+int arm_smmu_set_dev_ssid(struct iommu_domain *domain,
+			 struct device *dev, u32 ssid);
+void arm_smmu_remove_dev_ssid(struct device *dev, u32 ssid,
+			      struct iommu_domain *domain);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 int arm_smmu_trigger_irq(struct arm_smmu_device *smmu);

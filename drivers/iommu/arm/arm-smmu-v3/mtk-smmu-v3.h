@@ -7,12 +7,14 @@
 #ifndef _MTK_SMMU_V3_H_
 #define _MTK_SMMU_V3_H_
 
+#include <linux/dma-direct.h>
 #include <linux/iommu.h>
 #include <linux/io-pgtable.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
+#include <linux/rbtree.h>
 #include <soc/mediatek/smi.h>
 
 #include <dt-bindings/memory/mtk-memory-port.h>
@@ -444,6 +446,14 @@
 	((action_id << 27) | (ste_row << 19) | (reg << 10) | (smu_type << 8) | \
 	 sid)
 
+#define SMMU_TAB_ID_INVALID		ULONG_MAX
+#define SMMU_ID_SHIFT			(32)
+#define SMMU_SSID_SHIFT			(16)
+#define SMMU_ID_MASK			GENMASK_ULL(35, 32)
+#define SMMU_SSID_MASK			GENMASK(31, 16)
+#define SMMU_ASID_MASK			GENMASK(15, 0)
+#define SMMU_NO_SSID			(0U)
+
 enum mtk_smmu_type {
 	MM_SMMU,
 	APU_SMMU,
@@ -537,6 +547,7 @@ struct mtk_smmu_data {
 	u32				pmg_max;
 	u32				tcu_prefetch;
 	bool				axslc;
+	bool				ssid_enabled;
 	u32				*smi_com_base;
 	u32				smi_com_base_cnt;
 	bool				irq_disable;
@@ -572,6 +583,15 @@ struct mtk_iommu_fault_event {
 	struct mtk_smmu_fault_param mtk_fault_param[SMMU_TFM_TYPE_NUM][SMMU_TBU_CNT_MAX];
 	struct mtk_smmu_fault_param *first_fault_param;
 	struct iopf_fault fault_evt;
+};
+
+struct arm_smmu_ssid_domain {
+	u32				ssid;
+	u32				asid;
+	struct arm_smmu_domain		*domain;
+	struct arm_smmu_domain		*default_domain;
+	struct rb_node			node;
+	atomic_t			nr_ssid_masters;
 };
 
 struct mtk_smmu_ops {
@@ -693,17 +713,22 @@ static inline u64 get_smmu_tab_id(struct device *dev)
 	smmu_id = get_smmu_id(dev);
 	asid = get_smmu_asid(dev);
 
-	return smmu_id << 32 | asid;
+	return (smmu_id << SMMU_ID_SHIFT) | asid;
 }
 
 static inline int smmu_tab_id_to_smmu_id(u64 tab_id)
 {
-	return tab_id >> 32;
+	return (tab_id & SMMU_ID_MASK) >> SMMU_ID_SHIFT;
+}
+
+static inline int smmu_tab_id_to_ssid(u64 tab_id)
+{
+	return (tab_id & SMMU_SSID_MASK) >> SMMU_SSID_SHIFT;
 }
 
 static inline int smmu_tab_id_to_asid(u64 tab_id)
 {
-	return tab_id & 0xffffffff;
+	return tab_id & SMMU_ASID_MASK;
 }
 
 static inline struct device *mtk_smmu_get_shared_device(struct device *dev)
@@ -774,6 +799,201 @@ static inline int mtk_smmu_set_pm_ops(u32 smmu_type, const struct mtk_pm_ops *op
 	data->pm_ops = ops;
 
 	return 0;
+}
+
+static inline const struct iommu_ops *dev_iommu_ops(struct device *dev)
+{
+	return dev->iommu->iommu_dev->ops;
+}
+
+static inline struct mtk_smmuv3_ops *dev_smmuv3_ops(struct device *dev)
+{
+	const struct iommu_ops *ops = dev_iommu_ops(dev);
+	struct mtk_smmuv3_ops *smmuv3_ops = NULL;
+
+	if (ops)
+		smmuv3_ops = to_mtk_smmu_ops(ops);
+
+	return smmuv3_ops;
+}
+
+static inline u64 get_smmu_tab_id_for_dev_ssid(struct device *dev, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops;
+
+	if (ssid != SMMU_NO_SSID) {
+		smmuv3_ops = dev_smmuv3_ops(dev);
+		if (smmuv3_ops && smmuv3_ops->get_tab_id_ssid)
+			return smmuv3_ops->get_tab_id_ssid(dev, ssid);
+	}
+
+	return get_smmu_tab_id(dev);
+}
+
+static inline int mtk_smmu_enable_ssid(struct device *dev, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops = dev_smmuv3_ops(dev);
+
+	if (smmuv3_ops && smmuv3_ops->enable_ssid)
+		return smmuv3_ops->enable_ssid(dev, ssid);
+
+	return -EINVAL;
+}
+
+static inline int mtk_smmu_disable_ssid(struct device *dev, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops = dev_smmuv3_ops(dev);
+
+	if (smmuv3_ops && smmuv3_ops->disable_ssid)
+		return smmuv3_ops->disable_ssid(dev, ssid);
+
+	return -EINVAL;
+}
+
+static inline phys_addr_t mtk_smmu_iova_to_phys(struct device *dev,
+						dma_addr_t iova, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops = dev_smmuv3_ops(dev);
+
+	if (smmuv3_ops && smmuv3_ops->iova_to_phys_ssid)
+		return smmuv3_ops->iova_to_phys_ssid(dev, iova, ssid);
+
+	return -EINVAL;
+}
+
+static inline void mtk_smmu_dma_sync_for_cpu(struct device *dev,
+					     phys_addr_t paddr, size_t size,
+					     enum dma_data_direction dir)
+{
+	if (!dev_is_dma_coherent(dev)) {
+		struct scatterlist sgl;
+		unsigned int nents = 1;
+
+		sg_init_table(&sgl, nents);
+		sg_set_page(&sgl, phys_to_page(paddr), size, offset_in_page(paddr));
+
+		dma_sync_sg_for_cpu(dev, &sgl, nents, dir);
+	}
+}
+
+static inline void mtk_smmu_dma_sync_for_device(struct device *dev,
+						phys_addr_t paddr, size_t size,
+						enum dma_data_direction dir)
+{
+	if (!dev_is_dma_coherent(dev)) {
+		struct scatterlist sgl;
+		unsigned int nents = 1;
+
+		sg_init_table(&sgl, nents);
+		sg_set_page(&sgl, phys_to_page(paddr), size, offset_in_page(paddr));
+
+		dma_sync_sg_for_device(dev, &sgl, nents, dir);
+	}
+}
+
+static inline void mtk_smmu_dma_sync_single_for_cpu(struct device *dev,
+						    dma_addr_t dma_addr, size_t size,
+						    enum dma_data_direction dir,
+						    u32 ssid)
+{
+	phys_addr_t phys;
+
+	if (ssid == SMMU_NO_SSID) {
+		dma_sync_single_for_cpu(dev, dma_addr, size, dir);
+		return;
+	}
+
+	if (!dev_is_dma_coherent(dev)) {
+		phys = mtk_smmu_iova_to_phys(dev, dma_addr, ssid);
+		if (phys > 0)
+			mtk_smmu_dma_sync_for_cpu(dev, phys, size, dir);
+	}
+}
+
+static inline void mtk_smmu_dma_sync_single_for_device(struct device *dev,
+						       dma_addr_t dma_addr, size_t size,
+						       enum dma_data_direction dir,
+						       u32 ssid)
+{
+	phys_addr_t phys;
+
+	if (ssid == SMMU_NO_SSID) {
+		dma_sync_single_for_device(dev, dma_addr, size, dir);
+		return;
+	}
+
+	if (!dev_is_dma_coherent(dev)) {
+		phys = mtk_smmu_iova_to_phys(dev, dma_addr, ssid);
+		if (phys > 0)
+			mtk_smmu_dma_sync_for_device(dev, phys, size, dir);
+	}
+}
+
+static inline dma_addr_t mtk_smmu_map_page(struct device *dev, struct page *page,
+					   unsigned long offset, size_t size,
+					   enum dma_data_direction dir,
+					   unsigned long attrs, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops = dev_smmuv3_ops(dev);
+
+	if (smmuv3_ops && smmuv3_ops->map_pages_ssid)
+		return smmuv3_ops->map_pages_ssid(dev, page, offset, size,
+						   dir, attrs, ssid);
+
+	return -EINVAL;
+}
+
+static inline void mtk_smmu_unmap_page(struct device *dev,
+				       dma_addr_t dma_addr, size_t size,
+				       enum dma_data_direction dir,
+				       unsigned long attrs, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops = dev_smmuv3_ops(dev);
+
+	if (smmuv3_ops && smmuv3_ops->unmap_pages_ssid)
+		smmuv3_ops->unmap_pages_ssid(dev, dma_addr, size, dir, attrs, ssid);
+}
+
+static inline int mtk_smmu_map_sg(struct device *dev, struct scatterlist *sg,
+				  int nents, enum dma_data_direction dir,
+				  unsigned long attrs, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops = dev_smmuv3_ops(dev);
+
+	if (smmuv3_ops && smmuv3_ops->map_sg_ssid)
+		return smmuv3_ops->map_sg_ssid(dev, sg, nents, dir, attrs, ssid);
+
+	return -EINVAL;
+}
+
+static inline void mtk_smmu_unmap_sg(struct device *dev, struct scatterlist *sg,
+				     int nents, enum dma_data_direction dir,
+				     unsigned long attrs, u32 ssid)
+{
+	struct mtk_smmuv3_ops *smmuv3_ops = dev_smmuv3_ops(dev);
+
+	if (smmuv3_ops && smmuv3_ops->unmap_sg_ssid)
+		smmuv3_ops->unmap_sg_ssid(dev, sg, nents, dir, attrs, ssid);
+}
+
+static inline int mtk_smmu_map_sgtable(struct device *dev, struct sg_table *sgt,
+				       enum dma_data_direction dir,
+				       unsigned long attrs, u32 ssid)
+{
+	int nents;
+
+	nents = mtk_smmu_map_sg(dev, sgt->sgl, sgt->orig_nents, dir, attrs, ssid);
+	if (nents < 0)
+		return nents;
+	sgt->nents = nents;
+	return 0;
+}
+
+static inline void mtk_smmu_unmap_sgtable(struct device *dev, struct sg_table *sgt,
+					  enum dma_data_direction dir,
+					  unsigned long attrs, u32 ssid)
+{
+	mtk_smmu_unmap_sg(dev, sgt->sgl, sgt->orig_nents, dir, attrs, ssid);
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)

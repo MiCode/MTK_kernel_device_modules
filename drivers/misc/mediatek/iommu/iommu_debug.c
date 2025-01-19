@@ -295,9 +295,8 @@ static struct iova_map_list map_list = {.init_flag = ATOMIC_INIT(0)};
 
 static void mtk_iommu_iova_trace(int event, dma_addr_t iova, size_t size,
 				 u64 tab_id, struct device *dev);
-static void mtk_iommu_iova_alloc_dump_top(struct seq_file *s,
-					  struct device *dev);
-static int mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev);
+static void mtk_iommu_iova_alloc_dump_top(struct seq_file *s);
+static int mtk_iommu_iova_alloc_dump(struct seq_file *s);
 static int mtk_iommu_iova_map_dump(struct seq_file *s, u64 iova, u64 tab_id);
 static int mtk_iommu_iova_dump(struct seq_file *s, u64 iova, u64 tab_id);
 
@@ -317,13 +316,11 @@ static inline void mtk_iova_count_dec(void)
 		pr_info_ratelimited("%s, iova count underflow\n", __func__);
 }
 
-static void mtk_iova_count_check(struct device *dev, dma_addr_t iova, size_t size)
+static void mtk_iova_count_check(struct device *dev, u64 tab_id, u32 dom_id,
+				 dma_addr_t iova, size_t size)
 {
 	static DEFINE_RATELIMIT_STATE(warn_dump_rs, IOVA_WARN_RS_INTERVAL,
 				      IOVA_WARN_RS_BURST);
-	struct iommu_fwspec *fwspec;
-	u64 tab_id = 0;
-	u32 dom_id = 0;
 
 	if (!dev)
 		return;
@@ -334,24 +331,12 @@ static void mtk_iova_count_check(struct device *dev, dma_addr_t iova, size_t siz
 	if (!__ratelimit(&warn_dump_rs))
 		return;
 
-	fwspec = dev_iommu_fwspec_get(dev);
-	if (!fwspec)
-		return;
-
-	if (smmu_v3_enable) {
-		tab_id = get_smmu_tab_id(dev);
-		dom_id = 0;
-	} else {
-		tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
-		dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
-	}
-
 	pr_info("%s, dev:%s, iova:[0x%llx %d 0x%llx 0x%zx] count:%llu\n",
 		__func__, (dev ? dev_name(dev) : "NULL"),
 		tab_id, dom_id, (unsigned long long)iova, size, iova_list.count);
 
 	if (iommu_globals.iova_warn_aee == 1) {
-		mtk_iommu_iova_alloc_dump_top(NULL, NULL);
+		mtk_iommu_iova_alloc_dump_top(NULL);
 		m4u_aee_print(iova_warn_log_format,
 			      dev_name(dev), dev_name(dev),
 			      tab_id, dom_id, iova_list.count);
@@ -559,8 +544,8 @@ static int __iommu_trace_dump(struct seq_file *s, u64 iova)
 	start_t = sched_clock();
 	if (smmu_v3_enable) {
 		iommu_dump(s, "smmu trace dump:\n");
-		iommu_dump(s, "%-8s %-9s %-11s %-11s %-14s %-12s %-14s %17s %s\n",
-			   "action", "smmu_id", "stream_id", "asid", "iova_start",
+		iommu_dump(s, "%-8s %-9s %-11s %-11s %-11s %-14s %-12s %-14s %17s %s\n",
+			   "action", "smmu_id", "stream_id", "ssid", "asid", "iova_start",
 			   "size", "iova_end", "time", "dev");
 	} else {
 		iommu_dump(s, "iommu trace dump:\n");
@@ -592,11 +577,12 @@ static int __iommu_trace_dump(struct seq_file *s, u64 iova)
 
 		if (smmu_v3_enable) {
 			iommu_dump(s,
-				   "%-8s 0x%-7x 0x%-9x 0x%-9x 0x%-12lx 0x%-10lx 0x%-12lx %10llu.%06u %s\n",
+				   "%-8s 0x%-7x 0x%-9x 0x%-9x 0x%-9x 0x%-12lx 0x%-10lx 0x%-12lx %10llu.%06u %s\n",
 				   event_mgr[event_id].name,
 				   smmu_tab_id_to_smmu_id(iommu_globals.record[i].data3),
 				   (iommu_globals.record[i].dev != NULL ?
 				   get_smmu_stream_id(iommu_globals.record[i].dev) : -1),
+				   smmu_tab_id_to_ssid(iommu_globals.record[i].data3),
 				   smmu_tab_id_to_asid(iommu_globals.record[i].data3),
 				   iommu_globals.record[i].data1,
 				   iommu_globals.record[i].data2,
@@ -1222,12 +1208,37 @@ static void arm_lpae_ops_dump(struct seq_file *s, struct io_pgtable_ops *ops)
 
 static void dump_pgtable_ops(struct seq_file *s, struct arm_smmu_master *master)
 {
-	if (!master || !master->domain || !master->domain->pgtbl_ops) {
-		iommu_dump(s, "Not do arm_smmu_domain_finalise\n");
+	struct arm_smmu_ssid_domain *ssid_domain, *next;
+	u32 sid, ssid, asid;
+
+	if (!master || !master->streams) {
+		pr_info("%s, ERROR", __func__);
 		return;
 	}
 
+	if (!master->domain || !master->domain->pgtbl_ops) {
+		iommu_dump(s, "Not do arm_smmu_domain_finalise: %s\n",
+			   dev_name(master->dev));
+		return;
+	}
+
+	sid = master->streams[0].id;
+	iommu_dump(s, "SMMU dump pgtbl OPS for sid:%d ssid:0 asid:%d\n",
+		   sid, master->domain->cd.asid);
 	arm_lpae_ops_dump(s, master->domain->pgtbl_ops);
+
+	/* ssid page table OPS dump */
+	rbtree_postorder_for_each_entry_safe(ssid_domain,
+					     next,
+					     &master->domain->ssid_domains,
+					     node) {
+		ssid = ssid_domain->ssid;
+		asid = ssid_domain->asid;
+
+		iommu_dump(s, "SMMU dump pgtbl OPS for sid:%d ssid:%d asid:%d\n",
+			   sid, ssid, asid);
+		arm_lpae_ops_dump(s, ssid_domain->domain->pgtbl_ops);
+	}
 }
 
 static inline bool is_valid_ste(__le64 *ste)
@@ -1291,6 +1302,8 @@ static void cd_dump(struct seq_file *s, u32 ssid, __le64 *cd)
 static void dump_ste_cd_info(struct seq_file *s,
 			     struct arm_smmu_master *master)
 {
+	struct arm_smmu_ssid_domain *ssid_domain, *next;
+	struct arm_smmu_domain *domain;
 	struct arm_smmu_device *smmu;
 	__le64 *steptr = NULL, *cdptr = NULL;
 	u64 asid = 0, ttbr = 0;
@@ -1305,6 +1318,10 @@ static void dump_ste_cd_info(struct seq_file *s,
 	sid = master->streams[0].id;
 	ssid = 0;
 	smmu = master->smmu;
+	domain = master->domain;
+
+	iommu_dump(s, "%s strtab base:0x%llx, cfg:0x%x\n", __func__,
+		   smmu->strtab_cfg.strtab_base, smmu->strtab_cfg.strtab_base_cfg);
 
 	if (smmu_ops && smmu_ops->get_step_ptr)
 		steptr = smmu_ops->get_step_ptr(smmu, sid);
@@ -1317,14 +1334,35 @@ static void dump_ste_cd_info(struct seq_file *s,
 		ttbr = FIELD_GET(CTXDESC_CD_1_TTB0_MASK,  le64_to_cpu(cdptr[1]));
 	}
 
-	iommu_dump(s, "%s strtab base:0x%llx, cfg:0x%x\n", __func__,
-		   smmu->strtab_cfg.strtab_base, smmu->strtab_cfg.strtab_base_cfg);
-	iommu_dump(s, "%s sid=0x%x asid=0x%llx ttbr=0x%llx dev(%s) [cd:%d ste:%d]\n",
+	iommu_dump(s, "%s sid=0x%x ssid=0x0 asid=0x%llx ttbr=0x%llx dev(%s) [cd:%d ste:%d]\n",
 		   __func__, sid, asid, ttbr, dev_name(master->dev),
 		   (cdptr == NULL), (steptr == NULL));
 
 	ste_dump(s, sid, steptr);
 	cd_dump(s, ssid, cdptr);
+
+	if (!domain) {
+		iommu_dump(s, "Not do arm_smmu_domain_finalise: %s\n",
+			   dev_name(master->dev));
+		return;
+	}
+
+	/* ssid cd dump */
+	rbtree_postorder_for_each_entry_safe(ssid_domain,
+					     next,
+					     &domain->ssid_domains,
+					     node) {
+		ssid = ssid_domain->ssid;
+		cdptr = smmu_ops->get_cd_ptr(master, ssid);
+		if (!is_valid_cd(cdptr))
+			continue;
+
+		asid = FIELD_GET(CTXDESC_CD_0_ASID, le64_to_cpu(cdptr[0]));
+		ttbr = FIELD_GET(CTXDESC_CD_1_TTB0_MASK,  le64_to_cpu(cdptr[1]));
+		iommu_dump(s, "%s sid=0x%x ssid=0x%x asid=0x%llx ttbr=0x%llx dev(%s)\n",
+			   __func__, sid, ssid, asid, ttbr, dev_name(master->dev));
+		cd_dump(s, ssid, cdptr);
+	}
 }
 
 static inline void pt_info_dump(struct seq_file *s,
@@ -1444,10 +1482,10 @@ static void ptdump(struct seq_file *s,
 	struct io_pgtable_ops *ops;
 	arm_lpae_iopte *ptep = pgd;
 
-	iommu_dump(s, "SMMU dump page table for stage %d, ssid 0x%x:\n",
+	iommu_dump(s, "SMMU dump page table for stage %d, ssid:0x%x:\n",
 		   stage, ssid);
 
-	if (stage == 1 && !ssid) {
+	if (stage == 1) {
 		ops = domain->pgtbl_ops;
 		data = io_pgtable_ops_to_data(ops);
 	} else {
@@ -1484,7 +1522,7 @@ static void dump_io_pgtable_s1(struct seq_file *s,
 	ttbr = le64_to_cpu(cd[1]) & CTXDESC_CD_1_TTB0_MASK;
 
 	if (!ttbr) {
-		iommu_dump(s, "Stage 1 TTBR is not valid (sid: %u, ssid: %u)\n",
+		iommu_dump(s, "Stage 1 TTBR is not valid (sid:%u, ssid:%u)\n",
 			   sid, ssid);
 		return;
 	}
@@ -1501,12 +1539,13 @@ static void dump_io_pgtable_s2(struct seq_file *s,
 	u64 vttbr;
 
 	if (!is_valid_ste(ste)) {
-		iommu_dump(s, "Failed to valid ste(sid:%u):%d\n", sid, (ste == NULL));
+		iommu_dump(s, "Failed to valid ste(sid:%u, ssid:%u):%d\n",
+			   sid, ssid, (ste == NULL));
 		return;
 	}
 
 	if (!(le64_to_cpu(ste[0]) & (1UL << 2))) {
-		iommu_dump(s, "Stage 2 translation is not valid (sid: %u, ssid: %u)\n",
+		iommu_dump(s, "Stage 2 translation is not valid (sid:%u, ssid:%u)\n",
 			   sid, ssid);
 		return;
 	}
@@ -1514,7 +1553,7 @@ static void dump_io_pgtable_s2(struct seq_file *s,
 	vttbr = le64_to_cpu(ste[3]) & STRTAB_STE_3_S2TTB_MASK;
 
 	if (!vttbr) {
-		iommu_dump(s, "Stage 2 TTBR is not valid (sid: %u, ssid: %u)\n",
+		iommu_dump(s, "Stage 2 TTBR is not valid (sid:%u, ssid:%u)\n",
 			   sid, ssid);
 		return;
 	}
@@ -1525,6 +1564,7 @@ static void dump_io_pgtable_s2(struct seq_file *s,
 
 static void dump_io_pgtable(struct seq_file *s, struct arm_smmu_master *master)
 {
+	struct arm_smmu_ssid_domain *ssid_domain, *next;
 	struct arm_smmu_domain *domain;
 	struct arm_smmu_device *smmu;
 	__le64 *steptr = NULL, *cdptr = NULL;
@@ -1544,6 +1584,12 @@ static void dump_io_pgtable(struct seq_file *s, struct arm_smmu_master *master)
 	iommu_dump(s, "SMMU dump page table for sid:0x%x, ssid:0x%x:\n",
 		   sid, ssid);
 
+	if (!domain) {
+		iommu_dump(s, "Not do arm_smmu_domain_finalise: %s\n",
+			   dev_name(master->dev));
+		return;
+	}
+
 	if (smmu_ops && smmu_ops->get_cd_ptr)
 		cdptr = smmu_ops->get_cd_ptr(master, ssid);
 
@@ -1553,6 +1599,22 @@ static void dump_io_pgtable(struct seq_file *s, struct arm_smmu_master *master)
 		steptr = smmu_ops->get_step_ptr(smmu, sid);
 
 	dump_io_pgtable_s2(s, domain, sid, ssid, steptr);
+
+	/* ssid page table dump */
+	rbtree_postorder_for_each_entry_safe(ssid_domain,
+					     next,
+					     &domain->ssid_domains,
+					     node) {
+		ssid = ssid_domain->ssid;
+		cdptr = smmu_ops->get_cd_ptr(master, ssid);
+		if (!is_valid_cd(cdptr))
+			continue;
+
+		iommu_dump(s, "SMMU dump page table for sid:0x%x, ssid:0x%x:\n",
+			   sid, ssid);
+
+		dump_io_pgtable_s1(s, ssid_domain->domain, sid, ssid, cdptr);
+	}
 }
 
 static void dump_ste_info_list(struct seq_file *s,
@@ -1915,8 +1977,8 @@ static int m4u_debug_set(void *data, u64 input)
 		ret = mtk_iommu_trace_dump(file);
 		break;
 	case 6:	/* dump iova alloc list */
-		mtk_iommu_iova_alloc_dump_top(file, NULL);
-		ret = mtk_iommu_iova_alloc_dump(file, NULL);
+		mtk_iommu_iova_alloc_dump_top(file);
+		ret = mtk_iommu_iova_alloc_dump(file);
 		break;
 	case 7:	/* enable/disable trace log */
 		for (i = 0; i < IOMMU_EVENT_MAX; i++) {
@@ -2002,8 +2064,8 @@ static int mtk_iommu_help_fops_proc_show(struct seq_file *s, void *unused)
 static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 {
 	mtk_iommu_trace_dump(s);
-	mtk_iommu_iova_alloc_dump(s, NULL);
-	mtk_iommu_iova_alloc_dump_top(s, NULL);
+	mtk_iommu_iova_alloc_dump(s);
+	mtk_iommu_iova_alloc_dump_top(s);
 
 	if (smmu_v3_enable) {
 		int i, ret;
@@ -2031,8 +2093,8 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 
 static int mtk_iommu_iova_alloc_fops_proc_show(struct seq_file *s, void *unused)
 {
-	mtk_iommu_iova_alloc_dump_top(s, NULL);
-	mtk_iommu_iova_alloc_dump(s, NULL);
+	mtk_iommu_iova_alloc_dump_top(s);
+	mtk_iommu_iova_alloc_dump(s);
 	return 0;
 }
 
@@ -2158,11 +2220,12 @@ static void mtk_iommu_trace_rec_write(int event,
 
 	if (event_mgr[event].dump_log) {
 		if (smmu_v3_enable)
-			pr_info("[trace] %5s |0x%-9lx |%9lx |0x%x |0x%-4x |%s\n",
+			pr_info("[trace] %5s |0x%-9lx |%9lx |0x%x |0x%-4x |0x%-4x |%s\n",
 				event_mgr[event].name,
 				data1,
 				data2,
 				smmu_tab_id_to_smmu_id(data3),
+				smmu_tab_id_to_ssid(data3),
 				smmu_tab_id_to_asid(data3),
 				(dev != NULL ? dev_name(dev) : ""));
 		else
@@ -2228,7 +2291,7 @@ EXPORT_SYMBOL_GPL(mtk_iommu_pm_trace);
 static int mtk_iommu_mrdump_show(struct seq_file *s, void *unused)
 {
 	mtk_iommu_trace_dump(s);
-	mtk_iommu_iova_alloc_dump(s, NULL);
+	mtk_iommu_iova_alloc_dump(s);
 	return 0;
 }
 
@@ -2365,15 +2428,14 @@ static void mtk_iommu_clear_iova_size(void)
 	}
 }
 
-static void mtk_iommu_count_iova_size(
-	struct device *dev, dma_addr_t iova, size_t size)
+static void mtk_iommu_count_iova_size(struct device *dev,
+				      u64 tab_id, u32 dom_id,
+				      dma_addr_t iova, size_t size)
 {
 	struct iommu_fwspec *fwspec = NULL;
 	struct iova_count_info *plist = NULL;
 	struct iova_count_info *n = NULL;
 	struct iova_count_info *new_info;
-	u64 tab_id;
-	u32 dom_id;
 
 	fwspec = dev_iommu_fwspec_get(dev);
 	if (fwspec == NULL) {
@@ -2402,14 +2464,6 @@ static void mtk_iommu_count_iova_size(
 		return;
 	}
 
-	if (smmu_v3_enable) {
-		tab_id = get_smmu_tab_id(dev);
-		dom_id = 0;
-	} else {
-		tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
-		dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
-	}
-
 	new_info->tab_id = tab_id;
 	new_info->dom_id = dom_id;
 	new_info->dev = dev;
@@ -2419,8 +2473,10 @@ static void mtk_iommu_count_iova_size(
 	spin_unlock(&count_list.lock);
 }
 
-static void mtk_iommu_iova_alloc_dump_top(
-	struct seq_file *s, struct device *dev)
+static void mtk_iommu_iova_alloc_dump_top_by_dev(struct seq_file *s,
+						 struct device *dev,
+						 u64 dev_tab_id,
+						 u32 dev_dom_id)
 {
 	struct iommu_fwspec *fwspec = NULL;
 	struct iova_info *plist = NULL;
@@ -2450,14 +2506,12 @@ static void mtk_iommu_iova_alloc_dump_top(
 				  __func__, dev_name(dev));
 			return;
 		}
+
+		tab_id = dev_tab_id;
+		dom_id = dev_dom_id;
 		if (smmu_v3_enable) {
 			smmu_id = get_smmu_id(dev);
 			stream_id = get_smmu_stream_id(dev);
-			tab_id = get_smmu_tab_id(dev);
-			dom_id = 0;
-		} else {
-			tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
-			dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
 		}
 	}
 
@@ -2467,7 +2521,9 @@ static void mtk_iommu_iova_alloc_dump_top(
 		size = (unsigned long) (plist->size / 1024);
 		if (dev == NULL ||
 		    (plist->dom_id == dom_id && plist->tab_id == tab_id)) {
-			mtk_iommu_count_iova_size(plist->dev, plist->iova, plist->size);
+			mtk_iommu_count_iova_size(plist->dev, plist->tab_id,
+						  plist->dom_id, plist->iova,
+						  plist->size);
 			dom_size += size;
 			dom_count++;
 		}
@@ -2486,8 +2542,8 @@ static void mtk_iommu_iova_alloc_dump_top(
 			   "smmu iova alloc total:(%d/%lluKB), dom:(%d/%lluKB,%d,%d,%d) top %d user:\n",
 			   total_cnt, total_size, dom_count, dom_size,
 			   smmu_id, stream_id, dom_id, IOVA_DUMP_TOP_MAX);
-		iommu_dump(s, "%-8s %-10s %-10s %-7s %-10s %-16s %s\n",
-			   "smmu_id", "stream_id", "asid", "dom_id", "count",
+		iommu_dump(s, "%-8s %-10s %-10s %-10s %-7s %-10s %-16s %s\n",
+			   "smmu_id", "stream_id", "ssid", "asid", "dom_id", "count",
 			   "size(KB)", "dev");
 	} else {
 		iommu_dump(s,
@@ -2500,9 +2556,10 @@ static void mtk_iommu_iova_alloc_dump_top(
 
 	list_for_each_entry_safe(p_count_list, n_count, &count_list.head, list_node) {
 		if (smmu_v3_enable) {
-			iommu_dump(s, "%-8u 0x%-8x 0x%-8x %-7u %-10u %-16llu %s\n",
+			iommu_dump(s, "%-8u 0x%-8x 0x%-8x 0x%-8x %-7u %-10u %-16llu %s\n",
 				   smmu_tab_id_to_smmu_id(p_count_list->tab_id),
 				   get_smmu_stream_id(p_count_list->dev),
+				   smmu_tab_id_to_ssid(p_count_list->tab_id),
 				   smmu_tab_id_to_asid(p_count_list->tab_id),
 				   p_count_list->dom_id,
 				   p_count_list->count,
@@ -2527,11 +2584,16 @@ static void mtk_iommu_iova_alloc_dump_top(
 	spin_unlock(&count_list.lock);
 }
 
+static void mtk_iommu_iova_alloc_dump_top(struct seq_file *s)
+{
+	mtk_iommu_iova_alloc_dump_top_by_dev(s, NULL, 0, 0);
+}
+
 static void mtk_iommu_iova_alloc_title_dump(struct seq_file *s)
 {
 	if (smmu_v3_enable)
-		iommu_dump(s, "%-9s %-10s %-10s %-18s %-14s %17s %-25s %-9s %s\n",
-			   "smmu_id", "stream_id", "asid", "iova", "size",
+		iommu_dump(s, "%-9s %-10s %-10s %-10s %-18s %-14s %17s %-25s %-9s %s\n",
+			   "smmu_id", "stream_id", "ssid", "asid", "iova", "size",
 			   "time", "dev", "in_rbtree", iommu_globals.iova_stack_trace == 1 ?
 			   "alloc_trace" : "");
 	else
@@ -2542,9 +2604,10 @@ static void mtk_iommu_iova_alloc_title_dump(struct seq_file *s)
 static void mtk_iommu_iova_alloc_info_dump(struct seq_file *s, struct iova_info *plist)
 {
 	if (smmu_v3_enable)
-		iommu_dump(s, "%-9u 0x%-8x 0x%-8x %-18pa 0x%-12zx %10llu.%06u %-25s %-9d %s\n",
+		iommu_dump(s, "%-9u 0x%-8x 0x%-8x 0x%-8x %-18pa 0x%-12zx %10llu.%06u %-25s %-9d %s\n",
 			   smmu_tab_id_to_smmu_id(plist->tab_id),
 			   get_smmu_stream_id(plist->dev),
+			   smmu_tab_id_to_ssid(plist->tab_id),
 			   smmu_tab_id_to_asid(plist->tab_id),
 			   &plist->iova,
 			   plist->size,
@@ -2589,7 +2652,10 @@ static int mtk_iommu_iova_alloc_dump_rbtree(struct seq_file *s, struct device *d
 	return dump_count;
 }
 
-static int mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
+static int mtk_iommu_iova_alloc_dump_by_dev(struct seq_file *s,
+					    struct device *dev,
+					    u64 dev_tab_id,
+					    u32 dev_dom_id)
 {
 	struct iommu_fwspec *fwspec = NULL;
 	struct iova_info *plist = NULL;
@@ -2609,13 +2675,9 @@ static int mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 				__func__, dev_name(dev));
 			return -EINVAL;
 		}
-		if (smmu_v3_enable) {
-			tab_id = get_smmu_tab_id(dev);
-			dom_id = 0;
-		} else {
-			tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
-			dom_id = MTK_M4U_TO_DOM(fwspec->ids[0]);
-		}
+
+		tab_id = dev_tab_id;
+		dom_id = dev_dom_id;
 	}
 
 	iommu_dump(s, "iova alloc dump:\n");
@@ -2639,6 +2701,11 @@ static int mtk_iommu_iova_alloc_dump(struct seq_file *s, struct device *dev)
 		mtk_iommu_iova_alloc_dump_rbtree(s, dev, tab_id, dom_id);
 	spin_unlock_irqrestore(&iova_list.lock, flags);
 	return dump_count;
+}
+
+static int mtk_iommu_iova_alloc_dump(struct seq_file *s)
+{
+	return mtk_iommu_iova_alloc_dump_by_dev(s, NULL, 0, 0);
 }
 
 /* For smmu, tab_id is smmu hardware id */
@@ -2884,7 +2951,7 @@ static struct iova_info *mtk_iova_del(struct iova_domain *iovad, dma_addr_t iova
 	return NULL;
 }
 
-static void mtk_iova_dbg_alloc(struct device *dev,
+static void mtk_iova_dbg_alloc(struct device *dev, u32 ssid,
 	struct iova_domain *iovad, dma_addr_t iova, size_t size)
 {
 	static DEFINE_RATELIMIT_STATE(dump_rs, IOVA_DUMP_RS_INTERVAL,
@@ -2905,7 +2972,7 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 	}
 
 	if (smmu_v3_enable) {
-		tab_id = get_smmu_tab_id(dev);
+		tab_id = get_smmu_tab_id_for_dev_ssid(dev, ssid);
 		dom_id = 0;
 	} else {
 		tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
@@ -2920,9 +2987,9 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 			return;
 
 		if (dom_id > 0 || smmu_v3_enable)
-			mtk_iommu_iova_alloc_dump(NULL, dev);
+			mtk_iommu_iova_alloc_dump_by_dev(NULL, dev, tab_id, dom_id);
 
-		mtk_iommu_iova_alloc_dump_top(NULL, dev);
+		mtk_iommu_iova_alloc_dump_top_by_dev(NULL, dev, tab_id, dom_id);
 
 		if (iommu_globals.iova_warn_aee == 1) {
 			m4u_aee_print(iova_warn_log_format,
@@ -2961,7 +3028,7 @@ static void mtk_iova_dbg_alloc(struct device *dev,
 
 iova_trace:
 	mtk_iommu_iova_trace(IOMMU_ALLOC, iova, size, tab_id, dev);
-	mtk_iova_count_check(dev, iova, size);
+	mtk_iova_count_check(dev, tab_id, dom_id, iova, size);
 }
 
 static void mtk_iova_dbg_free(
@@ -3013,12 +3080,28 @@ iova_trace:
 	mtk_iommu_iova_trace(IOMMU_FREE, iova, size, tab_id, dev);
 }
 
+void mtk_iova_alloc(struct device *dev, u32 ssid,
+		    struct iova_domain *iovad,
+		    dma_addr_t iova, size_t size)
+{
+	mtk_iova_dbg_alloc(dev, ssid, iovad, iova, size);
+}
+EXPORT_SYMBOL_GPL(mtk_iova_alloc);
+
+void mtk_iova_free(struct device *dev, u32 ssid,
+		   struct iova_domain *iovad,
+		   dma_addr_t iova, size_t size)
+{
+	mtk_iova_dbg_free(iovad, iova, size);
+}
+EXPORT_SYMBOL_GPL(mtk_iova_free);
+
 /* all code inside alloc_iova_hook can't be scheduled! */
 static void alloc_iova_hook(void *data,
 	struct device *dev, struct iova_domain *iovad,
 	dma_addr_t iova, size_t size)
 {
-	return mtk_iova_dbg_alloc(dev, iovad, iova, size);
+	return mtk_iova_dbg_alloc(dev, SMMU_NO_SSID, iovad, iova, size);
 }
 
 /* all code inside free_iova_hook can't be scheduled! */
