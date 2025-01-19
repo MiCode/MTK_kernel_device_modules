@@ -56,10 +56,10 @@ extern int rdma_stash_leading;
 #define mml_qos_force_bw	((mml_qos >> MML_QOS_FORCE_BW_SH) & MML_QOS_FORCE_MASK)
 
 /* 513 to ensure port has good ostd
- * 1536 is the worst bw calculated by DE
+ * 5329 is the worst bw calculated by 1440x3200 RGBA in+out w/ 1.2 overhead
  */
 #define MML_QOS_MIN_BW		513
-#define MML_QOS_MAX_BW		1536
+#define MML_QOS_MAX_BW		5329
 #define MML_QOS_MIN_STASH_BW	17
 
 /* MML couple mode HRT mode, HRT bandwidth to MMQoS and DPC
