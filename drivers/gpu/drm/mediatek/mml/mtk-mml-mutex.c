@@ -112,8 +112,8 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 	if (mutex_id < 0)
 		return -EINVAL;
 
-	if (mml_irq && mutex->irq)
-		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN, U32_MAX, U32_MAX);
+	if (mml_irq && mutex->irq && mode == MML_MODE_DIRECT_LINK)
+		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN, 1 << path->mux_group, U32_MAX);
 
 	/* Do config mutex mod only in dc mode.
 	 * For direct link mode, config from mml side (which mutex_sof is empty),
@@ -606,10 +606,10 @@ static irqreturn_t mml_mutex_irq_handler_mt6991(int irq, void *dev_id)
 
 	mml_mmp(mutex, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
 
-	if (!irq_status)
-		return IRQ_NONE;
-
 	writel(0, base + MUTEX_INSTA);
+
+	if (!irq_status)
+		return IRQ_HANDLED;
 
 	/* stream 1 for mml-frame dl mode,
 	 * mml1_rrot0 as rrot0, mml1_rrot1 as rrot1
