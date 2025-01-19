@@ -12,41 +12,62 @@
 #include <linux/types.h>
 #include <linux/tracepoint.h>
 
-TRACE_EVENT(core_ctl_algo_info,
+TRACE_EVENT(core_ctl_heaviest_util,
 
 	TP_PROTO(
 		unsigned int big_cpu_ts,
 		unsigned int heaviest_thres,
-		unsigned int max_util,
-		unsigned int active_cpus,
-		unsigned int *orig_need_cpus),
+		unsigned int max_util),
 
-	TP_ARGS(big_cpu_ts, heaviest_thres, max_util, active_cpus, orig_need_cpus),
+	TP_ARGS(big_cpu_ts, heaviest_thres, max_util),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, big_cpu_ts)
 		__field(unsigned int, heaviest_thres)
 		__field(unsigned int, max_util)
-		__field(unsigned int, active_cpus)
-		__array(unsigned int, orig_need_cpus, 3)
 	),
 
 	TP_fast_assign(
 		__entry->big_cpu_ts = big_cpu_ts;
 		__entry->heaviest_thres = heaviest_thres;
 		__entry->max_util = max_util;
-		__entry->active_cpus = active_cpus;
-		memcpy(__entry->orig_need_cpus, orig_need_cpus, sizeof(unsigned int)*3);
 	),
 
-	TP_printk("big_cpu_ts=%u heaviest_thres=%u max_util=%u active_cpus=%x orig_need_cpus=%u|%u|%u",
+	TP_printk("big_cpu_ts=%u heaviest_thres=%u max_util=%u",
 		__entry->big_cpu_ts,
 		__entry->heaviest_thres,
-		__entry->max_util,
-		__entry->active_cpus,
-		__entry->orig_need_cpus[0],
-		__entry->orig_need_cpus[1],
-		__entry->orig_need_cpus[2])
+		__entry->max_util)
+);
+
+TRACE_EVENT(core_ctl_algo_info,
+
+	TP_PROTO(
+		unsigned int *need_spread_cpu,
+		unsigned int *nr_assist_cpu,
+		unsigned int *orig_need_cpus,
+		unsigned int active_cpus),
+
+	TP_ARGS(need_spread_cpu, nr_assist_cpu, orig_need_cpus, active_cpus),
+
+	TP_STRUCT__entry(
+		__array(unsigned int, need_spread_cpu, 3)
+		__array(unsigned int, nr_assist_cpu, 3)
+		__array(unsigned int, orig_need_cpus, 3)
+		__field(unsigned int, active_cpus)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->need_spread_cpu, need_spread_cpu, sizeof(unsigned int)*3);
+		memcpy(__entry->nr_assist_cpu, nr_assist_cpu, sizeof(unsigned int)*3);
+		memcpy(__entry->orig_need_cpus, orig_need_cpus, sizeof(unsigned int)*3);
+		__entry->active_cpus = active_cpus;
+	),
+
+	TP_printk("need_spread_cpu=%u|%u|%u nr_assist_cpu=%u|%u|%u orig_need_cpus=%u|%u|%u active_cpus=%x",
+		__entry->need_spread_cpu[0], __entry->need_spread_cpu[1], __entry->need_spread_cpu[2],
+		__entry->nr_assist_cpu[0], __entry->nr_assist_cpu[1], __entry->nr_assist_cpu[2],
+		__entry->orig_need_cpus[0], __entry->orig_need_cpus[1], __entry->orig_need_cpus[2],
+		__entry->active_cpus)
 );
 
 TRACE_EVENT(core_ctl_demand_eval,
@@ -60,18 +81,12 @@ TRACE_EVENT(core_ctl_demand_eval,
 			unsigned int max_cpus,
 			unsigned int boost,
 			unsigned int enable,
-			unsigned int updated),
+			unsigned int updated,
+			unsigned int next_off_time),
 
-		TP_ARGS(
-			cid,
-			old_need,
-			new_need,
-			active_cpus,
-			min_cpus,
-			max_cpus,
-			boost,
-			enable,
-			updated),
+		TP_ARGS(cid, old_need, new_need,
+			active_cpus, min_cpus, max_cpus,
+			boost, enable, updated, next_off_time),
 
 		TP_STRUCT__entry(
 			__field(u32, cid)
@@ -83,6 +98,7 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__field(u32, boost)
 			__field(u32, enable)
 			__field(u32, updated)
+			__field(u32, next_off_time)
 		),
 
 		TP_fast_assign(
@@ -95,9 +111,10 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__entry->boost = boost;
 			__entry->enable = enable;
 			__entry->updated = updated;
+			__entry->next_off_time = next_off_time;
 		),
 
-		TP_printk("cid=%u, old=%u, new=%u, act=%u min=%u max=%u bst=%u enbl=%u update=%u",
+		TP_printk("cid=%u, old=%u, new=%u, act=%u min=%u max=%u bst=%u enbl=%u update=%u next_off_time=%u",
 			__entry->cid,
 			__entry->old_need,
 			__entry->new_need,
@@ -106,35 +123,48 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__entry->max_cpus,
 			__entry->boost,
 			__entry->enable,
-			__entry->updated)
+			__entry->updated,
+			__entry->next_off_time)
 );
 
-TRACE_EVENT(core_ctl_update_nr_over_thres,
+TRACE_EVENT(core_ctl_nr_over_thres,
 
 	TP_PROTO(
+		unsigned int *cls_nr_up,
+		unsigned int *cls_nr_down,
 		unsigned int *nr_up,
 		unsigned int *nr_down,
-		unsigned int *need_spread_cpus),
+		unsigned int *prod_up,
+		unsigned int *prod_down),
 
-	TP_ARGS(nr_up, nr_down, need_spread_cpus),
+	TP_ARGS(cls_nr_up, cls_nr_down, nr_up, nr_down, prod_up, prod_down),
 
 	TP_STRUCT__entry(
+		__array(unsigned int, cls_nr_up, 3)
+		__array(unsigned int, cls_nr_down, 3)
 		__array(unsigned int, nr_up, 3)
 		__array(unsigned int, nr_down, 3)
-		__array(unsigned int, need_spread_cpus, 3)
+		__array(unsigned int, prod_up, 3)
+		__array(unsigned int, prod_down, 3)
 	),
 
 	TP_fast_assign(
+		memcpy(__entry->cls_nr_up, cls_nr_up, sizeof(unsigned int) * 3);
+		memcpy(__entry->cls_nr_down, cls_nr_down, sizeof(unsigned int) * 3);
 		memcpy(__entry->nr_up, nr_up, sizeof(unsigned int) * 3);
 		memcpy(__entry->nr_down, nr_down, sizeof(unsigned int) * 3);
-		memcpy(__entry->need_spread_cpus, need_spread_cpus, sizeof(unsigned int) * 3);
+		memcpy(__entry->prod_up, prod_up, sizeof(unsigned int) * 3);
+		memcpy(__entry->prod_down, prod_down, sizeof(unsigned int) * 3);
 	),
 
-	TP_printk("nr_up=%u|%u|%u nr_down=%u|%u|%u need_spread_cpus=%u|%u|%u",
+	TP_printk("cls_nr_up/dn=%u|%u|%u %u|%u|%u nr_up/dn=%u|%u|%u %u|%u|%u prod_up/dn=%u|%u|%u %u|%u|%u",
+		__entry->cls_nr_up[0], __entry->cls_nr_up[1], __entry->cls_nr_up[2],
+		__entry->cls_nr_down[0], __entry->cls_nr_down[1], __entry->cls_nr_down[2],
 		__entry->nr_up[0], __entry->nr_up[1], __entry->nr_up[2],
-		__entry->nr_down[0], __entry->nr_down[1], __entry->nr_down[2],
-		__entry->need_spread_cpus[0], __entry->need_spread_cpus[1],
-		__entry->need_spread_cpus[2])
+		__entry->nr_down[0], __entry->nr_down[1], __entry->nr_down[2], 
+		__entry->prod_up[0], __entry->prod_up[1], __entry->prod_up[2], 
+		__entry->prod_down[0], __entry->prod_down[1], __entry->prod_down[2])
+
 );
 
 TRACE_EVENT(core_ctl_periodic_debug_handler,
@@ -196,6 +226,61 @@ TRACE_EVENT(core_ctl_call_notifier,
 	TP_printk("cpu:%d, is_pause:%d, online_mask=0x%x, paused_mask=0x%x",
 		__entry->cpu, __entry->is_pause, __entry->online_mask, __entry->paused_mask)
 );
+
+TRACE_EVENT(core_ctl_cpu_loading_util,
+
+	TP_PROTO(
+		unsigned int *active_loading,
+		unsigned int *cpu_util),
+
+	TP_ARGS(active_loading, cpu_util),
+
+	TP_STRUCT__entry(
+		__array(unsigned int, active_loading, 8)
+		__array(unsigned int, cpu_util, 8)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->active_loading, active_loading, sizeof(unsigned int) * 8);
+		memcpy(__entry->cpu_util, cpu_util, sizeof(unsigned int) * 8);
+	),
+
+	TP_printk("loading=%d|%d|%d|%d|%d|%d|%d|%d util=%d|%d|%d|%d|%d|%d|%d|%d",
+		__entry->active_loading[0], __entry->active_loading[1], __entry->active_loading[2],
+		__entry->active_loading[3], __entry->active_loading[4], __entry->active_loading[5],
+		__entry->active_loading[6], __entry->active_loading[7], __entry->cpu_util[0],
+		__entry->cpu_util[1], __entry->cpu_util[2], __entry->cpu_util[3],
+		__entry->cpu_util[4], __entry->cpu_util[5], __entry->cpu_util[6],
+		__entry->cpu_util[7])
+);
+
+TRACE_EVENT(core_ctl_busy_cpus,
+
+	TP_PROTO(
+		unsigned int *busy_state,
+		unsigned int *max_nr_state),
+
+	TP_ARGS(busy_state, max_nr_state),
+
+	TP_STRUCT__entry(
+		__array(unsigned int, busy_state, 8)
+		__array(unsigned int, max_nr_state, 8)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->busy_state, busy_state, sizeof(unsigned int) * 8);
+		memcpy(__entry->max_nr_state, max_nr_state, sizeof(unsigned int) * 8);
+	),
+
+	TP_printk("busy=%d|%d|%d|%d|%d|%d|%d|%d max_nr=%d|%d|%d|%d|%d|%d|%d|%d",
+		__entry->busy_state[0], __entry->busy_state[1], __entry->busy_state[2],
+		__entry->busy_state[3], __entry->busy_state[4], __entry->busy_state[5],
+		__entry->busy_state[6], __entry->busy_state[7], __entry->max_nr_state[0],
+		__entry->max_nr_state[1], __entry->max_nr_state[2], __entry->max_nr_state[3],
+		__entry->max_nr_state[4], __entry->max_nr_state[5], __entry->max_nr_state[6],
+		__entry->max_nr_state[7])
+);
+
 
 #endif /*_CORE_CTL_TRACE_H */
 

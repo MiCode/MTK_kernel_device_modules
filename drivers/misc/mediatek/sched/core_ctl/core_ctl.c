@@ -388,7 +388,8 @@ static bool demand_eval(struct cluster_data *cluster)
 			cluster->max_cpus,
 			cluster->boost,
 			cluster->enable,
-			ret && need_flag);
+			ret && need_flag,
+			cluster->next_offline_time);
 unlock:
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	return ret && need_flag;
@@ -659,6 +660,7 @@ static int get_cpu_active_loading(void)
 	unsigned int cpu_active_loading, idx;
 	struct cpu_data *cpu_stat;
 	u64 prev_wall_time, prev_idle_time, wall_time, idle_time;
+	unsigned int cpu_active_loading_state[MAX_NR_CPUS], cpu_util_state[MAX_NR_CPUS];
 
 	if (!initialized)
 		return 0;
@@ -691,8 +693,13 @@ static int get_cpu_active_loading(void)
 			cpu_stat->cpu_active_loading[idx] = cpu_active_loading;
 			cpu_stat->cpu_util_pct[idx] = get_cpu_util_pct(cpu, false);
 		}
+
+		cpu_active_loading_state[cpu] = cpu_stat->cpu_active_loading[idx];
+		cpu_util_state[cpu] = cpu_stat->cpu_util_pct[idx];
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+
+	trace_core_ctl_cpu_loading_util(cpu_active_loading_state, cpu_util_state);
 	return 0;
 }
 
@@ -1443,10 +1450,6 @@ static struct kobj_type ktype_core_ctl = {
 	.default_groups  = default_groups,
 };
 
-static unsigned long heaviest_thres = 520;
-static unsigned int max_task_util;
-static unsigned int big_cpu_ts;
-
 /* ==================== algorithm of core control ======================== */
 
 #define MAX_NR_RUNNING_THRESHOLD   4
@@ -1459,6 +1462,7 @@ static void get_busy_cpus(void)
 	struct cluster_data *cluster;
 	struct cpu_data *cpu_stat;
 	int cpu = 0, cid = 0, i = 0, cpu_count = 0, idx = 0;
+	unsigned int busy_state[MAX_NR_CPUS], max_nr_state[MAX_NR_CPUS];
 
 	/* check CPU is busy or not */
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
@@ -1474,6 +1478,11 @@ static void get_busy_cpus(void)
 		else if (cpu_stat->cpu_util_pct[idx] < cluster->cpu_busy_down_thres)
 			cpu_stat->is_busy = false;
 		/* else remain previous status */
+
+		if (cpu < MAX_NR_CPUS) {
+			busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
+			max_nr_state[cpu] = get_max_nr_running(cpu);
+		}
 	}
 
 	/* Define need spread cpus */
@@ -1488,6 +1497,8 @@ static void get_busy_cpus(void)
 		cluster->need_spread_cpus = cpu_count;
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+
+	trace_core_ctl_busy_cpus(busy_state, max_nr_state);
 }
 
 #define BIG_TASK_AVG_THRESHOLD 25
@@ -1501,7 +1512,8 @@ static void get_nr_running_big_task(void)
 	int avg_up[MAX_CLUSTERS] = {0};
 	int nr_up[MAX_CLUSTERS] = {0};
 	int nr_down[MAX_CLUSTERS] = {0};
-	int need_spread_cpus[MAX_CLUSTERS] = {0};
+	int cluster_nr_up[MAX_CLUSTERS] = {0};
+	int cluster_nr_down[MAX_CLUSTERS] = {0};
 	int i, delta;
 
 	for (i = 0; i < num_clusters; i++) {
@@ -1548,14 +1560,14 @@ static void get_nr_running_big_task(void)
 		cluster_state[i].nr_down =
 			cluster_state[i].nr_down < 0 ? 0 : cluster_state[i].nr_down;
 	}
-	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
 	for (i = 0; i < num_clusters; i++) {
-		nr_up[i] = cluster_state[i].nr_up;
-		nr_down[i] = cluster_state[i].nr_down;
-		need_spread_cpus[i] = cluster_state[i].need_spread_cpus;
+		cluster_nr_up[i] = cluster_state[i].nr_up;
+		cluster_nr_down[i] = cluster_state[i].nr_down;
 	}
-	trace_core_ctl_update_nr_over_thres(nr_up, nr_down, need_spread_cpus);
+
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	trace_core_ctl_nr_over_thres(cluster_nr_up, cluster_nr_down, nr_up, nr_down, avg_up, avg_down);
 }
 
 /*
@@ -1603,7 +1615,9 @@ static void check_heaviest_util(void)
 	unsigned long flags;
 	struct cluster_data *big_cluster;
 	struct cluster_data *mid_cluster;
-	unsigned int max_capacity;
+	unsigned int max_capacity, big_cpu_ts;
+	unsigned long heaviest_thres;
+	static unsigned int max_task_util;
 
 	if (num_clusters <= 2)
 		return;
@@ -1647,6 +1661,7 @@ static void check_heaviest_util(void)
 			mid_cluster->new_need_cpus--;
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
+	trace_core_ctl_heaviest_util(big_cpu_ts, heaviest_thres, max_task_util);
 }
 
 static inline void core_ctl_main_algo(void)
@@ -1656,6 +1671,8 @@ static inline void core_ctl_main_algo(void)
 	struct cluster_data *cluster;
 	unsigned int orig_need_cpu[MAX_CLUSTERS] = {0};
 	struct cpumask active_cpus;
+	unsigned int nr_assist_cpu[MAX_CLUSTERS] = {0};
+	unsigned int need_spread_cpu[MAX_CLUSTERS] = {0};
 
 	/* get each cpu loading */
 	get_cpu_active_loading();
@@ -1699,11 +1716,12 @@ static inline void core_ctl_main_algo(void)
 	index = 0;
 	for_each_cluster(cluster, index) {
 		orig_need_cpu[index] = cluster->new_need_cpus;
+		nr_assist_cpu[index] = cluster->nr_assist;
+		need_spread_cpu[index] = cluster->need_spread_cpus;
 	}
-
 	cpumask_andnot(&active_cpus, cpu_online_mask, cpu_pause_mask);
-	trace_core_ctl_algo_info(big_cpu_ts, heaviest_thres, max_task_util,
-			cpumask_bits(&active_cpus)[0], orig_need_cpu);
+	trace_core_ctl_algo_info(need_spread_cpu, nr_assist_cpu, orig_need_cpu,
+				cpumask_bits(&active_cpus)[0]);
 }
 
 unsigned long (*calc_eff_hook)(unsigned int first_cpu, int opp, unsigned int temp,
