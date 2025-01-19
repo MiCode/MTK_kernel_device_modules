@@ -1095,6 +1095,16 @@
 		reg = <0 0x1000a000 0 0x1000>;
 	};
 
+	regulator_vibrator: regulator-vibrator {
+		compatible = "regulator-vibrator";
+		label = "vibrator";
+		min-volt = <2300000>;
+		max-volt = <3200000>;
+		min-limit = <15>;
+		max-limit = <15000>;
+		vib-supply = <&mt_pmic_vibr_ldo_reg>;
+	};
+
 	eint: apirq@1000b000 {
 		compatible = "mediatek,mt6983-eint";
 		reg = <0 0x1000b000 0 0x1000>;
