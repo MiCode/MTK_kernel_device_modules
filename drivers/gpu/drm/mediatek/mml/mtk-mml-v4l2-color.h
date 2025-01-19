@@ -157,6 +157,20 @@ static const struct mml_m2m_format mml_m2m_formats[] = {
 		.row_depth	= { 32 },
 		.num_planes	= 1,
 		.types		= MML_M2M_FMT_OUTPUT | MML_M2M_FMT_CAPTURE,
+	},  {
+		.pixelformat	= V4L2_PIX_FMT_BGR32,
+		.mml_color	= MML_FMT_BGRA8888,
+		.depth		= { 32 },
+		.row_depth	= { 32 },
+		.num_planes	= 1,
+		.types		= MML_M2M_FMT_OUTPUT | MML_M2M_FMT_CAPTURE,
+	}, {
+		.pixelformat	= V4L2_PIX_FMT_RGB32,
+		.mml_color	= MML_FMT_RGBA8888,
+		.depth		= { 32 },
+		.row_depth	= { 32 },
+		.num_planes	= 1,
+		.types		= MML_M2M_FMT_OUTPUT | MML_M2M_FMT_CAPTURE,
 	}, {
 		.pixelformat	= V4L2_PIX_FMT_RGBA32,
 		.mml_color	= MML_FMT_RGBA8888,
