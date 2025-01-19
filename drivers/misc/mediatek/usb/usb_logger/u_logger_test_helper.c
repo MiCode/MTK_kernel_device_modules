@@ -1,0 +1,301 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * MTK USB Test Helper
+ * *
+ * Copyright (c) 2023 MediaTek Inc.
+ */
+
+#include <linux/string.h>
+#include "u_logger.h"
+#include "xhci-trace.h"
+
+#define TESTER_NAME         "usb_tester"
+#define TEST_CMD_NAME       "command"
+#define RESULT_CMD_NAME     "result"
+#define MAX_TRACE_ISR       5
+#define MAX_RESULT_STR      100
+#define MAX_CMD_NUM         20
+
+struct xhci_isr {
+	u16 slot;
+	u16 ep;
+	u8 dir;
+	u16 class;
+	u32 cnt;
+	u32 cnt2;
+};
+
+struct u_tester {
+	struct device *dev;
+	struct device_attribute test_attr;
+	char output[MAX_RESULT_STR];
+	struct device_attribute result_attr;
+	struct xhci_isr done[MAX_TRACE_ISR];
+	u16 in_use;
+	atomic_t running;
+} tester;
+
+static void reset_xhci_isr(struct xhci_isr *done)
+{
+	//memset(done, 0, sizeof(*done));
+	done->slot = 0;
+	done->ep = 0;
+	done->dir = 0;
+	done->class = 0;
+	done->cnt = 0;
+	done->cnt2 = 0;
+}
+
+static ssize_t test_cmd_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct xhci_isr *done;
+	int i, cnt;
+	char cmd[MAX_CMD_NUM];
+	char *c = cmd, *name;
+	const char * const delim = " \0\n\t";
+
+	if (count > MAX_CMD_NUM) {
+		dev_info(dev, "cmd can't exceed %d\n", MAX_CMD_NUM);
+		goto error;
+	}
+
+	dev_info(dev, "======%s=====\n", __func__);
+	if (count > MAX_CMD_NUM) {
+		dev_info(dev, "wrong size\n");
+		goto error;
+	}
+	strscpy(cmd, buf, sizeof(cmd));
+	cmd[count] = '\0';
+	dev_info(dev, "input:%s", cmd);
+	name = strsep(&c, delim);
+	if (!name) {
+		dev_info(dev, "wrong input\n");
+		goto error;
+	}
+	dev_info(dev, "@[%zu]name:%s", strlen(name), name);
+
+	if (!strncmp(name, "start", 5)) {
+		if (atomic_read(&tester.running))
+			dev_info(dev, "tester has already started\n");
+		else {
+			atomic_set(&tester.running, 1);
+			dev_info(dev, "tester start\n");
+		}
+		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+	} else if (!strncmp(name, "stop", 4)) {
+		if (!atomic_read(&tester.running))
+			dev_info(dev, "tester has already stopped\n");
+		else {
+			atomic_set(&tester.running, 0);
+			dev_info(dev, "tester stop\n");
+		}
+		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+
+	} else if (!strncmp(name, "reset", 5)) {
+		u16 temp;
+
+		if (!atomic_read(&tester.running)) {
+			temp = tester.in_use;
+			for (i = 0; i < tester.in_use; i++) {
+				done = &tester.done[i];
+				dev_info(tester.dev, "delete done[%d]=>slot%d ep%d dir:%d class:%d\n",
+					i, done->slot, done->ep, done->dir, done->class);
+				reset_xhci_isr(done);
+			}
+			tester.in_use = 0;
+			dev_info(dev, "tester reset, in_use:%d->%d\n", temp, tester.in_use);
+		}
+		cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+	} else if (!strncmp(name, "done_number", 11)) {
+		dev_info(dev, "in_use: %d\n", tester.in_use);
+		cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", tester.in_use);
+		tester.output[cnt] = '\0';
+	} else if (!strncmp(name, "all_done", 8)) {
+		cnt = 0;
+		for (i = 0; i < tester.in_use; i++) {
+			done = &tester.done[i];
+			cnt += snprintf(tester.output + cnt, MAX_RESULT_STR - cnt, "%d:%d-%d-%d ",
+				i, done->slot, done->ep, done->cnt);
+		}
+		tester.output[cnt] = '\0';
+	} else if (!strncmp(name, "result", 6)) {
+		struct xhci_isr *done;
+		char *token1, *token2;
+		int ret;
+		long idx;
+
+		token1 = strsep(&c, delim);
+		if (token1) {
+			dev_info(dev, "@[%zu]token1:%s", strlen(token1), token1);
+			ret = kstrtol(token1, 0, &idx);
+			if (ret != 0) {
+				dev_info(dev, "kstrtol ret:%d\n", ret);
+				goto error;
+			}
+
+			if (idx >= tester.in_use) {
+				dev_info(dev, "wrong index, idx:%ld in_use:%d\n", idx, tester.in_use);
+				goto error;
+			}
+		} else {
+			dev_info(dev, "token should follow result\n");
+			goto error;
+		}
+
+		done = &tester.done[idx];
+		token2 = strsep(&c, delim);
+		if (token2) {
+			/* get partial info(token2) of token1 */
+			dev_info(dev, "@[%zu]token2:%s\n", strlen(token2), token2);
+			if (!strncmp(token2, "ep", 2))
+				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->ep);
+			else if (!strncmp(token2, "slot", 4))
+				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->slot);
+			else if (!strncmp(token2, "dir", 3))
+				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->dir);
+			else if (!strncmp(token2, "class", 5))
+				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->class);
+			else if (!strncmp(token2, "cnt", 3))
+				cnt = snprintf(tester.output, MAX_RESULT_STR, "%d", done->cnt);
+			else
+				cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+		} else {
+			/* get full info of token1 */
+			cnt = snprintf(tester.output, MAX_RESULT_STR, "slot%d-ep%d-dir%d-class%d-cnt%d",
+				done->slot, done->ep, done->dir, done->class, done->cnt);
+		}
+		tester.output[cnt] = '\0';
+	} else {
+		dev_info(dev, "unknown command\n");
+		goto error;
+	}
+
+	dev_info(dev, "@output: %s\n", tester.output);
+	dev_info(dev, "status: success\n");
+	return count;
+error:
+	cnt = snprintf(tester.output, MAX_RESULT_STR, "none");
+	tester.output[cnt] = '\0';
+	dev_info(dev, "status: error\n");
+	return count;
+}
+
+static ssize_t test_cmd_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	dev_info(dev, "======%s=====\n", __func__);
+	dev_info(dev, "@output: %s\n", tester.output);
+
+	return sprintf(buf, "%s", tester.output);
+}
+
+static int u_tester_create_sysfs(struct u_logger *logger)
+{
+	struct device_attribute *attr;
+	int ret = 0;
+
+	tester.dev = device_create(logger->class, NULL, MKDEV(0, 0), NULL, TESTER_NAME);
+
+	/* test command */
+	attr = &tester.test_attr;
+	attr->attr.name = TEST_CMD_NAME;
+	attr->attr.mode = 0777;
+	attr->show = test_cmd_show;
+	attr->store = test_cmd_store;
+	ret = device_create_file(tester.dev, attr);
+	if (ret)
+		dev_info(logger->dev, "fail creating file %s\n", TEST_CMD_NAME);
+	return ret;
+}
+
+static void xhci_monitor_interrupt(void *data, struct urb *urb)
+{
+	struct xhci_isr *done;
+	int i;
+	bool match = false;
+	u16 ep, slot;
+
+	if (!atomic_read(&tester.running))
+		return;
+
+	if (!urb || !urb->dev || urb->setup_packet || !urb->ep)
+		return;
+
+	ep = urb->dev->slot_id;
+	slot = xhci_get_endpoint_index_(&urb->ep->desc);
+
+	dev_dbg(tester.dev, "======%s slot:%d ep:%d======\n", __func__, slot, ep);
+
+	for (i = 0; i < tester.in_use; i++) {
+		done = &tester.done[i];
+		dev_dbg(tester.dev, "done[%d]=>slot:%d ep%d dir%d class%d\n",
+			i, done->slot, done->ep, done->dir, done->class);
+		if (done->slot == slot && done->ep == ep) {
+			dev_dbg(tester.dev, "match id:%d for slot%d ep%d\n", i, slot, ep);
+			match = true;
+			break;
+		}
+	}
+
+	dev_dbg(tester.dev, "%s match:%d i:%d in_use:%d\n", __func__, match, i, tester.in_use);
+
+	if (match) {
+		if (tester.done[i].cnt + 1 > UINT_MAX) {
+			tester.done[i].cnt = 0;
+			if (tester.done[i].cnt2 + 1 > UINT_MAX)
+				tester.done[i].cnt2 = 0;
+		} else
+			tester.done[i].cnt++;
+	} else {
+		if (tester.in_use + 1 > MAX_TRACE_ISR) {
+			dev_dbg(tester.dev, "not enough space for slot%d ep%d\n", slot, ep);
+		} else {
+			struct usb_host_config *actconfig = NULL;
+			struct usb_host_interface *intf;
+			int intf_num, i, idx;
+
+			actconfig = urb->dev->actconfig;
+			if (!actconfig)
+				return;
+
+			tester.in_use++;
+			idx = tester.in_use - 1;
+			done = &tester.done[idx];
+			intf_num = actconfig->desc.bNumInterfaces;
+			for (i = 0; i < intf_num; i++) {
+				if (!actconfig->interface[i]->cur_altsetting)
+					continue;
+				intf = actconfig->interface[i]->cur_altsetting;
+				if (intf->endpoint == urb->ep)
+					done->class = intf->desc.bInterfaceClass;
+			}
+			done->slot = slot;
+			done->ep = ep;
+			done->dir = usb_endpoint_dir_in(&urb->ep->desc);
+			done->cnt = 1;
+			done->cnt2 = 0;
+			dev_dbg(tester.dev, "create done[%d]=>slot%d ep%d dir:%d class:%d in_use:%d\n",
+				idx, done->slot, done->ep, done->dir, done->class, tester.in_use);
+		}
+	}
+}
+
+int u_tester_init(struct u_logger *logger)
+{
+	int ret = 0;
+
+	ret = u_tester_create_sysfs(logger);
+	if (ret) {
+		dev_info(logger->dev, "fail creating sysfs\n");
+		ret = -EOPNOTSUPP;
+		goto exit;
+	}
+
+	atomic_set(&tester.running, 0);
+	tester.in_use = 0;
+
+	WARN_ON(register_trace_xhci_urb_giveback_(xhci_monitor_interrupt, &tester));
+
+exit:
+	return ret;
+}
