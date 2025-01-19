@@ -511,8 +511,6 @@ static int mdw_rv_dev_handshake(struct mdw_rv_dev *mrdev)
 		msg.h.basic.dev_bmp, mrdev->mem_mask[0], msg.h.basic.mem_bmp,
 		mrdev->mdev->power_gain_time_us);
 
-	if(mrdev->mdev->power_gain_time_us)
-		mrdev->mdev->support_power_fast_on_off = true;
 	/* query device num */
 	type = 0;
 	do {
