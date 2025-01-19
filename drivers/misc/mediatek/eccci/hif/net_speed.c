@@ -377,6 +377,8 @@ again:
 	while (1) {
 		ret = wait_event_interruptible(s_spd_mon.m_speed_wq,
 				s_spd_mon.m_speed_cal_en);
+		if (ret == -ERESTARTSYS)
+			continue;
 
 		if (kthread_should_stop()) {
 			pr_info("[%s] error: kthread_should_stop.\n",

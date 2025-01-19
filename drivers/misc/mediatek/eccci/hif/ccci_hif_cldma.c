@@ -721,9 +721,12 @@ static int cldma_gpd_rx_collect(struct md_cd_queue *queue,
 	struct lhif_header lhif_h;
 	struct sk_buff *skb = NULL;
 	struct sk_buff *new_skb = NULL;
-	int ret = 0, count = 0, rxbytes = 0;
-	int over_budget = 0, skb_handled = 0, retry = 0;
+	int ret = 0, count = 0;
+#ifdef CLDMA_TRACE
+	int rxbytes = 0;
 	unsigned long long skb_bytes = 0;
+#endif
+	int retry = 0;
 	unsigned long flags;
 
 	char using_napi = (ccci_md_get_cap_by_id() & MODEM_CAP_NAPI);
@@ -788,7 +791,9 @@ again:
 		skb_reset_tail_pointer(skb);
 		/*set data len*/
 		skb_put(skb, rgpd->data_buff_len);
+#ifdef CLDMA_TRACE
 		skb_bytes = skb->len;
+#endif
 		lhif_h = *((struct lhif_header *)skb->data);
 
 		/* check wakeup source */
@@ -832,7 +837,9 @@ again:
 #if TRAFFIC_MONITOR_INTERVAL
 			md_ctrl->rx_traffic_monitor[queue->index]++;
 #endif
+#ifdef CLDMA_TRACE
 			rxbytes += skb_bytes;
+#endif
 			ccci_md_add_log_history(&md_ctrl->traffic_info, IN,
 				(int)queue->index, &ccci_h,
 				(ret >= 0 ? 0 : 1));
@@ -871,7 +878,6 @@ again:
 			/* step forward */
 			queue->rx_refill =
 				cldma_ring_step_forward(queue->tr_ring, req);
-			skb_handled = 1;
 		} else {
 			/* undo skb, as it remains in buffer and
 			 * will be handled later
@@ -919,7 +925,6 @@ again:
 		if ((count >= budget ||
 			time_after_eq(jiffies, time_limit))
 			&& !blocking) {
-			over_budget = 1;
 			ret = ONCE_MORE;
 			CCCI_DEBUG_LOG(0, TAG,
 				"rxq%d over budget or timeout, count = %d\n",
@@ -1011,14 +1016,13 @@ static void cldma_stop_dev_queue(struct md_cd_queue *txq,
 	spin_lock_irqsave(&txq->txq_stop_start_lock, flags);
 
 	if (ccmni_idx < CCMNI_INTERFACE_NUM && que_idx < MD_HW_Q_MAX) {
-		int ccmni_stop_counter;
 
 		ccmni_ops.stop_queue(ccmni_idx, que_idx);
 		set_bit(ccmni_idx, &txq->txq_ccmni_state[que_idx]);
 
 		smp_mb(); /* for cpu exec. */
 
-		ccmni_stop_counter = atomic_inc_return(&txq->txq_ccmni_stop_counter);
+		atomic_inc_return(&txq->txq_ccmni_stop_counter);
 
 		txq->txq_stop_cnt[que_idx]++;
 		if (time_after(jiffies, txq->txq_stop_tick[que_idx] +
@@ -1036,7 +1040,7 @@ static void cldma_stop_dev_queue(struct md_cd_queue *txq,
 static void cldma_start_dev_queue(struct md_cd_queue *txq)
 {
 	unsigned int que_idx = 0, ccmni_idx;
-	int ret, ccmni_stop_counter;
+	int ccmni_stop_counter;
 	unsigned long *ccmni_state, flags;
 
 	spin_lock_irqsave(&txq->txq_stop_start_lock, flags);
@@ -1053,7 +1057,7 @@ static void cldma_start_dev_queue(struct md_cd_queue *txq)
 
 				smp_mb(); /* for cpu exec. */
 
-				ret = ccmni_ops.start_queue(ccmni_idx, que_idx);
+				ccmni_ops.start_queue(ccmni_idx, que_idx);
 
 				txq->txq_start_cnt[que_idx]++;
 				if (time_after(jiffies, txq->txq_start_tick[que_idx] +
@@ -1086,7 +1090,7 @@ static void cldma_start_dev_queue(struct md_cd_queue *txq)
 
 static void cldma_flush_napi_rx_list(unsigned int count, unsigned int *ccmni, unsigned int qno)
 {
-	unsigned int rx_count, i = 0;
+	unsigned int i = 0;
 
 	if (unlikely(count > CCMNI_INTERFACE_NUM)) {
 		CCCI_ERROR_LOG(-1, TAG,
@@ -1096,7 +1100,7 @@ static void cldma_flush_napi_rx_list(unsigned int count, unsigned int *ccmni, un
 	}
 
 	while (i < count) {
-		rx_count = ccmni_ops.flush_queue(ccmni[i]);
+		ccmni_ops.flush_queue(ccmni[i]);
 
 		i++;
 	}
@@ -1109,7 +1113,6 @@ static int cldma_net_rx_push_thread(void *arg)
 #ifdef CCCI_SKB_TRACE
 	struct ccci_per_md *per_md_data = ccci_get_per_md_data();
 #endif
-	int count = 0;
 	int ret;
 	unsigned int ccmni_idx = 0xFFFFFFFF;
 	unsigned int ccmni_flush_count = 0;
@@ -1125,7 +1128,6 @@ static int cldma_net_rx_push_thread(void *arg)
 			ccmni_temp_state = 0;
 			ccmni_idx = 0xFFFFFFFF;
 
-			count = 0;
 			ret = wait_event_interruptible(queue->rx_wq,
 				!skb_queue_empty(&queue->skb_list.skb_list));
 			if (ret == -ERESTARTSYS)
@@ -1166,7 +1168,7 @@ static int cldma_net_rx_push_thread(void *arg)
 		}
 
 		cldma_recv_skb(lhif->netif, skb);
-		count++;
+
 #ifdef CCCI_SKB_TRACE
 		per_md_data->netif_rx_profile[6] =
 			sched_clock() - per_md_data->netif_rx_profile[6];
@@ -1183,12 +1185,10 @@ static void cldma_rx_done(struct work_struct *work)
 		container_of(work, struct md_cd_queue, cldma_rx_work);
 
 	struct md_cd_ctrl *md_ctrl = cldma_ctrl;
-	int ret;
 
 	md_ctrl->traffic_info.latest_q_rx_time[queue->index]
 		= local_clock();
-	ret =
-		queue->tr_ring->handle_rx_done(queue, queue->budget, 1);
+	queue->tr_ring->handle_rx_done(queue, queue->budget, 1);
 	/* enable RX_DONE interrupt */
 	cldma_write32_ao_misc(md_ctrl, CLDMA_AP_L2RIMCR0,
 		(CLDMA_RX_INT_DONE & (1 << queue->index)) |
@@ -2019,7 +2019,7 @@ void __weak dump_emi_latency(void)
 static int cldma_stop(unsigned char hif_id)
 {
 	struct md_cd_ctrl *md_ctrl = cldma_ctrl;
-	int count, i;
+	int i;
 	unsigned long flags;
 #ifdef ENABLE_CLDMA_TIMER
 	int qno;
@@ -2031,7 +2031,6 @@ static int cldma_stop(unsigned char hif_id)
 		__func__, __builtin_return_address(0));
 	spin_lock_irqsave(&md_ctrl->cldma_timeout_lock, flags);
 	/* stop all Tx and Rx queues */
-	count = 0;
 	md_ctrl->txq_active &= (~CLDMA_BM_ALL_QUEUE);
 
 	cldma_write32(md_ctrl->cldma_ap_pdn_base,
@@ -2039,7 +2038,7 @@ static int cldma_stop(unsigned char hif_id)
 	/* dummy read */
 	cldma_read32(md_ctrl->cldma_ap_pdn_base,
 		CLDMA_AP_UL_STOP_CMD);
-	count = 0;
+
 	md_ctrl->rxq_active &= (~CLDMA_BM_ALL_QUEUE);
 
 	cldma_write32(md_ctrl->cldma_ap_pdn_base,
