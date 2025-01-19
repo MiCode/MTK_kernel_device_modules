@@ -3247,7 +3247,7 @@ static int mtk_vcu_probe(struct platform_device *pdev)
 		device_create(vcu_mtkdev[vcuid]->vcu_class,
 				  NULL,
 				  vcu_mtkdev[vcuid]->vcu_devno,
-				  NULL, vcu_mtkdev[vcuid]->vcuname);
+				  NULL, "%s", vcu_mtkdev[vcuid]->vcuname);
 	if (IS_ERR_OR_NULL(vcu_mtkdev[vcuid]->vcu_device) == true) {
 		ret = (int)PTR_ERR(vcu_mtkdev[vcuid]->vcu_device);
 		dev_info(dev, "[VCU] device_create fail (ret=%d)", ret);

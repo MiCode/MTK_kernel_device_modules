@@ -116,13 +116,12 @@ static int handle_enc_get_bs_buf(struct venc_vcu_inst *vcu, void *data)
 	struct venc_vsi *vsi = (struct venc_vsi *)vcu->vsi;
 	struct venc_vcu_ipi_msg_get_bs *msg = (struct venc_vcu_ipi_msg_get_bs *)data;
 	long timeout_jiff;
-	int ret = 1;
 
 	pbs_buf =  mtk_vcodec_get_bs(ctx);
 	timeout_jiff = msecs_to_jiffies(1000);
 
 	while (pbs_buf == NULL) {
-		ret = wait_event_interruptible_timeout(
+		wait_event_interruptible_timeout(
 			vcu->ctx->bs_wq,
 			v4l2_m2m_num_dst_bufs_ready(vcu->ctx->m2m_ctx) > 0 ||
 				vcu->ctx->state == MTK_STATE_FLUSH,

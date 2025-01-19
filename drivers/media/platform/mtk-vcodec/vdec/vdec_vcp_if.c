@@ -675,7 +675,6 @@ int vcp_dec_ipi_handler(void *arg)
 	struct vdec_vcu_inst *vcu = NULL;
 	struct vdec_inst *inst = NULL;
 	struct share_obj *obj;
-	struct vdec_vsi *vsi;
 	int ret = 0;
 	struct mtk_vcodec_msg_node *mq_node;
 	struct vdec_vcu_ipi_mem_op *shem_msg;
@@ -789,7 +788,6 @@ int vcp_dec_ipi_handler(void *arg)
 		mtk_v4l2_debug(2, "[%d] pop msg_id %X ml_cnt %d, vcu %lx, status %d", vcu->ctx->id,
 			msg->msg_id, atomic_read(&dev->mq.cnt), (unsigned long)vcu, msg->status);
 
-		vsi = (struct vdec_vsi *)vcu->vsi;
 		inst = container_of(vcu, struct vdec_inst, vcu);
 
 		if (msg->msg_id == VCU_IPIMSG_DEC_CHECK_CODEC_ID) {
