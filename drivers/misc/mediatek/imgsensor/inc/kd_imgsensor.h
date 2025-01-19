@@ -138,6 +138,8 @@
 #define GC08A3REAR_SENSOR_ID                          0x08a3
 #define SENSOR_DRVNAME_GC08A3REAR_MIPI_RAW            "gc08a3rear_mipi_raw"
 
+#define S5K4H7SUB_SENSOR_ID                     0x487C
+#define SENSOR_DRVNAME_S5K4H7SUB_MIPI_RAW       "s5k4h7sub_mipi_raw"
 /* SENSOR CHIP VERSION */
 /*IMX*/
 #define IMX06A_SENSOR_ID                        0xa18a

@@ -139,6 +139,9 @@ struct IMGSENSOR_HW_DEVICE {
 };
 
 extern struct IMGSENSOR_HW_CFG       imgsensor_custom_config[];
+#ifdef IMGSENSOR_TB8786P2
+extern struct IMGSENSOR_HW_CFG       imgsensor_mt8786_config[];
+#endif
 #ifdef IMGSENSOR_ISP4_T_REF
 extern struct IMGSENSOR_HW_CFG       imgsensor_isp4_t_ref[];
 #endif

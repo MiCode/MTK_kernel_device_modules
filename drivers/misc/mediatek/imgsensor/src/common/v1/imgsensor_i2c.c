@@ -167,7 +167,7 @@ enum IMGSENSOR_RETURN imgsensor_i2c_read(
 {
 	struct IMGSENSOR_I2C_INST *pinst = pi2c_cfg->pinst;
 	enum   IMGSENSOR_RETURN    ret   = IMGSENSOR_RETURN_SUCCESS;
-	int ret_i2c = 0;
+	//int ret_i2c = 0;
 
 	mutex_lock(&pi2c_cfg->i2c_mutex);
 
@@ -181,22 +181,24 @@ enum IMGSENSOR_RETURN imgsensor_i2c_read(
 	pinst->msg[1].len   = read_length;
 	pinst->msg[1].buf   = pread_data;
 
-	ret_i2c = mtk_i2c_transfer(
+	if (mtk_i2c_transfer(
 	    pinst->pi2c_client->adapter,
 	    pinst->msg,
 	    IMGSENSOR_I2C_MSG_SIZE_READ,
 	    (pi2c_cfg->pinst->status.filter_msg) ? I2C_A_FILTER_MSG : 0,
 	    ((speed > 0) && (speed <= 1000))
-	      ? speed * 1000 : IMGSENSOR_I2C_SPEED * 1000);
-
-	if (ret_i2c != (u32)IMGSENSOR_I2C_MSG_SIZE_READ) {
+	      ? speed * 1000 : IMGSENSOR_I2C_SPEED * 1000)
+	    != IMGSENSOR_I2C_MSG_SIZE_READ) {
 
 		static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 30);
 
 		if (__ratelimit(&ratelimit))
 			pr_info(
-			    "I2C read failed (ret = %d)! speed(%dk) id(0x%02x) len(%u)(%u)\n",
-			    ret_i2c, speed, id, write_length, read_length);
+			    "I2C read failed (0x%x)! speed(0=%d) (0x%x)\n",
+			    ret,
+			    speed,
+			    *pwrite_data);
+
 		ret = IMGSENSOR_RETURN_ERROR;
 	}
 
@@ -219,7 +221,7 @@ enum IMGSENSOR_RETURN imgsensor_i2c_write(
 	u8                 *pdata = pwrite_data;
 	u8                 *pend  = pwrite_data + write_length;
 	int i   = 0;
-	int ret_i2c = 0;
+	//int ret_i2c = 0;
 
 	mutex_lock(&pi2c_cfg->i2c_mutex);
 
@@ -234,22 +236,24 @@ enum IMGSENSOR_RETURN imgsensor_i2c_write(
 		pdata += write_per_cycle;
 	}
 
-	ret_i2c = mtk_i2c_transfer(
-		pinst->pi2c_client->adapter,
-		pinst->msg,
-		i,
-		(pi2c_cfg->pinst->status.filter_msg) ? I2C_A_FILTER_MSG : 0,
-		((speed > 0) && (speed <= 1000))
-		  ? speed * 1000 : IMGSENSOR_I2C_SPEED * 1000);
-
-	if (ret_i2c != i) {
+	if (mtk_i2c_transfer(
+	    pinst->pi2c_client->adapter,
+	    pinst->msg,
+	    i,
+	    (pi2c_cfg->pinst->status.filter_msg) ? I2C_A_FILTER_MSG : 0,
+	    ((speed > 0) && (speed <= 1000))
+	      ? speed * 1000 : IMGSENSOR_I2C_SPEED * 1000)
+	    != i) {
 
 		static DEFINE_RATELIMIT_STATE(ratelimit, 1 * HZ, 30);
 
 		if (__ratelimit(&ratelimit))
 			pr_info(
-			    "I2C write failed (ret = %d)! speed(%dk) id(0x%02x)\n",
-			    ret_i2c, speed, id);
+			    "I2C write failed (0x%x)! speed(0=%d) (0x%x)\n",
+			    ret,
+			    speed,
+			    *pwrite_data);
+
 		ret = IMGSENSOR_RETURN_ERROR;
 	}
 

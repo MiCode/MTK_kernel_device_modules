@@ -69,6 +69,12 @@ enum IMGSENSOR_RETURN imgsensor_hw_init(struct IMGSENSOR_HW *phw)
 #else
 			pcust_pwr_cfg = imgsensor_custom_config;
 #endif
+
+#ifdef IMGSENSOR_TB8786P2
+			pcust_pwr_cfg = imgsensor_mt8786_config;
+#else
+			pcust_pwr_cfg = imgsensor_custom_config;
+#endif
 		} else {
 			pcust_pwr_cfg = imgsensor_custom_config;
 		}
