@@ -10753,6 +10753,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
+		vhost_apu: vhost-apu@0 {
+			status = "disabled";
+		};
+
 		apusys_hw_logger: apusys-hw-logger@19024000 {
 			compatible = "mediatek,apusys_hw_logger";
 			status = "okay";
