@@ -5440,6 +5440,13 @@ static int mtk_dsi_wait_cmd_frame_done(struct mtk_dsi *dsi,
 	 * commands are there in the waiting queue, so here we force
 	 * frame updating and wait for the latest frame done.
 	 */
+	/* for the case MML DL(frame n) and next frame doze status change(frame n+1)
+	 * we will force frame updating(frame n') and wait for the latest frame done
+	 * BUT, there are no MML DL data in self updating frame(frame n')
+	 * for this case, we can't get dsi frame done in frame n' ==> cmdq timeout
+	 * for fix MML DL case, we don't wait dsi frame done,
+	 * we using gce sleep to context switch to trigger loop to make sure the frame n show to panel
+	 */
 	if (new_doze_state && !force_lcm_update) {
 		//CRTC_MMP_MARK(0, set_dirty, WAIT_CMD_FRAME_DONE, __LINE__);
 		//cmdq_pkt_set_event(handle,
