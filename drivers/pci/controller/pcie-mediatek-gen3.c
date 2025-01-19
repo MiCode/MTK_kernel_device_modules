@@ -478,10 +478,10 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 	if (reg & PCIE_AER_EVT) {
 		writel_relaxed(PCIE_RC_CFG, port->base + PCIE_CFGNUM_REG);
 		reg = readl_relaxed(port->base + PCIE_AER_CO_STATUS);
-		if (reg & AER_CO_RE) {
+		if (reg & (AER_CO_RE | PCI_ERR_COR_REP_ROLL)) {
 			mtk_pcie_dump_link_info(port->port_num);
 			mtk_pcie_disable_data_trans(port->port_num);
-			dev_info(port->dev, "PCIe Rxerr detected!\n");
+			dev_info(port->dev, "PCIe Correctable Error:%#x detected!\n", reg);
 		}
 
 		reg = readl_relaxed(port->base + PCIE_AER_UNC_STATUS);
