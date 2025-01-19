@@ -6691,6 +6691,10 @@
 		io-channel-names = "thermistor-ch2";
 	};
 
+	thermal_ipi: thermal-ipi {
+		compatible = "mediatek,thermal-ipi";
+	};
+
 	gps: gps@18C00000 {
 		compatible = "mediatek,mt6877-gps";
 		reg = <0 0x18000000 0 0x100000>,
