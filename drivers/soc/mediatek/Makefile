@@ -68,7 +68,7 @@ endif
 ifneq ($(wildcard $(src)/mt8188-pm-domains.h),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS) += mtk-pm-domains.o
 endif
-obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS) += mtk-mmsys.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS_MMSYS) += mtk-mmsys.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_DEVAPC) += devapc/
 obj-$(CONFIG_MTK_DEVMPU) += devmpu/
 obj-$(CONFIG_MTK_MMDVFS) += mmdvfs/
@@ -76,5 +76,5 @@ obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs.o
 ifneq ($(filter y m,$(CONFIG_MTK_MMDVFS_VCP)),)
 obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs-v3.o
 endif
-obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS) += mtk-mutex.o
+obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS_MUTEX) += mtk-mutex.o
 obj-$(CONFIG_MTK_SOCINFO) += mtk-socinfo.o
