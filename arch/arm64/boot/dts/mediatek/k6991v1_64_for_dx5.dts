@@ -1910,6 +1910,19 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 #endif
 
+&mmlsys0_config {
+	mediatek,mminfra-supply = <&mminfra_util>;
+	mminfra-all-on-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
+	power-domains;
+};
+
+&mmlsys1_config {
+	mediatek,mminfra-supply = <&mminfra_util>;
+	mminfra-all-on-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
+	power-domains;
+};
+
+
 &connfem {
 	sku {
 		hw-names =
