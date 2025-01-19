@@ -133,6 +133,10 @@ mgk_64_common_eng_modules = mgk_module_outs + mgk_module_eng_outs + mgk_64_modul
 mgk_64_common_userdebug_modules = mgk_module_outs + mgk_module_userdebug_outs + mgk_64_module_outs
 mgk_64_common_user_modules = mgk_module_outs + mgk_module_user_outs + mgk_64_module_outs
 
+mgk_64_kleaf_device_modules_kconfigs = [
+   # keep sorted
+]
+
 mgk_64_kleaf_device_modules = [
     # keep sorted
 ]

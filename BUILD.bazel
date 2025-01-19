@@ -51,6 +51,7 @@ load("//kernel_device_modules-mainline:kernel/kleaf/mgk_64.bzl",
      "mgk_64_common_eng_modules",
      "mgk_64_common_userdebug_modules",
      "mgk_64_common_user_modules",
+     "mgk_64_kleaf_device_modules_kconfigs",
      "mgk_64_kleaf_device_modules",
      "mgk_64_kleaf_platform_device_modules",
      "mgk_64_kleaf_eng_device_modules",
@@ -80,6 +81,7 @@ define_mgk(
     common_eng_modules = mgk_64_common_eng_modules,
     common_userdebug_modules = mgk_64_common_userdebug_modules,
     common_user_modules = mgk_64_common_user_modules,
+    kleaf_device_modules_kconfigs = mgk_64_kleaf_device_modules_kconfigs,
     kleaf_device_modules = mgk_64_kleaf_device_modules,
     kleaf_platform_device_modules = mgk_64_kleaf_platform_device_modules,
     kleaf_eng_device_modules = mgk_64_kleaf_eng_device_modules,
@@ -97,20 +99,4 @@ define_mgk(
     device_user_modules = mgk_64_device_user_modules,
     platform_device_user_modules = mgk_64_platform_device_user_modules,
     symbol_list = mgk_kmi_symbol_list,
-)
-
-kleaf_device_modules = mgk_64_kleaf_device_modules + \
-    mgk_64_kleaf_eng_device_modules + \
-    mgk_64_kleaf_userdebug_device_modules + \
-    mgk_64_kleaf_user_device_modules
-
-kleaf_platform_device_modules = mgk_64_kleaf_platform_device_modules | \
-    mgk_64_kleaf_platform_eng_device_modules | \
-    mgk_64_kleaf_platform_userdebug_device_modules | \
-    mgk_64_kleaf_platform_user_device_modules
-
-filegroup(
-    name = "ddk_kconfigs",
-    srcs = depset(["{}:ddk_kconfigs".format(m.split(":")[0]) for m in kleaf_device_modules] +
-        ["{}:ddk_kconfigs".format(m.split(":")[0]) for m in kleaf_platform_device_modules.keys()]).to_list(),
 )
