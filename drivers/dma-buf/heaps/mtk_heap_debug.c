@@ -1546,7 +1546,7 @@ static int dma_heap_buf_dump_cb(const struct dma_buf *dmabuf, void *priv)
 
 	if (get_kernel_nofault(tmp_dmabuf, dmabuf) ||
 	    get_kernel_nofault(tmp_file, dmabuf->file) ||
-	    !is_dma_buf_file(dmabuf->file))
+	    !mtk_is_dma_buf_file(dmabuf->file))
 		return 0;
 
 	spin_lock((spinlock_t *)&dmabuf->name_lock);
