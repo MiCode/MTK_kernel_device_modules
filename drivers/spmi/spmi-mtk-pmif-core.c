@@ -517,6 +517,7 @@ static bool in_spmi_nack_monitor_list(u32 spmi_nack)
 	return false;
 }
 
+#if 0
 static int mt6316_revision_check(struct pmif *arb, unsigned int slvid)
 {
 	u8 rdata = 0;
@@ -529,6 +530,7 @@ static int mt6316_revision_check(struct pmif *arb, unsigned int slvid)
 	else
 		return MT6316_E3;
 }
+#endif
 
 unsigned long long get_current_time_ms(void)
 {
@@ -1611,11 +1613,11 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 			}
 		} else {
 			if (spmi_nack & 0xD8) {
-				flag = 1;
-				assert_flag = 1;
+				flag = 0;
+				assert_flag = 0;
 			} else {
-				flag = 1;
-				assert_flag = (mt6316_revision_check(arb, GET_SPMI_NACK_SLVID(spmi_p_nack)) == MT6316_E4) ? 1 : 0;
+				flag = 0;
+				assert_flag = 0;
 			}
 		}
 	}
@@ -1649,16 +1651,17 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 			}
 		} else {
 			if (spmi_nack & 0x20) {
-				flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
-				assert_flag = (in_spmi_nack_monitor_list(spmi_nack)) ? 1 : 0;
+				flag = 0;
+				assert_flag = 0;
 			} else {
-				dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
-				flag = 1;
-				if ((mt6316_revision_check(arb, GET_SPMI_NACK_SLVID(spmi_p_nack)) == MT6316_E4) && (in_spmi_nack_monitor_list(spmi_p_nack))) {
-					assert_flag = 1;
-				} else {
-					assert_flag = 0;
-				}
+				// dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
+				flag = 0;
+				assert_flag = 0;
+				// if ((mt6316_revision_check(arb, GET_SPMI_NACK_SLVID(spmi_p_nack)) == MT6316_E4) && (in_spmi_nack_monitor_list(spmi_p_nack))) {
+				// 	assert_flag = 1;
+				// } else {
+				// 	assert_flag = 0;
+				// }
 			}
 		}
 		pr_notice("%s spmi transaction fail (Read) irq triggered", __func__);
@@ -1707,7 +1710,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 
 	if (assert_flag)
-		BUG_ON(1);
+		pr_notice("%s Avoid assert for bring up de-risk\n", __func__);
 
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
@@ -2218,6 +2221,9 @@ static const struct of_device_id mtk_spmi_match_table[] = {
 		.data = &mt6989_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6991-spmi",
+		.data = &mt6xxx_pmif_arb,
+	}, {
+		.compatible = "mediatek,mt6993-spmi",
 		.data = &mt6xxx_pmif_arb,
 	}, {
 		/* sentinel */
