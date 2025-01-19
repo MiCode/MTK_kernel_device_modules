@@ -285,9 +285,9 @@ static int enable_vcp_blocking(void *data)
 	atomic_inc(&mmqos_hrt->lock_count);
 	pr_notice("%s: increase lock_count=%d\n", __func__,
 		atomic_read(&mmqos_hrt->lock_count));
-
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-
+#endif
 	atomic_dec(&mmqos_hrt->lock_count);
 	wake_up(&mmqos_hrt->hrt_wait);
 	pr_notice("%s: decrease lock_count=%d\n", __func__,
@@ -306,9 +306,11 @@ static void set_camera_max_bw(u32 bw)
 		thread_vcp = kthread_run(enable_vcp_blocking, NULL, "enable vcp");
 		if (IS_ERR(thread_vcp))
 			pr_notice("%s: Failed to start enable vcp thread\n", __func__);
-	} else if (mmqos_hrt->cam_max_bw > 0 && bw == 0)
+	}
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	else if (mmqos_hrt->cam_max_bw > 0 && bw == 0)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
-
+#endif
 	mmqos_hrt->cam_max_bw = bw;
 	record_cam_hrt(bw);
 

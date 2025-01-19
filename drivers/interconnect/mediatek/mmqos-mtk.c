@@ -618,10 +618,11 @@ static void start_write_bw(void)
 
 	// for hfrp timeout debug
 	readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//enable vcp
 	if (mmqos_state & VMMRC_VCP_ENABLE)
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-
+#endif
 	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		write_register(APMCU_MASK_OFFSET, 0);
 	else {
@@ -640,9 +641,11 @@ static void stop_write_bw(void)
 		orig = read_register(APMCU_MASK_OFFSET);
 		write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
 	}
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//disable vcp
 	if (mmqos_state & VMMRC_VCP_ENABLE)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+#endif
 }
 
 void clear_reg_value(bool is_on)
