@@ -244,6 +244,8 @@ DECLARE_PER_CPU(unsigned int, gear_id);
 DECLARE_PER_CPU(struct sbb_cpu_data *, sbb);
 DECLARE_PER_CPU(struct mtk_rq *, rq_data);
 
+#define DEFAULT_MARGIN 1280
+extern int mtk_uclamp_involve(unsigned long uclamp_min, unsigned long uclamp_max, int is_multiply_by_margin);
 /* DPT */
 struct curr_collab_state_struct {
 	int state;
@@ -292,6 +294,7 @@ extern int get_sys_max_cap_cluster(void);
 #define DPT_CALL_PD_GET_UTIL_FREQ 24
 #define DPT_CALL_PD_GET_CPU_OPP 25
 #define DPT_CALL_MTK_EM_CPU_ENERGY 26
+#define DPT_CALL_INIT_UCLAMP_INVOLVE 27
 
 #define DPT_CALL_DEBUG1 98
 #define DPT_CALL_DEBUG2 99
