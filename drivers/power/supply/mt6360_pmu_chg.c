@@ -2818,10 +2818,11 @@ static int mt6360_set_shipping_mode(struct mt6360_chg_info *mci)
 	/* disable shipping mode rst */
 	ret = regmap_update_bits(mci->regmap, MT6360_PMU_CORE_CTRL2,
 				 MT6360_MASK_SHIP_RST_DIS, 0xff);
-	if (ret < 0)
+	if (ret < 0) {
 		dev_dbg(mci->dev,
 			"%s: fail to disable ship reset\n", __func__);
 		goto out;
+	}
 	/* enter shipping mode and disable cfo_en/chg_en */
 	ret = regmap_write(mci->regmap, MT6360_PMU_CHG_CTRL2, 0x80);
 	if (ret < 0)
@@ -3083,7 +3084,7 @@ static int mt6360_boost_get_current_limit(struct regulator_dev *rdev)
 	if (ret < 0)
 		return ret;
 	ret = (regval & desc->csel_mask) >> shift;
-	if (ret > ARRAY_SIZE(mt6360_otg_oc_threshold))
+	if (ret >= ARRAY_SIZE(mt6360_otg_oc_threshold))
 		return -EINVAL;
 	return mt6360_otg_oc_threshold[ret];
 }
