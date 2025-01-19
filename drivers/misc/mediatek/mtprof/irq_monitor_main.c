@@ -754,7 +754,6 @@ struct irq_mon_tracepoint {
 	struct tracepoint *tp;
 	const char *name;
 	void *func;
-	void *data;
 	bool probe;
 	struct irq_mon_tracer *tracer;
 };
@@ -764,82 +763,70 @@ struct irq_mon_tracepoint irq_mon_tracepoint_table[] = {
 	{
 		.name = "irq_handler_entry",
 		.func = probe_irq_handler_entry,
-		.data = NULL,
 		.tracer = &irq_handler_tracer,
 	},
 	{
 		.name = "irq_handler_exit",
 		.func = probe_irq_handler_exit,
-		.data = NULL,
 		.tracer = &irq_handler_tracer,
 	},
 	/* softirq_tracer irq.h */
 	{
 		.name = "softirq_entry",
 		.func = probe_softirq_entry,
-		.data = NULL,
 		.tracer = &softirq_tracer
 	},
 	{
 		.name = "softirq_exit",
 		.func = probe_softirq_exit,
-		.data = NULL,
 		.tracer = &softirq_tracer,
 	},
 	/* ipi_tracer ipi.h */
 	{
 		.name = "ipi_entry",
 		.func = probe_ipi_entry,
-		.data = NULL,
 		.tracer = &ipi_tracer,
 	},
 	{
 		.name = "ipi_exit",
 		.func = probe_ipi_exit,
-		.data = NULL,
 		.tracer = &ipi_tracer,
 	},
 	/* irq_off_tracer */
 	{
 		.name = "irq_disable",
 		.func = probe_irq_disable,
-		.data = NULL,
 		.tracer = &irq_off_tracer,
 	},
 	{
 		.name = "irq_enable",
 		.func = probe_irq_enable,
-		.data = NULL,
 		.tracer = &irq_off_tracer,
 	},
 	/* preempt_off_tracer */
 	{
 		.name = "preempt_disable",
 		.func = probe_preempt_disable,
-		.data = NULL,
 		.tracer = &preempt_off_tracer,
 	},
 	{
 		.name = "preempt_enable",
 		.func = probe_preempt_enable,
-		.data = NULL,
 		.tracer = &preempt_off_tracer,
 	},
 	/* hrtimer_expire_tracer timer.h */
 	{
 		.name = "hrtimer_expire_entry",
 		.func = probe_hrtimer_expire_entry,
-		.data = NULL,
 		.tracer = &hrtimer_expire_tracer,
 	},
 	{
 		.name = "hrtimer_expire_exit",
 		.func = probe_hrtimer_expire_exit,
-		.data = NULL,
 		.tracer = &hrtimer_expire_tracer,
 	},
 	/* Last item must be NULL!! */
-	{.name = NULL, .func = NULL, .data = NULL},
+	{.name = NULL, .func = NULL},
 };
 
 /* lookup tracepoints */
@@ -939,7 +926,7 @@ static int irq_mon_tracepoint_init(void)
 				pr_info("tp: %s not found\n", t->name);
 				continue;
 			}
-			ret = tracepoint_probe_register(t->tp, t->func, t->data);
+			ret = tracepoint_probe_register(t->tp, t->func, (void *)t->tracer);
 			if (ret) {
 				pr_info("tp: %s probe failed\n", t->name);
 				continue;
@@ -971,7 +958,7 @@ static int irq_mon_tracer_probe(struct irq_mon_tracer *tracer)
 			pr_info("tp: %s not found\n", t->name);
 			return -1;
 		}
-		ret = tracepoint_probe_register(t->tp, t->func, t->data);
+		ret = tracepoint_probe_register(t->tp, t->func, (void *)t->tracer);
 		if (ret) {
 			pr_info("tp: %s probe failed\n", t->name);
 			return ret;
@@ -994,7 +981,7 @@ static int irq_mon_tracer_unprobe(struct irq_mon_tracer *tracer)
 		if (!t->tp)
 			continue;
 		if (t->probe) {
-			tracepoint_probe_unregister(t->tp, t->func, t->data);
+			tracepoint_probe_unregister(t->tp, t->func, (void *)t->tracer);
 			t->probe = false;
 		}
 	}
@@ -1307,7 +1294,7 @@ static int irq_mon_tracepoint_exit(void)
 		if (!t->tp)
 			continue;
 		if (t->probe) {
-			tracepoint_probe_unregister(t->tp, t->func, t->data);
+			tracepoint_probe_unregister(t->tp, t->func, (void *)t->tracer);
 			t->probe = false;
 		}
 	}
