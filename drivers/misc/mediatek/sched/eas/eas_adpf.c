@@ -19,7 +19,7 @@
 #define DEFAULT_EAS_ADPF_VIP	false
 
 static DEFINE_MUTEX(adpf_mutex);
-static int eas_adpf_enable = 1;
+static int eas_adpf_enable = 0;
 static int eas_adpf_vip_ctrl = DEFAULT_EAS_ADPF_VIP;
 
 int sched_adpf_callback(struct _SESSION *session)
