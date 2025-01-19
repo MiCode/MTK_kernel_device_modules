@@ -42,7 +42,7 @@
 
 #define HW_LOG_DUMP_RAW_BUF (1)
 #define APUSYS_RV_DEBUG_INFO_DUMP (1)
-#define HW_LOG_INTR_THRESHOLD 20
+#define HW_LOG_INTR_THRESHOLD 10
 
 /* debug log level */
 static unsigned char g_hw_logger_log_lv = DBG_LOG_INFO;
@@ -864,6 +864,9 @@ int hw_logger_deep_idle_leave(void)
 
 static irqreturn_t apu_logtop_irq_handler(int irq, void *priv)
 {
+	static DEFINE_RATELIMIT_STATE(
+		_rs, DEFAULT_RATELIMIT_INTERVAL, DEFAULT_RATELIMIT_BURST);
+
 	bool lbc_full_flg, ovwrite_flg;
 	unsigned int ctrl_flag = 0;
 	unsigned long long irq_start_time;
@@ -885,7 +888,7 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *priv)
 	lbc_full_flg = !!(ctrl_flag & LBC_FULL_FLAG);
 	ovwrite_flg = !!(ctrl_flag & OVWRITE_FLAG);
 
-	if (!lbc_full_flg && !ovwrite_flg) {
+	if (!lbc_full_flg && !ovwrite_flg && !__ratelimit(&_rs)) {
 		if (burst_intr_cnt < HW_LOG_INTR_THRESHOLD) {
 			HWLOGR_INFO("apu may power off, intr status = 0x%x, intr cnt = %d\n",
 				ctrl_flag, burst_intr_cnt);
