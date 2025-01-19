@@ -4520,7 +4520,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6991 ||
 			priv->data->mmsys_id == MMSYS_MT6993)
-			iommu_dev_disable_feature(comp->dev, IOMMU_DEV_FEAT_BYPASS_S1);
+			iommu_dev_disable_feature(mtk_smmu_get_shared_device(comp->dev), IOMMU_DEV_FEAT_BYPASS_S1);
 		break;
 	}
 	case BACKUP_INFO_CMP: {
