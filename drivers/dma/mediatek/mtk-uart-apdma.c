@@ -47,7 +47,7 @@
 #define VFF_INT_EN_CLR_B	0
 #define VFF_4G_SUPPORT_CLR_B	0
 #define VFF_ORI_ADDR_BITS_NUM    32
-#define VFF_RX_FLOWCTL_THRE_SIZE 0xc00
+#define VFF_RX_FLOWCTL_THRE_SIZE 0xc0
 #define VFF_RX_TRANS_FINISH_MASK 0x7F  /*bit 0~7*/
 /*
  * interrupt trigger level for tx
