@@ -1,0 +1,41 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "i2c-mt65xx",
+    srcs = [
+        "i2c-mt65xx.c",
+    ],
+    ko_deps = [
+       "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
+    ],
+    copts = [
+        "-Werror",
+        "-I$(srctree)/$(src)",
+        "-I$(srctree)/drivers/i2c/busses/",
+    ],
+    out = "i2c-mt65xx.ko",
+)
