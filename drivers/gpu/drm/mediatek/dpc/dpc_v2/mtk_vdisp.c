@@ -525,12 +525,21 @@ static void mtk_vdisp_query_aging_val(void)
 	mtk_vdisp_avs_query_aging_val(g_dev[DISP_PD_DISP_VCORE]);
 }
 
+static void mtk_vdisp_debug_mtcmos_ctrl(int pd_id, bool on)
+{
+	if (on)
+		pm_runtime_get_sync(g_dev[pd_id]);
+	else
+		pm_runtime_put_sync(g_dev[pd_id]);
+}
+
 static const struct mtk_vdisp_funcs funcs = {
 	.genpd_put = mtk_vdisp_genpd_put,
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
 	.sent_aod_scp_sema = mtk_sent_aod_scp_sema,
 	.query_aging_val = mtk_vdisp_query_aging_val,
+	.debug_mtcmos_ctrl = mtk_vdisp_debug_mtcmos_ctrl,
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	.wk_lock = mtk_vdisp_wk_lock,
 #endif
