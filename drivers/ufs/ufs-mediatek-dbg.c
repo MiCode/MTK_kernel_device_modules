@@ -1766,6 +1766,8 @@ int ufs_mtk_cali_hold(void)
 	if (ufs_mtk_wait_for_doorbell_clr(hba, timeout)) {
 		dev_err(hba->dev, "%s: wait doorbell clr timeout!\n",
 				__func__);
+		ufs_mtk_scsi_unblock_requests(hba);
+		pm_runtime_put(&hba->ufs_device_wlun->sdev_gendev);
 		ret = -EBUSY;
 	}
 
