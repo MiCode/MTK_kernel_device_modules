@@ -12732,8 +12732,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	mtk_crtc_config_default_path(mtk_crtc);
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 3);
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	if (priv->data->ovl_exdma_rule)
 		mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(mtk_crtc);
+#endif
 
 	/* 8. disconnect addon module and config */
 	mtk_crtc_connect_addon_module(crtc);
