@@ -36,6 +36,7 @@
 
 #define MAX_BIN_NUM	7
 #define MAX_BINSET_NUM 32
+#define DMR_LINE_BUFFER 19
 
 enum ODDMR_STATE {
 	ODDMR_INVALID = 0,
@@ -120,7 +121,7 @@ struct mtk_drm_oddmr_partial_update_params {
 	unsigned int partial_update_dmr_is_compression_mode;
 	unsigned int partial_update_dmr_slice_size; //byte base
 	unsigned int partial_update_dmr_slice_height; //pixel base
-	unsigned int dummy0;
+	unsigned int compression_mode_ln_offset;
 	unsigned int dummy1;
 	unsigned int dummy2;
 	unsigned int dummy3;
