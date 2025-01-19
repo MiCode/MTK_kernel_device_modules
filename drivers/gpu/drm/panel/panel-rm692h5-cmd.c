@@ -820,6 +820,13 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.rc_quant_incr_limit1  =  FHD_DSC_RC_QUANT_INCR_LIMIT1,
 			.rc_tgt_offset_hi	   =  FHD_DSC_RC_TGT_OFFSET_HI,
 			.rc_tgt_offset_lo	   =  FHD_DSC_RC_TGT_OFFSET_LO,
+			.ext_pps_cfg = {
+				.enable = 1,
+				.rc_buf_thresh = panel_visionox_rm692h5_spr_off_rc_buf_thresh,
+				.range_min_qp = panel_visionox_rm692h5_spr_off_range_min_qp,
+				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
+				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
+			},
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
@@ -904,6 +911,13 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.rc_quant_incr_limit1  =  FHD_DSC_RC_QUANT_INCR_LIMIT1,
 			.rc_tgt_offset_hi	   =  FHD_DSC_RC_TGT_OFFSET_HI,
 			.rc_tgt_offset_lo	   =  FHD_DSC_RC_TGT_OFFSET_LO,
+			.ext_pps_cfg = {
+				.enable = 1,
+				.rc_buf_thresh = panel_visionox_rm692h5_spr_off_rc_buf_thresh,
+				.range_min_qp = panel_visionox_rm692h5_spr_off_range_min_qp,
+				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
+				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
+			},
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
@@ -988,6 +1002,13 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.rc_quant_incr_limit1  =  FHD_DSC_RC_QUANT_INCR_LIMIT1,
 			.rc_tgt_offset_hi	   =  FHD_DSC_RC_TGT_OFFSET_HI,
 			.rc_tgt_offset_lo	   =  FHD_DSC_RC_TGT_OFFSET_LO,
+			.ext_pps_cfg = {
+				.enable = 1,
+				.rc_buf_thresh = panel_visionox_rm692h5_spr_off_rc_buf_thresh,
+				.range_min_qp = panel_visionox_rm692h5_spr_off_range_min_qp,
+				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
+				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
+			},
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
@@ -1072,6 +1093,13 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.rc_quant_incr_limit1  =  FHD_DSC_RC_QUANT_INCR_LIMIT1,
 			.rc_tgt_offset_hi	   =  FHD_DSC_RC_TGT_OFFSET_HI,
 			.rc_tgt_offset_lo	   =  FHD_DSC_RC_TGT_OFFSET_LO,
+			.ext_pps_cfg = {
+				.enable = 1,
+				.rc_buf_thresh = panel_visionox_rm692h5_spr_off_rc_buf_thresh,
+				.range_min_qp = panel_visionox_rm692h5_spr_off_range_min_qp,
+				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
+				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
+			},
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
@@ -1156,6 +1184,13 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.rc_quant_incr_limit1  =  FHD_DSC_RC_QUANT_INCR_LIMIT1,
 			.rc_tgt_offset_hi	   =  FHD_DSC_RC_TGT_OFFSET_HI,
 			.rc_tgt_offset_lo	   =  FHD_DSC_RC_TGT_OFFSET_LO,
+			.ext_pps_cfg = {
+				.enable = 1,
+				.rc_buf_thresh = panel_visionox_rm692h5_spr_off_rc_buf_thresh,
+				.range_min_qp = panel_visionox_rm692h5_spr_off_range_min_qp,
+				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
+				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
+			},
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
@@ -1233,6 +1268,13 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.rc_quant_incr_limit1  =  FHD_DSC_RC_QUANT_INCR_LIMIT1,
 			.rc_tgt_offset_hi	   =  FHD_DSC_RC_TGT_OFFSET_HI,
 			.rc_tgt_offset_lo	   =  FHD_DSC_RC_TGT_OFFSET_LO,
+			.ext_pps_cfg = {
+				.enable = 1,
+				.rc_buf_thresh = panel_visionox_rm692h5_spr_off_rc_buf_thresh,
+				.range_min_qp = panel_visionox_rm692h5_spr_off_range_min_qp,
+				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
+				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
+			},
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 90,
@@ -1310,6 +1352,13 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.rc_quant_incr_limit1  =  FHD_DSC_RC_QUANT_INCR_LIMIT1,
 			.rc_tgt_offset_hi	   =  FHD_DSC_RC_TGT_OFFSET_HI,
 			.rc_tgt_offset_lo	   =  FHD_DSC_RC_TGT_OFFSET_LO,
+			.ext_pps_cfg = {
+				.enable = 1,
+				.rc_buf_thresh = panel_visionox_rm692h5_spr_off_rc_buf_thresh,
+				.range_min_qp = panel_visionox_rm692h5_spr_off_range_min_qp,
+				.range_max_qp = panel_visionox_rm692h5_spr_off_range_max_qp,
+				.range_bpg_ofs = panel_visionox_rm692h5_spr_off_range_bpg_ofs,
+			},
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 60,
