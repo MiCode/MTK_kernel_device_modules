@@ -187,6 +187,7 @@ struct mml_sys {
 	/* DDP component bound index */
 	u32 ddp_bound;
 	struct mml_comp comps[MML_MAX_SYS_COMPONENTS];
+	u16 event_eofs[MML_MAX_SYS_COMPONENTS];
 	/* MML component count */
 	u32 comp_cnt;
 	/* MML component bound count */
@@ -2478,7 +2479,11 @@ static const struct mml_comp_config_ops dlo_config_ops_mt6991f = {
 static s32 dl_wait_mt6993(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 idx)
 {
-	if (task->config->info.mode == MML_MODE_DIRECT_LINK)
+	struct mml_sys *sys = comp_to_sys(comp);
+
+	if (sys->event_eofs[comp->sub_idx])
+		cmdq_pkt_wfe(task->pkts[ccfg->pipe], sys->event_eofs[comp->sub_idx]);
+	else
 		cmdq_pkt_wfe(task->pkts[ccfg->pipe], task->config->info.disp_done_event);
 
 	return 0;
@@ -2556,7 +2561,16 @@ static const struct mml_comp_config_ops dl_mml_config_ops = {
 	.tile = dl_mml_config_tile,
 };
 
+static void dl_init_frame_done_event(struct mml_comp *comp, u32 event)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+
+	if (!sys->event_eofs[comp->sub_idx])
+		sys->event_eofs[comp->sub_idx] = event;
+}
+
 static const struct mml_comp_hw_ops dl_hw_ops = {
+	.init_frame_done_event = dl_init_frame_done_event,
 	.clk_enable = mml_comp_clk_enable,
 	.clk_disable = mml_comp_clk_disable,
 	/* TODO: pmqos_op
