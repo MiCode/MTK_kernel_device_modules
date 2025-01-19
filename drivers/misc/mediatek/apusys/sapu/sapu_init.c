@@ -77,22 +77,17 @@ static int dram_fb_register(void)
 	u32 datamem_type = SAPU_DATAMEM_TYPE_DEFAULT;
 
 	if (!sapu) {
-		pr_info("%s %d\n", __func__, __LINE__);
+		pr_info("%s %d: sapu is NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	pdev = sapu->pdev;
 	if (pdev == NULL) {
-		pr_info("%s %d\n", __func__, __LINE__);
+		pr_info("%s %d: pdev is NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	dmem_device = &pdev->dev;
-	if (dmem_device == NULL) {
-		pr_info("%s %d\n", __func__, __LINE__);
-		ret = -EINVAL;
-		return -EINVAL;
-	}
 
 	ret = sapu->platdata->ops.power_ctrl(sapu, 1);
 	if (ret != 0) {
@@ -103,7 +98,7 @@ static int dram_fb_register(void)
 	sapu_node = dmem_device->of_node;
 	if (!sapu_node) {
 		pr_info("%s sapu_node is NULL\n", __func__);
-		return -ENODEV;
+		goto err_return;
 	}
 
 	ret = of_property_read_u32(sapu_node, "datamem-type", &datamem_type);
@@ -164,13 +159,13 @@ static int dram_fb_register(void)
 		smmu_node = of_parse_phandle(sapu_node, "smmu-device", 0);
 		if (!smmu_node) {
 			pr_info("%s get smmu_node failed\n", __func__);
-			return -ENODEV;
+			goto dmabuf_free;
 		}
 
 		smmu_dev = of_find_device_by_node(smmu_node);
-		if (!smmu_node) {
+		if (!smmu_dev) {
 			pr_info("%s get smmu_dev failed\n", __func__);
-			return -ENODEV;
+			goto dmabuf_free;
 		}
 
 		sapu->dram_fb_info.dram_fb_attach = dma_buf_attach(
@@ -394,6 +389,7 @@ static int apusys_sapu_probe(struct platform_device *pdev)
 	if (ret != 0) {
 		pr_info("error: misc register failed.");
 		devm_kfree(dev, sapu);
+		return ret;
 	}
 
 	mutex_init(&sapu->dmabuf_lock);
@@ -410,7 +406,11 @@ static int apusys_sapu_probe(struct platform_device *pdev)
 	}
 
 	/* runtime set platdata by dts*/
-	set_sapu_platdata_by_dts();
+	ret = set_sapu_platdata_by_dts();
+	if (ret) {
+		pr_info("error: %s - set_sapu_platdata_by_dts failed\n", __func__);
+		return ret;
+	}
 
 	sapu->platdata->ops.detect();
 
@@ -421,10 +421,13 @@ static int apusys_sapu_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	if (!sapu) {
-		mutex_destroy(&sapu->dmabuf_lock);
-		misc_deregister(&sapu->mdev);
-		devm_kfree(dev, sapu);
+		pr_info("%s: sapu is NULL\n", __func__);
+		return -ENODEV;
 	}
+
+	mutex_destroy(&sapu->dmabuf_lock);
+	misc_deregister(&sapu->mdev);
+	devm_kfree(dev, sapu);
 
 	return 0;
 }
