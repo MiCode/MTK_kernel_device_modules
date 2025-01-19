@@ -967,7 +967,6 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
-	struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	const phys_addr_t base_pa = comp->base_pa;
 
@@ -998,12 +997,9 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 	aal_relay(comp, pkt, base_pa, alpha);
 
-	if (MML_FMT_10BIT(src->format) || MML_FMT_10BIT(dest->data.format))
-		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG_MAIN],
-			0, 0x00000080);
-	else
-		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG_MAIN],
-			1 << 7, 0x00000080);
+	/* Enable 10-bit output by default
+	 * cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_CFG_MAIN], 0, 0x00000080);
+	 */
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, AAL_WAIT_TIMEOUT_MS);
@@ -2232,7 +2228,7 @@ static void aal_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_aal *aal = comp_to_aal(comp);
 	void __iomem *base = comp->base;
-	u32 value[9];
+	u32 value[11];
 	u32 shadow_ctrl;
 
 	mml_err("aal component %u dump:", comp->id);
@@ -2254,13 +2250,17 @@ static void aal_debug_dump(struct mml_comp *comp)
 	value[6] = read_reg_value(comp, aal->data->reg_table[AAL_OUTPUT_OFFSET]);
 	value[7] = read_reg_value(comp, aal->data->reg_table[AAL_TILE_00]);
 	value[8] = read_reg_value(comp, aal->data->reg_table[AAL_TILE_01]);
+	value[9] = read_reg_value(comp, aal->data->reg_table[AAL_TILE_02]);
+	value[10] = read_reg_value(comp, aal->data->reg_table[AAL_CFG_MAIN]);
 
 	mml_err("AAL_INTSTA %#010x AAL_STATUS %#010x AAL_INPUT_COUNT %#010x AAL_OUTPUT_COUNT %#010x",
 		value[0], value[1], value[2], value[3]);
 	mml_err("AAL_SIZE %#010x AAL_OUTPUT_SIZE %#010x AAL_OUTPUT_OFFSET %#010x",
 		value[4], value[5], value[6]);
-	mml_err("AAL_TILE_00 %#010x AAL_TILE_01 %#010x",
-		value[7], value[8]);
+	mml_err("AAL_TILE_00 %#010x AAL_TILE_01 %#010x AAL_TILE_02 %#010x",
+		value[7], value[8], value[9]);
+	mml_err("AAL_CFG_MAIN %#010x",
+		value[10]);
 }
 
 static const struct mml_comp_debug_ops aal_debug_ops = {

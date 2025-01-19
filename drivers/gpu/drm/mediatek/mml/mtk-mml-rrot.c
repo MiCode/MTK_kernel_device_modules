@@ -1398,8 +1398,8 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			0);
 	}
 
-	if (MML_FMT_10BIT(src->format) || MML_FMT_10BIT(dst_fmt))
-		output_10bit = 1;
+	/* Enable 10-bit output */
+	output_10bit = 1;
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_CON,
 		   (rrot_frm->lb_2b_mode << 12) |
 		   (output_10bit << 5) |

@@ -87,6 +87,9 @@
 int mml_rsz_fw_comb = 1;
 module_param(mml_rsz_fw_comb, int, 0644);
 
+int mml_force_rsz;
+module_param(mml_force_rsz, int, 0644);
+
 enum rsz_dbg_ver {
 	RSZ_DBG_MT6985 = 0,
 	RSZ_DBG_MT6989,
@@ -224,6 +227,12 @@ static bool rsz_can_relay(const struct mml_frame_config *cfg,
 	const u32 in_w = cfg->frame_tile_sz.width;
 	const u32 in_h = cfg->frame_tile_sz.height;
 
+	mml_msg("%s force:%d aal_crop_dis:%d dest_cnt:%d s:%dx%d c:%dx%d d:%dx%d",
+		__func__, mml_force_rsz, rsz->data->aal_crop_disable && dest->pq_config.en_dre,
+		cfg->info.dest_cnt, in_w, in_h, crop->r.width, crop->r.height,
+		frame_out->width, frame_out->height);
+	if (mml_force_rsz)
+		return false;
 	if (rsz->data->aal_crop_disable && dest->pq_config.en_dre)
 		return false;
 	if (cfg->info.dest_cnt > 1)
@@ -267,8 +276,7 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 			fw_in.out_width = frame_out->width;
 			fw_in.out_height = frame_out->height;
 			fw_in.crop = *crop;
-			fw_in.power_saving = !MML_FMT_10BIT(src->format) &&
-				!MML_FMT_10BIT(dest->data.format);
+			fw_in.power_saving = false;
 			fw_in.use121filter = rsz_frm->use121filter;
 
 			mml_msg("rsz fw in %u %u crop %u.%u %u.%u %u.%u %u.%u out %u %u",

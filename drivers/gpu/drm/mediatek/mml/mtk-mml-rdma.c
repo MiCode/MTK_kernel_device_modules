@@ -1211,13 +1211,37 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 		break;
 	}
 
+	/*
+	 * 4'b0000:  0 RGB to JPEG
+	 * 4'b0001:  1 RGB to FULL709
+	 * 4'b0010:  2 RGB to BT601
+	 * 4'b0011:  3 RGB to BT709
+	 * 4'b0100:  4 JPEG to RGB
+	 * 4'b0101:  5 FULL709 to RGB
+	 * 4'b0110:  6 BT601 to RGB
+	 * 4'b0111:  7 BT709 to RGB
+	 * 4'b1000:  8 JPEG to BT601 / FULL709 to BT709
+	 * 4'b1001:  9 JPEG to BT709
+	 * 4'b1010: 10 BT601 to JPEG / BT709 to FULL709
+	 * 4'b1011: 11 BT709 to JPEG
+	 * 4'b1100: 12 BT709 to BT601
+	 * 4'b1101: 13 BT601 to BT709
+	 * 4'b1110: 14 JPEG to FULL709
+	 * 4'b1111: 15 IDENTITY
+	 *             FULL709 to JPEG
+	 *             FULL709 to BT601
+	 *             BT601 to FULL709
+	 */
 	if (profile_in == MML_YCBCR_PROFILE_BT2020 ||
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT709 ||
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
 	if (rdma_frm->color_tran) {
-		if (profile_in == MML_YCBCR_PROFILE_BT601)
+		if (MML_FMT_IS_RGB(cfg->info.dest[0].data.format) &&
+		    !cfg->info.dest[0].pq_config.en)
+			rdma_frm->matrix_sel = 1;
+		else if (profile_in == MML_YCBCR_PROFILE_BT601)
 			rdma_frm->matrix_sel = 2;
 		else if (profile_in == MML_YCBCR_PROFILE_BT709)
 			rdma_frm->matrix_sel = 3;
@@ -1572,7 +1596,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   gmcif_con, write_sec);
 	rdma_frm->gmcif_con = gmcif_con;
 
-	if (cfg->alpharot)
+	if (cfg->alpharot || cfg->rgbrot)
 		rdma_frm->color_tran = 0;
 	else if (MML_FMT_10BIT(src->format))
 		rdma_frm->color_tran = 1;
@@ -1732,8 +1756,8 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 				CPR_RDMA_UFO_DEC_LENGTH_BASE_C, 0, write_sec);
 	}
 
-	if (MML_FMT_10BIT(src->format) || MML_FMT_10BIT(dst_fmt))
-		output_10bit = 1;
+	/* Enable 10-bit output */
+	output_10bit = 1;
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_CON,
 		   (rdma_frm->lb_2b_mode << 12) +
 		   (output_10bit << 5) +
@@ -2446,7 +2470,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
 	const bool write_sec = rdma->data->write_sec_reg;
-	u32 value[34], comp_con;
+	u32 value[35], comp_con;
 	u32 apu_en;
 	u32 state, greq;
 	u32 i;
@@ -2519,12 +2543,15 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[29] = readl(base + RDMA_AFBC_PAYLOAD_OST);
 	}
 	value[30] = readl(base + RDMA_GMCIF_CON);
-	value[33] = readl(base + RDMA_TRANSFORM_0);
+	value[33] = readl(base + RDMA_CON);
+	value[34] = readl(base + RDMA_TRANSFORM_0);
 
 	mml_err("RDMA_EN %#010x RDMA_RESET %#010x RDMA_SRC_CON %#010x RDMA_COMP_CON %#010x",
 		value[0], value[1], value[2], comp_con);
-	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x RDMA_TRANSFORM_0 %#010x",
-		value[4], value[5], value[33]);
+	mml_err("RDMA_CON %#010x RDMA_TRANSFORM_0 %#010x",
+		value[33], value[34]);
+	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x",
+		value[4], value[5]);
 	mml_err("RDMA_MF_SRC_SIZE %#010x RDMA_MF_CLIP_SIZE %#010x RDMA_MF_OFFSET_1 %#010x",
 		value[6], value[7], value[8]);
 	mml_err("RDMA_SF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_H_SIZE_IN_PXL %#010x",

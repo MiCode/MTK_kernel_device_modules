@@ -407,7 +407,6 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct fg_frame_data *fg_frm = fg_frm_data(ccfg);
 	struct mml_comp_fg *fg = comp_to_fg(comp);
@@ -421,7 +420,7 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	bool relay_mode = !dest->pq_config.en_fg;
 	u32 gpr = fg->data->gpr[ccfg->pipe];
 	s32 i, ret = 0;
-	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
+	u8 bit_depth = 10;
 	bool smi_sw_reset = 1;
 	bool crc_cg_enable = 1;
 	bool is_yuv_444 = true;
@@ -440,6 +439,9 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (relay_mode) {
 		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], 1, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0x7, U32_MAX);
+		/* bit_depth & is yuv420 or yuv444 */
+		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_0],
+			!is_yuv_444 << 4 | bit_depth << 0, 1 << 4 | 0xF << 0);
 		goto exit;
 	}
 
@@ -636,7 +638,6 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			     struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
-	const struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct fg_frame_data *fg_frm = fg_frm_data(ccfg);
 	struct mml_comp_fg *fg = comp_to_fg(comp);
@@ -647,7 +648,7 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	bool relay_mode = !dest->pq_config.en_fg;
 	s32 i, ret = 0;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
-	u8 bit_depth = MML_FMT_10BIT(src->format) ? 10 : 8;
+	u8 bit_depth = 10;
 	bool is_yuv_444 = true;
 	dma_addr_t fg_table_pa[FG_BUF_NUM];
 	u8 en_hw_ar = fg->data->hw_ar ? 1 : 0;

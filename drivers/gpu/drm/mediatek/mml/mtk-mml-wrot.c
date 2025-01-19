@@ -1091,18 +1091,25 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 	}
 
 	/*
-	 * 4'b0000: RGB to JPEG
-	 * 4'b0010: RGB to BT601
-	 * 4'b0011: RGB to BT709
-	 * 4'b0100: JPEG to RGB
-	 * 4'b0110: BT601 to RGB
-	 * 4'b0111: BT709 to RGB
-	 * 4'b1000: JPEG to BT601
-	 * 4'b1001: JPEG to BT709
-	 * 4'b1010: BT601 to JPEG
-	 * 4'b1011: BT709 to JPEG
-	 * 4'b1100: BT709 to BT601
-	 * 4'b1101: BT601 to BT709
+	 * 4'b0000:  0 RGB to JPEG
+	 * 4'b0001:  1 RGB to FULL709
+	 * 4'b0010:  2 RGB to BT601
+	 * 4'b0011:  3 RGB to BT709
+	 * 4'b0100:  4 JPEG to RGB
+	 * 4'b0101:  5 FULL709 to RGB
+	 * 4'b0110:  6 BT601 to RGB
+	 * 4'b0111:  7 BT709 to RGB
+	 * 4'b1000:  8 JPEG to BT601 / FULL709 to BT709
+	 * 4'b1001:  9 JPEG to BT709
+	 * 4'b1010: 10 BT601 to JPEG / BT709 to FULL709
+	 * 4'b1011: 11 BT709 to JPEG
+	 * 4'b1100: 12 BT709 to BT601
+	 * 4'b1101: 13 BT601 to BT709
+	 * 4'b1110: 14 JPEG to FULL709
+	 * 4'b1111: 15 IDENTITY
+	 *             FULL709 to JPEG
+	 *             FULL709 to BT601
+	 *             BT601 to FULL709
 	 */
 	if (profile_in == MML_YCBCR_PROFILE_BT2020 ||
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT709 ||
@@ -1110,7 +1117,10 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
 	if (wrot_frm->mat_en == 1) {
-		if (profile_in == MML_YCBCR_PROFILE_BT601)
+		if (MML_FMT_IS_RGB(cfg->info.src.format) &&
+		    !cfg->info.dest[wrot_frm->out_idx].pq_config.en)
+			wrot_frm->mat_sel = 5;
+		else if (profile_in == MML_YCBCR_PROFILE_BT601)
 			wrot_frm->mat_sel = 6;
 		else if (profile_in == MML_YCBCR_PROFILE_BT709)
 			wrot_frm->mat_sel = 7;
@@ -1147,15 +1157,18 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 		}
 	}
 
-	/* Enable dither */
-	if (MML_FMT_10BIT(cfg->info.src.format) && !MML_FMT_10BIT(fmt)) {
+	/* Enable 10-bit input */
+	if (!MML_FMT_10BIT(fmt)) {
 		wrot_frm->mat_en = 1;
-		wrot_frm->dither_con = (0x1 << 10) +
-			 (0x0 << 8) +
-			 (0x0 << 4) +
-			 (0x1 << 2) +
-			 (0x1 << 1) +
-			 (0x1 << 0);
+		/* Enable 10-to-8 dither */
+		if (MML_FMT_10BIT(cfg->info.src.format)) {
+			wrot_frm->dither_con = (0x1 << 10) +
+				 (0x0 << 8) +
+				 (0x0 << 4) +
+				 (0x1 << 2) +
+				 (0x1 << 1) +
+				 (0x1 << 0);
+		}
 	}
 }
 
@@ -1362,8 +1375,9 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* calculate for later config tile use */
 	wrot_calc_hw_buf_setting(wrot, cfg, dest, wrot_frm);
 
-	if (cfg->alpharot) {
+	if (cfg->alpharot || cfg->rgbrot) {
 		wrot_frm->mat_en = 0;
+		wrot_frm->mat_sel = 15;
 
 		if (wrot->data->rb_swap == 1) {
 			if (!MML_FMT_AFBC(src_fmt) && !MML_FMT_10BIT(src_fmt))
@@ -2702,7 +2716,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	void __iomem *base = comp->base;
-	u32 value[36];
+	u32 value[40];
 	u32 debug[33];
 	u32 dbg_id = 0, state, smi_req;
 	u32 shadow_ctrl;
@@ -2769,6 +2783,10 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	value[33] = readl(base + wrot->reg[VIDO_CRC_CTRL]);
 	value[34] = readl(base + wrot->reg[VIDO_CRC_VALUE]);
 	value[35] = readl(base + wrot->reg[VIDO_MAT_CTRL]);
+	value[36] = readl(base + wrot->reg[VIDO_DITHER_CON]);
+	value[37] = readl(base + wrot->reg[VIDO_DITHER]);
+	value[38] = readl(base + wrot->reg[VIDO_AFBC_YUVTRANS]);
+	value[39] = readl(base + wrot->reg[VIDO_BKGD]);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
@@ -2783,8 +2801,10 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[3], value[4], value[5]);
 	mml_err("VIDO_IN_SIZE %#010x VIDO_CROP_OFST %#010x VIDO_TAR_SIZE %#010x",
 		value[6], value[7], value[8]);
-	mml_err("VIDO_FRAME_SIZE %#010x VIDO_MAT_CTRL %#010x",
-		value[9], value[35]);
+	mml_err("VIDO_FRAME_SIZE %#010x VIDO_AFBC_YUVTRANS %#010x VIDO_BKGD %#010x",
+		value[9], value[38], value[39]);
+	mml_err("VIDO_MAT_CTRL %#010x VIDO_DITHER_CON %#010x VIDO_DITHER %#010x",
+		value[35], value[36], value[37]);
 	if (value[33] || value[34])
 		mml_err("VIDO_CRC_CTRL %#010x VIDO_CRC_VALUE %#010x", value[33], value[34]);
 	mml_err("VIDO_OFST ADDR_HIGH   %#010x ADDR   %#010x",

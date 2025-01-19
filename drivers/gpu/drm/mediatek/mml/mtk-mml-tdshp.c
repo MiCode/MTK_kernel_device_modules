@@ -491,7 +491,6 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
 	struct tdshp_frame_data *tdshp_frm = tdshp_frm_data(ccfg);
-	struct mml_frame_data *src = &cfg->info.src;
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
@@ -508,13 +507,9 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_sharp[%d]", __func__,
 		ccfg->pipe, comp->id, dest->pq_config.en_sharp);
 
-	if (MML_FMT_10BIT(src->format) || MML_FMT_10BIT(dest->data.format)) {
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + tdshp->data->reg_table[TDSHP_CTRL], 0, 0x00000004);
-	} else {
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + tdshp->data->reg_table[TDSHP_CTRL], 0x4, 0x00000004);
-	}
+	/* Enable 10-bit output by default
+	 * cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CTRL], 0, 0x00000004);
+	 */
 
 	tdshp_config_region_pq(comp, pkt, base_pa, &dest->pq_config);
 
