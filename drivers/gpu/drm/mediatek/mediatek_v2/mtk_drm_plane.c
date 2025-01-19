@@ -40,6 +40,7 @@ static const u32 formats[] = {
 	DRM_FORMAT_Y410,
 };
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 unsigned int to_crtc_plane_index(unsigned int plane_index)
 {
 	if (plane_index < OVL_LAYER_NR)
@@ -53,6 +54,14 @@ unsigned int to_crtc_plane_index(unsigned int plane_index)
 	else
 		return 0;
 }
+#else
+unsigned int to_crtc_plane_index(unsigned int plane_index)
+{
+	DDPINFO("%s plane index %d local_index 0\n", __func__, plane_index);
+
+	return 0;
+}
+#endif
 
 int mtk_get_format_bpp(uint32_t format)
 {
