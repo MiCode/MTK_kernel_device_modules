@@ -238,6 +238,7 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 	unsigned int freq_thermal = 0;
 	struct sugov_rq_data *sugov_data_ptr;
 	bool dsu_idle_ctrl = is_dsu_idle_enable();
+	unsigned int cpu_freq_with_thermal = 0;
 
 	for_each_cpu(cpu_idx, policy->related_cpus)
 		freq_state.cpu_freq[cpu_idx] = policy->cached_target_freq;
@@ -269,14 +270,16 @@ void set_dsu_target_freq(struct cpufreq_policy *policy)
 					max_freq_in_gear = freq_state.cpu_freq[cpu_idx];
 			}
 		}
-		freq_state.dsu_freq_vote[i]
-			= dsu_freq_agg(cpu, max_freq_in_gear, false, wl, &dsu_target_freq);
+		cpu_freq_with_thermal = max_freq_in_gear;
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		freq_thermal = get_cpu_ceiling_freq(gearid);
-		if(dsu_target_freq > freq_thermal)
-			dsu_target_freq = freq_thermal;
+		if(max_freq_in_gear > freq_thermal)
+			cpu_freq_with_thermal = freq_thermal;
 #endif
+		freq_state.dsu_freq_vote[i]
+			= dsu_freq_agg(cpu, cpu_freq_with_thermal, false, wl, &dsu_target_freq);
+
 skip_single_idle_cpu:
 		if (trace_sugov_ext_dsu_freq_vote_enabled())
 			trace_sugov_ext_dsu_freq_vote(wl, i, dsu_idle_ctrl,
