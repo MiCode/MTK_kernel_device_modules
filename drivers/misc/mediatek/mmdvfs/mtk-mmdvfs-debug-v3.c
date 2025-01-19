@@ -514,6 +514,16 @@ sram_dump:
 		mmdvfs_debug_dump_line(file, "pwr:%d gear:%u", i, readl(SRAM_PWR_GEAR(i)));
 	mmdvfs_debug_dump_line(file, "pwr:%d ceil:%u", i, readl(SRAM_VMM_CEIL));
 
+	// lock
+	for (i = 0; i < SRAM_MUX_CNT; i++)
+		for (j = 0; j < SRAM_LOCK_CNT; j++) {
+			val = readl(SRAM_LOCK_VAL(i, j));
+			if ((((val >> 24) & GENMASK(7, 0)) == i) && (((val >> 16) & GENMASK(7, 0)) == j))
+				mmdvfs_debug_dump_line(file, "[%5u.%3u] pwr:%d lock:%d func:%lu",
+					readl(SRAM_LOCK_SEC(i, j)), readl(SRAM_LOCK_USEC(i, j)),
+					i, j, val & GENMASK(15, 0));
+		}
+
 	mmdvfs_vcp_cb_mutex_unlock();
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
 

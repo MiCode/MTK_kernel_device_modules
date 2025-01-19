@@ -219,7 +219,13 @@ enum {
 #define SRAM_PWR_GEAR(x)	(SRAM_BASE + 4 * (415 + (x))) // SRAM_PWR_CNT
 #define SRAM_VMM_CEIL		(SRAM_BASE + 4 * (418))
 
-// next : 419
+/* SRAM_PWR_CNT, SRAM_LOCK_CNT */
+#define SRAM_LOCK_CNT		(2)
+#define SRAM_LOCK_SEC(x, y)	(SRAM_BASE + 4 * (419 + SRAM_PWR_CNT * ((x) * SRAM_LOCK_CNT + (y))))
+#define SRAM_LOCK_USEC(x, y)	(SRAM_BASE + 4 * (420 + SRAM_PWR_CNT * ((x) * SRAM_LOCK_CNT + (y))))
+#define SRAM_LOCK_VAL(x, y)	(SRAM_BASE + 4 * (421 + SRAM_PWR_CNT * ((x) * SRAM_LOCK_CNT + (y))))
+
+// next : 437
 
 /* mbrain : u64(2) * SRAM_PWR_CNT * OPP_NUM(8) = 64 */
 #define SRAM_PWR_TOTAL(x, y)	(SRAM_BASE + 4 * (570 + 2 * ((y) + (x) * 8)))
