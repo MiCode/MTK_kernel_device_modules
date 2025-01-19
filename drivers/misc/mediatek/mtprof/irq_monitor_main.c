@@ -1044,9 +1044,8 @@ static int irq_mon_bool_show(struct seq_file *s, void *p)
 {
 	bool val;
 
-	mutex_lock(&proc_lock);
-	val = *(bool *)s->private;
-	mutex_unlock(&proc_lock);
+	scoped_guard(mutex, &proc_lock)
+		val = *(bool *)s->private;
 	seq_printf(s, "%s\n", (val) ? "1" : "0");
 	return 0;
 }
@@ -1066,11 +1065,8 @@ static ssize_t irq_mon_bool_write(struct file *filp, const char *ubuf,
 	ret = kstrtobool_from_user(ubuf, count, &val);
 	if (ret)
 		return ret;
-
-	mutex_lock(&proc_lock);
-	*ptr = val;
-	mutex_unlock(&proc_lock);
-
+	scoped_guard(mutex, &proc_lock)
+		*ptr = val;
 	return count;
 }
 
@@ -1094,11 +1090,8 @@ static ssize_t irq_mon_tracing_set(struct file *filp, const char *ubuf,
 	ret = kstrtobool_from_user(ubuf, count, &val);
 	if (ret)
 		return ret;
-
-	mutex_lock(&proc_lock);
-	irq_mon_tracer_tracing_set(tracer, val);
-	mutex_unlock(&proc_lock);
-
+	scoped_guard(mutex, &proc_lock)
+		irq_mon_tracer_tracing_set(tracer, val);
 	return count;
 }
 
@@ -1119,11 +1112,8 @@ ssize_t irq_mon_count_set(struct file *filp, const char *ubuf,
 	ret = kstrtobool_from_user(ubuf, count, &val);
 	if (ret)
 		return ret;
-
-	mutex_lock(&proc_lock);
-	irq_count_tracer_set(val);
-	mutex_unlock(&proc_lock);
-
+	scoped_guard(mutex, &proc_lock)
+		irq_count_tracer_set(val);
 	return count;
 }
 
@@ -1131,9 +1121,8 @@ static int irq_mon_uint_show(struct seq_file *s, void *p)
 {
 	unsigned int val;
 
-	mutex_lock(&proc_lock);
-	val = *(unsigned int *)s->private;
-	mutex_unlock(&proc_lock);
+	scoped_guard(mutex, &proc_lock)
+		val = *(unsigned int *)s->private;
 	seq_printf(s, "%u\n", val);
 	return 0;
 }
@@ -1156,11 +1145,8 @@ static ssize_t irq_mon_uint_write(struct file *filp, const char *ubuf,
 	ret = kstrtouint_from_user(ubuf, count, 10, &val);
 	if (ret)
 		return ret;
-
-	mutex_lock(&proc_lock);
-	*ptr = val;
-	mutex_unlock(&proc_lock);
-
+	scoped_guard(mutex, &proc_lock)
+		*ptr = val;
 	return count;
 }
 

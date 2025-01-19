@@ -288,15 +288,12 @@ EXPORT_SYMBOL_GPL(irq_mon_aee_period_set);
 int irq_mon_aee_callback_register(unsigned int irq, aee_callback_t fn)
 {
 	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
-	unsigned long flags;
 
 	desc = desc ?: irq_mon_desc_alloc(irq);
 	if (!desc)
 		return -ENOMEM;
-
-	spin_lock_irqsave(&aee_callback_lock, flags);
+	guard(spinlock_irqsave)(&aee_callback_lock);
 	rcu_assign_pointer(desc->fn, fn);
-	spin_unlock_irqrestore(&aee_callback_lock, flags);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(irq_mon_aee_callback_register);
@@ -304,14 +301,11 @@ EXPORT_SYMBOL_GPL(irq_mon_aee_callback_register);
 void irq_mon_aee_callback_unregister(unsigned int irq)
 {
 	struct irq_mon_desc *desc = irq_mon_desc_lookup(irq);
-	unsigned long flags;
 
 	if (!desc)
 		return;
-
-	spin_lock_irqsave(&aee_callback_lock, flags);
-	rcu_assign_pointer(desc->fn, NULL);
-	spin_unlock_irqrestore(&aee_callback_lock, flags);
+	scoped_guard(spinlock_irqsave, &aee_callback_lock)
+		rcu_assign_pointer(desc->fn, NULL);
 	synchronize_rcu();
 }
 EXPORT_SYMBOL_GPL(irq_mon_aee_callback_unregister);
@@ -324,25 +318,20 @@ void irq_mon_aee_callback(unsigned int irq, enum irq_mon_aee_type type)
 	if (!desc)
 		return;
 
-	rcu_read_lock();
+	guard(rcu)();
 	fn = rcu_dereference(desc->fn);
 	if (fn)
 		fn(desc->irq, type);
-	rcu_read_unlock();
 }
 
-static void update_irq_count(void)
+static void prealloc_imdesc(void)
 {
+	struct irq_mon_desc *imdesc;
+	struct irq_desc *desc;
 	unsigned int irq;
 	int cpu;
-	struct irq_desc *desc;
-	struct irq_mon_desc *imdesc;
-	struct irq_count_stat *stat = &irq_count_stat;
-	unsigned long flags;
-	XA_STATE(xas, &imdesc_xa, 0);
 
-	/* Step 1: pre-allocate irq_mon_desc */
-	rcu_read_lock();
+	guard(rcu)();
 	for_each_irq_nr(irq) {
 		imdesc = irq_mon_desc_lookup(irq);
 		if (imdesc)
@@ -359,7 +348,19 @@ static void update_irq_count(void)
 			}
 		}
 	}
-	rcu_read_unlock();
+}
+
+static void update_irq_count(void)
+{
+	int cpu;
+	struct irq_desc *desc;
+	struct irq_mon_desc *imdesc;
+	struct irq_count_stat *stat = &irq_count_stat;
+	unsigned long flags;
+	XA_STATE(xas, &imdesc_xa, 0);
+
+	/* Step 1: pre-allocate irq_mon_desc */
+	prealloc_imdesc();
 
 	/*
 	 * Step 2: Take a snapshot of IRQ counts.
@@ -396,7 +397,6 @@ static void show_one_imdesc(unsigned int output, struct irq_mon_desc *imdesc,
 	char msg[MAX_MSG_LEN];
 	struct seq_buf buf;
 	struct irq_desc *desc;
-	unsigned long flags;
 
 	count = IMDESC_IRQ(imdesc, cpu, index);
 	prev_count = IMDESC_IRQ(imdesc, cpu, !index);
@@ -411,15 +411,15 @@ static void show_one_imdesc(unsigned int output, struct irq_mon_desc *imdesc,
 		irq_mon_msg(output, "%s{irq_desc not exist!}", msg);
 		return;
 	}
-	raw_spin_lock_irqsave(&desc->lock, flags);
-	if (desc->action && desc->action->name) {
-		seq_buf_printf(&buf, "%s", desc->action->name);
-		if (!strcmp(desc->action->name, "IPI"))
-			seq_buf_printf(&buf, "%d", desc_to_ipi_type(desc));
-	} else {
-		seq_buf_printf(&buf, "%s", "NULL");
+	scoped_guard(raw_spinlock_irqsave, &desc->lock) {
+		if (desc->action && desc->action->name) {
+			seq_buf_printf(&buf, "%s", desc->action->name);
+			if (!strcmp(desc->action->name, "IPI"))
+				seq_buf_printf(&buf, "%d", desc_to_ipi_type(desc));
+		} else {
+			seq_buf_printf(&buf, "%s", "NULL");
+		}
 	}
-	raw_spin_unlock_irqrestore(&desc->lock, flags);
 	irq_mon_msg(output, "%s", msg);
 }
 
@@ -440,7 +440,7 @@ static void __show_irq_count_info(unsigned int output)
 		    sec_high(stat->t_end), sec_low(stat->t_end),
 		    msec_high(stat->t_diff));
 
-	rcu_read_lock();
+	guard(rcu)();
 	for_each_possible_cpu(cpu) {
 		irq_mon_msg(output, "CPU%d", cpu);
 		irq_mon_msg(output, "# IRQ ORIG-COUNT  NEW-COUNT  INCREASED IRQ-NAME");
@@ -449,7 +449,6 @@ static void __show_irq_count_info(unsigned int output)
 			show_one_imdesc(output, imdesc, cpu, stat->index);
 		irq_mon_msg(output, "");
 	}
-	rcu_read_unlock();
 }
 
 void show_irq_count_info(unsigned int output)
@@ -508,7 +507,7 @@ static void irq_count_core(void)
 	do_div(t_diff_ms, NSEC_PER_MSEC);
 
 	xas_set(&xas, 0);
-	rcu_read_lock();
+	guard(rcu)();
 	xas_for_each(&xas, imdesc, ULONG_MAX) {
 		struct seq_buf buf_msg, buf_mod;
 		unsigned long count, flags;
@@ -588,7 +587,6 @@ static void irq_count_core(void)
 			}
 		}
 	}
-	rcu_read_unlock();
 }
 
 static int irq_count_kthread(void *unused)
