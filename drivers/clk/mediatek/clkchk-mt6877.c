@@ -492,11 +492,11 @@ static void devapc_dump(void)
 	print_subsys_reg_mt6877(apmixed);
 }
 
-//TODO:
-// static struct devapc_vio_callbacks devapc_vio_handle = {
-// .id = DEVAPC_SUBSYS_CLKMGR,
-// .debug_dump = devapc_dump,
-// };
+
+static struct devapc_vio_callbacks devapc_vio_handle = {
+	.id = DEVAPC_SUBSYS_CLKMGR,
+	.debug_dump = devapc_dump,
+};
 #endif
 
 u32 get_mt6877_reg_value(u32 id, u32 ofs)
@@ -638,7 +638,7 @@ static int clk_chk_mt6877_probe(struct platform_device *pdev)
 	set_clkchk_ops(&clkchk_mt6877_ops);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
-	// register_devapc_vio_callback(&devapc_vio_handle);
+	register_devapc_vio_callback(&devapc_vio_handle);
 #endif
 
 #if CHECK_VCORE_FREQ
