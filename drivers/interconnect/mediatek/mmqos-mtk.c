@@ -254,14 +254,17 @@ u32 off_reg_value[MAX_BW_VALUE_NUM];
 
 u32 freq_mode = BY_REGULATOR;
 
-enum hrt_ostdl_policy {
-	HRT_OSTDL_1_5 = 0,
-	HRT_OSTDL_1,
-	HRT_OSTDL_2,
+enum ostdl_latency {
+	OSTDL_1_5 = 0,
+	OSTDL_1,
+	OSTDL_2,
+	OSTDL_3,
 };
 
-u32 r_hrt_ostdl = HRT_OSTDL_1_5;
-u32 w_hrt_ostdl = HRT_OSTDL_1_5;
+u32 r_hrt_ostdl = OSTDL_1_5;
+u32 w_hrt_ostdl = OSTDL_1_5;
+u32 r_srt_ostdl = OSTDL_1;
+u32 w_srt_ostdl = OSTDL_1;
 
 static void mmqos_update_comm_bw(struct device *dev,
 	u32 comm_port, u32 freq, u64 mix_bw, u64 bw_peak, bool qos_bound, bool max_bwl)
@@ -1343,12 +1346,19 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				icc_to_MBps(src->v2_mix_bw),
 				larb_port_node->bw_ratio);
 			if (src->peak_bw) {
-				if ((larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_1_5) ||
-					(!larb_port_node->is_write && r_hrt_ostdl == HRT_OSTDL_1_5))
+				if ((larb_port_node->is_write && w_hrt_ostdl == OSTDL_1_5) ||
+					(!larb_port_node->is_write && r_hrt_ostdl == OSTDL_1_5))
 					value = SHIFT_ROUND(value * 3, 1);
-				if ((larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_2) ||
-					(larb_port_node->is_write && w_hrt_ostdl == HRT_OSTDL_1) ||
-					(!larb_port_node->is_write && r_hrt_ostdl == HRT_OSTDL_2))
+				if ((larb_port_node->is_write && w_hrt_ostdl == OSTDL_2) ||
+					(larb_port_node->is_write && w_hrt_ostdl == OSTDL_1) ||
+					(!larb_port_node->is_write && r_hrt_ostdl == OSTDL_2))
+					value = SHIFT_ROUND(
+						icc_to_MBps(src->v2_mix_bw),
+						larb_port_node->bw_ratio - 1);
+				if (larb_port_node->is_write && w_hrt_ostdl == OSTDL_3)
+					value = value * 3;
+			} else {
+				if (larb_port_node->is_write && w_srt_ostdl == OSTDL_2)
 					value = SHIFT_ROUND(
 						icc_to_MBps(src->v2_mix_bw),
 						larb_port_node->bw_ratio - 1);
@@ -2100,8 +2110,9 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 			comm_port_bw_full_dump(file, comm_id, port_id);
 	}
 
-	seq_printf(file, "MMQoS OSTDL Dump r:%2d w:%2d       %8s %8s %8s %8s\n",
-		r_hrt_ostdl, w_hrt_ostdl,
+	seq_printf(file, "OSTDL Policy rh:%2d wh:%2d rs:%2d ws:%2d\n",
+		r_hrt_ostdl, w_hrt_ostdl, r_srt_ostdl, w_srt_ostdl);
+	seq_printf(file, "MMQoS OSTDL Dump:                %8s %8s %8s %8s\n",
 		"avg_bw", "peak_bw", "mix_bw", "ostdl");
 	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
 		larb_port_ostdl_full_dump(file, larb_id);
@@ -2465,9 +2476,13 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	of_property_read_u32(pdev->dev.of_node, "r-hrt-ostdl", &r_hrt_ostdl);
 	of_property_read_u32(pdev->dev.of_node, "w-hrt-ostdl", &w_hrt_ostdl);
 
+	of_property_read_u32(pdev->dev.of_node, "r-srt-ostdl", &r_srt_ostdl);
+	of_property_read_u32(pdev->dev.of_node, "w-srt-ostdl", &w_srt_ostdl);
+
 	mmqos_met_not_freerun = of_property_read_bool(pdev->dev.of_node, "mediatek,mmqos-met-not-freerun");
 	pr_notice("[mmqos] mediatek,mmqos-met-not-freerun: %d\n", mmqos_met_not_freerun);
-	MMQOS_DBG("hrt ostdl policy, read:%d, write:%d", r_hrt_ostdl, w_hrt_ostdl);
+	MMQOS_DBG("ostdl policy, hrt read:%d, write:%d, srt read:%d, write:%d",
+		r_hrt_ostdl, w_hrt_ostdl, r_srt_ostdl, w_srt_ostdl);
 
 	for (i = 0 ; i < MMQOS_MAX_DISP_VIRT_LARB_NUM ; i++)
 		mmqos->disp_virt_larbs[i] = mmqos_desc->disp_virt_larbs[i];
@@ -3160,6 +3175,12 @@ MODULE_PARM_DESC(r_hrt_ostdl, "Read HRT OSTDL Policy");
 
 module_param(w_hrt_ostdl, uint, 0644);
 MODULE_PARM_DESC(w_hrt_ostdl, "Write HRT OSTDL Policy");
+
+module_param(r_srt_ostdl, uint, 0644);
+MODULE_PARM_DESC(r_srt_ostdl, "Read SRT OSTDL Policy");
+
+module_param(w_srt_ostdl, uint, 0644);
+MODULE_PARM_DESC(w_srt_ostdl, "Write SRT OSTDL Policy");
 
 u32 larb_port_ostdl;
 
