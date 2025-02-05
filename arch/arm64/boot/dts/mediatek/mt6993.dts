@@ -4512,6 +4512,39 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
+		dfd_mcu: dfd-mcu {
+			compatible = "mediatek,dfd_mcu";
+			enabled = <1>;
+			hw-version = <35>;
+			sw-version = <1>;
+			dfd-timeout = <0x2710>;
+			dump-to-dramc-channel = <1>;
+			enable-dramc-hub-mode = <1>;
+			buf-addr-align = <0x1000000>;
+			buf-addr-max = <0xffffffff>;
+			buf-length = <0x380000>;
+			nr-max-core = <8>;
+			nr-big-core = <4>;
+			nr-rs-entry-little = <16>;
+			nr-rs-entry-big = <32>;
+			nr-header-row = <4>;
+			chip-id-offset = <0x38>;
+			check-pattern-offset = <0x20>;
+			dfd-disable-efuse = <25 22>;
+			/* dfd-disable-efuse = <(-1) (-1)>; */
+			dfd_cache: dfd-cache {
+				enabled = <1>;
+				/* dfd-timeout = <0x3a980>; */ /* 120 sec for full cache dump */
+				/* dfd-timeout = <0x1d4c0>; */ /* 60 sec for full cache dump */
+				dfd-timeout = <0xc000>; /* 24.6 sec */
+				/* buf-length = <0x2000000>; */ /* for full cache dump */
+				buf-length = <0x380000>;
+				tap-en = <0x0>; /* for all SRAM dump */
+				/* tap-en = <0x0f1fffff>; *//* for all SRAM dump */
+				tap-en2 = <0x000000f0>; /* for CPU EB_mst/slv/dfd_log and GIC SRAM dump */
+			};
+		};
+
 		lkg: lkg@51c1400 {
 			compatible = "mediatek,mtk-lkg";
 			reg = <0 0x051c1400 0 0xc00>;
