@@ -105,9 +105,6 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x8e>;
 		clocks =
-			<&ufs1cfg_ao_clk UFS1AO_UNIPRO_TX_SYM_UFS>,
-			<&ufs1cfg_ao_clk UFS1AO_UNIPRO_RX_SYM0_UFS>,
-			<&ufs1cfg_ao_clk UFS1AO_UNIPRO_RX_SYM1_UFS>,
 			<&ufs1cfg_ao_clk UFS1AO_UNIPRO_SYS_UFS>,
 			<&ufs1cfg_ao_clk UFS1AO_UNIPRO_SAP_UFS>,
 			<&ufs1cfg_ao_clk UFS1AO_U_PHY_SAP_UFS>,
@@ -120,9 +117,6 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x8f>;
 		clocks =
-			<&ufs0cfg_ao_clk UFS0AO_UNIPRO_TX_SYM_UFS>,
-			<&ufs0cfg_ao_clk UFS0AO_UNIPRO_RX_SYM0_UFS>,
-			<&ufs0cfg_ao_clk UFS0AO_UNIPRO_RX_SYM1_UFS>,
 			<&ufs0cfg_ao_clk UFS0AO_UNIPRO_SYS_UFS>,
 			<&ufs0cfg_ao_clk UFS0AO_UNIPRO_SAP_UFS>,
 			<&ufs0cfg_ao_clk UFS0AO_U_PHY_SAP_UFS>,
