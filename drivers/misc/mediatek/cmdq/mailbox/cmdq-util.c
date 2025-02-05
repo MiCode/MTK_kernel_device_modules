@@ -22,10 +22,6 @@
 
 #include "cmdq-util.h"
 
-#ifdef CMDQ_SECURE_SUPPORT
-#include "cmdq-sec-mailbox.h"
-#endif
-
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
 #include <soc/mediatek/smi.h>
 #endif

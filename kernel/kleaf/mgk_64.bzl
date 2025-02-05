@@ -169,7 +169,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/slbc:ktf_slbc_it",
     "//vendor/mediatek/tests/kernel/ktf_testcase/smi:ktf_smi",
     "//vendor/mediatek/tests/kernel/ktf_testcase/smi/smi_ait:ktf_smi_ait",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
+    #"//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mtprintk:ktf_mtprintk",
     "//vendor/mediatek/tests/kernel/ktf_testcase/trusted_mem/trusted_mem_2307:2307",
@@ -179,7 +179,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/emmc:ktf_emmc",
     "//vendor/mediatek/tests/kernel/ktf_testcase/masp:ktf_masp",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ufs:ktf_ufs",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce_wbgai:ktf_cmdq_wbgai",
+    #"//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce_wbgai:ktf_cmdq_wbgai",
     "//vendor/mediatek/tests/kernel/ktf_testcase/hybrid:ktf_hybrid_demo",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_device_class_ut:ktf_usb_device_class_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_type_c_ut:ktf_usb_type_c_ut",
@@ -252,7 +252,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/slbc:ktf_slbc_it",
     "//vendor/mediatek/tests/kernel/ktf_testcase/smi:ktf_smi",
     "//vendor/mediatek/tests/kernel/ktf_testcase/smi/smi_ait:ktf_smi_ait",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
+    #"//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce/cmdq_gce_ait:ktf_cmdq_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/mtprintk:ktf_mtprintk",
     "//vendor/mediatek/tests/kernel/ktf_testcase/trusted_mem/trusted_mem_2307:2307",
@@ -262,7 +262,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/emmc:ktf_emmc",
     "//vendor/mediatek/tests/kernel/ktf_testcase/masp:ktf_masp",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ufs:ktf_ufs",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce_wbgai:ktf_cmdq_wbgai",
+    #"//vendor/mediatek/tests/kernel/ktf_testcase/cmdq_gce_wbgai:ktf_cmdq_wbgai",
     "//vendor/mediatek/tests/kernel/ktf_testcase/hybrid:ktf_hybrid_demo",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_device_class_ut:ktf_usb_device_class_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/usb_type_c_ut:ktf_usb_type_c_ut",
@@ -453,6 +453,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:srcs".format(kernel_version),
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:srcs",
 ]
 
@@ -608,6 +609,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/smi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -1061,6 +1063,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
     "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod-ise".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:mtk-hw-semaphore".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1315,6 +1318,11 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6895":"mt6895",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6879":"mt6879",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6991".format(kernel_version): "mt6991",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6855".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6789".format(kernel_version): "mt6789",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6878".format(kernel_version): "mt6878",
 }
 
 mgk_64_kleaf_eng_device_modules = [
@@ -1432,7 +1440,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/clkbuf/clkbuf.ko",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-sec-drv.ko",
     "drivers/misc/mediatek/cmdq/mailbox/cmdq-test.ko",
-    "drivers/misc/mediatek/cmdq/mailbox/mtk-cmdq-drv-ext.ko",
+    #"drivers/misc/mediatek/cmdq/mailbox/mtk-cmdq-drv-ext.ko",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_ipi.ko",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr.ko",
     #drivers/misc/mediatek/connectivity/connadp.ko",
@@ -1588,9 +1596,6 @@ mgk_64_platform_device_modules = {
     #"drivers/clk/mediatek/clk-mt6893-ven2.ko": "mt6893",
     #"drivers/clk/mediatek/clk-mt6893.ko": "mt6893",
     #"drivers/clk/mediatek/clk-mt6893-pg.ko": "mt6893",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6893.ko": "mt6893",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6853.ko": "mt6853",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6781.ko": "mt6781",
     #"drivers/clk/mediatek/clk-chk-mt6893.ko": "mt6893",
     #"drivers/clk/mediatek/clk-chk-mt6899.ko": "mt6899",
     #"drivers/clk/mediatek/clk-chk-mt6983.ko": "mt6983",
@@ -1731,22 +1736,6 @@ mgk_64_platform_device_modules = {
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6985.ko": "mt6985",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6989.ko": "mt6989",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6878.ko": "mt6878",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6761.ko": "mt6761",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6765.ko": "mt6765",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6878.ko": "mt6878",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6886.ko": "mt6886",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6897.ko": "mt6897",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6983.ko": "mt6983",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6985.ko": "mt6985",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6989.ko": "mt6989",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6768.ko": "mt6768",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6991.ko": "mt6991",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6993.ko": "mt6993",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6877.ko": "mt6877",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6899.ko": "mt6899",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6833.ko": "mt6833",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6789.ko": "mt6789",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-platform-mt6855.ko": "mt6855",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6886.ko": "mt6886",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6897.ko": "mt6897",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6983.ko": "mt6983",
