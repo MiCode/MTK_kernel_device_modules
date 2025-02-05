@@ -8587,6 +8587,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					/bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
 			mboxes = <&gce 13 0 CMDQ_THR_PRIO_HIGHEST>;
+			mediatek,smi = <&smi_mdp_common &smi_sram_sub_comm4>;
+			mtk,smmu-shared = <&mm_smmu_gce_d>;
+			mtk,iommu-dma-axid = <SMMU_L62_GCE_D>;
 			gce-hwid = <0>;
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
@@ -8599,6 +8602,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 			gce-fast-mtcmos;
 			ao-ctrl-by-mminfra;
+		};
+
+		gce_sec: gce-mbox-sec@30100000 {
+			compatible = "mediatek,mailbox-gce-sec";
+			reg = <0 0x30100000 0 0x80000>;
+			virtio-supply = <&trusty_virtio>;
+			#mbox-cells = <3>;
+			mboxes = <&gce 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			dma-mask-bit = <35>;
+			gce-hwid = <0>;
 		};
 
 		gce_2: gce@30300000 {
@@ -8621,6 +8634,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					/bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
 			mboxes = <&gce_2 13 0 CMDQ_THR_PRIO_HIGHEST>;
+			mediatek,smi = <&smi_mdp_common &smi_sram_sub_comm4>;
+			mtk,smmu-shared = <&mm_smmu_gce_d>;
+			mtk,iommu-dma-axid = <SMMU_L62_GCE_D2>;
 			gce-hwid = <1>;
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
@@ -8633,6 +8649,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 		};
 
+		gce_sec_1: gce-mbox-sec@30300000 {
+			compatible = "mediatek,mailbox-gce-sec";
+			reg = <0 0x30300000 0 0x80000>;
+			virtio-supply = <&trusty_virtio>;
+			#mbox-cells = <3>;
+			mboxes = <&gce_2 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			dma-mask-bit = <35>;
+			gce-hwid = <1>;
+		};
+
 		gce_m: gce@30180000 {
 			compatible = "mediatek,mt6993-gce";
 			reg = <0 0x30180000 0 0x80000>;
@@ -8642,6 +8668,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#gce-event-cells = <1>;
 			#gce-subsys-cells = <2>;
 			mboxes = <&gce_m 14 0 CMDQ_THR_PRIO_HIGHEST>;
+			mediatek,smi = <&smi_mdp_common &smi_sram_sub_comm4>;
+			mtk,smmu-shared = <&mm_smmu_gce_m>;
+			mtk,iommu-dma-axid = <SMMU_L62_GCE_M>;
 			gce-hwid = <2>;
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
@@ -8653,6 +8682,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 		};
 
+		gce_m_sec: gce-mbox-m-sec@30180000 {
+			compatible = "mediatek,mailbox-gce-sec";
+			reg = <0 0x30180000 0 0x80000>;
+			#mbox-cells = <3>;
+			virtio-supply = <&trusty_virtio>;
+			mboxes = <&gce_m 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			dma-mask-bit = <35>;
+			gce-hwid = <2>;
+		};
+
 		gce_m_2: gce@30380000 {
 			compatible = "mediatek,mt6993-gce";
 			reg = <0 0x30380000 0 0x80000>;
@@ -8662,6 +8701,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#gce-event-cells = <1>;
 			#gce-subsys-cells = <2>;
 			mboxes = <&gce_m_2 14 0 CMDQ_THR_PRIO_HIGHEST>;
+			mediatek,smi = <&smi_mdp_common &smi_sram_sub_comm4>;
+			mtk,smmu-shared = <&mm_smmu_gce_m>;
+			mtk,iommu-dma-axid = <SMMU_L62_GCE_M2>;
 			gce-hwid = <3>;
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
@@ -8673,14 +8715,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 		};
 
+		gce_m_sec_2: gce-mbox-m-sec@30380000 {
+			compatible = "mediatek,mailbox-gce-sec";
+			reg = <0 0x30380000 0 0x80000>;
+			#mbox-cells = <3>;
+			virtio-supply = <&trusty_virtio>;
+			mboxes = <&gce_m_2 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			dma-mask-bit = <35>;
+			gce-hwid = <3>;
+		};
+
 		cmdq_test: cmdq-test@0 {
 			compatible = "mediatek,cmdq-test";
-			mediatek,gce = <&gce>;
-			//cmdq-supply = <&gce_sec>;
-			mboxes = <&gce 14 3000 CMDQ_THR_PRIO_1>,
-				<&gce_2 8 3000 CMDQ_THR_PRIO_1>,
-				<&gce 28 3000 CMDQ_THR_PRIO_1>;
-				//<&gce_sec 9 0 CMDQ_THR_PRIO_1>;
+			mediatek,gce = <&gce_m_2>;
+			cmdq-supply = <&gce_m_sec_2>;
+			mboxes = <&gce_m_2 8 3000 CMDQ_THR_PRIO_1>,
+				<&gce_m 8 3000 CMDQ_THR_PRIO_1>,
+				<&gce_m 30 3000 CMDQ_THR_PRIO_1>,
+				<&gce_m_sec_2 9 0 CMDQ_THR_PRIO_1>;
 			gce-event-names = "token_user_0";
 			gce-events = <&gce CMDQ_SYNC_TOKEN_USER_0>;
 			token-user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
@@ -15941,7 +15993,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			smmu-supply = <&mm_smmu>;
 		};
 		mm_smmu_gce_m: mm-smmu-gce-m {
-			//compatible = "mediatek,smmu-share-group";
+			compatible = "mediatek,smmu-share-group";
 			label = "mm_smmu_gce_m";
 			dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mm_smmu 183>;
@@ -15950,7 +16002,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			smmu-supply = <&mm_smmu>;
 		};
 		mm_smmu_gce_d: mm-smmu-gce-d {
-			//compatible = "mediatek,smmu-share-group";
+			compatible = "mediatek,smmu-share-group";
 			label = "mm_smmu_gce_d";
 			dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mm_smmu 199>;
