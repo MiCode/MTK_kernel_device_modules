@@ -370,9 +370,9 @@ int8_t  VL53LX_f_030(
 
 
 	if (phase_delta > 0)
-		bin_offset = (int8_t)((phase_delta + 1024) / 2048);
+		bin_offset = (int8_t)(((phase_delta + 1024) / 2048) & 0xFF);
 	else
-		bin_offset = (int8_t)((phase_delta - 1024) / 2048);
+		bin_offset = (int8_t)(((phase_delta - 1024) / 2048) & 0xFF);
 
 	LOG_FUNCTION_END(0);
 

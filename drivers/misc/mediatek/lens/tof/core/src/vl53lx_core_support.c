@@ -340,8 +340,8 @@ uint16_t VL53LX_rate_maths(
 
 
 	if (VL53LX_p_018 > VL53LX_SPAD_TOTAL_COUNT_RES_THRES)
-		tmp_int = tmp_int << 4;
-
+		if(tmp_int <= 0xFFF)
+			tmp_int = tmp_int << 4;
 
 
 	if (tmp_int > 0xFFFF)

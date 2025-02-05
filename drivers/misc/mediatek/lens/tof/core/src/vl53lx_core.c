@@ -911,16 +911,16 @@ int32_t VL53LX_i2c_decode_int32_t(
 {
 
 
-	int32_t    value = 0x00;
+	uint32_t    value = 0x00;
 
 
 	if (*pbuffer >= 0x80)
 		value = 0xFFFFFFFF;
 
 	while (count-- > 0)
-		value = (value << 8) | (int32_t)*pbuffer++;
+		value = (value << 8) | (uint32_t)*pbuffer++;
 
-	return value;
+	return (int32_t)value;
 }
 
 
@@ -1190,10 +1190,10 @@ uint16_t VL53LX_calc_range_ignore_threshold(
 
 	if (range_ignore_thresh_int > 0xFFFF)
 		range_ignore_thresh_kcps = 0xFFFF;
-	else
-		range_ignore_thresh_kcps = (uint16_t)range_ignore_thresh_int;
-
-
+	else {
+		range_ignore_thresh_kcps =
+			(uint16_t)(range_ignore_thresh_int & 0xFFFF);
+	}
 
 	LOG_FUNCTION_END(0);
 
@@ -2268,8 +2268,8 @@ VL53LX_Error VL53LX_hist_xtalk_extract_calc_window(
 
 
 	if (pxtalk_data->VL53LX_p_013 > (pxtalk_data->target_start-1))
-		pxtalk_data->VL53LX_p_013 = pxtalk_data->target_start-1;
-
+		pxtalk_data->VL53LX_p_013 = (pxtalk_data->target_start > 0) ?
+				(pxtalk_data->target_start-1) : 0;
 
 	pxtalk_data->effective_width =
 			(2048 * ((int32_t)pxtalk_data->VL53LX_p_013+1));
