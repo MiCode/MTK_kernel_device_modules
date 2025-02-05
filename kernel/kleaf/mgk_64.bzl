@@ -1564,6 +1564,7 @@ mgk_64_device_modules = [
     # "drivers/misc/mediatek/cg_ppt/mtk_cg_peak_power_throttling.ko",
     "drivers/misc/mediatek/perf_common/mtk_perf_common.ko",
     "drivers/misc/mediatek/performance/fpsgo_v8/mtk_fpsgo_v8.ko",
+    "drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo_v3.ko",
     "drivers/misc/mediatek/performance/frs/frs.ko",
     "drivers/misc/mediatek/performance/powerhal_cpu_ctrl/powerhal_cpu_ctrl.ko",
     "drivers/misc/mediatek/performance/sbe/mtk_sbe.ko",

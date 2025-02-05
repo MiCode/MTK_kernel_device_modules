@@ -1468,11 +1468,7 @@ static int __init fpsgo_init(void)
 	fpsgo_get_cmd_fp = fpsgo_get_cmd;
 	fpsgo_notify_buffer_quota_fp = fpsgo_notify_buffer_quota;
 	fpsgo_get_pid_fp = fpsgo_get_pid;
-#if IS_ENABLED(CONFIG_MTK_PERF_IOCTL_MAGT)
-	magt2fpsgo_notify_target_fps_fp = fpsgo_notify_magt_target_fps;
-	magt2fpsgo_notify_dep_list_fp = fpsgo_notify_magt_dep_list;
-	magt2fpsgo_get_fpsgo_frame_info = get_fpsgo_frame_info;
-#endif
+
 	fpsgo_get_lr_pair_fp = fpsgo_get_lr_pair;
 	fpsgo_set_rl_l2q_enable_fp = fpsgo_set_rl_l2q_enable;
 	fpsgo_set_rl_expected_l2q_us_fp = fpsgo_set_expected_l2q_us;
