@@ -490,17 +490,17 @@
 
 			scmi_tinysys: protocol@80 {
 				reg = <0x80>;
-				scmi_qos = <1>;
-				scmi_pmic = <2>;
-				scmi_met = <3>;
-				scmi_gpupm = <6>;
-				scmi_plt = <7>;
-				scmi_smi = <8>;
-				scmi_cm = <9>;
-				scmi_slbc = <10>;
-				scmi_ssc = <11>;
-				scmi_apmcupm = <12>;
-				scmi_mminfra = <13>;
+				scmi-qos = <1>;
+				scmi-pmic = <2>;
+				scmi-met = <3>;
+				scmi-gpupm = <6>;
+				scmi-plt = <7>;
+				scmi-smi = <8>;
+				scmi-cm = <9>;
+				scmi-slbc = <10>;
+				scmi-ssc = <11>;
+				scmi-apmcupm = <12>;
+				scmi-mminfra = <13>;
 			};
 		};
 	};
@@ -764,8 +764,10 @@
 		interrupts = <GIC_SPI 289 IRQ_TYPE_LEVEL_HIGH 0>;
 
 		interrupt-names = "ipc";
-		sspm_res_ram_start = <0x0>;
-		sspm_res_ram_size = <0x110000>; /* 1M + 64K */
+		sspm-res-ram-start = <0x0>;
+		sspm-res-ram-size = <0x110000>; /* 1M + 64K */
+		sspm-share-region-base = <0x20000>;
+		sspm-share-region-size = <0x10000>;
 	};
 
 	teeperf {
@@ -799,7 +801,7 @@
 		ranges = <0 0x0 0x1C350000 0x80>;
 
 		scmi_tx_shmem: tiny_mbox@0 {
-			compatible = "arm,scmi-tx-shmem";
+			compatible = "arm,scmi-shmem";
 			reg = <0x0 0x80>;
 		};
 
@@ -819,7 +821,7 @@
 		ranges = <0 0x0 0x1C360000 0x80>;
 
 		scmi_rx_shmem: tiny_mbox@1 {
-			compatible = "arm,scmi-rx-shmem";
+			compatible = "arm,scmi-shmem";
 			reg = <0x0 0x80>;
 		};
 	};
