@@ -78,7 +78,7 @@ void cm_ipi_init(void)
 
 	_tinfo = get_scmi_tinysys_info();
 
-	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi_cm",
+	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-cm",
 			&scmi_cm_id);
 	if (ret) {
 		pr_info("get scmi_cm fail, ret %d\n", ret);
