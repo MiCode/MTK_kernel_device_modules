@@ -201,7 +201,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:tmem_hdrs".format(kernel_version),
     ],
     ko_deps = [
-        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-main".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz_tz_system".format(kernel_version),
     ],
     includes = ["."],
     out = "iommu_gz.ko",

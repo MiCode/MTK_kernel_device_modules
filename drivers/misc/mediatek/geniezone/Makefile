@@ -61,9 +61,9 @@ ifneq ($(filter y m, $(CONFIG_ARM_FFA_TRANSPORT)),)
    gz_main_mod-objs += gz_ffa.o
 endif
 
-#obj-$(CONFIG_MTK_GZ_TZ_SYSTEM) += gz_tz_system.o
-#gz_tz_system-objs += tz_system.o mtee-kree/tz_mmap.o mtee-kree/kree_mem.o
+obj-$(CONFIG_MTK_GZ_TZ_SYSTEM) += gz_tz_system.o
+gz_tz_system-objs += tz_system.o mtee-kree/tz_mmap.o mtee-kree/kree_mem.o
 
-#ifndef CONFIG_GRT_HYPERVISOR
-#  obj-$(CONFIG_MTK_ENABLE_GENIEZONE) += gz-trusty/
-#endif
+ifndef CONFIG_GRT_HYPERVISOR
+  obj-$(CONFIG_MTK_ENABLE_GENIEZONE) += gz-trusty/
+endif

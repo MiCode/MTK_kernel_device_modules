@@ -277,7 +277,7 @@ define_mgk_ddk_ko(
 		":tmem_local_hdrs",
 	],
 	ko_deps = [
-		"{}:gz-main".format(gz_package),
+		"{}:gz_tz_system".format(gz_package),
 		"{}:iommu_gz".format(iommu_package),
 		"{}:mcDrvModule".format(tee_package),
 	],
@@ -343,7 +343,7 @@ define_mgk_ddk_ko(
 	],
 	ko_deps = [
 		":ffa",
-		"{}:gz-main".format(gz_package),
+		"{}:gz_tz_system".format(gz_package),
 		"{}:iommu_gz".format(iommu_package),
 		"{}:mcDrvModule-ffa".format(tee_package),
 	],

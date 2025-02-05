@@ -38,6 +38,7 @@ mgk_package = "//kernel_device_modules-{}".format(kernel_version)
 
 gz_trusty_package = "{}/drivers/misc/mediatek/geniezone/gz-trusty".format(mgk_package)
 heaps_package = "{}/drivers/dma-buf/heaps".format(mgk_package)
+tmem_package = "{}/drivers/misc/mediatek/trusted_mem".format(mgk_package)
 
 ddk_headers(
 	name = "gz-public_hdrs",
@@ -79,30 +80,25 @@ ddk_headers(
 )
 
 define_mgk_ddk_ko(
-	name = "gz-main",
-	module_type = "main",
-	ko_deps = [
-#		":gz_main",
-		":gz_tz_system",
-	],
-)
-
-define_mgk_ddk_ko(
 	name = "gz_main",
-	module_type = "sub",
 	out = "gz_main_mod.ko",
 	srcs = [
-		"gz_main.c",
-		"mtee_ut/gz_ut.c",
-		"mtee_ut/gz_shmem_ut.c",
-		"mtee_ut/gz_vreg_ut.c",
+		"dummy.c",
 	],
 	conditional_srcs = {
-		"CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM": {
+		"CONFIG_MTK_GZ_MAIN": {
 			True: [
-				"mtee_ut/gz_chmem_ut.c",
+				"gz_main.c",
+				"mtee_ut/gz_ut.c",
+				"mtee_ut/gz_shmem_ut.c",
+				"mtee_ut/gz_vreg_ut.c",
 			],
 		},
+#		"CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM": {
+#			True: [
+#				"mtee_ut/gz_chmem_ut.c",
+#			],
+#		},
 		"CONFIG_ARM_FFA_TRANSPORT": {
 			True: [
 				"gz_ffa.c",
@@ -117,7 +113,10 @@ define_mgk_ddk_ko(
 		":gz-mtee_ut_hdrs",
 	],
 	ko_deps = [
-		"{}:system_heap".format(heaps_package),
+		":gz_tz_system",
+		"{}:gz-trusty".format(gz_trusty_package),
+		"{}:mtk_sec_heap".format(heaps_package),
+		"{}:ffa".format(tmem_package),
 	],
 	local_defines = gz_main_config["local_defines"],
 	copts = gz_main_config["copts"],
@@ -125,13 +124,19 @@ define_mgk_ddk_ko(
 
 define_mgk_ddk_ko(
 	name = "gz_tz_system",
-	module_type = "sub",
 	out = "gz_tz_system.ko",
 	srcs = [
-		"mtee-kree/kree_mem.c",
-		"mtee-kree/tz_mmap.c",
-		"tz_system.c",
+		"dummy.c",
 	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_TZ_SYSTEM": {
+			True: [
+				"mtee-kree/kree_mem.c",
+				"mtee-kree/tz_mmap.c",
+				"tz_system.c",
+			],
+		},
+	},
 	hdrs = [
 		":gz-public_hdrs",
 	],

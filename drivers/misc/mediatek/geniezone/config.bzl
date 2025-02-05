@@ -5,6 +5,9 @@
 
 gz_main_config = {
 	"local_defines": [
+		# disable tmem UTs due to including private headers
+		"CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM=0",
+		# enable secure storage UTs.
 		"GZ_SEC_STORAGE_UT=1",
 	],
 	"copts": [
@@ -13,7 +16,8 @@ gz_main_config = {
 
 gz_tz_system_config = {
 	"local_defines": [
-		"CONFIG_TEE=0", # disable TEEC-compliant APIs
+		# disable TEEC-compliant APIs
+		"CONFIG_TEE=0",
 	],
 	"copts": [
 	],

@@ -59,10 +59,15 @@ define_mgk_ddk_ko(
 	module_type = "sub",
 	out = "gz_trusty_mod.ko",
 	srcs = [
-		"trusty.c",
-		"smcnr-table.c",
+		"dummy.c",
 	],
 	conditional_srcs = {
+		"CONFIG_MTK_ENABLE_GENIEZONE": {
+			True: [
+				"trusty.c",
+				"smcnr-table.c",
+			],
+		},
 		"CONFIG_MT_GZ_TRUSTY_DEBUGFS": {
 			True: [
 				"trusty-debugfs.c",
@@ -84,8 +89,15 @@ define_mgk_ddk_ko(
 	module_type = "sub",
 	out = "gz_ipc_mod.ko",
 	srcs = [
-		"trusty-ipc.c",
+		"dummy.c",
 	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_VIRTIO_IPC": {
+			True: [
+				"trusty-ipc.c",
+			],
+		},
+	},
 	hdrs = [
 		"{}:gz-public_hdrs".format(gz_main_package),
 	],
@@ -101,8 +113,15 @@ define_mgk_ddk_ko(
 	module_type = "sub",
 	out = "gz_irq_mod.ko",
 	srcs = [
-		"trusty-irq.c",
+		"dummy.c",
 	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_IRQ": {
+			True: [
+				"trusty-irq.c",
+			],
+		},
+	},
 	hdrs = [
 		"{}:gz-public_hdrs".format(gz_main_package),
 	],
@@ -118,8 +137,15 @@ define_mgk_ddk_ko(
 	module_type = "sub",
 	out = "gz_log_mod.ko",
 	srcs = [
-		"gz-log.c",
+		"dummy.c",
 	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_LOG": {
+			True: [
+				"gz-log.c",
+			],
+		},
+	},
 	hdrs = [
 		"{}:gz-public_hdrs".format(gz_main_package),
 	],
@@ -136,9 +162,16 @@ define_mgk_ddk_ko(
 	module_type = "sub",
 	out = "gz_virtio_mod.ko",
 	srcs = [
-		"trusty-virtio.c",
-		"trusty-mem.c",
+		"dummy.c",
 	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_VIRTIO": {
+			True: [
+				"trusty-virtio.c",
+				"trusty-mem.c",
+			],
+		},
+	},
 	hdrs = [
 		"{}:gz-public_hdrs".format(gz_main_package),
 	],
