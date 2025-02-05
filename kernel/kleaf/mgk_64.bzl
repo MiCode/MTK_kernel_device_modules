@@ -1378,7 +1378,7 @@ mgk_64_device_modules = [
     # keep sorted
     #"drivers/char/hw_random/sec-rng.ko",
     #"drivers/clk/mediatek/fhctl.ko",
-    #"drivers/clocksource/timer-mediatek.ko",
+    "drivers/clocksource/timer-mediatek.ko",
     #"drivers/misc/mediatek/pkvm_smmu/pkvm_smmu.ko",
     #"drivers/dma/mediatek/mtk-cqdma.ko",
     #"drivers/dma/mediatek/mtk-uart-apdma.ko",
