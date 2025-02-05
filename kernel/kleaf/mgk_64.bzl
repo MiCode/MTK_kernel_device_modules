@@ -64,8 +64,26 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus",
     "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int",
     "//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3",
-    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_cus",
-    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_backlight_api:met_backlight_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_emi_api:met_emi_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_adv_api:met_gpu_adv_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_api:met_gpu_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpueb_api:met_gpueb_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_ipi_api:met_ipi_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_mcupm_api:met_mcupm_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_scmi_api:met_scmi_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_sspm_api:met_sspm_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_vcore_api:met_vcore_api_int",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_backlight_api:met_backlight_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_emi_api:met_emi_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_adv_api:met_gpu_adv_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_api:met_gpu_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpueb_api:met_gpueb_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_ipi_api:met_ipi_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_mcupm_api:met_mcupm_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_scmi_api:met_scmi_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_sspm_api:met_sspm_api_cus",
+    "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_vcore_api:met_vcore_api_cus",
     "//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3",
     #"//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus",
     #"//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int",
@@ -1849,8 +1867,26 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_int:fpsgo_int")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_cus")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api:met_api_v3_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/backlight_api_headers:backlight_api_headers_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_emi_api:met_emi_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_adv_api:met_gpu_adv_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_api:met_gpu_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpueb_api:met_gpueb_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_ipi_api:met_ipi_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_mcupm_api:met_mcupm_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_scmi_api:met_scmi_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_sspm_api:met_sspm_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_vcore_api:met_vcore_api_int")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/backlight_api_headers:backlight_api_headers_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_emi_api:met_emi_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_adv_api:met_gpu_adv_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpu_api:met_gpu_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_gpueb_api:met_gpueb_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_ipi_api:met_ipi_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_mcupm_api:met_mcupm_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_scmi_api:met_scmi_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_sspm_api:met_sspm_api_cus")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_vcore_api:met_vcore_api_cus")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/met_drv_v3:met_drv_v3")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/msync2_frd_cus/build:msync2_frd_cus")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/msync2_frd_int:msync2_frd_int")
