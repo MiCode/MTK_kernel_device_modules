@@ -1290,13 +1290,13 @@ static void FillRegSettings(struct PDA_Data_t *pda_PdaConfig,
 	}
 
 	// ROI data sequentially fill to PDA_CFG[127] ~ PDA_CFG[253]
-	for (pair = 45; pair <= (ROI_last-1+45); pair += 2) {
+	for (pair = 45; pair <= (ROI_last+45-1); pair += 2) {
 		PDA_WR32((PDA_devs[PDA_Index].m_pda_base + 0x004*(RegIndex_last++)),
 			(g_rgn_y_buf[pair] << 16) + g_rgn_x_buf[pair]);
 		PDA_WR32((PDA_devs[PDA_Index].m_pda_base + 0x004*(RegIndex_last++)),
 			(g_rgn_h_buf[pair] << 16) + g_rgn_w_buf[pair]);
 
-		if (pair == (ROI_last-1+45) && pair%2 != 0) {
+		if (pair == (ROI_last+45-1) && pair%2 != 0) {
 			// Process PDA_CFG[254] specially
 			if (pair == (PDA_MAXROI_PER_ROUND - 1)) {
 				nTemp = pda_PdaConfig->PDA_FrameSetting.PDA_CFG_254.Raw;
