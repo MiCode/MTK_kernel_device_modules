@@ -14,8 +14,12 @@
 /**************************************************
  * GPUFREQ Register Operation
  **************************************************/
-#define DRV_Reg32(addr) readl(addr)
-#define DRV_WriteReg32(addr, val) writel(val, addr)
+#define DRV_Reg32(addr)                     (readl(addr))
+#define DRV_WriteReg32(addr, val)           (writel(val, addr))
+#define DRV_SetReg32(addr, val)             (DRV_WriteReg32(addr, DRV_Reg32(addr) | (val)))
+#define DRV_ClrReg32(addr, val)             (DRV_WriteReg32(addr, DRV_Reg32(addr) & ~(val)))
+#define DRV_FieldReg32(addr, val, field)    \
+	(DRV_WriteReg32(addr, ((DRV_Reg32(addr) & ~(field)) | (((val) << (__builtin_ctz(field))) & (field)))))
 
 /**************************************************
  * Misc Definition
@@ -101,7 +105,6 @@ unsigned int __gpufreq_get_shader_present(void);
 int __gpufreq_power_control(enum gpufreq_power_state power);
 int __gpufreq_active_sleep_control(enum gpufreq_power_state power);
 void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size);
-void __gpufreq_dump_power_tracker_status(void);
 unsigned int __gpufreq_bus_tracker_vio_handler(void);
 void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_config_value val);
 struct gpufreq_core_mask_info *__gpufreq_get_core_mask_table(void);

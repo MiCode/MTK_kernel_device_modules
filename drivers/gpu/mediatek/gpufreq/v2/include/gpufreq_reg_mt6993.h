@@ -41,6 +41,22 @@
 #define MFG_TOP_POWER_TRACKER_PDC_STATUS3      (g_mfg_top_base + 0x0FF0)           /* 0x48500FF0 */
 #define MFG_TOP_POWER_TRACKER_PDC_STATUS4      (g_mfg_top_base + 0x0FF4)           /* 0x48500FF4 */
 #define MFG_TOP_POWER_TRACKER_PDC_STATUS5      (g_mfg_top_base + 0x0FF8)           /* 0x48500FF8 */
+#define MFG_TOP_VOLT_TRACKER_CON_1             (g_mfg_top_base + 0x1644)           /* 0x48501644 */
+#define MFG_TOP_VOLT_TRACKER_CON_2             (g_mfg_top_base + 0x1648)           /* 0x48501648 */
+#define MFG_TOP_VOLT_TRACKER_CON_3             (g_mfg_top_base + 0x164C)           /* 0x4850164C */
+#define MFG_TOP_VOLT_TRACKER_CON_4             (g_mfg_top_base + 0x1910)           /* 0x48501910 */
+#define MFG_TOP_VOLT_TRACKER_CON_5             (g_mfg_top_base + 0x1914)           /* 0x48501914 */
+#define MFG_TOP_VOLT_TRACKER_CON_6             (g_mfg_top_base + 0x1918)           /* 0x48501918 */
+#define MFG_TOP_VOLT_TRACKER_CON_7             (g_mfg_top_base + 0x191C)           /* 0x4850191C */
+#define MFG_TOP_VOLT_TRACKER_CON_8             (g_mfg_top_base + 0x1920)           /* 0x48501920 */
+#define MFG_TOP_TOP_FREQ_TRACKER_CON_0         (g_mfg_top_base + 0x1990)           /* 0x48501990 */
+#define MFG_TOP_TOP_FREQ_TRACKER_CON_1         (g_mfg_top_base + 0x1994)           /* 0x48501994 */
+#define MFG_TOP_TOP_FREQ_TRACKER_CON_2         (g_mfg_top_base + 0x1998)           /* 0x48501998 */
+#define MFG_TOP_TOP_FREQ_TRACKER_CON_3         (g_mfg_top_base + 0x199C)           /* 0x4850199C */
+#define MFG_TOP_STACK_FREQ_TRACKER_CON_0       (g_mfg_top_base + 0x19A0)           /* 0x485019A0 */
+#define MFG_TOP_STACK_FREQ_TRACKER_CON_1       (g_mfg_top_base + 0x19A4)           /* 0x485019A4 */
+#define MFG_TOP_STACK_FREQ_TRACKER_CON_2       (g_mfg_top_base + 0x19A8)           /* 0x485019A8 */
+#define MFG_TOP_STACK_FREQ_TRACKER_CON_3       (g_mfg_top_base + 0x19AC)           /* 0x485019AC */
 
 #define MFG_SMMU_BASE                          (0x48600000)
 #define MFG_SMMU_CR0                           (g_mfg_smmu_base + 0x0020)          /* 0x48600020 */

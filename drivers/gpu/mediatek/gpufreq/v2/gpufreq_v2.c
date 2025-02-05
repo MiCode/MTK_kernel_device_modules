@@ -55,7 +55,6 @@ static int gpufreq_ipi_to_gpueb(struct gpufreq_ipi_data data);
 static int gpufreq_validate_target(unsigned int *target);
 static void gpufreq_dump_infra_status_no_lock(char *log_buf, int *log_len, int log_size);
 static void gpufreq_dump_dvfs_status(char *log_buf, int *log_len, int log_size);
-static void gpufreq_dump_power_tracker_status(void);
 static void gpufreq_abort(void);
 
 /**
@@ -1666,7 +1665,6 @@ static void gpufreq_dump_infra_status_no_lock(char *log_buf, int *log_len, int l
 {
 	gpueb_dump_status(log_buf, log_len, log_size);
 	gpufreq_dump_dvfs_status(log_buf, log_len, log_size);
-	gpufreq_dump_power_tracker_status();
 
 	/* implement on AP */
 	if (gpufreq_fp && gpufreq_fp->dump_infra_status)
@@ -1746,23 +1744,6 @@ static void gpufreq_dump_dvfs_status(char *log_buf, int *log_len, int log_size)
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
 			"GPU_SB_Version: 0x%04x, GPU_PTP_Version: 0x%04x",
 			g_shared_status->sb_version, g_shared_status->ptp_version);
-	}
-}
-
-/***********************************************************************************
- * Function Name      : gpufreq_dump_power_tracker_status
- * Description        : Dump PDC power tracker status
- ***********************************************************************************/
-static void gpufreq_dump_power_tracker_status(void)
-{
-	/* implement on AP */
-	if (gpufreq_get_power_state() == GPU_PWR_ON) {
-		if (g_shared_status && g_shared_status->power_tracker_mode) {
-			if (gpufreq_fp && gpufreq_fp->dump_power_tracker_status)
-				gpufreq_fp->dump_power_tracker_status();
-			else
-				GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
-		}
 	}
 }
 

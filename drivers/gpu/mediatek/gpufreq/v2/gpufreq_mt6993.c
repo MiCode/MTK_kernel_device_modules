@@ -38,6 +38,8 @@
  */
 /* misc function */
 static void __iomem *__gpufreq_of_ioremap(const char *node_name, int idx);
+static void __gpufreq_dump_power_tracker_status(void);
+static void __gpufreq_dump_freq_volt_tracker_status(char *log_buf, int *log_len, int log_size);
 static void __gpufreq_dump_bus_tracker_status(char *log_buf, int *log_len, int log_size);
 static irqreturn_t __gpufreq_bus_tracker_irq_handler(int irq, void *data);
 /* bringup function */
@@ -105,7 +107,6 @@ static DEFINE_MUTEX(gpufreq_lock);
 
 static struct gpufreq_platform_fp platform_eb_fp = {
 	.dump_infra_status = __gpufreq_dump_infra_status,
-	.dump_power_tracker_status = __gpufreq_dump_power_tracker_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.get_dyn_pstack = __gpufreq_get_dyn_pstack,
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
@@ -238,6 +239,8 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 	if (!g_gpufreq_ready)
 		return;
 
+	__gpufreq_dump_power_tracker_status();
+	__gpufreq_dump_freq_volt_tracker_status(log_buf, log_len, log_size);
 	__gpufreq_dump_bus_tracker_status(log_buf, log_len, log_size);
 
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
@@ -421,33 +424,6 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 		"MFG18", DRV_Reg32(MFG_RPC_MFG18_PWR_CON),
 		"MFG19", DRV_Reg32(MFG_RPC_MFG19_PWR_CON),
 		"MFG20", DRV_Reg32(MFG_RPC_MFG20_PWR_CON));
-}
-
-void __gpufreq_dump_power_tracker_status(void)
-{
-	int i = 0;
-	unsigned int val = 0, cur_point = 0, read_point = 0;
-
-	if (!g_gpufreq_ready)
-		return;
-
-	cur_point = (DRV_Reg32(MFG_TOP_POWER_TRACKER_SETTING) >> 10) & GENMASK(5, 0);
-	GPUFREQ_LOGI("== [PDC POWER TRACKER STATUS: %u] ==", cur_point);
-	for (i = 1; i <= 16; i++) {
-		/* only dump last 16 record */
-		read_point = (cur_point + ~i + 1) & GENMASK(5, 0);
-		val = (DRV_Reg32(MFG_TOP_POWER_TRACKER_SETTING) & ~GENMASK(9, 4)) | (read_point << 4);
-		DRV_WriteReg32(MFG_TOP_POWER_TRACKER_SETTING, val);
-		udelay(1);
-
-		GPUFREQ_LOGI("[%02u][%u] STA 1=0x%08x, 2=0x%08x, 3=0x%08x, 4=0x%08x, 5=0x%08x",
-			read_point, DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS0),
-			DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS1),
-			DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS2),
-			DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS3),
-			DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS4),
-			DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS5));
-	}
 }
 
 /* API: get working OPP index of STACK limited by BATTERY_OC via given level */
@@ -683,6 +659,72 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		"FMETER", __gpufreq_get_fmeter_fstack(),
 		"SEL", DRV_Reg32(MFG_VCORE_AO_CK_FAST_REF_SEL) & MFG_SC0_SEL_BIT);
 	GPUFREQ_LOGI("[GPU] %s=0x%08x", "MALI_GPU_ID", DRV_Reg32(MALI_GPU_ID));
+}
+
+static void __gpufreq_dump_power_tracker_status(void)
+{
+	int i = 0;
+	unsigned int w_ptr = 0, r_ptr = 0;
+
+	if (!g_gpufreq_ready)
+		return;
+
+	if (g_shared_status && g_shared_status->power_count &&
+		g_shared_status->power_tracker_mode) {
+		w_ptr = (DRV_Reg32(MFG_TOP_POWER_TRACKER_SETTING) & GENMASK(5, 0)) >> 10;
+		GPUFREQ_LOGI("== [PDC POWER TRACKER STATUS: %02u] ==", w_ptr);
+		for (i = 1; i <= 16; i++) {
+			/* only dump last 16 record */
+			r_ptr = (w_ptr + ~i + 1) & GENMASK(5, 0);
+			DRV_FieldReg32(MFG_TOP_POWER_TRACKER_SETTING, r_ptr, GENMASK(9, 4));
+			udelay(1);
+
+			GPUFREQ_LOGI("[%02u][%u] STA 1=0x%08x, 2=0x%08x, 3=0x%08x, 4=0x%08x, 5=0x%08x",
+				r_ptr, DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS0),
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS1),
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS2),
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS3),
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS4),
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS5));
+		}
+	}
+}
+
+static void __gpufreq_dump_freq_volt_tracker_status(char *log_buf, int *log_len, int log_size)
+{
+	int i = 0;
+	unsigned int w_ptr_gpu = 0, r_ptr_gpu = 0, w_ptr_stk = 0, r_ptr_stk = 0;
+
+	if (!g_gpufreq_ready)
+		return;
+
+	if (g_shared_status && g_shared_status->power_count &&
+		g_shared_status->ptp3_status.freq_tracker_mode &&
+		g_shared_status->ptp3_status.volt_tracker_mode) {
+		/* stop tracker */
+		DRV_ClrReg32(MFG_TOP_TOP_FREQ_TRACKER_CON_0, BIT(8));
+		DRV_ClrReg32(MFG_TOP_STACK_FREQ_TRACKER_CON_0, BIT(8));
+
+		w_ptr_gpu = (DRV_Reg32(MFG_TOP_TOP_FREQ_TRACKER_CON_3) & GENMASK(16, 11)) >> 11;
+		w_ptr_stk = (DRV_Reg32(MFG_TOP_STACK_FREQ_TRACKER_CON_3) & GENMASK(16, 11)) >> 11;
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"== [FREQ VOLT TRACKER STATUS: GPU=%02u, STK=%02u] ==", w_ptr_gpu, w_ptr_stk);
+		for (i = 1; i <= 32; i++) {
+			/* only dump last 16 record */
+			r_ptr_gpu = (w_ptr_gpu + ~i + 1) & GENMASK(5, 0);
+			DRV_FieldReg32(MFG_TOP_TOP_FREQ_TRACKER_CON_1, r_ptr_gpu, GENMASK(19, 14));
+			DRV_FieldReg32(MFG_TOP_VOLT_TRACKER_CON_5, r_ptr_gpu, GENMASK(19, 14));
+			r_ptr_stk = (w_ptr_stk + ~i + 1) & GENMASK(5, 0);
+			DRV_FieldReg32(MFG_TOP_STACK_FREQ_TRACKER_CON_1, r_ptr_stk, GENMASK(19, 14));
+			DRV_FieldReg32(MFG_TOP_VOLT_TRACKER_CON_1, r_ptr_stk, GENMASK(19, 14));
+			udelay(1);
+
+			GPUFREQ_LOGB(log_buf, log_len, log_size,
+				"[GPU][%02u][%u] Freq=%lu, Volt=%lu [STK][%02u][%u] Freq=%lu, Volt=%lu",
+				r_ptr_gpu, FTRACKER_TGPU, FTRACKER_FGPU, VTRACKER_VGPU,
+				r_ptr_stk, FTRACKER_TSTACK, FTRACKER_FSTACK, VTRACKER_VSTACK);
+		}
+	}
 }
 
 static void __gpufreq_dump_bus_tracker_status(char *log_buf, int *log_len, int log_size)

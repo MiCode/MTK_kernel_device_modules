@@ -115,6 +115,30 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 	}
 
 /**************************************************
+ * FREQ/VOLT Tracker Setting
+ **************************************************/
+#define FTRACKER_FREQ_CONVERT(freq)         ((freq) / 1000 * 8 / 26)
+#define FTRACKER_FREQ_REVERT(freq)          ((freq) * 1000 / 8 * 26)
+#define VTRACKER_VOLT_CONVERT(volt)         ((volt) / 100)
+#define VTRACKER_VOLT_REVERT(volt)          ((volt) * 100)
+#define FTRACKER_FGPU                       \
+	(FTRACKER_FREQ_REVERT(DRV_Reg32(MFG_TOP_TOP_FREQ_TRACKER_CON_3) & GENMASK(10, 0)))
+#define FTRACKER_FSTACK                     \
+	(FTRACKER_FREQ_REVERT(DRV_Reg32(MFG_TOP_STACK_FREQ_TRACKER_CON_3) & GENMASK(10, 0)))
+#define FTRACKER_TGPU                       \
+	(DRV_Reg32(MFG_TOP_TOP_FREQ_TRACKER_CON_2))
+#define FTRACKER_TSTACK                     \
+	(DRV_Reg32(MFG_TOP_STACK_FREQ_TRACKER_CON_2))
+#define VTRACKER_VGPU                       \
+	(VTRACKER_VOLT_REVERT(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_7) & GENMASK(10, 0)))
+#define VTRACKER_VSTACK                     \
+	(VTRACKER_VOLT_REVERT(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_3) & GENMASK(10, 0)))
+#define VTRACKER_TGPU                       \
+	(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_6))
+#define VTRACKER_TSTACK                     \
+	(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_2))
+
+/**************************************************
  * Enumeration
  **************************************************/
 

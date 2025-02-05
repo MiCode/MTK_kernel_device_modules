@@ -101,7 +101,6 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size);
 int __gpufreq_get_batt_oc_idx(int batt_oc_level);
 int __gpufreq_get_batt_percent_idx(int batt_percent_level);
 int __gpufreq_get_low_batt_idx(int low_batt_level);
-void __gpufreq_dump_power_tracker_status(void);
 void __gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_config_value val);
 struct gpufreq_core_mask_info *__gpufreq_get_core_mask_table(void);
 unsigned int __gpufreq_get_core_num(void);
