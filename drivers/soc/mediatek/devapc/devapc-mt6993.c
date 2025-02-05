@@ -204,7 +204,13 @@ static const struct INFRAAXI_ID_INFO infra_mi_tracer0_id_to_master[] = {
 	{"DRAMC_CH2_M@APB",     { 0, 1, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"DRAMC_CH3_M@APB",     { 0, 1, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"MD_AP_M",             { 0, 1, 1, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
-	{"GPU_EB_M",            { 1, 1, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_IM",           { 1, 1, 0, 0, 0, 2, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0 } },
+	{"GPU_EB_DM",           { 1, 1, 0, 0, 0, 2, 1, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0 } },
+	{"GPU_EB_DMA",          { 1, 1, 0, 0, 0, 2, 0, 1, 0, 2, 2, 2, 0, 0, 0, 0, 0 } },
+	{"GPU_EB_AUTODMA_CORE0", { 1, 1, 0, 0, 0, 2, 1, 1, 0, 2, 0, 0, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_AUTODMA_CORE1", { 1, 1, 0, 0, 0, 2, 1, 1, 0, 2, 1, 0, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_AUTODMA_CORE2", { 1, 1, 0, 0, 0, 2, 1, 1, 0, 2, 0, 1, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_AUTODMA_CSF",  { 1, 1, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"PERI2INFRA_IO_M",     { 1, 1, 1, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0 } },
 	{"UFS1_M",              { 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0 } },
 	{"APDMA_EXT_M",         { 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0 } },
@@ -259,7 +265,13 @@ static const struct INFRAAXI_ID_INFO infra_mi_tracer1_id_to_master[] = {
 	{"DRAMC_CH3_M@APB",     { 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"MD_AP_M",             { 0, 1, 1, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"MCU_AP_M",            { 1, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 } },
-	{"GPU_EB_M",            { 1, 1, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_IM",           { 1, 1, 0, 0, 2, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0 } },
+	{"GPU_EB_DM",           { 1, 1, 0, 0, 2, 1, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0 } },
+	{"GPU_EB_DMA",          { 1, 1, 0, 0, 2, 0, 1, 0, 2, 2, 2, 0, 0, 0, 0, 0 } },
+	{"GPU_EB_AUTODMA_CORE0", { 1, 1, 0, 0, 2, 1, 1, 0, 2, 0, 0, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_AUTODMA_CORE1", { 1, 1, 0, 0, 2, 1, 1, 0, 2, 1, 0, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_AUTODMA_CORE2", { 1, 1, 0, 0, 2, 1, 1, 0, 2, 0, 1, 2, 2, 2, 0, 0 } },
+	{"GPU_EB_AUTODMA_CSF",  { 1, 1, 0, 0, 2, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0 } },
 	{"PERI2INFRA_IO_M",     { 1, 0, 1, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0 } },
 	{"UFS1_M",              { 1, 0, 1, 0, 0, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0 } },
 	{"APDMA_EXT_M",         { 1, 0, 1, 0, 1, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 0 } },
@@ -649,49 +661,61 @@ static const char *mt6993_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 	} else if (slave_type == SLAVE_TYPE_MMUP) {
 		return mminfra_domain[domain];
 	} else if (slave_type == SLAVE_TYPE_GPU) {
-		/* PD_BUS */
 		if (domain == 0x6) {
-			if (((bus_id & 0xf800) == 0x0) && ((bus_id & 0x3f) == 0x2a)) {
-				if (((bus_id >> 6) & 0x3) == 0x0)
-					return "GPUEB_RV33_P";
-				else if (((bus_id >> 6) & 0x3) == 0x1)
-					return "GPUEB_RV33_D";
-				else if (((bus_id >> 6) & 0x3) == 0x2)
-					return "GPUEB_DMA";
-				else
-					return "GPUEB_AutoDMA";
-			} else
+			if ((bus_id & 0x7) == 0x2)
+				return "GPUEB_HRE0";
+			else if ((bus_id & 0x7) == 0x4)
+				return "GPUEB_GHPM";
+			else if ((bus_id & 0x1) == 0x1)
 				return "GPU_BRCAST";
+			else if ((bus_id & 0x7) == 0x6) {
+				if (((bus_id >> 3) & 0x7) == 0x0)
+					return "GPUEB_IM";
+				else if (((bus_id >> 3) & 0x7) == 0x1)
+					return "GPUEB_DM";
+				else if (((bus_id >> 3) & 0x7) == 0x2)
+					return "GPUEB_DMA";
+				else if (((bus_id >> 3) & 0x7) == 0x4)
+					return "MFG_CSF";
+				else if (((bus_id >> 7) & 0x3) == 0x0)
+					return "GPUEB_AUTODMA_CORE0";
+				else if (((bus_id >> 7) & 0x3) == 0x1)
+					return "GPUEB_AUTODMA_CORE1";
+				else if (((bus_id >> 7) & 0x3) == 0x2)
+					return "GPUEB_AUTODMA_CORE2";
+				else
+					return "UNKNOWN_USER_FROM_GPU";
+			} else
+				return "UNKNOWN_USER_FROM_GPU";
 		} else
 			return infra_mi_trans(vio_addr, bus_id);
 	} else if (slave_type == SLAVE_TYPE_GPU1) {
-		/* PD_BUS */
-		if ((vio_addr >= GPU1_PD_START) && (vio_addr <= GPU1_PD_END)) {
-			if (domain == 0x6) {
-				if ((bus_id & 0x3) == 0x0)
-					return "GPUEB_RV33_P";
-				else if ((bus_id & 0x3) == 0x1)
-					return "GPUEB_RV33_D";
-				else if ((bus_id & 0x3) == 0x2)
+		if (domain == 0x6) {
+			if ((bus_id & 0x3) == 0x1)
+				return "GPUEB_HRE0";
+			else if ((bus_id & 0x3) == 0x2)
+				return "GPUEB_GHPM";
+			else if ((bus_id & 0x3) == 0x3) {
+				if (((bus_id >> 2) & 0x7) == 0x0)
+					return "GPUEB_IM";
+				else if (((bus_id >> 2) & 0x7) == 0x1)
+					return "GPUEB_DM";
+				else if (((bus_id >> 2) & 0x7) == 0x2)
 					return "GPUEB_DMA";
-				else
-					return "GPUEB_AutoDMA";
-			} else
-				return infra_mi_trans(vio_addr, bus_id);
-		/* AO_BUS */
-		} else {
-			if (domain == 0x6) {
-				if (((bus_id >> 6) & 0x3) == 0x0)
-					return "GPUEB_RV33_P";
+				else if (((bus_id >> 2) & 0x7) == 0x4)
+					return "MFG_CSF";
+				else if (((bus_id >> 6) & 0x3) == 0x0)
+					return "GPUEB_AUTODMA_CORE0";
 				else if (((bus_id >> 6) & 0x3) == 0x1)
-					return "GPUEB_RV33_D";
+					return "GPUEB_AUTODMA_CORE1";
 				else if (((bus_id >> 6) & 0x3) == 0x2)
-					return "GPUEB_DMA";
+					return "GPUEB_AUTODMA_CORE2";
 				else
-					return "GPUEB_AutoDMA";
+					return "UNKNOWN_USER_FROM_GPU";
 			} else
-				return infra_mi_trans(vio_addr, bus_id);
-		}
+				return "UNKNOWN_USER_FROM_GPU";
+		} else
+			return infra_mi_trans(vio_addr, bus_id);
 	} else
 		return infra_mi_trans(vio_addr, bus_id);
 }
