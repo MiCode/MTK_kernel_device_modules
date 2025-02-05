@@ -502,7 +502,7 @@ static ssize_t powerkey_irq_store(struct device *dev,
 	return count;
 }
 
-DEVICE_ATTR_RW(powerkey_irq);
+static DEVICE_ATTR(powerkey_irq, 0660, powerkey_irq_show, powerkey_irq_store);
 
 static int mtk_pmic_key_setup(struct mtk_pmic_keys *keys,
 		struct mtk_pmic_keys_info *info)
