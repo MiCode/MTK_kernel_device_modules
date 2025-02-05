@@ -733,10 +733,10 @@ struct mml_task {
 	struct mml_task_pipe pipe[MML_PIPE_CNT];
 	struct cmdq_backup backup_crc_rdma[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
 	struct cmdq_backup backup_crc_wdma[MML_PIPE_CNT];
-	u32 dpc_srt_bw[mml_max_sys];
-	u32 dpc_hrt_bw[mml_max_sys];
-	u32 dpc_srt_write_bw[mml_max_sys];
-	u32 dpc_hrt_write_bw[mml_max_sys];
+	u32 dpc_srt_bw[MML_MAX_LARB];
+	u32 dpc_hrt_bw[MML_MAX_LARB];
+	u32 dpc_srt_write_bw[MML_MAX_LARB];
+	u32 dpc_hrt_write_bw[MML_MAX_LARB];
 
 	struct cmdq_backup perf_prete;
 	struct cmdq_backup perf_dispready;
@@ -915,6 +915,7 @@ struct mml_comp {
 	struct device *larb_dev;
 	phys_addr_t larb_base;
 	u32 larb_port;
+	u8 larb_idx;
 	s32 pw_cnt;
 	s32 mminfra_pw_cnt;
 	s32 clk_cnt;

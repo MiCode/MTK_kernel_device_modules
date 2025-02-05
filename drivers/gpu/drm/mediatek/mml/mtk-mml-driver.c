@@ -140,8 +140,8 @@ struct mml_dev {
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
 	struct mml_sys_state sys_state[mml_max_sys];
 	struct mml_sys_qos qos[mml_max_sys];
-	u16 port_srt_bw[mml_max_sys][MML_MAX_PORT];
-	u16 port_hrt_bw[mml_max_sys][MML_MAX_PORT];
+	u16 port_srt_bw[MML_MAX_LARB][MML_MAX_PORT];
+	u16 port_hrt_bw[MML_MAX_LARB][MML_MAX_PORT];
 	u32 vcp_ref;
 	struct mutex sys_state_mutex;
 	struct mml_sys *sys;
@@ -923,6 +923,8 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	struct resource res;
 
 	/* parse larb node and port from dts */
+	if (of_property_read_u8(dev->of_node, "larb-idx", &comp->larb_idx))
+		comp->larb_idx = U8_MAX;
 	if (of_parse_phandle_with_fixed_args(dev->of_node, "mediatek,larb",
 		1, 0, &larb_args)) {
 		mml_err("%s fail to parse mediatek,larb comp %u %s",
@@ -1138,10 +1140,14 @@ void mml_dpc_task_cnt_inc(struct mml_task *task)
 		mml_clock_lock(mml);
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
+		if (path->mmlsys2)
+			mml_dpc_exc_keep(mml, path->mmlsys2->sysid);
 		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode, false);
 		if (path->mmlsys2)
 			call_hw_op(path->mmlsys2, pw_enable, task->config->info.mode, false);
 		mml_mmp(dpc, MMPROFILE_FLAG_START, 1, 0);
+		if (path->mmlsys2)
+			mml_dpc_exc_release(mml, path->mmlsys2->sysid);
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 		mml_clock_unlock(mml);
@@ -1166,11 +1172,15 @@ void mml_dpc_task_cnt_dec(struct mml_task *task)
 		mml_clock_lock(mml);
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
+		if (path->mmlsys2)
+			mml_dpc_exc_keep(mml, path->mmlsys2->sysid);
 		mml_mmp(dpc, MMPROFILE_FLAG_END, 0, 0);
 		if (path->mmlsys2)
 			call_hw_op(path->mmlsys2, pw_disable,
 				task->config->info.mode, false);
 		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode, false);
+		if (path->mmlsys2)
+			mml_dpc_exc_release(mml, path->mmlsys2->sysid);
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
 		mml_clock_unlock(mml);
@@ -1411,11 +1421,16 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	const u32 stash_srt_bw = bw->stash_srt_bw, stash_hrt_bw = bw->stash_hrt_bw;
 	bool hrt = cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK;
 	bool updated = false;
+	u8 larb_idx = (comp->larb_idx == U8_MAX) ? comp->sysid : comp->larb_idx;
 
+	if (larb_idx >= MML_MAX_LARB) {
+		mml_err("%s larb_idx overflow comp %d", __func__, comp->id);
+		larb_idx = 0;
+	}
 	/* store for debug log */
 	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
-	if (srt_bw == mml->port_srt_bw[comp->sysid][comp->larb_port] &&
-		hrt_bw == mml->port_hrt_bw[comp->sysid][comp->larb_port])
+	if (srt_bw == mml->port_srt_bw[larb_idx][comp->larb_port] &&
+		hrt_bw == mml->port_hrt_bw[larb_idx][comp->larb_port])
 		goto skip_update;
 
 	mml_trace_begin("mml_comp%u_bw_%u_%u", comp->id, srt_bw, hrt_bw);
@@ -1458,15 +1473,15 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 #endif
 	mml_trace_end();
 	updated = true;
-	mml->port_srt_bw[comp->sysid][comp->larb_port] = srt_bw;
-	mml->port_hrt_bw[comp->sysid][comp->larb_port] = hrt_bw;
+	mml->port_srt_bw[larb_idx][comp->larb_port] = srt_bw;
+	mml->port_hrt_bw[larb_idx][comp->larb_port] = hrt_bw;
 
 skip_update:
 	if (cfg->dpc) {
-		task->dpc_srt_bw[comp->sysid] += srt_bw;
-		task->dpc_hrt_bw[comp->sysid] += hrt_bw;
-		task->dpc_srt_write_bw[comp->sysid] += stash_srt_bw;
-		task->dpc_hrt_write_bw[comp->sysid] += stash_hrt_bw;
+		task->dpc_srt_bw[larb_idx] += srt_bw;
+		task->dpc_hrt_bw[larb_idx] += hrt_bw;
+		task->dpc_srt_write_bw[larb_idx] += stash_srt_bw;
+		task->dpc_hrt_write_bw[larb_idx] += stash_hrt_bw;
 	}
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, ((u32)bw->srt_bw << 16) | bw->hrt_bw);
@@ -1482,7 +1497,12 @@ void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 {
 	struct mml_dev *mml = task->config->mml;
 	struct mml_comp_bw *bw = &comp->bw[dpc];
+	u8 larb_idx = (comp->larb_idx == U8_MAX) ? comp->sysid : comp->larb_idx;
 
+	if (larb_idx >= MML_MAX_LARB) {
+		mml_err("%s larb_idx overflow comp %d", __func__, comp->id);
+		larb_idx = 0;
+	}
 #ifndef MML_FPGA
 	if (dpc) {
 		mtk_icc_set_bw(comp->icc_dpc_path, 0, 0);
@@ -1498,8 +1518,8 @@ void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 	bw->hrt_bw = 0;
 	bw->stash_srt_bw = 0;
 	bw->stash_hrt_bw = 0;
-	mml->port_srt_bw[comp->sysid][comp->larb_port] = 0;
-	mml->port_hrt_bw[comp->sysid][comp->larb_port] = 0;
+	mml->port_srt_bw[larb_idx][comp->larb_port] = 0;
+	mml->port_hrt_bw[larb_idx][comp->larb_port] = 0;
 
 	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, 0);
 

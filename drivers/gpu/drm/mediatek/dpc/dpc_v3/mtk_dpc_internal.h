@@ -440,6 +440,7 @@ struct mtk_dpc_dvfs_bw {
 	u32 disp_bw[DPC_BW_TYPE_CNT];
 	u32 mml0_bw[DPC_BW_TYPE_CNT];
 	u32 mml1_bw[DPC_BW_TYPE_CNT];
+	u32 mml2_bw[DPC_BW_TYPE_CNT];
 	u8 bw_level;
 	u8 mml_level;
 	u8 disp_level;

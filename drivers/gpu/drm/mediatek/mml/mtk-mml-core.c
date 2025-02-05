@@ -1086,49 +1086,52 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	struct mml_task_pipe *task_pipe;
 	struct mml_task *task;
 	const struct mml_topology_path *path = cfg->path[0];
-	u32 srt_bw[mml_max_sys] = {0}, hrt_bw[mml_max_sys] = {0}, srt_bw_max = 0, hrt_bw_max = 0;
-	u32 stash_srt_bw[mml_max_sys] = {0}, stash_hrt_bw[mml_max_sys] = {0};
+	u32 srt_bw[MML_MAX_LARB] = {0}, hrt_bw[MML_MAX_LARB] = {0}, srt_bw_max = 0, hrt_bw_max = 0;
+	u32 stash_srt_bw[MML_MAX_LARB] = {0}, stash_hrt_bw[MML_MAX_LARB] = {0};
 	u32 dpc_dvfs_lv = 0;
 	enum mml_sys_id sysid;
+	u8 larb_idx;
 	u32 i;
 
 	if (unlikely(!tp))
 		return;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
-		u32 task_srt_max[mml_max_sys] = {0}, task_hrt_max[mml_max_sys] = {0};
-		u32 task_stash_srt_max[mml_max_sys] = {0}, task_stash_hrt_max[mml_max_sys] = {0};
+		u32 task_srt_max[MML_MAX_LARB] = {0}, task_hrt_max[MML_MAX_LARB] = {0};
+		u32 task_stash_srt_max[MML_MAX_LARB] = {0}, task_stash_hrt_max[MML_MAX_LARB] = {0};
 
 		/* scan all tasks in this cmdq client and find max srt hrt */
 		list_for_each_entry(task_pipe, &tp->path_clts[i].tasks, entry_clt) {
 			task = task_pipe->task;
 
-			for (sysid = 0; sysid < mml_max_sys; sysid++) {
-				task_srt_max[sysid] =
-					max_t(u32, task_srt_max[sysid], task->dpc_srt_bw[sysid]);
-				task_hrt_max[sysid] =
-					max_t(u32, task_hrt_max[sysid], task->dpc_hrt_bw[sysid]);
+			for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
+				task_srt_max[larb_idx] =
+					max_t(u32, task_srt_max[larb_idx], task->dpc_srt_bw[larb_idx]);
+				task_hrt_max[larb_idx] =
+					max_t(u32, task_hrt_max[larb_idx], task->dpc_hrt_bw[larb_idx]);
 
-				task_stash_srt_max[sysid] = max_t(u32, task_stash_srt_max[sysid],
-					task->dpc_srt_write_bw[sysid]);
-				task_stash_hrt_max[sysid] = max_t(u32, task_stash_hrt_max[sysid],
-					task->dpc_hrt_write_bw[sysid]);
+				task_stash_srt_max[larb_idx] = max_t(u32, task_stash_srt_max[larb_idx],
+					task->dpc_srt_write_bw[larb_idx]);
+				task_stash_hrt_max[larb_idx] = max_t(u32, task_stash_hrt_max[larb_idx],
+					task->dpc_hrt_write_bw[larb_idx]);
 			}
 		}
 
-		for (sysid = 0; sysid < mml_max_sys; sysid++) {
-			srt_bw[sysid] += task_srt_max[sysid];
-			hrt_bw[sysid] += task_hrt_max[sysid];
-			stash_srt_bw[sysid] += task_stash_srt_max[sysid];
-			stash_hrt_bw[sysid] += task_stash_hrt_max[sysid];
+		for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
+			srt_bw[larb_idx] += task_srt_max[larb_idx];
+			hrt_bw[larb_idx] += task_hrt_max[larb_idx];
+			stash_srt_bw[larb_idx] += task_stash_srt_max[larb_idx];
+			stash_hrt_bw[larb_idx] += task_stash_hrt_max[larb_idx];
 		}
 	}
 
-	for (sysid = 0; sysid < mml_max_sys; sysid++) {
-		srt_bw_max = max_t(u32, srt_bw_max, srt_bw[sysid]);
-		hrt_bw_max = max_t(u32, hrt_bw_max, hrt_bw[sysid]);
-		dpc_dvfs_lv = max_t(u32, dpc_dvfs_lv, tp->qos[sysid].current_level[mml_tput_dpc]);
+	for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
+		srt_bw_max = max_t(u32, srt_bw_max, srt_bw[larb_idx]);
+		hrt_bw_max = max_t(u32, hrt_bw_max, hrt_bw[larb_idx]);
 	}
+
+	for (sysid = 0; sysid < mml_max_sys; sysid++)
+		dpc_dvfs_lv = max_t(u32, dpc_dvfs_lv, tp->qos[sysid].current_level[mml_tput_dpc]);
 
 	mml_msg_dpc("%s dpc dvfs level %u srt %u hrt %u hrt_mode %u trigger %s",
 		__func__, dpc_dvfs_lv, srt_bw_max, hrt_bw_max, mtk_mml_hrt_mode,
@@ -1143,16 +1146,16 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	}
 
 	/* set dpc hrt/srt bw */
-	for (sysid = 0; sysid < mml_max_sys; sysid++) {
-		mml_dpc_srt_bw_set(sysid, srt_bw[sysid], false);
-		mml_dpc_hrt_bw_set(sysid, hrt_bw_max, false);
+	for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
+		mml_dpc_srt_bw_set(larb_idx, srt_bw[larb_idx], false);
+		mml_dpc_hrt_bw_set(larb_idx, hrt_bw_max, false);
 
-		mml_mmp(dpc_bw_srt, MMPROFILE_FLAG_PULSE, sysid, srt_bw[sysid]);
-		mml_mmp(dpc_bw_hrt, MMPROFILE_FLAG_PULSE, sysid, hrt_bw_max);
+		mml_mmp(dpc_bw_srt, MMPROFILE_FLAG_PULSE, larb_idx, srt_bw[larb_idx]);
+		mml_mmp(dpc_bw_hrt, MMPROFILE_FLAG_PULSE, larb_idx, hrt_bw_max);
 
 		/* set channel bw for dpc2.0 */
-		mml_dpc_channel_bw_set_by_idx(sysid, stash_srt_bw[sysid], false);
-		mml_dpc_channel_bw_set_by_idx(sysid, stash_hrt_bw[sysid], true);
+		mml_dpc_channel_bw_set_by_idx(larb_idx, stash_srt_bw[larb_idx], false);
+		mml_dpc_channel_bw_set_by_idx(larb_idx, stash_hrt_bw[larb_idx], true);
 	}
 
 	/* set dpc dvfs (mminfra, bus) */
@@ -1160,6 +1163,8 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 
 	/* set channel bw total for dpc1.0 */
 	mml_dpc_channel_bw_set(path->mmlsys->id, hrt_bw_max);
+	if (path->mmlsys2)
+		mml_dpc_channel_bw_set(path->mmlsys2->sysid, hrt_bw_max);
 
 	/* and update in dvfs end case */
 	if (trigger)
