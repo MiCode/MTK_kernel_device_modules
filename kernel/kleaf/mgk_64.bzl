@@ -100,6 +100,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtk_input/synaptics_tcm:synaptics_tcm",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:ccd_rpmsg",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk_ccd_remoteproc",
+    "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-util",
 
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:camsys",
