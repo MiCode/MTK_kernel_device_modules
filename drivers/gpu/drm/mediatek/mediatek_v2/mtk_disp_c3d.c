@@ -511,9 +511,6 @@ static int disp_c3d_set_3dlut(struct mtk_ddp_comp *comp,
 					(primary_data->c3d_reg.lut3d_reg[i+1] << 16);
 				primary_data->c3d_sram_cfg_b[i / 3] =
 					primary_data->c3d_reg.lut3d_reg[i+2];
-				pr_notice("%s(i/3 = %d): r_g: 0x%x, b: 0x%x\n", __func__, i/3,
-					primary_data->c3d_sram_cfg_r_g[i / 3],
-					primary_data->c3d_sram_cfg_b[i / 3]);
 			}
 		}
 	} else {
