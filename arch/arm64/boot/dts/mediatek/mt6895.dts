@@ -5218,7 +5218,7 @@
 			mboxes = <&gce_sec 8 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_4>;
 		};
 
-		mmqos_wrapper {
+		mmqos-wrapper {
 			compatible = "mediatek,mt6895-mmqos-wrapper";
 		};
 
