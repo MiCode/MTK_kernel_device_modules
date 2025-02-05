@@ -18584,6 +18584,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			soc-reduce-tx-lv1 = <0>;
 			soc-reduce-tx-lv2 = <0>;
 			soc-reduce-tx-lv3 = <6>;
+
+			lbat-dedicate-temperature = <25 10 0>;
 		};
 
 		bp_thl: bp-thl {
