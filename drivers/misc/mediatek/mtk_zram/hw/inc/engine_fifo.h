@@ -160,6 +160,8 @@ struct hwfifo_mask_fields {
  * 	static bool comp_fifo_1_empty(struct hwfifo *fifo)
  * // Increase the fifo's write index (including the HW one) by 1
  *	static inline void update_comp_fifo_1_write_index(struct hwfifo *fifo)
+ * // Increase the fifo's write index (including the HW one) by 1 without kick
+ *	static inline void update_comp_fifo_1_write_index_nokick(struct hwfifo *fifo)
  * // Increase the SW copy of fifo's complete index by 1
  *	static inline void update_comp_fifo_1_complete_index(struct hwfifo *fifo)
  * // Translate the HW complete index to the SW one
@@ -198,6 +200,21 @@ static inline void update_##lname##_fifo##num##_write_index(struct hwfifo *fifo)
 	fifo->write_idx = next_write_idx;							\
 												\
 	writel(ENGINE_START_MASK | next_hw_write_idx, fifo->write_idx_reg);			\
+}												\
+static inline void update_##lname##_fifo##num##_write_index_nokick(struct hwfifo *fifo)		\
+{												\
+	uint32_t next_write_idx, next_hw_write_idx;						\
+												\
+	next_write_idx = (fifo->write_idx + 1)							\
+			 & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
+	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)		\
+			    & ENGINE_##uname##_FIFO##num##_INDEX_MASK;				\
+												\
+	wmb();											\
+												\
+	fifo->write_idx = next_write_idx;							\
+												\
+	writel(next_hw_write_idx, fifo->write_idx_reg);			\
 }												\
 static inline void update_##lname##_fifo##num##_complete_index(struct hwfifo *fifo)		\
 {												\
@@ -241,6 +258,21 @@ static bool lname##_fifo##num##_full(struct hwfifo *fifo)					\
 static bool lname##_fifo##num##_empty(struct hwfifo *fifo)					\
 { return fifo->write_idx == fifo->complete_idx; }						\
 static inline void update_##lname##_fifo##num##_write_index(struct hwfifo *fifo)		\
+{												\
+	uint32_t next_write_idx, next_hw_write_idx;						\
+												\
+	next_write_idx = (fifo->write_idx + 1)							\
+			 & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
+	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)		\
+			    & ENGINE_##uname##_FIFO##num##_INDEX_MASK;				\
+												\
+	wmb();											\
+												\
+	fifo->write_idx = next_write_idx;							\
+												\
+	fifo->hw_write_idx = next_hw_write_idx; /* CONFIG_ZRAM_ENGINE_SW_SIMULATION */		\
+}												\
+static inline void update_##lname##_fifo##num##_write_index_nokick(struct hwfifo *fifo)		\
 {												\
 	uint32_t next_write_idx, next_hw_write_idx;						\
 												\

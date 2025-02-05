@@ -7,6 +7,7 @@
 #include <linux/printk.h>
 #include <inc/engine_regs.h>
 #include <inc/engine_gears.h>
+#include <inc/helpers.h>
 
 /* Return 0 if success */
 static int engine_setup_gear(struct engine_gear_control_t *gear_ctrl, uint32_t level, bool gear_up)
@@ -590,23 +591,21 @@ int engine_gear_get_status(struct engine_gear_control_t *gear_ctrl, char *buf)
 
 	spin_lock(&gear_ctrl->lock);
 
-	copied += snprintf(buf + copied, PAGE_SIZE - copied, "clk_usage: %u\n",
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "clk_usage: %u\n",
 			gear_ctrl->clk_usage);
-	copied += snprintf(buf + copied, PAGE_SIZE - copied, "enc_wish_gear: %u\n",
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "enc_wish_gear: %u\n",
 			gear_ctrl->enc_wish_gear);
-	copied += snprintf(buf + copied, PAGE_SIZE - copied, "dec_wish_gear: %u\n",
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "dec_wish_gear: %u\n",
 			gear_ctrl->dec_wish_gear);
-	copied += snprintf(buf + copied, PAGE_SIZE - copied, "curr_gear: %u\n",
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "curr_gear: %u\n",
 			gear_ctrl->curr_gear);
-	copied += snprintf(buf + copied, PAGE_SIZE - copied, "in-change(%s) fixed(%s)\n",
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "in-change(%s) fixed(%s)\n",
 			gear_ctrl->engine_gear_in_change? "Y": "N",
 			gear_ctrl->engine_gear_fixed? "Y" : "N");
-	copied += snprintf(buf + copied, PAGE_SIZE - copied, "PE(%s)\n",
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "PE(%s)\n",
 			engine_power_efficiency_enabled()? "enabled" : "disabled");
-	copied += snprintf(buf + copied, PAGE_SIZE - copied, "power(%s)\n",
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "power(%s)\n",
 			gear_ctrl->power_on? "on" : "off");
-
-	/* Query clk & voltage (TODO) */
 
 	spin_unlock(&gear_ctrl->lock);
 	return copied;

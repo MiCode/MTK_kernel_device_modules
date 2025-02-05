@@ -177,16 +177,21 @@ static atomic_t dec_suspect_hang_count = ATOMIC_INIT(0);
  * Request to adjust gear level
  */
 enum glaflags {
-	GLA_notify,	/* Someone has a request */
-	GLA_encset,	/* Set to default gear level for compression */
-	GLA_decset,	/* Set to default gear level for decompression */
-	GLA_encdone,	/* Gear down for compression */
-	GLA_decdone,	/* Gear down for decompression */
+	GLA_notify,		/* Someone has a request */
+	GLA_encset,		/* Set to default gear level for compression */
+	GLA_decset,		/* Set to default gear level for decompression */
+	GLA_encnotready,	/* Gear set up is ready for compression */
+	GLA_encdone,		/* Gear down for compression */
+	GLA_decdone,		/* Gear down for decompression */
 };
 
 #define SETGLAFLAG(uname, lname)					\
 static __always_inline void SetGla##uname(unsigned long *flags)		\
 { set_bit(GLA_##lname, flags); }
+
+#define CLEARGLAFLAG(uname, lname)					\
+static __always_inline void ClearGla##uname(unsigned long *flags)		\
+{ clear_bit(GLA_##lname, flags); }
 
 #define TESTGLACLEARFLAG(uname, lname)					\
 static __always_inline bool TestClearGla##uname(unsigned long *flags)	\
@@ -198,6 +203,7 @@ static __always_inline bool Gla##uname(unsigned long *flags)		\
 
 #define GLAFLAG(uname, lname)						\
 	SETGLAFLAG(uname, lname)					\
+	CLEARGLAFLAG(uname, lname)					\
 	TESTGLAFLAG(uname, lname)					\
 	TESTGLACLEARFLAG(uname, lname)
 
@@ -206,6 +212,7 @@ GLAFLAG(Encset, encset);
 GLAFLAG(Decset, decset);
 GLAFLAG(Encdone, encdone);
 GLAFLAG(Decdone, decdone);
+GLAFLAG(EncNotready, encnotready);
 
 static unsigned long gla_flags;
 
@@ -649,8 +656,13 @@ int refill_entry_buffer(uint32_t *buf_addr, int index, bool invalidate)
 static int gear_level_adjustment(void *data)
 {
 	struct zram_engine_t *hwz = data;
+	struct hwfifo *fifo;
 	DEFINE_WAIT(wait);
 
+	/* Default setting */
+	SetGlaEncNotready(&gla_flags);
+
+	/* Main loop for GLA thread */
 	while (!kthread_should_stop()) {
 
 		/* Wait for request notification */
@@ -664,8 +676,18 @@ static int gear_level_adjustment(void *data)
 			return 0;
 
 		/* Request to set up default gear level for compression */
-		if (TestClearGlaEncset(&gla_flags))
+		if (TestClearGlaEncset(&gla_flags)) {
 			while (!engine_try_to_set_gear_level(&hwz->gear_ctrl, true, ENGINE_ENC_MIN_KICK_GEAR));
+
+			/* Gear set up is ready */
+			ClearGlaEncNotready(&gla_flags);
+
+			/* It's ok to kick compression */
+			spin_lock(&hwz->fifo_2_lock);
+			fifo = &hwz->fifo_2;
+			engine_kick(fifo->write_idx_reg);
+			spin_unlock(&hwz->fifo_2_lock);
+		}
 
 		/* Request to set up default gear level for decompression */
 		if (TestClearGlaDecset(&gla_flags))
@@ -673,6 +695,10 @@ static int gear_level_adjustment(void *data)
 
 		/* Request to start gear down for compression */
 		if (TestClearGlaEncdone(&gla_flags)) {
+
+			/* Set EncNotready to notify users should set gear if necessary */
+			SetGlaEncNotready(&gla_flags);
+
 			do {
 				/* Sleep for a while */
 				usleep_idle_range(50, 100);
@@ -682,7 +708,7 @@ static int gear_level_adjustment(void *data)
 					break;
 
 				/* Whether there are any pending requests */
-				if (atomic_read(&hwz->comp_cnt) != 0)
+				if (atomic_read(&hwz->comp_cnt) > 0)
 					break;
 
 				/* Demote frequency (may sleep) */
@@ -703,7 +729,7 @@ static int gear_level_adjustment(void *data)
 					break;
 
 				/* Whether there are any pending requests */
-				if (atomic_read(&hwz->dcomp_cnt) != 0)
+				if (atomic_read(&hwz->dcomp_cnt) > 0)
 					break;
 
 				/* Demote frequency (may sleep) */
@@ -765,6 +791,7 @@ static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
 		for (index = start; index != end; index = (index + 1) & ENGINE_DCOMP_FIFO_ENTRY_CARRY_MASK) {
 			entry = index & ENGINE_DCOMP_FIFO_ENTRY_MASK;
 			dcomp_process_completed_cmd(hwz, fifo, entry);
+			atomic_dec(&hwz->dcomp_cnt);
 			update_dcomp_fifo_complete_index(fifo);
 			processed++;
 		}
@@ -807,6 +834,7 @@ static int dcomp_post_process(void *data)
 	struct zram_engine_t *hwz = data;
 	uint32_t processed, total_processed;
 	uint32_t hang_detect, suspect_hang;
+	int cnt;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
@@ -853,9 +881,6 @@ repeat:
 		/* Processing cmds */
 		processed = dcomp_post_processing_cmds(hwz);
 
-		/* "processed" cmds are processed */
-		WARN_ON(atomic_sub_return(processed, &hwz->dcomp_cnt) < 0);
-
 		/* Update total_processed */
 		total_processed += processed;
 
@@ -879,20 +904,28 @@ repeat:
 		/* dcomp hang. Try to dump more information & do something. */
 		if (suspect_hang > SUSPECT_HANG_BOUND) {
 			engine_get_reg_status(&hwz->ctrl, NULL);
-			engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+			//engine_fatal_get_reg_status(&hwz->ctrl, NULL);
 			dump_fifo_idx(hwz, NULL, 0);
+			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 
 			/* do something */
 			suspect_hang = 0;
-			WARN_ON(1);
+			WARN_ON_ONCE(1);
 
 			/* Increase the suspect hang count */
 			atomic_inc(&dec_suspect_hang_count);
 		}
 
 		/* Repeat until all decompression cmds are processed */
-		if (atomic_read(&hwz->dcomp_cnt) != 0)
+		cnt = atomic_read(&hwz->dcomp_cnt);
+		if (cnt > 0) {
 			goto repeat;
+		} else if (cnt < 0) {
+			WARN_ON_ONCE(1);
+			engine_get_reg_status(&hwz->ctrl, NULL);
+			dump_fifo_idx(hwz, NULL, 0);
+			engine_gear_get_status(&hwz->gear_ctrl, NULL);
+		}
 
 #ifndef FPGA_EMULATION
 		/*
@@ -929,6 +962,7 @@ static inline uint32_t comp_second_post_processing_cmds(struct zram_engine_t *hw
 	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
 		entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
 		hwz->ops->comp_process_completed_cmd(fifo, entry);
+		atomic_dec(&hwz->comp_cnt);
 		update_comp_fifo_2_complete_index(fifo);
 		processed++;
 	}
@@ -961,6 +995,7 @@ static inline uint32_t comp_main_post_processing_cmds(struct zram_engine_t *hwz,
 	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
 		entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
 		hwz->ops->comp_process_completed_cmd(fifo, entry);
+		atomic_dec(&hwz->comp_cnt);
 		update_comp_fifo_1_complete_index(fifo);
 		processed++;
 	}
@@ -994,6 +1029,7 @@ static void comp_hang_handle(struct zram_engine_t *hwz)
 }
 
 /* Handler when comp is not started successfully */
+#if 0
 static void dump_pending_comp_cmds(struct zram_engine_t *hwz)
 {
 	struct hwfifo *fifo;
@@ -1025,6 +1061,7 @@ static void dump_pending_comp_cmds(struct zram_engine_t *hwz)
 		dump_comp_cmd(COMP_CMD(fifo, entry));
 	}
 }
+#endif
 
 /*
  * Compression post-process
@@ -1034,6 +1071,7 @@ static int comp_post_process(void *data)
 	struct zram_engine_t *hwz = data;
 	uint32_t processed, total_processed;
 	uint32_t hang_detect, suspect_hang;
+	int cnt;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
@@ -1083,16 +1121,16 @@ repeat:
 		/* Processing second fifo cmds */
 		processed += comp_second_post_processing_cmds(hwz, &hwz->fifo_2);
 
-		/* "processed" cmds are processed */
-		WARN_ON(atomic_sub_return(processed, &hwz->comp_cnt) < 0);
-
 		/* Update total_processed */
 		total_processed += processed;
 
 		/* HW is slow, just sleep for a while */
 		if (processed == 0) {
 			usleep_idle_range(50, 100);
-			hang_detect++;
+
+			/* Not hang, don't count it as hang */
+			if (!GlaEncNotready(&gla_flags))
+				hang_detect++;
 		} else {
 			/* not hang */
 			hang_detect = 0;
@@ -1109,21 +1147,29 @@ repeat:
 		/* comp hang. Try to dump more information & do something. */
 		if (suspect_hang > SUSPECT_HANG_BOUND) {
 			engine_get_reg_status(&hwz->ctrl, NULL);
-			engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+			//engine_fatal_get_reg_status(&hwz->ctrl, NULL);
 			dump_fifo_idx(hwz, NULL, 0);
+			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 
 			/* do something */
-			dump_pending_comp_cmds(hwz);
+			//dump_pending_comp_cmds(hwz);
 			suspect_hang = 0;
-			WARN_ON(1);
+			WARN_ON_ONCE(1);
 
 			/* Increase the suspect hang count */
 			atomic_inc(&enc_suspect_hang_count);
 		}
 
 		/* Repeat until all compression cmds are processed */
-		if (atomic_read(&hwz->comp_cnt) != 0)
+		cnt = atomic_read(&hwz->comp_cnt);
+		if (cnt > 0) {
 			goto repeat;
+		} else if (cnt < 0) {
+			WARN_ON_ONCE(1);
+			engine_get_reg_status(&hwz->ctrl, NULL);
+			dump_fifo_idx(hwz, NULL, 0);
+			engine_gear_get_status(&hwz->gear_ctrl, NULL);
+		}
 
 #ifndef FPGA_EMULATION
 		/*
@@ -1188,18 +1234,6 @@ next_dcmd:
 		return -EBUSY;
 	}
 
-	entry = dcomp_fifo_write_entry(fifo);
-
-	valid = hwz->ops->fill_decompression_info(fifo, entry, src, slen, page, pp_info,
-						from_async, zspool_to_hwcomp_buffer);
-
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	{
-		/* pp_info should be copied for SW simulation */
-		memcpy(DCOMP_CMPL(fifo, entry), pp_info, sizeof(struct dcomp_pp_info));
-	}
-#endif
-
 	/*
 	 * Increment the usage count and enable the gear clock
 	 * if possible before committing the request.
@@ -1210,6 +1244,18 @@ next_dcmd:
 
 	/* Increment the number of decompression request */
 	atomic_inc(&hwz->dcomp_cnt);
+
+	/* Query entry and fill request */
+	entry = dcomp_fifo_write_entry(fifo);
+	valid = hwz->ops->fill_decompression_info(fifo, entry, src, slen, page, pp_info,
+						from_async, zspool_to_hwcomp_buffer);
+
+#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
+	{
+		/* pp_info should be copied for SW simulation */
+		memcpy(DCOMP_CMPL(fifo, entry), pp_info, sizeof(struct dcomp_pp_info));
+	}
+#endif
 
 	update_dcomp_fifo_write_index(fifo);
 
@@ -1233,10 +1279,11 @@ next_dcmd:
 	 * is in this mode. So callers need to update complete index by themselves.
 	 */
 	if (engine_async_mode_disabled() || engine_coherence_disabled()) {
-		update_dcomp_fifo_complete_index(fifo);
 
 		/* Decrement the number of decompression request */
 		atomic_dec(&hwz->dcomp_cnt);
+
+		update_dcomp_fifo_complete_index(fifo);
 
 		/*
 		 * Decrement the usage count and disable the gear clock
@@ -1328,11 +1375,6 @@ next_dcmd:
 		return -EBUSY;
 	}
 
-	entry = dcomp_fifo_write_entry(fifo);
-
-	valid = hwz->ops->fill_decompression_info(fifo, entry, src, slen, page, pp_info,
-						true, zspool_to_hwcomp_buffer);
-
 	/*
 	 * Increment the usage count and enable the gear clock
 	 * if possible before committing the request.
@@ -1344,15 +1386,21 @@ next_dcmd:
 	/* Increment the number of decompression request */
 	if (atomic_inc_return(&hwz->dcomp_cnt) == 1) {
 
-		/* Wake up gear level adjusting thread to set up default gear */
-		SetGlaDecset(&gla_flags);
-		SetGlaNotify(&gla_flags);
-		wake_up(&hwz->gla_wait);
+		/* Wake up gear level adjusting thread to set up default gear if necessary */
+		if (!GlaDecset(&gla_flags)) {
+			SetGlaDecset(&gla_flags);
+			SetGlaNotify(&gla_flags);
+			wake_up(&hwz->gla_wait);
+		}
 
 		/* Remember to wake up post-process */
 		wake_up_pp = true;
 	}
 
+	/* Query entry and fill request */
+	entry = dcomp_fifo_write_entry(fifo);
+	valid = hwz->ops->fill_decompression_info(fifo, entry, src, slen, page, pp_info,
+						true, zspool_to_hwcomp_buffer);
 	update_dcomp_fifo_write_index(fifo);
 
 	/* Try next cmd if necessary */
@@ -1419,10 +1467,6 @@ next_cmd_fifo_1:
 			goto slowpath;
 		}
 
-		entry = comp_fifo_1_write_entry(fifo);
-
-		valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info);
-
 		/*
 		 * Increment the usage count and enable the gear clock
 		 * if possible before committing the request.
@@ -1431,19 +1475,27 @@ next_cmd_fifo_1:
 		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
-		/* Increment the number of compression request and try to promote frequency. */
-		if (atomic_inc_return(&hwz->comp_cnt) == 1) {
-
-			/* Wake up gear level adjusting thread to set up default gear */
-			SetGlaEncset(&gla_flags);
-			SetGlaNotify(&gla_flags);
-			wake_up(&hwz->gla_wait);
-
-			/* Remember to wake up post-process */
+		/* Increment the number of compression request and remember to wake up post-process. */
+		if (atomic_inc_return(&hwz->comp_cnt) == 1)
 			wake_up_pp = true;
-		}
 
-		update_comp_fifo_1_write_index(fifo);
+		/* Query entry and fill request */
+		entry = comp_fifo_1_write_entry(fifo);
+		valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info);
+		if (GlaEncNotready(&gla_flags)) {
+
+			/* Wake up gear level adjusting thread to set up default gear if necessary */
+			if (!GlaEncset(&gla_flags)) {
+				SetGlaEncset(&gla_flags);
+				SetGlaNotify(&gla_flags);
+				wake_up(&hwz->gla_wait);
+			}
+
+			/* Update write index without kick */
+			update_comp_fifo_1_write_index_nokick(fifo);
+		} else {
+			update_comp_fifo_1_write_index(fifo);
+		}
 
 		/* Try next cmd if necessary */
 		if (!valid)
@@ -1494,10 +1546,6 @@ next_cmd_fifo_2:
 		return -EBUSY;
 	}
 
-	entry = comp_fifo_2_write_entry(fifo);
-
-	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info);
-
 	/*
 	 * Increment the usage count and enable the gear clock
 	 * if possible before committing the request.
@@ -1506,19 +1554,27 @@ next_cmd_fifo_2:
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
-	/* Increment the number of compression request and try to promote frequency. */
-	if (atomic_inc_return(&hwz->comp_cnt) == 1) {
-
-		/* Wake up gear level adjusting thread to set up default gear */
-		SetGlaEncset(&gla_flags);
-		SetGlaNotify(&gla_flags);
-		wake_up(&hwz->gla_wait);
-
-		/* Remember to wake up post-process */
+	/* Increment the number of compression request and remember to wake up post-process. */
+	if (atomic_inc_return(&hwz->comp_cnt) == 1)
 		wake_up_pp = true;
-	}
 
-	update_comp_fifo_2_write_index(fifo);
+	/* Query entry and fill request */
+	entry = comp_fifo_2_write_entry(fifo);
+	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info);
+	if (GlaEncNotready(&gla_flags)) {
+
+		/* Wake up gear level adjusting thread to set up default gear if necessary */
+		if (!GlaEncset(&gla_flags)) {
+			SetGlaEncset(&gla_flags);
+			SetGlaNotify(&gla_flags);
+			wake_up(&hwz->gla_wait);
+		}
+
+		/* Update write index without kick */
+		update_comp_fifo_2_write_index_nokick(fifo);
+	} else {
+		update_comp_fifo_2_write_index(fifo);
+	}
 
 	/* Try next cmd if necessary */
 	if (!valid)
@@ -2557,6 +2613,7 @@ static int kick_hwe_exp(const char *val, const struct kernel_param *kp)
 		/* Same as kick_hwe_ctrl, but output to kernel log */
 		engine_get_reg_status(&hwz->ctrl, NULL);
 		dump_fifo_idx(hwz, NULL, 0);
+		engine_gear_get_status(&hwz->gear_ctrl, NULL);
 		break;
 	default:
 		pr_info("%s invalid ops!\n", __func__);
