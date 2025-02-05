@@ -479,6 +479,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/ufs:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/fdvt/5.1:srcs".format(kernel_version),
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:srcs",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:srcs".format(kernel_version),
 ]
@@ -640,6 +641,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/ufs:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/fdvt/5.1:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:ddk_kconfigs".format(kernel_version),
 ]
 
@@ -1114,6 +1116,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod-ise".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hw_sem:mtk-hw-semaphore".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/fdvt/5.1:camera_fdvt_isp51".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:mtk-soc-offload-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:mtk_mbraink_bridge".format(kernel_version),
 ]
@@ -1508,7 +1511,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
     "drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko",
     "drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko",
-    "drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm_v2.ko",
     #"drivers/misc/mediatek/jpeg/jpeg-driver.ko",
@@ -2303,7 +2305,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cam_cal/src/isp6s_mon/camera_eeprom_isp6s_mon.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/wpe/isp_6s/camera_wpe_isp6s.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp60.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/rsc/camera_rsc_isp6s.ko")
 
@@ -3216,7 +3217,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/wpe/isp_6s/camera_wpe_isp6s.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/rsc/camera_rsc_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp60.ko")
@@ -4103,7 +4103,6 @@ def get_overlay_modules_list():
         #mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
 
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/mfb/camera_mfb_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp60.ko")
 
@@ -4276,7 +4275,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/mfb/camera_mfb_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp60.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/fdvt/camera_fdvt_isp51.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/rsc/camera_rsc_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/wpe/isp_6s/camera_wpe_isp6s.ko")
 

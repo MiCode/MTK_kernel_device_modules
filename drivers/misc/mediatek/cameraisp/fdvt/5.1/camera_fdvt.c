@@ -37,7 +37,7 @@
 #ifdef CMDQ_MTEE
 #include <cmdq-sec.h>
 #endif
-#include <mtk_heap.h>
+#include "mtk_heap.h"
 #include <linux/suspend.h>
 #include <linux/rtc.h>
 
@@ -3523,7 +3523,7 @@ static long FDVT_ioctl(struct file *pFile,
 					request->enque_req_num);
 			}
 			spin_unlock_irqrestore(spinlock_lrq_ptr, flags);
-			log_dbg("config_fdvt Request!!\n");
+			log_inf("Tina: config_fdvt Request!!\n");
 			config_fdvt_request(FdvtWriteIdx);
 
 			mutex_unlock(&fdvt_mutex);

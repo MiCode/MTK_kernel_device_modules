@@ -56,8 +56,8 @@ endif
 #obj-y:= fdvt_dummy.o
 
 ifneq (, $(filter $(strip $(CONFIG_MTK_CAMERA_FD_ISP6S)),m y))
-obj-$(CONFIG_MTK_CAMERA_FD_ISP6S) += camera_fdvt_isp51.o
-camera_fdvt_isp51-objs += 5.1/camera_fdvt.o
+#obj-$(CONFIG_MTK_CAMERA_FD_ISP6S) += camera_fdvt_isp51.o
+#camera_fdvt_isp51-objs += 5.1/camera_fdvt.o
 endif
 
 ifneq (, $(filter $(strip $(CONFIG_MTK_CAMERA_FD_ISP6S_V1)),m y))
