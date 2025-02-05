@@ -10,7 +10,7 @@
 #include <mt-plat/aee.h>
 #endif
 #include <soc/mediatek/emi.h>
-#if IS_ENABLED(CONFIG_MTK_EMI)
+#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_COMMON_LEGACY_EMI)
 #include <soc/mediatek/smpu.h>
 #endif
 
@@ -936,6 +936,7 @@ static void mdee_dumper_v5_emimpu_callback(
 	return;
 }
 
+#if !IS_ENABLED(CONFIG_MTK_COMMON_LEGACY_EMI)
 static void mdee_dumper_v5_smpu_callback(const char *vio_msg)
 {
 	int md_state;
@@ -971,6 +972,7 @@ static void mdee_dumper_v5_smpu_callback(const char *vio_msg)
 	}
 }
 #endif
+#endif
 
 int mdee_dumper_v5_alloc(struct ccci_fsm_ee *mdee)
 {
@@ -980,9 +982,11 @@ int mdee_dumper_v5_alloc(struct ccci_fsm_ee *mdee)
 	if (mtk_emimpu_md_handling_register(&mdee_dumper_v5_emimpu_callback))
 		CCCI_ERROR_LOG(0, FSM, "%s: mtk_emimpu_md_handling_register fail\n",
 			__func__);
+#if !IS_ENABLED(CONFIG_MTK_COMMON_LEGACY_EMI)
 	if (mtk_smpu_md_handling_register(&mdee_dumper_v5_smpu_callback))
 		CCCI_ERROR_LOG(0, FSM, "%s: mtk_smpu_md_handling_register fail\n",
 			__func__);
+#endif
 #endif
 
 	/* Allocate port_proxy obj and set all member zero */
