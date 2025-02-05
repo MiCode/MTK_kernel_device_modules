@@ -84,6 +84,10 @@ struct zram_engine_t {
 	wait_queue_head_t dcomp_wait;
 	struct task_struct *dcomp_pp_work;
 
+	/* Gear-level-adjust relatives */
+	wait_queue_head_t gla_wait;
+	struct task_struct *gla_work;
+
 	/* Reference count */
 	refcount_t refcount;
 
@@ -168,6 +172,42 @@ DEFINE_STATIC_KEY_TRUE(engine_power_efficiency);
 /* Statistics for suspect hang */
 static atomic_t enc_suspect_hang_count = ATOMIC_INIT(0);
 static atomic_t dec_suspect_hang_count = ATOMIC_INIT(0);
+
+/*
+ * Request to adjust gear level
+ */
+enum glaflags {
+	GLA_notify,	/* Someone has a request */
+	GLA_encset,	/* Set to default gear level for compression */
+	GLA_decset,	/* Set to default gear level for decompression */
+	GLA_encdone,	/* Gear down for compression */
+	GLA_decdone,	/* Gear down for decompression */
+};
+
+#define SETGLAFLAG(uname, lname)					\
+static __always_inline void SetGla##uname(unsigned long *flags)		\
+{ set_bit(GLA_##lname, flags); }
+
+#define TESTGLACLEARFLAG(uname, lname)					\
+static __always_inline bool TestClearGla##uname(unsigned long *flags)	\
+{ return test_and_clear_bit(GLA_##lname, flags); }
+
+#define TESTGLAFLAG(uname, lname)					\
+static __always_inline bool Gla##uname(unsigned long *flags)		\
+{ return test_bit(GLA_##lname, flags); }
+
+#define GLAFLAG(uname, lname)						\
+	SETGLAFLAG(uname, lname)					\
+	TESTGLAFLAG(uname, lname)					\
+	TESTGLACLEARFLAG(uname, lname)
+
+GLAFLAG(Notify, notify);
+GLAFLAG(Encset, encset);
+GLAFLAG(Decset, decset);
+GLAFLAG(Encdone, encdone);
+GLAFLAG(Decdone, decdone);
+
+static unsigned long gla_flags;
 
 /**************************************************/
 
@@ -603,6 +643,80 @@ int refill_entry_buffer(uint32_t *buf_addr, int index, bool invalidate)
 	return 0;
 }
 
+/*
+ * Dedicated thread to adjust gear level.
+ */
+static int gear_level_adjustment(void *data)
+{
+	struct zram_engine_t *hwz = data;
+	DEFINE_WAIT(wait);
+
+	while (!kthread_should_stop()) {
+
+		/* Wait for request notification */
+		prepare_to_wait(&hwz->gla_wait, &wait, TASK_IDLE);
+		if (!TestClearGlaNotify(&gla_flags) && !kthread_should_stop())
+			schedule();
+		finish_wait(&hwz->gla_wait, &wait);
+
+		/* Should stop, just return. */
+		if (kthread_should_stop())
+			return 0;
+
+		/* Request to set up default gear level for compression */
+		if (TestClearGlaEncset(&gla_flags))
+			while (!engine_try_to_set_gear_level(&hwz->gear_ctrl, true, ENGINE_ENC_MIN_KICK_GEAR));
+
+		/* Request to set up default gear level for decompression */
+		if (TestClearGlaDecset(&gla_flags))
+			while (!engine_try_to_set_gear_level(&hwz->gear_ctrl, false, ENGINE_DEC_MIN_KICK_GEAR));
+
+		/* Request to start gear down for compression */
+		if (TestClearGlaEncdone(&gla_flags)) {
+			do {
+				/* Sleep for a while */
+				usleep_idle_range(50, 100);
+
+				/* Incoming request to set up gear level for compression */
+				if (GlaEncset(&gla_flags))
+					break;
+
+				/* Whether there are any pending requests */
+				if (atomic_read(&hwz->comp_cnt) != 0)
+					break;
+
+				/* Demote frequency (may sleep) */
+				if (engine_try_to_gear_down(&hwz->gear_ctrl, true))
+					break;
+
+			} while (1);
+		}
+
+		/* Request to start gear down for decompression */
+		if (TestClearGlaDecdone(&gla_flags)) {
+			do {
+				/* Sleep for a while */
+				usleep_idle_range(50, 100);
+
+				/* Incoming request to set up gear level for decompression */
+				if (GlaDecset(&gla_flags))
+					break;
+
+				/* Whether there are any pending requests */
+				if (atomic_read(&hwz->dcomp_cnt) != 0)
+					break;
+
+				/* Demote frequency (may sleep) */
+				if (engine_try_to_gear_down(&hwz->gear_ctrl, false))
+					break;
+
+			} while (1);
+		}
+	}
+
+	return 0;
+}
+
 /* Called by dcomp_post_process */
 static void dcomp_process_completed_cmd(struct zram_engine_t *hwz,
 				struct hwfifo *fifo, uint32_t entry)
@@ -664,19 +778,10 @@ static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
 #ifndef FPGA_EMULATION
 static inline void dcomp_try_to_gear_down(struct zram_engine_t *hwz)
 {
-retry:
-	/* Sleep for a while */
-	usleep_idle_range(50, 100);
-
-	/* Whether there are any pending requests */
-	if (atomic_read(&hwz->dcomp_cnt) != 0)
-		return;
-
-	/* Demote frequency (may sleep) */
-	if (engine_try_to_gear_down(&hwz->gear_ctrl, false))
-		return;
-
-	goto retry;
+	/* Wake up gear level adjusting thread to start gear down for decompression */
+	SetGlaDecdone(&gla_flags);
+	SetGlaNotify(&gla_flags);
+	wake_up(&hwz->gla_wait);
 }
 #else
 #define dcomp_try_to_gear_down(hwz)	do { } while (0)
@@ -868,19 +973,10 @@ static inline uint32_t comp_main_post_processing_cmds(struct zram_engine_t *hwz,
 #ifndef FPGA_EMULATION
 static inline void comp_try_to_gear_down(struct zram_engine_t *hwz)
 {
-retry:
-	/* Sleep for a while */
-	usleep_idle_range(50, 100);
-
-	/* Whether there are any pending requests */
-	if (atomic_read(&hwz->comp_cnt) != 0)
-		return;
-
-	/* Demote frequency (may sleep) */
-	if (engine_try_to_gear_down(&hwz->gear_ctrl, true))
-		return;
-
-	goto retry;
+	/* Wake up gear level adjusting thread to start gear down for compression */
+	SetGlaEncdone(&gla_flags);
+	SetGlaNotify(&gla_flags);
+	wake_up(&hwz->gla_wait);
 }
 #else
 #define comp_try_to_gear_down(hwz)	do { } while (0)
@@ -1202,10 +1298,6 @@ int hwcomp_decompress_page(void *hw, void *src, unsigned int slen, struct page *
 #endif
 
 #ifndef FPGA_EMULATION
-	/* Try to set up gear level for initial decompression request */
-	if (atomic_read(&hwz->dcomp_cnt) == 0)
-		engine_try_to_set_gear_level(&hwz->gear_ctrl, false, ENGINE_DEC_MIN_KICK_GEAR);
-
 retry:
 #endif
 
@@ -1250,8 +1342,16 @@ next_dcmd:
 #endif
 
 	/* Increment the number of decompression request */
-	if (atomic_inc_return(&hwz->dcomp_cnt) == 1)
+	if (atomic_inc_return(&hwz->dcomp_cnt) == 1) {
+
+		/* Wake up gear level adjusting thread to set up default gear */
+		SetGlaDecset(&gla_flags);
+		SetGlaNotify(&gla_flags);
+		wake_up(&hwz->gla_wait);
+
+		/* Remember to wake up post-process */
 		wake_up_pp = true;
+	}
 
 	update_dcomp_fifo_write_index(fifo);
 
@@ -1282,7 +1382,6 @@ int hwcomp_compress_page(void *hw, struct page *page, struct comp_pp_info *pp_in
 	uint32_t entry;
 	bool valid = false;
 	bool wake_up_pp = false;
-	int gear_set_retry = 3;
 
 	if (!hwz)
 		return -EINVAL;
@@ -1332,11 +1431,15 @@ next_cmd_fifo_1:
 		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
-		/* Increment the number of compression request & try to promote frequency. (may sleep) */
+		/* Increment the number of compression request and try to promote frequency. */
 		if (atomic_inc_return(&hwz->comp_cnt) == 1) {
-#ifndef FPGA_EMULATION
-			engine_try_to_gear_up(&hwz->gear_ctrl, true);
-#endif
+
+			/* Wake up gear level adjusting thread to set up default gear */
+			SetGlaEncset(&gla_flags);
+			SetGlaNotify(&gla_flags);
+			wake_up(&hwz->gla_wait);
+
+			/* Remember to wake up post-process */
 			wake_up_pp = true;
 		}
 
@@ -1362,26 +1465,6 @@ next_cmd_fifo_1:
 	}
 
 slowpath:
-
-#ifndef FPGA_EMULATION
-	/*
-	 * The cases entering this path:
-	 * 1. main fifo full
-	 * 2. Callers not from kswapd
-	 *
-	 * For case.1, the gear level is already set to higher.
-	 * We only need to consider the case.2 here for initial request.
-	 */
-	while (atomic_read(&hwz->comp_cnt) == 0) {
-		if(engine_try_to_set_gear_level(&hwz->gear_ctrl, true, ENGINE_ENC_MIN_KICK_GEAR))
-			break;
-
-		if(gear_set_retry-- < 0) {
-			pr_info("%s: unable to set gear level!\n", __func__);
-			break;
-		}
-	}
-#endif
 
 	/* For other callers */
 	spin_lock(&hwz->fifo_2_lock);
@@ -1423,9 +1506,17 @@ next_cmd_fifo_2:
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
-	/* Increment the number of compression request */
-	if (atomic_inc_return(&hwz->comp_cnt) == 1)
+	/* Increment the number of compression request and try to promote frequency. */
+	if (atomic_inc_return(&hwz->comp_cnt) == 1) {
+
+		/* Wake up gear level adjusting thread to set up default gear */
+		SetGlaEncset(&gla_flags);
+		SetGlaNotify(&gla_flags);
+		wake_up(&hwz->gla_wait);
+
+		/* Remember to wake up post-process */
 		wake_up_pp = true;
+	}
 
 	update_comp_fifo_2_write_index(fifo);
 
@@ -1896,6 +1987,7 @@ static void zram_engine_sw_deinit(struct zram_engine_t *hwz)
 	kthread_stop(hwz->fake_hw_dcomp);
 	kthread_stop(hwz->fake_hw);
 #endif
+	kthread_stop(hwz->gla_work);
 	kthread_stop(hwz->dcomp_pp_work);
 	kthread_stop(hwz->comp_pp_work);
 
@@ -1925,11 +2017,13 @@ static int zram_engine_sw_init(struct zram_engine_t *hwz)
 		goto destroy_allocator;
 	}
 
-	/* Initialize workers for post-process */
+	/* Initialize workers for post-process & gear-level-adjustment */
 	init_waitqueue_head(&hwz->comp_wait);
 	init_waitqueue_head(&hwz->dcomp_wait);
+	init_waitqueue_head(&hwz->gla_wait);
 	hwz->comp_pp_work = kthread_run(comp_post_process, hwz, "comp_pp_worker");
 	hwz->dcomp_pp_work = kthread_run(dcomp_post_process, hwz, "dcomp_pp_worker");
+	hwz->gla_work = kthread_run(gear_level_adjustment, hwz, "gla_worker");
 
 #if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
 	init_waitqueue_head(&hwz->fake_hw_wait);
