@@ -2867,10 +2867,15 @@ static void mmpc_ftrace_dump(void)
 		subsys_name = get_subsys_name(sid);
 		if (mmqos_state & MMPC_V2_ENABLE) {
 			for (int i = 0; i <  MAX_BW_VALUE_NUM; i++) {
-				reg_value = read_register(SUBSYS_HW_BW_OFFSET(sid, i));
+				reg_value = read_register(SUBSYS_V2_HW_BW_OFFSET(sid, i));
 				trace_mmqos__mmpc_v2_subsys_chnn_bw(
 					subsys_name, i, reg_value);
 			}
+			bw0 = read_register(SUBSYS_V2_HW_EMI_BW_HRT(sid));
+			bw1 = read_register(SUBSYS_V2_HW_EMI_BW_SRT(sid));
+			trace_mmqos__mmpc_subsys_emi_bw(subsys_name,
+				bw0 << DRAM_BW_UNIT_SHIFT,
+				bw1 << DRAM_BW_UNIT_SHIFT);
 			bw0 = read_register(SUBSYS_V2_HW_BW_HRT(sid));
 			bw1 = read_register(SUBSYS_V2_HW_BW_SRT(sid));
 		} else {
@@ -2894,17 +2899,33 @@ static void mmpc_ftrace_dump(void)
 		bw0 = read_register(TOTAL_BW(i));
 		trace_mmqos__mmpc_total_chnn_bw(
 			i, bw0 << CHNN_BW_UNIT_SHIFT);
+		if (mmqos_state & MMPC_V2_ENABLE) {
+			bw1 = read_register(TOTAL_CUR_BW(i));
+			trace_mmqos__mmpc_total_current_chnn_bw(
+				i, bw1 << CHNN_BW_UNIT_SHIFT);
+		}
 	}
 	if (mmqos_state & MMPC_V2_ENABLE) {
 		for (int i = 0; i < MAX_SLB_BW_NUM; i++) {
 			bw0 = read_register(TOTAL_SLB_BW(i));
 			trace_mmqos__mmpc_total_slb_chnn_bw(
 				i, bw0 << CHNN_BW_UNIT_SHIFT);
+			bw1 = read_register(TOTAL_CUR_SLB_BW(i));
+			trace_mmqos__mmpc_total_current_slb_chnn_bw(
+				i, bw1 << CHNN_BW_UNIT_SHIFT);
 		}
 	}
 	trace_mmqos__mmpc_total_dram_bw(
 		read_register(TOTAL_HRT_BW) << DRAM_BW_UNIT_SHIFT,
 		read_register(TOTAL_SRT_BW) << DRAM_BW_UNIT_SHIFT);
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		trace_mmqos__mmpc_total_emi_bw(
+			read_register(TOTAL_EMI_HRT_BW) << DRAM_BW_UNIT_SHIFT,
+			read_register(TOTAL_EMI_SRT_BW) << DRAM_BW_UNIT_SHIFT);
+		trace_mmqos__mmpc_total_current_bw(
+			read_register(TOTAL_CUR_HRT_BW) << DRAM_BW_UNIT_SHIFT,
+			read_register(TOTAL_CUR_SRT_BW) << DRAM_BW_UNIT_SHIFT);
+	}
 }
 
 static int mmqos_dbg_ftrace_thread(void *data)

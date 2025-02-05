@@ -296,6 +296,25 @@ TRACE_EVENT(mmqos__mmpc_subsys_chnn_bw,
 		(int)((__entry->i*3 + 2) & 1) ? "w" : "r",
 		(int)__entry->bw2)
 );
+TRACE_EVENT(mmqos__mmpc_subsys_emi_bw,
+	TP_PROTO(const char *sub_name, int hrt, int srt),
+	TP_ARGS(sub_name, hrt, srt),
+	TP_STRUCT__entry(
+		__string(sub_name, sub_name)
+		__field(int, hrt)
+		__field(int, srt)
+	),
+	TP_fast_assign(
+		__assign_str(sub_name);
+		__entry->hrt = hrt;
+		__entry->srt = srt;
+	),
+	TP_printk("%s_hrt=%d, %s_srt=%d",
+		__get_str(sub_name),
+		(int)__entry->hrt,
+		__get_str(sub_name),
+		(int)__entry->srt)
+);
 TRACE_EVENT(mmqos__mmpc_subsys_dram_bw,
 	TP_PROTO(const char *sub_name, int hrt, int srt),
 	TP_ARGS(sub_name, hrt, srt),
@@ -314,6 +333,25 @@ TRACE_EVENT(mmqos__mmpc_subsys_dram_bw,
 		(int)__entry->hrt,
 		__get_str(sub_name),
 		(int)__entry->srt)
+);
+TRACE_EVENT(mmqos__mmpc_total_current_chnn_bw,
+	TP_PROTO(int i, int bw),
+	TP_ARGS(i, bw),
+	TP_STRUCT__entry(
+		__field(int, i)
+		__field(int, bw)
+	),
+	TP_fast_assign(
+		__entry->i = i;
+		__entry->bw = bw;
+	),
+	TP_printk("bw%d_comm%d_%d_%s_%s=%d",
+		(int)__entry->i,
+		(int)(__entry->i >> 3) & 3,
+		(int)(__entry->i >> 2) & 1,
+		(int)(__entry->i & 2) ? "h" : "s",
+		(int)(__entry->i & 1) ? "w" : "r",
+		(int)__entry->bw)
 );
 TRACE_EVENT(mmqos__mmpc_total_chnn_bw,
 	TP_PROTO(int i, int bw),
@@ -334,6 +372,22 @@ TRACE_EVENT(mmqos__mmpc_total_chnn_bw,
 		(int)(__entry->i & 1) ? "w" : "r",
 		(int)__entry->bw)
 );
+TRACE_EVENT(mmqos__mmpc_total_current_slb_chnn_bw,
+	TP_PROTO(int i, int bw),
+	TP_ARGS(i, bw),
+	TP_STRUCT__entry(
+		__field(int, i)
+		__field(int, bw)
+	),
+	TP_fast_assign(
+		__entry->i = i;
+		__entry->bw = bw;
+	),
+	TP_printk("slb_bw%d_%s=%d",
+		(int)__entry->i,
+		(int)(__entry->i & 1) ? "w" : "r",
+		(int)__entry->bw)
+);
 TRACE_EVENT(mmqos__mmpc_total_slb_chnn_bw,
 	TP_PROTO(int i, int bw),
 	TP_ARGS(i, bw),
@@ -349,6 +403,36 @@ TRACE_EVENT(mmqos__mmpc_total_slb_chnn_bw,
 		(int)__entry->i,
 		(int)(__entry->i & 1) ? "w" : "r",
 		(int)__entry->bw)
+);
+TRACE_EVENT(mmqos__mmpc_total_emi_bw,
+	TP_PROTO(int hrt, int srt),
+	TP_ARGS(hrt, srt),
+	TP_STRUCT__entry(
+		__field(int, hrt)
+		__field(int, srt)
+	),
+	TP_fast_assign(
+		__entry->hrt = hrt;
+		__entry->srt = srt;
+	),
+	TP_printk("hrt=%d, srt=%d",
+		(int)__entry->hrt,
+		(int)__entry->srt)
+);
+TRACE_EVENT(mmqos__mmpc_total_current_bw,
+	TP_PROTO(int hrt, int srt),
+	TP_ARGS(hrt, srt),
+	TP_STRUCT__entry(
+		__field(int, hrt)
+		__field(int, srt)
+	),
+	TP_fast_assign(
+		__entry->hrt = hrt;
+		__entry->srt = srt;
+	),
+	TP_printk("hrt=%d, srt=%d",
+		(int)__entry->hrt,
+		(int)__entry->srt)
 );
 TRACE_EVENT(mmqos__mmpc_total_dram_bw,
 	TP_PROTO(int hrt, int srt),
