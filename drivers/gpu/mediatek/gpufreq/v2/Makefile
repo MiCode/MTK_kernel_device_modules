@@ -73,7 +73,7 @@ mtk_gpufreq_mt6993-y := \
 	gpuppm.o \
 	gpufreq_mt6993.o
 
-obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpufreq_wrapper.o
+# obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpufreq_wrapper.o
 ifneq ($(wildcard $(src)/gpufreq_mt6886.c),)
 ifneq ($(wildcard $(src)/gpufreq_history_mt6886.c),)
 obj-$(CONFIG_MTK_GPU_MT6886_SUPPORT) += mtk_gpufreq_mt6886.o

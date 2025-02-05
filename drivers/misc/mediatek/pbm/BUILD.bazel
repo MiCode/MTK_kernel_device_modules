@@ -39,8 +39,9 @@ define_mgk_ddk_ko(
         "mtk_pbm_common.h",
 		"mtk_pbm_gpu_cb.h",
     ],
-	header_deps = [
+    header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version),
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:mtk_mdpm".format(kernel_version),
