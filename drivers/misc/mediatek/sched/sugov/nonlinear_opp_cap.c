@@ -2325,8 +2325,13 @@ EXPORT_SYMBOL_GPL(set_dpt_v2_info_manual);
 
 #define check_sratio_sanity(ratio) (ratio == 0xdeadbeef) ? USING_LAST_STATE : ratio
 #define SET_VALUE(target, min, max, value) \
-	if ( min <= value && value <= max) \
+	if (min <= value && value <= max) \
 		(target) = (value);
+#define SET_VALUE_MAX(target, max, value) \
+	do { \
+		if (value <= max)	\
+			(target) = (value);	\
+	} while (0)
 
 int get_dpt_v2_driver_init_status(void)
 {
@@ -2450,13 +2455,13 @@ void update_dpt_v2_info(void)
 		SET_VALUE(dpt_rq->cur_ltime[S_COEF2], coef2_min_ltime, coef2_max_ltime, dpt_rq->coef2_ltime_manual);
 
 		/* Stall ratio info */
-		SET_VALUE(dpt_rq->sratio[S_COEF1], 0, 100, coef1_s);
-		SET_VALUE(dpt_rq->sratio[S_COEF1], 0, 100, dpt_rq->coef1_sratio_manual);
-		SET_VALUE(dpt_rq->sratio[S_COEF2], 0, 100, coef2_s);
-		SET_VALUE(dpt_rq->sratio[S_COEF2], 0, 100, dpt_rq->coef2_sratio_manual);
-		SET_VALUE(dpt_rq->sratio[S_TOTAL], 0, 100, total_s);
-		SET_VALUE(dpt_rq->sratio[S_TOTAL], 0, 100, dpt_rq->cpu_sratio_manual);
-		SET_VALUE(dpt_rq->sratio[NON_S], 0, 100, (100 - dpt_rq->sratio[S_COEF1] - dpt_rq->sratio[S_COEF2]));
+		SET_VALUE_MAX(dpt_rq->sratio[S_COEF1], 100, coef1_s);
+		SET_VALUE_MAX(dpt_rq->sratio[S_COEF1], 100, dpt_rq->coef1_sratio_manual);
+		SET_VALUE_MAX(dpt_rq->sratio[S_COEF2], 100, coef2_s);
+		SET_VALUE_MAX(dpt_rq->sratio[S_COEF2], 100, dpt_rq->coef2_sratio_manual);
+		SET_VALUE_MAX(dpt_rq->sratio[S_TOTAL], 100, total_s);
+		SET_VALUE_MAX(dpt_rq->sratio[S_TOTAL], 100, dpt_rq->cpu_sratio_manual);
+		SET_VALUE_MAX(dpt_rq->sratio[NON_S], 100, (100 - dpt_rq->sratio[S_COEF1] - dpt_rq->sratio[S_COEF2]));
 
 		record_scaling_factor_dpt_v2(cpu, &dpt_rq->util_cfs);
 
