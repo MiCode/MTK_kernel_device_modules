@@ -44,7 +44,6 @@ subdir-ccflags-y += -Wformat
 
 obj-${CONFIG_MTK_MBRAINK} += mtk_mbraink.o
 obj-${CONFIG_MTK_MBRAINK} += modules/
-obj-${CONFIG_MTK_MBRAINK} += perf/
 
 mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o mbraink_memory.o mbraink_gpu.o mbraink_audio.o mbraink_cpufreq.o mbraink_battery.o mbraink_pmu.o mbraink_gps.o mbraink_wifi.o mbraink_usb.o
 
