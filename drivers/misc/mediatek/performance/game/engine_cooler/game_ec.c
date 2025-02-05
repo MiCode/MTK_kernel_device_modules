@@ -245,7 +245,7 @@ int get_render_frame_info(struct game_package *pack)
 			break;
 		}
 
-		if (oldest_update_time < s_ECData[i].latest_update_timestamp) {
+		if (oldest_update_time > s_ECData[i].latest_update_timestamp) {
 			oldest_update_time = s_ECData[i].latest_update_timestamp;
 			oldest_update_idx = i;
 		}
