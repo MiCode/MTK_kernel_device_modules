@@ -995,6 +995,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
     "//kernel_device_modules-{}/drivers/spmi:spmi-mtk-mpu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/spmi:spmi-mtk-pmif".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/spmi:spmi-mtk-gip".format(kernel_version),
     "//kernel_device_modules-{}/drivers/tee/teeperf:teeperf".format(kernel_version),
     "//kernel_device_modules-{}/drivers/tee/gud:mcDrvModule".format(kernel_version),
     "//kernel_device_modules-{}/drivers/tee/gud:mcDrvModule-ffa".format(kernel_version),

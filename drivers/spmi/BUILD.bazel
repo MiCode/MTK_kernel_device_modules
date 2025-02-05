@@ -51,3 +51,14 @@ define_mgk_ddk_ko(
     ],
     includes = ["include"],
 )
+
+define_mgk_ddk_ko(
+    name = "spmi-mtk-gip",
+    srcs = [
+        "spmi-mtk-gip.c",
+    ],
+    hdrs = [
+        "spmi-mtk.h",
+    ],
+    includes = ["include"],
+)
