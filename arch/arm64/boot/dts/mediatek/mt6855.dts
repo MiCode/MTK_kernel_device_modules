@@ -2574,7 +2574,7 @@
 			compatible = "mediatek,pwrap";
 			reg = <0 0x1000d000 0 0x1000>;
 		};
-		usb_meta: usb_meta {
+		usb_meta: usb-meta {
 			compatible = "mediatek,usb-meta";
 			udc = <&usb>;
 		};
@@ -7124,7 +7124,7 @@
 				#phy-cells = <1>;
 			};
 		};
-		usb_boost: usb_boost_manager {
+		usb_boost: usb-boost-manager {
 			compatible = "mediatek,usb-boost", "mediatek,mt6855-usb-boost";
 			interconnects = <&dvfsrc MT6873_MASTER_USB &dvfsrc MT6873_SLAVE_DDR_EMI>;
 			interconnect-names = "icc-bw";
