@@ -1749,7 +1749,7 @@ error:
 	regs->regs[1] = ret;
 }
 
-static int mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
+static bool mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
 				       u64 addr)
 {
 	smmu_device_t *smmu_dev;
@@ -1763,7 +1763,7 @@ static int mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
 	if (!smmu_dev) {
 		pkvm_smmu_ops->puts(
 			"pkvm_smmu: mtk_iommu_host_dabt_handler can't find dev");
-		return 0;
+		return false;
 	}
 	is_write = esr & ESR_ELx_WNR;
 	off = addr - smmu_dev->reg_base_pa_addr;
@@ -1773,10 +1773,10 @@ static int mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
 	else
 		mmio_read(regs, smmu_dev, esr, off);
 
-	return 0;
+	return true;
 }
 
-static int mtk_smmu_init(unsigned long init_arg)
+static int mtk_smmu_init(void)
 {
 	return 0;
 }
@@ -1786,7 +1786,7 @@ static struct kvm_hyp_iommu *mtk_smmu_id_to_iommu(pkvm_handle_t smmu_id)
 	return 0;
 }
 
-int mtk_smmu_alloc_domain(struct kvm_hyp_iommu_domain *domain, u32 type)
+int mtk_smmu_alloc_domain(struct kvm_hyp_iommu_domain *domain, int type)
 {
 	return 0;
 }
@@ -1809,8 +1809,7 @@ static int mtk_smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu
 
 bool mtk_smmu_dabt_handler(struct kvm_cpu_context *host_ctxt, u64 esr, u64 addr)
 {
-	mtk_iommu_host_dabt_handler(&host_ctxt->regs, esr, addr);
-	return true;
+	return mtk_iommu_host_dabt_handler(&host_ctxt->regs, esr, addr);
 }
 
 int mtk_smmu_suspend(struct kvm_hyp_iommu *iommu)
