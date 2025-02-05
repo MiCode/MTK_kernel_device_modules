@@ -873,8 +873,11 @@ static void gpu_pdma_set_irq(struct pdma_device *pdma_dev, int idx)
 		if (idx != 0)
 			pdma_sram_base->interrupt_status =
 				((pdma_sram_base->interrupt_status >> 1) << 1) | (idx & 0x1);
-		else
+		else {
 			pdma_sram_base->interrupt_status = 0;
+			pdma_sram_base->pmu_status_df_0 = 0;
+			pdma_sram_base->pmu_status_df_1 = 0;
+		}
 	} else
 		pr_info("@%s: set irq failed\n", __func__);
 }
@@ -918,6 +921,13 @@ static ssize_t gpu_pdma_show(struct device *dev,
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 		"irq enable status:	0x%x\n",
 		pdma_dev->pdma_sram_base_kva->interrupt_status & 0x1);
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+		"pmu sum for df 0:	0x%x\n",
+		pdma_dev->pdma_sram_base_kva->pmu_status_df_0);
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+		"pmu sum for df 1:	0x%x\n",
+		pdma_dev->pdma_sram_base_kva->pmu_status_df_1);
+
 
 	if (pdma_dev->ccmd_locked_ctx_id != 0) {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
@@ -1090,6 +1100,8 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	/* init sram values */
 	g_pdma_dev->pdma_sram_base_kva->ccmd_hw_reset = 0;
 	g_pdma_dev->pdma_sram_base_kva->interrupt_status = 0;
+	g_pdma_dev->pdma_sram_base_kva->pmu_status_df_0 = 0;
+	g_pdma_dev->pdma_sram_base_kva->pmu_status_df_1 = 0;
 
 	pr_info("@%s: SRAM base: 0x%llx, size: 0x%llx, kva: 0x%p\n", __func__,
 		g_pdma_dev->pdma_sram_base, resource_size(res),

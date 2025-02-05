@@ -166,8 +166,10 @@ struct pdma_rw_ptr {
 
 struct pdma_sram {
 	unsigned int ccmd_hw_reset;
-	unsigned int interrupt_status;    /* [0]:enable irq [1]:interrupt status(from eb) */
+	unsigned int interrupt_status;    /* [0]:enable irq & pmu[1]:interrupt status(from eb) */
 	unsigned int ringbuf[PDMA_RINGBUF_PA_NUM];
+	unsigned int pmu_status_df_0;
+	unsigned int pmu_status_df_1;
 };
 
 /* IOCTL cmd */
