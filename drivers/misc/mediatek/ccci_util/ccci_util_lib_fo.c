@@ -118,7 +118,7 @@ struct _modem_info {
 	unsigned int size;
 	char md_id;
 	char errno;
-	char md_type;
+	unsigned int md_type;
 	char ver;
 	unsigned int reserved[2];
 };
