@@ -32,7 +32,7 @@ ddk_headers(
         "iommu_pseudo.h",
         "iommu_secure.h",
         "mtk-iommu-util.h",
-	"mtk-smmu-ela.h",
+        "mtk-smmu-ela.h",
         "smmu_secure.h",
     ]) + ["//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),]
        + ["//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),],
@@ -63,8 +63,6 @@ define_mgk_ddk_ko(
         },
     },
     hdrs = glob([
-        "iommu_debug.h",
-        "mtk-iommu-util.h",
         "smmu_secure.h",
     ]),
     includes = ["."],
@@ -75,10 +73,18 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
-    name = "iommu-secure",
-    srcs = [
-        "iommu_secure.c",
-    ],
+    name = "iommu_secure",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_IOMMU_MISC_SECURE": {
+            True: [
+                "iommu-secure.c",
+            ],
+            False: [
+                "iommu_secure_dummy.c"
+            ],
+        }
+    },
     hdrs = glob([
         "iommu_debug.h",
         "iommu_secure.h",
@@ -111,7 +117,7 @@ define_mgk_ddk_ko(
     ],
     hdrs = glob([
         "iommu_debug.h",
-	"iommu_engine.h",
+        "iommu_engine.h",
         "mtk-iommu-util.h",
     ]),
     includes = ["."],
@@ -129,12 +135,12 @@ define_mgk_ddk_ko(
     srcs = [
         "iommu_port.h",
         "iommu-debug.c",
-	"mtk-smmu-ela.c",
+        "mtk-smmu-ela.c",
         "smmu_reg.h",
     ],
     hdrs = glob([
         "iommu_debug.h",
-	"mtk-smmu-ela.h",
+        "mtk-smmu-ela.h",
     ]),
     includes = ["."],
     copts = [

@@ -740,4 +740,4 @@ static void __exit mtk_iommu_sec_exit(void)
 
 module_init(mtk_iommu_sec_init);
 module_exit(mtk_iommu_sec_exit);
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
