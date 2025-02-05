@@ -42,6 +42,7 @@ enum {
 	QOS_IPI_QOS_PREFETCH_POWER_RATIO_UP,
 	QOS_IPI_QOS_PREFETCH_POWER_RATIO_DN,
 	QOS_IPI_FORCE_POLLING,
+	QOS_IPI_EVT_TRI_DEBUG,
 	NR_QOS_IPI,
 };
 
@@ -110,6 +111,9 @@ struct qos_ipi_data {
 			unsigned int userID;
 			unsigned int enable;
 		} qos_force_polling;
+		struct {
+			unsigned int enable;
+		} qos_evt_tri_dbg;
 	} u;
 };
 

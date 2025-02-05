@@ -33,7 +33,7 @@ struct tag_bootmode {
 struct mtk_qos *m_qos;
 static void __iomem *qos_sram_base;
 static unsigned int qos_sram_bound;
-
+unsigned int evt_tri_dbg_tbl[NR_TRI];
 unsigned int mtk_qos_enable = 1;
 
 unsigned int is_mtk_qos_enable(void)
@@ -106,6 +106,31 @@ void qos_sram_init(void __iomem *regs, unsigned int bound)
 	for (i = 0; i < bound; i += 4)
 		writel(0x0, qos_sram_base+i);
 }
+
+void qos_force_polling_mode(int enable, unsigned int userID)
+{
+	struct qos_ipi_data qos_ipi_d;
+
+	qos_ipi_d.cmd = QOS_IPI_FORCE_POLLING;
+	qos_ipi_d.u.qos_force_polling.userID = userID;
+	qos_ipi_d.u.qos_force_polling.enable = enable;
+	// pr_info("%s: userID: %d, enable: %d\n", __func__, userID, enable);
+	qos_ipi_to_sspm_scmi_command(qos_ipi_d.cmd,
+		qos_ipi_d.u.qos_force_polling.userID,
+		qos_ipi_d.u.qos_force_polling.enable, 0, 0);
+}
+EXPORT_SYMBOL_GPL(qos_force_polling_mode);
+
+void qos_evt_tri_dbg_enable(int enable)
+{
+	struct qos_ipi_data qos_ipi_d;
+
+	qos_ipi_d.cmd = QOS_IPI_EVT_TRI_DEBUG;
+	qos_ipi_d.u.qos_evt_tri_dbg.enable = enable;
+	qos_ipi_to_sspm_scmi_command(qos_ipi_d.cmd,
+		qos_ipi_d.u.qos_evt_tri_dbg.enable, 0, 0, 0);
+}
+EXPORT_SYMBOL_GPL(qos_evt_tri_dbg_enable);
 
 #if IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
 unsigned int mtk_qos_get_boot_mode(void)
@@ -199,8 +224,20 @@ int mtk_qos_probe(struct platform_device *pdev,
 	else {
 		pr_info("mtkqos: find share sram ext node\n");
 		qos->regsize = (unsigned int) resource_size(res);
-		qos_share_init_sram_ext(qos->regs, qos->regsize);
+		pr_info("mtkqos: check_ext_size:%d\n", qos->regsize);
+		if (qos->regsize)
+			qos_share_init_sram_ext(qos->regs, qos->regsize);
+		else
+			pr_info("mtkqos: check_ext_size:%d\n", qos->regsize);
 	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	qos->regs = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(qos->regs))
+		return PTR_ERR(qos->regs);
+	pr_info("mtkqos: find share sram dbg node\n");
+	qos->regsize = (unsigned int) resource_size(res);
+	qos_share_init_sram_dbg(qos->regs, qos->regsize);
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	if (mtk_qos_enable) {

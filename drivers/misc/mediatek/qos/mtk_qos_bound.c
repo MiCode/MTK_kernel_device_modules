@@ -118,23 +118,6 @@ void qos_bound_stress_enable(int enable)
 	qos_bound_stress_enabled = enable;
 }
 
-#if IS_ENABLED(MTK_SCMI)
-// #if IS_ENABLED(MTK_QOS_EVT_TRI_SUPPORT)
-void qos_force_polling_mode(int enable, unsigned int userID)
-{
-	struct qos_ipi_data qos_ipi_d;
-
-	qos_ipi_d.cmd = QOS_IPI_FORCE_POLLING;
-	qos_ipi_d.u.qos_force_polling.userID = userID;
-	qos_ipi_d.u.qos_force_polling.enable = enable;
-	qos_ipi_to_sspm_scmi_command(qos_ipi_d.cmd,
-		qos_ipi_d.u.qos_force_polling.userID,
-		qos_ipi_d.u.qos_force_polling.enable, 0, 0);
-}
-EXPORT_SYMBOL_GPL(qos_force_polling_mode);
-// #endif	/* MTK_QOS_EVT_TRI_SUPPORT */
-#endif
-
 int is_qos_bound_log_enabled(void)
 {
 	return qos_bound_log_enabled;

@@ -6,6 +6,7 @@
 #include <linux/io.h>
 #include <mtk_qos_ipi.h>
 #include <mtk_qos_share.h>
+#include <mtk_qos_sram.h>
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 #include <sspm_reservedmem.h>
@@ -16,6 +17,8 @@ static void __iomem *qos_share_sram_base;
 static unsigned int qos_share_sram_bound;
 static void __iomem *qos_share_sram_base_ext;
 static unsigned int qos_share_sram_bound_ext;
+static void __iomem *qos_share_sram_base_dbg;
+static unsigned int qos_share_sram_bound_dbg;
 
 struct qos_rec_data *qos_share_ref;
 
@@ -25,6 +28,7 @@ static int qos_share_use_sram_ext;
 /* share dram for subsys related table communication */
 static phys_addr_t rec_phys_addr, rec_virt_addr;
 static unsigned long long rec_size;
+unsigned int is_enable_qos_ltr_buffer = 0xFFFF;
 
 static void qos_share_sspm_setup(void)
 {
@@ -124,25 +128,6 @@ unsigned int qos_rec_get_dramc_hist_bw(unsigned int idx, unsigned int type)
 }
 EXPORT_SYMBOL_GPL(qos_rec_get_dramc_hist_bw);
 
-unsigned int qos_rec_get_hist_bw(unsigned int idx, unsigned int type)
-{
-	unsigned int val = 0;
-
-	if (!qos_share_ref)
-		return val;
-
-	if (idx >= HIST_NUM || type >= BW_TYPE)
-		return val;
-
-	if (qos_share_use_sram)
-		val = qos_share_sram_read(QOS_SHARE_HIST_BW + (BW_TYPE * idx + type)*4);
-	else
-		val = qos_share_ref->bw_hist[idx][type];
-
-	return val;
-}
-EXPORT_SYMBOL_GPL(qos_rec_get_hist_bw);
-
 unsigned int qos_rec_get_hist_data_bw(unsigned int idx, unsigned int type)
 {
 	unsigned int val = 0;
@@ -164,15 +149,24 @@ EXPORT_SYMBOL_GPL(qos_rec_get_hist_data_bw);
 
 unsigned int qos_rec_check_sram_ext(void)
 {
-	if (qos_share_use_sram_ext)
+	// info("Ryan: %s: %d, %d\n", __func__, qos_share_use_sram_ext, is_enable_qos_ltr_buffer);
+	if (qos_share_use_sram_ext || is_enable_qos_ltr_buffer)
 		return 0;
 	else
 		return 0xFFFF;
 }
 EXPORT_SYMBOL_GPL(qos_rec_check_sram_ext);
 
+unsigned int qos_ltr_buffer_support(void)
+{
+	return is_enable_qos_ltr_buffer;
+}
+EXPORT_SYMBOL_GPL(qos_ltr_buffer_support);
+
 unsigned int qos_rec_get_hist_idx(void)
 {
+	if (is_enable_qos_ltr_buffer == 0xFFFF)
+		is_enable_qos_ltr_buffer = qos_sram_read(QOS_DEBUG_1);
 	if (qos_share_use_sram)
 		return qos_share_sram_read(QOS_SHARE_CURR_IDX);
 	else if (qos_share_ref)
@@ -181,6 +175,7 @@ unsigned int qos_rec_get_hist_idx(void)
 		return 0xFFFF;
 }
 EXPORT_SYMBOL_GPL(qos_rec_get_hist_idx);
+
 int qos_share_init_sram(void __iomem *regs, unsigned int bound)
 {
 	int i;
@@ -209,6 +204,7 @@ int qos_share_init_sram_ext(void __iomem *regs, unsigned int bound)
 
 	pr_info("qos share sram_ext addr:0x%p len:%d\n",
 		qos_share_sram_base_ext, qos_share_sram_bound_ext);
+
 	qos_share_use_sram_ext = 1;
 	/* init zero except for version addr */
 	for (i = 0; i < bound; i += 4)
@@ -218,6 +214,54 @@ int qos_share_init_sram_ext(void __iomem *regs, unsigned int bound)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(qos_share_init_sram_ext);
+
+int qos_share_init_sram_dbg(void __iomem *regs, unsigned int bound)
+{
+	int i;
+
+	qos_share_sram_base_dbg = regs;
+	qos_share_sram_bound_dbg = bound;
+
+	pr_info("qos share sram_dbg addr:0x%p len:%d\n",
+		qos_share_sram_base_dbg, qos_share_sram_bound_dbg);
+
+	/* init zero except for version addr */
+	for (i = 0; i < bound; i += 4)
+		writel(0x0, qos_share_sram_base_dbg+i);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qos_share_init_sram_dbg);
+
+unsigned int qos_rec_get_hist_bw(unsigned int idx, unsigned int type)
+{
+	unsigned int val = 0;
+
+	if (!qos_share_ref)
+		return val;
+
+	if (idx >= HIST_NUM || type >= BW_NUM)
+		return val;
+
+	if (qos_share_use_sram) {
+		if (is_enable_qos_ltr_buffer == 1)
+			val = qos_share_sram_read(QOS_SHARE_HIST_BW + (BW_TYPE * idx * SRC_TYPE + type)*4);
+		else
+			val = qos_share_sram_read(QOS_SHARE_HIST_BW + (BW_TYPE * idx + type)*4);
+	} else
+		val = qos_share_ref->bw_hist[idx][type];
+
+	return val;
+}
+EXPORT_SYMBOL_GPL(qos_rec_get_hist_bw);
+
+extern u32 qos_share_sram_read_dbg(u32 offset)
+{
+	if (!qos_share_sram_base_dbg || offset >= qos_share_sram_bound_dbg)
+		return 0;
+	return readl(qos_share_sram_base_dbg + offset);
+}
+EXPORT_SYMBOL_GPL(qos_share_sram_read_dbg);
 
 extern u32 qos_share_sram_read_ext(u32 offset)
 {
