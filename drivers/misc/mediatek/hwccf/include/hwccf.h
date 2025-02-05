@@ -679,13 +679,16 @@ struct voter_map {
 #define XPU_B0_SET          CCF_XPU_B1_SET(HWV_XPU_0)
 #define XPU_B0_CLR          CCF_XPU_B1_CLR(HWV_XPU_0)
 #define XPU_B0_DONE         CCF_BACKUP1_DONE
+#define XPU_B0_STA          CCF_BACKUP1_STA
 
 #define XPU_B1_SET          CCF_XPU_B2_SET(HWV_XPU_0)
 #define XPU_B1_CLR          CCF_XPU_B2_CLR(HWV_XPU_0)
 #define XPU_B1_DONE         CCF_BACKUP2_DONE
+#define XPU_B1_STA          CCF_BACKUP2_STA
 
 #define XPU_B2_SET          CCF_XPU_B3_SET(HWV_XPU_0)
 #define XPU_B2_CLR          CCF_XPU_B3_CLR(HWV_XPU_0)
 #define XPU_B2_DONE         CCF_BACKUP3_DONE
+#define XPU_B2_STA          CCF_BACKUP3_STA
 
 #endif /* _HWCCF_H_ */
