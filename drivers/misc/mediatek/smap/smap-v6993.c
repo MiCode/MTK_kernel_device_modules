@@ -37,14 +37,14 @@ int register_smap_mbrain_cb(smap_mbrain_callback smap_mbrain_cb)
 }
 EXPORT_SYMBOL(register_smap_mbrain_cb);
 
-int get_smap_mbrain_data(struct smap_mbrain *mbrain_data)
+int get_smap_mbrain_data(struct smap_mbrain *debug_data)
 {
 	if (!smap_data) {
 		smap_print("No smap_data\n");
 		return -EINVAL;
 	}
 
-	memcpy(mbrain_data, &smap_data->mbrain_data, sizeof(struct smap_mbrain));
+	memcpy(debug_data, &smap_data->debug_data, sizeof(struct smap_mbrain));
 	return 0;
 }
 EXPORT_SYMBOL(get_smap_mbrain_data);
@@ -72,7 +72,7 @@ static inline void smap_write(u32 offset, u32 val)
 	writel(val, smap_data->regs + offset);
 }
 
-static int smap_setting(struct smap_entry *entry)
+static int smap_set_entry(struct smap_entry *entry)
 {
 	int i, ret = 0;
 
@@ -98,19 +98,18 @@ static void smap_init(enum SMAP_MODE mode)
 	}
 
 	if (mode == MODE_NORMAL)
-		smap_setting(SMAP_NORMAL_MODE_ENTRY);
+		smap_set_entry(SMAP_NORMAL_MODE_ENTRY);
 	else if (mode == MODE_TEST1)
-		smap_setting(SMAP_DVT_MODE_ENTRY);
+		smap_set_entry(SMAP_DVT_MODE_ENTRY);
 	else
 		smap_print("wrong mode\n");
 }
 
-static ssize_t dump_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_type,
-	enum SMAP_MBRAIN_LOG mlog)
+static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_type,
+	enum SMAP_SEND_LOG_TYPE send_type)
 {
-	unsigned int len = 0, cnt;
-	unsigned int sys_time_h, sys_time_l, result, dyn_base, cg_subsys_dyn, cg_ratio;
-	unsigned long long sys_time;
+	unsigned int len = 0;
+	struct smap_mbrain *dbg;
 	struct timespec64 tv = {0};
 
 	if (!smap_data) {
@@ -118,65 +117,107 @@ static ssize_t dump_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_type,
 		return -ENODATA;
 	}
 
-	cnt = smap_read(PMSR_RESERVED_RW_REG_4);
-	sys_time_h = smap_read(PMSR_RESERVED_RW_REG_5);
-	sys_time_l = smap_read(PMSR_RESERVED_RW_REG_6);
-	result = smap_read(PMSR_RESERVED_RW_REG_7);
-	dyn_base = (result >> 4) & 0xFFF;
-	cg_subsys_dyn = (result >> 16) & 0xFFF;
-	cg_ratio = (result >> 28) & 0xF;
+	dbg = &smap_data->debug_data;
+
+	dbg->enable = smap_read(SMAP_ENABLE);
+	dbg->dect_cnt = smap_read(PMSR_RESERVED_RW_REG_4);
+	dbg->temp_cnt = smap_read(PMSR_RESERVED_RW_REG_5);
+	dbg->sys_time = smap_read(PMSR_RESERVED_RW_REG_6);
+	dbg->dect_result = smap_read(PMSR_RESERVED_RW_REG_7);
+	dbg->dyn_base = (smap_data->debug_data.dect_result >> 4) & 0xFFF;
+	dbg->cg_subsys_dyn = (smap_data->debug_data.dect_result >> 16) & 0xFFF;
+	dbg->cg_ratio = (smap_data->debug_data.dect_result >> 28) & 0xF;
+	dbg->dram0_smap_snapshot = smap_read(DRAM0_SMAP_SNAPSHOT);
+	dbg->dram1_smap_snapshot = smap_read(DRAM1_SMAP_SNAPSHOT);
+	dbg->dram2_smap_snapshot = smap_read(DRAM2_SMAP_SNAPSHOT);
+	dbg->dram3_smap_snapshot = smap_read(DRAM3_SMAP_SNAPSHOT);
+	dbg->chinf0_smap_snapshot = smap_read(CHINF0_SMAP_SNAPSHOT);
+	dbg->chinf1_smap_snapshot = smap_read(CHINF1_SMAP_SNAPSHOT);
+	dbg->venc0_smap_snapshot = smap_read(VENC0_SMAP_SNAPSHOT);
+	dbg->venc1_smap_snapshot = smap_read(VENC1_SMAP_SNAPSHOT);
+	dbg->venc2_smap_snapshot = smap_read(VENC2_SMAP_SNAPSHOT);
+	dbg->emi_snapshot = smap_read(EMI_SMAP_SNAPSHOT);
+	dbg->emi_s_snapshot = smap_read(EMI_SMAP_SOUTH_SNAPSHOT);
+	dbg->zram_snapshot = smap_read(ZRAM_SMAP_SNAPSHOT);
+	dbg->apu_snapshot = smap_read(APU_SMAP_SNAPSHOT);
+
+	smap_write(SMAP_SNAPSHOT_CLR, 0x0);
 
 	if (log_type == DUMP_HEADER) {
-		len += snprintf(buf + len, PAGE_SIZE - len, "CNT=%u\n", cnt);
-		sys_time = ((uint64_t)sys_time_h << 32) | sys_time_l;
-		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME=%llu, ", sys_time);
-		len += snprintf(buf + len, PAGE_SIZE - len, "RESULT=0x%x\n", result);
-		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=0x%x\n", dyn_base);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=0x%x\n", cg_subsys_dyn);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=0x%x\n", cg_ratio);
-	} else if (log_type == DUMP_NO_HEADER) {
-		len += snprintf(buf + len, PAGE_SIZE - len, "%u, ", cnt);
-		sys_time = ((uint64_t)sys_time_h << 32) | sys_time_l;
-		len += snprintf(buf + len, PAGE_SIZE - len, "%llu, ", sys_time);
-		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x, ", result);
-		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x, ", dyn_base);
-		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x, ", cg_subsys_dyn);
-		len += snprintf(buf + len, PAGE_SIZE - len, "0x%x\n", cg_ratio);
-	} else if (log_type == DUMP_KERNEL) {
-		len += snprintf(buf + len, PAGE_SIZE - len, "CNT=%u, ", cnt);
-		sys_time = ((uint64_t)sys_time_h << 32) | sys_time_l;
-		len += snprintf(buf + len, PAGE_SIZE - len, "SYSTIME=%llu, ", sys_time);
-		len += snprintf(buf + len, PAGE_SIZE - len, "RESULT=0x%x, ", result);
-		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=0x%x, ", dyn_base);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=0x%x, ", cg_subsys_dyn);
-		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=0x%x\n", cg_ratio);
-	} else if (log_type == NO_DUMP)
-		len = 0;
-
-	if (mlog == MBRAIN_LOG_ON) {
-		ktime_get_real_ts64(&tv);
-		smap_data->mbrain_data.cnt = cnt;
-		sys_time = sys_time_h;
-		smap_data->mbrain_data.sys_time = (sys_time << 32) | sys_time_l;
-		smap_data->mbrain_data.real_time_end = (tv.tv_sec*1000) + (tv.tv_nsec/1000000);
-		smap_data->mbrain_data.real_time_start =
-			smap_data->mbrain_data.real_time_end - smap_data->delay_ms;
-		smap_data->mbrain_data.dyn_base = dyn_base;
-		smap_data->mbrain_data.cg_subsys_dyn = cg_subsys_dyn;
-		smap_data->mbrain_data.cg_ratio = cg_ratio;
-
-		if (mbrain_cb)
-			mbrain_cb(&smap_data->mbrain_data);
+		len += snprintf(buf + len, PAGE_SIZE - len, "ENABLE=%u\n", dbg->enable);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DECT_CNT=%u\n", dbg->dect_cnt);
+		len += snprintf(buf + len, PAGE_SIZE - len, "TEMP_CNT=%u\n", dbg->temp_cnt);
+		len += snprintf(buf + len, PAGE_SIZE - len, "SYS_TIME=%u\n", dbg->sys_time);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DECT_RESULT=0x%x\n", dbg->dect_result);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=0x%x\n", dbg->dyn_base);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=0x%x\n",
+			dbg->cg_subsys_dyn);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=0x%x\n", dbg->cg_ratio);
+		len += snprintf(buf + len, PAGE_SIZE - len,
+			"SNAPSHOT[DRAM0/1/2/3]=0x%x,0x%x,0x%x,0x%x",
+			dbg->dram0_smap_snapshot, dbg->dram1_smap_snapshot,
+			dbg->dram2_smap_snapshot, dbg->dram3_smap_snapshot);
+		len += snprintf(buf + len, PAGE_SIZE - len, "[CHINF0/1]=0x%x,0x%x",
+			dbg->chinf0_smap_snapshot, dbg->chinf1_smap_snapshot);
+		len += snprintf(buf + len, PAGE_SIZE - len, "[VENC0/1/2]=0x%x,0x%x,0x%x",
+			dbg->venc0_smap_snapshot, dbg->venc1_smap_snapshot,
+			dbg->venc2_smap_snapshot);
+		len += snprintf(buf + len, PAGE_SIZE - len,
+			"[EMI/EMI_S/ZRAM/APU]=0x%x,0x%x,0x%x,0x%x", dbg->emi_snapshot,
+			dbg->emi_s_snapshot, dbg->zram_snapshot, dbg->apu_snapshot);
+	} else if (log_type == DUMP_NO_HEADER)
+		len += snprintf(buf + len, PAGE_SIZE - len,
+			"%u,%u,%u,%u,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",
+			dbg->enable, dbg->dect_cnt,
+			dbg->temp_cnt, dbg->sys_time, dbg->dect_result,
+			dbg->dyn_base, dbg->cg_subsys_dyn, dbg->cg_ratio,
+			dbg->dram0_smap_snapshot, dbg->dram1_smap_snapshot,
+			dbg->dram2_smap_snapshot, dbg->dram3_smap_snapshot,
+			dbg->chinf0_smap_snapshot, dbg->chinf1_smap_snapshot,
+			dbg->venc0_smap_snapshot, dbg->venc1_smap_snapshot,
+			dbg->venc2_smap_snapshot, dbg->emi_s_snapshot,
+			dbg->zram_snapshot, dbg->apu_snapshot);
+	else if (log_type == DUMP_KERNEL) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "ENABLE=%u ", dbg->enable);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DECT_CNT=%u ", dbg->dect_cnt);
+		len += snprintf(buf + len, PAGE_SIZE - len, "TEMP_CNT=%u ", dbg->temp_cnt);
+		len += snprintf(buf + len, PAGE_SIZE - len, "SYS_TIME=%u ", dbg->sys_time);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DECT_RESULT=0x%x ", dbg->dect_result);
+		len += snprintf(buf + len, PAGE_SIZE - len, "DYN_BASE=0x%x ", dbg->dyn_base);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_SUBSYS_DYN=0x%x ",
+			dbg->cg_subsys_dyn);
+		len += snprintf(buf + len, PAGE_SIZE - len, "CG_RATIO=0x%x ", dbg->cg_ratio);
+		len += snprintf(buf + len, PAGE_SIZE - len,
+			"SNAPSHOT[DRAM0/1/2/3]=0x%x,0x%x,0x%x,0x%x",
+			dbg->dram0_smap_snapshot, dbg->dram1_smap_snapshot,
+			dbg->dram2_smap_snapshot, dbg->dram3_smap_snapshot);
+		len += snprintf(buf + len, PAGE_SIZE - len, "[CHINF0/1]=0x%x,0x%x",
+			dbg->chinf0_smap_snapshot, dbg->chinf1_smap_snapshot);
+		len += snprintf(buf + len, PAGE_SIZE - len, "[VENC0/1/2]=0x%x,0x%x,0x%x",
+			dbg->venc0_smap_snapshot, dbg->venc1_smap_snapshot,
+			dbg->venc2_smap_snapshot);
+		len += snprintf(buf + len, PAGE_SIZE - len,
+			"[EMI/EMI_S/ZRAM/APU]=0x%x,0x%x,0x%x,0x%x",
+			dbg->emi_snapshot, dbg->emi_s_snapshot,
+			dbg->zram_snapshot, dbg->apu_snapshot);
 	}
 
-	smap_print("Log type:%u, mbrain log:%u\n", log_type, mlog);
+	if (send_type == SEND_MBRAIN && mbrain_cb) {
+		ktime_get_real_ts64(&tv);
+		dbg->real_time_end = (tv.tv_sec*1000) + (tv.tv_nsec/1000000);
+		dbg->real_time_start = dbg->real_time_end - smap_data->delay_ms;
+		mbrain_cb(dbg);
+	}
+
+	smap_print("Log type:%u, Send type:%u\n", log_type, send_type);
+
 	return len;
 }
 
 static void smap_update_result(struct mtk_smap *smap)
 {
-	static unsigned int last_cnt;
-	unsigned int len, cnt = 0;
+	static unsigned int last_dect_cnt, last_temp_cnt;
+	unsigned int len, dect_cnt, temp_cnt, enable;
 	char buf[STR_SIZE];
 
 	if (!smap_data) {
@@ -184,15 +225,21 @@ static void smap_update_result(struct mtk_smap *smap)
 		return;
 	}
 
-	cnt = smap_read(PMSR_RESERVED_RW_REG_4);
+	enable = smap_read(SMAP_ENABLE);
+	dect_cnt = smap_read(PMSR_RESERVED_RW_REG_4);
+	temp_cnt = smap_read(PMSR_RESERVED_RW_REG_5);
 
-	if (cnt == last_cnt)
-		return;
+	if (dect_cnt != last_dect_cnt && temp_cnt != last_temp_cnt) {
+		len = dump_and_send_smap_staus(buf, DUMP_KERNEL, SEND_MBRAIN);
+		smap_print("Mitigation happened, SMAP enalbe:%u\n", enable);
+	} else
+		len = dump_and_send_smap_staus(buf, DUMP_KERNEL, NO_SEND);
 
-	len = dump_smap_staus(buf, DUMP_KERNEL, MBRAIN_LOG_ON);
 	if (len)
 		smap_print("%s\n", buf);
-	last_cnt = cnt;
+
+	last_dect_cnt = dect_cnt;
+	last_temp_cnt = temp_cnt;
 }
 
 static void smap_periodic_work_handler(struct work_struct *work)
@@ -216,7 +263,7 @@ static ssize_t smap_status_show(struct device *dev,
 		return -ENODATA;
 	}
 
-	len = dump_smap_staus(buf, DUMP_HEADER, MBRAIN_LOG_OFF);
+	len = dump_and_send_smap_staus(buf, DUMP_HEADER, NO_SEND);
 
 	return len;
 }
@@ -232,7 +279,7 @@ static ssize_t smap_dbg_show(struct device *dev,
 		return -ENODATA;
 	}
 
-	len = dump_smap_staus(buf, DUMP_NO_HEADER, MBRAIN_LOG_OFF);
+	len = dump_and_send_smap_staus(buf, DUMP_NO_HEADER, NO_SEND);
 
 	return len;
 }
@@ -240,7 +287,7 @@ static ssize_t smap_dbg_show(struct device *dev,
 static ssize_t smap_dbg_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
-	char cmd[20], buffer[STR_SIZE];
+	char cmd[20];
 	u32 val = 0;
 	int ret;
 
@@ -273,9 +320,6 @@ static ssize_t smap_dbg_store(struct device *dev,
 					msecs_to_jiffies(smap_data->delay_ms));
 			}
 		}
-	} else if (!strcmp(cmd, "mb")) {
-		dump_smap_staus(buffer, DUMP_KERNEL, MBRAIN_LOG_ON);
-		smap_print("%s\n", buffer);
 	}
 out:
 	if (ret < 0)

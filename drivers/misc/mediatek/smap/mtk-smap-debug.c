@@ -27,8 +27,10 @@ static unsigned int smap_read(u32 offset)
 
 static void smap_write(u32 offset, u32 val)
 {
-	if (!smap_data)
+	if (!smap_data) {
 		smap_print("No smap_data\n");
+		return;
+	}
 
 	writel(val, smap_data->regs + offset);
 }
@@ -78,8 +80,9 @@ static ssize_t smap_debugfs_read(struct file *file, char __user *buf,
 		return -EFAULT;
 
 	len = snprintf(buffer, sizeof(buffer), "0x%x\n", smap_data->reg_value);
+	if (len < 0)
+		return 0;
 
-	smap_print("debugfs_read successfully, smap_data->reg_value=%u\n", smap_data->reg_value);
 	return simple_read_from_buffer(buf, count, pos, buffer, len);
 }
 

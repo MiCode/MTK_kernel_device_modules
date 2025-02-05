@@ -19,15 +19,15 @@ enum SMAP_MODE {
 };
 
 enum SMAP_DUMP_LOG_TYPE {
+	NO_DUMP,
 	DUMP_HEADER,
 	DUMP_NO_HEADER,
 	DUMP_KERNEL,
-	NO_DUMP,
 };
 
-enum SMAP_MBRAIN_LOG {
-	MBRAIN_LOG_ON,
-	MBRAIN_LOG_OFF,
+enum SMAP_SEND_LOG_TYPE {
+	NO_SEND,
+	SEND_MBRAIN,
 };
 
 struct smap_entry {
@@ -40,12 +40,29 @@ struct smap_entry {
 struct smap_mbrain {
 	unsigned int cnt;
 	unsigned int type;
-	unsigned long long sys_time;
-	unsigned long long real_time_start;
-	unsigned long long real_time_end;
+	unsigned int enable;
+	unsigned int dect_cnt;
+	unsigned int temp_cnt;
+	unsigned int sys_time;
+	unsigned int dect_result;
 	unsigned int dyn_base;
 	unsigned int cg_subsys_dyn;
 	unsigned int cg_ratio;
+	unsigned int dram0_smap_snapshot;
+	unsigned int dram1_smap_snapshot;
+	unsigned int dram2_smap_snapshot;
+	unsigned int dram3_smap_snapshot;
+	unsigned int chinf0_smap_snapshot;
+	unsigned int chinf1_smap_snapshot;
+	unsigned int venc0_smap_snapshot;
+	unsigned int venc1_smap_snapshot;
+	unsigned int venc2_smap_snapshot;
+	unsigned int emi_snapshot;
+	unsigned int emi_s_snapshot;
+	unsigned int zram_snapshot;
+	unsigned int apu_snapshot;
+	unsigned long long real_time_start;
+	unsigned long long real_time_end;
 };
 
 struct mtk_smap {
@@ -57,12 +74,12 @@ struct mtk_smap {
 	struct delayed_work defer_work;
 	unsigned int delay_ms;
 	bool def_disable;
-	struct smap_mbrain mbrain_data;
+	struct smap_mbrain debug_data;
 };
 
-typedef void (*smap_mbrain_callback)(struct smap_mbrain *mbrain_data);
+typedef void (*smap_mbrain_callback)(struct smap_mbrain *debug_data);
 int register_smap_mbrain_cb(smap_mbrain_callback smap_mbrain_cb);
-int get_smap_mbrain_data(struct smap_mbrain *mbrain_data);
+int get_smap_mbrain_data(struct smap_mbrain *debug_data);
 
 
 #endif /* __MTK_SMAP_COMMON_H__ */
