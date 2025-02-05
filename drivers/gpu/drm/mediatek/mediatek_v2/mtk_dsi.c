@@ -10356,7 +10356,7 @@ static void mtk_dsi_send_cmd_trigger(struct mtk_dsi *dsi, struct cmdq_pkt *handl
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 
 	if (!cmdq_size) {
-		DDPMSG("%s, cmdq_size is 0\n", __func__);
+		DDPPR_ERR("%s, cmdq_size is 0\n", __func__);
 		return;
 	}
 	mtk_ddp_write_mask(comp, cmdq_size, DSI_CMDQ_CON(dsi->driver_data), CMDQ_SIZE, handle);

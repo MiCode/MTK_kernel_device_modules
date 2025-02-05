@@ -5420,54 +5420,6 @@ static void process_dbg_opt(const char *opt)
 			g_dump_prop_log = 1;
 		else if (strncmp(opt + 10, "off", 3) == 0)
 			g_dump_prop_log = 0;
-	} else if (strncmp(opt, "new_write_ddic_long:", 20) == 0) {
-		int flags = 0, tx_len = 0, lp = 0;
-		char addr = 0, val = 0;
-		char *tx_buf = NULL;
-		int i, ret;
-		struct mtk_dsi_cmd_option cmd_opt = { 0 };
-		struct mtk_dsi_cmd_msg test_cmd = { 0 };
-		struct mipi_dsi_msg msg = { 0 };
-
-		ret = sscanf(opt, "new_write_ddic_long:%x,%d,%d,%x,%x\n", &flags, &lp, &tx_len, &addr, &val);
-		if (ret <= 0) {
-			DDPPR_ERR("new_write_ddic_long fail, ret=%d\n", ret);
-			return;
-		}
-		DDPMSG("new_write_ddic_long %d, flags=0x%x,len=%d,, addr=0x%x, val=0x%x, ret=%d\n",
-			__LINE__, flags, tx_len, addr, val, ret);
-
-		tx_buf = vmalloc(sizeof(u8) * tx_len);
-		if (!tx_buf) {
-			DDPMSG("new_write_ddic_long alloc tx_buf fail\n");
-			return;
-		}
-		memset(tx_buf, 0, tx_len);
-
-		for (i = 0; i < tx_len; i++) {
-			if (i == 0)
-				tx_buf[0] = addr;
-			else {
-				val += 2;
-				tx_buf[i] = val;
-			}
-			DDPMSG("0x%x,", tx_buf[i]);
-		}
-
-		DDPMSG("\n");
-		msg.tx_len = tx_len;
-		msg.tx_buf = tx_buf;
-		test_cmd.cmd_num = 1;
-		test_cmd.transfer_mode = lp;
-		test_cmd.cmd_msg= &msg;
-
-		cmd_opt.flags = flags;
-		cmd_opt.crtc_id = 0;
-
-		DDPMSG("new_write_ddic_long ++\n");
-		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
-		DDPMSG("new_write_ddic_long --\n");
-		vfree(tx_buf);
 	} else if (strncmp(opt, "new_write_ddic_package:", 23) == 0) {
 		int flags = 0, tx_len = 0, lp = 0, cmd_num = 0, package = 0;
 		char addr = 0, init_val = 0, step = 1;
@@ -5531,7 +5483,7 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("new_write_ddic_package --\n");
 
 test_done:
-		for (j = 0; j < tx_len; j++)
+		for (j = 0; j < cmd_num; j++)
 			vfree(tx_buf[j]);
 		vfree(tx_buf);
 	} else if (strncmp(opt, "2c_init:", 8) == 0) {
