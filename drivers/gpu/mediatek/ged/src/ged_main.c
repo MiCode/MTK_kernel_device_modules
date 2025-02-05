@@ -835,7 +835,6 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	err = ged_gpu_slc_init();
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to init GPU SLC!\n");
-		goto ERROR;
 	}
 #endif /*MTK_GPU_SLC_POLICY */
 

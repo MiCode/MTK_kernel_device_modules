@@ -28,23 +28,26 @@ static GED_ERROR gpu_slc_sysram_init(void)
 	phys_addr_t counter_pa = 0, counter_va = 0, counter_size = 0;
 
 	/* get GPU SLC pre-defined device node from dts */
-	node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_slc");
+	node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_memsys");
 	if (unlikely(!node)) {
-		GED_LOGE("[GPU_SLC]%s Cannot find gpu slc dts node", __func__);
-		return GED_OK;
+		node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_slc");
+		if (unlikely(!node)) {
+			GED_LOGE("[GPU_SLC]%s Cannot find gpu slc dts node", __func__);
+			return GED_ERROR_FAIL;
+		}
 	}
 
 	/* check if sysram support by getting slc-sysram-support property */
 	of_property_read_u32(node, "slc-sysram-support", &g_sysram_support);
 	if (unlikely(!g_sysram_support)) {
 		GED_LOGI("[GPU_SLC]%s sysram not support", __func__);
-		return GED_OK;
+		return GED_ERROR_FAIL;
 	}
 
 	/* get sysram address from "reg" property then translate into a resource */
 	if (unlikely(of_address_to_resource(node, 0, &res))) {
 		GED_LOGE("[GPU_SLC]%s Cannot get physical memory addr", __func__);
-		return GED_OK;
+		return GED_ERROR_FAIL;
 	}
 	counter_pa = res.start;
 	counter_size = resource_size(&res);
@@ -86,7 +89,7 @@ GED_ERROR ged_gpu_slc_init(void)
 
 	if (unlikely(ret)) {
 		GED_LOGE("[GPU_SLC]%s gpu_slc_sysram_init failed.", __func__);
-		return GED_OK;
+		return GED_ERROR_FAIL;
 	}
 
 	if (g_slc_stat) {
