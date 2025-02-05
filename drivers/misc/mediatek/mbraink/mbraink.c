@@ -2012,6 +2012,7 @@ static ssize_t mbraink_info_show(struct device *dev,
 								struct device_attribute *attr,
 								char *buf)
 {
+	mbraink_netlink_send_msg("aee_db_close");
 	return sprintf(buf, "show the process information...\n");
 }
 
