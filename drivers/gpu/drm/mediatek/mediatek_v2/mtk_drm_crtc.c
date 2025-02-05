@@ -2768,6 +2768,8 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 				old_state->prop_val[CRTC_PROP_LYE_IDX];
 			state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] =
 				old_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
+			state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE] =
+				old_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE];
 		}
 	}
 
