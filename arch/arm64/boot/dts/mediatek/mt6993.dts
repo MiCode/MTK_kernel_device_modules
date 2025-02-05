@@ -12381,6 +12381,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 384 IRQ_TYPE_LEVEL_HIGH 0>;
 			cksys = <&cksys_top_clk>;
 			vlpcksys = <&cksys_vlp_clk>;
+			vlpcksys-apll1 = <&apll1_ctrl_clk>;
+			vlpcksys-apll2 = <&apll2_ctrl_clk>;
 			clocks = <&afe_clk AFE_AUDIO_HOPPING_AUDIO>,
 				<&afe_clk AFE_AUDIO_F26M_AUDIO>,
 				<&afe_clk AFE_UL0_ADC_AUDIO>,
