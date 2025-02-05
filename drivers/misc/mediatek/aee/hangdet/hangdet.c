@@ -1703,6 +1703,7 @@ static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, k
 				burst_hrtimer_history[temp_count].caller_cpu = smp_processor_id();
 				burst_hrtimer_history[temp_count].count = cpu_counts[i].count;
 				strscpy(burst_hrtimer_history[temp_count].comm, current->comm, TASK_COMM_LEN);
+				*last_time_ptr = sched_clock();
 			}
 			break;
 		} else if (cpu_counts[i].timer_caller_ip == 0) {
@@ -1759,6 +1760,7 @@ static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
 				burst_hrtimer_history[temp_count].caller_cpu = smp_processor_id();
 				burst_hrtimer_history[temp_count].count = cpu_counts[i].count;
 				strscpy(burst_hrtimer_history[temp_count].comm, t->task->comm, TASK_COMM_LEN);
+				*last_time_ptr = sched_clock();
 			}
 			break;
 		} else if (strcmp(cpu_counts[i].comm, "N/A") == 0) {
