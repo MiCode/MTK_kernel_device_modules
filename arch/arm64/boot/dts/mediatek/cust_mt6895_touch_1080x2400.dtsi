@@ -73,6 +73,7 @@
 
 		goodix,avdd-name = "vtouch";
 		vtouch-supply = <&mt6368_vtp>;
+		gt9896s,power-voltage = <2800000>;
 		goodix,reset-gpio = <&pio 3 0x0>;
 		goodix,irq-gpio = <&pio 135 0x0>;
 		goodix,irq-flags = <2>; /* 1:rising, 2:falling;*/
