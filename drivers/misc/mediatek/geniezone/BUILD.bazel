@@ -94,14 +94,14 @@ define_mgk_ddk_ko(
 				"mtee_ut/gz_vreg_ut.c",
 			],
 		},
-#		"CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM": {
-#			True: [
-#				"mtee_ut/gz_chmem_ut.c",
-#			],
-#		},
 		"CONFIG_ARM_FFA_TRANSPORT": {
 			True: [
 				"gz_ffa.c",
+			],
+		},
+		"GZ_CHMEM_UT": {
+			True: [
+				"mtee_ut/gz_chmem_ut.c",
 			],
 		},
 	},

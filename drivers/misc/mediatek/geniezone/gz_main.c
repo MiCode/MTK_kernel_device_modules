@@ -44,9 +44,9 @@
 #endif
 #include "mtee_ut/gz_ut.h"
 #include "mtee_ut/gz_shmem_ut.h"
-#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
+#if defined(GZ_CHMEM_UT) && GZ_CHMEM_UT
 #include "mtee_ut/gz_chmem_ut.h"
-#endif
+#endif /* defined(GZ_CHMEM_UT) && GZ_CHMEM_UT */
 #include "mtee_ut/gz_vreg_ut.h"
 #include "unittest.h"
 
@@ -137,10 +137,11 @@ static ssize_t gz_test_store(struct device *dev,
 		th = kthread_run(gz_test_shm, NULL, "test_shm");
 		break;
 	case '4':
-#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
+#if defined(GZ_CHMEM_UT) && GZ_CHMEM_UT
+
 		KREE_DEBUG("gz_test_chm\n");
 		th = kthread_run(gz_test_chm, NULL, "test_chm");
-#endif
+#endif /* defined(GZ_CHMEM_UT) && GZ_CHMEM_UT */
 		break;
 	case '5':
 		KREE_DEBUG("gz_test_vreg\n");

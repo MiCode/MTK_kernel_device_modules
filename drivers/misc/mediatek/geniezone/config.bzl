@@ -6,7 +6,7 @@
 gz_main_config = {
 	"local_defines": [
 		# disable tmem UTs due to including private headers
-		"CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM=0",
+		"GZ_CHMEM_UT=0",
 		# enable secure storage UTs.
 		"GZ_SEC_STORAGE_UT=1",
 	],
