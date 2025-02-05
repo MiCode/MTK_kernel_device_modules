@@ -1148,7 +1148,7 @@ static ssize_t mssv_test_proc_write(struct file *file,
 
 	mutex_lock(&gpufreq_debug_lock);
 
-	if (sscanf(buf, "%11s %7d", cmd, &val) == 2) {
+	if (sscanf(buf, "%21s %7d", cmd, &val) == 2) {
 		if (sysfs_streq(cmd, "fgpu"))
 			target = TARGET_MSSV_FGPU;
 		else if (sysfs_streq(cmd, "vgpu"))
@@ -1173,6 +1173,10 @@ static ssize_t mssv_test_proc_write(struct file *file,
 			target = TARGET_MSSV_HW_FSTACK;
 		else if (sysfs_streq(cmd, "hw_vstack"))
 			target = TARGET_MSSV_HW_VSTACK;
+		else if (sysfs_streq(cmd, "pmic_vgpu_low_limit"))
+			target = TARGET_MSSV_PMIC_VGPU_LOW_LIMIT;
+		else if (sysfs_streq(cmd, "pmic_vstack_low_limit"))
+			target = TARGET_MSSV_PMIC_VSTACK_LOW_LIMIT;
 		else {
 			GPUFREQ_LOGE("invalid MSSV cmd: %s", cmd);
 			ret = GPUFREQ_EINVAL;
