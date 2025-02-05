@@ -15462,18 +15462,49 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 612 IRQ_TYPE_LEVEL_HIGH 0>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
 			mediatek,larbs = <&smi_larb26>;
-			clocks = <&camsys_mraw_clk CAM_MR_LARB25_CAMSV>,
+			mediatek,camisp-vcore = <&camisp_vcore>;
+			clocks = <&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
+				<&camsys_mraw_clk CAM_MR_LARB25_CAMSV>,
 				<&camsys_mraw_clk CAM_MR_LARB26_CAMSV>,
 				<&camsys_mraw_clk CAM_MR_LARB25_SMI>,
 				<&camsys_mraw_clk CAM_MR_LARB26_SMI>,
 				<&camsys_mraw_clk CAM_MR_PDA0_PDA>,
 				<&camsys_mraw_clk CAM_MR_PDA1_PDA>;
-			clock-names = "mraw_larb25_camsv",
+			clock-names = "camsys_main_cam",
+					"mraw_larb25_camsv",
 					"mraw_larb26_camsv",
 					"mraw_larb25_smi",
 					"mraw_larb26_smi",
 					"camsys_mraw_pda0",
 					"camsys_mraw_pda1";
+			mediatek,smmu-dma-axid =
+					<SMMU_L26_P4_PDA_1_RDMA0>,
+					<SMMU_L26_P5_PDA_1_RDMA1>,
+					<SMMU_L26_P6_PDA_1_RDMA2>,
+					<SMMU_L26_P7_PDA_1_RDMA3>,
+					<SMMU_L26_P8_PDA_1_RDMA4>,
+					<SMMU_L26_P10_PDA_1_WDMA>;
+			mediatek,cam-bwr = <&cam_bwr>;
+			mmqos-supply = <&mmqos>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P4_PDA_1_RDMA0)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P5_PDA_1_RDMA1)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P6_PDA_1_RDMA2)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P7_PDA_1_RDMA3)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P8_PDA_1_RDMA4)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L26_P10_PDA_1_WDMA)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "l26_pdai_b0",
+						"l26_pdai_b1",
+						"l26_pdai_b2",
+						"l26_pdai_b3",
+						"l26_pdai_b4",
+						"l26_pdao_b";
 		};
 
 		/* ATF logger */
