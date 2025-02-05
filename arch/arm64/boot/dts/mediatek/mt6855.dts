@@ -6660,6 +6660,7 @@
 					  <12 100 1>,	/* vow dual mic barge in */
 					  <13 200 0>,	/* ultrasound */
 					  <14 100 0>;	/* spk process */
+			scp-protect = "disable";   /* enable scp protections */
 			secure-dump = "enable";	/* enable dump via secure world */
 			secure-dump-size = <0x280000>;
 			scp-mem-key = "mediatek,reserve-memory-scp_share";
