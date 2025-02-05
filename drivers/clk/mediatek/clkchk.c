@@ -26,6 +26,7 @@
 #include <linux/module.h>
 
 #include "clk-mtk.h"
+#include "clk-mux.h"
 #include "clkchk.h"
 #include "mt-plat/aee.h"
 
@@ -376,8 +377,12 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 	const char *c_name;
 	const char *p_name;
 	const char *comp_name;
+	const char * const *mux_names;
 	struct clk_hw *c_hw = __clk_get_hw(pvdck->ck);
 	struct clk_hw *p_hw;
+	struct mtk_clk_mux *mux;
+	u8 index = 0;
+	u8 valid = 0;
 
 	/* If SW ref_count=0 (PLL/CG) or HW disabled (Mux), skip dump clk. */
 	if (!clkchk_pvdck_is_enabled(pvdck))
@@ -391,7 +396,29 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 
 	c_name = clk_hw_get_name(c_hw);
 
-	p_hw = clk_hw_get_parent(c_hw);
+	/* mux parent > 1 */
+	if (clk_hw_get_num_parents(c_hw) > 1) {
+		/* filter no-need-to-check mux list */
+		if (clkchk_ops && clkchk_ops->get_off_mux_names) {
+			mux_names = clkchk_ops->get_off_mux_names();
+			for (; *mux_names != NULL; mux_names++) {
+				if (!strncmp(*mux_names, c_name, strlen(*mux_names))) {
+					valid++;
+					break;
+				}
+			}
+		}
+
+		if (valid) {
+			mux = container_of(c_hw, struct mtk_clk_mux, hw);
+			if (!IS_ERR_OR_NULL(mux) && mux->data) {
+				index = mux->data->ops->get_parent(c_hw);
+				p_hw = clk_hw_get_parent_by_index(c_hw, index);
+			}
+		}
+	} else
+		p_hw = clk_hw_get_parent(c_hw);
+
 	if (IS_ERR_OR_NULL(p_hw))
 		return;
 
@@ -399,7 +426,32 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 	comp_name = clk_hw_get_name(p_hw);
 	while (strcmp(comp_name, "clk26m")) {
 		p_name = clk_hw_get_name(p_hw);
-		p_hw = clk_hw_get_parent(p_hw);
+		/* mux parent > 1 */
+		if (clk_hw_get_num_parents(p_hw) > 1) {
+			valid = 0;
+			/* filter no-need-to-check mux list */
+			if (clkchk_ops && clkchk_ops->get_off_mux_names) {
+				mux_names = clkchk_ops->get_off_mux_names();
+				for (; *mux_names != NULL; mux_names++) {
+					if (!strncmp(*mux_names, p_name, strlen(*mux_names))) {
+						valid++;
+						break;
+					}
+				}
+			}
+
+			if (!valid)
+				break;
+
+			mux = container_of(p_hw, struct mtk_clk_mux, hw);
+			if (!IS_ERR_OR_NULL(mux) && mux->data) {
+				index = mux->data->ops->get_parent(p_hw);
+				p_hw = clk_hw_get_parent_by_index(p_hw, index);
+			} else
+				return;
+		} else
+			p_hw = clk_hw_get_parent(p_hw);
+		/* if cannot get parent hw, then returned */
 		if (IS_ERR_OR_NULL(p_hw))
 			return;
 
