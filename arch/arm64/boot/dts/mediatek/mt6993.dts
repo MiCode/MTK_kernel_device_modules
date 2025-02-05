@@ -2327,6 +2327,858 @@
 		pmu-ai-support = <0>;
 	};
 
+	wla: wla@11031000 {
+		compatible = "mediatek,wla";
+		reg = <0 0x11031000 0 0x1000>;
+		wla-enable = <1>;
+		ddren-force-on = <1>;
+		init-setting-ver = "standby_power_ver_a";
+		group-hw-max = <0x8>;
+		group-ctrl = <&group_0 &group_1 &group_2 &group_3>;
+		mon-ch-hw-max = <16>;
+		mon-ddr-sta-mux-hw-max = <5>;
+		mon-pt-sta-mux-hw-max = <2>;
+		dbg-lat-hw-max = <6>;
+		dbg-lat-ddr-sta-mux-hw-max = <3>;
+		mon-ch = <&ch_0 &ch_1 &ch_2>,
+				<&ch_3>;
+		mon-ddr-sta-mux = <&mon_ddr_sta_mux_1 &mon_ddr_sta_mux_2>,
+						<&mon_ddr_sta_mux_3>;
+		mon-pt-sta-mux = <&mon_pt_sta_mux_1 &mon_pt_sta_mux_2>;
+		dbg-lat = <&lat_0 &lat_1 &lat_2>,
+					<&lat_3 &lat_4 &lat_5>;
+		dbg-lat-ddr-sta-mux = <&lat_ddr_sta_mux_1 &lat_ddr_sta_mux_2>,
+						<&lat_ddr_sta_mux_3>;
+		/* regulator 2p0 */
+		lbc-shuclr-cnt = <0xffff>;
+		lbc-shuetr-thres = <0x5>;
+		lbc-shuext-thres = <0x1f>;
+		lbc-mst-urg-msk = <0xbfc00c63 0xa6a407fa>;
+		lbc-shu-lb-lvl = <0x514 0x71c 0x924 0xc30 0xe38 0x1040 0x1248 0x1450>,
+						<0x820 0xb2c 0xe38 0x1144 0x1450 0x175c 0x1a68 0x1d74>;
+		plc-en = <0x0>;
+		/* lv1 = 0b1110 lv2 = 0b1100 lv3 = 0b1000 */
+		plc-dis-target-val = <0x8>;
+		plc-hit-miss-thres = <0x8>;
+		tfc-highbound = <0xf3c>;
+		tfc-ylw-timeout = <0x138>;
+		tfc-mst-req-msk = <0xbfc00c43 0xa4a000f0>;
+		tfc-mst-urg-msk = <0xbfc00c43 0xa4a000f0>;
+		vlc-mux-hw-max = <64>;
+		tfc-mux-hw-max = <32>;
+		pmsr-ocla-mux-hw-max = <64>;
+		vlc-mux = <&vlc_mux_0 &vlc_mux_1 &vlc_mux_2 &vlc_mux_3>,
+					<&vlc_mux_4 &vlc_mux_5 &vlc_mux_6 &vlc_mux_7>,
+					<&vlc_mux_8 &vlc_mux_9 &vlc_mux_10 &vlc_mux_11>,
+					<&vlc_mux_12 &vlc_mux_13 &vlc_mux_14 &vlc_mux_15>,
+					<&vlc_mux_16 &vlc_mux_17 &vlc_mux_18 &vlc_mux_19>,
+					<&vlc_mux_20 &vlc_mux_21 &vlc_mux_22 &vlc_mux_23>,
+					<&vlc_mux_24 &vlc_mux_25 &vlc_mux_26 &vlc_mux_27>,
+					<&vlc_mux_28 &vlc_mux_29 &vlc_mux_30 &vlc_mux_31>,
+					<&vlc_mux_32 &vlc_mux_33 &vlc_mux_34 &vlc_mux_35>,
+					<&vlc_mux_36 &vlc_mux_37 &vlc_mux_38 &vlc_mux_39>,
+					<&vlc_mux_40 &vlc_mux_41 &vlc_mux_42 &vlc_mux_43>,
+					<&vlc_mux_44 &vlc_mux_45 &vlc_mux_46 &vlc_mux_47>,
+					<&vlc_mux_48 &vlc_mux_49 &vlc_mux_50 &vlc_mux_51>,
+					<&vlc_mux_52 &vlc_mux_53 &vlc_mux_54 &vlc_mux_55>,
+					<&vlc_mux_56 &vlc_mux_57 &vlc_mux_58 &vlc_mux_59>,
+					<&vlc_mux_60 &vlc_mux_61 &vlc_mux_62 &vlc_mux_63>;
+		tfc-mux = <&tfc_mux_0 &tfc_mux_1 &tfc_mux_2 &tfc_mux_3>,
+					<&tfc_mux_4 &tfc_mux_5 &tfc_mux_6 &tfc_mux_7>,
+					<&tfc_mux_8 &tfc_mux_9 &tfc_mux_10 &tfc_mux_11>,
+					<&tfc_mux_12 &tfc_mux_13 &tfc_mux_14 &tfc_mux_15>,
+					<&tfc_mux_16 &tfc_mux_17 &tfc_mux_18 &tfc_mux_19>,
+					<&tfc_mux_20 &tfc_mux_21 &tfc_mux_22 &tfc_mux_23>,
+					<&tfc_mux_24 &tfc_mux_25 &tfc_mux_26 &tfc_mux_27>,
+					<&tfc_mux_28 &tfc_mux_29 &tfc_mux_30 &tfc_mux_31>;
+		pmsr-ocla-mux = <&pmsr_ocla_mux_0 &pmsr_ocla_mux_1 &pmsr_ocla_mux_2 &pmsr_ocla_mux_3>,
+					<&pmsr_ocla_mux_4 &pmsr_ocla_mux_5 &pmsr_ocla_mux_6 &pmsr_ocla_mux_7>,
+					<&pmsr_ocla_mux_8 &pmsr_ocla_mux_9 &pmsr_ocla_mux_10 &pmsr_ocla_mux_11>,
+					<&pmsr_ocla_mux_12 &pmsr_ocla_mux_13 &pmsr_ocla_mux_14 &pmsr_ocla_mux_15>,
+					<&pmsr_ocla_mux_16 &pmsr_ocla_mux_17 &pmsr_ocla_mux_18 &pmsr_ocla_mux_19>,
+					<&pmsr_ocla_mux_20 &pmsr_ocla_mux_21 &pmsr_ocla_mux_22 &pmsr_ocla_mux_23>,
+					<&pmsr_ocla_mux_24 &pmsr_ocla_mux_25 &pmsr_ocla_mux_26 &pmsr_ocla_mux_27>,
+					<&pmsr_ocla_mux_28 &pmsr_ocla_mux_29 &pmsr_ocla_mux_30 &pmsr_ocla_mux_31>,
+					<&pmsr_ocla_mux_32 &pmsr_ocla_mux_33 &pmsr_ocla_mux_34 &pmsr_ocla_mux_35>,
+					<&pmsr_ocla_mux_36 &pmsr_ocla_mux_37 &pmsr_ocla_mux_38 &pmsr_ocla_mux_39>,
+					<&pmsr_ocla_mux_40 &pmsr_ocla_mux_41 &pmsr_ocla_mux_42 &pmsr_ocla_mux_43>,
+					<&pmsr_ocla_mux_44 &pmsr_ocla_mux_45 &pmsr_ocla_mux_46 &pmsr_ocla_mux_47>,
+					<&pmsr_ocla_mux_48 &pmsr_ocla_mux_49 &pmsr_ocla_mux_50 &pmsr_ocla_mux_51>,
+					<&pmsr_ocla_mux_52 &pmsr_ocla_mux_53 &pmsr_ocla_mux_54 &pmsr_ocla_mux_55>,
+					<&pmsr_ocla_mux_56 &pmsr_ocla_mux_57 &pmsr_ocla_mux_58 &pmsr_ocla_mux_59>,
+					<&pmsr_ocla_mux_60 &pmsr_ocla_mux_61 &pmsr_ocla_mux_62 &pmsr_ocla_mux_63>;
+		bus-prot-inst-list = <0x12000fac>,
+							<0x60000017>,
+							<0x3dfffff3>,
+							<0x2fffffff>,
+							<0x12004ffe>,
+							<0x60000016>,
+							<0x3fffbffd>,
+							<0x2fffffff>,
+							<0x1200dffe>,
+							<0x60000015>,
+							<0x3fff63ff>,
+							<0x2fffffff>,
+							<0x1201dffe>,
+							<0x60000015>,
+							<0x3ffeffff>,
+							<0x2fffffff>,
+							<0x1261dffe>,
+							<0x60000015>,
+							<0x3f9fffff>,
+							<0x2fffffff>,
+							<0x40000000>,
+							<0x12004ffe>,
+							<0x12000fac>,
+							<0x10000000>,
+							<0x50000000>;
+		group-ctrl-list {
+			group_0: group-0 {
+				master-sel = <0x0 0x4108>;
+				debounce = <0xd>;
+				strategy = <0x1>;
+				ignore-urgent = <0x1>;
+			};
+			group_1: group-1 {
+				master-sel = <0x0 0x0>;
+				debounce = <0xd>;
+				strategy = <0x6>;
+				ignore-urgent = <0x0>;
+			};
+			group_2: group-2 {
+				master-sel = <0x403ff3bc 0x5b5fbe07>;
+				debounce = <0xd>;
+				strategy = <0x4>;
+				ignore-urgent = <0x0>;
+			};
+			group_3: group-3 {
+				master-sel = <0x403ff3bc 0x5b5fff0f>;
+				debounce = <0xd>;
+				strategy = <0x0>;
+				ignore-urgent = <0x1>;
+			};
+		};
+		mon-ch-list {
+			ch_0: ch-0 {
+				sig-sel = <0>;
+				bit-sel = <3>;
+				trig-type = <3>;
+			};
+			ch_1: ch-1 {
+				sig-sel = <5>;
+				bit-sel = <4>;
+				trig-type = <2>;
+			};
+			ch_2: ch-2 {
+				sig-sel = <5>;
+				bit-sel = <8>;
+				trig-type = <2>;
+			};
+			ch_3: ch-3 {
+				sig-sel = <5>;
+				bit-sel = <16>;
+				trig-type = <3>;
+			};
+
+		};
+		mon-ddr-sta-mux-list {
+			mon_ddr_sta_mux_1: mon-ddr-sta-mux-1 {
+				mux = <0x24>;
+			};
+			mon_ddr_sta_mux_2: mon-ddr-sta-mux-2 {
+				mux = <0x25>;
+			};
+			mon_ddr_sta_mux_3: mon-ddr-sta-mux-3 {
+				mux = <0x20>;
+			};
+		};
+		mon-pt-sta-mux-list {
+			mon_pt_sta_mux_1: mon-pt-sta-mux-1 {
+				mux = <0x1>;
+			};
+			mon_pt_sta_mux_2: mon-pt-sta-mux-2 {
+				mux = <0x2>;
+			};
+		};
+		dbg-lat-list {
+			lat_0: lat-0 {
+				sel = <0x0>;
+			};
+			lat_1: lat-1 {
+				sel = <0x1>;
+			};
+			lat_2: lat-2 {
+				sel = <0x4>;
+			};
+			lat_3: lat-3 {
+				sel = <0x5>;
+			};
+			lat_4: lat-4 {
+				sel = <0x6>;
+			};
+			lat_5: lat-5 {
+				sel = <0x7>;
+			};
+		};
+		dbg-lat-ddr-sta-mux-list {
+			lat_ddr_sta_mux_1: lat-ddr-sta-mux-1 {
+				mux = <0x0>;
+			};
+			lat_ddr_sta_mux_2: lat-ddr-sta-mux-2 {
+				mux = <0x1>;
+			};
+			lat_ddr_sta_mux_3: lat-ddr-sta-mux-3 {
+				mux = <0x6>;
+			};
+		};
+		vlc-mux-list {
+			vlc_mux_0: vlc-mux-0 {
+				sig-sel = <0>;
+				bit-sel = <0>;
+			};
+			vlc_mux_1: vlc-mux-1 {
+				sig-sel = <0>;
+				bit-sel = <1>;
+			};
+			vlc_mux_2: vlc-mux-2 {
+				sig-sel = <0>;
+				bit-sel = <2>;
+			};
+			vlc_mux_3: vlc-mux-3 {
+				sig-sel = <0>;
+				bit-sel = <3>;
+			};
+			vlc_mux_4: vlc-mux-4 {
+				sig-sel = <0>;
+				bit-sel = <4>;
+			};
+			vlc_mux_5: vlc-mux-5 {
+				sig-sel = <0>;
+				bit-sel = <5>;
+			};
+			vlc_mux_6: vlc-mux-6 {
+				sig-sel = <0>;
+				bit-sel = <6>;
+			};
+			vlc_mux_7: vlc-mux-7 {
+				sig-sel = <0>;
+				bit-sel = <7>;
+			};
+			vlc_mux_8: vlc-mux-8 {
+				sig-sel = <0>;
+				bit-sel = <8>;
+			};
+			vlc_mux_9: vlc-mux-9 {
+				sig-sel = <0>;
+				bit-sel = <9>;
+			};
+			vlc_mux_10: vlc-mux-10 {
+				sig-sel = <0>;
+				bit-sel = <10>;
+			};
+			vlc_mux_11: vlc-mux-11 {
+				sig-sel = <0>;
+				bit-sel = <11>;
+			};
+			vlc_mux_12: vlc-mux-12 {
+				sig-sel = <0>;
+				bit-sel = <12>;
+			};
+			vlc_mux_13: vlc-mux-13 {
+				sig-sel = <0>;
+				bit-sel = <13>;
+			};
+			vlc_mux_14: vlc-mux-14 {
+				sig-sel = <0>;
+				bit-sel = <14>;
+			};
+			vlc_mux_15: vlc-mux-15 {
+				sig-sel = <0>;
+				bit-sel = <15>;
+			};
+			vlc_mux_16: vlc-mux-16 {
+				sig-sel = <0>;
+				bit-sel = <16>;
+			};
+			vlc_mux_17: vlc-mux-17 {
+				sig-sel = <0>;
+				bit-sel = <17>;
+			};
+			vlc_mux_18: vlc-mux-18 {
+				sig-sel = <0>;
+				bit-sel = <18>;
+			};
+			vlc_mux_19: vlc-mux-19 {
+				sig-sel = <0>;
+				bit-sel = <19>;
+			};
+			vlc_mux_20: vlc-mux-20 {
+				sig-sel = <0>;
+				bit-sel = <20>;
+			};
+			vlc_mux_21: vlc-mux-21 {
+				sig-sel = <0>;
+				bit-sel = <21>;
+			};
+			vlc_mux_22: vlc-mux-22 {
+				sig-sel = <0>;
+				bit-sel = <22>;
+			};
+			vlc_mux_23: vlc-mux-23 {
+				sig-sel = <0>;
+				bit-sel = <23>;
+			};
+			vlc_mux_24: vlc-mux-24 {
+				sig-sel = <0>;
+				bit-sel = <24>;
+			};
+			vlc_mux_25: vlc-mux-25 {
+				sig-sel = <0>;
+				bit-sel = <25>;
+			};
+			vlc_mux_26: vlc-mux-26 {
+				sig-sel = <0>;
+				bit-sel = <26>;
+			};
+			vlc_mux_27: vlc-mux-27 {
+				sig-sel = <0>;
+				bit-sel = <27>;
+			};
+			vlc_mux_28: vlc-mux-28 {
+				sig-sel = <0>;
+				bit-sel = <28>;
+			};
+			vlc_mux_29: vlc-mux-29 {
+				sig-sel = <0>;
+				bit-sel = <29>;
+			};
+			vlc_mux_30: vlc-mux-30 {
+				sig-sel = <0>;
+				bit-sel = <30>;
+			};
+			vlc_mux_31: vlc-mux-31 {
+				sig-sel = <0>;
+				bit-sel = <31>;
+			};
+			vlc_mux_32: vlc-mux-32 {
+				sig-sel = <1>;
+				bit-sel = <0>;
+			};
+			vlc_mux_33: vlc-mux-33 {
+				sig-sel = <1>;
+				bit-sel = <1>;
+			};
+			vlc_mux_34: vlc-mux-34 {
+				sig-sel = <1>;
+				bit-sel = <2>;
+			};
+			vlc_mux_35: vlc-mux-35 {
+				sig-sel = <1>;
+				bit-sel = <3>;
+			};
+			vlc_mux_36: vlc-mux-36 {
+				sig-sel = <1>;
+				bit-sel = <4>;
+			};
+			vlc_mux_37: vlc-mux-37 {
+				sig-sel = <1>;
+				bit-sel = <5>;
+			};
+			vlc_mux_38: vlc-mux-38 {
+				sig-sel = <1>;
+				bit-sel = <6>;
+			};
+			vlc_mux_39: vlc-mux-39 {
+				sig-sel = <1>;
+				bit-sel = <7>;
+			};
+			vlc_mux_40: vlc-mux-40 {
+				sig-sel = <1>;
+				bit-sel = <8>;
+			};
+			vlc_mux_41: vlc-mux-41 {
+				sig-sel = <1>;
+				bit-sel = <9>;
+			};
+			vlc_mux_42: vlc-mux-42 {
+				sig-sel = <1>;
+				bit-sel = <10>;
+			};
+			vlc_mux_43: vlc-mux-43 {
+				sig-sel = <1>;
+				bit-sel = <11>;
+			};
+			vlc_mux_44: vlc-mux-44 {
+				sig-sel = <1>;
+				bit-sel = <12>;
+			};
+			vlc_mux_45: vlc-mux-45 {
+				sig-sel = <1>;
+				bit-sel = <13>;
+			};
+			vlc_mux_46: vlc-mux-46 {
+				sig-sel = <1>;
+				bit-sel = <14>;
+			};
+			vlc_mux_47: vlc-mux-47 {
+				sig-sel = <1>;
+				bit-sel = <15>;
+			};
+			vlc_mux_48: vlc-mux-48 {
+				sig-sel = <1>;
+				bit-sel = <16>;
+			};
+			vlc_mux_49: vlc-mux-49 {
+				sig-sel = <1>;
+				bit-sel = <17>;
+			};
+			vlc_mux_50: vlc-mux-50 {
+				sig-sel = <1>;
+				bit-sel = <18>;
+			};
+			vlc_mux_51: vlc-mux-51 {
+				sig-sel = <1>;
+				bit-sel = <19>;
+			};
+			vlc_mux_52: vlc-mux-52 {
+				sig-sel = <1>;
+				bit-sel = <20>;
+			};
+			vlc_mux_53: vlc-mux-53 {
+				sig-sel = <1>;
+				bit-sel = <21>;
+			};
+			vlc_mux_54: vlc-mux-54 {
+				sig-sel = <1>;
+				bit-sel = <22>;
+			};
+			vlc_mux_55: vlc-mux-55 {
+				sig-sel = <1>;
+				bit-sel = <23>;
+			};
+			vlc_mux_56: vlc-mux-56 {
+				sig-sel = <1>;
+				bit-sel = <24>;
+			};
+			vlc_mux_57: vlc-mux-57 {
+				sig-sel = <1>;
+				bit-sel = <25>;
+			};
+			vlc_mux_58: vlc-mux-58 {
+				sig-sel = <1>;
+				bit-sel = <26>;
+			};
+			vlc_mux_59: vlc-mux-59 {
+				sig-sel = <1>;
+				bit-sel = <27>;
+			};
+			vlc_mux_60: vlc-mux-60 {
+				sig-sel = <1>;
+				bit-sel = <28>;
+			};
+			vlc_mux_61: vlc-mux-61 {
+				sig-sel = <1>;
+				bit-sel = <29>;
+			};
+			vlc_mux_62: vlc-mux-62 {
+				sig-sel = <1>;
+				bit-sel = <30>;
+			};
+			vlc_mux_63: vlc-mux-63 {
+				sig-sel = <1>;
+				bit-sel = <31>;
+			};
+		};
+		tfc-mux-list {
+			tfc_mux_0: tfc-mux-0 {
+				sig-sel = <2>;
+				bit-sel = <0>;
+			};
+			tfc_mux_1: tfc-mux-1 {
+				sig-sel = <2>;
+				bit-sel = <1>;
+			};
+			tfc_mux_2: tfc-mux-2 {
+				sig-sel = <2>;
+				bit-sel = <2>;
+			};
+			tfc_mux_3: tfc-mux-3 {
+				sig-sel = <2>;
+				bit-sel = <3>;
+			};
+			tfc_mux_4: tfc-mux-4 {
+				sig-sel = <2>;
+				bit-sel = <4>;
+			};
+			tfc_mux_5: tfc-mux-5 {
+				sig-sel = <2>;
+				bit-sel = <5>;
+			};
+			tfc_mux_6: tfc-mux-6 {
+				sig-sel = <2>;
+				bit-sel = <6>;
+			};
+			tfc_mux_7: tfc-mux-7 {
+				sig-sel = <2>;
+				bit-sel = <7>;
+			};
+			tfc_mux_8: tfc-mux-8 {
+				sig-sel = <2>;
+				bit-sel = <8>;
+			};
+			tfc_mux_9: tfc-mux-9 {
+				sig-sel = <2>;
+				bit-sel = <9>;
+			};
+			tfc_mux_10: tfc-mux-10 {
+				sig-sel = <2>;
+				bit-sel = <10>;
+			};
+			tfc_mux_11: tfc-mux-11 {
+				sig-sel = <2>;
+				bit-sel = <11>;
+			};
+			tfc_mux_12: tfc-mux-12 {
+				sig-sel = <2>;
+				bit-sel = <12>;
+			};
+			tfc_mux_13: tfc-mux-13 {
+				sig-sel = <2>;
+				bit-sel = <13>;
+			};
+			tfc_mux_14: tfc-mux-14 {
+				sig-sel = <2>;
+				bit-sel = <14>;
+			};
+			tfc_mux_15: tfc-mux-15 {
+				sig-sel = <2>;
+				bit-sel = <15>;
+			};
+			tfc_mux_16: tfc-mux-16 {
+				sig-sel = <2>;
+				bit-sel = <16>;
+			};
+			tfc_mux_17: tfc-mux-17 {
+				sig-sel = <2>;
+				bit-sel = <17>;
+			};
+			tfc_mux_18: tfc-mux-18 {
+				sig-sel = <2>;
+				bit-sel = <18>;
+			};
+			tfc_mux_19: tfc-mux-19 {
+				sig-sel = <2>;
+				bit-sel = <19>;
+			};
+			tfc_mux_20: tfc-mux-20 {
+				sig-sel = <2>;
+				bit-sel = <20>;
+			};
+			tfc_mux_21: tfc-mux-21 {
+				sig-sel = <2>;
+				bit-sel = <21>;
+			};
+			tfc_mux_22: tfc-mux-22 {
+				sig-sel = <2>;
+				bit-sel = <22>;
+			};
+			tfc_mux_23: tfc-mux-23 {
+				sig-sel = <2>;
+				bit-sel = <23>;
+			};
+			tfc_mux_24: tfc-mux-24 {
+				sig-sel = <2>;
+				bit-sel = <24>;
+			};
+			tfc_mux_25: tfc-mux-25 {
+				sig-sel = <2>;
+				bit-sel = <25>;
+			};
+			tfc_mux_26: tfc-mux-26 {
+				sig-sel = <2>;
+				bit-sel = <26>;
+			};
+			tfc_mux_27: tfc-mux-27 {
+				sig-sel = <2>;
+				bit-sel = <27>;
+			};
+			tfc_mux_28: tfc-mux-28 {
+				sig-sel = <2>;
+				bit-sel = <28>;
+			};
+			tfc_mux_29: tfc-mux-29 {
+				sig-sel = <2>;
+				bit-sel = <29>;
+			};
+			tfc_mux_30: tfc-mux-30 {
+				sig-sel = <2>;
+				bit-sel = <30>;
+			};
+			tfc_mux_31: tfc-mux-31 {
+				sig-sel = <2>;
+				bit-sel = <31>;
+			};
+		};
+		pmsr-ocla-mux-list {
+			pmsr_ocla_mux_0: pmsr-ocla-mux-0 {
+				sig-sel = <0>;
+				bit-sel = <0>;
+			};
+			pmsr_ocla_mux_1: pmsr-ocla-mux-1 {
+				sig-sel = <0>;
+				bit-sel = <1>;
+			};
+			pmsr_ocla_mux_2: pmsr-ocla-mux-2 {
+				sig-sel = <0>;
+				bit-sel = <2>;
+			};
+			pmsr_ocla_mux_3: pmsr-ocla-mux-3 {
+				sig-sel = <0>;
+				bit-sel = <3>;
+			};
+			pmsr_ocla_mux_4: pmsr-ocla-mux-4 {
+				sig-sel = <0>;
+				bit-sel = <4>;
+			};
+			pmsr_ocla_mux_5: pmsr-ocla-mux-5 {
+				sig-sel = <0>;
+				bit-sel = <5>;
+			};
+			pmsr_ocla_mux_6: pmsr-ocla-mux-6 {
+				sig-sel = <0>;
+				bit-sel = <6>;
+			};
+			pmsr_ocla_mux_7: pmsr-ocla-mux-7 {
+				sig-sel = <0>;
+				bit-sel = <7>;
+			};
+			pmsr_ocla_mux_8: pmsr-ocla-mux-8 {
+				sig-sel = <0>;
+				bit-sel = <8>;
+			};
+			pmsr_ocla_mux_9: pmsr-ocla-mux-9 {
+				sig-sel = <0>;
+				bit-sel = <9>;
+			};
+			pmsr_ocla_mux_10: pmsr-ocla-mux-10 {
+				sig-sel = <0>;
+				bit-sel = <10>;
+			};
+			pmsr_ocla_mux_11: pmsr-ocla-mux-11 {
+				sig-sel = <0>;
+				bit-sel = <11>;
+			};
+			pmsr_ocla_mux_12: pmsr-ocla-mux-12 {
+				sig-sel = <0>;
+				bit-sel = <12>;
+			};
+			pmsr_ocla_mux_13: pmsr-ocla-mux-13 {
+				sig-sel = <0>;
+				bit-sel = <13>;
+			};
+			pmsr_ocla_mux_14: pmsr-ocla-mux-14 {
+				sig-sel = <0>;
+				bit-sel = <14>;
+			};
+			pmsr_ocla_mux_15: pmsr-ocla-mux-15 {
+				sig-sel = <0>;
+				bit-sel = <15>;
+			};
+			pmsr_ocla_mux_16: pmsr-ocla-mux-16 {
+				sig-sel = <0>;
+				bit-sel = <16>;
+			};
+			pmsr_ocla_mux_17: pmsr-ocla-mux-17 {
+				sig-sel = <0>;
+				bit-sel = <17>;
+			};
+			pmsr_ocla_mux_18: pmsr-ocla-mux-18 {
+				sig-sel = <0>;
+				bit-sel = <18>;
+			};
+			pmsr_ocla_mux_19: pmsr-ocla-mux-19 {
+				sig-sel = <0>;
+				bit-sel = <19>;
+			};
+			pmsr_ocla_mux_20: pmsr-ocla-mux-20 {
+				sig-sel = <0>;
+				bit-sel = <20>;
+			};
+			pmsr_ocla_mux_21: pmsr-ocla-mux-21 {
+				sig-sel = <0>;
+				bit-sel = <21>;
+			};
+			pmsr_ocla_mux_22: pmsr-ocla-mux-22 {
+				sig-sel = <0>;
+				bit-sel = <22>;
+			};
+			pmsr_ocla_mux_23: pmsr-ocla-mux-23 {
+				sig-sel = <0>;
+				bit-sel = <23>;
+			};
+			pmsr_ocla_mux_24: pmsr-ocla-mux-24 {
+				sig-sel = <0>;
+				bit-sel = <24>;
+			};
+			pmsr_ocla_mux_25: pmsr-ocla-mux-25 {
+				sig-sel = <0>;
+				bit-sel = <25>;
+			};
+			pmsr_ocla_mux_26: pmsr-ocla-mux-26 {
+				sig-sel = <0>;
+				bit-sel = <26>;
+			};
+			pmsr_ocla_mux_27: pmsr-ocla-mux-27 {
+				sig-sel = <0>;
+				bit-sel = <27>;
+			};
+			pmsr_ocla_mux_28: pmsr-ocla-mux-28 {
+				sig-sel = <0>;
+				bit-sel = <28>;
+			};
+			pmsr_ocla_mux_29: pmsr-ocla-mux-29 {
+				sig-sel = <0>;
+				bit-sel = <29>;
+			};
+			pmsr_ocla_mux_30: pmsr-ocla-mux-30 {
+				sig-sel = <0>;
+				bit-sel = <30>;
+			};
+			pmsr_ocla_mux_31: pmsr-ocla-mux-31 {
+				sig-sel = <0>;
+				bit-sel = <31>;
+			};
+			pmsr_ocla_mux_32: pmsr-ocla-mux-32 {
+				sig-sel = <1>;
+				bit-sel = <0>;
+			};
+			pmsr_ocla_mux_33: pmsr-ocla-mux-33 {
+				sig-sel = <1>;
+				bit-sel = <1>;
+			};
+			pmsr_ocla_mux_34: pmsr-ocla-mux-34 {
+				sig-sel = <1>;
+				bit-sel = <2>;
+			};
+			pmsr_ocla_mux_35: pmsr-ocla-mux-35 {
+				sig-sel = <1>;
+				bit-sel = <3>;
+			};
+			pmsr_ocla_mux_36: pmsr-ocla-mux-36 {
+				sig-sel = <1>;
+				bit-sel = <4>;
+			};
+			pmsr_ocla_mux_37: pmsr-ocla-mux-37 {
+				sig-sel = <1>;
+				bit-sel = <5>;
+			};
+			pmsr_ocla_mux_38: pmsr-ocla-mux-38 {
+				sig-sel = <1>;
+				bit-sel = <6>;
+			};
+			pmsr_ocla_mux_39: pmsr-ocla-mux-39 {
+				sig-sel = <1>;
+				bit-sel = <7>;
+			};
+			pmsr_ocla_mux_40: pmsr-ocla-mux-40 {
+				sig-sel = <1>;
+				bit-sel = <8>;
+			};
+			pmsr_ocla_mux_41: pmsr-ocla-mux-41 {
+				sig-sel = <1>;
+				bit-sel = <9>;
+			};
+			pmsr_ocla_mux_42: pmsr-ocla-mux-42 {
+				sig-sel = <1>;
+				bit-sel = <10>;
+			};
+			pmsr_ocla_mux_43: pmsr-ocla-mux-43 {
+				sig-sel = <1>;
+				bit-sel = <11>;
+			};
+			pmsr_ocla_mux_44: pmsr-ocla-mux-44 {
+				sig-sel = <1>;
+				bit-sel = <12>;
+			};
+			pmsr_ocla_mux_45: pmsr-ocla-mux-45 {
+				sig-sel = <1>;
+				bit-sel = <13>;
+			};
+			pmsr_ocla_mux_46: pmsr-ocla-mux-46 {
+				sig-sel = <1>;
+				bit-sel = <14>;
+			};
+			pmsr_ocla_mux_47: pmsr-ocla-mux-47 {
+				sig-sel = <1>;
+				bit-sel = <15>;
+			};
+			pmsr_ocla_mux_48: pmsr-ocla-mux-48 {
+				sig-sel = <1>;
+				bit-sel = <16>;
+			};
+			pmsr_ocla_mux_49: pmsr-ocla-mux-49 {
+				sig-sel = <1>;
+				bit-sel = <17>;
+			};
+			pmsr_ocla_mux_50: pmsr-ocla-mux-50 {
+				sig-sel = <1>;
+				bit-sel = <18>;
+			};
+			pmsr_ocla_mux_51: pmsr-ocla-mux-51 {
+				sig-sel = <1>;
+				bit-sel = <19>;
+			};
+			pmsr_ocla_mux_52: pmsr-ocla-mux-52 {
+				sig-sel = <1>;
+				bit-sel = <20>;
+			};
+			pmsr_ocla_mux_53: pmsr-ocla-mux-53 {
+				sig-sel = <1>;
+				bit-sel = <21>;
+			};
+			pmsr_ocla_mux_54: pmsr-ocla-mux-54 {
+				sig-sel = <1>;
+				bit-sel = <22>;
+			};
+			pmsr_ocla_mux_55: pmsr-ocla-mux-55 {
+				sig-sel = <1>;
+				bit-sel = <23>;
+			};
+			pmsr_ocla_mux_56: pmsr-ocla-mux-56 {
+				sig-sel = <1>;
+				bit-sel = <24>;
+			};
+			pmsr_ocla_mux_57: pmsr-ocla-mux-57 {
+				sig-sel = <1>;
+				bit-sel = <25>;
+			};
+			pmsr_ocla_mux_58: pmsr-ocla-mux-58 {
+				sig-sel = <1>;
+				bit-sel = <26>;
+			};
+			pmsr_ocla_mux_59: pmsr-ocla-mux-59 {
+				sig-sel = <1>;
+				bit-sel = <27>;
+			};
+			pmsr_ocla_mux_60: pmsr-ocla-mux-60 {
+				sig-sel = <1>;
+				bit-sel = <28>;
+			};
+			pmsr_ocla_mux_61: pmsr-ocla-mux-61 {
+				sig-sel = <1>;
+				bit-sel = <29>;
+			};
+			pmsr_ocla_mux_62: pmsr-ocla-mux-62 {
+				sig-sel = <1>;
+				bit-sel = <30>;
+			};
+			pmsr_ocla_mux_63: pmsr-ocla-mux-63 {
+				sig-sel = <1>;
+				bit-sel = <31>;
+			};
+		};
+	};
+
 	mtk_lpm: mtk-lpm {
 		compatible = "mediatek,mtk-lpm";
 		#address-cells = <2>;
