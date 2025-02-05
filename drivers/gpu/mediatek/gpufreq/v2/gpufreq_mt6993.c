@@ -79,6 +79,7 @@ static struct platform_driver g_gpufreq_pdrv = {
 
 static void __iomem *g_mfg_acp_gals_top_base;
 static void __iomem *g_emi_infra_noncoh_gals;
+static void __iomem *emi_infra_cfg_base;
 static void __iomem *g_emi_infra_pdn_bcrm_base;
 static void __iomem *g_emi_infra_acp_rsi_base;
 static void __iomem *g_mali_base;
@@ -277,10 +278,18 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
 		"[MFG_GALS]",
-		"NEMI_M0", val1,
-		"NEMI_M1", val2,
-		"SEMI_M0", val3,
-		"SEMI_M1", val4);
+		"NEMI_M0_TX", val1,
+		"NEMI_M1_TX", val2,
+		"SEMI_M0_TX", val3,
+		"SEMI_M1_TX", val4);
+
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[MFG_GALS]",
+		"NEMI_M0_RX", DRV_Reg32(EMI_IFR_CFG_MFG_EMI0_NTH_GALS),
+		"NEMI_M1_RX", DRV_Reg32(EMI_IFR_CFG_MFG_EMI1_NTH_GALS),
+		"SEMI_M0_RX", DRV_Reg32(EMI_IFR_CFG_MFG_EMI0_STH_GALS),
+		"SEMI_M1_RX", DRV_Reg32(EMI_IFR_CFG_MFG_EMI1_STH_GALS));
 
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
@@ -1302,6 +1311,18 @@ static int __gpufreq_init_platform_info(struct platform_device *pdev)
 	g_emi_infra_noncoh_gals = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
 	if (!g_emi_infra_noncoh_gals) {
 		GPUFREQ_LOGE("fail to ioremap EMI_IFR_NONCOH_GALS: 0x%llx", res->start);
+		goto done;
+	}
+
+	/* 0x11025000 */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "emi_infra_cfg");
+	if (!res) {
+		GPUFREQ_LOGE("fail to get resource EMI_IFR_CFG");
+		goto done;
+	}
+	emi_infra_cfg_base = devm_ioremap(gpufreq_dev, res->start, resource_size(res));
+	if (!emi_infra_cfg_base) {
+		GPUFREQ_LOGE("fail to ioremap EMI_IFR_CFG: 0x%llx", res->start);
 		goto done;
 	}
 

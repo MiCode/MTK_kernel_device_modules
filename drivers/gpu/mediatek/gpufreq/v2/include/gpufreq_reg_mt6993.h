@@ -199,6 +199,12 @@
 #define EMI_IFR_NONCOH_GALS_MM_M0_RX_STA0      (g_emi_infra_noncoh_gals + 0xA20)   /* 0x11014A20 */
 #define EMI_IFR_NONCOH_GALS_MM_M0_TX_STA0      (g_emi_infra_noncoh_gals + 0xA64)   /* 0x11014A64 */
 
+#define EMI_IFR_CFG_BASE                       (0x11025000)
+#define EMI_IFR_CFG_MFG_EMI1_STH_GALS          (emi_infra_cfg_base + 0x83C)        /* 0x1102583C */
+#define EMI_IFR_CFG_MFG_EMI1_NTH_GALS          (emi_infra_cfg_base + 0x840)        /* 0x11025840 */
+#define EMI_IFR_CFG_MFG_EMI0_STH_GALS          (emi_infra_cfg_base + 0x844)        /* 0x11025844 */
+#define EMI_IFR_CFG_MFG_EMI0_NTH_GALS          (emi_infra_cfg_base + 0x848)        /* 0x11025848 */
+
 #define EMI_IFR_PDN_BRCM_BASE                  (0x1102B000)
 #define EMI_IFR_NTH_M6_RW_MI_CTRL              (g_emi_infra_pdn_bcrm_base + 0x0A8) /* 0x1102B0A8 */
 #define EMI_IFR_NTH_M7_RW_MI_CTRL              (g_emi_infra_pdn_bcrm_base + 0x0B4) /* 0x1102B0B4 */
