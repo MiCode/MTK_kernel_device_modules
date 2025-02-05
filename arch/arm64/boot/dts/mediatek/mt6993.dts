@@ -6041,6 +6041,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			qos-opp-high = <0>;
 		};
 
+		gpu_memsys: gpu-memsys@124820 {
+			compatible = "mediatek,gpu_memsys";
+			slc-sysram-support = <1>;
+			reg =
+				<0 0x124820 0 0x20>,	/* gpu slc v1 */
+				<0 0x124840 0 0x20>;	/* gpu memsys */
+		};
+
 		gpufreq: gpufreq@48500000 {
 			compatible = "mediatek,gpufreq";
 			reg =
