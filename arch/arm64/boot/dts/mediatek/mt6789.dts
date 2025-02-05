@@ -4095,6 +4095,7 @@
 			mediatek,common-id = <0>;
 			operating-points-v2 = <&opp_table_disp0>;
 			smi-common;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			power-domains = <&scpsys MT6789_POWER_DOMAIN_DISP>;
 			clocks = <&dispsys_config_clk CLK_MM_SMI_INFRA>,
 					<&dispsys_config_clk CLK_MM_SMI_COMMON>,
