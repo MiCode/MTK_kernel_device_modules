@@ -18,3 +18,8 @@ endif
 ifneq ($(CONFIG_MTK_LPM_MT6853),)
 obj-y += k6853/
 endif
+
+ifneq ($(CONFIG_MTK_LPM_MT6789),)
+obj-y += k6789/
+endif
+

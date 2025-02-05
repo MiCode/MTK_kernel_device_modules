@@ -8,6 +8,7 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/proc_fs.h>
+#include <linux/of.h>
 //#include <linux/spinlock.h>
 //#include <linux/syscore_ops.h>
 

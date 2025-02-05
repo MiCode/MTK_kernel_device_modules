@@ -12,7 +12,7 @@
 #include <lpm_module.h>
 #include <lpm_internal.h>
 #include <lpm_trace.h>
-
+#include <lpm_plat_common.h>
 
 #define LPM_TRACE_SYSRAM_MEMCPY_DEST(_offset, _buf, _sz) ({\
 	memcpy(buf, (void *)(lpm_trace_ins.mmu + _offset),\
