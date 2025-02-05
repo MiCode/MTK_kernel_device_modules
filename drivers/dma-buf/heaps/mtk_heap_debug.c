@@ -6,6 +6,9 @@
  *
  */
 
+#ifdef pr_fmt
+#undef pr_fmt
+#endif
 #define pr_fmt(fmt) "dma_heap: mtk_debug "fmt
 
 #include <linux/dma-buf.h>

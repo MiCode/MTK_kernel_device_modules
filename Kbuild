@@ -30,8 +30,6 @@ obj-y += drivers/clocksource/
 
 obj-y += drivers/soc/mediatek/
 
-obj-y += drivers/dma-buf/heaps/
-
 obj-y += drivers/regulator/
 
 obj-y += drivers/leds/
