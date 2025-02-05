@@ -7,28 +7,6 @@ package(
     ],
 )
 
-define_mgk_ddk_ko(
-    name = "leds-mtk",
-    srcs = [
-        "leds-mtk.c",
-    ],
-    hdrs = [
-        "leds-mtk.h",
-    ],
-    includes = ["."],
-
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)
-    ],
-)
-
-define_mgk_ddk_ko(
-    name = "regulator-vibrator",
-    srcs = [
-        "regulator-vibrator.c",
-    ],
-)
-
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([
@@ -37,7 +15,7 @@ filegroup(
 )
 
 filegroup(
-    name = "srcs",
+    name = "ddk_src",
     srcs = glob([
         "**/Makefile",
         "**/Kbuild",
@@ -47,9 +25,26 @@ filegroup(
 )
 
 define_mgk_ddk_ko(
-    name = "leds-mt6360",
+    name = "leds-mt6370-flash",
     srcs = [
-        "leds-mt6360.c",
+        "leds-mt6370-flash.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/flashlight",
+        "-I$(DEVICE_MODULES_PATH)/drivers/leds",
+        "-I$(DEVICE_MODULES_PATH)/drivers/video/backlight",
+        "-I$(srctree)/drivers/power/supply",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "leds-mt6379",
+    srcs = [
+        "leds-mt6379.c",
     ],
     includes = ["."],
     ko_deps = [
