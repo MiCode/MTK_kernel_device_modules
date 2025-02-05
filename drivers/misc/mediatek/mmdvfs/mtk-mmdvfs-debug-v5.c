@@ -570,7 +570,7 @@ static int mmdvfs_debug_user_probe(struct platform_device *pdev)
 	mmdvfs_debug_parse_user(dev, &rl_user, &rl_user_count);
 
 	for (i = 0; i < rl_user_count; i++) {
-		opp = rl_user[i].rc ? 0 : 3;
+		opp = rl_user[i].rc ? 1 : 3;
 		ret = clk_set_rate(rl_user[i].clk, mmdvfs_user_get_freq_by_opp(rl_user[i].id, opp));
 		rl_user[i].vote_opp = opp;
 	}
