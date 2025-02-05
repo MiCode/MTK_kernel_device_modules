@@ -29,9 +29,9 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 	DEFINE_MNODE(common0_port6,
 		MASTER_COMMON_PORT(0, 6), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port7,
-		MASTER_COMMON_PORT(0, 7), 0, false, 0x2, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 7), 2, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port8,
-		MASTER_COMMON_PORT(0, 8), 0, false, 0x1, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 8), 1, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(mdp_common0_port0,
 		MASTER_COMMON_PORT(1, 0), 0, false, 0x12, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port1,
@@ -47,9 +47,9 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 	DEFINE_MNODE(mdp_common0_port6,
 		MASTER_COMMON_PORT(1, 6), 0, false, 0x12, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port7,
-		MASTER_COMMON_PORT(1, 7), 0, false, 0x12, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 7), 1, false, 0x12, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port8,
-		MASTER_COMMON_PORT(1, 8), 0, false, 0x11, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 8), 2, false, 0x11, SLAVE_COMMON(1)),
 	/* SMI DISP COMMON */
 	// port0: larb54, 1, 37, 50, 56, 61
 	DEFINE_MNODE(DISP_larb54,  SLAVE_LARB(54),  0,   false, 0x0, MASTER_COMMON_PORT(0, 0)),

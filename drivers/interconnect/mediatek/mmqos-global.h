@@ -7,7 +7,7 @@
 #define MMQOS_GLOBAL_H
 
 #define MMQOS_DBG(fmt, args...) \
-	pr_notice("%s:%d: "fmt"\n", __func__, __LINE__, ##args)
+	pr_notice("[mmqos]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
 #define MMQOS_ERR(fmt, args...) \
 	pr_notice("error: %s:%d: "fmt"\n", __func__, __LINE__, ##args)
 

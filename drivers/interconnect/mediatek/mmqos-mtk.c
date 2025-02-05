@@ -295,6 +295,12 @@ static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
 	u16 bw_ratio;
 
 	bw_ratio = larb_node->bw_ratio;
+	if (bw_ratio == 0) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("ignore set comm ostdl for larb%d", LARB_ID(larb->id));
+		return;
+	}
+
 	if (larb->avg_bw) {
 		value = SHIFT_ROUND(icc_to_MBps(larb->avg_bw), bw_ratio);
 		if (value > max_ratio)
@@ -1110,6 +1116,10 @@ bwl_result calculate_bwl(u32 avg_r_bw, u32 avg_w_bw, u32 peak_r_bw, u32 peak_w_b
 	MMQOS_DBG("avg_r:%d, avg_w:%d, peak_r: %d, peak_w:%d",
 		avg_r_bw, avg_w_bw, peak_r_bw, peak_w_bw);
 
+	if (log_level & 1 << log_bw)
+		MMQOS_DBG("avg_r:%d, avg_w:%d, peak_r: %d, peak_w:%d",
+			avg_r_bw, avg_w_bw, peak_r_bw, peak_w_bw);
+
 	return result;
 }
 
@@ -1250,9 +1260,11 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		comm_id = COMM_PORT_COMM_ID(dst->id);
 		if ((mmqos_state & AXI_MON_OSTDBL_ENABLE) || (mmqos_state & AXI_MON_BWL_ENABLE)) {
 			if (comm_port_node->base->icc_node->is_mapping == AXI_NOT_REMAP) {
+				port_id = (comm_port_node->real_port_id >= 0) ? comm_port_node->real_port_id : port_id;
 				pair = get_mux_axi_pair_by_comm_port(comm_id, port_id);
 				if (pair) {
-					MMQOS_DBG("mux:%d, axi:%d", pair->mux_id, pair->axi_mon_id);
+					if (log_level & 1 << log_bw)
+						MMQOS_DBG("mux:%d, axi:%d", pair->mux_id, pair->axi_mon_id);
 					comm_port_node->base->icc_node->axi_mux_id = pair->mux_id;
 					comm_port_node->base->icc_node->axi_mon_id = pair->axi_mon_id;
 					comm_port_node->base->icc_node->is_mapping = AXI_REMAP_DONE;
@@ -1262,11 +1274,12 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			if (comm_port_node->base->icc_node->is_mapping == AXI_REMAP_DONE) {
 				mux_id = comm_port_node->base->icc_node->axi_mux_id;
 				axi_mon_id = comm_port_node->base->icc_node->axi_mon_id;
-				pr_info("[mmqos]mux_id: %d, axi_mon_id: %d\n", mux_id, axi_mon_id);
 				min_freq = get_min_freq_from_axi_mon(mux_id);
-				pr_info("[mmqos]min_freq: %d\n", min_freq);
+				if (log_level & 1 << log_bw)
+					MMQOS_DBG("mux_id: %d, axi_mon_id: %d, min_freq: %d",
+						mux_id, axi_mon_id, min_freq);
 				if (mmqos_state & AXI_MON_OSTDBL_ENABLE) {
-					mtk_mmmc_set_ostdbl(axi_mon_id,	min_freq);
+					mtk_mmmc_set_ostdbl(axi_mon_id, min_freq);
 					axi_mon_state |= 1 << AXI_MON_OSTDBL;
 				}
 				if (mmqos_state & AXI_MON_BWL_ENABLE) {
@@ -1274,7 +1287,8 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 											comm_port_node->base->icc_node->v2_avg_w_bw,
 											comm_port_node->base->icc_node->v2_peak_r_bw,
 											comm_port_node->base->icc_node->v2_peak_w_bw);
-					MMQOS_DBG("result.r_bwl:%d, w_bwl:%d", result.r_bwl, result.w_bwl);
+					if (log_level & 1 << log_bw)
+						MMQOS_DBG("result.r_bwl:%d, w_bwl:%d", result.r_bwl, result.w_bwl);
 					mtk_mmmc_set_bw_limiter(axi_mon_id, result.r_bwl, result.w_bwl, min_freq);
 					axi_mon_state |= 1 << AXI_MON_BWL;
 				}
@@ -2377,6 +2391,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 			list_add_tail(&comm_port_node->list,
 				      &comm_port_node->common->comm_port_list);
 			comm_port_node->base = base_node;
+			comm_port_node->real_port_id = node_desc->bw_ratio - 1;
 			node->data = (void *)comm_port_node;
 			break;
 		case MTK_MMQOS_NODE_LARB:

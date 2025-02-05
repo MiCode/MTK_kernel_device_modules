@@ -108,6 +108,7 @@ struct common_port_node {
 	u8 hrt_type;
 	u32 write_peak_bw;
 	u32 write_avg_bw;
+	int real_port_id;
 };
 
 struct larb_node {
