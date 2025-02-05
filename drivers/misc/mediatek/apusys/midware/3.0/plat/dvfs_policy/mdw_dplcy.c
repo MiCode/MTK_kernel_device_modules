@@ -22,6 +22,8 @@ struct policy_cb {
 	uint64_t start_ts_us;
 	uint64_t end_ts_us;
 	uint64_t cmd_tb_id;
+	/* from uP, clear recommand_opp when dvfs_target_time change */
+	uint64_t dvfs_target_time;
 
 	uint32_t history_inf_time[MAX_CON_CMD][OPP_MAX_NUM];
 	uint32_t history_point_tma[TMA_POINT_NUM];
@@ -46,10 +48,12 @@ struct mdw_dplcy_cmd_tb {
 	// for same cmd execution racing
 	struct mutex cmd_mtx;
 
+	uint64_t dvfs_target_time;
 	uint32_t history_tma;
 	uint32_t history_point_tma[TMA_POINT_NUM];
 	uint32_t history_point_percent[TMA_POINT_NUM];
 	uint32_t history_inf_time[MAX_CON_CMD][OPP_MAX_NUM];
+	int32_t iter_round;
 	uint8_t record_quality;
 	uint8_t valid_record_num;
 	int8_t recommand_opp[MAX_CON_CMD];
@@ -87,11 +91,13 @@ static uint32_t mdw_dplcy_appendix_cb_size(uint32_t num_subcmds)
 static void mdw_dplcy_dump_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
 {
 	int i;
+	mdw_flw_debug("uid(0x%llx) target(%llu) round(%u) num_subcmds(%u) session(%llu)\n",
+		      cmd_tb->uid, cmd_tb->dvfs_target_time, cmd_tb->iter_round,
+		      cmd_tb->num_subcmds, (uint64_t)cmd_tb->mpriv);
 	mdw_flw_debug(
-		"uid(0x%llx) num_subcmds(%u) session(%llu) history_tma(0x%x) record_quality(%u) valid_record_num(%u) recommand_opp(%d/%d/%d)\n",
-		cmd_tb->uid, cmd_tb->num_subcmds, (uint64_t)cmd_tb->mpriv, cmd_tb->history_tma,
-		cmd_tb->record_quality, cmd_tb->valid_record_num, cmd_tb->recommand_opp[0],
-		cmd_tb->recommand_opp[1], cmd_tb->recommand_opp[2]);
+		"history_tma(0x%x) record_quality(%u) valid_record_num(%u) recommand_opp(%d/%d/%d)\n",
+		cmd_tb->history_tma, cmd_tb->record_quality, cmd_tb->valid_record_num,
+		cmd_tb->recommand_opp[0], cmd_tb->recommand_opp[1], cmd_tb->recommand_opp[2]);
 
 	mdw_flw_debug("history_point_tma(0x%x/0x%x/0x%x/0x%x/0x%x/0x%x/0x%x/0x%x/0x%x)\n",
 		      cmd_tb->history_point_tma[0], cmd_tb->history_point_tma[1],
@@ -123,9 +129,9 @@ static void mdw_dplcy_dump_cb(struct policy_cb *cb)
 	int i;
 
 	mdw_flw_debug(
-		"cmd_tb_ic(0x%llx) total(%llu) history_num(%u) start_ts(%llu) end_ts(%llu)\n",
-		cb->cmd_tb_id, cb->end_ts_us - cb->start_ts_us, cb->history_num, cb->start_ts_us,
-		cb->end_ts_us);
+		"cmd_tb_ic(0x%llx) target(%llu) total(%llu) history_num(%u) start_ts(%llu) end_ts(%llu)\n",
+		cb->cmd_tb_id, cb->dvfs_target_time, cb->end_ts_us - cb->start_ts_us,
+		cb->history_num, cb->start_ts_us, cb->end_ts_us);
 	for (i = 0; i < MAX_CON_CMD; i++)
 		mdw_flw_debug(
 			"history_inf_time-%d (%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u/%u)\n",
@@ -175,6 +181,7 @@ static void mdw_dplcy_dump_cb(struct policy_cb *cb)
 static int mdw_dplcy_preprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *cmd_tb)
 {
 	cb->version = MDW_DPLCY_VERSION;
+	cb->dvfs_target_time = cmd_tb->dvfs_target_time;
 	memcpy(cb->history_inf_time, cmd_tb->history_inf_time,
 	       MAX_CON_CMD * OPP_MAX_NUM * sizeof(uint32_t));
 	memcpy(cb->recommand_opp, cmd_tb->recommand_opp, sizeof(cb->recommand_opp));
@@ -242,6 +249,7 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 
 	cb->con_current_cmd =
 		(cb->con_current_cmd > MAX_CON_CMD) ? MAX_CON_CMD : cb->con_current_cmd;
+	/* minus 1 due to include self cmd */
 	cb->con_current_cmd = cb->con_current_cmd - 1;
 	for (i = 0; i < TMA_POINT_NUM; i++) {
 		total_us_opp += cb->record_point_accu_boost[i];
@@ -250,6 +258,22 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 	}
 	valid_record_num = i;
 	avg_opp = mdw_dplcy_cal_close_opp(total_us_opp, total_us);
+
+	/* update recommand opp. to achieve iterate goal */
+	if (cb->dvfs_target_time != cmd_tb->dvfs_target_time) {
+		memset(cmd_tb->recommand_opp, -1, sizeof(cmd_tb->recommand_opp));
+		cmd_tb->iter_round = 0;
+		cmd_tb->dvfs_target_time = cb->dvfs_target_time;
+	}
+	if (cmd_tb->iter_round != 0) {
+		cmd_tb->recommand_opp[cb->con_current_cmd] = avg_opp;
+		/* fill out initial value */
+		for (i = cb->con_current_cmd; i < MAX_CON_CMD - 1; i++) {
+			if (cmd_tb->recommand_opp[i+1] == -1)
+				cmd_tb->recommand_opp[i+1] = cmd_tb->recommand_opp[i];
+		}
+	}
+	cmd_tb->iter_round++;
 
 	if (total_us > cmd_tb->history_inf_time[cb->con_current_cmd][avg_opp])
 		cmd_tb->history_inf_time[cb->con_current_cmd][avg_opp] = total_us;
@@ -332,6 +356,8 @@ static void mdw_dplcy_clear_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
 	cmd_tb->num_subcmds = 0;
 	cmd_tb->history_tma = 0;
 	cmd_tb->record_quality = 0;
+	cmd_tb->iter_round = 0;
+	cmd_tb->dvfs_target_time = 0;
 }
 
 static void mdw_dplcy_delete_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
@@ -412,6 +438,10 @@ static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type, uint64_
 
 		if (cmd_tb == NULL) {
 			cmd_tb = mdw_dplcy_create_cmd_tb(cb, session_id, cmd_uid, num_subcmds);
+			if (cmd_tb == NULL) {
+				ret = -EINVAL;
+				goto out;
+			}
 			down_write(&g_dplcy_mgr->rw_sem);
 			hash_add(g_dplcy_mgr->all_cmd_hash, &cmd_tb->hash_node, cmd_tb->uid);
 			up_write(&g_dplcy_mgr->rw_sem);
