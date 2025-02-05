@@ -8809,7 +8809,7 @@
 					<&disp_iommu M4U_LARB2_PORT1>,
 					<&disp_iommu M4U_LARB2_PORT2>,
 					<&disp_iommu M4U_LARB2_PORT3>;
-			dma-mask-bit = <35>;
+			dma-mask-bit = <34>;
 		};
 
 		mdp: mdp@1f000000 {
@@ -9108,7 +9108,7 @@
 			comp-names = "mmlsys",
 				"dli0", "dli1",
 				"dlo0", "dlo1",
-				"dli0_sel", "dli1_sel";
+				"dli0-sel", "dli1-sel";
 			mmlsys-clock-names = "apb_bus";
 			dli0-clock-names = "dli0";
 			dli1-clock-names = "dli1";
@@ -9241,7 +9241,7 @@
 			mutex-comps = "rdma0", "rdma1", "hdr0", "hdr1", "aal0", "aal1",
 				"rsz0", "rsz1", "tdshp0", "tdshp1", "color0", "color1",
 				"wrot0", "wrot1",
-				"dli_async0", "dli_async1", "dlo_async0", "dlo_async1",
+				"dli-async0", "dli-async1", "dlo-async0", "dlo-async1",
 				"rsz2", "rsz3", "wrot2", "wrot3";
 			rdma0 = <MML_RDMA0 0 0>;
 			rdma1 = <MML_RDMA1 0 1>;
