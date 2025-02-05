@@ -17394,6 +17394,42 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"therm_cputcm";
 		};
 
+		mt6661_5_temp: mt6661-5-temp {
+			compatible = "mediatek,mt6661-5-pmic-temp";
+			io-channels =
+				<&mt6661_5_auxadc AUXADC_THR1>,
+				<&mt6661_5_auxadc AUXADC_THR2>,
+				<&mt6661_5_auxadc AUXADC_THR3>,
+				<&mt6661_5_auxadc AUXADC_THR4>;
+			io-channel-names =
+				"pmic6661_5_ts1",
+				"pmic6661_5_ts2",
+				"pmic6661_5_ts3",
+				"pmic6661_5_ts4";
+
+			#thermal-sensor-cells = <1>;
+			nvmem-cells = <&mt6661_5_thermal_efuse>;
+			nvmem-cell-names = "mt6661-5-e-data";
+		};
+
+		mt6661_6_temp: mt6661-6-temp {
+			compatible = "mediatek,mt6661-6-pmic-temp";
+			io-channels =
+				<&mt6661_6_auxadc AUXADC_THR1>,
+				<&mt6661_6_auxadc AUXADC_THR2>,
+				<&mt6661_6_auxadc AUXADC_THR3>,
+				<&mt6661_6_auxadc AUXADC_THR4>;
+			io-channel-names =
+				"pmic6661_6_ts1",
+				"pmic6661_6_ts2",
+				"pmic6661_6_ts3",
+				"pmic6661_6_ts4";
+
+			#thermal-sensor-cells = <1>;
+			nvmem-cells = <&mt6661_6_thermal_efuse>;
+			nvmem-cell-names = "mt6661-6-e-data";
+		};
+
 		thermal_zones: thermal-zones {
 			soc_max: soc_max {
 				polling-delay = <0>; /* milliseconds */
@@ -17402,7 +17438,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					soc_max_crit: so-max-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "critical";
 					};
@@ -17414,7 +17450,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 1>;
 				trips {
 					cpu_dsu_1_0_crit: cpu-dsu-1-0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17426,7 +17462,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 2>;
 				trips {
 					cpu_dsu_1_1_crit: cpu-dsu-1-1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17438,7 +17474,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 3>;
 				trips {
 					cpu_medium6_1_2_crit: cpu-medium6-1-2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17450,7 +17486,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 4>;
 				trips {
 					cpu_medium6_1_3_crit: cpu-medium6-1-3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17462,7 +17498,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 5>;
 				trips {
 					cpu_little0_2_0_crit: cpu-little0-2-0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17474,7 +17510,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 6>;
 				trips {
 					cpu_little1_2_1_crit: cpu-little1-2-1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17486,7 +17522,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 7>;
 				trips {
 					cpu_little2_2_2_crit: cpu-little2-2-2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17498,7 +17534,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 8>;
 				trips {
 					cpu_little3_2_3_crit: cpu-little3-2-3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17510,7 +17546,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 9>;
 				trips {
 					cpu_medium4_3_0_crit: cpu-medium4-3-0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17522,7 +17558,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 10>;
 				trips {
 					cpu_medium4_3_1_crit: cpu-medium4-3-1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17534,7 +17570,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 11>;
 				trips {
 					cpu_medium5_3_2_crit: cpu-medium5-3-2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17546,7 +17582,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 12>;
 				trips {
 					cpu_medium5_3_3_crit: cpu-medium5-3-3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17558,7 +17594,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 13>;
 				trips {
 					cpu_dsu_4_0_crit: cpu-dsu-4-0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17570,7 +17606,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 14>;
 				trips {
 					cpu_cme_4_1_crit: cpu-cme-4-1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17582,7 +17618,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 15>;
 				trips {
 					cpu_big7_4_2_crit: cpu-big7-4-2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17594,7 +17630,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 16>;
 				trips {
 					cpu_big7_4_3_crit: cpu-big7-4-3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17606,7 +17642,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 17>;
 				trips {
 					apu_a0_crit: apu-a0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17618,7 +17654,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 18>;
 				trips {
 					apu_a1_crit: apu-a1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17630,7 +17666,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 19>;
 				trips {
 					apu_a2_crit: apu-a2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17642,7 +17678,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 20>;
 				trips {
 					apu_a3_crit: apu-a3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17654,7 +17690,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 21>;
 				trips {
 					gpu0_crit: gpu0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17666,7 +17702,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 22>;
 				trips {
 					soc_top0_crit: soc-top0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17678,7 +17714,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 23>;
 				trips {
 					soc_top1_crit: soc-top1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17690,7 +17726,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 24>;
 				trips {
 					soc_top2_crit: soc-top2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17702,7 +17738,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 25>;
 				trips {
 					soc_top3_crit: soc-top3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17714,7 +17750,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 26>;
 				trips {
 					soc_bot0_crit: soc-bot0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17726,7 +17762,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 27>;
 				trips {
 					soc_bot1_crit: soc-bot1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17738,7 +17774,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 28>;
 				trips {
 					soc_bot2_crit: soc-bot2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17750,7 +17786,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 29>;
 				trips {
 					soc_bot3_crit: soc-bot3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17762,7 +17798,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 30>;
 				trips {
 					soc_smap0_crit: soc-smap0-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17774,7 +17810,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&lvts 31>;
 				trips {
 					soc_smap1_crit: soc-smap1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17787,7 +17823,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					ap_ntc_crit: ap-ntc-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17800,7 +17836,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					ltepa_ntc_crit: ltepa-ntc-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17813,7 +17849,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					nrpa_ntc_crit: nrpa-ntc-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17826,7 +17862,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					quiet_top_left_ntc_crit: quiet-top-left-ntc-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17839,7 +17875,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					quiet_top_right_ntc_crit: quiet-top-right-ntc-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17852,7 +17888,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					quiet_bot_left_ntc_crit: quiet-bot-left-ntc-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17865,7 +17901,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 				trips {
 					quiet_bot_right_ntc_crit: quiet-bot-right-ntc-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17877,7 +17913,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 0>;
 				trips {
 					vtskin_max_crit: vtskin-max-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17889,7 +17925,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 1>;
 				trips {
 					vtskin1_crit: vtskin1-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17901,7 +17937,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 2>;
 				trips {
 					vtskin2_crit: vtskin2-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17913,7 +17949,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 3>;
 				trips {
 					vtskin3_crit: vtskin3-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17925,7 +17961,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 4>;
 				trips {
 					vtskin4_crit: vtskin4-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17937,7 +17973,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 5>;
 				trips {
 					vtskin5_crit: vtskin5-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17949,7 +17985,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 6>;
 				trips {
 					vtskin6_crit: vtskin6-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17961,7 +17997,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 7>;
 				trips {
 					vtskin7_crit: vtskin7-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17973,7 +18009,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 8>;
 				trips {
 					vtskin8_crit: vtskin8-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17985,7 +18021,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 9>;
 				trips {
 					vtskin9_crit: vtskin9-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -17997,7 +18033,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&vtskin 10>;
 				trips {
 					vtskin10_crit: vtskin10-crit {
-						temperature = <118800>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -18009,7 +18045,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&wifi 0>;
 				trips {
 					wifi_adie_0_crit: wifi-adie-0-crit {
-						temperature = <118400>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -18021,7 +18057,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&wifi 1>;
 				trips {
 					wifi_ddie_0_crit: wifi-ddie-0-crit {
-						temperature = <118400>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -18033,7 +18069,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&wifi 2>;
 				trips {
 					wifi_ddie_1_crit: wifi-ddie-1-crit {
-						temperature = <118400>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -18045,7 +18081,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&wifi 3>;
 				trips {
 					wifi_ddie_2_crit: wifi-ddie-2-crit {
-						temperature = <118400>;
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};
@@ -18057,7 +18093,111 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				thermal-sensors = <&wifi 4>;
 				trips {
 					wifi_ddie_3_crit: wifi-ddie-3-crit {
-						temperature = <118400>;
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-5-ts1 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_5_temp 0>;
+
+				trips {
+					pmic6661_5_ts1_crit: pmic6661-5-ts1-crit {
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-5-ts2 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_5_temp 1>;
+
+				trips {
+					pmic6661_5_ts2_crit: pmic6661-5-ts2-crit {
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-5-ts3 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_5_temp 2>;
+
+				trips {
+					pmic6661_5_ts3_crit: pmic6661-5-ts3-crit {
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-5-ts4 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_5_temp 3>;
+
+				trips {
+					pmic6661_5_ts4_crit: pmic6661-5-ts4-crit {
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-6-ts1 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_6_temp 0>;
+
+				trips {
+					pmic6661_6_ts1_crit: pmic6661-6-ts1-crit {
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-6-ts2 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_6_temp 1>;
+
+				trips {
+					pmic6661_6_ts2_crit: pmic6661-6-ts2-crit {
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-6-ts3 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_6_temp 2>;
+
+				trips {
+					pmic6661_6_ts3_crit: pmic6661-6-ts3-crit {
+						temperature = <118500>;
+						hysteresis = <2000>;
+						type = "passive";
+					};
+				};
+			};
+			pmic6661-6-ts4 {
+				polling-delay = <0>;
+				polling-delay-passive = <0>;
+				thermal-sensors = <&mt6661_6_temp 3>;
+
+				trips {
+					pmic6661_6_ts4_crit: pmic6661-6-ts4-crit {
+						temperature = <118500>;
 						hysteresis = <2000>;
 						type = "passive";
 					};

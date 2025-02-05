@@ -826,8 +826,11 @@
 
 		mt6661_5_efuse: mt6661-5-efuse {
 			compatible = "mediatek,mt6661-5-efuse";
-			// #address-cells = <1>;
-			// #size-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			mt6661_5_thermal_efuse: mt6661-5-e-data {
+				reg = <0x43 7>;
+			};
 		};
 
 		mt6661_5_pio: mt6661-5-pinctrl {
@@ -1299,8 +1302,11 @@
 
 		mt6661_6_efuse: mt6661-6-efuse {
 			compatible = "mediatek,mt6661-6-efuse";
-			// #address-cells = <1>;
-			// #size-cells = <1>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			mt6661_6_thermal_efuse: mt6661-6-e-data {
+				reg = <0x43 7>;
+			};
 		};
 
 		mt6661_6_pio: mt6661-6-pinctrl {
