@@ -37,7 +37,6 @@ struct mtk_disp_sec_data {
 	u32 with_larb_ctrl;
 };
 
-
 struct mtk_disp_sec_config sec_config;
 static bool sec_client_already_stop;
 
@@ -495,22 +494,56 @@ static int _drm_crtc_sec_create(struct drm_device *drm_dev, struct device *dev)
 	return 0;
 }
 
+struct platform_device *drm_get_plat_device(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct device_node *drm_node;
+	struct platform_device *drm_pdev;
+
+	drm_node = of_parse_phandle(dev->of_node, "mediatek,drm", 0);
+	if (!drm_node) {
+		DDPMSG("[E] %s cannot get drm node", __func__);
+		return NULL;
+	}
+
+	drm_pdev = of_find_device_by_node(drm_node);
+	of_node_put(drm_node);
+	if (WARN_ON(!drm_pdev)) {
+		DDPMSG("[E] %s cannot get drm node", __func__);
+		return NULL;
+	}
+
+	return drm_pdev;
+}
+
+
 static int disp_mtee_probe(struct platform_device *pdev)
 {
 	void **ret;
 	struct device *dev = &pdev->dev;
+	struct platform_device *drm_pdev;
+	struct platform_device *plat_dev;
+	struct mtk_drm_private *private;
+	struct drm_device *drm;
 
 	DDPINFO("%s+\n", __func__);
 
-	if (IS_ERR_OR_NULL(disp_mtee_cb.dev))
-		DDPPR_ERR("mtee_probe:invalid dev\n");
-	else {
-		if (_drm_crtc_sec_create(disp_mtee_cb.dev, dev) < 0) {
-			DDPPR_ERR("%s:create sec crtc failed\n", __func__);
-			return -1;
-		}
+	drm_pdev = drm_get_plat_device(plat_dev);
+	if (!drm_pdev) {
+		DDPMSG("[E] drm_get_plat_device open fail\n");
+		goto cb_init;
 	}
 
+	private = platform_get_drvdata(drm_pdev);
+	drm = private->drm;
+
+	if (_drm_crtc_sec_create(drm, dev) < 0) {
+		DDPMSG("%s:create sec crtc failed\n", __func__);
+		return -1;
+	}
+
+
+cb_init:
 	ret = mtk_drm_disp_mtee_cb_init();
 	*ret = (void *) mtk_drm_disp_mtee_cb_event;
 	DDPINFO("%s-\n", __func__);

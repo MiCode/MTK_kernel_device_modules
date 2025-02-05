@@ -70,7 +70,6 @@
 #include "mtk_vdisp_common.h"
 #include "mtk_disp_dbi_count.h"
 
-
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 #include <linux/interconnect.h>
 #include "dvfsrc-exp.h"
@@ -190,7 +189,7 @@ void **mtk_drm_disp_sec_cb_init(void)
 EXPORT_SYMBOL(mtk_drm_disp_sec_cb_init);
 
 struct mtk_drm_disp_mtee_cb disp_mtee_cb;
-EXPORT_SYMBOL(disp_mtee_cb);
+//EXPORT_SYMBOL(disp_mtee_cb);
 
 void mtk_drm_svp_init(struct drm_device *dev)
 {
