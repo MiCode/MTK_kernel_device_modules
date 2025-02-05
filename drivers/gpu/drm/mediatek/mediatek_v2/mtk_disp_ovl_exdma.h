@@ -48,6 +48,14 @@ struct mtk_disp_ovl_exdma_data {
 	unsigned int (*ovlsys_mapping)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovl_phy_mapping)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovl_ch_mapping)(struct mtk_ddp_comp *comp);
+	bool apb_mcyc_rd;
+	bool output_interlace;
+	unsigned int output_round;
+	unsigned int lead_time;
+	unsigned int stash_min_ostdl;
+	unsigned int afbc_header_min_ostdl;
+	unsigned int ovl_fifo_depth;
+	unsigned int ovl_hdr_fifo_depth;
 };
 
 struct exdma_compress_info {

@@ -128,6 +128,7 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 
 /*OVL_EXDMA_EN*/
 #define ENABLE_OVL_EN					BIT(0)
+#define ENABLE_FORCE_RELAY_MODE			BIT(4)
 
 /*OVL_EXDMA_SHADOW_CTRL*/
 #define OVL_EXDMA_BYPASS_SHADOW			BIT(2)
@@ -269,6 +270,7 @@ enum GS_OVL_FLD {
 	GS_OVL_RDMA_PRE_ULTRA_HIGH_DIS,
 	GS_OVL_BLOCK_EXT_ULTRA,
 	GS_OVL_BLOCK_EXT_PRE_ULTRA,
+	GS_OVL_APB_MCYC_RD,
 	GS_OVL_STASH_EN,
 	GS_OVL_STASH_CFG,
 	GS_OVL_FLD_NUM,
@@ -870,6 +872,9 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
 		       ENABLE_OVL_EN, REG_FLD_MASK(reg_fld[FLD_OVL_EN]));
 
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
+		       ENABLE_FORCE_RELAY_MODE, REG_FLD_MASK(reg_fld[FLD_FORCE_RELAY_MODE]));
+
 	/* In 6779 we need to set DISP_OVL_FORCE_RELAY_MODE */
 	if (compr_info && strncmp(compr_info->name, "PVRIC_V3_1", 10) == 0) {
 		val = FBDC_8XE_MODE | FBDC_FILTER_EN;
@@ -1042,6 +1047,8 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 	}
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
 		       ENABLE_OVL_EN, REG_FLD_MASK(reg_fld[FLD_OVL_EN]));
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
+		ENABLE_FORCE_RELAY_MODE, REG_FLD_MASK(reg_fld[FLD_FORCE_RELAY_MODE]));
 #ifdef IF_ZERO
 	//enable sram dbg reg:0x900~0x934
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1100,6 +1107,8 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
 		       ENABLE_OVL_EN, REG_FLD_MASK(reg_fld[FLD_OVL_EN]));
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
+		ENABLE_FORCE_RELAY_MODE, REG_FLD_MASK(reg_fld[FLD_FORCE_RELAY_MODE]));
 
 	if (ext_idx != LYE_NORMAL) {
 		unsigned int con_mask;
@@ -1143,13 +1152,14 @@ static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 		return;
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG1],
-		       1, ~0);
+		       0, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
 		       0,
 		       ((REG_FLD_MASK(reg_fld[FLD_L0_STASH_EN])) |
 		       (REG_FLD_MASK(reg_fld[FLD_EL0_STASH_EN])) |
 		       (REG_FLD_MASK(reg_fld[FLD_EL1_STASH_EN])) |
-		       (REG_FLD_MASK(reg_fld[FLD_EL2_STASH_EN]))));
+		       (REG_FLD_MASK(reg_fld[FLD_EL2_STASH_EN])) |
+		       (REG_FLD_MASK(reg_fld[FLD_STASH_ROI_Y_SEL]))));
 }
 
 static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -1240,6 +1250,8 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 		mtk_drm_crtc_exdma_ovl_path(comp->mtk_crtc, comp, comp->bind_comp->id, handle, true, false);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
 		       0x0, REG_FLD_MASK(reg_fld[FLD_OVL_EN]));
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
+			0x0, REG_FLD_MASK(reg_fld[FLD_FORCE_RELAY_MODE]));
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + regs[OVL_EXDMA_DATAPATH_CON], 0,
 			       BIT(0));
@@ -2332,11 +2344,21 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
 	unsigned int value = 0, mask = 0;
+	struct mtk_crtc_state *mtk_crtc_state;
+	unsigned int decompr_en = 0;
+	unsigned int pref_line_lead = 0;
+	unsigned int hdr_pref_l_lead = 0;
+	unsigned int phy_id = 0;
 
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	priv = mtk_crtc->base.dev->dev_private;
+
+	if (exdma->data->ovl_phy_mapping)
+		phy_id = exdma->data->ovl_phy_mapping(comp);
+
+	decompr_en = mtk_crtc->usage_ovl_compr[phy_id];
 
 	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_STASH_CMD))
 		return;
@@ -2375,17 +2397,17 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	}
 
 	l_time = 1000000 * 100 / vrefresh / mode->vtotal;
-	fifo_l = 1536 * 4 * l_time / mode->hdisplay;
-	hdr_fifo_l = (320 - 8) * 32 * 4 * l_time / mode->hdisplay;
+	fifo_l = exdma->data->ovl_fifo_depth * 4 * l_time / mode->hdisplay;
+	hdr_fifo_l = (exdma->data->ovl_hdr_fifo_depth - 8) * 32 * 4 * l_time / mode->hdisplay;
 
 	if (!l_time) {
 		DDPPR_ERR("%s, l_time=%d is invalid!\n", __func__, l_time);
 		return;
 	}
 
-	hdr_roi_stall = (200 * 100 + hdr_fifo_l * 10) / l_time / 10;
-	roi_stall = (200 * 100 + fifo_l * 10) / l_time / 10;
-	gmc_stall = 200 * 100 / l_time / 10;
+	hdr_roi_stall = (exdma->data->lead_time * 100 + hdr_fifo_l * 10) / l_time / 10;
+	roi_stall = (exdma->data->lead_time * 100 + fifo_l * 10) / l_time / 10 + decompr_en * 4;
+	gmc_stall = exdma->data->lead_time * 100 / l_time / 10;
 	DDPDBG("%s, l_time=%d, fifo_l=%d, hdr_fifo_l=%d, hdr_roi_stall=%d, roi_stall=%d, gmc_stall=%d\n",
 		__func__, l_time, fifo_l, hdr_fifo_l, hdr_roi_stall, roi_stall, gmc_stall);
 
@@ -2396,19 +2418,62 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL0_STASH_EN]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL1_STASH_EN]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL2_STASH_EN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ROI_Y_SEL]);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
 			   value, mask);
 
 	value = 0;
 	mask = 0;
+	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_STASH_CACHE_NUM]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ULTRA_MAN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_PREULTRA]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ULTRA]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_ULTRA_MAN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_PREULTRA]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_ULTRA]);
-
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG2],
 			   value, mask);
+
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_PREF_START_CTRL]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_PREF_LINE_CTRL]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG0],
+					value, mask);
+
+	pref_line_lead = exdma->data->ovl_fifo_depth * 4 / mode->hdisplay + 4 * decompr_en;
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_L0_PREF_LINE_LEAD]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG1],
+			   value, mask);
+
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL0_PREF_LINE_LEAD]);
+	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL1_PREF_LINE_LEAD]);
+	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL2_PREF_LINE_LEAD]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG2],
+			   value, mask);
+
+	hdr_pref_l_lead = exdma->data->ovl_hdr_fifo_depth * 32 * 4 / mode->hdisplay;
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_L0_HDR_PREF_LINE_LEAD]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG3],
+			   value, mask);
+
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL0_HDR_PREF_LINE_LEAD]);
+	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL1_HDR_PREF_LINE_LEAD]);
+	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL2_HDR_PREF_LINE_LEAD]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG4],
+			   value, mask);
+
+	DDPDBG("%s, pref_line_lead=%d, hdr_pref_l_lead=%d, decompr_en=%d, hdisplay=%d\n",
+		__func__, pref_line_lead, hdr_pref_l_lead, decompr_en, mode->hdisplay);
 }
 
 static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -3461,6 +3526,8 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 		}
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
 				   ENABLE_OVL_EN, REG_FLD_MASK(reg_fld[FLD_OVL_EN]));
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
+			ENABLE_FORCE_RELAY_MODE, REG_FLD_MASK(reg_fld[FLD_FORCE_RELAY_MODE]));
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			(crtc_idx == 0)) {
@@ -3600,7 +3667,7 @@ void mtk_ovl_exdma_cal_golden_setting(bool cfg_dc,
 	gs[GS_OVL_RDMA_FORCE_REQ_TH] = 0;
 
 	/* OVL_RDMA_GREQ_NUM */
-	gs[GS_OVL_RDMA_GREQ_NUM] = (!is_dc) ? (0xF1FFFFFF | data->greq_num_dl)
+	gs[GS_OVL_RDMA_GREQ_NUM] = (!is_dc) ? (0xF1FF00FF | data->greq_num_dl)
 						: 0xF1FFFFFF;
 
 	/* OVL_RDMA_GREQURG_NUM */
@@ -3622,6 +3689,7 @@ void mtk_ovl_exdma_cal_golden_setting(bool cfg_dc,
 	/* OVL_EN */
 	gs[GS_OVL_BLOCK_EXT_ULTRA] = (!is_dc) ? 0 : 1;
 	gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] = (!is_dc) ? 0 : 1;
+	gs[GS_OVL_APB_MCYC_RD] = (!is_dc) ? data->apb_mcyc_rd : 1;
 
 }
 
@@ -3708,9 +3776,10 @@ static int mtk_ovl_exdma_golden_setting(struct mtk_ddp_comp *comp,
 
 	/* OVL_EN */
 	regval = (gs[GS_OVL_BLOCK_EXT_ULTRA] << 18) +
-		 (gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] << 19);
+		 (gs[GS_OVL_BLOCK_EXT_PRE_ULTRA] << 19) +
+		 (gs[GS_OVL_APB_MCYC_RD] << 23);
 	cmdq_pkt_write(handle, comp->cmdq_base, baddr + regs[OVL_EXDMA_EN_CON],
-		       regval, 0x3 << 18);
+		       regval, 0x23 << 18);
 
 	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL) {
 		struct mtk_drm_crtc *mtk_crtc;
@@ -3747,7 +3816,7 @@ static int mtk_ovl_exdma_golden_setting(struct mtk_ddp_comp *comp,
 					0 , ~0);
 				cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG0],
-					0 , ~0);
+					3 , ~0);
 				break;
 			default:
 				break;
@@ -4045,6 +4114,11 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
 		u32 hdr_stash_bw_val = 0;
+		u32 stash_bw_min = 0;
+		u32 afbc_header_bw_min = 0;
+
+		stash_bw_min = (exdma->data->stash_min_ostdl - 1) * 16 + 1;
+		afbc_header_bw_min = (exdma->data->afbc_header_min_ostdl - 1) * 16 * 2 + 1;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4077,7 +4151,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (!IS_ERR(comp->hdr_qos_req)) {
 			if (bw_val && usage_ovl_compr) {
 				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
-				hdr_bw_val = (hdr_bw_val > 129) ? hdr_bw_val : 129; //set low bound
+				hdr_bw_val =
+					(hdr_bw_val > afbc_header_bw_min) ? hdr_bw_val : afbc_header_bw_min;
 			}
 
 			if (hdr_bw_val != comp->last_hdr_bw) {
@@ -4096,7 +4171,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					stash_bw_val = bw_val / 256;
 
-				stash_bw_val = stash_bw_val > 49 ? stash_bw_val : 49; //set low bound
+				stash_bw_val =
+					stash_bw_val > stash_bw_min ? stash_bw_val : stash_bw_min; //set low bound
 			}
 
 			if (stash_bw_val != comp->last_stash_bw) {
@@ -4115,7 +4191,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					hdr_stash_bw_val = bw_val / 32 / 256;
 
-				hdr_stash_bw_val = hdr_stash_bw_val > 49 ? hdr_stash_bw_val : 49; //set low bound
+				hdr_stash_bw_val =
+					hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
 			}
 
 			if (hdr_stash_bw_val != comp->last_hdr_stash_bw) {
@@ -4138,6 +4215,11 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
 		u32 hdr_stash_bw_val = 0;
+		u32 stash_bw_min = 0;
+		u32 afbc_header_bw_min = 0;
+
+		stash_bw_min = (exdma->data->stash_min_ostdl - 1) * 16 + 1;
+		afbc_header_bw_min = (exdma->data->afbc_header_min_ostdl - 1) * 16 * 2 + 1;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4184,7 +4266,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (!IS_ERR(comp->hdr_qos_req)) {
 			if (bw_val && usage_ovl_compr) {
 				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
-				hdr_bw_val = (hdr_bw_val > 129) ? hdr_bw_val : 129; //set low bound
+				hdr_bw_val =
+					(hdr_bw_val > afbc_header_bw_min) ? hdr_bw_val : afbc_header_bw_min;
 			}
 
 			if (hdr_bw_val > comp->last_hdr_bw) {
@@ -4212,7 +4295,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					stash_bw_val = bw_val / 256;
 
-				stash_bw_val = stash_bw_val > 49 ? stash_bw_val : 49; //set low bound
+				stash_bw_val =
+					stash_bw_val > stash_bw_min ? stash_bw_val : stash_bw_min; //set low bound
 			}
 
 			if (stash_bw_val > comp->last_stash_bw) {
@@ -4240,7 +4324,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 				else
 					hdr_stash_bw_val = bw_val / 32 / 256;
 
-				hdr_stash_bw_val = hdr_stash_bw_val > 49 ? hdr_stash_bw_val : 49; //set low bound
+				hdr_stash_bw_val =
+					hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
 			}
 
 			if (hdr_stash_bw_val > comp->last_hdr_stash_bw) {
@@ -4607,18 +4692,22 @@ void mtk_ovl_exdma_dump_golden_setting(struct mtk_ddp_comp *comp)
 
 	value = readl(regs[OVL_EXDMA_EN] + baddr);
 	DDPDUMP("OVL_EN:%d\n", REG_FLD_VAL_GET(reg_fld[FLD_OVL_EN], value));
+	DDPDUMP("FORCE_RELAY_MODE:%d\n", REG_FLD_VAL_GET(reg_fld[FLD_FORCE_RELAY_MODE], value));
 	value = readl(regs[OVL_EXDMA_EN_CON] + baddr);
-	DDPDUMP("[18]:%x [19]:%x\n",
+	DDPDUMP("[18]:%x [19]:%x [23]:%x\n",
 		REG_FLD_VAL_GET(reg_fld[FLD_BLOCK_EXT_ULTRA], value),
-		REG_FLD_VAL_GET(reg_fld[FLD_BLOCK_EXT_PREULTRA], value));
+		REG_FLD_VAL_GET(reg_fld[FLD_BLOCK_EXT_PREULTRA], value),
+		REG_FLD_VAL_GET(reg_fld[FLD_APB_MCYC_RD], value));
 
 	value = readl(regs[OVL_EXDMA_DATAPATH_CON] + baddr);
 	DDPDUMP("DATAPATH_CON\n");
-	DDPDUMP("[0]:%u [24]:%u [25]:%u [26]:%u\n",
+	DDPDUMP("[0]:%u [24]:%u [25]:%u [26]:%u [27]:%u [29:28]:%u\n",
 		REG_FLD_VAL_GET(reg_fld[FLD_LAYER_SMI_ID_EN], value),
 		REG_FLD_VAL_GET(reg_fld[FLD_GCLAST_EN], value),
 		REG_FLD_VAL_GET(reg_fld[FLD_HDR_GCLAST_EN], value),
-		REG_FLD_VAL_GET(reg_fld[FLD_OUTPUT_CLAMP], value));
+		REG_FLD_VAL_GET(reg_fld[FLD_OUTPUT_CLAMP], value),
+		REG_FLD_VAL_GET(reg_fld[FLD_OUTPUT_INTERLACE], value),
+		REG_FLD_VAL_GET(reg_fld[FLD_OUTPUT_ROUND], value));
 
 	value = readl(regs[OVL_EXDMA_STASH_CFG0] + baddr);
 	DDPDUMP("OVL_STASH_CFG0:0x%08x\n", value);
@@ -5443,6 +5532,14 @@ static const struct mtk_disp_ovl_exdma_data mt6991_ovl_exdma_driver_data = {
 	.ovl_ch_mapping = &mtk_ovl_phy_channel_mapping_MT6991,
 	.regs = ovl_exdma_regs_mt6991,
 	.reg_fld = ovl_exdma_fld_mt6991,
+	.apb_mcyc_rd = 1,
+	.output_interlace = 1,
+	.output_round = 0,
+	.lead_time = 200,
+	.stash_min_ostdl = 4,
+	.afbc_header_min_ostdl = 5,
+	.ovl_fifo_depth = 1536,
+	.ovl_hdr_fifo_depth = 320,
 };
 
 static const struct exdma_compress_info compr_info_mt6993 = {
@@ -5467,7 +5564,7 @@ static const struct mtk_disp_ovl_exdma_data mt6993_ovl_exdma_driver_data = {
 	.issue_req_th_dc = 31,
 	.issue_req_th_urg_dl = 255,
 	.issue_req_th_urg_dc = 31,
-	.greq_num_dl = 0xFFFF,
+	.greq_num_dl = 0x00FF,
 	.stash_en = 0,
 	.stash_cfg = 0x1,
 	.is_support_34bits = true,
@@ -5481,6 +5578,14 @@ static const struct mtk_disp_ovl_exdma_data mt6993_ovl_exdma_driver_data = {
 	.ovl_ch_mapping = &mtk_ovl_phy_channel_mapping_MT6993,
 	.regs = ovl_exdma_regs_mt6993,
 	.reg_fld = ovl_exdma_fld_mt6991,
+	.apb_mcyc_rd = 0,
+	.output_interlace = 0,
+	.output_round = 0x2,
+	.lead_time = 200,
+	.stash_min_ostdl = 4,
+	.afbc_header_min_ostdl = 5,
+	.ovl_fifo_depth = 1536,
+	.ovl_hdr_fifo_depth = 320,
 };
 
 
