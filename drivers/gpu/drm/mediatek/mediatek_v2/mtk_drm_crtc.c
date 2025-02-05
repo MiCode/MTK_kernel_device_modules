@@ -2671,6 +2671,20 @@ struct mtk_ddp_comp *mtk_ddp_comp_request_output(struct mtk_drm_crtc *mtk_crtc)
 	return NULL;
 }
 
+struct mtk_ddp_comp *mtk_ddp_comp_request_output_lpc(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp;
+	int i, j;
+
+	for_each_comp_in_crtc_path_reverse(
+		comp, mtk_crtc, i,
+		j)
+		if (mtk_ddp_comp_is_lpc(comp))
+			return comp;
+
+	return NULL;
+}
+
 void mtk_crtc_change_output_mode(struct drm_crtc *crtc, int aod_en)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -3681,7 +3695,10 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		mtk_drm_top_clk_prepare_enable(crtc);
 		mtk_crtc_gce_event_config(crtc);
 		mtk_crtc_vdisp_ao_config(crtc);
-		mtk_crtc_dsi_lpc_config(crtc);
+
+		comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+		if (comp)
+			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
 		/*APSRC control*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, true);
@@ -7919,8 +7936,20 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 					MTK_IO_CMD_RDMA_GOLDEN_SETTING, &cfg);
 		}
 	}
-	// update LPC panel params
-	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LPC_PANEL_PARAMS, &en);
+
+	if (mtk_dsi_lpc_en(mtk_crtc)) {
+		// update LPC panel params
+		struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
+
+		if (unlikely(!panel_ext))
+			DDPMSG("%s:can't find panel_ext handle\n", __func__);
+		else {
+			struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+
+			if (comp)
+				mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_PANEL_PARAMS, panel_ext);
+		}
+	}
 
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LFR_SET, &en);
 	//vdo ltpo
@@ -15108,7 +15137,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 
 	mtk_crtc_gce_event_config(crtc);
 	mtk_crtc_vdisp_ao_config(crtc);
-	mtk_crtc_dsi_lpc_config(crtc);
+
+	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+	if (comp)
+		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
 	/*
 	 * for case display does not have multiple display mode,
@@ -16330,6 +16362,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	unsigned int en = 1, crtc_id = drm_crtc_index(&mtk_crtc->base);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *output_comp;
+	struct mtk_ddp_comp *comp;
 
 	mtk_drm_crtc_init_para(crtc);
 
@@ -16397,7 +16430,10 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	}
 
 	mtk_crtc_vdisp_ao_config(crtc);
-	mtk_crtc_dsi_lpc_config(crtc);
+
+	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+	if (comp)
+		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
 	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -21347,8 +21383,13 @@ void mtk_crtc_vblank_irq_for_lpc_resync(struct drm_crtc *crtc)
 	char tag_name[100] = {'\0'};
 	long long ts;
 	ktime_t ktime;
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 
-	mtk_dsi_lpc_resync_ts(&ts, mtk_crtc);
+	if (comp)
+		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_GET_RESYNC_TS, &ts);
+	else
+		ts = ktime_get();
+
 	ktime = (ktime_t)ts;
 
 	mtk_crtc->vblank_time = ktime_to_timespec64(ktime);
@@ -22241,7 +22282,7 @@ static int mtk_drm_pf_release_thread(void *data)
 
 #ifndef DRM_CMDQ_DISABLE
 		if (likely(mtk_drm_lcm_is_connect(mtk_crtc))) {
-			if (mtk_dsi_lpc_en())
+			if (mtk_dsi_lpc_en(mtk_crtc))
 				pf_time = mtk_crtc->sof_time;
 			else
 				pf_time = mtk_check_preset_fence_timestamp(crtc);
@@ -26336,10 +26377,3 @@ void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc)
 		priv->data->vdisp_ao_qos_config(crtc->dev);
 }
 
-void mtk_crtc_dsi_lpc_config(struct drm_crtc *crtc)
-{
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-
-	if (priv->data->dsi_lpc_init_config)
-		priv->data->dsi_lpc_init_config(crtc);
-}

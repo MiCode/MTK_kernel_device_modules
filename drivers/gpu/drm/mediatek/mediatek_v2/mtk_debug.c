@@ -2414,8 +2414,14 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 		return;
 	}
 
-	if (mtk_dsi_lpc_en()) {
-		mtk_dsi_lpc_sof_ts(&sof_ts, mtk_crtc);
+	if (mtk_dsi_lpc_en(mtk_crtc)) {
+		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+
+		if (comp)
+			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_GET_SOF_TS, &sof_ts);
+		else
+			sof_ts = ktime_get();
+
 		sof_time = (ktime_t) sof_ts;
 	} else
 		sof_time = ktime_get();

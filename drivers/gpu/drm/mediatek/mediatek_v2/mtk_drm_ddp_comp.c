@@ -1440,6 +1440,12 @@ bool mtk_ddp_comp_is_rdma(struct mtk_ddp_comp *comp)
 	return false;
 }
 #endif
+bool mtk_ddp_comp_is_lpc(struct mtk_ddp_comp *comp)
+{
+	if (mtk_ddp_comp_get_type(comp->id) == MTK_DSI_LPC)
+		return true;
+	return false;
+}
 
 void mtk_ddp_comp_get_name(struct mtk_ddp_comp *comp, char *buf, int buf_len)
 {

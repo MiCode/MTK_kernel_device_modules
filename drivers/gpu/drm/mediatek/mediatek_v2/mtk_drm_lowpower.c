@@ -27,6 +27,8 @@
 #include "mtk_drm_trace.h"
 #include "mtk_disp_vidle.h"
 #include "mtk_dsi.h"
+#include "mtk_dsi_lpc.h"
+
 #ifdef SHARE_WROT_SRAM
 #include "cmdq_helper_ext.h"
 #endif
@@ -2243,7 +2245,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 
 	mtk_crtc_gce_event_config(crtc);
 	mtk_crtc_vdisp_ao_config(crtc);
-	mtk_crtc_dsi_lpc_config(crtc);
+	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+
+	if (comp)
+		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"update_mmclk", 4, perf_string, true);

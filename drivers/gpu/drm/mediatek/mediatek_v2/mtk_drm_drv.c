@@ -7376,7 +7376,6 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
 	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6993,
 	.get_channel_idx = mtk_disp_get_channel_idx,
-	.dsi_lpc_init_config = mtk_dsi_lpc_init_config,
 	.pwr_clk_map = pwr_clk_map,
 	.pwr_on_order = mt6993_pwr_on_order,
 	.pwr_off_order = mt6993_pwr_off_order,
@@ -9211,8 +9210,15 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 	/* hwvsync_en*/
 	mtk_crtc->hwvsync_en = 1;
 
-	if (mtk_dsi_lpc_en())
-		mtk_dsi_lpc_interrupt_enable(mtk_crtc, crtc, true);
+	if (mtk_dsi_lpc_en(mtk_crtc)) {
+		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+		bool en = true;
+
+		if (comp)
+			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_IRQ_EN, &en);
+		else
+			return -EFAULT;
+	}
 
 	return ret;
 }

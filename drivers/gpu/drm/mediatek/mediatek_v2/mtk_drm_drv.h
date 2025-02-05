@@ -127,7 +127,6 @@ struct mtk_mmsys_driver_data {
 	void (*gce_event_config)(struct drm_device *drm);
 	void (*vdisp_ao_irq_config)(struct drm_device *drm);
 	void (*vdisp_ao_qos_config)(struct drm_device *drm);
-	void (*dsi_lpc_init_config)(struct drm_crtc *crtc);
 	enum PF_TS_TYPE pf_ts_type;
 	bool respective_ostdl;
 	bool ovl_exdma_rule;

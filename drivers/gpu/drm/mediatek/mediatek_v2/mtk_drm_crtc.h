@@ -1466,6 +1466,7 @@ struct mtk_ddp_comp *mtk_crtc_get_dual_comp(struct drm_crtc *crtc,
 
 
 struct mtk_ddp_comp *mtk_ddp_comp_request_output(struct mtk_drm_crtc *mtk_crtc);
+struct mtk_ddp_comp *mtk_ddp_comp_request_output_lpc(struct mtk_drm_crtc *mtk_crtc);
 
 /* get fence */
 int mtk_drm_crtc_getfence_ioctl(struct drm_device *dev, void *data,
@@ -1768,7 +1769,6 @@ enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int 
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle);
-void mtk_crtc_dsi_lpc_config(struct drm_crtc *crtc);
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,

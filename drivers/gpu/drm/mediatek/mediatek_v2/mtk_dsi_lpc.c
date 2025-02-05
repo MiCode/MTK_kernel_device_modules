@@ -159,10 +159,7 @@ module_param(lpc_te_irq_en, int, 0644);
 #define DSI_LPC_EXT_TE_SEL REG_FLD_MSB_LSB(1, 0)
 #define DSI_LPC_MIPI_ERROR_FLAG_SEL REG_FLD_MSB_LSB(3, 2)
 
-static void __iomem *dsi_lpc_base;
-static resource_size_t dsi_lpc_regs_pa;
-
-static bool dsi_lpc_en;
+static bool dsi_lpc_en = true;
 static unsigned int panel_skip_vblank;
 ktime_t ts_offset;	// arch_timer_get_cntfrq: MT6993 = 1,000,000,000
 
@@ -175,69 +172,9 @@ static inline struct mtk_dsi_lpc *comp_to_dsi_lpc(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_dsi_lpc, ddp_comp);
 }
-int mtk_dsi_lpc_dump(struct mtk_ddp_comp *comp)
+void mtk_set_dsi_lpc_en(bool en)
 {
-	int i = 0;
-
-	if (!mtk_dsi_lpc_en())
-		return 0;
-
-	DDPDUMP("== LPC REGS:0x%pa ==\n", &dsi_lpc_regs_pa);
-
-	for (i = 0; i < 0x1FF; i += 16) {
-		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", i,
-			readl(dsi_lpc_base + i),
-			readl(dsi_lpc_base + i + 0x4),
-			readl(dsi_lpc_base + i + 0x8),
-			readl(dsi_lpc_base + i + 0xC));
-	}
-
-	return 0;
-}
-void mtk_dsi_lpc_analysis(struct mtk_ddp_comp *comp)
-{
-	unsigned int reg_val;
-	int i = 0;
-
-	if (!mtk_dsi_lpc_en())
-		return;
-
-	DDPDUMP("== LPC ANALYSIS:0x%pa ==\n", &dsi_lpc_regs_pa);
-	reg_val = readl(dsi_lpc_base + DSI_LPC_EN);
-	DDPDUMP("LPC_EN:%d\n", REG_FLD_VAL_GET(DSI_LPC_EN_BIT_FLD, reg_val));
-	for (i = 0; i < 4; i++) {
-		reg_val = readl(dsi_lpc_base + DSI_LPC_CONFIG(i));
-		if ((reg_val & 0x1) == 0)
-			break;
-		DDPDUMP("LPC(%d) UNIT_EN:%d\n", i, REG_FLD_VAL_GET(DSI_LPC_UNIT_EN_FLD, reg_val));
-		reg_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(i));
-		DDPDUMP("TE_TYPE:%d,LPC_TE_NUM:%d,HW_VSYNC_ON:%d\n",
-			REG_FLD_VAL_GET(DSI_LPC_TE_TYPE, reg_val),
-			REG_FLD_VAL_GET(DSI_LPC_TE_NUM, reg_val),
-			REG_FLD_VAL_GET(DSI_LPC_HW_VSYNC_ON_FLD, reg_val));
-		reg_val = readl(dsi_lpc_base + DSI_LPC_TE_CON1(i));
-		DDPDUMP("FAKE_TE_PRD:%d\n", REG_FLD_VAL_GET(DSI_LPC_FAKE_TE_PRD, reg_val));
-	}
-}
-static void mtk_dsi_lpc_prepare(struct mtk_ddp_comp *comp)
-{
-	mtk_ddp_comp_clk_prepare(comp);
-}
-static void mtk_dsi_lpc_unprepare(struct mtk_ddp_comp *comp)
-{
-	int i = 0;
-
-	for (i = 0; i < 4; i++) {
-		writel(0, dsi_lpc_base + DSI_LPC_INTEN(i));
-		writel(0, dsi_lpc_base + DSI_LPC_INSTA(i));
-	}
-
-	mtk_ddp_comp_clk_unprepare(comp);
-}
-static void mtk_dsi_lpc_config(struct mtk_ddp_comp *comp,
-	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
-{
-	struct mtk_dsi_lpc *dsi_lpc = container_of(comp, struct mtk_dsi_lpc, ddp_comp);
+	dsi_lpc_en = en;
 }
 static int mtk_dsi_lpc_unit(struct mtk_drm_crtc *mtk_crtc)
 {
@@ -259,6 +196,117 @@ static int mtk_dsi_lpc_unit(struct mtk_drm_crtc *mtk_crtc)
 	}
 	return -1;
 }
+bool mtk_dsi_lpc_en(struct mtk_drm_crtc *mtk_crtc)
+{
+	int index = mtk_dsi_lpc_unit(mtk_crtc);
+	struct mtk_drm_private *priv = NULL;
+
+	if (lpc_disable) {
+		DDPMSG("%s, lpc_disable\n", __func__);
+		return false;
+	}
+
+	if (index != 0) {
+		DDPMSG("%s, only support dsi0\n", __func__);
+		return false;
+	}
+
+	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		DDPMSG("%s, lpc only support cmd mode\n", __func__);
+		return false;
+	}
+
+	if (!mtk_drm_lcm_is_connect(mtk_crtc)) {
+		DDPMSG("%s, lcm is not connected\n", __func__);
+		return false;
+	}
+
+	if (mtk_crtc && mtk_crtc->base.dev) {
+		priv = mtk_crtc->base.dev->dev_private;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_LPC_EN))
+			return false;
+	} else
+		return false;
+
+
+	return dsi_lpc_en;
+}
+int mtk_dsi_lpc_dump(struct mtk_ddp_comp *comp)
+{
+	int i = 0;
+	void __iomem *baddr = comp->regs;
+
+	if (!mtk_dsi_lpc_en(comp->mtk_crtc))
+		return 0;
+
+	if (!baddr)
+		return 0;
+
+	DDPDUMP("== LPC REGS:0x%pa ==\n", &comp->regs_pa);
+
+	for (i = 0; i < 0x1FF; i += 16) {
+		DDPDUMP("0x%04x: 0x%08x 0x%08x 0x%08x 0x%08x\n", i,
+			readl(baddr + i),
+			readl(baddr + i + 0x4),
+			readl(baddr + i + 0x8),
+			readl(baddr + i + 0xC));
+	}
+
+	return 0;
+}
+void mtk_dsi_lpc_analysis(struct mtk_ddp_comp *comp)
+{
+	unsigned int reg_val;
+	int i = 0;
+	void __iomem *baddr = comp->regs;
+
+	if (!mtk_dsi_lpc_en(comp->mtk_crtc))
+		return;
+
+	if (!baddr)
+		return;
+
+	DDPDUMP("== LPC ANALYSIS:0x%pa ==\n", &comp->regs_pa);
+	reg_val = readl(baddr + DSI_LPC_EN);
+	DDPDUMP("LPC_EN:%d\n", REG_FLD_VAL_GET(DSI_LPC_EN_BIT_FLD, reg_val));
+	for (i = 0; i < 4; i++) {
+		reg_val = readl(baddr + DSI_LPC_CONFIG(i));
+		if ((reg_val & 0x1) == 0)
+			break;
+		DDPDUMP("LPC(%d) UNIT_EN:%d\n", i, REG_FLD_VAL_GET(DSI_LPC_UNIT_EN_FLD, reg_val));
+		reg_val = readl(baddr + DSI_LPC_TE_CON0(i));
+		DDPDUMP("TE_TYPE:%d,LPC_TE_NUM:%d,HW_VSYNC_ON:%d\n",
+			REG_FLD_VAL_GET(DSI_LPC_TE_TYPE, reg_val),
+			REG_FLD_VAL_GET(DSI_LPC_TE_NUM, reg_val),
+			REG_FLD_VAL_GET(DSI_LPC_HW_VSYNC_ON_FLD, reg_val));
+		reg_val = readl(baddr + DSI_LPC_TE_CON1(i));
+		DDPDUMP("FAKE_TE_PRD:%d\n", REG_FLD_VAL_GET(DSI_LPC_FAKE_TE_PRD, reg_val));
+	}
+}
+static void mtk_dsi_lpc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	int i = 0;
+
+	writel(0, comp->regs + DSI_LPC_EN);
+	for (i = 0; i < 4; i++) {
+		writel(0, comp->regs + DSI_LPC_INTEN(i));
+		writel(0, comp->regs + DSI_LPC_INSTA(i));
+	}
+}
+static void mtk_dsi_lpc_prepare(struct mtk_ddp_comp *comp)
+{
+	mtk_ddp_comp_clk_prepare(comp);
+}
+static void mtk_dsi_lpc_unprepare(struct mtk_ddp_comp *comp)
+{
+	mtk_ddp_comp_clk_unprepare(comp);
+}
+static void mtk_dsi_lpc_config(struct mtk_ddp_comp *comp,
+	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	struct mtk_dsi_lpc *dsi_lpc = container_of(comp, struct mtk_dsi_lpc, ddp_comp);
+}
 void set_pl_kernel_offset(void)
 {
 	ktime_t ts = ktime_get();
@@ -271,7 +319,7 @@ ktime_t pl_kernel_offset(void)
 {
 	return ts_offset;
 }
-void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc)
+void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct mtk_ddp_comp *comp)
 {
 	/* repot sof time */
 	int index = 0;
@@ -283,8 +331,8 @@ void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc)
 		return;
 	}
 
-	ts0 = readl(dsi_lpc_base + DSI_LPC_SOF_TIMESTAMP_0(index));
-	ts1 = readl(dsi_lpc_base + DSI_LPC_SOF_TIMESTAMP_1(index));
+	ts0 = readl(comp->regs+ DSI_LPC_SOF_TIMESTAMP_0(index));
+	ts1 = readl(comp->regs + DSI_LPC_SOF_TIMESTAMP_1(index));
 	*sof_ts = (ts1 << 32 | ts0) << 7;
 	*sof_ts -= pl_kernel_offset();
 
@@ -292,7 +340,8 @@ void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc)
 		DRM_MMP_MARK(dsi_lpc0_ts, ts1, ts0);
 	drm_trace_tag_value("lpc_sof_timestamp", *sof_ts);
 }
-void mtk_dsi_lpc_event_te_ts(long long *event_te_ts_diff, struct mtk_drm_crtc *mtk_crtc)
+void mtk_dsi_lpc_event_te_ts(long long *event_te_ts_diff, struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_ddp_comp *comp)
 {
 	/* repot sof time */
 	int index = 0;
@@ -306,15 +355,16 @@ void mtk_dsi_lpc_event_te_ts(long long *event_te_ts_diff, struct mtk_drm_crtc *m
 		return;
 	}
 
-	ts0 = readl(dsi_lpc_base + DSI_LPC_EVENT_TE_TIMESTAMP_0(index));
-	ts1 = readl(dsi_lpc_base + DSI_LPC_EVENT_TE_TIMESTAMP_1(index));
+	ts0 = readl(comp->regs + DSI_LPC_EVENT_TE_TIMESTAMP_0(index));
+	ts1 = readl(comp->regs + DSI_LPC_EVENT_TE_TIMESTAMP_1(index));
 	event_te_ts = (ts1 << 32 | ts0) << 7;
 	if (event_te_ts > pre_event_te_ts)
 		*event_te_ts_diff = event_te_ts - pre_event_te_ts;
 
 	pre_event_te_ts = event_te_ts;
 }
-void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc)
+void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_ddp_comp *comp)
 {
 	/* repot resync time */
 	int index = 0;
@@ -326,8 +376,8 @@ void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc)
 		return;
 	}
 
-	ts0 = readl(dsi_lpc_base + DSI_LPC_RESYNC_TE_TIMESTAMP_0(index));
-	ts1 = readl(dsi_lpc_base + DSI_LPC_RESYNC_TE_TIMESTAMP_1(index));
+	ts0 = readl(comp->regs + DSI_LPC_RESYNC_TE_TIMESTAMP_0(index));
+	ts1 = readl(comp->regs + DSI_LPC_RESYNC_TE_TIMESTAMP_1(index));
 	*resync_ts = (ts1 << 32 | ts0) << 7;
 	*resync_ts -= pl_kernel_offset();
 
@@ -336,12 +386,13 @@ void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc)
 	drm_trace_tag_value("lpc_resync_timestamp", *resync_ts);
 }
 void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
-							struct drm_crtc *crtc, bool lock)
+	struct mtk_ddp_comp *comp, bool lock)
 {
 	struct mtk_ddp_comp *output_comp = NULL;
 	unsigned int lpc_te_con0_val = 0;
 	int index = 0;
 	u32 inten = 0;
+	struct drm_crtc *crtc = &mtk_crtc->base;
 
 	if (lock) {
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
@@ -355,7 +406,7 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 	}
 
-	lpc_te_con0_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(index));
+	lpc_te_con0_val = readl(comp->regs + DSI_LPC_TE_CON0(index));
 
 	index = mtk_dsi_lpc_unit(mtk_crtc);
 	if (index < 0) {
@@ -374,32 +425,28 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 		drm_trace_tag_end("lpc_hwvsync_on");
 		DRM_MMP_EVENT_END(dsi_lpc, 0xFFFFFFFF, 0);
 	}
-	writel(lpc_te_con0_val, dsi_lpc_base + DSI_LPC_TE_CON0(index));
+	writel(lpc_te_con0_val, comp->regs + DSI_LPC_TE_CON0(index));
 
 	if (lpc_te_irq_en)
 		inten |= EVENT_TE_INT_EN;
 
-	writel(0, dsi_lpc_base + DSI_LPC_INTEN(index));
-	writel(inten, dsi_lpc_base + DSI_LPC_INTEN(index));
+	writel(0, comp->regs + DSI_LPC_INTEN(index));
+	writel(inten, comp->regs + DSI_LPC_INTEN(index));
 
 	if (lock) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	}
 
-	DDPMSG("%s,[%d]inten:0x%x\n", __func__, index, inten);
+	DDPINFO("%s,[%d]inten:0x%x\n", __func__, index, inten);
 }
-void mtk_dsi_set_lpc_en(bool en)
+void mtk_dsi_set_lpc_en(bool en, struct mtk_ddp_comp *comp)
 {
-	writel(en, dsi_lpc_base + DSI_LPC_EN);
+	writel(en, comp->regs + DSI_LPC_EN);
 }
-void mtk_dsi_lpc_unit_en(bool en, int index)
+void mtk_dsi_lpc_unit_en(bool en, int index, struct mtk_ddp_comp *comp)
 {
-	writel(en, dsi_lpc_base + DSI_LPC_CONFIG(index));
-}
-bool mtk_dsi_lpc_en(void)
-{
-	return dsi_lpc_en;
+	writel(en, comp->regs + DSI_LPC_CONFIG(index));
 }
 void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp, struct cmdq_pkt *cmdq_handle,
@@ -416,7 +463,12 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 		return;
 	}
 
-	lpc_te_con0_val = readl(dsi_lpc_base + DSI_LPC_TE_CON0(index));
+	if (!params) {
+		DDPMSG("%s params error\n", __func__);
+		return;
+	}
+
+	lpc_te_con0_val = readl(comp->regs + DSI_LPC_TE_CON0(index));
 	lpc_te_con0_val &= ~te_num_mask;
 	panel_skip_vblank = params->skip_vblank;
 	lpc_te_con0_val |= (panel_skip_vblank << 8) & te_num_mask;
@@ -424,13 +476,13 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 	dsi_lpc_fake_te_prd = params->real_te_duration * 26;
 
 	if (cmdq_handle) {
-		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-			dsi_lpc_regs_pa + DSI_LPC_TE_CON0(index), lpc_te_con0_val, ~0);
-		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-					dsi_lpc_regs_pa + DSI_LPC_TE_CON1(index), dsi_lpc_fake_te_prd, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa+ DSI_LPC_TE_CON0(index), lpc_te_con0_val, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+					comp->regs_pa+ DSI_LPC_TE_CON1(index), dsi_lpc_fake_te_prd, ~0);
 	} else {
-		writel(lpc_te_con0_val, dsi_lpc_base + DSI_LPC_TE_CON0(index));
-		writel(dsi_lpc_fake_te_prd, dsi_lpc_base + DSI_LPC_TE_CON1(index));
+		writel(lpc_te_con0_val, comp->regs + DSI_LPC_TE_CON0(index));
+		writel(dsi_lpc_fake_te_prd, comp->regs+ DSI_LPC_TE_CON1(index));
 	}
 
 	DDPINFO("%s,[%d]te_num:%d,fake_te_prd:%d\n", __func__, index, panel_skip_vblank,dsi_lpc_fake_te_prd);
@@ -439,104 +491,112 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 	drm_trace_tag_value("lpc_te_num", panel_skip_vblank);
 	drm_trace_tag_value("lpc_fake_te_prd", dsi_lpc_fake_te_prd);
 }
-void mtk_dsi_lpc_init_config(struct drm_crtc *crtc)
+void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 {
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	enum mtk_panel_type type = PANEL_TYPE_COUNT;
 	struct mtk_panel_params *params = NULL;
 	int index = 0;
 	unsigned int dsi_lpc_te_con = 0;
 	unsigned long dsi_lpc_fake_te_prd = 0;
+	bool lpc_en = false;
 
 	set_pl_kernel_offset();
-
-	if (priv == NULL)
-		return;
-
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_LPC_EN)) {
-		DDPMSG("%s, lpc not enable\n", __func__);
-		return;
-	}
-	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		DDPMSG("%s, lpc only support cmd mode\n", __func__);
-		return;
-	}
-
-	if (!mtk_drm_lcm_is_connect(mtk_crtc)) {
-		DDPMSG("%s, lcm is not connected\n", __func__);
-		return;
-	}
-
-	index = mtk_dsi_lpc_unit(mtk_crtc);
-	if (index < 0) {
-		DDPMSG("%s lpc unit error\n", __func__);
-		return;
-	}
 
 	params = mtk_drm_get_lcm_ext_params(crtc);
 	if (!params) {
 		DDPMSG("%s,lcm params pointer is NULL\n", __func__);
-		return;
+		mtk_set_dsi_lpc_en(false);
+	} else {
+		/* set MTE mode */
+		dsi_lpc_te_con = 2;
+		if (params->skip_vblank) {
+			panel_skip_vblank = params->skip_vblank;
+			dsi_lpc_te_con |= panel_skip_vblank << 8;
+		}
+		writel(dsi_lpc_te_con, comp->regs+ DSI_LPC_TE_CON0(index));
+
+		/* real_te_duration (us), FAKE_TE_PRD (26M clock cycle) */
+		dsi_lpc_fake_te_prd = params->real_te_duration * 26;
+		writel(dsi_lpc_fake_te_prd, comp->regs + DSI_LPC_TE_CON1(index));
 	}
 
-	/* set MTE mode */
-	dsi_lpc_te_con = 2;
-	if (params->skip_vblank) {
-		panel_skip_vblank = params->skip_vblank;
-		dsi_lpc_te_con |= panel_skip_vblank << 8;
-	}
-	writel(dsi_lpc_te_con, dsi_lpc_base + DSI_LPC_TE_CON0(index));
-
-	/* real_te_duration (us), FAKE_TE_PRD (26M clock cycle) */
-	dsi_lpc_fake_te_prd = params->real_te_duration * 26;
-	writel(dsi_lpc_fake_te_prd, dsi_lpc_base + DSI_LPC_TE_CON1(index));
-
-	if (lpc_disable)
-		dsi_lpc_en = false;
-	else
-		dsi_lpc_en = true;
+	lpc_en = mtk_dsi_lpc_en(mtk_crtc);
 
 	DDPINFO("%s, lpc_en:%d, te_num:%d,fake_te_prd:%d\n", __func__,
-		dsi_lpc_en, panel_skip_vblank,dsi_lpc_fake_te_prd);
+		lpc_en, panel_skip_vblank,dsi_lpc_fake_te_prd);
 
-	mtk_dsi_set_lpc_en(dsi_lpc_en);
-	mtk_dsi_lpc_unit_en(dsi_lpc_en, index);
+	mtk_dsi_set_lpc_en(lpc_en, comp);
+	mtk_dsi_lpc_unit_en(lpc_en, index, comp);
 
 	if (lpc_te_irq_en)
-		mtk_dsi_lpc_interrupt_enable(mtk_crtc, crtc, false);
-}
-void mtk_dsi_lpc_first_config(struct mtk_ddp_comp *comp,
-	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
-{
-
+		mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, false);
 }
 static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
 {
-	struct mtk_dsi_lpc *dsi_lpc = NULL;
-	void **out_params;
-
 	if (!comp) {
-		pr_info("%s: error, comp=NULL!\n", __func__);
-		return 0;
+		DDPMSG("%s: error, comp=NULL!\n", __func__);
+		return -INVALID;
 	}
+
 	if(mtk_ddp_comp_get_type(comp->id) != MTK_DSI_LPC) {
-		pr_info("%s: comp = %s, return!\n", __func__, mtk_dump_comp_str(comp));
-		return 0;
+		DDPMSG("%s: comp = %s, return!\n", __func__, mtk_dump_comp_str(comp));
+		return -INVALID;
 	}
-	dsi_lpc = container_of(comp, struct mtk_dsi_lpc, ddp_comp);
+
+	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev)) {
+		DDPMSG("%s %s %u has invalid CRTC or device\n",
+			__func__, mtk_dump_comp_str(comp), cmd);
+		return -INVALID;
+	}
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+
+	switch(cmd) {
+	case DSI_LPC_INIT_CONFIG:
+	{
+		mtk_dsi_lpc_init_config(&mtk_crtc->base, comp);
+	}
+		break;
+	case DSI_LPC_GET_SOF_TS:
+	{
+		long long *ts = (long long *)params;
+
+		mtk_dsi_lpc_sof_ts(ts,mtk_crtc, comp);
+	}
+		break;
+	case DSI_LPC_GET_RESYNC_TS:
+	{
+		long long *ts = (long long *)params;
+
+		mtk_dsi_lpc_resync_ts(ts,mtk_crtc, comp);
+	}
+		break;
+	case DSI_LPC_IRQ_EN:
+	{
+		mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, true);
+	}
+		break;
+	case DSI_LPC_PANEL_PARAMS:
+	{
+		struct mtk_panel_params *panel_params = (struct mtk_panel_params *)params;
+
+		mtk_dsi_lpc_update_panel_params(mtk_crtc, comp, handle, panel_params);
+	}
+		break;
+	default:
+		break;
+	}
 
 	return 0;
 }
 static const struct mtk_ddp_comp_funcs mtk_dsi_lpc_funcs = {
 	//.start = mtk_dsi_lpc_start,
-	//.stop = mtk_dsi_lpc_stop,
+	.stop = mtk_dsi_lpc_stop,
 	.prepare = mtk_dsi_lpc_prepare,
 	.unprepare = mtk_dsi_lpc_unprepare,
-	//.config = mtk_dsi_lpc_config,
-	//.first_cfg = mtk_dsi_lpc_first_config,
-	//.io_cmd = mtk_dsi_lpc_io_cmd,
+	//.config = mtk_dsi_lpc_config,,
+	.io_cmd = mtk_dsi_lpc_io_cmd,
 };
 static int mtk_dsi_lpc_bind(struct device *dev, struct device *master,
 			     void *data)
@@ -622,7 +682,7 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 			if (!vblank || refcount == 0) {
 				// disable hwvsync
 				mtk_crtc->hwvsync_en = 0;
-				mtk_dsi_lpc_interrupt_enable(mtk_crtc, &mtk_crtc->base, false);
+				mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, false);
 			} else
 				mtk_crtc_vblank_irq_for_lpc_resync(&mtk_crtc->base);
 
@@ -631,7 +691,7 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 		if (status & EVENT_TE_INT) {
 			long long event_te_ts_diff;
 
-			mtk_dsi_lpc_event_te_ts(&event_te_ts_diff, mtk_crtc);
+			mtk_dsi_lpc_event_te_ts(&event_te_ts_diff, mtk_crtc, comp);
 			drm_trace_tag_value("lpc_te_irq", event_te_ts_diff);
 		}
 	}
@@ -646,14 +706,14 @@ out:
 static int mtk_dsi_lpc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct mtk_dsi_lpc *priv;
+	struct mtk_dsi_lpc *dsi_lpc;
 	enum mtk_ddp_comp_id comp_id;
 	int ret;
 	int irq, num_irqs;
 
 	DDPFUNC("+");
-	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
-	if (!priv)
+	dsi_lpc = devm_kzalloc(dev, sizeof(*dsi_lpc), GFP_KERNEL);
+	if (!dsi_lpc)
 		return -ENOMEM;
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DSI_LPC);
@@ -662,17 +722,15 @@ static int mtk_dsi_lpc_probe(struct platform_device *pdev)
 		return comp_id;
 	}
 
-	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
+	ret = mtk_ddp_comp_init(dev, dev->of_node, &dsi_lpc->ddp_comp, comp_id,
 				&mtk_dsi_lpc_funcs);
 	if (ret) {
 		dev_err(dev, "Failed to initialize component: %d\n", ret);
 		return ret;
 	}
 
-	dsi_lpc_base = priv->ddp_comp.regs;
-	dsi_lpc_regs_pa = priv->ddp_comp.regs_pa;
+	platform_set_drvdata(pdev, dsi_lpc);
 
-	platform_set_drvdata(pdev, priv);
 	num_irqs = platform_irq_count(pdev);
 
 	if (num_irqs) {
@@ -683,7 +741,7 @@ static int mtk_dsi_lpc_probe(struct platform_device *pdev)
 
 		ret = devm_request_irq(dev, irq, mtk_dsi_lpc_irq_handler,
 					   IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
-					   priv);
+					   dsi_lpc);
 		if (ret < 0) {
 			DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
 					__func__, __LINE__,
@@ -692,12 +750,12 @@ static int mtk_dsi_lpc_probe(struct platform_device *pdev)
 		}
 	}
 
-	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
+	mtk_ddp_comp_pm_enable(&dsi_lpc->ddp_comp);
 
 	ret = component_add(dev, &mtk_dsi_lpc_component_ops);
 	if (ret != 0) {
 		dev_err(dev, "Failed to add component: %d\n", ret);
-		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
+		mtk_ddp_comp_pm_disable(&dsi_lpc->ddp_comp);
 	}
 	set_pl_kernel_offset();
 	DDPFUNC("-");

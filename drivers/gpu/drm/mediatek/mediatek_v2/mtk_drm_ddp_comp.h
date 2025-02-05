@@ -1413,7 +1413,11 @@ enum mtk_ddp_io_cmd {
 	BYPASS_SPR2RGB,
 	DSI_LTPO_VDO_SET,
 	DSI_LTPO_VDO_UPDATE,
+	DSI_LPC_INIT_CONFIG,
 	DSI_LPC_PANEL_PARAMS,
+	DSI_LPC_GET_SOF_TS,
+	DSI_LPC_GET_RESYNC_TS,
+	DSI_LPC_IRQ_EN,
 	DSI_GET_PANEL_VBLANK_PERIOD_US,
 	MTK_IO_CMD_BWM_TRIG,
 	MTK_IO_CMD_BWM_CALC_RATIO,
@@ -1913,6 +1917,7 @@ bool mtk_ddp_comp_is_output_by_id(enum mtk_ddp_comp_id id);
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 bool mtk_ddp_comp_is_rdma(struct mtk_ddp_comp *comp);
 #endif
+bool mtk_ddp_comp_is_lpc(struct mtk_ddp_comp *comp);
 void mtk_ddp_comp_get_name(struct mtk_ddp_comp *comp, char *buf, int buf_len);
 int mtk_ovl_layer_num(struct mtk_ddp_comp *comp);
 void mtk_ddp_write(struct mtk_ddp_comp *comp, unsigned int value,
