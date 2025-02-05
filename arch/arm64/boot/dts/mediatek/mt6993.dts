@@ -19843,10 +19843,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "disabled";
 		};
 
-		pkvm: pkvm {
-			status = "disable";
-		};
-
 		apinfra_m4_bw_regulator: apinfra-m4-bw-regulator {
 			compatible = "mediatek,apinfra-m4-bw-regulator";
 			reg = <0 0x14805000 0 0x1000>;
@@ -21983,6 +21979,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,imgsys-qof-ver = <31>;
 #endif
 	};
+
+	pkvm: pkvm {
+		status = "disable";
+	};
+
 };
 
 /* CONNV3 GPIO start */
