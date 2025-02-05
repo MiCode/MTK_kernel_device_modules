@@ -73,6 +73,9 @@ struct tag_bootmode {
 	u32 boottype;
 };
 
+static int mtk_charger_force_disable_power_path(struct mtk_charger *info,
+	int idx, bool disable);
+
 #ifdef MODULE
 static char __chg_cmdline[COMMAND_LINE_SIZE];
 static char *chg_cmdline = __chg_cmdline;
@@ -618,6 +621,60 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 	/*	PDtest */
 	if (of_property_read_u32(np, "enable-pdtest-mode", &val)>= 0)
 		info->en_cts_mode = val;
+
+	/* battery control */
+	info->bc_enable = of_property_read_bool(np, "bc_enable")
+		|| of_property_read_bool(np, "bc-enable");
+
+	if (of_property_read_u32(np, "bc_stop_charging_uisoc", &val) >= 0)
+		info->data.bc_stop_charging_uisoc = val;
+	else if (of_property_read_u32(np, "bc-stop-charging-uisoc", &val) >= 0)
+		info->data.bc_stop_charging_uisoc = val;
+	else {
+		chr_err("use default BC_STOP_CHARGING_UISOC:%d\n",
+			BC_STOP_CHARGING_UISOC);
+		info->data.bc_stop_charging_uisoc = BC_STOP_CHARGING_UISOC;
+	}
+
+	if (of_property_read_u32(np, "bc_recharge_uisoc", &val) >= 0)
+		info->data.bc_recharge_uisoc = val;
+	else if (of_property_read_u32(np, "bc-recharge-uisoc", &val) >= 0)
+		info->data.bc_recharge_uisoc = val;
+	else {
+		chr_err("use default BC_RECHARGE_UISOC:%d\n",
+			BC_RECHARGE_UISOC);
+		info->data.bc_recharge_uisoc = BC_RECHARGE_UISOC;
+	}
+
+	if (of_property_read_u32(np, "bc_stop_charging_voltage", &val) >= 0)
+		info->data.bc_stop_charging_voltage = val;
+	else if (of_property_read_u32(np, "bc-stop-charging-voltage", &val) >= 0)
+		info->data.bc_stop_charging_voltage = val;
+	else {
+		chr_err("use default BC_STOP_CHARGING_VOLTAGE:%d\n",
+			BC_STOP_CHARGING_VOLTAGE);
+		info->data.bc_stop_charging_voltage = BC_STOP_CHARGING_VOLTAGE;
+	}
+
+	if (of_property_read_u32(np, "bc_recharge_voltage", &val) >= 0)
+		info->data.bc_recharge_voltage = val;
+	else if (of_property_read_u32(np, "bc-recharge-voltage", &val) >= 0)
+		info->data.bc_recharge_voltage = val;
+	else {
+		chr_err("use default BC_RECHARGE_VOLTAGE:%d\n",
+			BC_RECHARGE_VOLTAGE);
+		info->data.bc_recharge_voltage = BC_RECHARGE_VOLTAGE;
+	}
+
+	if (of_property_read_u32(np, "bc_mode", &val) >= 0)
+		info->data.bc_mode = val;
+	else if (of_property_read_u32(np, "bc-mode", &val) >= 0)
+		info->data.bc_mode = val;
+	else {
+		chr_err("use default BC_MODE:%d\n",
+			BC_MODE_UISOC);
+		info->data.bc_mode = BC_MODE_UISOC;
+	}
 
 	/*	dual parallel battery*/
 	np = of_parse_phandle(dev->of_node, "current-selector", 0);
@@ -2590,6 +2647,32 @@ static void charger_check_status(struct mtk_charger *info)
 		charging = false;
 	if (info->sc.disable_charger == true)
 		charging = false;
+	if (info->bc_enable == true) {
+		switch (info->data.bc_mode) {
+		case BC_MODE_UISOC:
+			if (get_uisoc(info) > info->data.bc_stop_charging_uisoc)
+				info->bc_disable_charging = true;
+			if (get_uisoc(info) <= info->data.bc_recharge_uisoc)
+				info->bc_disable_charging = false;
+			break;
+		case BC_MODE_VOLTAGE:
+			mtk_charger_force_disable_power_path(info, CHG1_SETTING, true);
+			if (get_battery_voltage(info) > info->data.bc_stop_charging_voltage)
+				info->bc_disable_charging = true;
+			if (get_battery_voltage(info) <= info->data.bc_recharge_voltage)
+				info->bc_disable_charging = false;
+			mtk_charger_force_disable_power_path(info, CHG1_SETTING, false);
+			break;
+		default:
+			chr_debug("[BC] Unknown bc mode!\n");
+		}
+		if (info->bc_disable_charging)
+			charging = false;
+
+		chr_err("[BC] mode %d, uisoc_threshold %d:%d, voltage_threshold %d:%d, disable_charging %d\n",
+		info->data.bc_mode, info->data.bc_stop_charging_uisoc, info->data.bc_recharge_uisoc,
+		info->data.bc_stop_charging_voltage, info->data.bc_recharge_voltage, info->bc_disable_charging);
+	}
 stop_charging:
 	mtk_battery_notify_check(info);
 
@@ -2599,18 +2682,21 @@ stop_charging:
 		info->stop_6pin_re_en = false;
 	}
 
-	chr_err("tmp:%d (jeita:%d sm:%d cv:%d en:%d) (sm:%d) en:%d c:%d s:%d ov:%d %d sc:%d %d %d saf_cmd:%d bat_mon:%d %d\n",
+	chr_err("tmp:%d (jeita:%d sm:%d cv:%d en:%d) (sm:%d) en:%d c:%d s:%d ov:%d %d sc:%d %d %d saf_cmd:%d bat_mon:%d %d bc_enable:%d\n",
 		temperature, info->enable_sw_jeita, info->sw_jeita.sm,
 		info->sw_jeita.cv, info->sw_jeita.charging, thermal->sm,
 		charging, info->cmd_discharging, info->safety_timeout,
 		info->vbusov_stat, info->dpdmov_stat, info->sc.disable_charger,
 		info->can_charging, charging, info->safety_timer_cmd,
-		info->enable_vbat_mon, info->batpro_done);
+		info->enable_vbat_mon, info->batpro_done, info->bc_enable);
 
 	charger_dev_is_enabled(info->chg1_dev, &chg_dev_chgen);
 
-	if (charging != info->can_charging)
+	if (charging != info->can_charging) {
 		_mtk_enable_charging(info, charging);
+		if (info->bc_enable == true)
+			mtk_charger_force_disable_power_path(info, CHG1_SETTING, !charging);
+	}
 	else if (charging == false && chg_dev_chgen == true)
 		_mtk_enable_charging(info, charging);
 
@@ -2863,8 +2949,6 @@ static bool charger_init_algo(struct mtk_charger *info)
 	return true;
 }
 
-static int mtk_charger_force_disable_power_path(struct mtk_charger *info,
-	int idx, bool disable);
 static int mtk_charger_plug_out(struct mtk_charger *info)
 {
 	struct charger_data *pdata1 = &info->chg_data[CHG1_SETTING];
@@ -4156,6 +4240,9 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	info->en_power_path = true;
 	info->safety_timer_cmd = -1;
 	info->cmd_pp = -1;
+
+	/* bc value init*/
+	info->bc_disable_charging = false;
 
 	/* 8 = KERNEL_POWER_OFF_CHARGING_BOOT */
 	/* 9 = LOW_POWER_OFF_CHARGING_BOOT */

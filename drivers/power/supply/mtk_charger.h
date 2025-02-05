@@ -202,6 +202,18 @@ struct sw_jeita_data {
 	bool error_recovery_flag;
 };
 
+/* bc threshold */
+#define BC_STOP_CHARGING_UISOC		10
+#define BC_RECHARGE_UISOC			5
+#define BC_STOP_CHARGING_VOLTAGE	3550
+#define BC_RECHARGE_VOLTAGE			3500
+
+enum bc_mode_type {
+	/* bc modes */
+	BC_MODE_UISOC = 0,
+	BC_MODE_VOLTAGE,
+};
+
 struct mtk_charger_algorithm {
 
 	int (*do_algorithm)(struct mtk_charger *info);
@@ -262,6 +274,12 @@ struct charger_custom_data {
 	int min_charger_voltage_2;
 	int max_dmivr_charger_current;
 
+	/* bc values*/
+	int bc_stop_charging_uisoc;
+	int bc_recharge_uisoc;
+	int bc_stop_charging_voltage;
+	int bc_recharge_voltage;
+	enum bc_mode_type bc_mode;
 };
 
 struct charger_data {
@@ -495,6 +513,10 @@ struct mtk_charger {
 	int protocol_state;
 	int ta_capability;
 	int wait_times;
+
+	/* battery control (bc) */
+	bool bc_enable;
+	bool bc_disable_charging;
 };
 
 static inline int mtk_chg_alg_notify_call(struct mtk_charger *info,
