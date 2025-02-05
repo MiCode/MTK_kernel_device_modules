@@ -23,10 +23,10 @@ static int (*subsys_init[])(struct pll_dts *array) = {
 #if IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SSPM)
 	&fhctl_sspm_init,
 #endif
-#ifdef USE_FHCTL_MCUPM
+#if IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_MCUPM)
 	&fhctl_mcupm_init,
 #endif
-#ifdef USE_FHCTL_GPUEB
+#if IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_GPUEB)
 	&fhctl_gpueb_init,
 #endif
 #ifdef USE_FHCTL_VCP

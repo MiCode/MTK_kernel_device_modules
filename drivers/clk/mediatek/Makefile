@@ -208,20 +208,20 @@ obj-$(CONFIG_COMMON_CLK_MT8188_MFGCFG) += clk-mt8188-mfgcfg.o
 endif
 obj-$(CONFIG_COMMON_CLK_MT8516) += clk-mt8516.o
 obj-$(CONFIG_COMMON_CLK_MT8516_AUDSYS) += clk-mt8516-aud.o
-obj-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING) += fhctl.o
-fhctl-y += clk-fhctl.o
-fhctl-y += clk-fhctl-ap.o
-fhctl-y += clk-fhctl-pll.o
-fhctl-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SSPM) += clk-fhctl-sspm.o
-ifeq ($(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_MCUPM),y)
-fhctl-y += clk-fhctl-mcupm.o
-ccflags-y += -DUSE_FHCTL_MCUPM
-endif
-ifeq ($(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_GPUEB),y)
-fhctl-y += clk-fhctl-gpueb.o
-ccflags-y += -DUSE_FHCTL_GPUEB
-endif
-fhctl-$(CONFIG_DEBUG_FS) += clk-fhctl-debug.o
+#obj-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING) += fhctl.o
+#fhctl-y += clk-fhctl.o
+#fhctl-y += clk-fhctl-ap.o
+#fhctl-y += clk-fhctl-pll.o
+#fhctl-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SSPM) += clk-fhctl-sspm.o
+#ifeq ($(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_MCUPM),y)
+#fhctl-y += clk-fhctl-mcupm.o
+#ccflags-y += -DUSE_FHCTL_MCUPM
+#endif
+#ifeq ($(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_GPUEB),y)
+#fhctl-y += clk-fhctl-gpueb.o
+#ccflags-y += -DUSE_FHCTL_GPUEB
+#endif
+#fhctl-$(CONFIG_DEBUG_FS) += clk-fhctl-debug.o
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/

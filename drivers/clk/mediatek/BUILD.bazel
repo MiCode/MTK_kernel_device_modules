@@ -71,6 +71,51 @@ define_mgk_ddk_ko(
     hdrs = glob(["**/*.h"]),
 )
 
+define_mgk_ddk_ko(
+    name = "fhctl",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING":{
+            True: [
+                "clk-fhctl-ap.c",
+                "clk-fhctl-debug.c",
+                "clk-fhctl-pll.c",
+                "clk-fhctl.c",
+                #"clk-fhctl-vcp.c",
+            ],
+        },
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SSPM":{
+            True: ["clk-fhctl-sspm.c"],
+        },
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_MCUPM":{
+            True: ["clk-fhctl-mcupm.c"],
+        },
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_GPUEB":{
+            True: ["clk-fhctl-gpueb.c"],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v3:mcupm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+    ],
+    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:mcupm_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:gpueb_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    hdrs = glob(["**/*.h"]),
+)
+
 define_v1_platform_clkmgr_ko("mt6897", None)
 define_v1_platform_clkmgr_ko("mt6897", "adsp")
 define_v1_platform_clkmgr_ko("mt6897", "cam")

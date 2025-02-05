@@ -628,6 +628,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-pmu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-disable-unused".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/clk/mediatek:fhctl".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:rt4831a_drv".format(kernel_version),
@@ -1341,7 +1342,7 @@ mgk_64_kleaf_platform_user_modules = {
 mgk_64_device_modules = [
     # keep sorted
     #"drivers/char/hw_random/sec-rng.ko",
-    "drivers/clk/mediatek/fhctl.ko",
+    #"drivers/clk/mediatek/fhctl.ko",
     #"drivers/clocksource/timer-mediatek.ko",
     "drivers/dma-buf/heaps/mtk_heap_debug.ko",
     "drivers/dma-buf/heaps/mtk_sec_heap.ko",

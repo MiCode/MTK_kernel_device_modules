@@ -15,7 +15,7 @@
 #include "clk-fhctl-pll.h"
 #include "clk-fhctl-util.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
-#include <include/mcupm_ipi_id.h>
+#include <mcupm_ipi_id.h>
 
 #define FHCTL_TARGET FHCTL_MCUPM
 #define IPI_TIMEOUT_MS 10
