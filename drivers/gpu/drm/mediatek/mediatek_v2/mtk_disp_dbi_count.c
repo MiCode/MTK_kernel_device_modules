@@ -59,6 +59,15 @@ struct dbi_count_block_info {
 	uint32_t channel;
 };
 
+static void dmabuf_iova_free(struct mtk_dbi_dma_buf *dma)
+{
+	dma_buf_unmap_attachment_unlocked(dma->attach, dma->sgt, DMA_FROM_DEVICE);
+	dma_buf_detach(dma->dmabuf, dma->attach);
+
+	dma->sgt = NULL;
+	dma->attach = NULL;
+}
+
 static int dmabuf_to_iova(struct drm_device *dev, struct mtk_dbi_dma_buf *dma)
 {
 	int err;
@@ -573,6 +582,9 @@ int mtk_dbi_count_load_buffer(struct drm_crtc *crtc,void *data)
 		DDPMSG("%s: fail to dmabuf_to_iova : %d\n", __func__, ret);
 		return -1;
 	}
+
+	dmabuf_iova_free(&buf);
+	dma_buf_put(buf.dmabuf);
 	return 0;
 }
 
