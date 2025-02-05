@@ -14057,7 +14057,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cksys_mm_clk CKSYS_MM_SENINF5_SEL>,
 				<&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
 
-				<&cksys_mm_clk CKSYS_TOP_OSC_D4>,
+				<&cksys_top_clk CKSYS_TOP_OSC_D4>,
 				<&cksys_mm_clk CKSYS_MM_UNIVPLL2_D4_D2>,
 				<&cksys_mm_clk CKSYS_MM_MAINPLL2_D6>,
 				<&cksys_mm_clk CKSYS_MM_UNIVPLL2_D6>,
