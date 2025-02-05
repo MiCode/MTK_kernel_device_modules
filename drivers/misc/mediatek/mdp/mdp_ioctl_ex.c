@@ -435,7 +435,13 @@ static s32 translate_meta(struct op_meta *meta,
 				src_base_lsb = mva & U32_MAX;
 			} else {
 				src_base_msb = 0;
-				src_base_lsb = mva;
+				if (mva <= U32_MAX)
+					src_base_lsb = mva;
+				else {
+					CMDQ_ERR("%s: op:%u, mva overflowed\n",
+						__func__, meta->op);
+					return -EINVAL;
+				}
 			}
 
 			status = cmdq_op_assign_reg_idx_ex(handle, cmd_buf,

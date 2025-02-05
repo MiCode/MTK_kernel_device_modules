@@ -1246,7 +1246,7 @@ static void m2m_set_format(struct mml_frame_data *data, struct mml_buffer *buf,
 				stride, pix_mp->height, i);
 		data->plane_offset[i] = 0;
 	}
-	for (; i < buf->cnt; i++) {
+	for (; i > 0 && i < buf->cnt; i++) {
 		stride = mml_fmt_get_stride_contig(fmt,
 			data->y_stride, i);
 		if (i == 1)

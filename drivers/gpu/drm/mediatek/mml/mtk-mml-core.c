@@ -2165,7 +2165,8 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 
 		if (cfg->info.mode == MML_MODE_DDP_ADDON ||
 		    cfg->info.mode == MML_MODE_DIRECT_LINK)
-			cmdq_check_thread_complete(rb_clt->chan);
+			if (rb_clt->chan)
+				cmdq_check_thread_complete(rb_clt->chan);
 	}
 
 	/* before flush, wait buffer fence being signaled */

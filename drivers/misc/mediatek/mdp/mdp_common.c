@@ -3288,7 +3288,7 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 			CMDQ_LOG_PMQOS(
 				"[%d]end task, update target isp-bw of port[%d](0x%x) from %u to %u\n",
 				thread_id, i,
-				mdp_curr_pmqos->qos2_isp_port[i],
+				target_pmqos->qos2_isp_port[i],
 				target_pmqos->qos2_isp_bandwidth[i],
 				isp_curr_bandwidth);
 			mtk_icc_set_bw(port_path, MBps_to_icc(isp_curr_bandwidth), 0);
