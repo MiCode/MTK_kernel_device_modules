@@ -595,7 +595,7 @@ void eenv_init_for_temp(struct energy_env *eenv)
 void eenv_init_for_dsu(struct energy_env *eenv)
 {
 	int cpu;
-	unsigned int output[8] = {[0 ... 7] = -1};
+	unsigned int output[11] = {[0 ... 10] = -1};
 	unsigned int val[MAX_NR_CPUS] = {[0 ... MAX_NR_CPUS-1] = -1};
 
 	if (is_dsu_pwr_triggered(eenv->wl_dsu)) {
@@ -622,11 +622,12 @@ void eenv_init_for_dsu(struct energy_env *eenv)
 	if (trace_sched_eenv_init_enabled())
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 		trace_sched_eenv_init(output[1], output[2], output[6], output[7],
-				output[3], output[4], output[5],
+				output[3], output[4], output[5], output[8], output[9], output[10],
 				share_buck.gear_idx);
 #else
 		trace_sched_eenv_init(output[1], output[2], output[6], output[7],
-				0, output[4], output[5], share_buck.gear_idx);
+				0, output[4], output[5],  output[8], output[9], output[10],
+				share_buck.gear_idx);
 #endif // CONFIG_MTK_THERMAL_INTERFACE
 }
 

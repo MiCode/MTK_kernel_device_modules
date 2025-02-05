@@ -622,10 +622,14 @@ TRACE_EVENT(sched_eenv_init,
 	TP_PROTO(unsigned int dsu_freq_base, unsigned int dsu_volt_base,
 			unsigned int dsu_freq_floor, unsigned int dsu_freq_ceil,
 			unsigned int dsu_freq_thermal, unsigned int dsu_bw_base,
-			unsigned int emi_bw_base, unsigned int gear_idx),
+			unsigned int emi_bw_base, unsigned int dsu_swpm_ver,
+			unsigned int base_active_ratio_from_tcm, unsigned int dsu_active_ratio,
+			unsigned int gear_idx),
 
 	TP_ARGS(dsu_freq_base, dsu_volt_base, dsu_freq_floor, dsu_freq_ceil,
-			dsu_freq_thermal, dsu_bw_base, emi_bw_base, gear_idx),
+			dsu_freq_thermal, dsu_bw_base, emi_bw_base,
+			dsu_swpm_ver, base_active_ratio_from_tcm, dsu_active_ratio,
+			gear_idx),
 
 	TP_STRUCT__entry(
 		__field(int, dsu_freq_base)
@@ -635,6 +639,9 @@ TRACE_EVENT(sched_eenv_init,
 		__field(int, dsu_freq_thermal)
 		__field(int, dsu_bw_base)
 		__field(int, emi_bw_base)
+		__field(unsigned int, dsu_swpm_ver)
+		__field(unsigned int, base_active_ratio_from_tcm)
+		__field(unsigned int, dsu_active_ratio)
 		__field(unsigned int, gear_idx)
 		),
 
@@ -646,10 +653,13 @@ TRACE_EVENT(sched_eenv_init,
 		__entry->dsu_freq_thermal = (int) dsu_freq_thermal;
 		__entry->dsu_bw_base = (int) dsu_bw_base;
 		__entry->emi_bw_base = (int) emi_bw_base;
+		__entry->dsu_swpm_ver = dsu_swpm_ver;
+		__entry->base_active_ratio_from_tcm = base_active_ratio_from_tcm;
+		__entry->dsu_active_ratio = dsu_active_ratio;
 		__entry->gear_idx = gear_idx;
 		),
 
-	TP_printk("dsu_freq_base=%d dsu_volt_base=%d dsu_freq_floor=%d dsu_freq_ceil=%d dsu_freq_thermal=%d dsu_bw_base=%d emi_bw_base=%d share_buck_idx=%u",
+	TP_printk("dsu_freq_base=%d dsu_volt_base=%d dsu_freq_floor=%d dsu_freq_ceil=%d dsu_freq_thermal=%d dsu_bw_base=%d emi_bw_base=%d dsu_swpm_ver=%u base_active_ratio_from_tcm=%u dsu_active_ratio=%u share_buck_idx=%u",
 		__entry->dsu_freq_base,
 		__entry->dsu_volt_base,
 		__entry->dsu_freq_floor,
@@ -657,6 +667,9 @@ TRACE_EVENT(sched_eenv_init,
 		__entry->dsu_freq_thermal,
 		__entry->dsu_bw_base,
 		__entry->emi_bw_base,
+		__entry->dsu_swpm_ver,
+		__entry->base_active_ratio_from_tcm,
+		__entry->dsu_active_ratio,
 		__entry->gear_idx)
 );
 

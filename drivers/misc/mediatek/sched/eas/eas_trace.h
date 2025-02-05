@@ -216,14 +216,9 @@ TRACE_EVENT(sched_dsu_freq,
 TRACE_EVENT(dsu_pwr_cal,
 
 	TP_PROTO(int dst_cpu, unsigned long task_util, unsigned long total_util,
-		unsigned int dsu_bw, unsigned int mem_bw,
-		int dsu_temp, unsigned int dsu_freq, unsigned int dsu_volt,
-		unsigned int extern_volt,
-		unsigned int dsu_dyn_pwr, unsigned int dsu_lkg_pwr,
-		unsigned int mcusys_dyn_pwr),
+		unsigned int *data, unsigned int extern_volt),
 
-	TP_ARGS(dst_cpu, task_util, total_util, dsu_bw, mem_bw, dsu_temp, dsu_freq, dsu_volt,
-		extern_volt, dsu_dyn_pwr, dsu_lkg_pwr, mcusys_dyn_pwr),
+	TP_ARGS(dst_cpu, task_util, total_util, data, extern_volt),
 
 	TP_STRUCT__entry(
 		__field(int, dst_cpu)
@@ -238,24 +233,32 @@ TRACE_EVENT(dsu_pwr_cal,
 		__field(unsigned int, dsu_dyn_pwr)
 		__field(unsigned int, dsu_lkg_pwr)
 		__field(unsigned int, mcusys_dyn_pwr)
+		__field(unsigned int, dsu_swpm_ver)
+		__field(unsigned int, new_active_ratio_from_tcm)
+		__field(unsigned int, active_ratio_base)
+		__field(unsigned int, active_ratio_new)
 	),
 
 	TP_fast_assign(
 		__entry->dst_cpu    = dst_cpu;
 		__entry->task_util   = task_util;
 		__entry->total_util     = total_util;
-		__entry->dsu_bw   = dsu_bw;
-		__entry->mem_bw   = mem_bw;
-		__entry->temp    = dsu_temp;
-		__entry->dsu_freq   = dsu_freq;
-		__entry->dsu_volt     = dsu_volt;
+		__entry->dsu_bw   = data[0];
+		__entry->mem_bw   = data[1];
+		__entry->temp    = data[2];
+		__entry->dsu_freq   = data[3];
+		__entry->dsu_volt     = data[4];
 		__entry->extern_volt   = extern_volt;
-		__entry->dsu_dyn_pwr   = dsu_dyn_pwr;
-		__entry->dsu_lkg_pwr   = dsu_lkg_pwr;
-		__entry->mcusys_dyn_pwr   = mcusys_dyn_pwr;
+		__entry->dsu_dyn_pwr   = data[5];
+		__entry->dsu_lkg_pwr   = data[6];
+		__entry->mcusys_dyn_pwr   = data[7];
+		__entry->dsu_swpm_ver   = data[8];
+		__entry->new_active_ratio_from_tcm   = data[9];
+		__entry->active_ratio_base   = data[10];
+		__entry->active_ratio_new   = data[11];
 	),
 
-	TP_printk("dst_cpu=%d task_util=%lu total_util=%lu dsu_bw=%u mem_bw=%u temp=%d dsu_freq=%u dsu_volt=%u extern_volt=%u dsu_dyn_pwr=%u dsu_lkg_pwr=%u mcusys_dyn_pwr=%u",
+	TP_printk("dst_cpu=%d task_util=%lu total_util=%lu dsu_bw=%u mem_bw=%u temp=%d dsu_freq=%u dsu_volt=%u extern_volt=%u dsu_dyn_pwr=%u dsu_lkg_pwr=%u mcusys_dyn_pwr=%u dsu_swpm_ver=%u new_active_ratio_from_tcm=%u active_ratio_base=%u active_ratio_new=%u",
 		__entry->dst_cpu,
 		__entry->task_util,
 		__entry->total_util,
@@ -267,7 +270,11 @@ TRACE_EVENT(dsu_pwr_cal,
 		__entry->extern_volt,
 		__entry->dsu_dyn_pwr,
 		__entry->dsu_lkg_pwr,
-		__entry->mcusys_dyn_pwr)
+		__entry->mcusys_dyn_pwr,
+		__entry->dsu_swpm_ver,
+		__entry->new_active_ratio_from_tcm,
+		__entry->active_ratio_base,
+		__entry->active_ratio_new)
 );
 
 TRACE_EVENT(sched_em_cpu_energy,
