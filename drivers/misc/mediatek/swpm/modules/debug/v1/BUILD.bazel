@@ -33,10 +33,6 @@ define_mgk_ddk_ko(
         "subsys/swpm_isp_wrapper.c",
         "subsys/swpm_isp_wrapper.h",
     ],
-    hdrs = [
-        "subsys/swpm_isp_wrapper.h",
-    ],
-    includes = ["subsys"],
     out = "mtk-swpm-isp-wrapper.ko"
 )
 

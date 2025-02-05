@@ -10,7 +10,7 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/module.h>
-#include <swpm_isp_wrapper.h>
+#include <subsys/swpm_isp_wrapper.h>
 
 #define MyTag "[swpm_isp]"
 #define isp_log_basic(fmt, args...) pr_info(MyTag "[%s] " fmt "\n", __func__, ##args)
