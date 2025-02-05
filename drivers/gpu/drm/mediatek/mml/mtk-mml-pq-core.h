@@ -117,6 +117,14 @@ do { \
 		_mml_log("[pq][set_dump]" fmt, ##args); \
 } while (0)
 
+extern int mml_pq_fg_tuning_log;
+
+#define mml_pq_fg_tuning_log(fmt, args...) \
+do { \
+	if (mml_pq_fg_tuning_log) \
+		_mml_log("[pq][fg_tuning]" fmt, ##args); \
+} while (0)
+
 /* mml pq ftrace */
 extern int mml_pq_trace;
 
@@ -145,6 +153,7 @@ enum mml_pq_debug_mode {
 	MML_PQ_TIMEOUT_TEST = 1 << 5,
 	MML_PQ_BUFFER_CHECK = 1 << 6,
 	MML_PQ_FG_HW_AR_DBG = 1 << 7,
+	MML_PQ_FG_TUNING = 1 << 8,
 };
 
 enum mml_pq_vcp_engine {
@@ -731,5 +740,21 @@ void mml_pq_get_pq_task(struct mml_pq_task *pq_task);
  * Return:	if value = 1, pq will be released
  */
 int mml_pq_put_pq_task(struct mml_pq_task *pq_task);
+
+/*
+ * mml_pq_get_fg_tuned_data - get fg tuned data
+ *
+ * @pdata:	source buffer pointer
+ *
+ */
+void mml_pq_get_fg_tuned_data(u32 *pdata);
+
+/*
+ * mml_pq_set_fg_tuned_data - set fg tuned data
+ *
+ * @pdata:	source buffer pointer
+ *
+ */
+void mml_pq_set_fg_tuned_data(u32 *pdata);
 
 #endif	/* __MTK_MML_PQ_CORE_H__ */

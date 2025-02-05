@@ -39,6 +39,9 @@ module_param(mml_pq_buf_num, int, 0644);
 int mml_pq_ir_log;
 module_param(mml_pq_ir_log, int, 0644);
 
+int mml_pq_fg_tuning_log;
+module_param(mml_pq_fg_tuning_log, int, 0644);
+
 struct mml_pq_chan {
 	struct wait_queue_head msg_wq;
 	atomic_t msg_cnt;
@@ -100,6 +103,8 @@ static u32 buffer_num;
 static u32 rb_buf_pool[TOTAL_RB_BUF_NUM];
 static struct mutex rb_buf_pool_mutex;
 static struct mml_pq_dev_data *dev_data[MML_MAX_OUTPUTS];
+static struct mutex fg_tuning_mutex;
+static u32 mml_pq_fg_tuned_data[FG_REG_MAX_COUNT_TUNING];
 
 #define MML_CLARITY_RB_ENG_NUM (2)
 
@@ -414,6 +419,20 @@ int mml_pq_put_pq_task(struct mml_pq_task *pq_task)
 	ret = kref_put_mutex(&pq_task->ref, release_pq_task, &pq_task->ref_lock);
 
 	return ret;
+}
+
+void mml_pq_get_fg_tuned_data(u32 *pdata)
+{
+	mutex_lock(&fg_tuning_mutex);
+	memcpy(pdata, mml_pq_fg_tuned_data, sizeof(u32) * FG_REG_MAX_COUNT_TUNING);
+	mutex_unlock(&fg_tuning_mutex);
+}
+
+void mml_pq_set_fg_tuned_data(u32 *pdata)
+{
+	mutex_lock(&fg_tuning_mutex);
+	memcpy(mml_pq_fg_tuned_data, pdata, sizeof(u32) * FG_REG_MAX_COUNT_TUNING);
+	mutex_unlock(&fg_tuning_mutex);
 }
 
 void mml_pq_comp_config_clear(struct mml_task *task)
@@ -2042,6 +2061,7 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	struct mml_pq_reg *ds_regs = NULL;
 	struct mml_pq_reg *color_regs = NULL;
 	struct mml_pq_reg *c3d_regs = NULL;
+	struct mml_pq_reg *fg_regs = NULL;
 	u32 *aal_curve = NULL;
 	u32 *hdr_curve = NULL;
 	u32 *c3d_lut = NULL;
@@ -2211,6 +2231,31 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 		goto free_c3d_lut_curve;
 	}
 
+	/* fg setting from userspace for tuning purpose */
+	if (result->is_fg_tuning && result->fg_reg_cnt != 0) {
+		mml_pq_fg_tuning_log("%s fg setting from userspace for tuning purpose",
+			__func__);
+
+		fg_regs = kmalloc_array(result->fg_reg_cnt, sizeof(*fg_regs),
+					   GFP_KERNEL);
+		if (unlikely(!fg_regs)) {
+			mml_pq_err("err: create fg_regs failed, size:%d\n",
+				result->fg_reg_cnt);
+			goto free_fg_regs;
+		}
+
+		ret = copy_from_user(fg_regs, result->fg_regs,
+			result->fg_reg_cnt * sizeof(*fg_regs));
+		if (unlikely(ret)) {
+			mml_pq_err("copy fg config failed!: %d\n", ret);
+			goto free_fg_regs;
+		}
+
+		result->fg_regs = fg_regs;
+	} else {
+		result->fg_regs = NULL;
+	}
+
 	result->aal_param = aal_param;
 	result->aal_regs = aal_regs;
 	result->aal_curve = aal_curve;
@@ -2225,6 +2270,8 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	mml_pq_msg("%s result end, result_id[%d] sub_task[%p]",
 		__func__, job->result_job_id, sub_task);
 	goto wake_up_prev_comp_config_task;
+free_fg_regs:
+	kfree(fg_regs);
 free_c3d_lut_curve:
 	kfree(c3d_lut);
 free_c3d_regs:
@@ -2259,7 +2306,9 @@ static int mml_pq_comp_config_ioctl(unsigned long data)
 	struct mml_pq_comp_config_job *user_job;
 	u32 new_job_id;
 	s32 ret;
-
+	bool is_fg_tuning;
+	u32 *fg_tuning_data = NULL;
+	int i = 0;
 	mml_pq_trace_ex_begin("%s", __func__);
 	mml_pq_msg("%s called", __func__);
 	user_job = (struct mml_pq_comp_config_job *)data;
@@ -2283,6 +2332,8 @@ static int mml_pq_comp_config_ioctl(unsigned long data)
 	}
 	mml_pq_msg("%s new_job_id[%d] result_job_id[%d]", __func__,
 		job->new_job_id, job->result_job_id);
+
+	is_fg_tuning = job->is_fg_tuning;
 
 	if (job->result_job_id)
 		handle_comp_config_result(chan, job);
@@ -2328,12 +2379,36 @@ static int mml_pq_comp_config_ioctl(unsigned long data)
 		mml_pq_err("err: fail to copy to user pq param: %d", ret);
 		goto wake_up_comp_config_task;
 	}
+
+	if (is_fg_tuning && new_sub_task->frame_data->info.dest[0].pq_config.en_fg) {
+		fg_tuning_data = kmalloc_array(FG_REG_MAX_COUNT_TUNING, sizeof(u32), GFP_KERNEL);
+		if (unlikely(!fg_tuning_data)) {
+			mml_pq_err("err: create fg_tuning_data failed, size:%d",
+				FG_REG_MAX_COUNT_TUNING);
+			goto wake_up_comp_config_task;
+		}
+
+		mml_pq_get_fg_tuned_data(fg_tuning_data);
+		for (i = 0; i < FG_REG_MAX_COUNT_TUNING; i++)
+			mml_pq_fg_tuning_log("%s:[%d] = %#x ", __func__, i, fg_tuning_data[i]);
+
+		ret = copy_to_user(user_job->fg_tuning_data, fg_tuning_data,
+			sizeof(u32) * FG_REG_MAX_COUNT_TUNING);
+
+		if (unlikely(ret)) {
+			mml_pq_err("err: fail to copy to fg user tuning data: %d", ret);
+			goto wake_up_comp_config_task;
+		}
+		kfree(fg_tuning_data);
+	}
+
 	dump_sub_task(new_sub_task, new_job_id, 0, 0, 0);
 	mml_pq_msg("%s end", __func__);
 	mml_pq_trace_ex_end();
 	return 0;
 
 wake_up_comp_config_task:
+	kfree(fg_tuning_data);
 	cancel_sub_task(new_sub_task);
 	mml_pq_msg("%s end %d", __func__, ret);
 	mml_pq_trace_ex_end();
@@ -3067,6 +3142,7 @@ int mml_pq_core_init(void)
 	mutex_init(&fg_buf_grain_mutex);
 	mutex_init(&fg_buf_scaling_mutex);
 	mutex_init(&rb_buf_pool_mutex);
+	mutex_init(&fg_tuning_mutex);
 
 	pq_mbox = kzalloc(sizeof(*pq_mbox), GFP_KERNEL);
 	if (unlikely(!pq_mbox))

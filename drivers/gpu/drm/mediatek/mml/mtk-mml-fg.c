@@ -16,6 +16,7 @@
 #include "tile_driver.h"
 
 #define REG_NOT_SUPPORT 0xfff
+#define FG_WAIT_TIMEOUT_MS (50)
 
 bool mml_pq_en_hw_ar;
 module_param(mml_pq_en_hw_ar, bool, 0644);
@@ -268,6 +269,8 @@ struct mml_comp_fg {
 	const struct fg_data *data;
 	struct device *mmu_dev;	/* for dmabuf to iova */
 	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
+	u32 fg_tuning_data[FG_REG_MAX_COUNT_TUNING]; /* for reserving tuned value */
+	bool tuning; /* to judge condition that tuning tool tuning or not */
 };
 
 enum fg_label_index {
@@ -339,6 +342,25 @@ static s32 fg_prepare(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static s32 fg_buf_prepare(struct mml_comp *comp, struct mml_task *task,
+			     struct mml_comp_config *ccfg)
+{
+	struct mml_frame_config *cfg = task->config;
+	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
+	s32 ret = 0;
+
+	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_fg[%d]", __func__,
+		ccfg->pipe, comp->id, dest->pq_config.en_fg);
+
+	if (!dest->pq_config.en_fg)
+		return ret;
+
+	if (mml_pq_debug_mode & MML_PQ_FG_TUNING)
+		ret = mml_pq_set_comp_config(task);
+
+	return ret;
+}
+
 static s32 fg_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg,
 			   struct tile_func_block *func,
@@ -402,6 +424,12 @@ static s32 fg_init(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static struct mml_pq_comp_config_result *get_fg_comp_config_result(
+	struct mml_task *task)
+{
+	return task->pq_task->comp_config.result;
+}
+
 static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			   struct mml_comp_config *ccfg)
 {
@@ -428,14 +456,20 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	bool buf_ready = true;
 	dma_addr_t fg_table_pa[FG_BUF_NUM] = {0};
 	u8 en_hw_ar = fg->data->hw_ar ? 1 : 0;
+	/* for fg tuning */
+	struct mml_pq_comp_config_result *result;
+	struct mml_pq_reg *regs;
+	bool is_tuning = mml_pq_debug_mode & MML_PQ_FG_TUNING;
+	u32 tuned_value[FG_REG_MAX_COUNT_TUNING];
+	bool need_tuned = false;
 
 	if (mml_pq_debug_mode & MML_PQ_FG_HW_AR_DBG)
 		en_hw_ar = mml_pq_en_hw_ar;
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
-	mml_pq_msg("%s engine_id[%d] en_fg[%d] width[%d] height[%d] en_hw_ar[%d]",
+	mml_pq_msg("%s engine_id[%d] en_fg[%d] width[%d] height[%d] en_hw_ar[%d] is_tuning[%d]",
 		__func__, comp->id, dest->pq_config.en_fg,
-		crop->r.width, crop->r.height, en_hw_ar);
+		crop->r.width, crop->r.height, en_hw_ar, is_tuning);
 
 	if (relay_mode) {
 		cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], 1, U32_MAX);
@@ -466,6 +500,106 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
+	if (is_tuning && buf_ready) {
+		ret = mml_pq_get_comp_config_result(task, FG_WAIT_TIMEOUT_MS);
+		if (ret) {
+			mml_pq_comp_config_clear(task);
+			mml_pq_err("%s:[pq][fg_tuning]get fg param timeout: %d in %dms",
+				__func__, ret, FG_WAIT_TIMEOUT_MS);
+			ret = -ETIMEDOUT;
+			// relay setting
+			cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], 1,
+					U32_MAX);
+			cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0x77,
+					U32_MAX);
+			/* bit_depth & is yuv420 or yuv444 */
+			cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_0],
+					!is_yuv_444 << 4 | bit_depth << 0, 1 << 4 | 0xF << 0);
+			goto exit;
+		}
+
+		result = get_fg_comp_config_result(task);
+		if (!result) {
+			mml_pq_err("%s:[pq][fg_tuning]not get result from user lib", __func__);
+			ret = -EBUSY;
+			// relay setting
+			cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CTRL_0], 1,
+					U32_MAX);
+			cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_CK_EN], 0x77,
+					U32_MAX);
+			/* bit_depth & is yuv420 or yuv444 */
+			cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_0],
+					!is_yuv_444 << 4 | bit_depth << 0, 1 << 4 | 0xF << 0);
+			goto exit;
+		}
+
+		/* assign tuning status */
+		fg->tuning = result->is_fg_tuning;
+
+		/* if result->fg_reg_cnt == 0, result->fg_regs will be Null */
+		regs = result->fg_regs;
+		/* use tuning regs to replace original setting */
+		mml_pq_fg_tuning_log("%s:result->count: %d mml_fg_reg_tuning_index size : %d",
+			__func__, result->fg_reg_cnt, FG_REG_MAX_COUNT_TUNING);
+
+		/* assign value by tuning buffer */
+		for (i = 0; i < result->fg_reg_cnt; i++) {
+			mml_pq_fg_tuning_log("%s:[%x] = %#x mask(%#x)", __func__,
+				regs[i].offset, regs[i].value, regs[i].mask);
+			tuned_value[i] = regs[i].value;
+		}
+
+		if (!result->fg_reg_cnt) {
+			// stay in default read status
+			// reserve original driver data for tool read
+			mml_pq_fg_tuning_log("%s:stay in default read status", __func__);
+
+			need_tuned = false;
+
+			fg->fg_tuning_data[FG_RELAY_MODE_TUNING] =
+				(relay_mode << 0);
+			fg->fg_tuning_data[FG_CLK_ENABLE_TUNING] =
+				0x7F;
+			fg->fg_tuning_data[FG_YUV_FORMAT_TUNING] =
+				(!is_yuv_444 << 4 | bit_depth << 0);
+			fg->fg_tuning_data[FG_RESOLUTION_TUNING] =
+				(crop->r.width << 0 | crop->r.height << 16);
+			fg->fg_tuning_data[FG_AR_COEFF_CFG_TUNING] =
+				en_hw_ar << 0 |fg_meta->ar_coeff_lag << 1 |
+				fg_meta->ar_coeff_shift << 3 | bit_depth << 7 |
+				!is_yuv_444 << 11 | fg_meta->chroma_scaling_from_luma << 12 |
+				fg_meta->num_y_points << 13 | fg_meta->num_cb_points << 17 |
+				fg_meta->num_cr_points << 21;
+			for (i = 0; i < 6; i++) {
+				fg->fg_tuning_data[FG_AR_COEFF_Y_0_TUNING + i] =
+					(0x000000FF & fg_meta->ar_coeffs_y[i*4]) << 0 |
+					(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 1]) << 8 |
+					(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 2]) << 16 |
+					(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 3]) << 24;
+				fg->fg_tuning_data[FG_AR_COEFF_CB_0_TUNING + i] =
+					(0x000000FF & fg_meta->ar_coeffs_cb[i*4]) << 0 |
+					(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 1]) << 8 |
+					(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 2]) << 16 |
+					(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 3]) << 24;
+				fg->fg_tuning_data[FG_AR_COEFF_CR_0_TUNING + i] =
+					(0x000000FF & fg_meta->ar_coeffs_cr[i*4]) << 0 |
+					(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 1]) << 8 |
+					(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 2]) << 16 |
+					(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 3]) << 24;
+			}
+			fg->fg_tuning_data[FG_AR_COEFF_CB_6_TUNING] =
+				fg_meta->ar_coeffs_cb[24] << 0;
+			fg->fg_tuning_data[FG_AR_COEFF_CR_6_TUNING] =
+				fg_meta->ar_coeffs_cr[24] << 0;
+		} else {
+			mml_pq_fg_tuning_log("%s:overwrite status", __func__);
+			need_tuned = true;
+			// reserve latest data for tool read
+			for (i = 0; i < result->fg_reg_cnt; i++)
+				fg->fg_tuning_data[i] = regs[i].value;
+		}
+	}
+
 	if (buf_ready) {
 		mml_pq_fg_calc(task->pq_task->fg_table, fg_meta, is_yuv_444, bit_depth, en_hw_ar);
 		/* sync dmabuf for lumn, cb, cr */
@@ -477,10 +611,12 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			dev_buf, fg_table_pa[FG_BUF_NUM-1], 0, FG_BUF_SCALING_SIZE, DMA_TO_DEVICE);
 
 		/* enable filmGrain */
-		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0], relay_mode << 0,
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0],
+			need_tuned ? tuned_value[FG_RELAY_MODE_TUNING] : (relay_mode << 0),
 			1 << 0, reuse, cache, &fg_frm->labels[FG_CTRL_0_LABEL]);
-		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN], 0x7F, 0x7F,
-			reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
+		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CK_EN],
+			need_tuned ? tuned_value[FG_CLK_ENABLE_TUNING] : 0x7F,
+			0x7F, reuse, cache, &fg_frm->labels[FG_CK_EN_LABEL]);
 	} else {
 		/* relay filmGrain */
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_CTRL_0], 1, 1 << 0,
@@ -527,11 +663,15 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* bit_depth & is yuv420 or yuv444 */
 	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_0],
-		!is_yuv_444 << 4 | bit_depth << 0, 1 << 4 | 0xF << 0);
+		need_tuned ? tuned_value[FG_YUV_FORMAT_TUNING] :
+		(!is_yuv_444 << 4 | bit_depth << 0),
+		1 << 4 | 0xF << 0);
 
 	/* picture widht & height */
 	cmdq_pkt_write(pkt, NULL, base_pa + fg->data->reg_table[FG_PIC_INFO_1],
-		crop->r.width << 0 | crop->r.height << 16, U32_MAX);
+		need_tuned ? tuned_value[FG_RESOLUTION_TUNING] :
+		(crop->r.width << 0 | crop->r.height << 16),
+		U32_MAX);
 
 	/* config pps */
 	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_PPS_0], mml_pq_fg_get_pps0(fg_meta),
@@ -545,7 +685,8 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (fg->data->hw_ar) {
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CFG],
-			en_hw_ar << 0 |
+			need_tuned ? tuned_value[FG_AR_COEFF_CFG_TUNING] :
+			(en_hw_ar << 0 |
 			fg_meta->ar_coeff_lag << 1 |
 			fg_meta->ar_coeff_shift << 3 |
 			bit_depth << 7 |
@@ -553,37 +694,42 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			fg_meta->chroma_scaling_from_luma << 12 |
 			fg_meta->num_y_points << 13 |
 			fg_meta->num_cb_points << 17 |
-			fg_meta->num_cr_points << 21,
+			fg_meta->num_cr_points << 21),
 			U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CFG_LABEL]);
 
 		for (i = 0; i < 6; i++) {
 			mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_Y_0 + i],
-				(0x000000FF & fg_meta->ar_coeffs_y[i*4]) << 0 |
+				need_tuned ? tuned_value[FG_AR_COEFF_Y_0_TUNING + i] :
+				((0x000000FF & fg_meta->ar_coeffs_y[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 2]) << 16 |
-				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 3]) << 24,
+				(0x000000FF & fg_meta->ar_coeffs_y[i*4 + 3]) << 24),
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_Y_0_LABEL + i]);
 
 			mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_0 + i],
-				(0x000000FF & fg_meta->ar_coeffs_cb[i*4]) << 0 |
+				need_tuned ? tuned_value[FG_AR_COEFF_CB_0_TUNING + i] :
+				((0x000000FF & fg_meta->ar_coeffs_cb[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 2]) << 16 |
-				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 3]) << 24,
+				(0x000000FF & fg_meta->ar_coeffs_cb[i*4 + 3]) << 24),
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CB_0_LABEL + i]);
 
 			mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_0 + i],
-				(0x000000FF & fg_meta->ar_coeffs_cr[i*4]) << 0 |
+				need_tuned ? tuned_value[FG_AR_COEFF_CR_0_TUNING + i] :
+				((0x000000FF & fg_meta->ar_coeffs_cr[i*4]) << 0 |
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 1]) << 8 |
 				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 2]) << 16 |
-				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 3]) << 24,
+				(0x000000FF & fg_meta->ar_coeffs_cr[i*4 + 3]) << 24),
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CR_0_LABEL + i]);
 		}
 
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CB_6],
+				need_tuned ? tuned_value[FG_AR_COEFF_CB_6_TUNING] :
 				fg_meta->ar_coeffs_cb[24] << 0,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CB_6_LABEL]);
 
 		mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_AR_COEFF_CR_6],
+				need_tuned ? tuned_value[FG_AR_COEFF_CR_6_TUNING] :
 				fg_meta->ar_coeffs_cr[24] << 0,
 				U32_MAX, reuse, cache, &fg_frm->labels[FG_AR_COEFF_CR_6_LABEL]);
 	}
@@ -787,6 +933,7 @@ buf_err_exit:
 
 static const struct mml_comp_config_ops fg_cfg_ops = {
 	.prepare = fg_prepare,
+	.buf_prepare = fg_buf_prepare,
 	.get_label_count = fg_get_label_count,
 	.init = fg_init,
 	.frame = fg_config_frame,
@@ -811,6 +958,10 @@ static void fg_task_done(struct mml_comp *comp, struct mml_task *task,
 
 	mml_pq_put_fg_buffer(task, ccfg->pipe, dev_buf);
 
+	/* copy tuned data to pq_sub_task for tuning tool read */
+	if (fg->tuning)
+		mml_pq_set_fg_tuned_data(fg->fg_tuning_data);
+
 exit:
 	mml_pq_trace_ex_end();
 }
@@ -825,7 +976,7 @@ static void fg_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_fg *fg = comp_to_fg(comp);
 	void __iomem *base = comp->base;
-	u32 value[33];
+	u32 value[54];
 	u32 shadow_ctrl;
 
 	mml_err("fg component %u dump:", comp->id);
@@ -871,6 +1022,27 @@ static void fg_debug_dump(struct mml_comp *comp)
 	}
 	value[31] = readl(base + fg->data->reg_table[FG_CRC_TBL_0]);
 	value[32] = readl(base + fg->data->reg_table[FG_CRC_TBL_1]);
+	value[33] = readl(base + fg->data->reg_table[FG_AR_COEFF_CFG]);
+	value[34] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_0]);
+	value[35] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_1]);
+	value[36] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_2]);
+	value[37] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_3]);
+	value[38] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_4]);
+	value[39] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_5]);
+	value[40] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_0]);
+	value[41] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_1]);
+	value[42] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_2]);
+	value[43] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_3]);
+	value[44] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_4]);
+	value[45] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_5]);
+	value[46] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_6]);
+	value[47] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_0]);
+	value[48] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_1]);
+	value[49] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_2]);
+	value[50] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_3]);
+	value[51] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_4]);
+	value[52] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_5]);
+	value[53] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_6]);
 
 	mml_err("FG_TRIGGER %#010x FG_STATUS %#010x",
 		value[0], value[1]);
@@ -902,6 +1074,28 @@ static void fg_debug_dump(struct mml_comp *comp)
 	mml_err("FG_DEBUG_6 %#010x ", value[15]);
 	mml_err("FG_CRC_TBL_0 %#010x FG_CRC_TBL_1 %#010x",
 		value[31], value[32]);
+	mml_err("FG_AR_COEFF_CFG %#010x FG_AR_COEFF_Y_0 %#010x",
+		value[33], value[34]);
+	mml_err("FG_AR_COEFF_Y_1 %#010x FG_AR_COEFF_Y_2 %#010x",
+		value[35], value[36]);
+	mml_err("FG_AR_COEFF_Y_3 %#010x FG_AR_COEFF_Y_4 %#010x",
+		value[37], value[38]);
+	mml_err("FG_AR_COEFF_Y_5 %#010x FG_AR_COEFF_CB_0 %#010x",
+		value[39], value[40]);
+	mml_err("FG_AR_COEFF_CB_1 %#010x FG_AR_COEFF_CB_2 %#010x",
+		value[41], value[42]);
+	mml_err("FG_AR_COEFF_CB_3 %#010x FG_AR_COEFF_CB_4 %#010x",
+		value[43], value[44]);
+	mml_err("FG_AR_COEFF_CB_5 %#010x FG_AR_COEFF_CB_6 %#010x",
+		value[45], value[46]);
+	mml_err("FG_AR_COEFF_CR_0 %#010x FG_AR_COEFF_CR_1 %#010x",
+		value[47], value[48]);
+	mml_err("FG_AR_COEFF_CR_2 %#010x FG_AR_COEFF_CR_3 %#010x",
+		value[49], value[50]);
+	mml_err("FG_AR_COEFF_CR_4 %#010x FG_AR_COEFF_CR_5 %#010x",
+		value[51], value[52]);
+	mml_err("FG_AR_COEFF_CR_6 %#010x",
+		value[53]);
 }
 
 static const struct mml_comp_debug_ops fg_debug_ops = {
@@ -971,6 +1165,8 @@ static int probe(struct platform_device *pdev)
 	priv->comp.config_ops = &fg_cfg_ops;
 	priv->comp.hw_ops = &fg_hw_ops;
 	priv->comp.debug_ops = &fg_debug_ops;
+
+	priv->tuning = 0;
 
 	dbg_probed_components[dbg_probed_count++] = priv;
 

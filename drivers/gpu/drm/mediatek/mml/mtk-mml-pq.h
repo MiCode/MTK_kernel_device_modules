@@ -11,6 +11,36 @@
 
 #include "mtk-mml.h"
 
+/* for fg tuning */
+enum mml_fg_reg_tuning_index {
+	FG_RELAY_MODE_TUNING, // FG_CTRL_0
+	FG_CLK_ENABLE_TUNING, // FG_CK_EN
+	FG_YUV_FORMAT_TUNING, // FG_PIC_INFO_0
+	FG_RESOLUTION_TUNING, // FG_PIC_INFO_1
+	FG_AR_COEFF_CFG_TUNING,
+	FG_AR_COEFF_Y_0_TUNING,
+	FG_AR_COEFF_Y_1_TUNING,
+	FG_AR_COEFF_Y_2_TUNING,
+	FG_AR_COEFF_Y_3_TUNING,
+	FG_AR_COEFF_Y_4_TUNING,
+	FG_AR_COEFF_Y_5_TUNING,
+	FG_AR_COEFF_CB_0_TUNING,
+	FG_AR_COEFF_CB_1_TUNING,
+	FG_AR_COEFF_CB_2_TUNING,
+	FG_AR_COEFF_CB_3_TUNING,
+	FG_AR_COEFF_CB_4_TUNING,
+	FG_AR_COEFF_CB_5_TUNING,
+	FG_AR_COEFF_CB_6_TUNING,
+	FG_AR_COEFF_CR_0_TUNING,
+	FG_AR_COEFF_CR_1_TUNING,
+	FG_AR_COEFF_CR_2_TUNING,
+	FG_AR_COEFF_CR_3_TUNING,
+	FG_AR_COEFF_CR_4_TUNING,
+	FG_AR_COEFF_CR_5_TUNING,
+	FG_AR_COEFF_CR_6_TUNING,
+	FG_REG_MAX_COUNT_TUNING
+};
+
 struct mml_pq_rsz_tile_init_param {
 	u32 coeff_step_x;
 	u32 coeff_step_y;
@@ -89,12 +119,17 @@ struct mml_pq_comp_config_result {
 	u32 c3d_lut_num;
 	u32 *c3d_lut; // 9*9*9*3
 	bool is_set_test;
+	u32 fg_reg_cnt;
+	struct mml_pq_reg *fg_regs;
+	bool is_fg_tuning;
 };
 
 struct mml_pq_comp_config_job {
 	/* input from user-space */
 	u32 result_job_id;
 	struct mml_pq_comp_config_result *result;
+	/* input from user-space for fg tuning */
+	bool is_fg_tuning;
 
 	/* output to user-space */
 	u32 new_job_id;
@@ -102,6 +137,8 @@ struct mml_pq_comp_config_job {
 	struct mml_frame_size dst[MML_MAX_OUTPUTS];
 	struct mml_pq_frame_info size_info;
 	struct mml_pq_param param[MML_MAX_OUTPUTS];
+	/* output to user-space for fg tuning */
+	u32 fg_tuning_data[FG_REG_MAX_COUNT_TUNING];
 };
 
 struct mml_pq_aal_readback_result {
