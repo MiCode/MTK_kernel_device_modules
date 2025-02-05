@@ -2691,13 +2691,14 @@ static int vcp_io_device_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device *smmu_dev = NULL;
+	unsigned int vcp_io_support = 0;
 	int ret;
 
 	pr_debug("[VCP_IO] %s", __func__);
 
 	of_property_read_u32(pdev->dev.of_node, "vcp-support",
-		 &vcp_support);
-	if (vcp_support == 0 || vcp_support == 1) {
+		 &vcp_io_support);
+	if (vcp_io_support == 0 || vcp_io_support == 1) {
 		pr_info("Bypass the VCP driver probe\n");
 		return -1;
 	}
@@ -2707,24 +2708,24 @@ static int vcp_io_device_probe(struct platform_device *pdev)
 		dev_info(dev, "[VCP] smmu enable\n");
 		smmu_dev = mtk_smmu_get_shared_device(dev);
 		if (smmu_dev)
-			vcp_io_devs[vcp_support-1] = smmu_dev;
+			vcp_io_devs[vcp_io_support-1] = smmu_dev;
 		else
 			dev_info(dev, "[VCP] cannot get smmu shared dev\n");
 	} else
-		vcp_io_devs[vcp_support-1] = dev;
+		vcp_io_devs[vcp_io_support-1] = dev;
 
-	ret = dma_set_mask_and_coherent(vcp_io_devs[vcp_support-1], DMA_BIT_MASK(64));
+	ret = dma_set_mask_and_coherent(vcp_io_devs[vcp_io_support-1], DMA_BIT_MASK(64));
 	if (ret) {
-		dev_info(vcp_io_devs[vcp_support-1], "64-bit DMA enable failed\n");
+		dev_info(vcp_io_devs[vcp_io_support-1], "64-bit DMA enable failed\n");
 		return ret;
 	}
-	if (!vcp_io_devs[vcp_support-1]->dma_parms) {
-		vcp_io_devs[vcp_support-1]->dma_parms =
-			devm_kzalloc(vcp_io_devs[vcp_support-1],
-			sizeof(*vcp_io_devs[vcp_support-1]->dma_parms), GFP_KERNEL);
+	if (!vcp_io_devs[vcp_io_support-1]->dma_parms) {
+		vcp_io_devs[vcp_io_support-1]->dma_parms =
+			devm_kzalloc(vcp_io_devs[vcp_io_support-1],
+			sizeof(*vcp_io_devs[vcp_io_support-1]->dma_parms), GFP_KERNEL);
 	}
-	if (vcp_io_devs[vcp_support-1]->dma_parms)
-		dma_set_max_seg_size(vcp_io_devs[vcp_support-1],
+	if (vcp_io_devs[vcp_io_support-1]->dma_parms)
+		dma_set_max_seg_size(vcp_io_devs[vcp_io_support-1],
 			(unsigned int)DMA_BIT_MASK(64));
 
 	return 0;
@@ -2798,6 +2799,7 @@ static int vcp_device_probe(struct platform_device *pdev)
 	struct device_node	*smi_node;
 	struct platform_device	*psmi_com_dev;
 	unsigned int temp_value;
+	struct arm_smccc_res smc_res;
 
 	pr_debug("[VCP] %s", __func__);
 
@@ -2818,9 +2820,6 @@ static int vcp_device_probe(struct platform_device *pdev)
 			dev_info(dev, "[VCP] cannot get smmu shared dev\n");
 	} else
 		vcp_io_devs[vcp_support-1] = dev;
-
-	if (vcp_support > 1)
-		return 0;
 
 	vcp_power_devs = dev;
 
@@ -3178,6 +3177,93 @@ static int vcp_device_probe(struct platform_device *pdev)
 		pr_info("[VCP] Unable to get memory dump size.\n");
 	}
 
+	if (vcpreg.core_nums == 2) {
+		ret = mmup_init();
+		if (ret < 0) {
+			pr_notice("[VCP] mmup init fail\n");
+			return ret;
+		}
+	}
+
+	/* vcp platform initialise */
+	vcp_awake_init();
+	vcp_workqueue = create_singlethread_workqueue("VCP_WQ");
+	if (!vcp_workqueue)
+		pr_notice("[VCP] vcp_workqueue create fail\n");
+
+	ret = vcp_excep_init();
+	if (ret) {
+		pr_notice("[VCP]Excep Init Fail\n");
+		return ret;
+	}
+
+	for (i = 0; i < VCP_CORE_TOTAL; i++)
+		INIT_WORK(&vcp_A_notify_work[i].work, vcp_A_notify_ws);
+
+	mtk_ipi_register(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
+		NULL, NULL, &slp_ipi_ack_data);
+
+	mtk_ipi_register(&vcp_ipidev, IPI_IN_VCP_READY_0,
+			(void *)vcp_A_ready_ipi_handler, NULL, &msg_vcp_ready0);
+
+	ret = register_pm_notifier(&vcp_pm_notifier_block);
+	if (ret)
+		pr_notice("[VCP] failed to register PM notifier %d\n", ret);
+
+	/* vcp sysfs initialise */
+	pr_debug("[VCP] sysfs init\n");
+	ret = create_files();
+	if (unlikely(ret != 0)) {
+		pr_notice("[VCP] create files failed\n");
+		return ret;
+	}
+
+	/* scp hwvoter debug init */
+	if (vcp_hwvoter_support)
+		vcp_hw_voter_dbg_init();
+
+#if VCP_LOGGER_ENABLE
+	/* vcp logger initialise */
+	pr_debug("[VCP] logger init\n");
+	/*create wq for vcp logger*/
+	vcp_logger_workqueue = create_singlethread_workqueue("VCP_LOG_WQ");
+	if (!vcp_logger_workqueue)
+		pr_notice("[VCP] vcp_logger_workqueue create fail\n");
+
+	if (vcp_logger_init(vcp_get_reserve_mem_virt(VCP_A_LOGGER_MEM_ID),
+			vcp_get_reserve_mem_size(VCP_A_LOGGER_MEM_ID)) == -1) {
+		pr_notice("[VCP] vcp_logger_init_fail\n");
+		return -1;
+	}
+#endif
+
+	vcp_recovery_init();
+	vcp_disable_irqs();
+	driver_init_done = true;
+
+	vcp_set_fp(&vcp_helper_fp);
+
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
+	register_devapc_power_callback(&devapc_power_handle);
+#endif
+
+	pr_notice("[VCP] %s core0 status: 0x%x, core1 status: 0x%x\n",
+		__func__, readl(R_CORE0_STATUS), readl(R_CORE1_STATUS));
+	/* core 0 */
+	arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
+		MTK_TINYSYS_VCP_KERNEL_OP_RESET_SET,
+		1, 0, 0, 0, 0, 0, &smc_res);
+
+	/* core 1 */
+	arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
+		MTK_TINYSYS_MMUP_KERNEL_OP_RESET_SET,
+		1, 0, 0, 0, 0, 0, &smc_res);
+
+	if (vcp_register_feature(RTOS_FEATURE_ID) < 0) {
+		pr_notice("[VCP] bootup fail\n");
+		return -1;
+	}
+
 	pr_info("[VCP] %s done\n", __func__);
 
 	return ret;
@@ -3451,9 +3537,7 @@ static struct platform_driver mtk_vcp_io_sentry_mode_extra = {
  */
 static int __init vcp_init(void)
 {
-	int ret = 0;
 	int i = 0;
-	struct arm_smccc_res res;
 
 	/* vcp platform initialise */
 	pr_info("[VCP] %s v2 begins\n", __func__);
@@ -3469,8 +3553,10 @@ static int __init vcp_init(void)
 #endif
 		vcp_ready[i] = 0;
 	}
-	vcp_support = 1;
+	vcp_support = 0;
 	vcp_dbg_log = 0;
+	is_suspending = false;
+	pwclkcnt = 0;
 
 	/* vco io device initialise */
 	for (i = 0; i < VCP_IOMMU_DEV_NUM; i++)
@@ -3528,98 +3614,9 @@ static int __init vcp_init(void)
 		goto err_io_sentry_mode_extra;
 	}
 #endif
-	if (!vcp_support)
-		return 0;
 
-	if (vcpreg.core_nums == 2) {
-		if (mmup_init() < 0) {
-			pr_notice("[VCP] mmup init fail\n");
-			goto err;
-		}
-	}
+	return 0;
 
-	/* vcp platform initialise */
-	pr_debug("[VCP] platform init\n");
-	vcp_awake_init();
-	vcp_workqueue = create_singlethread_workqueue("VCP_WQ");
-	if (!vcp_workqueue)
-		pr_notice("[VCP] vcp_workqueue create fail\n");
-
-	ret = vcp_excep_init();
-	if (ret) {
-		pr_notice("[VCP]Excep Init Fail\n");
-		goto err;
-	}
-
-	for (i = 0; i < VCP_CORE_TOTAL; i++)
-		INIT_WORK(&vcp_A_notify_work[i].work, vcp_A_notify_ws);
-
-	mtk_ipi_register(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
-		NULL, NULL, &slp_ipi_ack_data);
-
-	mtk_ipi_register(&vcp_ipidev, IPI_IN_VCP_READY_0,
-			(void *)vcp_A_ready_ipi_handler, NULL, &msg_vcp_ready0);
-
-	ret = register_pm_notifier(&vcp_pm_notifier_block);
-	if (ret)
-		pr_notice("[VCP] failed to register PM notifier %d\n", ret);
-
-	/* vcp sysfs initialise */
-	pr_debug("[VCP] sysfs init\n");
-	ret = create_files();
-	if (unlikely(ret != 0)) {
-		pr_notice("[VCP] create files failed\n");
-		goto err;
-	}
-
-	/* scp hwvoter debug init */
-	if (vcp_hwvoter_support)
-		vcp_hw_voter_dbg_init();
-
-#if VCP_LOGGER_ENABLE
-	/* vcp logger initialise */
-	pr_debug("[VCP] logger init\n");
-	/*create wq for vcp logger*/
-	vcp_logger_workqueue = create_singlethread_workqueue("VCP_LOG_WQ");
-	if (!vcp_logger_workqueue)
-		pr_notice("[VCP] vcp_logger_workqueue create fail\n");
-
-	if (vcp_logger_init(vcp_get_reserve_mem_virt(VCP_A_LOGGER_MEM_ID),
-			vcp_get_reserve_mem_size(VCP_A_LOGGER_MEM_ID)) == -1) {
-		pr_notice("[VCP] vcp_logger_init_fail\n");
-		goto err;
-	}
-#endif
-
-	vcp_recovery_init();
-	vcp_disable_irqs();
-	driver_init_done = true;
-	is_suspending = false;
-	pwclkcnt = 0;
-
-	vcp_set_fp(&vcp_helper_fp);
-
-#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
-	register_devapc_power_callback(&devapc_power_handle);
-#endif
-
-	pr_notice("[VCP] %s core0 status: 0x%x, core1 status: 0x%x\n",
-		__func__, readl(R_CORE0_STATUS), readl(R_CORE1_STATUS));
-	/* core 0 */
-	arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
-		MTK_TINYSYS_VCP_KERNEL_OP_RESET_SET,
-		1, 0, 0, 0, 0, 0, &res);
-
-	/* core 1 */
-	arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
-		MTK_TINYSYS_MMUP_KERNEL_OP_RESET_SET,
-		1, 0, 0, 0, 0, 0, &res);
-
-	if (vcp_register_feature(RTOS_FEATURE_ID) < 0)
-		pr_notice("[VCP] bootup fail\n");
-
-	return ret;
-err:
 	platform_driver_unregister(&mtk_vcp_io_acp_codec);
 #if IS_ENABLED(CONFIG_MTK_SENTRY_MODE)
 err_io_sentry_mode_extra:
