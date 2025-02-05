@@ -2334,13 +2334,11 @@
 			reg = <0 0x10026000 0 0x1000>;
 		};
 
-		clock_buffer_ctrl: clock_buffer_ctrl {
-			compatible = "mediatek,clock_buffer_ctrl";
-			mediatek,xo-buf-hwbblpm-mask = <1 0 0 0 0 0 0>;
-			mediatek,xo-buf-hwbblpm-bypass = <0 0 0 0 0 0 0>;
-
+		clkbuf_ctrl: clkbuf-ctrl {
+			compatible = "mediatek,mt6789-clkbuf";
+			pmic-supply = <&mt6366_clkbuf>;
+			pmic = <&mt6366_clkbuf>;
 			pmif = <&pwrap 0>;
-			mediatek,enable;
 		};
 
 		keypad: kp@10010000 {
