@@ -60,6 +60,7 @@ struct tag_bootmode {
 
 struct mtk_vdisp_data {
 	const struct mtk_vdisp_avs_data *avs;
+	unsigned int ap_voter_bit;
 };
 
 #endif

@@ -45,6 +45,7 @@ static const struct mtk_gate_regs mm0b1_hwv_regs = {
 		.regs = &mm0b0_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_MM0B0_V(_id, _name, _parent) {    \
@@ -78,7 +79,7 @@ static const struct mtk_gate_regs mm0b1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate mm0b_clks[] = {
@@ -354,6 +355,7 @@ static const struct mtk_gate_regs mm1b1_hwv_regs = {
 		.regs = &mm1b0_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_MM1B0_V(_id, _name, _parent) {    \
@@ -387,7 +389,7 @@ static const struct mtk_gate_regs mm1b1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate mm1b_clks[] = {
@@ -667,6 +669,7 @@ static const struct mtk_gate_regs mm11_hwv_regs = {
 		.regs = &mm10_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_MM10_V(_id, _name, _parent) {    \
@@ -700,7 +703,7 @@ static const struct mtk_gate_regs mm11_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate mm1_clks[] = {
@@ -980,6 +983,7 @@ static const struct mtk_gate_regs mm01_hwv_regs = {
 		.regs = &mm00_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_MM00_V(_id, _name, _parent) {    \
@@ -1013,7 +1017,7 @@ static const struct mtk_gate_regs mm01_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate mm0_clks[] = {
@@ -1307,7 +1311,7 @@ static const struct mtk_gate_regs vdisp_ao1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_HWV_VDISP_AO1(_id, _name, _parent, _shift) {	\
@@ -1320,7 +1324,7 @@ static const struct mtk_gate_regs vdisp_ao1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate vdisp_ao_clks[] = {
@@ -1398,6 +1402,7 @@ static const struct mtk_gate_regs mml11_cg_regs = {
 		.regs = &mml10_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_MML10_V(_id, _name, _parent) {    \
@@ -1416,7 +1421,7 @@ static const struct mtk_gate_regs mml11_cg_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_MML11(_id, _name, _parent, _shift) {	\
@@ -1553,6 +1558,7 @@ static const struct mtk_gate_regs mml21_cg_regs = {
 		.regs = &mml20_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_MML20_V(_id, _name, _parent) {    \
@@ -1571,7 +1577,7 @@ static const struct mtk_gate_regs mml21_cg_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_MML21(_id, _name, _parent, _shift) {	\
@@ -1740,6 +1746,7 @@ static const struct mtk_gate_regs mml1_cg_regs = {
 		.regs = &mml0_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_MML0_V(_id, _name, _parent) {    \
@@ -1758,7 +1765,7 @@ static const struct mtk_gate_regs mml1_cg_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_MML1(_id, _name, _parent, _shift) {	\
@@ -1895,6 +1902,7 @@ static const struct mtk_gate_regs ovl11_hwv_regs = {
 		.regs = &ovl10_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_OVL10_V(_id, _name, _parent) {    \
@@ -1928,7 +1936,7 @@ static const struct mtk_gate_regs ovl11_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate ovl1_clks[] = {
@@ -2212,6 +2220,7 @@ static const struct mtk_gate_regs ovl21_hwv_regs = {
 		.regs = &ovl20_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_OVL20_V(_id, _name, _parent) {    \
@@ -2245,7 +2254,7 @@ static const struct mtk_gate_regs ovl21_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate ovl2_clks[] = {
@@ -2529,6 +2538,7 @@ static const struct mtk_gate_regs ovl1_hwv_regs = {
 		.regs = &ovl0_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VDISP,		\
 	}
 
 #define GATE_OVL0_V(_id, _name, _parent) {    \
@@ -2562,7 +2572,7 @@ static const struct mtk_gate_regs ovl1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VMM | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate ovl_clks[] = {

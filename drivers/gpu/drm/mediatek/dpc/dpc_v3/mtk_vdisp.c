@@ -19,6 +19,11 @@
 #include "mtk_disp_vidle.h"
 #include "mtk-smi-dbg.h"
 #include "clk-mtk.h"
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+#include "hwccf_provider.h"
+#include "hwccf_provider_data.h"
+#include "clkchk.h"
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <aee.h>
@@ -78,10 +83,18 @@ struct mtk_vdisp {
 	u32 pwr_ack_wait_time;
 	struct device_node *pwr_node;
 	int bringup_stage;
+	const struct mtk_vdisp_data *data;
 };
-const struct mtk_vdisp_data default_vdisp_driver_data = {
+
+static const struct mtk_vdisp_data mt6991_vdisp_driver_data = {
 	.avs = &default_vdisp_avs_driver_data,
 };
+
+static const struct mtk_vdisp_data mt6993_vdisp_driver_data = {
+	.avs = &default_vdisp_avs_driver_data,
+	.ap_voter_bit = 25,
+};
+
 static struct device *g_dev[DISP_PD_NUM];
 static struct device *g_parent_dev;
 static void __iomem *g_vlp_base;
@@ -312,31 +325,50 @@ static void mtk_vdisp_vlp_disp_vote(u32 user, bool set)
 
 static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 {
-	u32 hwccf_done = HW_CCF_BACKUP1_DONE;
-	u32 ctrl_reg = (enable) ? HW_CCF_XPU0_BACKUP1_SET : HW_CCF_XPU0_BACKUP1_CLR;
-	u32 hwccf_ctrl_status = (enable) ? HW_CCF_BACKUP1_SET_STATUS : HW_CCF_BACKUP1_CLR_STATUS;
+	const struct mtk_vdisp_data *data = priv->data;
 
-	if (IS_ERR_OR_NULL(priv->hwccf_base))
+	if (!data) {
+		VDISPERR("no vdisp data");
 		return;
+	}
 
-	while((readl_relaxed(priv->hwccf_base + hwccf_done) & BIT(HW_CCF_AP_VOTER_BIT)) != BIT(HW_CCF_AP_VOTER_BIT))
-		udelay(VOTE_DELAY_US);
+	if (g_priv->hwccf_base) {
+		u32 hwccf_done = HW_CCF_BACKUP1_DONE;
+		u32 ctrl_reg = (enable) ? HW_CCF_XPU0_BACKUP1_SET : HW_CCF_XPU0_BACKUP1_CLR;
+		u32 hwccf_ctrl_status = (enable) ? HW_CCF_BACKUP1_SET_STATUS : HW_CCF_BACKUP1_CLR_STATUS;
 
-	// set/clr
-	writel_relaxed(BIT(HW_CCF_AP_VOTER_BIT), (priv->hwccf_base + ctrl_reg));
+		if (IS_ERR_OR_NULL(priv->hwccf_base))
+			return;
 
-	// //polling
-	// while(readl_relaxed(ctrl_reg) != 0){
-	//	VDISPDBG("HWCCF_CTL_STSTUS= 0x%x", readl_relaxed(ctrl_reg));
-	// }
+		while((readl_relaxed(priv->hwccf_base + hwccf_done)
+				& BIT(HW_CCF_AP_VOTER_BIT)) != BIT(HW_CCF_AP_VOTER_BIT))
+			udelay(VOTE_DELAY_US);
 
-	// wait for hwccf done
-	while((readl_relaxed(priv->hwccf_base + hwccf_done) & BIT(HW_CCF_AP_VOTER_BIT)) != BIT(HW_CCF_AP_VOTER_BIT))
-		udelay(VOTE_DELAY_US);
+		// set/clr
+		writel_relaxed(BIT(HW_CCF_AP_VOTER_BIT), (priv->hwccf_base + ctrl_reg));
 
-	// wait for ctrl status been cleared
-	while((readl_relaxed(priv->hwccf_base + hwccf_ctrl_status) & BIT(HW_CCF_AP_VOTER_BIT)) != 0)
-		udelay(VOTE_DELAY_US);
+		// wait for hwccf done
+		while((readl_relaxed(priv->hwccf_base + hwccf_done)
+				& BIT(HW_CCF_AP_VOTER_BIT)) != BIT(HW_CCF_AP_VOTER_BIT))
+			udelay(VOTE_DELAY_US);
+		// wait for ctrl status been cleared
+		while((readl_relaxed(priv->hwccf_base + hwccf_ctrl_status)
+				& BIT(HW_CCF_AP_VOTER_BIT)) != 0)
+			udelay(VOTE_DELAY_US);
+	} else {
+		int hwccf_ret = 0;
+
+		#if IS_ENABLED(CONFIG_MTK_HWCCF)
+		hwccf_ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0,
+			enable ? HWCCF_VOTE : HWCCF_UNVOTE,
+			data->ap_voter_bit);
+		if (hwccf_ret) {
+			VDISPERR("hwccf irq voter failed, ret: %d", hwccf_ret);
+			clkchk_external_dump();
+		}
+		VDISPDBG("BUCK %s", (enable) ? "ON" : "OFF");
+		#endif
+	}
 }
 
 static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
@@ -398,16 +430,15 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			__pm_stay_awake(g_vdisp_wake_lock);
 #endif
-
 			vdisp_hwccf_ctrl(g_priv, true);
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
 			/* POST ON */
-
 			if (!g_priv->pwr_node)
 				for (i = 0; i < g_priv->clk_num; i++)
 					clk_prepare_enable(g_priv->clks[i]);
 			else
-				writel((BIT(0) | BIT(1) | BIT(2)), g_priv->vdisp_ao_cg_con + 0x8);
+				if (g_priv->vdisp_ao_cg_con)
+					writel((BIT(0) | BIT(1) | BIT(2)), g_priv->vdisp_ao_cg_con + 0x8);
 
 			/* clr vdisp_ao bus prot */
 			if (g_priv->mmpc_bus_prot_gp1)
@@ -440,7 +471,8 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 				for (i = 0; i < g_priv->clk_num; i++)
 					clk_disable_unprepare(g_priv->clks[i]);
 			else
-				writel((BIT(0) | BIT(1) | BIT(2)), g_priv->vdisp_ao_cg_con + 0x4);
+				if (g_priv->vdisp_ao_cg_con)
+					writel((BIT(0) | BIT(1) | BIT(2)), g_priv->vdisp_ao_cg_con + 0x4);
 
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
 			/* POST OFF */
@@ -856,6 +888,8 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 
 	priv->bringup_stage = bringup_stage;
 
+	priv->data = of_device_get_match_data(dev);
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "SPM_BASE");
 	if (res) {
 		priv->spm_base = devm_ioremap(dev, res->start, resource_size(res));
@@ -1071,11 +1105,12 @@ static void mtk_vdisp_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_vdisp_driver_v3_dt_match[] = {
 	{.compatible = "mediatek,mt6991-vdisp-ctrl-v3",
-	 .data = &default_vdisp_driver_data},
+	 .data = &mt6991_vdisp_driver_data},
 	{.compatible = "mediatek,mt6993-vdisp-ctrl-v3",
-	 .data = &default_vdisp_driver_data},
+	 .data = &mt6993_vdisp_driver_data},
 	{},
 };
+
 MODULE_DEVICE_TABLE(of, mtk_vdisp_driver_v3_dt_match);
 
 struct platform_driver mtk_vdisp_driver_v3 = {
