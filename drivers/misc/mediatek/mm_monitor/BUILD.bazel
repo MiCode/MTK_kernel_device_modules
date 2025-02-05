@@ -1,4 +1,3 @@
-
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl", "kernel_version",)
@@ -13,7 +12,11 @@ filegroup(
         "**/Kconfig",
     ]),
 )
+
 PLATFORMS = [
+    "mt6789",
+    "mt6855",
+    "mt6895",
     "mt6991",
     "mt6993",
 ]
@@ -34,6 +37,9 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
     ] +
+    ([":mm-monitor-platform-mt6789"] if glob(["mm-monitor-platform-mt6789.c"]) else []) +
+    ([":mm-monitor-platform-mt6855"] if glob(["mm-monitor-platform-mt6855.c"]) else []) +
+    ([":mm-monitor-platform-mt6895"] if glob(["mm-monitor-platform-mt6895.c"]) else []) +
     ([":mm-monitor-platform-mt6991"] if glob(["mm-monitor-platform-mt6991.c"]) else []) +
     ([":mm-monitor-platform-mt6993"] if glob(["mm-monitor-platform-mt6993.c"]) else []),
     header_deps = [
@@ -50,8 +56,11 @@ define_mgk_ddk_ko(
         "**/*.h",
     ]),
     includes = ["."],
-    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+            "-I$(DEVICE_MODULES_PATH)/include/dt-bindings/memory/",
+            ],
 ) for p in PLATFORMS]
+
 # add ddk_headers to export headers for other modules to use in the future
 ddk_headers(
     name = "mmmc_public_headers",
