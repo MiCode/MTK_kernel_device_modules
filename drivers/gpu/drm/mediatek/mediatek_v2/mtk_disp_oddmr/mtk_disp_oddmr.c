@@ -641,13 +641,15 @@
 	#define OD_SPR2RGB_SR2WRK_CG_ON					REG_FLD_MSB_LSB(3, 3)
 
 #define DISP_ODDMR_DBI_GUSER_CTRL_1 0x084
-	#define REG_DBI_AR_SLC REG_FLD_MSB_LSB(4, 0)
+	#define REG_DBI_SLC_AR REG_FLD_MSB_LSB(4, 0)
+	#define REG_DBI_SLC_GID REG_FLD_MSB_LSB(22, 16)
 #define DISP_ODDMR_DMR_GUSER_CTRL_1 0x088
-	#define REG_DMR_AR_SLC REG_FLD_MSB_LSB(4, 0)
+	#define REG_DMR_SLC_AR REG_FLD_MSB_LSB(4, 0)
+	#define REG_DMR_SLC_GID REG_FLD_MSB_LSB(22, 16)
 #define DISP_ODDMR_ODR_GUSER_CTRL_1 0x08c
-	#define REG_ODR_AR_SLC REG_FLD_MSB_LSB(4, 0)
+	#define REG_ODR_SLC_AR REG_FLD_MSB_LSB(4, 0)
 #define DISP_ODDMR_ODW_GUSER_CTRL_1 0x090
-	#define REG_ODW_WR_SLC REG_FLD_MSB_LSB(4, 0)
+	#define REG_ODW_SLC_AR REG_FLD_MSB_LSB(4, 0)
 
 static bool debug_flow_log;
 #define ODDMRFLOW_LOG(fmt, arg...) do { \
@@ -708,10 +710,18 @@ static unsigned char lookup[16] = {
 	0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf,
 };
 
+enum ODDMR_SLC_STATE {
+	ODDMR_SLC_UNINIT = 0,
+	ODDMR_SLC_REQUESTED = 1,
+	ODDMR_SLC_VALID = 2,
+};
+
 static int g_slc_gid[ODDMR_SLC_NUM] = {-1, -1, -1};
-static int g_slc_valid[ODDMR_SLC_NUM];
+static int g_slc_state[ODDMR_SLC_NUM];
 static int g_slc_read_alloc;
 static int g_slc_period;
+
+static int g_dbi_update;
 
 /* 0: instant trigger, 1: delay trigger 2: no trigger*/
 static uint32_t g_od_check_trigger = 1;
@@ -1222,12 +1232,15 @@ static int disp_oddmr_slc_request(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC
 	uid = disp_oddmr_get_slc_uid(idx);
 	if (uid < 0)
 		return ret;
-	if (g_slc_gid[idx] <= 0) {
+	if (g_slc_state[idx] == ODDMR_SLC_UNINIT) {
 		gid = -1;
 		ret = slbc_gid_request(uid, &gid, &data);
-		g_slc_gid[idx] = gid;
+		if (g_slc_gid[idx] < 0)
+			g_slc_gid[idx] = gid;
 		if (ret)
 			DDPPR_ERR("%s request failed %d\n", __func__, ret);
+		else
+			g_slc_state[idx] = ODDMR_SLC_REQUESTED;
 	} else {
 		DDPPR_ERR("%s already requested for %d:%d\n", __func__, idx, g_slc_gid[idx]);
 		ret = 0;
@@ -1245,14 +1258,14 @@ static int disp_oddmr_slc_valid(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_I
 	if (uid < 0)
 		return ret;
 
-	if (g_slc_gid[idx] > 0 && !g_slc_valid[idx]) {
+	if (g_slc_state[idx] == ODDMR_SLC_REQUESTED) {
 		ret = slbc_validate(uid, g_slc_gid[idx]);
 		if (!ret)
-			g_slc_valid[idx] = 1;
+			g_slc_state[idx] = ODDMR_SLC_VALID;
 		else
 			DDPPR_ERR("%s failed %d %d\n", __func__, idx, g_slc_gid[idx]);
 	} else
-		DDPPR_ERR("%s skip %d %d %d\n", __func__, idx, g_slc_gid[idx], g_slc_valid[idx]);
+		DDPPR_ERR("%s skip %d %d %d\n", __func__, idx, g_slc_gid[idx], g_slc_state[idx]);
 	return ret;
 }
 
@@ -1266,14 +1279,14 @@ static int disp_oddmr_slc_invalid(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC
 	if (uid < 0)
 		return ret;
 
-	if (g_slc_gid[idx] > 0 && g_slc_valid[idx]) {
+	if (g_slc_gid[idx] > 0 && g_slc_state[idx] == ODDMR_SLC_VALID) {
 		ret = slbc_invalidate(uid, g_slc_gid[idx]);
 		if (!ret)
-			g_slc_valid[idx] = 0;
+			g_slc_state[idx] = ODDMR_SLC_REQUESTED;
 		else
 			DDPPR_ERR("%s failed %d %d\n", __func__, idx, g_slc_gid[idx]);
 	} else
-		DDPPR_ERR("%s skip %d %d %d\n", __func__, idx, g_slc_gid[idx], g_slc_valid[idx]);
+		DDPPR_ERR("%s skip %d %d %d\n", __func__, idx, g_slc_gid[idx], g_slc_state[idx]);
 	return ret;
 }
 
@@ -2602,10 +2615,12 @@ static void mtk_oddmr_dmr_set_slc(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int value, mask;
 
-	if (oddmr_data->use_slc[DMR_SLC] && g_slc_valid[DMR_SLC]) {
+	if (oddmr_data->use_slc[DMR_SLC] && g_slc_state[DMR_SLC] == ODDMR_SLC_VALID) {
 		value = 0;
 		mask = 0;
-		SET_VAL_MASK(value, mask, ar, REG_DMR_AR_SLC);
+		SET_VAL_MASK(value, mask, ar, REG_DMR_SLC_AR);
+		if (g_slc_gid[DMR_SLC] > 0)
+			SET_VAL_MASK(value, mask, g_slc_gid[DMR_SLC], REG_DMR_SLC_GID);
 		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DMR_GUSER_CTRL_1, mask, handle);
 	}
 }
@@ -2883,10 +2898,12 @@ static void mtk_oddmr_dbi_set_slc(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int value, mask;
 
-	if (oddmr_data->use_slc[DBI_SLC] && g_slc_valid[DBI_SLC]) {
+	if (oddmr_data->use_slc[DBI_SLC] && g_slc_state[DBI_SLC] == ODDMR_SLC_VALID) {
 		value = 0;
 		mask = 0;
-		SET_VAL_MASK(value, mask, ar, REG_DBI_AR_SLC);
+		SET_VAL_MASK(value, mask, ar, REG_DBI_SLC_AR);
+		if (g_slc_gid[DBI_SLC] > 0)
+			SET_VAL_MASK(value, mask, g_slc_gid[DBI_SLC], REG_DBI_SLC_GID);
 		mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DBI_GUSER_CTRL_1, mask, handle);
 	}
 }
@@ -3681,6 +3698,16 @@ void mtk_disp_oddmr_debug(struct drm_crtc *crtc, const char *opt)
 		ODDMRFLOW_LOG("slc_alloc:%d/%d\n", alloc, period);
 		g_slc_period = period;
 		g_slc_read_alloc = alloc;
+	} else if (strncmp(opt, "dbi_update:", 11) == 0) {
+		int update, ret;
+
+		ret = sscanf(opt, "dbi_update:%d\n", &update);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		ODDMRFLOW_LOG("dbi_update:%d\n", update);
+		g_dbi_update = update;
 	} else if (strncmp(opt, "debugdump:", 10) == 0) {
 		ODDMRFLOW_LOG("debug_flow_log = %d\n", debug_flow_log);
 		ODDMRFLOW_LOG("debug_api_log = %d\n", debug_api_log);
@@ -6031,8 +6058,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		mtk_oddmr_dbi_srt_cal(comp, oddmr_data->dbi_enable);
 
-		if(dbi_enable != oddmr_data->dbi_enable) {
+		if(dbi_enable != oddmr_data->dbi_enable || g_dbi_update) {
 			oddmr_data->primary_data->slc_frame_cnt[DBI_SLC] = 0;
+			g_dbi_update = 0;
 			mtk_oddmr_dbi_config(comp,handle);
 			dbi_enable = oddmr_data->dbi_enable;
 		} else if (oddmr_data->dbi_enable) {
@@ -11767,6 +11795,11 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 		memset(oddmr_data->use_slc, 0, sizeof(oddmr_data->use_slc));
 	else
 		of_property_read_u32_array(dev->of_node, "mediatek,oddmr-slc", oddmr_data->use_slc, count);
+
+	count = of_property_count_u32_elems(dev->of_node, "mediatek,oddmr-slc-gid");
+	if (count > 0)
+		of_property_read_u32_array(dev->of_node, "mediatek,oddmr-slc-gid", (unsigned int *)g_slc_gid, count);
+
 	ret = of_property_read_u32(dev->of_node, "mediatek,larb-oddmr-dmrr", &oddmr_data->larb_dmrr);
 	if (ret) {
 		dev_err(dev, "%s Failed to initialize oddmr-dmrr: %d\n", __func__, ret);

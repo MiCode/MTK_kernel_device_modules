@@ -2883,7 +2883,7 @@ static bool is_comp_addr(uint32_t addr, struct mtk_ddp_comp *comp)
 	uint32_t offset = 0x0;
 
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)
-		range = 0x2000;
+		range = 0x20000;
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_SPR)
 		offset = 0x10000;
 	if (addr >= (comp->regs_pa + offset) &&
