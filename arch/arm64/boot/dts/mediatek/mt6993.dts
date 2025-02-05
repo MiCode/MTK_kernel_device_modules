@@ -6102,6 +6102,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x4b860000 0 0x1000>,   /* MFG_VCORE_AO_CFG */
 				<0 0x4b910000 0 0x1000>,   /* MFG_VCORE_BUS_DBG_TRACKER */
 				<0 0x11014000 0 0x1000>,   /* EMI_IFR_NONCOH_GALS */
+				<0 0x11025000 0 0x1000>,   /* EMI_IFR_CFG */
 				<0 0x1102b000 0 0x300>,    /* EMI_IFR_PDN_BRCM */
 				<0 0x11037000 0 0x100>,    /* EMI_IFR_ACP_RSI */
 				<0 0x1c004000 0 0x1000>;   /* SLEEP */
@@ -6117,6 +6118,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mfg_vcore_ao_cfg",
 				"mfg_vcore_bus_trk",
 				"emi_infra_noncoh_gals",
+				"emi_infra_cfg",
 				"emi_infra_pdn_bcrm",
 				"emi_infra_acp_rsi",
 				"sleep";
