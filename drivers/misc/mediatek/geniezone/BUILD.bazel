@@ -68,9 +68,7 @@ ddk_headers(
 	hdrs = glob([
 		"*.h",
 		"include/*.h",
-	]) + [
-		":gz-public_hdrs",
-	],
+	]),
 	includes = [
 		".",
 		"include",
@@ -111,6 +109,9 @@ define_mgk_ddk_ko(
 			],
 		},
 	},
+	hdrs = [
+		":gz-public_hdrs",
+	],
 	header_deps = [
 		":local_hdrs",
 		":gz-mtee_ut_hdrs",
@@ -130,6 +131,9 @@ define_mgk_ddk_ko(
 		"mtee-kree/kree_mem.c",
 		"mtee-kree/tz_mmap.c",
 		"tz_system.c",
+	],
+	hdrs = [
+		":gz-public_hdrs",
 	],
 	header_deps = [
 		":local_hdrs",

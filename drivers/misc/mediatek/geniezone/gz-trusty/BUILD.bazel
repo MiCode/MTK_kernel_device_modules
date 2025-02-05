@@ -33,9 +33,7 @@ ddk_headers(
 	name = "local_hdrs",
 	hdrs = glob([
 		"*.h",
-	]) + [
-		"{}:gz-public_hdrs".format(gz_main_package),
-	],
+	]),
 	includes = [
 		".",
 	],
@@ -71,6 +69,9 @@ define_mgk_ddk_ko(
 			],
 		},
 	},
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
+	],
 	header_deps = [
 		":local_hdrs",
 	],
@@ -84,6 +85,9 @@ define_mgk_ddk_ko(
 	out = "gz_ipc_mod.ko",
 	srcs = [
 		"trusty-ipc.c",
+	],
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
 	],
 	header_deps = [
 		":local_hdrs",
@@ -99,6 +103,9 @@ define_mgk_ddk_ko(
 	srcs = [
 		"trusty-irq.c",
 	],
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
+	],
 	header_deps = [
 		":local_hdrs",
 	],
@@ -112,6 +119,9 @@ define_mgk_ddk_ko(
 	out = "gz_log_mod.ko",
 	srcs = [
 		"gz-log.c",
+	],
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
 	],
 	header_deps = [
 		":local_hdrs",
@@ -128,6 +138,9 @@ define_mgk_ddk_ko(
 	srcs = [
 		"trusty-virtio.c",
 		"trusty-mem.c",
+	],
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
 	],
 	header_deps = [
 		":local_hdrs",
