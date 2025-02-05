@@ -6393,6 +6393,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mmlsys_config_clk MML_MDP_FG0_MML>;
 			clock-names = "fg0";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P6_MDP_FG0)>;
+			larb-idx = /bits/ 8 <MML_LARB2_IDX>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 		};
@@ -6631,6 +6632,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mml1_mmlsys_config_clk MML1_MDP_RDMA2_MML>;
 			clock-names = "rdma2";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P4_MDP_RDMA2)>;
+			larb-idx = /bits/ 8 <MML_LARB3_IDX>;
 
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P4_MDP_RDMA2)
@@ -6696,6 +6698,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mml1_mmlsys_config_clk MML1_MDP_WROT2_MML>;
 			clock-names = "wrot2";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P5_MDP_WROT2)>;
+			larb-idx = /bits/ 8 <MML_LARB3_IDX>;
 
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L3_P5_MDP_WROT2)
@@ -7102,6 +7105,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mml2_mmlsys_config_clk MML2_MDP_RDMA1_MML>;
 			clock-names = "rdma1";
 			mediatek,larb = <&smi_larb57 MTK_M4U_TO_PORT(SMMU_L57_P0_MDP_RDMA1)>;
+			larb-idx = /bits/ 8 <MML_LARB57_IDX>;
 
 			mmqos-supply = <&mmqos>;
 			interconnects =
@@ -7129,6 +7133,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mml2_mmlsys_config_clk MML2_MDP_WROT0_MML>;
 			clock-names = "wrot0";
 			mediatek,larb = <&smi_larb56 MTK_M4U_TO_PORT(SMMU_L56_P1_MDP_WROT0)>;
+			larb-idx = /bits/ 8 <MML_LARB56_IDX>;
 
 			mmqos-supply = <&mmqos>;
 			interconnects =
@@ -7155,6 +7160,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mml2_mmlsys_config_clk MML2_MDP_RROT0_MML>;
 			clock-names = "rrot0";
 			mediatek,larb = <&smi_larb56 MTK_M4U_TO_PORT(SMMU_L56_P2_MDP_RROT0)>;
+			larb-idx = /bits/ 8 <MML_LARB56_IDX>;
 
 			mmqos-supply = <&mmqos>;
 			interconnects =
@@ -7189,6 +7195,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mml2_mmlsys_config_clk MML2_MDP_RROT1_MML>;
 			clock-names = "rrot0";
 			mediatek,larb = <&smi_larb57 MTK_M4U_TO_PORT(SMMU_L57_P2_MDP_RROT1)>;
+			larb-idx = /bits/ 8 <MML_LARB57_IDX>;
 
 			mmqos-supply = <&mmqos>;
 			interconnects =
@@ -7216,6 +7223,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mml2_mmlsys_config_clk MML2_MDP_WROT1_MML>;
 			clock-names = "wrot0";
 			mediatek,larb = <&smi_larb57 MTK_M4U_TO_PORT(SMMU_L57_P1_MDP_WROT1)>;
+			larb-idx = /bits/ 8 <MML_LARB57_IDX>;
 
 			mmqos-supply = <&mmqos>;
 			interconnects =
