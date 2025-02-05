@@ -3648,7 +3648,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"ddr_lv,",
 				"PMQOS_BW0,PMQOS_BW1,PMQOS_BW2,PMQOS_BW3,PMQOS_BW4,PMQOS_BW_TOTAL,",
 				"EMI_Occupy_TOTAL,",
-				"EMI_data_CPU,EMI_data_GPU,EMI_data_MM,EMI_data_MD,EMI_data_TOTAL";
+				"EMI_data_CPU,EMI_data_GPU,EMI_data_MM,EMI_data_MD,EMI_data_TOTAL,",
+				"qos_control_table";
 
 			node-3 = "SSPM_CM_MGR_NON_WFX",
 				"non_wfx_0,non_wfx_1,non_wfx_2,non_wfx_3,",
@@ -15545,9 +15546,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		qos:qos@11bb00 {
 			compatible = "mediatek,mt6893-qos";
 			reg = <0 0x0011bb00 0 0x100>,
-				<0 0x0011b9c0 0 0x140>,
-				<0 0x0011b920 0 0xa0>;
-			reg-names = "sram", "share_sram", "share_sram_ext";
+				<0 0x0011b8dc 0 0x224>,
+				<0 0x0011b920 0 0x0>,
+				<0 0x0011b864 0 0x2c>;
+		reg-names = "sram", "share_sram", "share_sram_ext", "share_sram_dbg";
 			mediatek,enable = <1>;
 		};
 
