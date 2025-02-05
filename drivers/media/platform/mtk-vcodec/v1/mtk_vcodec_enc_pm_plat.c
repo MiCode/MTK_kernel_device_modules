@@ -47,7 +47,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	const int tp_item_num = 6;
 	const int cfg_item_num = 4;
 	const int bw_item_num = 3;
-	int i, ret;
+	int i, ret, cnt = 0;
 	struct platform_device *pdev;
 	u32 nmin, nmax;
 	s32 offset;
@@ -78,8 +78,12 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	dev->venc_dvfs_params.allow_oc = 0;
 
 	/* throughput */
-	dev->venc_tput_cnt = of_property_count_u32_elems(pdev->dev.of_node,
-				"throughput-table") / tp_item_num;
+	cnt = of_property_count_u32_elems(pdev->dev.of_node, "throughput-table");
+	if (cnt < 0) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] invalid venc_tput_cnt value");
+		return false;
+	}
+	dev->venc_tput_cnt = cnt / tp_item_num;
 
 	if (!dev->venc_tput_cnt) {
 		mtk_vcodec_dvfs_qos_log(true, "[VENC] throughput table not exist");
@@ -145,8 +149,12 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	}
 
 	/* config */
-	dev->venc_cfg_cnt = of_property_count_u32_elems(pdev->dev.of_node,
-				"config-table") / cfg_item_num;
+	cnt = of_property_count_u32_elems(pdev->dev.of_node, "config-table");
+	if (cnt < 0) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] invalid venc_cfg_cnt value");
+		return false;
+	}
+	dev->venc_cfg_cnt = cnt / cfg_item_num;
 
 	if (!dev->venc_cfg_cnt) {
 		mtk_vcodec_dvfs_qos_log(true, "[VENC] config table not exist");
@@ -197,8 +205,12 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	}
 
 	/* bw */
-	dev->venc_larb_cnt = of_property_count_u32_elems(pdev->dev.of_node,
-				"bandwidth-table") / bw_item_num;
+	cnt = of_property_count_u32_elems(pdev->dev.of_node, "bandwidth-table");
+	if (cnt < 0) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] invalid venc_larb_cnt value");
+		return false;
+	}
+	dev->venc_larb_cnt = cnt / bw_item_num;
 
 	if (dev->venc_larb_cnt > MTK_VENC_LARB_NUM) {
 		mtk_vcodec_dvfs_qos_log(true, "[VENC] venc larb over limit %d > %d",
@@ -353,7 +365,10 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 		dev_pm_opp_put(opp);
 	}
 
-	mtk_enc_tput_init(dev);
+	ret = mtk_enc_tput_init(dev);
+	if (!ret)
+		mtk_enc_tput_deinit(dev);
+
 #endif
 }
 

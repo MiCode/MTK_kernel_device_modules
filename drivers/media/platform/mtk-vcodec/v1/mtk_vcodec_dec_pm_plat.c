@@ -35,8 +35,8 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	const int tp_item_num = 4;
 	const int bw_item_num = 3;
 	struct platform_device *pdev;
-	int i, j, ret;
-	u32 nmin = 0, nmax = 0, cnt = 0;
+	int i, j, ret, cnt = 0;
+	u32 nmin = 0, nmax = 0;
 
 	pdev = dev->plat_dev;
 
@@ -71,13 +71,18 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	/* max operating rate by codec / resolution */
 	cnt = of_property_count_u32_elems(pdev->dev.of_node, "max-op-rate-table");
+	if (cnt < 0) {
+		mtk_vcodec_dvfs_qos_log(true, "[VDEC] invalid max-op-rate-table value");
+		return false;
+	}
 	dev->vdec_op_rate_cnt = cnt / op_item_num;
 
 	mtk_vcodec_dvfs_qos_log(false, "[VDEC] max-op-rate table elements %u, %d per line",
 			cnt, op_item_num);
-	if (!dev->vdec_op_rate_cnt)
+	if (!dev->vdec_op_rate_cnt) {
 		mtk_vcodec_dvfs_qos_log(true, "[VDEC] max-op-rate-table not exist");
-
+		return false;
+	}
 
 	dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
 
@@ -115,12 +120,18 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			}
 			dev->vdec_dflt_op_rate[i].codec_type = 0;
 		}
-	} else
+	} else {
 		mtk_vcodec_dvfs_qos_log(true, "[VDEC] vzalloc vdec_dflt_op_rate table failed");
+		return false;
+	}
 
 
 	/* throughput */
 	cnt = of_property_count_u32_elems(pdev->dev.of_node, "throughput-table");
+	if (cnt < 0) {
+		mtk_vcodec_dvfs_qos_log(true, "[VDEC] invalid throughput-table value");
+		return false;
+	}
 	dev->vdec_tput_cnt = cnt / tp_item_num;
 
 	mtk_vcodec_dvfs_qos_log(false, "[VDEC] tput table elements %u, %d per line",
@@ -129,8 +140,10 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 		dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
 		mtk_vcodec_dvfs_qos_log(false, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_perf), dev->vdec_tput_cnt, dev->vdec_tput);
-	} else
+	} else {
 		mtk_vcodec_dvfs_qos_log(true, "[VDEC] throughtput table not exist");
+		return false;
+	}
 
 	if (dev->vdec_tput) {
 		for (i = 0; i < dev->vdec_tput_cnt; i++) {
@@ -164,12 +177,18 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			}
 			dev->vdec_tput[i].codec_type = 0;
 		}
-	} else
+	} else {
 		mtk_vcodec_dvfs_qos_log(true, "[VDEC] vzalloc vdec_tput table failed");
+		return false;
+	}
 
 	/* bw */
-	dev->vdec_larb_cnt = of_property_count_u32_elems(pdev->dev.of_node,
-				"bandwidth-table") / bw_item_num;
+	cnt = of_property_count_u32_elems(pdev->dev.of_node, "bandwidth-table");
+	if (cnt < 0) {
+		mtk_vcodec_dvfs_qos_log(true, "[VDEC] invalid bandwidth-table value");
+		return false;
+	}
+	dev->vdec_larb_cnt = cnt / bw_item_num;
 
 	if (dev->vdec_larb_cnt > MTK_VDEC_LARB_NUM) {
 		mtk_vcodec_dvfs_qos_log(true, "[VDEC] vdec port over limit %d > %d",
@@ -177,8 +196,10 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 		dev->vdec_larb_cnt = MTK_VDEC_LARB_NUM;
 	}
 
-	if (!dev->vdec_larb_cnt)
+	if (!dev->vdec_larb_cnt) {
 		mtk_vcodec_dvfs_qos_log(true, "[VDEC] bandwidth table not exist");
+		return false;
+	}
 
 	dev->vdec_larb_bw = vzalloc(sizeof(struct vcodec_larb_bw) * dev->vdec_larb_cnt);
 	if (dev->vdec_larb_bw) {
@@ -204,8 +225,10 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 				return false;
 			}
 		}
-	} else
+	} else {
 		mtk_vcodec_dvfs_qos_err("[VDEC] vzalloc vdec_larb_bw table failed");
+		return false;
+	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "os-allow-bw",
 			&dev->vdec_dvfs_params.os_bw[1]);
@@ -342,7 +365,11 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		i++;
 		dev_pm_opp_put(opp);
 	}
-	mtk_dec_tput_init(dev);
+
+	ret = mtk_dec_tput_init(dev);
+	if (!ret)
+		mtk_dec_tput_deinit(dev);
+
 #endif
 }
 
