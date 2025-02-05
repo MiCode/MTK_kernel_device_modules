@@ -176,6 +176,7 @@ define_platform_scpsys_ko("mt6983")
 define_platform_scpsys_ko("mt6985")
 define_platform_scpsys_ko("mt6989")
 define_platform_scpsys_ko("mt6855")
+define_platform_scpsys_ko("mt6895")
 
 define_mgk_ddk_ko(
     name = "mtk-mmdvfs",
