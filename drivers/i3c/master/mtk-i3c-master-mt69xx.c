@@ -97,6 +97,8 @@
 #define I3C_DELAY_LEN                 (0x02)
 
 /* DMA Register Bit */
+#define I3C_DMA_INT_FLAG_RX           BIT(1)
+#define I3C_DMA_INT_FLAG_TX           BIT(0)
 #define I3C_DMA_INT_FLAG_CLR          (0)
 #define I3C_DMA_EN_START              BIT(0)
 
@@ -131,6 +133,7 @@
 #define I3C_HEAD_SPEED (2300000)
 
 /* Reference to core layer timeout (ns) */
+#define I3C_WAIT_DMA_TIMEOUT (8000000)
 #define I3C_POLLING_TIMEOUT (50000000)
 #define I3C_ENTDAA_TIMEOUT  (2000000)
 
@@ -2022,6 +2025,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 	unsigned long time_left = 0;
 	unsigned long flags;
 	u64 cur_time = 0;
+	u64 wait_apdma_time = 0;
 	u64 entdaa_spin_lock_time = 0;
 	u64 entdaa_spin_unlock_time = 0;
 
@@ -2142,24 +2146,6 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 			else
 				time_left = 0;
 		}
-		if (xfer->dma_en) {
-			if (xfer->op == MTK_I3C_MASTER_WR) {
-				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
-				kfree(xfer->pdma.dma_wr_buf);
-			} else if (xfer->op == MTK_I3C_MASTER_RD) {
-				dma_unmap_single(i3c->dev, xfer->pdma.rpaddr, xfer->rx_len, DMA_FROM_DEVICE);
-				memcpy(xfer->rx_buf, xfer->pdma.dma_rd_buf, xfer->rx_len);
-				kfree(xfer->pdma.dma_rd_buf);
-			} else if (xfer->op == MTK_I3C_MASTER_WRRD) {
-				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
-				kfree(xfer->pdma.dma_wr_buf);
-				dma_unmap_single(i3c->dev, xfer->pdma.rpaddr, xfer->rx_len, DMA_FROM_DEVICE);
-				memcpy(xfer->rx_buf, xfer->pdma.dma_rd_buf, xfer->rx_len);
-				kfree(xfer->pdma.dma_rd_buf);
-			} else if (xfer->op == MTK_I3C_MASTER_CON_WR) {
-				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
-			}
-		}
 		if ((time_left == 0) || (i3c->irq_stat & I3C_INTR_IBI)) {
 			I3C_DUMP_BUF(i3c->entdaa_addr, MTK_I3C_MAX_DEVS,
 				"entdaa_count=%u,addr:", i3c->entdaa_count);
@@ -2177,7 +2163,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 				ret = -ETIMEDOUT;
 			else
 				ret = -EBUSY;
-			goto err_exit;
+			goto dma_unmap;
 		}
 		if (i3c->irq_stat & I3C_INTR_HS_ACKERR) {
 			if (i3c->base.init_done) {
@@ -2189,7 +2175,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 				__func__, xfer->addr, i3c->irq_stat, intr_mask_reg, read_mask,
 				xfer->mode, xfer->ccc_id, i3c->base.init_done);
 			mtk_i3c_init_hw(i3c);
-			goto err_exit;
+			goto dma_unmap;
 		}
 
 		if (i3c->irq_stat & I3C_INTR_ACKERR) {
@@ -2202,7 +2188,7 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 				xfer->error = I3C_ERROR_M1;
 				ret = -ENXIO;
 			}
-			goto err_exit;
+			goto dma_unmap;
 		}
 
 		if (!(xfer->dma_en)) {
@@ -2216,6 +2202,45 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 						__func__, i3c, xfer->addr, *rxptr_fifo, rxsize_fifo);
 					rxptr_fifo++;
 				}
+			}
+		} else if ((xfer->op == MTK_I3C_MASTER_RD) ||
+			(xfer->op == MTK_I3C_MASTER_WRRD)) {
+			/* polling apdma send data to dram for read data condation */
+			wait_apdma_time = ktime_get_ns();
+			while (!(readl(i3c->pdmabase + OFFSET_INT_FLAG) & I3C_DMA_INT_FLAG_RX) &&
+				((ktime_get_ns() - wait_apdma_time) < I3C_WAIT_DMA_TIMEOUT))
+				cpu_relax();
+			/* make sure memory order */
+			mb();
+			if (!(readl(i3c->pdmabase + OFFSET_INT_FLAG) & I3C_DMA_INT_FLAG_RX)) {
+				dev_info(i3c->dev, "[%s] polling apdma_rx_flag timeout.\n",
+					__func__);
+				mtk_i3c_dump_reg(i3c);
+				mtk_i3c_init_hw(i3c);
+				ret = -ETIMEDOUT;
+			}
+			/* make sure memory order */
+			mb();
+			writel(I3C_DMA_INT_FLAG_CLR, i3c->pdmabase + OFFSET_INT_FLAG);
+		}
+
+dma_unmap:
+		if (xfer->dma_en) {
+			if (xfer->op == MTK_I3C_MASTER_WR) {
+				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
+				kfree(xfer->pdma.dma_wr_buf);
+			} else if (xfer->op == MTK_I3C_MASTER_RD) {
+				dma_unmap_single(i3c->dev, xfer->pdma.rpaddr, xfer->rx_len, DMA_FROM_DEVICE);
+				memcpy(xfer->rx_buf, xfer->pdma.dma_rd_buf, xfer->rx_len);
+				kfree(xfer->pdma.dma_rd_buf);
+			} else if (xfer->op == MTK_I3C_MASTER_WRRD) {
+				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
+				kfree(xfer->pdma.dma_wr_buf);
+				dma_unmap_single(i3c->dev, xfer->pdma.rpaddr, xfer->rx_len, DMA_FROM_DEVICE);
+				memcpy(xfer->rx_buf, xfer->pdma.dma_rd_buf, xfer->rx_len);
+				kfree(xfer->pdma.dma_rd_buf);
+			} else if (xfer->op == MTK_I3C_MASTER_CON_WR) {
+				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
 			}
 		}
 	}
