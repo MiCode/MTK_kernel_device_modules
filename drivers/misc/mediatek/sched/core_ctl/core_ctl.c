@@ -2614,6 +2614,22 @@ static unsigned int find_turn_point(struct cluster_data *c1,
 	return turn_point;
 }
 
+static void update_ppm_log_handler(struct work_struct *work);
+static DECLARE_DELAYED_WORK(update_ppm_log, update_ppm_log_handler);
+
+static void update_ppm_log_handler(struct work_struct *work)
+{
+	int cid;
+	struct cluster_data *prev_cluster;
+
+	for(cid=0; cid<MAX_CLUSTERS; cid++) {
+		if (cid != L_CLUSTER_ID) {
+			prev_cluster = &cluster_state[cid - 1];
+			pr_info("%s: update ppm cid=%d turn_cap=%u ", TAG, cid-1, prev_cluster->cap_turn_point);
+		}
+	}
+}
+
 static int update_ppm_eff(void)
 {
 	int opp_nr, first_cpu, cid, i;
@@ -2648,9 +2664,10 @@ static int update_ppm_eff(void)
 				turn_point = prev_cluster->ppm_data.ppm_tbl[0].capacity;
 
 			prev_cluster->cap_turn_point = turn_point;
-			pr_info("%s: update ppm cid=%d turn_cap=%u ", TAG, cid-1, turn_point);
 		}
 	}
+	mod_delayed_work(system_power_efficient_wq, &update_ppm_log,
+						msecs_to_jiffies(100));
 	return 0;
 }
 
