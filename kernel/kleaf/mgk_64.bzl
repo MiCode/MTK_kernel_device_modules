@@ -192,6 +192,21 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/irq_monitor:ktf_irq_monitor",
     "//vendor/mediatek/tests/kernel/ktf_testcase/power_throttling:ktf_power_throttling",
     "//vendor/mediatek/tests/kernel/ktf_testcase/pbm_mdpm:ktf_pbm_mdpm",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcodec/vcodec_ait:ktf_vcodec_ait3",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcodec/vcodec_ait:ktf_vcodec_ait2",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcodec/vcodec_ait:ktf_vcodec_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mmdvfs:ktf_mmdvfs",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mminfra:ktf_mminfra",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/adsp:ktf_adsp_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/gpueb:ktf_gpueb_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mminfra:ktf_mminfra_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/display_mobile_wbgai:ktf_display_mobile_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/display_pq_wbgai:ktf_display_pq_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/vcp:ktf_vcp_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcp/ipifuzz_vcp:ktf_vcp_ipifuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_sap_ipifuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_scp_ipifuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/scp:ktf_scp_ipifuzz_autogen",
 ]
 
 mgk_64_kleaf_userdebug_modules = [
@@ -259,6 +274,21 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/irq_monitor:ktf_irq_monitor",
     "//vendor/mediatek/tests/kernel/ktf_testcase/power_throttling:ktf_power_throttling",
     "//vendor/mediatek/tests/kernel/ktf_testcase/pbm_mdpm:ktf_pbm_mdpm",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcodec/vcodec_ait:ktf_vcodec_ait3",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcodec/vcodec_ait:ktf_vcodec_ait2",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcodec/vcodec_ait:ktf_vcodec_ait",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mmdvfs:ktf_mmdvfs",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mminfra:ktf_mminfra",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/adsp:ktf_adsp_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/gpueb:ktf_gpueb_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/mminfra:ktf_mminfra_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/display_mobile_wbgai:ktf_display_mobile_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/display_pq_wbgai:ktf_display_pq_wbgai",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/vcp:ktf_vcp_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/vcp/ipifuzz_vcp:ktf_vcp_ipifuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_sap_ipifuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_scp_ipifuzz",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/scp:ktf_scp_ipifuzz_autogen",
 ]
 
 mgk_64_kleaf_user_modules = [
@@ -1886,6 +1916,8 @@ def get_overlay_modules_list():
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp".format(kernel_version))
 
+        mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/mmdvfs:ktf_mmdvfs")
+        mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/mmdvfs:ktf_mmdvfs")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug-v3".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version))
