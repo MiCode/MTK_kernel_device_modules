@@ -1,0 +1,60 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "lm3643",
+    srcs = [
+        "lm3643.c",
+        "lm3643.h",
+    ],
+    header_deps =[
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/drivers/misc/mediatek/flashlight",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "lm3644",
+    srcs = [
+        "lm3644.c",
+        "lm3644.h",
+    ],
+    header_deps =[
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/drivers/misc/mediatek/flashlight",
+    ],
+)
