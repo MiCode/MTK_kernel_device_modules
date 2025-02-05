@@ -19,26 +19,26 @@ config MTK_ZRAM_ENGINE
 	  If you are not sure about whether to enable it or not, please set n.
 
 config ZRAM_ENGINE_COMP_FIFO_1_BITS
-	int "The entry bits of ZRAM ENGINE Compression FIFO #1 (5-11)"
-	range 5 11
-	default "8"
+	int "The entry bits of ZRAM ENGINE Compression FIFO #1 (8-11)"
+	range 8 11
+	default "11"
 	help
-	  This will create a fifo with depth of 2^5 ~ 2^11.
+	  This will create a fifo with depth of 2^8 ~ 2^11.
 
 config ZRAM_ENGINE_COMP_FIFO_2_BITS
-	int "The entry bits of ZRAM ENGINE Compression FIFO #2 (5-11)"
-	range 5 11
-	default "7"
+	int "The entry bits of ZRAM ENGINE Compression FIFO #2 (7-11)"
+	range 7 11
+	default "11"
 	help
-	  This will create a fifo with depth of 2^5 ~ 2^11.
+	  This will create a fifo with depth of 2^7 ~ 2^11.
 
 config ZRAM_ENGINE_DECOMP_FIFO_BITS
-	int "The entry bits of ZRAM ENGINE Decompression FIFOs (0-7)"
-	range 0 7
-	default "3"
+	int "The entry bits of ZRAM ENGINE Decompression FIFOs (3-7)"
+	range 3 7
+	default "7"
 	help
-	  When setting to 0, the way of waiting for decompression completion
-	  will be changed to synchronous mode. Asynchronous mode for others.
+	  This will create per-cpu fifos with depth of 2^3 ~ 2^7 for
+	  decompression.
 
 config HWCOMP_SUPPORT_NO_DST_COPY
 	bool "No extra SW copy to store HW compressed data"
