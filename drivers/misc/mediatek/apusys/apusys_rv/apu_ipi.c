@@ -1699,13 +1699,10 @@ static void apu_ipi_dbg_exit(void)
 
 static int apu_ipi_ut_init(struct mtk_apu *apu)
 {
-	int ret, i;
+	int ret;
 
 	init_completion(&apu_ipi_ut_rpm_dev.ack);
 	mutex_init(&apu_ipi_ut_mtx);
-
-	for (i = 0; i < APU_IPI_MAX; i++)
-		sema_init(&apu_ipi_ost_sem[i], ipi_attrs[i].send_ipi_in_rv_handler_max_ost);
 
 	dev_info(apu->dev, "%s: register rpmsg...\n", __func__);
 	ret = register_rpmsg_driver(&apu_ipi_ut_rpmsg_driver);
@@ -1829,6 +1826,9 @@ int apu_ipi_init(struct platform_device *pdev, struct mtk_apu *apu)
 	mutex_init(&affin_lock);
 	affin_depth = 0;
 	g_apu = apu;
+
+	for (i = 0; i < APU_IPI_MAX; i++)
+		sema_init(&apu_ipi_ost_sem[i], ipi_attrs[i].send_ipi_in_rv_handler_max_ost);
 
 	if (apu->platdata->flags & F_APU_IPI_UT_SUPPORT)
 		apu_ipi_ut_init(apu);
