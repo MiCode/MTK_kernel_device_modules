@@ -985,7 +985,7 @@ static long _gz_ioctl(struct file *filep, unsigned int cmd, void __user *arg,
 		shm_data.shm_handle = shm_handle;
 
 		/* copy result back to user */
-		shm_data.session = ret;
+		shm_data.session = (uint32_t)ret;
 		err = copy_to_user(arg, &shm_data, sizeof(shm_data));
 		if (err) {
 			KREE_ERR("[%s]copy_to_user fail(0x%x)\n", __func__,
