@@ -102,6 +102,7 @@ int mminfra2_onoff(bool on_off)
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_MTK_MMINFRA)
 int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 {
 	int ret = 0, ref_cnt;
@@ -179,6 +180,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_mminfra_on_off);
+#endif /* CONFIG_MTK_MMINFRA */
 
 int mminfra_ctrl(struct cb_params *cb_para)
 {
