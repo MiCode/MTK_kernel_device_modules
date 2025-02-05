@@ -91,7 +91,6 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp8s-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/cam_cal/src_v4l2:mtk_cam_cal",
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:mtk_ccuv",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor:mtk_imgsensor",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/common:imgsys_common",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8",
@@ -123,6 +122,10 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8/imgsensor-glue:imgsensor-glue_isp8",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src_spm-isp8/imgsensor-glue:imgsensor-glue_spm_isp8",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8s/imgsensor-glue:imgsensor-glue_isp8s",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:imgsensor",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8:imgsensor_isp8",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src_spm-isp8:imgsensor_spm_isp8",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8s:imgsensor_isp8s",
     "//vendor/mediatek/kernel_modules/perf_common_cus:perf_common_cus",
     "//vendor/mediatek/kernel_modules/perf_common_int:perf_common_int",
 ]
