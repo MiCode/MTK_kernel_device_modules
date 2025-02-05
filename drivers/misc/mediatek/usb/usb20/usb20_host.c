@@ -341,6 +341,20 @@ static void do_host_plug_test_work(struct work_struct *data)
 
 #define ID_PIN_WORK_RECHECK_TIME 30	/* 30 ms */
 #define ID_PIN_WORK_BLOCK_TIMEOUT 30000 /* 30000 ms */
+struct usb_role_switch {
+	struct device dev;
+	struct mutex lock; /* device lock*/
+	enum usb_role role;
+
+	/* From descriptor */
+	struct device *usb2_port;
+	struct device *usb3_port;
+	struct device *udc;
+	usb_role_switch_set_t set;
+	usb_role_switch_get_t get;
+	bool allow_userspace_control;
+};
+
 static void do_host_work(struct work_struct *data)
 {
 	u8 devctl = 0;
@@ -461,8 +475,6 @@ static void do_host_work(struct work_struct *data)
 			usb_hcd_resume_root_hub(musb_to_hcd(mtk_musb));
 			musb_root_disconnect(mtk_musb);
 		}
-		spin_unlock_irqrestore(&mtk_musb->lock, flags);
-
 		DBG(1, "devctl is %x\n",
 				musb_readb(mtk_musb->mregs, MUSB_DEVCTL));
 		musb_writeb(mtk_musb->mregs, MUSB_DEVCTL, 0);
@@ -474,6 +486,8 @@ static void do_host_work(struct work_struct *data)
 		set_usb_phy_mode(PHY_MODE_INVALID);
 
 		musb_stop(mtk_musb);
+		DBG(0, "musb stopped\n");
+		spin_unlock_irqrestore(&mtk_musb->lock, flags);
 
 		if (!typec_control && !host_plug_test_triggered)
 			switch_int_to_host(mtk_musb);
@@ -495,6 +509,8 @@ static void do_host_work(struct work_struct *data)
 	}
 	DBG(0, "work end, is_host=%d\n", mtk_musb->is_host);
 	up(&mtk_musb->musb_lock);
+
+	kobject_uevent(&glue->otg_sx.role_sw->dev.kobj, KOBJ_CHANGE);
 
 	/* Wait for irq All done */
 	synchronize_irq(mtk_musb->nIrq);
