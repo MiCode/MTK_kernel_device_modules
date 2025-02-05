@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
 
 package(
     default_visibility = [
@@ -43,3 +44,15 @@ MODULE_NAME = [
     ],
     includes = ["."],
 ) for mod in MODULE_NAME]
+
+define_mgk_ddk_ko(
+    name = "mt6681-auxadc",
+    srcs = [
+        "mt6681-auxadc.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/mfd:mt6685-audclk".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
+    ],
+)

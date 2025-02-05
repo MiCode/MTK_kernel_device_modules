@@ -93,3 +93,20 @@ define_mgk_ddk_ko(
 
     ko_deps = ["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version)],
 )
+
+define_mgk_ddk_ko(
+    name = "mt6681-regulator",
+    srcs = [
+        "mt6681-regulator.c",
+    ],
+
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/mfd:mt6685-audclk".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
+    ],
+)
