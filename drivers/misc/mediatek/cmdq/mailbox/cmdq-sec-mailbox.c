@@ -2062,7 +2062,6 @@ cmdq_sec_probe_mtee_end:
 		of_property_read_u32(dev->of_node,
 			"mminfra-all-on-pwr-idx", &cmdq->mminfra_all_on_pwr_idx);
 		cmdq_msg("%s pwr_control_by_mminfra enable", __func__);
-		return 0;
 	} else
 		pm_runtime_enable(dev);
 

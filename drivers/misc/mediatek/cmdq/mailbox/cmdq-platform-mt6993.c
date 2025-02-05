@@ -433,7 +433,6 @@ s32 cmdq_check_pkt_finalize(void *pkt)
 
 void cmdq_error_irq_debug(void *chan)
 {
-#ifdef SKIP_BUILD
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 #if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
@@ -454,13 +453,11 @@ void cmdq_error_irq_debug(void *chan)
 #endif
 #endif
 #endif
-#endif
 }
 
 bool cmdq_check_tf(struct device *dev,
 	u32 sid, u32 tbu, u32 *axids)
 {
-#ifdef SKIP_BUILD
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 #if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
@@ -468,9 +465,6 @@ bool cmdq_check_tf(struct device *dev,
 
 	return mtk_smmu_tf_detect(MM_SMMU, dev,
 		sid, tbu, axids, 1, &out_param);
-#else
-	return false;
-#endif
 #else
 	return false;
 #endif
