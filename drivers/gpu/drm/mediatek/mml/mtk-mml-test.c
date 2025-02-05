@@ -538,6 +538,8 @@ static void case_general_submit_ut(struct mml_test *test,
 		task.info.dest[0].pq_config.en_dc = 0;
 		task.info.dest[0].pq_config.en_region_pq =
 			(utcfg->pq & MML_PQ_AI_SCENE_PQ_EN) ? 1 : 0;
+		task.info.dest[0].pq_config.en_cv_based_sdr =
+			(utcfg->pq & MML_PQ_CV_BASED_SDR_EN) ? 1 : 0;
 		if (task.info.dest[0].pq_config.en_hdr)
 			pq_param->src_hdr_video_mode = utcfg->videomode;
 		mml_log("[test] %s open PQ %#010x video_mode:%d bypass_all_alg:%d", __func__,
@@ -1064,6 +1066,7 @@ static void setup_2in_2out(struct mml_submit *task, struct mml_ut *cur)
 	task->buffer.dest_cnt = 2;
 	task->info.dest[0].pq_config.en = true;
 	task->info.dest[0].pq_config.en_region_pq = true;
+	task->info.dest[0].pq_config.en_cv_based_sdr = true;
 	task->info.dest[0].pq_config.en_sharp = true;
 	fillin_info_data(the_case.cfg_dest1_format,
 		the_case.cfg_dest1_w, the_case.cfg_dest1_h,
@@ -2825,6 +2828,7 @@ static void ut_setup(struct mml_submit *task, struct mml_ut *cur)
 		task->buffer.dest_cnt = 2;
 		task->info.dest[0].pq_config.en = true;
 		task->info.dest[0].pq_config.en_region_pq = true;
+		task->info.dest[0].pq_config.en_cv_based_sdr = true;
 		task->info.dest[0].pq_config.en_sharp = true;
 		fillin_info_data(utcfg->out1_fmt, utcfg->out1_w, utcfg->out1_h,
 			&task->info.dest[1].data);

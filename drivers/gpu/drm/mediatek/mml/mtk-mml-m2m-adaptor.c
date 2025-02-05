@@ -1018,7 +1018,9 @@ static int mml_m2m_ctrl_type_op_validate(const struct v4l2_ctrl *ctrl,
 		if (pq_submit->pq_config.en_sharp || pq_submit->pq_config.en_ur ||
 			pq_submit->pq_config.en_dc || pq_submit->pq_config.en_color ||
 			pq_submit->pq_config.en_ccorr || pq_submit->pq_config.en_dre ||
-			pq_submit->pq_config.en_region_pq || pq_submit->pq_config.en_c3d) {
+			pq_submit->pq_config.en_region_pq ||
+			pq_submit->pq_config.en_cv_based_sdr ||
+			pq_submit->pq_config.en_c3d) {
 			mml_err("[m2m] unsupport PQ func! (Support: HDR, FG)");
 			return -EINVAL;
 		}

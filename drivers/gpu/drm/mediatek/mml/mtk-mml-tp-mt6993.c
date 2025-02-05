@@ -1336,6 +1336,7 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	      cfg->info.dest[0].pq_config.en_ccorr ||
 	      cfg->info.dest[0].pq_config.en_dre ||
 	      cfg->info.dest[0].pq_config.en_region_pq ||
+	      cfg->info.dest[0].pq_config.en_cv_based_sdr ||
 	      cfg->info.dest[0].pq_config.en_fg ||
 	      cfg->info.dest[0].pq_config.en_c3d) &&
 	    (cfg->info.mode == MML_MODE_DIRECT_LINK ||
@@ -1380,6 +1381,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		dest->pq_config.en_ccorr ||
 		dest->pq_config.en_dre ||
 		dest->pq_config.en_region_pq ||
+		dest->pq_config.en_cv_based_sdr ||
 		dest->pq_config.en_fg ||
 		dest->pq_config.en_c3d ||
 		dest->pq_config.en_sharp) {
@@ -1458,6 +1460,7 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		info->dest[0].pq_config.en_ccorr ||
 		info->dest[0].pq_config.en_dre ||
 		info->dest[0].pq_config.en_region_pq ||
+		info->dest[0].pq_config.en_cv_based_sdr ||
 		info->dest[0].pq_config.en_fg ||
 		info->dest[0].pq_config.en_c3d) {
 		*reason = mml_query_pqen;

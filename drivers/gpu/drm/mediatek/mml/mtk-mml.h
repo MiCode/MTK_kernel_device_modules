@@ -137,6 +137,7 @@ struct mml_pq_config {
 	bool en_c3d:1;
 	bool en_clarity:1;
 	bool en_color_adaptive:1;
+	bool en_cv_based_sdr:1;
 };
 
 enum mml_pq_enable_flag {
@@ -158,6 +159,7 @@ enum mml_pq_enable_flag {
 	MML_PQ_CLARITY_EN = 1 << 12,
 	MML_PQ_FG_EN = 1 << 13,
 	MML_PQ_COLOR_ADAPTIVE_EN = 1 << 14,
+	MML_PQ_CV_BASED_SDR_EN = 1 << 15,
 };
 
 enum mml_pq_user_info {
@@ -177,6 +179,7 @@ enum mml_pq_video_mode {
 	MML_PQ_CCORR,
 	MML_PQ_HLG,
 	MML_PQ_APP,
+	MML_PQ_CV_BASED_SDR,
 };
 
 struct mml_pq_param {

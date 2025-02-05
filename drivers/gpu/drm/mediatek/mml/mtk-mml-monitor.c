@@ -73,6 +73,7 @@ void mml_update_pq_status(const void *pq)
 	pq_cfg |= pq_config->en_region_pq << 8;
 	pq_cfg |= pq_config->en_fg << 9;
 	pq_cfg |= pq_config->en_c3d << 10;
+	pq_cfg |= pq_config->en_cv_based_sdr << 11;
 
 	mml_pq = pq_cfg;
 }
