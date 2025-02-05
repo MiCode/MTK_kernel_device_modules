@@ -1310,6 +1310,14 @@ static bool __used ppb_func_enable_check(void)
 	return true;
 }
 
+static unsigned int __used check_ppb_version(void)
+{
+	pr_info("[%s] [%d]\n", __func__, pb.version);
+
+	return pb.version;
+}
+
+
 static bool __used ppb_update_table_info(enum ppb_kicker kicker, struct ppb *req_ppb)
 {
 	bool is_update = false;
@@ -3179,7 +3187,7 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 
 static void peak_power_budget_remove(struct platform_device *pdev)
 {
-
+	sysfs_remove_group(kernel_kobj, &spbm_attr_group);
 }
 
 static const struct of_device_id peak_power_budget_of_match[] = {
