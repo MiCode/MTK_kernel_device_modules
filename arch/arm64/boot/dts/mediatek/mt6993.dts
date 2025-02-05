@@ -8552,12 +8552,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			condition-num = <2>;
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <4>;
-	//		interconnects = <&mmqos SLAVE_LARB(51) &mmqos SLAVE_COMMON(0)>,
-	//				<&mmqos SLAVE_LARB(52) &mmqos SLAVE_COMMON(1)>,
-	//				<&mmqos SLAVE_LARB(53) &mmqos SLAVE_COMMON(1)>;
-	//		interconnect-names = "disp_hrt_qos",
-	//				"disp_hrt_by_larb",
-	//				"disp_dp_hrt_by_larb";
+
+			/* disp mmqos parameter */
+			ssc-larb = <0 0>, <0 36>, <0 51>, <0 55>, <0 60>,
+				<1 21>, <1 32>, <1 34>, <1 52>,
+				<2 1>, <2 37>, <2 50>, <2 54>, <2 61>,
+				<3 20>, <3 33>, <3 35>, <3 53>;
+			ssc-ch = <3 2 0 1>;
+
+			/* SPHRT parameter */
 			pre-define-bw = <0xffffffff>, <4800>, <0>, <2700>;
 			crtc-ovl-usage = <0xe0>, <0x2>, <0x2>, <0x4>;
 			default-emi-eff = <8500>;
