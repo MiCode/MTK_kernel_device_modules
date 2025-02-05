@@ -70,3 +70,13 @@ config MTK_GAME
 	  This module is for game feature use, If some flow modification
 	  for game only, need to modify in this module.
 	  Default it enable on eng, user, userdebug load.
+
+config MTK_PELT_HINT
+	tristate "MediaTek PELT HINT"
+	help
+	  Enable the MediaTek PELT (Per-Entity Load Tracking) HINT module. This
+	  module provides an API for boosting the CPU resources allocated to tasks
+	  by providing hints to the scheduler. It is useful in scenarios where
+	  tasks require more immediate CPU resources for better performance.
+	  If unsure, or if you do not need task-specific CPU resource optimization,
+	  select 'n'.

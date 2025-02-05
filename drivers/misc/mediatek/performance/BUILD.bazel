@@ -39,6 +39,7 @@ define_mgk_ddk_ko(
         "perf_ioctl/perf_ioctl_magt.c",
         "fpsgo_v8/base/include/fpsgo_frame_info.h",
         "fpsgo_v8/base/include/fpsgo_base.h",
+        "pelt_hint/include/pelt_hint.h",
     ],
     includes = [
         ".",
@@ -50,6 +51,7 @@ define_mgk_ddk_ko(
         "-I$(srctree)/kernel/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/pelt_hint/include/",
     ],
 )
 

@@ -249,6 +249,11 @@ int (*magt2fpsgo_notify_thread_status_fp)(unsigned int frameid,
 	unsigned long long tv_ts);
 EXPORT_SYMBOL(magt2fpsgo_notify_thread_status_fp);
 
+int (*magt2pelt_notify_pelt_hint_boost_fp)(int enable,
+	int pid_mode,
+	int pid,
+	int ratio);
+EXPORT_SYMBOL(magt2pelt_notify_pelt_hint_boost_fp);
 /*--------------------Set CPU mask by kernel------------------------*/
 int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask)
 {
