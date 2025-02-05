@@ -604,6 +604,7 @@ struct mtk_panel_params {
 	unsigned int lp_perline_en; //0: lp perframe 1: lp perline
 	unsigned int cmd_null_pkt_en;
 	unsigned int cmd_null_pkt_len;
+	unsigned int dconfig_mipi_chg_en;
 	unsigned int lcm_degree;
 //Settings for LFR Function:
 	unsigned int lfr_enable;

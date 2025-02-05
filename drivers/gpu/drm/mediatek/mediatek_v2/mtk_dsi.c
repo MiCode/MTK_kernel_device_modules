@@ -14664,6 +14664,15 @@ static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)
 		goto err_unregister;
 	}
 
+	if (dsi->ext && dsi->ext->params && dsi->ext->params->dconfig_mipi_chg_en) {
+		struct mtk_drm_private *priv = drm->dev_private;
+
+		ret = mtk_drm_helper_set_opt_by_name(priv->helper_opt,
+			"MTK_DRM_OPT_DYN_MIPI_CHANGE", 1);
+		if (ret)
+			DDPMSG("%s, helper set opt MIPI  fail\n", __func__);
+	}
+
 	drm_dev = drm;
 	DDPINFO("%s-\n", __func__);
 	return 0;
