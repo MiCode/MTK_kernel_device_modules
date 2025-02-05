@@ -196,7 +196,7 @@
 #define DVO_BUF_RW_TIMES			0x22C
 #define DVO_BUF_SODI_HIGHT			0x230
 #define DVO_BUF_SODI_LOW			0x234
-#define DVO_BUF_VDE					0x256
+#define DVO_BUF_VDE					0x258
 #define DISP_BUF_VDE_BLOCK_URGENT			BIT(0)
 #define DISP_BUF_NON_VDE_FORCE_PREULTRA		BIT(1)
 #define DISP_BUF_VDE_BLOCK_ULTRA				BIT(2)
@@ -205,6 +205,16 @@
 #define DVO_STATUS					0xE00
 
 #define dvo_dp_sel_lsb				24
+
+#define DP_BUF_SODI_HIGH				0x0230
+#define DP_BUF_SODI_LOW					0x0234
+#define DP_BUF_PREULTRA_HIGH			0x0240
+#define DP_BUF_PREULTRA_LOW				0x0244
+#define DP_BUF_ULTRA_HIGH				0x0248
+#define DP_BUF_ULTRA_LOW				0x024C
+#define DP_BUF_URGENT_HIGH				0x0250
+#define DP_BUF_URGENT_LOW				0x0254
+
 
 static const struct of_device_id mtk_dvo_driver_dt_match[];
 /**
@@ -601,13 +611,6 @@ void mtk_dvo_video_clock(struct mtk_dp_dvo *dp_dvo)
 		DPTXMSG("%s clk_set_parent dp_dvo->pclk: err=%d\n",
 			__func__, ret);
 
-	// mux set hard code
-	base = ioremap(0x10040000, 0x100);
-	writel(0x7000000, base + 0x38);
-	writel((clksrc << dvo_dp_sel_lsb), base + 0x34);
-	writel(0x800, base + 0x4);
-	iounmap(base);
-
 	DPTXMSG("%s set pclk2 and src %d\n", __func__, clksrc);
 }
 
@@ -642,68 +645,80 @@ void mtk_dp_dvo_prepare_clk(void)
 }
 EXPORT_SYMBOL(mtk_dp_dvo_prepare_clk);
 
-/*
- *static void mtk_dp_dvo_golden_setting(struct mtk_ddp_comp *comp,
- *					    struct cmdq_pkt *handle)
- *{
- *	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
- *	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
- *	unsigned int dp_buf_sodi_high, dp_buf_sodi_low;
- *	unsigned int dp_buf_preultra_high, dp_buf_preultra_low;
- *	unsigned int dp_buf_ultra_high, dp_buf_ultra_low;
- *	unsigned int dp_buf_urgent_high, dp_buf_urgent_low;
- *	unsigned int mmsys_clk, dp_clk; //{26000, 37125, 74250, 148500, 297000};
- *	unsigned int twait = 12, twake = 5;
- *	unsigned int fill_rate, consume_rate;
- *
- *	DPTXFUNC();
- *	if (dp_dvo->res >= SINK_MAX || dp_dvo->res < 0) {
- *		DPTXERR("%s:input res error: %d\n", __func__, dp_dvo->res);
- *		dp_dvo->res = SINK_1920_1080;
- *	}
- *
- *	dp_clk = dp_dvo->driver_data->video_clock_cfg->resolution_cfg[dp_dvo->res].dp_clk;
- *	dp_clk = dp_clk > 0 ? dp_clk : 74250;
- *	mmsys_clk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000;
- *	mmsys_clk = mmsys_clk > 0 ? mmsys_clk : 273000;
- *
- *	fill_rate = mmsys_clk * 4 / 8;
- *	consume_rate = dp_clk * 4 / 8;
- *	DPTXMSG("%s mmsys_clk=%d, dp_dvo->res=%d, dp_clk=%d, fill_rate=%d, consume_rate=%d\n",
- *		__func__, mmsys_clk, dp_dvo->res, dp_clk, fill_rate, consume_rate);
- *
- *	dp_buf_sodi_high = (5940000 - twait * 100 * fill_rate / 1000 - consume_rate) * 30 / 32000;
- *	dp_buf_sodi_low = (25 + twake) * consume_rate * 30 / 32000;
- *
- *	dp_buf_preultra_high = 36 * consume_rate * 30 / 32000;
- *	dp_buf_preultra_low = 35 * consume_rate * 30 / 32000;
- *
- *	dp_buf_ultra_high = 26 * consume_rate * 30 / 32000;
- *	dp_buf_ultra_low = 25 * consume_rate * 30 / 32000;
- *
- *	dp_buf_urgent_high = 12 * consume_rate * 30 / 32000;
- *	dp_buf_urgent_low = 11 * consume_rate * 30 / 32000;
- *
- *	DPTXDBG("dp_buf_sodi_high=%d, dp_buf_sodi_low=%d, dp_buf_preultra_high=%d, dp_buf_preultra_low=%d\n",
- *			dp_buf_sodi_high, dp_buf_sodi_low, dp_buf_preultra_high, dp_buf_preultra_low);
- *
- *	DPTXDBG("dp_buf_ultra_high=%d, dp_buf_ultra_low=%d dp_buf_urgent_high=%d, dp_buf_urgent_low=%d\n",
- *			dp_buf_ultra_high, dp_buf_ultra_low, dp_buf_urgent_high, dp_buf_urgent_low);
- *
- *	mtk_ddp_write_relaxed(comp, dp_buf_sodi_high, DP_BUF_SODI_HIGH, handle);
- *	mtk_ddp_write_relaxed(comp, dp_buf_sodi_low, DP_BUF_SODI_LOW, handle);
- *
- *	mtk_ddp_write_relaxed(comp, dp_buf_preultra_high, DP_BUF_PREULTRA_HIGH, handle);
- *	mtk_ddp_write_relaxed(comp, dp_buf_preultra_low, DP_BUF_PREULTRA_LOW, handle);
- *
- *	mtk_ddp_write_relaxed(comp, dp_buf_ultra_high, DP_BUF_ULTRA_HIGH, handle);
- *	mtk_ddp_write_relaxed(comp, dp_buf_ultra_low, DP_BUF_ULTRA_LOW, handle);
- *
- *	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_URGENT_HIGH, handle);
- *	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_URGENT_LOW, handle);
- *
- *}
- */
+
+static void mtk_dp_dvo_golden_setting(struct mtk_ddp_comp *comp,
+					    struct cmdq_pkt *handle)
+{
+	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	unsigned int pixel_clk_rate, threshold_unit, bpp, consume_rate;
+	unsigned int fifo_size = 5569;
+	unsigned int ultra_high_fifo_us, ultra_low_fifo_us;
+	unsigned int urgent_high_fifo_us, urgent_low_fifo_us;
+	unsigned int dp_buf_sodi_high, dp_buf_sodi_low;
+	unsigned int dp_buf_preultra_high, dp_buf_preultra_low;
+	unsigned int dp_buf_ultra_high, dp_buf_ultra_low;
+	unsigned int dp_buf_urgent_high, dp_buf_urgent_low;
+
+	DPTXFUNC();
+	if (dp_dvo->res >= SINK_MAX || dp_dvo->res < 0) {
+		DPTXERR("%s :input res error: %d\n", __func__, dp_dvo->res);
+		dp_dvo->res = SINK_1920_1080;
+	}
+
+	//parameter setting
+	//htt * vtt * fps = dp_ck_rate * 4 (output: 1t4p)
+	pixel_clk_rate = clk_get_rate(dp_dvo->hf_fdp_ck) * 4;
+	threshold_unit = 32;
+	bpp = 30;
+	//Use 1000 times consume_rate to avoid truncation errors
+	consume_rate = (uint32_t) ((uint64_t)pixel_clk_rate * bpp / (8 * threshold_unit) / 1000);
+
+	//ultra low cal
+	//fifo_size * 0.7 / (consume_rate / 1000)
+	ultra_low_fifo_us = (fifo_size * 1000 * 7) / (10 * consume_rate);
+	ultra_low_fifo_us = (ultra_low_fifo_us >= 35) ? ultra_low_fifo_us : 35;
+	ultra_high_fifo_us = ultra_low_fifo_us + 1;
+
+	//urgent low is fix value (1/6 version) (30us)
+	urgent_low_fifo_us = 30;
+	urgent_high_fifo_us = 31;
+
+	//final result
+	dp_buf_sodi_low = fifo_size;
+	dp_buf_sodi_high = fifo_size + 1;
+
+	dp_buf_preultra_low = fifo_size;
+	dp_buf_preultra_high = fifo_size + 1;
+
+	dp_buf_ultra_low = ultra_low_fifo_us * consume_rate / 1000;
+	dp_buf_ultra_high = ultra_high_fifo_us * consume_rate / 1000;
+
+	dp_buf_urgent_low = urgent_low_fifo_us * consume_rate / 1000;
+	dp_buf_urgent_high = urgent_high_fifo_us * consume_rate / 1000;
+
+	//print
+	DPTXMSG("consume_rate = %u\n", consume_rate);
+	DPTXMSG("ultra_low_fifo_us = %u, ultra_high_fifo_us = %u\n", ultra_low_fifo_us, ultra_high_fifo_us);
+	DPTXMSG("urgent_high_fifo_us = %u, urgent_low_fifo_us = %u\n", urgent_high_fifo_us, urgent_low_fifo_us);
+	DPTXMSG("dp_buf_sodi_high = %u, dp_buf_sodi_low = %u, dp_buf_preultra_high = %u, dp_buf_preultra_low = %u\n",
+			dp_buf_sodi_high, dp_buf_sodi_low, dp_buf_preultra_high, dp_buf_preultra_low);
+	DPTXMSG("dp_buf_ultra_high = %u, dp_buf_ultra_low = %u, dp_buf_urgent_high = %u, dp_buf_urgent_low = %u\n",
+			dp_buf_ultra_high, dp_buf_ultra_low, dp_buf_urgent_high, dp_buf_urgent_low);
+
+	//RG setting
+	mtk_ddp_write_relaxed(comp, dp_buf_sodi_low, DP_BUF_SODI_LOW, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_sodi_high, DP_BUF_SODI_HIGH, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_preultra_low, DP_BUF_PREULTRA_LOW, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_preultra_high, DP_BUF_PREULTRA_HIGH, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_ultra_low, DP_BUF_ULTRA_LOW, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_ultra_high, DP_BUF_ULTRA_HIGH, handle);
+
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_low, DP_BUF_URGENT_LOW, handle);
+	mtk_ddp_write_relaxed(comp, dp_buf_urgent_high, DP_BUF_URGENT_HIGH, handle);
+}
 
 void mhal_DVO_VideoClock(bool enable, int resolution)
 {
@@ -887,7 +902,7 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 		DVO_OUTPUT_SET, handle);
 
 	//Golden setting need to check
-	//mtk_dp_dvo_golden_setting(comp, handle);
+	mtk_dp_dvo_golden_setting(comp, handle);
 	val = DISP_BUF_VDE_BLOCK_URGENT | DISP_BUF_NON_VDE_FORCE_PREULTRA | DISP_BUF_VDE_BLOCK_ULTRA;
 	mtk_ddp_write_relaxed(comp, val, DVO_BUF_VDE, handle);
 
@@ -896,7 +911,7 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 	val = (200 + line_time - 1) / line_time;
 	val = (val << MUTEX_VFP) | MUTEX_VSYNC_SEL;
 	mtk_ddp_write_relaxed(comp, val, DVO_MUTEX_VSYNC_SET, handle);
-	DPTXMSG("%s vsync_time=%d\n",val);
+	DPTXMSG("vsync_time=%d\n",val);
 
 	DPTXMSG("%s config done\n",
 			mtk_dump_comp_str(comp));
