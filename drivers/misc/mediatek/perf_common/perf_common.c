@@ -16,6 +16,7 @@
 #include <trace/hooks/sched.h>
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
+#include <perf_tracker_trace.h>
 #include <perf_tracker_internal.h>
 #include "mtk_qos_common.h"
 #include <mtk_qos_share.h>
@@ -191,6 +192,9 @@ bool hit_long_check(void)
 static void perf_common(void *data, struct rq *rq)
 {
 	u64 wallclock;
+
+	if (trace_perf_index_xmu_enabled())
+		update_xmu_info();
 
 	wallclock = ktime_get_ns();
 	if (!perf_do_check(wallclock))

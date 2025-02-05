@@ -289,6 +289,70 @@ TRACE_EVENT(cpu_pmu_debug,
 	)
 );
 
+TRACE_EVENT(perf_index_xmu,
+	TP_PROTO(
+		u32 pc_diff,
+		u32 ac_diff,
+		u32 ai_diff,
+		u32 am_diff
+	),
+
+	TP_ARGS(pc_diff, ac_diff, ai_diff, am_diff),
+
+	TP_STRUCT__entry(
+		__field(u32, pc_diff)
+		__field(u32, ac_diff)
+		__field(u32, ai_diff)
+		__field(u32, am_diff)
+	),
+
+	TP_fast_assign(
+		__entry->pc_diff = pc_diff;
+		__entry->ac_diff = ac_diff;
+		__entry->ai_diff = ai_diff;
+		__entry->am_diff = am_diff;
+	),
+
+	TP_printk("pmcore=%u amcore=%u amins=%u amstall=%u",
+		__entry->pc_diff,
+		__entry->ac_diff,
+		__entry->ai_diff,
+		__entry->am_diff
+	)
+);
+
+TRACE_EVENT(perf_index_xmu_debug,
+	TP_PROTO(
+		u64 pc_raw,
+		u64 ac_raw,
+		u64 ai_raw,
+		u64 am_raw
+	),
+
+	TP_ARGS(pc_raw, ac_raw, ai_raw, am_raw),
+
+	TP_STRUCT__entry(
+		__field(u64, pc_raw)
+		__field(u64, ac_raw)
+		__field(u64, ai_raw)
+		__field(u64, am_raw)
+	),
+
+	TP_fast_assign(
+		__entry->pc_raw = pc_raw;
+		__entry->ac_raw = ac_raw;
+		__entry->ai_raw = ai_raw;
+		__entry->am_raw = am_raw;
+	),
+
+	TP_printk("pmcore_raw=%llu amcore_raw=%llu amins_raw=%llu amstall_raw=%llu",
+		__entry->pc_raw,
+		__entry->ac_raw,
+		__entry->ai_raw,
+		__entry->am_raw
+	)
+);
+
 #endif /*_PERF_TRACKER_TRACE_H */
 
 #undef TRACE_INCLUDE_PATH

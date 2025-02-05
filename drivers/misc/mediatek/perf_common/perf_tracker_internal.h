@@ -101,6 +101,8 @@ extern void passtiveTick_on(void);
 extern void passtiveTick_off(void);
 extern void timer_on(void);
 extern void timer_off(void);
+/* perf_xmu */
+extern void update_xmu_info(void);
 #else
 static inline void perf_tracker(u64 wallclock,
 				bool hit_long_check) {}
