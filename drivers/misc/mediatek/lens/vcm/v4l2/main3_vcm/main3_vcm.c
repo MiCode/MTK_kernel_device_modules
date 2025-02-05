@@ -619,6 +619,8 @@ static long main3_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 	int ret = 0;
 	struct main3_vcm_device *main3_vcm = sd_to_main3_vcm_vcm(sd);
 	struct i2c_client *client = v4l2_get_subdevdata(&main3_vcm->sd);
+	struct v4l2_ctrl_handler *hdl = &main3_vcm->ctrls;
+	const struct v4l2_ctrl_ops *ops = &main3_vcm_vcm_ctrl_ops;
 
 	client->addr = g_vcmconfig.vcm_config.slave_addr >> 1;
 
@@ -644,6 +646,13 @@ static long main3_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 			ret = -EFAULT;
 			break;
 		}
+
+		LOG_INF("vcm bits: %d, decimal data: %d\n",
+			g_vcmconfig.vcm_config.vcm_bits,
+			(1 << g_vcmconfig.vcm_config.vcm_bits));
+		main3_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
+			  0, (1 << g_vcmconfig.vcm_config.vcm_bits)-1,
+			  MAIN3_VCM_FOCUS_STEPS, 0);
 
 		// Confirm hardware requirements and adjust/remove the delay.
 		usleep_range(g_vcmconfig.vcm_config.ctrl_delay_us,
@@ -746,12 +755,12 @@ static void main3_vcm_subdev_cleanup(struct main3_vcm_device *main3_vcm)
 static int main3_vcm_init_controls(struct main3_vcm_device *main3_vcm)
 {
 	struct v4l2_ctrl_handler *hdl = &main3_vcm->ctrls;
-	const struct v4l2_ctrl_ops *ops = &main3_vcm_vcm_ctrl_ops;
+	//const struct v4l2_ctrl_ops *ops = &main3_vcm_vcm_ctrl_ops;
 
 	v4l2_ctrl_handler_init(hdl, 1);
 
-	main3_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
-			  0, MAIN3_VCM_MAX_FOCUS_POS, MAIN3_VCM_FOCUS_STEPS, 0);
+	//main3_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
+	//		  0, MAIN3_VCM_MAX_FOCUS_POS, MAIN3_VCM_FOCUS_STEPS, 0);
 
 	if (hdl->error)
 		return hdl->error;
