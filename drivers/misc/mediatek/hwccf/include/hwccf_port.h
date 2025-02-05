@@ -20,7 +20,7 @@
 
 /* should disable becasue outside loop with spin lock */
 #define HWCCF_DBG_LOG_EN        0
-#define HWCCF_PROFILE_EN        1
+#define HWCCF_PROFILE_EN        0
 #define HWCCF_STEP_RECORD_EN    1
 
 #define HWCCF_TAG           "[HWV] "
