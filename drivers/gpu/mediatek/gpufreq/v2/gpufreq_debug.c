@@ -923,7 +923,7 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 			else if (sysfs_streq(input_val, "disable"))
 				val = FEAT_DISABLE;
 			/* only allow enable/disable once */
-			if (g_debug_margin_mode ^ val)
+			if ((val == FEAT_ENABLE || val == FEAT_DISABLE) && g_debug_margin_mode ^ val)
 				g_debug_margin_mode = val;
 			else
 				val = CONFIG_VAL_INVALID;
