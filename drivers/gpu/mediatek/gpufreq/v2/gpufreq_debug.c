@@ -237,11 +237,12 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc,
 		ptp3_status.brisket_safe_margin ? "Safe" : "Normal");
 	seq_printf(m,
-		"%-16s Internal_P/V/I: %d/%d/%d, External_P/I: %d/%d, Ratio: %d/1000\n",
+		"%-16s Internal_P/V/I: %d/%d/%d, External_P/I: %d/%d, Final_P: %d (0x%x), Ratio: %d/1000\n",
 		"[PRBC Status]",
 		g_shared_status->prbc_info.ondie_power, g_shared_status->prbc_info.ondie_volt,
 		g_shared_status->prbc_info.ondie_current, g_shared_status->prbc_info.spbm_power,
-		g_shared_status->prbc_info.spbm_current, g_shared_status->prbc_info.ratio);
+		g_shared_status->prbc_info.spbm_current, g_shared_status->prbc_info.final_power,
+		g_shared_status->prbc_info.limiter, g_shared_status->prbc_info.ratio);
 	seq_printf(m,
 		"%-16s Freq_HBVC/PRBC/AVG: %d/%d/%d, RIC: %d (RITC: %d)\n",
 		"[PRBC Status]",

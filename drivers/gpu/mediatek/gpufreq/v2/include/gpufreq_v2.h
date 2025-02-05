@@ -475,6 +475,8 @@ struct gpufreq_prbc_info {
 	unsigned int ondie_power;
 	unsigned int ondie_volt;
 	unsigned int ondie_current;
+	unsigned int final_power;
+	unsigned int limiter;
 	unsigned int spbm_power;
 	unsigned int spbm_current;
 	unsigned int hbvc_freq;
