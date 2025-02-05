@@ -3,7 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#include <emi_mpu.h>
+#include "emi_mpu.h"
 #include <linux/arm-smccc.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
@@ -23,6 +23,25 @@
 /* global pointer for exported functions */
 struct emi_mpu *global_emi_mpu;
 EXPORT_SYMBOL_GPL(global_emi_mpu);
+
+/*
+ * Implemented dummy functions mtk_clear_smpu_log() and mtk_get_axiid() to
+ * avoid build errors for the legacy EMI driver. smpu.c depends on emi-mpu.c,
+ * which is now conditionally compiled with legacy emi-mpu.c.
+ */
+int mtk_clear_smpu_log(unsigned int emi_id)
+{
+	pr_info("%s: dummy implementation for legacy!\n", __func__);
+	return 0;
+}
+EXPORT_SYMBOL(mtk_clear_smpu_log);
+
+unsigned int mtk_get_axiid(unsigned int emi_id)
+{
+	pr_info("%s: dummy implementation for legacy!\n", __func__);
+	return 0;
+}
+EXPORT_SYMBOL(mtk_get_axiid);
 
 static void set_regs(
 	struct reg_info_t *reg_list, unsigned int reg_cnt,
@@ -902,7 +921,7 @@ free_ap_rg_info:
 	return ret;
 }
 
-static int emimpu_remove(struct platform_device *pdev)
+static void emimpu_remove(struct platform_device *pdev)
 {
 	struct emi_mpu *mpu = platform_get_drvdata(pdev);
 
@@ -914,7 +933,6 @@ static int emimpu_remove(struct platform_device *pdev)
 
 	global_emi_mpu = NULL;
 
-	return 0;
 }
 
 static struct platform_driver emimpu_driver = {

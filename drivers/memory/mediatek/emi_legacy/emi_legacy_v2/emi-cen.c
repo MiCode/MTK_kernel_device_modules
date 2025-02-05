@@ -17,6 +17,9 @@
 #include <linux/slab.h>
 #include <soc/mediatek/emi.h>
 
+
+extern int emimpu_ap_region_init(void);
+
 /*
  * EMI address-to-dram setting's structure.
  * a2d is the abbreviation of addr2dram.
@@ -1306,11 +1309,10 @@ static int emicen_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int emicen_remove(struct platform_device *pdev)
+static void emicen_remove(struct platform_device *pdev)
 {
 	global_emi_cen = NULL;
 
-	return 0;
 }
 
 static const struct of_device_id emicen_of_ids[] = {

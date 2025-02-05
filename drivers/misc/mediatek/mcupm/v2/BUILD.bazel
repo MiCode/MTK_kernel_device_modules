@@ -33,6 +33,7 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu".format(kernel_version),
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:mcupm_public_headers".format(kernel_version),

@@ -3,7 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#include <emi_mpu.h>
+#include "emi_mpu.h"
 #include <linux/arm-smccc.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
@@ -598,7 +598,7 @@ static int emimpu_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int emimpu_remove(struct platform_device *pdev)
+static void emimpu_remove(struct platform_device *pdev)
 {
 	struct emi_mpu *mpu = platform_get_drvdata(pdev);
 
@@ -610,7 +610,6 @@ static int emimpu_remove(struct platform_device *pdev)
 
 	global_emi_mpu = NULL;
 
-	return 0;
 }
 
 static struct platform_driver emimpu_driver = {

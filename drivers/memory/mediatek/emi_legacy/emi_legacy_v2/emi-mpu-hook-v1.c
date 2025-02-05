@@ -3,7 +3,7 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#include <emi_mpu.h>
+#include "emi_mpu.h"
 #include <linux/bits.h>
 #include <linux/kernel.h>
 #include <linux/module.h>

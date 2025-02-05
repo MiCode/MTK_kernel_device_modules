@@ -310,8 +310,8 @@ unsigned int mtk_get_axiid(unsigned int emi_id)
 	unsigned int masterid_mask = 0xf;
 	//offset
 	unsigned int axiid_offset = 3;
-        unsigned int axiid_ext_offset = 8;
-        unsigned int masterid_offset = 12;
+	unsigned int axiid_ext_offset = 8;
+	unsigned int masterid_offset = 12;
 
 	mpu = global_emi_mpu;
 	dump_reg = mpu->dump_reg;
