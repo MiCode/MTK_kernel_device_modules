@@ -13427,11 +13427,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
-#if 0
 		ktf-emislc-test {
 			compatible = "mediatek,ktf-emislc-test";
+			way-num = <10>;
 		};
-#endif
 
 		slbc: slbc@117800 {
 			compatible = "mediatek,mtk-slbc";
