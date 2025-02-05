@@ -220,6 +220,21 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "smpu-hook-v1",
+    srcs = [
+        "smpu-hook-v1.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
+    ],
+    ko_deps = [
+        ":smpu",
+    ]
+)
+
+define_mgk_ddk_ko(
     name = "emi-mpu-test-v2",
     srcs = [
         "emi-mpu-test-v2.c",

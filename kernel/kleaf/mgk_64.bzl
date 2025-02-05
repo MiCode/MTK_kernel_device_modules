@@ -732,6 +732,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version),
@@ -1436,7 +1437,6 @@ mgk_64_device_modules = [
     "drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v1.ko",
     "drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko",
     "drivers/media/platform/mtk-vcu/mtk-vcu.ko",
-    "drivers/memory/mediatek/smpu-hook-v1.ko",
     #"drivers/misc/mediatek/adsp/adsp.ko",
     #"drivers/misc/mediatek/adsp/v1/adsp-v1.ko",
     #"drivers/misc/mediatek/adsp/v2/adsp-v2.ko",
@@ -2008,8 +2008,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
         mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
@@ -2300,8 +2300,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v2/emi-mpu-test.ko")
@@ -2442,7 +2442,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/memory/mediatek:emicen".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/memory/mediatek:emiisu".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/memory/mediatek:emimpu".format(kernel_version))
@@ -2890,6 +2890,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty.ko")
@@ -2906,7 +2907,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/perf/mtk_mbraink_perf.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-debug.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mminfra/mtk-mminfra-imax.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emicen.ko")
@@ -3239,8 +3239,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
 
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version))
@@ -3555,8 +3555,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emicen.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emimpu.ko")
         mgk_64_device_modules.append("drivers/memory/mediatek/emi_legacy/emi_legacy_v1/emiisu.ko")
@@ -3857,7 +3857,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-mt6893-apu0.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-mt6893-apu1.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-mt6893-apu2.ko")
@@ -4256,8 +4256,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:smpu-hook-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/memory/mediatek/smpu-hook-v1.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mmsram".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:slbc_ipi".format(kernel_version))
