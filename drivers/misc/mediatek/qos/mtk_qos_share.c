@@ -240,7 +240,7 @@ unsigned int qos_rec_get_hist_bw(unsigned int idx, unsigned int type)
 	if (!qos_share_ref)
 		return val;
 
-	if (idx >= HIST_NUM || type >= BW_NUM)
+	if (idx >= HIST_NUM || type >= BW_TYPE)
 		return val;
 
 	if (qos_share_use_sram) {

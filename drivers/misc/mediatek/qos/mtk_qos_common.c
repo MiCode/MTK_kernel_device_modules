@@ -20,7 +20,6 @@
 #include "mtk_qos_share.h"
 #include "mtk_qos_common.h"
 
-#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
 //add for 32bit recovery mode
 struct tag_bootmode {
 	u32 size;
@@ -28,7 +27,6 @@ struct tag_bootmode {
 	u32 bootmode;
 	u32 boottype;
 };
-#endif
 
 struct mtk_qos *m_qos;
 static void __iomem *qos_sram_base;
@@ -132,7 +130,6 @@ void qos_evt_tri_dbg_enable(int enable)
 }
 EXPORT_SYMBOL_GPL(qos_evt_tri_dbg_enable);
 
-#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
 unsigned int mtk_qos_get_boot_mode(void)
 {
 	struct device_node *qos_dev = NULL;
@@ -153,7 +150,6 @@ unsigned int mtk_qos_get_boot_mode(void)
 	pr_info("qos get boot mode = %d\n", boot_mode);
 	return boot_mode;
 }
-#endif
 
 int mtk_qos_probe(struct platform_device *pdev,
 			const struct mtk_qos_soc *soc)
@@ -186,14 +182,16 @@ int mtk_qos_probe(struct platform_device *pdev,
 			mtk_qos_enable = 1;
 		}
 	}
+	/* get legacy enable/disable flag */
+	qos->legacy_support_v1 = of_property_read_bool(node, "legacy-support-v1");
 
-#if IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2)
+	if (qos->legacy_support_v1) {
 		//Not enable mtk qos in recovery mode
-	if (mtk_qos_get_boot_mode() == 2) {
-		mtk_qos_enable = 0;
-		pr_info("mtkqos, recovery mode, disable qos\n");
+		if (mtk_qos_get_boot_mode() == 2) {
+			mtk_qos_enable = 0;
+			pr_info("mtkqos, recovery mode, disable qos\n");
+		}
 	}
-#endif
 
 	qos->soc = soc;
 	qos->dev = &pdev->dev;
@@ -206,39 +204,39 @@ int mtk_qos_probe(struct platform_device *pdev,
 	qos->regsize = (unsigned int) resource_size(res);
 	qos_sram_init(qos->regs, qos->regsize);
 
-#if !(IS_ENABLED(CONFIG_MTK_QOS_LEGACY) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2))
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	qos->regs = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(qos->regs))
+	if (!qos->legacy_support_v1) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		qos->regs = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(qos->regs))
 			return PTR_ERR(qos->regs);
-	else {
-		pr_info("mtkqos: find share sram node\n");
-		qos->regsize = (unsigned int) resource_size(res);
-		qos_share_init_sram(qos->regs, qos->regsize);
-	}
+		else {
+			pr_info("mtkqos: find share sram node\n");
+			qos->regsize = (unsigned int) resource_size(res);
+			qos_share_init_sram(qos->regs, qos->regsize);
+		}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	qos->regs = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(qos->regs))
-		pr_info("mtkqos: not using ext share sram\n");
-	else {
-		pr_info("mtkqos: find share sram ext node\n");
-		qos->regsize = (unsigned int) resource_size(res);
-		pr_info("mtkqos: check_ext_size:%d\n", qos->regsize);
-		if (qos->regsize)
-			qos_share_init_sram_ext(qos->regs, qos->regsize);
-		else
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+		qos->regs = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(qos->regs))
+			pr_info("mtkqos: not using ext share sram\n");
+		else {
+			pr_info("mtkqos: find share sram ext node\n");
+			qos->regsize = (unsigned int) resource_size(res);
 			pr_info("mtkqos: check_ext_size:%d\n", qos->regsize);
-	}
+			if (qos->regsize)
+				qos_share_init_sram_ext(qos->regs, qos->regsize);
+			else
+				pr_info("mtkqos: check_ext_size:%d\n", qos->regsize);
+		}
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-	qos->regs = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(qos->regs))
-		return PTR_ERR(qos->regs);
-	pr_info("mtkqos: find share sram dbg node\n");
-	qos->regsize = (unsigned int) resource_size(res);
-	qos_share_init_sram_dbg(qos->regs, qos->regsize);
-#endif
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+		qos->regs = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(qos->regs))
+			return PTR_ERR(qos->regs);
+		pr_info("mtkqos: find share sram dbg node\n");
+		qos->regsize = (unsigned int) resource_size(res);
+		qos_share_init_sram_dbg(qos->regs, qos->regsize);
+	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	if (mtk_qos_enable) {
 		m_qos = qos;

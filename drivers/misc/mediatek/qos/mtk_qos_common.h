@@ -35,6 +35,7 @@ struct mtk_qos {
 	int dram_type;
 	void __iomem *regs;
 	unsigned int regsize;
+	bool legacy_support_v1;
 };
 
 extern unsigned int evt_tri_dbg_tbl[NR_TRI];
