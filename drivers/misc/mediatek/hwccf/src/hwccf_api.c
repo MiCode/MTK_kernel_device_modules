@@ -130,18 +130,20 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 		goto ERR;
 	}
 
-	if (global_en_ofs != 0 && is_set) {
-		ret = regmap_read_poll_timeout_atomic(regmap, global_en_ofs, val,
-			is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val),
-			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
-		if (ret) {
-			HWCCF_ERR("%s timeout\n", is_set ? "g_vote" : "g_unvote");
-			ret = -HWV_VOTE_TIMEOUT;
-			goto ERR;
+	if (global_en_ofs != 0) {
+		if (is_set) {
+			ret = regmap_read_poll_timeout_atomic(regmap, global_en_ofs, val,
+				IS_MASK_SET(val, vote_val),
+				MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+			if (ret) {
+				HWCCF_ERR("%s timeout\n", is_set ? "g_vote" : "g_unvote");
+				ret = -HWV_VOTE_TIMEOUT;
+				goto ERR;
+			}
+		} else {
+			/* delay 100us for stable status */
+			udelay(100);
 		}
-	} else if (!is_set) {
-		/* delay 100us for stable status */
-		udelay(100);
 	}
 
 	if (setclr_sta_ofs != 0) {
@@ -657,14 +659,20 @@ static int _v0_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 	HWCCF_PROFILE_RESET(wait_done);
 	HWCCF_PROFILE_START(wait_done);
 
+
 	if (global_en_ofs != 0) {
-		ret = regmap_read_poll_timeout_atomic(regmap, global_en_ofs, val,
-			is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val),
-			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
-		if (ret) {
-			HWCCF_ERR("%s timeout\n", is_set ? "g_vote" : "g_unvote");
-			ret = -HWV_VOTE_TIMEOUT;
-			goto ERR;
+		if (is_set) {
+			ret = regmap_read_poll_timeout_atomic(regmap, global_en_ofs, val,
+				IS_MASK_SET(val, vote_val),
+				MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+			if (ret) {
+				HWCCF_ERR("%s timeout\n", is_set ? "g_vote" : "g_unvote");
+				ret = -HWV_VOTE_TIMEOUT;
+				goto ERR;
+			}
+		} else {
+			/* delay 100us for stable status */
+			udelay(100);
 		}
 	}
 
