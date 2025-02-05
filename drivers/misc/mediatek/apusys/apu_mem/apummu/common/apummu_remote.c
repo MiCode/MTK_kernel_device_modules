@@ -99,6 +99,7 @@ int apummu_remote_send_cmd_sync(void *drvinfo, void *request, void *reply, uint3
 	ret = rpmsg_sendto(rdv->rpdev->ept, NULL, 1, 0);
 	if (ret && ret != -EOPNOTSUPP) {
 		pr_info("%s: rpmsg_sendto(power on) fail(%d)\n", __func__, ret);
+		mutex_unlock(&g_ammu_msg->lock.mutex_ipi);
 		goto out;
 	}
 
