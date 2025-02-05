@@ -130,6 +130,7 @@ static int g_min_async_oppnum = 1;
 static bool g_same_stack_in_opp;
 static int g_async_id_threshold;
 static int g_oppnum_eachmask = 1;
+static int g_memory_counter_scale = 4;
 static struct GpuRawCounter g_counter_hs;
 static unsigned int g_async_log_level;
 
@@ -1970,6 +1971,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 			counters->irq * async_coeff[9]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL;
 
 		perf += counters->gpuactive * async_coeff[10];
+		perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	} else if (g_async_pmodel_ver == 1) {
 		perf = counters->iter * async_coeff_1[3] +
 			(counters->mcu * async_coeff_1[0] +
@@ -1983,6 +1985,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 			counters->compute * async_coeff_1[8]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
 
 		perf += counters->gpuactive * async_coeff_1[10];
+		perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	} else if (g_async_pmodel_ver == 2) {
 		perf = (counters->mcu * async_coeff_2[0] +
 			counters->compute * async_coeff_2[4] +
@@ -1996,6 +1999,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 			counters->l2ext * async_coeff_2[8]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
 
 		perf += counters->gpuactive * async_coeff_2[10];
+		perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	} else if (g_async_pmodel_ver == 3) {
 		perf = (counters->mcu * async_coeff_3[0] +
 			counters->l2ext * async_coeff_3[7]) * ratio / RATIO_SCAL +
@@ -2009,6 +2013,21 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 			counters->l2ext * async_coeff_3[9]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
 
 		perf += counters->gpuactive * async_coeff_3[10];
+		perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
+	} else if (g_async_pmodel_ver == 4) {
+		perf =  (counters->iter * async_coeff_4[0] +
+			counters->l2ext * async_coeff_4[1]) +
+			(counters->mcu * async_coeff_4[2] +
+			counters->iter * async_coeff_4[3]) * ratio / RATIO_SCAL +
+			(counters->mcu * async_coeff_4[4] +
+			counters->iter * async_coeff_4[5] +
+			counters->l2ext * async_coeff_4[6] +
+			counters->tiler * async_coeff_4[7]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL +
+			(counters->tiler * async_coeff_4[8]) / ratio * RATIO_SCAL +
+			(counters->l2ext * async_coeff_4[9]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
+
+		perf = (perf / counters->gpuactive) + async_coeff_4[10];
+		perf = div64_u64(perf * PERF_SCAL, COEFF_SCAL);
 	}
 
 
@@ -2019,7 +2038,6 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 		return (unsigned int)perf;
 	}
 
-	perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	return (unsigned int)perf;
 }
 
@@ -2045,7 +2063,7 @@ static void reset_async_counters(void)
 
 static int get_async_counters(struct async_counter *counters)
 {
-	int memory_conter_scale = 4, shader_conter_scale = dcs_get_cur_core_num();
+	int shader_conter_scale = dcs_get_cur_core_num();
 
 	if (!counters) {
 		GED_LOGE("[DVFS_ASYNC] async_counter pointer is NULL");
@@ -2073,7 +2091,7 @@ static int get_async_counters(struct async_counter *counters)
 
 	counters->iter		= (long)g_counter_hs.util_iter_raw;
 	counters->compute	= (long)div_u64(g_counter_hs.util_sc_comp_raw, shader_conter_scale);
-	counters->l2ext		= (long)div_u64(g_counter_hs.util_l2ext_raw, memory_conter_scale);
+	counters->l2ext		= (long)div_u64(g_counter_hs.util_l2ext_raw, g_memory_counter_scale);
 	counters->tiler		= (long)g_counter_hs.util_tiler_raw;
 	counters->mcu		= (long)g_counter_hs.util_mcu_raw;
 
@@ -4558,6 +4576,8 @@ GED_ERROR ged_dvfs_system_init(void)
 							&g_async_virtual_table_support);
 		of_property_read_u32(async_dvfs_node, "async-oppnum-low", &g_min_async_oppnum);
 		of_property_read_u32(async_dvfs_node, "async-oppnum-eachmask", &g_oppnum_eachmask);
+		of_property_read_u32(async_dvfs_node, "async-memory-counter-scale", &g_memory_counter_scale);
+		of_property_read_u32(async_dvfs_node, "async-async-pmodel-ver", &g_async_pmodel_ver);
 		g_enable_lb_async = g_async_ratio_support;
 	}
 	ged_set_eb_dvfs_init_value();
