@@ -460,6 +460,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/qos:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/widevine_drm:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/remoteproc:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/spi:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_src".format(kernel_version),
@@ -624,6 +625,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/spi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/widevine_drm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:ddk_kconfigs".format(kernel_version),
@@ -1088,6 +1090,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/widevine_drm:widevine_driver".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version),
@@ -1558,7 +1561,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/usb/usb_sram/usb_sram.ko",
     #"drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko",
     "drivers/misc/mediatek/vmm/mtk-vmm-notifier.ko",
-    "drivers/misc/mediatek/widevine_drm/widevine_driver.ko",
+    #"drivers/misc/mediatek/widevine_drm/widevine_driver.ko",
     "drivers/mmc/host/mtk-mmc.ko",
     #"drivers/mmc/host/mtk-sd.ko",
     #"drivers/mmc/host/mtk-mmc-wp.ko",
@@ -3091,7 +3094,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/mdpm_v1/mtk_mdpm_v1.ko")
         mgk_64_kleaf_platform_modules.update({"//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6761_dcm".format(kernel_version):"mt6761"})
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/widevine_drm/widevine_driver.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/widevine_drm:widevine_driver".format(kernel_version))
 
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-soc-sound.ko":"mt6761"})
         mgk_64_platform_device_modules.update({"sound/soc/mediatek/common_int/mtk-auddrv-gpio.ko":"mt6761"})
