@@ -969,6 +969,11 @@ static int audio_region_write_from_linear(uint32_t dsp_id,
 	}
 
 	base = dma_vir_base(dsp_id) + region->offset;
+	if (!base) {
+		pr_info("base is NULL!!! return -EFAULT");
+		return -EFAULT;
+	}
+
 #if defined(DUMP_DMA_DEBUG)
 	dump_head_idx = base + region->write_idx;
 #endif
@@ -1053,6 +1058,10 @@ static int audio_region_read_to_linear(uint32_t dsp_id,
 	}
 
 	base = dma_vir_base(dsp_id) + region->offset;
+	if (!base) {
+		pr_info("base is NULL!!! return -EFAULT");
+		return -EFAULT;
+	}
 
 	if (region->read_idx <= region->write_idx) {
 		memcpy(linear_buf, base + region->read_idx, count);
