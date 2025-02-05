@@ -67,6 +67,12 @@
 #define MML1_ENGINE_TOTAL		54
 #define MML_ENGINE_TOTAL		54
 
+/* MML larb index */
+#define MML_LARB2_IDX  0
+#define MML_LARB3_IDX  1
+#define MML_LARB56_IDX 2
+#define MML_LARB57_IDX 3
+
 /* MML component types. See mtk-mml-sys.c */
 #define MML_CT_SYS		1
 #define MML_CT_PATH		2
