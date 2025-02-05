@@ -28,9 +28,7 @@
 #include "iommu_debug.h"
 #endif
 #include "mtk-smmu-ela.h"
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 #include "smmu_secure.h"
-#endif
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
 #include "mtk-smi-dbg.h"
 #endif
@@ -448,12 +446,10 @@ static void smmu_sec_wpcfg(struct arm_smmu_device *smmu)
 	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
 		return;
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	ret = mtk_smmu_sec_wpcfg(plat_data->smmu_type);
 	if (ret)
 		dev_info(smmu->dev, "[%s] smmu_%u ret:%d\n",
 			 __func__, plat_data->smmu_type, ret);
-#endif
 }
 
 static void smmu_stash_mode_cfg(struct arm_smmu_device *smmu)
@@ -1002,12 +998,10 @@ static int mtk_smmu_hw_sec_init(struct arm_smmu_device *smmu)
 	if (plat_data->smmu_type == SOC_SMMU || plat_data->smmu_type == GPU_SMMU)
 		return 0;
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	ret = mtk_smmu_sec_init(plat_data->smmu_type);
 	if (ret)
 		dev_info(smmu->dev, "[%s] smmu:%s fail\n", __func__,
 			 get_smmu_name(plat_data->smmu_type));
-#endif
 
 	return 0;
 }
@@ -1708,14 +1702,12 @@ static int mtk_smmu_sec_setup_irqs(struct arm_smmu_device *smmu, bool enable)
 	if (smmu_type == SOC_SMMU || smmu_type == GPU_SMMU)
 		return 0;
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	/* enable or disable secure interrupt */
 	ret = mtk_smmu_sec_irq_setup(smmu_type, enable);
 	if (ret) {
 		dev_info(smmu->dev, "[%s] Enable:%d IRQs failed\n", __func__, enable);
 		return ret;
 	}
-#endif
 
 	return 0;
 }
@@ -1812,13 +1804,11 @@ static irqreturn_t mtk_smmu_sec_irq_process(int irq, void *dev)
 	if (smmu_type == SOC_SMMU || smmu_type == GPU_SMMU)
 		return IRQ_NONE;
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	/* query whether need handle secure TF */
 	ret = mtk_smmu_sec_tf_handler(smmu_type, &need_handle,
 			&fault_iova, &fault_pa, &fault_id);
 	if (ret)
 		return IRQ_NONE;
-#endif
 
 #ifdef MTK_SMMU_DEBUG
 	if (need_handle) {
@@ -2424,11 +2414,9 @@ static void mtk_smmu_sid_dump(struct arm_smmu_device *smmu, u32 sid)
 	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
 		return;
 
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	ret = mtk_smmu_dump_sid(smmu_type, sid);
 	if (ret)
 		pr_info("[%s] smmu_%u fail\n", __func__, smmu_type);
-#endif
 }
 
 static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,

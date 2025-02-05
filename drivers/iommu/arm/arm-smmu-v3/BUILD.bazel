@@ -41,7 +41,6 @@ define_mgk_ddk_ko(
         "mtk-smmuv3-mpam-mon.c",
     ],
     header_deps = [
-        ":smmu_public_headers",
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
     ],
     ko_deps = [
@@ -52,23 +51,28 @@ define_mgk_ddk_ko(
 
 define_mgk_ddk_ko(
     name = "arm_smmu_v3",
-    srcs = [
-        "arm-smmu-v3.c",
-        "arm-smmu-v3-common.c",
-        "arm-smmu-v3-impl.c",
-        "io-pgtable-arm-common.c",
-        "mtk-io-pgtable-arm.c",
-        "mtk-io-pgtable-arm.h",
-        "mtk-smmu-ssid.c",
-        "mtk-smmu-ssid.h",
-        "mtk-smmu-v3.c",
-    ],
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_DEVICE_MODULES_ARM_SMMU_V3": {
+            True: [
+                "arm-smmu-v3.c",
+                "arm-smmu-v3-common.c",
+                "arm-smmu-v3-impl.c",
+                "io-pgtable-arm-common.c",
+                "mtk-io-pgtable-arm.c",
+                "mtk-io-pgtable-arm.h",
+                "mtk-smmu-ssid.c",
+                "mtk-smmu-ssid.h",
+                "mtk-smmu-v3.c",
+	    ],
+            False: ["arm-smmu-v3-dummy.c"],
+        },
+    },
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
         "-I$(srctree)/drivers/iommu/",
     ],
     header_deps = [
-        ":smmu_public_headers",
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
     ],
     ko_deps = [
@@ -86,7 +90,6 @@ define_mgk_ddk_ko(
         "mtk-smmuv3-pmu.c",
     ],
     header_deps = [
-        ":smmu_public_headers",
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
     ],
     ko_deps = [
