@@ -944,8 +944,7 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 	struct devapc_vio_callbacks *viocb;
 	char dispatch_key[48] = {0};
 	enum infra_subsys_id id;
-	/* To bypass clkmgr cb KE issue, we change the init value from 0 to DEVAPC_NOT_KE */
-	uint32_t ret_cb = DEVAPC_NOT_KE;
+	uint32_t ret_cb = 0;
 
 	dbg_stat = mtk_devapc_ctx->soc->dbg_stat;
 	vio_info = mtk_devapc_ctx->soc->vio_info;
