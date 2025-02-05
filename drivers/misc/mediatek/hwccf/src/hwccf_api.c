@@ -19,11 +19,12 @@
 #include <linux/device.h>
 
 // Default HWCCF Timeout For _hwccf_voter_ctrl(...)
-#define MTK_WAIT_GHWV_PREPARE_CNT     3000
+#define MTK_WAIT_GHWV_PREPARE_CNT     10000
 #define MTK_WAIT_GHWV_PREPARE_US      1
 #define MTK_WAIT_GHWV_VOTE_CNT        200
 #define MTK_WAIT_GHWV_VOTE_US         1
-#define MTK_WAIT_GHWV_DONE_CNT        300000
+// 300ms to 10ms
+#define MTK_WAIT_GHWV_DONE_CNT        10000
 #define MTK_WAIT_GHWV_DONE_US         1
 // HWCCF Timeout For hwccf_cg_voter_ctrl(...)
 #define MTK_WAIT_GHWV_SET_CHK_CNT     2000
@@ -38,11 +39,12 @@
 #define MTK_WAIT_GHWV_MUX_DONE_US        1
 
 // For IRQ Voter
-#define MTK_WAIT_GHWV_IRQ_PREPARE_CNT 100000
+#define MTK_WAIT_GHWV_IRQ_PREPARE_CNT 10000
 #define MTK_WAIT_GHWV_IRQ_PREPARE_US  1
 #define MTK_WAIT_GHWV_IRQ_VOTE_CNT    1250
 #define MTK_WAIT_GHWV_IRQ_VOTE_US     2
-#define MTK_WAIT_GHWV_IRQ_DONE_CNT    300000
+// 10ms
+#define MTK_WAIT_GHWV_IRQ_DONE_CNT    10000
 #define MTK_WAIT_GHWV_IRQ_DONE_US     1
 
 static bool _inited;
@@ -79,7 +81,7 @@ static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 	// Check repeat vote
 	val = hwccf_read(regmap, en_ofs);
 	if (is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val)) {
-		HWCCF_ERR("already %s, [%x]=%x{%x}\n",
+		HWCCF_WARN("already %s, [%x]=%x{%x}\n",
 			is_set ? "set" : "clr", setclr_ofs, vote_val, val);
 		goto skip;
 	}
@@ -201,7 +203,7 @@ static int _v1_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 	// Check repeat vote
 	val = hwccf_read(regmap, en_ofs);
 	if (is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val)) {
-		HWCCF_ERR("already %s, [%x]=%x{%x}\n",
+		HWCCF_WARN("already %s, [%x]=%x{%x}\n",
 			is_set ? "set" : "clr", setclr_ofs, vote_val, val);
 		goto skip;
 	}

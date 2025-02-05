@@ -44,8 +44,12 @@
 #if HWCCF_DBG_LOG_EN
 	#define HWCCF_DBG(fmt, arg...)											\
 		pr_notice(HWCCF_DBG_TAG "<%s(), %d> " fmt, __func__, __LINE__, ##arg) /* Kernel only */
+	#define HWCCF_WARN(fmt, arg...)										\
+		pr_notice(HWCCF_TAG "<%s(), %d> " fmt, __func__, __LINE__, ##arg) /* warning log */
 #else
 	#define HWCCF_DBG(...)
+	#define HWCCF_WARN(fmt, arg...)										\
+		pr_notice(HWCCF_TAG "<%s(), %d> " fmt, __func__, __LINE__, ##arg) /* warning log */
 #endif
 
 /* Kernel only */
