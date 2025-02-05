@@ -20,7 +20,7 @@ filegroup(
 
 ddk_headers(
     name = "vcp_status_headers",
-    hdrs = [
+  hdrs = [
         "vcp_status.h",
     ],
     includes = ["."],
@@ -42,7 +42,7 @@ define_mgk_ddk_ko(
     includes = [
         ".",
     ],
-    hdrs = [
+     hdrs = [
         "vcp_status.h",
     ],
     copts = [

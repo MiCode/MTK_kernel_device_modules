@@ -1,0 +1,58 @@
+
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+PLATFORMS = [
+    "mt6991",
+    "mt6993",
+]
+define_mgk_ddk_ko(
+    name = "mtk-mm-monitor-controller",
+    srcs = [
+        "mtk-mm-monitor-controller.c",
+    ],
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    includes = ["."],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+            "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+            "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+            ],
+    ko_deps = [
+        ":mm-monitor-platform-mt6993",
+        ":mm-monitor-platform-mt6991",
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+)
+[define_mgk_ddk_ko(
+    name = "mm-monitor-platform-{}".format(p),
+    srcs = [
+        "mm-monitor-platform-{}.c".format(p),
+    ],
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    includes = ["."],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",],
+) for p in PLATFORMS]
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "mmmc_public_headers",
+    includes = ["."],
+    hdrs = glob(["mtk-mm-monitor-controller.h"]),
+)

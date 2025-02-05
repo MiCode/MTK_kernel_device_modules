@@ -21,6 +21,7 @@
 #include <linux/sched/clock.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
+#include <soc/mediatek/mmdvfs_public.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include "mtk_iommu.h"
 #include "mmqos-global.h"
