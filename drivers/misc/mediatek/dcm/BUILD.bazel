@@ -42,6 +42,7 @@ define_mgk_ddk_ko(
 define_platform_dcm_ko("mt6761")
 define_platform_dcm_ko("mt6765")
 define_platform_dcm_ko("mt6768")
+define_platform_dcm_ko("mt6789")
 define_platform_dcm_ko("mt6833")
 define_platform_dcm_ko("mt6885")
 define_platform_dcm_ko("mt6877")
