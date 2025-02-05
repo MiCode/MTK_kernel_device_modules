@@ -31,4 +31,35 @@
 #define MT6667_RG_VSYS_UVLO_VTHL_MASK                                   (0xF)
 #define MT6667_RG_VSYS_UVLO_VTHL_SHIFT                                  (4)
 
+/* PRE-OT RG */
+#define MT6667_PMIC_RG_PRE_OT_COUNT_ADDR                                (0xb10)
+#define MT6667_PMIC_RG_PRE_OT_COUNT_MASK                                (0xff)
+#define MT6667_PMIC_RG_PRE_OT_COUNT_SHIFT                               (0)
+#define MT6667_PMIC_RG_PRE_OT_COUNT_CLR_ADDR                            (0xb11)
+#define MT6667_PMIC_RG_PRE_OT_COUNT_CLR_MASK                            (0x1)
+#define MT6667_PMIC_RG_PRE_OT_COUNT_CLR_SHIFT                           (3)
+
+/* CURRENT CLAMPING RG */
+#define MT6667_PMIC_RG_BUCK_OC_STS_CNT_CLR_ADDR                         (0x144d)
+#define MT6667_PMIC_RG_BUCK_OC_STS_CNT_CLR_MASK                         (0x1)
+#define MT6667_PMIC_RG_BUCK_OC_STS_CNT_CLR_SHIFT                        (0)
+#define MT6667_PMIC_RG_BUCK_OC_STS_CNT_EN_ADDR                          (0x144d)
+#define MT6667_PMIC_RG_BUCK_OC_STS_CNT_EN_MASK                          (0x1)
+#define MT6667_PMIC_RG_BUCK_OC_STS_CNT_EN_SHIFT                         (1)
+#define MT6667_PMIC_RG_BUCK_TOP_RSV0_ADDR                               (0x144d)
+#define MT6667_PMIC_RG_BUCK_TOP_RSV0_MASK                               (0x3f)
+#define MT6667_PMIC_RG_BUCK_TOP_RSV0_SHIFT                              (2)
+#define MT6667_PMIC_RG_BUCK1_OC_STS_CNT_ADDR                            (0x144e)
+#define MT6667_PMIC_RG_BUCK1_OC_STS_CNT_MASK                            (0xff)
+#define MT6667_PMIC_RG_BUCK1_OC_STS_CNT_SHIFT                           (0)
+#define MT6667_PMIC_RG_BUCK2_OC_STS_CNT_ADDR                            (0x144f)
+#define MT6667_PMIC_RG_BUCK2_OC_STS_CNT_MASK                            (0xff)
+#define MT6667_PMIC_RG_BUCK2_OC_STS_CNT_SHIFT                           (0)
+#define MT6667_PMIC_RG_BUCK3_OC_STS_CNT_ADDR                            (0x1450)
+#define MT6667_PMIC_RG_BUCK3_OC_STS_CNT_MASK                            (0xff)
+#define MT6667_PMIC_RG_BUCK3_OC_STS_CNT_SHIFT                           (0)
+#define MT6667_PMIC_RG_BUCK4_OC_STS_CNT_ADDR                            (0x1451)
+#define MT6667_PMIC_RG_BUCK4_OC_STS_CNT_MASK                            (0xff)
+#define MT6667_PMIC_RG_BUCK4_OC_STS_CNT_SHIFT                           (0)
+
 #endif /* __MFD_MT6667_REGISTERS_H__ */

@@ -5,10 +5,23 @@
 #ifndef __MTK_SPMI_PMIC_DEBUG_H__
 #define __MTK_SPMI_PMIC_DEBUG_H__
 
-#define spmi_glitch_idx_cnt 65
-#define spmi_parity_err_idx_cnt 33
+#define PMIC_MBRAIN_VER_INFO_IDX        0
+#define spmi_glitch_idx_cnt             65
+#define spmi_parity_err_idx_cnt         33
+
+#define PMIC_PRE_OT_CNT_NUM             1
+#define PMIC_PRE_LVSYS_CNT_NUM          1
+#define PMIC_CURR_CLAMPING_CNT_NUM      6
+#define PMIC_PRE_OT_BUF_SIZE            ((PMIC_PRE_OT_CNT_NUM * SPMI_MAX_SLAVE_ID) + 1)
+#define PMIC_PRE_LVSYS_BUF_SIZE         ((PMIC_PRE_LVSYS_CNT_NUM * SPMI_MAX_SLAVE_ID) + 1)
+#define PMIC_CURR_CLAMPING_BUF_SIZE     ((PMIC_CURR_CLAMPING_CNT_NUM * SPMI_MAX_SLAVE_ID) + 1)
+#define SPMI_MIN_SLAVE_ID               2
+
 extern void mtk_spmi_pmic_get_glitch_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_parity_err_cnt(u16 *buf);
+extern void mtk_spmi_pmic_get_pre_ot_cnt(u16 *buf);
+extern void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf);
+extern void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf);
 
 MODULE_AUTHOR("HS Chien <HS.Chien@mediatek.com>");
 MODULE_DESCRIPTION("Debug driver for MediaTek SPMI PMIC");

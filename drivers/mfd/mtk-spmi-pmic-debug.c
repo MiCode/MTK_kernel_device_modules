@@ -4,6 +4,8 @@
 
 #include <linux/bitfield.h>
 #include <linux/module.h>
+#include <linux/mfd/mt6661/registers.h>
+#include <linux/mfd/mt6667/registers.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
@@ -12,8 +14,8 @@
 #include <dt-bindings/spmi/spmi.h>
 #include "mtk-spmi-pmic-debug.h"
 
-#define MT6316_SWCID_L_E4_CODE                (0x30)
-#define PARITY_ERROR_CLR_RDY                   0
+#define MT6316_SWCID_L_E4_CODE		(0x30)
+#define PARITY_ERROR_CLR_RDY		0
 /* For mt6688 parity error count */
 #define MT6688_REG_TOP_INFO1		0x00
 #define MT6688_REG_SPMI_DEBUG_SEL	0x21A
@@ -27,7 +29,33 @@
 #define MT6688_CHIP_REV_E2		2
 #define MT6688_CHIP_REV_E3		3
 
+#define MTK_SPMI_DBG			0
+
 struct mutex dump_mutex;
+
+struct pmic_pre_ot_info {
+	unsigned int enable;
+	unsigned int cnt_reg;
+	unsigned int cnt_clr_reg;
+	unsigned int cnt_clr_mask;
+	unsigned int cnt_clr_shift;
+};
+
+struct pmic_pre_lvsys_info {
+	unsigned int enable;
+	unsigned int cnt_reg;
+	unsigned int cnt_clr_reg;
+	unsigned int cnt_clr_mask;
+	unsigned int cnt_clr_shift;
+};
+
+struct pmic_curr_clamping_info {
+	unsigned int enable;
+	unsigned int cnt_reg[PMIC_CURR_CLAMPING_CNT_NUM];
+	unsigned int cnt_clr_reg;
+	unsigned int cnt_clr_mask;
+	unsigned int cnt_clr_shift;
+};
 struct mtk_spmi_pmic_debug_data {
 	struct device *dev;
 	struct mutex lock;
@@ -45,6 +73,9 @@ struct mtk_spmi_pmic_debug_data {
 	unsigned int spmi_parity_err_clr;
 	unsigned int spmi_parity_err_sts;
 	unsigned int spmi_parity_err_cnt;
+	struct pmic_pre_ot_info pre_ot_info;
+	struct pmic_pre_lvsys_info pre_lvsys_info;
+	struct pmic_curr_clamping_info curr_clamping_info;
 };
 
 static struct mtk_spmi_pmic_debug_data *mtk_spmi_pmic_debug[SPMI_MAX_SLAVE_ID];
@@ -336,11 +367,158 @@ void mtk_spmi_pmic_get_parity_err_cnt(u16 *buf)
 }
 EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_parity_err_cnt);
 
+void mtk_spmi_pmic_get_pre_ot_cnt(u16 *buf)
+{
+	struct regmap *regmap;
+	struct pmic_pre_ot_info info;
+	unsigned int val = 0, i = 0, j = 0;
+	u16 pre_ot_cnt[PMIC_PRE_OT_BUF_SIZE] = {0};
+
+	/* idx 0 for mbrain version info */
+	pre_ot_cnt[PMIC_MBRAIN_VER_INFO_IDX] = 1;
+	mutex_lock(&dump_mutex);
+	for (i = SPMI_MIN_SLAVE_ID; i < SPMI_MAX_SLAVE_ID; i++) {
+		if (!mtk_spmi_pmic_debug[i])
+			continue;
+		info = mtk_spmi_pmic_debug[i]->pre_ot_info;
+		if (info.enable) {
+			regmap = mtk_spmi_pmic_debug[i]->regmap;
+			/* read pre-ot count */
+			regmap_read(regmap, info.cnt_reg, &val);
+			pre_ot_cnt[PMIC_PRE_OT_CNT_NUM*i+1] = val;
+#if MTK_SPMI_DBG
+			pre_ot_cnt[PMIC_PRE_OT_CNT_NUM*i+1] = 10;
+			pr_info("slvid: 0x%x, pre_ot_cnt: %d\n",
+				 i, pre_ot_cnt[PMIC_PRE_OT_CNT_NUM*i+1]);
+#endif
+			/* clear pre-ot count */
+			regmap_update_bits(regmap,
+					   info.cnt_clr_reg,
+					   info.cnt_clr_mask << info.cnt_clr_shift, 1);
+			regmap_update_bits(regmap,
+					   info.cnt_clr_reg,
+					   info.cnt_clr_mask << info.cnt_clr_shift, 0);
+		}
+	}
+	if (buf != NULL)
+		memcpy(buf, pre_ot_cnt, PMIC_PRE_OT_BUF_SIZE * sizeof(u16));
+	else {
+		for (i = PMIC_MBRAIN_VER_INFO_IDX + 1;
+		     i < PMIC_PRE_OT_BUF_SIZE; i += PMIC_PRE_OT_CNT_NUM) {
+			pr_info("\n%s SLVID(0x%x), pre_ot_cnt: ",
+				__func__, (i-1) / PMIC_PRE_OT_CNT_NUM);
+			for (j = i; j < j + PMIC_PRE_OT_CNT_NUM; j++)
+				pr_info("%d ", pre_ot_cnt[j]);
+		}
+	}
+	mutex_unlock(&dump_mutex);
+}
+EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_pre_ot_cnt);
+
+void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf)
+{
+	struct regmap *regmap;
+	struct pmic_pre_lvsys_info info;
+	unsigned int val = 0, i = 0, j = 0;
+	u16 pre_lvsys_cnt[PMIC_PRE_LVSYS_BUF_SIZE] = {0};
+
+	/* idx 0 for version info */
+	pre_lvsys_cnt[PMIC_MBRAIN_VER_INFO_IDX] = 1;
+	mutex_lock(&dump_mutex);
+	for (i = SPMI_MIN_SLAVE_ID; i < SPMI_MAX_SLAVE_ID; i++) {
+		if (!mtk_spmi_pmic_debug[i])
+			continue;
+		info = mtk_spmi_pmic_debug[i]->pre_lvsys_info;
+		if (info.enable) {
+			regmap = mtk_spmi_pmic_debug[i]->regmap;
+			/* read pre-lvsys count */
+			regmap_read(regmap, info.cnt_reg, &val);
+			pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1] = val;
+#if MTK_SPMI_DBG
+			pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1] = 3;
+			pr_info("slvid: 0x%x, pre_lvsys_cnt: %d\n",
+				 i, pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1]);
+#endif
+			/* clear pre-lvsys count */
+			regmap_update_bits(regmap,
+					   info.cnt_clr_reg,
+					   info.cnt_clr_mask << info.cnt_clr_shift, 1);
+			regmap_update_bits(regmap,
+					   info.cnt_clr_reg,
+					   info.cnt_clr_mask << info.cnt_clr_shift, 0);
+		}
+	}
+	if (buf != NULL)
+		memcpy(buf, pre_lvsys_cnt, PMIC_PRE_LVSYS_BUF_SIZE * sizeof(u16));
+	else {
+		for (i = PMIC_MBRAIN_VER_INFO_IDX + 1;
+		     i < PMIC_PRE_LVSYS_BUF_SIZE; i += PMIC_PRE_LVSYS_CNT_NUM) {
+			pr_info("\n%s SLVID(0x%x), pre_lvsys_cnt: ",
+				__func__, (i-1) / PMIC_PRE_LVSYS_CNT_NUM);
+			for (j = i; j < j + PMIC_PRE_LVSYS_CNT_NUM; j++)
+				pr_info("%d ", pre_lvsys_cnt[j]);
+		}
+	}
+	mutex_unlock(&dump_mutex);
+}
+EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_pre_lvsys_cnt);
+
+void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf)
+{
+	struct regmap *regmap;
+	struct pmic_curr_clamping_info info;
+	unsigned int val = 0, i = 0, j = 0;
+	u16 curr_clamping_cnt[PMIC_CURR_CLAMPING_BUF_SIZE] = {0};
+
+	/* idx 0 for version info */
+	curr_clamping_cnt[PMIC_MBRAIN_VER_INFO_IDX] = 1;
+	mutex_lock(&dump_mutex);
+	for (i = SPMI_MIN_SLAVE_ID; i < SPMI_MAX_SLAVE_ID; i++) {
+		if (!mtk_spmi_pmic_debug[i])
+			continue;
+		info = mtk_spmi_pmic_debug[i]->curr_clamping_info;
+		if (info.enable) {
+			regmap = mtk_spmi_pmic_debug[i]->regmap;
+			/* read current clamping count */
+			for (j = 0; j < PMIC_CURR_CLAMPING_CNT_NUM; j++) {
+				regmap_read(regmap, info.cnt_reg[j], &val);
+				curr_clamping_cnt[PMIC_CURR_CLAMPING_CNT_NUM*i+j+1] = val;
+#if MTK_SPMI_DBG
+				curr_clamping_cnt[PMIC_CURR_CLAMPING_CNT_NUM*i+j+1] = j;
+				pr_info("slvid: 0x%x, j: %d, index: %d, curr_clamping_cnt: %d\n",
+					 i, j, PMIC_CURR_CLAMPING_CNT_NUM*i+j+1,
+					 curr_clamping_cnt[PMIC_CURR_CLAMPING_CNT_NUM*i+j+1]);
+#endif
+			}
+			/* clear current clamping count */
+			regmap_update_bits(regmap,
+					   info.cnt_clr_reg,
+					   info.cnt_clr_mask << info.cnt_clr_shift, 1);
+			regmap_update_bits(regmap,
+					   info.cnt_clr_reg,
+					   info.cnt_clr_mask << info.cnt_clr_shift, 0);
+		}
+	}
+	if (buf != NULL)
+		memcpy(buf, curr_clamping_cnt, PMIC_CURR_CLAMPING_BUF_SIZE * sizeof(u16));
+	else {
+		for (i = PMIC_MBRAIN_VER_INFO_IDX + 1;
+		     i < PMIC_CURR_CLAMPING_BUF_SIZE; i += PMIC_CURR_CLAMPING_CNT_NUM) {
+			pr_info("\n%s SLVID(0x%x), curr_clamping_cnt: ",
+				__func__, (i-1) / PMIC_CURR_CLAMPING_CNT_NUM);
+			for (j = i; j < j + PMIC_CURR_CLAMPING_CNT_NUM; j++)
+				pr_info("%d ", curr_clamping_cnt[j]);
+		}
+	}
+	mutex_unlock(&dump_mutex);
+}
+EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_current_clamping_cnt);
+
 static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debug_data *data)
 {
 	struct device_node *node_parent, *node;
-	int err;
-	u32 reg[2] = {0}, cid_addr[3] = {0}, debug_out_l[3] = {0};
+	int i = 0, err;
+	u32 reg[2] = {0}, cid_addr[3] = {0}, buf[3] = {0}, cc_buf[PMIC_CURR_CLAMPING_CNT_NUM] = {0};
 
 	if (!dev || !dev->of_node || !dev->parent->of_node)
 		return -ENODEV;
@@ -365,6 +543,7 @@ static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debu
 
 	data->usid = (u8) reg[0];
 
+	/* SPMI glitch */
 	err = of_property_read_u32_array(node, "cid-addr", cid_addr, ARRAY_SIZE(cid_addr));
 	if (err) {
 		dev_info(dev, "%s slvid 0x%x no cid/cid_addr found\n", __func__, data->usid);
@@ -382,14 +561,16 @@ static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debu
 	if (err)
 		dev_info(dev, "%s slvid 0x%x no spmi-glitch-sts found\n", __func__, data->usid);
 
-	err = of_property_read_u32_array(node, "spmi-debug-out-l", debug_out_l, ARRAY_SIZE(debug_out_l));
+	err = of_property_read_u32_array(node, "spmi-debug-out-l", buf, ARRAY_SIZE(buf));
 	if (err)
 		dev_info(dev, "%s slvid 0x%x no spmi-debug-out-l found\n", __func__, data->usid);
 	else {
-		data->spmi_debug_out_l = debug_out_l[0];
-		data->spmi_debug_out_l_mask = debug_out_l[1];
-		data->spmi_debug_out_l_shift = debug_out_l[2];
+		data->spmi_debug_out_l = buf[0];
+		data->spmi_debug_out_l_mask = buf[1];
+		data->spmi_debug_out_l_shift = buf[2];
 	}
+
+	/* SPMI parity error */
 	err = of_property_read_u32(node, "spmi-parity-err-clr", &data->spmi_parity_err_clr);
 	if (err)
 		dev_info(dev, "%s slvid 0x%x no spmi-parity-err-clr found\n", __func__, data->usid);
@@ -401,6 +582,78 @@ static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debu
 	err = of_property_read_u32(node, "spmi-parity-err-cnt", &data->spmi_parity_err_cnt);
 	if (err)
 		dev_info(dev, "%s slvid 0x%x no spmi-parity-err-cnt found\n", __func__, data->usid);
+
+	/* PMIC PRE-OT */
+	err = of_property_read_u32(node, "pmic-pre-ot-cnt-enable", &data->pre_ot_info.enable);
+	if (err)
+		dev_info(dev, "%s slvid 0x%x does not have 'pmic-pre-ot-cnt-enable' property\n",
+			 __func__, data->usid);
+	if (data->pre_ot_info.enable) {
+		err = of_property_read_u32(node, "pmic-pre-ot-cnt", &(data->pre_ot_info.cnt_reg));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'pmic-pre-ot-cnt' property\n",
+				 __func__, data->usid);
+		err = of_property_read_u32_array(node, "pmic-pre-ot-cnt-clr", buf, ARRAY_SIZE(buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'pmic-pre-ot-cnt-clr' property\n",
+				 __func__, data->usid);
+		else {
+			data->pre_ot_info.cnt_clr_reg = buf[0];
+			data->pre_ot_info.cnt_clr_mask = buf[1];
+			data->pre_ot_info.cnt_clr_shift = buf[2];
+		}
+	}
+
+	/* PMIC PRE-LVSYS */
+	err = of_property_read_u32(node, "pmic-pre-lvsys-cnt-enable",
+				   &(data->pre_lvsys_info.enable));
+	if (err)
+		dev_info(dev, "%s slvid 0x%x does not have 'pmic-pre-lvsys-cnt-enable' property\n",
+			 __func__, data->usid);
+	if (data->pre_lvsys_info.enable) {
+		err = of_property_read_u32(node, "pmic-pre-lvsys-cnt",
+					   &(data->pre_lvsys_info.cnt_reg));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'pmic-pre-lvsys-cnt' property\n",
+				 __func__, data->usid);
+		err = of_property_read_u32_array(node, "pmic-pre-lvsys-cnt-clr", buf, ARRAY_SIZE(buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'pmic-pre-lvsys-cnt-clr' property\n",
+				 __func__, data->usid);
+		else {
+			data->pre_lvsys_info.cnt_clr_reg = buf[0];
+			data->pre_lvsys_info.cnt_clr_mask = buf[1];
+			data->pre_lvsys_info.cnt_clr_shift = buf[2];
+		}
+	}
+
+	/* Current Clamping */
+	err = of_property_read_u32(node, "pmic-curr-clamping-cnt-enable",
+				   &(data->curr_clamping_info.enable));
+	if (err)
+		dev_info(dev, "%s slvid 0x%x does not have 'pmic-curr-clamping-cnt-enable' property\n",
+			 __func__, data->usid);
+	if (data->curr_clamping_info.enable) {
+		err = of_property_read_u32_array(node, "pmic-curr-clamping-cnt",
+						 cc_buf, ARRAY_SIZE(cc_buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'pmic-curr-clamping-cnt' property\n",
+				 __func__, data->usid);
+		else {
+			for (i = 0; i < PMIC_CURR_CLAMPING_CNT_NUM; i++)
+				data->curr_clamping_info.cnt_reg[i] = cc_buf[i];
+		}
+		err = of_property_read_u32_array(node, "pmic-curr-clamping-cnt-clr", buf, ARRAY_SIZE(buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'pmic-curr-clamping-cnt-clr' property\n",
+				 __func__, data->usid);
+		else {
+			data->curr_clamping_info.cnt_clr_reg = buf[0];
+			data->curr_clamping_info.cnt_clr_mask = buf[1];
+			data->curr_clamping_info.cnt_clr_shift = buf[2];
+		}
+	}
+
 	return data->usid;
 }
 
@@ -408,6 +661,12 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 {
 	struct mtk_spmi_pmic_debug_data *data;
 	int ret = 0, usid = 0;
+#if MTK_SPMI_DBG
+	int i = 0;
+	u16 pre_ot_buf[PMIC_PRE_OT_BUF_SIZE] = {0};
+	u16 pre_lvsys_buf[PMIC_PRE_LVSYS_BUF_SIZE] = {0};
+	u16 cc_buf[PMIC_CURR_CLAMPING_BUF_SIZE] = {0};
+#endif
 
 	data = devm_kzalloc(&pdev->dev, sizeof(struct mtk_spmi_pmic_debug_data),
 			    GFP_KERNEL);
@@ -433,6 +692,18 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "success to create %s slave-%d sysfs file\n", pdev->name, usid);
 	} else
 		dev_info(&pdev->dev, "fail to create %s slave-%d sysfs file\n", pdev->name, usid);
+
+#if MTK_SPMI_DBG
+	mtk_spmi_pmic_get_pre_ot_cnt(pre_ot_buf);
+	for (i = 0; i < PMIC_PRE_OT_BUF_SIZE; i++)
+		dev_info(&pdev->dev, "pre_ot_buf[%d]: %d\n", i, pre_ot_buf[i]);
+	mtk_spmi_pmic_get_pre_lvsys_cnt(pre_lvsys_buf);
+	for (i = 0; i < PMIC_PRE_LVSYS_BUF_SIZE; i++)
+		dev_info(&pdev->dev, "pre_lvsys_buf[%d]: %d\n", i, pre_lvsys_buf[i]);
+	mtk_spmi_pmic_get_current_clamping_cnt(cc_buf);
+	for (i = 0; i < PMIC_CURR_CLAMPING_BUF_SIZE; i++)
+		dev_info(&pdev->dev, "cc_buf[%d]: %d\n", i, cc_buf[i]);
+#endif
 
 	return ret;
 }
