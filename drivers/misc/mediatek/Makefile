@@ -53,6 +53,7 @@ obj-$(CONFIG_MTK_CAM_CAL) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MON) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_MOU) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP6S_LAG) += cam_cal/
+obj-$(CONFIG_MTK_CONN_MD) += conn_md/
 obj-$(CONFIG_MTK_AEE_FEATURE) += aee/
 #obj-$(CONFIG_MTK_CLKBUF_CTRL) += clkbuf/
 #obj-$(CONFIG_MTK_SRCLKEN_RC) += srclken_rc/
