@@ -6,6 +6,7 @@
 #include <linux/spmi.h>
 
 #define slvid_cnt 16
+#define spmi_nack_idx_cnt 33
 
 struct ch_reg {
 	u32 ch_sta;
@@ -99,6 +100,10 @@ enum spmi_regs {
 	SPMI_WDT_REC,
 	SPMI_DEC_DBG,
 	SPMI_REC_CMD_DEC,
+	SPMI_SLV_3_0_NACK_COUNT,
+	SPMI_SLV_7_4_NACK_COUNT,
+	SPMI_SLV_B_8_NACK_COUNT,
+	SPMI_SLV_F_C_NACK_COUNT,
 };
 
 struct spmi_nack_monitor_pair {

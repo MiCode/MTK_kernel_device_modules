@@ -1344,7 +1344,7 @@ static const u32 mt6885_pmif_dbg_regs[] = {
 static char d_log_buf[2560];
 static struct spmi_controller *dbg_ctrl;
 static char *wp;
-static unsigned int slvid_nack_cnt[slvid_cnt] = {0};
+static unsigned int slvid_nack_cnt[spmi_nack_idx_cnt] = {0};
 
 /* spmi & pmif debug mechanism */
 void spmi_dump_wdt_reg(void)
@@ -1713,7 +1713,7 @@ static char *get_spmimst_all_reg_dump(void)
 	int i = 0;
 
 	start = arb->spmimst_regs[SPMI_OP_ST_CTRL];
-	end = arb->spmimst_regs[SPMI_DEC_DBG];
+	end = arb->spmimst_regs[SPMI_SLV_F_C_NACK_COUNT];
 
 	log_size += sprintf(wp, "\n[SPMI-M] ");
 	for (offset = start; offset <= end; offset += 4) {
@@ -1749,13 +1749,7 @@ static char *get_spmimst_all_reg_dump(void)
 		tmp_dat = readl(arb->spmimst_base[1] + offset);
 		log_size += sprintf(wp + log_size, "(0x%x)=0x%x\n", offset, tmp_dat);
 	}
-	log_size += sprintf(wp + log_size, "\n[SPMI_MST_NACK_CNT] ");
-	for (i = 0; i < slvid_cnt; i++) {
-		log_size += sprintf(wp + log_size, "SLVID(0x%x)=%d ",
-			i, slvid_nack_cnt[i]);
-		if (i % 4 == 0)
-			log_size += sprintf(wp + log_size, "\n[SPMI_MST_NACK_CNT] ");
-	}
+	get_spmi_slvid_nack_cnt(NULL);
 	if (log_size < 0)
 		pr_notice("sprintf failed\n");
 	return wp;
@@ -2186,8 +2180,51 @@ EXPORT_SYMBOL_GPL(spmi_slvid_nack_cnt_add);
 
 void get_spmi_slvid_nack_cnt(unsigned int *buf)
 {
-	if (buf != NULL)
-		memcpy(buf, slvid_nack_cnt, slvid_cnt*sizeof(unsigned int));
+	int i = 0;
+	struct pmif *arb = spmi_controller_get_drvdata(dbg_ctrl);
+	unsigned int offset = 0, rdata_soc = 0;
+
+	/* Version number */
+	slvid_nack_cnt[0] = 0;
+
+	/* Fill in SPMI-M NACK count */
+	for (i = 0; i < slvid_cnt; i++) {
+		/* Read HW NACK counter register */
+		offset = arb->spmimst_regs[SPMI_SLV_3_0_NACK_COUNT] + (i/4)*0x4;
+		rdata_soc = readl(arb->spmimst_base[0] + offset);
+		/* Add to accumulation array */
+		slvid_nack_cnt[i + 1] += (rdata_soc >> ((i % 4)*8)) & 0xFF;
+		/* Clear HW NACK count */
+		if (i % 4 == 3)
+			writel(0xFFFFFFFF, arb->spmimst_base[0] + offset);
+	}
+
+	/* Fill in SPMI-P NACK count */
+	for (i = 0; i < slvid_cnt; i++) {
+		/* Read HW NACK counter register */
+		offset = arb->spmimst_regs[SPMI_SLV_3_0_NACK_COUNT] + (i / 4) * 0x4;
+		rdata_soc = readl(arb->spmimst_base[1] + offset);
+		/* Add to accumulation array */
+		slvid_nack_cnt[i + slvid_cnt + 1] += (rdata_soc >> ((i % 4) * 8)) & 0xFF;
+		/* Clear HW NACK count */
+		if (i % 4 == 3)
+			writel(0xFFFFFFFF, arb->spmimst_base[1] + offset);
+	}
+
+	if (buf != NULL) {
+		memcpy(buf, slvid_nack_cnt, spmi_nack_idx_cnt*sizeof(unsigned int));
+	} else {
+		/* Dump accumulated NACK count */
+		pr_notice("[SPMI] HW NACK count Version: %d\n", slvid_nack_cnt[0]);
+		for (i = 1; i < slvid_cnt + 1; i++) {
+			pr_notice("[SPMI-M] SLVID: %d, NACK Count: %d\n",
+						i - 1, slvid_nack_cnt[i]);
+		}
+		for (i = slvid_cnt + 1; i < spmi_nack_idx_cnt; i++) {
+			pr_notice("[SPMI-P] SLVID: %d, NACK Count: %d\n",
+						i - 1 - slvid_cnt, slvid_nack_cnt[i]);
+		}
+	}
 }
 EXPORT_SYMBOL_GPL(get_spmi_slvid_nack_cnt);
 

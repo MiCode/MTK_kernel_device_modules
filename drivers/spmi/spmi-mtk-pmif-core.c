@@ -352,6 +352,10 @@ static const u32 mt6853_spmi_regs[] = {
 	[SPMI_WDT_REC] =	0x0060,
 	[SPMI_DEC_DBG] =	0x00F8,
 	[SPMI_MST_DBG] =	0x00FC,
+	[SPMI_SLV_3_0_NACK_COUNT] =	0x0140,
+	[SPMI_SLV_7_4_NACK_COUNT] =	0x0144,
+	[SPMI_SLV_B_8_NACK_COUNT] =	0x0148,
+	[SPMI_SLV_F_C_NACK_COUNT] =	0x014C,
 };
 
 static const u32 mt6873_spmi_regs[] = {
@@ -1596,7 +1600,6 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		if (spmi_p_nack & 0xD8)
 			dump_spmip_pmic_dbg_rg(arb, (spmi_p_nack & 0x0f00)>>8);
 
-		spmi_slvid_nack_cnt_add(spmi_nack, spmi_p_nack);
 		pr_notice("%s spmi transaction fail (Write) irq triggered", __func__);
 		pr_notice("SPMI_REC0 m/p:0x%x/0x%x SPMI_REC1 m/p 0x%x/0x%x\n",
 			spmi_nack, spmi_p_nack, spmi_nack_data, spmi_p_nack_data);
