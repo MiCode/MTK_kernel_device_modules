@@ -349,6 +349,32 @@ done:
 EXPORT_SYMBOL(gpufreq_get_cur_out_freq);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_get_cur_avg_freq
+ * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
+ * Outputs            : -
+ * Returns            : freq   - Current avg freq of given target
+ * Description        : Query current avg frequency of the target
+ ***********************************************************************************/
+unsigned int gpufreq_get_cur_avg_freq(enum gpufreq_target target)
+{
+	unsigned int freq = 0;
+
+	if (gpufreq_validate_target(&target))
+		goto done;
+
+	if (target == TARGET_STACK && g_shared_status)
+		freq = g_shared_status->prbc_info.avg_freq;
+	else if (target == TARGET_GPU && g_shared_status)
+		freq = g_shared_status->cur_out_fgpu;
+	else
+		GPUFREQ_LOGE("null gpufreq shared memory (ENOENT)");
+
+done:
+	return freq;
+}
+EXPORT_SYMBOL(gpufreq_get_cur_avg_freq);
+
+/***********************************************************************************
  * Function Name      : gpufreq_get_cur_volt
  * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
  * Outputs            : -
