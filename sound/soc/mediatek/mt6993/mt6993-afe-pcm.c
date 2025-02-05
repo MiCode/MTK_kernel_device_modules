@@ -7404,40 +7404,40 @@ static ssize_t mt6993_debug_read_reg(char *buffer, int size, struct mtk_base_afe
 		regmap_read(afe_priv->vlp_ck, VLP_CLK_CFG_UPDATE1, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_CLK_CFG_UPDATE1 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PLL_CON3, &value);
+		regmap_read(afe_priv->vlp_apll1, VLP_APLL1_PLL_CON3, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PLL_CON3 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PCW_CON0, &value);
+		regmap_read(afe_priv->vlp_apll1, VLP_APLL1_PCW_CON0, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PCW_CON0 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PCW_CON1, &value);
+		regmap_read(afe_priv->vlp_apll1, VLP_APLL1_PCW_CON1, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PCW_CON1 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PLL_CON0, &value);
+		regmap_read(afe_priv->vlp_apll1, VLP_APLL1_PLL_CON0, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PLL_CON0 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PLL_CON1, &value);
+		regmap_read(afe_priv->vlp_apll1, VLP_APLL1_PLL_CON1, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PLL_CON1 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PLL_CON3, &value);
+		regmap_read(afe_priv->vlp_apll1, VLP_APLL1_PLL_CON3, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PLL_CON3 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL2_PLL_CON3, &value);
+		regmap_read(afe_priv->vlp_apll2, VLP_APLL2_PLL_CON3, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL2_PLL_CON3 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL2_PCW_CON0, &value);
+		regmap_read(afe_priv->vlp_apll2, VLP_APLL2_PCW_CON0, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL2_PCW_CON0 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL2_PCW_CON1, &value);
+		regmap_read(afe_priv->vlp_apll2, VLP_APLL2_PCW_CON1, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL2_PCW_CON1 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PLL_CON0, &value);
+		regmap_read(afe_priv->vlp_apll2, VLP_APLL1_PLL_CON0, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PLL_CON0 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PLL_CON1, &value);
+		regmap_read(afe_priv->vlp_apll2, VLP_APLL1_PLL_CON1, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PLL_CON1 = 0x%x\n", value);
-		regmap_read(afe_priv->vlp_ck, VLP_APLL1_PLL_CON3, &value);
+		regmap_read(afe_priv->vlp_apll2, VLP_APLL1_PLL_CON3, &value);
 		n += scnprintf(buffer + n, size - n,
 				"VLP_APLL1_PLL_CON3 = 0x%x\n", value);
 	}

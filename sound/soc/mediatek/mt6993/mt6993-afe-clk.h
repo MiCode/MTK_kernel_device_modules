@@ -9,20 +9,23 @@
 #ifndef _MT6993_AFE_CLOCK_CTRL_H_
 #define _MT6993_AFE_CLOCK_CTRL_H_
 
-// vlp_cksys_clk: 0x1c200000
-#define VLP_APLL1_PCW_CON0 0x303c
-#define VLP_APLL1_PCW_CON1 0x3040
-#define VLP_APLL1_PLL_CON0 0x3008
-#define VLP_APLL1_PLL_CON1 0x300c
-#define VLP_APLL1_PLL_CON3 0x3014
-#define VLP_APLL1_TUNER_CON0 0x3038
+// vlp_cksys_clk:<0 0x1c200000 0 0x1000>
+// apll1_ctrl_clk:<0 0x1c203000 0 0x0100>
+// apll2_ctrl_clk:<0 0x1c203100 0 0x1000>
 
-#define VLP_APLL2_PCW_CON0 0x313c
-#define VLP_APLL2_PCW_CON1 0x3140
-#define VLP_APLL2_PLL_CON0 0x3108
-#define VLP_APLL2_PLL_CON1 0x310c
-#define VLP_APLL2_PLL_CON3 0x3114
-#define VLP_APLL2_TUNER_CON0 0x3138
+#define VLP_APLL1_PCW_CON0 0x3c
+#define VLP_APLL1_PCW_CON1 0x40
+#define VLP_APLL1_PLL_CON0 0x08
+#define VLP_APLL1_PLL_CON1 0x0c
+#define VLP_APLL1_PLL_CON3 0x14
+#define VLP_APLL1_TUNER_CON0 0x38
+
+#define VLP_APLL2_PCW_CON0 0x3c
+#define VLP_APLL2_PCW_CON1 0x40
+#define VLP_APLL2_PLL_CON0 0x08
+#define VLP_APLL2_PLL_CON1 0x0c
+#define VLP_APLL2_PLL_CON3 0x14
+#define VLP_APLL2_TUNER_CON0 0x38
 
 /* [0]: aud_sw_engen2_ck_update */
 /* [1]: aud_intbus_ck_update */

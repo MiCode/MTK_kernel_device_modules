@@ -27,12 +27,20 @@
 #ifdef SKIP_SB
 #define SKIP_SB_GPIO
 #define SKIP_SB_CLK
+#define SKIP_SB_DSP
+#define SKIP_SB_BTCVSD
+#define SKIP_SB_OFFLOAD
+#define SKIP_SB_VOW
+#define SKIP_SB_ULTRA
+#define SKIP_SB_AUDIO
+#define SKIP_SMCC_SB
+#define SKIP_SB_PBM
+#define SKIP_SB_USB_OFFLOAD
 #define SKIP_ACCDET
 #else
 /* delete define below if your feature don't want to skip */
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_AUDIO
-#define SKIP_SMCC_SB
 #define SKIP_SB_PBM
 #define SKIP_SB_USB_OFFLOAD
 #define SKIP_VIP
@@ -633,6 +641,8 @@ struct mt6993_afe_private {
 	struct clk **clk;
 	struct regmap *cksys_ck;
 	struct regmap *vlp_ck;
+	struct regmap *vlp_apll1;
+	struct regmap *vlp_apll2;
 	struct regmap *pmic_regmap;
 	int irq_cnt[MT6993_MEMIF_NUM];
 	int stf_positive_gain_db;
