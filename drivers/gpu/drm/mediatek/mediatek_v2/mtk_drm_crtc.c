@@ -10533,12 +10533,9 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_CALC_RATIO,
 				NULL);
 	//clear srt bw
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
-		mtk_crtc->total_srt -= comp->qos_bw;
-		mtk_disp_total_srt_bw(mtk_crtc, mtk_crtc->total_srt);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, 0, 0,
 					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
-	}
 
 	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
