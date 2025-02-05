@@ -506,7 +506,7 @@ int ccu_send_command(struct ccu_cmd_s *pCmd)
 		if (ret == -ERESTARTSYS)
 			LOG_ERR("interrupted as -ERESTARTSYS\n");
 
-		pCmd->status = ret;
+		pCmd->status = CCU_ENG_STATUS_FAILURE;
 		goto out;
 	}
 

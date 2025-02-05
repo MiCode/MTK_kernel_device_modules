@@ -34,7 +34,7 @@ struct CcuMemHandle {
 };
 
 int ccu_allocate_mem(struct ccu_device_s *dev, struct CcuMemHandle *memHandle,
-			 int size, bool cached);
+			 unsigned int size, bool cached);
 int ccu_deallocate_mem(struct ccu_device_s *dev, struct CcuMemHandle *memHandle);
 struct CcuMemInfo *ccu_get_binary_memory(void);
 #endif

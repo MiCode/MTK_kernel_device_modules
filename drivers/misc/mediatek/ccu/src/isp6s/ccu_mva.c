@@ -13,9 +13,9 @@
 struct CcuMemHandle ccu_buffer_handle[2];
 
 int ccu_allocate_mem(struct ccu_device_s *dev, struct CcuMemHandle *memHandle,
-			 int size, bool cached)
+			 unsigned int size, bool cached)
 {
-	int ssize = size << 1;
+	unsigned int ssize = size << 1;
 	dma_addr_t dsize = size;
 
 	if (dev == NULL)
@@ -24,7 +24,7 @@ int ccu_allocate_mem(struct ccu_device_s *dev, struct CcuMemHandle *memHandle,
 	if (memHandle == NULL)
 		return -2;
 
-	LOG_DBG("size(%d) cached(%d)\n", ssize, cached);
+	LOG_DBG("size(%u) cached(%d)\n", ssize, cached);
 	// get buffer virtual address
 	memHandle->meminfo.size = ssize;
 	memHandle->meminfo.cached = (cached) ? 1 : 0;
