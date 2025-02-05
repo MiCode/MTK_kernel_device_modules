@@ -122,7 +122,6 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
-        "-Wno-return-mismatch",
     ],
 
     ko_deps = [
@@ -151,6 +150,7 @@ define_mgk_ddk_ko(
 
 platforms = [
     "mt6878",
+    "mt6895",
     "mt6991",
     "mt6993",
 ]
@@ -203,6 +203,5 @@ platforms = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
-        "-Wno-return-mismatch",
     ],
 ) for p in platforms]
