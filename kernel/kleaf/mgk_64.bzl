@@ -2066,6 +2066,22 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched/c2ps_ioctl:c2ps_perf_ioctl")
 
+        mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")
+        mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")
+        mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")
+        mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/tee/gud:mcDrvModule-ffa".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/tee/teei/520:isee-ffa".format(kernel_version))
+
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+
     if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877:wlan_drv_gen4m_6877")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/slbc:ktf_slbc_it")
