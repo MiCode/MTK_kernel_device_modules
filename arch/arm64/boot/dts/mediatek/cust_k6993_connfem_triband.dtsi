@@ -6,23 +6,25 @@
 &connfem {
 	sku-mtk {
 		hw-names =
-			"qm42655_qm45655_was_ps__phone",/* [0] SKU5-1 Phone 2G+1A+1A */
+			"qm42655_qm45655_legacy",/* [0] SKU5-1 Phone 2G+1A+1A (legacy) */
 			"qm42655_qm45655_was_ps",	/* [1] SKU5-1 EVB 2G+1A+1A */
 			"sky55208_sky55714",		/* [2] SKU1-2 Phone (N/A) 2G+2A+1A */
 			"sky55208_sky55714",		/* [3] SKU1-2 EVB 2G+2A+1A */
 			"ipa_qm45655_ps",		/* [4] SKU2 Phone (N/A) 2G iPA+1A+1A */
 			"ipa_qm45655_ps",		/* [5] SKU2 EVB 2G iPA+1A+1A  */
-			"sky55208_sky55714_was",		/* [6] SKU5-2 Phone (N/A) 2G+1A+1A */
-			"sky55208_sky55714_was",		/* [7] SKU5-2 EVB 2G+1A+1A */
-			"qm42655_qm45655_was_ps",	/* [8] SKU5-3 Phone (N/A) 2G+1A+1A */
-			"qm42655_qm45655_was_ps",	/* [9] SKU5-3 EVB 2G+1A+1A */
+			"sky55208_sky55714_was",	/* [6] SKU5-2 Phone (N/A) 2G+1A+1A */
+			"sky55208_sky55714_was",	/* [7] SKU5-2 EVB 2G+1A+1A */
+			"qm42655_qm45655_was_ps__phone",	/* [8] SKU5-1 Phone 2G+1A+1A */
+			"vc536431_vc576831_was",	/* [9] SKU5-3 EVB 2G+1A+1A */
 			"qm42655_qm45655_ps",		/* [10] SKU1-1 E3 Phone (N/A) 2G+2A+1A */
 			"qm42655_qm45655_ps",		/* [11] SKU1-1 E3 EVB 2G+2A+1A */
 			"ipa_sky55714",			/* [12] SKU2 with SKY55714 */
-			"qm42655_qm45655",			/* [13] SKU1-1 with MXD7282 BT eFEM */
+			"qm42655_qm45655",		/* [13] SKU1-1 with MXD7282 BT eFEM */
 			"qm42655_qm45655_sky85732",	/* [14] SKU1-1 BN2 SKY85732 2A+1A */
-			"qm42655_qm45655_was",		/* [15] SKU5-1 2G+1A+1A */
-			"ipa_qm45655";			/* [16] SKU2 2G iPA+1A+1A */
+			"vc536421_vc576821",		/* [15] SKU1 VC536421/576821 */
+			"qm42655_qm45655_was",		/* [16] SKU5-1 2G+1A+1A */
+			"ipa_qm45655",			/* [17] SKU2 2G iPA+1A+1A */
+			"vc536411_vc576811";	/* [18] SKU1 VC5364/VC5768 -11 2G+2A */
 
 		hwid {
 			/* HWID bit[0]
@@ -46,7 +48,7 @@
 		};
 
 		/***************************************************************
-		 * [HW][0] SKU5-1 Phone 2G+1A+1A
+		 * [HW][0] SKU5-1 Phone 2G+1A+1A (Legacy)
 		 **************************************************************/
 		hw-0 {
 			using-fems =
@@ -394,7 +396,7 @@
 		};
 
 		/***************************************************************
-		 * [HW][8] SKU5-3 Phone (N/A) 2G+1A+1A
+		 * [HW][8] SKU5-3 Phone 2G+1A+1A
 		 **************************************************************/
 		hw-8 {
 			using-fems =
@@ -443,15 +445,15 @@
 		 **************************************************************/
 		hw-9 {
 			using-fems =
-				<&qm42655>,
-				<&qm45655>;
+				<&vc536431>,
+				<&vc576831>;
 
 			layout-flag = <0x00000000>;
 			layout =
-				<&g_wf0_bt0_qm42655>,
-				<&g_wf1_bt1_qm42655>,
-				<&a_wf0_qm45655>,
-				<&a_wf12_emlsr_bt0_qm45655>;
+				<&g_wf0_bt0_vc536431>,
+				<&g_wf1_bt1_vc536431>,
+				<&a_wf0_vc576831>,
+				<&a_wf12_emlsr_bt0_vc576831>;
 
 			layout-spdt =
 				<&spdt_a1_a2_tx>,
@@ -471,8 +473,8 @@
 
 			wifi {
 				using-states =
-					<&qm42655_rxl>,
-					<&qm45655_rxl_rxh>;
+					<&vc536431_rxl>,
+					<&vc576831_rxl_rxh>;
 			};
 
 			bt {
@@ -704,9 +706,53 @@
 		};
 
 		/***************************************************************
-		 * [HW][15] SKU5-1 2G+1A+1A
+		 * [HW][15] SKU1 VC536421/576821
 		 **************************************************************/
 		hw-15 {
+			using-fems =
+				<&vc536421>,
+				<&vc576821>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_vc536421>,
+				<&g_wf1_bt1_vc536421>,
+				<&a_wf0_vc576821>,
+				<&a_wf1_vc576821>,
+				<&a_wf2_bt0_vc576821>;
+
+			layout-spdt =
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [96];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&vc536421_rxl>,
+					<&vc576821_rxl_rxh>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][16] SKU5-1 2G+1A+1A
+		 **************************************************************/
+		hw-16 {
 			using-fems =
 				<&qm42655>,
 				<&qm45655>;
@@ -749,9 +795,9 @@
 		};
 
 		/***************************************************************
-		 * [HW][16] SKU2 2G iPA+1A+1A
+		 * [HW][17] SKU2 2G iPA+1A+1A
 		 **************************************************************/
-		hw-16 {
+		hw-17 {
 			using-fems = <&qm45655>;
 
 			layout-flag = <0x00000000>;
@@ -784,6 +830,52 @@
 				flags {
 					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
 					rx-mode = [10]; /* 0x10: HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][18] SKU1 VC536411/576811
+		 **************************************************************/
+		hw-18 {
+			using-fems =
+				<&vc536411>,
+				<&vc576811>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_vc536411>,
+				<&g_wf1_bt1_vc536411>,
+				<&a_wf0_vc576811>,
+				<&a_wf1_vc576811>,
+				<&a_wf2_bt0_vc576821>;
+
+			layout-spdt =
+				<&spdt_g_wf0_bt0_tx>,
+				<&spdt_g_wf1_bt1_tx>,
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [96];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [f8];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&vc536421_rxl>,
+					<&vc576821_rxl_rxh>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
 				};
 			};
 		};
