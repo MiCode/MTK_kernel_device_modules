@@ -2372,12 +2372,14 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	t_gpu = div_u64(t_gpu, 100000);   // change unit from ns to 100*us
 	t_gpu_target = div_u64(t_gpu_target, 100000);   // change unit from ns to 100*us
 
-	if (ged_npu_hint_enable && (ged_kpi_get_FPSGO_ulID() == ged_kpi_get_Frame_done_ulID())
-		&& t_gpu > (ged_npu_hint_enable * 10))
+	if (ged_npu_hint_enable && (ged_kpi_get_FPSGO_ulID() == ged_kpi_get_Frame_done_ulID()))
 		npu_hint_flag = 1;
 
 	if (npu_hint_flag) {
-		npu_t_gpu = t_gpu - (ged_npu_hint_enable * 10);
+		if (t_gpu > (ged_npu_hint_enable * 10))
+			npu_t_gpu = t_gpu - (ged_npu_hint_enable * 10);
+		else
+			npu_t_gpu = 0;
 		npu_t_gpu_target = t_gpu_target - (ged_npu_hint_enable * 10);
 		trace_tracing_mark_write(5566, "gpu_npu_hint_ms", ged_npu_hint_enable);
 	}
