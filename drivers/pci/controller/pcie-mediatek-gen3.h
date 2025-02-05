@@ -40,7 +40,8 @@ enum cplto_range {
 };
 
 enum hs_feature_id {
-	PCIE_RPM_CTRL = 1
+	PCIE_RPM_CTRL = 1,
+	PCIE_TAG_CTRL,
 };
 
 enum mtk_pcie_suspend_link_state {
@@ -53,9 +54,9 @@ enum mtk_pcie_suspend_link_state {
  * struct handshake_info - PCIe RC handshake protocol with EP
  */
 struct handshake_info {
-	int feature_id;
+	enum hs_feature_id feature_id;
 	int data_size;
-	u8 data[64];
+	u32 data[64];
 };
 
 bool mtk_pcie_in_use(int port);

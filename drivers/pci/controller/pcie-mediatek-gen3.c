@@ -230,6 +230,9 @@
 #define PCIE_MAC_SLP_DIS		BIT(7)
 #define PCIE_DVFS_REQ_FORCE_OFF		BIT(12)
 
+#define PCIE_ULTRA_SETTING_REG		0x3d0
+#define PCIE_TAG_EN			BIT(3)
+
 #define PCIE_TRANS_TABLE_BASE_REG	0x800
 #define PCIE_ATR_SRC_ADDR_MSB_OFFSET	0x4
 #define PCIE_ATR_TRSL_ADDR_LSB_OFFSET	0x8
@@ -2032,7 +2035,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x5c, 0x5d, 0x5e, 0x0));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, phy err=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, phy err=%#x, tag_id=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -2053,7 +2056,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_ERR_ADDR_H),
 		readl_relaxed(port->base + PCIE_ERR_INFO),
 		readl_relaxed(port->base + PCIE_AXI_IF_CTRL),
-		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0));
+		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0),
+		readl_relaxed(port->base + PCIE_ULTRA_SETTING_REG));
 
 	/* Clear LTSSM record info after dump */
 	writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
@@ -2623,6 +2627,7 @@ int mtk_pcie_ep_set_info(int port, struct handshake_info *params)
 {
 	struct platform_device *pdev;
 	struct mtk_pcie_port *pcie_port;
+	u32 val;
 
 	if (!params)
 		return -EINVAL;
@@ -2639,11 +2644,29 @@ int mtk_pcie_ep_set_info(int port, struct handshake_info *params)
 		return -ENODEV;
 	}
 
-	pcie_port->rpm_suspend_mode = LINK_STATE_L2;
-	if (params->feature_id == PCIE_RPM_CTRL && params->data[0] == LINK_STATE_PCIPM_L12)
-		pcie_port->rpm_suspend_mode = LINK_STATE_PCIPM_L12;
+	switch (params->feature_id) {
+	case PCIE_RPM_CTRL:
+		pcie_port->rpm_suspend_mode = LINK_STATE_L2;
+		if (params->data[0] == LINK_STATE_PCIPM_L12)
+			pcie_port->rpm_suspend_mode = LINK_STATE_PCIPM_L12;
 
-	dev_info(pcie_port->dev, "%s: set rpm mode=%d\n", __func__, pcie_port->rpm_suspend_mode);
+		dev_info(pcie_port->dev, "set rpm mode=%d\n", pcie_port->rpm_suspend_mode);
+		break;
+	case PCIE_TAG_CTRL:
+		/*
+		 * Enable new design for AXI master tag
+		 * EP uses tag ID to identify which user sent the TLP packet.
+		 */
+		val = readl_relaxed(pcie_port->base + PCIE_ULTRA_SETTING_REG);
+		val |= PCIE_TAG_EN;
+		writel_relaxed(val, pcie_port->base + PCIE_ULTRA_SETTING_REG);
+		dev_info(pcie_port->dev, "Enable RC tag = %#x\n",
+			 readl_relaxed(pcie_port->base + PCIE_ULTRA_SETTING_REG));
+		break;
+	default:
+		dev_info(pcie_port->dev, "%s: ep handshake feature_id %d out of range\n",
+			 __func__, params->feature_id);
+	}
 
 	return 0;
 }
