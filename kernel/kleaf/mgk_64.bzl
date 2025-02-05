@@ -464,6 +464,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     # keep sorted
     "//kernel_device_modules-{}/drivers/char/hw_random:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/char/rpmb:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/clocksource:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/devfreq:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma/mediatek:ddk_kconfigs".format(kernel_version),
@@ -620,6 +621,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/char/hw_random:sec-rng".format(kernel_version),
     "//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version),
     "//kernel_device_modules-{}/drivers/char/rpmb:rpmb-mtk".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/clocksource:timer-mediatek".format(kernel_version),
     "//kernel_device_modules-{}/drivers/cpufreq:mediatek-cpufreq-hw".format(kernel_version),
     "//kernel_device_modules-{}/drivers/devfreq:mtk-dvfsrc-devfreq".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma/mediatek:mtk-cqdma".format(kernel_version),
@@ -1378,7 +1380,6 @@ mgk_64_device_modules = [
     # keep sorted
     #"drivers/char/hw_random/sec-rng.ko",
     #"drivers/clk/mediatek/fhctl.ko",
-    "drivers/clocksource/timer-mediatek.ko",
     #"drivers/misc/mediatek/pkvm_smmu/pkvm_smmu.ko",
     #"drivers/dma/mediatek/mtk-cqdma.ko",
     #"drivers/dma/mediatek/mtk-uart-apdma.ko",

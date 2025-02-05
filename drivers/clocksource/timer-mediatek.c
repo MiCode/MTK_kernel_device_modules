@@ -7,7 +7,6 @@
  * Matthias Brugger <matthias.bgg@gmail.com>
  */
 
-#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
 
 #include <linux/clockchips.h>
 #include <linux/clocksource.h>
