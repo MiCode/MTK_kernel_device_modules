@@ -8,7 +8,6 @@
 #include <linux/mutex.h>
 #include <linux/rbtree.h>
 #include <linux/kmemleak.h>
-#include <linux/trace_events.h>
 #include <linux/sched/clock.h>
 #include "fpsgo_frame_info.h"
 #include "game_sysfs.h"
@@ -16,10 +15,13 @@
 #define FI_MAX_RENDER_INFO_SIZE 20
 
 static int total_render_info_num;
+static int total_fi_policy_cmd_num;
 
 static struct rb_root render_pid_tree;
+static HLIST_HEAD(fi_policy_cmd_list);
 
 static DEFINE_MUTEX(render_tree_lock);
+static DEFINE_MUTEX(fi_policy_cmd_lock);
 
 
 // --------game render info rbtree manipulation--------
@@ -104,11 +106,12 @@ struct game_render_info *frame_interp_search_and_add_render_info(int tgid, int a
 	if (!iter_thr)
 		return NULL;
 
-	mutex_init(&iter_thr->thr_mlock);
 	iter_thr->frame_info.tgid = tgid;
 	iter_thr->frame_count = 0;
 	iter_thr->interpolation_ratio = 2;
-	iter_thr->frame_interpolation_enable = 0;
+	iter_thr->fi_enabled = 0;
+	iter_thr->fpsgo_target_fps = 0;
+	iter_thr->user_target_fps = 0;
 	iter_thr->updated_ts = game_get_time();
 
 	kmemleak_not_leak(iter_thr);
@@ -155,30 +158,95 @@ delete:
 	return is_delete;
 }
 
-void game_clear_render_info(void)
-{
-	struct rb_node *n = NULL;
-	struct game_render_info *tmp_iter = NULL;
-
-	game_render_tree_lockprove(__func__);
-
-	n = rb_first(&render_pid_tree);
-
-	while (n) {
-		tmp_iter = rb_entry(n, struct game_render_info, entry);
-
-		rb_erase(&tmp_iter->entry, &render_pid_tree);
-		n = rb_first(&render_pid_tree);
-
-		vfree(tmp_iter);
-	}
-}
 
 struct rb_root *game_get_render_pid_tree(void)
 {
 	game_render_tree_lockprove(__func__);
 
 	return &render_pid_tree;
+}
+
+// ------------------------------------------------
+
+struct fi_policy_info *fi_get_policy_cmd(int tgid, int pid,
+	unsigned long long bufID, int force)
+{
+	struct fi_policy_info *iter = NULL;
+	struct hlist_node *h = NULL;
+
+	hlist_for_each_entry_safe(iter, h, &fi_policy_cmd_list, hlist) {
+		if (iter->tgid == tgid) {
+			iter->ts = game_get_time();
+			break;
+		}
+	}
+
+	if (iter || !force)
+		goto out;
+
+	iter = kzalloc(sizeof(struct fi_policy_info), GFP_KERNEL);
+	if (!iter)
+		goto out;
+
+	iter->tgid = tgid;
+	iter->pid = pid;
+	iter->buffer_id = bufID;
+	iter->user_target_fps = 0;
+	iter->ts = game_get_time();
+
+	hlist_add_head(&iter->hlist, &fi_policy_cmd_list);
+	total_fi_policy_cmd_num++;
+
+	if (total_fi_policy_cmd_num > FI_MAX_RENDER_INFO_SIZE)
+		fi_delete_policy_cmd(NULL);
+
+out:
+	return iter;
+}
+
+void fi_delete_policy_cmd(struct fi_policy_info *iter)
+{
+	unsigned long long min_ts = ULLONG_MAX;
+	struct fi_policy_info *tmp_iter = NULL, *min_iter = NULL;
+	struct hlist_node *h = NULL;
+
+	if (iter)
+		goto delete;
+
+	hlist_for_each_entry_safe(tmp_iter, h, &fi_policy_cmd_list, hlist) {
+		if (tmp_iter->ts < min_ts) {
+			min_ts = tmp_iter->ts;
+			min_iter = tmp_iter;
+		}
+	}
+
+	if (!min_iter)
+		return;
+
+delete:
+	hlist_del(&min_iter->hlist);
+	kfree(min_iter);
+	total_fi_policy_cmd_num--;
+}
+
+void game_fi_policy_list_lock(void)
+{
+	mutex_lock(&fi_policy_cmd_lock);
+}
+
+void game_fi_policy_list_unlock(void)
+{
+	mutex_unlock(&fi_policy_cmd_lock);
+}
+
+int game_get_fi_policy_list_total_num(void)
+{
+	return total_fi_policy_cmd_num;
+}
+
+struct hlist_head *game_get_fi_policy_cmd_list(void)
+{
+	return &fi_policy_cmd_list;
 }
 
 int init_fi_base(void)

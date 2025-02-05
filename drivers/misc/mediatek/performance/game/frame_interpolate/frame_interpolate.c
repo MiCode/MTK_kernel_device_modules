@@ -20,15 +20,21 @@
 #include "frame_interpolate.h"
 
 #define FRAME_INTERPOLATE_VERSION_MODULE "1.0"
-#define GAME_BY_PID_DEFAULT_VAL -1
 #define GAME_MAX_DEP_NUM 50
 #define GAME_MAX_FRAME_COUNT INT_MAX
 #define FRAME_INTERPOLATE_BUFFER_ID 1234
 
 static int is_registered_cb;
+static int is_registered_detect_cb;
+static int is_registered_all_fi_cb;
 static int frame_interpolation_enable;
+static int fi_detect_enable;
 static struct kobject *frame_interpolation_kobj;
 
+static DEFINE_MUTEX(fi_lock);
+static DEFINE_MUTEX(fi_cb_lock);
+
+static struct workqueue_struct *fi_target_fps_wq;
 
 extern int register_fpsgo_frame_info_callback(unsigned long mask, fpsgo_frame_info_callback cb);
 extern int unregister_fpsgo_frame_info_callback(fpsgo_frame_info_callback cb);
@@ -101,6 +107,47 @@ static int frame_get_heaviest_tid(int rpid, int tgid, int *l_tid,
 	return 1;
 }
 
+static void fi_queuework_cb(struct work_struct *psWork)
+{
+	struct fi_notifier_push_tag *vpPush = NULL;
+	struct game_render_info *iter_thr = NULL;
+	int target_fps = 0;
+
+	vpPush = container_of(psWork, struct fi_notifier_push_tag, sWork);
+	// TODO(Ann): It has still a bug when calculating target fps.
+	target_fps = fpsgo_other2fstb_calculate_target_fps(2, vpPush->pid,
+		vpPush->buffer_id, vpPush->cur_queue_end_ts);
+
+	game_render_tree_lock();
+	iter_thr = frame_interp_search_and_add_render_info(vpPush->tgid, 0);
+	if (iter_thr)
+		iter_thr->fpsgo_target_fps = target_fps;
+	game_render_tree_unlock();
+
+	kfree(vpPush);
+}
+
+static void fi_queuework_calculate_target_fps(int pid, int tgid, unsigned long long bufid,
+	unsigned long long q_end_ts)
+{
+	struct fi_notifier_push_tag *vpPush = NULL;
+
+	vpPush = kzalloc(sizeof(struct fi_notifier_push_tag), GFP_ATOMIC);
+	if (!vpPush)
+		goto out;
+
+	vpPush->tgid = tgid;
+	vpPush->pid = pid;
+	vpPush->buffer_id = bufid;
+	vpPush->cur_queue_end_ts = q_end_ts;
+
+	INIT_WORK(&vpPush->sWork, fi_queuework_cb);
+	queue_work(fi_target_fps_wq, &vpPush->sWork);
+
+out:
+	return;
+}
+
 static void frame_interpolate_fpsgo_render_control(struct game_render_info *iter, unsigned long long ts)
 {
 	int dep_num = 1, i = 0;
@@ -152,70 +199,25 @@ static void frame_interpolate_fpsgo_render_control(struct game_render_info *iter
 	kfree(dep_arr);
 }
 
-void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
-{
-    int pid, add = 0;
-	struct game_render_info *iter_thr = NULL;
-	unsigned long long ts = 0;
-	int target_fps = 0, set_target_fps = 0;
-
-	if (!iter)
-		goto out;
-
-	ts = game_get_time();
-	pid = iter->tgid;
-
-	game_render_tree_lock();
-	iter_thr = frame_interp_search_and_add_render_info(pid, add);
-	if (iter_thr) {
-		iter_thr->frame_info = *iter;
-		iter_thr->frame_info.buffer_id = FRAME_INTERPOLATE_BUFFER_ID;
-		iter_thr->frame_count++;
-		iter_thr->frame_count = iter_thr->frame_count % GAME_MAX_FRAME_COUNT;
-		iter_thr->updated_ts = ts;
-		if (!iter_thr->is_fpsgo_render_created) {
-			fpsgo_other2comp_user_create(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
-				iter_thr->frame_info.buffer_id, NULL, 0, 0);
-			iter_thr->is_fpsgo_render_created = 1;
-		}
-
-		switch_fpsgo_control(0, iter_thr->frame_info.tgid, 0, 0);
-
-		target_fps = fpsgo_other2fstb_calculate_target_fps(2, iter_thr->frame_info.pid,
-			iter_thr->frame_info.buffer_id, ts);
-		set_target_fps = target_fps;
-		do_div(set_target_fps, iter_thr->interpolation_ratio);
-
-		fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 0, set_target_fps, 0, iter_thr->frame_info.buffer_id);
-
-		if (iter_thr->frame_count % iter_thr->interpolation_ratio == 0)
-			frame_interpolate_fpsgo_render_control(iter_thr, ts);
-
-		game_main_trace("[%s] tgid=%d, frame=%d, ts=%llu, target_fps=%d, set_fps=%d",
-			__func__, iter_thr->frame_info.tgid, iter_thr->frame_count, ts, target_fps, set_target_fps);
-	}
-	game_render_tree_unlock();
-out:
-	return;
-}
-EXPORT_SYMBOL(fpsgo_fi_receive_q2q_cb);
-
-// TODO: (Ann) Call unregister function.
-static int game_register_queue_end_cb(int enable)
+static int game_register_queue_end_cb(int enable, int *is_registered, fpsgo_frame_info_callback cb)
 {
 	int ret = 0;
 
 	switch(enable) {
 	case 0:
-		if (is_registered_cb) {
-			unregister_fpsgo_frame_info_callback(&fpsgo_fi_receive_q2q_cb);
-			is_registered_cb = 0;
+		if (*is_registered) {
+			mutex_lock(&fi_cb_lock);
+			unregister_fpsgo_frame_info_callback(cb);
+			*is_registered = 0;
+			mutex_unlock(&fi_cb_lock);
 		}
 		break;
 	case 1:
-		if (!is_registered_cb) {
-			register_fpsgo_frame_info_callback(1 << GET_FPSGO_QUEUE_HINT, &fpsgo_fi_receive_q2q_cb);
-			is_registered_cb = 1;
+		if (!(*is_registered)) {
+			mutex_lock(&fi_cb_lock);
+			register_fpsgo_frame_info_callback(1 << GET_FPSGO_QUEUE_HINT, cb);
+			*is_registered = 1;
+			mutex_unlock(&fi_cb_lock);
 		}
 		break;
 	case -1:
@@ -226,33 +228,39 @@ static int game_register_queue_end_cb(int enable)
 	return ret;
 }
 
-static int game_switch_frame_inteprolate_onoff(int pid, int enable)
+int game_switch_frame_inteprolate_onoff(int pid, int enable)
 {
 	struct game_render_info *iter_thr = NULL;
 	int delete = 0, num = 0;
 
-	game_render_tree_lockprove(__func__);
-
 	switch(enable) {
 	case 0:
+		game_render_tree_lock();
 		iter_thr = frame_interp_search_and_add_render_info(pid, 0);
 		if (iter_thr) {
-			fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
-				iter_thr->frame_info.buffer_id);
-			switch_fpsgo_control(0, iter_thr->frame_info.tgid, 1, 0);
+			if (iter_thr->is_fpsgo_render_created) {
+				fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+					iter_thr->frame_info.buffer_id);
+				switch_fpsgo_control(0, iter_thr->frame_info.tgid, 1, 0);
+				iter_thr->is_fpsgo_render_created = 0;
+			}
 			delete = game_delete_render_info(iter_thr);
-
 		}
 		num = game_get_render_tree_total_num();
+		game_render_tree_unlock();
 		if (!num)
-			game_register_queue_end_cb(0);
+			game_register_queue_end_cb(0, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
 		break;
 	case 1:
+		game_render_tree_lock();
 		iter_thr = frame_interp_search_and_add_render_info(pid, 1);
 		if (!iter_thr)
 			return 1;
-		iter_thr->frame_interpolation_enable = 1;
-		game_register_queue_end_cb(1);
+		set_bit(FI_ENABLE, &iter_thr->fi_enabled);
+		clear_bit(FI_DETECTION, &iter_thr->fi_enabled);
+		game_render_tree_unlock();
+
+		game_register_queue_end_cb(1, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
 		break;
 	}
 
@@ -262,11 +270,71 @@ static int game_switch_frame_inteprolate_onoff(int pid, int enable)
 	return 0;
 }
 
+void game_fi_set_user_target_fps(int tgid, int target_fps)
+{
+	struct fi_policy_info *iter = NULL;
+	int add = 0;
+
+	if (target_fps > 0)
+		add = 1;
+
+	game_fi_policy_list_lock();
+	iter = fi_get_policy_cmd(tgid, 0, 0, add);
+	if (iter) {
+		if (target_fps > 0)
+			iter->user_target_fps = target_fps;
+		else
+			fi_delete_policy_cmd(iter);
+	}
+
+
+	game_fi_policy_list_unlock();
+
+}
+
+/*
+ *	game_clear_render_info(int mode)
+ *	to delete all game render info in the rb_tree (render_pid_tree)
+ *	input:
+ *		mode: 0->clear all info, 1->clear only FI_DETECTION mode.
+ */
+void game_clear_render_info(int mode)
+{
+	struct rb_root *root = NULL;
+	struct rb_node *n = NULL;
+	struct game_render_info *tmp_iter = NULL;
+	int num = 0;
+
+	game_render_tree_lock();
+
+	root = game_get_render_pid_tree();
+	n = rb_first(root);
+
+	while (n) {
+		tmp_iter = rb_entry(n, struct game_render_info, entry);
+		if (tmp_iter) {
+			if (mode && !test_bit(FI_DETECTION, &tmp_iter->fi_enabled)) {
+				n = rb_next(n);
+				continue;
+			}
+			fpsgo_other2comp_user_close(tmp_iter->frame_info.tgid, tmp_iter->frame_info.pid,
+				tmp_iter->frame_info.buffer_id);
+			switch_fpsgo_control(0, tmp_iter->frame_info.tgid, 1, 0);
+			game_delete_render_info(tmp_iter);
+		}
+
+		root = game_get_render_pid_tree();
+		n = rb_first(root);
+	}
+
+	num = game_get_render_tree_total_num();
+	game_render_tree_unlock();
+	if (!num)
+		game_register_queue_end_cb(0, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
+}
 
 static void game_set_frame_render_val(int cmd, int value, int pid, int add)
 {
-	game_render_tree_lockprove(__func__);
-
 	switch(cmd) {
 	case 0:  // frame_interpolate_enable_by_pid
 		game_switch_frame_inteprolate_onoff(pid, value);
@@ -276,7 +344,239 @@ static void game_set_frame_render_val(int cmd, int value, int pid, int add)
 	}
 
 	game_main_trace("[%s] cmd=%d, pid=%d", __func__, cmd, pid);
+}
+
+static void game_set_fi_policy_val(int cmd, int value, int pid, int add)
+{
+	switch(cmd) {
+	case 0:  // frame_interpolate_enable_by_pid
+		// TODO (Ann): Add frame interpolation enable by pid node.
+		break;
+	case 1: // set_user_target_fps
+		game_fi_set_user_target_fps(pid, value);
+		break;
+	default:
+		break;
+	}
+
+	game_main_trace("[%s] cmd=%d, pid=%d", __func__, cmd, pid);
+}
+
+void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
+{
+    int pid, add = 0;
+	struct game_render_info *iter_thr = NULL;
+	struct fi_policy_info *fi_policy = NULL;
+	unsigned long long ts = 0;
+	int set_target_fps = 0;
+
+	if (!iter)
+		goto out;
+
+	ts = game_get_time();
+	pid = iter->tgid;
+
+	game_render_tree_lock();
+	iter_thr = frame_interp_search_and_add_render_info(pid, add);
+	if (!iter_thr)
+		goto out;
+
+	if (test_bit(FI_ENABLE, &iter_thr->fi_enabled)) {
+		iter_thr->updated_ts = ts;
+		if (!iter_thr->is_fpsgo_render_created) {
+			iter_thr->frame_info = *iter;
+			iter_thr->frame_info.buffer_id = FRAME_INTERPOLATE_BUFFER_ID;
+			fpsgo_other2comp_user_create(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+				iter_thr->frame_info.buffer_id, NULL, 0, 0);
+			iter_thr->is_fpsgo_render_created = 1;
+		}
+
+		switch_fpsgo_control(0, iter_thr->frame_info.tgid, 0, 0);
+
+		fi_queuework_calculate_target_fps(iter_thr->frame_info.pid, iter_thr->frame_info.tgid,
+			iter_thr->frame_info.buffer_id, ts);
+		game_fi_policy_list_lock();
+		fi_policy = fi_get_policy_cmd(iter_thr->frame_info.tgid, 0, 0, 0);
+		if (fi_policy)
+			iter_thr->user_target_fps = fi_policy->user_target_fps;
+		game_fi_policy_list_unlock();
+
+		set_target_fps =
+			iter_thr->user_target_fps ? iter_thr->user_target_fps : iter_thr->fpsgo_target_fps;
+		do_div(set_target_fps, iter_thr->interpolation_ratio);
+
+		fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 0, set_target_fps, 0,
+			iter_thr->frame_info.buffer_id);
+
+		if (iter_thr->frame_count % iter_thr->interpolation_ratio == 0)
+			frame_interpolate_fpsgo_render_control(iter_thr, ts);
+
+		iter_thr->frame_count++;
+		iter_thr->frame_count = iter_thr->frame_count % GAME_MAX_FRAME_COUNT;
+
+		game_main_trace("[%s] tgid=%d, frame=%d, ts=%llu, target_fps=%d, set_fps=%d",
+			__func__, iter_thr->frame_info.tgid, iter_thr->frame_count, ts,
+			iter_thr->fpsgo_target_fps, set_target_fps);
+	} else {
+		if (iter_thr->is_fpsgo_render_created) {
+			fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+				iter_thr->frame_info.buffer_id);
+			switch_fpsgo_control(0, iter_thr->frame_info.tgid, 1, 0);
+			iter_thr->is_fpsgo_render_created = 0;
+		}
+	}
+out:
+	game_render_tree_unlock();
 	return;
+}
+EXPORT_SYMBOL(fpsgo_fi_receive_q2q_cb);
+
+void fpsgo_fi_receive_fi_detect_cb(unsigned long cmd, struct render_frame_info *iter)
+{
+	int pid = 0;
+	struct game_render_info *iter_thr = NULL;
+	int target_fps = 0, is_interpolation_on = 0;
+	unsigned long fi_enabled = 0;
+
+	if (!iter)
+		goto out;
+
+	pid = iter->tgid;
+
+	game_render_tree_lock();
+	iter_thr = frame_interp_search_and_add_render_info(pid, 1);
+
+	if (!iter_thr)
+		goto out;
+
+	// Distinct from mfrc.
+	if (!test_bit(FI_ENABLE, &iter_thr->fi_enabled)) {
+		set_bit(FI_DETECTION, &iter_thr->fi_enabled);
+		set_bit(FI_ENABLE, &iter_thr->fi_enabled);
+		iter_thr->frame_info = *iter;
+		iter_thr->frame_info.buffer_id = FRAME_INTERPOLATE_BUFFER_ID;
+		iter_thr->interpolation_ratio = 1;
+	}
+
+	if (!test_bit(FI_DETECTION, &iter_thr->fi_enabled))
+		goto out;
+
+	fi_enabled = iter_thr->fi_enabled;
+	if (fstb_get_is_interpolation_is_on_fp)
+		is_interpolation_on = fstb_get_is_interpolation_is_on_fp(iter_thr->frame_info.pid,
+			iter_thr->frame_info.buffer_id, iter_thr->frame_info.tgid, 0, &target_fps);
+
+	if (test_bit(FI_DETECTION, &iter_thr->fi_enabled)) {
+		if (is_interpolation_on == 1) {
+			iter_thr->interpolation_ratio = 2;
+			iter_thr->user_target_fps = target_fps;
+		} else {
+			iter_thr->interpolation_ratio = 1;
+			iter_thr->user_target_fps = 0;
+		}
+	}
+
+	game_main_trace("[%s] pid=%d, buf=%llx, tgid=%d, target_fps=%d, fi_enabled=%lu, interpol=%d",
+		__func__, iter_thr->frame_info.pid, iter_thr->frame_info.buffer_id, iter_thr->frame_info.tgid,
+		target_fps, fi_enabled, is_interpolation_on);
+out:
+	game_render_tree_unlock();
+	return;
+}
+EXPORT_SYMBOL(fpsgo_fi_receive_fi_detect_cb);
+
+void fpsgo_fi_receive_all_fi_cb(unsigned long cmd, struct render_frame_info *iter)
+{
+	int pid;
+	struct game_render_info *iter_thr = NULL;
+	int target_fps = 0;
+
+	if (!iter)
+		goto out;
+
+	pid = iter->tgid;
+
+	game_render_tree_lock();
+	iter_thr = frame_interp_search_and_add_render_info(pid, 1);
+
+	if (!iter_thr)
+		goto out;
+
+	if (fstb_get_is_interpolation_is_on_fp)
+		fstb_get_is_interpolation_is_on_fp(iter->pid, iter->buffer_id,
+			iter->tgid, 0, &target_fps);
+
+	if (!test_bit(FI_ENABLE, &iter_thr->fi_enabled)) {
+		set_bit(FI_DETECTION, &iter_thr->fi_enabled);
+		set_bit(FI_ENABLE, &iter_thr->fi_enabled);
+		iter_thr->user_target_fps = target_fps;
+	}
+
+	game_main_trace("[%s] pid=%d, buf=%llu, tgid=%d, target_fps=%d, fi_enabled=%lu",
+		__func__, iter->pid, iter->buffer_id, iter->tgid, target_fps, iter_thr->fi_enabled);
+out:
+	game_render_tree_unlock();
+}
+EXPORT_SYMBOL(fpsgo_fi_receive_all_fi_cb);
+
+static int game_switch_fi_detect_onoff(int fi_detect_active)
+{
+	switch(fi_detect_active) {
+	case 0:
+	case 2:
+		// Only clear all FI_DETECTION's render.
+		fstb_fi_detect_enable = 0;
+		game_clear_render_info(1);
+		game_register_queue_end_cb(0, &is_registered_detect_cb,
+			&fpsgo_fi_receive_fi_detect_cb);
+		game_register_queue_end_cb(0, &is_registered_all_fi_cb,
+			&fpsgo_fi_receive_all_fi_cb);
+		break;
+	case 1:
+		fstb_fi_detect_enable = 1;
+		game_register_queue_end_cb(1, &is_registered_detect_cb,
+			&fpsgo_fi_receive_fi_detect_cb);
+		game_register_queue_end_cb(1, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
+		break;
+	case 3:
+		// TODO(Ann): Activate 3.
+		// fstb_fi_detect_enable = 1;
+		// game_register_queue_end_cb(1, &is_registered_all_fi_cb,
+			// &fpsgo_fi_receive_all_fi_cb);
+		// game_register_queue_end_cb(1, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
+		break;
+	}
+
+	return 0;
+}
+
+static ssize_t fi_detect_enable_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char *acBuffer = NULL;
+	int arg;
+	int min = 0, max = 3;
+
+	acBuffer = kcalloc(FI_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FI_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				if (arg >= (min) && arg <= (max)) {
+					mutex_lock(&fi_lock);
+					fi_detect_enable = arg;
+					game_switch_fi_detect_onoff(fi_detect_enable);
+					mutex_unlock(&fi_lock);
+				}
+			}
+		}
+	}
+out:
+	kfree(acBuffer);
+	return count;
 }
 
 #define FRAME_INTERPOLATION_SYSFS_READ(name, show, variable); \
@@ -290,7 +590,7 @@ static ssize_t name##_show(struct kobject *kobj, \
 		return 0; \
 }
 
-#define FRAME_INTERPOLATION_SYSFS_WRITE_VALUE(name, variable, min, max); \
+#define FRAME_INTERPOLATION_SYSFS_WRITE_VALUE(name, cmd, min, max); \
 static ssize_t name##_store(struct kobject *kobj, \
 		struct kobj_attribute *attr, \
 		const char *buf, size_t count) \
@@ -305,9 +605,8 @@ static ssize_t name##_store(struct kobject *kobj, \
 	if ((count > 0) && (count < FI_SYSFS_MAX_BUFF_SIZE)) { \
 		if (scnprintf(acBuffer, FI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) { \
 			if (kstrtoint(acBuffer, 0, &arg) == 0) { \
-				if (arg >= (min) && arg <= (max)) { \
-					(variable) = arg; \
-				} \
+				if (arg >= (min) && arg <= (max)) \
+					game_set_frame_render_val(cmd, arg, -1, 1); \
 			} \
 		} \
 	} \
@@ -317,7 +616,7 @@ out: \
 	return count; \
 }
 
-#define FPSGO_COM_SYSFS_WRITE_PID_CMD(name, cmd, min, max); \
+#define FRAME_INTERPOLATE_SYSFS_WRITE_PID_CMD(name, cmd, min, max); \
 static ssize_t name##_store(struct kobject *kobj, \
 		struct kobj_attribute *attr, \
 		const char *buf, size_t count) \
@@ -333,13 +632,41 @@ static ssize_t name##_store(struct kobject *kobj, \
 	if ((count > 0) && (count < FI_SYSFS_MAX_BUFF_SIZE)) { \
 		if (scnprintf(acBuffer, FI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) { \
 			if (sscanf(acBuffer, "%d %d", &tgid, &arg) == 2) { \
-				game_render_tree_lock(); \
 				if (arg >= (min) && arg <= (max)) \
 					game_set_frame_render_val(cmd, arg, tgid, 1); \
 				else \
 					game_set_frame_render_val(cmd, GAME_BY_PID_DEFAULT_VAL, \
 						tgid, 0); \
-				game_render_tree_unlock(); \
+			} \
+		} \
+	} \
+\
+out: \
+	kfree(acBuffer); \
+	return count; \
+}
+
+#define FI_POLICY_CMD_SYSFS_WRITE_PID_CMD(name, cmd, min, max); \
+static ssize_t name##_store(struct kobject *kobj, \
+		struct kobj_attribute *attr, \
+		const char *buf, size_t count) \
+{ \
+	char *acBuffer = NULL; \
+	int tgid; \
+	int arg; \
+\
+	acBuffer = kcalloc(FI_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL); \
+	if (!acBuffer) \
+		goto out; \
+\
+	if ((count > 0) && (count < FI_SYSFS_MAX_BUFF_SIZE)) { \
+		if (scnprintf(acBuffer, FI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) { \
+			if (sscanf(acBuffer, "%d %d", &tgid, &arg) == 2) { \
+				if (arg >= (min) && arg <= (max)) \
+					game_set_fi_policy_val(cmd, arg, tgid, 1); \
+				else \
+					game_set_fi_policy_val(cmd, GAME_BY_PID_DEFAULT_VAL, \
+						tgid, 0); \
 			} \
 		} \
 	} \
@@ -354,8 +681,14 @@ FRAME_INTERPOLATION_SYSFS_READ(frame_interpolation_enable, 1, frame_interpolatio
 FRAME_INTERPOLATION_SYSFS_WRITE_VALUE(frame_interpolation_enable, frame_interpolation_enable, 0, 1);
 static KOBJ_ATTR_RW(frame_interpolation_enable);
 
-FPSGO_COM_SYSFS_WRITE_PID_CMD(frame_interpolate_enable_by_pid, 0, -1, 3);
+FRAME_INTERPOLATION_SYSFS_READ(fi_detect_enable, 1, fi_detect_enable);
+static KOBJ_ATTR_RW(fi_detect_enable);
+
+FRAME_INTERPOLATE_SYSFS_WRITE_PID_CMD(frame_interpolate_enable_by_pid, 0, -1, 3);
 static KOBJ_ATTR_WO(frame_interpolate_enable_by_pid);
+
+FI_POLICY_CMD_SYSFS_WRITE_PID_CMD(fi_set_target_fps_by_pid, 1, 0, 200);
+static KOBJ_ATTR_WO(fi_set_target_fps_by_pid);
 
 static ssize_t fi_info_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -379,7 +712,7 @@ static ssize_t fi_info_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
-	"tgid\tbufID\t\tenable\tratio\tcount\n");
+	"tgid\tbufID\t\tenable\tratio\tf_count\tuser_target_fps\tfpsgo_target_fps\n");
 	pos += length;
 
 	root = game_get_render_pid_tree();
@@ -388,12 +721,14 @@ static ssize_t fi_info_show(struct kobject *kobj,
 	while (n) {
 		iter = rb_entry(n, struct game_render_info, entry);
 		length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
-				"%d\t0x%llx\t\t%d\t%d\t%d\n",
+				"%d\t0x%llx\t\t%lu\t%d\t%d\t%d\t%d\n",
 				iter->frame_info.tgid,
 				iter->frame_info.buffer_id,
-				iter->frame_interpolation_enable,
+				iter->fi_enabled,
 				iter->interpolation_ratio,
-				iter->frame_count
+				iter->frame_count,
+				iter->user_target_fps,
+				iter->fpsgo_target_fps
 				);
 		pos += length;
 		n = rb_next(n);
@@ -409,26 +744,86 @@ out:
 }
 static KOBJ_ATTR_RO(fi_info);
 
+static ssize_t fi_policy_cmd_info_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	struct fi_policy_info *tmp_iter = NULL;
+	struct hlist_head *fi_policy_list = NULL;
+	struct hlist_node *h = NULL;
+	char *temp = NULL;
+	int pos = 0;
+	int length = 0;
+
+	temp = kcalloc(FI_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!temp)
+		goto out;
+
+	game_fi_policy_list_lock();
+
+	length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
+			"total fi policy num:%d\n", game_get_fi_policy_list_total_num());
+	pos += length;
+
+	length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
+	"tgid\tuser_target_fps\tts\n");
+	pos += length;
+
+	fi_policy_list = game_get_fi_policy_cmd_list();
+
+	hlist_for_each_entry_safe(tmp_iter, h, fi_policy_list, hlist) {
+		length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
+				"%d\t%d\t%llu\n",
+				tmp_iter->tgid,
+				tmp_iter->user_target_fps,
+				tmp_iter->ts
+				);
+		pos += length;
+	}
+
+	game_fi_policy_list_unlock();
+
+	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
+
+out:
+	kfree(temp);
+	return length;
+}
+static KOBJ_ATTR_RO(fi_policy_cmd_info);
+
 int init_frame_interpolation(void)
 {
     is_registered_cb = 0;
+	is_registered_detect_cb = 0;
+	is_registered_all_fi_cb = 0;
 
 	if (!game_get_sysfs_dir(&frame_interpolation_kobj)) {
         game_sysfs_create_file(frame_interpolation_kobj, &kobj_attr_frame_interpolation_enable);
 		game_sysfs_create_file(frame_interpolation_kobj, &kobj_attr_frame_interpolate_enable_by_pid);
+		game_sysfs_create_file(frame_interpolation_kobj, &kobj_attr_fi_set_target_fps_by_pid);
 		game_sysfs_create_file(frame_interpolation_kobj, &kobj_attr_fi_info);
+		game_sysfs_create_file(frame_interpolation_kobj, &kobj_attr_fi_policy_cmd_info);
+		game_sysfs_create_file(frame_interpolation_kobj, &kobj_attr_fi_detect_enable);
     }
+
+	fi_target_fps_wq = alloc_ordered_workqueue("%s", WQ_MEM_RECLAIM | WQ_HIGHPRI, "mt_game_fi");
 
 	return 0;
 }
 
 int exit_frame_interpolation(void)
 {
-	game_register_queue_end_cb(0);
-	game_clear_render_info();
+	game_register_queue_end_cb(0, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
+	game_register_queue_end_cb(0, &is_registered_detect_cb, &fpsgo_fi_receive_fi_detect_cb);
+	game_register_queue_end_cb(0, &is_registered_all_fi_cb,	&fpsgo_fi_receive_all_fi_cb);
+	game_clear_render_info(0);
+
 	game_sysfs_remove_file(frame_interpolation_kobj, &kobj_attr_frame_interpolation_enable);
 	game_sysfs_remove_file(frame_interpolation_kobj, &kobj_attr_frame_interpolate_enable_by_pid);
+	game_sysfs_remove_file(frame_interpolation_kobj, &kobj_attr_fi_set_target_fps_by_pid);
 	game_sysfs_remove_file(frame_interpolation_kobj, &kobj_attr_fi_info);
+	game_sysfs_remove_file(frame_interpolation_kobj, &kobj_attr_fi_policy_cmd_info);
+	game_sysfs_remove_file(frame_interpolation_kobj, &kobj_attr_fi_detect_enable);
 
 	return 0;
 }
@@ -444,6 +839,7 @@ int frame_interpolate_init(void)
 	init_fi_base();
 	game_sysfs_init();
 	init_frame_interpolation();
+
 	return 0;
 }
 
