@@ -1368,6 +1368,7 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 				reconfig_frame_oetf(comp, task, ccfg, oetf_curve);
 
 		} else {
+			val_idx = 0;
 			for (i = 0; i < hdr_frm->reuse_curve.idx; i++)
 				for (j = 0; j < hdr_frm->reuse_curve.offs[i].cnt; j++, val_idx++)
 					mml_update_array(comp->id, reuse,
