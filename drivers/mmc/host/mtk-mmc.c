@@ -3655,6 +3655,36 @@ end:
 	return ret;
 }
 
+static bool msdc_init_dll(struct msdc_host *host)
+{
+	u32 val;
+	u8 start_point, lock_val;
+
+	/* Configure dll range sel */
+	if (host->id == MSDC_EMMC)
+		sdr_set_field(host->top_base + MSDC_DLL_CFG, DLL_RANGE_SEL, 0);
+	else
+		sdr_set_field(host->top_base + MSDC_DLL_CFG, DLL_RANGE_SEL, 1);
+
+	for (start_point = 8; start_point < 240; start_point *= 2) {
+		sdr_set_field(host->top_base + MSDC_DLL_CTRL1, (DLL_RST | DLL_EN), 2);
+		sdr_set_field(host->top_base + MSDC_DLL_CFG, DLL_PHASE_SEL, 4);
+		sdr_set_field(host->top_base + MSDC_DLL_CFG, DLL_START_POINT, start_point);
+		sdr_set_field(host->top_base + MSDC_DLL_CTRL1, DLL_MASK, 0x11);
+		if (!readl_poll_timeout(host->top_base + MSDC_DLL_CTRL1, val,
+		    val & (DLL_LOCK_DONE | DLL_LOCK_ERR), 1, 2000)) {
+			lock_val = (val & DLL_LOCK_VALUE) >> 8;
+			if (val & DLL_LOCK_DONE && lock_val >= 16 ) {
+				dev_dbg(host->dev, "dll lock done. lock value: %d\n", lock_val);
+				return true;
+			}
+		}
+	}
+
+	dev_info(host->dev, "dll lock failed\n");
+	return false;
+}
+
 static int msdc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 {
 	struct msdc_host *host = mmc_priv(mmc);
@@ -3665,6 +3695,11 @@ static int msdc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		__func__, opcode,
 		host->dvfsrc_vcore_power ?
 		regulator_get_voltage(host->dvfsrc_vcore_power) : -1);
+
+	if (host->dll && !msdc_init_dll(host)) {
+		sdr_clr_bits(host->top_base + MSDC_DLL_CTRL1, DLL_DLY_SEL);
+		sdr_clr_bits(host->top_base + MSDC_DLL_CTRL1, DLL_EN);
+	}
 
 	if (mmc->ios.timing == MMC_TIMING_MMC_HS200) {
 		if (host->is_skip_hs200_tune) {
@@ -4174,6 +4209,11 @@ static void msdc_of_property_parse(struct platform_device *pdev,
 		host->msdc_spm_hw_supp = true;
 	else
 		host->msdc_spm_hw_supp = false;
+
+	if (of_property_read_bool(pdev->dev.of_node, "enable-dll"))
+		host->dll = true;
+	else
+		host->dll = false;
 
 	if (of_property_read_u32(pdev->dev.of_node, "cd-gpio-num", &host->cd_gpio_num))
 		host->cd_gpio_num = INVALID_CD_GPIO;
@@ -5100,6 +5140,11 @@ static int __maybe_unused msdc_runtime_resume(struct device *dev)
 		return ret;
 
 	msdc_restore_reg(host);
+
+	if (host->dll && !msdc_init_dll(host)) {
+		sdr_clr_bits(host->top_base + MSDC_DLL_CTRL1, DLL_DLY_SEL);
+		sdr_clr_bits(host->top_base + MSDC_DLL_CTRL1, DLL_EN);
+	}
 
 	if (host->sdio_irq_cnt > 0 && host->id == MSDC_SDIO) {
 		disable_irq_nosync(host->eint_irq);

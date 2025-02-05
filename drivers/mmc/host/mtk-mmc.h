@@ -136,6 +136,14 @@
 #define LOOP_TEST_CONTROL	0x30
 #define MSDC_TOP_STATUS		0x3c
 #define MSDC_TOP_NEW_RX_CFG	0x38
+#define MSDC_TOP_VERSION	0x40
+#define MSDC_DLL_CTRL0		0x60
+#define MSDC_DLL_CTRL1		0x64
+#define MSDC_DLL_CFG		0x68
+#define MSDC_DLL_DBG		0x6c
+#define HW_SUPP_VER_IO0		0xA0
+#define HW_SUPP_VER_IO1		0xA4
+#define HW_SUPP_VER_IO2		0xA8
 
 /*--------------------------------------------------------------------------*/
 /* Register Mask                                                            */
@@ -376,6 +384,18 @@
 #define TEST_LOOP_LATCH_MUX_SEL	(0x1 << 1)	/* RW */
 #define LOOP_EN_SEL_CLK		(0x1 << 20)	/* RW */
 #define TEST_HS400_CMD_LOOP_MUX_SEL	(0x1 << 31)	/* RW */
+
+/* MSDC_TOP_DLL mask  */
+#define DLL_LOCK_VALUE		(0xff << 8)	/* RO */
+#define DLL_DLY_SEL		(0x1 << 4)	/* RO */
+#define DLL_LOCK_DONE		(0x1 << 3)	/* RO */
+#define DLL_LOCK_ERR		(0x1 << 2)	/* RO */
+#define DLL_RST			(0x1 << 1)	/* RW */
+#define DLL_EN			(0x1 << 0)	/* RW */
+#define DLL_MASK		(0x1f << 0)
+#define DLL_PHASE_SEL		(0x7 << 24)	/* RW */
+#define DLL_START_POINT		(0xff << 16)	/* RW */
+#define DLL_RANGE_SEL		(0x3 << 27)	/* RW */
 
 #define REQ_CMD_EIO  (0x1 << 0)
 #define REQ_CMD_TMO  (0x1 << 1)
@@ -618,6 +638,7 @@ struct msdc_host {
 	bool hs400_tuning;	/* hs400 mode online tuning */
 	bool internal_cd;	/* Use internal card-detect logic */
 	bool cqhci;		/* support eMMC HW CMDQ */
+	bool dll;
 	struct msdc_save_para save_para; /* used when gate HCLK */
 	struct msdc_tune_para def_tune_para; /* default tune setting */
 	struct msdc_tune_para saved_tune_para; /* tune result of CMD21/CMD19 */
