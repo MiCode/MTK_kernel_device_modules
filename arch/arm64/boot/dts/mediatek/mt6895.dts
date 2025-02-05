@@ -5225,7 +5225,7 @@
 		mmqos: interconnect {
 			compatible = "mediatek,mt6895-mmqos";
 			#mtk-interconnect-cells = <1>;
-			mediatek,larbs = <&smi_larb0 &smi_larb1 &smi_larb2
+			mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2
 							&smi_larb3 &smi_larb4 &smi_larb5
 							&smi_larb6 &smi_larb7 &smi_larb8
 							&smi_larb9 &smi_larb10 &smi_larb11
@@ -5235,7 +5235,7 @@
 							&smi_larb21 &smi_larb22 &smi_larb23
 							&smi_larb25 &smi_larb26 &smi_larb27
 							&smi_larb28 &smi_larb29 &smi_larb30>;
-			mediatek,commons = <&smi_disp_common>, <&smi_mdp_common>;
+			mediatek,commons-supply = <&smi_disp_common>, <&smi_mdp_common>;
 			clocks = <&topckgen_clk CLK_TOP_MMINFRA_SEL>,
 					<&topckgen_clk CLK_TOP_MMINFRA_SEL>;
 			mmqos-state = <0x7>;
