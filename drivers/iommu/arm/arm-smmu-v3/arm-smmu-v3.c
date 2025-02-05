@@ -1194,14 +1194,13 @@ void arm_smmu_write_cd_entry(struct arm_smmu_master *master, int ssid,
 	}
 
 	arm_smmu_write_entry(&cd_writer.writer, cdptr->data, target->data);
-	dev_info(master->smmu->dev,
-		 "[%s] ssid:%u, used_ssids:%u, cd0:0x%lx, cd1:0x%lx, cd2:0x%lx, cd3:0x%lx\n",
-		 __func__, ssid, master->cd_table.used_ssids,
-		 (unsigned long)target->data[0],
-		 (unsigned long)target->data[1],
-		 (unsigned long)target->data[2],
-		 (unsigned long)target->data[3]);
-
+	dev_dbg(master->smmu->dev,
+		"[%s] ssid:%u, used_ssids:%u, cd0:0x%lx, cd1:0x%lx, cd2:0x%lx, cd3:0x%lx\n",
+		__func__, ssid, master->cd_table.used_ssids,
+		(unsigned long)target->data[0],
+		(unsigned long)target->data[1],
+		(unsigned long)target->data[2],
+		(unsigned long)target->data[3]);
 }
 
 void arm_smmu_make_s1_cd(struct arm_smmu_cd *target,
@@ -2281,9 +2280,9 @@ static struct iommu_domain *arm_smmu_domain_alloc_paging(struct device *dev)
 		int ret;
 
 		ret = arm_smmu_domain_finalise(smmu_domain, master->smmu, 0);
-		dev_info(smmu->dev, "[%s] dom_fin:%d, dev:%s\n",
-			 __func__, ret, dev_name(master->dev));
 		if (ret) {
+			dev_info(smmu->dev, "[%s] dom_fin:%d, dev:%s\n",
+				 __func__, ret, dev_name(master->dev));
 			kfree(smmu_domain);
 			return ERR_PTR(ret);
 		}
@@ -2397,11 +2396,11 @@ static int arm_smmu_domain_finalise(struct arm_smmu_domain *smmu_domain,
 		return -EINVAL;
 	}
 
-	dev_info(smmu->dev,
-		 "[%s] stage:%d, ias:(%u,%lu), oas:(%u,%lu), fmt:%d, coherent:%d\n",
-		 __func__, smmu_domain->stage, pgtbl_cfg.ias, smmu->ias,
-		 pgtbl_cfg.oas, smmu->oas, fmt,
-		 (smmu->features & ARM_SMMU_FEAT_COHERENCY));
+	dev_dbg(smmu->dev,
+		"[%s] stage:%d, ias:(%u,%lu), oas:(%u,%lu), fmt:%d, coherent:%d\n",
+		__func__, smmu_domain->stage, pgtbl_cfg.ias, smmu->ias,
+		pgtbl_cfg.oas, smmu->oas, fmt,
+		(smmu->features & ARM_SMMU_FEAT_COHERENCY));
 
 	if (smmu->impl && smmu->impl->alloc_io_pgtable_ops)
 		pgtbl_ops = smmu->impl->alloc_io_pgtable_ops(fmt, &pgtbl_cfg,
@@ -2417,10 +2416,10 @@ static int arm_smmu_domain_finalise(struct arm_smmu_domain *smmu_domain,
 	if (enable_dirty && smmu_domain->stage == ARM_SMMU_DOMAIN_S1)
 		smmu_domain->domain.dirty_ops = &arm_smmu_dirty_ops;
 
-	dev_info(smmu->dev, "[%s] pgsize_bitmap:0x%lx, aperture:0x%llx, 0x%llx\n",
-		 __func__, smmu_domain->domain.pgsize_bitmap,
-		 smmu_domain->domain.geometry.aperture_start,
-		 smmu_domain->domain.geometry.aperture_end);
+	dev_dbg(smmu->dev, "[%s] pgsize_bitmap:0x%lx, aperture:0x%llx, 0x%llx\n",
+		__func__, smmu_domain->domain.pgsize_bitmap,
+		smmu_domain->domain.geometry.aperture_start,
+		smmu_domain->domain.geometry.aperture_end);
 
 	ret = finalise_stage_fn(smmu, smmu_domain);
 	if (ret < 0) {

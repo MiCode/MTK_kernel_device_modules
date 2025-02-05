@@ -1178,8 +1178,8 @@ static int invert_dma_regions(struct device *dev,
 			goto out_err;
 		}
 
-		dev_info(dev, "[%s]-1 start:0x%llx, length:0x%lx, prot:0x%x, type:%d\n",
-			 __func__, new->start, new->length, new->prot, new->type);
+		dev_dbg(dev, "[%s]-1 start:0x%llx, length:0x%lx, prot:0x%x, type:%d\n",
+			__func__, new->start, new->length, new->prot, new->type);
 
 		list_add_tail(&new->list, inverted);
 next:
@@ -1198,8 +1198,8 @@ next:
 			goto out_err;
 		}
 
-		dev_info(dev, "[%s]-2 start:0x%llx, length:0x%lx, prot:0x%x, type:%d\n",
-			 __func__, new->start, new->length, new->prot, new->type);
+		dev_dbg(dev, "[%s]-2 start:0x%llx, length:0x%lx, prot:0x%x, type:%d\n",
+			__func__, new->start, new->length, new->prot, new->type);
 
 		list_add(&new->list, inverted);
 	}
@@ -1219,8 +1219,8 @@ next:
 			goto out_err;
 		}
 
-		dev_info(dev, "[%s]-3 start:0x%llx, length:0x%lx, prot:0x%x, type:%d\n",
-			 __func__, new->start, new->length, new->prot, new->type);
+		dev_dbg(dev, "[%s]-3 start:0x%llx, length:0x%lx, prot:0x%x, type:%d\n",
+			__func__, new->start, new->length, new->prot, new->type);
 
 		list_add_tail(&new->list, inverted);
 	}

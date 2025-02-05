@@ -954,8 +954,8 @@ int mtk_enable_smmu_ssid(struct device *dev, u32 ssid)
 	ssid_domain = smmu_ssid_domain_find(smmu_domain, ssid);
 	if (ssid_domain) {
 		nr_masters = atomic_inc_return(&ssid_domain->nr_ssid_masters);
-		dev_info(dev, "[%s] find exist domain:%p, sid:%u, ssid:%u, nr:%d\n",
-			 __func__, ssid_domain, sid, ssid, nr_masters);
+		dev_dbg(dev, "[%s] find exist domain:%p, sid:%u, ssid:%u, nr:%d\n",
+			__func__, ssid_domain, sid, ssid, nr_masters);
 		mutex_unlock(&smmu_domain->ssid_mutex);
 		return 0;
 	}
@@ -977,10 +977,15 @@ int mtk_enable_smmu_ssid(struct device *dev, u32 ssid)
 	ret = smmu_ssid_domain_add(smmu_domain, ssid_domain);
 	if (!ret) {
 		nr_masters = atomic_inc_return(&ssid_domain->nr_ssid_masters);
-		dev_info(dev,
-			 "[%s] new domain:%p, sid:%u, ssid:%u, asid:%u, nr:%d, ssids[%u, %u]\n",
-			 __func__, ssid_domain, sid, ssid, ssid_domain->asid,
-			 nr_masters, master->ssid_bits, master->cd_table.used_ssids);
+
+		/* only fist and last ssid print debug log */
+		if (master->cd_table.used_ssids == 1 ||
+		    master->cd_table.used_ssids == ((1U << master->ssid_bits) - 1)) {
+			dev_info(dev,
+				 "[%s] domain:%p, sid:%u, ssid:%u, asid:%u, nr:%d, ssids[%u,%u]\n",
+				 __func__, ssid_domain, sid, ssid, ssid_domain->asid,
+				 nr_masters, master->ssid_bits, master->cd_table.used_ssids);
+		}
 	}
 
 out:
