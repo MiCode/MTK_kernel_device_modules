@@ -289,7 +289,8 @@ enum vdec_power_type {
 
 enum vdec_slc_version {
 	VDEC_SLC_NOT_SUPPORT = 0,
-	VDEC_SLC_V1 = 1,
+	VDEC_SLC_V1,
+	VDEC_SLC_V2,
 	VDEC_SLC_VER_MAX,
 };
 

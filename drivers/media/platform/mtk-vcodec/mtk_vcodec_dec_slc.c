@@ -32,6 +32,9 @@ void mtk_vdec_slc_gid_request(struct mtk_vcodec_ctx *ctx, struct slc_param *para
 	mtk_vdec_slc_fill_data(ctx, param); // update roi info (TBD)
 
 	if (param->uid == ID_VDEC_FRAME) {
+		if (ctx->dev->dec_slc_ver == 2 && param->gid >= 0) {
+			ctx->dev->queued_frame = true; // v2 doesn't need to wait actual frame
+		}
 		if (ctx->dev->queued_frame && param->gid >= 0 && !param->is_requested) {
 			slbc_gid_request(param->uid, &param->gid, &param->data);
 			param->is_requested = true;
@@ -163,6 +166,13 @@ void mtk_vdec_slc_fill_data(struct mtk_vcodec_ctx *ctx, struct slc_param *param)
 	param->data.sign = 0x51ca11ca;
 	param->data.dma_size = slc_roi_8k[idx][0];
 	param->data.bw = slc_roi_8k[idx][1];
+
+	if (ctx->dev->dec_slc_ver == 2) {
+		if (param->uid == ID_VDEC_FRAME)
+			param->gid = 73;
+		else if (param->uid == ID_VDEC_UBE)
+			param->gid = 74;
+	}
 
 	mtk_v4l2_debug(4, "[%d][SLC] uid %d set slc data, dma_size: %d, bw: %d",
 		ctx->id, param->uid, param->data.dma_size, param->data.bw);

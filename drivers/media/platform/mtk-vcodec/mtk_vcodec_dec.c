@@ -4234,7 +4234,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 	vcodec_trace_end();
 
-	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
+	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver >= VDEC_SLC_V1 && ctx->dev->dec_slc_ver < VDEC_SLC_VER_MAX) {
 		vcodec_trace_begin("SLC(stream_off)");
 		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_frame);
 		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_ube);
@@ -4287,7 +4287,7 @@ static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 	vcodec_trace_end();
 
-	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
+	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver >= VDEC_SLC_V1 && ctx->dev->dec_slc_ver < VDEC_SLC_VER_MAX) {
 		vcodec_trace_begin("SLC(stream_on)");
 		mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_frame);
 		mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_ube);
