@@ -62,14 +62,22 @@ define_mgk_ddk_ko(
     includes = ["."],
 )
 
-#define_mgk_ddk_ko(
-#    name = "mt6681-accdet",
-#    srcs = [
-#        "mt6681-accdet.c",
-#    ],
-#    hdrs = glob(["**/*.h"]),
-#    includes = ["."],
-#)
+define_mgk_ddk_ko(
+    name = "mt6681-accdet",
+    srcs = [
+        "mt6681-accdet.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+)
 
 ddk_headers(
     name = "ddk_public_headers",
