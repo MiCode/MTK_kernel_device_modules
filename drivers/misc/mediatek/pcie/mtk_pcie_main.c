@@ -1473,13 +1473,13 @@ static int __init mtk_pcie_test_init(void)
 	pcie_smt->max_lane = &test_table[i].max_lane[0];
 	pcie_smt->max_speed = &test_table[i].max_speed[0];
 
-	pcie_smt->regs = kzalloc((pcie_smt->max_port) * (sizeof(*pcie_smt->regs)), GFP_KERNEL);
+	pcie_smt->regs = kzalloc((pcie_smt->max_port) * (sizeof(void __iomem *)), GFP_KERNEL);
 	if (!pcie_smt->regs) {
 		ret = -ENOMEM;
 		goto err_alloc_phy;
 	}
 
-	pcie_smt->mac_regs = kzalloc((pcie_smt->max_port) * (sizeof(*pcie_smt->mac_regs)), GFP_KERNEL);
+	pcie_smt->mac_regs = kzalloc((pcie_smt->max_port) * (sizeof(void __iomem *)), GFP_KERNEL);
 	if (!pcie_smt->mac_regs) {
 		ret = -ENOMEM;
 		goto err_alloc_mac;
