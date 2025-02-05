@@ -41,12 +41,12 @@ static bool mmup_ena;
 static phys_addr_t mmdvfs_mmup_iova;
 static phys_addr_t mmdvfs_mmup_pa;
 static void *mmdvfs_mmup_va;
-uint32_t mmup_ipi_ack_data;
+uint64_t mmup_ipi_ack_data;
 
 static phys_addr_t mmdvfs_vcp_iova;
 static phys_addr_t mmdvfs_vcp_pa;
 static void *mmdvfs_vcp_va;
-uint32_t vcp_ipi_ack_data;
+uint64_t vcp_ipi_ack_data;
 
 static bool mmdvfs_mmup_sram;
 static void __iomem *mmdvfs_mmup_sram_va;
