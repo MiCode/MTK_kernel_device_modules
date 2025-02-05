@@ -918,6 +918,13 @@ static int md_ccif_send(unsigned char hif_id, int channel_id)
 	return 0;
 }
 
+void ccci_ccif_send_notify(unsigned char user_id)
+{
+	if (user_id < (CCIF_CH_NUM - AP_MD_DATA_NOTIFY))
+		md_ccif_send(CCIF_HIF_ID, (user_id + AP_MD_DATA_NOTIFY));
+}
+EXPORT_SYMBOL(ccci_ccif_send_notify);
+
 static void md_ccif_switch_ringbuf(unsigned char hif_id, enum ringbuf_id rb_id)
 {
 	int i;
@@ -1209,6 +1216,45 @@ static int ccif_debug(unsigned char hif_id,
 	return ret;
 }
 
+struct ccif_irq_cb_func_info ccif_irq_cb[ID_CCIF_CB_MAX];
+int register_ccif_irq_cb(unsigned char user_id, void (*func)(unsigned char user_id))
+{
+	if (user_id < ID_CCIF_CB_MAX && (user_id < (CCIF_CH_NUM - AP_MD_DATA_NOTIFY))) {
+		ccif_irq_cb[user_id].id = user_id;
+		ccif_irq_cb[user_id].qno = user_id + AP_MD_DATA_NOTIFY;
+		ccif_irq_cb[user_id].cb_func = func;
+		return 0;
+	}
+	return -1;
+}
+EXPORT_SYMBOL(register_ccif_irq_cb);
+
+/* mask_set == 1: mask, clear bit, ==0: unmask set bit */
+int ccif_mask_setting(unsigned char user_id, unsigned char mask_set)
+{
+	struct md_ccif_ctrl *ccif_ctrl =
+		(struct md_ccif_ctrl *)ccci_hif[CCIF_HIF_ID];
+	unsigned int reg_val;
+	unsigned int reg_offset;
+	unsigned long flags;
+
+	switch (user_id) {
+	case ID_CCIF_USER_DATA:
+		spin_lock_irqsave(&ccif_ctrl->mask_lock, flags);
+		reg_offset = APCCIF_IRQ1_MASK;
+		reg_val = ccif_read32(ccif_ctrl->ccif_ap_base, reg_offset);
+		reg_val =
+			mask_set?(reg_val&~(1<<AP_MD_DATA_NOTIFY)):(reg_val|(1<<AP_MD_DATA_NOTIFY));
+		ccif_write32(ccif_ctrl->ccif_ap_base, reg_offset, reg_val);
+		spin_unlock_irqrestore(&ccif_ctrl->mask_lock, flags);
+		break;
+	default:
+		return -1;
+	};
+	return 0;
+}
+EXPORT_SYMBOL(ccif_mask_setting);
+
 /* CCIF interrupt 1 handler: mainly for exception notification */
 static irqreturn_t md_ccif_isr1(int irq, void *data)
 {
@@ -1224,7 +1270,11 @@ static irqreturn_t md_ccif_isr1(int irq, void *data)
 	ccif_write32(ccif_ctrl->ccif_ap_base, APCCIF_ACK,
 		channel_id & (0xFFFF << RINGQ_EXP_BASE));
 
-	md_fsm_exp_info(channel_id);
+	if (channel_id & (1 << AP_MD_DATA_NOTIFY) &&
+		ccif_irq_cb[ID_CCIF_USER_DATA].cb_func)
+		ccif_irq_cb[ID_CCIF_USER_DATA].cb_func(ccif_irq_cb[ID_CCIF_USER_DATA].id);
+	else
+		md_fsm_exp_info(channel_id);
 
 	return IRQ_HANDLED;
 }

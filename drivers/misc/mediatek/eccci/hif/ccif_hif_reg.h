@@ -33,6 +33,8 @@ void ccif_write32(void *b, unsigned long a, unsigned int v);
 #define APCCIF_TCHNUM (0x0C)
 #define APCCIF_RCHNUM (0x10)
 #define APCCIF_ACK    (0x14)
+#define APCCIF_IRQ0_MASK  (0x20)
+#define APCCIF_IRQ1_MASK  (0x24)
 #define APCCIF_CHDATA (0x100)
 
 #define RINGQ_BASE (0)
@@ -84,6 +86,14 @@ void ccif_write32(void *b, unsigned long a, unsigned int v);
 #define AP_MD_PEER_WAKEUP         (RINGQ_EXP_BASE+5)
 /* HWQ 21 */
 #define AP_MD_SEQ_ERROR           (RINGQ_EXP_BASE+6)
-
+#define AP_MD_DATA_NOTIFY         (RINGQ_EXP_BASE+8)
 #define CCIF_SRAM_SIZE 512
+
+
+/* use hw_channel = usr_id + AP_MD_DATA_NOTIFY */
+enum ccif_isr_cb_user_id {
+	ID_CCIF_USER_DATA = 0,
+	ID_CCIF_CB_MAX,
+};
+
 #endif /*__CCIF_HIF_PLATFORM_H__*/

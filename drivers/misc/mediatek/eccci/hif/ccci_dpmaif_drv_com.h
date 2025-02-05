@@ -153,5 +153,6 @@ int ccci_drv2_rxq_update_apit_dummy(struct dpmaif_rx_queue *rxq);
 void ccci_drv2_rxq_hw_int_apit(struct dpmaif_rx_queue *rxq);
 void ccci_drv2_rxq_handle_ig(struct dpmaif_rx_queue *rxq,
 	struct dpmaif_normal_pit_v2 *nml_pit_v2);
-
+extern void dpmaif_txq_set_budget_v1(struct dpmaif_tx_queue *txq);
+extern void dpmaif_txqs_sw_stop_special_v1(void);
 #endif  /* __CCCI_DPMAIF_DRV_COM_H__ */

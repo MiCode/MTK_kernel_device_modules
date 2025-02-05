@@ -41,7 +41,6 @@
 #include "ccci_dpmaif_bat.h"
 #include "ccci_dpmaif_drv_com.h"
 #include "ccci_dpmaif_resv_mem.h"
-
 #include "net_speed.h"
 #include "net_pool.h"
 #include "md_spd_dvfs_fn.h"
@@ -73,7 +72,7 @@ unsigned int            g_plat_inf;
 
 struct dpmaif_ctrl     *g_dpmaif_ctrl;
 
-static atomic_t         g_tx_busy_assert_on;
+atomic_t                g_tx_busy_assert_on;
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 int                     g_rx_flush_pkt_cnt;
@@ -152,7 +151,7 @@ static void dpmaif_get_android_time(char *time_buf, int buf_len)
 		tm_android.tm_sec, (unsigned int)(tv_android.tv_nsec/1000));
 }
 
-static void dpmaif_handle_wakeup_skb(unsigned int is_rx, struct sk_buff *skb)
+void dpmaif_handle_wakeup_skb(unsigned int is_rx, struct sk_buff *skb)
 {
 	struct iphdr *iph = NULL;
 	struct ipv6hdr *ip6h = NULL;
@@ -1663,6 +1662,8 @@ static int dpmaif_txq_sw_init(struct dpmaif_tx_queue *txq)
 
 	init_waitqueue_head(&txq->req_wq);
 	atomic_set(&txq->txq_budget, DPMAIF_UL_DRB_ENTRY_SIZE);
+	if (g_dpmf_ver == 1)
+		dpmaif_txq_set_budget_v1(txq);
 
 	ret = dpmaif_txq_init_buf(txq);
 	if (ret)
@@ -1816,7 +1817,7 @@ static int dpmaif_rxqs_start(void)
 	return 0;
 }
 
-static inline int dpmaif_wait_resume_done(void)
+inline int dpmaif_wait_resume_done(void)
 {
 	int cnt = 0;
 
@@ -1849,7 +1850,7 @@ static inline unsigned int dpmaif_get_txq_drb_release_cnt(struct dpmaif_tx_queue
 			atomic_read(&txq->drb_rel_rd_idx), drb_rd_idx);
 }
 
-static inline void dpmaif_stop_dev_queue(struct dpmaif_tx_queue *txq,
+inline void dpmaif_stop_dev_queue(struct dpmaif_tx_queue *txq,
 	unsigned int ccmni_idx, unsigned int que_idx, unsigned int stop_threshold)
 {
 	unsigned long flags;
@@ -1898,7 +1899,7 @@ static inline void dpmaif_stop_dev_queue(struct dpmaif_tx_queue *txq,
 	spin_unlock_irqrestore(&txq->txq_stop_start_lock, flags);
 }
 
-static inline void dpmaif_start_dev_queue(struct dpmaif_tx_queue *txq)
+inline void dpmaif_start_dev_queue(struct dpmaif_tx_queue *txq)
 {
 	unsigned int que_idx = 0, ccmni_idx;
 	int ret, ccmni_stop_counter;
@@ -2507,7 +2508,7 @@ static inline int dpmaif_txq_set_skb_data_to_drb(struct dpmaif_tx_queue *txq,
 	return ret;
 }
 
-static int dpmaif_tx_send_skb_to_md(struct ccmni_tx_para_info *tx_info)
+int dpmaif_tx_send_skb_to_md(struct ccmni_tx_para_info *tx_info)
 {
 	unsigned int send_cnt, txq_no = tx_info->hw_qno;
 	struct dpmaif_tx_queue *txq;
@@ -2801,6 +2802,8 @@ static void dpmaif_txqs_sw_stop(void)
 		}
 
 		atomic_set(&txq->txq_budget, DPMAIF_UL_DRB_ENTRY_SIZE);
+		if (g_dpmf_ver == 1)
+			dpmaif_txq_set_budget_v1(txq);
 
 		memset(txq->drb_base, 0, (txq->drb_cnt * sizeof(struct dpmaif_drb_pd)));
 		memset(txq->drb_skb_base, 0, (txq->drb_cnt * sizeof(struct dpmaif_drb_skb)));
@@ -2894,6 +2897,9 @@ static int dpmaif_stop(unsigned char hif_id)
 	dpmaif_txqs_sw_stop();
 
 	dpmaif_rxqs_sw_stop();
+
+	if (g_dpmf_ver == 1)
+		dpmaif_txqs_sw_stop_special_v1();
 
 	/* rx bat buf clear */
 	ccci_dpmaif_bat_stop();
@@ -3370,6 +3376,7 @@ static int dpmaif_init_com(struct device *dev)
 			"[%s] error: alloc hif_ctrl fail\n", __func__);
 		goto DPMAIF_INIT_FAIL;
 	}
+
 	g_dpmaif_ctrl = temp_dpmaif_ctrl;
 
 	g_dpmaif_ctrl->dev = dev;
@@ -3418,7 +3425,7 @@ static int dpmaif_init_com(struct device *dev)
 
 	/* hook up to device */
 	dev->platform_data = g_dpmaif_ctrl; /* maybe no need */
-
+	ccmni_ops.send_skb = &dpmaif_tx_send_skb_to_md;
 	if (g_dpmf_ver >= 3)
 		ret = ccci_dpmaif_drv3_init();
 	else if (g_dpmf_ver == 2)
@@ -3437,7 +3444,7 @@ static int dpmaif_init_com(struct device *dev)
 	mtk_ccci_spd_qos_method_init();
 
 	ccci_hif_register(DPMAIF_HIF_ID, g_dpmaif_ctrl, &g_dpmaif_ops);
-	ccmni_ops.send_skb = &dpmaif_tx_send_skb_to_md;
+
 	atomic_set(&g_dpmaif_ctrl->suspend_flag, 0);
 
 #if DPMAIF_TRAFFIC_MONITOR_INTERVAL
@@ -3448,6 +3455,8 @@ static int dpmaif_init_com(struct device *dev)
 	return 0;  /* dpmaif init succ. */
 
 DPMAIF_INIT_FAIL:
+	if (g_dpmaif_ctrl && g_dpmaif_ctrl->tx_sw_solution)
+		kfree(g_dpmaif_ctrl->tx_sw_solution);
 	kfree(g_dpmaif_ctrl);
 	g_dpmaif_ctrl = NULL;
 

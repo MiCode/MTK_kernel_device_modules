@@ -26,9 +26,9 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/syscore_ops.h>
-
-
 #include "ccci_dpmaif_com.h"
+#include "ccci_dpmaif_v1_mt6789.h"
+
 #include "ccci_dpmaif_reg_v1.h"
 
 #define TAG "drv1"
@@ -338,6 +338,7 @@ static irqreturn_t drv1_isr(int irq, void *data)
 	unsigned int L2RIMR0  = drv1_get_dl_interrupt_mask();
 	unsigned int L2TISAR0 = ccci_drv_get_ul_isr_event();
 	unsigned int L2TIMR0  = DPMA_READ_PD_MISC(DPMAIF_PD_AP_UL_L2TIMR0);
+	unsigned int L2RISAR0_bak = L2RISAR0, L2TISAR0_bak = L2TISAR0;
 
 	/* clear IP busy register wake up cpu case */
 	ccci_drv_clear_ip_busy();
@@ -384,6 +385,19 @@ static irqreturn_t drv1_isr(int irq, void *data)
 			/*for (i = 0; i < DPMAIF_HW_MAX_DLQ_NUM; i++)*/
 			tasklet_hi_schedule(&g_dpmaif_ctrl->rxq[0].rxq_task);
 		}
+	}
+	if (g_debug_flags & DEBUG_RXTX_ISR) {
+		struct debug_rxtx_isr_hdr hdr = {0};
+
+		hdr.type = TYPE_RXTX_ISR_ID;
+		hdr.qidx = 0;
+		hdr.time = (unsigned int)(local_clock() >> 16);
+		hdr.rxsr = L2RISAR0_bak;
+		hdr.rxmr = L2RIMR0;
+		hdr.txsr = L2TISAR0_bak;
+		hdr.txmr = L2TIMR0;
+		hdr.l1sr = L2TISAR0;
+		ccci_dpmaif_debug_add(&hdr, sizeof(hdr));
 	}
 
 	return IRQ_HANDLED;
@@ -752,8 +766,21 @@ int ccci_dpmaif_drv1_init(void)
 	ops.drv_get_dl_interrupt_mask = &drv1_get_dl_interrupt_mask;
 	ops.drv_txq_hw_init = &drv1_txq_hw_init;
 	ops.drv_dump_register = &drv1_dump_register;
-
+	if (g_plat_inf == 6789)
+		return dpmaif_tx_sw_solution_init();
 	return 0;
+}
+
+void dpmaif_txq_set_budget_v1(struct dpmaif_tx_queue *txq)
+{
+	if (g_plat_inf == 6789)
+		dpmaif_txq_set_budget_v1_mt6789(txq);
+}
+
+void dpmaif_txqs_sw_stop_special_v1(void)
+{
+	if (g_plat_inf == 6789 && g_dpmaif_ctrl->tx_sw_solution)
+		dpmaif_smem_tx_stop();
 }
 
 

@@ -23,6 +23,7 @@
 #endif
 #include "ccci_debug.h"
 #include "ccci_dpmaif_reg_com.h"
+#include "ccci_dpmaif_v1_mt6789.h"
 #include "ccci_dpmaif_drv_com.h"
 #include "ccci_dpmaif_debug.h"
 #include "ccci_dpmaif_bat.h"
@@ -447,6 +448,12 @@ struct dpmaif_tx_queue {
 	unsigned int        txq_stop_cnt[MD_HW_Q_MAX];
 };
 
+struct dpmaif_ctrl_v1 {
+	union {
+		struct dpmaif_ctrl_v1_mt6789 tx_use_ccif_isr;
+	};
+};
+
 struct dpmaif_ctrl {
 	enum   dpmaif_state_t     dpmaif_state;
 	struct dpmaif_tx_queue    txq[DPMAIF_TXQ_NUM];
@@ -525,6 +532,7 @@ struct dpmaif_ctrl {
 	struct page_pool            *g_page_pool[POOL_NUMBER];
 //      spinlock_t                  * spinlock;
 #endif
+	struct dpmaif_ctrl_v1        *tx_sw_solution;
 };
 
 struct dpmaif_clk_node {
@@ -535,7 +543,7 @@ struct dpmaif_clk_node {
 
 extern unsigned int            g_plat_inf;
 extern struct dpmaif_plat_ops  g_plt_ops;
-
+extern atomic_t                g_tx_busy_assert_on;
 int ccci_dpmaif_init_v1(struct device *dev);
 int ccci_dpmaif_init_v2(struct device *dev);
 int ccci_dpmaif_init_v3(struct device *dev);
@@ -560,5 +568,10 @@ extern void mt_irq_dump_status(unsigned int irq);
 
 extern void ccmni_set_tcp_is_need_gro(u32 tcp_is_need_gro);
 extern void ccmni_set_cur_speed(u64 cur_dl_speed);
-
+extern inline void dpmaif_stop_dev_queue(struct dpmaif_tx_queue *txq,
+	unsigned int ccmni_idx, unsigned int que_idx, unsigned int stop_threshold);
+extern inline void dpmaif_start_dev_queue(struct dpmaif_tx_queue *txq);
+extern inline int dpmaif_wait_resume_done(void);
+extern int dpmaif_tx_send_skb_to_md(struct ccmni_tx_para_info *tx_info);
+extern void dpmaif_handle_wakeup_skb(unsigned int is_rx, struct sk_buff *skb);
 #endif				/* __CCCI_MODEM_DPMA_COMM_H__ */

@@ -11,6 +11,12 @@
 #include "ccci_dpmaif_reg_com.h"
 
 
+#define INFRA_TOPAXI_PROTECTEN_1_SET_WA  (0xB84)
+#define INFRA_TOPAXI_PROTECTEN_1_CLR_WA  (0xB88)
+#define INFRA_TOPAXI_PROTECTEN_1_WA      (0xB80)
+#define DPMAIF_SLEEP_PROTECT_CTRL_WA   (0x1<<5)
+#define INFRA_TOPAXI_PROTECT_READY_STA1_1_WA (0xB90)
+
 #define DPMAIF_PD_UL_CFG_BASE              0
 #define DPMAIF_PD_DL_CFG_BASE              0
 #define DPMAIF_PD_AP_MISC_BASE             0

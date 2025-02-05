@@ -14,6 +14,7 @@
 #define TAG "hif"
 
 void *ccci_hif[CCCI_HIF_NUM];
+EXPORT_SYMBOL(ccci_hif);
 struct ccci_hif_ops *ccci_hif_op[CCCI_HIF_NUM];
 
 void ccci_hif_set_clk_cg(unsigned int hif_flag, unsigned int on)
