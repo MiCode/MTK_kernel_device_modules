@@ -709,8 +709,8 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		else
 			p->scenario = (p->scenario & (~V4L2_VENC_SDK_SCENARIO_BASED)) + ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_SCENARIO;
-		if (((p->scenario & (~V4L2_VENC_SDK_SCENARIO_BASED)) == V4L2_VENC_SCENARIO_SMVR) ||
-		    ((p->scenario & (~V4L2_VENC_SDK_SCENARIO_BASED)) == V4L2_VENC_SCENARIO_WFD)) {
+		if (((p->scenario & (V4L2_VENC_SDK_SCENARIO_BASED)) == V4L2_VENC_SCENARIO_SMVR) ||
+		    ((p->scenario & (V4L2_VENC_SDK_SCENARIO_BASED)) == V4L2_VENC_SCENARIO_WFD)) {
 			src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 				V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 			if (!src_vq) {
@@ -1046,6 +1046,12 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 			ctrl->p_new.p_s32[0], ctrl->p_new.p_s32[1]);
 		memcpy(&p->i_frm_sz_ctrl, ctrl->p_new.p_s32, sizeof(struct v4l2_venc_i_frame_size_control));
 		ctx->param_change |= MTK_ENCODE_PARAM_I_FRM_SZ_CTRL;
+		break;
+	case V4L2_CID_MTK_VIDEO_ENC_QUERY_PARAM:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MTK_VIDEO_ENC_QUERY_PARAM val = %d",
+			ctrl->val);
+		p->query_encode_param = ctrl->val;
 		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
@@ -1660,6 +1666,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->use_clean_gop = enc_params->use_clean_gop;
 	param->adab_info = &enc_params->adab_info;
 	param->i_frm_sz_ctrl = &enc_params->i_frm_sz_ctrl;
+	param->query_encode_param = enc_params->query_encode_param;
 	vcodec_trace_end();
 }
 
@@ -3312,7 +3319,6 @@ static int mtk_venc_encode_header(void *priv)
 			dst_vb2_v4l2->flags |= V4L2_BUF_FLAG_MULTINAL;
 		if (enc_result.flags&VENC_FLAG_NAL_LENGTH_BS)
 			dst_vb2_v4l2->flags |= V4L2_BUF_FLAG_NAL_LENGTH_BS;
-
 		vb2_set_plane_payload(dst_vb, 0, enc_result.bs_size);
 		v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_DONE);
 	}
@@ -4888,6 +4894,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.step = 1;
 	cfg.def = -1;
 	cfg.dims[0] = (sizeof(struct v4l2_venc_i_frame_size_control)/sizeof(s32));
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_QUERY_PARAM;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode query param";
+	cfg.min = 0;
+	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 

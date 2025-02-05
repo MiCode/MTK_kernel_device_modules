@@ -644,6 +644,7 @@ struct venc_vsi {
 	struct ring_input_list list_free;
 	struct venc_info       venc;
 	__u32 sync_mode;
+	__u8  query_encode_param;
 	__u32 meta_size;
 	__u64 meta_addr;
 	__u32 meta_offset;

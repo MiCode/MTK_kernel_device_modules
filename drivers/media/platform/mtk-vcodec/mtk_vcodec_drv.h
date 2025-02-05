@@ -441,6 +441,7 @@ struct mtk_enc_params {
 	bool use_clean_gop;
 	struct v4l2_venc_adab_info adab_info;
 	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
+	bool query_encode_param;
 };
 
 /*
@@ -544,6 +545,7 @@ struct venc_enc_param {
 	bool use_clean_gop;
 	struct v4l2_venc_adab_info *adab_info;
 	struct v4l2_venc_i_frame_size_control *i_frm_sz_ctrl;
+	bool query_encode_param;
 };
 
 /*
