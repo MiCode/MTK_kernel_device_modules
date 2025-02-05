@@ -16031,6 +16031,15 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			"mbox2";
 
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
+		vcp-iommu-vdec-supply = <&vcp_io2>;
+		vcp-iommu-venc-supply = <&vcp_io3>;
+		vcp-iommu-work-supply = <&vcp_io4>;
+		vcp-iommu-sec-supply = <&vcp_io5>;
+		vcp-iommu-acp-vdec-supply = <&vcp_io6>;
+		vcp-iommu-acp-venc-supply = <&vcp_io7>;
+		vcp-iommu-acp-codec-supply = <&vcp_io8>;
+		vcp-iommu-sentrymode-supply = <&vcp_io9>;
+		vcp-iommu-sentrymode-extra-supply = <&vcp_io10>;
 		/*mediatek,smi = <&smi_mdp_common &mmsram_smi_2x1_sub_comm4>;*/
 
 		vcp-sram-size = <0x00060000>;
@@ -16105,48 +16114,56 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		compatible =  "mediatek,vcp-io-vdec";
 		vcp-support = <2>;
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
+		mm-smmu-hfrp-supply = <&mm_smmu_hfrp>;
 	};
 
 	vcp_io3: vcp-iommu-venc {
 		compatible =  "mediatek,vcp-io-venc";
 		vcp-support = <3>;
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
+		mm-smmu-hfrp-supply = <&mm_smmu_hfrp>;
 	};
 
 	vcp_io4: vcp-iommu-work {
 		compatible = "mediatek,vcp-io-work";
 		vcp-support = <4>;
 		mtk,smmu-shared = <&mm_smmu_hfrp>;
+		mm-smmu-hfrp-supply = <&mm_smmu_hfrp>;
 	};
 
 	vcp_io5: vcp-iommu-sec {
 		compatible =  "mediatek,vcp-io-sec";
 		vcp-support = <7>;
 		mtk,smmu-shared = <&mm_smmu_hfrp_protected>;
+		mm-smmu-hfrp-protected-supply = <&mm_smmu_hfrp_protected>;
 	};
 
 	vcp_io6: vcp-iommu-acp-vdec {
 		compatible =  "mediatek,vcp-io-acp-vdec";
 		vcp-support = <8>;
 		mtk,smmu-shared = <&mm_smmu_acp_hfrp>;
+		mm-smmu-acp-hfrp-supply = <&mm_smmu_acp_hfrp>;
 	};
 
 	vcp_io7: vcp-iommu-acp-venc {
 		compatible =  "mediatek,vcp-io-acp-venc";
 		vcp-support = <9>;
 		mtk,smmu-shared = <&mm_smmu_acp_hfrp>;
+		mm-smmu-acp-hfrp-supply = <&mm_smmu_acp_hfrp>;
 	};
 
 	vcp_io8: vcp-iommu-acp-codec {
 		compatible =  "mediatek,vcp-io-acp-codec";
 		vcp-support = <10>;
 		mtk,smmu-shared = <&mm_smmu_acp_codec>;
+		mm-smmu-acp-codec-supply = <&mm_smmu_acp_codec>;
 	};
 
 	vcp_io9: vcp-iommu-sentrymode {
 		compatible = "mediatek,vcp-io-sentrymode";
 		vcp-support = <10>;
 		mtk,smmu-shared = <&mm_smmu_vencsentrymode>;
+		mm-smmu-vencsentrymode-supply = <&mm_smmu_vencsentrymode>;
 		status = "disabled";
 	};
 
@@ -16154,6 +16171,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		compatible = "mediatek,vcp-io-sentrymode_extra";
 		vcp-support = <11>;
 		mtk,smmu-shared = <&mm_smmu_vencsentrymode_extra>;
+		mm-smmu-vencsentrymode-extra-supply = <&mm_smmu_vencsentrymode_extra>;
 		status = "disabled";
 	};
 

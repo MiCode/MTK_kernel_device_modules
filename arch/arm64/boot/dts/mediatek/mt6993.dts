@@ -12282,6 +12282,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mbox2";
 
 			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			vcp-iommu-vdec-supply = <&vcp_io2>;
+			vcp-iommu-venc-supply = <&vcp_io3>;
+			vcp-iommu-work-supply = <&vcp_io4>;
+			vcp-iommu-sec-supply = <&vcp_io5>;
+			vcp-iommu-acp-codec-supply = <&vcp_io8>;
 
 			vcp-sram-size = <0x00080000>;
 			vcp-dram-size = <0x00e00000>;
@@ -12355,30 +12360,35 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible =  "mediatek,vcp-io-vdec";
 			vcp-support = <2>;
 			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mm-smmu-hfrp-supply = <&mm_smmu_hfrp>;
 		};
 
 		vcp_io3: vcp-iommu-venc {
 			compatible =  "mediatek,vcp-io-venc";
 			vcp-support = <3>;
 			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mm-smmu-hfrp-supply = <&mm_smmu_hfrp>;
 		};
 
 		vcp_io4: vcp-iommu-work {
 			compatible = "mediatek,vcp-io-work";
 			vcp-support = <4>;
 			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mm-smmu-hfrp-supply = <&mm_smmu_hfrp>;
 		};
 
 		vcp_io5: vcp-iommu-sec {
 			compatible =  "mediatek,vcp-io-sec";
 			vcp-support = <7>;
 			mtk,smmu-shared = <&mm_smmu_hfrp_protected>;
+			mm-smmu-hfrp-protected-supply = <&mm_smmu_hfrp_protected>;
 		};
 
 		vcp_io8: vcp-iommu-acp-codec {
 			compatible =  "mediatek,vcp-io-acp-codec";
 			vcp-support = <10>;
 			mtk,smmu-shared = <&mm_smmu_acp_codec>;
+			mm-smmu-acp-codec-supply = <&mm_smmu_acp_codec>;
 		};
 
 		bus-parity@c000900 {
