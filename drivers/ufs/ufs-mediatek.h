@@ -88,6 +88,8 @@
 #define REG_UFS_DEBUG_SEL_B3        0x22DC
 #define REG_UFS_SQ_DBR_DBG          0x22FC
 #define REG_UFS_ACT_STS             0x2304
+/* Control Signal */
+#define REG_UFS_MMIO_RSV_CTRL       0x2308
 /* MCQ CQ/SQ */
 #define REG_UFS_MTK_SQD             0x2800
 #define REG_UFS_MTK_SQIS            0x2814
@@ -378,6 +380,7 @@ enum {
 	IP_VER_MT6899    = 0x10450100,
 	IP_VER_MT6991_A0 = 0x10460000,
 	IP_VER_MT6991_B0 = 0x10470000,
+	IP_VER_MT6993    = 0x10480000,
 
 	IP_VER_NONE      = 0xFFFFFFFF,
 };

@@ -854,6 +854,7 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	bool clk_pwr_off = false;
 	int ret = 0;
+	u32 value;
 
 	/*
 	 * In case ufs_mtk_init() is not yet done, simply ignore.
@@ -864,6 +865,15 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		return 0;
 
 	if (!on && status == PRE_CHANGE) {
+		if (host->ip_ver == IP_VER_MT6993) {
+			/* Release data coherence req */
+			ufshcd_rmwl(hba, 0x1, 0x0, REG_UFS_MMIO_RSV_CTRL);
+			usleep_range(10, 20);
+			value = ufshcd_readl(hba, REG_UFS_MMIO_RSV_CTRL);
+			if ((value & 0x2) == 1)
+				dev_err(hba->dev, "missing ack of hw coh release\n");
+		}
+
 		if (ufshcd_is_link_off(hba)) {
 			clk_pwr_off = true;
 		} else if (ufshcd_is_link_hibern8(hba) ||
@@ -903,6 +913,15 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		if (!ufshcd_is_clkscaling_supported(hba) ||
 		    !hba->clk_scaling.is_enabled)
 			ufs_mtk_pm_qos(hba, on);
+
+		if (host->ip_ver == IP_VER_MT6993) {
+			/* Enable data coherence */
+			ufshcd_rmwl(hba, 0x1, 0x1, REG_UFS_MMIO_RSV_CTRL);
+			usleep_range(10, 20);
+			value = ufshcd_readl(hba, REG_UFS_MMIO_RSV_CTRL);
+			if ((value & 0x2) == 0)
+				dev_err(hba->dev, "missing ack of hw coh request.\n");
+		}
 		ufs_mtk_mcq_enable_irq(hba);
 	}
 
