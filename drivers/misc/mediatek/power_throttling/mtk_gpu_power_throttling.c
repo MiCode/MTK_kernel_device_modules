@@ -22,6 +22,7 @@ static int gpu_pt_table_idx;
 static unsigned int system_boot_completed;
 static bool bootup_pt_support;
 static bool switch_pt;
+static int lbat_tb_num;
 
 enum gpu_pt_table_num {
 	GPU_PT_TABLE0,
@@ -219,7 +220,7 @@ static void __used gpu_pt_table_default_setting(enum gpu_pt_table_num num)
 		gpu_pt_data->freq_limit[i] = GPU_LIMIT_FREQ;
 }
 
-static bool parse_switchpt_table(struct device_node *np, int lbat_tb_num)
+static bool parse_switchpt_table(struct device_node *np)
 {
 	int i, j, ret = 0;
 	struct gpu_pt_table *gpu_pt_table;
@@ -404,7 +405,10 @@ static ssize_t gpu_pt_table_idx_store(struct device *dev,
 		dev_info(dev, "parameter number not correct\n");
 		return -EINVAL;
 	}
-
+	if (gpu_pt_table_idx < 0 || gpu_pt_table_idx >= lbat_tb_num) {
+		pr_info("Invalid voltage table index.\n");
+		return -EINVAL;
+	}
 	mutex_lock(&gpu_freq_lock);
 
 	for (j = 0; j < gpu_pt_info[LBAT_POWER_THROTTLING].max_lv; j++) {
@@ -469,7 +473,7 @@ static int mtk_gpu_power_throttling_probe(struct platform_device *pdev)
 	struct device_node *np_bootmode;
 	struct gpu_pt_priv *gpu_pt_data;
 	struct tag_bootmode *tag;
-	int i, j, lbat_tb_num = 0, ret = 0, num = 0;
+	int i, j, ret = 0, num = 0;
 	char buf[32];
 	switch_pt = false;
 	bootup_pt_support = false;
@@ -516,7 +520,7 @@ static int mtk_gpu_power_throttling_probe(struct platform_device *pdev)
 		lbat_tb_num = 1;
 		switch_pt = false;
 	} else {
-		switch_pt = parse_switchpt_table(np, lbat_tb_num);
+		switch_pt = parse_switchpt_table(np);
 	}
 
 	//gpu bootup pt

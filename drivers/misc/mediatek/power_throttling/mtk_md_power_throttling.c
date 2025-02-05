@@ -4,8 +4,10 @@
  * Author: Samuel Hsieh <samuel.hsieh@mediatek.com>
  */
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/power_supply.h>
 #include "mtk_ccci_common.h"
 #include "mtk_md_power_throttling.h"
 #include "mtk_battery_oc_throttling.h"
@@ -13,13 +15,22 @@
 #include "mtk_bp_thl.h"
 #include "pmic_lbat_service.h"
 
+#define MAX_INT 0x7FFF
 #define MD_TX_REDUCE 6
+
+static int *temp_thresholds;
+static int temp_stage_size;
+
 struct md_pt_priv {
 	char max_lv_name[32];
 	char limit_name[32];
 	u32 max_lv;
+	u32 cur_temp_stage;
+	u32 cur_thl_lv;
 	u32 *reduce_tx;
 	u32 *threshold;
+	struct work_struct psy_work;
+	struct power_supply *psy;
 };
 
 static struct md_pt_priv md_pt_info[POWER_THROTTLING_TYPE_MAX] = {
@@ -35,20 +46,74 @@ static struct md_pt_priv md_pt_info[POWER_THROTTLING_TYPE_MAX] = {
 	}
 };
 
+static int get_temp_thresholds(struct device *dev)
+{
+	int ret;
+	struct device_node *np = dev->of_node;
+
+	temp_stage_size = of_property_count_u32_elems(np, "lbat-dedicate-temperature");
+	if (temp_stage_size <= 0) {
+		np = of_find_node_by_name(NULL, "low-battery-throttling");
+		if (!np) {
+			temp_stage_size = 0;
+			return -ENODEV;
+		}
+		temp_stage_size = of_property_count_u32_elems(np, "temperature-stage-threshold");
+		if (temp_stage_size <= 0) {
+			pr_info ("[%s]: get temp info from low battery node failed\n", __func__);
+			temp_stage_size = 0;
+			return -ENODEV;
+		}
+		temp_thresholds = kcalloc(temp_stage_size, sizeof(int), GFP_KERNEL);
+		if (!temp_thresholds)
+			return -ENOMEM;
+		ret = of_property_read_u32_array(np, "temperature-stage-threshold",
+						temp_thresholds, temp_stage_size);
+		if (ret) {
+			kfree(temp_thresholds);
+			return ret;
+		}
+		return 0;
+	}
+
+	temp_thresholds = kcalloc(temp_stage_size, sizeof(int), GFP_KERNEL);
+	if (!temp_thresholds)
+		return -ENOMEM;
+	ret = of_property_read_u32_array(np, "lbat-dedicate-temperature",
+					temp_thresholds, temp_stage_size);
+	if (ret) {
+		pr_info ("Failed to read lbat-dedicate-temperature\n");
+		kfree(temp_thresholds);
+		return ret;
+	}
+	return 0;
+}
+
+static struct notifier_block md_pt_nb;
+static DEFINE_MUTEX(md_temp_lock);
+static DEFINE_MUTEX(md_thl_lock);
+
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 static void md_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
 	unsigned int md_throttle_cmd;
 	int ret, intensity;
+	struct md_pt_priv *priv;
+
+	priv = &md_pt_info[LBAT_POWER_THROTTLING];
 	if (level > md_pt_info[LBAT_POWER_THROTTLING].max_lv)
 		return;
-
+	if (priv->cur_thl_lv != level) {
+		mutex_lock(&md_thl_lock);
+		priv->cur_thl_lv = level;
+		mutex_unlock(&md_thl_lock);
+	}
 	if (level != LOW_BATTERY_LEVEL_0)
 		intensity = md_pt_info[LBAT_POWER_THROTTLING].reduce_tx[level-1];
 	else
 		intensity = 0;
-	md_throttle_cmd = TMC_CTRL_CMD_TX_POWER | level << 8 |
-		PT_LOW_BATTERY_VOLTAGE << 16 | intensity << 24;
+	md_throttle_cmd = TMC_CTRL_CMD_TX_POWER | level << 8 | priv->cur_temp_stage << 12 |
+		PT_LOW_BATTERY_VOLTAGE_WITH_TEMP << 16 | intensity << 24;
 	ret = exec_ccci_kern_func(ID_THROTTLING_CFG,
 		(char *)&md_throttle_cmd, 4);
 
@@ -104,6 +169,7 @@ static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 {
 	unsigned int md_throttle_cmd;
 	int ret, intensity;
+
 	if (level > md_pt_info[OC_POWER_THROTTLING].max_lv)
 		return;
 	if (level < BATTERY_OC_LEVEL_NUM) {
@@ -125,6 +191,73 @@ static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 	}
 }
 #endif
+static void md_pt_psy_handler(struct work_struct *work)
+{
+	struct power_supply *psy;
+	union power_supply_propval val;
+	int ret, temp, temp_thd, temp_stage;
+	static int last_temp = MAX_INT;
+	struct md_pt_priv *priv;
+	bool loop;
+
+	priv = &md_pt_info[LBAT_POWER_THROTTLING];
+
+	if (!priv->psy)
+		return;
+
+	psy = priv->psy;
+
+	if (strcmp(psy->desc->name, "battery") != 0)
+		return;
+
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_TEMP, &val);
+	if (ret)
+		return;
+
+	temp = val.intval / 10;
+	temp_stage = priv->cur_temp_stage;
+
+	do {
+		loop = false;
+		if (temp < last_temp) {
+			if (temp_stage < temp_stage_size) {
+				temp_thd = temp_thresholds[temp_stage];
+				if (temp < temp_thd) {
+					temp_stage++;
+					loop = true;
+				}
+			}
+		} else if (temp > last_temp) {
+			if (temp_stage > 0) {
+				temp_thd = temp_thresholds[temp_stage-1];
+				if (temp >= temp_thd) {
+					temp_stage--;
+					loop = true;
+				}
+			}
+		}
+	} while (loop);
+
+	last_temp = temp;
+
+	if (temp_stage <= temp_stage_size && temp_stage != priv->cur_temp_stage) {
+		mutex_lock(&md_temp_lock);
+		priv->cur_temp_stage = temp_stage;
+		mutex_unlock(&md_temp_lock);
+		md_pt_low_battery_cb(priv->cur_thl_lv, NULL);
+	}
+}
+
+static int md_pt_psy_event(struct notifier_block *nb, unsigned long event, void *v)
+{
+	struct md_pt_priv *priv;
+
+	priv = &md_pt_info[LBAT_POWER_THROTTLING];
+	priv->psy = v;
+	schedule_work(&priv->psy_work);
+	return NOTIFY_DONE;
+}
+
 static int __used md_limit_default_setting(struct device *dev, enum md_pt_type type)
 {
 	struct device_node *np = dev->of_node;
@@ -234,10 +367,23 @@ static int mtk_md_power_throttling_probe(struct platform_device *pdev)
 	ret = parse_md_limit_table(&pdev->dev);
 	if (ret != 0)
 		return ret;
+	ret = get_temp_thresholds(&pdev->dev);
+	if (ret != 0){
+		pr_info ("%s: md get_temp_thresholds failed", __func__);
+	}
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 	if (md_pt_info[LBAT_POWER_THROTTLING].max_lv > 0) {
 		priv = &md_pt_info[LBAT_POWER_THROTTLING];
+		INIT_WORK(&priv->psy_work, md_pt_psy_handler);
+		if (temp_stage_size > 0) {
+			md_pt_nb.notifier_call = md_pt_psy_event;
+			ret = power_supply_reg_notifier(&md_pt_nb);
+			if (ret) {
+				dev_notice(&pdev->dev, "[%s] register psy notify fail %d\n", __func__, ret);
+				return ret;
+			}
+		}
 		if (priv->threshold) {
 			lbat_user_register_ext("md pa dedicate throttle", priv->threshold,
 				priv->max_lv + 1, md_lbat_dedicate_callback);
@@ -259,7 +405,7 @@ static int mtk_md_power_throttling_probe(struct platform_device *pdev)
 }
 static void mtk_md_power_throttling_remove(struct platform_device *pdev)
 {
-
+	kfree(temp_thresholds);
 }
 static const struct of_device_id md_power_throttling_of_match[] = {
 	{ .compatible = "mediatek,md-power-throttling", },

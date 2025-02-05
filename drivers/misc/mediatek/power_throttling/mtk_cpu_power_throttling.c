@@ -31,6 +31,7 @@ static int cpu_pt_table_idx;
 static unsigned int system_boot_completed;
 static bool bootup_pt_support;
 static bool switch_pt;
+static int lbat_tb_num;
 
 enum cpu_pt_table_num {
 	CPU_PT_TABLE0,
@@ -332,7 +333,7 @@ static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *t
 
 }
 
-static bool parse_switchpt_table(struct device_node *np, int lbat_tb_num)
+static bool parse_switchpt_table(struct device_node *np)
 {
 	struct cpu_pt_table *cpu_pt_table;
 	int i, j, k, ret;
@@ -373,7 +374,7 @@ static int __used parse_cpu_limit_table(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
 	struct device_node *np_bootmode;
-	int i, j, lbat_tb_num = 0, k, num, ret;
+	int i, j, k, num, ret;
 	struct cpu_pt_priv *pt_info_p;
 	struct tag_bootmode *tag;
 
@@ -449,7 +450,7 @@ static int __used parse_cpu_limit_table(struct device *dev)
 		lbat_tb_num = 1;
 		switch_pt = false;
 	} else {
-		switch_pt = parse_switchpt_table(np, lbat_tb_num);
+		switch_pt = parse_switchpt_table(np);
 	}
 	return 0;
 }
@@ -560,7 +561,7 @@ static ssize_t boot_notify_show(struct device *dev,
 	int len = 0;
 
 	if (bootup_pt_support == false){
-		dev_info(dev, "not support gpu bootup\n");
+		dev_info(dev, "not support cpu bootup\n");
 		return -EINVAL;
 	}
 	len += snprintf(buf + len, PAGE_SIZE - len, "system_boot_completed: %u\n", system_boot_completed);
@@ -576,7 +577,7 @@ static ssize_t boot_notify_store(struct device *dev,
 	s32 freq_limit;
 
 	if (bootup_pt_support == false){
-		dev_info(dev, "not support gpu bootup\n");
+		dev_info(dev, "not support cpu bootup\n");
 		return -EINVAL;
 	}
 	if (sscanf(buf, "%u\n", &boot_completed) != 1) {
@@ -630,7 +631,10 @@ static ssize_t cpu_pt_table_idx_store(struct device *dev,
 		dev_info(dev, "parameter number not correct\n");
 		return -EINVAL;
 	}
-
+	if (cpu_pt_table_idx < 0 || cpu_pt_table_idx >= lbat_tb_num) {
+		pr_info("Invalid voltage table index.\n");
+		return -EINVAL;
+	}
 	mutex_lock(&cpu_freq_lock);
 
 	list_for_each_entry(pt_policy, &pt_policy_list, cpu_pt_list) {

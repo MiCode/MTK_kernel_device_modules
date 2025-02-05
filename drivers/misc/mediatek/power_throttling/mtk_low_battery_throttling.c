@@ -1169,7 +1169,6 @@ static void psy_handler(struct work_struct *work)
 				lbat_data->aging_cur_stage = aging_stage;
 				decide_and_throttle(LBAT_INTR_1, lbat_data->lbat_lv[INTR_1], 0);
 			}
-
 			update_thresholds(temp_stage, aging_stage);
 		}
 		lbat_data->temp_cur_stage = temp_stage;
