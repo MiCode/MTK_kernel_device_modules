@@ -31,9 +31,9 @@
 #include "private/tmem_entry.h"
 #include "private/tmem_priv.h"
 #include "private/ut_cmd.h"
-#ifdef TCORE_MEMORY_LEAK_DETECTION_SUPPORT
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 #include "private/mld_helper.h"
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 #include "tests/ut_api.h"
 #include "tests/ut_common.h"
 #include "tee_impl/tee_invoke.h"
@@ -322,7 +322,7 @@ static enum UT_RET_STATE tmem_regmgr_run_all(struct ut_params *params,
 	return UT_STATE_PASS;
 }
 
-#ifdef TCORE_MEMORY_LEAK_DETECTION_SUPPORT
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 static enum UT_RET_STATE mld_check_test(struct ut_params *params,
 					char *test_desc)
 {
@@ -358,7 +358,7 @@ static enum UT_RET_STATE mld_check_test(struct ut_params *params,
 
 	return UT_STATE_PASS;
 }
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 
 #ifdef TCORE_PROFILING_SUPPORT
 static enum UT_RET_STATE profile_dump_all(struct ut_params *params,
@@ -821,10 +821,10 @@ static struct test_case test_cases[] = {
 	     0, config_tee_prot_region_test),
 #endif
 
-#ifdef TCORE_MEMORY_LEAK_DETECTION_SUPPORT
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 	CASE(TMEM_MEMORY_LEAK_DETECTION_CHECK, "Memory Leak Detection Test", 0,
 	     0, 0, mld_check_test),
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 
 #ifdef TCORE_PROFILING_SUPPORT
 	CASE(TMEM_PROFILE_DUMP, "Profiling Dump Test", 0, 0, 0,

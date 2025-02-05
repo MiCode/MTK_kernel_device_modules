@@ -6,7 +6,9 @@
 #ifndef TMEM_MEMORY_LEAK_DETECTION_HELPER_H
 #define TMEM_MEMORY_LEAK_DETECTION_HELPER_H
 
-#ifdef TCORE_MEMORY_LEAK_DETECTION_SUPPORT
+#include <linux/kconfig.h>
+
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 enum MLD_CHECK_STATUS { MLD_CHECK_PASS = 0, MLD_CHECK_FAIL = 1 };
 void mld_init(void);
 void *mld_kmalloc(size_t size, gfp_t flags);
@@ -17,6 +19,6 @@ enum MLD_CHECK_STATUS mld_stamp_check(size_t previous_stamped_size);
 #define mld_init()
 #define mld_kmalloc(size, flags) kmalloc(size, flags)
 #define mld_kfree(mem_ptr) kfree(mem_ptr)
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 
 #endif /* end of TMEM_MEMORY_LEAK_DETECTION_HELPER_H */

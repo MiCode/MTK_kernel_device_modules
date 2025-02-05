@@ -32,7 +32,7 @@
 #include "tee_impl/tee_ops.h"
 #include "tee_impl/tee_regions.h"
 #if !IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
-#include "../iommu/iommu_pseudo.h"
+#include <iommu_pseudo.h>
 #endif
 
 #define TEE_CMD_LOCK() mutex_lock(&tee_lock)

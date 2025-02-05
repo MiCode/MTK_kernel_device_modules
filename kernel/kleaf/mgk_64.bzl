@@ -623,7 +623,9 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
     "//kernel_device_modules-{}/drivers/i3c/master:mtk-i3c-master-mt69xx".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/i3c_i2c_wrap:mtk-i3c-i2c-wrap".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_heap_debug".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_heap_refill".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
     "//kernel_device_modules-{}/drivers/pwm:pwm-mtk-disp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/edac/mediatek:mtk_edac_slc".format(kernel_version),
@@ -815,6 +817,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/core:hf_manager".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/sensorhub:sensorhub".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:trusted_mem".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_rs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
@@ -1359,8 +1362,6 @@ mgk_64_device_modules = [
     #"drivers/char/hw_random/sec-rng.ko",
     #"drivers/clk/mediatek/fhctl.ko",
     #"drivers/clocksource/timer-mediatek.ko",
-    "drivers/dma-buf/heaps/mtk_heap_debug.ko",
-    "drivers/dma-buf/heaps/mtk_sec_heap.ko",
     #"drivers/misc/mediatek/pkvm_smmu/pkvm_smmu.ko",
     #"drivers/dma/mediatek/mtk-cqdma.ko",
     #"drivers/dma/mediatek/mtk-uart-apdma.ko",
@@ -1503,8 +1504,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-isp-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6993/mtk-swpm-dbg-v6993.ko",
     "drivers/misc/mediatek/task_turbo/task_turbo.ko",
-    "drivers/misc/mediatek/trusted_mem/tmem_ffa.ko",
-    "drivers/misc/mediatek/trusted_mem/trusted_mem.ko",
     "drivers/misc/mediatek/typec/mux/usb_dp_selector.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko",
@@ -2023,7 +2022,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")
@@ -2359,7 +2357,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
@@ -2598,7 +2595,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm-perf-arm-pmu".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version))
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/misc/mediatek/upower/Upower.ko")
@@ -2794,7 +2790,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/spmi:spmi-mtk-mpu".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/spmi:spmi-mtk-pmif".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
         mgk_64_kleaf_device_modules.update("//kernel_device_modules-{}/drivers/power/supply:rt9465".format(kernel_version))
         mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6761-vcodec.ko":"mt6761"})
@@ -2859,9 +2854,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu-secure".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/trusted_mem.ko")
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version))
-        mgk_64_device_modules.remove("drivers/dma-buf/heaps/mtk_sec_heap.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version))
         mgk_64_device_modules.remove("drivers/tee/gud/610/TlcTui/t-base-tui.ko")
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mmsram".format(kernel_version))
@@ -3344,7 +3338,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm-perf-arm-pmu".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/tinysys_scmi/tinysys-scmi.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6993/mtk-swpm-dbg-v6993.ko")
@@ -3568,7 +3561,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/dma/mediatek/mtk-cqdma.ko")
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
 
@@ -4005,7 +3997,6 @@ def get_overlay_modules_list():
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6993.ko")
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/teei/515/isee.ko")
@@ -4112,7 +4103,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/tee/gud/600/MobiCoreDriver/mcDrvModule-ffa.ko")
         mgk_64_device_modules.append("drivers/tee/gud/600/TlcTui/t-base-tui.ko")
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/trusted_mem/tmem_ffa.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
         mgk_64_device_modules.remove("drivers/tee/teei/510/isee-ffa.ko")
 

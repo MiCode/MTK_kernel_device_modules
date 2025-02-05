@@ -48,10 +48,10 @@ ifneq ($(filter y m,$(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)),)
 tmem_ffa-y += tmemperf/tmemperf.o
 endif # !CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ
 
-#obj-m += ffa_v11.o
-#ffa_v11-y += ffa_v11/bus.o
-#ffa_v11-y += ffa_v11/driver.o
-#ffa_v11-y += ffa_v11/smccc.o
+obj-m += ffa_v11.o
+ffa_v11-y += ffa_v11/bus.o
+ffa_v11-y += ffa_v11/driver.o
+ffa_v11-y += ffa_v11/smccc.o
 endif # CONFIG_ARM_FFA_TRANSPORT
 
 ifeq ($(TCORE_PROFILING_SUPPORT),y)
@@ -158,6 +158,10 @@ endif # !CONFIG_MICROTRUST_TEE_SUPPORT
 ifneq ($(filter y m,$(CONFIG_BLOWFISH_TEE_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/tzdev
 endif # !CONFIG_BLOWFISH_TEE_SUPPORT
+
+ifneq ($(filter y m,$(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
+endif # !CONFIG_DEVICE_MODULES_ARM_SMMU_V3
 
 ifneq ($(filter y m,$(CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/tmemperf

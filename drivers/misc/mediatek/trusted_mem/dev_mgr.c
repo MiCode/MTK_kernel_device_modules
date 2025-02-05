@@ -34,7 +34,7 @@
 
 #if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 #include "tests/ut_api.h"
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 
 struct trusted_mem_device_table {
 	enum TRUSTED_MEM_TYPE mem_type;
@@ -46,22 +46,22 @@ static struct trusted_mem_device_table tmem_dev[TRUSTED_MEM_MAX];
 static inline void run_ut_with_memory_leak_check(u64 cmd, u64 param1,
 						 u64 param2, u64 param3)
 {
-#ifdef TCORE_MEMORY_LEAK_DETECTION_SUPPORT
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 	size_t start_size = mld_stamp();
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 
 #if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 	invoke_ut_cases(cmd, param1, param2, param3);
 #else
 	pr_err("TCORE_UT_TESTS_SUPPORT option is not enabled\n");
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 
-#ifdef TCORE_MEMORY_LEAK_DETECTION_SUPPORT
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 	if (mld_stamp_check(start_size) == MLD_CHECK_PASS)
 		pr_info("memory leak check is passed!!!\n");
 	else
 		pr_err("trusted memory core exists memory leak!\n");
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 }
 
 void trusted_mem_ut_cmd_invoke(u64 cmd, u64 param1, u64 param2, u64 param3)
@@ -241,9 +241,9 @@ int trusted_mem_subsys_init(void)
 
 	pr_info("%s:%d\n", __func__, __LINE__);
 
-#ifdef TCORE_MEMORY_LEAK_DETECTION_SUPPORT
+#if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
 	mld_init();
-#endif
+#endif /* IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY) */
 
 	for (idx = 0; idx < TRUSTED_MEM_MAX; idx++) {
 		tmem_dev[idx].mem_type = TRUSTED_MEM_INVALID;
