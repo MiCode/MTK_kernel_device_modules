@@ -4,6 +4,7 @@
  */
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/spmi/spmi.h>
+#include <linux/mfd/mt6661/registers.h>
 
 &spmi {
 	#address-cells = <2>;
@@ -25,6 +26,26 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
 		};
 
 		mt6661_4_efuse: mt6661-4-efuse {
@@ -302,6 +323,26 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
 		};
 
 		mt6661_3_efuse: mt6661-3-efuse {
@@ -559,6 +600,26 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
 		};
 
                 mt6661_5_auxadc: mt6661-5-auxadc {
@@ -1012,6 +1073,26 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
 		};
 
                 mt6661_6_auxadc: mt6661-6-auxadc {
