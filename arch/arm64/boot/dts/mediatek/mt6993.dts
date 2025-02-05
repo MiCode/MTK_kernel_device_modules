@@ -15939,7 +15939,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			smmu-supply = <&mm_smmu>;
 		};
 		mm_smmu_img_protected: mm-smmu-img-protected {
-			//compatible = "mediatek,smmu-share-group";
+			compatible = "mediatek,smmu-share-group";
 			label = "mm_smmu_img_protected";
 			dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mm_smmu 138>;
@@ -20649,8 +20649,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&gce_m_2 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 			<&gce_m_2 28 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 			/* qos thread */
-			<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
-#if 0
+			<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 			/* secure thread */
 			<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 			/* sec mae */
@@ -20658,7 +20657,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/* slc */
 			<&gce_m_sec 8 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 			/* thread list end */
-#endif
 		traw-cq-thread0-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMG_TRAW0_CQ_THR_DONE_TRAW0_0>;
 		traw-cq-thread1-frame-done =
@@ -21682,6 +21680,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
 		sw-sync-token-tzmp-aie-set =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
+		sw-sync-token-tzmp-isc-wait =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISC_WAIT>;
+		sw-sync-token-tzmp-isc-set =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISC_SET>;
 #if 0
 		sw-sync-token-camsys-pool-1 =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_CAMSYS_POOL_1>;
@@ -21976,8 +21978,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"mmdvfs_mux";
 		operating-points-v2 = <&opp_table_img>;
 		mediatek,imgsys-dvfs-pix-mode = <4>;
-#if 0
 		imgsys-supply = <&gce_m_sec>;
+#if 0
 		mediatek,imgsys-qof-ver = <31>;
 #endif
 	};
