@@ -1370,6 +1370,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6878".format(kernel_version): "mt6878",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6895".format(kernel_version): "mt6895",
 }
 
 mgk_64_kleaf_eng_device_modules = [
@@ -1770,6 +1771,7 @@ mgk_64_platform_device_modules = {
     "drivers/interconnect/mediatek/mmqos-mt6877.ko": "mt6877",
     "drivers/interconnect/mediatek/mmqos-mt6789.ko": "mt6789",
     "drivers/interconnect/mediatek/mmqos-mt6855.ko": "mt6855",
+    "drivers/interconnect/mediatek/mmqos-mt6895.ko": "mt6895",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6855.ko": "mt6855",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6879.ko": "mt6879",
     "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6886.ko": "mt6886",
