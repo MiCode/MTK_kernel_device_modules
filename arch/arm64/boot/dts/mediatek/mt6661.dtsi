@@ -829,7 +829,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			mt6661_5_thermal_efuse: mt6661-5-e-data {
-				reg = <0x43 7>;
+				reg = <0x43 14>;
 			};
 		};
 
@@ -1305,7 +1305,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			mt6661_6_thermal_efuse: mt6661-6-e-data {
-				reg = <0x43 7>;
+				reg = <0x43 14>;
 			};
 		};
 
