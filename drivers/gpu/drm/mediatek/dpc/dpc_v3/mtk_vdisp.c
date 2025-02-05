@@ -332,6 +332,9 @@ static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 		return;
 	}
 
+	VDISPDBG("BUCK %s skip", (enable) ? "ON" : "OFF");
+	return;
+
 	if (g_priv->hwccf_base) {
 		u32 hwccf_done = HW_CCF_BACKUP1_DONE;
 		u32 ctrl_reg = (enable) ? HW_CCF_XPU0_BACKUP1_SET : HW_CCF_XPU0_BACKUP1_CLR;
