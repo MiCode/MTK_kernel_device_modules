@@ -4185,7 +4185,7 @@
 			reg = <0 0x13fbf000 0 0x1000>;
 		};
 
-		mmqos_wrapper {
+		mmqos-wrapper {
 			compatible = "mediatek,mt6789-mmqos-wrapper";
 		};
 
