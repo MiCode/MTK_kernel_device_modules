@@ -116,7 +116,7 @@
 #endif
 
 #define IOMMU_DEFAULT_IOVA_MAX_ALIGN_SHIFT	9
-//static unsigned long iommu_max_align_shift __read_mostly = IOMMU_DEFAULT_IOVA_MAX_ALIGN_SHIFT;
+static unsigned long iommu_max_align_shift __read_mostly = IOMMU_DEFAULT_IOVA_MAX_ALIGN_SHIFT;
 
 struct mtk_iommu_cb {
 	int port;
@@ -3164,7 +3164,6 @@ static void free_iova_hook(void *data,
 	return mtk_iova_dbg_free(iovad, iova, size);
 }
 
-#if 0
 static unsigned long limit_align_shift(struct iova_domain *iovad, unsigned long shift)
 {
 	unsigned long max_align_shift;
@@ -3178,7 +3177,6 @@ static void limit_align_hook(void __always_unused *data, struct iova_domain *iov
 {
 	*shift = limit_align_shift(iovad, *shift);
 }
-#endif
 
 static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 {
@@ -3212,11 +3210,9 @@ static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 							      "mtk_m4u_dbg_probe");
 	pr_debug("add free iova hook %s\n", (ret ? "fail" : "pass"));
 
-#if 0
 	ret = register_trace_android_rvh_iommu_limit_align_shift(limit_align_hook,
 								 "mtk_m4u_dbg_probe");
 	pr_debug("add limit align shift hook %s\n", (ret ? "fail" : "pass"));
-#endif
 
 	return 0;
 }
