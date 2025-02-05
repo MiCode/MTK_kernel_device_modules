@@ -5763,7 +5763,7 @@
 		dispsys_config: dispsys_config@14000000 {
 			compatible = "mediatek,mt6895-disp";
 			mediatek,mml = <&mmlsys_config>;
-			dispsys_num = <2>;
+			dispsys-num = <2>;
 			reg = <0 0x14000000 0 0x1000>,
 				<0 0x14400000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
@@ -5997,7 +5997,7 @@
 						"mediatek,mt6895-disp-mutex";
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_DISP1>;
 			mediatek,mml = <&mmlsys_config>;
-			dispsys_num = <2>;
+			dispsys-num = <2>;
 			reg = <0 0x14001000 0 0x1000>,
 				<0 0x14401000 0 0x1000>;
 			interrupts = <GIC_SPI 300 IRQ_TYPE_LEVEL_HIGH 0>,
