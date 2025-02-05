@@ -69,6 +69,26 @@ struct pmif {
 	u32 hwintf_err_idx[2];
 };
 
+struct pmrc_gip_data {
+	const u32	*pmrcgip_regs;
+};
+
+struct pmrc_gip {
+	void __iomem	*gip_base[2];
+	void __iomem	*gip_sec_base[2];
+	const struct pmrc_gip_data *data;
+	struct wakeup_source *pmrc_gip_m_Thread_lock;
+	struct wakeup_source *pmrc_gip_p_Thread_lock;
+	struct mutex pmrc_gip_m_mutex;
+	struct mutex pmrc_gip_p_mutex;
+	int     pmrc_gip_irq;
+	int     pmrc_gip_irq_p;
+	u32 hwintf_bytecnt_vio_idx[2];
+	u32 hwintf_err_idx[2];
+	u32 pmic_vio_irq_idx[2];
+	u32 req_vio_irq_idx[2];
+};
+
 struct spmi_dev {
 	int exist;
 	int slvid;
@@ -104,6 +124,29 @@ enum spmi_regs {
 	SPMI_SLV_7_4_NACK_COUNT,
 	SPMI_SLV_B_8_NACK_COUNT,
 	SPMI_SLV_F_C_NACK_COUNT,
+};
+
+enum gip_regs {
+	GIP_WRD_REQ_VIO_LOG_CLR,
+	GIP_WRD_MPU_PMIC_VIO_LOG_CLR,
+	GIP_IRQ_EVENT_EN_0,
+	GIP_IRQ_EVENT_EN_1,
+	GIP_IRQ_EVENT_EN_2,
+	GIP_IRQ_EVENT_EN_3,
+	GIP_IRQ_EVENT_EN_4,
+	GIP_IRQ_EVENT_EN_5,
+	GIP_WRD_IRQ_CLR_0,
+	GIP_WRD_IRQ_CLR_1,
+	GIP_WRD_IRQ_CLR_2,
+	GIP_WRD_IRQ_CLR_3,
+	GIP_WRD_IRQ_CLR_4,
+	GIP_WRD_IRQ_CLR_5,
+	GIP_IRQCTRL_DEBUG_IRQ_FLAG_0,
+	GIP_IRQCTRL_DEBUG_IRQ_FLAG_1,
+	GIP_IRQCTRL_DEBUG_IRQ_FLAG_2,
+	GIP_IRQCTRL_DEBUG_IRQ_FLAG_3,
+	GIP_IRQCTRL_DEBUG_IRQ_FLAG_4,
+	GIP_IRQCTRL_DEBUG_IRQ_FLAG_5,
 };
 
 struct spmi_nack_monitor_pair {
