@@ -1110,6 +1110,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6358-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6368-accdet".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
     "//kernel_device_modules-{}/drivers/spi:spi-mt65xx".format(kernel_version),
@@ -1649,7 +1650,7 @@ mgk_64_device_modules = [
     #"sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
     "sound/soc/mediatek/common/mtk-sp-spk-amp.ko",
     "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
-    "sound/soc/codecs/snd-soc-mt6366.ko",
+    #"sound/soc/codecs/snd-soc-mt6366.ko",
 ]
 
 mgk_64_platform_device_modules = {
@@ -2365,7 +2366,7 @@ def get_overlay_modules_list():
         #mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/mt6985-mt6338.ko")
         #mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
         mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6660.ko")
-        mgk_64_device_modules.append("sound/soc/codecs/snd-soc-mt6366.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version))
         #mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6781/mt6781-mt6366.ko":"mt6781"})
         #mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6781/snd-soc-mt6781-afe.ko":"mt6781"})
         mgk_64_platform_device_modules.update({"drivers/interconnect/mediatek/mmqos-mt6781.ko":"mt6781"})
