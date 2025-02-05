@@ -40,6 +40,11 @@ enum {
 	SUB_FEAT_FLAVOR_BIGCORE = 1U << 3,
 };
 
+enum {
+	PRINT_UCLAMP_LIST		= 1,
+	CLEAR_UCLAMP_LIST		= 2,
+};
+
 enum rwsem_waiter_type {
 	RWSEM_WAITING_FOR_WRITE,
 	RWSEM_WAITING_FOR_READ
@@ -73,9 +78,18 @@ struct cpu_info {
 	int *cpu_loading;
 };
 
+struct uclamp_data_node {
+	pid_t pid;
+	struct list_head list;
+};
+
 extern void (*task_turbo_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu);
 extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
 extern inline int get_vip_task_prio(struct task_struct *p);
+extern void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid, int binder_uclamp_max, int binder_uclamp_min);
+extern void (*task_turbo_do_unset_binder_uclamp_param)(pid_t pid);
+extern void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
+extern void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
 
 /*
  * Nice levels are multiplicative, with a gentle 10% change for every

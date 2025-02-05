@@ -60,6 +60,69 @@ TRACE_EVENT(binder_vip_restore,
 		__entry->restore_vip_prio)
 );
 
+TRACE_EVENT(binder_uclamp_parameters_set,
+	TP_PROTO(pid_t b_pid, int max, int min),
+	TP_ARGS(b_pid, max, min),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+		__field(int, max)
+		__field(int, min)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+		__entry->max = max;
+		__entry->min = min;
+	),
+	TP_printk("%d set uclamp parameters: max=%d, min=%d",
+		__entry->b_pid,
+		__entry->max,
+		__entry->min)
+);
+
+TRACE_EVENT(binder_uclamp_set,
+	TP_PROTO(pid_t b_pid, int max, int min, int ret),
+	TP_ARGS(b_pid, max, min, ret),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+		__field(int, max)
+		__field(int, min)
+		__field(int, ret)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+		__entry->max = max;
+		__entry->min = min;
+		__entry->ret = ret;
+	),
+	TP_printk("%d set uclamp: max=%d, min=%d, ret:%d",
+		__entry->b_pid,
+		__entry->max,
+		__entry->min,
+		__entry->ret)
+);
+
+TRACE_EVENT(binder_start_uclamp_inherit,
+	TP_PROTO(pid_t b_pid, int max, int min),
+	TP_ARGS(b_pid, max, min),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+		__field(int, max)
+		__field(int, min)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+		__entry->max = max;
+		__entry->min = min;
+	),
+	TP_printk("%d start uclamp inherit: max=%d, min=%d",
+		__entry->b_pid,
+		__entry->max,
+		__entry->min)
+);
+
 TRACE_EVENT(turbo_feats_set,
 	TP_PROTO(unsigned int feats),
 	TP_ARGS(feats),

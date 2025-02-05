@@ -42,6 +42,7 @@
 #include <trace_task_turbo.h>
 
 LIST_HEAD(hmp_domains);
+LIST_HEAD(uclamp_data_head);
 
 /*TODO: find the magic bias number */
 #define TURBO_PID_COUNT		8
@@ -52,6 +53,8 @@ LIST_HEAD(hmp_domains);
 #define TURBO_DISABLE		0
 #define INHERIT_THRESHOLD	4
 #define VIP_PRIO_OFFSET		5
+#define UCLAMP_MAX_VALUE	1024
+#define UCLAMP_MIN_VALUE	0
 #define type_offset(type)		 (type * 4)
 #define task_turbo_nice(nice) (nice == 0xbeef || nice == 0xbeee)
 #define task_restore_nice(nice) (nice == 0xbeee)
@@ -113,6 +116,7 @@ static uint32_t launch_turbo =  SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 static DEFINE_SPINLOCK(TURBO_SPIN_LOCK);
 static DEFINE_SPINLOCK(RWSEM_SPIN_LOCK);
 static DEFINE_SPINLOCK(check_lock);
+static DEFINE_SPINLOCK(binder_uclamp_lock);
 static DEFINE_MUTEX(cpu_lock);
 static DEFINE_MUTEX(cpu_loading_lock);
 static DEFINE_MUTEX(wi_lock);
@@ -169,8 +173,10 @@ static int cpu_loading_thres = 95;
 static int tt_vip_enable = 1;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 static int binder_vip_inheritance_enable = 1;
+static int binder_uclamp_inheritance_enable;
 static int binder_nonvip_inheritance_enable;
 #endif
+static pid_t unset_binder_uclamp_pid;
 static struct cpu_info ci;
 static u64 checked_timestamp;
 static int max_cpus;
@@ -761,6 +767,306 @@ static const struct kernel_param_ops enforce_ct_to_vip_param_ops = {
 module_param_cb(enforce_ct_to_vip_param, &enforce_ct_to_vip_param_ops,
 				&enforced_qualified_param, 0664);
 
+static int doUclamp(struct task_struct *to, int max, int min)
+{
+	struct sched_attr attr = {};
+	int ret;
+
+	attr.sched_policy = -1;
+	attr.sched_flags =
+		SCHED_FLAG_KEEP_ALL |
+		SCHED_FLAG_UTIL_CLAMP |
+		SCHED_FLAG_RESET_ON_FORK;
+	attr.sched_util_min = min;
+	attr.sched_util_max = max;
+
+	if(likely(to)) {
+		if(uclamp_eff_value(to, UCLAMP_MIN)!= attr.sched_util_min ||
+			uclamp_eff_value(to, UCLAMP_MAX)!= attr.sched_util_max) {
+			attr.sched_priority = to->rt_priority;
+			if(rt_policy(to->policy))
+				attr.sched_policy = to->policy;
+		}
+	}
+	ret = sched_setattr_nocheck(to, &attr);
+	trace_binder_uclamp_set(to->pid, max, min, ret);
+
+	if (ret < 0) {
+		switch (-ret) {
+		case ESRCH:
+			pr_info("%s: Error: No such process\n", __func__);
+			break;
+		case EINVAL:
+			pr_info("%s: Error: Invalid argument\n", __func__);
+			break;
+		case EPERM:
+			pr_info("%s: Error: Operation not permitted\n", __func__);
+			break;
+		case ENOMEM:
+			pr_info("%s: Error: Out of memory\n", __func__);
+			break;
+		default:
+			pr_info("%s: Error: unknown\n", __func__);
+			break;
+		}
+	}
+	return ret;
+}
+
+int write_uclamp_to_list(pid_t pid)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&binder_uclamp_lock, flags);
+	struct uclamp_data_node *newNode = kmalloc(sizeof(struct uclamp_data_node), GFP_KERNEL);
+
+	if(!newNode){
+		spin_unlock_irqrestore(&binder_uclamp_lock, flags);
+		return -ENOMEM;
+	}
+
+	newNode->pid = pid;
+	INIT_LIST_HEAD(&newNode->list);
+	list_add_tail(&newNode->list, &uclamp_data_head);
+	spin_unlock_irqrestore(&binder_uclamp_lock, flags);
+	return 0;
+}
+
+void erase_uclamp_in_list(pid_t pid)
+{
+	struct list_head *pos, *n;
+	struct uclamp_data_node *tmp_node;
+	unsigned long flags;
+
+	spin_lock_irqsave(&binder_uclamp_lock, flags);
+	list_for_each_safe(pos, n, &uclamp_data_head){
+		tmp_node = list_entry(pos, struct uclamp_data_node, list);
+		if(tmp_node->pid == pid){
+			list_del(&tmp_node->list);
+			kfree(tmp_node);
+		}
+	}
+	spin_unlock_irqrestore(&binder_uclamp_lock, flags);
+}
+
+void uclamp_list_clear(void)
+{
+	struct task_turbo_t *task_turbo_data;
+	struct task_struct *task_struct_data;
+	struct list_head *pos, *n;
+	struct uclamp_data_node *tmp_node;
+	unsigned long flags;
+
+	spin_lock_irqsave(&binder_uclamp_lock, flags);
+	list_for_each_safe(pos, n, &uclamp_data_head){
+		tmp_node = list_entry(pos, struct uclamp_data_node, list);
+		rcu_read_lock();
+		task_struct_data = find_task_by_vpid(tmp_node->pid);
+		if(!task_struct_data){
+			rcu_read_unlock();
+			continue;
+		}
+
+		task_turbo_data = get_task_turbo_t(task_struct_data);
+		if(!task_turbo_data){
+			rcu_read_unlock();
+			continue;
+		}
+		doUclamp(task_struct_data, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE);
+		task_turbo_data->uclamp_binder_cnt = 0;
+		task_turbo_data->is_uclamp_binder = 0;
+		task_turbo_data->uclamp_value_max = 0;
+		task_turbo_data->uclamp_value_min = 0;
+		rcu_read_unlock();
+		list_del(&tmp_node->list);
+		kfree(tmp_node);
+	}
+	spin_unlock_irqrestore(&binder_uclamp_lock, flags);
+}
+
+void print_uclamp_list(void)
+{
+	struct list_head *pos, *n;
+	struct uclamp_data_node *tmp_node;
+	unsigned long flags;
+
+	spin_lock_irqsave(&binder_uclamp_lock, flags);
+	list_for_each_safe(pos, n, &uclamp_data_head){
+		tmp_node = list_entry(pos, struct uclamp_data_node, list);
+		pr_info("%s: tid: %d", __func__, tmp_node->pid);
+	}
+	spin_unlock_irqrestore(&binder_uclamp_lock, flags);
+}
+
+void do_set_binder_uclamp_param(pid_t pid, int binder_uclamp_max, int binder_uclamp_min)
+{
+	struct task_turbo_t *task_turbo_data;
+	struct task_struct *task_struct_data;
+
+	trace_binder_uclamp_parameters_set(pid, binder_uclamp_max, binder_uclamp_min);
+	if (binder_uclamp_min<UCLAMP_MIN_VALUE || binder_uclamp_min>UCLAMP_MAX_VALUE ||
+		binder_uclamp_max<UCLAMP_MIN_VALUE || binder_uclamp_max>UCLAMP_MAX_VALUE)
+		return;
+	rcu_read_lock();
+	task_struct_data = find_task_by_vpid(pid);
+	if(!task_struct_data){
+		rcu_read_unlock();
+		return;
+	}
+	task_turbo_data = get_task_turbo_t(task_struct_data);
+	if(!task_turbo_data){
+		rcu_read_unlock();
+		return;
+	}
+	if (!task_turbo_data->is_uclamp_binder){
+		if(task_turbo_data->uclamp_binder_cnt == 0){
+			if(unlikely(write_uclamp_to_list(pid))){
+				rcu_read_unlock();
+				return;
+			}
+			task_turbo_data->uclamp_binder_cnt++;
+		}
+		task_turbo_data->is_uclamp_binder = 1;
+	}
+	task_turbo_data->uclamp_value_min = binder_uclamp_min;
+	task_turbo_data->uclamp_value_max = binder_uclamp_max;
+	doUclamp(task_struct_data, binder_uclamp_max, binder_uclamp_min);
+	rcu_read_unlock();
+}
+
+void do_unset_binder_uclamp_param(int pid)
+{
+	struct task_turbo_t *task_turbo_data;
+	struct task_struct *task_struct_data;
+
+	if (pid < 0)
+		return;
+
+	unset_binder_uclamp_pid = pid;
+	trace_binder_uclamp_parameters_set(unset_binder_uclamp_pid, -1, -1);
+
+	rcu_read_lock();
+	task_struct_data = find_task_by_vpid(unset_binder_uclamp_pid);
+	if(!task_struct_data){
+		rcu_read_unlock();
+		return;
+	}
+	task_turbo_data = get_task_turbo_t(task_struct_data);
+	if(!task_turbo_data){
+		rcu_read_unlock();
+		return;
+	}
+	if (task_turbo_data->is_uclamp_binder){
+		task_turbo_data->is_uclamp_binder = 0;
+		if(--task_turbo_data->uclamp_binder_cnt == 0){
+			doUclamp(task_struct_data, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE);
+			erase_uclamp_in_list(pid);
+			task_turbo_data->uclamp_value_min = 0;
+			task_turbo_data->uclamp_value_max = 0;
+		}
+	}
+	rcu_read_unlock();
+}
+
+void do_binder_uclamp_stuff(int cmd)
+{
+	trace_binder_uclamp_parameters_set(cmd, -2, -2);
+	if(cmd == PRINT_UCLAMP_LIST)
+		print_uclamp_list();
+	else if (cmd == CLEAR_UCLAMP_LIST)
+		uclamp_list_clear();
+}
+
+void do_enable_binder_uclamp_inheritance(int enable)
+{
+	if (enable < 0)
+		return;
+	if (binder_uclamp_inheritance_enable && !enable)
+		uclamp_list_clear();
+	binder_uclamp_inheritance_enable = !!enable;
+}
+
+static int enable_binder_uclamp_inheritance(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtoint(buf, 0, &val);
+	if (retval)
+		return -EINVAL;
+	do_enable_binder_uclamp_inheritance(val);
+	return retval;
+}
+
+static const struct kernel_param_ops enable_binder_uclamp_inheritance_ops = {
+	.set = enable_binder_uclamp_inheritance,
+	.get = param_get_int,
+};
+
+module_param_cb(enable_binder_uclamp_inheritance
+		, &enable_binder_uclamp_inheritance_ops, &binder_uclamp_inheritance_enable, 0664);
+MODULE_PARM_DESC(enable_binder_uclamp_inheritance, "Enable or disable binder uclamp inheritance");
+
+static char binder_uclamp_param[64] = "";
+static int set_binder_uclamp_param(const char *buf, const struct kernel_param *kp)
+{
+	pid_t pid = 0;
+	int binder_uclamp_min = UCLAMP_MIN_VALUE, binder_uclamp_max = UCLAMP_MAX_VALUE;
+
+	if (sscanf(buf, "%d %d %d", &pid, &binder_uclamp_min, &binder_uclamp_max) != 3)
+		return -EINVAL;
+	do_set_binder_uclamp_param(pid, binder_uclamp_max, binder_uclamp_min);
+	return 0;
+}
+
+static const struct kernel_param_ops set_binder_uclamp_param_ops = {
+	.set = set_binder_uclamp_param,
+	.get = param_get_int,
+};
+module_param_cb(set_binder_uclamp_param, &set_binder_uclamp_param_ops,
+				&binder_uclamp_param, 0664);
+
+static int unset_binder_uclamp_param(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtoint(buf, 0, &val);
+
+	if (retval)
+		return -EINVAL;
+
+	do_unset_binder_uclamp_param(val);
+	return retval;
+}
+
+static const struct kernel_param_ops unset_binder_uclamp_param_ops = {
+	.set = unset_binder_uclamp_param,
+	.get = param_get_int,
+};
+
+module_param_cb(unset_binder_uclamp_param
+		, &unset_binder_uclamp_param_ops, &unset_binder_uclamp_pid, 0664);
+MODULE_PARM_DESC(unset_binder_uclamp_param, "unset binder uclamp parameters");
+
+static int binder_uclamp_stuff(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtoint(buf, 0, &val);
+	if (retval)
+		return -EINVAL;
+	do_binder_uclamp_stuff(val);
+	return retval;
+}
+
+static const struct kernel_param_ops binder_uclamp_stuff_ops = {
+	.set = binder_uclamp_stuff,
+	.get = param_get_int,
+};
+
+module_param_cb(binder_uclamp_stuff
+		, &binder_uclamp_stuff_ops, &unset_binder_uclamp_pid, 0664);
+MODULE_PARM_DESC(binder_uclamp_stuff, "unset binder uclamp parameters");
+
 /*
  * update_cpu_loading - Update the average CPU loading
  *
@@ -1204,6 +1510,53 @@ void binder_stop_vip_inherit(struct task_struct *p)
 }
 #endif
 
+void binder_start_uclamp_inherit(struct task_struct *from,
+					struct task_struct *to)
+{
+	struct task_turbo_t *from_turbo_data;
+	struct task_turbo_t *to_turbo_data;
+	int from_min, from_max;
+
+	if (!from || !to)
+		return;
+
+	from_turbo_data = get_task_turbo_t(from);
+	if (from_turbo_data->uclamp_binder_cnt == 0)
+		return;
+	from_min = from_turbo_data->uclamp_value_min;
+	from_max = from_turbo_data->uclamp_value_max;
+	trace_binder_start_uclamp_inherit(to->pid, from_max, from_min);
+
+	if (from_min<UCLAMP_MIN_VALUE || from_min>UCLAMP_MAX_VALUE ||
+		from_max<UCLAMP_MIN_VALUE || from_max>UCLAMP_MAX_VALUE)
+		return;
+
+	to_turbo_data = get_task_turbo_t(to);
+	if(to_turbo_data->uclamp_binder_cnt==0){
+		if(unlikely(write_uclamp_to_list(to->pid)))
+			return;
+		to_turbo_data->uclamp_binder_cnt++;
+	}
+	to_turbo_data->uclamp_value_min = from_min;
+	to_turbo_data->uclamp_value_max = from_max;
+	doUclamp(to, from_max, from_min);
+}
+
+void binder_stop_uclamp_inherit(struct task_struct *p)
+{
+	struct task_turbo_t *turbo_data;
+
+	turbo_data = get_task_turbo_t(p);
+	if(turbo_data->uclamp_binder_cnt>0){
+		if(--turbo_data->uclamp_binder_cnt==0){
+			turbo_data->uclamp_value_min = 0;
+			turbo_data->uclamp_value_max = 0;
+			erase_uclamp_in_list(p->pid);
+			doUclamp(p, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE);
+		}
+	}
+}
+
 static void probe_android_vh_binder_set_priority(void *ignore, struct binder_transaction *t,
 							struct task_struct *task)
 {
@@ -1215,6 +1568,8 @@ static void probe_android_vh_binder_set_priority(void *ignore, struct binder_tra
 	if (binder_vip_inheritance_enable && tt_vip_enable && binder_start_vip_inherit_hook)
 		binder_start_vip_inherit(t->from ? t->from->task : NULL, task);
 #endif
+	if (binder_uclamp_inheritance_enable)
+		binder_start_uclamp_inherit(t->from ? t->from->task : NULL, task);
 }
 
 static void probe_android_vh_binder_restore_priority(void *ignore,
@@ -1234,6 +1589,7 @@ static void probe_android_vh_binder_restore_priority(void *ignore,
 	if (cur && binder_stop_vip_inherit_hook)
 		binder_stop_vip_inherit(cur);
 #endif
+	binder_stop_uclamp_inherit(cur);
 }
 
 static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_node *q_list,
@@ -1857,6 +2213,10 @@ static void init_turbo_attr(struct task_struct *p)
 	turbo_data->inherit_cnt = 0;
 	turbo_data->vip_prio_backup = 0;
 	turbo_data->throttle_time_backup = 0;
+	turbo_data->is_uclamp_binder = 0;
+	turbo_data->uclamp_binder_cnt = 0;
+	turbo_data->uclamp_value_min = 0;
+	turbo_data->uclamp_value_max = 0;
 }
 
 int get_turbo_feats(void)
@@ -2557,8 +2917,13 @@ static int __init init_task_turbo(void)
 		pr_info("%s: init input handler failed, returned %d\n", TAG, ret);
 
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
-	//task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
+	task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
 #endif
+
+	task_turbo_do_set_binder_uclamp_param = do_set_binder_uclamp_param;
+	task_turbo_do_unset_binder_uclamp_param = do_unset_binder_uclamp_param;
+	task_turbo_do_binder_uclamp_stuff = do_binder_uclamp_stuff;
+	task_turbo_do_enable_binder_uclamp_inheritance = do_enable_binder_uclamp_inheritance;
 
 failed:
 	if (ret)
@@ -2573,6 +2938,7 @@ register_failed:
 }
 static void  __exit exit_task_turbo(void)
 {
+	uclamp_list_clear();
 	/*
 	 * vendor hook cannot unregister, please check vendor_hook.h
 	 */

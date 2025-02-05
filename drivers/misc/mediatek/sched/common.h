@@ -205,6 +205,10 @@ struct task_turbo_t {
 	atomic_t inherit_types;
 	int vip_prio_backup;
 	unsigned int throttle_time_backup;
+	int is_uclamp_binder;
+	int uclamp_binder_cnt;
+	unsigned short uclamp_value_min:11;
+	unsigned short uclamp_value_max:11;
 };
 
 struct flt_task_struct {
