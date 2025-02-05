@@ -4,6 +4,8 @@
  * Copyright (c) 2024 MediaTek Inc.
  */
 #include "mtk-mm-monitor-controller.h"
+#include <asm/arch_timer.h>
+#include <linux/sched/clock.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/delay.h>
@@ -160,6 +162,26 @@ static const struct kernel_param_ops mmmc_state_ops = {
 };
 module_param_cb(mmmc_state, &mmmc_state_ops, &mmmc_state, 0644);
 MODULE_PARM_DESC(mmmc_state, "mmmc_state");
+
+static u64 sched_clock_value;
+
+static int mmmc_get_timer(char *val, const struct kernel_param *kp)
+{
+	u64 systimer_cnt;
+
+	systimer_cnt = arch_timer_read_counter();
+	sched_clock_value = sched_clock();
+
+	MM_MONITOR_DBG("systimer:%llu ns, ktime: %llu ns", systimer_cnt, sched_clock_value);
+
+	return 0;
+}
+
+static const struct kernel_param_ops get_timer_ops = {
+	.get = mmmc_get_timer,
+};
+module_param_cb(get_timer, &get_timer_ops, &sched_clock_value, 0444);
+MODULE_PARM_DESC(get_timer, "get_timer");
 
 mux_axi_mon_pair *get_mux_axi_pair_by_comm_port(uint32_t comm_id, uint32_t port_id)
 {
