@@ -71,6 +71,7 @@ struct plat_xodata {
 	struct mutex mutex_lock;
 };
 
+extern struct plat_xodata mt6366_data;
 extern struct plat_xodata mt6685_data;
 extern struct plat_xodata mt6685_tb_data;
 extern struct plat_xodata mt6687_data;

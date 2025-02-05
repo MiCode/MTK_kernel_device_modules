@@ -25,6 +25,7 @@ clkbuf-y += src/clkbuf-debug.o
 clkbuf-y += src/dcxo-6357.o
 clkbuf-y += src/dcxo-6358.o
 clkbuf-y += src/dcxo-6358-tb.o
+clkbuf-y += src/dcxo-6366.o
 clkbuf-y += src/dcxo-6685.o
 clkbuf-y += src/dcxo-6687.o
 clkbuf-y += src/dcxo-6685-tb.o
