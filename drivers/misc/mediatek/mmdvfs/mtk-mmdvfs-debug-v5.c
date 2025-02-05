@@ -210,7 +210,6 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 	int i, j, k, ret;
 
 	ret = mmdvfs_debug_dump_volt_freq(file);
-	ret = mmdvfs_dump_dvfsrc_record();
 
 	mmdvfs_mmup_cb_mutex_lock();
 	ret = mmdvfs_mmup_cb_ready_get();
