@@ -142,11 +142,12 @@ int engine_control_init(struct platform_device *pdev, struct engine_control_t *c
 	return 0;
 }
 
-/* For LDVT stress with SMMU S1. Should be removed later? (TODO) */
+/* Setup smmu relatives */
 int engine_smmu_setup(struct platform_device *pdev, struct engine_control_t *ctrl)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *dev_node = dev_of_node(dev);
+	const char *str;
 	struct iommu_domain *domain;
 	u64 reg[2] = {0, 0};
 	unsigned long iova;
@@ -155,6 +156,20 @@ int engine_smmu_setup(struct platform_device *pdev, struct engine_control_t *ctr
 	int prot = IOMMU_READ | IOMMU_WRITE;
 	int ret;
 
+	/* Check the support of smmu s2 firstly */
+	if (of_property_read_string(dev_node, "mtk,smmu-dma-mode", &str))
+		str = "default";
+
+	if (!strcmp(str, "disable")) {
+		dev_info(dev, "Use SMMU S2 for ZRAM\n");
+		ctrl->smmu_s2 = true;
+		return 0;
+	}
+
+	/* Use smmu s1 */
+	ctrl->smmu_s2 = false;
+
+	/* Setup relatives for smmu s1 */
 	domain = iommu_get_domain_for_dev(dev);
 	if (!domain) {
 		dev_info(dev, "no IOMMU domain found for ZRAM\n");
@@ -187,8 +202,8 @@ int engine_smmu_setup(struct platform_device *pdev, struct engine_control_t *ctr
 	return 0;
 }
 
-/* For LDVT stress with SMMU S1. Should be removed later (TODO) */
-void engine_smmu_destroy(struct platform_device *pdev)
+/* Destroy smmu relatives */
+void engine_smmu_destroy(struct platform_device *pdev, struct engine_control_t *ctrl)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *dev_node = dev_of_node(dev);
@@ -197,6 +212,10 @@ void engine_smmu_destroy(struct platform_device *pdev)
 	unsigned long iova;
 	size_t size;
 	int ret;
+
+	/* It's smmu s2, just return */
+	if (ctrl->smmu_s2)
+		return;
 
 	domain = iommu_get_domain_for_dev(dev);
 	if (!domain) {

@@ -1350,7 +1350,7 @@ static void zram_engine_platform_deinit(struct platform_device *pdev, struct zra
 
 	/* Release platform resource */
 	engine_free_interrupts(pdev, &hwz->ctrl, zram_engine_irqs, ARRAY_SIZE(zram_engine_irqs));
-	engine_smmu_destroy(pdev);
+	engine_smmu_destroy(pdev, &hwz->ctrl);
 #ifndef FPGA_EMULATION
 	engine_gear_deinit(pdev, &hwz->gear_ctrl);
 #endif

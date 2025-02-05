@@ -31,6 +31,9 @@ struct engine_control_t {
 	/* Control by gear enable/disable clock */
 	atomic_t irq_status;
 
+	/* Use smmu s2 or not */
+	bool smmu_s2;
+
 #if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 	/* Register size range */
 	resource_size_t zram_config_res_sz;
@@ -149,7 +152,7 @@ int engine_control_init(struct platform_device *pdev, struct engine_control_t *c
 void engine_control_deinit(struct platform_device *pdev, struct engine_control_t *ctrl);
 
 int engine_smmu_setup(struct platform_device *pdev, struct engine_control_t *ctrl);
-void engine_smmu_destroy(struct platform_device *pdev);
+void engine_smmu_destroy(struct platform_device *pdev, struct engine_control_t *ctrl);
 
 int engine_request_interrupts(struct platform_device *pdev, struct engine_control_t *ctrl,
 			struct engine_irq_t *irqs, unsigned int count);
