@@ -8482,6 +8482,9 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 	unsigned int pan_disp_frame_weight = 400;
 	bool hrt_valid = false;
 	int sphrt_enable;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
 
 	mutex_lock(&mtk_drm->lyeblob_list_mutex);
 	prop_lye_idx = crtc_state->prop_val[CRTC_PROP_LYE_IDX];
@@ -8609,6 +8612,17 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 			cmdq_handle);
 		mtk_crtc_update_hrt_state(crtc, pan_disp_frame_weight, NULL,
 			cmdq_handle);
+		if (priv->data->ovl_exdma_rule && lyeblob_ids->blank_lyr_valid == true) {
+			int i, j, keep_first_layer;
+			struct mtk_ddp_comp *comp;
+
+			keep_first_layer = false;
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+				mtk_ddp_comp_io_cmd(comp, cmdq_handle,
+					OVL_ALL_LAYER_OFF, &keep_first_layer);
+			}
+			DDPINFO("%s %d clear for first blank layer", __func__, __LINE__);
+		}
 		DRM_MMP_MARK(layering_blob, 0,
 			pan_disp_frame_weight | 0xffff0000);
 	}

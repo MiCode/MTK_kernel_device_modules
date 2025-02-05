@@ -171,6 +171,7 @@ struct mtk_drm_lyeblob_ids {
 	bool hrt_valid;
 	uint32_t overlap_ovl;
 	uint32_t overlap_ovl_of_bwm;
+	bool blank_lyr_valid;
 	struct list_head list;
 };
 

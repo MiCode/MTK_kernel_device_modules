@@ -59,6 +59,7 @@ extern unsigned int g_mml_mode;
 
 static struct drm_mtk_layering_info layering_info;
 static bool g_hrt_valid;
+static bool g_blank_lyr_valid;
 #ifdef HRT_UT_DEBUG
 static int debug_resolution_level;
 #endif
@@ -4069,6 +4070,7 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 	lyeblob_ids->ref_cnt_mask = crtc_mask;
 	lyeblob_ids->free_cnt_mask = crtc_mask;
 	lyeblob_ids->hrt_valid = g_hrt_valid;
+	lyeblob_ids->blank_lyr_valid = g_blank_lyr_valid;
 	lyeblob_ids->disp_status = l_info->disp_list;
 	INIT_LIST_HEAD(&lyeblob_ids->list);
 	mutex_lock(&priv->lyeblob_list_mutex);
@@ -5032,9 +5034,13 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	 * else hrt bandwidth will be 0 at boot logo scenario
 	 * and underflow/underrun issue may happened
 	 */
-	if (g_hrt_valid == false &&
-	    layering_info.layer_num[HRT_PRIMARY] > 0)
-		g_hrt_valid = true;
+	if (g_hrt_valid == false) {
+		if (layering_info.layer_num[HRT_PRIMARY] > 0) {
+			g_hrt_valid = true;
+			g_blank_lyr_valid = false;
+		} else
+			g_blank_lyr_valid = true;
+	}
 
 	hrt_idx = _layering_rule_get_hrt_idx(disp_idx);
 	if (++hrt_idx == 0xffffffff)
