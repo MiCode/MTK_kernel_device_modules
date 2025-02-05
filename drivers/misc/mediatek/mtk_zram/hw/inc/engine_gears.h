@@ -26,6 +26,10 @@
 #define ENGINE_DISABLE_GEAR_PE	(81)	/* Disable power efficiency */
 #define ENGINE_FREE_RUN_GEAR	(99)
 
+/* Min start gear level for compression & decompression */
+#define ENGINE_ENC_MIN_KICK_GEAR	(ENGINE_MIN_GEAR + 1)
+#define ENGINE_DEC_MIN_KICK_GEAR	(ENGINE_MAX_GEAR - 2)
+
 struct engine_gear_control_t {
 
 	/* gear status */
@@ -224,6 +228,9 @@ void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 /* Gear up or down */
 bool engine_try_to_gear_up(struct engine_gear_control_t *gear_ctrl, bool enc_wish);
 bool engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_wish);
+
+/* Set initial gear level */
+bool engine_try_to_set_gear_level(struct engine_gear_control_t *gear_ctrl, bool enc_wish, uint32_t level);
 
 /* Fix or free gear */
 void engine_fix_gear_level(struct engine_gear_control_t *gear_ctrl, uint32_t level);

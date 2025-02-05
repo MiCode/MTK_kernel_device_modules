@@ -1194,6 +1194,10 @@ int hwcomp_decompress_page(void *hw, void *src, unsigned int slen, struct page *
 #endif
 
 #ifndef FPGA_EMULATION
+	/* Try to set up gear level for initial decompression request */
+	if (atomic_read(&hwz->dcomp_cnt) == 0)
+		engine_try_to_set_gear_level(&hwz->gear_ctrl, false, ENGINE_DEC_MIN_KICK_GEAR);
+
 retry:
 #endif
 
@@ -1211,6 +1215,9 @@ next_dcmd:
 	/* Return directly if fifo is full */
 	if (dcomp_fifo_full(fifo)) {
 		put_cpu();
+
+		/* Post-process may not start yet */
+		wake_up(&hwz->dcomp_wait);
 
 #ifndef FPGA_EMULATION
 		/* Promote frequency. Retry if gear up successfully (may sleep) */
@@ -1266,6 +1273,7 @@ int hwcomp_compress_page(void *hw, struct page *page, struct comp_pp_info *pp_in
 	struct hwfifo *fifo;
 	uint32_t entry;
 	bool valid = false;
+	int gear_set_retry = 3;
 
 	if (!hwz)
 		return -EINVAL;
@@ -1340,6 +1348,26 @@ next_cmd_fifo_1:
 	}
 
 slowpath:
+
+#ifndef FPGA_EMULATION
+	/*
+	 * The cases entering this path:
+	 * 1. main fifo full
+	 * 2. Callers not from kswapd
+	 *
+	 * For case.1, the gear level is already set to higher.
+	 * We only need to consider the case.2 here for initial request.
+	 */
+	while (atomic_read(&hwz->comp_cnt) == 0) {
+		if(engine_try_to_set_gear_level(&hwz->gear_ctrl, true, ENGINE_ENC_MIN_KICK_GEAR))
+			break;
+
+		if(gear_set_retry-- < 0) {
+			pr_info("%s: unable to set gear level!\n", __func__);
+			break;
+		}
+	}
+#endif
 
 	/* For other callers */
 	spin_lock(&hwz->fifo_2_lock);

@@ -375,12 +375,86 @@ exit:
 	return wish_gear_is_min;
 }
 
+/*
+ * Return true if it's successful to set gear to level or higher one.
+ */
+bool engine_try_to_set_gear_level(struct engine_gear_control_t *gear_ctrl, bool enc_wish, uint32_t level)
+{
+	uint32_t new_gear = level;
+	int ret;
+	bool successful_gear_set = false;
+
+	spin_lock(&gear_ctrl->lock);
+
+	/*
+	 * Whether gear is in change.
+	 * Someone is changing gear, and it may be set to lower level.
+	 * It's ok because caller may retry again if it needs.
+	 */
+	if (gear_ctrl->engine_gear_in_change)
+		goto exit;
+
+	/*
+	 * If it's already set to level, just return.
+	 * It may race with other requests and no gear setup is finished
+	 * here. But at least someone is doing gear-up for us.
+	 */
+	if (gear_ctrl->curr_gear >= new_gear)
+		goto exit;
+
+	/*
+	 * Whether gear is fixed.
+	 * The gear will be allowed to update when it's free run, and it will
+	 * be set to proper gear level according enc and dec wish level.
+	 */
+	if (gear_ctrl->engine_gear_fixed)
+		goto exit;
+
+	/* Gear is in change */
+	gear_ctrl->engine_gear_in_change = true;
+	spin_unlock(&gear_ctrl->lock);
+
+	/* Now change voltage & clk to the higher one (May sleep). */
+	ret = engine_setup_gear(gear_ctrl, new_gear, true);
+	if (ret)
+		pr_info("%s: failed to set new gear %u: ret(%d).\n", __func__, new_gear, ret);
+#ifdef ZRAM_ENGINE_DEBUG
+	else
+		pr_info("%s: new gear is %u.\n", __func__, new_gear);
+#endif
+
+	/* Gear change is finished */
+	spin_lock(&gear_ctrl->lock);
+
+	/* Change to new gear successfully */
+	if (!ret)
+		gear_ctrl->curr_gear = new_gear;
+
+	/* Gear is NOT in change */
+	gear_ctrl->engine_gear_in_change = false;
+
+exit:
+	/* Update enc or dec wish gear */
+	if (enc_wish)
+		gear_ctrl->enc_wish_gear = (new_gear > gear_ctrl->enc_wish_gear)? new_gear : gear_ctrl->enc_wish_gear;
+	else
+		gear_ctrl->dec_wish_gear = (new_gear > gear_ctrl->dec_wish_gear)? new_gear : gear_ctrl->dec_wish_gear;
+
+	spin_unlock(&gear_ctrl->lock);
+
+	/* It's successful when curr_gear is higher than or equal to new_gear */
+	if (gear_ctrl->curr_gear >= new_gear)
+		successful_gear_set = true;
+
+	return successful_gear_set;
+}
+
 void engine_fix_gear_level(struct engine_gear_control_t *gear_ctrl, uint32_t gear_level)
 {
 	bool gear_up = false;
 	int ret;
 
-	if (gear_level > ENGINE_MAX_GEAR) {
+	if (gear_level > ENGINE_MAX_GEAR || gear_level <= ENGINE_MIN_GEAR) {
 		pr_info("%s: invalid gear:(%u)!\n", __func__, gear_level);
 		return;
 	}
