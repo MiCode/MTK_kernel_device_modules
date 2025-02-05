@@ -4074,7 +4074,7 @@ int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
 		gpu_opp_logs_enable == 1) {
 
 		if (is_fdvfs_enable() & POLICY_MODE_V2) {
-			for (int i = 0; i < real_opp_num; i++) {
+			for (unsigned int i = 0; i < real_opp_num; i++) {
 				if (i >= i32NumOpp)
 					report_idx = i32NumOpp - 1;
 				else
@@ -4368,7 +4368,9 @@ void ged_notify_fix_opp_from_gpufreq(int gpu_opp, int stack_opp)
 
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		union combineData tmp_multi = {0};
-		tmp_multi = (union combineData){ .twoVar = {ged_is_fix_dvfs(), g_fix_opp_by_cmd} };
+		if (g_fix_opp_by_cmd != -1) { // Update tmp_multi when g_fix_opp_by_cmd != -1
+			tmp_multi = (union combineData){ .twoVar = {ged_is_fix_dvfs(), g_fix_opp_by_cmd} };
+		}
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FIX_FREQ_ID].addr, tmp_multi.value);
 	}
 

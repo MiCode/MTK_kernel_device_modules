@@ -1518,7 +1518,7 @@ static void ged_kpi_update_soc_timer(struct GED_KPI_HEAD *psHead, unsigned int u
 			/* compare overdue timer to check uncomplete soc timer*/
 			info_soc_overdue +=
 					(g_ged_eb_uncomplete_info.last_uncomplete_target / 1000) * soc_timer_unit;
-			psHead_soc_overdue += head_t_gpu_target * soc_timer_unit;
+			psHead_soc_overdue += ((unsigned long long)head_t_gpu_target * soc_timer_unit);
 			if (psHead_soc_overdue < info_soc_overdue)
 				timer_change = 1;
 		}
