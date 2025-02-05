@@ -89,11 +89,10 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <383>;
-			/* cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu1: cpu@001 {
 			device_type = "cpu";
@@ -102,11 +101,10 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <383>;
-			/* cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu2: cpu@002 {
 			device_type = "cpu";
@@ -115,11 +113,10 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <383>;
-			/* cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu3: cpu@003 {
 			device_type = "cpu";
@@ -128,11 +125,10 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <383>;
-			/* cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu4: cpu@004 {
 			device_type = "cpu";
@@ -141,11 +137,10 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <383>;
-			/* cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu5: cpu@005 {
 			device_type = "cpu";
@@ -154,11 +149,10 @@
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <383>;
-			/* cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu6: cpu@100 {
 			device_type = "cpu";
@@ -167,11 +161,10 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
-			/* cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu7: cpu@101 {
 			device_type = "cpu";
@@ -180,11 +173,10 @@
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
 			capacity-dmips-mhz = <1024>;
-			/* cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
-			 *			&system_mem &system_pll &system_bus
-			 *			&s2idle>;
-			 */
-		};
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
+					  &system_mem &system_pll &system_bus
+					  &s2idle>;
+			};
 
 		cpu-map {
 			cluster0 {
