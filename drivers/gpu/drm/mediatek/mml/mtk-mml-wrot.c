@@ -109,6 +109,9 @@ enum wrot_register {
 	VIDO_STASH_SW_ADDR_HIGH,
 	VIDO_STASH_SW_WORK,
 	VIDO_STASH_DELAY_CNT,
+
+	/* mt6993 */
+	VIDO_SIDEBAND_SEL,
 	wrot_register_total,
 };
 
@@ -235,6 +238,82 @@ u16 wrot_mt6991[] = {
 	[VIDO_STASH_DELAY_CNT		] = 0xf78,
 };
 
+u16 wrot_mt6993[] = {
+	[VIDO_CTRL			] = 0x000,
+	[VIDO_DMA_PERF			] = 0x004,
+	[VIDO_MAIN_BUF_SIZE		] = 0x008,
+	[VIDO_SOFT_RST			] = 0x010,
+	[VIDO_SOFT_RST_STAT		] = 0x014,
+	[VIDO_INT_EN			] = 0x018,
+	[VIDO_INT			] = 0x01c,
+	[VIDO_CROP_OFST			] = 0x020,
+	[VIDO_TAR_SIZE			] = 0x024,
+	[VIDO_FRAME_SIZE		] = 0x028,
+	[VIDO_DDREN_REQ			] = 0x02c,
+	[VIDO_STRIDE			] = 0x030,
+	[VIDO_BKGD			] = 0x034,
+	[VIDO_SLC_SIDEBAND		] = 0x038,
+	[VIDO_STRIDE_C			] = 0x03c,
+	[VIDO_CTRL_2			] = 0x048,
+	[VIDO_IN_LINE_ROT		] = 0x050,
+	[VIDO_DITHER			] = 0x054,
+	[VIDO_DITHER_CON		] = 0x058,
+	[VIDO_SECURITY_DISABLE		] = 0x05c,
+	[VIDO_INT_UP_EN			] = 0x060,
+	[VIDO_INT_UP			] = 0x064,
+	[VIDO_STRIDE_V			] = 0x06c,
+	[VIDO_RSV_1			] = 0x070,
+	[VIDO_DMA_PREULTRA		] = 0x074,
+	[VIDO_IN_SIZE			] = 0x078,
+	[VIDO_ROT_EN			] = 0x07c,
+	[VIDO_FIFO_TEST			] = 0x080,
+	[VIDO_MAT_CTRL			] = 0x084,
+	[VIDO_SHADOW_CTRL		] = 0x08c,
+	[VIDO_DEBUG			] = 0x0d0,
+	[VIDO_PVRIC			] = 0x0d8,
+	[VIDO_SCAN_10BIT		] = 0x0dc,
+	[VIDO_PENDING_ZERO		] = 0x0e0,
+	[VIDO_CRC_CTRL			] = 0x0e8,
+	[VIDO_CRC_VALUE			] = 0x0ec,
+	[VIDO_COMPRESION_VALUE		] = 0x0f0,
+	[VIDO_DUMMY_NORMAL		] = 0x0f4,
+	[VIDO_DUMMY_SECURE		] = 0x0f8,
+	[VIDO_OFST_ADDR			] = 0x100,
+	[VIDO_OFST_ADDR_HIGH		] = 0x104,
+	[VIDO_OFST_ADDR_C		] = 0x108,
+	[VIDO_OFST_ADDR_HIGH_C		] = 0x10c,
+	[VIDO_OFST_ADDR_V		] = 0x110,
+	[VIDO_OFST_ADDR_HIGH_V		] = 0x114,
+	[VIDO_BASE_ADDR			] = 0x118,
+	[VIDO_BASE_ADDR_HIGH		] = 0x11c,
+	[VIDO_BASE_ADDR_C		] = 0x120,
+	[VIDO_BASE_ADDR_HIGH_C		] = 0x124,
+	[VIDO_BASE_ADDR_V		] = 0x128,
+	[VIDO_BASE_ADDR_HIGH_V		] = 0x12c,
+	[VIDO_CSC_COEFFICIENT_1		] = 0x138,
+	[VIDO_CSC_COEFFICIENT_2		] = 0x13c,
+	[VIDO_CSC_COEFFICIENT_3		] = 0x140,
+	[VIDO_CSC_COEFFICIENT_4		] = 0x144,
+	[VIDO_CSC_COEFFICIENT_5		] = 0x148,
+	[VIDO_CSC_COEFFICIENT_6		] = 0x14c,
+	[VIDO_CSC_COEFFICIENT_7		] = 0x150,
+	[VIDO_PVRIC_FMT			] = 0xf0c,
+	[VIDO_AFBC_YUVTRANS		] = 0xf2c,
+	[VIDO_STASH_CMD_INTF		] = 0xf4c,
+	[VIDO_STASH_CMD_FUNC_1		] = 0xf50,
+	[VIDO_STASH_OFST_ADDR		] = 0xf54,
+	[VIDO_STASH_OFST_ADDR_HIGH	] = 0xf58,
+	[VIDO_STASH_OFST_ADDR_C		] = 0xf5c,
+	[VIDO_STASH_OFST_ADDR_HIGH_C	] = 0xf60,
+	[VIDO_STASH_OFST_ADDR_V		] = 0xf64,
+	[VIDO_STASH_OFST_ADDR_HIGH_V	] = 0xf68,
+	[VIDO_STASH_SW_ADDR		] = 0xf6c,
+	[VIDO_STASH_SW_ADDR_HIGH	] = 0xf70,
+	[VIDO_STASH_SW_WORK		] = 0xf74,
+	[VIDO_STASH_DELAY_CNT		] = 0xf78,
+	[VIDO_SIDEBAND_SEL		] = 0x164,
+};
+
 #define WROT_MIN_BUF_LINE_NUM		16
 
 /* register mask */
@@ -255,6 +334,8 @@ u16 wrot_mt6991[] = {
 
 #define WROT_POLL_SLEEP_TIME_US		(10)
 #define WROT_MAX_POLL_TIME_US		(1000)
+
+#define FIFO_ENTRY			20
 
 /* debug option to change sram write height */
 int mml_racing_h = MML_WROT_RACING_MAX;
@@ -351,6 +432,10 @@ struct wrot_data {
 	u8 rb_swap;		/* WA: version for rb channel swap behavior */
 	bool yuv_pending;	/* WA: enable wrot yuv422/420 pending zero */
 	bool stash;		/* enable stash prefetch with leading time */
+	u8 stash_delay_cnt;
+	bool sideband;		/* sideband setting */
+	u32 ostdl_stash_min;
+	u32 ostdl_afbc_stash_min;
 };
 
 static const struct wrot_data mt6983_wrot_data = {
@@ -402,14 +487,32 @@ static const struct wrot_data mt6991_wrot_data = {
 	.stash = true,
 };
 
-static const struct wrot_data mt6993_wrot_data = {
-	.reg = wrot_mt6991,
+static const struct wrot_data mt6993_mmlf_wrot_data = {
+	.reg = wrot_mt6993,
 	.fifo = 256,
 	.tile_width = 512,
 	.sram_size = 512 * 1024,
 	.px_per_tick = 2,
 	.read_mode = MML_PQ_SOF_MODE,
 	.stash = true,
+	.stash_delay_cnt = 16,
+	.sideband = true,
+	.ostdl_stash_min = 49,
+	.ostdl_afbc_stash_min = 513,
+};
+
+static const struct wrot_data mt6993_mmld_wrot_data = {
+	.reg = wrot_mt6993,
+	.fifo = 1024,
+	.tile_width = 512,
+	.sram_size = 512 * 1024,
+	.px_per_tick = 2,
+	.read_mode = MML_PQ_SOF_MODE,
+	.stash = true,
+	.stash_delay_cnt = 16,
+	.sideband = true,
+	.ostdl_stash_min = 49,
+	.ostdl_afbc_stash_min = 513,
 };
 
 struct mml_comp_wrot {
@@ -1364,7 +1467,6 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const u8 flip = wrot_frm->flip ? 1 : 0;
 	const u32 h_subsample = MML_FMT_H_SUBSAMPLE(dest_fmt);
 	const u32 v_subsample = MML_FMT_V_SUBSAMPLE(dest_fmt);
-	const u8 plane = MML_FMT_PLANE(dest_fmt);
 	const u32 preultra_en = 1;	/* always enable wrot pre-ultra */
 	const u32 crop_en = 1;		/* always enable crop */
 	const u32 hw_fmt = MML_FMT_HW_FORMAT(dest_fmt);
@@ -1372,7 +1474,7 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	u32 out_swap = MML_FMT_SWAP(dest_fmt);
 	u32 uv_xsel, uv_ysel;
-	u32 preultra, alpha;
+	u32 preultra, fmt_bpp, alpha;
 	u32 scan_10bit = 0, bit_num = 0, pending_zero = 0, pvric = 0;
 
 	/* clear event */
@@ -1524,6 +1626,19 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_LINE_ROT], 0, U32_MAX);
 	}
 
+	if (cfg->info.mode == MML_MODE_RACING ||
+		cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (wrot->data->sideband)
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + wrot->reg[VIDO_SIDEBAND_SEL],
+				0x11, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DDREN_REQ],
+			BIT(2) | BIT(1), U32_MAX);
+	} else {
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DDREN_REQ],
+			BIT(2), U32_MAX);
+	}
+
 	/* Write frame related registers */
 	alpha = (cfg->alpharot || cfg->alpharsz);
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CTRL],
@@ -1574,16 +1689,9 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_PVRIC], pvric, U32_MAX);
 
 	/* set ESL */
-	if (plane == 3 || plane == 2 || hw_fmt == 7)	/* 3-plane, 2-plane, Y8 */
-		preultra = (216 << 12) + (196 << 0);
-	else if (hw_fmt == 0 || hw_fmt == 1)		/* RGB */
-		preultra = (136 << 12) + (76 << 0);
-	else if (hw_fmt == 2 || hw_fmt == 3)		/* ARGB */
-		preultra = (96 << 12) + (16 << 0);
-	else if (hw_fmt == 4 || hw_fmt == 5)		/* UYVY */
-		preultra = (176 << 12) + (136 << 0);
-	else
-		preultra = 0;
+	fmt_bpp = MML_FMT_BITS_PER_PIXEL(dest_fmt) >> 3;
+	preultra = ((wrot->data->fifo - FIFO_ENTRY * fmt_bpp * 2) << 12) +
+		(wrot->data->fifo - FIFO_ENTRY * fmt_bpp * 3);
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DMA_PREULTRA], preultra,
 		       U32_MAX);
 
@@ -2280,6 +2388,8 @@ static s32 wrot_config_tile(struct mml_comp *comp, struct mml_task *task,
 			u32 delay_cnt = wrot_calc_stash_delay(ccfg, cfg, dest, wrot_in_xsize,
 				buf_line_num);
 
+			if (wrot->data->stash_delay_cnt)
+				delay_cnt = wrot->data->stash_delay_cnt;
 			/* enable wrot stash for expect performance
 			 * VIDO_STASH_DWNSAMP_H		[31:27] 2 (default)
 			 * VIDO_STASH_HW_MODE_SEL	[20:18] 2 (default)
@@ -2562,12 +2672,14 @@ u32 wrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 static u32 wrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	const struct mml_frame_dest *dest = &cfg->info.dest[wrot_frm->out_idx];
 	const u32 rotate = dest->rotate;
 	const u32 format = dest->data.format;
 	u32 burst, srt_bw = *srt_bw_out, hrt_bw = *hrt_bw_out;
+	u32 qos_min_stash_bw = MML_QOS_MIN_STASH_BW;
 
 	if (wrot_frm->stash_srt_bw)
 		goto done;
@@ -2611,9 +2723,15 @@ static u32 wrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	wrot_frm->stash_srt_bw = srt_bw / burst;
 	wrot_frm->stash_hrt_bw = hrt_bw / burst;
 
-	wrot_frm->stash_srt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wrot_frm->stash_srt_bw);
+	if (wrot->data->ostdl_afbc_stash_min &&
+		MML_FMT_AFBC(task->config->info.src.format))
+		qos_min_stash_bw = wrot->data->ostdl_afbc_stash_min;
+	else if (wrot->data->ostdl_stash_min)
+		qos_min_stash_bw = wrot->data->ostdl_stash_min;
+
+	wrot_frm->stash_srt_bw = max_t(u32, qos_min_stash_bw, wrot_frm->stash_srt_bw);
 	if (wrot_frm->stash_hrt_bw)
-		wrot_frm->stash_hrt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wrot_frm->stash_hrt_bw);
+		wrot_frm->stash_hrt_bw = max_t(u32, qos_min_stash_bw, wrot_frm->stash_hrt_bw);
 
 done:
 	*srt_bw_out = wrot_frm->stash_srt_bw;
@@ -3115,11 +3233,11 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6993-mml1_wrot",
-		.data = &mt6993_wrot_data,
+		.data = &mt6993_mmlf_wrot_data,
 	},
 	{
 		.compatible = "mediatek,mt6993-mml2_wrot",
-		.data = &mt6993_wrot_data,
+		.data = &mt6993_mmld_wrot_data,
 	},
 	{},
 };

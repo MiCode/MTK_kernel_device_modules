@@ -109,7 +109,10 @@ enum wdma_register {
 	VIDO_STASH_SW_ADDR_HIGH,
 	VIDO_STASH_SW_WORK,
 	VIDO_STASH_DELAY_CNT,
-	wdma_register_total,
+
+	/* mt6993 */
+	VIDO_SIDEBAND_SEL,
+	wdam_register_total,
 };
 
 u16 wdma_mt6993[] = {
@@ -185,6 +188,7 @@ u16 wdma_mt6993[] = {
 	[VIDO_STASH_SW_ADDR_HIGH	] = 0xf70,
 	[VIDO_STASH_SW_WORK		] = 0xf74,
 	[VIDO_STASH_DELAY_CNT		] = 0xf78,
+	[VIDO_SIDEBAND_SEL		] = 0x164,
 };
 
 #define WDMA_MIN_BUF_LINE_NUM		16
@@ -303,6 +307,9 @@ struct wdma_data {
 	u8 rb_swap;		/* WA: version for rb channel swap behavior */
 	bool yuv_pending;	/* WA: enable wdma yuv422/420 pending zero */
 	bool stash;		/* enable stash prefetch with leading time */
+	bool sideband;		/* sideband setting */
+	u32 ostdl_stash_min;
+	u32 ostdl_afbc_stash_min;
 };
 
 /*
@@ -316,6 +323,9 @@ static const struct wdma_data mt6993_wdma_data = {
 	.px_per_tick = 2,
 	.yuv_pending = true,
 	.stash = true,
+	.sideband = true,
+	.ostdl_stash_min = 49,
+	.ostdl_afbc_stash_min = 513,
 };
 */
 
@@ -1426,6 +1436,19 @@ static s32 wdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_IN_LINE_ROT], 0, U32_MAX);
 	}
 
+	if (cfg->info.mode == MML_MODE_RACING ||
+		cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (wdma->data->sideband)
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + wdma->reg[VIDO_SIDEBAND_SEL],
+				0x11, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_DDREN_REQ],
+			BIT(2) | BIT(1), U32_MAX);
+	} else {
+		cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_DDREN_REQ],
+			BIT(2), U32_MAX);
+	}
+
 	/* Write frame related registers */
 	alpha = (cfg->alpharot || cfg->alpharsz);
 	cmdq_pkt_write(pkt, NULL, base_pa + wdma->reg[VIDO_CTRL],
@@ -2464,12 +2487,14 @@ u32 wdma_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 static u32 wdma_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	struct mml_frame_config *cfg = task->config;
 	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
 	const struct mml_frame_dest *dest = &cfg->info.dest[wdma_frm->out_idx];
 	const u32 rotate = dest->rotate;
 	const u32 format = dest->data.format;
 	u32 burst, srt_bw = *srt_bw_out, hrt_bw = *hrt_bw_out;
+	u32 qos_min_stash_bw = MML_QOS_MIN_STASH_BW;
 
 	if (wdma_frm->stash_srt_bw)
 		goto done;
@@ -2513,9 +2538,15 @@ static u32 wdma_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	wdma_frm->stash_srt_bw = srt_bw / burst;
 	wdma_frm->stash_hrt_bw = hrt_bw / burst;
 
-	wdma_frm->stash_srt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wdma_frm->stash_srt_bw);
+	if (wdma->data->ostdl_afbc_stash_min &&
+		MML_FMT_AFBC(task->config->info.src.format))
+		qos_min_stash_bw = wdma->data->ostdl_afbc_stash_min;
+	else if (wdma->data->ostdl_stash_min)
+		qos_min_stash_bw = wdma->data->ostdl_stash_min;
+
+	wdma_frm->stash_srt_bw = max_t(u32, qos_min_stash_bw, wdma_frm->stash_srt_bw);
 	if (wdma_frm->stash_hrt_bw)
-		wdma_frm->stash_hrt_bw = max_t(u32, MML_QOS_MIN_STASH_BW, wdma_frm->stash_hrt_bw);
+		wdma_frm->stash_hrt_bw = max_t(u32, qos_min_stash_bw, wdma_frm->stash_hrt_bw);
 
 done:
 	*srt_bw_out = wdma_frm->stash_srt_bw;

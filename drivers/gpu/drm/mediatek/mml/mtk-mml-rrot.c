@@ -96,6 +96,7 @@
 #define RROT_PREULTRA_TH_CON_3		0x290
 
 #define RROT_DITHER_CON			0x2a0
+#define RROT_RESV_DUMMY_0		0x2a8
 #define RROT_CHKS_EXTR			0x300
 #define RROT_CHKS_ROTO			0x318
 #define RROT_DEBUG_CON			0x380
@@ -223,6 +224,8 @@ struct rrot_data {
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
+	u32 ostdl_stash_min;
+	u32 ostdl_afbc_stash_min;
 };
 
 static const struct rrot_data mt6989_rrot_data = {
@@ -321,6 +324,8 @@ static const struct rrot_data mt6993_rrot_data = {
 			.settings = th_afbc_mt6991,
 		},
 	},
+	.ostdl_stash_min = 49,
+	.ostdl_afbc_stash_min = 513,
 };
 
 struct mml_comp_rrot {
@@ -981,7 +986,7 @@ static void rrot_reset_threshold(struct mml_comp_rrot *rrot,
 
 	/* clear threshold for all plane */
 	for (i = 0; i < DMABUF_CON_CNT; i++) {
-		cmdq_pkt_write(pkt, NULL, base_pa + rrot_dmabuf[i], 0x3, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + rrot_dmabuf[i], 0x3 << 24, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + rrot_urgent_th[i], 0, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + rrot_ultra_th[i], 0, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + rrot_preultra_th[i], 0, U32_MAX);
@@ -1225,6 +1230,9 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 u4pic_size_bs = 0;
 	u32 u4pic_size_y_bs = 0;
 	u32 gmcif_con;
+	u8 ext_preultra_en = 0;
+	u8 ext_ultra_en = 0;
+	u32 ddren = BIT(2);
 
 	mml_msg("use config %p rrot %p", cfg, rrot);
 
@@ -1288,20 +1296,22 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* racing case also enable urgent/ultra to not blocking disp */
 	if (unlikely(mml_rdma_urgent)) {
 		if (mml_rdma_urgent == 1)
-			gmcif_con ^= BIT(15) | BIT(13); /* URGENT_EN/ULTRA_EN: always */
+			gmcif_con ^= BIT(17) | BIT(15) | BIT(13); /* PRE_ULTRA/URGENT_EN/ULTRA_EN: always */
 		else if (mml_rdma_urgent == 2)
 			gmcif_con ^= BIT(13);	/* ULTRA_EN: always */
 		else
-			gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN */
+			gmcif_con |= BIT(16) | BIT(14) | BIT(12);	/* URGENT_EN */
 		if (cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK)
 			rrot_select_threshold_hrt(rrot, pkt, comp->base_pa, src->format,
 				frame_in->width, frame_in->height, rrot_frm->rotate);
 		else
 			rrot_reset_threshold(rrot, pkt, base_pa);
+		ddren = ddren | BIT(1);
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN and ULTRA_EN */
+		gmcif_con |= BIT(16) | BIT(14) | BIT(12);	/* PRE_ULTRA, URGENT_EN and ULTRA_EN */
 		rrot_select_threshold_hrt(rrot, pkt, comp->base_pa, src->format,
 			frame_in->width, frame_in->height, rrot_frm->rotate);
+		ddren = ddren | BIT(1);
 	} else {
 		rrot_reset_threshold(rrot, pkt, comp->base_pa);
 	}
@@ -1310,6 +1320,8 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_GMCIF_CON, gmcif_con, U32_MAX);
 	rrot_frm->gmcif_con = gmcif_con;
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RROT_DDREN, ddren, U32_MAX);
 
 	if (cfg->alpharot)
 		rrot_frm->color_tran = 0;
@@ -1465,9 +1477,19 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 			0);
 	}
 
+	/* rrot sideband setting */
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_RESV_DUMMY_0, 0xc, U32_MAX);
+
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		ext_preultra_en = 1;
+		ext_ultra_en = 1;
+	}
+
 	/* Enable 10-bit output */
 	output_10bit = 1;
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_CON,
+		   (ext_preultra_en << 19) |
+		   (ext_ultra_en << 18) |
 		   (rrot_frm->lb_2b_mode << 12) |
 		   (output_10bit << 5) |
 		   (simple_mode << 4) |
@@ -2280,6 +2302,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_frame_data *src = &cfg->info.src;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	const u32 rotate = rrot_frm->rotate;
 	const u32 format = src->format;
 	const u32 acttime = mml_iscouple(cfg->info.mode) ? cfg->info.act_time : cfg->duration;
@@ -2287,6 +2310,7 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	const u32 pgsz = PAGE_SIZE;
 	u32 w = src->width, h = src->height;
 	u32 stash_cmd_num = 0, stash_bw = 256;
+	u32 qos_min_stash_bw = MML_QOS_MIN_STASH_BW;
 
 	if (rrot_frm->stash_bw)
 		goto done;
@@ -2424,7 +2448,13 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	mml_msg("%s bw %u bin %u acttime %u cmd num %u dual %d",
 		__func__, stash_bw, bin_hor, acttime, stash_cmd_num, cfg->rrot_dual);
 
-	rrot_frm->stash_bw = max_t(u32, MML_QOS_MIN_STASH_BW, rrot_frm->stash_bw);
+	if (rrot->data->ostdl_afbc_stash_min &&
+		MML_FMT_AFBC(format))
+		qos_min_stash_bw = rrot->data->ostdl_afbc_stash_min;
+	else if (rrot->data->ostdl_stash_min)
+		qos_min_stash_bw = rrot->data->ostdl_stash_min;
+
+	rrot_frm->stash_bw = max_t(u32, qos_min_stash_bw, rrot_frm->stash_bw);
 
 done:
 	*srt_bw_out = rrot_frm->stash_bw;

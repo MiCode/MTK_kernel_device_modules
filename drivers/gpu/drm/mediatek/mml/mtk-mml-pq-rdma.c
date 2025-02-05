@@ -48,6 +48,7 @@
 #define RDMA_SF_BKGD_SIZE_IN_BYTE	0x090
 #define RDMA_MF_BKGD_H_SIZE_IN_PXL	0x098
 #define RDMA_PREFETCH_CONTROL		0x0a8
+#define RDMA_DDREN			0x0dc
 #define RDMA_VC1_RANGE			0x0f0
 #define RDMA_SRC_OFFSET_0		0x118
 #define RDMA_SRC_OFFSET_1		0x120
@@ -404,6 +405,8 @@ struct rdma_data {
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];
+	u32 ostdl_stash_min;
+	u32 ostdl_afbc_stash_min;
 };
 
 static const struct rdma_data mt6985_pq_rdma_data = {
@@ -463,6 +466,29 @@ static const struct rdma_data mt6991_pq_rdma_data = {
 			.settings = th_yuv420_mt6983,
 		},
 	},
+};
+
+static const struct rdma_data mt6993_pq_rdma_data = {
+	.tile_width = 516,
+	.px_per_tick = 2,
+	.tile_reset = true,
+	.stash = true,
+	.golden = {
+		[GOLDEN_FMT_ARGB] = {
+			.cnt = ARRAY_SIZE(th_argb_mt6983),
+			.settings = th_argb_mt6983,
+		},
+		[GOLDEN_FMT_RGB] = {
+			.cnt = ARRAY_SIZE(th_rgb_mt6983),
+			.settings = th_rgb_mt6983,
+		},
+		[GOLDEN_FMT_YUV420] = {
+			.cnt = ARRAY_SIZE(th_yuv420_mt6983),
+			.settings = th_yuv420_mt6983,
+		},
+	},
+	.ostdl_stash_min = 49,
+	.ostdl_afbc_stash_min = 513,
 };
 
 struct mml_comp_rdma {
@@ -714,8 +740,10 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u64 iova[3];
 	u32 gmcif_con;
 	u32 prefetch = 0x43000000;
-	u8 ext_preultra_en = 1;
-	u8 exr_ultra_en = 1;
+	u8 simple_mode = 1;
+	u8 ext_preultra_en = 0;
+	u8 ext_ultra_en = 0;
+	u32 ddren = BIT(2);
 
 	mml_msg("use config %p rdma %p", cfg, rdma);
 
@@ -752,10 +780,18 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 				write_sec, src->format, src->width, src->height);
 		else
 			rdma_reset_threshold(rdma, pkt, base_pa, hw_pipe, write_sec);
+
+		ext_preultra_en = 1;
+		ext_ultra_en = 1;
+		ddren = ddren | BIT(1);
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		gmcif_con |= BIT(14) | BIT(12);	/* URGENT_EN and ULTRA_EN */
 		rdma_select_threshold_hrt(rdma, pkt, base_pa, hw_pipe,
 			write_sec, src->format, src->width, src->height);
+
+		ext_preultra_en = 1;
+		ext_ultra_en = 1;
+		ddren = ddren | BIT(1);
 	} else {
 		rdma_reset_threshold(rdma, pkt, base_pa, hw_pipe, write_sec);
 	}
@@ -763,6 +799,8 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_GMCIF_CON,
 		   gmcif_con, write_sec);
 	rdma_frm->gmcif_con = gmcif_con;
+
+	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, ddren, U32_MAX);
 
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_SRC_CON,
 		   (rdma_frm->hw_fmt << 0) +
@@ -782,7 +820,8 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 	iova[2] = src_buf->dma[2].iova + src->plane_offset[2];
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_CON,
 		(ext_preultra_en << 19) +
-		(exr_ultra_en << 18),
+		(ext_ultra_en << 18) +
+		(simple_mode << 4),
 		write_sec);
 
 	mml_msg("%s src %#011llx %#011llx %#011llx",
@@ -1045,13 +1084,22 @@ static u32 pq_rdma_datasize_get(struct mml_task *task, struct mml_comp_config *c
 static u32 pq_rdma_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
 {
+	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
+	u32 qos_min_stash_bw = MML_QOS_MIN_STASH_BW;
+
 	/* stash command for every 4KB size */
 	*srt_bw_out = *srt_bw_out / 256;
 	*hrt_bw_out = *hrt_bw_out / 256;
 
-	*srt_bw_out = max_t(u32, MML_QOS_MIN_STASH_BW, *srt_bw_out);
+	if (rdma->data->ostdl_afbc_stash_min &&
+		MML_FMT_AFBC(task->config->info.src.format))
+		qos_min_stash_bw = rdma->data->ostdl_afbc_stash_min;
+	else if (rdma->data->ostdl_stash_min)
+		qos_min_stash_bw = rdma->data->ostdl_stash_min;
+
+	*srt_bw_out = max_t(u32, qos_min_stash_bw, *srt_bw_out);
 	if (*hrt_bw_out)
-		*hrt_bw_out= max_t(u32, MML_QOS_MIN_STASH_BW, *hrt_bw_out);
+		*hrt_bw_out= max_t(u32, qos_min_stash_bw, *hrt_bw_out);
 
 	return 0;
 }
@@ -1115,7 +1163,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
 	const bool write_sec = rdma->data->write_sec_reg;
-	u32 value[33];
+	u32 value[36];
 	u32 state, greq;
 	u32 i;
 
@@ -1173,9 +1221,14 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[29] = readl(base + RDMA_AFBC_PAYLOAD_OST);
 	}
 	value[30] = readl(base + RDMA_GMCIF_CON);
+	value[33] = readl(base + RDMA_CON);
+	value[34] = readl(base + RDMA_TRANSFORM_0);
+	value[35] = readl(base + RDMA_DDREN);
 
 	mml_err("RDMA_EN %#010x RDMA_RESET %#010x RDMA_SRC_CON %#010x RDMA_COMP_CON %#010x",
 		value[0], value[1], value[2], value[3]);
+	mml_err("RDMA_CON %#010x RDMA_TRANSFORM_0 %#010x RDMA_DDREN %#010x",
+		value[33], value[34], value[35]);
 	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x",
 		value[4], value[5]);
 	mml_err("RDMA_MF_SRC_SIZE %#010x RDMA_MF_CLIP_SIZE %#010x RDMA_MF_OFFSET_1 %#010x",
@@ -1352,7 +1405,7 @@ const struct of_device_id mml_pq_rdma_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6993-mml_pq_rdma",
-		.data = &mt6991_pq_rdma_data
+		.data = &mt6993_pq_rdma_data
 	},
 	{},
 };

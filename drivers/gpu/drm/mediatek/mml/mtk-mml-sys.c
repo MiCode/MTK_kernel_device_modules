@@ -44,6 +44,16 @@
 #define SYS_CG_CON2		0x120
 #define SYS_CG_CON3		0x130
 
+#define SYS_WLA20_EN		0x9a4
+#define SYS_WLA20_RG_WROT0_0	0x9a8
+#define SYS_WLA20_RG_WROT0_1	0x9ac
+#define SYS_WLA20_RG_WROT1_0	0x9b0
+#define SYS_WLA20_RG_WROT1_1	0x9b4
+#define SYS_WLA20_RG_WDMA0_0	0x9c0
+#define SYS_WLA20_RG_WDMA0_1	0x9c4
+#define SYS_WLA20_RG_WDMA1_0	0x9c8
+#define SYS_WLA20_RG_WDMA1_1	0x9cc
+
 enum sys_register {
 	SYS_SW0_RST_B_REG,
 	SYS_SW1_RST_B_REG,
@@ -153,6 +163,7 @@ struct mml_data {
 	const u16 *reg;
 	u8 sof_grp_bit;
 	u8 cb_sof_grp_bit;
+	bool wla20;
 };
 
 enum mml_mux_type {
@@ -540,6 +551,28 @@ static s32 sys_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (sys->data->irq) {
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MDP_IRQ, 1, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_INTMERGE, 0, U32_MAX);
+	}
+
+	if (sys->data->wla20) {
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_EN, 1, U32_MAX);
+		if (mml_isdc(cfg->info.mode)) {
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WROT0_0,
+				(0x34b00 << 4) + 15, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WROT0_1,
+				(18 << 24) + (17 << 16) + (16 << 8) + 15, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WROT1_0,
+				(0x34b00 << 4) + 15, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WROT1_1,
+				(18 << 24) + (17 << 16) + (16 << 8) + 15, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WDMA0_0,
+				(0x34b00 << 4) + 15, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WDMA0_1,
+				(18 << 24) + (17 << 16) + (16 << 8) + 15, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WDMA1_0,
+				(0x34b00 << 4) + 15, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_WLA20_RG_WDMA1_1,
+				(18 << 24) + (17 << 16) + (16 << 8) + 15, U32_MAX);
+		}
 	}
 
 	/* if this mmlsys is not primary sys in current path, skip sys config */
@@ -2767,7 +2800,7 @@ static int mml_sys_init(struct platform_device *pdev, struct mml_sys *sys,
 
 	sys->clk_sys_26m = devm_clk_get(dev, "mmlsys_26m_clk");
 	if (IS_ERR_OR_NULL(sys->clk_sys_26m)) {
-		mml_err("%s get dpc 26m clk failed %d",
+		mml_log("%s get dpc 26m clk failed %d",
 			__func__, (int)PTR_ERR(sys->clk_sys_26m));
 		sys->clk_sys_26m = NULL;
 	}
@@ -3336,6 +3369,7 @@ static const struct mml_data mt6993_mmld_data = {
 	.sof_grp_bit = 12,
 	.cb_sof_grp_bit = 28,
 	.irq = true,
+	.wla20 = true,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {
