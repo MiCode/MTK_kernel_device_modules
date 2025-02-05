@@ -202,22 +202,22 @@ bool mtk_dsi_lpc_en(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_drm_private *priv = NULL;
 
 	if (lpc_disable) {
-		DDPMSG("%s, lpc_disable\n", __func__);
+		DDPDBG("%s, lpc_disable\n", __func__);
 		return false;
 	}
 
 	if (index != 0) {
-		DDPMSG("%s, only support dsi0\n", __func__);
+		DDPDBG("%s, only support dsi0\n", __func__);
 		return false;
 	}
 
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		DDPMSG("%s, lpc only support cmd mode\n", __func__);
+		DDPDBG("%s, lpc only support cmd mode\n", __func__);
 		return false;
 	}
 
 	if (!mtk_drm_lcm_is_connect(mtk_crtc)) {
-		DDPMSG("%s, lcm is not connected\n", __func__);
+		DDPDBG("%s, lcm is not connected\n", __func__);
 		return false;
 	}
 
