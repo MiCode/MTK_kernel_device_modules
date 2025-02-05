@@ -12370,7 +12370,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		speech_usip_mem: speech-usip-mem {
 			compatible = "mediatek,speech-usip-mem";
-			adsp-phone-call-enh-enable = <0x0>;
+			adsp-phone-call-enh-enable = <0x3>;
 			adsp-phone-call-hwif = <0x0>;
 			adsp-ble-phone-call-enable = <0x1>;
 		};
