@@ -8650,8 +8650,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			cmdq-print-debug = <1>;
 			mediatek,mminfra-supply = <&mminfra_util>;
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
-			gce-fast-mtcmos;
-			ao-ctrl-by-mminfra;
 		};
 
 		gce_sec: gce-mbox-sec@30100000 {
