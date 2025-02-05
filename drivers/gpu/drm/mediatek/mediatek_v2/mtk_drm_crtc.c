@@ -318,17 +318,20 @@ enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state)
 	enum addon_scenario scn;
 
 	switch (state->prop_val[CRTC_PROP_OUTPUT_SCENARIO]) {
-	case 0:
+	case MTK_DRM_BEFORE_PQ:
 		scn = WDMA_WRITE_BACK_OVL;
 		break;
-	case 1:
+	case MTK_DRM_MID:
 		scn = WDMA_WRITE_BACK_MID;
 		break;
-	case 2:
+	case MTK_DRM_AFTER_PQ:
 		scn = WDMA_WRITE_BACK;
 		break;
-	case 3:
+	case MTK_DRM_MML:
 		scn = WDMA_WRITE_BACK_EXDMA_DL;
+		break;
+	case MTK_DRM_DBI:
+		scn = WDMA_WRITE_BACK_DBI;
 		break;
 	default:
 		scn = WDMA_WRITE_BACK_OVL;
@@ -5046,6 +5049,37 @@ int mtk_crtc_wb_addon_get_event(struct drm_crtc *crtc)
 	return -EINVAL;
 }
 
+static inline bool _mtk_crtc_is_wb_addon(const struct mtk_addon_module_data *addon_module)
+{
+	if (addon_module->type != ADDON_AFTER)
+		return false;
+
+	/* following module support wb/cwb addon */
+	switch (addon_module->module) {
+	case DISP_WDMA0:
+	case DISP_WDMA0_v2:
+	case DISP_WDMA0_v3:
+	case DISP_WDMA0_v4:
+	case DISP_WDMA0_v5:
+	case DISP_WDMA0_v6:
+	case DISP_WDMA_MID:
+	case DISP_WDMA1:
+	case DISP_WDMA1_v3:
+	case DISP_WDMA1_v3_PQ:
+	case DISP_WDMA1_v3_DBI:
+	case DISP_WDMA1_DL:
+	case DISP_OVLSYS_WDMA0:
+	case DISP_OVLSYS_WDMA0_v2:
+	case DISP_OVLSYS_WDMA0_v3:
+	case DISP_OVLSYS_WDMA0_DL:
+		break;
+	default:
+		return false;
+	}
+
+	return true;
+}
+
 void _mtk_crtc_wb_addon_module_disconnect(
 	struct drm_crtc *crtc, unsigned int ddp_mode,
 	struct cmdq_pkt *cmdq_handle)
@@ -5081,51 +5115,24 @@ void _mtk_crtc_wb_addon_module_disconnect(
 		addon_config.config_type.module = addon_module->module;
 		addon_config.config_type.type = addon_module->type;
 
-		if ((addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v4) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v5) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v6) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_DL) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA_MID) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_DL)) {
-			if (mtk_crtc->is_dual_pipe) {
-				/* disconnect left pipe */
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-				/* disconnect right pipe */
-				addon_module = &addon_data_dual->module_data[i];
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-			} else {
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
-								  &addon_config,
-								  cmdq_handle);
-			}
-		} else
+		if (!_mtk_crtc_is_wb_addon(addon_module)) {
 			DDPPR_ERR("addon type1:%d + module:%d not support\n",
-					  addon_module->type,
-					  addon_module->module);
+				addon_module->type, addon_module->module);
+			continue;
+		}
+
+		if (mtk_crtc->is_dual_pipe) {
+			/* disconnect left pipe */
+			mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+			/* disconnect right pipe */
+			addon_module = &addon_data_dual->module_data[i];
+			mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		} else {
+			mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		}
 	}
 }
 
@@ -5165,49 +5172,24 @@ static void _mtk_crtc_cwb_addon_module_disconnect(
 		addon_config.config_type.module = addon_module->module;
 		addon_config.config_type.type = addon_module->type;
 
-		if ((addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v4) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v5) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v6) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_DL) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_DL)) {
-			if (mtk_crtc->is_dual_pipe) {
-				/* disconnect left pipe */
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-				/* disconnect right pipe */
-				addon_module = &addon_data_dual->module_data[i];
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-			} else {
-				mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
-								  &addon_config,
-								  cmdq_handle);
-			}
-		} else
+		if (!_mtk_crtc_is_wb_addon(addon_module)) {
 			DDPPR_ERR("addon type1:%d + module:%d not support\n",
-					  addon_module->type,
-					  addon_module->module);
+				addon_module->type, addon_module->module);
+			continue;
+		}
+
+		if (mtk_crtc->is_dual_pipe) {
+			/* disconnect left pipe */
+			mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+			/* disconnect right pipe */
+			addon_module = &addon_data_dual->module_data[i];
+			mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		} else {
+			mtk_addon_disconnect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		}
 	}
 }
 
@@ -5485,11 +5467,10 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 	}
 }
 
-void
-_mtk_crtc_wb_addon_module_connect(
-				      struct drm_crtc *crtc,
-				      unsigned int ddp_mode,
-				      struct cmdq_pkt *cmdq_handle)
+static void _mtk_crtc_wb_addon_module_connect(
+	struct drm_crtc *crtc,
+	unsigned int ddp_mode,
+	struct cmdq_pkt *cmdq_handle)
 {
 	int i;
 	const struct mtk_addon_scenario_data *addon_data;
@@ -5522,180 +5503,155 @@ _mtk_crtc_wb_addon_module_connect(
 			return;
 	}
 
+	DDPINFO("%s scenario %d\n", __func__, scn);
+
 	mtk_crtc->wb_error = 0;
 
 	for (i = 0; i < addon_data->module_num; i++) {
 		addon_module = &addon_data->module_data[i];
 		addon_config.config_type.module = addon_module->module;
 		addon_config.config_type.type = addon_module->type;
+		struct mtk_rect src_roi = {0};
+		struct mtk_rect dst_roi = {0};
+		struct drm_framebuffer *fb;
 
-		if ((addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v4) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v5) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v6) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA_MID) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_DL) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_DL)) {
-			struct mtk_rect src_roi = {0};
-			struct mtk_rect dst_roi = {0};
-			struct drm_framebuffer *fb;
-
-			if (addon_module->module == DISP_OVLSYS_WDMA0_DL) {
-				src_roi = state->mml_dst_roi;
-				dst_roi.x = dst_roi.y = 0;
-				dst_roi.width = state->mml_dst_roi.width;
-				dst_roi.height = state->mml_dst_roi.height;
-			} else {
-				mtk_crtc_set_width_height(&(src_roi.width), &(src_roi.height),
-					crtc, (scn == WDMA_WRITE_BACK));
-				dst_roi.x = state->prop_val[CRTC_PROP_OUTPUT_X];
-				dst_roi.y = state->prop_val[CRTC_PROP_OUTPUT_Y];
-				dst_roi.width = state->prop_val[CRTC_PROP_OUTPUT_WIDTH];
-				dst_roi.height = state->prop_val[CRTC_PROP_OUTPUT_HEIGHT];
-			}
-
-			if (dst_roi.x >= src_roi.width ||
-				dst_roi.y >= src_roi.height ||
-				dst_roi.x + dst_roi.width > src_roi.width ||
-				dst_roi.y + dst_roi.height > src_roi.height ||
-				!dst_roi.width || !dst_roi.height) {
-				DDPMSG("[cwb_dump]x:%d,y:%d,w:%d,h:%d\n",
-					dst_roi.x, dst_roi.y, dst_roi.width, dst_roi.height);
-				mtk_crtc->wb_error = 1;
-				return;
-			}
-
-			fb = mtk_drm_framebuffer_lookup(crtc->dev,
-				state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
-			mtk_crtc->capturing = true;
-			/* get fb reference conut, put at wb_cmdq_cb */
-//			drm_framebuffer_get(fb);
-			if (!fb) {
-				DDPPR_ERR("fb is NULL\n");
-				mtk_crtc->wb_error = 1;
-				return;
-			}
-			addon_config.addon_wdma_config.wdma_src_roi = src_roi;
-			addon_config.addon_wdma_config.wdma_dst_roi = dst_roi;
-			addon_config.addon_wdma_config.pitch = fb->pitches[0];
-			addon_config.addon_wdma_config.addr = mtk_fb_get_dma(fb);
-			addon_config.addon_wdma_config.fb = fb;
-			addon_config.addon_wdma_config.is_secure = mtk_drm_fb_is_secure(fb);
-			addon_config.addon_wdma_config.p_golden_setting_context
-				= __get_golden_setting_context(mtk_crtc);
-			DDPMSG("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx/sec%d\n",
-				(unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX],
-				mtk_fb_get_dma(fb), mtk_fb_get_size(fb), mtk_drm_fb_is_secure(fb));
-
-			if (mtk_crtc->is_dual_pipe) {
-				int src_w = 0, dst_w = 0;
-				struct mtk_rect src_roi_l, src_roi_r;
-				struct mtk_rect dst_roi_l, dst_roi_r;
-				unsigned int r_buff_off = 0;
-				unsigned int Bpp;
-
-				src_roi_l = src_roi_r = src_roi;
-				dst_roi_l = dst_roi_r = dst_roi;
-
-				/*
-				 * If support tile overhead, front WDMA will be affected
-				 * and WDMA after RSZ will be affected by ap-resolution switch
-				 * need to assign proper width height
-				 */
-				src_w = mtk_crtc_get_width_by_comp(__func__, crtc,
-					NULL, (scn == WDMA_WRITE_BACK));
-				dst_w = mtk_crtc_get_width_by_comp(__func__, crtc,
-					NULL, (scn == WDMA_WRITE_BACK));
-				if (to_info.is_support &&
-					(scn == WDMA_WRITE_BACK_OVL || scn == WDMA_WRITE_BACK_EXDMA_DL))
-					src_w = to_info.left_in_width + to_info.right_in_width;
-
-				/*
-				 * If support tile overhead, front WDMA will be affected
-				 * and WDMA after RSZ will be affected by ap-resolution switch
-				 * need to assign proper width height
-				 */
-				if (to_info.is_support &&
-					(scn == WDMA_WRITE_BACK_OVL || scn == WDMA_WRITE_BACK_EXDMA_DL)) {
-					src_roi_l.width = to_info.left_in_width;
-					src_roi_r.width = to_info.right_in_width;
-				} else {
-					src_roi_l.width = src_w/2;
-					src_roi_r.width = src_w/2;
-				}
-
-				/* Check if dst roi exceed src roi range */
-				if (dst_roi.x + dst_roi.width < dst_w/2) {
-					/* handle dst ROI locate in left pipe */
-					dst_roi_r.x = 0;
-					dst_roi_r.y = 0;
-					dst_roi_r.width = 0;
-				} else if (dst_roi.x >= dst_w/2) {
-					/* handle dst ROI locate in right pipe */
-					dst_roi_l.x = 0;
-					dst_roi_r.x = dst_roi.x - dst_w/2;
-				} else {
-					/* handle dst ROI locate in both display pipe */
-					dst_roi_l.width = dst_w/2 - dst_roi_l.x;
-					dst_roi_r.x = 0;
-					if (to_info.is_support &&
-						(scn == WDMA_WRITE_BACK_OVL || scn == WDMA_WRITE_BACK_EXDMA_DL))
-						dst_roi_r.x += to_info.right_overhead;
-					dst_roi_r.width = dst_roi.width - dst_roi_l.width;
-					r_buff_off = dst_roi_l.width;
-				}
-
-				addon_config.addon_wdma_config.wdma_src_roi = src_roi_l;
-				addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_l;
-
-				/* connect left pipe */
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-
-				addon_module = &addon_data_dual->module_data[i];
-				addon_config.addon_wdma_config.wdma_src_roi = src_roi_r;
-				addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_r;
-				Bpp = mtk_drm_format_plane_cpp(fb->format->format, 0);
-				addon_config.addon_wdma_config.addr += r_buff_off * Bpp;
-				/* connect right pipe */
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-			} else {
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-			}
-		} else
+		if (!_mtk_crtc_is_wb_addon(addon_module)) {
 			DDPPR_ERR("addon type:%d + module:%d not support\n",
 				  addon_module->type, addon_module->module);
+			continue;
+		}
+
+		if (addon_module->module == DISP_OVLSYS_WDMA0_DL) {
+			src_roi = state->mml_dst_roi;
+			dst_roi.x = dst_roi.y = 0;
+			dst_roi.width = state->mml_dst_roi.width;
+			dst_roi.height = state->mml_dst_roi.height;
+		} else {
+			mtk_crtc_set_width_height(&(src_roi.width), &(src_roi.height),
+				crtc, (scn == WDMA_WRITE_BACK));
+			dst_roi.x = state->prop_val[CRTC_PROP_OUTPUT_X];
+			dst_roi.y = state->prop_val[CRTC_PROP_OUTPUT_Y];
+			dst_roi.width = state->prop_val[CRTC_PROP_OUTPUT_WIDTH];
+			dst_roi.height = state->prop_val[CRTC_PROP_OUTPUT_HEIGHT];
+		}
+
+		if (dst_roi.x >= src_roi.width ||
+			dst_roi.y >= src_roi.height ||
+			dst_roi.x + dst_roi.width > src_roi.width ||
+			dst_roi.y + dst_roi.height > src_roi.height ||
+			!dst_roi.width || !dst_roi.height) {
+			DDPMSG("[cwb_dump]x:%d,y:%d,w:%d,h:%d\n",
+				dst_roi.x, dst_roi.y, dst_roi.width, dst_roi.height);
+			mtk_crtc->wb_error = 1;
+			return;
+		}
+
+		fb = mtk_drm_framebuffer_lookup(crtc->dev,
+			state->prop_val[CRTC_PROP_OUTPUT_FB_ID]);
+		mtk_crtc->capturing = true;
+		/* get fb reference conut, put at wb_cmdq_cb */
+		//drm_framebuffer_get(fb);
+		if (!fb) {
+			DDPPR_ERR("fb is NULL\n");
+			mtk_crtc->wb_error = 1;
+			return;
+		}
+		addon_config.addon_wdma_config.wdma_src_roi = src_roi;
+		addon_config.addon_wdma_config.wdma_dst_roi = dst_roi;
+		addon_config.addon_wdma_config.pitch = fb->pitches[0];
+		addon_config.addon_wdma_config.addr = mtk_fb_get_dma(fb);
+		addon_config.addon_wdma_config.fb = fb;
+		addon_config.addon_wdma_config.is_secure = mtk_drm_fb_is_secure(fb);
+		addon_config.addon_wdma_config.p_golden_setting_context
+			= __get_golden_setting_context(mtk_crtc);
+		DDPMSG("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx/sec%d\n",
+			(unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX],
+			mtk_fb_get_dma(fb), mtk_fb_get_size(fb), mtk_drm_fb_is_secure(fb));
+
+		if (mtk_crtc->is_dual_pipe) {
+			int src_w = 0, dst_w = 0;
+			struct mtk_rect src_roi_l, src_roi_r;
+			struct mtk_rect dst_roi_l, dst_roi_r;
+			unsigned int r_buff_off = 0;
+			unsigned int Bpp;
+
+			src_roi_l = src_roi_r = src_roi;
+			dst_roi_l = dst_roi_r = dst_roi;
+
+			/*
+			 * If support tile overhead, front WDMA will be affected
+			 * and WDMA after RSZ will be affected by ap-resolution switch
+			 * need to assign proper width height
+			 */
+			src_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+				NULL, (scn == WDMA_WRITE_BACK));
+			dst_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+				NULL, (scn == WDMA_WRITE_BACK));
+			if (to_info.is_support &&
+				(scn == WDMA_WRITE_BACK_OVL || scn == WDMA_WRITE_BACK_EXDMA_DL))
+				src_w = to_info.left_in_width + to_info.right_in_width;
+
+			/*
+			 * If support tile overhead, front WDMA will be affected
+			 * and WDMA after RSZ will be affected by ap-resolution switch
+			 * need to assign proper width height
+			 */
+			if (to_info.is_support &&
+				(scn == WDMA_WRITE_BACK_OVL || scn == WDMA_WRITE_BACK_EXDMA_DL)) {
+				src_roi_l.width = to_info.left_in_width;
+				src_roi_r.width = to_info.right_in_width;
+			} else {
+				src_roi_l.width = src_w/2;
+				src_roi_r.width = src_w/2;
+			}
+
+			/* Check if dst roi exceed src roi range */
+			if (dst_roi.x + dst_roi.width < dst_w/2) {
+				/* handle dst ROI locate in left pipe */
+				dst_roi_r.x = 0;
+				dst_roi_r.y = 0;
+				dst_roi_r.width = 0;
+			} else if (dst_roi.x >= dst_w/2) {
+				/* handle dst ROI locate in right pipe */
+				dst_roi_l.x = 0;
+				dst_roi_r.x = dst_roi.x - dst_w/2;
+			} else {
+				/* handle dst ROI locate in both display pipe */
+				dst_roi_l.width = dst_w/2 - dst_roi_l.x;
+				dst_roi_r.x = 0;
+				if (to_info.is_support &&
+					(scn == WDMA_WRITE_BACK_OVL || scn == WDMA_WRITE_BACK_EXDMA_DL))
+					dst_roi_r.x += to_info.right_overhead;
+				dst_roi_r.width = dst_roi.width - dst_roi_l.width;
+				r_buff_off = dst_roi_l.width;
+			}
+
+			addon_config.addon_wdma_config.wdma_src_roi = src_roi_l;
+			addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_l;
+
+			/* connect left pipe */
+			mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+
+			addon_module = &addon_data_dual->module_data[i];
+			addon_config.addon_wdma_config.wdma_src_roi = src_roi_r;
+			addon_config.addon_wdma_config.wdma_dst_roi = dst_roi_r;
+			Bpp = mtk_drm_format_plane_cpp(fb->format->format, 0);
+			addon_config.addon_wdma_config.addr += r_buff_off * Bpp;
+			/* connect right pipe */
+			mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		} else {
+			mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		}
 	}
 }
 
-static void
-_mtk_crtc_cwb_addon_module_connect(
-				      struct drm_crtc *crtc,
-				      unsigned int ddp_mode,
-				      struct cmdq_pkt *cmdq_handle)
+static void _mtk_crtc_cwb_addon_module_connect(
+	struct drm_crtc *crtc,
+	unsigned int ddp_mode,
+	struct cmdq_pkt *cmdq_handle)
 {
 	int i;
 	const struct mtk_addon_scenario_data *addon_data;
@@ -5714,17 +5670,14 @@ _mtk_crtc_cwb_addon_module_connect(
 	cwb_info = mtk_crtc->cwb_info;
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 
-	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
-		!cwb_info)
+	if (index != 0 || mtk_crtc_is_dc_mode(crtc) || !cwb_info)
 		return;
 
 	mtk_crtc_cwb_set_sec(crtc);
-	if (!cwb_info->enable || cwb_info->is_sec ||
-			priv->need_cwb_path_disconnect)
+	if (!cwb_info->enable || cwb_info->is_sec || priv->need_cwb_path_disconnect)
 		return;
 
-	addon_data = mtk_addon_get_scenario_data(__func__, crtc,
-					cwb_info->scn);
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, cwb_info->scn);
 	if (!addon_data)
 		return;
 
@@ -5736,172 +5689,148 @@ _mtk_crtc_cwb_addon_module_connect(
 			return;
 	}
 
+	DDPINFO("%s scenario %d\n", __func__, cwb_info->scn);
+
 	for (i = 0; i < addon_data->module_num; i++) {
 		addon_module = &addon_data->module_data[i];
 		addon_config.config_type.module = addon_module->module;
 		addon_config.config_type.type = addon_module->type;
 
-		if ((addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v4) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v5) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA0_v6) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_WDMA1_DL) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v2) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_v3) ||
-			(addon_module->type == ADDON_AFTER &&
-			addon_module->module == DISP_OVLSYS_WDMA0_DL)) {
-			buf_idx = cwb_info->buf_idx;
-			fb = cwb_info->buffer[buf_idx].fb;
-			Bpp = mtk_get_format_bpp(fb->format->format);
-			addon_config.addon_wdma_config.wdma_src_roi =
-				cwb_info->src_roi;
-			addon_config.addon_wdma_config.wdma_dst_roi =
-				cwb_info->buffer[buf_idx].dst_roi;
-			addon_config.addon_wdma_config.pitch =
-				cwb_info->buffer[buf_idx].dst_roi.width * Bpp;
-			addon_config.addon_wdma_config.addr =
-				cwb_info->buffer[buf_idx].addr_mva;
-			addon_config.addon_wdma_config.fb = fb;
-			addon_config.addon_wdma_config.p_golden_setting_context
-				= __get_golden_setting_context(mtk_crtc);
-			if (mtk_crtc->is_dual_pipe) {
-				int src_w = 0, dst_w = 0;
-				struct mtk_rect src_roi_l;
-				struct mtk_rect src_roi_r;
-				struct mtk_rect dst_roi_l;
-				struct mtk_rect dst_roi_r;
-				unsigned int r_buff_off = 0;
-
-				/*
-				 * If support tile overhead, front WDMA will be affected
-				 * and WDMA after RSZ will be affected by ap-resolution switch
-				 * need to assign proper width height
-				 */
-				src_w = mtk_crtc_get_width_by_comp(__func__, crtc,
-					NULL, (cwb_info->scn == WDMA_WRITE_BACK));
-				dst_w = mtk_crtc_get_width_by_comp(__func__, crtc,
-					NULL, (cwb_info->scn == WDMA_WRITE_BACK));
-				if (to_info.is_support &&
-					(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
-					cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL))
-					src_w = to_info.left_in_width + to_info.right_in_width;
-
-				src_roi_l = src_roi_r = cwb_info->src_roi;
-				dst_roi_l = dst_roi_r = cwb_info->buffer[buf_idx].dst_roi;
-
-				src_roi_l.x = 0;
-				src_roi_r.x = 0;
-
-				/*
-				 * If support tile overhead, front WDMA will be affected
-				 * and WDMA after RSZ will be affected by ap-resolution switch
-				 * need to assign proper width height
-				 */
-				if (to_info.is_support &&
-					(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
-					cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL)) {
-					src_roi_l.width = to_info.left_in_width;
-					src_roi_r.width = to_info.right_in_width;
-				} else {
-					src_roi_l.width = src_w/2;
-					src_roi_r.width = src_w/2;
-				}
-
-				if (cwb_info->buffer[buf_idx].dst_roi.x +
-					cwb_info->buffer[buf_idx].dst_roi.width < dst_w/2) {
-				/* handle source ROI locate in left pipe*/
-					dst_roi_r.x = 0;
-					dst_roi_r.y = 0;
-					dst_roi_r.width = 0;
-				} else if (cwb_info->buffer[buf_idx].dst_roi.x >= dst_w/2) {
-				/* handle source ROI locate in right pipe*/
-					dst_roi_l.x = 0;
-					dst_roi_l.width = 0;
-					dst_roi_r.x = cwb_info->buffer[buf_idx].dst_roi.x - dst_w/2;
-					/* add tile overhead offest */
-					if (to_info.is_support &&
-						(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
-					cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL))
-						dst_roi_r.x += to_info.right_overhead;
-				} else {
-				/* handle source ROI locate in both display pipe*/
-					dst_roi_l.width = dst_w/2 -
-						cwb_info->buffer[buf_idx].dst_roi.x;
-					dst_roi_r.x = 0;
-					if (to_info.is_support &&
-						(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
-					cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL))
-						dst_roi_r.x += to_info.right_overhead;
-					dst_roi_r.width =
-						cwb_info->buffer[buf_idx].dst_roi.width -
-						dst_roi_l.width;
-					r_buff_off = dst_roi_l.width;
-				}
-				DDPINFO("cwb (%u, %u %u, %u) (%u ,%u %u,%u)\n",
-					cwb_info->src_roi.width, cwb_info->src_roi.height,
-					cwb_info->src_roi.x, cwb_info->src_roi.y,
-					cwb_info->buffer[buf_idx].dst_roi.width,
-					cwb_info->buffer[buf_idx].dst_roi.height,
-					cwb_info->buffer[buf_idx].dst_roi.x,
-					cwb_info->buffer[buf_idx].dst_roi.y);
-				DDPDBG("L s(%u,%u %u,%u), d(%u,%u %u,%u)\n",
-					src_roi_l.width, src_roi_l.height,
-					src_roi_l.x, src_roi_l.y,
-					dst_roi_l.width, dst_roi_l.height,
-					dst_roi_l.x, dst_roi_l.y);
-				DDPDBG("R s(%u,%u %u,%u), d(%u,%u %u,%u)\n",
-					src_roi_r.width, src_roi_r.height,
-					src_roi_r.x, src_roi_r.y,
-					dst_roi_r.width, dst_roi_r.height,
-					dst_roi_r.x, dst_roi_r.y);
-				addon_config.addon_wdma_config.wdma_src_roi =
-					src_roi_l;
-				addon_config.addon_wdma_config.wdma_dst_roi =
-					dst_roi_l;
-
-				/* connect left pipe */
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-
-				addon_module = &addon_data_dual->module_data[i];
-				addon_config.addon_wdma_config.wdma_src_roi =
-					src_roi_r;
-				addon_config.addon_wdma_config.wdma_dst_roi =
-					dst_roi_r;
-				addon_config.addon_wdma_config.addr += (u64)r_buff_off * (u64)Bpp;
-				cwb_info->buf_idx += 1;
-				if (cwb_info->buf_idx == CWB_BUFFER_NUM)
-					cwb_info->buf_idx = 0;
-				/* connect right pipe */
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-			} else {
-				cwb_info->buf_idx += 1;
-				if (cwb_info->buf_idx == CWB_BUFFER_NUM)
-					cwb_info->buf_idx = 0;
-				mtk_addon_connect_after(crtc, ddp_mode, addon_module,
-							  &addon_config, cmdq_handle);
-			}
-		} else
+		if (!_mtk_crtc_is_wb_addon(addon_module)) {
 			DDPPR_ERR("addon type:%d + module:%d not support\n",
 				  addon_module->type, addon_module->module);
+			continue;
+		}
+
+		buf_idx = cwb_info->buf_idx;
+		fb = cwb_info->buffer[buf_idx].fb;
+		Bpp = mtk_get_format_bpp(fb->format->format);
+		addon_config.addon_wdma_config.wdma_src_roi = cwb_info->src_roi;
+		addon_config.addon_wdma_config.wdma_dst_roi = cwb_info->buffer[buf_idx].dst_roi;
+		addon_config.addon_wdma_config.pitch =
+			cwb_info->buffer[buf_idx].dst_roi.width * Bpp;
+		addon_config.addon_wdma_config.addr = cwb_info->buffer[buf_idx].addr_mva;
+		addon_config.addon_wdma_config.fb = fb;
+		addon_config.addon_wdma_config.p_golden_setting_context =
+			__get_golden_setting_context(mtk_crtc);
+		if (mtk_crtc->is_dual_pipe) {
+			int src_w = 0, dst_w = 0;
+			struct mtk_rect src_roi_l;
+			struct mtk_rect src_roi_r;
+			struct mtk_rect dst_roi_l;
+			struct mtk_rect dst_roi_r;
+			unsigned int r_buff_off = 0;
+
+			/*
+			 * If support tile overhead, front WDMA will be affected
+			 * and WDMA after RSZ will be affected by ap-resolution switch
+			 * need to assign proper width height
+			 */
+			src_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+				NULL, (cwb_info->scn == WDMA_WRITE_BACK));
+			dst_w = mtk_crtc_get_width_by_comp(__func__, crtc,
+				NULL, (cwb_info->scn == WDMA_WRITE_BACK));
+			if (to_info.is_support &&
+				(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
+				cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL))
+				src_w = to_info.left_in_width + to_info.right_in_width;
+
+			src_roi_l = src_roi_r = cwb_info->src_roi;
+			dst_roi_l = dst_roi_r = cwb_info->buffer[buf_idx].dst_roi;
+
+			src_roi_l.x = 0;
+			src_roi_r.x = 0;
+
+			/*
+			 * If support tile overhead, front WDMA will be affected
+			 * and WDMA after RSZ will be affected by ap-resolution switch
+			 * need to assign proper width height
+			 */
+			if (to_info.is_support &&
+				(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
+				cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL)) {
+				src_roi_l.width = to_info.left_in_width;
+				src_roi_r.width = to_info.right_in_width;
+			} else {
+				src_roi_l.width = src_w/2;
+				src_roi_r.width = src_w/2;
+			}
+
+			if (cwb_info->buffer[buf_idx].dst_roi.x +
+				cwb_info->buffer[buf_idx].dst_roi.width < dst_w/2) {
+				/* handle source ROI locate in left pipe*/
+				dst_roi_r.x = 0;
+				dst_roi_r.y = 0;
+				dst_roi_r.width = 0;
+			} else if (cwb_info->buffer[buf_idx].dst_roi.x >= dst_w/2) {
+				/* handle source ROI locate in right pipe*/
+				dst_roi_l.x = 0;
+				dst_roi_l.width = 0;
+				dst_roi_r.x = cwb_info->buffer[buf_idx].dst_roi.x - dst_w/2;
+				/* add tile overhead offest */
+				if (to_info.is_support &&
+					(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
+				cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL))
+					dst_roi_r.x += to_info.right_overhead;
+			} else {
+				/* handle source ROI locate in both display pipe*/
+				dst_roi_l.width = dst_w/2 -
+					cwb_info->buffer[buf_idx].dst_roi.x;
+				dst_roi_r.x = 0;
+				if (to_info.is_support &&
+					(cwb_info->scn == WDMA_WRITE_BACK_OVL ||
+				cwb_info->scn == WDMA_WRITE_BACK_EXDMA_DL))
+					dst_roi_r.x += to_info.right_overhead;
+				dst_roi_r.width =
+					cwb_info->buffer[buf_idx].dst_roi.width -
+					dst_roi_l.width;
+				r_buff_off = dst_roi_l.width;
+			}
+			DDPINFO("cwb (%u, %u %u, %u) (%u ,%u %u,%u)\n",
+				cwb_info->src_roi.width, cwb_info->src_roi.height,
+				cwb_info->src_roi.x, cwb_info->src_roi.y,
+				cwb_info->buffer[buf_idx].dst_roi.width,
+				cwb_info->buffer[buf_idx].dst_roi.height,
+				cwb_info->buffer[buf_idx].dst_roi.x,
+				cwb_info->buffer[buf_idx].dst_roi.y);
+			DDPDBG("L s(%u,%u %u,%u), d(%u,%u %u,%u)\n",
+				src_roi_l.width, src_roi_l.height,
+				src_roi_l.x, src_roi_l.y,
+				dst_roi_l.width, dst_roi_l.height,
+				dst_roi_l.x, dst_roi_l.y);
+			DDPDBG("R s(%u,%u %u,%u), d(%u,%u %u,%u)\n",
+				src_roi_r.width, src_roi_r.height,
+				src_roi_r.x, src_roi_r.y,
+				dst_roi_r.width, dst_roi_r.height,
+				dst_roi_r.x, dst_roi_r.y);
+			addon_config.addon_wdma_config.wdma_src_roi =
+				src_roi_l;
+			addon_config.addon_wdma_config.wdma_dst_roi =
+				dst_roi_l;
+
+			/* connect left pipe */
+			mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+
+			addon_module = &addon_data_dual->module_data[i];
+			addon_config.addon_wdma_config.wdma_src_roi =
+				src_roi_r;
+			addon_config.addon_wdma_config.wdma_dst_roi =
+				dst_roi_r;
+			addon_config.addon_wdma_config.addr += (u64)r_buff_off * (u64)Bpp;
+			cwb_info->buf_idx += 1;
+			if (cwb_info->buf_idx == CWB_BUFFER_NUM)
+				cwb_info->buf_idx = 0;
+			/* connect right pipe */
+			mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		} else {
+			cwb_info->buf_idx += 1;
+			if (cwb_info->buf_idx == CWB_BUFFER_NUM)
+				cwb_info->buf_idx = 0;
+			mtk_addon_connect_after(crtc, ddp_mode, addon_module,
+				&addon_config, cmdq_handle);
+		}
 	}
 }
 
@@ -22776,21 +22705,23 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		/* use it when CRTC not define ability in DTS */
 		if (pipe == 0) {
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK_OVL))
-				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_BEFORE_PQ].support = 1;
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK))
-				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_AFTER_PQ].support = 1;
 			/* HW support cwb dump */
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
 				priv->data->mmsys_id == MMSYS_MT6897)
-				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_AFTER_PQ].support = 1;
 			if (priv->data->mmsys_id == MMSYS_MT6991 ||
 				priv->data->mmsys_id == MMSYS_MT6993) {
-				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
-				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
-				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
-				mtk_crtc->crtc_caps.wb_caps[3].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_BEFORE_PQ].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_MID].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_AFTER_PQ].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_MML].support = 1;
 			}
+			if (priv->data->mmsys_id == MMSYS_MT6993)
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_DBI].support = 1;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_RSZ;
@@ -22825,7 +22756,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 			if (priv->data->mmsys_id == MMSYS_MT6991 ||
 				priv->data->mmsys_id == MMSYS_MT6993) {
-				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_MID].support = 1;
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;
 			}
 		}

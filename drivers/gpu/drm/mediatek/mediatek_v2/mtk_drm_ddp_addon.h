@@ -40,6 +40,7 @@ enum addon_scenario {
 	DSC_COMP, /* describe which DSC module would apply in this CRTC */
 	WDMA_WRITE_BACK_MID,
 	BWM_COMP,
+	WDMA_WRITE_BACK_DBI,
 	ADDON_SCN_NR,
 };
 
@@ -63,6 +64,8 @@ enum addon_module {
 	DISP_WDMA1,
 	DISP_WDMA1_v2,
 	DISP_WDMA1_v3,
+	DISP_WDMA1_v3_PQ,
+	DISP_WDMA1_v3_DBI,
 	DISP_WDMA1_DL,
 	DISP_WDMA2,
 	DISP_OVLSYS_WDMA0,
