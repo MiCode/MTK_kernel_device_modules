@@ -5785,9 +5785,10 @@
 			clock-num = <22>;
 
 			operating-points-v2 = <&opp_table_disp0>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos SLAVE_LARB(31) &mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "disp_hrt_qos";
+			pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
 
 			/* define threads, see mt6895-gce.h */
 			mediatek,mailbox-gce = <&gce>;
@@ -5915,6 +5916,9 @@
 				"MTK_DRM_OPT_MML_PRIMARY",
 				"MTK_DRM_OPT_DUAL_TE",
 				"MTK_DRM_OPT_VIRTUAL_DISP",
+				"MTK_DRM_OPT_SPHRT",
+				"MTK_DRM_OPT_SDPA_OVL_SWITCH",
+				"MTK_DRM_OPT_OVL_BW_MONITOR",
 				"MTK_DRM_OPT_RES_SWITCH";
 
 			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
@@ -5965,6 +5969,9 @@
 				<1>, /*MTK_DRM_OPT_MML_PRIMARY*/
 				<0>, /*MTK_DRM_OPT_DUAL_TE*/
 				<1>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
+				<1>, /*MTK_DRM_OPT_SPHRT*/
+				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
+				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<1>; /*MTK_DRM_OPT_RES_SWITCH*/
 		};
 
@@ -6104,6 +6111,7 @@
 			reg = <0 0x14009000 0 0x1000>;
 			interrupts = <GIC_SPI 309 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_COLOR0>;
+			doze-bypass = <1>;
 		};
 
 		disp_ccorr0_0: disp_ccorr@1400a000 {
@@ -6112,9 +6120,12 @@
 			reg = <0 0x1400a000 0 0x1000>;
 			interrupts = <GIC_SPI 310 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_CCORR0>;
-			ccorr_bit = <13>;
-			ccorr_num_per_pipe = <2>;
-			ccorr_linear_per_pipe = <0x10>;
+			ccorr-bit = <13>;
+			ccorr-num-per-pipe = <2>;
+			ccorr-linear-per-pipe = <0x10>;
+			ccorr-prim-force-linear = <0x0>;
+			ccorr-linear = <1>;
+			doze-bypass = <1>;
 		};
 
 		disp_ccorr0_1: disp_ccorr@1400b000 {
@@ -6123,6 +6134,7 @@
 			reg = <0 0x1400b000 0 0x1000>;
 			interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_CCORR1>;
+			doze-bypass = <1>;
 		};
 
 		disp_mdp_aal0: disp_mdp_aal@1400c000 {
@@ -6132,6 +6144,7 @@
 			interrupts = <GIC_SPI 312 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_MDP_AAL0>;
 			clock-names = "DRE3_AAL0";
+			doze-bypass = <1>;
 		};
 
 		disp_aal0: disp_aal@1400d000 {
@@ -6140,9 +6153,10 @@
 			reg = <0 0x1400d000 0 0x1000>;
 			interrupts = <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_AAL0>;
-			aal_dre3 = <&disp_mdp_aal0>;
-			mtk_aal_support = <1>;
-			mtk_dre30_support = <0>;
+			aal-dre3 = <&disp_mdp_aal0>;
+			mtk-aal-support = <1>;
+			mtk-dre30-support = <0>;
+			doze-bypass = <1>;
 		};
 
 		disp_gamma0: disp_gamma@1400e000 {
@@ -6151,13 +6165,13 @@
 			reg = <0 0x1400e000 0 0x1000>;
 			interrupts = <GIC_SPI 314 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_GAMMA0>;
-			gamma_data_mode = <2>;
-			color_protect_red = <0>;
-			color_protect_green = <0>;
-			color_protect_blue = <0>;
-			color_protect_white = <0>;
-			color_protect_black = <0>;
-			color_protect_lsb = <0>;
+			gamma-data-mode = <2>;
+			color-protect-red = <0>;
+			color-protect-green = <0>;
+			color-protect-blue = <0>;
+			color-protect-white = <0>;
+			color-protect-black = <0>;
+			color-protect-lsb = <0>;
 		};
 
 		disp_postmask0: disp_postmask0@1400f000 {
@@ -6168,6 +6182,7 @@
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_POSTMASK0>;
 			mediatek,smi-id = <0>;
 			iommus = <&disp_iommu M4U_LARB0_PORT0>;/*M4U_PORT_L0_DISP_POSTMASK0*/
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		};
 
 		disp_dither0: disp_dither@14010000 {
@@ -6176,9 +6191,9 @@
 			reg = <0 0x14010000 0 0x1000>;
 			interrupts = <GIC_SPI 316 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_DITHER0>;
-			pure_clr_det = <0>;
-			pure_clr_num = <7>;
-			pure_clr_rgb = <255 0 0
+			pure-clr-det = <0>;
+			pure-clr-num = <7>;
+			pure-clr-rgb = <255 0 0
 				0 255 0
 				0 0 255
 				255 255 0
@@ -6438,7 +6453,7 @@
 			reg = <0 0x14409000 0 0x1000>;
 			interrupts = <GIC_SPI 353 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys1_config_clk CLK_MM1_DISP_COLOR0>;
-
+			doze-bypass = <1>;
 		};
 
 		disp_ccorr1_0: disp_ccorr@1440a000 {
@@ -6447,6 +6462,7 @@
 			reg = <0 0x1440a000 0 0x1000>;
 			interrupts = <GIC_SPI 354 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys1_config_clk CLK_MM1_DISP_CCORR0>;
+			doze-bypass = <1>;
 		};
 
 		disp_ccorr1_1: disp_ccorr@1440b000 {
@@ -6455,6 +6471,7 @@
 			reg = <0 0x1440b000 0 0x1000>;
 			interrupts = <GIC_SPI 355 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys1_config_clk CLK_MM1_DISP_CCORR1>;
+			doze-bypass = <1>;
 		};
 
 		disp_mdp_aal1: disp_mdp_aal@1440c000 {
@@ -6464,6 +6481,7 @@
 			interrupts = <GIC_SPI 356 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys1_config_clk CLK_MM1_MDP_AAL0>;
 			clock-names = "DRE3_AAL1";
+			doze-bypass = <1>;
 		};
 
 		disp_aal1: disp_aal@1440d000 {
@@ -6472,9 +6490,10 @@
 			reg = <0 0x1440d000 0 0x1000>;
 			interrupts = <GIC_SPI 357 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys1_config_clk CLK_MM1_DISP_AAL0>;
-			aal_dre3 = <&disp_mdp_aal1>;
-			mtk_aal_support = <1>;
-			mtk_dre30_support = <0>;
+			aal-dre3 = <&disp_mdp_aal1>;
+			mtk-aal-support = <1>;
+			mtk-dre30-support = <0>;
+			doze-bypass = <1>;
 		};
 
 		disp_gamma1: disp_gamma@1440e000 {
@@ -6493,6 +6512,7 @@
 			clocks = <&mmsys1_config_clk CLK_MM1_DISP_POSTMASK0>;
 			mediatek,smi-id = <20>;
 			iommus = <&disp_iommu M4U_LARB20_PORT0>;/*M4U_PORT_L20_DISP_POSTMASK0*/
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 		};
 
 		disp_dither1: disp_dither@14410000 {
