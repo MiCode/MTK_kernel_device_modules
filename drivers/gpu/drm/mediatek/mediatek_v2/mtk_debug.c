@@ -4411,6 +4411,17 @@ static void process_dbg_opt(const char *opt)
 		rect.height = clip_h;
 
 		mtk_drm_set_cwb_roi(rect);
+	} else if (strncmp(opt, "larb:", 5) == 0) {
+		unsigned int ret;
+		int larb, ssc;
+
+		ret = sscanf(opt, "larb:%d\n", &larb);
+		if (ret != 1) {
+			DDPMSG("error to parse cmd\n");
+			return;
+		}
+		ssc = mtk_disp_lookup_subcomm(larb);
+		DDPINFO("lookup larb%d in ssc:%d\n", larb, ssc);
 	} else if (strncmp(opt, "cwb:", 4) == 0) {
 		unsigned int ret, enable, offset_x, offset_y;
 		unsigned int clip_w, clip_h;

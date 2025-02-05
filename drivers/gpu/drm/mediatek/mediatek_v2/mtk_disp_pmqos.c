@@ -50,6 +50,11 @@ module_param(debug_deteriorate, int, 0644);
 int debug_channel_overlap = 1;
 module_param(debug_channel_overlap, int, 0644);
 
+/* add for larb_ssc_ch_mapping */
+DEFINE_HASHTABLE(larb_ssc_table, 5);
+int ssc_cnt;
+u32 *ssc_ch;
+
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 #define CRTC_NUM		7
 #else
@@ -1610,6 +1615,105 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 
 		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, c, __func__, __LINE__);
 	}
+}
+
+int mtk_disp_lookup_subcomm(int larb)
+{
+	struct larb_ssc_entry *entry;
+
+	hash_for_each_possible(larb_ssc_table, entry, node, larb) {
+		if (entry->larb == larb)
+			return entry->subcomm;
+	}
+
+	DDPPR_ERR("%s not found larb:%d in which subcomm\n", __func__, larb);
+	return -1;
+}
+
+static void mtk_disp_insert_ssc_larb(int subcomm, int larb)
+{
+	struct larb_ssc_entry *entry;
+
+	entry = kmalloc(sizeof(*entry), GFP_KERNEL);
+	if (!entry)
+		return;
+
+	entry->larb = larb;
+	entry->subcomm = subcomm;
+	// (key, value) is (larb, subcom)
+	hash_add(larb_ssc_table, &entry->node, larb);
+}
+
+static void mtk_drm_larb_ssc_ch_deinit(void)
+{
+	struct larb_ssc_entry *entry;
+	struct hlist_node *temp;
+	unsigned int i;
+
+	hash_for_each_safe(larb_ssc_table, i, temp, entry, node) {
+		hash_del(&entry->node);
+		kfree(entry);
+	}
+	ssc_cnt = 0;
+	kfree(ssc_ch);
+	ssc_ch = NULL;
+}
+
+int mtk_drm_larb_ssc_ch_init(struct device *dev)
+{
+	struct device_node *node = dev->of_node;
+	int count, ret = 0, i;
+	u32 *values = NULL;
+
+	// load subcom-larb mapping from dts
+	count = of_property_count_u32_elems(node, "ssc-larb");
+	if (count < 0) {
+		DDPPR_ERR("%s no ssc-larb property\n", __func__);
+		ret = -1;
+		goto deinit_larb_ssc_ch;
+	}
+	values = kzalloc(sizeof(u32) * count, GFP_KERNEL);
+	if (!values) {
+		ret = -ENOMEM;
+		goto deinit_larb_ssc_ch;
+	}
+	ret = of_property_read_u32_array(node, "ssc-larb", values, count);
+	if (ret) {
+		DDPPR_ERR("%s ssc-larb read fail ret:%d\n", __func__, ret);
+		goto deinit_larb_ssc_ch;
+	}
+
+	// pair fmt: <ssc larb>
+	count >>= 1;
+	for (i = 0; i < count; i++)
+		mtk_disp_insert_ssc_larb(values[i*2], values[i*2 + 1]);
+	kfree(values);
+	values = NULL;
+
+	// load subcom-channel mapping from dts
+	ssc_cnt = of_property_count_u32_elems(node, "ssc-ch");
+	if (ssc_cnt < 0) {
+		DDPPR_ERR("%s no ssc-ch property\n", __func__);
+		ret = -1;
+		goto deinit_larb_ssc_ch;
+	}
+	ssc_ch = kzalloc(sizeof(u32) * ssc_cnt, GFP_KERNEL);
+	if (!ssc_ch) {
+		ret = -ENOMEM;
+		goto deinit_larb_ssc_ch;
+	}
+	ret = of_property_read_u32_array(node, "ssc-ch", ssc_ch, ssc_cnt);
+	if (ret) {
+		DDPPR_ERR("%s ssc-ch read fail ret:%d\n", __func__, ret);
+		goto deinit_larb_ssc_ch;
+	}
+
+	return ret;
+
+deinit_larb_ssc_ch:
+	kfree(values);
+	mtk_drm_larb_ssc_ch_deinit();
+	return ret;
 }
 
 int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,

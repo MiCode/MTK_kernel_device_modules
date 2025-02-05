@@ -7342,6 +7342,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.first_dma_from_lk = true,
 	.real_srt_ostdl = true,
 	.skip_trans = true,
+	.larb_ssc_ch_mapping = true,
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
 	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6993,
 	.get_channel_idx = mtk_disp_get_channel_idx,
@@ -9839,6 +9840,10 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	/* Load emi efficiency table for ovl bandwidht monitor */
 	if (private->data->need_emi_eff)
 		mtk_drm_init_emi_eff_table(drm);
+
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT) &&
+		private->data->larb_ssc_ch_mapping)
+		mtk_drm_larb_ssc_ch_init(drm->dev);
 
 	mtk_drm_first_enable(drm);
 

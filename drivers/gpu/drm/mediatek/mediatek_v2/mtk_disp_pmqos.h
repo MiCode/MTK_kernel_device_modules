@@ -8,6 +8,7 @@
 
 //#include <linux/interconnect-provider.h>
 #include "mtk-interconnect-provider.h"
+#include <linux/hashtable.h>
 #include <linux/pm_qos.h>
 
 enum DISP_QOS_BW_MODE {
@@ -54,6 +55,12 @@ struct mtk_larb_port_bw {
 	int larb_id;
 	unsigned int bw;
 	enum CHANNEL_TYPE type;
+};
+
+struct larb_ssc_entry {
+	int larb;
+	int subcomm;
+	struct hlist_node node;
 };
 
 struct mtk_drm_qos_ctx {
@@ -123,6 +130,7 @@ unsigned int mtk_disp_set_per_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		unsigned int bw, unsigned int ch_idx, bool force, const char *master);
 void mtk_disp_set_all_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc,
 		unsigned int *bw, unsigned int size, const char *master);
-
+int mtk_disp_lookup_subcomm(int larb);
+int mtk_drm_larb_ssc_ch_init(struct device *dev);
 void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx);
 #endif
