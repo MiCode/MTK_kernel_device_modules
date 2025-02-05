@@ -241,6 +241,10 @@ u32 get_min_freq_from_axi_mon(uint32_t mux_id)
 			min_freq = mminfra_freq;
 		else if (local_bus_freq <= mminfra_freq)
 			min_freq = local_bus_freq;
+		else
+			min_freq = mminfra_freq;
+	} else {
+		min_freq = mminfra_freq;
 	}
 	MM_MONITOR_INFO("mminfra_freq:%d, local_bus_freq:%d, min_freq:%d",
 		mminfra_freq, local_bus_freq, min_freq);
@@ -520,12 +524,13 @@ void set_bwl_to_aximon(uint32_t axi_mon_id, uint32_t r_total_budget, uint32_t r_
 void mtk_mmmc_enable_axi_limiter(uint32_t hwid, uint32_t axi_mon_state)
 {
 	u32 config = 0;
+	u32 mask = 0xc03;
 
 	if (axi_mon_state & 1 << AXI_MON_OSTDBL)
 		config = 0x403;
 	if (axi_mon_state & 1 << AXI_MON_BWL)
 		config |= 0x803;
-	write_axi_register_with_mask(hwid, MON_BMAN2, config, config);
+	write_axi_register_with_mask(hwid, MON_BMAN2, mask, config);
 	MM_MONITOR_INFO("(%#x):%#x, value:%#x",
 		MON_BMAN2, read_axi_register(hwid, MON_BMAN2), config);
 }
