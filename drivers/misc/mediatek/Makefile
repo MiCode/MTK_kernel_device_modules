@@ -74,7 +74,6 @@ obj-$(CONFIG_MTK_PTPOD_LEGACY) += eem_v2/
 obj-$(CONFIG_MTK_MKP) += mkp/
 obj-$(CONFIG_MTK_STATIC_POWER) += leakage_table/
 obj-$(CONFIG_MTK_STATIC_POWER_LEGACY) += leakage_table_v2/
-obj-$(CONFIG_EXTCON_MTK_USB) += extcon/
 obj-$(CONFIG_MTK_VOW_SUPPORT) += vow/
 obj-$(CONFIG_MTK_PERFORMANCE_MODULE) += performance/
 obj-$(CONFIG_MTK_PERF_COMMON) += perf_common/
