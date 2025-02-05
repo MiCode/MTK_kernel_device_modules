@@ -4352,8 +4352,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mmpc-total-current-pmqos-bw = <0xdec>;
 		mmpc-total-current-slb-bw = <0xdec>;
 
-		r-hrt-ostdl = <1>;
-		w-hrt-ostdl = <1>;
+		r-hrt-ostdl = <0>;
+		w-hrt-ostdl = <3>;
+		r-srt-ostdl = <1>;
+		w-srt-ostdl = <2>;
 		bwl-hrt-r-margin = <100>;
 		bwl-hrt-w-margin = <100>;
 		bwl-srt-r-margin = <100>;
