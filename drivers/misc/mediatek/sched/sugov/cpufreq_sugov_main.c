@@ -1552,11 +1552,10 @@ static int sugov_init(struct cpufreq_policy *policy)
 	if (ret)
 		goto fail;
 
-	sugov_eas_rebuild_sd();
-
 	policy->dvfs_possible_from_any_cpu = 1;
 
 out:
+	sugov_eas_rebuild_sd();
 	mutex_unlock(&global_tunables_lock);
 	return 0;
 
