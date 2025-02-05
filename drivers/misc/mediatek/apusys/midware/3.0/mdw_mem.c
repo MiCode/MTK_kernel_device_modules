@@ -317,6 +317,7 @@ struct mdw_mem_map *mdw_mem_create_map(struct mdw_fpriv *mpriv, struct dma_buf *
 	map->flags = flags;
 	map->buf_type = buf_type;
 	map->device_va = map->sysmap->device_va;
+	map->mem_type = mem_type;
 	map->size = map->sysmap->size; //info from sysmap
 	map->vaddr = map->sysmap->vaddr; //info from sysmap
 	/* insert to dev */
@@ -572,7 +573,9 @@ static int mdw_mem_ioctl_map(struct mdw_fpriv *mpriv,
 
 	/* add to u_hash */
 	hash_add(mpriv->u_map_hash, &map->fpriv_node, (uint64_t)map->dbuf);
+	memset(args, 0, sizeof(*args));
 	args->out.map.device_va = map->device_va;
+	args->out.map.type = map->mem_type;
 
 	mdw_map_show(map);
 

@@ -95,6 +95,7 @@ struct mdw_mem_map {
 	struct mdw_fpriv *mpriv;
 	uint64_t flags;
 	struct dma_buf *dbuf;
+	enum mdw_mem_type mem_type;
 	enum mdw_buf_type buf_type;
 
 	struct apu_sysmem_map *sysmap; //from apu_sysmem
