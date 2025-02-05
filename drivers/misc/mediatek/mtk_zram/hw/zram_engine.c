@@ -627,6 +627,10 @@ static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
 
 		smp_rmb();
 
+		/* The wake up is premature. Continue with the next one */
+		if (start == end)
+			continue;
+
 		if (start != fifo->pp_prev_end)
 			pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
 

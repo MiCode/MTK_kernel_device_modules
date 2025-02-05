@@ -47,7 +47,7 @@ static DEFINE_MUTEX(zram_index_mutex);
 static int zram_major;
 static const char *default_compressor = "lz4";
 #if PAGE_SIZE == 4096
-static const char *default_mode = "swonly";
+static const char *default_mode = "hwonly";
 #else
 static const char *default_mode = "swonly";
 #endif
@@ -2388,7 +2388,9 @@ again:
 	/* Wait for HW available */
 	if (ret == -EBUSY) {
 		if (wait) {
+#ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
+#endif
 			atomic64_inc(&zram->stats.hw_dec_busy_wait);
 
 			/* HW is busy. Relinquish CPU to take a breath. */
@@ -2435,7 +2437,9 @@ again:
 	/* Wait for HW available */
 	if (ret == -EBUSY) {
 		if (wait) {
+#ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
+#endif
 			atomic64_inc(&zram->stats.hw_busy_wait);
 
 			/* HW is busy. Relinquish CPU to take a breath. */
@@ -2702,7 +2706,9 @@ again:
 	/* Wait for HW available */
 	if (ret == -EBUSY) {
 		if (wait) {
+#ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
+#endif
 			atomic64_inc(&zram->stats.hw_dec_busy_wait);
 
 			/* HW is busy. Relinquish CPU to take a breath. */
@@ -2754,7 +2760,9 @@ again:
 	/* Wait for HW available */
 	if (ret == -EBUSY) {
 		if (wait) {
+#ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
+#endif
 			atomic64_inc(&zram->stats.hw_busy_wait);
 
 			/* HW is busy. Relinquish CPU to take a breath. */
@@ -3017,8 +3025,10 @@ const struct zram_mode_operations mode_ops[] = {
 	},
 	[1] = {
 		.name		= "hwonly",
-		.bio_read	= zram_hwonly_bio_read,
-		.hw_bvec_read	= zram_hw_bvec_read_dc,
+		//.bio_read	= zram_hwonly_bio_read,
+		.bio_read	= zram_bio_read,
+		//.hw_bvec_read	= zram_hw_bvec_read_dc,
+		.hw_bvec_read	= NULL,
 		.bio_write	= zram_hwonly_bio_write,
 		.hw_bvec_write	= zram_hw_bvec_write_dc,
 		.to_zspool	= NULL,
