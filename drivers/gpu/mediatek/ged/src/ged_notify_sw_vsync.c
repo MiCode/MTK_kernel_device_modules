@@ -274,7 +274,7 @@ void ged_eb_dvfs_trace_dump(void)
 	static int pre_freq_id;
 	GED_DVFS_COMMIT_TYPE eCommitType;
 	static int apply_lb_async;
-	int top_freq_diff = 0, sc_freq_diff = 0;
+	int top_freq_diff = 0, sc_freq_diff = 0, sc_avg_freq_diff = 0;
 	struct cmd_info custom_ceiling_info ={0};
 	struct cmd_info custom_boost_info ={0};
 	union combineData tmp_multi = {0};
@@ -313,10 +313,12 @@ void ged_eb_dvfs_trace_dump(void)
 			ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
 		top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
 			ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+		sc_avg_freq_diff = ged_get_cur_stack_avg_freq() > 0 ?
+			ged_get_cur_stack_avg_freq() - ged_get_cur_real_stack_freq() : 0;
 
 		trace_GPU_DVFS__Frequency(ged_get_cur_stack_freq() / 1000,
 			ged_get_cur_real_stack_freq() / 1000, ged_get_cur_top_freq() / 1000,
-			sc_freq_diff / 1000, top_freq_diff / 1000);
+			sc_freq_diff / 1000, top_freq_diff / 1000, sc_avg_freq_diff / 1000);
 
 		trace_tracing_mark_write(5566, "gpu_freq_ceil",
 			ged_get_freq_by_idx(ui32CeilingID) / 1000);
@@ -455,7 +457,7 @@ void ged_eb_dvfs_trace_dump(void)
 void ged_eb_dvfs_frame_done_dump(void)
 {
 #if defined(MTK_GPU_EB_SUPPORT)
-	int top_freq_diff = 0, sc_freq_diff = 0;
+	int top_freq_diff = 0, sc_freq_diff = 0, sc_avg_freq_diff = 0;
 	union combineData tmp_multi = {0};
 	union combineData tmp_multi_async = {0};
 	struct cmd_info custom_ceiling_info ={0};
@@ -538,10 +540,12 @@ void ged_eb_dvfs_frame_done_dump(void)
 		ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
 	top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
 		ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+	sc_avg_freq_diff = ged_get_cur_stack_avg_freq() > 0 ?
+		ged_get_cur_stack_avg_freq() - ged_get_cur_real_stack_freq() : 0;
 
 	trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
 		div_u64(ged_get_cur_real_stack_freq(), 1000), div_u64(ged_get_cur_top_freq(), 1000),
-		div_s64(sc_freq_diff, 1000), div_s64(top_freq_diff, 1000));
+		div_s64(sc_freq_diff, 1000), div_s64(top_freq_diff, 1000), div_s64(sc_avg_freq_diff, 1000));
 
 	trace_tracing_mark_write(5566, "preserve",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE));

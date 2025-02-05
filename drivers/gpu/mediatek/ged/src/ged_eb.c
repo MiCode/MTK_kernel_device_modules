@@ -502,6 +502,14 @@ static void ged_eb_sysram_debug_data_write(void)
 						dbg_data2[i] = tmp_multi.oneVar.var1;
 					}
 					break;
+				case GPU_EB_LOG_DUMP_STACK_FREQ2:
+					tmp_multi =	mtk_gpueb_sysram_multi_read(
+							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
+					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 2) {
+						dbg_data[i] = tmp_multi.twoVar.var1;
+						dbg_data2[i] = tmp_multi.twoVar.var2;
+					}
+					break;
 				default:
 					break;
 				}
@@ -549,6 +557,9 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 			case GPU_EB_LOG_DUMP_PRESERVE4:
 				trace_GPU_DVFS__EBRB_FOUR_ARG_PRESERVE(dbg_data, dbg_data2, dbg_data3, dbg_data4);
+				break;
+			case GPU_EB_LOG_DUMP_STACK_FREQ2:
+				trace_GPU_DVFS__EBRB_FREQ2(dbg_data, dbg_data2);
 				break;
 			default:
 				break;

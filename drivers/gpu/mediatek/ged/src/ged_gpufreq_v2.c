@@ -545,6 +545,11 @@ unsigned int ged_get_cur_stack_out_freq(void)
 	return gpufreq_get_cur_out_freq(TARGET_DEFAULT);
 }
 
+unsigned int ged_get_cur_stack_avg_freq(void)
+{
+	return gpufreq_get_cur_avg_freq(TARGET_DEFAULT);
+}
+
 unsigned int ged_get_cur_real_stack_freq(void)
 {
 	unsigned int cur_minfreq = ged_get_freq_by_idx(ged_get_min_oppidx());

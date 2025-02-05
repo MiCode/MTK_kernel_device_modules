@@ -243,14 +243,15 @@ TRACE_EVENT(GPU_DVFS__Policy__VERSION,
 
 TRACE_EVENT(GPU_DVFS__Frequency,
 	TP_PROTO(unsigned int virtual_stack, unsigned int real_stack, unsigned int real_top,
-			int d_stack, int d_top),
-	TP_ARGS(virtual_stack, real_stack, real_top, d_stack, d_top),
+			int d_stack, int d_top , int d_avg_stack),
+	TP_ARGS(virtual_stack, real_stack, real_top, d_stack, d_top, d_avg_stack),
 	TP_STRUCT__entry(
 		__field(unsigned int, virtual_stack)
 		__field(unsigned int, real_stack)
 		__field(unsigned int, real_top)
 		__field(int, d_stack)
 		__field(int, d_top)
+		__field(int, d_avg_stack)
 	),
 	TP_fast_assign(
 		__entry->virtual_stack = virtual_stack;
@@ -258,10 +259,11 @@ TRACE_EVENT(GPU_DVFS__Frequency,
 		__entry->real_top = real_top;
 		__entry->d_stack = d_stack;
 		__entry->d_top = d_top;
+		__entry->d_avg_stack = d_avg_stack;
 	),
-	TP_printk("virtual_stack=%u, real_stack=%u, real_top=%u, d_stack=%d, d_top=%d",
+	TP_printk("virtual_stack=%u, real_stack=%u, real_top=%u, d_stack=%d, d_top=%d, d_avg_stack=%d",
 		__entry->virtual_stack, __entry->real_stack, __entry->real_top,
-		__entry->d_stack, __entry->d_top)
+		__entry->d_stack, __entry->d_top, __entry->d_avg_stack)
 );
 
 TRACE_EVENT(GPU_DVFS__Loading,
@@ -2389,6 +2391,35 @@ TRACE_EVENT(GPU_DVFS__EBRB_FOUR_ARG_PRESERVE,
 		__entry->u5, __entry->r5, __entry->v5, __entry->c5,
 		__entry->u6, __entry->r6, __entry->v6, __entry->c6,
 		__entry->u7, __entry->r7, __entry->v7, __entry->c7)
+);
+
+TRACE_EVENT(GPU_DVFS__EBRB_FREQ2,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2),
+	TP_ARGS(arg, arg2),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+	),
+
+	TP_printk("u0=%u|%u u1=%u|%u u2=%u|%u u3=%u|%u u4=%u|%u u5=%u|%u u6=%u|%u u7=%u|%u",
+		__entry->u0, __entry->r0,
+		__entry->u1, __entry->r1,
+		__entry->u2, __entry->r2,
+		__entry->u3, __entry->r3,
+		__entry->u4, __entry->r4,
+		__entry->u5, __entry->r5,
+		__entry->u6, __entry->r6,
+		__entry->u7, __entry->r7)
+
 );
 
 #endif /* _TRACE_GED_H */
