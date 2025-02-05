@@ -2010,6 +2010,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/gpu:gpu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6789")
         mgk_64_device_modules.append("drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_wrapper_legacy.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/conn_md/conn_md_drv.ko")
 
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6789.ko":"mt6789"})
         mgk_64_platform_device_modules.update({"drivers/gpu/mediatek/gpufreq/v2_legacy/mtk_gpufreq_mt6855.ko":"mt6855"})
@@ -2419,9 +2420,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/upower/Upower.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/ppm_v3/mtk_ppm_v3.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/conn_md/conn_md_drv.ko")
-
-    if "mt6789_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/misc/mediatek/conn_md/conn_md_drv.ko")
 
     if "mt6768_overlay.config" in DEFCONFIG_OVERLAYS:
