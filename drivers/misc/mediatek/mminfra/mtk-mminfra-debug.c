@@ -3,7 +3,7 @@
  * Copyright (c) 2021 MediaTek Inc.
  * Author: Anthony Huang <anthony.huang@mediatek.com>
  */
-
+#if IS_ENABLED(CONFIG_MTK_MMINFRA)
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
@@ -22,6 +22,7 @@
 #include "vcp_status.h"
 #include "clk-mtk.h"
 #include "mtk-pd-chk.h"
+
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
@@ -1590,6 +1591,8 @@ static void __exit mtk_mminfra_debug_exit(void)
 
 module_init(mtk_mminfra_debug_init);
 module_exit(mtk_mminfra_debug_exit);
+#endif
+
 MODULE_DESCRIPTION("MTK MMInfra Debug driver");
 MODULE_AUTHOR("Anthony Huang<anthony.huang@mediatek.com>");
 MODULE_LICENSE("GPL v2");

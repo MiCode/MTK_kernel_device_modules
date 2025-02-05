@@ -61,3 +61,90 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
 )
+
+ddk_headers(
+    name = "mtk_mminfra_debug_headers",
+    hdrs = glob([
+        "mtk-mminfra-debug.h",
+    ]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mminfra-debug",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_MMINFRA": {
+            True: [
+                "mtk-mminfra-debug.c",
+            ],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:smi_dbg_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+    ],
+)
+
+ddk_headers(
+    name = "mtk_mminfra_imax_headers",
+    hdrs = glob([
+        "mtk-mminfra-imax.h",
+    ]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mminfra-imax",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_MMINFRA": {
+            True: [
+                "mtk-mminfra-imax.c",
+            ],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+    ],
+)
