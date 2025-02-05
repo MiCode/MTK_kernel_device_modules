@@ -20438,6 +20438,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	vmm_ctrl: vmm-ctrl {
 		compatible = "mediatek,vmm_notifier_mt6993";
 		pd-id = <0>;
+		vmm-vcp-supply = <&vcp>;
 	};
 
 	imgsys_cmdq: imgsys-cmdq@15002000 {
