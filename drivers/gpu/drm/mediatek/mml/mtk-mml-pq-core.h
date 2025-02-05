@@ -24,10 +24,13 @@
 #define AAL_DUAL_INFO_NUM (16)
 #define AAL_CLARITY_STATUS_NUM (7)
 #define C3D_LUT_NUM (4913) // 17*17*17
+#define HDR_OOTF_NUM (513)
+#define HDR_OETF_NUM (513)
 
 #define CMDQ_GPR_UPDATE	(2)
 
 #define HDR_HIST_NUM (58)
+#define HDR_HIST_128_NUM (136)
 
 #define TDSHP_CONTOUR_HIST_NUM (17)
 #define TDSHP_CLARITY_STATUS_NUM (12)
@@ -481,6 +484,14 @@ int mml_pq_dc_aal_readback(struct mml_task *task, u8 pipe, u32 *phist);
  *
  */
 void mml_pq_set_hdr_status(struct mml_pq_task *pq_task, u8 out_idx);
+
+/*
+ * mml_pq_set_hdr_histogram_bin - set hdr histogram bin to mml-pq-core
+ *
+ * @hdr_histogram_bin:	hdr histogram bin
+ *
+ */
+void mml_pq_set_hdr_histogram_bin(u32 hdr_histogram_bin);
 
 /*
  * mml_pq_hdr_flag_check - check hdr flag reset or not

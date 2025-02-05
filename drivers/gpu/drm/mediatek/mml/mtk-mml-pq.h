@@ -119,6 +119,9 @@ struct mml_pq_comp_config_result {
 	u32 c3d_lut_num;
 	u32 *c3d_lut; // 9*9*9*3
 	bool is_set_test;
+	u32 *hdr_ootf;
+	u32 *hdr_oetf;
+	u32 update_curve; // 1 update_ootf 2 update_oetf 3 update_both
 	u32 fg_reg_cnt;
 	struct mml_pq_reg *fg_regs;
 	bool is_fg_tuning;

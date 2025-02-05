@@ -27,6 +27,7 @@
 #define HDR_WAIT_TIMEOUT_MS (50)
 #define HDR_REG_NUM (70)
 #define HDR_HIST_CNT (57)
+#define HDR_HIST_128_CNT (128)
 /* count of reserved cross page anchor label count
  * min count would be
  *	((HDR_CURVE_NUM * 2 + HDR_REG_NUM * 3) / CMDQ_NUM_CMD(CMDQ_CMD_BUFFER_SIZE) + 3)
@@ -34,6 +35,8 @@
  */
 #define HDR_LABEL_CNT_REG	6
 #define HDR_LABEL_CNT_CURVE	7
+#define HDR_LABEL_CNT_OOTF 4
+#define HDR_LABEL_CNT_OETF 4
 #define HDR_LABEL_CNT		(HDR_LABEL_CNT_REG + HDR_LABEL_CNT_CURVE)
 #define call_hw_op(_comp, op, ...) \
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
@@ -71,6 +74,21 @@ enum mml_hdr_reg_index {
 	HDR_A_LUMINANCE,
 	HDR_DEBUG,
 	HDR_DUMMY1,
+	HDR_EOTF_CTRL,
+	HDR_SHADOW_CLTR,
+	HDR_LUT_CTRL_0,
+	HDR_LUT_CTRL_1,
+	HDR_LUT_CTRL_2,
+	HDR_LUT_CTRL_3,
+	HDR_LUT_CTRL_4,
+	HDR_LUT_CTRL_6,
+	HDR_HIST_REPORT_0,
+	HDR_HIST_REPORT_1,
+	HDR_HIST_REPORT_2,
+	HDR_HIST_REPORT_3,
+	HDR_HIST_READ_0,
+	HDR_HIST_READ_1,
+	HDR_OOTF_CTRL_0,
 	HDR_REG_MAX_COUNT
 };
 
@@ -106,6 +124,68 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 	[HDR_DEBUG] = 0x1e8,
 	[HDR_DUMMY1] = 0x1d8,
+	[HDR_EOTF_CTRL] = REG_NOT_SUPPORT,
+	[HDR_SHADOW_CLTR] = REG_NOT_SUPPORT,
+	[HDR_LUT_CTRL_0] = REG_NOT_SUPPORT,
+	[HDR_LUT_CTRL_1] = REG_NOT_SUPPORT,
+	[HDR_LUT_CTRL_2] = REG_NOT_SUPPORT,
+	[HDR_LUT_CTRL_3] = REG_NOT_SUPPORT,
+	[HDR_LUT_CTRL_4] = REG_NOT_SUPPORT,
+	[HDR_LUT_CTRL_6] = REG_NOT_SUPPORT,
+	[HDR_HIST_REPORT_0] = REG_NOT_SUPPORT,
+	[HDR_HIST_REPORT_1] = REG_NOT_SUPPORT,
+	[HDR_HIST_REPORT_2] = REG_NOT_SUPPORT,
+	[HDR_HIST_REPORT_3] = REG_NOT_SUPPORT,
+	[HDR_HIST_READ_0] = REG_NOT_SUPPORT,
+	[HDR_HIST_READ_1] = REG_NOT_SUPPORT,
+	[HDR_OOTF_CTRL_0] = REG_NOT_SUPPORT,
+};
+
+static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
+	[HDR_TOP] = 0x000,
+	[HDR_RELAY] = 0x004,
+	[HDR_INTSTA] = 0x00c,
+	[HDR_ENGSTA] = 0x010,
+	[HDR_SIZE_0] = 0x014,
+	[HDR_SIZE_1] = 0x018,
+	[HDR_SIZE_2] = 0x01c,
+	[HDR_HIST_CTRL_0] = 0x020,
+	[HDR_HIST_CTRL_1] = 0x024,
+	[HDR_HIST_CTRL_2] = 0x028,
+	[HDR_3x3_COEF_00] = 0x038,
+	[HDR_B_CHANNEL_NR] = 0x0D8,
+	[HDR_HIST_ADDR] = 0x0dc,
+	[HDR_HIST_DATA] = 0x0e0,
+	[HDR_A_LUMINANCE] = 0x0e4,
+	[HDR_GAIN_TABLE_0] = 0x0e8,
+	[HDR_GAIN_TABLE_1] = 0x0ec,
+	[HDR_GAIN_TABLE_2] = 0x0f0,
+	[HDR_LBOX_DET_4] = 0x104,
+	[HDR_CURSOR_CTRL] = 0x10c,
+	[HDR_CURSOR_POS] = 0x110,
+	[HDR_CURSOR_COLOR] = 0x114,
+	[HDR_TILE_POS] = 0x118,
+	[HDR_CURSOR_BUF0] = 0x11c,
+	[HDR_CURSOR_BUF1] = 0x120,
+	[HDR_CURSOR_BUF2] = 0x124,
+	[HDR_TONE_MAP_TOP] = 0x1b0,
+	[HDR_DEBUG] = 0x1e8,
+	[HDR_DUMMY1] = 0x1d8,
+	[HDR_EOTF_CTRL] = 0x0ec,
+	[HDR_SHADOW_CLTR] = 0x0f4,
+	[HDR_LUT_CTRL_0] = 0x18c,
+	[HDR_LUT_CTRL_1] = 0x190,
+	[HDR_LUT_CTRL_2] = 0x194,
+	[HDR_LUT_CTRL_3] = 0x198,
+	[HDR_LUT_CTRL_4] = 0x19c,
+	[HDR_LUT_CTRL_6] = 0x1c8,
+	[HDR_HIST_REPORT_0] = 0x1b4,
+	[HDR_HIST_REPORT_1] = 0x1b8,
+	[HDR_HIST_REPORT_2] = 0x1bc,
+	[HDR_HIST_REPORT_3] = 0x1c0,
+	[HDR_HIST_READ_0] = 0x0dc,
+	[HDR_HIST_READ_1] = 0x0e0,
+	[HDR_OOTF_CTRL_0] = 0x1a4,
 };
 
 struct hdr_data {
@@ -117,6 +197,8 @@ struct hdr_data {
 	u8 rb_mode;
 	bool vcp_readback;	/* WA: use vcp to replace gce readback */
 	bool enable_dummy;	/* WA: enable dummy to ignore fg out_mask */
+	bool two_curve;     /* Jayer HW Change two curve array OOTF OETF*/
+	u32 histogram_bin;
 };
 
 static const struct hdr_data mt6983_hdr_data = {
@@ -172,6 +254,26 @@ static const struct hdr_data mt6991_mmlf_hdr_data = {
 	.enable_dummy = true,
 };
 
+static const struct hdr_data mt6993_mmlt_hdr_data = {
+	.min_tile_width = 16,
+	.cpr = {CMDQ_CPR_MML0_PQ0_ADDR, CMDQ_CPR_MML0_PQ1_ADDR},
+	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.reg_table = hdr_reg_table_mt6993,
+	.rb_mode = RB_EOF_MODE,
+	.two_curve = true,
+	.histogram_bin = 128,
+};
+
+static const struct hdr_data mt6993_mmlf_hdr_data = {
+	.min_tile_width = 16,
+	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.reg_table = hdr_reg_table_mt6993,
+	.rb_mode = RB_EOF_MODE,
+	.two_curve = true,
+	.histogram_bin = 128,
+};
+
 struct mml_comp_hdr {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
@@ -221,8 +323,12 @@ struct hdr_frame_data {
 	u16 labels[HDR_LABEL_TOTAL];
 	struct mml_reuse_array reuse_reg;
 	struct mml_reuse_array reuse_curve;
+	struct mml_reuse_array reuse_curve_ootf;
+	struct mml_reuse_array reuse_curve_oetf;
 	struct mml_reuse_offset offs_reg[HDR_LABEL_CNT_REG];
 	struct mml_reuse_offset offs_curve[HDR_LABEL_CNT_CURVE];
+	struct mml_reuse_offset offs_ootf[HDR_LABEL_CNT_OOTF];
+	struct mml_reuse_offset offs_oetf[HDR_LABEL_CNT_OETF];
 	bool is_hdr_need_readback;
 	bool config_success;
 };
@@ -248,6 +354,10 @@ static s32 hdr_prepare(struct mml_comp *comp, struct mml_task *task,
 	hdr_frm->reuse_reg.offs_size = ARRAY_SIZE(hdr_frm->offs_reg);
 	hdr_frm->reuse_curve.offs = hdr_frm->offs_curve;
 	hdr_frm->reuse_curve.offs_size = ARRAY_SIZE(hdr_frm->offs_curve);
+	hdr_frm->reuse_curve_ootf.offs = hdr_frm->offs_ootf;
+	hdr_frm->reuse_curve_ootf.offs_size = ARRAY_SIZE(hdr_frm->offs_ootf);
+	hdr_frm->reuse_curve_oetf.offs = hdr_frm->offs_oetf;
+	hdr_frm->reuse_curve_oetf.offs_size = ARRAY_SIZE(hdr_frm->offs_oetf);
 	return 0;
 }
 
@@ -329,7 +439,10 @@ static void hdr_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_add
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 
 	/* Enable engine and shadow */
-	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP], 0x100001, 0x00308001);
+	if (hdr->data->two_curve)
+		cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP], 0x1, 0x1);
+	else
+		cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP], 0x100001, 0x00308001);
 }
 
 static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
@@ -354,10 +467,18 @@ static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
 			base_pa + hdr->data->reg_table[HDR_TOP], 0x0, 0x08080000);
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + hdr->data->reg_table[HDR_3x3_COEF_00], 0x0, 0x1);
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_B_CHANNEL_NR], 0x0, 0x1);
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_A_LUMINANCE], 0x0, 0x1);
+		if (hdr->data->two_curve) {
+			/* disable ootf and oetf */
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0], 0x0, 0x1);
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_TOP], 0 << 27, 1 << 27);
+		} else {
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_B_CHANNEL_NR], 0x0, 0x1);
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_A_LUMINANCE], 0x0, 0x1);
+		}
 		// RGB In, enable R2Y, disable Y2R
 		//TODO: Add R2Y matrix detail setting
 		if(MML_FMT_IS_RGB(src->format)) {
@@ -468,6 +589,71 @@ static s32 hdr_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static s32 hdr_write_two_curve(struct mml_comp *comp, struct mml_task *task,
+			    struct mml_comp_config *ccfg, u32 *ootf_curve, u32 *oetf_curve, u32 update_curve)
+{
+	struct mml_frame_config *cfg = task->config;
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	struct hdr_frame_data *hdr_frm = hdr_frm_data(ccfg);
+	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
+	const phys_addr_t base_pa = comp->base_pa;
+	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
+	u32 i = 0;
+	/* disable ping-pong (reg_lut_ping_pong_en) so not care reg_lut_update*/
+	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_6], 1 << 0, 0x1);
+	/* set HDR_LUT_CTRL_0 reg_lut_init_addr = 0, reg_lut_load_en = 1, and reg_lut_fast_md = 1*/
+	/* reg_lut_sel = 0 reg_lut_wd_dup_md = 0 need to check*/
+	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0],
+			(0 << 8) | (0 << 5) | (0 << 3) | (1 << 2) | (1 << 0), U32_MAX);
+	if (update_curve & 1) {
+		for (i = 0; i < HDR_OOTF_NUM - 1; i+=8) {
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_1],
+				(ootf_curve[i + 7] << 16) | (ootf_curve[i + 6]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_ootf);
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_2],
+				(ootf_curve[i + 5] << 16) | (ootf_curve[i + 4]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_ootf);
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_3],
+				(ootf_curve[i + 3] << 16) | (ootf_curve[i + 2]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_ootf);
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_4],
+				(ootf_curve[i + 1] << 16) | (ootf_curve[i + 0]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_ootf);
+		}
+		mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_4],
+			ootf_curve[512], U32_MAX, reuse, cache, &hdr_frm->reuse_curve_ootf);
+	}
+	/* set lut_load_en = 0*/
+	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0], 0 << 0, 0x1);
+	/* set HDR_LUT_CTRL_0 reg_lut_init_addr = 0, reg_lut_load_en = 1, and reg_lut_fast_md = 1*/
+	/* reg_lut_sel = 1*/
+	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0],
+		(0 << 8) | (1 << 5) | (1 << 3) | (1 << 2) | (1 << 0), U32_MAX);
+	if (update_curve & 2) {
+		for (i = 0; i < HDR_OETF_NUM - 1; i+=8) {
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_1],
+				(oetf_curve[i + 7] << 16) | (oetf_curve[i + 6]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_oetf);
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_2],
+				(oetf_curve[i + 5] << 16) | (oetf_curve[i + 4]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_oetf);
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_3],
+				(oetf_curve[i + 3] << 16) | (oetf_curve[i + 2]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_oetf);
+			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_4],
+				(oetf_curve[i + 1] << 16) | (oetf_curve[i + 0]), U32_MAX, reuse, cache,
+				&hdr_frm->reuse_curve_oetf);
+		}
+		mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_4],
+			oetf_curve[512], U32_MAX, reuse, cache, &hdr_frm->reuse_curve_oetf);
+	}
+	/* set lut_load_en = 0*/
+	//cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0], 0 << 0, 0x1);
+	/* reg_lut_update = 1*/
+	//cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_6], 1 << 1, 0x2);
+	return 0;
+}
 
 static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg)
@@ -483,6 +669,9 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_pq_comp_config_result *result;
 	struct mml_pq_reg *regs;
 	u32 *curve;
+	u32 *ootf_curve;
+	u32 *oetf_curve;
+	u32 update_curve;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	s32 ret;
@@ -536,6 +725,9 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	regs = result->hdr_regs;
 	curve = result->hdr_curve;
+	ootf_curve = result->hdr_ootf;
+	oetf_curve = result->hdr_oetf;
+	update_curve = result->update_curve;
 
 	/* TODO: use different regs */
 	mml_pq_msg("%s:config hdr regs, count: %d", __func__, result->hdr_reg_cnt);
@@ -547,11 +739,15 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
-		for (i = 0; i < HDR_CURVE_NUM; i += 2) {
-			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_1],
-				curve[i], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
-			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_2],
-				curve[i + 1], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
+		if (hdr->data->two_curve) {
+			hdr_write_two_curve(comp, task, ccfg, ootf_curve, oetf_curve, update_curve);
+		} else {
+			for (i = 0; i < HDR_CURVE_NUM; i += 2) {
+				mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_1],
+					curve[i], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
+				mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_2],
+					curve[i + 1], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
+			}
 		}
 	} else if (mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) {
 		hdr->curve_pq_task = task->pq_task;
@@ -585,14 +781,28 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		hdr_hist_ctrl(comp, task, ccfg, result);
 	}
 
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + hdr->data->reg_table[HDR_HIST_ADDR], 1 << 8, 1 << 8);
+	if (hdr->data->two_curve) {
+		/* userspace already setted*/
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_2], 1 << 26, 1 << 26);
+	} else {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_ADDR], 1 << 8, 1 << 8);
+	}
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + hdr->data->reg_table[HDR_HIST_CTRL_2], 1 << 31, 1 << 31);
 
-	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2)
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_0], 1 << 11, 1 << 11);
+	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
+		if (hdr->data->two_curve) {
+			/* set lut_load_en = 0*/
+			cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0], 0 << 0, 0x1);
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_LUT_CTRL_6], 1 << 1, 1 << 1);
+		} else {
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_0], 1 << 11, 1 << 11);
+		}
+	}
 
 	mml_pq_msg("%s is_hdr_need_readback[%d] reuses count %u %u",
 		__func__, result->is_hdr_need_readback,
@@ -727,8 +937,9 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP],
 		(hdr_first_tile << 5) | (hdr_last_tile << 6), 0x00000060);
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + hdr->data->reg_table[HDR_HIST_ADDR], (hdr_first_tile << 9), 0x00000200);
+	if (!hdr->data->two_curve)
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_ADDR], (hdr_first_tile << 9), 0x00000200);
 
 	mml_pq_msg("%s %d: jobid[%d] hdr_hist_begin_x[%d] hdr_hist_end_x[%d] out_hist_xs[%d]",
 		__func__, idx, task->job.jobid, hdr_hist_begin_x, hdr_hist_end_x,
@@ -820,6 +1031,13 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 		return;
 	}
 
+	/* reg_hdr_hist_rb_en = 1, reg_hdr_hist_fast_md = 1, reg_hdr_hist_sram_ini_addr = 0 */
+	if (hdr->data->two_curve) {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_READ_0], (0 << 5) | (1 << 3) | (1 << 2) |
+				(0 << 1), 0xFEE);
+	}
+
 	pa = task->pq_task->hdr_hist[pipe]->pa;
 
 	/* readback to this pa */
@@ -838,11 +1056,14 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	begin_pa = cmdq_pkt_get_pa_by_offset(pkt, hdr_frm->begin_offset);
 
 	/* read to value cpr */
-	cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_DATA], idx_val);
+	if (hdr->data->two_curve)
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_READ_1], idx_val);
+	else
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_DATA], idx_val);
 	/* write value spr to dst cpr */
 	cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
 
-	/* jump forward end if match, if spr1 >= 57 - 1	*/
+	/* jump forward end if match, if spr1 >= 57 - 1	or 128 - 1*/
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX0, 0);
 	hdr_frm->condi_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
@@ -863,7 +1084,10 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	lop.reg = true;
 	lop.idx = idx_counter;
 	rop.reg = false;
-	rop.value =  HDR_HIST_CNT - 1;
+	if (hdr->data->two_curve)
+		rop.value = HDR_HIST_128_CNT - 1;
+	else
+		rop.value = HDR_HIST_CNT - 1;
 	cmdq_pkt_cond_jump_abs(pkt, CMDQ_THR_SPR_IDX0, &lop, &rop,
 		CMDQ_LESS_THAN_AND_EQUAL);
 	condi_inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, hdr_frm->condi_offset);
@@ -876,6 +1100,78 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_LBOX_DET_4], idx_val);
 	/* write value spr to dst cpr */
 	cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+	if (hdr->data->two_curve) {
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_EOTF_CTRL], idx_val);
+		/* write value spr to dst cpr */
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_TOP], idx_val);
+		/* write value spr to dst cpr */
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_CTRL_2], idx_val);
+		/* write value spr to dst cpr */
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_REPORT_0], idx_val);
+		/* write value spr to dst cpr */
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_REPORT_1], idx_val);
+		/* write value spr to dst cpr */
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_REPORT_2], idx_val);
+		/* write value spr to dst cpr */
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+
+		lop.reg = true;
+		lop.idx = idx_out;
+		rop.reg = false;
+		rop.value = 4;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, idx_out, &lop, &rop);
+
+		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_REPORT_3], idx_val);
+		/* write value spr to dst cpr */
+		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	}
 
 	if ((mml_pq_debug_mode & MML_PQ_HIST_CHECK)) {
 		lop.reg = true;
@@ -897,6 +1193,11 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_read_addr(pkt, base_pa + hdr->data->reg_table[HDR_HIST_CTRL_1], idx_val);
 		/* write value spr to dst cpr */
 		cmdq_pkt_write_reg_indriect(pkt, idx_out64, idx_val, U32_MAX);
+	}
+
+	if (hdr->data->two_curve) {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_READ_0], 0 << 2, 0x2);
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
@@ -935,6 +1236,75 @@ exit:
 
 }
 
+static s32 reconfig_frame_ootf(struct mml_comp *comp, struct mml_task *task,
+			      struct mml_comp_config *ccfg, u32 *ootf_curve)
+{
+	struct hdr_frame_data *hdr_frm = hdr_frm_data(ccfg);
+	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
+	int i = 0, j = 0, cnt = 0, val_idx = 0;
+
+	for (i = 0; i < hdr_frm->reuse_curve_ootf.idx; i++)
+		cnt += hdr_frm->reuse_curve_ootf.offs[i].cnt;
+
+	for (i = 0; i < cnt && val_idx < 512; i += 4, val_idx += 8) {
+		for (j = 0; j < 4; j++) {
+			if (i + j < hdr_frm->reuse_curve_ootf.offs[0].cnt)
+				mml_update_array(comp->id, reuse,
+					&hdr_frm->reuse_curve_ootf, 0, i + j,
+					(ootf_curve[val_idx + 7 - 2 * j] << 16) |
+					(ootf_curve[val_idx + 6 - 2 * j]));
+			else
+				mml_update_array(comp->id, reuse,
+					&hdr_frm->reuse_curve_ootf, 1,
+					i + j - hdr_frm->reuse_curve_ootf.offs[0].cnt,
+					(ootf_curve[val_idx + 7 - 2 * j] << 16) |
+					(ootf_curve[val_idx + 6 - 2 * j]));
+		}
+	}
+
+	if (cnt != 0)
+		mml_update_array(comp->id, reuse,
+			&hdr_frm->reuse_curve_ootf,
+				1, (i - hdr_frm->reuse_curve_ootf.offs[0].cnt),
+				ootf_curve[val_idx]);
+	return 0;
+}
+
+static s32 reconfig_frame_oetf(struct mml_comp *comp, struct mml_task *task,
+			      struct mml_comp_config *ccfg, u32 *oetf_curve)
+{
+	struct hdr_frame_data *hdr_frm = hdr_frm_data(ccfg);
+	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
+	int i = 0, j = 0, cnt = 0, val_idx = 0;
+
+	for (i = 0; i < hdr_frm->reuse_curve_oetf.idx; i++)
+		cnt += hdr_frm->reuse_curve_oetf.offs[i].cnt;
+
+	for (i = 0; i < cnt && val_idx < 512; i += 4, val_idx += 8) {
+		for (j = 0; j < 4; j++) {
+			if (i + j < hdr_frm->reuse_curve_oetf.offs[0].cnt)
+				mml_update_array(comp->id, reuse,
+					&hdr_frm->reuse_curve_oetf, 0, i + j,
+					(oetf_curve[val_idx + 7 - 2 * j] << 16) |
+					(oetf_curve[val_idx + 6 - 2 * j]));
+			else
+				mml_update_array(comp->id, reuse,
+					&hdr_frm->reuse_curve_oetf, 1,
+					i + j - hdr_frm->reuse_curve_oetf.offs[0].cnt,
+					(oetf_curve[val_idx + 7 - 2 * j] << 16) |
+					(oetf_curve[val_idx + 6 - 2 * j]));
+		}
+	}
+
+	if (cnt != 0)
+		mml_update_array(comp->id, reuse,
+			&hdr_frm->reuse_curve_oetf, 1,
+			(i - hdr_frm->reuse_curve_oetf.offs[0].cnt),
+			oetf_curve[val_idx]);
+
+	return 0;
+}
+
 static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 			      struct mml_comp_config *ccfg)
 {
@@ -946,6 +1316,9 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_pq_reg *regs;
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	u32 *curve;
+	u32 *ootf_curve;
+	u32 *oetf_curve;
+	u32 update_curve;
 	u32 i, j, val_idx;
 	s32 ret;
 	s8 mode = task->config->info.mode;
@@ -976,6 +1349,9 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	regs = result->hdr_regs;
 	curve = result->hdr_curve;
+	ootf_curve = result->hdr_ootf;
+	oetf_curve = result->hdr_oetf;
+	update_curve = result->update_curve;
 
 	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		val_idx = 0;
@@ -984,11 +1360,19 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 				mml_update_array(comp->id, reuse, &hdr_frm->reuse_reg, i, j,
 					regs[val_idx].value);
 
-		val_idx = 0;
-		for (i = 0; i < hdr_frm->reuse_curve.idx; i++)
-			for (j = 0; j < hdr_frm->reuse_curve.offs[i].cnt; j++, val_idx++)
-				mml_update_array(comp->id, reuse, &hdr_frm->reuse_curve, i, j,
-					curve[val_idx]);
+		if (hdr->data->two_curve) {
+			if (update_curve & 1)
+				reconfig_frame_ootf(comp, task, ccfg, ootf_curve);
+
+			if (update_curve & 2)
+				reconfig_frame_oetf(comp, task, ccfg, oetf_curve);
+
+		} else {
+			for (i = 0; i < hdr_frm->reuse_curve.idx; i++)
+				for (j = 0; j < hdr_frm->reuse_curve.offs[i].cnt; j++, val_idx++)
+					mml_update_array(comp->id, reuse,
+						&hdr_frm->reuse_curve, i, j, curve[val_idx]);
+		}
 	} else if (mode == MML_MODE_DIRECT_LINK) {
 		hdr->curve_pq_task = task->pq_task;
 		hdr->dual = cfg->dual;
@@ -1121,25 +1505,42 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 	bool vcp = hdr->data->vcp_readback;
 	u32 hist_up = 0, hist_down = 0, hist_height = 0;
 
-	for (i = 0; i < HDR_HIST_CNT; i++)
-		sum = sum + task->pq_task->hdr_hist[pipe]->va[offset/4+i];
+	if (hdr->data->two_curve) {
+		for (i = 0; i < HDR_HIST_128_CNT; i++)
+			sum = sum + task->pq_task->hdr_hist[pipe]->va[offset/4+i];
 
-	letter_up = ((task->pq_task->hdr_hist[pipe]->va[57] &
-		0x0000FFFF) >> 0);
-	letter_down = ((task->pq_task->hdr_hist[pipe]->va[57] &
-		0xFFFF0000) >> 16);
-	letter_height = letter_down - letter_up + 1;
+		letter_up = ((task->pq_task->hdr_hist[pipe]->va[128] &
+			0x0000FFFF) >> 0);
+		letter_down = ((task->pq_task->hdr_hist[pipe]->va[128] &
+			0xFFFF0000) >> 16);
+		letter_height = letter_down - letter_up + 1;
 
-	if (vcp) {
-		hist_up = ((readl(base + hdr->data->reg_table[HDR_HIST_CTRL_0]) &
+		hist_up = ((task->pq_task->hdr_hist[pipe]->va[129] &
 			0xFFFF0000) >> 16);
-		hist_down = ((readl(base + hdr->data->reg_table[HDR_HIST_CTRL_1]) &
+		hist_down = ((task->pq_task->hdr_hist[pipe]->va[130] &
 			0xFFFF0000) >> 16);
+
 	} else {
-		hist_up = ((task->pq_task->hdr_hist[pipe]->va[58] &
+		for (i = 0; i < HDR_HIST_CNT; i++)
+			sum = sum + task->pq_task->hdr_hist[pipe]->va[offset/4+i];
+
+		letter_up = ((task->pq_task->hdr_hist[pipe]->va[57] &
+			0x0000FFFF) >> 0);
+		letter_down = ((task->pq_task->hdr_hist[pipe]->va[57] &
 			0xFFFF0000) >> 16);
-		hist_down = ((task->pq_task->hdr_hist[pipe]->va[59] &
-			0xFFFF0000) >> 16);
+		letter_height = letter_down - letter_up + 1;
+
+		if (vcp) {
+			hist_up = ((readl(base + hdr->data->reg_table[HDR_HIST_CTRL_0]) &
+				0xFFFF0000) >> 16);
+			hist_down = ((readl(base + hdr->data->reg_table[HDR_HIST_CTRL_1]) &
+				0xFFFF0000) >> 16);
+		} else {
+			hist_up = ((task->pq_task->hdr_hist[pipe]->va[58] &
+				0xFFFF0000) >> 16);
+			hist_down = ((task->pq_task->hdr_hist[pipe]->va[59] &
+				0xFFFF0000) >> 16);
+		}
 	}
 	hist_height = hist_down - hist_up + 1;
 
@@ -1170,6 +1571,10 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 		expect_value_crop = crop_height * crop_width * 8;
 	}
 
+	/* get histogram total pixel from readback */
+	if (hdr->data->two_curve)
+		expect_value_hist = task->pq_task->hdr_hist[pipe]->va[132];
+
 	mml_pq_rb_msg("%s sum[%u] expect_value[%u %u %u] job_id[%d] pipe[%d]",
 		__func__, sum, expect_value_letter, expect_value_crop, expect_value_hist,
 		task->job.jobid, pipe);
@@ -1191,13 +1596,23 @@ static void hdr_histogram_check(struct mml_comp *comp, struct mml_task *task, u3
 		mml_pq_err("%s expect_value_letter_1[%u]",
 			__func__, expect_value_letter_1);
 
-		for (i = 0; i < HDR_HIST_CNT-1; i += 4)
-			mml_pq_err("%s hist[%d - %d] = [%d, %d, %d, %d]",
-				__func__, i, i+3,
-				task->pq_task->hdr_hist[pipe]->va[offset/4+i],
-				task->pq_task->hdr_hist[pipe]->va[offset/4+i+1],
-				task->pq_task->hdr_hist[pipe]->va[offset/4+i+2],
-				task->pq_task->hdr_hist[pipe]->va[offset/4+i+3]);
+		if (hdr->data->two_curve) {
+			for (i = 0; i < HDR_HIST_128_CNT-1; i += 4)
+				mml_pq_err("%s hist[%d - %d] = [%d, %d, %d, %d]",
+					__func__, i, i+3,
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i],
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i+1],
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i+2],
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i+3]);
+		} else {
+			for (i = 0; i < HDR_HIST_CNT-1; i += 4)
+				mml_pq_err("%s hist[%d - %d] = [%d, %d, %d, %d]",
+					__func__, i, i+3,
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i],
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i+1],
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i+2],
+					task->pq_task->hdr_hist[pipe]->va[offset/4+i+3]);
+		}
 
 		mml_pq_err("%s job_id[%d] pipe[%d] letter_height[%d] down[%d] up[%d]",
 			__func__, task->job.jobid, pipe, letter_height, letter_down, letter_up);
@@ -1300,14 +1715,20 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	void __iomem *base = comp->base;
 	u32 value[20];
-	u32 hdr_top;
+	u32 hdr_top, shadow_ctrl;
 
 	mml_err("hdr component %u dump:", comp->id);
 
 	/* Enable shadow read working */
-	hdr_top = read_reg_value(comp, hdr->data->reg_table[HDR_TOP]);
-	hdr_top |= 0x8000;
-	writel(hdr_top, base + hdr->data->reg_table[HDR_TOP]);
+	if (hdr->data->two_curve) {
+		shadow_ctrl = read_reg_value(comp, hdr->data->reg_table[HDR_SHADOW_CLTR]);
+		shadow_ctrl |= 0x1;
+		writel(shadow_ctrl, base + hdr->data->reg_table[HDR_SHADOW_CLTR]);
+	} else {
+		hdr_top = read_reg_value(comp, hdr->data->reg_table[HDR_TOP]);
+		hdr_top |= 0x8000;
+		writel(hdr_top, base + hdr->data->reg_table[HDR_TOP]);
+	}
 
 	value[0] = read_reg_value(comp, hdr->data->reg_table[HDR_TOP]);
 	value[1] = read_reg_value(comp, hdr->data->reg_table[HDR_RELAY]);
@@ -1841,6 +2262,8 @@ static int probe(struct platform_device *pdev)
 				 &priv->mutex_hint))
 		dev_err(dev, "read event mutex_hint fail\n");
 
+	mml_pq_set_hdr_histogram_bin(priv->data->histogram_bin);
+
 	dbg_probed_components[dbg_probed_count++] = priv;
 
 	ret = mml_comp_add(priv->comp.id, dev, &mml_comp_ops);
@@ -1909,11 +2332,11 @@ const struct of_device_id mml_hdr_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6993-mml0_hdr",
-		.data = &mt6899_mmlt_hdr_data,
+		.data = &mt6993_mmlt_hdr_data,
 	},
 	{
 		.compatible = "mediatek,mt6993-mml1_hdr",
-		.data = &mt6985_hdr_data,
+		.data = &mt6993_mmlf_hdr_data,
 	},
 	{},
 };

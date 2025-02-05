@@ -88,6 +88,7 @@ struct mml_pq_dev_data {
 	atomic_t tdshp_hist_done;
 	atomic_t tdshp_hist_read_cnt;
 	u32 tdshp_cnt;
+	u32 hdr_histogram_bin;
 };
 
 static struct mutex fg_buf_grain_mutex;
@@ -95,6 +96,7 @@ static struct mutex fg_buf_scaling_mutex;
 static struct list_head fg_buf_grain_list;
 static struct list_head fg_buf_scaling_list;
 static u32 dma_buf_num;
+static u32 hdr_histogram_bin;
 
 static struct mml_pq_mbox *pq_mbox;
 static struct mutex rb_buf_list_mutex;
@@ -325,10 +327,17 @@ s32 mml_pq_task_create(struct mml_task *task)
 	pq_task->aal_readback.readback_data.pipe1_hist =
 		kzalloc(sizeof(u32)*(AAL_HIST_NUM + AAL_DUAL_INFO_NUM),
 		GFP_KERNEL);
-	pq_task->hdr_readback.readback_data.pipe0_hist =
-		kzalloc(sizeof(u32)*HDR_HIST_NUM, GFP_KERNEL);
-	pq_task->hdr_readback.readback_data.pipe1_hist =
-		kzalloc(sizeof(u32)*HDR_HIST_NUM, GFP_KERNEL);
+	if (dev_data[0]->hdr_histogram_bin == 128) {
+		pq_task->hdr_readback.readback_data.pipe0_hist =
+			kzalloc(sizeof(u32)*HDR_HIST_128_NUM, GFP_KERNEL);
+		pq_task->hdr_readback.readback_data.pipe1_hist =
+			kzalloc(sizeof(u32)*HDR_HIST_128_NUM, GFP_KERNEL);
+	} else {
+		pq_task->hdr_readback.readback_data.pipe0_hist =
+			kzalloc(sizeof(u32)*HDR_HIST_NUM, GFP_KERNEL);
+		pq_task->hdr_readback.readback_data.pipe1_hist =
+			kzalloc(sizeof(u32)*HDR_HIST_NUM, GFP_KERNEL);
+	}
 
 	init_completion(&pq_task->hdr_curve_ready[0]);
 	init_completion(&pq_task->hdr_curve_ready[1]);
@@ -367,6 +376,8 @@ static void release_comp_config_result(void *data)
 	kfree(result->color_regs);
 	kfree(result->c3d_regs);
 	kfree(result->c3d_lut);
+	kfree(result->hdr_ootf);
+	kfree(result->hdr_oetf);
 	kfree(result);
 }
 
@@ -1325,6 +1336,12 @@ bool mml_pq_aal_hist_reading(struct mml_pq_task *pq_task, u8 out_idx, u8 pipe)
 
 }
 
+void mml_pq_set_hdr_histogram_bin(u32 histogram_bin)
+{
+	hdr_histogram_bin = histogram_bin;
+	mml_log("%s hdr_histogram_bin: %d", __func__, hdr_histogram_bin);
+}
+
 void mml_pq_aal_flag_check(bool dual, u8 out_idx)
 {
 
@@ -1520,9 +1537,15 @@ int mml_pq_dc_hdr_readback(struct mml_task *task, u8 pipe, u32 *phist)
 
 	dump_pq_param(&task->pq_param[0]);
 
-	if (set_hist(sub_task, task->config->dual, pipe, phist,
-		0, HDR_HIST_NUM, 1))
-		ret = set_sub_task(task, sub_task, chan, &task->pq_param[0], true);
+	if (dev_data[0]->hdr_histogram_bin == 128) {
+		if (set_hist(sub_task, task->config->dual, pipe, phist,
+			0, HDR_HIST_128_NUM, 1))
+			ret = set_sub_task(task, sub_task, chan, &task->pq_param[0], true);
+	} else {
+		if (set_hist(sub_task, task->config->dual, pipe, phist,
+			0, HDR_HIST_NUM, 1))
+			ret = set_sub_task(task, sub_task, chan, &task->pq_param[0], true);
+	}
 
 	mml_pq_msg("%s end pipe[%d] job_id[%d]\n", __func__, pipe, task->job.jobid);
 	return ret;
@@ -1674,9 +1697,15 @@ int mml_pq_dc_readback(struct mml_task *task, u8 pipe, u32 *phist)
 
 	dump_pq_param(&task->pq_param[0]);
 
-	if (set_hist(sub_task, task->config->dual, pipe, phist,
-		0, TDSHP_CONTOUR_HIST_NUM, 1))
-		ret = set_sub_task(task, sub_task, chan, &task->pq_param[0], true);
+	if (dev_data[0]->hdr_histogram_bin == 128) {
+		if (set_hist(sub_task, task->config->dual, pipe, phist,
+			0, HDR_HIST_128_NUM, 1))
+			ret = set_sub_task(task, sub_task, chan, &task->pq_param[0], true);
+	} else {
+		if (set_hist(sub_task, task->config->dual, pipe, phist,
+			0, HDR_HIST_NUM, 1))
+			ret = set_sub_task(task, sub_task, chan, &task->pq_param[0], true);
+	}
 
 	mml_pq_msg("%s end pipe[%d] job_id[%d]\n", __func__, pipe, task->job.jobid);
 	return ret;
@@ -2065,6 +2094,8 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	u32 *aal_curve = NULL;
 	u32 *hdr_curve = NULL;
 	u32 *c3d_lut = NULL;
+	u32 *hdr_ootf = NULL;
+	u32 *hdr_oetf = NULL;
 	s32 ret;
 
 	mml_pq_trace_ex_begin("%s", __func__);
@@ -2231,6 +2262,36 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 		goto free_c3d_lut_curve;
 	}
 
+	hdr_ootf = kmalloc_array(HDR_OOTF_NUM, sizeof(u32),
+				  GFP_KERNEL);
+	if (unlikely(!hdr_ootf)) {
+		mml_pq_err("err: create hdr_ootf failed, size:%d\n",
+			HDR_OOTF_NUM);
+		goto free_c3d_lut_curve;
+	}
+
+	ret = copy_from_user(hdr_ootf, result->hdr_ootf,
+		HDR_OOTF_NUM * sizeof(u32));
+	if (unlikely(ret)) {
+		mml_pq_err("copy hdr ootf failed!: %d\n", ret);
+		goto free_hdr_ootf;
+	}
+
+	hdr_oetf = kmalloc_array(HDR_OETF_NUM, sizeof(u32),
+				  GFP_KERNEL);
+	if (unlikely(!hdr_oetf)) {
+		mml_pq_err("err: create hdr_oetf failed, size:%d\n",
+			HDR_OETF_NUM);
+		goto free_hdr_ootf;
+	}
+
+	ret = copy_from_user(hdr_oetf, result->hdr_oetf,
+		HDR_OETF_NUM * sizeof(u32));
+	if (unlikely(ret)) {
+		mml_pq_err("copy hdr oetf failed!: %d\n", ret);
+		goto free_hdr_oetf;
+	}
+
 	/* fg setting from userspace for tuning purpose */
 	if (result->is_fg_tuning && result->fg_reg_cnt != 0) {
 		mml_pq_fg_tuning_log("%s fg setting from userspace for tuning purpose",
@@ -2250,10 +2311,6 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 			mml_pq_err("copy fg config failed!: %d\n", ret);
 			goto free_fg_regs;
 		}
-
-		result->fg_regs = fg_regs;
-	} else {
-		result->fg_regs = NULL;
 	}
 
 	result->aal_param = aal_param;
@@ -2265,6 +2322,9 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	result->color_regs = color_regs;
 	result->c3d_regs = c3d_regs;
 	result->c3d_lut = c3d_lut;
+	result->hdr_ootf = hdr_ootf;
+	result->hdr_oetf = hdr_oetf;
+	result->fg_regs = fg_regs;
 
 	handle_sub_task_result(sub_task, result, release_comp_config_result);
 	mml_pq_msg("%s result end, result_id[%d] sub_task[%p]",
@@ -2272,6 +2332,10 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	goto wake_up_prev_comp_config_task;
 free_fg_regs:
 	kfree(fg_regs);
+free_hdr_oetf:
+	kfree(hdr_oetf);
+free_hdr_ootf:
+	kfree(hdr_ootf);
 free_c3d_lut_curve:
 	kfree(c3d_lut);
 free_c3d_regs:
@@ -2650,13 +2714,24 @@ static int mml_pq_hdr_readback_ioctl(unsigned long data)
 	}
 
 	if (new_sub_task->readback_data.pipe0_hist) {
-		ret = copy_to_user(readback->hdr_pipe0_hist,
-			new_sub_task->readback_data.pipe0_hist,
-			HDR_HIST_NUM * sizeof(u32));
-		atomic_dec_if_positive(&new_sub_task->readback_data.pipe_cnt);
-		if (unlikely(ret)) {
-			mml_pq_err("err: fail to copy to hdr_pipe0_hist: %d\n", ret);
-			goto wake_up_hdr_readback_task;
+		if (dev_data[0]->hdr_histogram_bin == 128) {
+			ret = copy_to_user(readback->hdr_pipe0_hist,
+				new_sub_task->readback_data.pipe0_hist,
+				HDR_HIST_128_NUM * sizeof(u32));
+			atomic_dec_if_positive(&new_sub_task->readback_data.pipe_cnt);
+			if (unlikely(ret)) {
+				mml_pq_err("err: fail to copy to hdr_pipe0_hist: %d\n", ret);
+				goto wake_up_hdr_readback_task;
+			}
+		} else {
+			ret = copy_to_user(readback->hdr_pipe0_hist,
+				new_sub_task->readback_data.pipe0_hist,
+				HDR_HIST_NUM * sizeof(u32));
+			atomic_dec_if_positive(&new_sub_task->readback_data.pipe_cnt);
+			if (unlikely(ret)) {
+				mml_pq_err("err: fail to copy to hdr_pipe0_hist: %d\n", ret);
+				goto wake_up_hdr_readback_task;
+			}
 		}
 	} else {
 		mml_pq_err("err: fail to copy to hdr_pipe0_hist because of null pointer");
@@ -2679,8 +2754,13 @@ static int mml_pq_hdr_readback_ioctl(unsigned long data)
 	atomic_dec_if_positive(&new_sub_task->queued);
 	mml_pq_put_pq_task(new_pq_task);
 
-	dump_sub_task(new_sub_task, new_job_id, readback->is_dual, readback->cut_pos_x,
-		HDR_HIST_NUM);
+	if (dev_data[0]->hdr_histogram_bin == 128) {
+		dump_sub_task(new_sub_task, new_job_id, readback->is_dual, readback->cut_pos_x,
+			HDR_HIST_128_NUM);
+	} else {
+		dump_sub_task(new_sub_task, new_job_id, readback->is_dual, readback->cut_pos_x,
+			HDR_HIST_NUM);
+	}
 	mml_pq_msg("%s end job_id[%d]\n", __func__, job->new_job_id);
 	kfree(job);
 	kfree(readback);
@@ -3170,6 +3250,7 @@ int mml_pq_core_init(void)
 		mutex_init(&dev_data[i]->aal_hist_mutex);
 		mutex_init(&dev_data[i]->hdr_hist_mutex);
 		mutex_init(&dev_data[i]->tdshp_hist_mutex);
+		dev_data[i]->hdr_histogram_bin = hdr_histogram_bin;
 	}
 
 	if (ret < 0)
