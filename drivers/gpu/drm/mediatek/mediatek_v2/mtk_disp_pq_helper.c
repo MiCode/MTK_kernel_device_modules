@@ -434,14 +434,26 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 
 static int disp_pq_proxy_virtual_wait_crtc_ready(struct drm_crtc *crtc, void *data)
 {
-	int *ready = (int *)data;
+	struct CRTC_READY_INFO *crtc_ready_info = (struct CRTC_READY_INFO *)data;
 	struct pq_common_data *pq_data = to_mtk_crtc(crtc)->pq_data;
+	struct mtk_drm_private *priv = to_mtk_crtc(crtc)->base.dev->dev_private;
 
 	if (atomic_read(&pq_data->pipe_info_filled) != 1) {
-		*ready = 0;
+		crtc_ready_info->crtcReady = 0;
+		crtc_ready_info->pathSel = 0;
 		return -1;
 	}
-	*ready = 1;
+	crtc_ready_info->crtcReady = 1;
+	crtc_ready_info->pathSel = priv->pq_path_sel;
+	if (crtc_ready_info->pathSel == 0) {
+#if defined(PQ_PATH_11)
+		crtc_ready_info->pathSel = 11;
+#elif defined(PQ_PATH_9)
+		crtc_ready_info->pathSel = 9;
+#endif
+	}
+	DDPDBG("%s: crtcReady %d pathSel %d", __func__, crtc_ready_info->crtcReady, crtc_ready_info->pathSel);
+
 	return 0;
 }
 
@@ -966,7 +978,7 @@ static int disp_pq_proxy_virtual_get_persist_property(struct drm_crtc *crtc, voi
 	memset(pq_persist_property, 0, sizeof(pq_persist_property));
 	memcpy(pq_persist_property, (unsigned int *)data, sizeof(pq_persist_property));
 
-	for (i = 0; i < DISP_PQ_PROPERTY_MAX; i++) {
+	for (i = 0; i < DISP_PQ_PERSIST_PROPERTY_MAX; i++) {
 		pq_data->old_persist_property[i] = pq_data->new_persist_property[i];
 		pq_data->new_persist_property[i] = pq_persist_property[i];
 	}

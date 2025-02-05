@@ -1815,6 +1815,12 @@ struct mtk_drm_dma_buf {
 	__u64 mva;
 };
 
+struct CRTC_READY_INFO {
+	int crtcReady;
+	int pathSel;
+	int hw_valid;// modules by bit
+};
+
 #define DRM_IOCTL_MTK_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_GEM_CREATE, struct drm_mtk_gem_create)
 
@@ -1948,6 +1954,8 @@ struct mtk_drm_dma_buf {
 #define AAL_HIST_BIN            33	/* [0..32] */
 #define AAL_DRE_POINT_NUM       29
 #define AAL_DRE_BLK_NUM			(16)
+#define AAL_HIST_BIN_HIGH            96	/* [33..129] */
+#define AAL_DRE_POINT_NUM_HIGH       129
 
 /* Display Clarity */
 #define MDP_AAL_CLARITY_READBACK_NUM (7)
@@ -2010,6 +2018,8 @@ struct DISP_AAL_INITREG {
 	_Bool isdual;
 	int width;
 	int height;
+	int aal_max_hist_bin_switch;
+	int aal_gtm_entry_mode_switch;
 };
 
 enum rgbSeq {
@@ -2029,6 +2039,7 @@ struct DISP_AAL_PARAM {
 	unsigned int silky_gain_range; /* 13bit: [1-8192]; 14bit:[1-16384] */
 	unsigned int silky_bright_gain[3];
 	unsigned long long dre30_gain;
+	int dre_global_tone_129entry[AAL_DRE_POINT_NUM_HIGH];
 };
 
 struct DISP_DRE30_INIT {
@@ -2052,6 +2063,8 @@ struct DISP_AAL_HIST {
 	unsigned int mdp_aal_ghist_valid;
 	unsigned int aal0_maxHist[AAL_HIST_BIN];
 	unsigned int aal1_maxHist[AAL_HIST_BIN];
+	unsigned int aal0_maxHist_High[AAL_HIST_BIN_HIGH];
+	unsigned int aal1_maxHist_High[AAL_HIST_BIN_HIGH];
 	unsigned int mdp_aal0_maxHist[AAL_HIST_BIN];
 	unsigned int mdp_aal1_maxHist[AAL_HIST_BIN];
 	int requestPartial;
