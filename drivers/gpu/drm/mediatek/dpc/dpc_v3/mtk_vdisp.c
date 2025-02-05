@@ -14,8 +14,15 @@
 #include <linux/pm_wakeup.h>
 #include <linux/regulator/consumer.h>
 #include <linux/sched/clock.h>
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+#include <linux/debugfs.h>
+#endif /* #if IS_ENABLED(CONFIG_DEBUG_FS) */
+#if IS_ENABLED(CONFIG_PROC_FS)
+#include <linux/proc_fs.h>
+#endif /* #if IS_ENABLED(CONFIG_PROC_FS) */
 
 #include "mtk_vdisp.h"
+#include "mtk_vdisp_avs.h"
 #include "mtk_disp_vidle.h"
 #include "mtk-smi-dbg.h"
 #include "clk-mtk.h"
@@ -27,6 +34,14 @@
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <aee.h>
+#endif
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+static struct dentry *vdisp_dbgfs;
+#endif
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+static struct proc_dir_entry *vdisp_procfs;
 #endif
 
 int debug_recover;
@@ -832,6 +847,75 @@ static const struct smi_disp_ops smi_funcs = {
 };
 #endif
 
+#if (IS_ENABLED(CONFIG_DEBUG_FS) | IS_ENABLED(CONFIG_PROC_FS))
+static void process_dbg_opt(const char *opt)
+{
+	if (mtk_vdisp_up_dbg_opt(opt))
+		VDISPERR();
+}
+
+static void process_dbg_cmd(char *cmd)
+{
+	char *tok;
+
+	VDISPDBG("[vdisp_dbg] %s", cmd);
+	while ((tok = strsep(&cmd, " ")) != NULL)
+		process_dbg_opt(tok);
+}
+
+static ssize_t debug_write(struct file *file, const char __user *ubuf,
+			   size_t count, loff_t *ppos)
+{
+	const int debug_bufmax = 512 - 1;
+	size_t ret;
+	char cmd_buffer[512];
+
+	ret = count;
+
+	if (count > debug_bufmax)
+		count = debug_bufmax;
+
+	if (copy_from_user(&cmd_buffer, ubuf, count))
+		return -EFAULT;
+
+	cmd_buffer[count] = 0;
+
+	process_dbg_cmd(cmd_buffer);
+
+	return ret;
+}
+#endif /* #if (IS_ENABLED(CONFIG_DEBUG_FS) | IS_ENABLED(CONFIG_PROC_FS)) */
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+static const struct file_operations debug_fops = {
+	.write = debug_write,
+};
+#endif /* #if IS_ENABLED(CONFIG_DEBUG_FS) */
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+static const struct proc_ops debug_proc_fops = {
+	.proc_write = debug_write,
+};
+#endif /* #if IS_ENABLED(CONFIG_PROC_FS) */
+
+static void mtk_vdisp_dbg_probe(void)
+{
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	vdisp_dbgfs = debugfs_create_file("vdisp", S_IFREG | 0440, NULL,
+					  NULL, &debug_fops);
+	if (IS_ERR(vdisp_dbgfs))
+		VDISPERR("debugfs_create_file failed:%ld", PTR_ERR(vdisp_dbgfs));
+#endif
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+	vdisp_procfs = proc_create("vdisp", S_IFREG | 0440,
+				   NULL, &debug_proc_fops);
+	if (!vdisp_procfs) {
+		VDISPERR("failed to create vdisp in /proc/");
+	}
+#endif
+}
+
 static int mtk_vdisp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -851,6 +935,8 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	u32 pd_id = 0;
 	int bringup_stage = 0;
 	int i = 0, clk_num = 0, genpd_num = 0, pair_size = 0;
+
+	mtk_vdisp_dbg_probe();
 
 	ret = of_property_read_u32(dev->of_node, "bringup-stage", &bringup_stage);
 	if (ret)
@@ -1104,6 +1190,16 @@ EXPORT_SYMBOL(mtk_vdisp_dpc_register);
 
 static void mtk_vdisp_remove(struct platform_device *pdev)
 {
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	debugfs_remove(vdisp_dbgfs);
+#endif
+
+#if IS_ENABLED(CONFIG_PROC_FS)
+	if (vdisp_procfs) {
+		proc_remove(vdisp_procfs);
+		vdisp_procfs = NULL;
+	}
+#endif
 }
 
 static const struct of_device_id mtk_vdisp_driver_v3_dt_match[] = {

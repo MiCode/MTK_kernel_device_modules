@@ -312,6 +312,7 @@ release_vcp:
 	VDISPDBG("execution %lld us", ktime_us_delta(end_time, start_time));
 }
 
+#if (IS_ENABLED(CONFIG_DEBUG_FS) | IS_ENABLED(CONFIG_PROC_FS))
 int mtk_vdisp_avs_dbg_opt(const char *opt)
 {
 	int ret = 0;
@@ -413,7 +414,7 @@ int mtk_vdisp_up_dbg_opt(const char *opt)
 
 	return ret;
 }
-EXPORT_SYMBOL(mtk_vdisp_up_dbg_opt);
+#endif /* #if (IS_ENABLED(CONFIG_DEBUG_FS) | IS_ENABLED(CONFIG_PROC_FS)) */
 
 int mtk_vdisp_avs_probe(struct platform_device *pdev)
 {
