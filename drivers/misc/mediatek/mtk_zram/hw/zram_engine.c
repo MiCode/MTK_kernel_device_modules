@@ -50,7 +50,7 @@ struct zram_engine_t {
 	struct hwfifo fifo_2;
 	spinlock_t fifo_2_lock;
 
-	/* The number of decompression requests */
+	/* The number of compression requests */
 	atomic_t comp_cnt;
 
 	CACHELINE_PADDING(__pad__0);
@@ -643,13 +643,47 @@ static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
 	return processed;
 }
 
+#ifndef FPGA_EMULATION
+static inline void dcomp_try_to_gear_down(struct zram_engine_t *hwz)
+{
+retry:
+	/* Sleep for a while */
+	usleep_idle_range(5, 15);
+
+	/* Whether there are any pending requests */
+	if (atomic_read(&hwz->dcomp_cnt) != 0)
+		return;
+
+	/* Demote frequency (may sleep) */
+	if (engine_try_to_gear_down(&hwz->gear_ctrl, false))
+		return;
+
+	goto retry;
+}
+#else
+#define dcomp_try_to_gear_down(hwz)	do { } while (0)
+#endif
+
+/* Handler when dcomp is not started successfully */
+static void dcomp_hang_handle(struct zram_engine_t *hwz)
+{
+	struct hwfifo *fifo;
+	int cpu;
+
+	cpu = get_cpu();
+	fifo = &hwz->dcomp_fifo[cpu];
+	engine_kick(fifo->write_idx_reg);
+	put_cpu();
+}
+
 /*
  * Decompression post-process
  */
 static int dcomp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
-	uint32_t processed;
+	uint32_t processed, total_processed;
+	uint32_t hang_detect;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
@@ -661,16 +695,10 @@ static int dcomp_post_process(void *data)
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info("%s: decompress fifos are empty.\n", __func__);
 #endif
+			/* Try to demote frequency (may sleep) */
+			dcomp_try_to_gear_down(hwz);
 
-			/* Sleep for a while */
-			usleep_idle_range(5, 15);
-
-#ifndef FPGA_EMULATION
-			/* Demote frequency (may sleep) */
-			if (atomic_read(&hwz->dcomp_cnt) == 0)
-				engine_try_to_gear_down(&hwz->gear_ctrl, false);
-#endif
-
+			/* Try to sleep for next incoming request */
 			prepare_to_wait(&hwz->dcomp_wait, &wait, TASK_IDLE);
 			if (atomic_read(&hwz->dcomp_cnt) == 0 && !kthread_should_stop()) {
 #ifdef ZRAM_ENGINE_DEBUG
@@ -689,23 +717,47 @@ static int dcomp_post_process(void *data)
 		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, false) != 0);
 #endif
 
+		/* Reset total_processed */
+		total_processed = 0;
+
+		/* Reset hang_detect */
+		hang_detect = 0;
+
+repeat:
 		/* Processing cmds */
 		processed = dcomp_post_processing_cmds(hwz);
 
 		/* "processed" cmds are processed */
 		WARN_ON(atomic_sub_return(processed, &hwz->dcomp_cnt) < 0);
 
+		/* Update total_processed */
+		total_processed += processed;
+
+		/* HW is slow, just sleep for a while */
+		if (processed == 0) {
+			usleep_idle_range(5, 10);
+			hang_detect++;
+		} else {
+			hang_detect = 0;
+		}
+
+		/* dcomp may hang. Try to kick it again. */
+		if (hang_detect > HANG_DETECT_BOUND) {
+			dcomp_hang_handle(hwz);
+			hang_detect = 0;
+		}
+
+		/* Repeat until all decompression cmds are processed */
+		if (atomic_read(&hwz->dcomp_cnt) != 0)
+			goto repeat;
+
 #ifndef FPGA_EMULATION
 		/*
 		 * Disable clock for zram engine -
-		 * Paired with the one in dcomp_post_process. (decrease the ref count by "processed + 1")
+		 * Paired with the one in dcomp_post_process. (decrease the ref count by "total_processed + 1")
 		 */
-		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, processed + 1);
+		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, total_processed + 1);
 #endif
-
-		/* HW is slow, just sleep for a while */
-		if (processed == 0)
-			usleep_idle_range(5, 10);
 	}
 
 	return 0;
@@ -775,13 +827,46 @@ static inline uint32_t comp_main_post_processing_cmds(struct zram_engine_t *hwz,
 	return processed;
 }
 
+#ifndef FPGA_EMULATION
+static inline void comp_try_to_gear_down(struct zram_engine_t *hwz)
+{
+retry:
+	/* Sleep for a while */
+	usleep_idle_range(5, 15);
+
+	/* Whether there are any pending requests */
+	if (atomic_read(&hwz->comp_cnt) != 0)
+		return;
+
+	/* Demote frequency (may sleep) */
+	if (engine_try_to_gear_down(&hwz->gear_ctrl, true))
+		return;
+
+	goto retry;
+}
+#else
+#define comp_try_to_gear_down(hwz)	do { } while (0)
+#endif
+
+/* Handler when comp is not started successfully */
+static void comp_hang_handle(struct zram_engine_t *hwz)
+{
+	struct hwfifo *fifo;
+
+	spin_lock(&hwz->fifo_2_lock);
+	fifo = &hwz->fifo_2;
+	engine_kick(fifo->write_idx_reg);
+	spin_unlock(&hwz->fifo_2_lock);
+}
+
 /*
  * Compression post-process
  */
 static int comp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
-	uint32_t processed;
+	uint32_t processed, total_processed;
+	uint32_t hang_detect;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
@@ -793,16 +878,10 @@ static int comp_post_process(void *data)
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info("%s: fifo is empty!!!!!\n", __func__);
 #endif
+			/* Try to demote frequency (may sleep) */
+			comp_try_to_gear_down(hwz);
 
-			/* Sleep for a while */
-			usleep_idle_range(5, 15);
-
-#ifndef FPGA_EMULATION
-			/* Demote frequency (may sleep) */
-			if (atomic_read(&hwz->comp_cnt) == 0)
-				engine_try_to_gear_down(&hwz->gear_ctrl, true);
-#endif
-
+			/* Try to sleep for next incoming request */
 			prepare_to_wait(&hwz->comp_wait, &wait, TASK_IDLE);
 			if (atomic_read(&hwz->comp_cnt) == 0 && !kthread_should_stop()) {
 #ifdef ZRAM_ENGINE_DEBUG
@@ -821,6 +900,13 @@ static int comp_post_process(void *data)
 		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, true) != 0);
 #endif
 
+		/* Reset total_processed */
+		total_processed = 0;
+
+		/* Reset hang_detect */
+		hang_detect = 0;
+
+repeat:
 		/* Processing main fifo cmds */
 		processed = comp_main_post_processing_cmds(hwz, &hwz->fifo_1);
 
@@ -830,17 +916,34 @@ static int comp_post_process(void *data)
 		/* "processed" cmds are processed */
 		WARN_ON(atomic_sub_return(processed, &hwz->comp_cnt) < 0);
 
+		/* Update total_processed */
+		total_processed += processed;
+
+		/* HW is slow, just sleep for a while */
+		if (processed == 0) {
+			usleep_idle_range(5, 10);
+			hang_detect++;
+		} else {
+			hang_detect = 0;
+		}
+
+		/* comp may hang. Try to kick it again. */
+		if (hang_detect > HANG_DETECT_BOUND) {
+			comp_hang_handle(hwz);
+			hang_detect = 0;
+		}
+
+		/* Repeat until all compression cmds are processed */
+		if (atomic_read(&hwz->comp_cnt) != 0)
+			goto repeat;
+
 #ifndef FPGA_EMULATION
 		/*
 		 * Disable clock for zram engine -
-		 * Paired with the one in comp_post_process. (decrease the ref count by "processed + 1")
+		 * Paired with the one in comp_post_process. (decrease the ref count by "total_processed + 1")
 		 */
-		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, processed + 1);
+		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, total_processed + 1);
 #endif
-
-		/* HW is slow, just sleep for a while */
-		if (processed == 0)
-			usleep_idle_range(5, 10);
 	}
 
 	return 0;
@@ -983,6 +1086,7 @@ int hwcomp_decompress_page(void *hw, void *src, unsigned int slen, struct page *
 	uint32_t entry;
 	int cpu;
 	bool valid = false;
+	bool wake_up_pp = false;
 
 	/*
 	 * Using sync mode when user indicates or engine has no coherence support -
@@ -1047,7 +1151,8 @@ next_dcmd:
 #endif
 
 	/* Increment the number of decompression request */
-	atomic_inc(&hwz->dcomp_cnt);
+	if (atomic_inc_return(&hwz->dcomp_cnt) == 1)
+		wake_up_pp = true;
 
 	update_dcomp_fifo_write_index(fifo);
 
@@ -1061,6 +1166,11 @@ next_dcmd:
 #endif
 
 	put_cpu();
+
+	/* Wake up dcomp_post_process */
+	if (wake_up_pp)
+		wake_up(&hwz->dcomp_wait);
+
 	return 0;
 }
 EXPORT_SYMBOL(hwcomp_decompress_page);
@@ -1116,8 +1226,14 @@ next_cmd_fifo_1:
 		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
+#ifndef FPGA_EMULATION
+		/* Increment the number of compression request & try to promote frequency. (may sleep) */
+		if (atomic_inc_return(&hwz->comp_cnt) == 1)
+			engine_try_to_gear_up(&hwz->gear_ctrl, true);
+#else
 		/* Increment the number of compression request */
 		atomic_inc(&hwz->comp_cnt);
+#endif
 
 		update_comp_fifo_1_write_index(fifo);
 
@@ -2361,7 +2477,7 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 		break;
 	case ENGINE_FREE_RUN_GEAR:
 		/* gear free-run */
-		engine_free_gear_level(&hwz->gear_ctrl, ENGINE_FREE_RUN_GEAR);
+		engine_free_gear_level(&hwz->gear_ctrl);
 		break;
 	default:
 		pr_info("%s: invalid gear!\n", __func__);

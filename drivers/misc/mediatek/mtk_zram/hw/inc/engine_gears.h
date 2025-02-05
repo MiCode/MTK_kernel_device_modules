@@ -34,7 +34,7 @@ struct engine_gear_control_t {
 	uint32_t dec_wish_gear;
 	uint32_t curr_gear;			/* max(curr_enc_gear, curr_dec_gear) or manually */
 	bool engine_gear_in_change;
-	bool engine_gear_fixed;
+	bool engine_gear_fixed;			/* curr_gear is fixed */
 	bool power_on;
 
 	/* Protect above status update */
@@ -223,11 +223,11 @@ void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 
 /* Gear up or down */
 bool engine_try_to_gear_up(struct engine_gear_control_t *gear_ctrl, bool enc_wish);
-void engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_wish);
+bool engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_wish);
 
 /* Fix or free gear */
 void engine_fix_gear_level(struct engine_gear_control_t *gear_ctrl, uint32_t level);
-void engine_free_gear_level(struct engine_gear_control_t *gear_ctrl, uint32_t level);
+void engine_free_gear_level(struct engine_gear_control_t *gear_ctrl);
 
 /* Dump gear status */
 int engine_gear_get_status(struct engine_gear_control_t *gear_ctrl, char *buf);

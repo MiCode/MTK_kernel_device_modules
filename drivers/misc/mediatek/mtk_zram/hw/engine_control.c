@@ -627,15 +627,8 @@ next:
 	}
 	zram_writel(reg_val, ctrl->zram_dec_base + ZRAM_DEC_CFG);
 
-	/*
-	 * IRQ setting (No CMD interrupt enabled by default) -
-	 * No dec batch or idle interrupts for engine w/o coherence (using sync mode).
-	 */
-	if (engine_coherence_disabled() || engine_async_mode_disabled())
-		reg_val = ZRAM_DEC_ERROR_INTR_MASK;
-	else
-		reg_val = ZRAM_DEC_BATCH_INTR_MASK | ZRAM_DEC_IDLE_INTR_MASK | ZRAM_DEC_ERROR_INTR_MASK;
-
+	/* Don't support batch & idle interrupt for decompression */
+	reg_val = ZRAM_DEC_ERROR_INTR_MASK;
 	reg_val |= ZRAM_DEC_FIFO_CMD_INTR_MASK;
 	reg_val |= ZRAM_DEC_ERROR_FIFO_ID_INTR_MASK;
 	reg_val |= ZRAM_DEC_KERNEL_HANG_INTR_MASK;

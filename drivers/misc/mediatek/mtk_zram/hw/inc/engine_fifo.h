@@ -9,6 +9,7 @@
 #include <linux/types.h>
 #include <linux/mm.h>
 #include <linux/static_key.h>
+#include <inc/engine_regs.h>
 
 /*
  * Compression FIFO - BIT[15]: Tag-bit, BIT[10..0]: Entry-bits
@@ -74,8 +75,8 @@
 /* The number of dcompression set */
 #define MAX_DCOMP_NR	(8)
 
-/* Bit mask to start engine (Same for both compression and decompression) */
-#define ENGINE_START_MASK	(1UL << 31)
+/* Hang detect upper bound */
+#define HANG_DETECT_BOUND	(3)
 
 /*
  * Structure for HW engine FIFO

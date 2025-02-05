@@ -368,4 +368,14 @@ static inline void engine_poll_cmd_complete(void __iomem *write_idx_reg,
 	} while (complete_idx_reg_val != write_idx_reg_val);
 }
 
+/* Bit mask to start engine (Same for both compression and decompression) */
+#define ENGINE_START_MASK	(1UL << 31)
+
+/* Kick engine */
+static inline void engine_kick(void __iomem *write_idx_reg)
+{
+	uint32_t reg_val = readl(write_idx_reg);
+
+	writel(ENGINE_START_MASK | reg_val, write_idx_reg);
+}
 #endif /* _ENGINE_REGS_H_ */
