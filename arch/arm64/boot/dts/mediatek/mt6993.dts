@@ -13036,23 +13036,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-names = "ap-smi-vcore", "ap-cam-vmm", "ap-mml-vdisp", "ap-vde-vmm";
 		};
 
-		mmdvfs-debug-user {
-			compatible = "mediatek,mmdvfs-debug-user";
-			clocks =
-				// VMM
-				<&mmdvfs_mux MMDVFS_USER_CAM>,
-				<&mmdvfs_mux MMDVFS_USER_IMG>,
-				<&mmdvfs_mux MMDVFS_USER_VDEC>,
-				// VDISP
-				<&mmdvfs_mux MMDVFS_USER_DISP>,
-				// VCORE
-				<&mmdvfs_mux MMDVFS_USER_SMI>,
-				<&mmdvfs_mux MMDVFS_USER_VENC>,
-				<&mmdvfs_mux MMDVFS_USER_ADAB>,
-				<&mmdvfs_mux MMDVFS_USER_VCP_SMI>;
-			clock-names = "cam", "img", "vde", "dis", "smi", "ven", "adab", "vcp-smi";
-		};
-
 		u3fpgaphy: u3fpgaphy {
 			compatible = "mediatek,fpga-u3phy";
 			mediatek,ippc = <0x16753e00>;
