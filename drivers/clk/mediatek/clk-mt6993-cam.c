@@ -45,6 +45,7 @@ static const struct mtk_gate_regs cam_mr0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_MR0(_id, _name, _parent, _shift) {	\
@@ -193,6 +194,7 @@ static const struct mtk_gate_regs cam_ra0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_RA0(_id, _name, _parent, _shift) {	\
@@ -269,6 +271,7 @@ static const struct mtk_gate_regs cam_rb0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_RB0(_id, _name, _parent, _shift) {	\
@@ -345,6 +348,7 @@ static const struct mtk_gate_regs cam_rc0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_RC0(_id, _name, _parent, _shift) {	\
@@ -421,6 +425,7 @@ static const struct mtk_gate_regs camsys_rmsa0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAMSYS_RMSA0(_id, _name, _parent, _shift) {	\
@@ -481,6 +486,7 @@ static const struct mtk_gate_regs camsys_rmsb0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAMSYS_RMSB0(_id, _name, _parent, _shift) {	\
@@ -541,6 +547,7 @@ static const struct mtk_gate_regs camsys_rmsc0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAMSYS_RMSC0(_id, _name, _parent, _shift) {	\
@@ -601,6 +608,7 @@ static const struct mtk_gate_regs cam_ya0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_YA0(_id, _name, _parent, _shift) {	\
@@ -663,6 +671,7 @@ static const struct mtk_gate_regs cam_yb0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_YB0(_id, _name, _parent, _shift) {	\
@@ -725,6 +734,7 @@ static const struct mtk_gate_regs cam_yc0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_YC0(_id, _name, _parent, _shift) {	\
@@ -799,6 +809,7 @@ static const struct mtk_gate_regs cam_m1_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_M0(_id, _name, _parent, _shift) {	\
@@ -827,6 +838,7 @@ static const struct mtk_gate_regs cam_m1_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_M1(_id, _name, _parent, _shift) {	\
@@ -983,6 +995,7 @@ static const struct mtk_gate_regs cam_vcore_r1a1_cg_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CAM_VCORE_R1A0(_id, _name, _parent, _shift) {	\
@@ -1005,13 +1018,14 @@ static const struct mtk_gate_regs cam_vcore_r1a1_cg_regs = {
 		.regs = &cam_vcore_r1a1_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
-		.flags = RES_FRAMEWORK_MMINFRA,		\
+		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA,		\
 	}
 
 #define GATE_CAM_VCORE_R1A1_V(_id, _name, _parent) {    \
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 static const struct mtk_gate cam_vcore_r1a_clks[] = {
@@ -1241,6 +1255,7 @@ static const struct mtk_gate_regs ccu0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_CCU0(_id, _name, _parent, _shift) {	\

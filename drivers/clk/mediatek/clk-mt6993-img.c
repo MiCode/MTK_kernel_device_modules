@@ -46,6 +46,7 @@ static const struct mtk_gate_regs dip_cine_dip10_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_DIP_CINE_DIP10(_id, _name, _parent, _shift) {	\
@@ -90,13 +91,14 @@ static const struct mtk_gate_regs dip_nr1_dip1_cg_regs = {
 		.regs = &dip_nr1_dip1_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
-		.flags = RES_FRAMEWORK_MMINFRA,		\
+		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA,		\
 	}
 
 #define GATE_DIP_NR1_DIP1_V(_id, _name, _parent) {    \
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 static const struct mtk_gate dip_nr1_dip1_clks[] = {
@@ -128,13 +130,14 @@ static const struct mtk_gate_regs dip_nr2_dip1_cg_regs = {
 		.regs = &dip_nr2_dip1_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
-		.flags = RES_FRAMEWORK_MMINFRA,		\
+		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA,		\
 	}
 
 #define GATE_DIP_NR2_DIP1_V(_id, _name, _parent) {    \
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 static const struct mtk_gate dip_nr2_dip1_clks[] = {
@@ -176,12 +179,14 @@ static const struct mtk_gate_regs dip_top_dip10_hwv_regs = {
 		.regs = &dip_top_dip1_cg_regs,			\
 		.shift = _shift,			\
 		.ops = &mtk_clk_mm_gate_ops_setclr,	\
+		.flags = RES_FRAMEWORK_VMM,		\
 	}
 
 #define GATE_DIP_TOP_DIP1_V(_id, _name, _parent) {    \
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_DIP_TOP_DIP10(_id, _name, _parent, _shift) {	\
@@ -298,6 +303,7 @@ static const struct mtk_gate_regs img2_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_IMG0(_id, _name, _parent, _shift) {	\
@@ -326,6 +332,7 @@ static const struct mtk_gate_regs img2_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_IMG1(_id, _name, _parent, _shift) {	\
@@ -354,6 +361,7 @@ static const struct mtk_gate_regs img2_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_IMG2(_id, _name, _parent, _shift) {	\
@@ -609,6 +617,7 @@ static const struct mtk_gate_regs img_v0_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_IMG_V0(_id, _name, _parent, _shift) {	\
@@ -687,6 +696,7 @@ static const struct mtk_gate_regs traw_cap_dip10_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_TRAW_CAP_DIP10(_id, _name, _parent, _shift) {	\
@@ -739,6 +749,7 @@ static const struct mtk_gate_regs traw_dip10_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_TRAW_DIP10(_id, _name, _parent, _shift) {	\
@@ -807,6 +818,7 @@ static const struct mtk_gate_regs wpe_eis_dip10_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_WPE_EIS_DIP10(_id, _name, _parent, _shift) {	\
@@ -927,6 +939,7 @@ static const struct mtk_gate_regs wpe_lite_dip10_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_WPE_LITE_DIP10(_id, _name, _parent, _shift) {	\
@@ -1043,6 +1056,7 @@ static const struct mtk_gate_regs wpe_tnr_dip10_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_WPE_TNR_DIP10(_id, _name, _parent, _shift) {	\

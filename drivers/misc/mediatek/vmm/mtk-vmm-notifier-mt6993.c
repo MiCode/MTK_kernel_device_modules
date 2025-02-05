@@ -24,6 +24,7 @@
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 #include "hwccf_provider.h"
 #include "hwccf_provider_data.h"
+#include "clkchk.h"
 #endif
 
 #define ISP_LOGI(fmt, args...) \
@@ -36,7 +37,6 @@
 	pr_notice("fatal %s(),%d: " fmt "\n", \
 		__func__, __LINE__, ##args)
 
-#define NUM_CVFS_USERS							(6)
 #define SEL_MASK								(0xff)
 // Time setting
 #define POLL_DELAY_US						(1)
@@ -49,6 +49,9 @@
 #define HW_CCF_AP_VOTER_BIT					(11)
 #define HW_CCF_CAM_SEL_VOTER_BIT			(14)
 #define HW_CCF_IMG_SEL_VOTER_BIT			(15)
+#define VMM_DBG_EN_BIT						(18)
+#define VMM_DBG_FORCE_BUCK_ON_BIT			(19)
+#define VMM_DBG_FORCE_BUCK_OFF_BIT			(20)
 
 #define GET_SEL_COUNT(value, sel) (((value) >> ((sel) * 8)) & SEL_MASK)
 
@@ -62,16 +65,6 @@
 #define CHECK_CVFS_VOTE_TOGGLE(vote, currVal) \
 	(((vote) > 0 && (currVal) == 0) ? CVFS_ENABLE_TOGGLE : \
 	(((vote) < 0 && (currVal) == 1) ? CVFS_DISABLE_TOGGLE : 0))
-
-
-struct vmm_notifier_data {
-	struct notifier_block notifier;
-	u32 pd_id;
-	struct clk *clk_avs;
-	const char *avs_name;
-	void __iomem *base;
-	unsigned long timestamp;
-};
 
 struct mutex ctrl_mutex;
 static int vmm_user_counter;
@@ -269,10 +262,10 @@ static int vmm_locked_buck_ctrl(bool enable)
 		ret = hwccf_irq_multi_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0,
 						 is_activating ? HWCCF_VOTE : HWCCF_UNVOTE,
 						 BIT(HW_CCF_AP_VOTER_BIT)|BIT(VMM_BUCK_SWITCH));
-		if (ret)
+		if (ret) {
 			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
-#else
-		vmm_locked_hwccf_ctrl(is_activating, HW_CCF_AP_VOTER_BIT);
+			clkchk_external_dump();
+		}
 #endif
 	}
 
@@ -282,9 +275,6 @@ static int vmm_locked_buck_ctrl(bool enable)
 int mtk_vmm_ctrl(struct cb_params *cb_para)
 {
 	int ret = 0;
-	// ISP_LOGI("mtk_vmm_ctrl start empty");
-
-	return ret;
 
 	mutex_lock(&ctrl_mutex);
 	/* TODO: save cg_status, PIC: Eric Chien */
@@ -306,7 +296,11 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	ISP_LOGI("register mtk_vmm for hwccf api");
 	register_mtk_clk_external_api_cb(CLK_REQUEST_VMM_CB, &mtk_vmm_ctrl, NULL);
+
+	vmm_locked_buck_ctrl(true);
+	vmm_locked_buck_ctrl(false);
 
 	return 0;
 }
@@ -448,6 +442,61 @@ static const struct kernel_param_ops vmm_cvfs_ut_ctrl_ops = {
 	.set = mtk_vmm_cvfs_ut_ctrl,
 };
 
+int mtk_vmm_force_buck_ctrl(const char *val, const struct kernel_param *kp)
+{
+	unsigned int enable;
+	int ret;
+
+	ret = kstrtouint(val, 0, &enable);
+	if (ret)
+		return ret;
+	ISP_LOGI("[%s][%d] force buck en[%u]", __func__, __LINE__, enable);
+
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+	switch (enable) {
+	case 0:
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+							VMM_DBG_FORCE_BUCK_OFF_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+							VMM_DBG_FORCE_BUCK_OFF_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		break;
+	case 1:
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+							VMM_DBG_FORCE_BUCK_ON_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+							VMM_DBG_FORCE_BUCK_ON_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		break;
+	case 8:
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+							VMM_DBG_EN_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		break;
+	case 9:
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+							VMM_DBG_EN_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		break;
+	default:
+		break;
+	}
+#endif
+	return 0;
+}
+
+static const struct kernel_param_ops vmm_force_buck_ctrl_ops = {
+	.set = mtk_vmm_force_buck_ctrl,
+};
+
 module_param_cb(vmm_notify_ut_ctrl, &vmm_notify_ut_ctrl_ops, NULL, 0644);
 MODULE_PARM_DESC(vmm_notify_ut_ctrl, "vmm_notify_ut_ctrl");
 
@@ -456,6 +505,9 @@ MODULE_PARM_DESC(vmm_ccf_ut_ctrl, "vmm_ccf_ut_ctrl");
 
 module_param_cb(vmm_cvfs_ut_ctrl, &vmm_cvfs_ut_ctrl_ops, NULL, 0644);
 MODULE_PARM_DESC(vmm_cvfs_ut_ctrl, "vmm_cvfs_ut_ctrl");
+
+module_param_cb(vmm_force_buck_ctrl, &vmm_force_buck_ctrl_ops, NULL, 0644);
+MODULE_PARM_DESC(vmm_force_buck_ctrl, "vmm_force_buck_ctrl");
 
 module_init(mtk_vmm_notifier_init);
 module_exit(mtk_vmm_notifier_exit);

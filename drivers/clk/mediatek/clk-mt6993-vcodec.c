@@ -45,6 +45,7 @@ static const struct mtk_gate_regs vde20_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_VDE20(_id, _name, _parent, _shift) {	\
@@ -57,7 +58,7 @@ static const struct mtk_gate_regs vde20_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate vde2_clks[] = {
@@ -109,6 +110,7 @@ static const struct mtk_gate_regs vde11_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_VDE10(_id, _name, _parent, _shift) {	\
@@ -121,7 +123,7 @@ static const struct mtk_gate_regs vde11_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_VDE11(_id, _name, _parent, _shift) {	\
@@ -137,6 +139,7 @@ static const struct mtk_gate_regs vde11_hwv_regs = {
         .id = _id,              \
         .name = _name,              \
         .parent_name = _parent,         \
+		.flags = RES_FRAMEWORK_VMM,		\
     }
 
 #define GATE_HWV_VDE11(_id, _name, _parent, _shift) {	\
@@ -149,7 +152,7 @@ static const struct mtk_gate_regs vde11_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops_inv,				\
 		.dma_ops = &mtk_clk_gate_ops_setclr_inv,			\
-		.flags = RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate vde1_clks[] = {
@@ -477,7 +480,7 @@ static const struct mtk_gate_regs ven_mdp0_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops_inv,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr_inv,			\
-		.flags = RES_FRAMEWORK_VMM | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER | BYPASS_CHECK,	\
+		.flags = RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER | BYPASS_CHECK,	\
 	}
 
 static const struct mtk_gate ven_mdp_clks[] = {
