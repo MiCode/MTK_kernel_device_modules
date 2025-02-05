@@ -621,7 +621,7 @@ static int mt6661_get_cali_data(struct device *dev, struct pmic_tz_data *tz_data
 	if (IS_ERR(efuse_buff))
 		return PTR_ERR(efuse_buff);
 
-	if (len != 7){
+	if (len != 14){
 		kfree(efuse_buff);
 		return -EINVAL;
 	}
