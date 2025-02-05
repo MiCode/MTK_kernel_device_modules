@@ -35,9 +35,9 @@ define_mgk_ddk_ko(
     name = "mtk_pbm",
     srcs = [
         "mtk_pbm.c",
-		"mtk_pbm.h",
+	"mtk_pbm.h",
         "mtk_pbm_common.h",
-		"mtk_pbm_gpu_cb.h",
+	"mtk_pbm_gpu_cb.h",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
@@ -54,5 +54,47 @@ define_mgk_ddk_ko(
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq",
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb",
+    ],
+)
+define_mgk_ddk_ko(
+    name = "mtk_peak_power_budget",
+    srcs = [
+        "mtk_peak_power_budget.c",
+        "mtk_peak_power_budget.h",
+	"mtk_peak_power_budget_mbrain.h",
+        "mtk_peak_power_budget_trace.h",
+        "mtk_peak_power_budget_cgppt.h"
+    ],
+	header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:gpueb_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cg_ppt:cg_ppt_headers".format(kernel_version),
+    ],
+    ko_deps = [
+	"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+    ],
+    includes = [
+        ".",
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink",
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm_v1/inc",
+        "$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb",
+        "$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq",
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cg_ppt",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm_v1/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cg_ppt",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",
     ],
 )
