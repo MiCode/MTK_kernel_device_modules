@@ -105,6 +105,14 @@ enum VCP_NOTIFY_EVENT {
 	VCP_EVENT_RESUME,
 };
 
+/* vcp notify suspend event priority*/
+enum VCP_NOTIFY_EVENT_PRIORITY {
+	VCP_SUSPEND_FEATURES_PRIO = 0,	//Default Probe Order
+	VCP_SUSPEND_SYSTEM_LAST_PRIO = -1,
+	VCP_RESUME_SYSTEM_FIRST_PRIO = 0,	//Default Probe Order
+	VCP_RESUME_FEATURES_PRIO = -1,
+};
+
 /* vcp iommus */
 enum VCP_IOMMU_DEV {
 	VCP_IOMMU_VCP = 0,

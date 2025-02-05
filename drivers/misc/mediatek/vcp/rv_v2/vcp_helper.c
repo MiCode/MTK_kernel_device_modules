@@ -961,7 +961,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 	return ret;
 }
 
-static int vcp_pm_event(struct notifier_block *notifier
+static int vcp_pm_suspend_event(struct notifier_block *notifier
 			, unsigned long pm_event, void *unused)
 {
 	uint32_t waitCnt = 0, i = 0;
@@ -1021,6 +1021,24 @@ static int vcp_pm_event(struct notifier_block *notifier
 		mutex_unlock(&vcp_pw_clk_mutex);
 
 		pr_debug("[VCP] PM_SUSPEND_PREPARE ok, waitCnt=%u\n", waitCnt);
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		return NOTIFY_OK;
+	case PM_POST_HIBERNATION:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_DONE;
+}
+
+
+static int vcp_pm_resume_event(struct notifier_block *notifier
+			, unsigned long pm_event, void *unused)
+{
+	uint32_t waitCnt = 0, i = 0;
+	int ret;
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 		mutex_lock(&vcp_pw_clk_mutex);
@@ -1087,9 +1105,14 @@ static int vcp_pm_event(struct notifier_block *notifier
 	return NOTIFY_DONE;
 }
 
-static struct notifier_block vcp_pm_notifier_block = {
-	.notifier_call = vcp_pm_event,
-	.priority = 0,
+static struct notifier_block vcp_resume_pm_notifier_block = {
+	.notifier_call = vcp_pm_resume_event,
+	.priority = VCP_RESUME_SYSTEM_FIRST_PRIO,
+};
+
+static struct notifier_block vcp_suspend_pm_notifier_block = {
+	.notifier_call = vcp_pm_suspend_event,
+	.priority = VCP_SUSPEND_SYSTEM_LAST_PRIO,
 };
 
 void vcp_set_clk(void)
@@ -3206,9 +3229,13 @@ static int vcp_device_probe(struct platform_device *pdev)
 	mtk_ipi_register(&vcp_ipidev, IPI_IN_VCP_READY_0,
 			(void *)vcp_A_ready_ipi_handler, NULL, &msg_vcp_ready0);
 
-	ret = register_pm_notifier(&vcp_pm_notifier_block);
+	ret = register_pm_notifier(&vcp_resume_pm_notifier_block);
 	if (ret)
-		pr_notice("[VCP] failed to register PM notifier %d\n", ret);
+		pr_notice("[VCP] failed to register vcp_resume_pm_notifier_block %d\n", ret);
+
+	ret = register_pm_notifier(&vcp_suspend_pm_notifier_block);
+	if (ret)
+		pr_notice("[VCP] failed to register vcp_suspend_pm_notifier_block %d\n", ret);
 
 	/* vcp sysfs initialise */
 	pr_debug("[VCP] sysfs init\n");
@@ -3291,8 +3318,17 @@ void dump_vcp_irq_status(void)
 
 static void vcp_device_remove(struct platform_device *pdev)
 {
-	pm_runtime_disable(&pdev->dev);
+	int ret = 0;
 
+	ret = unregister_pm_notifier(&vcp_resume_pm_notifier_block);
+	if (ret)
+		pr_notice("[VCP] failed to unregister vcp_resume_pm_notifier_block %d\n", ret);
+
+	ret = unregister_pm_notifier(&vcp_suspend_pm_notifier_block);
+	if (ret)
+		pr_notice("[VCP] failed to unregister vcp_suspend_pm_notifier_block %d\n", ret);
+
+	pm_runtime_disable(&pdev->dev);
 	kfree(vcp_mbox_info);
 	vcp_mbox_info = NULL;
 	kfree(vcp_mbox_pin_recv);
