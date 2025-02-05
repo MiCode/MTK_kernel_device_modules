@@ -360,6 +360,19 @@ unsigned int gpufreq_get_cur_out_freq(enum gpufreq_target target)
 EXPORT_SYMBOL(gpufreq_get_cur_out_freq);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_get_cur_avg_freq
+ * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
+ * Outputs            : -
+ * Returns            : freq   - Current avg freq of given target
+ * Description        : Query current avg frequency of the target
+ ***********************************************************************************/
+unsigned int gpufreq_get_cur_avg_freq(enum gpufreq_target target)
+{
+	return gpufreq_get_cur_freq(target);
+}
+EXPORT_SYMBOL(gpufreq_get_cur_avg_freq);
+
+/***********************************************************************************
  * Function Name      : gpufreq_get_cur_volt
  * Inputs             : target - Target of GPU DVFS (GPU, STACK, DEFAULT)
  * Outputs            : -
