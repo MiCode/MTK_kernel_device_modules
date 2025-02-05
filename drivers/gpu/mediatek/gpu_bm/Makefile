@@ -27,8 +27,9 @@ ccflags-y += -DMTK_SCMI
 $(info *GPU BM QoS 2.0 SCMI defined)
 endif
 
-obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpu_qos.o
-mtk_gpu_qos-y := gpu_bm.o
+#obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpu_qos.o
+#mtk_gpu_qos-y := gpu_bm.o
 
-obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpu_qos_bringup.o
-mtk_gpu_qos_bringup-y := gpu_bm_bringup.o
+#obj-$(CONFIG_MTK_GPU_SUPPORT) += mtk_gpu_qos_bringup.o
+#mtk_gpu_qos_bringup-y := gpu_bm_bringup.o
+

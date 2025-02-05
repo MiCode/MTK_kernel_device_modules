@@ -184,7 +184,7 @@ static void setupfw_work_handler(struct work_struct *work)
 #endif /* CONFIG_ARM64 */
 	qos_d.u.gpu_info.size = (unsigned int)setupfw_data.size;
 
-#ifdef MTK_SCMI
+#ifdef CONFIG_MTK_TINYSYS_SSPM_V3
 	ret = qos_ipi_to_sspm_scmi_command(qos_d.cmd,
 		qos_d.u.gpu_info.addr,
 		qos_d.u.gpu_info.addr_hi,
@@ -204,7 +204,7 @@ static void setupfw_work_handler(struct work_struct *work)
 	else
 		pr_info("%s: sspm_ipi fail (%d)\n", __func__, ret);
 #endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-#endif /* MTK_SCMI */
+#endif /* CONFIG_MTK_TINYSYS_SSPM_V3 */
 	gpu_bm_inited = 1;
 	pr_debug("%s: addr:0x%x, addr_hi:0x%x, ret:%d\n",
 		__func__,
@@ -214,7 +214,7 @@ static void setupfw_work_handler(struct work_struct *work)
 
 #else
 	pr_debug("%s: sspm_ipi is not support!\n", __func__);
-#endif /* MTK_QOS_FRAMEWORK */
+#endif /* CONFIG_MTK_QOS_FRAMEWORK */
 }
 
 static void _MTKGPUQoS_setupFW(phys_addr_t phyaddr, size_t size)
