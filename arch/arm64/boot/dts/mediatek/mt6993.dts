@@ -547,6 +547,26 @@
 		procb-supply = <&mt6667_12_buck1>;
 	};
 
+	pmrc_gip: gip@1c02c000 {
+		compatible = "mediatek,mt6993-pmrc-gip";
+		reg = <0 0x1c02c000 0 0x000efc>,
+			  <0 0x1c500000 0 0x000efc>,
+			  <0 0x1c02e000 0 0x000efc>,
+			  <0 0x1c502000 0 0x000efc>;
+		reg-names = "gip","gip-sec","gip-p","gip-p-sec";
+		interrupts-extended = <&gic 2 62 IRQ_TYPE_LEVEL_HIGH 0>,
+				<&gic 2 63 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "pmrc_gip_irq","pmrc_gip_p_irq";
+		gip-irq-event-en = <0x0 0xffffffff 0xf9dc0000 0x3 0xfffc0000 0x3>;
+		gip-irq-event-en-p = <0x0 0xffffffff 0xf9dc0000 0x3 0xfffc0000 0x3>;
+		#address-cells = <2>;
+		#size-cells = <0>;
+		hwinf-bytecnt-vio-irq-idx = <0x92 0xa1>;
+		hwinf-err-irq-idx = <0x52 0x61>;
+		pmic-vio-irq-idx = <0x30 0x3f>;
+		req-vio-irq-idx = <0x20 0x2f>;
+	};
+
 	timer: timer {
 			compatible = "arm,armv8-timer";
 			interrupt-parent = <&gic>;
