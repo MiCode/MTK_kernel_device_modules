@@ -136,8 +136,9 @@ static int initAF(void)
 	//wait driver ic ready
 	mdelay(5);
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened == 1) {
-
+		spin_unlock(g_pAF_SpinLock);
 		int ret = 0;
 		int cnt = 0;
 		unsigned char Temp;
@@ -165,7 +166,8 @@ static int initAF(void)
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
 		spin_unlock(g_pAF_SpinLock);
-	}
+	} else
+		spin_unlock(g_pAF_SpinLock);
 
 	LOG_INF("-\n");
 
@@ -267,6 +269,7 @@ int LC898229AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
 			int *pAF_Opened)
 {
 	g_pstAF_I2Cclient = pstAF_I2Cclient;
+	spin_lock(g_pAF_SpinLock);
 	g_pAF_Opened = pAF_Opened;
 
 	LOG_INF("+\n");
@@ -275,6 +278,7 @@ int LC898229AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
 		LOG_INF("Set power donw -\n");
 	}
 	LOG_INF("-\n");
+	spin_unlock(g_pAF_SpinLock);
 
 	return 0;
 }
@@ -284,7 +288,9 @@ int LC898229AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
 {
 	g_pstAF_I2Cclient = pstAF_I2Cclient;
 	g_pAF_SpinLock = pAF_SpinLock;
+	spin_lock(g_pAF_SpinLock);
 	g_pAF_Opened = pAF_Opened;
+	spin_unlock(g_pAF_SpinLock);
 
 	initAF();
 

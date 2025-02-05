@@ -71,10 +71,12 @@ static inline int getAFInfo(__user struct stAF_MotorInfo *pstMotorInfo)
 
 	stMotorInfo.bIsMotorMoving = 1;
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened >= 1)
 		stMotorInfo.bIsMotorOpen = 1;
 	else
 		stMotorInfo.bIsMotorOpen = 0;
+	spin_unlock(g_pAF_SpinLock);
 
 	if (copy_to_user(pstMotorInfo, &stMotorInfo,
 			 sizeof(struct stAF_MotorInfo)))
@@ -88,7 +90,9 @@ static int initAF(void)
 {
 	LOG_INF("+\n");
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened == 1) {
+		spin_unlock(g_pAF_SpinLock);
 
 		int i4RetValue = 0;
 		char Mode[2] = {(char)(0x02), (char)(0x01)};
@@ -110,7 +114,8 @@ static int initAF(void)
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
 		spin_unlock(g_pAF_SpinLock);
-	}
+	} else
+		spin_unlock(g_pAF_SpinLock);
 
 	LOG_INF("-\n");
 
@@ -191,21 +196,24 @@ int AD5823AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	LOG_INF("Start\n");
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened == 2) {
+		spin_unlock(g_pAF_SpinLock);
 		LOG_INF("Wait\n");
 		s4AF_WriteReg(200);
 		msleep(20);
 		s4AF_WriteReg(100);
 		msleep(20);
-	}
+	} else
+		spin_unlock(g_pAF_SpinLock);
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");
 
-		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 0;
-		spin_unlock(g_pAF_SpinLock);
 	}
+	spin_unlock(g_pAF_SpinLock);
 
 	LOG_INF("End\n");
 
@@ -217,7 +225,9 @@ int AD5823AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
 {
 	g_pstAF_I2Cclient = pstAF_I2Cclient;
 	g_pAF_SpinLock = pAF_SpinLock;
+	spin_lock(g_pAF_SpinLock);
 	g_pAF_Opened = pAF_Opened;
+	spin_unlock(g_pAF_SpinLock);
 
 	initAF();
 
