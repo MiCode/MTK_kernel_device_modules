@@ -764,7 +764,7 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 {
 	struct mdw_fpriv *mpriv = c->mpriv;
 	struct mdw_device *mdev = mpriv->mdev;
-	struct dma_fence *f = NULL, *input_fence = NULL;
+	struct dma_fence *f = NULL;
 	int ret = 0;
 
 	mdw_cmd_show(c, mdw_cmd_debug);
@@ -772,8 +772,8 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 	f = &c->fence->base_fence;
 
 	/* wait input fence */
-	input_fence = sync_file_get_fence(wait_fd);
-	if (!input_fence) {
+	c->wait_fence = sync_file_get_fence(wait_fd);
+	if (!c->wait_fence) {
 		mdw_flw_debug("no fence to wait, trigger directly\n");
 		mdw_cmd_preprocess(c);
 		ret = mdev->plat_funcs->run_cmd(c);
@@ -798,10 +798,10 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 		}
 	} else {
 		mdw_flw_debug("wait fence, fd(%d)\n", wait_fd);
-		if (input_fence->ops->get_timeline_name && input_fence->ops->get_driver_name) {
+		if (c->wait_fence->ops->get_timeline_name && c->wait_fence->ops->get_driver_name) {
 			mdw_flw_debug("wait fence, fence name(%s-%s)\n",
-				input_fence->ops->get_driver_name(f),
-				input_fence->ops->get_timeline_name(f));
+				c->wait_fence->ops->get_driver_name(f),
+				c->wait_fence->ops->get_timeline_name(f));
 		}
 
 		/* wait fence from wq */
@@ -894,10 +894,12 @@ static void mdw_cmd_trigger_func(struct work_struct *wk)
 	if (c->wait_fence) {
 		dma_fence_wait(c->wait_fence, false);
 		dma_fence_put(c->wait_fence);
+		mdw_flw_debug("s(0x%llx) c(0x%llx) wait fence done, start run\n",
+			(uint64_t)c->mpriv, c->kid);
+	} else {
+		mdw_flw_debug("no fence to wait, trigger directly\n");
 	}
 
-	mdw_flw_debug("s(0x%llx) c(0x%llx) wait fence done, start run\n",
-		(uint64_t)c->mpriv, c->kid);
 
 	mutex_lock(&c->mtx);
 	mdw_cmd_preprocess(c);
