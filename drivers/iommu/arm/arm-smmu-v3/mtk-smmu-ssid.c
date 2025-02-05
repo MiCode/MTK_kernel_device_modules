@@ -798,6 +798,9 @@ bool smmu_ssid_supported(struct arm_smmu_master *master, u32 ssid)
 	if (!(master->smmu->features & ARM_SMMU_FEAT_SSID))
 		return false;
 
+	if (master->ssid_bits == 0)
+		return false;
+
 	return smmu_ssid_is_valid(master, ssid) == 0;
 }
 
@@ -934,8 +937,9 @@ int mtk_enable_smmu_ssid(struct device *dev, u32 ssid)
 	struct arm_smmu_device *smmu;
 	int nr_masters;
 	int ret = 0;
+	u32 sid;
 
-	if (!master || !master->smmu || !master->domain)
+	if (!master || !master->smmu || !master->domain || !master->streams)
 		return -EINVAL;
 
 	if (!smmu_ssid_supported(master, ssid)) {
@@ -943,14 +947,15 @@ int mtk_enable_smmu_ssid(struct device *dev, u32 ssid)
 		return -ENODEV;
 	}
 
+	sid = master->streams[0].id;
 	smmu = master->smmu;
 	smmu_domain = master->domain;
 	mutex_lock(&smmu_domain->ssid_mutex);
 	ssid_domain = smmu_ssid_domain_find(smmu_domain, ssid);
 	if (ssid_domain) {
 		nr_masters = atomic_inc_return(&ssid_domain->nr_ssid_masters);
-		dev_info(dev, "[%s] find exist domain:%px, ssid:%u, nr:%d\n",
-			 __func__, ssid_domain, ssid, nr_masters);
+		dev_info(dev, "[%s] find exist domain:%p, sid:%u, ssid:%u, nr:%d\n",
+			 __func__, ssid_domain, sid, ssid, nr_masters);
 		mutex_unlock(&smmu_domain->ssid_mutex);
 		return 0;
 	}
@@ -972,9 +977,10 @@ int mtk_enable_smmu_ssid(struct device *dev, u32 ssid)
 	ret = smmu_ssid_domain_add(smmu_domain, ssid_domain);
 	if (!ret) {
 		nr_masters = atomic_inc_return(&ssid_domain->nr_ssid_masters);
-		dev_info(dev, "[%s] new domain:%px, ssid:%u, asid:%u, nr:%d\n",
-			 __func__, ssid_domain, ssid, ssid_domain->asid,
-			 nr_masters);
+		dev_info(dev,
+			 "[%s] new domain:%p, sid:%u, ssid:%u, asid:%u, nr:%d, ssids[%u, %u]\n",
+			 __func__, ssid_domain, sid, ssid, ssid_domain->asid,
+			 nr_masters, master->ssid_bits, master->cd_table.used_ssids);
 	}
 
 out:
@@ -1015,7 +1021,7 @@ int mtk_release_smmu_ssids(struct device *dev)
 	rbtree_postorder_for_each_entry_safe(ssid_domain, tmp, root, node) {
 		int nr_masters = atomic_read(&ssid_domain->nr_ssid_masters);
 
-		dev_info(dev, "[%s] domain:%px, ssid:%u, asid:%u, nr:%d\n",
+		dev_info(dev, "[%s] domain:%p, ssid:%u, asid:%u, nr:%d\n",
 			 __func__, ssid_domain, ssid_domain->ssid,
 			 ssid_domain->asid, nr_masters);
 		WARN_ON(nr_masters != 0);
@@ -1037,8 +1043,9 @@ int mtk_disable_smmu_ssid(struct device *dev, u32 ssid)
 	struct arm_smmu_device *smmu;
 	int nr_masters;
 	int ret = 0;
+	u32 sid;
 
-	if (!master || !master->smmu || !master->domain)
+	if (!master || !master->smmu || !master->domain || !master->streams)
 		return -EINVAL;
 
 	if (!smmu_ssid_supported(master, ssid)) {
@@ -1046,12 +1053,13 @@ int mtk_disable_smmu_ssid(struct device *dev, u32 ssid)
 		return -ENODEV;
 	}
 
+	sid = master->streams[0].id;
 	smmu = master->smmu;
 	smmu_domain = master->domain;
 	mutex_lock(&smmu_domain->ssid_mutex);
 	ssid_domain = smmu_ssid_domain_find(smmu_domain, ssid);
 	if (!ssid_domain) {
-		dev_info(dev, "[%s] no ssid domain, ssid:%u\n", __func__, ssid);
+		dev_info(dev, "[%s] no ssid domain, sid:%u, ssid:%u\n", __func__, sid, ssid);
 		mutex_unlock(&smmu_domain->ssid_mutex);
 		return -EINVAL;
 	}
@@ -1065,8 +1073,9 @@ int mtk_disable_smmu_ssid(struct device *dev, u32 ssid)
 	}
 
 	nr_masters = atomic_dec_return(&ssid_domain->nr_ssid_masters);
-	dev_info(dev, "[%s] domain:%px, ssid:%u, asid:%u, nr:%d\n", __func__,
-		 ssid_domain, ssid_domain->ssid, ssid_domain->asid, nr_masters);
+	dev_info(dev, "[%s] domain:%p, sid:%u, ssid:%u, asid:%u, nr:%d, ssids[%u, %u]\n",
+		 __func__, ssid_domain, sid, ssid_domain->ssid, ssid_domain->asid,
+		 nr_masters, master->ssid_bits, master->cd_table.used_ssids);
 
 	if (nr_masters == 0) {
 		smmu_ssid_domain_delete(smmu_domain, ssid_domain);

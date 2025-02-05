@@ -1011,6 +1011,17 @@ static int get_smmu_common_id(u32 smmu_type, u32 tbu_id)
 	return id;
 }
 
+static int mtk_smmu_ssid_support(struct arm_smmu_master *master)
+{
+	if (!master || !master->smmu || !master->dev || !master->domain)
+		return -EINVAL;
+
+	if (master->ssid_bits == 0 || master->cd_table.used_ssids == 0)
+		return -EPERM;
+
+	return 0;
+}
+
 void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 			      u32 fault_id, u32 smmu_id)
 {
@@ -1293,6 +1304,9 @@ static void dump_pgtable_ops(struct seq_file *s, struct arm_smmu_master *master)
 	if (!smmu_ssid_dump_enable)
 		return;
 
+	if (mtk_smmu_ssid_support(master))
+		return;
+
 	/* ssid page table OPS dump */
 	rbtree_postorder_for_each_entry_safe(ssid_domain,
 					     next,
@@ -1411,6 +1425,9 @@ static void dump_ste_cd_info(struct seq_file *s,
 	}
 
 	if (!smmu_ssid_dump_enable)
+		return;
+
+	if (mtk_smmu_ssid_support(master))
 		return;
 
 	/* ssid cd dump */
@@ -1667,6 +1684,9 @@ static void dump_io_pgtable(struct seq_file *s, struct arm_smmu_master *master)
 	dump_io_pgtable_s2(s, domain, sid, ssid, steptr);
 
 	if (!smmu_ssid_dump_enable)
+		return;
+
+	if (mtk_smmu_ssid_support(master))
 		return;
 
 	/* ssid page table dump */
@@ -2223,10 +2243,12 @@ static void mtk_iommu_trace_init(struct mtk_m4u_data *data)
 	iommu_globals.iova_alloc_list = 1;
 	iommu_globals.iova_alloc_rbtree = 1;
 	iommu_globals.iova_map_list = 0;
+	smmu_ssid_dump_enable = true;
 #else
 	iommu_globals.iova_alloc_list = 0;
 	iommu_globals.iova_alloc_rbtree = 0;
 	iommu_globals.iova_map_list = 0;
+	smmu_ssid_dump_enable = false;
 #endif
 
 	spin_lock_init(&iommu_globals.lock);
@@ -3166,7 +3188,6 @@ static int mtk_m4u_dbg_probe(struct platform_device *pdev)
 
 	smmu_v3_enable = smmu_v3_enabled();
 	pr_info("%s start, smmu_v3_enable:%d\n", __func__, smmu_v3_enable);
-	smmu_ssid_dump_enable = false;
 
 	m4u_data = devm_kzalloc(dev, sizeof(struct mtk_m4u_data), GFP_KERNEL);
 	if (!m4u_data)
