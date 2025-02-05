@@ -2235,54 +2235,56 @@ static GED_ERROR ged_kpi_push_timestamp(
 	int target_FPS;
 
 	if (g_psWorkQueue && ged_kpi_enabled()) {
-		struct GED_TIMESTAMP *psTimeStamp = (struct GED_TIMESTAMP *)
-			ged_alloc_atomic(sizeof(struct GED_TIMESTAMP));
+		struct GED_TIMESTAMP *psTimeStamp;
 		unsigned int pui32Block, pui32Idle;
 
-		if (!psTimeStamp) {
-			GED_LOGD("GED_ERROR_OOM in %s", __func__);
-			return GED_ERROR_OOM;
-		}
+		if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
+			psTimeStamp = (struct GED_TIMESTAMP *)
+				ged_alloc_atomic(sizeof(struct GED_TIMESTAMP));
 
-		if (eTimeStampType == GED_TIMESTAMP_TYPE_2 &&
-			!(is_fdvfs_enable() & POLICY_MODE_V2)) {
-			spin_lock_irqsave(&gsGpuUtilLock, ui32IRQFlags);
+			if (!psTimeStamp) {
+				GED_LOGD("GED_ERROR_OOM in %s", __func__);
+				return GED_ERROR_OOM;
+			}
 
-			if (!ged_kpi_get_fallback_mode() && pid != pid_sf) {
-				struct GpuUtilization_Ex util_ex;
-				ged_kpi_trigger_fb_dvfs();
-				ged_dvfs_cal_gpu_utilization_ex(
-					&(psTimeStamp->i32GPUloading),
-					&pui32Block, &pui32Idle, &util_ex);
-			} else if (is_fdvfs_enable() && ullTimeStamp > eb_ullTimeStamp) {
-				if (ullTimeStamp - eb_ullTimeStamp > fb_timeout) {
+			if (eTimeStampType == GED_TIMESTAMP_TYPE_2) {
+				spin_lock_irqsave(&gsGpuUtilLock, ui32IRQFlags);
+
+				if (!ged_kpi_get_fallback_mode() && pid != pid_sf) {
 					struct GpuUtilization_Ex util_ex;
 
+					ged_kpi_trigger_fb_dvfs();
 					ged_dvfs_cal_gpu_utilization_ex(
 						&(psTimeStamp->i32GPUloading),
 						&pui32Block, &pui32Idle, &util_ex);
-					eb_ullTimeStamp = ullTimeStamp;
-				}
-			} else {
-				psTimeStamp->i32GPUloading = 0;
-			}
-			spin_unlock_irqrestore(&gsGpuUtilLock, ui32IRQFlags);
-		}
+				} else if (is_fdvfs_enable() && ullTimeStamp > eb_ullTimeStamp) {
+					if (ullTimeStamp - eb_ullTimeStamp > fb_timeout) {
+						struct GpuUtilization_Ex util_ex;
 
-		psTimeStamp->eTimeStampType = eTimeStampType;
-		psTimeStamp->ullTimeStamp = ullTimeStamp;
-		psTimeStamp->pid = pid;
-		psTimeStamp->ullWnd = ullWnd;
-		psTimeStamp->i32FrameID = i32FrameID;
-		psTimeStamp->i32QedBuffer_length = QedBuffer_length;
-		psTimeStamp->isSF = isSF;
-		psTimeStamp->fence_addr = fence_addr;
-		if (!(is_fdvfs_enable() & POLICY_MODE_V2)) {
+						ged_dvfs_cal_gpu_utilization_ex(
+							&(psTimeStamp->i32GPUloading),
+							&pui32Block, &pui32Idle, &util_ex);
+						eb_ullTimeStamp = ullTimeStamp;
+					}
+				} else {
+					psTimeStamp->i32GPUloading = 0;
+				}
+				spin_unlock_irqrestore(&gsGpuUtilLock, ui32IRQFlags);
+			}
+
+			psTimeStamp->eTimeStampType = eTimeStampType;
+			psTimeStamp->ullTimeStamp = ullTimeStamp;
+			psTimeStamp->pid = pid;
+			psTimeStamp->ullWnd = ullWnd;
+			psTimeStamp->i32FrameID = i32FrameID;
+			psTimeStamp->i32QedBuffer_length = QedBuffer_length;
+			psTimeStamp->isSF = isSF;
+			psTimeStamp->fence_addr = fence_addr;
+
 			INIT_WORK(&psTimeStamp->sWork, ged_kpi_work_cb);
 			queue_work(g_psWorkQueue, &psTimeStamp->sWork);
-		} else {
-			ged_free(psTimeStamp, sizeof(struct GED_TIMESTAMP));
 		}
+
 		switch (eTimeStampType) {
 		case GED_TIMESTAMP_TYPE_D:
 			break;
