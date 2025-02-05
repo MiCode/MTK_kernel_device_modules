@@ -193,9 +193,16 @@ int mt6991_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		memif->tid = 0;
 		strscpy(memif->process_name, "NULL", sizeof(memif->process_name) - 1);
 
-		mtk_memif_set_pbuf_size(afe, id, MT6991_MEMIF_PBUF_SIZE_256_BYTES);
-		mtk_memif_set_min_max_len(afe, id, MT6991_MEMIF_MIN_LEN_64_BYTES,
+		/* ALPS09622911 WA for DL23 (bt memif) to avoid dl noise */
+		if (id == MT6991_MEMIF_DL23) {
+			mtk_memif_set_pbuf_size(afe, id, MT6991_MEMIF_PBUF_SIZE_64_BYTES);
+			mtk_memif_set_min_max_len(afe, id, MT6991_MEMIF_MIN_LEN_16_BYTES,
 					  MT6991_MEMIF_MAX_LEN_64_BYTES);
+		} else {
+			mtk_memif_set_pbuf_size(afe, id, MT6991_MEMIF_PBUF_SIZE_256_BYTES);
+			mtk_memif_set_min_max_len(afe, id, MT6991_MEMIF_MIN_LEN_64_BYTES,
+					  MT6991_MEMIF_MAX_LEN_64_BYTES);
+		}
 
 		if (is_afe_need_triggered(memif)) {
 			ret = mtk_memif_set_enable(afe, id);
