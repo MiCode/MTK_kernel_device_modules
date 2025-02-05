@@ -506,7 +506,7 @@ int setMaxBrightness(int connector_id, int percent, bool enable)
 	int i = 0, index = -1;
 	bool bSetall = false;
 
-	if (percent <= 0) {
+	if (percent < 0) {
 		pr_info("connector_id %d set invalid percent %d", connector_id, percent);
 		return -EINVAL;
 	}
