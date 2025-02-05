@@ -30,7 +30,8 @@
 /* TODO: TBD swpm_status */
 unsigned int swpm_status;
 EXPORT_SYMBOL(swpm_status);
-
+# define GPU_DBG_ENABLE 0
+# if GPU_DBG_ENABLE
 unsigned int swpm_gpu_debug;
 EXPORT_SYMBOL(swpm_gpu_debug);
 
@@ -85,7 +86,7 @@ static const struct mtk_swpm_sysfs_op gpu_debug_fops = {
 	.fs_read = gpu_debug_read,
 	.fs_write = gpu_debug_write,
 };
-
+# endif
 #if IS_ENABLED(CONFIG_MTK_SWPM_PERF_ARMV8_PMU)
 static ssize_t swpm_arm_dsu_pmu_read(char *ToUser, size_t sz, void *priv)
 {
@@ -222,9 +223,10 @@ static const struct mtk_swpm_sysfs_op swpm_arm_pmu_fops = {
 static void swpm_dbg_fs_init(void)
 {
 	/* mtk_swpm_sysfs_root_entry_create(); */
+# if GPU_DBG_ENABLE
 	mtk_swpm_sysfs_entry_func_node_add("gpu_debug"
 			, 0644, &gpu_debug_fops, NULL, NULL);
-
+#endif
 #if IS_ENABLED(CONFIG_MTK_SWPM_PERF_ARMV8_PMU)
 	mtk_swpm_sysfs_entry_func_node_add("swpm_arm_pmu"
 			, 0644, &swpm_arm_pmu_fops, NULL, NULL);

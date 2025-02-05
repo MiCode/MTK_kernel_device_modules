@@ -91,6 +91,8 @@ define_mgk_ddk_ko(
     ],
 )
 
+
+
 ddk_headers(
     name = "ddk_public_headers",
     includes = [
@@ -100,5 +102,7 @@ ddk_headers(
     hdrs = glob([
         "inc/*.h",
         "mtk_swpm_fs/*.h",
+        "modules/include/*.h",
+        "modules/debug/v1/*.h",
     ]),
 )
