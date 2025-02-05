@@ -242,11 +242,25 @@ struct iova_count_list {
 
 static struct iova_count_list count_list = {};
 
+#define MTK_IOMMU_IOVA_SPACE_NUM	(4)
+
 enum mtk_iova_space {
 	MTK_IOVA_SPACE0, /* 0GB ~ 4GB */
 	MTK_IOVA_SPACE1, /* 4GB ~ 8GB */
 	MTK_IOVA_SPACE2, /* 8GB ~ 12GB */
 	MTK_IOVA_SPACE3, /* 12GB ~ 16GB */
+	MTK_IOVA_SPACE4,
+	MTK_IOVA_SPACE5,
+	MTK_IOVA_SPACE6,
+	MTK_IOVA_SPACE7,
+	MTK_IOVA_SPACE8,
+	MTK_IOVA_SPACE9,
+	MTK_IOVA_SPACE10,
+	MTK_IOVA_SPACE11,
+	MTK_IOVA_SPACE12,
+	MTK_IOVA_SPACE13,
+	MTK_IOVA_SPACE14,
+	MTK_IOVA_SPACE15,
 	MTK_IOVA_SPACE_NUM
 };
 
@@ -312,6 +326,11 @@ static inline bool __maybe_unused iommu_bring_up_enable(void)
 	return IOMMU_BRING_UP || m4u_data->plat_data->bring_up_enable;
 }
 
+static inline u32 mtk_iova_space_num(void)
+{
+	return smmu_v3_enable ? MTK_IOVA_SPACE_NUM : MTK_IOMMU_IOVA_SPACE_NUM;
+}
+
 static inline void mtk_iova_count_inc(void)
 {
 	if (iova_list.count < ULLONG_MAX)
@@ -374,7 +393,7 @@ void mtk_iova_map(u64 tab_id, u64 iova, size_t size)
 	if (iommu_globals.iova_evt_enable == 0)
 		return;
 
-	if (id >= MTK_IOVA_SPACE_NUM) {
+	if (id >= mtk_iova_space_num()) {
 		pr_err("out of iova space: 0x%llx\n", iova);
 		return;
 	}
@@ -412,7 +431,7 @@ void mtk_iova_unmap(u64 tab_id, u64 iova, size_t size)
 	if (iommu_globals.iova_evt_enable == 0)
 		return;
 
-	if (id >= MTK_IOVA_SPACE_NUM) {
+	if (id >= mtk_iova_space_num()) {
 		pr_err("out of iova space: 0x%llx\n", iova);
 		return;
 	}
@@ -500,7 +519,7 @@ static int mtk_iommu_iova_map_dump(struct seq_file *s, u64 iova, u64 tab_id)
 	if (iommu_globals.iova_evt_enable == 0 || iommu_globals.iova_map_list == 0)
 		return 0;
 
-	if (id >= MTK_IOVA_SPACE_NUM) {
+	if (id >= mtk_iova_space_num()) {
 		pr_err("out of iova space: 0x%llx\n", iova);
 		return -EINVAL;
 	}
@@ -517,7 +536,7 @@ static int mtk_iommu_iova_map_dump(struct seq_file *s, u64 iova, u64 tab_id)
 
 	spin_lock_irqsave(&map_list.lock, flags);
 	if (!iova) {
-		for (i = 0; i < MTK_IOVA_SPACE_NUM; i++) {
+		for (i = 0; i < mtk_iova_space_num(); i++) {
 			list_for_each_entry_safe(plist, n, &map_list.head[i], list_node)
 				if (to_smmu_hw_id(plist->tab_id) == tab_id) {
 					mtk_iommu_iova_map_info_dump(s, plist);
@@ -2313,7 +2332,7 @@ static void mtk_iommu_iova_trace(int event,
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	u32 id = (iova >> 32);
 
-	if (id >= MTK_IOVA_SPACE_NUM) {
+	if (id >= mtk_iova_space_num()) {
 		pr_err("out of iova space: 0x%llx\n", iova);
 		return;
 	}
@@ -2382,6 +2401,7 @@ void get_iommu_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 static int m4u_debug_init(struct mtk_m4u_data *data)
 {
 	struct proc_dir_entry *debug_file;
+	u32 id;
 
 	data->debug_root = proc_mkdir("iommu_debug", NULL);
 
@@ -2432,10 +2452,8 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 	INIT_LIST_HEAD(&iova_list.head);
 
 	spin_lock_init(&map_list.lock);
-	INIT_LIST_HEAD(&map_list.head[MTK_IOVA_SPACE0]);
-	INIT_LIST_HEAD(&map_list.head[MTK_IOVA_SPACE1]);
-	INIT_LIST_HEAD(&map_list.head[MTK_IOVA_SPACE2]);
-	INIT_LIST_HEAD(&map_list.head[MTK_IOVA_SPACE3]);
+	for (id = 0; id < MTK_IOVA_SPACE_NUM; id++)
+		INIT_LIST_HEAD(&map_list.head[id]);
 
 	spin_lock_init(&count_list.lock);
 	INIT_LIST_HEAD(&count_list.head);
