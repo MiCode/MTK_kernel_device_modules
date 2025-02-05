@@ -535,12 +535,12 @@ int uarthub_dump_intfhub_debug_info_mt6993(const char *tag)
 			REG_FLD_SHIFT(DEV1_PKT_CNT_FLD_dev1_rx_pkt_cnt)),
 		((dev2_sta & REG_FLD_MASK(DEV2_PKT_CNT_FLD_dev2_rx_pkt_cnt)) >>
 			REG_FLD_SHIFT(DEV2_PKT_CNT_FLD_dev2_rx_pkt_cnt)),
-		((dev0_sta & REG_FLD_MASK(DEV0_PKT_CNT_FLD_dev0_tx_timeout_cnt)) >>
-			REG_FLD_SHIFT(DEV0_PKT_CNT_FLD_dev0_tx_timeout_cnt)),
-		((dev1_sta & REG_FLD_MASK(DEV1_PKT_CNT_FLD_dev1_tx_timeout_cnt)) >>
-			REG_FLD_SHIFT(DEV1_PKT_CNT_FLD_dev1_tx_timeout_cnt)),
-		((dev2_sta & REG_FLD_MASK(DEV2_PKT_CNT_FLD_dev2_tx_timeout_cnt)) >>
-			REG_FLD_SHIFT(DEV2_PKT_CNT_FLD_dev2_tx_timeout_cnt)));
+		((dev0_sta & REG_FLD_MASK(DEV0_PKT_CNT_FLD_dev0_tx_pkt_cnt)) >>
+			REG_FLD_SHIFT(DEV0_PKT_CNT_FLD_dev0_tx_pkt_cnt)),
+		((dev1_sta & REG_FLD_MASK(DEV1_PKT_CNT_FLD_dev1_tx_pkt_cnt)) >>
+			REG_FLD_SHIFT(DEV1_PKT_CNT_FLD_dev1_tx_pkt_cnt)),
+		((dev2_sta & REG_FLD_MASK(DEV2_PKT_CNT_FLD_dev2_tx_pkt_cnt)) >>
+			REG_FLD_SHIFT(DEV2_PKT_CNT_FLD_dev2_tx_pkt_cnt)));
 	if (ret > 0)
 		len += ret;
 
