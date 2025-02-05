@@ -605,6 +605,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/rpmsg:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devmpu:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/spmi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:ddk_kconfigs".format(kernel_version),
@@ -1116,6 +1117,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devmpu:devmpu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/widevine_drm:widevine_driver".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version),
@@ -2223,7 +2225,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version))
-        mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/soc/mediatek/devmpu:devmpu".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v0:adsp-v0".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v1:adsp-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/adsp/v2:adsp-v2".format(kernel_version))
@@ -2382,7 +2384,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/clk/mediatek/clkdbg-mt6781.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-chk-mt6781.ko")
         mgk_64_device_modules.append("drivers/clk/mediatek/clk-mt6781-pg.ko")
-        mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/soc/mediatek/devmpu:devmpu".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-fake-eng".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-fake-eng-v2".format(kernel_version))
@@ -3258,7 +3260,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuidle/mtk_cpuidle.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cpuhotplug/mtk_cpuhp.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/upower/Upower.ko")
-        mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/soc/mediatek/devmpu:devmpu".format(kernel_version))
         mgk_64_device_modules.append("drivers/misc/mediatek/eemgpu/mtk_eem.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/leakage_table_v2/mediatek_static_power.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/sspm/v2/sspm.ko")
@@ -3886,7 +3888,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version))
-        mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/soc/mediatek/devmpu:devmpu".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mmsram".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version))
@@ -4212,7 +4214,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-dec-v2.ko")
         mgk_64_device_modules.remove("drivers/media/platform/mtk-vcodec/mtk-vcodec-enc-v2.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version))
-        mgk_64_device_modules.append("drivers/soc/mediatek/devmpu/devmpu.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/soc/mediatek/devmpu:devmpu".format(kernel_version))
 
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko")
