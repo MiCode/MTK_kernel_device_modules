@@ -197,7 +197,7 @@ static int mt635x_efuse_read(void *context, unsigned int offset,
 	const struct efuse_chip_data *data = efuse->data;
 	const struct efuse_reg *reg = data->reg;
 	unsigned int buf = 0;
-	unsigned int offset_end = offset + bytes;
+	unsigned int offset_end = offset + bytes / data->efuse_reg_read_width;
 	unsigned short *val = _val;
 	unsigned short key_val = 0;
 	int ret;
