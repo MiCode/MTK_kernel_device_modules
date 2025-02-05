@@ -50,7 +50,7 @@ static int *num_cpus;
 
 unsigned long capacity_curr_of(int cpu)
 {
-	unsigned long max_cap = arch_scale_cpu_capacity(cpu);
+	unsigned long max_cap = cpu_rq(cpu)->cpu_capacity;
 	unsigned long scale_freq = arch_scale_freq_capacity(cpu);
 
 	return cap_scale(max_cap, scale_freq);
@@ -235,6 +235,9 @@ int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr,
 		int num);
 EXPORT_SYMBOL(magt2fpsgo_notify_target_fps_fp);
 
+int (*magt2fpsgo_get_all_fps_control_pid_info)(struct fps_control_info *arr);
+EXPORT_SYMBOL(magt2fpsgo_get_all_fps_control_pid_info);
+
 int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
 	struct render_frame_info *frame_info_arr);
 EXPORT_SYMBOL(magt2fpsgo_get_fpsgo_frame_info);
@@ -245,6 +248,20 @@ int (*magt2fpsgo_notify_thread_status_fp)(unsigned int frameid,
 	unsigned int status,
 	unsigned long long tv_ts);
 EXPORT_SYMBOL(magt2fpsgo_notify_thread_status_fp);
+
+/*--------------------Set CPU mask by kernel------------------------*/
+int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask)
+{
+	struct cpumask *kernel_allowed_mask;
+	int ret;
+
+	if (!p)
+		return -EINVAL;
+	kernel_allowed_mask = &((struct mtk_task *) p->android_vendor_data1)->kernel_allowed_mask;
+	cpumask_copy(kernel_allowed_mask, new_mask);
+	ret = set_cpus_allowed_ptr(p, new_mask);
+	return ret;
+}
 
 /*--------------------MAGT IOCTL------------------------*/
 static long magt_ioctl(struct file *filp,
@@ -640,6 +657,49 @@ static long magt_ioctl(struct file *filp,
 		ret = magt2fpsgo_notify_thread_status_fp(tsiKM->frameid,
 			tsiKM->type, tsiKM->status, tsiKM->tv_ts);
 		break;
+
+	case MAGT_BIND_THREAD_TO_CPU:
+	{
+		struct thread_binding_info tbiKM;
+		struct cpumask mask;
+		struct task_struct *p;
+
+		// Check if the input parameters are valid,
+		// And Copy the data from userspace.
+		if (perfctl_copy_from_user(&tbiKM, (void *)arg,
+				sizeof(struct thread_binding_info))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		// Bind the threads to the specified CPUs.
+		for (int i = 0; i < tbiKM.pid_num; i++) {
+			rcu_read_lock();
+
+			p = find_task_by_vpid(tbiKM.pid[i]);
+			if (!p) {
+				rcu_read_unlock();
+				ret = -ESRCH;
+				goto ret_ioctl;
+			}
+
+			get_task_struct(p);
+			rcu_read_unlock();
+
+			if (p->flags & PF_NO_SETAFFINITY) {
+				ret = -EINVAL;
+				put_task_struct(p);
+				goto out_put_task;
+			}
+
+			cpumask_clear(&mask);
+			*cpumask_bits(&mask) = tbiKM.core[i];
+			ret = set_cpus_allowed_ptr_by_kernel(p, &mask);
+out_put_task:
+			put_task_struct(p);
+		}
+		break;
+	}
 
 	default:
 		pr_debug(TAG "%s %d: unknown cmd %x\n",

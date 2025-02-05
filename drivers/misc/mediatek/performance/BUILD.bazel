@@ -48,6 +48,7 @@ define_mgk_ddk_ko(
     ],
     copts = [
         "-I$(srctree)/kernel/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/",
     ],
 )

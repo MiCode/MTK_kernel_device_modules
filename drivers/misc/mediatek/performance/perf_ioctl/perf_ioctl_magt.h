@@ -25,10 +25,14 @@
 #include <linux/cpumask.h>
 #include <linux/mutex.h>
 #include "fpsgo_frame_info.h"
+#include "sched/eas/eas_plus.h"
+#include "sched/common.h"
 
 #define max_cpus 8
 #define MAX_MAGT_TARGET_FPS_NUM  10
 #define MAGT_DEP_LIST_NUM  10
+#define MAX_MAGT_BIND_CPU_NUM 10
+
 #define MAGT_GET_CPU_LOADING              _IOR('r', 0, struct cpu_info)
 #define MAGT_GET_PERF_INDEX               _IOR('r', 1, struct cpu_info)
 #define MAGT_SET_TARGET_FPS               _IOW('g', 2, struct target_fps_info)
@@ -41,6 +45,7 @@
 #define MAGT_GET_FPSGO_RENDER_PERFIDX     _IOWR('g', 9, struct fpsgo_render_perf)
 #define MAGT_NOTIFY_THREAD_STATUS         _IOW('g', 10, struct thread_status_info)
 #define MAGT_SET_DEP_LIST_V3              _IOW('g', 11, struct dep_list_info_V3)
+#define MAGT_BIND_THREAD_TO_CPU           _IOW('g', 15, struct thread_binding_info)
 
 struct thread_param {
 	int32_t tid;
@@ -113,6 +118,12 @@ struct thread_status_info {
 	__u32 type;
 	__u32 status;
 	__u64 tv_ts;
+};
+
+struct thread_binding_info {
+	int32_t pid_num;
+	int32_t pid[MAX_MAGT_BIND_CPU_NUM];
+	int32_t core[MAX_MAGT_BIND_CPU_NUM];
 };
 
 extern int get_cpu_loading(struct cpu_info *_ci);
