@@ -204,6 +204,8 @@ struct mml_sys {
 	/* MML component bound count */
 	u32 comp_bound;
 
+	u8 sub_comp_type[MML_MAX_SYS_COMPONENTS];
+
 	/* clock for dpc */
 	struct clk *clk_sys_26m;
 
@@ -2420,18 +2422,34 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_sys *sys = comp_to_sys(comp);
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	struct mml_frame_config *cfg = task->config;
 	const phys_addr_t base_pa = comp->base_pa;
-	struct mml_tile_engine *tile = config_get_tile(task->config, ccfg, idx);
+	struct mml_tile_engine *tile = config_get_tile(cfg, ccfg, idx);
 	struct dl_frame_data *dl_frm = dl_frm_data(ccfg);
 
 	u16 offset = sys->dl_relays[sys->adjacency[comp->id][comp->id]];
 	u32 dl_w = tile->in.xe - tile->in.xs + 1;
 	u32 dl_h = tile->in.ye - tile->in.ys + 1;
 	u32 size = (dl_h << 16) + dl_w;
+	bool dl_4p = false;
 
-	if (sys->data->px_per_tick == 2)
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && !cfg->merge2p) {
+		u8 comp_type = sys->sub_comp_type[comp->sub_idx];
+
+		/* only enable 4p in
+		 * rrot x2 -> merge 4p -> sysd_dlo 4p -> sysf_dli 4p -> rsz -> 2p ...
+		 */
+		if ((comp_type == MML_CT_SYS_OUT && comp->sysid == mml_sys_dma) ||
+			(comp_type == MML_CT_SYS_IN && comp->sysid != mml_sys_dma))
+			dl_4p = true;
+	}
+
+	if (dl_4p)
+		size = size | (2 << 30);
+	else if (sys->data->px_per_tick == 2)
 		size = size | (1 << 30);
-	if (comp->sysid == task->config->path[ccfg->pipe]->mmlsys->sysid)
+
+	if (comp->sysid == cfg->path[ccfg->pipe]->mmlsys->sysid)
 		task->dlo_size = size;
 	cmdq_pkt_write(pkt, NULL, base_pa + offset, size, U32_MAX);
 
@@ -2766,6 +2784,7 @@ static int subcomp_init(struct platform_device *pdev, struct mml_sys *sys,
 	}
 
 	if (data->comp_inits[comp_type]) {
+		sys->sub_comp_type[subcomponent] = comp_type;
 		ret = data->comp_inits[comp_type](dev, sys, comp);
 		if (ret)
 			return ret;

@@ -924,7 +924,8 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 
 	/* parse larb node and port from dts */
 	if (of_property_read_u8(dev->of_node, "larb-idx", &comp->larb_idx))
-		comp->larb_idx = U8_MAX;
+		comp->larb_idx = comp->sysid;
+
 	if (of_parse_phandle_with_fixed_args(dev->of_node, "mediatek,larb",
 		1, 0, &larb_args)) {
 		mml_err("%s fail to parse mediatek,larb comp %u %s",
@@ -932,6 +933,7 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 			comp->name ? comp->name : "");
 		return -ENOENT;
 	}
+
 	comp->larb_port = larb_args.args[0];
 	if (!of_address_to_resource(larb_args.np, 0, &res))
 		comp->larb_base = res.start;
@@ -950,30 +952,27 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	comp->icc_path = of_mtk_icc_get(dev, "mml_dma");
 	if (IS_ERR_OR_NULL(comp->icc_path))
 		comp->icc_path = NULL;
-	else
-		mml_log("%s %s supports qos",
-			__func__, comp->name ? comp->name : "");
 
 	comp->icc_dpc_path = of_mtk_icc_get(dev, "mml_dma_dpc");
 	if (IS_ERR_OR_NULL(comp->icc_dpc_path))
 		comp->icc_dpc_path = NULL;
-	else
-		mml_log("%s %s supports qos dpc",
-			__func__, comp->name ? comp->name : "");
 
 	comp->icc_stash_path = of_mtk_icc_get(dev, "mml_dma_stash");
 	if (IS_ERR_OR_NULL(comp->icc_stash_path))
 		comp->icc_stash_path = NULL;
-	else
-		mml_log("%s %s supports qos stash",
-			__func__, comp->name ? comp->name : "");
 
 	comp->icc_dpc_stash_path = of_mtk_icc_get(dev, "mml_dma_dpc_stash");
 	if (IS_ERR_OR_NULL(comp->icc_dpc_stash_path))
 		comp->icc_dpc_stash_path = NULL;
-	else
-		mml_log("%s %s supports qos dpc stash",
-			__func__, comp->name ? comp->name : "");
+
+	if (comp->icc_path || comp->icc_dpc_path ||
+		comp->icc_stash_path || comp->icc_dpc_stash_path)
+		mml_log("%s %s mml larb idx %u port %u supports%s%s%s%s",
+			__func__, comp->name ? comp->name : "", comp->larb_idx, comp->larb_port,
+			comp->icc_path ? " qos" : "",
+			comp->icc_dpc_path ? " qos_dpc" : "",
+			comp->icc_stash_path ? " stash" : "",
+			comp->icc_dpc_stash_path ? " stash_dpc" : "");
 #endif
 
 	return 0;
@@ -1421,7 +1420,7 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	const u32 stash_srt_bw = bw->stash_srt_bw, stash_hrt_bw = bw->stash_hrt_bw;
 	bool hrt = cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK;
 	bool updated = false;
-	u8 larb_idx = (comp->larb_idx == U8_MAX) ? comp->sysid : comp->larb_idx;
+	u8 larb_idx = comp->larb_idx;
 
 	if (larb_idx >= MML_MAX_LARB) {
 		mml_err("%s larb_idx overflow comp %d", __func__, comp->id);
@@ -1497,7 +1496,7 @@ void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 {
 	struct mml_dev *mml = task->config->mml;
 	struct mml_comp_bw *bw = &comp->bw[dpc];
-	u8 larb_idx = (comp->larb_idx == U8_MAX) ? comp->sysid : comp->larb_idx;
+	u8 larb_idx = comp->larb_idx;
 
 	if (larb_idx >= MML_MAX_LARB) {
 		mml_err("%s larb_idx overflow comp %d", __func__, comp->id);

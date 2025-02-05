@@ -2773,10 +2773,14 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 
 	writel(0, base + RROT_INTERRUPT_STATUS);
 
+	if (irq_status & RROT_IRQ_UNDERRUN) {
+		mml_mmp(underrun, MMPROFILE_FLAG_PULSE, comp->id, 0);
+		mml_log("%s comp %u %s irq underrun status %#010lx",
+			__func__, comp->id, comp->name, irq_status);
+	}
+
 	if (irq_status & RROT_IRQ_FRAME_COMPLETE)
 		rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_END, comp->id, 0);
-	else if (irq_status & RROT_IRQ_UNDERRUN)
-		mml_mmp(underrun, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 	return IRQ_HANDLED;
 }

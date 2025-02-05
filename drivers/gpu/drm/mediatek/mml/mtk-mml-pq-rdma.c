@@ -134,6 +134,8 @@
 #define RDMA_SRC_OFFSET_2_MSB		0xf4c
 #define RDMA_AFBC_PAYLOAD_OST		0xf50
 
+#define RDMA_DDREN			0x0dc
+
 /* RDMA debug monitor register count */
 #define RDMA_MON_COUNT 29
 
