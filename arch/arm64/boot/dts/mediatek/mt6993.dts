@@ -15107,12 +15107,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x3a601000 0 0x1000>,
 				<0 0x3a602000 0 0x1000>,
 				<0 0x3a603000 0 0x1000>,
+				<0 0x3a604000 0 0x1000>,
 				<0 0x3a608000 0 0x1000>,
 				<0 0x3a609000 0 0x1000>,
 				<0 0x3a60a000 0 0x1000>,
-				<0 0x3a60b000 0 0x1000>;
-			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "inner_base",
-						"inner_base_DMA", "inner_base_SCQ", "inner_base_pdp";
+				<0 0x3a60b000 0 0x1000>,
+				<0 0x3a60c000 0 0x1000>;
+			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "base_stg",
+					"inner_base", "inner_base_DMA", "inner_base_SCQ",
+					"inner_base_pdp", "inner_base_stg";
 			mediatek,camsv-id = <0>;
 			mediatek,cammux-id = <0>;
 			interrupts = <GIC_SPI 621 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -15170,12 +15173,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x3a611000 0 0x1000>,
 				<0 0x3a612000 0 0x1000>,
 				<0 0x3a613000 0 0x1000>,
+				<0 0x3a614000 0 0x1000>,
 				<0 0x3a618000 0 0x1000>,
 				<0 0x3a619000 0 0x1000>,
 				<0 0x3a61a000 0 0x1000>,
-				<0 0x3a61b000 0 0x1000>;
-			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "inner_base",
-						"inner_base_DMA", "inner_base_SCQ", "inner_base_pdp";
+				<0 0x3a61b000 0 0x1000>,
+				<0 0x3a61c000 0 0x1000>;
+			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "base_stg",
+					"inner_base", "inner_base_DMA", "inner_base_SCQ",
+					"inner_base_pdp", "inner_base_stg";
 			mediatek,camsv-id = <1>;
 			mediatek,cammux-id = <1>;
 			interrupts = <GIC_SPI 622 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -15233,12 +15239,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x3a621000 0 0x1000>,
 				<0 0x3a622000 0 0x1000>,
 				<0 0x3a623000 0 0x1000>,
+				<0 0x3a624000 0 0x1000>,
 				<0 0x3a628000 0 0x1000>,
 				<0 0x3a629000 0 0x1000>,
 				<0 0x3a62a000 0 0x1000>,
-				<0 0x3a62b000 0 0x1000>;
-			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "inner_base",
-						"inner_base_DMA", "inner_base_SCQ", "inner_base_pdp";
+				<0 0x3a62b000 0 0x1000>,
+				<0 0x3a62c000 0 0x1000>;
+			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "base_stg",
+					"inner_base", "inner_base_DMA", "inner_base_SCQ",
+					"inner_base_pdp", "inner_base_stg";
 			mediatek,camsv-id = <2>;
 			mediatek,cammux-id = <2>;
 			interrupts = <GIC_SPI 623 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -15296,12 +15305,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x3a631000 0 0x1000>,
 				<0 0x3a632000 0 0x1000>,
 				<0 0x3a633000 0 0x1000>,
+				<0 0x3a634000 0 0x1000>,
 				<0 0x3a638000 0 0x1000>,
 				<0 0x3a639000 0 0x1000>,
 				<0 0x3a63a000 0 0x1000>,
-				<0 0x3a63b000 0 0x1000>;
-			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "inner_base",
-						"inner_base_DMA", "inner_base_SCQ", "inner_base_pdp";
+				<0 0x3a63b000 0 0x1000>,
+				<0 0x3a63c000 0 0x1000>;
+			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "base_stg",
+					"inner_base", "inner_base_DMA", "inner_base_SCQ",
+					"inner_base_pdp", "inner_base_stg";
 			mediatek,camsv-id = <3>;
 			mediatek,cammux-id = <3>;
 			interrupts = <GIC_SPI 624 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -15349,12 +15361,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x3a641000 0 0x1000>,
 				<0 0x3a642000 0 0x1000>,
 				<0 0x3a643000 0 0x1000>,
+				<0 0x3a644000 0 0x1000>,
 				<0 0x3a648000 0 0x1000>,
 				<0 0x3a649000 0 0x1000>,
 				<0 0x3a64a000 0 0x1000>,
-				<0 0x3a64b000 0 0x1000>;
-			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "inner_base",
-						"inner_base_DMA", "inner_base_SCQ", "inner_base_pdp";
+				<0 0x3a64b000 0 0x1000>,
+				<0 0x3a64c000 0 0x1000>;
+			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "base_stg",
+					"inner_base", "inner_base_DMA", "inner_base_SCQ",
+					"inner_base_pdp", "inner_base_stg";
 			mediatek,camsv-id = <4>;
 			mediatek,cammux-id = <4>;
 			interrupts = <GIC_SPI 625 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -15392,12 +15407,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x3a651000 0 0x1000>,
 				<0 0x3a652000 0 0x1000>,
 				<0 0x3a653000 0 0x1000>,
+				<0 0x3a654000 0 0x1000>,
 				<0 0x3a658000 0 0x1000>,
 				<0 0x3a659000 0 0x1000>,
 				<0 0x3a65a000 0 0x1000>,
-				<0 0x3a65b000 0 0x1000>;
-			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "inner_base",
-						"inner_base_DMA", "inner_base_SCQ", "inner_base_pdp";
+				<0 0x3a65b000 0 0x1000>,
+				<0 0x3a65c000 0 0x1000>;
+			reg-names = "base", "base_DMA", "base_SCQ", "base_pdp", "base_stg",
+					"inner_base", "inner_base_DMA", "inner_base_SCQ",
+					"inner_base_pdp", "inner_base_stg";
 			mediatek,camsv-id = <5>;
 			mediatek,cammux-id = <5>;
 			interrupts = <GIC_SPI 626 IRQ_TYPE_LEVEL_HIGH 0>,
