@@ -18,7 +18,7 @@
 #include "ccci_dpmaif_bat.h"
 #include "ccci_dpmaif_drv_com.h"
 #include "ccci_hif_internal.h"
-#include "ccci_dpmaif_v1_mt6789.h"
+#include "ccci_dpmaif_v1_6789.h"
 #include "ccmni.h"
 #define TAG "dpmf"
 static struct dpmaif_ctrl_v1_mt6789 *g_dpmaif_ctrl_v1_mt6789;
@@ -667,4 +667,3 @@ void drv1_hw_reset_for_6789(void)
 			"[%s]-%d error: write infra_ao_base fail; ret=%d; value: 0x%x\n",
 			__func__, __LINE__, ret, reg_value);
 }
-

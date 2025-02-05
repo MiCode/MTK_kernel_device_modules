@@ -23,7 +23,7 @@
 #endif
 #include "ccci_debug.h"
 #include "ccci_dpmaif_reg_com.h"
-#include "ccci_dpmaif_v1_mt6789.h"
+#include "ccci_dpmaif_v1_6789.h"
 #include "ccci_dpmaif_drv_com.h"
 #include "ccci_dpmaif_debug.h"
 #include "ccci_dpmaif_bat.h"

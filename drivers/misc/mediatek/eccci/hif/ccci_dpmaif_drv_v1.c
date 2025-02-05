@@ -27,7 +27,7 @@
 #include <linux/of_address.h>
 #include <linux/syscore_ops.h>
 #include "ccci_dpmaif_com.h"
-#include "ccci_dpmaif_v1_mt6789.h"
+#include "ccci_dpmaif_v1_6789.h"
 
 #include "ccci_dpmaif_reg_v1.h"
 
