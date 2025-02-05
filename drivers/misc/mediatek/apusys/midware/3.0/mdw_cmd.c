@@ -12,6 +12,7 @@
 #include "mdw_cmd.h"
 #include "mdw_fence.h"
 #include "mdw_mem_pool.h"
+#include "mdw_rv_tag.h"
 
 /* 64-bit execid : [world(4bit) | session_id(28bit) | counter(32bit)] */
 #define mdw_world (1ULL)
@@ -873,6 +874,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	mdw_flw_debug("c(0x%llx) complete done\n", c->kid);
 	up(&c->exec_sem);
 	mutex_unlock(&c->mtx);
+	mdw_cmd_deque_trace(c, MDW_CMD_DEQUE);
 
 	/* put cmd execution ref */
 	c->put_ref(c);
@@ -1219,6 +1221,8 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 
 		/* generate cmd inference id */
 		c->inference_id = MDW_CMD_GEN_INFID((uint64_t) mpriv, mpriv->counter++);
+
+		mdw_cmd_trace(c, MDW_CMD_ENQUE);
 
 		run_ret = mdw_cmd_run(c, wait_fd);
 		//mdw_drv_warn("check fd or not\n");

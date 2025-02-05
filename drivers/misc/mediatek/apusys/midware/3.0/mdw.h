@@ -340,6 +340,7 @@ struct mdw_cmd {
 	char comm[16];
 	uint64_t kid;
 	uint64_t uid;
+	uint64_t rvid;
 	uint32_t u_pid;
 	uint32_t priority;
 	uint32_t hardlimit;

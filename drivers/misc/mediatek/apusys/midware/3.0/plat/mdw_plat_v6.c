@@ -550,6 +550,7 @@ static int mdw_plat_v6_create_cmd_priv(struct mdw_cmd *c)
 
 	mdw_drv_debug("\n");
 	c->plat_priv = rc;
+	c->rvid = (uint64_t)&rc->s_msg;
 
 	/* get ext id */
 	mdw_ext_cmd_get_id(c);

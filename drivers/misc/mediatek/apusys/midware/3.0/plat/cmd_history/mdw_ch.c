@@ -10,6 +10,7 @@
 #include "mdw_cmn.h"
 #include "mdw_ch.h"
 #include "mdw_rv.h"
+#include "mdw_rv_tag.h"
 
 #define MDW_CH_HLIST_HASH_ORDER (6)
 #define MDW_CH_PREDICT_CMD_NUM (16)
@@ -253,6 +254,8 @@ static void mdw_ch_handle_iptime(struct mdw_ch_tbl *ch_tbl, struct mdw_cmd *c)
 {
 	struct mdw_subcmd_exec_info *sc_einfo = NULL;
 	uint32_t h_iptime = 0, c_iptime = 0, i = 0;
+	uint64_t sc_sync_info = 0;
+	int64_t vsid = 0;
 
 	/* get sc execution information */
 	sc_einfo = &c->einfos->sc;
@@ -264,6 +267,12 @@ static void mdw_ch_handle_iptime(struct mdw_ch_tbl *ch_tbl, struct mdw_cmd *c)
 		h_iptime = ch_tbl->h_sc_einfo[i].ip_time;
 		c_iptime = sc_einfo[i].ip_time;
 
+		if (sc_einfo[i].was_preempted || sc_einfo[i].ret) {
+			mdw_flw_debug("sc was preempted or failed, skip this iptime\n");
+			mdw_subcmd_trace(c, i, vsid, ch_tbl->h_sc_einfo[i].ip_time, sc_sync_info, MDW_CMD_SCHED);
+			continue;
+		}
+
 		if (MDW_CH_IN_THRESHOLD_PERCENT(c_iptime, h_iptime, MDW_CH_IPTIME_TOLERANCE_TH)) {
 			/* under 10% difference, get max */
 			ch_tbl->h_sc_einfo[i].ip_time = max(c_iptime, h_iptime);
@@ -271,6 +280,7 @@ static void mdw_ch_handle_iptime(struct mdw_ch_tbl *ch_tbl, struct mdw_cmd *c)
 			/* over 10% difference, apply current ip time */
 			ch_tbl->h_sc_einfo[i].ip_time = c_iptime;
 		}
+		mdw_subcmd_trace(c, i, vsid, ch_tbl->h_sc_einfo[i].ip_time, sc_sync_info ,MDW_CMD_SCHED);
 	}
 }
 
@@ -339,6 +349,17 @@ static void mdw_ch_cmd_delete_tbl(struct mdw_ch_tbl *tbl)
 	hash_del(&tbl->ch_hash_node);
 	devm_kfree(mpriv->dev, tbl->h_sc_einfo);
 	devm_kfree(mpriv->dev, tbl);
+}
+
+static bool mdw_ch_exec_time_check(uint64_t h_exec_time, uint64_t exec_time)
+{
+	uint64_t exec_time_th = 0;
+
+	exec_time_th = MDW_EXECTIME_TOLERANCE_TH(h_exec_time);
+	if (abs(exec_time - h_exec_time) < exec_time_th)
+		return true;
+
+	return false;
 }
 
 //--------------------------------------------
@@ -414,6 +435,13 @@ int mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 		ret = -EINVAL;
 		c->need_dtime_handle = true;
 		goto out;
+	}
+
+	/* initial or update h_exec_time */
+	if (!ch_tbl->h_exec_time ||
+		 mdw_ch_exec_time_check(ch_tbl->h_exec_time, c->einfos->c.total_us)) {
+		ch_tbl->h_exec_time = c->einfos->c.total_us;
+		mdw_cmd_debug("h_exec_time(%llu)\n", ch_tbl->h_exec_time);
 	}
 
 	/* update ip time for rv */
