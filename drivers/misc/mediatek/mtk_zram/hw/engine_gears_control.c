@@ -59,6 +59,11 @@ void engine_gear_deinit(struct platform_device *pdev, struct engine_gear_control
 	struct device *dev = &pdev->dev;
 
 	dev_info(dev, "%s\n", __func__);
+
+	/* Set up to min gear */
+	WARN_ON(engine_setup_gear(gear_ctrl, ENGINE_MIN_GEAR, false));
+
+	/* Undo preparation zram CG */
 	clk_unprepare(gear_ctrl->clk_mux);
 }
 
@@ -227,16 +232,22 @@ bool engine_try_to_gear_up(struct engine_gear_control_t *gear_ctrl, bool enc_wis
 	 * It may race with other requests and no gear setup is finished
 	 * here. But at least someone is doing gear-up for us.
 	 */
-	if (gear_ctrl->curr_gear == ENGINE_MAX_GEAR)
+	if (gear_ctrl->curr_gear == ENGINE_MAX_GEAR) {
+		/* It's successful when curr_gear is equal to max */
+		successful_gear_up = true;
 		goto exit;
+	}
 
 	/*
 	 * Whether gear is fixed.
 	 * The gear will be allowed to update when it's free run, and it will
 	 * be set to proper gear level according enc and dec wish level.
 	 */
-	if (gear_ctrl->engine_gear_fixed)
+	if (gear_ctrl->engine_gear_fixed) {
+		/* It's unable to change gear level. View it as successful. */
+		successful_gear_up = true;
 		goto exit;
+	}
 
 	/* Gear is in change */
 	gear_ctrl->engine_gear_in_change = true;
@@ -271,7 +282,6 @@ exit:
 		gear_ctrl->dec_wish_gear = new_gear;
 
 	spin_unlock(&gear_ctrl->lock);
-
 	return successful_gear_up;
 }
 
@@ -291,9 +301,31 @@ bool engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_w
 	 * Someone is changing gear, and it may be set to higher level.
 	 * It's ok because caller may retry again if it needs.
 	 */
-	if (gear_ctrl->engine_gear_in_change) {
-		new_gear = gear_ctrl->curr_gear;
+	if (gear_ctrl->engine_gear_in_change)
 		goto exit;
+
+	/* Check wish gear level */
+	if (enc_wish) {
+
+		/* Reach the min wish gear level */
+		if (gear_ctrl->enc_wish_gear == ENGINE_MIN_GEAR) {
+			wish_gear_is_min = true;
+			goto exit;
+		}
+
+		/* Decrease enc wish gear */
+		gear_ctrl->enc_wish_gear--;
+
+	} else {
+
+		/* Reach the min wish gear level */
+		if (gear_ctrl->dec_wish_gear == ENGINE_MIN_GEAR) {
+			wish_gear_is_min = true;
+			goto exit;
+		}
+
+		/* Decrease dec wish gear */
+		gear_ctrl->dec_wish_gear--;
 	}
 
 	/*
@@ -301,10 +333,8 @@ bool engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_w
 	 * It may race with other requests and no gear setup is finished
 	 * here. But at least someone is doing gear-up for us.
 	 */
-	if (gear_ctrl->curr_gear == ENGINE_MIN_GEAR) {
-		new_gear = ENGINE_MIN_GEAR;
+	if (gear_ctrl->curr_gear == ENGINE_MIN_GEAR)
 		goto exit;
-	}
 
 	/* Query new gear level */
 	new_gear = gear_ctrl->curr_gear - 1;
@@ -360,18 +390,7 @@ bool engine_try_to_gear_down(struct engine_gear_control_t *gear_ctrl, bool enc_w
 	gear_ctrl->engine_gear_in_change = false;
 
 exit:
-	/* Update enc or dec wish gear */
-	if (enc_wish)
-		gear_ctrl->enc_wish_gear = new_gear;
-	else
-		gear_ctrl->dec_wish_gear = new_gear;
-
-	/* Caller has reached its min gear level */
-	if (new_gear == ENGINE_MIN_GEAR)
-		wish_gear_is_min = true;
-
 	spin_unlock(&gear_ctrl->lock);
-
 	return wish_gear_is_min;
 }
 
@@ -399,16 +418,24 @@ bool engine_try_to_set_gear_level(struct engine_gear_control_t *gear_ctrl, bool 
 	 * It may race with other requests and no gear setup is finished
 	 * here. But at least someone is doing gear-up for us.
 	 */
-	if (gear_ctrl->curr_gear >= new_gear)
+	if (gear_ctrl->curr_gear >= new_gear) {
+		/* It's successful when curr_gear is higher than or equal to new_gear */
+		successful_gear_set = true;
 		goto exit;
+	}
 
 	/*
 	 * Whether gear is fixed.
 	 * The gear will be allowed to update when it's free run, and it will
 	 * be set to proper gear level according enc and dec wish level.
 	 */
-	if (gear_ctrl->engine_gear_fixed)
+	if (gear_ctrl->engine_gear_fixed) {
+		/* It's unable to change gear level. View it as successful. */
+		successful_gear_set = true;
 		goto exit;
+	}
+
+	/* Should we judge it with the other wish gear level (?) */
 
 	/* Gear is in change */
 	gear_ctrl->engine_gear_in_change = true;
@@ -427,8 +454,10 @@ bool engine_try_to_set_gear_level(struct engine_gear_control_t *gear_ctrl, bool 
 	spin_lock(&gear_ctrl->lock);
 
 	/* Change to new gear successfully */
-	if (!ret)
+	if (!ret) {
 		gear_ctrl->curr_gear = new_gear;
+		successful_gear_set = true;
+	}
 
 	/* Gear is NOT in change */
 	gear_ctrl->engine_gear_in_change = false;
@@ -441,11 +470,6 @@ exit:
 		gear_ctrl->dec_wish_gear = (new_gear > gear_ctrl->dec_wish_gear)? new_gear : gear_ctrl->dec_wish_gear;
 
 	spin_unlock(&gear_ctrl->lock);
-
-	/* It's successful when curr_gear is higher than or equal to new_gear */
-	if (gear_ctrl->curr_gear >= new_gear)
-		successful_gear_set = true;
-
 	return successful_gear_set;
 }
 
