@@ -256,51 +256,6 @@ extern int GT9764AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
 				int *pAF_Opened);
 extern int GT9764AF_GetFileName(unsigned char *pFileName);
 
-#define LC898122AF_SetI2Cclient LC898122AF_SetI2Cclient_Main
-#define LC898122AF_Ioctl LC898122AF_Ioctl_Main
-#define LC898122AF_Release LC898122AF_Release_Main
-#define LC898122AF_GetFileName LC898122AF_GetFileName_Main
-extern int LC898122AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
-				   spinlock_t *pAF_SpinLock, int *pAF_Opened);
-extern long LC898122AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
-			     unsigned long a_u4Param);
-extern int LC898122AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
-extern int LC898122AF_GetFileName(unsigned char *pFileName);
-
-#define LC898212AF_SetI2Cclient LC898212AF_SetI2Cclient_Main
-#define LC898212AF_Ioctl LC898212AF_Ioctl_Main
-#define LC898212AF_Release LC898212AF_Release_Main
-#define LC898212AF_GetFileName LC898212AF_GetFileName_Main
-extern int LC898212AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
-				   spinlock_t *pAF_SpinLock, int *pAF_Opened);
-extern long LC898212AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
-			     unsigned long a_u4Param);
-extern int LC898212AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
-extern int LC898212AF_GetFileName(unsigned char *pFileName);
-
-#define LC898212XDAF_SetI2Cclient LC898212XDAF_SetI2Cclient_Main
-#define LC898212XDAF_Ioctl LC898212XDAF_Ioctl_Main
-#define LC898212XDAF_Release LC898212XDAF_Release_Main
-#define LC898212XDAF_GetFileName LC898212XDAF_GetFileName_Main
-extern int LC898212XDAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
-				     spinlock_t *pAF_SpinLock, int *pAF_Opened);
-extern long LC898212XDAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
-			       unsigned long a_u4Param);
-extern int LC898212XDAF_Release(struct inode *a_pstInode,
-				struct file *a_pstFile);
-extern int LC898212XDAF_GetFileName(unsigned char *pFileName);
-
-#define LC898214AF_SetI2Cclient LC898214AF_SetI2Cclient_Main
-#define LC898214AF_Ioctl LC898214AF_Ioctl_Main
-#define LC898214AF_Release LC898214AF_Release_Main
-#define LC898214AF_GetFileName LC898214AF_GetFileName_Main
-extern int LC898214AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
-				   spinlock_t *pAF_SpinLock, int *pAF_Opened);
-extern long LC898214AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
-			     unsigned long a_u4Param);
-extern int LC898214AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
-extern int LC898214AF_GetFileName(unsigned char *pFileName);
-
 #define LC898217AF_SetI2Cclient LC898217AF_SetI2Cclient_Main
 #define LC898217AF_Ioctl LC898217AF_Ioctl_Main
 #define LC898217AF_Release LC898217AF_Release_Main
