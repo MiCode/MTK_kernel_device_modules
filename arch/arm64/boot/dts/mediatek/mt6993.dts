@@ -6003,6 +6003,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			async-oppnum-eachmask = <1>;
 			async-ratio = <170>;
 			async-oppnum-low = <0>;
+			async-memory-counter-scale = <8>;
+			async-async-pmodel-ver = <3>;
 			async-ratio-low = <130 100>;
 		};
 
