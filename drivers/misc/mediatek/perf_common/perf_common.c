@@ -17,6 +17,8 @@
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
 #include <perf_tracker_internal.h>
+#include "mtk_qos_common.h"
+#include <mtk_qos_share.h>
 
 #define TAG	"mtk_perf_common"
 
@@ -52,6 +54,7 @@ bool perf_tracker_info_exist;
 bool is_percore;
 bool is_percore_need_to_check;
 bool perf_timer_enable;
+unsigned int is_qos_ltr_buffer_support;
 u32 CHECK_PER_CORE = 0x1124;
 u32 IS_PER_CORE	= 0xABCD0001;
 
@@ -367,6 +370,8 @@ static int __init init_perf_common(void)
 	init_perf_freq_tracker();
 #endif
 
+	is_qos_ltr_buffer_support = qos_ltr_buffer_support();
+
 	perf_common_init = 1;
 	atomic_set(&perf_in_progress, 0);
 
@@ -456,6 +461,7 @@ static void __exit exit_perf_common(void)
 	unregister_trace_android_vh_scheduler_tick(perf_common, NULL);
 	exit_cpufreq_table();
 	cleanup_perf_common_sysfs();
+	qos_force_polling_mode(0, TRI_SW_LTR);
 #if IS_ENABLED(CONFIG_MTK_PERF_TRACKER)
 	exit_perf_freq_tracker();
 #endif

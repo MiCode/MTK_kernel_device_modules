@@ -75,6 +75,7 @@ extern u64 get_cpu_pmu(int cpu, u32 offset);
 extern bool perf_tracker_info_exist;
 extern bool is_percore;
 extern bool perf_timer_enable;
+extern unsigned int is_qos_ltr_buffer_support;
 extern bool is_perf_tracker_info_exist(void);
 extern u32 get_perf_tracker_info_from_dts(const char *property_name);
 

@@ -6,7 +6,7 @@
 #include <linux/mm.h>
 #include <linux/swap.h>
 #include <linux/power_supply.h>
-
+#include "mtk_qos_common.h"
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
 #include <soc/mediatek/dramc.h>
 #endif
@@ -186,15 +186,17 @@ enum {
 	SBIN_U_A_E_RECORD		= 1U << 5,
 	SBIN_DRAM_BW_RECORD		= 1U << 6,
 	SBIN_S_RECORD			= 1U << 7,
+	SBIN_DRAM_DATA_RECORD	= 1U << 8,
 	SBIN_HIDDEN				= 1U << 9,
 };
 
 #define K(x) ((x) << (PAGE_SHIFT - 10))
 #define max_cpus 8
 #define emi_bw_hist_nums 8
-#define dram_bw_hist_nums 4
+#define dram_bw_hist_nums 8
 #define emi_bw_record_nums 32
-#define dram_bw_record_nums 16
+#define dram_bw_record_nums 32
+#define dram_bw_no_data_record_nums 16
 #define u_record_nums 2
 #define mcupm_record_nums 9
 #define u_voting_record_nums 3
@@ -273,11 +275,17 @@ void perf_tracker(u64 wallclock,
 			sbin_data[bw_record+2] = qos_rec_get_hist_bw(emi_bw_idx, 2);
 			sbin_data[bw_record+3] = qos_rec_get_hist_bw(emi_bw_idx, 3);
 			/* data bw history */
-			sbin_data[bw_record+4] = qos_rec_get_hist_data_bw(emi_bw_idx, 0);
-			sbin_data[bw_record+5] = qos_rec_get_hist_data_bw(emi_bw_idx, 1);
-			sbin_data[bw_record+6] = qos_rec_get_hist_data_bw(emi_bw_idx, 2);
-			sbin_data[bw_record+7] = qos_rec_get_hist_data_bw(emi_bw_idx, 3);
-
+			if (is_qos_ltr_buffer_support){
+				sbin_data[bw_record+4] = qos_rec_get_hist_bw(emi_bw_idx, 4);
+				sbin_data[bw_record+5] = qos_rec_get_hist_bw(emi_bw_idx, 5);
+				sbin_data[bw_record+6] = qos_rec_get_hist_bw(emi_bw_idx, 6);
+				sbin_data[bw_record+7] = qos_rec_get_hist_bw(emi_bw_idx, 7);
+			} else {
+				sbin_data[bw_record+4] = qos_rec_get_hist_data_bw(emi_bw_idx, 0);
+				sbin_data[bw_record+5] = qos_rec_get_hist_data_bw(emi_bw_idx, 1);
+				sbin_data[bw_record+6] = qos_rec_get_hist_data_bw(emi_bw_idx, 2);
+				sbin_data[bw_record+7] = qos_rec_get_hist_data_bw(emi_bw_idx, 3);
+			}
 			emi_bw_idx -= 1;
 			if (emi_bw_idx < 0)
 				emi_bw_idx = emi_bw_idx + emi_bw_hist_nums;
@@ -340,22 +348,42 @@ void perf_tracker(u64 wallclock,
 	if (check_dram_bw == 0) {
 		if (dram_bw_idx != 0xFFFF && bw_idx_checked) {
 			/* dram bw history */
-			for (bw_record = 0; bw_record < dram_bw_record_nums; bw_record += 4) {
+			if (is_qos_ltr_buffer_support) {
 				/* occupied bw history */
-				sbin_data[sbin_lens+bw_record]   = qos_rec_get_dramc_hist_bw(dram_bw_idx, 0);
-				sbin_data[sbin_lens+bw_record+1] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 1);
-				sbin_data[sbin_lens+bw_record+2] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 2);
-				sbin_data[sbin_lens+bw_record+3] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 3);
+				for (bw_record = 0; bw_record < dram_bw_record_nums; bw_record += 8) {
+					sbin_data[sbin_lens+bw_record]   = qos_rec_get_hist_bw(dram_bw_idx, 8);
+					sbin_data[sbin_lens+bw_record+1] = qos_rec_get_hist_bw(dram_bw_idx, 9);
+					sbin_data[sbin_lens+bw_record+2] = qos_rec_get_hist_bw(dram_bw_idx, 10);
+					sbin_data[sbin_lens+bw_record+3] = qos_rec_get_hist_bw(dram_bw_idx, 11);
 
-				dram_bw_idx -= 1;
-				if (dram_bw_idx < 0)
-					dram_bw_idx = dram_bw_idx + dram_bw_hist_nums;
+					sbin_data[sbin_lens+bw_record+4] = qos_rec_get_hist_bw(dram_bw_idx, 12);
+					sbin_data[sbin_lens+bw_record+5] = qos_rec_get_hist_bw(dram_bw_idx, 13);
+					sbin_data[sbin_lens+bw_record+6] = qos_rec_get_hist_bw(dram_bw_idx, 14);
+					sbin_data[sbin_lens+bw_record+7] = qos_rec_get_hist_bw(dram_bw_idx, 15);
+					dram_bw_idx -= 1;
+					if (dram_bw_idx < 0)
+						dram_bw_idx = dram_bw_idx + dram_bw_hist_nums;
+				}
+			} else {
+				for (bw_record = 0; bw_record < dram_bw_no_data_record_nums; bw_record += 4) {
+					sbin_data[sbin_lens+bw_record]   = qos_rec_get_dramc_hist_bw(dram_bw_idx, 0);
+					sbin_data[sbin_lens+bw_record+1] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 1);
+					sbin_data[sbin_lens+bw_record+2] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 2);
+					sbin_data[sbin_lens+bw_record+3] = qos_rec_get_dramc_hist_bw(dram_bw_idx, 3);
+					dram_bw_idx -= 1;
+					if (dram_bw_idx < 0)
+						dram_bw_idx = dram_bw_idx + dram_bw_hist_nums;
+				}
 			}
 		}
-		sbin_lens += dram_bw_record_nums;
 		sbin_data_ctl |= SBIN_DRAM_BW_RECORD;
+		if (is_qos_ltr_buffer_support) {
+			sbin_lens += dram_bw_record_nums;
+			sbin_data_ctl |= SBIN_DRAM_DATA_RECORD;
+		} else {
+			sbin_lens += dram_bw_no_data_record_nums;
+		}
 	}
-
 	if (!is_percore) { // per cluster
 		sched_freq[0] = cpudvfs_get_cur_freq(0, false);
 		sched_freq[4] = cpudvfs_get_cur_freq(1, false);
@@ -476,7 +504,7 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 #endif
 		/* do something after on/off perf_tracker */
 		if (val && !perf_tracker_on) {
-
+			qos_force_polling_mode(1, TRI_SW_LTR);
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 			mtk_btag_mictx_register(&ufs_mictx_id, "ufs0",
 						"perf_tracker", NULL);
@@ -488,6 +516,7 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 			else
 				passtiveTick_on();
 		} else if (!val && perf_tracker_on) {
+			qos_force_polling_mode(0, TRI_SW_LTR);
 			remove_freq_qos_hook();
 			if (perf_timer_enable)
 				timer_off();
