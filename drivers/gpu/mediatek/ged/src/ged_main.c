@@ -832,10 +832,8 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	}
 
 #if defined(MTK_GPU_SLC_POLICY)
-	err = ged_gpu_slc_init();
-	if (unlikely(err != GED_OK)) {
+	if (unlikely(ged_gpu_slc_init() != GED_OK))
 		GED_LOGE("Failed to init GPU SLC!\n");
-	}
 #endif /*MTK_GPU_SLC_POLICY */
 
 #if defined(MTK_GPU_MEMSYS_UTIL)
