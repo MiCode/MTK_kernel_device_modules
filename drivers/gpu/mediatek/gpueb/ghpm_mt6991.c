@@ -84,9 +84,6 @@ static unsigned long long g_ghpm_ts64[GHPM_TS_MONITOR_NUM];
 #endif
 static int g_gpueb_resume_fail_recovery_times;
 
-unsigned int g_ghpm_ready;
-EXPORT_SYMBOL(g_ghpm_ready);
-
 static struct ghpm_platform_fp platform_ghpm_fp = {
 	.ghpm_ctrl = __ghpm_ctrl,
 	.wait_gpueb = __wait_gpueb,

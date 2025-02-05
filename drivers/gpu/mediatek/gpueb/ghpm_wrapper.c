@@ -33,6 +33,9 @@ static struct ghpm_platform_fp *ghpm_fp;
 unsigned int g_ghpm_support;
 EXPORT_SYMBOL(g_ghpm_support);
 
+unsigned int g_ghpm_ready;
+EXPORT_SYMBOL(g_ghpm_ready);
+
 unsigned long long g_ghpm_profile[PROF_GHPM_TYPE_NUM][PROF_GHPM_IDX_NUM];
 EXPORT_SYMBOL(g_ghpm_profile);
 
@@ -148,8 +151,9 @@ void ghpm_wrapper_init(struct platform_device *pdev)
 {
 	of_property_read_u32(pdev->dev.of_node, "ghpm-support", &g_ghpm_support);
 
-	if (g_ghpm_support == 0)
+	if (g_ghpm_support == 0) {
+		g_ghpm_ready = 1;
 		gpueb_log_i(GHPM_TAG, "no ghpm support");
-	else
+	} else
 		ghpm_debug_init(pdev);
 }
