@@ -1044,16 +1044,16 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-			mt6661-6-vin1-100k-poll {
-				channel = <AUXADC_VIN1_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-vin1-open-poll {
-				channel = <AUXADC_VIN1_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
+			//mt6661-6-vin1-100k-poll {
+			//	channel = <AUXADC_VIN1_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin1-open-poll {
+			//	channel = <AUXADC_VIN1_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
 			mt6661-6-vin2-100k {
 				channel = <AUXADC_VIN2>;
 				pures = <ADC_PURES_100K>;
@@ -1064,16 +1064,16 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-			mt6661-6-vin2-100k-poll {
-				channel = <AUXADC_VIN2_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-vin2-open-poll {
-				channel = <AUXADC_VIN2_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
+			//mt6661-6-vin2-100k-poll {
+			//	channel = <AUXADC_VIN2_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin2-open-poll {
+			//	channel = <AUXADC_VIN2_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
 			mt6661-6-vin3-100k {
 				channel = <AUXADC_VIN3>;
 				pures = <ADC_PURES_100K>;
@@ -1084,16 +1084,16 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-			mt6661-6-vin3-100k-poll {
-				channel = <AUXADC_VIN3_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-vin3-open-poll {
-				channel = <AUXADC_VIN3_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
+			//mt6661-6-vin3-100k-poll {
+			//	channel = <AUXADC_VIN3_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin3-open-poll {
+			//	channel = <AUXADC_VIN3_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
 			mt6661-6-vin4-100k {
 				channel = <AUXADC_VIN4>;
 				pures = <ADC_PURES_100K>;
@@ -1104,16 +1104,16 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-			mt6661-6-vin4-100k-poll {
-				channel = <AUXADC_VIN4_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-vin4-open-poll {
-				channel = <AUXADC_VIN4_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
+			//mt6661-6-vin4-100k-poll {
+			//	channel = <AUXADC_VIN4_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin4-open-poll {
+			//	channel = <AUXADC_VIN4_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
 			mt6661-6-vin5-100k {
 				channel = <AUXADC_VIN5>;
 				pures = <ADC_PURES_100K>;
@@ -1124,16 +1124,16 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-			mt6661-6-vin5-100k-poll {
-				channel = <AUXADC_VIN5_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-vin5-open-poll {
-				channel = <AUXADC_VIN5_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
+			//mt6661-6-vin5-100k-poll {
+			//	channel = <AUXADC_VIN5_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin5-open-poll {
+			//	channel = <AUXADC_VIN5_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
 			mt6661-6-agpio1-100k {
 				channel = <AUXADC_AGPIO1>;
 				pures = <ADC_PURES_100K>;
@@ -1144,16 +1144,16 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-			mt6661-6-agpio1-100k-poll {
-				channel = <AUXADC_AGPIO1_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-agpio1-open-poll {
-				channel = <AUXADC_AGPIO1_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
+			//mt6661-6-agpio1-100k-poll {
+			//	channel = <AUXADC_AGPIO1_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio1-open-poll {
+			//	channel = <AUXADC_AGPIO1_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
 			mt6661-6-agpio2-100k {
 				channel = <AUXADC_AGPIO2>;
 				pures = <ADC_PURES_100K>;
@@ -1164,17 +1164,17 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-			mt6661-6-agpio2-100k-poll {
-				channel = <AUXADC_AGPIO2_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-agpio2-open-poll {
-				channel = <AUXADC_AGPIO2_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
-                        mt6661-6-agpio3-100k {
+			//mt6661-6-agpio2-100k-poll {
+			//	channel = <AUXADC_AGPIO2_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio2-open-poll {
+			//	channel = <AUXADC_AGPIO2_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-agpio3-100k {
 				channel = <AUXADC_AGPIO3>;
 				pures = <ADC_PURES_100K>;
 				rc-set-time = <1400>;
@@ -1184,17 +1184,17 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-                        mt6661-6-agpio3-100k-poll {
-				channel = <AUXADC_AGPIO3_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-agpio3-open-poll {
-				channel = <AUXADC_AGPIO3_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
-                        mt6661-6-agpio4-100k {
+			//mt6661-6-agpio3-100k-poll {
+			//	channel = <AUXADC_AGPIO3_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio3-open-poll {
+			//	channel = <AUXADC_AGPIO3_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-agpio4-100k {
 				channel = <AUXADC_AGPIO4>;
 				pures = <ADC_PURES_100K>;
 				rc-set-time = <1400>;
@@ -1204,16 +1204,16 @@
 				pures = <ADC_PURES_OPEN>;
 				rc-set-time = <1400>;
 			};
-                        mt6661-6-agpio4-100k-poll {
-				channel = <AUXADC_AGPIO4_POLL>;
-				pures = <ADC_PURES_100K>;
-				rc-set-time = <1400>;
-			};
-			mt6661-6-agpio4-open-poll {
-				channel = <AUXADC_AGPIO4_POLL>;
-				pures = <ADC_PURES_OPEN>;
-				rc-set-time = <1400>;
-			};
+			//mt6661-6-agpio4-100k-poll {
+			//	channel = <AUXADC_AGPIO4_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio4-open-poll {
+			//	channel = <AUXADC_AGPIO4_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
 		};
 
 		mt6661_6_efuse: mt6661-6-efuse {
