@@ -4389,7 +4389,9 @@ void ged_notify_fix_freq_volt_from_gpufreq(
 
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		union combineData tmp_multi = {0};
-		tmp_multi = (union combineData){ .twoVar = {ged_is_fix_dvfs(), g_fix_opp_by_cmd} };
+		if (g_fix_opp_by_cmd != -1)
+			tmp_multi = (union combineData){ .twoVar = {ged_is_fix_dvfs(), g_fix_opp_by_cmd} };
+
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FIX_FREQ_ID].addr, tmp_multi.value);
 	}
 
@@ -4596,10 +4598,14 @@ GED_ERROR ged_dvfs_system_init(void)
 	g_sum_loading = 0;
 	g_sum_delta_time = 0;
 
-	g_ged_dvfs_commit_idx = gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
-	g_ged_dvfs_commit_top_idx = gpufreq_get_opp_num(TARGET_GPU) - 1;
+	if (gpufreq_get_opp_num(TARGET_DEFAULT) > 0) {
+		g_ged_dvfs_commit_idx = gpufreq_get_opp_num(TARGET_DEFAULT) - 1;
+		g_last_def_commit_freq_id = g_ged_dvfs_commit_idx;
+	}
+
+	if (gpufreq_get_opp_num(TARGET_GPU) > 0)
+		g_ged_dvfs_commit_top_idx = gpufreq_get_opp_num(TARGET_GPU) - 1;
 	g_ged_dvfs_commit_dual = (g_ged_dvfs_commit_top_idx << 8) | g_ged_dvfs_commit_idx;
-	g_last_def_commit_freq_id = g_ged_dvfs_commit_idx;
 
 	return GED_OK;
 }
