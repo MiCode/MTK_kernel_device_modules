@@ -71,6 +71,7 @@
 #define POWER_DVFSRC_INFO		'Q'
 #define WIFI_PCIE_INFO			'R'
 #define WIFI_TXPWR_RPT			'S'
+#define WIFI_RXTXPERF_INFO		'T'
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -190,6 +191,8 @@
 
 #define RO_WIFI_PCIE_INFO       _IOR(IOC_MAGIC, WIFI_PCIE_INFO, \
 					struct mbraink_wifi2mbr_pcie_data*)
+#define RO_WIFI_RXTXPERF_INFO       _IOR(IOC_MAGIC, WIFI_RXTXPERF_INFO, \
+					struct mbraink_wifi2mbr_rxtxperf_data*)
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
 #define CURRENT_DATA	2

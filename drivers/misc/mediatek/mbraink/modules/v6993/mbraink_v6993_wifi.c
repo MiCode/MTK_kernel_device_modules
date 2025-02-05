@@ -403,6 +403,89 @@ void mbraink_v6993_get_wifi_tx_power_data(struct mbraink_wifi2mbr_tx_power_data 
 		pr_info("%s: Reached maximum retry count\n", __func__);
 }
 
+void mbraink_v6993_get_wifi_rxtxperf_data(int current_idx,
+		struct mbraink_wifi2mbr_rxtxperf_data *rxtxperf_buffer)
+{
+	unsigned short len = 0;
+	enum wifi2mbr_status ret = WIFI2MBR_FAILURE;
+	struct wifi2mbr_TRxPerfInfo rxtxperf_info;
+	int loop = 0;
+	int cnt = 0;
+
+	memset(rxtxperf_buffer, 0, sizeof(struct mbraink_wifi2mbr_rxtxperf_data));
+
+	do {
+		ret = mbraink_bridge_wifi_get_data(MBR2WIFI_TRX_PERF,
+						WIFI2MBR_TAG_TRX_PERF,
+						(void *)(&rxtxperf_info), &len);
+		loop++;
+
+		if (ret == WIFI2MBR_NO_OPS)
+			break;
+		else if (ret == WIFI2MBR_FAILURE)
+			continue;
+		else if (ret == WIFI2MBR_SUCCESS) {
+			cnt = rxtxperf_buffer->count;
+
+			if (cnt < MAX_WIFI_RXTXPERF_SZ) {
+				rxtxperf_buffer->rxtxperf_data[cnt].timestamp = rxtxperf_info.timestamp;
+				rxtxperf_buffer->rxtxperf_data[cnt].bss_index = rxtxperf_info.bss_index;
+				rxtxperf_buffer->rxtxperf_data[cnt].wlan_index = rxtxperf_info.wlan_index;
+				rxtxperf_buffer->rxtxperf_data[cnt].tx_stop_timestamp =
+								rxtxperf_info.tx_stop_timestamp;
+				rxtxperf_buffer->rxtxperf_data[cnt].tx_resume_timestamp =
+								rxtxperf_info.tx_resume_timestamp;
+				rxtxperf_buffer->rxtxperf_data[cnt].bto_timestamp =
+								rxtxperf_info.bto_timestamp;
+				rxtxperf_buffer->rxtxperf_data[cnt].tx_timeout_timestamp =
+								rxtxperf_info.tx_timeout_timestamp;
+				rxtxperf_buffer->rxtxperf_data[cnt].token_id = rxtxperf_info.token_id;
+				rxtxperf_buffer->rxtxperf_data[cnt].timeout_duration =
+								rxtxperf_info.timeout_duration;
+				rxtxperf_buffer->rxtxperf_data[cnt].operation_mode =
+								rxtxperf_info.operation_mode;
+				rxtxperf_buffer->rxtxperf_data[cnt].tput = rxtxperf_info.tput;
+				rxtxperf_buffer->rxtxperf_data[cnt].idle_slot = rxtxperf_info.idle_slot;
+				rxtxperf_buffer->rxtxperf_data[cnt].tx_per = rxtxperf_info.tx_per;
+				rxtxperf_buffer->rxtxperf_data[cnt].tx_rate = rxtxperf_info.tx_rate;
+				rxtxperf_buffer->rxtxperf_data[cnt].rx_rssi = rxtxperf_info.rx_rssi;
+				rxtxperf_buffer->rxtxperf_data[cnt].rx_per = rxtxperf_info.rx_per;
+				rxtxperf_buffer->rxtxperf_data[cnt].rx_rate = rxtxperf_info.rx_rate;
+				rxtxperf_buffer->rxtxperf_data[cnt].rx_drop_total =
+								rxtxperf_info.rx_drop_total;
+				rxtxperf_buffer->rxtxperf_data[cnt].rx_drop_reorder =
+								rxtxperf_info.rx_drop_reorder;
+				rxtxperf_buffer->rxtxperf_data[cnt].rx_drop_sanity =
+								rxtxperf_info.rx_drop_sanity;
+				rxtxperf_buffer->rxtxperf_data[cnt].rx_napi_full =
+								rxtxperf_info.rx_napi_full;
+				rxtxperf_buffer->rxtxperf_data[cnt].rts_fail_rate =
+								rxtxperf_info.rts_fail_rate;
+				memcpy(rxtxperf_buffer->rxtxperf_data[cnt].ipi_hist, rxtxperf_info.ipi_hist,
+						sizeof(unsigned int) * 22);
+				rxtxperf_buffer->rxtxperf_data[cnt].nbi = rxtxperf_info.nbi;
+				rxtxperf_buffer->rxtxperf_data[cnt].cu_all = rxtxperf_info.cu_all;
+				rxtxperf_buffer->rxtxperf_data[cnt].cu_not_me = rxtxperf_info.cu_not_me;
+				memcpy(rxtxperf_buffer->rxtxperf_data[cnt].snr, rxtxperf_info.snr,
+						sizeof(unsigned char) * 2);
+
+				rxtxperf_buffer->count++;
+
+				if (cnt ==  MAX_WIFI_RXTXPERF_SZ - 1) {
+					rxtxperf_buffer->idx = current_idx + rxtxperf_buffer->count;
+					break;
+				}
+			}
+		} else if (ret ==  WIFI2MBR_END) {
+			rxtxperf_buffer->idx = 0;
+			break;
+		}
+	} while (loop < MAX_WIFI_DATA_CNT);
+
+	if (loop == MAX_WIFI_DATA_CNT)
+		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
+}
+
 static struct mbraink_wifi_ops mbraink_v6993_wifi_ops = {
 	.get_wifi_rate_data = mbraink_v6993_get_wifi_rate_data,
 	.get_wifi_radio_data = mbraink_v6993_get_wifi_radio_data,
@@ -411,6 +494,7 @@ static struct mbraink_wifi_ops mbraink_v6993_wifi_ops = {
 	.get_wifi_txtimeout_data = mbraink_v6993_get_wifi_txtimeout_data,
 	.get_wifi_pcie_data = mbraink_v6993_get_wifi_pcie_data,
 	.get_wifi_tx_power_data = mbraink_v6993_get_wifi_tx_power_data,
+	.get_wifi_rxtxperf_data = mbraink_v6993_get_wifi_rxtxperf_data,
 };
 
 int mbraink_v6993_wifi_init(void)

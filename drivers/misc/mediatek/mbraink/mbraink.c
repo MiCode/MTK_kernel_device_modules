@@ -1275,6 +1275,34 @@ static long handle_wifi_pcie_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_wifi_rxtxperf_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_rxtxperf_data *wifi_rxtxperf_buf =
+		(struct mbraink_wifi2mbr_rxtxperf_data *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(wifi_rxtxperf_buf,
+			(struct mbraink_wifi2mbr_rxtxperf_data *) arg,
+			sizeof(struct mbraink_wifi2mbr_rxtxperf_data))) {
+		pr_notice("copy mbraink_wifi2mbr_extxperf_data data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (wifi_rxtxperf_buf->idx > 2147483647) {
+		pr_notice("wifi rxtxperf info: Invalid idx %u\n", wifi_rxtxperf_buf->idx);
+		return -EINVAL;
+	}
+
+	mbraink_get_wifi_rxtxperf_data(wifi_rxtxperf_buf->idx, wifi_rxtxperf_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_rxtxperf_data *) arg,
+			wifi_rxtxperf_buf,
+			sizeof(struct mbraink_wifi2mbr_rxtxperf_data))) {
+		pr_notice("Copy wifi_rxtxperf_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1746,6 +1774,17 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_wifi_pcie_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_WIFI_RXTXPERF_INFO:
+	{
+		mbraink_data =
+			kmalloc(sizeof(struct mbraink_wifi2mbr_rxtxperf_data),
+				GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_rxtxperf_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

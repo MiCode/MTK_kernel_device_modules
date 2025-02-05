@@ -38,6 +38,7 @@
 #define MAX_WIFI_PCIE_SZ                32
 #define MAX_WIFI_BAND_NUM               3
 #define MAX_WIFI_ANTENA_NUM             2
+#define MAX_WIFI_RXTXPERF_SZ			8
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -655,6 +656,54 @@ struct mbraink_wifi2mbr_tx_power_data {
 	unsigned char max_bn_num;
 	unsigned char max_ant_num;
 	struct mbraink_wifi2mbr_txpwr_info info[MAX_WIFI_BAND_NUM][MAX_WIFI_ANTENA_NUM];
+};
+
+struct mbraink_wifi2mbr_rxtxperf_struct {
+	u64 timestamp;
+	unsigned int bss_index;
+	unsigned int wlan_index;
+
+	/* trx event timestamp */
+	u64 tx_stop_timestamp;
+	u64 tx_resume_timestamp;
+	u64 bto_timestamp;
+
+	/* txtimeout index */
+	u64 tx_timeout_timestamp;
+	unsigned int token_id;
+	unsigned int timeout_duration;
+	unsigned int operation_mode;
+
+	/* trx performance index*/
+	u64 tput;
+	u64 idle_slot; /* idle slot diff count */
+
+	unsigned int tx_per;
+	unsigned int tx_rate;
+
+	int rx_rssi;
+	unsigned int rx_per;
+	unsigned int rx_rate;
+
+	unsigned int rx_drop_total; /* total rx drop diff count */
+	unsigned int rx_drop_reorder; /* reorder drop diff count */
+	unsigned int rx_drop_sanity; /* sanity drop diff count */
+
+	unsigned int rx_napi_full; /* napi full diff count */
+
+	/* latency index*/
+	unsigned int rts_fail_rate;
+	unsigned int ipi_hist[2][11]; /* idle power indicate histogram*/
+	unsigned int nbi; /* narrowband interference */
+	unsigned char cu_all; /* channel utilization*/
+	unsigned char cu_not_me; /* channel utilization others*/
+	unsigned char snr[2]; /* signal-to-noise ratio */
+};
+
+struct mbraink_wifi2mbr_rxtxperf_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wifi2mbr_rxtxperf_struct rxtxperf_data[MAX_WIFI_RXTXPERF_SZ];
 };
 
 #endif

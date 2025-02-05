@@ -19,6 +19,7 @@ enum mbr2wifi_reason {
 	MBR2WIFI_TX_TIMEOUT,
 	MBR2WIFI_PCIE_DATA,
 	MBR2WIFI_TXPWR_RPT,
+	MBR2WIFI_TRX_PERF,
 };
 
 struct wifi2mbr_hdr {
@@ -36,6 +37,7 @@ enum wifi2mbr_tag {
 	WIFI2MBR_TAG_TXTIMEOUT,
 	WIFI2MBR_TAG_PCIE,
 	WIFI2MBR_TAG_TXPWR_RPT,
+	WIFI2MBR_TAG_TRX_PERF,
 	WIFI2MBR_TAG_MAX
 };
 
@@ -170,6 +172,49 @@ struct wifi2mbr_txpwr {
 	unsigned char max_bn_num;
 	unsigned char max_ant_num;
 	struct wifi2mbr_txpwr_info info[WIFI2MBR_MAX_BAND_NUM][WIFI2MBR_MAX_ANTENA_NUM];
+};
+
+struct wifi2mbr_TRxPerfInfo {
+	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
+	unsigned int bss_index;
+	unsigned int wlan_index;
+
+	/* trx event timestamp */
+	u64 tx_stop_timestamp;
+	u64 tx_resume_timestamp;
+	u64 bto_timestamp;
+
+	/* txtimeout index */
+	u64 tx_timeout_timestamp;
+	unsigned int token_id;
+	unsigned int timeout_duration;
+	unsigned int operation_mode;
+
+	/* trx performance index*/
+	u64 tput;
+	u64 idle_slot; /* idle slot diff count */
+
+	unsigned int tx_per;
+	unsigned int tx_rate;
+
+	int rx_rssi;
+	unsigned int rx_per;
+	unsigned int rx_rate;
+
+	unsigned int rx_drop_total; /* total rx drop diff count */
+	unsigned int rx_drop_reorder; /* reorder drop diff count */
+	unsigned int rx_drop_sanity; /* sanity drop diff count */
+
+	unsigned int rx_napi_full; /* napi full diff count */
+
+	/* latency index*/
+	unsigned int rts_fail_rate;
+	unsigned int ipi_hist[2][11]; /* idle power indicate histogram*/
+	unsigned int nbi; /* narrowband interference */
+	unsigned char cu_all; /* channel utilization*/
+	unsigned char cu_not_me; /* channel utilization others*/
+	unsigned char snr[2]; /* signal-to-noise ratio */
 };
 
 struct mbraink2wifi_ops {
