@@ -218,6 +218,9 @@
 /* EFUSE */
 #define SPHY3_EFUSE_MAX_LANE		2
 
+#define EFUSE_VERSION_INFO		GENMASK(4, 0)
+#define EFUSE_VER_4			4
+
 #define EFUSE_GLB_BIAS_INTR_CTRL	GENMASK(5, 0)
 #define EFUSE_GLB_BIAS_V2V_VTRIM	GENMASK(9, 6)
 #define EFUSE_CKM_CKTX_IMPSEL_PMOS	GENMASK(13, 10)
@@ -292,7 +295,9 @@ struct mtk_pcie_phy {
 	bool disable_ssc;
 	u32 efuse_glb_intr;
 	u32 *efuse_info;
+	u32 *efuse_ver;
 	size_t efuse_info_len;
+	size_t efuse_ver_len;
 	struct mtk_pcie_lane_efuse *efuse;
 };
 
@@ -747,6 +752,22 @@ static int mtk_pcie_get_efuse_info(struct phy *phy)
 	pcie_phy->efuse_info = efuse_buff;
 	pcie_phy->efuse_info_len = len;
 
+	cell = nvmem_cell_get(dev, "efuse_version");
+	if (IS_ERR(cell)) {
+		dev_info(dev, "No optional efuse version nvmem cell\n");
+		return 0;
+	}
+
+	efuse_buff = (u32 *)nvmem_cell_read(cell, &len);
+	nvmem_cell_put(cell);
+	if (IS_ERR(efuse_buff)) {
+		dev_info(dev, "Failed to read efuse version nvmem cell\n");
+		return PTR_ERR(efuse_buff);
+	}
+
+	pcie_phy->efuse_ver = efuse_buff;
+	pcie_phy->efuse_ver_len = len;
+
 	return 0;
 }
 
@@ -789,7 +810,7 @@ static int mtk_pcie_no_efuse_cal_6993(struct phy *phy)
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_RX_LEQ_RL_VGA_CAL,
-				     RX_LEQ_RL_CTLE_CAL_TO_A);
+				     RX_LEQ_RL_VGA_CAL_TO_A);
 
 		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
 				     i * PEXTP_ANA_LANE_OFFSET,
@@ -892,7 +913,7 @@ static int mtk_pcie_sphy3_calibrate(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
 	struct device *dev = pcie_phy->dev;
-	u32 i;
+	u32 i, val, pcie_efuse_ver;
 
 	/* Efuse info is null or chip without calibrated data */
 	if (!pcie_phy->efuse_info || !pcie_phy->efuse_info_len || !pcie_phy->efuse_info[0])
@@ -974,6 +995,31 @@ static int mtk_pcie_sphy3_calibrate(struct phy *phy)
 				     FIELD_GET(EFUSE_LN_TX_IMPSEL_NMOS, pcie_phy->efuse_info[i+1]));
 	}
 
+	if (!pcie_phy->efuse_ver_len)
+		goto calibrate_done;
+
+	pcie_efuse_ver = pcie_phy->efuse_ver[0] & EFUSE_VERSION_INFO;
+	dev_info(dev, "get pcie efuse version is %d\n", pcie_efuse_ver);
+	if (pcie_efuse_ver > EFUSE_VER_4)
+		goto calibrate_done;
+
+	for (i = 0; i < pcie_phy->num_lanes; i++) {
+		val = readl_relaxed(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
+				    i * PEXTP_ANA_LANE_OFFSET);
+		if (val == RX_LEQ_RL_CTLE_CAL_TO_A) {
+			mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
+					     i * PEXTP_ANA_LANE_OFFSET,
+					     RG_XTP_LN_RX_LEQ_RL_VGA_CAL,
+					     RX_LEQ_RL_VGA_CAL_TO_A);
+
+			mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_A8 +
+					     i * PEXTP_ANA_LANE_OFFSET,
+					     RG_XTP_LN_RX_LEQ_RL_DFE_CAL,
+					     RX_LEQ_RL_DFE_CAL_TO_A);
+		}
+	}
+
+calibrate_done:
 	dev_info(dev, "Calibration successful\n");
 
 	return 0;
