@@ -13059,7 +13059,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,vcodec-dec";
 			mediatek,platform = "platform:mt6993";
 			mediatek,ipm = <2>;
-			//mediatek,slc = <2>;
+			mediatek,slc = <2>;
 			support-acp = <1>;
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			vdec-power-in-vcp = <1>;
