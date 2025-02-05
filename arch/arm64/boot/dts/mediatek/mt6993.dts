@@ -1876,7 +1876,7 @@
 		reg =
 			<0 0x48540000 0 0x1000>,
 			<0 0x48540000 0 0x2000>,
-			<0 0x124860 0 0x30>;
+			<0 0x124860 0 0x48>;
 		ringbuf-page-order = <2>;
 		config-mode = <1>;
 		concurrent-contexts = /bits/ 8 <0x4>;
