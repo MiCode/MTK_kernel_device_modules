@@ -11,11 +11,11 @@
 #include <linux/wait.h>
 
 #include "mtk-dsp-common.h"
-#include "mtk-dsp-common_define.h"
+//#include "mtk-dsp-common_define.h"
 #include "mtk-dsp-mem-control.h"
 #include "audio_buf.h"
 #include "mtk-auddrv-offloadcommon.h"
-#include "mtk-base-dsp.h"
+//#include "mtk-base-dsp.h"
 
 #include <audio_task_manager.h>
 #include <audio_ipi_dma.h>
