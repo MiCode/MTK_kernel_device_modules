@@ -1268,11 +1268,11 @@ static int zram_engine_platform_init(struct platform_device *pdev, struct zram_e
 #endif
 
 	/* For LDVT stress with SMMU S1. Should be removed later? (TODO) */
-//	ret = engine_smmu_setup(pdev, &hwz->ctrl);
-//	if (ret) {
-//		pr_info("%s: engine_smmu_setup fail: (%d)\n", __func__, ret);
-//		return ret;
-//	}
+	ret = engine_smmu_setup(pdev, &hwz->ctrl);
+	if (ret) {
+		pr_info("%s: engine_smmu_setup fail: (%d)\n", __func__, ret);
+		return ret;
+	}
 
 	/* Prepare the information of interrupt handlers */
 	for (i = 0; i < ARRAY_SIZE(zram_engine_irqs); i++)

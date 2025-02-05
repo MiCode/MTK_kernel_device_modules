@@ -347,7 +347,9 @@ int engine_power_on(struct engine_control_t *ctrl)
 	/* Wait for SMMU prot off */
 	engine_wait_smmu_prot_off(ctrl);
 
+#ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+#endif
 
 	return 0;
 }
@@ -377,7 +379,9 @@ void engine_power_off(struct engine_control_t *ctrl)
 		reg_val = zram_readl(reg);
 	} while ((reg_val & ZRAM_SSYS_PWR_ACK) == ZRAM_SSYS_PWR_ACK);
 
+#ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+#endif
 }
 
 #define RSC_BUS_PLL_REQ	(1UL << 14)
