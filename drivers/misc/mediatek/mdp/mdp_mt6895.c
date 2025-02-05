@@ -33,7 +33,7 @@
 
 /* iommu larbs */
 struct device *larb2;
-
+struct device *mdpdev;
 /* support RDMA prebuilt access */
 int gCmdqRdmaPrebuiltSupport;
 /* support register MSB */
@@ -999,12 +999,13 @@ int32_t cmdqMdpClockOn(uint64_t engineFlag)
 
 #endif				/* #ifdef CMDQ_PWR_AWARE */
 
-	CMDQ_MSG("%s: cmdq_util_prebuilt_init(0)\n", __func__);
-	cmdq_util_prebuilt_init(0);
+	if (engineFlag != 0) {
+		CMDQ_MSG("%s: cmdq_util_prebuilt_init(0)\n", __func__);
+		cmdq_util_prebuilt_init(0);
 
-	CMDQ_MSG("%s: set BYPASS_MUX_SHADOW bit0 as 0x1\n", __func__);
-	CMDQ_REG_SET32(MMSYS_CONFIG_BASE + 0xF00, 0x1);
-
+		CMDQ_MSG("%s: set BYPASS_MUX_SHADOW bit0 as 0x1\n", __func__);
+		CMDQ_REG_SET32(MMSYS_CONFIG_BASE + 0xF00, 0x1);
+	}
 
 	CMDQ_MSG("%s: Enable MDP(0x%llx) clock end\n", __func__, engineFlag);
 	return 0;
@@ -1442,6 +1443,8 @@ struct device *mdp_init_larb(struct platform_device *pdev, u8 idx)
 	struct device_node *node;
 	struct platform_device *larb_pdev;
 
+	CMDQ_LOG("%s start\n", __func__);
+
 	/* get larb node from dts */
 	node = of_parse_phandle(pdev->dev.of_node, "mediatek,larb", idx);
 	if (!node) {
@@ -1480,6 +1483,7 @@ void cmdqMdpInitialSetting(struct platform_device *pdev)
 
 	/* must porting in dts */
 	larb2 = mdp_init_larb(pdev, 0);
+	mdpdev = &pdev->dev;
 
 	/* Query vcp pq readback setting in dts */
 	gVcpPQReadbackSupport = of_property_read_bool(pdev->dev.of_node, "vcp_pq_readback");
@@ -1539,6 +1543,11 @@ u64 cmdq_mdp_get_eng_larb(void)
 struct device *cmdq_mdp_get_larb_device(void)
 {
 	return larb2;
+}
+
+struct device *cmdq_mdp_get_mdp_device(void)
+{
+	return mdpdev;
 }
 
 s32 cmdq_mdp_enable_APB_MUTEX(bool enable, u64 engineFlag)
@@ -1652,7 +1661,7 @@ static u32 mdp_get_group_mdp(void)
 	return CMDQ_GROUP_MDP;
 }
 
-static const char ** mdp_get_engine_group_name(void)
+static const char **mdp_get_engine_group_name(void)
 {
 	static const char *const engineGroupName[] = {
 		CMDQ_FOREACH_GROUP(GENERATE_STRING)
@@ -1891,4 +1900,3 @@ void cmdq_mdp_platform_function_setting(void)
 }
 
 MODULE_LICENSE("GPL");
-
