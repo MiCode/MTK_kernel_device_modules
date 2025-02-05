@@ -5444,14 +5444,19 @@
 					  "mbox3",
 					  "mbox4";
 
-			core_0 = "enable";
-			scp_hwvoter = "enable";
-			scp_sramSize = <0x00180000>;
-			core_nums = <1>;	/* core number */
+			core-0 = "enable";
+			scp-hwvoter = "enable";
+			scp-sram-size = <0x00180000>;
+			scp-dram-size = <0x00100000>; /* scp dram image size */
+			scp-cache-dump-buf-size = <0x0003c000>;
+			scp-reg-dump-buf-size = <0x00003c00>;
+			scp-tbuf-dump-buf-size = <0x00000400>;
+
+			core-nums = <1>;	/* core number */
 			twohart = <1>;		/* two hart arch */
-			mbox_count = <5>;
+			mbox-count = <5>;
 			/* id, mbox, send_size*/
-			send_table =
+			send-table =
 			< 0 0  9>,/* IPI_OUT_AUDIO_VOW_1 */
 			<14 0  1>,/* IPI_OUT_DVFS_SET_FREQ_1 */
 			<15 0  2>,/* IPI_OUT_C_SLEEP_1 */
@@ -5471,7 +5476,7 @@
 			<31 4  7>;/* IPI_OUT_SENSOR_NOTIFY */
 
 			/* id, mbox, recv_size, recv_opt */
-			recv_table =
+			recv-table =
 			< 1 0  2 0>,/* IPI_IN_AUDIO_VOW_ACK_1 */
 			< 2 0 26 0>,/* IPI_IN_AUDIO_VOW_1 */
 			<36 0  1 0>,/* IPI_IN_AUDIO_ACDDET_1 */
@@ -5499,7 +5504,7 @@
 			//		<6>; /* in_size */
 
 			/* feature, frequecy, coreid */
-			scp_feature_tbl = < 0 400 1>,	/* vow */
+			scp-feature-tbl = < 0 400 1>,	/* vow */
 					  < 1 350 0>,	/* sensor */
 					  < 2  26 0>,	/* flp */
 					  < 3   0 0>,	/* rtos */
@@ -5514,14 +5519,14 @@
 					  <12 100 1>,	/* vow dual mic barge in */
 					  <13 200 0>;	/* ultrasound */
 
-			debug_timeout_reset = "enable"; /* enable timeout debug*/
-			secure_dump = "enable";   /* enable dump via secure world*/
-			secure_dump_size = <0x300000>;
+			debug-timeout-reset = "enable"; /* enable timeout debug*/
+			secure-dump = "enable";   /* enable dump via secure world*/
+			secure-dump-size = <0x300000>;
 
-			scp_mem_key = "mediatek,reserve-memory-scp_share";
+			scp-mem-key = "mediatek,reserve-memory-scp_share";
 
 			/* feature ID, size, alignment */
-			scp_mem_tbl = < 0 0x0      0x0>, /* secure dump,*/
+			scp-mem-tbl = < 0 0x0      0x0>, /* secure dump,*/
 							 /* its size is in secure_dump_size */
 				      < 1 0xca700  0x0>, /* vow */
 				      < 2 0x100000 0x0>, /* sensor main*/
