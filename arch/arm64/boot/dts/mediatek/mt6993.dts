@@ -15581,12 +15581,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/* default gear level */
 			default-gear = <6>;
 
-#if 0
 			/* iommus */
 			iommus = <&soc_smmu 0x40>;
-			mtk,iommu-dma-range = <0x0 0x80000000 0x4 0x00000000>;
+			mtk,smmu-dma-mode = "disable";
 			dma-coherent;
-#endif
 		};
 
 		emi-pctrl {
