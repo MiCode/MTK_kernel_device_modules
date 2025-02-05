@@ -1,5 +1,5 @@
 # common KOs
-obj-$(CONFIG_MTK_SWPM_MODULE) += v1/
+#obj-$(CONFIG_MTK_SWPM_MODULE) += v1/
 
 # platform dependent  KOs
 ifeq ($(CONFIG_MTK_SWPM_MT6789),m)
@@ -50,6 +50,6 @@ endif
 ifeq ($(CONFIG_MTK_SWPM_MT6991),m)
 obj-$(CONFIG_MTK_SWPM_MT6991) += v6991/
 endif
-ifeq ($(CONFIG_MTK_SWPM_MT6993),m)
-obj-$(CONFIG_MTK_SWPM_MT6993) += v6993/
-endif
+#ifeq ($(CONFIG_MTK_SWPM_MT6993),m)
+#obj-$(CONFIG_MTK_SWPM_MT6993) += v6993/
+#endif

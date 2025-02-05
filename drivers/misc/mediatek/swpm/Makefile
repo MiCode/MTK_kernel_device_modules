@@ -1,28 +1,28 @@
 SWPM_BUILD_FOLDER=$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm
 
-ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V2),y)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2
-endif
+#ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V2),y)
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v2
+#endif
 
-ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V3),y)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3
-endif
+#ifeq ($(CONFIG_MTK_TINYSYS_SSPM_V3),y)
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3
+#endif
 
-ifeq ($(CONFIG_MTK_QOS_FRAMEWORK),m)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos
-endif
+#ifeq ($(CONFIG_MTK_QOS_FRAMEWORK),m)
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos
+#endif
 
-ifneq ($(CONFIG_MTK_TINYSYS_SCMI),)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmsr/v3/
-endif
+#ifneq ($(CONFIG_MTK_TINYSYS_SCMI),)
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pmsr/v3/
+#endif
 
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
-ccflags-y += -I$(SWPM_BUILD_FOLDER)/inc/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+#ccflags-y += -I$(SWPM_BUILD_FOLDER)/inc/
 
-subdir-ccflags-y += -I$(SWPM_BUILD_FOLDER)/inc/
+#subdir-ccflags-y += -I$(SWPM_BUILD_FOLDER)/inc/
 #subdir-ccflags-y += -I$(SWPM_BUILD_FOLDER)/swpm_trace_event/
-subdir-ccflags-y += -I$(SWPM_BUILD_FOLDER)/mtk_swpm_fs/
+#subdir-ccflags-y += -I$(SWPM_BUILD_FOLDER)/mtk_swpm_fs/
 
 ifeq ($(CONFIG_MTK_SWPM_MODULE),$(filter $(CONFIG_MTK_SWPM_MODULE),m))
 ccflags-y += -DMTK_SWPM_KERNEL_MODULE
