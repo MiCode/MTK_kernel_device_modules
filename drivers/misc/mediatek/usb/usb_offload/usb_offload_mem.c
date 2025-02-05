@@ -9,14 +9,6 @@
 #include <linux/printk.h>
 #include <linux/genalloc.h>
 
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
-#include <adsp_helper.h>
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-#include <scp.h>
-#endif
-
 #include "usb_offload.h"
 
 static void provider_auto_power(enum uo_provider_type id, bool is_on);

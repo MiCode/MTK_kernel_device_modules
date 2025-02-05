@@ -17,7 +17,7 @@
 #include "u_logger.h"
 #include "u_logger_trace.h"
 
-#include "xhci-trace.h"
+#include "../usb_xhci/xhci-trace.h"
 #include "mtu3.h"
 #include "mtu3_trace.h"
 

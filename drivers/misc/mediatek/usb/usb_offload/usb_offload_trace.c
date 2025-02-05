@@ -11,7 +11,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
 
-#include "xhci.h"
+#include "../usb_xhci/xhci.h"
 #include "audio_task_manager.h"
 #include "audio_task_usb_msg_id.h"
 #include "usb_offload.h"

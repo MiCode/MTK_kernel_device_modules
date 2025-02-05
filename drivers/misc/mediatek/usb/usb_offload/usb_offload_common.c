@@ -41,13 +41,6 @@
 #include "pcm.h"
 #include "power.h"
 #endif
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_XHCI_MTK)
-#include "xhci.h"
-#include "xhci-mtk.h"
-#endif
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
-#include "mtu3.h"
-#endif
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include <adsp_helper.h>
 #include "audio_messenger_ipi.h"
@@ -55,8 +48,11 @@
 #include "audio_controller_msg_id.h"
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-#include <scp.h>
+#include <scp_rv.h>
 #endif
+#include "../usb_xhci/xhci.h"
+#include "../usb_xhci/xhci-mtk.h"
+#include "mtu3.h"
 #include "usb_boost.h"
 #include "usb_offload.h"
 #include "audio_task_usb_msg_id.h"

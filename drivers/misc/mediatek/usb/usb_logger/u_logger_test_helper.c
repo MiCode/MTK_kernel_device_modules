@@ -7,7 +7,7 @@
 
 #include <linux/string.h>
 #include "u_logger.h"
-#include "xhci-trace.h"
+#include "../usb_xhci/xhci-trace.h"
 
 #if IS_ENABLED(CONFIG_MTK_USB_OFFLOAD)
 #include "usb_offload_trace.h"

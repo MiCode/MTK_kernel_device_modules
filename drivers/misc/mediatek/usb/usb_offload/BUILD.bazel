@@ -1,0 +1,68 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "usb_offload",
+    srcs = [
+        "provider_afe_sram.c",
+        "provider_dram.c",
+        "provider_usb_sram.c",
+        "usb_offload_common.c",
+        "usb_offload_hid.c",
+        "usb_offload_ipi.c",
+        "usb_offload_mem.c",
+        "usb_offload_policy.c",
+        "usb_offload_provider.c",
+        "usb_offload_trace.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+    ],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/usb/mtu3:mtu3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:xhci-mtk-hcd-v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_boost:usb_boost".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_xhci/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_boost/",
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/common/",
+        "-I$(srctree)/sound/usb",
+        "-I$(srctree)/$(src)",
+    ],
+)

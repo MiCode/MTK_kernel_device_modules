@@ -11,7 +11,7 @@
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-#include <scp.h>
+#include <scp_rv.h>
 #endif
 
 #include "usb_offload.h"

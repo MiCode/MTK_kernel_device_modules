@@ -12,9 +12,9 @@
 #include <linux/mutex.h>
 #include <linux/bitops.h>
 #include <linux/timekeeping.h>
-#include "xhci.h"
-#include "xhci-mtk.h"
-#include "xhci-trace.h"
+#include "../usb_xhci/xhci.h"
+#include "../usb_xhci/xhci-mtk.h"
+#include "../usb_xhci/xhci-trace.h"
 #include "usb_offload.h"
 #include "audio_task_usb_msg_id.h"
 #include "audio_task_manager.h"
