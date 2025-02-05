@@ -15686,10 +15686,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"gear_6",
 				"gear_7";
 
-			/* for clock scaling bind vcore */
+			/* for clock scaling vcore voting */
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 
-			vcore-volts = <550000 600000 650000 725000 825000>;
+			vcore-volts = <575000 600000 650000 725000 825000>;
 
 			/* default gear level */
 			default-gear = <6>;
