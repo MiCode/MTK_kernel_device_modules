@@ -9620,7 +9620,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		ovl_dli_async0: ovl-dli-async0@32900000 {
 			compatible = "mediatek,ovl0_dli_async",
 				"mediatek,mt6993-ovl-0-dli-async";
-			//clocks = <&ovlsys_config_clk OVL_DLI_ASYNC0_DISP>;
+			clocks = <&ovlsys_config_clk OVL_DLI_ASYNC0_DISP>;
 			reg = <0 0x32900000 0 0x1000>;
 		};
 
@@ -9773,7 +9773,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"mediatek,mt6993-disp-wdma";
 			reg = <0 0x3e770000 0 0x1000>;
 			interrupts = <GIC_SPI 444 IRQ_TYPE_LEVEL_HIGH 0>;
-			//clocks = <&dispsys1_config_clk MM1_DISP_WDMA1_DISP>;
+			clocks = <&dispsys1_config_clk MM1_DISP_WDMA1_DISP>;
 			fifo-size-1plane = <2045>;
 			fifo-size-2plane = <1022>;
 			fifo-size-uv-2plane = <1022>;
