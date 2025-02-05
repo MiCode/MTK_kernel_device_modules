@@ -232,6 +232,11 @@
 
 #define PARSE_FROM_DTS 0xFFFFFFFF
 
+/* disp dma min stash ostdl = 4, hence
+ * min stash bw = 3 * 16 + 1 = 49, mmqos carry ostdl 3.x to 4
+ */
+#define WDMA_STASH_BW_FLOOR 49
+
 enum GS_WDMA_FLD {
 	GS_WDMA_SMI_CON = 0, /* whole reg */
 	GS_WDMA_BUF_CON1,    /* whole reg */
@@ -1037,8 +1042,7 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 
 	/* WDMA_BUF_CON6 */
 	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * preultra_high_us, FP);
-	gs[GS_WDMA_PRE_ULTRA_HIGH_Y] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
+	gs[GS_WDMA_PRE_ULTRA_HIGH_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * ultra_high_us, FP);
 	gs[GS_WDMA_ULTRA_HIGH_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
@@ -1072,59 +1076,45 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 	gs[GS_WDMA_ULTRA_HIGH_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON11 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (preultra_low_us + dvfs_offset),
-			   FP);
-	gs[GS_WDMA_PRE_ULTRA_LOW_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
-	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_low_us + dvfs_offset),
-			   FP);
-	gs[GS_WDMA_ULTRA_LOW_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (preultra_low_us + dvfs_offset), FP);
+	gs[GS_WDMA_PRE_ULTRA_LOW_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
+
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_low_us + dvfs_offset), FP);
+	gs[GS_WDMA_ULTRA_LOW_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON12 */
-	tmp = DO_DIV_ROUND_UP(
-		consume_rate * Bpp * (preultra_high_us + dvfs_offset), FP);
-	gs[GS_WDMA_PRE_ULTRA_HIGH_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
-	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_high_us + dvfs_offset),
-			   FP);
-	gs[GS_WDMA_ULTRA_HIGH_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (preultra_high_us + dvfs_offset), FP);
+	gs[GS_WDMA_PRE_ULTRA_HIGH_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
+
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_high_us + dvfs_offset), FP);
+	gs[GS_WDMA_ULTRA_HIGH_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON13 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_LOW_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_ULTRA_LOW_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON14 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_ULTRA_HIGH_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON15 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_LOW_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_ULTRA_LOW_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON16 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_ULTRA_HIGH_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON17 */
@@ -1801,6 +1791,11 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 		return;
 	}
 
+	if (wdma->info_data->is_support_ufbc) {
+		mtk_ufbc_wdma_config(comp, addon_config, handle);
+		goto golden_setting;
+	}
+
 	// WDMA bandwidth setting
 	bpp = mtk_get_format_bpp(comp->fb->format->format);
 	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
@@ -1811,28 +1806,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	bw_base = div_u64(bw_base, 1000) * 2;
 
 	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
-
-	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
-	mtk_ddp_comp_iommu_enable(comp, handle);
-
-	if (wdma->info_data->is_support_ufbc) {
-		mtk_ufbc_wdma_config(comp, addon_config, handle);
-		goto golden_setting;
-	}
-
-	// WDMA bandwidth setting
-	if (priv->data->mmsys_id == MMSYS_MT6991) {
-		bpp = mtk_get_format_bpp(comp->fb->format->format);
-		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
-		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
-		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
-		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-		bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
-		bw_base = div_u64(bw_base, 1000) * 2;
-
-		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
-		comp->hrt_bw = bw_base;
-	}
+	comp->hrt_bw = bw_base;
 
 	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
 	mtk_ddp_comp_iommu_enable(comp, handle);
@@ -2420,12 +2394,11 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	}
 	case PMQOS_SET_HRT_BW: {
-		unsigned int bw = *(unsigned int *)params;
-		unsigned int ostdl_bw = 0;
+		u32 bw = *(unsigned int *)params;
+		u32 ostdl_bw;
 		struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 
-		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_MMQOS_SUPPORT))
+		if (!wdma || !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
 
 		if (wdma->info_data->force_ostdl_bw &&
@@ -2437,16 +2410,25 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (comp->last_hrt_bw == ostdl_bw)
 			break;
 
-		if (priv->data->respective_ostdl) {
-			if (!IS_ERR_OR_NULL(comp->hrt_qos_req)) {
-				__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, ostdl_bw,
-					priv->data->respective_ostdl);
-				DDPINFO("%s: %s:%d update port hrt BW:%u->%u/%u,force:%d,bw:%u\n",
-					__func__, mtk_dump_comp_str(comp), comp->id,
-					comp->last_hrt_bw, comp->hrt_bw, ostdl_bw,
-					wdma->info_data->force_ostdl_bw, bw);
-				comp->last_hrt_bw = ostdl_bw;
+		if (priv->data->respective_ostdl && !IS_ERR_OR_NULL(comp->hrt_qos_req)) {
+			u32 stash_bw = 0;
+
+			__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, ostdl_bw,
+				priv->data->respective_ostdl);
+
+			if (!IS_ERR_OR_NULL(comp->stash_qos_req)) {
+				stash_bw = max_t(u32, ostdl_bw / 4096, WDMA_STASH_BW_FLOOR);
+
+				__mtk_disp_set_module_hrt(comp->stash_qos_req,
+					comp->id, stash_bw, priv->data->respective_ostdl);
 			}
+
+			DDPINFO(
+				"%s: %s:%d update port hrt BW:%u->%u/%u,force:%d,bw:%u,stash:%u\n",
+				__func__, mtk_dump_comp_str(comp), comp->id,
+				comp->last_hrt_bw, comp->hrt_bw, ostdl_bw,
+				wdma->info_data->force_ostdl_bw, bw, stash_bw);
+			comp->last_hrt_bw = ostdl_bw;
 		}
 		ret = WDMA_REQ_HRT;
 		break;
@@ -2512,12 +2494,31 @@ static const struct mtk_ddp_comp_funcs mtk_disp_wdma_funcs = {
 	.io_cmd = mtk_wdma_io_cmd,
 };
 
+static struct icc_path *mtk_disp_wdma_icc_get(struct device *dev, struct mtk_ddp_comp *comp,
+	const char *qos_event)
+{
+	struct icc_path *qos;
+	char buf[64];
+
+	mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf), comp, qos_event);
+	qos = of_mtk_icc_get(dev, buf);
+	if (IS_ERR_OR_NULL(qos)) {
+		DDPMSG("%s,%d comp:%u failed to create %s, name:%s\n",
+			__func__, __LINE__, comp->id, qos_event, buf);
+		return NULL;
+	}
+
+	DDPMSG("%s,%s create %s success, dev:%s\n", __func__, buf, qos_event, dev_name(dev));
+	return qos;
+}
+
 static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 			      void *data)
 {
 	struct mtk_disp_wdma *priv = dev_get_drvdata(dev);
 	struct drm_device *drm_dev = data;
 	struct mtk_drm_private *private = drm_dev->dev_private;
+	struct mtk_ddp_comp *comp = &priv->ddp_comp;
 	int ret;
 	char buf[64];
 
@@ -2527,24 +2528,10 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 			dev->of_node->full_name, ret);
 		return ret;
 	}
-	if (mtk_drm_helper_get_opt(private->helper_opt,
-			MTK_DRM_OPT_MMQOS_SUPPORT)) {
-		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf), &priv->ddp_comp, "qos");
-		priv->ddp_comp.qos_req = of_mtk_icc_get(dev, buf);
-		if (!IS_ERR(priv->ddp_comp.qos_req))
-			DDPMSG("%s,%s create success, dev:%s\n", __func__, buf, dev_name(dev));
-		else
-			DDPMSG("%s,%d, comp:%u failed to create qos_req, name:%s\n",
-				__func__, __LINE__, priv->ddp_comp.id, buf);
-
-		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
-				&priv->ddp_comp, "hrt_qos");
-		priv->ddp_comp.hrt_qos_req = of_mtk_icc_get(dev, buf);
-		if (!IS_ERR(priv->ddp_comp.hrt_qos_req))
-			DDPMSG("%s,%s create success, dev:%s\n", __func__, buf, dev_name(dev));
-		else
-			DDPMSG("%s,%d comp:%u failed to create hrt_qos_req, name:%s\n",
-				__func__, __LINE__, priv->ddp_comp.id, buf);
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
+		comp->qos_req = mtk_disp_wdma_icc_get(dev, comp, "qos");
+		comp->hrt_qos_req = mtk_disp_wdma_icc_get(dev, comp, "hrt_qos");
+		comp->stash_qos_req = mtk_disp_wdma_icc_get(dev, comp, "stash_qos");
 	}
 	return 0;
 }
@@ -2976,7 +2963,7 @@ static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
 	.force_ostdl_bw = 7000,
 	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
-	.bus_priority_mask = 0xc4000000,
+	.bus_priority_mask = 0xd4000000,
 	.sodi_config = mt6989_mtk_sodi_config,
 	.aid_sel = &mtk_wdma_aid_sel_MT6993,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,

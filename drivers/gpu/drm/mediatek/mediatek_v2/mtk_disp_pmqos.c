@@ -155,7 +155,7 @@ struct hrt_mmclk_request hrt_req_level_ddr4_fhd_hfps_mt6765[] = {
 };
 #endif
 void mtk_disp_pmqos_get_icc_path_name(char *buf, int buf_len,
-				struct mtk_ddp_comp *comp, char *qos_event)
+				struct mtk_ddp_comp *comp, const char *qos_event)
 {
 	int len;
 
