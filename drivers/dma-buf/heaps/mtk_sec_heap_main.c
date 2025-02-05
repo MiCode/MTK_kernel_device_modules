@@ -29,7 +29,9 @@
 #include "mtk_tmem_interop.h"
 #include "mtk_iommu.h"
 #include "mtk-smmu-v3.h"
+#if !IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 #include "iommu_pseudo.h"
+#endif
 
 // static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
 //static gfp_t order_flags[] = { LOW_ORDER_GFP };

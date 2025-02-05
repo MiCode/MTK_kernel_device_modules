@@ -165,3 +165,35 @@ define_mgk_ddk_ko(
     ],
     out = "mtk_smmu_qos.ko",
 )
+
+define_mgk_ddk_ko(
+    name = "iommu_gz",
+    srcs = [
+        "iommu_gz_dummy.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_DEVICE_MODULES_ARM_SMMU_V3": {
+            False: [
+                "iommu_pseudo.c",
+            ],
+        },
+        "CONFIG_MTK_ENABLE_GENIEZONE": {
+            True: [
+                "iommu_gz_sec.c",
+                "iommu_gz_sec.h",
+            ],
+        },
+    },
+    hdrs = glob([
+        "iommu_pseudo.h",
+    ]),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:tmem_hdrs".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-main".format(kernel_version),
+    ],
+    includes = ["."],
+    out = "iommu_gz.ko",
+)
+

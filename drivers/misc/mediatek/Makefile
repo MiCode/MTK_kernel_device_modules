@@ -45,7 +45,6 @@ obj-$(CONFIG_MTK_IMGSENSOR) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MON) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_MOU) += imgsensor/src/
 obj-$(CONFIG_MTK_IMGSENSOR_ISP6S_LAG) += imgsensor/src/
-obj-$(CONFIG_MTK_IOMMU_MISC) += iommu/
 obj-$(CONFIG_MTK_CAM_CAL_ISP3_Z) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP3_M) += cam_cal/
 obj-$(CONFIG_MTK_CAM_CAL_ISP4_T) += cam_cal/
