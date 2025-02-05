@@ -102,6 +102,7 @@
 	#size-cells = <0>;
 	switch-spr = <1>;
 	spr-ip-type = <0>;
+	switch-mipi-clk-chg = <0>;
 	panel1@0 {
 		compatible = "nt37801,cmd,spr";
 		reg = <0>;
@@ -130,6 +131,20 @@
 			};
 		};
 	};
+	panel3@2 {
+		compatible = "mt6991,rm692h5,alpha,cmd,spr,mipichg";
+		reg = <2>;
+		vddr-gpios = <&pio 105 0>;
+		reset-gpios = <&pio 89 0>;
+		res-switch = <2>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
 	ports {
 		port {
 			dsi_out1: endpoint@0 {
@@ -138,6 +153,9 @@
 			/* dsi_out2 but dsi_out1 fixes warning. It only allows pairing endpoints.*/
 			dsi_out2: endpoint@1 {
 				remote-endpoint = <&panel_in2>;
+			};
+			dsi_out3: endpoint@2 {
+				remote-endpoint = <&panel_in3>;
 			};
 		};
 	};
