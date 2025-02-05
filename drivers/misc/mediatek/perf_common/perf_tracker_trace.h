@@ -19,13 +19,10 @@ TRACE_EVENT(perf_index_s,
 		unsigned int sf1,
 		unsigned int sf2,
 		int dram_freq,
-		int vcore_uv,
-		unsigned int cf0,
-		unsigned int cf1,
-		unsigned int cf2
+		int vcore_uv
 	),
 
-	TP_ARGS(sf0, sf1, sf2, dram_freq, vcore_uv, cf0, cf1, cf2),
+	TP_ARGS(sf0, sf1, sf2, dram_freq, vcore_uv),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, sf0)
@@ -33,9 +30,6 @@ TRACE_EVENT(perf_index_s,
 		__field(unsigned int, sf2)
 		__field(int, dram_freq)
 		__field(int, vcore_uv)
-		__field(unsigned int, cf0)
-		__field(unsigned int, cf1)
-		__field(unsigned int, cf2)
 	),
 
 	TP_fast_assign(
@@ -44,20 +38,14 @@ TRACE_EVENT(perf_index_s,
 		__entry->sf2       =  sf2;
 		__entry->dram_freq = dram_freq;
 		__entry->vcore_uv  = vcore_uv;
-		__entry->cf0       =  cf0;
-		__entry->cf1       =  cf1;
-		__entry->cf2       =  cf2;
 	),
 
-	TP_printk("sched_freq=%u|%u|%u dram_freq=%d vcore=%d cpu_mcupm_freq=%u|%u|%u",
+	TP_printk("sched_freq=%u|%u|%u dram_freq=%d vcore=%d",
 		__entry->sf0,
 		__entry->sf1,
 		__entry->sf2,
 		__entry->dram_freq,
-		__entry->vcore_uv,
-		__entry->cf0,
-		__entry->cf1,
-		__entry->cf2)
+		__entry->vcore_uv)
 );
 
 TRACE_EVENT(perf_index_l,

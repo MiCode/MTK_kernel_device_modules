@@ -427,7 +427,7 @@ void perf_tracker(u64 wallclock,
 	trace_perf_index_s(
 			sched_freq[0], sched_freq[4], sched_freq[5],
 			dram_rate,
-			vcore_uv, cpu_mcupm_freq[0], cpu_mcupm_freq[4], cpu_mcupm_freq[5]);
+			vcore_uv);
 
 	if (!hit_long_check) {
 		#if !IS_ENABLED(CONFIG_ARM64)
