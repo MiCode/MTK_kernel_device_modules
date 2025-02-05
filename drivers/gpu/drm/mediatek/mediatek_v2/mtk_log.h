@@ -59,6 +59,13 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DDP_EXTEND_MSG(fmt, arg...) \
 	MME_EXTEND_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg)
 
+#define DDPDSI_CMD(fmt, arg...)                                                   \
+	do {                                                                   \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
+		if (g_dsi_cmd_v2_log)                                              \
+			pr_info("[DISP][CMD]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
 #define DDPINFO(fmt, arg...)                                               \
 	do {                                                                   \
 		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
@@ -132,6 +139,11 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_4, fmt, ##arg)
 
 #else
+#define DDPDSI_CMD(fmt, arg...)                                                   \
+	do {                                                                   \
+		if (g_dsi_cmd_v2_log)                                              \
+			pr_info("[DISP][CMD]" pr_fmt(fmt), ##arg);     \
+	} while (0)
 
 #define DDPINFO(fmt, arg...)                                                   \
 	do {                                                                   \
@@ -391,6 +403,7 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 	} while (0)
 #endif /* CONFIG_MTK_AEE_FEATURE */
 
+extern bool g_dsi_cmd_v2_log;
 extern bool g_mobile_log;
 extern bool g_msync_debug;
 extern bool g_fence_log;

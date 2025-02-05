@@ -97,6 +97,8 @@ static struct proc_dir_entry *mtkfb_debug_procfs;
 #endif
 static struct drm_device *drm_dev;
 
+bool g_dsi_cmd_v2_log;
+EXPORT_SYMBOL(g_dsi_cmd_v2_log);
 bool g_mobile_log;
 EXPORT_SYMBOL(g_mobile_log);
 bool g_fence_log;
@@ -149,7 +151,7 @@ static int partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
 
-int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 0, 1, 1, 1, 1};
+int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 1, 1, 1, 1, 1};
 
 struct logger_buffer {
 	char **buffer_ptr;
@@ -3074,6 +3076,13 @@ static void process_dbg_opt(const char *opt)
 			g_mobile_log = 1;
 		else if (strncmp(opt + 7, "off", 3) == 0)
 			g_mobile_log = 0;
+	} else if (strncmp(opt, "dsi_cmd:", 8) == 0) {
+		if (strncmp(opt + 8, "on", 2) == 0)
+			g_dsi_cmd_v2_log = 1;
+		else if (strncmp(opt + 8, "off", 3) == 0)
+			g_dsi_cmd_v2_log = 0;
+
+		DDPMSG("[DISP][CMD] g_dsi_cmd_v2_log=%d\n", g_dsi_cmd_v2_log);
 	} else if (strncmp(opt, "msync_debug:", 12) == 0) {
 		if (strncmp(opt + 12, "on", 2) == 0)
 			g_msync_debug = 1;
@@ -5342,7 +5351,7 @@ static void process_dbg_opt(const char *opt)
 			DDPPR_ERR("new_read_ddic fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("new_read_ddic %d,flags=0x%x,slot=%d,idx=%d,len=%d,addr=0x%x,ret=%d\n",
+		DDPMSG("new_read_ddic %d,flags=0x%x,slot=%d,idx=%d,len=%d,addr=0x%x, ret=%d\n",
 			__LINE__, flags, slot, idx, rx_len, addr, ret);
 		msg.rx_buf= vmalloc(rx_len * sizeof(u8));
 		if (!msg.rx_buf) {
@@ -5405,6 +5414,175 @@ static void process_dbg_opt(const char *opt)
 			g_dump_prop_log = 1;
 		else if (strncmp(opt + 10, "off", 3) == 0)
 			g_dump_prop_log = 0;
+	} else if (strncmp(opt, "new_write_ddic_long:", 20) == 0) {
+		int flags = 0, tx_len = 0, lp = 0;
+		char addr = 0, val = 0;
+		char *tx_buf = NULL;
+		int i, ret;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		struct mtk_dsi_cmd_msg test_cmd = { 0 };
+		struct mipi_dsi_msg msg = { 0 };
+
+		ret = sscanf(opt, "new_write_ddic_long:%x,%d,%d,%x,%x\n", &flags, &lp, &tx_len, &addr, &val);
+		if (ret <= 0) {
+			DDPPR_ERR("new_write_ddic_long fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("new_write_ddic_long %d, flags=0x%x,len=%d,, addr=0x%x, val=0x%x, ret=%d\n",
+			__LINE__, flags, tx_len, addr, val, ret);
+
+		tx_buf = vmalloc(sizeof(u8) * tx_len);
+		if (!tx_buf) {
+			DDPMSG("new_write_ddic_long alloc tx_buf fail\n");
+			return;
+		}
+		memset(tx_buf, 0, tx_len);
+
+		for (i = 0; i < tx_len; i++) {
+			if (i == 0)
+				tx_buf[0] = addr;
+			else {
+				val += 2;
+				tx_buf[i] = val;
+			}
+			DDPMSG("0x%x,", tx_buf[i]);
+		}
+
+		DDPMSG("\n");
+		msg.tx_len = tx_len;
+		msg.tx_buf = tx_buf;
+		test_cmd.cmd_num = 1;
+		test_cmd.transfer_mode = lp;
+		test_cmd.cmd_msg= &msg;
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("new_write_ddic_long ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		DDPMSG("new_write_ddic_long --\n");
+		vfree(tx_buf);
+	} else if (strncmp(opt, "new_write_ddic_package:", 23) == 0) {
+		int flags = 0, tx_len = 0, lp = 0, cmd_num = 0, package = 0;
+		char addr = 0, init_val = 0, step = 1;
+		char **tx_buf = NULL;
+		int i, j, ret;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		struct mtk_dsi_cmd_msg test_cmd = { 0 };
+		struct mipi_dsi_msg *msg;
+
+		ret = sscanf(opt, "new_write_ddic_package:%x,%d,%d,%d,%d,%x,%d,%d\n",
+			&flags, &package, &lp, &cmd_num, &tx_len, &addr, &init_val, &step);
+		if (ret <= 0) {
+			DDPPR_ERR("new_write_ddic_package fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("new_write_ddic_package %d, f=0x%x,lp=%d,p=%d,num=%d,len=%d,addr=0x%x,val=%d(%d)\n",
+			__LINE__, flags, lp, package, cmd_num, tx_len, addr, init_val, step);
+
+		tx_buf = vmalloc(cmd_num * sizeof(char *));
+		if (!tx_buf) {
+			DDPMSG("new_write_ddic_package alloc tx_buf[] fail\n");
+			return;
+		}
+
+		for (i = 0; i < cmd_num; i++) {
+			tx_buf[i] = vmalloc(tx_len * sizeof(char));
+			if (!tx_buf[i]) {
+				DDPMSG("new_write_ddic_package alloc tx_buf[][] fail\n");
+				vfree(tx_buf);
+				return;
+			}
+			memset(tx_buf[i], 0, tx_len);
+			for (j = 0; j < tx_len; j++) {
+				if (j == 0)
+					tx_buf[i][0] = addr;
+				else {
+					init_val += step;
+					tx_buf[i][j] = init_val;
+				}
+			}
+		}
+		msg = vmalloc(cmd_num * sizeof(struct mipi_dsi_msg));
+		if (!msg) {
+			DDPMSG("new_write_ddic_package mipi_dsi_msg fail\n");
+			goto test_done;
+		}
+		for (i = 0; i < cmd_num; i++) {
+			msg[i].tx_len = tx_len;
+			msg[i].tx_buf = tx_buf[i];
+		}
+		test_cmd.is_package = package;
+		test_cmd.cmd_num = cmd_num;
+		test_cmd.transfer_mode = lp;
+		test_cmd.cmd_msg= msg;
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("new_write_ddic_package ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		DDPMSG("new_write_ddic_package --\n");
+
+test_done:
+		for (j = 0; j < tx_len; j++)
+			vfree(tx_buf[j]);
+		vfree(tx_buf);
+	} else if (strncmp(opt, "2c_init:", 8) == 0) {
+
+		int i;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		static struct mtk_panel_para_table frame_3c_code[] = {
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0xC8, 0x60}},
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0xAB, 0xFF}},
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0xAC, 0x0F}},
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0xAD, 0xFF}},
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0xAE, 0x1F}},
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0x78, 0xB1}},
+
+			{0x02,{0xFE, 0xD4}},
+			{0x02,{0x87, 0x01}},
+			{0x02,{0xFE, 0xD4}},
+			{0x02,{0x1B, 0x80}},
+
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0x08, 0x00}},
+			{0x02,{0xFE, 0xD0}},
+			{0x02,{0x28, 0x00}},
+			{0x02,{0xFE, 0xD4}},
+			{0x02,{0x5E, 0x09}},
+			{0x02,{0xFE, 0x00}},
+			{0x02,{0xFA, 0x02}},
+			{0x02,{0xFE, 0x40}},
+			{0x02,{0xA3, 0x04}},
+		};
+
+		static struct mipi_dsi_msg cmd_msg[ARRAY_SIZE(frame_3c_code)] = { 0 };
+
+		for (i = 0; i < ARRAY_SIZE(frame_3c_code); i++) {
+			cmd_msg[i].tx_len= frame_3c_code[i].count;
+			cmd_msg[i].tx_buf = frame_3c_code[i].para_list;
+		};
+
+		struct mtk_dsi_cmd_msg init_code= {
+			.is_package = 0,
+			.cmd_num = ARRAY_SIZE(frame_3c_code),
+			.transfer_mode = PACKET_LP_MODE,
+			.cmd_msg = cmd_msg,
+		};
+
+		cmd_opt.flags = 0x40001;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("hc3 3c_init ++\n");
+		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &init_code);
+		DDPMSG("hc3 3c_init --\n");
 	}
 }
 
