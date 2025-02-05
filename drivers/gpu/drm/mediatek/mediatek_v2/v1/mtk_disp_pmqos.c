@@ -1222,7 +1222,8 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		mtk_disp_hrt_mmclk_request_mt6765(mtk_crtc, tmp);
 #else
 	if (!IS_ERR_OR_NULL(priv->hrt_bw_request)) {
-		if ((priv->data->mmsys_id == MMSYS_MT6897) &&
+		if ((priv->data->mmsys_id == MMSYS_MT6897 ||
+			priv->data->mmsys_id == MMSYS_MT6895) &&
 			(mtk_disp_check_segment(mtk_crtc, priv) == false))
 			mtk_icc_set_bw(priv->hrt_bw_request, 0, MBps_to_icc(1));
 		else
@@ -1258,7 +1259,8 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 			}
 
 			if (!IS_ERR_OR_NULL(priv->hrt_by_larb)) {
-				if ((priv->data->mmsys_id == MMSYS_MT6897) &&
+				if ((priv->data->mmsys_id == MMSYS_MT6897 ||
+					priv->data->mmsys_id == MMSYS_MT6895) &&
 					(mtk_disp_check_segment(mtk_crtc, priv) == false))
 					mtk_icc_set_bw(priv->hrt_by_larb, 0, MBps_to_icc(1));
 				else
