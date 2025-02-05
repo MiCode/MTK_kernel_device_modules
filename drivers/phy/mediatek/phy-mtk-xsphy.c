@@ -73,6 +73,7 @@
 #define P2A1_RG_TERM_SEL_OFST	(8)
 
 #define XSP_USBPHYACR2		((SSUSB_SIFSLV_U2PHY_COM) + 0x08)
+#define P2A2_RG_USBPLL_RST_DLY		GENMASK(10, 9)
 
 #define XSP_USBPHYACR4		((SSUSB_SIFSLV_U2PHY_COM) + 0x10)
 #define P2A4_RG_USB20_FS_CR		GENMASK(10, 8)
@@ -132,6 +133,7 @@
 
 #define XSP_U2PHYA_RESERVE1	((SSUSB_SIFSLV_U2PHY_COM) + 0x044)
 #define P2A2R1_RG_PLL_POSDIV    GENMASK(2, 0)
+#define P2A2R1_RG_PLL_POSDIV_2        BIT(2)
 #define P2A2R1_RG_PLL_REFCLK_SEL        BIT(5)
 #define P2A2R1_RG_HSTX_IMPP		GENMASK(12, 8)
 
@@ -1771,6 +1773,12 @@ static void u2_phy_lpm_pll_set(struct mtk_xsphy *xsphy,
 
 	if (!inst->lpm_quirk)
 		return;
+
+	/* increase pll stability */
+	if (of_device_is_compatible(xsphy->dev->of_node, "mediatek,mt6993-xsphy")) {
+		mtk_phy_clear_bits(pbase + XSP_U2PHYA_RESERVE1, P2A2R1_RG_PLL_POSDIV_2);
+		mtk_phy_update_field(pbase + XSP_USBPHYACR2, P2A2_RG_USBPLL_RST_DLY, 0x2);
+	}
 
 	/* enable SW PLL mode */
 	mtk_phy_update_field(pbase + XSP_U2PHYDCR1, P2C_RG_USB20_SW_PLLMODE, 0x1);
