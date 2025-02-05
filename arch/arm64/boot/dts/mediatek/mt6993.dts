@@ -3558,73 +3558,73 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 					,l3_bw,sub_wl_type,l3_stall_avg,l3_stall_avg_diff\
 					,hybrid_ratio,fine_grained_enabled";
 			node-37 = "MCUPM_PTP3__PMIC",
-					"GRP0_vosel,GRP1_vosel,GRP2_vosel";
+					"GRP0_vosel,GRP1_vosel,GRP2_vosel,MCUPM_PTP3_EOL";
 			node-38 = "MCUPM_PTP3__HBVC",
-					"GRP0_Vc,GRP1_Vc,GRP2_Vc,GRP0_Vt,GRP1_Vt,GRP2_Vt";
+					"GRP0_Vc,GRP1_Vc,GRP2_Vc,GRP0_Vt,GRP1_Vt,GRP2_Vt,MCUPM_PTP3_EOL";
 			node-39 = "MCUPM_PTP3__HBVC__Freq_Ctrl",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-40 = "MCUPM_PTP3__HBVC__Freq_Ctrl__AP",
 "C0_req,C1_req,C2_req,C3_req,C4_req,C5_req,C6_req,C7_req,DSU_req\
 ,C0_max,C1_max,C2_max,C3_max,C4_max,C5_max,C6_max,C7_max,DSU_max\
-,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min";
+,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min,MCUPM_PTP3_EOL";
 			node-41 = "MCUPM_PTP3__HBVC__Freq_Ctrl__EB",
 "C0_req,C1_req,C2_req,C3_req,C4_req,C5_req,C6_req,C7_req,DSU_req\
 ,C0_max,C1_max,C2_max,C3_max,C4_max,C5_max,C6_max,C7_max,DSU_max\
-,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min";
+,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min,MCUPM_PTP3_EOL";
 			node-42 = "MCUPM_PTP3__HBVC__Sample_Ctrl",
-					"C0_Verr,C1_Verr,C2_Verr,C3_Verr,C4_Verr,C5_Verr,C6_Verr,C7_Verr,DSU_Verr";
+"C0_Verr,C1_Verr,C2_Verr,C3_Verr,C4_Verr,C5_Verr,C6_Verr,C7_Verr,DSU_Verr,MCUPM_PTP3_EOL";
 			node-43 = "MCUPM_PTP3__HBVC__Volt_Calc",
-					"C0_Vt,C1_Vt,C2_Vt,C3_Vt,C4_Vt,C5_Vt,C6_Vt,C7_Vt,DSU_Vt";
+"C0_Vt,C1_Vt,C2_Vt,C3_Vt,C4_Vt,C5_Vt,C6_Vt,C7_Vt,DSU_Vt,MCUPM_PTP3_EOL";
 			node-44 = "MCUPM_PTP3__HBVC__Volt_Calc__Vupper",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-45 = "MCUPM_PTP3__HBVC__Volt_Calc__Vlower",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-46 = "MCUPM_PTP3__HBVC__PMIF_Mst",
-					"GRP0_state,GRP1_state,GRP2_state";
+					"GRP0_state,GRP1_state,GRP2_state,MCUPM_PTP3_EOL";
 			node-47 = "MCUPM_PTP3__FLL",
 "C0_fin,C1_fin,C2_fin,C3_fin,C4_fin\
 ,C5_fin,C6_fin,C7_fin,DSU_fin\
 ,C0_fout,C1_fout,C2_fout,C3_fout,C4_fout\
-,C5_fout,C6_fout,C7_fout,DSU_fout";
+,C5_fout,C6_fout,C7_fout,DSU_fout,MCUPM_PTP3_EOL";
 			node-48 = "MCUPM_PTP3__FLL__MinFC",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-49 = "MCUPM_PTP3__FLL__CC",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-50 = "MCUPM_PTP3__FLL__FC",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-51 = "MCUPM_PTP3__FLL__Outerloop_Mode",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-52 = "MCUPM_PTP3__VC__Cerr",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-53 = "MCUPM_PTP3__VC__Ferr",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-54 = "MCUPM_PTP3__VC__Inc_Dec_Signal",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-55 = "MCUPM_PTP3__CTT",
 "C0_target_scale,C1_target_scale,C2_target_scale\
 ,C3_target_scale,C4_target_scale,C5_target_scale\
-,C6_target_scale,C7_target_scale,DSU_target_scale";
+,C6_target_scale,C7_target_scale,DSU_target_scale,MCUPM_PTP3_EOL";
 			node-56 = "MCUPM_PTP3__CTT__Tmax",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-57 = "MCUPM_PTP3__CTT__Imax",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-58 = "MCUPM_PTP3__CPmeter",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-59 = "MCUPM_PTP3__CPmeter__Dynamic",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-60 = "MCUPM_PTP3__CPmeter__Leakage",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-61 = "MCUPM_PTP3__Tmeter",
 "C0_max,C1_max,C2_max,C3_max,C4_max,C5_max,C6_max,C7_max,DSU_max\
-,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min";
+,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min,MCUPM_PTP3_EOL";
 			node-62 = "MCUPM_PTP3__Tmeter__Since",
 "C0_max,C1_max,C2_max,C3_max,C4_max,C5_max,C6_max,C7_max,DSU_max\
-,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min";
+,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min,MCUPM_PTP3_EOL";
 			node-63 = "MCUPM_PTP3__Tmeter__Since__Index",
 "C0_max,C1_max,C2_max,C3_max,C4_max,C5_max,C6_max,C7_max,DSU_max\
-,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min";
+,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min,MCUPM_PTP3_EOL";
 			node-64 = "MCUPM_PTP3__Vmeter",
-					"C0,C1,C2,C3,C4,C5,C6,C7,DSU";
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-65 = "MCUPM_MET_UNIT_TEST_SLV_0", "test";
 		};
 
