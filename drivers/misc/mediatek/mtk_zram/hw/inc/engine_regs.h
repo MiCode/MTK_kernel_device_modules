@@ -198,6 +198,7 @@ int engine_compare_all_registers(struct engine_control_t *ctrl);
 #endif
 
 int engine_get_reg_status(struct engine_control_t *ctrl, char *buf);
+int engine_fatal_get_reg_status(struct engine_control_t *ctrl, char *buf);
 
 /* Whether IRQ is available */
 #define ENGINE_IRQ_ON	(0x1)	// Set when clk is enabled

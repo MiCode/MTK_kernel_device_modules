@@ -163,6 +163,10 @@ DEFINE_STATIC_KEY_FALSE(engine_sync_mode);
  */
 DEFINE_STATIC_KEY_TRUE(engine_power_efficiency);
 
+/* Statistics for suspect hang */
+static atomic_t enc_suspect_hang_count = ATOMIC_INIT(0);
+static atomic_t dec_suspect_hang_count = ATOMIC_INIT(0);
+
 /**************************************************/
 
 static irqreturn_t comp_irq_handler(int irq, void *data)
@@ -526,6 +530,8 @@ static int fake_hw_func(void *data)
 
 #endif /* CONFIG_ZRAM_ENGINE_SW_SIMULATION */
 
+static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset);
+
 /* Polling for cmd completion */
 static inline void hwcomp_poll_cmd_complete(struct hwfifo *fifo)
 {
@@ -652,7 +658,7 @@ static inline void dcomp_try_to_gear_down(struct zram_engine_t *hwz)
 {
 retry:
 	/* Sleep for a while */
-	usleep_idle_range(5, 15);
+	usleep_idle_range(50, 100);
 
 	/* Whether there are any pending requests */
 	if (atomic_read(&hwz->dcomp_cnt) != 0)
@@ -687,7 +693,7 @@ static int dcomp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
 	uint32_t processed, total_processed;
-	uint32_t hang_detect;
+	uint32_t hang_detect, suspect_hang;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
@@ -727,6 +733,9 @@ static int dcomp_post_process(void *data)
 		/* Reset hang_detect */
 		hang_detect = 0;
 
+		/* Reset suspect_hang */
+		suspect_hang = 0;
+
 repeat:
 		/* Processing cmds */
 		processed = dcomp_post_processing_cmds(hwz);
@@ -739,16 +748,33 @@ repeat:
 
 		/* HW is slow, just sleep for a while */
 		if (processed == 0) {
-			usleep_idle_range(5, 10);
+			usleep_idle_range(50, 100);
 			hang_detect++;
 		} else {
+			/* not hang */
 			hang_detect = 0;
+			suspect_hang = 0;
 		}
 
 		/* dcomp may hang. Try to kick it again. */
 		if (hang_detect > HANG_DETECT_BOUND) {
 			dcomp_hang_handle(hwz);
 			hang_detect = 0;
+			suspect_hang++;
+		}
+
+		/* dcomp hang. Try to dump more information & do something. */
+		if (suspect_hang > SUSPECT_HANG_BOUND) {
+			engine_get_reg_status(&hwz->ctrl, NULL);
+			engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+			dump_fifo_idx(hwz, NULL, 0);
+
+			/* do something */
+			suspect_hang = 0;
+			WARN_ON(1);
+
+			/* Increase the suspect hang count */
+			atomic_inc(&dec_suspect_hang_count);
 		}
 
 		/* Repeat until all decompression cmds are processed */
@@ -836,7 +862,7 @@ static inline void comp_try_to_gear_down(struct zram_engine_t *hwz)
 {
 retry:
 	/* Sleep for a while */
-	usleep_idle_range(5, 15);
+	usleep_idle_range(50, 100);
 
 	/* Whether there are any pending requests */
 	if (atomic_read(&hwz->comp_cnt) != 0)
@@ -863,6 +889,39 @@ static void comp_hang_handle(struct zram_engine_t *hwz)
 	spin_unlock(&hwz->fifo_2_lock);
 }
 
+/* Handler when comp is not started successfully */
+static void dump_pending_comp_cmds(struct zram_engine_t *hwz)
+{
+	struct hwfifo *fifo;
+	uint32_t start, end, index, entry;
+
+	/* main fifo */
+	fifo = &hwz->fifo_1;
+	start = comp_fifo_1_HtS_complete_index(fifo);
+	end = fifo->write_idx;
+
+	if (start != end)
+		pr_info("%s: main fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
+
+	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
+		dump_comp_cmd(COMP_CMD(fifo, entry));
+	}
+
+	/* second fifo */
+	fifo = &hwz->fifo_2;
+	start = comp_fifo_2_HtS_complete_index(fifo);
+	end = fifo->write_idx;
+
+	if (start != end)
+		pr_info("%s: second fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
+
+	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
+		dump_comp_cmd(COMP_CMD(fifo, entry));
+	}
+}
+
 /*
  * Compression post-process
  */
@@ -870,7 +929,7 @@ static int comp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
 	uint32_t processed, total_processed;
-	uint32_t hang_detect;
+	uint32_t hang_detect, suspect_hang;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
@@ -910,6 +969,9 @@ static int comp_post_process(void *data)
 		/* Reset hang_detect */
 		hang_detect = 0;
 
+		/* Reset suspect_hang */
+		suspect_hang = 0;
+
 repeat:
 		/* Processing main fifo cmds */
 		processed = comp_main_post_processing_cmds(hwz, &hwz->fifo_1);
@@ -925,16 +987,34 @@ repeat:
 
 		/* HW is slow, just sleep for a while */
 		if (processed == 0) {
-			usleep_idle_range(5, 10);
+			usleep_idle_range(50, 100);
 			hang_detect++;
 		} else {
+			/* not hang */
 			hang_detect = 0;
+			suspect_hang = 0;
 		}
 
 		/* comp may hang. Try to kick it again. */
 		if (hang_detect > HANG_DETECT_BOUND) {
 			comp_hang_handle(hwz);
 			hang_detect = 0;
+			suspect_hang++;
+		}
+
+		/* comp hang. Try to dump more information & do something. */
+		if (suspect_hang > SUSPECT_HANG_BOUND) {
+			engine_get_reg_status(&hwz->ctrl, NULL);
+			engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+			dump_fifo_idx(hwz, NULL, 0);
+
+			/* do something */
+			dump_pending_comp_cmds(hwz);
+			suspect_hang = 0;
+			WARN_ON(1);
+
+			/* Increase the suspect hang count */
+			atomic_inc(&enc_suspect_hang_count);
 		}
 
 		/* Repeat until all compression cmds are processed */
@@ -2330,6 +2410,11 @@ static int kick_hwe_exp(const char *val, const struct kernel_param *kp)
 		/* Compare all registers with the previous record */
 		retval = engine_compare_all_registers(&hwz->ctrl);
 		break;
+	case 92:
+		/* Same as kick_hwe_ctrl, but output to kernel log */
+		engine_get_reg_status(&hwz->ctrl, NULL);
+		dump_fifo_idx(hwz, NULL, 0);
+		break;
 	default:
 		pr_info("%s invalid ops!\n", __func__);
 		retval = -EINVAL;
@@ -2545,22 +2630,25 @@ static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset)
 	int i;
 
 	fifo = &hwz->fifo_1;
-	copied += snprintf(buf + copied, PAGE_SIZE - copied,
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
 			"[enc:main] - 0x%-4x:0x%-4x:0x%-4x\n",
 			fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
 	fifo = &hwz->fifo_2;
-	copied += snprintf(buf + copied, PAGE_SIZE - copied,
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
 			"[enc:second] - 0x%-4x:0x%-4x:0x%-4x\n",
 			fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
-	copied += snprintf(buf + copied, PAGE_SIZE - copied,
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
 			"Total comp cnts: %d, dcomp cnts: %d\n",
 			atomic_read(&hwz->comp_cnt), atomic_read(&hwz->dcomp_cnt));
 	for (i = 0; i < MAX_DCOMP_NR; i++) {
 		fifo = &hwz->dcomp_fifo[i];
-		copied += snprintf(buf + copied, PAGE_SIZE - copied,
+		ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
 				"[dec:%d] - 0x%-4x:0x%-4x:0x%-4x\n",
 				i, fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
 	}
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
+			"comp hang: %d, dcomp hang: %d\n",
+			atomic_read(&enc_suspect_hang_count), atomic_read(&dec_suspect_hang_count));
 
 	return copied;
 }

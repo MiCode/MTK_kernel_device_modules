@@ -46,7 +46,11 @@
 #define ENGINE_COMP_FIFO_2_TAG_CARRY_OFFSET	(ENGINE_COMP_FIFO_TAG_BIT - ENGINE_COMP_FIFO_2_CARRY_BIT)
 
 /* Batch interrupt for compression */
-#define ENGINE_COMP_BATCH_INTR_CNT_BITS		(6)	/* 2^6 */
+#define COMP_BATCH_INTR_CNT_BITS		((CONFIG_ZRAM_ENGINE_COMP_FIFO_1_BITS >		\
+						 CONFIG_ZRAM_ENGINE_COMP_FIFO_2_BITS) ?		\
+						 (CONFIG_ZRAM_ENGINE_COMP_FIFO_2_BITS - 1) :	\
+						 (CONFIG_ZRAM_ENGINE_COMP_FIFO_1_BITS - 1))
+#define ENGINE_COMP_BATCH_INTR_CNT_BITS		((COMP_BATCH_INTR_CNT_BITS > 6) ? COMP_BATCH_INTR_CNT_BITS : 6)
 
 /*
  * Decompression FIFO - BIT[15]: Tag-bit, BIT[6..0]: Entry-bits
@@ -77,6 +81,7 @@
 
 /* Hang detect upper bound */
 #define HANG_DETECT_BOUND	(3)
+#define SUSPECT_HANG_BOUND	(10000)
 
 /*
  * Structure for HW engine FIFO

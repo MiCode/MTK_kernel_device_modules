@@ -6,6 +6,8 @@
 #ifndef _HELPERS_H_
 #define _HELPERS_H_
 
+#include <linux/printk.h>
+#include <linux/sprintf.h>
 #include <inc/engine_fifo.h>
 
 int printbinary(char *buf, unsigned long x, int nbits);
@@ -25,5 +27,14 @@ static inline void *cmd_buf_addr_to_va(uint32_t *addr)
 
 	return phys_to_virt(DST_ADDR_TO_PHYS(addr_to_be_free));
 }
+
+#define ZRAM_DEBUG_DUMP(buf, copied, bufp, strlen, fmt, args...)	\
+	do {								\
+		if (buf) {						\
+			copied += snprintf(bufp, strlen, fmt, ##args);	\
+		} else {						\
+			pr_info(fmt, ##args);				\
+		}							\
+	} while (0)
 
 #endif /* _HELPERS_H_ */
