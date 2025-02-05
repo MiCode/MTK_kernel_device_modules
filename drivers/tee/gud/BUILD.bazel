@@ -115,9 +115,11 @@ define_mgk_ddk_ko(
 		"{}/MobiCoreDriver/ffa_dummy.c".format(TRUSTONIC_TEE_VERSION),
 	],
 	out = "{}/MobiCoreDriver/mcDrvModule.ko".format(TRUSTONIC_TEE_VERSION),
+	hdrs = [
+		":mobicore_public_hdrs",
+	],
 	header_deps = [
 		":mobicore_local_hdrs",
-		":mobicore_public_hdrs",
 	],
 	local_defines = mobicore_local_defines,
 )
@@ -142,10 +144,11 @@ define_mgk_ddk_ko(
 	ko_deps = [
 		"{}:ffa".format(tmem_package),
 	],
-	header_deps = [
-		"{}:ffa_hdrs".format(tmem_package),
-		":mobicore_local_hdrs",
+	hdrs = [
 		":mobicore_public_hdrs",
+	],
+	header_deps = [
+		":mobicore_local_hdrs",
 	],
 	local_defines = mobicore_local_defines,
 )
