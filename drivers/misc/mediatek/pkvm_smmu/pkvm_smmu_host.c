@@ -772,13 +772,8 @@ unsigned long smmu_mpool_mem_allocate(struct mpt *mpt,
 static int mtk_kvm_arm_smmu_v3_init(void)
 {
 	int ret;
-	struct kvm_hyp_memcache atomic_mc = {};
 
-	ret = topup_hyp_memcache(&atomic_mc, 100, 0);
-	if (ret)
-		pr_info("topup_hyp_memcache failed ret=%d\n", ret);
-
-	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops), &atomic_mc, 0);
+	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops));
 	if (ret)
 		pr_info("kvm_iommu_init_hyp ret=%d\n", ret);
 
@@ -790,14 +785,8 @@ static int mtk_kvm_arm_smmu_v3_init(void)
 	return ret;
 }
 
-pkvm_handle_t mtk_kvm_arm_smmu_v3_id(struct device *dev)
-{
-	return 0;
-}
-
 struct kvm_iommu_driver kvm_smmu_v3_ops = {
 	.init_driver = mtk_kvm_arm_smmu_v3_init,
-	.get_iommu_id = mtk_kvm_arm_smmu_v3_id,
 };
 
 static int __init smmu_nvhe_init(void)
