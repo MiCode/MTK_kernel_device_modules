@@ -4470,7 +4470,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/video/backlight/sgm37604a.ko")
 
     if "entry_level_5g.config" in DEFCONFIG_OVERLAYS:
-        mgk_64_device_modules.append("drivers/misc/mediatek/iommu/iommu_gz.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:arm_smmu_v3".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-pmu".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-mpam-mon".format(kernel_version))
@@ -4510,6 +4510,7 @@ def get_overlay_modules_list():
 
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6878.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6886.ko")
+        mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6895.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6897.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6899.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/drm/mediatek/mml/mtk-mml-mt6983.ko")
@@ -4539,14 +4540,14 @@ def get_overlay_modules_list():
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version))
 
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6886.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6897.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6899.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6985.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989_fpga.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6991.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6993.ko")
+        #mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6886.ko")
+        #mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6897.ko")
+        #mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6899.ko")
+        #mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6985.ko")
+        #mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989.ko")
+        #mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6989_fpga.ko")
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6991".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6993".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6993.ko")
 
