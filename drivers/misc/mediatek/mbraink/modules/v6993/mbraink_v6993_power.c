@@ -1096,41 +1096,103 @@ void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 	int n = 0;
 	int pos = 0;
 
-	unsigned int version = 1;
-	unsigned int cnt = 0;
-	unsigned long long sys_time = 0;
-	unsigned int type = 0;
-	unsigned long long real_time_start = 0;
-	unsigned long long real_time_end = 0;
-	unsigned int dyn_base = 0;
-	unsigned int cg_subsys_dyn = 0;
-	unsigned int cg_ratio = 0;
+	unsigned int version = 2;
+	unsigned int cnt;
+	unsigned int type;
+	unsigned int enable;
+	unsigned int dect_cnt;
+	unsigned int temp_cnt;
+	unsigned int sys_time;
+	unsigned int dect_result;
+	unsigned int dyn_base;
+	unsigned int cg_subsys_dyn;
+	unsigned int cg_ratio;
+	unsigned int dram0_smap_snapshot;
+	unsigned int dram1_smap_snapshot;
+	unsigned int dram2_smap_snapshot;
+	unsigned int dram3_smap_snapshot;
+	unsigned int chinf0_smap_snapshot;
+	unsigned int chinf1_smap_snapshot;
+	unsigned int venc0_smap_snapshot;
+	unsigned int venc1_smap_snapshot;
+	unsigned int venc2_smap_snapshot;
+	unsigned int emi_snapshot;
+	unsigned int emi_s_snapshot;
+	unsigned int zram_snapshot;
+	unsigned int apu_snapshot;
+	unsigned long long real_time_start;
+	unsigned long long real_time_end;
 
 	cnt = smap_mbrain_data->cnt;
-	sys_time = smap_mbrain_data->sys_time;
 	type = smap_mbrain_data->type;
-	real_time_start = smap_mbrain_data->real_time_start;
-	real_time_end = smap_mbrain_data->real_time_end;
+	enable = smap_mbrain_data->enable;
+	dect_cnt = smap_mbrain_data->dect_cnt;
+	temp_cnt = smap_mbrain_data->temp_cnt;
+	sys_time = smap_mbrain_data->sys_time;
+	dect_result = smap_mbrain_data->dect_result;
 	dyn_base = smap_mbrain_data->dyn_base;
 	cg_subsys_dyn = smap_mbrain_data->cg_subsys_dyn;
 	cg_ratio = smap_mbrain_data->cg_ratio;
+	dram0_smap_snapshot = smap_mbrain_data->dram0_smap_snapshot;
+	dram1_smap_snapshot = smap_mbrain_data->dram1_smap_snapshot;
+	dram2_smap_snapshot = smap_mbrain_data->dram2_smap_snapshot;
+	dram3_smap_snapshot = smap_mbrain_data->dram3_smap_snapshot;
+	chinf0_smap_snapshot = smap_mbrain_data->chinf0_smap_snapshot;
+	chinf1_smap_snapshot = smap_mbrain_data->chinf1_smap_snapshot;
+	venc0_smap_snapshot = smap_mbrain_data->venc0_smap_snapshot;
+	venc1_smap_snapshot = smap_mbrain_data->venc1_smap_snapshot;
+	venc2_smap_snapshot = smap_mbrain_data->venc2_smap_snapshot;
+	emi_snapshot = smap_mbrain_data->emi_snapshot;
+	emi_s_snapshot = smap_mbrain_data->emi_s_snapshot;
+	zram_snapshot = smap_mbrain_data->zram_snapshot;
+	apu_snapshot = smap_mbrain_data->apu_snapshot;
+	real_time_start = smap_mbrain_data->real_time_start;
+	real_time_end = smap_mbrain_data->real_time_end;
 
 	n = snprintf(netlink_buf + pos,
-			NETLINK_EVENT_MESSAGE_SIZE - pos,
-			"%s:%d:%d:%lld:%d:%lld:%lld:%d:%d:%d",
-			NETLINK_EVENT_SMAP_NOTIFY,
-			version,
-			cnt,
-			sys_time,
-			type,
-			real_time_start,
-			real_time_end,
-			dyn_base,
-			cg_subsys_dyn,
-			cg_ratio);
+		NETLINK_EVENT_MESSAGE_SIZE - pos,
+		"%s:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
+		NETLINK_EVENT_SMAP_NOTIFY,
+		version,
+		cnt,
+		type,
+		enable,
+		dect_cnt,
+		temp_cnt,
+		sys_time,
+		dect_result,
+		dyn_base,
+		cg_subsys_dyn,
+		cg_ratio,
+		dram0_smap_snapshot,
+		dram1_smap_snapshot,
+		dram2_smap_snapshot,
+		dram3_smap_snapshot,
+		chinf0_smap_snapshot,
+		chinf1_smap_snapshot);
 
 	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 		return;
+
+	pos += n;
+
+	n = snprintf(netlink_buf + pos,
+		NETLINK_EVENT_MESSAGE_SIZE - pos,
+		":%d:%d:%d:%d:%d:%d:%d:%lld:%lld",
+		venc0_smap_snapshot,
+		venc1_smap_snapshot,
+		venc2_smap_snapshot,
+		emi_snapshot,
+		emi_s_snapshot,
+		zram_snapshot,
+		apu_snapshot,
+		real_time_start,
+		real_time_end);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	pr_info("%s(%d) [%s]\n", __func__, __LINE__, netlink_buf);
 
 	mbraink_netlink_send_msg(netlink_buf);
 
