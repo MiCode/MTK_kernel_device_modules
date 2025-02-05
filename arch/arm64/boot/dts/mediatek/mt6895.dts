@@ -8,7 +8,7 @@
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/clock/mt6895-clk.h>
 #include <dt-bindings/power/mt6895-power.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
