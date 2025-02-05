@@ -16,6 +16,8 @@
 #include <linux/swap.h>
 #include <linux/highmem.h>
 
+#include <linux/kmemleak.h>
+
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 
@@ -578,6 +580,12 @@ int refill_entry_buffer(uint32_t *buf_addr, int index, bool invalidate)
 		*buf_addr = 0;
 		return -1;
 	}
+
+	/*
+	 * "bufp" will be translated to cmd format and kmemleak can't detect it properly.
+	 * Mark it as ignore to avoid kmemleak scan.
+	 */
+	kmemleak_ignore(bufp);
 
 #ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s:%d:0x%llx:0x%llx:%d\n",
