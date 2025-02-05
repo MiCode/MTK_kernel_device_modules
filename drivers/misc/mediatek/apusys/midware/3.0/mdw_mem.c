@@ -149,8 +149,6 @@ static inline uint64_t mdw_map_bitmask2sysmem(uint64_t flags)
 	/* attribute */
 	if (flags & F_MDW_MEM_ATTR_SLC_DC)
 		map_bitmask |= F_APU_SYSMEM_MAP_TYPE_SLC_DC;
-	if (flags & F_MDW_MEM_ATTR_SHAREABLE)
-		map_bitmask |= F_APU_SYSMEM_MAP_TYPE_SHAREABLE;
 
 	return map_bitmask;
 }

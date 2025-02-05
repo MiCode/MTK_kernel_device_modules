@@ -455,10 +455,6 @@ static struct mdw_mem_map *mdw_plat_v6_create_msg(struct mdw_cmd *c)
 		rmaci++;
 	}
 
-	if (mdw_mem_flush(mpriv, rv_cmdbuf))
-		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%llu) fail\n",
-			(uint64_t)c->mpriv, c->kid, c->inference_id, rv_cmdbuf->size);
-
 	goto out;
 
 cb_overflow:
@@ -600,6 +596,7 @@ static int mdw_plat_v6_delete_cmd_priv(struct mdw_cmd *c)
 static void mdw_plat_v6_reset_info(struct mdw_rv_msg_cmd *rmc, struct mdw_cmd *c,
 				 struct mdw_mem_map *map)
 {
+	struct mdw_rv_cmd *rc = (struct mdw_rv_cmd *)c->plat_priv;
 	struct mdw_rv_msg_sc *rmsc = NULL;
 	uint32_t i = 0;
 
@@ -617,6 +614,10 @@ static void mdw_plat_v6_reset_info(struct mdw_rv_msg_cmd *rmc, struct mdw_cmd *c
 	}
 	/* update inference id */
 	rmc->inference_id = c->inference_id;
+
+	if (mdw_mem_flush(c->mpriv, rc->cb))
+		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%llu) fail\n",
+			(uint64_t)c->mpriv, c->kid, c->inference_id, rc->cb->size);
 }
 
 /**
