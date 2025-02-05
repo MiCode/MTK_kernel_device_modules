@@ -13,6 +13,9 @@
 #define PD_NULL		-1
 #define VCORE_NULL	-1
 
+#define BYPASS_CHECK_MM_MTCMOS false
+#define CHECK_MM_MTCMOS true
+
 struct seq_file;
 
 #define clk_readl(addr)		readl(addr)
@@ -141,5 +144,6 @@ extern void pdchk_dump_trace_evt(void);
 extern const struct dev_pm_ops clk_chk_dev_pm_ops;
 extern void clkchk_external_dump(void);
 extern int clkchk_chk_pm_state(void);
+extern bool is_hwccf_mtcmos_on(bool check_mm_hwv);
 
 #endif /* __MTK_CLK_CHK_H */

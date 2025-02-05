@@ -8,6 +8,7 @@
 #include <linux/pm_domain.h>
 #include "clkchk.h"
 #include "clk-mtk.h"
+#include "clk-gate.h"
 
 #define PD_PWR_ON	1
 #define PD_PWR_OFF	0
@@ -52,6 +53,9 @@ struct pdchk_ops {
 	const char *(*get_pd_name)(int idx);
 	bool (*get_mtcmos_sw_state)(struct generic_pm_domain *pd);
 	void (*verify_debug_flow)(struct clk_event_data *clkd);
+	const char * const *(*get_off_mtcmos_names)(void);
+	const char * const *(*get_notice_mtcmos_names)(void);
+	const char * const *(*get_mm_mtcmos_names)(void);
 };
 
 void pdchk_common_init(const struct pdchk_ops *ops);
@@ -59,9 +63,11 @@ void pdchk_hwv_irq_init(struct platform_device *pdev);
 int set_pdchk_notify(void);
 
 extern const struct dev_pm_ops pdchk_dev_pm_ops;
+extern const struct dev_pm_ops pdchk_dev_pm_ops_no_irq;
 extern struct clk *clk_chk_lookup(const char *name);
 extern int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 mask);
 extern void pdchk_debug_dump(void);
 extern struct generic_pm_domain **pdchk_get_all_genpd(void);
 extern const char *pdchk_get_pd_name(int idx);
+
 #endif /* __MTK_PD_CHK_H */

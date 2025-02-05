@@ -11,6 +11,7 @@
 
 #include "mtk-pd-chk.h"
 #include "clkchk-mt6993.h"
+#include "clk-gate.h"
 
 #define TAG				"[pdchk] "
 #define BUG_ON_CHK_ENABLE		0
@@ -309,16 +310,16 @@ static int off_mtcmos_id[] = {
 };
 
 static int notice_mtcmos_id[] = {
-	
+
 	PD_NULL,
 };
 
-static int *get_off_mtcmos_id(void)
+int *get_off_mtcmos_id(void)
 {
 	return off_mtcmos_id;
 }
 
-static int *get_notice_mtcmos_id(void)
+int *get_notice_mtcmos_id(void)
 {
 	return notice_mtcmos_id;
 }
@@ -335,11 +336,117 @@ static bool is_mtcmos_chk_bug_on(void)
  * init functions
  */
 
+static bool pdchk_is_suspend_retry_stop(bool reset_cnt)
+{
+	static unsigned int suspend_cnt;
+
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
+
+static const char * const off_mtcmos_names[] = {
+	NULL
+};
+
+static const char * const notice_mtcmos_names[] = {
+	"conn",
+	"ssusb_dp_phy_p0",
+	"ssusb_p0",
+	"pextp_mac0",
+	"pextp_mac1",
+	"pextp_phy0",
+	"pextp_phy1",
+	"audio",
+	"adsp_top",
+	"adsp_infra",
+	"adsp_ao",
+	"ssrsys",
+	NULL
+};
+
+static const char * const mm_mtcmos_names[] = {
+	"img_dip",
+	"img_dip_cine",
+	"img_traw",
+	"img_main",
+	"img_vcore",
+	"img_wpe_eis",
+	"img_wpe_tnr",
+	"img_wpe_lite",
+	"vde0",
+	"vde1",
+	"vde_vcore0",
+	"ven0",
+	"ven1",
+	"ven2",
+	"ven3",
+	"ven_mdp",
+	"cam_mraw",
+	"cam_rawa",
+	"cam_rawb",
+	"cam_rawc",
+	"cam_rmsa",
+	"cam_rmsb",
+	"cam_rmsc",
+	"cam_main",
+	"cam_vcore",
+	"cam_ccu",
+	"disp_vcore",
+	"dis0_a",
+	"dis0_b",
+	"dis1_a",
+	"dis1_b",
+	"ovl0",
+	"ovl1",
+	"ovl2",
+	"disp_dptx",
+	"vdisp_peri",
+	"mml0",
+	"mml1",
+	"mml2",
+	"mm_infra0",
+	"mm_infra1",
+	"mm_infra2",
+	"mm_infra_ao",
+	"csi_bs_rx",
+	"dsi_phy0",
+	"dsi_phy1",
+	"dsi_phy2",
+	NULL
+};
+
+static const char * const *get_off_mtcmos_names(void)
+{
+	return off_mtcmos_names;
+}
+
+static const char * const *get_notice_mtcmos_names(void)
+{
+	return notice_mtcmos_names;
+}
+
+static const char * const *get_mm_mtcmos_names(void)
+{
+	return mm_mtcmos_names;
+}
+
 static struct pdchk_ops pdchk_mt6993_ops = {
 	.get_pd_pwr_status = get_pd_pwr_status,
-	.get_off_mtcmos_id = get_off_mtcmos_id,
-	.get_notice_mtcmos_id = get_notice_mtcmos_id,
+	.get_off_mtcmos_names = get_off_mtcmos_names,
+	.get_notice_mtcmos_names = get_notice_mtcmos_names,
+	.get_mm_mtcmos_names = get_mm_mtcmos_names,
 	.is_mtcmos_chk_bug_on = is_mtcmos_chk_bug_on,
+	.is_suspend_retry_stop = pdchk_is_suspend_retry_stop,
 };
 
 static int pd_chk_mt6993_probe(struct platform_device *pdev)
@@ -363,6 +470,7 @@ static struct platform_driver pd_chk_mt6993_drv = {
 	.driver = {
 		.name = "pd-chk-mt6993",
 		.owner = THIS_MODULE,
+		.pm = &pdchk_dev_pm_ops_no_irq,
 		.of_match_table = of_match_pdchk_mt6993,
 	},
 };

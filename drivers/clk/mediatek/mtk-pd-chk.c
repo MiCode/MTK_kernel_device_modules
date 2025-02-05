@@ -163,6 +163,65 @@ static bool pdchk_get_mtcmos_sw_state(struct generic_pm_domain *pd)
 	return pdchk_ops->get_mtcmos_sw_state(pd);
 }
 
+static bool __is_hwccf_mtcmos_on(const char * const *name)
+{
+	struct clk *ck = NULL;
+	struct clk_hw *hw = NULL;
+	struct mtk_clk_gate *cg = NULL;
+	const char *c_n ="";
+	struct cb_params params;
+	int valid = 0;
+	int ret = 0;
+
+	for (; *name != NULL && name != NULL ; name++) {
+
+		ck = clk_chk_lookup(*name);
+
+		if(ck != NULL)
+			hw = __clk_get_hw(ck);
+
+		if(hw != NULL) {
+			cg = to_mtk_clk_gate(hw);
+			c_n = clk_hw_get_name(hw);
+		} else {
+			pr_pd_err("get %s hw fail\n", *name);
+			return false;
+		}
+
+		if(cg != NULL)
+			if ((cg->flags & TYPE_MTCMOS) == TYPE_MTCMOS) {
+
+				params.regmap = cg->hwv_regmap;
+
+				if (!params.regmap) {
+					pr_pd_dbg("regmap is NULL\n");
+					return false;
+				}
+
+				params.name = c_n;
+				params.setclr_ofs = cg->hwv_set_ofs;
+				params.done_ofs = cg->hwv_sta_ofs;
+				params.vote_bit = cg->bit;
+
+				if (!callback[CLK_REQUEST_RAW_HWCCF_IS_ENABLED_CB]) {
+					pr_pd_dbg("raw_hwccf_is_enabled is NULL\n");
+					return false;
+				}
+
+				ret = callback[CLK_REQUEST_RAW_HWCCF_IS_ENABLED_CB](&params);
+
+				if (ret) {
+					pr_pd_dbg("suspend warning: %s is on\n", *name);
+					valid++;
+				}
+			}
+	}
+	if (valid)
+		return true;
+	else
+		return false;
+}
+
 static bool __is_mtcmos_on(int *pd_id, bool dump_en)
 {
 	int valid = 0;
@@ -189,6 +248,39 @@ static bool __is_mtcmos_on(int *pd_id, bool dump_en)
 
 	return false;
 }
+
+bool is_hwccf_mtcmos_on(bool print_mm_hwv)
+{
+	const char * const *pd_name;
+	int ret = 0;
+
+	if (pdchk_ops == NULL || pdchk_ops->get_off_mtcmos_names == NULL)
+		goto OUT;
+
+	/* check hwccf ops */
+	pd_name = pdchk_ops->get_off_mtcmos_names();
+
+	ret = __is_hwccf_mtcmos_on(pd_name);
+
+	if (pdchk_ops == NULL || pdchk_ops->get_notice_mtcmos_names == NULL)
+		goto OUT;
+
+	/* only do print here during suspend */
+	pd_name = pdchk_ops->get_notice_mtcmos_names();
+	__is_hwccf_mtcmos_on(pd_name);
+
+	/* only for debug & dispatch */
+	if (print_mm_hwv) {
+		pd_name = pdchk_ops->get_mm_mtcmos_names();
+		__is_hwccf_mtcmos_on(pd_name);
+	}
+
+	if (ret)
+		return true;
+OUT:
+	return false;
+}
+EXPORT_SYMBOL(is_hwccf_mtcmos_on);
 
 static bool is_mtcmos_on(void)
 {
@@ -251,6 +343,35 @@ void pdchk_dump_trace_evt(void)
 }
 EXPORT_SYMBOL(pdchk_dump_trace_evt);
 
+static int pdchk_dev_pm_suspend_no_irq(struct device *dev)
+{
+	atomic_inc(&check_enabled);
+	if (is_hwccf_mtcmos_on(BYPASS_CHECK_MM_MTCMOS)) {
+		if (!pdchk_is_retry_bug_on(false))
+			return -1;
+
+		if (is_mtcmos_chk_bug_on())
+			pdchk_set_bug_on_stat(true);
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+		aee_kernel_warning_api(__FILE__, __LINE__,
+				DB_OPT_DEFAULT | DB_OPT_FTRACE, "pd-chk",
+				"fail to disable clk/pd in suspend\n");
+#endif
+	} else {
+		pdchk_is_retry_bug_on(true);
+	}
+
+	return 0;
+}
+
+static int pdchk_dev_pm_resume_no_irq(struct device *dev)
+{
+	atomic_dec(&check_enabled);
+
+	return 0;
+}
+
 static int pdchk_dev_pm_suspend(struct device *dev)
 {
 	atomic_inc(&check_enabled);
@@ -279,6 +400,12 @@ static int pdchk_dev_pm_resume(struct device *dev)
 
 	return 0;
 }
+
+const struct dev_pm_ops pdchk_dev_pm_ops_no_irq = {
+	.suspend_noirq = pdchk_dev_pm_suspend_no_irq,
+	.resume_noirq = pdchk_dev_pm_resume_no_irq,
+};
+EXPORT_SYMBOL(pdchk_dev_pm_ops_no_irq);
 
 const struct dev_pm_ops pdchk_dev_pm_ops = {
 	.suspend = pdchk_dev_pm_suspend,

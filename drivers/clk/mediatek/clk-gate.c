@@ -358,8 +358,6 @@ static int mtk_cg_enable_generic_hwv(struct clk_hw *hw)
 	struct cb_params params;
 
 	params.regmap = cg->hwv_regmap;
-	if (params.regmap)
-
 	params.name = c_n;
 	params.setclr_ofs = cg->hwv_set_ofs;
 	params.done_ofs = cg->hwv_sta_ofs;

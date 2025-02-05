@@ -4710,7 +4710,7 @@ void clkchk_debug_dump_mt6993(enum chk_sys_id id[],
 
 	chk_pm_state();
 	dump_clk_event();
-	pdchk_dump_trace_evt();
+	is_hwccf_mtcmos_on(CHECK_MM_MTCMOS);
 
 	for (i = 0; fclks != NULL && fclks->type != FT_NULL; fclks++, i++) {
 		pr_notice("[%s] %d khz\n", fclks->name,
