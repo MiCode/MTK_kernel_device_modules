@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/thermal.h>
 #include <linux/types.h>
+#include <linux/string.h>
 #include "thermal_core.h"
 /*=============================================================
  *Local variable definition
@@ -585,6 +586,86 @@ out:
 	return 0;
 }
 
+static int mt6661_get_cali_data(struct device *dev, struct pmic_tz_data *tz_data)
+{
+	size_t len = 0;
+	unsigned short *efuse_buff;
+	struct nvmem_cell *cell_1;
+	int i = 0;
+	struct pmic_tz_cali_data *cali_data = tz_data->cali_data;
+	char pmic_name[11];
+
+	if ( !cali_data[0].iio_chan_name) {
+		dev_info(dev, "Error: Failed to get iio_chan_name\n");
+		return -EINVAL;
+	}
+	strscpy(pmic_name, cali_data[0].iio_chan_name, sizeof(pmic_name));
+
+	if (strcmp(pmic_name, "pmic6661_5") == 0) {
+		cell_1 = devm_nvmem_cell_get(dev, "mt6661-5-e-data");
+	}else if(strcmp(pmic_name, "pmic6661_6") == 0) {
+		cell_1 = devm_nvmem_cell_get(dev, "mt6661-6-e-data");
+	}else{
+		dev_info(dev, "Error: Failed to get pmic_name\n");
+		return -ENODEV;
+	}
+
+	if (IS_ERR(cell_1)) {
+		dev_info(dev, "Error: Failed to get nvmem cell %s e-data\n",
+			pmic_name);
+		return PTR_ERR(cell_1);
+	}
+	efuse_buff = (unsigned short *)nvmem_cell_read(cell_1, &len);
+	nvmem_cell_put(cell_1);
+
+	if (IS_ERR(efuse_buff))
+		return PTR_ERR(efuse_buff);
+
+	if (len != 7){
+		kfree(efuse_buff);
+		return -EINVAL;
+	}
+
+	tz_data->adc_cali_en = ((efuse_buff[0] & BIT(0)));
+	if (tz_data->adc_cali_en == 0)
+		goto out;
+
+	cali_data[0].o_vts = ((efuse_buff[2] & GENMASK(15, 8)) >> 8)
+	| ((efuse_buff[3] & GENMASK(4, 0)) << 8);
+
+	cali_data[1].o_vts = ((efuse_buff[3] & GENMASK(15, 8)) >> 8)
+	| ((efuse_buff[4] & GENMASK(4, 0)) << 8);
+
+	cali_data[2].o_vts = ((efuse_buff[4] & GENMASK(15, 8)) >> 8)
+	| ((efuse_buff[5] & GENMASK(4, 0)) << 8);
+
+	cali_data[3].o_vts = ((efuse_buff[5] & GENMASK(15, 8)) >> 8)
+	| ((efuse_buff[6] & GENMASK(4, 0)) << 8);
+
+	tz_data->degc_cali = ((efuse_buff[0] & GENMASK(14, 9)) >> 9);
+	tz_data->o_slope_sign = ((efuse_buff[1] & BIT(0)));
+	tz_data->o_slope = ((efuse_buff[0] & GENMASK(14, 9)) >> 9);
+	tz_data->id = ((efuse_buff[2] & BIT(7)) >> 7);
+
+	if (tz_data->id == 0)
+		tz_data->o_slope = 0;
+
+	if (tz_data->degc_cali < 38 || tz_data->degc_cali > 60)
+		tz_data->degc_cali = 53;
+
+out:
+	for (i = 0; i < tz_data->sensor_num; i++)
+		dev_info(dev, "[%s_debug] tz_id=%d, o_vts = 0x%x\n", pmic_name, i, cali_data[i].o_vts);
+
+	dev_info(dev, "[%s_debug] degc_cali= 0x%x\n", pmic_name, tz_data->degc_cali);
+	dev_info(dev, "[%s_debug] adc_cali_en        = 0x%x\n", pmic_name, tz_data->adc_cali_en);
+	dev_info(dev, "[%s_debug] o_slope        = 0x%x\n", pmic_name, tz_data->o_slope);
+	dev_info(dev, "[%s_debug] o_slope_sign        = 0x%x\n", pmic_name, tz_data->o_slope_sign);
+	dev_info(dev, "[%s_debug] id        = 0x%x\n", pmic_name, tz_data->id);
+	kfree(efuse_buff);
+
+	return 0;
+}
 
 static struct pmic_tz_cali_data mt6359_cali_data[] = {
 	[0] = {
@@ -732,6 +813,52 @@ static struct pmic_tz_cali_data mt6338_cali_data[] = {
 	}
 };
 
+static struct pmic_tz_cali_data mt6661_5_cali_data[] = {
+	[0] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_5_ts1",
+	},
+	[1] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_5_ts2",
+	},
+	[2] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_5_ts3",
+	},
+	[3] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_5_ts4",
+	}
+};
+
+static struct pmic_tz_cali_data mt6661_6_cali_data[] = {
+	[0] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_6_ts1",
+	},
+	[1] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_6_ts2",
+	},
+	[2] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_6_ts3",
+	},
+	[3] = {
+		.cali_factor = 1903,
+		.o_vts = 1600,
+		.iio_chan_name = "pmic6661_6_ts4",
+	}
+};
+
 static struct pmic_tz_data mt6359_pmic_tz_data = {
 	.degc_cali = 50,
 	.adc_cali_en = 0,
@@ -816,6 +943,30 @@ static struct pmic_tz_data mt6338_pmic_tz_data = {
 	.get_cali_data = mt6338_get_cali_data,
 };
 
+static struct pmic_tz_data mt6661_5_pmic_tz_data = {
+	.degc_cali = 50,
+	.adc_cali_en = 0,
+	.o_slope = 0,
+	.o_slope_sign = 0,
+	.id = 0,
+	.sensor_num = 4,
+	.pullup_volt = 1840,
+	.cali_data = mt6661_5_cali_data,
+	.get_cali_data = mt6661_get_cali_data,
+};
+
+static struct pmic_tz_data mt6661_6_pmic_tz_data = {
+	.degc_cali = 50,
+	.adc_cali_en = 0,
+	.o_slope = 0,
+	.o_slope_sign = 0,
+	.id = 0,
+	.sensor_num = 4,
+	.pullup_volt = 1840,
+	.cali_data = mt6661_6_cali_data,
+	.get_cali_data = mt6661_get_cali_data,
+};
+
 /*==================================================
  * Support chips
  *==================================================
@@ -849,6 +1000,14 @@ static const struct of_device_id pmic_temp_of_match[] = {
 	{
 		.compatible = "mediatek,mt6338-pmic-temp",
 		.data = (void *)&mt6338_pmic_tz_data,
+	},
+	{
+		.compatible = "mediatek,mt6661-5-pmic-temp",
+		.data = (void *)&mt6661_5_pmic_tz_data,
+	},
+	{
+		.compatible = "mediatek,mt6661-6-pmic-temp",
+		.data = (void *)&mt6661_6_pmic_tz_data,
 	},
 	{},
 };
