@@ -27,8 +27,6 @@
 #include "ssmr/memory_ssmr.h"
 
 extern struct ffa_device *get_tee_ffa_dev(void);
-extern struct ffa_device *trusty_ffa_get_dev(void);
-extern u32 is_google_real_driver(void);
 
 typedef u16 ffa_partition_id_t;
 
@@ -550,8 +548,6 @@ int tmem_register_ffa_module(void)
 
 	if (is_hf_bypass_cma_enabled() || tmem_ffa_dev == NULL) {
 		tmem_ffa_dev = get_tee_ffa_dev();
-		if (is_google_real_driver())
-			tmem_ffa_dev = trusty_ffa_get_dev();
 		tmem_ffa_ops = tmem_ffa_dev->ops;
 	}
 
