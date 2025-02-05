@@ -666,6 +666,12 @@ int mminfra_ut(const char *val, const struct kernel_param *kp)
 			}
 		}
 		break;
+	case 4:
+		mtk_mminfra_all_power_debug();
+		break;
+	case 5:
+		mtk_mminfra_power_debug(arg0);
+		break;
 	default:
 		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
 		break;

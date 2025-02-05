@@ -26,6 +26,10 @@ enum mm_power_num {
 
 #if IS_ENABLED(CONFIG_MTK_MMINFRA)
 
+bool mtk_mminfra_is_on(u32 mm_pwr);
+void mtk_mminfra_power_debug(u32 mm_pwr);
+void mtk_mminfra_all_power_debug(void);
+
 int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type);
 
 #else

@@ -9,6 +9,7 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/sched/clock.h>
 #include "clk-mtk.h"
 #include "clkchk.h"
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
@@ -17,10 +18,25 @@
 #endif
 #include "mtk-mminfra-util.h"
 
+#define MM_TIMESTAMP_NUM	(5)
+
 struct mminfra_mtcmos {
 	u32 voter;
 	u32 vote_bit;
 	atomic_t ref_cnt;
+	void __iomem *base;
+	u32 mask;
+	u64 on_t[MM_TIMESTAMP_NUM]; /* ms */
+	u64 off_t[MM_TIMESTAMP_NUM]; /* ms */
+	atomic_t user_ref_cnt[MM_TYPE_NR];
+	u64 user_on_t[MM_TYPE_NR]; /* ms */
+	u64 user_off_t[MM_TYPE_NR]; /* ms */
+	u64 total_on_t; /* mbrain */
+	u32 total_on_cnt;	/* mbrain */
+	u64 user_total_on_t[MM_TYPE_NR]; /* mbrain */
+	u32 user_total_on_cnt[MM_TYPE_NR]; /* mbrain */
+	u64 max_latency; /* mbrain */
+	u64 max_latency_t; /* mbrain */
 };
 
 struct mtk_mminfra_pd {
@@ -37,21 +53,134 @@ struct mtk_mminfra_util {
 };
 
 static struct device *g_dev;
-static struct mtk_mminfra_pd *g_mminfra_pd;
+static struct mtk_mminfra_pd *g_mm_pd;
 static struct mtk_mminfra_util *g_mminfra_util;
 spinlock_t mminfra_pd_lock;
 
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
+void mtk_mminfra_voter_debug(u32 mm_pwr)
+{
+	/*not implement yet*/
+}
+
+bool mtk_mminfra_is_on(u32 mm_pwr)
+{
+	if (mm_pwr >= MM_PWR_NUM_NR) {
+		pr_notice("%s: power(%d) is invalid.\n",__func__, mm_pwr);
+		return false;
+	}
+	if (!g_mm_pd->mm_mtcmos[mm_pwr].base) {
+		pr_notice("%s: mm_mtcmos[%d].base is invalid.\n",__func__, mm_pwr);
+		return true;
+	}
+	if (!g_mm_pd->mm_mtcmos[mm_pwr].mask) {
+		pr_notice("%s: mm_mtcmos[%d].mask is invalid.\n",__func__, mm_pwr);
+		return true;
+	}
+	if ((readl(g_mm_pd->mm_mtcmos[mm_pwr].base) & g_mm_pd->mm_mtcmos[mm_pwr].mask)
+				!= g_mm_pd->mm_mtcmos[mm_pwr].mask) {
+		pr_notice("%s: mm_mtcmos[%d] is off.\n",__func__, mm_pwr);
+		return false;
+	}
+	return true;
+
+}
+EXPORT_SYMBOL_GPL(mtk_mminfra_is_on);
+
+void mtk_mminfra_power_debug(u32 mm_pwr)
+{
+	int i;
+	u64 time_ms = 0;
+
+	// check mminfra_pd valid
+	if (!g_mm_pd) {
+		pr_notice("%s: not supported\n", __func__);
+		return;
+	}
+
+	pr_notice("%s:pwr[%d] in.\n", __func__, mm_pwr);
+
+	// check mm_pwr valid
+	if (mm_pwr >= g_mm_pd->mminfra_mtcmos_num) {
+		pr_notice("%s: invalid mm_pwr(%d)\n", __func__, mm_pwr);
+		return;
+	}
+
+	pr_notice("%s:pwr[%d] timestamp:\n", __func__, mm_pwr);
+	for (i = 0; i < MM_TIMESTAMP_NUM; i++) {
+		if (atomic_read(&g_mm_pd->mm_mtcmos[mm_pwr].ref_cnt) > 0) /* power on */
+			pr_notice("%s:pwr[%d] T[%d] off_t[%llu]ms on_t[%llu]ms.\n", __func__,
+				mm_pwr, i,
+				g_mm_pd->mm_mtcmos[mm_pwr].off_t[i],
+				g_mm_pd->mm_mtcmos[mm_pwr].on_t[i]);
+		else /* power off */
+			pr_notice("%s:pwr[%d] T[%d] on_t[%llu]ms off_t[%llu]ms.\n", __func__,
+				mm_pwr, i,
+				g_mm_pd->mm_mtcmos[mm_pwr].on_t[i],
+				g_mm_pd->mm_mtcmos[mm_pwr].off_t[i]);
+	}
+
+	pr_notice("%s:pwr[%d] user info:\n", __func__, mm_pwr);
+	for (i = 0; i < g_mm_pd->mminfra_type_num; i++) {
+		if (!g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_cnt[i])
+			continue;
+		pr_notice("%s:pwr[%d],user refcnt[%d]=[%d] on_t[%d]=[%llu]ms off_t[%d]=[%llu]ms.\n",
+			__func__, mm_pwr,
+			i, atomic_read(&g_mm_pd->mm_mtcmos[mm_pwr].user_ref_cnt[i]),
+			i, g_mm_pd->mm_mtcmos[mm_pwr].user_on_t[i],
+			i, g_mm_pd->mm_mtcmos[mm_pwr].user_off_t[i]);
+	}
+
+	pr_notice("%s:pwr[%d] mbrain info:\n", __func__, mm_pwr);
+	time_ms = g_mm_pd->mm_mtcmos[mm_pwr].total_on_t;
+	if (atomic_read(&g_mm_pd->mm_mtcmos[mm_pwr].ref_cnt) > 0)/* power on */
+		time_ms += ((sched_clock()/1000000)
+				- g_mm_pd->mm_mtcmos[mm_pwr].on_t[MM_TIMESTAMP_NUM - 1]);
+	pr_notice("%s:pwr[%d],total_on_cnt=[%d] total_on_t=[%llu]ms.\n", __func__, mm_pwr,
+		g_mm_pd->mm_mtcmos[mm_pwr].total_on_cnt, time_ms);
+	for (i = 0; i < g_mm_pd->mminfra_type_num; i++) {
+		if (!g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_cnt[i])
+			continue;
+		time_ms = g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_t[i];
+		if (atomic_read(&g_mm_pd->mm_mtcmos[mm_pwr].user_ref_cnt[i]) > 0)/* power on */
+			time_ms += ((sched_clock()/1000000)
+				- g_mm_pd->mm_mtcmos[mm_pwr].user_on_t[i]);
+		pr_notice("%s:pwr[%d],total_on_cnt[%d]=[%d] total_on_t[%d]=[%llu]ms.\n",
+			__func__, mm_pwr,
+			i, g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_cnt[i],
+			i, time_ms);
+	}
+	pr_notice("%s:pwr[%d] max_latency=[%llu]ms in [%llu]ms.\n", __func__,
+		mm_pwr, g_mm_pd->mm_mtcmos[mm_pwr].max_latency,
+		g_mm_pd->mm_mtcmos[mm_pwr].max_latency_t);
+
+	pr_notice("%s:pwr[%d] mtk_mminfra_is_on=[%d].\n", __func__,
+		mm_pwr, mtk_mminfra_is_on(mm_pwr));
+	mtk_mminfra_voter_debug(mm_pwr);
+
+	pr_notice("%s:pwr[%d] out.\n", __func__, mm_pwr);
+}
+EXPORT_SYMBOL_GPL(mtk_mminfra_power_debug);
+
+void mtk_mminfra_all_power_debug(void)
+{
+	u32 mm_pwr;
+
+	for (mm_pwr = 0; mm_pwr < MM_PWR_NUM_NR ; mm_pwr++)
+		mtk_mminfra_power_debug(mm_pwr);
+}
+EXPORT_SYMBOL_GPL(mtk_mminfra_all_power_debug);
+
 int mminfra0_onoff(bool on_off)
 {
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].voter,
-			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].voter,
-			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
 	}
 
 	return ret;
@@ -62,11 +191,11 @@ int mminfra1_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].voter,
-			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].voter,
-			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
 	}
 
 	return ret;
@@ -77,11 +206,11 @@ int mminfra_ao_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
-			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
-			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
 	}
 
 	return ret;
@@ -92,11 +221,11 @@ int mminfra2_onoff(bool on_off)
 	int ret = 0;
 
 	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].voter,
-			HWCCF_VOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
 	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].voter,
-			HWCCF_UNVOTE, g_mminfra_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
 	}
 
 	return ret;
@@ -105,11 +234,14 @@ int mminfra2_onoff(bool on_off)
 #if IS_ENABLED(CONFIG_MTK_MMINFRA)
 int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 {
-	int ret = 0, ref_cnt;
+	int ret = 0, ref_cnt, user_ref_cnt, i, temp_cnt;
 	unsigned long flags;
+	u64 start_t_ms = sched_clock()/1000000;
+	u64 end_t_ms = 0;
+	u64 temp_t;
 
 	// check mminfra_pd valid
-	if (!g_mminfra_pd) {
+	if (!g_mm_pd) {
 		pr_notice("%s: not supported\n", __func__);
 		return -EINVAL;
 	}
@@ -117,14 +249,14 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 	spin_lock_irqsave(&mminfra_pd_lock, flags);
 
 	// check mm_pwr valid
-	if (mm_pwr >= g_mminfra_pd->mminfra_mtcmos_num) {
+	if (mm_pwr >= g_mm_pd->mminfra_mtcmos_num) {
 		pr_notice("%s: invalid mm_pwr(%d)\n", __func__, mm_pwr);
 		spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 		return -EINVAL;
 	}
 
 	// check mm_type valid
-	if (mm_type >= g_mminfra_pd->mminfra_type_num) {
+	if (mm_type >= g_mm_pd->mminfra_type_num) {
 		pr_notice("%s: invalid mm_type(%d)\n", __func__, mm_type);
 		spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 		return -EINVAL;
@@ -132,13 +264,24 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 
 	if (on_off) {
 		// add ref_cnt
-		ref_cnt = atomic_inc_return(&g_mminfra_pd->mm_mtcmos[mm_pwr].ref_cnt);
+		ref_cnt = atomic_inc_return(&g_mm_pd->mm_mtcmos[mm_pwr].ref_cnt);
+
+		// add user ref_cnt
+		user_ref_cnt
+			= atomic_inc_return(&g_mm_pd->mm_mtcmos[mm_pwr].user_ref_cnt[mm_type]);
+
 		if (ref_cnt != 1) {
 			// pr_notice("%s: already enabled, mm_pwr(%d) ref_cnt(%d)\n",
 			// 	__func__, mm_pwr, ref_cnt);
+			if (user_ref_cnt == 1) {
+				end_t_ms = sched_clock()/1000000;
+				g_mm_pd->mm_mtcmos[mm_pwr].user_on_t[mm_type] = end_t_ms;
+				g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_cnt[mm_type]++;
+			}
 			spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 			return 0;
 		}
+
 		// power on mminfra
 		if (mm_pwr == MM_PWR_MM_0)
 			ret = mminfra0_onoff(true);
@@ -150,13 +293,32 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			ret = mminfra2_onoff(true);
 	} else {
 		// minus ref_cnt
-		ref_cnt = atomic_dec_return(&g_mminfra_pd->mm_mtcmos[mm_pwr].ref_cnt);
+		ref_cnt = atomic_dec_return(&g_mm_pd->mm_mtcmos[mm_pwr].ref_cnt);
+
+		// minus user ref_cnt
+		if (atomic_read(&g_mm_pd->mm_mtcmos[mm_pwr].user_ref_cnt[mm_type]) <= 0) {
+			temp_cnt = atomic_read(&g_mm_pd->mm_mtcmos[mm_pwr].user_ref_cnt[mm_type]);
+			pr_notice("%s:[err] mm_mtcmos[%d].user_ref_cnt[%d]=[%d] underflow.\n",
+				__func__, mm_pwr, mm_type,
+				temp_cnt);
+				BUG_ON(1);
+		}
+		user_ref_cnt
+			= atomic_dec_return(&g_mm_pd->mm_mtcmos[mm_pwr].user_ref_cnt[mm_type]);
+
 		if (ref_cnt != 0) {
 			// pr_notice("%s: ref_cnt>1, mm_pwr(%d) ref_cnt(%d)\n",
 			// 	__func__, mm_pwr, ref_cnt);
+			if (user_ref_cnt == 0) {
+				end_t_ms = sched_clock()/1000000;
+				g_mm_pd->mm_mtcmos[mm_pwr].user_off_t[mm_type] = end_t_ms;
+				temp_t = end_t_ms - g_mm_pd->mm_mtcmos[mm_pwr].user_on_t[mm_type];
+				g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_t[mm_type] += temp_t;
+			}
 			spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 			return 0;
 		}
+
 		// power off mminfra
 		if (mm_pwr == MM_PWR_MM_0)
 			ret = mminfra0_onoff(false);
@@ -169,13 +331,47 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 	}
 
 	if (ret) {
-		pr_notice("%s: power(%d) on_off(%d) fail, type(%d)\n",
-			__func__, mm_pwr, on_off, mm_type);
+		pr_notice("%s:[err] power(%d) on_off(%d) fail, type(%d) ret(%d).\n",
+			__func__, mm_pwr, on_off, mm_type, ret);
 		clkchk_external_dump();
+		mtk_mminfra_voter_debug(mm_type);
 		BUG_ON(1);
 	}
 
+	/* check power on */
+	if (on_off && !mtk_mminfra_is_on(mm_pwr)) {
+		pr_notice("%s:[err] power(%d) on_off(%d) fail, pwr is off, mm_type[%d].\n",
+			__func__, mm_pwr, on_off, mm_type);
+		mtk_mminfra_voter_debug(mm_type);
+	}
+
+	end_t_ms = sched_clock()/1000000;
 	spin_unlock_irqrestore(&mminfra_pd_lock, flags);
+
+	/* record timestamp */
+	if (on_off) {
+		for (i = 0; i < (MM_TIMESTAMP_NUM - 1); i++)
+			g_mm_pd->mm_mtcmos[mm_pwr].on_t[i]
+				= g_mm_pd->mm_mtcmos[mm_pwr].on_t[i+1];
+		g_mm_pd->mm_mtcmos[mm_pwr].on_t[MM_TIMESTAMP_NUM - 1] = end_t_ms;
+		g_mm_pd->mm_mtcmos[mm_pwr].user_on_t[mm_type] = end_t_ms;
+		g_mm_pd->mm_mtcmos[mm_pwr].total_on_cnt++;
+		g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_cnt[mm_type]++;
+	} else {
+		for (i = 0; i < (MM_TIMESTAMP_NUM - 1); i++)
+			g_mm_pd->mm_mtcmos[mm_pwr].off_t[i]
+				= g_mm_pd->mm_mtcmos[mm_pwr].off_t[i+1];
+		g_mm_pd->mm_mtcmos[mm_pwr].off_t[MM_TIMESTAMP_NUM - 1] = end_t_ms;
+		g_mm_pd->mm_mtcmos[mm_pwr].user_off_t[mm_type] = end_t_ms;
+		g_mm_pd->mm_mtcmos[mm_pwr].total_on_t += (end_t_ms
+			- g_mm_pd->mm_mtcmos[mm_pwr].on_t[MM_TIMESTAMP_NUM - 1]);
+		g_mm_pd->mm_mtcmos[mm_pwr].user_total_on_t[mm_type]
+			+= (end_t_ms - g_mm_pd->mm_mtcmos[mm_pwr].user_on_t[mm_type]);
+	}
+	if ((end_t_ms - start_t_ms) > g_mm_pd->mm_mtcmos[mm_pwr].max_latency) {
+		g_mm_pd->mm_mtcmos[mm_pwr].max_latency = end_t_ms - start_t_ms;
+		g_mm_pd->mm_mtcmos[mm_pwr].max_latency_t = end_t_ms;
+	}
 
 	return ret;
 }
@@ -188,7 +384,7 @@ int mminfra_ctrl(struct cb_params *cb_para)
 	//	cb_para->name, cb_para->onoff, cb_para->vote_bit);
 
 	mtk_mminfra_on_off((cb_para->onoff ? true : false),
-		g_mminfra_pd->mminfra_type0_pwr,
+		g_mm_pd->mminfra_type0_pwr,
 		MM_TYPE_CG_LINK);
 
 	return 0;
@@ -210,35 +406,48 @@ static void mminfra_util_shutdown(struct platform_device *pdev)
 
 static int mminfra_util_probe(struct platform_device *pdev)
 {
-	u32 i, tmp, vlp_base_pa;
+	u32 i, j, tmp, vlp_base_pa;
 	int ret = 0;
 
-	g_mminfra_pd = devm_kzalloc(&pdev->dev, sizeof(*g_mminfra_pd), GFP_KERNEL);
+	g_mm_pd = devm_kzalloc(&pdev->dev, sizeof(*g_mm_pd), GFP_KERNEL);
 	g_mminfra_util = devm_kzalloc(&pdev->dev, sizeof(*g_mminfra_util), GFP_KERNEL);
-	if (!g_mminfra_pd || !g_mminfra_util)
+	if (!g_mm_pd || !g_mminfra_util)
 		return -ENOMEM;
 
 	g_dev = &pdev->dev;
 
 	of_property_read_u32(g_dev->of_node, "mminfra-mtcmos-num",
-		&g_mminfra_pd->mminfra_mtcmos_num);
+		&g_mm_pd->mminfra_mtcmos_num);
 	of_property_read_u32(g_dev->of_node, "mminfra-type-num",
-		&g_mminfra_pd->mminfra_type_num);
+		&g_mm_pd->mminfra_type_num);
 	of_property_read_u32(g_dev->of_node, "mminfra-type0-pwr",
-		&g_mminfra_pd->mminfra_type0_pwr);
+		&g_mm_pd->mminfra_type0_pwr);
 	for (i = 0; i < MM_PWR_NUM_NR; i++) {
-		if (i >= g_mminfra_pd->mminfra_mtcmos_num)
+		if (i >= g_mm_pd->mminfra_mtcmos_num)
 			break;
 		if (!of_property_read_u32_index(g_dev->of_node, "mminfra-mtcmos-voter", i, &tmp)) {
-			g_mminfra_pd->mm_mtcmos[i].voter = tmp;
+			g_mm_pd->mm_mtcmos[i].voter = tmp;
 			pr_notice("[mminfra] mm[%d] voter(%d)\n",
-				i, g_mminfra_pd->mm_mtcmos[i].voter);
+				i, g_mm_pd->mm_mtcmos[i].voter);
 		}
 		if (!of_property_read_u32_index(g_dev->of_node, "mminfra-mtcmos-data", i, &tmp)) {
-			g_mminfra_pd->mm_mtcmos[i].vote_bit = tmp;
-			atomic_set(&g_mminfra_pd->mm_mtcmos[i].ref_cnt, 0);
+			g_mm_pd->mm_mtcmos[i].vote_bit = tmp;
+			atomic_set(&g_mm_pd->mm_mtcmos[i].ref_cnt, 0);
+			for (j = 0; j < MM_TYPE_NR; j++)
+				atomic_set(&g_mm_pd->mm_mtcmos[i].user_ref_cnt[j], 0);
 			pr_notice("[mminfra] mm[%d] vote_bit(%d)\n",
-				i, g_mminfra_pd->mm_mtcmos[i].vote_bit);
+				i, g_mm_pd->mm_mtcmos[i].vote_bit);
+		}
+		if (!of_property_read_u32_index(g_dev->of_node, "mm-mtcmos-base", i, &tmp)) {
+			if (tmp)
+				g_mm_pd->mm_mtcmos[i].base = ioremap(tmp, 0x4);
+			pr_notice("[mminfra] mm[%d] mm-mtcmos-base(0x%x)\n", i, tmp);
+		}
+		if (!of_property_read_u32_index(g_dev->of_node, "mm-mtcmos-mask", i, &tmp)) {
+			if (tmp)
+				g_mm_pd->mm_mtcmos[i].mask = tmp;
+			pr_notice("[mminfra] mm[%d] mm-mtcmos-mask(0x%x)\n",
+				i, g_mm_pd->mm_mtcmos[i].mask);
 		}
 	}
 
