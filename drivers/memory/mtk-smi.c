@@ -23,6 +23,7 @@
 
 #include <linux/kthread.h>
 #include <linux/of_address.h>
+#include "clkchk.h"
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
@@ -4131,8 +4132,9 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev, enum smi_ctrl_
 	larb_gen->config_port(dev);
 
 	smi_pd_ctrl_notify_on(larb->pd_id);
-	if (!readl_relaxed(larb->base + SMI_LARB_SW_FLAG)) {
+	if (!readl_relaxed(larb->base + SMI_LARB_SW_FLAG) && (ctrl_type == SMI_CTRL)) {
 		dev_notice(dev, "write dummy fail\n");
+		clkchk_external_dump();
 		smi_ut_result |= 1;
 	}
 
@@ -5873,8 +5875,9 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev, enum smi_ctr
 	wmb(); /* make sure settings are written */
 
 	smi_pd_ctrl_notify_on(common->pd_id);
-	if (!readl_relaxed(common->base + SMI_DUMMY)) {
+	if (!readl_relaxed(common->base + SMI_DUMMY) && (ctrl_type == SMI_CTRL)) {
 		dev_notice(dev, "write dummy fail\n");
+		clkchk_external_dump();
 		smi_ut_result |= 1;
 	}
 
