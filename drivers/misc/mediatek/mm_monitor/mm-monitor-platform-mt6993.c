@@ -226,7 +226,7 @@ void emi_moniter_settings(void)
 EXPORT_SYMBOL(emi_moniter_settings);
 
 u32 power_domains[] = {
-	MT6993_SMI_PD_DISP_VCORE,
+	MT6993_SMI_PD_VDISP_PERI,
 	MT6993_SMI_PD_ISP_VCORE,
 	MT6993_SMI_PD_CAM_VCORE,
 	MT6993_SMI_PD_CAM_RAWA,
