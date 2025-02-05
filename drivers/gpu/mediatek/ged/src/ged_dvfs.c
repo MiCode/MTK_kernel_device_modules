@@ -4079,7 +4079,7 @@ int ged_dvfs_query_opp_cost(struct GED_DVFS_OPP_STAT *psReport,
 		gpu_opp_logs_enable == 1) {
 
 		if (is_fdvfs_enable() & POLICY_MODE_V2) {
-			for (unsigned int i = 0; i < real_opp_num; i++) {
+			for (int i = 0; i < (int)real_opp_num; i++) {
 				if (i >= i32NumOpp)
 					report_idx = i32NumOpp - 1;
 				else
