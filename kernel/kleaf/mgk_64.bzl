@@ -484,6 +484,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/fdvt/5.1:srcs".format(kernel_version),
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:srcs",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/touchscreen/GT9895:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
