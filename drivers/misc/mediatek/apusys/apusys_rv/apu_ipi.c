@@ -794,9 +794,11 @@ irqreturn_t apu_ipi_int_handler(int irq, void *priv)
 
 	ktime_get_ts64(&apu->ipi_top_ts_end);
 
-	if (apu->platdata->flags & F_BRINGUP)
-		dev_info(dev, "%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d\n",
-			__func__, apu->hdr.id, apu->hdr.len, apu->hdr.csum, apu->hdr.serial_no);
+	/*
+	 * if (apu->platdata->flags & F_BRINGUP)
+	 *	dev_info(dev, "%s: ipi_id=%d, len=%d, csum=0x%x, serial_no=%d\n",
+	 *		__func__, apu->hdr.id, apu->hdr.len, apu->hdr.csum, apu->hdr.serial_no);
+	 */
 
 	return IRQ_WAKE_THREAD;
 
