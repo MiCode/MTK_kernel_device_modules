@@ -13,17 +13,19 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V2) || IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_V3)
 #include <sspm_reservedmem.h>
+#endif
 #endif
 #if IS_ENABLED(CONFIG_MTK_THERMAL)
 #include <thermal_interface.h>
 #endif
 #include <mtk_swpm_common_sysfs.h>
 #include <mtk_swpm_sysfs.h>
-#include <swpm_dbg_fs_common.h>
-#include <swpm_dbg_common_v1.h>
+// #include <swpm_dbg_fs_common.h>
+// #include <swpm_dbg_common_v1.h>
 #include <swpm_module.h>
-#include <swpm_isp_v6991.h>
+#include "swpm_isp_v6991.h"
 // log level
 static u32 log_level;
 module_param(log_level, uint, 0644);
