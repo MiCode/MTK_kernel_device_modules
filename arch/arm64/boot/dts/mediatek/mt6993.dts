@@ -12142,11 +12142,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				compatible = "mediatek,gpu-iommu";
 				iommus = <&gpu_smmu 0x01>; /* SID=1 */
 				mtk,smmu-dma-mode = "disable";
+				mtk,smmu-dcp;
 			};
 			gpu-iommu-protected {
 				 compatible = "mediatek,gpu-iommu";
 				 iommus = <&gpu_smmu 0x02>; /* SID=2 */
 				 mtk,smmu-dma-mode = "disable";
+				 mtk,smmu-dcp;
 			};
 		};
 
