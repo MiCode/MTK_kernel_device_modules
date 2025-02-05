@@ -2825,8 +2825,10 @@ void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 					g_ged_eb_uncomplete_info.last_uncomplete_target =
 						psHead->t_gpu_target;
 				} else if (psHead->t_gpu_latest_uncompleted > 0){
-					info_soc_overdue += (info->last_tgpu_uncompleted_target / 1000) * soc_timer_unit;
-					psHead_soc_overdue += (psHead->t_gpu_target / 1000) * soc_timer_unit;
+					info_soc_overdue += (unsigned long long)(
+						info->last_tgpu_uncompleted_target / 1000) * soc_timer_unit;
+					psHead_soc_overdue += (unsigned long long)(
+						psHead->t_gpu_target / 1000) * soc_timer_unit;
 					if (psHead_soc_overdue < info_soc_overdue) {
 						info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
 						info->last_tgpu_uncompleted_target = psHead->t_gpu_target;

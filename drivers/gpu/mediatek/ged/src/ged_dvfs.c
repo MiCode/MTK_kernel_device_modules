@@ -2124,7 +2124,7 @@ static int get_async_counters(struct async_counter *counters)
 
 static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasing)
 {
-	struct async_counter asyncCounter;
+	struct async_counter asyncCounter = {0};
 	int adjust_ratio = 0, perf_improve = 0, tar_opp = oppidx, tmp_ratio = 0, tmp_perf = 0;
 	int min_freq_id_real = ged_get_min_oppidx_real(); // 50
 	int perf_toler = 0, perf_require = 0;
