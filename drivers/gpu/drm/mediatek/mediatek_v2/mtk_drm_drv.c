@@ -11913,7 +11913,7 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_PWM},
 	//{.compatible = "mediatek,mt6897-disp-pwm0",
 	// .data = (void *)MTK_DISP_PWM},
-	{.compatible = "mediatek,mt6895-disp-pwm",
+	{.compatible = "mediatek,mt6895-disp-pwm0",
 	 .data = (void *)MTK_DISP_PWM},
 	{.compatible = "mediatek,mt6886-disp-pwm",
 	 .data = (void *)MTK_DISP_PWM},
@@ -12577,7 +12577,8 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	if (private->secure_static_path_switch == true)
 		mtk_drm_helper_set_opt_by_name(private->helper_opt, "MTK_DRM_OPT_RPO", 0);
 
-	if (private->data->mmsys_id == MMSYS_MT6897) {
+	if (private->data->mmsys_id == MMSYS_MT6897 ||
+		private->data->mmsys_id == MMSYS_MT6895) {
 		if (mtk_drm_get_segment_id(pdev, private))
 			DDPPR_ERR("%s, segment get fail\n", __func__);
 	}

@@ -2860,12 +2860,12 @@ static const struct mtk_disp_wdma_data mt6983_wdma_driver_data = {
 };
 
 static const struct mtk_disp_wdma_data mt6895_wdma_driver_data = {
-	.fifo_size_1plane = 905,
+	.fifo_size_1plane = PARSE_FROM_DTS,
 	.fifo_size_uv_1plane = 29,
-	.fifo_size_2plane = 599,
-	.fifo_size_uv_2plane = 299,
-	.fifo_size_3plane = 596,
-	.fifo_size_uv_3plane = 148,
+	.fifo_size_2plane = PARSE_FROM_DTS,
+	.fifo_size_uv_2plane = PARSE_FROM_DTS,
+	.fifo_size_3plane = PARSE_FROM_DTS,
+	.fifo_size_uv_3plane = PARSE_FROM_DTS,
 	.sodi_config = mt6895_mtk_sodi_config,
 	.aid_sel = &mtk_wdma_aid_sel_MT6895,
 	.support_shadow = false,
