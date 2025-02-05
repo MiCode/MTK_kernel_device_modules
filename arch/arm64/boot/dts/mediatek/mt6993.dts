@@ -1647,7 +1647,9 @@
 
 	vdisp_ctrl: vdisp-ctrl@0 {
 		compatible = "mediatek,mt6993-vdisp-ctrl-v3";
-		bringup-stage = <1>;
+		pwr-handle = <&disp_pwr_dev>;
+		bringup-stage = <0>;
+		disp-pd-id = <0>;
 	};
 
 	efuse: efuse@10160000 {
@@ -8142,6 +8144,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			pd-names = "side_dispsys", "ovlsys", "side_ovlsys",
 							"mminfra_in_dpc", "dsi_phy0", "dsi_phy1";
 			clocks =
+				<&disp_vdisp_ao_config_clk VDISP_AO_CONFIG_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_PWM0_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_PWM1_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BWM0_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BWM1_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BWR_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_DEBUG_TOP_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_CVFS_DISP>,
+				<&vdisp_dvfsrc_apb_clk VDISP_RC_DVFSRC_EN_DISP>,
 				<&dispsys_config_clk MM0_CONFIG_DISP>,
 				<&dispsys_config_clk MM0_DISP_MUTEX0_DISP>,
 				<&dispsys_config_clk MM0_DISP_AAL0_DISP>,
