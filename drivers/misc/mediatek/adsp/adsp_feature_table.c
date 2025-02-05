@@ -170,9 +170,7 @@ int _adsp_register_feature(u32 cid, u32 fid, u32 opt)
 	mutex_lock(&ctrl->lock);
 
 	if (ctrl->total == 0 && ctrl->resume) {
-		ret = cancel_delayed_work(&ctrl->suspend_work);
-		pr_info("[%s] cancel delayed work cid(%u), ret(%u)",
-			 __func__, cid, ret);
+		cancel_delayed_work(&ctrl->suspend_work);
 		ret = ctrl->resume();
 	}
 	if (ret == 0) {
