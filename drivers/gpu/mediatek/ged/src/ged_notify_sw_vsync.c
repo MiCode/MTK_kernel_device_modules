@@ -1144,7 +1144,8 @@ void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time)
 		if (is_fdvfs_enable() & POLICY_MODE_V2) {
 			unsigned long long g_gpu_frame_time_ns_tmp;
 			g_gpu_frame_time_ns = g_ged_gpu_frame_time[0].target;
-			g_gpu_frame_time_ns_tmp = mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_TARGET_US].addr) * 1000;
+			g_gpu_frame_time_ns_tmp =
+				(unsigned long long)mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_TARGET_US].addr) * 1000;
 			for (int i = 0; i < GED_FRAME_TIME_CONFIG_NUM; i++) {
 				if (g_gpu_frame_time_ns_tmp <= g_ged_gpu_frame_time[i].margin) {
 					g_gpu_frame_time_ns = g_ged_gpu_frame_time[i].target;
