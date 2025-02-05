@@ -34,8 +34,11 @@
 #include "ccci_hif.h"
 #include "ccci_port.h"
 #include "modem_sys.h"
+#include "port_cfg.h"
+#include "port_ctlmsg.h"
 #include "port_proxy.h"
 #include "port_udc.h"
+
 #define TAG PORT
 #define CCCI_DEV_NAME "ccci"
 
@@ -53,6 +56,8 @@ struct ccci_proc_user {
 static spinlock_t file_lock;
 static struct port_t *port_list[CCCI_MAX_CH_NUM];
 int port_md_gen;
+unsigned int unified_ports_cfg;
+struct work_struct runtime_port_config_work;
 
 static struct port_t *ccci_port_get_port_by_user_id(unsigned int user_id)
 {
@@ -1578,10 +1583,10 @@ static inline int proxy_register_char_dev(struct port_proxy *proxy_p)
 
 	if (proxy_p->major) {
 		dev = MKDEV(proxy_p->major, proxy_p->minor_base);
-		ret = register_chrdev_region(dev, 120, CCCI_DEV_NAME);
+		ret = register_chrdev_region(dev, MAX_PORT_DEV_MINOR, CCCI_DEV_NAME);
 	} else {
 		ret = alloc_chrdev_region(&dev, proxy_p->minor_base,
-				120, CCCI_DEV_NAME);
+				MAX_PORT_DEV_MINOR, CCCI_DEV_NAME);
 		if (ret)
 			CCCI_ERROR_LOG(0, CHAR,
 				"alloc_chrdev_region fail,ret=%d\n", ret);
@@ -1849,26 +1854,52 @@ static void ccci_proc_init(void)
 
 }
 
+DEFINE_HASHTABLE(unified_port_cfg_hash_tbl, RUNTIME_CFG_PORT_CFG_HASH_TABLE_BITS);
+
 int ccci_port_init(void)
 {
 	int ret = 0;
 	struct device_node *node = NULL;
+	struct port_t *runtime_port_t;
+	unsigned int i;
+	unsigned int runtime_cfg_port_size;
 
 	ccci_proc_init();
 
-	node = of_find_compatible_node(NULL, NULL,
-		"mediatek,mddriver");
-	if (node)
-		ret = of_property_read_u32(node,
-			"mediatek,md-generation", &port_md_gen);
-	if (ret < 0) {
-		CCCI_ERROR_LOG(0, CHAR, "%s:get md_gen from dts fail\n",
-			__func__);
+	node = of_find_compatible_node(NULL, NULL, "mediatek,mddriver");
+	if (!node) {
+		CCCI_ERROR_LOG(0, TAG, "%s: mediatek,mddriver not found\n", __func__);
 		return -1;
 	}
 
-	CCCI_NORMAL_LOG(0, TAG, "%s: port_md_gen=%d\n",
-		__func__, port_md_gen);
+	ret = of_property_read_u32(node, "mediatek,md-generation", &port_md_gen);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, CHAR, "%s: get md_gen from dts fail\n",
+			__func__);
+		return -1;
+	}
+	CCCI_NORMAL_LOG(0, TAG, "%s: port_md_gen=%d\n", __func__, port_md_gen);
+
+	ret = of_property_read_u32(node, "mediatek,unified-ports-cfg", &unified_ports_cfg);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, CHAR, "%s: doesn't get unified-ports-cfg from dts\n",
+			__func__);
+		unified_ports_cfg = 0;
+	}
+	CCCI_NORMAL_LOG(0, TAG, "%s: unified_ports_cfg=%d\n", __func__, unified_ports_cfg);
+
+	if (unified_ports_cfg) {
+		hash_init(unified_port_cfg_hash_tbl);
+		runtime_cfg_port_size = get_runtime_cfg_port_size();
+		for (i = 0; i < runtime_cfg_port_size; i++) {
+			runtime_port_t = &ccci_runtime_cfg_port[i];
+			hash_add(unified_port_cfg_hash_tbl,
+				 &runtime_port_t->runtime_cfg_port_hnode,
+				 runtime_port_t->tx_ch);
+		}
+
+		INIT_WORK(&runtime_port_config_work, runtime_port_device_init_work);
+	}
 
 	port_proxyp = proxy_alloc();
 	if (port_proxyp == NULL) {
@@ -1956,10 +1987,7 @@ void ccci_port_queue_status_notify(int hif_id, int qno,
 }
 EXPORT_SYMBOL(ccci_port_queue_status_notify);
 
-/*
- * This API is called by HIF,
- * and used to dispatch RX data for related port
- */
+/* This is common API for port to receive skb from modem or HIF */
 int ccci_port_recv_skb(int hif_id, struct sk_buff *skb,
 	unsigned int flag)
 {

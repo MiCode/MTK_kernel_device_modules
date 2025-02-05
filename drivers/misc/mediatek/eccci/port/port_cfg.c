@@ -172,9 +172,7 @@ static struct port_t md_ccci_ports_6293[] = {
 	{CCCI_STATUS_TX, CCCI_STATUS_RX, 0, 0, 0, 0,
 		MD1_NORMAL_HIF, 0, &poller_port_ops, 0xFF, "ccci_poll",},
 /* smem port */
-	/*ccb array item must be put together and
-	 * should same with memory layout
-	 */
+	/* ccb array item must be put together and should same with memory layout */
 	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
 		CCIF_HIF_ID, 0, &smem_port_ops, SMEM_USER_RAW_DBM,
 		"ccci_raw_dbm",},
@@ -329,7 +327,8 @@ static struct port_t md_ccci_ports[] = {
 	{CCCI_IKERAW_TX, CCCI_IKERAW_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
 		&char_port_ops, 36, "ccci_ikeraw",},
-/* for EPDG use */
+
+	/* for EPDG use */
 	{CCCI_EPDG1_TX, CCCI_EPDG1_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
 		&char_port_ops, 37, "ccci_epdg1",},
@@ -342,6 +341,7 @@ static struct port_t md_ccci_ports[] = {
 	{CCCI_EPDG4_TX, CCCI_EPDG4_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
 		&char_port_ops, 40, "ccci_epdg4",},
+
 	/* for muxd/rild mipc, ttyCMIPC0 ~ 9 */
 	{CCCI_MIPC0_CHANNEL_TX, CCCI_MIPC0_CHANNEL_RX,
 		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
@@ -383,14 +383,16 @@ static struct port_t md_ccci_ports[] = {
 		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
 		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
 		&char_port_ops, 50, "ttyCMIPC9",},
-/* IPC char port minor= minor idx + CCCI_IPC_MINOR_BASE(100) */
+
+	/* IPC char port minor= minor idx + CCCI_IPC_MINOR_BASE(100) */
 	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
 		&ipc_port_ops, 0, "ccci_ipc_1220_0",},
 	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
 		&ipc_port_ops, 2, "ccci_ipc_2",},
-/* IPC kernel port */
+
+	/* IPC kernel port */
 	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, 0, &ipc_port_ops, 3, "ccci_ipc_3",},
 	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
@@ -408,17 +410,17 @@ static struct port_t md_ccci_ports[] = {
 	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
 		&ipc_port_ops, 9, "ccci_ipc_9",},
-/* sys port */
+
+	/* sys port */
 	{CCCI_SYSTEM_TX, CCCI_SYSTEM_RX, 0, 0, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, 0, &sys_port_ops, 0xFF, "ccci_sys",},
 	{CCCI_CONTROL_TX, CCCI_CONTROL_RX, 0, 0, 0, 0,
 		MD1_NORMAL_HIF, 0, &ctl_port_ops, 0xFF, "ccci_ctrl",},
 	{CCCI_STATUS_TX, CCCI_STATUS_RX, 0, 0, 0, 0,
 		MD1_NORMAL_HIF, 0, &poller_port_ops, 0xFF, "ccci_poll",},
-/* smem port */
-	/*ccb array item must be put together and
-	 * should same with memory layout
-	 */
+
+	/* smem port */
+	/* ccb array item must be put together and should same with memory layout */
 	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
 		CCIF_HIF_ID, 0, &smem_port_ops, SMEM_USER_RAW_DBM,
 		"ccci_raw_dbm",},
@@ -459,6 +461,285 @@ static struct port_t md_ccci_ports[] = {
 		&smem_port_ops, SMEM_USER_MD_POST_DUMP, "ccci_md_post_dump",},
 };
 
+/* used for unified ports config feature:
+ * The port devices in the ccci_boot_cfg_port table will be
+ * created during the ccci driver initialization phase.
+ */
+static struct port_t ccci_boot_cfg_port[] = {
+	/* char port */
+	{CCCI_UART1_TX, CCCI_UART1_RX, 1, 1, EXP_CTRL_Q, EXP_CTRL_Q,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 2, "ccci_md_log_ctrl",},
+	{CCCI_FS_TX, CCCI_FS_RX, DATA_FSD_Q, DATA_FSD_Q, 1, 1, MD1_NORMAL_HIF,
+		PORT_F_USER_HEADER|PORT_F_CLOSE_NO_DROP_PKT|PORT_F_CLEAN|
+		PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA|PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 4, "ccci_fs",},
+	{CCCI_DUMMY_CH, CCCI_DUMMY_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 12, "ccci_ioctl0",},
+	{CCCI_DUMMY_CH, CCCI_DUMMY_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 13, "ccci_ioctl1",},
+	{CCCI_DUMMY_CH, CCCI_DUMMY_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 14, "ccci_ioctl2",},
+	{CCCI_DUMMY_CH, CCCI_DUMMY_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 15, "ccci_ioctl3",},
+	{CCCI_DUMMY_CH, CCCI_DUMMY_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 16, "ccci_ioctl4",},
+	{CCCI_MDL_MONITOR_UL, CCCI_MDL_MONITOR_DL, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 19, "ccci_mdl_monitor",},
+
+	/* RPC port */
+	{CCCI_RPC_TX, CCCI_RPC_RX, 1, 1, 1, 1, MD1_NORMAL_HIF, PORT_F_CLOSE_NO_DROP_PKT,
+		&rpc_port_ops, 0xFF, "ccci_rpc_k",},
+	{CCCI_RPC_TX, CCCI_RPC_RX, 1, 1, 1, 1, MD1_NORMAL_HIF,
+		PORT_F_USER_HEADER | PORT_F_WITH_CHAR_NODE | PORT_F_CLOSE_NO_DROP_PKT,
+		&rpc_port_ops, 20, "ccci_rpc",},
+	/* udc port */
+	{CCCI_UDC_TX, CCCI_UDC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_CLOSE_NO_DROP_PKT,
+		&ccci_udc_port_ops, 30, "ccci_udc",},
+
+	{CCCI_MD_DIRC_TX, CCCI_MD_DIRC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 33, "ccci_0_200",},
+	{CCCI_TIME_TX, CCCI_TIME_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 34, "ccci_0_202",},
+	{CCCI_GARB_TX, CCCI_GARB_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 35, "ccci_0_204",},
+
+	/* IPC char port */
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&ipc_port_ops, 0, "ccci_ipc_1220_0",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&ipc_port_ops, 2, "ccci_ipc_2",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, 0, &ipc_port_ops, 3, "ccci_ipc_3",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&ipc_port_ops, 4, "ccci_ipc_4",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&ipc_port_ops, 5, "ccci_ipc_5",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, 0, &ipc_port_ops, 6, "ccci_ipc_6",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, 0, &ipc_port_ops, 7, "ccci_ipc_7",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, 0, &ipc_port_ops, 8, "ccci_ipc_8",},
+	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&ipc_port_ops, 9, "ccci_ipc_9",},
+
+	/* sys port */
+	{CCCI_SYSTEM_TX, CCCI_SYSTEM_RX, 0, 0, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, 0, &sys_port_ops, 0xFF, "ccci_sys",},
+	{CCCI_CONTROL_TX, CCCI_CONTROL_RX, 0, 0, 0, 0,
+		MD1_NORMAL_HIF, 0, &ctl_port_ops, 0xFF, "ccci_ctrl",},
+	{CCCI_STATUS_TX, CCCI_STATUS_RX, 0, 0, 0, 0,
+		MD1_NORMAL_HIF, 0, &poller_port_ops, 0xFF, "ccci_poll",},
+
+	/* smem port */
+	/* ccb array item must be put together and should same with memory layout */
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, 0, &smem_port_ops, SMEM_USER_RAW_DBM,
+		"ccci_raw_dbm",},
+	{CCCI_CCB_CTRL, CCCI_CCB_CTRL, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE, &smem_port_ops,
+		SMEM_USER_RAW_CCB_CTRL, "ccci_ccb_ctrl",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, SMEM_Q, SMEM_Q, SMEM_Q, SMEM_Q,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_CCB_DHL, "ccci_ccb_dhl",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE, &smem_port_ops,
+		SMEM_USER_RAW_DHL, "ccci_raw_dhl",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_RAW_NETD, "ccci_raw_netd",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_RAW_USB, "ccci_raw_usb",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_RAW_AUDIO, "ccci_raw_audio",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, 0, &smem_port_ops, SMEM_USER_RAW_LWA,
+		"ccci_raw_lwa",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, 0xFF, 0xFF, 0xFF, 0xFF,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_RAW_MDM, "ccci_raw_mdm",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, SMEM_Q, SMEM_Q, 0xFF, 0xFF,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_CCB_MD_MONITOR,
+		"ccci_ccb_md_monitor",},
+	{CCCI_SMEM_CH, CCCI_SMEM_CH, SMEM_Q, SMEM_Q, SMEM_Q, SMEM_Q,
+		CCIF_HIF_ID, PORT_F_WITH_CHAR_NODE,
+		&smem_port_ops, SMEM_USER_CCB_META, "ccci_ccb_meta",},
+};
+
+/* used for unified ports config feature:
+ * The port devices in the ccci_runtime_cfg_port table will be
+ * created during the AP-MD handshak phase.
+ */
+struct port_t ccci_runtime_cfg_port[] = {
+	{CCCI_PCM_TX, CCCI_PCM_RX, 0, 0, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_USER_HEADER | PORT_F_WITH_CHAR_NODE | PORT_F_CLOSE_NO_DROP_PKT,
+		&char_port_ops, 1, "ccci_aud",},
+	{CCCI_UART2_TX, CCCI_UART2_RX, DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, (PORT_F_WITH_CHAR_NODE |
+		PORT_F_CLOSE_NO_DROP_PKT | PORT_F_CH_TRAFFIC),
+		&char_port_ops, 3, "ttyC0",},
+	{CCCI_IPC_UART_TX, CCCI_IPC_UART_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 5, "ttyC2",},
+	{CCCI_ICUSB_TX, CCCI_ICUSB_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 6, "ttyC3",},
+	{CCCI_MD_LOG_TX, CCCI_MD_LOG_RX, 2, 2, 2, 2,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 7, "ttyC1",},
+
+	{CCCI_IMSV_UL, CCCI_IMSV_DL, 6, 6, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 8, "ccci_imsv",},
+	{CCCI_IMSC_UL, CCCI_IMSC_DL, 6, 6, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 9, "ccci_imsc",},
+	{CCCI_IMSA_UL, CCCI_IMSA_DL, 6, 6, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 10, "ccci_imsa",},
+	{CCCI_IMSDC_UL, CCCI_IMSDC_DL, 6, 6, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 11, "ccci_imsdc",},
+
+	{CCCI_IT_TX, CCCI_IT_RX, 0, 0, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_USER_HEADER | PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 17, "ccci_it",},
+	{CCCI_LB_IT_TX, CCCI_LB_IT_RX, 0, 0, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 18, "ccci_lb_it",},
+
+	{CCCI_IMSEM_UL, CCCI_IMSEM_DL, 6, 6, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 21, "ccci_imsem",},
+	{CCCI_IMSM_TX, CCCI_IMSM_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 22, "ccci_imsm",},
+	{CCCI_WOA_TX, CCCI_WOA_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 23, "ccci_woa",},
+	{CCCI_C2K_PPP_TX, CCCI_C2K_PPP_RX, DATA_C2K_PPP_Q,
+		DATA_C2K_PPP_Q, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 24, "ccci_c2k_ppp",},
+	{CCCI_C2K_AGPS_TX, CCCI_C2K_AGPS_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 25, "ccci_c2k_agps",},
+	{CCCI_XCAP_TX, CCCI_XCAP_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 26, "ccci_ss_xcap",},
+	{CCCI_BIP_TX, CCCI_BIP_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 27, "ccci_bip",},
+
+	{CCCI_TCHE_TX, CCCI_TCHE_RX, DATA_TCHE, DATA_TCHE, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 28, "ttyC5",},
+	{CCCI_DISP_TX, CCCI_DISP_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 29, "ttyC6",},
+
+	{CCCI_WIFI_TX, CCCI_WIFI_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 31, "ccci_wifi_proxy",},
+	{CCCI_VTS_TX, CCCI_VTS_RX, 3, 3, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 32, "ccci_vts",},
+
+	{CCCI_IKERAW_TX, CCCI_IKERAW_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 36, "ccci_ikeraw",},
+
+	{CCCI_EPDG1_TX, CCCI_EPDG1_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 37, "ccci_epdg1",},
+	{CCCI_EPDG2_TX, CCCI_EPDG2_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 38, "ccci_epdg2",},
+	{CCCI_EPDG3_TX, CCCI_EPDG3_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 39, "ccci_epdg3",},
+	{CCCI_EPDG4_TX, CCCI_EPDG4_RX, 1, 1, 0xFF, 0xFF,
+		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 40, "ccci_epdg4",},
+
+	/* for muxd/rild mipc, ttyCMIPC0 ~ 9 */
+	{CCCI_MIPC0_CHANNEL_TX, CCCI_MIPC0_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 41, "ttyCMIPC0",},
+	{CCCI_MIPC1_CHANNEL_TX, CCCI_MIPC1_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 42, "ttyCMIPC1",},
+	{CCCI_MIPC2_CHANNEL_TX, CCCI_MIPC2_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 43, "ttyCMIPC2",},
+	{CCCI_MIPC3_CHANNEL_TX, CCCI_MIPC3_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 44, "ttyCMIPC3",},
+	{CCCI_MIPC4_CHANNEL_TX, CCCI_MIPC4_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 45, "ttyCMIPC4",},
+	{CCCI_MIPC5_CHANNEL_TX, CCCI_MIPC5_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 46, "ttyCMIPC5",},
+	{CCCI_MIPC6_CHANNEL_TX, CCCI_MIPC6_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 47, "ttyCMIPC6",},
+	{CCCI_MIPC7_CHANNEL_TX, CCCI_MIPC7_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 48, "ttyCMIPC7",},
+	{CCCI_MIPC8_CHANNEL_TX, CCCI_MIPC8_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 49, "ttyCMIPC8",},
+	{CCCI_MIPC9_CHANNEL_TX, CCCI_MIPC9_CHANNEL_RX,
+		DATA_AT_CMD_Q, DATA_AT_CMD_Q, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
+		&char_port_ops, 50, "ttyCMIPC9",},
+
+	{CCCI_RIL_IPC0_TX, CCCI_RIL_IPC0_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE, &char_port_ops, 51, "ccci_umts_ipc0",},
+	{CCCI_RIL_IPC1_TX, CCCI_RIL_IPC1_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE, &char_port_ops, 52, "ccci_cdma_ipc0",},
+	{CCCI_VT_CTL_TX, CCCI_VT_CTL_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE, &char_port_ops, 53, "ttyC4",},
+
+	/* NAD test, for md NAD test */
+	{CCCI_AT_TX, CCCI_AT_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE, &char_port_ops, 54, "ttyC_AT",},
+};
+
+int get_runtime_cfg_port_size(void)
+{
+	return ARRAY_SIZE(ccci_runtime_cfg_port);
+}
+
 int port_get_cfg(struct port_t **ports)
 {
 	int port_number = 0;
@@ -466,6 +747,9 @@ int port_get_cfg(struct port_t **ports)
 	if (port_md_gen == 6293) {
 		*ports = md_ccci_ports_6293;
 		port_number = ARRAY_SIZE(md_ccci_ports_6293);
+	} else if (unified_ports_cfg) {
+		*ports = ccci_boot_cfg_port;
+		port_number = ARRAY_SIZE(ccci_boot_cfg_port);
 	} else {
 		*ports = md_ccci_ports;
 		port_number = ARRAY_SIZE(md_ccci_ports);
@@ -483,6 +767,12 @@ int mtk_ccci_request_port(char *name)
 		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
 		for (i = 0; i < port_array_size; i++) {
 			if (!strcmp(md_ccci_ports_6293[i].name, name))
+				return i;
+		}
+	} else if (unified_ports_cfg) {
+		port_array_size = ARRAY_SIZE(ccci_boot_cfg_port);
+		for (i = 0; i < port_array_size; i++) {
+			if (!strcmp(ccci_boot_cfg_port[i].name, name))
 				return i;
 		}
 	} else {
@@ -505,6 +795,8 @@ int find_port_by_channel(int index, struct port_t **port)
 
 	if (port_md_gen == 6293)
 		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
+	else if (unified_ports_cfg)
+		port_array_size = ARRAY_SIZE(ccci_boot_cfg_port);
 	else
 		port_array_size = ARRAY_SIZE(md_ccci_ports);
 
@@ -516,6 +808,8 @@ int find_port_by_channel(int index, struct port_t **port)
 
 	if (port_md_gen == 6293)
 		*port = &md_ccci_ports_6293[index];
+	else if (unified_ports_cfg)
+		*port = &ccci_boot_cfg_port[index];
 	else
 		*port = &md_ccci_ports[index];
 
@@ -528,6 +822,8 @@ int mtk_ccci_open_port(int index)
 
 	if (port_md_gen == 6293)
 		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
+	else if (unified_ports_cfg)
+		port_array_size = ARRAY_SIZE(ccci_boot_cfg_port);
 	else
 		port_array_size = ARRAY_SIZE(md_ccci_ports);
 
@@ -541,6 +837,11 @@ int mtk_ccci_open_port(int index)
 		    atomic_read(&md_ccci_ports_6293[index].usage_cnt))
 			return -EBUSY;
 		atomic_inc(&md_ccci_ports_6293[index].usage_cnt);
+	} else if (unified_ports_cfg) {
+		if (ccci_boot_cfg_port[index].rx_ch != CCCI_CCB_CTRL &&
+		    atomic_read(&ccci_boot_cfg_port[index].usage_cnt))
+			return -EBUSY;
+		atomic_inc(&ccci_boot_cfg_port[index].usage_cnt);
 	} else {
 		if (md_ccci_ports[index].rx_ch != CCCI_CCB_CTRL &&
 		    atomic_read(&md_ccci_ports[index].usage_cnt))
@@ -558,6 +859,8 @@ int mtk_ccci_release_port(int index)
 
 	if (port_md_gen == 6293)
 		port_array_size = ARRAY_SIZE(md_ccci_ports_6293);
+	else if (unified_ports_cfg)
+		port_array_size = ARRAY_SIZE(ccci_boot_cfg_port);
 	else
 		port_array_size = ARRAY_SIZE(md_ccci_ports);
 
@@ -568,6 +871,8 @@ int mtk_ccci_release_port(int index)
 
 	if (port_md_gen == 6293)
 		atomic_dec(&md_ccci_ports_6293[index].usage_cnt);
+	else if (unified_ports_cfg)
+		atomic_dec(&ccci_boot_cfg_port[index].usage_cnt);
 	else
 		atomic_dec(&md_ccci_ports[index].usage_cnt);
 

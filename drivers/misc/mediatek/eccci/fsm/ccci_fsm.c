@@ -31,6 +31,7 @@ struct ccci_fsm_ctl *ccci_fsm_entries;
 struct md_wdt_record md_wdt_rec;
 static int needforcestop;
 static int hs2_done;
+static unsigned int fsm_unified_ports_cfg;
 
 struct kern_md_state_cb {
 	unsigned char host_id;
@@ -46,7 +47,6 @@ static struct mutex md_ufs_io_lock;
 
 static unsigned int kern_reg_cb_bitmap;
 atomic_t md_ee_occurred;
-
 
 /*
  * Record the currently supported versions.
@@ -1210,6 +1210,10 @@ static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 				rt_f_element.feature[0] |= (1 << 0);
 				/* polling MD status */
 				rt_f_element.feature[0] |= (1 << 1);
+				/* unified portss configuration */
+				if (fsm_unified_ports_cfg)
+					rt_f_element.feature[0] |= (1 << 2);
+
 				append_runtime_feature(&rt_data,
 				&rt_feature, &rt_f_element);
 				break;
@@ -1879,6 +1883,7 @@ int ccci_fsm_init(void)
 {
 	struct ccci_fsm_ctl *ctl = NULL;
 	int ret = 0;
+	struct device_node *node = NULL;
 
 	ctl = kzalloc(sizeof(struct ccci_fsm_ctl), GFP_KERNEL);
 	if (ctl == NULL) {
@@ -1921,6 +1926,20 @@ int ccci_fsm_init(void)
 
 	ccci_fsm_entries = ctl;
 	ccci_get_spm_resource();
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,mddriver");
+	if (!node) {
+		CCCI_ERROR_LOG(0, FSM, "%s: mediatek,mddriver not found\n", __func__);
+		return 0;
+	}
+
+	ret = of_property_read_u32(node, "mediatek,unified-ports-cfg", &fsm_unified_ports_cfg);
+	if (ret < 0) {
+		fsm_unified_ports_cfg = 0;
+		CCCI_ERROR_LOG(0, FSM, "%s: doesn't get unified-ports-cfg from dts\n",
+			__func__);
+	}
+
 	return 0;
 }
 

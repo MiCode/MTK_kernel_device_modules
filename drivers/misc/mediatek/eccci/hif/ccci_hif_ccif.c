@@ -572,11 +572,8 @@ static int ccif_rx_collect(struct md_ccif_queue *queue, int budget,
 						sizeof(struct ccci_header) + 10));
 			}
 		}
-		//if (ccci_h->channel == CCCI_C2K_LB_DL)
-		//	atomic_set(&lb_dl_q, queue->index);
 
 		ccci_hdr = *ccci_h;
-
 		ret = ccci_port_recv_skb(queue->hif_id, skb, NORMAL_DATA);
 
 		if (ret >= 0 || ret == -CCCI_ERR_DROP_PACKET) {
@@ -774,7 +771,7 @@ static void md_ccif_sram_rx_work(struct work_struct *work)
 
 static void md_ccif_launch_work(struct md_ccif_ctrl *ccif_ctrl)
 {
-	int i;
+	unsigned int i;
 
 	if (ccif_ctrl->channel_id & (1 << (D2H_SRAM))) {
 		clear_bit(D2H_SRAM, &ccif_ctrl->channel_id);
@@ -800,17 +797,15 @@ static void md_ccif_launch_work(struct md_ccif_ctrl *ccif_ctrl)
 				CCCI_DEBUG_LOG(0, TAG,
 					"Q%d rx is on-going(%d)2\n",
 					ccif_ctrl->rxq[i].index,
-					atomic_read(
-					&ccif_ctrl->rxq[i].rx_on_going));
+					atomic_read(&ccif_ctrl->rxq[i].rx_on_going));
 				continue;
 			}
-			queue_work(ccif_ctrl->rxq[i].worker,
-				&ccif_ctrl->rxq[i].qwork);
+			queue_work(ccif_ctrl->rxq[i].worker, &ccif_ctrl->rxq[i].qwork);
 		}
 	}
 }
 
-/* CCIF interrupt 1 handler: mainly for communication notification */
+/* CCIF interrupt 0 handler: mainly used for communication and notification */
 static irqreturn_t md_ccif_isr0(int irq, void *data)
 {
 	struct md_ccif_ctrl *ccif_ctrl = (struct md_ccif_ctrl *)data;

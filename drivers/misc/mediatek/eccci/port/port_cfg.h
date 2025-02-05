@@ -17,5 +17,8 @@ extern struct port_ops ipc_port_ops;
 extern struct port_ops smem_port_ops;
 extern struct port_ops ccci_udc_port_ops;
 extern int port_md_gen;
+extern unsigned int unified_ports_cfg;
+extern struct port_t ccci_runtime_cfg_port[];
+extern int get_runtime_cfg_port_size(void);
 
 #endif /* __PORT_CFG_H__ */

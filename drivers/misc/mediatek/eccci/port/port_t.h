@@ -34,6 +34,9 @@
 /*Dump pkt of ccmni*/
 #define PORT_F_NET_DUMP         (1<<10)
 #define PORT_F_CLOSE_NO_DROP_PKT   (1<<11)
+
+#define MAX_PORT_DEV_MINOR	120
+
 enum {
 	PORT_DBG_DUMP_RILD = 0,
 	PORT_DBG_DUMP_AUDIO,
@@ -114,6 +117,8 @@ struct port_t {
 	unsigned int tx_pkg_cnt;
 	port_skb_handler skb_handler;
 	spinlock_t flag_lock;
+	struct hlist_node runtime_cfg_port_hnode;
+	unsigned int create_port_dev_flag;
 };
 /****************************************************************************/
 /* API Region called by ccci port object */

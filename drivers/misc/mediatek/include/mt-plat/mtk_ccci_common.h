@@ -51,7 +51,6 @@ enum MD_LOAD_TYPE {
 #define MD1_LOGGER_FILE_PATH		"/data/mdlog/mdlog1_config"
 #define MD2_LOGGER_FILE_PATH		"/data/mdlog/mdlog2_config"
 
-/* Image string and header */
 /* image name/path */
 #define MOEDM_IMAGE_NAME		"modem.img"
 #define DSP_IMAGE_NAME			"DSP_ROM"
@@ -65,6 +64,9 @@ enum MD_LOAD_TYPE {
 #define RELEASE_STR			"Release"
 #define INVALID_STR			"INVALID"
 
+#define CCCI_PORT_NAME_LEN		20
+#define CCCI_HEADER_LEN			sizeof(struct ccci_header)
+
 struct ccci_header {
 	/* do NOT assume data[1] is data length in Rx */
 	u32 data[2];
@@ -74,6 +76,7 @@ struct ccci_header {
 	u32 reserved;
 } __packed;
 
+/* data path: cldma or dpmaif used */
 struct lhif_header {
 	u16 pdcp_count;
 	u8 flow:4;

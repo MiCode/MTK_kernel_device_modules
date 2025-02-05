@@ -413,7 +413,7 @@ static int mdee_set_core_name(char *core_name, struct ex_overview_t *ex_overview
 		temp_sys_inf_2, temp_sys_inf_1);
 	}
 	CCCI_NORMAL_LOG(0, FSM,
-		"brief_info: core_name = %s", core_name);
+		"brief_info: core_name = %s\n", core_name);
 	return core_id;
 }
 
