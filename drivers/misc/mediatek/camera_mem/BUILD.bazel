@@ -1,0 +1,40 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "camera_mem",
+    srcs = [
+        "camera_mem.c",
+    ],
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/common/",
+    ],
+    ko_deps = ["//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h",
+        ]),
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
