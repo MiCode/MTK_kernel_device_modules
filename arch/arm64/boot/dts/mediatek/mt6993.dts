@@ -8531,6 +8531,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-type0-pwr = <MMINFRA_MT6993_PWR_MM2>; /* cg_link to mm2*/
 			mminfra-mtcmos-voter = <55 55 55 55>;
 			mminfra-mtcmos-data = <1 2 0 3>;
+			mm-mtcmos-base = <0x31b5009c 0x31b500a0 0x31b500a4 0x31b500a8>; /* mm0/mm1/mm_ao/mm2 */
+			mm-mtcmos-mask = <0xc0000000 0xc0000000 0xc0000000 0xc0000000>; /* mm0/mm1/mm_ao/mm2*/
 		};
 
 		mminfra_debug: mminfra-debug@30070000 {
