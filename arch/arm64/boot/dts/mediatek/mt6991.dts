@@ -15939,27 +15939,13 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	};
 
 	systimer: systimer@1c400000 {
-		compatible = "mediatek,legacy-timer";
+		compatible = "mediatek,mt6991-timer",
+				"mediatek,mt6765-timer";
 		reg = <0 0x1c400000 0 0x1000>;
 		interrupts = <GIC_SPI 813 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 814 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 815 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&clk13m>;
-	};
-
-	mem_mapped_timer: mem-mapped-timer@1c430000 {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-		compatible = "arm,armv7-timer-mem";
-		mediatek,erratum-690001;
-		reg = <0 0x1c430000 0 0x1000>; //CNTCTLBase frame
-		clock-frequency = <13000000>;
-		frame@1c440000 {
-			frame-number = <0>;
-			interrupts = <GIC_SPI 813 IRQ_TYPE_LEVEL_HIGH 0>; //phys irq
-			reg = <0 0x1c440000 0 0x1000>; //CNTBase0
-		};
 	};
 
 	vcp: vcp@31800000 {
