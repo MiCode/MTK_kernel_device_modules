@@ -754,11 +754,13 @@ static int trusty_gz_send_ktime(struct platform_device *pdev)
 	uint64_t diff_all;
 	uint32_t diff_msb;
 	uint32_t diff_lsb;
+	uint64_t cnt_mhz;
 
+	cnt_mhz = div_u64(arch_timer_get_cntfrq(), 1000000);
 	current_ktime = sched_clock();
 	current_cnt = __arch_counter_get_cntvct();
 
-	diff_all = current_cnt - div_u64(13 * current_ktime, 1000);
+	diff_all = current_cnt - div_u64(cnt_mhz * current_ktime, 1000);
 	diff_msb = (diff_all >> 32);
 	diff_lsb = (diff_all & U32_MAX);
 
