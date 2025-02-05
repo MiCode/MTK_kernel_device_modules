@@ -24,6 +24,7 @@
 #include <dt-bindings/gce/mt6895-gce.h>
 #include <dt-bindings/mml/mml-mt6895.h>
 #include <dt-bindings/thermal/thermal.h>
+#include <dt-bindings/power/mtk-charger.h>
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 
 / {
@@ -9969,6 +9970,7 @@
 		compatible = "mediatek,charger";
 		gauge = <&mtk_gauge>;
 		charger = <&mt6375_chg>;
+		bc12-psy = <&mt6375_chg>;
 		bootmode = <&chosen>;
 
 		algorithm_name = "Basic";
@@ -11868,8 +11870,9 @@
 	smart_pa: smart_pa {
 	};
 
-	pd_adapter: pd_adapter {
+	pd_adapter: pd-adapter {
 		compatible = "mediatek,pd_adapter";
+		nr-port = <1>;
 		boot_mode = <&chosen>;
 		adapter_name = "pd_adapter";
 		force_cv;
@@ -11889,10 +11892,12 @@
 		compatible = "mediatek,mtk_composite_v4l2_2";
 	};
 
-	mtk_ctd: mtk_ctd {
+	mtk_ctd: mtk-ctd {
 		compatible = "mediatek,mtk_ctd";
-		bc12 = <&mt6375_chg>;
-		bc12_sel = <0>;
+		nr-port = <1>;
+		chg-name-port0 = "primary_chg";
+		bc12-sel-port0 = <MTK_CTD_BY_SUBPMIC>;
+		bc12-psy-port0 = <&mt6375_chg>;
 	};
 
 	subpmic_pmu_eint: subpmic_pmu_eint {
@@ -13862,12 +13867,14 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 				     <MT6375_FL_WDT>, <MT6375_FL_BC12_DN>,
 				     <MT6375_FL_AICC_DONE>, <MT6375_FL_PE_DONE>,
 				     <MT6375_FL_BATPRO_DONE>,
-				     <MT6375_ADC_VBAT_MON_OV>;
+				     <MT6375_ADC_VBAT_MON_OV>,
+				     <MT6375_USBID_EVT>;
 			interrupt-names = "fl_pwr_rdy", "fl_detach",
 					  "fl_vbus_ov", "fl_chg_tout",
 					  "fl_wdt", "fl_bc12_dn",
 					  "fl_aicc_done", "fl_pe_done",
-					  "fl_batpro_done", "adc_vbat_mon_ov";
+					  "fl_batpro_done", "adc_vbat_mon_ov",
+					  "usbid_evt";
 			io-channels = <&mt6375_adc MT6375_ADC_CHGVIN>,
 				      <&mt6375_adc MT6375_ADC_VSYS>,
 				      <&mt6375_adc MT6375_ADC_VBAT>,
@@ -13875,7 +13882,8 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 				      <&mt6375_adc MT6375_ADC_IBAT>,
 				      <&mt6375_adc MT6375_ADC_TEMPJC>,
 				      <&mt6375_adc MT6375_ADC_USBDP>,
-				      <&mt6375_adc MT6375_ADC_USBDM>;
+				      <&mt6375_adc MT6375_ADC_USBDM>,
+				      <&mt6375_adc MT6375_ADC_SBU2>;
 			chg_name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;
@@ -13893,7 +13901,8 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 			chg_tmr = <10>;
 			chg_tmr_en;
 			dcdt_sel = <600>;
-			bc12_sel = <&mtk_ctd>;
+			nr-port = <1>;
+			bc12-sel = <MTK_CTD_BY_SUBPMIC>;
 			boot_mode = <&chosen>;
 			phys = <&u2port0 PHY_TYPE_USB2>;
 			phy-names = "usb2-phy";
@@ -14075,7 +14084,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 				val = <90>;
 			};
 		};
-		mtk_gauge: mtk_gauge {
+		mtk_gauge: mtk-gauge {
 			compatible = "mediatek,mt6375-gauge";
 			interrupt-controller;
 			#interrupt-cells = <1>;
