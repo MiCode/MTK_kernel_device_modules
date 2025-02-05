@@ -1,0 +1,56 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "include/**/*.h",
+    ]),
+)
+
+filegroup(
+        name = "srcs",
+        srcs = glob([
+                "**/Makefile",
+                "**/Kbuild",
+                "**/*.c",
+                "**/*.h",
+        ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_mbraink_bridge",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_MBRAINK_BRIDGE": {
+            True:["mbraink_bridge.c",
+                  "mbraink_bridge_gps.c",
+                  "mbraink_bridge_wifi.c",
+                  "mbraink_bridge_camera.c",
+            ],
+        },
+    },
+    includes = [
+        ".",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+    local_defines = [
+        "MTK_MBRAINK_BRIDGE_TEST_ENABLED=0"
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
