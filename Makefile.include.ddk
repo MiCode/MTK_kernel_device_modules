@@ -3,9 +3,16 @@
 # This file should be included by external modules that need to link to this
 # project.
 
+ifeq ($(COVERITY_BUILD),True)
+DEVICE_MODULES_FOLDER := $(OUT_DIR)/$(DEVICE_MODULES_REL_DIR)
+ifeq ($(wildcard $(DEVICE_MODULES_FOLDER)/*mgk*Module.symvers),)
+DEVICE_MODULES_FOLDER := $(OUT_DIR)/$(DEVICE_SYMVERS_FILES_REBUILD_REL_DIR)
+endif
+else
 DEVICE_MODULES_FOLDER := $(OUT_DIR)/$(DEVICE_MODULES_REL_DIR)
 ifeq ($(wildcard $(DEVICE_MODULES_FOLDER)),)
 DEVICE_MODULES_FOLDER := $(OUT_DIR)/$(subst kernel/,,$(DEVICE_MODULES_REL_DIR))
+endif
 endif
 
 # add ddk device modules' Module.symvers
@@ -209,6 +216,7 @@ EXTRA_SYMBOLS += $(wildcard $(OUT_DIR)/../vendor/mediatek/kernel_modules/mtkcam/
 
 # Please don't modify below lines
 extra_symbols_temp := $(EXTRA_SYMBOLS)
+
 extmod_suffix := $(shell openssl rand -base64 32 | md5sum | cut -d " " -f 1)
 sum_Module_symvers_tmp := $(DEVICE_MODULES_FOLDER)/sum.Module.symvers.$(extmod_suffix)
 
