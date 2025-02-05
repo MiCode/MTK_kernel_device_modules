@@ -574,7 +574,7 @@
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_192M_D10>,
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_192M_D8>,
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_D6_D16>,
-			<&cksys_top_clk CKSYS_VLP_OSC3>,
+			<&cksys_vlp_clk CKSYS_VLP_OSC3>,
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_D6_D8>,
 			<&cksys_vlp_clk VLP_CAMTG1_SEL>;
 
@@ -661,7 +661,7 @@
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_192M_D10>,
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_192M_D8>,
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_D6_D16>,
-			<&cksys_top_clk CKSYS_VLP_OSC3>,
+			<&cksys_vlp_clk CKSYS_VLP_OSC3>,
 			<&cksys_top_clk CKSYS_TOP_UNIVPLL_D6_D8>,
 			<&cksys_vlp_clk VLP_CAMTG0_SEL>;
 		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
