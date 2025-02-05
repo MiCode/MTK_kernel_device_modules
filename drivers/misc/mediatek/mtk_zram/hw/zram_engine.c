@@ -1273,6 +1273,7 @@ int hwcomp_compress_page(void *hw, struct page *page, struct comp_pp_info *pp_in
 	struct hwfifo *fifo;
 	uint32_t entry;
 	bool valid = false;
+	bool wake_up_pp = false;
 	int gear_set_retry = 3;
 
 	if (!hwz)
@@ -1303,8 +1304,13 @@ next_cmd_fifo_1:
 		smp_rmb();
 
 		/* Fallback to slow path if fifo full */
-		if (comp_fifo_1_full(fifo))
+		if (comp_fifo_1_full(fifo)) {
+
+			/* Post-process may not start yet */
+			wake_up(&hwz->comp_wait);
+
 			goto slowpath;
+		}
 
 		entry = comp_fifo_1_write_entry(fifo);
 
@@ -1318,14 +1324,13 @@ next_cmd_fifo_1:
 		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
-#ifndef FPGA_EMULATION
 		/* Increment the number of compression request & try to promote frequency. (may sleep) */
-		if (atomic_inc_return(&hwz->comp_cnt) == 1)
+		if (atomic_inc_return(&hwz->comp_cnt) == 1) {
+#ifndef FPGA_EMULATION
 			engine_try_to_gear_up(&hwz->gear_ctrl, true);
-#else
-		/* Increment the number of compression request */
-		atomic_inc(&hwz->comp_cnt);
 #endif
+			wake_up_pp = true;
+		}
 
 		update_comp_fifo_1_write_index(fifo);
 
@@ -1344,7 +1349,8 @@ next_cmd_fifo_1:
 			wake_up(&hwz->comp_wait);
 		}
 
-		return 0;
+		/* Request is sent, just leave. */
+		goto exit;
 	}
 
 slowpath:
@@ -1410,7 +1416,8 @@ next_cmd_fifo_2:
 #endif
 
 	/* Increment the number of compression request */
-	atomic_inc(&hwz->comp_cnt);
+	if (atomic_inc_return(&hwz->comp_cnt) == 1)
+		wake_up_pp = true;
 
 	update_comp_fifo_2_write_index(fifo);
 
@@ -1430,6 +1437,12 @@ next_cmd_fifo_2:
 	}
 
 	spin_unlock(&hwz->fifo_2_lock);
+
+exit:
+	/* Wake up comp_post_process */
+	if (wake_up_pp)
+		wake_up(&hwz->comp_wait);
+
 	return 0;
 }
 EXPORT_SYMBOL(hwcomp_compress_page);

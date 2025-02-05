@@ -596,11 +596,8 @@ next:
 	/* DDREN HW mode setting */
 	zram_writel(0x0006c040, ctrl->zram_enc_base + ZRAM_ENC_RESOURCE_SETTING);
 
-	/* IRQ setting (No CMD interrupt enabled by default) */
-	if (engine_async_mode_disabled())
-		reg_val = ZRAM_ENC_ERROR_INTR_MASK;
-	else
-		reg_val = ZRAM_ENC_BATCH_INTR_MASK | ZRAM_ENC_IDLE_INTR_MASK | ZRAM_ENC_ERROR_INTR_MASK;
+	/* IRQ setting: Do support of batch & idle interrupt currently */
+	reg_val = ZRAM_ENC_ERROR_INTR_MASK;
 
 	/* Keep IRQ setting for future configuration */
 	ctrl->enc_irq_setting = reg_val;
