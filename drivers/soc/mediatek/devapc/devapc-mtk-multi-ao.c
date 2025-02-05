@@ -93,7 +93,7 @@ static bool is_devapc_subsys_enabled(int devapc_type)
 	}
 
 	/* Bypass other devapc as a workaround to avoid system reboot issue */
-	if (devapc_type >= DEVAPC_TYPE_MMINFRA) {
+	if (devapc_type >= DEVAPC_TYPE_MMINFRA && devapc_type != DEVAPC_TYPE_MMUP) {
 		pr_info(PFX "%s:%d, bypass devapc\n", __func__, __LINE__);
 		return 0;
 	}
