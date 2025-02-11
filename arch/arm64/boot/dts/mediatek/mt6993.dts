@@ -8578,6 +8578,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <4>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VDE1>;
+			smi-user-id = <MTK_SMI_VDEC_CORE>;
 		};
 
 		smi_larb5: smi-larb5@3600d000 {
@@ -8588,6 +8589,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <5>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VDE0>;
+			smi-user-id = <MTK_SMI_VDEC_CORE MTK_SMI_VDEC_LAT>;
 		};
 
 		smi_larb6: smi-larb6@3600e000 {
@@ -8598,6 +8600,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <6>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VDE0>;
+			smi-user-id = <MTK_SMI_VDEC_CORE>;
 		};
 
 		mm_m0_rsiu_regs: smi-mm-m0-rsiu-regs@30b30000 {
