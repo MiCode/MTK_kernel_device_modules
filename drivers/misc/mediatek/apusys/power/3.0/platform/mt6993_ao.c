@@ -836,6 +836,7 @@ static int test_apu_dummy_reg_access(int byass_engine)
 }
 #endif
 
+#if APU_RPCLITE_INIT
 int apu_rpclite_pwr_on(int eng_idx)
 {
 	int ret = 0;
@@ -946,6 +947,7 @@ int apu_rpclite_pwr_on(int eng_idx)
 	pr_info("%s power on success for eng_idx : %d\n", __func__, eng_idx);
 	return 0;
 }
+#endif
 
 #if APU_AOC_INIT
 static void __apu_aoc_init(void)
@@ -1102,8 +1104,9 @@ static void debug_dump_list(void)
 
 int mt6993_all_on(struct platform_device *pdev)
 {
+#if APU_RPCLITE_INIT
 	int dev_idx = 0;
-
+#endif
 	pr_info("%s dbg 1\n", __func__);
 
 	/* wake up RCX */
@@ -1116,6 +1119,8 @@ int mt6993_all_on(struct platform_device *pdev)
 	//__apu_engine_acc_on(); //acc on through 26M ARE
 	mtk_clk_acc_get_rate();
 #endif
+
+#if APU_RPCLITE_INIT
 	for (dev_idx = 0 ; dev_idx < DEVICE_NUM ; dev_idx++) {
 		if (papw->env == AO_ALL) {
 			apu_rpclite_pwr_on(dev_idx);
@@ -1125,6 +1130,7 @@ int mt6993_all_on(struct platform_device *pdev)
 			pr_info("%s bypass dev_idx : %d\n", __func__, dev_idx);
 		}
 	}
+#endif
 
 #if TEST_DUMMY_REG_RW
 	if (papw->env == AO_ALL)
