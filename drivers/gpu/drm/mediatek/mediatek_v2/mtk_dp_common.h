@@ -312,6 +312,7 @@ struct mtk_dp {
 	struct work_struct hdcp_work;
 	struct work_struct dptx_work;
 
+	struct clk *dp_phy_clk;
 	u32 min_clock;
 	u32 max_clock;
 	u32 max_hdisplay;

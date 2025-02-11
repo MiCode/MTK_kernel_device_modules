@@ -241,6 +241,8 @@ void dptx_shutdown(void)
 	g_mtk_dp->shutdown = 1;
 	DPTXMSG("unprepare dptx shutdown\n");
 	if (g_mtk_dp->priv->pwr_node) {
+		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+			clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 		pm_runtime_put_sync(g_mtk_dp->dev);
@@ -1690,6 +1692,8 @@ void mdrv_DPTx_put_device(void)
 	}
 	if(g_mtk_dp->shutdown == 0) {
 		if (g_mtk_dp->priv->pwr_node) {
+			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+				clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 			pm_runtime_put_sync(g_mtk_dp->dev);
@@ -4412,6 +4416,8 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					}
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+						clk_prepare_enable(g_mtk_dp->dp_phy_clk);
 					pm_runtime_get_sync(g_mtk_dp->dev);
 				}
 				else
@@ -4731,6 +4737,12 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	mtk_dp_create_workqueue(mtk_dp);
 
 	mtk_dp_vsvoter_clr(mtk_dp);
+
+	mtk_dp->dp_phy_clk = devm_clk_get(dev, "dp_phy");
+	if (IS_ERR(mtk_dp->dp_phy_clk)) {
+		ret = PTR_ERR(mtk_dp->dp_phy_clk);
+		dev_err(dev, "Failed to get dp_phy clock: %d\n", ret);
+	}
 
 	return component_add(&pdev->dev, &mtk_dp_component_ops);
 
