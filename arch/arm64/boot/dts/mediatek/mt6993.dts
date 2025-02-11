@@ -4154,7 +4154,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"tdla_on_acc,tdla_pwr_acc,tdla_leak_acc,tdla_freq,",
 				"top_up_pwr_acc,top_edpa_pwr_acc,top_mnoc_pwr_acc,top_tcm_pwr_acc,",
 				"top_aputop_clk_pwr_acc,top_core_on_ratio,top_aputop_leak_acc,",
-				"top_freq,div,time";
+				"top_freq,div,time_h,time_l";
 			node-88 = "SSPM_SWPM_APU__MVPU",
 				"mvpu_pdx0,mvpu_pdx1,",
 				"mvpu_freq0,mvpu_freq1,",
