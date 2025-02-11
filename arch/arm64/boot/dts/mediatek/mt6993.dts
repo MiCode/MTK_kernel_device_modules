@@ -14783,6 +14783,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,seninf-eint = <&eint>;
 		};
 
+		camera-camsys-ccu {
+			compatible = "mediatek,camera-camsys-ccu";
+			mediatek,ccu-rproc = <&ccu_rproc>;
+		};
+
 		remoteproc_ccd: remoteproc-ccd@3a019000 {
 			compatible = "mediatek,ccd";
 			reg =	<0 0x3a019000 0 0x10>;
@@ -16348,7 +16353,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			smmu-supply = <&mm_smmu>;
 		};
 		mm_smmu_cam_protected: mm-smmu-cam-protected {
-			//compatible = "mediatek,smmu-share-group";
+			compatible = "mediatek,smmu-share-group";
 			label = "mm_smmu_cam_protected";
 			dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mm_smmu 137>;
