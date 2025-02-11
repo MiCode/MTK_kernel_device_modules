@@ -319,7 +319,8 @@ static void filter_by_fbdc(struct drm_device *dev,
 			continue;
 
 		if ((can_be_compress(dev, c->src_fmt) == 0) ||
-			(priv && disp_info->disp_idx > HRT_PRIMARY &&
+			(priv && priv->data->mmsys_id == MMSYS_MT6877 &&
+			disp_info->disp_idx > HRT_PRIMARY &&
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)))
 			mtk_rollback_compress_layer_to_GPU(disp_info,
 							   HRT_PRIMARY, i);
