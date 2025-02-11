@@ -167,7 +167,7 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 			dbg->emi_s_snapshot, dbg->zram_snapshot, dbg->apu_snapshot);
 	} else if (log_type == DUMP_NO_HEADER)
 		len += snprintf(buf + len, PAGE_SIZE - len,
-			"%u,%u,%u,%u,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",
+			"%u,%u,%u,%u,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",
 			dbg->enable, dbg->dect_cnt,
 			dbg->temp_cnt, dbg->sys_time, dbg->dect_result,
 			dbg->dyn_base, dbg->cg_subsys_dyn, dbg->cg_ratio,
@@ -175,8 +175,8 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 			dbg->dram2_smap_snapshot, dbg->dram3_smap_snapshot,
 			dbg->chinf0_smap_snapshot, dbg->chinf1_smap_snapshot,
 			dbg->venc0_smap_snapshot, dbg->venc1_smap_snapshot,
-			dbg->venc2_smap_snapshot, dbg->emi_s_snapshot,
-			dbg->zram_snapshot, dbg->apu_snapshot);
+			dbg->venc2_smap_snapshot, dbg->emi_snapshot,
+			dbg->emi_s_snapshot, dbg->zram_snapshot, dbg->apu_snapshot);
 	else if (log_type == DUMP_KERNEL) {
 		len += snprintf(buf + len, PAGE_SIZE - len, "ENABLE=%u ", dbg->enable);
 		len += snprintf(buf + len, PAGE_SIZE - len, "DECT_CNT=%u ", dbg->dect_cnt);
