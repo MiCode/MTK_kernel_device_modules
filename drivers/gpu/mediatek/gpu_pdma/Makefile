@@ -11,19 +11,19 @@
 # See http://www.gnu.org/licenses/gpl-2.0.html for more details.
 #
 
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_pdma/include
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_pdma/include
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq
 
-ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
-ifneq ($(wildcard $(src)/gpu_pdma_mt6991.c),)
-mtk_gpu_pdma_mt6991-y := gpu_pdma_mt6991.o
-obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpu_pdma_mt6991.o
-endif
+#ifneq ($(CONFIG_MTK_GPU_LEGACY),y)
+#ifneq ($(wildcard $(src)/gpu_pdma_mt6991.c),)
+#mtk_gpu_pdma_mt6991-y := gpu_pdma_mt6991.o
+#obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpu_pdma_mt6991.o
+#endif
 
-ifneq ($(wildcard $(src)/gpu_pdma_mt6993.c),)
-mtk_gpu_pdma_mt6993-y := gpu_pdma_mt6993.o
-obj-$(CONFIG_MTK_GPU_MT6993_SUPPORT) += mtk_gpu_pdma_mt6993.o
-endif
-endif
+#ifneq ($(wildcard $(src)/gpu_pdma_mt6993.c),)
+#mtk_gpu_pdma_mt6993-y := gpu_pdma_mt6993.o
+#obj-$(CONFIG_MTK_GPU_MT6993_SUPPORT) += mtk_gpu_pdma_mt6993.o
+#endif
+#endif
