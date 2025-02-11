@@ -24,7 +24,7 @@
 #include "../mtk_drm_fb.h"
 #include "../mtk_dsi.h"
 
-#define OD_TABLE_MAX 4
+#define OD_TABLE_MAX 128
 #define DMR_TABLE_MAX 2
 #define DMR_GAIN_MAX 15
 #define OD_GAIN_MAX 15
@@ -414,7 +414,7 @@ struct mtk_disp_oddmr_data {
 	bool is_od_need_force_clk;
 	bool is_od_support_sec;
 	bool is_od_merge_lines;
-	bool is_od_4_table;
+	bool is_od_table_bl_chg;
 	int tile_overhead;
 	uint32_t dmr_buffer_size;
 	uint32_t dbir_buffer_size;
@@ -447,7 +447,7 @@ struct mtk_disp_oddmr_od_data {
 	 *	a:which table for dram
 	 *	b:this table save in which sram
 	 */
-	struct cmdq_pkt *od_sram_pkgs[4][2];
+	struct cmdq_pkt *od_sram_pkgs[OD_TABLE_MAX][2];
 	struct mtk_drm_gem_obj *r_channel;
 	struct mtk_drm_gem_obj *g_channel;
 	struct mtk_drm_gem_obj *b_channel;

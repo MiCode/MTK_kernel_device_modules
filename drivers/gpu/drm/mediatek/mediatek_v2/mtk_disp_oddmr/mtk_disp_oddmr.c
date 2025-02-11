@@ -4329,11 +4329,11 @@ static int _mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 		if ((IS_TABLE_VALID(idx, od_param->valid_table)) &&
 			(fps >= od_param->od_tables[idx]->table_basic_info.min_fps) &&
 			(fps <= od_param->od_tables[idx]->table_basic_info.max_fps) &&
-			(!oddmr_data->data->is_od_4_table || (oddmr_data->data->is_od_4_table &&
+			(!oddmr_data->data->is_od_table_bl_chg || (oddmr_data->data->is_od_table_bl_chg &&
 			(dbv >= od_param->od_tables[idx]->table_basic_info.min_dbv) &&
 			(dbv <= od_param->od_tables[idx]->table_basic_info.max_dbv)))) {
 			ODDMRFLOW_LOG("table_idx %d,is_4_tab:%d,min_fps:%d,max_fps:%d,min_dbv:%d,max_dbv:%d\n", idx,
-			oddmr_data->data->is_od_4_table,
+			oddmr_data->data->is_od_table_bl_chg,
 			od_param->od_tables[idx]->table_basic_info.min_fps,
 			od_param->od_tables[idx]->table_basic_info.max_fps,
 			od_param->od_tables[idx]->table_basic_info.min_dbv,
@@ -4385,8 +4385,8 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 	if ((IS_TABLE_VALID(tmp_table_idx, od_param->valid_table)) &&
 	(cur_timing->vrefresh >= od_param->od_tables[tmp_table_idx]->table_basic_info.min_fps) &&
 	(cur_timing->vrefresh <= od_param->od_tables[tmp_table_idx]->table_basic_info.max_fps) &&
-	(!oddmr_data->data->is_od_4_table || //if is_od_4_table = 0 always true, if is_od_4_table = 1, need judge bl_level
-	(oddmr_data->data->is_od_4_table &&
+	(!oddmr_data->data->is_od_table_bl_chg || //if is_od_table_bl_chg = 1, need judge bl_level
+	(oddmr_data->data->is_od_table_bl_chg &&
 	(cur_timing->bl_level >= od_param->od_tables[tmp_table_idx]->table_basic_info.min_dbv) &&
 	(cur_timing->bl_level <= od_param->od_tables[tmp_table_idx]->table_basic_info.max_dbv)))) {
 		*table_idx = tmp_table_idx;
@@ -4405,8 +4405,8 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 	if ((IS_TABLE_VALID(tmp1_table_idx, od_param->valid_table)) &&
 	(cur_timing->vrefresh >= od_param->od_tables[tmp1_table_idx]->table_basic_info.min_fps) &&
 	(cur_timing->vrefresh <= od_param->od_tables[tmp1_table_idx]->table_basic_info.max_fps) &&
-	(!oddmr_data->data->is_od_4_table || //if is_od_4_table = 0 always true, if is_od_4_table = 1, need judge bl_level
-	(oddmr_data->data->is_od_4_table &&
+	(!oddmr_data->data->is_od_table_bl_chg || //if is_od_table_bl_chg = 1, need judge bl_level
+	(oddmr_data->data->is_od_table_bl_chg &&
 	(cur_timing->bl_level >= od_param->od_tables[tmp1_table_idx]->table_basic_info.min_dbv) &&
 	(cur_timing->bl_level <= od_param->od_tables[tmp1_table_idx]->table_basic_info.max_dbv)))) {
 		*table_idx = tmp1_table_idx;
@@ -4417,7 +4417,7 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 
 	/* worst case should update table */
 	ret = _mtk_oddmr_od_table_lookup(oddmr_data,cur_timing);
-	if (ret >= 0 && oddmr_data->data->is_od_4_table) {
+	if (ret >= 0 && oddmr_data->data->is_od_table_bl_chg) {
 		*table_idx = tmp_table_idx; //used table not change before updata table finish
 		od_param->updata_dram_table = ret;
 		ODDMRFLOW_LOG("update table fps %u, vrefresh %u, table_idx %d sram(%d %d)\n",
@@ -5898,7 +5898,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	mtk_oddmr_drm_mode_to_oddmr_timg(mode, &primary_data->current_timing);
 	mutex_unlock(&primary_data->timing_lock);
 
-	if (oddmr_data->data->is_od_4_table)
+	if (oddmr_data->data->is_od_table_bl_chg)
 		mtk_oddmr_create_workqueue(oddmr_data);
 	// start thread for oddmr sof
 	sprintf(thread_name, "oddmr_sof_%d", comp->id);
@@ -6544,7 +6544,7 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 
 				current_timing->old_vrefresh = current_timing->vrefresh;
 				current_timing->old_bl_level = current_timing->bl_level;
-			} else if (oddmr_data->data->is_od_4_table && ret == 2) {
+			} else if (oddmr_data->data->is_od_table_bl_chg && ret == 2) {
 				if (oddmr_data->data->od_version >= MTK_OD_V2)
 					oddmr_data->od_update_sram = 1;
 				//TODO:update table work queue(table pq sram) mt6985 no need
@@ -7484,10 +7484,11 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc;
-	int ret, table_idx, pm_ret = 0;
+	int ret, idx, table_idx, pm_ret = 0;
 	struct cmdq_client *client = NULL;
 	bool od_support = oddmr_data->primary_data->od_support;
 	uint32_t value = 0, mask = 0;
+	uint32_t cnts = od_param->od_basic_info.basic_param.table_cnt;
 
 	ODDMRAPI_LOG("+\n");
 	DDPMSG("%s+\n",__func__);
@@ -7589,29 +7590,18 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			}
 			CRTC_MMP_MARK(0, oddmr_ctl, 0, 12);
 		}
-
-		if (IS_TABLE_VALID(2, od_param->valid_table)) {
-			CRTC_MMP_MARK(0, oddmr_ctl, 0, 20);
-			mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp, oddmr_data, 2);
-			if(table_idx == 2) {
-				oddmr_data->od_data.od_sram_table_idx[1] = 1;
-				oddmr_data->od_data.od_dram_sel[1] = 2;
-				CRTC_MMP_MARK(0, oddmr_ctl, 0, 21);
-				cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[2][1]);
+		for (idx = 0; idx < cnts; idx++) {
+			if (IS_TABLE_VALID(idx, od_param->valid_table)) {
+				CRTC_MMP_MARK(0, oddmr_ctl, 0, idx * 10);
+				mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp, oddmr_data, idx);
+				if(table_idx == idx) {
+					oddmr_data->od_data.od_sram_table_idx[1] = 1;
+					oddmr_data->od_data.od_dram_sel[1] = idx;
+					CRTC_MMP_MARK(0, oddmr_ctl, 0, idx * 10 + 1);
+					cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[idx][1]);
+				}
+				CRTC_MMP_MARK(0, oddmr_ctl, 0, idx * 10 + 2);
 			}
-			CRTC_MMP_MARK(0, oddmr_ctl, 0, 22);
-		}
-
-		if (IS_TABLE_VALID(3, od_param->valid_table)) {
-			CRTC_MMP_MARK(0, oddmr_ctl, 0, 30);
-			mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp, oddmr_data, 3);
-			if(table_idx == 3) {
-				oddmr_data->od_data.od_sram_table_idx[1] = 1;
-				oddmr_data->od_data.od_dram_sel[1] = 3;
-				CRTC_MMP_MARK(0, oddmr_ctl, 0, 31);
-				cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[3][1]);
-			}
-			CRTC_MMP_MARK(0, oddmr_ctl, 0, 32);
 		}
 
 		if (table_idx == 0) {
@@ -7646,7 +7636,6 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 				cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[0][0]);
 				CRTC_MMP_MARK(0, oddmr_ctl, 1, 2);
 			}
-
 			if (IS_TABLE_VALID(1, od_param->valid_table)) {
 				CRTC_MMP_MARK(0, oddmr_ctl, 1, 10);
 				mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp1, oddmr1_data, 1);
@@ -7658,29 +7647,18 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 				}
 				CRTC_MMP_MARK(0, oddmr_ctl, 1, 12);
 			}
-
-			if (IS_TABLE_VALID(2, od_param->valid_table)) {
-				CRTC_MMP_MARK(0, oddmr_ctl, 1, 20);
-				mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp1, oddmr1_data, 2);
-				if(table_idx == 2) {
-					oddmr1_data->od_data.od_sram_table_idx[1] = 1;
-					oddmr1_data->od_data.od_dram_sel[1] = 2;
-					CRTC_MMP_MARK(0, oddmr_ctl, 1, 21);
-					cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[1][1]);
+			for (idx = 0; idx < cnts; idx++) {
+				if (IS_TABLE_VALID(idx, od_param->valid_table)) {
+					CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10);
+					mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp1, oddmr1_data, idx);
+					if(table_idx == idx) {
+						oddmr1_data->od_data.od_sram_table_idx[1] = 1;
+						oddmr1_data->od_data.od_dram_sel[1] = idx;
+						CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10 +1);
+						cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[idx][1]);
+					}
+					CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10 + 2);
 				}
-				CRTC_MMP_MARK(0, oddmr_ctl, 1, 22);
-			}
-
-			if (IS_TABLE_VALID(3, od_param->valid_table)) {
-				CRTC_MMP_MARK(0, oddmr_ctl, 1, 30);
-				mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp1, oddmr1_data, 3);
-				if(table_idx == 3) {
-					oddmr1_data->od_data.od_sram_table_idx[1] = 1;
-					oddmr1_data->od_data.od_dram_sel[1] = 3;
-					CRTC_MMP_MARK(0, oddmr_ctl, 0, 31);
-					cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[1][1]);
-				}
-				CRTC_MMP_MARK(0, oddmr_ctl, 1, 32);
 			}
 
 			if (table_idx == 0) {
@@ -11923,7 +11901,7 @@ static const struct mtk_disp_oddmr_data mt6985_oddmr_driver_data = {
 	.is_od_need_force_clk = true,
 	.is_od_support_sec = false,
 	.is_od_merge_lines = true,
-	.is_od_4_table = false,
+	.is_od_table_bl_chg = false,
 	.tile_overhead = 8,
 	.dmr_buffer_size = 458,
 	.odr_buffer_size = 264,
@@ -11940,7 +11918,7 @@ static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
 	.is_od_need_force_clk = false,
 	.is_od_support_sec = false,
 	.is_od_merge_lines = true,
-	.is_od_4_table = false,
+	.is_od_table_bl_chg = false,
 	.tile_overhead = 0,
 	.dmr_buffer_size = 458,
 	.odr_buffer_size = 264,
@@ -11957,7 +11935,7 @@ static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
 	.is_od_need_force_clk = false,
 	.is_od_support_sec = false,
 	.is_od_merge_lines = true,
-	.is_od_4_table = true,
+	.is_od_table_bl_chg = true,
 	.p_num = 2,
 	.tile_overhead = 8,
 	.dmr_buffer_size = 458,
@@ -11975,7 +11953,7 @@ static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
 	.is_od_need_force_clk = false,
 	.is_od_support_sec = false,
 	.is_od_merge_lines = false,
-	.is_od_4_table = true,
+	.is_od_table_bl_chg = true,
 	.tile_overhead = 8,
 	.dmr_buffer_size = 102,
 	.dbir_buffer_size = 72,
@@ -11998,13 +11976,10 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.is_od_need_force_clk = false,
 	.is_od_support_sec = false,
 	.is_od_merge_lines = false,
-	.is_od_4_table = true,
-	// .p_num = 2,
+	.is_od_table_bl_chg = true,
 	.tile_overhead = 8,
 	.dmr_buffer_size = 102,
 	.dbir_buffer_size = 72,
-	.odr_buffer_size = 960,
-	.odw_buffer_size = 960,
 	.irq_handler = NULL,
 	.dbi_version = MTK_DBI_V3,
 	.dmr_version = MTK_DMR_V2,
