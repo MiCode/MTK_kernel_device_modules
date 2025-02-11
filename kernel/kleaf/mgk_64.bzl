@@ -357,6 +357,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:ddk_makefile".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_bm:srcs".format(kernel_version),
@@ -1241,6 +1242,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-dbg-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-fmeter-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/clk/mediatek:pd-chk-mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6991".format(kernel_version): "mt6991",
+    "//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_ghpm_mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_ghpm_mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6991".format(kernel_version): "mt6991",
@@ -1855,9 +1858,9 @@ mgk_64_platform_device_modules = {
     #"drivers/gpu/mediatek/gpufreq/v2/mtk_gpufreq_mt6895.ko": "mt6895",
     "drivers/gpu/mediatek/ged/mtk_ged_mt6991.ko": "mt6991",
     "drivers/gpu/mediatek/ged/mtk_ged_mt6993.ko": "mt6993",
-    "drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6989.ko": "mt6989",
-    "drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6991.ko": "mt6991",
-    "drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6993.ko": "mt6993",
+    #"drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6989.ko": "mt6989",
+    #"drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6991.ko": "mt6991",
+    #"drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6993.ko": "mt6993",
     "drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko": "mt6991",
     "drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6993.ko": "mt6993",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6886.ko": "mt6886",
@@ -4560,8 +4563,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched/c2ps_ioctl:c2ps_perf_ioctl")
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/ged/mtk_ged_mt6991.ko")
         mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/ged/mtk_ged_mt6993.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6989.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6991.ko")
-        mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6993.ko")
+        #mgk_64_platform_device_modules.pop("drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6989.ko")
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6991".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6993".format(kernel_version))
 
 get_overlay_modules_list()

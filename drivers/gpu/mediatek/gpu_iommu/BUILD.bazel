@@ -1,0 +1,69 @@
+#
+# Copyright (C) 2025 MediaTek Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_gpu_iommu_mt6991",
+    out = "mtk_gpu_iommu_mt6991.ko",
+    srcs = [
+        "gpu_iommu_mt6991.c"
+    ]+glob(["**/include/*.h"]),
+
+    includes = ["include"],
+
+    copts = [
+        "-Wno-unused-variable",
+        "-Wno-unused-function",
+        "-I$(DEVICE_MODULES_PATH)/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_gpu_iommu_mt6993",
+    out = "mtk_gpu_iommu_mt6993.ko",
+    srcs = [
+        "gpu_iommu_mt6993.c"
+    ]+glob(["**/include/*.h"]),
+
+    includes = ["include"],
+
+    copts = [
+        "-Wno-unused-variable",
+        "-Wno-unused-function",
+        "-I$(DEVICE_MODULES_PATH)/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+
+)

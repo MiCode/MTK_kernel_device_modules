@@ -10,28 +10,28 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-ccflags-y += -I$(DEVICE_MODULES_PATH)/include/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/mt-plat/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/include/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/mt-plat/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
-ccflags-y += \
-	-Wno-unused-variable \
-	-Wno-unused-function
+#ccflags-y += \
+#	-Wno-unused-variable \
+#	-Wno-unused-function
 
-ifneq ($(wildcard $(src)/gpu_iommu_mt6989.c),)
-mtk_gpu_iommu_mt6989-y := gpu_iommu_mt6989.o
-obj-$(CONFIG_MTK_GPU_MT6989_SUPPORT) += mtk_gpu_iommu_mt6989.o
-endif
+#ifneq ($(wildcard $(src)/gpu_iommu_mt6989.c),)
+#mtk_gpu_iommu_mt6989-y := gpu_iommu_mt6989.o
+#obj-$(CONFIG_MTK_GPU_MT6989_SUPPORT) += mtk_gpu_iommu_mt6989.o
+#endif
 
-ifneq ($(wildcard $(src)/gpu_iommu_mt6991.c),)
-mtk_gpu_iommu_mt6991-y := gpu_iommu_mt6991.o
-obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpu_iommu_mt6991.o
-endif
+#ifneq ($(wildcard $(src)/gpu_iommu_mt6991.c),)
+#mtk_gpu_iommu_mt6991-y := gpu_iommu_mt6991.o
+#obj-$(CONFIG_MTK_GPU_MT6991_SUPPORT) += mtk_gpu_iommu_mt6991.o
+#endif
 
-mtk_gpu_iommu_mt6993-y := gpu_iommu_mt6993.o
-ifneq ($(wildcard $(src)/gpu_iommu_mt6993.c),)
-obj-$(CONFIG_MTK_GPU_MT6993_SUPPORT) += mtk_gpu_iommu_mt6993.o
-endif
+#mtk_gpu_iommu_mt6993-y := gpu_iommu_mt6993.o
+#ifneq ($(wildcard $(src)/gpu_iommu_mt6993.c),)
+#obj-$(CONFIG_MTK_GPU_MT6993_SUPPORT) += mtk_gpu_iommu_mt6993.o
+#endif
