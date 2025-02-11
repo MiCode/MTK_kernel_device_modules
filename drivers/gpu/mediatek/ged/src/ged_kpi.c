@@ -2226,7 +2226,7 @@ static GED_ERROR ged_kpi_push_timestamp(
 	void *fence_addr)
 {
 	static atomic_t event_QedBuffer_cnt, event_3d_fence_cnt, event_hw_vsync;
-	static atomic_t tcm_rb_write_idx, sram_rb_write_idx;
+	static atomic_t sram_rb_write_idx;
 	unsigned long ui32IRQFlags;
 	GPU_TS_INFO temp_ts;
 	unsigned int tmp_sram_rb_write_idx = 0, tmp_sram_rb_read_idx = 0;
@@ -2733,46 +2733,6 @@ unsigned int ged_kpi_get_cur_avg_gpu_freq(void)
 #endif /* MTK_GED_KPI */
 }
 
-static GED_BOOL ged_kpi_update_sysram_uncompleted_fcn(void *pvoid, void *pvParam)
-{
-	struct GED_KPI_HEAD *psHead = (struct GED_KPI_HEAD *) pvoid;
-	struct ged_sysram_info *info = (struct ged_sysram_info *) pvParam;
-	struct GED_KPI *psKPI = NULL;
-	struct list_head *psListEntry, *psListEntryTemp;
-	struct list_head *psList = &psHead->sList;
-	long long t_gpu_uncomplete = 0;
-	int i = 0;
-
-	spin_lock(&psHead->sListLock);
-	list_for_each_prev_safe(psListEntry, psListEntryTemp, psList) {
-		psKPI = list_entry(psListEntry, struct GED_KPI, sList);
-		if (psKPI && (psKPI->ulMask & GED_TIMESTAMP_TYPE_2) == 0) {
-			// only uncompleted frame has uncompleted time
-			// GPU completion start time is queue
-			if (psKPI->ulMask & GED_TIMESTAMP_TYPE_1)
-				t_gpu_uncomplete = info->current_timestamp - psKPI->ullTimeStamp1;
-
-			// release fence is signaled after queue
-			if (g_ged_pre_fence_chk == 1 &&
-				psKPI->ulMask & GED_TIMESTAMP_TYPE_P &&
-				psKPI->ulMask & GED_TIMESTAMP_TYPE_1 &&
-				psKPI->ullTimeStampP > psKPI->ullTimeStamp1)
-				t_gpu_uncomplete = info->current_timestamp - psKPI->ullTimeStampP;
-			// 4/3 buffer per BQ for 120FPS/<120FPS producer
-			if (++i >= 4)
-				break;
-		}
-	}
-	spin_unlock(&psHead->sListLock);
-
-	psHead->t_gpu_latest_uncompleted = t_gpu_uncomplete;
-
-	if (info->last_tgpu_uncompleted <  psHead->t_gpu_latest_uncompleted)
-		info->last_tgpu_uncompleted = psHead->t_gpu_latest_uncompleted;
-	info->uncompleted_count += psHead->i32Gpu_uncompleted;
-
-	return GED_TRUE;
-}
 
 void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 {

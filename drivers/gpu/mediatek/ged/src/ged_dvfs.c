@@ -4383,17 +4383,6 @@ static enum hrtimer_restart gpu_mewtwo_timer_cb(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
-static unsigned int ged_get_eb_default_policy_mode(void)
-{
-	struct fdvfs_ipi_data ipi_data;
-	struct fdvfs_ipi_data* p_ipi_data = &ipi_data;
-	int ret = 0;
-
-	p_ipi_data->cmd = GPUFDVFS_IPI_GET_DEFAULT_POLICY_MODE;
-	ret = mtk_get_fastdvfs_mode((void *)p_ipi_data);
-	return ret ? p_ipi_data->u.set_para.arg[0] : 0;
-}
-
 void ged_notify_fix_opp_from_gpufreq(int gpu_opp, int stack_opp)
 {
 	g_force_commit = true;
