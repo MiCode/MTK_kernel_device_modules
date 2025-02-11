@@ -56,7 +56,7 @@ struct engine_gear_control_t {
 DECLARE_STATIC_KEY_TRUE(engine_power_efficiency);
 static inline bool engine_power_efficiency_enabled(void)
 {
-	return static_branch_unlikely(&engine_power_efficiency);
+	return static_branch_likely(&engine_power_efficiency);
 }
 
 int engine_gear_init(struct platform_device *pdev, struct engine_gear_control_t *gear_ctrl);
