@@ -95,6 +95,24 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "mtk-vmm-isp71-regulator",
+    srcs = [
+        "mtk-vmm-isp71-regulator.c",
+    ],
+
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/remoteproc:mtk_ccu".format(kernel_version),
+    ],
+    out = "mtk-vmm-isp71-regulator.ko",
+)
+
+define_mgk_ddk_ko(
     name = "mt6681-regulator",
     srcs = [
         "mt6681-regulator.c",
