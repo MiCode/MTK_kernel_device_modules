@@ -69,6 +69,8 @@ int fstb_no_r_timer_enable;
 EXPORT_SYMBOL(fstb_no_r_timer_enable);
 int fstb_filter_poll_enable;
 EXPORT_SYMBOL(fstb_filter_poll_enable);
+int fstb_fi_detect_enable;
+EXPORT_SYMBOL(fstb_fi_detect_enable);
 
 DECLARE_WAIT_QUEUE_HEAD(queue);
 DECLARE_WAIT_QUEUE_HEAD(active_queue);
@@ -119,7 +121,9 @@ int (*fstb_get_logic_head_trace_event_fp)(int pid, unsigned long long bufID, int
 	unsigned long long pprev_queue_end_ts, unsigned long long dequeue_start_ts,
 	unsigned long long *logical_head, int *has_logic_head);
 EXPORT_SYMBOL(fstb_get_logic_head_trace_event_fp);
-
+int (*fstb_get_is_interpolation_is_on_fp)(int pid, unsigned long long bufID, int tgid,
+	unsigned long long cur_queue_end_ts, int *target_fps);
+EXPORT_SYMBOL(fstb_get_is_interpolation_is_on_fp);
 // AutoTest
 int (*test_fstb_hrtimer_info_update_fp)(int *tmp_tid, unsigned long long *tmp_ts, int tmp_num,
 	int *i_tid, unsigned long long *i_latest_ts, unsigned long long *i_diff,

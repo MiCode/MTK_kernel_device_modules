@@ -141,6 +141,17 @@ static bool cam_status;
 
 int powerhal_tid;
 
+/* to make task_turbo KO load properly in legacy chipsets with FPSGO V4 */
+void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid,
+		int binder_uclamp_max, int binder_uclamp_min);
+EXPORT_SYMBOL_GPL(task_turbo_do_set_binder_uclamp_param);
+void (*task_turbo_do_unset_binder_uclamp_param)(pid_t pid);
+EXPORT_SYMBOL_GPL(task_turbo_do_unset_binder_uclamp_param);
+void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
+EXPORT_SYMBOL_GPL(task_turbo_do_binder_uclamp_stuff);
+void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
+EXPORT_SYMBOL_GPL(task_turbo_do_enable_binder_uclamp_inheritance);
+
 #if !IS_ENABLED(CONFIG_ARM64)
 int cap_ready;
 #endif
