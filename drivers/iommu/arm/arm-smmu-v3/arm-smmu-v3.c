@@ -2295,7 +2295,7 @@ static void arm_smmu_domain_free_paging(struct iommu_domain *domain)
 	struct arm_smmu_domain *smmu_domain = to_smmu_domain(domain);
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 
-	if (smmu->impl && smmu->impl->free_io_pgtable_ops)
+	if (smmu && smmu->impl && smmu->impl->free_io_pgtable_ops)
 		smmu->impl->free_io_pgtable_ops(smmu_domain->pgtbl_ops);
 	else
 		free_io_pgtable_ops(smmu_domain->pgtbl_ops);
