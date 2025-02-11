@@ -257,6 +257,20 @@ enable_vcp_end:
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_enable_vcp);
 
+void mmdvfs_record_user(const u32 user, const u32 rc, const u32 level)
+{
+	u64 ns = sched_clock(), sec = ns / 1000000000, usec = (ns / 1000) % 1000000;
+	u32 cnt;
+
+	if (DRAM_VCP_BASE && user < DRAM_USR_NUM_MAX) {
+		cnt = readl(DRAM_USR_IDX(user)) % DRAM_REC_CNT;
+		writel(DRAM_ENC_USR(rc, level, usec), DRAM_USR_VAL(user, cnt));
+		writel(sec, DRAM_USR_SEC(user, cnt));
+		writel((cnt + 1) % DRAM_REC_CNT, DRAM_USR_IDX(user));
+	}
+}
+EXPORT_SYMBOL_GPL(mmdvfs_record_user);
+
 static inline void mmdvfs_check_vcp_power(void)
 {
 	int i;
@@ -411,6 +425,7 @@ static int mmdvfs_vcp_notifier_callback(struct notifier_block *nb, unsigned long
 	switch (action) {
 	case VCP_EVENT_READY:
 		MMDVFS_DBG("VCP_EVENT_READY in");
+		mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_INIT, 0, 0, NULL, true);
 		break;
 	}
 	return NOTIFY_DONE;
@@ -533,6 +548,8 @@ static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long 
 			break;
 
 	level = (i == mmdvfs_data->rc[mux->rc].level_num) ? (i - 1) : i;
+
+	mmdvfs_record_user(user->id, mux->rc, level);
 
 	mutex_lock(&mux->lock);
 	if(mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->dfs_vote_by_xpu)

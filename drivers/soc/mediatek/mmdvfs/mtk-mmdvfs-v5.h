@@ -100,5 +100,6 @@ int mmdvfs_force_vcore_notify(const u32 val);
 int mmdvfs_force_step(const u8 idx, const s8 opp);
 int mmdvfs_dump_dvfsrc_rg(void);
 int mmdvfs_dump_dvfsrc_record(void);
+void mmdvfs_record_user(const u32 user, const u32 rc, const u32 level);
 #endif
 

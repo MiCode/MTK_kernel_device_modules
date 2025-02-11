@@ -33,14 +33,24 @@ static inline bool mmdvfs_get_mmup_sram_enable(void) { return false; }
 static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 #endif
 
-#define MEM_MMUP_BASE		mmdvfs_get_mmup_base(NULL)
-#define MEM_VCP_BASE		mmdvfs_get_vcp_base(NULL)
-#define MEM_BASE		(mmdvfs_get_mmup_enable() ? MEM_MMUP_BASE : MEM_VCP_BASE)
+#define DRAM_MMUP_BASE		mmdvfs_get_mmup_base(NULL)
+#define DRAM_VCP_BASE		mmdvfs_get_vcp_base(NULL)
 
-#define MEM_IPI_SYNC_FUNC(vcp)	((vcp ? MEM_VCP_BASE : MEM_MMUP_BASE) + 0x0)
-#define MEM_IPI_SYNC_DATA(vcp)	((vcp ? MEM_VCP_BASE : MEM_MMUP_BASE) + 0x4)
+#define DRAM_REC_CNT		(8)
+#define DRAM_OBJ_CNT		(2) // sec, val
 
-#define MEM_SRAM_OFFSET		(MEM_BASE + 0xFFC)
+#define DRAM_USR_NUM_MAX	(16)
+#define DRAM_USR_IDX(x)		(DRAM_VCP_BASE + 0x4 * (0 + (x))) // 16 users
+#define DRAM_USR_SEC(x, y)	(DRAM_VCP_BASE + 0x4 * (16 + DRAM_OBJ_CNT * (DRAM_REC_CNT * x + y) + 0))
+#define DRAM_USR_VAL(x, y)	(DRAM_VCP_BASE + 0x4 * (16 + DRAM_OBJ_CNT * (DRAM_REC_CNT * x + y) + 1))
+// 272
+
+#define DRAM_DEC_USR_PWR(val)	((val >> 28) & 0xf)
+#define DRAM_DEC_USR_LVL(val)	((val >> 24) & 0xf)
+#define DRAM_DEC_USR_USEC(val)	((val >>  0) & 0xffffff)
+#define DRAM_ENC_USR(pwr, lvl, usec)	(((pwr & 0xf) << 28) | ((lvl & 0xf) << 24) | (usec & 0xffffff) << 0)
+
+
 #define SRAM_BASE		mmdvfs_get_mmup_sram()
 #define SRAM_REC_CNT		(8)
 #define SRAM_OBJ_CNT		(2) // sec, usec << 16 | idx << 8 | opp

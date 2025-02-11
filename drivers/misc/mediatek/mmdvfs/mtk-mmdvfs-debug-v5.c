@@ -214,8 +214,28 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 
 	ret = mmdvfs_debug_dump_volt_freq(file);
 
-	mtk_mmdvfs_enable_vcp(true, ap_user ? ap_user[0].id : 0);
+	if (DRAM_VCP_BASE) {
+		// user vote history
+		for (i = 0; i < DRAM_USR_NUM_MAX; i++) {
+			k = readl(DRAM_USR_IDX(i)) % DRAM_REC_CNT;
+			for (j = k; j < DRAM_REC_CNT; j++) {
+				val = readl(DRAM_USR_VAL(i, j));
+				if (!readl(DRAM_USR_SEC(i, j)) && !DRAM_DEC_USR_USEC(val))
+					continue;
+				mmdvfs_seq_print(file, "[%5u.%3u] user:%u pwr:%u lvl:%u", readl(DRAM_USR_SEC(i, j)),
+					DRAM_DEC_USR_USEC(val), i, DRAM_DEC_USR_PWR(val), DRAM_DEC_USR_LVL(val));
+			}
+			for (j = 0; j < k; j++) {
+				val = readl(DRAM_USR_VAL(i, j));
+				if (!readl(DRAM_USR_SEC(i, j)) && !DRAM_DEC_USR_USEC(val))
+					continue;
+				mmdvfs_seq_print(file, "[%5u.%3u] user:%u pwr:%u lvl:%u", readl(DRAM_USR_SEC(i, j)),
+					DRAM_DEC_USR_USEC(val), i, DRAM_DEC_USR_PWR(val), DRAM_DEC_USR_LVL(val));
+			}
+		}
+	}
 
+	mtk_mmdvfs_enable_vcp(true, ap_user ? ap_user[0].id : 0);
 	mmdvfs_mmup_cb_mutex_lock();
 	ret = mmdvfs_mmup_cb_ready_get();
 	if (!ret || !unlikely(SRAM_BASE)) {
