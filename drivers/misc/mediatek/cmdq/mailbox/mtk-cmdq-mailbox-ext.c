@@ -65,6 +65,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define CMDQ_TPR_MASK			0xD0
 #define CMDQ_TPR_TIMEOUT_EN		0xDC
 #define CMDQ_ULTRA_EN			BIT(0)
+#define CMDQ_DDREN_VOTE			(0x3 << 6)
 #define CMDQ_PREULTRA_EN		BIT(1)
 #define CMDQ_DDR_URGENT			BIT(19)
 #define DDR_SEL_WLA			BIT(0)
@@ -315,6 +316,7 @@ struct cmdq {
 	struct device	*pd_mminfra_1;
 	struct device	*pd_mminfra_ao;
 	bool		gce_ddr_sel_wla;
+	bool		gce_wla_vote;
 	unsigned int	dbg3;
 	u32	cmdq_dbg_type;
 	u32		hw_trace_disable[CMDQ_THR_MAX_COUNT];
@@ -3683,6 +3685,8 @@ static int cmdq_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (of_property_read_bool(dev->of_node, "gce-wla-vote"))
+		cmdq->gce_wla_vote = true;
 
 	return 0;
 }
@@ -3906,6 +3910,9 @@ void cmdq_mbox_enable(void *chan)
 			cmdq->base + GCE_BUS_GCTL);
 		if (cmdq->sw_ddr_urgent)
 			writel(readl(cmdq->base + GCE_GCTL_VALUE) | CMDQ_DDR_URGENT,
+				cmdq->base + GCE_GCTL_VALUE);
+		if (cmdq->gce_wla_vote)
+			writel(readl(cmdq->base + GCE_GCTL_VALUE) & (~CMDQ_DDREN_VOTE),
 				cmdq->base + GCE_GCTL_VALUE);
 		if (cmdq->sw_ddr_en) {
 			writel((0x7 << 16) + 0x7, cmdq->base + GCE_GCTL_VALUE);
