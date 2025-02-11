@@ -45,6 +45,8 @@ static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 #define DRAM_USR_VAL(x, y)	(DRAM_VCP_BASE + 0x4 * (16 + DRAM_OBJ_CNT * (DRAM_REC_CNT * x + y) + 1))
 // 272
 
+#define DRAM_SRAM_OFFSET	(DRAM_VCP_BASE + 0xffc)
+
 #define DRAM_DEC_USR_PWR(val)	((val >> 28) & 0xf)
 #define DRAM_DEC_USR_LVL(val)	((val >> 24) & 0xf)
 #define DRAM_DEC_USR_USEC(val)	((val >>  0) & 0xffffff)

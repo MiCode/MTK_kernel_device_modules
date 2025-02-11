@@ -372,8 +372,11 @@ static inline void mmdvfs_mmup_sram_init(void)
 	static bool sram_init;
 
 	if (unlikely(!sram_init) && mmdvfs_mmup_sram) {
-		if(mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->get_mmup_sram_offset)
+		if(mmdvfs_data && mmdvfs_data->ops && mmdvfs_data->ops->get_mmup_sram_offset) {
 			mmdvfs_mmup_sram_va = vcp_get_sram_virt_ex() + mmdvfs_data->ops->get_mmup_sram_offset();
+			if (DRAM_VCP_BASE)
+				writel(mmdvfs_data->ops->get_mmup_sram_offset(), DRAM_SRAM_OFFSET);
+		}
 		sram_init = true;
 		MMDVFS_DBG("sram_init:%d virt:%#lx offset:%#x va:%#lx",
 			sram_init, (unsigned long)(void *)vcp_get_sram_virt_ex(),
