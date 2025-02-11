@@ -409,6 +409,9 @@ u32 mkp_sync_handler(struct user_pt_regs *regs)
 			regs->pc, far, el2_gpa_va);
 	}
 	*/
+	/* Is faulting va in the range of FIXADDR_xxx */
+	if (far >= FIX_END || far < FIX_START)
+		return -EPERM;
 
 	switch(ESR_ELx_EC(esr)) {
 	case ESR_ELx_EC_DABT_LOW:
@@ -486,16 +489,20 @@ finish:
 
 int mkp_perm_fault_handler(struct user_pt_regs *regs, u64 esr, u64 addr)
 {
-	int ret;
+	int ret = 0;
 
 	ret = mkp_sync_handler(regs);
-	write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
+	if (!ret)
+		write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
 
 	return ret;
 }
 
 void mkp_illegal_abt_notifier(struct user_pt_regs *regs)
 {
-	mkp_sync_handler(regs);
-	write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
+	int ret = 0;
+
+	ret = mkp_sync_handler(regs);
+	if (!ret)
+		write_sysreg_el2(read_sysreg_el2(SYS_ELR) + 4, SYS_ELR);
 }
