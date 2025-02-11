@@ -139,15 +139,9 @@
 #define RG_INIT_SW_SEL_MASK		0x1
 
 #define PHYD_COM_CR2_2			0x8A
-#define RG_EUSB_DISC_INT_DIS		BIT(0)
-#define RG_EUSB_DISC_INT_DIS_SHIFT	0
-#define RG_EUSB_DISC_INT_DIS_MASK	0x1
-#define RG_EUSB_WAKE_INT_DIS		BIT(1)
-#define RG_EUSB_WAKE_INT_DIS_SHIFT	1
-#define RG_EUSB_WAKE_INT_DIS_MASK	0x1
-#define RG_EUSB_FSM_INT_DIS			BIT(2)
-#define RG_EUSB_FSM_INT_DIS_SHIFT	2
-#define RG_EUSB_FSM_INT_DIS_MASK	0x1
+#define RG_RX_DBC_CNT			GENMASK(2,0)
+#define RG_RX_DBC_CNT_SHIFT		0
+#define RG_RX_DBC_CNT_MASK		0x7
 
 #define PHYA_COM_CR0_0			0x0
 #define PHYA_COM_CR0_2			0x2
@@ -583,11 +577,7 @@ static void eusb2_default_prop_set(struct eusb2_repeater *rptr)
 	regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR0_0,
 			RG_EUSB20_TXLDO_VREF_SEL, RG_EUSB20_TXLDO_VREF_SEL);
 	regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
-			RG_EUSB_DISC_INT_DIS, RG_EUSB_DISC_INT_DIS);
-	regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
-			RG_EUSB_WAKE_INT_DIS, RG_EUSB_WAKE_INT_DIS);
-	regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_2,
-			RG_EUSB_FSM_INT_DIS, 0);
+			RG_RX_DBC_CNT, 0x3 << RG_RX_DBC_CNT_SHIFT);
 
 }
 
