@@ -68,6 +68,7 @@ enum mtk_pd_connect_type {
 	MTK_PD_CONNECT_PE_READY_SNK_PD30,
 	MTK_PD_CONNECT_PE_READY_SNK_APDO,
 	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
+	MTK_PD_CONNECT_NEW_SRC_CAP,
 };
 
 static enum mtk_pd_connect_type pd_connect_tbl[] = {
@@ -82,6 +83,7 @@ static enum mtk_pd_connect_type pd_connect_tbl[] = {
 	MTK_PD_CONNECT_PE_READY_SNK_APDO,
 	MTK_PD_CONNECT_HARD_RESET,
 	MTK_PD_CONNECT_SOFT_RESET,
+	MTK_PD_CONNECT_NEW_SRC_CAP,
 	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
 	MTK_PD_CONNECT_TYPEC_ONLY_SNK,
 };
@@ -547,7 +549,6 @@ stop_repeat:
 	    ita_meas == PPS_STATUS_ITA_NOTSUPP) {
 		data->support_meas_cap = false;
 		data->support_cc = false;
-		// ret = MTK_ADAPTER_OK;
 	}
 	ret = pd_get_status(dev, &status);
 	if (ret == MTK_ADAPTER_NOT_SUPPORT) {
