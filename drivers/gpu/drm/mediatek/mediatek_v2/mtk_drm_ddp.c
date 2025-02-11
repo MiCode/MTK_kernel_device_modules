@@ -37489,12 +37489,26 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 					}
 				}
 			}
+
+			if (irq_time_index < IRQ_DEBUG_MAX) {
+				irq_time[irq_time_index].comp = NULL;
+				irq_time[irq_time_index].time = sched_clock();
+				irq_time_index++;
+			}
+
 			if(mtk_crtc0 && atomic_read(&mtk_crtc0->get_data_type)) {
 				temp = mtk_spr_check_postalign_status(mtk_crtc0);
 				if(temp >= 0)
 					atomic_set(&mtk_crtc0->postalign_relay, temp);
 				atomic_dec(&mtk_crtc0->get_data_type);
 			}
+
+			if (irq_time_index < IRQ_DEBUG_MAX) {
+				irq_time[irq_time_index].comp = NULL;
+				irq_time[irq_time_index].time = sched_clock();
+				irq_time_index++;
+			}
+
 			if ((m_id == 0 || m_id == 3) && ddp->data->wakeup_pf_wq)
 				mtk_wakeup_pf_wq(m_id);
 
@@ -40149,6 +40163,9 @@ void ovlsys_config_dump_reg_mt6993(void __iomem *config_regs)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0xA00; off <= 0xA10; off += 0x10)
+		mtk_serial_dump_reg(config_regs, off, 4);
+
+	for (off = 0xAC0; off <= 0xAD0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0xB00; off <= 0xB24; off += 0x10)
