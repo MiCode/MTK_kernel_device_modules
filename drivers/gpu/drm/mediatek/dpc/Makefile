@@ -7,4 +7,4 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc \
 
 obj-$(CONFIG_MTK_DPC) += dpc_v1/
 obj-$(CONFIG_MTK_DPC) += dpc_v2/
-obj-$(CONFIG_MTK_DPC) += dpc_v3/
+#obj-$(CONFIG_MTK_DPC) += dpc_v3/
