@@ -1406,7 +1406,7 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	end[end_cnt] = sched_clock();
 	if (end[end_cnt] - start >= 4000000) /* 4 ms*/
-		cmdq_msg("%s cost time %llu trace:%llu free buf:%llu kfree:%llu ms",
+		cmdq_msg("%s cost time %llu trace:%llu free buf:%llu kfree:%llu ns",
 			__func__, end[end_cnt] - start, end[0] - start,
 			end[1] - end[0], end[2] - end[1]);
 #endif
@@ -1467,7 +1467,7 @@ void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 	end[end_cnt] = sched_clock();
 
 	if (end[end_cnt] - start >= 4000000) /* 4 ms*/
-		cmdq_msg("%s cost time %llu trace:%llu free buf:%llu kfree:%llu ms",
+		cmdq_msg("%s cost time %llu trace:%llu free buf:%llu kfree:%llu ns",
 			__func__, end[end_cnt] - start, end[0] - start,
 			end[1] - end[0], end[2] - end[1]);
 #endif
@@ -3701,7 +3701,7 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	end[end_cnt] = sched_clock();
 	if (end[end_cnt] - start >= 4000000) /* 4 ms*/
-		cmdq_msg("%s cost time %llu alloc item:%llu finalize:%llu inst:%llu cb:%llu mbox:%llu ms",
+		cmdq_msg("%s cost time %llu alloc item:%llu finalize:%llu inst:%llu cb:%llu mbox:%llu ns",
 			__func__, end[end_cnt] - start, end[0] - start, end[1] - end[0],
 			end[2] - end[1], end[3] - end[2], end[4] - end[3]);
 #endif
