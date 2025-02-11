@@ -89,6 +89,7 @@ struct dmaheap_buf_copy {
 	int vmap_cnt;
 	void *vaddr;
 	bool uncached;
+	bool coherent;
 	/* helper function */
 	int (*show)(const struct dma_buf *dmabuf, struct seq_file *s);
 
@@ -265,6 +266,7 @@ struct heap_status_s debug_heap_list[] = {
 	{"mtk_mm", NULL, 0},
 	{"system", NULL, 0},
 	{"mtk_mm-uncached", NULL, 0},
+	{"mtk_mm-coherent", NULL, 0},
 	{"system-uncached", NULL, 0},
 	{"mtk_svp_region", NULL, 0},
 	{"mtk_svp_region-aligned", NULL, 0},
@@ -2386,7 +2388,7 @@ void dma_heap_default_show(struct dma_heap *heap,
 
 	/* pool data show */
 	heap_priv = heap ? dma_heap_get_drvdata(heap) : NULL;
-	if (heap_priv && !heap_priv->uncached) {
+	if (heap_priv && !heap_priv->uncached && !heap_priv->coherent) {
 		long pool_size = mtk_dmabuf_page_pool_size(heap);
 
 		if (pool_size > 0)

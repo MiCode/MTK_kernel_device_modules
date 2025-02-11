@@ -59,6 +59,7 @@ struct system_heap_buffer {
 	int vmap_cnt;
 	void *vaddr;
 	bool uncached;
+	bool coherent;
 	/* helper function */
 	int (*show)(const struct dma_buf *dmabuf, struct seq_file *s);
 
@@ -330,7 +331,7 @@ static bool is_cache_sync_dev(struct device *dev)
 	return false;
 }
 
-static int dma_coherent_check(struct device *dev, bool uncached)
+static int dma_coherent_check(struct dma_buf *dmabuf, struct device *dev, bool uncached)
 {
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	if (dev && dev_is_dma_coherent(dev) && uncached) {
@@ -339,6 +340,13 @@ static int dma_coherent_check(struct device *dev, bool uncached)
 		return -EINVAL;
 	}
 #endif
+
+	if (dev && !dev_is_dma_coherent(dev) && is_coherent_heap_dmabuf(dmabuf)) {
+		pr_info_ratelimited("%s fail, non-coherent dev:%s use coherent dmabuf\n",
+				    __func__, dev_name(dev));
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
@@ -351,7 +359,7 @@ static int system_heap_attach(struct dma_buf *dmabuf,
 	u64 tm1, tm2, tm_mid;
 	int ret;
 
-	ret = dma_coherent_check(attachment->dev, buffer->uncached);
+	ret = dma_coherent_check(dmabuf, attachment->dev, buffer->uncached);
 	if (ret)
 		return ret;
 
@@ -1265,6 +1273,7 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	buffer->heap = heap;
 	buffer->len = len;
 	buffer->uncached = uncached;
+	buffer->coherent = (heap_priv ? heap_priv->coherent : false);
 
 	INIT_LIST_HEAD(&pages);
 	i = 0;
@@ -1565,6 +1574,7 @@ static int mtk_heap_create(const char *name, const struct dma_heap_ops *ops,
 		}
 	}
 	heap_priv->uncached = false;
+	heap_priv->coherent = false;
 	heap_priv->buf_priv_dump = system_heap_buf_priv_dump;
 
 	heap = dma_heap_add(&exp_info);
@@ -1596,6 +1606,7 @@ static int mtk_heap_create(const char *name, const struct dma_heap_ops *ops,
 
 		heap_priv_uncache->page_pools = heap_priv->page_pools;
 		heap_priv_uncache->uncached = true;
+		heap_priv_uncache->coherent = false;
 		heap_priv_uncache->buf_priv_dump = system_heap_buf_priv_dump;
 
 		heap = dma_heap_add(&exp_info);
@@ -1672,6 +1683,49 @@ int mtk_dma_heap_config_parse(struct device *dev, struct mtk_dma_heap_config *he
 }
 EXPORT_SYMBOL_GPL(mtk_dma_heap_config_parse);
 
+static int mtk_mm_coherent_heap_create(struct mtk_dma_heap_config *heap_config)
+{
+	struct mtk_heap_priv_info *coh_heap_priv;
+	struct mtk_heap_priv_info *heap_priv;
+	struct dma_heap *coh_heap = NULL;
+	struct dma_heap *heap = NULL;
+	int ret;
+
+	ret = mtk_heap_create(heap_config->heap_name, &mtk_mm_heap_ops, false, false);
+	if (ret)
+		return ret;
+
+	/* check heap and set coherent property */
+	coh_heap = dma_heap_find(heap_config->heap_name);
+	if (!coh_heap) {
+		ret = -ENODEV;
+		goto out;
+	}
+
+	coh_heap_priv = dma_heap_get_drvdata(coh_heap);
+	if (!coh_heap_priv) {
+		ret = -ENODEV;
+		goto out;
+	}
+	coh_heap_priv->coherent = true;
+
+	/* Coherent heap and mtk_mm heap have the same page pool */
+	heap = dma_heap_find("mtk_mm");
+	if (heap) {
+		heap_priv = dma_heap_get_drvdata(heap);
+		if (heap_priv)
+			coh_heap_priv->page_pools = heap_priv->page_pools;
+	}
+
+out:
+	if (heap)
+		dma_heap_put(heap);
+	if (coh_heap)
+		dma_heap_put(coh_heap);
+
+	return ret;
+}
+
 static int mtk_dma_heap_config_probe(struct platform_device *pdev)
 {
 	struct mtk_dma_heap_config heap_config = {0};
@@ -1684,6 +1738,12 @@ static int mtk_dma_heap_config_probe(struct platform_device *pdev)
 	if (heap_config.heap_type == DMA_HEAP_MTK_SLC)
 		mtk_heap_create(heap_config.heap_name, &mtk_slc_heap_ops, false, false);
 
+	if (heap_config.heap_type == DMA_HEAP_MTK_MM_COHERENT) {
+		ret = mtk_mm_coherent_heap_create(&heap_config);
+		if (ret)
+			pr_info("%s, create coherent heap, ret:%d\n", __func__, ret);
+	}
+
 	return 0;
 }
 
@@ -1691,15 +1751,25 @@ static const struct mtk_dma_heap_match_data dmaheap_data_mtk_slc = {
 	.dmaheap_type = DMA_HEAP_MTK_SLC,
 };
 
+static const struct mtk_dma_heap_match_data dmaheap_data_mtk_mm_coherent = {
+	.dmaheap_type = DMA_HEAP_MTK_MM_COHERENT,
+};
+
 static const struct of_device_id mtk_dma_heap_match_table[] = {
-	{.compatible = "mediatek,dmaheap-mtk-slc", .data = &dmaheap_data_mtk_slc},
+	{	.compatible = "mediatek,dmaheap-mtk-slc",
+		.data = &dmaheap_data_mtk_slc,
+	},
+	{
+		.compatible = "mediatek,dmaheap-mtk-mm-coherent",
+		.data = &dmaheap_data_mtk_mm_coherent,
+	},
 	{},
 };
 
 static struct platform_driver mtk_dma_heap_config_driver = {
 	.probe = mtk_dma_heap_config_probe,
 	.driver = {
-		.name = "mtk-dma-heap-slc",
+		.name = "mtk-dma-heap-config",
 		.of_match_table = mtk_dma_heap_match_table,
 	},
 };
@@ -1799,6 +1869,21 @@ int is_uncached_dmabuf(const struct dma_buf *dmabuf)
 	return buffer->uncached;
 }
 EXPORT_SYMBOL_GPL(is_uncached_dmabuf);
+
+int is_coherent_heap_dmabuf(const struct dma_buf *dmabuf)
+{
+	struct system_heap_buffer *buffer;
+
+	if (IS_ERR_OR_NULL(dmabuf))
+		return 0;
+
+	buffer = dmabuf->priv;
+	if (IS_ERR_OR_NULL(buffer))
+		return 0;
+
+	return buffer->coherent;
+}
+EXPORT_SYMBOL_GPL(is_coherent_heap_dmabuf);
 
 hang_dump_cb hang_dump_proc;
 EXPORT_SYMBOL_GPL(hang_dump_proc);

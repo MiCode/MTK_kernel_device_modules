@@ -60,6 +60,7 @@ enum mtk_dmaheap_type {
 	DMA_HEAP_INVALID,
 	DMA_HEAP_SYSTEM,
 	DMA_HEAP_MTK_MM,
+	DMA_HEAP_MTK_MM_COHERENT,
 	DMA_HEAP_MTK_SEC_REGION,
 	DMA_HEAP_MTK_SEC_PAGE,
 	DMA_HEAP_MTK_SLC,
@@ -68,7 +69,8 @@ enum mtk_dmaheap_type {
 
 /* mtk_heap private info, used for dump */
 struct mtk_heap_priv_info {
-	int uncached;
+	bool uncached;
+	bool coherent;
 
 	/* heap specific page pool */
 	struct mtk_dmabuf_page_pool **page_pools;

@@ -63,6 +63,7 @@ struct mtk_sec_heap_buffer {
 	int vmap_cnt;
 	void *vaddr;
 	bool uncached;
+	bool coherent;
 	/* helper function */
 	int (*show)(const struct dma_buf *dmabuf, struct seq_file *s);
 

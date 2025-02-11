@@ -196,6 +196,7 @@ enum {
 	HEAP_TAG_NULL,
 	HEAP_TAG_MTK_MM,
 	HEAP_TAG_MTK_MM_UNCACHED,
+	HEAP_TAG_MTK_MM_COHERENT,
 	HEAP_TAG_MTK_CAMERA,
 	HEAP_TAG_MTK_CAMERA_UNCACHED,
 	HEAP_TAG_SYSTEM,
@@ -207,6 +208,7 @@ enum {
 static struct dump_heap_info dump_heap_list[] = {
 	{"mtk_mm", HEAP_TAG_MTK_MM, NULL},
 	{"mtk_mm-uncached", HEAP_TAG_MTK_MM_UNCACHED, NULL},
+	{"mtk_mm-coherent", HEAP_TAG_MTK_MM_COHERENT, NULL},
 	{"mtk_slc", HEAP_TAG_MTK_SLC, NULL},
 	{"system", HEAP_TAG_SYSTEM, NULL},
 	{"system-uncached", HEAP_TAG_SYSTEM_UNCACHED, NULL},
