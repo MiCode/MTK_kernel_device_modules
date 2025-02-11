@@ -352,6 +352,28 @@ static long magt_ioctl(struct file *filp,
 			dli.user_dep_arr, dli.user_dep_num);
 		break;
 	}
+	case MAGT_PELT_HINT_BOOST:
+	{
+		struct pelt_hint_boost *phint;
+		struct pelt_hint_boost hint;
+
+		if (!magt2pelt_notify_pelt_hint_boost_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		phint = (struct pelt_hint_boost *)arg;
+
+		if (perfctl_copy_from_user(&hint, phint,
+				sizeof(struct pelt_hint_boost))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+
+		ret = magt2pelt_notify_pelt_hint_boost_fp(hint.enable,
+			hint.pid_mode, hint.pid, hint.ratio);
+		break;
+	}
 	case MAGT_GET_FPSGO_SUPPORT:
 	{
 		struct fpsgo_pid_support pid_support;

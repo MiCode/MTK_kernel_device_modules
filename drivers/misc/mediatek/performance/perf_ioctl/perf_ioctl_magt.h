@@ -45,7 +45,16 @@
 #define MAGT_GET_FPSGO_RENDER_PERFIDX     _IOWR('g', 9, struct fpsgo_render_perf)
 #define MAGT_NOTIFY_THREAD_STATUS         _IOW('g', 10, struct thread_status_info)
 #define MAGT_SET_DEP_LIST_V3              _IOW('g', 11, struct dep_list_info_V3)
+#define MAGT_PELT_HINT_BOOST              _IOW('g', 14, struct pelt_hint_boost)
 #define MAGT_BIND_THREAD_TO_CPU           _IOW('g', 15, struct thread_binding_info)
+
+
+struct pelt_hint_boost {
+	int32_t pid;
+	int32_t pid_mode;
+	int32_t enable;
+	int32_t ratio;
+};
 
 struct thread_param {
 	int32_t tid;
