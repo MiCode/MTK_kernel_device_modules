@@ -15820,39 +15820,29 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		smmu_hyp_vms: smmu-hyp-vms {
 			compatible = "mtk,smmu-hyp-vms";
-			/* ipa-granule (test or debug only): 0=1G;1=2M;2=4KB */
-			ipa-granule = <0>;
-			/* sid 255 means bypass stage 2 translate */
+			/* vm-no-map-ranges = <IPA.high IPA.low size.high size.low> */
+			vm-no-map-ranges = <0x0 0x10700000 0x0 0x00100000>;
 			s2-bypass-sid = <255>;
+
 			linux-vm-0 {
 				compatible = "mtk,smmu-vm";
 				vmid = <0x0>;
-				/* identity-map(IPA=PA) = <IPA size> */
-				/* 0 ~ 0x80000000 sram , dram pa max support 0x800000000-1 (35-bit) */
-				identity-map = /bits/ 64 <0x80000000 0x7c0000000>,
-					/bits/ 64 <0x840000000 0x40000000>; /* emi slb buffer */
+				/* ipa-granule (test or debug only): 1=2M;2=4KB */
+				/* ipa-granule = <2>; */
+				/* identity-map(IPA=PA) = <IPA.high IPA.low size.high size.low> */
+				/* 0 ~ 0x40000000 sram , dram pa max support 0x800000000-1 (35-bit) */
+				identity-map = /bits/ 64 <0x80000000 0x780000000>,
+					/bits/ 64 <0x880000000 0x40000000>; /* emi slb buffer */
 				identity-map-mode = <0x7>; /* 0x7 = rwx */
 			};
+
 			protected-vm-1 {
 				compatible = "mtk,smmu-vm";
 				vmid = <0x1>;
-				/* sid	module_name
-				 * 2	GPUSID_PROT
-				 * 16	APUSID_PROT_SAPU
-				 * 137	MMSID_PROT_CAM
-				 * 138	MMSID_PROT_IMG
-				 * 139	MMSID_PROT_CCU_DATA
-				 * 145	MMSID_PROT_SVP_DISP
-				 * 147	MMSID_PROT_HDCP_DISP
-				 * 161	MMSID_PROT_HFRP
-				 * 177	MMSID_PROT_CODEC
-				 * 209	MMSID_PROT_SVP_DISP_PA2VA
-				 * 211	MMSID_PROT_HDCP_DISP_PA2VA
-				 */
 				sid = <2 16 137 138 139 145 147 161 177 209 211>;
-				/* identity-map(IPA=PA) = <IPA size> */
-				identity-map = /bits/ 64 <0x80000000 0x7c0000000>,
-					/bits/ 64 <0x840000000 0x40000000>; /* emi slb buffer */
+				/* identity-map(IPA=PA) = <IPA.high IPA.low size.high size.low> */
+				identity-map = /bits/ 64 <0x80000000 0x780000000>,
+					/bits/ 64 <0x880000000 0x40000000>; /* emi slb buffer */
 				identity-map-mode = <0x1>; /* 0x1 = r */
 				identity-map-mblock = "mediatek,me_GPUmputab_PMA";
 			};
