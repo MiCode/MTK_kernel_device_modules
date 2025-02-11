@@ -18,6 +18,8 @@ struct mtk_disp_vidle_para {
 	unsigned int wdt_en;
 };
 
+extern unsigned int default_emi_eff;
+
 #define DISP_VIDLE_TOP_EN BIT(0)	/* total V-Idle on/off */
 #define DISP_VIDLE_MTCMOS_DT_EN BIT(1)
 #define DISP_VIDLE_MMINFRA_DT_EN BIT(2)

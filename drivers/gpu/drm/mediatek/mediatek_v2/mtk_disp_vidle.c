@@ -695,8 +695,17 @@ void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 	if (disp_dpc_driver.dpc_hrt_bw_set) {
 		if (vidle_data.dpc_version == DPC_VER1)
 			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
-		else
-			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
+		else {
+			//bwm need consider different emi eff by compr ratio
+			//its means disp has considered emi eff and is more accurate than dpc
+			//in order to avoid dpc dividing emi eff again
+			//disp needs to be multiplied by emi eff and then report
+			if (bw_in_mb && vidle_data.drm_priv && vidle_data.drm_priv->data->need_emi_eff) {
+				vidle_data.hrt_bw = vidle_data.hrt_bw * default_emi_eff / 10000;
+				DDPINFO("%s modify bw=%d\n", __func__, vidle_data.hrt_bw);
+			}
+			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, vidle_data.hrt_bw, true);
+		}
 	} else
 		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
 
