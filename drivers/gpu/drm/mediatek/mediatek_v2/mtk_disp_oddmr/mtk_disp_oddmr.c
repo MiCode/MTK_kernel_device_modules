@@ -116,6 +116,7 @@
 #define REG_WBGR_OD_SRAM_IO_EN REG_FLD_MSB_LSB(3, 0)
 #define REG_OD_SRAM_WRITE_SEL REG_FLD_MSB_LSB(4, 4)
 #define REG_OD_SRAM_READ_SEL REG_FLD_MSB_LSB(5, 5)
+#define REG_OD_SRAM_READ_BACK_SEL REG_FLD_MSB_LSB(6, 6)
 #define REG_AUTO_SRAM_ADR_INC_EN REG_FLD_MSB_LSB(11, 11)
 #define DISP_ODDMR_OD_SRAM_CTRL_1 (0x0008 + DISP_ODDMR_REG_OD_BASE)
 #define DISP_ODDMR_OD_SRAM_CTRL_2 (0x000C + DISP_ODDMR_REG_OD_BASE)
@@ -3273,7 +3274,12 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 		}
 		cmdq_mbox_disable(client->chan);
 		ODDMRAPI_LOG("oddmr_config_od_sram, %d\n", oddmr_data->od_data.od_sram_read_sel);
-		if (oddmr_data->data->od_version >= MTK_OD_V2) {
+		if (oddmr_data->data->od_version >= MTK_OD_V3) {
+			if (oddmr_data->od_data.od_sram_read_sel == 1)
+				mtk_oddmr_write(comp, 0x60, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+			else
+				mtk_oddmr_write(comp, 0x50, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+		} else if (oddmr_data->data->od_version == MTK_OD_V2) {
 			if (oddmr_data->od_data.od_sram_read_sel == 1)
 				mtk_oddmr_write(comp, 0x20, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 			else
@@ -4214,6 +4220,8 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 			SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
 			SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
 			SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+			if (oddmr_data->data->od_version >= MTK_OD_V3)
+				SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 			if (oddmr_data->data->od_version >= MTK_OD_V2)
 				mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask, pkg);
 			else
@@ -4243,6 +4251,8 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 			SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
 			SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
 			SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
+			if (oddmr_data->data->od_version >= MTK_OD_V3)
+				SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 			if (oddmr_data->data->od_version >= MTK_OD_V2)
 				mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask, pkg);
 			else
@@ -4255,6 +4265,8 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 		mask = 0;
 		SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
 		SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+		if (oddmr_data->data->od_version >= MTK_OD_V3)
+			SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 		if (oddmr_data->data->od_version >= MTK_OD_V2)
 			mtk_oddmr_write(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 		else
@@ -5208,6 +5220,8 @@ static void mtk_oddmr_od_flip(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	mask = 0;
 	SET_VAL_MASK(value, mask, w_sel, REG_OD_SRAM_WRITE_SEL);
 	SET_VAL_MASK(value, mask, r_sel, REG_OD_SRAM_READ_SEL);
+	if (oddmr_data->data->od_version >= MTK_OD_V3)
+		SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 	ODDMRFLOW_LOG("value w_sel %d r_sel %d 0x%x\n", w_sel, r_sel, value);
 	if (oddmr_data->data->od_version >= MTK_OD_V2)
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask, handle);
@@ -7101,6 +7115,8 @@ static void mtk_oddmr_od_tuning_write_sram(struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
 	SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
 	SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+	if (oddmr_data->data->od_version >= MTK_OD_V3)
+		SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 	if (oddmr_data->data->od_version >= MTK_OD_V2) {
 		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask, handle);
 		mtk_oddmr_write(comp, val,
@@ -7167,6 +7183,8 @@ static void mtk_oddmr_od_tuning_read_sram(struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
 	SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
 	SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+	if (oddmr_data->data->od_version >= MTK_OD_V3)
+		SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 	if (oddmr_data->data->od_version >= MTK_OD_V2) {
 		mtk_oddmr_write_mask_cpu(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask);
 		mtk_oddmr_write_cpu(comp, 0x4000 | (idx & 0x1FF),
@@ -7605,7 +7623,10 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 		}
 
 		if (table_idx == 0) {
-			if (oddmr_data->data->od_version >= MTK_OD_V2)
+			if (oddmr_data->data->od_version >= MTK_OD_V3)
+				mtk_oddmr_write(comp,
+					0x50, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+			else if (oddmr_data->data->od_version == MTK_OD_V2)
 				mtk_oddmr_write(comp,
 					0x10, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 			else
@@ -7613,7 +7634,10 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 					0x10, DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 			oddmr_data->od_data.od_sram_read_sel = 0;
 		} else {
-			if (oddmr_data->data->od_version >= MTK_OD_V2)
+			if (oddmr_data->data->od_version >= MTK_OD_V3)
+				mtk_oddmr_write(comp,
+					0x60, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+			else if (oddmr_data->data->od_version == MTK_OD_V2)
 				mtk_oddmr_write(comp,
 					0x20, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 			else
@@ -7662,7 +7686,10 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			}
 
 			if (table_idx == 0) {
-				if (oddmr_data->data->od_version >= MTK_OD_V2)
+				if (oddmr_data->data->od_version >= MTK_OD_V3)
+					mtk_oddmr_write(comp1,
+						0x50, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+				else if (oddmr_data->data->od_version == MTK_OD_V2)
 					mtk_oddmr_write(comp1,
 						0x10, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 				else
@@ -7670,7 +7697,10 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 						0x10, DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 				oddmr1_data->od_data.od_sram_read_sel = 0;
 			} else {
-				if (oddmr_data->data->od_version >= MTK_OD_V2)
+				if (oddmr_data->data->od_version >= MTK_OD_V3)
+					mtk_oddmr_write(comp1,
+						0x60, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+				else if (oddmr_data->data->od_version == MTK_OD_V2)
 					mtk_oddmr_write(comp1,
 						0x20, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 				else
