@@ -82,11 +82,38 @@
 #define LS_EOF_CFG		0x930
 #define LSEOF_OFFSET		0x89
 
+#define LS_EOF_BANK		GENMASK(20, 16)
+#define LS_EOF_BANK_OFST	16
+#define LS_EOF_OFFSET		GENMASK(11, 0)
+#define LS_EOF_OFFSET_OFST	0
+
 #define FS_EOF_CFG		0x934
 #define FSEOF_OFFSET		0x2e
 
+#define FS_EOF_BANK		GENMASK(20, 16)
+#define FS_EOF_BANK_OFST	16
+#define FS_EOF_OFFSET		GENMASK(11, 0)
+#define FS_EOF_OFFSET_OFST	0
+
+#define HS_SYNC_EOF_CFG		0x938
+
+#define SYNC_HS_EOF_BANK	GENMASK(20, 16)
+#define SYNC_HS_EOF_BANK_OFST	16
+#define SYNC_HS_EOF_OFFSET	GENMASK(11, 0)
+#define SYNC_HS_EOF_OFFSET_OFST 0
+
+#define HS_ASYNC_EOF_CFG	0x954
+
+#define ASYNC_HS_EOF_BANK	GENMASK(20, 16)
+#define ASYNC_HS_EOF_BANK_OFST	16
+#define ASYNC_HS_EOF_OFFSET	GENMASK(11, 0)
+#define ASYNC_HS_EOF_OFFSET_OFST 0
+
 #define SS_GEN1_EOF_CFG		0x93c
 #define SSG1EOF_OFFSET		0x78
+
+#define SS_GEN1_EOF_OFFSET	GENMASK(11, 0)
+#define SS_GEN1_EOF_OFFSET_OFST 0
 
 #define HFCNTR_CFG		0x944
 #define ITP_DELTA_CLK		(0xa << 1)
@@ -99,6 +126,9 @@
 
 #define SS_GEN2_EOF_CFG		0x990
 #define SSG2EOF_OFFSET		0x3c
+
+#define SS_GEN2_EOF_OFFSET	GENMASK(11, 0)
+#define SS_GEN2_EOF_OFFSET_OFST 0
 
 #define XSEOF_OFFSET_MASK	GENMASK(11, 0)
 
@@ -200,6 +230,50 @@ static void xhci_mtk_set_frame_interval(struct xhci_hcd_mtk *mtk)
 	value &= ~XSEOF_OFFSET_MASK;
 	value |= SSG2EOF_OFFSET;
 	writel(value, hcd->regs + SS_GEN2_EOF_CFG);
+}
+
+/* MT6993 has different frmcnt clk, so need to fine tune EOF settings */
+static void xhci_mtk_set_frmcnt_clk(struct xhci_hcd_mtk *mtk)
+{
+	struct device *dev = mtk->dev;
+	struct usb_hcd *hcd = mtk->hcd;
+	u32 value;
+
+	if (!of_device_is_compatible(dev->of_node, "mediatek,mt6993-xhci"))
+		return;
+
+	dev_info(dev, "%s, Apply frmcnt clk EOF fine tune.\n", __func__);
+
+	value = readl(hcd->regs + LS_EOF_CFG);
+	value &= ~(LS_EOF_BANK | LS_EOF_OFFSET);
+	value |= (0x19 <<LS_EOF_BANK_OFST | 0x24 << LS_EOF_OFFSET_OFST);
+	writel(value, hcd->regs + LS_EOF_CFG);
+
+	value = readl(hcd->regs + FS_EOF_CFG);
+	value &= ~(FS_EOF_BANK | FS_EOF_OFFSET);
+	value |= (0xd <<FS_EOF_BANK_OFST | 0x19 << FS_EOF_OFFSET_OFST);
+	writel(value, hcd->regs + FS_EOF_CFG);
+
+	value = readl(hcd->regs + HS_SYNC_EOF_CFG);
+	value &= ~(SYNC_HS_EOF_BANK | SYNC_HS_EOF_OFFSET);
+	value |= (0x5 <<SYNC_HS_EOF_BANK_OFST | 0x19 << SYNC_HS_EOF_OFFSET_OFST);
+	writel(value, hcd->regs + HS_SYNC_EOF_CFG);
+
+	value = readl(hcd->regs + HS_ASYNC_EOF_CFG);
+	value &= ~(ASYNC_HS_EOF_BANK | ASYNC_HS_EOF_OFFSET);
+	value |= (0x2 <<ASYNC_HS_EOF_BANK_OFST | 0x4b << ASYNC_HS_EOF_OFFSET_OFST);
+	writel(value, hcd->regs + HS_ASYNC_EOF_CFG);
+
+	value = readl(hcd->regs + SS_GEN1_EOF_CFG);
+	value &= ~(SS_GEN1_EOF_OFFSET);
+	value |= (0x41 << SS_GEN1_EOF_OFFSET_OFST);
+	writel(value, hcd->regs + SS_GEN1_EOF_CFG);
+
+	value = readl(hcd->regs + SS_GEN2_EOF_CFG);
+	value &= ~(SS_GEN2_EOF_OFFSET);
+	value |= (0x21 << SS_GEN2_EOF_OFFSET_OFST);
+	writel(value, hcd->regs + SS_GEN2_EOF_CFG);
+
 }
 
 static int xhci_mtk_halt(struct xhci_hcd *xhci)
@@ -447,6 +521,9 @@ static void xhci_mtk_init_quirk(struct xhci_hcd_mtk *mtk)
 {
 	/* workaround only for mt8195 */
 	xhci_mtk_set_frame_interval(mtk);
+
+	/* fine tune EOF for mt6993 */
+	xhci_mtk_set_frmcnt_clk(mtk);
 
 	/* workaround for SoCs using SSUSB about before IPM v1.6.0 */
 	xhci_mtk_rxfifo_depth_set(mtk);
