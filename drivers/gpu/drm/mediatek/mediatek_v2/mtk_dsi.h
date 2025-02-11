@@ -101,7 +101,6 @@ struct mtk_dsi_driver_data {
 	//vdo ltpo
 	const u32 dsi_ltpo_vdo_con;
 	const u32 dsi_ltpo_vdo_sq0;
-	bool support_512byte_rx;
 	bool support_bl_at_te;
 	bool dsi_cmd_v2_en;
 	const u32 dsi_rx_trig_sta;
@@ -109,7 +108,8 @@ struct mtk_dsi_driver_data {
 	const u32 con_offset;
 	const u32 dsi_cmdq_size;
 	const u32 dsi_cmdq_page;
-	const u32 dsi_cmdq_rd_max_sz;
+	const u32 dsi_cmdq_rd_max_sz_cpu;
+	const u32 dsi_cmdq_rd_max_sz_gce;
 	const u32 dsi_rx_data_rd_max_sz;
 	bool support_pu_con;
 };

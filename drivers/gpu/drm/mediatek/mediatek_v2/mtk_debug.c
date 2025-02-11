@@ -5380,11 +5380,16 @@ static void process_dbg_opt(const char *opt)
 
 		DDPMSG("new_read_ddic ++\n");
 		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		if (ret < 0) {
+			DDPMSG("new_read_ddic test fail, ret=%d\n", ret);
+			goto read_test_done;
+		}
 
 		rx_buf = (char *)test_cmd.cmd_msg->rx_buf;
 		for (i = 0; i < rx_len; i++)
 			DDPMSG("new_read_ddic, addr=0x%x, rx_data[%d]:0x%x, ret=%d\n", addr, i, rx_buf[i], ret);
 
+read_test_done:
 		vfree(msg.rx_buf);
 	} else if (strncmp(opt, "new_write_ddic:", 15) == 0) {
 		int flags = 0, tx_len = 0, mode = 0;
