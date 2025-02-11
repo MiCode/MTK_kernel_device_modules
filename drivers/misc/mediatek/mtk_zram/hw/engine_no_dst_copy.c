@@ -453,6 +453,7 @@ static void __dcomp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry, b
 
 	/* Post-process is finished. */
 	reset_cmd_after_decompression(cmdp);
+	memset(pp_info, 0, sizeof(struct dcomp_pp_info));
 }
 
 /*
@@ -635,6 +636,9 @@ static void comp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry)
 		reset_cmd_after_compression(cmdp);
 	else
 		reset_cmd_after_compression_pp_err(cmdp);
+
+	/* Reset pp_info */
+	memset(pp_info, 0, sizeof(struct comp_pp_info));
 
 #ifdef ZRAM_ENGINE_DEBUG
 	/* DEBUG */

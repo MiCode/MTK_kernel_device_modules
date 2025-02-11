@@ -2106,6 +2106,11 @@ static void hwcomp_decompress_post_process(int err, struct dcomp_pp_info *pp_inf
 		return;
 	}
 
+	if (unlikely(!bio)) {
+		pr_info("%s: Empty BIO for index (%u) at (%d)\n", __func__, index, err);
+		return;
+	}
+
 	zram_slot_lock(zram, index);
 
 	/* Clear ZRAM_IN_HW_PROCESSING whatever the err is */
@@ -2262,6 +2267,12 @@ static void hwcomp_compress_post_process_ndc(int err, void *buffer, unsigned int
 	}
 
 	/* zram should not be NULL here */
+
+	/* Check bio */
+	if (unlikely(!bio)) {
+		pr_info("%s: Empty BIO for index (%u) at (%d)\n", __func__, index, err);
+		return;
+	}
 
 	/* Copy incompressible page to zspool */
 	if (flag == HWCOMP_HUGE) {
@@ -2584,6 +2595,12 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 	}
 
 	/* zram should not be NULL here */
+
+	/* Check bio */
+	if (unlikely(!bio)) {
+		pr_info("%s: Empty BIO for index (%u) at (%d)\n", __func__, index, err);
+		return;
+	}
 
 	/* Copy compressed/incompressible page to zspool */
 	if (flag != HWCOMP_SAME) {
