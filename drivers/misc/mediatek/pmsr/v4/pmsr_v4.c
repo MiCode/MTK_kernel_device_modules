@@ -455,9 +455,11 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 				cfg.sig_count, 0, 0, 0);
 #endif
 			if (!ret) {
-				hrtimer_start(&pmsr_timer,
-						ns_to_ktime(timer_window_len * NSEC_PER_USEC),
-						HRTIMER_MODE_REL_PINNED);
+				if (timer_window_len != 0) {
+					hrtimer_start(&pmsr_timer,
+							ns_to_ktime(timer_window_len * NSEC_PER_USEC),
+							HRTIMER_MODE_REL_PINNED);
+				}
 			} else {
 				cfg.err |= (1 << PMSR_TOOL_ACT_ENABLE);
 			}
