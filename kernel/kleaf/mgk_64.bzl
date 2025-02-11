@@ -1169,6 +1169,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/codecs:mt6369-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
     "//kernel_device_modules-{}/drivers/spi:spi-mt65xx".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:mme".format(kernel_version),
@@ -1614,7 +1615,6 @@ mgk_64_device_modules = [
     "sound/soc/mediatek/common/mtk-sp-spk-amp.ko",
     "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
     #"sound/soc/codecs/snd-soc-mt6366.ko",
-    "sound/soc/codecs/snd-soc-mt6369.ko",
 
 ]
 
