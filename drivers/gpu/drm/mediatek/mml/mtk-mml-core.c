@@ -728,6 +728,7 @@ static const char *ovlid_str(enum mml_mode mode, enum mml_layer_id ovlsys_id)
 static void dump_task(struct mml_task *task)
 {
 	const struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[0];
 	const struct mml_frame_dest *dest;
 	char frame[60];
 	u32 i, sz = 0;
@@ -735,13 +736,21 @@ static void dump_task(struct mml_task *task)
 
 	mml_mmp(dumpinfo, MMPROFILE_FLAG_START, task->job.jobid, 0);
 
+	if (path->desc[0])
+		mml_log("[topology]path:%u engines:%s%s%s",
+			path->path_id, path->desc,
+			cfg->shadow ? " shadow" : "",
+			cfg->dpc ? " dpc" : "");
+
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
-	mml_log("    in:%s plane:%hhu alpha:%s%s%s%s job:%u mode:%hhu %s%s acttime %u",
+	mml_log("    in:%s plane:%hhu alpha:%s%s%s%s%s%s job:%u mode:%hhu %s%s acttime %u",
 		frame,
 		task->buf.src.cnt,
 		cfg->alpharot ? "rot" :
 		cfg->alpharsz ? "rsz" :
 		cfg->info.alpha ? "ignore" : "false",
+		cfg->merge2p ? " m2p" : "",
+		cfg->rsz_front ? " rzf" : "",
 		task->buf.src.fence ? " fence" : "",
 		task->buf.src.flush ? " flush" : "",
 		task->buf.src.invalid ? " invalid" : "",
@@ -1492,9 +1501,6 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 	task_pipe_cur = list_first_entry_or_null(&path_clt->tasks, typeof(*task_pipe_cur),
 		entry_clt);
-	if (task_pipe_cur && task != task_pipe_cur->task) {
-		mml_err("warning: task done job is not the first one in the pipe");
-	}
 	/* find current item which still running */
 	while (task_pipe_cur && (task_pipe_cur->task->done ||
 		task_pipe_cur->task->config->dpc != cfg->dpc)) {

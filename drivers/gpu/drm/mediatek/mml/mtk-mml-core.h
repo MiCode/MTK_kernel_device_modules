@@ -421,6 +421,9 @@ struct mml_topology_path {
 	 * Indexed by enum mml_sys_id, could be mml_sys_frame or mml_sys_tile or mml_sys_dma
 	 */
 	bool sys_en[mml_max_sys];
+
+	/* short desc of this path */
+	char desc[128];
 };
 
 struct mml_topology_ops {

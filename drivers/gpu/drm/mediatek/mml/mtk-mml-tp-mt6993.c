@@ -720,15 +720,15 @@ static void tp_dump_path(const struct mml_topology_path *path)
 
 static void tp_dump_path_short(struct mml_topology_path *path, bool shadow, bool dpc)
 {
-	char path_desc[128];
 	u32 len = 0;
 	u8 i;
 
+	if (path->desc[0])
+		return;
+
 	for (i = 0; i < path->node_cnt; i++)
-		len += snprintf(path_desc + len, sizeof(path_desc) - len, " %u",
+		len += snprintf(path->desc + len, sizeof(path->desc) - len, " %u",
 			path->nodes[i].id);
-	mml_log("[topology]path:%u engines:%s%s%s",
-		path->path_id, path_desc, shadow ? " shadow" : "", dpc ? " dpc" : "");
 }
 
 static void tp_parse_connect_prev(const struct path_node *route, struct mml_path_node *nodes,
