@@ -6,7 +6,7 @@
 &connfem {
 	sku-mtk {
 		hw-names =
-			"qm42655_qm45655_legacy",/* [0] SKU5-1 Phone 2G+2A (legacy) */
+			"qm42655_qm45655_legacy",	/* [0] SKU5-1 Phone 2G+2A (legacy) */
 			"qm42655_qm45655_was_ps",	/* [1] SKU5-1 EVB 2G+2A */
 			"sky55208_sky55714",		/* [2] SKU1-2 Phone (N/A) 2G+2A */
 			"sky55208_sky55714",		/* [3] SKU1-2 EVB 2G+2A */
@@ -14,7 +14,7 @@
 			"ipa_qm45655_ps",		/* [5] SKU2 EVB 2G iPA+2A */
 			"sky55208_sky55714_was",	/* [6] SKU5-2 Phone (N/A) 2G+2A */
 			"sky55208_sky55714_was",	/* [7] SKU5-2 EVB 2G+2A */
-			"qm42655_qm45655_was_ps__phone",	/* [8] SKU5-1 Phone 2G+2A */
+			"qm42655_qm45655_was_ps__phone",/* [8] SKU5-1 Phone 2G+2A */
 			"vc536431_vc576831_was",	/* [9] SKU5-3 EVB 2G+2A */
 			"qm42655_qm45655_ps",		/* [10] SKU1-1 E3 Phone (N/A) 2G+2A */
 			"qm42655_qm45655_ps",		/* [11] SKU1-1 E3 EVB 2G+2A */
@@ -23,7 +23,7 @@
 			"vc536421_vc576821",		/* [14] SKU1 VC536421/576821 */
 			"qm42655_qm45655_was",		/* [15] SKU5-1 2G+2A */
 			"ipa_qm45655",			/* [16] SKU2 2G iPA+2A */
-			"vc536411_vc576811";	/* [17] SKU1 VC5364/VC5768 -11 2G+2A */
+			"vc536411_vc576811";		/* [17] SKU1 VC5364/VC5768 -11 2G+2A */
 
 		hwid {
 			/* HWID bit[0]
@@ -776,7 +776,7 @@
 		};
 
 		/***************************************************************
-		 * [HW][17] SKU1 EVB VC5364/VC5768-11 2G+2A
+		 * [HW][17] SKU1 EVB VC536411/VC576811 2G+2A
 		 **************************************************************/
 		hw-17 {
 			using-fems =

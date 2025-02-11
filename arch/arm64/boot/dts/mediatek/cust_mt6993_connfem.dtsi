@@ -676,6 +676,53 @@
 							<0x24>;	/* TxH */
 					};
 				};
+
+				vc576811_rxh: vc576811-rxh {
+					fem = <&vc576811>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x00>;	/* ISO */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x12>;	/* RxH */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>,	/* TxL */
+							<0x22>,	/* TxM */
+							<0x24>;	/* TxH */
+					};
+				};
+
+				vc576811_rxl_rxh: vc576811-rxl-rxh {
+					fem = <&vc576811>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x00>;	/* ISO */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x11>,	/* RxL */
+							<0x12>;	/* RxH */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>,	/* TxL */
+							<0x22>,	/* TxM */
+							<0x24>;	/* TxH */
+					};
+				};
 			};
 		};
 
@@ -1274,6 +1321,16 @@
 			fem = <&sky85732>;
 			mapping = <0 0x07 0>,	/* Antsel 0 <-> SEL1 0x07 */
 				  <1 0x09 0>;	/* Antsel 1 <-> SEL2 0x09 */
+		};
+
+		a_wf2_bt0_vc576811: a-wf2-bt0-vc576811 {
+			band-path-wifi = <0x12>; /* A-WF2 */
+			band-path-bt = <0x60>;	/* A-BT0 */
+			fem = <&vc576811>;
+			mapping = <0 0x0a 0>,	/* Antsel 0 <-> SEL1 0x0a */
+				  <1 0x0b 0>,	/* Antsel 1 <-> SEL2 0x0b */
+				  <2 0x0c 0>,	/* Antsel 2 <-> SEL3 0x0c */
+				  <3 0x01 0>;	/* Antsel 3 <-> SEL4 0x01 */
 		};
 
 		a_wf2_bt0_vc576821: a-wf2-bt0-vc576821 {
