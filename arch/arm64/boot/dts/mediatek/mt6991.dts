@@ -32,6 +32,7 @@
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <dt-bindings/clock/mt6991-ivi-clk.h>
 #include <dt-bindings/power/mt6991-ivi-power.h>
+#include <dt-bindings/mminfra/mminfra-mt6991.h>
 
 / {
 	model = "MT6991";
@@ -10140,6 +10141,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<GIC_SPI 449 IRQ_TYPE_LEVEL_HIGH 0>; /* DISP_VDISP_AO_MERGE_IRQ_BIT */
 			vidle-mask = <0>;
 			root-dev = <&vdisp_ao>;
+			mminfra-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
+			mminfra-pwr-type = <MMINFRA_MT6991_TYPE_DISP>;
 		};
 
 		mipi_tx_config0: mipi-tx-config@130b0000 {

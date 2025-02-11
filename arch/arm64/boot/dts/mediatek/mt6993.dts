@@ -11348,6 +11348,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts =
 				<GIC_SPI 450 IRQ_TYPE_LEVEL_HIGH 0>; // DISP_VDISP_AO_MERGE_IRQ_BIT
 			vidle-mask = <0x0>;
+			mminfra-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
+			mminfra-pwr-type = <MMINFRA_MT6993_TYPE_DISP>;
 		};
 /*
 		mipi_tx_config0: mipi-tx-config@130b0000 {
