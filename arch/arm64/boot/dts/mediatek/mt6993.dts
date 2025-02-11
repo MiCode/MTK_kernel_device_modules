@@ -21890,10 +21890,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_13>;
 		dpe-sw-sync-token-pool-14 =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_14>;
-		dpe-sw-sync-token-pool-15 =
-			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_15>;
-		dpe-sw-sync-token-pool-16 =
-			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_16>;
 		aiseg-sw-sync-token-pool-1 =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_1>;
 		aiseg-sw-sync-token-pool-2 =
