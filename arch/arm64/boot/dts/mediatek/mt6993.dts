@@ -12077,6 +12077,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			scp-task-monitor-dbg = "enable";
 			scp-asan = "disable";
 			scp-asan-size = <0x200000>;
+			vscp-aging = "disable";
 
 			//scp_aovmem_key = "mediatek,scp_aov_reserved";
 			scp-mem-key = "mediatek,reserve-memory-scp_share";
