@@ -18,24 +18,6 @@ filegroup(
     ]),
 )
 
-
-ddk_headers(
-    name = "swpm_isp_wrapper_headers",
-    includes = ["."],
-    hdrs = [
-        "subsys/swpm_isp_wrapper.h",
-    ],
-)
-
-define_mgk_ddk_ko(
-    name = "mtk-swpm-isp-wrapper",
-    srcs = [
-        "subsys/swpm_isp_wrapper.c",
-        "subsys/swpm_isp_wrapper.h",
-    ],
-    out = "mtk-swpm-isp-wrapper.ko"
-)
-
 define_mgk_ddk_ko(
     name = "mtk-swpm-dbg-common-v1",
     srcs = [],

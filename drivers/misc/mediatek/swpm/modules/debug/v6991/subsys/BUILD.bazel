@@ -73,3 +73,18 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
     ]
 )
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm-isp-dbg-v6991",
+    srcs = [
+        "swpm_isp_v6991.c",
+        "swpm_isp_v6991.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v1:mtk-swpm-dbg-common-v1".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v1/subsys:mtk-swpm-isp-wrapper".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+    ],
+    out = "mtk-swpm-isp-dbg-v6991.ko"
+)
