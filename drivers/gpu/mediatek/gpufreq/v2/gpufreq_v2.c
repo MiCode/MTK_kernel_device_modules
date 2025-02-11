@@ -1996,14 +1996,12 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 		goto done;
 	}
 
-#if !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	/* ensure probe order */
 	if (!g_ghpm_ready) {
 		GPUFREQ_LOGE("ghpm has not been probed, defer gpufreq wrapper driver probe");
 		ret = -EPROBE_DEFER;
 		goto done;
 	}
-#endif /* CONFIG_MTK_GPU_MT6855_SUPPORT */
 
 	/* init shared memory */
 	ret = gpufreq_shared_memory_init();
