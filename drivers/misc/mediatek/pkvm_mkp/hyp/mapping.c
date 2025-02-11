@@ -13,6 +13,7 @@ static void __mkp_lookup_mapping_entry(u64 ipa, u64 *entry_level, u64 *permissio
 {
 	// int ret;
 	u64 descriptor = 0;
+	s8 level;
 
 	/* Clear entry_size and permission */
 	*entry_level = 0;
@@ -20,7 +21,10 @@ static void __mkp_lookup_mapping_entry(u64 ipa, u64 *entry_level, u64 *permissio
 
 	/* Query corresponding descriptor */
 	// ret = module_ops->host_stage2_get_leaf(ipa, &descriptor, (u32 *)entry_level);
-	module_ops->host_stage2_get_leaf(ipa, &descriptor, (u32 *)entry_level);
+	module_ops->host_stage2_get_leaf(ipa, &descriptor, &level);
+
+	BUG_ON(level < 0);
+	*entry_level = (u64)level;
 
 	//if (ret)
 	//	trace_hyp_printk("[MKP] __mkp_lookup_mapping_entry: failed to get pte");
