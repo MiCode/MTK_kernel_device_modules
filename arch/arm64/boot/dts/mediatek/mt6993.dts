@@ -16241,7 +16241,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek, mtk_dmabufheap, coherent";
 			#address-cells = <2>;
 			#size-cells = <2>;
-			iommus = <&mm_smmu 214>;
+			iommus = <&mm_smmu 228>;
 			mtk,iommu-dma-range = <0x0 0x40000000 0x0 0x80000000>;
 			dma-coherent;
 		};
@@ -16267,7 +16267,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "mediatek,mm-smmu-test-ktf3";
-			iommus = <&mm_smmu 217>;
+			iommus = <&mm_smmu 224>;
 			mtk,iommu-dma-range = <0x40000000 0x10000000>;
 			mtk,smmu-dma-mode = "bypass";
 		};
@@ -16275,7 +16275,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		smmu-test-ktf4 {
 			compatible = "mediatek,mm-smmu-test-ktf4";
 			mtk,smmu-dma-mode = "disable";
-			iommus = <&mm_smmu 218>;
+			iommus = <&mm_smmu 225>;
 		};
 
 		smmu-test-ktf5 {
@@ -16289,14 +16289,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				#address-cells = <1>;
 				#size-cells = <1>;
 				compatible = "mediatek,mm-dynamic-iommu-ktf";
-				iommus = <&mm_smmu 216>;
+				iommus = <&mm_smmu 226>;
 				mtk,iommu-dma-range = <0x40000000 0x10000000>;
 			};
 		};
 
 		smmu-test-ktf7 {
 			compatible = "mediatek,mm-ssid-test-ktf";
-			iommus = <&mm_smmu 215>;
+			iommus = <&mm_smmu 227>;
 			pasid-num-bits = <8>;
 			mtk,smmu-ssids {
 				#address-cells = <2>;
