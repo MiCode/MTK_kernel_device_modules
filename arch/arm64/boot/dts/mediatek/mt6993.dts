@@ -16227,6 +16227,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_svp_disp>;
 		};
 
+		mtk_dmabufheap_debug2: dmaheap-test2 {
+			compatible = "mediatek, mtk_dmabufheap, coherent";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			iommus = <&mm_smmu 214>;
+			mtk,iommu-dma-range = <0x0 0x40000000 0x0 0x80000000>;
+			dma-coherent;
+		};
+
 		/* smmu test */
 		smmu-test-ktf1 {
 			compatible = "mediatek,mm-smmu-test-ktf1";
