@@ -2020,18 +2020,16 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 		perf += counters->gpuactive * async_coeff_3[10];
 		perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	} else if (g_async_pmodel_ver == 4) {
-		perf =  (counters->iter * async_coeff_4[0] +
-			counters->l2ext * async_coeff_4[1]) +
+		perf = (counters->mcu * async_coeff_4[4] +
+			counters->iter * async_coeff_4[5] +
+			counters->tiler * async_coeff_4[6]) * ratio / RATIO_SCAL +
+			(counters->mcu * async_coeff_4[7]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL +
+			(counters->mcu * async_coeff_4[0] +
+			counters->iter * async_coeff_4[1]) / ratio * RATIO_SCAL +
 			(counters->mcu * async_coeff_4[2] +
-			counters->iter * async_coeff_4[3]) * ratio / RATIO_SCAL +
-			(counters->mcu * async_coeff_4[4] +
-			counters->iter * async_coeff_4[5] +
-			counters->l2ext * async_coeff_4[6] +
-			counters->tiler * async_coeff_4[7]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL +
-			(counters->tiler * async_coeff_4[8]) / ratio * RATIO_SCAL +
-			(counters->l2ext * async_coeff_4[9]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
+			counters->tiler * async_coeff_4[3]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
 
-		perf = (perf / counters->gpuactive) + async_coeff_4[10];
+		perf = (perf / counters->gpuactive) + async_coeff_4[8];
 		perf = div64_u64(perf * PERF_SCAL, COEFF_SCAL);
 	}
 
