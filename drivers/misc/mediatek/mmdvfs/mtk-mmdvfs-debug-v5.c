@@ -211,14 +211,16 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 
 	ret = mmdvfs_debug_dump_volt_freq(file);
 
+	mtk_mmdvfs_enable_vcp(true, ap_user ? ap_user[0].id : 0);
+
 	mmdvfs_mmup_cb_mutex_lock();
 	ret = mmdvfs_mmup_cb_ready_get();
 	if (!ret || !unlikely(SRAM_BASE)) {
 		mmdvfs_mmup_cb_mutex_unlock();
+		mtk_mmdvfs_enable_vcp(false, ap_user ? ap_user[0].id : 0);
 		mmdvfs_seq_print(file, "mmup_cb_ready:%d mmup_sram:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
 		return 0;
 	}
-	mtk_mmdvfs_enable_vcp(true, ap_user ? ap_user[0].id : 0);
 
 	mmdvfs_seq_print(file, "mmup_sram:%#lx", (unsigned long)(void *)SRAM_BASE);
 
@@ -282,8 +284,8 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 		}
 	}
 
-	mtk_mmdvfs_enable_vcp(false, ap_user ? ap_user[0].id : 0);
 	mmdvfs_mmup_cb_mutex_unlock();
+	mtk_mmdvfs_enable_vcp(false, ap_user ? ap_user[0].id : 0);
 
 	return 0;
 }
