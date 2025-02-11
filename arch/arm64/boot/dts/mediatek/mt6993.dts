@@ -13032,16 +13032,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				opp-peak-KBps = <19900000>;
 			};
 			dvfsrc_freq_opp5: opp5 {
-				opp-peak-KBps = <25000000>;
+				opp-peak-KBps = <27000000>;
 			};
 			dvfsrc_freq_opp4: opp4 {
-				opp-peak-KBps = <32500000>;
+				opp-peak-KBps = <35100000>;
 			};
 			dvfsrc_freq_opp3: opp3 {
-				opp-peak-KBps = <37800000>;
+				opp-peak-KBps = <40900000>;
 			};
 			dvfsrc_freq_opp2: opp2 {
-				opp-peak-KBps = <44400000>;
+				opp-peak-KBps = <48000000>;
 			};
 			dvfsrc_freq_opp1: opp1 {
 				opp-peak-KBps = <54700000>;
