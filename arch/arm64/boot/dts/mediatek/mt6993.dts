@@ -3572,7 +3572,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 					"bcpu_ratio,mcpu_ratio,lcpu_ratio\
 					,wl_change,wl_tick,opp_tick\
 					,l3_bw,sub_wl_type,l3_stall_avg,l3_stall_avg_diff\
-					,hybrid_ratio,fine_grained_enabled";
+					,hybrid_ratio,fine_grained_enabled,dsu_exceed_req";
 			node-37 = "MCUPM_PTP3__PMIC",
 					"GRP0_vosel,GRP1_vosel,GRP2_vosel,MCUPM_PTP3_EOL";
 			node-38 = "MCUPM_PTP3__HBVC",
