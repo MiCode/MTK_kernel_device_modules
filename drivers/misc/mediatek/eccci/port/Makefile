@@ -30,18 +30,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/clkbuf_v1
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif
 
 # port objects
-obj-$(CONFIG_MTK_ECCCI_DRIVER) := ccci_port.o
-ccci_port-y := port_cfg.o \
-		port_char.o \
-		port_ctlmsg.o \
-		port_udc.o \
-		port_ipc.o \
-		port_poller.o \
-		port_proxy.o \
-		port_rpc.o \
-		port_smem.o \
-		port_sysmsg.o \
-		ccci_swtp.o
+
 
 endif
 

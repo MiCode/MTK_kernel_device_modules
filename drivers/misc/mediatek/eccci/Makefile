@@ -40,10 +40,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccmni/
 
-obj-$(CCCI_OBJ) += ccci_md_all.o
-ccci_md_all-$(CCCI_OBJ) := ccci_core.o ccci_bm.o ccci_modem.o \
-		udc/udc.o \
-		hif/ccci_hif.o
 
 # port start
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/port/
@@ -51,39 +47,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/udc/udc_lib_inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_md/include/
 
-ccci_md_all-$(CCCI_OBJ) += port/port_cfg.o \
-		port/port_char.o \
-		port/port_ctlmsg.o \
-		port/port_udc.o \
-		port/port_ipc.o \
-		port/port_poller.o \
-		port/port_proxy.o \
-		port/port_rpc.o \
-		port/port_smem.o \
-		port/port_sysmsg.o \
-		port/ccci_swtp.o \
-		port/port_kernel_interface.o
 # port end
 # fsm start
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/fsm/
-ccci_md_all-$(CCCI_OBJ) += fsm/ccci_fsm.o \
-			fsm/ccci_fsm_ioctl.o \
-			fsm/ccci_fsm_monitor.o \
-			fsm/ccci_fsm_poller.o \
-			fsm/ccci_fsm_ee.o \
-			fsm/ccci_fsm_sys.o \
-			fsm/mdee_dumper_v1.o \
-			fsm/mdee_dumper_v2.o \
-			fsm/mdee_dumper_v3.o \
-			fsm/mdee_dumper_v5.o \
-			fsm/mdee_dumper_v6.o \
-			fsm/modem_sys1.o \
-			fsm/md_sys1_platform.o \
-			fsm/ap_md_reg_dump.o \
-			fsm/ap_md_reg_dump_gen93.o \
-			fsm/ap_md_reg_dump_gen95.o \
-			fsm/ap_md_reg_dump_gen97.o \
-			fsm/ap_md_mem.o
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/fsm/
+
 
 # fsm end
 

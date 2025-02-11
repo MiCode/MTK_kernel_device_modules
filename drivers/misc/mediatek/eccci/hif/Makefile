@@ -24,27 +24,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include
 #ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 
 # ccci_ccif.ko
-
-ccci_ccif-y := ccci_ringbuf.o ccci_hif_ccif.o
-obj-$(CONFIG_MTK_ECCCI_DRIVER) += ccci_ccif.o
-
 # ccci_dpmaif.ko
-
-ccci_dpmaif-y := net_pool.o md_spd_dvfs_fn.o md_spd_dvfs_method.o net_speed.o \
-	ccci_dpmaif_com.o ccci_dpmaif_bat.o ccci_dpmaif_debug.o ccci_dpmaif_resv_mem.o \
-	ccci_dpmaif_drv_com.o ccci_dpmaif_drv_v1.o ccci_dpmaif_drv_v2.o ccci_dpmaif_drv_v3.o \
-	ccci_dpmaif_v1_6789.o
-
-ifeq ($(CONFIG_PAGE_POOL), y)
-ccflags-y += -DRX_PAGE_POOL
-ccci_dpmaif-y += ccci_dpmaif_page_pool.o
-endif
-
-obj-$(CONFIG_MTK_ECCCI_DRIVER) += ccci_dpmaif.o
-
 # ccci_cldma.ko
-ccci_cldma-y := ccci_cldma_plat.o ccci_hif_cldma.o
-obj-$(CONFIG_MTK_ECCCI_DRIVER) += ccci_cldma.o
 
 endif
 
