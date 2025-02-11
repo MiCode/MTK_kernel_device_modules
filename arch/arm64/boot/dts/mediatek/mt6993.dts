@@ -4494,7 +4494,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			map8 {
 				domain = "gpu0";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfgpll {
 					fh-id = <0>;
 				};
@@ -4502,7 +4502,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			map9 {
 				domain = "gpu1";
-				method = "fhctl-ap";
+				method = "fhctl-gpueb";
 				mfgpll-sc {
 					fh-id = <0>;
 				};
