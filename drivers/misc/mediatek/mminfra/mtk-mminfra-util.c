@@ -56,6 +56,7 @@ static struct device *g_dev;
 static struct mtk_mminfra_pd *g_mm_pd;
 static struct mtk_mminfra_util *g_mminfra_util;
 spinlock_t mminfra_pd_lock;
+static bool is_mminfra_util_shutdown;
 
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 void mtk_mminfra_voter_debug(u32 mm_pwr)
@@ -246,6 +247,14 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 		return -EINVAL;
 	}
 
+	if (is_mminfra_util_shutdown) {
+		pr_notice("%s:[err] bypass power[%d] on[%d], mm_type[%d] shutdown[%d].\n",
+			__func__, mm_pwr, on_off, mm_type,
+			is_mminfra_util_shutdown);
+		WARN_ON(1);
+		return -EINVAL;
+	}
+
 	spin_lock_irqsave(&mminfra_pd_lock, flags);
 
 	// check mm_pwr valid
@@ -393,15 +402,17 @@ int mminfra_ctrl(struct cb_params *cb_para)
 
 static void mminfra_util_shutdown(struct platform_device *pdev)
 {
-	if (!g_mminfra_util->vlp_base)
-		return;
+	is_mminfra_util_shutdown = true;
 
-	writel(readl(g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs) &
-		~(1 << g_mminfra_util->irq_rdy_bit),
-		g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs);
+	if (g_mminfra_util->vlp_base) {
+		writel(readl(g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs) &
+			~(1 << g_mminfra_util->irq_rdy_bit),
+			g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs);
 
-	pr_notice("[mminfra]%s shutdown done vlp:%x\n", __func__,
-		readl(g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs));
+		pr_notice("[mminfra]%s shutdown done vlp:%x\n", __func__,
+			readl(g_mminfra_util->vlp_base + g_mminfra_util->vlp_rsvd6_ofs));
+	}
+	pr_notice("[mminfra]%s shutdown\n", __func__);
 }
 
 static int mminfra_util_probe(struct platform_device *pdev)
