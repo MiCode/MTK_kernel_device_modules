@@ -10,6 +10,7 @@ subdir-ccflags-y += -I$(LPM_BUILD_FOLDER)/modules/include/
 
 subdir-ccflags-y += -I$(LPM_BUILD_FOLDER)/modules/debug/v1/
 subdir-ccflags-y += -I$(LPM_BUILD_FOLDER)/modules/debug/k6789
+subdir-ccflags-y += -I$(LPM_BUILD_FOLDER)/modules/debug/k6855
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 
