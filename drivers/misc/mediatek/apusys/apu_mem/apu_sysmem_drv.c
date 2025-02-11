@@ -264,24 +264,21 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	struct scatterlist *sg = NULL;
 	int ret = 0, i = 0;
 	uint a_SLC_DC_EN;
-	//bool is_cached = false;
 
 	/* get dmabuf's ref */
 	get_dma_buf(dbuf);
 
-	/* check dma buf cachable or not TODO: kernel-6.1 not support*/
-	#if 0
-	is_cached = !is_uncached_dmabuf(dbuf);
-	if ((!is_cached) && (map_bitmask & F_APU_SYSMEM_MAP_TYPE_SHAREABLE)) {
-		apu_sysmem_err("sharable buf but not cached\n");
-		goto put_dma_buf;
-	}
-	#endif
 	/* new map */
 	map = kzalloc(sizeof(*map), GFP_KERNEL);
 	if (!map) {
 		apu_sysmem_err("allocate map failed\n");
 		goto put_dma_buf;
+	}
+
+	/* check if dbuf is allocated from coherence heap */
+	if (is_coherent_heap_dmabuf(dbuf)) {
+		apu_sysmem_info("dmabuf is from coherent heap\n");
+		map_bitmask |= F_APU_SYSMEM_MAP_TYPE_SHAREABLE;
 	}
 
 	/* get memory device */
