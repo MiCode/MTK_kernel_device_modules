@@ -33,6 +33,9 @@
 
 #include <hwcomp_bridge.h>
 
+/* TBU monitor */
+#include <mtk-iommu-util.h>
+
 /*
  * DST copy -
  * [0]: 2048, [1]: 1024, [2]: 512, [3]: 256, [4]: 128, [5]: 64
@@ -218,6 +221,88 @@ static unsigned long gla_flags;
 
 /**************************************************/
 
+static int __maybe_unused mtk_hwzram_suspend(struct device *dev);
+static int __maybe_unused mtk_hwzram_resume(struct device *dev);
+
+static int zram_engine_tbu_pm_get(struct smmu_tbu_device *tbu)
+{
+	struct zram_engine_t *hwz = dev_get_drvdata(tbu->dev);
+
+	dev_info(tbu->dev, "%s:\n", __func__);
+
+#ifndef FPGA_EMULATION
+	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+#endif
+
+	/* hook to pm resume */
+	return mtk_hwzram_resume(tbu->dev);
+}
+
+static int zram_engine_tbu_pm_put(struct smmu_tbu_device *tbu)
+{
+	struct zram_engine_t *hwz = dev_get_drvdata(tbu->dev);
+
+	dev_info(tbu->dev, "%s:\n", __func__);
+
+#ifndef FPGA_EMULATION
+	engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
+
+	/* hook to pm suspend */
+	return mtk_hwzram_suspend(tbu->dev);
+}
+
+static void zram_engine_tbu_debug_dump(struct smmu_tbu_device *tbu, struct seq_file *s)
+{
+	struct zram_engine_t *hwz = dev_get_drvdata(tbu->dev);
+
+	/* TBU debug dump */
+	dev_info(tbu->dev, "%s:\n", __func__);
+	engine_get_smmu_reg_dump(&hwz->ctrl, s);
+}
+
+static struct smmu_tbu_impl zram_engine_tbu_impl = {
+	.pm_get = zram_engine_tbu_pm_get,
+	.pm_put = zram_engine_tbu_pm_put,
+	.debug_dump = zram_engine_tbu_debug_dump,
+};
+
+static struct smmu_tbu_device zram_engine_tbu_device = {
+	.impl = &zram_engine_tbu_impl,
+};
+
+static int zram_engine_tbu_register(struct device *dev, void __iomem *tbu_wp_base)
+{
+	int ret;
+
+	if (!dev) {
+		dev_info(dev, "%s: dev is NULL\n", __func__);
+		return -1;
+	}
+
+	INIT_LIST_HEAD(&zram_engine_tbu_device.node);
+	zram_engine_tbu_device.dev = dev;
+	zram_engine_tbu_device.type = SOC_SMMU;
+	zram_engine_tbu_device.tbu_base = tbu_wp_base;
+	zram_engine_tbu_device.tbu_cnt = 1;
+
+	ret = mtk_smmu_register_tbu(&zram_engine_tbu_device);
+	dev_info(dev, "%s: register TBU device:%d\n", __func__, ret);
+
+	return ret;
+}
+
+static void zram_engine_tbu_unregister(void)
+{
+	int ret;
+
+	ret = mtk_smmu_unregister_tbu(&zram_engine_tbu_device);
+	pr_info("%s: unregister TBU device:%d\n", __func__, ret);
+
+	WARN_ON(ret != 0);
+}
+
+/* IRQ handler for compression */
 static irqreturn_t comp_irq_handler(int irq, void *data)
 {
 	struct zram_engine_t *hwz = data;
@@ -253,6 +338,7 @@ static irqreturn_t comp_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+/* IRQ handler for decompression */
 static irqreturn_t dcomp_irq_handler(int irq, void *data)
 {
 	struct zram_engine_t *hwz = data;
@@ -1613,6 +1699,9 @@ MODULE_DEVICE_TABLE(of, mtk_hwzram_of_match);
 /* Uninitialize platform resource for zram engine */
 static void zram_engine_platform_deinit(struct platform_device *pdev, struct zram_engine_t *hwz)
 {
+	/* Unregister TBU monitor before disable clock & put runtime pm */
+	zram_engine_tbu_unregister();
+
 #ifndef FPGA_EMULATION
 	/*
 	 * Disable clock for zram engine -
@@ -1704,6 +1793,13 @@ static int zram_engine_platform_init(struct platform_device *pdev, struct zram_e
 	/*
 	 * Power & clock is prepared. It's safe to start engine initialization.
 	 */
+
+	/* Register TBU monitor after clock enable & runtime pm get */
+	ret = zram_engine_tbu_register(&pdev->dev, hwz->ctrl.zram_smmu_base);
+	if (ret) {
+		pr_info("%s: zram_engine_tbu_register fail: (%d)\n", __func__, ret);
+		return ret;
+	}
 
 	return 0;
 }

@@ -5,6 +5,7 @@
 
 #include <linux/printk.h>
 #include <linux/vmalloc.h>
+#include <linux/seq_file.h>
 #include <inc/engine_fifo.h>
 #include <inc/engine_regs.h>
 #include <inc/helpers.h>
@@ -1069,4 +1070,36 @@ int engine_fatal_get_reg_status(struct engine_control_t *ctrl, char *buf)
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
 
 	return copied;
+}
+
+#define zram_smmu_dump(file, fmt, args...)		\
+	do {						\
+		if (file) {				\
+			seq_printf(file, fmt, ##args);	\
+		} else {				\
+			pr_info(fmt, ##args);		\
+		}					\
+	} while (0)
+
+void engine_get_smmu_reg_dump(struct engine_control_t *ctrl, struct seq_file *s)
+{
+	void __iomem *reg;
+	uint32_t reg_val;
+	unsigned int smmuwp_reg_nr, i;
+
+	zram_smmu_dump(s, "%s\n", __func__);
+
+	smmuwp_reg_nr = ARRAY_SIZE(zram_smmuwp_regs);
+	for (i = 0; i < smmuwp_reg_nr;) {
+
+		reg = ctrl->zram_smmu_base + zram_smmuwp_regs[i].offset;
+		reg_val = zram_readl(reg);
+		zram_smmu_dump(s, "%-11s:0x%03x=0x%x", zram_smmuwp_regs[i].name, zram_smmuwp_regs[i].offset, reg_val);
+
+		/* newline or space */
+		if (++i % 4 == 0)
+			zram_smmu_dump(s, "\n");
+		else
+			zram_smmu_dump(s, " ");
+	}
 }

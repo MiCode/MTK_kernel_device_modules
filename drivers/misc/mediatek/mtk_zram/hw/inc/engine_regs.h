@@ -80,6 +80,148 @@ struct engine_error_t {
 #define	ZRAM_CONFIG_ZRAM_PWR_PROT_EN_0				0x09A0
 #define	ZRAM_CONFIG_ZRAM_PWR_PROT_RDY_0				0x09B0
 
+// ---------------------- ZRAM_SMMU Definitions ---------------------- //
+#define SMMU_GLB_CTL0		0x000
+#define SMMU_GLB_CTL1		0x004
+#define SMMU_GLB_CTL2		0x008
+#define SMMU_GLB_CTL4		0x010
+#define SMMU_GLB_CTL6		0x018
+
+#define SMMU_GLB_MON0		0x050
+#define SMMU_GLB_MON1		0x054
+#define SMMU_GLB_MON2		0x058
+#define SMMU_GLB_MON3		0x05C
+#define SMMU_GLB_MON4		0x060
+
+#define SMMU_PMU_CTL0		0x070
+#define SMMU_PMU_MON0		0x074
+#define SMMU_LMU_CTL0		0x078
+
+#define SMMU_IRQ_STA		0x080
+#define SMMU_IRQ_ACK		0x084
+#define SMMU_IRQ_ACK_CNT	0x0088
+#define SMMU_IRQ_DIS		0x08C
+
+#define SMMU_IRQ_CNT		0x100
+
+#define SMMU_TBU0_CTL0		0x300
+#define SMMU_TBU0_CTL1		0x304
+#define SMMU_TBU0_CTL2		0x308
+#define SMMU_TBU0_CTL4		0x310
+#define SMMU_TBU0_CTL5		0x314
+#define SMMU_TBU0_CTL6		0x318
+#define SMMU_TBU0_CTL7		0x31C
+
+#define SMMU_TBU0_MON0		0x330
+#define SMMU_TBU0_MON1		0x334
+#define SMMU_TBU0_MON2		0x338
+#define SMMU_TBU0_MON3		0x33C
+#define SMMU_TBU0_MON4		0x340
+#define SMMU_TBU0_MON5		0x344
+#define SMMU_TBU0_MON6		0x348
+#define SMMU_TBU0_MON7		0x34C
+#define SMMU_TBU0_MON8		0x350
+#define SMMU_TBU0_MON9		0x354
+#define SMMU_TBU0_MON10		0x358
+
+#define SMMU_TBU0_DBG0		0x360
+#define SMMU_TBU0_DBG1		0x364
+#define SMMU_TBU0_DBG2		0x368
+#define SMMU_TBU0_DBG3		0x36C
+#define SMMU_TBU0_DBG4		0x370
+#define SMMU_TBU0_DBG5		0x374
+
+#define SMMU_TBU0_RTFM0		0x380
+#define SMMU_TBU0_RTFM1		0x384
+#define SMMU_TBU0_RTFM2		0x388
+
+#define SMMU_TBU0_WTFM0		0x390
+#define SMMU_TBU0_WTFM1		0x394
+#define SMMU_TBU0_WTFM2		0x398
+
+#define SMMU_TBU0_MOGC		0x3A0
+
+#define SMMU_TBU0_MOGL0		0x3B0
+#define SMMU_TBU0_MOGH0		0x3B4
+#define SMMU_TBU0_MOGL1		0x3B8
+#define SMMU_TBU0_MOGH1		0x3BC
+#define SMMU_TBU0_MOGL2		0x3C0
+#define SMMU_TBU0_MOGH2		0x3C4
+#define SMMU_TBU0_MOGL3		0x3C8
+#define SMMU_TBU0_MOGH3		0x3CC
+
+#define SMMU_TBU0_MON11		0x3d0
+#define SMMU_TBU0_MON12		0x3d4
+#define SMMU_TBU0_MON13		0x3d8
+
+struct smmuwp_reg {
+	unsigned int offset;
+	const char *name;
+};
+
+static const struct smmuwp_reg zram_smmuwp_regs[] = {
+	{ SMMU_GLB_CTL0, "GLB_CTL0" },
+	{ SMMU_GLB_CTL1, "GLB_CTL1" },
+	{ SMMU_GLB_CTL2, "GLB_CTL2" },
+	{ SMMU_GLB_CTL4, "GLB_CTL4" },
+	{ SMMU_GLB_CTL6, "GLB_CTL6" },
+	{ SMMU_GLB_MON0, "GLB_MON0" },
+	{ SMMU_GLB_MON1, "GLB_MON1" },
+	{ SMMU_GLB_MON2, "GLB_MON2" },
+	{ SMMU_GLB_MON3, "GLB_MON3" },
+	{ SMMU_GLB_MON4, "GLB_MON4" },
+	{ SMMU_PMU_CTL0, "PMU_CTL0" },
+	{ SMMU_PMU_MON0, "PMU_MON0" },
+	{ SMMU_LMU_CTL0, "LMU_CTL0" },
+	{ SMMU_IRQ_STA, "IRQ_STA" },
+	{ SMMU_IRQ_ACK, "IRQ_ACK" },
+	{ SMMU_IRQ_ACK_CNT, "IRQ_ACK_CNT" },
+	{ SMMU_IRQ_DIS, "IRQ_DIS" },
+	{ SMMU_IRQ_CNT, "IRQ_CNT" },
+	{ SMMU_TBU0_CTL0, "TBU0_CTL0" },
+	{ SMMU_TBU0_CTL1, "TBU0_CTL1" },
+	{ SMMU_TBU0_CTL2, "TBU0_CTL2" },
+	{ SMMU_TBU0_CTL4, "TBU0_CTL4" },
+	{ SMMU_TBU0_CTL5, "TBU0_CTL5" },
+	{ SMMU_TBU0_CTL6, "TBU0_CTL6" },
+	{ SMMU_TBU0_CTL7, "TBU0_CTL7" },
+	{ SMMU_TBU0_MON0, "TBU0_MON0" },
+	{ SMMU_TBU0_MON1, "TBU0_MON1" },
+	{ SMMU_TBU0_MON2, "TBU0_MON2" },
+	{ SMMU_TBU0_MON3, "TBU0_MON3" },
+	{ SMMU_TBU0_MON4, "TBU0_MON4" },
+	{ SMMU_TBU0_MON5, "TBU0_MON5" },
+	{ SMMU_TBU0_MON6, "TBU0_MON6" },
+	{ SMMU_TBU0_MON7, "TBU0_MON7" },
+	{ SMMU_TBU0_MON8, "TBU0_MON8" },
+	{ SMMU_TBU0_MON9, "TBU0_MON9" },
+	{ SMMU_TBU0_MON10, "TBU0_MON10" },
+	{ SMMU_TBU0_DBG0, "TBU0_DBG0" },
+	{ SMMU_TBU0_DBG1, "TBU0_DBG1" },
+	{ SMMU_TBU0_DBG2, "TBU0_DBG2" },
+	{ SMMU_TBU0_DBG3, "TBU0_DBG3" },
+	{ SMMU_TBU0_DBG4, "TBU0_DBG4" },
+	{ SMMU_TBU0_DBG5, "TBU0_DBG5" },
+	{ SMMU_TBU0_RTFM0, "TBU0_RTFM0" },
+	{ SMMU_TBU0_RTFM1, "TBU0_RTFM1" },
+	{ SMMU_TBU0_RTFM2, "TBU0_RTFM2" },
+	{ SMMU_TBU0_WTFM0, "TBU0_WTFM0" },
+	{ SMMU_TBU0_WTFM1, "TBU0_WTFM1" },
+	{ SMMU_TBU0_WTFM2, "TBU0_WTFM2" },
+	{ SMMU_TBU0_MOGC, "TBU0_MOGC" },
+	{ SMMU_TBU0_MOGL0, "TBU0_MOGL0" },
+	{ SMMU_TBU0_MOGH0, "TBU0_MOGH0" },
+	{ SMMU_TBU0_MOGL1, "TBU0_MOGL1" },
+	{ SMMU_TBU0_MOGH1, "TBU0_MOGH1" },
+	{ SMMU_TBU0_MOGL2, "TBU0_MOGL2" },
+	{ SMMU_TBU0_MOGH2, "TBU0_MOGH2" },
+	{ SMMU_TBU0_MOGL3, "TBU0_MOGL3" },
+	{ SMMU_TBU0_MOGH3, "TBU0_MOGH3" },
+	{ SMMU_TBU0_MON11, "TBU0_MON11" },
+	{ SMMU_TBU0_MON12, "TBU0_MON12" },
+	{ SMMU_TBU0_MON13, "TBU0_MON13" },
+};
+
 // ---------------------- ZRAM_ENC Definitions ---------------------- //
 #define ZRAM_ENC_GMCIF_CON_READ_INSTN				0x001C
 #define ZRAM_ENC_GMCIF_CON_READ_DATA				0x0020
@@ -199,6 +341,7 @@ int engine_compare_all_registers(struct engine_control_t *ctrl);
 
 int engine_get_reg_status(struct engine_control_t *ctrl, char *buf);
 int engine_fatal_get_reg_status(struct engine_control_t *ctrl, char *buf);
+void engine_get_smmu_reg_dump(struct engine_control_t *ctrl, struct seq_file *s);
 
 /* Whether IRQ is available */
 #define ENGINE_IRQ_ON	(0x1)	// Set when clk is enabled
