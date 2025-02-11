@@ -14,10 +14,8 @@
 #include <linux/timer.h>
 #include <linux/types.h>
 
-#include <swpm_dbg_fs_common.h>
-#include <swpm_dbg_common_v1.h>
 #include <swpm_module.h>
-#include <swpm_mml_v6991.h>
+#include "swpm_mml_v6991.h"
 
 int __init swpm_mml_v6991_dbg_init(void)
 {

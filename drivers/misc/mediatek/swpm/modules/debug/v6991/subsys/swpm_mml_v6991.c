@@ -22,10 +22,8 @@
 
 #include <mtk_swpm_common_sysfs.h>
 #include <mtk_swpm_sysfs.h>
-#include <swpm_dbg_common_v1.h>
 #include <swpm_module.h>
-#include <swpm_v6991.h>
-#include <swpm_mml_v6991.h>
+#include "swpm_mml_v6991.h"
 
 #include "mtk-mml-driver.h"
 
