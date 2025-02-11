@@ -76,7 +76,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getScpInfo = ops->getScpInfo;
 	_mbraink_power_ops.getScpTaskInfo = ops->getScpTaskInfo;
 	_mbraink_power_ops.getModemInfo = ops->getModemInfo;
-	_mbraink_power_ops.getSpmiInfo = NULL;//ops->getSpmiInfo;
+	_mbraink_power_ops.getSpmiInfo = ops->getSpmiInfo;
 	_mbraink_power_ops.getUvloInfo = ops->getUvloInfo;
 	_mbraink_power_ops.getPmicVoltageInfo = ops->getPmicVoltageInfo;
 	_mbraink_power_ops.suspendprepare = ops->suspendprepare;

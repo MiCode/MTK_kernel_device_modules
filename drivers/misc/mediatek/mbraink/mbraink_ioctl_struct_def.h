@@ -40,6 +40,10 @@
 #define MAX_WIFI_ANTENA_NUM             2
 #define MAX_WIFI_RXTXPERF_SZ			8
 #define MAX_TOUCH_GHOST_SZ			64
+#define MAX_SPMI_PARITY_ERR_SZ			64
+#define MAX_SPMI_PRE_OT_SZ			32
+#define MAX_SPMI_PRE_LVSYS_SZ			32
+#define MAX_SPMI_CURR_CLAMPING_SZ		128
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -357,6 +361,14 @@ struct mbraink_voting_struct_data {
 struct mbraink_spmi_struct_data {
 	unsigned int spmi_count;
 	unsigned int spmi[MAX_PMIC_SPMI_SZ];
+	u16 spmi_parity_err_count;
+	u16 spmi_parity_err[MAX_SPMI_PARITY_ERR_SZ];
+	u16 spmi_pre_ot_count;
+	u16 spmi_pre_ot[MAX_SPMI_PRE_OT_SZ];
+	u16 spmi_pre_lvsys_count;
+	u16 spmi_pre_lvsys[MAX_SPMI_PRE_LVSYS_SZ];
+	u16 spmi_curr_clamping_count;
+	u16 spmi_curr_clamping[MAX_SPMI_CURR_CLAMPING_SZ];
 };
 
 struct mbraink_uvlo_err_data {

@@ -22,8 +22,10 @@
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 #include <spmi-mtk.h>
 #define MAX_SPMI_SLVID slvid_cnt
+#define MAX_SPMI_NACK_CNT spmi_nack_idx_cnt
 #else
 #define MAX_SPMI_SLVID 32
+#define MAX_SPMI_NACK_CNT 64
 #endif
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_RT6160)
@@ -717,7 +719,7 @@ static void mbraink_v6991_power_get_voting_info(
 static int mbraink_v6991_power_get_spmi_info(
 	struct mbraink_spmi_struct_data *mbraink_spmi_data)
 {
-	unsigned int Buf[MAX_SPMI_SLVID] = {0};
+	unsigned int Buf[MAX_SPMI_NACK_CNT] = {0};
 	int ret = 0;
 	int num = 0;
 
@@ -727,7 +729,8 @@ static int mbraink_v6991_power_get_spmi_info(
 	}
 
 	get_spmi_slvid_nack_cnt(Buf);
-	num = (MAX_PMIC_SPMI_SZ > MAX_SPMI_SLVID) ? MAX_SPMI_SLVID : MAX_PMIC_SPMI_SZ;
+	num = (MAX_PMIC_SPMI_SZ > MAX_SPMI_NACK_CNT) ?
+		MAX_SPMI_NACK_CNT : MAX_PMIC_SPMI_SZ;
 	memcpy(mbraink_spmi_data->spmi, Buf, sizeof(unsigned int)*num);
 	mbraink_spmi_data->spmi_count = num;
 

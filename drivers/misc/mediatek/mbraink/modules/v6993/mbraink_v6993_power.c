@@ -23,8 +23,18 @@
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 #include <spmi-mtk.h>
 #define MAX_SPMI_SLVID slvid_cnt
+#define MAX_SPMI_NACK_CNT spmi_nack_idx_cnt
+#define MAX_SPMI_PARITY_ERR_CNT spmi_parity_err_idx_cnt
+#define MAX_SPMI_PRE_OT_CNT PMIC_PRE_OT_BUF_SIZE
+#define MAX_SPMI_PRE_LVSYS_CNT PMIC_PRE_LVSYS_BUF_SIZE
+#define MAX_SPMI_CURR_CLAMPING_CNT PMIC_CURR_CLAMPING_BUF_SIZE
 #else
 #define MAX_SPMI_SLVID 32
+#define MAX_SPMI_NACK_CNT 64
+#define MAX_SPMI_PARITY_ERR_CNT 64
+#define MAX_SPMI_PRE_OT_CNT 32
+#define MAX_SPMI_PRE_LVSYS_CNT 32
+#define MAX_SPMI_CURR_CLAMPING_CNT 128
 #endif
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_RT6160)
@@ -700,7 +710,11 @@ static int mbraink_v6993_power_get_modem_info(struct mbraink_modem_raw *modem_bu
 static int mbraink_v6993_power_get_spmi_info(
 	struct mbraink_spmi_struct_data *mbraink_spmi_data)
 {
-	unsigned int Buf[MAX_SPMI_SLVID] = {0};
+	unsigned int nackBuf[MAX_SPMI_NACK_CNT] = {0};
+	u16 parityErrBuf[MAX_SPMI_PARITY_ERR_CNT] = {0};
+	u16 preOtBuf[MAX_SPMI_PRE_OT_CNT] = {0};
+	u16 preLvsysBuf[MAX_SPMI_PRE_LVSYS_CNT] = {0};
+	u16 currClampingBuf[MAX_SPMI_CURR_CLAMPING_CNT] = {0};
 	int ret = 0;
 	int num = 0;
 
@@ -709,10 +723,40 @@ static int mbraink_v6993_power_get_spmi_info(
 		return -1;
 	}
 
-	get_spmi_slvid_nack_cnt(Buf);
-	num = (MAX_PMIC_SPMI_SZ > MAX_SPMI_SLVID) ? MAX_SPMI_SLVID : MAX_PMIC_SPMI_SZ;
-	memcpy(mbraink_spmi_data->spmi, Buf, sizeof(unsigned int)*num);
+	//get nack cnt
+	get_spmi_slvid_nack_cnt(nackBuf);
+	num = (MAX_PMIC_SPMI_SZ > MAX_SPMI_NACK_CNT) ?
+		MAX_SPMI_NACK_CNT : MAX_PMIC_SPMI_SZ;
+	memcpy(mbraink_spmi_data->spmi, nackBuf, sizeof(unsigned int)*num);
 	mbraink_spmi_data->spmi_count = num;
+
+	//get parity err cnt
+	mtk_spmi_pmic_get_parity_err_cnt(parityErrBuf);
+	num = (MAX_SPMI_PARITY_ERR_SZ > MAX_SPMI_PARITY_ERR_CNT) ?
+		MAX_SPMI_PARITY_ERR_CNT : MAX_SPMI_PARITY_ERR_SZ;
+	memcpy(mbraink_spmi_data->spmi_parity_err, parityErrBuf, sizeof(u16)*num);
+	mbraink_spmi_data->spmi_parity_err_count = num;
+
+	//get pre ot cnt
+	mtk_spmi_pmic_get_pre_ot_cnt(preOtBuf);
+	num = (MAX_SPMI_PRE_OT_SZ > MAX_SPMI_PRE_OT_CNT) ?
+		MAX_SPMI_PRE_OT_CNT : MAX_SPMI_PRE_OT_SZ;
+	memcpy(mbraink_spmi_data->spmi_pre_ot, preOtBuf, sizeof(u16)*num);
+	mbraink_spmi_data->spmi_pre_ot_count = num;
+
+	//get pre lvsys cnt
+	mtk_spmi_pmic_get_pre_lvsys_cnt(preLvsysBuf);
+	num = (MAX_SPMI_PRE_LVSYS_SZ > MAX_SPMI_PRE_LVSYS_CNT) ?
+		MAX_SPMI_PRE_LVSYS_CNT : MAX_SPMI_PRE_LVSYS_SZ;
+	memcpy(mbraink_spmi_data->spmi_pre_lvsys, preLvsysBuf, sizeof(u16)*num);
+	mbraink_spmi_data->spmi_pre_lvsys_count = num;
+
+	//get pre lvsys cnt
+	mtk_spmi_pmic_get_current_clamping_cnt(currClampingBuf);
+	num = (MAX_SPMI_CURR_CLAMPING_SZ > MAX_SPMI_CURR_CLAMPING_CNT) ?
+		MAX_SPMI_CURR_CLAMPING_CNT : MAX_SPMI_CURR_CLAMPING_SZ;
+	memcpy(mbraink_spmi_data->spmi_curr_clamping, currClampingBuf, sizeof(u16)*num);
+	mbraink_spmi_data->spmi_curr_clamping_count = num;
 
 	return ret;
 }
