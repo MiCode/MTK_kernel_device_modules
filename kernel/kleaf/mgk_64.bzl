@@ -1671,6 +1671,8 @@ mgk_64_device_modules = [
     "sound/soc/mediatek/common/mtk-sp-spk-amp.ko",
     "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
     #"sound/soc/codecs/snd-soc-mt6366.ko",
+    "sound/soc/codecs/snd-soc-mt6369.ko",
+
 ]
 
 mgk_64_platform_device_modules = {
@@ -1868,6 +1870,9 @@ mgk_64_platform_device_modules = {
     "sound/soc/mediatek/mt6993/snd-soc-mt6993-afe.ko": "mt6993",
     "sound/soc/mediatek/mt6789/mt6789-mt6366.ko": "mt6789",
     "sound/soc/mediatek/mt6789/snd-soc-mt6789-afe.ko": "mt6789",
+    "sound/soc/mediatek/mt6855/snd-soc-mt6855-afe.ko": "mt6855",
+    "sound/soc/mediatek/mt6855/mt6855-mt6369.ko": "mt6855",
+
 
 }
 

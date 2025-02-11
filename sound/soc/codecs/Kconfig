@@ -8,6 +8,7 @@ config DEVICE_MODULES_SND_SOC_ALL_CODECS
 	imply DEVICE_MODULES_SND_SOC_MT6351
 	imply DEVICE_MODULES_SND_SOC_MT6358
 	imply DEVICE_MODULES_SND_SOC_MT6359
+	imply DEVICE_MODULES_SND_SOC_MT6369
 	imply DEVICE_MODULES_SND_SOC_MT6366
 	imply DEVICE_MODULES_SND_SOC_MT6359P
 	imply SND_SOC_MT6368
@@ -111,6 +112,14 @@ config DEVICE_MODULES_SND_SOC_MT6359
 	help
 	  Enable support for the platform which uses MT6359 as
 	  external codec device.
+
+config DEVICE_MODULES_SND_SOC_MT6369
+	tristate "MediaTek MT6369 Codec driver"
+	help
+	  MediaTek MT6369 is a codec which contain
+	  one ADC for uplink path(MICs), and
+	  one DAC for downlink path(handset,
+	  headset, lineout).
 
 config DEVICE_MODULES_SND_SOC_MT6359_ACCDET
 	tristate "MediaTek MT6359 ACCDET driver"
