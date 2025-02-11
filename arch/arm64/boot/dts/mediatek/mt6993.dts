@@ -22188,9 +22188,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		operating-points-v2 = <&opp_table_img>;
 		mediatek,imgsys-dvfs-pix-mode = <4>;
 		imgsys-supply = <&gce_m_sec>;
-#if 0
 		mediatek,imgsys-qof-ver = <31>;
-#endif
 	};
 
 	pkvm: pkvm {
