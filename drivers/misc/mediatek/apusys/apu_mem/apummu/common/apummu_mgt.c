@@ -47,6 +47,7 @@ static struct delayed_work DRAM_free_work;
 #define AMMU_SSID_MAX		(256)
 #define SLC_DC_BUF_EVA      0x0F000000
 
+static DEFINE_MUTEX(session_lock);
 static DEFINE_SPINLOCK(ssid_lock);
 static DECLARE_BITMAP(ssid_bitmap, AMMU_SSID_MAX);
 
@@ -179,6 +180,7 @@ static void free_memory(void)
 	ammu_trace_begin("APUMMU: free memory");
 
 	mutex_lock(&g_ammu_table_set.DRAM_FB_lock);
+	mutex_lock(&g_ammu_table_set.gtable_lock);
 	if (g_adv->plat.alloc_DRAM_FB_in_session_create) {
 		if (g_adv->rsc.vlm_dram.iova != 0) {
 			queue_delayed_work(ammu_workq, &DRAM_free_work,
@@ -205,6 +207,7 @@ static void free_memory(void)
 
 	g_ammu_table_set.is_VLM_info_IPI_sent = false;
 	g_ammu_table_set.is_SLB_set = false;
+	mutex_unlock(&g_ammu_table_set.gtable_lock);
 	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 
 	ammu_trace_end();
@@ -336,6 +339,7 @@ free_DRAM:
 	apummu_dram_remap_runtime_free(g_adv);
 free_general_SLB:
 	apummu_free_general_SLB(g_adv);
+	mutex_unlock(&g_ammu_table_set.DRAM_FB_lock);
 	return ret;
 }
 
@@ -554,6 +558,17 @@ out:
 	return sTable_ptr;
 }
 
+static struct apummu_session_tbl *session_table_alloc_and_return_mtx(uint64_t session)
+{
+	struct apummu_session_tbl *tbl;
+
+	mutex_lock(&session_lock);
+	tbl = session_table_alloc_and_return(session);
+	mutex_unlock(&session_lock);
+
+	return tbl;
+}
+
 static int enable_slc(uint64_t session)
 {
 #if IS_ENABLED(CONFIG_MTK_SLBC)
@@ -577,7 +592,7 @@ static int enable_slc(uint64_t session)
 	return ret_slbc;
 }
 
-int session_table_alloc(uint64_t session)
+static int session_table_alloc_inner(uint64_t session)
 {
 	int ret = 0;
 	struct apummu_session_tbl *sTable_ptr;
@@ -600,9 +615,20 @@ exit:
 	return ret;
 }
 
+int session_table_alloc(uint64_t session)
+{
+	int ret;
+
+	mutex_lock(&session_lock);
+	ret = session_table_alloc_inner(session);
+	mutex_unlock(&session_lock);
+
+	return ret;
+}
+
 /* device_va == iova */
 int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint64_t device_va,
-								uint64_t buf_size, uint64_t *eva, uint SLC_DC_EN)
+	uint64_t buf_size, uint64_t *eva, uint SLC_DC_EN)
 {
 	int ret = 0;
 	uint64_t ret_eva = 0;
@@ -662,7 +688,7 @@ int addr_encode_and_write_stable(enum AMMU_BUF_TYPE type, uint64_t session, uint
 	sTable_ptr = session_table_find(session);
 	if (!sTable_ptr) {
 		/* if session table not exist alloc a session table */
-		sTable_ptr = session_table_alloc_and_return(session);
+		sTable_ptr = session_table_alloc_and_return_mtx(session);
 		if (!sTable_ptr) {
 			ret = -ENOMEM;
 			goto out;
@@ -761,7 +787,7 @@ out:
 }
 
 /* free session table by session */
-int session_table_free(uint64_t session)
+static int session_table_free_inner(uint64_t session)
 {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_MTK_SLBC)
@@ -799,7 +825,9 @@ int session_table_free(uint64_t session)
 
 	g_ammu_table_set.session_tbl_cnt -= 1;
 	if (g_ammu_table_set.session_tbl_cnt == g_adv->plat.reserved_session_num) {
+		mutex_unlock(&g_ammu_table_set.gtable_lock);
 		free_memory();
+		mutex_lock(&g_ammu_table_set.gtable_lock);
 #if IS_ENABLED(CONFIG_MTK_SLBC)
 		/*slc release flow*/
 		ret_slbc = slbc_invalidate(ID_NPU, gid);
@@ -814,6 +842,17 @@ int session_table_free(uint64_t session)
 	mutex_unlock(&g_ammu_table_set.gtable_lock);
 out:
 	ammu_trace_end();
+	return ret;
+}
+
+int session_table_free(uint64_t session)
+{
+	int ret;
+
+	mutex_lock(&session_lock);
+	ret = session_table_free_inner(session);
+	mutex_unlock(&session_lock);
+
 	return ret;
 }
 
