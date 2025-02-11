@@ -18,6 +18,12 @@ struct cmd_fn {
 	int (*fn)(struct seq_file *s, void *v);
 };
 
+#define TEST_CLK_NUM (100)
+struct test_task_clk {
+	struct clk *test_clk[TEST_CLK_NUM];
+	int test_clk_num;
+};
+
 struct clkdbg_ops {
 	const struct fmeter_clk *(*get_all_fmeter_clks)(void);
 	void *(*prepare_fmeter)(void);
@@ -26,7 +32,7 @@ struct clkdbg_ops {
 	const char * const *(*get_all_clk_names)(void);
 	const char * const *(*get_pwr_names)(void);
 	u32 (*get_spm_pwr_status)(void);
-	int (*start_task)(void);
+	int (*start_task)(void *data);
 };
 
 void set_clkdbg_ops(const struct clkdbg_ops *ops);

@@ -1275,30 +1275,34 @@ static void stop_clkdbg_test_task(void)
 
 static int clkdbg_thread_fn(void *data)
 {
-	struct clk *clks[PD_NUM] = {NULL};
-	const char *clk_name[PD_NUM] = {
-		"disp_vcore",
-		"dis0",
-		"dis1",
-	};
+	struct clk *clks[TEST_CLK_NUM] = {NULL};
+	struct test_task_clk *test_clk = (struct test_task_clk *)data;
 	int i;
-	int ret = 0;
+	int ret = 0, test_clk_num;
 	unsigned int thread_cnt = 0;
 
-	for (i = 0; i < PD_NUM; i++)
-		clks[i] = __clk_dbg_lookup(clk_name[i]);
+	if (test_clk == NULL || test_clk->test_clk_num == 0) {
+		pr_info("clkdbg_thread receive NULL data\n");
+		goto ERR;
+	}
+	test_clk_num = test_clk->test_clk_num;
+
+	for (i = 0; i < test_clk_num; i++)
+		clks[i] = test_clk->test_clk[i];
+
 	while (!kthread_should_stop()) {
 		if ((thread_cnt % 10000) == 0)
 			pr_info("clkdbg_thread is running...(%d)\n", thread_cnt);
 
-		for (i = 0; i < PD_NUM; i++) {
+		for (i = 0; i < test_clk_num; i++) {
 			ret = clk_prepare_enable(clks[i]);
 			if (ret < 0) {
-				pr_notice("%s fail to power on(%d)\n", clk_name[i], ret);
+				pr_notice("%s fail to power on(%d)\n",
+					clk_hw_get_name(__clk_get_hw(clks[i])), ret);
 				goto ERR;
 			}
 		}
-		for (i = PD_NUM - 1; i >= 0; i--)
+		for (i = test_clk_num - 1; i >= 0; i--)
 			clk_disable_unprepare(clks[i]);
 
 		thread_cnt++;
@@ -1308,34 +1312,34 @@ ERR:
 	return 0;
 }
 
-static int start_clkdbg_test_task(void)
+static int start_clkdbg_test_task(void *data)
 {
-    char thread_name[THREAD_LEN];
-    int ret = 0;
+	char thread_name[THREAD_LEN];
+	int ret = 0;
 
-    if (clkdbg_thread_cnt >= THREAD_NUM || clkdbg_thread_cnt < 0)
-        return 0;
+	if (clkdbg_thread_cnt >= THREAD_NUM || clkdbg_thread_cnt < 0)
+		return 0;
 
-    if (clkdbg_test_thread[clkdbg_thread_cnt]) {
-        pr_info("%s clkdbg_thread is already running\n", __func__);
-        return -EBUSY;
-    }
+	if (clkdbg_test_thread[clkdbg_thread_cnt]) {
+		pr_info("%s clkdbg_thread is already running\n", __func__);
+		return -EBUSY;
+	}
 
-    ret = snprintf(thread_name, THREAD_LEN, "clkdbg_thread%d", clkdbg_thread_cnt);
+	ret = snprintf(thread_name, THREAD_LEN, "clkdbg_thread%d", clkdbg_thread_cnt);
 
-    if (ret < 0) {
-        pr_info("%s snprintf error(%d)\n", __func__, ret);
-        return ret;
-    }
+	if (ret < 0) {
+		pr_info("%s snprintf error(%d)\n", __func__, ret);
+		return ret;
+	}
 
-    clkdbg_test_thread[clkdbg_thread_cnt] = kthread_run(clkdbg_thread_fn, NULL, "%s", thread_name);
-    if (IS_ERR(clkdbg_test_thread[clkdbg_thread_cnt])) {
-        pr_info("%s Failed to start clkdbg_thread(%d)\n", __func__, clkdbg_thread_cnt);
-        return PTR_ERR(clkdbg_test_thread[clkdbg_thread_cnt]);
-    }
-    clkdbg_thread_cnt++;
+	clkdbg_test_thread[clkdbg_thread_cnt] = kthread_run(clkdbg_thread_fn, data, "%s", thread_name);
+	if (IS_ERR(clkdbg_test_thread[clkdbg_thread_cnt])) {
+		pr_info("%s Failed to start clkdbg_thread(%d)\n", __func__, clkdbg_thread_cnt);
+		return PTR_ERR(clkdbg_test_thread[clkdbg_thread_cnt]);
+	}
+	clkdbg_thread_cnt++;
 
-    return 0;
+	return 0;
 }
 
 /*

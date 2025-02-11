@@ -1196,7 +1196,7 @@ ERR:
 	return 0;
 }
 
-static int start_clkdbg_test_task(void)
+static int start_clkdbg_test_task(void *data)
 {
 	char thread_name[THREAD_LEN];
 	int ret = 0;

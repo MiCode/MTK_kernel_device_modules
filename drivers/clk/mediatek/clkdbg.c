@@ -683,18 +683,65 @@ static int clkdbg_set_rate(struct seq_file *s, void *v)
 	return r;
 }
 
+
 static int clkdbg_test_task(struct seq_file *s, void *v)
 {
+	char cmd[sizeof(last_cmd)];
+	char *c = cmd;
+	char *ign, *tmp_clk_name;
+	struct test_task_clk test_clk; // need use malloc?
+	struct clk *tmp_clk;
+	int skip;
+
 	if (clkdbg_ops == NULL || clkdbg_ops->start_task == NULL) {
 		seq_puts(s, "Task not support\n");
 		return 0;
 	}
 
-	if (!clkdbg_ops->start_task())
+	test_clk.test_clk_num = 0;
+	skip = 0;
+	/* add parsing input clk name */
+	strscpy(cmd, last_cmd, sizeof(cmd));
+	cmd[sizeof(cmd) - 1UL] = '\0';
+
+	ign = strsep(&c, " ");
+
+	/* validate input clk name */
+	tmp_clk_name = strsep(&c, " ");
+
+	if (tmp_clk_name == NULL) {
+		seq_puts(s, "please input test clk names\n");
+		goto END;
+	}
+
+	while(tmp_clk_name != NULL) {
+		tmp_clk = __clk_dbg_lookup(tmp_clk_name);
+		if (tmp_clk) {
+			test_clk.test_clk[test_clk.test_clk_num] = tmp_clk;
+			test_clk.test_clk_num++;
+			seq_printf(s, "valid clk %s\n", tmp_clk_name);
+			if (test_clk.test_clk_num >= TEST_CLK_NUM) {
+				seq_puts(s, "too many test clk, skip this cmd\n");
+				skip = 1;
+				break;
+			}
+		} else {
+			seq_printf(s, "invalid clk %s, skip this cmd\n", tmp_clk_name);
+			skip = 1;
+			break;
+		}
+		tmp_clk_name = strsep(&c, " ");
+	}
+
+	if (skip == 1)
+		goto END;
+
+	if (!clkdbg_ops->start_task(&test_clk))
 		seq_puts(s, "Task Createted\n");
 	else
 		seq_puts(s, "Create task failed\n");
 
+END:
 	return 0;
 }
 
