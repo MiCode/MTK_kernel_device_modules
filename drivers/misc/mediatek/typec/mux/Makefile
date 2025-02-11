@@ -5,4 +5,3 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc
 CFLAGS_pi3dpx1205a.o += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/mux
 
 obj-$(CONFIG_TYPEC_MUX_PI3DPX1205A) += pi3dpx1205a.o
-obj-$(CONFIG_TYPEC_MUX_DP_SELECTOR) += usb_dp_selector.o

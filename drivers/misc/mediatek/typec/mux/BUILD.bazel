@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
 
 package(
     default_visibility = [
@@ -92,3 +93,19 @@ define_mgk_ddk_ko(
     ],
 )
 
+define_mgk_ddk_ko(
+    name = "usb_dp_selector",
+    srcs = [
+        "usb_dp_selector.c",
+        "mux_switch.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+    	"//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:mux_switch".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version)
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(srctree)/drivers/usb/typec",
+    ],
+)

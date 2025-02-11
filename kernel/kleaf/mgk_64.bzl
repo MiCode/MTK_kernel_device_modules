@@ -977,6 +977,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5169".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5170".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ptn36241g".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:usb_dp_selector".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/uarthub:uarthub_drv".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_meta:usb_meta".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_rndis:mtk_u_ether".format(kernel_version),
@@ -1660,7 +1661,6 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko",
     "drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-isp-dbg-v6991.ko",
     "drivers/misc/mediatek/task_turbo/task_turbo.ko",
-    "drivers/misc/mediatek/typec/mux/usb_dp_selector.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_atc.ko",
     "drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko",
@@ -3218,7 +3218,6 @@ def get_overlay_modules_list():
 
     if "mt6768_overlay_ref.config" in DEFCONFIG_OVERLAYS:
         mgk_64_device_modules.append("drivers/misc/mediatek/flashlight/flashlights-ocp81375.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/typec/mux/usb_dp_selector.ko")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut")
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:fusb304".format(kernel_version))
@@ -3226,6 +3225,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5169".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5170".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ptn36241g".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:usb_dp_selector".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/power/supply/mtk_chg_det.ko")
         mgk_64_device_modules.append("sound/soc/mediatek/mt6768/mt6768-mt6358-ref.ko")
