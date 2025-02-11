@@ -945,6 +945,10 @@ SND_SOC_DAILINK_DEFS(hostless_ul4,
 	DAILINK_COMP_ARRAY(COMP_CPU("Hostless_UL4 DAI")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(hostless_ul24,
+	DAILINK_COMP_ARRAY(COMP_CPU("Hostless_UL24 DAI")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(hostless_dsp_dl,
 	DAILINK_COMP_ARRAY(COMP_CPU("Hostless_DSP_DL DAI")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -2077,6 +2081,13 @@ static struct snd_soc_dai_link mt6993_mt6681_dai_links[] = {
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
 		SND_SOC_DAILINK_REG(hostless_ul4),
+	},
+	{
+		.name = "Hostless_UL24",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		SND_SOC_DAILINK_REG(hostless_ul24),
 	},
 	{
 		.name = "Hostless_DSP_DL",
