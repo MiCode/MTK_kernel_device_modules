@@ -53,7 +53,7 @@
 #define CCMD_UNSUPPORTED_CID		0xFFFFFFFF
 #define CCMD_RESERVED_PBHA_NUM		5
 #define CCMD_UNSUPPORTED_PBHA_ID	0
-#define CCMD_DEBUG_MODE				0
+/* #define CCMD_DEBUG_MODE */
 #define CCMD_V2_SUPPORT			1
 
 /* variables */
@@ -1008,7 +1008,7 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&g_pdma_dev->ctx_list);
 	mutex_init(&g_pdma_dev->pdma_device_lock);
 
-#if CCMD_V2_SUPPORT & CCMD_DEBUG_MODE
+#ifdef CCMD_DEBUG_MODE
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 #else
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);

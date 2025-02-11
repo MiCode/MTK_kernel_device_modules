@@ -53,8 +53,7 @@
 #define CCMD_UNSUPPORTED_CID		0xFFFFFFFF
 #define CCMD_RESERVED_PBHA_NUM		5
 #define CCMD_UNSUPPORTED_PBHA_ID	0
-#define CCMD_DEBUG_MODE				0
-#define JAYER_HW_SUPPORT			0
+#define CCMD_V2_SUPPORT			0
 
 /* variables */
 static struct pdma_device *g_pdma_dev;
@@ -238,7 +237,7 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	struct ccmd_context *ccmd_ctx)
 {
 //	int *ringbuf_pa0_setting_l;
-#if JAYER_HW_SUPPORT
+#if CCMD_V2_SUPPORT
 	unsigned int pdma_status;
 	unsigned int poll_timeout = 1000;
 #endif
@@ -252,7 +251,7 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 //	ringbuf_pa0_setting_l = pdma_dev->pdma_reg_base_kva +
 //		CIDX_RING_BUFFER_PA_0_L(ccmd_ctx->cid);
 
-#if JAYER_HW_SUPPORT
+#if CCMD_V2_SUPPORT
 	/*ch0 is for initializing custom command buffer process.*/
 	/* Disable and poll Ch0*/
 	writel((readl(pdma_dev->pdma_reg_base_kva) & 0xFFFDFFFF),
@@ -271,7 +270,7 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	/* CCB */
 	writel(0x3, (pdma_dev->pdma_reg_base_kva + CCMD_RING_BUFFER_CONTROL));
 
-	/* Jayer CID_COMMAND */
+	/* CID_COMMAND */
 	writel((ccmd_ctx->cid << 8) | (0x3 << 10),
 		pdma_dev->pdma_reg_base_kva + CCMD_CID_COMMAND);
 	/* release GID command of the CID, and reset hrptr&hwptr */
@@ -309,14 +308,14 @@ static int init_ccmd_hw(struct pdma_device *pdma_dev,
 	if (ccmd_power_control(CCMD_POWER_ON))
 		return 1;
 
-#if JAYER_HW_SUPPORT
-	/* Jayer CCMD mode */
+#if CCMD_V2_SUPPORT
+	/* CCMD mode */
 	writel(0x423B8000, pdma_dev->pdma_reg_base_kva);
 
-	/* Jayer Zombie_IRQ_CONTROL */
+	/* Zombie_IRQ_CONTROL */
 	writel(0x90000200, pdma_dev->pdma_reg_base_kva + 0x6C);
 
-	/* Jayer SLC Policy Attr */
+	/* SLC Policy Attr */
 	writel(0x400, (pdma_dev->pdma_reg_base_kva + 0x300));
 	writel(0x402, (pdma_dev->pdma_reg_base_kva + 0x304));
 	writel(0x406, (pdma_dev->pdma_reg_base_kva + 0x308));
@@ -1017,7 +1016,7 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&g_pdma_dev->ctx_list);
 	mutex_init(&g_pdma_dev->pdma_device_lock);
 
-#if JAYER_HW_SUPPORT & CCMD_DEBUG_MODE
+#ifdef CCMD_DEBUG_MODE
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 #else
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
