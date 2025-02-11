@@ -16744,6 +16744,10 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	/* release wakelock */
 	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
 
+	/* no need to consider cam throttle between suspend and first LR after suspend */
+	if (index == 0)
+		atomic_set(&mtk_crtc->consider_cam_thro, 0);
+
 	CRTC_MMP_EVENT_END(index, suspend,
 			mtk_crtc->enabled, 0);
 }

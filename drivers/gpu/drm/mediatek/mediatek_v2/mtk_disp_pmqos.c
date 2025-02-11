@@ -1724,6 +1724,10 @@ int mtk_disp_hrt_cond_change_cb(struct notifier_block *nb, unsigned long value,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dev_crtc);
 	unsigned int hrt_idx;
 
+	if (!atomic_read(&mtk_crtc->consider_cam_thro)) {
+		DDPMSG("%s no need reduce layer\n", __func__);
+		return 0;
+	}
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	/* No need to repaint when display suspend */

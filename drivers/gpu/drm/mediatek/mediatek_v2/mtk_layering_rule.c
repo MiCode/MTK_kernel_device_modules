@@ -367,6 +367,7 @@ static void copy_hrt_bound_table(struct drm_mtk_layering_info *disp_info,
 	int valid_num, ovl_bound, i;
 	struct mtk_drm_private *priv = dev->dev_private;
 	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
 	unsigned int disp_idx = 0;
 
 	/* Not used in 6779 */
@@ -377,6 +378,12 @@ static void copy_hrt_bound_table(struct drm_mtk_layering_info *disp_info,
 		disp_idx = disp_info->disp_idx;
 
 	crtc = priv->crtc[disp_idx];
+
+	/* no need to consider cam throttle between suspend and first LR after suspend */
+	if (disp_idx == 0) {
+		mtk_crtc = to_mtk_crtc(crtc);
+		atomic_set(&mtk_crtc->consider_cam_thro, 1);
+	}
 
 	/* update table if hrt bw is enabled */
 	mutex_lock(&hrt_table_lock);

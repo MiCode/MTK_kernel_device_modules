@@ -1156,6 +1156,7 @@ struct mtk_drm_crtc {
 	struct mtk_drm_gem_obj *round_corner_gem_l;
 	struct mtk_drm_gem_obj *round_corner_gem_r;
 	struct mtk_drm_qos_ctx *qos_ctx;
+	atomic_t consider_cam_thro;
 	bool sec_on;
 	struct task_struct *vblank_enable_task;
 	wait_queue_head_t vblank_enable_wq;
