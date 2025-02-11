@@ -4391,6 +4391,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-129 = "EMI_MAX_OCC_BW",
 				"TOTAL_DRAM,CPU_DRAM,GPU_DRAM,APU_DRAM,MM_DRAM,MD_DRAM,WB_DRAM,",
 				"TOTAL_EMI,CPU_EMI,GPU_EMI,APU_EMI,MM_EMI,MD_EMI";
+			node-130 = "SSPM_SWPM_CHINFRA",
+				"non_snp_bw,snp_bw,non_snp_ratio,snp_ratio,",
+				"idle_ratio,suspend_ratio,frequency";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
