@@ -3644,6 +3644,158 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-64 = "MCUPM_PTP3__Vmeter",
 					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 			node-65 = "MCUPM_MET_UNIT_TEST_SLV_0", "test";
+
+			node-66 = "MCUPM_DPTV2_AMU_CPU0",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-67 = "MCUPM_DPTV2_AMU_CPU1",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-68 = "MCUPM_DPTV2_AMU_CPU2",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-69 = "MCUPM_DPTV2_AMU_CPU3",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-70 = "MCUPM_DPTV2_AMU_CPU4",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-71 = "MCUPM_DPTV2_AMU_CPU5",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-72 = "MCUPM_DPTV2_AMU_CPU6",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-73 = "MCUPM_DPTV2_AMU_CPU7",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-74 = "MCUPM_DPTV2_AMU_DIFF_CPU0",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-75 = "MCUPM_DPTV2_AMU_DIFF_CPU1",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-76 = "MCUPM_DPTV2_AMU_DIFF_CPU2",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-77 = "MCUPM_DPTV2_AMU_DIFF_CPU3",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-78 = "MCUPM_DPTV2_AMU_DIFF_CPU4",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-79 = "MCUPM_DPTV2_AMU_DIFF_CPU5",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-80 = "MCUPM_DPTV2_AMU_DIFF_CPU6",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-81 = "MCUPM_DPTV2_AMU_DIFF_CPU7",
+					"cpu_cycle_l,cpu_cycle_h,instr_retired_l,instr_retired_h";
+			node-82 = "MCUPM_DPTV2_PMU_CPU0",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-83 = "MCUPM_DPTV2_PMU_CPU1",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-84 = "MCUPM_DPTV2_PMU_CPU2",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-85 = "MCUPM_DPTV2_PMU_CPU3",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-86 = "MCUPM_DPTV2_PMU_CPU4",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-87 = "MCUPM_DPTV2_PMU_CPU5",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-88 = "MCUPM_DPTV2_PMU_CPU6",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-89 = "MCUPM_DPTV2_PMU_CPU7",
+					"EVENT_STALL,EVENT_L2_ACTIVE,EVENT_VX_DIDT,EVENT_LS_DIDT,EVENT_LD_SPEC,",
+					"EVENT_ST_SPEC,EVENT_DP_SPEC,EVENT_ASE_SPEC,EVENT_VFP_SPEC,",
+					"EVENT_PC_WRITE_SPEC,EVENT_INST_SPEC";
+			node-90 = "MCUPM_DPTV2_PMU_DIFF_CPU0",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-91 = "MCUPM_DPTV2_PMU_DIFF_CPU1",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-92 = "MCUPM_DPTV2_PMU_DIFF_CPU2",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-93 = "MCUPM_DPTV2_PMU_DIFF_CPU3",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-94 = "MCUPM_DPTV2_PMU_DIFF_CPU4",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-95 = "MCUPM_DPTV2_PMU_DIFF_CPU5",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-96 = "MCUPM_DPTV2_PMU_DIFF_CPU6",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-97 = "MCUPM_DPTV2_PMU_DIFF_CPU7",
+					"CPU_CUCLE_l,CPU_CYCLE_h,CPU_INSTR_RETIRED_l,CPU_INSTR_RETIRED_h,",
+					"EVENT_STALL_l,EVENT_STALL_h,EVENT_LD_SPEC_l,EVENT_LD_SPEC_h,",
+					"EVENT_ST_SPEC_l,EVENT_ST_SPEC_h,EVENT_DP_SPEC_l,EVENT_DP_SPEC_h,EVENT_ASE_SPEC_l,EVENT_ASE_SPEC_h,",
+					"EVENT_VFP_SPEC_l,EVENT_VFP_SPEC_h,EVENT_PC_WRITE_SPEC_l,EVENT_PC_WRITE_SPEC_h,",
+					"EVENT_INST_SPEC_l,EVENT_INST_SPEC_h";
+			node-98 = "MCUPM_DPTV2_SCALING_FCT_CPU0",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-99 = "MCUPM_DPTV2_SCALING_FCT_CPU1",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-100 = "MCUPM_DPTV2_SCALING_FCT_CPU2",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-101 = "MCUPM_DPTV2_SCALING_FCT_CPU3",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-102 = "MCUPM_DPTV2_SCALING_FCT_CPU4",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-103 = "MCUPM_DPTV2_SCALING_FCT_CPU5",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-104 = "MCUPM_DPTV2_SCALING_FCT_CPU6",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-105 = "MCUPM_DPTV2_SCALING_FCT_CPU7",
+					"cur_to_B_active,cur_to_B_dsu_stall,cur_to_B_emi_stall,cur_to_B_cpu_stall,",
+					"B_to_M_active,B_to_M_dsu_stall,B_to_M_emi_stall,B_to_M_cpu_stall,",
+					"B_to_L_active,B_to_L_dsu_stall,B_to_L_emi_stall,B_to_L_cpu_stall";
+			node-106 = "MCUPM_DPTV2_PWR_FCT",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-107 = "MCUPM_DPTV2_ERR_STATUS",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+
+			node-108 = "MCUPM_DPTV2_CTX_SW",
+					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 		};
 
 		sspm_rts_header: sspm-rts-header {
