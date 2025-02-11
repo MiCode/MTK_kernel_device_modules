@@ -641,7 +641,7 @@ static char *dvfsrc_dump_reg_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u32 size
 
 	p += snprintf(p, buff_end - p,
 		"%-12s: %d, %d, %d, %d, %d, %d, %d\n",
-		"DDR_SW_BW_0~6",
+		"SW_BW_0~6",
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x0),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x4),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x8),
@@ -652,7 +652,7 @@ static char *dvfsrc_dump_reg_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u32 size
 
 	p += snprintf(p, buff_end - p,
 		"%-12s: %d, %d, %d\n",
-		"DDR_SW_BW_7~9",
+		"SW_BW_7~9",
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x1C),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x20),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x24));
@@ -1137,6 +1137,40 @@ static void dvfsrc_set_ceiling_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear, bool
 	}
 }
 
+#define MTK_SIP_VCOREFS_CEINING_SET   19
+static void dvfsrc_set_ceiling_6993_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear, bool force_en)
+{
+	u32 val;
+	struct arm_smccc_res ares;
+
+	if (force_en) {
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING_SW_REQ,
+			((dvfsrc->opp_desc->num_dram_opp - 1) << 12));
+	} else
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING_SW_REQ, 0x0);
+
+	val = dvfsrc_read(dvfsrc, DVFSRC_CEILING, 0);
+
+	if (!force_en) {
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING, val & ~(1 << 16));
+		pr_info("ceiling set\n");
+		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_CEINING_SET,
+			gear, 0, 0, 0, 0, 0,
+			&ares);
+
+		if (ares.a0)
+			pr_info("set_ceiling_priv not support\n");
+	}
+
+	if (gear == 0xFF)
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING, val & ~(1 << 16));
+	else {
+		val = val & ~((0xF << 4) | (1 << 16));
+		val = val | (((gear + 1) & 0xF) << 4) | (1 << 16);
+		dvfsrc_write(dvfsrc, DVFSRC_CEILING, val);
+	}
+}
+
 static void dvfsrc_set_vcore_avs(struct mtk_dvfsrc *dvfsrc, u32 enable, u32 bit)
 {
 	u32 rsrv4;
@@ -1316,7 +1350,7 @@ const struct dvfsrc_config mt6993_dvfsrc_config = {
 	.dump_md_floor_table = dvfsrc_dump_mt6983_md_floor_table,
 	.query_opp_count = dvfsrc_get_opp_count,
 	.query_opp_gear_info = dvfsrc_get_opp_gear_info,
-	.set_ddr_ceiling = dvfsrc_set_ceiling_ddr_opp,
+	.set_ddr_ceiling = dvfsrc_set_ceiling_6993_ddr_opp,
 	.set_vcore_avs = dvfsrc_set_vcore_avs,
 	.dump_vcore_avs_zone = dvfsrc_dump_vcore_avs_zone,
 };
