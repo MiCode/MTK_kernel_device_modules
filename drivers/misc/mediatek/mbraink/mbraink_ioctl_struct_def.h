@@ -39,6 +39,7 @@
 #define MAX_WIFI_BAND_NUM               3
 #define MAX_WIFI_ANTENA_NUM             2
 #define MAX_WIFI_RXTXPERF_SZ			8
+#define MAX_TOUCH_GHOST_SZ			64
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -58,6 +59,7 @@
 #define NETLINK_EVENT_IMGSYS_NOTIFY "NLEvent_IMGSYSNotify"
 #define NETLINK_EVENT_USB_OFFLOAD "NLEvent_USBOffload"
 #define NETLINK_EVENT_SMAP_NOTIFY "NLEvent_SMAPNotify"
+#define NETLINK_EVENT_TOUCH_GHOST_NOTIFY "NLEvent_TouchGhostNotify"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
@@ -704,6 +706,19 @@ struct mbraink_wifi2mbr_rxtxperf_data {
 	u16 count;
 	u32 idx;
 	struct mbraink_wifi2mbr_rxtxperf_struct rxtxperf_data[MAX_WIFI_RXTXPERF_SZ];
+};
+
+struct mbraink_touch_ghost_struct {
+	u64 kernel_time;
+	u64 unix_time;
+	int touch_id;
+	int x;
+	int y;
+};
+
+struct mbraink_touch_ghost_info {
+	u16 count;
+	struct mbraink_touch_ghost_struct data[MAX_TOUCH_GHOST_SZ];
 };
 
 #endif

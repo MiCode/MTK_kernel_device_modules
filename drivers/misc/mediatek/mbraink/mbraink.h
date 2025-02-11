@@ -66,6 +66,7 @@
 #define VDEC_FPS_INFO			'L'
 
 #define POWER_SCP_TASK_INFO		'M'
+#define TOUCH_GHOST_INFO		'N'
 #define NETLINK_TRIGGER_RECV	'O'
 #define POWER_SPMI_GLITCH_INFO  'P'
 #define POWER_DVFSRC_INFO		'Q'
@@ -182,6 +183,8 @@
 #define RO_POWER_SCP_TASK_INFO	_IOR(IOC_MAGIC, POWER_SCP_TASK_INFO, \
 						struct mbraink_power_scp_task_info*)
 #define WO_NETLINK_TRIGGER_RECV		_IOW(IOC_MAGIC, NETLINK_TRIGGER_RECV, char*)
+#define RO_TOUCH_GHOST_INFO	_IOR(IOC_MAGIC, TOUCH_GHOST_INFO, \
+						struct mbraink_touch_ghost_info*)
 
 #define RO_POWER_SPMI_GLITCH_INFO	_IOR(IOC_MAGIC, POWER_SPMI_GLITCH_INFO, \
 					struct mbraink_spmi_glitch_struct_data*)

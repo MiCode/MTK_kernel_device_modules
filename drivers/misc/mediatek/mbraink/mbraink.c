@@ -35,6 +35,7 @@
 #include "mbraink_gps.h"
 #include "mbraink_wifi.h"
 #include "mbraink_usb.h"
+#include "mbraink_touch.h"
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 
@@ -1300,6 +1301,31 @@ static long handle_wifi_rxtxperf_info(unsigned long arg, void *mbraink_data)
 		pr_notice("Copy wifi_rxtxperf_buf to UserSpace error!\n");
 		return -EPERM;
 	}
+
+	return ret;
+}
+
+static long handle_touch_ghost_info(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_touch_ghost_info *touch_ghost_info =
+		(struct mbraink_touch_ghost_info *)(mbraink_data);
+
+	pr_notice("mbraink %s\n", __func__);
+	memset(touch_ghost_info,
+		0,
+		sizeof(struct mbraink_touch_ghost_info));
+
+	ret = mbraink_get_touch_ghost_info(touch_ghost_info);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_touch_ghost_info *)arg,
+				touch_ghost_info,
+				sizeof(struct mbraink_touch_ghost_info))) {
+			pr_notice("Copy touch ghost info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
 	return ret;
 }
 
@@ -1785,6 +1811,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_wifi_rxtxperf_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_TOUCH_GHOST_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_touch_ghost_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_touch_ghost_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
@@ -2387,6 +2422,10 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink pmu init failed.\n");
 
+	ret = mbraink_touch_init();
+	if (ret)
+		pr_notice("mbraink touch init failed.\n");
+
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	ret = mbraink_auto_init();
 	if (ret)
@@ -2449,6 +2488,7 @@ static void mbraink_exit(void)
 	mbraink_wifi_deinit();
 	mbraink_usb_deinit();
 	mbraink_pmu_deinit();
+	mbraink_touch_deinit();
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	mbraink_auto_deinit();
 #endif

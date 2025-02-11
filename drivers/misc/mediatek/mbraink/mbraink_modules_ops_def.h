@@ -104,4 +104,12 @@ struct mbraink_pmu_ops {
 };
 int register_mbraink_pmu_ops(struct mbraink_pmu_ops *ops);
 int unregister_mbraink_pmu_ops(void);
+
+/*TOUCH*/
+struct mbraink_touch_ops {
+	int (*get_touch_ghost_info)(struct mbraink_touch_ghost_info *touch_ghost_info);
+};
+int register_mbraink_touch_ops(struct mbraink_touch_ops *ops);
+int unregister_mbraink_touch_ops(void);
+
 #endif //MBRAINK_MODULES_OPS_STRUCT_H

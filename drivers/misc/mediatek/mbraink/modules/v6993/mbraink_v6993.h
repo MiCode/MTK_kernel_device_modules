@@ -15,5 +15,6 @@
 #include "mbraink_v6993_wifi.h"
 #include "mbraink_v6993_camera.h"
 #include "mbraink_v6993_pmu.h"
+#include "mbraink_v6993_touch.h"
 
 #endif /*end of MBRAINK_V6993_H*/
