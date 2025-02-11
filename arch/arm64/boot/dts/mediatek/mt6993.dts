@@ -4592,6 +4592,94 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			wakeup-irq-support = <1>;
 		};
 
+		ccu_rproc: ccu_rproc@3c080000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,ccu_rproc";
+			reg = <0 0x3c080000 0 0x4000>;
+			interrupts = <GIC_SPI 665 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,larbs = <&smi_larb30>;
+			clocks =
+				<&mm_pd_clk CLK_PD_CAM_VCORE_CAM_VCORE>,
+				<&mm_pd_clk CLK_PD_CAM_MAIN_CAM_MAIN>,
+				<&mm_pd_clk CLK_PD_CAM_CCU_CCU>,
+				<&cksys_mm_clk CKSYS_MM_CCUSYS_SEL>,
+				<&cksys_mm_clk CKSYS_MM_CCUTM_SEL>,
+				<&ccu_main_clk CCU2MM0_GALS_CON_CCU>,
+				<&ccu_main_clk CCU_LARB19_CON_CCU>,
+				<&ccu_main_clk CCU2INFRA_GALS_CON_CCU>,
+				<&ccu_main_clk CCUSYS_CCU0_CON_CCU>,
+				<&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
+				<&cam_vcore_r1a_clk CAM_V_R1A_26M_CAM_VCORE>,
+				<&cam_vcore_r1a_clk CAM_V_R1A_SUB_COMM1_CAM_VCORE>,
+				<&cam_vcore_r1a_clk CAM_V_R1A_X60_GALS_CAM_VCORE>,
+				<&cam_vcore_r1a_clk CAM_V_R1A_X90_GALS_CAM_VCORE>,
+				<&cam_vcore_r1a_clk CAM_V_R1A_TX90_GALS_CAM_VCORE>,
+				<&cam_vcore_r1a_clk CAM_V_R1A_TX13_GALS_CAM_VCORE>;
+			clock-names =
+				"PD_CAM_VCORE",
+				"PD_CAM_MAIN",
+				"PD_CCU",
+				"MM_CCUSYS",
+				"MM_CCUTM",
+				"CCU2MM0_GALS",
+				"CCU_LARB",
+				"CCU_INFRA",
+				"CCUSYS_CCU0",
+				"CAM_MAIN",
+				"VCORE_26M",
+				"VCORE_SUBCOMM1",
+				"VCORE_X60_GAL",
+				"VCORE_X90_GAL",
+				"VCORE_TX90_GAL",
+				"VCORE_TX13_GAL";
+			mediatek,ccu_rproc1 = <&ccu_rproc1>;
+			mtk,smmu-shared = <&mm_smmu_ccu_inst>;
+			mmqos-supply = <&mmqos>;
+			interconnects =
+			<&mmqos MASTER_LARB_PORT(SMMU_L30_P1_CAM_TOP_0_CCUO)
+				&mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(SMMU_L30_P0_CAM_TOP_0_CCUI)
+				&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+				"ccu_o",
+				"ccu_i";
+			secured = "yes";
+			ccu_version = <82>;
+			ccu_sramSize = <0x00010000>;
+			ccu_sramOffset = <0x00040000>;
+			ccu_dramSize = <0x00200000>;
+			ccu_dramAddr = <0xc0000000>;
+			ccu_emiRegion = <20>;
+			ccu-exch-base = <0x3c0b0000>;
+			systick-freq = <1000000000>;
+			ccu-cores = <1>;
+			compact-ipc = <0>;
+			ccu-mbext = <1>;
+			ccu-mbext-int = <0>;
+		};
+
+		ccu_rproc1: ccu_rproc1@3c180000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,ccu_rproc1";
+			reg = <0 0x3c180000 0 0x4000>;
+			mtk,smmu-shared = <&mm_smmu_ccu_data_protected>;
+			mmqos-supply = <&mmqos>;
+			interconnects =
+			<&mmqos MASTER_LARB_PORT(SMMU_L30_P3_CAM_TOP_1_CCUO)
+				&mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(SMMU_L30_P2_CAM_TOP_1_CCUI)
+				&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+				"ccu_o",
+				"ccu_i";
+			ccu-exch-base = <0x3c1b0000>;
+			systick-freq = <1000000000>;
+			ccu-cores = <1>;
+			compact-ipc = <0>;
+		};
+
 		uart0: serial@16000000 {
 			compatible = "mediatek,mt6577-uart";
 			reg = <0 0x16000000 0 0x1000>;
@@ -16045,7 +16133,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mm_smmu_ccu_inst: mm-smmu-ccu-inst {
 			#address-cells = <2>;
 			#size-cells = <2>;
-			//compatible = "mediatek,smmu-share-group";
+			compatible = "mediatek,smmu-share-group";
 			label = "mm_smmu_ccu_inst";
 			//dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			mtk,iommu-dma-range = <0x1 0x8000000 0x0 0x4000000>;
@@ -16083,7 +16171,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mm_smmu_ccu_data_protected: mm-smmu-ccu-data-protected {
 			#address-cells = <2>;
 			#size-cells = <2>;
-			//compatible = "mediatek,smmu-share-group";
+			compatible = "mediatek,smmu-share-group";
 			label = "mm_smmu_ccu_data_protected";
 			//dma-range = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			mtk,iommu-dma-range = <0x1 0xc000000 0x0 0x4000000>;
