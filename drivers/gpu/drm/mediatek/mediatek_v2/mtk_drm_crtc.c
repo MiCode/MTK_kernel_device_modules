@@ -20275,13 +20275,14 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	if (!(mtk_crtc->enabled))
 		DDPDBG("Sleep State set partial update enable --crtc not ebable\n");
 
-#ifdef IF_ZERO
+//#ifdef IF_ZERO
 	/* disable partial update if rpo lye is exist */
-	if (state->lye_state.rpo_lye && partial_enable) {
+	if (state->lye_state.rpo_lye && partial_enable &&
+		mtk_crtc->scaling_ctx.scaling_en) {
 		DDPDBG("skip because rpo lye is exist\n");
 		partial_enable = 0;
 	}
-#endif
+//#endif
 
 	/* disable partial update if mml_ir lye is exist */
 	if (state->lye_state.mml_ir_lye && partial_enable) {
@@ -20466,7 +20467,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 
 	/* disable oddmr if enable partial update */
 	//mtk_crtc->panel_ext->params->is_support_dmr = !partial_enable;
-	if(priv->data->mmsys_id == MMSYS_MT6991)
+	if(priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6993)
 		rsz_comp = priv->ddp_comp[DDP_COMPONENT_MDP_RSZ0];
 	else
 		rsz_comp = priv->ddp_comp[DDP_COMPONENT_RSZ0];
