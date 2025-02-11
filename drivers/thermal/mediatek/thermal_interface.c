@@ -28,7 +28,7 @@
 
 #include <linux/io.h>
 #if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2)
-#include <mtk_gpufreq.h>
+#include "gpufreq_v2.h"
 #endif
 #include "vtskin_temp.h"
 #include "thermal_interface.h"
