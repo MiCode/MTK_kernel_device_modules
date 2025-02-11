@@ -8,6 +8,7 @@
 
 #include "mdw.h"
 #include "mdw_cmn.h"
+#include "mdw_cmd.h"
 #include "mdw_ch.h"
 #include "mdw_rv.h"
 #include "mdw_rv_tag.h"
@@ -88,34 +89,6 @@ static const struct min_heap_callbacks mdw_ch_min_heap_funcs = {
 };
 
 //--------------------------------------------
-int mdw_ch_pollcmd_timeout(uint32_t *flag, uint32_t poll_interval_us, uint32_t poll_timeout_us)
-{
-	uint32_t poll_acc_us = 0;
-	int ret = -ETIME;
-
-	/* check flag */
-	if (flag == NULL || poll_interval_us == 0 || poll_timeout_us == 0) {
-		mdw_drv_err("invalid args (%pK/%u/%u)\n", flag, poll_interval_us, poll_timeout_us);
-		return -EINVAL;
-	}
-
-	mdw_cmd_debug("poll_interval_us = %u, poll_timeout_us = %u\n", poll_interval_us, poll_timeout_us);
-
-	while (poll_acc_us < poll_timeout_us) {
-		if (*flag) {
-			ret = 0;
-			mdw_cmd_debug("poll cmd done, total time = %u\n", poll_acc_us);
-			break;
-		}
-
-		udelay(poll_interval_us);
-		poll_acc_us += poll_interval_us;
-	}
-
-	return ret;
-}
-
-//--------------------------------------------
 static struct mdw_ch_tbl *mdw_ch_find_tbl(struct mdw_cmd *c)
 {
 	struct mdw_ch_tbl *tmp = NULL;
@@ -131,6 +104,57 @@ out:
 	return tmp;
 }
 
+int mdw_ch_pollcmd_timeout(uint32_t *flag, uint32_t poll_interval_us, uint32_t poll_timeout_us,
+	struct mdw_cmd *c)
+{
+	struct mdw_ch_tbl *ch_tbl = NULL;
+	uint32_t poll_acc_us = 0;
+	int ret = -ETIME;
+	uint64_t poll_timeout = MDW_POLL_TIMEOUT;
+
+	mutex_lock(&g_ch_mgr->mtx);
+	ch_tbl = mdw_ch_find_tbl(c);
+	mutex_unlock(&g_ch_mgr->mtx);
+	if (ch_tbl == NULL) {
+		mdw_drv_warn("find ch table failed(0x%llx)\n", c->uid);
+		goto out;
+	}
+
+	if (g_mdw_poll_timeout)
+		poll_timeout = g_mdw_poll_timeout;
+
+	if (ch_tbl->h_exec_time > poll_timeout) {
+		mdw_cmd_debug("skip poll cmd\n");
+		goto out;
+	}
+
+	/* check flag */
+	if (flag == NULL || poll_interval_us == 0 || poll_timeout_us == 0) {
+		mdw_drv_err("invalid args (%pK/%u/%u)\n", flag, poll_interval_us, poll_timeout_us);
+		return -EINVAL;
+	}
+
+	if (ch_tbl->h_exec_time)
+		usleep_range(MDW_POLLTIME_SLEEP_TH(ch_tbl->h_exec_time),
+			MDW_POLLTIME_SLEEP_TH(ch_tbl->h_exec_time)+10);
+
+	mdw_cmd_debug("poll_interval_us = %u, poll_timeout_us = %u\n", poll_interval_us, poll_timeout_us);
+
+	while (poll_acc_us < poll_timeout_us) {
+		if (*flag) {
+			ret = 0;
+			mdw_cmd_debug("poll cmd done, total time = %u\n", poll_acc_us);
+			break;
+		}
+
+		udelay(poll_interval_us);
+		poll_acc_us += poll_interval_us;
+	}
+out:
+	return ret;
+}
+
+//--------------------------------------------
 static uint64_t mdw_ch_period_avg(uint64_t old_period, uint64_t new_period)
 {
 	uint64_t period = 0;

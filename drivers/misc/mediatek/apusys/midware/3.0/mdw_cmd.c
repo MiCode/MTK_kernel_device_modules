@@ -94,15 +94,15 @@ static void mdw_cmd_postprocess(struct mdw_cmd *c)
 
 	mdw_flw_debug("\n");
 
-	/* update einfos */
-	mdw_cmd_update_einfos(c);
-
 	/* post process such as copy exec info */
 	if (mdev->plat_funcs->postprocess_cmd(c))
 		mdw_drv_err("cmd postprocess failed\n");
 
 	/* copy cmdbuf to user */
 	mdw_cmd_cmdbuf_out(c);
+
+	/* update einfos */
+	mdw_cmd_update_einfos(c);
 
 	c->cmd_state = MDW_CMD_STATE_POSTPROCESS_DONE;
 }

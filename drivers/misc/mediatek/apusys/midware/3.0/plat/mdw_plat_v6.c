@@ -655,7 +655,7 @@ static int mdw_plat_v6_run_cmd(struct mdw_cmd *c)
 
 	/* polling cmd done if performance mode */
 	if (c->power_plcy == MDW_POWERPOLICY_PERFORMANCE) {
-		if (!mdw_ch_pollcmd_timeout(&rmc->cmd_done, 1, MDW_POLL_TIMEOUT))
+		if (!mdw_ch_pollcmd_timeout(&rmc->cmd_done, 1, MDW_POLL_TIMEOUT, c))
 			ret = EALREADY;
 	}
 
@@ -692,11 +692,6 @@ static int mdw_plat_v6_postprocess_cmd(struct mdw_cmd *c)
 	mdw_pb_put(c->power_plcy);
 	atomic_dec(&c->mpriv->mdev->cmd_running);
 
-	if (c->cmd_state == MDW_CMD_STATE_ERROR) {
-		c->need_dtime_handle = true;
-		goto dtime_handle;
-	}
-
 	/* copy exec info out */
 	/* invalidate */
 	if (mdw_mem_invalidate(c->mpriv, rc->cb))
@@ -720,6 +715,11 @@ static int mdw_plat_v6_postprocess_cmd(struct mdw_cmd *c)
 
 	/* postprocess appendix */
 	mdw_plat_v6_appendix_process(c, APU_APPENDIX_CB_POSTPROCESS);
+
+	if (c->cmd_state == MDW_CMD_STATE_ERROR) {
+		c->need_dtime_handle = true;
+		goto dtime_handle;
+	}
 
 	/* update cmd history */
 	mdw_ch_cmd_exec_update(c);

@@ -324,13 +324,14 @@ static void mdw_rv_ipi_cmplt_cmd(struct mdw_ipi_msg_sync *s_msg)
 	switch (s_msg->msg.ret) {
 	case MDW_IPI_MSG_STATUS_BUSY:
 		ret = -EBUSY;
-		mdw_drv_warn("uP mdw busy, sync_id (0x%llu)\n", s_msg->msg.sync_id);
+		mdw_drv_warn("uP mdw busy, sync_id(0x%llx) inference_id(0x%llx)\n",
+			s_msg->msg.sync_id, c->inference_id);
 		break;
 
 	case MDW_IPI_MSG_STATUS_ERR:
 		ret = -EREMOTEIO;
-		mdw_exception("uP mdw error, sync_id (0x%llu)\n",
-			s_msg->msg.sync_id);
+		mdw_exception("uP mdw error, sync_id(0x%llx) inference_id(0x%llx)\n",
+			s_msg->msg.sync_id, c->inference_id);
 		break;
 
 	case MDW_IPI_MSG_STATUS_TIMEOUT:
@@ -340,13 +341,13 @@ static void mdw_rv_ipi_cmplt_cmd(struct mdw_ipi_msg_sync *s_msg)
 	default:
 		break;
 	}
-
 	if (ret)
 		mdw_drv_err("cmd(%pK/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
 			c->mpriv, c->kid, ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
 	c->enter_rv_cb_time = mrdev->enter_rv_cb_time;
 	c->rv_cb_time = mrdev->rv_cb_time;
+	s_msg->msg.sync_id = 0;
 	mdw_cmd_trace(rc->c, MDW_CMD_DONE);
 
 	c->complete(c, ret);
@@ -402,7 +403,6 @@ static int mdw_rv_callback(struct rpmsg_device *rpdev, void *data,
 		mdw_drv_err("get ipi msg fail(0x%llu)", msg->sync_id);
 	} else {
 		memcpy(&s_msg->msg, msg, sizeof(*msg));
-		s_msg->msg.sync_id = 0;
 		/* complete callback */
 		if (s_msg->complete)
 			s_msg->complete(s_msg);
