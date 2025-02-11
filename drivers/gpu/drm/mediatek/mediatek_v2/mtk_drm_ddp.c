@@ -30,6 +30,7 @@
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "mtk_disp_pq_helper.h"
 #include "platform/mtk_drm_platform.h"
+#include "platform/mtk_disp_ovlsys_reg.h"
 #include "mtk_drm_trace.h"
 
 #ifdef CONFIG_MTK_SMI_EXT
@@ -1793,6 +1794,7 @@
 #define MT6993_DISP_MUTEX0_SOF	0x30
 #define MT6993_DISP_MUTEX_RST	0x2C
 
+#define REG_NOT_SUPPORT (0xFFFF)
 
 #define MT6993_OVLSYS_BYPASS_MUX_SHADOW	0x400
 #define MT6993_OVLSYS_CROSSBAR_CON 0x408
@@ -9661,17 +9663,55 @@ const struct mtk_mmsys_reg_data mt6989_mmsys_reg_data = {
 	.rdma0_sout_sel_in = MT6983_DISP_RDMA0_SEL_IN,
 	.dispsys_map = mt6989_dispsys_map,
 };
+
 const struct mtk_mmsys_reg_data mt6991_mmsys_reg_data = {
 	// To-Do
 	.rdma0_sout_sel_in = MT6983_DISP_RDMA0_SEL_IN,
 	.dispsys_map = mt6991_dispsys_map,
+	.ovlsys_regs = ovlsys_regs_mt6991,
 };
+
+const struct mtk_ovlsys_data mt6991_ovlsys_data = {
+	.exdma_mout = &mtk_ddp_exdma_mout_MT6991,
+	.exdma_mout_reset = &mtk_ddp_exdma_mout_reset_MT6991,
+	.config_dump_analysis = &ovlsys_config_dump_analysis_mt6991,
+	.mutex_dump_analysis = &mutex_ovlsys_dump_analysis_mt6991,
+	.mutex_dump_reg = &mutex_ovlsys_dump_reg_mt6991,
+	.config_dump_reg = &ovlsys_config_dump_reg_mt6991,
+};
+
+const struct mtk_dispsys_data mt6991_dispsys_data = {
+	.config_dump_analysis = &mmsys_config_dump_analysis_mt6991,
+	.mutex_dump_analysis = &mutex_dump_analysis_mt6991,
+	.mutex_dump_reg = &mutex_dump_reg_mt6991,
+	.config_dump_reg = &mmsys_config_dump_reg_mt6991,
+};
+
 
 const struct mtk_mmsys_reg_data mt6993_mmsys_reg_data = {
 	// To-Do
 	.rdma0_sout_sel_in = MT6983_DISP_RDMA0_SEL_IN,
 	.dispsys_map = mt6993_dispsys_map,
+	.ovlsys_regs = ovlsys_regs_mt6993,
 };
+
+const struct mtk_ovlsys_data mt6993_ovlsys_data = {
+	.exdma_mout = &mtk_ddp_exdma_mout_MT6993,
+	.exdma_mout_reset = &mtk_ddp_exdma_mout_reset_MT6993,
+	.config_dump_analysis = &ovlsys_config_dump_analysis_mt6993,
+	.mutex_dump_analysis = &mutex_ovlsys_dump_analysis_mt6993,
+	.mutex_dump_reg = &mutex_ovlsys_dump_reg_mt6993,
+	.config_dump_reg = &ovlsys_config_dump_reg_mt6993,
+};
+
+const struct mtk_dispsys_data mt6993_dispsys_data = {
+	.config_dump_analysis = &mmsys_config_dump_analysis_mt6993,
+	.mutex_dump_analysis = &mutex_dump_analysis_mt6993,
+	.mutex_dump_reg = &mutex_dump_reg_mt6993,
+	.config_dump_reg = &mmsys_config_dump_reg_mt6993,
+};
+
+
 const struct mtk_mmsys_reg_data mt6897_mmsys_reg_data = {
 	// To-Do
 	.rdma0_sout_sel_in = MT6983_DISP_RDMA0_SEL_IN,
@@ -36145,92 +36185,121 @@ void mtk_ddp_disconnect_dual_pipe_path(struct mtk_drm_crtc *mtk_crtc,
 	}
 }
 
-const struct mtk_mmsys_reg_data *
-mtk_ddp_get_mmsys_reg_data(enum mtk_mmsys_id mmsys_id)
+void mtk_ddp_get_mmsys_data(enum mtk_mmsys_id mmsys_id,
+	const struct mtk_mmsys_reg_data **reg_data,
+	const struct mtk_ovlsys_data **ovlsys_data,
+	const struct mtk_dispsys_data **dispsys_data)
 {
-	const struct mtk_mmsys_reg_data *data = NULL;
+	//const struct mtk_mmsys_reg_data *data = NULL;
 
 	switch (mmsys_id) {
 	case MMSYS_MT2701:
-		data = &mt2701_mmsys_reg_data;
+		*reg_data = &mt2701_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT2712:
-		data = &mt2712_mmsys_reg_data;
+		*reg_data = &mt2712_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT8173:
-		data = &mt8173_mmsys_reg_data;
+		*reg_data = &mt8173_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6779:
-		data = &mt6779_mmsys_reg_data;
+		*reg_data = &mt6779_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6761:
-		data = &mt6761_mmsys_reg_data;
+		*reg_data = &mt6761_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6765:
-		data = &mt6765_mmsys_reg_data;
+		*reg_data = &mt6765_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6768:
-		data = &mt6768_mmsys_reg_data;
+		*reg_data = &mt6768_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6885:
-		data = &mt6885_mmsys_reg_data;
+		*reg_data = &mt6885_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6789:
-		data = &mt6789_mmsys_reg_data;
+		*reg_data = &mt6789_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6983:
-		data = &mt6983_mmsys_reg_data;
+		*reg_data = &mt6983_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6985:
-		data = &mt6985_mmsys_reg_data;
+		*reg_data = &mt6985_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6989:
-		data = &mt6989_mmsys_reg_data;
+		*reg_data = &mt6989_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6991:
-		data = &mt6991_mmsys_reg_data;
+		*reg_data = &mt6991_mmsys_reg_data;
+		*ovlsys_data = &mt6991_ovlsys_data;
+		*dispsys_data = &mt6991_dispsys_data;
 		break;
 	case MMSYS_MT6993:
-		data = &mt6993_mmsys_reg_data;
+		*reg_data = &mt6993_mmsys_reg_data;
+		*ovlsys_data = &mt6993_ovlsys_data;
+		*dispsys_data = &mt6993_dispsys_data;
 		break;
 	case MMSYS_MT6897:
-		data = &mt6897_mmsys_reg_data;
+		*reg_data = &mt6897_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6895:
-		data = &mt6895_mmsys_reg_data;
+		*reg_data = &mt6895_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6886:
-		data = &mt6886_mmsys_reg_data;
+		*reg_data = &mt6886_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6873:
-		data = &mt6873_mmsys_reg_data;
+		*reg_data = &mt6873_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6853:
-		data = &mt6853_mmsys_reg_data;
+		*reg_data = &mt6853_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6833:
-		data = &mt6833_mmsys_reg_data;
+		*reg_data = &mt6833_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6877:
-		data = &mt6877_mmsys_reg_data;
+		*reg_data = &mt6877_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6781:
-		data = &mt6781_mmsys_reg_data;
+		*reg_data = &mt6781_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6879:
-		data = &mt6879_mmsys_reg_data;
+		*reg_data = &mt6879_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6855:
-		data = &mt6855_mmsys_reg_data;
+		*reg_data = &mt6855_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	case MMSYS_MT6835:
-		data = &mt6835_mmsys_reg_data;
+		*reg_data = &mt6835_mmsys_reg_data;
+		*ovlsys_data = NULL;
 		break;
 	default:
 		DDPPR_ERR("mtk drm not support mmsys id %d\n", mmsys_id);
 		break;
 	}
-	return data;
+	//return data;
 }
 
 struct mtk_disp_mutex *mtk_disp_mutex_get(struct device *dev, unsigned int id)
@@ -42481,7 +42550,7 @@ void mmsys_config_dump_analysis_mt6993(void __iomem *config_regs, int sys_id)
 #endif
 }
 
-void ovlsys_config_dump_analysis_mt6993(void __iomem *config_regs)
+void ovlsys_config_dump_analysis_mt6993(void __iomem *config_regs, bool rg_dump)
 {
 	unsigned int idx = 0, bit = 0;
 	int len = 0;

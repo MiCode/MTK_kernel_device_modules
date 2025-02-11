@@ -12541,7 +12541,9 @@ static int mtk_drm_probe(struct platform_device *pdev)
 
 	private->data = of_device_get_match_data(dev);
 
-	private->reg_data = mtk_ddp_get_mmsys_reg_data(private->data->mmsys_id);
+	mtk_ddp_get_mmsys_data(private->data->mmsys_id, &(private->reg_data),
+		&(private->ovlsys_data), &(private->dispsys_data));
+
 	if (IS_ERR(private->reg_data)) {
 		ret = PTR_ERR(private->config_regs);
 		DDPPR_ERR("Failed to get mmsys register data: %d\n", ret);

@@ -573,25 +573,23 @@ void mtk_drm_crtc_rsz_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	resource_size_t config_regs_pa = 0;
 	enum mtk_ddp_comp_id next_blender = blender_id;
 	int crtc_id = drm_crtc_index(&mtk_crtc->base);
+	enum mtk_ddp_comp_id comp_id = 0;
 
-	if (priv->data->mmsys_id == MMSYS_MT6991) {
+
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		comp_id = (rpo_flag) ? DDP_COMPONENT_OVL0_MDP_RSZ0 : DDP_COMPONENT_OVL0_EXDMA_OUT_CB3;
+	else if (priv->data->mmsys_id == MMSYS_MT6993) {
 		if (rpo_flag)
-			value = mtk_ddp_exdma_mout_MT6991(comp->id, DDP_COMPONENT_OVL0_MDP_RSZ0, &addr);
-		else
-			value = mtk_ddp_exdma_mout_MT6991(comp->id, DDP_COMPONENT_OVL0_EXDMA_OUT_CB3, &addr);
-	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
-		if (rpo_flag)
-			value = mtk_ddp_exdma_mout_MT6993(comp->id, DDP_COMPONENT_OVL0_MDP_RSZ0,
-				&addr);
+			comp_id = DDP_COMPONENT_OVL0_MDP_RSZ0;
 		else {
 			if (crtc_id == 0)
-				value = mtk_ddp_exdma_mout_MT6993(comp->id, DDP_COMPONENT_OVL0_EXDMA_OUT_CB3,
-					&addr);
+				comp_id = DDP_COMPONENT_OVL0_EXDMA_OUT_CB3;
 			else if (crtc_id == 1)
-				value = mtk_ddp_exdma_mout_MT6993(comp->id, DDP_COMPONENT_OVL2_EXDMA_OUT_CB3,
-					&addr);
+				comp_id = DDP_COMPONENT_OVL2_EXDMA_OUT_CB3;
 		}
 	}
+
+	value = priv->ovlsys_data->exdma_mout(comp->id, comp_id, &addr);
 
 	if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
 		config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
@@ -608,18 +606,20 @@ void mtk_drm_crtc_rsz_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				config_regs_pa + addr, value, ~0);
 
+
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
-		value = mtk_ddp_exdma_mout_MT6991(DDP_COMPONENT_OVL0_MDP_RSZ0, next_blender, &addr);
-		value_rsz = mtk_ddp_exdma_mout_MT6991(DDP_COMPONENT_OVL0_RSZ_IN_CB1, next_blender,
+		value = priv->ovlsys_data->exdma_mout(DDP_COMPONENT_OVL0_MDP_RSZ0, next_blender, &addr);
+		value_rsz = priv->ovlsys_data->exdma_mout(DDP_COMPONENT_OVL0_RSZ_IN_CB1, next_blender,
 			&addr_rsz);
 	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
 		if (crtc_id == 0) {
-			value = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL0_MDP_RSZ0, next_blender, &addr);
-			value_rsz = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL0_RSZ_IN_CB2, next_blender,
-				&addr_rsz);
+			value = priv->ovlsys_data->exdma_mout(DDP_COMPONENT_OVL0_MDP_RSZ0,
+				next_blender, &addr);
+			value_rsz = priv->ovlsys_data->exdma_mout(DDP_COMPONENT_OVL0_RSZ_IN_CB2,
+				next_blender, &addr_rsz);
 		} else if (crtc_id == 1) {
-			value_rsz = mtk_ddp_exdma_mout_MT6993(DDP_COMPONENT_OVL2_EXDMA_OUT_CB3, next_blender,
-				&addr_rsz);
+			value_rsz = priv->ovlsys_data->exdma_mout(DDP_COMPONENT_OVL2_EXDMA_OUT_CB3,
+				next_blender, &addr_rsz);
 		}
 	}
 
@@ -676,7 +676,7 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 				cmdq_handle, reset_flag, rpo_flag);
 			goto check_reset;
 		} else {
-			value = mtk_ddp_exdma_mout_MT6991(comp->id, next_blender, &addr);
+			value = priv->ovlsys_data->exdma_mout(comp->id, next_blender, &addr);
 			if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
 				config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
 			else
@@ -689,7 +689,7 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 				cmdq_handle, reset_flag, rpo_flag);
 			goto check_reset;
 		} else {
-			value = mtk_ddp_exdma_mout_MT6993(comp->id, next_blender, &addr);
+			value = priv->ovlsys_data->exdma_mout(comp->id, next_blender, &addr);
 			if (comp->id < DDP_COMPONENT_OVL1_EXDMA0)
 				config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
 			else if (comp->id < DDP_COMPONENT_OVL2_EXDMA0)
@@ -770,7 +770,6 @@ void mtk_drm_crtc_blender_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 		else
 			config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
 
-		value = mtk_ddp_exdma_mout_MT6991(comp->id, out_proc, &addr);
 	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
 		if (crtc_id == 0)
 			out_proc = DDP_COMPONENT_OVL0_OUTPROC0;
@@ -790,8 +789,9 @@ void mtk_drm_crtc_blender_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 		else
 			config_regs_pa = mtk_crtc->ovlsys2_regs_pa;
 
-		value = mtk_ddp_exdma_mout_MT6993(comp->id, out_proc, &addr);
 	}
+
+	value = priv->ovlsys_data->exdma_mout(comp->id, out_proc, &addr);
 
 	if(!mtk_crtc->last_blender) {
 		DDPMSG("mtk_crtc->last_blender is null\n");
@@ -985,15 +985,13 @@ void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 			config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
 
 		/**
-		 * mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_BLENDER, &offset, &addr_begin,
+		 * priv->ovlsys_data->exdma_mout_reset(MTK_OVL_BLENDER, &offset, &addr_begin,
 		 * &addr_end);
 		 *
 		 * for (i = addr_begin; i <= addr_end; i = i + offset)
 		 *	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 		 *				config_regs_pa + i, 0, ~0);
 		 */
-
-		value = mtk_ddp_exdma_mout_MT6991(last_blender->id, out_proc, &addr);
 	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
 		if (last_blender->id > DDP_COMPONENT_OVL1_BLENDER7)
 			config_regs_pa = mtk_crtc->ovlsys2_regs_pa;
@@ -1001,9 +999,10 @@ void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 			config_regs_pa = mtk_crtc->ovlsys1_regs_pa;
 		else
 			config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
-
-		value = mtk_ddp_exdma_mout_MT6993(last_blender->id, out_proc, &addr);
 	}
+
+	value = priv->ovlsys_data->exdma_mout(last_blender->id, out_proc, &addr);
+
 	DDPINFO("%s out_proc %d, out_comp %d, last_blender->id %d\n", __func__,out_proc,
 		out_comp, last_blender->id);
 #ifndef DRM_CMDQ_DISABLE
@@ -1019,7 +1018,7 @@ void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 
 /*
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
-		value = mtk_ddp_exdma_mout_MT6991(out_proc, out_comp, &addr);
+		value = priv->ovlsys_data->exdma_mout(out_proc, out_comp, &addr);
 		if (last_blender->id < DDP_COMPONENT_OVL1_BLENDER0)
 			config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
 		else
@@ -1110,12 +1109,8 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 	} else if (crtc_id == 3) {
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6991)
-		mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_EXDMA, &offset, &addr_begin,
-			&addr_end, crtc_id);
-	else if (priv->data->mmsys_id == MMSYS_MT6993)
-		mtk_ddp_exdma_mout_reset_MT6993(MTK_OVL_EXDMA, &offset, &addr_begin,
-			&addr_end, crtc_id);
+	priv->ovlsys_data->exdma_mout_reset(MTK_OVL_EXDMA, &offset, &addr_begin,
+		&addr_end, crtc_id);
 
 	for (i = addr_begin; i <= addr_end; i = i + offset) {
 		if (crtc_id == 0) {
@@ -1136,12 +1131,10 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 			writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
 		}
 	}
-	if (priv->data->mmsys_id == MMSYS_MT6991)
-		mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_BLENDER, &offset, &addr_begin,
-			&addr_end, crtc_id);
-	else if (priv->data->mmsys_id == MMSYS_MT6993)
-		mtk_ddp_exdma_mout_reset_MT6993(MTK_OVL_BLENDER, &offset, &addr_begin,
-			&addr_end, crtc_id);
+
+	priv->ovlsys_data->exdma_mout_reset(MTK_OVL_BLENDER, &offset, &addr_begin,
+		&addr_end, crtc_id);
+
 
 	for (i = addr_begin; i <= addr_end; i = i + offset) {
 		if (crtc_id == 0) {
@@ -1162,12 +1155,8 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 	}
 
 	if (crtc_id == 0) {
-		if (priv->data->mmsys_id == MMSYS_MT6991)
-			mtk_ddp_exdma_mout_reset_MT6991(MTK_DISP_MDP_RSZ, &offset, &addr_begin,
-				&addr_end, crtc_id);
-		else if (priv->data->mmsys_id == MMSYS_MT6993)
-			mtk_ddp_exdma_mout_reset_MT6993(MTK_DISP_MDP_RSZ, &offset, &addr_begin,
-				&addr_end, crtc_id);
+		priv->ovlsys_data->exdma_mout_reset(MTK_DISP_MDP_RSZ, &offset, &addr_begin,
+			&addr_end, crtc_id);
 
 		for (i = addr_begin; i <= addr_end; i = i + offset)
 			writel_relaxed(0, mtk_crtc->ovlsys0_regs + i);
@@ -1196,10 +1185,7 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 
 	mtk_disp_mutex_add_comp(mutex, first_blender->id);
 
-	if (priv->data->mmsys_id == MMSYS_MT6991)
-		value = mtk_ddp_exdma_mout_MT6991(first_blender->id, out_proc, &addr);
-	else if (priv->data->mmsys_id == MMSYS_MT6993)
-		value = mtk_ddp_exdma_mout_MT6993(first_blender->id, out_proc, &addr);
+	value = priv->ovlsys_data->exdma_mout(first_blender->id, out_proc, &addr);
 
 	if (crtc_id == 0)
 		ovlsys_base = mtk_crtc->ovlsys0_regs;
@@ -1292,19 +1278,16 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 	}
 
 	/**
-	 * mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_BLENDER, &offset, &addr_begin,
+	 * priv->ovlsys_data->exdma_mout_reset(MTK_OVL_BLENDER, &offset, &addr_begin,
 	 *	&addr_end);
 	 *
 	 *	for (i = addr_begin; i <= addr_end; i = i + offset)
 	 *		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 	 *					mtk_crtc->ovlsys0_regs_pa + i, 0, ~0);
 	 */
-	if (priv->data->mmsys_id == MMSYS_MT6991)
-		mtk_ddp_exdma_mout_reset_MT6991(MTK_OVL_EXDMA, &offset, &addr_begin,
-			&addr_end, crtc_id);
-	else if (priv->data->mmsys_id == MMSYS_MT6993)
-		mtk_ddp_exdma_mout_reset_MT6993(MTK_OVL_EXDMA, &offset, &addr_begin,
-			&addr_end, crtc_id);
+
+	priv->ovlsys_data->exdma_mout_reset(MTK_OVL_EXDMA, &offset, &addr_begin,
+		&addr_end, crtc_id);
 
 	for (i = addr_begin; i <= addr_end; i = i + offset) {
 		if (crtc_id == 0) {
@@ -1369,10 +1352,9 @@ void mtk_drm_crtc_default_blender(struct mtk_drm_crtc *mtk_crtc,
 	mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, first_blender->id,
 			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base),
 			cmdq_handle, 0);
-	if (priv->data->mmsys_id == MMSYS_MT6991)
-		value = mtk_ddp_exdma_mout_MT6991(first_blender->id, out_proc, &addr);
-	else if (priv->data->mmsys_id == MMSYS_MT6993)
-		value = mtk_ddp_exdma_mout_MT6993(first_blender->id, out_proc, &addr);
+
+	value = priv->ovlsys_data->exdma_mout(first_blender->id, out_proc, &addr);
+
 	cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 						mtk_crtc->ovlsys0_regs_pa + addr, value, ~0);
 	mtk_crtc->last_blender = first_blender;
@@ -1522,57 +1504,39 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 		}
 		break;
 	case MMSYS_MT6991:
-			DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
-						&mtk_crtc->ovlsys0_regs_pa);
-			ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys0_regs);
-			if (mtk_crtc->ovlsys1_regs) {
-				DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
-					&mtk_crtc->ovlsys1_regs_pa);
-				ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys1_regs);
-			}
-
-			DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
-						&mtk_crtc->config_regs_pa);
-			mmsys_config_dump_reg_mt6991(mtk_crtc->config_regs);
-			if (mtk_crtc->side_config_regs) {
-				DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
-					&mtk_crtc->side_config_regs_pa);
-				mmsys_config_dump_reg_mt6991(mtk_crtc->side_config_regs);
-			}
-			break;
 	case MMSYS_MT6993:
 			DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
 						&mtk_crtc->ovlsys0_regs_pa);
-			ovlsys_config_dump_reg_mt6993(mtk_crtc->ovlsys0_regs);
+			priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys0_regs);
 			if (mtk_crtc->ovlsys1_regs) {
 				DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->ovlsys1_regs_pa);
-				ovlsys_config_dump_reg_mt6993(mtk_crtc->ovlsys1_regs);
+				priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys1_regs);
 			}
 			if (mtk_crtc->ovlsys2_regs) {
 				DDPDUMP("== DISP pipe-2 OVLSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->ovlsys2_regs_pa);
-				ovlsys_config_dump_reg_mt6993(mtk_crtc->ovlsys2_regs);
+				priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys2_regs);
 			}
 
 
 			DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
 						&mtk_crtc->config_regs_pa);
-			mmsys_config_dump_reg_mt6993(mtk_crtc->config_regs);
+			priv->dispsys_data->config_dump_reg(mtk_crtc->config_regs);
 			if (mtk_crtc->side_config_regs) {
 				DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->side_config_regs_pa);
-				mmsys_config_dump_reg_mt6993(mtk_crtc->side_config_regs);
+				priv->dispsys_data->config_dump_reg(mtk_crtc->side_config_regs);
 			}
 			if (mtk_crtc->sys_b_config_regs) {
 				DDPDUMP("== DISP pipe-2 MMSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->sys_b_config_regs_pa);
-				mmsys_config_dump_reg_mt6993(mtk_crtc->sys_b_config_regs);
+				priv->dispsys_data->config_dump_reg(mtk_crtc->sys_b_config_regs);
 			}
 			if (mtk_crtc->sys_b_side_config_regs) {
 				DDPDUMP("== DISP pipe-3 MMSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->sys_b_side_config_regs_pa);
-				mmsys_config_dump_reg_mt6993(mtk_crtc->sys_b_side_config_regs);
+				priv->dispsys_data->config_dump_reg(mtk_crtc->sys_b_side_config_regs);
 			}
 			break;
 	case MMSYS_MT6897:
@@ -1739,70 +1703,68 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		break;
 	case MMSYS_MT6991:
 		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
-					&mtk_crtc->ovlsys0_regs_pa);
-		ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys0_regs);
+			&mtk_crtc->ovlsys0_regs_pa);
+		priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys0_regs);
 		if (mtk_crtc->ovlsys1_regs) {
 			DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
 				&mtk_crtc->ovlsys1_regs_pa);
-			ovlsys_config_dump_reg_mt6991(mtk_crtc->ovlsys1_regs);
+			priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys1_regs);
 		}
 
 		DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
-					&mtk_crtc->config_regs_pa);
-		mmsys_config_dump_reg_mt6991(mtk_crtc->config_regs);
+			&mtk_crtc->config_regs_pa);
+		priv->dispsys_data->config_dump_reg(mtk_crtc->config_regs);
 		if (mtk_crtc->side_config_regs) {
 			DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
 				&mtk_crtc->side_config_regs_pa);
-			mmsys_config_dump_reg_mt6991(mtk_crtc->side_config_regs);
+			priv->dispsys_data->config_dump_reg(mtk_crtc->side_config_regs);
 		}
 
-		mutex_dump_reg_mt6991(mtk_crtc->mutex[0]);
-		mutex_ovlsys_dump_reg_mt6991(mtk_crtc->mutex[0]);
-
+		priv->dispsys_data->mutex_dump_reg(mtk_crtc->mutex[0]);
+		priv->ovlsys_data->mutex_dump_reg(mtk_crtc->mutex[0]);
 		break;
 	case MMSYS_MT6993:
 		if (drm_crtc_index(&mtk_crtc->base) != 1) {
 			DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
 						&mtk_crtc->ovlsys0_regs_pa);
-			ovlsys_config_dump_reg_mt6993(mtk_crtc->ovlsys0_regs);
+			priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys1_regs);
 			if (mtk_crtc->ovlsys1_regs) {
 				DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->ovlsys1_regs_pa);
-				ovlsys_config_dump_reg_mt6993(mtk_crtc->ovlsys1_regs);
+				priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys1_regs);
 			}
 		} else {
 			if (mtk_crtc->ovlsys2_regs) {
 				DDPDUMP("== DISP pipe-2 OVLSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->ovlsys2_regs_pa);
-				ovlsys_config_dump_reg_mt6993(mtk_crtc->ovlsys2_regs);
+				priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys2_regs);
 			}
 		}
 
 		if (drm_crtc_index(&mtk_crtc->base) != 1) {
 			DDPDUMP("== DISP pipe-0 MMSYS_CONFIG REGS:0x%pa ==\n",
 						&mtk_crtc->config_regs_pa);
-			mmsys_config_dump_reg_mt6993(mtk_crtc->config_regs);
+			priv->dispsys_data->config_dump_reg(mtk_crtc->config_regs);
 			if (mtk_crtc->side_config_regs) {
 				DDPDUMP("== DISP pipe-1 MMSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->side_config_regs_pa);
-				mmsys_config_dump_reg_mt6993(mtk_crtc->side_config_regs);
+				priv->dispsys_data->config_dump_reg(mtk_crtc->side_config_regs);
 			}
 		} else {
 			if (mtk_crtc->sys_b_config_regs) {
 				DDPDUMP("== DISP pipe-2 MMSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->sys_b_config_regs_pa);
-				mmsys_config_dump_reg_mt6993(mtk_crtc->sys_b_config_regs);
+				priv->dispsys_data->config_dump_reg(mtk_crtc->sys_b_config_regs);
 			}
 
 			if (mtk_crtc->sys_b_side_config_regs) {
 				DDPDUMP("== DISP pipe-3 MMSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->sys_b_side_config_regs_pa);
-				mmsys_config_dump_reg_mt6993(mtk_crtc->sys_b_side_config_regs);
+				priv->dispsys_data->config_dump_reg(mtk_crtc->sys_b_side_config_regs);
 			}
 		}
-
-		mutex_dump_reg_mt6993(mtk_crtc->mutex[0]);
-		mutex_ovlsys_dump_reg_mt6993(mtk_crtc->mutex[0]);
+		priv->dispsys_data->mutex_dump_reg(mtk_crtc->mutex[0]);
+		priv->ovlsys_data->mutex_dump_reg(mtk_crtc->mutex[0]);
 
 		break;
 	case MMSYS_MT6897:
@@ -2029,7 +1991,7 @@ void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
 		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 	}
-	ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs, true);
+	priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys0_regs, true);
 	goto done_return;
 
 done_return:
@@ -2145,62 +2107,39 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		/* MT6989 only dump OVL module and topsys in mini analysis */
 		goto done_return;
 	case MMSYS_MT6991:
-			DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
-				&mtk_crtc->ovlsys0_regs_pa);
-			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs, false);
-			if (mtk_crtc->ovlsys1_regs) {
-				DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
-					&mtk_crtc->ovlsys1_regs_pa);
-				ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs, false);
-			}
-
-			DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
-				&mtk_crtc->config_regs_pa);
-			mmsys_config_dump_analysis_mt6991(mtk_crtc->config_regs, 0);
-			if (mtk_crtc->side_config_regs) {
-				DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
-					&mtk_crtc->side_config_regs_pa);
-				mmsys_config_dump_analysis_mt6991(mtk_crtc->side_config_regs, 1);
-			}
-			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-				if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA ||
-					mtk_ddp_comp_get_type(comp->id) == MTK_OVL_BLENDER))
-					mtk_dump_analysis(comp);
-			}
-			/* MT6991 only dump EXDMA module and topsys in mini analysis */
-			goto done_return;
 	case MMSYS_MT6993:
 			DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
 				&mtk_crtc->ovlsys0_regs_pa);
-			ovlsys_config_dump_analysis_mt6993(mtk_crtc->ovlsys0_regs);
+			priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys0_regs, false);
 			if (mtk_crtc->ovlsys1_regs) {
 				DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
 					&mtk_crtc->ovlsys1_regs_pa);
-				ovlsys_config_dump_analysis_mt6993(mtk_crtc->ovlsys1_regs);
+				priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys1_regs, false);
 			}
 			if (mtk_crtc->ovlsys2_regs) {
 				DDPDUMP("== DUMP OVLSYS pipe-2 ANALYSIS:0x%pa ==\n",
 					&mtk_crtc->ovlsys2_regs_pa);
-				ovlsys_config_dump_analysis_mt6993(mtk_crtc->ovlsys2_regs);
+				priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys2_regs, false);
 			}
 
 			DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
 				&mtk_crtc->config_regs_pa);
-			mmsys_config_dump_analysis_mt6993(mtk_crtc->config_regs, 0);
+			priv->dispsys_data->config_dump_analysis(mtk_crtc->config_regs, 0);
 			if (mtk_crtc->side_config_regs) {
 				DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
 					&mtk_crtc->side_config_regs_pa);
-				mmsys_config_dump_analysis_mt6993(mtk_crtc->side_config_regs, 1);
+				priv->dispsys_data->config_dump_analysis(mtk_crtc->side_config_regs, 1);
 			}
 			if (mtk_crtc->sys_b_config_regs) {
 				DDPDUMP("== DUMP DISP pipe-2 ANALYSIS:0x%pa ==\n",
 					&mtk_crtc->sys_b_config_regs_pa);
-				mmsys_config_dump_analysis_mt6993(mtk_crtc->sys_b_config_regs, 0);
+				//mmsys_config_dump_analysis_mt6993(mtk_crtc->sys_b_config_regs, 0);
+				priv->dispsys_data->config_dump_analysis(mtk_crtc->sys_b_config_regs, 0);
 			}
 			if (mtk_crtc->sys_b_side_config_regs) {
 				DDPDUMP("== DUMP DISP pipe-3 ANALYSIS:0x%pa ==\n",
 					&mtk_crtc->sys_b_side_config_regs_pa);
-				mmsys_config_dump_analysis_mt6993(mtk_crtc->sys_b_side_config_regs, 1);
+				priv->dispsys_data->config_dump_analysis(mtk_crtc->sys_b_side_config_regs, 1);
 			}
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 				if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA ||
@@ -2409,24 +2348,24 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6991:
 		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
 			&mtk_crtc->ovlsys0_regs_pa);
-		ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys0_regs, false);
+		priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys0_regs, false);
 		if (mtk_crtc->ovlsys1_regs) {
 			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
 				&mtk_crtc->ovlsys1_regs_pa);
-			ovlsys_config_dump_analysis_mt6991(mtk_crtc->ovlsys1_regs, false);
+			priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys1_regs, false);
 		}
 
 		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
 			&mtk_crtc->config_regs_pa);
-		mmsys_config_dump_analysis_mt6991(mtk_crtc->config_regs, 0);
+		priv->dispsys_data->config_dump_analysis(mtk_crtc->config_regs, 0);
 		if (mtk_crtc->side_config_regs) {
 			DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
 				&mtk_crtc->side_config_regs_pa);
-			mmsys_config_dump_analysis_mt6991(mtk_crtc->side_config_regs, 1);
+			priv->dispsys_data->config_dump_analysis(mtk_crtc->side_config_regs, 1);
 		}
 
-		mutex_dump_analysis_mt6991(mtk_crtc->mutex[0]);
-		mutex_ovlsys_dump_analysis_mt6991(mtk_crtc->mutex[0]);
+		priv->dispsys_data->mutex_dump_analysis(mtk_crtc->mutex[0]);
+		priv->ovlsys_data->mutex_dump_analysis(mtk_crtc->mutex[0]);
 		if (mtk_crtc->is_dual_pipe) {
 			DDPDUMP("anlysis dual pipe\n");
 			for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
@@ -2436,46 +2375,51 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		}
 		break;
 	case MMSYS_MT6993:
-	if (drm_crtc_index(&mtk_crtc->base) != 1) {
-		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
-			&mtk_crtc->ovlsys0_regs_pa);
-		ovlsys_config_dump_analysis_mt6993(mtk_crtc->ovlsys0_regs);
-		if (mtk_crtc->ovlsys1_regs) {
-			DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
-				&mtk_crtc->ovlsys1_regs_pa);
-			ovlsys_config_dump_analysis_mt6993(mtk_crtc->ovlsys1_regs);
+		if (drm_crtc_index(&mtk_crtc->base) != 1) {
+			DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->ovlsys0_regs_pa);
+			priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys0_regs, false);
+			if (mtk_crtc->ovlsys1_regs) {
+				DDPDUMP("== DUMP OVLSYS pipe-1 ANALYSIS:0x%pa ==\n",
+					&mtk_crtc->ovlsys1_regs_pa);
+				priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys1_regs, false);
+			}
+		} else {
+			if (mtk_crtc->ovlsys2_regs) {
+				DDPDUMP("== DUMP OVLSYS pipe-2 ANALYSIS:0x%pa ==\n",
+					&mtk_crtc->ovlsys2_regs_pa);
+				priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys2_regs, false);
+			}
 		}
-	} else {
-		if (mtk_crtc->ovlsys2_regs) {
-			DDPDUMP("== DUMP OVLSYS pipe-2 ANALYSIS:0x%pa ==\n",
-				&mtk_crtc->ovlsys2_regs_pa);
-			ovlsys_config_dump_analysis_mt6993(mtk_crtc->ovlsys2_regs);
-		}
-	}
 
-	if (drm_crtc_index(&mtk_crtc->base) != 1) {
-		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
-			&mtk_crtc->config_regs_pa);
-		mmsys_config_dump_analysis_mt6993(mtk_crtc->config_regs, 0);
-		if (mtk_crtc->side_config_regs) {
-			DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
-				&mtk_crtc->side_config_regs_pa);
-			mmsys_config_dump_analysis_mt6993(mtk_crtc->side_config_regs, 1);
+		if (drm_crtc_index(&mtk_crtc->base) != 1) {
+			DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
+				&mtk_crtc->config_regs_pa);
+			priv->dispsys_data->config_dump_analysis(mtk_crtc->config_regs, 0);
+			if (mtk_crtc->side_config_regs) {
+				DDPDUMP("== DUMP DISP pipe-1 ANALYSIS:0x%pa ==\n",
+					&mtk_crtc->side_config_regs_pa);
+				priv->dispsys_data->config_dump_analysis(mtk_crtc->side_config_regs, 1);
+			}
+		} else {
+			if (mtk_crtc->sys_b_config_regs) {
+				DDPDUMP("== DUMP DISP pipe-2 ANALYSIS:0x%pa ==\n",
+					&mtk_crtc->sys_b_config_regs_pa);
+				priv->dispsys_data->config_dump_analysis(mtk_crtc->sys_b_config_regs, 0);
+			}
+			if (mtk_crtc->sys_b_side_config_regs) {
+				DDPDUMP("== DUMP DISP pipe-3 ANALYSIS:0x%pa ==\n",
+					&mtk_crtc->sys_b_side_config_regs_pa);
+				priv->dispsys_data->config_dump_analysis(mtk_crtc->sys_b_side_config_regs, 1);
+			}
 		}
-	} else {
-		if (mtk_crtc->sys_b_config_regs) {
-			DDPDUMP("== DUMP DISP pipe-2 ANALYSIS:0x%pa ==\n",
-				&mtk_crtc->sys_b_config_regs_pa);
-			mmsys_config_dump_analysis_mt6993(mtk_crtc->sys_b_config_regs, 0);
-		}
-		if (mtk_crtc->sys_b_side_config_regs) {
-			DDPDUMP("== DUMP DISP pipe-3 ANALYSIS:0x%pa ==\n",
-				&mtk_crtc->sys_b_side_config_regs_pa);
-			mmsys_config_dump_analysis_mt6993(mtk_crtc->sys_b_side_config_regs, 1);
-		}
-	}
-		mutex_dump_analysis_mt6993(mtk_crtc->mutex[0]);
-		mutex_ovlsys_dump_analysis_mt6993(mtk_crtc->mutex[0]);
+
+		//mutex_dump_analysis_mt6993(mtk_crtc->mutex[0]);
+		//mutex_ovlsys_dump_analysis_mt6993(mtk_crtc->mutex[0]);
+
+		priv->dispsys_data->mutex_dump_analysis(mtk_crtc->mutex[0]);
+		priv->ovlsys_data->mutex_dump_analysis(mtk_crtc->mutex[0]);
+
 		if (mtk_crtc->is_dual_pipe) {
 			DDPDUMP("anlysis dual pipe\n");
 			for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
@@ -18606,7 +18550,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 			unsigned int exdma_addr = 0, value = 0;
 			resource_size_t config_regs_pa;
 
-			value = mtk_ddp_exdma_mout_MT6991(comp_state->comp_id,
+			value = priv->ovlsys_data->exdma_mout(comp_state->comp_id,
 						DDP_COMPONENT_ID_MAX, &exdma_addr);
 			if (comp_state->comp_id < DDP_COMPONENT_OVL1_EXDMA0)
 				config_regs_pa = mtk_crtc->ovlsys0_regs_pa;

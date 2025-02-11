@@ -270,6 +270,25 @@ struct mtk_ddp {
 	struct mtk_ddp_comp ddp_comp;
 };
 
+struct mtk_ovlsys_data {
+	int (*exdma_mout)(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+			   unsigned int *addr);
+	int (*exdma_mout_reset)(enum mtk_ddp_comp_type type, int *offset,
+			   unsigned int *addr_begin, unsigned int *addr_end, int crtc_id);
+	void (*config_dump_analysis)(void __iomem *config_regs, bool rg_dump);
+	void (*mutex_dump_analysis)(struct mtk_disp_mutex *mutex);
+	void (*mutex_dump_reg)(struct mtk_disp_mutex *mutex);
+	void (*config_dump_reg)(void __iomem *config_regs);
+};
+
+struct mtk_dispsys_data {
+	void (*config_dump_analysis)(void __iomem *config_regs, int sys_id);
+	void (*mutex_dump_analysis)(struct mtk_disp_mutex *mutex);
+	void (*mutex_dump_reg)(struct mtk_disp_mutex *mutex);
+	void (*config_dump_reg)(void __iomem *config_regs);
+};
+
+
 struct mtk_mmsys_reg_data {
 	unsigned int ovl0_mout_en;
 	unsigned int rdma0_sout_sel_in;
@@ -284,6 +303,7 @@ struct mtk_mmsys_reg_data {
 	const unsigned int *dispsys_map;
 	const unsigned int *module_rst_offset;
 	const unsigned int *module_rst_bit;
+	const u16 *ovlsys_regs;
 };
 
 #define MT6983_DUMMY_REG_CNT 85
@@ -296,8 +316,11 @@ extern struct dummy_mapping mt6895_dispsys_dummy_register[MT6895_DUMMY_REG_CNT];
 extern struct dummy_mapping mt6879_dispsys_dummy_register[MT6879_DUMMY_REG_CNT];
 
 
-const struct mtk_mmsys_reg_data *
-mtk_ddp_get_mmsys_reg_data(enum mtk_mmsys_id mmsys_id);
+void mtk_ddp_get_mmsys_data(enum mtk_mmsys_id mmsys_id,
+	const struct mtk_mmsys_reg_data **reg_data,
+	const struct mtk_ovlsys_data **ovlsys_data,
+	const struct mtk_dispsys_data **dispsys_data);
+
 
 void mtk_disp_ultra_offset(void __iomem *config_regs,
 			enum mtk_ddp_comp_id comp, bool is_dc);
@@ -415,7 +438,7 @@ void mutex_dump_analysis_mt6993(struct mtk_disp_mutex *mutex);
 void mmsys_config_dump_reg_mt6993(void __iomem *config_regs);
 void ovlsys_config_dump_reg_mt6993(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6993(void __iomem *config_regs, int sys_id);
-void ovlsys_config_dump_analysis_mt6993(void __iomem *config_regs);
+void ovlsys_config_dump_analysis_mt6993(void __iomem *config_regs, bool rg_dump);
 
 void mtk_ddp_insert_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);

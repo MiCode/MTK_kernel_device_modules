@@ -31,6 +31,7 @@
 #include "mtk_drm_helper.h"
 #include "mtk_drm_drv.h"
 #include "platform/mtk_ovl_exdma_reg.h"
+#include "platform/mtk_disp_ovlsys_reg.h"
 #include "mtk_disp_ovl_exdma.h"
 #include "mtk_disp_pmqos.h"
 #ifdef IF_ZERO
@@ -210,27 +211,6 @@ module_param_array(debug_module_bw, int, NULL, 0644);
 #define M4U_PORT_DISP_OVL0 3
 #define M4U_PORT_DISP_OVL0_2L_HDR ((1 << 5) + 0)
 #define M4U_PORT_DISP_OVL0_2L ((1 << 5) + 2)
-
-/*To-do: It will be moved to ovlsys related define in the future*/
-#define MT6991_OVL_EXDMA0_L0_AID_SETTING	(0xB00UL)
-#define MT6991_OVL_EXDMA1_L0_AID_SETTING	(0xB10UL)
-#define MT6991_OVL_EXDMA2_L0_AID_SETTING	(0xB20UL)
-#define MT6991_OVL_EXDMA3_L0_AID_SETTING	(0xB30UL)
-#define MT6991_OVL_EXDMA4_L0_AID_SETTING	(0xB40UL)
-#define MT6991_OVL_EXDMA5_L0_AID_SETTING	(0xB50UL)
-#define MT6991_OVL_EXDMA6_L0_AID_SETTING	(0xB60UL)
-#define MT6991_OVL_EXDMA7_L0_AID_SETTING	(0xB70UL)
-#define MT6991_OVL_EXDMA8_L0_AID_SETTING	(0xB80UL)
-#define MT6991_OVL_EXDMA9_L0_AID_SETTING	(0xB90UL)
-
-#define MT6993_OVL_EXDMA0_L0_AID_SETTING	(0xE0CUL)
-#define MT6993_OVL_EXDMA1_L0_AID_SETTING	(0xE1CUL)
-#define MT6993_OVL_EXDMA2_L0_AID_SETTING	(0xE2CUL)
-#define MT6993_OVL_EXDMA3_L0_AID_SETTING	(0xE3CUL)
-#define MT6993_OVL_EXDMA4_L0_AID_SETTING	(0xE4CUL)
-#define MT6993_OVL_EXDMA5_L0_AID_SETTING	(0xE5CUL)
-#define MT6993_OVL_EXDMA6_L0_AID_SETTING	(0xE6CUL)
-#define MT6993_OVL_EXDMA7_L0_AID_SETTING	(0xE7CUL)
 
 #define MT6985_OVL_LAYER_OFFEST				(0x4)
 
@@ -492,80 +472,56 @@ unsigned int mtk_ovl_sys_mapping_MT6993(struct mtk_ddp_comp *comp)
 	}
 }
 
-unsigned int mtk_ovl_aid_sel_MT6991(struct mtk_ddp_comp *comp)
+unsigned int mtk_ovl_aid_sel(struct mtk_ddp_comp *comp)
 {
-	switch (comp->id) {
-	case DDP_COMPONENT_OVL_EXDMA0:
-	case DDP_COMPONENT_OVL1_EXDMA0:
-		return MT6991_OVL_EXDMA0_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA1:
-	case DDP_COMPONENT_OVL1_EXDMA1:
-		return MT6991_OVL_EXDMA1_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA2:
-	case DDP_COMPONENT_OVL1_EXDMA2:
-		return MT6991_OVL_EXDMA2_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA3:
-	case DDP_COMPONENT_OVL1_EXDMA3:
-		return MT6991_OVL_EXDMA3_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA4:
-	case DDP_COMPONENT_OVL1_EXDMA4:
-		return MT6991_OVL_EXDMA4_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA5:
-	case DDP_COMPONENT_OVL1_EXDMA5:
-		return MT6991_OVL_EXDMA5_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA6:
-	case DDP_COMPONENT_OVL1_EXDMA6:
-		return MT6991_OVL_EXDMA6_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA7:
-	case DDP_COMPONENT_OVL1_EXDMA7:
-		return MT6991_OVL_EXDMA7_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA8:
-	case DDP_COMPONENT_OVL1_EXDMA8:
-		return MT6991_OVL_EXDMA8_L0_AID_SETTING;
-	case DDP_COMPONENT_OVL_EXDMA9:
-	case DDP_COMPONENT_OVL1_EXDMA9:
-		return MT6991_OVL_EXDMA9_L0_AID_SETTING;
-	default:
-		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
-		return 0;
-	}
-}
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv;
 
-unsigned int mtk_ovl_aid_sel_MT6993(struct mtk_ddp_comp *comp)
-{
+	mtk_crtc = comp->mtk_crtc;
+	crtc = &mtk_crtc->base;
+	priv = crtc->dev->dev_private;
+
+
 	switch (comp->id) {
 	case DDP_COMPONENT_OVL_EXDMA0:
 	case DDP_COMPONENT_OVL1_EXDMA0:
 	case DDP_COMPONENT_OVL2_EXDMA0:
-		return MT6993_OVL_EXDMA0_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA0_L0_AID_SETTING];
 	case DDP_COMPONENT_OVL_EXDMA1:
 	case DDP_COMPONENT_OVL1_EXDMA1:
 	case DDP_COMPONENT_OVL2_EXDMA1:
-		return MT6993_OVL_EXDMA1_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA1_L0_AID_SETTING];
 	case DDP_COMPONENT_OVL_EXDMA2:
 	case DDP_COMPONENT_OVL1_EXDMA2:
 	case DDP_COMPONENT_OVL2_EXDMA2:
-		return MT6993_OVL_EXDMA2_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA2_L0_AID_SETTING];
 	case DDP_COMPONENT_OVL_EXDMA3:
 	case DDP_COMPONENT_OVL1_EXDMA3:
 	case DDP_COMPONENT_OVL2_EXDMA3:
-		return MT6993_OVL_EXDMA3_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA3_L0_AID_SETTING];
 	case DDP_COMPONENT_OVL_EXDMA4:
 	case DDP_COMPONENT_OVL1_EXDMA4:
 	case DDP_COMPONENT_OVL2_EXDMA4:
-		return MT6993_OVL_EXDMA4_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA4_L0_AID_SETTING];
 	case DDP_COMPONENT_OVL_EXDMA5:
 	case DDP_COMPONENT_OVL1_EXDMA5:
 	case DDP_COMPONENT_OVL2_EXDMA5:
-		return MT6993_OVL_EXDMA5_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA5_L0_AID_SETTING];
 	case DDP_COMPONENT_OVL_EXDMA6:
 	case DDP_COMPONENT_OVL1_EXDMA6:
 	case DDP_COMPONENT_OVL2_EXDMA6:
-		return MT6993_OVL_EXDMA6_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA6_L0_AID_SETTING];
 	case DDP_COMPONENT_OVL_EXDMA7:
 	case DDP_COMPONENT_OVL1_EXDMA7:
 	case DDP_COMPONENT_OVL2_EXDMA7:
-		return MT6993_OVL_EXDMA7_L0_AID_SETTING;
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA7_L0_AID_SETTING];
+	case DDP_COMPONENT_OVL_EXDMA8:
+	case DDP_COMPONENT_OVL1_EXDMA8:
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA8_L0_AID_SETTING];
+	case DDP_COMPONENT_OVL_EXDMA9:
+	case DDP_COMPONENT_OVL1_EXDMA9:
+		return priv->reg_data->ovlsys_regs[OVL_EXDMA9_L0_AID_SETTING];
 	default:
 		DDPPR_ERR("%s invalid ovl module=%d\n", __func__, comp->id);
 		return 0;
@@ -2152,8 +2108,7 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 	if (exdma->data->mmsys_mapping)
 		mmsys_reg = exdma->data->mmsys_mapping(comp);
 
-	if (exdma->data->aid_sel_mapping)
-		aid_sel_offset = exdma->data->aid_sel_mapping(comp);
+	aid_sel_offset = mtk_ovl_aid_sel(comp);
 
 	if (state->comp_state.layer_caps & (MTK_DISP_RSZ_LAYER))
 		rpo_check_flag = true;
@@ -3220,8 +3175,7 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	if (exdma->data->mmsys_mapping)
 		mmsys_reg = exdma->data->mmsys_mapping(comp);
 
-	if (exdma->data->aid_sel_mapping)
-		aid_sel_offset = exdma->data->aid_sel_mapping(comp);
+	aid_sel_offset = mtk_ovl_aid_sel(comp);
 
 	if (ext_lye_idx != LYE_NORMAL) {
 		unsigned int id = ext_lye_idx - 1;
@@ -3922,8 +3876,9 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	if (src_on & ENABLE_OVL_L_EN) {
 		if (exdma->data->mmsys_mapping)
 			mmsys_reg = exdma->data->mmsys_mapping(comp);
-		if (exdma->data->aid_sel_mapping)
-			aid_sel_offset = exdma->data->aid_sel_mapping(comp);
+
+		aid_sel_offset = mtk_ovl_aid_sel(comp);
+
 		if (mmsys_reg && aid_sel_offset &&
 			(comp->id == DDP_COMPONENT_OVL_EXDMA3 || comp->id == DDP_COMPONENT_OVL_EXDMA4))
 			cmdq_pkt_write(handle, comp->cmdq_base,	mmsys_reg + aid_sel_offset,
@@ -5570,7 +5525,6 @@ static const struct mtk_disp_ovl_exdma_data mt6991_ovl_exdma_driver_data = {
 	.stash_en = 0,
 	.stash_cfg = 0x1,
 	.is_support_34bits = true,
-	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6991,
 	.aid_per_layer_setting = true,
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6991,
 	.source_bpc = 10,
@@ -5616,7 +5570,6 @@ static const struct mtk_disp_ovl_exdma_data mt6993_ovl_exdma_driver_data = {
 	.stash_en = 0,
 	.stash_cfg = 0x1,
 	.is_support_34bits = true,
-	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6993,
 	.aid_per_layer_setting = true,
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6993,
 	.source_bpc = 10,

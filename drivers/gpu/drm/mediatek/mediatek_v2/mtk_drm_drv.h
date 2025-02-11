@@ -289,6 +289,8 @@ struct mtk_drm_private {
 	void __iomem *infra_regs;
 	resource_size_t infra_regs_pa;
 	const struct mtk_mmsys_reg_data *reg_data;
+	const struct mtk_ovlsys_data *ovlsys_data;
+	const struct mtk_dispsys_data *dispsys_data;
 	struct device_node *comp_node[DDP_COMPONENT_ID_MAX];
 	struct mtk_ddp_comp *ddp_comp[DDP_COMPONENT_ID_MAX];
 	const struct mtk_mmsys_driver_data *data;
