@@ -106,7 +106,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/cam_cal/src_v4l2:mtk_cam_cal",
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:mtk_ccuv",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/common:imgsys_common",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s",
+    # "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7s:imgsys_7s",
@@ -1394,6 +1394,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6895":"mt6895",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6879":"mt6879",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s":"mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6855".format(kernel_version): "mt6855",
@@ -2438,7 +2439,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7s:imgsys_7s")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s")
+        # mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s")
