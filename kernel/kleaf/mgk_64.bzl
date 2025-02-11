@@ -142,6 +142,8 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8s:imgsensor_isp8s",
     "//vendor/mediatek/kernel_modules/perf_common_cus:perf_common_cus",
     "//vendor/mediatek/kernel_modules/perf_common_int:perf_common_int",
+    "//vendor/mediatek/kernel_modules/game_cus:game_cus",
+    "//vendor/mediatek/kernel_modules/game_int:game_int",
 ]
 
 mgk_64_kleaf_eng_modules = [

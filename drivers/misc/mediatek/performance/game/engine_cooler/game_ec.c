@@ -24,11 +24,19 @@ static int smallest_yield_time;
 static struct engine_cooler_data_internal s_ECData[MAX_ENGINE_COOLER_DATA_SIZE];
 static bool is_register_fpsgo_cb = false;
 static DEFINE_MUTEX(s_ec_lock);
+DEFINE_MUTEX(g_ec_private_lock);
 
 module_param(engine_cooler_enable, int, 0644);
 module_param(yield_duration, int ,0644);
 module_param(lr_frame_time_buffer, int ,0644);
 module_param(smallest_yield_time, int, 0644);
+
+void get_mutext_lock(void **lock)
+{
+	*lock = &g_ec_private_lock;
+	(void)lock;
+}
+EXPORT_SYMBOL(get_mutext_lock);
 
 extern int get_fpsgo_frame_info(int max_num, unsigned long mask,
 	struct render_frame_info *frame_info_arr);

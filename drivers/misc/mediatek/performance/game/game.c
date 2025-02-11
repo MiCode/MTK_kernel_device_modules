@@ -38,6 +38,20 @@ struct render_info_fps {
 	int target_fps;
 };
 
+void game_lock_from_private(void *lock)
+{
+	if (lock != NULL)
+		mutex_lock(lock);
+}
+EXPORT_SYMBOL(game_lock_from_private);
+
+void game_unlock_from_private(void *lock)
+{
+	if (lock != NULL)
+		mutex_unlock(lock);
+}
+EXPORT_SYMBOL(game_unlock_from_private);
+
 int game_get_tgid(int pid)
 {
 	struct task_struct *tsk;
@@ -86,7 +100,7 @@ void game_free(void *pvBuf, int i32Size)
 
 void game_register_func(void *funcPtr, void *data)
 {
-	register_trace_android_rvh_do_sched_yield(funcPtr, data);
+	register_trace_android_rvh_before_do_sched_yield(funcPtr, data);
 }
 EXPORT_SYMBOL(game_register_func);
 
