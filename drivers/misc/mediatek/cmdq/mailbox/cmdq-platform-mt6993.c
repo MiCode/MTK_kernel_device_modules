@@ -243,7 +243,7 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 			... CMDQ_SYNC_TOKEN_TRAW_PWR_HAND_SHAKE:
 			return "MM_IMG_DIP";
 		case CMDQ_SYNC_TOKEN_DPE_POOL_1
-			... CMDQ_SYNC_TOKEN_DPE_POOL_16:
+			... CMDQ_SYNC_TOKEN_DPE_POOL_14:
 			return "MM_IMG_FRM";
 		default:
 			return "MM_GCEM";
