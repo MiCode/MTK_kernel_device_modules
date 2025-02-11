@@ -1435,6 +1435,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6879".format(kernel_version): "mt6879",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6878".format(kernel_version): "mt6878",
 
   ## write vendor file by platform here
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
@@ -1816,11 +1817,6 @@ mgk_64_platform_device_modules = {
     "drivers/gpu/mediatek/gpu_iommu/mtk_gpu_iommu_mt6993.ko": "mt6993",
     "drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6991.ko": "mt6991",
     "drivers/gpu/mediatek/gpu_pdma/mtk_gpu_pdma_mt6993.ko": "mt6993",
-    "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6886.ko": "mt6886",
-    "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6897.ko": "mt6897",
-    "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6985.ko": "mt6985",
-    "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6989.ko": "mt6989",
-    "drivers/misc/mediatek/cameraisp/pda/pda_drv_mt6878.ko": "mt6878",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6886.ko": "mt6886",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6897.ko": "mt6897",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr_mt6983.ko": "mt6983",

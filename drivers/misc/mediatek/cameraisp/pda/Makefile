@@ -11,12 +11,12 @@
 # GNU General Public License for more details.
 #
 
-$(info $(DEVICE_MODULES_PATH))
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
-ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
+#$(info $(DEVICE_MODULES_PATH))
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu
+#ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 
 #ifneq ($(wildcard $(DEVICE_MODULES_PATH)/include/dt-bindings/memory/mt6983-larb-port.h),)
 #subdir-ccflags-y += -DPDA_TF_DUMP_71_1
@@ -42,27 +42,27 @@ ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek
 #ifneq ($(wildcard $(src)/isp_6s/pda_mt6855.c),)
 #obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6855.o
 #endif
-ifneq ($(wildcard $(src)/isp_7s/pda_mt6985.c),)
-obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6985.o
-endif
-ifneq ($(wildcard $(src)/isp_7s/pda_mt6886.c),)
-obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6886.o
-endif
-ifneq ($(wildcard $(src)/isp_7sp/pda_mt6897.c),)
-obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6897.o
-endif
-ifneq ($(wildcard $(src)/isp_7sp/pda_mt6989.c),)
-obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6989.o
-endif
-ifneq ($(wildcard $(src)/isp_7sp/pda_mt6878.c),)
-obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6878.o
-endif
+#ifneq ($(wildcard $(src)/isp_7s/pda_mt6985.c),)
+#obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6985.o
+#endif
+#ifneq ($(wildcard $(src)/isp_7s/pda_mt6886.c),)
+#obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6886.o
+#endif
+#ifneq ($(wildcard $(src)/isp_7sp/pda_mt6897.c),)
+#obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6897.o
+#endif
+#ifneq ($(wildcard $(src)/isp_7sp/pda_mt6989.c),)
+#obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6989.o
+#endif
+#ifneq ($(wildcard $(src)/isp_7sp/pda_mt6878.c),)
+#obj-$(CONFIG_MTK_CAMERA_ISP_PDA_SUPPORT) += pda_drv_mt6878.o
+#endif
 
 #pda_drv_mt6879-objs := isp_71/camera_pda_mt6879.o
 #pda_drv_mt6895-objs := isp_71/camera_pda_mt6895.o
 #pda_drv_mt6855-objs := isp_6s/camera_pda.o isp_6s/pda_mt6855.o
-pda_drv_mt6985-objs := isp_7s/camera_pda.o isp_7s/pda_mt6985.o
-pda_drv_mt6886-objs := isp_7s/camera_pda.o isp_7s/pda_mt6886.o
-pda_drv_mt6897-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6897.o
-pda_drv_mt6989-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6989.o
-pda_drv_mt6878-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6878.o
+#pda_drv_mt6985-objs := isp_7s/camera_pda.o isp_7s/pda_mt6985.o
+#pda_drv_mt6886-objs := isp_7s/camera_pda.o isp_7s/pda_mt6886.o
+#pda_drv_mt6897-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6897.o
+#pda_drv_mt6989-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6989.o
+#pda_drv_mt6878-objs := isp_7sp/camera_pda.o isp_7sp/pda_mt6878.o
