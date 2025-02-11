@@ -29,7 +29,7 @@
 #include <linux/of_platform.h>
 #include <linux/nvmem-consumer.h>
 
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 #include "ged_debugFS.h"
 #endif
 #include "ged_sysfs.h"
@@ -753,7 +753,7 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 	err = ged_debugFS_init();
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to init debug FS!\n");
@@ -773,7 +773,7 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
-#ifdef GED_DCS_POLICY
+#if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2) /* GED_DCS_POLICY */
 	err = ged_dcs_init_platform_info();
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to init DCS platform info!\n");
@@ -842,7 +842,7 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	}
 #endif /* MTK_GPU_MEMSYS_UTIL */
 
-#ifndef GED_BUFFER_LOG_DISABLE
+#if !IS_ENABLED(CONFIG_MTK_ENABLE_GMO) /* GED_BUFFER_LOG_DISABLE */
 	ghLogBuf_GPU = ged_log_buf_alloc(512, 128 * 512,
 		GED_LOG_BUF_TYPE_RINGBUFFER, "GPU_FENCE", NULL);
 	ghLogBuf_HWC_ERR = ged_log_buf_alloc(2048, 2048 * 128,
@@ -875,7 +875,7 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 #endif
 
 	gpufreq_ged_log = 0;
-#endif /* GED_BUFFER_LOG_DISABLE */
+#endif /* CONFIG_MTK_ENABLE_GMO */
 
 	GED_LOGI("@%s: ged driver probe done\n", __func__);
 
@@ -888,7 +888,7 @@ ERROR:
  */
 static void ged_pdrv_remove(struct platform_device *pdev)
 {
-#ifndef GED_BUFFER_LOG_DISABLE
+#if !IS_ENABLED(CONFIG_MTK_ENABLE_GMO) /* GED_BUFFER_LOG_DISABLE */
 	ged_log_buf_free(gpufreq_ged_log);
 	gpufreq_ged_log = 0;
 
@@ -912,7 +912,7 @@ static void ged_pdrv_remove(struct platform_device *pdev)
 	ghLogBuf_HWC_ERR = 0;
 	ged_log_buf_free(ghLogBuf_GPU);
 	ghLogBuf_GPU = 0;
-#endif /* GED_BUFFER_LOG_DISABLE */
+#endif /* CONFIG_MTK_ENABLE_GMO */
 
 	ged_gpu_tuner_exit();
 
@@ -928,13 +928,13 @@ static void ged_pdrv_remove(struct platform_device *pdev)
 
 	ged_log_system_exit();
 
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 	ged_debugFS_exit();
 #endif
 
 	ged_sysfs_exit();
 
-#ifdef GED_DCS_POLICY
+#if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2) /* GED_DCS_POLICY */
 	ged_dcs_exit();
 #endif
 

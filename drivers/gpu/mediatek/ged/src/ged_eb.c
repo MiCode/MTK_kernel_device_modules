@@ -20,7 +20,7 @@
 #include <linux/module.h>
 #include <linux/uaccess.h>
 
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 #include <ged_notify_sw_vsync.h>
 #include <gpueb_ipi.h>
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
@@ -43,7 +43,7 @@
 #include <ged_gpufreq_v1.h>
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
 
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 static void __iomem *mtk_gpueb_dvfs_sysram_base_addr;
 static void __iomem *mtk_gpueb_base_addr;   /* 0x4b000000 */
 static void __iomem *mtk_gpueb_dvfs_sysram_base_addr_swrgo;
@@ -84,7 +84,7 @@ struct ged_last_timer {
 
 static struct ged_last_timer g_ged_last_timer;
 
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 #define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %lu, TIMEOUT: %d(ms)"
 #define EB_DVFS_FALLBACK 5566
 #define EB_DVFS_DUMP_TH 0x800
@@ -2230,7 +2230,7 @@ void ged_notify_eb_ged_ready(void)
 		schedule_work(&sg_notify_ged_ready_work);
 	}
 }
-#else /* MTK_GPU_EB_SUPPORT */
+#else /* CONFIG_MTK_GPU_LEGACY */
 void mtk_gpueb_dvfs_commit(unsigned long ulNewFreqID,
 		GED_DVFS_COMMIT_TYPE eCommitType, int *pbCommited)
 {
@@ -2471,4 +2471,4 @@ unsigned int ged_get_mbrain_max_num(void)
 	return 0;
 }
 
-#endif /* MTK_GPU_EB_SUPPORT */
+#endif /* CONFIG_MTK_GPU_LEGACY */

@@ -91,12 +91,12 @@ static uint64_t g_last_opp_cost_update_ts_ms;
 enum MTK_GPU_DVFS_TYPE g_CommitType;
 unsigned long g_ulCommitFreq;
 
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 static unsigned int boost_gpu_enable;
 static unsigned int gpu_bottom_freq;
 static unsigned int gpu_cust_boost_freq;
 static unsigned int gpu_cust_upbound_freq;
-#endif /* ENABLE_COMMON_DVFS */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 
 static unsigned int g_ui32PreFreqID;
 
@@ -1678,10 +1678,10 @@ GED_ERROR ged_dvfs_vsync_offset_event_switch(
 		break;
 	case GED_DVFS_VSYNC_OFFSET_TOUCH_EVENT:
 		/* touch boost */
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 		if (bSwitch == GED_TRUE)
 			ged_dvfs_boost_gpu_freq();
-#endif /* ENABLE_COMMON_DVFS */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 
 		(bSwitch) ? (g_ui32EventStatus |= GED_EVENT_TOUCH) :
 			(g_ui32EventStatus &= (~GED_EVENT_TOUCH));
@@ -1767,7 +1767,7 @@ int ged_dvfs_vsync_offset_level_get(void)
 
 GED_ERROR ged_dvfs_um_commit(unsigned long gpu_tar_freq, bool bFallback)
 {
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 	int i;
 	int minfreq_idx;
 	unsigned int ui32NewFreqID = 0;
@@ -1860,7 +1860,7 @@ GED_ERROR ged_dvfs_um_commit(unsigned long gpu_tar_freq, bool bFallback)
 #endif /* GED_DVFS_UM_CAL */
 #else
 	gpu_pre_loading = 0;
-#endif /* ENABLE_COMMON_DVFS */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 
 	return GED_OK;
 }
@@ -3319,7 +3319,7 @@ static bool ged_dvfs_policy(
 			(prev_async_opp_diff != g_async_opp_diff) ? GED_TRUE : GED_FALSE;
 }
 
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 static void ged_dvfs_freq_input_boostCB(unsigned int ui32BoostFreqID)
 {
 	if (g_iSkipCount > 0)
@@ -3481,7 +3481,7 @@ static unsigned long ged_get_gpu_bottom_freq(void)
 {
 	return ged_get_freq_by_idx(g_bottom_freq_id);
 }
-#endif /* ENABLE_COMMON_DVFS */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 
 unsigned int ged_dvfs_get_custom_ceiling_gpu_freq(void)
 {
@@ -4439,7 +4439,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	spin_lock_init(&gsGpuUtilLock);
 
 	/* initial as locked, signal when vsync_sw_notify */
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 	gpu_dvfs_enable = (g_is_bringup == 1)? 0: 1;
 
 	gpu_util_history_init();
@@ -4479,11 +4479,11 @@ GED_ERROR ged_dvfs_system_init(void)
 
 	early_force_fallback_enable = 1;
 
-#ifdef ENABLE_TIMER_BACKUP
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
 	g_gpu_timer_based_emu = 0;
 #else
 	g_gpu_timer_based_emu = 1;
-#endif /* ENABLE_TIMER_BACKUP */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 
 	mtk_set_bottom_gpu_freq_fp = ged_dvfs_set_bottom_gpu_freq;
 	mtk_get_bottom_gpu_freq_fp = ged_dvfs_get_bottom_gpu_freq;
@@ -4501,7 +4501,7 @@ GED_ERROR ged_dvfs_system_init(void)
 
 	mtk_dvfs_margin_value_fp = ged_dvfs_margin_value;
 	mtk_get_dvfs_margin_value_fp = ged_get_dvfs_margin_value;
-#endif /* ENABLE_COMMON_DVFS */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 
 	mtk_loading_base_dvfs_step_fp = ged_loading_base_dvfs_step;
 	mtk_get_loading_base_dvfs_step_fp = ged_get_loading_base_dvfs_step;
@@ -4523,7 +4523,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	ged_get_last_commit_top_idx_fp = ged_dvfs_get_last_commit_top_idx;
 	ged_get_last_commit_stack_idx_fp = ged_dvfs_get_last_commit_stack_idx;
 
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	ged_notify_gpu_fix_opp_fp = ged_notify_fix_opp_from_gpufreq;
 	ged_notify_gpu_fix_freq_volt_fp = ged_notify_fix_freq_volt_from_gpufreq;
 #endif
@@ -4631,7 +4631,7 @@ void ged_dvfs_system_exit(void)
 	ged_dvfs_deinit_opp_cost();
 }
 
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 module_param(gpu_loading, uint, 0644);
 module_param(gpu_block, uint, 0644);
 module_param(gpu_idle, uint, 0644);
@@ -4644,5 +4644,5 @@ module_param(gpu_cust_upbound_freq, uint, 0644);
 module_param(g_gpu_timer_based_emu, uint, 0644);
 //MBrain
 module_param(gpu_opp_logs_enable, uint, 0644);
-#endif /* ENABLE_COMMON_DVFS */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 

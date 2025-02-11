@@ -122,7 +122,7 @@ endif
 
 ged-$(CONFIG_SYNC_FILE) += src/ged_sync.o
 
-obj-$(CONFIG_MTK_GPU_SUPPORT) += ged.o
+# obj-$(CONFIG_MTK_GPU_SUPPORT) += ged.o
 
 mtk_ged_mt6991-y := src/platform/ged_mt6991.o
 

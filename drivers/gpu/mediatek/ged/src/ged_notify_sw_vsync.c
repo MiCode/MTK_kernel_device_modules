@@ -39,14 +39,14 @@
 #define GED_DVFS_FB_TIMER_TIMEOUT 100000000
 #define GED_DVFS_TIMER_TIMEOUT g_fallback_time_out
 
-#ifndef ENABLE_TIMER_BACKUP
+#if !IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
 
 #undef GED_DVFS_TIMER_TIMEOUT
 
 #define GED_DVFS_FB_TIMER_TIMEOUT 100000000
 #define GED_DVFS_TIMER_TIMEOUT g_fallback_time_out
 
-#endif /* GED_DVFS_TIMER_TIMEOUT */
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 
 static u64 g_fallback_time_out = GED_DVFS_FB_TIMER_TIMEOUT;
 
@@ -260,7 +260,7 @@ static void ged_eb_dump_norm_loading(void) {
 
 void ged_eb_dvfs_trace_dump(void)
 {
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
 	u64 eb_timeout_value = ged_get_fallback_time();
@@ -456,7 +456,7 @@ void ged_eb_dvfs_trace_dump(void)
 
 void ged_eb_dvfs_frame_done_dump(void)
 {
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	int top_freq_diff = 0, sc_freq_diff = 0, sc_avg_freq_diff = 0;
 	union combineData tmp_multi = {0};
 	union combineData tmp_multi_async = {0};
@@ -615,7 +615,7 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 				temp = 0;
 				/* if callback is queued, send mode off to real driver */
 				ged_sw_vsync_event(false);
-#ifdef ENABLE_TIMER_BACKUP
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
 				temp = ged_get_time();
 				if (temp-sw_vsync_ts > GED_DVFS_TIMER_TIMEOUT) {
 					do_div(temp, 1000);
@@ -649,7 +649,7 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
 
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 static unsigned long long hw_vsync_ts;
 #endif
 
@@ -705,7 +705,7 @@ void ged_cancel_backup_timer(void)
 	unsigned long long temp;
 
 	temp = ged_get_time();
-#ifdef ENABLE_TIMER_BACKUP
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
 	if ((g_ged_frame_base_optimize == 0 || g_bGPUClock) && ged_timer_or_trace_enable()) {
 		if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
 			/* Timer is either queued or in cb
@@ -727,7 +727,7 @@ void ged_cancel_backup_timer(void)
 			timer_switch_locked(true);
 		}
 	}
-#endif /*	#ifdef ENABLE_TIMER_BACKUP	*/
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 }
 
 
@@ -737,7 +737,7 @@ GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 	ged_notification(GED_NOTIFICATION_TYPE_SW_VSYNC);
 
 	{
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 
 	unsigned long long temp;
 	unsigned long ul3DFenceDoneTime;
@@ -758,7 +758,7 @@ GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 	}
 
 /* TODO: temp defined to disable vsync_dvfs when COMMON_DVFS on*/
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 	return GED_ERROR_INTENTIONAL_BLOCK;
 #else
 	long phase = 0;
@@ -771,7 +771,7 @@ GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 
 	if (eType == GED_VSYNC_SW_EVENT) {
 		sw_vsync_ts = temp;
-#ifdef ENABLE_TIMER_BACKUP
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
 		if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
 			/* Timer is either queued or in cb
 			 * cancel it to ensure it is not bother any way
@@ -791,7 +791,7 @@ GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 				"[GED_K] New Timer Start (ts=%llu)", temp);
 			timer_switch_locked(true);
 		}
-#endif // #ifdef ENABLE_TIMER_BACKUP
+#endif /* CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT */
 	} else {
 		hw_vsync_ts = temp;
 
@@ -881,7 +881,7 @@ enum hrtimer_restart ged_sw_vsync_check_cb(struct hrtimer *timer)
 		if (notify_index >= MAX_NOTIFY_CNT)
 			notify_index = 0;
 
-#ifndef ENABLE_TIMER_BACKUP
+#if !IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
 		ged_dvfs_cal_gpu_utilization_ex(&gpu_av_loading,
 			&gpu_block, &gpu_idle, &util_ex);
 		gpu_loading = gpu_av_loading;
@@ -1891,7 +1891,7 @@ void ged_notify_sw_vsync_system_exit(void)
 		g_psNotifyWorkQueue = NULL;
 	}
 
-#ifdef ENABLE_COMMON_DVFS
+#if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_COMMON_DVFS */
 	hrtimer_cancel(&g_HT_hwvsync_emu);
 #endif
 	mutex_destroy(&gsVsyncModeLock);

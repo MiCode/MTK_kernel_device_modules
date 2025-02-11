@@ -20,7 +20,7 @@
 
 #include "ged_base.h"
 #include "ged_log.h"
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 #include "ged_debugFS.h"
 #endif
 #include "ged_hashtable.h"
@@ -96,7 +96,7 @@ static struct GED_LOG_BUF_LIST gsGEDLogBufList = {
 	.sList_listen   = LIST_HEAD_INIT(gsGEDLogBufList.sList_listen),
 };
 
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 static struct dentry *gpsGEDLogEntry;
 static struct dentry *gpsGEDLogBufsDir;
 #endif
@@ -335,7 +335,7 @@ static int __ged_log_buf_check_get_early_list(GED_LOG_BUF_HANDLE hLogBuf,
 }
 
 //-----------------------------------------------------------------------------
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 static ssize_t ged_log_buf_write_entry(const char __user *pszBuffer,
 	size_t uiCount, loff_t uiPosition, void *pvData)
 {
@@ -472,7 +472,7 @@ static const struct seq_operations gsGEDLogBufReadOps = {
 	.next = ged_log_buf_seq_next,
 	.show = ged_log_buf_seq_show,
 };
-#endif /* GED_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 //-----------------------------------------------------------------------------
 GED_LOG_BUF_HANDLE ged_log_buf_alloc(
 		int i32MaxLineCount,
@@ -560,7 +560,7 @@ GED_LOG_BUF_HANDLE ged_log_buf_alloc(
 	list_add(&psGEDLogBuf->sList, &gsGEDLogBufList.sList_buf);
 	write_unlock_bh(&gsGEDLogBufList.sLock);
 
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 	if (pszNodeName) {
 		int err;
 		int cx;
@@ -594,7 +594,7 @@ GED_LOG_BUF_HANDLE ged_log_buf_alloc(
 			return (GED_LOG_BUF_HANDLE)0;
 		}
 	}
-#endif /* GED_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 
 	error = ged_hashtable_insert(ghHashTable, psGEDLogBuf,
 		&psGEDLogBuf->ulHashNodeID);
@@ -831,7 +831,7 @@ void ged_log_buf_free(GED_LOG_BUF_HANDLE hLogBuf)
 		list_del(&psGEDLogBuf->sList);
 		write_unlock_bh(&gsGEDLogBufList.sLock);
 
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 		if (psGEDLogBuf->psEntry)
 			ged_debugFS_remove_entry(psGEDLogBuf->psEntry);
 #endif
@@ -913,7 +913,7 @@ EXPORT_SYMBOL(ged_log_buf_reset);
 //  GED Log System
 //
 //-----------------------------------------------------------------------------
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 static ssize_t ged_log_write_entry(const char __user *pszBuffer, size_t uiCount,
 	loff_t uiPosition, void *pvData)
 {
@@ -1005,7 +1005,7 @@ static const struct seq_operations gsGEDLogReadOps = {
 	.next = ged_log_seq_next,
 	.show = ged_log_buf_seq_show,
 };
-#endif /* GED_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 
 //-----------------------------------------------------------------------------
 unsigned int is_gpu_ged_log_enable(void)
@@ -1046,7 +1046,7 @@ GED_ERROR ged_log_system_init(void)
 {
 	GED_ERROR err = GED_OK;
 
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 	err = ged_debugFS_create_entry(
 			"gedlog",
 			NULL,
@@ -1070,7 +1070,7 @@ GED_ERROR ged_log_system_init(void)
 		GED_LOGE("Failed to create logbufs dir!\n");
 		goto ERROR;
 	}
-#endif /* GED_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS */
 
 	ghHashTable = ged_hashtable_create(5);
 	if (!ghHashTable) {
@@ -1104,7 +1104,7 @@ ERROR:
 void ged_log_system_exit(void)
 {
 	ged_hashtable_destroy(ghHashTable);
-#ifdef GED_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS) /* GED_DEBUG_FS */
 	ged_debugFS_remove_entry_dir(gpsGEDLogBufsDir);
 	ged_debugFS_remove_entry(gpsGEDLogEntry);
 #endif

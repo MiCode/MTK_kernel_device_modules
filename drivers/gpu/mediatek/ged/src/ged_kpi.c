@@ -964,11 +964,11 @@ static void ged_kpi_statistics_and_remove(struct GED_KPI_HEAD *psHead,
 		psKPI->cpu_gpu_info.gpu.limit_lower,
 		psKPI->cpu_gpu_info.gpu.dvfs_loading_mode,
 		psKPI->cpu_gpu_info.gpu.gpu_util,
-#ifdef GED_DCS_POLICY
+#if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2) /* GED_DCS_POLICY */
 		dcs_get_cur_core_num(),
 #else
 		psKPI->cpu_gpu_info.gpu.gpu_power,
-#endif /* GED_DCS_POLICY */
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
 #ifdef MTK_CPUFREQ
 		mt_cpufreq_get_cur_freq(0) / 1000,
 		mt_cpufreq_get_freq_by_idx(0, GED_KPI_CPU_MAX_OPP) / 1000,
@@ -1495,7 +1495,7 @@ static int ged_kpi_get_fallback_mode(void)
 
 static void ged_kpi_update_soc_timer(struct GED_KPI_HEAD *psHead, unsigned int ulMask)
 {
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	u64 soc_timer = 0;
 
 	if (is_fdvfs_enable()) {
@@ -2776,7 +2776,7 @@ static GED_BOOL ged_kpi_update_sysram_uncompleted_fcn(void *pvoid, void *pvParam
 
 void ged_kpi_update_sysram_uncompleted_tgpu(struct ged_sysram_info *info)
 {
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	unsigned long long t_gpu_uncomplete = 0;
 	unsigned long long soc_timer = 0;
 	unsigned long long cur_type = 0;
@@ -2911,13 +2911,13 @@ void ged_dfrc_fps_limit_cb(unsigned int target_fps)
 GED_ERROR ged_kpi_system_init(void)
 {
 #ifdef MTK_GED_KPI
-#ifndef GED_BUFFER_LOG_DISABLE
+#if !IS_ENABLED(CONFIG_MTK_ENABLE_GMO) /* GED_BUFFER_LOG_DISABLE */
 	ghLogBuf_KPI = ged_log_buf_alloc(GED_KPI_MAX_FPS * 10,
 		220 * GED_KPI_MAX_FPS * 10,
 		GED_LOG_BUF_TYPE_RINGBUFFER, NULL, "KPI");
 #else
 	ghLogBuf_KPI = 0;
-#endif /* GED_BUFFER_LOG_DISABLE */
+#endif /* CONFIG_MTK_ENABLE_GMO */
 	struct device_node *dvfs_prefence_node = NULL;
 	is_GED_KPI_enabled = ged_gpufreq_bringup() ? 0 : 1;
 	g_eb_workload = 0;
@@ -2982,10 +2982,10 @@ void ged_kpi_system_exit(void)
 #endif
 	destroy_workqueue(g_FenceWorkQueue);
 	ged_thread_destroy(ghThread);
-#ifndef GED_BUFFER_LOG_DISABLE
+#if !IS_ENABLED(CONFIG_MTK_ENABLE_GMO) /* GED_BUFFER_LOG_DISABLE */
 	ged_log_buf_free(ghLogBuf_KPI);
 	ghLogBuf_KPI = 0;
-#endif /* GED_BUFFER_LOG_DISABLE */
+#endif /* CONFIG_MTK_ENABLE_GMO */
 	ged_free(g_psGIFT, sizeof(struct GED_KPI_MEOW_DVFS_FREQ_PRED));
 #endif /* MTK_GED_KPI */
 }

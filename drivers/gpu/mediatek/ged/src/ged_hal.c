@@ -1418,7 +1418,7 @@ static ssize_t default_fps_margin_support_store(struct kobject *kobj,
 static KOBJ_ATTR_RW(default_fps_margin_support);
 
 //-----------------------------------------------------------------------------
-#ifdef GED_DCS_POLICY
+#if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2) /* GED_DCS_POLICY */
 static ssize_t dcs_mode_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -1724,7 +1724,7 @@ static ssize_t lowpwr_mode_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(lowpwr_mode);
 
-#endif /* GED_DCS_POLICY */
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
 //-----------------------------------------------------------------------------
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
@@ -2633,7 +2633,7 @@ static ssize_t loading_window_size_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(loading_window_size);
 
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 unsigned int g_enable_idx_notify;
 static ssize_t enable_idx_notify_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -3081,7 +3081,7 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create default_fps_margin_support entry!\n");
 
-#ifdef GED_DCS_POLICY
+#if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2) /* GED_DCS_POLICY */
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_dcs_mode);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to create dcs_mode entry!\n");
@@ -3114,7 +3114,7 @@ GED_ERROR ged_hal_init(void)
 	if (unlikely(err != GED_OK))
 		GED_LOGE("Failed to create lowpwr_mode entry!\n");
 
-#endif /* GED_DCS_POLICY */
+#endif /* CONFIG_MTK_GPUFREQ_V2 */
 
 #if IS_ENABLED(CONFIG_MTK_GPU_FW_IDLE)
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_fw_idle);
@@ -3270,7 +3270,7 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_enable_idx_notify);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE(
@@ -3390,7 +3390,7 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_ged_fallback_tuning);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_gpu_fps);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_default_fps_margin_support);
-#ifdef GED_DCS_POLICY
+#if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2) /* GED_DCS_POLICY */
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_mode);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_major_min);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_dcs_stress);
@@ -3414,7 +3414,7 @@ void ged_hal_exit(void)
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_autosuspend_stress);
 
-#if defined(MTK_GPU_EB_SUPPORT)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_enable_idx_notify);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_eb_counter_select);
 #endif
