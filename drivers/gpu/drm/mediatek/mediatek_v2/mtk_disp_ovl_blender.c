@@ -807,7 +807,6 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		break;
 	}
 	case BACKUP_OVL_STATUS: {
-		#ifdef IF_ZERO
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		u32 idx = drm_crtc_index(&mtk_crtc->base);
 		dma_addr_t slot = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_OVL_STATUS(idx));
@@ -815,7 +814,6 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		cmdq_pkt_mem_move(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_BLD_STA],
 			slot, CMDQ_THR_SPR_IDX3);
-		#endif
 		break;
 	}
 	default:
