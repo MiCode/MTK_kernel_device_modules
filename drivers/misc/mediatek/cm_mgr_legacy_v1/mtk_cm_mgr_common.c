@@ -114,11 +114,7 @@ EXPORT_SYMBOL(debounce_times_down_adb);
 unsigned int *debounce_times_up_adb;
 EXPORT_SYMBOL(debounce_times_up_adb);
 
-#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
-static int debounce_times_perf_down = 5;
-#else
 static int debounce_times_perf_down = 50;
-#endif
 static int debounce_times_perf_force_down = 100;
 #if IS_ENABLED(CONFIG_MTK_CM_IPI)
 static int cm_mgr_dram_opp_ceiling = -1;
@@ -132,16 +128,7 @@ unsigned int cm_hint;
 unsigned int dsu_perf;
 unsigned int cm_lmode;
 #endif
-#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
-#define CM_MGR_EMI_OPP 6
-int debounce_times_reset_adb = 1;
-int x_ratio_enable = 1;
-int cm_mgr_camera_enable;
-unsigned int cpu_power_ratio_up_x_camera[CM_MGR_EMI_OPP] = {0, 0, 0, 0, 60, 60};
-unsigned int cpu_power_ratio_up_x[CM_MGR_EMI_OPP] = {0, 0, 0, 0, 0, 0};
-#else
 int debounce_times_reset_adb;
-#endif
 int light_load_cps = 1000;
 
 static int debounce_times_perf_down_local = -1;
@@ -156,13 +143,8 @@ int total_bw_value;
 int cm_mgr_use_bcpu_weight;
 int cm_mgr_use_cpu_to_dram_map = 1;
 static int cm_mgr_use_cpu_to_dram_map_new;
-#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
-int cpu_power_bcpu_weight_max = 350;
-int cpu_power_bcpu_weight_min = 100;
-#else
 int cpu_power_bcpu_weight_max = 100;
 int cpu_power_bcpu_weight_min = 100;
-#endif
 int cpu_power_bbcpu_weight_max = 100;
 int cpu_power_bbcpu_weight_min = 100;
 int cm_mgr_cpu_map_dram_enable;
@@ -574,124 +556,10 @@ void cm_mgr_set_dram_opp_floor(int opp)
 }
 EXPORT_SYMBOL_GPL(cm_mgr_set_dram_opp_floor);
 #endif
-
-#if !IS_ENABLED(CONFIG_MTK_CM_MGR_MT6877)
 int __weak dbg_cm_mgr_platform_show(char *buff) { return 0; }
 
 void __weak dbg_cm_mgr_platform_write(int len, char *cmd, u32 val_1, u32 val_2)
 {}
-
-#else
-static int cm_mgr_get_dram_type(void)
-{
-	int cm_mgr_ddr_type = -1;
-
-#if IS_ENABLED(CONFIG_MTK_DRAMC)
-	int ddr_type;
-
-	ddr_type = mtk_dramc_get_ddr_type();
-	if (ddr_type == TYPE_LPDDR5)
-		cm_mgr_ddr_type = DDR_TYPE_LP5;
-	else
-		cm_mgr_ddr_type = DDR_TYPE_LP4;
-
-#endif /* CONFIG_MTK_DRAMC */
-	pr_info("#@# %s(%d) ddr_type 0x%x\n", __func__, __LINE__, cm_mgr_ddr_type);
-	return cm_mgr_ddr_type;
-};
-
-int dbg_cm_mgr_platform_show(char *buff)
-{
-	int i;
-	int len = 0;
-
-#define cm_mgr_print(...) \
-	snprintf(buff + len, (4096 - len) > 0 ? (4096 - len) : 0, __VA_ARGS__)
-	if (cm_mgr_get_dram_type() == DDR_TYPE_LP4)
-		return 0;
-	len += cm_mgr_print("cm_mgr_camera_enable %d\n", cm_mgr_camera_enable);
-	len += cm_mgr_print("x_ratio_enable %d\n", x_ratio_enable);
-
-	len += cm_mgr_print("cpu_power_ratio_up_x_camera");
-	for (i = 0; i < CM_MGR_EMI_OPP; i++)
-		len += cm_mgr_print(" %d", cpu_power_ratio_up_x_camera[i]);
-	len += cm_mgr_print("\n");
-
-	len += cm_mgr_print("cpu_power_ratio_up_x");
-	for (i = 0; i < CM_MGR_EMI_OPP; i++)
-		len += cm_mgr_print(" %d", cpu_power_ratio_up_x[i]);
-	len += cm_mgr_print("\n");
-	return len;
-}
-
-void dbg_cm_mgr_platform_write(int len, const char *cmd, u32 val_1, u32 val_2)
-{
-	unsigned int i;
-
-	if (cm_mgr_get_dram_type() == DDR_TYPE_LP4)
-		return;
-
-	if (!strcmp(cmd, "x_ratio_enable")) {
-		x_ratio_enable = val_1;
-		if (!x_ratio_enable) {
-			for (i = 0; i <  CM_MGR_EMI_OPP; i++) {
-				/* restore common setting */
-				cpu_power_ratio_up_x[i] = 0;
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
-				cm_mgr_to_sspm_command(
-					IPI_CM_MGR_CPU_POWER_RATIO_UP,
-					i << 16 | cpu_power_ratio_up[i]);
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-			}
-		}
-	} else if (!strcmp(cmd, "cm_mgr_camera_enable") && x_ratio_enable) {
-		if (cm_mgr_camera_enable == val_1)
-			return;
-		if (val_1) {
-			for (i = 0; i <  CM_MGR_EMI_OPP; i++) {
-				if (cpu_power_ratio_up_x[i] ==
-					cpu_power_ratio_up_x_camera[i])
-					continue;
-				cpu_power_ratio_up_x[i] =
-					cpu_power_ratio_up_x_camera[i];
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
-				if (cpu_power_ratio_up_x[i])
-					cm_mgr_to_sspm_command(
-					IPI_CM_MGR_CPU_POWER_RATIO_UP,
-					i << 16 | cpu_power_ratio_up_x[i]);
-				else
-					cm_mgr_to_sspm_command(
-					IPI_CM_MGR_CPU_POWER_RATIO_UP,
-					i << 16 | cpu_power_ratio_up[i]);
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-			}
-		} else {
-			for (i = 0; i <  CM_MGR_EMI_OPP; i++) {
-				if (!cpu_power_ratio_up_x[i])
-					continue;
-				cpu_power_ratio_up_x[i] = 0;
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
-				cm_mgr_to_sspm_command(
-					IPI_CM_MGR_CPU_POWER_RATIO_UP,
-					i << 16 | cpu_power_ratio_up[i]);
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-			}
-		}
-		cm_mgr_camera_enable = val_1;
-	} else if (!strcmp(cmd, "cpu_power_ratio_up_x")) {
-		if (len == 3 && val_1 < CM_MGR_EMI_OPP && x_ratio_enable) {
-			cpu_power_ratio_up_x[val_1] = val_2;
-			if (!val_2)
-				val_2 = cpu_power_ratio_up[val_1];
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
-			cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_UP,
-				val_1 << 16 | val_2);
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
-		}
-	}
-}
-#endif
 
 static void cm_mgr_cpu_map_update_table(void)
 {
@@ -837,18 +705,6 @@ static ssize_t dbg_cm_mgr_show(struct kobject *kobj,
 	len += cm_mgr_print("cm_mgr_dram_opp_floor %d\n",
 			    cm_mgr_dram_opp_floor);
 #endif
-#ifdef USE_CM_USER_MODE
-	len += cm_mgr_print("cm_user_mode %d\n",
-			cm_user_mode);
-	len += cm_mgr_print("cm_user_active %d\n",
-			cm_user_active);
-#endif
-#ifdef USE_STEP_PERF_OPP
-	len += cm_mgr_print("cm_mgr_dram_perf_opp %d\n",
-			cm_mgr_dram_perf_opp);
-	len += cm_mgr_print("cm_mgr_dram_step_opp %d\n",
-			cm_mgr_dram_step_opp);
-#endif /* USE_STEP_PERF_OPP */
 	len += cm_mgr_print("\n");
 
 	len += dbg_cm_mgr_platform_show(buff);
@@ -870,22 +726,6 @@ static ssize_t dbg_cm_mgr_store(struct  kobject *kobj,
 		ret = -EPERM;
 		goto out;
 	}
-
-#ifdef USE_CM_USER_MODE
-	if (!strcmp(cmd, "cm_user_mode")) {
-		cm_mgr_user_mode_set(val_1);
-		goto out;
-	}
-
-	if (cm_user_mode) {
-		if (cm_user_active)
-			cm_mgr_user_mode_cmd(0, cmd, val_1, val_2);
-		else
-			pr_info("skip cmd:%s for cm_user_mode: %d, active: %d\n",
-				cmd, cm_user_mode, cm_user_active);
-		goto out;
-	}
-#endif
 
 	if (!strcmp(cmd, "cm_mgr_enable")) {
 		cm_mgr_enable = val_1;
@@ -1051,14 +891,6 @@ static ssize_t dbg_cm_mgr_store(struct  kobject *kobj,
 		cm_mgr_dram_opp_floor = val_1;
 		cm_mgr_to_sspm_command(IPI_CM_MGR_DRAM_OPP_FLOOR, val_1);
 #endif
-#ifdef USE_STEP_PERF_OPP
-	} else if (!strcmp(cmd, "cm_mgr_dram_perf_opp")) {
-		cm_mgr_dram_perf_opp = val_1;
-	} else if (!strcmp(cmd, "cm_mgr_dram_step_opp")) {
-		if (val_1 < 0)
-			val_1 = 0;
-		cm_mgr_dram_step_opp = val_1;
-#endif /* USE_STEP_PERF_OPP */
 	} else {
 		dbg_cm_mgr_platform_write(ret, cmd, val_1, val_2);
 	}
@@ -1103,7 +935,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 
 	/* cm_mgr_cpu_opp_to_dram */
 	opp_count = of_count_phandle_with_args(node,
-			"cm-mgr-cpu-opp-to-dram", NULL);
+			"cm_mgr_cpu_opp_to_dram", NULL);
 	pr_info("#@# %s(%d) opp_count %d\n",
 			__func__, __LINE__, opp_count);
 
@@ -1125,7 +957,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 	}
 
 	if (opp_count > 0) {
-		ret = of_property_read_u32_array(node, "cm-mgr-cpu-opp-to-dram",
+		ret = of_property_read_u32_array(node, "cm_mgr_cpu_opp_to_dram",
 				cm_mgr_cpu_opp_to_dram, cm_mgr_cpu_opp_size);
 	}
 
@@ -1141,7 +973,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 			__func__, __LINE__, cm_mgr_enable);
 
 	ret = of_property_read_string(node,
-			"use-bcpu-weight", (const char **)&buf);
+			"use_bcpu_weight", (const char **)&buf);
 	if (!ret) {
 		if (!strcmp(buf, "enable"))
 			cm_mgr_use_bcpu_weight = 1;
@@ -1152,7 +984,7 @@ int cm_mgr_check_dts_setting(struct platform_device *pdev)
 			__func__, __LINE__, cm_mgr_use_bcpu_weight);
 
 	ret = of_property_read_string(node,
-			"use-cpu-to-dram-map", (const char **)&buf);
+			"use_cpu_to_dram_map", (const char **)&buf);
 	if (!ret) {
 		if (!strcmp(buf, "enable"))
 			cm_mgr_use_cpu_to_dram_map = 1;
@@ -1468,13 +1300,12 @@ fail_reg_cpu_frequency_entry:
 
 		cm_mgr_to_sspm_command(IPI_CM_MGR_BCPU_WEIGHT_MIN_SET,
 				cpu_power_bcpu_weight_min);
-#ifdef CM_TRIGEAR
+
 		cm_mgr_to_sspm_command(IPI_CM_MGR_BBCPU_WEIGHT_MAX_SET,
 				cpu_power_bbcpu_weight_max);
 
 		cm_mgr_to_sspm_command(IPI_CM_MGR_BBCPU_WEIGHT_MIN_SET,
 				cpu_power_bbcpu_weight_min);
-#endif
 	}
 
 	if (cm_mgr_use_cpu_to_dram_map) {
