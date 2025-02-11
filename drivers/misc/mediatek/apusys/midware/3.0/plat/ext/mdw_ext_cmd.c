@@ -60,7 +60,7 @@ void mdw_ext_cmd_put_id(struct mdw_cmd *c)
 	mdwext_cmd_debug("c(0x%llx) extid(0x%llx) tgid(%d/%d)\n",
 		c->kid, c->ext_id, task_tgid_nr(current), c->tgid);
 
-	/* don't need lock ext lock because mdw_cmd_put() already get mutex */
+	mdw_ext_lock();
 	if (mdw_ext_cmd_sanity_check(c)) {
 		mdwext_drv_warn("c(0x%llx) extid(0x%llx) not available, cmd tgid(%d)\n",
 			c->kid, c->ext_id, c->tgid);
@@ -68,6 +68,7 @@ void mdw_ext_cmd_put_id(struct mdw_cmd *c)
 		idr_remove(&mdw_ext_dev->ext_ids, MDWEXT_EXTID2ID(c->ext_id));
 		c->ext_id = 0;
 	}
+	mdw_ext_unlock();
 }
 
 static int mdw_ext_cmd_ioctl_run(union mdw_ext_cmd_args *args)
