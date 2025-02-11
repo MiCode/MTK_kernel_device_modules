@@ -81,6 +81,7 @@ PANELS = [
     "panel-nt37801-cmd-ltpo",
     "panel-nt37801-cmd-spr",
     "panel-truly-td4330-cmd",
+    "panel-samsung-s68fc01-vdo-aod",
 ]
 
 [define_mgk_ddk_ko(
