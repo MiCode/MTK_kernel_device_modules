@@ -46,7 +46,8 @@ static unsigned int default_out_fmt_idx;
 static unsigned int default_cap_fmt_idx;
 static struct vb2_mem_ops venc_dma_contig_memops;
 
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 static struct vb2_mem_ops venc_sec_dma_contig_memops;
 
 static int mtk_venc_sec_dc_map_dmabuf(void *mem_priv)
@@ -718,7 +719,8 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 				return -EINVAL;
 			}
 			src_vq->mem_ops = &venc_dma_contig_memops;
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 			if (ctx->enc_params.svp_mode && is_disable_map_sec() && mtk_venc_is_vcu())
 				src_vq->mem_ops = &venc_sec_dma_contig_memops;
 #endif
@@ -2532,7 +2534,8 @@ static int vb2ops_venc_queue_setup(struct vb2_queue *vq,
 		q_data->sizeimage[0], q_data->sizeimage[1], q_data->sizeimage[2],
 		mtk_vcodec_get_state(ctx));
 
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	if (ctx->enc_params.svp_mode && is_disable_map_sec() && mtk_venc_is_vcu()) {
 		vq->mem_ops = &venc_sec_dma_contig_memops;
 		mtk_v4l2_debug(1, "[%d] hook venc_sec_dma_contig_memops for queue type %d",
@@ -4971,7 +4974,8 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	venc_dma_contig_memops.attach_dmabuf = mtk_venc_dc_attach_dmabuf;
 	src_vq->mem_ops         = &venc_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] src_vq use venc_dma_contig_memops", name);
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	// svp_mode will be raised in vidioc_venc_s_ctrl which is later than mtk_vcodec_enc_queue_init
 	// init venc_sec_dma_contig_memops without checking svp_mode value to avoid could not init sec
 	// dma_contig_memops which will cause input/output buffer secure handle will be 0,
@@ -5008,7 +5012,8 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->ops             = &mtk_venc_vb2_ops;
 	dst_vq->mem_ops         = &venc_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] dst_vq use venc_dma_contig_memops", name);
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	if (ctx->enc_params.svp_mode && is_disable_map_sec() && mtk_venc_is_vcu()) {
 		dst_vq->mem_ops     = &venc_sec_dma_contig_memops;
 		mtk_v4l2_debug(4, "dst_vq use venc_sec_dma_contig_memops");

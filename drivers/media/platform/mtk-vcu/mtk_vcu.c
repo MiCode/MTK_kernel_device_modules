@@ -952,6 +952,7 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 	break;
 	case CMD_SEC_WRITE:
 		if (vcu_check_reg_base(vcu, addr, 4) == 0) {
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 			cmdq_sec_pkt_write_reg(pkt,
 				addr,
 				data,
@@ -959,6 +960,7 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 				dma_offset,
 				dma_size,
 				0);
+#endif
 		} else {
 			pr_info("[VCU] %s CMD_SEC_WRITE wrong addr: 0x%llx 0x%llx 0x%x 0x%x\n",
 				__func__, addr, data, dma_offset, dma_size);
@@ -1058,7 +1060,8 @@ static void vcu_set_gce_secure_cmd(struct cmdq_pkt *pkt,
 
 	break;
 	case CMD_SEC_WRITE:
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 		if (vcu_check_reg_base(vcu, addr, 4) == 0) {
 			if (is_disable_map_sec()) {
 				//for secure handle
@@ -1208,8 +1211,10 @@ static void vcu_gce_flush_callback(struct cmdq_cb_data data)
 				buff->cmdq_buff.core_id, &vcu->flags[i]);
 
 			//TODO: ask CMDQ owner add mtee param
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 			if (buff->cmdq_buff.secure != 0)
 				cmdq_sec_mbox_switch_normal(vcu->clt_venc_sec[0]);
+#endif
 
 			vcu->cbf.enc_unlock(vcu->gce_info[j].v4l2_ctx,
 				buff->cmdq_buff.core_id);
@@ -1219,8 +1224,10 @@ static void vcu_gce_flush_callback(struct cmdq_cb_data data)
 				if (vcu->clt_venc[core_id] != NULL)
 					cmdq_mbox_disable(vcu->clt_venc[core_id]->chan);
 			} else {
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 				if (vcu->clt_venc_sec[0] != NULL)
 					cmdq_sec_mbox_disable(vcu->clt_venc_sec[0]->chan);
+#endif
 				if (vcu->clt_venc[1] != NULL)
 					cmdq_mbox_disable(vcu->clt_venc[1]->chan);
 			}
@@ -1417,7 +1424,9 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 					cmdq_mbox_enable(vcu->clt_venc[core_id]->chan);
 			} else {
 				if (vcu->clt_venc_sec[0] != NULL)
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 					cmdq_sec_mbox_enable(vcu->clt_venc_sec[0]->chan);
+#endif
 				if (vcu->clt_venc[1] != NULL)
 					cmdq_mbox_enable(vcu->clt_venc[1]->chan);
 			}
@@ -1487,6 +1496,7 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 
 			pr_debug("[VCU] dapc_engine: 0x%llx, port_sec_engine: 0x%llx\n",
 				dapc_engine, port_sec_engine);
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 			cmdq_sec_pkt_set_data(pkt_ptr, dapc_engine,
 				port_sec_engine, CMDQ_SEC_KERNEL_CONFIG_GENERAL,
 				CMDQ_METAEX_VENC);
@@ -1497,7 +1507,7 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 
 			//CMDQ SCENARIO hint WFD
 			cmdq_sec_pkt_set_secid(pkt_ptr, SEC_ID_WFD);
-
+#endif
 			// one normal cmdq thread is for sec encoding
 			//coworking with cmdq secure thread
 

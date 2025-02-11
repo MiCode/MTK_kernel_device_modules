@@ -482,7 +482,8 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.b_qp = enc_prm->b_qp;
 		inst->vsi->config.svp_mode = enc_prm->svp_mode;
 		if (inst->vsi->config.svp_mode)
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 			inst->vsi->config.svp_is_hal_secure_handle = is_disable_map_sec();
 #else
 			inst->vsi->config.svp_is_hal_secure_handle = false;

@@ -65,7 +65,8 @@ bool mtk_vdec_enable_dynll = true;
 #define NUM_FORMATS ARRAY_SIZE(mtk_vdec_formats)
 static struct vb2_mem_ops vdec_dma_contig_memops;
 
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 static struct vb2_mem_ops vdec_sec_dma_contig_memops;
 
 static int mtk_vdec_sec_dc_map_dmabuf(void *mem_priv)
@@ -3386,7 +3387,8 @@ static int vb2ops_vdec_queue_setup(struct vb2_queue *vq,
 	mtk_v4l2_debug(1, "[%d] type = %d, get %d plane(s), %d buffer(s) of size 0x%x 0x%x (sizeimage 0x%x 0x%x)",
 		ctx->id, vq->type, *nplanes, *nbuffers, sizes[0], sizes[1], q_data->sizeimage[0], q_data->sizeimage[1]);
 
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
 		vq->mem_ops = &vdec_sec_dma_contig_memops;
 		mtk_v4l2_debug(1, "[%d] hook vdec_sec_dma_contig_memops for queue type %d",
@@ -5698,7 +5700,8 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	vdec_dma_contig_memops.attach_dmabuf = mtk_vdec_dc_attach_dmabuf;
 	src_vq->mem_ops	        = &vdec_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] src_vq use vdec_dma_contig_memops", name);
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	// svp_mode will be raised in mtk_vdec_s_ctrl which will be later than mtk_vcodec_dec_queue_init
 	// init vdec_sec_dma_contig_memops without checking svp_mode value to avoid could not init sec
 	// dma_contig_memops which will cause input/output buffer secure handle will be 0,
@@ -5758,7 +5761,8 @@ int mtk_vcodec_dec_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->ops             = &mtk_vdec_vb2_ops;
 	dst_vq->mem_ops         = &vdec_dma_contig_memops;
 	mtk_v4l2_debug(4, "[%s] dst_vq use vdec_dma_contig_memops", name);
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	if (ctx->dec_params.svp_mode && is_disable_map_sec() && mtk_vdec_is_vcu()) {
 		dst_vq->mem_ops = &vdec_sec_dma_contig_memops;
 		mtk_v4l2_debug(4, "dst_vq use vdec_sec_dma_contig_memops");
