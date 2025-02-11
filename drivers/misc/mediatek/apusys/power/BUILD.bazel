@@ -1,0 +1,129 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+# For Kconfig
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+# apu_top common src
+apu_top_common_srcs_list = glob([
+	"2.5/backward_compatible/*.c",
+	# "2.5/common/*.c", #Trap: no apu-tag.c
+	"2.5/common/apu-clk.c",
+	"2.5/common/apu-common.c",
+	"2.5/common/apu-regulator.c",
+	"2.5/common/apu-rpc.c",
+	"2.5/common/apu-of.c",
+	"2.5/common/apu-plat.c",
+	"2.5/common/apu-driver.c",
+	"2.5/common/apu-dbg.c",
+	"2.5/common/apu-trace.c",
+	"2.5/devices/*.c",
+	"2.5/governor/*.c",
+	"3.0/*.c",
+	"*.c"
+])
+
+# apu_top platform src
+apu_top_plat_srcs_list=\
+(["3.0/platform/mt6983_aputop.c"] if glob(["3.0/platform/mt6983_aputop.c"]) else []) +\
+(["3.0/platform/mt6879_aputop.c"] if glob(["3.0/platform/mt6879_aputop.c"]) else []) +\
+(["3.0/platform/mt6897_aputop.c"] if glob(["3.0/platform/mt6897_aputop.c"]) else []) +\
+(["3.0/platform/mt6895_aputop.c"] if glob(["3.0/platform/mt6895_aputop.c"]) else []) +\
+(["3.0/platform/mt6985_aputop.c"] if glob(["3.0/platform/mt6985_aputop.c"]) else []) +\
+(["3.0/platform/mt6886_aputop.c"] if glob(["3.0/platform/mt6886_aputop.c"]) else []) +\
+(["3.0/platform/mt8188_aputop.c"] if glob(["3.0/platform/mt8188_aputop.c"]) else []) +\
+(["3.0/platform/mt6989_aputop.c"] if glob(["3.0/platform/mt6989_aputop.c"]) else []) +\
+(["3.0/platform/mt6991_aputop.c"] if glob(["3.0/platform/mt6991_aputop.c"]) else []) +\
+(["3.0/platform/mt6993_aputop.c"] if glob(["3.0/platform/mt6993_aputop.c"]) else []) +\
+(["3.0/platform/mt6983_pwr_func.c"] if glob(["3.0/platform/mt6983_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6879_pwr_func.c"] if glob(["3.0/platform/mt6879_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6897_pwr_func.c"] if glob(["3.0/platform/mt6897_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6895_pwr_func.c"] if glob(["3.0/platform/mt6895_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6985_pwr_func.c"] if glob(["3.0/platform/mt6985_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6886_pwr_func.c"] if glob(["3.0/platform/mt6886_pwr_func.c"]) else []) +\
+(["3.0/platform/mt8188_pwr_func.c"] if glob(["3.0/platform/mt8188_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6989_pwr_func.c"] if glob(["3.0/platform/mt6989_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6991_pwr_func.c"] if glob(["3.0/platform/mt6991_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6993_pwr_func.c"] if glob(["3.0/platform/mt6993_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6985_ao.c"] if glob(["3.0/platform/mt6985_ao.c"]) else []) +\
+(["3.0/platform/mt6897_ao.c"] if glob(["3.0/platform/mt6897_ao.c"]) else []) +\
+(["3.0/platform/mt6989_ao.c"] if glob(["3.0/platform/mt6989_ao.c"]) else []) +\
+(["3.0/platform/mt6993_ao.c"] if glob(["3.0/platform/mt6993_ao.c"]) else []) +\
+(["3.0/platform/mt6993_pwr_ce.c"] if glob(["3.0/platform/mt6993_pwr_ce.c"]) else []) +\
+(["3.0/platform/mt6993_apuce_impl.c"] if glob(["3.0/platform/mt6993_apuce_impl.c"]) else [])
+
+
+# APU_TOP DDK ko
+define_mgk_ddk_ko(
+	name = "apu_top",
+	srcs =
+		apu_top_common_srcs_list +
+		apu_top_plat_srcs_list
+	,
+	# header export to other DDK
+	hdrs = glob([
+		"2.5/common/clk_def/atf_acc_clk.c",
+		"2.5/inc/*.h",
+		"2.5/inc/events/*.h",
+		"3.0/inc/*.h",
+		"3.0/inc/platform/*.h",
+		"*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"2.5/common",
+		"2.5/inc",
+		"2.5/inc/events",
+		"3.0/inc",
+		"3.0/inc/platform",
+		".",
+	],
+	local_defines =
+		(["MT6983_PLAT_DATA"] if glob(["3.0/platform/mt6983_aputop.c"]) else []) +
+		(["MT6879_PLAT_DATA"] if glob(["3.0/platform/mt6879_aputop.c"]) else []) +
+		(["MT6897_PLAT_DATA"] if glob(["3.0/platform/mt6897_aputop.c"]) else []) +
+		(["MT6895_PLAT_DATA"] if glob(["3.0/platform/mt6895_aputop.c"]) else []) +
+		(["MT6985_PLAT_DATA"] if glob(["3.0/platform/mt6985_aputop.c"]) else []) +
+		(["MT6886_PLAT_DATA"] if glob(["3.0/platform/mt6886_aputop.c"]) else []) +
+		(["MT8188_PLAT_DATA"] if glob(["3.0/platform/mt8188_aputop.c"]) else []) +
+		(["MT6989_PLAT_DATA"] if glob(["3.0/platform/mt6989_aputop.c"]) else []) +
+		(["MT6991_PLAT_DATA"] if glob(["3.0/platform/mt6991_aputop.c"]) else []) +
+		(["MT6993_PLAT_DATA"] if glob(["3.0/platform/mt6993_aputop.c"]) else [])
+	,
+	copts = [
+		"-I$(srctree)/drivers/devfreq",
+		"-I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/debug",
+		"-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/include/",
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/apusys:apusys_public_hdrs".format(kernel_version),
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+	],
+)
