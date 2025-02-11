@@ -21455,9 +21455,9 @@ void mtk_gce_backup_slot_init(struct mtk_drm_crtc *mtk_crtc)
 	if (mmsys_id == MMSYS_MT6983) {
 		table = mt6983_dispsys_dummy_register;
 		size = MT6983_DUMMY_REG_CNT;
-	} else if (mmsys_id == MMSYS_MT6895){
-		table = mt6895_dispsys_dummy_register;
-		size = MT6895_DUMMY_REG_CNT;
+	//} else if (mmsys_id == MMSYS_MT6895){
+	//	table = mt6895_dispsys_dummy_register;
+	//	size = MT6895_DUMMY_REG_CNT;
 	} else if (mmsys_id == MMSYS_MT6879) {
 		table = mt6879_dispsys_dummy_register;
 		size = MT6879_DUMMY_REG_CNT;
@@ -21487,9 +21487,9 @@ unsigned int *mtk_get_gce_backup_slot_va(struct mtk_drm_crtc *mtk_crtc,
 	if (mmsys_id == MMSYS_MT6983) {
 		table = mt6983_dispsys_dummy_register;
 		size = MT6983_DUMMY_REG_CNT;
-	} else if (mmsys_id == MMSYS_MT6895){
-		table = mt6895_dispsys_dummy_register;
-		size = MT6895_DUMMY_REG_CNT;
+	//} else if (mmsys_id == MMSYS_MT6895){
+	//	table = mt6895_dispsys_dummy_register;
+	//	size = MT6895_DUMMY_REG_CNT;
 	} else if (mmsys_id == MMSYS_MT6879) {
 		table = mt6879_dispsys_dummy_register;
 		size = MT6879_DUMMY_REG_CNT;
@@ -21538,9 +21538,9 @@ dma_addr_t mtk_get_gce_backup_slot_pa(struct mtk_drm_crtc *mtk_crtc,
 	if (mmsys_id == MMSYS_MT6983) {
 		table = mt6983_dispsys_dummy_register;
 		size = MT6983_DUMMY_REG_CNT;
-	} else if (mmsys_id == MMSYS_MT6895){
-		table = mt6895_dispsys_dummy_register;
-		size = MT6895_DUMMY_REG_CNT;
+	//} else if (mmsys_id == MMSYS_MT6895){
+	//	table = mt6895_dispsys_dummy_register;
+	//	size = MT6895_DUMMY_REG_CNT;
 	} else if (mmsys_id == MMSYS_MT6879) {
 		table = mt6879_dispsys_dummy_register;
 		size = MT6879_DUMMY_REG_CNT;
