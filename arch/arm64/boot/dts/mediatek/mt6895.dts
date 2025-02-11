@@ -9648,8 +9648,8 @@
 			interrupts = <GIC_SPI 700 IRQ_TYPE_LEVEL_HIGH 0>;
 			phy-cells = <1>;
 			phys = <&u2port1 PHY_TYPE_USB2>;
-			clocks = <&topckgen_clk CLK_TOP_USB_TOP_SEL>,
-				<&topckgen_clk CLK_TOP_USB_XHCI_SEL>,
+			clocks = <&topckgen_clk CLK_TOP_USB_TOP_1P_SEL>,
+				<&topckgen_clk CLK_TOP_USB_XHCI_1P_SEL>,
 				<&pericfg_ao_clk CLK_PERAOP_1_USB1P_FRMC>;
 			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
 			#address-cells = <2>;
@@ -9747,13 +9747,18 @@
 			};
 		};
 
-		usb_boost: usb_boost_manager {
-			compatible = "mediatek,usb_boost", "mediatek,mt6895-usb_boost";
+		usb_boost: usb-boost-manager {
+			compatible = "mediatek,usb-boost", "mediatek,mt6895-usb-boost";
 			interconnects = <&dvfsrc MT6873_MASTER_USB &dvfsrc MT6873_SLAVE_DDR_EMI>;
 			interconnect-names = "icc-bw";
 			required-opps = <&dvfsrc_freq_opp0>;
 			usb-audio;
 			small-core = <1250000>;
+		};
+
+		usb_meta: usb-meta {
+			compatible = "mediatek,usb-meta";
+			udc = <&ssusb>;
 		};
 
 		rt-pd-manager {
