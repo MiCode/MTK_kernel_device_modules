@@ -14,7 +14,8 @@ static void __iomem *spare_reg_base;
 static struct tiny_dvfs_opp_tbl opp_tbl;
 static struct tiny_dvfs_opp_tbl opp_tbl2;
 static struct apu_pwr_curr_info curr_info;
-
+int opp_level_pll_freq[OPP_TABLE_SIZE];
+int opp_request_bit;
 static const char * const pll_name[] = {
 				"PLL_CONN", "PLL_RV33", "PLL_MVPU", "PLL_MDLA"};
 static const char * const buck_name[] = {
@@ -317,14 +318,14 @@ static int aputop_show_opp_tbl(struct seq_file *s, void *unused)
 	// first line
 	seq_printf(s, "\n| # | %s | %s|", buck_name[0], buck_name[1]);
 
-	for (i = 0 ; i < PLL_NUM ; i++)
+	for (i = 0 ; i <= PLL_DLA ; i++)
 		seq_printf(s, " %s |", pll_name[i]);
 	seq_puts(s, "\n");
 
 	for (i = 0 ; i < size ; i++) {
 		seq_printf(s, "| %d |   %06d  |   %06d  |",
 			i, tbl.opp[i].vapu, tbl.opp[i].vsram);
-		for (j = 0 ; j < PLL_NUM ; j++)
+		for (j = 0 ; j <= PLL_DLA ; j++)
 			seq_printf(s, "  %07d |", tbl.opp[i].pll_freq[j]);
 		seq_puts(s, "\n");
 	}
@@ -334,7 +335,7 @@ static int aputop_show_opp_tbl(struct seq_file *s, void *unused)
 	for (k = 0; size > 0 ; size--, i++, k++) {
 		seq_printf(s, "| %d |   %06d  |   %06d  |",
 			i, tbl.opp[k].vapu, tbl.opp[k].vsram);
-		for (j = 0 ; j < PLL_NUM ; j++)
+		for (j = 0 ; j <= PLL_DLA ; j++)
 			seq_printf(s, "  %07d |", tbl.opp[k].pll_freq[j]);
 		seq_puts(s, "\n");
 	}
@@ -357,7 +358,7 @@ static int aputop_show_curr_status(struct seq_file *s, void *unused)
 	memcpy(&info, &curr_info, sizeof(struct apu_pwr_curr_info));
 	seq_puts(s, "\n");
 
-	for (i = 0 ; i < PLL_NUM ; i++) {
+	for (i = 0 ; i <= PLL_DLA ; i++) {
 		seq_printf(s, "%s : opp %d , %d(kHz)\n",
 				pll_name[i],
 				info.pll_opp[i],
@@ -469,6 +470,53 @@ out:
 }
 #endif
 
+void request_opp_table(void)
+{
+	struct aputop_rpmsg_data rpmsg_data;
+
+	opp_request_bit = 1;
+	memset(&rpmsg_data, 0, sizeof(struct aputop_rpmsg_data));
+
+	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL;
+	rpmsg_data.data0 = 1; // pseudo data
+	aputop_send_rpmsg(&rpmsg_data, 100);
+
+	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL2;
+	rpmsg_data.data0 = 1; // pseudo data
+	aputop_send_rpmsg(&rpmsg_data, 100);
+}
+EXPORT_SYMBOL(request_opp_table);
+
+static void save_opp_table(struct tiny_dvfs_opp_tbl *tbl, int start_index)
+{
+	struct tiny_dvfs_opp_tbl mytbl;
+	int size, i, j;
+
+	size = tbl->tbl_size;
+#if LOCAL_DBG
+	pr_info("size = %d, Saving OPP Table Data:\n", size);
+	for (i = 0; i < size; i++) {
+		pr_info("OPP %d: vapu=%d, vsram=%d", i, tbl->opp[i].vapu, tbl->opp[i].vsram);
+		for (j = 0; j < PLL_TLA; j++)
+			pr_info(" pll_freq[%d]=%d", j, tbl->opp[i].pll_freq[j]);
+		pr_info("\n");
+	}
+#endif
+	memcpy(&mytbl, tbl, sizeof(struct tiny_dvfs_opp_tbl));
+	size = mytbl.tbl_size;
+
+	pr_info("Saving OPP Table Data to mytbl:\n");
+	for (i = 0; i < size; i++) {
+		pr_info("OPP %d: vapu=%d, vsram=%d", i, mytbl.opp[i].vapu, tbl->opp[i].vsram);
+		for (j = 0; j < 4; j++)
+			pr_info(" pll_freq[%d]=%d", j, mytbl.opp[i].pll_freq[j]);
+		if (i + start_index < OPP_TABLE_SIZE)
+			opp_level_pll_freq[i + start_index] = mytbl.opp[i].pll_freq[PLL_DLA];
+		pr_info("\n");
+	}
+}
+EXPORT_SYMBOL(opp_level_pll_freq);
+
 int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 {
 	int ret = 0;
@@ -482,15 +530,24 @@ int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 		// do nothing
 		break;
 	case APUTOP_DUMP_OPP_TBL:
-		if (len)
+		if (len) {
 			memcpy(&opp_tbl, data, len);
-		else
+			if(opp_request_bit == 1) {
+				save_opp_table(&opp_tbl, 0);
+				//memset(&opp_tbl, 0, sizeof(opp_tbl));
+			}
+		} else
 			ret = -EINVAL;
 		break;
 	case APUTOP_DUMP_OPP_TBL2:
-		if (len)
+		if (len) {
 			memcpy(&opp_tbl2, data, len);
-		else
+			if(opp_request_bit == 1) {
+				save_opp_table(&opp_tbl2, (THERMAL_USER_MID_OPP_VAL - THERMAL_OPP_OFS));
+				//memset(&opp_tbl, 0, sizeof(opp_tbl));
+				opp_request_bit = 0;
+			}
+		} else
 			ret = -EINVAL;
 		break;
 	case APUTOP_CURR_STATUS:

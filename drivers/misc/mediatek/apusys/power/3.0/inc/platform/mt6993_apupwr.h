@@ -26,6 +26,17 @@
 
 #define HW_VOTER_TOTAL_OPP_ENTRY		(20)
 
+#if defined(DVFS_ENABLE_OD_OPP)
+#define THERMAL_OPP_OFS			(0) // final opp = opp + opp offset
+#else
+#define THERMAL_OPP_OFS			(3) // final opp = opp + opp offset
+#endif // DVFS_ENABLE_OD_OPP
+
+#define THERMAL_USER_MAX_OPP_VAL	(0) // fastest speed user can specify
+#define THERMAL_USER_MID_OPP_VAL        (7) // for dump 2nd opp table
+#define THERMAL_USER_MIN_OPP_VAL	(15 - THERMAL_OPP_OFS) // slowest speed user can specify
+#define OPP_TABLE_SIZE (THERMAL_USER_MIN_OPP_VAL	-  THERMAL_USER_MAX_OPP_VAL	+ 1)
+
 enum smc_rcx_pwr_op {
 	SMC_RCX_PWR_AFC_EN = 0,
 	SMC_RCX_PWR_WAKEUP_RPC,
@@ -65,7 +76,10 @@ enum apu_clksrc_id {
 	PLL_UP,
 	PLL_VPU,
 	PLL_DLA,
+	PLL_TLA,
+	// ---------
 	PLL_NUM,
+	PLL_NULL,
 };
 
 enum apu_buck_id {

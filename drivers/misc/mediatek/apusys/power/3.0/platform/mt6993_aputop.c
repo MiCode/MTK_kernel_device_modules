@@ -14,6 +14,15 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
+// for thermal node
+#include <linux/kernel.h>
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
+#include <linux/mutex.h>
+#include <linux/uaccess.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+// end
 #include "apusys_secure.h"
 #include "aputop_rpmsg.h"
 #include "apu_top.h"
@@ -386,6 +395,38 @@ static void release_smmu_hw_sema(void)
 	iounmap(mbox11);
 }
 
+static int opp_proc_show(struct seq_file *m, void *v)
+{
+	int i;
+
+	request_opp_table();
+	seq_puts(m, "APU Support Frequency points(Unit is KHZ):\n");
+	for (i = 0; i < ARRAY_SIZE(opp_level_pll_freq); i++) {
+		if (opp_level_pll_freq[i] == 0)
+			continue; /* cause bin 0.9v was set as opp0 */
+		else if (opp_level_pll_freq[i] > 1000000)
+			seq_printf(m, "%d\n", opp_level_pll_freq[i]);
+		else
+			seq_printf(m, " %d\n", opp_level_pll_freq[i]);
+	}
+
+	return 0;
+}
+
+static int opp_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, opp_proc_show, NULL);
+}
+
+static const struct proc_ops opp_proc_ops = {
+	.proc_open    = opp_proc_open,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+static struct proc_dir_entry *apudvfs_dir;
+
 static int mt6993_apu_top_pb(struct platform_device *pdev)
 {
 	int ret = 0, val = 0;
@@ -420,6 +461,15 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	}
 
 	mt6993_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
+
+	apudvfs_dir = proc_mkdir("apudvfs", NULL);
+	if (!apudvfs_dir)
+		return -ENOMEM;
+
+	if (!proc_create("apu_opp_table", 0, apudvfs_dir, &opp_proc_ops)) {
+		remove_proc_entry("apudvfs", NULL);
+		return -ENOMEM;
+	}
 
 	return ret;
 }
