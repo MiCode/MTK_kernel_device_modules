@@ -13324,7 +13324,8 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 	if (mtk_drm_dal_enable() && drm_crtc_index(crtc) == 0)
 		drm_set_dal(&mtk_crtc->base, cmdq_handle);
 
-	DDPDBG("restore plane mtk_crtc->last_blender %d\n",mtk_crtc->last_blender->id);
+	if (priv->data->ovl_exdma_rule)
+		DDPDBG("restore plane mtk_crtc->last_blender %d\n",mtk_crtc->last_blender->id);
 
 	for (i = 0; i < mtk_crtc->layer_nr; i++) {
 		struct drm_plane *con_plane = &mtk_crtc->planes[i].base;
@@ -16639,15 +16640,6 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 		/* release wakelock */
 		mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
 		return;
-	}
-
-	//Temp workaround for MT6855 suspend/resume issue
-	switch (priv->data->mmsys_id) {
-	case MMSYS_MT6855:
-		DDPMSG("%s force return\n", __func__);
-		return;
-	default:
-		break;
 	}
 
 	CRTC_MMP_EVENT_START(index, suspend,

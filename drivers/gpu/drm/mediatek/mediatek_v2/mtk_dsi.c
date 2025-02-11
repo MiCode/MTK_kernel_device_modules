@@ -5959,15 +5959,6 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 		return;
 	}
 
-	//Temp workaround for MT6855 suspend/resume issue
-	switch (priv->data->mmsys_id) {
-	case MMSYS_MT6855:
-		DDPMSG("%s force return\n", __func__);
-		return;
-	default:
-		break;
-	}
-
 	CRTC_MMP_EVENT_START(index, dsi_suspend,
 			(unsigned long)crtc, index);
 

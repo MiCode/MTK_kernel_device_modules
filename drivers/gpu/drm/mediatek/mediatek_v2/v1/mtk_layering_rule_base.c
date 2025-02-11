@@ -3464,7 +3464,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 			break;
 		}
 
-		if ((priv->data->mmsys_id == MMSYS_MT6789) &&
+		if ((priv->data->mmsys_id == MMSYS_MT6789 ||
+			priv->data->mmsys_id == MMSYS_MT6855) &&
 			mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER) &&
 			comp_state.comp_id != DDP_COMPONENT_OVL0_2L &&
 			comp_state.comp_id != DDP_COMPONENT_OVL1_2L) {
@@ -4292,7 +4293,8 @@ static int RPO_rule(struct drm_crtc *crtc,
 
 		if (!(!(mtk_crtc->is_dual_pipe) &&
 			(i == 0 && private && private->data &&
-			(private->data->mmsys_id == MMSYS_MT6789)))) {
+			(private->data->mmsys_id == MMSYS_MT6789) ||
+			(private->data->mmsys_id == MMSYS_MT6855)))) {
 			if (same_ratio_limitation(crtc, c, RATIO_LIMIT,
 				disp_w, disp_h))
 				continue;
@@ -4984,6 +4986,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	DRM_MMP_EVENT_START(layering, (unsigned long)disp_info_user,
 			(unsigned long)dev);
 
+	DDPINFO("%s+\n",__func__);
 	roll_gpu_for_idle = 0;
 
 	if (l_rule_ops == NULL || l_rule_info == NULL) {
@@ -5080,6 +5083,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6855 ||
 		priv->data->mmsys_id == MMSYS_MT6885))
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
 
@@ -5207,6 +5211,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6855 ||
 		priv->data->mmsys_id == MMSYS_MT6885)) {
 		scale_num = get_scale_cnt(&layering_info);
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
