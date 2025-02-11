@@ -14340,6 +14340,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
+		adaptor_core: adaptor-core@0 {
+			compatible = "mediatek,adaptor_core";
+			status = "okay";
+		};
+
 		seninf_top: seninf-top@3a400000 {
 			compatible = "mediatek,seninf-core";
 			#address-cells = <2>;

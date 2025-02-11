@@ -904,3 +904,10 @@
 		};
 	};
 };
+
+&adaptor_core {
+	power1-supply = <&camera_vcamd_pmu>;
+	power2-supply = <&rt5133_ldo7>;
+	power3-supply = <&rt5133_ldo1>;
+	mux-sel-ctrl-supply = <&rt5133_gpio2>;
+};
