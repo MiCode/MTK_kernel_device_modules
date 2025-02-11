@@ -64,10 +64,16 @@ define_mgk_ddk_ko(
       },
     },
     hdrs = glob(["**/*.h"]),
-    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat"],
-    ko_deps = ["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
-               "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
-			   "//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),],
+    copts = [
+                "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+                "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
+            ],
+    ko_deps = [
+                "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+              ],
 )
 
 define_mgk_ddk_ko(
