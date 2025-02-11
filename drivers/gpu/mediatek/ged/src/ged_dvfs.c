@@ -3195,10 +3195,14 @@ static bool ged_dvfs_policy(
 				gpu_util_history_query_lb_counter(window_size_ms * 1000, &asyncCounter);
 				// if in DCS, async_top = g_async_id_threshold.
 				// Otherwise, async_top = ui32GPUFreq - DEFAULT_ASYNC_DIFF
-				adjust_ratio = RATIO_SCAL *
-						ged_get_top_freq_by_virt_opp(ui32GPUFreq > ged_get_min_oppidx_real() ?
-							g_async_id_threshold : ui32GPUFreq - DEFAULT_ASYNC_DIFF) /
-						ged_get_top_freq_by_virt_opp(ui32GPUFreq);
+				unsigned int top_freq_current = ged_get_top_freq_by_virt_opp(ui32GPUFreq);
+				unsigned int top_freq_target = ged_get_top_freq_by_virt_opp(ui32GPUFreq
+					> ged_get_min_oppidx_real() ? g_async_id_threshold
+					: ui32GPUFreq - DEFAULT_ASYNC_DIFF);
+
+				if (top_freq_current != 0)
+					adjust_ratio = RATIO_SCAL * top_freq_target / top_freq_current;
+
 				perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
 				trace_tracing_mark_write(5566, "async_perf_high", perf_improve);
 				if (perf_improve > g_lb_async_perf_diff_th)
@@ -3279,19 +3283,21 @@ static bool ged_dvfs_policy(
 
 		/* Back to frame base when uncomplete time is smller than fb_timeout */
 		if (g_ged_frame_base_optimize &&
-				ged_get_policy_state() == POLICY_STATE_FB_FALLBACK &&
-				((u64)t_gpu_uncomplete * 1000) < fb_timeout) {
-			u64 fb_tmp_timer = fb_timeout - ((u64)t_gpu_uncomplete * 1000);
-			// consider workqueue latency
-			if (fb_tmp_timer > TIMER_LATENCY)
-				fb_tmp_timer -= TIMER_LATENCY;
+				ged_get_policy_state() == POLICY_STATE_FB_FALLBACK) {
 
-			u64 timeout_val = ged_get_fallback_time();
+			if ((u64)t_gpu_uncomplete <= ULLONG_MAX / 1000 && (u64)t_gpu_uncomplete < fb_timeout / 1000) {
+				u64 fb_tmp_timer = fb_timeout - ((u64)t_gpu_uncomplete * 1000);
+				// consider workqueue latency
+				if (fb_tmp_timer > TIMER_LATENCY)
+					fb_tmp_timer -= TIMER_LATENCY;
 
-			if (fb_tmp_timer > timeout_val) {
-				ged_set_policy_state(POLICY_STATE_FB);
-				ged_set_backup_timer_timeout(fb_tmp_timer);
-				g_CommitType = MTK_GPU_DVFS_TYPE_SKIPFALLBACK;
+				u64 timeout_val = ged_get_fallback_time();
+
+				if (fb_tmp_timer > timeout_val) {
+					ged_set_policy_state(POLICY_STATE_FB);
+					ged_set_backup_timer_timeout(fb_tmp_timer);
+					g_CommitType = MTK_GPU_DVFS_TYPE_SKIPFALLBACK;
+				}
 			}
 		}
 	}
