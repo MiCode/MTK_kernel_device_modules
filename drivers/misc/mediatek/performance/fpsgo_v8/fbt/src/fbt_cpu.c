@@ -55,6 +55,7 @@
 #include "fps_composer.h"
 #include "fpsgo_cpu_policy.h"
 #include "fbt_cpu_ctrl.h"
+#include "cpuqos_sys_common.h"
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
 #define TIME_3MS  3000000
@@ -307,6 +308,7 @@ static int target_time_up_bound;
 static int cpumask_heavy;
 static int cpumask_second;
 static int cpumask_others;
+static int set_l3_cache_ct;
 static int set_ls;
 static int ls_groupmask;
 static int aa_b_minus_idle_time;
@@ -1010,6 +1012,37 @@ FAIL:
 	return NULL;
 }
 
+static int fbt_set_l3_ct(int l3_cache_ct, int pid ,int spid_action ,int group )
+{
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_CPUQOS_V3)
+	int ret = 0;
+
+	if (!pid)
+		return -EINVAL;
+
+	if (l3_cache_ct>=1 && group == FPSGO_GROUP_HEAVY){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else if (l3_cache_ct>=2 && group == FPSGO_GROUP_SECOND){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else if (l3_cache_ct>=3 && group == FPSGO_GROUP_OTHERS){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else if (spid_action == XGF_FORCE_L3_CT){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else{
+		ret=set_ct_task(pid,0);
+	}
+	return ret ;
+#endif
+};
+
 void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
 {
 	struct rb_node *cur = NULL;
@@ -1613,6 +1646,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 		fl->action, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
 	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action,
 		0, 0, &fl->is_vip, 0, 0, 0, 1);
+	fbt_set_l3_ct(0,fl->pid,0,0);
 	fbt_set_task_vvip(0, fl->pid, 0, &fl->is_vvip, 1);
 	fbt_gear_hint_prefer_cpu(0, fl->pid, &fl->is_prefer, 1);
 	fbt_set_task_ls(0, 0, fl->pid, 0, &fl->ori_ls);
@@ -2304,6 +2338,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int ml_th_final;
 	int tp_multiuser_check;
 	int gh_prefer_final;
+	int set_l3_cache_ct_final;
 	int set_ls_final;
 	int ls_groupmask_final;
 	int vip_mask_final;
@@ -2327,6 +2362,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	separate_pct_other_final = thr->attr.separate_pct_other_by_pid;
 	boost_affinity_final = thr->attr.boost_affinity_by_pid;
 	boost_VIP_final = thr->attr.boost_vip_by_pid;
+	set_l3_cache_ct_final = thr->attr.set_l3_cache_ct_by_pid;
 	set_ls_final = thr->attr.set_ls_by_pid;
 	ls_groupmask_final = thr->attr.ls_groupmask_by_pid;
 	vip_mask_final = thr->attr.vip_mask_by_pid;
@@ -2493,6 +2529,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		else
 			fbt_nice_task(fl->pid, 0, &fl->ori_nice);
 
+		fbt_set_l3_ct(set_l3_cache_ct_final,fl->pid,fl->action,fl->heavyidx);
 		fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx, fl->reset_taskmask, fl->action,
 			&fl->policy, &fl->prefer_type, &fl->ori_ls, group_affinity_mask, FPSGO_MAX_GROUP);
 		fbt_gear_hint_prefer_cpu(group_prefer_final, fl->pid, &fl->is_prefer, 0);
@@ -2575,6 +2612,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->ml_th_by_pid = ml_th;
 	render_attr->tp_policy_by_pid = tp_policy;
 	render_attr->gh_prefer_by_pid = gh_prefer;
+	render_attr->set_l3_cache_ct_by_pid = set_l3_cache_ct;
 	render_attr->set_ls_by_pid = set_ls;
 	render_attr->ls_groupmask_by_pid = ls_groupmask;
 	render_attr->vip_mask_by_pid = vip_mask;
@@ -2765,6 +2803,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->tp_policy_by_pid = pid_attr.tp_policy_by_pid;
 	if (pid_attr.gh_prefer_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->gh_prefer_by_pid = pid_attr.gh_prefer_by_pid;
+	if (pid_attr.set_l3_cache_ct_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->set_l3_cache_ct_by_pid = pid_attr.set_l3_cache_ct_by_pid;
 	if (pid_attr.set_ls_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->set_ls_by_pid = pid_attr.set_ls_by_pid;
 	if (pid_attr.ls_groupmask_by_pid != BY_PID_DEFAULT_VAL)
@@ -7225,6 +7265,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->gh_prefer_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->gh_prefer_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "set_l3_cache_ct")) {
+		if ((val <= 3 && val >= 0) && action == 's')
+			boost_attr->set_l3_cache_ct_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->set_l3_cache_ct_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "set_ls")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->set_ls_by_pid = val;
@@ -8740,6 +8785,11 @@ FBT_SYSFS_READ(cpumask_others, fbt_mlock, cpumask_others);
 FBT_SYSFS_WRITE_VALUE(cpumask_others, fbt_mlock, cpumask_others, 1, 255);
 static KOBJ_ATTR_RW(cpumask_others);
 
+
+FBT_SYSFS_READ(set_l3_cache_ct, fbt_mlock, set_l3_cache_ct);
+FBT_SYSFS_WRITE_VALUE(set_l3_cache_ct, fbt_mlock, set_l3_cache_ct, 0, 3);
+static KOBJ_ATTR_RW(set_l3_cache_ct);
+
 FBT_SYSFS_READ(set_ls, fbt_mlock, set_ls);
 FBT_SYSFS_WRITE_VALUE(set_ls, fbt_mlock, set_ls, 0, 1);
 static KOBJ_ATTR_RW(set_ls);
@@ -8939,6 +8989,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_second);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_others);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_l3_cache_ct);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_ls);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_ls_groupmask);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_mask);
@@ -9044,6 +9095,7 @@ int __init fbt_cpu_init(void)
 	cpumask_heavy = 255;
 	cpumask_second = 255;
 	cpumask_others = 255;
+	set_l3_cache_ct = 0;
 
 	rl_learning_rate_p = 10;
 	rl_learning_rate_n = 10;
@@ -9135,6 +9187,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_second);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_others);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_l3_cache_ct);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_ls);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_ls_groupmask);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_mask);

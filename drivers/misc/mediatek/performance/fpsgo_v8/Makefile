@@ -25,6 +25,7 @@ ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/kernel_core_ctrl/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cache-auditor/cpuqos_v3/  \
 
 subdir-ccflags-y += \
         -I$(srctree)/include/ \
@@ -42,6 +43,7 @@ subdir-ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/kernel_core_ctrl/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cache-auditor/cpuqos_v3/  \
 
 #fpsgo_main
 MTK_FPSGO_MAIN += fpsgo_main.o

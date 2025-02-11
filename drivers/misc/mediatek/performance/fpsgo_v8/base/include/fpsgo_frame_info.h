@@ -38,6 +38,7 @@ enum XGF_ACTION {
 	XGF_ADD_DEP_FORCE_CPU_TIME = 3,
 	XGF_ADD_DEP_FORCE_GROUPING = 4,
 	XGF_FORCE_BOOST = 5,
+	XGF_FORCE_L3_CT = 6,
 };
 
 struct task_info {
@@ -138,6 +139,9 @@ struct fpsgo_boost_attr {
 	int cpumask_heavy_by_pid;
 	int cpumask_second_by_pid;
 	int cpumask_others_by_pid;
+
+	/* L3 cache policy */
+	int set_l3_cache_ct_by_pid;
 
 	/* set idle prefer */
 	int set_ls_by_pid;
