@@ -2036,7 +2036,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 	}
 
 
-	if (perf <= 0) {
+	if (perf <= 0 || counters->gpuactive <= 0) {
 		GED_LOGE("[DVFS_ASYNC] - %s: perf result(%ld) is unreasonable",
 				__func__, perf);
 		perf = 0;
@@ -4163,7 +4163,7 @@ int ged_dvfs_query_loading(u64 *sum_loading, u64 *sum_delta_time)
 
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		tmp_loading1 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_LOADING1);
-		tmp_loading2 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_LOADING2);
+		tmp_loading2 = mtk_gpueb_sysram_read_u64(SYSRAM_GPU_SUM_LOADING2);
 		tmp_time1 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_TIME1);
 		tmp_time2 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_TIME2);
 

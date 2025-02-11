@@ -54,35 +54,36 @@ unsigned int ged_platform_get_mbrain_max_num(void)
 unsigned int ged_platform_get_sysram(int virtual_offset)
 {
 	unsigned int index = 0;
+	unsigned int ret = 0;
 
 	// Order: legacy data => Debug RB => TS RB => Mbrain => Normal data
 
 	// legacy sysram defined in ged_eb.h
 	if (virtual_offset < FDVFS_LEGACY_DATA_SIZE)
-		return virtual_offset;
+		ret = virtual_offset;
 
 	// Debug RB range
 	if (virtual_offset >= FDVFS_LEGACY_DATA_SIZE &&
 		virtual_offset < FDVFS_TS_VIRTUAL_DATA_START) {
 		index = virtual_offset - FDVFS_LEGACY_DATA_SIZE;
-		return FDVFS_LEGACY_DATA_SIZE + index * SYSRAM_LOG_SIZE;
+		ret = FDVFS_LEGACY_DATA_SIZE + index * SYSRAM_LOG_SIZE;
 	}
 	// TS RB range
 	if (virtual_offset >= FDVFS_TS_VIRTUAL_DATA_START &&
 		virtual_offset < FDVFS_MBRAIN_VIRTUAL_DATA_START) {
 		index = virtual_offset - FDVFS_TS_VIRTUAL_DATA_START;
-		return FDVFS_TS_REAL_DATA_START + index * SYSRAM_LOG_SIZE;
+		ret = FDVFS_TS_REAL_DATA_START + index * SYSRAM_LOG_SIZE;
 	}
 	// Mbrain range
 	if (virtual_offset >= FDVFS_MBRAIN_VIRTUAL_DATA_START &&
 		virtual_offset < FDVFS_NORMAL_VIRTUAL_DATA_START) {
 		index = virtual_offset - FDVFS_MBRAIN_VIRTUAL_DATA_START;
-		return FDVFS_MBRAIN_REAL_DATA_START + index * SYSRAM_LOG_SIZE;
+		ret = FDVFS_MBRAIN_REAL_DATA_START + index * SYSRAM_LOG_SIZE;
 	}
 	// Normal data range
 	if (virtual_offset >= FDVFS_NORMAL_VIRTUAL_DATA_START) {
 		index = virtual_offset - FDVFS_NORMAL_VIRTUAL_DATA_START;
-		return (FDVFS_NORMAL_REAL_DATA_START + index) * SYSRAM_LOG_SIZE;
+		ret = (FDVFS_NORMAL_REAL_DATA_START + index) * SYSRAM_LOG_SIZE;
 	}
 
 /* DX5 Normal data range
@@ -92,7 +93,7 @@ unsigned int ged_platform_get_sysram(int virtual_offset)
  *	}
  */
 
-	return 0;
+	return ret;
 }
 
 static int ged_init_platform_info(void)

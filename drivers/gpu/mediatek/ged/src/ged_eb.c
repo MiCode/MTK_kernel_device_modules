@@ -215,9 +215,9 @@ static void ged_eb_sysram_debug_data_write(void)
 		int cur_read_p = tmp_head * sizeof(u32);
 
 		if (tmp_head != tail) {
-			soc_timer_eb_hi = mtk_gpueb_sysram_read(
+			soc_timer_eb_hi = mtk_gpueb_sysram_read_u64(
 				SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_HI + cur_read_p);
-			soc_timer_eb = (u32) mtk_gpueb_sysram_read(
+			soc_timer_eb =  mtk_gpueb_sysram_read_u64(
 				SYSRAM_GPU_EB_LOG_DUMP_SOC_TIMER_LO + cur_read_p);
 			soc_timer_eb |= (((u64)soc_timer_eb_hi) << 32);
 			if (soc_timer > soc_timer_eb && soc_timer_eb != 0)
@@ -1246,6 +1246,40 @@ int mtk_gpueb_sysram_batch_read(int max_read_count,
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_batch_read);
 
+u64 mtk_gpueb_sysram_read_u64(int offset)
+{
+	unsigned int real_offset = offset;
+
+	if (!mtk_gpueb_dvfs_sysram_base_addr)
+		return 0;
+
+	if (ged_fp && ged_fp->get_sysram) {
+		// use virtual offset to query real offset
+		real_offset = ged_fp->get_sysram(offset);
+	} else if (offset >= AP_FDVFS_DATA_START_OFFSET) {
+		GED_LOGE("Access platform related sysram without ged_fp: %d", offset);
+		return 0;
+	}
+
+	if ((real_offset % 4) != 0)
+		return 0;
+
+	if (mtk_gpueb_dvfs_sysram_base_addr_swrgo) {
+		// legacy 2 KB space (0x800)
+		if (real_offset < AP_FDVFS_DATA_START_OFFSET)
+			return (u64)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + real_offset));
+		// new space for swrgo and Jayer
+		else
+			return (u64)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr_swrgo -
+				AP_FDVFS_TMP_NEGATIVE_OFFSET + real_offset));
+	} else {
+		return (u64)(__raw_readl(mtk_gpueb_dvfs_sysram_base_addr + real_offset));
+	}
+
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_read_u64);
+
+
 int mtk_gpueb_sysram_read(int offset)
 {
 	unsigned int real_offset = offset;
@@ -1298,7 +1332,7 @@ struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp)
 		return out_data;
 
 	active_low = mtk_gpueb_sysram_read(offset);
-	active_high = mtk_gpueb_sysram_read(offset + 1);
+	active_high = mtk_gpueb_sysram_read_u64(offset + 1);
 	idle_low = mtk_gpueb_sysram_read(offset + 2);
 	idle_high = mtk_gpueb_sysram_read(offset + 3);
 
@@ -1995,7 +2029,7 @@ EXPORT_SYMBOL(ged_register_platform_fp);
 
 void ged_do_platform_related_init(void)
 {
-	unsigned int workloadMode;
+	unsigned int workloadMode = 0;
 
 	mtk_get_dvfs_workload_mode(&workloadMode);
 	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr, workloadMode);
@@ -2327,6 +2361,13 @@ int mtk_gpueb_sysram_read(int offset)
 	return -1;
 }
 EXPORT_SYMBOL(mtk_gpueb_sysram_read);
+
+u64 mtk_gpueb_sysram_read_u64(int offset)
+{
+	//Do nothing
+	return 0;
+}
+EXPORT_SYMBOL(mtk_gpueb_sysram_read_u64);
 
 int mtk_gpueb_sysram_write(int offset, int val)
 {

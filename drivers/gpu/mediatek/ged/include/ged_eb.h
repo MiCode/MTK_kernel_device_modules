@@ -787,6 +787,7 @@ extern void fdvfs_exit(void);
 extern int ged_to_fdvfs_command(unsigned int cmd,
 	struct fdvfs_ipi_data *fdvfs_d);
 extern int mtk_gpueb_sysram_read(int offset);
+extern u64 mtk_gpueb_sysram_read_u64(int offset);
 extern int mtk_gpueb_sysram_write(int offset, int value);
 
 /**************************************************

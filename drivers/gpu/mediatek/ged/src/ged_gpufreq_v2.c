@@ -529,7 +529,10 @@ unsigned int ged_get_cur_stack_freq(void)
 		else
 			oppidx = g_min_working_oppidx + i;
 
-		return ged_get_freq_by_idx(oppidx);
+		if (oppidx >= 0)
+			return ged_get_freq_by_idx(oppidx);
+		else
+			return cur_stack_freq;
 	}else
 		return cur_stack_freq;
 
