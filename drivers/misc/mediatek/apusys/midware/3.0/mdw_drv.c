@@ -28,6 +28,10 @@ static void mdw_drv_priv_delete(struct kref *ref)
 			container_of(ref, struct mdw_fpriv, ref);
 
 	mdw_drv_debug("mpriv(0x%llx) free\n", (uint64_t) mpriv);
+	mutex_lock(&mpriv->mtx);
+	if (apu_sysmem_delete_allocator(mpriv->mem_allocator))
+		mdw_exception("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
+	mutex_unlock(&mpriv->mtx);
 	mpriv->mdev->plat_funcs->delete_session(mpriv);
 	mdw_dev_session_delete(mpriv);
 	kfree(mpriv);
@@ -128,8 +132,6 @@ static int mdw_drv_close(struct inode *inode, struct file *filp)
 	mdw_drv_warn("removed release cmd\n");
 	mdw_mem_release_session(mpriv);
 	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
-	if (apu_sysmem_delete_allocator(mpriv->mem_allocator))
-		mdw_drv_err("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
 	mutex_unlock(&mpriv->mtx);
 	mpriv->put_ref(mpriv);
 
