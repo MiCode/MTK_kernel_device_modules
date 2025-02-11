@@ -252,8 +252,8 @@
 			reg = <0x0000>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <793>;
 		};
 
@@ -262,8 +262,8 @@
 			reg = <0x0100>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <793>;
 		};
 
@@ -272,8 +272,8 @@
 			reg = <0x0200>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <793>;
 		};
 
@@ -282,8 +282,8 @@
 			reg = <0x0300>;
 			performance-domains = <&performance 0>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <793>;
 		};
 
@@ -292,8 +292,8 @@
 			reg = <0x0400>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <952>;
 		};
 
@@ -302,8 +302,8 @@
 			reg = <0x0500>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <952>;
 		};
 
@@ -312,8 +312,8 @@
 			reg = <0x0600>;
 			performance-domains = <&performance 1>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_m &clusteroff_m &mcusysoff_m
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <952>;
 		};
 
@@ -322,8 +322,8 @@
 			reg = <0x0700>;
 			performance-domains = <&performance 2>;
 			enable-method = "psci";
-			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
-			//			&system_vcore &s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+						&system_vcore &s2idle>;
 			capacity-dmips-mhz = <1024>;
 		};
 
@@ -3361,7 +3361,7 @@
 			rc_bus26m: rc-bus26m {
 				rc-name = "bus26m";
 				id = <0x00000001>;
-				value = <0>;
+				value = <1>;
 				cond-info = <1>;
 			};
 			rc_vcore: rc-vcore {
