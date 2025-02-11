@@ -378,6 +378,7 @@ static void release_comp_config_result(void *data)
 	kfree(result->c3d_lut);
 	kfree(result->hdr_ootf);
 	kfree(result->hdr_oetf);
+	kfree(result->fg_regs);
 	kfree(result);
 }
 
