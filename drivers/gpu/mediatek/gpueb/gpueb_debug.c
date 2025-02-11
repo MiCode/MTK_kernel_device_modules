@@ -109,7 +109,9 @@ void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 			"GPUEB_DIAGNOSIS_GPR: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR18)));
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
-			"GPUEB_AUTO_DMA_FW_VERSION: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR28)));
+			"GPUEB_AUTO_DMA_FW_VERSION_1: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR28)));
+		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
+			"GPUEB_AUTO_DMA_FW_VERSION_2: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR31)));
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 			"GPUPTP3_BAD_SAMPLE_FOOTPRINT: 0x%08x", readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR30)));
 	} else {
@@ -204,8 +206,10 @@ static int gpueb_status_proc_show(struct seq_file *m, void *v)
 			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR16)));
 		seq_printf(m, "@%s: GPUEB_DIAGNOSIS_GPR: 0x%08x\n", __func__,
 			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR18)));
-		seq_printf(m, "@%s: GPUEB_AUTO_DMA_FW_VERSION: 0x%08x\n", __func__,
+		seq_printf(m, "@%s: GPUEB_AUTO_DMA_FW_VERSION_1: 0x%08x\n", __func__,
 			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR28)));
+		seq_printf(m, "@%s: GPUEB_AUTO_DMA_FW_VERSION_2: 0x%08x\n", __func__,
+			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR31)));
 		seq_printf(m, "@%s: GPUPTP3_BAD_SAMPLE_FOOTPRINT: 0x%08x\n", __func__,
 			readl(gpueb_get_gpr_addr(GPUEB_SRAM_GPR30)));
 	} else {
