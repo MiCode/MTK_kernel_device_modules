@@ -602,6 +602,10 @@
 	#define REG_OD_USE_HRT_DDREN_REQ				REG_FLD_MSB_LSB(1, 1)
 	#define REG_OD_STASH_DDREN_REQ_DISABLE			REG_FLD_MSB_LSB(16, 16)
 	#define REG_OD_STASH_USE_HRT_DDREN_REQ			REG_FLD_MSB_LSB(17, 17)
+#define MT6993_DISP_ODDMR_SMI_SB_FLG_ODR			0x54
+	#define REG_ODR_STASH_ULTRA_RE_FRCE				REG_FLD_MSB_LSB(19, 19)
+#define MT6993_DISP_ODDMR_SMI_SB_FLG_ODW			0x58
+	#define REG_ODW_STASH_ULTRA_WR_FRCE				REG_FLD_MSB_LSB(19, 19)
 //DMR ctrl
 #define DISP_ODDMR_MURA_SHADOW_CTRL					0x108B8
 	#define MURA_BYPASS_SHADOW						REG_FLD_MSB_LSB(0, 0)
@@ -4586,42 +4590,16 @@ static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 		return;
 	ODDMRAPI_LOG("+\n");
 	if (oddmr_data->data->od_version >= MTK_OD_V3) {
-		//OD TODO: stash SMI setting
-		//OD TODO: Change SMI RG name
 		/* odr*/
 		value = 0; mask = 0;
-		SET_VAL_MASK(value, mask, 4, REG_ODR_RE_ULTRA_MODE);
-		mtk_oddmr_write_mask(comp, value, MT6991_OD_DISP_ODDMR_SMI_SB_FLG_ODR_8, mask, pkg);
-		value = 0; mask = 0;
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_READ_IN_PRE_ULTRA,
-				MT6991_OD_REG_REQ_PREULTRA_RISE_LV);//read in pre-ultra
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_READ_OUT_PRE_ULTRA,
-				MT6991_OD_REG_REQ_PREULTRA_FALL_LV);//read out pre-ultra
-		mtk_oddmr_write_mask(comp, value, MT6991_OD_DISP_ODDMR_UDMA_R_CTRL21, mask, pkg);
-		value = 0; mask = 0;
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_READ_IN_ULTRA,
-				MT6991_OD_REG_REQ_ULTRA_RISE_LV);//read in ultra
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_READ_OUT_ULTRA,
-				MT6991_OD_REG_REQ_ULTRA_FALL_LV);//read out ultra
-		mtk_oddmr_write_mask(comp, value, MT6991_OD_DISP_ODDMR_UDMA_R_CTRL22, mask, pkg);
-
+		SET_VAL_MASK(value, mask, 2, REG_ODR_RE_ULTRA_MODE);
+		SET_VAL_MASK(value, mask, 1, REG_ODR_STASH_ULTRA_RE_FRCE);
+		mtk_oddmr_write_mask(comp, value, MT6993_DISP_ODDMR_SMI_SB_FLG_ODR, mask, pkg);
 		/* odw*/
 		value = 0; mask = 0;
-		SET_VAL_MASK(value, mask, 4, REG_ODW_WR_ULTRA_MODE);
-		mtk_oddmr_write_mask(comp, value, MT6991_OD_DISP_ODDMR_SMI_SB_FLG_ODW_8, mask, pkg);
-		value = 0; mask = 0;
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_WRITE_IN_PRE_ULTRA,
-				MT6991_OD_REG_REQ_PREULTRA_RISE_LV);//write in pre-ultra
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_WRITE_OUT_PRE_ULTRA,
-				MT6991_OD_REG_REQ_PREULTRA_FALL_LV);//write out pre-ultra
-		mtk_oddmr_write_mask(comp, value, MT6991_OD_DISP_ODDMR_UDMA_W_CTR_15, mask, pkg);
-		value = 0; mask = 0;
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_WRITE_IN_ULTRA,
-				MT6991_OD_REG_REQ_ULTRA_RISE_LV);//write in ultra
-		SET_VAL_MASK(value, mask, MT6991_OD_ODDMR_WRITE_OUT_ULTRA,
-				MT6991_OD_REG_REQ_ULTRA_FALL_LV);//write out ultra
-		mtk_oddmr_write_mask(comp, value, MT6991_OD_DISP_ODDMR_UDMA_W_CTR_16, mask, pkg);
-		ODDMRAPI_LOG("od_smi, %u\n", 66);
+		SET_VAL_MASK(value, mask, 2, REG_ODW_WR_ULTRA_MODE);
+		SET_VAL_MASK(value, mask, 1, REG_ODW_STASH_ULTRA_WR_FRCE);
+		mtk_oddmr_write_mask(comp, value, MT6993_DISP_ODDMR_SMI_SB_FLG_ODW, mask, pkg);
 	} else if (oddmr_data->data->od_version == MTK_OD_V2) {
 		/* odr*/
 		value = 0; mask = 0;
@@ -6720,8 +6698,11 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				mtk_oddmr_od_bypass(comp, handle);
 				//OD DDREN ctrl
 				SET_VAL_MASK(value, mask, 1, REG_OD_DDREN_REQ_DISABLE);
-				if (oddmr_data->data->is_od_support_stash)
+				SET_VAL_MASK(value, mask, 0, REG_OD_USE_HRT_DDREN_REQ);
+				if (oddmr_data->data->is_od_support_stash) {
 					SET_VAL_MASK(value, mask, 1, REG_OD_STASH_DDREN_REQ_DISABLE);
+					SET_VAL_MASK(value, mask, 0, REG_OD_STASH_USE_HRT_DDREN_REQ);
+				}
 				mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DDREN_CTRL_ODW, mask, handle);
 				mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DDREN_CTRL_ODR, mask, handle);
 				mtk_oddmr_set_od_clk(comp, 0, handle);
