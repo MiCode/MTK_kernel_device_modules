@@ -33,10 +33,7 @@
 #include "iommu_pseudo.h"
 #endif
 
-// static gfp_t order_flags[] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
-//static gfp_t order_flags[] = { LOW_ORDER_GFP };
-
-struct dmabuf_page_pool *pools[NUM_ORDERS];
+struct dmabuf_page_pool *sec_pools[SEC_NUM_ORDERS];
 
 bool smmu_v3_enable;
 
@@ -1232,13 +1229,14 @@ static int mtk_page_heap_create(void)
 	int err = 0;
 
 	/* page pool */
-	for (i = 0; i < NUM_ORDERS; i++) {
-		pools[i] = dmabuf_page_pool_create(order_flags[i], orders[i]);
-		if (IS_ERR(pools[i])) {
+	for (i = 0; i < SEC_NUM_ORDERS; i++) {
+		sec_pools[i] = dmabuf_page_pool_create(sec_order_flags[i],
+				sec_orders[i]);
+		if (IS_ERR(sec_pools[i])) {
 			pr_err("%s: page pool creation failed!\n", __func__);
 			for (j = 0; j < i; j++)
-				dmabuf_page_pool_destroy(pools[j]);
-			return PTR_ERR(pools[i]);
+				dmabuf_page_pool_destroy(sec_pools[j]);
+			return PTR_ERR(sec_pools[i]);
 		}
 	}
 

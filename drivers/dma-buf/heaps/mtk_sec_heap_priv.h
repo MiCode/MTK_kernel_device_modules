@@ -33,13 +33,16 @@ extern const struct dma_heap_ops sec_heap_region_ops;
 		~__GFP_RECLAIM) | __GFP_COMP)
 
 /*
- * 4KB page granule: 4KB
- * 16KB page granule: 16KB
+ * 4KB page granule: 16KB, 4KB
+ * 16KB page granule: 64KB, 16KB
  */
-//static int orders[1] = { 0 };
-//#define NUM_ORDERS ARRAY_SIZE(orders)
-
-extern struct dmabuf_page_pool *pools[NUM_ORDERS];
+static int sec_orders[] = { 2, 0 };
+#define SEC_NUM_ORDERS ARRAY_SIZE(sec_orders)
+//static gfp_t order_flags[SEC_NUM_ORDERS] = { HIGH_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
+//static gfp_t order_flags[SEC_NUM_ORDERS] = { MID_ORDER_GFP, MID_ORDER_GFP, LOW_ORDER_GFP };
+static gfp_t sec_order_flags[SEC_NUM_ORDERS] = { MID_ORDER_GFP, LOW_ORDER_GFP };
+//static gfp_t order_flags[SEC_NUM_ORDERS] = { LOW_ORDER_GFP };
+extern struct dmabuf_page_pool *sec_pools[SEC_NUM_ORDERS];
 
 enum HEAP_BASE_TYPE {
 	HEAP_TYPE_INVALID = 0,

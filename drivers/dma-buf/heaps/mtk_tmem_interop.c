@@ -252,12 +252,13 @@ TMEM_PRIV struct page *page_alloc_largest_available(ulong size, uint max_order)
 	struct page *page;
 	int i;
 
-	for (i = 0; i < NUM_ORDERS; i++) {
-		if (size < (PAGE_SIZE << orders[i]) && i < NUM_ORDERS - 1)
+	for (i = 0; i < SEC_NUM_ORDERS; i++) {
+		if (size < (PAGE_SIZE << sec_orders[i]) &&
+				i < SEC_NUM_ORDERS - 1)
 			continue;
-		if (max_order < orders[i])
+		if (max_order < sec_orders[i])
 			continue;
-		page = dmabuf_page_pool_alloc(pools[i]);
+		page = dmabuf_page_pool_alloc(sec_pools[i]);
 		if (!page)
 			continue;
 		return page;
@@ -329,7 +330,7 @@ TMEM_PRIV int page_alloc_v2(struct secure_heap_page *sec_heap,
 	// if (!is_page_based_heap_type(sec_heap->tmem_type))
 	//	return -EINVAL;
 	unsigned long size_remaining = 0;
-	unsigned int max_order = orders[0];
+	unsigned int max_order = sec_orders[0];
 	struct sg_table *table;
 	struct scatterlist *sg;
 	struct list_head pages;
@@ -601,12 +602,12 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 		}
 		page = sg_page(sg);
 
-		for (j = 0; j < NUM_ORDERS; j++) {
-			if (compound_order(page) == orders[j])
+		for (j = 0; j < SEC_NUM_ORDERS; j++) {
+			if (compound_order(page) == sec_orders[j])
 				break;
 		}
-		if (j < NUM_ORDERS)
-			dmabuf_page_pool_free(pools[j], page);
+		if (j < SEC_NUM_ORDERS)
+			dmabuf_page_pool_free(sec_pools[j], page);
 		else
 			pr_err("%s error: order %u\n", __func__,
 			       compound_order(page));
