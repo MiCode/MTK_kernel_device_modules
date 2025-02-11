@@ -187,6 +187,24 @@ void check_isu_timer_callback(struct timer_list *timer)
 	}
 }
 
+/*
+ * Function to check if ISU is disabled due to MET
+ * @param struct emi_isu *isu Pointer to the ISU structure
+ * @return unsigned int Returns 1 if ISU is disabled due to MET, 0 otherwise
+ */
+static unsigned int isu_met_disable_check(struct emi_isu *isu)
+{
+	const unsigned int isu_ctrl_readback = readl(isu->con_addr);
+	//pr_info("%s: readback isu_ctrl: 0x%x\n", __func__, isu_ctrl_readback);
+
+	if (isu_ctrl_readback == ISU_CTRL_NODE_MET_DISABLE) {
+		pr_info("%s: ISU stopped due to MET (0x0)\n", __func__);
+		return 1;
+	}
+
+	return 0;
+}
+
 void mtk_emiisu_record_off(void)
 {
 	struct emi_isu *isu;
@@ -232,6 +250,9 @@ void mtk_emiisu_record_on(void)
 		return;
 
 	if (!(isu->enable))
+		return;
+
+	if (isu_met_disable_check(isu))
 		return;
 
 	writel(ISU_CTRL_ENABLED_RECORDING, isu->con_addr);
@@ -381,8 +402,10 @@ static ssize_t read_emi_isu_buf(struct file *filp, struct kobject *kobj,
 	ret = memory_read_from_buffer(buff, count, &pos,
 				isu->buf_addr, isu->buf_size);
 
-	mtk_emiisu_record_on();
-	set_isu_ctrl_flag(KERN_REC_ON_ISU_BUF_READ);
+	if (!isu_met_disable_check(isu)) {
+		mtk_emiisu_record_on();
+		set_isu_ctrl_flag(KERN_REC_ON_ISU_BUF_READ);
+	}
 
 	if (ret < 0)
 		return ret;
