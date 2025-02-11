@@ -427,9 +427,10 @@ struct mtk_disp_oddmr_data {
 	enum mtk_dmr_version dmr_version;
 	enum mtk_od_version od_version;
 	bool is_dmr_support_stash;
-	unsigned int dmr_stash_lead_time;
+	unsigned int stash_lead_time;
 	bool is_dbi_support_stash;
 	bool is_od_support_stash;
+	unsigned int min_stash_port_bw;
 	int slc_read_alloc;
 	int slc_period;
 };
