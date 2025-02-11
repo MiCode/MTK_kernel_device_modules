@@ -4141,13 +4141,13 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		if (!IS_ERR(comp->hdr_stash_qos_req)) {
 			if (bw_val) {
-				if (usage_ovl_compr)
+				if (usage_ovl_compr) {
 					hdr_stash_bw_val = bw_val * 2 / 32 / 256;
+					hdr_stash_bw_val =
+						hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
+				}
 				else
-					hdr_stash_bw_val = bw_val / 32 / 256;
-
-				hdr_stash_bw_val =
-					hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
+					hdr_stash_bw_val = 0;
 			}
 
 			if (hdr_stash_bw_val != comp->last_hdr_stash_bw) {
@@ -4274,13 +4274,13 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		if (!IS_ERR(comp->hdr_stash_qos_req)) {
 			if (bw_val) {
-				if (usage_ovl_compr)
+				if (usage_ovl_compr) {
 					hdr_stash_bw_val = bw_val * 2 / 32 / 256;
+					hdr_stash_bw_val =
+						hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
+				}
 				else
-					hdr_stash_bw_val = bw_val / 32 / 256;
-
-				hdr_stash_bw_val =
-					hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
+					hdr_stash_bw_val = 0;
 			}
 
 			if (hdr_stash_bw_val > comp->last_hdr_stash_bw) {
