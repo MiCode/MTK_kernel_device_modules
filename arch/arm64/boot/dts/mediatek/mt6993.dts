@@ -9182,11 +9182,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<GIC_SPI 862 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_big4 irq */
 				<GIC_SPI 867 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_dramc irq */
 				/* <GIC_SPI 1073 IRQ_TYPE_LEVEL_HIGH 0>, apinfra_emi_infra irq (fake) */
-				<GIC_SPI 855 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem irq */
-				<GIC_SPI 856 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem_ctrl irq */
-				<GIC_SPI 857 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem_intf irq */
+				<GIC_SPI 832 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem irq */
+				<GIC_SPI 833 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem_ctrl irq */
+				<GIC_SPI 834 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem_intf irq */
 				<GIC_SPI 863 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_int irq */
-				<GIC_SPI 854 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mmu irq */
+				<GIC_SPI 831 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mmu irq */
 				<GIC_SPI 967 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash irq */
 				<GIC_SPI 968 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash_ctrl irq */
 				<GIC_SPI 279 IRQ_TYPE_EDGE_RISING 0>, /* peri irq */
