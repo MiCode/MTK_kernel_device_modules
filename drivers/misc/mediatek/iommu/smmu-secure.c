@@ -30,7 +30,6 @@
 	((cmd_id) | (smmu_type << 8) | (sec << 11))
 
 enum smmu_atf_cmd {
-	SMMU_SECURE_WPCFG,
 	SMMU_SECURE_INIT,
 	SMMU_SECURE_IRQ_SETUP,
 	SMMU_SECURE_TF_HANDLE,
@@ -43,6 +42,7 @@ enum smmu_atf_cmd {
 	SMMU_SECURE_CONFIG_CQDMA,
 	SMMU_SECURE_DUMP_REG,
 	SMMU_SECURE_DUMP_PGTABLE,
+	SMMU_SECURE_WPCFG,
 	SMMU_CMD_NUM
 };
 
