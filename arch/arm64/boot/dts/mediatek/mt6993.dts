@@ -14786,6 +14786,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		seninf-eint {
 			compatible = "mediatek,seninf-eint";
 			mediatek,seninf-eint = <&eint>;
+			systimer-leftshift-bits = <7>;
 		};
 
 		camera-camsys-ccu {
