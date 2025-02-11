@@ -869,7 +869,8 @@ void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
 	int boost = is_runnable_boost_enable();
 
 	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
-		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER)) {
+		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER) &&
+		is_runnable_boost_enable()) {
 		set_runnable_boost_enable(0);
 		codec_runnable_boost_disable++;
 	} else {
