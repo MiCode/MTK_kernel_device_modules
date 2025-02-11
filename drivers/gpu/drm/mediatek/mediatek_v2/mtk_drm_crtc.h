@@ -1573,6 +1573,9 @@ unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc);
 unsigned int mtk_drm_primary_display_get_debug_state(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
 
+unsigned int mtk_drm_external_display_get_debug_state(
+	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
+
 bool mtk_crtc_with_trigger_loop(struct drm_crtc *crtc);
 void mtk_crtc_stop_trig_loop(struct drm_crtc *crtc);
 void mtk_crtc_start_trig_loop(struct drm_crtc *crtc);

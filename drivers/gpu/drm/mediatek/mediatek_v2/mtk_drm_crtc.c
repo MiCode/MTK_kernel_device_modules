@@ -25391,6 +25391,40 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 	return len;
 }
 
+unsigned int mtk_drm_external_display_get_debug_state(
+	struct mtk_drm_private *priv, char *stringbuf, int buf_len)
+{
+	int len = 0;
+	int mode_idx = 0;
+
+	struct drm_crtc *crtc = priv->crtc[1];
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp;
+	struct drm_display_mode *adjust_mode;
+
+	if (!mtk_crtc || !mtk_crtc->avail_modes)
+		return 0;
+
+	if (!mtk_crtc->enabled)
+		return 0;
+
+	mode_idx = mtk_crtc->mode_idx;
+	adjust_mode = &(mtk_crtc->avail_modes[mode_idx]);
+
+	len += scnprintf(stringbuf + len, buf_len - len,
+			 "==========    External Display Info    ==========\n");
+
+	len += scnprintf(stringbuf + len, buf_len - len,
+			 "Resolution = %ux%u, FPS = %d\n",
+			  adjust_mode->hdisplay, adjust_mode->vdisplay,
+			  drm_mode_vrefresh(adjust_mode));
+
+	len += scnprintf(stringbuf + len, buf_len - len,
+		"================================================\n\n");
+
+	return len;
+}
+
 int MMPathTraceCrtcPlanes(struct drm_crtc *crtc,
 	char *str, int strlen, int n)
 {

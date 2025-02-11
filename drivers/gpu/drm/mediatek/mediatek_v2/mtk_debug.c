@@ -1113,6 +1113,9 @@ static int debug_get_info(unsigned char *stringbuf, int buf_len)
 	n += mtk_drm_primary_display_get_debug_state(private, stringbuf + n,
 		buf_len - n);
 
+	n += mtk_drm_external_display_get_debug_state(private, stringbuf + n,
+		buf_len - n);
+
 	n += mtk_drm_dump_wk_lock(private, stringbuf + n,
 		buf_len - n);
 
