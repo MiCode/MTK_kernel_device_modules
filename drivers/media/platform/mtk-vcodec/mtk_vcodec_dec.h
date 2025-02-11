@@ -13,7 +13,7 @@
 #include "mtk_vcodec_util.h"
 
 #define MTK_VDEC_GROUP_CNT		6
-#define MTK_VDEC_WAIT_GROUP_MS		160
+#define MTK_VDEC_WAIT_GROUP_MS		180
 #define MTK_VDEC_OPEN_CGRP_MS		200
 
 extern int mtk_vdec_lpw_limit;
