@@ -4384,7 +4384,16 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"univpll2_en,mmpll2,imgpll,tvdpll1,apll1_en,apll2_en,ulposc1_en,",
 				"ulposc2_en,ulposc3_en";
 			node-127 = "SSPM_SWPM_SCP__POWER_IDX",
-				"active_0,active_rv33_0,cpu_off_0,wfi_0,sleep_0,off_0,freq";
+				"all_active_0,",
+				"core0_core1_act_ois_wfi_0,",
+				"core0_or_core1_act_ois_act_0,",
+				"core0_core1_wfi_ois_act_0,",
+				"all_wfi_0,",
+				"all_cpu_mtcoms_off_0,",
+				"smp_mtcmos_off_0,",
+				"ois_mtcmos_off_0,",
+				"sleep_0,",
+				"freq";
 			node-128 = "EMI_MAX_DATA_BW",
 				"TOTAL_DRAM,CPU_DRAM,GPU_DRAM,APU_DRAM,MM_DRAM,MD_DRAM,WB_DRAM,",
 				"TOTAL_EMI,CPU_EMI,GPU_EMI,APU_EMI,MM_EMI,MD_EMI";
