@@ -31,7 +31,8 @@
 #endif
 #include "tee_impl/tee_ops.h"
 #include "tee_impl/tee_regions.h"
-#if !IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 #include <iommu_pseudo.h>
 #endif
 
@@ -116,7 +117,8 @@ int secmem_fr_set_svp_region(u64 pa, u32 size, int remote_region_type)
 #endif
 
 	ret = tee_directly_invoke_cmd(&cmd_params);
-#if !IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	mtk_iommu_sec_init(SEC_ID_SVP);
 #endif
 	return ret;
@@ -143,7 +145,8 @@ int secmem_fr_set_wfd_region(u64 pa, u32 size, int remote_region_type)
 #endif
 
 	ret = tee_directly_invoke_cmd(&cmd_params);
-#if !IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	mtk_iommu_sec_init(SEC_ID_WFD);
 #endif
 	return ret;
@@ -170,7 +173,8 @@ int secmem_fr_set_prot_shared_region(u64 pa, u32 size, int remote_region_type)
 #endif
 
 	ret = tee_directly_invoke_cmd(&cmd_params);
-#if !IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
+	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
 	mtk_iommu_sec_init(SEC_ID_SEC_CAM);
 #endif
 	return ret;
