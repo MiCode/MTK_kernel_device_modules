@@ -64,9 +64,9 @@ endif
 #ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6989.c),)
 #obj-${CONFIG_MTK_CM_MGR_MT6989} += mtk_cm_mgr_mt6989.o
 #endif
-ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6991.c),)
-obj-${CONFIG_MTK_CM_MGR_MT6991} += mtk_cm_mgr_mt6991.o
-endif
-ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6993.c),)
-obj-${CONFIG_MTK_CM_MGR_MT6993} += mtk_cm_mgr_mt6993.o
-endif
+#ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6991.c),)
+#obj-${CONFIG_MTK_CM_MGR_MT6991} += mtk_cm_mgr_mt6991.o
+#endif
+#ifneq ($(wildcard $(src)/mtk_cm_mgr_mt6993.c),)
+#obj-${CONFIG_MTK_CM_MGR_MT6993} += mtk_cm_mgr_mt6993.o
+#endif
