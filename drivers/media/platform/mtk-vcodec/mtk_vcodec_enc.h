@@ -46,6 +46,7 @@ extern const struct v4l2_m2m_ops mtk_venc_m2m_ops;
 void mtk_venc_unlock(struct mtk_vcodec_ctx *ctx, u32 hw_id);
 int mtk_venc_lock(struct mtk_vcodec_ctx *ctx, u32 hw_id, bool sec);
 void mtk_venc_queue_error_event(struct mtk_vcodec_ctx *ctx);
+void mtk_venc_queue_videogo_info_event(struct mtk_vcodec_ctx *ctx, unsigned int info);
 int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	struct vb2_queue *dst_vq);
 void venc_worker_probe(struct mtk_vcodec_dev *dev);

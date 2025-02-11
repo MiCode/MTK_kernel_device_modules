@@ -1678,6 +1678,8 @@ static int vidioc_venc_subscribe_evt(struct v4l2_fh *fh,
 		return v4l2_event_subscribe(fh, sub, 2, NULL);
 	case V4L2_EVENT_MTK_VENC_ERROR:
 		return v4l2_event_subscribe(fh, sub, 0, NULL);
+	case V4L2_EVENT_MTK_VCODEC_VIDEO_GO_INFO:
+		return v4l2_event_subscribe(fh, sub, 0, NULL);
 	default:
 		return v4l2_ctrl_subscribe_event(fh, sub);
 	}
@@ -1703,6 +1705,18 @@ void mtk_venc_queue_error_event(struct mtk_vcodec_ctx *ctx)
 
 	mtk_v4l2_debug(0, "[%d] msg %x", ctx->id, ctx->err_msg);
 	v4l2_event_queue_fh(&ctx->fh, &ev_error);
+}
+
+void mtk_venc_queue_videogo_info_event(struct mtk_vcodec_ctx *ctx, unsigned int info)
+{
+	struct v4l2_event event = {
+		.type = V4L2_EVENT_MTK_VCODEC_VIDEO_GO_INFO,
+	};
+
+	memcpy((void *)event.u.data, &info, sizeof(info));
+
+	mtk_v4l2_debug(1, "[%d] video go info %d", ctx->id, info);
+	v4l2_event_queue_fh(&ctx->fh, &event);
 }
 
 static void mtk_venc_error_handle(struct mtk_vcodec_ctx *ctx)
