@@ -221,6 +221,8 @@ bool no_bwm20_layer;
 
 #define ALIGN_TO_32(x) ALIGN_TO(x, 32)
 
+#define DISP_REG_CONFIG_DISPSYS_BYPASS_MUX_SHADOW 0xf00
+
 #define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL 0x308
 #define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6991 0x408
 #define DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL_MT6993 0x408
@@ -14014,16 +14016,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 #ifndef DRM_CMDQ_DISABLE
 	if (priv->data->mmsys_id == MMSYS_MT6983 ||
-		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6879 ||
-		priv->data->mmsys_id == MMSYS_MT6885 ||
-		priv->data->mmsys_id == MMSYS_MT6853 ||
-		priv->data->mmsys_id == MMSYS_MT6768 ||
-		priv->data->mmsys_id == MMSYS_MT6877 ||
-		priv->data->mmsys_id == MMSYS_MT6833 ||
-		priv->data->mmsys_id == MMSYS_MT6781 ||
-		priv->data->mmsys_id == MMSYS_MT6761 ||
-		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6835 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
@@ -14034,7 +14027,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 		/*Set BYPASS_MUX_SHADOW*/
 		writel(0x1, mtk_crtc->config_regs +
-				DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
+				DISP_REG_CONFIG_DISPSYS_BYPASS_MUX_SHADOW);
 
 		if (mtk_crtc->side_config_regs) {
 			writel(0x3, mtk_crtc->side_config_regs +
@@ -14042,7 +14035,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 			/*Set BYPASS_MUX_SHADOW*/
 			writel(0x1, mtk_crtc->side_config_regs +
-					DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
+					DISP_REG_CONFIG_DISPSYS_BYPASS_MUX_SHADOW);
 		}
 	} else if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
