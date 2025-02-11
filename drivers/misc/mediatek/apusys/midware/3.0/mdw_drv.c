@@ -132,7 +132,6 @@ static int mdw_drv_close(struct inode *inode, struct file *filp)
 	mpriv = filp->private_data;
 	mdw_flw_debug("mpriv(0x%llx)\n", (uint64_t)mpriv);
 	mutex_lock(&mpriv->mtx);
-	mdw_drv_warn("removed release cmd\n");
 	mdw_mem_release_session(mpriv);
 	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
 	mutex_unlock(&mpriv->mtx);

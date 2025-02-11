@@ -13,7 +13,6 @@ static int mdw_util_info(struct mdw_fpriv *mpriv, uint32_t type, uint64_t val)
 
 	switch (type) {
 	case MDW_UTIL_INFO_POWERPOLICY:
-		mdw_drv_warn("TODO policy input\n");
 		/* only performance mode can be set by user */
 		#if 0
 		if (val == MDW_POWERPOLICY_PERFORMANCE && mdev->plat_funcs->pb_get != NULL)
