@@ -3,6 +3,7 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
+#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/sched/clock.h>
 
 #include "inc/tcpci_typec.h"
@@ -95,8 +96,8 @@ static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 	};
 
 	mutex_lock(&tcpc->access_lock);
-	tcpc->io_time_diff = (local_clock() - tcpc->io_time_start) /
-			      NSEC_PER_USEC;
+	tcpc->io_time_diff = local_clock() - tcpc->io_time_start;
+	do_div(tcpc->io_time_diff, NSEC_PER_USEC);
 	TCPC_DBG("%s io_time_diff = %lluus\n", __func__, tcpc->io_time_diff);
 	tx_state = tcpc->pd_transmit_state;
 	tcpc->pd_transmit_state = PD_TX_STATE_GOOD_CRC;
@@ -134,7 +135,7 @@ static int tcpci_alert_tx_discard(struct tcpc_device *tcpc)
 	bool retry_crc_discard =
 		!!(tcpc->tcpc_flags & TCPC_FLAGS_RETRY_CRC_DISCARD);
 
-	TCPC_INFO("Discard\n");
+	TCPC_DBG("Discard\n");
 
 	mutex_lock(&tcpc->access_lock);
 	tcpc->io_time_diff = 0;
@@ -167,8 +168,6 @@ static void tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 	int rv = 0;
 	struct pd_msg *pd_msg = NULL;
 
-	tcpc->curr_pd_msg = NULL;
-
 	pd_msg = pd_alloc_msg(tcpc);
 	if (pd_msg == NULL)
 		return;
@@ -185,14 +184,17 @@ static void tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 
 static int tcpci_alert_recv_msg_put_event(struct tcpc_device *tcpc)
 {
-	if (tcpc->curr_pd_msg)
+	if (tcpc->curr_pd_msg) {
 		pd_put_pd_msg_event(tcpc, tcpc->curr_pd_msg);
+		tcpc->curr_pd_msg = NULL;
+
+	}
 	return 0;
 }
 
 static int tcpci_alert_rx_overflow(struct tcpc_device *tcpc)
 {
-	TCPC_INFO("RX_OVERFLOW\n");
+	TCPC_DBG("RX_OVERFLOW\n");
 	return 0;
 }
 
@@ -224,7 +226,7 @@ static int tcpci_alert_fault(struct tcpc_device *tcpc)
 
 int tcpci_alert_wakeup(struct tcpc_device *tcpc)
 {
-	TCPC_INFO("Wakeup\n");
+	TCPC_DBG("Wakeup\n");
 	if (tcpc->typec_lpm) {
 		if (tcpc->ops->set_low_power_mode)
 			tcpc->ops->set_low_power_mode(tcpc, false,
@@ -268,16 +270,19 @@ static const struct tcpci_alert_handler tcpci_alert_handlers[] = {
 static inline bool tcpci_check_hard_reset_complete(
 	struct tcpc_device *tcpc, uint32_t *alert_status)
 {
-	if ((*alert_status & TCPC_REG_ALERT_HRESET_SUCCESS)
-			== TCPC_REG_ALERT_HRESET_SUCCESS) {
-		*alert_status &= ~TCPC_REG_ALERT_HRESET_SUCCESS;
+	if ((*alert_status & TCPC_V10_REG_ALERT_HRESET_SUCCESS)
+			== TCPC_V10_REG_ALERT_HRESET_SUCCESS) {
+		*alert_status &= ~TCPC_V10_REG_ALERT_HRESET_SUCCESS;
 		pd_put_sent_hard_reset_event(tcpc);
 		return true;
 	}
 
-	if (*alert_status & TCPC_REG_ALERT_TX_DISCARDED) {
-		*alert_status &= ~TCPC_REG_ALERT_TX_DISCARDED;
+	if (*alert_status & TCPC_V10_REG_ALERT_TX_DISCARDED) {
+		*alert_status &= ~TCPC_V10_REG_ALERT_TX_DISCARDED;
 		TCPC_INFO("HResetFailed\n");
+		mutex_lock(&tcpc->access_lock);
+		tcpc->pd_transmit_state = PD_TX_STATE_DISCARD;
+		mutex_unlock(&tcpc->access_lock);
 		pd_put_hw_event(tcpc, PD_HW_TX_FAILED);
 		return true;
 	}
@@ -303,6 +308,15 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 	if (rv < 0)
 		return rv;
 
+	if (!__ratelimit(&tcpc->alert_rs)) {
+		tcpci_notify_alert_ratelimited(tcpc, true);
+		alert_status &= alert_mask;
+		if (alert_status & TCPC_V10_REG_ALERT_VENDOR_DEFINED)
+			tcpci_alert_vendor_defined_handler(tcpc);
+		return tcpci_alert_status_clear(tcpc, alert_status);
+	}
+	tcpci_notify_alert_ratelimited(tcpc, false);
+
 	TCPC_INFO("Alert:0x%04x, Mask:0x%04x\n", alert_status, alert_mask);
 
 	alert_status &= alert_mask;
@@ -321,25 +335,21 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 	}
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
+	if (alert_status & TCPC_V10_REG_ALERT_RX_STATUS) {
 		mutex_lock(&tcpc->rxbuf_lock);
-		tcpci_alert_recv_msg(tcpc);
+		if (!(alert_status & TCPC_V10_REG_ALERT_RX_HARD_RST))
+			tcpci_alert_recv_msg(tcpc);
 	}
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	tcpci_alert_status_clear(tcpc, alert_status);
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	if (alert_status & TCPC_REG_ALERT_RX_STATUS) {
-		mutex_unlock(&tcpc->rxbuf_lock);
-		tcpc_event_thread_wake_up(tcpc);
-	}
-
 	if (tcpc->pd_transmit_state == PD_TX_STATE_WAIT_HARD_RESET) {
 		if (tcpci_check_hard_reset_complete(tcpc, &alert_status))
 			atomic_dec_if_positive(&tcpc->tx_pending);
 	}
-	i = __builtin_popcount(alert_status & TCPC_REG_ALERT_TX_MASK);
+	i = __builtin_popcount(alert_status & TCPC_V10_REG_ALERT_TX_MASK);
 	while (i-- > 0)
 		atomic_dec_if_positive(&tcpc->tx_pending);
 	TCPC_DBG("%s tx_pending = %d\n", __func__,
@@ -350,13 +360,20 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 
 	if ((tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10) &&
 	    (alert_status & TCPC_REG_ALERT_EXT_VBUS_80))
-		alert_status |= TCPC_REG_ALERT_POWER_STATUS;
+		alert_status |= TCPC_V10_REG_ALERT_POWER_STATUS;
 
 	for (i = 0; i < ARRAY_SIZE(tcpci_alert_handlers); i++)
 		if (tcpci_alert_handlers[i].bit_mask & alert_status)
 			tcpci_alert_handlers[i].handler(tcpc);
 
-	if (masked && !(alert_status & TCPC_REG_ALERT_RX_HARD_RST))
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	if (alert_status & TCPC_V10_REG_ALERT_RX_STATUS) {
+		mutex_unlock(&tcpc->rxbuf_lock);
+		tcpc_event_thread_wake_up(tcpc);
+	}
+#endif	/* CONFIG_USB_POWER_DELIVERY */
+
+	if (masked && !(alert_status & TCPC_V10_REG_ALERT_RX_HARD_RST))
 		rv = tcpci_set_alert_mask(tcpc, alert_mask);
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10)
@@ -374,54 +391,9 @@ EXPORT_SYMBOL(tcpci_alert);
  * [BLOCK] TYPEC device changed
  */
 
-static inline int tcpci_set_wake_lock(struct tcpc_device *tcpc, bool pd_lock)
-{
-	if (!!pd_lock != !!tcpc->wake_lock_pd) {
-		if (pd_lock) {
-			TCPC_DBG("wake_lock=1\n");
-			__pm_wakeup_event(tcpc->attach_wake_lock,
-					  CONFIG_TCPC_ATTACH_WAKE_LOCK_TOUT);
-		} else {
-			TCPC_DBG("wake_lock=0\n");
-			__pm_relax(tcpc->attach_wake_lock);
-		}
-		return 1;
-	}
-
-	return 0;
-}
-
-static int tcpci_set_wake_lock_pd(struct tcpc_device *tcpc, bool pd_lock)
-{
-	uint8_t wake_lock_pd = 0;
-
-	mutex_lock(&tcpc->access_lock);
-
-	wake_lock_pd = tcpc->wake_lock_pd;
-	if (pd_lock)
-		wake_lock_pd++;
-	else if (wake_lock_pd > 0)
-		wake_lock_pd--;
-
-	if (wake_lock_pd == 0)
-		__pm_wakeup_event(tcpc->detach_wake_lock, 1000);
-
-	tcpci_set_wake_lock(tcpc, wake_lock_pd);
-	tcpc->wake_lock_pd = wake_lock_pd;
-
-	if (wake_lock_pd == 1)
-		__pm_relax(tcpc->detach_wake_lock);
-
-	mutex_unlock(&tcpc->access_lock);
-
-	return 0;
-}
-
 int tcpci_report_usb_port_attached(struct tcpc_device *tcpc)
 {
-	TCPC_INFO("usb_port_attached\n");
-
-	tcpci_set_wake_lock_pd(tcpc, true);
+	TCPC_DBG("usb_port_attached\n");
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 #if CONFIG_USB_PD_DISABLE_PE
@@ -438,7 +410,7 @@ int tcpci_report_usb_port_attached(struct tcpc_device *tcpc)
 
 int tcpci_report_usb_port_detached(struct tcpc_device *tcpc)
 {
-	TCPC_INFO("usb_port_detached\n");
+	TCPC_DBG("usb_port_detached\n");
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	if (tcpc->pd_inited_flag)
@@ -451,8 +423,6 @@ int tcpci_report_usb_port_detached(struct tcpc_device *tcpc)
 	cancel_delayed_work_sync(&tcpc->tx_pending_work);
 	atomic_set(&tcpc->tx_pending, 0);
 #endif /* CONFIG_USB_POWER_DELIVERY */
-
-	tcpci_set_wake_lock_pd(tcpc, false);
 
 	return 0;
 }
@@ -467,7 +437,7 @@ int tcpci_report_usb_port_changed(struct tcpc_device *tcpc)
 	else if (tcpc->typec_attach_old == TYPEC_UNATTACHED)
 		tcpci_report_usb_port_attached(tcpc);
 	else
-		TCPC_DBG2("TCPC Attach Again\n");
+		TCPC_DBG("TCPC Attach Again\n");
 
 	return 0;
 }
@@ -478,12 +448,9 @@ int tcpci_report_usb_port_changed(struct tcpc_device *tcpc)
 
 static inline int tcpci_report_power_control_on(struct tcpc_device *tcpc)
 {
-	tcpci_set_wake_lock_pd(tcpc, true);
-
 	mutex_lock(&tcpc->access_lock);
 	tcpc_disable_timer(tcpc, TYPEC_RT_TIMER_DISCHARGE);
-	tcpci_enable_auto_discharge(tcpc, true);
-	tcpci_enable_force_discharge(tcpc, false, 0);
+	tcpci_enable_discharge(tcpc, false, 0);
 	mutex_unlock(&tcpc->access_lock);
 
 	return 0;
@@ -492,11 +459,9 @@ static inline int tcpci_report_power_control_on(struct tcpc_device *tcpc)
 static inline int tcpci_report_power_control_off(struct tcpc_device *tcpc)
 {
 	mutex_lock(&tcpc->access_lock);
-	tcpci_enable_force_discharge(tcpc, true, 0);
+	tcpci_enable_discharge(tcpc, true, 0);
 	tcpc_enable_timer(tcpc, TYPEC_RT_TIMER_DISCHARGE);
 	mutex_unlock(&tcpc->access_lock);
-
-	tcpci_set_wake_lock_pd(tcpc, false);
 
 	return 0;
 }
@@ -515,3 +480,4 @@ int tcpci_report_power_control(struct tcpc_device *tcpc, bool en)
 
 	return 0;
 }
+#endif	/* CONFIG_TCPC_CLASS */

@@ -3,16 +3,14 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
-#include <linux/interrupt.h>
-#include <linux/kernel.h>
 #include <linux/module.h>
+#if IS_ENABLED(CONFIG_TCPC_CLASS)
+#include <linux/interrupt.h>
 #include <linux/of.h>
 #include <linux/regmap.h>
-#include <linux/platform_device.h>
-#include <linux/cpu.h>
 #include <linux/iio/consumer.h>
-#include <linux/sched.h>
 #include <linux/sched/clock.h>
+#include <linux/suspend.h>
 
 #include "inc/tcpci.h"
 #include "inc/tcpci_typec.h"
@@ -20,10 +18,10 @@
 #include "inc/std_tcpci_v10.h"
 
 #define MT6379_INFO_EN		1
-#define MT6379_DBGINFO_EN	CONFIG_WD_DURING_PLUGGED_IN
+#define MT6379_DBGINFO_EN	0
 #define MT6379_WD1_EN		1
 #define MT6379_WD2_EN		1
-#define CC_SHORT_DEBOUNCE	100
+#define VBUS_TO_CC_DEBOUNCE	100
 #define MT6379_FOD_SRC_EN	0
 
 #define MT6379_INFO(fmt, ...) \
@@ -87,6 +85,7 @@
 #define MT6379_REG_TCPCCTRL2	(0xB2)
 #define MT6379_REG_TCPCCTRL3	(0xB3)
 #define MT6379_REG_LPWRCTRL3	(0xBB)
+#define MT6379_REG_LPWRCTRL5	(0xBD)
 #define MT6379_REG_WATCHDOGCTRL	(0xBE)
 #define MT6379_REG_I2CTORSTCTRL	(0xBF)
 #define MT6379_REG_VCONN_LATCH	(0xC0)
@@ -170,6 +169,7 @@
 	 MT6379_MSK_VCON_UVP | MT6379_MSK_VCON_SHTGND)
 /* MT6379_REG_MTINT3: 0x9A */
 #define MT6379_MSK_CTD		BIT(4)
+#define MT6379_SFT_VBUS_TO_CC1	(6)
 #define MT6379_MSK_VBUS_TO_CC1	BIT(6)
 #define MT6379_MSK_VBUS_TO_CC2	BIT(7)
 #define MT6379_MSK_VBUS_TO_CC \
@@ -283,11 +283,6 @@ struct mt6379_tcpc_data {
 	struct tcpc_device *tcpc;
 	struct iio_channel *adc_iio;
 	int irq;
-	u16 did;
-	bool wd0_state;
-	bool wd0_enable;
-	bool vsc_status;
-	u8 short_cc;
 	u8 wd0_tsleep;
 	u8 wd0_tdet;
 
@@ -300,7 +295,7 @@ struct mt6379_tcpc_data {
 	struct delayed_work wd12_strise_irq_dwork;
 	struct delayed_work fod_polling_dwork;
 
-	struct delayed_work cc_short_dwork;
+	struct delayed_work vbus_to_cc_dwork;
 };
 
 enum mt6379_vend_int {
@@ -383,14 +378,6 @@ enum mt6379_wd_tdet {
 	MT6379_WD_TDET_40MS,
 	MT6379_WD_TDET_100MS,
 	MT6379_WD_TDET_400MS,
-};
-
-static const u8 mt6379_vend_alert_clearall[MT6379_VEND_INT_NUM] = {
-	0x3F, 0xFD, 0xF0, 0xE3, 0xFF, 0xF8, 0x3F,
-};
-
-static const u8 mt6379_vend_alert_maskall[MT6379_VEND_INT_NUM] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 /* REG RT2 0x20 ~ 0x2D */
@@ -493,30 +480,51 @@ static inline u32 rg_xlate(struct mt6379_tcpc_data *ddata, u32 reg)
 	return reg;
 }
 
+static int mt6379_write_helper(struct mt6379_tcpc_data *ddata, u32 reg,
+			       const void *data, size_t count)
+{
+	struct tcpc_device *tcpc = ddata->tcpc;
+	int ret = 0;
+
+	atomic_inc(&tcpc->suspend_pending);
+	wait_event(tcpc->resume_wait_que, !atomic_read(&tcpc->is_suspended) ||
+		   !ddata->dev->parent->power.is_suspended);
+	ret = regmap_bulk_write(ddata->rmap, rg_xlate(ddata, reg), data, count);
+	atomic_dec_if_positive(&tcpc->suspend_pending);
+	return ret;
+}
+
+static int mt6379_read_helper(struct mt6379_tcpc_data *ddata, u32 reg,
+			      void *data, size_t count)
+{
+	struct tcpc_device *tcpc = ddata->tcpc;
+	int ret = 0;
+
+	atomic_inc(&tcpc->suspend_pending);
+	wait_event(tcpc->resume_wait_que, !atomic_read(&tcpc->is_suspended) ||
+		   !ddata->dev->parent->power.is_suspended);
+	ret = regmap_bulk_read(ddata->rmap, rg_xlate(ddata, reg), data, count);
+	atomic_dec_if_positive(&tcpc->suspend_pending);
+	return ret;
+}
+
 static inline int mt6379_write8(struct mt6379_tcpc_data *ddata, u32 reg,
 				u8 data)
 {
-	return regmap_write(ddata->rmap, rg_xlate(ddata, reg), data);
+	return mt6379_write_helper(ddata, reg, &data, 1);
 }
 
 static inline int mt6379_read8(struct mt6379_tcpc_data *ddata, u32 reg,
 			       u8 *data)
 {
-	int ret;
-	u32 _data = 0;
-
-	ret = regmap_read(ddata->rmap, rg_xlate(ddata, reg), &_data);
-	if (ret < 0)
-		return ret;
-	*data = _data;
-	return 0;
+	return mt6379_read_helper(ddata, reg, data, 1);
 }
 
 static inline int mt6379_write16(struct mt6379_tcpc_data *ddata, u32 reg,
 				 u16 data)
 {
 	data = cpu_to_le16(data);
-	return regmap_bulk_write(ddata->rmap, rg_xlate(ddata, reg), &data, 2);
+	return mt6379_write_helper(ddata, reg, &data, 2);
 }
 
 static inline int mt6379_read16(struct mt6379_tcpc_data *ddata, u32 reg,
@@ -524,7 +532,7 @@ static inline int mt6379_read16(struct mt6379_tcpc_data *ddata, u32 reg,
 {
 	int ret;
 
-	ret = regmap_bulk_read(ddata->rmap, rg_xlate(ddata, reg), data, 2);
+	ret = mt6379_read_helper(ddata, reg, data, 2);
 	if (ret < 0)
 		return ret;
 	*data = le16_to_cpu(*data);
@@ -534,20 +542,30 @@ static inline int mt6379_read16(struct mt6379_tcpc_data *ddata, u32 reg,
 static inline int mt6379_bulk_write(struct mt6379_tcpc_data *ddata, u32 reg,
 				    const void *data, size_t count)
 {
-	return regmap_bulk_write(ddata->rmap, rg_xlate(ddata, reg), data, count);
+	return mt6379_write_helper(ddata, reg, data, count);
 }
 
 
 static inline int mt6379_bulk_read(struct mt6379_tcpc_data *ddata, u32 reg,
 				   void *data, size_t count)
 {
-	return regmap_bulk_read(ddata->rmap, rg_xlate(ddata, reg), data, count);
+	return mt6379_read_helper(ddata, reg, data, count);
 }
 
 static inline int mt6379_update_bits(struct mt6379_tcpc_data *ddata, u32 reg,
 				     u8 mask, u8 data)
 {
-	return regmap_update_bits(ddata->rmap, rg_xlate(ddata, reg), mask, data);
+	u8 orig_data = 0;
+	int ret = 0;
+
+	ret = mt6379_read_helper(ddata, reg, &orig_data, 1);
+	if (ret < 0)
+		return ret;
+
+	orig_data &= ~mask;
+	orig_data |= data & mask;
+
+	return mt6379_write_helper(ddata, reg, &orig_data, 1);
 }
 
 static inline int mt6379_set_bits(struct mt6379_tcpc_data *ddata, u32 reg,
@@ -612,13 +630,11 @@ static inline int mt6379_init_vend_mask(struct mt6379_tcpc_data *ddata)
 
 static inline int mt6379_init_alert_mask(struct mt6379_tcpc_data *ddata)
 {
-	int ret;
-	u16 mask = TCPC_V10_REG_ALERT_CC_STATUS |
-		   TCPC_V10_REG_ALERT_FAULT |
-		   TCPC_V10_REG_VBUS_SINK_DISCONNECT |
-		   TCPC_V10_REG_ALERT_VENDOR_DEFINED;
-	u8 masks[5] = {0x00, 0x00,
-		       0x00, TCPC_V10_REG_FAULT_STATUS_VCONN_OC, 0x00};
+	u16 mask = TCPC_V10_REG_ALERT_VENDOR_DEFINED |
+		   TCPC_V10_REG_ALERT_VBUS_SINK_DISCONNECT |
+		   TCPC_V10_REG_ALERT_FAULT | TCPC_V10_REG_ALERT_CC_STATUS;
+	u8 masks[4] = {0x00, 0x00, 0x00,
+		       TCPC_V10_REG_FAULT_STATUS_VCONN_OC};
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	mask |= TCPC_V10_REG_ALERT_TX_SUCCESS |
@@ -626,19 +642,11 @@ static inline int mt6379_init_alert_mask(struct mt6379_tcpc_data *ddata)
 		TCPC_V10_REG_ALERT_TX_FAILED |
 		TCPC_V10_REG_ALERT_RX_HARD_RST |
 		TCPC_V10_REG_ALERT_RX_STATUS |
-		TCPC_V10_REG_RX_OVERFLOW;
+		TCPC_V10_REG_ALERT_RX_OVERFLOW;
 #endif /* CONFIG_USB_POWER_DELIVERY */
 	*(u16 *)masks = cpu_to_le16(mask);
-	ret = mt6379_bulk_write(ddata, TCPC_V10_REG_ALERT_MASK,
-				masks, sizeof(masks));
-	return (ret < 0) ? ret : 0;
-}
-
-static int mt6379_enable_force_discharge(struct mt6379_tcpc_data *ddata,
-					 bool en)
-{
-	return (en ? mt6379_set_bits : mt6379_clr_bits)
-		(ddata, TCPC_V10_REG_POWER_CTRL, TCPC_V10_REG_FORCE_DISC_EN);
+	return mt6379_bulk_write(ddata, TCPC_V10_REG_ALERT_MASK,
+				 masks, sizeof(masks));
 }
 
 static int mt6379_enable_vsafe0v_detect(struct mt6379_tcpc_data *ddata, bool en)
@@ -669,9 +677,8 @@ static int mt6379_is_vconn_fault(struct mt6379_tcpc_data *ddata, bool *fault)
 static int mt6379_vend_alert_status_clear(struct mt6379_tcpc_data *ddata,
 					  const u8 *mask)
 {
-	mt6379_bulk_write(ddata, MT6379_REG_MTINT1, mask, MT6379_VEND_INT_NUM);
-	return mt6379_write16(ddata, TCPC_V10_REG_ALERT,
-			      TCPC_V10_REG_ALERT_VENDOR_DEFINED);
+	return mt6379_bulk_write(ddata, MT6379_REG_MTINT1, mask,
+				 MT6379_VEND_INT_NUM);
 }
 
 
@@ -684,36 +691,30 @@ static int mt6379_enable_typec_otp_fwen(struct tcpc_device *tcpc, bool en)
 		(ddata, MT6379_REG_TYPECOTPCTRL, MT6379_MSK_TYPECOTP_FWEN);
 }
 
-static int mt6379_enable_vbus_short_cc(struct tcpc_device *tcpc, bool cc1, bool cc2)
+static int mt6379_set_vbus_short_cc(struct tcpc_device *tcpc,
+				    bool cc1, bool cc2)
 {
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	int ret = 0;
 	u8 val = 0;
 
-	MT6379_DBGINFO("cc1: %d, cc2: %d\n", cc1, cc2);
-	mt6379_update_bits(ddata, MT6379_REG_MTINT3, 0xc0, 0xc0);
+	MT6379_DBGINFO("cc1:%d, cc2:%d\n", cc1, cc2);
+	mt6379_write8(ddata, MT6379_REG_MTINT3, MT6379_MSK_VBUS_TO_CC);
 
 	val = (cc1 ? MT6379_MSK_CMPEN_VBUS_TO_CC1 : 0) |
 		(cc2 ? MT6379_MSK_CMPEN_VBUS_TO_CC2 : 0);
 
-	ret = mt6379_update_bits(ddata, MT6379_REG_FRS_CTRL2,
-				 MT6379_MSK_CMPEN_VBUS_TO_CC, val);
-	if (ret < 0)
-		return ret;
-
-	tcpc->typec_vbus_to_cc_en = (cc1 | cc2);
-	return 0;
+	return mt6379_update_bits(ddata, MT6379_REG_FRS_CTRL2,
+				  MT6379_MSK_CMPEN_VBUS_TO_CC, val);
 }
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
-#if CONFIG_TCPC_FORCE_DISCHARGE_IC
 static int mt6379_set_force_discharge(struct tcpc_device *tcpc, bool en, int mv)
 {
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	return mt6379_enable_force_discharge(ddata, en);
+	return (en ? mt6379_set_bits : mt6379_clr_bits)
+		(ddata, TCPC_V10_REG_POWER_CTRL, TCPC_V10_REG_FORCE_DISC_EN);
 }
-#endif	/* CONFIG_TCPC_FORCE_DISCHARGE_IC */
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
 
 static int __mt6379_get_cc_hi(struct mt6379_tcpc_data *ddata)
@@ -728,28 +729,24 @@ static int __mt6379_get_cc_hi(struct mt6379_tcpc_data *ddata)
 		>> MT6379_SFT_HIDET_CC1;
 }
 
-static void mt6379_cc_short_dwork_handler(struct work_struct *work)
+static void mt6379_vbus_to_cc_dwork_handler(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct mt6379_tcpc_data *ddata = container_of(dwork,
 						      struct mt6379_tcpc_data,
-						      cc_short_dwork);
-	bool local_vsc_status;
-	int ret;
-	u8 data;
+						      vbus_to_cc_dwork);
+	int ret = 0;
+	u8 data = 0;
+
+	pm_system_wakeup();
 
 	ret = mt6379_read8(ddata, MT6379_REG_MTST3, &data);
 	if (ret < 0) {
 		MT6379_DBGINFO("Read MT6379_REG_MTST3 fail.\n");
 		return;
 	}
-	local_vsc_status = (data & MT6379_MSK_VBUS_TO_CC) ? true : false;
-	if (local_vsc_status != ddata->vsc_status) {
-		ddata->vsc_status = local_vsc_status;
-		tcpci_notify_vbus_short_cc_status(ddata->tcpc,
-						  ddata->vsc_status,
-						  ddata->short_cc);
-	}
+	data = (data & MT6379_MSK_VBUS_TO_CC) >> MT6379_SFT_VBUS_TO_CC1;
+	tcpci_notify_vbus_short_cc_status(ddata->tcpc, data);
 }
 
 static int mt6379_hidet_cc_evt_process(struct mt6379_tcpc_data *ddata)
@@ -759,7 +756,7 @@ static int mt6379_hidet_cc_evt_process(struct mt6379_tcpc_data *ddata)
 	ret = __mt6379_get_cc_hi(ddata);
 	if (ret < 0)
 		return ret;
-	return tcpc_typec_handle_cc_hi(ddata->tcpc, ret);
+	return tcpci_notify_cc_hi(ddata->tcpc, ret);
 }
 
 static int mt6379_get_fod_status(struct mt6379_tcpc_data *ddata,
@@ -794,6 +791,8 @@ static void mt6379_fod_polling_dwork_handler(struct work_struct *work)
 						      struct mt6379_tcpc_data,
 						      fod_polling_dwork);
 
+	pm_system_wakeup();
+
 	MT6379_DBGINFO("Set FOD_FW_EN\n");
 	tcpci_lock_typec(ddata->tcpc);
 	mt6379_set_bits(ddata, MT6379_REG_FODCTRL, MT6379_MSK_FOD_FW_EN);
@@ -813,7 +812,7 @@ static int mt6379_fod_evt_process(struct mt6379_tcpc_data *ddata)
 	if (ret < 0)
 		return ret;
 	if (fod == TCPC_FOD_LR)
-		mod_delayed_work(system_freezable_wq, &ddata->fod_polling_dwork,
+		mod_delayed_work(system_wq, &ddata->fod_polling_dwork,
 				 msecs_to_jiffies(5000));
 	return tcpc_typec_handle_fod(tcpc, fod);
 }
@@ -1238,14 +1237,16 @@ static void mt6379_wd_polling_dwork_handler(struct work_struct *work)
 	size_t array_size = (tcpc_flags & TCPC_FLAGS_WD_DUAL_PORT) ?  2 : 1;
 	int ret = 0;
 
+	pm_system_wakeup();
+
 	for (i = 0; i < array_size; i++) {
 		tcpci_lock_typec(tcpcs[i]);
 		ret = tcpci_is_plugged_in(tcpcs[i]);
 		tcpci_unlock_typec(tcpcs[i]);
 		if (ret) {
 			if (i != 0)
-				queue_delayed_work(system_freezable_wq, dwork,
-						   msecs_to_jiffies(10000));
+				schedule_delayed_work(dwork,
+						      msecs_to_jiffies(10000));
 			return;
 		}
 	}
@@ -1275,9 +1276,8 @@ static int mt6379_wd_polling_evt_process(struct mt6379_tcpc_data *ddata)
 		tcpci_unlock_typec(tcpcs[i]);
 		if (ret) {
 			if (i != 0)
-				queue_delayed_work(system_freezable_wq,
-						   &ddata->wd_polling_dwork,
-						   msecs_to_jiffies(10000));
+				schedule_delayed_work(&ddata->wd_polling_dwork,
+						      msecs_to_jiffies(10000));
 			tcpci_lock_typec(ddata->tcpc);
 			return 0;
 		}
@@ -1337,22 +1337,6 @@ out:
 	return 0;
 }
 
-static int mt6379_vbus_to_cc1_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	ddata->short_cc = 0;
-	mod_delayed_work(system_freezable_wq, &ddata->cc_short_dwork,
-			 msecs_to_jiffies(CC_SHORT_DEBOUNCE));
-	return 0;
-}
-
-static int mt6379_vbus_to_cc2_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	ddata->short_cc = 1;
-	mod_delayed_work(system_freezable_wq, &ddata->cc_short_dwork,
-			 msecs_to_jiffies(CC_SHORT_DEBOUNCE));
-	return 0;
-}
-
 static int mt6379_is_floating_ground_enabled(struct mt6379_tcpc_data *ddata,
 					     bool *en)
 {
@@ -1406,8 +1390,8 @@ static int mt6379_floating_ground_evt_process(struct mt6379_tcpc_data *ddata)
 	ret = mt6379_read8(ddata, MT6379_REG_WD0SET, &data);
 	if (ret < 0)
 		return ret;
-	ddata->wd0_state = (data & MT6379_MSK_WD0PULL_STS) ? true : false;
-	return tcpci_notify_wd0_state(ddata->tcpc, ddata->wd0_state);
+	return tcpci_notify_wd0_state(ddata->tcpc,
+				      !!(data & MT6379_MSK_WD0PULL_STS));
 }
 
 /*
@@ -1442,8 +1426,8 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	mt6379_write8(ddata, TCPC_V10_REG_ROLE_CTRL,
 		      TCPC_V10_REG_ROLE_CTRL_RES_SET(0, 0, CC_RD, CC_RD));
 
-	/* tTCPCFilter = 250us */
-	mt6379_write8(ddata, MT6379_REG_TCPCCTRL1, 0x0A);
+	/* tTCPCFilter = 500us */
+	mt6379_write8(ddata, MT6379_REG_TCPCCTRL1, 0x14);
 
 	/*
 	 * DRP Toggle Cycle : 51.2 + 6.4*val ms
@@ -1465,14 +1449,17 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	/* Transition window time = 43.29us */
 	mt6379_write8(ddata, MT6379_REG_PHYCTRL3, 0x82);
 
-	/* BMC decoder idle time = 17.982us */
-	mt6379_write8(ddata, MT6379_REG_PHYCTRL7, 0x36);
+	/* BMC decoder idle time = 9.99us */
+	mt6379_write8(ddata, MT6379_REG_PHYCTRL7, 0x1E);
 
 	/* Retry period = 26.208us */
 	mt6379_write8(ddata, MT6379_REG_PHYCTRL9, 0x3C);
 
 	/* Enable PD Vconn current limit mode, ocp sel 300mA, and analog OVP */
 	mt6379_write8(ddata, MT6379_REG_VCONCTRL3, 0x51);
+
+	/* VBUS_VALID debounce time: 375us */
+	mt6379_write8(ddata, MT6379_REG_LPWRCTRL5, 0x2F);
 
 	/* Set HILOCCFILTER 250us */
 	mt6379_write8(ddata, MT6379_REG_HILOCTRL9, 0xAA);
@@ -1499,7 +1486,7 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 			TCPC_V10_REG_BLEED_DISC_EN);
 
 	/* Set Low Power LDO to 2V */
-	mt6379_write8(ddata, MT6379_REG_LPWRCTRL3, 0xD8);
+	mt6379_write8(ddata, MT6379_REG_LPWRCTRL3, 0xF8);
 
 	/* Sync IRQ to 3M path */
 	mt6379_set_bits(ddata, MT6379_REG_SYSCTRL1, MT6379_MSK_INTN_SELECT);
@@ -1542,12 +1529,6 @@ static int mt6379_fault_status_clear(struct tcpc_device *tcpc, u8 status)
 {
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	/*
-	 * Not sure how to react after discharge fail
-	 * follow previous H/W behavior, turn off force discharge
-	 */
-	if (status & TCPC_V10_REG_FAULT_STATUS_FORCE_DISC_FAIL)
-		mt6379_enable_force_discharge(ddata, false);
 	return mt6379_write8(ddata, TCPC_V10_REG_FAULT_STATUS, status);
 }
 
@@ -1621,46 +1602,40 @@ static int mt6379_get_fault_status(struct tcpc_device *tcpc, u8 *status)
 
 static int mt6379_get_cc(struct tcpc_device *tcpc, int *cc1, int *cc2)
 {
-	int ret;
-	bool act_as_sink, act_as_drp;
-	u8 status, role_ctrl, cc_role;
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	bool act_as_sink = false;
+	u8 buf[4], status = 0, role_ctrl = 0, cc_role = 0;
+	int ret = 0;
 
-	ret = mt6379_read8(ddata, TCPC_V10_REG_CC_STATUS, &status);
+	ret = mt6379_bulk_read(ddata, TCPC_V10_REG_ROLE_CTRL, buf, sizeof(buf));
 	if (ret < 0)
 		return ret;
-
-	ret = mt6379_read8(ddata, TCPC_V10_REG_ROLE_CTRL, &role_ctrl);
-	if (ret < 0)
-		return ret;
+	role_ctrl = buf[0];
+	status = buf[3];
 
 	if (status & TCPC_V10_REG_CC_STATUS_DRP_TOGGLING) {
-		if (!(role_ctrl & TCPC_V10_REG_ROLE_CTRL_DRP)) {
-			/* Toggle reg0x1A[6] DRP = 1 and = 0 */
-			mt6379_write8(ddata, TCPC_V10_REG_ROLE_CTRL,
-				      role_ctrl | TCPC_V10_REG_ROLE_CTRL_DRP);
-			mt6379_write8(ddata, TCPC_V10_REG_ROLE_CTRL, role_ctrl);
-			return -EAGAIN;
+		if (role_ctrl & TCPC_V10_REG_ROLE_CTRL_DRP) {
+			*cc1 = TYPEC_CC_DRP_TOGGLING;
+			*cc2 = TYPEC_CC_DRP_TOGGLING;
+			return 0;
 		}
-
-		*cc1 = TYPEC_CC_DRP_TOGGLING;
-		*cc2 = TYPEC_CC_DRP_TOGGLING;
-		return 0;
+		/* Toggle reg0x1A[6] DRP = 1 and = 0 */
+		mt6379_write8(ddata, TCPC_V10_REG_ROLE_CTRL,
+			      role_ctrl | TCPC_V10_REG_ROLE_CTRL_DRP);
+		mt6379_write8(ddata, TCPC_V10_REG_ROLE_CTRL, role_ctrl);
+		return -EAGAIN;
 	}
-
 	*cc1 = TCPC_V10_REG_CC_STATUS_CC1(status);
 	*cc2 = TCPC_V10_REG_CC_STATUS_CC2(status);
 
-	act_as_drp = TCPC_V10_REG_ROLE_CTRL_DRP & role_ctrl;
-
-	if (act_as_drp)
+	if (role_ctrl & TCPC_V10_REG_ROLE_CTRL_DRP)
 		act_as_sink = TCPC_V10_REG_CC_STATUS_DRP_RESULT(status);
 	else {
 		if (tcpc->typec_polarity)
 			cc_role = TCPC_V10_REG_CC_STATUS_CC2(role_ctrl);
 		else
 			cc_role = TCPC_V10_REG_CC_STATUS_CC1(role_ctrl);
-		act_as_sink = (cc_role == TYPEC_CC_RP) ? false : true;
+		act_as_sink = (cc_role != TYPEC_CC_RP);
 	}
 
 	/*
@@ -1689,12 +1664,11 @@ static int mt6379_set_cc(struct tcpc_device *tcpc, int pull)
 		ret = mt6379_write8(ddata, TCPC_V10_REG_ROLE_CTRL, data);
 		if (ret < 0)
 			return ret;
-		mt6379_enable_vsafe0v_detect(ddata, false);
 		/*
 		 * Before set LOOK_CONNECTION, at least 30us needed after
 		 * setting TCPC_V10_REG_ROLE_CTRL
 		 */
-		udelay(30);
+		udelay(32);
 		ret = mt6379_write8(ddata, TCPC_V10_REG_COMMAND,
 				    TCPM_CMD_LOOK_CONNECTION);
 	} else {
@@ -1760,17 +1734,14 @@ static int mt6379_set_vconn(struct tcpc_device *tcpc, int en)
 
 static int mt6379_tcpc_deinit(struct tcpc_device *tcpc)
 {
-	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	int cc1 = TYPEC_CC_VOLT_OPEN, cc2 = TYPEC_CC_VOLT_OPEN;
 
-#if CONFIG_TCPC_SHUTDOWN_CC_DETACH
-	mt6379_set_cc(tcpc, TYPEC_CC_OPEN);
-
-	/* Enable i2c reset and set timeout 200ms */
-	mt6379_set_bits(ddata, MT6379_REG_I2CTORSTCTRL,
-			MT6379_MSK_I2CTORST_SEL | MT6379_MSK_I2CTORST_EN);
-#else
-	mt6379_write8(ddata, MT6379_REG_SYSCTRL3, 0x01);
-#endif	/* CONFIG_TCPC_SHUTDOWN_CC_DETACH */
+	mt6379_get_cc(tcpc, &cc1, &cc2);
+	if (cc1 != TYPEC_CC_DRP_TOGGLING &&
+	    (cc1 != TYPEC_CC_VOLT_OPEN || cc2 != TYPEC_CC_VOLT_OPEN)) {
+		mt6379_set_cc(tcpc, TYPEC_CC_OPEN);
+		usleep_range(20000, 30000);
+	}
 	return 0;
 }
 
@@ -1812,8 +1783,8 @@ static int mt6379_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 		 * try to reset protocol before disabling BMC clock
 		 */
 		mt6379_protocol_reset(tcpc);
-		mt6379_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_ALL_MASK);
-		mt6379_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_ALL_MASK);
+		mt6379_alert_status_clear(tcpc, TCPC_V10_REG_ALERT_RX_ALL_MASK);
+		mt6379_alert_status_clear(tcpc, TCPC_V10_REG_ALERT_RX_ALL_MASK);
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 		data = MT6379_MSK_LPWR_EN;
 #if CONFIG_TYPEC_CAP_NORP_SRC
@@ -1902,21 +1873,21 @@ static int mt6379_transmit(struct tcpc_device *tcpc,
 	int ret, data_cnt, packet_cnt;
 	u8 temp[MT6379_TRANSMIT_MAX_SIZE + 1];
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	long long t1 = 0, t2 = 0;
+	u64 t = 0;
 
-	MT6379_INFO("++\n");
-	t1 = local_clock();
+	MT6379_DBGINFO("++\n");
+	t = local_clock();
 	if (type < TCPC_TX_HARD_RESET) {
 		data_cnt = sizeof(u32) * PD_HEADER_CNT(header);
 		packet_cnt = data_cnt + sizeof(u16);
 
 		temp[0] = packet_cnt;
-		memcpy(temp + 1, (u8 *)&header, 2);
+		memcpy(temp + 1, &header, 2);
 		if (data_cnt > 0)
-			memcpy(temp + 3, (u8 *)data, data_cnt);
+			memcpy(temp + 3, data, data_cnt);
 
 		ret = mt6379_bulk_write(ddata, TCPC_V10_REG_TX_BYTE_CNT,
-					(u8 *)temp, packet_cnt + 1);
+					temp, packet_cnt + 1);
 		if (ret < 0)
 			return ret;
 	}
@@ -1924,8 +1895,8 @@ static int mt6379_transmit(struct tcpc_device *tcpc,
 	ret = mt6379_write8(ddata, TCPC_V10_REG_TRANSMIT,
 			     TCPC_V10_REG_TRANSMIT_SET(tcpc->pd_retry_count,
 			     type));
-	t2 = local_clock();
-	MT6379_INFO("-- delta = %lluus\n", (t2 - t1) / NSEC_PER_USEC);
+	t = local_clock() - t;
+	MT6379_INFO("-- delta = %lluns\n", t);
 
 	return ret;
 }
@@ -1937,12 +1908,6 @@ static int mt6379_set_bist_test_mode(struct tcpc_device *tcpc, bool en)
 	return (en ? mt6379_set_bits : mt6379_clr_bits)
 		(ddata, TCPC_V10_REG_TCPC_CTRL,
 		 TCPC_V10_REG_TCPC_CTRL_BIST_TEST_MODE);
-}
-
-static int mt6379_set_bist_carrier_mode(struct tcpc_device *tcpc, u8 pattern)
-{
-	/* Not support this function */
-	return 0;
 }
 #endif /* CONFIG_USB_POWER_DELIVERY */
 
@@ -2008,34 +1973,14 @@ static int mt6379_wakeup_irq_handler(struct mt6379_tcpc_data *ddata)
 	return tcpci_alert_wakeup(ddata->tcpc);
 }
 
-static int mt6379_vsafe0v_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	return mt6379_vbus_change_helper(ddata);
-}
-
-static int mt6379_typec_otp_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	int ret;
-	u8 data;
-
-	ret = mt6379_read8(ddata, MT6379_REG_MTST1, &data);
-	if (ret < 0)
-		return ret;
-	return tcpc_typec_handle_otp(ddata->tcpc,
-				     !!(data & MT6379_MSK_TYPECOTP));
-}
-
-static int mt6379_vbus_valid_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	return mt6379_vbus_change_helper(ddata);
-}
-
 static void mt6379_wd12_strise_irq_dwork_handler(struct work_struct *work)
 {
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct mt6379_tcpc_data *ddata = container_of(dwork,
 						      struct mt6379_tcpc_data,
 						      wd12_strise_irq_dwork);
+
+	pm_system_wakeup();
 
 	MT6379_DBGINFO("++\n");
 	tcpci_lock_typec(ddata->tcpc);
@@ -2050,8 +1995,8 @@ static int mt6379_wd12_strise_irq_handler(struct mt6379_tcpc_data *ddata)
 	/* Pull or discharge status from 0 to 1 in normal polling mode */
 	/* mask */
 	mt6379_clr_bits(ddata, MT6379_REG_MTMASK7, MT6379_MSK_WD12_STRISE);
-	queue_delayed_work(system_freezable_wq, &ddata->wd12_strise_irq_dwork,
-			   msecs_to_jiffies(200));
+	schedule_delayed_work(&ddata->wd12_strise_irq_dwork,
+			      msecs_to_jiffies(900));
 	return 0;
 }
 
@@ -2061,44 +2006,9 @@ static int mt6379_wd12_done_irq_handler(struct mt6379_tcpc_data *ddata)
 	return mt6379_wd_protection_evt_process(ddata);
 }
 
-static int mt6379_wd0_stfall_irq_handler(struct mt6379_tcpc_data *ddata)
+static int mt6379_fod_irq_handler(struct mt6379_tcpc_data *ddata)
 {
-	/* WD0_PULL_STS from 1 to 0 in normal polling mode */
-	return mt6379_floating_ground_evt_process(ddata);
-}
-
-static int mt6379_wd0_strise_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	/* WD0_PULL_STS from 0 to 1 in normal polling mode */
-	return mt6379_floating_ground_evt_process(ddata);
-}
-
-static int mt6379_hidet_cc1_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	return mt6379_hidet_cc_evt_process(ddata);
-}
-
-static int mt6379_hidet_cc2_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	return mt6379_hidet_cc_evt_process(ddata);
-}
-
-static int mt6379_fod_done_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	mt6379_fod_evt_process(ddata);
-	return 0;
-}
-
-static int mt6379_fod_ov_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	mt6379_fod_evt_process(ddata);
-	return 0;
-}
-
-static int mt6379_fod_dischgf_irq_handler(struct mt6379_tcpc_data *ddata)
-{
-	mt6379_fod_evt_process(ddata);
-	return 0;
+	return mt6379_fod_evt_process(ddata);
 }
 
 static int mt6379_ctd_irq_handler(struct mt6379_tcpc_data *ddata)
@@ -2115,57 +2025,86 @@ static int mt6379_ctd_irq_handler(struct mt6379_tcpc_data *ddata)
 	return ret;
 }
 
+static int mt6379_typec_otp_irq_handler(struct mt6379_tcpc_data *ddata)
+{
+	int ret = 0;
+	u8 data = 0;
+
+	ret = mt6379_read8(ddata, MT6379_REG_MTST1, &data);
+	if (ret < 0)
+		return ret;
+	return tcpc_typec_handle_otp(ddata->tcpc,
+				     !!(data & MT6379_MSK_TYPECOTP));
+}
+
+static int mt6379_hidet_cc_irq_handler(struct mt6379_tcpc_data *ddata)
+{
+	return mt6379_hidet_cc_evt_process(ddata);
+}
+
+static int mt6379_wd0_irq_handler(struct mt6379_tcpc_data *ddata)
+{
+	return mt6379_floating_ground_evt_process(ddata);
+}
+
+static int mt6379_vbus_to_cc_irq_handler(struct mt6379_tcpc_data *ddata)
+{
+	mod_delayed_work(system_wq, &ddata->vbus_to_cc_dwork,
+			 msecs_to_jiffies(VBUS_TO_CC_DEBOUNCE));
+	return 0;
+}
+
+static int mt6379_vbus_irq_handler(struct mt6379_tcpc_data *ddata)
+{
+	return mt6379_vbus_change_helper(ddata);
+}
+
 struct irq_mapping_tbl {
 	u8 num;
-	const char *name;
+	s8 grp;
 	int (*hdlr)(struct mt6379_tcpc_data *ddata);
 };
 
-#define MT6379_IRQ_MAPPING(_num, _name) \
-	{ .num = _num, .name = #_name, .hdlr = mt6379_##_name##_irq_handler }
+#define MT6379_IRQ_MAPPING(_num, _grp, _name) \
+	{ .num = _num, .grp = _grp, .hdlr = mt6379_##_name##_irq_handler }
 
 static struct irq_mapping_tbl mt6379_vend_irq_mapping_tbl[] = {
-	MT6379_IRQ_MAPPING(0, wakeup),
+	MT6379_IRQ_MAPPING(0, -1, wakeup),
+	MT6379_IRQ_MAPPING(49, -1, wd12_strise),
+	MT6379_IRQ_MAPPING(50, -1, wd12_done),
+	MT6379_IRQ_MAPPING(24, 0, fod),		/* fod_done */
+	MT6379_IRQ_MAPPING(25, 0, fod),		/* fod_ov */
+	MT6379_IRQ_MAPPING(31, 0, fod),		/* fod_dischgf */
+	MT6379_IRQ_MAPPING(20, -1, ctd),
+	MT6379_IRQ_MAPPING(2, -1, typec_otp),
+	MT6379_IRQ_MAPPING(36, 1, hidet_cc),	/* hidet_cc1 */
+	MT6379_IRQ_MAPPING(37, 1, hidet_cc),	/* hidet_cc2 */
+	MT6379_IRQ_MAPPING(51, 2, wd0),		/* wd0_stfall */
+	MT6379_IRQ_MAPPING(52, 2, wd0),		/* wd0_strise */
+	MT6379_IRQ_MAPPING(22, 3, vbus_to_cc),	/* vbus_to_cc1 */
+	MT6379_IRQ_MAPPING(23, 3, vbus_to_cc),	/* vbus_to_cc2 */
 
-	MT6379_IRQ_MAPPING(1, vsafe0v),
-
-	MT6379_IRQ_MAPPING(2, typec_otp),
-
-	MT6379_IRQ_MAPPING(5, vbus_valid),
-
-	MT6379_IRQ_MAPPING(49, wd12_strise),
-	MT6379_IRQ_MAPPING(50, wd12_done),
-
-	MT6379_IRQ_MAPPING(51, wd0_stfall),
-	MT6379_IRQ_MAPPING(52, wd0_strise),
-
-	MT6379_IRQ_MAPPING(36, hidet_cc1),
-	MT6379_IRQ_MAPPING(37, hidet_cc2),
-
-	MT6379_IRQ_MAPPING(24, fod_done),
-	MT6379_IRQ_MAPPING(25, fod_ov),
-	MT6379_IRQ_MAPPING(31, fod_dischgf),
-
-	MT6379_IRQ_MAPPING(20, ctd),
-	MT6379_IRQ_MAPPING(22, vbus_to_cc1),
-	MT6379_IRQ_MAPPING(23, vbus_to_cc2),
+	MT6379_IRQ_MAPPING(1, 4, vbus),		/* vsafe0V */
+	MT6379_IRQ_MAPPING(5, 4, vbus),		/* vbus_valid */
 };
 
 static int mt6379_alert_vendor_defined_handler(struct tcpc_device *tcpc)
 {
-	int ret, i;
-	u8 irqnum, irqbit;
+	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	u8 irqnum = 0, irqbit = 0;
 	u8 buf[MT6379_VEND_INT_NUM * 2];
 	u8 *mask = &buf[0];
 	u8 *alert = &buf[MT6379_VEND_INT_NUM];
-	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	s8 grp = 0;
+	unsigned long handled_bitmap = 0;
+	int ret = 0, i = 0;
 
 	ret = mt6379_bulk_read(ddata, MT6379_REG_MTMASK1, buf, sizeof(buf));
 	if (ret < 0)
 		return ret;
 
 	for (i = 0; i < MT6379_VEND_INT_NUM; i++) {
-		if (!alert[i])
+		if (!(alert[i] & mask[i]))
 			continue;
 		MT6379_INFO("vend_alert[%d]=alert,mask(0x%02X,0x%02X)\n",
 			    i + 1, alert[i], mask[i]);
@@ -2179,42 +2118,53 @@ static int mt6379_alert_vendor_defined_handler(struct tcpc_device *tcpc)
 		if (irqnum >= MT6379_VEND_INT_NUM)
 			continue;
 		irqbit = mt6379_vend_irq_mapping_tbl[i].num % 8;
-		if (alert[irqnum] & (1 << irqbit))
+		if (alert[irqnum] & BIT(irqbit)) {
+			grp = mt6379_vend_irq_mapping_tbl[i].grp;
+			if (grp >= 0) {
+				ret = test_and_set_bit(grp, &handled_bitmap);
+				if (ret)
+					continue;
+			}
 			mt6379_vend_irq_mapping_tbl[i].hdlr(ddata);
+		}
 	}
 	return 0;
 }
 
 static int mt6379_set_auto_dischg_discnt(struct tcpc_device *tcpc, bool en)
 {
-	u8 mask = TCPC_V10_REG_VBUS_MONITOR | TCPC_V10_REG_AUTO_DISCHG_DISCNT;
-	u8 val = en ? TCPC_V10_REG_AUTO_DISCHG_DISCNT
-		    : TCPC_V10_REG_VBUS_MONITOR;
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	u8 data = 0;
 	int ret = 0;
 
-	MT6379_INFO("en=%d\n", en);
+	MT6379_DBGINFO("en = %d\n", en);
 	if (en) {
-		ret |= mt6379_update_bits(ddata, TCPC_V10_REG_POWER_CTRL,
-					  TCPC_V10_REG_VBUS_MONITOR, 0);
-		ret |= mt6379_update_bits(ddata, TCPC_V10_REG_POWER_CTRL,
-					  TCPC_V10_REG_AUTO_DISCHG_DISCNT,
-					  TCPC_V10_REG_AUTO_DISCHG_DISCNT);
-		return ret;
+		ret = mt6379_read8(ddata, TCPC_V10_REG_POWER_CTRL, &data);
+		if (ret < 0)
+			return ret;
+		data &= ~TCPC_V10_REG_VBUS_MONITOR;
+		ret = mt6379_write8(ddata, TCPC_V10_REG_POWER_CTRL, data);
+		if (ret < 0)
+			return ret;
+		data |= TCPC_V10_REG_AUTO_DISCHG_DISCNT;
+		return mt6379_write8(ddata, TCPC_V10_REG_POWER_CTRL, data);
 	}
-	return mt6379_update_bits(ddata, TCPC_V10_REG_POWER_CTRL, mask, val);
+	return mt6379_update_bits(ddata, TCPC_V10_REG_POWER_CTRL,
+				  TCPC_V10_REG_VBUS_MONITOR |
+				  TCPC_V10_REG_AUTO_DISCHG_DISCNT,
+				  TCPC_V10_REG_VBUS_MONITOR);
 }
 
 static int mt6379_get_vbus_voltage(struct tcpc_device *tcpc, u32 *vbus)
 {
-	int ret;
-	u16 data;
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	u16 data = 0;
+	int ret = 0;
 
 	ret = mt6379_read16(ddata, TCPC_V10_REG_VBUS_VOLTAGE_L, &data);
 	if (ret < 0)
 		return ret;
-	/* TODO: Please re-write it */
+	data = le16_to_cpu(data);
 	*vbus = (data & 0x3FF) * 25;
 	MT6379_DBGINFO("0x%04x, %dmV\n", data, *vbus);
 	return 0;
@@ -2248,7 +2198,6 @@ static struct tcpc_ops mt6379_tcpc_ops = {
 	.get_message = mt6379_get_message,
 	.transmit = mt6379_transmit,
 	.set_bist_test_mode = mt6379_set_bist_test_mode,
-	.set_bist_carrier_mode = mt6379_set_bist_carrier_mode,
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
@@ -2260,12 +2209,10 @@ static struct tcpc_ops mt6379_tcpc_ops = {
 
 	.set_water_protection = mt6379_set_water_protection,
 
-	.set_vbus_short_cc_en = mt6379_enable_vbus_short_cc,
+	.set_vbus_short_cc = mt6379_set_vbus_short_cc,
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
-#if CONFIG_TCPC_FORCE_DISCHARGE_IC
 	.set_force_discharge = mt6379_set_force_discharge,
-#endif	/* CONFIG_TCPC_FORCE_DISCHARGE_IC */
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
 };
 
@@ -2285,7 +2232,8 @@ static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
 		if (ret || !pd_stat)
 			break;
 
-		MT6379_INFO("pd_evt:0x%02X, pd_stat:0x%02X\n", pd_evt, pd_stat);
+		MT6379_DBGINFO("pd_evt:0x%02X, pd_stat:0x%02X\n",
+			       pd_evt, pd_stat);
 
 		handled = true;
 		tcpci_lock_typec(ddata->tcpc);
@@ -2314,12 +2262,8 @@ static int mt6379_tcpc_init_irq(struct mt6379_tcpc_data *ddata)
 
 	dev_info(ddata->dev, "IRQ: %s\n", __func__);
 	/* Mask all alerts & clear them */
-	mt6379_bulk_write(ddata, MT6379_REG_MTMASK1, mt6379_vend_alert_maskall,
-			  ARRAY_SIZE(mt6379_vend_alert_maskall));
-	mt6379_bulk_write(ddata, MT6379_REG_MTINT1, mt6379_vend_alert_clearall,
-			  ARRAY_SIZE(mt6379_vend_alert_clearall));
 	mt6379_write16(ddata, TCPC_V10_REG_ALERT_MASK, 0);
-	mt6379_write16(ddata, TCPC_V10_REG_ALERT, 0x8FFF);
+	mt6379_write16(ddata, TCPC_V10_REG_ALERT, 0xffff);
 
 	ret = platform_get_irq_byname(to_platform_device(ddata->dev), "pd_evt");
 	if (ret < 0) {
@@ -2474,8 +2418,6 @@ static int mt6379_parse_dt(struct mt6379_tcpc_data *ddata)
 				 *tcpc_props_u32[i].val_ptr);
 	}
 
-	ddata->desc = desc;
-
 	if (desc->en_floatgnd) {
 		if (device_property_read_u32(dev, "wd,wd0-tsleep", &val) &&
 		    device_property_read_u32(dev, "wd,wd0_tsleep", &val)) {
@@ -2530,7 +2472,6 @@ static int mt6379_check_revision(struct mt6379_tcpc_data *ddata)
 		return ret;
 	}
 	dev_info(ddata->dev, "did = 0x%04X\n", id);
-	ddata->did = id;
 	return 0;
 }
 
@@ -2553,12 +2494,6 @@ static int mt6379_tcpc_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	ret = mt6379_check_revision(ddata);
-	if (ret < 0) {
-		dev_err(ddata->dev, "failed to check revision(%d)\n", ret);
-		return ret;
-	}
-
 	ddata->desc = devm_kzalloc(ddata->dev, sizeof(*ddata->desc),
 				   GFP_KERNEL);
 	if (!ddata->desc)
@@ -2576,8 +2511,9 @@ static int mt6379_tcpc_probe(struct platform_device *pdev)
 #endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 	INIT_DELAYED_WORK(&ddata->wd12_strise_irq_dwork,
 			  mt6379_wd12_strise_irq_dwork_handler);
-	INIT_DELAYED_WORK(&ddata->cc_short_dwork, mt6379_cc_short_dwork_handler);
 	INIT_DELAYED_WORK(&ddata->fod_polling_dwork, mt6379_fod_polling_dwork_handler);
+	INIT_DELAYED_WORK(&ddata->vbus_to_cc_dwork,
+			  mt6379_vbus_to_cc_dwork_handler);
 
 	ddata->adc_iio = devm_iio_channel_get_all(ddata->dev);
 	if (IS_ERR(ddata->adc_iio)) {
@@ -2590,6 +2526,12 @@ static int mt6379_tcpc_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to register tcpcdev(%d)\n", ret);
 		return ret;
+	}
+
+	ret = mt6379_check_revision(ddata);
+	if (ret < 0) {
+		dev_notice(ddata->dev, "failed to check revision(%d)\n", ret);
+		goto err;
 	}
 
 	ret = mt6379_sw_reset(ddata);
@@ -2649,30 +2591,54 @@ err:
 	return ret;
 }
 
-static void mt6379_shutdown(struct platform_device *pdev)
+static void mt6379_tcpc_remove(struct platform_device *pdev)
 {
 	struct mt6379_tcpc_data *ddata = platform_get_drvdata(pdev);
 
 	disable_irq(ddata->irq);
-	cancel_delayed_work_sync(&ddata->cc_short_dwork);
+	device_init_wakeup(ddata->dev, false);
+	cancel_delayed_work_sync(&ddata->vbus_to_cc_dwork);
+	cancel_delayed_work_sync(&ddata->fod_polling_dwork);
 	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION) {
 #if !CONFIG_WD_DURING_PLUGGED_IN
 		cancel_delayed_work_sync(&ddata->wd_polling_dwork);
 #endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 		cancel_delayed_work_sync(&ddata->wd12_strise_irq_dwork);
 	}
+	tcpc_device_unregister(ddata->dev, ddata->tcpc);
+}
 
+static void mt6379_tcpc_shutdown(struct platform_device *pdev)
+{
+	struct mt6379_tcpc_data *ddata = platform_get_drvdata(pdev);
+
+	disable_irq(ddata->irq);
+	cancel_delayed_work_sync(&ddata->vbus_to_cc_dwork);
+	cancel_delayed_work_sync(&ddata->fod_polling_dwork);
+	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION) {
+#if !CONFIG_WD_DURING_PLUGGED_IN
+		cancel_delayed_work_sync(&ddata->wd_polling_dwork);
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
+		cancel_delayed_work_sync(&ddata->wd12_strise_irq_dwork);
+	}
 	tcpm_shutdown(ddata->tcpc);
 }
 
-static int mt6379_tcpc_suspend(struct device *dev)
+static int __maybe_unused mt6379_tcpc_suspend(struct device *dev)
 {
 	struct mt6379_tcpc_data *ddata = dev_get_drvdata(dev);
 
 	return tcpm_suspend(ddata->tcpc);
 }
 
-static int mt6379_tcpc_resume(struct device *dev)
+static int __maybe_unused mt6379_tcpc_suspend_late(struct device *dev)
+{
+	struct mt6379_tcpc_data *ddata = dev_get_drvdata(dev);
+
+	return tcpm_check_suspend_pending(ddata->tcpc);
+}
+
+static int __maybe_unused mt6379_tcpc_resume(struct device *dev)
 {
 	struct mt6379_tcpc_data *ddata = dev_get_drvdata(dev);
 
@@ -2682,28 +2648,33 @@ static int mt6379_tcpc_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops mt6379_tcpc_pm_ops = {
-	.suspend = mt6379_tcpc_suspend,
-	.resume = mt6379_tcpc_resume,
+	SET_SYSTEM_SLEEP_PM_OPS(mt6379_tcpc_suspend, mt6379_tcpc_resume)
+#if IS_ENABLED(CONFIG_PM_SLEEP)
+	.suspend_late = mt6379_tcpc_suspend_late,
+#endif	/* CONFIG_PM_SLEEP */
 };
 
-static const struct of_device_id __maybe_unused mt6379_tcpc_of_match[] = {
-	{ .compatible = "mediatek,mt6379-tcpc", },
-	{ }
+static const struct of_device_id mt6379_tcpc_of_match[] = {
+	{.compatible = "mediatek,mt6379-tcpc",},
+	{}
 };
 MODULE_DEVICE_TABLE(of, mt6379_tcpc_of_match);
 
 static struct platform_driver mt6379_tcpc_driver = {
 	.probe = mt6379_tcpc_probe,
-	.shutdown = mt6379_shutdown,
+	.remove = mt6379_tcpc_remove,
+	.shutdown = mt6379_tcpc_shutdown,
 	.driver = {
 		.name = "mt6379-tcpc",
+		.owner = THIS_MODULE,
+		.of_match_table = mt6379_tcpc_of_match,
 		.pm = &mt6379_tcpc_pm_ops,
-		.of_match_table = of_match_ptr(mt6379_tcpc_of_match),
 	},
 };
 module_platform_driver(mt6379_tcpc_driver);
 
 MODULE_AUTHOR("Gene Chen <gene_chen@richtek.com>");
 MODULE_DESCRIPTION("MT6379 USB Type-C Port Controller Interface Driver");
-MODULE_LICENSE("GPL");
 MODULE_VERSION("1.0.3");
+#endif	/* CONFIG_TCPC_CLASS */
+MODULE_LICENSE("GPL");

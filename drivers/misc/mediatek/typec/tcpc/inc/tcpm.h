@@ -153,7 +153,8 @@ enum {
 	TCP_NOTIFY_VBUS_SHORT_CC,
 	TCP_NOTIFY_PS_CHANGE,
 	TCP_NOTIFY_CC_HI,
-	TCP_NOTIFY_MISC_END = TCP_NOTIFY_CC_HI,
+	TCP_NOTIFY_ALERT_RATELIMITED,
+	TCP_NOTIFY_MISC_END = TCP_NOTIFY_ALERT_RATELIMITED,
 };
 
 struct tcp_ny_pd_state {
@@ -333,11 +334,6 @@ struct tcp_ny_wd0_state {
 	bool wd0;
 };
 
-struct tcp_ny_vbus_short_cc {
-	bool short_status;
-	u8 short_cc;
-};
-
 struct tcp_notify {
 	union {
 		struct tcp_ny_enable_state en_state;
@@ -359,9 +355,10 @@ struct tcp_notify {
 		struct tcp_ny_cable_type cable_type;
 		struct tcp_ny_typec_otp typec_otp;
 		struct tcp_ny_wd0_state wd0_state;
-		struct tcp_ny_vbus_short_cc vsc_status;
+		int vsc_status;
 		int vbus_level;
 		int cc_hi;
+		bool alert_ratelimited;
 	};
 };
 
@@ -714,6 +711,7 @@ struct tcp_dpm_custom_vdm_data {
 
 struct tcp_dpm_event {
 	uint8_t event_id;
+	uint8_t event_serial;
 	void *user_data;
 	tcp_dpm_event_cb event_cb;
 
@@ -875,6 +873,7 @@ extern int unregister_tcp_dev_notifier(struct tcpc_device *tcpc,
 				struct notifier_block *nb, uint8_t flags);
 
 extern int tcpm_shutdown(struct tcpc_device *tcpc);
+extern int tcpm_check_suspend_pending(struct tcpc_device *tcpc);
 extern int tcpm_suspend(struct tcpc_device *tcpc);
 extern void tcpm_resume(struct tcpc_device *tcpc);
 
@@ -1357,12 +1356,6 @@ static inline uint8_t tcpm_inquire_typec_local_rp(struct tcpc_device *tcpc)
 static inline void tcpm_inquire_sink_vbus(struct tcpc_device *tcpc,
 					  int *mv, int *ma, uint8_t *type)
 {
-}
-
-static inline int tcpm_typec_set_wake_lock(
-	struct tcpc_device *tcpc, bool user_lock)
-{
-	return TCPM_ERROR_NO_IMPLEMENT;
 }
 
 static inline int tcpm_typec_set_usb_sink_curr(

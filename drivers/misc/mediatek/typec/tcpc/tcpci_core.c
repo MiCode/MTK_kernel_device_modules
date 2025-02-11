@@ -3,8 +3,9 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
-#include <linux/init.h>
 #include <linux/module.h>
+#if IS_ENABLED(CONFIG_TCPC_CLASS)
+#include <linux/init.h>
 #include <linux/device.h>
 #include <linux/version.h>
 #include <linux/slab.h>
@@ -25,7 +26,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.30_MTK"
+#define TCPC_CORE_VERSION		"2.0.31_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -51,6 +52,7 @@ static struct device_attribute tcpc_device_attributes[] = {
 	TCPC_DEVICE_ATTR(typec_role, 0664),
 	TCPC_DEVICE_ATTR(local_rp_level, 0664),
 	TCPC_DEVICE_ATTR(timer, 0220),
+	TCPC_DEVICE_ATTR(alert_ratelimit, 0664),
 	TCPC_DEVICE_ATTR(vbus_level, 0444),
 	TCPC_DEVICE_ATTR(cc_high, 0444),
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -64,6 +66,7 @@ enum {
 	TCPC_DESC_TYPEC_ROLE = 0,
 	TCPC_DESC_LOCAL_RP_LEVEL,
 	TCPC_DESC_TIMER,
+	TCPC_DESC_ALERT_RATELIMIT,
 	TCPC_TCPM_VBUS_LEVEL,
 	TCPC_TCPM_CC_HIGH,
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -112,6 +115,11 @@ static ssize_t tcpc_show_property(struct device *dev,
 	case TCPC_DESC_LOCAL_RP_LEVEL:
 		ret = snprintf(buf, 256, "%s\n",
 			local_rp_level_names[tcpc->typec_local_rp_level]);
+		if (ret < 0)
+			break;
+		break;
+	case TCPC_DESC_ALERT_RATELIMIT:
+		ret = snprintf(buf, 256, "%d\n", tcpc->alert_rs.burst);
 		if (ret < 0)
 			break;
 		break;
@@ -272,6 +280,14 @@ static ssize_t tcpc_store_property(struct device *dev,
 			break;
 		}
 		break;
+	case TCPC_DESC_ALERT_RATELIMIT:
+		ret = get_parameters((char *)buf, &val, 1);
+		if (ret < 0) {
+			dev_notice(dev, "get parameters fail\n");
+			return -EINVAL;
+		}
+		tcpc->alert_rs.burst = val;
+		break;
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	case TCPC_DESC_PD_TEST:
 		ret = get_parameters((char *)buf, &val, 1);
@@ -389,6 +405,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 	mutex_init(&tcpc->timer_lock);
 	mutex_init(&tcpc->mr_lock);
 	spin_lock_init(&tcpc->timer_tick_lock);
+	init_waitqueue_head(&tcpc->resume_wait_que);
 
 	tcpc->dev.class = tcpc_class;
 	tcpc->dev.type = &tcpc_dev_type;
@@ -405,6 +422,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 	tcpc->bootmode = bootmode;
 	tcpc->cc_hi = INT_MAX;
 	tcpc->tcpc_vconn_supply = tcpc_desc->vconn_supply;
+	ratelimit_state_init(&tcpc->alert_rs, HZ, 500);
 
 	device_set_of_node_from_dev(&tcpc->dev, parent);
 
@@ -413,17 +431,12 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 		kfree(tcpc);
 		return ERR_PTR(ret);
 	}
-
-	INIT_DELAYED_WORK(&tcpc->event_init_work, tcpc_event_init_work);
-
 	device_init_wakeup(&tcpc->dev, true);
-	tcpc->attach_wake_lock =
-		wakeup_source_register(NULL, "tcpc_attach_wake_lock");
-	tcpc->detach_wake_lock =
-		wakeup_source_register(NULL, "tcpc_detach_wake_lock");
 
 	tcpci_timer_init(tcpc);
+	INIT_DELAYED_WORK(&tcpc->event_init_work, tcpc_event_init_work);
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	tcpci_event_init(tcpc);
 	init_waitqueue_head(&tcpc->tx_wait_que);
 	atomic_set(&tcpc->tx_pending, 0);
 	mutex_init(&tcpc->rxbuf_lock);
@@ -488,16 +501,16 @@ static void bat_update_work_func(struct work_struct *work)
 		POWER_SUPPLY_PROP_STATUS, &value);
 	if (ret == 0) {
 		if (value.intval == POWER_SUPPLY_STATUS_CHARGING) {
-			TCPC_INFO("%s Battery Charging, soc = %d\n",
-				  __func__, tcpc->bat_soc);
+			TCPC_DBG("%s Battery Charging, soc = %d\n",
+				 __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_CHARGING;
 		} else if (value.intval == POWER_SUPPLY_STATUS_DISCHARGING) {
-			TCPC_INFO("%s Battery Discharging, soc = %d\n",
-				  __func__, tcpc->bat_soc);
+			TCPC_DBG("%s Battery Discharging, soc = %d\n",
+				 __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_DISCHARGING;
 		} else {
-			TCPC_INFO("%s Battery Idle, soc = %d\n",
-				  __func__, tcpc->bat_soc);
+			TCPC_DBG("%s Battery Idle, soc = %d\n",
+				 __func__, tcpc->bat_soc);
 			tcpc->charging_status = BSDO_BAT_INFO_IDLE;
 		}
 	}
@@ -536,7 +549,6 @@ static void tcpc_event_init_work(struct work_struct *work)
 #endif /* CONFIG_USB_PD_REV30 */
 
 	tcpci_lock_typec(tcpc);
-	tcpci_event_init(tcpc);
 #if CONFIG_USB_PD_WAIT_BC12
 	tcpc->chg_psy = devm_power_supply_get_by_phandle(
 		tcpc->dev.parent, "charger");
@@ -751,10 +763,6 @@ void tcpc_device_unregister(struct device *dev, struct tcpc_device *tcpc)
 		return;
 
 	tcpc_typec_deinit(tcpc);
-
-	wakeup_source_unregister(tcpc->detach_wake_lock);
-	wakeup_source_unregister(tcpc->attach_wake_lock);
-
 	device_unregister(&tcpc->dev);
 
 }
@@ -849,9 +857,36 @@ void __weak sched_set_fifo(struct task_struct *p)
 MODULE_DESCRIPTION("Richtek TypeC Port Control Core");
 MODULE_AUTHOR("Jeff Chang <jeff_chang@richtek.com>");
 MODULE_VERSION(TCPC_CORE_VERSION);
+#endif	/* CONFIG_TCPC_CLASS */
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.31_MTK
+ * (1) Do I2C/IO transactions when system resumed
+ * (2) Reduce log printing
+ * (3) Revise attach/detach conditions/actions
+ * (4) Disable FOD
+ * (5) Add support for RT1718S
+ * (6) Replace 64-bit divisions with do_div() calls
+ * (7) Disable Rx SOP' when in ready states
+ * (8) Revise BIST flows
+ * (9) Revise discharge controls
+ * (10) Control CC Open in the deinit ops
+ * (11) Revise sink_vbus of standby current
+ * (12) Implement alert ratelimit mechanism
+ * (13) Disable CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
+ * (14) Revise cable discovery flow
+ * (15) Separate tSenderResponse for PD2 and PD3
+ * (16) Enter low power mode with 5ms delay after unattached
+ * (17) Fix tcpm_bk sync issues
+ * (18) Fix SinkTxNG
+ * (19) Call pm_system_wakeup() in delayed_work handler function
+ * (20) Update pd_transmit_state when PD Hard Reset failed
+ * (21) Remove the unwanted PD Hard Reset in tcpm.c
+ * (22) Revise the feature of VBUS shorted to CC
+ * (23) Handle typec timers first
+ * (24) Revise the logics of expected_svid
+ *
  * 2.0.30_MTK
  * (1) Decrease the I2C/IO transactions
  * (2) Remove the old way of get_power_status()

@@ -58,14 +58,11 @@ extern int tcpc_typec_handle_wd(struct tcpc_device **tcpcs, size_t nr, bool wd);
 
 extern int tcpc_typec_handle_fod(struct tcpc_device *tcpc,
 					enum tcpc_fod_status);
-extern int tcpc_typec_handle_otp(struct tcpc_device *tcpc, bool otp);
-
 #if CONFIG_CABLE_TYPE_DETECTION
 extern int tcpc_typec_handle_ctd(struct tcpc_device *tcpc,
 				 enum tcpc_cable_type cable_type);
 #endif /* CONFIG_CABLE_TYPEC_DETECTION */
-
-extern int tcpc_typec_handle_cc_hi(struct tcpc_device *tcpc, int cc_hi);
+extern int tcpc_typec_handle_otp(struct tcpc_device *tcpc, bool otp);
 
 #define typec_get_cc1()		\
 	tcpc->typec_remote_cc[0]
