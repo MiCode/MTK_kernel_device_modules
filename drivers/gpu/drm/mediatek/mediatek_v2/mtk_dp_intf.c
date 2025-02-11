@@ -1128,7 +1128,8 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 	unsigned int bg_left = 0, bg_right = 0;
 	unsigned int bg_top = 0, bg_bot = 0;
 	unsigned int rw_times = 0;
-	u32 val = 0, line_time;
+	unsigned int vblank_time = 0, prefetch_time = 0, config_time = 0;
+	u32 val = 0, line_time = 0;
 	u32 dp_vfp_mutex = 0;
 
 	DPTXMSG("%s w %d, h, %d, clock %d, fps %d!\n",
@@ -1289,9 +1290,21 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 	val = BUF_VDE_BLOCK_URGENT | BUF_NON_VDE_FORCE_PREULTRA | BUF_VDE_BLOCK_ULTRA;
 	mtk_ddp_write_relaxed(comp, val, DP_BUF_VDE, handle);
 
+	/* fix prefetch time at 133us as DE suggests, *100 for integer calculation,
+	 * and also use ceiling function for value (unit: line) written into register
+	 */
 	vtotal = vfp + vpw + vbp + cfg->h;
-	line_time = 1000000 / (vtotal * cfg->vrefresh);
-	val = (200 + line_time - 1) / line_time;
+	line_time = (vtotal * cfg->vrefresh) > 0 ? 1000000 * 100 / (vtotal * cfg->vrefresh) : 1400;
+	vblank_time = line_time * (vfp + vpw + vbp);
+	prefetch_time = 13300;
+	config_time = vblank_time - prefetch_time;
+	val = line_time > 0 ? (config_time + line_time - 100) / line_time : vfp;
+
+	DPTXMSG("line time: %dus, vblank time: %dus, prefetch time: %dus, config time: %dus\n",
+		line_time/100, vblank_time/100, prefetch_time/100, config_time/100);
+	DPTXMSG("vblank line: %d, mutex_vfp= %d line, prefetch= %d line\n",
+		(vfp + vpw + vbp), val, (vfp + vpw + vbp - val));
+
 	val = val | MUTEX_VSYNC_SEL;
 	mtk_ddp_write_relaxed(comp, val, DP_MUTEX_VSYNC_SETTING, handle);
 
