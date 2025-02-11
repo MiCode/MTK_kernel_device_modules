@@ -514,6 +514,10 @@
 	};
 };
 
+&mmlsys2_config {
+	dl-enable;
+};
+
 #include "k6993v1_64/cust.dtsi"
 #include "mediatek/cust_mt6993_camera_v4l2.dtsi"
 #include "mediatek/cust_k6993_connfem.dtsi"
