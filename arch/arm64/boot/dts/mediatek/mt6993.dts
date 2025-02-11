@@ -8749,12 +8749,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
 			poll-sleep-bit32;
-			//hw-trace-built-in;
-			//hw-trace-disable = <16 17 18 19>;
-			cmdq-dump-hw-trace = <0>;
+			gce-wla-vote;
 			cmdq-print-debug = <1>;
 			mediatek,mminfra-supply = <&mminfra_util>;
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
+			smmu-tbu = <2>;
+			axid = <0x1801>;
+			cmdq-dump-buf-size = <1>;
+			cmdq-dump-hw-trace = <1>;
+			hw-trace-built-in;
+			hw-trace-disable = <16 17 18 19>;
 		};
 
 		gce_sec: gce-mbox-sec@30100000 {
@@ -8794,12 +8798,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
 			poll-sleep-bit32;
-			//hw-trace-built-in;
-			//hw-trace-disable = <16 17 18 19>;
-			cmdq-dump-hw-trace = <0>;
+			gce-wla-vote;
 			cmdq-print-debug = <1>;
 			mediatek,mminfra-supply = <&mminfra_util>;
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
+			smmu-tbu = <2>;
+			axid = <0x1801>;
+			cmdq-dump-buf-size = <1>;
+			cmdq-dump-hw-trace = <1>;
+			hw-trace-built-in;
 		};
 
 		gce_sec_1: gce-mbox-sec@30300000 {
@@ -8828,11 +8835,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
 			poll-sleep-bit32;
-			//hw-trace-built-in;
-			cmdq-dump-hw-trace = <0>;
+			gce-wla-vote;
 			cmdq-print-debug = <1>;
 			mediatek,mminfra-supply = <&mminfra_util>;
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
+			smmu-tbu = <2>;
+			axid = <0x1802>;
+			cmdq-dump-buf-size = <1>;
+			cmdq-dump-hw-trace = <1>;
+			hw-trace-built-in;
 		};
 
 		gce_m_sec: gce-mbox-m-sec@30180000 {
@@ -8861,11 +8872,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-mask-bit = <35>;
 			cmdq-dbg-type = <0x4>;
 			poll-sleep-bit32;
-			//hw-trace-built-in;
-			cmdq-dump-hw-trace = <0>;
+			gce-wla-vote;
 			cmdq-print-debug = <1>;
 			mediatek,mminfra-supply = <&mminfra_util>;
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
+			smmu-tbu = <2>;
+			axid = <0x1802>;
+			cmdq-dump-buf-size = <1>;
+			cmdq-dump-hw-trace = <1>;
+			hw-trace-built-in;
 		};
 
 		gce_m_sec_2: gce-mbox-m-sec@30380000 {
