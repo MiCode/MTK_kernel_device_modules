@@ -92,12 +92,6 @@ static bool is_devapc_subsys_enabled(int devapc_type)
 		return false;
 	}
 
-	/* Bypass other devapc as a workaround to avoid system reboot issue */
-	if (devapc_type >= DEVAPC_TYPE_GPU) {
-		pr_info(PFX "%s:%d, bypass devapc\n", __func__, __LINE__);
-		return 0;
-	}
-
 	return mtk_devapc_ctx->subsys_enabled[devapc_type];
 }
 
