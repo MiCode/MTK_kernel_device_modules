@@ -499,6 +499,8 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/perf:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9895:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -674,6 +676,8 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/perf:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc/dpc_v3:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -1179,6 +1183,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmqos:mmqos_wrapper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1600,7 +1605,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/flashlight/v4l2/lm3643.ko",
     #"drivers/misc/mediatek/flashlight/v4l2/lm3644.ko",
     #"drivers/misc/mediatek/i3c_i2c_wrap/mtk-i3c-i2c-wrap.ko",
-    "drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
+    #"drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
     "drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko",
     "drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm.ko",
@@ -2604,8 +2609,10 @@ def get_overlay_modules_list():
 
         mgk_64_device_modules.append("drivers/misc/mediatek/eem_v2/mediatek_eem.ko")
 
-        mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp4_t/imgsensor_isp4_t.ko")
+        #mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
+        #mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp4_t/imgsensor_isp4_t.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp4_t".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cam_cal/src/isp4_t/camera_eeprom_isp4_t.ko")
 

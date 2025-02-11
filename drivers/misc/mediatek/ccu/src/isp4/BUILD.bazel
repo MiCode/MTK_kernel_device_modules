@@ -42,9 +42,11 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
     ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/imgsensor/inc",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
