@@ -5325,7 +5325,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 
 			usb_host: xhci0@16750000 {
-				compatible = "mediatek,mtk-xhci";
+				compatible = "mediatek,mtk-xhci", "mediatek,mt6993-xhci";
 				reg = <0 0x16750000 0 0x1000>;
 				reg-names = "mac";
 				interrupts = <GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>;
