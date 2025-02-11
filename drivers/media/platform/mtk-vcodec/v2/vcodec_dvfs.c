@@ -828,7 +828,8 @@ void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 {
 	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
 		mtk_set_pf_ctrl_enable((bool)enable);
-		mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS] pf dynamic control %s\n", __func__, mtk_get_pf_ctrl_enable()?"enable":"disable");
+		mtk_vcodec_dvfs_qos_log(false, "%s [VDVFS] pf dynamic control %s\n",
+				__func__, mtk_get_pf_ctrl_enable()?"enable":"disable");
 	}
 }
 
@@ -836,7 +837,8 @@ void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
 {
 	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
 		slbc_disable_dcc((bool)off); // 1: disable WCE, 0: enable (default)
-		mtk_v4l2_debug(0, "%s [VDVFS] slc wce %s\n", __func__, off?"disable":"enable");
+		mtk_vcodec_dvfs_qos_log(false, "%s [VDVFS] slc wce %s\n",
+						__func__, off?"disable":"enable");
 	}
 }
 
@@ -859,7 +861,8 @@ void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
 		}
 	}
 
-	mtk_v4l2_debug(0, "%s [VDVFS] cpu margin change %d to %d, count: %d\n", __func__,
+	mtk_vcodec_dvfs_qos_log(false,
+		"%s [VDVFS] cpu margin change %d to %d, count: %d\n", __func__,
 		margin, get_target_margin_low(0), codec_margin_change);
 
 }
@@ -880,9 +883,9 @@ void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
 		}
 	}
 
-	mtk_v4l2_debug(0, "%s [VDVFS] cpu runnable boost change %d to %d, count: %d\n", __func__,
+	mtk_vcodec_dvfs_qos_log(false,
+		"%s [VDVFS] cpu runnable boost change %d to %d, count: %d\n", __func__,
 		boost, is_runnable_boost_enable(), codec_runnable_boost_disable);
 
 
 }
-
