@@ -14,8 +14,15 @@
 
 #undef pr_fmt
 #define pr_fmt(fmt) "pKVM handler: " fmt
+#define PKVM_MGMT_VER	(1)
 
 int __kvm_nvhe_mtk_smc_handler_hyp_init(const struct pkvm_module_ops *ops);
+
+u32 pkvm_mgmt_get_ver(void)
+{
+	return PKVM_MGMT_VER;
+}
+EXPORT_SYMBOL(pkvm_mgmt_get_ver);
 
 static int __init mtk_smc_handler_nvhe_init(void)
 {
