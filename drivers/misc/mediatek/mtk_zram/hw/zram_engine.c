@@ -2694,6 +2694,7 @@ static const struct kernel_param_ops hwe_power_param_ops = {
 	.get = NULL,	/* power status can be queried from get_hwe_gear */
 };
 module_param_cb(kick_hwe_power, &hwe_power_param_ops, NULL, 0600);
+#endif
 
 static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 {
@@ -2758,12 +2759,15 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 		/* CLK_SEL(7): 728MHz with 0.825v or 0.95v */
 		engine_fix_gear_level(&hwz->gear_ctrl, 7 - ENGINE_GEAR_DTS_BASE);
 		break;
+
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 	case ENGINE_ENABLE_GEAR_PE:
 		static_branch_enable(&engine_power_efficiency);
 		break;
 	case ENGINE_DISABLE_GEAR_PE:
 		static_branch_disable(&engine_power_efficiency);
 		break;
+#endif
 	case ENGINE_FREE_RUN_GEAR:
 		/* gear free-run */
 		engine_free_gear_level(&hwz->gear_ctrl);
@@ -2787,7 +2791,6 @@ pre_exit:
 	mutex_unlock(&hwz_mutex);
 	return retval;
 }
-#endif
 
 static int get_hwe_gear(char *buf, const struct kernel_param *kp)
 {
@@ -2812,16 +2815,10 @@ exit:
 }
 
 static const struct kernel_param_ops hwe_gear_param_ops = {
-#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 	.set = &kick_hwe_gear,
-#endif
 	.get = &get_hwe_gear,
 };
-#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 module_param_cb(kick_hwe_gear, &hwe_gear_param_ops, NULL, 0600);
-#else
-module_param_cb(kick_hwe_gear, &hwe_gear_param_ops, NULL, 0400);
-#endif
 
 static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset)
 {
