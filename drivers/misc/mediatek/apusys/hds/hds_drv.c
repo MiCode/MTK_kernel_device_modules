@@ -18,7 +18,6 @@ static struct apusys_core_info *g_info;
 /* global */
 struct apu_hds_device *g_hdev;
 uint32_t g_hds_klog;
-uint32_t g_hds_plog;
 
 static int apu_hds_rpmsg_probe(struct rpmsg_device *rpdev)
 {
@@ -27,7 +26,6 @@ static int apu_hds_rpmsg_probe(struct rpmsg_device *rpdev)
 	pr_info("%s +\n", __func__);
 
 	g_hds_klog = APU_HDS_LOG_LV_INFO;
-	g_hds_plog = 0;
 
 	g_hdev = devm_kzalloc(&rpdev->dev, sizeof(*g_hdev), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(g_hdev)) {

@@ -4,9 +4,10 @@
  */
 
 #include <linux/rpmsg.h>
-#include "hds.h"
-#include "hds_ipi_msg.h"
-#include "apu_sysmem.h"
+#include <hds.h>
+#include <hds_ipi_msg.h>
+#include <hds_plat.h>
+#include <apu_sysmem.h>
 
 #define APU_HDS_BUFFER_MAX_SIZE (1*1024*1024)
 
@@ -137,31 +138,42 @@ static int apu_hds_dev_ipi_cb(struct rpmsg_device *rpdev, void *data,
 	case APU_HDS_IPI_MSG_QUERY_INFO:
 		/* check size boundary */
 		if (ipi_msg->info.init_workbuf_size > APU_HDS_BUFFER_MAX_SIZE ||
-			ipi_msg->info.exec_per_cmd_size > APU_HDS_BUFFER_MAX_SIZE ||
-			ipi_msg->info.exec_subcmd_size > APU_HDS_BUFFER_MAX_SIZE ||
-			ipi_msg->info.pmu_per_cmd_size > APU_HDS_BUFFER_MAX_SIZE ||
-			ipi_msg->info.pmu_per_subcmd_size > APU_HDS_BUFFER_MAX_SIZE) {
-			apu_hds_err("invalid info size(%u/%u/%u/%u/%u)\n",
+			ipi_msg->info.per_cmd_appendix_size > APU_HDS_BUFFER_MAX_SIZE ||
+			ipi_msg->info.per_subcmd_appendix_size > APU_HDS_BUFFER_MAX_SIZE) {
+			apu_hds_err("invalid info size init(%u) cmd(%u) sc(%u)\n",
 				ipi_msg->info.init_workbuf_size,
-				ipi_msg->info.exec_per_cmd_size,
-				ipi_msg->info.exec_subcmd_size,
-				ipi_msg->info.pmu_per_cmd_size,
-				ipi_msg->info.pmu_per_subcmd_size);
+				ipi_msg->info.per_cmd_appendix_size,
+				ipi_msg->info.per_subcmd_appendix_size);
 			ret = -EINVAL;
 		} else {
-			hdev->version = ipi_msg->info.version;
+			hdev->version_hw = ipi_msg->info.version_hw;
+			hdev->version_date = ipi_msg->info.version_date;
+			hdev->version_revision = ipi_msg->info.version_revision;
 			hdev->init_workbuf_size = ipi_msg->info.init_workbuf_size;
-			hdev->exec_per_cmd_size = ipi_msg->info.exec_per_cmd_size;
-			hdev->exec_subcmd_size = ipi_msg->info.exec_subcmd_size;
-			hdev->pmu_per_cmd_size = ipi_msg->info.pmu_per_cmd_size;
-			hdev->pmu_per_subcmd_size = ipi_msg->info.pmu_per_subcmd_size;
-			apu_hds_info("init info (%u/%u/%u/%u/%u/%u)\n",
-				hdev->version,
-				ipi_msg->info.init_workbuf_size,
-				ipi_msg->info.exec_per_cmd_size,
-				ipi_msg->info.exec_subcmd_size,
-				ipi_msg->info.pmu_per_cmd_size,
-				ipi_msg->info.pmu_per_subcmd_size);
+			hdev->per_cmd_appendix_size = ipi_msg->info.per_cmd_appendix_size;
+			hdev->per_subcmd_appendix_size = ipi_msg->info.per_subcmd_appendix_size;
+			apu_hds_info("hds info: ver(0x%x.0x%x.0x%x) size init(%u) cmd(%u) sc(%u)\n",
+				hdev->version_hw,
+				hdev->version_date,
+				hdev->version_revision,
+				hdev->init_workbuf_size,
+				hdev->per_cmd_appendix_size,
+				hdev->per_subcmd_appendix_size);
+
+			/* get platform function by version */
+			hdev->plat_func = hds_plat_get_funcs(hdev->version_hw,
+				hdev->version_date, hdev->version_revision);
+			if (hdev->plat_func == NULL) {
+				apu_hds_err("no plat funcs for version(0x%x.0x%x.0x%x)\n",
+					hdev->version_hw, hdev->version_date, hdev->version_revision);
+				break;
+			}
+
+			if (hdev->plat_func->plat_init(hdev))
+				apu_hds_err("plat version(0x%x.0x%x.0x%x) init failed\n",
+					hdev->version_hw,
+					hdev->version_date,
+					hdev->version_revision);
 
 			ret = apu_hds_dev_handshake_set_buffer(hdev);
 			if (ret)
@@ -273,7 +285,14 @@ int apu_hds_dev_init(struct apu_hds_device *hdev)
 		goto destroy_ept;
 	}
 
-	apu_hds_debug("ret(%d)\n", ret);
+	/* init default platform function */
+	hdev->plat_func = hds_plat_get_funcs(0, 0, 0);
+	if (hdev->plat_func == NULL) {
+		apu_hds_err("no plat funcs for version(0x%x.0x%x.0x%x)\n",
+			hdev->version_hw, hdev->version_date, hdev->version_revision);
+		ret = -EINVAL;
+		goto destroy_ept;
+	}
 
 	goto out;
 

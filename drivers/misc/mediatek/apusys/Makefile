@@ -418,8 +418,12 @@ apu_aov-objs = $(AOV_SRC)
 
 # apu hds makefile
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hds/
-
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hds/platform/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/hds/platform/1.0/
 apusys-objs += hds/hds_drv.o
 apusys-objs += hds/hds_dev.o
 apusys-objs += hds/hds_cmd.o
 apusys-objs += hds/hds_sysfs.o
+apusys-objs += hds/platform/hds_plat.o
+apusys-objs += hds/platform/1.0/hds_plat_1_0.o
+apusys-objs += hds/platform/1.0/hds_plat_1_0_tag.o

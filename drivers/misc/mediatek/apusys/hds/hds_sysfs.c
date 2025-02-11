@@ -12,7 +12,7 @@ static ssize_t klog_show(struct device *dev,
 {
 	int ret = 0;
 
-	ret = sprintf(buf, "%u\n", g_hds_klog);
+	ret = snprintf(buf, 32, "%u\n", g_hds_klog);
 	if (ret < 0)
 		apu_hds_err("show klog fail(%d)\n", g_hds_klog);
 
@@ -39,7 +39,7 @@ static ssize_t plog_show(struct device *dev,
 {
 	int ret = 0;
 
-	ret = sprintf(buf, "%u\n", g_hdev->pmu_lv);
+	ret = snprintf(buf, 32, "%u\n", g_hdev->pmu_lv);
 	if (ret < 0)
 		apu_hds_err("show plog fail(%u)\n", g_hdev->pmu_lv);
 

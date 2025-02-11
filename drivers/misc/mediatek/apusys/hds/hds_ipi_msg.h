@@ -15,19 +15,19 @@ struct apu_hds_ipi_msg {
 	uint32_t op;
 	union {
 		struct {
-			uint32_t version;
+			uint32_t version_hw;
+			uint32_t version_date;
+			uint32_t version_revision;
 			uint32_t init_workbuf_size;
-			uint32_t exec_per_cmd_size;
-			uint32_t exec_subcmd_size;
-			uint32_t pmu_per_cmd_size;
-			uint32_t pmu_per_subcmd_size;
+			uint32_t per_cmd_appendix_size;
+			uint32_t per_subcmd_appendix_size;
+			uint32_t reserve[2];
 		} info;
 
 		struct {
 			uint64_t init_workbuf_va;
 			uint32_t init_workbuf_size;
-			uint64_t reserved0;
-			uint64_t reserved1;
+			uint32_t reserve[4];
 		} init;
 	};
 } __packed;

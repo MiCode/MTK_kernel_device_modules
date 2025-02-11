@@ -11,6 +11,15 @@
 #include <linux/dma-buf.h>
 #include <linux/types.h>
 
+struct apu_hds_device;
+
+/* hds platform related functions */
+struct hds_plat_func {
+	int (*plat_init)(struct apu_hds_device *hdev);
+	void (*plat_deinit)(struct apu_hds_device *hdev);
+	int (*cmd_postprocess_late)(struct apu_hds_device *hdev, void *va, uint32_t size);
+};
+
 /* hds related structure */
 struct apu_hds_device {
 	/* control */
@@ -28,16 +37,19 @@ struct apu_hds_device {
 	uint32_t power_cnt;
 
 	/* queried info */
-	uint32_t version;
+	uint32_t version_hw;
+	uint32_t version_date;
+	uint32_t version_revision;
 	uint32_t init_workbuf_size;
-	uint32_t exec_per_cmd_size;
-	uint32_t exec_subcmd_size;
-	uint32_t pmu_per_cmd_size;
-	uint32_t pmu_per_subcmd_size;
+	uint32_t per_cmd_appendix_size;
+	uint32_t per_subcmd_appendix_size;
 
 	struct work_struct ipi_wk;
 	struct list_head msgs; //for ipi_wk
 	struct mutex msg_mtx;
+
+	/* plat func */
+	struct hds_plat_func *plat_func;
 };
 
 /* hds api */
@@ -49,17 +61,16 @@ int hds_cmd_init(void);
 
 /* hds log definition */
 extern uint32_t g_hds_klog; //hds_procfs.c
-extern uint32_t g_hds_plog; //hds_procfs.c
 extern struct apu_hds_device *g_hdev; //hds_drv.c
 
 enum {
-	APU_HDS_LOG_LV_DEBUG = 0x1,
-	APU_HDS_LOG_LV_INFO = 0x2,
-	APU_HDS_LOG_LV_WARN = 0x3,
-	APU_HDS_LOG_LV_ERROR = 0x4,
+	APU_HDS_LOG_LV_ERROR = 0x1,
+	APU_HDS_LOG_LV_WARN = 0x2,
+	APU_HDS_LOG_LV_INFO = 0x3,
+	APU_HDS_LOG_LV_DEBUG = 0x4,
 };
 
-static inline int hds_debug_on(int lv)
+static inline bool hds_debug_on(int lv)
 {
 	return g_hds_klog >= lv;
 }
