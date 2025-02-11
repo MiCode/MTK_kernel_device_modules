@@ -1381,7 +1381,7 @@ ccu_run_err:
 	return ret;
 }
 
-int ccu_i2c_ctrl(unsigned char i2c_write_id, int transfer_len)
+int ccu_i2c_ctrl(unsigned char i2c_write_id, unsigned int transfer_len)
 {
 
 	LOG_DBG("+:%s\n", __func__);
