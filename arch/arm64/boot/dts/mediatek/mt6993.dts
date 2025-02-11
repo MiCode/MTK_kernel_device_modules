@@ -960,7 +960,7 @@
 		sapu-data-shm-size = <0 0x1000000>;
 	};
 
-	ssmr {
+	ssmr: ssmr {
 		compatible = "mediatek,trusted_mem";
 		memory-region = <&ssmr_cma_mem>;
 	};
