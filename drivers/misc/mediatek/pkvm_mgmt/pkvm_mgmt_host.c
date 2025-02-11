@@ -13,7 +13,7 @@
 #include "../include/pkvm_mgmt/pkvm_mgmt.h"
 
 #undef pr_fmt
-#define pr_fmt(fmt) "pKVM handler: " fmt
+#define pr_fmt(fmt) "[PKVM_MGMT]: " fmt
 #define PKVM_MGMT_VER	(1)
 
 int __kvm_nvhe_mtk_smc_handler_hyp_init(const struct pkvm_module_ops *ops);

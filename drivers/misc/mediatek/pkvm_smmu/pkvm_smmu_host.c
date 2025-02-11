@@ -15,6 +15,9 @@
 #include "../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "pkvm_smmu_host.h"
 
+#undef pr_fmt
+#define pr_fmt(fmt) "[PKVM_SMMU]: " fmt
+
 int kvm_nvhe_sym(smmu_hyp_init)(const struct pkvm_module_ops *ops);
 
 static unsigned long pkvm_module_token;

@@ -12,6 +12,9 @@
 #include "../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "pkvm_tmem_host.h"
 
+#undef pr_fmt
+#define pr_fmt(fmt) "[PKVM_TMEM]: " fmt
+
 static int __init test_nvhe_init(void)
 {
 	int ret;
