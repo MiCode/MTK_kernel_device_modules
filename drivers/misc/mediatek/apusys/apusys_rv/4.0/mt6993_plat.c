@@ -124,6 +124,9 @@ enum APU_EXCEPTION_ID {
 #define APU_L2CACHE_WAY_NUM 8
 #define APU_CACHE_DUMP_SETTING_MODE 16
 
+/* TODO: enable after NPU stable */
+#define PWR_OFF_TIMEOUT_DETECTION (0)
+
 static void *apu_are_reg;
 
 /* for IPI IRQ affinity tuning*/
@@ -837,7 +840,7 @@ static int mt6993_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 				profile_start(&ts);
 				if (!ret) {
 					/* for power timeout detection */
-					if ((apu->platdata->flags & F_BRINGUP) == 0)
+					if (PWR_OFF_TIMEOUT_DETECTION)
 						queue_delayed_work(apu_workq,
 							&timeout_work,
 							msecs_to_jiffies(APU_PWROFF_TIMEOUT_MS));
@@ -885,7 +888,7 @@ static int mt6993_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 				if (!ret) {
 					/* clear status & cancel timeout worker */
 					apu->bypass_pwr_off_chk = false;
-					if ((apu->platdata->flags & F_BRINGUP) == 0)
+					if (PWR_OFF_TIMEOUT_DETECTION)
 						cancel_delayed_work_sync(&timeout_work);
 					if (id == APU_IPI_SCP_NP_RECOVER)
 						is_under_lp_scp_recovery_flow = false;
@@ -973,7 +976,7 @@ static int mt6993_power_on_off(struct mtk_apu *apu, u32 id, u32 on, u32 off)
 
 static int mt6993_ipi_send_pre(struct mtk_apu *apu, uint32_t id, bool is_host_initiated)
 {
-	if (apu->platdata->flags & F_BRINGUP)
+	if (!PWR_OFF_TIMEOUT_DETECTION)
 		return 0;
 
 	if (!is_host_initiated)
@@ -1397,7 +1400,7 @@ static int mt6993_rproc_exit(struct mtk_apu *apu)
 const struct mtk_apu_platdata mt6993_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
 					F_SMMU_SUPPORT | F_DEBUG_MEM_SUPPORT | F_PRELOAD_FIRMWARE |
-					F_APUSYS_RV_TAG_SUPPORT | F_BRINGUP | F_DEBUG_LOG_ON |
+					F_APUSYS_RV_TAG_SUPPORT |
 					F_RV_BSP_RX_SUPPORT | F_COREDUMP_RV55 | F_SECURE_BOOT | F_SECURE_COREDUMP,
 	.ops		= {
 		.init	= mt6993_rproc_init,
