@@ -27,13 +27,12 @@
 
 #define CONFIG_MTK_PANEL_EXT
 #if defined(CONFIG_MTK_PANEL_EXT)
-#include "../mediatek/mediatek_v2/mtk_panel_ext.h"
-#include "../mediatek/mediatek_v2/mtk_log.h"
-#include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
+#include "mtk_panel_ext.h"
+#include "mtk_drm_graphics_base.h"
 #endif
 
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-#include "../mediatek/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
+#include "mtk_data_hw_roundedpattern.h"
 #endif
 
 #define HSA 14
@@ -422,14 +421,14 @@ static int panel_ata_check(struct drm_panel *panel)
 	if (ret < 0)
 		pr_info("%s error\n", __func__);
 
-	DDPINFO("ATA read data %x %x %x\n", data[0], data[1], data[2]);
+	pr_info("ATA read data %x %x %x\n", data[0], data[1], data[2]);
 
 	if (data[0] == id[0] &&
 			data[1] == id[1] &&
 			data[2] == id[2])
 		return 1;
 
-	DDPINFO("ATA expect read data is %x %x %x\n",
+	pr_info("ATA expect read data is %x %x %x\n",
 			id[0], id[1], id[2]);
 
 	return 0;
