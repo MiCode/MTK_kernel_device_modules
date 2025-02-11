@@ -13,6 +13,7 @@
 #define HWUI_MAX_FRAME_SAME_TIME 5
 #define MAX_SBE_SPID_LOADING_SIZE 10
 #define MAX_SBE_RECYCLE_IDLE_CNT 5
+#define MAX_PROCESS_NAME_LEN 16
 
 struct sbe_info {
 	int pid;
@@ -40,6 +41,8 @@ struct sbe_render_info {
 	int dep_self_ctrl;
 	int dep_num;
 	int dep_arr[MAX_TASK_NUM];
+	int ai_boost;
+	int ai_boost_ctl;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;
 	unsigned long long frame_time;
@@ -95,5 +98,6 @@ int sbe_split_task_name(int tgid, char *dep_name, int dep_num, int *out_tid_arr,
 int sbe_split_task_tid(char *dep_name, int dep_num, int *out_tid_arr, const char *caller);
 int sbe_base_init(void);
 void sbe_base_exit(void);
+void sbe_get_proc_name(int tgid, char *name);
 
 #endif

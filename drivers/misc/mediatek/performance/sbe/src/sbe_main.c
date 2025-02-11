@@ -570,6 +570,8 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 		sbe_put_tree_lock(__func__);
 	}
 
+	sbe_register_jank_cb(mask);
+
 	for (i = 0; i < final_pid_arr_idx; i++) {
 		if (test_bit(SBE_CPU_CONTROL, &mask)) {
 			switch_fpsgo_control(1, final_pid_arr[i], start, final_bufID_arr[i]);
@@ -615,6 +617,8 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 			attr_iter.gcc_enable_by_pid = 0;
 			attr_iter.qr_enable_by_pid = 0;
 			set_fpsgo_attr(1, final_pid_arr[i], 1, &attr_iter);
+
+			sbe_notify_ux_jank_detection(true, tgid, final_pid_arr[i], mask, thr, final_bufID_arr[i]);
 
 			//get sbe_render_info struct for this tid and buffer_id
 			if (test_bit(SBE_HWUI, &mask) && thr != NULL) {
@@ -662,6 +666,8 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 				}
 				sbe_reset_deplist_task_priority(thr);
 			}
+
+			sbe_notify_ux_jank_detection(false, tgid, final_pid_arr[i], mask, thr, final_bufID_arr[i]);
 
 			//update scroll_info when scroll end
 			if (test_bit(SBE_HWUI, &mask) && thr != NULL) {

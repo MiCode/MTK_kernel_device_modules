@@ -778,3 +778,23 @@ void sbe_base_exit(void)
 
 	sbe_sysfs_remove_dir(&sbe_base_kobj);
 }
+
+void sbe_get_proc_name(int tgid, char *name)
+{
+	struct task_struct *gtsk = NULL;
+
+	if (!name)
+		return;
+
+	rcu_read_lock();
+	gtsk = find_task_by_vpid(tgid);
+	if (gtsk) {
+		get_task_struct(gtsk);
+		strscpy(name, gtsk->comm, 16);
+		put_task_struct(gtsk);
+		name[15] = '\0';
+	} else {
+		name[0]= '\0';
+	}
+	rcu_read_unlock();
+}

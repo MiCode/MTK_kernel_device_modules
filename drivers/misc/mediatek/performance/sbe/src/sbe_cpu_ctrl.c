@@ -69,6 +69,25 @@ static int gas_threshold_for_low_TLP;
 static int gas_threshold_for_high_TLP;
 static int global_sbe_dy_enhance;
 static int global_sbe_dy_enhance_max_pid;
+static int sbe_ai_ctrl_enabled;
+
+/*For AI jank detection*/
+static int ai_rescuing_frame_id;
+static int registered;
+static int curr_pid;
+static unsigned long long curr_idf;
+
+typedef void (*heavy_fp)(int jank, int tgid, int pid, unsigned long long frameid);
+int (*register_jank_ux_callback_fp)(heavy_fp cb);
+EXPORT_SYMBOL(register_jank_ux_callback_fp);
+int (*unregister_jank_ux_callback_fp)(heavy_fp cb);
+EXPORT_SYMBOL(unregister_jank_ux_callback_fp);
+void (*sbe_frame_hint_fp)(int frame_start, int perf_index, int capacity_area,
+								int buffer_count, unsigned long long frame_id);
+EXPORT_SYMBOL(sbe_frame_hint_fp);
+
+void (*enable_ux_jank_detection_fp)(bool enable, const char *info, int tgid, int pid);
+EXPORT_SYMBOL(enable_ux_jank_detection_fp);
 
 #if IS_ENABLED(CONFIG_ARM64)
 #define SMART_LAUNCH_BOOST_SUPPORT_CLUSTER_NUM 3
@@ -97,6 +116,7 @@ module_param(ux_general_policy_dpt_setwl, int, 0644);
 module_param(gas_threshold_for_low_TLP, int, 0644);
 module_param(gas_threshold_for_high_TLP, int, 0644);
 module_param(smart_launch_off_on, int, 0644);
+module_param(sbe_ai_ctrl_enabled, int, 0644);
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -219,6 +239,72 @@ static void sbe_set_deplist_policy(struct sbe_render_info *thr, int policy)
 		}
 	}
 	sbe_systrace_c(thr->pid, thr->buffer_id, policy, "[ux]set_vip");
+}
+
+void sbe_set_curr_thread_info(int pid, unsigned long long identifier)
+{
+	curr_pid = pid;
+	curr_idf = identifier;
+}
+
+void receive_jank_detection(int perf, int tgid, int pid, unsigned long long frameid)
+{
+	struct sbe_render_info *sbe_rinfo = NULL;
+
+	sbe_get_tree_lock(__func__);
+	sbe_rinfo =	sbe_get_render_info(curr_pid, curr_idf, 0);
+
+	if (sbe_rinfo != NULL) {
+		sbe_trace("Received curr_pid %d, heavy detection: %d", curr_pid, perf);
+		sbe_do_rescue(sbe_rinfo, 1, perf, RESCUE_TYPE_AI_RESCUE, 0, frameid);
+	}
+	sbe_put_tree_lock(__func__);
+}
+
+void sbe_notify_ux_jank_detection(bool enable, int tgid, int pid, unsigned long mask,
+			struct sbe_render_info *sbe_thr, unsigned long long buf_id)
+{
+	char *proc_name = NULL;
+
+	if (!enable_ux_jank_detection_fp || !sbe_ai_ctrl_enabled)
+		return;
+
+	proc_name = kcalloc(MAX_PROCESS_NAME_LEN, sizeof(char), GFP_KERNEL);
+	if (!proc_name)
+		goto out;
+
+	proc_name[15] = '\0';
+	sbe_get_proc_name(tgid, proc_name);
+	enable_ux_jank_detection_fp(enable, proc_name, tgid, pid);
+	sbe_trace("ux jank detection: tgid=%d, pid=%d, proc_name=%s,enable=%d, mask=%llu\n",
+		tgid, pid, proc_name, enable, mask);
+
+	if (enable && test_bit(SBE_HWUI, &mask) && sbe_thr != NULL)
+		sbe_set_curr_thread_info(pid, buf_id);
+
+	kfree(proc_name);
+out:
+	return;
+}
+
+void sbe_register_jank_cb(unsigned long mask)
+{
+	if (test_bit(SBE_HWUI, &mask)) {
+		if (!sbe_ai_ctrl_enabled) {
+			if (unregister_jank_ux_callback_fp && registered == 1) {
+				unregister_jank_ux_callback_fp(receive_jank_detection);
+				sbe_trace("unregister_jank_ux_callback_fp...");
+				registered = 0;
+			}
+		} else {
+			if (register_jank_ux_callback_fp && registered == 0) {
+				register_jank_ux_callback_fp(receive_jank_detection);
+				sbe_trace("register_jank_ux_callback_fp...");
+				registered = 1;
+			}
+		}
+	}
+
 }
 
 static int sbe_cal_perf(long long t_cpu_cur, long long target_time,
@@ -349,19 +435,53 @@ void sbe_set_per_task_cap(struct sbe_render_info *thr)
 	int set_blc_wt = 0;
 	int local_min_cap = 0;
 	int local_max_cap = 100;
+	int ai_boost = 0;
 
 	set_blc_wt = thr->ux_blc_cur + thr->sbe_enhance;
 	set_blc_wt = clamp(set_blc_wt, 0, 100);
 
-	local_min_cap = set_blc_wt;
-	if (!set_blc_wt || thr->sbe_enhance > 0)
-		local_max_cap = 100;
-	else
-		local_max_cap = set_blc_wt;
+	if (!sbe_ai_ctrl_enabled) {
+		local_min_cap = set_blc_wt;
+		if (!set_blc_wt || thr->sbe_enhance > 0)
+			local_max_cap = 100;
+		else
+			local_max_cap = set_blc_wt;
+	} else {
+		ai_boost = thr->ai_boost > 0 ? thr->ai_boost : set_blc_wt;
+		ai_boost = clamp(ai_boost, 0, 100);
+		local_min_cap = ai_boost >= set_blc_wt ? thr->ai_boost : set_blc_wt;
+		if (!set_blc_wt || (!thr->ai_boost || thr->sbe_enhance > 0))
+			local_max_cap = 100;
+		else
+			local_max_cap = local_min_cap;
+
+		sbe_systrace_c(thr->pid, thr->buffer_id, ai_boost, "[ux_ai]perf_idx");
+		sbe_systrace_c(thr->pid, thr->buffer_id, set_blc_wt, "[ux_sbe]perf_idx");
+	}
 
 	__sbe_set_per_task_cap(thr, local_min_cap, local_max_cap);
 	sbe_systrace_c(thr->pid, thr->buffer_id, local_min_cap, "[ux]perf_idx");
 	sbe_systrace_c(thr->pid, thr->buffer_id, local_max_cap, "[ux]perf_idx_max");
+}
+
+
+void sbe_notify_ai_frame_hint(int frame_start, int capacity_area, struct sbe_render_info *thr,
+							unsigned long long frameid)
+{
+	if (!sbe_frame_hint_fp || !thr || !sbe_ai_ctrl_enabled)
+		return;
+
+	if (frame_start) {
+		thr->ai_boost = 0;
+		sbe_trace("[ai_hint] start: %d, sbe_rescued:%d, enhance_f: %d, frameid: %llu",
+				frame_start, thr->ux_blc_cur, thr->sbe_dy_enhance_f);
+		sbe_frame_hint_fp(1, thr->ux_blc_cur, capacity_area, thr->cur_buffer_count, frameid);
+	} else {
+		sbe_trace("[ai_hint] start: %d, sbe_rescued:%d, enhance_f: %d, frameid: %llu",
+				frame_start, thr->sbe_rescue, thr->sbe_dy_enhance_f);
+		sbe_frame_hint_fp(0, 0, capacity_area, thr->cur_buffer_count, frameid);
+	}
+
 }
 
 void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid, unsigned long long ts)
@@ -374,6 +494,8 @@ void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid,
 		sbe_set_deplist_policy(thr, SBE_TASK_VIP);
 
 	sbe_set_per_task_cap(thr);
+
+	sbe_notify_ai_frame_hint(1, -1, thr, frameid);
 
 	if (sbe_dy_rescue_enable && !list_empty(&thr->scroll_list)) {
 		struct hwui_frame_info *frame = get_valid_hwui_frame_info_from_pool(thr);
@@ -451,6 +573,7 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->ux_blc_next, "[ux]ux_blc_next");
 
 EXIT:
+	sbe_notify_ai_frame_hint(0, loading, thr, frameid);
 	thr->ux_blc_cur = 0;
 	sbe_set_per_task_cap(thr);
 }
@@ -1110,6 +1233,74 @@ static void update_rescue_filter_info(struct sbe_render_info *thr)
 	sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]rescue_filter");
 }
 
+void fpsgo_ai_boost(struct sbe_render_info *thr, int start, int boost, int frame_id)
+{
+	mutex_lock(&sbe_rescue_lock);
+	if (start) {
+		struct hwui_frame_info *frame =
+			get_hwui_frame_info_by_frameid(thr, frame_id);
+
+		if (frame == NULL) {
+			sbe_trace("frame not found!\n");
+			goto leave;
+		} else if (frame->end_ts > frame->start_ts) {
+			sbe_trace("frame is end :%llu\n", frame_id);
+			goto leave;
+		}
+
+		ai_rescuing_frame_id = frame_id;
+
+		thr->ai_boost = boost < 0 ?  0 : boost;
+		thr->ai_boost = clamp(thr->ai_boost, 0, 100);
+		thr->ai_boost_ctl = 1;
+
+		sbe_set_per_task_cap(thr);
+		sbe_systrace_c(thr->pid, thr->buffer_id, thr->ai_boost, "[ux]ai_boost");
+	} else {
+		if (thr->ai_boost_ctl == 0)
+			goto leave;
+		if (frame_id < ai_rescuing_frame_id)
+			goto leave;
+		ai_rescuing_frame_id = -1;
+		thr->ai_boost_ctl = 0;
+		thr->ai_boost = 0;
+
+		sbe_set_per_task_cap(thr);
+		sbe_systrace_c(thr->pid, thr->buffer_id, thr->ai_boost, "[ux]ai_boost");
+	}
+leave:
+	mutex_unlock(&sbe_rescue_lock);
+}
+
+void sbe_notify_ai_do_boost(struct sbe_render_info *thr, int start,
+							int rescue_type, int boost, int frame_id)
+{
+	if (!thr || !sbe_ai_ctrl_enabled)
+		return;
+
+	if (rescue_type == RESCUE_TYPE_AI_RESCUE) {
+		fpsgo_ai_boost(thr, start, boost, frame_id);
+		return;
+	}
+
+	if (!start)
+		fpsgo_ai_boost(thr, 0, 0, frame_id);
+
+}
+
+int sbe_switch_ai_clear_boost_info(struct sbe_render_info *thr)
+{
+	if (!thr || !sbe_ai_ctrl_enabled)
+		return 0;
+
+	if (thr->ai_boost_ctl) {
+		thr->sbe_enhance = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
 void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id)
 {
@@ -1121,6 +1312,8 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 
 	if (sbe_query_cur_buffer_count(thr))
 		return;
+
+	sbe_notify_ai_do_boost(thr, start, rescue_type, enhance, frame_id);
 
 	mutex_lock(&sbe_rescue_lock);
 	if (start) {
@@ -1185,6 +1378,9 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 			sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_M);
 			#endif
 		}
+
+		if (sbe_switch_ai_clear_boost_info(thr))
+			goto leave;
 
 		sbe_set_per_task_cap(thr);
 		sbe_systrace_c(thr->pid, thr->buffer_id, thr->sbe_enhance, "[ux]sbe_rescue");
@@ -1710,6 +1906,10 @@ int __init sbe_cpu_ctrl_init(void)
 	gas_threshold = 10;
 	gas_threshold_for_low_TLP = 10;
 	gas_threshold_for_high_TLP = 5;
+
+	ai_rescuing_frame_id = -1;
+	registered = 0;
+	sbe_ai_ctrl_enabled = 0;
 
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);

@@ -34,6 +34,7 @@
 #define RESCUE_TYPE_BUFFER_FOUNT_FITLER   (1 << 9)
 #define RESCUE_TYPE_PRE_ANIMATION         (1 << 10)
 #define RESCUE_TYPE_ENABLE_MARGIN         (1 << 11)
+#define RESCUE_TYPE_AI_RESCUE             (1 << 12)
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
@@ -146,6 +147,9 @@ void sbe_do_rescue_legacy(struct sbe_render_info *thr, int start, int enhance,
 int sbe_get_perf(void);
 void fbt_ux_set_perf(int cur_pid, int cur_blc);
 void sbe_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance);
+void sbe_register_jank_cb(unsigned long mask);
+void sbe_notify_ux_jank_detection(bool enable, int tgid, int pid, unsigned long mask,
+					struct sbe_render_info *sbe_thr, unsigned long long buf_id);
 
 extern int group_set_threshold(int grp_id, int val);
 extern int group_reset_threshold(int grp_id);
