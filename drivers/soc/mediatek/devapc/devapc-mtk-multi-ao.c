@@ -987,7 +987,8 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 			!strncasecmp(dispatch_key, "GCE", 3))
 		id = INFRA_SUBSYS_GCE;
 
-	else if (!strncasecmp(vio_master, "MCU_AP_M", 8))
+	else if (!strncasecmp(vio_master, "MCU_AP_M", 8) ||
+			 !strncasecmp(vio_master, "APMCU", 5))
 		if (vio_info->domain_id == 0)
 			id = INFRA_SUBSYS_APMCU;
 		else
@@ -1020,10 +1021,13 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 			viocb->debug_dump();
 	}
 
+	pr_info(PFX "enable AEE:0x%x,enable KE:0x%x, enable WARN:0x%x",
+			dbg_stat->enable_AEE, dbg_stat->enable_KE, dbg_stat->enable_WARN);
+	pr_info(PFX "ret_cb = 0x%x", ret_cb);
 	/* Severity level */
 	if (dbg_stat->enable_AEE) {
 		/* call mtk aee_kernel_exception */
-		pr_info(PFX "Device APC Violation Issue/%s", dispatch_key);
+		pr_info(PFX "[AEE] Device APC Violation Issue/%s", dispatch_key);
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_exception("[DEVAPC]",
 			"%s%s\n",
@@ -1031,9 +1035,8 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 			dispatch_key);
 #endif
 	} else if (dbg_stat->enable_KE && (ret_cb != DEVAPC_NOT_KE)) {
-		pr_info(PFX "Device APC Violation Issue/%s", dispatch_key);
+		pr_info(PFX "[KE] Device APC Violation Issue/%s", dispatch_key);
 		BUG_ON(id != INFRA_SUBSYS_CONN && id != INFRA_SUBSYS_PCIE);
-
 	} else if (dbg_stat->enable_WARN) {
 		WARN(1, "Device APC Violation Issue/%s", dispatch_key);
 	}

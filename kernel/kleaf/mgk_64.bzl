@@ -1380,6 +1380,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895-ccu".format(kernel_version): "mt6895",
 
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6768".format(kernel_version): "mt6768",
+    "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6993".format(kernel_version): "mt6993",
@@ -2813,6 +2814,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/slbc:slbc_mt6993".format(kernel_version))
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6789".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6895".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6993".format(kernel_version))
