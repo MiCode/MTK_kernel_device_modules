@@ -15,6 +15,9 @@
 #include <linux/iommu.h>
 #include "mtk-smmu-v3.h"
 
+#define CREATE_TRACE_POINTS
+#include "mmmc_events.h"
+
 #define MM_MONITOR_DRIVER_NAME		"mtk-mm-monitor-controller"
 
 /* settings for AXI Monitor */
@@ -435,6 +438,8 @@ void mtk_mmmc_set_ostdbl(uint32_t hwid, uint32_t min_freq)
 			hwid, w_ostdbl, freq_ostdbl.w_ostdbl);
 
 	set_ostdbl_to_aximon(hwid, r_ostdbl, w_ostdbl);
+	trace_mmmc__axi_mon_ostdbl("r", r_ostdbl, hwid);
+	trace_mmmc__axi_mon_ostdbl("w", w_ostdbl, hwid);
 }
 EXPORT_SYMBOL(mtk_mmmc_set_ostdbl);
 
@@ -464,6 +469,8 @@ void mtk_mmmc_set_ostdbl_by_larb(uint32_t hwid, uint32_t avg_r_bw, uint32_t avg_
 			g_mtk_bwr[hwid]->ostdbl_w_nps, w_srt_ostdbl);
 
 	set_ostdbl_to_aximon(hwid, r_ostdbl, w_ostdbl);
+	trace_mmmc__axi_mon_ostdbl("r", r_ostdbl, hwid);
+	trace_mmmc__axi_mon_ostdbl("w", w_ostdbl, hwid);
 }
 EXPORT_SYMBOL(mtk_mmmc_set_ostdbl_by_larb);
 
@@ -560,6 +567,10 @@ void mtk_mmmc_set_bw_limiter(uint32_t hwid, uint32_t r_bw, uint32_t w_bw, uint32
 		"r_budget:%d, r_threshold:%d, w_budget:%d, w_threshold:%d",
 		hwid, r_bw, w_bw, r_bwl, w_bwl, r_budget, r_threshold, w_budget, w_threshold);
 	set_bwl_to_aximon(hwid, r_budget, r_threshold, w_budget, w_threshold);
+	trace_mmmc__axi_mon_bwl_threshold("r", hwid, r_threshold);
+	trace_mmmc__axi_mon_bwl_threshold("w", hwid, w_threshold);
+	trace_mmmc__axi_mon_bwl_budget("r", hwid, r_budget);
+	trace_mmmc__axi_mon_bwl_budget("w", hwid, w_budget);
 }
 EXPORT_SYMBOL(mtk_mmmc_set_bw_limiter);
 
@@ -1980,5 +1991,79 @@ static __init int mm_monitor_init(void)
 	}
 	return 0;
 }
+
+int mmmc_set_ostdbl_r_factor(const char *val, const struct kernel_param *kp)
+{
+	u32 r_factor = 0;
+	int ret;
+
+	ret = kstrtou32(val, 0, &r_factor);
+
+	if (ret) {
+		MM_MONITOR_ERR("failed:%d r_factor:%d", ret, r_factor);
+		return ret;
+	}
+
+	g_mtk_axi_mon->ostdbl_master_r_factor = r_factor;
+
+	return 0;
+}
+
+
+static const struct kernel_param_ops mmmc_set_ostdbl_r_factor_ops = {
+	.set = mmmc_set_ostdbl_r_factor,
+	.get = param_get_uint,
+};
+module_param_cb(ostdbl_r_factor, &mmmc_set_ostdbl_r_factor_ops, NULL, 0644);
+MODULE_PARM_DESC(ostdbl_r_factor, "set ostdbl r factor");
+
+int mmmc_set_ostdbl_w_factor(const char *val, const struct kernel_param *kp)
+{
+	u32 w_factor = 0;
+	int ret;
+
+	ret = kstrtou32(val, 0, &w_factor);
+
+	if (ret) {
+		MM_MONITOR_ERR("failed:%d w_factor:%d", ret, w_factor);
+		return ret;
+	}
+
+	g_mtk_axi_mon->ostdbl_master_w_factor = w_factor;
+
+	return 0;
+}
+
+static const struct kernel_param_ops mmmc_set_ostdbl_w_factor_ops = {
+	.set = mmmc_set_ostdbl_w_factor,
+	.get = param_get_uint,
+};
+module_param_cb(ostdbl_w_factor, &mmmc_set_ostdbl_w_factor_ops, NULL, 0644);
+MODULE_PARM_DESC(ostdbl_w_factor, "set ostdbl w factor");
+
+int mmmc_set_threshold_us(const char *val, const struct kernel_param *kp)
+{
+	u32 threshold_us = 0;
+	int ret;
+
+	ret = kstrtou32(val, 0, &threshold_us);
+
+	if (ret) {
+		MM_MONITOR_ERR("failed:%d threshold_us:%d", ret, threshold_us);
+		return ret;
+	}
+
+	g_mtk_axi_mon->threshold_us = threshold_us;
+
+	return 0;
+}
+
+static const struct kernel_param_ops mmmc_set_threshold_us_ops = {
+	.set = mmmc_set_threshold_us,
+	.get = param_get_uint,
+};
+module_param_cb(threshold_us, &mmmc_set_threshold_us_ops, NULL, 0644);
+MODULE_PARM_DESC(threshold_us, "set threshold us");
+
 module_init(mm_monitor_init);
 MODULE_LICENSE("GPL v2");
