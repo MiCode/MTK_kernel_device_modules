@@ -62,7 +62,7 @@ static void __iomem *_gpu_bm_of_ioremap(void)
 		ret = of_address_to_resource(node, 0, &res);
 		if (ret)
 			GED_LOGE("[GPU_QOS]Cannot get physical memory addr");
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 		rec_phys_addr = res.start;
 		GED_LOGI("[GPU_QOS] get physical memory addr: %x", (unsigned int)rec_phys_addr);
 #endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
@@ -73,7 +73,7 @@ static void __iomem *_gpu_bm_of_ioremap(void)
 
 static void check_sysram_support(void)
 {
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	struct device_node *gpu_qos_node = NULL;
 	int ret = 0;
 
@@ -92,7 +92,7 @@ static void check_sysram_support(void)
 
 static void get_rec_addr(void)
 {
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	int i;
 	unsigned char *ptr;
 
@@ -133,7 +133,7 @@ int mtk_bandwidth_resource_init(void)
 	int err = 0;
 
 	get_rec_addr();
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	if (gpu_info_ref == NULL) {
 		err = -1;
 		pr_info("%s: get sspm reserved memory fail\n", __func__);
