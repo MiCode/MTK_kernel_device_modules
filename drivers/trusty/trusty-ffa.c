@@ -21,8 +21,6 @@
 #include "trusty-sched-share-api.h"
 #include "trusty-trace.h"
 
-extern const struct bus_type ffa_bus_type;
-
 /* partition property: Supports receipt of direct requests */
 #define FFA_PARTITION_DIRECT_REQ_RECV	BIT(0)
 

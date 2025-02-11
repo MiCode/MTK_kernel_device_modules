@@ -4,21 +4,22 @@
  *
  * Copyright (c) 2021 MediaTek Inc.
  */
-#include <linux/spinlock.h>
+
 #include <linux/dma-mapping.h>
 #include <linux/err.h>
 #include <linux/genalloc.h>
 #include <linux/io.h>
 #include <linux/mm.h>
-#include <linux/scatterlist.h>
-#include <linux/slab.h>
-#include <linux/vmalloc.h>
 #include <linux/mutex.h>
-#include <linux/slab.h>
-#include <linux/scatterlist.h>
-#include <linux/uaccess.h>
-#include <linux/time.h>
+#include <linux/of.h>
 #include <linux/proc_fs.h>
+#include <linux/scatterlist.h>
+#include <linux/slab.h>
+#include <linux/spinlock.h>
+#include <linux/time.h>
+#include <linux/uaccess.h>
+#include <linux/uuid.h>
+#include <linux/vmalloc.h>
 
 #include "ffa_v11/arm_ffa.h"
 #include "public/mtee_regions.h"
@@ -534,9 +535,16 @@ static struct ffa_driver tmem_ffa_driver = {
 	.id_table = tmem_ffa_device_id,
 };
 
+static int ffa_legacy_dev_match(struct device *dev, const void *uuid)
+{
+	return uuid_equal((const uuid_t *)&to_ffa_dev(dev)->uuid,
+			(const uuid_t *)uuid) ? 1 : 0;
+}
+
 int tmem_register_ffa_module(void)
 {
-	int ret;
+	int ret = 0;
+	uuid_t ffa_legacy_dev_uuid = { 0 };
 
 	pr_info("%s:%d (start)\n", __func__, __LINE__);
 
@@ -547,8 +555,19 @@ int tmem_register_ffa_module(void)
 	}
 
 	if (is_hf_bypass_cma_enabled() || tmem_ffa_dev == NULL) {
-		tmem_ffa_dev = get_tee_ffa_dev();
-		tmem_ffa_ops = tmem_ffa_dev->ops;
+		ret = of_property_read_u8_array(of_find_compatible_node(NULL,
+					NULL, "mediatek,trusted_mem"),
+				"mediatek,ffa-legacy-dev-uuid",
+				(u8 *)&ffa_legacy_dev_uuid, UUID_SIZE);
+		tmem_ffa_dev = (!ret) ? to_ffa_dev(bus_find_device(
+					&ffa_bus_type, NULL,
+					(const void *)&ffa_legacy_dev_uuid,
+					ffa_legacy_dev_match)) :
+				tmem_ffa_dev;
+		tmem_ffa_dev = IS_ERR_OR_NULL((const void *)tmem_ffa_dev) ?
+				get_tee_ffa_dev() : tmem_ffa_dev;
+		tmem_ffa_ops = IS_ERR_OR_NULL((const void *)tmem_ffa_dev) ?
+				NULL : tmem_ffa_dev->ops;
 	}
 
 	pr_info("%s:%d (end)\n", __func__, __LINE__);
