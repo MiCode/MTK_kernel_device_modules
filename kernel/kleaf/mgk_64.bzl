@@ -981,6 +981,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1711h".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1718s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:fusb304".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:mux_switch".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:ps5169".format(kernel_version),

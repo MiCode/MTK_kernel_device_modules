@@ -31,6 +31,7 @@ CHIP_NAME = [
     "mt6375",
     "mt6379",
     "rt1711h",
+    "rt1718s",
 ]
 
 define_mgk_ddk_ko(
