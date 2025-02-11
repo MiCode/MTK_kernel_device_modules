@@ -1315,7 +1315,7 @@ static void mtk_smi_dbg_shutdown(struct platform_device *dbg_pdev)
 
 static void smi_dbg_init_v2(struct mtk_smi_dbg_node *node)
 {
-	u32 id, i = 0;
+	u32 id = 0, i = 0;
 	struct device *dev = node->dev;
 
 	of_property_for_each_u32(dev->of_node, "smi-user-id", id) {
