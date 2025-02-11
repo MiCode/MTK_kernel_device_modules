@@ -15962,6 +15962,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			heap-name = "mtk_slc";
 		};
 
+		mtkheap-mm-coherent {
+			compatible = "mediatek,dmaheap-mtk-mm-coherent";
+			heap-name = "mtk_mm-coherent";
+		};
+
 		mtkheap-page-prot {
 			compatible = "mediatek,dmaheap-mtk-sec-page";
 			heap-name = "mtk_prot_page-uncached";
