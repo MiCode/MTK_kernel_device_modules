@@ -1192,6 +1192,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmqos:mmqos_wrapper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:mediatek_drm_v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom".format(kernel_version),
 ]
@@ -1545,7 +1546,7 @@ mgk_64_device_modules = [
     "drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_dpc_v2.ko",
     "drivers/gpu/drm/mediatek/dpc/dpc_v2/mtk_vdisp_v2.ko",
     #"drivers/gpu/drm/mediatek/mediatek_v2/mediatek-drm.ko",
-    "drivers/gpu/drm/mediatek/mediatek_v2/v1/mediatek_drm_v1.ko",
+    #"drivers/gpu/drm/mediatek/mediatek_v2/v1/mediatek_drm_v1.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_aod_scp.ko",
     "drivers/gpu/drm/mediatek/mediatek_v2/mtk_disp_sec.ko",
     "drivers/gpu/drm/panel/mediatek-cust-panel-sample.ko",
