@@ -21,6 +21,7 @@ int mtk_mdp_rsz_dump(struct mtk_ddp_comp *comp);
 int mtk_dsi_dump(struct mtk_ddp_comp *comp);
 int mtk_dsi_lpc_dump(struct mtk_ddp_comp *comp);
 int mtk_dp_intf_dump(struct mtk_ddp_comp *comp);
+int mtk_dp_dvo_dump(struct mtk_ddp_comp *comp);
 int mtk_postmask_dump(struct mtk_ddp_comp *comp);
 void disp_tdshp_dump(struct mtk_ddp_comp *comp);
 void disp_color_dump(struct mtk_ddp_comp *comp);

@@ -215,7 +215,10 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_DP_INTF1:
 		mtk_dp_intf_dump(comp);
 		break;
-
+	case DDP_COMPONENT_DISP_DVO:
+	case DDP_COMPONENT_SYS_B_DISP_DVO:
+		mtk_dp_dvo_dump(comp);
+		break;
 	case DDP_COMPONENT_TDSHP0:
 	case DDP_COMPONENT_TDSHP1:
 	case DDP_COMPONENT_TDSHP2:

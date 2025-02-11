@@ -31,7 +31,7 @@
 #define DVO_EN						0x00
 #define EN							BIT(0)
 
-#define DVO_RET						0x04
+#define DVO_RST						0x04
 #define SWRST						BIT(0)
 
 #define DVO_INTEN					0x08
@@ -117,7 +117,7 @@
 #define PIC_VSIZE					16
 #define PIC_VSIZE_MASK				(0xFFFF << 16)
 
-#define DVO_OUT_SIZE				0x28
+#define DVO_OUT_HSIZE				0x28
 
 #define DVO_TGEN_H0					0x50
 #define HFP							0
@@ -167,7 +167,7 @@
 
 #define DVO_BUF_CON0				0x220
 #define DISP_BUF_EN					BIT(0)
-#define FIFO_UNDERFLOW_DONE_BLOCK	BIT(4)
+#define FIFO_UNDERFLOW_DONT_BLOCK	BIT(4)
 
 #define DVO_TGEN_V_LAST_TRAILING_BLANK	0x6c
 #define V_LAST_TRAILING_BLANK			0
@@ -445,9 +445,9 @@ static void mtk_dp_dvo_start(struct mtk_ddp_comp *comp,
 
 	mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, 0xffffffff, 0);
 	mtk_ddp_write_mask(comp, 1,
-		DVO_RET, SWRST, handle);
+		DVO_RST, SWRST, handle);
 	mtk_ddp_write_mask(comp, 0,
-		DVO_RET, SWRST, handle);
+		DVO_RST, SWRST, handle);
 	mtk_ddp_write_mask(comp,
 			(UNDERFLOW_EN |
 			 INT_VDE_END_EN | INT_VSYNC_START_EN),
@@ -870,7 +870,7 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 	//video config setting
 	mtk_ddp_write_relaxed(comp, (vsize << SRC_VSIZE) | hsize, DVO_SRC_SIZE, handle);
 	mtk_ddp_write_relaxed(comp, (vsize << PIC_VSIZE) | hsize, DVO_PIC_SIZE, handle);
-	mtk_ddp_write_relaxed(comp, hsize, DVO_OUT_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, hsize, DVO_OUT_HSIZE, handle);
 	mtk_ddp_write_relaxed(comp, (hpw << HSYNC) | hfp, DVO_TGEN_H0, handle);
 	mtk_ddp_write_relaxed(comp, ((hsize / 4) << HACT) | (hbp + hpw), DVO_TGEN_H1, handle);
 	mtk_ddp_write_relaxed(comp, (vpw << VSYNC) | vfp, DVO_TGEN_V0, handle);
@@ -896,8 +896,8 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 			DVO_BUF_RW_TIMES, handle);
 	mtk_ddp_write_mask(comp, DISP_BUF_EN,
 			DVO_BUF_CON0, DISP_BUF_EN, handle);
-	mtk_ddp_write_mask(comp, FIFO_UNDERFLOW_DONE_BLOCK,
-			DVO_BUF_CON0, FIFO_UNDERFLOW_DONE_BLOCK, handle);
+	mtk_ddp_write_mask(comp, FIFO_UNDERFLOW_DONT_BLOCK,
+			DVO_BUF_CON0, FIFO_UNDERFLOW_DONT_BLOCK, handle);
 	//DVO 1T4P select
 	mtk_ddp_write_relaxed(comp, DVO_OUT_1T4P_SEL,
 		DVO_OUTPUT_SET, handle);
@@ -932,107 +932,55 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 	dp_dvo->enable = true;
 }
 
-/*
- *int mtk_dp_intf_dump(struct mtk_ddp_comp *comp)
- *{
- *	void __iomem *baddr = NULL;
- *
- *	if (IS_ERR_OR_NULL(comp) || IS_ERR_OR_NULL(comp->regs)) {
- *		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
- *		return 0;
- *	}
- *
- *	baddr = comp->regs;
- *
- *	DDPDUMP("== %s REGS ==\n", mtk_dump_comp_str(comp));
- *	DDPDUMP("(0x0000) DVO_EN                 =0x%x\n",
- *			readl(baddr + DVO_EN));
- *	DDPDUMP("(0x0004) DVO_RET                =0x%x\n",
- *			readl(baddr + DVO_RET));
- *	DDPDUMP("(0x0008) DVO_INTEN              =0x%x\n",
- *			readl(baddr + DVO_INTEN));
- *	DDPDUMP("(0x000C) DVO_INTSTA             =0x%x\n",
- *			readl(baddr + DVO_INTSTA));
- *	DDPDUMP("(0x0010) DP_CON                =0x%x\n",
- *			readl(baddr + DP_CON));
- *	DDPDUMP("(0x0014) DP_OUTPUT_SETTING     =0x%x\n",
- *			readl(baddr + DP_OUTPUT_SETTING));
- *	DDPDUMP("(0x0018) DP_SIZE               =0x%x\n",
- *			readl(baddr + DP_SIZE));
- *	DDPDUMP("(0x0020) DP_TGEN_HWIDTH        =0x%x\n",
- *			readl(baddr + DP_TGEN_HWIDTH));
- *	DDPDUMP("(0x0024) DP_TGEN_HPORCH        =0x%x\n",
- *			readl(baddr + DP_TGEN_HPORCH));
- *	DDPDUMP("(0x0028) DP_TGEN_VWIDTH        =0x%x\n",
- *			readl(baddr + DP_TGEN_VWIDTH));
- *	DDPDUMP("(0x002C) DP_TGEN_VPORCH        =0x%x\n",
- *			readl(baddr + DP_TGEN_VPORCH));
- *	DDPDUMP("(0x0030) DP_BG_HCNTL           =0x%x\n",
- *			readl(baddr + DP_BG_HCNTL));
- *	DDPDUMP("(0x0034) DP_BG_VCNTL           =0x%x\n",
- *			readl(baddr + DP_BG_VCNTL));
- *	DDPDUMP("(0x0038) DP_BG_COLOR           =0x%x\n",
- *			readl(baddr + DP_BG_COLOR));
- *	DDPDUMP("(0x003C) DP_FIFO_CTL           =0x%x\n",
- *			readl(baddr + DP_FIFO_CTL));
- *	DDPDUMP("(0x0040) DP_STATUS             =0x%x\n",
- *			readl(baddr + DP_STATUS));
- *	DDPDUMP("(0x004C) DP_DCM                =0x%x\n",
- *			readl(baddr + DP_DCM));
- *	DDPDUMP("(0x0050) DP_DUMMY              =0x%x\n",
- *			readl(baddr + DP_DUMMY));
- *	DDPDUMP("(0x0068) DP_TGEN_VWIDTH_LEVEN  =0x%x\n",
- *			readl(baddr + DP_TGEN_VWIDTH_LEVEN));
- *	DDPDUMP("(0x006C) DP_TGEN_VPORCH_LEVEN  =0x%x\n",
- *			readl(baddr + DP_TGEN_VPORCH_LEVEN));
- *	DDPDUMP("(0x0070) DP_TGEN_VWIDTH_RODD   =0x%x\n",
- *			readl(baddr + DP_TGEN_VWIDTH_RODD));
- *	DDPDUMP("(0x0074) DP_TGEN_VPORCH_RODD   =0x%x\n",
- *			readl(baddr + DP_TGEN_VPORCH_RODD));
- *	DDPDUMP("(0x0078) DP_TGEN_VWIDTH_REVEN  =0x%x\n",
- *			readl(baddr + DP_TGEN_VWIDTH_REVEN));
- *	DDPDUMP("(0x007C) DP_TGEN_VPORCH_REVEN  =0x%x\n",
- *			readl(baddr + DP_TGEN_VPORCH_REVEN));
- *	DDPDUMP("(0x00E0) DP_MUTEX_VSYNC_SETTING=0x%x\n",
- *			readl(baddr + DP_MUTEX_VSYNC_SETTING));
- *	DDPDUMP("(0x00E4) DP_SHEUDO_REG_UPDATE  =0x%x\n",
- *			readl(baddr + DP_SHEUDO_REG_UPDATE));
- *	DDPDUMP("(0x00E8) DP_INTERNAL_DCM_DIS   =0x%x\n",
- *			readl(baddr + DP_INTERNAL_DCM_DIS));
- *	DDPDUMP("(0x00F0) DP_TARGET_LINE        =0x%x\n",
- *			readl(baddr + DP_TARGET_LINE));
- *	DDPDUMP("(0x0100) DP_CHKSUM_EN          =0x%x\n",
- *			readl(baddr + DP_CHKSUM_EN));
- *	DDPDUMP("(0x0104) DP_CHKSUM0            =0x%x\n",
- *			readl(baddr + DP_CHKSUM0));
- *	DDPDUMP("(0x0108) DP_CHKSUM1            =0x%x\n",
- *			readl(baddr + DP_CHKSUM1));
- *	DDPDUMP("(0x010C) DP_CHKSUM2            =0x%x\n",
- *			readl(baddr + DP_CHKSUM2));
- *	DDPDUMP("(0x0110) DP_CHKSUM3            =0x%x\n",
- *			readl(baddr + DP_CHKSUM3));
- *	DDPDUMP("(0x0114) DP_CHKSUM4            =0x%x\n",
- *			readl(baddr + DP_CHKSUM4));
- *	DDPDUMP("(0x0118) DP_CHKSUM5            =0x%x\n",
- *			readl(baddr + DP_CHKSUM5));
- *	DDPDUMP("(0x011C) DP_CHKSUM6            =0x%x\n",
- *			readl(baddr + DP_CHKSUM6));
- *	DDPDUMP("(0x0120) DP_CHKSUM7            =0x%x\n",
- *			readl(baddr + DP_CHKSUM7));
- *	DDPDUMP("(0x0210) DP_BUF_CON0      =0x%x\n",
- *			readl(baddr + DP_BUF_CON0));
- *	DDPDUMP("(0x0214) DP_BUF_CON1      =0x%x\n",
- *			readl(baddr + DP_BUF_CON1));
- *	DDPDUMP("(0x0220) DP_BUF_RW_TIMES      =0x%x\n",
- *			readl(baddr + DP_BUF_RW_TIMES));
- *	DDPDUMP("(0x0F00) DP_PATTERN_CTRL0      =0x%x\n",
- *			readl(baddr + DP_PATTERN_CTRL0));
- *	DDPDUMP("(0x0F04) DP_PATTERN_CTRL1      =0x%x\n",
- *			readl(baddr + DP_PATTERN_CTRL1));
- *
- *	return 0;
- *}
- *
+
+int mtk_dp_dvo_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr = NULL;
+
+	if (IS_ERR_OR_NULL(comp) || IS_ERR_OR_NULL(comp->regs)) {
+		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return 0;
+	}
+
+	baddr = comp->regs;
+
+	DDPDUMP("== %s REGS ==\n", mtk_dump_comp_str(comp));
+	DDPDUMP("(0x0000) DVO_EN              =0x%x\n",
+			readl(baddr + DVO_EN));
+	DDPDUMP("(0x0004) DVO_RST             =0x%x\n",
+			readl(baddr + DVO_RST));
+	DDPDUMP("(0x0008) DVO_INTEN           =0x%x\n",
+			readl(baddr + DVO_INTEN));
+	DDPDUMP("(0x000C) DVO_INTSTA          =0x%x\n",
+			readl(baddr + DVO_INTSTA));
+	DDPDUMP("(0x0018) DVO_OUTPUT_SET      =0x%x\n",
+			readl(baddr + DVO_OUTPUT_SET));
+	DDPDUMP("(0x0020) DVO_SRC_SIZE        =0x%x\n",
+			readl(baddr + DVO_SRC_SIZE));
+	DDPDUMP("(0x0024) DVO_PIC_SIZE        =0x%x\n",
+			readl(baddr + DVO_PIC_SIZE));
+	DDPDUMP("(0x0028) DVO_OUT_HSIZE       =0x%x\n",
+			readl(baddr + DVO_OUT_HSIZE));
+	DDPDUMP("(0x0050) DVO_TGEN_H0         =0x%x\n",
+			readl(baddr + DVO_TGEN_H0));
+	DDPDUMP("(0x0054) DVO_TGEN_H1         =0x%x\n",
+			readl(baddr + DVO_TGEN_H1));
+	DDPDUMP("(0x0058) DVO_TGEN_V0         =0x%x\n",
+			readl(baddr + DVO_TGEN_V0));
+	DDPDUMP("(0x005C) DVO_TGEN_V1         =0x%x\n",
+			readl(baddr + DVO_TGEN_V1));
+	DDPDUMP("(0x0084) DVO_MUTEX_VSYNC_SET =0x%x\n",
+			readl(baddr + DVO_MUTEX_VSYNC_SET));
+	DDPDUMP("(0x0220) DVO_BUF_CON0        =0x%x\n",
+			readl(baddr + DVO_BUF_CON0));
+	DDPDUMP("(0x022C) DVO_BUF_RW_TIMES    =0x%x\n",
+			readl(baddr + DVO_BUF_RW_TIMES));
+	DDPDUMP("(0x0258) DVO_BUF_VDE         =0x%x\n",
+			readl(baddr + DVO_BUF_VDE));
+	return 0;
+}
+
+ /*
  *int mtk_dp_intf_analysis(struct mtk_ddp_comp *comp)
  *{
  *	void __iomem *baddr = comp->regs;
