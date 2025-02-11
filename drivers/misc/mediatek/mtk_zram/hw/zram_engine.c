@@ -2711,6 +2711,10 @@ static int kick_hwe_exp(const char *val, const struct kernel_param *kp)
 		dump_fifo_idx(hwz, NULL, 0);
 		engine_gear_get_status(&hwz->gear_ctrl, NULL);
 		break;
+	case 93:
+		/* Dump more debug registers */
+		engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+		break;
 	default:
 		pr_info("%s invalid ops!\n", __func__);
 		retval = -EINVAL;
