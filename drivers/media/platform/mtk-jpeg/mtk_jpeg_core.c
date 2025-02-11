@@ -55,7 +55,7 @@ static struct mtk_jpeg_fmt mtk_jpeg_enc_formats[] = {
 	},
 	{
 		.fourcc		= V4L2_PIX_FMT_NV21M,
-		.hw_format	= JEPG_ENC_YUV_FORMAT_NV21,
+		.hw_format	= JPEG_ENC_YUV_FORMAT_NV21,
 		.h_sample	= {4, 4},
 		.v_sample	= {4, 2},
 		.colplanes	= 2,
@@ -767,15 +767,14 @@ static void mtk_jpeg_prepare_bw_request(struct mtk_jpeg_dev *jpeg)
 
 static void mtk_jpeg_set_level_qos(struct mtk_jpeg_dev *jpeg)
 {
-	u32 i = 0;
 	pr_info("%s +\n", __func__);
 	if (jpeg->gcon_base != NULL) {
-		for (i=0; i < jpeg->port_num; i++)
-				writel(0x71, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[i]*4);
-
-		writel(0x8C, jpeg->gcon_base + VENC_MMQOS_ULTRA);
+		writel(0x61, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[0]*4);
+		writel(0x61, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[1]*4);
+		writel(0x60, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[2]*4);
+		writel(0x61, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[3]*4);
+		writel(0x90, jpeg->gcon_base + VENC_MMQOS_ULTRA);
 	}
-	pr_info("%s -\n", __func__);
 }
 static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 {
