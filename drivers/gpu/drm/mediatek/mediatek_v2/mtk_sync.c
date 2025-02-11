@@ -93,11 +93,12 @@ static struct sync_pt *mtk_sync_pt_create(struct sync_timeline *obj,
 		return NULL;
 
 	mtk_sync_timeline_get(obj);
+	spin_lock_irq(&obj->lock);
+
 	dma_fence_init(&pt->base, &mtk_sync_timeline_fence_ops, &obj->lock,
 		   obj->context, value);
 	INIT_LIST_HEAD(&pt->link);
 
-	spin_lock_irq(&obj->lock);
 	if (!dma_fence_is_signaled_locked(&pt->base)) {
 		struct rb_node **p = &obj->pt_tree.rb_node;
 		struct rb_node *parent = NULL;
