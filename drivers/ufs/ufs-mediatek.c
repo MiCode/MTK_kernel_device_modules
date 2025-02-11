@@ -1664,6 +1664,8 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	/* Enable clk scaling*/
 	hba->caps |= UFSHCD_CAP_CLK_SCALING;
 	host->clk_scale_up = true; /* default is max freq */
+	host->clk_scale_mode = CLK_SCALE_FREE_RUN;
+	host->clk_scale_forced = false;
 
 	/* Set runtime pm delay to replace default */
 	shost->rpm_autosuspend_delay = MTK_RPM_AUTOSUSPEND_DELAY_MS;
@@ -2253,9 +2255,6 @@ out:
 void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	static int scale_mode = CLK_SCALE_FREE_RUN;
-	static u32 saved_gear;
-	static bool is_forced;
 	unsigned long flags;
 	bool scale_allow = true;
 	bool scale_suspend = false;
@@ -2266,9 +2265,9 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 		return;
 
 	/* Already in desire mode */
-	if (scale_mode == mode)
+	if (host->clk_scale_mode == mode)
 		return;
-	scale_mode = mode;
+	host->clk_scale_mode = mode;
 
 	/* UFS version is below 4.0, clock scaling is not necessary */
 	if (hba->dev_info.wspecversion < 0x0400)
@@ -2287,7 +2286,7 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 
 	if (mode == CLK_SCALE_FREE_RUN) {
 		ufs_mtk_scsi_block_requests(hba);
-		if (saved_gear >= UFS_HS_G5)
+		if (host->saved_gear >= UFS_HS_G5)
 			ufs_mtk_config_pwr_mode(hba, CLK_FORCE_SCALE_UP,
 				scale_allow);
 		else
@@ -2309,9 +2308,9 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 		}
 		ufs_mtk_scsi_unblock_requests(hba);
 
-		is_forced = false;
+		host->clk_scale_forced = false;
 	} else {
-		if (!is_forced) {
+		if (!host->clk_scale_forced) {
 			if (scale_allow) {
 				hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
 				/* Make sure no resume work on-going */
@@ -2328,8 +2327,8 @@ void ufs_mtk_dynamic_clock_scaling(struct ufs_hba *hba, int mode)
 					devfreq_suspend_device(hba->devfreq);
 			}
 
-			saved_gear = hba->pwr_info.gear_rx;
-			is_forced = true;
+			host->saved_gear = hba->pwr_info.gear_rx;
+			host->clk_scale_forced = true;
 		}
 
 		ufs_mtk_config_pwr_mode(hba, mode, scale_allow);

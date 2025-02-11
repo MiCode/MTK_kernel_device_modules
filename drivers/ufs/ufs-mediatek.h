@@ -288,6 +288,8 @@ struct ufs_mtk_host {
 	bool ref_clk_enabled;
 	bool clk_scale_up;
 	bool clk_scale_forbid;
+	bool clk_scale_forced;
+	int clk_scale_mode;
 	atomic_t clkscale_control;
 	atomic_t skip_btag;
 	atomic_t dbg_tp_unregister;
@@ -297,6 +299,7 @@ struct ufs_mtk_host {
 	u32 host_id;
 	u32 desired_ahit;
 	u32 max_gear;
+	u32 saved_gear;
 	struct ufs_mtk_clk mclk;
 	bool pm_qos_init;
 	struct pm_qos_request pm_qos_req;
