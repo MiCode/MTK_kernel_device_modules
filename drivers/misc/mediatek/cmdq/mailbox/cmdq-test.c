@@ -37,6 +37,8 @@
 #define GCE_BUS_GCTL	0x40
 #define GCE_PC_HIGH		0xd4
 
+#define CMDQ_FAST_MTCMOS_TEST_CNT	10
+
 enum {
 	CMDQ_TEST_SUBSYS_GCE,
 	CMDQ_TEST_SUBSYS_MMSYS,
@@ -85,6 +87,9 @@ struct cmdq_test {
 };
 
 static struct cmdq_test		*gtest;
+static u32	*gdma_va;
+static dma_addr_t gdma_pa;
+static bool g_stop;
 
 static void cmdq_test_mbox_cb(struct cmdq_cb_data data)
 {
@@ -1590,6 +1595,108 @@ static void cmdq_test_sec_reg(struct cmdq_test *test)
 		readl((void *)(test->gce.va + GCE_PC_HIGH)));
 }
 
+
+static int cmdq_test_fast_mtcmos_event_task(void *unused)
+{
+	while (!g_stop) {
+		cmdq_set_event(gtest->clt->chan, gtest->token_user0);
+		msleep(1);
+		cmdq_clear_event(gtest->clt->chan, gtest->token_user0);
+		msleep(1);
+	}
+	return 0;
+}
+
+static void cmdq_test_fast_mtcmos_destroy(struct cmdq_cb_data data)
+{
+	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
+
+	pkt->rec_irq = 0;
+}
+
+static int cmdq_test_fast_mtcmos_flush(void *unused)
+{
+	struct cmdq_pkt *pkt[CMDQ_FAST_MTCMOS_TEST_CNT] = {0};
+	const u32	mask = ~0;
+	const u32	pttn = (1 << 0) | (1 << 2) | (1 << 16);
+	unsigned long	pa = CMDQ_GPR_R32(gtest->gce.pa, CMDQ_GPR_DEBUG_DUMMY);
+	u32 i, j;
+
+	for (i = 0; i < CMDQ_FAST_MTCMOS_TEST_CNT; i++) {
+		pkt[i] = cmdq_pkt_create(gtest->clt);
+		for (j = 0; j < sched_clock()%100; j++)
+			cmdq_pkt_write(pkt[i], NULL, pa, pttn, mask);
+		cmdq_pkt_wfe(pkt[i], gtest->token_user0);
+	}
+
+	while (!g_stop) {
+		cmdq_mbox_enable(gtest->clt->chan);
+		for (i = 0; i < CMDQ_FAST_MTCMOS_TEST_CNT; i++) {
+			if (!(pkt[i] && pkt[i]->task_alloc && !pkt[i]->rec_irq)) {
+				// cmdq_msg("%s exec pkt:%p", __func__, pkt[i]);
+				cmdq_pkt_refinalize(pkt[i]);
+				cmdq_pkt_flush_async(pkt[i],
+					cmdq_test_fast_mtcmos_destroy, (void *)pkt[i]);
+			}
+		}
+
+		for(i = 0; i < CMDQ_FAST_MTCMOS_TEST_CNT; i++) {
+			cmdq_pkt_wait_complete(pkt[i]);
+		}
+
+		cmdq_mbox_disable(gtest->clt->chan);
+	}
+	return 0;
+}
+
+static int cmdq_test_fast_mtcmos_alloc(void *unused)
+{
+	u32 *va;
+	dma_addr_t pa;
+
+	while (!g_stop) {
+		va = cmdq_mbox_buf_alloc(gtest->clt, &pa);
+		msleep(2);
+		cmdq_mbox_buf_free(gtest->clt, va, pa);
+		msleep(2);
+	}
+
+	return 0;
+}
+
+static void cmdq_test_fast_mtcmos_stress(void)
+{
+	struct task_struct *mbox_task0;
+	struct task_struct *mbox_task1;
+	struct task_struct *mbox_event_task;
+
+	if (!g_stop) {
+		g_stop = true;
+		return;
+	} else
+		g_stop = false;
+
+	if (!gdma_va || !gdma_pa) {
+		gdma_va = cmdq_mbox_buf_alloc(gtest->clt, &gdma_pa);
+		cmdq_msg("%s dma allcate va:%p pa:%pa", __func__, gdma_va, &gdma_pa);
+		if (!gdma_va || !gdma_pa) {
+			cmdq_err("cmdq_mbox_buf_alloc failed");
+			return;
+		}
+	}
+
+	mbox_event_task = kthread_create(cmdq_test_fast_mtcmos_event_task, NULL , "mbox_event_task");
+	if (!IS_ERR(mbox_event_task))
+		wake_up_process(mbox_event_task);
+	mbox_task0 = kthread_create(cmdq_test_fast_mtcmos_flush, NULL , "cmdq_kthrd_task0");
+	if (!IS_ERR(mbox_task0))
+		wake_up_process(mbox_task0);
+	mbox_task1 = kthread_create(cmdq_test_fast_mtcmos_alloc, NULL , "cmdq_kthrd_task1");
+	if (!IS_ERR(mbox_task1))
+		wake_up_process(mbox_task1);
+}
+
+
 static void
 cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec,
 	const s32 id, const u32 address)
@@ -1736,6 +1843,9 @@ cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec,
 		break;
 	case 26:
 		cmdq_test_sec_reg(test);
+		break;
+	case 51:
+		cmdq_test_fast_mtcmos_stress();
 		break;
 	default:
 		break;
@@ -1948,6 +2058,7 @@ static int cmdq_test_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, test);
 
+	g_stop = true;
 	return 0;
 }
 
