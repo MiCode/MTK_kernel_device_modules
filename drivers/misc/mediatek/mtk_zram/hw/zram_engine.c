@@ -867,6 +867,10 @@ static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
 
 		smp_rmb();
 
+		/* fifo is empty. Continue with the next one */
+		if (dcomp_fifo_empty(fifo))
+			continue;
+
 		/* The wake up is premature. Continue with the next one */
 		if (start == end)
 			continue;
@@ -1037,6 +1041,10 @@ static inline uint32_t comp_second_post_processing_cmds(struct zram_engine_t *hw
 
 	smp_rmb();
 
+	/* I am empty, just leave. */
+	if (comp_fifo_2_empty(fifo))
+		return 0;
+
 	/* The wake up is premature */
 	if (start == end)
 		return 0;
@@ -1069,6 +1077,10 @@ static inline uint32_t comp_main_post_processing_cmds(struct zram_engine_t *hwz,
 	end = comp_fifo_1_HtS_complete_index(fifo);
 
 	smp_rmb();
+
+	/* I am empty, just leave. */
+	if (comp_fifo_1_empty(fifo))
+		return 0;
 
 	/* The wake up is premature */
 	if (start == end)
