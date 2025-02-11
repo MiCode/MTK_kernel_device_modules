@@ -479,6 +479,11 @@ static int dbg_error_flag_probe(struct platform_device *pdev)
 	err_flags_num = of_count_phandle_with_args(
 		pdev->dev.of_node, "mediatek,error-flag", NULL);
 
+	if (err_flags_num <= 0) {
+		pr_info("No err_flags_num\n");
+		return err_flags_num;
+	}
+
 	//struct device_node* node[err_flags_num];
 
 	dbg_error_flag.nr_error_flag = err_flags_num;
