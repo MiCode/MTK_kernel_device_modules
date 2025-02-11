@@ -107,6 +107,31 @@ define_mgk_ddk_ko(
     ],
 )
 
+define_mgk_ddk_ko(
+    name = "mtk_pelt_hint",
+    srcs = [
+        "pelt_hint/src/pelt_hint_main.c",
+        "pelt_hint/src/pelt_hint_sysfs.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_perf_ioctl_magt".format(kernel_version),
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "pelt_hint/include/pelt_hint.h",
+        "pelt_hint/include/pelt_hint_sysfs.h",
+        "pelt_hint/include/pelt_hint_trace_event.h",
+        "pelt_hint/include/pelt_hint_usedext.h",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/pelt_hint/include/",
+        "-I$(srctree)/kernel/",
+        "-I$(srctree)/include/",
+    ],
+)
+
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([
