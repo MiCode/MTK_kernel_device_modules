@@ -1158,6 +1158,12 @@
 		#clock-cells = <1>;
 	};
 
+	usbcfg_ao_mbist_clk:syscon@16782000 {
+		compatible = "mediatek,mt6993-usbcfg-ao-mbist", "syscon";
+		reg = <0 0x16782000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
 	usb0cfg_ao_sec_clk: syscon@16790000 {
 		compatible = "mediatek,mt6993-usb0cfg_ao_sec", "syscon";
 		reg = <0 0x16790000 0 0x1000>;
@@ -5490,6 +5496,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,ux-exit-lfps-gen2 = <0x44>;
 			mediatek,hwrscs-vers = <2>;
 			mediatek,clkgate = <&usb0cfg_ao_sec_clk 0x13>;
+			mediatek,usb-mbist = <&usbcfg_ao_mbist_clk>;
 			mediatek,vs-voter = <&mt6661_4 0x1787 0x01 1>;
 			mediatek,uds = <&usb_dp_selector 19>;
 			usb-role-switch;
