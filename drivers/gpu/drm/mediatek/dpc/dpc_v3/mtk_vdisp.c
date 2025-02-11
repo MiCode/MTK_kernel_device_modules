@@ -901,17 +901,20 @@ static const struct proc_ops debug_proc_fops = {
 static void mtk_vdisp_dbg_probe(void)
 {
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-	vdisp_dbgfs = debugfs_create_file("vdisp", S_IFREG | 0440, NULL,
-					  NULL, &debug_fops);
-	if (IS_ERR(vdisp_dbgfs))
-		VDISPERR("debugfs_create_file failed:%ld", PTR_ERR(vdisp_dbgfs));
+	if (!vdisp_dbgfs) {
+		vdisp_dbgfs = debugfs_create_file("vdisp", S_IFREG | 0440, NULL,
+						NULL, &debug_fops);
+		if (IS_ERR(vdisp_dbgfs))
+			VDISPERR("debugfs_create_file failed:%ld", PTR_ERR(vdisp_dbgfs));
+	}
 #endif
 
 #if IS_ENABLED(CONFIG_PROC_FS)
-	vdisp_procfs = proc_create("vdisp", S_IFREG | 0440,
-				   NULL, &debug_proc_fops);
 	if (!vdisp_procfs) {
-		VDISPERR("failed to create vdisp in /proc/");
+		vdisp_procfs = proc_create("vdisp", S_IFREG | 0440,
+					NULL, &debug_proc_fops);
+		if (!vdisp_procfs)
+			VDISPERR("failed to create vdisp in /proc/");
 	}
 #endif
 }
