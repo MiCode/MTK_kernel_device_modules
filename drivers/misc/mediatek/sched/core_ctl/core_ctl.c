@@ -126,6 +126,7 @@ struct cluster_data {
 	unsigned int cap_turn_point;
 	unsigned long freq_thres;
 	bool boost_by_freq;
+	bool boost_by_wlan;
 };
 
 struct cpu_data {
@@ -435,6 +436,32 @@ static void check_freq_min_req(void)
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 }
 
+uint32_t (*wlan_cur_cpumask_req_hook)(void);
+EXPORT_SYMBOL(wlan_cur_cpumask_req_hook);
+
+static void check_wlan_request(void)
+{
+	int i;
+	uint32_t wlan_cpu_req, cluster_cpu_mask;
+	struct cluster_data *cluster;
+
+	if (wlan_cur_cpumask_req_hook) {
+		wlan_cpu_req = wlan_cur_cpumask_req_hook();
+
+		cluster = &cluster_state[B_CLUSTER_ID];
+		cluster_cpu_mask = 0;
+		for_each_cpu(i, &cluster->cpu_mask)
+			cluster_cpu_mask |= (1U << i);
+		cluster->boost_by_wlan = (wlan_cpu_req & cluster_cpu_mask)?true:false;
+
+		cluster = &cluster_state[M_CLUSTER_ID];
+		cluster_cpu_mask = 0;
+		for_each_cpu(i, &cluster->cpu_mask)
+			cluster_cpu_mask |= (1U << i);
+		cluster->boost_by_wlan = (wlan_cpu_req & cluster_cpu_mask)?true:false;
+	}
+}
+
 static bool demand_eval(struct cluster_data *cluster)
 {
 	unsigned long flags;
@@ -446,6 +473,7 @@ static bool demand_eval(struct cluster_data *cluster)
 	unsigned int old_need;
 	s64 now, elapsed;
 	int gas_enable = 0;
+	unsigned int cluster_boost_state;
 
 	if (unlikely(!cluster->inited))
 		return ret;
@@ -455,9 +483,8 @@ static bool demand_eval(struct cluster_data *cluster)
 #endif
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
-
-	if (cluster->boost || !cluster->enable || !enable_policy
-			|| cluster->boost_by_freq || gas_enable)
+	cluster_boost_state = cluster->boost || cluster->boost_by_wlan || cluster->boost_by_freq;
+	if (cluster_boost_state || !cluster->enable || !enable_policy || gas_enable)
 		need_cpus = cluster->max_cpus;
 	else
 		need_cpus = cluster->new_need_cpus;
@@ -508,7 +535,7 @@ static bool demand_eval(struct cluster_data *cluster)
 			cluster->active_cpus,
 			cluster->min_cpus,
 			cluster->max_cpus,
-			cluster->boost & cluster->boost_by_freq,
+			cluster_boost_state,
 			gas_enable,
 			cluster->enable,
 			cost_flag,
@@ -2004,6 +2031,8 @@ static inline void core_ctl_main_algo(void)
 	check_heaviest_status();
 
 	check_freq_min_req();
+
+	check_wlan_request();
 
 	index = 0;
 	for_each_cluster(cluster, index) {
