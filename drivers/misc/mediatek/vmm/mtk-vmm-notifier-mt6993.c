@@ -49,12 +49,9 @@
 #define HW_CCF_AP_VOTER_BIT					(11)
 #define HW_CCF_CAM_SEL_VOTER_BIT			(14)
 #define HW_CCF_IMG_SEL_VOTER_BIT			(15)
-#define HW_CCF_IPE_SEL_VOTER_BIT			(16)
 #define VMM_DBG_EN_BIT						(18)
-#define VMM_DBG_MUX0_BIT			(19)
-#define VMM_DBG_MUX1_BIT			(20)
-#define VMM_DBG_MUX2_BIT			(21)
-#define VMM_DBG_MUX3_BIT			(22)
+#define VMM_DBG_FORCE_BUCK_ON_BIT			(19)
+#define VMM_DBG_FORCE_BUCK_OFF_BIT			(20)
 
 #define GET_SEL_COUNT(value, sel) (((value) >> ((sel) * 8)) & SEL_MASK)
 
@@ -69,9 +66,6 @@
 	(((vote) > 0 && (currVal) == 0) ? CVFS_ENABLE_TOGGLE : \
 	(((vote) < 0 && (currVal) == 1) ? CVFS_DISABLE_TOGGLE : 0))
 
-#define MUX_PARSE_VOTE(curr_val, new_val)  (((new_val) & (~(curr_val))) << VMM_DBG_MUX0_BIT)
-#define MUX_PARSE_UNVOTE(curr_val, new_val) (((~(new_val)) & (curr_val)) << VMM_DBG_MUX0_BIT)
-
 struct mutex ctrl_mutex;
 static int vmm_user_counter;
 
@@ -82,9 +76,6 @@ typedef struct {
 } CVFSCounter;
 
 CVFSCounter cvfsCNT;
-
-bool vmm_debug_dump;
-int adb_dbg_val;
 
 int update_cvfs_table(CVFSCounter *cnts, enum VMM_CVFS_USR_ID usrID, enum VMM_CVFS_SEL_ID selID, int8_t vote)
 {
@@ -132,18 +123,16 @@ updateEnd:
 		ISP_LOGE("cvfs_update overflow, vote:%d", vote);
 		break;
 	default:
-		if (vmm_debug_dump) {
-			ISP_LOGI("SUM cvfs: 0x%08x", cnts->sumSEL);
-			ISP_LOGI("CAMSYS:0x%08x,IMGSYS:0x%08x,PDA:0x%08x,SENINF:0x%08x,UISP:0x%08x,VDE:0x%08x",
-				cnts->user_count[VMM_CVFS_USR_CAMSYS],
-				cnts->user_count[VMM_CVFS_USR_IMGSYS],
-				cnts->user_count[VMM_CVFS_USR_PDA],
-				cnts->user_count[VMM_CVFS_USR_SENINF],
-				cnts->user_count[VMM_CVFS_USR_UISP],
-				cnts->user_count[VMM_CVFS_USR_VDE]);
-		}
 		break;
 	}
+	ISP_LOGI("SUM cvfs: 0x%08x", cnts->sumSEL);
+	ISP_LOGI("CAMSYS:0x%08x, IMGSYS: 0x%08x, PDA: 0x%08x, SENINF: 0x%08x, UISP: 0x%08x, VDE: 0x%08x",
+		cnts->user_count[VMM_CVFS_USR_CAMSYS],
+		cnts->user_count[VMM_CVFS_USR_IMGSYS],
+		cnts->user_count[VMM_CVFS_USR_PDA],
+		cnts->user_count[VMM_CVFS_USR_SENINF],
+		cnts->user_count[VMM_CVFS_USR_UISP],
+		cnts->user_count[VMM_CVFS_USR_VDE]);
 
 	return ret;
 }
@@ -151,8 +140,10 @@ updateEnd:
 int vmm_enable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs_sel_id)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_CONFIG_VMM_SUPPORT_CCF)
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 	int hwccf_ret = 0;
+#endif
 #endif
 
 	switch(vmm_cvfs_sel_id) {
@@ -163,18 +154,18 @@ int vmm_enable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs_
 		ret = update_cvfs_table(&cvfsCNT, user_id, vmm_cvfs_sel_id, (int8_t)1);
 		mutex_unlock(&cvfs_mutex);
 		if (ret == CVFS_ENABLE_TOGGLE) {
-			if (vmm_debug_dump)
-				ISP_LOGI("do cvfs_enable, with %d", vmm_cvfs_sel_id);
+			ISP_LOGI("do cvfs_enable, with %d", vmm_cvfs_sel_id);
+		/* TODO: enable cvfs */
+#if IS_ENABLED(CONFIG_VMM_SUPPORT_CCF)
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
-			hwccf_ret = hwccf_irq_voter_ctrl(
-				MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
-				vmm_cvfs_sel_id == VMM_CVFS_CAM_SEL ? HW_CCF_CAM_SEL_VOTER_BIT :
-				(vmm_cvfs_sel_id == VMM_CVFS_IPE_SEL ? HW_CCF_IPE_SEL_VOTER_BIT :
-				HW_CCF_IMG_SEL_VOTER_BIT));
+			hwccf_ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+				vmm_cvfs_sel_id == VMM_CVFS_CAM_SEL ?
+				HW_CCF_CAM_SEL_VOTER_BIT : HW_CCF_IMG_SEL_VOTER_BIT);
 			if (hwccf_ret) {
 				ISP_LOGE("HWCCF cvfs unvoter failed, ret: %d", hwccf_ret);
 				clkchk_external_dump();
 			}
+#endif
 #endif
 		} else if (ret == CVFS_DISABLE_TOGGLE) {
 			ISP_LOGE("vmm_enable should NOT disable %d", vmm_cvfs_sel_id);
@@ -200,8 +191,10 @@ EXPORT_SYMBOL_GPL(vmm_enable_cvfs);
 int vmm_disable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs_sel_id)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_VMM_SUPPORT_CCF)
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 	int hwccf_ret = 0;
+#endif
 #endif
 
 	switch(vmm_cvfs_sel_id) {
@@ -212,18 +205,18 @@ int vmm_disable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs
 		ret = update_cvfs_table(&cvfsCNT, user_id, vmm_cvfs_sel_id, (int8_t)-1);
 		mutex_unlock(&cvfs_mutex);
 		if (ret == CVFS_DISABLE_TOGGLE) {
-			if (vmm_debug_dump)
-				ISP_LOGI("do cvfs_disable, with %d", vmm_cvfs_sel_id);
+			ISP_LOGI("do cvfs_disable, with %d", vmm_cvfs_sel_id);
+		/* TODO: disable cvfs */
+#if IS_ENABLED(CONFIG_VMM_SUPPORT_CCF)
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
-			hwccf_ret = hwccf_irq_voter_ctrl(
-				MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
-				vmm_cvfs_sel_id == VMM_CVFS_CAM_SEL ? HW_CCF_CAM_SEL_VOTER_BIT :
-				(vmm_cvfs_sel_id == VMM_CVFS_IPE_SEL ? HW_CCF_IPE_SEL_VOTER_BIT :
-				HW_CCF_IMG_SEL_VOTER_BIT));
+			hwccf_ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+				vmm_cvfs_sel_id == VMM_CVFS_CAM_SEL ?
+				HW_CCF_CAM_SEL_VOTER_BIT : HW_CCF_IMG_SEL_VOTER_BIT);
 			if (hwccf_ret) {
 				ISP_LOGE("HWCCF cvfs unvoter failed, ret: %d", hwccf_ret);
 				clkchk_external_dump();
 			}
+#endif
 #endif
 		} else if (ret == CVFS_ENABLE_TOGGLE) {
 			ISP_LOGE("vmm_disable should NOT enable %d", vmm_cvfs_sel_id);
@@ -260,8 +253,6 @@ static int vmm_locked_buck_ctrl(bool enable)
 	int pre_cnt = vmm_user_counter;
 
 	vmm_user_counter += (enable ? 1 : -1);
-	if (vmm_debug_dump)
-		ISP_LOGI("vmm_cnt: %d", vmm_user_counter);
 
 	// Check if we're transitioning from 0 to 1 (enabling) or from 1 to 0 (disabling)
 	if ((pre_cnt == 0 && vmm_user_counter == 1) || (pre_cnt == 1 && vmm_user_counter == 0)) {
@@ -287,8 +278,6 @@ int mtk_vmm_ctrl(struct cb_params *cb_para)
 
 	mutex_lock(&ctrl_mutex);
 	/* TODO: save cg_status, PIC: Eric Chien */
-	if (vmm_debug_dump)
-		ISP_LOGI("vmm_api, %d, %s", cb_para->onoff, cb_para->name);
 	ret = vmm_locked_buck_ctrl(cb_para->onoff ? true : false);
 	mutex_unlock(&ctrl_mutex);
 
@@ -310,8 +299,6 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 	ISP_LOGI("register mtk_vmm for hwccf api");
 	register_mtk_clk_external_api_cb(CLK_REQUEST_VMM_CB, &mtk_vmm_ctrl, NULL);
 
-	vmm_debug_dump = false;
-	adb_dbg_val = 0;
 	vmm_locked_buck_ctrl(true);
 	vmm_locked_buck_ctrl(false);
 
@@ -455,57 +442,7 @@ static const struct kernel_param_ops vmm_cvfs_ut_ctrl_ops = {
 	.set = mtk_vmm_cvfs_ut_ctrl,
 };
 
-int mtk_vmm_dbg_ctrl(const char *val, const struct kernel_param *kp)
-{
-	int enable;
-	int vote_val;
-	int ret;
-
-	ret = kstrtouint(val, 0, &enable);
-	if (ret)
-		return ret;
-	ISP_LOGI("[%s][%d] vmm adb cmd[%u]", __func__, __LINE__, enable);
-
-#if IS_ENABLED(CONFIG_MTK_HWCCF)
-	vote_val = MUX_PARSE_VOTE(adb_dbg_val, enable);
-	ISP_LOGI("vote: 0x%0x", vote_val);
-	if (vote_val != 0) {
-		ret = hwccf_irq_multi_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
-								vote_val);
-		if (ret)
-			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
-	}
-
-	vote_val = MUX_PARSE_UNVOTE(adb_dbg_val, enable);
-	ISP_LOGI("unvote: 0x%0x", vote_val);
-	if (vote_val != 0) {
-		ret = hwccf_irq_multi_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
-								vote_val);
-		if (ret)
-			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
-	}
-
-	ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
-					VMM_DBG_EN_BIT);
-	if (ret)
-		ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
-
-	ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
-					VMM_DBG_EN_BIT);
-	if (ret)
-		ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
-#endif
-
-	adb_dbg_val = enable;
-
-	return 0;
-}
-
-static const struct kernel_param_ops vmm_dbg_ctrl_ops = {
-	.set = mtk_vmm_dbg_ctrl,
-};
-
-int mtk_vmm_dump_debug_ctrl(const char *val, const struct kernel_param *kp)
+int mtk_vmm_force_buck_ctrl(const char *val, const struct kernel_param *kp)
 {
 	unsigned int enable;
 	int ret;
@@ -513,26 +450,51 @@ int mtk_vmm_dump_debug_ctrl(const char *val, const struct kernel_param *kp)
 	ret = kstrtouint(val, 0, &enable);
 	if (ret)
 		return ret;
-	ISP_LOGI("[%s][%d] dump debug en[%u]", __func__, __LINE__, enable);
+	ISP_LOGI("[%s][%d] force buck en[%u]", __func__, __LINE__, enable);
 
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 	switch (enable) {
 	case 0:
-		ISP_LOGI("vmm_dump_debug_ctrl: disable");
-		vmm_debug_dump = false;
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+							VMM_DBG_FORCE_BUCK_OFF_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+							VMM_DBG_FORCE_BUCK_OFF_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
 		break;
 	case 1:
-		ISP_LOGI("vmm_dump_debug_ctrl: enable");
-		vmm_debug_dump = true;
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+							VMM_DBG_FORCE_BUCK_ON_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+							VMM_DBG_FORCE_BUCK_ON_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		break;
+	case 8:
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+							VMM_DBG_EN_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		break;
+	case 9:
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+							VMM_DBG_EN_BIT);
+		if (ret)
+			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
 		break;
 	default:
 		break;
 	}
-
+#endif
 	return 0;
 }
 
-static const struct kernel_param_ops vmm_dump_debug_ctrl_ops = {
-	.set = mtk_vmm_dump_debug_ctrl,
+static const struct kernel_param_ops vmm_force_buck_ctrl_ops = {
+	.set = mtk_vmm_force_buck_ctrl,
 };
 
 module_param_cb(vmm_notify_ut_ctrl, &vmm_notify_ut_ctrl_ops, NULL, 0644);
@@ -544,11 +506,8 @@ MODULE_PARM_DESC(vmm_ccf_ut_ctrl, "vmm_ccf_ut_ctrl");
 module_param_cb(vmm_cvfs_ut_ctrl, &vmm_cvfs_ut_ctrl_ops, NULL, 0644);
 MODULE_PARM_DESC(vmm_cvfs_ut_ctrl, "vmm_cvfs_ut_ctrl");
 
-module_param_cb(vmm_dbg_ctrl, &vmm_dbg_ctrl_ops, NULL, 0644);
-MODULE_PARM_DESC(vmm_dbg_ctrl, "vmm_dbg_ctrl");
-
-module_param_cb(vmm_dump_debug_ctrl, &vmm_dump_debug_ctrl_ops, NULL, 0644);
-MODULE_PARM_DESC(vmm_dump_debug_ctrl, "vmm_dump_debug_ctrl");
+module_param_cb(vmm_force_buck_ctrl, &vmm_force_buck_ctrl_ops, NULL, 0644);
+MODULE_PARM_DESC(vmm_force_buck_ctrl, "vmm_force_buck_ctrl");
 
 module_init(mtk_vmm_notifier_init);
 module_exit(mtk_vmm_notifier_exit);
