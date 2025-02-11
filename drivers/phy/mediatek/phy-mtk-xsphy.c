@@ -2484,6 +2484,10 @@ static void u2_phy_host_props_set(struct mtk_xsphy *xsphy,
 		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6,
 				    inst->rev6_host);
 
+	if (inst->discth != -EINVAL)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_DISCTH,
+				    inst->discth);
+
 }
 
 static void u3_phy_props_set(struct mtk_xsphy *xsphy,
