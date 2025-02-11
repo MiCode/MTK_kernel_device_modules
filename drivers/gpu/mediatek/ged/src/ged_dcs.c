@@ -49,8 +49,9 @@ unsigned int g_major_min_core;
 unsigned int g_major_option;
 
 // gov core mask
-int g_has_gov_support;
-int g_gov_enable;
+unsigned int g_has_gov_support;
+unsigned int g_gov_enable;
+unsigned int g_gov_src;
 
 
 struct gpufreq_core_mask_info *g_core_mask_table;
@@ -249,12 +250,11 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num, int commit_
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
+		if (g_gov_enable)
+			return ret;
 	}
 
 	mutex_lock(&g_DCS_lock);
-
-	if (g_gov_enable)
-		goto done_unlock;
 
 	if ((!g_dcs_enable || g_cur_core_num == core_num) && !g_setting_dirty)
 		goto done_unlock;
@@ -290,10 +290,10 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 {
 	int ret = GED_OK;
 
-	mutex_lock(&g_DCS_lock);
+	if (g_gov_enable && (is_fdvfs_enable() & POLICY_MODE_V2))
+		return ret;
 
-	if (g_gov_enable)
-		goto done_unlock;
+	mutex_lock(&g_DCS_lock);
 
 	if (ged_dvfs_set_gpu_core_mask_fp != NULL)
 		ged_dvfs_set_gpu_core_mask_fp(core_mask);
@@ -380,6 +380,11 @@ unsigned int dcs_get_fix_mask(void)
 	return g_fix_core_mask;
 }
 
+void dcs_set_setting_dirty(void)
+{
+	g_setting_dirty = true;
+}
+
 bool dcs_get_setting_dirty(void)
 {
 	return g_setting_dirty;
@@ -392,12 +397,11 @@ int dcs_restore_max_core_mask(void)
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
+		if (g_gov_enable)
+			return ret;
 	}
 
 	mutex_lock(&g_DCS_lock);
-
-	if (g_gov_enable)
-		goto done_unlock;
 
 	if ((!g_dcs_enable || g_cur_core_num == g_max_core_num) && !g_setting_dirty)
 		goto done_unlock;
@@ -412,10 +416,6 @@ int dcs_restore_max_core_mask(void)
 		ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
 	else
 		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
-
-	if (is_fdvfs_enable() & POLICY_MODE_V2) {
-		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
-	}
 
 	g_cur_core_num = g_max_core_num;
 	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
@@ -583,7 +583,8 @@ unsigned int dcs_get_gov_enable(void) {
 	return g_gov_enable;
 }
 
-void dcs_set_gov_enable(unsigned int enable) {
+void dcs_set_gov_enable(unsigned int enable, unsigned int src)
+{
 	struct fdvfs_ipi_data ipi_data = {0};
 	int ret = 0;
 
@@ -597,6 +598,7 @@ void dcs_set_gov_enable(unsigned int enable) {
 	g_has_gov_support = ipi_data.u.set_para.arg[0];
 	g_gov_enable = ipi_data.u.set_para.arg[1];
 	g_setting_dirty = true;
+	g_gov_src = src;
 
 	if (g_gov_enable) {
 
@@ -612,6 +614,40 @@ void dcs_set_gov_enable(unsigned int enable) {
 
 		mutex_unlock(&g_DCS_lock);
 	}
+}
+
+unsigned int dcs_get_desire_mask(void)
+{
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		return mtk_gpueb_sysram_read(fdvfs_v2_table[GOV_DESIRE_MASK].addr);
+
+	return 0;
+}
+
+ssize_t get_get_gov_support_dump(char *buf, int sz, ssize_t pos)
+{
+	int length;
+
+	length = scnprintf(buf + pos, sz - pos,
+			"support:%u enable:%u(%u) (enable will restore to 0 if platform not support)\n",
+			dcs_get_gov_support(), dcs_get_gov_enable(), ged_dvfs_get_gov_mask_enable());
+
+	pos += length;
+
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		length = scnprintf(buf + pos, sz - pos,
+			"%u", mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr));
+		pos += length;
+	}
+
+	length = scnprintf(buf + pos, sz - pos, "(%u), ap(%u) last_src(%u)\n",
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DCS_CORE_NUM), g_gov_src);
+
+	pos += length;
+
+	return pos;
 }
 
 int dcs_get_lowpwr(void)
@@ -632,12 +668,11 @@ void dcs_set_lowpwr(int enable)
 
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
+		if (g_gov_enable)
+			goto done_unlock;
 	}
 
 	if(!g_dcs_enable)
-		goto done_unlock;
-
-	if (g_gov_enable)
 		goto done_unlock;
 
 	if (enable) {

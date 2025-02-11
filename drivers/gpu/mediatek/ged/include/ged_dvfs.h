@@ -273,6 +273,10 @@ unsigned long ged_dvfs_write_sysram_last_commit_dual_test(int top_idx, int stack
 void ged_dvfs_set_sysram_last_commit_top_idx(int commit_idx);
 void ged_dvfs_set_sysram_last_commit_dual_idx(int top_idx, int stack_idx);
 void ged_dvfs_set_sysram_last_commit_stack_idx(int commit_idx);
+unsigned int ged_dvfs_get_gov_mask_enable(void);
+unsigned int ged_dvfs_get_gov_mask_support(void);
+void ged_dvfs_set_gov_mask_enable(unsigned int enable);
+unsigned int ged_dvfs_get_desire_mask(void);
 unsigned int ged_dvfs_write_sysram_protm_enter(void);
 unsigned int ged_dvfs_write_sysram_protm_exit(void);
 int ged_write_sysram_pwr_hint(int pwr_hint);

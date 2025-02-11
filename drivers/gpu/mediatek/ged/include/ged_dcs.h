@@ -52,6 +52,7 @@ int dcs_set_fix_num(unsigned int core_num);
 void dcs_fix_reset(void);
 unsigned int dcs_get_fix_num(void);
 unsigned int dcs_get_fix_mask(void);
+void dcs_set_setting_dirty(void);
 bool dcs_get_setting_dirty(void);
 
 // for dcs_stress
@@ -77,7 +78,10 @@ ssize_t get_get_major_min_dump(char *buf, int sz, ssize_t pos);
 //gov
 unsigned int dcs_get_gov_support(void);
 unsigned int dcs_get_gov_enable(void);
-void dcs_set_gov_enable(unsigned int enable);
+void dcs_set_gov_enable(unsigned int enable, unsigned int src);
+unsigned int dcs_get_desire_mask(void);
+ssize_t get_get_gov_support_dump(char *buf, int sz, ssize_t pos);
+
 int dcs_get_lowpwr(void);
 void dcs_set_lowpwr(int enable);
 

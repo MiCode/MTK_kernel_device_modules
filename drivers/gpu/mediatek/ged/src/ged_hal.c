@@ -1647,12 +1647,11 @@ static ssize_t gov_mask_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE,
-			"support:%d enable:%d (enable will restore to 0 if platform not support) %d(%d), ap(%d)\n",
-			dcs_get_gov_support(), dcs_get_gov_enable(),
-			mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DESIRE_FREQ_ID),
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_DCS_CORE_NUM));
+	char debug_buf[GED_SYSFS_MAX_BUFF_SIZE];
+
+	get_get_gov_support_dump(debug_buf, sizeof(debug_buf), 0);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", debug_buf);
 }
 
 static ssize_t gov_mask_store(struct kobject *kobj,
@@ -1666,9 +1665,9 @@ static ssize_t gov_mask_store(struct kobject *kobj,
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0) {
 				if (i32Value <= 0)
-					dcs_set_gov_enable(0);
+					dcs_set_gov_enable(0, 0);
 				else
-					dcs_set_gov_enable(i32Value);
+					dcs_set_gov_enable(i32Value, 0);
 			}
 		}
 	}

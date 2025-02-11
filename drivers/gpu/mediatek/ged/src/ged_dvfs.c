@@ -1152,6 +1152,33 @@ unsigned long ged_dvfs_get_last_commit_dual_idx(void)
 }
 EXPORT_SYMBOL(ged_dvfs_get_last_commit_dual_idx);
 
+unsigned int ged_dvfs_get_gov_mask_enable(void)
+{
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		return dcs_get_gov_enable();
+	else
+		return 0;
+}
+EXPORT_SYMBOL(ged_dvfs_get_gov_mask_enable);
+
+unsigned int ged_dvfs_get_gov_mask_support(void)
+{
+	return dcs_get_gov_support();
+}
+EXPORT_SYMBOL(ged_dvfs_get_gov_mask_support);
+
+void ged_dvfs_set_gov_mask_enable(unsigned int enable)
+{
+	dcs_set_gov_enable(enable, 1);
+}
+EXPORT_SYMBOL(ged_dvfs_set_gov_mask_enable);
+
+unsigned int ged_dvfs_get_desire_mask(void)
+{
+	return dcs_get_desire_mask();
+}
+EXPORT_SYMBOL(ged_dvfs_get_desire_mask);
+
 unsigned int ged_dvfs_write_sysram_protm_enter(void)
 {
 	if(protm_cnt == 0x7FFFFFFF)
@@ -3805,6 +3832,8 @@ static void ged_set_fastdvfs_mode(unsigned int u32ModeValue)
 	mtk_gpueb_dvfs_set_mode(u32ModeValue);
 	ged_set_eb_dvfs_init_value();
 	ged_eb_dvfs_task(EB_REINIT, 0);
+	if (u32ModeValue == 0)
+		dcs_set_setting_dirty();
 	mutex_unlock(&gsDVFSLock);
 }
 
