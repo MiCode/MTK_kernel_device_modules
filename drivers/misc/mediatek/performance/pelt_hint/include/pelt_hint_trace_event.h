@@ -10,7 +10,7 @@
 #define _MTK_PELT_HINT_TRACE_EVENT_H__
 #include <linux/tracepoint.h>
 
-TRACE_EVENT(chi_trace,
+TRACE_EVENT(pelt_hint_trace,
 	TP_PROTO(
 	const char *buf
 	),

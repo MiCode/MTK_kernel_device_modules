@@ -3,8 +3,8 @@
  * Copyright (c) 2019 MediaTek Inc.
  */
 
-#ifndef __CHI_USEDEXT_H__
-#define __CHI_USEDEXT_H__
+#ifndef __PELT_HINT_USEDEXT_H__
+#define __PELT_HINT_USEDEXT_H__
 
 #define CHI_SYSFS_READ(name, show, variable); \
 static ssize_t name##_show(struct kobject *kobj, \
@@ -25,12 +25,12 @@ static ssize_t name##_store(struct kobject *kobj, \
 	char *acBuffer = NULL; \
 	int arg; \
 \
-	acBuffer = kcalloc(CHI_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL); \
+	acBuffer = kcalloc(PELT_HINT_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL); \
 	if (!acBuffer) \
 		goto out; \
 \
-	if ((count > 0) && (count < CHI_SYSFS_MAX_BUFF_SIZE)) { \
-		if (scnprintf(acBuffer, CHI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) { \
+	if ((count > 0) && (count < PELT_HINT_SYSFS_MAX_BUFF_SIZE)) { \
+		if (scnprintf(acBuffer, PELT_HINT_SYSFS_MAX_BUFF_SIZE, "%s", buf)) { \
 			if (kstrtoint(acBuffer, 0, &arg) == 0) { \
 				if (arg >= (min) && arg <= (max)) \
 					(variable) = arg; \
@@ -43,7 +43,7 @@ out: \
 	return count; \
 }
 
-struct chi_oem_task_data {
+struct pelt_hint_oem_task_data {
 	int gai_task_flag;
 };
 
