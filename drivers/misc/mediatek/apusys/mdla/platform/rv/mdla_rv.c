@@ -93,6 +93,7 @@ DEFINE_IPI_DBGFS_ATTRIBUTE(dump_cmdbuf_en, MDLA_IPI_DUMP_CMDBUF_EN, 0, "%llu\n")
 DEFINE_IPI_DBGFS_ATTRIBUTE(info,           MDLA_IPI_INFO,           0, "%llu\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(dbg_brk,        MDLA_IPI_HALT_STA,       0, "0x%llx\n");
 DEFINE_IPI_DBGFS_ATTRIBUTE(dbg_options,    MDLA_IPI_DBG_OPTIONS,    0, "0x%llx\n");
+DEFINE_IPI_DBGFS_ATTRIBUTE(flog,           MDLA_IPI_FW_LOG_LV,      0, "%llu\n");
 
 struct mdla_dbgfs_ipi_file {
 	int type0;
@@ -128,10 +129,11 @@ static struct mdla_dbgfs_ipi_file ipi_dbgfs_file[] = {
 	{MDLA_IPI_PREEMPT_CNT,    0, 0x6C, 0660,  "preempt_times",  &preempt_times_fops, 0},
 	{MDLA_IPI_FORCE_PWR_ON,   0, 0x2C, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
 	{MDLA_IPI_PROFILE_EN,     0, 0x28, 0660,      "profiling",      &profiling_fops, 0},
-	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x2C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
+	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x6C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
 	{MDLA_IPI_INFO,           0, 0x6C, 0660,           "info",           &info_fops, 0},
 	{MDLA_IPI_HALT_STA,       0, 0x28, 0660,        "dbg_brk",        &dbg_brk_fops, 0},
 	{MDLA_IPI_DBG_OPTIONS,    0, 0x60, 0660,    "dbg_options",    &dbg_options_fops, 0},
+	{MDLA_IPI_FW_LOG_LV,      0, 0x40, 0660,      "fw_log_lv",           &flog_fops, 0},
 	{NF_MDLA_IPI_TYPE_0,      0, 0x00,    0,             NULL,                 NULL, 0}
 };
 
@@ -544,8 +546,6 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_printf(s, "echo [item] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_INFO));
 	seq_puts(s, "and then cat /proc/apusys_logger/seq_log\n");
 	seq_printf(s, "\t%d: show register value\n", MDLA_IPI_INFO_REG);
-	seq_printf(s, "\t%d: show the last cmdbuf (if dump_cmdbuf_en != 0)\n",
-				MDLA_IPI_INFO_CMDBUF);
 
 	seq_puts(s, "\n----------- set debug options -----------\n");
 	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
@@ -553,6 +553,13 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_puts(s, "\tPreempt once                                     = 0x0002\n");
 	seq_puts(s, "\tDump cmdbuf in seq log while CMD hang            = 0x0010\n");
 	seq_puts(s, "\tDump cmdbuf in /d/mdla/mdla_memory               = 0x0020\n");
+
+	seq_puts(s, "\n----------- set firmware log level -----------\n");
+	seq_printf(s, "echo [log_lv] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_FW_LOG_LV));
+	seq_puts(s, "\t0: off\n");
+	seq_puts(s, "\t1: error\n");
+	seq_puts(s, "\t2: info\n");
+	seq_puts(s, "\t3: debug\n");
 
 	return 0;
 }
