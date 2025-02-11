@@ -356,7 +356,7 @@ u32 mtk_offload_provider_get_cnt(enum uo_provider_type id)
 		return 0;
 	}
 
-	return provider ? provider->struct_cnt : 0;
+	return provider->struct_cnt;
 }
 
 char *mtk_offload_provider_parse_count(enum uo_provider_type id)

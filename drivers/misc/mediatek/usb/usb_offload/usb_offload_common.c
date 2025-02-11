@@ -104,7 +104,7 @@ static struct usb_device *get_uac_device(void)
 
 static struct usb_offload_stream *get_stream(int direction)
 {
-	if (direction >= 2)
+	if (direction >= 2 || direction < 0)
 		return NULL;
 
 	uodev->stream[direction].direction = direction;
@@ -118,6 +118,7 @@ static void free_stream_urb(int direction)
 
 	if (!stream) {
 		USB_OFFLOAD_ERR("invalid direction:%d\n", direction);
+		return;
 	}
 
 	if (mtk_offload_free_mem(stream->urb))
@@ -1206,7 +1207,7 @@ static int usb_offload_enable_stream(struct usb_audio_stream_info *uainfo,
 	if (pcm_card_num >= SNDRV_CARDS) {
 		USB_OFFLOAD_ERR("invalid card # %u", pcm_card_num);
 		ret = -EINVAL;
-		goto done;
+		goto error;
 	}
 
 	if (!is_support_format(uainfo->audio_format)) {
@@ -1402,7 +1403,7 @@ done:
 			kref_put(&uadev[pcm_card_num].kref, uaudio_dev_release);
 		mutex_unlock(&uodev->dev_lock);
 	}
-
+error:
 	return ret;
 }
 
@@ -2395,8 +2396,6 @@ static void check_valid_device(struct usb_device *udev, bool *support, bool *byp
 		 */
 		for (alt_idx = 0; alt_idx < intf->num_altsetting; alt_idx++) {
 			hostif = &intf->altsetting[alt_idx];
-			if (unlikely(!hostif))
-				continue;
 			intfd = get_iface_desc(hostif);
 			if (unlikely(!intfd))
 				continue;

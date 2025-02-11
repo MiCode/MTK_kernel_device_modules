@@ -294,7 +294,8 @@ void usb_offload_trace_start(struct usb_audio_stream_msg *msg)
 	/* init trace_stream */
 	if (stream_start(trace_buffer, slot, ep, dir, desc)) {
 		USB_OFFLOAD_ERR("init stream fail\n");
-		mtk_offload_free_mem(trace_buffer);
+		if (mtk_offload_free_mem(trace_buffer))
+			USB_OFFLOAD_ERR("fail to free trace_buffer\n");
 		goto error;
 	}
 
