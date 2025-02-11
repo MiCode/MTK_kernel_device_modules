@@ -1246,36 +1246,69 @@ int init_legacy_capacity_table(void)
 	struct pd_capacity_info *pd_info;
 	struct em_perf_domain *pd;
 	struct upower_tbl *tbl = NULL;
+	struct eas_info eas_node;
+	void __iomem *sram_base_addr = NULL;
+	void __iomem *base = NULL;
+	unsigned long offset = 0;
+	unsigned long end_cap;
+	unsigned long power_res, cost;
+
+	parse_eas_data(&eas_node);
+	if (eas_node.available) {
+		sram_base_addr = ioremap(eas_node.csram_base + eas_node.offs_cap, CAPACITY_TBL_SIZE);
+		if (!sram_base_addr) {
+			pr_info("Remap thermal info failed in eas-info node\n");
+			return -EIO;
+		}
+		base = sram_base_addr;
+	}
 
 	ret = alloc_capacity_table();
-	if (ret)
+	if (ret) {
+		pr_info("%s alloc failed\n", __func__);
 		return ret;
-
+	}
 	for (i = 0; i < legacy_pd_count; i++) {
 		pd_info = &pd_capacity_tbl[i];
 		cpu = cpumask_first(&pd_info->cpus);
 		pd = em_cpu_get(cpu);
-		if (!pd)
+		if (!pd) {
+			pr_info("%s em_cpu_get failed\n", __func__);
 			goto err;
-
+		}
 #if IS_ENABLED(CONFIG_MTK_UNIFIED_POWER)
 		tbl = upower_get_core_tbl(cpu);
 #endif
-		if (!tbl)
-			goto err;
-
-		for (j = 0; j < pd_info->nr_caps; j++) {
-			cap = tbl->row[pd_info->nr_caps - j - 1].cap;
-			if (j == pd_info->nr_caps - 1)
-				next_cap = -1;
-			else
-				next_cap = tbl->row[pd_info->nr_caps - j - 2].cap;
-
-			if (cap == 0 || next_cap == 0)
+		if (!eas_node.available) {
+			if (!tbl) {
+				pr_info("%s EAS_NODE not found tbl=NULL\n", __func__);
 				goto err;
-
+			}
+		}
+		pr_info("%s i=%d pd_info->nr_caps=%d\n",__func__ , i, (int) pd_info->nr_caps);
+		for (j = 0; j < pd_info->nr_caps; j++) {
+			if (eas_node.available) {
+				cap = ioread16(base + offset);
+				next_cap = ioread16(base + offset + CAPACITY_ENTRY_SIZE);
+			} else {
+				cap = tbl->row[pd_info->nr_caps - j - 1].cap;
+				if (j == pd_info->nr_caps - 1)
+					next_cap = -1;
+				else
+					next_cap = tbl->row[pd_info->nr_caps - j - 2].cap;
+			}
+			if (cap == 0 || next_cap == 0) {
+				pr_info("%s capacity = %d next_cap = %d fail\n", __func__, (int) cap, (int) next_cap );
+				goto err;
+			}
+			pr_info("%s j=%d cap = %d next_cap=%d\n",__func__, j, (int) cap, (int) next_cap);
 			pd_info->caps[j] = cap;
+			pd->em_table->state[pd_info->nr_caps - j - 1].performance = pd_info->caps[j];
 
+			power_res = pd->em_table->state[pd_info->nr_caps - j - 1].power * 10;
+			cost = power_res / pd->em_table->state[pd_info->nr_caps - j - 1].performance;
+
+			pd->em_table->state[pd_info->nr_caps - j - 1].cost = cost;
 			if (!pd_info->util_opp) {
 				pd_info->util_opp = kcalloc(cap + 1, sizeof(unsigned int),
 										GFP_KERNEL);
@@ -1300,23 +1333,35 @@ int init_legacy_capacity_table(void)
 			}
 
 			count += 1;
+			if (eas_node.available)
+				offset += CAPACITY_ENTRY_SIZE;
 		}
 
-		for_each_cpu(cpu, &pd_info->cpus) {
-			if (per_cpu(cpu_scale, cpu) != tbl->row[tbl->row_num - 1].cap) {
-				pr_info("err: cpu=%d, cpu_scale=%lu, upower_info_cap=%llu\n",
-					cpu, per_cpu(cpu_scale, cpu), tbl->row[tbl->row_num - 1].cap);
-				per_cpu(cpu_scale, cpu) = tbl->row[tbl->row_num - 1].cap;
+		/* repeated last cap 0 between each cluster */
+		if (eas_node.available) {
+			end_cap = ioread16(base + offset);
+			if (end_cap != cap) {
+				pr_info("%s end_cap=%d cap = %d  FAIL\n",__func__, (int) end_cap, (int) cap);
+				goto err;
+			}
+			offset += CAPACITY_ENTRY_SIZE;
+		}
+
+		for_each_cpu(j, &pd_info->cpus) {
+			if (per_cpu(cpu_scale, j) != pd_info->caps[0]) {
+				pr_info("capacity err: cpu=%d, cpu_scale=%d, pd_info_cap=%d\n",
+					j, (int) per_cpu(cpu_scale, j), (int) pd_info->caps[0]);
+				per_cpu(cpu_scale, j) = pd_info->caps[0];
 			} else {
-				pr_info("match: cpu=%d, cpu_scale=%lu, upower_info_cap=%llu\n",
-					cpu, per_cpu(cpu_scale, cpu), tbl->row[tbl->row_num - 1].cap);
+				pr_info("capacity match: cpu=%d, cpu_scale=%d, pd_info_cap=%d\n",
+					j, (int) per_cpu(cpu_scale, j), (int) pd_info->caps[0]);
 			}
 		}
 	}
-
-	if (entry_count != count)
+	if (entry_count != count) {
+		pr_info("%s entry_count=%d count = %d  FAIL\n",__func__, (int) entry_count, (int) count);
 		goto err;
-
+	}
 	legacy_pd_enable = 1;
 
 	return 0;
@@ -1330,6 +1375,44 @@ err:
 
 	return -ENOENT;
 }
+
+static int pd_capacity_tbl_show(struct seq_file *m, void *v)
+{
+	int i, j;
+	struct pd_capacity_info *pd_info;
+
+	if (!pd_capacity_tbl) {
+		pr_info ("PD_CAPACITY_TBL not initialized");
+		return 1;
+	}
+
+	for (i = 0; i < MAX_PD_COUNT; i++) {
+		pd_info = &pd_capacity_tbl[i];
+
+		if (!pd_info || !pd_info->nr_caps)
+			break;
+
+		seq_printf(m, "Pd table: %d\n", i);
+		seq_printf(m, "cpus: %*pbl\n", cpumask_pr_args(&pd_info->cpus));
+		seq_printf(m, "nr_caps: %d\n", pd_info->nr_caps);
+		for (j = 0; j < pd_info->nr_caps; j++)
+			seq_printf(m, "%d: %d, %d\n", j, (int) pd_info->caps[j],
+					(int) pd_info->util_freq[pd_info->caps[j]]);
+	}
+
+	return 0;
+}
+
+static int pd_capacity_tbl_open(struct inode *in, struct file *file)
+{
+	return single_open(file, pd_capacity_tbl_show, NULL);
+}
+
+static const struct proc_ops pd_capacity_tbl_ops = {
+	.proc_open = pd_capacity_tbl_open,
+	.proc_read = seq_read
+};
+
 
 /* em */
 int em_opp2freq(int cpu, int opp)
@@ -2627,7 +2710,7 @@ EXPORT_SYMBOL_GPL(get_dpt_default_status);
 int init_opp_cap_info(struct proc_dir_entry *dir)
 {
 	int ret;
-
+	struct proc_dir_entry *entry;
 	ret = init_sram_mapping();
 	if (ret) {
 		pr_info("init_sram_mapping fail, return=%d\n", ret);
@@ -2701,7 +2784,11 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 	init_adaptive_margin();
 
 	register_fpsgo_sugov_hooks();
-
+	if (legacy_api_support_get()) {
+		entry = proc_create("pd_capacity_tbl_legacy", 0644, dir, &pd_capacity_tbl_ops);
+		if (!entry)
+			pr_info("mtk_scheduler/pd_capacity_tbl_legacy entry create failed\n");
+	}
 	return ret;
 }
 

@@ -653,7 +653,7 @@ unsigned long mtk_cpu_util_next_dpt_v2(int cpu, struct task_struct *p, int dst_c
 unsigned long mtk_cpu_util_cfs_dpt_v2(int cpu, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util);
 unsigned long mtk_cpu_util_cfs_boost_dpt_v2(int cpu, unsigned long *cpu_util, unsigned long *coef1_util, unsigned long *coef2_util);
 
-#define EAS_NODE_NAME "eas_info"
+#define EAS_NODE_NAME "eas-info"
 #define EAS_PROP_CSRAM "csram-base"
 #define EAS_PROP_OFFS_CAP "offs-cap"
 #define EAS_PROP_OFFS_THERMAL_S "offs-thermal-limit"
