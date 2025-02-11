@@ -318,6 +318,7 @@ int mtk_usb_sram_free(dma_addr_t physical)
 	region = in_region_list(manager, physical);
 	if (!region) {
 		dev_info(manager->dev, "%s can't find phy:%llx\n", __func__, physical);
+		spin_unlock(&manager->list_lock);
 		return -EINVAL;
 	}
 	list_del(&region->list);
@@ -341,6 +342,7 @@ int mtk_usb_sram_free_virt(void *virtual)
 	region = in_region_list_virt(manager, virtual);
 	if (!region) {
 		dev_info(manager->dev, "%s can't find virt:%p\n", __func__, virtual);
+		spin_unlock(&manager->list_lock);
 		return -EINVAL;
 	}
 	list_del(&region->list);
@@ -502,7 +504,6 @@ static ssize_t dbg_store(struct device *dev,
 			goto success;
 		else
 			goto error;
-		return usb_sram_allocate_dbg(start_index, size) ? count : -EINVAL;
 	} else if (!strncmp(field1, "free", 4)) {
 		dev_info(manager->dev, "%s free: index:%d\n", __func__, start_index);
 		if (!usb_sram_free_dbg(start_index))
@@ -518,6 +519,7 @@ invalid_input:
 
 error:
 	dev_info(manager->dev, "%s operation error\n", __func__);
+	return -EINVAL;
 success:
 	return count;
 }
