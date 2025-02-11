@@ -689,17 +689,19 @@ static inline uint8_t dpm_check_reaction_available(struct pd_port *pd_port,
 static inline bool dpm_check_clear_reaction(struct pd_port *pd_port,
 	const struct dpm_ready_reaction *reaction)
 {
-	if (pd_port->pe_data.dpm_reaction_id != reaction->bit_mask)
-		pd_port->pe_data.dpm_reaction_retry = 0;
+	struct pe_data *pe_data = &pd_port->pe_data;
 
-	pd_port->pe_data.dpm_reaction_retry++;
-	pd_port->pe_data.dpm_reaction_id = reaction->bit_mask;
+	if (pe_data->dpm_reaction_id != reaction->bit_mask) {
+		pe_data->dpm_reaction_id = reaction->bit_mask;
+		pe_data->dpm_reaction_try = 1;
+	} else
+		pe_data->dpm_reaction_try++;
 
 	if (reaction->condition & DPM_REACTION_COND_ONE_SHOT)
 		return true;
 
 	if (reaction->condition & DPM_REACTION_COND_LIMITED_RETRIES)
-		return pd_port->pe_data.dpm_reaction_retry > 5;
+		return pe_data->dpm_reaction_try >= 6;
 
 	return false;
 }
@@ -721,7 +723,6 @@ uint8_t pd_dpm_get_ready_reaction(struct pd_port *pd_port)
 	} while ((evt == 0) && (++reaction < reaction_last));
 
 	if (evt > 0 && dpm_check_clear_reaction(pd_port, reaction)) {
-		pd_port->pe_data.dpm_reaction_retry = 0;
 		clear_reaction |= reaction->bit_mask;
 		DPM_DBG("clear_reaction=%d\n", evt);
 	}

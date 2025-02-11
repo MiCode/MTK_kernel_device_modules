@@ -14,7 +14,7 @@
 #define TIMEOUT_VAL(val)		((val) * USEC_PER_MSEC)
 #define TIMEOUT_RANGE(min, max)		(((min) * 4 + (max)) * USEC_PER_MSEC / 5)
 
-static inline uint64_t tcpc_get_timer_tick(struct tcpc_device *tcpc)
+uint64_t tcpc_get_timer_tick(struct tcpc_device *tcpc)
 {
 	uint64_t tick;
 	unsigned long flags;
@@ -142,7 +142,7 @@ DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_STATE_CHANGE, 50),
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_DISCHARGE, CONFIG_TYPEC_CAP_DISCHARGE_TOUT),
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_LOW_POWER_MODE, 500),
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_PE_IDLE, 1),
+DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_PE_IDLE, 0),
 #if CONFIG_USB_PD_WAIT_BC12
 DECL_TCPC_TIMEOUT(TYPEC_RT_TIMER_PD_WAIT_BC12, 50),
 #endif /* CONFIG_USB_PD_WAIT_BC12 */
@@ -159,7 +159,7 @@ DECL_TCPC_TIMEOUT_RANGE(TYPEC_TRY_TIMER_TRY_TOUT, 550, 1100),
 DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_CCDEBOUNCE, 100, 200),
 DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_PDDEBOUNCE, 10, 10),
 DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_TRYCCDEBOUNCE, 10, 20),
-DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_SRCDISCONNECT, 0, 20),
+DECL_TCPC_TIMEOUT(TYPEC_TIMER_SRCDISCONNECT, 1),
 DECL_TCPC_TIMEOUT_RANGE(TYPEC_TIMER_DRP_SRC_TOGGLE, 50, 100),
 
 /* TYPEC_TIMER (out of spec) */
@@ -323,6 +323,9 @@ static inline void tcpc_reset_timer_range(
 void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 {
 	uint32_t r, mod, tout;
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	int locked = 0;
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	if (timer_id >= PD_TIMER_NR) {
 		PD_BUG_ON(1);
@@ -331,24 +334,24 @@ void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 
 	TCPC_TIMER_DBG("Enable %s\n", tcpc_timer_desc[timer_id].name);
 
+	tout = tcpc_timer_desc[timer_id].tout;
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	locked = mutex_trylock(&tcpc->access_lock);
+	if (timer_id == PD_TIMER_SENDER_RESPONSE ||
+	    timer_id == PD_TIMER_VDM_RESPONSE) {
+		if (tout > tcpc->io_time_diff)
+			tout -= tcpc->io_time_diff;
+		else
+			tout = 0;
+		tcpc->io_time_diff = 0;
+	}
+	if (locked)
+		mutex_unlock(&tcpc->access_lock);
+#endif /* CONFIG_USB_POWER_DELIVERY */
+
 	mutex_lock(&tcpc->timer_lock);
 	if (timer_id >= TYPEC_TIMER_START_ID)
 		tcpc_reset_timer_range(tcpc, TYPEC_TIMER_START_ID, PD_TIMER_NR);
-
-	tout = tcpc_timer_desc[timer_id].tout;
-#if PD_DYNAMIC_SENDER_RESPONSE
-	if ((timer_id == PD_TIMER_SENDER_RESPONSE) &&
-		(tout > tcpc->tx_time_diff) && (tcpc->tx_time_diff > 2000)) {
-		tout -= (tcpc->tx_time_diff - 2000);
-		tcpc->tx_time_diff = 0;
-	}
-#endif
-
-#if CONFIG_USB_PD_RANDOM_FLOW_DELAY
-	if (timer_id == PD_TIMER_DFP_FLOW_DELAY ||
-		timer_id == PD_TIMER_UFP_FLOW_DELAY)
-		tout += TIMEOUT_VAL(jiffies & 0x07);
-#endif	/* CONFIG_USB_PD_RANDOM_FLOW_DELAY */
 
 	r =  tout / USEC_PER_SEC;
 	mod = tout % USEC_PER_SEC;
@@ -411,9 +414,10 @@ void tcpc_reset_typec_try_timer(struct tcpc_device *tcpc)
 static void tcpc_handle_timer_triggered(struct tcpc_device *tcpc)
 {
 	int i = 0;
-	uint64_t tick = tcpc_get_and_clear_all_timer_tick(tcpc);
+	uint64_t tick = 0;
 
 	atomic_inc(&tcpc->suspend_pending);
+	tick = tcpc_get_and_clear_all_timer_tick(tcpc);
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	for (i = 0; i < PD_PE_TIMER_END_ID; i++) {

@@ -85,10 +85,9 @@ static int tcpc_check_notify_time(struct tcpc_device *tcpc,
 
 int tcpci_check_vbus_valid_from_ic(struct tcpc_device *tcpc)
 {
-	uint16_t power_status;
 	int vbus_level = tcpc->vbus_level;
 
-	if (tcpci_get_power_status(tcpc, &power_status) == 0) {
+	if (tcpci_get_power_status(tcpc) == 0) {
 		if (vbus_level != tcpc->vbus_level) {
 			TCPC_INFO("[Warning] ps_changed %d -> %d\n",
 				vbus_level, tcpc->vbus_level);
@@ -165,14 +164,17 @@ int tcpci_get_alert_mask(
 }
 EXPORT_SYMBOL(tcpci_get_alert_mask);
 
-int tcpci_get_alert_status(
-	struct tcpc_device *tcpc, uint32_t *alert)
+int tcpci_get_alert_status_and_mask(
+	struct tcpc_device *tcpc, uint32_t *alert, uint32_t *mask)
 {
-	PD_BUG_ON(tcpc->ops->get_alert_status == NULL);
+	int ret = 0;
 
-	return tcpc->ops->get_alert_status(tcpc, alert);
+	if (tcpc->ops->get_alert_status_and_mask)
+		ret = tcpc->ops->get_alert_status_and_mask(tcpc, alert, mask);
+
+	return ret;
 }
-EXPORT_SYMBOL(tcpci_get_alert_status);
+EXPORT_SYMBOL(tcpci_get_alert_status_and_mask);
 
 int tcpci_get_fault_status(
 	struct tcpc_device *tcpc, uint8_t *fault)
@@ -185,18 +187,17 @@ int tcpci_get_fault_status(
 }
 EXPORT_SYMBOL(tcpci_get_fault_status);
 
-int tcpci_get_power_status(
-	struct tcpc_device *tcpc, uint16_t *pw_status)
+int tcpci_get_power_status(struct tcpc_device *tcpc)
 {
 	int ret;
 
 	PD_BUG_ON(tcpc->ops->get_power_status == NULL);
 
-	ret = tcpc->ops->get_power_status(tcpc, pw_status);
+	ret = tcpc->ops->get_power_status(tcpc);
 	if (ret < 0)
 		return ret;
 
-	tcpci_vbus_level_init(tcpc, *pw_status);
+	tcpci_vbus_level_refresh(tcpc);
 	return 0;
 }
 EXPORT_SYMBOL(tcpci_get_power_status);
@@ -204,7 +205,6 @@ EXPORT_SYMBOL(tcpci_get_power_status);
 int tcpci_init(struct tcpc_device *tcpc, bool sw_reset)
 {
 	int ret;
-	uint16_t power_status;
 
 	PD_BUG_ON(tcpc->ops->init == NULL);
 
@@ -212,7 +212,7 @@ int tcpci_init(struct tcpc_device *tcpc, bool sw_reset)
 	if (ret < 0)
 		return ret;
 
-	return tcpci_get_power_status(tcpc, &power_status);
+	return tcpci_get_power_status(tcpc);
 }
 EXPORT_SYMBOL(tcpci_init);
 
@@ -315,7 +315,7 @@ EXPORT_SYMBOL(tcpci_set_vconn);
 
 int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en)
 {
-	int ret = 0, pull = TYPEC_CC_OPEN, i = 0;
+	int ret = 0, pull = TYPEC_CC_OPEN;
 
 	tcpc->typec_lpm = en;
 	if (!tcpc_typec_is_cc_open_state(tcpc)) {
@@ -332,21 +332,6 @@ int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en)
 		}
 	}
 
-#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	/* [Workaround]
-	 * rx_buffer can't clear, try to reset protocol before disable bmc clock
-	 */
-	if (en) {
-		ret = tcpci_protocol_reset(tcpc);
-		for (i = 0; i < 2; i++) {
-			ret = tcpci_alert_status_clear(tcpc,
-				TCPC_REG_ALERT_RX_ALL_MASK);
-			if (ret < 0)
-				TCPC_INFO("%s:%d clear rx event fail\n",
-					  __func__, i);
-		}
-	}
-#endif	/* CONFIG_USB_POWER_DELIVERY */
 	if (tcpc->ops->set_low_power_mode)
 		ret = tcpc->ops->set_low_power_mode(tcpc, en, pull);
 
@@ -364,17 +349,6 @@ int tcpci_alert_vendor_defined_handler(struct tcpc_device *tcpc)
 	return ret;
 }
 EXPORT_SYMBOL(tcpci_alert_vendor_defined_handler);
-
-int tcpci_is_vsafe0v(struct tcpc_device *tcpc)
-{
-	int ret = -EOPNOTSUPP;
-
-	if (tcpc->ops->is_vsafe0v)
-		ret = tcpc->ops->is_vsafe0v(tcpc);
-
-	return ret;
-}
-EXPORT_SYMBOL(tcpci_is_vsafe0v);
 
 #if CONFIG_WATER_DETECTION
 int tcpci_set_water_protection(struct tcpc_device *tcpc, bool en)
@@ -732,11 +706,11 @@ int tcpci_source_vbus(
 			ma = 0;
 	}
 
-	tcp_noti.vbus_state.ma = ma;
 	tcp_noti.vbus_state.mv = mv;
+	tcp_noti.vbus_state.ma = ma;
 	tcp_noti.vbus_state.type = type;
 
-	TCPC_DBG("source_vbus: %d mV, %d mA\n", mv, ma);
+	TCPC_DBG("source_vbus(0x%02X): %d mV, %d mA\n", type, mv, ma);
 	return tcpc_check_notify_time(tcpc, &tcp_noti,
 		TCP_NOTIFY_IDX_VBUS, TCP_NOTIFY_SOURCE_VBUS);
 }
@@ -756,11 +730,11 @@ int tcpci_sink_vbus(
 	if (ma < 0) {
 		if (mv != 0) {
 			switch (tcpc->typec_remote_rp_level) {
-			case TYPEC_CC_VOLT_SNK_1_5:
-				ma = 1500;
-				break;
 			case TYPEC_CC_VOLT_SNK_3_0:
 				ma = 3000;
+				break;
+			case TYPEC_CC_VOLT_SNK_1_5:
+				ma = 1500;
 				break;
 			case TYPEC_CC_VOLT_SNK_DFT:
 			default:
@@ -831,7 +805,6 @@ int tcpci_notify_attachwait_state(struct tcpc_device *tcpc, bool as_sink)
 #else
 	return 0;
 #endif	/* CONFIG_TYPEC_NOTIFY_ATTACHWAIT */
-
 }
 EXPORT_SYMBOL(tcpci_notify_attachwait_state);
 

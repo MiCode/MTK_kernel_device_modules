@@ -10,6 +10,7 @@
 #include "inc/tcpci.h"
 #include "inc/tcpci_typec.h"
 #include "inc/tcpci_timer.h"
+#include "inc/std_tcpci_v10.h"
 
 enum TYPEC_WAIT_PS_STATE {
 	TYPEC_WAIT_PS_DISABLE = 0,
@@ -907,7 +908,8 @@ static inline bool typec_attached_snk_cc_change(struct tcpc_device *tcpc)
 		tcpc->typec_remote_rp_level = cc_res;
 
 #if CONFIG_USB_PD_REV30
-		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port))
+		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port) &&
+		    cc_res == TYPEC_CC_VOLT_SNK_3_0)
 			pd_put_sink_tx_event(tcpc, cc_res);
 #endif	/* CONFIG_USB_PD_REV30 */
 
@@ -1011,6 +1013,7 @@ static inline bool typec_handle_cc_changed_entry(struct tcpc_device *tcpc)
 static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 {
 	bool as_sink = tcpc_typec_is_act_as_sink_role(tcpc);
+	uint8_t cc_res = typec_get_cc_res();
 #if CONFIG_USB_PD_REV30
 	struct pd_port *pd_port = &tcpc->pd_port;
 #endif	/* CONFIG_USB_PD_REV30 */
@@ -1032,10 +1035,16 @@ static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 	case typec_attached_dbgacc_snk:
 #endif	/* CONFIG_TYPEC_CAP_DBGACC_SNK */
 	case typec_attached_custom_src:
+		if (cc_res == tcpc->typec_remote_rp_level) {
+			tcpc_reset_typec_debounce_timer(tcpc);
+			TYPEC_DBG("The Same RpLvl, Ignore cc_attach\n");
+			return;
+		}
 		TYPEC_INFO("RpLvl Alert\n");
 #if CONFIG_USB_PD_REV30
-		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port))
-			pd_put_sink_tx_event(tcpc, typec_get_cc_res());
+		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port) &&
+		    cc_res != TYPEC_CC_VOLT_SNK_3_0)
+			pd_put_sink_tx_event(tcpc, cc_res);
 #endif	/* CONFIG_USB_PD_REV30 */
 		tcpc_enable_timer(tcpc, TYPEC_TIMER_PDDEBOUNCE);
 		return;
@@ -1819,11 +1828,57 @@ int tcpc_typec_change_role(
 	if (tcpc_typec_is_cc_open_state(tcpc))
 		return 0;
 
-	if (!postpone || tcpc->typec_attach_old == TYPEC_UNATTACHED)
+	if (!postpone || tcpc->typec_attach_old == TYPEC_UNATTACHED ||
+			 tcpc->typec_attach_old == TYPEC_ATTACHED_NORP_SRC)
 		return tcpc_typec_error_recovery(tcpc);
 	else
 		return 0;
 }
+
+#if CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND
+int tcpc_typec_suspend(struct tcpc_device *tcpc)
+{
+	int ret = 0;
+	uint32_t alert_mask = 0;
+
+	if (tcpc->typec_role < TYPEC_ROLE_DRP)
+		return ret;
+
+	if (tcpc->typec_state != typec_unattached_snk &&
+	    tcpc->typec_state != typec_attached_norp_src)
+		return ret;
+
+	ret = tcpci_get_alert_mask(tcpc, &alert_mask);
+	if (ret < 0)
+		return ret;
+	ret = tcpci_set_alert_mask(tcpc, alert_mask &
+				   ~TCPC_V10_REG_ALERT_CC_STATUS);
+	if (ret < 0)
+		return ret;
+	tcpci_set_cc(tcpc, TYPEC_CC_RD);
+	usleep_range(500, 1000);
+	tcpci_alert_status_clear(tcpc, TCPC_V10_REG_ALERT_CC_STATUS);
+	tcpci_set_alert_mask(tcpc, alert_mask);
+	tcpci_get_cc(tcpc);
+	if (!typec_is_cc_open()) {
+		tcpci_set_cc(tcpc, TYPEC_CC_DRP);
+		return -EBUSY;
+	}
+	return 0;
+}
+
+void tcpc_typec_resume(struct tcpc_device *tcpc)
+{
+	if (tcpc->typec_role < TYPEC_ROLE_DRP)
+		return;
+
+	if (tcpc->typec_state != typec_unattached_snk &&
+	    tcpc->typec_state != typec_attached_norp_src)
+		return;
+
+	tcpci_set_cc(tcpc, TYPEC_CC_DRP);
+}
+#endif	/* CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND */
 
 int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 {
@@ -2039,8 +2094,6 @@ EXPORT_SYMBOL(tcpc_typec_handle_otp);
 int tcpc_typec_handle_ctd(struct tcpc_device *tcpc,
 			  enum tcpc_cable_type cable_type)
 {
-	int ret;
-
 	TCPC_DBG("%s: cable_type = %d\n", __func__, cable_type);
 
 	if (!(tcpc->tcpc_flags & TCPC_FLAGS_CABLE_TYPE_DETECTION))
@@ -2051,19 +2104,6 @@ int tcpc_typec_handle_ctd(struct tcpc_device *tcpc,
 		    (tcpc->typec_fod == TCPC_FOD_DISCHG_FAIL ||
 		     tcpc->typec_fod == TCPC_FOD_OV))
 			cable_type = TCPC_CABLE_TYPE_A2C;
-	}
-
-	/* Filter out initial no cable */
-	if (cable_type == TCPC_CABLE_TYPE_C2C) {
-		ret = tcpci_get_cc(tcpc);
-		if (ret >= 0) {
-			if (typec_is_cc_no_res() &&
-			    (tcpc->typec_state == typec_unattached_snk ||
-			     tcpc->typec_state == typec_unattached_src)) {
-				TCPC_INFO("%s toggling or open\n", __func__);
-				cable_type = TCPC_CABLE_TYPE_NONE;
-			}
-		}
 	}
 
 	TCPC_INFO("%s cable (%d, %d)\n", __func__, tcpc->typec_cable_type,

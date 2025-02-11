@@ -42,12 +42,12 @@
 #define PDO_TYPE_APDO		(3 << 30)
 #define PDO_TYPE_MASK		(3 << 30)
 
-#define PDO_FIXED_DUAL_ROLE	(1 << 29) /* Dual role device */
-#define PDO_FIXED_SUSPEND	(1 << 28) /* USB Suspend supported (SRC) */
-#define PDO_FIXED_HIGH_CAP	(1 << 28) /* Higher Capability (SNK) */
-#define PDO_FIXED_EXTERNAL	(1 << 27) /* Externally powered */
-#define PDO_FIXED_COMM_CAP	(1 << 26) /* USB Communications Capable */
-#define PDO_FIXED_DATA_SWAP	(1 << 25) /* Data role swap command supported */
+#define PDO_FIXED_DUAL_ROLE_POWER	(1 << 29)
+#define PDO_FIXED_USB_SUSPEND		(1 << 28) /* USB Suspend supported (SRC) */
+#define PDO_FIXED_HIGH_CAP		(1 << 28) /* Higher Capability (SNK) */
+#define PDO_FIXED_UNCONSTRAINED_POWER	(1 << 27)
+#define PDO_FIXED_USB_COMM		(1 << 26) /* USB Communications Capable */
+#define PDO_FIXED_DUAL_ROLE_DATA	(1 << 25)
 
 #define PDO_FIXED_PEAK_CURR(i) \
 	((i & 0x03) << 20) /* [21..20] Peak current */
@@ -680,10 +680,6 @@ struct pe_data {		/* reset after detached */
 	bool cable_rev_discovered;
 #endif	/* CONFIG_USB_PD_REV30 */
 
-#if CONFIG_USB_PD_KEEP_PARTNER_ID
-	bool partner_id_present;
-#endif	/* CONFIG_USB_PD_KEEP_PARTNER_ID */
-
 #if CONFIG_USB_PD_VCONN_SAFE5V_ONLY
 	bool vconn_highv_prot;
 	uint8_t vconn_highv_prot_role;
@@ -699,8 +695,7 @@ struct pe_data {		/* reset after detached */
 	uint8_t msg_id_rx[PD_SOP_NR];
 	uint8_t msg_id_tx[PD_SOP_NR];
 
-	uint8_t dpm_reaction_retry;
-	uint8_t dpm_svdm_retry_cnt;
+	uint8_t dpm_reaction_try;
 	uint16_t dpm_flags;
 	uint32_t dpm_reaction_id;
 	uint32_t dpm_ready_reactions;
@@ -718,6 +713,7 @@ struct pe_data {		/* reset after detached */
 
 #if CONFIG_USB_PD_KEEP_PARTNER_ID
 	uint32_t partner_vdos[VDO_MAX_NR];
+	bool partner_id_present;
 #endif	/* CONFIG_USB_PD_KEEP_PARTNER_ID */
 
 	uint8_t cable_discovered_state;
@@ -1490,8 +1486,8 @@ int pd_reply_custom_vdm(struct pd_port *pd_port, uint8_t sop_type,
 #if CONFIG_USB_PD_REV30
 
 enum {	/* pd_traffic_control */
-	PD_SINK_TX_OK = 0,
-	PD_SINK_TX_NG = 1,
+	PD_SINK_TX_NG = 0,
+	PD_SINK_TX_OK = 1,
 	PD_SOURCE_TX_OK = 2,
 	PD_SOURCE_TX_START = 3,
 	PD_SINK_TX_START = 4,

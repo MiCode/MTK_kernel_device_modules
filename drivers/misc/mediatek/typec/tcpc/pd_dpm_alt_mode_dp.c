@@ -1214,9 +1214,8 @@ bool dp_parse_svid_data(
 	if (of_property_read_bool(np, "usbr20-not-used") ||
 	    of_property_read_bool(np, "usbr20_not_used"))
 		usb2 = 1;
-
-	receptacle = of_property_read_bool(np, "typec,receptacle");
-
+	if (of_property_read_bool(np, "typec,receptacle"))
+		receptacle = 1;
 	svid_data->local_mode.mode_cnt = 1;
 	if (receptacle) {
 		ufp_d_pin = ufp_d_pin_cap;

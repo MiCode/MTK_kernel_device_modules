@@ -120,6 +120,7 @@ enum {
 	PD_TIMER_NR,
 };
 
+extern uint64_t tcpc_get_timer_tick(struct tcpc_device *tcpc);
 extern void tcpc_enable_lpm_timer(struct tcpc_device *tcpc, bool en);
 extern bool tcpc_is_timer_active(struct tcpc_device *tcpc, int start, int end);
 extern void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id);

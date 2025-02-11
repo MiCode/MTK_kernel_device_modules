@@ -123,7 +123,7 @@ enum pd_pe_state_machine {
 	VDM_STATE_FLAG_BACK_READY_IF_DPM_ACK |\
 	VDM_STATE_FLAG_DPM_ACK_IMMEDIATELY; }
 
-#define VDM_STATE_REPLY_SVDM_REQUEST(pd_port)	{\
+#define VDM_STATE_REPLY_VDM_REQUEST(pd_port)	{\
 	pd_port->pe_data.vdm_state_flags = \
 	VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
 

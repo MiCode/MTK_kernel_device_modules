@@ -200,6 +200,7 @@ enum mt6360_id_rupsel {
  * MT6360_REG_MT_MASK1				(0x91)
  */
 
+#define MT6360_M_VBUS_VALID			BIT(5)
 #define MT6360_M_VCONN_SHT_GND			BIT(3)
 #define MT6360_M_VBUS_SAFE0V			BIT(1)
 #define MT6360_M_WAKEUP				BIT(0)
@@ -252,6 +253,7 @@ enum mt6360_id_rupsel {
  * MT6360_REG_MT_ST1				(0x9B)
  */
 
+#define MT6360_ST_VBUS_VALID			BIT(5)
 #define MT6360_ST_VCONN_SHT_GND			BIT(3)
 #define MT6360_ST_VBUS_SAFE0V			BIT(1)
 

@@ -66,7 +66,7 @@ void pe_src_transition_supply_entry(struct pd_port *pd_port)
 	struct pd_event *pd_event = pd_get_curr_pd_event(pd_port);
 
 	/* goto-min */
-	if (pd_event->event_type == PD_EVT_TCP_MSG)	 {
+	if (pd_event->event_type == PD_EVT_TCP_MSG) {
 		msg = PD_CTRL_GOTO_MIN;
 		pd_port->request_i_new = pd_port->request_i_op;
 	}

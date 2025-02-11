@@ -1158,16 +1158,15 @@ void pd_notify_pe_snk_explicit_contract(struct pd_port *pd_port)
 	if (pe_data->explicit_contract || !pd_check_rev30(pd_port))
 		return;
 
-	if (tcpc->typec_remote_rp_level == TYPEC_CC_VOLT_SNK_3_0)
+#if CONFIG_USB_PD_REV30_SNK_FLOW_DELAY_STARTUP
+	pe_data->pd_traffic_control = PD_SINK_TX_START;
+	pd_restart_timer(pd_port, PD_TIMER_SNK_FLOW_DELAY);
+#else
+	if (typec_get_cc_res() == TYPEC_CC_VOLT_SNK_3_0 &&
+	    tcpc->typec_remote_rp_level == TYPEC_CC_VOLT_SNK_3_0)
 		pe_data->pd_traffic_control = PD_SINK_TX_OK;
 	else
 		pe_data->pd_traffic_control = PD_SINK_TX_NG;
-
-#if CONFIG_USB_PD_REV30_SNK_FLOW_DELAY_STARTUP
-	if (pe_data->pd_traffic_control == PD_SINK_TX_OK) {
-		pe_data->pd_traffic_control = PD_SINK_TX_START;
-		pd_restart_timer(pd_port, PD_TIMER_SNK_FLOW_DELAY);
-	}
 #endif	/* CONFIG_USB_PD_REV30_SNK_FLOW_DELAY_STARTUP */
 #endif	/* CONFIG_USB_PD_REV30 */
 }
