@@ -515,6 +515,10 @@ struct v4l2_venc_multi_ref {
 struct v4l2_venc_visual_quality {
 	__s32	quant;
 	__s32	psyrd;
+	__s32	pfrmquant;
+	__s32	bfrmquant;
+	__s32	aqoffsetreduction;
+	__s32	lumaAq10bitEnhance;
 };
 
 // for V4L2_CID_MTK_VIDEO_ENC_INIT_QP
