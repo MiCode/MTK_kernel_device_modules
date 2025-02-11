@@ -41,7 +41,7 @@ int32_t fmt_clock_on(struct mtk_vdec_fmt *fmt)
 {
 	int ret = 0;
 
-	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VFMT);
+	//mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VFMT);
 	cmdq_mbox_enable(fmt->clt_fmt[0]->chan);
 	if (fmt->fmtLarb) {
 		ret = pm_runtime_resume_and_get(fmt->fmtLarb);
@@ -75,7 +75,6 @@ int32_t fmt_clock_off(struct mtk_vdec_fmt *fmt)
 		pm_runtime_put_sync(fmt->fmtLarb);
 	cmdq_mbox_disable(fmt->clt_fmt[0]->chan);
 	atomic_set(&fmt->fmt_error, 0);
-	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_VFMT);
 	return 0;
 }
 
@@ -96,14 +95,7 @@ void fmt_prepare_dvfs_emi_bw(struct mtk_vdec_fmt *fmt)
 						"mmdvfs-dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(fmt->fmt_reg)) {
 		fmt_debug(0, "Failed to get regulator\n");
-		if (!mmdvfs_get_version())
-			fmt->dvfs_clk = devm_clk_get(fmt->dev, "mmdvfs_clk");
-		else
-			fmt->dvfs_clk = devm_clk_get(fmt->dev, "mmdvfs_mux");
-		if (IS_ERR_OR_NULL(fmt->dvfs_clk)) {
-			fmt_debug(0, "Failed to get mmdvfs clk\n");
-			return;
-		}
+		return;
 	}
 
 	fmt->fmt_freq_cnt = dev_pm_opp_get_opp_count(fmt->dev);
@@ -176,11 +168,6 @@ void fmt_start_dvfs_emi_bw(struct mtk_vdec_fmt *fmt, struct fmt_pmqos pmqos_para
 		if (ret)
 			fmt_debug(0, "Failed to set regulator voltage %d\n",
 			volt);
-	} else if (!IS_ERR_OR_NULL(fmt->dvfs_clk)) {
-		fmt_debug(1, "actual request freq %lu", request_freq);
-		ret = clk_set_rate(fmt->dvfs_clk, request_freq);
-		if (ret)
-			fmt_debug(0, "Failed to set mmdvfs rate %lu\n", request_freq);
 	}
 	fmt_debug(1, "rdma cal MMqos (%d, %d, %lu)",
 			pmqos_param.rdma_datasize,
@@ -227,11 +214,6 @@ void fmt_end_dvfs_emi_bw(struct mtk_vdec_fmt *fmt, int id)
 			fmt_debug(0, "Failed to set regulator voltage %d\n",
 			volt);
 		}
-	} else if (!IS_ERR_OR_NULL(fmt->dvfs_clk)) {
-		fmt_debug(1, "request freq 0\n");
-		ret = clk_set_rate(fmt->dvfs_clk, 0);
-		if (ret)
-			fmt_debug(0, "Failed to set mmdvfs rate 0\n");
 	}
 	if (id >= 0 && id < fmt->gce_th_num) {
 		if (fmt->fmt_qos_req[id] != 0) {
