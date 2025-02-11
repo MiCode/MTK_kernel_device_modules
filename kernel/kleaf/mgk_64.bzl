@@ -4469,4 +4469,9 @@ def get_overlay_modules_list():
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6993".format(kernel_version))
 
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/mtk-lpm-legacy.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/platform/v1/mtk-lpm-plat-v1-legacy.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/k6855/mtk-lpm-dbg-mt6855-legacy.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/v1/mtk-lpm-dbg-common-v1-legacy.ko")
+
 get_overlay_modules_list()
