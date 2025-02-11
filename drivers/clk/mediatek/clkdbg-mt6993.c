@@ -1285,7 +1285,9 @@ static int clkdbg_thread_fn(void *data)
 		pr_info("clkdbg_thread receive NULL data\n");
 		goto ERR;
 	}
-	test_clk_num = test_clk->test_clk_num;
+
+	test_clk_num = test_clk->test_clk_num < TEST_CLK_NUM ?
+		test_clk->test_clk_num : TEST_CLK_NUM;
 
 	for (i = 0; i < test_clk_num; i++)
 		clks[i] = test_clk->test_clk[i];
@@ -1309,6 +1311,7 @@ static int clkdbg_thread_fn(void *data)
 	}
 ERR:
 	stop_clkdbg_test_task();
+	kfree(data);
 	return 0;
 }
 

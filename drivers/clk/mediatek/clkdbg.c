@@ -689,16 +689,20 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 	char cmd[sizeof(last_cmd)];
 	char *c = cmd;
 	char *ign, *tmp_clk_name;
-	struct test_task_clk test_clk; // need use malloc?
+	struct test_task_clk *ttc = kmalloc(sizeof(struct test_task_clk), GFP_KERNEL);
 	struct clk *tmp_clk;
 	int skip;
 
+	if (ttc == NULL) {
+		seq_puts(s, "malloc fail\n");
+		return 0;
+	}
 	if (clkdbg_ops == NULL || clkdbg_ops->start_task == NULL) {
 		seq_puts(s, "Task not support\n");
 		return 0;
 	}
 
-	test_clk.test_clk_num = 0;
+	ttc->test_clk_num = 0;
 	skip = 0;
 	/* add parsing input clk name */
 	strscpy(cmd, last_cmd, sizeof(cmd));
@@ -717,10 +721,10 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 	while(tmp_clk_name != NULL) {
 		tmp_clk = __clk_dbg_lookup(tmp_clk_name);
 		if (tmp_clk) {
-			test_clk.test_clk[test_clk.test_clk_num] = tmp_clk;
-			test_clk.test_clk_num++;
+			ttc->test_clk[ttc->test_clk_num] = tmp_clk;
+			ttc->test_clk_num++;
 			seq_printf(s, "valid clk %s\n", tmp_clk_name);
-			if (test_clk.test_clk_num >= TEST_CLK_NUM) {
+			if (ttc->test_clk_num >= TEST_CLK_NUM) {
 				seq_puts(s, "too many test clk, skip this cmd\n");
 				skip = 1;
 				break;
@@ -736,7 +740,8 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 	if (skip == 1)
 		goto END;
 
-	if (!clkdbg_ops->start_task(&test_clk))
+	seq_printf(s, "test_clk_num = %d\n", ttc->test_clk_num);
+	if (!clkdbg_ops->start_task(ttc))
 		seq_puts(s, "Task Createted\n");
 	else
 		seq_puts(s, "Create task failed\n");
