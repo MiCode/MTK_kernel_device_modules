@@ -98,7 +98,7 @@ struct battery_oc_data_t mt6357_battery_oc_data = {
 };
 struct battery_oc_data_t mt6358_battery_oc_data = {
 	.regmap_source = "parent_drvdata",
-	.gauge_node_name = "mtk_gauge",
+	.gauge_node_name = "mtk-gauge",
 	.fg_cur_hth = {MT6358_FGADC_CUR_CON2, 0xFFFF, 1},
 	.fg_cur_lth = {MT6358_FGADC_CUR_CON1, 0xFFFF, 1},
 	.spmi_intf = false,
@@ -679,6 +679,7 @@ static int battery_oc_parse_dt(struct platform_device *pdev, unsigned int num)
 			priv->unit_fg_cur = MT6357_UNIT_FGCURRENT;
 			break;
 		case MT6358_CHIP_ID:
+		case MT6366_CHIP_ID:
 			priv->default_rfg = MT6358_DEFAULT_RFG;
 			priv->unit_fg_cur = MT6358_UNIT_FGCURRENT;
 			break;
