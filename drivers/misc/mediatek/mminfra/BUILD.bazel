@@ -26,6 +26,7 @@ filegroup(
 )
 
 PLATFORMS = [
+    "mt6895",
     "mt6989",
     "mt6991",
     "mt6993",
