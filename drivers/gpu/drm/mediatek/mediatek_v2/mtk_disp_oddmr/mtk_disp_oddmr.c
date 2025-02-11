@@ -6091,7 +6091,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case PMQOS_GET_LARB_PORT_HRT_BW: {
 		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
 		int weight = 0;
-		unsigned int bw_base = 0;
+		unsigned int bw_base = data->bw_base;
 
 		data->larb_id = -1;
 		data->bw = 0;
@@ -6108,7 +6108,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		mtk_oddmr_sum_hrt(comp, data->type, &weight);
 		if (weight > 0) {
-			bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
+			if (!bw_base)
+				bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
 			data->bw = bw_base * weight / 400;
 			DDPINFO("%s, oddmr comp:%d, larb:%d, type:%d, bw:%d, weight:%d\n",
 				__func__, comp->id, data->larb_id, data->type, data->bw, weight);

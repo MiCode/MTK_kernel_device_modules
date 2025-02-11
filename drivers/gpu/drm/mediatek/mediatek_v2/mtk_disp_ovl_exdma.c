@@ -4423,6 +4423,52 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		ret = OVL_REQ_HRT;
 		break;
 	}
+	case PMQOS_GET_LARB_PORT_HRT_BW: {
+		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		struct drm_crtc *crtc = &mtk_crtc->base;
+		unsigned int compr_ratio = 90;
+		unsigned int bw_val = data->bw_base;
+		unsigned int phy_id = 0, usage_ovl_fmt = 0, usage_ovl_compr = 0;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
+		data->larb_id = -1;
+		data->bw = 0;
+		if (data->type != CHANNEL_HRT_READ)
+			break;
+
+		if (IS_ERR_OR_NULL(comp->larb_ids))
+			data->larb_id = comp->larb_id;
+		else
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0)
+			break;
+
+		if (exdma->data->ovl_phy_mapping)
+			phy_id = exdma->data->ovl_phy_mapping(comp);
+
+		usage_ovl_fmt = mtk_crtc->usage_ovl_fmt[phy_id];
+		usage_ovl_compr = mtk_crtc->usage_ovl_compr[phy_id];
+
+		if (usage_ovl_fmt == 0)
+			break;
+
+		if (!data->bw_base)
+			bw_val = mtk_drm_primary_frame_bw(crtc);
+		bw_val = (bw_val * usage_ovl_fmt) >> 2;
+
+		if (usage_ovl_compr)
+			bw_val = bw_val * compr_ratio / 100;
+
+		data->bw = bw_val;
+		DDPQOS("%s, exdma comp:%d, larb:%d, type:%d, bw:%d\n",
+			__func__, comp->id, data->larb_id, data->type, data->bw);
+		break;
+	}
 	case PMQOS_UPDATE_BW: {
 		struct drm_crtc *crtc;
 		struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);

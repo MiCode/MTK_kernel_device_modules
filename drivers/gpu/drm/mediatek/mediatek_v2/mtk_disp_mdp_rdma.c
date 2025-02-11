@@ -667,6 +667,38 @@ static int mtk_mdp_rdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 		ret = MDP_RDMA_REQ_HRT;
 	}
 		break;
+	case PMQOS_GET_LARB_PORT_HRT_BW:
+	{
+		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		struct drm_crtc *crtc = &mtk_crtc->base;
+		unsigned int bw_base = data->bw_base;
+
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_MMQOS_SUPPORT))
+			break;
+
+		data->larb_id = -1;
+		data->bw = 0;
+		if (data->type != CHANNEL_HRT_READ)
+			break;
+
+		if (IS_ERR_OR_NULL(comp->larb_ids))
+			data->larb_id = comp->larb_id;
+		else
+			data->larb_id = comp->larb_ids[0];
+
+		if (data->larb_id < 0)
+			break;
+
+		if (!data->bw_base)
+			bw_base = mtk_drm_primary_frame_bw(crtc);
+
+		data->bw = bw_base;
+		DDPQOS("%s, exdma comp:%d, larb:%d, type:%d, bw:%d\n",
+			__func__, comp->id, data->larb_id, data->type, data->bw);
+	}
+		break;
 	default:
 		break;
 	}

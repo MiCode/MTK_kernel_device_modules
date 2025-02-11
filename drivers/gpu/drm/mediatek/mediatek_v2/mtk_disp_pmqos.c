@@ -338,6 +338,51 @@ int mtk_disp_get_port_hrt_bw(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type)
 	return 0;
 }
 
+int mtk_disp_lookup_subcomm(int larb)
+{
+	struct larb_ssc_entry *entry;
+
+	hash_for_each_possible(larb_ssc_table, entry, node, larb) {
+		if (entry->larb == larb)
+			return entry->subcomm;
+	}
+
+	DDPPR_ERR("%s not found larb:%d in which subcomm\n", __func__, larb);
+	return -1;
+}
+
+struct mtk_ssc_bw mtk_disp_get_ssc_bw(struct mtk_ddp_comp *comp,
+	enum CHANNEL_TYPE type, unsigned int bw_base)
+{
+	struct mtk_ssc_bw ssc_bw = { 0 };
+	struct mtk_larb_port_bw port_bw = { 0 };
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(comp))
+		return ssc_bw;
+
+	port_bw.larb_id = -1;
+	port_bw.bw = 0;
+	port_bw.bw_base = bw_base;
+	port_bw.type = type;
+	ret = mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_GET_LARB_PORT_HRT_BW, &port_bw);
+
+	ssc_bw.ssc_id = mtk_disp_lookup_subcomm(port_bw.larb_id);
+	ssc_bw.bw = port_bw.bw;
+
+	if (ssc_bw.ssc_id < 0) {
+		DDPQOS("%s get %s ssc_id fail\n", __func__,
+			mtk_dump_comp_str_id(comp->id));
+		ssc_bw.ssc_id = 0;
+		ssc_bw.bw = 0;
+	}
+	if (ssc_bw.bw)
+		DDPQOS("%s %s, ssc_id:%d, bw:%d\n", __func__,
+			mtk_dump_comp_str_id(comp->id), ssc_bw.ssc_id, ssc_bw.bw);
+
+	return ssc_bw;
+}
+
 void mtk_disp_update_channel_bw_by_layer_MT6989(unsigned int layer, unsigned int bpp,
 		unsigned int *subcomm_bw_sum, unsigned int size,
 		unsigned int bw_base, enum CHANNEL_TYPE type)
@@ -795,56 +840,48 @@ void mtk_disp_update_channel_hrt_write_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	channel_bw[3] = subcomm_bw_sum[2];
 }
 
-void mtk_disp_update_channel_hrt_MT6993(struct mtk_drm_crtc *mtk_crtc,
+void mtk_disp_update_channel_hrt_common(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[])
 {
-	int i;
+	int i, j;
 	unsigned int subcomm_bw_sum[4] = {0};
+	struct mtk_ddp_comp *comp;
+	struct mtk_ssc_bw ssc_bw;
+	enum CHANNEL_TYPE type;
 
 	if (!mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[DDP_FIRST_PATH])
 		return;
 
-	/* channel0: sub_comm2: exdma3(1) +   exdma6(4) + 1_exdma5(9) +  2_exdma2(12)
-	 * channel1: sub_comm3: exdma4(2) + 1_exdma3(7) + 1_exdma6(10) + 2_exdma5(15)
-	 * channel3: sub_comm1: exdma5(3) + 1_exdma2(6) + 1_exdma7(11) + 2_exdma4(14)
-	 * channel2: sub_comm0: exdma2(0) +   exdma7(5) + 1_exdma4(8) +  2_exdma3(13)
-	 */
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (((mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) &&
+			(comp->id != DDP_COMPONENT_OVL_EXDMA0))||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR ||
+			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_MDP_RDMA) {
+			type = CHANNEL_HRT_READ;
+			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR)
+				type = CHANNEL_HRT_RW;
 
-	for (i = 0; i < MAX_LAYER_NR; i++) {
-		if (mtk_crtc->usage_ovl_fmt[i]) {
-			unsigned int bw = mtk_disp_cal_usage_bw(mtk_crtc, bw_base, i);
-
-			if (i == 0 || i == 5 || i == 8 || i == 13)
-				subcomm_bw_sum[0] += bw;
-			else if (i == 3 || i == 6 || i == 11 || i == 14)
-				subcomm_bw_sum[1] += bw;
-			else if (i == 1 || i == 4 || i == 9 || i == 12)
-				subcomm_bw_sum[2] += bw;
-			else if (i == 2 || i == 7 || i == 10 || i == 15)
-				subcomm_bw_sum[3] += bw;
+			ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
+			subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
 		}
 	}
 
-	if (mtk_crtc->path_data->is_discrete_path)
-		subcomm_bw_sum[2] += bw_base;
-
-	/* channel_bw[0]: comm0_ch0: sub_comm2
-	 * channel_bw[1]: comm0_ch1: sub_comm3
-	 * channel_bw[2]: comm1_ch0: sub_comm1
-	 * channel_bw[3]: comm1_ch1: sub_comm0
-	 */
-	channel_bw[0] = subcomm_bw_sum[2];
-	channel_bw[1] = subcomm_bw_sum[3];
-	channel_bw[2] = subcomm_bw_sum[1];
-	channel_bw[3] = subcomm_bw_sum[0];
+	if (ssc_cnt == 0) {
+		DDPPR_ERR("ssc_cnt not exist\n");
+		return;
+	}
+	for (i = 0; i < ssc_cnt; i++)
+		channel_bw[ssc_ch[i]] = subcomm_bw_sum[i];
 }
 
-void mtk_disp_update_channel_hrt_write_MT6993(struct mtk_drm_crtc *mtk_crtc,
+void mtk_disp_update_channel_hrt_write_common(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[])
 {
+	int i, j;
 	unsigned int subcomm_bw_sum[4] = {0};
-	int wdma_hrt = 0;
 	struct mtk_ddp_comp *comp;
+	struct mtk_ssc_bw ssc_bw;
+	enum CHANNEL_TYPE type;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 	enum addon_scenario scn;
@@ -852,24 +889,29 @@ void mtk_disp_update_channel_hrt_write_MT6993(struct mtk_drm_crtc *mtk_crtc,
 	if (!mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[DDP_FIRST_PATH])
 		return;
 
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR) {
+			type = CHANNEL_HRT_WRITE;
+			ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
+			subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
+		}
+	}
+
 	/* update wdma total bw for cwb */
 	if (crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
 		scn = mtk_crtc_wb_get_scn(crtc_state);
 		comp = mtk_disp_get_wdma_comp_by_scn(crtc, scn);
-		if (comp)
-			wdma_hrt += mtk_disp_get_port_hrt_bw(comp, CHANNEL_HRT_WRITE);
-		subcomm_bw_sum[3] += wdma_hrt;
+		type = CHANNEL_HRT_WRITE;
+		ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
+		subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
 	}
 
-	/* channel_bw[0]: comm0_ch0: sub_comm2
-	 * channel_bw[1]: comm0_ch1: sub_comm3
-	 * channel_bw[2]: comm1_ch0: sub_comm1
-	 * channel_bw[3]: comm1_ch1: sub_comm0
-	 */
-	channel_bw[0] = subcomm_bw_sum[2];
-	channel_bw[1] = subcomm_bw_sum[3];
-	channel_bw[2] = subcomm_bw_sum[1];
-	channel_bw[3] = subcomm_bw_sum[0];
+	if (ssc_cnt == 0) {
+		DDPPR_ERR("ssc_cnt not exist\n");
+		return;
+	}
+	for (i = 0; i < ssc_cnt; i++)
+		channel_bw[ssc_ch[i]] = subcomm_bw_sum[i];
 }
 
 static void __mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
@@ -1617,19 +1659,6 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 
 		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->lock, c, __func__, __LINE__);
 	}
-}
-
-int mtk_disp_lookup_subcomm(int larb)
-{
-	struct larb_ssc_entry *entry;
-
-	hash_for_each_possible(larb_ssc_table, entry, node, larb) {
-		if (entry->larb == larb)
-			return entry->subcomm;
-	}
-
-	DDPPR_ERR("%s not found larb:%d in which subcomm\n", __func__, larb);
-	return -1;
 }
 
 static void mtk_disp_insert_ssc_larb(int subcomm, int larb)

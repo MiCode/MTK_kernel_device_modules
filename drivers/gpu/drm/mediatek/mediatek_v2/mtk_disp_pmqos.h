@@ -54,7 +54,13 @@ struct mtk_ddp_comp;
 struct mtk_larb_port_bw {
 	int larb_id;
 	unsigned int bw;
+	unsigned int bw_base;
 	enum CHANNEL_TYPE type;
+};
+
+struct mtk_ssc_bw {
+	int ssc_id;
+	unsigned int bw;
 };
 
 struct larb_ssc_entry {
@@ -105,9 +111,9 @@ void mtk_disp_update_channel_hrt_MT6991(struct mtk_drm_crtc *mtk_crtc,
 void mtk_disp_update_channel_hrt_write_MT6991(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[]);
 unsigned int mtk_disp_get_channel_idx(enum CHANNEL_TYPE type, unsigned int i);
-void mtk_disp_update_channel_hrt_MT6993(struct mtk_drm_crtc *mtk_crtc,
+void mtk_disp_update_channel_hrt_common(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[]);
-void mtk_disp_update_channel_hrt_write_MT6993(struct mtk_drm_crtc *mtk_crtc,
+void mtk_disp_update_channel_hrt_write_common(struct mtk_drm_crtc *mtk_crtc,
 						unsigned int bw_base, unsigned int channel_bw[]);
 void mtk_disp_set_channel_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);
 void mtk_disp_set_channel_hrt_write_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i);

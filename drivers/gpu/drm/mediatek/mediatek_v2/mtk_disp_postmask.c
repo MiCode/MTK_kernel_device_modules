@@ -733,9 +733,10 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 	case PMQOS_GET_LARB_PORT_HRT_BW: {
 		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
 		unsigned int bpp = 1;
-		unsigned int tmp;
+		unsigned int tmp = data->bw_base;
 
-		tmp = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
+		if (!data->bw_base)
+			tmp = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
 
 		data->larb_id = -1;
 		data->bw = 0;
