@@ -23271,7 +23271,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			tcpc,en-wd;
 			// tcpc,en-wd-dual-port;
 			tcpc,en-ctd;
-			tcpc,en-fod;
+			// tcpc,en-fod;
 			tcpc,en-typec-otp;
 			// tcpc,en-floatgnd;
 			wd,sbu-calib-init = <1200>;	/* mV */
@@ -23320,7 +23320,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				pd,sink-pdo-data = <0x000190c8>;
 
 				/*
-				 * No DP, host + device
+				 * No DP Sink capability
 				 *	pd,id-vdo-size = <6>;
 				 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63790000
 							  0x61000000 0x0 0x41000000>;
