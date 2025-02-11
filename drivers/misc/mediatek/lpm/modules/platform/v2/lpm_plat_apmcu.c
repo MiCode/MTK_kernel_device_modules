@@ -198,7 +198,7 @@ static void lpm_cpu_ret_check(struct timer_list *t)
 	}
 
 	en = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
-					0x6, 0);
+					MT_RET_CPU, 0x7);
 	if (en == 0) {
 		crtd->ret_ready = 1;
 		del_timer(&crtd->ret_timer);
@@ -245,7 +245,7 @@ static int lpm_cpu_ret_init(void)
 		cpu_ret_check_interval = 5 * HZ; /* default check interval: 5s */
 
 	en = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
-					0, 0);
+					MT_RET_CPU, 0);
 
 	for_each_possible_cpu(cpu) {
 		const char *pRetention = NULL;

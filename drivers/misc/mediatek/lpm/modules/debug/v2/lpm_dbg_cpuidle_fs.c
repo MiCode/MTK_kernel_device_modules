@@ -4,6 +4,7 @@
  */
 
 #include <linux/cpumask.h>
+#include <linux/cpuhplock.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_address.h>
@@ -123,7 +124,226 @@ static ssize_t cpuidle_enable_write(char *FromUserBuf, size_t sz, void *priv)
 	return -EINVAL;
 }
 
-static ssize_t cpuidle_cpu_ret_en_read(char *ToUserBuf, size_t sz, void *priv)
+static long cpuidle_lcpu_ret_debounce_set_smc(void *pData)
+{
+	unsigned long *enabled = (unsigned long *)pData;
+
+	lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
+				MT_RET_LCPU, *enabled);
+	return 0;
+}
+
+static long cpuidle_lcpu_ret_debounce_get_smc(void *pData)
+{
+	unsigned long *enabled = (unsigned long *) pData;
+
+	*enabled = (unsigned long) lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_GET,
+					MT_RET_LCPU, 0);
+	return 0;
+}
+
+static ssize_t cpuidle_lcpu_ret_debounce_read(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	int cpu;
+	unsigned long en = 0xffffU;
+	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+				MT_RET_LCPU, 0);
+
+	if (!p)
+		return -EINVAL;
+
+	if (!mask) {
+		mtk_dbg_cpuidle_log("LCPU not support\n");
+		return -EINVAL;
+	}
+
+	cpu_hotplug_disable();
+	for_each_online_cpu(cpu) {
+		if (mask & (1U << cpu)) {
+			work_on_cpu(cpu, cpuidle_lcpu_ret_debounce_get_smc, &en);
+			break;
+		}
+	}
+	cpu_hotplug_enable();
+
+	if (en == 0)
+		mtk_dbg_cpuidle_log("LCPU ret: Disable(%lu), echo 1-7 to enable\n", en);
+	else if (en == 0xffffU)
+		mtk_dbg_cpuidle_log("LCPU ret: no LCPU alive, 0:disable, 1-7:enable\n");
+	else
+		mtk_dbg_cpuidle_log("LCPU ret: Enable(%lu), echo 0 to disable\n", en);
+
+	return p - ToUserBuf;
+}
+
+static ssize_t cpuidle_lcpu_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
+{
+	int cpu;
+	unsigned long enabled = 0;
+	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+				MT_RET_LCPU, 0);
+	if (!FromUserBuf || !mask)
+		return -EINVAL;
+
+	if (!kstrtouint(FromUserBuf, 10, (unsigned int *)&enabled)) {
+		for_each_online_cpu(cpu) {
+			if (mask & (1U << cpu))
+				work_on_cpu(cpu, cpuidle_lcpu_ret_debounce_set_smc, &enabled);
+		}
+		return sz;
+	}
+
+	return -EINVAL;
+}
+
+static long cpuidle_mcpu_ret_debounce_set_smc(void *pData)
+{
+	unsigned long *enabled = (unsigned long *)pData;
+
+	lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
+				MT_RET_MCPU, *enabled);
+	return 0;
+}
+
+static long cpuidle_mcpu_ret_debounce_get_smc(void *pData)
+{
+	unsigned long *enabled = (unsigned long *) pData;
+
+	*enabled = (unsigned long) lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_GET,
+					MT_RET_MCPU, 0);
+	return 0;
+}
+
+static ssize_t cpuidle_mcpu_ret_debounce_read(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	int cpu;
+	unsigned long en = 0xffffU;
+	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+				MT_RET_MCPU, 0);
+
+	if (!p)
+		return -EINVAL;
+
+	if (!mask) {
+		mtk_dbg_cpuidle_log("MCPU not support\n");
+		return -EINVAL;
+	}
+
+	cpu_hotplug_disable();
+	for_each_online_cpu(cpu) {
+		if (mask & (1U << cpu)) {
+			work_on_cpu(cpu, cpuidle_mcpu_ret_debounce_get_smc, &en);
+			break;
+		}
+	}
+	cpu_hotplug_enable();
+
+	if (en == 0)
+		mtk_dbg_cpuidle_log("MCPU ret: Disable(%lu), echo 1-7 to enable\n", en);
+	else if (en == 0xffffU)
+		mtk_dbg_cpuidle_log("MCPU ret: no MCPU alive, 0:disable, 1-7:enable\n");
+	else
+		mtk_dbg_cpuidle_log("MCPU ret: Enable(%lu), echo 0 to disable\n", en);
+
+	return p - ToUserBuf;
+}
+
+static ssize_t cpuidle_mcpu_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
+{
+	int cpu;
+	unsigned long enabled = 0;
+	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+				MT_RET_MCPU, 0);
+	if (!FromUserBuf || !mask)
+		return -EINVAL;
+
+	if (!kstrtouint(FromUserBuf, 10, (unsigned int *)&enabled)) {
+		for_each_online_cpu(cpu) {
+			if (mask & (1U << cpu))
+				work_on_cpu(cpu, cpuidle_mcpu_ret_debounce_set_smc, &enabled);
+		}
+		return sz;
+	}
+
+	return -EINVAL;
+}
+
+static long cpuidle_bcpu_ret_debounce_set_smc(void *pData)
+{
+	unsigned long *enabled = (unsigned long *)pData;
+
+	lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
+				MT_RET_BCPU, *enabled);
+	return 0;
+}
+
+static long cpuidle_bcpu_ret_debounce_get_smc(void *pData)
+{
+	unsigned long *enabled = (unsigned long *) pData;
+
+	*enabled = (unsigned long) lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_GET,
+					MT_RET_BCPU, 0);
+	return 0;
+}
+
+static ssize_t cpuidle_bcpu_ret_debounce_read(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	int cpu;
+	unsigned long en = 0xffffU;
+	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+				MT_RET_BCPU, 0);
+
+	if (!p)
+		return -EINVAL;
+
+	if (!mask) {
+		mtk_dbg_cpuidle_log("BCPU not support\n");
+		return -EINVAL;
+	}
+
+	cpu_hotplug_disable();
+	for_each_online_cpu(cpu) {
+		if (mask & (1U << cpu)) {
+			work_on_cpu(cpu, cpuidle_bcpu_ret_debounce_get_smc, &en);
+			break;
+		}
+	}
+	cpu_hotplug_enable();
+
+	if (en == 0)
+		mtk_dbg_cpuidle_log("BCPU ret: Disable(%lu), echo 1-7 to enable\n", en);
+	else if (en == 0xffffU)
+		mtk_dbg_cpuidle_log("BCPU ret: no MCPU alive, 0:disable, 1-7:enable\n");
+	else
+		mtk_dbg_cpuidle_log("BCPU ret: Enable(%lu), echo 0 to disable\n", en);
+
+	return p - ToUserBuf;
+}
+
+static ssize_t cpuidle_bcpu_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
+{
+	int cpu;
+	unsigned long enabled = 0;
+	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+				MT_RET_BCPU, 0);
+	if (!FromUserBuf || !mask)
+		return -EINVAL;
+
+	if (!kstrtouint(FromUserBuf, 10, (unsigned int *)&enabled)) {
+		for_each_online_cpu(cpu) {
+			if (mask & (1U << cpu))
+				work_on_cpu(cpu, cpuidle_bcpu_ret_debounce_set_smc, &enabled);
+		}
+		return sz;
+	}
+
+	return -EINVAL;
+}
+
+static ssize_t cpuidle_dsu_fl_ret_debounce_read(char *ToUserBuf, size_t sz, void *priv)
 {
 	char *p = ToUserBuf;
 	long en;
@@ -132,36 +352,61 @@ static ssize_t cpuidle_cpu_ret_en_read(char *ToUserBuf, size_t sz, void *priv)
 		return -EINVAL;
 
 	en = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_GET,
-					0, 0);
+					MT_RET_DSU_FL, 0);
 
 	if (en == 0)
-		mtk_dbg_cpuidle_log("CPU retention: Disable\n");
+		mtk_dbg_cpuidle_log("DSU full retention: Disable(%lu)\n", en);
 	else
-		mtk_dbg_cpuidle_log("CPU retention: Enable\n");
+		mtk_dbg_cpuidle_log("DSU full retention: Enable(%lu), echo 0 can disable\n", en);
 
 	return p - ToUserBuf;
 }
-static long cpuidle_cpu_ret_en_smc(void *pData)
-{
-	unsigned int *enabled = (unsigned int *)pData;
 
-	lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
-				*enabled, 0);
-	return 0;
-}
-
-static ssize_t cpuidle_cpu_ret_en_write(char *FromUserBuf, size_t sz, void *priv)
+static ssize_t cpuidle_dsu_fl_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
 {
-	int cpu;
 	unsigned int enabled = 0;
 
 	if (!FromUserBuf)
 		return -EINVAL;
 
 	if (!kstrtouint(FromUserBuf, 10, &enabled)) {
-		for_each_online_cpu(cpu) {
-			work_on_cpu(cpu, cpuidle_cpu_ret_en_smc, &enabled);
-		}
+		lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
+				MT_RET_DSU_FL, (unsigned long)enabled);
+		return sz;
+	}
+
+	return -EINVAL;
+}
+
+static ssize_t cpuidle_dsu_fc_ret_debounce_read(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	long en;
+
+	if (!p)
+		return -EINVAL;
+
+	en = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_GET,
+					MT_RET_DSU_FC, 0);
+
+	if (en == 0)
+		mtk_dbg_cpuidle_log("DSU functional retention: Disable(%lu)\n", en);
+	else
+		mtk_dbg_cpuidle_log("DSU functional retention: Enable(%lu), echo 0 can disable\n", en);
+
+	return p - ToUserBuf;
+}
+
+static ssize_t cpuidle_dsu_fc_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
+{
+	unsigned int enabled = 0;
+
+	if (!FromUserBuf)
+		return -EINVAL;
+
+	if (!kstrtouint(FromUserBuf, 10, &enabled)) {
+		lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_SET,
+				MT_RET_DSU_FC, (unsigned long)enabled);
 		return sz;
 	}
 
@@ -178,15 +423,53 @@ static const struct mtk_lp_sysfs_op cpuidle_enable_fops = {
 	.fs_write = cpuidle_enable_write,
 };
 
-static const struct mtk_lp_sysfs_op cpuidle_cpu_ret_en_fops = {
-	.fs_read = cpuidle_cpu_ret_en_read,
-	.fs_write = cpuidle_cpu_ret_en_write,
+static const struct mtk_lp_sysfs_op cpuidle_lcpu_ret_debounce_fops = {
+	.fs_read = cpuidle_lcpu_ret_debounce_read,
+	.fs_write = cpuidle_lcpu_ret_debounce_write,
+};
+
+static const struct mtk_lp_sysfs_op cpuidle_mcpu_ret_debounce_fops = {
+	.fs_read = cpuidle_mcpu_ret_debounce_read,
+	.fs_write = cpuidle_mcpu_ret_debounce_write,
+};
+
+static const struct mtk_lp_sysfs_op cpuidle_bcpu_ret_debounce_fops = {
+	.fs_read = cpuidle_bcpu_ret_debounce_read,
+	.fs_write = cpuidle_bcpu_ret_debounce_write,
+};
+
+static const struct mtk_lp_sysfs_op cpuidle_dsu_fl_ret_debounce_fops = {
+	.fs_read = cpuidle_dsu_fl_ret_debounce_read,
+	.fs_write = cpuidle_dsu_fl_ret_debounce_write,
+};
+
+static const struct mtk_lp_sysfs_op cpuidle_dsu_fc_ret_debounce_fops = {
+	.fs_read = cpuidle_dsu_fc_ret_debounce_read,
+	.fs_write = cpuidle_dsu_fc_ret_debounce_write,
 };
 
 int lpm_cpuidle_retention_init(void)
 {
-	mtk_cpuidle_sysfs_entry_node_add("cpu_ret_en", MTK_CPUIDLE_SYS_FS_MODE,
-			&cpuidle_cpu_ret_en_fops, NULL);
+	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
+				MT_RET_LCPU, 0);
+	if (mask)
+		mtk_cpuidle_sysfs_entry_node_add("lcpu_ret_debounce", MTK_CPUIDLE_SYS_FS_MODE,
+			&cpuidle_lcpu_ret_debounce_fops, NULL);
+
+	mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT, MT_RET_MCPU, 0);
+	if (mask)
+		mtk_cpuidle_sysfs_entry_node_add("mcpu_ret_debounce", MTK_CPUIDLE_SYS_FS_MODE,
+			&cpuidle_mcpu_ret_debounce_fops, NULL);
+
+	mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT, MT_RET_BCPU, 0);
+	if (mask)
+		mtk_cpuidle_sysfs_entry_node_add("bcpu_ret_debounce", MTK_CPUIDLE_SYS_FS_MODE,
+			&cpuidle_bcpu_ret_debounce_fops, NULL);
+
+	mtk_cpuidle_sysfs_entry_node_add("dsu_fl_ret_debounce", MTK_CPUIDLE_SYS_FS_MODE,
+			&cpuidle_dsu_fl_ret_debounce_fops, NULL);
+	mtk_cpuidle_sysfs_entry_node_add("dsu_fc_ret_debounce", MTK_CPUIDLE_SYS_FS_MODE,
+			&cpuidle_dsu_fc_ret_debounce_fops, NULL);
 	return 0;
 }
 
