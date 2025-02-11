@@ -1997,18 +1997,23 @@
 	low_battery_throttling {
 		compatible = "mediatek,low_battery_throttling";
 		vbat-thd-enable = <1>;
-		thd-volts-l = <
+		bat0-thd-volts-l = <
 			3250 3100 2900
 			3250 3100 2900
 			3250 3100 2900
 			3250 3100 2900>;
-		thd-volts-h = <
+		bat0-thd-volts-h = <
 			3400 3250 3100
 			3400 3250 3100
 			3400 3250 3100
 			3400 3250 3100>;
 		temperature-max-stage = <3>;
 		temperature-stage-threshold = <25 10 0>;
+		throttle-level = <0 1 2 3>,
+				<0 1 2 3>,
+				<0 1 2 3>,
+				<0 1 2 3>;
+		bootmode = <&chosen>;
 	};
 
 	pbm: pbm {
