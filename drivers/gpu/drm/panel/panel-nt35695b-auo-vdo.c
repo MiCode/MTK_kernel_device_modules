@@ -117,11 +117,10 @@ static void lcm_panel_get_data(struct lcm *ctx)
 #if IS_ENABLED(CONFIG_RT5081_PMU_DSV) || IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_MT6370)
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
-
+static int regulator_inited;
 
 static int lcm_panel_bias_regulator_init(struct lcm *ctx)
 {
-	static int regulator_inited;
 	int ret = 0;
 
 	if (regulator_inited)
@@ -144,6 +143,16 @@ static int lcm_panel_bias_regulator_init(struct lcm *ctx)
 
 	regulator_inited = 1;
 	return ret; /* must be 0 */
+}
+
+static void lcm_panel_bias_regulator_deinit(void)
+{
+	/* please only put regulator once in a driver */
+	regulator_put(disp_bias_pos);
+
+	regulator_put(disp_bias_neg);
+
+	regulator_inited = 0;
 }
 
 static int lcm_panel_bias_enable(struct lcm *ctx)
@@ -198,6 +207,9 @@ static int lcm_panel_bias_disable(struct lcm *ctx)
 		dev_info(ctx->dev, "disable regulator disp_bias_pos fail, ret = %d\n",
 			ret);
 	retval |= ret;
+
+	if (retval == 0)
+		lcm_panel_bias_regulator_deinit();
 
 	return retval;
 }
