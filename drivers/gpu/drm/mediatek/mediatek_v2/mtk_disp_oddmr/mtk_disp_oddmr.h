@@ -506,7 +506,8 @@ struct mtk_disp_oddmr_cfg {
 	uint32_t total_overhead;
 };
 struct mtk_disp_oddmr_tile_overhead_v {
-	unsigned int overhead_v;
+	unsigned int top_overhead_v;
+	unsigned int bot_overhead_v;
 	unsigned int comp_overhead_v;
 };
 struct mtk_disp_oddmr_parital_data_v {

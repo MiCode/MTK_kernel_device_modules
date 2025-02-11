@@ -20418,24 +20418,35 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		/* calculate total overhead vertical */
 		for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
 			mtk_ddp_comp_config_overhead_v(comp, &tile_overhead_v);
-			DDPDBG("%s:comp %s overhead_v:%d\n",
+			DDPDBG("%s:comp %s overhead_v T:%d overhead_v B:%d\n",
 				__func__, mtk_dump_comp_str(comp),
-				tile_overhead_v.overhead_v);
+				tile_overhead_v.top_overhead_v,
+				tile_overhead_v.bot_overhead_v);
 		}
 
 		/*store total overhead vertical data*/
 		mtk_crtc_store_total_overhead_v(mtk_crtc, tile_overhead_v);
 	}
 
-	/* disable partial update if total overhead_v exceed the bounds */
+	/*  adjust partial roi if total overhead_v exceed the bounds */
 	if (partial_enable == 1 &&
-		partial_roi.y < mtk_crtc->tile_overhead_v.overhead_v ||
+		partial_roi.y < mtk_crtc->tile_overhead_v.top_overhead_v) {
+		mtk_crtc->tile_overhead_v.top_overhead_v = 0;
+		mtk_crtc->tile_overhead_v.top_overhead_v_scaling = 0;
+		if (partial_roi.y != 0) {
+			_assign_full_lcm_roi(crtc, &partial_roi, true);
+			partial_enable = 0;
+		}
+	}
+	if (partial_enable == 1 &&
 		partial_roi.y + partial_roi.height >=
-		full_roi.height - mtk_crtc->tile_overhead_v.overhead_v) {
-		mtk_crtc->tile_overhead_v.overhead_v = 0;
-		mtk_crtc->tile_overhead_v.overhead_v_scaling = 0;
-		_assign_full_lcm_roi(crtc, &partial_roi, true);
-		partial_enable = 0;
+		full_roi.height - mtk_crtc->tile_overhead_v.bot_overhead_v) {
+		mtk_crtc->tile_overhead_v.bot_overhead_v = 0;
+		mtk_crtc->tile_overhead_v.bot_overhead_v_scaling = 0;
+		if (partial_roi.y + partial_roi.height != full_roi.height) {
+			_assign_full_lcm_roi(crtc, &partial_roi, true);
+			partial_enable = 0;
+		}
 	}
 
 	DDPINFO("final partial roi: (%d,%d,%d,%d), pu_en: (%d)(%d)\n",
@@ -25741,7 +25752,8 @@ struct total_tile_overhead mtk_crtc_get_total_overhead(struct mtk_drm_crtc *mtk_
 void mtk_crtc_store_total_overhead_v(struct mtk_drm_crtc *mtk_crtc,
 	struct total_tile_overhead_v info)
 {
-	mtk_crtc->tile_overhead_v.overhead_v = info.overhead_v;
+	mtk_crtc->tile_overhead_v.top_overhead_v = info.top_overhead_v;
+	mtk_crtc->tile_overhead_v.bot_overhead_v = info.bot_overhead_v;
 }
 
 struct total_tile_overhead_v mtk_crtc_get_total_overhead_v(struct mtk_drm_crtc *mtk_crtc)

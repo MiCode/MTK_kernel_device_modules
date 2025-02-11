@@ -770,10 +770,13 @@ static void disp_c3d_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	c3d_data->tile_overhead_v.comp_overhead_v = 0;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+		c3d_data->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 		c3d_data->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	c3d_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	c3d_data->tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	c3d_data->tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 static void disp_c3d_config(struct mtk_ddp_comp *comp,
@@ -782,7 +785,7 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
 	unsigned int width;
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 	int sram_int;
 
 	C3DFLOW_LOG("line: %d\n", __LINE__);
@@ -800,10 +803,13 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + C3D_SIZE, (width << 16) | cfg->h, ~0);
 	else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : c3d_data->tile_overhead_v.overhead_v;
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : c3d_data->tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : c3d_data->tile_overhead_v.bot_overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
-		   comp->regs_pa + C3D_SIZE, (width << 16) | (c3d_data->roi_height + overhead_v * 2), ~0);
+		   comp->regs_pa + C3D_SIZE,
+		   (width << 16) | (c3d_data->roi_height + top_overhead_v + bot_overhead_v), ~0);
 	}
 
 	if (c3d_data->bin_num == 9)
@@ -1061,24 +1067,27 @@ static int disp_c3d_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
 {
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
+		unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	c3d_data->set_partial_update = enable;
 	c3d_data->roi_height = partial_roi.height;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : c3d_data->tile_overhead_v.overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : c3d_data->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : c3d_data->tile_overhead_v.bot_overhead_v;
 
-	DDPDBG("%s, %s overhead_v:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
+			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
 	if (c3d_data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + C3D_SIZE, c3d_data->roi_height + overhead_v * 2, 0xffff);
+				   comp->regs_pa + C3D_SIZE,
+				   c3d_data->roi_height + top_overhead_v + bot_overhead_v, 0xffff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + C3D_SIZE, full_height, 0xffff);

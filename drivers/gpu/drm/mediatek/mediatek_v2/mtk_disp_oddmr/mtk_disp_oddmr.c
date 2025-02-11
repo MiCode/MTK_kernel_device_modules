@@ -763,7 +763,8 @@ static uint32_t mtk_oddmr_od_get_data_size(struct mtk_ddp_comp *comp, uint32_t w
 static int mtk_oddmr_od_get_bpc(uint32_t od_mode, uint32_t channel);
 static void mtk_oddmr_od_dummy(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
-		struct cmdq_pkt *handle, unsigned int overhead_v, unsigned int full_height);
+		struct cmdq_pkt *handle, unsigned int top_overhead_v,
+		unsigned int bot_overhead_v, unsigned int full_height);
 
 static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, unsigned int dbv_node, unsigned int fps_node,
@@ -1466,10 +1467,16 @@ static void mtk_oddmr_od_hsk_6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *pk
 	merge_lines = oddmr_data->od_data.merge_lines;
 	hsk_0 = DIV_ROUND_UP(oddmr_data->cfg.comp_in_width * merge_lines, 2); //2p-align/2
 	if (oddmr_data->set_partial_update == 1) {//OD_PU
-		unsigned int overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : oddmr_data->tile_overhead_v.overhead_v;
-		ODDMRAPI_LOG("PU=1: roi_height %d, overhead_v %d\n", oddmr_data->roi_height, overhead_v);
-		hsk_1 = (oddmr_data->roi_height + overhead_v * 2) / merge_lines;
+		unsigned int top_overhead_v =
+						(!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+						? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
+		unsigned int bot_overhead_v =
+						(!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+						? 0 : oddmr_data->tile_overhead_v.bot_overhead_v;
+		ODDMRAPI_LOG("PU=1: roi_height %d, overhead_v T %d B %d\n",
+					oddmr_data->roi_height,top_overhead_v, bot_overhead_v);
+		hsk_1 = (oddmr_data->roi_height + top_overhead_v + bot_overhead_v)
+				/ merge_lines;
 	} else
 		hsk_1 = oddmr_data->cfg.height / merge_lines;
 	hsk_2 = 1;
@@ -1578,10 +1585,16 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 		mtk_oddmr_write(comp, line_offset, MT6991_DISP_ODDMR_OD_UMDA_CTRL_1, pkg);
 		mtk_oddmr_write(comp, hsize, MT6991_DISP_ODDMR_OD_UMDA_CTRL_2, pkg);
 		if (oddmr_data->set_partial_update == 1) {//OD_PU
-			unsigned int overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : oddmr_data->tile_overhead_v.overhead_v;
-			ODDMRAPI_LOG("PU=1: roi_height %d, overhead_v %d\n", oddmr_data->roi_height, overhead_v);
-			vsize = (oddmr_data->roi_height + overhead_v * 2) / merge_lines;
+			unsigned int top_overhead_v =
+						(!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+						? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
+			unsigned int bot_overhead_v =
+						(!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+						? 0 : oddmr_data->tile_overhead_v.bot_overhead_v;
+			ODDMRAPI_LOG("PU=1: roi_height %d, overhead_v T %d B %d\n",
+					oddmr_data->roi_height, top_overhead_v, bot_overhead_v);
+			vsize = (oddmr_data->roi_height + top_overhead_v + bot_overhead_v)
+					/ merge_lines;
 		}
 		mtk_oddmr_write(comp, vsize, MT6991_DISP_ODDMR_OD_UMDA_CTRL_3, pkg);
 	} else {
@@ -2479,10 +2492,15 @@ static void mtk_disp_oddmr_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	oddmr_data->tile_overhead_v.comp_overhead_v = oddmr_overhead_v;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+			oddmr_data->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 			oddmr_data->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	oddmr_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	oddmr_data->tile_overhead_v.top_overhead_v =
+				tile_overhead_v->top_overhead_v;
+	oddmr_data->tile_overhead_v.bot_overhead_v =
+				tile_overhead_v->bot_overhead_v;
 }
 
 static void mtk_oddmr_top_config(struct mtk_ddp_comp *comp,
@@ -2642,8 +2660,8 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 
 	// DMR V2 partial update
 	unsigned int crop_height;
-	unsigned int overhead_v;
-	unsigned int comp_overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
+	unsigned int top_comp_overhead_v, bot_comp_overhead_v;
 	unsigned int dmr_y_ini, dmr_y_offset = 0;
 	unsigned int dmr_input_height; //pixel base
 	unsigned int is_compression_mode;
@@ -2757,13 +2775,24 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 				DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH, handle);
 		}
 		if(oddmr_data->set_partial_update == 1) {
-			overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : oddmr_data->tile_overhead_v.overhead_v;
-			comp_overhead_v = (!overhead_v) ? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
-			crop_height = oddmr_data->roi_height + (overhead_v - comp_overhead_v) * 2;
-			dmr_input_height = oddmr_data->roi_height + overhead_v * 2;
-			ODDMRAPI_LOG("log: %s %d overhead_v:%d comp_overhead_v:%d crop_hegiht:%d\n",
-				__func__, __LINE__, overhead_v, comp_overhead_v, crop_height);
+			top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
+			bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.bot_overhead_v;
+			top_comp_overhead_v = (!top_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
+			bot_comp_overhead_v = (!bot_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
+			crop_height = oddmr_data->roi_height +
+						(top_overhead_v - top_comp_overhead_v) +
+						(bot_overhead_v - bot_comp_overhead_v);
+			dmr_input_height = oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v;
+			ODDMRAPI_LOG("log: %s %d overhead_v T:%d comp_overhead_v T:%d\n",
+				__func__, __LINE__, top_overhead_v, top_comp_overhead_v);
+			ODDMRAPI_LOG("log: %s %d overhead_v B:%d comp_overhead_v B:%d crop_h:%d\n",
+				__func__, __LINE__,
+				bot_overhead_v, bot_comp_overhead_v, crop_height);
 
 			/* update y ini */
 			dmr_y_ini = oddmr_data->dbi_pu_data.dbi_y_ini;
@@ -2923,8 +2952,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 	dma_addr_t addr = 0;
 
 	unsigned int crop_height;
-	unsigned int overhead_v;
-	unsigned int comp_overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
+	unsigned int top_comp_overhead_v, bot_comp_overhead_v;
 	unsigned int idx;
 	unsigned int width;
 
@@ -3047,22 +3076,32 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 		}
 
 		if(oddmr_data->set_partial_update == 1) {
-			overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : oddmr_data->tile_overhead_v.overhead_v;
-			comp_overhead_v = (!overhead_v) ? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
-			crop_height = oddmr_data->roi_height + (overhead_v - comp_overhead_v) * 2;
-			ODDMRAPI_LOG("log: %s %d overhead_v:%d comp_overhead_v:%d crop_hegiht:%d\n",
-				__func__, __LINE__, overhead_v, comp_overhead_v, crop_height);
+			top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
+			bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.bot_overhead_v;
+			top_comp_overhead_v = (!top_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
+			bot_comp_overhead_v = (!bot_overhead_v)
+					? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
+			crop_height = oddmr_data->roi_height +
+						(top_overhead_v - top_comp_overhead_v) +
+						(bot_overhead_v - bot_comp_overhead_v);
+			ODDMRAPI_LOG("log: %s %d overhead_v T:%d comp_overhead_v T:%d\n",
+				__func__, __LINE__, top_overhead_v, top_comp_overhead_v);
+			ODDMRAPI_LOG("log: %s %d overhead_v B:%d comp_overhead_v B:%d crop_h:%d\n",
+				__func__, __LINE__,
+				bot_overhead_v, bot_comp_overhead_v, crop_height);
 
 			if (oddmr_data->data->dbi_version == MTK_DBI_V2) {
 				//ODDMR input size
 				mtk_oddmr_write(comp,
-					(oddmr_data->roi_height + overhead_v * 2),
+					(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 					MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT, handle);
 
 				//DBI input size
 				mtk_oddmr_write(comp,
-					(oddmr_data->roi_height + overhead_v * 2),
+					(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 					MT6991_DISP_ODDMR_REG_DMR_FRAME_HEIGHT, handle);
 				//DBI input pos
 				mtk_oddmr_write(comp, oddmr_data->dbi_pu_data.dbi_y_ini,
@@ -3073,8 +3112,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
 
 				//DBI table size as block
-				dbi_size_as_block = (oddmr_data->roi_height + overhead_v * 2
-					+ scale_factor_v -1) / scale_factor_v;
+				dbi_size_as_block = (oddmr_data->roi_height + top_overhead_v +
+					bot_overhead_v + scale_factor_v -1) / scale_factor_v;
 				if ( dbi_size_as_block < 0x10) {
 					dbi_size_as_block = 0x10;
 					mtk_oddmr_write(comp, dbi_size_as_block,
@@ -3088,7 +3127,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
-					SET_VAL_MASK(value, mask, oddmr_data->roi_height + overhead_v * 2,
+					SET_VAL_MASK(value, mask, oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v,
 						MT6991_REG_DBI_V_LENGTH_R);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
@@ -3096,7 +3136,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
-					SET_VAL_MASK(value, mask, oddmr_data->roi_height + overhead_v * 2,
+					SET_VAL_MASK(value, mask, oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v,
 						MT6991_REG_DBI_V_LENGTH_G);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
@@ -3104,7 +3145,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
-					SET_VAL_MASK(value, mask, oddmr_data->roi_height + overhead_v * 2,
+					SET_VAL_MASK(value, mask, oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v,
 						MT6991_REG_DBI_V_LENGTH_B);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
@@ -3114,21 +3156,23 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 
 					//DBI table size as pixel
 					mtk_oddmr_write(comp,
-						(oddmr_data->roi_height + overhead_v * 2),
+						(oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v),
 						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
 
-					dbi_size_as_block = (oddmr_data->roi_height + overhead_v * 2
-						+ scale_factor_v -1) / scale_factor_v;
+					dbi_size_as_block = (oddmr_data->roi_height + top_overhead_v
+						+ bot_overhead_v + scale_factor_v -1) /
+						scale_factor_v;
 					mtk_oddmr_write(comp, dbi_size_as_block,
 						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
 				}
 
 				//DBI output size
 				mtk_oddmr_write(comp,
-					(oddmr_data->roi_height + overhead_v * 2),
+					(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 					MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_VSIZE, handle);
 				mtk_oddmr_write(comp,
-					(oddmr_data->roi_height + overhead_v * 2),
+					(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 					MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
 			}
 
@@ -3136,7 +3180,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 				/* ODDMR on MT6989 dose not support V crop */
 				mtk_oddmr_write(comp, oddmr_data->dbi_pu_data.dbi_y_ini,
 					DISP_ODDMR_REG_DMR_Y_INI, handle);
-				mtk_oddmr_write(comp, (oddmr_data->roi_height + overhead_v * 2),
+				mtk_oddmr_write(comp, (oddmr_data->roi_height + top_overhead_v +
+					bot_overhead_v),
 					DISP_ODDMR_FMT_CTR_1, handle); // oddmr input height
 
 				mtk_oddmr_write(comp, oddmr_data->dbi_pu_data.dbi_udma_y_ini,
@@ -3357,20 +3402,25 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 		}
 
 		if (oddmr_data->set_partial_update == 1) {//OD_PU
-			unsigned int overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : oddmr_data->tile_overhead_v.overhead_v;
-			ODDMRAPI_LOG("PU=1: roi_height %d, overhead_v %d\n", oddmr_data->roi_height, overhead_v);
+			unsigned int top_overhead_v =
+						(!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+						? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
+			unsigned int bot_overhead_v =
+						(!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+						? 0 : oddmr_data->tile_overhead_v.bot_overhead_v;
+			ODDMRAPI_LOG("PU=1: roi_height %d, overhead_v T %d B %d\n",
+					oddmr_data->roi_height, top_overhead_v, bot_overhead_v);
 			if (oddmr_data->data->od_version >= MTK_OD_V2) {
 				//ODDMR input size
 				mtk_oddmr_write(comp,
-					(oddmr_data->roi_height + overhead_v * 2),
+					(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 					MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT, handle);
 				//OUTP size
 				mtk_oddmr_write(comp,
-					(oddmr_data->roi_height + overhead_v * 2),
+					(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 					MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_VSIZE, handle);
 				mtk_oddmr_write(comp,
-					(oddmr_data->roi_height + overhead_v * 2),
+					(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 					MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
 			}
 		}
@@ -11016,7 +11066,8 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 
 /* OD setting for PU */
 static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
-		struct cmdq_pkt *handle, unsigned int overhead_v, unsigned int full_height)
+		struct cmdq_pkt *handle, unsigned int top_overhead_v,
+		unsigned int bot_overhead_v, unsigned int full_height)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
@@ -11024,14 +11075,14 @@ static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
 	uint32_t hsk_1, merge_lines;
 
 	ODDMRAPI_LOG("set_partial_update %d +\n", oddmr_data->set_partial_update);
-	ODDMRAPI_LOG("roi_height %d, overhead_v %d, full_height %d\n",
-			oddmr_data->roi_height, overhead_v, full_height);
+	ODDMRAPI_LOG("roi_height %d, overhead_v T %d B %d, full_height %d\n",
+		oddmr_data->roi_height, top_overhead_v, bot_overhead_v, full_height);
 	/* oddmr reg config */
 	if (oddmr_data->set_partial_update == 1) {
 		if (oddmr_data->data->od_version >= MTK_OD_V2) {
 			//OD UDMA hsize
-			mtk_oddmr_write(comp, (oddmr_data->roi_height + overhead_v * 2),
-				MT6991_DISP_ODDMR_OD_UMDA_CTRL_3, handle);
+			mtk_oddmr_write(comp, (oddmr_data->roi_height + top_overhead_v +
+			bot_overhead_v),MT6991_DISP_ODDMR_OD_UMDA_CTRL_3, handle);
 			//OD base address
 			if (oddmr_data->od_data.channel != NULL) {
 				if (oddmr_data->od_data.base_line_jump == 0)
@@ -11049,7 +11100,8 @@ static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
 			}
 			//OD HSK hsize
 			merge_lines = oddmr_data->od_data.merge_lines;
-			hsk_1 = (oddmr_data->roi_height + overhead_v * 2) / merge_lines;
+			hsk_1 = (oddmr_data->roi_height + top_overhead_v + bot_overhead_v) /
+					merge_lines;
 			mtk_oddmr_write(comp, hsk_1, DISP_ODDMR_OD_HSK_1, handle);
 			ODDMRAPI_LOG("PU=1: merge_lines %d, hsk_1 %d\n", merge_lines, hsk_1);
 		}
@@ -11091,8 +11143,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 				&comp->mtk_crtc->base, comp, true);
 	unsigned int crop_voffset = 0;
 	unsigned int crop_height;
-	unsigned int overhead_v;
-	unsigned int comp_overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
+	unsigned int top_comp_overhead_v, bot_comp_overhead_v;
 
 	unsigned int dbi_y_ini, dbi_udma_y_ini;
 	unsigned int block_size;
@@ -11124,22 +11176,32 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	/* oddmr crop offset set*/
 	oddmr_data->set_partial_update = enable;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-			? 0 : oddmr_data->tile_overhead_v.overhead_v;
-	comp_overhead_v = (!overhead_v) ? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+			? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+			? 0 : oddmr_data->tile_overhead_v.bot_overhead_v;
+	top_comp_overhead_v = (!top_overhead_v)
+			? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
+	bot_comp_overhead_v = (!bot_overhead_v)
+			? 0 : oddmr_data->tile_overhead_v.comp_overhead_v;
 	oddmr_data->roi_height = partial_roi.height;
 	oddmr_data->roi_y = partial_roi.y;
-	crop_voffset = comp_overhead_v;
-	crop_height = oddmr_data->roi_height + (overhead_v - comp_overhead_v) * 2;
-	dmr_input_height = partial_roi.height + overhead_v * 2;
+	crop_voffset = top_comp_overhead_v;
+	crop_height = oddmr_data->roi_height +
+					(top_overhead_v - top_comp_overhead_v) +
+					(bot_overhead_v - bot_comp_overhead_v);
+	dmr_input_height = partial_roi.height + top_overhead_v + bot_overhead_v;
 
-	DDPDBG("%s, %s total overhead_v:%d, oddmr overhead_v:%d, scale_factor_v:%d\n",
-		__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v, scale_factor_v);
+	DDPDBG("%s, %s total overhead_v T:%d, oddmr overhead_v T:%d\n",
+		__func__, mtk_dump_comp_str(comp), top_overhead_v, top_comp_overhead_v);
+	DDPDBG("%s, %s total overhead_v T:%d, oddmr overhead_v B:%d, scale_factor_v:%d\n",
+		__func__, mtk_dump_comp_str(comp), bot_overhead_v,
+		bot_comp_overhead_v, scale_factor_v);
 
 	/* update y ini */
 	if (oddmr_data->set_partial_update == 1) {
-		dbi_y_ini = partial_roi.y - overhead_v;
-		dmr_y_ini = partial_roi.y - overhead_v;
+		dbi_y_ini = partial_roi.y - top_overhead_v;
+		dmr_y_ini = partial_roi.y - top_overhead_v;
 	} else {
 		dbi_y_ini = 0;
 		dmr_y_ini = 0;
@@ -11190,7 +11252,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 //					DISP_ODDMR_TOP_CRP_BYPASS, handle);
 			mtk_oddmr_write(comp, dbi_y_ini,
 					DISP_ODDMR_REG_DMR_Y_INI, handle);
-			mtk_oddmr_write(comp, (oddmr_data->roi_height + overhead_v * 2),
+			mtk_oddmr_write(comp, (oddmr_data->roi_height +
+					top_overhead_v + bot_overhead_v),
 					DISP_ODDMR_FMT_CTR_1, handle); // oddmr input height
 //			mtk_oddmr_write(comp, crop_height,
 //					DISP_ODDMR_CRP_CTR_1, handle); // oddmr output height
@@ -11208,7 +11271,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 			oddmr_data->data->dmr_version == MTK_DMR_V2) {
 			//ODDMR input size
 			mtk_oddmr_write(comp,
-				(partial_roi.height + overhead_v * 2),
+				(partial_roi.height + top_overhead_v + bot_overhead_v),
 				MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT, handle);
 
 			//DBI&DMR input size and pos
@@ -11228,8 +11291,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 				mtk_oddmr_write(comp, dbi_udma_y_ini,
 					MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
 				//DBI table size as block
-				reg_val = (partial_roi.height + overhead_v * 2
-					+ scale_factor_v -1)/ scale_factor_v;
+				reg_val = (partial_roi.height + top_overhead_v +
+				bot_overhead_v + scale_factor_v -1)/ scale_factor_v;
 				if (reg_val < 0x10) {
 					reg_val = 0x10;
 					mtk_oddmr_write(comp, reg_val,
@@ -11244,7 +11307,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
-					SET_VAL_MASK(value, mask, partial_roi.height + overhead_v * 2,
+					SET_VAL_MASK(value, mask, partial_roi.height +
+							top_overhead_v + bot_overhead_v,
 						MT6991_REG_DBI_V_LENGTH_R);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
@@ -11253,7 +11317,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
-					SET_VAL_MASK(value, mask, partial_roi.height + overhead_v * 2,
+					SET_VAL_MASK(value, mask, partial_roi.height +
+						top_overhead_v + bot_overhead_v,
 						MT6991_REG_DBI_V_LENGTH_G);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
@@ -11262,7 +11327,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
-					SET_VAL_MASK(value, mask, partial_roi.height + overhead_v * 2,
+					SET_VAL_MASK(value, mask, partial_roi.height +
+						top_overhead_v + bot_overhead_v,
 						MT6991_REG_DBI_V_LENGTH_B);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
@@ -11271,9 +11337,9 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
 					//DBI table size as pixel
 					mtk_oddmr_write(comp,
-						(partial_roi.height + overhead_v * 2),
+						(partial_roi.height + top_overhead_v + bot_overhead_v),
 						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
-					reg_val = (partial_roi.height + overhead_v * 2
+					reg_val = (partial_roi.height + top_overhead_v + bot_overhead_v
 						+ scale_factor_v -1) / scale_factor_v;
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
@@ -11329,10 +11395,10 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 
 			//DBI&DMR output size
 			mtk_oddmr_write(comp,
-				(partial_roi.height + overhead_v * 2),
+				(partial_roi.height + top_overhead_v + bot_overhead_v),
 				MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_VSIZE, handle);
 			mtk_oddmr_write(comp,
-				(partial_roi.height + overhead_v * 2),
+				(partial_roi.height + top_overhead_v + bot_overhead_v),
 				MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
 		}
 	} else {
@@ -11424,8 +11490,10 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 				MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
 		}
 	}
-	if (od_support == true && oddmr_data->od_enable)
-		mtk_oddmr_od_set_partial_update(comp, handle, overhead_v, full_height);
+	if (od_support == true && oddmr_data->od_enable) {
+		mtk_oddmr_od_set_partial_update(comp, handle, top_overhead_v,
+						bot_overhead_v, full_height);
+	}
 	return 0;
 }
 

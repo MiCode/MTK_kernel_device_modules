@@ -688,10 +688,13 @@ static void disp_gamma_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	gamma->tile_overhead_v.comp_overhead_v = 0;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+		gamma->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 		gamma->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	gamma->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	gamma->tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	gamma->tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 static void disp_gamma_config(struct mtk_ddp_comp *comp,
@@ -702,7 +705,7 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 	unsigned int width;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
@@ -719,11 +722,14 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_GAMMA_SIZE,
 			(width << 16) | cfg->h, ~0);
 	else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : gamma->tile_overhead_v.overhead_v;
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : gamma->tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : gamma->tile_overhead_v.bot_overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SIZE,
-			(width << 16) | (gamma->roi_height + overhead_v * 2), ~0);
+			(width << 16) | (gamma->roi_height + top_overhead_v + bot_overhead_v),
+			~0);
 	}
 	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT ||
 		gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
@@ -966,23 +972,25 @@ static int disp_gamma_set_partial_update(struct mtk_ddp_comp *comp,
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	gamma->set_partial_update = enable;
 	gamma->roi_height = partial_roi.height;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : gamma->tile_overhead_v.overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : gamma->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : gamma->tile_overhead_v.bot_overhead_v;
 
-	DDPDBG("%s, %s overhead_v:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
+			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
 	if (gamma->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,
-				   gamma->roi_height + overhead_v * 2, 0xffff);
+				   gamma->roi_height + top_overhead_v + bot_overhead_v, 0xffff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,

@@ -5930,7 +5930,7 @@ static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, false);
 	struct total_tile_overhead_v to_v_info;
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
@@ -5938,16 +5938,18 @@ static int mtk_ovl_set_partial_update(struct mtk_ddp_comp *comp,
 	ovl->set_partial_update = enable;
 
 	to_v_info = mtk_crtc_get_total_overhead_v(comp->mtk_crtc);
-	overhead_v = to_v_info.overhead_v;
+	top_overhead_v = to_v_info.top_overhead_v;
+	bot_overhead_v = to_v_info.bot_overhead_v;
 
 	if (comp->mtk_crtc->res_switch == RES_SWITCH_ON_AP &&
 		comp->mtk_crtc->scaling_ctx.scaling_en)
 		ovl->roi_height = to_v_info.in_height;
 	else
-		ovl->roi_height = partial_roi.height + (overhead_v * 2);
+		ovl->roi_height = partial_roi.height + (top_overhead_v + bot_overhead_v);
 
-	DDPDBG("%s, %s overhead_v:%d, roi_height:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v, ovl->roi_height);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d, roi_height:%d\n",
+			__func__, mtk_dump_comp_str(comp),
+			top_overhead_v, bot_overhead_v, ovl->roi_height);
 
 	if (ovl->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,

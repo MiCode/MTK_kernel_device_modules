@@ -1279,10 +1279,13 @@ static void mtk_disp_spr_config_overhead_v(struct mtk_ddp_comp *comp,
 		spr->tile_overhead_v.comp_overhead_v = 0;
 	}
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+			spr->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 			spr->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	spr->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	spr->tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	spr->tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc)
@@ -1328,8 +1331,8 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv;
 	struct mtk_ddp_comp *postalign_comp;
 	struct mtk_disp_spr *spr;
-	unsigned int overhead_v;
-	unsigned int comp_overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
+	unsigned int top_comp_overhead_v, bot_comp_overhead_v;
 
 	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
 		return;
@@ -1402,12 +1405,18 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			crop_voffset = 0;
 			out_height = cfg->h;
 		} else {
-			overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : spr->tile_overhead_v.overhead_v;
-			comp_overhead_v = (!overhead_v) ? 0 : spr->tile_overhead_v.comp_overhead_v;
-			height = spr->roi_height + overhead_v * 2;
-			out_height = spr->roi_height + (overhead_v - comp_overhead_v) * 2;
-			crop_voffset = comp_overhead_v;
+			top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : spr->tile_overhead_v.top_overhead_v;
+			bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : spr->tile_overhead_v.bot_overhead_v;
+			top_comp_overhead_v = (!top_overhead_v)
+				? 0 : spr->tile_overhead_v.comp_overhead_v;
+			bot_comp_overhead_v = (!bot_overhead_v)
+				? 0 : spr->tile_overhead_v.comp_overhead_v;
+			height = spr->roi_height + top_overhead_v + bot_overhead_v;
+			out_height = spr->roi_height + (top_overhead_v - top_comp_overhead_v) +
+				(bot_overhead_v - bot_comp_overhead_v);
+			crop_voffset = top_comp_overhead_v;
 		}
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
 			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
@@ -1667,8 +1676,8 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 
 	unsigned int width, height; //image size
 	unsigned int out_height = cfg->h;
-	unsigned int overhead_v;
-	unsigned int comp_overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
+	unsigned int top_comp_overhead_v, bot_comp_overhead_v;
 	unsigned int image_pos_x, image_pos_y; //spr input pos based on panel
 	unsigned int output_pos_x, output_pos_y; //SPR output pos based on panel
 	unsigned int delta_x_pos, delta_y_pos; //delta-rgb mode, spr type pu ctl
@@ -1699,13 +1708,19 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		image_pos_y = cfg->y;
 		output_pos_y = cfg->y;
 	} else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-			? 0 : spr->tile_overhead_v.overhead_v;
-		comp_overhead_v = (!overhead_v) ? 0 : spr->tile_overhead_v.comp_overhead_v;
-		height = spr->roi_height + overhead_v * 2;
-		out_height = spr->roi_height + (overhead_v - comp_overhead_v) * 2;
-		image_pos_y = spr->partial_roi_y - overhead_v;
-		output_pos_y = spr->partial_roi_y - overhead_v + comp_overhead_v;
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+			? 0 : spr->tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+			? 0 : spr->tile_overhead_v.bot_overhead_v;
+		top_comp_overhead_v = (!top_overhead_v)
+			? 0 : spr->tile_overhead_v.comp_overhead_v;
+		bot_comp_overhead_v = (!bot_overhead_v)
+			? 0 : spr->tile_overhead_v.comp_overhead_v;
+		height = spr->roi_height + top_overhead_v + bot_overhead_v;
+		out_height = spr->roi_height + (top_overhead_v - top_comp_overhead_v) +
+			(bot_overhead_v - bot_comp_overhead_v);
+		image_pos_y = spr->partial_roi_y - top_overhead_v;
+		output_pos_y = spr->partial_roi_y - top_overhead_v + top_comp_overhead_v;
 	}
 
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
@@ -1728,7 +1743,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, 0,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_X + offset, handle);
 	if (spr->set_partial_update == 1)
-		mtk_ddp_write_relaxed(comp, comp_overhead_v, //position based on input
+		mtk_ddp_write_relaxed(comp, top_comp_overhead_v, //position based on input
 			MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
 	else
 		mtk_ddp_write_relaxed(comp, 0, //position based on input
@@ -2036,8 +2051,7 @@ void mtk_cal_spr_valid_partial_roi(struct mtk_drm_crtc *crtc,
 		(partial_roi->y - spr_over_height) : 0;
 	partial_roi->height = partial_roi->height + spr_over_height * 2;
 	if(partial_roi->y + partial_roi->height > full_height) {
-		partial_roi->y = 0;
-		partial_roi->height = full_height;
+		partial_roi->height = full_height - partial_roi->y;
 	}
 
 	/* spr roi size must be greater than 120 lines*/
@@ -2101,8 +2115,8 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 				&comp->mtk_crtc->base, comp, true);
 	unsigned int crop_voffset = 0;
 	unsigned int crop_height;
-	unsigned int overhead_v;
-	unsigned int comp_overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
+	unsigned int top_comp_overhead_v, bot_comp_overhead_v;
 	u32 offset = 0;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
@@ -2113,16 +2127,23 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	/* spr crop offset set*/
 	spr->set_partial_update = enable;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-			? 0 : spr->tile_overhead_v.overhead_v;
-	comp_overhead_v = (!overhead_v) ? 0 : spr->tile_overhead_v.comp_overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+			? 0 : spr->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+			? 0 : spr->tile_overhead_v.bot_overhead_v;
+	top_comp_overhead_v = (!top_overhead_v)
+			? 0 : spr->tile_overhead_v.comp_overhead_v;
+	bot_comp_overhead_v = (!bot_overhead_v)
+			? 0 : spr->tile_overhead_v.comp_overhead_v;
 	spr->roi_height = partial_roi.height;
 	spr->partial_roi_y = partial_roi.y;
-	crop_voffset = comp_overhead_v;
-	crop_height = spr->roi_height + (overhead_v - comp_overhead_v) * 2;
+	crop_voffset = top_comp_overhead_v;
+	crop_height = spr->roi_height + (top_overhead_v - top_comp_overhead_v) +
+		(bot_overhead_v - bot_comp_overhead_v) ;
 
-	DDPDBG("%s, %s total overhead_v:%d, spr overhead_v:%d\n",
-		__func__, mtk_dump_comp_str(comp), overhead_v, comp_overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d, comp overhead_v T:%d B:%d\n",
+		__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v,
+		top_comp_overhead_v, bot_comp_overhead_v);
 
 	// SPR & Postallign reg config
 	if (comp->id == DDP_COMPONENT_SPR0) {
@@ -2138,12 +2159,13 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 		offset = spr->data->mtk_spr_ip_addr_offset;
 		if (spr->set_partial_update == 1) {
 			//input size config
-			mtk_ddp_write_relaxed(comp, (partial_roi.y - overhead_v),
+			mtk_ddp_write_relaxed(comp, (partial_roi.y - top_overhead_v),
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
-			mtk_ddp_write_relaxed(comp, (partial_roi.height + overhead_v * 2),
+			mtk_ddp_write_relaxed(comp,
+				(partial_roi.height + top_overhead_v + bot_overhead_v),
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_HEIGHT + offset, handle);
 			//output size config
-			mtk_ddp_write_relaxed(comp, comp_overhead_v,
+			mtk_ddp_write_relaxed(comp, top_comp_overhead_v,
 				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
 			mtk_ddp_write_relaxed(comp, crop_height,
 				MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_HEIGHT + offset, handle);
@@ -2189,11 +2211,11 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 
 		//roi size config
 		mtk_ddp_write_mask(comp,
-			(spr->roi_height + overhead_v * 2) << 16,
+			(spr->roi_height + top_overhead_v + bot_overhead_v) << 16,
 			DISP_REG_V2_SPR_ROI_SIZE, REG_FLD_MASK(CROP_OUT_VSIZE), handle);
 
 		mtk_ddp_write_mask(comp,
-			(spr->roi_height + overhead_v * 2) << 12,
+			(spr->roi_height + top_overhead_v + bot_overhead_v) << 12,
 			DISP_REG_V2_SPR_IP_CFG_0, 0xfffff000, handle);
 
 		mtk_ddp_write_mask(comp, 1 << 28,

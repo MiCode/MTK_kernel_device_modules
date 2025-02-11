@@ -31,7 +31,8 @@ struct mtk_disp_gamma_tile_overhead {
 };
 
 struct mtk_disp_gamma_tile_overhead_v {
-	unsigned int overhead_v;
+	unsigned int top_overhead_v;
+	unsigned int bot_overhead_v;
 	unsigned int comp_overhead_v;
 };
 

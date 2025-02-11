@@ -830,10 +830,13 @@ static void disp_color_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	color->tile_overhead_v.comp_overhead_v = 0;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+		color->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 		color->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	color->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	color->tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	color->tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 static void disp_color_config(struct mtk_ddp_comp *comp,
@@ -844,7 +847,7 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	struct DISP_AAL_DRECOLOR_PARAM *drecolor = &primary_data->drecolor_param;
 	unsigned int width;
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support)
 		width = color->tile_overhead.in_width;
@@ -871,10 +874,13 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 					comp->regs_pa + DISP_COLOR_HEIGHT(color), cfg->h, ~0);
 	else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : color->tile_overhead_v.overhead_v;
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : color->tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : color->tile_overhead_v.bot_overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_HEIGHT(color), color->roi_height + overhead_v * 2, ~0);
+			comp->regs_pa + DISP_COLOR_HEIGHT(color),
+			color->roi_height + top_overhead_v + bot_overhead_v, ~0);
 	}
 	// set color_8bit_switch register
 	if (cfg->source_bpc == 8)
@@ -1313,22 +1319,25 @@ static int disp_color_set_partial_update(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color *color = comp_to_color(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	color->set_partial_update = enable;
 	color->roi_height = partial_roi.height;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : color->tile_overhead_v.overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : color->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : color->tile_overhead_v.bot_overhead_v;
 
-	DDPDBG("%s, %s overhead_v:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
+			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
 	if (color->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_HEIGHT(color), color->roi_height + overhead_v * 2, ~0);
+			comp->regs_pa + DISP_COLOR_HEIGHT(color),
+			color->roi_height + top_overhead_v + bot_overhead_v, ~0);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_HEIGHT(color), full_height, ~0);

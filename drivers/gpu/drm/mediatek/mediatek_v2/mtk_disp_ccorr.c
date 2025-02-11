@@ -1111,27 +1111,29 @@ static int disp_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	ccorr_data->set_partial_update = enable;
 	ccorr_data->roi_height = partial_roi.height;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : ccorr_data->tile_overhead_v.overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : ccorr_data->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : ccorr_data->tile_overhead_v.bot_overhead_v;
 
-	DDPDBG("%s, %s overhead_v:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
+			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
 	if (ccorr_data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + DISP_REG_CCORR_SIZE,
-				   ccorr_data->roi_height + overhead_v * 2, 0x1fff);
+				comp->regs_pa + DISP_REG_CCORR_SIZE,
+				ccorr_data->roi_height + top_overhead_v + bot_overhead_v, 0x1fff);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + DISP_REG_CCORR_SIZE,
-				   full_height, 0x1fff);
+				comp->regs_pa + DISP_REG_CCORR_SIZE,
+				full_height, 0x1fff);
 	}
 
 	return 0;
@@ -1184,10 +1186,13 @@ static void disp_ccorr_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	ccorr_data->tile_overhead_v.comp_overhead_v = 0;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+		ccorr_data->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 		ccorr_data->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	ccorr_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	ccorr_data->tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	ccorr_data->tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 static void disp_ccorr_config(struct mtk_ddp_comp *comp,
@@ -1197,7 +1202,7 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 	unsigned int width;
 	struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		width = ccorr_data->tile_overhead.in_width;
@@ -1222,14 +1227,16 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 				primary_data->ccorr_8bit_switch << 10, 0x1 << 10);
 	if (ccorr_data->set_partial_update != 1)
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + DISP_REG_CCORR_SIZE,
-				   (width << 16) | cfg->h, ~0);
+			comp->regs_pa + DISP_REG_CCORR_SIZE,
+			(width << 16) | cfg->h, ~0);
 	else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : ccorr_data->tile_overhead_v.overhead_v;
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : ccorr_data->tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : ccorr_data->tile_overhead_v.bot_overhead_v;
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_CCORR_SIZE,
-			       (width << 16) | (ccorr_data->roi_height + overhead_v * 2), ~0);
+			comp->regs_pa + DISP_REG_CCORR_SIZE,
+			(width << 16) | (ccorr_data->roi_height + top_overhead_v + bot_overhead_v), ~0);
 	}
 
 	/* Bypass shadow register*/

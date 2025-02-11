@@ -156,7 +156,8 @@ struct mtk_disp_postmark_tile_overhead {
 };
 
 struct mtk_disp_postmask_tile_overhead_v {
-	unsigned int overhead_v;
+	unsigned int top_overhead_v;
+	unsigned int bot_overhead_v;
 	unsigned int comp_overhead_v;
 };
 
@@ -272,10 +273,13 @@ static void mtk_disp_postmask_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	postmask_tile_overhead_v.comp_overhead_v = 0;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+		postmask_tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 		postmask_tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	postmask_tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	postmask_tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	postmask_tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 static void mtk_postmask_config(struct mtk_ddp_comp *comp,
@@ -296,7 +300,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
 #endif
 	unsigned int width;
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	if (comp->mtk_crtc->is_dual_pipe) {
 		width = cfg->w / 2;
@@ -327,9 +331,12 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	if (postmask->set_partial_update != 1)
 		value = (width << 16) + cfg->h;
 	else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : postmask_tile_overhead_v.overhead_v;
-		value = (width << 16) + (postmask->roi_height + overhead_v * 2);
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : postmask_tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : postmask_tile_overhead_v.bot_overhead_v;
+		value = (width << 16) +
+			(postmask->roi_height + top_overhead_v + bot_overhead_v);
 	}
 
 	mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SIZE, handle);
@@ -825,7 +832,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 	unsigned int pause_start = 0, pause_end = 0;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPINFO("%s, %s set partial update, height:%d, enable:%d\n",
 			__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
@@ -843,11 +850,13 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 	postmask->set_partial_update = enable;
 	postmask->roi_height = partial_roi.height;
 	postmask->roi_y_offset = partial_roi.y;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : postmask_tile_overhead_v.overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : postmask_tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : postmask_tile_overhead_v.bot_overhead_v;
 
-	DDPDBG("%s, %s overhead_v:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
+		__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
 	if (comp->mtk_crtc->round_corner_gem &&
 			panel_ext->corner_pattern_tp_size &&
@@ -862,31 +871,37 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 	if (postmask->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_POSTMASK_SIZE,
-			postmask->roi_height + overhead_v * 2, 0x1fff);
+			postmask->roi_height + top_overhead_v + bot_overhead_v, 0x1fff);
 
-		if ((postmask->roi_y_offset - overhead_v) >= panel_ext->corner_pattern_height
-			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+		if ((postmask->roi_y_offset - top_overhead_v)
+			>= panel_ext->corner_pattern_height
+			&& (postmask->roi_y_offset + postmask->roi_height + bot_overhead_v)
 			< full_height - panel_ext->corner_pattern_height_bot) {
 			/*1. No overlapping cases*/
 			DDPDBG("%s, 1. No overlapping cases\n",__func__);
 			DDPDBG("%s, force_relay = 1\n",__func__);
 			force_relay = 1;
-		} else if ((postmask->roi_y_offset - overhead_v) < panel_ext->corner_pattern_height
-			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+		} else if ((postmask->roi_y_offset - top_overhead_v)
+			< panel_ext->corner_pattern_height
+			&& (postmask->roi_y_offset + postmask->roi_height + bot_overhead_v)
 			< full_height - panel_ext->corner_pattern_height_bot) {
 			/*2. partial roi overlap with top corner and not overlap with bot corner*/
-			tmp_top = postmask->roi_y_offset - overhead_v - 1;
-			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
+			if (postmask->roi_y_offset - top_overhead_v == 0)
+				size_per_line_top = 0;
+			else {
+				tmp_top = postmask->roi_y_offset - top_overhead_v - 1;
+				size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
 							panel_ext->corner_pattern_size_per_line);
+			}
 			DDPDBG("%s, 2. overlap with top and not overlap with bot\n",__func__);
 			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
 				__func__, size_per_line_top, 0, tmp_top);
 
 			/*2-1. partial roi inside top corner*/
-			if (postmask->roi_y_offset + postmask->roi_height + overhead_v
+			if (postmask->roi_y_offset + postmask->roi_height + bot_overhead_v
 				<= panel_ext->corner_pattern_height) {
 				tmp_top_b = (postmask->roi_y_offset + postmask->roi_height
-							+ overhead_v);
+							+ bot_overhead_v);
 				size_per_line_top_b = sum_corner_pattern_per_line(
 						tmp_top_b, panel_ext->corner_pattern_height - 1,
 						panel_ext->corner_pattern_size_per_line);
@@ -908,13 +923,14 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			addr = addr + size_per_line_top;
 			size = size - size_per_line_top - size_per_line_top_b - size_per_line_bot;
 			pause_start = panel_ext->corner_pattern_height - (tmp_top + 1);
-			pause_end = postmask->roi_height + overhead_v * 2;
+			pause_end = postmask->roi_height + top_overhead_v + bot_overhead_v;
 			DDPDBG("%s, tmp_top: %d, tmp_top_b: %d, tmp_bot: %d\n",
 				__func__, tmp_top, tmp_top_b, tmp_bot);
 			DDPDBG("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
 				__func__, &addr, size, pause_start, pause_end);
-		} else if ((postmask->roi_y_offset - overhead_v) >= panel_ext->corner_pattern_height
-			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+		} else if ((postmask->roi_y_offset - top_overhead_v)
+			>= panel_ext->corner_pattern_height
+			&& (postmask->roi_y_offset + postmask->roi_height + bot_overhead_v)
 			>= full_height - panel_ext->corner_pattern_height_bot) {
 			/*3. partial roi not overlap with top corner and overlap with bot corner*/
 			tmp_top = panel_ext->corner_pattern_height - 1;
@@ -925,9 +941,9 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 				__func__, size_per_line_top, 0, tmp_top);
 
 			/*3-1. partial roi inside bot corner*/
-			if ((postmask->roi_y_offset - overhead_v) > full_height
+			if ((postmask->roi_y_offset - top_overhead_v) > full_height
 			 - panel_ext->corner_pattern_height_bot) {
-				tmp_bot_t = (postmask->roi_y_offset - overhead_v) -
+				tmp_bot_t = (postmask->roi_y_offset - top_overhead_v) -
 					(full_height - panel_ext->corner_pattern_height_bot) - 1;
 				size_per_line_bot_t = sum_corner_pattern_per_line(
 						(panel_ext->corner_pattern_height),
@@ -940,7 +956,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			}
 
 			tmp_bot = full_height - (postmask->roi_y_offset
-						+ postmask->roi_height + overhead_v);
+						+ postmask->roi_height + bot_overhead_v);
 			size_per_line_bot = sum_corner_pattern_per_line(
 			(panel_ext->corner_pattern_height
 				+ panel_ext->corner_pattern_height_bot - tmp_bot),
@@ -958,26 +974,30 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			addr = addr + size_per_line_top + size_per_line_bot_t;
 			size = size - size_per_line_top - size_per_line_bot_t - size_per_line_bot;
 			pause_start = 0;
-			pause_end = tmp_bot_t ? 0 : postmask->roi_height + overhead_v * 2 -
-						(panel_ext->corner_pattern_height_bot - tmp_bot);
+			pause_end = tmp_bot_t ? 0 : postmask->roi_height + top_overhead_v
+				+ bot_overhead_v - (panel_ext->corner_pattern_height_bot - tmp_bot);
 			DDPDBG("%s, tmp_top: %d, tmp_bot_t: %d, tmp_bot: %d\n",
 					__func__, tmp_top, tmp_bot_t, tmp_bot);
 			DDPDBG("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
 				__func__, &addr, size, pause_start, pause_end);
-		} else if ((postmask->roi_y_offset - overhead_v)
+		} else if ((postmask->roi_y_offset - top_overhead_v)
 			< panel_ext->corner_pattern_height
-			&& (postmask->roi_y_offset + postmask->roi_height + overhead_v)
+			&& (postmask->roi_y_offset + postmask->roi_height + bot_overhead_v)
 			>= full_height - panel_ext->corner_pattern_height_bot) {
 			/*4. partial roi overlap with top corner and overlap with bot corner*/
-			tmp_top = postmask->roi_y_offset - overhead_v - 1;
-			size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
+			if (postmask->roi_y_offset - top_overhead_v == 0)
+				size_per_line_top = 0;
+			else {
+				tmp_top = postmask->roi_y_offset - top_overhead_v - 1;
+				size_per_line_top = sum_corner_pattern_per_line(0, tmp_top,
 							panel_ext->corner_pattern_size_per_line);
+			}
 			DDPDBG("%s, 4. overlap with top and overlap with bot\n",__func__);
 			DDPDBG("%s, size_per_line_top: %d, num_start: %d, num_end: %d\n",
 				__func__, size_per_line_top, 0, tmp_top);
 
 			tmp_bot = full_height - (postmask->roi_y_offset
-						+ postmask->roi_height + overhead_v);
+						+ postmask->roi_height + bot_overhead_v);
 			size_per_line_bot = sum_corner_pattern_per_line(
 				(panel_ext->corner_pattern_height
 					+ panel_ext->corner_pattern_height_bot - tmp_bot),
@@ -995,7 +1015,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 			addr = addr + size_per_line_top;
 			size = size - size_per_line_top - size_per_line_bot;
 			pause_start = panel_ext->corner_pattern_height - (tmp_top + 1);
-			pause_end = postmask->roi_height + overhead_v * 2 -
+			pause_end = postmask->roi_height + top_overhead_v + bot_overhead_v -
 						(panel_ext->corner_pattern_height_bot - tmp_bot);
 			DDPDBG("%s, tmp_top: %d, tmp_bot: %d\n", __func__, tmp_top, tmp_bot);
 			DDPDBG("%s, addr: 0x%pa, size: %d, pause start: %d, pause end: %d\n",
@@ -1012,7 +1032,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_POSTMASK_SIZE,
-			postmask->roi_height + overhead_v * 2, 0x1fff);
+			postmask->roi_height + top_overhead_v + bot_overhead_v, 0x1fff);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_POSTMASK_CFG,

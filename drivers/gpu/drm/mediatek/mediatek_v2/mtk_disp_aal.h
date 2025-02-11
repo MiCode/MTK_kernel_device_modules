@@ -70,7 +70,8 @@ struct _mtk_disp_aal_tile_overhead {
 };
 
 struct _mtk_disp_aal_tile_overhead_v {
-	unsigned int overhead_v;
+	unsigned int top_overhead_v;
+	unsigned int bot_overhead_v;
 	unsigned int comp_overhead_v;
 };
 

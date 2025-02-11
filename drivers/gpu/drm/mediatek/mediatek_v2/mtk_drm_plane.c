@@ -647,11 +647,12 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		struct mtk_rect layer_roi = {0, 0, 0, 0};
 		struct mtk_rect ovl_partial_roi = {0, 0, 0, 0};
 		struct mtk_rect layer_partial_roi = {0, 0, 0, 0};
-		unsigned int overhead_v;
+		unsigned int top_overhead_v, bot_overhead_v;
 
 		ovl_partial_roi = crtc_state->ovl_partial_roi;
 
-		overhead_v = to_v_info.overhead_v;
+		top_overhead_v = to_v_info.top_overhead_v;
+		bot_overhead_v = to_v_info.bot_overhead_v;
 
 		if (mtk_crtc->scaling_ctx.scaling_en) {
 			ovl_partial_roi.width = crtc->state->adjusted_mode.hdisplay;
@@ -660,8 +661,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 			DDPDBG("%s roi_width:%d, roi_y:%d, roi_height:%d\n", __func__,
 				ovl_partial_roi.width, ovl_partial_roi.y, ovl_partial_roi.height);
 		} else {
-			ovl_partial_roi.y -= overhead_v;
-			ovl_partial_roi.height += (overhead_v * 2);
+			ovl_partial_roi.y -= top_overhead_v;
+			ovl_partial_roi.height += (top_overhead_v + bot_overhead_v);
 		}
 
 		if (mtk_plane_state->pending.mml_mode == MML_MODE_DIRECT_LINK)

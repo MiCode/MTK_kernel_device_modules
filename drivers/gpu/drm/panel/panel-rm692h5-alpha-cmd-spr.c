@@ -1207,10 +1207,12 @@ static void rm692h5_lcm_valid_roi(struct mtk_panel_params *ext_param,
 	unsigned int *x, unsigned int *y, unsigned int *w, unsigned int *h)
 {
 	unsigned int roi_y = *y, roi_h = *h;
-	unsigned int slice_height = 40;
+	unsigned int slice_height = 20;
 	unsigned int lil_te1_line = 520;
 	unsigned int lil_te2_line = 1560;
+	unsigned int lil_te3_line = 2620;
 	unsigned int inteval = 399;
+	unsigned int inteval_3 = 100;
 	int line_diff;
 
 	//lcm_info("partial roi y:%d height:%d\n", roi_y, roi_h);
@@ -1229,7 +1231,12 @@ static void rm692h5_lcm_valid_roi(struct mtk_panel_params *ext_param,
 			line_diff = roi_y - lil_te2_line + slice_height * 2;
 			roi_y -= line_diff;
 			roi_h += line_diff;
+		} else if (roi_y >= lil_te3_line && roi_y <= (lil_te3_line + inteval_3)) {
+			line_diff = roi_y - lil_te3_line + slice_height * 2;
+			roi_y -= line_diff;
+			roi_h += line_diff;
 		}
+
 	}
 
 	//lcm_info("validate partial roi y:%d height:%d\n", roi_y, roi_h);

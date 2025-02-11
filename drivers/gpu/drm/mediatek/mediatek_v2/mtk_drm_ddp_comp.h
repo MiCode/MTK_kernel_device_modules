@@ -1456,8 +1456,10 @@ bool is_support;
 
 struct total_tile_overhead_v {
 	unsigned int in_height;
-	unsigned int overhead_v;
-	unsigned int overhead_v_scaling;
+	unsigned int top_overhead_v;
+	unsigned int bot_overhead_v;
+	unsigned int top_overhead_v_scaling;
+	unsigned int bot_overhead_v_scaling;
 	unsigned int src_y;
 };
 

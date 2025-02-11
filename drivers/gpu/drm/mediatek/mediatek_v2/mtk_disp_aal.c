@@ -2741,24 +2741,28 @@ static int disp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPDBG("%s set partial update, height:%d, enable:%d\n",
 			mtk_dump_comp_str(comp), partial_roi.height, enable);
 
 	aal_data->set_partial_update = enable;
 	aal_data->roi_height = partial_roi.height;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : aal_data->tile_overhead_v.overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : aal_data->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : aal_data->tile_overhead_v.bot_overhead_v;
 
-	DDPDBG("%s, %s overhead_v:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
+			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
 	if (aal_data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_AAL_SIZE, aal_data->roi_height + overhead_v * 2, 0x0FFF);
+				comp->regs_pa + DISP_AAL_SIZE,
+				aal_data->roi_height + top_overhead_v + bot_overhead_v, 0x0FFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DISP_AAL_OUTPUT_SIZE, aal_data->roi_height + overhead_v * 2, 0x0FFF);
+				comp->regs_pa + DISP_AAL_OUTPUT_SIZE,
+				aal_data->roi_height + top_overhead_v + bot_overhead_v, 0x0FFF);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_AAL_SIZE, full_height, 0x0FFF);
@@ -3164,17 +3168,20 @@ static void disp_aal_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	aal_data->tile_overhead_v.comp_overhead_v = 0;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+		aal_data->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 		aal_data->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	aal_data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	aal_data->tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	aal_data->tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 static void disp_aal_config(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	unsigned int val = 0, out_val = 0;
-	unsigned int overhead_v = 0;
+	unsigned int top_overhead_v = 0, bot_overhead_v = 0;
 	int width = cfg->w, height = cfg->h;
 	int out_width = cfg->w;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
@@ -3212,10 +3219,13 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 		val = (width << 16) | (height);
 		out_val = (out_width << 16) | height;
 	} else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-					? 0 : aal_data->tile_overhead_v.overhead_v;
-		val = (width << 16) | (aal_data->roi_height + overhead_v * 2);
-		out_val = (out_width << 16) | (aal_data->roi_height + overhead_v * 2);
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+					? 0 : aal_data->tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+					? 0 : aal_data->tile_overhead_v.bot_overhead_v;
+		val = (width << 16) | (aal_data->roi_height + top_overhead_v + bot_overhead_v);
+		out_val = (out_width << 16) |
+			(aal_data->roi_height + top_overhead_v + bot_overhead_v);
 	}
 	if (aal_data->primary_data->aal_param_valid) {
 		disp_aal_write_dre_to_reg(comp, handle, &aal_data->primary_data->aal_param);

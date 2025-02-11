@@ -67,7 +67,8 @@ struct mtk_disp_mdp_aal_tile_overhead {
 };
 
 struct mtk_disp_mdp_aal_tile_overhead_v {
-	unsigned int overhead_v;
+	unsigned int top_overhead_v;
+	unsigned int bot_overhead_v;
 	unsigned int comp_overhead_v;
 };
 
@@ -181,16 +182,19 @@ static void disp_mdp_aal_config_overhead_v(struct mtk_ddp_comp *comp,
 	/*set component overhead*/
 	data->tile_overhead_v.comp_overhead_v = 0;
 	/*add component overhead on total overhead*/
-	tile_overhead_v->overhead_v +=
+	tile_overhead_v->top_overhead_v +=
+		data->tile_overhead_v.comp_overhead_v;
+	tile_overhead_v->bot_overhead_v +=
 		data->tile_overhead_v.comp_overhead_v;
 	/*copy from total overhead info*/
-	data->tile_overhead_v.overhead_v = tile_overhead_v->overhead_v;
+	data->tile_overhead_v.top_overhead_v = tile_overhead_v->top_overhead_v;
+	data->tile_overhead_v.bot_overhead_v = tile_overhead_v->bot_overhead_v;
 }
 
 static void disp_mdp_aal_config(struct mtk_ddp_comp *comp,
 			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	unsigned int overhead_v = 0;
+	unsigned int top_overhead_v = 0, bot_overhead_v = 0;
 	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
 	uint32_t out_hoffset = 0, out_width = cfg->w, width = cfg->w, size = 0, out_size = 0;
 
@@ -212,9 +216,12 @@ static void disp_mdp_aal_config(struct mtk_ddp_comp *comp,
 		size = (width << 16) | cfg->h;
 		out_size = (out_width << 16) | cfg->h;
 	} else {
-		overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v) ? 0 : data->tile_overhead_v.overhead_v;
-		size = (width << 16) | (data->roi_height + overhead_v * 2);
-		out_size = (out_width << 16) | (data->roi_height + overhead_v * 2);
+		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : data->tile_overhead_v.top_overhead_v;
+		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : data->tile_overhead_v.bot_overhead_v;
+		size = (width << 16) | (data->roi_height + top_overhead_v + bot_overhead_v);
+		out_size = (out_width << 16) | (data->roi_height + top_overhead_v + bot_overhead_v);
 	}
 
 	DDPINFO("%s: size 0x%08x\n", __func__, size);
@@ -368,7 +375,7 @@ static int disp_mdp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
-	unsigned int overhead_v;
+	unsigned int top_overhead_v, bot_overhead_v;
 
 	DDPDBG("%s set partial update(enable: %d), roi: (x: %d, y: %d, width: %d, height: %d)\n",
 			mtk_dump_comp_str(comp), enable,
@@ -376,17 +383,20 @@ static int disp_mdp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 
 	data->set_partial_update = enable;
 	data->roi_height = partial_roi.height;
-	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
-				? 0 : data->tile_overhead_v.overhead_v;
+	top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
+				? 0 : data->tile_overhead_v.top_overhead_v;
+	bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
+				? 0 : data->tile_overhead_v.bot_overhead_v;
 
-	DDPDBG("%s, %s overhead_v:%d\n",
-			__func__, mtk_dump_comp_str(comp), overhead_v);
+	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
+			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
 	if (data->set_partial_update == 1) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
-				data->roi_height + overhead_v * 2, 0x0FFFF);
+				data->roi_height + top_overhead_v + bot_overhead_v, 0x0FFFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + DMDP_AAL_OUTPUT_SIZE, data->roi_height + overhead_v * 2, 0x0FFFF);
+				comp->regs_pa + DMDP_AAL_OUTPUT_SIZE, data->roi_height +
+				top_overhead_v + bot_overhead_v, 0x0FFFF);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
 				full_height, 0x0FFFF);
