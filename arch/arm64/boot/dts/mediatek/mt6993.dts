@@ -2024,6 +2024,23 @@
 
 	};
 
+	dpt_info: dpt-info@538f820 {
+		compatible = "mediatek,dpt-info";
+		dpt-v2-support = <0>;
+		reg = <0 0x538f820 0 0x5dc>;
+	};
+
+	collab_type_0: collab-type-0-info@5392828 {
+		compatible = "mediatek,dpt-info";
+		reg = <0 0x5392828 0 0x4>,
+			<0 0x53927b8 0 0x4>,
+			<0 0x51c12f4 0 0x8>,
+			<0 0x51c12fc 0 0x8>,
+			<0 0x53927c0 0 0x32>;
+		reg-names = "COEF2_LTIME", "COEF1_LTIME", "COFE2_S", "COEF1_S", "CPU_S";
+	};
+
+
 	firmware: firmware {
 		scmi: scmi {
 			compatible = "arm,scmi";
