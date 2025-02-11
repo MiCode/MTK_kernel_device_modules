@@ -24,7 +24,7 @@ config MICROTRUST_TEE_SUPPORT
 config MICROTRUST_TEE_VERSION
 	string "MICROTRUST TEE Version"
 	depends on MICROTRUST_TEE_SUPPORT
-	default "510"
+	default "520"
 	help
 	  Enables the support of Microtrust new version.
 	  All Microtrust related TEE drivers will depend on this option.
@@ -45,7 +45,7 @@ config MICROTRUST_TZ_DRIVER
 config MICROTRUST_DYNAMIC_CORE
 	tristate "Microtrust Dynamic Core"
 	depends on MICROTRUST_TEE_SUPPORT
-	default y
+	default n
 	help
 	  Enables the support of Microtrust trustzone linux driver.
 	  This driver in charge of all initial process, creating

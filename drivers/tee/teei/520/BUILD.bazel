@@ -30,7 +30,8 @@ filegroup(
 ddk_headers(
      name = "ddk_teei_headers",
      includes = ["."],
-     hdrs = glob(["common/include/teei_client_main.h"]), # export all headers for other modules to use
+     hdrs = glob(["common/include/teei_client_api.h",
+                "tz_driver/include/teei_client_main.h",]), # export all headers for other modules to use
 )
 filegroup(
     name = "srcs",

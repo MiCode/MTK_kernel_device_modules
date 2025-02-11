@@ -70,7 +70,7 @@ DECLARE_SEMA(pm_sema, 0);
 DECLARE_COMPLETION(boot_decryto_lock);
 
 #if !IS_ENABLED(CONFIG_MICROTRUST_DYNAMIC_CORE)
-#define TZ_PREFER_BIND_CORE (6)
+#define TZ_PREFER_BIND_CORE (0)
 #endif
 
 #define TEEI_RT_POLICY			(0x01)
