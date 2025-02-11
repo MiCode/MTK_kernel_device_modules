@@ -2537,7 +2537,7 @@ void update_dpt_v2_info(void)
 		SET_VALUE(dpt_rq->cur_ltime[S_COEF2], coef2_min_ltime, coef2_max_ltime, coef2_ltime);
 		SET_VALUE(dpt_rq->cur_ltime[S_COEF2], coef2_min_ltime, coef2_max_ltime, dpt_rq->coef2_ltime_manual);
 
-		/* Stall ratio info */
+		/* sratio info */
 		SET_VALUE_MAX(dpt_rq->sratio[S_COEF1], 100, coef1_s);
 		SET_VALUE_MAX(dpt_rq->sratio[S_COEF1], 100, dpt_rq->coef1_sratio_manual);
 		SET_VALUE_MAX(dpt_rq->sratio[S_COEF2], 100, coef2_s);
@@ -3742,7 +3742,7 @@ EXPORT_SYMBOL(dpt_v2_get_uclamped_cpu_util);
 void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, unsigned long *capacity_result, struct cpumask *cpumask,
 	unsigned int cpu_util_local, unsigned int coef1_util_local, unsigned int coef2_util_local, unsigned long min, unsigned long max)
 {
-	unsigned long util, coefs[2];
+	unsigned long orig_util, util, coefs[2];
 
 	if (!is_dpt_v2_support())
 		return;
@@ -3750,7 +3750,8 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 	if (!dpt_v2_util2cap_needed_local_hook || !dpt_v2_linear_local_cap2freq_hook)
 		return;
 
-	util = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local, coefs);
+	orig_util = dpt_v2_util2cap_needed_local_hook(cpu_util_local, coef1_util_local, coef2_util_local, coefs);
+	util = clamp_val(orig_util, min, max);
 
 	cpu_util_local = cpu_util_local == 0 ? 1 : cpu_util_local;
 
@@ -3763,7 +3764,7 @@ void mtk_map_util_freq_dpt_v2(void *data, int cpu, unsigned long *next_freq, uns
 
 	*next_freq = dpt_v2_linear_local_cap2freq_hook(cpu, false, util, 0, 1024, false);
 	if (trace_sugov_ext_mtk_map_util_freq_dpt_v2_enabled())
-		trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, cpu_util_local,
+		trace_sugov_ext_mtk_map_util_freq_dpt_v2(cpu, *next_freq, util, orig_util, cpu_util_local,
 			coef1_util_local, coef2_util_local, min, max, coefs);
 
 	if (data != NULL) {

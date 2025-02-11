@@ -1138,16 +1138,17 @@ TRACE_EVENT(sugov_ext_dpt_v2_get_uclamped_cpu_util,
 );
 
 TRACE_EVENT(sugov_ext_mtk_map_util_freq_dpt_v2,
-	TP_PROTO(int cpu, unsigned long freq, unsigned long util,
+	TP_PROTO(int cpu, unsigned long freq, unsigned long util, unsigned long orig_util,
 		unsigned long cpu_util_local, unsigned long coef1_util_local, unsigned long coef2_util_local,
 		unsigned long min, unsigned long max, unsigned long *coefs),
 
-	TP_ARGS(cpu, freq, util, cpu_util_local, coef1_util_local, coef2_util_local, min, max, coefs),
+	TP_ARGS(cpu, freq, util, orig_util, cpu_util_local, coef1_util_local, coef2_util_local, min, max, coefs),
 
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(unsigned long, freq)
 		__field(unsigned long, util)
+		__field(unsigned long, orig_util)
 		__field(unsigned long, cpu_util_local)
 		__field(unsigned long, coef1_util_local)
 		__field(unsigned long, coef2_util_local)
@@ -1160,6 +1161,7 @@ TRACE_EVENT(sugov_ext_mtk_map_util_freq_dpt_v2,
 		__entry->cpu = cpu;
 		__entry->freq = freq;
 		__entry->util = util;
+		__entry->orig_util = orig_util;
 		__entry->cpu_util_local = cpu_util_local;
 		__entry->coef1_util_local = coef1_util_local;
 		__entry->coef2_util_local = coef2_util_local;
@@ -1169,10 +1171,11 @@ TRACE_EVENT(sugov_ext_mtk_map_util_freq_dpt_v2,
 		__entry->max = max;
 	),
 	TP_printk(
-		"cpu=%d freq=%lu util=%lu cpu_util_local=%lu coef1_util_local=%lu coef2_util_local=%lu coef1_param=%lu coef2_param=%lu min=%lu max=%lu",
+		"cpu=%d freq=%lu util=%lu orig_util=%lu cpu_util_local=%lu coef1_util_local=%lu coef2_util_local=%lu coef1_param=%lu coef2_param=%lu min=%lu max=%lu",
 		__entry->cpu,
 		__entry->freq,
 		__entry->util,
+		__entry->orig_util,
 		__entry->cpu_util_local,
 		__entry->coef1_util_local,
 		__entry->coef2_util_local,
