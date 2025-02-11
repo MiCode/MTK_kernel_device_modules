@@ -3805,6 +3805,7 @@
 			gpufreq-version = <2>;
 			dual-buck = <0>;
 			gpueb-support = <1>;
+			gpufreq-bringup = <0>;
 		};
 		ged: ged {
 			compatible = "mediatek,ged";
