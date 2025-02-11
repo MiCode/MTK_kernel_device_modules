@@ -513,6 +513,7 @@ struct vdec_vsi {
 	__u8 output_async;
 	__u8 output_async_handling;
 	__u8 low_pw_mode;
+	__u8 dynamic_low_latency;
 	__u8 in_group;
 	__u8 cpu_hint;
 	__s8 crc_path[256];

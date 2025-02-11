@@ -1556,6 +1556,7 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	}
 
 	inst->vsi->dec.timestamp = inst->ctx->timestamp;
+	inst->vsi->dynamic_low_latency = inst->ctx->dynamic_low_latency;
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_id = AP_IPIMSG_DEC_START;
