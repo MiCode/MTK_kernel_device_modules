@@ -67,12 +67,15 @@ struct mmdvfs_debug_user {
 };
 static struct mmdvfs_debug_user *ap_user, *rl_user;
 
-int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
+int mmdvfs_debug_v5_force_vcore(const u32 val)
 {
-	//TODO: return mtk_mmdvfs_force_vcore_notify(val);
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+	return mmdvfs_force_vcore_notify(val);
+#else
 	return 0;
+#endif
 }
-EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
+EXPORT_SYMBOL_GPL(mmdvfs_debug_v5_force_vcore);
 
 int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
@@ -324,6 +327,7 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v5_ops = {
 	.force_step_fp = mmdvfs_debug_v5_set_force_step,
 	.vote_step_fp = mmdvfs_debug_v5_set_vote_step,
 	.status_dump_fp = mmdvfs_debug_v5_status_dump,
+	.force_vcore_fp = mmdvfs_debug_v5_force_vcore,
 };
 
 static int mmdvfs_debug_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)

@@ -649,7 +649,7 @@ static const struct proc_ops mmdvfs_mbrain_test_fops = {
 	.proc_release = single_release,
 };
 
-int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
+int mmdvfs_debug_v3_force_vcore(const u32 val)
 {
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	return mtk_mmdvfs_force_vcore_notify(val);
@@ -657,7 +657,7 @@ int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
 	return 0;
 #endif
 }
-EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
+EXPORT_SYMBOL_GPL(mmdvfs_debug_v3_force_vcore);
 
 bool mtk_is_mmdvfs_v3_debug_init_done(void)
 {
@@ -1215,6 +1215,7 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v3_ops = {
 	.force_step_fp = mmdvfs_debug_v3_set_force_step,
 	.vote_step_fp = mmdvfs_debug_v3_set_vote_step,
 	.status_dump_fp = mmdvfs_debug_v3_status_dump,
+	.force_vcore_fp = mmdvfs_debug_v3_force_vcore,
 };
 
 static int mmdvfs_debug_probe(struct platform_device *pdev)

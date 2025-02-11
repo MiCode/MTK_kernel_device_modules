@@ -17,6 +17,17 @@ void mmdvfs_debug_ops_set(struct mmdvfs_debug_ops *_ops)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_ops_set);
 
+int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
+{
+	if (!ops.force_vcore_fp) {
+		pr_notice("[mmdvfs_dbg][dbg]%s:%d: without fp\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	return ops.force_vcore_fp(val);
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
+
 int mmdvfs_debug_status_dump(struct seq_file *file)
 {
 	if (!ops.status_dump_fp) {

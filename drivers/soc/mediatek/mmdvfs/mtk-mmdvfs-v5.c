@@ -35,6 +35,9 @@ static struct mmdvfs_data *mmdvfs_data;
 
 static int log_level;
 
+static u8 vcore_level_count;
+static u8 *vcore_level;
+
 static bool mmup_ena;
 #define MMDVFS_HFRP_FEATURE_ID (mmup_ena ? MMDVFS_MMUP_FEATURE_ID : MMDVFS_VCP_FEATURE_ID)
 
@@ -162,6 +165,28 @@ int mmdvfs_dump_dvfsrc_record(void)
 	return -EPERM;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_dump_dvfsrc_record);
+
+int mmdvfs_force_vcore_notify(const u32 val)
+{
+	int ret = 0;
+	s8 opp;
+
+	if (!vcore_level_count || val >= vcore_level_count)
+		return 0;
+
+	//TODO: refactor from calling force_step to calling vcore ceil flow
+	//release force_step at max vcore level
+	//0:MMDVFS_PWR_VCORE
+	opp = (vcore_level[val] < (mmdvfs_data->rc[0].level_num - 1)) ?
+		OPP2LEVEL(0, vcore_level[val]) : -1;
+	ret = mmdvfs_force_step(0, opp);
+	if (ret)
+		MMDVFS_DBG("ret:%d force_vcore_level:%u final_vcore_opp:%hhd",
+			ret, val, opp);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_force_vcore_notify);
 
 int mmdvfs_force_step(const u8 idx, const s8 opp)
 {
@@ -669,6 +694,27 @@ static int mmdvfs_parse_mmdvfs_clk(struct device_node *node, struct mmdvfs_data 
 	return 0;
 }
 
+static int mmdvfs_parse_vcore_level(struct device_node *node)
+{
+	int ret = 0;
+
+	ret = of_property_count_u8_elems(node, "mediatek,vcore-level");
+	if (ret > 0) {
+		vcore_level_count = ret;
+		vcore_level = kcalloc(vcore_level_count, sizeof(*vcore_level), GFP_KERNEL);
+		if (!vcore_level) {
+			MMDVFS_DBG("vcore-level alloc failed:%d", ret);
+		} else {
+			ret = of_property_read_u8_array(node,
+				"mediatek,vcore-level", vcore_level, vcore_level_count);
+			if (ret)
+				MMDVFS_DBG("read_array vcore-level failed:%d", ret);
+		}
+	}
+
+	return 0;
+}
+
 static int mmdvfs_get_rc_base(struct mmdvfs_data *mmdvfs_data)
 {
 	int i;
@@ -698,6 +744,7 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 
 	ret = mmdvfs_parse_mmdvfs_mux(node, mmdvfs_data);
 	ret = mmdvfs_parse_mmdvfs_clk(node, mmdvfs_data);
+	ret = mmdvfs_parse_vcore_level(node);
 	ret = mmdvfs_get_rc_base(mmdvfs_data);
 
 	ret = mmdvfs_vcp_init();

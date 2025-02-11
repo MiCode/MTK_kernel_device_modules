@@ -95,6 +95,7 @@ inline void mmdvfs_mmup_cb_mutex_unlock(void);
 
 inline u8 mmdvfs_user_get_rc(const u8 idx);
 inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp);
+int mmdvfs_force_vcore_notify(const u32 val);
 int mmdvfs_force_step(const u8 idx, const s8 opp);
 int mmdvfs_dump_dvfsrc_rg(void);
 int mmdvfs_dump_dvfsrc_record(void);

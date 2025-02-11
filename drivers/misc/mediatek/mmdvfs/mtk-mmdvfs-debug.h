@@ -57,6 +57,7 @@ struct mmdvfs_debug_ops {
 	int (*force_step_fp)(const char *val, const struct kernel_param *kp);
 	int (*vote_step_fp)(const char *val, const struct kernel_param *kp);
 	int (*status_dump_fp)(struct seq_file *file);
+	int (*force_vcore_fp)(const u32 val);
 };
 void mmdvfs_debug_ops_set(struct mmdvfs_debug_ops *_ops);
 #endif
