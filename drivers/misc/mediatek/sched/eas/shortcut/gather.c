@@ -11,7 +11,7 @@
 #include "gather.h"
 #include "sugov/cpufreq.h"
 
-#define GEAR_HINTS_GATHERING_TH 0 // 31
+#define GEAR_HINTS_GATHERING_TH 30
 
 static int gear_hints_gathering_th = GEAR_HINTS_GATHERING_TH;
 
