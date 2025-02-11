@@ -7,7 +7,7 @@
 #include <linux/printk.h>
 #include <linux/kvm.h>
 #include <linux/kprobes.h>
-#include <linux/mutex.h>
+#include <linux/spinlock.h>
 
 #include "common.h"
 
@@ -16,7 +16,7 @@
 
 #ifdef APPLY_FFA_WA
 static struct kprobe tmp_kp;
-static DEFINE_MUTEX(pkvm_mgmt_mutex);
+static spinlock_t pkvm_mgmt_spinlock;
 
 static void *lookup_function_address(const char *name)
 {
@@ -43,13 +43,14 @@ static bool is_pkvm_mgmt_valid(void)
 {
 	static void *symbol_addr;
 	static int has_run;
+	unsigned long irq_flags;
 
-	mutex_lock(&pkvm_mgmt_mutex);
+	spin_lock_irqsave(&pkvm_mgmt_spinlock, irq_flags);
 	if (has_run == 0) {
 		symbol_addr = lookup_function_address(PKVM_MGMT_SYMBOL);
 		has_run = 1;
 	}
-	mutex_unlock(&pkvm_mgmt_mutex);
+	spin_unlock_irqrestore(&pkvm_mgmt_spinlock, irq_flags);
 
 	if (symbol_addr)
 		return true;
@@ -90,6 +91,8 @@ int __init ffa_transport_init(ffa_fn **invoke_ffa_fn)
 		*invoke_ffa_fn = __arm_ffa_fn_smc;
 	else
 		*invoke_ffa_fn = __arm_ffa_fn_hvc;
+
+	spin_lock_init(&pkvm_mgmt_spinlock);
 
 	return 0;
 }
