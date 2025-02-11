@@ -619,22 +619,6 @@ usb_aocfg:
 	return 0;
 }
 
-void mtu3_ao_rg_dump(void)
-{
-	u32 val = 0;
-
-	if (!IS_ERR_OR_NULL(usb_mbist)) {
-		regmap_read(usb_mbist, 0x54, &val);
-		pr_notice("[MTU3] debug dump usb-mbist: %x\n", val);
-	}
-
-	if (!IS_ERR_OR_NULL(usb_cfg_ao)) {
-		regmap_read(usb_cfg_ao, 0x284, &val);
-		pr_notice("[MTU3] debug dump usb-cfg-ao: %x\n", val);
-
-	}
-}
-
 int ssusb_wait_power_state(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
@@ -673,30 +657,6 @@ int ssusb_wait_power_state(struct ssusb_mtk *ssusb,
 
 	return 0;
 }
-
-static int ssusb_pd_event(struct notifier_block *nb,
-				  unsigned long flags , void *data)
-{
-	switch (flags) {
-	case GENPD_NOTIFY_ON:
-		pr_notice("%s() mtu3 pwr on\n", __func__);
-		mtu3_ao_rg_dump();
-		break;
-	case GENPD_NOTIFY_PRE_OFF:
-		pr_notice("%s() mtu3 pwr pre off\n", __func__);
-		mtu3_ao_rg_dump();
-		break;
-	default:
-		break;
-	}
-
-	return NOTIFY_OK;
-}
-
-struct notifier_block ssusb_pd_notifier_block = {
-	.notifier_call = ssusb_pd_event,
-	.priority = 0,
-};
 
 static int ssusb_offload_get_mode(struct ssusb_offload *offload)
 {
@@ -1335,7 +1295,6 @@ static int ssusb_genpd_init(struct device *dev,
 {
 	int genpd_num = 0;
 	int err = 0;
-	int ret = 0;
 
 	ssusb->use_multi_genpd = false;
 	genpd_num = of_count_phandle_with_args(dev->of_node,
@@ -1387,10 +1346,6 @@ static int ssusb_genpd_init(struct device *dev,
 		dev_info(dev, "failed to add usb genpd u3 link\n");
 		return -ENODEV;
 	}
-
-	ret = dev_pm_genpd_add_notifier(ssusb->genpd_u2, &ssusb_pd_notifier_block);
-	if (ret)
-		dev_info(dev, "failed to register genpd notify %d\n", ret);
 
 	return 0;
 }
