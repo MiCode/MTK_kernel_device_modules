@@ -92,6 +92,7 @@ void mtk_vidle_dsi_pll_set(const u32 value);
 void mtk_vidle_channel_bw_set(const u32 bw_in_mb, const u32 idx);
 u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type);
 int mtk_vidle_hint_decision(const char *caller);
+void mtk_vidle_mminfra_on_off(bool en);
 
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp, enum mtk_vdisp_version version);
 void mtk_vidle_wait_init(void);

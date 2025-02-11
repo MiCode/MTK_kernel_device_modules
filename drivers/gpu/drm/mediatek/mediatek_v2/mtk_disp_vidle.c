@@ -585,6 +585,13 @@ int mtk_vidle_update_dt_by_period(void *_crtc, unsigned int dur_frame, unsigned 
 	return 0;
 }
 
+void mtk_vidle_mminfra_on_off(bool en)
+{
+	if (!disp_dpc_driver.dpc_mminfra_on_off)
+		return;
+	disp_dpc_driver.dpc_mminfra_on_off(en);
+}
+
 bool mtk_vidle_is_ff_enabled(void)
 {
 	return (bool)atomic_read(&g_ff_enabled);

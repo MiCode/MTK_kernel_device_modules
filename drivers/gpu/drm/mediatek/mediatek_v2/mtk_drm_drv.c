@@ -7774,7 +7774,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		}
 #endif
 		if (priv->pwr_node) {
-			mtk_mminfra_on_off(true, MM_PWR_MM_1, MM_TYPE_DISP);
+			mtk_vidle_mminfra_on_off(true);
 			for (i = 0; i < priv->data->pwr_length; i++)
 				clk_prepare_enable(priv->pwr_clks[priv->data->pwr_on_order[i]]);
 		} else {
@@ -7815,7 +7815,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->pwr_node) {
 			for (i = 0; i < priv->data->pwr_length; i++)
 				clk_disable_unprepare(priv->pwr_clks[priv->data->pwr_off_order[i]]);
-			mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
+			mtk_vidle_mminfra_on_off(false);
 		} else {
 			if (priv->side_ovlsys_dev)
 				pm_runtime_put_sync(priv->side_ovlsys_dev);
@@ -7844,7 +7844,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->pwr_node) {
 			for (i = 0; i < priv->data->pwr_length; i++)
 				clk_disable_unprepare(priv->pwr_clks[priv->data->pwr_off_order[i]]);
-			mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
+			mtk_vidle_mminfra_on_off(false);
 		} else {
 			if (priv->side_ovlsys_dev)
 				pm_runtime_put_sync(priv->side_ovlsys_dev);

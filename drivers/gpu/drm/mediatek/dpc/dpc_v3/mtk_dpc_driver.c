@@ -387,7 +387,7 @@ static inline int dpc_pm_ctrl(bool en)
 	return ret;
 
 skip_pm:
-	mtk_mminfra_on_off(en, MM_PWR_MM_1, MM_TYPE_DISP);
+	mtk_mminfra_on_off(en, g_priv->mminfra_pwr_idx, g_priv->mminfra_pwr_type);
 
 	return ret;
 }
@@ -2332,6 +2332,7 @@ static struct dpc_funcs funcs_v3 = {
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx_v3,
 	// .dpc_analysis = dpc_analysis_v3,
 	.dpc_debug_cmd = process_dbg_opt,
+	.dpc_mminfra_on_off = dpc_pm_ctrl,
 };
 
 static struct mtk_dpc mt6991_dpc_driver_data = {
@@ -2450,6 +2451,16 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 		priv->vidle_mask = 0;
 	}
 #endif
+
+	if (of_property_read_u32(dev->of_node, "mminfra-pwr-idx", &priv->mminfra_pwr_idx)) {
+		DPCERR("failed to get mminfra-pwr-idx");
+		priv->mminfra_pwr_idx = 0;
+	}
+
+	if (of_property_read_u32(dev->of_node, "mminfra-pwr-type", &priv->mminfra_pwr_type)) {
+		DPCERR("failed to getmminfra-pwr-type");
+		priv->mminfra_pwr_type = 0;
+	}
 
 	/* platform setting */
 	priv->res_init(priv);

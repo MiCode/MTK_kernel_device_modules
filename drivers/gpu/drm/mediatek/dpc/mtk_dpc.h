@@ -243,6 +243,7 @@ struct dpc_funcs {
 	void (*dpc_dvfs_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
 	void (*dpc_dvfs_both_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
+	int (*dpc_mminfra_on_off)(bool en);
 };
 
 #endif

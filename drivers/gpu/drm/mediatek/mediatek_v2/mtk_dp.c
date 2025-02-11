@@ -43,6 +43,7 @@
 #include "mtk_dp_api.h"
 #include "mtk_dp_reg.h"
 #include "mtk-mminfra-util.h"
+#include "mtk_disp_vidle.h"
 #ifdef DPTX_HDCP_ENABLE
 #include "mtk_dp_hdcp1x.h"
 #include "mtk_dp_hdcp2.h"
@@ -1709,7 +1710,7 @@ void mdrv_DPTx_put_device(void)
 	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 		if (g_mtk_dp->priv->dpc_dev) {
 			if (g_mtk_dp->priv->pwr_node)
-				mtk_mminfra_on_off(false, MM_PWR_MM_1, MM_TYPE_DISP);
+				mtk_vidle_mminfra_on_off(false);
 			else
 				pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
 
@@ -4389,7 +4390,7 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 				if (g_mtk_dp->priv->dpc_dev) {
 					/* get mminfra before DPTX on */
 					if (g_mtk_dp->priv->pwr_node)
-						mtk_mminfra_on_off(true, MM_PWR_MM_1, MM_TYPE_DISP);
+						mtk_vidle_mminfra_on_off(true);
 					else
 						ret = pm_runtime_resume_and_get(g_mtk_dp->priv->dpc_dev);
 					if (unlikely(ret)) {
