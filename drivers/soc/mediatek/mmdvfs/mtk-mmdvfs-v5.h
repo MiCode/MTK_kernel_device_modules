@@ -18,7 +18,8 @@
 #define MMDVFS_ERR(fmt, args...) \
 	pr_notice("[mmdvfs][err]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
 
-#define OPP2LEVEL(idx, opp) ((opp) < 0 ? 0 : (mmdvfs_data->rc[idx].level_num - (opp) - 1))
+#define OPP2LEVEL(idx, opp) \
+	(((opp) < 0 || (opp) >= mmdvfs_data->rc[idx].level_num) ? 0 : (mmdvfs_data->rc[idx].level_num - (opp) - 1))
 enum {
 	log_pwr,
 	log_ipi,
