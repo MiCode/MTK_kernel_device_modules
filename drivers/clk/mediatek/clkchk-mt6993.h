@@ -6,6 +6,8 @@
 
 #ifndef __DRV_CLKCHK_MT6993_H
 #define __DRV_CLKCHK_MT6993_H
+#define pr_chk(fmt, ...) \
+	pr_info("[CLKCHK] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
 enum chk_sys_id {
 	hwv = 0,
@@ -336,7 +338,7 @@ enum pm_bus_state {
 extern int get_sw_req_vcore_opp(void);
 #endif
 
-extern void print_subsys_reg_mt6993(enum chk_sys_id id);
+extern void print_subsys_reg_mt6993(enum chk_sys_id id[]);
 extern void set_subsys_reg_dump_mt6993(enum chk_sys_id id[]);
 extern void get_subsys_reg_dump_mt6993(void);
 extern u32 get_mt6993_reg_value(u32 id, u32 ofs);

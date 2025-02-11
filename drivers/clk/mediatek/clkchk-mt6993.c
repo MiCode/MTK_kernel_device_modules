@@ -4222,7 +4222,7 @@ struct pwr_data {
  * clkchk pwr_data
  */
 static struct pwr_data pvd_pwr_data[] = {
-	{"camsys_mraw", cam_mr, mmpc, 0x005C},
+	{"camsys_mraw", cam_mr, mmpc, 0x0040},
 	{"camsys_rawa", cam_ra, mmpc, 0x0044},
 	{"camsys_rawb", cam_rb, mmpc, 0x0048},
 	{"camsys_rawc", cam_rc, mmpc, 0x004C},
@@ -4241,7 +4241,9 @@ static struct pwr_data pvd_pwr_data[] = {
 	{"dip_top_dip1", dip_top_dip1, mmpc, 0x0004},
 	{"disp0b_dispsys_config", mm0b, mmpc, 0x0070},
 	{"disp1b_dispsys1_config", mm1b, mmpc, 0x0078},
+	/* DISPSYS1_CONFIG */
 	{"mmsys1", mm1, mmpc, 0x0074},
+	/* DISPSYS_CONFIG */
 	{"mmsys0", mm0, mmpc, 0x006C},
 	{"disp_vdisp_ao_config", vdisp_ao, mmpc, 0x0068},
 	{"imgsys_main", img, mmpc, 0x000C},
@@ -4256,6 +4258,7 @@ static struct pwr_data pvd_pwr_data[] = {
 	{"traw_dip1", traw_dip1, mmpc, 0x0000},
 	{"vdecsys", vde2, mmpc, 0x0024},
 	{"vdecsys_soc", vde1, mmpc, 0x0020},
+	/* VENC_GCON */
 	{"vencsys", ven1, mmpc, 0x002C},
 	{"venc_gcon_core0_p1", ven_c0_p1, mmpc, 0x0030},
 	{"vencsys_c1", ven2, mmpc, 0x0034},
@@ -4452,6 +4455,53 @@ static int get_vcore_opp(void)
 #endif
 }
 
+static enum chk_sys_id subsys_cg_dump_id[] = {
+	cam_mr,
+	cam_ra,
+	cam_rb,
+	cam_rc,
+	camsys_rmsa,
+	camsys_rmsb,
+	camsys_rmsc,
+	cam_ya,
+	cam_yb,
+	cam_yc,
+	cam_m,
+	cam_vcore_r1a,
+	ccu,
+	dip_cine_dip1,
+	dip_nr1_dip1,
+	dip_nr2_dip1,
+	dip_top_dip1,
+	mm0b,
+	mm1b,
+	mm1,
+	mm0,
+	vdisp_ao,
+	img,
+	img_v,
+	mml1,
+	mml2,
+	mml,
+	ovl1,
+	ovl2,
+	ovl,
+	traw_cap_dip1,
+	traw_dip1,
+	vde2,
+	vde1,
+	ven1,
+	ven_c0_p1,
+	ven2,
+	ven_c1_p1,
+	ven_mdp,
+	wpe_eis_dip1,
+	wpe_lite_dip1,
+	wpe_tnr_dip1,
+	chk_sys_num,
+};
+
+
 /* debug dump register */
 static enum chk_sys_id debug_dump_id[] = {
 	hwv,
@@ -4559,42 +4609,46 @@ void get_subsys_reg_dump_mt6993(void)
 }
 EXPORT_SYMBOL_GPL(get_subsys_reg_dump_mt6993);
 
-void print_subsys_reg_mt6993(enum chk_sys_id id)
+void print_subsys_reg_mt6993(enum chk_sys_id id_arr[])
 {
 	struct regbase *rb_dump;
-	const struct regname *rns = &rn[0];
-	int pwr_idx = PD_NULL;
-	int i;
+	enum chk_sys_id id = 0;
+	const struct regname *rns;
+	int pwr_idx;
+	int i, j;
 
-	if (id >= chk_sys_num) {
-		pr_info("wrong id:%d\n", id);
-		return;
-	}
+	for(i=0; id_arr[i] < chk_sys_num; i++) {
+		id = id_arr[i];
+		pwr_idx = PD_NULL;
 
-	for (i = 0; i < ARRAY_SIZE(pvd_pwr_data); i++) {
-		if (pvd_pwr_data[i].id == id) {
-			pwr_idx = i;
-			break;
-		}
-	}
-
-	rb_dump = &rb[id];
-
-	for (i = 0; i < ARRAY_SIZE(rn) - 1 && rns->base != NULL; i++, rns++) {
-		if (!is_valid_reg(ADDR(rns)))
-			continue;
-
-		/* filter out the subsys that we don't want */
-		if (rns->base != rb_dump)
-			continue;
-
-		if (pwr_idx != PD_NULL) {
-			if (!pwr_hw_is_on(PWR_CON_STA, pwr_idx))
-				return;
+		for (j = 0; j < ARRAY_SIZE(pvd_pwr_data); j++) {
+			if (pvd_pwr_data[j].id == id) {
+				pwr_idx = j;
+				break;
+			}
 		}
 
-		pr_info("%-18s: [0x%08x] = 0x%08x\n",
-			rns->name, PHYSADDR(rns), clk_readl(ADDR(rns)));
+		rb_dump = &rb[id];
+
+		for (j = 0, rns = &rn[0]; j < ARRAY_SIZE(rn) - 1 && rns->base != NULL; j++, rns++) {
+
+			if (!is_valid_reg(ADDR(rns)))
+				continue;
+
+			/* filter out the subsys that we don't want */
+			if (rns->base != rb_dump)
+				continue;
+
+			if ((pwr_idx != PD_NULL && !pwr_hw_is_on(PWR_CON_STA, pwr_idx))) {
+				pr_chk("pvd_pwr_data[%d] mtcmos off\n", pwr_idx);
+				break;
+			}
+
+			pr_chk("pvd_pwr_data[%d] mtcmos on\n", pwr_idx);
+			pr_chk("%-18s: [0x%08x] = 0x%08x\n",
+					rns->name, PHYSADDR(rns), clk_readl(ADDR(rns)));
+
+		}
 	}
 }
 EXPORT_SYMBOL_GPL(print_subsys_reg_mt6993);
@@ -4707,6 +4761,7 @@ void clkchk_debug_dump_mt6993(enum chk_sys_id id[],
 	fclks = mt_get_fmeter_clks();
 	set_subsys_reg_dump_mt6993(id);
 	get_subsys_reg_dump_mt6993();
+	print_subsys_reg_mt6993(subsys_cg_dump_id);
 
 	chk_pm_state();
 	dump_clk_event();
@@ -4974,6 +5029,7 @@ static void check_hwv_irq_sta(void)
 
 	if ((irq_sta & HWV_INT_TIMEOUT_TRIGGER) != 0)
 		dump_bus_reg(NULL, 0);
+
 }
 
 static void check_mm_hwv_irq_sta(void)
