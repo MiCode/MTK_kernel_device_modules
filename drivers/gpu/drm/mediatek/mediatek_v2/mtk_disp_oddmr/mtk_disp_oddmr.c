@@ -1670,7 +1670,7 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		mtk_oddmr_write(comp, 1,
 				DISP_ODDMR_TOP_HRT0_BYPASS, handle);
 
-	if (oddmr_data->data->od_version >= MTK_OD_V2 && oddmr_data->od_update_sram == 0 &&
+	if (oddmr_data->data->od_version == MTK_OD_V2 && oddmr_data->od_update_sram == 0 &&
 			!oddmr_data->dmr_enable)
 		mtk_oddmr_set_top_clk_force(comp, 0, handle); //no need to update sram table, top_clk can be closed
 
@@ -3429,7 +3429,7 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 		mtk_oddmr_od_set_dram(comp, NULL);
 		mtk_oddmr_od_common_init(comp, NULL);
 		mtk_oddmr_od_set_res_udma(comp, NULL);
-		if (oddmr_data->data->od_version >= MTK_OD_V2 && !oddmr_data->dmr_enable)
+		if (oddmr_data->data->od_version == MTK_OD_V2 && !oddmr_data->dmr_enable)
 			mtk_oddmr_set_top_clk_force(comp, 0, NULL);
 		mtk_oddmr_set_od_enable(comp, oddmr_data->od_enable, true, handle);
 		//sw bypass first frame od pq
@@ -6808,7 +6808,7 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 	if (comp->mtk_crtc->is_dual_pipe)
 		mtk_oddmr_set_od_enable(comp1, enable, force_config, handle);
 
-	if (oddmr_data->data->od_version >= MTK_OD_V2  &&
+	if (oddmr_data->data->od_version == MTK_OD_V2  &&
 			od_update_sram_last == 1 && oddmr_data->od_update_sram == 0 &&
 			!oddmr_data->dmr_enable)
 		mtk_oddmr_set_top_clk_force(comp, 0, handle); //updating sram done, top_clk can be closed
@@ -6945,7 +6945,8 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 							MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 					}
 				}
-				if (oddmr_data->od_update_sram == 0) {
+				if (oddmr_data->od_update_sram == 0 &&
+					oddmr_data->primary_data->od_state < ODDMR_INIT_DONE) {
 					value = 0; mask = 0;
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
 					mtk_oddmr_write_mask(comp, value,
@@ -7050,7 +7051,8 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 				}
-				if (!oddmr_data->dmr_enable && oddmr_data->od_update_sram == 0) {
+				if (!oddmr_data->dmr_enable && oddmr_data->od_update_sram == 0 &&
+					oddmr_data->primary_data->od_state < ODDMR_INIT_DONE) {
 					value = 0;
 					mask = 0;
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
@@ -7773,7 +7775,7 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 		if (oddmr_data->data->od_version < MTK_OD_V2)
 			ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base,
 					comp, ODDMR_CMD_OD_INIT_END, NULL);
-		if (oddmr_data->data->od_version >= MTK_OD_V2 && !oddmr_data->dmr_enable)
+		if (oddmr_data->data->od_version == MTK_OD_V2 && !oddmr_data->dmr_enable)
 			mtk_oddmr_set_top_clk_force(comp, 0, NULL);
 	}
 	return ret;
