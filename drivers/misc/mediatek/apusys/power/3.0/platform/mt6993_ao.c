@@ -1082,7 +1082,7 @@ static void dump_dbg_are(void)
 static void debug_dump_list(void)
 {
 	// BD brisket delegate dbg (0x19058094 ~ 0x190580B0)
-	aputop_dump_reg(apu_briske_del, 0x90, 0x30);
+//	aputop_dump_reg(apu_briske_del, 0x90, 0x30);
 
 	// debug rpc, buck iso, sram iso, dreq iso
 	aputop_dump_reg(apu_rpc, 0x0, 0x40);

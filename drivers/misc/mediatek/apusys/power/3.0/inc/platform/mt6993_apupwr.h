@@ -110,8 +110,8 @@ enum apupw_reg {
 	apu_dla_2_config,
 	apu_dla_3_config,
 	tinydla_top_config,
-	apu_briske_del,
-	apu_briske_del_sram,
+//	apu_briske_del,
+//	apu_briske_del_sram,
 	APUPW_MAX_REGS,
 };
 

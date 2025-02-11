@@ -30,13 +30,15 @@
 #include "mt6993_apupwr.h"
 #include "mt6993_apupwr_prot.h"
 #include "mt6993_apupwr_ce.h"
+
 #define LOCAL_DBG	(1)
 #define RPC_ALIVE_DBG	(0)
+#define SMC_APUSYS_PWR_DUMP	(0)
 
 static uint32_t mbox_data;
 
 static struct apu_power apupw = {
-	.env = AO_RCX,
+	.env = MP,
 };
 
 #define _DOMAIN(_idx, _phy_addr, _size) \
@@ -52,8 +54,8 @@ static void init_reg_base(void)
 	_DOMAIN(apu_are,		0x19040000, 0x11000)
 	_DOMAIN(apu_vcore,		0x19004800, 0x4000)
 	_DOMAIN(apu_md32_mbox,		0x4c2c0000, 0x2000)
-	_DOMAIN(apu_briske_del_sram,	0x19056000, 0x2000)
-	_DOMAIN(apu_briske_del,		0x19058000, 0x1000)
+//	_DOMAIN(apu_briske_del_sram,	0x19056000, 0x2000)
+//	_DOMAIN(apu_briske_del,		0x19058000, 0x1000)
 	_DOMAIN(apu_rpc,		0x19052000, 0x1000)
 	_DOMAIN(apu_pcu,		0x19053000, 0x1000)
 	_DOMAIN(apu_ao_ctl,		0x19038000, 0x1000)
@@ -147,34 +149,15 @@ static void plat_get_up_drv_data(struct aputop_func_param *aputop)
 
 static void aputop_dump_pwr_reg(struct device *dev)
 {
+#if SMC_APUSYS_PWR_DUMP
 	// dump reg in ATF log
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_DUMP,
 			SMC_PWR_DUMP_ALL);
+#endif
 	// dump reg in AEE db
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_REGDUMP, 0);
-}
-
-static void aputop_dump_rpc_data(void)
-{
-	char buf[32];
-	int ret = 0;
-
-	// reg dump for RPC
-	memset(buf, 0, sizeof(buf));
-	ret = snprintf(buf, 32, "phys 0x%08x: ",
-			(u32)(apupw.phy_addr[apu_rpc]));
-	if (!ret)
-		print_hex_dump(KERN_INFO, buf, DUMP_PREFIX_OFFSET, 16, 4,
-			       apupw.regs[apu_rpc], 0x20, true);
-}
-
-static void aputop_dump_pcu_data(struct device *dev)
-{
-	apusys_pwr_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_DUMP,
-			SMC_PWR_DUMP_PCU);
 }
 
 #if APUPW_DUMP_FROM_APMCU
@@ -224,12 +207,11 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 			 __func__,
 			 (u32)(apupw.phy_addr[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 			 readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
-	apusys_pwr_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
-			SMC_RCX_PWR_AFC_EN);
+
 	/* Change used RV SMC call to wake up RPC */
 	apusys_pwr_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_RV_PWR_CTRL, 1);
+
 	ret = readl_relaxed_poll_timeout_atomic(
 			(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 			val, (val & 0x1UL), 50, 10000);
@@ -249,25 +231,10 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 			     __func__,
 			     (u32)(apupw.phy_addr[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 			     readl(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY));
-	/* polling FSM @RPC-lite to ensure RPC is in on/off stage */
-	ret |= readl_relaxed_poll_timeout_atomic(
-			(apupw.regs[apu_rpc] + APU_RPC_STATUS_1),
-			val, (val & (0x1 << 13)), 50, 10000);
-
-	if (ret) {
-		pr_info("%s polling ARE FSM timeout, ret %d\n", __func__, ret);
-		/* show powerack info */
-		dev_info(dev, "%s RCX APU_RPC_PWR_ACK 0x%x = 0x%x\n",
-					 __func__,
-					 (u32)(apupw.phy_addr[apu_rpc] + APU_RPC_PWR_ACK),
-					 readl(apupw.regs[apu_rpc] + APU_RPC_PWR_ACK));
-		goto out;
-	}
 
 	/* clear vcore/rcx cgs */
-	apusys_pwr_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
-			SMC_RCX_PWR_CG_EN);
+	apu_writel(0xFFFFFFFF, apupw.regs[apu_intc_cfg] + 0x8);
+	apu_writel(0xFFFFFFFF, apupw.regs[apu_ctrlsys_cfg] + 0x8);
 out:
 	return ret;
 }
@@ -287,8 +254,6 @@ static int mt6993_apu_top_on(struct device *dev)
 	if (ret) {
 		pr_info("%s fail to wakeup RPC, ret %d\n", __func__, ret);
 		aputop_dump_pwr_reg(dev);
-		aputop_dump_rpc_data();
-		aputop_dump_pcu_data(dev);
 #if APUPW_DUMP_FROM_APMCU
 		aputop_dump_pll_data();
 #endif
@@ -364,8 +329,6 @@ static int mt6993_apu_top_off(struct device *dev)
 		pr_info(
 		"%s timeout to wait RPC sleep (val:%d), ret %d\n", __func__, rpc_timeout_val, ret);
 		aputop_dump_pwr_reg(dev);
-		aputop_dump_rpc_data();
-		aputop_dump_pcu_data(dev);
 #if APUPW_DUMP_FROM_APMCU
 		aputop_dump_pll_data();
 #endif
@@ -377,22 +340,6 @@ static int mt6993_apu_top_off(struct device *dev)
 		pr_info("%s -\n", __func__);
 
 	return 0;
-}
-
-static void release_smmu_hw_sema(void)
-{
-	// FIXME:
-	void *mbox11 = ioremap(0x4c2b0000, 0x100);
-
-	pr_info("%s mbox hw sema1 status: 0x%08x\n", __func__, apu_readl(mbox11 + 0xa8));
-	apu_writel(0x2, mbox11 + 0xA0); // sema1 bit 1 for release
-	pr_info("%s mbox hw sema1 status: 0x%08x\n", __func__, apu_readl(mbox11 + 0xa8));
-
-	pr_info("%s mbox hw sema2 status: 0x%08x\n", __func__, apu_readl(mbox11 + 0x6c));
-	apu_writel(0x2, mbox11 + 0x60); // sema2 bit 1 for release
-	pr_info("%s mbox hw sema2 status: 0x%08x\n", __func__, apu_readl(mbox11 + 0x6c));
-
-	iounmap(mbox11);
 }
 
 static int opp_proc_show(struct seq_file *m, void *v)
@@ -433,18 +380,18 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 
 	pr_info("%s +%d\n", __func__, apupw.env);
 
-	//apusys_pwr_smc_call(&pdev->dev, MTK_APUSYS_KERNEL_OP_APUSYS_SETUP_CE_BIN, 0);
-
 	init_reg_base();
-	mt6993_power_init(pdev, &apupw); // remove lk2 init flow, init apu from here now
+
+	if (apupw.env < MP) {
+		mt6993_power_init(pdev, &apupw); // remove lk2 init flow, init apu from here now
+
 #if PRELOAD_ACE_FW
-	ret = mt6993_load_ce_bin();
-	if (ret != 0)
-		pr_info("%s load fw error\n", __func__);
+		ret = mt6993_load_ce_bin();
+		if (ret != 0)
+			pr_info("%s load fw error\n", __func__);
 #else
 		pr_info("%s bypass load fw in aputop\n", __func__);
 #endif
-	if (apupw.env < MP) {
 		ret = mt6993_all_on(pdev);
 	} else {
 		mt6993_apu_top_on(&pdev->dev);
@@ -452,12 +399,6 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 		ret = readl_relaxed_poll_timeout_atomic(
 				(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 				val, (val & 0x1UL), 50, 10000);
-	}
-
-	if (!ret) {
-		/* release hw sema before smmu driver init */
-		pr_info("%s release hw sema before smmu driver init\n", __func__);
-		release_smmu_hw_sema();
 	}
 
 	mt6993_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
