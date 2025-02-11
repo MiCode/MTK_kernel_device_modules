@@ -8048,12 +8048,6 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 		if (ret)
 			DDPPR_ERR("top clk prepare enable failed:%d\n", i);
 	}
-	/* remove after mod1_hf_ck_cg define done */
-	if (priv->data->pwr_length == MT6993_PWR_CLK_NUMS) {
-		base = ioremap(0x3E700A78, 0x4);
-		writel(0xFF000000, base);
-		iounmap(base);
-	}
 
 	spin_lock_irqsave(&top_clk_lock, flags);
 	atomic_inc(&top_clk_ref);

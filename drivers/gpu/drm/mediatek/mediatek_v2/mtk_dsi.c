@@ -439,6 +439,8 @@ unsigned int line_back_to_LP = 1;
 
 unsigned int data_phy_cycle;
 
+bool skip_clk_prepare;
+
 struct mtk_dsi;
 struct mtk_dsi_mgr {
 	struct mtk_dsi *master;
@@ -4300,8 +4302,12 @@ static void mtk_dsi_poweroff(struct mtk_dsi *dsi)
 		if (--dsi->clk_refcnt != 0)
 			return;
 
-		clk_disable_unprepare(dsi->engine_clk);
-		clk_disable_unprepare(dsi->digital_clk);
+		if (skip_clk_prepare) {
+			skip_clk_prepare = 0;
+		} else {
+			clk_disable_unprepare(dsi->engine_clk);
+			clk_disable_unprepare(dsi->digital_clk);
+		}
 
 		writel(0, dsi->regs + DSI_START);
 		writel(0, dsi->regs + dsi->driver_data->reg_cmdq0_ofs);
@@ -15413,6 +15419,7 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	const struct of_device_id *of_id;
 	struct device_node *remote_node, *endpoint;
+	struct device_node *pwr_node;
 	struct resource *regs;
 	int irq, num_irqs;
 	int comp_id;
@@ -15589,6 +15596,8 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 		pm_runtime_get_sync(dev);
 #endif
 
+	pwr_node = of_parse_phandle(dev->of_node, "pwr-handle", 0);
+
 	alias = mtk_ddp_comp_get_alias(dsi->ddp_comp.id);
 	/* use atag information check which display enable in LK */
 	/* Assume DSI0 enable already in LK */
@@ -15598,15 +15607,20 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 #ifndef CONFIG_MTK_DISP_NO_LK
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 			phy_power_on(dsi->phy);
-			ret = clk_prepare_enable(dsi->engine_clk);
-			if (ret < 0)
-				DDPPR_ERR("%s Failed to enable engine clock: %d\n",
-					__func__, ret);
+			/* only prepare dsi clk after vdisp api been attached */
+			if (!pwr_node) {
+				ret = clk_prepare_enable(dsi->engine_clk);
+				if (ret < 0)
+					DDPPR_ERR("%s Failed to enable engine clock: %d\n",
+						__func__, ret);
 
-			ret = clk_prepare_enable(dsi->digital_clk);
-			if (ret < 0)
-				DDPPR_ERR("%s Failed to enable digital clock: %d\n",
-					__func__, ret);
+				ret = clk_prepare_enable(dsi->digital_clk);
+				if (ret < 0)
+					DDPPR_ERR("%s Failed to enable digital clock: %d\n",
+						__func__, ret);
+			} else {
+				skip_clk_prepare = 1;
+			}
 		}
 		dsi->output_en = true;
 		if (dsi->panel) {
