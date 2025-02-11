@@ -22423,8 +22423,10 @@ static int disp_mutex_dispatch(struct mtk_drm_private *priv, struct mtk_drm_crtc
 		mutex = mtk_disp_mutex_get(priv->mutex_dev, i);
 		if (IS_ERR(mutex))
 			continue;
+		mutex->is_vdo = !mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
 		mtk_crtc->mutex[cur] = mutex;
-		DDPDBG("%s assign mutex %d need %u mutex\n", __func__, i, max_path);
+		DDPDBG("%s crtc%u assign mutex %d need %u mutex is_vdo:%d\n",
+			__func__, pipe, i, max_path, mutex->is_vdo);
 		++cur;
 		if (cur >= max_path)
 			break;
@@ -22627,10 +22629,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			dev, path_data->wb_path_len[i],
 			sizeof(struct mtk_ddp_comp *), GFP_KERNEL | __GFP_ZERO);
 	}
-
-	ret = disp_mutex_dispatch(priv, mtk_crtc, path_data, pipe);
-	if (ret)
-		DDPPR_ERR("mutex_dispatch fail %d\n", ret);
 
 	for_each_comp_id_in_path_data(comp_id, path_data, i, j, p_mode) {
 		struct mtk_ddp_comp *comp;
@@ -22875,6 +22873,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	}
 	if (ret < 0)
 		return ret;
+
+	ret = disp_mutex_dispatch(priv, mtk_crtc, path_data, pipe);
+	if (ret)
+		DDPPR_ERR("mutex_dispatch fail %d\n", ret);
 
 	/*
 	 * Workaround:

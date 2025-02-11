@@ -219,6 +219,7 @@ struct dummy_mapping {
 struct mtk_disp_mutex {
 	int id;
 	bool claimed;
+	bool is_vdo;
 };
 
 struct mtk_disp_ddp_data {

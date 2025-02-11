@@ -36966,13 +36966,15 @@ void mtk_disp_mutex_inten_enable(struct mtk_disp_mutex *mutex)
 
 	val = readl_relaxed(ddp->regs + DISP_REG_MUTEX_INTEN);
 	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
+	if (mutex->is_vdo)
+		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	writel_relaxed(val, ddp->regs + DISP_REG_MUTEX_INTEN);
 
 	if (ddp->ovlsys0_regs) {
 		val = readl_relaxed(ddp->ovlsys0_regs + DISP_REG_MUTEX_INTEN);
 		val |= (0x1 << (unsigned int)mutex->id);
-		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
+		if (mutex->is_vdo)
+			val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->ovlsys0_regs + DISP_REG_MUTEX_INTEN);
 	}
 	if (!(ddp->data->dispsys_map && ddp->side_regs))
@@ -36980,34 +36982,39 @@ void mtk_disp_mutex_inten_enable(struct mtk_disp_mutex *mutex)
 
 	val = readl_relaxed(ddp->side_regs + DISP_REG_MUTEX_INTEN);
 	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
+	if (mutex->is_vdo)
+		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	writel_relaxed(val, ddp->side_regs + DISP_REG_MUTEX_INTEN);
 
 	if (ddp->ovlsys1_regs) {
 		val = readl_relaxed(ddp->ovlsys1_regs + DISP_REG_MUTEX_INTEN);
 		val |= (0x1 << (unsigned int)mutex->id);
-		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
+		if (mutex->is_vdo)
+			val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->ovlsys1_regs + DISP_REG_MUTEX_INTEN);
 	}
 
 	if (ddp->ovlsys2_regs) {
 		val = readl_relaxed(ddp->ovlsys2_regs + DISP_REG_MUTEX_INTEN);
 		val |= (0x1 << (unsigned int)mutex->id);
-		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		if (mutex->is_vdo)
+			val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->ovlsys2_regs + DISP_REG_MUTEX_INTEN);
 	}
 
 	if (ddp->sys_b_regs) {
 		val = readl_relaxed(ddp->sys_b_regs + DISP_REG_MUTEX_INTEN);
 		val |= (0x1 << (unsigned int)mutex->id);
-		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		if (mutex->is_vdo)
+			val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->sys_b_regs + DISP_REG_MUTEX_INTEN);
 	}
 
 	if (ddp->sys_b_side_regs) {
 		val = readl_relaxed(ddp->sys_b_side_regs + DISP_REG_MUTEX_INTEN);
 		val |= (0x1 << (unsigned int)mutex->id);
-		val |= (0x1 << (unsigned int)(mutex->id + DISP_MUTEX_TOTAL));
+		if (mutex->is_vdo)
+			val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 		writel_relaxed(val, ddp->sys_b_side_regs + DISP_REG_MUTEX_INTEN);
 	}
 }
@@ -37020,7 +37027,8 @@ void mtk_disp_mutex_inten_enable_cmdq(struct mtk_disp_mutex *mutex,
 	unsigned int val = 0;
 
 	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
+	if (mutex->is_vdo)
+		val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	cmdq_pkt_write(handle, ddp->cmdq_base,
 		       ddp->regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	if (ddp->ovlsys0_regs_pa)
@@ -37030,8 +37038,6 @@ void mtk_disp_mutex_inten_enable_cmdq(struct mtk_disp_mutex *mutex,
 	if (!(ddp->data->dispsys_map && ddp->side_regs_pa))
 		return;
 
-	val |= (0x1 << (unsigned int)mutex->id);
-	val |= (0x1 << (unsigned int)(mutex->id + ddp->data->disp_mutex_total));
 	cmdq_pkt_write(handle, ddp->cmdq_base,
 		       ddp->side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	if (ddp->ovlsys1_regs_pa)
@@ -37432,7 +37438,8 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		writel(0, ddp->ovlsys2_regs + DISP_REG_MUTEX_INTSTA);
 
 	for (m_id = 0; m_id < DISP_MUTEX_DDP_COUNT; m_id++) {
-		if (val & (0x1 << (m_id + ddp->data->disp_mutex_total))) {
+		if (ddp->mutex[m_id].is_vdo &&
+			(val & (0x1 << (m_id + ddp->data->disp_mutex_total)))) {
 			DDPIRQ("[IRQ] mutex%d eof!\n", m_id);
 			DRM_MMP_MARK(mutex[m_id], val, 1);
 			if (m_id == 0)
@@ -37457,6 +37464,10 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				}
 			}
 		}
+		// although not enable eof inten in cmd mode, status still has val
+		// in order to avoid confusion must always clear the eof status bit
+		if (!ddp->mutex[m_id].is_vdo)
+			val = val & ~(0x1 << (m_id + ddp->data->disp_mutex_total));
 		if (val & (0x1 << m_id)) {
 			DDPIRQ("[IRQ] mutex%d sof!\n", m_id);
 			DRM_MMP_MARK(mutex[m_id], val, 0);
