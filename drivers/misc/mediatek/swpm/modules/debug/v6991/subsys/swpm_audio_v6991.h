@@ -23,8 +23,6 @@
 #include <mtk_swpm_common_sysfs.h>
 #include <mtk_swpm_sysfs.h>
 
-#include <swpm_dbg_fs_common.h>
-#include <swpm_dbg_common_v1.h>
 #include <swpm_module.h>
 
 #include <sound/pcm_params.h>

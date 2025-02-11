@@ -3,7 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
-#include <swpm_audio_v6991.h>
+#include "swpm_audio_v6991.h"
 
 /****************************************************************************
  *  Local Variables

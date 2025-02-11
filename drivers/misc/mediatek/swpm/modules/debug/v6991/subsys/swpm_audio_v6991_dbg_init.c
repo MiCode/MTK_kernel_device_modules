@@ -2,7 +2,7 @@
 /*
  * Copyright (c) 2022 MediaTek Inc.
  */
-#include <swpm_audio_v6991.h>
+#include "swpm_audio_v6991.h"
 
 #undef swpm_dbg_log
 #define swpm_dbg_log(fmt, args...) \
