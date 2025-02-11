@@ -172,7 +172,7 @@ int mtk_vidle_force_power_ctrl_by_cpu(bool power_on)
 
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL ||
 		disp_dpc_driver.dpc_vidle_power_release == NULL) {
-		return -1;
+		return 0;
 	}
 
 	if (power_on)
