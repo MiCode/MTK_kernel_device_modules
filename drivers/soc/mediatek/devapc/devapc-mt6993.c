@@ -103,6 +103,18 @@ static struct mtk_device_num mtk6993_devices_num[] = {
 		IRQ_TYPE_NUM,	/* No apinfra emi devapc irq */
 		DEVAPC_GET_INFRA
 	},
+	{	// SLAVE_TYPE_APINFRA_NEMI_SYS
+		DEVAPC_TYPE_INFRA,
+		VIO_SLAVE_NUM_APINFRA_NEMI_SYS,
+		IRQ_TYPE_NUM,	/* No apinfra nemi sys devapc irq */
+		DEVAPC_GET_INFRA
+	},
+	{	// SLAVE_TYPE_APINFRA_SEMI_SYS
+		DEVAPC_TYPE_INFRA,
+		VIO_SLAVE_NUM_APINFRA_SEMI_SYS,
+		IRQ_TYPE_NUM,	/* No apinfra semi sys devapc irq */
+		DEVAPC_GET_INFRA
+	},
 	{	// SLAVE_TYPE_APINFRA_MEM
 		DEVAPC_TYPE_INFRA,
 		VIO_SLAVE_NUM_APINFRA_MEM,
@@ -773,6 +785,16 @@ const char *index_to_subsys(int slave_type, uint32_t vio_index,
 			if (vio_index == mt6993_devices_apinfra_emi[i].vio_index)
 				return mt6993_devices_apinfra_emi[i].device;
 		}
+	} else if (slave_type == SLAVE_TYPE_APINFRA_NEMI_SYS) {
+		for (i = 0; i < VIO_SLAVE_NUM_APINFRA_NEMI_SYS; i++) {
+			if (vio_index == mt6993_devices_apinfra_nemi_sys[i].vio_index)
+				return mt6993_devices_apinfra_nemi_sys[i].device;
+		}
+	} else if (slave_type == SLAVE_TYPE_APINFRA_SEMI_SYS) {
+		for (i = 0; i < VIO_SLAVE_NUM_APINFRA_SEMI_SYS; i++) {
+			if (vio_index == mt6993_devices_apinfra_semi_sys[i].vio_index)
+				return mt6993_devices_apinfra_semi_sys[i].device;
+		}
 	} else if (slave_type == SLAVE_TYPE_APINFRA_MEM) {
 		for (i = 0; i < VIO_SLAVE_NUM_APINFRA_MEM; i++) {
 			if (vio_index == mt6993_devices_apinfra_mem[i].vio_index)
@@ -1033,6 +1055,8 @@ static const char * const slave_type_to_str[] = {
 	"SLAVE_TYPE_APINFRA_BIG4",
 	"SLAVE_TYPE_APINFRA_DRAMC",
 	"SLAVE_TYPE_APINFRA_EMI",
+	"SLAVE_TYPE_APINFRA_NEMI_SYS",
+	"SLAVE_TYPE_APINFRA_SEMI_SYS",
 	"SLAVE_TYPE_APINFRA_MEM",
 	"SLAVE_TYPE_APINFRA_MEM_CTRL",
 	"SLAVE_TYPE_APINFRA_MEM_INTF",
@@ -1134,6 +1158,8 @@ static struct mtk_devapc_soc mt6993_data = {
 	.device_info[SLAVE_TYPE_APINFRA_BIG4] = mt6993_devices_apinfra_big4,
 	.device_info[SLAVE_TYPE_APINFRA_DRAMC] = mt6993_devices_apinfra_dramc,
 	.device_info[SLAVE_TYPE_APINFRA_EMI] = mt6993_devices_apinfra_emi,
+	.device_info[SLAVE_TYPE_APINFRA_NEMI_SYS] = mt6993_devices_apinfra_nemi_sys,
+	.device_info[SLAVE_TYPE_APINFRA_SEMI_SYS] = mt6993_devices_apinfra_semi_sys,
 	.device_info[SLAVE_TYPE_APINFRA_MEM] = mt6993_devices_apinfra_mem,
 	.device_info[SLAVE_TYPE_APINFRA_MEM_CTRL] = mt6993_devices_apinfra_mem_ctrl,
 	.device_info[SLAVE_TYPE_APINFRA_MEM_INTF] = mt6993_devices_apinfra_mem_intf,

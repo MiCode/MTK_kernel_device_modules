@@ -31,6 +31,8 @@ enum DEVAPC_SLAVE_TYPE {
 	SLAVE_TYPE_APINFRA_BIG4,
 	SLAVE_TYPE_APINFRA_DRAMC,
 	SLAVE_TYPE_APINFRA_EMI,
+	SLAVE_TYPE_APINFRA_NEMI_SYS,
+	SLAVE_TYPE_APINFRA_SEMI_SYS,
 	SLAVE_TYPE_APINFRA_MEM,
 	SLAVE_TYPE_APINFRA_MEM_CTRL,
 	SLAVE_TYPE_APINFRA_MEM_INTF,
@@ -58,6 +60,8 @@ enum DEVAPC_VIO_MASK_STA_NUM {
 	VIO_MASK_STA_NUM_APINFRA_BIG4 = 5,
 	VIO_MASK_STA_NUM_APINFRA_DRAMC = 4,
 	VIO_MASK_STA_NUM_APINFRA_EMI = 7,
+	VIO_MASK_STA_NUM_APINFRA_NEMI_SYS = 1,
+	VIO_MASK_STA_NUM_APINFRA_SEMI_SYS = 1,
 	VIO_MASK_STA_NUM_APINFRA_MEM = 1,
 	VIO_MASK_STA_NUM_APINFRA_MEM_CTRL = 2,
 	VIO_MASK_STA_NUM_APINFRA_MEM_INTF = 1,
@@ -1316,6 +1320,26 @@ static const struct mtk_device_info mt6993_devices_apinfra_emi[] = {
 	{-1, -1, 198, "reserve", false},
 	{-1, -1, 199, "reserve", false},
 	{-1, -1, 200, "reserve", false},
+};
+
+static const struct mtk_device_info mt6993_devices_apinfra_nemi_sys[] = {
+	{0, 0, 0, "NSEC_SLC_APB_S", true},
+	{0, 1, 1, "SEC_SLC_APB_S", true},
+	{0, 2, 2, "DEVICE_APC_AO_S", true},
+	{0, 3, 3, "DEVICE_APC_PDN_S", true},
+	{0, 4, 4, "BCRM_PDN_S", true},
+	{0, 5, 5, "BCRM_AO_S", true},
+	{0, 6, 6, "DEBUG_CTRL_AO_S", true},
+};
+
+static const struct mtk_device_info mt6993_devices_apinfra_semi_sys[] = {
+	{0, 0, 0, "NSEC_SLC_APB_S", true},
+	{0, 1, 1, "SEC_SLC_APB_S", true},
+	{0, 2, 2, "DEVICE_APC_AO_S", true},
+	{0, 3, 3, "DEVICE_APC_PDN_S", true},
+	{0, 4, 4, "BCRM_PDN_S", true},
+	{0, 5, 5, "BCRM_AO_S", true},
+	{0, 6, 6, "DEBUG_CTRL_AO_S", true},
 };
 
 static const struct mtk_device_info mt6993_devices_apinfra_mem[] = {
@@ -3489,6 +3513,8 @@ enum DEVAPC_VIO_SLAVE_NUM {
 	VIO_SLAVE_NUM_APINFRA_BIG4 = ARRAY_SIZE(mt6993_devices_apinfra_big4),
 	VIO_SLAVE_NUM_APINFRA_DRAMC = ARRAY_SIZE(mt6993_devices_apinfra_dramc),
 	VIO_SLAVE_NUM_APINFRA_EMI = ARRAY_SIZE(mt6993_devices_apinfra_emi),
+	VIO_SLAVE_NUM_APINFRA_NEMI_SYS = ARRAY_SIZE(mt6993_devices_apinfra_nemi_sys),
+	VIO_SLAVE_NUM_APINFRA_SEMI_SYS = ARRAY_SIZE(mt6993_devices_apinfra_semi_sys),
 	VIO_SLAVE_NUM_APINFRA_MEM = ARRAY_SIZE(mt6993_devices_apinfra_mem),
 	VIO_SLAVE_NUM_APINFRA_MEM_CTRL = ARRAY_SIZE(mt6993_devices_apinfra_mem_ctrl),
 	VIO_SLAVE_NUM_APINFRA_MEM_INTF = ARRAY_SIZE(mt6993_devices_apinfra_mem_intf),
