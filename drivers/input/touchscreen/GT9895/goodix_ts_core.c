@@ -55,7 +55,7 @@ int64_t unixtimestamp = 24;
 
 /*touch ghost callback*/
 typedef void (*kfifo_data_ready_callback)(void);
-struct mutex callback_lock;
+DEFINE_MUTEX(callback_lock);
 
 struct goodix_module goodix_modules;
 int core_module_prob_sate = CORE_MODULE_UNPROBED;
@@ -86,7 +86,7 @@ static int goodix_send_ic_config(struct goodix_ts_core *cd, int type);
 static struct kfifo ghost_touch_fifo;
 static int64_t last_touch_timestamps[GOODIX_MAX_TOUCH] = {0};
 static bool finger_down[GOODIX_MAX_TOUCH] = {0};
-struct mutex ghost_touch_fifo_lock;
+DEFINE_MUTEX(ghost_touch_fifo_lock);
 #endif
 
 static int ghost_touch_fifo_init(void)
