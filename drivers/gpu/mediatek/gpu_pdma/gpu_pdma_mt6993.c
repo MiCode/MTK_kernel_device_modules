@@ -267,10 +267,6 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	}while(pdma_status == 0 && poll_timeout > 0);
 	/* status 0: ch0 is running */
 
-	/* reset HW */
-	/* CCB */
-	writel(0x3, (pdma_dev->pdma_reg_base_kva + CCMD_RING_BUFFER_CONTROL));
-
 	/* CID_COMMAND */
 	writel((ccmd_ctx->cid << 8) | (0x3 << 10),
 		pdma_dev->pdma_reg_base_kva + CCMD_CID_COMMAND);
