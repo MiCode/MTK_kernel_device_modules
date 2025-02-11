@@ -303,7 +303,7 @@ static struct notifier_block mmdvfs_pm_notifier_block = {
 	.priority = 1,  //digit larger means higher priority
 };
 
-static int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *data, const bool vcp)
+int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *data, const bool vcp)
 {
 	const u32 feature_id = vcp ? MMDVFS_VCP_FEATURE_ID : MMDVFS_MMUP_FEATURE_ID;
 	struct mtk_ipi_device *vcp_ipi_dev;
@@ -365,6 +365,7 @@ ipi_send_end:
 
 	return ret;
 }
+EXPORT_SYMBOL(mmdvfs_hfrp_ipi_send);
 
 static inline void mmdvfs_mmup_sram_init(void)
 {
@@ -388,7 +389,6 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 	case VCP_EVENT_READY:
 		MMDVFS_DBG("VCP_EVENT_READY in");
 		mmup_cb_tick[VCP_EVENT_READY] = sched_clock();
-		mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_INIT, 0, 0, NULL, false);
 		mmdvfs_mmup_sram_init();
 		mutex_lock(&mmdvfs_mmup_cb_mutex);
 		mmdvfs_mmup_cb_ready = true;

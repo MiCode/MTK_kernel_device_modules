@@ -88,6 +88,7 @@ struct mmdvfs_data {
 	struct mmdvfs_ops *ops;
 };
 
+int mmdvfs_hfrp_ipi_send(const u8 func, const u8 idx, const u8 opp, u32 *data, const bool vcp);
 int mmdvfs_mux_probe(struct platform_device *pdev);
 
 inline bool mmdvfs_mmup_cb_ready_get(void);
