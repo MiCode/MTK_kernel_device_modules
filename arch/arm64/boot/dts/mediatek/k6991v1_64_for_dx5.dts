@@ -2075,6 +2075,14 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 /* usb typec mux end */
 
+&qos {
+	reg = <0 0x0011bb00 0 0x100>,
+		<0 0x0011b8dc 0 0x224>,
+		<0 0x0011b920 0 0x0>,
+		<0 0x0011b864 0 0x2c>;
+	reg-names = "sram", "share_sram", "share_sram_ext", "share_sram_dbg";
+};
+
 &i2c6 {
 	spk1: speaker_amp@5c {
 		compatible = "richtek,rt5512";
