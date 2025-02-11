@@ -3073,7 +3073,7 @@ static int dpmaif_init_cap(struct device *dev)
 		atomic_set(&g_alloc_skb_threshold, MAX_ALLOC_BAT_CNT);
 
 	if (of_property_read_u32(dev->of_node,
-			"dl_bat_entry_size", &g_dpmaif_ctrl->dl_bat_entry_size))
+			"dl-bat-entry-size", &g_dpmaif_ctrl->dl_bat_entry_size))
 		g_dpmaif_ctrl->dl_bat_entry_size = 0;
 
 	CCCI_NORMAL_LOG(0, TAG,
