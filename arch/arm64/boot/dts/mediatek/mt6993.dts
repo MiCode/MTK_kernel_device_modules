@@ -9428,7 +9428,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BWR_DISP>,
 				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_DEBUG_TOP_DISP>,
 				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_CVFS_DISP>,
-				<&vdisp_dvfsrc_apb_clk VDISP_RC_DVFSRC_EN_DISP>,
 				<&dispsys_config_clk MM0_CONFIG_DISP>,
 				<&dispsys_config_clk MM0_DISP_MUTEX0_DISP>,
 				<&dispsys_config_clk MM0_DISP_AAL0_DISP>,
@@ -10828,11 +10827,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e730000 0 0x1000>;
 			interrupts = <GIC_SPI 442 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys1_config_clk MM1_DISP_DSI0_DISP>,
-				 <&dispsys1_config_clk MM1_DISP_DSI0_DISP>, /* mod1_hf_ck_cg */
+				 <&dispsys1_config_clk MM1_MOD1>,
 				 <&mipi_tx_config0>;
 			clock-names = "engine", "digital", "hs";
 			phys = <&mipi_tx_config0>;
 			phy-names = "dphy";
+			pwr-handle = <&disp_pwr_dev>;
 		};
 
 		dsi_lpc: dsi-lpc@3ee90000 {
