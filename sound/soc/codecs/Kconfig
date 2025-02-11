@@ -186,6 +186,15 @@ config SND_SOC_MT6368_ACCDET
 	  detection mechanism. Select N if you don't
 	  have jack on board.
 
+config SND_SOC_MT6369_ACCDET
+	tristate "MediaTek MT6369 ACCDET driver"
+	depends on MFD_MTK_SPMI_PMIC
+	help
+	  ACCDET means Accessory Detection technology,
+	  MediaTek develop it for ASoC codec soc-jack
+	  detection mechanism. Select N if you don't
+	  have jack on board.
+
 config SND_SOC_MT6681
 	tristate "MediaTek MT6681 Codec driver"
 	depends on MFD_MT6681

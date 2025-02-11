@@ -63,6 +63,15 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "mt6369-accdet",
+    srcs = [
+        "mt6369-accdet.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
     name = "mt6681-accdet",
     srcs = [
         "mt6681-accdet.c",
@@ -90,6 +99,7 @@ ddk_headers(
         "mt6357-accdet.h",
         "mt6358-accdet.h",
         "mt6368-accdet.h",
+        "mt6369-accdet.h",
         "mt6681-accdet.h",
         "mt6681-private.h",
     ],

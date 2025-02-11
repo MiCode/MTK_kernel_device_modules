@@ -1148,6 +1148,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6358-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6368-accdet".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/codecs:mt6369-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
