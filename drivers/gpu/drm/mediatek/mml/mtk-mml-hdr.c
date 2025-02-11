@@ -73,9 +73,10 @@ enum mml_hdr_reg_index {
 	HDR_B_CHANNEL_NR,
 	HDR_A_LUMINANCE,
 	HDR_DEBUG,
+	HDR_DUMMY0,
 	HDR_DUMMY1,
 	HDR_EOTF_CTRL,
-	HDR_SHADOW_CLTR,
+	HDR_SHADOW_CTRL,
 	HDR_LUT_CTRL_0,
 	HDR_LUT_CTRL_1,
 	HDR_LUT_CTRL_2,
@@ -123,9 +124,10 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_Y2R_09] = 0x178,
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 	[HDR_DEBUG] = 0x1e8,
+	[HDR_DUMMY0] = 0x1d4,
 	[HDR_DUMMY1] = 0x1d8,
 	[HDR_EOTF_CTRL] = REG_NOT_SUPPORT,
-	[HDR_SHADOW_CLTR] = REG_NOT_SUPPORT,
+	[HDR_SHADOW_CTRL] = REG_NOT_SUPPORT,
 	[HDR_LUT_CTRL_0] = REG_NOT_SUPPORT,
 	[HDR_LUT_CTRL_1] = REG_NOT_SUPPORT,
 	[HDR_LUT_CTRL_2] = REG_NOT_SUPPORT,
@@ -170,9 +172,10 @@ static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
 	[HDR_CURSOR_BUF2] = 0x124,
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 	[HDR_DEBUG] = 0x1e8,
+	[HDR_DUMMY0] = 0x1d4,
 	[HDR_DUMMY1] = 0x1d8,
 	[HDR_EOTF_CTRL] = 0x0ec,
-	[HDR_SHADOW_CLTR] = 0x0f4,
+	[HDR_SHADOW_CTRL] = 0x0f4,
 	[HDR_LUT_CTRL_0] = 0x18c,
 	[HDR_LUT_CTRL_1] = 0x190,
 	[HDR_LUT_CTRL_2] = 0x194,
@@ -199,6 +202,7 @@ struct hdr_data {
 	bool enable_dummy;	/* WA: enable dummy to ignore fg out_mask */
 	bool two_curve;     /* Jayer HW Change two curve array OOTF OETF*/
 	u32 histogram_bin;
+	bool default2p;
 };
 
 static const struct hdr_data mt6983_hdr_data = {
@@ -262,6 +266,7 @@ static const struct hdr_data mt6993_mmlt_hdr_data = {
 	.rb_mode = RB_EOF_MODE,
 	.two_curve = true,
 	.histogram_bin = 128,
+	.default2p = true,
 };
 
 static const struct hdr_data mt6993_mmlf_hdr_data = {
@@ -272,6 +277,7 @@ static const struct hdr_data mt6993_mmlf_hdr_data = {
 	.rb_mode = RB_EOF_MODE,
 	.two_curve = true,
 	.histogram_bin = 128,
+	.default2p = true,
 };
 
 struct mml_comp_hdr {
@@ -458,37 +464,32 @@ static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 
-	if (!hdr->data->tile_loss && !MML_FMT_IS_RGB(src->format))
-		hdr_relay(comp, pkt, base_pa, 0x1);
-	else {
+	cmdq_pkt_write(pkt, NULL,
+		base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP], 0x0, 0x1);
+	cmdq_pkt_write(pkt, NULL,
+		base_pa + hdr->data->reg_table[HDR_TOP], 0x0, 0x08080000);
+	cmdq_pkt_write(pkt, NULL,
+		base_pa + hdr->data->reg_table[HDR_3x3_COEF_00], 0x0, 0x1);
+	if (hdr->data->two_curve) {
+		/* disable ootf and oetf */
 		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP], 0x0, 0x1);
+			base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0], 0x0, 0x1);
 		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_TOP], 0x0, 0x08080000);
+			base_pa + hdr->data->reg_table[HDR_TOP], 0 << 27, 1 << 27);
+	} else {
 		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_3x3_COEF_00], 0x0, 0x1);
-		if (hdr->data->two_curve) {
-			/* disable ootf and oetf */
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0], 0x0, 0x1);
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_TOP], 0 << 27, 1 << 27);
-		} else {
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_B_CHANNEL_NR], 0x0, 0x1);
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_A_LUMINANCE], 0x0, 0x1);
-		}
-		// RGB In, enable R2Y, disable Y2R
-		//TODO: Add R2Y matrix detail setting
-		if(MML_FMT_IS_RGB(src->format)) {
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x1, 0x1);
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x0, 0x1);
-		}
+			base_pa + hdr->data->reg_table[HDR_B_CHANNEL_NR], 0x0, 0x1);
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_A_LUMINANCE], 0x0, 0x1);
 	}
-
+	// RGB In, enable R2Y, disable Y2R
+	//TODO: Add R2Y matrix detail setting
+	if(MML_FMT_IS_RGB(src->format)) {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x1, 0x1);
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x0, 0x1);
+	}
 }
 
 static s32 hdr_config_init(struct mml_comp *comp, struct mml_task *task,
@@ -697,16 +698,39 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_hdr) {
 		/* relay mode */
 		hdr_relay(comp, pkt, base_pa, 0x1);
+		if (hdr->data->default2p) {
+			if (cfg->rsz_front) {
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_TOP], 1 << 1, 0x2);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
+			} else {
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_TOP], 0 << 1, 0x2);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_RELAY], 1, 0x1);
+			}
+		}
 		return 0;
 	}
+
 	hdr_relay(comp, pkt, base_pa, 0x0);
+
+	if (hdr->data->default2p) {
+		/* HDR_TOP keep default setting */
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_TOP], 0 << 1, 0x2);
+	}
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, HDR_WAIT_TIMEOUT_MS);
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			hdr_frm->config_success = false;
-			hdr_disable_curve(comp, pkt, src, base_pa);
+			if (!hdr->data->tile_loss && !MML_FMT_IS_RGB(src->format))
+				hdr_relay(comp, pkt, base_pa, 0x1);
+			else
+				hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: get hdr param timeout: %d in %dms",
 				 __func__, ret, HDR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
@@ -716,7 +740,10 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		result = get_hdr_comp_config_result(task);
 		if (!result) {
 			hdr_frm->config_success = false;
-			hdr_disable_curve(comp, pkt, src, base_pa);
+			if (!hdr->data->tile_loss && !MML_FMT_IS_RGB(src->format))
+				hdr_relay(comp, pkt, base_pa, 0x1);
+			else
+				hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
@@ -1715,16 +1742,16 @@ static void hdr_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	void __iomem *base = comp->base;
-	u32 value[20];
+	u32 value[21];
 	u32 hdr_top, shadow_ctrl;
 
 	mml_err("hdr component %u dump:", comp->id);
 
 	/* Enable shadow read working */
 	if (hdr->data->two_curve) {
-		shadow_ctrl = read_reg_value(comp, hdr->data->reg_table[HDR_SHADOW_CLTR]);
+		shadow_ctrl = read_reg_value(comp, hdr->data->reg_table[HDR_SHADOW_CTRL]);
 		shadow_ctrl |= 0x1;
-		writel(shadow_ctrl, base + hdr->data->reg_table[HDR_SHADOW_CLTR]);
+		writel(shadow_ctrl, base + hdr->data->reg_table[HDR_SHADOW_CTRL]);
 	} else {
 		hdr_top = read_reg_value(comp, hdr->data->reg_table[HDR_TOP]);
 		hdr_top |= 0x8000;
@@ -1748,9 +1775,10 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	value[14] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF1]);
 	value[15] = read_reg_value(comp, hdr->data->reg_table[HDR_CURSOR_BUF2]);
 	value[16] = read_reg_value(comp, hdr->data->reg_table[HDR_DEBUG]);
-	value[17] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY1]);
-	value[18] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_ADDR]);
-	value[19] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_2]);
+	value[17] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY0]);
+	value[18] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY1]);
+	value[19] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_ADDR]);
+	value[20] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_2]);
 
 	mml_err("HDR_TOP %#010x HDR_RELAY %#010x HDR_INTSTA %#010x HDR_ENGSTA %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -1763,8 +1791,9 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	mml_err("HDR_TILE_POS %#010x", value[12]);
 	mml_err("HDR_CURSOR_BUF0 %#010x HDR_CURSOR_BUF1 %#010x HDR_CURSOR_BUF2 %#010x",
 		value[13], value[14], value[15]);
-	mml_err("HDR_DEBUG %#010x HDR_DUMMY1 %#010x", value[16], value[17]);
-	mml_err("HDR_HIST_ADDR %#010x HDR_HIST_CTRL_2 %#010x", value[18], value[19]);
+	mml_err("HDR_DEBUG %#010x HDR_DUMMY0 %#010x HDR_DUMMY1 %#010x",
+		value[16], value[17], value[18]);
+	mml_err("HDR_HIST_ADDR %#010x HDR_HIST_CTRL_2 %#010x", value[19], value[20]);
 }
 
 static const struct mml_comp_debug_ops hdr_debug_ops = {

@@ -495,10 +495,10 @@ static s32 rsz_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (rsz_frm->relay_mode) {
 		rsz_relay(pkt, base_pa);
-		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CG_CFG, 0x7, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CG_CFG, 0x17, U32_MAX);
 		return 0;
 	} else
-		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CG_CFG, 0xf, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CG_CFG, 0x1f, U32_MAX);
 
 	if (mml_rsz_fw_comb) {
 		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_CONTROL,

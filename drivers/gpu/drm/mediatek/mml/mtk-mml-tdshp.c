@@ -532,10 +532,20 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		} else {
 			tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 		}
+		if(cfg->rsz_front)
+			cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG],
+				(1 << 31), 0x80000000);
+		else
+			cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG],
+				(0 << 31), 0x80000000);
 		return 0;
 	}
 
 	tdshp_relay(comp, pkt, base_pa, alpha);
+
+	/* TDSHP_CFG keep default setting */
+	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG],
+		(1 << 31), 0x80000000);
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, TDSHP_WAIT_TIMEOUT_MS);
