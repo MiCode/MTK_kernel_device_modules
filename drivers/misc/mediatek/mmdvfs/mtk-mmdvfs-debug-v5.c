@@ -513,6 +513,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct task_struct *task;
+	int ret;
 
 	mmdvfs_debug_parse_proc();
 	mmdvfs_debug_parse_regulator(dev);
@@ -525,7 +526,12 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	MMDVFS_DBG("mux_base:%#x mux_count:%hu fmeter_count:%hhu user_count:%hhu met_freerun:%d",
 		mux_base_pa, mux_count, fmeter_count, ap_user_count, met_freerun);
 
-	register_pm_notifier(&mmdvfs_debug_pm_notifier_block);
+	ret = register_pm_notifier(&mmdvfs_debug_pm_notifier_block);
+	if (ret) {
+		MMDVFS_ERR("failed:%d", ret);
+		return ret;
+	}
+
 	mmdvfs_debug_ops_set(&mmdvfs_debug_v5_ops);
 
 	workq = create_singlethread_workqueue("mmdvfs-debug-workq");

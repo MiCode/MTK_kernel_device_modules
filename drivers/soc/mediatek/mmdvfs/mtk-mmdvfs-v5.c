@@ -701,7 +701,9 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 	ret = mmdvfs_get_rc_base(mmdvfs_data);
 
 	ret = mmdvfs_vcp_init();
-	register_pm_notifier(&mmdvfs_pm_notifier_block);
+	ret = register_pm_notifier(&mmdvfs_pm_notifier_block);
+	if (ret)
+		MMDVFS_ERR("failed:%d", ret);
 
 	return ret;
 }
