@@ -11883,6 +11883,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			scp-mbrain = "enable";
 			scp-recovery-wfi-detect = "enable";
 			scp-ipi-timeout-bugon = "enable";
+			scp-task-monitor-dbg = "enable";
 			scp-asan = "disable";
 			scp-asan-size = <0x200000>;
 
