@@ -5249,7 +5249,7 @@
 			reg = <0 0x15812000 0 0x1000>;
 		};
 
-		vdec_fmt: vdec_fmt@16080000 {
+		vdec_fmt: vdec-fmt@16080000 {
 			compatible = "mediatek-vdec-fmt";
 			mediatek,fmtname = "vdec-fmt";
 			reg = <0 0x16080000 0 0x1000>, /* mini_mdp0_rdma */
@@ -5258,31 +5258,31 @@
 			clocks = <&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>,
 				<&vdec_gcon_base_clk CLK_VDE2_MINI_MDP_CKEN_CFG_RG>;
 			clock-names = "MT_CG_VDEC", "MT_CG_MINI_MDP";
-			mediatek,fmt_gce_th_num = <1>; /* FMT GCE HW THREAD NUM */
+			mediatek,fmt-gce-th-num = <1>; /* FMT GCE HW THREAD NUM */
 			mboxes = <&gce 13 2000 CMDQ_THR_PRIO_1>;
 			/* rdma0_sw_rst_done_eng_event */
-			rdma0_sw_rst_done_eng =
+			rdma0-sw-rst-done-eng =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_0>;
 			/* rdma0_tile_done */
-			rdma0_tile_done =
+			rdma0-tile-done =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_1>;
 			/* wdma0_sw_rst_done_eng_event */
-			wdma0_sw_rst_done_eng =
+			wdma0-sw-rst-done-eng =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_2>;
 			/* wdma0_tile_done */
-			wdma0_tile_done =
+			wdma0-tile-done =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_3>;
 			/* rdma1_sw_rst_done_eng_event */
-			rdma1_sw_rst_done_eng =
+			rdma1-sw-rst-done-eng =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_4>;
 			/* rdma1_tile_done */
-			rdma1_tile_done =
+			rdma1-tile-done =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_7>;
 			/* wdma1_sw_rst_done_eng_event */
-			wdma1_sw_rst_done_eng =
+			wdma1-sw-rst-done-eng =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_6>;
 			/* wdma1_tile_done */
-			wdma1_tile_done =
+			wdma1-tile-done =
 			/bits/ 16 <CMDQ_EVENT_VDEC_VDEC_MINI_MDP_EVENT_8>;
 			gce-gpr = <GCE_GPR_R10>;
 			iommus = <&disp_iommu M4U_PORT_L4_MINI_MDP_R0_EXT>,
@@ -5291,7 +5291,7 @@
 			power-domains = <&scpsys MT6789_POWER_DOMAIN_VDEC>;
 			mediatek,larbs = <&smi_larb4>;
 			operating-points-v2 = <&opp_table_vdec>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_MINI_MDP_R0_EXT)
 			&mmqos SLAVE_COMMON(0)>,
@@ -5330,7 +5330,7 @@
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		};
 
 		mbist@17060000 {
@@ -5683,13 +5683,11 @@
 				<&disp_iommu M4U_PORT_L4_VDEC_UFO_ENC_EXT>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 
-			mediatek,dec_gce_th_num = <1>; /* VDEC GCE HW THREAD NUM*/
-			mediatek,enc_gce_th_num = <2>; /* VENC GCE HW THREAD NUM*/
-
+			mediatek,dec-gce-th-num = <1>; /* VDEC GCE HW THREAD NUM*/
+			mediatek,enc-gce-th-num = <2>; /* VENC GCE HW THREAD NUM*/
 			mboxes = <&gce 7 0 CMDQ_THR_PRIO_1>,
 					<&gce 12 0 CMDQ_THR_PRIO_1>,
-					<&gce 23 0 CMDQ_THR_PRIO_1>,
-					<&gce_sec 12 0 CMDQ_THR_PRIO_1>;
+					<&gce 23 0 CMDQ_THR_PRIO_1>;
 			gce-event-names = "venc_eof",
 					"venc_cmdq_pause_done",
 					"venc_mb_done",
@@ -5731,12 +5729,12 @@
 					<&gce CMDQ_EVENT_VDEC_GCE_EVENT_15>;
 
 			gce-gpr = <GCE_GPR_R10>, <GCE_GPR_R11>;
-			gce_norm_token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT>;
-			gce_sec_token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET>;
+			gce-norm-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_WAIT>;
+			gce-sec-token = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_VENC_SET>;
 		};
 
 		vdec@16000000 {
-			compatible = "mediatek,mt6789-vcodec-dec";
+			compatible = "mediatek,vcodec-dec";
 			mediatek,platform = "platform:mt6789";
 			mediatek,ipm = <1>;
 			reg = <0 0x16000000 0 0x1000>,		/* VDEC_BASE */
@@ -5801,7 +5799,7 @@
 				"CORE_MT_CG_VDEC0";
 			mediatek,clock-parents = <4 3>;
 			operating-points-v2 = <&opp_table_vdec>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_MC_EXT)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L4_VDEC_UFO_EXT)
@@ -5867,23 +5865,23 @@
 				<809062486 0 637 637>, /* VP9 */
 				<808539713 0 637 637>; /* AV1 */
 			bandwidth-table =
-				<3 1100>,
-				<3 0>,
-				<2 550>,
-				<5 10>,
-				<5 10>,
-				<5 0>,
-				<5 0>,
-				<0 26>,
-				<0 26>,
-				<5 26>,
-				<5 0>,
-				<6 4>;
+				<3 2 1100>,
+				<3 0 0>,
+				<2 1 550>,
+				<5 2 10>,
+				<5 2 10>,
+				<5 2 0>,
+				<5 2 0>,
+				<0 0 26>,
+				<0 0 26>,
+				<5 2 26>,
+				<5 0 0>,
+				<6 0 4>;
 			svp-mtee = <1>;
 		};
 
 		venc@17000000 {
-			compatible = "mediatek,mt6789-vcodec-enc";
+			compatible = "mediatek,vcodec-enc";
 			mediatek,platform = "platform:mt6789";
 			mediatek,ipm = <1>;
 			reg = <0 0x17020000 0 0x2000>,
@@ -5913,7 +5911,7 @@
 			clock-names =
 				"MT_CG_VENC0";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			interconnects = <&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_RCPU)
 						&mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(M4U_PORT_L7_VENC_REC)
@@ -5945,35 +5943,67 @@
 			throughput-normal-max = <458000000>;
 			throughput-config-offset = <2>;
 			throughput-table =
-				<875967048 4 860 1415>, /* H.264 */
-				<875967048 5 766 1151>,
-				<1129727304 2 2484 3703>, /* HEVC low power*/
-				<1129727304 4 1780 2889>,
-				<892744264 2 2484 3703>, /* H265*/
-				<892744264 4 1780 2889>,
-				<1179206984 2 2484 3703>, /* HEIF */
-				<1179206984 4 1780 2889>;
-			config-table =
-				<875967048 243000 4 4>, /* H.264 */
-				<875967048 486000 5 5>,
-				<1129727304 243000 2 2>, /* HEVC*/
-				<1129727304 486000 4 4>,
-				<892744264 243000 2 2>, /* H265*/
-				<892744264 486000 4 4>,
-				<1179206984 243000 2 2>, /* HEIF */
-				<1179206984 486000 4 4>,
-				<1179206984 4294967295 9 7>;
+				/* H.264 */
+				<875967048 1 1148 1148 249000000 88>, /* 720p30, LP */
+				<875967048 4 860 860 249000000 88>, /* 1080p30, LP */
+				<875967048 8 780 780 458000000 156>, /* 1080p60, LP */
+				<875967048 12 860 860 458000000 88>, /* 1080p30, LP */
+				<875967048 17 430 430 624000000 258>, /* others, LP */
+				/* HEVC */
+				<1129727304 1 1148 1148 249000000 88>, /* 720p30, LP */
+				<1129727304 4 860 860 249000000 88>, /* 1080p30, LP */
+				<1129727304 8 780 780 458000000 157>, /* 1080p60, LP */
+				<1129727304 12 860 860 458000000 88>, /* 2560x1440@30, LP */
+				<1129727304 17 430 430 624000000 248>, /* others, LP */
+
+				/* H.265 */
+				<892744264 1 1148 1148 249000000 88>, /* 720p30, LP */
+				<892744264 4 860 860 249000000 88>, /* 1080p30, LP */
+				<892744264 8 780 780 458000000 156>, /* 1080p60, LP */
+				<1129727304 12 860 860 458000000 88>, /* 2560x1440@30, LP */
+				<892744264 17 430 430 624000000 258>, /* others, LP */
+				/* HEIF */
+				<1179206984 1 1148 1148 249000000 88>, /* 720p30, LP */
+				<1179206984 4 860 860 249000000 88>, /* 1080p30, LP */
+				<1179206984 8 780 780 458000000 156>, /* 1080p60, LP */
+				<1129727304 12 860 860 458000000 88>, /* 2560x1440@30, LP */
+				<1179206984 17 430 430 624000000 258>; /* others, LP */
+			config-table = /* codec, mb/s, normal config, high quality config*/
+				/* H.264 */
+				<875967048 108000 1 1>, /* 720p30 */
+				<875967048 261120 4 4>, /* 1080p30 */
+				<875967048 522240 8 8>, /* 1080p60 */
+				<875967048 432000 12 12>, /* 2560x1440@30 */
+				<875967048 4294967295 17 17>, /* others */
+				/* HEVC */
+				<1129727304 108000 1 1>, /* 720p30 */
+				<1129727304 261120 4 4>, /* 1080p30 */
+				<1129727304 522240 8 8>, /* 1080p60 */
+				<1129727304 432000 12 12>, /* 2560x1440@30 */
+				<1129727304 4294967295 17 17>, /* others */
+				/* H.265 */
+				<892744264 108000 1 1>, /* 720p30 */
+				<892744264 261120 4 4>, /* 1080p30 */
+				<892744264 522240 8 8>, /* 1080p60 */
+				<892744264 432000 12 12>, /* 2560x1440@30 */
+				<892744264 4294967295 17 17>, /* others */
+				/* HEIF */
+				<1179206984 108000 1 1>, /* 720p30 */
+				<1179206984 261120 4 4>, /* 1080p30 */
+				<1179206984 522240 8 8>, /* 1080p60 */
+				<1179206984 432000 12 12>, /* 2560x1440@30 */
+				<1179206984 4294967295 17 17>; /* others */
 			bandwidth-table =
-				<4 10>,
-				<3 160>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 0.7 */
-				<0 20>,
-				<5 4>,
-				<5 16>,
-				<1 194>,
-				<2 97>,
-				<1 0>,
-				<2 642>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 4 * 0.7*/
-				<6 7>;
+				<4 2 10>,
+				<3 1 160>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 0.7 */
+				<0 1 20>,
+				<5 1 4>,
+				<5 0 16>,
+				<1 0 194>,
+				<2 0 97>,
+				<1 0 0>,
+				<2 0 642>, /* FHD60 worst case * 0.7: 256*458/766 * 1.5 * 4 * 0.7*/
+				<6 0 7>;
 		};
 
 		mdpsys_config: mdpsys_config@1f000000 {
