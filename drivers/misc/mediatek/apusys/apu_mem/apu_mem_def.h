@@ -34,6 +34,7 @@ struct apu_mem_export_ops {
 	int (*apu_mem_table_alloc)  (uint64_t session);
 	int (*apu_mem_table_free)   (uint64_t session);
 	int (*apu_mem_DRAM_FB_alloc)(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
+	int (*apu_mem_DRAM_FB_free) (uint64_t session, uint32_t vlm_size, uint32_t subcmd_num);
 	int (*apu_mem_ssid_get)     (uint64_t session, uint32_t *ssid);
 };
 

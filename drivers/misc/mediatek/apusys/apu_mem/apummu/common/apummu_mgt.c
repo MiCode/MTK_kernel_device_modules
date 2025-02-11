@@ -512,6 +512,45 @@ exit:
 	return;
 }
 
+static int ammu_DRAM_FB_refcnt_adjust(uint64_t session, uint32_t subcmd_num)
+{
+	int ret = 0;
+	struct apummu_session_tbl *sTable_ptr;
+
+	// ref cnt adjust
+
+	AMMU_LOG_VERBO("subcmd_num = %u\n", subcmd_num);
+
+	sTable_ptr = session_table_find(session);
+	if (!sTable_ptr) {
+		AMMU_LOG_ERR("Session table NOT exist!!!(0x%llx)\n", session);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	mutex_lock(&sTable_ptr->stable_lock);
+	sTable_ptr->subcmd_num_for_DRAM_FB -= subcmd_num;
+	AMMU_LOG_VERBO("sTable_ptr->subcmd_num_for_DRAM_FB = %u\n", sTable_ptr->subcmd_num_for_DRAM_FB);
+	mutex_unlock(&sTable_ptr->stable_lock);
+
+	mutex_lock(&g_ammu_table_set.gtable_lock);
+	g_ammu_table_set.subcmd_refcnt -= subcmd_num;
+	mutex_unlock(&g_ammu_table_set.gtable_lock);
+
+out:
+	return ret;
+}
+
+int ammu_DRAM_FB_free(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
+{
+	int ret = 0;
+
+	if (!g_adv->plat.alloc_DRAM_FB_in_session_create && vlm_size)
+		ret = ammu_DRAM_FB_refcnt_adjust(session, subcmd_num);
+
+	return ret;
+}
+
 /**
  * @input:
  *  None

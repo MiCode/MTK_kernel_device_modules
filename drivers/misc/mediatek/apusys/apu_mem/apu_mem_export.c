@@ -196,6 +196,15 @@ int apu_mem_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_n
 		vlm_size, subcmd_num);
 }
 
+int apu_mem_DRAM_FB_free(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
+{
+	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_DRAM_FB_free == NULL)
+		return -EOPNOTSUPP;
+
+	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_DRAM_FB_free(session,
+		vlm_size, subcmd_num);
+}
+
 int apu_mem_ssid_get(uint64_t session, uint32_t *ssid)
 {
 	if (apu_mem_plat_op_set.apu_mem_ops->apu_mem_ssid_get == NULL)
@@ -203,4 +212,3 @@ int apu_mem_ssid_get(uint64_t session, uint32_t *ssid)
 
 	return apu_mem_plat_op_set.apu_mem_ops->apu_mem_ssid_get(session, ssid);
 }
-

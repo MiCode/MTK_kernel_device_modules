@@ -34,6 +34,7 @@ static struct apu_mem_export_ops apummu_export_ops = {
 	.apu_mem_table_alloc   = apummu_table_alloc,
 	.apu_mem_table_free    = apummu_table_free,
 	.apu_mem_DRAM_FB_alloc = apummu_DRAM_FB_alloc,
+	.apu_mem_DRAM_FB_free  = apummu_DRAM_FB_free,
 	.apu_mem_ssid_get      = apummu_ssid_get
 };
 
@@ -438,6 +439,11 @@ int apummu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_nu
 int apummu_ssid_get(uint64_t session, uint32_t *ssid)
 {
 	return get_session_ssid(session, ssid);
+}
+
+int apummu_DRAM_FB_free(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
+{
+	return ammu_DRAM_FB_free(session, vlm_size, subcmd_num);
 }
 
 int apummu_export_API_init(void)
