@@ -411,6 +411,9 @@ static irqreturn_t gauge_irq_thread(int irq, void *data)
 	bool handled = false;
 	int i, j, ret;
 
+	if ((priv->unmask_buf[0] == 0) && (priv->unmask_buf[1] == 0) && (priv->unmask_buf[2] == 0))
+		return IRQ_HANDLED;
+
 	ret = regmap_raw_read(priv->regmap, RG_BM_TOP_INT_STATUS0, status_buf, sizeof(status_buf));
 	if (ret) {
 		dev_err(priv->dev, "Error reading INT status\n");

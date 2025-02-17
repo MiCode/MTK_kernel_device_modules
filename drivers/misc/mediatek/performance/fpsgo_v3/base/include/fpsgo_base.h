@@ -381,6 +381,7 @@ struct fpsgo_boost_attr {
 	int powerRL_enable_by_pid;
 	int powerRL_FPS_margin_by_pid;
 	int powerRL_cap_limit_range_by_pid;
+	int engine_cooler_enable_by_pid;
 };
 
 

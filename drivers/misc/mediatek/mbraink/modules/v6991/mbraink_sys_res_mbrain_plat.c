@@ -432,7 +432,7 @@ int mbraink_sys_res_mbrain_plat_init(void)
 	int i = 0;
 
 	for (i = 0; i < NR_SPM_GRP; i++) {
-		if (group_release[i]) {
+		if (group_release[i] && sys_res_group_info[i].group_num != 0) {
 			if (i == DDREN_REQ || i == APSRC_REQ || i == EMI_REQ || i == INFRA_REQ ||
 				i == F26M_REQ || i == VCORE_REQ)
 				sys_res_grp_num += 1;
@@ -440,6 +440,10 @@ int mbraink_sys_res_mbrain_plat_init(void)
 		}
 	}
 	sys_res_sig_num += sys_res_grp_num;
+	if (!sys_res_sig_num) {
+		pr_info("[Mbraink][SPM] sys_res_sig_num is zero\n");
+		return -1;
+	}
 	spm_res_sig_tbl_ptr = kcalloc(sys_res_sig_num,
 				      sizeof(struct mbraink_sys_res_sig_info),
 				      GFP_KERNEL);

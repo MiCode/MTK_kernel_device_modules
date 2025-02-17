@@ -442,7 +442,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 		if (!tp->path_clts[i].sys_en_ref[sysid])
 			continue;
 		/* select max one across clients */
-		tput = max(tput, tp->path_clts[i].throughput);
+		tput = max(tput, tp->path_clts[i].throughput[dpc]);
 	}
 
 	for (i = 0; i < sysqos->opp_cnt; i++) {
@@ -458,13 +458,14 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 	if (!dpc && sysqos->dvfs_clk && enable)
 		mml_dvfs_vcp_enable(mml, sysid);
 
-	if (sysqos->current_volt == volt)	/* skip for better performance */
+	if (sysqos->current_volt[dpc] == volt)	/* skip for better performance */
 		goto done;
-	sysqos->current_level = i;
+	sysqos->current_level[dpc] = i;
 
-	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u",
-		__func__, sysid, tp->qos[sysid].current_volt, volt, sysqos->opp_speeds[i], tput);
-	tp->qos[sysid].current_volt = volt;
+	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u dpc %u",
+		__func__, sysid, tp->qos[sysid].current_volt[dpc], volt, sysqos->opp_speeds[i],
+		tput, dpc);
+	tp->qos[sysid].current_volt[dpc] = volt;
 	mml_trace_begin("mml_volt_%u", volt);
 
 #ifndef MML_FPGA
@@ -1313,6 +1314,7 @@ void mml_comp_qos_calc(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	u32 datasize, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw;
+	struct mml_comp_bw *bw = &comp->bw[cfg->dpc];
 	bool hrt;
 
 	datasize = comp->hw_ops->qos_datasize_get(task, ccfg);
@@ -1365,10 +1367,10 @@ void mml_comp_qos_calc(struct mml_comp *comp, struct mml_task *task,
 	/* store for debug log */
 	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
 
-	comp->srt_bw = max_t(u32, comp->srt_bw, srt_bw);
-	comp->hrt_bw = max_t(u32, comp->hrt_bw, hrt_bw);
-	comp->stash_srt_bw = max_t(u32, comp->stash_srt_bw, stash_srt_bw);
-	comp->stash_hrt_bw = max_t(u32, comp->stash_hrt_bw, stash_hrt_bw);
+	bw->srt_bw = max_t(u32, bw->srt_bw, srt_bw);
+	bw->hrt_bw = max_t(u32, bw->hrt_bw, hrt_bw);
+	bw->stash_srt_bw = max_t(u32, bw->stash_srt_bw, stash_srt_bw);
+	bw->stash_hrt_bw = max_t(u32, bw->stash_hrt_bw, stash_hrt_bw);
 
 	mml_msg("%s comp %u bw %u %u stash %u %u tput %u%s",
 		__func__, comp->id, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw, throughput,
@@ -1381,13 +1383,14 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct mml_dev *mml = cfg->mml;
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
-	const u32 srt_bw = comp->srt_bw, hrt_bw = comp->hrt_bw;
-	const u32 stash_srt_bw = comp->stash_srt_bw, stash_hrt_bw = comp->stash_hrt_bw;
+	struct mml_comp_bw *bw = &comp->bw[cfg->dpc];
+	const u32 srt_bw = bw->srt_bw, hrt_bw = bw->hrt_bw;
+	const u32 stash_srt_bw = bw->stash_srt_bw, stash_hrt_bw = bw->stash_hrt_bw;
 	bool hrt = cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK;
 	bool updated = false;
 
 	/* store for debug log */
-	task->pipe[ccfg->pipe].bandwidth = max(comp->srt_bw, task->pipe[ccfg->pipe].bandwidth);
+	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
 	if (srt_bw == mml->port_srt_bw[comp->sysid][comp->larb_port] &&
 		hrt_bw == mml->port_hrt_bw[comp->sysid][comp->larb_port])
 		goto skip_update;
@@ -1443,7 +1446,7 @@ skip_update:
 		task->dpc_hrt_write_bw[comp->sysid] += stash_hrt_bw;
 	}
 
-	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->srt_bw << 16) | comp->hrt_bw);
+	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, ((u32)bw->srt_bw << 16) | bw->hrt_bw);
 
 	mml_msg_qos("%s comp %u %s bw %u %u stash %u %u by throughput %u pixel %u%s%s dpc %u hrtmode %d",
 		__func__, comp->id, comp->name, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw,
@@ -1455,6 +1458,7 @@ skip_update:
 void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 {
 	struct mml_dev *mml = task->config->mml;
+	struct mml_comp_bw *bw = &comp->bw[dpc];
 
 #ifndef MML_FPGA
 	if (dpc) {
@@ -1467,10 +1471,10 @@ void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 			mtk_icc_set_bw(comp->icc_stash_path, 0, 0);
 	}
 #endif
-	comp->srt_bw = 0;
-	comp->hrt_bw = 0;
-	comp->stash_srt_bw = 0;
-	comp->stash_hrt_bw = 0;
+	bw->srt_bw = 0;
+	bw->hrt_bw = 0;
+	bw->stash_srt_bw = 0;
+	bw->stash_hrt_bw = 0;
 	mml->port_srt_bw[comp->sysid][comp->larb_port] = 0;
 	mml->port_hrt_bw[comp->sysid][comp->larb_port] = 0;
 
@@ -2298,11 +2302,11 @@ static int mml_probe(struct platform_device *pdev)
 	if (mml->dpc_disable)
 		mml_log("dpc disable by project");
 
-#if defined(MML_IR_SUPPORT)
+//#if defined(MML_IR_SUPPORT)
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
 	if (mml->racing_en)
 		mml_log("IR mode enable");
-#endif
+//#endif
 
 	if (of_property_read_u8(dev->of_node, "mml-max-layer", &mml->max_layer))
 		mml->max_layer = MML_MAX_LAYER;

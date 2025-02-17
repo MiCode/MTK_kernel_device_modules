@@ -6,6 +6,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/
 
+ccflags-y += -I$(srctree)/drivers/scsi/
+ccflags-y += -I$(srctree)/kernel/
+ccflags-y += -I$(srctree)/block/
+
 # must after -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 ccflags-y += -I$(srctree)/drivers/ufs/
 ccflags-y += -I$(srctree)/drivers/ufs/core/
@@ -30,6 +34,10 @@ ufs-mediatek-mod-$(CONFIG_UFSRINGBUF)           += ufsringbuf.o
 
 
 # UFS KO with iSE enabled
+ccflags-y += -I$(srctree)/drivers/ufs/
+ccflags-y += -I$(srctree)/drivers/ufs/core/
+ccflags-y += -I$(srctree)/drivers/ufs/host/
+
 obj-$(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)      += ufs-mediatek-mod-ise.o
 ifeq ($(CONFIG_UFS_MEDIATEK_MT6893),y)
 ufs-mediatek-mod-ise-y                              += ../ufs-mediatek-perf.o ../ufs-mediatek-sysfs.o ../ufs-mediatek-mimic.o ../ufs-mediatek-mbrain.o

@@ -35,6 +35,7 @@
 #include "fpsgo_frame_info.h"
 
 #define MAX_FPSGO_CB_NUM 5
+#define HINT_FRAME_ERR_NUMBER 3
 
 static struct kobject *comp_kobj;
 static struct workqueue_struct *composer_wq;
@@ -1225,6 +1226,13 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 	if (!f_render->p_blc)
 		fpsgo_base2fbt_node_init(f_render);
 
+	if (f_render->frame_hint >= HINT_FRAME_ERR_NUMBER){
+		fpsgo_systrace_c_fbt(pid, identifier, f_render->frame_hint, "[ux]frame_hint");
+		fpsgo_thread_unlock(&f_render->thr_mlock);
+		fpsgo_render_tree_unlock(__func__);
+		goto out;
+	}
+
 	mutex_lock(&f_render->ux_mlock);
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, frame_start_time, 1);
 	if (!frame_info) {
@@ -1243,7 +1251,7 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 	fpsgo_render_tree_unlock(__func__);
 
 	fpsgo_com_notify_fpsgo_is_boost(1);
-
+ out:
 	mutex_lock(&recycle_lock);
 	if (recycle_idle_cnt) {
 		recycle_idle_cnt = 0;
@@ -1314,7 +1322,8 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	}
 
 	fpsgo_thread_lock(&f_render->thr_mlock);
-
+	f_render->frame_hint = 0;
+	fpsgo_systrace_c_fbt(pid, identifier, 0, "[ux]frame_hint");
 	// fill the frame info.
 	f_render->frame_type = FRAME_HINT_TYPE;
 	f_render->t_enqueue_start = frame_end_time; // for recycle only.
@@ -1370,7 +1379,7 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 	f_render->t_enqueue_start = time; // for recycle only.
 
 	fpsgo_thread_lock(&f_render->thr_mlock);
-
+	f_render->frame_hint++;
 	mutex_lock(&f_render->ux_mlock);
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, time, 0);
 	if (!frame_info) {

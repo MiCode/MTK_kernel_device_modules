@@ -761,6 +761,8 @@ static int scpsys_power_on(struct generic_pm_domain *genpd)
 
 	scpsys_clk_disable(scpd->lp_clk, MAX_CLKS);
 
+	scpd->is_on = true;
+
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE)) {
 		pd_end_time = jiffies_to_msecs(jiffies);
 		if ((pd_end_time - pd_start_time) > MTK_PROFILE_TIMEOUT)
@@ -921,6 +923,8 @@ static int scpsys_power_off(struct generic_pm_domain *genpd)
 	if (ret < 0)
 		goto out;
 
+	scpd->is_on = false;
+
 	if (MTK_SCPD_CAPS(scpd, MTK_SCPD_PROFILE)) {
 		pd_end_time = jiffies_to_msecs(jiffies);
 		if ((pd_end_time - pd_start_time) > MTK_PROFILE_TIMEOUT)
@@ -995,6 +999,8 @@ static int scpsys_md_power_on(struct generic_pm_domain *genpd)
 	if (ret < 0)
 		goto err_sram;
 
+	scpd->is_on = true;
+
 	return 0;
 
 err_sram:
@@ -1054,6 +1060,8 @@ static int scpsys_md_power_off(struct generic_pm_domain *genpd)
 	ret = scpsys_regulator_disable(scpd);
 	if (ret < 0)
 		goto out;
+
+	scpd->is_on = false;
 
 	return 0;
 
@@ -1560,6 +1568,9 @@ int __mminfra_hwv_power_ctrl(struct scp_domain *scpd, struct regmap *regmap,
 				MTK_POLL_DELAY_US, MTK_POLL_300MS_TIMEOUT);
 		if (ret < 0)
 			goto err_hwv_done;
+		scpd->is_on = true;
+	} else {
+		scpd->is_on = false;
 	}
 
 	return 0;

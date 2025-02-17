@@ -45,6 +45,7 @@ const char *cpu_event_names[] = {
 	"CPU_IRQ_UPDATE",
 };
 
+
 unsigned int __read_mostly sysctl_sched_init_task_load_pct = INIT_TASK_LOAD_PCT;
 EXPORT_SYMBOL(sysctl_sched_init_task_load_pct);
 unsigned int __read_mostly sysctl_task_sched_window_stats_policy = WP_MODE_4;
@@ -892,7 +893,6 @@ static void flt_init_new_task_load(struct task_struct *p)
 	fts->last_update_time = 0;
 	fts->sum = 0;
 	fts->util_sum = 0;
-	fts->util_demand = 0;
 	fts->active_time = 0;
 
 	fts->prev_on_rq = 0;
@@ -1230,6 +1230,7 @@ static void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 	struct rq *rq = cpu_rq(task_cpu(p));
 	struct rq_flags rf;
 	u64 wallclock;
+
 
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;

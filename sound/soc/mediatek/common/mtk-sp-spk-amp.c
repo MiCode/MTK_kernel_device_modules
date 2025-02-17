@@ -44,6 +44,32 @@
 
 static unsigned int mtk_spk_type;
 static int mtk_spk_i2s_out = MTK_SPK_I2S_3, mtk_spk_i2s_in = MTK_SPK_I2S_0;
+
+//add for combine spk start
+#define SMARTPA_COMPATIBEL
+#ifdef  SMARTPA_COMPATIBEL
+#define PA_NAME_MAX  24
+//static int probe_cout = 0;
+static char smartpa_num = 0;
+static char smartpa_type[PA_NAME_MAX] = "none";
+enum {
+	SMARTPA_NONE = 0,
+	SMARTPA_AW882XX,
+	SMARTPA_FS19XX,
+	SMARTPA_MAX,
+};
+static const char *smartpa_cust_name[SMARTPA_MAX] = {
+	[SMARTPA_NONE] = "none",
+	[SMARTPA_AW882XX] = "aw882xx",
+	[SMARTPA_FS19XX] = "fs19xx",
+};
+#define  SMARTPA_MAX_NUM  4
+//static int  smartpa_count = 0;
+//struct snd_soc_dai_link_component smartpa_dails[SMARTPA_MAX_NUM] = {0};
+#endif
+//add for combine spk end
+
+#if 0
 static struct mtk_spk_i2c_ctrl mtk_spk_list[MTK_SPK_TYPE_NUM] = {
 	[MTK_SPK_NOT_SMARTPA] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
@@ -113,6 +139,7 @@ static void mtk_spk_i2c_shutdown(struct i2c_client *client)
 	if (mtk_spk_list[mtk_spk_type].i2c_shutdown)
 		mtk_spk_list[mtk_spk_type].i2c_shutdown(client);
 }
+#endif
 
 int mtk_spk_get_type(void)
 {
@@ -201,6 +228,9 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 		mtk_spk_i2s_in = i2s_set[1];
 	}
 
+	dev_info(&pdev->dev, "%s() mtk_spk_i2s_out:%d\n", __func__,mtk_spk_i2s_out);
+	dev_info(&pdev->dev, "%s() mtk_spk_i2s_in:%d\n", __func__,mtk_spk_i2s_in);
+
 	if (mtk_spk_i2s_out > MTK_SPK_I2S_TYPE_NUM ||
 	    mtk_spk_i2s_in > MTK_SPK_I2S_TYPE_NUM) {
 		dev_err(&pdev->dev, "%s(), get mtk spk i2s fail\n",
@@ -222,6 +252,8 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 			   mtk_spk_i2s_out == MTK_SPK_I2S_3) {
 			i2s_out_dai_link_idx = i;
 			dai_link->name = MTK_SPK_NAME;
+			dai_link->codecs->name = NULL;
+			dai_link->codecs->dai_name = NULL;
 		} else if (i2s_out_dai_link_idx < 0 &&
 			   strcmp(dai_link->cpus->dai_name, "I2S5") == 0 &&
 			   mtk_spk_i2s_out == MTK_SPK_I2S_5) {
@@ -262,6 +294,8 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 		     mtk_spk_i2s_in == MTK_SPK_TINYCONN_I2S_0)) {
 			i2s_in_dai_link_idx = i;
 			dai_link->name = MTK_SPK_REF_NAME;
+			dai_link->codecs->name = NULL;
+			dai_link->codecs->dai_name = NULL;
 		} else if (i2s_in_dai_link_idx < 0 &&
 			   strcmp(dai_link->cpus->dai_name, "I2S2") == 0 &&
 			   (mtk_spk_i2s_in == MTK_SPK_I2S_2 ||
@@ -382,6 +416,7 @@ IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 }
 EXPORT_SYMBOL(mtk_spk_recv_ipi_buf_from_dsp);
 
+#if 0
 static const struct i2c_device_id mtk_spk_i2c_id[] = {
 	{ "speaker_amp", 0},
 	{}
@@ -409,6 +444,81 @@ static struct i2c_driver mtk_spk_i2c_driver = {
 };
 
 module_i2c_driver(mtk_spk_i2c_driver);
+#endif
+
+//add for combine spk start
+#ifdef SMARTPA_COMPATIBEL
+bool check_smartpa_type(const char *name)
+{
+	pr_debug("%s smartpa_type: %s \n", __func__, smartpa_type);
+	if (!strcmp(smartpa_type, "none") || !strcmp(smartpa_type, name)) {
+		return true;
+	} else {
+		return false;
+	}
+}
+EXPORT_SYMBOL_GPL(check_smartpa_type);
+
+int get_smartpa_type(void)
+{
+	pr_debug("%s smartpa_num: %d \n", __func__, smartpa_num);
+	return smartpa_num;
+}
+EXPORT_SYMBOL_GPL(get_smartpa_type);
+
+int set_smartpa_type(const char *name, unsigned int size)
+{
+	int i;
+	if (size > PA_NAME_MAX) {
+		pr_err("%s size[%d] > %d too large \n", __func__, size, PA_NAME_MAX);
+		return -1;
+	}
+	for (i = 0; i < SMARTPA_MAX; i++) {
+		if(!strncmp(name, smartpa_cust_name[i], size)){
+			pr_debug("%s find: %s \n", __func__, smartpa_cust_name[i]);
+			smartpa_num = i;
+			break;
+		}
+	}
+	if (i == SMARTPA_MAX) {
+		pr_err("%s find: %s failed\n", __func__, name);
+		return -1;
+	}
+	memcpy(smartpa_type, name, size);
+	pr_info("%s smartpa_type: %s \n", __func__, smartpa_type);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(set_smartpa_type);
+
+static ssize_t smartpa_type_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buff)
+{
+	return sprintf(buff, "%s\n", smartpa_type);
+}
+static struct kobj_attribute smartpa_type_attr =
+	__ATTR(smartpa_type, 0644,smartpa_type_show,NULL);
+
+int smartpa_sysfs_init(void)
+{
+	int ret = -1;
+	static struct kobject *ext_debug_kobj;
+	if (ext_debug_kobj)
+		return 0;
+	ext_debug_kobj = kobject_create_and_add("smartpa", kernel_kobj);
+	if (ext_debug_kobj == NULL) {
+		ret = -ENOMEM;
+		pr_err("register sysfs failed. ret = %d\n", ret);
+		return ret;
+	}
+	ret = sysfs_create_file(ext_debug_kobj, &smartpa_type_attr.attr);
+	if (ret)
+ 		pr_err("create sysfs failed. ret = %d\n", ret);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(smartpa_sysfs_init);
+
+#endif
+//add for combine spk end
 
 MODULE_DESCRIPTION("Mediatek speaker amp register driver");
 MODULE_AUTHOR("Shane Chien <shane.chien@mediatek.com>");

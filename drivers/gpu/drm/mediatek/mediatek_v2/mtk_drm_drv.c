@@ -91,6 +91,10 @@
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 #include "mtk_drm_edp/mtk_drm_edp_api.h"
 #endif
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_feature.h"
+#include "mi_disp/mi_disp_log.h"
+#endif
 //#include "swpm_me.h"
 //#include "include/pmic_api_buck.h"
 #include <../drivers/gpu/drm/mediatek/mml/mtk-mml.h>
@@ -104,6 +108,10 @@
 
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
 #include <linux/nvmem-consumer.h>
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#include "vcp_status.h"
 #endif
 
 #include "mtk-mminfra-debug.h"
@@ -1122,13 +1130,13 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 	}
 
 	if (cmdq_pkt_flush_threaded(cmdq_handle, pq_bypass_cmdq_cb, cb_data) < 0)
-		DDPPR_ERR("failed to flush user_cmd\n");
+        DDPPR_ERR("failed to flush user_cmd\n");
 
 #ifndef DRM_CMDQ_DISABLE
-	if (bypass) {
-		cmdq_mbox_stop(client); /* Before power off need stop first */
-		cmdq_mbox_disable(client->chan); /* GCE clk refcnt - 1 */
-	}
+    if (bypass) {
+        //cmdq_mbox_stop(client); /* Before power off need stop first */
+        cmdq_mbox_disable(client->chan); /* GCE clk refcnt - 1 */
+    }
 #endif
 }
 
@@ -9211,21 +9219,47 @@ static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
 	struct mtk_drm_kernel_pm *kernel_pm = container_of(notifier, typeof(*kernel_pm), nb);
+	struct mtk_drm_private *priv = container_of(kernel_pm, struct mtk_drm_private, kernel_pm);
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		DDPMSG("Disabling CRTC wakelock\n");
+		if (atomic_read(&priv->kernel_pm.wakelock_cnt) != 0) {
+			DDPMSG("%s PM_SUSPEND_PREPARE but wakelock is held, interrupt the suspend flow\n", __func__);
+			return NOTIFY_BAD;
+		}
+		DDPMSG("%s PM_SUSPEND_PREPARE, Disabling CRTC wakelock\n", __func__);
 		atomic_set(&kernel_pm->status, KERNEL_PM_SUSPEND);
 		wake_up_interruptible(&kernel_pm->wq);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
 		wake_up_interruptible(&kernel_pm->wq);
-		DDPINFO("%s status(%d)\n", __func__, atomic_read(&kernel_pm->status));
+		DDPMSG("%s PM_POST_SUSPEND status(%d)\n", __func__, atomic_read(&kernel_pm->status));
+#endif
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
 }
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp_event, void *unused)
+{
+	struct mtk_drm_kernel_pm *kernel_pm = container_of(vcp_nb, typeof(*kernel_pm), vcp_nb);
+
+	switch (vcp_event) {
+	case VCP_EVENT_READY:
+	case VCP_EVENT_STOP:
+	case VCP_EVENT_SUSPEND:
+		break;
+	case VCP_EVENT_RESUME:
+		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
+		wake_up_interruptible(&kernel_pm->wq);
+		DDPMSG("%s VCP_EVENT_RESUME status(%d)\n", __func__, atomic_read(&kernel_pm->status));
+		break;
+	}
+	return NOTIFY_DONE;
+}
+#endif
 #else
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
@@ -9877,7 +9911,6 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 	dma_addr_t mva;
 
 	dma_map->mva = 0;
-
 	if (dma_map->fd <= 0)
 		return -1;
 
@@ -11757,10 +11790,17 @@ SKIP_OVLSYS_CONFIG:
 	atomic_set(&private->kernel_pm.wakelock_cnt, 0);
 	atomic_set(&private->kernel_pm.status, KERNEL_PM_RESUME);
 	init_waitqueue_head(&private->kernel_pm.wq);
+	/* The priority must be higher than VCP to have the opportunity to interrupt its suspend flow */
+	private->kernel_pm.nb.priority = 1;
 	private->kernel_pm.nb.notifier_call = mtk_drm_pm_notifier;
 	ret = register_pm_notifier(&private->kernel_pm.nb);
 	if (ret)
 		DDPMSG("register_pm_notifier failed %d", ret);
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT) && !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	private->kernel_pm.vcp_nb.notifier_call = mtk_drm_vcp_notifier;
+	vcp_A_register_notify_ex(VDISP_FEATURE_ID, &private->kernel_pm.vcp_nb);
+#endif
 
 	private->dsi_phy0_dev = mtk_drm_get_pd_device(dev, "dsi_phy0");
 	private->dsi_phy1_dev = mtk_drm_get_pd_device(dev, "dsi_phy1");
@@ -12260,6 +12300,10 @@ static int __init mtk_drm_init(void)
 	int i;
 
 	DDPINFO("%s+\n", __func__);
+#ifdef CONFIG_MI_DISP
+	mi_disp_feature_init();
+#endif
+
 	for (i = 0; i < ARRAY_SIZE(mtk_drm_drivers); i++) {
 		DDPINFO("%s register %s driver\n",
 			__func__, mtk_drm_drivers[i]->driver.name);

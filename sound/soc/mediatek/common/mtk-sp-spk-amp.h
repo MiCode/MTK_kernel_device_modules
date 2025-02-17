@@ -24,6 +24,8 @@ struct mtk_spk_i2c_ctrl {
 #define MTK_SPK_GOODIX_TFA98XX_STR "MTK_SPK_GOODIX_TFAXXXX"
 #define MTK_SPK_AKM_AK7709_STR "MTK_SPK_AKM_AK7709"
 #define MTK_SPK_FOURSEMI_FS16XX_STR "MTK_SPK_FOURSEMI_FS16XX"
+#define MTK_SPK_AW_AW882XX_STR "MTK_SPK_AW_AW882XX"
+#define MTK_SPK_FS_FS19XX_STR "MTK_SPK_FS_FS19xx"
 
 #define MTK_SPK_I2S_0_STR "MTK_SPK_I2S_0"
 #define MTK_SPK_I2S_1_STR "MTK_SPK_I2S_1"
@@ -62,6 +64,8 @@ enum mtk_spk_type {
 	MTK_SPK_MEDIATEK_MT6660,
 	MTK_SPK_GOODIX_TFA98XX,
 	MTK_SPK_MEDIATEK_RT5512,
+	MTK_SPK_AW_AW882XX,
+	MTK_SPK_FS_FS19xx,
 	MTK_SPK_AKM_AK7709,
 	MTK_SPK_FOURSEMI_FS16XX,
 	MTK_SPK_TYPE_NUM
@@ -112,5 +116,11 @@ int mtk_spk_send_ipi_buf_to_dsp(void *data_buffer, uint32_t data_size);
 int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer,
 				  int16_t size,
 				  uint32_t *buf_len);
+//add for combine spk start
+extern bool check_smartpa_type(const char *name);
+extern int set_smartpa_type(const char *name, unsigned int size);
+extern int smartpa_sysfs_init(void);
+extern int get_smartpa_type(void);
+//add for combine spk end
 #endif
 

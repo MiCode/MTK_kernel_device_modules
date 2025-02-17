@@ -115,26 +115,16 @@ static void m2m_param_remove(struct mml_m2m_ctx *ctx)
 
 static void m2m_task_submit_done(struct mml_task *task)
 {
-	struct mml_ctx *ctx = task->ctx;
-	struct mml_m2m_ctx *mctx = container_of(ctx, struct mml_m2m_ctx, ctx);
-	struct vb2_v4l2_buffer *src_buf, *dst_buf;
+	struct mml_m2m_ctx *mctx = container_of(task->ctx, struct mml_m2m_ctx, ctx);
 	struct mml_v4l2_dev *v4l2_dev = mml_get_v4l2_dev(mctx->ctx.mml);
+	u32 jobid = task->job.jobid;
 
 	mml_trace_ex_begin("%s", __func__);
 	m2m_param_remove(mctx);
-
-	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
-	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
-	if (!src_buf ||!dst_buf) {
-		mml_err("[m2m]%s no src or dst buffer found", __func__);
-		return;
-	}
-	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
-	dst_buf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
-	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
 	v4l2_m2m_job_finish(v4l2_dev->m2m_dev, mctx->m2m_ctx);
 	task_submit_done(task);
 	mml_trace_ex_end();
+	mml_mmp(m2m_submit_done, MMPROFILE_FLAG_PULSE, jobid, 0);
 }
 
 static void mml_m2m_process_done(enum vb2_buffer_state vb_state, struct mml_task *task)
@@ -143,6 +133,7 @@ static void mml_m2m_process_done(enum vb2_buffer_state vb_state, struct mml_task
 	task->src_buf = NULL;
 	v4l2_m2m_buf_done(task->dst_buf, vb_state);
 	task->dst_buf = NULL;
+	mml_mmp(m2m_process_done, MMPROFILE_FLAG_PULSE, task->job.jobid, 0);
 }
 
 static void m2m_task_frame_done(struct mml_task *task)
@@ -1809,13 +1800,16 @@ static void mml_m2m_device_run(void *priv)
 	/* hold mctx to avoid release from v4l2 before call submit_done */
 	kref_get(&mctx->ref);
 
-	src_buf = v4l2_m2m_next_src_buf(mctx->m2m_ctx);
-	dst_buf = v4l2_m2m_next_dst_buf(mctx->m2m_ctx);
+	src_buf = v4l2_m2m_src_buf_remove(mctx->m2m_ctx);
+	dst_buf = v4l2_m2m_dst_buf_remove(mctx->m2m_ctx);
 	if (!src_buf || !dst_buf) {
 		mml_err("[m2m]%s get next buf fail src %p dst %p", __func__,
 			src_buf, dst_buf);
 		goto err_buf_exit;
 	}
+	src_buf->sequence = mctx->frame_count[MML_M2M_FRAME_SRC]++;
+	dst_buf->sequence = mctx->frame_count[MML_M2M_FRAME_DST]++;
+	v4l2_m2m_buf_copy_metadata(src_buf, dst_buf, true);
 
 	result = m2m_set_submit(mctx, submit);
 	if (result < 0)

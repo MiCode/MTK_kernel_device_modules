@@ -956,9 +956,11 @@ static void sys_loop_dl(struct mml_comp *comp, struct mml_task *task,
 static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg)
 {
-	const struct mml_frame_config *cfg = task->config;
+	struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	enum mml_mode mode = task->config->info.mode;
+	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
+	struct mml_sys *sys = comp_to_sys(comp);
 
 	/* later design only need in couple mode */
 	if (comp->id != path->mmlsys->id)
@@ -982,6 +984,12 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 		 * and job id for debug in both mode.
 		 */
 		sys_addr_update(comp, task, ccfg);
+
+		if (cfg->max_size.width && cfg->max_size.height) {
+			dvfs_cache_sz(cache, cfg->max_size.width / sys->data->px_per_tick,
+				cfg->max_size.height, 0, 0);
+			dvfs_cache_log(cache, comp, "sys");
+		}
 	} else if (mode == MML_MODE_DIRECT_LINK) {
 		if (cfg->disp_vdo) {
 			if (ccfg->pipe == 0)

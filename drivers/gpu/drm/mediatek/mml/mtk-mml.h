@@ -314,7 +314,8 @@ struct mml_submit {
 	struct mml_job *job;
 	struct mml_frame_info info;
 	struct mml_frame_buffer buffer;
-	struct mml_rect layer;
+	struct mml_frame_size max_size;
+	struct mml_frame_size layer;
 	struct mml_rect dl_out[MML_PIPE_CNT];
 	struct timeval_t {
 		uint64_t sec;

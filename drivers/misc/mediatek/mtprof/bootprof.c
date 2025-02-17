@@ -62,7 +62,22 @@ static void tp_deinit(void);
 /* Parameters */
 static struct log_t *bootprof[BUF_COUNT];
 static unsigned long log_count;
-static DEFINE_SPINLOCK(bootprof_lock);
+DEFINE_SPINLOCK(bootprof_lock);
+EXPORT_SYMBOL_GPL(bootprof_lock);
+
+unsigned long get_log_count(void)
+{
+	pr_info("BOOTTIME:get_log_count:log_count is %lu\n", log_count);
+	return log_count;
+}
+EXPORT_SYMBOL_GPL(get_log_count);
+
+struct log_t **get_bootprof_pointer(void)
+{
+	pr_info("BOOTTIME:get_bootprof:bootprof is %p\n", bootprof);
+	return bootprof;
+}
+EXPORT_SYMBOL_GPL(get_bootprof_pointer);
 
 static bool enabled;
 static int bf_lk_t, bf_pl_t, bf_logo_t;

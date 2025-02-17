@@ -36,7 +36,9 @@
 #define CREATE_TRACE_POINTS
 #include "sched_trace.h"
 
+
 MODULE_LICENSE("GPL");
+
 
 /*
  * Unsigned subtract and clamp on underflow.
@@ -1077,6 +1079,7 @@ void mtk_can_migrate_task(void *data, struct task_struct *p,
 	struct cpumask eff_mask;
 	int src_cpu = task_cpu(p), num_vip_src, num_vip_dst;
 
+
 	if (!get_eas_hook())
 		return;
 
@@ -1895,6 +1898,7 @@ struct find_best_candidates_parameters {
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_fbc_mask);
 
+
 static void mtk_find_best_candidates(struct cpumask *candidates, struct task_struct *p,
 		struct cpumask *effective_softmask, struct cpumask *allowed_cpu_mask,
 		struct energy_env *eenv, struct find_best_candidates_parameters *fbc_params,
@@ -1923,6 +1927,7 @@ static void mtk_find_best_candidates(struct cpumask *candidates, struct task_str
 	bool is_vip = fbc_params->is_vip;
 	int vip_prio = fbc_params->vip_prio;
 	struct cpumask vip_candidate = fbc_params->vip_candidate;
+
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	is_vvip = prio_is_vip(vip_prio, VVIP);
@@ -2172,6 +2177,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			order_index, end_index, reverse);
 	}
 #endif
+
 	if (!pd || READ_ONCE(rd->overutilized)) {
 		select_reason = LB_FAIL;
 		rcu_read_unlock();
@@ -2201,7 +2207,6 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	irq_log_store();
 
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
-
 	irq_log_store();
 
 	eenv.min_cap = min_cap;
@@ -2636,6 +2641,7 @@ void try_to_pull_VVIP(int this_cpu, bool *had_pull_vvip, struct rq_flags *src_rf
 	struct rq *src_rq, *this_rq;
 	struct task_struct *p;
 	int cpu, vip_prio;
+
 
 	if (!cpumask_test_cpu(this_cpu, &bcpus))
 		return;

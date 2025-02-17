@@ -115,7 +115,7 @@ int get_battery_voltage(struct mtk_charger *info)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge1");
 		info->bat_psy = bat_psy;
 	}
 
@@ -185,7 +185,7 @@ int get_battery_temperature(struct mtk_charger *info)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge1");
 		info->bat_psy = bat_psy;
 	}
 
@@ -216,7 +216,7 @@ int get_battery_current(struct mtk_charger *info)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge1");
 		info->bat_psy = bat_psy;
 	}
 
@@ -438,13 +438,13 @@ int get_charger_type(struct mtk_charger *info)
 		if (ret < 0)
 			chr_debug("%s: %d\n", __func__, ret);
 
-		if (prop.intval == 0 ||
+		if (((prop.intval == 0) && (info->input_suspend == 0)) ||
 		    (prop2.intval == POWER_SUPPLY_TYPE_USB &&
 		    prop3.intval == POWER_SUPPLY_USB_TYPE_UNKNOWN))
 			prop2.intval = POWER_SUPPLY_TYPE_UNKNOWN;
 	}
 
-	chr_debug("%s online:%d type:%d usb_type:%d\n", __func__,
+	chr_err("%s online:%d type:%d usb_type:%d\n", __func__,
 		prop.intval,
 		prop2.intval,
 		prop3.intval);

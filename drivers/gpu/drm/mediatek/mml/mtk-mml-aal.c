@@ -1108,6 +1108,18 @@ exit:
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e0, r2y_03, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e4, r2y_04, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + 0x4e8, r2y_05, U32_MAX);
+	} else {
+		/* aal_hist_en(bit 2) = 1, blk_hist_en(bit 5) = 1 */
+		if (aal_frm->config_success &&
+			aal_frm->is_aal_need_readback &&
+			!aal_frm->relay_mode) {
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + aal->data->reg_table[AAL_CFG], 0x24, 0x24);
+		} else {
+			mml_pq_msg("%s: hist off for config_success %d is_aal_need_readback %d",
+				__func__,
+				aal_frm->config_success, aal_frm->is_aal_need_readback);
+		}
 	}
 
 	mml_pq_trace_ex_end();

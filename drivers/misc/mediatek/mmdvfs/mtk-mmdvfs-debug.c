@@ -902,7 +902,7 @@ static int mmdvfs_mbrain_get_sys_res_data(void *address, uint32_t size)
 
 		for (j = 0; j < ARRAY_SIZE(record[i].opp_duration); j++) {
 			record[i].opp_duration[j] = readq(SRAM_PWR_TOTAL(i, j));
-			if (j == opp && sec && opp < MAX_OPP)
+			if (j == opp && (sec || usec) && opp < MAX_OPP)
 				record[i].opp_duration[j] += (us - (sec * 1000000 + usec)) / 1000;
 		}
 	}
@@ -918,7 +918,7 @@ dram_cal:
 		usec = readl(MEM_REC_PWR_ALN_NSEC(i, k));
 		opp = readl(MEM_REC_PWR_ALN_OPP(i, k));
 
-		if (sec && opp < MAX_OPP) {
+		if ((sec || usec) && opp < MAX_OPP) {
 			total = readq(MEM_PWR_TOTAL_TIME(i, opp));
 			total += (us - (sec * 1000000 + usec)) / 1000;
 		}

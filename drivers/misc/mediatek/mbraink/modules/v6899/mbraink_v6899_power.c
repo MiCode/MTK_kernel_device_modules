@@ -745,8 +745,13 @@ static int mbraink_v6899_power_get_pmic_voltage_info(
 
 static int mbraink_v6899_power_sys_res_init(void)
 {
-	mbraink_sys_res_plat_init();
-	mbraink_sys_res_mbrain_plat_init();
+	int ret = 0;
+
+	ret = mbraink_sys_res_plat_init();
+	if (!ret)
+		ret = mbraink_sys_res_mbrain_plat_init();
+	else
+		return -1;
 
 	return 0;
 }

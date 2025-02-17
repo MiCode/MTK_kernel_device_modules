@@ -43,6 +43,8 @@ extern int (*magt2fpsgo_notify_target_fps_fp)(int *pid_arr, int *tid_arr,
 extern int (*magt2fpsgo_notify_dep_list_fp)(int pid, void *dep_task_arr,
 	int dep_task_num);
 
+extern void game_engine_cooler_set_last_sleep_duration(int);
+
 int fpsgo_is_force_enable(void);
 void fpsgo_force_switch_enable(int enable);
 

@@ -21542,10 +21542,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	/delete-property/ regulator-always-on;
 };
 
-&mt6373_vbuck8 {
-	/delete-property/ regulator-always-on;
-};
-
 &mt6373_vbuck4_ufs {
 	regulator-min-microvolt = <0>;
 };

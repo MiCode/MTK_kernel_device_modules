@@ -5,6 +5,14 @@
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/spmi/spmi.h>
 
+&i2c13 {
+	et7480: et7480@42 {
+		status = "ok";
+		compatible = "mediatek,et7480-audioswitch";
+		reg = <0x42>;
+	};
+};
+
 &spmi {
 	second_pmic@5 {
 		compatible = "mediatek,mt6368";
@@ -40,6 +48,7 @@
 			io-channel-names = "pmic_accdet";
 			nvmem = <&mt6368_efuse>;
 			nvmem-names = "mt63xx-accdet-efuse";
+			et7480-i2c-handle = <&et7480>;
 			app-wakelock-time = <1000>;
 			status = "okay";
 		};
@@ -190,6 +199,7 @@
 				regulator-max-microvolt = <2100000>;
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
 			mt6368_vibr: vibr {
 				regulator-compatible = "VIBR";
@@ -206,7 +216,6 @@
 				regulator-max-microvolt = <3500000>;
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
-				regulator-always-on;
 			};
 			mt6368_vfp: vfp {
 				regulator-compatible = "VFP";

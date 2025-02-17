@@ -10,6 +10,9 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
+#ifdef __XIAOMI_CAMERA__
+#include <linux/ktime.h>
+#endif
 
 #define DRIVER_NAME "main_vcm"
 #define MAIN_VCM_I2C_SLAVE_ADDR 0x18
@@ -81,6 +84,10 @@ struct VcmDriverConfig {
 	unsigned int slave_addr;
 	uint8_t I2CSendNum;
 	struct stVCM_I2CFormat I2Cfmt[I2CSEND_MAXSIZE];
+#ifdef __XIAOMI_CAMERA__
+	int32_t read_code_addr;
+	uint8_t read_capability;
+#endif
 
 	// Uninit param
 	unsigned int origin_focus_pos;
@@ -112,6 +119,21 @@ struct VcmDriverList {
 struct mtk_vcm_info {
 	struct VcmDriverList *p_vcm_info;
 };
+
+#ifdef __XIAOMI_CAMERA__
+struct read_af_data {
+	int32_t code;
+	uint64_t timestamp;
+	int32_t sensordev;
+};
+
+struct AfCodeData {
+  struct read_af_data *read_af_data;
+};
+struct read_af_data afdata;
+
+#define VIDIOC_XIAOMI_S_LENS_INFO _IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct AfCodeData)
+#endif
 
 struct VCM_Hall_data {
 	unsigned int hall_value;
@@ -249,6 +271,33 @@ static void register_setting(struct i2c_client *client, char table[][3], int tab
 		udelay(100);
 	}
 }
+
+#ifdef __XIAOMI_CAMERA__
+static void read_register_pos(struct main_vcm_device *main_vcm, void __user *buf)
+{
+	int ret = 0;
+	unsigned short addr = g_vcmconfig.vcm_config.read_code_addr;
+	struct i2c_client *client = v4l2_get_subdevdata(&main_vcm->sd);
+	struct timespec64 ts = ktime_to_timespec64(ktime_get_boottime());
+
+	ret = i2c_smbus_read_word_data(client,addr);
+	LOG_INF("read_register_pos ret = 0x%x ",ret);
+
+	ret = ((ret & 0xff) << 8 )|((ret & 0xff00) >> 8);
+	afdata.code = ret & 0x3ff;
+	afdata.timestamp = timespec64_to_ns(&ts);
+	afdata.sensordev = 6;
+
+	LOG_INF("read_register_pos ret = %d afdata.timestamp = %lld addr = %d",afdata.code,afdata.timestamp, addr);
+
+	ret = copy_to_user((struct read_af_data *)buf, &afdata, sizeof(struct read_af_data));
+	if (ret < 0)
+	{
+		LOG_INF("copy_to_user fail ret =%d \n",ret);
+		ret = -EFAULT;
+	}
+}
+#endif
 
 static int main_vcm_set_position(struct main_vcm_device *main_vcm, u16 val)
 {
@@ -713,6 +762,17 @@ static long main_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, vo
 		}
 	}
 	break;
+#ifdef __XIAOMI_CAMERA__
+	case VIDIOC_XIAOMI_S_LENS_INFO:
+	{
+		//struct read_af_data *afinfo = arg;
+		struct AfCodeData *afinfo = arg;
+		read_register_pos(main_vcm, afinfo->read_af_data);
+		LOG_INF("read_register_pos\n");
+	}
+	break;
+#endif
+
 	default:
 		ret = -ENOIOCTLCMD;
 		break;

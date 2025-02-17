@@ -49,6 +49,8 @@ obj-$(CONFIG_DRM_PANEL_BOE_TV080WXMLLS) += panel-boe-tv080wxmlls.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_LTPO) += panel-nt37801-cmd-ltpo.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_120HZ) += panel-nt37801-cmd-120hz.o
 obj-$(CONFIG_DRM_PANEL_L12A_42_02_0A_DSC_CMD) += panel-l12a-42-02-0a-dsc-cmd.o
+obj-$(CONFIG_DRM_PANEL_O10_36_02_0B_DSC_VDO) += panel-o10-36-02-0b-dsc-vdo.o
+obj-$(CONFIG_DRM_PANEL_O10_42_02_0A_DSC_VDO) += panel-o10-42-02-0a-dsc-vdo.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_FHD) += panel-nt37801-cmd-fhd.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_SPR) += panel-nt37801-cmd-spr.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_FHD_PLUS) += panel-nt37801-cmd-fhd-plus.o
@@ -89,7 +91,6 @@ obj-$(CONFIG_DRM_PANEL_SERDES_DP) += panel-serdes-dp.o
 obj-$(CONFIG_DRM_PANEL_SERDES) += panel-serdes-max96789.o bridge-serdes-max96789.o
 obj-$(CONFIG_DRM_PANEL_NT37707_C2V_ARP) += panel-nt37707-c2v-arp.o
 obj-$(CONFIG_DRM_PANEL_NT51021H_WUXGA_VDO_BOE) += panel-nt51021h-wuxga-vdo-boe.o
-obj-$(CONFIG_DRM_PANEL_N11A_42_02_0A_DSC_VDO) += panel-n11a-42-02-0a-dsc-vdo.o
 mediatek-drm-gateic-y := mtk_drm_panel_i2c.o \
 		  mtk_drm_gateic_rt4801h.o \
 		  mtk_drm_gateic_rt4831a.o \
@@ -114,5 +115,21 @@ mediatek-cust-panel-sample-y :=  \
 obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-drm-gateic.o
 obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-drm-panel-drv.o
 obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-cust-panel-sample.o
+
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/devfreq/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/mi_disp/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
+			 -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/ \
 
 ccflags-$(CONFIG_DRM_MEDIATEK_PANEL) += -I$(DEVICE_MODULES_PATH)/drivers/leds/

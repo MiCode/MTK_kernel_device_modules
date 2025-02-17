@@ -372,6 +372,7 @@ static int powerRL_ko_is_ready;
 static int ux_general_policy;
 static int cm_big_cap;
 static int cm_tdiff;
+static int engine_cooler_enable;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -2493,6 +2494,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int max_util_other;
 	int user_cpumask[FPSGO_MAX_GROUP];
 	int powerRL_enable_final;
+	int engine_cooler_enable_final;
 	struct fbt_boost_info *boost_info;
 
 	if (!uclamp_boost_enable)
@@ -2523,6 +2525,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	ml_th_final = thr->attr.ml_th_by_pid;
 	gh_prefer_final = thr->attr.gh_prefer_by_pid;
 	powerRL_enable_final = thr->attr.powerRL_enable_by_pid;
+	engine_cooler_enable_final = thr->attr.engine_cooler_enable_by_pid;
 	boost_info = &(thr->boost_info);
 
 	fbt_get_user_group_setting(thr, user_cpumask);
@@ -2625,6 +2628,11 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 
 
 		heaviest_pid = fbt_get_heaviest_pid(thr->dep_arr, thr->dep_valid_size);
+		if (engine_cooler_enable_final)
+			game_set_heaviest_pid(heaviest_pid);
+		else
+			game_set_heaviest_pid(-1);
+
 		second_heavy_pid = fbt_find_second_heavy(thr->dep_arr,
 						thr->dep_valid_size, heaviest_pid);
 		ret = fbt_group_dep(group_by_lr_final, thr->dep_arr, thr->dep_valid_size, heavy_group_num_final,
@@ -2831,6 +2839,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->powerRL_enable_by_pid = powerRL_enable;
 	render_attr->powerRL_FPS_margin_by_pid = powerRL_FPS_margin;
 	render_attr->powerRL_cap_limit_range_by_pid = powerRL_cap_limit_range;
+	render_attr->engine_cooler_enable_by_pid = engine_cooler_enable;
 
 #if FPSGO_MW
 	fpsgo_attr = fpsgo_find_attr_by_pid(thr->tgid, 0);
@@ -3027,6 +3036,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->powerRL_FPS_margin_by_pid = pid_attr.powerRL_FPS_margin_by_pid;
 	if (pid_attr.powerRL_cap_limit_range_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->powerRL_cap_limit_range_by_pid = pid_attr.powerRL_cap_limit_range_by_pid;
+	if (pid_attr.engine_cooler_enable_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->engine_cooler_enable_by_pid = pid_attr.engine_cooler_enable_by_pid;
 
 by_tid:
 	fpsgo_attr_tid = fpsgo_find_attr_by_tid(thr->pid, 0);
@@ -6146,6 +6157,8 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	boost->quantile_cpu_time = q_c_time;
 	boost->quantile_gpu_time = q_g_time;
 
+	game_set_fps(thr->pid, targetfpks);
+
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, targetfps, "expected_fps");
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, targettime, "expected_time");
 
@@ -7957,6 +7970,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->l2q_exp_us_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->l2q_exp_us_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "engine_cooler_enable")) {
+		if ((val <= 1 && val >= 0) && action == 's')
+			boost_attr->engine_cooler_enable_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->engine_cooler_enable_by_pid = BY_PID_DEFAULT_VAL;
 	}
 delete_pid:
 	if (delete) {
@@ -9586,6 +9604,10 @@ FBT_SYSFS_READ(powerRL_voltage, fbt_mlock, powerRL_voltage);
 FBT_SYSFS_WRITE_VALUE(powerRL_voltage, fbt_mlock, powerRL_voltage, 1, 10);
 static KOBJ_ATTR_RW(powerRL_voltage);
 
+FBT_SYSFS_READ(engine_cooler_enable, fbt_mlock, engine_cooler_enable);
+FBT_SYSFS_WRITE_VALUE(engine_cooler_enable, fbt_mlock, engine_cooler_enable, 0, 1);
+static KOBJ_ATTR_RW(engine_cooler_enable);
+
 void fbt_init_cpu_loading_info(void)
 {
 	int i = 0;
@@ -9877,6 +9899,8 @@ int __init fbt_cpu_init(void)
 	powerRL_total_unit= DEFAULT_POWERRL_TOTAL_UNIT;
 	powerRL_voltage = DEFAULT_POWERRL_VOLTAGE;
 
+	engine_cooler_enable = 0;
+
 	if (cluster_num <= 0)
 		FPSGO_LOGE("cpufreq policy not found");
 
@@ -9987,6 +10011,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage_unit);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_engine_cooler_enable);
 	}
 
 	bat_psy = power_supply_get_by_name("battery");

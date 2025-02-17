@@ -906,6 +906,7 @@ TRACE_EVENT(sched_post_init_entity_util_avg,
 
 );
 
+
 #if IS_ENABLED(CONFIG_MTK_CORE_PAUSE)
 TRACE_EVENT(sched_pause_cpus,
 	TP_PROTO(struct cpumask *req_cpus, struct cpumask *last_cpus,

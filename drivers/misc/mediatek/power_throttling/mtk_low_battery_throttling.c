@@ -63,6 +63,7 @@ struct tag_bootmode {
 struct lbat_thl_priv {
 	struct tag_bootmode *tag;
 	bool notify_flag;
+	bool extreme_cold_chg_flag;
 	struct wait_queue_head notify_waiter;
 	struct timer_list notify_timer;
 	struct task_struct *notify_thread;
@@ -75,6 +76,7 @@ struct lbat_thl_priv {
 	unsigned int ppb_mode;
 	unsigned int hpt_mode;
 	unsigned int pt_shutdown_en;
+	unsigned int extreme_cold_chg_volt;
 	struct work_struct psy_work;
 	struct power_supply *psy;
 	int *temp_thd;
@@ -244,6 +246,13 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 		return;
 	}
 
+	if (lbat_data->extreme_cold_chg_flag == true && thl_level > 1) {
+		lbat_data->cur_thl_lv = thl_level;
+		lbat_data->extreme_cold_chg_volt = thd_volt;
+		pr_info("[%s] extreme_cold_chg thl_level can't above level1\n", __func__);
+		return;
+	}
+
 	if (user == HPT && thl_level != lbat_data->cur_thl_lv) {
 		for (i = 0; i <= LOW_BATTERY_PRIO_GPU; i++) {
 			if (lbcb_tb[i].lbcb)
@@ -265,6 +274,7 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 	lbat_data->lbat_mbrain_info.level = thl_level;
 	lbat_data->lbat_mbrain_info.thd_volt = thd_volt;
 	lbat_data->cur_thl_lv = thl_level;
+	lbat_data->extreme_cold_chg_volt = thd_volt;
 
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {
 		if (lbcb_tb[i].lbcb) {
@@ -286,6 +296,28 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 	pr_info("[%s] [decide_and_throttle] user=%d input=%d thl_lv=%d, volt=%d cur_thl_lv/cg_thl_lv=%d, %d\n",
 		__func__, user, input, thl_level, thd_volt, lbat_data->cur_thl_lv, lbat_data->cur_cg_thl_lv);
 }
+EXPORT_SYMBOL(exec_throttle);
+
+void exec_throttle_level_get(unsigned int *level)
+{
+	*level = lbat_data->cur_thl_lv;
+	pr_info("[%s] get low_battery_level = %d\n", __func__, lbat_data->cur_thl_lv);
+}
+EXPORT_SYMBOL(exec_throttle_level_get);
+
+void exec_throttle_volt_get(unsigned int *volt)
+{
+	*volt = lbat_data->extreme_cold_chg_volt;
+	pr_info("[%s] get low_battery_volt = %d\n", __func__, lbat_data->extreme_cold_chg_volt);
+}
+EXPORT_SYMBOL(exec_throttle_volt_get);
+
+void exec_throttle_set_extreme_cold_chg(bool flag)
+{
+	lbat_data->extreme_cold_chg_flag = flag;
+	pr_info("[%s] set extreme_cold_chg_flag = %d\n", __func__, flag);
+}
+EXPORT_SYMBOL(exec_throttle_set_extreme_cold_chg);
 
 static unsigned int convert_to_thl_lv(enum LOW_BATTERY_USER_TAG intr_type, unsigned int temp_stage,
 	unsigned int input_lv)
@@ -1431,6 +1463,8 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 
 	priv->dev = &pdev->dev;
 	lbat_data = priv;
+	lbat_data->extreme_cold_chg_flag = false;
+	lbat_data->extreme_cold_chg_volt = 0;
 	if (priv->pt_shutdown_en)
 		pt_notify_init(pdev);
 

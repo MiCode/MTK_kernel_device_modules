@@ -75,7 +75,10 @@ struct lbat_mbrain {
 
 typedef void (*low_battery_callback)(enum LOW_BATTERY_LEVEL_TAG tag, void *data);
 typedef void (*low_battery_mbrain_callback)(struct lbat_mbrain lbat_mbrain);
-
+extern void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsigned int thd_volt, unsigned int input);
+extern void exec_throttle_level_get(unsigned int *level);
+extern void exec_throttle_volt_get(unsigned int *volt);
+extern void exec_throttle_set_extreme_cold_chg(bool flag);
 
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 int register_low_battery_notify(low_battery_callback lb_cb,

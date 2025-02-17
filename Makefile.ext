@@ -80,7 +80,9 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/tee/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/gpu/drm/mediatek/
 
-obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/input/touchscreen/
+# obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/input/touchscreen/
+
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/input/misc/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/gpu/drm/panel/
 
@@ -100,6 +102,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/devfreq/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/misc/mediatek/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/misc/xiaomi/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/codecs/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/mediatek/
@@ -107,5 +111,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/mediatek/
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/virtio/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/pci/controller/
+
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/media/virtio/
+
 
 endif

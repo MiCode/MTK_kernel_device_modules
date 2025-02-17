@@ -919,7 +919,7 @@ int scp_excep_init(void)
 	/* 1: ee on, 0: ee disable */
 	scp_ee_enable = 1;
 	/* scp reset stress */
-	scp_reset_stress = false;
+	scp_reset_stress = true;
 	/* all coredump need element is prepare done */
 	complete(&scp_coredump_comp);
 

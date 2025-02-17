@@ -1293,6 +1293,9 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 	int ret = 0;
 	bool is_hrt;
 
+	if (priv->data->respective_ostdl)
+		return;
+
 	for (c = 0 ; c < MAX_CRTC ; ++c) {
 		crtc = priv->crtc[c];
 		if (crtc == NULL)

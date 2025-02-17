@@ -14,12 +14,15 @@
 #include "xhci-trace.h"
 
 #include <sound/asound.h>
+#include <sound/core.h>
 #include "card.h"
 
 struct usb_audio_quirk_flags_table {
 	u32 id;
 	u32 flags;
 };
+
+static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 
 #define DEVICE_FLG(vid, pid, _flags) \
 	{ .id = USB_ID(vid, pid), .flags = (_flags) }
@@ -151,6 +154,9 @@ void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 {
 	const struct usb_audio_quirk_flags_table *p;
 
+	if (chip->index >= 0 && chip->index <SNDRV_CARDS)
+		usb_chip[chip->index] = chip;
+
 	for (p = mtk_snd_quirk_flags_table; p->id; p++) {
 		if (chip->usb_id == p->id ||
 			(!USB_ID_PRODUCT(p->id) &&
@@ -167,6 +173,23 @@ void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 	xhci_mtk_usb_format_quirk(chip);
 }
 
+void xhci_mtk_deinit_snd_quirk(struct snd_usb_audio *chip)
+{
+	if (chip->index >= 0 && chip->index <SNDRV_CARDS)
+		usb_chip[chip->index] = NULL;
+}
+
+static bool xhci_mtk_is_valid_uac_dev(struct usb_device *udev)
+{
+	int i;
+
+	for (i = 0; i < SNDRV_CARDS; i++) {
+		if (usb_chip[i] && usb_chip[i]->dev == udev)
+			return true;
+	}
+	return false;
+}
+
 /* update mtk usbcore quirk */
 void xhci_mtk_apply_quirk(struct usb_device *udev)
 {
@@ -178,7 +201,8 @@ void xhci_mtk_apply_quirk(struct usb_device *udev)
 
 static void xhci_mtk_usb_clear_packet_size_quirk(struct urb *urb)
 {
-	struct device *dev = &urb->dev->dev;
+	struct usb_device *udev = urb->dev;
+	struct device *dev = &udev->dev;
 	struct usb_ctrlrequest *ctrl = NULL;
 	struct usb_interface *iface = NULL;
 	struct usb_host_interface *alt = NULL;
@@ -200,6 +224,9 @@ static void xhci_mtk_usb_clear_packet_size_quirk(struct urb *urb)
 		return;
 
 	if (alt->desc.bInterfaceClass != USB_CLASS_AUDIO)
+		return;
+
+	if (!xhci_mtk_is_valid_uac_dev(udev))
 		return;
 
 	chip = usb_get_intfdata(to_usb_interface(dev));
@@ -251,20 +278,17 @@ static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 
 static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
 {
-	struct device *dev = &urb->dev->dev;
+	struct usb_device *udev = urb->dev;
+	struct device *dev = &udev->dev;
 	struct usb_ctrlrequest *ctrl = NULL;
-	struct snd_usb_audio *chip;
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != UAC_SET_CUR || ctrl->wValue == 0)
 		return;
 
-	chip = usb_get_intfdata(to_usb_interface(dev));
-	if (!chip)
-		return;
-
-	if (chip->usb_id == USB_ID(0x2717, 0x3801)) {
-		dev_dbg(dev, "delay 50ms after set sample rate\n");
+	if (le16_to_cpu(udev->descriptor.idVendor) == 0x2717 &&
+			le16_to_cpu(udev->descriptor.idProduct) == 0x3801) {
+		dev_info(dev, "delay 50ms after set sample rate\n");
 		mdelay(50);
 	}
 }

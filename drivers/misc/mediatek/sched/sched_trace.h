@@ -850,6 +850,7 @@ TRACE_EVENT(sched_next_new_balance,
 		__entry->now_ns, __entry->next_balance)
 );
 
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 TRACE_EVENT(sched_find_imbalanced_vvip_gear,
 	TP_PROTO(int cpu, int num_vvip_in_gear),

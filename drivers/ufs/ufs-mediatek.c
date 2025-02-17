@@ -973,6 +973,7 @@ static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struc
 		return;
 
 	ufs_mtk_btag_send_command(hba, lrbp);
+
 }
 
 static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
@@ -987,6 +988,7 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 #endif
 
 	ufs_mtk_btag_compl_command(hba, lrbp);
+
 }
 
 void ufs_mtk_trace_vh_check_int_errors(void *data, struct ufs_hba *hba, bool queue_eh_work)
@@ -1711,7 +1713,7 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	if (host->caps & UFS_MTK_CAP_DISABLE_MCQ || !ufs_host_mcq_support(hba))
 		ufs_mtk_btag_init(hba);
-
+	
 	ufs_mtk_dbg_register(hba);
 
 	ufs_mtk_rpmb_init(hba);
@@ -2742,7 +2744,6 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 	struct ufs_event_hist *e;
 
 	trace_ufs_mtk_event(evt, val);
-
 
 	/* error check for mbrain */
 	if (evt <= UFS_EVT_FATAL_ERR){

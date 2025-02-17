@@ -85,6 +85,29 @@ static bool rpmb_rsp_valid;
 /* protect nl_rpmb_req */
 struct mutex rpmb_lock;
 
+
+/*
+ * Dummy definition for MAX_RPMB_TRANSFER_BLK.
+ *
+ * For UFS RPMB driver, MAX_RPMB_TRANSFER_BLK will be always
+ * used however it will NOT be defined in projects w/o Security
+ * OS. Thus we add a dummy definition here to avoid build errors.
+ *
+ * For eMMC RPMB driver, MAX_RPMB_TRANSFER_BLK will be used
+ * only if RPMB_MULTI_BLOCK_ACCESS is defined. thus
+ * build error will not happen on projects w/o Security OS.
+ *
+ * NOTE: This dummy definition shall be located after
+ *       #include "drrpmb_Api.h" and
+ *       #include "rpmb-mtk.h"
+ *       since MAX_RPMB_TRANSFER_BLK will be defined in those
+ *       header files if security OS is enabled.
+ */
+#ifndef MAX_RPMB_TRANSFER_BLK
+#define MAX_RPMB_TRANSFER_BLK (1U)
+#define MAX_RPMB_REQUEST_SIZE (512U * MAX_RPMB_TRANSFER_BLK) /* 8KB */
+#endif
+
 /**
  * struct storage_rpmb_req - request format for STORAGE_RPMB_SEND
  * @reliable_write_size:        size in bytes of reliable write region
@@ -111,27 +134,6 @@ struct nl_rpmb_send_req {
 	(sizeof(struct nl_rpmb_send_req) - MAX_RPMB_REQUEST_SIZE - 512)
 
 static struct nl_rpmb_send_req nl_rpmb_req;
-#endif
-
-/*
- * Dummy definition for MAX_RPMB_TRANSFER_BLK.
- *
- * For UFS RPMB driver, MAX_RPMB_TRANSFER_BLK will be always
- * used however it will NOT be defined in projects w/o Security
- * OS. Thus we add a dummy definition here to avoid build errors.
- *
- * For eMMC RPMB driver, MAX_RPMB_TRANSFER_BLK will be used
- * only if RPMB_MULTI_BLOCK_ACCESS is defined. thus
- * build error will not happen on projects w/o Security OS.
- *
- * NOTE: This dummy definition shall be located after
- *       #include "drrpmb_Api.h" and
- *       #include "rpmb-mtk.h"
- *       since MAX_RPMB_TRANSFER_BLK will be defined in those
- *       header files if security OS is enabled.
- */
-#ifndef MAX_RPMB_TRANSFER_BLK
-#define MAX_RPMB_TRANSFER_BLK (1U)
 #endif
 
 #define RPMB_NAME "rpmb"
@@ -1847,6 +1849,7 @@ free:
 	return ret;
 }
 
+#if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
 static int rpmb_gp_execute_emmc(u32 cmdId)
 {
 	int ret;
@@ -1929,6 +1932,7 @@ static int rpmb_gp_execute_emmc(u32 cmdId)
 
 	return 0;
 }
+#endif
 
 int rpmb_req_get_wc_emmc(struct mmc_card *card, u8 *key, u32 *wc)
 {
@@ -2183,7 +2187,7 @@ int rpmb_req_ioctl_write_data_emmc(struct mmc_card *card,
 
 	for (iCnt = 0; iCnt < total_blkcnt; iCnt++) {
 
-		ret = rpmb_req_get_wc_emmc(card, param->key, &wc);
+		ret = rpmb_req_get_wc_emmc(card, param->keybytes, &wc);
 		if (ret)
 			break;
 
@@ -2211,9 +2215,9 @@ int rpmb_req_ioctl_write_data_emmc(struct mmc_card *card,
 			tran_size = left_size;
 
 		memcpy(rpmb_frame->data,
-			param->data + iCnt * RPMB_SZ_DATA, tran_size);
+			param->databytes + iCnt * RPMB_SZ_DATA, tran_size);
 
-		hmac_sha256(param->key, 32, rpmb_frame->data, 284,
+		hmac_sha256(param->keybytes, 32, rpmb_frame->data, 284,
 			rpmb_frame->mac);
 
 		ret = emmc_rpmb_req_handle(card, &rpmb_req);
@@ -2226,7 +2230,7 @@ int rpmb_req_ioctl_write_data_emmc(struct mmc_card *card,
 		/*
 		 * Authenticate response write data frame.
 		 */
-		hmac_sha256(param->key, 32, rpmb_frame->data, 284, hmac);
+		hmac_sha256(param->keybytes, 32, rpmb_frame->data, 284, hmac);
 
 		if (memcmp(hmac, rpmb_frame->mac, RPMB_SZ_MAC) != 0) {
 			MSG(ERR, "%s, hmac compare error!!!\n", __func__);
@@ -2455,7 +2459,7 @@ int rpmb_req_ioctl_read_data_emmc(struct mmc_card *card,
 		/*
 		 * Authenticate response read data frame.
 		 */
-		hmac_sha256(param->key, 32, rpmb_frame->data, 284, hmac);
+		hmac_sha256(param->keybytes, 32, rpmb_frame->data, 284, hmac);
 
 		if (memcmp(hmac, rpmb_frame->mac, RPMB_SZ_MAC) != 0) {
 			MSG(ERR, "%s, hmac compare error!!!\n", __func__);
@@ -2481,7 +2485,7 @@ int rpmb_req_ioctl_read_data_emmc(struct mmc_card *card,
 		else
 			tran_size = left_size;
 
-		memcpy(param->data + RPMB_SZ_DATA * iCnt,
+		memcpy(param->databytes + RPMB_SZ_DATA * iCnt,
 			rpmb_frame->data, tran_size);
 
 		left_size -= tran_size;
@@ -3207,6 +3211,16 @@ static int __init rpmb_init(void)
 	}
 #endif
 
+#ifdef __RPMB_KERNEL_NL_SUPPORT
+	if (rpmb_create_netlink()) {
+		MSG(ERR, "%s, init netlink failed!\n", __func__);
+		goto error;
+	}
+
+	init_waitqueue_head(&wait_rpmb);
+	mutex_init(&rpmb_lock);
+#endif
+
 #if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
 	mobicore_node = of_find_compatible_node(NULL, NULL,
 					     "trustonic,mobicore");
@@ -3226,15 +3240,6 @@ static int __init rpmb_init(void)
 	open_th = kthread_run(rpmb_thread, NULL, "rpmb_open");
 	if (IS_ERR(open_th))
 		MSG(ERR, "%s, init kthread_run failed!\n", __func__);
-
-#ifdef __RPMB_KERNEL_NL_SUPPORT
-	init_waitqueue_head(&wait_rpmb);
-	mutex_init(&rpmb_lock);
-
-	if (rpmb_create_netlink()) {
-		MSG(ERR, "%s, init netlink failed!\n", __func__);
-	}
-#endif
 
 fake_out:
 #endif

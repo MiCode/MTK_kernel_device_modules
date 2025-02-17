@@ -32,7 +32,7 @@
 #define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF
 #define MAX_POWER_DRAM 4000
-#define MAX_POWER_DISPLAY 2000
+#define MAX_POWER_DISPLAY 4490
 #define SOC_ERROR 3000
 #define BAT_CIRCUIT_DEFAULT_RDC 55
 #define BAT_PATH_DEFAULT_RDC 100
@@ -818,8 +818,15 @@ static void bat_handler(struct work_struct *work)
 	int ret = 0, soc, temp, volt, qmax, cycle, bat_rdc, uisoc, i, cb_idx;
 	bool loop;
 
-	if (!pb.psy)
+	if (!pb.psy) {
+		pr_info("%s: pb.psy null!!\n", __func__);
 		return;
+	}
+
+	if (strcmp(psy->desc->name, "battery") != 0) {
+		pr_info("%s: name not battery!!\n", __func__);
+		return;
+	}
 
 	psy_mtk = power_supply_get_by_name("mtk-gauge");
 	if (!psy_mtk || IS_ERR(psy_mtk)) {
@@ -830,29 +837,33 @@ static void bat_handler(struct work_struct *work)
 		}
 	}
 
-	ret = power_supply_get_property(psy_mtk, POWER_SUPPLY_PROP_ENERGY_NOW, &val);
-	if (ret)
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+	if (ret) {
+		pr_info("%s: get energy now fail!!\n", __func__);
 		return;
+	}
 
-	soc = val.intval / 100;
-	if (soc == 0)
+	soc = val.intval;
+	if (soc == 0) {
+		pr_info("%s: sco == 0!!\n", __func__);
 		return;
+	}
 
-	ret = power_supply_get_property(psy_mtk, POWER_SUPPLY_PROP_ENERGY_FULL, &val);
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CHARGE_FULL, &val);
 	if (ret)
 		qmax = 0;
 	else
-		qmax = val.intval;
-
-	if (strcmp(psy->desc->name, "battery") != 0)
-		return;
+		qmax = val.intval/100;
 
 	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_TEMP, &val);
-	if (ret)
+	if (ret) {
+		pr_info("%s: temp get fail!!\n", __func__);
 		return;
+	}
 
 	temp = val.intval / 10;
 	temp_stage = pb.temp_cur_stage;
+	pr_info("%s: soc=%d, temp=%d, qmax=%d, temp_stage=%d\n", __func__, soc, temp, qmax, temp_stage);
 
 	cycle = 0;
 	if (pb.aging_max_stage > 0) {

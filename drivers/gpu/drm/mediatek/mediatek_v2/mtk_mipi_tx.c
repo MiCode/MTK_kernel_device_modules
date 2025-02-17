@@ -2330,11 +2330,11 @@ static int mtk_mipi_tx_pll_dphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 			FLD_RG_DSI_V2I_REF_SEL, 0x0);
 #endif
 
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON4, RG_DSI_PLL_ICHP);
-	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1, RG_DSI_PLL_LVROD_EN);
+	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON4, RG_DSI_PLL_ICHP_1);
+	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1, RG_DSI_PLL_LVROD_EN_1);
 
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-							RG_DSI_PLL_RST_DLY, 0x1 << 23);
+							RG_DSI_PLL_RST_DLY_1, 0x1 << 23);
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
 							RG_RG_DSI_PLL_LVR_REFSEL, 0x1 << 25);
 

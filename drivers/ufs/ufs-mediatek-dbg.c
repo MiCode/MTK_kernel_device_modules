@@ -47,6 +47,7 @@
 static bool cmd_hist_initialized;
 static bool cmd_hist_enabled;
 static spinlock_t cmd_hist_lock;
+static unsigned int max_cmd_loop_cnt;
 static unsigned int cmd_hist_cnt;
 static unsigned int cmd_hist_ptr = MAX_CMD_HIST_ENTRY_CNT - 1;
 static struct cmd_hist_struct *cmd_hist;
@@ -259,6 +260,7 @@ static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 	bool found = false;
 	struct ufs_event_hist *e;
 	struct ufs_hba *hba = ufshba;
+	struct timespec64 dur;
 
 	if (id >= UFS_EVT_CNT)
 		return;
@@ -270,9 +272,10 @@ static void ufs_mtk_dbg_print_err_hist(char **buff, unsigned long *size,
 
 		if (e->tstamp[p] == 0)
 			continue;
+		dur = ns_to_timespec64(e->tstamp[p]);
 		SPREAD_PRINTF(buff, size, m,
-			"%s[%d] = 0x%x at %lld us\n", err_name, p,
-			e->val[p], ktime_to_us(e->tstamp[p]));
+			"%s[%d] = 0x%x at %6llu.%lu\n", err_name, p,
+			e->val[p], dur.tv_sec, dur.tv_nsec);
 		found = true;
 	}
 
@@ -485,10 +488,16 @@ static void probe_android_vh_ufs_send_tm_command(void *data, struct ufs_hba *hba
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = event;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.tm.lun = lun;
 	cmd_hist[ptr].cmd.tm.tag = tag;
 	cmd_hist[ptr].cmd.tm.task_tag = task_tag;
 	cmd_hist[ptr].cmd.tm.tm_func = tm_func;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
@@ -506,6 +515,7 @@ static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
 		return;
 
 	cmd_hist[ptr].cmd.dev.tag = lrbp->task_tag;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.dev.opcode =
 		hba->dev_cmd.query.request.upiu_req.opcode;
 	cmd_hist[ptr].cmd.dev.idn =
@@ -514,6 +524,11 @@ static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
 		hba->dev_cmd.query.request.upiu_req.index;
 	cmd_hist[ptr].cmd.dev.selector =
 		hba->dev_cmd.query.request.upiu_req.selector;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void probe_android_vh_ufs_send_command(void *data, struct ufs_hba *hba,
@@ -561,6 +576,7 @@ static void probe_ufshcd_command(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = event;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.utp.tag = tag;
 	cmd_hist[ptr].cmd.utp.transfer_len = transfer_len;
 	cmd_hist[ptr].cmd.utp.lba = lba;
@@ -571,6 +587,11 @@ static void probe_ufshcd_command(void *data, const char *dev_name,
 	/* Need patch trace_ufshcd_command() first */
 	cmd_hist[ptr].cmd.utp.crypt_en = 0;
 	cmd_hist[ptr].cmd.utp.crypt_keyslot = 0;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 
 	if (event == CMD_COMPLETED) {
 		ptr_cur = ptr;
@@ -606,10 +627,16 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 		event = CMD_UIC_CMPL_GENERAL;
 
 	cmd_hist[ptr].event = event;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.uic.cmd = cmd;
 	cmd_hist[ptr].cmd.uic.arg1 = arg1;
 	cmd_hist[ptr].cmd.uic.arg2 = arg2;
 	cmd_hist[ptr].cmd.uic.arg3 = arg3;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 
 	if (event == CMD_UIC_CMPL_GENERAL) {
 		ptr_cur = ptr;
@@ -1493,7 +1520,13 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = CMD_CLK_GATING;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.clk_gating.state = state;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 	if (state == CLKS_ON && host->mphy_base) {
@@ -1554,11 +1587,18 @@ static void probe_ufshcd_profile_clk_scaling(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = CMD_CLK_SCALING;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	if (!strcmp(profile_info, "up"))
 		cmd_hist[ptr].cmd.clk_scaling.state = CLKS_SCALE_UP;
 	else
 		cmd_hist[ptr].cmd.clk_scaling.state = CLKS_SCALE_DOWN;
 	cmd_hist[ptr].cmd.clk_scaling.err = err;
+
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void probe_ufshcd_pm(void *data, const char *dev_name,
@@ -1574,11 +1614,17 @@ static void probe_ufshcd_pm(void *data, const char *dev_name,
 	ptr = cmd_hist_get_entry();
 
 	cmd_hist[ptr].event = CMD_PM;
+	cmd_hist[ptr].seq_no = cmd_hist_cnt;
 	cmd_hist[ptr].cmd.pm.state = state;
 	cmd_hist[ptr].cmd.pm.err = err;
 	cmd_hist[ptr].cmd.pm.time_us = time_us;
 	cmd_hist[ptr].cmd.pm.pwr_mode = pwr_mode;
 	cmd_hist[ptr].cmd.pm.link_state = link_state;
+
+	if (cmd_hist_cnt > 4000000000) {
+		cmd_hist_cnt = 0;
+		max_cmd_loop_cnt++;
+	}
 }
 
 static void probe_ufshcd_runtime_suspend(void *data, const char *dev_name,
@@ -2085,6 +2131,10 @@ static void ufs_mtk_dbg_print_cmd_hist(char **buff, unsigned long *size,
 
 	ptr = cmd_hist_ptr;
 
+
+	SPREAD_PRINTF(buff, size, m,
+		      "cmd_hist_enabled = %d ,cmd_hist_cnt=%d\n",
+		      cmd_hist_enabled, cmd_hist_cnt);
 	SPREAD_PRINTF(buff, size, m,
 		      "UFS CMD History: Latest %d of total %d entries, ptr=%d\n",
 		      latest_cnt, cnt, ptr);
@@ -2244,7 +2294,7 @@ static int ufs_mtk_dbg_init_procfs(void)
 	if (prEntry)
 		proc_set_user(prEntry, uid, gid);
 	else
-		pr_info("%s: failed to create ufs_debugn", __func__);
+		pr_info("%s: failed to create ufs_debug\n", __func__);
 
 	return 0;
 }
@@ -2309,6 +2359,8 @@ int ufs_mtk_dbg_register(struct ufs_hba *hba)
 
 	spin_lock_init(&cmd_hist_lock);
 	ufshba = hba;
+	max_cmd_loop_cnt = 0;
+	cmd_hist_cnt = 0;
 	cmd_hist_initialized = true;
 
 	/* Install the tracepoints */

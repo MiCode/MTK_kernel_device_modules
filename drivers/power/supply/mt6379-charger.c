@@ -30,19 +30,19 @@
 unsigned int dbg_log_level = 1;
 module_param(dbg_log_level, uint, 0644);
 
-enum {
-	CHG_STAT_SLEEP,
-	CHG_STAT_VBUS_RDY,
-	CHG_STAT_TRICKLE,
-	CHG_STAT_PRE,
-	CHG_STAT_FAST,
-	CHG_STAT_EOC,
-	CHG_STAT_BKGND,
-	CHG_STAT_DONE,
-	CHG_STAT_FAULT,
-	CHG_STAT_OTG = 15,
-	CHG_STAT_MAX,
-};
+// enum {
+// 	CHG_STAT_SLEEP,
+// 	CHG_STAT_VBUS_RDY,
+// 	CHG_STAT_TRICKLE,
+// 	CHG_STAT_PRE,
+// 	CHG_STAT_FAST,
+// 	CHG_STAT_EOC,
+// 	CHG_STAT_BKGND,
+// 	CHG_STAT_DONE,
+// 	CHG_STAT_FAULT,
+// 	CHG_STAT_OTG = 15,
+// 	CHG_STAT_MAX,
+// };
 
 struct mt6379_charger_field {
 	const char *name;

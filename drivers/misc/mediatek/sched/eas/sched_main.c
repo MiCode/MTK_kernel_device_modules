@@ -394,6 +394,11 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 		return;
 	}
 
+	if (!strcmp("ndroid.systemui", p->group_leader->comm) && task_uid(p).val == 1000)
+	{
+		return;
+	}
+
 	if (p->user_cpus_ptr &&
 		!(ctx->flags & (SCA_USER | SCA_MIGRATE_ENABLE | SCA_MIGRATE_DISABLE)) &&
 		cpumask_and(rq->scratch_mask, ctx->new_mask, p->user_cpus_ptr)) {
@@ -986,6 +991,7 @@ void exit_flt_platform(void)
 }
 #endif
 
+
 static int __init mtk_scheduler_init(void)
 {
 	struct proc_dir_entry *pe, *parent;
@@ -1003,7 +1009,6 @@ static int __init mtk_scheduler_init(void)
 	init_updown_migration();
 	init_percore_l3_bw();
 	init_dsu_pwr_enable();
-
 	ret = init_sched_common_sysfs();
 	if (ret)
 		return ret;

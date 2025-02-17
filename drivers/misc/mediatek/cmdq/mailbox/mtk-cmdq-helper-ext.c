@@ -99,6 +99,8 @@ struct cmdq_sec_helper_fp *cmdq_sec_helper;
 
 #define CMDQ_DBG_PERFBEGIN		CMDQ_CMD_BUFFER_SIZE
 #define CMDQ_DBG_PERFEND		(CMDQ_DBG_PERFBEGIN + 4)
+#define CMDQ_PERF_MAX_OFS		(63)
+#define CMDQ_PERF_MIN_OFS		(2)
 
 #define CMDQ_BUF_INIT_VAL		((u64)0xdeadbeafdeadbeaf)
 #define CMDQ_PACK_IOVA(addr)     ((uint32_t)((addr) | (((addr) >> 32) & 0xF)))
@@ -2820,6 +2822,39 @@ s32 cmdq_pkt_poll_timeout(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 		addr, mask, count, reg_gpr, NULL);
 }
 EXPORT_SYMBOL(cmdq_pkt_poll_timeout);
+
+void cmdq_pkt_save_tpr_to_dram(struct cmdq_pkt *pkt, const u32 offset)
+{
+	dma_addr_t pa;
+	struct cmdq_pkt_buffer *buf;
+
+	if ((cmdq_util_helper && cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF) &&
+		offset < CMDQ_PERF_MIN_OFS) || offset > CMDQ_PERF_MAX_OFS)
+		return;
+
+	if (!pkt->buf_size)
+		if (cmdq_pkt_add_cmd_buffer(pkt) < 0)
+			return;
+
+	pa = cmdq_pkt_get_pa_by_offset(pkt, 0) + CMDQ_DBG_PERFBEGIN + offset * 4;
+	cmdq_pkt_write_indriect(pkt, NULL, pa + gce_mminfra, CMDQ_TPR_ID, ~0);
+
+	buf = list_first_entry(&pkt->buf, typeof(*buf), list_entry);
+	*(u32 *)(buf->va_base + CMDQ_DBG_PERFBEGIN + offset * 4) = 0xdeaddead;
+}
+EXPORT_SYMBOL(cmdq_pkt_save_tpr_to_dram);
+
+u32 cmdq_mbox_get_tpr_from_dram(struct cmdq_pkt *pkt, u32 offset)
+{
+	struct cmdq_pkt_buffer *buf;
+
+	if (offset > CMDQ_PERF_MAX_OFS)
+		return 0;
+
+	buf = list_first_entry(&pkt->buf, typeof(*buf), list_entry);
+	return *(u32 *)(buf->va_base + CMDQ_DBG_PERFBEGIN + offset * 4);
+}
+EXPORT_SYMBOL(cmdq_mbox_get_tpr_from_dram);
 
 void cmdq_pkt_perf_begin(struct cmdq_pkt *pkt)
 {

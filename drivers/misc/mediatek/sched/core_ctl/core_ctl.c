@@ -36,6 +36,7 @@ extern int get_immediate_tslvts1_1_wrap(void);
 #endif
 #define TAG "core_ctl"
 
+
 struct ppm_table {
 	unsigned long power;
 	unsigned int leakage;
@@ -145,6 +146,7 @@ enum {
 	DEBUG_DETAIL,
 	DEBUG_CNT
 };
+
 
 static int set_core_ctl_debug_level(const char *buf,
 			       const struct kernel_param *kp)
@@ -409,12 +411,18 @@ static int test_set_val(struct cluster_data *cluster, unsigned int val)
 	return 0;
 }
 
+static bool test_disable_cpu(unsigned int cpu);
 static inline int core_ctl_pause_cpu(unsigned int cpu)
 {
 	int ret = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&core_ctl_pause_lock, flags);
+	/* Unable to pause CPU */
+	if(!test_disable_cpu(cpu)) {
+		spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
+		return -EBUSY;
+	}
 	ret = sched_pause_cpu(cpu);
 	spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
 
@@ -732,7 +740,6 @@ EXPORT_SYMBOL(core_ctl_set_up_thres);
  *
  *  return 0 if success, else return errno
  */
-static bool test_disable_cpu(unsigned int cpu);
 static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause);
 int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 {
@@ -1910,6 +1917,7 @@ static int cluster_init(const struct cpumask *mask)
 	cluster->nr_assist = 0;
 
 	cluster->min_cpus = default_min_cpus[cluster->cluster_id];
+
 
 	if (cluster->cluster_id ==
 			(arch_get_nr_clusters() - 1))

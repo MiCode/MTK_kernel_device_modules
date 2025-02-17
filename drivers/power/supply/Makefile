@@ -5,6 +5,7 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/in
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs
+subdir-ccflags-y += -I$(srctree)/drivers/scsi/
 
 ifeq ($(CONFIG_CHARGER_SGM41516D),m)
 obj-$(CONFIG_CHARGER_SGM41516D) += mtk_charger_framework.o charger_class.o adapter_class.o mtk_charger_algorithm_class.o mtk_ufcs_adapter.o sgm41516d.o mtk_chg_det.o
@@ -15,7 +16,7 @@ obj-$(CONFIG_CHARGER_BQ25601) += mtk_charger_framework.o charger_class.o adapter
 else
 obj-$(CONFIG_MTK_CHARGER) += mtk_charger_framework.o mtk_pd_charging.o charger_class.o adapter_class.o mtk_charger_algorithm_class.o mtk_pd_adapter.o mtk_ufcs_adapter.o
 endif
-mtk_charger_framework-objs := mtk_charger.o mtk_charger_intf.o mtk_basic_charger.o mtk_pulse_charger.o mtk_adapter_switch.o
+mtk_charger_framework-objs := mtk_charger.o mtk_charger_intf.o mtk_basic_charger.o mtk_pulse_charger.o mtk_adapter_switch.o  pmic_voter.o step_jeita_charge.o  charger_partition.o
 
 mtk_pd_charging-objs := mtk_pd.o mtk_pd_hal.o
 obj-$(CONFIG_CHARGER_RT9465)	+= rt9465.o
@@ -68,6 +69,11 @@ obj-$(CONFIG_CHARGER_RT9759)	+= rt9759.o
 obj-$(CONFIG_CHARGER_RT9490)	+= rt9490-charger.o
 obj-$(CONFIG_CHARGER_RT9758)	+= rt9758-charger.o
 obj-$(CONFIG_UFCS_CLASS)	+= ufcs/
-
+obj-$(CONFIG_HL7603_BOOST) += hl7603.o
 obj-$(CONFIG_CHARGER_BQ2589X)	+= bq2589x_charger.o
+obj-$(CONFIG_CHARGER_BQ25985)	+= bq25985_charger.o
+obj-$(CONFIG_XMEXT_TI_GAUGE) += bq28z610.o
+obj-$(CONFIG_XMEXT_SC858X_CHG_PUMP) += sc858x_charger.o
+obj-$(CONFIG_XM_PD_MANAGER) += pd_cp_manager.o
+obj-$(CONFIG_XM_SINGLE_PD_MANAGER) += pd_single_cp_manager.o
 obj-$(CONFIG_CHARGER_BQ25601) += bq25601.o

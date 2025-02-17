@@ -36,7 +36,7 @@ static ssize_t mt6368_codec_sysfs_read(struct file *filep, struct kobject *kobj,
 static ssize_t mt6368_codec_sysfs_write(struct file *filp, struct kobject *kobj,
 					struct bin_attribute *bin_attr,
 					char *buf, loff_t off, size_t count);
-
+static void mt6368_final_dump(struct mt6368_priv *priv, bool is_DL);
 
 /* static function declaration */
 static void mt6368_set_gpio_smt(struct mt6368_priv *priv)
@@ -179,6 +179,65 @@ static void mt6368_set_decoder_clk(struct mt6368_priv *priv, bool enable)
 	regmap_update_bits(priv->regmap, MT6368_AUDDEC_ANA_CON26,
 			   RG_RSTB_DECODER_VA32_MASK_SFT,
 			   (enable ? 1 : 0) << RG_RSTB_DECODER_VA32_SFT);
+}
+
+static void mt6368_final_dump(struct mt6368_priv *priv, bool is_DL)
+{
+	if (priv->codec_dump){
+		unsigned int value;
+		unsigned int be_reg;
+
+		regmap_read(priv->regmap, MT6368_AFE_TOP_CON0, &value);
+		dev_info(priv->dev, "%s(), MT6368_AFE_TOP_CON0=0x%x\n",
+			 __func__, value);
+		regmap_read(priv->regmap, MT6368_AUDIO_TOP_CON0, &value);
+		dev_info(priv->dev, "%s(), MT6368_AUDIO_TOP_CON0=0x%x\n",
+			 __func__, value);
+		regmap_read(priv->regmap, MT6368_AFE_AUD_PAD_TOP, &value);
+		dev_info(priv->dev, "%s(), MT6368_AFE_AUD_PAD_TOP=0x%x\n",
+			 __func__, value);
+		regmap_read(priv->regmap, MT6368_AUD_TOP_CKPDN_CON0, &value);
+		dev_info(priv->dev, "%s(), MT6368_AUD_TOP_CKPDN_CON0=0x%x\n",
+			 __func__, value);
+
+		regmap_read(priv->regmap, MT6368_LDO_VAUD18_CON0, &value);
+		dev_info(priv->dev, "%s(), MT6368_LDO_VAUD18_CON0 = 0x%x\n",
+			 __func__, value);
+
+
+		regmap_read(priv->regmap, MT6368_AFE_AUD_PAD_TOP_MON1, &value);
+		dev_info(priv->dev, "%s(), MT6368_AFE_AUD_PAD_TOP_MON1=0x%x\n",
+			 __func__, value);
+		regmap_read(priv->regmap, MT6368_AFE_AUD_PAD_TOP_MON2, &value);
+		dev_info(priv->dev, "%s(), MT6368_AFE_AUD_PAD_TOP_MON2=0x%x\n",
+			 __func__, value);
+
+		if (is_DL) {
+			for (be_reg = MT6368_AUDDEC_ANA_CON0; be_reg <= MT6368_AUDDEC_ANA_CON28; be_reg++) {
+				regmap_read(priv->regmap, be_reg, &value);
+				dev_info(priv->dev, "%s(), AUDDEC_CONx(0x%x) = 0x%x\n",
+					 __func__, be_reg, value);
+			}
+		} else {
+			for (be_reg = MT6368_AUDENC_ANA_CON0; be_reg <= MT6368_AUDENC_ANA_CON48; be_reg++) {
+				regmap_read(priv->regmap, be_reg, &value);
+				dev_info(priv->dev, "%s(), AUDENC_CONx(0x%x) = 0x%x\n",
+					 __func__, be_reg, value);
+			}
+		}
+		for (be_reg = MT6368_ACCDET_CON36; be_reg <= MT6368_ACCDET_CON40; be_reg++) {
+			regmap_read(priv->regmap, be_reg, &value);
+			dev_info(priv->dev, "%s(), MT6368_ACCDET_CONx(0x%x) = 0x%x\n",
+				 __func__, be_reg, value);
+		}
+		//monitor check
+		regmap_read(priv->regmap, MT6368_AFE_AUD_PAD_TOP_MON1, &value);
+		dev_info(priv->dev, "%s(), MT6368_AFE_AUD_PAD_TOP_MON1=0x%x\n",
+			 __func__, value);
+		regmap_read(priv->regmap, MT6368_AFE_AUD_PAD_TOP_MON2, &value);
+		dev_info(priv->dev, "%s(), MT6368_AFE_AUD_PAD_TOP_MON2=0x%x\n",
+			 __func__, value);
+	}
 }
 
 static void mt6368_mtkaif_tx_enable(struct mt6368_priv *priv)
@@ -1894,10 +1953,10 @@ static int mt_mic_bias_0_event(struct snd_soc_dapm_widget *w,
 			break;
 		}
 
-		/* MISBIAS0 = 1P9V */
+		/* MISBIAS0 = 2P7V */
 		regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON31,
 				   RG_AUDMICBIAS0VREF_MASK_SFT,
-				   MIC_BIAS_1P9 << RG_AUDMICBIAS0VREF_SFT);
+				   MIC_BIAS_2P7 << RG_AUDMICBIAS0VREF_SFT);
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON31,
 				   RG_AUDMICBIAS0LOWPEN_MASK_SFT,
@@ -1985,10 +2044,10 @@ static int mt_mic_bias_2_event(struct snd_soc_dapm_widget *w,
 			break;
 		}
 
-		/* MISBIAS2 = 1P9V */
+		/* MISBIAS2 = 2P7V */
 		regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON35,
 				   RG_AUDMICBIAS2VREF_MASK_SFT,
-				   MIC_BIAS_1P9 << RG_AUDMICBIAS2VREF_SFT);
+				   MIC_BIAS_2P7 << RG_AUDMICBIAS2VREF_SFT);
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6368_AUDENC_ANA_CON35,
 				   RG_AUDMICBIAS2LOWPEN_MASK_SFT,
@@ -2470,6 +2529,25 @@ static int mt_mtkaif_tx_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int mt_ul_src_event(struct snd_soc_dapm_widget *w,
+			   struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		mt6368_final_dump(priv, false);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static int mt_ul_src_dmic_event(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *kcontrol,
 				int event)
@@ -2740,8 +2818,8 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 3(18dB) */
-	mic_gain_l = priv->vow_enable ? 3 :
+	/* if vow is enabled, always set volume as 4(24dB) */
+	mic_gain_l = priv->vow_enable ? 4 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d\n",
 		__func__, event, mic_type, mic_gain_l, mux_pga);
@@ -2806,8 +2884,8 @@ static int mt_pga_r_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 3(18dB) */
-	mic_gain_r = priv->vow_enable ? 3 :
+	/* if vow is enabled, always set volume as 4(24dB) */
+	mic_gain_r = priv->vow_enable ? 4 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP2];
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_r %d, mux_pga %d\n",
 		__func__, event, mic_type, mic_gain_r, mux_pga);
@@ -3170,6 +3248,25 @@ static int mt_ncp_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int mt_dl_src_event(struct snd_soc_dapm_widget *w,
+			   struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(priv->dev, "%s(), event = 0x%x\n", __func__, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		mt6368_final_dump(priv, true);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static int mt_dl_gpio_event(struct snd_soc_dapm_widget *w,
 			    struct snd_kcontrol *kcontrol,
 			    int event)
@@ -3385,7 +3482,8 @@ static const struct snd_soc_dapm_widget mt6368_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("AFE_DL_SRC", SUPPLY_SEQ_DL_SRC,
 			      MT6368_AFE_DL_SRC2_CON0,
 			      DL_2_SRC_ON_TMP_CTL_PRE_SFT, 0,
-			      NULL, 0),
+			      mt_dl_src_event,
+			      SND_SOC_DAPM_PRE_PMU),
 
 	/* DL Supply */
 	SND_SOC_DAPM_SUPPLY("DL Power Supply", SND_SOC_NOPM,
@@ -3521,7 +3619,8 @@ static const struct snd_soc_dapm_widget mt6368_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("UL_SRC", SUPPLY_SEQ_UL_SRC,
 			      MT6368_AFE_UL_SRC_CON1,
 			      UL_SRC_ON_TMP_CTL_SFT, 0,
-			      NULL, 0),
+			      mt_ul_src_event,
+			      SND_SOC_DAPM_PRE_PMU),
 
 	SND_SOC_DAPM_SUPPLY_S("UL_SRC_DMIC", SUPPLY_SEQ_UL_SRC_DMIC,
 			      SND_SOC_NOPM, 0, 0,
@@ -5580,6 +5679,35 @@ static int mt6368_rcv_dcc_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int mt6368_codec_dump_get(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	ucontrol->value.integer.value[0] = priv->codec_dump;
+	dev_info(priv->dev, "%s(), priv->codec_dump = %d\n", __func__, priv->codec_dump);
+	return 0;
+}
+
+static int mt6368_codec_dump_set(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mt6368_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	if (ucontrol->value.enumerated.item[0] > ARRAY_SIZE(off_on_function)) {
+		dev_info(priv->dev, "%s(), return -EINVAL\n", __func__);
+		return -EINVAL;
+	}
+
+	priv->codec_dump = ucontrol->value.integer.value[0];
+
+	dev_info(priv->dev, "%s(), priv->codec_dump = %d\n", __func__, priv->codec_dump);
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new mt6368_snd_misc_controls[] = {
 	SOC_ENUM_EXT("Headphone Plugged In", misc_control_enum[0],
 		     hp_plugged_in_get, hp_plugged_in_set),
@@ -5589,6 +5717,8 @@ static const struct snd_kcontrol_new mt6368_snd_misc_controls[] = {
 	SOC_ENUM_EXT("PMIC_REG_CLEAR", misc_control_enum[0],
 		     NULL, mt6368_rcv_dcc_set),
 	SOC_ENUM_EXT("DMic Used", misc_control_enum[0], dmic_used_get, NULL),
+	SOC_ENUM_EXT("CODEC_DUMP", misc_control_enum[0], mt6368_codec_dump_get,
+		       mt6368_codec_dump_set),
 #if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
 	SOC_ENUM_EXT("VOW PBUF Channel", misc_control_enum[0], vow_pbuf_ch_get, NULL),
 	SOC_ENUM_EXT("VOW codec type", misc_control_enum[0], vow_codec_type_get, NULL),

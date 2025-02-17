@@ -194,6 +194,8 @@
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
 	status = "okay";
+	no_hwc_layers = <2>;
+	no_hwc_overlap = <1>;
 	bypass-pc-path = <1>;
 };
 
@@ -293,6 +295,23 @@
 		};
 	};
 #endif
+};
+
+&i2c6 {
+	spk1: speaker_amp@5c {
+		compatible = "richtek,rt5512";
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+};
+
+&sound {
+	mediatek,spk-i2s = <21 20>;
+	mediatek,speaker-codec {
+		sound-dai = <&spk1>;
+	};
 };
 
 #if 0

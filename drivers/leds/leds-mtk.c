@@ -597,6 +597,8 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 	if (!ret) {
 		if (!strncmp(state, "half", strlen("half")))
 			mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness / 2;
+		else if (!strncmp(state, "FifteenPercent", strlen("FifteenPercent")))
+			mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness * 10/ 121;
 		else if (!strncmp(state, "on", strlen("on")))
 			mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness;
 		else

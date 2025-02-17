@@ -106,6 +106,7 @@ CONFIG_DEVICE_MODULES_REALTEK_PHY=m
 CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK=m
 CONFIG_SCSI_UFS_MEDIATEK_DBG=m
 CONFIG_UFS_MEDIATEK_INTERNAL=y
+CONFIG_SCSI_UFS_XIAOMI=y
 CONFIG_UFSFEATURE=n
 CONFIG_UFSSHPB=n
 CONFIG_HPB_DEBUG=n
@@ -123,20 +124,20 @@ CONFIG_MTK_I3C_I2C_WRAP=m
 CONFIG_RPMB=m
 CONFIG_KEYBOARD_MTK_KPD=m
 CONFIG_DEVICE_MODULES_KEYBOARD_MTK_PMIC=m
-CONFIG_TOUCHSCREEN_MTK_TOUCH="GT9895 GT9886 GT9896S GT1151 NT36672C_I2C legacy_gt9896s"
-CONFIG_TOUCHSCREEN_BOTAI_MULTI_TOUCH=m
-CONFIG_TOUCHSCREEN_BOTAI_TOUCH_ONE=m
-CONFIG_TOUCHSCREEN_BOTAI_TOUCH_TWO=m
-CONFIG_TOUCHSCREEN_GOODIX_BRL=m
-CONFIG_TOUCHSCREEN_GT9XX=m
-CONFIG_TOUCHSCREEN_ILITEK_TOUCH=m
-CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_CORE_96789=m
-CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_CORE_96851=m
-CONFIG_TOUCHSCREEN_MT6983_ALPHA_SUPPORT=m
-CONFIG_TOUCHSCREEN_MT6895_ALPHA_SUPPORT=m
-CONFIG_TOUCHSCREEN_MT6985_ALPHA_SUPPORT=m
-CONFIG_TOUCHSCREEN_FOCALTECH_TOUCH=m
-CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI=m
+# CONFIG_TOUCHSCREEN_MTK_TOUCH="GT9895 GT9886 GT9896S GT1151 NT36672C_I2C legacy_gt9896s"
+# CONFIG_TOUCHSCREEN_BOTAI_MULTI_TOUCH is not set
+# CONFIG_TOUCHSCREEN_BOTAI_TOUCH_ONE is not set
+# CONFIG_TOUCHSCREEN_BOTAI_TOUCH_TWO is not set
+# CONFIG_TOUCHSCREEN_GOODIX_BRL is not set
+# CONFIG_TOUCHSCREEN_GT9XX is not set
+# CONFIG_TOUCHSCREEN_ILITEK_TOUCH is not set
+# CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_CORE_96789 is not set
+# CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_CORE_96851 is not set
+# CONFIG_TOUCHSCREEN_MT6983_ALPHA_SUPPORT is not set
+# CONFIG_TOUCHSCREEN_MT6895_ALPHA_SUPPORT is not set
+# CONFIG_TOUCHSCREEN_MT6985_ALPHA_SUPPORT is not set
+# CONFIG_TOUCHSCREEN_FOCALTECH_TOUCH is not set
+# CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI is not set
 CONFIG_DEVICE_MODULES_SERIAL_8250_MT6577=m
 CONFIG_DEVICE_MODULES_I2C_MT65XX=m
 CONFIG_DEVICE_MODULES_MTK_I3C_MASTER_MT69XX=m
@@ -212,7 +213,6 @@ CONFIG_MTK_CHARGER_THERMAL=m
 CONFIG_MTK_BACKLIGHT_THERMAL=m
 CONFIG_MTK_BOARD_THERMAL=m
 CONFIG_MTK_WIFI_THERMAL=m
-CONFIG_MTK_CPU_ISOLATE_THERMAL=m
 CONFIG_GENERIC_ADC_THERMAL=m
 CONFIG_DEVICE_MODULES_MEDIATEK_WATCHDOG=m
 CONFIG_MFD_MT6338=m
@@ -338,7 +338,7 @@ CONFIG_MTK_TINYSYS_GPUEB_SUPPORT=m
 CONFIG_MTK_GHPM_SUPPORT=m
 CONFIG_MTK_GPUFREQ_V2=y
 CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT=y
-CONFIG_CUSTOM_KERNEL_IMGSENSOR="fake_mipi_raw s5k4h7sub_mipi_raw s5k4h7_mipi_raw imx06a_mipi_raw imx858_mipi_raw imx858dual_mipi_raw imx989_mipi_raw imx989lite_mipi_raw imx758_mipi_raw imx758lite_mipi_raw imx598_mipi_raw imx598lite_mipi_raw imx866rgb_mipi_raw s5kjd1_mipi_raw imx686_mipi_raw imx519_mipi_raw s5k2t7sp_mipi_raw s5k2p7_mipi_raw ov8856_mipi_raw imx386_mipi_raw imx398_mipi_raw s5k2l7_mipi_raw imx586_mipi_raw imx576_mipi_raw imx481_mipi_raw s5khp3sp_mipi_raw s5k3m5sx_mipi_raw ov48b_mipi_raw ov64b_mipi_raw imx766_mipi_raw s5k3p9sp_mipi_raw imx766dual_mipi_raw imx766o_mipi_raw imx709o_mipi_raw imx766dualo_mipi_raw s5k3m5sxo_mipi_raw imx499_mipi_raw imx709_mipi_raw imx866_mipi_raw imx800_mipi_raw s5kgd2_mipi_raw imx6632x_mipi_raw hi847_mipi_raw imx966_mipiw_raw"
+CONFIG_CUSTOM_KERNEL_IMGSENSOR=""
 CONFIG_MTK_IMGSENSOR=m
 CONFIG_MTK_CAM_CAL=m
 CONFIG_MTK_SECURITY_SW_SUPPORT=m
@@ -394,6 +394,7 @@ CONFIG_DEVICE_MODULES_LEDS_MT6360=m
 CONFIG_LEDS_MT6379=m
 CONFIG_MTK_VIDEO_LM3643=m
 CONFIG_MTK_VIDEO_LM3644=m
+CONFIG_MTK_VIDEO_OCP81377=m
 CONFIG_MTK_VIDEO_SY7806=m
 CONFIG_MTK_FLASHLIGHT=m
 CONFIG_MTK_FLASHLIGHT_PT=y
@@ -662,9 +663,9 @@ CONFIG_LAN743X=m
 CONFIG_MTK_DEVINFO=m
 CONFIG_TEE=m
 CONFIG_TEE_PERF_SUPPORT=m
-CONFIG_TRUSTONIC_TEE_SUPPORT=m
-CONFIG_TRUSTONIC_TRUSTED_UI=m
-CONFIG_MICROTRUST_TEE_SUPPORT=m
+CONFIG_TRUSTONIC_TEE_SUPPORT=n
+CONFIG_TRUSTONIC_TRUSTED_UI=n
+CONFIG_MICROTRUST_TEE_SUPPORT=n
 CONFIG_MTK_TEE_GP_SUPPORT=y
 CONFIG_MT6685_AUDCLK=m
 CONFIG_MT6338_EFUSE=m
@@ -870,7 +871,7 @@ CONFIG_MTK_AEE_HANGDET=m
 CONFIG_MTK_AEE_IPANIC=m
 CONFIG_MTK_HANG_DETECT=m
 CONFIG_MTK_HANG_DETECT_DB=y
-CONFIG_EXT_MODULES="../vendor/mediatek/kernel_modules/connectivity/common ../vendor/mediatek/kernel_modules/connectivity/conninfra ../vendor/mediatek/kernel_modules/connectivity/connfem ../vendor/mediatek/kernel_modules/connectivity/gps/gps_stp ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v010 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v030 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v050 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v051 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v060 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v061 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v062 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_pwr ../vendor/mediatek/kernel_modules/connectivity/gps/gps_scp ../vendor/mediatek/kernel_modules/gpu ../vendor/mediatek/kernel_modules/connectivity/fmradio ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wlan_page_pool ../vendor/mediatek/kernel_modules/connectivity/bt/linux_v2 ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx ../vendor/mediatek/kernel_modules/hbt_driver_cus ../vendor/mediatek/kernel_modules/hbt_driver ../vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/5.10 ../vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/4.14 ../vendor/mediatek/tests/ktf/kernel ../vendor/mediatek/tests/kernel/ktf_testcase ../vendor/mediatek/kernel_modules/mtk_input/FT3518U ../vendor/mediatek/kernel_modules/mtk_input/GT9886 ../vendor/mediatek/kernel_modules/mtk_input/GT9916 ../vendor/mediatek/kernel_modules/mtk_input/NT36672C ../vendor/mediatek/kernel_modules/mtk_input/ST61Y ../vendor/mediatek/kernel_modules/mtk_input/synaptics_tcm ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx/wmt ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6765 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6768 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6781 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6833 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6853 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/eap_6639 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6985_6639 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653_2g2a ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653_triband ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/eap_6653 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6893 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6897 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6899 ../vendor/mediatek/kernel_modules/mtkcam ../vendor/mediatek/kernel_modules/cpufreq_cus ../vendor/mediatek/kernel_modules/cpufreq_int ../vendor/mediatek/kernel_modules/afs_common_utils  ../vendor/mediatek/kernel_modules/afs_core_cus  ../vendor/mediatek/kernel_modules/afs_core_int"
+CONFIG_EXT_MODULES="../vendor/mediatek/kernel_modules/connectivity/common ../vendor/mediatek/kernel_modules/connectivity/conninfra ../vendor/mediatek/kernel_modules/connectivity/connfem ../vendor/mediatek/kernel_modules/connectivity/gps/gps_stp ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v010 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v030 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v050 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v051 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v060 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v061 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v062 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_pwr ../vendor/mediatek/kernel_modules/connectivity/gps/mi_gps_pwr ../vendor/mediatek/kernel_modules/connectivity/gps/gps_scp ../vendor/mediatek/kernel_modules/gpu ../vendor/mediatek/kernel_modules/connectivity/fmradio ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wlan_page_pool ../vendor/mediatek/kernel_modules/connectivity/bt/linux_v2 ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx ../vendor/mediatek/kernel_modules/hbt_driver_cus ../vendor/mediatek/kernel_modules/hbt_driver ../vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/5.10 ../vendor/mediatek/kernel_modules/mtk_input/fingerprint/goodix/4.14 ../vendor/mediatek/tests/ktf/kernel ../vendor/mediatek/tests/kernel/ktf_testcase ../vendor/mediatek/kernel_modules/mtk_input/FT3518U ../vendor/mediatek/kernel_modules/mtk_input/GT9886 ../vendor/mediatek/kernel_modules/mtk_input/GT9916 ../vendor/mediatek/kernel_modules/mtk_input/NT36672C ../vendor/mediatek/kernel_modules/mtk_input/ST61Y ../vendor/mediatek/kernel_modules/mtk_input/synaptics_tcm ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx/wmt ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6765 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6768 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6781 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6833 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6853 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/eap_6639 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6985_6639 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6989_6639 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653_2g2a ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653_triband ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/eap_6653 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6893 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6897 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6899 ../vendor/mediatek/kernel_modules/mtkcam ../vendor/mediatek/kernel_modules/cpufreq_cus ../vendor/mediatek/kernel_modules/cpufreq_int ../vendor/mediatek/kernel_modules/afs_common_utils  ../vendor/mediatek/kernel_modules/afs_core_cus  ../vendor/mediatek/kernel_modules/afs_core_int ../vendor/xiaomi/proprietary/touch/touchfeature_v2/touch_driver ../vendor/xiaomi/proprietary/fingerprint  ../vendor/xiaomi/proprietary/mitee_drv ../vendor/xiaomi/proprietary/slm/kmod ../vendor/xiaomi/proprietary/miwillp/engine ../vendor/xiaomi/proprietary/minet/driver ../vendor/xiaomi/proprietary/kernelmodules/hardwareinfo/kernel_module"
 CONFIG_MTK_BTM_V1=m
 CONFIG_MTK_SECURITY_SW_SUPPORT=m
 CONFIG_MTK_BTM_SUPPORT=m
@@ -934,4 +935,5 @@ CONFIG_MTK_ZRAM=m
 CONFIG_MTK_PKVM_MTK_SMC_HANDLER=m
 CONFIG_MTK_PKVM_MKP=m
 CONFIG_MTK_PKVM_SMMU=m
+CONFIG_MTK_GAME=m
 # CONFIG_ARM64_HW_AFDBM is not set

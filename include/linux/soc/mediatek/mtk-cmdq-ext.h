@@ -652,6 +652,8 @@ s32 cmdq_pkt_poll_timeout(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 
 void cmdq_pkt_perf_end(struct cmdq_pkt *pkt);
 void cmdq_pkt_perf_begin(struct cmdq_pkt *pkt);
+void cmdq_pkt_save_tpr_to_dram(struct cmdq_pkt *pkt, const u32 offset);
+u32 cmdq_mbox_get_tpr_from_dram(struct cmdq_pkt *pkt, u32 offset);
 u32 *cmdq_pkt_get_perf_ret(struct cmdq_pkt *pkt);
 
 /**

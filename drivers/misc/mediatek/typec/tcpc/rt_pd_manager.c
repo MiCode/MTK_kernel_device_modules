@@ -57,6 +57,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	uint32_t partner_vdos[VDO_MAX_NR];
 	struct typec_displayport_data dp_data = {.status = 0, .conf = 0};
 	struct typec_mux_state state = {.mode = 0, .data = &dp_data};
+	int boot_mode = rpmd->tcpc[idx]->bootmode;
 
 	mt_dbg(rpmd->dev, "event = %lu, idx = %d ++\n", event, idx);
 
@@ -230,8 +231,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * report charger plug-in without charger type detection
 			 * to not interfering with USB2.0 communication
 			 */
-
 			typec_set_pwr_role(rpmd->typec_port[idx], TYPEC_SINK);
+			if((rpmd->partner_identity[idx].id_header & 0xFFFF) == 0x057e){
+				tcpm_dpm_vdm_discover_id(rpmd->tcpc[idx], NULL);
+			}
 		} else if (noti->swap_state.new_role == PD_ROLE_SOURCE) {
 			dev_info(rpmd->dev, "%s swap power role to source\n",
 					    __func__);
@@ -250,7 +253,6 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * disable host connection,
 			 * and enable device connection
 			 */
-
 			typec_set_data_role(rpmd->typec_port[idx],
 					    TYPEC_DEVICE);
 		} else if (noti->swap_state.new_role == PD_ROLE_DFP) {
@@ -260,8 +262,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * disable device connection,
 			 * and enable host connection
 			 */
-
 			typec_set_data_role(rpmd->typec_port[idx], TYPEC_HOST);
+			if((rpmd->partner_identity[idx].id_header & 0xFFFF) == 0x057e){
+				tcpm_dpm_vdm_discover_id(rpmd->tcpc[idx], NULL);
+			}
 		}
 		break;
 	case TCP_NOTIFY_VCONN_SWAP:
@@ -345,6 +349,9 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		typec_mux_set(rpmd->mux[idx], &state);
 		break;
 	case TCP_NOTIFY_WD0_STATE:
+		if(boot_mode == 8 || boot_mode == 9){
+			break;
+		}
 		tcpm_typec_change_role_postpone(rpmd->tcpc[idx],
 						noti->wd0_state.wd0 ?
 						rpmd->role_def[idx] :

@@ -2101,7 +2101,6 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 		mml_pq_err("copy aal config failed!: %d\n", ret);
 		goto free_hdr_regs;
 	}
-
 	hdr_curve = kmalloc_array(HDR_CURVE_NUM, sizeof(u32),
 				  GFP_KERNEL);
 	if (unlikely(!hdr_curve)) {

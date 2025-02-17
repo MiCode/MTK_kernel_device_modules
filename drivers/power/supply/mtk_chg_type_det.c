@@ -152,6 +152,26 @@ static void handle_audio_attach(struct mtk_ctd_info *mci, int idx,
 						     ATTACH_TYPE_NONE);
 }
 
+static int get_source_mode(struct tcp_notify *noti)
+{
+	/* if source is debug acc src A to C cable report typec mode as default */
+	if (noti->typec_state.new_state == TYPEC_ATTACHED_CUSTOM_SRC)
+		return POWER_SUPPLY_TYPEC_SOURCE_DEFAULT;
+
+	switch (noti->typec_state.rp_level) {
+	case TYPEC_CC_VOLT_SNK_1_5:
+		return POWER_SUPPLY_TYPEC_SOURCE_MEDIUM;
+	case TYPEC_CC_VOLT_SNK_3_0:
+		return POWER_SUPPLY_TYPEC_SOURCE_HIGH;
+	case TYPEC_CC_VOLT_SNK_DFT:
+		return POWER_SUPPLY_TYPEC_SOURCE_DEFAULT;
+	default:
+		break;
+	}
+
+	return POWER_SUPPLY_TYPEC_NONE;
+}
+
 static int pd_tcp_notifier_call(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
@@ -161,6 +181,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	int idx = pd_nb - mci->pd_nb;
 	struct tcp_notify *noti = data;
 	uint8_t old_state = TYPEC_UNATTACHED, new_state = TYPEC_UNATTACHED;
+	enum power_supply_typec_mode typec_mode = POWER_SUPPLY_TYPEC_NONE;
 
 	switch (event) {
 	case TCP_NOTIFY_SINK_VBUS:
@@ -181,6 +202,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			dev_info(mci->dev,
 				 "%s Charger plug in, polarity = %d\n",
 				 __func__, noti->typec_state.polarity);
+			typec_mode = get_source_mode(noti);
 			handle_typec_pd_attach(mci, idx, ATTACH_TYPE_TYPEC);
 		} else if ((old_state == TYPEC_ATTACHED_SNK ||
 			    old_state == TYPEC_ATTACHED_NORP_SRC ||
@@ -189,8 +211,15 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			    old_state == TYPEC_ATTACHED_AUDIO) &&
 			    new_state == TYPEC_UNATTACHED) {
 			dev_info(mci->dev, "%s Charger plug out\n", __func__);
+			typec_mode = POWER_SUPPLY_TYPEC_NONE;
 			handle_typec_pd_attach(mci, idx, ATTACH_TYPE_NONE);
 		}
+
+		pr_info("%s [old_state new_state typec_mode polarity] = [%d %d %d %d]\n", __func__,
+			noti->typec_state.old_state, noti->typec_state.new_state,
+			typec_mode, noti->typec_state.polarity);
+		usb_set_property(USB_PROP_TYPEC_CC_ORIENTATION, noti->typec_state.polarity);
+		usb_set_property(USB_PROP_TYPEC_MODE, typec_mode);
 		break;
 	case TCP_NOTIFY_PR_SWAP:
 		if (noti->swap_state.new_role == PD_ROLE_SOURCE)

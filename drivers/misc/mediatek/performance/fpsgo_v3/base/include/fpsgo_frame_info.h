@@ -71,4 +71,6 @@ int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
 extern int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
 	struct render_frame_info *frame_info_arr);
 
+extern int (*game2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
+	struct render_frame_info *frame_info_arr);
 #endif

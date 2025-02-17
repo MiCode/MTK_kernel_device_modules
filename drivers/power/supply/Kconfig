@@ -268,6 +268,12 @@ config GAUGE_BQ28Z610
 	  Select Alpha gauge Platform is mt6985
 	  Say N to disable.
 
+config XMEXT_SC858X_CHG_PUMP
+	tristate "xmext use sc8581 charger_pump"
+	help
+	  Say yes here to enable xmext use sc8551A charger_pump driver.
+	  Say no if not using xmext use sc8551A charger_pump driver.
+
 config CHARGER_TYPE_MT6357
 	tristate "MT6357 Charger Type Detection Driver"
 	depends on DEVICE_MODULES_MFD_MT6397
@@ -294,6 +300,30 @@ config MTK_CHARGER_TYPE_DETECT
 	  typec attach notify.
 	  Say N to disable.
 
+config XMEXT_TI_GAUGE
+	tristate "xmext use bq28z601 gauge"
+	help
+	  Say yes here to enable xmext use bq28z601 gauge driver.
+	  Say no if not using xmext use bq28z601 gauge driver.
+
+config XM_PD_MANAGER
+	tristate "pd_cp_manager contral pd adapter charging"
+	help
+	  Say yes here to enable pd_cp_manager contral pd adapter charging driver.
+	  Say no if not using pd_cp_manager contral pd adapter charging driver.
+
+config XM_SINGLE_PD_MANAGER
+	tristate "pd_cp_manager contral pd adapter charging"
+	help
+	  Say yes here to enable pd_cp_manager contral pd adapter charging driver.
+	  Say no if not using pd_cp_manager contral pd adapter charging driver.
+
+config RUST_DETECTION
+	bool "support rust detection"
+	default n
+	help
+	support rust detection.
+
 config CHARGER_BQ2589X
 	tristate "TI BQ2589X battery charger driver"
 	depends on I2C
@@ -305,6 +335,10 @@ config CHARGER_BQ2589X
 	  bq2589x charger IC Battery Charger. The base name for this driver is
 	  'bq2589x_charger.c'.
 
+config HL7603_BOOST
+    tristate "hl7603 boost"
+    help
+      Say y or m here to support hl7603 boost
 config CHARGER_BQ25601
 	tristate "CHARGER_BQ25601"
 	help
@@ -312,6 +346,17 @@ config CHARGER_BQ25601
 	  TI BQ25601 driver.
 	  It depends on
 	  the config MTK_CHARGER.
+
+config CHARGER_BQ25985
+	tristate "TI BQ25985 battery charger driver"
+	depends on I2C
+	depends on GPIOLIB || COMPILE_TEST
+	select REGMAP_I2C
+	help
+	  This adds support for charger IC bq25985.
+	  Say Y to include support for Texas Instruments
+	  bq2589x charger IC Battery Charger. The base name for this driver is
+	  'bq25985_charger.c'.
 
 config CHARGER_SGM41516D
     tristate "CHARGER_SGM41516D"

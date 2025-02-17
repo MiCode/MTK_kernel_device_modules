@@ -21,6 +21,7 @@
 #include <linux/spi/spi-mem.h>
 #include <linux/dma-mapping.h>
 #include <linux/time.h>
+#include "fp_spi.h"
 #include <linux/iopoll.h>
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
@@ -1935,6 +1936,11 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		goto err_put_master;
 	}
 
+	if(strncmp(dev_name(&master->dev), FP_USE_SPI, FP_USE_SPI_LENGTH) == 0) {
+		fingerprint_ms = spi_master_get_devdata(master);
+		pr_info("it is Fingerprint spi: %s", FP_USE_SPI);
+	}
+
 	return 0;
 
 err_put_master:
@@ -2097,6 +2103,19 @@ void mt_spi_enable_master_clk(struct spi_device *spidev)
 	BUG_ON(ret < 0);
 }
 EXPORT_SYMBOL(mt_spi_enable_master_clk);
+
+void spi_disable_fingerprint_clk(void)
+{
+	clk_disable_unprepare(fingerprint_ms->spi_clk);
+}
+EXPORT_SYMBOL(spi_disable_fingerprint_clk);
+
+void spi_enable_fingerprint_clk(void)
+{
+	int ret;
+	ret = clk_prepare_enable(fingerprint_ms->spi_clk);
+}
+EXPORT_SYMBOL(spi_enable_fingerprint_clk);
 
 static struct platform_driver mtk_spi_driver = {
 	.driver = {

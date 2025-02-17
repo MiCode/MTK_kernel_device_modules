@@ -41,6 +41,7 @@ MODULE_LICENSE("GPL");
 struct cpumask __cpu_pause_mask;
 EXPORT_SYMBOL(__cpu_pause_mask);
 
+
 struct perf_domain *find_pd(struct perf_domain *pd, int cpu)
 {
 	while (pd) {
@@ -862,6 +863,7 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	int this_cpu = smp_processor_id();
 	struct sugov_rq_data *sugov_data_ptr;
 	struct sugov_rq_data *sugov_data_ptr2;
+
 
 	if (!get_eas_hook())
 		return;

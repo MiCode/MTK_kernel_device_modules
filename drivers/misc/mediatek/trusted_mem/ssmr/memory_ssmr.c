@@ -51,7 +51,8 @@ static struct SSMR_HEAP_INFO _ssmr_heap_info[__MAX_NR_SSMR_FEATURES];
 
 #if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
 	IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT) || \
-	IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT)
+	IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT) || \
+	IS_ENABLED(CONFIG_MITEE_SUPPORT)
 static void set_svp_reserve_memory(void)
 {
 	struct device_node *rmem_node;
@@ -679,7 +680,8 @@ int sec_ssmr_init(struct platform_device *pdev)
 
 #if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) ||\
 	IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT) ||\
-	IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT)
+	IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT) ||\
+	IS_ENABLED(CONFIG_MITEE_SUPPORT)
 	/* check svp statis reserved status */
 	set_svp_reserve_memory();
 #endif

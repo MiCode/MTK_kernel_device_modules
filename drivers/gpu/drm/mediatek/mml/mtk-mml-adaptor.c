@@ -177,6 +177,7 @@ void frame_config_init(struct mml_frame_config *cfg,
 
 	cfg->job_id = atomic_inc_return(&ctx->config_serial);
 	cfg->info = submit->info;
+	cfg->max_size = submit->max_size;
 	cfg->disp_dual = ctx->disp_dual;
 	cfg->disp_vdo = ctx->disp_vdo;
 	cfg->ctx = ctx;

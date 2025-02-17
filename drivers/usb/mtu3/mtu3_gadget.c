@@ -431,6 +431,8 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 	struct mtu3 *mtu = mep->mtu;
 	unsigned long flags;
 	int ret = 0;
+	struct list_head *new = NULL;
+	struct list_head *head = NULL;
 
 	if (!req->buf)
 		return -ENODATA;
@@ -483,6 +485,15 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 	}
 
 	trace_mtu3_gadget_queue(mreq);
+	new = &mreq->list;
+	head = &mep->req_list;
+	if(new == head->prev) {
+		dev_info(mtu->dev, "req double add error,%s %s EP%d(%s), req=%p, maxp=%d, len#%d\n",
+			__func__, mep->is_in ? "TX" : "RX", mreq->epnum, ep->name,
+			mreq, ep->maxpacket, mreq->request.length);
+		ret = -EINVAL;
+		goto error;
+	}
 	list_add_tail(&mreq->list, &mep->req_list);
 	mtu3_insert_gpd(mep, mreq);
 	mtu3_qmu_resume(mep);

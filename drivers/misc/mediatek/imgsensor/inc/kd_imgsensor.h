@@ -705,6 +705,16 @@
  ************************************/
 /* SONY */
 #define IMX866RGB_I3C_PID							0x036008660000
+/*XIAOMI ADD START*/
+#define RODINOV20BFRONT_SENSOR_ID                  0x2042
+#define SENSOR_DRVNAME_RODINOV20BFRONT_MIPI_RAW   "rodinov20bfront_mipi_raw"
+
+#define RODINSC820CSULTRA_SENSOR_ID                  0xd154
+#define SENSOR_DRVNAME_RODINSC820CSULTRA_MIPI_RAW   "rodinsc820csultra_mipi_raw"
+
+#define RODINIMX882WIDE_SENSOR_ID                  0x8202
+#define SENSOR_DRVNAME_RODINIMX882WIDE_MIPI_RAW   "rodinimx882wide_mipi_raw"
+/*XIAOMI ADD END*/
 
 
 /************************************

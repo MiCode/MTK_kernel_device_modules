@@ -417,6 +417,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 	irq_log_store();
 	mtk_get_gear_indicies(p, &order_index, &end_index, &reverse);
+
 	irq_log_store();
 	end_index = energy_eval ? end_index : 0;
 
@@ -461,6 +462,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 
 			if (cpu_high_irqload(cpu))
 				continue;
+
 
 			/* RT task skips cpu that runs latency_sensitive or vip tasks */
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
@@ -576,6 +578,7 @@ unlock:
 
 DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_rt_mask);
 
+
 void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 				int sd_flag, int flags, int *target_cpu)
 {
@@ -584,7 +587,6 @@ void mtk_select_task_rq_rt(void *data, struct task_struct *p, int source_cpu,
 	int ret, target = -1, this_cpu, select_reason = -1;
 	struct cpumask *lowest_mask = this_cpu_cpumask_var_ptr(mtk_select_rq_rt_mask);
 	struct rt_energy_aware_output rt_ea_output;
-
 	if (!get_eas_hook())
 		return;
 
@@ -783,6 +785,7 @@ unlock:
 	*lowest_cpu = -1;
 	select_reason = LB_RT_FAIL;
 out:
+
 	irq_log_store();
 
 	if (trace_sched_find_lowest_rq_enabled())
