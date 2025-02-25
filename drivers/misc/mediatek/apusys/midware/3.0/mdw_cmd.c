@@ -111,8 +111,13 @@ static void mdw_cmd_late_postprocess(struct mdw_cmd *c)
 {
 	struct mdw_device *mdev = c->mpriv->mdev;
 
+	mdw_flw_debug("\n");
+
 	if (mdev->plat_funcs->late_postprocess_cmd(c))
 		mdw_drv_err("cmd late postprocess failed\n");
+
+	/* reset cmd state */
+	c->cmd_state = MDW_CMD_STATE_IDLE;
 }
 
 static void mdw_cmd_put_cmdbufs(struct mdw_fpriv *mpriv, struct mdw_cmd *c)
@@ -795,6 +800,7 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 			}
 			/* put refcnt from fence init */
 			dma_fence_put(f);
+			mdw_cmd_late_postprocess(c);
 		}
 	} else {
 		mdw_flw_debug("wait fence, fd(%d)\n", wait_fd);
@@ -868,9 +874,6 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	/* late post process */
 	mdw_cmd_late_postprocess(c);
 
-	/* reset cmd state */
-	c->cmd_state = MDW_CMD_STATE_IDLE;
-
 	mdw_flw_debug("c(0x%llx) complete done\n", c->kid);
 	mutex_unlock(&c->mtx);
 	up(&c->exec_sem);
@@ -908,6 +911,7 @@ static void mdw_cmd_trigger_func(struct work_struct *wk)
 		mdw_drv_err("run cmd fail\n");
 		c->cmd_state = MDW_CMD_STATE_ERROR;
 		mdw_cmd_postprocess(c);
+		mdw_cmd_late_postprocess(c);
 	}
 	mutex_unlock(&c->mtx);
 }
@@ -968,7 +972,6 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 		mdw_drv_err("end_vertices_num overflow\n");
 		goto free_cmd;
 	}
-	c->need_dtime_handle = false;
 	/* callback functions */
 	c->complete = mdw_cmd_complete;
 	c->get_ref = mdw_cmd_get;

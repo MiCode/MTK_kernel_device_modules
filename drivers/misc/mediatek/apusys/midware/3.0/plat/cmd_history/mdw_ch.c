@@ -61,7 +61,8 @@ struct mdw_ch_mgr {
 	uint64_t predict_cmd_ts[MDW_CH_PREDICT_CMD_NUM];
 
 	struct mdw_min_heap heap;
-	struct mutex mtx;
+	struct mutex mtx;   // cmd history talbe mtx
+	struct mutex h_mtx; // heap mtx
 
 	struct mdw_device *mdev;
 };
@@ -170,10 +171,12 @@ static void mdw_ch_reset_heap(void)
 
 	mdw_flw_debug("\n");
 
+	mutex_lock(&g_ch_mgr->h_mtx);
 	/* reset min heap */
 	g_ch_mgr->heap.nr = 0;
 	for (i = 0; i < MDW_NUM_PREDICT_CMD; i++)
 		g_ch_mgr->predict_cmd_ts[i] = 0;
+	mutex_unlock(&g_ch_mgr->h_mtx);
 }
 
 static void mdw_ch_min_heap_sanity_check(void)
@@ -308,10 +311,11 @@ static void mdw_ch_handle_iptime(struct mdw_ch_tbl *ch_tbl, struct mdw_cmd *c)
 	}
 }
 
-static void mdw_ch_handle_fast_power_onoff(struct mdw_ch_tbl *ch_tbl, struct mdw_cmd *c)
+static bool mdw_ch_handle_fast_power_onoff(struct mdw_ch_tbl *ch_tbl, struct mdw_cmd *c)
 {
 	uint64_t predict_start_ts = 0, predict_idle = 0;
 	struct mdw_device *mdev = g_ch_mgr->mdev;
+	bool need_dtime_handle = false;
 
 	/* update period */
 	mdw_ch_handle_period(ch_tbl, c);
@@ -328,15 +332,17 @@ static void mdw_ch_handle_fast_power_onoff(struct mdw_ch_tbl *ch_tbl, struct mdw
 	/* check support power fast power on off */
 	if (mdev->support_power_fast_on_off == false) {
 		mdw_flw_debug("no support power fast on off\n");
-		return;
+		goto out;
 	}
 
 	/* get next cmd in ts */
+	mutex_lock(&g_ch_mgr->h_mtx);
 	predict_start_ts = mdw_ch_get_next_cmd_in_ts(c);
+	mutex_unlock(&g_ch_mgr->h_mtx);
 	if (!predict_start_ts) {
 		mdw_flw_debug("no valid predict cmd in heap\n");
-		c->need_dtime_handle = true;
-		return;
+		need_dtime_handle = true;
+		goto out;
 	}
 
 	/* check predict idle time */
@@ -361,8 +367,10 @@ static void mdw_ch_handle_fast_power_onoff(struct mdw_ch_tbl *ch_tbl, struct mdw
 		mdw_flw_debug("not apply fast power off, time(%llu/%u), activated cmd(%u) dtime(%u/0x%llx)\n",
 			predict_idle, mdev->power_gain_time_us, atomic_read(&mdev->cmd_running),
 			c->power_dtime, c->is_dtime_set);
-		c->need_dtime_handle = true;
+		need_dtime_handle = true;
 	}
+out:
+	return need_dtime_handle;
 }
 
 static void mdw_ch_cmd_delete_tbl(struct mdw_ch_tbl *tbl)
@@ -437,17 +445,23 @@ out:
 	return ret;
 }
 
-int mdw_ch_cmd_exec_update(struct mdw_cmd *c)
+bool mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 {
 	struct mdw_ch_tbl *ch_tbl = NULL;
-	int ret = 0;
+	bool need_dtime_handle = false;
 
-	mdw_drv_debug("[todo] should be after signal\n");
+	mdw_drv_debug("\n");
 
 	if (mdw_ch_is_perf_mode(c)) {
 		mdw_flw_debug("perf mode cmd, bypass update\n");
-		c->need_dtime_handle = true;
-		return 0;
+		need_dtime_handle = true;
+		goto out;
+	}
+
+	if (c->cmd_state == MDW_CMD_STATE_ERROR) {
+		mdw_flw_debug("cmd execute error, bypass update\n");
+		need_dtime_handle = true;
+		goto out;
 	}
 
 	mutex_lock(&g_ch_mgr->mtx);
@@ -456,9 +470,8 @@ int mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 	ch_tbl = mdw_ch_find_tbl(c);
 	if (ch_tbl == NULL) {
 		mdw_drv_warn("find ch table failed(0x%llx)\n", c->uid);
-		ret = -EINVAL;
-		c->need_dtime_handle = true;
-		goto out;
+		need_dtime_handle = true;
+		goto lock_out;
 	}
 
 	/* initial or update h_exec_time */
@@ -472,15 +485,16 @@ int mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 	mdw_ch_handle_iptime(ch_tbl, c);
 
 	/* handle fast power onoff by heap */
-	mdw_ch_handle_fast_power_onoff(ch_tbl, c);
+	need_dtime_handle = mdw_ch_handle_fast_power_onoff(ch_tbl, c);
 
 	/* record cmd end_ts */
 	ch_tbl->h_start_ts = c->start_ts;
 	ch_tbl->h_end_ts = c->end_ts;
 
-out:
+lock_out:
 	mutex_unlock(&g_ch_mgr->mtx);
-	return ret;
+out:
+	return need_dtime_handle;
 }
 
 /*
@@ -522,6 +536,7 @@ int mdw_ch_init(struct mdw_device *mdev)
 
 	g_ch_mgr->mdev = mdev;
 	mutex_init(&g_ch_mgr->mtx);
+	mutex_init(&g_ch_mgr->h_mtx);
 	hash_init(g_ch_mgr->ch_tbl_hash);
 
 	/* init heap */

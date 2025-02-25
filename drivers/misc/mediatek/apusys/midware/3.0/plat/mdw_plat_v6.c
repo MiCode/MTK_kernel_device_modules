@@ -140,25 +140,27 @@ static void mdw_plat_v6_show_msg(struct mdw_mem_map *map)
 		rcb++;
 	}
 
-	/* execute_order */
-	print_hex_dump(KERN_INFO, "  execute_order order: ",
-		DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->execute_order_offset,
-		sizeof(uint32_t) * rmc->num_subcmds, 0);
+	if (mdw_debug_on(MDW_DBG_CMD)) {
+		/* execute_order */
+		print_hex_dump(KERN_INFO, "  execute_order order: ",
+			DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->execute_order_offset,
+			sizeof(uint32_t) * rmc->num_subcmds, 0);
 
-	/* predecessor*/
-	print_hex_dump(KERN_INFO, "  predecessor: ",
-		DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->predecessors_offset,
-		rmc->predecessors_size, 0);
+		/* predecessor*/
+		print_hex_dump(KERN_INFO, "  predecessor: ",
+			DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->predecessors_offset,
+			rmc->predecessors_size, 0);
 
-	/* pack_friends */
-	print_hex_dump(KERN_INFO, "  pack_friends: ",
-		DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->pack_friends_offset,
-		rmc->pack_friends_size, 0);
+		/* pack_friends */
+		print_hex_dump(KERN_INFO, "  pack_friends: ",
+			DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->pack_friends_offset,
+			rmc->pack_friends_size, 0);
 
-	/* end_vertices */
-	print_hex_dump(KERN_INFO, "  end_vertices: ",
-		DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->end_vertices_offset,
-		rmc->end_vertices_size, 0);
+		/* end_vertices */
+		print_hex_dump(KERN_INFO, "  end_vertices: ",
+			DUMP_PREFIX_OFFSET, 16, 4, map->vaddr + rmc->end_vertices_offset,
+			rmc->end_vertices_size, 0);
+	}
 
 	rmsc = (struct mdw_rv_msg_sc *)(map->vaddr + rmc->subcmds_offset);
 	for (i = 0; i < rmc->num_subcmds; i++) {
@@ -689,9 +691,6 @@ static int mdw_plat_v6_postprocess_cmd(struct mdw_cmd *c)
 		goto out;
 	}
 
-	mdw_pb_put(c->power_plcy);
-	atomic_dec(&c->mpriv->mdev->cmd_running);
-
 	/* copy exec info out */
 	/* invalidate */
 	if (mdw_mem_invalidate(c->mpriv, rc->cb))
@@ -716,29 +715,32 @@ static int mdw_plat_v6_postprocess_cmd(struct mdw_cmd *c)
 	/* postprocess appendix */
 	mdw_plat_v6_appendix_process(c, APU_APPENDIX_CB_POSTPROCESS);
 
-	if (c->cmd_state == MDW_CMD_STATE_ERROR) {
-		c->need_dtime_handle = true;
-		goto dtime_handle;
-	}
-
-	/* update cmd history */
-	mdw_ch_cmd_exec_update(c);
-
-dtime_handle:
-	/* handle dtime */
-	if (c->need_dtime_handle == true)
-		mdw_rv_dev_dtime_handle((struct mdw_rv_dev *)c->mpriv->mdev->dev_specific, c);
-
 out:
 	return ret;
 }
 
 static int mdw_plat_v6_late_postprocess_cmd(struct mdw_cmd *c)
 {
+	bool need_dtime_handle = false;
+
 	mdw_flw_debug("\n");
+	if (c->cmd_state == MDW_CMD_STATE_IDLE) {
+		mdw_drv_debug("cmd already late postprocess done\n");
+		goto out;
+	}
 	/* postprocess appendix */
 	mdw_plat_v6_appendix_process(c, APU_APPENDIX_CB_POSTPROCESS_LATE);
 
+	mdw_pb_put(c->power_plcy);
+	atomic_dec(&c->mpriv->mdev->cmd_running);
+
+	/* update cmd history */
+	need_dtime_handle = mdw_ch_cmd_exec_update(c);
+
+	/* handle dtime */
+	if (need_dtime_handle == true)
+		mdw_rv_dev_dtime_handle((struct mdw_rv_dev *)c->mpriv->mdev->dev_specific, c);
+out:
 	return 0;
 }
 

@@ -403,14 +403,14 @@ static int mdw_rv_callback(struct rpmsg_device *rpdev, void *data,
 		mdw_drv_err("get ipi msg fail(0x%llu)", msg->sync_id);
 	} else {
 		memcpy(&s_msg->msg, msg, sizeof(*msg));
-		/* complete callback */
-		if (s_msg->complete)
-			s_msg->complete(s_msg);
 	}
 	mutex_unlock(&mrdev->msg_mtx);
 
 	ts1 = sched_clock();
 	mrdev->rv_cb_time = ts1 - ts2;
+	/* complete callback */
+	if (s_msg->complete)
+		s_msg->complete(s_msg);
 
 	return 0;
 }
