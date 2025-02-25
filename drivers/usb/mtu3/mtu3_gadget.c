@@ -10,6 +10,7 @@
 #include <linux/usb/composite.h>
 
 #include "mtu3.h"
+#include "mtu3_dr.h"
 #include "mtu3_trace.h"
 
 #include "u_fs.h"
@@ -701,8 +702,10 @@ static int mtu3_gadget_pullup(struct usb_gadget *gadget, int is_on)
 {
 	struct mtu3 *mtu = gadget_to_mtu3(gadget);
 	unsigned long flags;
+	struct otg_switch_mtk *otg_sx = otg_sx = &mtu->ssusb->otg_switch;
+	bool setmode = false;
 
-	dev_dbg(mtu->dev, "%s (%s) for %sactive device\n", __func__,
+	dev_info(mtu->dev, "%s (%s) for %sactive device\n", __func__,
 		is_on ? "on" : "off", mtu->is_active ? "" : "in");
 
 	pm_runtime_get_sync(mtu->dev);
@@ -720,13 +723,25 @@ static int mtu3_gadget_pullup(struct usb_gadget *gadget, int is_on)
 		if (!is_on)
 			mtu3_nuke_all_ep(mtu);
 
-		mtu3_dev_on_off(mtu, is_on);
+		if (of_device_is_compatible(mtu->dev->of_node, "mediatek,mt6993-mtu3")) {
+			if (is_on && otg_sx->current_role == USB_ROLE_DEVICE)
+				setmode = true;
+			else
+				mtu3_dev_on_off(mtu, is_on);
+		} else {
+			mtu3_dev_on_off(mtu, is_on);
+		}
 	}
 
 	spin_unlock_irqrestore(&mtu->lock, flags);
 
 	if (!mtu->is_gadget_ready && is_on)
 		mtu3_gadget_set_ready(gadget);
+
+	mutex_lock(&otg_sx->otg_lock);
+	if (setmode)
+		ssusb_set_mode(otg_sx, otg_sx->current_role);
+	mutex_unlock(&otg_sx->otg_lock);
 
 	pm_runtime_put(mtu->dev);
 

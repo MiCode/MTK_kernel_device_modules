@@ -222,9 +222,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	dev_info(ssusb->dev, "%s: %s to %s\n", __func__,
 		 usb_role_string(current_role), usb_role_string(desired_role));
 
-	if (current_role == desired_role)
-		goto same_role;
-
 	mtu3_dbg_trace(ssusb->dev, "set role : %s", usb_role_string(desired_role));
 
 	timeout = jiffies + SSUSB_SUSPEND_RESUME_TIMEOUT;
@@ -304,7 +301,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 
 	pm_runtime_put(ssusb->dev);
 
-same_role:
 	kfree(work_data);
 }
 
@@ -413,7 +409,9 @@ static int ssusb_id_notifier(struct notifier_block *nb,
 	struct otg_switch_mtk *otg_sx =
 		container_of(nb, struct otg_switch_mtk, id_nb);
 
+	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, event ? USB_ROLE_HOST : USB_ROLE_DEVICE);
+	mutex_unlock(&otg_sx->otg_lock);
 
 	return NOTIFY_DONE;
 }
@@ -456,7 +454,9 @@ void ssusb_mode_switch(struct ssusb_mtk *ssusb, int to_host)
 {
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 
+	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, to_host ? USB_ROLE_HOST : USB_ROLE_DEVICE);
+	mutex_unlock(&otg_sx->otg_lock);
 }
 
 void ssusb_set_force_mode(struct ssusb_mtk *ssusb,
@@ -487,7 +487,9 @@ static int ssusb_role_sw_set(struct usb_role_switch *sw, enum usb_role role)
 	struct ssusb_mtk *ssusb = usb_role_switch_get_drvdata(sw);
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 
+	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, role);
+	mutex_unlock(&otg_sx->otg_lock);
 
 	return 0;
 }
@@ -538,7 +540,9 @@ static int ssusb_role_sw_register(struct otg_switch_mtk *otg_sx)
 	if (IS_ERR(otg_sx->role_sw))
 		return PTR_ERR(otg_sx->role_sw);
 
+	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, otg_sx->default_role);
+	mutex_unlock(&otg_sx->otg_lock);
 
 	return 0;
 }
@@ -820,6 +824,8 @@ int ssusb_otg_switch_init(struct ssusb_mtk *ssusb)
 	ret = sysfs_create_group(&ssusb->dev->kobj, &ssusb_dr_group);
 	if (ret)
 		dev_info(ssusb->dev, "error creating sysfs attributes\n");
+
+	mutex_init(&otg_sx->otg_lock);
 
 	if (otg_sx->manual_drd_enabled)
 		ssusb_dr_debugfs_init(ssusb);

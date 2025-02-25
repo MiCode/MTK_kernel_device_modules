@@ -295,6 +295,7 @@ struct otg_switch_mtk {
 	enum usb_role latest_role;
 	enum usb_role current_role;
 	enum mtu3_dr_operation_mode op_mode;
+	struct mutex otg_lock;
 };
 
 /**
