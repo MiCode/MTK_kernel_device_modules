@@ -180,7 +180,7 @@ int mmdvfs_force_vcore_notify(const u32 val)
 	//release force_step at max vcore level
 	//0:MMDVFS_PWR_VCORE
 	opp = (vcore_level[val] < (mmdvfs_data->rc[0].level_num - 1)) ?
-		OPP2LEVEL(0, vcore_level[val]) : -1;
+		OPP2LEVEL(0, vcore_level[0]) : -1;
 	ret = mmdvfs_force_step(0, opp);
 	if (ret)
 		MMDVFS_DBG("ret:%d force_vcore_level:%u final_vcore_opp:%hhd",

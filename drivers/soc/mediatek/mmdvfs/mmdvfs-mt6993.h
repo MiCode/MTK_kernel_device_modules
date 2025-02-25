@@ -40,9 +40,9 @@
 //dummy rg
 #define VMM_DVFSRC_SIGNAL_MAP0		0x00080
 
-static const u8 vmm_force_user[] = {MMDVFS_FORCE_CAM, MMDVFS_FORCE_CAMTM, MMDVFS_FORCE_VDE, MMDVFS_FORCE_IMG, MMDVFS_FORCE_IPE};
-static const u8 vdisp_force_user[] = {MMDVFS_FORCE_DIS, MMDVFS_FORCE_MML};
-static const u8 vcore_force_user[] = {MMDVFS_FORCE_SMI, MMDVFS_FORCE_VEN, MMDVFS_FORCE_MDP};
+static const u8 vmm_force_user[] = {MMDVFS_FORCE_CAM, MMDVFS_FORCE_VDE};
+static const u8 vdisp_force_user[] = {MMDVFS_FORCE_DIS};
+static const u8 vcore_force_user[] = {MMDVFS_FORCE_SMI};
 static struct mmdvfs_rc mmdvfs_rc[MMDVFS_PWR_NUM] = {
 	[MMDVFS_PWR_VMM] = {MMDVFS_PWR_VMM, VMMRC_APB_BASE, 6, vmm_force_user, ARRAY_SIZE(vmm_force_user)},
 	[MMDVFS_PWR_VDISP] = {MMDVFS_PWR_VDISP, VDISPRC_APB_BASE, 6, vdisp_force_user, ARRAY_SIZE(vdisp_force_user)},
