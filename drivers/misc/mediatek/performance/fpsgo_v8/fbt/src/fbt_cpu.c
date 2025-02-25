@@ -4283,9 +4283,13 @@ EXPORT_SYMBOL(fpsgo_other2fbt_calculate_frame_loading);
 
 static int fbt_get_aa(long loading, const long *cl_loading, int clusnum,
 			unsigned long long t_cpu, unsigned long long t_q2q, int separate_enable,
-			int max_cluster, int sec_cluster, long *aa, long *aa_b, long *aa_m)
+			int max_cluster, int sec_cluster, int min_cluster,
+			long *aa, long *aa_b, long *aa_m, long *aa_l)
 {
-	int ret = 0, ret_b = 0, ret_m = 0;
+	int ret = 0, ret_b = 0, ret_m = 0, ret_l = 0;
+
+	if (!aa || !aa_b || !aa_m || !aa_l)
+		return -EINVAL;
 
 	/* if not getting proper cl_loading, go back to default way */
 	ret = fpsgo_other2fbt_calculate_frame_loading(loading, t_cpu, t_q2q, aa);
@@ -4293,14 +4297,19 @@ static int fbt_get_aa(long loading, const long *cl_loading, int clusnum,
 		return ret;
 
 	if (cl_loading && clusnum > 1) {
-		ret_b = fpsgo_other2fbt_calculate_frame_loading(cl_loading[max_cluster], t_cpu, t_q2q, aa_b);
-		ret_m = fpsgo_other2fbt_calculate_frame_loading(cl_loading[sec_cluster], t_cpu, t_q2q, aa_m);
+		ret_b = fpsgo_other2fbt_calculate_frame_loading(cl_loading[max_cluster],
+							t_cpu,t_q2q, aa_b);
+		ret_m = fpsgo_other2fbt_calculate_frame_loading(cl_loading[sec_cluster],
+							t_cpu, t_q2q, aa_m);
+		ret_l = fpsgo_other2fbt_calculate_frame_loading(cl_loading[min_cluster],
+							t_cpu, t_q2q, aa_l);
 	} else {
 		*aa_b = *aa;
 		*aa_m = *aa;
+		*aa_l = *aa;
 		ret = -EINVAL;
 	}
-	if (ret_b != 0 || ret_m != 0 || ret != 0)
+	if (ret_b != 0 || ret_m != 0 || ret_l != 0 || ret != 0)
 		ret = -EINVAL;
 
 	return ret;
@@ -4411,8 +4420,8 @@ int Test_fbt_get_separatecap(int separate_enable, long *cl_loading,
 			unsigned int last_blc_wt_m, unsigned int *blc_wt_b,
 			unsigned int *blc_wt_m, int clusnum)
 {
-	long aa_n, aa_b = 0, aa_m = 0;
-	int max_cluster, sec_cluster;
+	long aa_n, aa_b = 0, aa_m = 0, aa_l = 0;
+	int max_cluster, sec_cluster, min_cluster;
 	int get_aa_ret = 0, getcap_ret = 0;
 	unsigned int blc_wt_n = 0;
 
@@ -4423,9 +4432,11 @@ int Test_fbt_get_separatecap(int separate_enable, long *cl_loading,
 
 	max_cluster = clusnum - 1;
 	sec_cluster = clusnum - 2;
+	min_cluster = 0;
 
 	get_aa_ret = fbt_get_aa(aa, cl_loading, clusnum,
-		t_cpu, t_q2q, 1, max_cluster, sec_cluster, &aa_n, &aa_b, &aa_m);
+		t_cpu, t_q2q, 1, max_cluster, sec_cluster, min_cluster,
+		&aa_n, &aa_b, &aa_m, &aa_l);
 
 	getcap_ret = fbt_get_separatecap(separate_enable, aa_n, aa_b, aa_m,
 		target_time, t_q2q, aa_retarget, last_blc_wt_b, last_blc_wt_b, last_blc_wt_m,
@@ -4869,7 +4880,8 @@ static int fbt_boost_policy(
 	}
 
 	fbt_get_aa(loading, boost_info->cl_loading, cluster_num, t1, t_Q2Q,
-		separate_aa_final, max_cap_cluster, sec_cap_cluster, &aa_n, &aa_b, &aa_m);
+		separate_aa_final, max_cap_cluster, sec_cap_cluster, min_cap_cluster,
+		&aa_n, &aa_b, &aa_m, &aa_l);
 	thread_info->frame_aa = loading;
 	// workaround, special code for APDF
 	if (test_bit(USER_TYPE, &thread_info->master_type)) {
@@ -4877,9 +4889,6 @@ static int fbt_boost_policy(
 		aa_n += thread_info->dep_aa * (10 - XGF_DEFAULT_EMA_DIVIDEND) / 10;
 	}
 	thread_info->dep_aa = aa_n;
-
-	if (boost_info->cl_loading && cluster_num > 1)
-		fpsgo_other2fbt_calculate_frame_loading(boost_info->cl_loading[min_cap_cluster], t1, t_Q2Q, &aa_l);
 
 	if (aal_clamp && aa_m < aa_l)
 		aa_m = aa_l;
