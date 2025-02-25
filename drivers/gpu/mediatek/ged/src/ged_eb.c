@@ -65,12 +65,15 @@ static unsigned int sysram_size;
 #endif
 
 bool need_to_refresh_mode = true;
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 static struct hrtimer g_HT_fdvfs_debug;
+#endif
 #define GED_FDVFS_TIMER_TIMEOUT 1000000 // 1ms
 
 #define DVFS_trace_counter(name, value) \
 	trace_tracing_mark_write(5566, name, value)
 
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 static DEFINE_SPINLOCK(counter_info_lock);
 static int mfg_is_power_on;
 static unsigned int fb_uncomplete_cnt;
@@ -84,7 +87,6 @@ struct ged_last_timer {
 
 static struct ged_last_timer g_ged_last_timer;
 
-#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 #define FDVFS_IPI_ATTR "ipi_dev:%p, ch:%d, DATA_LEN: %lu, TIMEOUT: %d(ms)"
 #define EB_DVFS_FALLBACK 5566
 #define EB_DVFS_DUMP_TH 0x800

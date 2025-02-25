@@ -409,6 +409,7 @@ struct ged_head_record {
 
 static struct ged_head_record g_ged_head_record;
 
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 struct ged_eb_dvfs_last_record {
 	u64 ulID;
 	u64 last_uncomplete_soc_timer;
@@ -416,6 +417,7 @@ struct ged_eb_dvfs_last_record {
 	u32 last_uncomplete_type;
 };
 static struct ged_eb_dvfs_last_record g_ged_eb_uncomplete_info;
+#endif
 
 u64 fb_timeout = 100000000;/*100 ms*/
 u64 lb_timeout = 100000000;

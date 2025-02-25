@@ -231,7 +231,7 @@ void ged_set_prev_policy_state(enum gpu_dvfs_policy_state state)
 	g_prev_policy_state = state;
 }
 
-
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 static void ged_eb_dump_norm_loading(void) {
 	union combineData tmp_multi = {0};
 	unsigned int gpu_loading = 0;
@@ -257,6 +257,7 @@ static void ged_eb_dump_norm_loading(void) {
 	trace_GPU_DVFS__Loading(gpu_loading, tile_loading,
 		frag_loading, comp_loading, iter_loading, mcu_loading, itet_mcu_union_loading);
 }
+#endif /* CONFIG_MTK_GPU_LEGACY */
 
 void ged_eb_dvfs_trace_dump(void)
 {

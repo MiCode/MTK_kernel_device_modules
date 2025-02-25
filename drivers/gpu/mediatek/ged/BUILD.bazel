@@ -179,8 +179,6 @@ define_mgk_ddk_ko(
         "MTK_GPU_MEMSYS_UTIL",
     ],
     copts = [
-        "-Wno-unused-variable",
-        "-Wno-unused-function",
         "-I$(DEVICE_MODULES_PATH)/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include",
