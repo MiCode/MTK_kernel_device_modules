@@ -401,6 +401,14 @@ static void mtk_sched_trace_init(void)
 	if (ret)
 		pr_info("register android_rvh_dequeue_task failed!\n");
 
+	ret = register_trace_android_rvh_enqueue_task_fair(hook_enqueue_task_fair, NULL);
+	if (ret)
+		pr_info("register android_rvh_enqueue_task_fair failed!\n");
+
+	ret = register_trace_android_rvh_dequeue_task_fair(hook_dequeue_task_fair, NULL);
+	if (ret)
+		pr_info("register android_rvh_dequeue_task_fair failed!\n");
+
 	ret = register_trace_pelt_se_tp(sched_task_util_hook, NULL);
 	if (ret)
 		pr_info("register sched_task_util_hook failed!\n");

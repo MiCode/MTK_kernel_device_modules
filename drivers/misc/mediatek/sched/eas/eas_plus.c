@@ -811,12 +811,40 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	WRITE_ONCE(sugov_data_ptr->enq_ing, false);
 #endif
 	irq_log_store();
+
+	if (trace_sched_eevdf_enabled()) {
+		if (p && p->prio > 99)
+			trace_sched_eevdf(rq->cpu, p, flags, 10);
+	}
 }
 
 void mtk_hook_after_dequeue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags)
 {
 	vip_dequeue_task(rq, p);
+
+	if (trace_sched_eevdf_enabled()) {
+		if (p && p->prio > 99)
+			trace_sched_eevdf(rq->cpu, p, flags, 11);
+	}
+}
+
+void hook_enqueue_task_fair(void *data, struct rq *rq,
+				struct task_struct *p, int flags)
+{
+	if (trace_sched_eevdf_enabled()) {
+		if (p && p->prio > 99)
+			trace_sched_eevdf(rq->cpu, p, flags, 20);
+	}
+}
+
+void hook_dequeue_task_fair(void *data, struct rq *rq,
+				struct task_struct *p, int flags)
+{
+	if (trace_sched_eevdf_enabled()) {
+		if (p && p->prio > 99)
+			trace_sched_eevdf(rq->cpu, p, flags, 21);
+	}
 }
 
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
@@ -1075,8 +1103,7 @@ void mtk_sched_switch(void *data, struct task_struct *prev,
 	if (trace_sched_stat_vdeadline_enabled()) {
 		if (prev->pid != 0 && next->pid != 0) {
 			if (prev->prio > 99 && next->prio > 99) {
-				if (_entity_eligible(&(rq->cfs), &(prev->se)))
-					trace_sched_stat_vdeadline(prev, next);
+				trace_sched_stat_vdeadline(prev, next);
 			}
 		}
 	}

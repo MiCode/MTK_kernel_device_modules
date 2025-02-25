@@ -577,6 +577,52 @@ TRACE_EVENT(sched_queue_task,
 		__entry->task_coef2_util_est)
 );
 
+TRACE_EVENT(sched_eevdf,
+	TP_PROTO(int cpu, struct task_struct *p, int flags, int source),
+
+	TP_ARGS(cpu, p, flags, source),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, pid)
+		__field(unsigned char, sched_delayed)
+		__field(s64, vlag)
+		__field(u64, deadline)
+		__field(unsigned char, rel_deadline)
+		__field(u64, slice)
+		__field(u64, custom_slice)
+		__field(int, flags)
+		__field(int, source)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pid = p->pid;
+		__entry->sched_delayed = (p->se).sched_delayed;
+		__entry->vlag = (p->se).vlag;
+		__entry->deadline = (p->se).deadline;
+		__entry->rel_deadline = (p->se).rel_deadline;
+		__entry->slice = (p->se).slice;
+		__entry->custom_slice = (p->se).custom_slice;
+		__entry->flags = flags;
+		__entry->source = source;
+	),
+
+	TP_printk(
+		"cpu=%d pid=%4d sched_delayed=%u vlag=%14lld vdeadline=%14llu rel_deadline=%u vslice=%llu custom_slice=%llu flags=0x%4x source=%2d",
+		__entry->cpu,
+		__entry->pid,
+		__entry->sched_delayed,
+		__entry->vlag,
+		__entry->deadline,
+		__entry->rel_deadline,
+		__entry->slice,
+		__entry->custom_slice,
+		__entry->flags,
+		__entry->source
+		)
+);
+
 TRACE_EVENT(sched_task_util,
 	TP_PROTO(int pid,
 		unsigned long util,
@@ -2427,32 +2473,53 @@ TRACE_EVENT(sched_stat_vdeadline,
 	TP_ARGS(prev, next),
 	TP_STRUCT__entry(
 		__field(int, prev_pid)
+		__field(unsigned char, prev_sched_delayed)
+		__field(s64, prev_vlag)
 		__field(u64, prev_deadline)
+		__field(unsigned char, prev_rel_deadline)
 		__field(u64, prev_slice)
+		__field(u64, prev_custom_slice)
 		__field(int, next_pid)
+		__field(unsigned char, next_sched_delayed)
+		__field(s64, next_vlag)
 		__field(u64, next_deadline)
+		__field(unsigned char, next_rel_deadline)
 		__field(u64, next_slice)
-		__field(bool, expected)
+		__field(u64, next_custom_slice)
 	),
 
 	TP_fast_assign(
 		__entry->prev_pid = prev->pid;
+		__entry->prev_sched_delayed = (prev->se).sched_delayed;
+		__entry->prev_vlag = (prev->se).vlag;
 		__entry->prev_deadline = (prev->se).deadline;
+		__entry->prev_rel_deadline = (prev->se).rel_deadline;
 		__entry->prev_slice = (prev->se).slice;
+		__entry->prev_custom_slice = (prev->se).custom_slice;
 		__entry->next_pid = next->pid;
+		__entry->next_sched_delayed = (next->se).sched_delayed;
+		__entry->next_vlag = (next->se).vlag;
 		__entry->next_deadline = (next->se).deadline;
+		__entry->next_rel_deadline = (next->se).rel_deadline;
 		__entry->next_slice = (next->se).slice;
-		__entry->expected = (prev->se).deadline > (next->se).deadline;
+		__entry->next_custom_slice = (next->se).custom_slice;
 	),
 
-	TP_printk("prev_pid=%d prev_deadline=%llu prev_slice=%llu next_pid=%d next_deadline=%llu next_slice=%llu expected=%d",
+	TP_printk("prev_pid=%4d prev_sched_delayed=%u prev_vlag=%14lld prev_deadline=%14llu prev_rel_deadline=%u prev_slice=%llu prev_custom_slice=%llu next_pid=%4d next_sched_delayed=%u next_vlag=%14lld next_deadline=%14llu next_rel_deadline=%u next_slice=%llu next_custom_slice=%llu",
 		__entry->prev_pid,
+		__entry->prev_sched_delayed,
+		__entry->prev_vlag,
 		__entry->prev_deadline,
+		__entry->prev_rel_deadline,
 		__entry->prev_slice,
+		__entry->prev_custom_slice,
 		__entry->next_pid,
+		__entry->next_sched_delayed,
+		__entry->next_vlag,
 		__entry->next_deadline,
+		__entry->next_rel_deadline,
 		__entry->next_slice,
-		__entry->expected
+		__entry->next_custom_slice
 	)
 );
 
