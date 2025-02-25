@@ -50,9 +50,6 @@ enum ssusb_hwrscs_vers {
 	SSUSB_HWRECS_V3 = 3,
 };
 
-struct regmap *usb_mbist;
-struct regmap *usb_cfg_ao;
-
 /* protect vs voter state */
 static DEFINE_MUTEX(vsv_mutex);
 static unsigned int vsv_use_count;
@@ -573,50 +570,33 @@ void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb,
 	}
 }
 
-static int ssusb_ao_cfg_of_property_parse(struct device_node *dn)
+static int ssusb_ao_cfg_of_property_parse(struct ssusb_mtk *ssusb,
+						struct device_node *dn)
 {
 	struct of_phandle_args args;
 	struct platform_device *pdev;
 	int ret;
 
-	usb_mbist = NULL;
-	usb_cfg_ao = NULL;
-
-	/* usb mbist */
+	/* usb mbist is optional */
 	if (!of_property_read_bool(dn, "mediatek,usb-mbist"))
-		goto usb_aocfg;
+		return 0;
 
 	ret = of_parse_phandle_with_fixed_args(dn,
 		"mediatek,usb-mbist", 0, 0, &args);
 
 	if (ret)
-		goto usb_aocfg;
+		return ret;
 
 	pdev = of_find_device_by_node(args.np);
 	if (!pdev)
-		goto usb_aocfg;
+		return -ENODEV;
 
-	usb_mbist = device_node_to_regmap(args.np);
+	ssusb->usb_mbist = device_node_to_regmap(args.np);
 
-usb_aocfg:
+	if (!ssusb->usb_mbist)
+		return -ENODEV;
 
-	/* usb ao cfg */
-	if (!of_property_read_bool(dn, "mediatek,usb-ao-cfg"))
-		return 0;
-
-	ret = of_parse_phandle_with_fixed_args(dn,
-		"mediatek,usb-ao-cfg", 0, 0, &args);
-
-	if (ret)
-		return 0;
-
-	pdev = of_find_device_by_node(args.np);
-	if (!pdev)
-		return 0;
-
-	usb_cfg_ao = device_node_to_regmap(args.np);
-
-	return 0;
+	return PTR_ERR_OR_ZERO(ssusb->usb_mbist);
 }
 
 int ssusb_wait_power_state(struct ssusb_mtk *ssusb,
@@ -626,19 +606,19 @@ int ssusb_wait_power_state(struct ssusb_mtk *ssusb,
 	u32 val2 = 0;
 	u32 val3 = 0;
 
-	if (IS_ERR_OR_NULL(usb_mbist))
+	if (IS_ERR_OR_NULL(ssusb->usb_mbist))
 		return -1;
 
 	while (time_before(jiffies, jiffies + (HZ*5))) {
 		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3")) {
-			regmap_read(usb_mbist, 0x34, &val1);
+			regmap_read(ssusb->usb_mbist, 0x34, &val1);
 			if ((val1 & BIT(0)) == 0x1)
 				return 0;
 			msleep(100);
 		} else if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3")) {
-			regmap_read(usb_mbist, 0x48, &val1);
-			regmap_read(usb_mbist, 0x4c, &val2);
-			regmap_read(usb_mbist, 0x50, &val3);
+			regmap_read(ssusb->usb_mbist, 0x48, &val1);
+			regmap_read(ssusb->usb_mbist, 0x4c, &val2);
+			regmap_read(ssusb->usb_mbist, 0x50, &val3);
 			if ((val1 & BIT(0)) == 0x1 && (val2 & 0x3) == 0  && (val3 & 0x3) == 0)
 				return 0;
 			msleep(100);
@@ -1214,7 +1194,9 @@ get_phy:
 	if (ret)
 		dev_info(dev, "failed to parse dp_switch property\n");
 
-	ssusb_ao_cfg_of_property_parse(node);
+	ssusb_ao_cfg_of_property_parse(ssusb, node);
+	if (ret)
+		dev_info(dev, "failed to parse usb ao cfg\n");
 
 	ssusb->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
 	if (ssusb->wakeup_irq == -EPROBE_DEFER)

@@ -377,6 +377,8 @@ struct ssusb_mtk {
 	/* clkgate */
 	struct regmap *clkgate;
 	u32 clkgate_oft;
+	/* usb bus related address */
+	struct regmap *usb_mbist;
 	/* usb power domain */
 	struct device *genpd_u2;
 	struct device *genpd_u3;
