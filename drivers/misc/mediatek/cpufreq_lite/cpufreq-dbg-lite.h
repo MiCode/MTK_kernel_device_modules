@@ -41,12 +41,3 @@ static const struct proc_ops name##_proc_fops = {\
 #define PROC_ENTRY(name)	{__stringify(name), &name ## _proc_fops}
 #define PROC_ENTRY_DATA(name)	\
 {__stringify(name), &name ## _proc_fops, g_ ## name}
-
-#define OFFS_CCI_TBL_MODE 0x0F9C
-
-extern int mtk_eem_init(struct platform_device *pdev);
-extern int mtk_devinfo_init(struct platform_device *pdev);
-extern int set_dsu_ctrl_debug(unsigned int eas_ctrl, bool debug_enable);
-extern int cpufreq_set_cci_mode(unsigned int mode);
-unsigned int cpufreq_get_cci_mode(void);
-void set_cci_mode(unsigned int mode);

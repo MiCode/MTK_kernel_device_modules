@@ -25,7 +25,6 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include "cpufreq-dbg-lite.h"
-#include "sugov/cpufreq.h"
 #include "mtk_freq_qos.h"
 #include "pf_ctrl.h"
 
