@@ -41,6 +41,8 @@ static u8 *vcore_level;
 static bool mmup_ena;
 #define MMDVFS_HFRP_FEATURE_ID (mmup_ena ? MMDVFS_MMUP_FEATURE_ID : MMDVFS_VCP_FEATURE_ID)
 
+static u8 step_idx;
+
 static phys_addr_t mmdvfs_mmup_iova;
 static phys_addr_t mmdvfs_mmup_pa;
 static void *mmdvfs_mmup_va;
@@ -366,6 +368,30 @@ ipi_send_end:
 	return ret;
 }
 EXPORT_SYMBOL(mmdvfs_hfrp_ipi_send);
+
+static int mmdvfs_vcp_set_rate(const char *val, const struct kernel_param *kp)
+{
+	int idx = 0, opp = 0, ret;
+
+	ret = sscanf(val, "%d %d", &idx, &opp);
+	if (ret != 2 || idx >= mmdvfs_data->mux_num) {
+		MMDVFS_DBG("failed:%d idx:%d opp:%d mux_num:%d", ret, idx, opp, mmdvfs_data->mux_num);
+		return -EINVAL;
+	}
+	idx += step_idx;
+
+	mtk_mmdvfs_enable_vcp(true, idx);
+	ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_VCP_SET_RATE, idx, opp, NULL, true);
+	mtk_mmdvfs_enable_vcp(false, idx);
+
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_vcp_set_rate_ops = {
+	.set = mmdvfs_vcp_set_rate,
+};
+module_param_cb(vcp_set_rate, &mmdvfs_vcp_set_rate_ops, NULL, 0644);
+MODULE_PARM_DESC(vcp_set_rate, "set rate from dummy vcp user by ipi");
 
 static inline void mmdvfs_mmup_sram_init(void)
 {
@@ -765,6 +791,9 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 	ret = mmdvfs_parse_mmdvfs_mux(node, mmdvfs_data);
 	ret = mmdvfs_parse_mmdvfs_clk(node, mmdvfs_data);
 	ret = mmdvfs_parse_vcore_level(node);
+
+	ret = of_property_read_u8(node, "mediatek,step-idx", &step_idx);
+
 	ret = mmdvfs_get_rc_base(mmdvfs_data);
 
 	ret = mmdvfs_vcp_init();
