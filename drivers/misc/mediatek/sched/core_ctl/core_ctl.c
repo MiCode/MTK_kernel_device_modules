@@ -1564,10 +1564,6 @@ static ssize_t store_cpu_busy_up_thres(struct cluster_data *state,
 	if (sscanf(buf, "%u\n", &val) != 1)
 		return -EINVAL;
 
-	/* No need to change up_thres for the last cluster */
-	if (state->cluster_id >= num_clusters-1)
-		return -EINVAL;
-
 	if (val > MAX_BTASK_THRESH)
 		val = MAX_BTASK_THRESH;
 
