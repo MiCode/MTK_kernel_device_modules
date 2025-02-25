@@ -2382,7 +2382,7 @@
 		reg = <0 0x11031000 0 0x1000>;
 		wla-enable = <1>;
 		ddren-force-on = <0>;
-		init-setting-ver = "standby_power_ver_a";
+		init-setting-ver = "wla_2p0_ver_a";
 		group-hw-max = <0x8>;
 		group-ctrl = <&group_0 &group_1 &group_2 &group_3>;
 		mon-ch-hw-max = <16>;
