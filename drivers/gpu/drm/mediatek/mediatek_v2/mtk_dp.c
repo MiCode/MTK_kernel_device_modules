@@ -33,6 +33,7 @@
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_edid.h>
 #include <drm/display/drm_dp_helper.h>
+#include <drm/display/drm_hdcp_helper.h>
 #include <uapi/drm/mediatek_drm.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_modes.h>
@@ -1764,6 +1765,7 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 				DPTXMSG("Skip uevent(0)\n");
 
 			cancel_work_sync(&mtk_dp->hdcp_work);
+			cancel_delayed_work_sync(&mtk_dp->check_work);
 
 #ifdef DPTX_HDCP_ENABLE
 			if (mtk_dp->info.hdcp2_info.bEnable)
@@ -2577,7 +2579,7 @@ void mdrv_DPTx_reAuthentication(struct mtk_dp *mtk_dp)
 	if (!mtk_dp->training_info.bCablePlugIn || !mtk_dp->dp_ready)
 		return;
 
-	queue_work(mtk_dp->dptx_wq, &mtk_dp->hdcp_work);
+	queue_work(mtk_dp->hdcp_wq, &mtk_dp->hdcp_work);
 }
 
 void mdrv_DPTx_CheckHDCPVersion(struct mtk_dp *mtk_dp, bool only_hdcp1x)
@@ -2594,44 +2596,68 @@ void mdrv_DPTx_CheckHDCPVersion(struct mtk_dp *mtk_dp, bool only_hdcp1x)
 	if (tee_addDevice(HDCP_NONE) != RET_SUCCESS)
 		mtk_dp->info.bAuthStatus = AUTH_FAIL;
 }
+EXPORT_SYMBOL(mdrv_DPTx_CheckHDCPVersion);
 
 static void mdrv_DPTx_hdcp_handle(struct work_struct *data)
 {
 	struct mtk_dp *mtk_dp = container_of(data, struct mtk_dp, hdcp_work);
+	mutex_lock(&mtk_dp->hdcp_mutex);
+
+	do {
+		if (!mtk_dp->training_info.bCablePlugIn || !mtk_dp->dp_ready)
+			goto end;
+
+		if (mtk_dp->info.bAuthStatus == AUTH_ZERO) {
+			mdrv_DPTx_CheckHDCPVersion(mtk_dp, false);
+			if (mtk_dp->info.hdcp2_info.bEnable)
+				mdrv_DPTx_HDCP2_SetStartAuth(mtk_dp, true);
+			else if (mtk_dp->info.hdcp1x_info.bEnable)
+				mdrv_DPTx_HDCP1X_SetStartAuth(mtk_dp, true);
+		}
+
+		if (mtk_dp->info.hdcp2_info.bEnable) {
+			HDCPTx_Hdcp2FSM(mtk_dp);
+
+			if (mtk_dp->info.bAuthStatus == AUTH_FAIL) {
+
+				mdrv_DPTx_CheckHDCPVersion(mtk_dp, true);
+				if (mtk_dp->info.hdcp1x_info.bEnable) {
+					mtk_dp->info.hdcp2_info.bEnable = false;
+					mdrv_DPTx_HDCP1X_SetStartAuth(mtk_dp, true);
+				}
+			}
+		}
+
+		if (mtk_dp->info.hdcp1x_info.bEnable)
+			mdrv_DPTx_HDCP1X_FSM(mtk_dp);
+	} while((mtk_dp->info.hdcp1x_info.bEnable
+				|| mtk_dp->info.hdcp2_info.bEnable)
+			&& (mtk_dp->info.bAuthStatus != AUTH_FAIL)
+			&& (mtk_dp->info.bAuthStatus != AUTH_PASS));
+
+end:
+	if (mtk_dp->info.bAuthStatus == AUTH_PASS)
+		schedule_delayed_work(&mtk_dp->check_work, 0);
+	else {
+		if (mtk_dp->info.hdcp2_info.bEnable)
+			mdrv_DPTx_HDCP2_SetStartAuth(mtk_dp, false);
+		else if (mtk_dp->info.hdcp1x_info.bEnable)
+			mdrv_DPTx_HDCP1X_SetStartAuth(mtk_dp, false);
+	}
+
+	mutex_unlock(&mtk_dp->hdcp_mutex);
+}
+
+static void mtk_dp_hdcp_check_work(struct work_struct *work)
+{
+	struct mtk_dp *mtk_dp = container_of(to_delayed_work(work),
+		struct mtk_dp, check_work);
 
 	if (!mtk_dp->training_info.bCablePlugIn || !mtk_dp->dp_ready)
 		return;
 
-	if (mtk_dp->info.bAuthStatus == AUTH_ZERO) {
-		mdrv_DPTx_CheckHDCPVersion(mtk_dp, false);
-		if (mtk_dp->info.hdcp2_info.bEnable)
-			mdrv_DPTx_HDCP2_SetStartAuth(mtk_dp, true);
-		else if (mtk_dp->info.hdcp1x_info.bEnable)
-			mdrv_DPTx_HDCP1X_SetStartAuth(mtk_dp, true);
-	}
-
-	if (mtk_dp->info.hdcp2_info.bEnable) {
-		HDCPTx_Hdcp2FSM(mtk_dp);
-
-		if (mtk_dp->info.bAuthStatus == AUTH_FAIL) {
-			tee_removeDevice();
-
-			mdrv_DPTx_CheckHDCPVersion(mtk_dp, true);
-			if (mtk_dp->info.hdcp1x_info.bEnable) {
-				mtk_dp->info.hdcp2_info.bEnable = false;
-				mdrv_DPTx_HDCP1X_SetStartAuth(mtk_dp, true);
-			}
-		}
-	}
-
-	if (mtk_dp->info.hdcp1x_info.bEnable)
-		mdrv_DPTx_HDCP1X_FSM(mtk_dp);
-
-	if ((mtk_dp->info.hdcp1x_info.bEnable
-			|| mtk_dp->info.hdcp2_info.bEnable)
-		&& (mtk_dp->info.bAuthStatus != AUTH_FAIL)
-		&& (mtk_dp->info.bAuthStatus != AUTH_PASS))
-		queue_work(mtk_dp->dptx_wq, &mtk_dp->hdcp_work);
+	if (mtk_dp->info.hdcp2_info.bEnable && (!dp_tx_hdcp2x_check_link(mtk_dp, &mtk_dp->info)))
+		schedule_delayed_work(&mtk_dp->check_work, DRM_HDCP2_CHECK_PERIOD_MS);
 }
 #else
 static void mdrv_DPTx_hdcp_handle(struct work_struct *data)
@@ -2697,9 +2723,15 @@ int mdrv_DPTx_Handle(struct mtk_dp *mtk_dp)
 			mdrv_DPTx_I2S_Audio_Config(mtk_dp);
 			mdrv_DPTx_I2S_Audio_Enable(mtk_dp, true);
 		}
-		mtk_dp->state = DPTXSTATE_NORMAL;
-		break;
 
+		if (mtk_dp->video_enable || mtk_dp->audio_enable) {
+			mtk_dp->state = DPTXSTATE_NORMAL;
+			queue_work(mtk_dp->hdcp_wq, &mtk_dp->hdcp_work);
+		} else {
+			ret = DPTX_WAIT_TRIGGER;
+		}
+
+		break;
 	case DPTXSTATE_NORMAL:
 		if (mtk_dp->training_state != DPTX_NTSTATE_NORMAL) {
 			mdrv_DPTx_VideoMute(mtk_dp, true);
@@ -3468,7 +3500,6 @@ static int mtk_dp_control_kthread(void *data)
 			mtk_dp->video_enable = true;
 			mtk_dp->info.resolution = res;
 			queue_work(mtk_dp->dptx_wq, &mtk_dp->dptx_work);
-			queue_work(mtk_dp->dptx_wq, &mtk_dp->hdcp_work);
 
 		} else if (videomute & video_mute) {
 			mtk_dp->video_enable = false;
@@ -4570,9 +4601,17 @@ static int mtk_dp_create_workqueue(struct mtk_dp *mtk_dp)
 		return -ENOMEM;
 	}
 
+	mtk_dp->hdcp_wq = create_singlethread_workqueue("mtk_hdcp_wq");
+	if (!mtk_dp->hdcp_wq) {
+		DPTXERR("Failed to create hdcp workqueue\n");
+		return -ENOMEM;
+	}
+
 	INIT_WORK(&mtk_dp->dptx_work, mdrv_DPTx_main_handle);
 	INIT_WORK(&mtk_dp->hdcp_work, mdrv_DPTx_hdcp_handle);
-
+#ifdef DPTX_HDCP_ENABLE
+	INIT_DELAYED_WORK(&mtk_dp->check_work, mtk_dp_hdcp_check_work);
+#endif
 	return 0;
 }
 
@@ -4703,6 +4742,7 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 	}
 	g_mtk_dp = mtk_dp;
 	mutex_init(&dp_lock);
+	mutex_init(&mtk_dp->hdcp_mutex);
 	platform_set_drvdata(pdev, mtk_dp);
 	mtk_dp->control_task = kthread_run(mtk_dp_control_kthread,
 		(void *)mtk_dp, "mtk_dp_video_trigger");
@@ -4728,6 +4768,9 @@ static void mtk_drm_dp_remove(struct platform_device *pdev)
 
 	if (mtk_dp->dptx_wq)
 		destroy_workqueue(mtk_dp->dptx_wq);
+
+	if (mtk_dp->hdcp_wq)
+		destroy_workqueue(mtk_dp->hdcp_wq);
 
 	mutex_destroy(&dp_lock);
 	drm_connector_cleanup(&mtk_dp->conn);
