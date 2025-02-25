@@ -13,8 +13,6 @@
 
 #define SLOG_MSG_MAX (256)
 
-void my_vsnprintf(char *buffer, size_t size, const char *format, ...);
-
 TRACE_EVENT(slog,
 	TP_PROTO(struct va_format *vaf),
 
@@ -24,8 +22,7 @@ TRACE_EVENT(slog,
 		__dynamic_array(char, msg, SLOG_MSG_MAX)
 	),
 
-	TP_fast_assign(
-		my_vsnprintf(__get_dynamic_array(msg),
+	TP_fast_assign(vsnprintf(__get_dynamic_array(msg),
 				SLOG_MSG_MAX,
 				vaf->fmt,
 				*vaf->va);

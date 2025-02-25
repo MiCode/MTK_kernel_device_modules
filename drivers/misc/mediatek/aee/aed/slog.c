@@ -29,25 +29,6 @@ static unsigned int gpu_count;
 static unsigned int threshold;
 static struct proc_dir_entry *dir;
 
-void my_vsnprintf(char *buffer, size_t size, const char *format, ...)
-{
-	va_list args;
-	int result = 0;
-
-	if (buffer != NULL && size > 0) {
-		va_start(args, format);
-		result = vsnprintf(buffer, size, format, args);
-		va_end(args);
-		if (result < 0) {
-			strscpy(buffer, "vsnprintf error", size);
-			buffer[size - 1] = '\0';
-		} else if(result >= size) {
-			strscpy(buffer + size - 4, "...", 3);
-			buffer[size - 1] = '\0';
-		}
-	}
-}
-
 void slog(const char *fmt, ...)
 {
 	struct va_format vaf;
