@@ -180,6 +180,7 @@
 		postalign2 = &disp_postalign2;
 		oddmr0 = &disp_oddmr0;
 		oddmr2 = &disp_oddmr2;
+		dbi-count0 = &disp_dbi_count0;
 		mdp-rsz0 = &disp_rsz0;
 		mdp-rsz6 = &disp_rsz1;
 		postmask0 = &disp_postmask0;
@@ -11891,6 +11892,32 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 //			interconnect-names = "DDP_COMPONENT_ODDMR0_dbir",
 //						"DDP_COMPONENT_ODDMR0_dbir_hrt",
 //						"DDP_COMPONENT_ODDMR0_dbir_stash";
+		};
+
+		disp_dbi_count0: disp-dbi-count0@3e780000 {
+			compatible = "mediatek,disp_dbi_count0",
+				"mediatek,mt6993-disp-dbi-count";
+			reg = <0 0x3e780000 0 0x1000>;
+			clocks = <&dispsys1_config_clk MM1_DISP_DBI_COUNT0_DISP>;
+
+			mediatek,larb = <&smi_larb33 SMMU_L33_P3_DISP_DBI_COUNT0_W>,
+					<&smi_larb33 SMMU_L33_P7_DISP_DBI_COUNT0_W_STASH>,
+					<&smi_larb33 SMMU_L33_P4_DISP_DBI_COUNT0_R>,
+					<&smi_larb33 SMMU_L33_P8_DISP_DBI_COUNT0_R_STASH>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L33_P3_DISP_DBI_COUNT0_W)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L33_P7_DISP_DBI_COUNT0_W_STASH)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L33_P4_DISP_DBI_COUNT0_R)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L33_P8_DISP_DBI_COUNT0_R_STASH)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_DBI_COUNT0_W",
+						"DDP_COMPONENT_DBI_COUNT0_W_STASH",
+						"DDP_COMPONENT_DBI_COUNT0_R",
+						"DDP_COMPONENT_DBI_COUNT0_R_STASH";
 		};
 
 		disp_rsz0: disp-rsz0@3e430000 {
