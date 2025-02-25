@@ -865,14 +865,9 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 		return 0;
 
 	if (!on && status == PRE_CHANGE) {
-		if (host->ip_ver == IP_VER_MT6993) {
-			/* Release data coherence req */
+		/* Release data coherence req */
+		if (host->ip_ver == IP_VER_MT6993)
 			ufshcd_rmwl(hba, 0x1, 0x0, REG_UFS_MMIO_RSV_CTRL);
-			usleep_range(10, 20);
-			value = ufshcd_readl(hba, REG_UFS_MMIO_RSV_CTRL);
-			if ((value & 0x2) == 1)
-				dev_err(hba->dev, "missing ack of hw coh release\n");
-		}
 
 		if (ufshcd_is_link_off(hba)) {
 			clk_pwr_off = true;
@@ -905,8 +900,18 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 				ufshcd_readl(hba,
 					REG_AUTO_HIBERNATE_IDLE_TIMER));
 		}
+
+		if (host->ip_ver == IP_VER_MT6993) {
+			value = ufshcd_readl(hba, REG_UFS_MMIO_RSV_CTRL);
+			if (value & 0x2)
+				dev_err(hba->dev, "missing ack of hw coh release.\n");
+		}
 		ufs_mtk_mcq_disable_irq(hba);
 	} else if (on && status == POST_CHANGE) {
+		/* Enable data coherence */
+		if (host->ip_ver == IP_VER_MT6993)
+			ufshcd_rmwl(hba, 0x1, 0x1, REG_UFS_MMIO_RSV_CTRL);
+
 		phy_power_on(host->mphy);
 		ufs_mtk_setup_ref_clk(hba, on);
 		ufs_mtk_boost_crypt(hba, on);
@@ -915,9 +920,6 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 			ufs_mtk_pm_qos(hba, on);
 
 		if (host->ip_ver == IP_VER_MT6993) {
-			/* Enable data coherence */
-			ufshcd_rmwl(hba, 0x1, 0x1, REG_UFS_MMIO_RSV_CTRL);
-			usleep_range(10, 20);
 			value = ufshcd_readl(hba, REG_UFS_MMIO_RSV_CTRL);
 			if ((value & 0x2) == 0)
 				dev_err(hba->dev, "missing ack of hw coh request.\n");
