@@ -608,6 +608,8 @@
 	#define REG_ODW_STASH_ULTRA_WR_FRCE				REG_FLD_MSB_LSB(19, 19)
 #define MT6993_DISP_ODDMR_UDMA_R_CTRL30				(0x006C + MT6991_DISP_ODDMR_REG_UDMA_R_BASE)
 #define MT6993_DISP_ODDMR_UDMA_W_CTR_1B				(0x006C + MT6991_DISP_ODDMR_REG_UDMA_W_BASE)
+#define MT6993_DISP_ODDMR_OD_USER_WEIGHT_R (0x004C + MT6991_DISP_ODDMR_REG_OD_BASE)
+#define MT6993_DISP_ODDMR_OD_USER_WEIGHT_B (0x0050 + MT6991_DISP_ODDMR_REG_OD_BASE)
 //DMR ctrl
 #define DISP_ODDMR_MURA_SHADOW_CTRL					0x108B8
 	#define MURA_BYPASS_SHADOW						REG_FLD_MSB_LSB(0, 0)
@@ -4499,37 +4501,93 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 	return -EFAULT;
 }
 
-
-/*
- * return int for further calculate
- */
-static int mtk_oddmr_common_gain_lookup(int item, void *table, uint32_t cnt)
+static void mtk_oddmr_common_gain_lookup(struct mtk_disp_oddmr *oddmr_data,
+	int item, void *table, uint32_t cnt, int *result)
 {
-	int i, left_value, right_value, result, left_item, right_item, tmp_item;
+	int i, left_value, right_value, left_item, right_item, tmp_item;
 	struct mtk_oddmr_table_gain *gain_table;
 
 	ODDMRAPI_LOG("cnt %u\n", cnt);
 	gain_table = (struct mtk_oddmr_table_gain *)table;
 	tmp_item = item;
+
+	if (oddmr_data->data->od_version >= MTK_OD_V3) {
+		if (tmp_item < gain_table[0].item) {
+			if (tmp_item != 0)
+				ODDMRFLOW_LOG("item %d outof range (%u, %u)\n", tmp_item,
+						gain_table[0].item, gain_table[cnt - 1].item);
+			result[0] = 0;
+			result[1] = 0;
+			result[2] = 0;
+			return;
+		}
+		if (tmp_item == gain_table[0].item) {
+			result[0] = gain_table[0].value_r;
+			result[1] = gain_table[0].value;
+			result[2] = gain_table[0].value_b;
+			ODDMRFLOW_LOG("R: L:(%d,%d) V:(%d,%d)\n", tmp_item, result[0], tmp_item, result[0]);
+			ODDMRFLOW_LOG("G: L:(%d,%d) V:(%d,%d)\n", tmp_item, result[1], tmp_item, result[1]);
+			ODDMRFLOW_LOG("B: L:(%d,%d) V:(%d,%d)\n", tmp_item, result[2], tmp_item, result[2]);
+			return;
+		}
+		for (i = 1; i < cnt; i++) {
+			if (tmp_item <= gain_table[i].item)
+				break;
+		}
+		if (i >= cnt) {
+			result[0] = 0;
+			result[1] = 0;
+			result[2] = 0;
+			ODDMRFLOW_LOG("item %u outof range (%u, %u)\n", tmp_item,
+					gain_table[0].item, gain_table[cnt - 1].item);
+		} else {
+			//to cover negative value in calculate
+			left_item = (int)gain_table[i - 1].item;
+			right_item = (int)gain_table[i].item;
+			//R
+			left_value = (int)gain_table[i - 1].value_r;
+			right_value = (int)gain_table[i].value_r;
+			result[0] = mtk_oddmr_gain_interpolation(left_item, tmp_item, right_item,
+					left_value, right_value);
+			ODDMRFLOW_LOG("R: idx %d L:(%d,%d),R:(%d,%d) V:(%d,%d)\n", i,
+					left_item, left_value, right_item, right_value, tmp_item, result[0]);
+			//G
+			left_value = (int)gain_table[i - 1].value;
+			right_value = (int)gain_table[i].value;
+			result[1] = mtk_oddmr_gain_interpolation(left_item, tmp_item, right_item,
+					left_value, right_value);
+			ODDMRFLOW_LOG("G: idx %d L:(%d,%d),R:(%d,%d) V:(%d,%d)\n", i,
+					left_item, left_value, right_item, right_value, tmp_item, result[1]);
+			//B
+			left_value = (int)gain_table[i - 1].value_b;
+			right_value = (int)gain_table[i].value_b;
+			result[2] = mtk_oddmr_gain_interpolation(left_item, tmp_item, right_item,
+					left_value, right_value);
+			ODDMRFLOW_LOG("B: idx %d L:(%d,%d),R:(%d,%d) V:(%d,%d)\n", i,
+					left_item, left_value, right_item, right_value, tmp_item, result[2]);
+		}
+		return;
+	}
+
 	if (tmp_item < gain_table[0].item) {
 		if (tmp_item != 0)
 			ODDMRFLOW_LOG("item %d outof range (%u, %u)\n", tmp_item,
 					gain_table[0].item, gain_table[cnt - 1].item);
-		result = 0;
-		return result;
+		result[1] = 0;
+		return;
 	}
 	if (tmp_item == gain_table[0].item) {
-		result = gain_table[0].value;
+		result[1] = gain_table[0].value;
 		ODDMRFLOW_LOG("L:(%d,%d) V:(%d,%d)\n",
-			gain_table[0].item, gain_table[0].value, tmp_item, result);
-		return result;
+			gain_table[0].item, gain_table[0].value, tmp_item, result[1]);
+		return;
 	}
 	for (i = 1; i < cnt; i++) {
 		if (tmp_item <= gain_table[i].item)
 			break;
 	}
 	if (i >= cnt) {
-		result = 0;
+		result[1] = 0;
 		ODDMRFLOW_LOG("item %u outof range (%u, %u)\n", tmp_item,
 				gain_table[0].item, gain_table[cnt - 1].item);
 	} else {
@@ -4538,12 +4596,12 @@ static int mtk_oddmr_common_gain_lookup(int item, void *table, uint32_t cnt)
 		right_value = (int)gain_table[i].value;
 		left_item = (int)gain_table[i - 1].item;
 		right_item = (int)gain_table[i].item;
-		result = mtk_oddmr_gain_interpolation(left_item, tmp_item, right_item,
+		result[1] = mtk_oddmr_gain_interpolation(left_item, tmp_item, right_item,
 				left_value, right_value);
 		ODDMRFLOW_LOG("idx %d L:(%d,%d),R:(%d,%d) V:(%d,%d)\n", i,
-				left_item, left_value, right_item, right_value, tmp_item, result);
+				left_item, left_value, right_item, right_value, tmp_item, result[1]);
 	}
-	return result;
+	return;
 }
 
 static int mtk_oddmr_od_gain_lookup(struct mtk_ddp_comp *comp,
@@ -4551,7 +4609,7 @@ static int mtk_oddmr_od_gain_lookup(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
-	int result_fps, result_dbv, tmp_item;
+	int result_fps[3] = {0}, result_dbv[3] = {0}, tmp_item, channel;
 	uint32_t cnt, result;
 	uint32_t user_gain = oddmr_data->od_user_gain;
 	struct mtk_oddmr_table_gain *bl_gain_table;
@@ -4559,7 +4617,9 @@ static int mtk_oddmr_od_gain_lookup(struct mtk_ddp_comp *comp,
 
 	ODDMRAPI_LOG("fps %u, dbv %u, table%d\n", fps, dbv, table_idx);
 	if (!IS_TABLE_VALID(table_idx, od_param->valid_table)) {
-		*weight = 0;
+		weight[0] = 0;
+		weight[1] = 0;
+		weight[2] = 0;
 		DDPPR_ERR("%s table%d is invalid\n", __func__, table_idx);
 		return -EFAULT;
 	}
@@ -4567,19 +4627,24 @@ static int mtk_oddmr_od_gain_lookup(struct mtk_ddp_comp *comp,
 	cnt = od_param->od_tables[table_idx]->fps_cnt;
 	fps_gain_table = od_param->od_tables[table_idx]->fps_table;
 	tmp_item = (int)fps;
-	result_fps = mtk_oddmr_common_gain_lookup(tmp_item, fps_gain_table, cnt);
+	mtk_oddmr_common_gain_lookup(oddmr_data, tmp_item, fps_gain_table, cnt, result_fps);
 	/* dbv */
 	cnt = od_param->od_tables[table_idx]->bl_cnt;
 	bl_gain_table = od_param->od_tables[table_idx]->bl_table;
 	tmp_item = (int)dbv;
-	result_dbv = mtk_oddmr_common_gain_lookup(tmp_item, bl_gain_table, cnt);
-	result = ((uint32_t)result_dbv * (uint32_t)result_fps + 32) / 64;
-	result = (result * user_gain + 32) / 64;
-	if (result > 255)
-		result = 255;
-	*weight = result;
-	ODDMRAPI_LOG("dbv_gain %d, fps_gain %d, user_gain %d weight %d\n",
-		result_dbv, result_fps, user_gain, result);
+	mtk_oddmr_common_gain_lookup(oddmr_data, tmp_item, bl_gain_table, cnt, result_dbv);
+
+	for (channel = 0; channel < 3; channel++) {
+		if (oddmr_data->data->od_version < MTK_OD_V3 && channel != 1)
+			continue;
+		result = ((uint32_t)result_dbv[channel] * (uint32_t)result_fps[channel] + 32) / 64;
+		result = (result * user_gain + 32) / 64;
+		if (result > 255)
+			result = 255;
+		weight[channel] = result;
+		ODDMRAPI_LOG("channel %d: dbv_gain %d, fps_gain %d, user_gain %d weight %d\n",
+			channel, result_dbv[channel], result_fps[channel], user_gain, result);
+	}
 	return 0;
 }
 
@@ -5261,24 +5326,29 @@ static void mtk_oddmr_od_flip(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		mtk_oddmr_set_pq(comp, handle, &od_param->od_tables[table_idx]->pq_od);
 }
 
-static void mtk_oddmr_set_od_weight(struct mtk_ddp_comp *comp, uint32_t weight,
+static void mtk_oddmr_set_od_weight(struct mtk_ddp_comp *comp, uint32_t *weight,
 		struct cmdq_pkt *handle)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 
-	ODDMRAPI_LOG("+\n");
-	if (oddmr_data->data->od_version >= MTK_OD_V2)
-		mtk_oddmr_write(comp, weight, MT6991_DISP_ODDMR_OD_PQ_0,
-				handle);
-	else
-		mtk_oddmr_write(comp, weight, DISP_ODDMR_OD_PQ_0,
-				handle);
+	if (oddmr_data->data->od_version >= MTK_OD_V3) {
+		ODDMRAPI_LOG("R %u, G %u, B %u\n", weight[0], weight[1], weight[2]);
+		mtk_oddmr_write(comp, weight[0], MT6993_DISP_ODDMR_OD_USER_WEIGHT_R, handle);
+		mtk_oddmr_write(comp, weight[1], MT6991_DISP_ODDMR_OD_PQ_0, handle);
+		mtk_oddmr_write(comp, weight[2], MT6993_DISP_ODDMR_OD_USER_WEIGHT_B, handle);
+	} else if (oddmr_data->data->od_version == MTK_OD_V2) {
+		ODDMRAPI_LOG("%u\n", weight[1]);
+		mtk_oddmr_write(comp, weight[1], MT6991_DISP_ODDMR_OD_PQ_0, handle);
+	} else {
+		ODDMRAPI_LOG("%u\n", weight[1]);
+		mtk_oddmr_write(comp, weight[1], DISP_ODDMR_OD_PQ_0, handle);
+	}
 }
 
-static void mtk_oddmr_set_od_weight_dual(struct mtk_ddp_comp *comp, uint32_t weight,
+static void mtk_oddmr_set_od_weight_dual(struct mtk_ddp_comp *comp, uint32_t *weight,
 		struct cmdq_pkt *handle)
 {
-	ODDMRAPI_LOG("%u+\n", weight);
+	ODDMRAPI_LOG("+\n");
 	mtk_oddmr_set_od_weight(comp, weight, handle);
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
@@ -5288,10 +5358,10 @@ static void mtk_oddmr_set_od_weight_dual(struct mtk_ddp_comp *comp, uint32_t wei
 	}
 }
 
-static void mtk_oddmr_od_timing_chg_dual(struct mtk_ddp_comp *comp, 
+static void mtk_oddmr_od_timing_chg_dual(struct mtk_ddp_comp *comp,
 	struct mtk_oddmr_timing *timing, struct cmdq_pkt *handle)
 {
-	uint32_t weight;
+	uint32_t weight[3] = {0};
 	int ret, table_idx;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
@@ -5306,7 +5376,6 @@ static void mtk_oddmr_od_timing_chg_dual(struct mtk_ddp_comp *comp,
 			(od_param->od_basic_info.basic_param.resolution_switch_mode == 1)) {
 				/* res switch in ddic */
 				atomic_set(&oddmr_data->primary_data->od_weight_trigger, 1);
-				weight = 0;
 				mtk_oddmr_od_set_res_udma_dual(comp, handle);
 				mtk_oddmr_set_od_weight_dual(comp, weight, handle);
 			}
@@ -6682,7 +6751,7 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_ddp_comp *comp1;
 	struct mtk_disp_oddmr *oddmr1_data;
-	uint32_t weight = 0;
+	uint32_t weight[3] = {0};
 	int table_idx,ret;
 	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
 
@@ -6716,7 +6785,7 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 			}
 
 			mtk_oddmr_od_gain_lookup(comp, current_timing->vrefresh,
-					current_timing->bl_level, table_idx, &weight);
+					current_timing->bl_level, table_idx, weight);
 			mtk_oddmr_set_od_weight_dual(comp, weight, handle);
 			if (od_fps_mode == 1) {
 				oddmr_data->od_force_off2 = false;
@@ -6744,10 +6813,15 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 			if (comp->mtk_crtc->is_dual_pipe)
 				oddmr1_data->od_force_off2 = false;
 		}
-		if (oddmr_data->od_force_off_last && !oddmr_data->od_force_off && !oddmr_data->od_force_off2) {
+		if (oddmr_data->od_force_off_last &&
+			!oddmr_data->od_force_off && !oddmr_data->od_force_off2) {
 			mtk_oddmr_od_gain_lookup(comp, current_timing->vrefresh,
-					current_timing->bl_level, table_idx, &weight);
-			ODDMRAPI_LOG("OD weight restore to %u\n", weight);
+					current_timing->bl_level, table_idx, weight);
+			if (oddmr_data->data->od_version >= MTK_OD_V3)
+				ODDMRAPI_LOG("OD weight restore: R %u, G %u, B %u\n",
+					weight[0], weight[1], weight[2]);
+			else
+				ODDMRAPI_LOG("OD weight restore %u\n", weight[1]);
 			mtk_oddmr_set_od_weight_dual(comp, weight, handle);
 		}
 	}
@@ -6762,7 +6836,6 @@ static void mtk_oddmr_od_table_chg(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_ddp_comp *comp1;
 	struct mtk_disp_oddmr *oddmr1_data;
-	uint32_t weight = 0;
 	int table_idx,ret;
 	struct mtk_oddmr_timing *current_timing = &oddmr_data->primary_data->current_timing;
 	struct mtk_oddmr_timing *od_content_timing = &oddmr_data->primary_data->od_content_timing;
@@ -6783,6 +6856,7 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 {
 	bool sec_on, en, od_force_off;
 	uint32_t value = 0, mask = 0;
+	uint32_t weight[3] = {0};
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_ddp_comp *output_comp = NULL;
 	unsigned int dsi_line_time = 0;
@@ -6803,7 +6877,7 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		if (en) {
 			if (!od_force_off)
 				atomic_set(&oddmr_data->primary_data->od_weight_trigger, 1);
-			mtk_oddmr_set_od_weight(comp, 0, handle);
+			mtk_oddmr_set_od_weight(comp, weight, handle);
 			mtk_oddmr_od_init_end(comp, handle);
 			if (oddmr_data->data->od_version >= MTK_OD_V3) {
 				mtk_oddmr_write_mask(comp, 1, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
@@ -6874,7 +6948,7 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	} else if (od_force_off != oddmr_data->od_force_off_last) {
 		if (od_force_off) {
 			ODDMRAPI_LOG("OD weight force 0\n");
-			mtk_oddmr_set_od_weight(comp, 0, handle);
+			mtk_oddmr_set_od_weight(comp, weight, handle);
 		}
 		oddmr_data->od_force_off_last = od_force_off;
 	}
@@ -7427,7 +7501,7 @@ static int mtk_oddmr_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	switch (cmd) {
 	case ODDMR_CMD_OD_SET_WEIGHT:
 	{
-		uint32_t value = *(uint32_t *)data;
+		uint32_t *value = (uint32_t *)data;
 
 		mtk_oddmr_set_od_weight_dual(comp, value, handle);
 		break;
@@ -7522,7 +7596,7 @@ static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 
 static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 {
-	uint32_t weight;
+	uint32_t weight[3] = {0};
 	int ret = 0, sel = 0;
 	bool frame_req_trig;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
@@ -7544,17 +7618,21 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 						oddmr_data->primary_data->od_content_timing.vrefresh,
 						oddmr_data->primary_data->od_content_timing.bl_level,
 						oddmr_data->od_data.od_sram_table_idx[sel],
-						&weight);
+						weight);
 				else
 					mtk_oddmr_od_gain_lookup(comp,
 						oddmr_data->primary_data->current_timing.vrefresh,
 						oddmr_data->primary_data->current_timing.bl_level,
 						oddmr_data->od_data.od_sram_table_idx[sel],
-						&weight);
-				ODDMRFLOW_LOG("weight restore %u\n", weight);
+						weight);
+				if (oddmr_data->data->od_version >= MTK_OD_V3)
+					ODDMRFLOW_LOG("weight restore: R %u, G %u, B %u\n",
+						weight[0], weight[1], weight[2]);
+				else
+					ODDMRFLOW_LOG("weight restore %u\n", weight[1]);
 				mtk_crtc_user_cmd(&comp->mtk_crtc->base,
-					comp, ODDMR_CMD_OD_SET_WEIGHT, &weight);
-				CRTC_MMP_MARK(0, oddmr_sof_thread, weight, 1);
+					comp, ODDMR_CMD_OD_SET_WEIGHT, weight);
+				CRTC_MMP_MARK(0, oddmr_sof_thread, weight[1], 1);
 			}
 		}
 		/* 2. wait until near next frame te */
