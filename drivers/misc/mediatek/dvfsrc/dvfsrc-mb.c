@@ -75,86 +75,88 @@ EXPORT_SYMBOL(dvfsrc_get_data);
 #define UNDEF_REG 0xDEADBEEF
 
 static const uint32_t mt6991_regs[] = {
-	[SW_REQ1] = 0x010,
-	[SW_REQ2] = 0x014,
-	[SW_REQ3] = 0x018,
-	[SW_REQ4] = 0x01c,
-	[SW_REQ5] = 0x020,
-	[SW_REQ7] = 0x028,
-	[SW_REQ10] = 0x5FC,
-	[MD_DDR] = 0x5E4,
-	[DDR_QOS] = 0x5E8,
-	[DBG_STA0] = 0x29C,
-	[DBG_STA1] = 0x2A0,
-	[DBG_STA2] = 0x2A4,
-	[DBG_STA3] = 0x2A8,
-	[DBG_STA4] = 0x2AC,
-	[DBG_STA5] = 0x2B0,
-	[DBG_STA6] = 0x2B4,
-	[DBG_STA7] = 0x2B8,
-	[DBG_STA8] = 0x2BC,
-	[DBG_STA9] = 0x2C0,
-	[DBG_STA10] = 0x2C4,
-	[DDR_SW_BW0] = 0x1DC,
-	[DDR_SW_BW1] = 0x1E0,
-	[DDR_SW_BW2] = 0x1E4,
-	[DDR_SW_BW3] = 0x1E8,
-	[DDR_SW_BW4] = 0x1EC,
-	[DDR_SW_BW5] = 0x1F0,
-	[DDR_SW_BW6] = 0x1F4,
-	[DDR_SW_BW7] = 0x1F8,
-	[DDR_SW_BW8] = 0x1FC,
-	[DDR_SW_BW9] = 0x200,
+	0x010, //SW_REQ1
+	0x014, //SW_REQ2
+	0x018, //SW_REQ3
+	0x01c, //SW_REQ4
+	0x020, //SW_REQ5
+	0x028, //SW_REQ7
+	0x5FC, //SW_REQ10
+	0x5E4, //MD_DDR
+	0x5E8, //DDR_QOS
+	0x29C, //DBG_STA0
+	0x2A0, //DBG_STA1
+	0x2A4, //DBG_STA2
+	0x2A8, //DBG_STA3
+	0x2AC, //DBG_STA4
+	0x2B0, //DBG_STA5
+	0x2B4, //DBG_STA6
+	0x2B8, //DBG_STA7
+	0x2BC, //DBG_STA8
+	0x2C0, //DBG_STA9
+	0x2C4, //DBG_STA10
+	0x1DC, //DDR_SW_BW0
+	0x1E0, //DDR_SW_BW1
+	0x1E4, //DDR_SW_BW2
+	0x1E8, //DDR_SW_BW3
+	0x1EC, //DDR_SW_BW4
+	0x1F0, //DDR_SW_BW5
+	0x1F4, //DDR_SW_BW6
+	0x1F8, //DDR_SW_BW7
+	0x1FC, //DDR_SW_BW8
+	0x200, //DDR_SW_BW9
+	0,
 };
 
 static const uint32_t mt6993_regs[] = {
-	[SW_REQ1] = 0x010,
-	[SW_REQ2] = 0x014,
-	[SW_REQ3] = 0x018,
-	[SW_REQ4] = 0x01c,
-	[SW_REQ5] = 0x020,
-	[SW_REQ6] = 0x024,
-	[SW_REQ7] = 0x028,
-	[SW_REQ8] = 0x02C,
-	[SW_REQ9] = 0x5F8,
-	[SW_REQ10] = 0x5FC,
-	[SW_REQ11] = 0x600,
-	[SW_REQ12] = 0x604,
-	[MD_DDR] = 0x5E4,
-	[DDR_QOS] = 0x5E8,
-	[DBG_STA0] = 0x29C,
-	[DBG_STA1] = 0x2A0,
-	[DBG_STA2] = 0x2A4,
-	[DBG_STA3] = 0x2A8,
-	[DBG_STA4] = 0x2AC,
-	[DBG_STA5] = 0x2B0,
-	[DBG_STA6] = 0x2B4,
-	[DBG_STA7] = 0x2B8,
-	[DBG_STA8] = 0x2BC,
-	[DBG_STA9] = 0x2C0,
-	[DBG_STA10] = 0x2C4,
-	[DBG_STA11] = 0xB90,
-	[DDR_SW_BW0] = 0x1DC,
-	[DDR_SW_BW1] = 0x1E0,
-	[DDR_SW_BW2] = 0x1E4,
-	[DDR_SW_BW3] = 0x1E8,
-	[DDR_SW_BW4] = 0x1EC,
-	[DDR_SW_BW5] = 0x1F0,
-	[DDR_SW_BW6] = 0x1F4,
-	[DDR_SW_BW7] = 0x1F8,
-	[DDR_SW_BW8] = 0x1FC,
-	[DDR_SW_BW9] = 0x200,
-	[EMI_SW_BW0] = 0xB68,
-	[EMI_SW_BW1] = 0xB6C,
-	[EMI_SW_BW2] = 0xB70,
-	[EMI_SW_BW3] = 0xB74,
-	[EMI_SW_BW4] = 0xB78,
-	[EMI_SW_BW5] = 0xB7C,
-	[EMI_SW_BW6] = 0xB80,
-	[EMI_SW_BW7] = 0xB84,
-	[EMI_SW_BW8] = 0xB88,
-	[EMI_SW_BW9] = 0xB8C,
-	[MMDVFS] = 0x308,
+	0x010, //SW_REQ1
+	0x014, //SW_REQ2
+	0x018, //SW_REQ3
+	0x01c, //SW_REQ4
+	0x020, //SW_REQ5
+	0x024, //SW_REQ6
+	0x028, //SW_REQ7
+	0x02C, //SW_REQ8
+	0x5F8, //SW_REQ9
+	0x5FC, //SW_REQ10
+	0x600, //SW_REQ11
+	0x604, //SW_REQ12
+	0x5E4, //MD_DDR
+	0x5E8, //DDR_QOS
+	0x29C, //DBG_STA0
+	0x2A0, //DBG_STA1
+	0x2A4, //DBG_STA2
+	0x2A8, //DBG_STA3
+	0x2AC, //DBG_STA4
+	0x2B0, //DBG_STA5
+	0x2B4, //DBG_STA6
+	0x2B8, //DBG_STA7
+	0x2BC, //DBG_STA8
+	0x2C0, //DBG_STA9
+	0x2C4, //DBG_STA10
+	0xB90, //DBG_STA11
+	0x1DC, //DDR_SW_BW0
+	0x1E0, //DDR_SW_BW1
+	0x1E4, //DDR_SW_BW2
+	0x1E8, //DDR_SW_BW3
+	0x1EC, //DDR_SW_BW4
+	0x1F0, //DDR_SW_BW5
+	0x1F4, //DDR_SW_BW6
+	0x1F8, //DDR_SW_BW7
+	0x1FC, //DDR_SW_BW8
+	0x200, //DDR_SW_BW9
+	0xB68, //EMI_SW_BW0
+	0xB6C, //EMI_SW_BW1
+	0xB70, //EMI_SW_BW2
+	0xB74, //EMI_SW_BW3
+	0xB78, //EMI_SW_BW4
+	0xB7C, //EMI_SW_BW5
+	0xB80, //EMI_SW_BW6
+	0xB84, //EMI_SW_BW7
+	0xB88, //EMI_SW_BW8
+	0xB8C, //EMI_SW_BW9
+	0x308, //MMDVFS
+	0,
 };
 
 void dvfsrc_read_dvfs_info_reg(struct mtk_dvfsrc_dvfs_info_header *dvfs_info_header)
@@ -162,14 +164,14 @@ void dvfsrc_read_dvfs_info_reg(struct mtk_dvfsrc_dvfs_info_header *dvfs_info_hea
 	uint32_t i = 0;
 
 	dvfs_info_header->dvfs_info_version = dvfsrc_drv->dvd->dvfs_info_ver;
+	dvfs_info_header->dvfs_info_size = dvfsrc_drv->dvd->dvfs_info_size;
 
 	for (i = 0; i < DVFS_INFO_REG_NUM; i++) {
-
 		if (dvfsrc_drv->dvd->dvfs_info_regs[i] != 0)
 			dvfs_info_header->dvfs_info_val[i] =
 			dvfsrc_read(dvfsrc_drv, dvfsrc_drv->dvd->dvfs_info_regs[i]);
 		else
-			dvfs_info_header->dvfs_info_val[i] = UNDEF_REG;
+			break;
 	}
 }
 
@@ -214,6 +216,7 @@ static const struct mtk_dvfsrc_data mt6991_data = {
 	.data_length = sizeof(struct mtk_dvfsrc_header),
 	.max_ddr_info_ver = 2,
 	.dvfs_info_ver = 0x6991,
+	.dvfs_info_size = 30,
 	.dvfs_info_regs = mt6991_regs,
 	.config = &mt6991_config,
 };
@@ -232,6 +235,7 @@ static const struct mtk_dvfsrc_data mt6993_data = {
 	.data_length = sizeof(struct mtk_dvfsrc_header),
 	.max_ddr_info_ver = 2,
 	.dvfs_info_ver = 0x6993,
+	.dvfs_info_size = 47,
 	.dvfs_info_regs = mt6993_regs,
 	.config = &mt6993_config,
 };

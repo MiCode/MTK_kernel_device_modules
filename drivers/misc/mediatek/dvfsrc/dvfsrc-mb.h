@@ -7,6 +7,7 @@
 #define __DVFSRC_MB_H__
 
 #define MAX_DATA_SIZE 6
+#define DVFS_INFO_REG_NUM 50
 
 enum dvfs_data {
 	DDR,
@@ -14,57 +15,6 @@ enum dvfs_data {
 	EMI,
 	TEMP_ZONE,
 	AGING,
-};
-
-enum dvfs_info_regs {
-	SW_REQ1 = 0,
-	SW_REQ2,
-	SW_REQ3,
-	SW_REQ4,
-	SW_REQ5,
-	SW_REQ6,
-	SW_REQ7,
-	SW_REQ8,
-	SW_REQ9,
-	SW_REQ10,
-	SW_REQ11,
-	SW_REQ12,
-	MD_DDR,
-	DDR_QOS,
-	DBG_STA0,
-	DBG_STA1,
-	DBG_STA2,
-	DBG_STA3,
-	DBG_STA4,
-	DBG_STA5,
-	DBG_STA6,
-	DBG_STA7,
-	DBG_STA8,
-	DBG_STA9,
-	DBG_STA10,
-	DBG_STA11,
-	DDR_SW_BW0,
-	DDR_SW_BW1,
-	DDR_SW_BW2,
-	DDR_SW_BW3,
-	DDR_SW_BW4,
-	DDR_SW_BW5,
-	DDR_SW_BW6,
-	DDR_SW_BW7,
-	DDR_SW_BW8,
-	DDR_SW_BW9,
-	EMI_SW_BW0,
-	EMI_SW_BW1,
-	EMI_SW_BW2,
-	EMI_SW_BW3,
-	EMI_SW_BW4,
-	EMI_SW_BW5,
-	EMI_SW_BW6,
-	EMI_SW_BW7,
-	EMI_SW_BW8,
-	EMI_SW_BW9,
-	MMDVFS,
-	DVFS_INFO_REG_NUM,
 };
 
 struct mtk_dvfsrc_header {
@@ -77,6 +27,7 @@ struct mtk_dvfsrc_header {
 
 struct mtk_dvfsrc_dvfs_info_header {
 	uint32_t dvfs_info_version;
+	uint32_t dvfs_info_size;
 	uint32_t dvfs_info_val[DVFS_INFO_REG_NUM];
 };
 
@@ -93,6 +44,7 @@ struct mtk_dvfsrc_data {
 	const struct mtk_dvfsrc_config *config;
 	uint32_t max_ddr_info_ver;
 	uint32_t dvfs_info_ver;
+	uint32_t dvfs_info_size;
 	const uint32_t *dvfs_info_regs;
 };
 
