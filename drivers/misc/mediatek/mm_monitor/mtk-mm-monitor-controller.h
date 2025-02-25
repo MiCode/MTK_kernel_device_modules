@@ -131,6 +131,7 @@ enum mmmc_state_level {
 	MONITOR_ENABLE = BIT(0),
 	CTI_SW_ENABLE = BIT(1),
 	DEF_LIMITER_ENABLE = BIT(2),
+	FIXED_OSTDBL_ENABLE = BIT(3),
 };
 extern u32 mmmc_state;
 

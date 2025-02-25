@@ -139,6 +139,33 @@ int mmmc_smi_mon_comm1 = 0x11000;
 EXPORT_SYMBOL(mmmc_smi_mon_comm1);
 module_param(mmmc_smi_mon_comm1, int, 0644);
 
+int mmmc_fixed_r_ostdbl = 210;
+EXPORT_SYMBOL(mmmc_fixed_r_ostdbl);
+
+int mmmc_fixed_w_ostdbl = 120;
+EXPORT_SYMBOL(mmmc_fixed_w_ostdbl);
+
+int validate_ostdbl(const char *val, const struct kernel_param *kp)
+{
+	int param_val;
+	int ret = kstrtoint(val, 0, &param_val);
+
+	if (ret != 0 || param_val <= 0 || param_val > 0xFFF) {
+		MM_MONITOR_ERR("Invalid value for ostdbl: %d\n", param_val);
+		return -EINVAL;
+	}
+	MM_MONITOR_DBG("Change %s from %d to %d", kp->name, *(int *)kp->arg, param_val);
+	return param_set_int(val, kp);
+}
+
+const struct kernel_param_ops ostdbl_ops = {
+	.set = validate_ostdbl,
+	.get = param_get_int,
+};
+
+module_param_cb(mmmc_fixed_r_ostdbl, &ostdbl_ops, &mmmc_fixed_r_ostdbl, 0644);
+module_param_cb(mmmc_fixed_w_ostdbl, &ostdbl_ops, &mmmc_fixed_w_ostdbl, 0644);
+
 u32 mmmc_state;
 static bool hrt_debug_enabled;
 
@@ -738,6 +765,7 @@ void init_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 {
 	u32 bwr_total_cnt = mmmc_power_domain->bwr_total_cnt;
 	int i;
+	u32 value = 0;
 
 	for (i = 0; i < bwr_total_cnt; i++) {
 		struct mtk_bwr *bwr = mmmc_power_domain->bwr[i];
@@ -776,6 +804,18 @@ void init_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 			writel(0x100010, base + MON_BWLMTE3);
 			writel(0x100010, base + MON_BWLMTE3_WA);
 			writel((readl(base + MON_BMAN2) & ~0xc03) | 0xc03, base + MON_BMAN2);
+		}
+		if (mmmc_state & FIXED_OSTDBL_ENABLE) {
+			writel(0xFFFFFFFF, base + MON_BWLMTE1);
+			writel(0xFFFFFFFF, base + MON_BWLMTE1_WA);
+			writel(0xFFFFFFFF, base + MON_BWLMTE2);
+			writel(0xFFFFFFFF, base + MON_BWLMTE2_WA);
+			value = ((mmmc_fixed_w_ostdbl & 0xFFF) << 16) + (mmmc_fixed_r_ostdbl & 0xFFF);
+			writel(value,   base + MON_BWLMTE3);
+			writel(value,   base + MON_BWLMTE3_WA);
+			writel((readl(base + MON_BMAN2) & ~0xc03) | 0x403, base + MON_BMAN2);
+			MM_MONITOR_INFO("FIXED_OSTDBL_ENABLE, r_ostdbl:%d, w_ostdbl:%d, value:%#x",
+				mmmc_fixed_r_ostdbl, mmmc_fixed_w_ostdbl, value);
 		}
 	}
 	if (dump)
