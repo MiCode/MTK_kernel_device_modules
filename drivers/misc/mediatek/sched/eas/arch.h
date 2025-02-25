@@ -55,6 +55,12 @@ unsigned long get_cpu_power(int pid, unsigned int mtk_em, unsigned int get_lkg,
 		swpm_vars[8] = dpt_v2_sratio;
 		swpm_vars[10] = data[4];
 
+		if (dpt_v2_swpm_support == 2 && get_cpu_power_scaling_factor_hook) {
+			get_cpu_power_scaling_factor_hook(this_cpu,
+				&per_cpu(__dpt_rq, this_cpu).util_cfs.power_scaling_factor);
+			swpm_vars[2] = per_cpu(__dpt_rq, this_cpu).util_cfs.power_scaling_factor;
+		}
+
 		result = get_cpu_power_hook(mtk_em, get_lkg, quant, wl,
 				dpt_pwr_eff_val, val_s, val_m, r_o,
 				this_cpu, cpu_temp, opp, cpumask_val, data, output, swpm_vars,
