@@ -1304,8 +1304,23 @@ static void apu_polling_on_work_func(struct work_struct *p_work)
 		apu->bypass_pwr_off_chk = true;
 		dev_info(dev, "%s: APU_RPC_TOP_CON = 0x%x\n",
 			__func__, ioread32(apu->apu_rpc + 0x0));
+		dev_info(dev, "%s: APU_RPC_TOP_SEL = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x4));
+		dev_info(dev, "%s: APU_RPC_IO_DEBUG = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0xc));
+		dev_info(dev, "%s: APU_RPC_STATUS = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x14));
+		dev_info(dev, "%s: APU_RPC_TOP_SEL_1 = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x18));
+		dev_info(dev, "%s: APU_RPC_CE_CTRL_RDATA = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x28));
+		dev_info(dev, "%s: APU_RPC_TOP_SEL_2 = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x2c));
+		dev_info(dev, "%s: APU_RPC_STATUS_1 = 0x%x\n",
+			__func__, ioread32(apu->apu_rpc + 0x34));
 		dev_info(dev, "%s: APU_RPC_INTF_PWR_RDY = 0x%x\n",
 			__func__, ioread32(apu->apu_rpc + 0x44));
+
 		dev_info(dev, "%s: MBOX0_RV_PWR_STA = 0x%x\n",
 			__func__, ioread32(apu->apu_mbox + MBOX_RV_PWR_STA_FLG));
 		apusys_rv_aee_warn("APUSYS_RV", "APUSYS_RV_TIMEOUT");
