@@ -1233,7 +1233,7 @@ mgk_64_kleaf_device_modules = [
 
 mgk_64_kleaf_platform_modules = {
     # keep sorted
-    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-bringup".format(kernel_version): "mt6781 mt6789 mt6833 mt6897 mt6886 mt6893 mt6983 mt6989 mt8192 mt8188 mt6899 mt6993",
+    "//kernel_device_modules-{}/drivers/clk/mediatek:clk-bringup".format(kernel_version): "mt6781 mt6789 mt6855 mt6833 mt6897 mt6886 mt6893 mt6983 mt6989 mt8192 mt8188 mt6899 mt6993",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6993-vcodec".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6993-adsp".format(kernel_version): "mt6993",
@@ -1283,7 +1283,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6989".format(kernel_version): "mt6989",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6993".format(kernel_version): "mt6993",
-    "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-bringup".format(kernel_version): "mt6765 mt6781 mt6789 mt6833 mt6853 mt6897 mt6886 mt6893 mt6983 mt6989 mt8192 mt8188 mt6895 mt6899",
+    "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-bringup".format(kernel_version): "mt6765 mt6781 mt6789 mt6833 mt6853 mt6855 mt6897 mt6886 mt6893 mt6983 mt6989 mt8192 mt8188 mt6895 mt6899",
     #"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6761".format(kernel_version): "mt6761",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6765".format(kernel_version): "mt6765",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6781".format(kernel_version): "mt6781",
