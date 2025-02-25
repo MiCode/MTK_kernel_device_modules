@@ -44,5 +44,3 @@ endif
 
 #ccflags-y += -DCMDQ_SKIP_BY_CMDQ_BUILT
 ccflags-y += -DCMDQ_DCACHE_INVAL
-
-obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-test.o

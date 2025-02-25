@@ -1234,6 +1234,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:mddp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:sapu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-test".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1544,7 +1545,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp70.ko",
     #"drivers/misc/mediatek/clkbuf/clkbuf.ko",
     #"drivers/misc/mediatek/cmdq/mailbox/cmdq-sec-drv.ko",
-    "drivers/misc/mediatek/cmdq/mailbox/cmdq-test.ko",
+    #"drivers/misc/mediatek/cmdq/mailbox/cmdq-test.ko",
     #"drivers/misc/mediatek/cmdq/mailbox/mtk-cmdq-drv-ext.ko",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_ipi.ko",
     #"drivers/misc/mediatek/cm_mgr/mtk_cm_mgr.ko",
