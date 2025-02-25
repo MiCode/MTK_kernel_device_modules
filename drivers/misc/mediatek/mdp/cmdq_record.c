@@ -1615,6 +1615,8 @@ s32 cmdq_op_assign_reg_idx_ex(struct cmdqRecStruct *handle,
 		range_check = true;
 	if (reg_idx > GPR_MIN_REG_INDEX && reg_idx < GPR_MAX_REG_INDEX)
 		range_check = true;
+	if (reg_idx > CPR_MIN_REG_INDEX && reg_idx < CPR_MAX_REG_INDEX)
+		range_check = true;
 
 	if (!range_check) {
 		CMDQ_ERR("reg_idx not in available range\n");
