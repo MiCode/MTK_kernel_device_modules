@@ -271,6 +271,7 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 #define HAVE_RST_BAR			BIT(16)
 #define PLL_AO				BIT(17)
 #define CLK_ENABLE_MERGE_CONTROL	BIT(23)
+#define CLK_SET_ROUND_RATE		BIT(26)
 
 /* mux */
 #define CLK_ENABLE_QUICK_SWITCH		BIT(20)
@@ -280,6 +281,7 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 /* special cg */
 #define CLK_EN_MM_INFRA_PWR		BIT(22)
 #define HWV_CHK_VCP_READY		BIT(25)
+
 
 struct mtk_pll_div_table {
 	u32 div;
