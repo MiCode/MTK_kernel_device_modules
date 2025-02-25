@@ -1854,7 +1854,7 @@ mgk_64_platform_device_modules = {
     #"drivers/misc/mediatek/mdp/mdp_drv_mt6985.ko": "mt6985",
     #"drivers/misc/mediatek/mdp/mdp_drv_mt6989.ko": "mt6989",
     #"drivers/misc/mediatek/mdp/mdp_drv_mt6991.ko": "mt6991",
-    "drivers/soc/mediatek/mtk-pm-domains.ko": "mt8188",
+    #"drivers/soc/mediatek/mtk-pm-domains.ko": "mt8188",
     #"drivers/soc/mediatek/mtk-scpsys-mt6991-spm.ko": "mt6991",
     #"drivers/soc/mediatek/mtk-scpsys-mt6991-mmpc.ko": "mt6991",
     #"drivers/misc/mediatek/vmm/mtk-vmm-notifier-mt6991.ko": "mt6991",

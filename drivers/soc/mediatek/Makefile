@@ -15,9 +15,9 @@ obj-$(CONFIG_MTK_CMDQ) += mtk-cmdq-helper.o
 ifneq ($(wildcard $(src)/mtk-scpsys-mt6991-ivi.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_IVI) += mtk-scpsys-mt6991-ivi.o
 endif
-ifneq ($(wildcard $(src)/mt8188-pm-domains.h),)
-obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS) += mtk-pm-domains.o
-endif
+#ifneq ($(wildcard $(src)/mt8188-pm-domains.h),)
+#obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS_PM_DOMAINS) += mtk-pm-domains.o
+#endif
 obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS_MMSYS) += mtk-mmsys.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_DEVAPC) += devapc/
 # obj-$(CONFIG_MTK_DEVMPU) += devmpu/
