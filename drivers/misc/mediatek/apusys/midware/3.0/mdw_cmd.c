@@ -1224,14 +1224,6 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 			goto delete_fence;
 		}
 
-		/* assign sync file to fd */
-		fd = get_unused_fd_flags(O_CLOEXEC);
-		if (fd < 0) {
-			mdw_drv_err("get unused fd fail\n");
-			goto delete_fence;
-		}
-		fd_install(fd, sync_file->file);
-
 		/* generate cmd inference id */
 		c->inference_id = MDW_CMD_GEN_INFID((uint64_t) mpriv, mpriv->counter++);
 
@@ -1239,13 +1231,22 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 
 		run_ret = mdw_cmd_run(c, wait_fd);
 		if (run_ret < 0) {
-			mdw_drv_err("run cmd fail, ret(%d)\n", ret);
+			mdw_drv_err("run cmd fail, ret(%d)\n", run_ret);
 			ret = run_ret;
 			goto put_sync_file;
 		} else if (run_ret > 0) {
 			mdw_cmd_debug("poll done, ret(%d)\n", run_ret);
 			mdw_cmd_postprocess(c);
 		}
+
+		/* assign sync file to fd */
+		fd = get_unused_fd_flags(O_CLOEXEC);
+		if (fd < 0) {
+			mdw_drv_err("get unused fd fail\n");
+			goto put_sync_file;
+		}
+
+		fd_install(fd, sync_file->file);
 	}
 
 	memset(args, 0, sizeof(*args));
@@ -1262,10 +1263,10 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 	mutex_unlock(&c->mtx);
 	goto out;
 
-delete_fence:
-	mdw_fence_delete(c);
 put_sync_file:
 	fput(sync_file->file);
+delete_fence:
+	mdw_fence_delete(c);
 remove_idr:
 	if (c != idr_remove(&mpriv->cmds, c->id))
 		mdw_drv_warn("remove id(%d) conflict\n", c->id);
