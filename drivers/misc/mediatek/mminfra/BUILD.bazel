@@ -132,11 +132,13 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
     ],
     hdrs = glob(["**/*.h"]),
     includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
@@ -147,5 +149,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk_interconnect".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:smi_dbg_headers".format(kernel_version),
     ],
 )
