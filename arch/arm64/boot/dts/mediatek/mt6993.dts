@@ -989,6 +989,10 @@
 		compatible = "mediatek,page-based-v2-enabled";
 	};
 
+	sel2: hafnium-bypass-cma-enabled {
+		compatible = "mediatek,hafnium-bypass-cma-enabled";
+	};
+
 	clkitg: clkitg {
 		compatible = "simple-bus";
 		#address-cells = <1>;
