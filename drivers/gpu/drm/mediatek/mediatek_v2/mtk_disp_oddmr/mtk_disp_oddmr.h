@@ -622,6 +622,7 @@ struct mtk_disp_oddmr {
 	uint32_t last_hrt_dmrr_stash;
 	uint32_t last_hrt_dbir;
 	uint32_t last_hrt_odrw;
+	uint32_t last_hrt_odrw_stash;
 	struct icc_path *qos_req_dmrr;
 	struct icc_path *qos_req_dbir;
 	struct icc_path *qos_req_odr;
@@ -631,6 +632,8 @@ struct mtk_disp_oddmr {
 	struct icc_path *qos_req_dbir_hrt;
 	struct icc_path *qos_req_odr_hrt;
 	struct icc_path *qos_req_odw_hrt;
+	struct icc_path *qos_req_odr_stash_hrt;
+	struct icc_path *qos_req_odw_stash_hrt;
 	uint32_t irq_status;
 	/* larb_cons idx */
 	uint32_t larb_dmrr;

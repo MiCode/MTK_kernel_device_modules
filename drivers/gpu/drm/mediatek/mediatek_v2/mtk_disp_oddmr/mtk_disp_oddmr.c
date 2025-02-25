@@ -606,6 +606,8 @@
 	#define REG_ODR_STASH_ULTRA_RE_FRCE				REG_FLD_MSB_LSB(19, 19)
 #define MT6993_DISP_ODDMR_SMI_SB_FLG_ODW			0x58
 	#define REG_ODW_STASH_ULTRA_WR_FRCE				REG_FLD_MSB_LSB(19, 19)
+#define MT6993_DISP_ODDMR_UDMA_R_CTRL30				(0x006C + MT6991_DISP_ODDMR_REG_UDMA_R_BASE)
+#define MT6993_DISP_ODDMR_UDMA_W_CTR_1B				(0x006C + MT6991_DISP_ODDMR_REG_UDMA_W_BASE)
 //DMR ctrl
 #define DISP_ODDMR_MURA_SHADOW_CTRL					0x108B8
 	#define MURA_BYPASS_SHADOW						REG_FLD_MSB_LSB(0, 0)
@@ -5644,11 +5646,19 @@ int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int disp_idx, int *oddmr_hr
 				atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 1);
 			if (atomic_read(&oddmr_data->primary_data->dbi_hrt_done) == 2)
 				atomic_set(&oddmr_data->primary_data->dbi_hrt_done, 1);
+			/* OD HRT */
 			if (oddmr_data->od_enable_req) {
 				if (oddmr_data->data->od_version >= MTK_OD_V2)
-					sum += mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode);
+					temp_hrt = mtk_oddmr_od_bpp_v(comp,
+							od_param->od_basic_info.basic_param.od_mode);
 				else
-					sum += mtk_oddmr_od_bpp(comp, od_param->od_basic_info.basic_param.od_mode);
+					temp_hrt = mtk_oddmr_od_bpp(comp, od_param->od_basic_info.basic_param.od_mode);
+				if (oddmr_data->data->is_od_support_stash &&
+						oddmr_data->data->od_version >= MTK_OD_V3) {
+					/* stash bw = data_bw / 4096 * 16 */
+					temp_hrt += temp_hrt / 256;
+				}
+				sum += temp_hrt;
 			}
 			/* DMR HRT */
 			if (oddmr_data->dmr_enable_req) {
@@ -5740,14 +5750,26 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 	if (type == CHANNEL_HRT_WRITE) {
 		if (od_enable) {
 			if (oddmr_data->data->od_version >= MTK_OD_V2)
-				sum += mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
+				temp_hrt = mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
+			if (oddmr_data->data->is_od_support_stash &&
+					oddmr_data->data->od_version >= MTK_OD_V3) {
+				/* stash bw = data_bw / 4096 * 16 */
+				temp_hrt += temp_hrt / 256;
+			}
+			sum += temp_hrt;
 		}
 	} else {
 		if (od_enable) {
 			if (oddmr_data->data->od_version >= MTK_OD_V2)
-				sum += mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
+				temp_hrt = mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
 			else
-				sum += mtk_oddmr_od_bpp(comp, od_param->od_basic_info.basic_param.od_mode);
+				temp_hrt = mtk_oddmr_od_bpp(comp, od_param->od_basic_info.basic_param.od_mode);
+			if (oddmr_data->data->is_od_support_stash &&
+					oddmr_data->data->od_version >= MTK_OD_V3) {
+				/* stash bw = data_bw / 4096 * 16 */
+				temp_hrt += temp_hrt / 256;
+			}
+			sum += temp_hrt;
 		}
 		/* DMR HRT */
 		if (oddmr_data->dmr_enable) {
@@ -6297,16 +6319,38 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			oddmr_data->last_hrt_dbir = bw_val;
 
 			/* OD outstanding */
-			if (oddmr_data->data->od_version >= MTK_OD_V2)
-				layer_num = mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
-			else
-				layer_num = mtk_oddmr_od_bpp(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
-			bw_val = (layer_num * bw_base / 400) * od_enable;
+			if (od_enable) {
+				if (oddmr_data->data->od_version >= MTK_OD_V2)
+					layer_num = mtk_oddmr_od_bpp_v(comp,
+						od_param->od_basic_info.basic_param.od_mode) / 2;
+				else
+					layer_num = mtk_oddmr_od_bpp(comp,
+						od_param->od_basic_info.basic_param.od_mode) / 2;
+				bw_val = layer_num * bw_base / 400;
+				/* OD stash bw = data_bw / 4096 * 16 */
+				if (oddmr_data->data->is_od_support_stash &&
+						oddmr_data->data->od_version >= MTK_OD_V3) {
+					stash_bw = bw_val / 256;
+					stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
+						stash_bw : oddmr_data->data->min_stash_port_bw; //set low bound
+				}
+			} else {
+				bw_val = 0;
+				stash_bw = 0;
+			}
 			__mtk_disp_set_module_hrt(oddmr_data->qos_req_odr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			__mtk_disp_set_module_hrt(oddmr_data->qos_req_odw_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			oddmr_data->last_hrt_odrw = bw_val;
+			if (oddmr_data->data->is_od_support_stash &&
+					oddmr_data->data->od_version >= MTK_OD_V3) {
+				__mtk_disp_set_module_hrt(oddmr_data->qos_req_odr_stash_hrt, comp->id, stash_bw,
+					priv->data->respective_ostdl);
+				__mtk_disp_set_module_hrt(oddmr_data->qos_req_odw_stash_hrt, comp->id, stash_bw,
+					priv->data->respective_ostdl);
+				oddmr_data->last_hrt_odrw_stash = stash_bw;
+			}
 		} else {
 			oddmr_data->last_hrt_dmrr = dmr_enable;
 			oddmr_data->last_hrt_dbir = dbi_enable;
@@ -6424,11 +6468,25 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		oddmr_data->last_hrt_dbir = bw_val;
 
 		/* OD outstanding */
-		if (oddmr_data->data->od_version >= MTK_OD_V2)
-			layer_num = mtk_oddmr_od_bpp_v(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
-		else
-			layer_num = mtk_oddmr_od_bpp(comp, od_param->od_basic_info.basic_param.od_mode) / 2;
-		bw_val = (layer_num * bw_base / 400) * od_enable;
+		if (od_enable) {
+			if (oddmr_data->data->od_version >= MTK_OD_V2)
+				layer_num = mtk_oddmr_od_bpp_v(comp,
+					od_param->od_basic_info.basic_param.od_mode) / 2;
+			else
+				layer_num = mtk_oddmr_od_bpp(comp,
+					od_param->od_basic_info.basic_param.od_mode) / 2;
+			bw_val = layer_num * bw_base / 400;
+			/* OD stash bw = data_bw / 4096 * 16 */
+			if (oddmr_data->data->is_od_support_stash &&
+					oddmr_data->data->od_version >= MTK_OD_V3) {
+				stash_bw = bw_val / 256;
+				stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
+					stash_bw : oddmr_data->data->min_stash_port_bw; //set low bound
+			}
+		} else {
+			bw_val = 0;
+			stash_bw = 0;
+		}
 		if (bw_val > oddmr_data->last_hrt_odrw) {
 			ODDMRLOW_LOG("odrw bw_val fast up %u -> %u\n", oddmr_data->last_hrt_odrw, bw_val);
 			__mtk_disp_set_module_hrt(oddmr_data->qos_req_odr_hrt, comp->id, bw_val,
@@ -6438,14 +6496,37 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_VAL_ODRW),
 				NO_PENDING_HRT, ~0);
+			if (oddmr_data->data->is_od_support_stash &&
+					oddmr_data->data->od_version >= MTK_OD_V3) {
+				ODDMRLOW_LOG("odrw stash_bw fast up %u -> %u\n",
+					oddmr_data->last_hrt_odrw_stash, stash_bw);
+				__mtk_disp_set_module_hrt(oddmr_data->qos_req_odr_stash_hrt, comp->id, stash_bw,
+					priv->data->respective_ostdl);
+				__mtk_disp_set_module_hrt(oddmr_data->qos_req_odw_stash_hrt, comp->id, stash_bw,
+					priv->data->respective_ostdl);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_VAL_ODRW_STASH),
+					NO_PENDING_HRT, ~0);
+			}
 		} else if (bw_val < oddmr_data->last_hrt_odrw) {
 			ODDMRLOW_LOG("odrw bw_val will slow down %u -> %u\n",
 				oddmr_data->last_hrt_odrw, bw_val);
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_VAL_ODRW),
 				bw_val, ~0);
+			if (oddmr_data->data->is_od_support_stash &&
+					oddmr_data->data->od_version >= MTK_OD_V3) {
+				ODDMRLOW_LOG("odrw stash_bw will slow down %u -> %u\n",
+					oddmr_data->last_hrt_odrw_stash, stash_bw);
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_VAL_ODRW_STASH),
+					stash_bw, ~0);
+			}
 		}
 		oddmr_data->last_hrt_odrw = bw_val;
+		if (oddmr_data->data->is_od_support_stash &&
+				oddmr_data->data->od_version >= MTK_OD_V3)
+			oddmr_data->last_hrt_odrw_stash = stash_bw;
 
 		ODDMRLOW_LOG("hrt dmrr %d dbir %d odrw %d\n",
 			oddmr_data->last_hrt_dmrr, oddmr_data->last_hrt_dbir, oddmr_data->last_hrt_odrw);
@@ -6509,6 +6590,19 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				priv->data->respective_ostdl);
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_HRT_VAL_ODRW) =	NO_PENDING_HRT;
+			if (oddmr_data->data->is_od_support_stash &&
+					oddmr_data->data->od_version >= MTK_OD_V3) {
+				stash_bw = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_HRT_VAL_ODRW_STASH);
+				ODDMRLOW_LOG("odrw stash_bw final down to %u,last:%u\n",
+					stash_bw, oddmr_data->last_hrt_odrw_stash);
+				__mtk_disp_set_module_hrt(oddmr_data->qos_req_odr_stash_hrt, comp->id, stash_bw,
+					priv->data->respective_ostdl);
+				__mtk_disp_set_module_hrt(oddmr_data->qos_req_odw_stash_hrt, comp->id, stash_bw,
+					priv->data->respective_ostdl);
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_CUR_HRT_VAL_ODRW_STASH) =	NO_PENDING_HRT;
+			}
 		}
 	}
 		break;
@@ -6681,6 +6775,10 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	bool sec_on, en;
 	uint32_t value = 0, mask = 0;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	struct mtk_ddp_comp *output_comp = NULL;
+	unsigned int dsi_line_time = 0;
+	unsigned int stash_lead_time = 12;
+	unsigned int stash_lead_cnt = 0;
 
 	if (oddmr_data->primary_data->od_state < ODDMR_INIT_DONE)
 		return;
@@ -6706,6 +6804,20 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				}
 				mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DDREN_CTRL_ODW, mask, handle);
 				mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DDREN_CTRL_ODR, mask, handle);
+				/* stash_lead_cnt = stash_lead_time / dsi_line_time */
+				if (oddmr_data->data->is_od_support_stash) {
+					stash_lead_time = oddmr_data->data->stash_lead_time;
+					output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
+					if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+						mtk_ddp_comp_io_cmd(output_comp, NULL,
+							DSI_GET_LINE_TIME_NS, &dsi_line_time);
+					dsi_line_time /= 1000;
+					if (dsi_line_time > 0)
+						stash_lead_cnt = (stash_lead_time + dsi_line_time - 1) / dsi_line_time;
+					value = (1 << 8) | stash_lead_cnt;
+					mtk_oddmr_write(comp, value, MT6993_DISP_ODDMR_UDMA_R_CTRL30, handle);
+					mtk_oddmr_write(comp, value, MT6993_DISP_ODDMR_UDMA_W_CTR_1B, handle);
+				}
 			} else if (oddmr_data->data->od_version == MTK_OD_V2) {
 				mtk_oddmr_write_mask(comp, 1, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 				mtk_oddmr_write(comp, 0, DISP_ODDMR_TOP_OD_BYASS, handle);
@@ -6727,6 +6839,11 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				}
 				mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DDREN_CTRL_ODW, mask, handle);
 				mtk_oddmr_write_mask(comp, value, DISP_ODDMR_DDREN_CTRL_ODR, mask, handle);
+				// close stash
+				if (oddmr_data->data->is_od_support_stash) {
+					mtk_oddmr_write(comp, 0, MT6993_DISP_ODDMR_UDMA_R_CTRL30, handle);
+					mtk_oddmr_write(comp, 0, MT6993_DISP_ODDMR_UDMA_W_CTR_1B, handle);
+				}
 				mtk_oddmr_set_od_clk(comp, 0, handle);
 			} else if (oddmr_data->data->od_version == MTK_OD_V2) {
 				mtk_oddmr_write_mask(comp, 0, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
@@ -11579,6 +11696,16 @@ static int mtk_disp_oddmr_bind(struct device *dev, struct device *master,
 			oddmr_data->qos_req_dmrr_stash_hrt = of_mtk_icc_get(dev, buf);
 		}
 
+		if (oddmr_data->data->od_version >= MTK_OD_V3) {
+			mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+							&oddmr_data->ddp_comp, "ODR_STASH");
+			oddmr_data->qos_req_odr_stash_hrt = of_mtk_icc_get(dev, buf);
+
+			mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+							&oddmr_data->ddp_comp, "ODW_STASH");
+			oddmr_data->qos_req_odw_stash_hrt = of_mtk_icc_get(dev, buf);
+		}
+
 	}
 	pr_notice("%s-\n", __func__);
 	return 0;
@@ -12100,7 +12227,7 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.is_dmr_support_stash = true,
 	.stash_lead_time = 20,
 	.is_dbi_support_stash = true,
-	.is_od_support_stash = false,
+	.is_od_support_stash = true,
 	.min_stash_port_bw = 49,
 	.slc_read_alloc = 1,
 	.slc_period = 10,
