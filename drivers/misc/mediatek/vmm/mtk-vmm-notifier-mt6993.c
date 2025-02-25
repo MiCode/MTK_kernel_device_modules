@@ -123,16 +123,16 @@ updateEnd:
 		ISP_LOGE("cvfs_update overflow, vote:%d", vote);
 		break;
 	default:
+		ISP_LOGI("SUM cvfs: 0x%08x", cnts->sumSEL);
+		ISP_LOGI("CAMSYS:0x%08x, IMGSYS: 0x%08x, PDA: 0x%08x, SENINF: 0x%08x, UISP: 0x%08x, VDE: 0x%08x",
+			cnts->user_count[VMM_CVFS_USR_CAMSYS],
+			cnts->user_count[VMM_CVFS_USR_IMGSYS],
+			cnts->user_count[VMM_CVFS_USR_PDA],
+			cnts->user_count[VMM_CVFS_USR_SENINF],
+			cnts->user_count[VMM_CVFS_USR_UISP],
+			cnts->user_count[VMM_CVFS_USR_VDE]);
 		break;
 	}
-	ISP_LOGI("SUM cvfs: 0x%08x", cnts->sumSEL);
-	ISP_LOGI("CAMSYS:0x%08x, IMGSYS: 0x%08x, PDA: 0x%08x, SENINF: 0x%08x, UISP: 0x%08x, VDE: 0x%08x",
-		cnts->user_count[VMM_CVFS_USR_CAMSYS],
-		cnts->user_count[VMM_CVFS_USR_IMGSYS],
-		cnts->user_count[VMM_CVFS_USR_PDA],
-		cnts->user_count[VMM_CVFS_USR_SENINF],
-		cnts->user_count[VMM_CVFS_USR_UISP],
-		cnts->user_count[VMM_CVFS_USR_VDE]);
 
 	return ret;
 }
