@@ -160,7 +160,7 @@ static unsigned int busy_down_thres[MAX_CLUSTERS] = {30, 30, 30};
 static unsigned int nr_task_thres[MAX_CLUSTERS] = {4, 4, 4};
 static unsigned int rt_nr_task_thres[MAX_CLUSTERS] = {2, 2, 2};
 static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
-static unsigned long freq_thres[MAX_CLUSTERS] = {1200000, 1500000, 1700000};
+static unsigned long freq_thres[MAX_CLUSTERS] = {5000000, 5000000, 5000000};
 
 /* ==================== module parameter ======================== */
 
@@ -748,6 +748,7 @@ void set_not_preferred_locked(int cpu, bool enable)
 	}
 }
 
+unsigned long get_freq_thres(unsigned int cid);
 static int set_up_thres(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned int old_thresh;
@@ -768,6 +769,7 @@ static int set_up_thres(struct cluster_data *cluster, unsigned int val)
 				cluster->cluster_id,
 				cluster->up_thres);
 		}
+		cluster->freq_thres = get_freq_thres(cluster->cluster_id);
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	return ret;
@@ -2573,7 +2575,6 @@ static int cluster_init(const struct cpumask *mask)
 	cluster->nr_assist = 0;
 	cluster->min_cpus = default_min_cpus[cluster->cluster_id];
 	cluster->up_thres = get_over_threshold(cluster->cluster_id);
-	cluster->freq_thres = freq_thres[cluster->cluster_id];
 
 	if (cluster->cluster_id == 0)
 		cluster->down_thres = 0;
@@ -2610,6 +2611,7 @@ static int cluster_init(const struct cpumask *mask)
 	cluster->nr_task_thres = nr_task_thres[cluster->cluster_id];
 	cluster->rt_nr_task_thres = rt_nr_task_thres[cluster->cluster_id];
 	cluster->active_loading_thres = active_loading_thres[cluster->cluster_id];
+	cluster->freq_thres = get_freq_thres(cluster->cluster_id);
 
 	cluster->next_offline_time =
 		ktime_to_ms(ktime_get()) + cluster->offline_throttle_ms;
@@ -2825,6 +2827,31 @@ static int ppm_data_init(struct cluster_data *cluster)
 		pr_info("%s: init ppm cid=%d, turn_cap=%u ", TAG, cid-1, turn_point);
 	}
 	return 0;
+}
+
+unsigned long get_freq_thres(unsigned int cid)
+{
+	struct cluster_data *cluster = &cluster_state[cid];
+	int i, opp_nr;
+	unsigned int target_freq;
+	unsigned int max_capacity, target_capacity;
+
+	if (cid >= MAX_CLUSTERS)
+		return 0;
+
+	opp_nr = cluster->ppm_data.opp_nr;
+	max_capacity = cluster->ppm_data.ppm_tbl[0].capacity;
+	target_capacity = div_u64(cluster->up_thres*max_capacity, 100);
+	target_freq = cluster->ppm_data.ppm_tbl[0].freq;
+
+	for (i=1; i<opp_nr; i++) {
+		if (cluster->ppm_data.ppm_tbl[i].capacity < target_capacity) {
+			target_freq = cluster->ppm_data.ppm_tbl[i-1].freq;
+			break;
+		}
+	}
+
+	return target_freq;
 }
 
 static unsigned long core_ctl_copy_from_user(void *pvTo,
