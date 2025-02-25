@@ -2165,18 +2165,18 @@ static struct regbase rb[] = {
 	[cam_rmsa_pm] = REGBASE_V(0x3c816000, cam_rmsa_pm, MT6993_CHK_PD_CAM_VCORE, CLK_NULL),
 	[cam_rmsb_pm] = REGBASE_V(0x3c817000, cam_rmsb_pm, MT6993_CHK_PD_CAM_VCORE, CLK_NULL),
 	[cam_rmsc_pm] = REGBASE_V(0x3c818000, cam_rmsc_pm, MT6993_CHK_PD_CAM_VCORE, CLK_NULL),
-	[dis0_a_pm] = REGBASE_V(0x3eff2000, dis0_a_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[dis0_b_pm] = REGBASE_V(0x3eff3000, dis0_b_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[dis1_a_pm] = REGBASE_V(0x3eff4000, dis1_a_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[dis1_b_pm] = REGBASE_V(0x3eff5000, dis1_b_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[ovl0_pm] = REGBASE_V(0x3eff6000, ovl0_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[ovl1_pm] = REGBASE_V(0x3eff7000, ovl1_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[ovl2_pm] = REGBASE_V(0x3eff8000, ovl2_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[mml0_pm] = REGBASE_V(0x3eff9000, mml0_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[mml1_pm] = REGBASE_V(0x3effa000, mml1_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[mml2_pm] = REGBASE_V(0x3effb000, mml2_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[disp_dptx_pm] = REGBASE_V(0x3effc000, disp_dptx_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
-	[vdisp_peri_pm] = REGBASE_V(0x3effd000, vdisp_peri_pm, MT6993_CHK_PD_DISP_VCORE, CLK_NULL),
+	[dis0_a_pm] = REGBASE_V(0x3eff2000, dis0_a_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[dis0_b_pm] = REGBASE_V(0x3eff3000, dis0_b_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[dis1_a_pm] = REGBASE_V(0x3eff4000, dis1_a_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[dis1_b_pm] = REGBASE_V(0x3eff5000, dis1_b_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[ovl0_pm] = REGBASE_V(0x3eff6000, ovl0_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[ovl1_pm] = REGBASE_V(0x3eff7000, ovl1_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[ovl2_pm] = REGBASE_V(0x3eff8000, ovl2_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[mml0_pm] = REGBASE_V(0x3eff9000, mml0_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[mml1_pm] = REGBASE_V(0x3effa000, mml1_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[mml2_pm] = REGBASE_V(0x3effb000, mml2_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[disp_dptx_pm] = REGBASE_V(0x3effc000, disp_dptx_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
+	[vdisp_peri_pm] = REGBASE_V(0x3effd000, vdisp_peri_pm, MT6993_CHK_PD_DISP_VCORE, "vdisp_ao_disp_dpc"),
 	[cam_m] = REGBASE_V(0x3a010000, cam_m, MT6993_CHK_PD_CAM_MAIN, CLK_NULL),
 	[cam_mr] = REGBASE_V(0x3a680000, cam_mr, MT6993_CHK_PD_CAM_MAIN, CLK_NULL),
 	[cam_ra] = REGBASE_V(0x3a7d0000, cam_ra, MT6993_CHK_PD_CAM_RAWA, CLK_NULL),
@@ -4572,6 +4572,7 @@ static bool reg_dump_valid[ARRAY_SIZE(rn) - 1];
 void set_subsys_reg_dump_mt6993(enum chk_sys_id id[])
 {
 	const struct regname *rns = &rn[0];
+	struct clk *clk = NULL;
 	int i, j;
 
 	for (i = 0; i < ARRAY_SIZE(rn) - 1 && rns->base != NULL; i++, rns++) {
@@ -4593,6 +4594,13 @@ void set_subsys_reg_dump_mt6993(enum chk_sys_id id[])
 		if (rns->base->pg != PD_NULL)
 			if (!pdchk_pd_is_on(rns->base->pg))
 				continue;
+
+		if (rns->base->pn != CLK_NULL) {
+			clk = clk_chk_lookup(rns->base->pn);
+			if(clk)
+				if (!__clk_is_enabled(clk))
+					continue;
+		}
 
 		reg_dump_addr[i] = PHYSADDR(rns);
 		reg_dump_val[i] = clk_readl(ADDR(rns));
@@ -5133,6 +5141,8 @@ static int clk_chk_mt6993_probe(struct platform_device *pdev)
 #if CHECK_VCORE_FREQ
 	mtk_clk_check_muxes();
 #endif
+	/* get all clocks before running */
+	get_all_provider_clks(true);
 
 	clkchk_hwv_irq_init(pdev);
 

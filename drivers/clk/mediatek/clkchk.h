@@ -130,6 +130,7 @@ struct clkchk_ops {
 
 int pwr_hw_is_on(enum PWR_STA_TYPE type, s32 val);
 int clkchk_pvdck_is_on(struct provider_clk *pvdck);
+struct provider_clk *get_all_provider_clks(bool is_internal);
 bool clkchk_pvdck_is_prepared(struct provider_clk *pvdck);
 bool clkchk_pvdck_is_enabled(struct provider_clk *pvdck);
 bool is_valid_reg(void __iomem *addr);

@@ -173,7 +173,7 @@ static bool __is_hwccf_mtcmos_on(const char * const *name)
 	int valid = 0;
 	int ret = 0;
 
-	for (; *name != NULL && name != NULL ; name++) {
+	for (; name != NULL && *name != NULL ; name++) {
 
 		ck = clk_chk_lookup(*name);
 
