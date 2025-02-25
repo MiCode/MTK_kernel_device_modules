@@ -541,6 +541,8 @@ struct mtk_disp_oddmr_data {
 	unsigned int min_stash_port_bw;
 	int slc_read_alloc;
 	int slc_period;
+	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			    struct cmdq_pkt *handle, void *data);
 };
 
 struct mtk_disp_oddmr_od_data {

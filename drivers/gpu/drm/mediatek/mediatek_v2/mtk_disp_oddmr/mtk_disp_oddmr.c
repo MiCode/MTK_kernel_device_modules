@@ -7019,6 +7019,8 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			mtk_oddmr_set_od_weight(comp, weight, handle);
 			mtk_oddmr_od_init_end(comp, handle);
 			if (oddmr_data->data->od_version >= MTK_OD_V3) {
+				if (oddmr_data->data->sodi_config)
+					oddmr_data->data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
 				mtk_oddmr_write_mask(comp, 1, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 				mtk_oddmr_write(comp, 0, DISP_ODDMR_TOP_OD_BYASS, handle);
 				//OD DDREN ctrl
@@ -7071,6 +7073,8 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_oddmr_write(comp, 0, MT6993_DISP_ODDMR_UDMA_W_CTR_1B, handle);
 				}
 				mtk_oddmr_set_od_clk(comp, 0, handle);
+				if (oddmr_data->data->sodi_config)
+					oddmr_data->data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
 			} else if (oddmr_data->data->od_version == MTK_OD_V2) {
 				mtk_oddmr_write_mask(comp, 0, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 				mtk_oddmr_od_bypass(comp, handle);
@@ -12573,6 +12577,7 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.min_stash_port_bw = 49,
 	.slc_read_alloc = 1,
 	.slc_period = 10,
+	.sodi_config = mt6993_mtk_sodi_config,
 };
 
 static const struct of_device_id mtk_disp_oddmr_driver_dt_match[] = {
