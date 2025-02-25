@@ -3,8 +3,8 @@
  * Copyright (C) 2024 MediaTek Inc.
  */
 
-#ifndef __GPUFREQ_HISTORY_MT6993_H__
-#define __GPUFREQ_HISTORY_MT6993_H__
+#ifndef __GPUFREQ_HISTORY_MT6855_H__
+#define __GPUFREQ_HISTORY_MT6855_H__
 
 /**************************************************
  * Definition

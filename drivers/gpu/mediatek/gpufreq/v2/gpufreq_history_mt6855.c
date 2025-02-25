@@ -21,7 +21,7 @@
 /* GPUFREQ */
 #include <gpufreq_v2.h>
 #include <gpufreq_history_common.h>
-#include <gpufreq_history_mt6993.h>
+#include <gpufreq_history_mt6855.h>
 #include <gpuppm.h>
 #include <gpufreq_common.h>
 
