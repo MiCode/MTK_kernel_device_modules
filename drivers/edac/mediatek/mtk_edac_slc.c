@@ -100,7 +100,7 @@ static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsi
 		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_PARITY_SELECT,
 				emi_idx, port_idx, 0, 0, 0, 0, &smc_res);
 		if (smc_res.a0) {
-			pr_info("%s:%d failed to clear slc parity, ret=0x%lx\n",
+			pr_info("%s:%d failed to select slc parity, ret=0x%lx\n",
 				__func__, __LINE__, smc_res.a0);
 		}
 		for (chn_idx = 0; chn_idx < drvdata->chn_num; chn_idx++) {
@@ -188,6 +188,8 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 				total_error_type = partial_error_type;
 		}
 	}
+	if (total_error_type == UNCORRECTABLE_ERROR)
+		BUG_ON(1);
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		slc_clear_violation(emi_idx);
 	}
