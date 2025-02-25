@@ -8946,6 +8946,28 @@ found:
 #endif
 }
 
+bool mtk_disp_is_enable_hrt_dbg(void)
+{
+	struct device_node *chosen_node;
+	const char *name;
+	int ret;
+
+	chosen_node = of_find_node_by_path("/chosen");
+	if (!chosen_node)
+		return false;
+
+	ret = of_property_read_string_index(chosen_node, "mtk_fabric_hrt_debug", 0, &name);
+	if (ret) {
+		DDPINFO("mtk_fabric_hrt_debug not found\n");
+		return false;
+	}
+
+	if (!strncmp("on", name, 2))
+		return true;
+
+	return false;
+}
+
 unsigned int mtk_disp_num_from_atag(void)
 {
 	struct device_node *chosen_node;
@@ -9881,6 +9903,9 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT) &&
 		private->data->larb_ssc_ch_mapping)
 		mtk_drm_larb_ssc_ch_init(drm->dev);
+
+	if (mtk_disp_is_enable_hrt_dbg())
+		mtk_drm_helper_set_opt_by_name(private->helper_opt, "MTK_DRM_OPT_HRT_DEBUG", 1);
 
 	mtk_drm_first_enable(drm);
 
