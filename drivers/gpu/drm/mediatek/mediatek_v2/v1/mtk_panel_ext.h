@@ -683,6 +683,8 @@ struct mtk_panel_funcs {
 		void *handle, unsigned int mode);
 	int (*set_backlight_grp_cmdq)(void *dsi_drv, dcs_grp_write_gce cb,
 		void *handle, unsigned int level);
+	int (*set_backlight_grp_cmdq_v2)(void *dsi_drv, mtk_dsi_ddic_cmd cb,
+		void *handle, unsigned int level, struct mtk_dsi_cmd_option *cmd_opt);
 	int (*reset)(struct drm_panel *panel, int on);
 	int (*ata_check)(struct drm_panel *panel);
 	int (*ext_param_set)(struct drm_panel *panel,
@@ -721,6 +723,9 @@ struct mtk_panel_funcs {
 	 */
 	int (*doze_enable_start)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce cb, void *handle);
+	int (*doze_enable_start_v2)(struct drm_panel *panel,
+		void *dsi_drv, mtk_dsi_ddic_cmd cb, void *handle,
+		 struct mtk_dsi_cmd_option *cmd_opt);
 
 	/**
 	 * @doze_enable:
@@ -729,6 +734,9 @@ struct mtk_panel_funcs {
 	 */
 	int (*doze_enable)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce cb, void *handle);
+	int (*doze_enable_v2)(struct drm_panel *panel,
+		void *dsi_drv, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt);
 
 	/**
 	 * @doze_disable:
@@ -737,6 +745,9 @@ struct mtk_panel_funcs {
 	 */
 	int (*doze_disable)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce cb, void *handle);
+	int (*doze_disable_v2)(struct drm_panel *panel,
+		void *dsi_drv, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt);
 
 	/**
 	 * @doze_post_disp_on:
@@ -747,6 +758,9 @@ struct mtk_panel_funcs {
 	 */
 	int (*doze_post_disp_on)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce cb, void *handle);
+	int (*doze_post_disp_on_v2)(struct drm_panel *panel,
+		void *dsi_drv, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt);
 
 	/**
 	 * @doze_area:
@@ -755,6 +769,9 @@ struct mtk_panel_funcs {
 	 */
 	int (*doze_area)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce cb, void *handle);
+	int (*doze_area_v2)(struct drm_panel *panel,
+		void *dsi_drv, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt);
 
 	/**
 	 * @doze_get_mode_flags:
@@ -767,6 +784,9 @@ struct mtk_panel_funcs {
 
 	int (*hbm_set_cmdq)(struct drm_panel *panel, void *dsi_drv,
 			    dcs_write_gce cb, void *handle, bool en);
+	int (*hbm_set_cmdq_v2)(struct drm_panel *panel, void *dsi_drv,
+			    mtk_dsi_ddic_cmd cb, void *handle, bool en,
+			    struct mtk_dsi_cmd_option *cmd_opt);
 	void (*hbm_get_state)(struct drm_panel *panel, bool *state);
 	void (*hbm_get_wait_state)(struct drm_panel *panel, bool *wait);
 	bool (*hbm_set_wait_state)(struct drm_panel *panel, bool wait);
@@ -776,6 +796,9 @@ struct mtk_panel_funcs {
 
 	int (*send_ddic_cmd_pack)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce_pack cb, void *handle);
+	int (*send_ddic_cmd_pack_v2)(struct drm_panel *panel,
+		void *dsi_drv, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt);
 	int (*ddic_ops)(struct drm_panel *panel, enum MTK_PANEL_DDIC_OPS ops,
 		struct mtk_lcm_dsi_cmd_packet *packet, void *misc);
 	int (*set_value)(int value);
