@@ -90,6 +90,8 @@ struct emimpu_region_t {
 
 typedef irqreturn_t (*emimpu_pre_handler)(
 	unsigned int emi_id, struct reg_info_t *dump, unsigned int leng);
+typedef irqreturn_t (*emimpu_tmem_handler) (
+	unsigned int emi_id, struct reg_info_t *dump, unsigned int len);
 typedef void (*emimpu_post_clear)(unsigned int emi_id);
 typedef void (*emimpu_md_handler)(const char *vio_msg);
 typedef void (*emimpu_iommu_handler)(
@@ -146,7 +148,7 @@ int mtk_emimpu_prehandle_register(emimpu_pre_handler bypass_func);
 #endif /* CONFIG_MTK_DEVMPU_EMI */
 
 #endif /* CONFIG_MTK_EMI_LEGACY */
-
+int mtk_emimpu_tmem_handler_register(emimpu_tmem_handler tmem_handler_func);
 int mtk_emimpu_md_handling_register(emimpu_md_handler md_handling_func);
 void mtk_clear_md_violation(void);
 int mtk_clear_smpu_log(unsigned int emi_id);
