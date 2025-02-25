@@ -6785,7 +6785,7 @@ static unsigned int overlap_to_bw(struct drm_crtc *crtc, unsigned int bw_base,
 	unsigned int bw = 0, tmp_overlap_of_bwm;
 	unsigned int ori_overlap_num = overlap_num;
 	int discount = hrt_lp_switch_get();
-
+#if defined(DISP_BWM20_ENABLE)
 	if (overlap_num == 0 && (bwm20_overlap != 0) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
 		(crtc_idx == 0) && lyeblob_ids) {
@@ -6804,7 +6804,9 @@ static unsigned int overlap_to_bw(struct drm_crtc *crtc, unsigned int bw_base,
 					bw_base, lyeblob_ids->frame_weight_of_bwm, bw);
 		}
 		bwm20_overlap = 0;
-	} else {
+	} else
+#endif
+	{
 		if (discount >= 200) {
 			if (discount > overlap_num)
 				DDPINFO("overlap_num discount:%d > original:%d\n",
@@ -7110,7 +7112,9 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL),
 			       bw, ~0);
-	} else if (bw == mtk_crtc->qos_ctx->last_hrt_req && flush &&
+	}
+#if defined(DISP_BWM20_ENABLE)
+	else if (bw == mtk_crtc->qos_ctx->last_hrt_req && flush &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
 		if (opt_mmqos)
 			mtk_disp_set_hrt_bw(mtk_crtc, bw);
@@ -7119,13 +7123,16 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL),
 			       NO_PENDING_HRT, ~0);
 	}
+#endif
 
+#if defined(DISP_BWM20_ENABLE)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
 		if (flush || no_bwm20_layer)
 			mtk_crtc->qos_ctx->last_hrt_req = bw;
 		else
 			mtk_crtc->cur_lyeblob = lyeblob_ids;
 	} else
+#endif
 		mtk_crtc->qos_ctx->last_hrt_req = bw;
 
 
@@ -13314,8 +13321,10 @@ void mtk_crtc_connect_addon_module(struct drm_crtc *crtc, bool skip_cwb)
 
 	mtk_crtc_addon_connector_connect(crtc, handle);
 
+#if defined(DISP_BWM20_ENABLE)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
 		mtk_crtc_bwm_enable(crtc, handle);
+#endif
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -16523,9 +16532,11 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 		}
 	}
 
+#if defined(DISP_BWM20_ENABLE)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)){
 		mtk_crtc_bwm_enable(crtc, cmdq_handle);
 	}
+#endif
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ) &&
 			mtk_crtc->pq_data->opt_bypass_pq)
@@ -20066,9 +20077,12 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if (ret)
 			DDPMSG("Wait event result ret %d\n", ret);
 	}
+
+#if defined(DISP_BWM20_ENABLE)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
 		(crtc_index == 0))
 		mtk_bwm_get_compress_ratio(crtc, priv, cmdq_handle);
+#endif
 
 #ifdef MTK_DRM_CMDQ_ASYNC
 #ifdef MTK_DRM_ASYNC_HANDLE

@@ -127,11 +127,13 @@ define_mgk_ddk_ko(
     local_defines = select({
             "@mgk_internal//:mgk_internal_setting" : [
                 "DRM_PARTIAL_UPDATE=1",
-                "DISP_STASH_ENABLE=1",
+		"DISP_BWM20_ENABLE=1",
+		"DISP_VIDLE_ENABLE=1"
             ],
             "//conditions:default" : []
     }) + [
         "DISP_MDP_COLOR_ON=1",
+        "DISP_STASH_ENABLE=1",
     ] ,
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)",
