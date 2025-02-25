@@ -611,9 +611,10 @@ uint32_t cksys_top_abist32k_fqmtr(enum FQMTR_ARR_ID arr_id) {
 	if (arr_id < MAX_FQMTR_ARR_ID) {
 		id = fclks_arr[arr_id].id;
 		return _cksys_top_abist32k_fqmtr(id);
-	} else
+	} else {
 		fq_pr_err("[Error] arr_id: %d > MAX_FQMTR_ARR_ID\n", arr_id);
 		return 0;
+	}
 }
 
 uint32_t _cksys_top_abist2_fqmtr(uint32_t ID) {
@@ -771,9 +772,10 @@ uint32_t cksys_mm_abist_fqmtr(enum FQMTR_ARR_ID arr_id) {
 		is_from_pll = fclks_arr[arr_id].is_pll;
 		id = fclks_arr[arr_id].id;
 		return is_from_pll ? _cksys_mm_abist_fqmtr_pll(id, fclks_arr[arr_id].domain): _cksys_mm_abist_fqmtr(id);
-	} else
+	} else {
 		fq_pr_err("[Error] arr_id: %d > MAX_FQMTR_ARR_ID\n", arr_id);
 		return 0;
+	}
 }
 
 uint32_t _cksys_mm_abist2_fqmtr(uint32_t ID) {
@@ -811,9 +813,10 @@ uint32_t cksys_mm_abist2_fqmtr(enum FQMTR_ARR_ID arr_id) {
 	if (arr_id < MAX_FQMTR_ARR_ID) {
 		id = fclks_arr[arr_id].id;
 		return _cksys_mm_abist2_fqmtr(id);
-	} else
+	} else {
 		fq_pr_err("[Error] arr_id: %d > MAX_FQMTR_ARR_ID\n", arr_id);
 		return 0;
+	}
 }
 
 uint32_t cksys_vlp_fqmtr(uint32_t arr_id) {
@@ -894,9 +897,10 @@ uint32_t _pll_fqmtr(enum DOMAIN_BASE domain) {
 uint32_t pll_fqmtr(enum FQMTR_ARR_ID arr_id) {
 	if (fclks_arr[arr_id].type == SUBSYS) {
 		return _pll_fqmtr(fclks_arr[arr_id].domain);
-	} else
+	} else {
 		fq_pr_err("[Error] pll_fqmtr: %d != SUBSYS\n", arr_id);
 		return 0;
+	}
 }
 
 uint32_t clksq_fqmtr(void) {
