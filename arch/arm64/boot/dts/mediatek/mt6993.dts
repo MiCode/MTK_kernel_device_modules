@@ -5828,10 +5828,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/* 0.65V for clock scale up */
 			clk-scale-up-vcore-min = <650000>;
-#if 0
+
 			vcc-supply = <&mt6661_4_ldc0_4>;
 			vccq-supply = <&mt6661_4_lnc0_s_12>;
-#endif
+
 			resets =	<&ufs0cfgao_rst 1>,
 					<&ufs0cfgao_rst 2>,
 					<&ufs0cfgao_rst 3>;
@@ -5922,10 +5922,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/* 0.65V for clock scale up */
 			clk-scale-up-vcore-min = <650000>;
-#if 0
+
 			vcc-supply = <&mt6661_6_ldc0_4>;
 			vccq-supply = <&mt6661_4_lnc0_s_11>;
-#endif
+
 			resets =	<&ufs1cfgao_rst 1>,
 					<&ufs1cfgao_rst 2>,
 					<&ufs1cfgao_rst 3>;
@@ -22707,18 +22707,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 &mt6661_3_lnc0_9 {
 	regulator-always-on;
-};
-
-&mt6661_4_ldc0_4 {
-	regulator-always-on; /* VCC1, remove after bringup */
-};
-
-&mt6661_6_ldc0_4 {
-	regulator-always-on; /* VCC2, remove after bringup */
-};
-
-&mt6661_4_lnc0_s_11 {
-	regulator-always-on; /* VCCQ2 */
 };
 
 &mt6661_4_lnc0_s_12 {
