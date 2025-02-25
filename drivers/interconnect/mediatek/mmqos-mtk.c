@@ -2869,7 +2869,8 @@ static void mmpc_ftrace_dump(void)
 			for (int i = 0; i <  MAX_BW_VALUE_NUM; i++) {
 				reg_value = read_register(SUBSYS_V2_HW_BW_OFFSET(sid, i));
 				trace_mmqos__mmpc_v2_subsys_chnn_bw(
-					subsys_name, i, reg_value);
+					subsys_name, i,
+					reg_value << CHNN_BW_UNIT_SHIFT);
 			}
 			bw0 = read_register(SUBSYS_V2_HW_EMI_BW_HRT(sid));
 			bw1 = read_register(SUBSYS_V2_HW_EMI_BW_SRT(sid));
