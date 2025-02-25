@@ -47,6 +47,7 @@ define_mgk_ddk_ko(
     hdrs = [
         "perf_ioctl/perf_ioctl_magt.h",
     ],
+	ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),],
     copts = [
         "-I$(srctree)/kernel/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/",

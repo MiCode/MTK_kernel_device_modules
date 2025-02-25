@@ -1,0 +1,70 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+filegroup(
+	name="ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+ddk_headers(
+	name = "cpufreq_sugov_ext_headers",
+	includes = ["."],
+	hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "cpufreq_sugov_ext",
+	conditional_srcs = {
+		"CONFIG_MTK_GEARLESS_SUPPORT":{
+			True:["mtk_energy_model/v3/static_power.c"],
+			False:["mtk_energy_model/v1/static_power.c"],
+		},
+	},
+    srcs = [
+		"sugov/cpufreq_sugov_main.c",
+		"sugov/nonlinear_opp_cap.c",
+		"sugov/dsu_interface.c",
+		"sugov/sched_version_ctrl.c",
+		"util/cpu_util.c",
+		"common.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/cpufreq:mediatek-cpufreq-hw".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/sugov",
+		"-I$(srctree)/kernel/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/cpufreq/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)

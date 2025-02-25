@@ -31,4 +31,7 @@ define_mgk_ddk_ko(
         "mediatek-cpufreq-hw_fdvfs.c",
         "mediatek-cpufreq-hw_fdvfs.h",
     ],
+	hdrs = [
+		"mediatek-cpufreq-hw_fdvfs.h",
+    ],
 )

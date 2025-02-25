@@ -1,18 +1,18 @@
-obj-$(CONFIG_MTK_CPUFREQ_SUGOV_EXT) += cpufreq_sugov_ext.o
-cpufreq_sugov_ext-y += sugov/cpufreq_sugov_main.o
-ifeq ($(CONFIG_MTK_GEARLESS_SUPPORT),y)
-	cpufreq_sugov_ext-y += mtk_energy_model/v3/static_power.o
-else
-	cpufreq_sugov_ext-y += mtk_energy_model/v1/static_power.o
-	ifeq ($(CONFIG_MTK_LEAKAGE_HIT),y)
-		subdir-ccflags-y += -DCFG_LKG_HIT
-	endif
-endif
-cpufreq_sugov_ext-y += sugov/nonlinear_opp_cap.o
-cpufreq_sugov_ext-y += sugov/dsu_interface.o
-cpufreq_sugov_ext-y += sugov/sched_version_ctrl.o
-cpufreq_sugov_ext-y += util/cpu_util.o
-cpufreq_sugov_ext-y += common.o
+# obj-$(CONFIG_MTK_CPUFREQ_SUGOV_EXT) += cpufreq_sugov_ext.o
+# cpufreq_sugov_ext-y += sugov/cpufreq_sugov_main.o
+# ifeq ($(CONFIG_MTK_GEARLESS_SUPPORT),y)
+	# cpufreq_sugov_ext-y += mtk_energy_model/v3/static_power.o
+# else
+	# cpufreq_sugov_ext-y += mtk_energy_model/v1/static_power.o
+	# ifeq ($(CONFIG_MTK_LEAKAGE_HIT),y)
+		# subdir-ccflags-y += -DCFG_LKG_HIT
+	# endif
+# endif
+# cpufreq_sugov_ext-y += sugov/nonlinear_opp_cap.o
+# cpufreq_sugov_ext-y += sugov/dsu_interface.o
+# cpufreq_sugov_ext-y += sugov/sched_version_ctrl.o
+# cpufreq_sugov_ext-y += util/cpu_util.o
+# cpufreq_sugov_ext-y += common.o
 
 obj-$(CONFIG_MTK_SCHEDULER) += scheduler.o
 scheduler-y += eas/sched_main.o

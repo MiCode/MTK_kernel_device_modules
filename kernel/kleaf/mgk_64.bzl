@@ -524,6 +524,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sched:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -708,6 +709,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sched:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -1231,6 +1233,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:mddp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:sapu".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1594,7 +1597,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/pmic_protect/mtk-pmic-oc-debug.ko",
     #"drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
     #"drivers/misc/mediatek/qos/mtk_qos.ko",
-    "drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
+    #"drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
     "drivers/misc/mediatek/sched/mtk_core_ctl.ko",
     "drivers/misc/mediatek/sched/scheduler.ko",
     #"drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko",
