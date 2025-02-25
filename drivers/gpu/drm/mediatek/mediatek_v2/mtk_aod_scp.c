@@ -25,7 +25,11 @@ struct aod_scp_ipi_receive_info {
 static int CFG_DISPLAY_WIDTH;      //(1080)
 static int CFG_DISPLAY_HEIGHT;     //(2340)
 static int CFG_DISPLAY_VREFRESH;
-static unsigned int aod_mmsys_id;
+
+/* Set 1 to trigger AOD SCP in doze active mode
+ * Only for early develop or debug purpsoe
+ */
+#define AO_MODE	(1)
 
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
 #define MTK_FB_ALIGNMENT 32
@@ -80,7 +84,6 @@ struct disp_module_backup_info {
 	unsigned int offset;
 };
 
-int aod_scp_tz_minuteswest;
 static struct aod_scp_ipi_receive_info aod_scp_msg;
 static int aod_state;
 static unsigned int aod_scp_pic;
@@ -119,8 +122,6 @@ enum OVL_INPUT_FORMAT {
 	OVL_INPUT_FORMAT_ABGR8888   = 9,
 	OVL_INPUT_FORMAT_UYVY       = 10,
 	OVL_INPUT_FORMAT_YUYV       = 11,
-	OVL_INPUT_FORMAT_RGBA4444   = 12,
-	OVL_INPUT_FORMAT_BGRA4444   = 13,
 	OVL_INPUT_FORMAT_UNKNOWN    = 32,
 };
 
@@ -139,7 +140,6 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 	char *bkup_buf, *scp_sh_mem, *module_base;
 	void __iomem *va = 0;
 	int i, size;
-	struct mtk_drm_private *priv;
 
 	if (!AOD_STAT_MATCH(AOD_STAT_ENABLE) || !crtc)
 		return;
@@ -147,12 +147,6 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 	CFG_DISPLAY_WIDTH = crtc->state->mode.hdisplay;
 	CFG_DISPLAY_HEIGHT = crtc->state->mode.vdisplay;
 	CFG_DISPLAY_VREFRESH = drm_mode_vrefresh(&crtc->state->mode);
-
-	if (crtc && crtc->dev && crtc->dev->dev_private) {
-		priv = crtc->dev->dev_private;
-		if (priv && priv->data)
-			aod_mmsys_id = priv->data->mmsys_id;
-	}
 
 	scp_sh_mem = (char *)scp_get_reserve_mem_virt(SCP_AOD_MEM_ID);
 
@@ -333,7 +327,7 @@ void mtk_prepare_config_map(void)
 		frame0->digits_addr[i] = dram_addr_digits + aod_scp_pic_sz * i;
 }
 
-void mtk_aod_scp_get_time(void)
+int mtk_aod_scp_get_time(void)
 {
 	struct rtc_time tm;
 	struct rtc_time tm_android;
@@ -345,11 +339,12 @@ void mtk_aod_scp_get_time(void)
 	rtc_time64_to_tm(tv.tv_sec, &tm);
 	tv_android.tv_sec -= (uint64_t)sys_tz.tz_minuteswest * 60;
 	rtc_time64_to_tm(tv_android.tv_sec, &tm_android);
-	DDPMSG("%s UTC %02d:%02d:%02d\n", __func__, tm.tm_hour, tm.tm_min, tm.tm_sec);
-	DDPMSG("%s Android %02d:%02d:%02d\n",
-		__func__, tm_android.tm_hour, tm_android.tm_min, tm_android.tm_sec);
-	aod_scp_tz_minuteswest = sys_tz.tz_minuteswest;
 
+	DDPMSG("%s: UTC %02d:%02d:%02d, Android %02d:%02d:%02d (tz_minuteswest %02d)\n",
+		__func__, tm.tm_hour, tm.tm_min, tm.tm_sec,
+		tm_android.tm_hour, tm_android.tm_min, tm_android.tm_sec, sys_tz.tz_minuteswest);
+
+	return sys_tz.tz_minuteswest;
 }
 
 static DEFINE_MUTEX(spm_sema_lock);
@@ -468,11 +463,12 @@ int mtk_aod_scp_ipi_send(int value)
 
 	DDPMSG("%s+\n", __func__);
 
-	mtk_aod_scp_get_time();
+	if (value == 0)
+		value = mtk_aod_scp_get_time();
 
 	for (retry_cnt = 0; retry_cnt <= 10; retry_cnt++) {
 		ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCP_AOD,
-					0, &aod_scp_tz_minuteswest, 1, 0);
+					0, &value, 1, 0);
 
 		if (ret == IPI_ACTION_DONE) {
 			DDPMSG("%s ipi send msg done\n", __func__);
@@ -492,21 +488,30 @@ int mtk_aod_scp_doze_update(int doze)
 		return 0;
 
 	if (doze) {
-		if (aod_mmsys_id == MMSYS_MT6989 ||
-			aod_mmsys_id == MMSYS_MT6991) {
-			mtkfb_set_backlight_level_AOD(AOD_TEMP_BACKLIGHT);
-			//mtk_aod_scp_set_BW();
-			AOD_STAT_SET(AOD_STAT_ACTIVE);
-			mtk_prepare_config_map();
-			//mtk_aod_scp_ipi_send(0);
-			//mtk_aod_scp_set_semaphore_noirq(0);
-			//mdelay(10000);
-		} else {
-			AOD_STAT_SET(AOD_STAT_ACTIVE);
-			mtk_prepare_config_map();
-		}
+		mtkfb_set_backlight_level_AOD(AOD_TEMP_BACKLIGHT);
+		//mtk_aod_scp_set_BW();
+
+		AOD_STAT_SET(AOD_STAT_ACTIVE);
+		mtk_prepare_config_map();
+
+#if (AO_MODE)
+		DDPMSG("%s: into doze active, trigger aod scp on!\n", __func__);
+		mtk_aod_scp_set_semaphore_noirq(0);
+		mtk_aod_scp_ipi_send(0);
+		mdelay(10000);
+		DDPMSG("%s: after mdelay, trigger aod scp off!\n", __func__);
+		mtk_aod_scp_ipi_send(1);
+		mtk_aod_scp_set_semaphore_noirq(1);
+	} else {
+		DDPMSG("%s: into doze suspend, notify aod scp off!\n", __func__);
+		mtk_aod_scp_ipi_send(1);
+		mtk_aod_scp_set_semaphore_noirq(1);
+		AOD_STAT_CLR(AOD_STAT_ACTIVE);
+	}
+#else
 	} else
 		AOD_STAT_CLR(AOD_STAT_ACTIVE);
+#endif
 
 	return 0;
 }
