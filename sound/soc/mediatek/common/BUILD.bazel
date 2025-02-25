@@ -1,5 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
 
 package(
     default_visibility = [
@@ -20,6 +21,43 @@ define_mgk_ddk_ko(
             "mtk-btcvsd.c",
             "mtk-base-afe.h",
     ],
+)
+
+define_mgk_ddk_ko(
+    name = "snd-soc-mtk-common",
+    srcs = [
+            "mtk-afe-platform-driver.c",
+            "mtk-afe-fe-dai.c",
+            "mtk-mmap-ion.c",
+			"mtk-usb-offload-ops.c",
+            "mtk-sram-manager.c",
+            "mtk-sp-pcm-ops.c",
+            "mtk-afe-debug.c",
+    ],
+	conditional_srcs = {
+        "CONFIG_MTK_USIP_DRIVER": {
+            True: ["mtk-usip.c"],
+        },
+    },
+    ko_deps = [
+		"//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version),
+		"//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:ddk_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
 )
 
 define_mgk_ddk_ko(

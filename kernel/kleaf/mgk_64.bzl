@@ -1203,6 +1203,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-btcvsd".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mm-fake-engine".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-debug".format(kernel_version),
@@ -1680,7 +1681,7 @@ mgk_64_device_modules = [
     #"sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko",
     #"sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
     "sound/soc/mediatek/common/mtk-sp-spk-amp.ko",
-    "sound/soc/mediatek/common/snd-soc-mtk-common.ko",
+    #"sound/soc/mediatek/common/snd-soc-mtk-common.ko",
     #"sound/soc/codecs/snd-soc-mt6366.ko",
 
 ]
