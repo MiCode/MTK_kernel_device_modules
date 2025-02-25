@@ -6537,15 +6537,21 @@ mtk_dsi_connector_duplicate_state(struct drm_connector *connector)
 	if (mtk_disp_get_dump_prop_enable()) {
 		int i = 0;
 		int written = 0;
-		char dbg_msg[1024] = {0};
+		char *dbg_msg = NULL;
 
-		written = scnprintf(dbg_msg, 1024,
-			"[DUMP_PROP]prev_conn%d_mtk_prop_val: ", index);
-		for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
-			written += scnprintf(dbg_msg + written, 1024 - written,
-				"[%d]%d ", i, state->prop_val[index][i]);
+		dbg_msg = kzalloc(1024, GFP_KERNEL);
+		if (dbg_msg) {
+			written = scnprintf(dbg_msg, 1024,
+				"[DUMP_PROP]prev_conn%d_mtk_prop_val: ", index);
+			for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
+				written += scnprintf(dbg_msg + written, 1024 - written,
+					"[%d]%d ", i, state->prop_val[index][i]);
+			}
+			DDP_DUMP_PROP("%s\n", dbg_msg);
+			kfree(dbg_msg);
+		} else {
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
 		}
-		DDP_DUMP_PROP("%s\n", dbg_msg);
 	}
 
 	return &state->base;

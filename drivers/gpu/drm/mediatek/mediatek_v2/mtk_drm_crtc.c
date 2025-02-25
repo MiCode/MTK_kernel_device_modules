@@ -2733,16 +2733,23 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 	if (mtk_disp_get_dump_prop_enable()) {
 		int i = 0;
 		int written = 0;
-		char dbg_msg[1024] = {0};
+		char *dbg_msg = NULL;
 		unsigned int crtc_idx = drm_crtc_index(crtc);
 
-		written = scnprintf(dbg_msg, 1024,
-			"[DUMP_PROP]prev_crtc%d_mtk_prop_val: ", crtc_idx);
-		for (i = 0; i < CRTC_PROP_MAX; i++) {
-			written += scnprintf(dbg_msg + written, 1024 - written,
-				"[%d]%d ", i, state->prop_val[i]);
+		dbg_msg = kzalloc(1024, GFP_KERNEL);
+		if (dbg_msg) {
+			written = scnprintf(dbg_msg, 1024,
+				"[DUMP_PROP]prev_crtc%d_mtk_prop_val: ", crtc_idx);
+			for (i = 0; i < CRTC_PROP_MAX; i++) {
+				written += scnprintf(dbg_msg + written, 1024 - written,
+					"[%d]%d ", i, state->prop_val[i]);
+			}
+			DDP_DUMP_PROP("%s\n", dbg_msg);
+			kfree(dbg_msg);
+		} else {
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
 		}
-		DDP_DUMP_PROP("%s\n", dbg_msg);
+
 		DDP_DUMP_PROP("[DUMP_PROP]prev_crtc%d_drm_prop_val: act%d mode_id%d\n",
 			crtc_idx, state->base.active,
 			!state->base.mode_blob ? -1 : state->base.mode_blob->base.id);
@@ -18429,15 +18436,22 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (mtk_disp_get_dump_prop_enable()) {
 		int i = 0;
 		int written = 0;
-		char dbg_msg[1024] = {0};
+		char *dbg_msg = NULL;
 
-		written = scnprintf(dbg_msg, 1024,
-			"[DUMP_PROP]curr_crtc%d_mtk_prop_val: ", crtc_idx);
-		for (i = 0; i < CRTC_PROP_MAX; i++) {
-			written += scnprintf(dbg_msg + written, 1024 - written,
-				"[%d]%d ", i, mtk_crtc_state->prop_val[i]);
+		dbg_msg = kzalloc(1024, GFP_KERNEL);
+		if (dbg_msg) {
+			written = scnprintf(dbg_msg, 1024,
+				"[DUMP_PROP]curr_crtc%d_mtk_prop_val: ", crtc_idx);
+			for (i = 0; i < CRTC_PROP_MAX; i++) {
+				written += scnprintf(dbg_msg + written, 1024 - written,
+					"[%d]%d ", i, mtk_crtc_state->prop_val[i]);
+			}
+			DDP_DUMP_PROP("%s\n", dbg_msg);
+			kfree(dbg_msg);
+		} else {
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
 		}
-		DDP_DUMP_PROP("%s\n", dbg_msg);
+
 		DDP_DUMP_PROP("[DUMP_PROP]curr_crtc%d_drm_prop_val: act%d mode_id%d\n",
 			crtc_idx, mtk_crtc_state->base.active,
 			!mtk_crtc_state->base.mode_blob ? -1 :

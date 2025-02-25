@@ -255,16 +255,23 @@ mtk_plane_duplicate_state(struct drm_plane *plane)
 	if (mtk_disp_get_dump_prop_enable()) {
 		int i = 0;
 		int written = 0;
-		char dbg_msg[1024] = {0};
+		char *dbg_msg = NULL;
 		unsigned int plane_idx = drm_plane_index(plane);
 
-		written = scnprintf(dbg_msg, 1024,
-			"[DUMP_PROP]prev_plane%d_mtk_prop_val: ", plane_idx);
-		for (i = 0; i < PLANE_PROP_MAX; i++) {
-			written += scnprintf(dbg_msg + written, 1024 - written,
-				"[%d]%d ", i, state->prop_val[i]);
+		dbg_msg = kzalloc(1024, GFP_KERNEL);
+		if (dbg_msg) {
+			written = scnprintf(dbg_msg, 1024,
+				"[DUMP_PROP]prev_plane%d_mtk_prop_val: ", plane_idx);
+			for (i = 0; i < PLANE_PROP_MAX; i++) {
+				written += scnprintf(dbg_msg + written, 1024 - written,
+					"[%d]%d ", i, state->prop_val[i]);
+			}
+			DDP_DUMP_PROP("%s\n", dbg_msg);
+			kfree(dbg_msg);
+		} else {
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
 		}
-		DDP_DUMP_PROP("%s\n", dbg_msg);
+
 #define _DUMP_PREV_PROP \
 	"[DUMP_PROP]prev_plane%d_drm_prop_val: src(x%u y%u w%u h%u) " \
 	"crtc(x%d y%d w%u h%u) fb_id%d crtc_id%d\n"
@@ -518,15 +525,22 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	if (mtk_disp_get_dump_prop_enable()) {
 		int i = 0;
 		int written = 0;
-		char dbg_msg[1024] = {0};
+		char *dbg_msg = NULL;
 
-		written = scnprintf(dbg_msg, 1024,
-			"[DUMP_PROP]curr_plane%d_mtk_prop_val: ", plane_index);
-		for (i = 0; i < PLANE_PROP_MAX; i++) {
-			written += scnprintf(dbg_msg + written, 1024 - written,
-				"[%d]%d ", i, mtk_plane_state->prop_val[i]);
+		dbg_msg = kzalloc(1024, GFP_KERNEL);
+		if (dbg_msg) {
+			written = scnprintf(dbg_msg, 1024,
+				"[DUMP_PROP]curr_plane%d_mtk_prop_val: ", plane_index);
+			for (i = 0; i < PLANE_PROP_MAX; i++) {
+				written += scnprintf(dbg_msg + written, 1024 - written,
+					"[%d]%d ", i, mtk_plane_state->prop_val[i]);
+			}
+			DDP_DUMP_PROP("%s\n", dbg_msg);
+			kfree(dbg_msg);
+		} else {
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
 		}
-		DDP_DUMP_PROP("%s\n", dbg_msg);
+
 #define _DUMP_CUR_PROP \
 	"[DUMP_PROP]curr_plane%d_drm_prop_val: src(x%u y%u w%u h%u) " \
 	"crtc(x%d y%d w%u h%u) fb_id%d crtc_id%d\n"
