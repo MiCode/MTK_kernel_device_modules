@@ -1308,6 +1308,8 @@ static int clkdbg_thread_fn(void *data)
 			clk_disable_unprepare(clks[i]);
 
 		thread_cnt++;
+		// add ~20ms delay to avoid mmup receiving too many irq
+		usleep_range(20000, 20100);
 	}
 ERR:
 	stop_clkdbg_test_task();

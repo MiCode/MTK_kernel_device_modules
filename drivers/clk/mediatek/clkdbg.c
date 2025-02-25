@@ -288,7 +288,7 @@ static int clkdbg_dump_muxes(struct seq_file *s, void *v)
 	return 0;
 }
 
-static char last_cmd[128] = "null";
+static char last_cmd[1024] = "null";
 
 const char *get_last_cmd(void)
 {
