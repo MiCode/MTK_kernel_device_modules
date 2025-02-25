@@ -11,7 +11,7 @@
 
 #define MAX_LEVEL 8
 
-#define IPI_TIMEOUT_MS (200U)
+#define IPI_TIMEOUT_MS (500U)
 
 #define MMDVFS_DBG(fmt, args...) \
 	pr_notice("[mmdvfs][dbg]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
