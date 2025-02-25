@@ -7,56 +7,29 @@
  */
 
 /* system includes */
-#include <linux/cpu.h>
-#include <linux/cpufreq.h>
-#include <linux/delay.h>
-#include <linux/init.h>
-#include <linux/io.h>
 #include <linux/kernel.h>
-#include <linux/kobject.h>
 #include <linux/module.h>
+#include <linux/kobject.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
-#include <linux/pm_opp.h>
-#include <linux/proc_fs.h>
-#include <linux/sched.h>
-#include <linux/seq_file.h>
-#include <linux/uaccess.h>
-#include "../mcupm/include/mcupm_driver.h"
-#include "../mcupm/include/mcupm_ipi_id.h"
-#include "cci-dbg-lite.h"
-#include "sugov/cpufreq.h"
+#include <sugov/cpufreq.h>
 
-#ifdef pr_fmt
-#undef pr_fmt
-#endif
-#define pr_fmt(fmt) "[ccidvfs]: " fmt
+#define csram_read(offs)	__raw_readl(csram_base + (offs))
+#define csram_write(offs, val)	__raw_writel(val, csram_base + (offs))
+
+#define OFFS_CCI_TBL_MODE 0x0F9C
 
 static void __iomem *csram_base;
+static unsigned int user_ctrl_mode;
+static bool dsu_ctrl_deubg_enable;
 
-unsigned int user_ctrl_mode;
-bool dsu_ctrl_deubg_enable;
 
-
-void set_cci_mode(unsigned int mode)
+static void set_cci_mode(unsigned int mode)
 {
 	/* mode = 0(Normal as 50%) mode = 1(Perf as 70%) */
 	csram_write(OFFS_CCI_TBL_MODE, mode);
-}
-
-unsigned int cpufreq_get_cci_mode(void)
-{
-	unsigned int mode;
-
-	/* Normal mode: 0, Perf mode: 1*/
-	mode = csram_read(OFFS_CCI_TBL_MODE);
-
-	if (mode > 1)
-		return -1;
-
-	return mode;
 }
 
 int cpufreq_set_cci_mode(unsigned int mode)
