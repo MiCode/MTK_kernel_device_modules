@@ -466,15 +466,16 @@ struct mtk_dpc_channel_bw_cfg {
 	u16 mml_bw;
 };
 
-static void mtk_disp_vlp_vote_v3(unsigned int vote_set, unsigned int thread);
-static void dpc_dt_set_v3(u16 dt, u32 counter);
-static void dpc_mtcmos_vote_v3(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
-static void dpc_ch_bw_set_v3(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb);
-static void dpc_dvfs_set_v3(const enum mtk_dpc_subsys subsys, const u8 level, bool update_level);
-static bool dpc_is_power_on_v3(void);
-static bool mminfra_is_power_on_v3(void);
+static void mtk_disp_vlp_vote_v2(unsigned int vote_set, unsigned int thread);
+static void dpc_dt_set_v2(u16 dt, u32 counter);
+static void dpc_mtcmos_vote_v3(const u32 subsys, const u8 thread, const bool en);
+static void dpc_ch_bw_set_v2(const u32 subsys, const u8 idx, const u32 bw_in_mb);
+static void dpc_dvfs_set_v2(const u32 subsys, const u8 level, bool update_level);
+static bool dpc_is_power_on_v2(void);
+static bool mminfra_is_power_on_v2(void);
 static u8 bw_to_level_v3(const u32 total_bw);
-static void dpc_analysis_v3(void);
+static void dpc_analysis_v2(void);
+static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt);
 
 struct mtk_dpc {
 	struct platform_device *pdev;
@@ -539,12 +540,20 @@ struct mtk_dpc {
 	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
 	struct mtk_dpc_channel_bw_cfg *ch_bw_cfg;
 
-	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode);
+	void (*set_mtcmos)(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode);
 	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
 	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
 	void (*duration_update)(const u32 us);
 	void (*enable)(const u8 en);
 	int (*res_init)(struct mtk_dpc *priv);
+	void (*hrt_bw_set)(const u32 subsys, const u32 bw_in_mb, bool force);
+	void (*srt_bw_set)(const u32 subsys, const u32 bw_in_mb, bool force);
+	void (*mtcmos_vote)(const u32 subsys, const u8 thread, const bool en);
+	int (*power_keep)(const u32 user);
+	void (*power_release)(const u32 user);
+	void (*power_keep_by_gce)(struct cmdq_pkt *pkt, const u32 user, const u16 gpr, struct cmdq_poll_reuse *reuse);
+	void (*power_release_by_gce)(struct cmdq_pkt *pkt, const u32 user);
+	void (*config)(const u32 subsys, bool en);
 };
 
 #endif

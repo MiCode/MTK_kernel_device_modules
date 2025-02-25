@@ -322,9 +322,9 @@ struct mtk_dpc_channel_bw_cfg {
 
 static void mtk_disp_vlp_vote(unsigned int vote_set, unsigned int thread);
 static void dpc_dt_set(u16 dt, u32 counter);
-static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
-static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb);
-static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool update_level);
+static void dpc_mtcmos_vote(const u32 subsys, const u8 thread, const bool en);
+static void dpc_ch_bw_set(const u32 subsys, const u8 idx, const u32 bw_in_mb);
+static void dpc_dvfs_set(const u32 subsys, const u8 level, bool update_level);
 static bool dpc_is_power_on(void);
 static bool mminfra_is_power_on(void);
 static u8 bw_to_level(const u32 total_bw);
@@ -389,7 +389,7 @@ struct mtk_dpc {
 	struct mtk_dpc_dt_usage *mml_dt_usage;
 	struct mtk_dpc2_dt_usage *dpc2_dt_usage;
 
-	void (*set_mtcmos)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode);
+	void (*set_mtcmos)(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode);
 	irqreturn_t (*disp_irq_handler)(int irq, void *dev_id);
 	irqreturn_t (*mml_irq_handler)(int irq, void *dev_id);
 };

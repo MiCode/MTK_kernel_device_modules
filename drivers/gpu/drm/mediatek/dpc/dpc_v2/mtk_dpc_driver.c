@@ -358,7 +358,7 @@ static inline bool dpc_pm_check_and_get(void)
 	return pm_runtime_get_if_in_use(g_priv->pd_dev) > 0 ? true : false;
 }
 
-static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en)
+static void dpc_mtcmos_vote(const u32 subsys, const u8 thread, const bool en)
 {
 	u32 addr = 0;
 
@@ -371,7 +371,7 @@ static void dpc_mtcmos_vote(const enum mtk_dpc_subsys subsys, const u8 thread, c
 	writel(1, dpc_base + addr);
 }
 
-static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
+static int mtk_disp_wait_pwr_ack(const u32 subsys)
 {
 	int ret = 0;
 	u32 value = 0;
@@ -486,7 +486,7 @@ static void dpc2_dt_en(u16 idx, bool en, bool set_sw_trig)
 	}
 }
 
-static void dpc_dt_en_all(const enum mtk_dpc_subsys subsys, u32 dt_en)
+static void dpc_dt_en_all(const u32 subsys, u32 dt_en)
 {
 	u32 cnt, idx;
 	struct mtk_dpc_dt_usage *usage = NULL;
@@ -562,7 +562,7 @@ static void dpc_duration_update(const u32 us)
 	}
 }
 
-static void dpc_ddr_force_enable(const enum mtk_dpc_subsys subsys, const bool en)
+static void dpc_ddr_force_enable(const u32 subsys, const bool en)
 {
 	u32 addr = 0;
 	u32 value = en ? 0x000D000D : 0x00050005;
@@ -668,7 +668,7 @@ static u8 dpc_max_dvfs_level(void)
 	return max_level > g_priv->dvfs_bw.mml_level ? max_level : g_priv->dvfs_bw.mml_level;
 }
 
-static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
+static void dpc_hrt_bw_set(const u32 subsys, const u32 bw_in_mb, bool force)
 {
 	u32 total_bw = bw_in_mb;
 
@@ -714,7 +714,7 @@ static void dpc_hrt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb,
 	dpc_dvfs_set(DPC_SUBSYS_DISP, 0, false);
 }
 
-static void dpc_srt_bw_set(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
+static void dpc_srt_bw_set(const u32 subsys, const u32 bw_in_mb, bool force)
 {
 	u32 total_bw = bw_in_mb;
 
@@ -779,7 +779,7 @@ u8 dpc_check_pll(void)
 	return ret;
 }
 
-static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
+static int vdisp_level_set_vcp(const u32 subsys, const u8 level)
 {
 	int ret = 0;
 	u32 value = 0, swreq = 0;
@@ -810,7 +810,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level)
 	return ret;
 }
 
-static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool update_level)
+static void dpc_dvfs_set(const u32 subsys, const u8 level, bool update_level)
 {
 	u32 mmdvfs_user = U32_MAX;
 	u8 max_level;
@@ -856,7 +856,7 @@ static void dpc_dvfs_set(const enum mtk_dpc_subsys subsys, const u8 level, bool 
 			g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level, g_priv->dvfs_bw.bw_level);
 }
 
-static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb)
+static void dpc_ch_bw_set(const u32 subsys, const u8 idx, const u32 bw_in_mb)
 {
 	u32 value = 0;
 	u32 ch_bw = bw_in_mb;
@@ -883,7 +883,7 @@ static void dpc_ch_bw_set(const enum mtk_dpc_subsys subsys, const u8 idx, const 
 	}
 }
 
-static void dpc_channel_bw_set_by_idx(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb)
+static void dpc_channel_bw_set_by_idx(const u32 subsys, const u8 idx, const u32 bw_in_mb)
 {
 	u32 ch_bw = bw_in_mb;
 	u32 cur_ch_bw = 0;
@@ -926,7 +926,7 @@ static void dpc_dvfs_trigger(const char *caller)
 		DPCFUNC("by %s", caller);
 }
 
-static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode)
+static void mt6991_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
 	bool en = (mode == DPC_MTCMOS_AUTO ? true : false);
 	int ret = 0;
@@ -1011,7 +1011,7 @@ static void mt6991_set_mtcmos(const enum mtk_dpc_subsys subsys, const enum mtk_d
 	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, readl(g_priv->rtff_pwr_con));
 }
 
-static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode)
+static void mt6989_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
 	bool en = (mode == DPC_MTCMOS_AUTO ? true : false);
 	u32 value = (en && has_cap(DPC_CAP_MTCMOS)) ? 0x11 : 0;
@@ -1056,7 +1056,7 @@ static void mt6989_set_mtcmos(const enum mtk_dpc_subsys subsys, const enum mtk_d
 	dpc_pm_ctrl(false);
 }
 
-void dpc_mtcmos_auto(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode)
+void dpc_mtcmos_auto(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
 	unsigned long flags;
 
@@ -1180,7 +1180,7 @@ void dpc_group_enable(const u16 group, bool en)
 	}
 }
 
-static void dpc_config(const enum mtk_dpc_subsys subsys, bool en)
+static void dpc_config(const u32 subsys, bool en)
 {
 	static bool is_mminfra_ctrl_by_dpc;
 

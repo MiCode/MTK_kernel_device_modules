@@ -187,17 +187,17 @@ struct dpc_funcs {
 	void (*dpc_duration_update)(u32 us);
 
 	/* dpc driver internal use */
-	void (*dpc_ddr_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
+	void (*dpc_ddr_force_enable)(const u32 subsys, const bool en);
 
 	/* resource auto mode control */
 	void (*dpc_group_enable)(const u16 group, bool en);
 
 	/* mtcmos auto mode control */
-	void (*dpc_mtcmos_auto)(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode);
+	void (*dpc_mtcmos_auto)(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode);
 
 	/* mtcmos and resource auto mode control */
-	void (*dpc_pause)(const enum mtk_dpc_subsys subsys, bool en);
-	void (*dpc_config)(const enum mtk_dpc_subsys subsys, bool en);
+	void (*dpc_pause)(const u32 subsys, bool en);
+	void (*dpc_config)(const u32 subsys, bool en);
 
 	/* exception power control */
 	int (*dpc_vidle_power_keep)(const enum mtk_vidle_voter_user);
@@ -215,8 +215,8 @@ struct dpc_funcs {
 	 * @bw_in_mb: [U32_MAX]: read stored bw, otherwise update stored bw
 	 * @force:    [TRUE]: trigger dvfs immediately
 	 */
-	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
-	void (*dpc_srt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
+	void (*dpc_hrt_bw_set)(const u32 subsys, const u32 bw_in_mb, bool force);
+	void (*dpc_srt_bw_set)(const u32 subsys, const u32 bw_in_mb, bool force);
 
 	/* check dpc vdisp level and pll mux, [0]: the same, [level]: dpc setting */
 	u8 (*dpc_check_pll)(void);
@@ -224,16 +224,16 @@ struct dpc_funcs {
 	/* vdisp dvfs
 	 * @update_level: [TRUE]: update stored level, [FALSE]: only trigger dvfs
 	 */
-	void (*dpc_dvfs_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool update_level);
+	void (*dpc_dvfs_set)(const u32 subsys, const u8 level, bool update_level);
 
 	/* mminfra dvfs */
-	void (*dpc_channel_bw_set_by_idx)(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb);
+	void (*dpc_channel_bw_set_by_idx)(const u32 subsys, const u8 idx, const u32 bw_in_mb);
 
 	/* trigger all dvfs immediately */
 	void (*dpc_dvfs_trigger)(const char *caller);
 
 	void (*dpc_clear_wfe_event)(struct cmdq_pkt *pkt, enum mtk_vidle_voter_user user, int event);
-	void (*dpc_mtcmos_vote)(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
+	void (*dpc_mtcmos_vote)(const u32 subsys, const u8 thread, const bool en);
 	void (*dpc_analysis)(void);
 	void (*dpc_debug_cmd)(const char *opt);
 
@@ -242,9 +242,9 @@ struct dpc_funcs {
 	void (*dpc_init_panel_type)(enum mtk_panel_type);
 	void (*dpc_dsi_pll_set)(const u32 value);
 	int (*dpc_dt_set_all)(u32 dur_frame, u32 dur_vblank);
-	void (*dpc_infra_force_enable)(const enum mtk_dpc_subsys subsys, const bool en);
-	void (*dpc_dvfs_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb);
-	void (*dpc_dvfs_both_set)(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
+	void (*dpc_infra_force_enable)(const u32 subsys, const bool en);
+	void (*dpc_dvfs_bw_set)(const u32 subsys, const u32 bw_in_mb);
+	void (*dpc_dvfs_both_set)(const u32 subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
 	int (*dpc_mminfra_on_off)(bool en);
 };
