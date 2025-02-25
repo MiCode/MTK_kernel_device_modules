@@ -21,5 +21,6 @@ void mbraink_get_wifi_pcie_data(int current_idx,
 void mbraink_get_wifi_tx_power_data(struct mbraink_wifi2mbr_tx_power_data *tx_power_data);
 void mbraink_get_wifi_rxtxperf_data(int current_idx,
 				struct mbraink_wifi2mbr_rxtxperf_data *rxtxperf_buffer);
+void mbraink_get_wifi_wakeupinfo_data(int current_idx,
+				struct mbraink_wifi2mbr_wakeupinfo_data *wakeupinfo_buffer);
 #endif
-

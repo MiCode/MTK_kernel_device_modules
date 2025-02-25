@@ -20,6 +20,7 @@ enum mbr2wifi_reason {
 	MBR2WIFI_PCIE_DATA,
 	MBR2WIFI_TXPWR_RPT,
 	MBR2WIFI_TRX_PERF,
+	MBR2WIFI_WIFI_WKUP_REASON,
 };
 
 struct wifi2mbr_hdr {
@@ -38,6 +39,7 @@ enum wifi2mbr_tag {
 	WIFI2MBR_TAG_PCIE,
 	WIFI2MBR_TAG_TXPWR_RPT,
 	WIFI2MBR_TAG_TRX_PERF,
+	WIFI2MBR_TAG_WIFI_WKUP_REASON,
 	WIFI2MBR_TAG_MAX
 };
 
@@ -222,6 +224,27 @@ struct wifi2mbr_TRxPerfInfo {
 	unsigned char cu_all; /* channel utilization*/
 	unsigned char cu_not_me; /* channel utilization others*/
 	unsigned char snr[2]; /* signal-to-noise ratio */
+};
+
+enum enum_mbr_wifi_wkup_reason {
+	MBR_WIFI_NO_WKUP,
+	MBR_WIFI_RX_DATA_WKUP,
+	MBR_WIFI_RX_EVENT_WKUP,
+	MBR_WIFI_RX_MGMT_WKUP,
+	MBR_WIFI_RX_OTHERS_WKUP,
+};
+
+struct wifi2mbr_WiFiWkUpRsnInfo {
+	struct wifi2mbr_hdr hdr;
+	u64 timestamp;
+	enum enum_mbr_wifi_wkup_reason wkup_reason;
+	unsigned int wkup_info;
+	u64 total_suspend_period;
+	u64 resume_time;
+	u64 suspend_time;
+	u64 wifi_wkup_period;
+	u64 wifi_wkup_time;
+	u64 wifi_suspend_time;
 };
 
 /**

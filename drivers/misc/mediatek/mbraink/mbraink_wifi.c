@@ -19,6 +19,7 @@ int mbraink_wifi_init(void)
 	_mbraink_wifi_ops.get_wifi_pcie_data = NULL;
 	_mbraink_wifi_ops.get_wifi_tx_power_data = NULL;
 	_mbraink_wifi_ops.get_wifi_rxtxperf_data = NULL;
+	_mbraink_wifi_ops.get_wifi_wakeupinfo_data = NULL;
 	return 0;
 }
 
@@ -32,6 +33,7 @@ int mbraink_wifi_deinit(void)
 	_mbraink_wifi_ops.get_wifi_pcie_data = NULL;
 	_mbraink_wifi_ops.get_wifi_tx_power_data = NULL;
 	_mbraink_wifi_ops.get_wifi_rxtxperf_data = NULL;
+	_mbraink_wifi_ops.get_wifi_wakeupinfo_data = NULL;
 	return 0;
 }
 
@@ -50,6 +52,7 @@ int register_mbraink_wifi_ops(struct mbraink_wifi_ops *ops)
 	_mbraink_wifi_ops.get_wifi_pcie_data = ops->get_wifi_pcie_data;
 	_mbraink_wifi_ops.get_wifi_tx_power_data = ops->get_wifi_tx_power_data;
 	_mbraink_wifi_ops.get_wifi_rxtxperf_data = ops->get_wifi_rxtxperf_data;
+	_mbraink_wifi_ops.get_wifi_wakeupinfo_data = ops->get_wifi_wakeupinfo_data;
 
 	return 0;
 }
@@ -67,6 +70,7 @@ int unregister_mbraink_wifi_ops(void)
 	_mbraink_wifi_ops.get_wifi_pcie_data = NULL;
 	_mbraink_wifi_ops.get_wifi_tx_power_data = NULL;
 	_mbraink_wifi_ops.get_wifi_rxtxperf_data = NULL;
+	_mbraink_wifi_ops.get_wifi_wakeupinfo_data = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_wifi_ops);
@@ -145,4 +149,14 @@ void mbraink_get_wifi_rxtxperf_data(int current_idx,
 		_mbraink_wifi_ops.get_wifi_rxtxperf_data(current_idx, rxtxperf_buffer);
 	else
 		pr_info("%s: Do not support ioctl get_wifi_rxtxperf_data.\n", __func__);
+}
+
+void mbraink_get_wifi_wakeupinfo_data(int current_idx,
+				struct mbraink_wifi2mbr_wakeupinfo_data *wakeupinfo_buffer)
+{
+
+	if (_mbraink_wifi_ops.get_wifi_wakeupinfo_data)
+		_mbraink_wifi_ops.get_wifi_wakeupinfo_data(current_idx, wakeupinfo_buffer);
+	else
+		pr_info("%s: Do not support ioctl get_wifi_wakeupinfo_data.\n", __func__);
 }

@@ -487,6 +487,59 @@ void mbraink_v6991_get_wifi_rxtxperf_data(int current_idx,
 		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
 }
 
+void mbraink_v6991_get_wifi_wakeupinfo_data(int current_idx,
+		struct mbraink_wifi2mbr_wakeupinfo_data *wakeupinfo_buffer)
+{
+	unsigned short len = 0;
+	enum wifi2mbr_status ret = WIFI2MBR_FAILURE;
+	struct wifi2mbr_WiFiWkUpRsnInfo wakeup_info;
+	int loop = 0;
+	int cnt = 0;
+
+	memset(wakeupinfo_buffer, 0, sizeof(struct mbraink_wifi2mbr_rxtxperf_data));
+
+	do {
+		ret = mbraink_bridge_wifi_get_data(MBR2WIFI_WIFI_WKUP_REASON,
+						WIFI2MBR_TAG_WIFI_WKUP_REASON,
+						(void *)(&wakeup_info), &len);
+		loop++;
+
+		if (ret == WIFI2MBR_NO_OPS)
+			break;
+		else if (ret == WIFI2MBR_FAILURE)
+			continue;
+		else if (ret == WIFI2MBR_SUCCESS) {
+			cnt = wakeupinfo_buffer->count;
+
+			if (cnt < MAX_WIFI_WAKEUP_INFO_SZ) {
+				wakeupinfo_buffer->wakeup_data[cnt].timestamp = wakeup_info.timestamp;
+				wakeupinfo_buffer->wakeup_data[cnt].wkup_reason =
+					(enum mbraink_enum_mbr_wakeup_reason) wakeup_info.wkup_reason;
+				wakeupinfo_buffer->wakeup_data[cnt].wkup_info = wakeup_info.wkup_info;
+				wakeupinfo_buffer->wakeup_data[cnt].total_suspend_period =
+					wakeup_info.total_suspend_period;
+				wakeupinfo_buffer->wakeup_data[cnt].resume_time = wakeup_info.resume_time;
+				wakeupinfo_buffer->wakeup_data[cnt].suspend_time = wakeup_info.suspend_time;
+				wakeupinfo_buffer->wakeup_data[cnt].wifi_wkup_period = wakeup_info.wifi_wkup_period;
+				wakeupinfo_buffer->wakeup_data[cnt].wifi_wkup_time = wakeup_info.wifi_wkup_time;
+				wakeupinfo_buffer->wakeup_data[cnt].wifi_suspend_time = wakeup_info.wifi_suspend_time;
+				wakeupinfo_buffer->count++;
+
+				if (cnt ==  MAX_WIFI_WAKEUP_INFO_SZ - 1) {
+					wakeupinfo_buffer->idx = current_idx + wakeupinfo_buffer->count;
+					break;
+				}
+			}
+		} else if (ret ==  WIFI2MBR_END) {
+			wakeupinfo_buffer->idx = 0;
+			break;
+		}
+	} while (loop < MAX_WIFI_DATA_CNT);
+
+	if (loop == MAX_WIFI_DATA_CNT)
+		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
+}
+
 static int handle_txtimeout_data(struct wifi2mbr_data *wifi_data)
 {
 	struct wifi2mbr_TxTimeoutInfo *tx_timeout;
@@ -663,6 +716,7 @@ static struct mbraink_wifi_ops mbraink_v6991_wifi_ops = {
 	.get_wifi_pcie_data = mbraink_v6991_get_wifi_pcie_data,
 	.get_wifi_tx_power_data = mbraink_v6991_get_wifi_tx_power_data,
 	.get_wifi_rxtxperf_data = mbraink_v6991_get_wifi_rxtxperf_data,
+	.get_wifi_wakeupinfo_data = mbraink_v6991_get_wifi_wakeupinfo_data,
 };
 
 static struct wifi2mbraink_set_ops mbraink_v6991_wifi_set_ops = {

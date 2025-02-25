@@ -39,6 +39,7 @@
 #define MAX_WIFI_BAND_NUM			3
 #define MAX_WIFI_ANTENA_NUM			2
 #define MAX_WIFI_RXTXPERF_SZ			8
+#define MAX_WIFI_WAKEUP_INFO_SZ			32
 #define MAX_TOUCH_GHOST_SZ			64
 #define MAX_SPMI_PARITY_ERR_SZ			64
 #define MAX_SPMI_PRE_OT_SZ			32
@@ -722,6 +723,32 @@ struct mbraink_wifi2mbr_rxtxperf_data {
 	u16 count;
 	u32 idx;
 	struct mbraink_wifi2mbr_rxtxperf_struct rxtxperf_data[MAX_WIFI_RXTXPERF_SZ];
+};
+
+enum mbraink_enum_mbr_wakeup_reason {
+	MBRAINK_MBR_WIFI_NO_WKUP,
+	MBRAINK_MBR_WIFI_RX_DATA_WKUP,
+	MBRAINK_MBR_WIFI_RX_EVENT_WKUP,
+	MBRAINK_MBR_WIFI_RX_MGMT_WKUP,
+	MBRAINK_MBR_WIFI_RX_OTHERS_WKUP,
+};
+
+struct mbraink_wakeup_reason_struct {
+	u64 timestamp;
+	enum mbraink_enum_mbr_wakeup_reason wkup_reason;
+	unsigned int wkup_info;
+	u64 total_suspend_period;
+	u64 resume_time;
+	u64 suspend_time;
+	u64 wifi_wkup_period;
+	u64 wifi_wkup_time;
+	u64 wifi_suspend_time;
+};
+
+struct mbraink_wifi2mbr_wakeupinfo_data {
+	u16 count;
+	u32 idx;
+	struct mbraink_wakeup_reason_struct wakeup_data[MAX_WIFI_WAKEUP_INFO_SZ];
 };
 
 struct mbraink_touch_ghost_struct {
