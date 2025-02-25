@@ -210,7 +210,7 @@ static int board_ntc_get_temp(struct thermal_zone_device *tz, int *temp)
 		r_type = 0;
 		r_ntc = calculate_r_ntc(v_in, adc_data->pullup_r[r_type], adc_data->pullup_v[r_type]);
 		*temp = board_ntc_r_to_temp(ntc_info, r_ntc);
-		dev_dbg_ratelimited(ntc_info->dev, "adc_raw=0x%x, v_in/r_type/r_ntc/t=%llu/%d/%d/%d pullup_r=%d pullup_v=%d\n",
+		dev_info_ratelimited(ntc_info->dev, "adc_raw=0x%x, v_in/r_type/r_ntc/t=%llu/%d/%d/%d pullup_r=%d pullup_v=%d\n",
 			adc_raw, v_in, r_type, r_ntc, *temp, adc_data->pullup_r[r_type], adc_data->pullup_v[r_type]);
 
 		return 0;
@@ -273,7 +273,7 @@ RETRY:
 		*temp = board_ntc_r_to_temp(ntc_info, r_ntc);
 	}
 
-	dev_dbg_ratelimited(ntc_info->dev, "val=0x%x, v_in/r_type/r_ntc/t=%llu/%d/%d/%d\n",
+	dev_info_ratelimited(ntc_info->dev, "val=0x%x, v_in/r_type/r_ntc/t=%llu/%d/%d/%d\n",
 		val, v_in, r_type, r_ntc, *temp);
 
 	return 0;
