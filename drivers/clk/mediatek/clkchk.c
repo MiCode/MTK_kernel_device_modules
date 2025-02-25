@@ -378,11 +378,16 @@ static void dump_enabled_clks(struct provider_clk *pvdck)
 	const char *p_name;
 	const char *comp_name;
 	const char * const *mux_names;
-	struct clk_hw *c_hw = __clk_get_hw(pvdck->ck);
-	struct clk_hw *p_hw;
+	struct clk_hw *c_hw = NULL;
+	struct clk_hw *p_hw = NULL;
 	struct mtk_clk_mux *mux;
 	u8 index = 0;
 	u8 valid = 0;
+
+	if (pvdck == NULL)
+		return;
+
+	c_hw = __clk_get_hw(pvdck->ck);
 
 	/* If SW ref_count=0 (PLL/CG) or HW disabled (Mux), skip dump clk. */
 	if (!clkchk_pvdck_is_enabled(pvdck))
@@ -482,6 +487,11 @@ static bool __check_pll_off(const char * const *name)
 
 	for (; *name != NULL; name++) {
 		struct provider_clk *pvdck = __clk_chk_lookup_pvdck(*name);
+		if (pvdck == NULL) {
+			pr_err("pvdck: %s is NULL\n", *name);
+			continue;
+		}
+
 		struct clk_hw *c_hw = __clk_get_hw(pvdck->ck);
 
 		if (!clkchk_pvdck_is_enabled(pvdck))
