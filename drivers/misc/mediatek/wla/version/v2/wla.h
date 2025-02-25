@@ -18,13 +18,13 @@
 #define reg_read_raw(addr, msk)				(readl(addr) & (msk))
 
 #define wla_write_field(offset, val, msk) \
-{ \
-	reg_write_field(wla_base+offset, val, msk); \
-}
+	do {	\
+		reg_write_field(wla_base+offset, val, msk); \
+	} while (0)
 #define wla_write_raw(offset, val, msk) \
-{ \
-	reg_write_raw(wla_base+offset, val, msk); \
-}
+	do {	\
+		reg_write_raw(wla_base+offset, val, msk); \
+	} while (0)
 
 #define wla_read_field(offset, msk)		(reg_read_field(wla_base+offset, msk))
 #define wla_read_raw(offset, msk)		(reg_read_raw(wla_base+offset, msk))

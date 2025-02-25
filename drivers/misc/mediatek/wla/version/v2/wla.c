@@ -175,7 +175,7 @@ void wla_set_rglt2p0_bypass(unsigned int bypass_mode)
 	if (bypass_mode > 1)
 		return;
 
-	if (default_mode == DEFAULT_BYPASS_MODE)
+	if (default_mode != DEFAULT_2P0_MODE)
 		bypass_mode = 1;
 
 	/* notify spmfw bypass mode status */
@@ -276,11 +276,10 @@ void wla_set_group_strategy(unsigned int group, unsigned int strategy)
 	wla_write_field(WLAPM_DDREN_GRP_CTRL0 + group*4, 0x1,
 						WLAPM_DDREN_GRP0_STANDY_DRAM_IDLE_ENABLE);
 
-	if (strategy == PST_REQ) {
+	if (strategy == PST_REQ)
 		wla_write_raw(WLAPM_2P0_DDREN_CTRL7, 0x1 << group, 0x1 << group);
-	} else {
+	else
 		wla_write_raw(WLAPM_2P0_DDREN_CTRL7, 0x0, 0x1 << group);
-	}
 }
 EXPORT_SYMBOL(wla_set_group_strategy);
 
