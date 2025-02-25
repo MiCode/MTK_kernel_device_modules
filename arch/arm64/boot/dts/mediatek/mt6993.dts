@@ -13615,7 +13615,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			vcp-support = <1>;
 			status = "okay";
 			reg = <0 0x31800000 0 0x80000>, /* tcm */
-				<0 0x31900000 0 0x1000>, /* bus tracker */
+				<0 0x31910000 0 0x1000>, /* bus tracker */
 				<0 0x31a04000 0 0x1000>, /* cfg */
 				<0 0x31a0a000 0 0x1000>, /* cfg core0 */
 				<0 0x31a0b000 0 0x1000>, /* intc core0 */
