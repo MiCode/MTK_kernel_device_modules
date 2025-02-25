@@ -187,6 +187,14 @@ static int sys_msg_send_battery(struct port_t *port)
 	return 0;
 }
 
+static int (*s_power_throttle_callback)(unsigned int data);
+
+void ccci_set_power_throttle_cb(int (*power_throttle_cb)(unsigned int data))
+{
+	s_power_throttle_callback = power_throttle_cb;
+}
+EXPORT_SYMBOL(ccci_set_power_throttle_cb);
+
 static void sys_msg_handler(struct port_t *port, struct sk_buff *skb)
 {
 	struct ccci_header *ccci_h = (struct ccci_header *)skb->data;
@@ -242,6 +250,12 @@ static void sys_msg_handler(struct port_t *port, struct sk_buff *skb)
 		fallthrough;
 	case MD_DRAM_SLC:
 		exec_ccci_sys_call_back(ccci_h->data[1], ccci_h->reserved);
+		break;
+	case MD_THROTTLING:
+		if (s_power_throttle_callback)
+			s_power_throttle_callback(ccci_h->reserved);
+		else
+			CCCI_NORMAL_LOG(0, SYS, "power_throttle not register callback");
 		break;
 	case MD_GET_BATTERY_INFO:
 		sys_msg_send_battery(port);
