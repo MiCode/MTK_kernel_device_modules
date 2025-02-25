@@ -165,6 +165,7 @@ EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/thermal/mediatek/*M
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/trusty/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/usb/mtu3/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/performance/*Module.symvers)
+EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/mdp/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/camera_mem/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/misc/mediatek/cam_timesync/*Module.symvers)

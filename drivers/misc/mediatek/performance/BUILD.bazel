@@ -27,6 +27,7 @@ define_mgk_ddk_ko(
     ],
     includes = [
         ".",
+        "perf_ioctl",
     ],
     hdrs = [
         "perf_ioctl/ioctl_powerhal.h",
