@@ -445,6 +445,7 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp)
 {
 	struct mtk_ddp_comp *output_comp = NULL;
+	struct mtk_drm_private *priv = NULL;
 	unsigned int lpc_te_con0_val = 0;
 	int index = 0;
 	u32 inten = 0;
@@ -468,8 +469,11 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 	}
 	writel(lpc_te_con0_val, comp->regs + DSI_LPC_TE_CON0(index));
 
-	if (mtk_disp_is_enable_hrt_dbg())
-		inten |= EVENT_TE_INT_EN;
+	priv = mtk_crtc->base.dev->dev_private;
+	if (priv) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
+			inten |= EVENT_TE_INT_EN;
+	}
 
 	writel(0, comp->regs + DSI_LPC_INTEN(index));
 	writel(inten, comp->regs + DSI_LPC_INTEN(index));
@@ -561,6 +565,7 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	enum mtk_panel_type type = PANEL_TYPE_COUNT;
 	struct mtk_panel_params *params = NULL;
+	struct mtk_drm_private *priv = NULL;
 	int index = 0;
 	unsigned int dsi_lpc_te_con = 0;
 	unsigned long dsi_lpc_fake_te_prd = 0;
@@ -593,8 +598,11 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	mtk_dsi_set_lpc_en(lpc_en, comp);
 	mtk_dsi_lpc_unit_en(lpc_en, index, comp);
 
-	if (mtk_disp_is_enable_hrt_dbg())
-		mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp);
+	priv = mtk_crtc->base.dev->dev_private;
+	if (priv) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
+			mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp);
+	}
 }
 static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
@@ -696,6 +704,7 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct drm_vblank_crtc *vblank = NULL;
+	struct mtk_drm_private *priv = NULL;
 	unsigned int status = 0;
 	unsigned int ret = 0;
 	int index = 0;
@@ -731,8 +740,11 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 		goto out;
 	}
 
-	if (!mtk_disp_is_enable_hrt_dbg())
-		status &= ~EVENT_TE_INT;
+	priv = mtk_crtc->base.dev->dev_private;
+	if (priv) {
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
+			status &= ~EVENT_TE_INT;
+	}
 
 	if (index == 0)
 		DRM_MMP_MARK(dsi_lpc0, status, 0);
