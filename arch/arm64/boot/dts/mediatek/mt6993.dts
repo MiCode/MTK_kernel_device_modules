@@ -11756,18 +11756,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						&mmqos SLAVE_COMMON(1)>,
 				<&mmqos MASTER_LARB_PORT(SMMU_L32_P10_DISP_ODDMR0_ODW_STASH)
 						&mmqos SLAVE_COMMON(1)>;
-			interconnect-names = "DDP_COMPONENT_ODDMR0_dmrr",
-						"DDP_COMPONENT_ODDMR0_dbir",
-						"DDP_COMPONENT_ODDMR0_odr",
-						"DDP_COMPONENT_ODDMR0_odw",
-						"DDP_COMPONENT_ODDMR0_dmrr_hrt",
-						"DDP_COMPONENT_ODDMR0_dbir_hrt",
-						"DDP_COMPONENT_ODDMR0_odr_hrt",
-						"DDP_COMPONENT_ODDMR0_odw_hrt",
-						"DDP_COMPONENT_ODDMR0_dmrr_stash",
-						"DDP_COMPONENT_ODDMR0_dbir_stash",
-						"DDP_COMPONENT_ODDMR0_odr_stash",
-						"DDP_COMPONENT_ODDMR0_odw_stash";
+			interconnect-names = "DDP_COMPONENT_ODDMR0_DMRR",
+						"DDP_COMPONENT_ODDMR0_DBIR",
+						"DDP_COMPONENT_ODDMR0_ODR",
+						"DDP_COMPONENT_ODDMR0_ODW",
+						"DDP_COMPONENT_ODDMR0_DMRR_HRT",
+						"DDP_COMPONENT_ODDMR0_DBIR_HRT",
+						"DDP_COMPONENT_ODDMR0_ODR_HRT",
+						"DDP_COMPONENT_ODDMR0_ODW_HRT",
+						"DDP_COMPONENT_ODDMR0_DMRR_STASH",
+						"DDP_COMPONENT_ODDMR0_DBIR_STASH",
+						"DDP_COMPONENT_ODDMR0_ODR_STASH",
+						"DDP_COMPONENT_ODDMR0_ODW_STASH";
 		};
 
 		disp_oddmr2: disp-oddmr2@3e610000 {
