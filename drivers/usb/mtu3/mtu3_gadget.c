@@ -324,13 +324,15 @@ static int mtu3_gadget_ep_enable(struct usb_ep *ep,
 
 	dev_dbg(mtu->dev, "%s %s\n", __func__, ep->name);
 
+	spin_lock_irqsave(&mtu->lock, flags);
+
 	if (mep->flags & MTU3_EP_ENABLED) {
 		dev_info_once(mtu->dev, "%s is already enabled\n",
 				mep->name);
+		spin_unlock_irqrestore(&mtu->lock, flags);
 		return 0;
 	}
 
-	spin_lock_irqsave(&mtu->lock, flags);
 	mep->desc = desc;
 	mep->comp_desc = ep->comp_desc;
 
@@ -363,12 +365,14 @@ static int mtu3_gadget_ep_disable(struct usb_ep *ep)
 	dev_dbg(mtu->dev, "%s %s\n", __func__, mep->name);
 	trace_mtu3_gadget_ep_disable(mep);
 
+	spin_lock_irqsave(&mtu->lock, flags);
+
 	if (!(mep->flags & MTU3_EP_ENABLED)) {
 		dev_warn(mtu->dev, "%s is already disabled\n", mep->name);
+		spin_unlock_irqrestore(&(mtu->lock), flags);
 		return 0;
 	}
 
-	spin_lock_irqsave(&mtu->lock, flags);
 	mtu3_ep_disable(mep);
 	mep->flags = 0;
 	mtu->active_ep--;
