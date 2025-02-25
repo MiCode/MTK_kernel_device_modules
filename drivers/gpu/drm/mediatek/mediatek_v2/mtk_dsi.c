@@ -1970,6 +1970,7 @@ void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 		writel(0x0913, dsi->regs + DSI_GCE_EVENT_CON0);
 		if (dsi->slave_dsi)
 			writel(0x0913, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
+		DDPMSG("%s:%d\n", __func__, __LINE__);
 		return;
 	}
 
@@ -2006,7 +2007,7 @@ static int  mtk_dsi_dbg_monitor_config0(struct mtk_dsi *dsi, struct mtk_ddp_comp
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON0,
 			config_value, ~0);
 
-	DDPMSG("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 	return 0;
 }
 
@@ -2034,7 +2035,7 @@ static int  mtk_dsi_dbg_monitor_config1(struct mtk_dsi *dsi, struct mtk_ddp_comp
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON1,
 			config_value, ~0);
 
-	DDPMSG("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 	return 0;
 
 }
@@ -2063,7 +2064,7 @@ static int  mtk_dsi_dbg_monitor_config2(struct mtk_dsi *dsi, struct mtk_ddp_comp
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON2,
 			config_value, ~0);
 
-	DDPMSG("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 	return 0;
 }
 
@@ -2100,7 +2101,7 @@ static int  mtk_dsi_dbg_monitor_disable_reset(struct mtk_dsi *dsi, struct mtk_dd
 		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON0, 0x0, ~0);
 
-	DDPMSG("%s-\n", __func__);
+	DDPDBG("%s-\n", __func__);
 	return 0;
 }
 
@@ -14824,6 +14825,11 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case DSI_MON_DSI_RST:
 	{
 		mtk_dsi_dbg_monitor_disable_reset(dsi, comp, handle, 0);
+	}
+		break;
+	case DSI_GCE_EVENT_CFG:
+	{
+		mtk_dsi_gce_event_cfg(dsi, comp, handle);
 	}
 		break;
 	case DUMP_CONNECTOR_PROP:

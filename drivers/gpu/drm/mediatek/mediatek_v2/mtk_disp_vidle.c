@@ -171,7 +171,7 @@ void mtk_dpc_monitor_config(struct cmdq_pkt *pkt, const u32 value)
 	if (disp_dpc_driver.dpc_monitor_config == NULL)
 		return;
 
-	DDPMSG("%s:%d\n", __func__, __LINE__);
+	DDPDBG("%s:%d\n", __func__, __LINE__);
 	disp_dpc_driver.dpc_monitor_config(pkt, value);
 }
 

@@ -12685,6 +12685,9 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 			}
 		}
 
+		/* For dbgtp fifo mon WA */
+		mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
+
 		if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true ||
 		    mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == true ||
 		    mtk_crtc->pre_te_cfg.prefetch_te_en == true ||
@@ -12744,11 +12747,17 @@ skip_prete:
 		}
 		GCE_DO(clear_event, EVENT_MML_DISP_DONE_EVENT);
 
+		/* For dbgtp fifo mon WA */
+		mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
+
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_TRIGGER);
 
 		if (debug_trigger_loop & BIT(3))
 			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
 		if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+			/* For dbgtp fifo mon WA */
+			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
+
 			DDPMSG("FIFO mon: Wait gce event vact start\n");
 			GCE_DO(wfe, EVENT_CMD_TRIG_START);
 			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);

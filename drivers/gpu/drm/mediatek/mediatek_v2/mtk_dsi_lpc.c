@@ -179,14 +179,14 @@ void mtk_dsi_lpc_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt
 	unsigned int mask = 0;
 
 
-	DDPMSG("%s:%d dsi lpc mon en:%d\n", __func__, __LINE__, priv->mtk_dbgtp_sta.dsi_lpc_mon_en);
+	DDPDBG("%s:%d dsi lpc mon en:%d\n", __func__, __LINE__, priv->mtk_dbgtp_sta.dsi_lpc_mon_en);
 
 	if (priv->mtk_dbgtp_sta.dsi_lpc_mon_en) {
 		value = (REG_FLD_VAL((DSI_LPC_DBG_MON_EN),
 			priv->mtk_dbgtp_sta.dsi_lpc_mon_en));
 		mask = REG_FLD_MASK(DSI_LPC_DBG_MON_EN);
 
-		DDPMSG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
+		DDPDBG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
 		if (cmdq_handle == NULL) {
 			val = readl(dsi_lpc_comp->regs + DSI_LPC_EN);
 			writel((val & ~mask) | value, dsi_lpc_comp->regs + DSI_LPC_EN);

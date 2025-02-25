@@ -95,6 +95,7 @@ void mtk_dbgtp_all_regs_dump(struct mtk_drm_private *priv);
 void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv);
 
 /* Just for mt6993*/
+void mtk_dbgtp_dsi_gce_event_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_dbgtp_fifo_mon_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_dbgtp_fifo_mon_set_trig_threshold(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 void mtk_dbgtp_update(struct mtk_drm_private *priv);

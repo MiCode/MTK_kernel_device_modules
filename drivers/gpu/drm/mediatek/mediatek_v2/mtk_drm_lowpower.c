@@ -1012,6 +1012,8 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
 		/*Make sure turn on vdo ltpo when enter idle, TODO: only choose one(LFR or VDO LTPO)*/
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LTPO_VDO_SET, &en);
+		/* For dbgtp fifo mon WA */
+		mtk_ddp_comp_io_cmd(comp, handle, DSI_GCE_EVENT_CFG, NULL);
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_IDLEMGR_BY_WB) &&
@@ -2254,9 +2256,12 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 				"update_mmclk", 4, perf_string, true);
 	/* 2. Request MMClock before enabling connector*/
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
-	if (output_comp)
+	if (output_comp) {
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
+		/* For dbgtp fifo mon WA */
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GCE_EVENT_CFG, NULL);
+	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 					"async_wait0", 41, perf_string, true);

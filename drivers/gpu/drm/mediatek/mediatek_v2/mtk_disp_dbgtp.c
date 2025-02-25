@@ -242,26 +242,36 @@ void mtk_dbgtp_update(struct mtk_drm_private *priv)
 		for (i = 0; i < DISPSYS_NUM; i++) {
 			if (priv->mtk_dbgtp_sta.dispsys[i].subsys_mon_en) {
 				priv->mtk_dbgtp_sta.dispsys[i].need_update = true;
-				DDPMSG("%s: dispsys%d need update\n", __func__, i);
+				DDPDBG("%s: dispsys%d need update\n", __func__, i);
 			}
 		}
 
 		for (i = 0; i < OVLSYS_NUM; i++) {
 			if (priv->mtk_dbgtp_sta.ovlsys[i].subsys_mon_en) {
 				priv->mtk_dbgtp_sta.ovlsys[i].need_update = true;
-				DDPMSG("%s: ovlsys%d need update\n", __func__, i);
+				DDPDBG("%s: ovlsys%d need update\n", __func__, i);
 			}
 		}
 
 		for (i = 0; i < MMLSYS_NUM; i++) {
 			if (priv->mtk_dbgtp_sta.mmlsys[i].subsys_mon_en) {
 				priv->mtk_dbgtp_sta.mmlsys[i].need_update = true;
-				DDPMSG("%s: mmlsys%d need update\n", __func__, i);
+				DDPDBG("%s: mmlsys%d need update\n", __func__, i);
 			}
 		}
 
 		priv->mtk_dbgtp_sta.need_update = true;
 	}
+}
+
+/* Just for mt6993*/
+void mtk_dbgtp_dsi_gce_event_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
+{
+	struct mtk_ddp_comp *output_comp = NULL;
+
+	output_comp =
+		mtk_ddp_comp_request_output(mtk_crtc);
+	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_GCE_EVENT_CFG, NULL);
 }
 
 /* Just for mt6993*/
@@ -271,10 +281,15 @@ void mtk_dbgtp_fifo_mon_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *c
 	unsigned int mask = 0;
 	unsigned int i = 0;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_ddp_comp *output_comp = NULL;
+
+	output_comp =
+		mtk_ddp_comp_request_output(mtk_crtc);
+	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_GCE_EVENT_CFG, NULL);
 
 	for (i = 0; i < FIFO_MON_NUM; i++) {
-		/* dbg top fifo mon0 disable*/
-		value = (REG_FLD_VAL((DISP_FIFO_MON_EN), 0));
+		/* dbg top fifo mon0 */
+		value = (REG_FLD_VAL((DISP_FIFO_MON_EN), priv->mtk_dbgtp_sta.fifo_mon_en[i]));
 		mask = REG_FLD_MASK(DISP_FIFO_MON_EN);
 		/*DDPMSG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);*/
 		cmdq_pkt_write(cmdq_handle, dbgtp_comp->cmdq_base,
@@ -877,9 +892,9 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 
 	/* debug top default setting */
 	priv->mtk_dbgtp_sta.dbgtp_en = true;
-	priv->mtk_dbgtp_sta.dbgtp_switch = 0x1FFF;
+	priv->mtk_dbgtp_sta.dbgtp_switch = 0x1795;
 	priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = true;
-	priv->mtk_dbgtp_sta.dbgtp_trig_prd = 2600;
+	priv->mtk_dbgtp_sta.dbgtp_trig_prd = 260;
 	priv->mtk_dbgtp_sta.dbgtp_timeout_en = 0x1;
 	priv->mtk_dbgtp_sta.dsi_lpc_mon_en = true;
 
@@ -887,19 +902,20 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = 0x10FFE;
 
 	/* fifo mon default setting */
-	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 0;
+	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 1;
 	priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 5;
 
 	/* dispsys default setting */
 	/* dispsys0A */
 	priv->mtk_dbgtp_sta.dispsys[0].subsys_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[0].subsys_smi_trig_en = true;
-	priv->mtk_dbgtp_sta.dispsys[0].subsys_dsi_trig_en = true;
-	priv->mtk_dbgtp_sta.dispsys[0].subsys_crossbar_info_en = true;
+	priv->mtk_dbgtp_sta.dispsys[0].subsys_dsi_trig_en = false;
+	priv->mtk_dbgtp_sta.dispsys[0].subsys_crossbar_info_en = false;
 	priv->mtk_dbgtp_sta.dispsys[0].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_portid[0] = 2;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_portid[1] = 3;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_portid[2] = 4;
@@ -917,23 +933,24 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_portid[0] = 0;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_portid[1] = 1;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_portid[2] = 5;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_portid[3] = 6;
 	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_mon_en = true;
-	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_mon_sel = 0xFFFF;
-	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_buf_sel = 0xFFFF;
+	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_mon_sel = 0x0200;
+	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_buf_sel = 0x0116;
 	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg0 = 0x00090000;//SPLITTER_OUT
 	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg1 = 0x00000000;//SPLITTER_IN
-	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg2 = 0x00000002;//MERGE_OUT
+	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg2 = 0x00000000;//MERGE_OUT
 	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg3 = 0x00000000;//INSIDE_PC
 	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg4 = 0x00000000;//COMP_OUT
 	/* dispsys0B */
-	priv->mtk_dbgtp_sta.dispsys[2].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.dispsys[2].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.dispsys[2].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.dispsys[2].subsys_dsi_trig_en = true;
-	priv->mtk_dbgtp_sta.dispsys[2].subsys_crossbar_info_en = true;
+	priv->mtk_dbgtp_sta.dispsys[2].subsys_crossbar_info_en = false;
 	priv->mtk_dbgtp_sta.dispsys[2].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].rst_by_frame = true;
@@ -947,10 +964,10 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[2].crossbar_mon_cfg2 = 0x00000002;//PC_OUT
 	priv->mtk_dbgtp_sta.dispsys[2].crossbar_mon_cfg3 = 0x00010000;//PC_IN
 	/* dispsys1B */
-	priv->mtk_dbgtp_sta.dispsys[3].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.dispsys[3].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.dispsys[3].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.dispsys[3].subsys_dsi_trig_en = true;
-	priv->mtk_dbgtp_sta.dispsys[3].subsys_crossbar_info_en = true;
+	priv->mtk_dbgtp_sta.dispsys[3].subsys_crossbar_info_en = false;
 	priv->mtk_dbgtp_sta.dispsys[3].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].rst_by_frame = true;
@@ -973,7 +990,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_mon_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_crossbar_info_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[0].subsys_inlinerotate_info_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[0].subsys_inlinerotate_info_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].smi_mon_en = true;
@@ -987,6 +1004,10 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].slice_time = 0x514;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].slice_time = 0x514;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].smi_mon_dump_sel = 0x1;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].smi_mon_dump_sel = 0x1;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].smi_mon_dump_sel = 0x1;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].smi_mon_portid[0] = 2;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].smi_mon_cg_ctl[1] = 1;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].smi_mon_cg_ctl[2] = 1;
@@ -1004,15 +1025,15 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].smi_mon_cg_ctl[2] = 1;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].smi_mon_cg_ctl[3] = 1;
 	priv->mtk_dbgtp_sta.ovlsys[0].crossbar_mon_cfg0 = 0x00000002;//OVL_RSZ_IN
-	priv->mtk_dbgtp_sta.ovlsys[0].crossbar_mon_cfg1 = 0x00000003;//OVL_PQ_IN
+	priv->mtk_dbgtp_sta.ovlsys[0].crossbar_mon_cfg1 = 0x00000000;//OVL_PQ_IN
 	priv->mtk_dbgtp_sta.ovlsys[0].crossbar_mon_cfg2 = 0x00000000;//OVL_OUTPROC_OUT
 	priv->mtk_dbgtp_sta.ovlsys[0].crossbar_mon_cfg3 = 0x00060003;//OVL_EXDMA_OUT
 	priv->mtk_dbgtp_sta.ovlsys[0].crossbar_mon_cfg4 = 0x00000006;//OVL_BLENDER_OUT
 	/* ovlsys1 */
-	priv->mtk_dbgtp_sta.ovlsys[1].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[1].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[1].subsys_smi_trig_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[1].subsys_crossbar_info_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[1].subsys_inlinerotate_info_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[1].subsys_crossbar_info_en = false;
+	priv->mtk_dbgtp_sta.ovlsys[1].subsys_inlinerotate_info_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[1].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[1].smi_mon_en = true;
@@ -1048,10 +1069,10 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.ovlsys[1].crossbar_mon_cfg3 = 0x00060003;//OVL_EXDMA_OUT
 	priv->mtk_dbgtp_sta.ovlsys[1].crossbar_mon_cfg4 = 0x00000006;//OVL_BLENDER_OUT
 	/* ovlsys2 */
-	priv->mtk_dbgtp_sta.ovlsys[2].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[2].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[2].subsys_smi_trig_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[2].subsys_crossbar_info_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[2].subsys_inlinerotate_info_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[2].subsys_crossbar_info_en = false;
+	priv->mtk_dbgtp_sta.ovlsys[2].subsys_inlinerotate_info_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[2].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[1].smi_mon_en = true;
@@ -1309,7 +1330,7 @@ void mtk_dbgtp_dispsys_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 
 		if (dbgtp_dispsys_update && ((i == 0) || (i == 2))) {
 			if (dbgtp_dispsys_en) {
-				DDPMSG("%s:%d dispsys%d enable\n", __func__, __LINE__, i);
+				DDPDBG("%s:%d dispsys%d enable\n", __func__, __LINE__, i);
 
 				/* Enable & config subsys - dispsys 0A-0B */
 				value = (REG_FLD_VAL((SUBSYS_SMI_TRIG_EN), subsys_smi_trig_en) |
@@ -1369,7 +1390,7 @@ void mtk_dbgtp_dispsys_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 
 				priv->mtk_dbgtp_sta.dispsys[i].need_update = false;
 			} else {
-				DDPMSG("%s:%d dispsys%d disable\n", __func__, __LINE__, i);
+				DDPDBG("%s:%d dispsys%d disable\n", __func__, __LINE__, i);
 
 				if (cmdq_handle == NULL) {
 					value = (REG_FLD_VAL((SUBSYS_MON_ENGINE_RST), 0x1));
@@ -1418,7 +1439,7 @@ void mtk_dbgtp_dispsys_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 
 		if (dbgtp_dispsys_update && ((i == 1) || (i == 3))) {
 			if (dbgtp_dispsys_en) {
-				DDPMSG("%s:%d dispsys%d enable\n", __func__, __LINE__, i);
+				DDPDBG("%s:%d dispsys%d enable\n", __func__, __LINE__, i);
 
 				/* Enable & config subsys - dispsys 1A-1B */
 				value = (REG_FLD_VAL((SUBSYS_SMI_TRIG_EN), subsys_smi_trig_en) |
@@ -1488,7 +1509,7 @@ void mtk_dbgtp_dispsys_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 
 				priv->mtk_dbgtp_sta.dispsys[i].need_update = false;
 			} else {
-				DDPMSG("%s:%d dispsys%d disable\n", __func__, __LINE__, i);
+				DDPDBG("%s:%d dispsys%d disable\n", __func__, __LINE__, i);
 
 				if (cmdq_handle == NULL) {
 					value = (REG_FLD_VAL((SUBSYS_MON_ENGINE_RST), 0x1));
@@ -1819,7 +1840,7 @@ void mtk_dbgtp_mmlsys_smi_mon_config(struct cmdq_pkt *cmdq_handle, struct cmdq_b
 				REG_FLD_MASK(SMI_MON_RST_BY_FRAME) |
 				REG_FLD_MASK(SMI_MON_SLICE_TIME) |
 				REG_FLD_MASK(SMI_MON_ENABLE);
-			DDPMSG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
+			DDPDBG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
 			if (cmdq_handle == NULL) {
 				val = readl(config_regs + MMLSYS_DISP_SMI_DBG_MON_LARB0_CON0 + i * 0x24);
 				writel((val & ~mask) | value,
@@ -1834,7 +1855,7 @@ void mtk_dbgtp_mmlsys_smi_mon_config(struct cmdq_pkt *cmdq_handle, struct cmdq_b
 					REG_FLD_VAL((SMI_MON_PORT_CG_CTL), smi_mon_cg_ctl));
 				mask = REG_FLD_MASK(SMI_MON_PORT_ID) |
 					REG_FLD_MASK(SMI_MON_PORT_CG_CTL);
-				DDPMSG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
+				DDPDBG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
 				if (cmdq_handle == NULL) {
 					val = readl(config_regs + MMLSYS_DISP_SMI_DBG_MON_LARB0_MON0_SEL +
 						j * 0x8 + i * 0x24);
@@ -1909,7 +1930,7 @@ void mtk_dbgtp_mmlsys_config(struct cmdq_pkt *cmdq_handle, struct cmdq_base *clt
 	unsigned int mask = 0;
 
 
-	DDPMSG("%s:%d for mmlsys:%d\n", __func__, __LINE__, mmlsys_id);
+	DDPDBG("%s:%d for mmlsys:%d\n", __func__, __LINE__, mmlsys_id);
 
 	dbgtp_mmlsys_en = priv->mtk_dbgtp_sta.mmlsys[mmlsys_id].subsys_mon_en;
 	dbgtp_mmlsys_update = priv->mtk_dbgtp_sta.mmlsys[mmlsys_id].need_update;
@@ -1932,7 +1953,7 @@ void mtk_dbgtp_mmlsys_config(struct cmdq_pkt *cmdq_handle, struct cmdq_base *clt
 
 	if (dbgtp_mmlsys_update) {
 		if (dbgtp_mmlsys_en) {
-			DDPMSG("%s:%d mmlsys%d dbgtp enable\n", __func__, __LINE__, mmlsys_id);
+			DDPDBG("%s:%d mmlsys%d dbgtp enable\n", __func__, __LINE__, mmlsys_id);
 
 			/* Enable & config subsys - mmlsys 0,1,2 */
 			value = (REG_FLD_VAL((SUBSYS_SMI_TRIG_EN), subsys_smi_trig_en) |
@@ -1947,7 +1968,7 @@ void mtk_dbgtp_mmlsys_config(struct cmdq_pkt *cmdq_handle, struct cmdq_base *clt
 				REG_FLD_MASK(SUBSYS_CROSSBAR_INFO_EN) |
 				REG_FLD_MASK(SUBSYS_MON_INFO_EN) |
 				REG_FLD_MASK(SUBSYS_MON_ENGINE_EN);
-			DDPMSG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
+			DDPDBG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
 			if (cmdq_handle == NULL) {
 				val = readl(config_regs + MMLSYS_DEBUG_SUBSYS);
 				writel((val & ~mask) | value, config_regs + MMLSYS_DEBUG_SUBSYS);
@@ -1974,7 +1995,7 @@ void mtk_dbgtp_mmlsys_config(struct cmdq_pkt *cmdq_handle, struct cmdq_base *clt
 
 			priv->mtk_dbgtp_sta.mmlsys[mmlsys_id].need_update = false;
 		} else {
-			DDPMSG("%s:%d mmlsys%d dbgtp disable\n", __func__, __LINE__, mmlsys_id);
+			DDPDBG("%s:%d mmlsys%d dbgtp disable\n", __func__, __LINE__, mmlsys_id);
 
 			if (cmdq_handle == NULL) {
 				value = (REG_FLD_VAL((SUBSYS_MON_ENGINE_RST), 0x1));
@@ -2021,9 +2042,15 @@ void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handl
 	unsigned int mask = 0;
 	unsigned int i = 0;
 
+
+	if (priv->mtk_dbgtp_sta.dbgtp_en && !(readl(priv->config_regs + DISPSYS_DEBUG_SUBSYS) & 0x1)) {
+		DDPDBG("%s:%d dbgtp regs not match setting need update\n", __func__, __LINE__);
+		mtk_dbgtp_update(priv);
+	}
+
 	if (priv->mtk_dbgtp_sta.need_update) {
 		if (priv->mtk_dbgtp_sta.dbgtp_en) {
-			DDPMSG("%s:%d debug top enable\n", __func__, __LINE__);
+			DDPDBG("%s:%d debug top enable\n", __func__, __LINE__);
 
 			/* dbg top switch */
 			value = priv->mtk_dbgtp_sta.dbgtp_switch;
@@ -2115,7 +2142,7 @@ void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handl
 			/* No need config per frame */
 			priv->mtk_dbgtp_sta.need_update = false;
 		} else {
-			DDPMSG("%s:%d debug top disable\n", __func__, __LINE__);
+			DDPDBG("%s:%d debug top disable\n", __func__, __LINE__);
 
 			/* Disable & Reset subsys monitor */
 			/* subsys - dispsys + SMI + DSI + DSI LPC + crossbar */

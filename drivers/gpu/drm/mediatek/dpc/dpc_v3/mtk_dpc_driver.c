@@ -2469,7 +2469,7 @@ static bool mminfra_is_power_on_v2(void)
 
 static void dpc_monitor_config(struct cmdq_pkt *cmdq_handle, const u32 value)
 {
-	DDPMSG("%s:%d value:%d\n", __func__, __LINE__, value);
+	DDPDBG("%s:%d value:%d\n", __func__, __LINE__, value);
 	if (cmdq_handle == NULL)
 		writel(value, dpc_base + DISP_DPC_DDREN_MONITOR_CFG);
 	else

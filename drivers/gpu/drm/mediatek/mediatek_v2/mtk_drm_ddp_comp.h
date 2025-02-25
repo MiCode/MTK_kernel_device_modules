@@ -1431,6 +1431,7 @@ enum mtk_ddp_io_cmd {
 	DSI_MON_CFG1,
 	DSI_MON_CFG2,
 	DSI_MON_DSI_RST,
+	DSI_GCE_EVENT_CFG,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
