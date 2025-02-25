@@ -110,6 +110,7 @@
 	switch-spr = <1>;
 	spr-ip-type = <0>;
 	switch-mipi-clk-chg = <0>;
+	mte-support = <1>;
 	panel1@0 {
 		compatible = "nt37801,cmd,spr";
 		reg = <0>;
