@@ -57,7 +57,7 @@ static void _MTKGPUQoS_setupFW(phys_addr_t phyaddr, size_t size)
 	;
 }
 
-void MTKGPUQoS_mode(int mode)
+void MTKGPUQoS_mode(int seg_flag)
 {
 	;
 }
