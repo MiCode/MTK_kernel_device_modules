@@ -84,7 +84,9 @@
 
 #define UART_RECORD_COUNT	10
 #define MAX_POLLING_CNT		5000
-#define MAX_FLUSH_CNT		25000
+#define MAX_POLLING_RX_T	3500000
+#define MAX_RETRY_RX_CNT	10000
+#define MAX_FLUSH_CNT		51250
 #define UART_RECORD_MAXLEN	4096
 #define UART_RX_DUMP_MAXLEN	4000
 #define UART_TX_DUMP_MAXLEN	1000
@@ -112,6 +114,8 @@
 #define DMA_RX_ENABLE_FAIL	-8
 #define DMA_FLUSH_FAIL		-9
 #define DMA_KFIFO_OP_ERR	-10
+#define DMA_DESC_NULL		-11
+#define DMA_RX_RETRY_FAIL	-12
 
 /* dma debug buf size*/
 #define LOG_BUG_SIZE		20
@@ -130,6 +134,10 @@ struct uart_info {
 	pid_t irq_cur_pid;
 	char irq_cur_comm[16]; /* task command name from sched.h */
 	int poll_cnt_rx;
+	unsigned int wpt_reg_a;
+	unsigned int rpt_reg_a;
+	unsigned int trans_len_a;
+	unsigned int vff_dbg_reg_a;
 };
 
 struct mtk_uart_apdmacomp {
@@ -190,6 +198,7 @@ struct mtk_chan {
 	unsigned int cur_rec_idx;
 	struct uart_info rec_info[UART_RECORD_COUNT];
 	unsigned int dma_debug_buf[LOG_BUG_SIZE];
+	int rx_chan_retry;
 };
 
 static unsigned long long num;
@@ -461,7 +470,7 @@ void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 	unsigned int count = 0;
 	unsigned int idx = 0;
 
-	idx = c->rec_total < UART_RECORD_COUNT ? 0 : (c->rec_idx + 1) % UART_RECORD_COUNT;
+	idx = c->rec_total < UART_RECORD_COUNT ? 0 : (c->rec_idx) % UART_RECORD_COUNT;
 
 	while (count < min_t(unsigned int, UART_RECORD_COUNT, c->rec_total)) {
 		unsigned long long endtime = c->rec_info[idx].trans_time;
@@ -491,12 +500,14 @@ void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 			c->rec_info[idx].irq_cur_comm);
 
 		pr_info("[%s] [%s] idx=%d, total=%llu, wpt=0x%x, rpt=0x%x, len=%d, poll_cnt_rx=%d, "
-			"vff_dbg=0x%x, copy_wpt=0x%x\n",
+			"vff_dbg=0x%x, copy_wpt=0x%x, wpt_a=0x%x, rpt_a=0x%x, vff_dbg_a=0x%x, len_a=0x%x\n",
 			__func__, c->dir == DMA_DEV_TO_MEM ? "dma_rx" : "dma_tx",
 			idx, c->rec_total,
 			c->rec_info[idx].wpt_reg, c->rec_info[idx].rpt_reg,
 			c->rec_info[idx].trans_len, c->rec_info[idx].poll_cnt_rx,
-			c->rec_info[idx].vff_dbg_reg, c->rec_info[idx].copy_wpt_reg);
+			c->rec_info[idx].vff_dbg_reg, c->rec_info[idx].copy_wpt_reg,
+			c->rec_info[idx].wpt_reg_a, c->rec_info[idx].rpt_reg_a,
+			c->rec_info[idx].vff_dbg_reg_a, c->rec_info[idx].trans_len_a);
 #ifdef CONFIG_UART_DMA_DATA_RECORD
 		if (len <= UART_RECORD_MAXLEN) {
 			if (len > 256)
@@ -948,6 +959,61 @@ static inline void vchan_cookie_complete_thread_irq(struct virt_dma_desc *vd)
 	list_add_tail(&vd->node, &vc->desc_completed);
 }
 
+static int mtk_uart_apdma_rx_retry(struct mtk_chan *c, struct mtk_uart_apdma_desc *d)
+{
+	unsigned int left_data = 0;
+	unsigned int len = 0, wg = 0, rg = 0, cnt = 0, poll_cnt = MAX_RETRY_RX_CNT;
+	unsigned int idx = 0;
+
+	if (d == NULL || c == NULL)
+		return DMA_DESC_NULL;
+
+	if (c->rx_chan_retry != 1)
+		return 0;
+
+	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_B);
+
+	left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
+	while (((left_data & DBG_STAT_WD_ACT) == DBG_STAT_WD_ACT) && (poll_cnt > 0)) {
+		udelay(2);
+		left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
+		poll_cnt--;
+	}
+
+	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_CLR_B);
+
+	if (poll_cnt <= 0)
+		return DMA_RX_RETRY_FAIL;
+
+	len = c->cfg.src_port_window_size;
+	rg = mtk_uart_apdma_read(c, VFF_RPT);
+	wg = mtk_uart_apdma_read(c, VFF_WPT);
+	cnt = (wg & VFF_RING_SIZE) - (rg & VFF_RING_SIZE);
+
+	/*
+	 * The buffer is ring buffer. If wrap bit different,
+	 * represents the start of the next cycle for WPT
+	 */
+	if ((rg ^ wg) & VFF_RING_WRAP)
+		cnt += len;
+
+	/*update current rx_status*/
+	c->rx_status = d->avail_len - cnt;
+	c->irq_wg = wg;
+	c->cur_rpt = rg;
+
+	idx = (unsigned int)((c->rec_idx - 1 + UART_RECORD_COUNT) % UART_RECORD_COUNT);
+	c->rec_info[idx].wpt_reg_a = wg;
+	c->rec_info[idx].rpt_reg_a = rg;
+	c->rec_info[idx].vff_dbg_reg_a = left_data;
+	c->rec_info[idx].trans_len_a = cnt;
+	c->rec_info[idx].poll_cnt_rx = poll_cnt;
+
+	pr_info("[%s]: rx_retry polling success, polling_cnt: %d\n", __func__, poll_cnt);
+
+	return 0;
+}
+
 /* vchan_complete use irq_thread */
 static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 {
@@ -967,8 +1033,15 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 	unsigned long long start_ns = 0;
 	unsigned long long end_ns = 0;
 	unsigned long long cost_time = 0;
+	int rx_retey_ret = 0;
 
 	LIST_HEAD(head);
+
+	if (c->dir == DMA_DEV_TO_MEM) {
+		rx_retey_ret = mtk_uart_apdma_rx_retry(c, d);
+		if (rx_retey_ret < 0)
+			pr_info("[%s]: rx_retry fail, ret: %d\n", __func__, rx_retey_ret);
+	}
 
 	if (c->dir == DMA_MEM_TO_DEV) {
 		idx = c->cur_rec_idx;
@@ -1059,7 +1132,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	unsigned int len, wg, rg, left_data;
 	int cnt;
 	unsigned int idx = 0;
-	int poll_cnt = MAX_POLL_CNT_RX_D;
+	unsigned long long wait_apdma_time = 0;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	struct mtk_uart_apdmadev *mtkd =
 		to_mtk_uart_apdma_dev(c->vc.chan.device);
@@ -1075,11 +1148,16 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	}
 #endif
 	left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
-	while (((left_data & DBG_STAT_WD_ACT) == DBG_STAT_WD_ACT) && (poll_cnt > 0)) {
-		udelay(1);
+	wait_apdma_time = ktime_get_ns();
+	while (((left_data & DBG_STAT_WD_ACT) == DBG_STAT_WD_ACT) &&
+			((ktime_get_ns() - wait_apdma_time) < MAX_POLLING_RX_T)) {
 		left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
-		poll_cnt--;
 	}
+	if ((left_data & DBG_STAT_WD_ACT) == DBG_STAT_WD_ACT)
+		c->rx_chan_retry = 1;
+	else
+		c->rx_chan_retry = 0;
+
 	flag_state = mtk_uart_apdma_read(c, VFF_INT_FLAG);
 	mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_RX_INT_CLR_B);
 	//Read VFF_VALID_FLAG value
@@ -1118,7 +1196,6 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	c->rec_idx = (unsigned int)(c->rec_idx % UART_RECORD_COUNT);
 	c->rec_total++;
 
-	c->rec_info[idx].poll_cnt_rx = poll_cnt;
 	c->rec_info[idx].vff_dbg_reg = left_data;
 	c->rec_info[idx].wpt_reg = wg;
 	c->rec_info[idx].rpt_reg = rg;
@@ -1696,6 +1773,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		c->irq = rc;
 		c->rec_idx = 0;
 		c->cur_rec_idx = 0;
+		c->rx_chan_retry = 0;
 		atomic_set(&c->rxdma_state, 0);
 	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		c->is_hub_port = mtkd->support_hub & (1 << i);
