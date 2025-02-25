@@ -483,6 +483,7 @@ static bool mminfra_is_power_on_v2(void);
 static u8 bw_to_level_v3(const u32 total_bw);
 static void dpc_analysis_v2(void);
 static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt);
+static void process_dbg_opt(const char *opt);
 
 struct mtk_dpc {
 	struct platform_device *pdev;

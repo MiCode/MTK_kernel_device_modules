@@ -2645,6 +2645,30 @@ static struct smi_user_pwr_ctrl dpc_smi_pwr_funcs_v3 = {
 	 .smi_user_put = dpc_smi_pwr_put,
 };
 
+static struct dpc_funcs funcs_v3 = {
+	// .dpc_enable = dpc_enable_v3,
+	// .dpc_config = dpc_config_v3,
+	.dpc_group_enable = dpc_group_enable_v3,
+	// .dpc_mtcmos_auto = dpc_mtcmos_auto_v3,
+	// .dpc_duration_update = dpc_duration_update_v3,
+	// .dpc_mtcmos_vote = dpc_mtcmos_vote_v3,
+	.dpc_dsi_pll_set = dpc_dsi_pll_set_v2,
+	.dpc_clear_wfe_event = dpc_clear_wfe_event_v2,
+	// .dpc_vidle_power_keep = dpc_vidle_power_keep_v3,
+	// .dpc_vidle_power_release = dpc_vidle_power_release_v3,
+	// .dpc_vidle_power_keep_by_gce = dpc_vidle_power_keep_by_gce_v3,
+	// .dpc_vidle_power_release_by_gce = dpc_vidle_power_release_by_gce_v3,
+	// .dpc_hrt_bw_set = dpc_hrt_bw_set_v3,
+	// .dpc_srt_bw_set = dpc_srt_bw_set_v3,
+	.dpc_dvfs_set = dpc_dvfs_set_v2,
+	.dpc_dvfs_trigger = dpc_dvfs_trigger,
+	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx_v2,
+	// .dpc_analysis = dpc_analysis_v2,
+	.dpc_debug_cmd = process_dbg_opt,
+	.dpc_mminfra_on_off = dpc_pm_ctrl,
+	.dpc_monitor_config = dpc_monitor_config,
+};
+
 static void process_dbg_opt(const char *opt)
 {
 	int ret = 0;
@@ -2659,6 +2683,20 @@ static void process_dbg_opt(const char *opt)
 		}
 		DPCDUMP("cap(0x%x->0x%x)", g_priv->vidle_mask, v1);
 		g_priv->vidle_mask = v1;
+
+		if (g_priv->vidle_mask & BIT(0)) {
+			funcs_v3.dpc_vidle_power_keep = g_priv->power_keep;
+			funcs_v3.dpc_vidle_power_release = g_priv->power_release;
+			funcs_v3.dpc_vidle_power_keep_by_gce = g_priv->power_keep_by_gce;
+			funcs_v3.dpc_vidle_power_release_by_gce = g_priv->power_release_by_gce;
+			funcs_v3.dpc_mtcmos_auto = g_priv->set_mtcmos;
+			funcs_v3.dpc_config = g_priv->config;
+
+			mtk_vidle_register(&funcs_v3, DPC_VER2);
+			mml_dpc_register(&funcs_v3, DPC_VER3);
+			mdp_dpc_register(&funcs_v3, DPC_VER2);
+			mtk_vdisp_dpc_register(&funcs_v3);
+		}
 	} else if (strncmp(opt, "vote:", 5) == 0) {
 		ret = sscanf(opt, "vote:%u\n", &v1);
 		if (ret != 1) {
@@ -2893,30 +2931,6 @@ static const struct file_operations debug_fops = {
 };
 #endif
 
-static struct dpc_funcs funcs_v3 = {
-	// .dpc_enable = dpc_enable_v3,
-	// .dpc_config = dpc_config_v3,
-	.dpc_group_enable = dpc_group_enable_v3,
-	// .dpc_mtcmos_auto = dpc_mtcmos_auto_v3,
-	// .dpc_duration_update = dpc_duration_update_v3,
-	// .dpc_mtcmos_vote = dpc_mtcmos_vote_v3,
-	.dpc_dsi_pll_set = dpc_dsi_pll_set_v2,
-	.dpc_clear_wfe_event = dpc_clear_wfe_event_v2,
-	// .dpc_vidle_power_keep = dpc_vidle_power_keep_v3,
-	// .dpc_vidle_power_release = dpc_vidle_power_release_v3,
-	// .dpc_vidle_power_keep_by_gce = dpc_vidle_power_keep_by_gce_v3,
-	// .dpc_vidle_power_release_by_gce = dpc_vidle_power_release_by_gce_v3,
-	// .dpc_hrt_bw_set = dpc_hrt_bw_set_v3,
-	// .dpc_srt_bw_set = dpc_srt_bw_set_v3,
-	.dpc_dvfs_set = dpc_dvfs_set_v2,
-	.dpc_dvfs_trigger = dpc_dvfs_trigger,
-	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx_v2,
-	// .dpc_analysis = dpc_analysis_v2,
-	.dpc_debug_cmd = process_dbg_opt,
-	.dpc_mminfra_on_off = dpc_pm_ctrl,
-	.dpc_monitor_config = dpc_monitor_config,
-};
-
 static struct mtk_dpc mt6991_dpc_driver_data = {
 	.mmsys_id = MMSYS_MT6991,
 	.mtcmos_cfg = mt6991_mtcmos_cfg,
@@ -3106,7 +3120,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	}
 
 	mtk_vidle_register(&funcs_v3, DPC_VER2);
-	mml_dpc_register(&funcs_v3, DPC_VER2);
+	mml_dpc_register(&funcs_v3, DPC_VER3);
 	mdp_dpc_register(&funcs_v3, DPC_VER2);
 	mtk_vdisp_dpc_register(&funcs_v3);
 	mtk_smi_dbg_register_pwr_ctrl_cb(&dpc_smi_pwr_funcs_v3);
