@@ -3362,7 +3362,7 @@ int mtk_effective_cpu_util_with_margin_from_adap_grp(int util, int cpu, struct c
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (flt_get_cpu_util_hook && grp_dvfs_ctrl_mode &&
 			(wl_cpu_curr != 4 || grp_high_freq[gearid]))
-		flt_util = group_aware_dvfs_util(cpumask);
+		flt_util = group_aware_dvfs_util(get_gear_cpumask(gearid));
 	if (grp_dvfs_ctrl_mode == 9)
 		flt_util = 0;
 #endif
