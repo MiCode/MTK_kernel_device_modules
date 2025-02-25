@@ -151,14 +151,17 @@ static enum wla_default_mode default_mode = DEFAULT_BYPASS_MODE;
 
 void wla_set_ddren_bypass(unsigned int bypass_mode)
 {
+	unsigned int runtime_switch_en;
+
 	if (bypass_mode > 1)
 		return;
 
 	if (default_mode == DEFAULT_BYPASS_MODE)
 		bypass_mode = 1;
 
-	/* notify spmfw bypass mode status */
-	wla_write_field(WLAPM_CLK_CTRL0, bypass_mode, BIT(0));
+	runtime_switch_en = !bypass_mode;
+	/* notify spmfw to switch to bypass mode or not */
+	wla_write_field(WLAPM_CLK_CTRL0, runtime_switch_en, BIT(0));
 	wla_write_field(WLAPM_DDREN_CTRL0, bypass_mode,
 						WLAPM_DDREN_BYPASS_FSM_CTRL);
 }
@@ -172,14 +175,17 @@ EXPORT_SYMBOL(wla_get_ddren_bypass);
 
 void wla_set_rglt2p0_bypass(unsigned int bypass_mode)
 {
+	unsigned int runtime_switch_en;
+
 	if (bypass_mode > 1)
 		return;
 
 	if (default_mode != DEFAULT_2P0_MODE)
 		bypass_mode = 1;
 
-	/* notify spmfw bypass mode status */
-	wla_write_field(WLAPM_CLK_CTRL0, bypass_mode, BIT(1));
+	runtime_switch_en = !bypass_mode;
+	/* notify spmfw to switch to bypass mode or not */
+	wla_write_field(WLAPM_CLK_CTRL0, runtime_switch_en, BIT(1));
 	wla_write_field(WLAPM_2P0_RGU4, bypass_mode, WLAPM_2P0_TFC_BYPASS_MODE);
 }
 EXPORT_SYMBOL(wla_set_rglt2p0_bypass);
