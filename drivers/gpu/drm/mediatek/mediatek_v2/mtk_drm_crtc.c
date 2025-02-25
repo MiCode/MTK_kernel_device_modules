@@ -17331,9 +17331,9 @@ struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crt
 				pkt_info->cb_data->pkt_info = pkt_info;
 				list_del(&pkt_info->list);
 				pkt_pool->list_len--;
-				CRTC_MMP_MARK(crtc_index, pkt_info_req, pkt_info->id,
+				PKT_MMP_MARK(crtc_index, pkt_info_req, pkt_info->id,
 					pkt_info->pf_idx);
-				CRTC_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len,
+				PKT_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len,
 					pkt_pool->size);
 				mtk_drm_trace_end();
 				drm_trace_tag_value_state_byid("pkt_pool_list_len",
@@ -17387,7 +17387,7 @@ create_new_pkt:
 	pkt_pool->size++;
 
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PKT_POOL)) {
-		CRTC_MMP_MARK(crtc_index, pkt_info_new, pkt_info->id,
+		PKT_MMP_MARK(crtc_index, pkt_info_new, pkt_info->id,
 			pkt_info->pf_idx);
 		mtk_drm_trace_end();
 		mutex_unlock(&pkt_pool->lock);
@@ -17406,8 +17406,8 @@ create_new_pkt:
 	pkt_info->reuse_counter = 0;
 	INIT_LIST_HEAD(&pkt_info->list);
 
-	CRTC_MMP_MARK(crtc_index, pkt_info_new, pkt_info->id, pkt_info->pf_idx);
-	CRTC_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
+	PKT_MMP_MARK(crtc_index, pkt_info_new, pkt_info->id, pkt_info->pf_idx);
+	PKT_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
 	mtk_drm_trace_end();
 	drm_trace_tag_value_state_byid("pkt_pool_size", pkt_pool->size, crtc_index);
 
@@ -17436,7 +17436,7 @@ void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
 			pkt_info->id, pkt_info->pf_idx);
 		cmdq_pkt_destroy(pkt_info->cmdq_handle);
 		kfree(pkt_info->cb_data);
-		CRTC_MMP_MARK(crtc_index, pkt_info_rel,
+		PKT_MMP_MARK(crtc_index, pkt_info_rel,
 			pkt_info->id, pkt_info->pf_idx);
 		mtk_drm_trace_end();
 		kfree(pkt_info);
@@ -17458,8 +17458,8 @@ void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
 	list_add_tail(&pkt_info->list, &pkt_pool->list);
 	pkt_pool->list_len++;
 
-	CRTC_MMP_MARK(crtc_index, pkt_info_rel, pkt_info->id, pkt_info->pf_idx);
-	CRTC_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
+	PKT_MMP_MARK(crtc_index, pkt_info_rel, pkt_info->id, pkt_info->pf_idx);
+	PKT_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
 	mtk_drm_trace_end();
 	drm_trace_tag_value_state_byid("pkt_pool_list_len", pkt_pool->list_len, crtc_index);
 

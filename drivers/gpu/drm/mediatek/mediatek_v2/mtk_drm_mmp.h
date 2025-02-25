@@ -197,7 +197,9 @@ struct CRTC_MMP_Events {
 	mmp_event enter_vidle;
 	mmp_event pause_vidle;
 	mmp_event set_dirty;
-	/*pkt pool*/
+};
+
+struct PKT_MMP_Events {
 	mmp_event pkt_info_new;
 	mmp_event pkt_info_req;
 	mmp_event pkt_info_rel;
@@ -206,6 +208,7 @@ struct CRTC_MMP_Events {
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);
 struct CRTC_MMP_Events *get_crtc_mmp_events(unsigned long id);
+struct PKT_MMP_Events *get_pkt_mmp_events(unsigned long id);
 void drm_mmp_init(void);
 int mtk_drm_mmp_ovl_layer(struct mtk_plane_state *state,
 			  u32 downSampleX, u32 downSampleY, int global_lye_num);
@@ -280,6 +283,28 @@ long: (id >= 0 ? (unsigned long)id : ULONG_MAX) \
 					 MMPROFILE_FLAG_PULSE, data);       \
 	} while (0)
 
+/* print mmp log for PKT_MMP_Events */
+#define PKT_MMP_MARK(id, event, v1, v2)                                       \
+	do {								\
+		if (CHECK_ID_TYPE(id) < MMP_CRTC_NUM)                              \
+			mmprofile_log_ex(get_pkt_mmp_events(id)->event,       \
+					 MMPROFILE_FLAG_PULSE, v1, v2);       \
+	} while (0)
+
+#define PKT_MMP_EVENT_START(id, event, v1, v2)                                \
+	do {								\
+		if (CHECK_ID_TYPE(id) < MMP_CRTC_NUM)                              \
+			mmprofile_log_ex(get_pkt_mmp_events(id)->event,       \
+					 MMPROFILE_FLAG_START, v1, v2);       \
+	} while (0)
+
+#define PKT_MMP_EVENT_END(id, event, v1, v2)                                  \
+	do {								\
+		if (CHECK_ID_TYPE(id) < MMP_CRTC_NUM)                              \
+			mmprofile_log_ex(get_pkt_mmp_events(id)->event,       \
+					 MMPROFILE_FLAG_END, v1, v2);       \
+	} while (0)
+
 #else
 #define DRM_MMP_MARK(event, v1, v2) do { } while (0)
 #define DRM_MMP_EVENT_START(event, v1, v2) do { } while (0)
@@ -287,6 +312,9 @@ long: (id >= 0 ? (unsigned long)id : ULONG_MAX) \
 #define CRTC_MMP_MARK(id, event, v1, v2) do { } while (0)
 #define CRTC_MMP_EVENT_START(id, event, v1, v2) do { } while (0)
 #define CRTC_MMP_EVENT_END(id, event, v1, v2) do { } while (0)
+#define PKT_MMP_MARK(id, event, v1, v2) do { } while (0)
+#define PKT_MMP_EVENT_START(id, event, v1, v2) do { } while (0)
+#define PKT_MMP_EVENT_END(id, event, v1, v2) do { } while (0)
 #endif
 
 #endif

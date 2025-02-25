@@ -18,6 +18,7 @@
 
 static struct DRM_MMP_Events g_DRM_MMP_Events;
 static struct CRTC_MMP_Events g_CRTC_MMP_Events[MMP_CRTC_NUM];
+static struct PKT_MMP_Events g_PKT_MMP_Events[MMP_CRTC_NUM];
 
 /* need to update if add new mmp_event in DRM_MMP_Events */
 void init_drm_mmp_event(void)
@@ -425,16 +426,41 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "pause_V_idle");
 		g_CRTC_MMP_Events[i].set_dirty = mmprofile_register_event(
 			crtc_mmp_root, "set_dirty");
-		g_CRTC_MMP_Events[i].pkt_info_new = mmprofile_register_event(
-			crtc_mmp_root, "pkt_info_new");
-		g_CRTC_MMP_Events[i].pkt_info_req = mmprofile_register_event(
-			crtc_mmp_root, "pkt_info_req");
-		g_CRTC_MMP_Events[i].pkt_info_rel = mmprofile_register_event(
-			crtc_mmp_root, "pkt_info_rel");
-		g_CRTC_MMP_Events[i].pkt_pool = mmprofile_register_event(
-			crtc_mmp_root, "pkt_pool");
 	}
 }
+
+void init_pkt_mmp_event(void)
+{
+	int i = 0;
+	int r = 0;
+
+	for (i = 0; i < MMP_CRTC_NUM; i++) {
+		char name[32];
+		mmp_event pkt_mmp_root;
+
+		/* create i th root of PKT mmp events */
+		r = snprintf(name, sizeof(name), "pkt_crtc%d", i);
+		if (r < 0) {
+			/* Handle snprintf() error */
+			DDPPR_ERR("%s:snprintf error\n", __func__);
+			return;
+		}
+		pkt_mmp_root =
+			mmprofile_register_event(g_DRM_MMP_Events.drm, name);
+		g_DRM_MMP_Events.crtc[i] = pkt_mmp_root;
+
+		/* init PKT mmp events */
+		g_PKT_MMP_Events[i].pkt_info_new = mmprofile_register_event(
+			pkt_mmp_root, "pkt_info_new");
+		g_PKT_MMP_Events[i].pkt_info_req = mmprofile_register_event(
+			pkt_mmp_root, "pkt_info_req");
+		g_PKT_MMP_Events[i].pkt_info_rel = mmprofile_register_event(
+			pkt_mmp_root, "pkt_info_rel");
+		g_PKT_MMP_Events[i].pkt_pool = mmprofile_register_event(
+			pkt_mmp_root, "pkt_pool");
+	}
+}
+
 void drm_mmp_init(void)
 {
 	DDPMSG("%s\n", __func__);
@@ -444,6 +470,7 @@ void drm_mmp_init(void)
 	/* init mmp events */
 	init_drm_mmp_event();
 	init_crtc_mmp_event();
+	init_pkt_mmp_event();
 
 	/* enable all mmp events */
 	mmprofile_enable_event_recursive(g_DRM_MMP_Events.drm, 1);
@@ -459,6 +486,11 @@ struct DRM_MMP_Events *get_drm_mmp_events(void)
 struct CRTC_MMP_Events *get_crtc_mmp_events(unsigned long id)
 {
 	return &g_CRTC_MMP_Events[id];
+}
+
+struct PKT_MMP_Events *get_pkt_mmp_events(unsigned long id)
+{
+	return &g_PKT_MMP_Events[id];
 }
 
 //#include <mtk_iommu_ext.h>
