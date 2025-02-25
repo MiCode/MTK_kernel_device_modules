@@ -3763,7 +3763,7 @@ static int __init vcp_init(void)
 		vcp_io_devs[i] = NULL;
 	vcp_power_devs = NULL;
 
-	if (platform_driver_register(&mtk_vcp_device)) {
+	if (platform_driver_register(&mtk_vcp_device) != 0) {
 		pr_info("[VCP] vcp probe fail\n");
 		goto err_vcp;
 	}
