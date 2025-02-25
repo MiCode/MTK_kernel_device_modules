@@ -10640,7 +10640,8 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 			mtk_ddp_comp_layer_config(comp, active_index, plane_state, NULL);
 
 			CRTC_MMP_MARK(0, bwm20,
-				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] << 4 | j, 1);
+				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] << 4 | j,
+				(unsigned long)mtk_fb_get_dma(fb));
 			active_index ++;
 			DDPDBG_BWM("%s:bwm2[%u],key:%llu,comp:%s-%u,layer:%u,valid:%u,dirty:%u\n",
 				__func__, j, all_layer_compress_ratio_table[j].key_value,

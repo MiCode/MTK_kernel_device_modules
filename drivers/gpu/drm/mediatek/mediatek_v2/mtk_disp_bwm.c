@@ -292,6 +292,7 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	writel(0x1, comp->regs + DISP_REG_BWM_TRIG);
+	CRTC_MMP_MARK(0, bwm20, 3, 3);
 }
 
 void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
@@ -553,6 +554,7 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 				+ bwm->data->aid_lye_ofs * idx);
 		}
 	}
+	CRTC_MMP_MARK(0, bwm20, (unsigned long)lx_hdr_addr, (unsigned long)lx_hdr_pitch);
 
 	return 0;
 }
