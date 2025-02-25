@@ -8990,10 +8990,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/* <mm0 mm1 mm_ao mm2> */
 			mm-cfg-base = <0x30000000 0x30a00000 0x30080000 0x30b00000>;
 			mm-dbg-out-sel-nr = <32 4 0 8>;
-			//mmpc-src-ctrl;
-			//mmpc-src-ctrl-base = <0x31b51000>;
-			//mm-proc-mtcmos-base = <0x1c00d04c>;
-			//mmpc-rsc-user = <7 9>;
+			mmpc-src-ctrl-v2;
+			mmpc-src-ctrl-base = <0x31b51000>;
+			mmpc-src-ctrl-fsm = <0x18 0x38 0x58 0x78 0x98 0xb8 0xd8 0x1d8 0x1f8>;
+			mmpc-src-ctrl-hw = <0x1c 0x3c 0x5c 0x7c 0x9c 0xbc 0xdc 0x1dc 0x1fc>;
+			mm-proc-mtcmos-base = <0x1c00d04c>;
+			mm-proc-mtcmos-mask = <0x80000000>;
 		};
 
 		gce: gce@30100000 {
