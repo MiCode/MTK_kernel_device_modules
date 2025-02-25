@@ -260,9 +260,16 @@ static int emi_icc_set(struct icc_node *src, struct icc_node *dst)
 	node = dst->data;
 
 	if (node->ep == 1) {
-		mtk_dvfsrc_send_request(src->provider->dev,
+		if (node->max_peak == 0xFFFFFFFF) {
+			pr_info("[PEAK-BW-ICC] is unexpected value\n");
+			mtk_dvfsrc_send_request(src->provider->dev,
+					MTK_DVFSRC_CMD_PEAK_BW_REQUEST,
+					0);
+		} else {
+			mtk_dvfsrc_send_request(src->provider->dev,
 					MTK_DVFSRC_CMD_PEAK_BW_REQUEST,
 					node->max_peak);
+		}
 		mtk_dvfsrc_send_request(src->provider->dev,
 					MTK_DVFSRC_CMD_BW_REQUEST,
 					node->sum_avg);
