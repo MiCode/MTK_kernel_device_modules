@@ -13,8 +13,7 @@
 #include <linux/dma-buf.h>
 #include <linux/dma-direction.h>
 #include <linux/dma-heap.h>
-#include <linux/vmalloc.h>
-#include <linux/of_platform.h>
+
 
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp_comp.h"
@@ -26,235 +25,9 @@
 #include "mtk_fence.h"
 #include "mtk_sync.h"
 
+
+
 #include "mtk_disp_dbi_count.h"
-
-#define DISP_DBI_COUNT_TOP_SHADOW_CTRL (0x0004)
-	#define BYPASS_SHADOW REG_FLD_MSB_LSB(0, 0)
-	#define FORCE_COMMIT REG_FLD_MSB_LSB(1, 1)
-	#define READ_WRK_REG REG_FLD_MSB_LSB(2, 2)
-	#define SR2WRK_CG_ON REG_FLD_MSB_LSB(3, 3)
-#define REG_DBI_FRAME_DROP_BLOCK_FUNC (0x0008)
-	#define FRAME_DROP_BLOCK_FUNC REG_FLD_MSB_LSB(0, 0)
-#define REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN 0x000C
-	#define SAMPLING_PQ_SINGLE_TRIGGER_SW_EN REG_FLD_MSB_LSB(0, 0)
-	#define SAMPLING_PQ_SINGLE_TRIGGER REG_FLD_MSB_LSB(4, 4)
-#define REG_DBI_SAMPLING_HDROP_EN 0x0024
-	#define SAMPLING_HDROP_EN REG_FLD_MSB_LSB(0, 0)
-	#define SAMPLING_HDROP_COUNT REG_FLD_MSB_LSB(7, 4)
-	#define SAMPLING_HDROP_IDX_SW_EN REG_FLD_MSB_LSB(8, 8)
-	#define SAMPLING_HDROP_IDX_SW REG_FLD_MSB_LSB(15, 12)
-#define REG_DBI_SAMPLING_HCROP_EN 0x0028
-	#define SAMPLING_HCROP_EN REG_FLD_MSB_LSB(0, 0)
-	#define SAMPLING_HCROP_COUNT REG_FLD_MSB_LSB(7, 4)
-	#define SAMPLING_HCROP_IDX_SW_EN REG_FLD_MSB_LSB(8, 8)
-	#define SAMPLING_HCROP_IDX_SW REG_FLD_MSB_LSB(15, 12)
-#define REG_DBI_SAMPLING_HCROP_SLICE_WIDTH 0x002C
-	#define SAMPLING_HCROP_SLICE_WIDTH REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_SAMPLING_VDROP_EN 0x0030
-	#define SAMPLING_VDROP_EN REG_FLD_MSB_LSB(0, 0)
-	#define SAMPLING_VDROP_COUNT REG_FLD_MSB_LSB(7, 4)
-	#define SAMPLING_VDROP_IDX_SW_EN REG_FLD_MSB_LSB(8, 8)
-	#define SAMPLING_VDROP_IDX_SW REG_FLD_MSB_LSB(15, 12)
-#define REG_DBI_COUNTING_HW_ENABLE 0x0034
-	#define COUNTING_HW_ENABLE REG_FLD_MSB_LSB(0, 0)
-	#define COUNTING_PQ_ENABLE REG_FLD_MSB_LSB(4, 4)
-	#define COUNTING_RESET_TIMESTAMP REG_FLD_MSB_LSB(8, 8)
-	#define COUNTING_RESET_INDEX REG_FLD_MSB_LSB(12, 12)
-#define REG_DBI_COUNTING_SW_TIMEDIFF_EN 0x0038
-	#define COUNTING_SW_TIMEDIFF_EN REG_FLD_MSB_LSB(0, 0)
-	#define COUNTING_SW_TIMEDIFF REG_FLD_MSB_LSB(23, 8)
-#define REG_DBI_COUNTING_SW_SYS_TIME_EN 0x003c
-	#define COUNTING_SW_SYS_TIME_EN REG_FLD_MSB_LSB(0, 0)
-	#define COUNTING_SW_SYS_CLOCK REG_FLD_MSB_LSB(23, 8)
-#define REG_DBI_COUNTING_SW_IDX_EN 0x0040
-	#define COUNTING_SW_IDX_EN REG_FLD_MSB_LSB(0, 0)
-	#define COUNTING_SW_IDX REG_FLD_MSB_LSB(10, 4)
-#define REG_DBI_COUNTING_GAIN_R (0x0710)
-	#define COUNTING_GAIN_R REG_FLD_MSB_LSB(15, 0)
-#define REG_DBI_COUNTING_GAIN_G (0x0714)
-	#define COUNTING_GAIN_G REG_FLD_MSB_LSB(15, 0)
-#define REG_DBI_COUNTING_GAIN_B (0x0718)
-	#define COUNTING_GAIN_B REG_FLD_MSB_LSB(15, 0)
-#define REG_DBI_COUNTING_SH1 (0x0728)
-
-#define REG_DBI_COUNTING_MODE (0x0730)
-	#define COUNTING_MODE REG_FLD_MSB_LSB(0, 0)
-	#define COUNTING_SLICE_MODE REG_FLD_MSB_LSB(5, 4)
-	#define COUNTING_SLICE_NUM REG_FLD_MSB_LSB(14, 8)
-
-#define DISP_DBI_COUNT_TOP_CTR_1 (0x0748)
-	#define REG_VS_RE_GEN_CYC REG_FLD_MSB_LSB(7, 0)
-#define DISP_DBI_COUNT_TOP_CTR_2 (0x074c)
-	#define REG_VS_RE_GEN REG_FLD_MSB_LSB(0, 0)
-#define DISP_DBI_COUNT_TOP_CTR_3 (0x0750)
-	#define REG_DBI_COUNT_BYPASS REG_FLD_MSB_LSB(0, 0)
-	#define REG_FORCE_IN_DONE REG_FLD_MSB_LSB(1, 1)
-	#define REG_FORCE_OUT_DONE REG_FLD_MSB_LSB(2, 2)
-	#define REG_FORCE_UDMA_W_DONE REG_FLD_MSB_LSB(3, 3)
-	#define REG_EOF_SEL REG_FLD_MSB_LSB(6, 6)
-	#define REG_EOF_USER REG_FLD_MSB_LSB(7, 7)
-	#define REG_DBI_COUNT_TOP_CLK_GATING_DB_EN REG_FLD_MSB_LSB(14, 14)
-	#define REG_DBI_COUNT_TOP_CLK_FORCE_EN REG_FLD_MSB_LSB(15, 15)
-#define DISP_DBI_COUNT_TOP_CTR_4 (0x0754)
-	#define REG_DBI_COUNT_SW_RST REG_FLD_MSB_LSB(0, 0)
-#define DISP_DBI_COUNT_SMI_SB_FLG_DBIR (0x76c)
-	#define REG_DBIR_PREULTRA_RE_ULTRA_MASK REG_FLD_MSB_LSB(0, 0)
-	#define REG_DBIR_PREULTRA_RE_ULTRA_FRCE REG_FLD_MSB_LSB(1, 1)
-	#define REG_DBIR_ULTRA_RE_MASK REG_FLD_MSB_LSB(2, 2)
-	#define REG_DBIR_ULTRA_RE_FRCE REG_FLD_MSB_LSB(3, 3)
-	#define REG_DBIR_RE_ULTRA_MODE REG_FLD_MSB_LSB(11, 8)
-	#define REG_DBIR_STASH_PREULTRA_RE_ULTRA_MASK REG_FLD_MSB_LSB(16, 16)
-	#define REG_DBIR_STASH_PREULTRA_RE_ULTRA_FRCE REG_FLD_MSB_LSB(17, 17)
-	#define REG_DBIR_STASH_ULTRA_RE_MASK REG_FLD_MSB_LSB(18, 18)
-	#define REG_DBIR_STASH_ULTRA_RE_FRCE REG_FLD_MSB_LSB(19, 19)
-	#define REG_DBIR_STASH_RE_ULTRA_MODE REG_FLD_MSB_LSB(27, 24)
-#define DISP_DBI_COUNT_SMI_SB_FLG_DBIW (0x770)
-	#define REG_DBIW_PREULTRA_WR_ULTRA_MASK REG_FLD_MSB_LSB(0, 0)
-	#define REG_DBIW_PREULTRA_WR_ULTRA_FRCE REG_FLD_MSB_LSB(1, 1)
-	#define REG_DBIW_ULTRA_WR_MASK REG_FLD_MSB_LSB(2, 2)
-	#define REG_DBIW_ULTRA_WR_FRCE REG_FLD_MSB_LSB(3, 3)
-	#define REG_DBIW_WR_ULTRA_MODE REG_FLD_MSB_LSB(11, 8)
-	#define REG_DBIW_STASH_PREULTRA_WR_ULTRA_MASK REG_FLD_MSB_LSB(16, 16)
-	#define REG_DBIW_STASH_PREULTRA_WR_ULTRA_FRCE REG_FLD_MSB_LSB(17, 17)
-	#define REG_DBIW_STASH_ULTRA_WR_MASK REG_FLD_MSB_LSB(18, 18)
-	#define REG_DBIW_STASH_ULTRA_WR_FRCE REG_FLD_MSB_LSB(19, 19)
-	#define REG_DBIW_STASH_WR_ULTRA_MODE REG_FLD_MSB_LSB(27, 24)
-#define DISP_DBI_COUNT_GUSR_CTRL_DBIR (0x774)
-	#define REG_DBIR_GUSER_CTRL REG_FLD_MSB_LSB(31, 0)
-#define DISP_DBI_COUNT_GUSR_CTRL_DBIW (0x778)
-	#define REG_DBIW_GUSER_CTRL REG_FLD_MSB_LSB(31, 0)
-#define DISP_DBI_COUNT_DDREN_CTRL_DBIW (0x77c)
-	#define REG_DBIW_DDREN_REQ_DISABLE REG_FLD_MSB_LSB(0, 0)
-	#define REG_DBIW_USE_HRT_DDREN_REQ REG_FLD_MSB_LSB(1, 1)
-	#define REG_DBIW_SW_DDREN_REQ REG_FLD_MSB_LSB(2, 2)
-	#define REG_DBIW_DDREN_REQ_SW_MODE_EN REG_FLD_MSB_LSB(3, 3)
-	#define REG_DBIW_DDREN_SMI_RESET REG_FLD_MSB_LSB(4, 4)
-	#define REG_DBIW_SRT_DDREN_REQ REG_FLD_MSB_LSB(5, 5)
-	#define REG_DBIW_SMI_ACTIVE_PROT_DISABLE REG_FLD_MSB_LSB(6, 6)
-	#define REG_DBIW_DDREN_REQ_DEBUG REG_FLD_MSB_LSB(15, 8)
-	#define REG_DBIW_STASH_DDREN_REQ_DISABLE REG_FLD_MSB_LSB(16, 16)
-	#define REG_DBIW_STASH_USE_HRT_DDREN_REQ REG_FLD_MSB_LSB(17, 17)
-	#define REG_DBIW_STASH_SW_DDREN_REQ REG_FLD_MSB_LSB(18, 18)
-	#define REG_DBIW_STASH_DDREN_SW_MODE_EN REG_FLD_MSB_LSB(19, 19)
-	#define REG_DBIW_STASH_DDREN_SMI_RESET REG_FLD_MSB_LSB(20, 20)
-	#define REG_DBIW_STASH_SRT_DDREN_REQ REG_FLD_MSB_LSB(21, 21)
-	#define REG_DBIW_STASH_DDREN_REQ_DEBUG REG_FLD_MSB_LSB(31, 24)
-#define DISP_DBI_COUNT_DDREN_CTRL_DBIR (0x780)
-	#define REG_DBIR_DDREN_REQ_DISABLE REG_FLD_MSB_LSB(0, 0)
-	#define REG_DBIR_USE_HRT_DDREN_REQ REG_FLD_MSB_LSB(1, 1)
-	#define REG_DBIR_SW_DDREN_REQ REG_FLD_MSB_LSB(2, 2)
-	#define REG_DBIR_DDREN_REQ_SW_MODE_EN REG_FLD_MSB_LSB(3, 3)
-	#define REG_DBIR_DDREN_SMI_RESET REG_FLD_MSB_LSB(4, 4)
-	#define REG_DBIR_SRT_DDREN_REQ REG_FLD_MSB_LSB(5, 5)
-	#define REG_DBIR_SMI_ACTIVE_PROT_DISABLE REG_FLD_MSB_LSB(6, 6)
-	#define REG_DBIR_DDREN_REQ_DEBUG REG_FLD_MSB_LSB(15, 8)
-	#define REG_DBIR_STASH_DDREN_REQ_DISABLE REG_FLD_MSB_LSB(16, 16)
-	#define REG_DBIR_STASH_USE_HRT_DDREN_REQ REG_FLD_MSB_LSB(17, 17)
-	#define REG_DBIR_STASH_SW_DDREN_REQ REG_FLD_MSB_LSB(18, 18)
-	#define REG_DBIR_STASH_DDREN_SW_MODE_EN REG_FLD_MSB_LSB(19, 19)
-	#define REG_DBIR_STASH_DDREN_SMI_RESET REG_FLD_MSB_LSB(20, 20)
-	#define REG_DBIR_STASH_SRT_DDREN_REQ REG_FLD_MSB_LSB(21, 21)
-	#define REG_DBIR_STASH_DDREN_REQ_DEBUG REG_FLD_MSB_LSB(31, 24)
-#define REG_DBI_COUNT_FRAME_WIDTH (0x784)
-	#define COUNT_FRAME_WIDTH REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_COUNT_FRAME_HEIGHT (0x788)
-	#define COUNT_FRAME_HEIGHT REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_COUNT_OUTP_IN_HSIZE (0x78c)
-	#define COUNT_OUTP_IN_HSIZE REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_COUNT_OUTP_IN_VSIZE (0x790)
-	#define COUNT_OUTP_IN_VSIZE REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_COUNT_OUTP_OUT_HSIZE (0x794)
-	#define COUNT_OUTP_OUT_HSIZE REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_COUNT_OUTP_OUT_VSIZE (0x798)
-	#define COUNT_OUTP_OUT_VSIZE REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_COUNT_REAL_FRAME_WIDTH (0x7a4)
-	#define COUNT_REAL_FRAME_WIDTH REG_FLD_MSB_LSB(12, 0)
-#define REG_DBI_COUNT_REAL_FRAME_HEIGHT (0x7a8)
-	#define COUNT_REAL_FRAME_HEIGHT REG_FLD_MSB_LSB(12, 0)
-#define REG_DBIR_UDMA_AUTO_CLK_DB_EN (0x7ac)
-	#define DBIR_UDMA_AUTO_CLK_DB_EN REG_FLD_MSB_LSB(1, 0)
-	#define DBIR_UDMA_AUTO_CLK_EN REG_FLD_MSB_LSB(3, 2)
-	#define DBIR_UDMA_AUTO_CLK_SW_MODE_EN REG_FLD_MSB_LSB(5, 4)
-	#define DBIW_UDMA_AUTO_CLK_DB_EN REG_FLD_MSB_LSB(9, 8)
-	#define DBIW_UDMA_AUTO_CLK_EN REG_FLD_MSB_LSB(11, 10)
-	#define DBIW_UDMA_AUTO_CLK_SW_MODE_EN REG_FLD_MSB_LSB(13, 12)
-#define REG_DBIR_UDMA_BASE_ADDR (0x7b0)
-	#define DBIR_UDMA_BASE_ADDR REG_FLD_MSB_LSB(31, 0)
-#define REG_DBIW_UDMA_BASE_ADDR (0x7b4)
-	#define DBIW_UDMW_BASE_ADDR REG_FLD_MSB_LSB(31, 0)
-#define REG_DBI_COUNT_OUTP_EN (0x7b8)
-	#define COUNT_OUTP_EN REG_FLD_MSB_LSB(0, 0)
-	#define COUNT_OUTP_RST REG_FLD_MSB_LSB(1, 1)
-	#define COUNT_OUTP_1TNP REG_FLD_MSB_LSB(3, 2)
-	#define COUNT_INP_EN REG_FLD_MSB_LSB(4, 4)
-	#define COUNT_INP_RST REG_FLD_MSB_LSB(5, 5)
-	#define COUNT_INP_1TNP REG_FLD_MSB_LSB(7, 6)
-	#define COUNT_OUTP_STATUS_CLEAR REG_FLD_MSB_LSB(8, 8)
-	#define COUNT_INP_STATUS_CLEAR REG_FLD_MSB_LSB(9, 9)
-	#define COUNT_ENG_STATUS_CLEAR REG_FLD_MSB_LSB(10, 10)
-#define REG_DBI_COUNT_OUTP_OUT_HOFFSET (0x7bc)
-#define REG_DBI_COUNT_OUTP_OF_END (0x7c0)
-#define REG_DBI_COUNT_OUTP_IN_PIX_CNT (0x7c4)
-#define REG_DBI_COUNT_OUTP_OUT_LINE_CNT (0x7c8)
-#define REG_DBI_COUNT_OUTP_OUT_PIX_CNT (0x7cc)
-#define REG_DBI_COUNT_INP_IF_END (0x7d0)
-#define REG_DBI_COUNT_INP_IN_PIX_CNT (0x7d4)
-#define REG_DBI_COUNT_RESERVE (0x7d8)
-#define REG_DBI_SAMPLING_BYPASS (0x7e0)
-#define REG_DBI_COUNTING_BYPASS (0x7e4)
-#define REG_DBI_COUNT_ALL_AUTO_CLK_EN (0x7e8)
-#define REG_DBI_COUNT_UDMA_W_EN (0x7ec)
-	#define COUNT_UDMA_W_EN REG_FLD_MSB_LSB(0, 0)
-	#define COUNT_UDMA_R_EN REG_FLD_MSB_LSB(4, 4)
-#define REG_DBI_COUNT_PATH_CONTROL (0x7f0)
-#define REG_SRAM_SW_TRIG (0x7f4)
-#define REG_SRAM_SW_DO (0x7f8)
-#define REG_DBI_COUNT_DISABLE_BIT_MASK (0x804)
-#define REG_DBI_COUNT_EMI_SIDE_BAND (0x808)
-	#define REG_CNTR_ULTRA_MODE REG_FLD_MSB_LSB(11, 8)
-	#define REG_CNTW_ULTRA_MODE REG_FLD_MSB_LSB(27, 24)
-	#define REG_CNTR_STASH_ULTRA_FRCE REG_FLD_MSB_LSB(6, 6)
-	#define REG_CNTW_STASH_ULTRA_FRCE REG_FLD_MSB_LSB(22, 22)
-
-#define REG_DBI_GATING (0x80c)
-	#define REG_SMP_CLK_FORCE_EN REG_FLD_MSB_LSB(0, 0)
-	#define REG_SMP_CLK_GATING_DB_EN REG_FLD_MSB_LSB(1, 1)
-	#define REG_TMR_CLK_FORCE_EN REG_FLD_MSB_LSB(2, 2)
-	#define REG_TMR_CLK_GATING_DB_EN REG_FLD_MSB_LSB(3, 3)
-	#define REG_SCL_CLK_FORCE_EN REG_FLD_MSB_LSB(4, 4)
-	#define REG_SCL_CLK_GATING_DB_EN REG_FLD_MSB_LSB(5, 5)
-	#define REG_CNT_CLK_FORCE_EN REG_FLD_MSB_LSB(6, 6)
-	#define REG_CNT_CLK_GATING_DB_EN REG_FLD_MSB_LSB(7, 7)
-	#define REG_GATING_RESERVE REG_FLD_MSB_LSB(31, 8)
-#define REG_DBI_COUNT_PPCTRL_0 (0x810)
-#define REG_DBI_COUNT_PPCTRL_1 (0x814)
-#define REG_DBI_COUNT_DBG_0 (0x818)
-#define REG_DBI_COUNT_DITHER (0x81c)
-#define REG_DBI_COUNT_VPP_RSZ_BYPASS (0x820)
-#define REG_DBI_COUNT_HCROP_IDX (0x824)
-
-#define DISP_DBI_COUNT_UDMA_R_CTRL30 (0xc6c)
-#define DISP_DBI_COUNT_UDMA_W_CTR_1B (0xe6c)
-
-
-#define DISP_DBI_COUNT_UDMA_R_CTRL37 (0xc74)
-	#define REG_FRAME_CMD_MODE_R REG_FLD_MSB_LSB(15, 15)
-
-#define DISP_DBI_COUNT_UDMA_W_CTRL37 (0xE74)
-	#define REG_FRAME_CMD_MODE_W REG_FLD_MSB_LSB(15, 15)
-
-#define MAX(a,b) ((a>=b)?(a):(b))
-#define MIN(a,b) ((a>=b)?(b):(a))
-
-static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, uint32_t slice_num,
-	uint32_t slice_id, uint32_t time_ms, u64 addr);
-static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
-		struct mtk_ddp_config *cfg,
-		struct cmdq_pkt *handle);
-static void mtk_dbi_count_srt_cal(struct mtk_ddp_comp *comp, int en, int slice_num);
-
-
 
 #define DBI_SPIN_LOCK(lock, name, line, flag)                        \
 	do {                                                         \
@@ -286,97 +59,6 @@ struct dbi_count_block_info {
 	uint32_t channel;
 };
 
-static inline unsigned int mtk_dbi_count_read(struct mtk_ddp_comp *comp,
-	unsigned int offset)
-{
-	u32 max_offset = 0x1000;
-
-	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
-		__func__, offset);
-		return 0;
-	}
-	return readl(comp->regs + offset);
-}
-
-static inline void mtk_dbi_count_write_mask_cpu(struct mtk_ddp_comp *comp,
-	unsigned int value, unsigned int offset, unsigned int mask)
-{
-	u32 max_offset = 0x1000;
-	unsigned int tmp;
-
-	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
-		__func__, offset);
-		return;
-	}
-
-	tmp = readl(comp->regs + offset);
-	tmp = (tmp & ~mask) | (value & mask);
-	writel(tmp, comp->regs + offset);
-}
-
-static inline void mtk_dbi_count_write_cpu(struct mtk_ddp_comp *comp,
-	unsigned int value, unsigned int offset)
-{
-	u32 max_offset = 0x1000;
-
-	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
-		__func__, offset);
-		return;
-	}
-		writel(value, comp->regs + offset);
-}
-
-static inline void mtk_dbi_count_write(struct mtk_ddp_comp *comp, unsigned int value,
-	unsigned int offset, void *handle)
-{
-	u32 max_offset = 0x1000;
-
-	if (comp == NULL) {
-		DDPPR_ERR("%s: invalid comp\n", __func__);
-		return;
-	}
-
-	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
-		__func__, offset);
-		return;
-	}
-
-	if (handle != NULL) {
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + offset, value, ~0);
-	} else {
-		writel(value, comp->regs + offset);
-	}
-}
-
-static inline void mtk_dbi_count_write_mask(struct mtk_ddp_comp *comp, unsigned int value,
-	unsigned int offset, unsigned int mask, void *handle)
-{
-	u32 max_offset = 0x1000;
-
-	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
-		__func__, offset);
-		return;
-	}
-
-	if (handle != NULL) {
-		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-			comp->regs_pa + offset, value, mask);
-	} else {
-		mtk_dbi_count_write_mask_cpu(comp, value, offset, mask);
-	}
-}
-
-static inline struct mtk_disp_dbi_count *comp_to_dbi_count(struct mtk_ddp_comp *comp)
-{
-	return container_of(comp, struct mtk_disp_dbi_count, ddp_comp);
-}
-
 static void dmabuf_iova_free(struct mtk_dbi_dma_buf *dma)
 {
 	dma_buf_unmap_attachment_unlocked(dma->attach, dma->sgt, DMA_FROM_DEVICE);
@@ -386,28 +68,12 @@ static void dmabuf_iova_free(struct mtk_dbi_dma_buf *dma)
 	dma->attach = NULL;
 }
 
-struct device *mtk_dbi_smmu_get_shared_device(struct device *dev, const char *name)
-{
-	struct device_node *node;
-	struct platform_device *shared_pdev;
-	struct device *shared_dev = dev;
-
-	node = of_parse_phandle(dev->of_node, name, 0);
-	if (node) {
-		shared_pdev = of_find_device_by_node(node);
-		if (shared_pdev)
-			shared_dev = &shared_pdev->dev;
-	}
-
-	return shared_dev;
-}
-
 static int dmabuf_to_iova(struct drm_device *dev, struct mtk_dbi_dma_buf *dma)
 {
 	int err;
 	struct mtk_drm_private *priv = dev->dev_private;
 
-	dma->attach = dma_buf_attach(dma->dmabuf, mtk_dbi_smmu_get_shared_device(priv->dma_dev,"mtk,smmu-shared-sec"));
+	dma->attach = dma_buf_attach(dma->dmabuf, priv->dma_dev);
 	if (IS_ERR_OR_NULL(dma->attach)) {
 		err = PTR_ERR(dma->attach);
 		DDPMSG("%s attach fail buf %p dev %p err %d",
@@ -467,29 +133,11 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 	struct mtk_dbi_timer *dbi_timer;
 	int sec;
 	unsigned int flags;
-	struct mtk_ddp_comp *comp;
-	struct mtk_ddp_comp *dbi_count = NULL;
-	struct mtk_disp_dbi_count *count_data;
-	int i,j;
 
 	if (!mtk_crtc->dbi_data.support)
 		return;
 
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT)
-			dbi_count = comp;
-	}
-
-	if(!dbi_count)
-		return;
-
-	count_data = comp_to_dbi_count(comp);
-
-	if(count_data->status < DBI_COUNT_SW_INIT)
-		return;
-
 	session_id = mtk_get_session_id(&mtk_crtc->base);
-	mtk_dbi_count_srt_cal(dbi_count, enable, slice_num);
 	if (enable) {
 		if (atomic_read(&mtk_crtc->dbi_data.disable_finish) == 1) {
 			/* enable again*/
@@ -520,16 +168,10 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 					mtk_crtc->dbi_data.fence_idx, ~0);
 				mtk_crtc->dbi_data.fence_unreleased = 0;
 			}
-		} else {
-			mtk_crtc->dbi_trigger = true;
-			mtk_dbi_hw_count_trigger(dbi_count,
-				crtc_state->cmdq_handle, slice_num,
-					mtk_crtc->dbi_data.slice_idx, 5000, count_data->count_buffer.iova);
+		} else
 			mtk_crtc->dbi_data.slice_idx++;
-			DBI_COUNT_INFO("%d %d\n", mtk_crtc->dbi_data.slice_idx, mtk_crtc->dbi_data.slice_num);
-		}
+		DBI_COUNT_INFO("%d %d\n", mtk_crtc->dbi_data.slice_idx, mtk_crtc->dbi_data.slice_num);
 	} else {
-		mtk_crtc->dbi_trigger = false;
 		if (mtk_crtc->dbi_data.fence_unreleased) {
 			mtk_crtc_release_dbi_count_fence_by_idx(&mtk_crtc->base,
 				session_id, mtk_crtc->dbi_data.fence_idx);
@@ -601,9 +243,9 @@ void mtk_crtc_dbi_count_init(struct mtk_drm_crtc *mtk_crtc)
 
 }
 
-int mtk_dbi_count_wait_event(struct mtk_ddp_comp *comp, void *data)
+int mtk_dbi_count_wait_event(struct drm_crtc *crtc, void *data)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	unsigned int *event = data;
 	struct mtk_dbi_event *dbi_event = &mtk_crtc->dbi_data.dbi_event;
@@ -624,9 +266,9 @@ int mtk_dbi_count_wait_event(struct mtk_ddp_comp *comp, void *data)
 	return ret;
 }
 
-int mtk_dbi_count_clear_event(struct mtk_ddp_comp *comp, void *data)
+int mtk_dbi_count_clear_event(struct drm_crtc *crtc, void *data)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	struct mtk_dbi_event *dbi_event = &mtk_crtc->dbi_data.dbi_event;
 	unsigned int flags_event;
@@ -639,9 +281,9 @@ int mtk_dbi_count_clear_event(struct mtk_ddp_comp *comp, void *data)
 }
 
 
-int mtk_dbi_count_wait_new_frame(struct mtk_ddp_comp *comp, void *data)
+int mtk_dbi_count_wait_new_frame(struct drm_crtc *crtc, void *data)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	unsigned int *event = data;
 
@@ -679,9 +321,9 @@ void mtk_dbi_count_timer_callback( struct timer_list *timer)
 
 }
 
-int mtk_dbi_count_create_timer(struct mtk_ddp_comp *comp, void *data, bool need_lock, bool update_sec)
+int mtk_dbi_count_create_timer(struct drm_crtc *crtc, void *data, bool need_lock, bool update_sec)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	unsigned int sec;
 	struct timer_list *timer = &mtk_crtc->dbi_data.dbi_timer.base;
@@ -715,9 +357,9 @@ int mtk_dbi_count_create_timer(struct mtk_ddp_comp *comp, void *data, bool need_
 	return ret;
 }
 
-int mtk_dbi_count_delete_timer(struct mtk_ddp_comp *comp, bool need_lock, bool mark_suspend)
+int mtk_dbi_count_delete_timer(struct drm_crtc *crtc, bool need_lock, bool mark_suspend)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	struct timer_list *timer = &mtk_crtc->dbi_data.dbi_timer.base;
 	struct mtk_dbi_timer *dbi_timer =  &mtk_crtc->dbi_data.dbi_timer;
@@ -750,8 +392,6 @@ int mtk_dbi_count_timer_disable(struct drm_crtc *crtc)
 	unsigned int flags;
 	unsigned int crtc_id = drm_crtc_index(crtc);
 	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
-	struct mtk_ddp_comp *comp;
-	int i,j;
 
 	if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
 		return ret;
@@ -760,13 +400,11 @@ int mtk_dbi_count_timer_disable(struct drm_crtc *crtc)
 		return ret;
 
 	DBI_COUNT_INFO("+++\n");
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT){
-			DBI_SPIN_LOCK(&dbi_timer->lock, __func__, __LINE__, flags);
-			mtk_dbi_count_delete_timer(comp, false, true);
-			DBI_SPIN_UNLOCK(&dbi_timer->lock, __func__, __LINE__, flags);
-		}
-	}
+
+	DBI_SPIN_LOCK(&dbi_timer->lock, __func__, __LINE__, flags);
+	mtk_dbi_count_delete_timer(crtc, false, true);
+	DBI_SPIN_UNLOCK(&dbi_timer->lock, __func__, __LINE__, flags);
+
 	return ret;
 }
 
@@ -779,8 +417,6 @@ int mtk_dbi_count_timer_enable(struct drm_crtc *crtc)
 	unsigned int flags;
 	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
 	unsigned int crtc_id = drm_crtc_index(crtc);
-	struct mtk_ddp_comp *comp;
-	int i,j;
 
 	if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
 		return ret;
@@ -789,14 +425,11 @@ int mtk_dbi_count_timer_enable(struct drm_crtc *crtc)
 		return ret;
 
 	DBI_COUNT_INFO("+++\n");
-	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT){
-			DBI_SPIN_LOCK(&dbi_timer->lock, __func__, __LINE__, flags);
-			if (mtk_crtc->dbi_data.dbi_timer.suspend)
-				mtk_dbi_count_create_timer(comp, NULL, false, false);
-			DBI_SPIN_UNLOCK(&dbi_timer->lock, __func__, __LINE__, flags);
-		}
-	}
+
+	DBI_SPIN_LOCK(&dbi_timer->lock, __func__, __LINE__, flags);
+	if (mtk_crtc->dbi_data.dbi_timer.suspend)
+		mtk_dbi_count_create_timer(crtc, NULL, false, false);
+	DBI_SPIN_UNLOCK(&dbi_timer->lock, __func__, __LINE__, flags);
 
 	return ret;
 }
@@ -891,64 +524,24 @@ void mtk_dbi_count_hrt_cal(uint32_t en, uint32_t slice_size, uint32_t slice_num,
 	struct dbi_count_block_info block;
 	uint32_t slice_width;
 	uint32_t slice_height;
-	uint32_t hrt = 0;
+	uint32_t hrt;
 	uint32_t layer_size;
 
-	if(en) {
-		block = mtk_dbi_count_get_block_info(block_h, block_v);
-		slice_width = panel_width / block.block_h * block.channel * 2;
-		slice_height = (panel_height/block.block_v + slice_num - 1)/slice_num;
-		hrt = slice_width * slice_height * 2;
-		layer_size = panel_width * panel_height * 4;
-		hrt = (400 * hrt)/layer_size;
+	block = mtk_dbi_count_get_block_info(block_h, block_v);
+	slice_width = panel_width / block.block_h * block.channel * 2;
+	slice_height = (panel_height/block.block_v + slice_num - 1)/slice_num;
+	hrt = slice_width * slice_height * 2;
+	layer_size = panel_width * panel_height * 4;
+	hrt = (400 * hrt)/layer_size;
+
+	if (en)
 		*oddmr_hrt += hrt;
-		DBI_COUNT_INFO("en:%d, total:%d, hrt:%d\n", en, *oddmr_hrt, hrt);
-	}
-
+	DBI_COUNT_INFO("en:%d, total:%d, hrt:%d\n", en, *oddmr_hrt, hrt);
 }
 
-void mtk_dbi_count_hrt_cal_ratio(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, int *dbi_count_hrt)
+int mtk_dbi_count_wait_disable_finish(struct drm_crtc *crtc, void *data)
 {
-	uint32_t panel_width = 1440;
-	uint32_t panel_height = 3200;
-	struct dbi_count_block_info block;
-	uint32_t slice_width;
-	uint32_t slice_height;
-	uint32_t hrt = 0;
-	uint32_t layer_size;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
-	uint32_t en = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE];
-	uint32_t block_h = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_H];
-	uint32_t block_v = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_V];
-	uint32_t slice_num = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_NUM];
-	unsigned long long res_ratio = 1000;
-
-	if(en) {
-		block = mtk_dbi_count_get_block_info(block_h, block_v);
-		slice_width = panel_width / block.block_h * block.channel * 2;
-		slice_height = (panel_height/block.block_v + slice_num - 1)/slice_num;
-		hrt = slice_width * slice_height;
-		layer_size = panel_width * panel_height * 4;
-		hrt = (400 * hrt)/layer_size;
-		if (mtk_crtc->scaling_ctx.scaling_en) {
-			res_ratio =
-			((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
-			mtk_crtc->scaling_ctx.lcm_height * 1000) /
-			((unsigned long long)mtk_crtc->base.state->adjusted_mode.vdisplay *
-			mtk_crtc->base.state->adjusted_mode.hdisplay);
-		}
-		hrt = hrt * res_ratio / 1000;
-		*dbi_count_hrt += hrt;
-		DBI_COUNT_INFO("en:%d, total:%d, hrt:%d\n", en, *dbi_count_hrt, hrt);
-	}
-}
-
-
-int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data)
-{
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	unsigned int *event = data;
 
@@ -961,7 +554,7 @@ int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data)
 	return 0;
 }
 
-int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data)
+int mtk_dbi_count_check_buffer(struct drm_crtc *crtc, void *data)
 {
 	unsigned int *event = data;
 
@@ -971,1361 +564,30 @@ int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data)
 	return 0;
 }
 
-int mtk_dbi_count_load_buffer(struct mtk_ddp_comp *comp,void *data)
+int mtk_dbi_count_load_buffer(struct drm_crtc *crtc,void *data)
 {
 	int fd = *(int *)data;
+	struct mtk_dbi_dma_buf buf;
 	int ret;
-	struct drm_crtc *crtc = &comp->mtk_crtc->base;
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	struct mtk_dbi_dma_buf *dbi_buf = &dbi_count->count_buffer;
-
 
 	DBI_COUNT_INFO("+++\n");
-	if(dbi_buf->used) {
-		DBI_COUNT_INFO("free buffer\n");
-		dmabuf_iova_free(dbi_buf);
-		dma_buf_put(dbi_buf->dmabuf);
-		dbi_buf->used = 0;
-	}
-
-	dbi_buf->dmabuf = dma_buf_get(fd);
-	if (IS_ERR_OR_NULL(dbi_buf->dmabuf)) {
+	buf.dmabuf = dma_buf_get(fd);
+	if (IS_ERR_OR_NULL(buf.dmabuf)) {
 		DDPMSG("%s: fail to get dma_buf by fd : %d\n", __func__, fd);
 		return -1;
 	}
 
-	ret = dmabuf_to_iova(crtc->dev, dbi_buf);
+	ret = dmabuf_to_iova(crtc->dev, &buf);
 	if (ret < 0) {
 		DDPMSG("%s: fail to dmabuf_to_iova : %d\n", __func__, ret);
 		return -1;
 	}
 
-	dbi_buf->used = 1;
-
-	DBI_COUNT_INFO("iova map success, iova: %llx\n", dbi_buf->iova);
-
-	return 0;
-}
-
-static void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-	uint32_t value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, 1, REG_DBI_COUNT_BYPASS);
-	mtk_dbi_count_write_mask(comp, value,
-			DISP_DBI_COUNT_TOP_CTR_3, mask, handle);
-	mtk_dbi_count_write(comp, 1, REG_DBI_SAMPLING_BYPASS, handle);
-	mtk_dbi_count_write(comp, 1, REG_DBI_COUNTING_BYPASS, handle);
-
-	// udma disable
-	value = 0; mask = 0;
-	SET_VAL_MASK(value, mask, 0, COUNT_UDMA_W_EN);
-	SET_VAL_MASK(value, mask, 0, COUNT_UDMA_R_EN);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNT_UDMA_W_EN, mask, handle);
-
-	// hw disable
-	value = 0; mask = 0;
-	SET_VAL_MASK(value, mask, 0, COUNTING_HW_ENABLE);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_HW_ENABLE, mask, handle);
-
-	value = 0; mask = 0;
-	SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER_SW_EN);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
-
-	mtk_dbi_count_write(comp, 1,
-				REG_DBI_FRAME_DROP_BLOCK_FUNC, handle);
-}
-
-static void mtk_dbi_set_reg_by_mode(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle,struct mtk_dbi_mode_reg_list *mode_cfg, int mode)
-{
-	int size;
-
-	if(!mode_cfg) {
-		DDPPR_ERR("%s:%d mode_cfg is null\n", __func__, __LINE__);
-		return;
-	}
-
-	size = mode_cfg->reg_num;
-	for(int i=0;i<size;i++) {
-		if(mode_cfg->mask[i])
-			mtk_dbi_count_write_mask(comp, mode_cfg->mode_value[size*mode+i],
-				mode_cfg->addr[i], mode_cfg->mask[i], handle);
-	}
-}
-
-int mtk_dbi_curve_interpolate(struct mtk_dbi_curve_2d *curve, uint32_t x)
-{
-	int x_l;
-	int x_r;
-	int y_l;
-	int y_r;
-
-	if(curve->num <=0)
-		return 0;
-
-	if(x<=curve->ux[0])
-		return curve->uy[0];
-
-	if (x>=curve->ux[curve->num-1])
-		return curve->uy[curve->num-1];
-
-	for (int r=1; r<curve->num; r++) {
-		if (x==curve->ux[r])
-			return curve->uy[r];
-		else if (x < curve->ux[r]) {
-			x_l = curve->ux[r-1];
-			x_r = curve->ux[r];
-			y_l = curve->uy[r-1];
-			y_r = curve->uy[r];
-			return ((x-x_l)*y_r + (x_r-x)*y_l)/(x_r - x_l);
-		}
-	}
-	return 0;
-}
-
-static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, uint32_t dbv, uint32_t fps, uint32_t temp)
-{
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	struct mtk_dbi_count_hw_param *count_param = &dbi_count->count_cfg.count_cfg.hw_count_param[0];
-	struct mtk_dbi_count_helper *count_helper = &dbi_count->count_cfg.count_helper;
-	uint32_t dbv_gain, fps_gain, temp_gain, gain_norm, total_gain;
-	uint32_t gains[DBI_CHANNEL_NUM] = { 0 };
-	uint32_t max_gain = 0;
-	uint32_t sh = 0;
-
-	if(dbi_count->status < DBI_COUNT_SW_INIT)
-		return;
-
-	temp += count_helper->hw_count_temp_offset;
-
-	for (int ch = 0; ch < DBI_CHANNEL_NUM; ch++) {
-		dbv_gain = mtk_dbi_curve_interpolate(&count_param->dbv_gain_curve[ch],dbv);
-		fps_gain = mtk_dbi_curve_interpolate(&count_param->fps_gain_curve[ch],fps);
-		temp_gain = mtk_dbi_curve_interpolate(&count_param->temp_gain_curve[ch],temp);
-		gain_norm = count_param->gain_norm[ch];
-		total_gain = (((uint64_t)dbv_gain) * fps_gain * temp_gain * gain_norm)>>28;
-		gains[ch] = total_gain;
-		max_gain = MAX(max_gain, total_gain>>12);
-	}
-
-	if(max_gain >= (1<<7))
-		sh = 0;
-	else if(max_gain >= (1<<6))
-		sh = 1;
-	else if(max_gain >= (1<<5))
-		sh = 2;
-	else if(max_gain >= (1<<4))
-		sh = 3;
-	else
-		sh = 4;
-
-	for (int ch = 0; ch < DBI_CHANNEL_NUM; ch++) {
-		if (ch == DBI_CH_R) {
-			mtk_dbi_count_write(comp, MIN(gains[ch]>>(4-sh), 0xffff),
-				REG_DBI_COUNTING_GAIN_R, handle);
-		}
-		if (ch == DBI_CH_G) {
-			mtk_dbi_count_write(comp, MIN(gains[ch]>>(4-sh), 0xffff),
-				REG_DBI_COUNTING_GAIN_G, handle);
-		}
-		if (ch == DBI_CH_B) {
-			mtk_dbi_count_write(comp, MIN(gains[ch]>>(4-sh), 0xffff),
-				REG_DBI_COUNTING_GAIN_B, handle);
-		}
-	}
-
-	mtk_dbi_count_write(comp, sh,
-				REG_DBI_COUNTING_SH1, handle);
-
-}
-
-static void mtk_dbi_set_slice(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, uint32_t slice_num, uint32_t slice_id)
-{
-
-	uint32_t value = 0, mask = 0;
-
-	SET_VAL_MASK(value, mask, slice_num - 1, COUNTING_SLICE_NUM);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_MODE, mask, handle);
-
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, 1, COUNTING_SW_IDX_EN);
-	SET_VAL_MASK(value, mask, slice_id, COUNTING_SW_IDX);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_SW_IDX_EN, mask, handle);
-}
-
-static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, uint32_t slice_num,
-	uint32_t slice_id, uint32_t time_ms, u64 addr)
-{
-
-	uint32_t value = 0, mask = 0;
-	uint32_t time_diff;
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-
-	if(dbi_count->status < DBI_COUNT_SW_INIT){
-		DDPPR_ERR("%s:%d trigger fail\n", __func__, __LINE__);
-		return;
-	}
-
-	if(dbi_count->status == DBI_COUNT_SW_INIT)
-		mtk_dbi_count_config(comp, NULL, handle);
-
-	//buf config
-	for(int i;i<dbi_count->buffer_cfg.buf_reg_list.reg_num;i++) {
-		if(dbi_count->buffer_cfg.buf_reg_list.mask[i])
-			mtk_dbi_count_write_mask(comp, dbi_count->buffer_cfg.buf_reg_list.value[i],
-				dbi_count->buffer_cfg.buf_reg_list.addr[i],
-				dbi_count->buffer_cfg.buf_reg_list.mask[i], handle);
-	}
-
-	// single trigger
-	SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
-
-	//slice and time diff
-	mtk_dbi_set_slice(comp, handle, slice_num, slice_id);
-	time_diff = time_ms * 1000 / 1050;
-	if(time_diff > 0xffff)
-		time_diff = 0xffff;
-	value = 0; mask = 0;
-	SET_VAL_MASK(value, mask, 1, COUNTING_SW_TIMEDIFF_EN);
-	SET_VAL_MASK(value, mask, time_diff, COUNTING_SW_TIMEDIFF);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_SW_TIMEDIFF_EN, mask, handle);
-
-	//buffer addr
-	mtk_dbi_count_write(comp, (unsigned int)(addr>>4),
-		REG_DBIR_UDMA_BASE_ADDR, handle);
-	mtk_dbi_count_write(comp, (unsigned int)(addr>>4),
-		REG_DBIW_UDMA_BASE_ADDR, handle);
-
-	//udma enable
-	value = 0; mask = 0;
-	SET_VAL_MASK(value, mask, 1, COUNT_UDMA_W_EN);
-	SET_VAL_MASK(value, mask, 1, COUNT_UDMA_R_EN);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNT_UDMA_W_EN, mask, handle);
-
-	// hw enable
-	value = 0; mask = 0;
-	SET_VAL_MASK(value, mask, 1, COUNTING_HW_ENABLE);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_HW_ENABLE, mask, handle);
-	mtk_dbi_count_write(comp, 0,
-				REG_DBI_SAMPLING_BYPASS, handle);
-	mtk_dbi_count_write(comp, 0,
-				REG_DBI_COUNTING_BYPASS, handle);
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, 0, REG_DBI_COUNT_BYPASS);
-	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_TOP_CTR_3, mask, handle);
-
-
-	mtk_dbi_count_write(comp,0x00000001,0x7f0,handle);
-}
-
-static void mtk_dbi_count_common_init(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle)
-{
-	uint32_t value = 0, mask = 0;
-	unsigned int dsi_line_time = 0;
-	unsigned int stash_lead_time = 12;
-	unsigned int stash_lead_cnt = 0;
-	unsigned int reg_val = 0;
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	struct mtk_ddp_comp *output_comp = NULL;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-
-	SET_VAL_MASK(value, mask, 0x38, REG_VS_RE_GEN_CYC);
-	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_TOP_CTR_1, mask, handle);
-
-	value = 0;mask = 0;
-	SET_VAL_MASK(value, mask, 1, REG_VS_RE_GEN);
-	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_TOP_CTR_2, mask, handle);
-
-	//value = 0;mask = 0;
-	//SET_VAL_MASK(value, mask, 0, REG_DBI_COUNT_TOP_CLK_FORCE_EN);
-	//mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_TOP_CTR_3, mask, handle);
-
-	//value = 0;mask = 0;
-	//SET_VAL_MASK(value, mask, 1, REG_FRAME_CMD_MODE_R);
-	//mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_UDMA_R_CTRL37, mask, handle);
-
-	//value = 0;mask = 0;
-	//SET_VAL_MASK(value, mask, 1, REG_FRAME_CMD_MODE_W);
-	//mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_UDMA_W_CTRL37, mask, handle);
-
-	// ddren
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, 0, REG_DBIW_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIW_USE_HRT_DDREN_REQ);
-	SET_VAL_MASK(value, mask, 0, REG_DBIW_STASH_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIW_STASH_USE_HRT_DDREN_REQ);
-
-	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_DDREN_CTRL_DBIW, mask, handle);
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, 0, REG_DBIR_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIR_USE_HRT_DDREN_REQ);
-	SET_VAL_MASK(value, mask, 0, REG_DBIR_STASH_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIR_STASH_USE_HRT_DDREN_REQ);
-	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_DDREN_CTRL_DBIR, mask, handle);
-
-	value = 0;mask = 0;
-	SET_VAL_MASK(value, mask, 1, COUNT_INP_EN);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNT_OUTP_EN, mask, handle);
-
-	//side band
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, 2, REG_CNTR_ULTRA_MODE);
-	SET_VAL_MASK(value, mask, 2, REG_CNTW_ULTRA_MODE);
-	SET_VAL_MASK(value, mask, 1, REG_CNTR_STASH_ULTRA_FRCE);
-	SET_VAL_MASK(value, mask, 1, REG_CNTW_STASH_ULTRA_FRCE);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNT_EMI_SIDE_BAND, mask, handle);
-
-
-}
-
-static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
-		struct mtk_ddp_config *cfg,
-		struct cmdq_pkt *handle)
-{
-	uint32_t value = 0, mask = 0;
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	int mode_idx;
-
-	DBI_COUNT_INFO("%s count_config\n", mtk_dump_comp_str(comp));
-	DBI_COUNT_INFO("%s +++ %d\n", mtk_dump_comp_str(comp), dbi_count->data->need_bypass_shadow);
-
-	if (dbi_count->data->need_bypass_shadow == true) {
-		SET_VAL_MASK(value, mask, 1, BYPASS_SHADOW);
-		mtk_dbi_count_write_mask(comp, value,
-			DISP_DBI_COUNT_TOP_SHADOW_CTRL, mask, handle);
-	}
-
-	mtk_dbi_count_common_init(comp, handle);
-
-	if(dbi_count->status >= DBI_COUNT_SW_INIT) {
-		if(dbi_count->status == DBI_COUNT_SW_INIT)
-			dbi_count->status = DBI_COUNT_HW_INIT;
-
-		//set hw static cfg
-		if(dbi_count->current_mode == HW_COUNTING_MODE)
-			mode_idx = dbi_count->count_cfg.count_helper.static_hw_counting_mode_index;
-		else
-			mode_idx = dbi_count->count_cfg.count_helper.static_hw_sampling_mode_index;
-		mtk_dbi_set_reg_by_mode(comp, handle,&dbi_count->count_cfg.count_static_cfg, mode_idx);
-
-		// set dfmt temp use rgb
-		mode_idx = dbi_count->count_cfg.count_helper.dfmt_rgbg_mode_index;
-		mtk_dbi_set_reg_by_mode(comp, handle,&dbi_count->count_cfg.count_dfmt_cfg, mode_idx);
-
-		//update hw count gain
-		mtk_dbi_update_count_gain(comp, handle, dbi_count->current_bl, dbi_count->current_fps, 25);
-
-		// set count mode
-		mtk_dbi_set_reg_by_mode(comp, handle,
-			&dbi_count->count_cfg.count_cfg.code_gain_packed, dbi_count->current_count_mode);
-	}
-	mtk_dbi_count_bypass(comp, handle);
-}
-
-static void mtk_dbi_count_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-	DBI_COUNT_INFO("%s count_start\n", mtk_dump_comp_str(comp));
-}
-
-static void mtk_dbi_count_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
-{
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-
-	DBI_COUNT_INFO("%s count_stop\n", mtk_dump_comp_str(comp));
-	dbi_count->qos_srt = 0;
-}
-
-int mtk_dbi_count_analysis(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-
-	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("dbi_count init status %d\n", dbi_count->status);
-	DDPDUMP("dbi_count current_bl %d\n", dbi_count->current_bl);
-	DDPDUMP("dbi_count current_fps %d\n", dbi_count->current_fps);
-	DDPDUMP("dbi_count current_freq %d\n", dbi_count->current_freq);
-
-	return 0;
-}
-
-void mtk_dbi_count_dump(struct mtk_ddp_comp *comp)
-{
-	void __iomem *baddr = comp->regs;
-	void __iomem *mbaddr;
-	int i;
-	struct mtk_drm_private *priv = NULL;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-
-
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("-- Start dump dbi count registers --\n");
-
-	mbaddr = baddr;
-
-	for (i = 0; i < 0x110; i += 16) {
-		DDPDUMP("DBI_COUNT+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
-		readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
-		readl(mbaddr + i + 0xc));
-	}
-
-	for (i = 0x700; i < 0x830; i += 16) {
-		DDPDUMP("DBI_COUNT+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
-		readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
-		readl(mbaddr + i + 0xc));
-	}
-}
-
-static void mtk_dbi_count_prepare(struct mtk_ddp_comp *comp)
-{
-	DBI_COUNT_INFO("%s +++\n", mtk_dump_comp_str(comp));
-	mtk_ddp_comp_clk_prepare(comp);
-}
-
-static void mtk_dbi_count_unprepare(struct mtk_ddp_comp *comp)
-{
-	uint32_t value = 0, mask = 0;
-
-	DBI_COUNT_INFO("%s +++\n", mtk_dump_comp_str(comp));
-	mtk_ddp_comp_clk_unprepare(comp);
-
-}
-
-static void mtk_dbi_count_srt_cal(struct mtk_ddp_comp *comp, int en, int slice_num)
-{
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	unsigned int buffer_size = dbi_count->count_buffer.size;
-	uint32_t vrefresh;
-	uint32_t srt = 0;
-
-	if (en) {
-		srt = (buffer_size + slice_num -1)/slice_num;
-		vrefresh = dbi_count->current_fps;
-		//blanking ratio
-		srt = DO_COMMON_DIV(srt, 1000);
-		srt *= 125;
-		srt = DO_COMMON_DIV(srt, 100);
-		srt = srt * vrefresh;
-		srt = DO_COMMON_DIV(srt, 1000);
-		dbi_count->qos_srt = srt;
-	} else
-		dbi_count->qos_srt = 0;
-}
-
-int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
-		enum mtk_ddp_io_cmd cmd, void *params)
-{
-	struct mtk_drm_private *priv;
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-
-	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev))
-		return -INVALID;
-
-	priv = comp->mtk_crtc->base.dev->dev_private;
-
-	switch (cmd) {
-	case PQ_FILL_COMP_PIPE_INFO:
-	{
-		struct drm_display_mode *mode;
-
-		mode = mtk_crtc_get_display_mode_by_comp(__func__, &comp->mtk_crtc->base, comp, false);
-		dbi_count->current_fps = drm_mode_vrefresh(mode);
-	}
-	break;
-	case DISP_BL_CHG:
-	{
-		dbi_count->current_bl = *(uint32_t *)params;
-		mtk_dbi_update_count_gain(comp, handle, dbi_count->current_bl, dbi_count->current_fps, 25);
-	}
-		break;
-
-	case PMQOS_GET_LARB_PORT_HRT_BW: {
-		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
-		int weight = 0;
-		unsigned int bw_base = data->bw_base;
-
-		data->larb_id = -1;
-		data->bw = 0;
-		if (data->type != CHANNEL_HRT_RW && data->type != CHANNEL_HRT_WRITE)
-			break;
-
-		if (comp->larb_num == 1)
-			data->larb_id = comp->larb_id;
-		else if (comp->larb_num > 1)
-			data->larb_id = comp->larb_ids[0];
-
-		if (data->larb_id < 0)
-			break;
-		mtk_dbi_count_hrt_cal_ratio(comp, data->type, &weight);
-		if (weight > 0) {
-			if (!bw_base)
-				bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
-			data->bw = bw_base * weight / 400;
-			DDPINFO("%s, oddmr comp:%d, larb:%d, type:%d, bw:%d, weight:%d\n",
-				__func__, comp->id, data->larb_id, data->type, data->bw, weight);
-		}
-		break;
-	}
-
-	case ODDMR_TIMING_CHG:
-	{
-		struct mtk_oddmr_timing *timing = (struct mtk_oddmr_timing *)params;
-
-		dbi_count->current_fps = timing->vrefresh;
-		mtk_dbi_update_count_gain(comp, handle, dbi_count->current_bl, dbi_count->current_fps, 25);
-	}
-		break;
-
-	case PMQOS_SET_HRT_BW_DELAY:
-	{
-		u32 bw_val, bw_base = *(unsigned int *)params;
-		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-		u32 stash_bw = 17;
-		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-		struct drm_crtc *crtc = &mtk_crtc->base;
-		struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
-		uint32_t en = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE];
-		int weight= 0;
-
-		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
-			break;
-
-		if (!priv->data->respective_ostdl) {
-			DDPPR_ERR("respective_ostdl do not set\n");
-			break;
-		}
-		if (!handle) {
-			DDPPR_ERR("no cmdq handle\n");
-			break;
-		}
-
-		en = !!bw_base && en;
-
-		mtk_dbi_count_hrt_cal_ratio(comp, CHANNEL_HRT_RW, &weight);
-		bw_val = (weight * bw_base) / 400 *2;
-		bw_val *= (en > 0) ? 1 : 0;
-		if (bw_val > dbi_count->last_hrt) {
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w, comp->id, bw_val,
-				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r, comp->id, bw_val,
-				priv->data->respective_ostdl);
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_VAL_DBI_COUNT),
-				NO_PENDING_HRT, ~0);
-			if(dbi_count->data->is_support_stash ){
-				if(bw_val) {
-					stash_bw = ((bw_val / 256) > dbi_count->data->min_stash_port_bw ?
-						((bw_val / 256)) : dbi_count->data->min_stash_port_bw);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_r_stash,
-							comp->id, stash_bw, priv->data->respective_ostdl);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_w_stash,
-							comp->id, stash_bw, priv->data->respective_ostdl);
-				} else {
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_r_stash,
-							comp->id, 0, priv->data->respective_ostdl);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_w_stash,
-							comp->id, 0, priv->data->respective_ostdl);
-				}
-			}
-		} else if (bw_val < dbi_count->last_hrt) {
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_VAL_DBI_COUNT),
-				bw_val, ~0);
-		}
-		dbi_count->last_hrt = bw_val;
-	}
-		break;
-
-	case PMQOS_SET_HRT_BW_DELAY_POST:
-	{
-		u32 bw_val = 0;
-		u32 stash_bw = dbi_count->data->min_stash_port_bw;
-		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-
-		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
-			break;
-
-		if (!priv->data->respective_ostdl) {
-			DDPPR_ERR("respective_ostdl do not set\n");
-			break;
-		}
-
-		bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
-			DISP_SLOT_CUR_HRT_VAL_DBI_COUNT);
-		if (bw_val != NO_PENDING_HRT && bw_val >= dbi_count->last_hrt) {
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r, comp->id, bw_val,
-				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w, comp->id, bw_val,
-				priv->data->respective_ostdl);
-			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_CUR_HRT_VAL_DBI_COUNT) =	NO_PENDING_HRT;
-			if(dbi_count->data->is_support_stash){
-				if(bw_val) {
-					stash_bw = ((bw_val / 256) > dbi_count->data->min_stash_port_bw ?
-						((bw_val / 256)) : dbi_count->data->min_stash_port_bw);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_r_stash,
-							comp->id, stash_bw, priv->data->respective_ostdl);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_w_stash,
-							comp->id, stash_bw, priv->data->respective_ostdl);
-				} else {
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_r_stash,
-							comp->id, 0, priv->data->respective_ostdl);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_w_stash,
-							comp->id, 0, priv->data->respective_ostdl);
-				}
-			}
-		}
-	}
-		break;
-
-	case PMQOS_SET_HRT_BW:
-	{
-		u32 bw_val, bw_base = *(unsigned int *)params;
-		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-		u32 stash_bw = 17;
-		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-		struct drm_crtc *crtc = &mtk_crtc->base;
-		struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
-		uint32_t en = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE];
-		int weight= 0;
-
-		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
-			break;
-
-		en = !!bw_base && en;
-		if (priv->data->respective_ostdl) {
-			/* DBI outstanding */
-			mtk_dbi_count_hrt_cal_ratio(comp, CHANNEL_HRT_RW, &weight);
-			bw_val = (weight * bw_base) / 400 * 2;
-			bw_val *= (en > 0) ? 1 : 0;
-			if(bw_val == dbi_count->last_hrt)
-				break;
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w, comp->id, bw_val,
-				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r, comp->id, bw_val,
-				priv->data->respective_ostdl);
-			dbi_count->last_hrt = bw_val;
-			if(dbi_count->data->is_support_stash){
-				if(bw_val) {
-					stash_bw = ((bw_val / 256) > dbi_count->data->min_stash_port_bw ?
-						((bw_val / 256)) : dbi_count->data->min_stash_port_bw);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_w_stash,
-							comp->id, stash_bw, priv->data->respective_ostdl);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_r_stash,
-							comp->id, stash_bw, priv->data->respective_ostdl);
-				} else {
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_w_stash,
-							comp->id, 0, priv->data->respective_ostdl);
-					__mtk_disp_set_module_hrt(dbi_count->qos_req_r_stash,
-							comp->id, 0, priv->data->respective_ostdl);
-				}
-			}
-		} else {
-			dbi_count->last_hrt = en;
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w,
-						comp->id, en, priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r,
-						comp->id, en, priv->data->respective_ostdl);
-		}
-	}
-		break;
-
-	case PMQOS_UPDATE_BW:
-	{
-		struct mtk_drm_private *priv =
-			comp->mtk_crtc->base.dev->dev_private;
-		unsigned int force_update = 0; /* force_update repeat last qos BW */
-		unsigned int update_pending = 0;
-		unsigned int crtc_idx = 0;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-		unsigned int channel_id = 1;
-
-		if (!mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_MMQOS_SUPPORT))
-			break;
-
-		mtk_crtc = comp->mtk_crtc;
-		crtc = &mtk_crtc->base;
-		crtc_idx = drm_crtc_index(crtc);
-
-		if (params) {
-			force_update = *(unsigned int *)params;
-			update_pending = (force_update == DISP_BW_UPDATE_PENDING);
-			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
-		}
-
-		if (!force_update && !update_pending) {
-			mtk_crtc->total_srt += (dbi_count->qos_srt * 2);
-			if (channel_id < 4)
-				priv->srt_channel_bw_sum[crtc_idx][channel_id] += dbi_count->qos_srt;
-			if (channel_id < 4)
-				priv->srt_channel_write_bw_sum[crtc_idx][channel_id] += dbi_count->qos_srt;
-		}
-
-		if (force_update || dbi_count->last_qos_srt != dbi_count->qos_srt) {
-			__mtk_disp_set_module_srt(dbi_count->qos_req_w, comp->id,
-				dbi_count->qos_srt, 0, DISP_BW_NORMAL_MODE,
-				priv->data->real_srt_ostdl);
-			dbi_count->last_qos_srt = dbi_count->qos_srt;
-			if (!force_update && update_pending) {
-				comp->mtk_crtc->total_srt += dbi_count->qos_srt;
-				if (channel_id < 4)
-					priv->srt_channel_bw_sum[crtc_idx][channel_id] += dbi_count->qos_srt;
-				if (channel_id < 4)
-					priv->srt_channel_write_bw_sum[crtc_idx][channel_id] += dbi_count->qos_srt;
-			}
-		}
-	}
-		break;
-
-	default:
-		break;
-	}
-
-	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev))
-		return -INVALID;
-
+	dmabuf_iova_free(&buf);
+	dma_buf_put(buf.dmabuf);
 	return 0;
 }
 
 
-static bool mtk_dbi_count_load_curve(struct mtk_dbi_curve_2d *curve , void **data,int *index)
-{
-	int size = curve->num * sizeof(int32_t);
-
-	if(size<=0)
-		return true;
-
-	data[*index] = vmalloc(size);
-	if (!data[*index]) {
-		DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-		goto fail;
-	}
-	if (copy_from_user(data[*index],
-		curve->x, size)) {
-		DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-		goto fail;
-	}
-	curve->x = (uint32_t *)data[*index];
-	*index = (*index) +1;
-
-	data[*index] = vmalloc(size);
-	if (!data[*index]) {
-		DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-		goto fail;
-	}
-	if (copy_from_user(data[*index],
-		curve->y, size)) {
-		DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-		goto fail;
-	}
-	curve->y = (uint32_t *)data[*index];
-	*index = (*index) +1;
-	return true;
-
-fail:
-	return false;
-
-}
-
-
-static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_info *cfg_info)
-{
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	struct mtk_drm_dbi_cfg_info *count_cfg;
-	void *data[300] = {0};
-	int size = 0;
-	int index = 0;
-	bool ret;
-
-	DBI_COUNT_INFO("+\n");
-
-	if (dbi_count->status != DBI_COUNT_INVALID) {
-		DBI_COUNT_MSG("dbi can not init, state %d\n", dbi_count->status);
-		return -1;
-	}
-	count_cfg = &dbi_count->count_cfg;
-	memcpy(count_cfg, cfg_info, sizeof(struct mtk_drm_dbi_cfg_info));
-
-	if(count_cfg->count_cfg.hw_count_param_num){
-		for(int i=0;i<count_cfg->count_cfg.hw_count_param_num;i++){
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].dbv_gain_curve[0], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].dbv_gain_curve[1], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].dbv_gain_curve[2], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].fps_gain_curve[0], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].fps_gain_curve[1], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].fps_gain_curve[2], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].temp_gain_curve[0], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].temp_gain_curve[1], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-			ret = mtk_dbi_count_load_curve(
-				&count_cfg->count_cfg.hw_count_param[i].temp_gain_curve[2], data, &index);
-			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-				goto fail;
-			}
-
-			if(count_cfg->count_cfg.hw_count_param[i].irdrop_enable) {
-				ret = mtk_dbi_count_load_curve(
-					&count_cfg->count_cfg.hw_count_param[i].irdrop_total_gain_curve, data, &index);
-				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-					goto fail;
-				}
-				ret = mtk_dbi_count_load_curve(
-					&count_cfg->count_cfg.hw_count_param[i].irdrop_ratio_gain_curve[0],
-					data, &index);
-				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-					goto fail;
-				}
-				ret = mtk_dbi_count_load_curve(
-					&count_cfg->count_cfg.hw_count_param[i].irdrop_ratio_gain_curve[1],
-					data, &index);
-				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-					goto fail;
-				}
-				ret = mtk_dbi_count_load_curve(
-					&count_cfg->count_cfg.hw_count_param[i].irdrop_ratio_gain_curve[2],
-					data, &index);
-				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-					goto fail;
-				}
-				ret = mtk_dbi_count_load_curve(
-					&count_cfg->count_cfg.hw_count_param[i].irdrop_dbv_gain_curve[0], data, &index);
-				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-					goto fail;
-				}
-				ret = mtk_dbi_count_load_curve(
-					&count_cfg->count_cfg.hw_count_param[i].irdrop_dbv_gain_curve[1], data, &index);
-				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-					goto fail;
-				}
-				ret = mtk_dbi_count_load_curve(
-					&count_cfg->count_cfg.hw_count_param[i].irdrop_dbv_gain_curve[2], data, &index);
-				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
-					goto fail;
-				}
-			}
-		}
-	}
-
-	if (count_cfg->count_cfg.code_gain_packed.reg_num) {
-		size = sizeof(uint32_t) * count_cfg->count_cfg.code_gain_packed.reg_num;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_cfg.code_gain_packed.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_cfg.code_gain_packed.addr = (uint32_t *)data[index];
-		index ++;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_cfg.code_gain_packed.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_cfg.code_gain_packed.mask= (uint32_t *)data[index];
-		index ++;
-
-		size = sizeof(uint32_t) * count_cfg->count_cfg.code_gain_packed.reg_num *
-			count_cfg->count_cfg.code_gain_packed.mode_num;
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_cfg.code_gain_packed.mode_value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_cfg.code_gain_packed.mode_value= (uint32_t *)data[index];
-		index ++;
-	}
-
-
-	if (count_cfg->count_static_cfg.reg_num) {
-		size = sizeof(uint32_t) * count_cfg->count_static_cfg.reg_num;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_static_cfg.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_static_cfg.addr = (uint32_t *)data[index];
-		index ++;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_static_cfg.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_static_cfg.mask= (uint32_t *)data[index];
-		index ++;
-
-		size = sizeof(uint32_t) * count_cfg->count_static_cfg.reg_num * count_cfg->count_static_cfg.mode_num;
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_static_cfg.mode_value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_static_cfg.mode_value= (uint32_t *)data[index];
-		index ++;
-	}
-
-	if (count_cfg->count_dfmt_cfg.reg_num) {
-		size = sizeof(uint32_t) * count_cfg->count_dfmt_cfg.reg_num;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_dfmt_cfg.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_dfmt_cfg.addr = (uint32_t *)data[index];
-		index ++;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_dfmt_cfg.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_dfmt_cfg.mask= (uint32_t *)data[index];
-		index ++;
-
-		size = sizeof(uint32_t) * count_cfg->count_dfmt_cfg.reg_num * count_cfg->count_dfmt_cfg.mode_num;
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			count_cfg->count_dfmt_cfg.mode_value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		count_cfg->count_dfmt_cfg.mode_value= (uint32_t *)data[index];
-		index ++;
-	}
-
-	dbi_count->current_mode = HW_COUNTING_MODE;
-	dbi_count->status = DBI_COUNT_SW_INIT;
-
-	return 0;
-
-fail:
-	DDPPR_ERR("%s: dbi count init fail\n", __func__);
-	for (int i = 0; i<ARRAY_SIZE(data); i++) {
-		if (data[i])
-			vfree(data[i]);
-	}
-	return -EFAULT;
-
-}
-
-static int mtk_dbi_count_load_buffer_cfg(struct mtk_ddp_comp *comp, struct mtk_dbi_count_buf_cfg *cfg)
-{
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	struct mtk_dbi_count_buf_cfg *buf_cfg;
-	void *data[10] = {0};
-	int size = 0;
-	int index = 0;
-	bool ret;
-
-	buf_cfg = &dbi_count->buffer_cfg;
-	DBI_COUNT_INFO("+ reg_num %d\n", buf_cfg->buf_reg_list.reg_num);
-	if(buf_cfg->buf_reg_list.reg_num) {
-		size = sizeof(uint32_t) * buf_cfg->buf_reg_list.reg_num;
-		data[0] = (void *)buf_cfg->buf_reg_list.value;
-		data[1] = (void *)buf_cfg->buf_reg_list.mask;
-		data[2] = (void *)buf_cfg->buf_reg_list.addr;
-		if (copy_from_user(buf_cfg->buf_reg_list.value,
-			cfg->buf_reg_list.value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-
-		if (copy_from_user(buf_cfg->buf_reg_list.mask,
-			cfg->buf_reg_list.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-
-		if (copy_from_user(buf_cfg->buf_reg_list.addr,
-			cfg->buf_reg_list.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-
-		return 0;
-	}
-	memcpy(buf_cfg, cfg, sizeof(struct mtk_dbi_count_buf_cfg));
-
-	if(buf_cfg->buf_reg_list.reg_num) {
-		size = sizeof(uint32_t) * buf_cfg->buf_reg_list.reg_num;
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			buf_cfg->buf_reg_list.value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		buf_cfg->buf_reg_list.value = (uint32_t *)data[index];
-		index ++;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			buf_cfg->buf_reg_list.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		buf_cfg->buf_reg_list.addr = (uint32_t *)data[index];
-		index ++;
-
-		data[index] = vmalloc(size);
-		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		if (copy_from_user(data[index],
-			buf_cfg->buf_reg_list.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			goto fail;
-		}
-		buf_cfg->buf_reg_list.mask = (uint32_t *)data[index];
-		index ++;
-	}
-
-	return 0;
-
-fail:
-	DDPPR_ERR("%s: dbi count init fail\n", __func__);
-	for (int i = 0; i<ARRAY_SIZE(data); i++) {
-		if (data[i])
-			vfree(data[i]);
-	}
-	memset(buf_cfg, 0, sizeof(struct mtk_dbi_count_buf_cfg));
-	return -EFAULT;
-
-}
-
-
-static int mtk_dbi_count_pq_ioctl_transact(struct mtk_ddp_comp *comp,
-	unsigned int cmd, void *params, unsigned int size)
-{
-	int ret = -1;
-
-	DBI_COUNT_MSG("+ cmd %d", cmd);
-
-	switch (cmd) {
-	case PQ_DBI_COUNT_IDLE_TIMER_INIT:
-		ret = mtk_dbi_count_create_timer(comp, params, true, true);
-		break;
-	case PQ_DBI_COUNT_IDLE_TIMER_DELETE:
-		ret = mtk_dbi_count_delete_timer(comp, true ,false);
-		break;
-	case PQ_DBI_COUNT_GET_EVENT:
-		ret = mtk_dbi_count_wait_event(comp, params);
-		break;
-	case PQ_DBI_COUNT_WAIT_DISABLE_FINISH:
-		ret = mtk_dbi_count_wait_disable_finish(comp, params);
-		break;
-	case PQ_DBI_COUNT_WAIT_NEW_FRAME:
-		ret = mtk_dbi_count_wait_new_frame(comp, params);
-		break;
-	case PQ_DBI_COUNT_CLEAR_EVENT:
-		ret = mtk_dbi_count_clear_event(comp, params);
-		break;
-	case PQ_DBI_COUNT_CHECK_BUFFER:
-		ret = mtk_dbi_count_check_buffer(comp, params);
-		break;
-	case PQ_DBI_COUNT_LOAD_BUFFER:
-		ret = mtk_dbi_count_load_buffer(comp, params);
-		break;
-
-	case PQ_DBI_COUNT_LOAD_PARAM:
-		ret = mtk_dbi_count_init(comp, (struct mtk_drm_dbi_cfg_info *)params);
-		break;
-
-	case PQ_DBI_COUNT_LOAD_BUFFER_CFG:
-		ret = mtk_dbi_count_load_buffer_cfg(comp, (struct mtk_dbi_count_buf_cfg *)params);
-		break;
-	default:
-		break;
-	}
-	return ret;
-}
-
-static const struct mtk_ddp_comp_funcs mtk_disp_dbi_count_funcs = {
-	.config = mtk_dbi_count_config,
-	.start = mtk_dbi_count_start,
-	.stop = mtk_dbi_count_stop,
-	.prepare = mtk_dbi_count_prepare,
-	.unprepare = mtk_dbi_count_unprepare,
-	.io_cmd = mtk_dbi_count_io_cmd,
-	.pq_ioctl_transact = mtk_dbi_count_pq_ioctl_transact,
-};
-
-
-static int mtk_disp_dbi_count_bind(struct device *dev, struct device *master,
-		void *data)
-{
-	struct mtk_disp_dbi_count *dbi_count = dev_get_drvdata(dev);
-	struct drm_device *drm_dev = data;
-	struct mtk_drm_private *private = drm_dev->dev_private;
-	int ret;
-	char buf[50];
-
-	pr_notice("%s+\n", __func__);
-	ret = mtk_ddp_comp_register(drm_dev, &dbi_count->ddp_comp);
-	if (ret < 0) {
-		dev_err(dev, "Failed to register component %s: %d\n",
-				dev->of_node->full_name, ret);
-		return ret;
-	}
-	if (mtk_drm_helper_get_opt(private->helper_opt,
-			MTK_DRM_OPT_MMQOS_SUPPORT)) {
-		dbi_count = comp_to_dbi_count(&dbi_count->ddp_comp);
-		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
-						&dbi_count->ddp_comp, "W");
-		dbi_count->qos_req_w = of_mtk_icc_get(dev, buf);
-
-		pr_notice("%s+ %llx\n", __func__, dbi_count->qos_req_w);
-
-		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
-						&dbi_count->ddp_comp, "W_STASH");
-		dbi_count->qos_req_w_stash = of_mtk_icc_get(dev, buf);
-
-		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
-						&dbi_count->ddp_comp, "R");
-		dbi_count->qos_req_r = of_mtk_icc_get(dev, buf);
-
-		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
-						&dbi_count->ddp_comp, "R_STASH");
-		dbi_count->qos_req_r_stash = of_mtk_icc_get(dev, buf);
-	}
-	pr_notice("%s-\n", __func__);
-	return 0;
-}
-
-static void mtk_disp_dbi_count_unbind(struct device *dev, struct device *master,
-		void *data)
-{
-	struct mtk_disp_dbi_count *dbi_count = dev_get_drvdata(dev);
-	struct drm_device *drm_dev = data;
-
-	pr_notice("%s+\n", __func__);
-	mtk_ddp_comp_unregister(drm_dev, &dbi_count->ddp_comp);
-}
-
-static const struct component_ops mtk_disp_dbi_count_component_ops = {
-	.bind = mtk_disp_dbi_count_bind,
-	.unbind = mtk_disp_dbi_count_unbind,
-};
-
-
-static int mtk_disp_dbi_count_probe(struct platform_device *pdev)
-{
-	struct device *dev = &pdev->dev;
-	struct mtk_disp_dbi_count *priv;
-	enum mtk_ddp_comp_id comp_id;
-	struct device_node *node = NULL;
-	int val = 0;
-	int ret, irq_num;
-
-	DDPMSG("%s+\n", __func__);
-	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
-	if (!priv)
-		return -ENOMEM;
-
-	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DBI_COUNT);
-	if ((int)comp_id < 0) {
-		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
-		return comp_id;
-	}
-
-	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
-				&mtk_disp_dbi_count_funcs);
-	if (ret) {
-		dev_err(dev, "Failed to initialize component: %d\n", ret);
-		return ret;
-	}
-
-	priv->data = of_device_get_match_data(dev);
-	platform_set_drvdata(pdev, priv);
-
-	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
-
-	irq_num = platform_get_irq(pdev, 0);
-	if (irq_num < 0 || !priv->data->irq_handler)
-		dev_err(&pdev->dev, "%s failed to request dbi_count irq resource\n", __func__);
-	else {
-		irq_set_status_flags(irq_num, IRQ_TYPE_LEVEL_HIGH);
-		ret = devm_request_irq(
-			&pdev->dev, irq_num, priv->data->irq_handler,
-			IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(&pdev->dev), priv);
-		if (ret) {
-			DDPAEE("%s:%d, failed to request irq:%d ret:%d\n",
-					__func__, __LINE__,
-					irq_num, ret);
-			ret = -EPROBE_DEFER;
-			return ret;
-		}
-	}
-
-	ret = component_add(dev, &mtk_disp_dbi_count_component_ops);
-	if (ret != 0) {
-		dev_err(dev, "Failed to add component: %d\n", ret);
-		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
-	}
-
-	DDPMSG("%s-\n", __func__);
-	return ret;
-}
-
-static void mtk_disp_dbi_count_remove(struct platform_device *pdev)
-{
-	struct mtk_disp_dbi_count *dbi_count = dev_get_drvdata(&pdev->dev);
-
-	component_del(&pdev->dev, &mtk_disp_dbi_count_component_ops);
-	mtk_ddp_comp_pm_disable(&dbi_count->ddp_comp);
-}
-
-
-static irqreturn_t mtk_dbi_count_irq_handler(int irq, void *dev_id)
-{
-	struct mtk_disp_dbi_count *priv = dev_id;
-
-	return IRQ_HANDLED;
-}
-
-static const struct mtk_disp_dbi_count_data mt6993_dbi_count_driver_data = {
-	.need_bypass_shadow = true,
-	.is_support_stash = true,
-	.countr_buffer_size = 300,
-	.countw_buffer_size = 300,
-	.irq_handler = mtk_dbi_count_irq_handler,
-	.stash_lead_time = 20,
-	.min_stash_port_bw = 49,
-};
-
-static const struct of_device_id mtk_disp_dbi_count_driver_dt_match[] = {
-	{ .compatible = "mediatek,mt6993-disp-dbi-count",
-	  .data = &mt6993_dbi_count_driver_data},
-	{},
-};
-
-MODULE_DEVICE_TABLE(of, mtk_disp_dbi_count_driver_dt_match);
-
-struct platform_driver mtk_disp_dbi_count_driver = {
-	.probe = mtk_disp_dbi_count_probe,
-	.remove = mtk_disp_dbi_count_remove,
-	.driver = {
-		.name = "mediatek-disp-dbi-count",
-		.owner = THIS_MODULE,
-		.of_match_table = mtk_disp_dbi_count_driver_dt_match,
-	},
-};
 
 

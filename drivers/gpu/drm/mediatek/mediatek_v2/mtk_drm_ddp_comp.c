@@ -378,7 +378,6 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_DISP_INLINE_ROTATE] = "inlinerotate",
 	[MTK_DISP_BWM] = "bwm",
 	[MTK_DISP_RELAY] = "relay",
-	[MTK_DISP_DBI_COUNT] = "dbi-count",
 	[MTK_MMLSYS_BYPASS] = "mmlsys_bypass",
 	[MTK_MML_RSZ] = "mml_rsz",
 	[MTK_MML_HDR] = "mml_hdr",
@@ -1162,7 +1161,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_DLO_ASYNC37, MTK_DISP_DLO_ASYNC, 37, NULL, 0},
 	{DDP_COMPONENT_DLO_ASYNC38, MTK_DISP_DLO_ASYNC, 38, NULL, 0},
 	{DDP_COMPONENT_RELAY4, MTK_DISP_RELAY, 4, NULL, 0},
-	{DDP_COMPONENT_DBI_COUNT0, MTK_DISP_DBI_COUNT, 0, NULL, 0},
+	{DDP_COMPONENT_DBI_COUNT0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 /*745*/	{DDP_COMPONENT_SYS_B_AAL0, MTK_DISP_AAL, 2, NULL, 0},
 	{DDP_COMPONENT_SYS_B_C3D0, MTK_DISP_C3D, 4, NULL, 0},
 	{DDP_COMPONENT_SYS_B_C3D1, MTK_DISP_C3D, 5, NULL, 0},
@@ -1271,7 +1270,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 /*850*/	{DDP_COMPONENT_SYS_B_CHIST0, MTK_DISP_CHIST, 4, NULL, 0},
 	{DDP_COMPONENT_SYS_B_CHIST1, MTK_DISP_CHIST, 5, NULL, 0},
 	{DDP_COMPONENT_SYS_B_CHIST2, MTK_DISP_CHIST, 6, NULL, 0},
-	{DDP_COMPONENT_SYS_B_DBI_COUNT0, MTK_DISP_DBI_COUNT, 1, NULL, 0},
+	{DDP_COMPONENT_SYS_B_DBI_COUNT0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVL2_RSZ_IN_CB0, MTK_DISP_VIRTUAL, -1, NULL, 0},
 /*855*/	{DDP_COMPONENT_OVL2_RSZ_IN_CB1, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_OVL2_RSZ_IN_CB2, MTK_DISP_VIRTUAL, -1, NULL, 0},
@@ -1725,7 +1724,7 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 	/* check if this module need larb_dev */
 	if (type != MTK_DISP_OVL && type != MTK_DISP_RDMA && type != MTK_DISP_WDMA &&
 		type != MTK_DISP_POSTMASK && type != MTK_DISP_MDP_RDMA && type != MTK_DISP_ODDMR &&
-		type != MTK_OVL_EXDMA && type != MTK_DISP_BWM && type != MTK_DISP_DBI_COUNT)
+		type != MTK_OVL_EXDMA && type != MTK_DISP_BWM)
 		return;
 
 	count = of_property_count_u32_elems(node, "mediatek,larb");
