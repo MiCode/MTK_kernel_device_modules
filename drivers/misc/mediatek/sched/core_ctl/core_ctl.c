@@ -427,6 +427,10 @@ static void check_freq_min_req(void)
 	struct cluster_data *cluster;
 	unsigned long last_freq_qos_max_of_min;
 
+	/* no need check with camera mode */
+	if (enable_policy == CAMERA_MODE)
+		return;
+
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for_each_cluster(cluster, index) {
 		last_freq_qos_max_of_min = get_freq_qos_max_of_min(index);
@@ -1857,9 +1861,11 @@ static void get_busy_cpus(void)
 			if (cpu_stat->is_busy && max_nr_state[i] > cluster->nr_task_thres)
 				cpu_count++;
 			else if (busy_state[i] > cluster->cpu_busy_up_thres &&
-				cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres)
+				cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres &&
+				enable_policy != CAMERA_MODE)
 				cpu_count++;
-			else if (max_rt_nr_state[i] > cluster->rt_nr_task_thres)
+			else if (max_rt_nr_state[i] > cluster->rt_nr_task_thres &&
+				enable_policy != CAMERA_MODE)
 				cpu_count++;
 		}
 		cluster->need_spread_cpus = cpu_count;
@@ -2020,17 +2026,24 @@ static void check_heaviest_status(void)
 	if (max_task_util > heaviest_thres) {
 		spin_lock_irqsave(&core_ctl_state_lock, flags);
 		big_cluster->new_need_cpus++;
-		if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
-			mid_cluster->new_need_cpus = mid_cluster->num_cpus;
+		if (enable_policy != CAMERA_MODE){
+			if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
+				mid_cluster->new_need_cpus = mid_cluster->num_cpus;
+		} else { /* only for camera mode */
+			if (mid_cluster->new_need_cpus > 0)
+				mid_cluster->new_need_cpus--;
+		}
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
 
 	/* rescue prime core when busy */
-	for_each_cpu(cpu, &big_cluster->cpu_mask){
-		cpu_stat = &per_cpu(cpu_state, cpu);
-		if (cpu_stat->is_busy) {
-			if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
-				mid_cluster->new_need_cpus = mid_cluster->num_cpus;
+	if (enable_policy != CAMERA_MODE) {
+		for_each_cpu(cpu, &big_cluster->cpu_mask){
+			cpu_stat = &per_cpu(cpu_state, cpu);
+			if (cpu_stat->is_busy) {
+				if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
+					mid_cluster->new_need_cpus = mid_cluster->num_cpus;
+			}
 		}
 	}
 

@@ -110,14 +110,28 @@ EXPORT_SYMBOL(_capacity_of);
 
 unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 {
+	struct cfs_rq *cfs_rq;
 	unsigned long cfs_util, cpu_util = 0;
 	unsigned long capacity, umin, umax;
+	unsigned long util_est;
 	unsigned int util_pct;
 
-	cfs_util = mtk_cpu_util_cfs_boost(cpu);
-	cpu_util = mtk_effective_cpu_util(cpu, cfs_util,
-				(struct task_struct *)UINTPTR_MAX, &umin, &umax);
-	capacity = (orig == true) ? arch_scale_cpu_capacity(cpu) : _capacity_of(cpu);
+	/* camera mode only consider CFS loading & orig capacity */
+	if (core_ctl_get_policy() != 2) {
+		cfs_util = mtk_cpu_util_cfs_boost(cpu);
+		cpu_util = mtk_effective_cpu_util(cpu, cfs_util,
+					(struct task_struct *)UINTPTR_MAX, &umin, &umax);
+		capacity = (orig == true) ? arch_scale_cpu_capacity(cpu) : _capacity_of(cpu);
+	} else {
+		cfs_rq = &cpu_rq(cpu)->cfs;
+		cfs_util = READ_ONCE(cfs_rq->avg.util_avg);
+		if (sched_feat(UTIL_EST) && is_util_est_enable()) {
+			util_est = READ_ONCE(cfs_rq->avg.util_est);
+			cpu_util = max_t(unsigned long, cfs_util, util_est);
+		}
+		capacity = arch_scale_cpu_capacity(cpu);
+	}
+
 	cpu_util = min_t(unsigned long, cpu_util, capacity);
 	util_pct = (unsigned int)div64_ul((cpu_util * 100), capacity);
 
