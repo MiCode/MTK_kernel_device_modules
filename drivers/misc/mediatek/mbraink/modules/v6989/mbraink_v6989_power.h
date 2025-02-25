@@ -45,7 +45,7 @@ extern int mbraink_netlink_send_msg(const char *msg);
 int vcorefs_get_src_req_num(void);
 unsigned int *vcorefs_get_src_req(void);
 
-int mbraink_v6989_power_init(void);
+int mbraink_v6989_power_init(struct device *dev);
 int mbraink_v6989_power_deinit(void);
 
 

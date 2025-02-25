@@ -29,6 +29,8 @@
 #include <rt6160.h>
 #endif
 
+static struct device *pMBrainkPlatDev;
+
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE) && \
 	IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 
@@ -625,32 +627,42 @@ static int mbraink_v6989_power_get_pmic_voltage_info(struct mbraink_pmic_voltage
 	struct regulator *reg_vcore;
 	struct regulator *reg_vsram_core;
 
-	reg_vcore = regulator_get(NULL, "8_vbuck1");
+	if (pMBrainkPlatDev == NULL) {
+		pr_info("get mbraink platform device is null");
+		return -1;
+	}
+
+	if (pmicVoltageInfo == NULL) {
+		pr_info("get pmicVoltageInfo is null");
+		return -1;
+	}
+
+	reg_vcore = devm_regulator_get_optional(pMBrainkPlatDev, "vcore");
 	if (IS_ERR(reg_vcore)) {
 		err = PTR_ERR(reg_vcore);
-		pr_notice("Failed to get '8_vbuck1' regulator: %d\n", err);
+		pr_notice("Failed to get 'vcore' regulator: %d\n", err);
 	} else {
 		ret = regulator_get_voltage(reg_vcore);
 		if (ret > 0) {
 			vcore = ret;
-			pr_info("get 8_vbuck1, vcore: %d", vcore);
+			pr_info("get vcore: %d", vcore);
 		} else {
-			pr_info("failed to get 8_vbuck1, vcore: %d", vcore);
+			pr_info("failed to get vcore: %d", vcore);
 		}
 		regulator_put(reg_vcore);
 	}
 
-	reg_vsram_core = regulator_get(NULL, "mt6363_vbuck4");
+	reg_vsram_core = devm_regulator_get_optional(pMBrainkPlatDev, "vsram");
 	if (IS_ERR(reg_vsram_core)) {
 		err = PTR_ERR(reg_vsram_core);
-		pr_notice("Failed to get 'mt6363_vbuck4' regulator: %d\n", err);
+		pr_notice("Failed to get 'vsram' regulator: %d\n", err);
 	} else {
 		ret = regulator_get_voltage(reg_vsram_core);
 		if (ret > 0) {
 			vsram_core = ret;
-			pr_info("get mt6363_vbuck4, vsram_core: %d", vsram_core);
+			pr_info("get vsram_core: %d", vsram_core);
 		} else {
-			pr_info("failed to get mt6363_vbuck4, vsram_core: %d", vsram_core);
+			pr_info("failed to get vsram_core: %d", vsram_core);
 		}
 		regulator_put(reg_vsram_core);
 	}
@@ -798,10 +810,11 @@ static struct mbraink_power_ops mbraink_v6989_power_ops = {
 	.getPowerThrottleHwInfo = mbraink_v6989_power_get_power_throttle_hw_info,
 };
 
-int mbraink_v6989_power_init(void)
+int mbraink_v6989_power_init(struct device *dev)
 {
 	int ret = 0;
 
+	pMBrainkPlatDev = dev;
 	ret = register_mbraink_power_ops(&mbraink_v6989_power_ops);
 	ret = register_low_battery_mbrain_cb(pt2mbrain_hint_low_battery_volt_throttle);
 	if (ret != 0) {

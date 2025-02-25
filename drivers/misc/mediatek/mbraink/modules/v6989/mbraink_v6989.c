@@ -73,7 +73,7 @@ static int mbraink_v6989_probe(struct platform_device *pdev)
 	if (ret)
 		pr_notice("[MBK_v6989] mbraink v6989 battery init failed.\n");
 
-	ret = mbraink_v6989_power_init();
+	ret = mbraink_v6989_power_init(mbraink_v6989_device);
 	if (ret)
 		pr_notice("[MBK_v6989] mbraink v6989 power init failed.\n");
 
