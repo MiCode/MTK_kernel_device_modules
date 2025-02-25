@@ -11,6 +11,8 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 
+extern struct provider_clk *get_all_provider_clks(bool is_internal);
+
 static int __bring_up_enable(struct platform_device *pdev)
 {
 	struct clk *clk;
@@ -35,6 +37,9 @@ static int __bring_up_enable(struct platform_device *pdev)
 			clk_prepare_enable(clk);
 		}
 	}
+
+	/* get all clocks before running */
+	get_all_provider_clks(true);
 
 	return 0;
 }

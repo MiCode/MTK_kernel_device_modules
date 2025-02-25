@@ -67,6 +67,9 @@ define_mgk_ddk_ko(
     srcs = [
         "clk-bringup.c",
     ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+    ],
     includes = ["."],
     hdrs = glob(["**/*.h"]),
 )

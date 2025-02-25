@@ -4597,9 +4597,11 @@ void set_subsys_reg_dump_mt6993(enum chk_sys_id id[])
 
 		if (rns->base->pn != CLK_NULL) {
 			clk = clk_chk_lookup(rns->base->pn);
-			if(clk)
+			if(clk) {
 				if (!__clk_is_enabled(clk))
 					continue;
+			} else
+				continue;
 		}
 
 		reg_dump_addr[i] = PHYSADDR(rns);
@@ -5141,8 +5143,6 @@ static int clk_chk_mt6993_probe(struct platform_device *pdev)
 #if CHECK_VCORE_FREQ
 	mtk_clk_check_muxes();
 #endif
-	/* get all clocks before running */
-	get_all_provider_clks(true);
 
 	clkchk_hwv_irq_init(pdev);
 
