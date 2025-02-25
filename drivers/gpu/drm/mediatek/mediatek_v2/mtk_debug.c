@@ -4014,15 +4014,15 @@ static void process_dbg_opt(const char *opt)
 		mtk_disp_oddmr_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "mtcmos:", 7) == 0) {
 		int ret;
-		unsigned int pd_id, on;
+		unsigned int on;
+		struct mtk_drm_private *priv = drm_dev->dev_private;
 
-		ret = sscanf(opt, "mtcmos:%u,%u\n", &pd_id, &on);
-		if (ret != 2) {
-			DDPMSG("mtcmos:0,1 for pd_id(0), power on(1)\n");
+		ret = sscanf(opt, "mtcmos:%u\n", &on);
+		if (ret != 1) {
+			DDPMSG("mtcmos:1 for power on\n");
 			return;
 		}
-		if (vdisp_func.debug_mtcmos_ctrl)
-			vdisp_func.debug_mtcmos_ctrl(pd_id, on);
+		mtk_drm_pm_ctrl(priv, on ? DISP_PM_GET : DISP_PM_PUT);
 	} else if (strncmp(opt, "dpc:", 4) == 0) {
 		mtk_vidle_debug_cmd_adapter(opt + 4);
 	} else if (strncmp(opt, "aee:", 4) == 0) {

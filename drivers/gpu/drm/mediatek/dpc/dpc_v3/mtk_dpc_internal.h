@@ -219,6 +219,11 @@
 #define DISP_DPC_MML_DT_TE_MON_SEL_G0                    0x040UL
 #define DISP_DPC_MML_DT_TE_MON_SEL_G1                    0x044UL
 
+#define DISP_REG_DPC3_DTx_SW_TRIG(n)                     (0x300UL + 0x4 * (n))	// n = 0 ~ 80
+
+#define DISP_SW_OFF_CONFIG_PADDR_W_PWRITE                0x6A0UL
+#define DISP_SW_OFF_CONFIG_PWRITE                        0x6A4UL
+
 #define DISP_DPC_EVENT_SEL_G0                            0x500UL
 #define DISP_DPC_EVENT_SEL_G1                            0x504UL
 #define DISP_DPC_EVENT_SEL_G2                            0x508UL
@@ -246,6 +251,7 @@
 #define DISP_DPC_INTSTA_DT_TE_THREAD                     0x718UL
 #define DISP_DPC_INTSTA_MML_STATE                        0x71CUL
 #define DISP_DPC_INTSTA_MML_ERROR                        0x720UL
+#define DISP_DPC_MTCMOS_STATUS                           0x824UL
 
 /* DPC monitor */
 #define DISP_DPC_DDREN_MONITOR_CFG                       0x860UL
@@ -457,6 +463,7 @@ struct mtk_dpc_mtcmos_cfg {
 	resource_size_t chk_pa;
 	void __iomem *chk_va;
 	enum mtk_dpc_mtcmos_mode mode;
+	u8 link_bit;
 };
 
 struct mtk_dpc_channel_bw_cfg {

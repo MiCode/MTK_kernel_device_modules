@@ -8041,7 +8041,6 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	bool en = 1;
 	int ret;
 	unsigned long flags = 0;
-	void *base;
 
 	if (priv->top_clk_num <= 0)
 		return;
