@@ -1503,7 +1503,7 @@ int cmdq_util_init(void)
 	cmdq_controller_set_fp(&controller_fp);
 	cmdq_helper_set_fp(&helper_fp);
 
-	for (i = 0; i < gce_hw_cnt; i++) {
+	for (i = 0; i < CMDQ_HW_MAX; i++) {
 		spin_lock_init(&util.err[i].lock);
 		util.err[i].buffer = vzalloc(CMDQ_FIRST_ERR_SIZE);
 		if (!util.err[i].buffer)
