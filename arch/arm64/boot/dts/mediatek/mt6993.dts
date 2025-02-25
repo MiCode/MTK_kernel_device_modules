@@ -4605,6 +4605,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vmmrc-mask = <0x10b0>;
 		vmmrc-on-table = <0xff0>;
 		mminfra-base = <0x30000000>;
+		hfrp-base = <0x31bd0000>;
 		mmpc-cam-hw-bw = <0x5c>;
 		mmpc-cam-hw-bw-hrt = <0x29c>;
 		mmpc-total-mmqos-bw = <0x53c>;
