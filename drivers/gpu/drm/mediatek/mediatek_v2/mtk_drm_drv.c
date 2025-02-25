@@ -9906,8 +9906,15 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 		private->data->larb_ssc_ch_mapping)
 		mtk_drm_larb_ssc_ch_init(drm->dev);
 
-	if (mtk_disp_is_enable_hrt_dbg())
+	if (mtk_disp_is_enable_hrt_dbg()) {
 		mtk_drm_helper_set_opt_by_name(private->helper_opt, "MTK_DRM_OPT_HRT_DEBUG", 1);
+
+		/* debug top load default setting */
+		if (private->data->mmsys_id == MMSYS_MT6993) {
+			mtk_dbgtp_default_cfg_load(private);
+			mtk_dbgtp_update(private);
+		}
+	}
 
 	mtk_drm_first_enable(drm);
 
@@ -9981,11 +9988,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	drm->mode_config.max_width = 8192;
 	drm->mode_config.max_height = 8192;
 	drm->mode_config.funcs = &mtk_drm_mode_config_funcs;
-
-	/* debug top load default setting */
-	//if (!is_enable_hrt_debug())//TODO
-	//if (private->data->mmsys_id == MMSYS_MT6993)
-		//mtk_dbgtp_default_cfg_load(private);
 
 	ret = component_bind_all(drm->dev, drm);
 	if (ret)

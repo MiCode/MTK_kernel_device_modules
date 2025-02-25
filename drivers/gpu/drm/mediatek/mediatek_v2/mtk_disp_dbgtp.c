@@ -273,8 +273,8 @@ void mtk_dbgtp_fifo_mon_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *c
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	for (i = 0; i < FIFO_MON_NUM; i++) {
-		/* dbg top fifo mon0 */
-		value = (REG_FLD_VAL((DISP_FIFO_MON_EN), priv->mtk_dbgtp_sta.fifo_mon_en[i]));
+		/* dbg top fifo mon0 disable*/
+		value = (REG_FLD_VAL((DISP_FIFO_MON_EN), 0));
 		mask = REG_FLD_MASK(DISP_FIFO_MON_EN);
 		/*DDPMSG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);*/
 		cmdq_pkt_write(cmdq_handle, dbgtp_comp->cmdq_base,
@@ -870,10 +870,16 @@ void mtk_dbgtp_dump_mmlsys_regs(void __iomem *config_regs, unsigned int mmlsys_i
 
 void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 {
+	DDPMSG("%s:%d +\n", __func__, __LINE__);
+
+	/* reset all setting */
+	memset(&priv->mtk_dbgtp_sta, 0, sizeof(priv->mtk_dbgtp_sta));
+
 	/* debug top default setting */
-	//priv->mtk_dbgtp_sta.dbgtp_en = true;
+	priv->mtk_dbgtp_sta.dbgtp_en = true;
 	priv->mtk_dbgtp_sta.dbgtp_switch = 0x1FFF;
-	priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = 0x0;
+	priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = true;
+	priv->mtk_dbgtp_sta.dbgtp_trig_prd = 2600;
 	priv->mtk_dbgtp_sta.dbgtp_timeout_en = 0x1;
 	priv->mtk_dbgtp_sta.dsi_lpc_mon_en = true;
 
@@ -881,7 +887,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = 0x10FFE;
 
 	/* fifo mon default setting */
-	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 1;
+	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 0;
 	priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 5;
 
 	/* dispsys default setting */
@@ -1134,6 +1140,8 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].smi_mon_portid[3] = 3;
 	priv->mtk_dbgtp_sta.mmlsys[2].crossbar_mon_cfg0 = 0x00000000;//MML_PQ_OUT
 	priv->mtk_dbgtp_sta.mmlsys[2].crossbar_mon_cfg1 = 0x00000000;//MML_PQ_IN
+
+	DDPMSG("%s:%d -\n", __func__, __LINE__);
 }
 
 void mtk_dbgtp_dispsys_smi_mon_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle,

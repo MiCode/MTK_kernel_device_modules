@@ -15912,6 +15912,10 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	if (of_property_read_bool(priv->mmsys_dev->of_node, "enable-output-int-switch"))
 		mtk_drm_crtc_update_interface(crtc, atomic_state);
 
+	/* for display debug setting restore */
+	if (priv->data->mmsys_id == MMSYS_MT6993)
+		mtk_dbgtp_update(priv);
+
 	mtk_drm_crtc_enable(crtc, false);
 	CRTC_MMP_EVENT_END((int) index, resume,
 			mtk_crtc->enabled, 0);
