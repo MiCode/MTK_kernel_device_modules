@@ -9818,6 +9818,13 @@
 		};
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6375_chg>;
+		bootmode = <&chosen>;
+	};
+
 	lk_charger: lk_charger {
 		compatible = "mediatek,lk_charger";
 		enable_anime;
@@ -14167,6 +14174,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 			compatible = "mediatek,mt6375-gauge";
 			interrupt-controller;
 			#interrupt-cells = <1>;
+			charger = <&mt6375_chg>;
 			bootmode = <&chosen>;
 			io-channels = <&mt6375_auxadc MT6375_AUXADC_BATSNS>,
 				      <&mt6375_auxadc MT6375_AUXADC_BATON>,
@@ -14181,6 +14189,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 					      <&mt6375_auxadc RG_INT_STATUS_BAT2_H>,
 					      <&mt6375_auxadc RG_INT_STATUS_BAT2_L>,
 					      <&mt6375_auxadc RG_INT_STATUS_NAG_C_DLTV>,
+					      <&mtk_gauge RG_INT_STATUS_BATON_BAT_IN>,
 					      <&mtk_gauge RG_INT_STATUS_BATON_BAT_OUT>,
 					      <&mtk_gauge RG_INT_STATUS_FG_ZCV>,
 					      <&mtk_gauge RG_INT_STATUS_FG_N_CHARGE_L>,
@@ -14189,7 +14198,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 					      <&mt6375_auxadc RG_INT_STATUS_BAT_TEMP_H>,
 					      <&mt6375_auxadc RG_INT_STATUS_BAT_TEMP_L>;
 			interrupt-names = "GM30_EVT", "COULOMB_H", "COULOMB_L",
-					  "VBAT2_H", "VBAT2_L", "NAFG", "BAT_OUT", "ZCV",
+					  "VBAT2_H", "VBAT2_L", "NAFG", "BAT_IN", "BAT_OUT","ZCV",
 					  "FG_N_CHARGE_L", "FG_IAVG_H", "FG_IAVG_L", "BAT_TMP_H",
 					  "BAT_TMP_L";
 			nvmem-cells = <&fg_init>, <&fg_soc>;
