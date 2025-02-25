@@ -12,7 +12,7 @@
 #include "mtk-base-afe.h"
 
 /* clean buffer that have already been play to HW, to minimize pop when xrun */
-#define CLEAR_BUFFER_US 600
+#define CLEAR_BUFFER_US 600ULL
 int mtk_sp_clean_written_buffer_ack(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
