@@ -53,6 +53,7 @@ struct mtk_usb_sram {
 	void __iomem *clk_upd;
 	u32 clk_bit;
 	u32 upd_bit;
+	u32 pdn_bit;
 
 	spinlock_t block_lock;
 	size_t block_size;
@@ -66,6 +67,7 @@ struct mtk_usb_sram {
 #define USB_SRAM_MIN_ORDER  8
 
 static struct mtk_usb_sram *g_manager;
+static void bus_clk_pdn(bool on);
 
 #define INFO_MAX_LEN 500
 static char parse_info[INFO_MAX_LEN];
@@ -278,6 +280,8 @@ next_block:
 		dev_info(manager->dev, "allocate [%s]\n", parse_region_info(region));
 
 		spin_lock(&manager->list_lock);
+		if (list_empty(&manager->region_list))
+			bus_clk_pdn(false);
 		list_add_tail(&region->list, &manager->region_list);
 		dump_region(manager);
 		spin_unlock(&manager->list_lock);
@@ -300,6 +304,14 @@ static int _mtk_usb_sram_free(struct mtk_usb_sram *manager, struct mtk_usb_sram_
 	spin_unlock(&manager->block_lock);
 
 	iounmap(region->virt);
+
+	spin_lock(&manager->list_lock);
+	list_del(&region->list);
+	if (list_empty(&manager->region_list))
+		bus_clk_pdn(true);
+	dump_region(manager);
+	spin_unlock(&manager->list_lock);
+
 	kfree(region);
 
 	return 0;
@@ -321,10 +333,8 @@ int mtk_usb_sram_free(dma_addr_t physical)
 		spin_unlock(&manager->list_lock);
 		return -EINVAL;
 	}
-	list_del(&region->list);
-	dump_region(manager);
-	spin_unlock(&manager->list_lock);
 
+	spin_unlock(&manager->list_lock);
 	return _mtk_usb_sram_free(manager, region);
 }
 EXPORT_SYMBOL_GPL(mtk_usb_sram_free);
@@ -345,10 +355,8 @@ int mtk_usb_sram_free_virt(void *virtual)
 		spin_unlock(&manager->list_lock);
 		return -EINVAL;
 	}
-	list_del(&region->list);
 
 	spin_unlock(&manager->list_lock);
-
 	return _mtk_usb_sram_free(manager, region);
 }
 EXPORT_SYMBOL_GPL(mtk_usb_sram_free_virt);
@@ -370,6 +378,29 @@ static void *allocate_for_offload(dma_addr_t *phys_addr, unsigned int size, int 
 static int free_for_offload(dma_addr_t phys_addr)
 {
 	return mtk_usb_sram_free(phys_addr);
+}
+
+static void bus_clk_pdn(bool on)
+{
+	struct mtk_usb_sram *manager = g_manager;
+	void __iomem *operation;
+	u32 value;
+
+	if (!manager->clk_reg) {
+		dev_info(manager->dev, "%s not defined bus clk!!", __func__);
+		return;
+	}
+
+	operation = manager->clk_reg;
+	value = readl(operation);
+	if (on)
+		value |= (0x1U << manager->pdn_bit);
+	else
+		value &= ~(0x1U << manager->pdn_bit);
+	writel(value, operation);
+
+	dev_info(manager->dev, "%s on:%d operation:0x%llx value:0x%x\n",
+		__func__, on, virt_to_phys(operation), readl(manager->clk_reg));
 }
 
 static void bus_clk_change(bool high_speed)
@@ -403,7 +434,7 @@ static void bus_clk_change(bool high_speed)
 		__func__, high_speed, virt_to_phys(operation), value, readl(manager->clk_reg));
 }
 
-#define BUS_CLK_INFO_COUNT	7
+#define BUS_CLK_INFO_COUNT	8
 static void usb_sram_bus_clk_parse(struct mtk_usb_sram *manager)
 {
 	u32 bus_clk[BUS_CLK_INFO_COUNT];
@@ -429,20 +460,21 @@ static void usb_sram_bus_clk_parse(struct mtk_usb_sram *manager)
 		upd_ofs = bus_clk[4];
 		manager->clk_bit = bus_clk[5];
 		manager->upd_bit = bus_clk[6];
+		manager->pdn_bit = bus_clk[7];
 
-		reg_physical = (uintptr_t)(clk_base + reg_ofs);
-		set_physical = (uintptr_t)(clk_base + set_ofs);
-		clr_physical = (uintptr_t)(clk_base + clr_ofs);
-		upd_physical = (uintptr_t)(clk_base + upd_ofs);
+		reg_physical = (uintptr_t)(clk_base + reg_ofs); /* for setting pdn */
+		set_physical = (uintptr_t)(clk_base + set_ofs); /* for setting source */
+		clr_physical = (uintptr_t)(clk_base + clr_ofs); /* for clearing source */
+		upd_physical = (uintptr_t)(clk_base + upd_ofs); /* for updating source */
 
 		manager->clk_reg = ioremap((phys_addr_t)reg_physical, sizeof(u32));
 		manager->clk_set = ioremap((phys_addr_t)set_physical, sizeof(u32));
 		manager->clk_clr = ioremap((phys_addr_t)clr_physical, sizeof(u32));
 		manager->clk_upd = ioremap((phys_addr_t)upd_physical, sizeof(u32));
 
-		dev_info(manager->dev, "reg:0x%lx set:0x%lx clr:0x%lx upd:0x%lx clk_bit:0x%x upd_bit:0x%x\n",
+		dev_info(manager->dev, "reg:0x%lx set:0x%lx clr:0x%lx upd:0x%lx (clkt:0x%x upd:0x%x pdn:0x%x)\n",
 			reg_physical, set_physical,	clr_physical, upd_physical,
-			manager->clk_bit, manager->upd_bit);
+			manager->clk_bit, manager->upd_bit, manager->pdn_bit);
 	}
 }
 
@@ -630,6 +662,9 @@ static int usb_sram_probe(struct platform_device *pdev)
 
 	if (sysfs_create_group(&dev->kobj, &usb_sram_group))
 		USB_OFFLOAD_ERR("fail to create sysfs attribtues\n");
+
+	/* set pdn down */
+	bus_clk_pdn(true);
 
 	return ret;
 
