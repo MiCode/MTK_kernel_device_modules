@@ -14404,6 +14404,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&opp_table_img>, <&opp_table_ipe>, <&opp_table_disp>, <&opp_table_disp>,
 				<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_venc_mdp>;
 			mediatek,vcore-level =	/bits/ 8 <1 2 3 4 5 6>; //mapping to mmdvfs vcore dfs level
+			mediatek,step-idx = /bits/ 8 <MMDVFS_VCP_CAM>;
 			mediatek,mmup-sram;
 		};
 
