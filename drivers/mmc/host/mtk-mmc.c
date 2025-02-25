@@ -1030,6 +1030,10 @@ static int msdc_ungate_clock(struct msdc_host *host)
 static void msdc_new_tx_rx_setting_v2(struct msdc_host *host,
 	unsigned char timing)
 {
+
+	if (IS_ERR_OR_NULL(host->top_base))
+		return;
+
 	switch (timing) {
 	case MMC_TIMING_LEGACY:
 	case MMC_TIMING_MMC_HS:
@@ -1068,6 +1072,10 @@ static void msdc_new_tx_rx_setting_v2(struct msdc_host *host,
 static void msdc_new_tx_rx_setting_v1(struct msdc_host *host,
 	unsigned char timing)
 {
+
+	if (IS_ERR_OR_NULL(host->top_base))
+		return;
+
 	switch (timing) {
 	case MMC_TIMING_LEGACY:
 	case MMC_TIMING_MMC_HS:
