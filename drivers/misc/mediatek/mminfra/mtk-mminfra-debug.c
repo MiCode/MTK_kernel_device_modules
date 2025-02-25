@@ -46,6 +46,8 @@
 
 #define MMPC_RSC_USER_NR	(2)
 
+#define MMPC_RESOURCE_NR	(9)
+
 struct mminfra_dbg {
 	void __iomem *ctrl_base;
 	void __iomem *mminfra_base;
@@ -73,6 +75,16 @@ struct mminfra_dbg {
 	bool irq_safe;
 };
 
+struct mmpc_src_dbg {
+	void __iomem *mmpc_src_base;
+	void __iomem *mm_proc_mtcmos;
+	u32 mmpc_src_ctrl_base;
+	u32 mmpc_src_ctrl_fsm[MMPC_RESOURCE_NR];
+	u32 mmpc_src_ctrl_hw[MMPC_RESOURCE_NR];
+	u32 mm_proc_mtcmos_base;
+	u32 mm_proc_mtcmos_mask;
+};
+
 static struct notifier_block mtk_pd_notifier;
 static struct scmi_tinysys_info_st *tinfo;
 static int feature_id;
@@ -83,6 +95,7 @@ static atomic_t vcp_ref_cnt = ATOMIC_INIT(0);
 #endif
 static struct device *dev;
 static struct mminfra_dbg *dbg;
+static struct mmpc_src_dbg *mmpc_dbg;
 #if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 static struct task_struct *mminfra_power_mon_thread;
 #endif
@@ -100,6 +113,7 @@ static bool mm_no_cg_ctrl;
 static bool mm_no_scmi;
 static bool bypass_devapc_excep;
 static bool mmpc_src_ctrl;
+static bool mmpc_src_ctrl_v2;
 static bool mminfra_api_pwr_ctrl;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 static bool mm_dapc_pwr_on;
@@ -834,6 +848,10 @@ int mminfra_dbg_ut(const char *val, const struct kernel_param *kp)
 		pr_notice("%s: read %x=0x%x\n", __func__, arg0, value);
 		iounmap(test_base);
 		break;
+	case 5:
+		pr_notice("%s: mmpc dump\n", __func__);
+		mtk_mmpc_resource_dump();
+		break;
 	default:
 		pr_notice("%s: wrong test_case(%d)\n", __func__, test_case);
 		break;
@@ -1078,6 +1096,28 @@ void mtk_mminfra_off_gipc(void)
 }
 EXPORT_SYMBOL_GPL(mtk_mminfra_off_gipc);
 
+void mtk_mmpc_resource_dump(void)
+{
+	int i;
+
+	if (mmpc_src_ctrl_v2) {
+		if ((readl(mmpc_dbg->mm_proc_mtcmos) & mmpc_dbg->mm_proc_mtcmos_mask)
+			== mmpc_dbg->mm_proc_mtcmos_mask) {
+			for (i = 0; i < MMPC_RESOURCE_NR; i++) {
+				pr_notice("mmpc src fsm(0x%x)=0x%x, hw(0x%x)=0x%x\n",
+					mmpc_dbg->mmpc_src_ctrl_fsm[i],
+					readl(mmpc_dbg->mmpc_src_base +
+						mmpc_dbg->mmpc_src_ctrl_fsm[i]),
+					mmpc_dbg->mmpc_src_ctrl_hw[i],
+					readl(mmpc_dbg->mmpc_src_base +
+						mmpc_dbg->mmpc_src_ctrl_hw[i]));
+			}
+		} else
+			pr_notice("%s: mmproc pwr off\n", __func__);
+	}
+}
+EXPORT_SYMBOL_GPL(mtk_mmpc_resource_dump);
+
 static bool aee_dump;
 static irqreturn_t mminfra_irq_handler(int irq, void *data)
 {
@@ -1286,7 +1326,8 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	int ret = 0, i = 0, irq, comm_nr = 0, clk_nr = 0;
 
 	dbg = kzalloc(sizeof(*dbg), GFP_KERNEL);
-	if (!dbg)
+	mmpc_dbg = kzalloc(sizeof(*mmpc_dbg), GFP_KERNEL);
+	if (!dbg || !mmpc_dbg)
 		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1447,6 +1488,31 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 				pr_notice("[mminfra] mmpc_rsc_user[%d]=%d\n",
 					i, dbg->mmpc_rsc_user[i]);
 			}
+		}
+	}
+	mmpc_src_ctrl_v2 = of_property_read_bool(node, "mmpc-src-ctrl-v2");
+	if (mmpc_src_ctrl_v2) {
+		of_property_read_u32(node, "mmpc-src-ctrl-base", &mmpc_dbg->mmpc_src_ctrl_base);
+		of_property_read_u32(node, "mm-proc-mtcmos-base", &mmpc_dbg->mm_proc_mtcmos_base);
+		of_property_read_u32(node, "mm-proc-mtcmos-mask", &mmpc_dbg->mm_proc_mtcmos_mask);
+
+		if (mmpc_dbg->mmpc_src_ctrl_base)
+			mmpc_dbg->mmpc_src_base = ioremap(mmpc_dbg->mmpc_src_ctrl_base, 0x1000);
+		if (mmpc_dbg->mm_proc_mtcmos_base)
+			mmpc_dbg->mm_proc_mtcmos = ioremap(mmpc_dbg->mm_proc_mtcmos_base, 0x1000);
+
+		for (i = 0; i < MMPC_RESOURCE_NR; i++) {
+			if (!of_property_read_u32_index(dev->of_node, "mmpc-src-ctrl-fsm", i, &tmp))
+				mmpc_dbg->mmpc_src_ctrl_fsm[i] = tmp;
+			else
+				mmpc_dbg->mmpc_src_ctrl_fsm[i] = 0;
+
+			if (!of_property_read_u32_index(dev->of_node, "mmpc-src-ctrl-hw", i, &tmp))
+				mmpc_dbg->mmpc_src_ctrl_hw[i] = tmp;
+			else
+				mmpc_dbg->mmpc_src_ctrl_hw[i] = 0;
+			pr_notice("[mminfra] [%d] mmpc_src_ctrl_fsm=0x%x, mmpc_src_ctrl_hw=0x%x\n",
+				i, mmpc_dbg->mmpc_src_ctrl_fsm[i], mmpc_dbg->mmpc_src_ctrl_hw[i]);
 		}
 	}
 
