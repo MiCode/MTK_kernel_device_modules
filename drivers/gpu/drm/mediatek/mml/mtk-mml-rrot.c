@@ -2305,7 +2305,8 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
 	const u32 rotate = rrot_frm->rotate;
 	const u32 format = src->format;
-	const u32 acttime = mml_iscouple(cfg->info.mode) ? cfg->info.act_time : cfg->duration;
+	const u32 acttime = mml_iscouple(cfg->info.mode) ?
+		cfg->info.act_time : cfg->duration * 1000;
 	const u32 bin_hor = 1 << cfg->bin_x;
 	const u32 pgsz = PAGE_SIZE;
 	u32 w = src->width, h = src->height;
