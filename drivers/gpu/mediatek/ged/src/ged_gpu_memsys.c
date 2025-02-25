@@ -16,7 +16,6 @@
 
 
 #if defined(MTK_GPU_MEMSYS_UTIL)
-static unsigned int g_sysram_support;
 static phys_addr_t g_counter_pa, g_counter_va;
 static unsigned int g_counter_size;
 static struct gpu_memsys_stat *g_memsys_stat;
