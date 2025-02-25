@@ -8974,6 +8974,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mm-mtcmos-base = <0x31b5009c>;
 			mm-mtcmos-mask = <0xc0000000>;
 			//mminfra-ao-base;
+			bypass-devapc-excep;
 			mm-devapc-vio-sta-base = <0x30040000>;
 			mmup-gipc-in-set = <0x31bd0028>;
 			mediatek,vcp-supply = <&vcp>;
