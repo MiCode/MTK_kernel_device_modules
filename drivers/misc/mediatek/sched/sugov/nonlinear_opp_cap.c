@@ -3376,7 +3376,7 @@ int mtk_effective_cpu_util_with_margin_from_adap_grp(int util, int cpu, struct c
 	return util;
 }
 
-int mtk_effective_cpu_util_with_margin_from_turn_point(int util, int cpu)
+int mtk_effective_cpu_util_with_margin_from_turn_point(int util, int cpu, struct cpumask *sg_cpumask, int source)
 {
 	int pelt_util = util;
 
@@ -3384,6 +3384,10 @@ int mtk_effective_cpu_util_with_margin_from_turn_point(int util, int cpu)
 		util = max(turn_point_util[cpu], util * target_margin[cpu] >> SCHED_CAPACITY_SHIFT);
 	else if (target_margin_low_enable[cpu] && util < turn_point_util[cpu])
 		util = min(turn_point_util[cpu], util * target_margin_low[cpu] >> SCHED_CAPACITY_SHIFT);
+	else if (am_ctrl || grp_dvfs_ctrl_mode)
+		util = mtk_effective_cpu_util_with_margin_from_adap_grp(util, cpu, sg_cpumask, source);
+	else
+		util = map_util_perf(util);
 
 	if (trace_sugov_ext_turn_point_margin_enabled()) {
 		int pelt_util_with_orig_margin = (pelt_util * util_scale) >> SCHED_CAPACITY_SHIFT;
@@ -3401,7 +3405,7 @@ int mtk_effective_cpu_util_with_margin_from_turn_point(int util, int cpu)
 int mtk_effective_cpu_util_with_margin(int util, int cpu, struct cpumask *sg_cpumask, int source)
 {
 	if (turn_point_util[cpu])
-		util = mtk_effective_cpu_util_with_margin_from_turn_point(util, cpu);
+		util = mtk_effective_cpu_util_with_margin_from_turn_point(util, cpu, sg_cpumask, source);
 	else if (am_ctrl || grp_dvfs_ctrl_mode)
 		util = mtk_effective_cpu_util_with_margin_from_adap_grp(util, cpu, sg_cpumask, source);
 	else
