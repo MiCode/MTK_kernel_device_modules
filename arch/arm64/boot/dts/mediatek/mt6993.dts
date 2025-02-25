@@ -3261,7 +3261,7 @@
 		ranges;
 		lpm-kernel-suspend = <0>;
 		suspend-method = "enable";
-		common-sodi = <0>;
+		common-sodi = <1>;
 
 		logger-enable-states = "mcusysoff_l", "mcusysoff_m", "mcusysoff_b", "system_vcore";
 
