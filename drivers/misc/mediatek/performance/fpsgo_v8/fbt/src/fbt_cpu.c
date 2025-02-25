@@ -1819,6 +1819,9 @@ static int fbt_get_dep_list(struct render_info *thr)
 	} else
 		count = 0;
 
+	if (count < 0)
+		count = 0;
+
 	fbt_filter_dep_list(dep_new, &count, thr->pid, thr->buffer_id);
 
 	sort(dep_new, count, sizeof(struct fpsgo_loading), __cmp1, NULL);
