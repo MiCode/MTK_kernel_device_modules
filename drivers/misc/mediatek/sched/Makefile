@@ -38,14 +38,14 @@
 # scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_utility_v4.o
 # scheduler-$(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)+= eas/flt_cal_build_utility.o
 
-subdir-ccflags-y += -I$(srctree)/kernel/
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/cpufreq/
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling
+#subdir-ccflags-y += -I$(srctree)/kernel/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/cpufreq/
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower
+#subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling
 
-obj-$(CONFIG_MTK_CORE_CTL) += mtk_core_ctl.o
-mtk_core_ctl-y += core_ctl/sched_avg.o
-mtk_core_ctl-y += core_ctl/core_ctl.o
+#obj-$(CONFIG_MTK_CORE_CTL) += mtk_core_ctl.o
+#mtk_core_ctl-y += core_ctl/sched_avg.o
+#mtk_core_ctl-y += core_ctl/core_ctl.o

@@ -1275,6 +1275,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:camera_dip_isp6s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:camera_wpe_isp6s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sched:mtk_core_ctl".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1640,7 +1641,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
     #"drivers/misc/mediatek/qos/mtk_qos.ko",
     #"drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
-    "drivers/misc/mediatek/sched/mtk_core_ctl.ko",
+    #"drivers/misc/mediatek/sched/mtk_core_ctl.ko",
     #"drivers/misc/mediatek/sched/scheduler.ko",
     #"drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko",
     "drivers/misc/mediatek/task_turbo/task_turbo.ko",
