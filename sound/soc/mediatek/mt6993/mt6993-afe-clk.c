@@ -432,8 +432,11 @@ CLK_CK_PD_ADSP_INFRA_ERR:
 void mt6993_afe_disable_clock(struct mtk_base_afe *afe)
 {
 	struct mt6993_afe_private *afe_priv = afe->platform_priv;
+	unsigned int value;
 
-	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
+	regmap_read(afe->regmap, AFE_IRQ_MCU_STATUS, &value);
+
+	dev_dbg(afe->dev, "%s() start, AFE_IRQ_MCU_STATUS = 0x%x\n", __func__, value);
 
 	/* IPM2.0: Use HOPPING & 26M */
 	clk_disable_unprepare(afe_priv->clk[CLK_HOPPING]);
