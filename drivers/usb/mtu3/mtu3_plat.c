@@ -1245,7 +1245,7 @@ get_phy:
 	if (ret)
 		dev_info(dev, "failed to parse dp_switch property\n");
 
-	ssusb_ao_cfg_of_property_parse(ssusb, node);
+	ret = ssusb_ao_cfg_of_property_parse(ssusb, node);
 	if (ret)
 		dev_info(dev, "failed to parse usb ao cfg\n");
 
