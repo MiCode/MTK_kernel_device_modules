@@ -1086,6 +1086,118 @@ unsigned int mtk_disp_get_dsi_data_rate(unsigned int info_idx)
 }
 EXPORT_SYMBOL(mtk_disp_get_dsi_data_rate);
 
+/*
+ * this function return whether panel need dsc
+ */
+int mtk_disp_is_panel_need_dsc(void *data)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_panel_dsc_params *dsc_params;
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	dsc_params = &mtk_crtc->panel_ext->params->dsc_params;
+
+	return ((dsc_params->enable == 1) && (dsc_params->bit_per_pixel != 1));
+}
+EXPORT_SYMBOL(mtk_disp_is_panel_need_dsc);
+
+/*
+ * this function return the number of working exdma in crtc0
+ */
+int mtk_disp_get_wrking_exdma_num(void *data)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	return atomic_read(&mtk_crtc->usage_ovl_wrking_num);
+}
+EXPORT_SYMBOL(mtk_disp_get_wrking_exdma_num);
+
+/*
+ * this function return if ovl_mdp_rsz is enable or not in crtc0
+ */
+int mtk_disp_is_ovl_mdp_rsz_en(void *data)
+{
+	struct drm_crtc *crtc;
+	const struct mtk_addon_scenario_data *addon_data = NULL;
+	const struct mtk_addon_module_data *addon_module = NULL;
+	const struct mtk_addon_path_data *path_data = NULL;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return 0;
+	}
+
+	priv = crtc->dev->dev_private;
+	if (!priv)
+		return 0;
+
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, ONE_SCALING);
+	if (IS_ERR_OR_NULL(addon_data))
+		return 0;
+
+	addon_module = &addon_data->module_data[0];
+	if (!addon_module)
+		return 0;
+
+	path_data = mtk_addon_module_get_path(addon_module->module);
+	if (!path_data)
+		return 0;
+
+	comp = priv->ddp_comp[path_data->path[path_data->path_len - 1]];
+	if (mtk_ddp_comp_get_type(comp->id) != MTK_DISP_MDP_RSZ)
+		return 0;
+
+	return mtk_mdp_rsz_bypass_info(comp);
+}
+EXPORT_SYMBOL(mtk_disp_is_ovl_mdp_rsz_en);
+
+/*
+ * this function return if disp scaling is needed in crtc0
+ */
+int mtk_disp_is_disp_scaling_en(void *data)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	return mtk_crtc->scaling_ctx.scaling_en;
+}
+EXPORT_SYMBOL(mtk_disp_is_disp_scaling_en);
+
 static int debug_get_info(unsigned char *stringbuf, int buf_len)
 {
 	int n = 0;

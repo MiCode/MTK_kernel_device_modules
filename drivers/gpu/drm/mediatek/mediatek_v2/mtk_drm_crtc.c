@@ -5326,7 +5326,7 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
 	char dbg_msg[512] = {0};
-	int written = 0;
+	int written = 0, ovl_wrking_num = 0;
 
 	if (crtc && crtc->state) {
 		plane_mask = crtc->state->plane_mask;
@@ -5380,6 +5380,12 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 			mtk_crtc->usage_ovl_fmt[3] = 4;
 		if (priv && priv->data->mmsys_id == MMSYS_MT6989)
 			mtk_crtc->usage_ovl_fmt[2] = 4;
+	}
+
+	if (mtk_crtc) {
+		for (int i = 0; i < MAX_LAYER_NR; i++)
+			ovl_wrking_num += (mtk_crtc->usage_ovl_fmt[i]) ? 1 : 0;
+		atomic_set(&mtk_crtc->usage_ovl_wrking_num, ovl_wrking_num);
 	}
 
 	if (mtk_crtc && mtk_disp_get_logger_enable()) {
@@ -14906,8 +14912,10 @@ skip:
 
 	/* 5. Set HRT BW to 0 */
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MMQOS_SUPPORT))
+			MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		mtk_disp_set_hrt_bw(mtk_crtc, 0);
+		atomic_set(&mtk_crtc->usage_ovl_wrking_num, 0);
+	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		unsigned int channel_hrt[BW_CHANNEL_NR] = { 0 };

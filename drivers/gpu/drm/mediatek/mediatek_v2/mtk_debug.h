@@ -59,6 +59,7 @@ enum MTK_DSI_CMD_V2_SCN_OPS {
 };
 
 extern int mtk_disp_hrt_bw_dbg(void);
+extern int mtk_mdp_rsz_bypass_info(struct mtk_ddp_comp *comp);
 
 struct cb_data_store {
 	struct cmdq_cb_data data;

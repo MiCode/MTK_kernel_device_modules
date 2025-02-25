@@ -181,6 +181,7 @@ struct mtk_disp_mdp_rsz {
 	unsigned int roi_height;
 	struct mtk_disp_mdp_rsz_tile_overhead tile_overhead;
 	struct mtk_disp_mdp_rsz_tile_overhead_v tile_overhead_v;
+	bool en;
 };
 
 struct mtk_disp_mdp_rsz_tile_overhead mdp_rsz_tile_overhead = { 0 };
@@ -871,6 +872,7 @@ static void mtk_mdp_rsz_config(struct mtk_ddp_comp *comp,
 		cfg->rsz_src_w, cfg->rsz_src_h, cfg->w, cfg->h);
 
 	if (!comp->mtk_crtc->scaling_ctx.scaling_en) {
+		rsz->en = false;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + RSZ_ENABLE, 0x0, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1216,9 +1218,11 @@ static void mtk_mdp_rsz_addon_config(struct mtk_ddp_comp *comp,
 static void mtk_mdp_rsz_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	struct mtk_disp_mdp_rsz *rsz = comp_to_mdp_rsz(comp);
 
 	if ((priv->data->mmsys_id == MMSYS_MT6989 && comp->id == DDP_COMPONENT_RSZ1) ||
 		(priv->data->mmsys_id == MMSYS_MT6991 && comp->id == DDP_COMPONENT_MDP_RSZ1)) {
+		rsz->en = false;
 		cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + RSZ_ENABLE, 0, ~0);
 		return;
@@ -1230,6 +1234,7 @@ static void mtk_mdp_rsz_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		return;
 	}
 
+	rsz->en = true;
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + RSZ_ENABLE, 0x1, ~0);
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1238,6 +1243,9 @@ static void mtk_mdp_rsz_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 
 static void mtk_mdp_rsz_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_disp_mdp_rsz *rsz = comp_to_mdp_rsz(comp);
+
+	rsz->en = false;
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + RSZ_ENABLE, 0x0, ~0);
 }
@@ -1382,6 +1390,13 @@ static const struct mtk_ddp_comp_funcs mtk_disp_mdp_rsz_funcs = {
 	.io_cmd = mtk_mdp_rsz_io_cmd,
 	.partial_update = mtk_mdp_rsz_set_partial_update,
 };
+
+int mtk_mdp_rsz_bypass_info(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_mdp_rsz *rsz = comp_to_mdp_rsz(comp);
+
+	return rsz->en;
+}
 
 static int mtk_disp_mdp_rsz_bind(struct device *dev, struct device *master,
 			     void *data)
