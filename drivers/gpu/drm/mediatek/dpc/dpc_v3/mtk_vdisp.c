@@ -122,6 +122,12 @@ static struct dpc_funcs disp_dpc_driver;
 struct wakeup_source *g_vdisp_wake_lock;
 struct mtk_vdisp *g_priv;
 
+static void __iomem *hwccf_xpu0_mtcmos_set;
+static void __iomem *hwccf_xpu0_mtcmos_clr;
+static void __iomem *hwccf_xpu0_local_en;
+static void __iomem *hwccf_global_en;
+static void __iomem *hwccf_global_sta;
+
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 atomic_t g_vdisp_wakelock_cnt;
 #endif
@@ -338,6 +344,65 @@ static void mtk_vdisp_vlp_disp_vote(u32 user, bool set)
 	} while (1);
 }
 
+static void vdisp_hwccf_vote(bool on)
+{
+	int ret = 0;
+	u32 value = 0;
+
+	if (IS_ERR_OR_NULL(hwccf_global_sta))
+		return;
+
+	if (on) {
+		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
+		if (ret < 0)
+			goto err1;
+
+		writel(0x40000, hwccf_xpu0_mtcmos_set);			/* vote xpu0 mtcmos voter */
+
+		ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, value & 0x40000, 1, 2000);
+		if (ret < 0)
+			goto err2;
+		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
+		if (ret < 0)
+			goto err3;
+		ret = readl_poll_timeout_atomic(hwccf_global_en, value, value & 0x40000, 1, 2000);
+		if (ret < 0)
+			goto err4;
+	} else {
+
+		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
+		if (ret < 0)
+			goto err1;
+
+		writel(0x40000, hwccf_xpu0_mtcmos_clr);			/* vote xpu0 mtcmos voter */
+
+		ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, !(value & 0x40000), 1, 2000);
+		if (ret < 0)
+			goto err2;
+		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
+		if (ret < 0)
+			goto err3;
+	}
+
+	return;
+
+err1:
+	VDISPERR("pwr(%u) polling status(%#x) idle timeout 1, ret(%d)", on, value, ret);
+	goto err_dump;
+err2:
+	VDISPERR("pwr(%u) polling local_enable(%#x) timeout, ret(%d)", on, value, ret);
+	goto err_dump;
+err3:
+	VDISPERR("pwr(%u) polling status(%#x) idle timeout 2, ret(%d)", on, value, ret);
+	goto err_dump;
+err4:
+	VDISPERR("pwr(%u) polling global_enable(%#x) timeout, ret(%d)", on, value, ret);
+	goto err_dump;
+err_dump:
+	clkchk_external_dump();
+	BUG_ON(1);
+}
+
 static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 {
 	const struct mtk_vdisp_data *data = priv->data;
@@ -445,6 +510,9 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			__pm_stay_awake(g_vdisp_wake_lock);
 #endif
+			/* power on disp vcore by mtcmos voter */
+			vdisp_hwccf_vote(true);
+
 			vdisp_hwccf_ctrl(g_priv, true);
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
 			/* POST ON */
@@ -491,8 +559,11 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
 			/* POST OFF */
-			vdisp_hwccf_ctrl(g_priv, false);
 
+			/* power off disp vcore by mtcmos voter */
+			vdisp_hwccf_vote(false);
+
+			vdisp_hwccf_ctrl(g_priv, false);
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			__pm_relax(g_vdisp_wake_lock);
 #endif
@@ -1080,6 +1151,15 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 		priv->pwr_node = NULL;
 	} else {
 		priv->pwr_node = pwr_node;
+
+		if (!priv->hwccf_base) {
+			/* platform code, not for legacy chip */
+			hwccf_xpu0_mtcmos_set = ioremap(0x31c20700, 0x4);
+			hwccf_xpu0_mtcmos_clr = ioremap(0x31c20704, 0x4);
+			hwccf_xpu0_local_en = ioremap(0x31c20708, 0x4);
+			hwccf_global_en = ioremap(0x31c13700, 0x4);
+			hwccf_global_sta = ioremap(0x31c1131c, 0x4);
+		}
 	}
 
 	clk_num = of_property_count_strings(dev->of_node, clkpropname);
