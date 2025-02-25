@@ -7579,8 +7579,7 @@ static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 
 	if (od_support == true &&
 			oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE &&
-			oddmr_data->primary_data->od_fps_mode == 1 &&
-			atomic_read(&oddmr_data->primary_data->frame_dirty)) {
+			oddmr_data->primary_data->od_fps_mode == 1) {
 		oddmr_data->primary_data->sof_time_last = oddmr_data->primary_data->sof_time;
 		oddmr_data->primary_data->sof_time = comp->mtk_crtc->sof_time;
 	}
