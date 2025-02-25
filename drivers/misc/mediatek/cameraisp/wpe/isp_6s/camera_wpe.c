@@ -5410,7 +5410,7 @@ EXIT:
 /***********************************************************************
  * Called when the device is being detached from the driver
  ***********************************************************************/
-static signed int WPE_remove(struct platform_device *pDev)
+static void WPE_remove(struct platform_device *pDev)
 {
 	/*struct resource *pRes; */
 	signed int IrqNum;
@@ -5434,8 +5434,6 @@ static signed int WPE_remove(struct platform_device *pDev)
 	/*  */
 	class_destroy(pWPEClass);
 	pWPEClass = NULL;
-	/*  */
-	return 0;
 }
 
 /***********************************************************************

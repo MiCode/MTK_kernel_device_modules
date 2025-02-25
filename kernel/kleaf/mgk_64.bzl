@@ -537,6 +537,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -726,6 +727,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -1262,6 +1264,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-test".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:camera_dip_isp6s".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:camera_wpe_isp6s".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {

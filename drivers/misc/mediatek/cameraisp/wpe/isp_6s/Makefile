@@ -29,5 +29,5 @@ ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
 
-obj-$(CONFIG_MTK_CAMERA_WPE_ISP6S) += camera_wpe_isp6s.o
-camera_wpe_isp6s-objs += camera_wpe.o 
+#obj-$(CONFIG_MTK_CAMERA_WPE_ISP6S) += camera_wpe_isp6s.o
+#camera_wpe_isp6s-objs += camera_wpe.o
