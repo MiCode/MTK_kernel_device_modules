@@ -52,7 +52,13 @@
 #define INFOB_OFFSET                (0x2C4)
 #define REBOOT_TEMPERATURE_ADDR_OFFSET (0x39c)
 #define GPU_COOLER_BASE             (0x3A0)
-#define CPU_COOLER_BASE             (0x3D0)
+
+#define TCM_REBOOT
+#define CPU_COOLER_REBOOT_BASE (0x304)
+//#define CPU_COOLER_BASE             (0x3D0)
+// SRAM--0x3D0 ==> TCM--0x1B0
+#define CPU_COOLER_BASE             (0x1B0)
+
 #define COLD_INTERRUPT_ENABLE_OFFSET (0x398)
 
 #define APU_MBOX_TTJ_OFFSET        (0x700)

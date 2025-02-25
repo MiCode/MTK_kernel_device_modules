@@ -1239,6 +1239,49 @@ static ssize_t cpu_atc_show(struct kobject *kobj, struct kobj_attribute *attr,
 
 	return len;
 }
+#ifdef TCM_REBOOT
+#define CPU_COOLER_DEBUG_THERMAL_SRAM_LEN (12)
+
+static ssize_t cpu_reboot_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len,
+		"%d, %d, %d, %d, %d ,%d, %d, %d, %d, %d, %d, %d\n",
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 4),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 8),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 12),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 16),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 20),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 24),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 28),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 32),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 36),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 40),
+		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE + 44));
+
+	return len;
+}
+
+static ssize_t cpu_reboot_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	int len, i;
+	int values[CPU_COOLER_DEBUG_THERMAL_SRAM_LEN] = { 0 };
+
+	len = sscanf(buf, "%d %d %d %d %d %d %d %d %d %d %d %d",
+		&values[0], &values[1], &values[2], &values[3],
+		&values[4], &values[5], &values[6], &values[7],
+		&values[8], &values[9], &values[10], &values[11]);
+
+	for (i = 0; i < len; i++)
+		therm_intf_write_cputcm(values[i], CPU_COOLER_REBOOT_BASE + (i * 4));
+
+	return count;
+}
+#endif
 
 static ssize_t gpu_atc_show(struct kobject *kobj, struct kobj_attribute *attr,
 	char *buf)
@@ -2115,6 +2158,9 @@ static struct kobj_attribute frs_info_attr = __ATTR_RW(frs_info);
 static struct kobj_attribute cpu_temp_attr = __ATTR_RO(cpu_temp);
 static struct kobj_attribute headroom_info_attr = __ATTR_RO(headroom_info);
 static struct kobj_attribute cpu_atc_attr = __ATTR_RO(cpu_atc);
+#ifdef TCM_REBOOT
+static struct kobj_attribute cpu_reboot_attr = __ATTR_RW(cpu_reboot);
+#endif
 static struct kobj_attribute gpu_atc_attr = __ATTR_RO(gpu_atc);
 static struct kobj_attribute apu_atc_attr = __ATTR_RO(apu_atc);
 static struct kobj_attribute target_tpcb_attr = __ATTR_RW(target_tpcb);
@@ -2159,6 +2205,9 @@ static struct attribute *thermal_attrs[] = {
 	&cpu_temp_attr.attr,
 	&headroom_info_attr.attr,
 	&cpu_atc_attr.attr,
+#ifdef TCM_REBOOT
+	&cpu_reboot_attr.attr,
+#endif
 	&gpu_atc_attr.attr,
 	&apu_atc_attr.attr,
 	&target_tpcb_attr.attr,
