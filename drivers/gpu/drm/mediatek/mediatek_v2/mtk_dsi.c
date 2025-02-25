@@ -4563,6 +4563,7 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 	int ret = 0;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
+	unsigned int lane_num = 0;
 
 	if (!dsi) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -4588,6 +4589,12 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 	}
 
 	dsi->ulps_wakeup_prd = wake_up_prd;
+
+	/* check lane_num before exit ulps */
+	lane_num = readl(dsi->regs + DSI_TXRX_CTRL(dsi->driver_data));
+	lane_num = REG_FLD_VAL_GET(REG_FLD_MSB_LSB(5, 2), lane_num);
+	if (lane_num)
+		DDPPR_ERR("%s, lane num is error! 0x%x\n", __func__, lane_num);
 
 	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
 	mtk_mipi_tx_oe_config(dsi->phy, 0);
@@ -4827,7 +4834,7 @@ static int mtk_preconfig_dsi_enable(struct mtk_dsi *dsi)
 	mtk_dsi_enable(dsi);
 	mtk_dsi_phy_timconfig(dsi, NULL);
 
-	mtk_dsi_rxtx_control(dsi, true);
+	mtk_dsi_rxtx_control(dsi, false);
 	if (dsi->driver_data->dsi_buffer) {
 		mtk_dsi_tx_buf_rw(dsi);
 	} else {
