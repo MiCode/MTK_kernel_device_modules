@@ -714,15 +714,30 @@ static unsigned int lpm_get_last_suspend_wakesrc(void)
 static int lpm_get_common_status(void)
 {
 	struct lpm_log_helper *help = &log_help;
+	unsigned int smc_id;
 
 	if (!help->wakesrc || !lpm_spm_base)
 		return -EINVAL;
-
+	smc_id = MT_SPM_DBG_SMC_COMMON_PWR_STAT;
 	/* FIXME: common debug reg (SPMFW) */
 	help->wakesrc->debug_flag2 = plat_mmio_read(PCM_WDT_LATCH_SPARE_2); // debug_flag2
-	help->wakesrc->common_cnt0 = plat_mmio_read(SPM_SRAM_D7X_APSRC_CNT); // apsrc cnt
-	help->wakesrc->common_cnt1 = plat_mmio_read(SPM_SRAM_D7X_INFRA_CNT); //infra cnt
-	help->wakesrc->common_cnt2 = plat_mmio_read(SPM_SRAM_D7X_VCORE_CNT); //vcore cnt
+	help->wakesrc->debug_flag1 = plat_mmio_read(PCM_WDT_LATCH_SPARE_1); // debug_flag1
+
+	/* set common sodi cnt and clr */
+	lpm_smc_spm_dbg(smc_id, MT_LPM_SMC_ACT_SET, 0, 0);
+	help->wakesrc->apsrc_cnt = lpm_smc_spm_dbg(smc_id,
+					MT_LPM_SMC_ACT_GET, SPM_STAT_D1_2, SPM_SLP_COUNT);
+	help->wakesrc->emi_cnt	 = lpm_smc_spm_dbg(smc_id,
+					MT_LPM_SMC_ACT_GET, SPM_STAT_D2, SPM_SLP_COUNT);
+	help->wakesrc->vrf18_cnt = lpm_smc_spm_dbg(smc_id,
+					MT_LPM_SMC_ACT_GET, SPM_STAT_D3, SPM_SLP_COUNT);
+	help->wakesrc->infra_cnt = lpm_smc_spm_dbg(smc_id,
+					MT_LPM_SMC_ACT_GET, SPM_STAT_D4, SPM_SLP_COUNT);
+	help->wakesrc->pmic_cnt  = lpm_smc_spm_dbg(smc_id,
+					MT_LPM_SMC_ACT_GET, SPM_STAT_D6X, SPM_SLP_COUNT);
+	help->wakesrc->vcore_cnt = lpm_smc_spm_dbg(smc_id,
+					MT_LPM_SMC_ACT_GET, SPM_STAT_VCORE, SPM_SLP_COUNT);
+
 
 	help->wakesrc->req_sta0 = plat_mmio_read(SPM_REQ_STA_0);
 	help->wakesrc->req_sta1 = plat_mmio_read(SPM_REQ_STA_1);
@@ -767,9 +782,15 @@ static int lpm_log_common_info(void)
 	lpm_get_common_status();
 	log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size,
-			"Common: debug_flag = 0x%x, cnt = 0x%x 0x%x 0x%x, ",
-			wakesrc->debug_flag2, wakesrc->common_cnt0,
-			wakesrc->common_cnt1, wakesrc-> common_cnt2);
+			"Common: debug_flag = 0x%x, 0x%x, ",
+			wakesrc->debug_flag2, wakesrc->debug_flag1);
+
+	log_size += scnprintf(log_buf + log_size,
+			LOG_BUF_SIZE - log_size,
+			"cnt = 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x, ",
+			wakesrc->apsrc_cnt, wakesrc->emi_cnt,
+			wakesrc->vrf18_cnt, wakesrc->infra_cnt,
+			wakesrc->pmic_cnt , wakesrc->vcore_cnt);
 
 	log_size += scnprintf(log_buf + log_size,
 			LOG_BUF_SIZE - log_size,
