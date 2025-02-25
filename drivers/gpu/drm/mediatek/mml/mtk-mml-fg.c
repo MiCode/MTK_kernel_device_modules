@@ -229,6 +229,7 @@ struct fg_data {
 	u32 tile_width;
 	bool sram_pp; /* support SRAM ping-pong */
 	bool hw_ar; /* HW support auto regressive */
+	bool fg_bw;
 	phys_addr_t ddrsrc_addr;
 };
 
@@ -259,6 +260,7 @@ static const struct fg_data mt6991_mmlt_fg_data = {
 	.tile_width = 640,
 	.sram_pp = true,
 	.hw_ar = true,
+	.fg_bw = true,
 };
 
 static const struct fg_data mt6991_mmlf_fg_data = {
@@ -267,6 +269,7 @@ static const struct fg_data mt6991_mmlf_fg_data = {
 	.tile_width = 3872,
 	.sram_pp = true,
 	.hw_ar = true,
+	.fg_bw = true,
 };
 
 static const struct fg_data mt6993_mmlt_fg_data = {
@@ -334,6 +337,7 @@ struct fg_frame_data {
 	u8 out_idx;
 	u16 labels[FG_LABEL_TOTAL];
 	bool config_success;
+	u32 datasize;		/* qos data size in bytes */
 };
 
 #define fg_frm_data(i)	((struct fg_frame_data *)(i->data))
@@ -352,6 +356,11 @@ static s32 fg_prepare(struct mml_comp *comp, struct mml_task *task,
 	ccfg->data = fg_frm;
 	/* cache out index for easy use */
 	fg_frm->out_idx = ccfg->node->out_idx;
+
+	/* BW per frame : (82*73*3*2+256*3*4) * FPS
+	 * 120fps: 4.68 MB/s => OSTDL: 1.543
+	 */
+	fg_frm->datasize = 4678560;
 
 	return 0;
 }
@@ -986,10 +995,37 @@ exit:
 	mml_pq_trace_ex_end();
 }
 
+static u32 fg_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	struct fg_frame_data *fg_frm = fg_frm_data(ccfg);
+
+	return fg_frm->datasize;
+}
+
+u32 fg_format_get(struct mml_task *task, struct mml_comp_config *ccfg)
+{
+	return MML_FMT_UNKNOWN; /* Just data array */
+}
+
+
+static u32 fg_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg, u32 *srt_bw_out, u32 *hrt_bw_out)
+{
+	*srt_bw_out = 0;
+	*hrt_bw_out = 0;
+
+	return 0;
+}
+
 static const struct mml_comp_hw_ops fg_hw_ops = {
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
 	.task_done = fg_task_done,
+	.qos_datasize_get = &fg_datasize_get,
+	.qos_stash_bw_get = &fg_qos_stash_bw_get,
+	.qos_format_get = &fg_format_get,
+	.qos_set = &mml_comp_qos_set,
+	.qos_clear = &mml_comp_qos_clear,
 };
 
 static void fg_debug_dump(struct mml_comp *comp)
@@ -1200,6 +1236,16 @@ static int probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	if (priv->data->fg_bw) {
+		/* init larb for smi and mtcmos */
+		ret = mml_comp_init_larb(&priv->comp, dev);
+		if (ret) {
+			if (ret == -EPROBE_DEFER)
+				return ret;
+			dev_err(dev, "fail to init component %u larb ret %d",
+				priv->comp.id, ret);
+		}
+	}
 	/* assign ops */
 	priv->comp.tile_ops = &fg_tile_ops;
 	priv->comp.config_ops = &fg_cfg_ops;

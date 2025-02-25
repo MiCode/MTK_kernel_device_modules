@@ -59,7 +59,7 @@ extern int mml_irq;
 /* 513 to ensure port has good ostd
  * 5329 is the worst bw calculated by 1440x3200 RGBA in+out w/ 1.2 overhead
  */
-#define MML_QOS_MIN_BW		513
+#define MML_QOS_MIN_BW		48
 #define MML_QOS_MAX_BW		5329
 #define MML_QOS_MIN_STASH_BW	17
 
