@@ -5667,7 +5667,7 @@
 			#mbox-cells = <3>;
 			#gce-event-cells = <1>;
 			#gce-subsys-cells = <2>;
-			default_tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
+			default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_3>,
@@ -5680,10 +5680,7 @@
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>;
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_MM_INFRA>;
 			mediatek,smi = <&smi_mdp_common>;
-			// FIX_ME rd comment
-			// revert after secmem ready
-			//prebuilt-enable;
-			no-append-by-event;
+			prebuilt-enable;
 			unprepare_in_idle;
 			gce-in-vcp;
 			cmdq-log-perf-off;
@@ -5696,7 +5693,7 @@
 			dma-mask-bit = <34>;
 		};
 
-		gce_sec: gce_mbox_sec@1e980000 {
+		gce_sec: gce-mbox-sec@1e980000 {
 			compatible = "mediatek,mailbox-gce-sec";
 			reg = <0 0x1e980000 0 0x4000>;
 			#mbox-cells = <3>;
@@ -5727,10 +5724,7 @@
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>;
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_MM_INFRA>;
 			mediatek,smi = <&smi_mdp_common>;
-			// FIX_ME rd comment
-			// revert after secmem ready
-			// prebuilt-enable;
-			no-append-by-event;
+			prebuilt-enable;
 			unprepare_in_idle;
 			gce-in-vcp;
 			cmdq-log-perf-off;
@@ -5743,7 +5737,7 @@
 			dma-mask-bit = <34>;
 		};
 
-		gce_m_sec: gce_mbox_m_sec@1e990000 {
+		gce_m_sec: gce-mbox-m-sec@1e990000 {
 			compatible = "mediatek,mailbox-gce-sec";
 			reg = <0 0x1e990000 0 0x4000>;
 			#mbox-cells = <3>;
