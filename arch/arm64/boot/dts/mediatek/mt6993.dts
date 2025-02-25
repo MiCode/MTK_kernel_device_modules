@@ -15943,6 +15943,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cam_vcore_r1a_clk CAM_V_R1A_GALS46_CON_1_CAM_VCORE>,
 				<&cam_vcore_r1a_clk CAM_V_R1A_GALS53_CON_1_CAM_VCORE>,
 				<&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
+				<&cam_main_r1a_clk CAM_M_CAM_CVFS_CON_1_CAM_MAIN>,
+				<&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
 				<&camsys_mraw_clk CAM_MR_LARB25_CAMSV>,
 				<&camsys_mraw_clk CAM_MR_LARB26_CAMSV>,
 				<&camsys_mraw_clk CAM_MR_LARB25_SMI>,
@@ -15959,6 +15961,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"camsys_vcore_gals46_con_1",
 				"camsys_vcore_gals53_con_1",
 				"camsys_main_cam",
+				"camsys_main_cam_cvfs_con_1",
+				"cksys_mm_camtm_sel",
 				"mraw_larb25_camsv",
 				"mraw_larb26_camsv",
 				"mraw_larb25_smi",
@@ -16009,6 +16013,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larbs = <&smi_larb26>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			clocks = <&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
+				<&cam_main_r1a_clk CAM_M_CAM_CVFS_CON_1_CAM_MAIN>,
+				<&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
 				<&camsys_mraw_clk CAM_MR_LARB25_CAMSV>,
 				<&camsys_mraw_clk CAM_MR_LARB26_CAMSV>,
 				<&camsys_mraw_clk CAM_MR_LARB25_SMI>,
@@ -16016,6 +16022,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&camsys_mraw_clk CAM_MR_PDA0_PDA>,
 				<&camsys_mraw_clk CAM_MR_PDA1_PDA>;
 			clock-names = "camsys_main_cam",
+					"camsys_main_cam_cvfs_con_1",
+					"cksys_mm_camtm_sel",
 					"mraw_larb25_camsv",
 					"mraw_larb26_camsv",
 					"mraw_larb25_smi",
