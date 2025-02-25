@@ -204,3 +204,43 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpu_bm",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "mtk_ged_mt6991",
+    out = "mtk_ged_mt6991.ko",
+    srcs = [
+        "src/platform/ged_mt6991.c"
+    ]+glob(["**/include/*.h",
+        "include/platform/ged_mt6991.h"]),
+
+    includes = ["include"],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:ged".format(kernel_version),
+    ],
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/platform/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_ged_mt6993",
+    out = "mtk_ged_mt6993.ko",
+    srcs = [
+        "src/platform/ged_mt6993.c"
+    ]+glob(["**/include/*.h",
+        "include/platform/ged_mt6993.h"]),
+
+    includes = ["include"],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:ged".format(kernel_version),
+    ],
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/platform/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/",
+    ],
+)
