@@ -53,6 +53,7 @@ struct sugov_policy {
 
 	struct sugov_tunables	*tunables;
 	struct list_head	tunables_hook;
+	struct rcu_head		rcu;
 
 	raw_spinlock_t		update_lock;	/* For shared policies */
 	u64			last_freq_update_time;

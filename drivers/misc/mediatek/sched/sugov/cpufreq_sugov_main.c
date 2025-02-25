@@ -47,7 +47,7 @@
 
 struct sugov_cpu {
 	struct update_util_data	update_util;
-	struct sugov_policy	*sg_policy;
+	struct sugov_policy	__rcu *sg_policy;
 	unsigned int		cpu;
 
 	bool			iowait_boost_pending;
@@ -145,7 +145,15 @@ EXPORT_SYMBOL(is_dsu_idle_enable);
 /* dptv2*/
 inline struct cpufreq_policy *get_cpufreq_policy(int cpu)
 {
-	return (per_cpu(sugov_cpu, cpu).sg_policy) ? (per_cpu(sugov_cpu, cpu).sg_policy->policy) : NULL;
+	struct sugov_policy *sg_policy;
+	struct cpufreq_policy *policy;
+
+	rcu_read_lock();
+	sg_policy = rcu_dereference(per_cpu(sugov_cpu, cpu).sg_policy);
+	policy = (sg_policy) ? sg_policy->policy : NULL;
+	rcu_read_unlock();
+
+	return policy;
 }
 EXPORT_SYMBOL(get_cpufreq_policy);
 
@@ -1412,8 +1420,9 @@ static struct sugov_policy *sugov_policy_alloc(struct cpufreq_policy *policy)
 	return sg_policy;
 }
 
-static void sugov_policy_free(struct sugov_policy *sg_policy)
+static void sugov_policy_free(struct rcu_head *head)
 {
+	struct sugov_policy *sg_policy = container_of(head, struct sugov_policy, rcu);
 	kfree(sg_policy);
 }
 
@@ -1569,7 +1578,7 @@ stop_kthread:
 	mutex_unlock(&global_tunables_lock);
 
 free_sg_policy:
-	sugov_policy_free(sg_policy);
+	call_rcu(&sg_policy->rcu, sugov_policy_free);
 
 disable_fast_switch:
 	cpufreq_disable_fast_switch(policy);
@@ -1588,13 +1597,14 @@ static void sugov_exit(struct cpufreq_policy *policy)
 
 	count = gov_attr_set_put(&tunables->attr_set, &sg_policy->tunables_hook);
 	policy->governor_data = NULL;
+	per_cpu(sugov_cpu, policy->cpu).sg_policy = NULL;
 	if (!count)
 		sugov_clear_global_tunables();
 
 	mutex_unlock(&global_tunables_lock);
 
 	sugov_kthread_stop(sg_policy);
-	sugov_policy_free(sg_policy);
+	call_rcu(&sg_policy->rcu, sugov_policy_free);
 	cpufreq_disable_fast_switch(policy);
 
 	sugov_eas_rebuild_sd();

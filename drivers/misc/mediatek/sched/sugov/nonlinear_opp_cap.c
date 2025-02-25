@@ -3616,7 +3616,7 @@ unsigned long get_freq_margin(int cpu, unsigned long util)
 	int margin_id = -1;
 
 	if(!policy)
-		return 0;
+		return margin;
 
 	cpumask = policy->related_cpus;
 	first_cpu = cpumask_first(cpumask);
