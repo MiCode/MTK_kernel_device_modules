@@ -20,6 +20,9 @@
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 #include <ged_mali_event.h>
+#define MAX_WORKER_META_DATA_NUM MAX_META_DATA_NUM
+#else
+#define MAX_WORKER_META_DATA_NUM 8
 #endif
 
 #define Q2QTIMEOUT 500000000 //500ms
@@ -29,6 +32,7 @@
 #define PERFINDEX_BUF 30
 #define PERFINDEX_SLOT 20
 #define PERFINDEX_LO_ALARM_COUNT 60
+#define GPU_WORKEREVT_QUEUE_LIMIT 10
 
 struct mbraink_gpu_perfidx_info {
 	struct hlist_node hlist;
@@ -44,6 +48,16 @@ struct mbraink_gpu_perfidx_info {
 	unsigned long long err_counter;
 };
 
+struct mbraink_gpu_workerevt_info {
+	struct hlist_node hlist;
+
+	unsigned long long timestamp;
+	int pid;
+	uint32_t workerType;
+	unsigned long long exec_duration;
+	uint32_t meta_data[MAX_WORKER_META_DATA_NUM];
+};
+
 static unsigned long long gq2qTimeoutInNs = Q2QTIMEOUT;
 unsigned int TimeoutCounter[10] = {0};
 unsigned int TimeoutRange[10] = {70, 120, 170, 220, 270, 320, 370, 420, 470, 520};
@@ -54,8 +68,13 @@ static int gperfIdxLimit = PERFINDEX_LIMIT;
 static int gOpMode = mbraink_op_mode_normal;
 static int gPerfLoAlarmCount = 1;
 
+static uint32_t gWorkerEvtCount = 1;
+
 static HLIST_HEAD(mbk_g_perfidx_list);
 static DEFINE_MUTEX(mbk_g_perfidx_lock);
+
+static HLIST_HEAD(mbk_g_workerevt_list);
+static DEFINE_MUTEX(mbk_g_workerevt_lock);
 
 
 static void calculateTimeoutCouter(unsigned long long q2qTimeInNS)
@@ -467,6 +486,33 @@ void fpsgo2mbrain_hint_deleteperfinfo(unsigned long cmd, struct render_frame_inf
 }
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+int recycle_workerevt_list(void)
+{
+	int ret = 0;
+	struct mbraink_gpu_workerevt_info *iter;
+	struct hlist_node *h;
+
+	mutex_lock(&mbk_g_workerevt_lock);
+
+	if (hlist_empty(&mbk_g_workerevt_list)) {
+		gWorkerEvtCount = 0;
+		ret = 1;
+		goto out;
+	}
+
+	hlist_for_each_entry_safe(iter, h, &mbk_g_workerevt_list, hlist) {
+		hlist_del(&iter->hlist);
+		vfree(iter);
+		ret = 1;
+	}
+
+	gWorkerEvtCount = 0;
+
+out:
+	mutex_unlock(&mbk_g_workerevt_lock);
+	return ret;
+}
+
 static void sendGpuFenceTimeoutEvent(int pid, void *data, unsigned long long time)
 {
 	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
@@ -581,6 +627,88 @@ void gpu2mbrain_hint_GpuResetDoneNotify(unsigned long long time)
 	sendGpuResetDoneEvent(time);
 }
 
+static void sendGpuWorkerEventNotify(void)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+	struct mbraink_gpu_workerevt_info *iter;
+	struct hlist_node *h;
+
+	mutex_lock(&mbk_g_workerevt_lock);
+	//prepare header.
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%d",
+			NETLINK_EVENT_GPUWORKERNOTIFY,
+			gWorkerEvtCount);
+	pos += n;
+
+	hlist_for_each_entry_safe(iter, h, &mbk_g_workerevt_list, hlist) {
+		n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				":%llu:%d:%d:%llu:%d:%d:%d:%d:%d:%d:%d:%d",
+				iter->timestamp,
+				iter->pid,
+				iter->workerType,
+				iter->exec_duration,
+				iter->meta_data[0],
+				iter->meta_data[1],
+				iter->meta_data[2],
+				iter->meta_data[3],
+				iter->meta_data[4],
+				iter->meta_data[5],
+				iter->meta_data[6],
+				iter->meta_data[7]);
+
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos) {
+			pr_info("%s(%d): n(%d), pos(%d), over nl size\n",
+				__func__, __LINE__, n, pos);
+			goto out;
+		}
+		pos += n;
+	}
+	mbraink_netlink_send_msg(netlink_buf);
+
+out:
+	mutex_unlock(&mbk_g_workerevt_lock);
+}
+
+void gpu2mbrain_hint_GpuWorkerEventNotify(void *data, unsigned long long time)
+{
+	struct mbraink_gpu_workerevt_info *new_workerevt_info = NULL;
+	struct ged_mali_worker_event_info *pGedMaliWorkerEventInfo = NULL;
+	int i = 0;
+
+	mutex_lock(&mbk_g_workerevt_lock);
+
+	new_workerevt_info = vmalloc(sizeof(struct mbraink_gpu_workerevt_info));
+	if (new_workerevt_info == NULL)
+		goto out;
+
+	pGedMaliWorkerEventInfo = (struct ged_mali_worker_event_info *)data;
+	memset(new_workerevt_info, 0x00, sizeof(struct mbraink_gpu_workerevt_info));
+
+	new_workerevt_info->timestamp = time;
+	new_workerevt_info->pid = pGedMaliWorkerEventInfo->pid;
+	new_workerevt_info->workerType = pGedMaliWorkerEventInfo->workerType;
+	new_workerevt_info->exec_duration = pGedMaliWorkerEventInfo->exec_duration;
+	for (i = 0; i < MAX_WORKER_META_DATA_NUM; i++)
+		new_workerevt_info->meta_data[i] = pGedMaliWorkerEventInfo->meta_data[i];
+	hlist_add_head(&new_workerevt_info->hlist, &mbk_g_workerevt_list);
+	gWorkerEvtCount++;
+
+out:
+	mutex_unlock(&mbk_g_workerevt_lock);
+
+	if (gWorkerEvtCount >= GPU_WORKEREVT_QUEUE_LIMIT) {
+		pr_info("%s(%d): over limit send nl worker event\n", __func__, __LINE__);
+		sendGpuWorkerEventNotify();
+		recycle_workerevt_list();
+	}
+
+}
+
 #endif
 
 static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
@@ -596,6 +724,8 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 
 		register_fpsgo_frame_info_callback(1 << GET_FPSGO_DELETE_INFO,
 			fpsgo2mbrain_hint_deleteperfinfo);
+
+		gPerfLoAlarmCount = 0;
 #endif
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
@@ -603,7 +733,9 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 			gpu2mbrain_hint_fenceTimeoutNotify);
 		ged_mali_event_register_gpu_reset_done_callback(
 			gpu2mbrain_hint_GpuResetDoneNotify);
-		gPerfLoAlarmCount = 0;
+		ged_mali_worker_event_register_callback(
+			gpu2mbrain_hint_GpuWorkerEventNotify);
+		gWorkerEvtCount = 0;
 #endif
 	} else {
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
@@ -613,6 +745,8 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_perfinfo);
 
 		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_deleteperfinfo);
+
+		gPerfLoAlarmCount = 0;
 #endif
 #endif
 
@@ -621,7 +755,9 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 			gpu2mbrain_hint_fenceTimeoutNotify);
 		ged_mali_event_unregister_gpu_reset_done_callback(
 			gpu2mbrain_hint_GpuResetDoneNotify);
-		gPerfLoAlarmCount = 0;
+		ged_mali_worker_event_unregister_callback(
+			gpu2mbrain_hint_GpuWorkerEventNotify);
+		gWorkerEvtCount = 0;
 #endif
 
 	}
