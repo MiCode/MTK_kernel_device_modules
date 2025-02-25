@@ -555,7 +555,6 @@ TRACE_EVENT(sched_dbg_eenv_init,
 		__field(int, cpu_temp)
 		__field(int, dpt_v2_freq)
 		__field(int, dpt_v2_gear_max_freq)
-		__field(int, dpt_v2_gear_max_freq_cpu)
 		__field(int, dpt_v2_sratio)
 		__field(int, dpt_v2_cpu_util)
 		__field(int, dpt_v2_coef1_util)
@@ -582,14 +581,13 @@ TRACE_EVENT(sched_dbg_eenv_init,
 		__entry->cpu_temp                 = (int)eenv->cpu_temp[0];
 		__entry->dpt_v2_freq              = (int)eenv->dpt_v2_freq[0][0];
 		__entry->dpt_v2_gear_max_freq     = (int)eenv->dpt_v2_gear_max_freq[0][0];
-		__entry->dpt_v2_gear_max_freq_cpu = (int)eenv->dpt_v2_gear_max_freq_cpu[0][0];
 		__entry->dpt_v2_sratio            = (int)eenv->dpt_v2_sratio[0][0];
 		__entry->dpt_v2_cpu_util          = (int)eenv->dpt_v2_cpu_util[0][0];
 		__entry->dpt_v2_coef1_util        = (int)eenv->dpt_v2_coef1_util[0][0];
 		__entry->dpt_v2_coef2_util        = (int)eenv->dpt_v2_coef2_util[0][0];
 		),
 
-	TP_printk("dpt_v2_support=%d dpt_v2_swpm_support=%d min_cap=%4d max_cap=%4d task_busy_time=%4d val_s=%10d wl_support=%d wl_cpu=%d wl_dsu=%d pds_cpu_cap=%4d pds_cap=%4d pds_busy_time=%4d cpu_max_util=%4d gear_max_util=%4d pd_base_max_util=%4d pd_base_freq=%8d cpu_temp=%3d dpt_v2_freq=%8d dpt_v2_gear_max_freq=%8d dpt_v2_gear_max_freq_cpu=%d dpt_v2_sratio=%4d dpt_v2_cpu_util=%4d dpt_v2_coef1_util=%4d dpt_v2_coef2_util=%4d",
+	TP_printk("dpt_v2_support=%d dpt_v2_swpm_support=%d min_cap=%4d max_cap=%4d task_busy_time=%4d val_s=%10d wl_support=%d wl_cpu=%d wl_dsu=%d pds_cpu_cap=%4d pds_cap=%4d pds_busy_time=%4d cpu_max_util=%4d gear_max_util=%4d pd_base_max_util=%4d pd_base_freq=%8d cpu_temp=%3d dpt_v2_freq=%8d dpt_v2_gear_max_freq=%8d dpt_v2_sratio=%4d dpt_v2_cpu_util=%4d dpt_v2_coef1_util=%4d dpt_v2_coef2_util=%4d",
 		__entry->dpt_v2_support,
 		__entry->dpt_v2_swpm_support,
 		__entry->min_cap,
@@ -609,7 +607,6 @@ TRACE_EVENT(sched_dbg_eenv_init,
 		__entry->cpu_temp,
 		__entry->dpt_v2_freq,
 		__entry->dpt_v2_gear_max_freq,
-		__entry->dpt_v2_gear_max_freq_cpu,
 		__entry->dpt_v2_sratio,
 		__entry->dpt_v2_cpu_util,
 		__entry->dpt_v2_coef1_util,

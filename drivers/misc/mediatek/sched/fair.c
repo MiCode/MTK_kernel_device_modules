@@ -210,7 +210,6 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 	unsigned long max_freq = 0, gear_max_freq = 0;
 	int pd_idx = cpumask_first(pd_cpus);
 	int cpu, dst_idx, pd_cpu = -1, gear_cpu = -1;
-	unsigned long dpt_v2_pd_cpu_util = -1, dpt_v2_pd_cpu_coef1_util = -1, dpt_v2_pd_cpu_coef2_util = -1;
 
 	for_each_cpu_and(cpu, get_gear_cpumask(eenv->gear_idx), cpu_active_mask) {
 		struct task_struct *tsk = (cpu == dst_cpu) ? p : NULL;
@@ -251,6 +250,11 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 			eenv->dpt_v2_cpu_util[cpu][dst_idx] = dpt_v2_cpu_util_local;
 			eenv->dpt_v2_coef1_util[cpu][dst_idx] = dpt_v2_coef1_util_local;
 			eenv->dpt_v2_coef2_util[cpu][dst_idx] = dpt_v2_coef2_util_local;
+			eenv->dpt_v2_cap_params[cpu][dst_idx].cpu_util_local = dpt_v2_cpu_util_local;
+			eenv->dpt_v2_cap_params[cpu][dst_idx].total_util_local = dpt_v2_cpu_util_local +
+					dpt_v2_coef1_util_local + dpt_v2_coef2_util_local;
+			eenv->dpt_v2_sratio[cpu][dst_idx] = (dpt_v2_coef1_util_local + dpt_v2_coef2_util_local) *
+					100 / eenv->dpt_v2_cap_params[cpu][dst_idx].total_util_local;
 		} else {
 			freq = eenv->dpt_v2_freq[cpu][dst_idx];
 			dpt_v2_cpu_util_local = eenv->dpt_v2_cpu_util[cpu][dst_idx];
@@ -262,9 +266,6 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 			if (freq > max_freq) {
 				pd_cpu = cpu;
 				max_freq = freq;
-				dpt_v2_pd_cpu_util = dpt_v2_cpu_util_local;
-				dpt_v2_pd_cpu_coef1_util = dpt_v2_coef1_util_local;
-				dpt_v2_pd_cpu_coef2_util = dpt_v2_coef2_util_local;
 			}
 		}
 
@@ -305,9 +306,21 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 			eenv->dpt_v2_cpu_util[cpu][0] = dpt_v2_cpu_util_base_local;
 			eenv->dpt_v2_coef1_util[cpu][0] = dpt_v2_coef1_util_base_local;
 			eenv->dpt_v2_coef2_util[cpu][0] = dpt_v2_coef2_util_base_local;
+			eenv->dpt_v2_cap_params[cpu][0].cpu_util_local = dpt_v2_cpu_util_base_local;
+			eenv->dpt_v2_cap_params[cpu][0].total_util_local = dpt_v2_cpu_util_base_local +
+					dpt_v2_coef1_util_base_local + dpt_v2_coef2_util_base_local;
+			eenv->dpt_v2_sratio[cpu][0] = (dpt_v2_coef1_util_base_local + dpt_v2_coef2_util_base_local) *
+					100 / eenv->dpt_v2_cap_params[cpu][0].total_util_local;
+
 			if (trace_sched_max_util_dpt_v2_enabled())
 				trace_sched_max_util_dpt_v2("cpu", cpu, dst_cpu, 0,
 					eenv->dpt_v2_freq[cpu][0], cpu, dpt_v2_cpu_util_base_local, dpt_v2_coef1_util_base_local, dpt_v2_coef2_util_base_local);
+
+			if (trace_sched_max_util_dpt_v2_sratio_enabled())
+				trace_sched_max_util_dpt_v2_sratio(cpu, dst_idx, pd_idx, pd_cpu,
+					eenv->dpt_v2_sratio[cpu][dst_idx], eenv->dpt_v2_sratio[cpu][0],
+					eenv->dpt_v2_cpu_util[cpu][dst_idx], eenv->dpt_v2_coef1_util[cpu][dst_idx],
+					eenv->dpt_v2_coef2_util[cpu][dst_idx]);
 		}
 
 		if (trace_sched_max_util_dpt_v2_enabled())
@@ -319,21 +332,6 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 	if (trace_sched_max_util_dpt_v2_enabled())
 		trace_sched_max_util_dpt_v2("pd", pd_idx, dst_cpu, dst_idx, max_freq, pd_cpu, -1, -1, -1);
 
-	if (pd_cpu != -1) {
-		eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx] = pd_cpu;
-		if (!s_type && dst_idx) {
-			eenv->dpt_v2_sratio[pd_cpu][dst_idx] = eenv->dpt_v2_sratio[pd_cpu][0];
-		} else {
-			if (eenv->dpt_v2_sratio[pd_cpu][dst_idx] == -1) {
-				eenv->dpt_v2_sratio[pd_cpu][dst_idx] = (dpt_v2_pd_cpu_coef1_util + dpt_v2_pd_cpu_coef2_util) * 100 / \
-					(dpt_v2_pd_cpu_util + dpt_v2_pd_cpu_coef1_util + dpt_v2_pd_cpu_coef2_util);
-			}
-		}
-		if (trace_sched_max_util_dpt_v2_sratio_enabled())
-			trace_sched_max_util_dpt_v2_sratio(dst_cpu, dst_idx, pd_idx, pd_cpu, eenv->dpt_v2_sratio[pd_cpu][dst_idx],
-				eenv->dpt_v2_sratio[eenv->dpt_v2_gear_max_freq_cpu[pd_idx][0]][0],
-				dpt_v2_pd_cpu_util, dpt_v2_pd_cpu_coef1_util, dpt_v2_pd_cpu_coef2_util);
-	}
 	eenv->dpt_v2_gear_max_freq[eenv->gear_idx][dst_idx] = gear_max_freq;
 
 	if (trace_sched_max_util_dpt_v2_enabled()) {
@@ -464,8 +462,6 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 			eenv->dpt_v2_freq[cpu][1] = -1;
 			eenv->dpt_v2_gear_max_freq[cpu][0] = -1;
 			eenv->dpt_v2_gear_max_freq[cpu][1] = -1;
-			eenv->dpt_v2_gear_max_freq_cpu[cpu][0] = -1;
-			eenv->dpt_v2_gear_max_freq_cpu[cpu][1] = -1;
 			eenv->dpt_v2_sratio[cpu][0] = -1;
 			eenv->dpt_v2_sratio[cpu][1] = -1;
 		}
@@ -678,7 +674,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 
 	dst_idx = (dst_cpu >= 0) ? 1 : 0;
 	if (eenv->dpt_v2_support)
-		dpt_v2_sratio = eenv->dpt_v2_sratio[eenv->dpt_v2_gear_max_freq_cpu[pd_idx][dst_idx]][dst_idx];
+		dpt_v2_sratio = eenv->dpt_v2_sratio[candidate_cpu][dst_idx];
 
 	/* dvfs power overhead */
 	if (!cpumask_equal(pd_cpus, get_gear_cpumask(eenv->gear_idx))) {
@@ -2117,10 +2113,6 @@ inline long dpt_v2_spare_cap(int cpu, struct task_struct *p, int dst_cpu,
 	*cpu_util = *total_util_global * cpu_util_ratio_shifted >> shift_bit;
 	spare_cap = *cpu_cap;
 	lsub_positive(&spare_cap, *cpu_util);
-
-	dst_cpu = (dst_cpu >= 0) ? 1 : 0;
-	eenv->dpt_v2_cap_params[cpu][dst_cpu].cpu_util_local = *cpu_util_local;
-	eenv->dpt_v2_cap_params[cpu][dst_cpu].total_util_local = total_util_local;
 
 	return spare_cap;
 }

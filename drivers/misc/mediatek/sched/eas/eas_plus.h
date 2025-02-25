@@ -107,7 +107,6 @@ struct energy_env {
 	unsigned int dpt_v2_freq[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
 	unsigned int dpt_v2_gear_max_freq[MAX_NR_CPUS][2]; /* 0: dst_cpu=-1 1: with dst_cpu*/
 	int dpt_v2_swpm_support;
-	int dpt_v2_gear_max_freq_cpu[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
 	unsigned int dpt_v2_sratio[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
 	u16 dpt_v2_cpu_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
 	u16 dpt_v2_coef1_util[MAX_NR_CPUS][2];  /* 0: dst_cpu=-1 1: with dst_cpu*/
