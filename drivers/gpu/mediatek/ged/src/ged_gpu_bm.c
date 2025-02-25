@@ -75,7 +75,6 @@ static void check_sysram_support(void)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	struct device_node *gpu_qos_node = NULL;
-	int ret = 0;
 
 	gpu_qos_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_qos");
 	if (unlikely(!gpu_qos_node))
