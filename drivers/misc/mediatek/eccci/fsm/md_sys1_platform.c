@@ -1908,16 +1908,70 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 
 	/* get regulator*/
 	reg_vmodem = devm_regulator_get_optional(&plat_dev->dev, "md-vmodem");
+	if (IS_ERR(reg_vmodem)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vmodem fail\n", __func__);
+		return;
+	}
+
 	reg_vdigrf = devm_regulator_get_optional(&plat_dev->dev, "md-vdigrf");
+	if (IS_ERR(reg_vdigrf)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vdigrf fail\n", __func__);
+		return;
+	}
+
 	reg_vsram_digrf = devm_regulator_get_optional(&plat_dev->dev, "vsram-digrf");
+	if (IS_ERR(reg_vsram_digrf)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vsram_digrf fail\n", __func__);
+		return;
+	}
+
 	reg_vrfio12 = devm_regulator_get_optional(&plat_dev->dev, "vrfio12");
+	if (IS_ERR(reg_vrfio12)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vrfio12 fail\n", __func__);
+		return;
+	}
+
 	reg_vrfio18 = devm_regulator_get_optional(&plat_dev->dev, "vrfio18");
+	if (IS_ERR(reg_vrfio18)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vrfio18 fail\n", __func__);
+		return;
+	}
+
 	reg_vs3_2 = devm_regulator_get_optional(&plat_dev->dev, "vs3-2");
+	if (IS_ERR(reg_vs3_2)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vs3_2 fail\n", __func__);
+		return;
+	}
+
 	reg_vs2_2 = devm_regulator_get_optional(&plat_dev->dev, "vs2-2");
+	if (IS_ERR(reg_vs2_2)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vs2_2 fail\n", __func__);
+		return;
+	}
+
 	reg_va10 = devm_regulator_get_optional(&plat_dev->dev, "va10");
+	if (IS_ERR(reg_va10)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_va10 fail\n", __func__);
+		return;
+	}
+
 	reg_vrf09 = devm_regulator_get_optional(&plat_dev->dev, "vrf09");
+	if (IS_ERR(reg_vrf09)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vrf09 fail\n", __func__);
+		return;
+	}
+
 	reg_vrf12 = devm_regulator_get_optional(&plat_dev->dev, "vrf12");
+	if (IS_ERR(reg_vrf12)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vrf12 fail\n", __func__);
+		return;
+	}
+
 	reg_vrf18 = devm_regulator_get_optional(&plat_dev->dev, "vrf18");
+	if (IS_ERR(reg_vrf18)) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get reg_vrf18 fail\n", __func__);
+		return;
+	}
 
 	// regulator setting
 	ret = regulator_enable(reg_vmodem);
@@ -1936,6 +1990,10 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	/* tfa Step 1: VDIGRF, Vmodem, VS2_2, VS3_2 mapping */
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
 			MD_SET_RF_PMIC_LP, 1, 0, 0, 0, 0, &res);
+	if (res.a0 != 1) {
+		CCCI_ERROR_LOG(0, TAG, "%s fail to exec tfa step1: %lu\n", __func__, res.a0);
+		return;
+	}
 	udelay(200);
 
 	// regulator setting
@@ -1952,6 +2010,10 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	/* tfa Step 2: Vsram_rf, VRFIO12 mapping */
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
 			MD_SET_RF_PMIC_LP, 2, 0, 0, 0, 0, &res);
+	if (res.a0 != 2) {
+		CCCI_ERROR_LOG(0, TAG, "%s fail to exec tfa step2: %lu\n", __func__, res.a0);
+		return;
+	}
 	udelay(200);
 
 	// regulator setting
@@ -1962,6 +2024,10 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	/* tfa Step 3: VRFIO18 mapping */
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
 			MD_SET_RF_PMIC_LP, 3, 0, 0, 0, 0, &res);
+	if (res.a0 != 3) {
+		CCCI_ERROR_LOG(0, TAG, "%s fail to exec tfa step3: %lu\n", __func__, res.a0);
+		return;
+	}
 	udelay(500);
 
 	/* Turn off PMRC4 PMIC */
@@ -1983,6 +2049,10 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	/* tfa step 4: VRF18, VRF12, VRF09 mapping */
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
 			MD_SET_RF_PMIC_LP, 4, 0, 0, 0, 0, &res);
+	if (res.a0 != 4) {
+		CCCI_ERROR_LOG(0, TAG, "%s fail to exec tfa step4: %lu\n", __func__, res.a0);
+		return;
+	}
 
 	/* Turn on PMRC4 @ PMIC, Set PMRC4 and write PMRC0~7 */
 	ret = regmap_write(map_slave6, PMRC_REG, val | 0x10);
@@ -2006,6 +2076,10 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	/* tfa step 5: set PMRC4 mapping to LP mode*/
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
 			MD_SET_RF_PMIC_LP, 5, 0, 0, 0, 0, &res);
+	if (res.a0 != 5) {
+		CCCI_ERROR_LOG(0, TAG, "%s fail to exec tfa step5: %lu\n", __func__, res.a0);
+		return;
+	}
 
 	udelay(200);
 
