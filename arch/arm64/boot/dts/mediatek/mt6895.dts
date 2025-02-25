@@ -415,56 +415,56 @@
 	lastbus: lastbus {
 		compatible = "mediatek,lastbus";
 		enabled = <1>;
-		sw_version = <1>;
-		timeout_ms = <200>;
-		timeout_type = <0>;
+		sw-version = <1>;
+		timeout-ms = <200>;
+		timeout-type = <0>;
 		monitors {
 			monitor1 {
-				monitor_name = "debug_ctrl_ao_INFRA_AO";
+				monitor-name = "debug_ctrl_ao_INFRA_AO";
 				base = <0x10023000>;
-				num_ports = <71>;
-				idle_masks = <0x20 0x00000100>;
-				bus_freq_mhz = <78>;
+				num-ports = <71>;
+				idle-masks = <0x20 0x00000100>;
+				bus-freq-mhz = <78>;
 			};
 			monitor2 {
-				monitor_name = "debug_ctrl_ao_INFRA_AO1";
+				monitor-name = "debug_ctrl_ao_INFRA_AO1";
 				base = <0x1002b000>;
-				num_ports = <18>;
-				bus_freq_mhz = <78>;
+				num-ports = <18>;
+				bus-freq-mhz = <78>;
 			};
 			monitor3 {
-				monitor_name = "debug_ctrl_ao_NEMI_AO";
+				monitor-name = "debug_ctrl_ao_NEMI_AO";
 				base = <0x10042000>;
-				num_ports = <17>;
-				idle_masks = <0x0c 0xffff8000>,
+				num-ports = <17>;
+				idle-masks = <0x0c 0xffff8000>,
 					     <0x10 0x00003fff>;
-				bus_freq_mhz = <640>;
+				bus-freq-mhz = <640>;
 			};
 			monitor4 {
-				monitor_name = "debug_ctrl_ao_SEMI_AO";
+				monitor-name = "debug_ctrl_ao_SEMI_AO";
 				base = <0x10028000>;
-				num_ports = <17>;
-				idle_masks = <0x0c 0xffff8000>,
+				num-ports = <17>;
+				idle-masks = <0x0c 0xffff8000>,
 					     <0x10 0x00003fff>;
-				bus_freq_mhz = <640>;
+				bus-freq-mhz = <640>;
 			};
 			monitor5 {
-				monitor_name = "debug_ctrl_ao_PERI_PAR_AO";
+				monitor-name = "debug_ctrl_ao_PERI_PAR_AO";
 				base = <0x11037000>;
-				num_ports = <21>;
-				bus_freq_mhz = <78>;
+				num-ports = <21>;
+				bus-freq-mhz = <78>;
 			};
 			monitor6 {
-				monitor_name = "debug_ctrl_ao_VLP_AO";
+				monitor-name = "debug_ctrl_ao_VLP_AO";
 				base = <0x1c01d000>;
-				num_ports = <14>;
-				bus_freq_mhz = <156>;
+				num-ports = <14>;
+				bus-freq-mhz = <156>;
 			};
 			monitor7 {
-				monitor_name = "debug_ctrl_ao_MM_AO";
+				monitor-name = "debug_ctrl_ao_MM_AO";
 				base = <0x1e825000>;
-				num_ports = <28>;
-				bus_freq_mhz = <688>;
+				num-ports = <28>;
+				bus-freq-mhz = <688>;
 			};
 		};
 	};
@@ -1760,28 +1760,28 @@
 			mcu-data-len = <4 4 2 4 2 2>;
 		};
 
-		dfd_mcu: dfd_mcu@0c530000 {
+		dfd_mcu: dfd-mcu@c530000 {
 			compatible = "mediatek,dfd_mcu";
 			enabled = <1>;
-			hw_version = <30>;
-			sw_version = <1>;
-			dfd_timeout = <0x190>;
-			buf_length = <0x280000>;
-			buf_addr_align = <0x1000000>;
-			nr_max_core = <8>;
-			nr_big_core = <4>;
-			nr_rs_entry_little = <8>;
-			nr_rs_entry_big = <0>;
-			nr_header_row = <0>;
-			chip_id_offset = <0x18>;
-			check_pattern_offset = <0x0>;
+			hw-version = <30>;
+			sw-version = <1>;
+			dfd-timeout = <0x190>;
+			buf-length = <0x280000>;
+			buf-addr-align = <0x1000000>;
+			nr-max-core = <8>;
+			nr-big-core = <4>;
+			nr-rs-entry-little = <8>;
+			nr-rs-entry-big = <0>;
+			nr-header-row = <0>;
+			chip-id-offset = <0x18>;
+			check-pattern-offset = <0x0>;
 			/* dfd_disable_efuse = <25 12>; */
-			dfd_disable_efuse = <(-1) (-1)>;
-			dfd_cache: dfd_cache {
+			dfd-disable-efuse = <(-1) (-1)>;
+			dfd_cache: dfd-cache {
 				enabled = <0>;
-				dfd_timeout = <0x1770>;
-				buf_length = <0x2000000>;
-				tap_en = <0x43ff>;
+				dfd-timeout = <0x1770>;
+				buf-length = <0x2000000>;
+				tap-en = <0x43ff>;
 			};
 		};
 
@@ -3263,15 +3263,15 @@
 				  <0 0x0d040800 0 0x100>, /* ap bus tracer base */
 				  <0 0x0d040900 0 0x100>; /* infra bus tracer base */
 
-			mediatek,err_flag = <0xfffcffff>;
+			mediatek,err-flag = <0xfffcffff>;
 
 			/*
 			 * index 0 for ap bus tracer
 			 * index 1 for infra bus tracer
 			 */
-			mediatek,num_tracer = <2>;
-			mediatek,enabled_tracer = <0 1>;
-			mediatek,at_id = <0x10 0x30>;
+			mediatek,num-tracer = <2>;
+			mediatek,enabled-tracer = <0 1>;
+			mediatek,at-id = <0x10 0x30>;
 
 			/* filters: disabled by default */
 			/*
