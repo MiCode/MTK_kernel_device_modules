@@ -518,6 +518,7 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 	unsigned long flags;
 	const uint64_t timeout_time = 5 * 1000 * 1000;
 	uint64_t start_time = 0, end_time = 0, pre_cb_time = 0, post_cb_time = 0, cbtimediff = 0;
+	uint64_t post_mbox_op_time = 0,  post_mbox_dump_time= 0;
 	uint32_t execute_count = 0;
 	//void *user_data;
 	int ret;
@@ -654,6 +655,8 @@ skip:
 	mtk_mbox_set_lock(mbdev, mbox, MBOX_DONE);
 	spin_unlock_irqrestore(&minfo->mbox_lock, flags);
 
+	post_mbox_op_time = cpu_clock(0);
+
 	if (irq_temp == 0 && irq_status != 0) {
 		pr_err("[MBOX ISR]dev=%s pin table err, status=%x",
 			mbdev->name, irq_status);
@@ -662,6 +665,8 @@ skip:
 			mtk_mbox_dump_recv_pin(mbdev, pin_recv);
 		}
 	}
+
+	post_mbox_dump_time = cpu_clock(0);
 
 	/*notify all receive pin handler*/
 	for (i = 0; i < mbdev->recv_count; i++) {
@@ -681,8 +686,9 @@ skip:
 	if (end_time - start_time > timeout_time) {
 		pr_notice("[MBOX Error]dev=%s ipi_id=%d, start=%llu, pre_cb_time=%llu, cb_pre_time=%llu\n",
 		mbdev->name, pin_recv->chan_id, start_time, pre_cb_time, pin_recv->recv_record.pre_timestamp);
-		pr_notice("[MBOX Error]cb_post_time=%llu, post_cb_time=%llu, end=%llu, diff=%llu, count=%u\n",
-		pin_recv->recv_record.post_timestamp, post_cb_time, end_time, end_time - start_time, execute_count);
+		pr_notice("[MBOX Error]cb_post_time=%llu, post_cb_time=%llu, post_mbox_op_time=%llu,post_mbox_dump_time =%llu,end=%llu\n",
+		pin_recv->recv_record.post_timestamp, post_cb_time, post_mbox_op_time, post_mbox_dump_time, end_time);
+		pr_notice("[MBOX Error]diff=%llu, count=%u\n", end_time - start_time, execute_count);
 	}
 	return IRQ_HANDLED;
 }
