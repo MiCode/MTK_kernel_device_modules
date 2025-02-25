@@ -37,7 +37,8 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
     ] +
     (["//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
-     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),] if "entry_level" not in DEFCONFIG_OVERLAYS else []),
+     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
         "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
