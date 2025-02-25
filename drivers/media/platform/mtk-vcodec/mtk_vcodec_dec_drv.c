@@ -18,7 +18,7 @@
 #include <linux/pm_wakeup.h>
 #include <linux/delay.h>
 #include <linux/suspend.h>
-#include <soc/mediatek/mmdvfs_v3.h>
+
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "mtk_vcodec_drv.h"
@@ -28,6 +28,8 @@
 #include "mtk_vcu.h"
 #include "mtk_vcodec_dec_slc.h"
 #include "vdec_drv_if.h"
+
+#include <soc/mediatek/mmdvfs_v3.h>
 /* SMMU related header file */
 #include "mtk-smmu-v3.h"
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)

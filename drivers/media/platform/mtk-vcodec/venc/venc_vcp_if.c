@@ -9,27 +9,28 @@
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #include <linux/mtk_vcu_controls.h>
 #include <linux/delay.h>
-#include <soc/mediatek/smi.h>
-#include <media/v4l2-mem2mem.h>
 #include <linux/sched.h>
 #include <linux/vmalloc.h>
+#include <media/v4l2-mem2mem.h>
 #include <uapi/linux/sched/types.h>
 
-#include "../mtk_vcodec_drv.h"
-#include "../mtk_vcodec_util.h"
-#include "../mtk_vcodec_enc.h"
-#include "../venc_drv_base.h"
-#include "../venc_ipi_msg.h"
-#include "../venc_vcu_if.h"
+#include "mtk_vcodec_drv.h"
+#include "mtk_vcodec_util.h"
+#include "mtk_vcodec_enc.h"
+#include "venc_drv_base.h"
+#include "venc_ipi_msg.h"
+#include "venc_vcu_if.h"
 #include "mtk_vcodec_enc_pm.h"
+// TODO: need remove ISR ipis
+#include "mtk_vcodec_intr.h"
+
+#include <soc/mediatek/smi.h>
 #if IS_ENABLED(CONFIG_MTK_EMI)
 #include <soc/mediatek/emi.h>
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
 #endif
-// TODO: need remove ISR ipis
-#include "mtk_vcodec_intr.h"
 
 #ifdef CONFIG_MTK_ENG_BUILD
 #define IPI_TIMEOUT_MS          (10000U)

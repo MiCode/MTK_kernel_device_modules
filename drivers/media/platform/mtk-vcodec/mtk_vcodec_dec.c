@@ -15,7 +15,6 @@
 #include <linux/sched.h>
 #include <linux/overflow.h>
 #include <linux/limits.h>
-#include <mtk_heap.h>
 
 #include "mtk_heap.h"
 #include "iommu_pseudo.h"
@@ -28,8 +27,6 @@
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "vdec_drv_if.h"
 #include "mtk_vcodec_dec_slc.h"
-/* SMMU related header file */
-#include "mtk-smmu-v3.h"
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
 #endif

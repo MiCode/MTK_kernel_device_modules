@@ -9,23 +9,22 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
-#include <soc/mediatek/smi.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
-//#include "smi_public.h"
-#include "mtk-smi-dbg.h"
+
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
 #include "vdec_drv_if.h"
 
+#include <soc/mediatek/smi.h>
+#include "mtk-smi-dbg.h"
 #ifdef CONFIG_MTK_PSEUDO_M4U
 #include <mach/mt_iommu.h>
 #include "mach/pseudo_m4u.h"
 #include "smi_port.h"
 #endif
-
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 #include "iommu_debug.h"
 #endif

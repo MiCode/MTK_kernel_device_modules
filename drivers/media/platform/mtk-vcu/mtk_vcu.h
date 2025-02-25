@@ -11,6 +11,10 @@
 #include <linux/fdtable.h>
 #include <linux/platform_device.h>
 
+#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+#define CMDQ_SEC_SUPPORT
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define vcu_aee_print(string, args...) do {\
 	char vcu_name[100];\

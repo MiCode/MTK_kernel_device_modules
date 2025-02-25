@@ -7,12 +7,10 @@
 
 #include <media/v4l2-event.h>
 #include <media/v4l2-mem2mem.h>
-#include <soc/mediatek/smi.h>
 #include <linux/delay.h>
 #include <linux/semaphore.h>
 #include <linux/module.h>
 #include <linux/limits.h>
-#include <mtk_heap.h>
 
 #include "mtk_heap.h"
 #include "iommu_pseudo.h"
@@ -24,7 +22,7 @@
 #include "mtk_vcodec_enc_pm.h"
 #include "mtk_vcodec_enc_pm_plat.h"
 #include "venc_drv_if.h"
-#include "mtk-smmu-v3.h"
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
 #endif

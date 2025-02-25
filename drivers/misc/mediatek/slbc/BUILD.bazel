@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("@mgk_info//:kernel_version.bzl",
     "kernel_version",
 )
@@ -39,6 +40,15 @@ filegroup(
     ]),
 )
 
+# to export headers for other modules to use
+ddk_headers(
+    name = "headers",
+    hdrs = [
+        "slbc_ops.h",
+    ],
+    includes = ["."],
+)
+
 define_mgk_ddk_ko(
     name = "mtk_slbc",
     srcs = [
@@ -51,6 +61,7 @@ define_mgk_ddk_ko(
         "slbc.h",
         "slbc_ops.h",
         "mtk_slbc_sram.h",
+        "slbc_sdk.h",
     ],
     copts = [
         "-Wall",

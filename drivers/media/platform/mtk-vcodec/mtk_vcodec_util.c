@@ -25,7 +25,9 @@
 #include "mtk_vcodec_enc.h"
 #include "vdec_drv_if.h"
 #include "venc_drv_if.h"
-#include "group.h"
+#ifdef MTK_SCHED_SUPPORT
+#include "eas/group.h"
+#endif
 
 #define LOG_PARAM_INFO_SIZE 64
 #define MAX_SUPPORTED_LOG_PARAMS_COUNT 12

@@ -6,19 +6,18 @@
 
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
-#include <soc/mediatek/smi.h>
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/list.h>
 #include <linux/vmalloc.h>
+#include <linux/pm_opp.h>
+#include <linux/regulator/consumer.h>
 
-//#include "smi_public.h"
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
-#include <linux/pm_opp.h>
-#include <linux/regulator/consumer.h>
+
 #include "vcodec_dvfs.h"
 #include "vdec_drv_if.h"
 #define STD_VDEC_FREQ 218000000

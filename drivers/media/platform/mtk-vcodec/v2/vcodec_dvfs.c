@@ -24,14 +24,16 @@
 #endif
 #include "pf_ctrl.h"
 #include "slbc_sdk.h"
+#ifdef MTK_SCHED_SUPPORT
 #include <sched/sched.h>
 #include "common.h"
-#include "cpu_util.h"
+#include "util/cpu_util.h"
 
 int get_target_margin_low(int cpu);
 
 int codec_margin_change;
 int codec_runnable_boost_disable;
+#endif
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -528,7 +530,7 @@ static bool mtk_vcodec_has_active_inst(struct mtk_vcodec_dev *dev, int codec_typ
 }
 
 
-
+#ifdef MTK_SCHED_SUPPORT
 static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_type, unsigned int op_rate)
 {
 	struct list_head *item = 0;
@@ -560,7 +562,7 @@ static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_typ
 
 	return false;
 }
-
+#endif
 
 u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 {
@@ -844,6 +846,7 @@ void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
 
 void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
 {
+#ifdef MTK_SCHED_SUPPORT
 	int margin = get_target_margin_low(0);
 
 	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
@@ -864,11 +867,12 @@ void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_dvfs_qos_log(false,
 		"%s [VDVFS] cpu margin change %d to %d, count: %d\n", __func__,
 		margin, get_target_margin_low(0), codec_margin_change);
-
+#endif
 }
 
 void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
 {
+#ifdef MTK_SCHED_SUPPORT
 	int boost = is_runnable_boost_enable();
 
 	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
@@ -886,6 +890,5 @@ void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_dvfs_qos_log(false,
 		"%s [VDVFS] cpu runnable boost change %d to %d, count: %d\n", __func__,
 		boost, is_runnable_boost_enable(), codec_runnable_boost_disable);
-
-
+#endif
 }

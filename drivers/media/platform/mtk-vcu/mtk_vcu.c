@@ -36,20 +36,23 @@
 #include <linux/signal.h>
 #include <trace/events/signal.h>
 #include <linux/string.h>
-#include <mailbox/cmdq-sec.h>
 #include <linux/vmalloc.h>
-
+#include <linux/dma-heap.h>
+#include <linux/mtk_vcu_controls.h>
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 #include <linux/iommu.h>
 #endif
-#include "mtk_vcodec_mem.h"
-#include <linux/dma-heap.h>
 #include <uapi/linux/dma-heap.h>
-#include <linux/mtk_vcu_controls.h>
+
+#include "mtk_vcodec_mem.h"
 #include "mtk_vcu.h"
 #include "vcp_status.h"
 #include "mtk_heap.h"
 #include "iommu_pseudo.h"
+#include "mtk-cmdq-ext.h"
+#ifdef CMDQ_SEC_SUPPORT
+#include "cmdq-sec.h"
+#endif
 
 /**
  * VCU (Video Communication/Controller Unit) is a tiny processor
@@ -950,9 +953,9 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 		pr_debug("[VCU] %s CMD_WRITE addr: 0x%llx 0x%llx 0x%x\n",
 			__func__, addr, data, mask);
 	break;
+#ifdef CMDQ_SEC_SUPPORT
 	case CMD_SEC_WRITE:
 		if (vcu_check_reg_base(vcu, addr, 4) == 0) {
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 			cmdq_sec_pkt_write_reg(pkt,
 				addr,
 				data,
@@ -960,7 +963,6 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 				dma_offset,
 				dma_size,
 				0);
-#endif
 		} else {
 			pr_info("[VCU] %s CMD_SEC_WRITE wrong addr: 0x%llx 0x%llx 0x%x 0x%x\n",
 				__func__, addr, data, dma_offset, dma_size);
@@ -968,6 +970,7 @@ static void vcu_set_gce_cmd(struct cmdq_pkt *pkt,
 		pr_debug("[VCU] %s CMD_SEC_WRITE addr: 0x%llx 0x%llx 0x%x 0x%x\n",
 				__func__, addr, data, dma_offset, dma_size);
 	break;
+#endif
 	case CMD_POLL_REG:
 		if (vcu_check_reg_base(vcu, addr, 4) == 0) {
 			cmdq_pkt_poll_addr(pkt, data, addr, mask, gpr);
@@ -1059,9 +1062,9 @@ static void vcu_set_gce_secure_cmd(struct cmdq_pkt *pkt,
 			__func__, addr, data, dma_offset, dma_size);
 
 	break;
+#ifdef CMDQ_SEC_SUPPORT
 	case CMD_SEC_WRITE:
-#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)) && \
-	IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE))
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
 		if (vcu_check_reg_base(vcu, addr, 4) == 0) {
 			if (is_disable_map_sec()) {
 				//for secure handle
@@ -1080,6 +1083,7 @@ static void vcu_set_gce_secure_cmd(struct cmdq_pkt *pkt,
 		pr_debug("[VCU] %s CMD_SEC_WRITE addr: 0x%llx 0x%llx 0x%x 0x%x\n",
 			__func__, addr, data, dma_offset, dma_size);
 	break;
+#endif
 	case CMD_POLL_REG:
 		if (vcu_check_reg_base(vcu, addr, 4) == 0) {
 			cmdq_pkt_poll_addr(pkt, data, addr, mask, gpr);
@@ -1141,6 +1145,7 @@ static void vcu_set_gce_secure_cmd(struct cmdq_pkt *pkt,
 	}
 }
 
+#ifdef CMDQ_SEC_SUPPORT
 static void vcu_set_gce_readstatus_cmd(struct cmdq_pkt *pkt,
 	struct mtk_vcu *vcu, unsigned int gce_index, unsigned int gce_order,
 	struct mtk_vcu_queue *q,
@@ -1174,6 +1179,7 @@ static void vcu_set_gce_readstatus_cmd(struct cmdq_pkt *pkt,
 	break;
 	}
 }
+#endif
 
 static void vcu_gce_flush_callback(struct cmdq_cb_data data)
 {
@@ -1210,8 +1216,8 @@ static void vcu_gce_flush_callback(struct cmdq_cb_data data)
 			vcu->cbf.enc_unprepare(vcu->gce_info[j].v4l2_ctx,
 				buff->cmdq_buff.core_id, &vcu->flags[i]);
 
+#ifdef CMDQ_SEC_SUPPORT
 			//TODO: ask CMDQ owner add mtee param
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 			if (buff->cmdq_buff.secure != 0)
 				cmdq_sec_mbox_switch_normal(vcu->clt_venc_sec[0]);
 #endif
@@ -1224,7 +1230,7 @@ static void vcu_gce_flush_callback(struct cmdq_cb_data data)
 				if (vcu->clt_venc[core_id] != NULL)
 					cmdq_mbox_disable(vcu->clt_venc[core_id]->chan);
 			} else {
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
+#ifdef CMDQ_SEC_SUPPORT
 				if (vcu->clt_venc_sec[0] != NULL)
 					cmdq_sec_mbox_disable(vcu->clt_venc_sec[0]->chan);
 #endif
@@ -1252,6 +1258,7 @@ static void vcu_gce_flush_callback(struct cmdq_cb_data data)
 	up(&vcu->gce_info[j].buff_sem[gce_order]);
 }
 
+#ifdef CMDQ_SEC_SUPPORT
 static void vcu_gce_pkt_destroy(struct cmdq_cb_data data)
 {
 	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
@@ -1266,7 +1273,7 @@ static void vcu_gce_pkt_destroy(struct cmdq_cb_data data)
 	cmdq_pkt_destroy(pkt);
 	pr_debug("%s: pkt:%p", __func__, pkt);
 }
-
+#endif
 
 static void vcu_gce_timeout_callback(struct cmdq_cb_data data)
 {
@@ -1300,7 +1307,6 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 	unsigned char *user_data_addr = NULL;
 	struct gce_callback_data buff;
 	struct cmdq_pkt *pkt_ptr;
-	struct cmdq_pkt *pkt;
 	struct cmdq_client *cl;
 	struct gce_cmds *cmds;
 	unsigned int suspend_block_cnt = 0;
@@ -1423,8 +1429,8 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 				if (vcu->clt_venc[core_id] != NULL)
 					cmdq_mbox_enable(vcu->clt_venc[core_id]->chan);
 			} else {
+#ifdef CMDQ_SEC_SUPPORT
 				if (vcu->clt_venc_sec[0] != NULL)
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 					cmdq_sec_mbox_enable(vcu->clt_venc_sec[0]->chan);
 #endif
 				if (vcu->clt_venc[1] != NULL)
@@ -1463,7 +1469,9 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 
 
 	if (buff.cmdq_buff.codec_type == VCU_VENC) {
+#ifdef CMDQ_SEC_SUPPORT
 		if (buff.cmdq_buff.secure != 0) {
+			struct cmdq_pkt *pkt;
 			const u64 dapc_engine =
 				(1LL << CMDQ_SEC_VENC_BSDMA) |
 				(1LL << CMDQ_SEC_VENC_CUR_LUMA) |
@@ -1496,7 +1504,6 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 
 			pr_debug("[VCU] dapc_engine: 0x%llx, port_sec_engine: 0x%llx\n",
 				dapc_engine, port_sec_engine);
-#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 			cmdq_sec_pkt_set_data(pkt_ptr, dapc_engine,
 				port_sec_engine, CMDQ_SEC_KERNEL_CONFIG_GENERAL,
 				CMDQ_METAEX_VENC);
@@ -1507,7 +1514,7 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 
 			//CMDQ SCENARIO hint WFD
 			cmdq_sec_pkt_set_secid(pkt_ptr, SEC_ID_WFD);
-#endif
+
 			// one normal cmdq thread is for sec encoding
 			//coworking with cmdq secure thread
 
@@ -1546,6 +1553,7 @@ static int vcu_gce_cmd_flush(struct mtk_vcu *vcu,
 			} else
 				pr_info("%s %d submit read status pkt fail", __func__, __LINE__);
 		}
+#endif
 	}
 
 	pr_debug("%s %d buff.cmdq_buff.secure %d", __func__, __LINE__, buff.cmdq_buff.secure);

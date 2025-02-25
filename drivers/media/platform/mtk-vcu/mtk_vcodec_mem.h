@@ -13,13 +13,17 @@
 #include <asm/cacheflush.h>
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
-#include <mailbox/cmdq-sec.h>
 
-//#define CACHE_SYNC //removed for test
-
+#include "mtk-cmdq-ext.h"
+#ifdef CMDQ_SEC_SUPPORT
+#include "mailbox/cmdq-sec.h"
+#endif
 #ifndef CONFIG_ARM64
 #include "mm/dma.h"
 #endif
+
+//#define CACHE_SYNC //removed for test
+
 
 #ifndef dmac_map_area
 #define dmac_map_area __dma_map_area

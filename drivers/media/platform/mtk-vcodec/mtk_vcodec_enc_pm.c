@@ -11,17 +11,15 @@
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
 #include <linux/jiffies.h>
-#include <soc/mediatek/smi.h>
 
 #include "mtk_vcodec_enc_pm.h"
 #include "mtk_vcodec_enc_pm_plat.h"
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
 #include "venc_drv_if.h"
-//#include "smi_public.h"
-#include "mtk-smi-dbg.h"
 
-#include <mtk_iommu.h>
+#include <soc/mediatek/smi.h>
+#include "mtk-smi-dbg.h"
 
 #ifdef CONFIG_MTK_PSEUDO_M4U
 #include <mach/mt_iommu.h>

@@ -27,6 +27,7 @@
 #include "mtk_vcodec_util.h"
 #include "mtk_vcu.h"
 #include "venc_drv_if.h"
+
 #include "mtk-smmu-v3.h"
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"

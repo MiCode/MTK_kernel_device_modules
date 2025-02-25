@@ -35,7 +35,8 @@ ddk_headers(
         "mtk-smmu-ela.h",
         "smmu_secure.h",
     ]) + ["//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),]
-       + ["//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),],
+       + ["//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),]
+       + ["//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:tmem_hdrs".format(kernel_version),],
     includes = ["."],
 )
 
