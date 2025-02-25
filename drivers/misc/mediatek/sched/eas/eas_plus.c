@@ -346,7 +346,7 @@ int pd_get_efficient_state_opp(struct em_perf_domain *pd, int cpu,
 DEFINE_PER_CPU(cpumask_var_t, em_energy_mask);
 
 static inline
-unsigned long estimate_energy(struct em_perf_domain *pd,
+unsigned long estimate_energy(int pid, struct em_perf_domain *pd,
 		int opp, unsigned long sum_util, struct energy_env *eenv,
 		unsigned long scale_cpu, unsigned long freq, unsigned long extern_volt, unsigned long max_util,
 		int candidate_cpu, unsigned int dpt_v2_sratio, dpt_v2_cap_params_struct dpt_v2_cap_params)
@@ -401,7 +401,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
 	data[3] = scale_cpu;
 	data[4] = eenv->dpt_v2_support;
 
-	energy = get_cpu_power(mtk_em, get_lkg, false, eenv->wl_cpu,
+	energy = get_cpu_power(pid, mtk_em, get_lkg, false, eenv->wl_cpu,
 		eenv->val_s, false, DPT_CALL_MTK_EM_CPU_ENERGY,
 		candidate_cpu, cpu_temp, opp, cpus->bits[0],
 		data, output, pd, freq, max_util,
@@ -448,7 +448,7 @@ unsigned long estimate_energy(struct em_perf_domain *pd,
  * Return: the sum of the energy consumed by the CPUs of the domain assuming
  * a capacity state satisfying the max utilization of the domain.
  */
-unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
+unsigned long mtk_em_cpu_energy(int pid, struct em_perf_domain *pd,
 		unsigned long pd_freq, unsigned long sum_util,
 		unsigned long scale_cpu, struct energy_env *eenv,
 		unsigned long extern_volt, unsigned long max_util,
@@ -513,7 +513,8 @@ unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
 	 *   pd_nrg = ------------------------                       (4)
 	 *                  scale_cpu
 	 */
-	return estimate_energy(pd, opp, sum_util, eenv, scale_cpu, freq, extern_volt, max_util, candidate_cpu, dpt_v2_sratio, dpt_v2_cap_params);
+	return estimate_energy(pid, pd, opp, sum_util, eenv, scale_cpu, freq, extern_volt,
+			max_util, candidate_cpu, dpt_v2_sratio, dpt_v2_cap_params);
 }
 
 #define OFFS_THERMAL_LIMIT_S 0x1208

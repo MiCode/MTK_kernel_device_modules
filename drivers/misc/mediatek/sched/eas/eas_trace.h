@@ -104,14 +104,15 @@ TRACE_EVENT(sched_leakage,
 
 TRACE_EVENT(sched_dptv2_swpm,
 
-	TP_PROTO(int cpu, int *swpm_vars),
+	TP_PROTO(int cpu, int pid, int *swpm_vars),
 
-	TP_ARGS(cpu, swpm_vars),
+	TP_ARGS(cpu, pid, swpm_vars),
 
 	TP_STRUCT__entry(
 		__field(int, dpt_v2_support)
 		__field(int, dpt_v2_swpm_support)
 		__field(int, cpu)
+		__field(int, pid)
 		__field(int, param1)
 		__field(int, param2)
 		__field(int, param3)
@@ -128,6 +129,7 @@ TRACE_EVENT(sched_dptv2_swpm,
 		__entry->dpt_v2_support    = swpm_vars[10];
 		__entry->dpt_v2_swpm_support    = swpm_vars[7];
 		__entry->cpu    = cpu;
+		__entry->pid    = pid;
 		__entry->param1    = swpm_vars[0];
 		__entry->param2   = swpm_vars[1];
 		__entry->param3   = swpm_vars[2];
@@ -140,10 +142,11 @@ TRACE_EVENT(sched_dptv2_swpm,
 		__entry->orig_pwr_eff  = swpm_vars[9];
 		),
 
-	TP_printk("dpt_v2_support=%d dpt_v2_swpm_support=%d cpu=%d pm_coef1=%d pm_coef2=%d pm_coef3=%d sratio=%d freq=%d volt=%d capacity=%d dyn_pwr=%d pwr_eff=%d orig_pwr_eff=%d",
+	TP_printk("dpt_v2_support=%d dpt_v2_swpm_support=%d cpu=%d pid=%d pm_coef1=%d pm_coef2=%d pm_coef3=%d sratio=%d freq=%d volt=%d capacity=%d dyn_pwr=%d pwr_eff=%d orig_pwr_eff=%d",
 		__entry->dpt_v2_support,
 		__entry->dpt_v2_swpm_support,
 		__entry->cpu,
+		__entry->pid,
 		__entry->param1,
 		__entry->param2,
 		__entry->param3,

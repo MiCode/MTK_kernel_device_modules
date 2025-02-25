@@ -302,6 +302,9 @@ eenv_pd_max_util_dpt_v2(struct energy_env *eenv, struct cpumask *pd_cpus,
 
 			mtk_map_util_freq_dpt_v2(NULL, cpu, &freq_base, &unused, pd_cpus, dpt_v2_cpu_util_base_local, dpt_v2_coef1_util_base_local, dpt_v2_coef2_util_base_local, *min, *max);
 			eenv->dpt_v2_freq[cpu][0] = freq_base;
+			eenv->dpt_v2_cpu_util[cpu][0] = dpt_v2_cpu_util_base_local;
+			eenv->dpt_v2_coef1_util[cpu][0] = dpt_v2_coef1_util_base_local;
+			eenv->dpt_v2_coef2_util[cpu][0] = dpt_v2_coef2_util_base_local;
 			if (trace_sched_max_util_dpt_v2_enabled())
 				trace_sched_max_util_dpt_v2("cpu", cpu, dst_cpu, 0,
 					eenv->dpt_v2_freq[cpu][0], cpu, dpt_v2_cpu_util_base_local, dpt_v2_coef1_util_base_local, dpt_v2_coef2_util_base_local);
@@ -645,6 +648,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 	int dst_idx, shared_buck_mode;
 	unsigned long pd_freq = 0, gear_freq, scale_cpu;
 	unsigned int dpt_v2_sratio = 0;
+	int pid = task_pid_nr(p);
 
 	scale_cpu = arch_scale_cpu_capacity(pd_idx);
 
@@ -692,13 +696,13 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 
 		if (gear_volt-pd_volt < volt_diff) {
 			extern_volt = max(gear_volt, dsu_volt);
-			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
+			energy =  mtk_em_cpu_energy(pid, pd->em_pd, pd_freq, busy_time,
 					scale_cpu, eenv, extern_volt, pd_max_util, candidate_cpu,
 					dpt_v2_sratio, eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
 			shared_buck_mode = 1;
 		} else {
 			extern_volt = 0;
-			energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
+			energy =  mtk_em_cpu_energy(pid, pd->em_pd, pd_freq, busy_time,
 					scale_cpu, eenv, extern_volt, pd_max_util, candidate_cpu,
 					dpt_v2_sratio, eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
 			energy = ((pd_volt) ? energy * max(gear_volt, dsu_volt) / pd_volt : energy);
@@ -706,7 +710,7 @@ mtk_compute_energy_cpu(struct energy_env *eenv, struct perf_domain *pd,
 		}
 	} else {
 		extern_volt = dsu_volt;
-		energy =  mtk_em_cpu_energy(pd->em_pd, pd_freq, busy_time,
+		energy =  mtk_em_cpu_energy(pid, pd->em_pd, pd_freq, busy_time,
 				scale_cpu, eenv, extern_volt, pd_max_util, candidate_cpu,
 				dpt_v2_sratio, eenv->dpt_v2_cap_params[candidate_cpu][dst_idx]);
 		shared_buck_mode = 0;

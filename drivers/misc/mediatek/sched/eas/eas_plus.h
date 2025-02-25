@@ -177,7 +177,7 @@ unsigned long get_dsu_pwr(int wl, int dst_cpu, unsigned long task_util,
 		unsigned long total_util, void *private, unsigned int extern_volt,
 		int dsu_pwr_enable);
 
-extern unsigned long mtk_em_cpu_energy(struct em_perf_domain *pd,
+extern unsigned long mtk_em_cpu_energy(int pid, struct em_perf_domain *pd,
 		unsigned long pd_freq, unsigned long sum_util,
 		unsigned long scale_cpu, struct energy_env *eenv,
 		unsigned long extern_volt, unsigned long max_util, int candidate_cpu,

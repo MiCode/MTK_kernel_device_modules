@@ -35,7 +35,7 @@ unsigned long (*get_cpu_power_hook)(unsigned int mtk_em, unsigned int get_lkg,
 	unsigned long cpu_util_local, unsigned long total_util_local, int IPC_scaling_factor);
 EXPORT_SYMBOL(get_cpu_power_hook);
 
-unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
+unsigned long get_cpu_power(int pid, unsigned int mtk_em, unsigned int get_lkg,
 	int quant, int wl, int *val_s, int r_o, int caller,
 	int this_cpu, int *cpu_temp, int opp, unsigned int cpumask_val,
 	unsigned long *data, unsigned long *output, struct em_perf_domain *pd,
@@ -61,7 +61,7 @@ unsigned long get_cpu_power(unsigned int mtk_em, unsigned int get_lkg,
 				dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local, dpt_v2_cap_params.IPC_scaling_factor);
 
 		if (trace_sched_dptv2_swpm_enabled())
-			trace_sched_dptv2_swpm(this_cpu, swpm_vars);
+			trace_sched_dptv2_swpm(this_cpu, pid, swpm_vars);
 
 		record_sched_pd_opp2pwr_eff(this_cpu, opp, quant, wl,
 			dpt_pwr_eff_val[0], dpt_pwr_eff_val[1], dpt_pwr_eff_val[2],
