@@ -527,7 +527,7 @@ u32 cmdq_mbox_get_tpr(void *chan)
 	u64 dbg[5] = {0};
 	u32 dbg_type = cmdq->cmdq_dbg_type;
 
-	if ((dbg_type & (CMDQ_DBG_ALL & CMDQ_DBG_NORMAL_SECURE)) && !base) {
+	if ((dbg_type & (CMDQ_DBG_ALL | CMDQ_DBG_NORMAL_SECURE)) && !base) {
 		cmdq_util_msg("dbg type:%d, no cmdq dbg since no base", dbg_type);
 		return U32_MAX;
 	}
@@ -2595,7 +2595,7 @@ void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 	u64 dbg[5];
 	u16 dbg0_offset, dbg2_offset, dbg3_offset;
 
-	if ((dbg_type & (CMDQ_DBG_ALL & CMDQ_DBG_NORMAL_SECURE)) && !base) {
+	if ((dbg_type & (CMDQ_DBG_ALL | CMDQ_DBG_NORMAL_SECURE)) && !base) {
 		cmdq_util_msg("no cmdq dbg since no base");
 		return;
 	}
@@ -2626,6 +2626,8 @@ void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 			dbg0_offset = GCE_DBG0_NORMAL;
 			dbg2_offset = GCE_DBG2_NORMAL;
 			dbg3_offset = GCE_DBG3_NORMAL;
+		} else {
+			cmdq_err("dbg_type error:%d", dbg_type);
 		}
 		/* debug select */
 		for (i = 0; i < 6; i++) {

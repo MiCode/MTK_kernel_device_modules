@@ -426,8 +426,10 @@ EXPORT_SYMBOL(cmdq_subsys_id_to_base);
 
 int cmdq_pkt_realloc_cmd_buffer(struct cmdq_pkt *pkt, size_t size)
 {
-	while (pkt->buf_size < size)
-		cmdq_pkt_add_cmd_buffer(pkt);
+	while (pkt->buf_size < size) {
+		if (cmdq_pkt_add_cmd_buffer(pkt) < 0)
+			return -ENOMEM;
+	}
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_pkt_realloc_cmd_buffer);
@@ -3639,7 +3641,7 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 		return -EINVAL;
 	}
 
-	if ((bool)cmdq_get_hw_flags(client ? client->chan : NULL, APPEND_BY_EVENT)
+	if ((bool)cmdq_get_hw_flags(client->chan, APPEND_BY_EVENT)
 		&& pkt->pause_offset) {
 		struct cmdq_instruction *cmdq_inst, inst;
 		cmdq_inst = (void *)cmdq_pkt_get_va_by_offset(pkt,

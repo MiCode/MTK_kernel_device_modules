@@ -415,6 +415,10 @@ void cmdq_test_mbox_polling(
 		case CMDQ_POLL_TIMEOUT:
 			out_va = cmdq_test_mbox_polling_timeout_unit(
 				pkt[i], pa, pttn[i], mask[i], aee);
+			if (!out_va) {
+				cmdq_err("out_va is null");
+				return;
+			}
 			break;
 		case CMDQ_POLL:
 			cmdq_pkt_poll(pkt[i], NULL, pttn[i] & mask[i], pa,

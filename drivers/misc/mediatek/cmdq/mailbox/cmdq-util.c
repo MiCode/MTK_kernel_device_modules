@@ -1463,8 +1463,12 @@ void cmdq_util_reserved_memory_lookup(struct device *dev)
 
 	pa = mem->base + mem->size - CMDQ_RECORD_SIZE - CMDQ_STATUS_SIZE;
 
-	if (!va)
+	if (!va) {
 		va = ioremap(pa, CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
+		if (!va)
+			return;
+	}
+
 	shared_mem->va = va;
 
 
