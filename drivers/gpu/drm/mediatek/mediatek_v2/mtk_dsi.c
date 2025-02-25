@@ -4096,6 +4096,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		irq_mask |= TE_RDY_INT_FLAG | INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG;
 		irq_mask |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 	}
+	if (mtk_dsi_lpc_en(mtk_crtc))
+		status &= ~TE_RDY_INT_FLAG;
 
 	status &= irq_mask;
 	if (status) {

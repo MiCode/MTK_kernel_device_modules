@@ -29,9 +29,6 @@
 int lpc_disable;
 module_param(lpc_disable, int, 0644);
 
-int lpc_te_irq_en;
-module_param(lpc_te_irq_en, int, 0644);
-
 #define DSI_LPC_EN (0x0)
 #define DSI_LPC_EN_BIT_FLD REG_FLD_MSB_LSB(0, 0)
 #define DSI_LPC_EN_BIT BIT(0)
@@ -467,7 +464,7 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 	}
 	writel(lpc_te_con0_val, comp->regs + DSI_LPC_TE_CON0(index));
 
-	if (lpc_te_irq_en)
+	if (mtk_disp_is_enable_hrt_dbg())
 		inten |= EVENT_TE_INT_EN;
 
 	writel(0, comp->regs + DSI_LPC_INTEN(index));
@@ -565,7 +562,7 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	mtk_dsi_set_lpc_en(lpc_en, comp);
 	mtk_dsi_lpc_unit_en(lpc_en, index, comp);
 
-	if (lpc_te_irq_en)
+	if (mtk_disp_is_enable_hrt_dbg())
 		mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp);
 }
 static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -702,6 +699,9 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 		ret = IRQ_NONE;
 		goto out;
 	}
+
+	if (!mtk_disp_is_enable_hrt_dbg())
+		status &= ~EVENT_TE_INT;
 
 	if (index == 0)
 		DRM_MMP_MARK(dsi_lpc0, status, 0);
