@@ -102,11 +102,11 @@ struct mtk_vdisp {
 };
 
 static const struct mtk_vdisp_data mt6991_vdisp_driver_data = {
-	.avs = &default_vdisp_avs_driver_data,
+	.up = &mt6991_vdisp_up_driver_data,
 };
 
 static const struct mtk_vdisp_data mt6993_vdisp_driver_data = {
-	.avs = &default_vdisp_avs_driver_data,
+	.up = &default_vdisp_up_driver_data,
 	.ap_voter_bit = 25,
 };
 
@@ -880,6 +880,15 @@ static void mtk_vdisp_debug_mtcmos_ctrl(u32 pd_id, bool on)
 		pm_runtime_put_sync(g_dev[pd_id]);
 }
 
+static void mtk_vdisp_analysis(void)
+{
+	int ret = 0;
+
+	ret = mtk_vdisp_up_analysis();
+	if (ret)
+		VDISPDBG("up analysis fail!");
+}
+
 static const struct mtk_vdisp_funcs funcs = {
 	.genpd_put = mtk_vdisp_genpd_put,
 	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
@@ -888,6 +897,7 @@ static const struct mtk_vdisp_funcs funcs = {
 	.set_clk = mtk_vdisp_set_clk,
 	.query_aging_val = mtk_vdisp_query_aging_val,
 	.debug_mtcmos_ctrl = mtk_vdisp_debug_mtcmos_ctrl,
+	.analysis = mtk_vdisp_analysis,
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	.wk_lock = mtk_vdisp_wk_lock,
 #endif

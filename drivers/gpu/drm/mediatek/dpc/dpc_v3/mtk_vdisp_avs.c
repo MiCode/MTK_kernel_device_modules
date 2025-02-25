@@ -16,12 +16,13 @@
 #include "vcp_status.h"
 #include "mtk_vdisp.h"
 #include "mtk_vdisp_avs.h"
+#include "mtk_log.h"
 
 #define VDISP_IPI_ACK_TIMEOUT_US 1000
 
 static void __iomem *g_aging_base;
 static struct clk *g_mmdvfs_clk;
-const struct mtk_vdisp_avs_data *g_vdisp_avs_data;
+const struct mtk_vdisp_up_data *g_vdisp_up_data;
 struct mtk_vdisp_avs_ipi_data {
 	u32 func_id;
 	u32 val;
@@ -30,12 +31,52 @@ static bool fast_en;
 static bool vcp_is_alive = true;
 static bool aging_force_disable;
 static uint32_t vdisp_opp_num = 5;
+struct vdisp_mmup_sram {
+	void __iomem *mmup_base_va;
+	void __iomem *vdisp_base_va; // mmup_base + ofst
+	uint32_t ofst;
+	bool ofst_is_init;
+	bool is_valid;
+};
+static struct vdisp_mmup_sram g_vdisp_mmup_sram;
+static struct notifier_block g_vdisp_vcp_nb;
+
+static void mtk_vdisp_set_mmup_sram_ofst(uint32_t ofst)
+{
+	if (!ofst) {
+		VDISPERR("vdisp mmup sram ofst not ready!\n");
+		return;
+	}
+
+	g_vdisp_mmup_sram.ofst = ofst;
+	g_vdisp_mmup_sram.ofst_is_init = true;
+}
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+static void mtk_vdisp_mmup_sram_init(void)
+{
+	void __iomem *mmup_base;
+
+	// do this only once
+	if (g_vdisp_mmup_sram.is_valid || !g_vdisp_mmup_sram.ofst_is_init)
+		return;
+
+	mmup_base = vcp_get_sram_virt_ex();
+	if (!mmup_base)
+		return;
+
+	g_vdisp_mmup_sram.mmup_base_va = mmup_base;
+	g_vdisp_mmup_sram.vdisp_base_va =
+		g_vdisp_mmup_sram.mmup_base_va + g_vdisp_mmup_sram.ofst;
+	g_vdisp_mmup_sram.is_valid = true;
+}
+#endif
 
 #define vdisp_avs_ipi_send_slot(id, value) \
 	mtk_vdisp_avs_ipi_send((struct mtk_vdisp_avs_ipi_data) \
 	{ .func_id = id, .val = value})
 #define IPI_TIMEOUT_MS	(200U)
-int mtk_vdisp_avs_ipi_send(struct mtk_vdisp_avs_ipi_data data)
+static int mtk_vdisp_avs_ipi_send(struct mtk_vdisp_avs_ipi_data data)
 {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_ARM64)
@@ -58,7 +99,10 @@ int mtk_vdisp_avs_ipi_send(struct mtk_vdisp_avs_ipi_data data)
 		udelay(1);
 		i++;
 		if (i >= VDISP_IPI_ACK_TIMEOUT_US) {
-			VDISPDBG("ack timeout");
+			VDISPDBG("ack timeout, vdisp_sram 0x%pa (mmup_sram 0x%pa, vdisp_ofst 0x%08x)",
+				g_vdisp_mmup_sram.vdisp_base_va,
+				g_vdisp_mmup_sram.mmup_base_va,
+				g_vdisp_mmup_sram.ofst);
 			return IPI_COMPL_TIMEOUT;
 		}
 	}
@@ -66,7 +110,7 @@ int mtk_vdisp_avs_ipi_send(struct mtk_vdisp_avs_ipi_data data)
 	return ret;
 }
 
-bool wait_for_aging_ack_timeout(int flag)
+static bool wait_for_aging_ack_timeout(int flag)
 {
 	u32 i = 0;
 
@@ -74,7 +118,10 @@ bool wait_for_aging_ack_timeout(int flag)
 		udelay(1);
 		i++;
 		if (i >= VDISP_IPI_ACK_TIMEOUT_US) {
-			VDISPDBG("ack timeout");
+			VDISPDBG("ack timeout, vdisp_sram 0x%pa (mmup_sram 0x%pa, vdisp_ofst 0x%08x)",
+				g_vdisp_mmup_sram.vdisp_base_va,
+				g_vdisp_mmup_sram.mmup_base_va,
+				g_vdisp_mmup_sram.ofst);
 			vdisp_avs_ipi_send_slot(FUNC_IPI_AGING_ACK, 0);
 			return true;
 		}
@@ -82,7 +129,8 @@ bool wait_for_aging_ack_timeout(int flag)
 	return false;
 }
 
-int vdisp_avs_ipi_send_slot_enable_vcp(enum mtk_vdisp_avs_ipi_func_id func_id, uint32_t val)
+static int vdisp_avs_ipi_send_slot_enable_vcp
+	(enum mtk_vdisp_avs_ipi_func_id func_id, uint32_t val)
 {
 	int ret = 0;
 
@@ -102,10 +150,14 @@ release_vcp:
 	return ret;
 }
 
-void mtk_vdisp_avs_vcp_notifier(unsigned long vcp_event, void *data)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+static int mtk_vdisp_avs_vcp_notifier
+	(struct notifier_block *nb, unsigned long vcp_event, void *unused)
 {
 	switch (vcp_event) {
 	case VCP_EVENT_READY:
+		mtk_vdisp_mmup_sram_init();
+		break;
 	case VCP_EVENT_STOP:
 		break;
 	case VCP_EVENT_SUSPEND:
@@ -115,11 +167,12 @@ void mtk_vdisp_avs_vcp_notifier(unsigned long vcp_event, void *data)
 		vcp_is_alive = true;
 		break;
 	}
+
+	return NOTIFY_DONE;
 }
-EXPORT_SYMBOL(mtk_vdisp_avs_vcp_notifier);
+#endif
 
-
-void query_curr_ro(const struct mtk_vdisp_avs_data *vdisp_avs_data)
+static void query_curr_ro(const struct mtk_vdisp_avs_data *vdisp_avs_data)
 {
 	u32 ro_fresh_curr = 0, ro_aging_curr = 0;
 
@@ -227,7 +280,7 @@ void mtk_vdisp_avs_query_aging_val(struct device *dev)
 		return;
 	}
 
-	if (!g_vdisp_avs_data) {
+	if (!g_vdisp_up_data || !g_vdisp_up_data->avs) {
 		VDISPDBG("vdisp_avs_data uninitialized, skip");
 		return;
 	}
@@ -266,7 +319,7 @@ void mtk_vdisp_avs_query_aging_val(struct device *dev)
 		goto release_mmdvfs_clk;
 
 	/* query current aging sensor value */
-	query_curr_ro(g_vdisp_avs_data);
+	query_curr_ro(g_vdisp_up_data->avs);
 
 	/* release VDISP opp4 */
 release_mmdvfs_clk:
@@ -314,8 +367,85 @@ release_vcp:
 	VDISPDBG("execution %lld us", ktime_us_delta(end_time, start_time));
 }
 
+int mtk_vdisp_up_analysis(void)
+{
+	char msg[512] = {0};
+	int i = 0, ret = 0, idx_temp = 0, retry_time = 0, written = 0;
+	uint32_t hist[VDISP_BUCK_HIST_REC_CNT*VDISP_BUCK_HIST_OBJ_CNT+1] = {0};
+	uint32_t *vdisp_cal = NULL;
+
+	if (!g_vdisp_up_data || !g_vdisp_up_data->buck_hist_support) {
+		VDISPDBG("buck hist not support");
+		return -1;
+	}
+
+	vdisp_cal = kcalloc(vdisp_opp_num, sizeof(uint32_t), GFP_KERNEL);
+	if (!vdisp_cal)
+		return -1;
+
+	ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
+	if (ret) {
+		VDISPDBG("request mmdvfs rst fail");
+		goto end;
+	}
+	if (!vcp_is_alive) {
+		VDISPDBG("vcp is not alive, do nothing");
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
+		goto end;
+	}
+
+	/* copy mmup info to kernel local variable */
+	for (i = 0; i < vdisp_opp_num; i++)
+		vdisp_cal[i] = VDISP_CAL(i);
+	do {
+		if (retry_time >= 3) {
+			VDISPERR("buck hist read fail, retry_time(%d)", retry_time);
+			break;
+		}
+		idx_temp = VDISP_SHRMEM_READ_CHK(VDISP_BUCK_HIST_IDX);
+		for (i = 0; i <= VDISP_BUCK_HIST_REC_CNT*VDISP_BUCK_HIST_OBJ_CNT; i++)
+			hist[i] = VDISP_SHRMEM_READ_CHK(VDISP_BUCK_HIST_BASE + 0x4*i);
+		retry_time++;
+	} while (idx_temp != VDISP_SHRMEM_READ_CHK(VDISP_BUCK_HIST_IDX));
+
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
+
+	if (idx_temp >= VDISP_BUCK_HIST_REC_CNT) {
+		VDISPERR("errornous idx(%d)", idx_temp);
+		ret = -1;
+		goto end;
+	}
+
+	/* print mmup info */
+	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "== VDISP MMUP ANALYSIS ==\n");
+	written = scnprintf(msg, 512, "vdisp_cal:");
+	for (i = 0; i < vdisp_opp_num; i++)
+		written += scnprintf(msg + written, 512 - written,
+			"[%d](%d) ", i, vdisp_cal[i]);
+	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
+
+	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP,
+		"vdisp_hist[i]: lvl,   volt,  temp,       step, ts\n");
+	i = idx_temp;
+	do {
+		mtk_dprec_logger_pr(DPREC_LOGGER_DUMP,
+			"vdisp_hist[%d]:   %d, %06d, %05d, 0x%08x, %d.%06d\n", i,
+			hist[VDISP_BUCK_HIST_OBJ_CNT*i + VDISP_BUCK_HIST_LVL_OFST],
+			hist[VDISP_BUCK_HIST_OBJ_CNT*i + VDISP_BUCK_HIST_VOLT_OFST],
+			hist[VDISP_BUCK_HIST_OBJ_CNT*i + VDISP_BUCK_HIST_TEMP_OFST],
+			hist[VDISP_BUCK_HIST_OBJ_CNT*i + VDISP_BUCK_HIST_STEP_OFST],
+			hist[VDISP_BUCK_HIST_OBJ_CNT*i + VDISP_BUCK_HIST_SEC_OFST],
+			hist[VDISP_BUCK_HIST_OBJ_CNT*i + VDISP_BUCK_HIST_USEC_OFST]);
+		i = (i + 1) % VDISP_BUCK_HIST_REC_CNT;
+	} while (i != idx_temp);
+
+end:
+	kfree(vdisp_cal);
+	return ret;
+}
+
 #if (IS_ENABLED(CONFIG_DEBUG_FS) | IS_ENABLED(CONFIG_PROC_FS))
-int mtk_vdisp_avs_dbg_opt(const char *opt)
+static int mtk_vdisp_avs_dbg_opt(const char *opt)
 {
 	int ret = 0;
 	u32 v1 = 0, v2 = 0;
@@ -414,6 +544,8 @@ int mtk_vdisp_up_dbg_opt(const char *opt)
 			return -EINVAL;
 		}
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_CHANGE_STAGE, v1);
+	} else if (strncmp(opt + 3, "analysis", 8) == 0) {
+		ret = mtk_vdisp_up_analysis();
 	}
 
 	return ret;
@@ -427,6 +559,7 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct clk *clk;
 	const struct mtk_vdisp_data *vdisp_data = of_device_get_match_data(dev);
+	void __iomem *mmup_sram_ofst_addr = NULL;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "aging_base");
 	if (res) {
@@ -437,11 +570,30 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* this register is used for passing vdisp mmup sram offset */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vdisp_ao_dummy");
+	if (res) {
+		mmup_sram_ofst_addr = devm_ioremap(dev, res->start, resource_size(res));
+		if (!mmup_sram_ofst_addr) {
+			VDISPERR("fail to ioremap vdisp_ao_dummy: 0x%pa", &res->start);
+			return -EINVAL;
+		}
+		mtk_vdisp_set_mmup_sram_ofst(readl(mmup_sram_ofst_addr));
+	}
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (!g_vdisp_vcp_nb.notifier_call) {
+		g_vdisp_vcp_nb.notifier_call = mtk_vdisp_avs_vcp_notifier;
+		vcp_A_register_notify_ex(VDISP_FEATURE_ID, &g_vdisp_vcp_nb);
+	}
+#endif
+
 	clk = devm_clk_get(dev, "mmdvfs_clk");
 	if (!IS_ERR(clk))
 		g_mmdvfs_clk = clk;
 
-	g_vdisp_avs_data = vdisp_data->avs;
+	if (vdisp_data && vdisp_data->up)
+		g_vdisp_up_data = vdisp_data->up;
 
 	ret = dev_pm_opp_of_add_table(dev);
 	if (ret)

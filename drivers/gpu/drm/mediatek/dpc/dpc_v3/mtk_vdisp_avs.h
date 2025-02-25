@@ -8,22 +8,39 @@
 
 #include <soc/mediatek/mmdvfs_v3.h>
 
-/* todo: port vdisp sram share memory */
-#define VDISP_SHRMEM_BITWISE_IDX 5
-#define VDISP_SHRMEM_BITWISE	(mmdvfs_get_mmup_sram_enable() \
-								? SRAM_VDISP_VAL(VDISP_SHRMEM_BITWISE_IDX) \
-								: MEM_VDISP_AVS_STEP(VDISP_SHRMEM_BITWISE_IDX))
-#define VDISP_SHRMEM_BITWISE_VAL 0 //readl(VDISP_SHRMEM_BITWISE)
+/* MMUP share memory */
+// common
+#define VDISP_SHRMEM_BASE (g_vdisp_mmup_sram.vdisp_base_va)
+#define VDISP_SHRMEM_READ_CHK(addr) \
+	(g_vdisp_mmup_sram.is_valid ? readl(addr) : 0)
+// bitwise
+#define VDISP_SHRMEM_BITWISE        (VDISP_SHRMEM_BASE + 0x0)
+#define VDISP_SHRMEM_BITWISE_VAL    VDISP_SHRMEM_READ_CHK(VDISP_SHRMEM_BITWISE)
 #define VDISP_AVS_ENABLE_BIT        0
 #define VDISP_AVS_AGING_ENABLE_BIT  1
 #define VDISP_AVS_AGING_ACK_BIT     2
 #define VDISP_AVS_IPI_ACK_BIT       3
+// hist
+#define VDISP_BUCK_HIST_REC_CNT   (8)
+#define VDISP_BUCK_HIST_OBJ_CNT   (6)
+#define VDISP_BUCK_HIST_BASE      (VDISP_SHRMEM_BASE + 0x4)
+#define VDISP_BUCK_HIST_SEC_OFST  (0)
+#define VDISP_BUCK_HIST_USEC_OFST (1)
+#define VDISP_BUCK_HIST_LVL_OFST  (2)
+#define VDISP_BUCK_HIST_VOLT_OFST (3)
+#define VDISP_BUCK_HIST_TEMP_OFST (4)
+#define VDISP_BUCK_HIST_STEP_OFST (5)
+#define VDISP_BUCK_HIST_IDX \
+	(VDISP_BUCK_HIST_BASE + 0x4*VDISP_BUCK_HIST_REC_CNT*VDISP_BUCK_HIST_OBJ_CNT)
+// others
+#define VDISP_CAL_BASE (VDISP_SHRMEM_BASE + 0xC8)
+#define VDISP_CAL(lvl) VDISP_SHRMEM_READ_CHK(VDISP_CAL_BASE + 0x4*lvl)
 
-void mtk_vdisp_avs_vcp_notifier(unsigned long vcp_event, void *data);
 void mtk_vdisp_avs_query_aging_val(struct device *dev);
 int mtk_vdisp_avs_probe(struct platform_device *pdev);
 int mtk_vdisp_up_dbg_opt(const char *opt);
 void mtk_vdisp_set_clk(unsigned long rate);
+int mtk_vdisp_up_analysis(void);
 
 /* This enum is used to define the IPI function IDs for vdisp */
 enum mtk_vdisp_avs_ipi_func_id {
@@ -70,6 +87,11 @@ struct mtk_vdisp_avs_data {
 	u32 aging_reg_ro_en2_aging_val;
 };
 
+struct mtk_vdisp_up_data {
+	const struct mtk_vdisp_avs_data *avs;
+	const bool buck_hist_support;
+};
+
 static const struct mtk_vdisp_avs_data mt6989_vdisp_avs_driver_data = {
 	.aging_reg_ro_en0   = 0x00,
 	.aging_reg_ro_en1   = 0x04,
@@ -111,5 +133,15 @@ static const struct mtk_vdisp_avs_data default_vdisp_avs_driver_data = {
 	.aging_reg_ro_en0_aging_val = 0x00000000,
 	.aging_reg_ro_en2_fresh_val = 0x00000000,
 	.aging_reg_ro_en2_aging_val = 0x00000800,
+};
+
+static const struct mtk_vdisp_up_data mt6991_vdisp_up_driver_data = {
+	.avs = &default_vdisp_avs_driver_data,
+	.buck_hist_support = false,
+};
+
+static const struct mtk_vdisp_up_data default_vdisp_up_driver_data = {
+	.avs = &default_vdisp_avs_driver_data,
+	.buck_hist_support = true,
 };
 #endif

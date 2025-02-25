@@ -21,6 +21,7 @@ struct mtk_vdisp_funcs {
 	void (*set_clk)(unsigned long rate);
 	void (*query_aging_val)(void);
 	void (*debug_mtcmos_ctrl)(u32 pd_id, bool on);
+	void (*analysis)(void);
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	void (*wk_lock)(u32 crtc_index, bool get, const char *func, int line);
 #endif
