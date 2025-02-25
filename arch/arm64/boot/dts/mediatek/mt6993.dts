@@ -1702,6 +1702,7 @@
 		pwr-handle = <&disp_pwr_dev>;
 		bringup-stage = <0>;
 		disp-pd-id = <0>;
+		operating-points-v2 = <&opp_table_disp>;
 	};
 
 	efuse: efuse@10160000 {
