@@ -689,16 +689,16 @@ static int smmu_ela_dump_get(char *buf, const struct kernel_param *kp)
 
 	wp_base = ela_ctrl[smmu_type]->wp_base;
 	for (i = 0; i < SMMU_ELA_MONITOR_MAX; i += 4) {
-		len += snprintf(buf + written, SMMU_ELA_DUMP_MAX - written,
-				"POLL_A: 0x%04x=0x%-8x 0x%04x=0x%-8x 0x%04x=0x%-8x 0x%04x=0x%x\n",
-				SMMUWP_PMU_POLL_A(i),
-				smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i)),
-				SMMUWP_PMU_POLL_A(i + 1),
-				smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i + 1)),
-				SMMUWP_PMU_POLL_A(i + 2),
-				smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i + 2)),
-				SMMUWP_PMU_POLL_A(i + 3),
-				smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i + 3)));
+		len = snprintf(buf + written, SMMU_ELA_DUMP_MAX - written,
+			       "POLL_A: 0x%04x=0x%-8x 0x%04x=0x%-8x 0x%04x=0x%-8x 0x%04x=0x%x\n",
+			       SMMUWP_PMU_POLL_A(i),
+			       smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i)),
+			       SMMUWP_PMU_POLL_A(i + 1),
+			       smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i + 1)),
+			       SMMUWP_PMU_POLL_A(i + 2),
+			       smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i + 2)),
+			       SMMUWP_PMU_POLL_A(i + 3),
+			       smmu_read_reg(wp_base, SMMUWP_PMU_POLL_A(i + 3)));
 
 		if (len >= (SMMU_ELA_DUMP_MAX - written) || len < 0)
 			break;
