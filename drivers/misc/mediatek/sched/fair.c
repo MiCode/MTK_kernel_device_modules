@@ -476,9 +476,13 @@ static inline void eenv_init(struct energy_env *eenv, struct task_struct *p,
 				continue;
 
 			for_each_cpu(cpu, cpus) {
-				eenv->dpt_v2_cap_params[cpu][0].IPC_scaling_factor
-					= eenv->dpt_v2_cap_params[cpu][1].IPC_scaling_factor
-					= get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
+				if (cpu == 7)
+					eenv->dpt_v2_cap_params[cpu][0].IPC_scaling_factor
+						= eenv->dpt_v2_cap_params[cpu][1].IPC_scaling_factor = 1024;
+				else
+					eenv->dpt_v2_cap_params[cpu][0].IPC_scaling_factor
+						= eenv->dpt_v2_cap_params[cpu][1].IPC_scaling_factor
+						= get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
 
 				if (!s_type) {
 					dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu);
