@@ -35,14 +35,15 @@ enum mtk_vdisp_avs_ipi_func_id {
 	FUNC_IPI_UNIT_TEST,
 	FUNC_IPI_RESET_EFUSE_VAR,
 	FUNC_IPI_CHANGE_STAGE,
+	FUNC_IPI_RESTORE_FREERUN,
 };
 
 enum vdisp_ut_id {
-    UT_RD_LVL,
-    UT_RD_VOL,
-    UT_WR_LVL,
-    UT_PWR_ON,
-    UT_PWR_OFF,
+	UT_RD_LVL,
+	UT_RD_VOL,
+	UT_WR_LVL,
+	UT_PWR_ON,
+	UT_PWR_OFF,
 };
 
 struct mtk_vdisp_avs_data {

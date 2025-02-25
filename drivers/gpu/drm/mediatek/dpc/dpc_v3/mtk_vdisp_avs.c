@@ -8,6 +8,7 @@
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/ktime.h>
+#include <linux/pm_opp.h>
 #include <soc/mediatek/mmdvfs_public.h>
 
 #include "mtk-mmdvfs-debug.h"
@@ -28,6 +29,7 @@ struct mtk_vdisp_avs_ipi_data {
 static bool fast_en;
 static bool vcp_is_alive = true;
 static bool aging_force_disable;
+static uint32_t vdisp_opp_num = 5;
 
 #define vdisp_avs_ipi_send_slot(id, value) \
 	mtk_vdisp_avs_ipi_send((struct mtk_vdisp_avs_ipi_data) \
@@ -320,8 +322,8 @@ int mtk_vdisp_avs_dbg_opt(const char *opt)
 
 	if (strncmp(opt + 4, "off:", 4) == 0) {
 		ret = sscanf(opt, "avs:off:%u,%u\n", &v1, &v2);
-		/* opp(v1): max 5 level; step(v2) max 32 level; v1(5) is used to toggle AVS */
-		if ((ret != 2) || (v1 > 5 || v2 >= 31)) {
+		/* opp(v1); step(v2) max 32 level */
+		if ((ret != 2) || (v1 >= vdisp_opp_num || v2 >= 31)) {
 			VDISPDBG("[Warning] avs:off sscanf not match");
 			return -EINVAL;
 		}
@@ -333,7 +335,7 @@ int mtk_vdisp_avs_dbg_opt(const char *opt)
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_EN, 0);
 		if (ret)
 			return ret;
-		ret = mmdvfs_debug_force_step(2, 4 - v1);
+		ret = mmdvfs_debug_force_step(2, vdisp_opp_num - v1 - 1);
 	} else if (strncmp(opt + 4, "off", 3) == 0) {
 		/*Off avs*/
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_EN, 0);
@@ -383,9 +385,11 @@ int mtk_vdisp_up_dbg_opt(const char *opt)
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, UT_RD_LVL);
 	} else if (strncmp(opt + 3, "vdisp_read_voltage", 18) == 0) {
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, UT_RD_VOL);
+	} else if (strncmp(opt + 3, "vdisp_update_level:-1", 21) == 0) {
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_RESTORE_FREERUN, 0);
 	} else if (strncmp(opt + 3, "vdisp_update_level", 18) == 0) {
 		ret = sscanf(opt, "up:vdisp_update_level:%u\n", &v1);
-		if (ret != 1) {
+		if ((ret != 1) || (v1 >= vdisp_opp_num)) {
 			VDISPDBG("[Warning] up:vdisp_update_level sscanf not match");
 			return -EINVAL;
 		}
@@ -418,6 +422,7 @@ int mtk_vdisp_up_dbg_opt(const char *opt)
 
 int mtk_vdisp_avs_probe(struct platform_device *pdev)
 {
+	int ret;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	struct clk *clk;
@@ -437,6 +442,16 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 		g_mmdvfs_clk = clk;
 
 	g_vdisp_avs_data = vdisp_data->avs;
+
+	ret = dev_pm_opp_of_add_table(dev);
+	if (ret)
+		return 0;
+
+	ret = dev_pm_opp_get_opp_count(dev);
+	if (ret > 0) {
+		vdisp_opp_num = ret;
+		VDISPDBG("get vdisp_opp_num(%d)", vdisp_opp_num);
+	}
 
 	return 0;
 }
