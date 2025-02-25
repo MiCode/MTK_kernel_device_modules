@@ -25,6 +25,12 @@ filegroup(
     ]),
 )
 
+ddk_headers(
+    name = "pcie-mediatek-gen3_headers",
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)
+
 define_mgk_ddk_ko(
     name = "pcie-mediatek-gen3",
     srcs = [
