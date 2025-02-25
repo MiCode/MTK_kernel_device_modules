@@ -4399,6 +4399,7 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					}
 				}
 				if (g_mtk_dp->priv->pwr_node) {
+					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
 						// set sram sleep mode
 						base = ioremap(0x3EFF1A10, 0x10);
@@ -4415,7 +4416,6 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 						writel(0x20000, base + 0xA8);
 						iounmap(base);
 					}
-					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
 						clk_prepare_enable(g_mtk_dp->dp_phy_clk);
