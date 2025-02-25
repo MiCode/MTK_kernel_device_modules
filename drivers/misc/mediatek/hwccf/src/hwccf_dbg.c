@@ -170,6 +170,7 @@ static int clkdbg_hwccf(struct seq_file *s, void *v)
 
 static struct regname hwccf_dump_regs[] = {
 	REGNAME(0x50, HW_CCF_INT_STATUS),
+	REGNAME(0x1544, HW_CCF_APB_M_REG5),
 	REGNAME(0x10000, HW_CCF_STATUS),
 	REGNAME(0x10004, HW_CCF_OUTPUT_STATUS),
 	REGNAME(0x10008, HW_CCF_FSM_REQ_ACK),
