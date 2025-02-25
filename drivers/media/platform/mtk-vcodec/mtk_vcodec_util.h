@@ -29,7 +29,7 @@
 #define MTK_SCHED_SUPPORT
 #endif
 #if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
-//#define MTK_TASK_SUPPORT
+#define MTK_TASK_SUPPORT
 #endif
 
 #define mem_slot_range (100*1024ULL) //100KB
