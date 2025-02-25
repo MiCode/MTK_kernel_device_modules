@@ -459,6 +459,8 @@ int scp_get_semaphore_3way(int flag)
 	else
 		sema_reg = SCP_3WAY_SEMAPHORE;
 
+	pr_notice("[SCP] get 3way semaphore, flag = %d\n", flag);
+
 	/* Need to awawke scp avoid peri off */
 	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
 		scp_awake_flag = -1;
@@ -525,6 +527,8 @@ int scp_release_semaphore_3way(int flag)
 		sema_reg = scpreg.cfgreg_ap + 0x0008;
 	else
 		sema_reg = SCP_3WAY_SEMAPHORE;
+
+	pr_notice("[SCP] release 3way semaphore, flag = %d\n", flag);
 
 	/* Need to awawke scp avoid peri off */
 	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
