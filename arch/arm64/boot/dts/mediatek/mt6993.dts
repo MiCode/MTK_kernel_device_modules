@@ -19046,8 +19046,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			temperature-max-stage = <3>;
 			temperature-stage-threshold = <25 10 0>;
 
-			md-soc-throttle-l = <20>;
-			md-soc-throttle-h = <25>;
+			md-thl-enable;
 		};
 
 		goodix_fp: fingerprint {
