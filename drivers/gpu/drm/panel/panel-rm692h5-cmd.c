@@ -797,6 +797,11 @@ static int panel_doze_disable(struct drm_panel *panel,
 				(base + offset - 1) & 0xFF}},\
 		}
 
+#define TO_XEQ_SETTING(addr, setting) \
+		{\
+			{0x02, {addr, setting}},\
+		}
+
 static int lcm_update_roi(struct drm_panel *panel,
 	unsigned int x, unsigned int y, unsigned int w, unsigned int h)
 {
@@ -819,15 +824,23 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	int i = 0;
 	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
 	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
+	struct LCD_setting_table xeq_head[] = TO_XEQ_SETTING(0xF1, 0xA2);
+	struct LCD_setting_table xeq_tail[] = TO_XEQ_SETTING(0xFB, 0xAA);
 
 	if (!cb)
 		return -1;
+
+	for (i = 0; i < ARRAY_SIZE(xeq_head); i++)
+		cb(dsi, handle, xeq_head[i].para_list, ARRAY_SIZE(xeq_head[i].para_list));
 
 	for (i = 0; i < ARRAY_SIZE(roi_x_setting); i++)
 		cb(dsi, handle, roi_x_setting[i].para_list, ARRAY_SIZE(roi_x_setting[i].para_list));
 
 	for (i = 0; i < ARRAY_SIZE(roi_y_setting); i++)
 		cb(dsi, handle, roi_y_setting[i].para_list, ARRAY_SIZE(roi_y_setting[i].para_list));
+
+	for (i = 0; i < ARRAY_SIZE(xeq_tail); i++)
+		cb(dsi, handle, xeq_tail[i].para_list, ARRAY_SIZE(xeq_tail[i].para_list));
 
 	lcm_info("(x,y,w,h): (%d,%d,%d,%d)\n", x, y, w, h);
 

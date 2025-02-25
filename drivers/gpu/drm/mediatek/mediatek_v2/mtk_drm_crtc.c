@@ -20841,7 +20841,9 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = 0;
 	}
 
-	if ((mtk_crtc->capturing == true) || (mtk_crtc->dbi_trigger== true)) {
+	if (partial_enable == 1 &&
+		((mtk_crtc->capturing == true) ||
+		(mtk_crtc->dbi_trigger== true))) {
 		DDPDBG("skip or switch to BISO because cwb is enable\n");
 		partial_enable = 2;
 	}

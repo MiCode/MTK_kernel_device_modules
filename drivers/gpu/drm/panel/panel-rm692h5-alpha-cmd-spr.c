@@ -1120,6 +1120,11 @@ static int panel_doze_disable(struct drm_panel *panel,
 				(base + offset - 1) & 0xFF}},\
 		}
 
+#define TO_XEQ_SETTING(addr, setting) \
+		{\
+			{0x02, {addr, setting}},\
+		}
+
 static int lcm_update_roi(struct drm_panel *panel,
 	unsigned int x, unsigned int y, unsigned int w, unsigned int h)
 {
@@ -1142,15 +1147,23 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	int i = 0;
 	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
 	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
+	struct LCD_setting_table xeq_head[] = TO_XEQ_SETTING(0xF1, 0xA2);
+	struct LCD_setting_table xeq_tail[] = TO_XEQ_SETTING(0xFB, 0xAA);
 
 	if (!cb)
 		return -1;
+
+	for (i = 0; i < ARRAY_SIZE(xeq_head); i++)
+		cb(dsi, handle, xeq_head[i].para_list, ARRAY_SIZE(xeq_head[i].para_list));
 
 	for (i = 0; i < ARRAY_SIZE(roi_x_setting); i++)
 		cb(dsi, handle, roi_x_setting[i].para_list, ARRAY_SIZE(roi_x_setting[i].para_list));
 
 	for (i = 0; i < ARRAY_SIZE(roi_y_setting); i++)
 		cb(dsi, handle, roi_y_setting[i].para_list, ARRAY_SIZE(roi_y_setting[i].para_list));
+
+	for (i = 0; i < ARRAY_SIZE(xeq_tail); i++)
+		cb(dsi, handle, xeq_tail[i].para_list, ARRAY_SIZE(xeq_tail[i].para_list));
 
 	lcm_info("(x,y,w,h): (%d,%d,%d,%d)\n", x, y, w, h);
 
@@ -1203,8 +1216,12 @@ static int lcm_update_roi_cmdq_v2(void *dsi_drv,
 	int i = 0;
 	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
 	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
+	struct LCD_setting_table xeq_head[] = TO_XEQ_SETTING(0xF1, 0xA2);
+	struct LCD_setting_table xeq_tail[] = TO_XEQ_SETTING(0xFB, 0xAA);
 	struct mipi_dsi_msg update_cmd_roi_x[ARRAY_SIZE(roi_x_setting)] = { 0 };
 	struct mipi_dsi_msg update_cmd_roi_y[ARRAY_SIZE(roi_y_setting)] = { 0 };
+	struct mipi_dsi_msg update_cmd_xeq_head[ARRAY_SIZE(xeq_head)] = { 0 };
+	struct mipi_dsi_msg update_cmd_xeq_tail[ARRAY_SIZE(xeq_tail)] = { 0 };
 
 	if (!cb)
 		return -1;
@@ -1220,6 +1237,14 @@ static int lcm_update_roi_cmdq_v2(void *dsi_drv,
 		update_cmd_roi_y[i].tx_buf = roi_y_setting[i].para_list;
 		update_cmd_roi_y[i].tx_len = roi_y_setting[i].count;
 	}
+	for (i = 0; i < ARRAY_SIZE(xeq_head); i++) {
+		update_cmd_xeq_head[i].tx_buf = xeq_head[i].para_list;
+		update_cmd_xeq_head[i].tx_len = xeq_head[i].count;
+	}
+	for (i = 0; i < ARRAY_SIZE(xeq_tail); i++) {
+		update_cmd_xeq_tail[i].tx_buf = xeq_tail[i].para_list;
+		update_cmd_xeq_tail[i].tx_len = xeq_tail[i].count;
+	}
 	struct mtk_dsi_cmd_msg roi_x_setting_msg = {
 		.transfer_mode = PACKET_LP_MODE,
 		.cmd_num = ARRAY_SIZE(roi_x_setting),
@@ -1230,9 +1255,21 @@ static int lcm_update_roi_cmdq_v2(void *dsi_drv,
 		.cmd_num = ARRAY_SIZE(roi_y_setting),
 		.cmd_msg = update_cmd_roi_y,
 	};
+	struct mtk_dsi_cmd_msg xeq_head_msg = {
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_num = ARRAY_SIZE(xeq_head),
+		.cmd_msg = update_cmd_xeq_head,
+	};
+	struct mtk_dsi_cmd_msg xeq_tail_msg = {
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_num = ARRAY_SIZE(xeq_tail),
+		.cmd_msg = update_cmd_xeq_tail,
+	};
 
+	cb(dsi_drv, handle, cmd_opt, &xeq_head_msg);
 	cb(dsi_drv, handle, cmd_opt, &roi_x_setting_msg);
 	cb(dsi_drv, handle, cmd_opt, &roi_y_setting_msg);
+	cb(dsi_drv, handle, cmd_opt, &xeq_tail_msg);
 
 	return 0;
 }
