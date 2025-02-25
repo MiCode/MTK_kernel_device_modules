@@ -4524,4 +4524,20 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/k6855/mtk-lpm-dbg-mt6855-legacy.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/v1/mtk-lpm-dbg-common-v1-legacy.ko")
 
+        mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")
+        mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")
+        mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")
+        mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_common_user_modules.remove("drivers/firmware/arm_ffa/ffa-module.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/tee/gud:mcDrvModule-ffa".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/tee/teei/520:isee-ffa".format(kernel_version))
+
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+
 get_overlay_modules_list()
