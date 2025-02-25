@@ -525,6 +525,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -710,6 +711,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -1235,6 +1237,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:sapu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-test".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:camera_dip_isp6s".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1559,7 +1562,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/flashlight/v4l2/lm3644.ko",
     #"drivers/misc/mediatek/i3c_i2c_wrap/mtk-i3c-i2c-wrap.ko",
     #"drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko",
-    "drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko",
+    #"drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko",
     # "drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm.ko",
     #"drivers/misc/mediatek/ise_lpm/ise_lpm_v2.ko",

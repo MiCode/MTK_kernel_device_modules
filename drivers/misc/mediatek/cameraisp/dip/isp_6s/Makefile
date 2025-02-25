@@ -11,7 +11,8 @@
 # GNU General Public License for more details.
 #
 
-$(info "isp 6s dip")
+
+$(info "dip isp_6s")
 $(info $(DEVICE_MODULES_PATH))
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/
@@ -30,5 +31,5 @@ ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/iommu
 ccflags-$(CONFIG_MTK_IOMMU_V2) += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
 
-obj-$(CONFIG_MTK_CAMERA_DIP_ISP6S) += camera_dip_isp6s.o
-camera_dip_isp6s-objs += camera_dip.o
+# obj-$(CONFIG_MTK_CAMERA_DIP_ISP6S) += camera_dip_isp6s.o
+# camera_dip_isp6s-objs += camera_dip.o
