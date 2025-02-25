@@ -481,8 +481,10 @@ static void mtk_rtc_reset_bbpu_alarm_status(struct mt6397_rtc *rtc)
 	int ret;
 #ifdef SUPPORT_EOSC_CALI
 	if (rtc->data->eosc_cali_version == EOSC_CALI_MT6357_SERIES ||
-		rtc->data->eosc_cali_version == EOSC_CALI_MT6358_SERIES)
-		return;
+		rtc->data->eosc_cali_version == EOSC_CALI_MT6358_SERIES) {
+		if (!rtc->skip_LPSD_solution)
+			return;
+	}
 #endif
 
 	pr_info("[RTC] %s, alarm_sta_clr_bit = %u\n", __func__, rtc->data->alarm_sta_clr_bit);
@@ -1143,6 +1145,7 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct mt6397_chip *mt6397_chip = dev_get_drvdata(pdev->dev.parent);
+	struct device_node *node = pdev->dev.of_node;
 	struct mt6397_rtc *rtc;
 	int ret;
 #ifdef SUPPORT_PWR_OFF_ALARM
@@ -1172,6 +1175,11 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 	rtc->rtc_dev = devm_rtc_allocate_device(&pdev->dev);
 	if (IS_ERR(rtc->rtc_dev))
 		return PTR_ERR(rtc->rtc_dev);
+	if (of_property_read_bool(node, "skip-lpsd-solution"))
+		rtc->skip_LPSD_solution = true;
+	else
+		rtc->skip_LPSD_solution = false;
+
 #ifdef SUPPORT_PWR_OFF_ALARM
 	mt6397_rtc_suspend_lock =
 		wakeup_source_register(NULL, "mt6397-rtc suspend wakelock");
@@ -1230,8 +1238,10 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 		if (mtk_rtc_config_eosc_cali(&pdev->dev))
 			dev_err(&pdev->dev, "config eosc cali failed\n");
 	if (rtc->data->eosc_cali_version == EOSC_CALI_MT6357_SERIES ||
-		rtc->data->eosc_cali_version == EOSC_CALI_MT6358_SERIES)
-		rtc_lpsd_restore_al_mask(&pdev->dev);
+		rtc->data->eosc_cali_version == EOSC_CALI_MT6358_SERIES) {
+		if(!rtc->skip_LPSD_solution)
+			rtc_lpsd_restore_al_mask(&pdev->dev);
+	}
 #endif
 	rtc_is_shutdown = 0;
 	return devm_rtc_register_device(rtc->rtc_dev);
@@ -1394,8 +1404,10 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 		mtk_rtc_disable_2sec_reboot(&pdev->dev);
 	mtk_rtc_enable_k_eosc(&pdev->dev);
 	if (rtc->data->eosc_cali_version == EOSC_CALI_MT6357_SERIES ||
-		rtc->data->eosc_cali_version == EOSC_CALI_MT6358_SERIES)
-		mtk_rtc_lpsd(&pdev->dev);
+		rtc->data->eosc_cali_version == EOSC_CALI_MT6358_SERIES) {
+		if(!rtc->skip_LPSD_solution)
+			mtk_rtc_lpsd(&pdev->dev);
+	}
 #endif
 }
 
