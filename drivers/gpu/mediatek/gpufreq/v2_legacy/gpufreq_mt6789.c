@@ -186,6 +186,8 @@ static unsigned int g_aging_load;
 static unsigned int g_mcl50_load;
 static unsigned int g_max_freq_off_load;
 static enum gpufreq_dvfs_state g_dvfs_state;
+static void __gpufreq_set_timestamp(void);
+static void __gpufreq_check_bus_idle(void);
 
 //thermal
 static struct mt_gpufreq_power_table_info *g_power_table;
@@ -687,9 +689,13 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		}
 		__gpufreq_footprint_power_step(0x04);
 
+		__gpufreq_set_timestamp();
+
 		/* free DVFS when power on */
 		g_dvfs_state &= ~DVFS_POWEROFF;
 	} else if (power == GPU_PWR_OFF && g_gpu.power_count == 0) {
+		/* check all transaction complete before power off */
+		__gpufreq_check_bus_idle();
 		__gpufreq_footprint_power_step(0x05);
 
 		/* freeze DVFS when power off */
