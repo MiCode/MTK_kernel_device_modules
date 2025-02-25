@@ -77,7 +77,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
     ] + ([
         "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
-    ] if "entry_level" not in DEFCONFIG_OVERLAYS else []),
+    ] if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
 
     local_defines = select({
             "//conditions:default": [],
@@ -187,7 +187,7 @@ platforms = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
     ] + ([
         "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
-    ] if "entry_level" not in DEFCONFIG_OVERLAYS else []),
+    ] if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
 
 
     local_defines = select({
