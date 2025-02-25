@@ -1462,8 +1462,12 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 		is_mminfra_shutdown = false;
 	}
 
-	mtk_pd_notifier.notifier_call = mtk_mminfra_pd_callback;
-	ret = dev_pm_genpd_add_notifier(dev, &mtk_pd_notifier);
+	if (!mminfra_api_pwr_ctrl) {
+		mtk_pd_notifier.notifier_call = mtk_mminfra_pd_callback;
+		ret = dev_pm_genpd_add_notifier(dev, &mtk_pd_notifier);
+		if (ret)
+			dev_notice(dev, "no genpd support, ret=%d\n", ret);
+	}
 
 	of_property_for_each_string(node, "clock-names", prop, name) {
 		clk = devm_clk_get(dev, name);
