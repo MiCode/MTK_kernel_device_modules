@@ -8,7 +8,7 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 #include <mtk_gpufreq.h>
 
 unsigned int (*mtk_get_gpu_memory_usage_fp)(void) = NULL;

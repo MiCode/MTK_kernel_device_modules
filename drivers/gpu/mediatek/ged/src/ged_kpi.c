@@ -19,7 +19,7 @@
 #include "ged_thread.h"
 /* #include <ged_vsync.h> */
 
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>

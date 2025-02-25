@@ -16,7 +16,7 @@
 #if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 #include <mtk_qos_ipi.h>
 #endif /* CONFIG_MTK_QOS_FRAMEWORK */
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 #include <mtk_gpufreq.h>
 #include "gpu_bm.h"
 

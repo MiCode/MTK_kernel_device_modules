@@ -43,17 +43,19 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2_legacy:gpufreq_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/mt-plat:gpu_utility_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq:mtk_gpufreq_headers".format(kernel_version),
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:mtk_mdpm".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_dynamic_loading_throttling".format(kernel_version),
     ],
     includes = [
-        "$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq",
+        "$(srctree)/drivers/gpu/mediatek/gpufreq",
         "$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb",
     ],
     copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq",
+        "-I$(srctree)/drivers/gpu/mediatek/gpufreq",
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb",
     ],
 )
@@ -71,6 +73,8 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:gpueb_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/cg_ppt:cg_ppt_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/mt-plat:gpu_utility_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq:mtk_gpufreq_headers".format(kernel_version),
     ],
     ko_deps = [
 	"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
@@ -86,14 +90,14 @@ define_mgk_ddk_ko(
         "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
         "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm_v1/inc",
         "$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb",
-        "$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq",
+        "$(srctree)/drivers/gpu/mediatek/gpufreq",
         "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cg_ppt",
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm_v1/inc",
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb",
-        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq",
+        "-I$(srctree)/drivers/gpu/mediatek/gpufreq",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cg_ppt",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",

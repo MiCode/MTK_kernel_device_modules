@@ -12,7 +12,7 @@
 #include <linux/sync_file.h>
 #include <linux/dma-fence.h>
 
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 
 #ifdef MTK_GPU_DVFS
 #include <mtk_gpufreq.h>

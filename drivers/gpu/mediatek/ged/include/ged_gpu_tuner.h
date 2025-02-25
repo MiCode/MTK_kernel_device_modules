@@ -11,7 +11,7 @@
 #include <linux/kernel.h>
 #include <ged_bridge.h>
 #include "ged_type.h"
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 
 #if defined(__cplusplus)
 extern "C" {

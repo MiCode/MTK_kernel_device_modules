@@ -16,7 +16,7 @@
 #include <linux/timekeeping.h>
 #include <asm/div64.h>
 
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 #include "ged_notify_sw_vsync.h"
 #include "ged_log.h"
 #include "ged_tracepoint.h"

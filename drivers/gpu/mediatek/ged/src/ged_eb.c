@@ -35,7 +35,7 @@
 #include "ged_tracepoint.h"
 #include "ged_dcs.h"
 
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 #include <ged_gpufreq_v2.h>

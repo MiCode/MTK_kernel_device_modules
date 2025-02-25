@@ -13,7 +13,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 #include "gpu_bm.h"
 
 static int _mgq_proc_open(struct inode *inode, struct file *file)

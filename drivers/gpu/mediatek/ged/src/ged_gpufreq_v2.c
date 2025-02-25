@@ -18,7 +18,7 @@
 #include <ged_global.h>
 #include <ged_eb.h>
 #include "ged_log.h"
-#include <mt-plat/mtk_gpu_utility.h>
+#include <mtk_gpu_utility.h>
 #include "ged_tracepoint.h"
 
 
