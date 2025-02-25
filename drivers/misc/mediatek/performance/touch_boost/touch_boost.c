@@ -72,7 +72,6 @@ static int boost_ta = 1;
 static int boost_fg = 1;
 static int idleprefer_ta = 1;
 static int idleprefer_fg = 1;
-static int boost_opp_cluster[CLUSTER_MAX];
 static int boost_cluster[CLUSTER_MAX];
 static int boost_up;
 static int boost_down = 1;
@@ -288,9 +287,9 @@ void touch_boost(void)
 	enable_touch_boost_timer();
 
 	for (i = 0 ; i < policy_num ; i++) {
-		if (boost_opp_cluster[i] >= 0) {
+		if (boost_cluster[i] >= 0) {
 			freq_to_set[i].min = (boost_cluster[i] != -1) ?
-				boost_cluster[i] : cpu_opp_tbl[i][boost_opp_cluster[i]];
+				boost_cluster[i] : cpu_opp_tbl[i][(opp_count[i]-1)];
 			ret = _update_userlimit_cpufreq_min(i, freq_to_set[i].min);
 			if (ret < 0) {
 				pr_info("[%s] freq_qos_update_request fail, cpu=%d freq=%d ret=%d",
@@ -536,129 +535,6 @@ static ssize_t perfmgr_force_stop_boost_proc_show(struct file *file,
 	if (*ppos != 0)
 		goto out;
 	n = scnprintf(buffer, 64, "%d\n", force_stop_boost);
-out:
-	if (n < 0)
-		return -EINVAL;
-
-	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
-}
-
-static ssize_t perfmgr_boost_opp_cluster_0_proc_write(struct file *filp,
-		const char *ubuf, size_t cnt, loff_t *data)
-{
-	char buf[64];
-	int value;
-	int ret;
-
-	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
-		return -EINVAL;
-
-	buf[cnt] = 0;
-	ret = kstrtoint(buf, 10, &value);
-	if (ret < 0)
-		return ret;
-
-	if (policy_num >= 1) {
-		if (value >= 0 && value < opp_count[0])
-			boost_opp_cluster[0] = value;
-		else
-			boost_opp_cluster[0] = opp_count[0]-1;
-	}
-
-	return cnt;
-}
-
-static ssize_t perfmgr_boost_opp_cluster_0_proc_show(struct file *file,
-		char __user *ubuf, size_t count, loff_t *ppos)
-{
-	int n = 0;
-	char buffer[64];
-
-	if (*ppos != 0)
-		goto out;
-	n = scnprintf(buffer, 64, "%d\n", boost_opp_cluster[0]);
-out:
-	if (n < 0)
-		return -EINVAL;
-
-	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
-}
-
-static ssize_t perfmgr_boost_opp_cluster_1_proc_write(struct file *filp,
-		const char *ubuf, size_t cnt, loff_t *data)
-{
-	char buf[64];
-	int value;
-	int ret;
-
-	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
-		return -EINVAL;
-
-	buf[cnt] = 0;
-	ret = kstrtoint(buf, 10, &value);
-	if (ret < 0)
-		return ret;
-
-	if (policy_num >= 2) {
-		if (value >= 0 && value < opp_count[1])
-			boost_opp_cluster[1] = value;
-		else
-			boost_opp_cluster[1] = opp_count[1]-1;
-	}
-
-	return cnt;
-}
-
-static ssize_t perfmgr_boost_opp_cluster_1_proc_show(struct file *file,
-		char __user *ubuf, size_t count, loff_t *ppos)
-{
-	int n = 0;
-	char buffer[64];
-
-	if (*ppos != 0)
-		goto out;
-	n = scnprintf(buffer, 64, "%d\n", boost_opp_cluster[1]);
-out:
-	if (n < 0)
-		return -EINVAL;
-
-	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
-}
-
-static ssize_t perfmgr_boost_opp_cluster_2_proc_write(struct file *filp,
-		const char *ubuf, size_t cnt, loff_t *data)
-{
-	char buf[64];
-	int value;
-	int ret;
-
-	if (cnt >= sizeof(buf) || copy_from_user(buf, ubuf, cnt))
-		return -EINVAL;
-
-	buf[cnt] = 0;
-	ret = kstrtoint(buf, 10, &value);
-	if (ret < 0)
-		return ret;
-
-	if (policy_num >= 3) {
-		if (value >= 0 && value < opp_count[2])
-			boost_opp_cluster[2] = value;
-		else
-			boost_opp_cluster[2] = opp_count[2]-1;
-	}
-
-	return cnt;
-}
-
-static ssize_t perfmgr_boost_opp_cluster_2_proc_show(struct file *file,
-		char __user *ubuf, size_t count, loff_t *ppos)
-{
-	int n = 0;
-	char buffer[64];
-
-	if (*ppos != 0)
-		goto out;
-	n = scnprintf(buffer, 64, "%d\n", boost_opp_cluster[2]);
 out:
 	if (n < 0)
 		return -EINVAL;
@@ -1095,9 +971,6 @@ PROC_FOPS_RW(boost_ta);
 PROC_FOPS_RW(boost_fg);
 PROC_FOPS_RW(idleprefer_ta);
 PROC_FOPS_RW(idleprefer_fg);
-PROC_FOPS_RW(boost_opp_cluster_0);
-PROC_FOPS_RW(boost_opp_cluster_1);
-PROC_FOPS_RW(boost_opp_cluster_2);
 PROC_FOPS_RW(boost_cluster_0);
 PROC_FOPS_RW(boost_cluster_1);
 PROC_FOPS_RW(boost_cluster_2);
@@ -1124,9 +997,6 @@ static int __init touch_boost_init(void)
 		PROC_ENTRY(boost_fg),
 		PROC_ENTRY(idleprefer_ta),
 		PROC_ENTRY(idleprefer_fg),
-		PROC_ENTRY(boost_opp_cluster_0),
-		PROC_ENTRY(boost_opp_cluster_1),
-		PROC_ENTRY(boost_opp_cluster_2),
 		PROC_ENTRY(boost_cluster_0),
 		PROC_ENTRY(boost_cluster_1),
 		PROC_ENTRY(boost_cluster_2),
@@ -1196,7 +1066,7 @@ static int __init touch_boost_init(void)
 
 	for (i = 0; i < policy_num; i++) {
 		freq_to_set[i].max = cpu_opp_tbl[i][0];
-		boost_opp_cluster[i] = -1;
+		boost_cluster[i] = -1;
 	}
 
 	freq_min_request = kcalloc(policy_num, sizeof(struct freq_qos_request), GFP_KERNEL);
