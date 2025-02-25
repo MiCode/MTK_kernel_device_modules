@@ -896,6 +896,7 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	unsigned int dst_w = pending->width;
 	unsigned int src_x = pending->src_x;
 	unsigned int src_y = pending->src_y;
+	unsigned int dst_roi = pending->dst_roi;
 	unsigned int lye_idx = 0, ext_lye_idx = 0 ,id = 0;
 	unsigned int src_size = 0;
 	unsigned int offset = 0;
@@ -917,20 +918,32 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	priv = crtc->dev->dev_private;
 
 	if (fmt == DRM_FORMAT_YUYV || fmt == DRM_FORMAT_YVYU ||
-	    fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_VYUY) {
-		if (src_x % 2) {
-			src_x -= 1;
-			dst_w += 1;
-			clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_LEFT_CLIP], 1);
-		}
-		if ((src_x + dst_w) % 2) {
-			dst_w += 1;
-			clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_RIGHT_CLIP], 1);
+		fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_VYUY) {
+		if (pending->pq_loop_type == 2) {
+			if (src_x % 2) {
+				src_x -= 1;
+				dst_roi += 1;
+				clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_LEFT_CLIP], 1);
+			}
+			if ((src_x + (dst_roi & 0xffff)) % 2) {
+				dst_roi += 1;
+				clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_RIGHT_CLIP], 1);
+			}
+		} else {
+			if (src_x % 2) {
+				src_x -= 1;
+				dst_w += 1;
+				clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_LEFT_CLIP], 1);
+			}
+			if ((src_x + dst_w) % 2) {
+				dst_w += 1;
+				clip |= REG_FLD_VAL(reg_fld[FLD_BLD_L0_SRC_RIGHT_CLIP], 1);
+			}
 		}
 	}
 
 	if (pending->pq_loop_type == 2)
-		src_size = pending->dst_roi;
+		src_size = dst_roi;
 	else
 		src_size = (dst_h << 16) | dst_w;
 
