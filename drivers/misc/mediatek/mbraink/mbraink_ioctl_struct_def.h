@@ -45,6 +45,7 @@
 #define MAX_SPMI_PRE_LVSYS_SZ			32
 #define MAX_SPMI_CURR_CLAMPING_SZ		128
 #define MAX_WIFI_NOTIFY_TXPOWER_RPT_NUM		2
+#define MAX_EMI_FREQ_NUM			12
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -734,6 +735,17 @@ struct mbraink_touch_ghost_struct {
 struct mbraink_touch_ghost_info {
 	u16 count;
 	struct mbraink_touch_ghost_struct data[MAX_TOUCH_GHOST_SZ];
+};
+
+struct mbraink_memory_emiActiveInfo {
+	int32_t freqInMhz;
+	int64_t totalActiveTimeInMs;
+};
+
+struct mbraink_memory_emiInfo {
+	struct mbraink_memory_emiActiveInfo emiActiveInfo[MAX_EMI_FREQ_NUM];
+	int32_t totalEmiFreqNum;
+	uint32_t updateCnt;
 };
 
 #endif

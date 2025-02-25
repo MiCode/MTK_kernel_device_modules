@@ -228,10 +228,64 @@ End:
 	return ret;
 }
 
+static int mbraink_v6993_memory_getEmiInfo(struct mbraink_memory_emiInfo *pMemoryEmiInfo)
+{
+	int i;
+	int32_t emi_freq_num = 0;
+	int ret = 0;
+	struct freq_duration *emi_duration_ptr = NULL;
+	uint32_t record_cnt = 0;
+	int32_t retV = 0;
+	int32_t emi_freq_check = 0;
+
+	emi_freq_num = get_emi_freq_num();
+
+	emi_duration_ptr = kmalloc_array(emi_freq_num, sizeof(struct freq_duration), GFP_KERNEL);
+	if (!emi_duration_ptr) {
+		ret = -1;
+		goto End;
+	}
+
+	for (i = 0; i < 2; i++) {
+		retV = sync_latest_data();
+		if (retV == SWPM_PSP_SUCCESS)
+			break;
+		pr_notice("%s(%d), (%d) retV(%d) sync latest data again\n",
+			__func__, __LINE__, i, retV);
+	}
+
+	get_emi_freq_duration(emi_freq_num, emi_duration_ptr);
+	get_data_record_number(&record_cnt);
+
+	if (emi_freq_num > MAX_EMI_FREQ_NUM) {
+		pr_notice("emi_freq_num over (%d)", MAX_EMI_FREQ_NUM);
+		emi_freq_check = MAX_EMI_FREQ_NUM;
+	} else
+		emi_freq_check = emi_freq_num;
+
+	for (i = 0; i < emi_freq_check; i++) {
+		pMemoryEmiInfo->emiActiveInfo[i].freqInMhz =
+			emi_duration_ptr[i].freq;
+		pMemoryEmiInfo->emiActiveInfo[i].totalActiveTimeInMs =
+			emi_duration_ptr[i].duration;
+	}
+
+	pMemoryEmiInfo->totalEmiFreqNum = emi_freq_check;
+	pMemoryEmiInfo->updateCnt = record_cnt;
+
+End:
+
+	if (emi_duration_ptr != NULL)
+		kfree(emi_duration_ptr);
+
+	return ret;
+}
+
 static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getDdrInfo = mbraink_v6993_memory_getDdrInfo,
 	.getMdvInfo = mbraink_v6993_memory_getMdvInfo,
 	.get_ufs_info = mbraink_v6993_get_ufs_info,
+	.getEmiInfo = mbraink_v6993_memory_getEmiInfo,
 };
 
 int mbraink_v6993_memory_init(struct device *dev)

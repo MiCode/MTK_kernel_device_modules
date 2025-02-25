@@ -1329,6 +1329,28 @@ static long handle_touch_ghost_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handleMemoryEmiInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_memory_emiInfo *pMemoryEmiInfo =
+		(struct mbraink_memory_emiInfo *)(mbraink_data);
+
+	memset(pMemoryEmiInfo,
+			0,
+			sizeof(struct mbraink_memory_emiInfo));
+	ret = mbraink_memory_getEmiInfo(pMemoryEmiInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_memory_emiInfo *)arg,
+				pMemoryEmiInfo,
+				sizeof(struct mbraink_memory_emiInfo))) {
+			pr_notice("Copy memory emi Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1820,6 +1842,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_touch_ghost_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MEMORY_EMI_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_emiInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryEmiInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

@@ -73,6 +73,7 @@
 #define WIFI_PCIE_INFO			'R'
 #define WIFI_TXPWR_RPT			'S'
 #define WIFI_RXTXPERF_INFO		'T'
+#define MEMORY_EMI_INFO	'U'
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -183,8 +184,12 @@
 #define RO_POWER_SCP_TASK_INFO	_IOR(IOC_MAGIC, POWER_SCP_TASK_INFO, \
 						struct mbraink_power_scp_task_info*)
 #define WO_NETLINK_TRIGGER_RECV		_IOW(IOC_MAGIC, NETLINK_TRIGGER_RECV, char*)
+
 #define RO_TOUCH_GHOST_INFO	_IOR(IOC_MAGIC, TOUCH_GHOST_INFO, \
 						struct mbraink_touch_ghost_info*)
+
+#define RO_MEMORY_EMI_INFO		_IOR(IOC_MAGIC, MEMORY_EMI_INFO, \
+							struct mbraink_memory_emiInfo*)
 
 #define RO_POWER_SPMI_GLITCH_INFO	_IOR(IOC_MAGIC, POWER_SPMI_GLITCH_INFO, \
 					struct mbraink_spmi_glitch_struct_data*)

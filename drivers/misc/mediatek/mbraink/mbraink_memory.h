@@ -17,7 +17,7 @@ int mbraink_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemoryDdrInfo);
 int mbraink_memory_getMdvInfo(struct mbraink_memory_mdvInfo *pMemoryMdv);
 
 int mbraink_get_ufs_info(struct mbraink_ufs_info *ufs_info);
-
+int mbraink_memory_getEmiInfo(struct mbraink_memory_emiInfo *pMemoryEmiInfo);
 
 #endif /*end of MBRAINK_MEMORY_H*/
 

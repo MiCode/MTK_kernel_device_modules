@@ -232,6 +232,7 @@ static struct mbraink_memory_ops mbraink_v6991_memory_ops = {
 	.getDdrInfo = mbraink_v6991_memory_getDdrInfo,
 	.getMdvInfo = mbraink_v6991_memory_getMdvInfo,
 	.get_ufs_info = mbraink_v6991_get_ufs_info,
+	.getEmiInfo = NULL,
 };
 
 int mbraink_v6991_memory_init(struct device *dev)
