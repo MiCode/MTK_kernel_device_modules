@@ -95,9 +95,11 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:ccd_rpmsg",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk_ccd_remoteproc",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp",
+    "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp7s",
+    "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp7sp",
+    "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp8",
+    "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp8s",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-util",
-
-    "//vendor/mediatek/kernel_modules/mtkcam/camsys:camsys",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp7_1-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp7s-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp7sp-ut",
