@@ -17024,7 +17024,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&apu_smmu 12>;
 
 			log-buf-sz = <0x300000>;
-			interrupt-lbc-sz = <0x1000>;
+			interrupt-lbc-sz = <0x60000>;
 		};
 
 		// PMIC TODO:
