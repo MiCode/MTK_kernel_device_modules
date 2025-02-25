@@ -2881,15 +2881,15 @@
 			mediatek,miukp-reg = <&miu_kp>;
 			mediatek,miumpu-reg = <&miu_mpu>;
 			interrupts = <GIC_SPI 213 IRQ_TYPE_LEVEL_HIGH 0>;
-			sr-cnt = <48>;
-			aid-cnt = <256>;
-			aid-num-per-set = <32>;
+			sr_cnt = <48>;
+			aid_cnt = <256>;
+			aid_num_per_set = <32>;
 			dump = <0x1f0 0x1f8 0x1fc>;
 			clear = <0x1f0 0x80000000 1>,
 				<0x160 0xffffffff 16>,
 				<0x200 0x00000003 16>;
-			clear-hp = <0x1fc 0x40000000 1>;
-			clear-md = <0x1fc 0x80000000 1>;
+			clear_hp = <0x1fc 0x40000000 1>;
+			clear_md = <0x1fc 0x80000000 1>;
 		};
 		miu_kp: miu_kp@10350000 {
 			compatible = "mediatek,common-miukp";
