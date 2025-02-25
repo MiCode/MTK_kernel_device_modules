@@ -14417,9 +14417,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			fmeter-id	= /bits/ 8 <116 117 109 110 111 112 113 105 107 108 106 126>;
 			fmeter-type	= /bits/ 8 < 6 6 6 6 6 6 6 6 6 6 6 6>;
 			mediatek,met-freerun;
-			clocks = <&mmdvfs_mux MMDVFS_AP_SMI>, <&mmdvfs_mux MMDVFS_AP_CAM>,
-				<&mmdvfs_mux MMDVFS_AP_MML>, <&mmdvfs_mux MMDVFS_AP_VDE>;
-			clock-names = "ap-smi-vcore", "ap-cam-vmm", "ap-mml-vdisp", "ap-vde-vmm";
+		};
+
+		mmdvfs-debug-user {
+			compatible = "mediatek,mmdvfs-debug-user";
+			clocks = <&mmdvfs_mux MMDVFS_AP_CAM>, <&mmdvfs_mux MMDVFS_AP_CAMTM>,
+				 <&mmdvfs_mux MMDVFS_AP_VDE>, <&mmdvfs_mux MMDVFS_AP_IMG>, <&mmdvfs_mux MMDVFS_AP_IPE>,
+				 <&mmdvfs_mux MMDVFS_AP_DIS>, <&mmdvfs_mux MMDVFS_AP_MML>,
+				 <&mmdvfs_mux MMDVFS_AP_SMI>, <&mmdvfs_mux MMDVFS_AP_VEN>, <&mmdvfs_mux MMDVFS_AP_MDP>;
+			clock-names = "cam", "camtm", "vde", "img", "ipe", "dis", "mml", "smi", "ven", "mdp";
+			mediatek,step-idx = /bits/ 8 <7 0 6 2>;
+			mediatek,clk-freerun = <0xffffff>; // 1: freerun without voting high
 		};
 
 		u3fpgaphy: u3fpgaphy {
