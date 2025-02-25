@@ -479,7 +479,7 @@ void engine_fix_gear_level(struct engine_gear_control_t *gear_ctrl, uint32_t gea
 	bool gear_up = false;
 	int ret;
 
-	if (gear_level > ENGINE_MAX_GEAR || gear_level <= ENGINE_MIN_GEAR) {
+	if (gear_level > ENGINE_MAX_GEAR) {
 		pr_info("%s: invalid gear:(%u)!\n", __func__, gear_level);
 		return;
 	}
