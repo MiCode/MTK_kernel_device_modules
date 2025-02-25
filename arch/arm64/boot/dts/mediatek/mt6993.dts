@@ -9427,6 +9427,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				  <0 0x32900000 0 0x1000>,
 				  <0 0x32c00000 0 0x1000>,
 				  <0 0x3e000000 0 0x1000>;
+			mmlsys-num = <3>;
+			mmlsys-regs = <0x32000000 0x32300000 0x32600000>;
 			#address-cells = <2>;
 			#size-cells = <2>;
 			mmqos-supply = <&mmqos>;
@@ -9979,7 +9981,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_aal1_eof",
 				"mml_disp_done_event",
 				"disp_dp_intf0_vde_start",
-				"disp_mutex0_sof0";
+				"disp_mutex0_sof0",
+				"disp_cmd_mode_trig_start",
+				"disp_vdo_mode_trig_start";
 
 			gce-events =
 				<&gce CMDQ_EVENT_DISP1_A_STREAM_DONE_ENG_EVENT_0>,
@@ -10034,7 +10038,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_EVENT_DISP0_A_GCE_FRAME_DONE_3>,
 				<&gce CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>,
 				<&gce CMDQ_EVENT_DISP1_B_DISP_DVO0_ENG_EVENT_0>,
-				<&gce CMDQ_EVENT_DISP1_A_STREAM_SOF_0>;
+				<&gce CMDQ_EVENT_DISP1_A_STREAM_SOF_0>,
+				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_3>,
+				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_4>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
@@ -10237,6 +10243,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					     "DDP_COMPONENT_OVL_EXDMA2_hdr_qos",
 					     "DDP_COMPONENT_OVL_EXDMA2_hdr_stash_qos",
 					     "DDP_COMPONENT_OVL_EXDMA2_stash_qos";
+		};
+
+		disp_dbgtp: disp-dbgtp@3ee80000 {
+			compatible = "mediatek,disp_dbgtp",
+				"mediatek,mt6993-disp-dbgtp";
+			reg = <0 0x3ee80000 0 0x1000>;
+			interrupts = <GIC_SPI 449 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DEBUG_TOP_DISP>;
 		};
 
 		disp_ovl0_exdma3: disp-ovl0-exdma3@32960000 {
