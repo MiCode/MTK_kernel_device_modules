@@ -707,6 +707,9 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 	struct sched_param param = {.sched_priority = 87};
 	struct mtk_drm_esd_ctx *esd_ctx = (struct mtk_drm_esd_ctx *)data;
 	int ret = 0, index = 0;
+	bool en = 0;
+	struct mtk_ddp_comp *output_comp;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	sched_setscheduler(current, SCHED_RR, &param);
 
@@ -715,8 +718,12 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 
 		return -EINVAL;
 	}
-	if (esd_ctx->crtc)
+	if (esd_ctx->crtc) {
 		index = drm_crtc_index(esd_ctx->crtc);
+		mtk_crtc = to_mtk_crtc(esd_ctx->crtc);
+	} else
+		return -EINVAL;
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 	while (1) {
 		msleep(ESD_CHECK_PERIOD);
@@ -724,9 +731,12 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 			continue;
 
 		esd_ctx->chk_retry = 0;
+		en = true;
 		do {
 			init_esd_timer(esd_ctx);
 			atomic_set(&esd_ctx->target_time, 0);
+			mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_CHECK_SET_INT,
+				(void *)&en);
 
 			ret = wait_event_interruptible(
 				esd_ctx->check_task_wq,
@@ -746,6 +756,9 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 			CRTC_MMP_MARK(index, target_time, 0x10000, 0);
 			atomic_set(&esd_ctx->target_time, 0);
 		}
+		en = false;
+		mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_CHECK_SET_INT,
+			(void *)&en);
 
 		/* 2. other check & recovery */
 		if (kthread_should_stop())

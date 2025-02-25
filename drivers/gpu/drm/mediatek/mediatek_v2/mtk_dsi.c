@@ -3616,8 +3616,7 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 		if (!mtk_dsi_lpc_en(mtk_crtc))
 			inten |= TE_RDY_INT_FLAG;
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
-						priv->data->mmsys_id == MMSYS_MT6991 ||
-						priv->data->mmsys_id == MMSYS_MT6993))
+						priv->data->mmsys_id == MMSYS_MT6991))
 			inten |= TARGET_LINE_INT_FLAG;
 	}
 
@@ -13850,8 +13849,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 
 		} else {
-			if (priv && priv->data->mmsys_id == MMSYS_MT6993)
-				inten |= TARGET_LINE_INT_FLAG;
 			if (!mtk_dsi_lpc_en(crtc))
 				inten |= TE_RDY_INT_FLAG;
 
@@ -13894,6 +13891,28 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (panel_ext && panel_ext->funcs
 			&& panel_ext->funcs->reset)
 			panel_ext->funcs->reset(dsi->panel, *(int *)params);
+	}
+		break;
+	case ESD_CHECK_SET_INT:
+	{
+		struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+		unsigned int inten, status;
+		bool *en = (bool *)params;
+
+		if (!underrun_happened && mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
+			status = readl(dsi->regs + DSI_INTSTA);
+			writel(status & (~(FRAME_DONE_INT_FLAG | TARGET_LINE_INT_FLAG)), dsi->regs + DSI_INTSTA);
+			inten = readl(dsi->regs + DSI_INTEN);
+			if (*en) {
+				inten |= (FRAME_DONE_INT_FLAG | TARGET_LINE_INT_FLAG);
+				CRTC_MMP_MARK(0, esd_check, 5, 1);
+			} else {
+				inten &= ~(FRAME_DONE_INT_FLAG | TARGET_LINE_INT_FLAG);
+				CRTC_MMP_MARK(0, esd_check, 5, 0);
+			}
+			writel(inten, dsi->regs + DSI_INTEN);
+		}
 	}
 		break;
 	case LCM_CUST_FUNC:
