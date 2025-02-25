@@ -8475,6 +8475,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mediatek,smi-common", "syscon";
 			reg = <0 0x3c803000 0 0x1000>;
 			mediatek,common-id = <35>;
+			skip-tcms-check;
 			clocks = <&ccu_main_clk CCU2INFRA_GALS_CON_SMI>;
 			clock-names = "apb";
 			mediatek,pd-id = <MT6993_SMI_PD_CAM_CCU>;
