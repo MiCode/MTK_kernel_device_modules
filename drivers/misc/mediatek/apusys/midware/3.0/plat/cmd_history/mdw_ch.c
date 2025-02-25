@@ -141,6 +141,7 @@ int mdw_ch_pollcmd_timeout(uint32_t *flag, uint32_t poll_interval_us, uint32_t p
 
 	mdw_cmd_debug("poll_interval_us = %u, poll_timeout_us = %u\n", poll_interval_us, poll_timeout_us);
 
+	mdw_trace_begin("apumdw:poll_cmd");
 	while (poll_acc_us < poll_timeout_us) {
 		if (*flag) {
 			ret = 0;
@@ -151,6 +152,7 @@ int mdw_ch_pollcmd_timeout(uint32_t *flag, uint32_t poll_interval_us, uint32_t p
 		udelay(poll_interval_us);
 		poll_acc_us += poll_interval_us;
 	}
+	mdw_trace_end();
 out:
 	return ret;
 }

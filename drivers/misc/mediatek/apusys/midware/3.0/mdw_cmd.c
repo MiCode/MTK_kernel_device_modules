@@ -88,9 +88,10 @@ static void mdw_cmd_update_einfos(struct mdw_cmd *c)
 	c->einfos->c.inference_id = c->inference_id;
 }
 
-static void mdw_cmd_postprocess(struct mdw_cmd *c)
+static int mdw_cmd_postprocess(struct mdw_cmd *c, int ipi_ret)
 {
 	struct mdw_device *mdev = c->mpriv->mdev;
+	int ret = 0;
 
 	mdw_flw_debug("\n");
 
@@ -104,7 +105,12 @@ static void mdw_cmd_postprocess(struct mdw_cmd *c)
 	/* update einfos */
 	mdw_cmd_update_einfos(c);
 
+	/* check subcmds return value */
+	ret = mdev->plat_funcs->check_sc_rets(c, ipi_ret);
+
 	c->cmd_state = MDW_CMD_STATE_POSTPROCESS_DONE;
+
+	return ret;
 }
 
 static void mdw_cmd_late_postprocess(struct mdw_cmd *c)
@@ -722,49 +728,6 @@ out:
 	return ret;
 }
 
-static void mdw_cmd_check_rets(struct mdw_cmd *c, int ret)
-{
-	uint32_t idx = 0, is_dma = 0, is_aps = 0;
-	DECLARE_BITMAP(tmp, 64);
-
-	memcpy(&tmp, &c->einfos->c.sc_rets, sizeof(c->einfos->c.sc_rets));
-
-	/* extract fail subcmd */
-	do {
-		idx = find_next_bit((unsigned long *)&tmp, c->num_subcmds, idx);
-		if (idx >= c->num_subcmds)
-			break;
-
-		mdw_drv_warn("sc(0x%llx-#%u) type(%u) softlimit(%u) boost(%u) fail\n",
-			c->kid, idx, c->subcmds[idx].type,
-			c->softlimit, c->subcmds[idx].boost);
-		switch (c->subcmds[idx].type) {
-		case APUSYS_DEVICE_EDMA:
-			is_dma++;
-			break;
-		case APUSYS_DEVICE_APS:
-			is_aps++;
-			break;
-		default:
-			break;
-		}
-
-		idx++;
-	} while (idx < c->num_subcmds);
-
-	/* trigger exception if dma */
-	if (is_dma) {
-		dma_exception("dma exec fail:%s:ret(%d/0x%llx)pid(%d/%d)c(0x%llx)\n",
-			c->comm, ret, c->einfos->c.sc_rets,
-			c->pid, c->tgid, c->kid);
-	}
-	if (is_aps) {
-		aps_exception("aps exec fail:%s:ret(%d/0x%llx)pid(%d/%d)c(0x%llx)\n",
-			c->comm, ret, c->einfos->c.sc_rets,
-			c->pid, c->tgid, c->kid);
-	}
-}
-
 static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 {
 	struct mdw_fpriv *mpriv = c->mpriv;
@@ -785,7 +748,7 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 		if (ret < 0) {
 			mdw_drv_err("run cmd fail, ret(%d)\n", ret);
 			c->cmd_state = MDW_CMD_STATE_ERROR;
-			mdw_cmd_postprocess(c);
+			mdw_cmd_postprocess(c, 0);
 
 			/* setup fence return value */
 			dma_fence_set_error(f, ret);
@@ -817,11 +780,12 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 	return ret;
 }
 
-static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
+static int mdw_cmd_complete(struct mdw_cmd *c, int ipi_ret)
 {
 	struct dma_fence *f = &c->fence->base_fence;
 	struct mdw_fpriv *mpriv = c->mpriv;
 	uint64_t ts1 = 0, ts2 = 0;
+	int ret = 0;
 
 	ts1 = sched_clock();
 	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
@@ -830,23 +794,14 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 	c->enter_complt_time = ts2 - ts1;
 
 	/* handle cmdbuf for user */
-	mdw_cmd_postprocess(c);
+	ret = mdw_cmd_postprocess(c, ipi_ret);
 	ts1 = sched_clock();
 	c->cmdbuf_out_time = ts1 - ts2;
 
-	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
+	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ipi_ret(%d) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
 		(uint64_t)mpriv, c->comm, c->uid, c->kid, c->inference_id,
-		ret, c->einfos->c.sc_rets,
+		ipi_ret, ret, c->einfos->c.sc_rets,
 		c->pid, c->tgid, task_pid_nr(current));
-
-	/* check subcmds return value */
-	if (c->einfos->c.sc_rets) {
-		if (!ret)
-			ret = -EIO;
-
-		mdw_cmd_check_rets(c, ret);
-	}
-	c->einfos->c.ret = ret;
 
 	if (ret) {
 		mdw_drv_err("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
@@ -918,7 +873,7 @@ static void mdw_cmd_trigger_func(struct work_struct *wk)
 	if (ret < 0) {
 		mdw_drv_err("run cmd fail\n");
 		c->cmd_state = MDW_CMD_STATE_ERROR;
-		mdw_cmd_postprocess(c);
+		mdw_cmd_postprocess(c, 0);
 		mdw_cmd_late_postprocess(c);
 	}
 	mutex_unlock(&c->mtx);
@@ -1244,7 +1199,7 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 			goto put_sync_file;
 		} else if (run_ret > 0) {
 			mdw_cmd_debug("poll done, ret(%d)\n", run_ret);
-			mdw_cmd_postprocess(c);
+			mdw_cmd_postprocess(c, 0);
 		}
 
 		/* assign sync file to fd */

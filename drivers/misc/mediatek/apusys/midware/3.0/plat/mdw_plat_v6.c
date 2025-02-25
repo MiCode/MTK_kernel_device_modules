@@ -752,6 +752,34 @@ out:
 	return 0;
 }
 
+static int mdw_plat_v6_check_sc_rets(struct mdw_cmd *c, int ipi_ret)
+{
+	uint64_t idx = c->einfos->c.sc_rets;
+	int ret = ipi_ret;
+
+	if (c->cmd_state == MDW_CMD_STATE_POSTPROCESS_DONE) {
+		mdw_drv_debug("cmd already postprocess done\n");
+		goto out;
+	}
+
+	if (idx >= c->num_subcmds) {
+		mdw_drv_err("invalid subcmd index %llu\n", idx);
+		return -EINVAL;
+	}
+
+	if (c->einfos->c.ret) {
+		if (!ipi_ret)
+			ret = -EIO;
+
+		mdw_drv_err("sc(0x%llx-#%llu) type(%u) softlimit(%u) boost(%u) fail\n",
+			c->kid, idx, c->subcmds[idx].type,
+			c->softlimit, c->subcmds[idx].boost);
+	}
+	c->einfos->c.ret = ret;
+out:
+	return ret;
+}
+
 const struct mdw_plat_func mdw_plat_func_v6 = {
 	.late_init = mdw_plat_v6_late_init,
 	.late_deinit = mdw_plat_v6_late_deinit,
@@ -773,4 +801,5 @@ const struct mdw_plat_func mdw_plat_func_v6 = {
 	.preprocess_cmd = mdw_plat_v6_preprocess_cmd,
 	.postprocess_cmd = mdw_plat_v6_postprocess_cmd,
 	.late_postprocess_cmd = mdw_plat_v6_late_postprocess_cmd,
+	.check_sc_rets = mdw_plat_v6_check_sc_rets,
 };
