@@ -602,6 +602,7 @@ static int ssusb_ao_cfg_of_property_parse(struct ssusb_mtk *ssusb,
 int ssusb_wait_power_state(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
+	unsigned long timeout;
 	u32 val1 = 0;
 	u32 val2 = 0;
 	u32 val3 = 0;
@@ -609,32 +610,33 @@ int ssusb_wait_power_state(struct ssusb_mtk *ssusb,
 	if (IS_ERR_OR_NULL(ssusb->usb_mbist))
 		return -1;
 
-	while (time_before(jiffies, jiffies + (HZ*5))) {
+	timeout = jiffies + HZ*3; /* 3 seconds timeout */
+
+	while (time_before(jiffies, timeout)) {
 		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3")) {
 			regmap_read(ssusb->usb_mbist, 0x34, &val1);
 			if ((val1 & BIT(0)) == 0x1)
 				return 0;
-			msleep(100);
+
+			dev_info(ssusb->dev, "[WARNING] USB bus not idle, usb-mbist: %x\n", val1);
+			mdelay(100);
 		} else if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3")) {
 			regmap_read(ssusb->usb_mbist, 0x48, &val1);
 			regmap_read(ssusb->usb_mbist, 0x4c, &val2);
 			regmap_read(ssusb->usb_mbist, 0x50, &val3);
 			if ((val1 & BIT(0)) == 0x1 && (val2 & 0x3) == 0  && (val3 & 0x3) == 0)
 				return 0;
-			msleep(100);
+
+			dev_info(ssusb->dev, "[WARNING] USB bus not idle, usb-mbist: 0x48: %x, 0x4c: %x, 0x50: %x\n",
+					val1, val2, val3);
+			mdelay(100);
 		} else {
 			dev_info(ssusb->dev, "[WARNING] No compatible bus idle setting?\n");
 			return 0;
 		}
 	}
 
-	if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3"))
-		dev_info(ssusb->dev, "[WARNING] USB bus not idle, usb-mbist: %x\n", val1);
-
-	if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3"))
-		dev_info(ssusb->dev, "[WARNING] USB bus not idle, usb-mbist: 0x48: %x, 0x4c: %x, 0x50: %x\n",
-					val1, val2, val3);
-
+	dev_info(ssusb->dev, "[WARNING] USB bus not idle, wait timeout\n");
 	return 0;
 }
 
