@@ -1249,7 +1249,8 @@ static int fpga_u3phy_probe(struct platform_device *pdev)
 	struct phy_provider *provider;
 	struct fpga_u3phy *u3phy;
 	u32 ippc;
-	u32 addr, mask;
+	u32 addr = 0;
+	u32 mask = 0;
 	int index;
 	int ret;
 
