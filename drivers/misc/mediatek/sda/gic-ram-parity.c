@@ -17,12 +17,10 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
-#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/workqueue.h>
 #include <mt-plat/aee.h>
-#include <linux/regmap.h>
 
 /* GICT related reg offset for error record 1 */
 #define GICT_ERR1STATUS	(0x50)
@@ -56,13 +54,6 @@ struct err_record {
 	struct reg_offset reg_offset;
 };
 
-struct power_domain {
-	struct regmap *map;
-	unsigned int reg;
-	/*unit: uV*/
-	unsigned int vol;
-};
-
 struct gic_ram_parity {
 	struct work_struct work;
 
@@ -74,7 +65,6 @@ struct gic_ram_parity {
 	/* recorded parity errors */
 	atomic_t nr_err;
 	struct err_record *record;
-	struct power_domain power_domain[2];
 };
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define ECC_LOG(fmt, ...) \
@@ -135,13 +125,11 @@ static void gic_ram_parity_irq_work(struct work_struct *w)
 	if (n > PAGE_SIZE)
 		goto call_aee;
 
-	n += scnprintf(buf + n, PAGE_SIZE - n, "%s:%s, %s:0x%016llx, %s:0x%016llx, %s:%llu, %s:%d, %s:%d",
+	n += scnprintf(buf + n, PAGE_SIZE - n, "%s:%s, %s:0x%016llx, %s:0x%016llx, %s:%llu",
 			"error type", gic_ram_parity.record[UE].error_type,
 			"status", gic_ram_parity.record[UE].status,
 			"misc0", gic_ram_parity.record[UE].misc0,
-			"INTID", ((gic_ram_parity.record[UE].misc0) & id_mask) + 32,
-			"vcore sram voltage", gic_ram_parity.power_domain[0].vol,
-			"vcore voltage", gic_ram_parity.power_domain[1].vol);
+			"INTID", ((gic_ram_parity.record[UE].misc0) & id_mask) + 32);
 
 	if (n > PAGE_SIZE)
 		goto call_aee;
@@ -163,7 +151,7 @@ static irqreturn_t gic_ram_parity_isr(int irq, void *dev_id)
 	struct reg_offset *offset;
 	void __iomem *base;
 	u64 misc0, status;
-	unsigned int i, val = 0;
+	unsigned int i;
 
 	atomic_inc(&gic_ram_parity.nr_err);
 
@@ -192,17 +180,6 @@ static irqreturn_t gic_ram_parity_isr(int irq, void *dev_id)
 	gic_ram_parity.record[i].status = status;
 	gic_ram_parity.record[i].misc0 = misc0;
 
-	/* read voltage */
-	regmap_read(gic_ram_parity.power_domain[0].map,
-			gic_ram_parity.power_domain[0].reg,
-			&val);
-	gic_ram_parity.power_domain[0].vol = val*6250;
-
-	regmap_read(gic_ram_parity.power_domain[1].map,
-			gic_ram_parity.power_domain[1].reg,
-			&val);
-	gic_ram_parity.power_domain[1].vol = val*5000;
-
 	if (gic_ram_parity.record[UE].irq == irq)
 		schedule_work(&gic_ram_parity.work);
 
@@ -217,8 +194,6 @@ static irqreturn_t gic_ram_parity_isr(int irq, void *dev_id)
 			"error type", gic_ram_parity.record[i].error_type,
 			"misc0", misc0, "status", status, "INTID",
 			(misc0 & id_mask) + 32);
-	ECC_LOG("%s: %d(uV)\n", "vcore_sram voltage", gic_ram_parity.power_domain[0].vol);
-	ECC_LOG("%s: %d(uV)\n", "vcore voltage", gic_ram_parity.power_domain[1].vol);
 
 	/* disable irq to avoid burst kernel log and DB */
 	disable_irq_nosync(irq);
@@ -264,9 +239,6 @@ static int gic_ram_parity_probe(struct platform_device *pdev)
 	size_t size;
 	int i, irq;
 	struct device_node *node;
-	struct platform_device *pmic_pdev = NULL;
-	struct platform_device *vcore_pdev = NULL;
-	struct of_phandle_args args;
 
 	dev_info(&pdev->dev, "driver probed\n");
 
@@ -320,47 +292,6 @@ static int gic_ram_parity_probe(struct platform_device *pdev)
 			return -ENXIO;
 		}
 	}
-
-	/* init struct power_domain[0] for get vcore_sram volt later */
-	node = of_find_node_by_name(NULL, "pmic");
-	if (!node) {
-		dev_err(&pdev->dev, "pmic node not found\n");
-		return -ENODEV;
-	}
-
-	pmic_pdev = of_find_device_by_node(node->child);
-	if (!pmic_pdev) {
-		dev_err(&pdev->dev, "pmic child device not found\n");
-		return -ENODEV;
-	}
-
-	gic_ram_parity.power_domain[0].map = dev_get_regmap(pmic_pdev->dev.parent, NULL);
-	if (!gic_ram_parity.power_domain[0].map)
-		return -ENODEV;
-
-	ret = of_property_read_u32(pdev->dev.of_node,
-			"pmic-reg", &gic_ram_parity.power_domain[0].reg);
-	if (ret) {
-		dev_err(&pdev->dev, "no pmic-reg");
-		return -ENXIO;
-	}
-
-	/* init struct power_domain[1] for get vcore volt later */
-	ret = of_parse_phandle_with_fixed_args(pdev->dev.of_node, "vcore-volt", 1, 0, &args);
-	if (ret)
-		return ret;
-
-	gic_ram_parity.power_domain[1].reg = args.args[0];
-
-	vcore_pdev = of_find_device_by_node(args.np->child);
-	if (!vcore_pdev) {
-		dev_err(&pdev->dev, "no vcore_pdev\n");
-		return -ENXIO;
-	}
-
-	gic_ram_parity.power_domain[1].map = dev_get_regmap(vcore_pdev->dev.parent, NULL);
-	if (!gic_ram_parity.power_domain[1].map)
-		return -ENODEV;
 
 	return ret;
 }
