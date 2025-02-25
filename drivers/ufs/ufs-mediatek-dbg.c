@@ -470,7 +470,7 @@ static void probe_android_vh_ufs_send_tm_command(void *data, struct ufs_hba *hba
 	enum ufs_trace_str_t _str_t = str_t;
 	struct utp_task_req_desc *d = &hba->utmrdl_base_addr[tag];
 	struct cmd_hist_struct *cmd_hist;
-	struct ufs_mtk_dbg *mdbg = data;
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -539,7 +539,7 @@ static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
 static void probe_android_vh_ufs_send_command(void *data, struct ufs_hba *hba,
 					      struct ufshcd_lrb *lrbp)
 {
-	struct ufs_mtk_dbg *mdbg = data;
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -556,7 +556,7 @@ static void probe_android_vh_ufs_send_command(void *data, struct ufs_hba *hba,
 static void probe_android_vh_ufs_compl_command(void *data, struct ufs_hba *hba,
 					      struct ufshcd_lrb *lrbp)
 {
-	struct ufs_mtk_dbg *mdbg = data;
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -578,7 +578,9 @@ static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
 	int ptr, ptr_cur;
 	enum cmd_hist_event event;
 	struct cmd_hist_struct *cmd_hist;
-	struct ufs_mtk_dbg *mdbg = data;
+	struct ufs_hba *hba = shost_priv(sdev->host);
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
+	struct ufshcd_lrb *lrbp = &hba->lrb[tag];
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -604,9 +606,8 @@ static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
 	cmd_hist[ptr].cmd.utp.doorbell = doorbell;
 	cmd_hist[ptr].cmd.utp.intr = intr;
 
-	/* Need patch trace_ufshcd_command() first */
-	cmd_hist[ptr].cmd.utp.crypt_en = 0;
-	cmd_hist[ptr].cmd.utp.crypt_keyslot = 0;
+	cmd_hist[ptr].cmd.utp.crypt_en = (lrbp->crypto_key_slot < 0 ? 0 : 1);
+	cmd_hist[ptr].cmd.utp.crypt_keyslot = lrbp->crypto_key_slot;
 
 	if (event == CMD_COMPLETED) {
 		ptr_cur = ptr;
@@ -632,6 +633,9 @@ static void probe_ufshcd_uic_command(void *data, const char *dev_name,
 	enum cmd_hist_event event;
 	struct cmd_hist_struct *cmd_hist;
 	struct ufs_mtk_dbg *mdbg = data;
+
+	if (strcmp(dev_name, "16890000.ufshci") == 0)
+		mdbg = ufshcd_to_dbg(ufshba[1]);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -1519,12 +1523,25 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 				    int state)
 {
 	int ptr;
-#if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
+	struct ufs_hba *hba;
 	struct ufs_mtk_host *host;
-#endif
 	struct cmd_hist_struct *cmd_hist;
-	struct ufs_mtk_dbg *mdbg = data;
+	struct ufs_mtk_dbg *mdbg;
 
+	if (strcmp(dev_name, "16890000.ufshci") == 0)
+		hba = ufshba[1];
+	else
+		hba = ufshba[0];
+
+	if (IS_ERR_OR_NULL(hba))
+		return;
+
+	host = ufshcd_get_variant(hba);
+
+	if (IS_ERR_OR_NULL(host))
+		return;
+
+	mdbg = host->mdbg;
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
 
@@ -1538,8 +1555,6 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 	cmd_hist[ptr].cmd.clk_gating.state = state;
 
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
-	host = mdbg->host;
-
 	if (host->mphy_base) {
 		writel(0xC1000200, host->mphy_base + 0x20C0);
 		cmd_hist[ptr].cmd.clk_gating.arg1 =
@@ -1561,6 +1576,9 @@ static void probe_ufshcd_profile_clk_scaling(void *data, const char *dev_name,
 	int ptr;
 	struct cmd_hist_struct *cmd_hist;
 	struct ufs_mtk_dbg *mdbg = data;
+
+	if (strcmp(dev_name, "16890000.ufshci") == 0)
+		mdbg = ufshcd_to_dbg(ufshba[1]);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -1587,6 +1605,9 @@ static void probe_ufshcd_pm(void *data, const char *dev_name,
 	int ptr;
 	struct cmd_hist_struct *cmd_hist;
 	struct ufs_mtk_dbg *mdbg = data;
+
+	if (strcmp(dev_name, "16890000.ufshci") == 0)
+		mdbg = ufshcd_to_dbg(ufshba[1]);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
