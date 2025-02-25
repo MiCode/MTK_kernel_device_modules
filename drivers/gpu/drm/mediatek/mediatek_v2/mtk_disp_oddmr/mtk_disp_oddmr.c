@@ -7112,6 +7112,29 @@ int mtk_oddmr_get_od_enable(struct mtk_ddp_comp *comp)
 	return en;
 }
 
+int mtk_oddmr_get_dmr_enable(struct mtk_ddp_comp *comp)
+{
+	int en = 0;
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	unsigned int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+
+	if (oddmr_data->primary_data->dmr_state < ODDMR_INIT_DONE)
+		return 0;
+	if ((oddmr_data->dmr_enable == 1) && (cur_bin_idx != -1))
+		en = 1;
+	ODDMRLOW_LOG("en %d: dmr_enable %d, cur_bin_idx %d\n",
+		en, oddmr_data->dmr_enable, cur_bin_idx);
+
+	return en;
+}
+
+int mtk_oddmr_get_dbi_enable(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+
+	ODDMRLOW_LOG("dbi_enable %d\n", oddmr_data->dbi_enable);
+	return oddmr_data->dbi_enable;
+}
 
 static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
 		int caller, struct cmdq_pkt *handle)

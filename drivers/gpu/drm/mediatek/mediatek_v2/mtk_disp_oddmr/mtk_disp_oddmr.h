@@ -783,4 +783,6 @@ void mtk_oddmr_scp_status(bool enable);
 int mtk_oddmr_load_param(struct mtk_disp_oddmr *priv, struct mtk_drm_oddmr_param *param);
 
 int mtk_oddmr_get_od_enable(struct mtk_ddp_comp *comp);
+int mtk_oddmr_get_dmr_enable(struct mtk_ddp_comp *comp);
+int mtk_oddmr_get_dbi_enable(struct mtk_ddp_comp *comp);
 #endif

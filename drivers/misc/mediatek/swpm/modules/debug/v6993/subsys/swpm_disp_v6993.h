@@ -56,6 +56,7 @@ extern int mtk_disp_is_panel_need_dsc(void *data);
 extern int mtk_disp_get_wrking_exdma_num(void *data);
 extern int mtk_disp_is_ovl_mdp_rsz_en(void *data);
 extern int mtk_disp_is_disp_scaling_en(void *data);
+extern int mtk_disp_get_oddmr_enable(int oddmr_idx);
 extern int swpm_disp_v6993_init(void);
 extern void swpm_disp_v6993_exit(void);
 #endif

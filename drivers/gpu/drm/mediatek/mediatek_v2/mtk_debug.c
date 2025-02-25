@@ -1202,6 +1202,42 @@ int mtk_disp_is_disp_scaling_en(void *data)
 }
 EXPORT_SYMBOL(mtk_disp_is_disp_scaling_en);
 
+/*
+ * this function return if od/dmr/dbi is enabled in crtc0
+ */
+int mtk_disp_get_oddmr_enable(int oddmr_idx)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_ddp_comp *comp;
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return 0;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_ODDMR, 0);
+	if (!comp)
+		return 0;
+
+	switch (oddmr_idx) {
+	case 0:
+		return mtk_oddmr_get_od_enable(comp);
+	case 1:
+		return mtk_oddmr_get_dmr_enable(comp);
+	case 2:
+		return mtk_oddmr_get_dbi_enable(comp);
+	default:
+		return 0;
+	}
+}
+EXPORT_SYMBOL(mtk_disp_get_oddmr_enable);
+
 static int debug_get_info(unsigned char *stringbuf, int buf_len)
 {
 	int n = 0;

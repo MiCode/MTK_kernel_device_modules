@@ -38,6 +38,9 @@ static void update_disp_info(void)
 	// disp_mdp_rsz use crtc request as surrogate for whether mdp_rsz is enabled
 	disp_swpm_data_ptr->rsz_num = mtk_disp_is_ovl_mdp_rsz_en(NULL)
 		+ mtk_disp_is_disp_scaling_en(NULL);
+	disp_swpm_data_ptr->oddmr_num = (mtk_disp_get_oddmr_enable(0) != 0)
+		|| (mtk_disp_get_oddmr_enable(1) != 0)
+		|| (mtk_disp_get_oddmr_enable(2) != 0);
 }
 
 static int disp_swpm_event(struct notifier_block *nb,
