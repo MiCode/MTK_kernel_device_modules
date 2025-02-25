@@ -834,6 +834,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor19 {
 				monitor-name = "debug_ctrl_ao_CFG_DBG_AO_B_PWR";
@@ -842,6 +843,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor20 {
 				monitor-name = "debug_ctrl_ao_CFG_DBG_AO_C_PWR";
@@ -850,6 +852,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor21 {
 				monitor-name = "debug_ctrl_ao_CFG_DBG_AO_D_PWR";
@@ -858,6 +861,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor22 {
 				monitor-name = "debug_ctrl_ao_DBG_AO_A_PWR";
@@ -866,6 +870,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor23 {
 				monitor-name = "debug_ctrl_ao_DBG_AO_B_PWR";
@@ -874,6 +879,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor24 {
 				monitor-name = "debug_ctrl_ao_DBG_AO_C_PWR";
@@ -882,6 +888,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor25 {
 				monitor-name = "debug_ctrl_ao_DBG_AO_D_PWR";
@@ -890,6 +897,7 @@
 				bus-status-offset = <0x8>;
 				bus-status-num = <2>;
 				bus-freq-mhz = <156>;
+				isr-dump = <0>;
 			};
 			monitor26 {
 				monitor-name = "debug_ctrl_ao_MMUP_AO";
