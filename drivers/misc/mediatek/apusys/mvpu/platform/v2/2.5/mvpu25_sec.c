@@ -2191,9 +2191,9 @@ static ssize_t mvpu_img_show(struct kobject *kobj, struct kobj_attribute *attr,
 	else
 		pr_info("[MVPU] already get kerbin_total_size: 0x%llx\n", kerbin_total_size);
 
-	ret = sprintf(buf, "0x%llx", ptn_total_size + kerbin_total_size + 32);
+	ret = snprintf(buf, 32, "0x%llx", ptn_total_size + kerbin_total_size + 32);
 	if (ret < 0) {
-		pr_info("[MVPU] %s, sprintf error\n", __func__);
+		pr_info("[MVPU] %s, snprintf error\n", __func__);
 		return ret;
 	}
 
