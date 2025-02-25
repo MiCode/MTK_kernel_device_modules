@@ -1,6 +1,7 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl", "kernel_version")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
 
 package(
     default_visibility = [
@@ -65,10 +66,12 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2_legacy:gpufreq_public_headers".format(kernel_version),
     ],
     ko_deps = [
-        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2_legacy:mtk_gpufreq_wrapper_legacy".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/qos:mtk_qos".format(kernel_version),
-    ],
+    ] + ([
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2_legacy:mtk_gpufreq_wrapper_legacy".format(kernel_version),
+    ] if "entry_level.config" in DEFCONFIG_OVERLAYS else [
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version),
+    ]),
     out = "mtk_gpu_qos.ko",
 )
