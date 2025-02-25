@@ -38,5 +38,6 @@ extern void policy_chg_notify(void);
 extern unsigned int core_ctl_get_policy(void);
 extern unsigned long _capacity_of(int cpu);
 extern unsigned long get_freq_qos_max_of_min(unsigned int cid);
+extern unsigned long mtk_cpu_util_cfs_boost(int cpu);
 
 #endif /* _SCHED_AVG_H */

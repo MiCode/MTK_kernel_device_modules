@@ -110,24 +110,13 @@ EXPORT_SYMBOL(_capacity_of);
 
 unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 {
-	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
-	unsigned long cpu_util = READ_ONCE(cfs_rq->avg.util_avg);
-	unsigned long runnable = READ_ONCE(cfs_rq->avg.runnable_avg);
+	unsigned long cfs_util, cpu_util = 0;
 	unsigned long capacity, umin, umax;
 	unsigned int util_pct;
 
-	cpu_util = max_t(unsigned long, cpu_util, runnable);
-
-	if (sched_feat(UTIL_EST) && is_util_est_enable()) {
-		unsigned long util_est;
-
-		util_est = READ_ONCE(cfs_rq->avg.util_est);
-		cpu_util = max_t(unsigned long, cpu_util, util_est);
-	}
-
-	cpu_util = mtk_effective_cpu_util(cpu, cpu_util,
+	cfs_util = mtk_cpu_util_cfs_boost(cpu);
+	cpu_util = mtk_effective_cpu_util(cpu, cfs_util,
 				(struct task_struct *)UINTPTR_MAX, &umin, &umax);
-
 	capacity = (orig == true) ? arch_scale_cpu_capacity(cpu) : _capacity_of(cpu);
 	cpu_util = min_t(unsigned long, cpu_util, capacity);
 	util_pct = (unsigned int)div64_ul((cpu_util * 100), capacity);
