@@ -23,6 +23,34 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "leds-mtk-pwm",
+    srcs = [
+        "leds-mtk-pwm.c",
+    ],
+    includes = ["."],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+        ":leds-mtk".format(kernel_version)
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "leds-mtk-disp",
+    srcs = [
+        "leds-mtk-disp.c",
+    ],
+
+    includes = ["."],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+        ":leds-mtk".format(kernel_version)
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "regulator-vibrator",
     srcs = [
         "regulator-vibrator.c",
