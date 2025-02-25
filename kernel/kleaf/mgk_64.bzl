@@ -397,6 +397,8 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/conn_scp:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/extcon:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:ddk_makefile".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:ddk_makefile".format(kernel_version),
@@ -887,11 +889,11 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mtk_dcm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_auxadc".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_ccif".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_cldma".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_dpmaif".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_fsm_scp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:ccci_fsm_scp".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_ccif".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_cldma".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_dpmaif".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/extcon:extcon-mtk-usb".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:mtk-composite".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight".format(kernel_version),
@@ -1947,14 +1949,14 @@ def get_overlay_modules_list():
         mgk_64_kleaf_userdebug_modules.append("//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase_fpga")
 
     if "wifionly.config" in DEFCONFIG_OVERLAYS:
-        mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_md_all.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_ccif.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_cldma.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_auxadc")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:ccci_fsm_scp")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_ccif")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_cldma")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_dpmaif")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mddp/mddp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
@@ -1972,14 +1974,14 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/connectivity/conninfra:conninfra")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/conninfra/build/thinmd:conninfra")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/thinmd_exception:thinmd_exception")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/ccci_util/ccci_util_lib.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/ccmni/ccmni.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_auxadc.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/ccci_md_all.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/fsm/ccci_fsm_scp.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_ccif.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_cldma.ko")
-        mgk_64_device_modules.remove("drivers/misc/mediatek/eccci/hif/ccci_dpmaif.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_auxadc")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:ccci_fsm_scp")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_ccif")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_cldma")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_dpmaif")
         mgk_64_device_modules.remove("drivers/misc/mediatek/mddp/mddp.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb.ko")
