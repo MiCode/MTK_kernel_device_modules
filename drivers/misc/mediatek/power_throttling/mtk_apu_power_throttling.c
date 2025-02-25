@@ -208,7 +208,7 @@ static void __used dump_apu_setting(struct platform_device *pdev, enum apu_pt_ty
 	pr_notice("[%s] type:%d, %s\n", __func__, type, str);
 }
 
-static void __used apu_limit_default_setting(struct device *dev, enum apu_pt_type type)
+static int __used apu_limit_default_setting(struct device *dev, enum apu_pt_type type)
 {
 	struct apu_pt_priv *apu_pt_data;
 	int i = 0;
@@ -223,8 +223,12 @@ static void __used apu_limit_default_setting(struct device *dev, enum apu_pt_typ
 		apu_pt_data->max_lv = 1;
 
 	apu_pt_data->opp_limit = kcalloc(apu_pt_data->max_lv, sizeof(u32), GFP_KERNEL);
+	if (!apu_pt_data->opp_limit)
+		return -ENOMEM;
 	for (i = 0; i < apu_pt_data->max_lv; i ++)
 		apu_pt_data->opp_limit[i] = APU_LIMIT_OPP0;
+
+	return 0;
 }
 
 static int parse_dts(struct platform_device *pdev)

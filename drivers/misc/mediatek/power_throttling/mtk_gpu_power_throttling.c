@@ -208,7 +208,7 @@ static void __used gpu_limit_default_setting(struct device *dev, enum gpu_pt_typ
 		gpu_pt_data->freq_limit[i] = GPU_LIMIT_FREQ;
 }
 
-static void __used gpu_pt_table_default_setting(enum gpu_pt_table_num num)
+static int __used gpu_pt_table_default_setting(enum gpu_pt_table_num num)
 {
 	struct gpu_pt_table *gpu_pt_data;
 	int i = 0;
@@ -216,8 +216,11 @@ static void __used gpu_pt_table_default_setting(enum gpu_pt_table_num num)
 	gpu_pt_data = &gpu_pt_tb[num];
 
 	gpu_pt_data->freq_limit = kcalloc(gpu_pt_info[LBAT_POWER_THROTTLING].max_lv, sizeof(u32), GFP_KERNEL);
+	if (!gpu_pt_data->freq_limit)
+		return -ENOMEM;
 	for (i = 0; i < gpu_pt_data->max_tb_num; i ++)
 		gpu_pt_data->freq_limit[i] = GPU_LIMIT_FREQ;
+	return 0;
 }
 
 static bool parse_switchpt_table(struct device_node *np)
@@ -344,7 +347,7 @@ static ssize_t modify_gpu_throttle_freq_store(struct device *dev,
 		return -EINVAL;
 	}
 	buf += len;
-	if (table_idx < 0 || table_idx > max_tb_num) {
+	if (table_idx > max_tb_num) {
 		dev_info(dev, "Invalid table_idx: %u\n", table_idx);
 		return -EINVAL;
 	}
@@ -453,7 +456,7 @@ static ssize_t boot_notify_store(struct device *dev,
 		dev_info(dev, "parameter number not correct\n");
 		return -EINVAL;
 	}
-	if ((boot_completed > 1) || (boot_completed < 0)) {
+	if (boot_completed > 1) {
 		dev_info(dev, "invalid input %u\n", boot_completed);
 		return -EINVAL;
 	}

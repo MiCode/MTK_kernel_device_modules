@@ -513,7 +513,7 @@ static ssize_t modify_cpu_throttle_freq_store(struct device *dev,
 		return -EINVAL;
 	}
 	buf += len;
-	if (table_idx < 0 || table_idx > max_tb_num) {
+	if (table_idx > max_tb_num) {
 		dev_info(dev, "Invalid table_idx: %u\n", table_idx);
 		return -EINVAL;
 	}
@@ -584,7 +584,7 @@ static ssize_t boot_notify_store(struct device *dev,
 		dev_info(dev, "parameter number not correct\n");
 		return -EINVAL;
 	}
-	if ((boot_completed > 1) || (boot_completed < 0)) {
+	if (boot_completed > 1) {
 		dev_info(dev, "invalid input %u\n", boot_completed);
 		return -EINVAL;
 	}

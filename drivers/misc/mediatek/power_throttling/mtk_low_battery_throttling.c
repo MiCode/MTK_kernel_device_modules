@@ -111,7 +111,7 @@ struct voltage_table {
 
 struct lbat_voltage_table {
 	struct voltage_table tables[MAX_TABLES];
-	int selected_table;
+	unsigned int selected_table;
 };
 
 static struct notifier_block lbat_nb;
@@ -1487,7 +1487,7 @@ static int low_battery_thd_tbl_init(struct platform_device *pdev, struct lbat_th
 	return 0;
 }
 
-static void switch_voltage_table(int table)
+static void switch_voltage_table(unsigned int table)
 {
 	struct lbat_thl_priv *priv = lbat_data;
 	u32 *volt_thd;
@@ -1550,7 +1550,7 @@ static ssize_t voltage_table_show(struct device *dev, struct device_attribute *a
 
 static ssize_t voltage_table_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	int table;
+	unsigned int table;
 	char keyword[10];
 
 	if (switch_pt == false) {
@@ -1559,7 +1559,7 @@ static ssize_t voltage_table_store(struct device *dev, struct device_attribute *
 	}
 	if (sscanf(buf, "%9s %d", keyword, &table) == 2) {
 		if (strcmp(keyword, "table_idx") == 0) {
-			if (table >= 0 && table < lbat_tb_num) {
+			if (table < lbat_tb_num) {
 				voltage_table_data->selected_table = table;
 				switch_voltage_table(table);
 			} else {
