@@ -2399,7 +2399,7 @@ out:
 
 static KOBJ_ATTR_RW(set_ui_ctrl);
 
-static ssize_t fpsgo_control_pid_show(struct kobject *kobj,
+static ssize_t fpsgo_control_by_process_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
@@ -2438,7 +2438,7 @@ out:
 	return length;
 }
 
-static ssize_t fpsgo_control_pid_store(struct kobject *kobj,
+static ssize_t fpsgo_control_by_process_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
@@ -2461,7 +2461,7 @@ out:
 	return count;
 }
 
-static KOBJ_ATTR_RW(fpsgo_control_pid);
+static KOBJ_ATTR_RW(fpsgo_control_by_process);
 
 static ssize_t is_fpsgo_boosting_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -2557,9 +2557,9 @@ void fpsgo_ktf2comp_fuzz_test_node(char *input_data, int op, int cmd)
 		break;
 	case FPSGO_CONTROL_BY_PID:
 		if (op)
-			fpsgo_ktf_test_write_node(kobj, attr, buf, fpsgo_control_pid_store);
+			fpsgo_ktf_test_write_node(kobj, attr, buf, fpsgo_control_by_process_store);
 		else
-			fpsgo_ktf_test_read_node(kobj, attr, buf, fpsgo_control_pid_show);
+			fpsgo_ktf_test_read_node(kobj, attr, buf, fpsgo_control_by_process_show);
 		break;
 	case FPS_ALIGN_MARGIN:
 		if (op)
@@ -2609,7 +2609,7 @@ void __exit fpsgo_composer_exit(void)
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_bypass_non_SF);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_set_ui_ctrl);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_control);
-	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_control_pid);
+	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fpsgo_control_by_process);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_fps_align_margin);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_bypass_non_SF_by_pid);
 	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_control_api_mask_by_pid);
@@ -2644,7 +2644,7 @@ int __init fpsgo_composer_init(void)
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_bypass_non_SF);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_set_ui_ctrl);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_control);
-		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_control_pid);
+		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fpsgo_control_by_process);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_fps_align_margin);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_bypass_non_SF_by_pid);
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_api_mask_by_pid);
