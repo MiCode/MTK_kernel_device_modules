@@ -216,19 +216,26 @@ static ssize_t spbm_cpu_info_show(struct kobject *kobj,
 	int len = 0;
 
 	len += snprintf(buf + len, PAGE_SIZE - len,
-		"%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u\n",
-		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_FREQ_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_FREQ_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_FREQ_TCM_OFFSET),
+		"%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u\n",
+		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_TGT_PWR_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_TGT_PWR_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_TGT_PWR_TCM_OFFSET),
+
 		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_AVG_PWR_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_TARGET_PWR_TCM_OFFSET),
 		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_AVG_PWR_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_TARGET_PWR_TCM_OFFSET),
 		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_AVG_PWR_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_TARGET_PWR_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_THROTTLED_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_THROTTLED_TCM_OFFSET),
-		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_THROTTLED_TCM_OFFSET));
+
+		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_DB_I_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_DB_I_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_DB_I_TCM_OFFSET),
+
+		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_DB_C_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_DB_C_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_DB_C_TCM_OFFSET),
+
+		spbm_intf_read_cputcm_s32(SPBM_CPU_BCORE_DB_TSO_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_MCORE_DB_TSO_TCM_OFFSET),
+		spbm_intf_read_cputcm_s32(SPBM_CPU_LCORE_DB_TSO_TCM_OFFSET));
 
 	if (len < 0) {
 		pr_info("[spbm]%s Error writing to buffer\n", __func__);
