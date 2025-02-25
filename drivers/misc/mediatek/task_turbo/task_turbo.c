@@ -767,30 +767,14 @@ static const struct kernel_param_ops enforce_ct_to_vip_param_ops = {
 module_param_cb(enforce_ct_to_vip_param, &enforce_ct_to_vip_param_ops,
 				&enforced_qualified_param, 0664);
 
-static int doUclamp(struct task_struct *to, int max, int min)
+static void sched_attr_work_func(struct work_struct *work)
 {
-	struct sched_attr attr = {};
+	struct sched_attr_work *sched_work = container_of(work, struct sched_attr_work, work);
 	int ret;
-
-	attr.sched_policy = -1;
-	attr.sched_flags =
-		SCHED_FLAG_KEEP_ALL |
-		SCHED_FLAG_UTIL_CLAMP |
-		SCHED_FLAG_RESET_ON_FORK;
-	attr.sched_util_min = min;
-	attr.sched_util_max = max;
-
-	if(likely(to)) {
-		if(uclamp_eff_value(to, UCLAMP_MIN)!= attr.sched_util_min ||
-			uclamp_eff_value(to, UCLAMP_MAX)!= attr.sched_util_max) {
-			attr.sched_priority = to->rt_priority;
-			if(rt_policy(to->policy))
-				attr.sched_policy = to->policy;
-		}
-	}
-	ret = sched_setattr_nocheck(to, &attr);
-	trace_binder_uclamp_set(to->pid, max, min, ret);
-
+	ret = sched_setattr_nocheck(sched_work->task, &sched_work->attr);
+	trace_binder_uclamp_set(sched_work->task->pid,
+		sched_work->attr.sched_util_max, sched_work->attr.sched_util_min, ret);
+	kfree(sched_work);
 	if (ret < 0) {
 		switch (-ret) {
 		case ESRCH:
@@ -810,23 +794,57 @@ static int doUclamp(struct task_struct *to, int max, int min)
 			break;
 		}
 	}
-	return ret;
+}
+
+void set_sched_attr_non_blocking(struct task_struct *task, const struct sched_attr *attr)
+{
+	struct sched_attr_work *sched_work;
+
+	sched_work = kmalloc(sizeof(*sched_work), GFP_NOWAIT);
+	if(!sched_work)
+		return;
+
+	INIT_WORK(&sched_work->work, sched_attr_work_func);
+	sched_work->task = task;
+	memcpy(&sched_work->attr, attr, sizeof(struct sched_attr));
+	schedule_work(&sched_work->work);
+}
+
+static void doUclamp(struct task_struct *to, int max, int min)
+{
+	struct sched_attr attr = {};
+
+	attr.sched_policy = -1;
+	attr.sched_flags =
+		SCHED_FLAG_KEEP_ALL |
+		SCHED_FLAG_UTIL_CLAMP |
+		SCHED_FLAG_RESET_ON_FORK;
+	attr.sched_util_min = min;
+	attr.sched_util_max = max;
+
+	if(likely(to)) {
+		if(uclamp_eff_value(to, UCLAMP_MIN)!= attr.sched_util_min ||
+			uclamp_eff_value(to, UCLAMP_MAX)!= attr.sched_util_max) {
+			attr.sched_priority = to->rt_priority;
+			if(rt_policy(to->policy))
+				attr.sched_policy = to->policy;
+		}
+	}
+	set_sched_attr_non_blocking(to, &attr);
 }
 
 int write_uclamp_to_list(pid_t pid)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&binder_uclamp_lock, flags);
-	struct uclamp_data_node *newNode = kmalloc(sizeof(struct uclamp_data_node), GFP_KERNEL);
+	struct uclamp_data_node *newNode = kmalloc(sizeof(struct uclamp_data_node), GFP_NOWAIT);
 
-	if(!newNode){
-		spin_unlock_irqrestore(&binder_uclamp_lock, flags);
+	if(!newNode)
 		return -ENOMEM;
-	}
 
 	newNode->pid = pid;
 	INIT_LIST_HEAD(&newNode->list);
+	spin_lock_irqsave(&binder_uclamp_lock, flags);
 	list_add_tail(&newNode->list, &uclamp_data_head);
 	spin_unlock_irqrestore(&binder_uclamp_lock, flags);
 	return 0;
@@ -866,10 +884,11 @@ void uclamp_list_clear(void)
 			rcu_read_unlock();
 			continue;
 		}
-
+		get_task_struct(task_struct_data);
+		rcu_read_unlock();
 		task_turbo_data = get_task_turbo_t(task_struct_data);
 		if(!task_turbo_data){
-			rcu_read_unlock();
+			put_task_struct(task_struct_data);
 			continue;
 		}
 		doUclamp(task_struct_data, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE);
@@ -877,7 +896,7 @@ void uclamp_list_clear(void)
 		task_turbo_data->is_uclamp_binder = 0;
 		task_turbo_data->uclamp_value_max = 0;
 		task_turbo_data->uclamp_value_min = 0;
-		rcu_read_unlock();
+		put_task_struct(task_struct_data);
 		list_del(&tmp_node->list);
 		kfree(tmp_node);
 	}
@@ -913,15 +932,17 @@ void do_set_binder_uclamp_param(pid_t pid, int binder_uclamp_max, int binder_ucl
 		rcu_read_unlock();
 		return;
 	}
+	get_task_struct(task_struct_data);
+	rcu_read_unlock();
 	task_turbo_data = get_task_turbo_t(task_struct_data);
 	if(!task_turbo_data){
-		rcu_read_unlock();
+		put_task_struct(task_struct_data);
 		return;
 	}
 	if (!task_turbo_data->is_uclamp_binder){
 		if(task_turbo_data->uclamp_binder_cnt == 0){
 			if(unlikely(write_uclamp_to_list(pid))){
-				rcu_read_unlock();
+				put_task_struct(task_struct_data);
 				return;
 			}
 			task_turbo_data->uclamp_binder_cnt++;
@@ -931,7 +952,7 @@ void do_set_binder_uclamp_param(pid_t pid, int binder_uclamp_max, int binder_ucl
 	task_turbo_data->uclamp_value_min = binder_uclamp_min;
 	task_turbo_data->uclamp_value_max = binder_uclamp_max;
 	doUclamp(task_struct_data, binder_uclamp_max, binder_uclamp_min);
-	rcu_read_unlock();
+	put_task_struct(task_struct_data);
 }
 
 void do_unset_binder_uclamp_param(int pid)
@@ -951,9 +972,11 @@ void do_unset_binder_uclamp_param(int pid)
 		rcu_read_unlock();
 		return;
 	}
+	get_task_struct(task_struct_data);
+	rcu_read_unlock();
 	task_turbo_data = get_task_turbo_t(task_struct_data);
 	if(!task_turbo_data){
-		rcu_read_unlock();
+		put_task_struct(task_struct_data);
 		return;
 	}
 	if (task_turbo_data->is_uclamp_binder){
@@ -965,7 +988,7 @@ void do_unset_binder_uclamp_param(int pid)
 			task_turbo_data->uclamp_value_max = 0;
 		}
 	}
-	rcu_read_unlock();
+	put_task_struct(task_struct_data);
 }
 
 void do_binder_uclamp_stuff(int cmd)

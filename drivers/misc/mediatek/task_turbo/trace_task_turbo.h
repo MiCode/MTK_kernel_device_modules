@@ -81,13 +81,13 @@ TRACE_EVENT(binder_uclamp_parameters_set,
 );
 
 TRACE_EVENT(binder_uclamp_set,
-	TP_PROTO(pid_t b_pid, int max, int min, int ret),
+	TP_PROTO(pid_t b_pid, u32 max, u32 min, int ret),
 	TP_ARGS(b_pid, max, min, ret),
 
 	TP_STRUCT__entry(
 		__field(pid_t, b_pid)
-		__field(int, max)
-		__field(int, min)
+		__field(u32, max)
+		__field(u32, min)
 		__field(int, ret)
 	),
 	TP_fast_assign(
