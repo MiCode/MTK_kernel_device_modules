@@ -45,6 +45,7 @@ static struct dentry *apusys_dbg_root;
 
 static const unsigned int version_number_1 = 1;
 static const unsigned int version_number_2 = 2;
+static const unsigned int version_number_3 = 3;
 
 // uint32_t mask
 // param->arg
@@ -771,6 +772,7 @@ static const struct of_device_id apusys_aov_of_match[] = {
 	{ .compatible = "mediatek,apusys_aov-v1", .data = &version_number_1},
 	{ .compatible = "mediatek,apusys_aov", .data = &version_number_2},
 	{ .compatible = "mediatek,apusys_aov-v2", .data = &version_number_2},
+	{ .compatible = "mediatek,apusys_aov-v3", .data = &version_number_3},
 	{},
 };
 MODULE_DEVICE_TABLE(of, apusys_aov_of_match);

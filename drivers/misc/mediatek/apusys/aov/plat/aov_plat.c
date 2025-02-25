@@ -51,6 +51,9 @@ int aov_plat_init(struct platform_device *pdev, unsigned int version)
 		}
 	}
 		break;
+	case 3:
+		pr_info("%s no need for platform callback of version %d\n", __func__, version);
+		break;
 	default:
 		pr_info("%s Not supported version %d\n", __func__, version);
 		break;
@@ -72,6 +75,9 @@ void aov_plat_exit(struct platform_device *pdev, unsigned int version)
 	case 2:
 		aov_mem_service_v2_exit(pdev);
 		aov_recovery_v2_exit(pdev);
+		break;
+	case 3:
+		pr_info("%s no need for platform callback of version %d\n", __func__, version);
 		break;
 	default:
 		pr_info("%s Not supported version %d\n", __func__, version);
