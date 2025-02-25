@@ -425,6 +425,14 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "pause_V_idle");
 		g_CRTC_MMP_Events[i].set_dirty = mmprofile_register_event(
 			crtc_mmp_root, "set_dirty");
+		g_CRTC_MMP_Events[i].pkt_info_new = mmprofile_register_event(
+			crtc_mmp_root, "pkt_info_new");
+		g_CRTC_MMP_Events[i].pkt_info_req = mmprofile_register_event(
+			crtc_mmp_root, "pkt_info_req");
+		g_CRTC_MMP_Events[i].pkt_info_rel = mmprofile_register_event(
+			crtc_mmp_root, "pkt_info_rel");
+		g_CRTC_MMP_Events[i].pkt_pool = mmprofile_register_event(
+			crtc_mmp_root, "pkt_pool");
 	}
 }
 void drm_mmp_init(void)

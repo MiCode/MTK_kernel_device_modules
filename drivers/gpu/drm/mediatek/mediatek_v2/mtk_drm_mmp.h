@@ -197,6 +197,11 @@ struct CRTC_MMP_Events {
 	mmp_event enter_vidle;
 	mmp_event pause_vidle;
 	mmp_event set_dirty;
+	/*pkt pool*/
+	mmp_event pkt_info_new;
+	mmp_event pkt_info_req;
+	mmp_event pkt_info_rel;
+	mmp_event pkt_pool;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

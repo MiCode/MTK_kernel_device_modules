@@ -794,8 +794,39 @@ struct mtk_crtc_path_data {
 	const enum mtk_ddp_comp_id *scaling_data_dual;
 };
 
+struct mtk_cmdq_cb_data;
+
+struct mtk_cmdq_pkt_pool {
+	struct mutex lock;
+	struct mtk_drm_crtc *mtk_crtc;
+	/* size change when create pkt */
+	unsigned int size;
+	/* list_len change when request/release pkt from pool */
+	unsigned int list_len;
+	struct list_head list;
+	struct cmdq_pkt *reset_pkt;
+};
+
+struct mtk_cmdq_pkt_info {
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_cmdq_pkt_pool *pkt_pool;
+	struct cmdq_pkt *cmdq_handle;
+	struct mtk_cmdq_cb_data *cb_data;
+	struct list_head list;
+	unsigned int pf_idx;
+	unsigned int id;
+	/* reuse_counter record pkt reused times
+	 * 2: pkt just be released to pool at N frame
+	 * 1: pkt may still be used for N frame so can't reuse at N+1 frame
+	 * 0: pkt can be reused at N+2 frame
+	 */
+	unsigned int reuse_counter;
+};
+
 struct mtk_crtc_gce_obj {
 	struct cmdq_client *client[CLIENT_TYPE_MAX];
+	struct mtk_cmdq_pkt_pool *pkt_pool[CLIENT_TYPE_MAX];
+	struct mtk_cmdq_pkt_info *pkt_info;
 	struct cmdq_pkt_buffer buf;
 	struct cmdq_base *base;
 	int event[EVENT_TYPE_MAX];
@@ -1425,6 +1456,7 @@ struct mtk_cmdq_cb_data {
 	struct cb_data_store *store_cb_data;
 	uint64_t pts;
 	bool is_retrig;
+	struct mtk_cmdq_pkt_info *pkt_info;
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;
@@ -1702,6 +1734,10 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 bool msync_is_on(struct mtk_drm_private *priv, struct mtk_panel_params *params,
 		unsigned int crtc_id, struct mtk_crtc_state *state,
 		struct mtk_crtc_state *old_state);
+
+struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crtc,
+	unsigned int client_type, unsigned int pf_idx);
+void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info);
 
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);

@@ -11203,7 +11203,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			atomic_set(&priv->need_recover, 0);
 	}
 	CRTC_MMP_MARK(id, frame_cfg, ovl_status, 0);
-	drm_trace_tag_mark("frame_cfg");
+	drm_trace_tag_value_byid("frame_cfg", cb_data->pres_fence_idx, id);
 
 	if (old_mtk_state->pending_usage_update) {
 		unsigned int i;
@@ -11331,11 +11331,11 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 #ifdef MTK_DRM_ASYNC_HANDLE
-	cmdq_pkt_wait_complete(cb_data->cmdq_handle);
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PKT_POOL))
+		cmdq_pkt_wait_complete(cb_data->cmdq_handle);
 	mtk_drm_del_cb_data(data, id);
 #endif
-	cmdq_pkt_destroy(cb_data->cmdq_handle);
-	kfree(cb_data);
+	mtk_crtc_release_cmdq_pkt(cb_data->pkt_info);
 
 	CRTC_MMP_EVENT_END(id, frame_cfg, 0, mtk_crtc->skip_check_trigger);
 }
@@ -11431,8 +11431,7 @@ static void ddp_cmdq_cb_blocking(struct mtk_cmdq_cb_data *cb_data)
 		drm_writeback_signal_completion(&mtk_crtc->wb_connector, 0);
 	}
 
-	cmdq_pkt_destroy(cb_data->cmdq_handle);
-	kfree(cb_data);
+	mtk_crtc_release_cmdq_pkt(cb_data->pkt_info);
 }
 #endif
 #endif
@@ -17151,16 +17150,20 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		old_mtk_state = to_mtk_crtc_state(old_crtc_state);
 
 	if (mtk_crtc->sec_on && !is_tzmp2_enable()) {
-		mtk_crtc_pkt_create(&cmdq_handle, crtc,
-			mtk_crtc->gce_obj.client[CLIENT_SEC_CFG]);
+		mtk_crtc->gce_obj.pkt_info =
+			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_SEC_CFG,
+			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
+	} else if (mtk_crtc_is_dc_mode(crtc) || mtk_crtc->is_mml) {
+		mtk_crtc->gce_obj.pkt_info =
+			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_SUB_CFG,
+			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 	} else {
-		if (mtk_crtc_is_dc_mode(crtc) || mtk_crtc->is_mml)
-			mtk_crtc_pkt_create(&cmdq_handle, crtc,
-				mtk_crtc->gce_obj.client[CLIENT_SUB_CFG]);
-		else
-			mtk_crtc_pkt_create(&cmdq_handle, crtc,
-				mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		mtk_crtc->gce_obj.pkt_info =
+			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_CFG,
+			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 	}
+	cmdq_handle = (mtk_crtc->gce_obj.pkt_info == NULL) ?
+		NULL : mtk_crtc->gce_obj.pkt_info->cmdq_handle;
 
 	if (crtc_id == 0)
 		mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
@@ -17215,6 +17218,204 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		mtk_drm_idlemgr_wb_leave(mtk_crtc, cmdq_handle);
 
 	return cmdq_handle;
+}
+
+struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crtc,
+	unsigned int client_type, unsigned int pf_idx)
+{
+	struct mtk_cmdq_pkt_info *pkt_info = NULL;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	int crtc_index = drm_crtc_index(crtc);
+	struct cmdq_client *client = mtk_crtc->gce_obj.client[client_type];
+	struct mtk_cmdq_pkt_pool *pkt_pool = mtk_crtc->gce_obj.pkt_pool[client_type];
+
+	if (client == NULL) {
+		DDPPR_ERR("%s: client of client_type %u is NULL\n", __func__, client_type);
+		return NULL;
+	}
+
+	if (pkt_pool == NULL) {
+		DDPPR_ERR("%s: pkt_pool of client_type %u is NULL\n", __func__, client_type);
+		return NULL;
+	}
+
+	mutex_lock(&pkt_pool->lock);
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PKT_POOL))
+		goto create_new_pkt;
+
+	/* Prepare a reset_pkt to clear pkt before reuse this pkt */
+	if (pkt_pool->reset_pkt == NULL) {
+		mtk_crtc_pkt_create(&pkt_pool->reset_pkt, crtc, client);
+		if (pkt_pool->reset_pkt == NULL) {
+			DDPPR_ERR("%s: reset_pkt pkt creation failed\n", __func__);
+			mutex_unlock(&pkt_pool->lock);
+			return NULL;
+		}
+	}
+
+	/* Record each pkt reused times */
+	if (!list_empty(&pkt_pool->list)) {
+		list_for_each_entry(pkt_info, &pkt_pool->list, list) {
+			if (pkt_info->reuse_counter > 0)
+				pkt_info->reuse_counter--;
+		}
+		pkt_info = NULL;
+	}
+
+	/* Find free pkt to reuse */
+	if (!list_empty(&pkt_pool->list)) {
+		list_for_each_entry(pkt_info, &pkt_pool->list, list) {
+			if (pkt_info->reuse_counter == 0) {
+				pkt_info->pf_idx = pf_idx;
+				mtk_drm_trace_begin("req_pkt_info_id %u pf_idx %u",
+					pkt_info->id, pkt_info->pf_idx);
+				/* clear pkt and cb_data */
+				cmdq_pkt_copy(pkt_info->cmdq_handle, pkt_pool->reset_pkt);
+				memset(pkt_info->cb_data, 0, sizeof(*pkt_info->cb_data));
+				pkt_info->cb_data->pkt_info = pkt_info;
+				list_del(&pkt_info->list);
+				pkt_pool->list_len--;
+				CRTC_MMP_MARK(crtc_index, pkt_info_req, pkt_info->id,
+					pkt_info->pf_idx);
+				CRTC_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len,
+					pkt_pool->size);
+				mtk_drm_trace_end();
+				drm_trace_tag_value_state_byid("pkt_pool_list_len",
+					pkt_pool->list_len, crtc_index);
+				mutex_unlock(&pkt_pool->lock);
+				return pkt_info;
+			}
+		}
+		pkt_info = NULL;
+	}
+
+	/* Don't find free pkt to so we new one and insert to pool */
+	DDPINFO("%s: not find free pkt, allocate new one, current pkt_pool size(%u)\n",
+			__func__, pkt_pool->size);
+
+create_new_pkt:
+	pkt_info = kzalloc(sizeof(struct mtk_cmdq_pkt_info), GFP_KERNEL);
+	if (pkt_info == NULL) {
+		DDPPR_ERR("%s: allocate pkt_info fail\n", __func__);
+		mutex_unlock(&pkt_pool->lock);
+		return NULL;
+	}
+
+	pkt_info->cb_data = kzalloc(sizeof(struct mtk_cmdq_cb_data), GFP_KERNEL);
+	if (pkt_info->cb_data == NULL) {
+		DDPPR_ERR("%s: allocate cb_data fail\n", __func__);
+		kfree(pkt_info);
+		mutex_unlock(&pkt_pool->lock);
+		return NULL;
+	}
+
+	pkt_info->cb_data->pkt_info = pkt_info;
+
+	mtk_crtc_pkt_create(&pkt_info->cmdq_handle, crtc, client);
+	if (pkt_info->cmdq_handle == NULL) {
+		kfree(pkt_info->cb_data);
+		kfree(pkt_info);
+		DDPPR_ERR("%s: pkt creation failed\n", __func__);
+		mutex_unlock(&pkt_pool->lock);
+		return NULL;
+	}
+
+	pkt_info->id = pkt_pool->size;
+	pkt_info->pf_idx = pf_idx;
+
+	mtk_drm_trace_begin("new_pkt_info_id %u pf_idx %u",
+		pkt_info->id, pkt_info->pf_idx);
+
+	pkt_info->mtk_crtc = mtk_crtc;
+	pkt_info->pkt_pool = pkt_pool;
+	pkt_pool->size++;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PKT_POOL)) {
+		CRTC_MMP_MARK(crtc_index, pkt_info_new, pkt_info->id,
+			pkt_info->pf_idx);
+		mtk_drm_trace_end();
+		mutex_unlock(&pkt_pool->lock);
+		return pkt_info;
+	}
+
+	/* dump DB when pool size too much */
+	if (pkt_pool->size == 1000) {
+#if IS_ENABLED(CONFIG_ARM64)
+		DDPAEE_FATAL("%s: pkt pool size too much", __func__);
+#else
+		DDPAEE("%s: pkt pool size too much", __func__);
+#endif
+	}
+
+	pkt_info->reuse_counter = 0;
+	INIT_LIST_HEAD(&pkt_info->list);
+
+	CRTC_MMP_MARK(crtc_index, pkt_info_new, pkt_info->id, pkt_info->pf_idx);
+	CRTC_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
+	mtk_drm_trace_end();
+	drm_trace_tag_value_state_byid("pkt_pool_size", pkt_pool->size, crtc_index);
+
+	mutex_unlock(&pkt_pool->lock);
+	return pkt_info;
+}
+
+void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
+{
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_cmdq_pkt_pool *pkt_pool = NULL;
+	int crtc_index;
+
+	if (pkt_info == NULL)
+		return;
+
+	if (pkt_info->mtk_crtc == NULL) {
+		DDPPR_ERR("%s: mtk_crtc of pkt_info is NULL\n", __func__);
+		return;
+	}
+
+	crtc_index = drm_crtc_index(&pkt_info->mtk_crtc->base);
+	priv = pkt_info->mtk_crtc->base.dev->dev_private;
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PKT_POOL)) {
+		mtk_drm_trace_begin("rel_pkt_info_id %u pf_idx %u",
+			pkt_info->id, pkt_info->pf_idx);
+		cmdq_pkt_destroy(pkt_info->cmdq_handle);
+		kfree(pkt_info->cb_data);
+		CRTC_MMP_MARK(crtc_index, pkt_info_rel,
+			pkt_info->id, pkt_info->pf_idx);
+		mtk_drm_trace_end();
+		kfree(pkt_info);
+		return;
+	}
+
+	pkt_pool = pkt_info->pkt_pool;
+	if (pkt_pool == NULL) {
+		DDPPR_ERR("%s: pkt_pool is NULL\n", __func__);
+		return;
+	}
+
+	mutex_lock(&pkt_pool->lock);
+
+	mtk_drm_trace_begin("rel_pkt_info_id %u pf_idx %u",
+		pkt_info->id, pkt_info->pf_idx);
+
+	pkt_info->reuse_counter = 2;
+	list_add_tail(&pkt_info->list, &pkt_pool->list);
+	pkt_pool->list_len++;
+
+	CRTC_MMP_MARK(crtc_index, pkt_info_rel, pkt_info->id, pkt_info->pf_idx);
+	CRTC_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
+	mtk_drm_trace_end();
+	drm_trace_tag_value_state_byid("pkt_pool_list_len", pkt_pool->list_len, crtc_index);
+
+	if (pkt_pool->list_len > pkt_pool->size) {
+		drm_trace_tag_value_state_byid("pkt_pool_size", pkt_pool->size, crtc_index);
+		DDPPR_ERR("%s: pkt_pool list_len %u is larget then size %u\n",
+				__func__, pkt_pool->list_len, pkt_pool->size);
+	}
+
+	mutex_unlock(&pkt_pool->lock);
 }
 
 /******************Msync 2.0 function start**********************/
@@ -19675,9 +19876,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			atomic_state = crtc_state->state;
 			drm_atomic_state_put(atomic_state);
 		}
-		cmdq_pkt_destroy(cmdq_handle);
-		kfree(cb_data);
 		DDPPR_ERR("flush check failed\n");
+		mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
 		return -1;
 	}
 
@@ -19877,8 +20077,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			= kzalloc(sizeof(struct cb_data_store), GFP_KERNEL);
 		if (!((struct mtk_cmdq_cb_data *)cb_data)->store_cb_data) {
 			DDPPR_ERR("store_cb_data alloc fail\n");
-			cmdq_pkt_destroy(cmdq_handle);
-			kfree(cb_data);
+			mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
 			return -EINVAL;
 		}
 	}
@@ -21087,12 +21286,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		}
 	}
 
-	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
-	if (!cb_data) {
-		DDPPR_ERR("cb data creation failed\n");
-		CRTC_MMP_MARK((int) index, atomic_flush, 0, 1);
-		goto end;
-	}
+	cb_data = mtk_crtc->gce_obj.pkt_info->cb_data;
 
 	if (mtk_crtc->event)
 		mtk_crtc->pending_needs_vblank = true;
@@ -21332,7 +21526,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 	CRTC_MMP_MARK((int) index, atomic_flush, (unsigned long)cmdq_handle,
 			(unsigned long)cmdq_handle->cmd_buf_size);
-	drm_trace_tag_mark("atomic_flush");
+	drm_trace_tag_value_byid("atomic_flush", cb_data->pres_fence_idx, index);
 #else
 	ret = mtk_crtc_gce_flush(crtc, NULL, NULL, cmdq_handle);
 	if (ret) {
@@ -21886,8 +22080,27 @@ static void mtk_crtc_init_gce_obj(struct drm_device *drm_dev,
 						 "gce-client-names", buf);
 		if (index < 0) {
 			mtk_crtc->gce_obj.client[i] = NULL;
+			mtk_crtc->gce_obj.pkt_pool[i] = NULL;
 			continue;
 		}
+
+		/* create pkt pool
+		 * when dts 0, pkt pool only use to calculate pkt_info->id
+		 * when dts 1, pkt pool will manage all pkt_info
+		 */
+		mtk_crtc->gce_obj.pkt_pool[i] =
+			kzalloc(sizeof(struct mtk_cmdq_pkt_pool), GFP_KERNEL);
+		if (!mtk_crtc->gce_obj.pkt_pool[i]) {
+			DDPPR_ERR("%s: allocate pkt_pool fail\n", __func__);
+			continue;
+		}
+		mutex_init(&mtk_crtc->gce_obj.pkt_pool[i]->lock);
+		INIT_LIST_HEAD(&mtk_crtc->gce_obj.pkt_pool[i]->list);
+		mtk_crtc->gce_obj.pkt_pool[i]->mtk_crtc = mtk_crtc;
+		mtk_crtc->gce_obj.pkt_pool[i]->size = 0;
+		mtk_crtc->gce_obj.pkt_pool[i]->list_len = 0;
+		mtk_crtc->gce_obj.pkt_pool[i]->reset_pkt = NULL;
+
 		mtk_crtc->gce_obj.client[i] =
 			cmdq_mbox_create(dev, index);
 
