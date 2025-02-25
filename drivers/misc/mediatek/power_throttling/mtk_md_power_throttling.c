@@ -145,25 +145,6 @@ static void md_lbat_dedicate_callback(unsigned int thd)
 
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-static void md_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
-{
-	unsigned int md_throttle_cmd;
-	int ret, val = 0;
-
-	if (bp_level == 0)
-		val = TMC_CTRL_LOW_POWER_RECHARGE_BATTERY_EVENT;
-	else
-		val = TMC_CTRL_LOW_POWER_LOW_BATTERY_EVENT;
-
-	md_throttle_cmd = TMC_CTRL_CMD_LOW_POWER_IND | val << 8;
-
-	ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_throttle_cmd, 4);
-
-	pr_notice("%s: send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_throttle_cmd);
-}
-#endif
-
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 static void md_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 {
@@ -397,9 +378,6 @@ static int mtk_md_power_throttling_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 	if (md_pt_info[OC_POWER_THROTTLING].max_lv > 0)
 		register_battery_oc_notify(&md_pt_over_current_cb, BATTERY_OC_PRIO_MD, NULL);
-#endif
-#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
-	register_bp_thl_md_notify(&md_bp_cb, BATTERY_PERCENT_PRIO_MD);
 #endif
 	return 0;
 }

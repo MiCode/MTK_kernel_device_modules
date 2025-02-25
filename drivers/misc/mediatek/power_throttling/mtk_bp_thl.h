@@ -47,6 +47,7 @@ void register_bp_thl_md_notify(
 void unregister_bp_thl_notify(BATTERY_PERCENT_PRIO prio_val);
 void set_bp_thl_ut_status(int status);
 #endif
+extern void ccci_set_power_throttle_cb(int (*power_throttle_cb)(unsigned int data));
 
 
 #endif /* __MTK_BATTERY_PERCENTAGE_THROTTLING_H__ */

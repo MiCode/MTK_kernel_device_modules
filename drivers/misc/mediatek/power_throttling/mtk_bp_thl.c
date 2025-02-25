@@ -13,6 +13,8 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include "mtk_bp_thl.h"
+#include "mtk_ccci_common.h"
+#include "mtk_md_power_throttling.h"
 #define BAT_PERCENT_LIMIT 15
 #define BPCB_MAX_NUM 16
 #define MAX_VALUE 0x7FFF
@@ -20,7 +22,6 @@
 static struct task_struct *bp_notify_thread;
 static bool bp_notify_flag;
 static bool bp_hpt_notify_only_flag;
-static bool bp_md_notify_flag;
 static DECLARE_WAIT_QUEUE_HEAD(bp_notify_waiter);
 static struct wakeup_source *bp_notify_lock;
 static DEFINE_MUTEX(exe_thr_lock);
@@ -28,7 +29,6 @@ struct bp_thl_callback_table {
 	void (*bpcb)(enum BATTERY_PERCENT_LEVEL_TAG);
 };
 static struct bp_thl_callback_table bpcb_tb[BPCB_MAX_NUM] = { {0} };
-static struct bp_thl_callback_table mdcb_tb[BPCB_MAX_NUM] = { {0} };
 static struct notifier_block bp_nb;
 struct bp_thl_priv {
 	int bp_thl_lv;
@@ -48,12 +48,40 @@ struct bp_thl_priv {
 static struct bp_thl_priv *bp_thl_data;
 
 struct md_bp_priv {
+	unsigned int soc;
 	unsigned int md_thl_enable;
-	unsigned int md_thl_lv;
-	unsigned int md_thl_l;
-	unsigned int md_thl_h;
+	unsigned int soc_ubound;
+	unsigned int chg_state;
 };
 static struct md_bp_priv *md_bp_data;
+
+static int md_notify_ubound(unsigned int ubound)
+{
+	int ret = 0;
+	unsigned int md_notify_cmd = 0;
+
+	if (!md_bp_data)
+		return -ENODATA;
+
+	if (!md_bp_data->md_thl_enable)
+		return -EINVAL;
+
+	md_bp_data->soc_ubound = ubound;
+
+	if (md_bp_data->soc > ubound)
+		return -EINVAL;
+
+	md_notify_cmd = TMC_CTRL_CMD_LOW_POWER_IND  |
+			md_bp_data->soc << 8 | md_bp_data->chg_state << 16;
+	pr_info("[%s] soc upper bound=%u\n", __func__, ubound);
+	ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_notify_cmd, 4);
+	if (ret) {
+		pr_info("%s: error, ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
+		return -EINVAL;
+	}
+	pr_info("[%s] send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
+	return 0;
+}
 
 void register_bp_thl_notify(
 	battery_percent_callback bp_cb,
@@ -82,27 +110,6 @@ void register_bp_thl_notify(
 }
 EXPORT_SYMBOL(register_bp_thl_notify);
 
-void register_bp_thl_md_notify(
-	battery_percent_callback md_cb,
-	BATTERY_PERCENT_PRIO prio_val)
-{
-	if (!md_bp_data) {
-		pr_info("[%s] md_bp_data not init\n", __func__);
-		return;
-	}
-
-	if (prio_val >= BPCB_MAX_NUM) {
-		pr_info("[%s] prio_val=%d, out of boundary\n", __func__, prio_val);
-		return;
-	}
-
-	mdcb_tb[prio_val].bpcb = md_cb;
-	pr_info("[%s] prio_val=%d\n", __func__, prio_val);
-	if (md_bp_data->md_thl_enable && md_bp_data->md_thl_lv != 0 && md_cb)
-		md_cb(md_bp_data->md_thl_lv);
-}
-EXPORT_SYMBOL(register_bp_thl_md_notify);
-
 void exec_bp_thl_callback(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
 {
 	int i;
@@ -122,30 +129,6 @@ void exec_bp_thl_callback(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
 		for (i = 0; i < BPCB_MAX_NUM; i++) {
 			if (bpcb_tb[i].bpcb != NULL)
 				bpcb_tb[i].bpcb(bp_level);
-		}
-		pr_info("[%s] bp_level=%d\n", __func__, bp_level);
-	}
-}
-
-void exec_bp_thl_md_callback(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
-{
-	int i;
-
-	if (!md_bp_data) {
-		pr_info("[%s] md_bp_data not init\n", __func__);
-		return;
-	}
-
-	if (!md_bp_data->md_thl_enable)
-		return;
-
-	if (bp_thl_data->bp_thl_stop == 1) {
-		pr_info("[%s] bp_thl_data->bp_thl_stop=%d\n"
-			, __func__, bp_thl_data->bp_thl_stop);
-	} else {
-		for (i = 0; i < BPCB_MAX_NUM; i++) {
-			if (mdcb_tb[i].bpcb != NULL)
-				mdcb_tb[i].bpcb(bp_level);
 		}
 		pr_info("[%s] bp_level=%d\n", __func__, bp_level);
 	}
@@ -251,20 +234,13 @@ static DEVICE_ATTR_RW(bp_thl_level);
 int bp_notify_handler(void *unused)
 {
 	do {
-		wait_event_interruptible(bp_notify_waiter, (bp_notify_flag == true) ||
-			(bp_md_notify_flag == true));
+		wait_event_interruptible(bp_notify_waiter, (bp_notify_flag == true));
 		__pm_stay_awake(bp_notify_lock);
 		if (bp_notify_flag) {
 			mutex_lock(&exe_thr_lock);
 			exec_bp_thl_callback(bp_thl_data->bp_thl_lv);
 			mutex_unlock(&exe_thr_lock);
 			bp_notify_flag = false;
-		}
-		if (bp_md_notify_flag) {
-			mutex_lock(&exe_thr_lock);
-			exec_bp_thl_md_callback(md_bp_data->md_thl_lv);
-			mutex_unlock(&exe_thr_lock);
-			bp_md_notify_flag = false;
 		}
 		__pm_relax(bp_notify_lock);
 	} while (!kthread_should_stop());
@@ -283,27 +259,59 @@ int bp_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 	return NOTIFY_DONE;
 }
 
-static void check_md_throttle(int soc)
+static void check_md_throttle(int soc, int chg_state)
 {
+	static int md_last_soc = MAX_VALUE, md_last_chg_state = -1;
+	unsigned int md_notify_cmd = 0;
+	int ret = 0;
+
+	if (!md_bp_data) {
+		pr_info("[%s] md_bp_data not init\n", __func__);
+		return;
+	}
+
 	if (!md_bp_data->md_thl_enable)
 		return;
 
-	if (soc <= md_bp_data->md_thl_l &&
-		md_bp_data->md_thl_lv == BATTERY_PERCENT_LEVEL_0) {
-		md_bp_data->md_thl_lv = BATTERY_PERCENT_LEVEL_1;
-		bp_md_notify_flag = true;
-	} else if (soc >= md_bp_data->md_thl_h &&
-				md_bp_data->md_thl_lv == BATTERY_PERCENT_LEVEL_1) {
-		md_bp_data->md_thl_lv = BATTERY_PERCENT_LEVEL_0;
-		bp_md_notify_flag = true;
+	md_bp_data->soc = soc;
+	md_bp_data->chg_state = chg_state;
+
+	if (md_bp_data->soc_ubound == 0)
+		return;
+	if (soc == md_last_soc && chg_state == md_last_chg_state) {
+		pr_info("[%s] same soc & chg state\n", __func__);
+		return;
 	}
+
+	if (soc > md_bp_data->soc_ubound) {
+		pr_info("[%s] soc over bound\n", __func__);
+		return;
+	}
+
+	if (chg_state != md_last_chg_state || soc % 5 == 0) {
+		md_notify_cmd = TMC_CTRL_CMD_LOW_POWER_IND | soc << 8 | chg_state << 16;
+		ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_notify_cmd, 4);
+		if (ret) {
+			pr_info("%s: error, ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
+			return;
+		}
+		pr_info("[%s] notify md soc:%d, chg state:%d\n", __func__, soc, chg_state);
+		pr_info("[%s] send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
+
+		md_last_soc = soc;
+		md_last_chg_state = chg_state;
+	};
+
+	pr_info("[%s] soc=%d, md_last_soc=%d, chg_state=%d, md_last_chg_state=%d\n",
+			__func__, soc, md_last_soc, chg_state, md_last_chg_state);
+
 }
 
 static void soc_handler(struct work_struct *work)
 {
 	struct power_supply *psy;
 	union power_supply_propval val;
-	int ret, soc, temp, new_lv, soc_thd, temp_thd, soc_stage, temp_stage;
+	int ret, soc, temp, new_lv, soc_thd, temp_thd, soc_stage, temp_stage, chg_state;
 	static int last_soc = MAX_VALUE, last_temp = MAX_VALUE;
 	bool loop;
 
@@ -321,6 +329,12 @@ static void soc_handler(struct work_struct *work)
 
 	if (strcmp(psy->desc->name, "battery") != 0)
 		return;
+
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_STATUS, &val);
+	if (ret)
+		return;
+	chg_state = val.intval;
+
 	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
 	if (ret)
 		return;
@@ -334,8 +348,7 @@ static void soc_handler(struct work_struct *work)
 		return;
 	}
 
-	if (soc != last_soc)
-		check_md_throttle(soc);
+	check_md_throttle(soc, chg_state);
 
 	if (soc == last_soc && temp == last_temp) {
 		pr_info("%s:%d soc and temperature are all the same\n", __func__, __LINE__);
@@ -398,10 +411,51 @@ static void soc_handler(struct work_struct *work)
 	last_temp = temp;
 	last_soc = soc;
 
-	if (bp_md_notify_flag || bp_notify_flag)
+	if (bp_notify_flag)
 		wake_up_interruptible(&bp_notify_waiter);
 	return;
 }
+
+static ssize_t bp_md_thl_show(
+		struct device *dev, struct device_attribute *attr, char *buf)
+{
+	/*show_battery_percent_MD_threshold */
+	if (!md_bp_data) {
+		pr_info("[%s] md_bp_data not init\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!md_bp_data->md_thl_enable)
+		return -EINVAL;
+
+	return sprintf(buf, "md soc ubound %d%%\n", md_bp_data->soc_ubound);
+}
+
+static ssize_t bp_md_thl_store(struct device *dev,
+					   struct device_attribute *attr,
+					   const char *buf,
+					   size_t size)
+{
+	char cmd[21];
+	unsigned int soc_upper_bound;
+
+	if (sscanf(buf, "%3s %u", cmd, &soc_upper_bound) != 2) {
+		dev_info(dev, "parameter number not correct\n");
+		return -EINVAL;
+	}
+
+	if (!md_bp_data) {
+		pr_info("[%s] md_bp_data not init\n", __func__);
+		return -EINVAL;
+	}
+
+	md_bp_data->soc_ubound = soc_upper_bound;
+	md_notify_ubound(md_bp_data->soc_ubound);
+
+	return size;
+}
+
+static DEVICE_ATTR_RW(bp_md_thl);
 
 static int soc_default_setting(struct device *dev, struct bp_thl_priv *priv)
 {
@@ -515,38 +569,6 @@ out:
 	return 0;
 }
 
-static int parse_md_setting(struct device *dev, struct md_bp_priv *md_priv)
-{
-	struct device_node *np = dev->of_node;
-	int ret = 0;
-
-	if (!np) {
-		pr_notice("No device tree data available.\n");
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32(np, "md-soc-throttle-l", &md_priv->md_thl_l);
-	if (ret) {
-		pr_notice("Cannot get md-soc-throttle-l property %d\n", ret);
-		return 0;
-	}
-
-	ret = of_property_read_u32(np, "md-soc-throttle-h", &md_priv->md_thl_h);
-	if (ret) {
-		pr_notice("Cannot get md-soc-throttle-h property %d\n", ret);
-		return 0;
-	}
-
-	if (md_priv->md_thl_l <= 0 || md_priv->md_thl_h <= 0) {
-		pr_notice("Invalid value\n");
-		return -EINVAL;
-	}
-	md_priv->md_thl_enable = 1;
-	pr_notice("md_thl_enable:%d, thl_l:%d, thl_h:%d\n",
-			md_priv->md_thl_enable, md_priv->md_thl_l, md_priv->md_thl_h);
-	return 0;
-}
-
 static int bp_thl_probe(struct platform_device *pdev)
 {
 	struct bp_thl_priv *priv;
@@ -568,11 +590,9 @@ static int bp_thl_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = parse_md_setting(&pdev->dev, md_priv);
-	if (ret) {
-		pr_notice("parse_md_setting fail\n");
-		return ret;
-	}
+	if (of_property_read_bool(pdev->dev.of_node, "md-thl-enable"))
+		md_priv->md_thl_enable = 1;
+
 	bp_thl_data = priv;
 	md_bp_data = md_priv;
 	pr_notice("md_thl_enable: %d\n", md_bp_data->md_thl_enable);
@@ -595,12 +615,16 @@ static int bp_thl_probe(struct platform_device *pdev)
 		pr_notice("power_supply_reg_notifier fail\n");
 		return ret;
 	}
+
+	ccci_set_power_throttle_cb(md_notify_ubound);
 	ret = device_create_file(&(pdev->dev),
 		&dev_attr_bp_thl_ut);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_bp_thl_stop);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_bp_thl_level);
+	ret |= device_create_file(&(pdev->dev),
+		&dev_attr_bp_md_thl);
 	if (ret)
 		dev_notice(&pdev->dev, "create file error ret=%d\n", ret);
 	return 0;
