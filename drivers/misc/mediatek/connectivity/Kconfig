@@ -525,3 +525,9 @@ config MTK_ADVANCED_80211_MLO
           Will support test if set to 'y',
           otherwise will not support test.
 
+config CONNINFRA_BUILD_MODE
+        int "Conninfra build mode"
+        help
+          This config is used to identify the build type.
+          Eng(1)/Userdebug(2)/User(3)
+
