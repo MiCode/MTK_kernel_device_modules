@@ -19,6 +19,7 @@
 #include <mtk-mmdebug-vcp.h>
 #include <mtk-mmdvfs-v5.h>
 #include <mtk-smi-dbg.h>
+#include <mtk-vmm-notifier.h>
 #include <soc/mediatek/mmdvfs_public.h>
 
 #include "mtk-mmdvfs-debug.h"
@@ -53,6 +54,7 @@ static u8 fmeter_count;
 static u8 *fmeter_id;
 static u8 *fmeter_type;
 
+static int dpsw_thr;
 static bool met_freerun;
 
 struct mmdvfs_debug_user {
@@ -81,17 +83,29 @@ EXPORT_SYMBOL_GPL(mmdvfs_debug_v5_force_vcore);
 
 int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
-	int ret;
+	int ret, last;
 
 	if (idx >= step_count) {
 		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
 		return -EINVAL;
 	}
 
+	last = user[step_idx[idx]].force_opp;
+
 	mtk_mmdvfs_enable_vcp(true, user[step_idx[idx]].id);
+
+	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
+		(last < 0 || last >= dpsw_thr))
+		mtk_vmm_ctrl_dbg_use(true);
+
 	ret = mmdvfs_force_step(idx, opp);
 	if (!ret)
 		user[step_idx[idx]].force_opp = opp;
+
+	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
+		last >= 0 && last < dpsw_thr)
+		mtk_vmm_ctrl_dbg_use(false);
+
 	mtk_mmdvfs_enable_vcp(false, user[step_idx[idx]].id);
 
 	return ret;
@@ -100,17 +114,30 @@ EXPORT_SYMBOL_GPL(mmdvfs_debug_force_step);
 
 int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
 {
-	int ret;
+	int ret, last;
 
 	if (idx >= step_count) {
 		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
 		return -EINVAL;
 	}
 
+
+	last = user[step_idx[idx]].vote_opp;
+
 	mtk_mmdvfs_enable_vcp(true, user[step_idx[idx]].id);
+
+	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
+		(last < 0 || last >= dpsw_thr))
+		mtk_vmm_ctrl_dbg_use(true);
+
 	ret = clk_set_rate(user[step_idx[idx]].clk, mmdvfs_user_get_freq_by_opp(user[step_idx[idx]].id, opp));
 	if (!ret)
 		user[step_idx[idx]].vote_opp = opp;
+
+	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
+		last >= 0 && last < dpsw_thr)
+		mtk_vmm_ctrl_dbg_use(false);
+
 	mtk_mmdvfs_enable_vcp(false, user[step_idx[idx]].id);
 
 	return ret;
@@ -145,7 +172,7 @@ static int mmdvfs_debug_v5_set_vote_step(const char *val, const struct kernel_pa
 
 static int mmdvfs_debug_v5_ap_set_rate(const char *val, const struct kernel_param *kp)
 {
-	int idx = 0, opp = 0, ret;
+	int idx = 0, opp = 0, ret, last;
 
 	ret = sscanf(val, "%d %d", &idx, &opp);
 	if (ret != 2 || idx >= user_count) {
@@ -153,10 +180,22 @@ static int mmdvfs_debug_v5_ap_set_rate(const char *val, const struct kernel_para
 		return -EINVAL;
 	}
 
+	last = user[idx].vote_opp;
+
 	mtk_mmdvfs_enable_vcp(true, user[idx].id);
+
+	if ((user[idx].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
+		(last < 0 || last >= dpsw_thr))
+		mtk_vmm_ctrl_dbg_use(true);
+
 	ret = clk_set_rate(user[idx].clk, mmdvfs_user_get_freq_by_opp(user[idx].id, opp));
 	if (!ret)
 		user[idx].vote_opp = opp;
+
+	if ((user[idx].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
+		last >= 0 && last < dpsw_thr)
+		mtk_vmm_ctrl_dbg_use(false);
+
 	mtk_mmdvfs_enable_vcp(false, user[idx].id);
 
 	return ret;
@@ -568,6 +607,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	mmdvfs_debug_parse_fmeter(dev);
 
 	met_freerun = of_property_read_bool(dev->of_node, "mediatek,met-freerun");
+	of_property_read_s32(dev->of_node, "mediatek,dpsw-thres", &dpsw_thr);
 
 	MMDVFS_DBG("mux_base:%#x mux_count:%hu fmeter_count:%hhu met_freerun:%d",
 		mux_base_pa, mux_count, fmeter_count, met_freerun);

@@ -79,11 +79,13 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
-    ],
+    ] +
+    (["//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version)] if glob([".flag.mt6993"]) else []),
     hdrs = glob(["**/*.h"]),
     includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
     ],
 )
 

@@ -13,6 +13,7 @@
 #include <linux/suspend.h>
 #include <soc/mediatek/mmdvfs_public.h>
 #include <soc/mediatek/smi.h>
+#include <mtk-vmm-notifier.h>
 #include <linux/pm_domain.h>
 #include <linux/rpmsg.h>
 #include <linux/rpmsg/mtk_rpmsg.h>
@@ -31,6 +32,8 @@
 
 #include "mtk-mmdvfs-v5-memory.h"
 
+#define OPP_NAG	(-1)
+
 static struct mmdvfs_data *mmdvfs_data;
 
 static int log_level;
@@ -42,6 +45,13 @@ static bool mmup_ena;
 #define MMDVFS_HFRP_FEATURE_ID (mmup_ena ? MMDVFS_MMUP_FEATURE_ID : MMDVFS_VCP_FEATURE_ID)
 
 static u8 step_idx;
+static int dpsw_thr;
+
+struct mmdvfs_debug_user {
+	s8 vote_opp;
+};
+
+static struct mmdvfs_debug_user *vcp_user;
 
 static phys_addr_t mmdvfs_mmup_iova;
 static phys_addr_t mmdvfs_mmup_pa;
@@ -371,17 +381,31 @@ EXPORT_SYMBOL(mmdvfs_hfrp_ipi_send);
 
 static int mmdvfs_vcp_set_rate(const char *val, const struct kernel_param *kp)
 {
-	int idx = 0, opp = 0, ret;
+	int idx = 0, opp = 0, mux_id = 0, ret, last;
 
-	ret = sscanf(val, "%d %d", &idx, &opp);
-	if (ret != 2 || idx >= mmdvfs_data->mux_num) {
+	ret = sscanf(val, "%d %d", &mux_id, &opp);
+	if (ret != 2 || mux_id >= mmdvfs_data->mux_num) {
 		MMDVFS_DBG("failed:%d idx:%d opp:%d mux_num:%d", ret, idx, opp, mmdvfs_data->mux_num);
 		return -EINVAL;
 	}
-	idx += step_idx;
+	idx = mux_id + step_idx;
+
+	last = vcp_user[mux_id].vote_opp;
 
 	mtk_mmdvfs_enable_vcp(true, idx);
+
+	if ((mmdvfs_data->mux[mux_id].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
+		(last < 0 || last >= dpsw_thr))
+		mtk_vmm_ctrl_dbg_use(true);
+
 	ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_VCP_SET_RATE, idx, opp, NULL, true);
+	if(!ret)
+		vcp_user[mux_id].vote_opp = opp;
+
+	if ((mmdvfs_data->mux[mux_id].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
+		last >= 0 && last < dpsw_thr)
+		mtk_vmm_ctrl_dbg_use(false);
+
 	mtk_mmdvfs_enable_vcp(false, idx);
 
 	return ret;
@@ -776,6 +800,22 @@ static int mmdvfs_get_rc_base(struct mmdvfs_data *mmdvfs_data)
 	return 0;
 }
 
+static inline int mmdvfs_debug_parse_user(struct mmdvfs_debug_user **_user, u8 count)
+{
+	struct mmdvfs_debug_user *user;
+	int i;
+
+	user = kcalloc(count, sizeof(*user), GFP_KERNEL);
+	if (!user)
+		return -ENOMEM;
+
+	*_user = user;
+	for (i = 0; i < count; i++)
+		user[i].vote_opp = OPP_NAG;
+
+	return 0;
+}
+
 int mmdvfs_mux_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -787,12 +827,14 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 		return -EINVAL;
 
 	mmdvfs_mmup_sram = of_property_read_bool(node, "mediatek,mmup-sram");
+	of_property_read_s32(node, "mediatek,dpsw-thres", &dpsw_thr);
 
 	ret = mmdvfs_parse_mmdvfs_mux(node, mmdvfs_data);
 	ret = mmdvfs_parse_mmdvfs_clk(node, mmdvfs_data);
 	ret = mmdvfs_parse_vcore_level(node);
 
 	ret = of_property_read_u8(node, "mediatek,step-idx", &step_idx);
+	mmdvfs_debug_parse_user(&vcp_user, mmdvfs_data->mux_num);
 
 	ret = mmdvfs_get_rc_base(mmdvfs_data);
 
