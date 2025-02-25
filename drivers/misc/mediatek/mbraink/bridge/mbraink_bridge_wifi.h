@@ -41,6 +41,13 @@ enum wifi2mbr_tag {
 	WIFI2MBR_TAG_MAX
 };
 
+struct wifi2mbr_data {
+	enum wifi2mbr_tag tag;
+	void *data;
+	unsigned short len;
+	unsigned short count;
+};
+
 #define LLS_RATE_PREAMBIE_MASK (GENMASK(2, 0))
 #define LLS_RATE_NSS_MASK (GENMASK(4, 3))
 #define LLS_RATE_BW_MASK (GENMASK(7, 5))
@@ -217,6 +224,11 @@ struct wifi2mbr_TRxPerfInfo {
 	unsigned char snr[2]; /* signal-to-noise ratio */
 };
 
+/**
+ * struct mbraink2wifi_ops - Operations for MBrainK Bridge to WiFi communication
+ * @get_data: Callback to get data from WiFi driver
+ * @priv: Private data for use by the WiFi driver
+ */
 struct mbraink2wifi_ops {
 	enum wifi2mbr_status (*get_data)(void *priv,
 				enum mbr2wifi_reason reason,
@@ -225,13 +237,27 @@ struct mbraink2wifi_ops {
 	void *priv;
 };
 
+/**
+ * struct wifi2mbraink_set_ops - Operations for WiFi to MBrainK Bridge communication
+ * @set_data: Callback to set data from WiFi driver
+ */
+struct wifi2mbraink_set_ops {
+	int (*set_data)(struct wifi2mbr_data *wifi_data);
+};
+
 void mbraink_bridge_wifi_init(void);
 void mbraink_bridge_wifi_deinit(void);
 void register_wifi2mbraink_ops(struct mbraink2wifi_ops *ops);
 void unregister_wifi2mbraink_ops(void);
+int register_platform_to_bridge_ops(struct wifi2mbraink_set_ops *ops);
+void unregister_platform_to_bridge_ops(void);
 enum wifi2mbr_status
 mbraink_bridge_wifi_get_data(enum mbr2wifi_reason reason,
 			enum wifi2mbr_tag tag,
 			void *data,
 			unsigned short *real_len);
+void wifi2mbrain_notify(enum wifi2mbr_tag tag,
+			void *data,
+			unsigned short len,
+			unsigned short count);
 #endif /*MBRAINK_BRIDGE_WIFI_H*/

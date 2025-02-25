@@ -8,6 +8,7 @@
 #include <mbraink_ioctl_struct_def.h>
 #include <mbraink_modules_ops_def.h>
 #include <bridge/mbraink_bridge_wifi.h>
+#include "mbraink_v6993_wifi.h"
 
 #define MAX_WIFI_DATA_CNT 8192
 
@@ -486,6 +487,173 @@ void mbraink_v6993_get_wifi_rxtxperf_data(int current_idx,
 		pr_info("%s: loop cnt is MAX_WIFI_DATA_CNT\n", __func__);
 }
 
+static int handle_txtimeout_data(struct wifi2mbr_data *wifi_data)
+{
+	struct wifi2mbr_TxTimeoutInfo *tx_timeout;
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	struct timespec64 tv = { 0 };
+	long long timestamp = 0;
+
+	if (wifi_data->len != sizeof(struct wifi2mbr_TxTimeoutInfo)) {
+		pr_info("Invalid TXTIMEOUT data size\n");
+		return -EINVAL;
+	}
+
+	tx_timeout = (struct wifi2mbr_TxTimeoutInfo *)wifi_data->data;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec * 1000) + (tv.tv_nsec / 1000000);
+
+	n = snprintf(netlink_buf, NETLINK_EVENT_MESSAGE_SIZE,
+				 "%s:%u:%lld:%llu:%u:%u:%u:%u:%u:%u",
+				 NETLINK_EVENT_WIFI_NOTIFY, wifi_data->tag, timestamp, tx_timeout->timestamp,
+				 tx_timeout->token_id, tx_timeout->wlan_index, tx_timeout->bss_index,
+				 tx_timeout->timeout_duration, tx_timeout->operation_mode,
+				 tx_timeout->idle_slot_diff_cnt);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+		return -EINVAL;
+
+	mbraink_netlink_send_msg(netlink_buf);
+	return 0;
+}
+
+static inline int append_txpwr_info(char *buf, int pos, int max_size,
+									int bn, int ant,
+									const struct wifi2mbr_txpwr_info *info)
+{
+	int n = snprintf(buf + pos, max_size - pos,
+					":%d:%d:%u:%u:%u:%u:%u:%d:%u:%u:%u:%u:%u:%u:%u:%u:%u:%u:%d:%u:%u:%u:%u:%u:%u:%u",
+					 bn, ant, info->epa_support, info->cal_type, info->center_ch,
+					 info->mcc_idx, info->rf_band, info->temp, info->antsel,
+					 info->coex.bt_on, info->coex.lte_on,
+					 info->coex.reserved[0], info->coex.reserved[1],
+					 info->coex.bt_profile, info->coex.pta_grant, info->coex.pta_req,
+					 info->coex.curr_op_mode, info->d_die_info.delta,
+					 info->d_die_info.target_pwr, info->d_die_info.comp_grp,
+					 info->d_die_info.fe_gain_mode,
+					 info->d_die_info.reserved[0], info->d_die_info.reserved[1],
+					 info->d_die_info.reserved[2], info->d_die_info.reserved[3],
+					 info->d_die_info.reserved[4]);
+
+	if (n < 0 || n >= max_size - pos)
+		return -1;
+
+	return n;
+}
+
+static int append_txpower_report(char *buf, int *pos, int max_size,
+				 unsigned int tag, long long timestamp,
+				 const struct wifi2mbr_txpwr *txpwr)
+{
+	int n, bn, ant;
+
+	n = snprintf(buf + *pos, max_size - *pos,
+		     ":%u:%lld:%llu:%u:%u:%u",
+		     tag, timestamp, txpwr->timestamp,
+		     txpwr->rpt_type, txpwr->max_bn_num, txpwr->max_ant_num);
+
+	if (n < 0 || n >= max_size - *pos)
+		return -1;
+	*pos += n;
+
+	for (bn = 0; bn < txpwr->max_bn_num && bn < MAX_WIFI_BAND_NUM; bn++) {
+		for (ant = 0; ant < txpwr->max_ant_num && ant < MAX_WIFI_ANTENA_NUM; ant++) {
+			n = append_txpwr_info(buf, *pos, max_size,
+					      bn, ant, &txpwr->info[bn][ant]);
+			if (n < 0)
+				return -1;
+			*pos += n;
+		}
+	}
+
+	return 0;
+}
+
+static int handle_txpower_data(struct wifi2mbr_data *wifi_data)
+{
+	struct wifi2mbr_txpwr *txpwr;
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int pos = 0;
+	struct timespec64 tv = { 0 };
+	long long timestamp = 0;
+	int remaining_count = wifi_data->count - 1;
+
+	txpwr = (struct wifi2mbr_txpwr *)wifi_data->data;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec * 1000) + (tv.tv_nsec / 1000000);
+
+	pos = snprintf(netlink_buf, NETLINK_EVENT_MESSAGE_SIZE,
+		       "%s", NETLINK_EVENT_WIFI_NOTIFY);
+	if (pos < 0 || pos >= NETLINK_EVENT_MESSAGE_SIZE)
+		return -1;
+
+	// Handle the first report
+	if (append_txpower_report(netlink_buf, &pos, NETLINK_EVENT_MESSAGE_SIZE,
+				  wifi_data->tag, timestamp, txpwr) < 0)
+		return -1;
+
+	// Handle remaining reports
+	while (remaining_count > 0 && remaining_count < MAX_WIFI_NOTIFY_TXPOWER_RPT_NUM) {
+		unsigned short len = 0;
+		enum wifi2mbr_status ret;
+		struct wifi2mbr_txpwr additional_txpwr;
+		int retry_count = 0;
+
+		while (retry_count < MAX_WIFI_DATA_CNT) {
+			ret = mbraink_bridge_wifi_get_data(MBR2WIFI_TXPWR_RPT,
+							   WIFI2MBR_TAG_TXPWR_RPT,
+							   (void *)(&additional_txpwr), &len);
+
+			if (ret == WIFI2MBR_NO_OPS || ret == WIFI2MBR_END) {
+				break;
+			} else if (ret == WIFI2MBR_FAILURE) {
+				retry_count++;
+				continue;
+			} else if (ret == WIFI2MBR_SUCCESS) {
+				if (len != sizeof(struct wifi2mbr_txpwr)) {
+					pr_info("%s: Received data length (%u) doesn't match expected size (%zu)",
+						__func__, len, sizeof(struct wifi2mbr_txpwr));
+					retry_count++;
+					continue;
+				}
+
+				if (append_txpower_report(netlink_buf, &pos, NETLINK_EVENT_MESSAGE_SIZE,
+							  wifi_data->tag, timestamp, &additional_txpwr) < 0)
+					return -1;
+
+				break;
+			}
+		}
+
+		if (retry_count == MAX_WIFI_DATA_CNT) {
+			pr_info("%s: Reached maximum retry count for additional TX power data ", __func__);
+			break;
+		}
+
+		remaining_count--;
+	}
+
+	mbraink_netlink_send_msg(netlink_buf);
+	pr_info("%s: End of TX power report handling ", __func__);
+	return 0;
+}
+
+static int mbraink_v6993_set_wifi_data(struct wifi2mbr_data *wifi_data)
+{
+	switch (wifi_data->tag) {
+	case WIFI2MBR_TAG_TXTIMEOUT:
+		return handle_txtimeout_data(wifi_data);
+	case WIFI2MBR_TAG_TXPWR_RPT:
+		return handle_txpower_data(wifi_data);
+	default:
+		pr_info("Unknown wifi data tag: %d\n", wifi_data->tag);
+		return -EINVAL;
+	}
+}
+
 static struct mbraink_wifi_ops mbraink_v6993_wifi_ops = {
 	.get_wifi_rate_data = mbraink_v6993_get_wifi_rate_data,
 	.get_wifi_radio_data = mbraink_v6993_get_wifi_radio_data,
@@ -497,21 +665,32 @@ static struct mbraink_wifi_ops mbraink_v6993_wifi_ops = {
 	.get_wifi_rxtxperf_data = mbraink_v6993_get_wifi_rxtxperf_data,
 };
 
+static struct wifi2mbraink_set_ops mbraink_v6993_wifi_set_ops = {
+	.set_data = mbraink_v6993_set_wifi_data,
+};
+
 int mbraink_v6993_wifi_init(void)
 {
 	int ret = 0;
 
 	ret = register_mbraink_wifi_ops(&mbraink_v6993_wifi_ops);
+	if (ret) {
+		pr_info("Failed to register mbraink wifi ops: %d\n", ret);
+		return ret;
+	}
 
-	return ret;
+	ret = register_platform_to_bridge_ops(&mbraink_v6993_wifi_set_ops);
+	if (ret)
+		pr_info("Failed to register platform to bridge ops: %d\n", ret);
+
+	return 0;
 }
 
 int mbraink_v6993_wifi_deinit(void)
 {
-	int ret = 0;
+	unregister_platform_to_bridge_ops();
+	unregister_mbraink_wifi_ops();
 
-	ret = unregister_mbraink_wifi_ops();
-
-	return ret;
+	return 0;
 }
 

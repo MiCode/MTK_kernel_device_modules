@@ -20,30 +20,31 @@
 #define MAX_NOTIFY_CPUFREQ_NUM			8
 #define MAX_FREQ_SZ				64
 #define MAX_WAKEUP_SOURCE_NUM			12
-#define MAX_NAME_SZ						64
-#define MAX_MDV_SZ						6
-#define MAX_PMIC_SPMI_SZ		64
-#define MAX_PMIC_UVLO_SZ		8
+#define MAX_NAME_SZ				64
+#define MAX_MDV_SZ				6
+#define MAX_PMIC_SPMI_SZ			64
+#define MAX_PMIC_UVLO_SZ			8
 #define MAX_GPU_OPP_INFO_SZ			64
 #define MAX_GNSS_DATA_SZ			7
 #define MAX_WIFI_RADIO_SZ			3
 #define MAX_WIFI_RATE_SZ			32
 #define MAX_WIFI_LP_SZ				5
-#define MAX_LPM_STATE_NUM				16
-#define MAX_UFS_INFO_NUM				64
+#define MAX_LPM_STATE_NUM			16
+#define MAX_UFS_INFO_NUM			64
 #define MAX_WIFI_TXTIMEOUT_SZ			32
 #define MAX_CPU_CORE_NUM			8
-#define MAX_PMIC_SPMI_GLITCH_SZ		96
-#define MAX_DVFSRC_INFO_SZ		64
-#define MAX_WIFI_PCIE_SZ                32
-#define MAX_WIFI_BAND_NUM               3
-#define MAX_WIFI_ANTENA_NUM             2
+#define MAX_PMIC_SPMI_GLITCH_SZ			96
+#define MAX_DVFSRC_INFO_SZ			64
+#define MAX_WIFI_PCIE_SZ			32
+#define MAX_WIFI_BAND_NUM			3
+#define MAX_WIFI_ANTENA_NUM			2
 #define MAX_WIFI_RXTXPERF_SZ			8
 #define MAX_TOUCH_GHOST_SZ			64
 #define MAX_SPMI_PARITY_ERR_SZ			64
 #define MAX_SPMI_PRE_OT_SZ			32
 #define MAX_SPMI_PRE_LVSYS_SZ			32
 #define MAX_SPMI_CURR_CLAMPING_SZ		128
+#define MAX_WIFI_NOTIFY_TXPOWER_RPT_NUM		2
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -65,6 +66,7 @@
 #define NETLINK_EVENT_SMAP_NOTIFY "NLEvent_SMAPNotify"
 #define NETLINK_EVENT_TOUCH_GHOST_NOTIFY "NLEvent_TouchGhostNotify"
 #define NETLINK_EVENT_GPUWORKERNOTIFY "NLEvent_GWkEvt"
+#define NETLINK_EVENT_WIFI_NOTIFY	 "NLEvent_WIFINotify"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
