@@ -113,6 +113,7 @@ struct cluster_data {
 	unsigned int cpu_busy_up_thres;
 	unsigned int cpu_busy_down_thres;
 	unsigned int nr_task_thres;
+	unsigned int rt_nr_task_thres;
 	unsigned int active_loading_thres;
 	cpumask_t cpu_mask;
 	bool pending;
@@ -157,6 +158,7 @@ ATOMIC_NOTIFIER_HEAD(core_ctl_notifier);
 static unsigned int busy_up_thres[MAX_CLUSTERS] = {60, 60, 60};
 static unsigned int busy_down_thres[MAX_CLUSTERS] = {30, 30, 30};
 static unsigned int nr_task_thres[MAX_CLUSTERS] = {4, 4, 4};
+static unsigned int rt_nr_task_thres[MAX_CLUSTERS] = {2, 2, 2};
 static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
 static unsigned long freq_thres[MAX_CLUSTERS] = {1200000, 1500000, 1700000};
 
@@ -803,6 +805,18 @@ static void set_cpu_nr_task_thres(struct cluster_data *cluster, unsigned int val
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 }
 
+static void set_cpu_rt_nr_task_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->rt_nr_task_thres;
+	if (old_thresh != val)
+		cluster->rt_nr_task_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
 static void set_cpu_active_loading_thres(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned int old_thresh;
@@ -1296,6 +1310,28 @@ int core_ctl_set_cpu_nr_task_thres(unsigned int cid, unsigned int nr_task)
 EXPORT_SYMBOL(core_ctl_set_cpu_nr_task_thres);
 
 /*
+ *  core_ctl_set_cpu_rt_nr_task_thres - set threshold of cpu busy state
+ *  @cid: cluster id
+ *  @rt_nr task: number of cpu rt task
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_cpu_rt_nr_task_thres(unsigned int cid, unsigned int rt_nr_task)
+{
+	struct cluster_data *cluster;
+
+	if (cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_cpu_rt_nr_task_thres(cluster, rt_nr_task);
+
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_cpu_rt_nr_task_thres);
+
+
+/*
  *  core_ctl_set_cpu_active_loading - set threshold of cpu busy state
  *  @cid: cluster id
  *  @loading: percentage of cpu loading(0-100).
@@ -1576,6 +1612,23 @@ static ssize_t show_cpu_nr_task_thres(const struct cluster_data *state, char *bu
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->nr_task_thres);
 }
 
+static ssize_t store_cpu_rt_nr_task_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_cpu_rt_nr_task_thres(state, val);
+	return count;
+}
+
+static ssize_t show_cpu_rt_nr_task_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->rt_nr_task_thres);
+}
+
 static ssize_t store_cpu_active_loading_thres(struct cluster_data *state,
 		const char *buf, size_t count)
 {
@@ -1696,6 +1749,7 @@ core_ctl_attr_rw(thermal_up_thres);
 core_ctl_attr_rw(cpu_busy_up_thres);
 core_ctl_attr_rw(cpu_busy_down_thres);
 core_ctl_attr_rw(cpu_nr_task_thres);
+core_ctl_attr_rw(cpu_rt_nr_task_thres);
 core_ctl_attr_rw(cpu_active_loading_thres);
 core_ctl_attr_rw(freq_min_thres);
 
@@ -1712,6 +1766,7 @@ static struct attribute *default_attrs[] = {
 	&cpu_busy_up_thres.attr,
 	&cpu_busy_down_thres.attr,
 	&cpu_nr_task_thres.attr,
+	&cpu_rt_nr_task_thres.attr,
 	&cpu_active_loading_thres.attr,
 	&freq_min_thres.attr,
 	NULL
@@ -1757,8 +1812,6 @@ static struct kobj_type ktype_core_ctl = {
 
 /* ==================== algorithm of core control ======================== */
 
-#define MAX_NR_RUNNING_THRESHOLD   4
-#define MAX_RT_NR_RUNNING_THRESHOLD 2
 /*
  * Get number of the busy CPU cores
  */
@@ -1807,7 +1860,7 @@ static void get_busy_cpus(void)
 			else if (busy_state[i] > cluster->cpu_busy_up_thres &&
 				cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres)
 				cpu_count++;
-			else if (max_rt_nr_state[i] > MAX_RT_NR_RUNNING_THRESHOLD)
+			else if (max_rt_nr_state[i] > cluster->rt_nr_task_thres)
 				cpu_count++;
 		}
 		cluster->need_spread_cpus = cpu_count;
@@ -2543,6 +2596,7 @@ static int cluster_init(const struct cpumask *mask)
 	cluster->cpu_busy_up_thres = busy_up_thres[cluster->cluster_id];
 	cluster->cpu_busy_down_thres = busy_down_thres[cluster->cluster_id];
 	cluster->nr_task_thres = nr_task_thres[cluster->cluster_id];
+	cluster->rt_nr_task_thres = rt_nr_task_thres[cluster->cluster_id];
 	cluster->active_loading_thres = active_loading_thres[cluster->cluster_id];
 
 	cluster->next_offline_time =
