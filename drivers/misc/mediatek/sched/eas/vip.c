@@ -54,12 +54,7 @@ struct task_struct *vts_to_ts(struct vip_task_struct *vts)
 
 pid_t list_head_to_pid(struct list_head *lh)
 {
-	pid_t pid = vts_to_ts(container_of(lh, struct vip_task_struct, vip_list))->pid;
-
-	/* means list_head is from rq */
-	if (!pid)
-		pid = 0;
-	return pid;
+	return vts_to_ts(list_entry(lh, struct vip_task_struct, vip_list))->pid;
 }
 
 int vip_in_gh;
@@ -404,6 +399,7 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 {
 	struct list_head *pos;
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+	struct list_head *entry = &vts->vip_list;
 
 	if (vts_to_ts(vts)->se.sched_delayed)
 		return;
@@ -432,7 +428,7 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 				break;
 		}
 	}
-	list_add(&vts->vip_list, pos->prev);
+	list_add(entry, pos->prev);
 	if (!requeue) {
 		vrq->num_vip_tasks[vts->vip_prio] += 1;
 		vrq->sum_num_vip_tasks += 1;
@@ -440,8 +436,8 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 
 	/* vip inserted trace event */
 	if (trace_sched_insert_vip_task_enabled()) {
-		pid_t prev_pid = list_head_to_pid(vts->vip_list.prev);
-		pid_t next_pid = list_head_to_pid(vts->vip_list.next);
+		pid_t prev_pid = list_is_first(entry, &vrq->vip_tasks) ? 0 : list_head_to_pid(entry->prev);
+		pid_t next_pid = list_is_last(entry, &vrq->vip_tasks) ? 0 : list_head_to_pid(entry->next);
 		bool is_first_entry = (prev_pid == 0) ? true : false;
 		struct task_struct *p = vts_to_ts(vts);
 
@@ -454,13 +450,12 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 {
 	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
-	struct list_head *prev = vts->vip_list.prev;
-	struct list_head *next = vts->vip_list.next;
+	struct list_head *entry = &vts->vip_list;
 
-	if (vts->vip_list.next == NULL || !link_with_others(&vts->vip_list))
+	if (entry->next == NULL || !link_with_others(entry))
 		return;
 
-	list_del_init(&vts->vip_list);
+	list_del_init(entry);
 
 	if (vts->vip_prio != NOT_VIP) {
 		vrq->num_vip_tasks[vts->vip_prio] -= 1;
@@ -474,8 +469,8 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 	check_vip_num(rq);
 
 	if (trace_sched_deactivate_vip_task_enabled()) {
-		pid_t prev_pid = list_head_to_pid(prev);
-		pid_t next_pid = list_head_to_pid(next);
+		pid_t prev_pid = list_is_first(entry, &vrq->vip_tasks) ? 0 : list_head_to_pid(entry->prev);
+		pid_t next_pid = list_is_last(entry, &vrq->vip_tasks) ? 0 : list_head_to_pid(entry->next);
 
 		trace_sched_deactivate_vip_task(p->pid, task_cpu(p), prev_pid, next_pid, vrq->sum_num_vip_tasks);
 	}
