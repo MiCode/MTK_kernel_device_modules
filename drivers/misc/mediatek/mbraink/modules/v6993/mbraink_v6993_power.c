@@ -561,11 +561,10 @@ End:
 	return 0;
 }
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 static int mbraink_v6993_power_get_scp_task_info(struct mbraink_power_scp_task_info *scp_task_info)
 {
 	unsigned char *g_scp_raw = NULL;
-	unsigned int g_data_size = 0;
+	unsigned int data_size = 0;
 	struct scp_res_mbrain_dbg_ops *scp_tmon_mbrain_ops = NULL;
 
 	if (scp_task_info == NULL)
@@ -574,38 +573,33 @@ static int mbraink_v6993_power_get_scp_task_info(struct mbraink_power_scp_task_i
 	scp_tmon_mbrain_ops = get_scp_mbrain_tmon_ops();
 	if (scp_tmon_mbrain_ops) {
 
-		g_data_size = scp_tmon_mbrain_ops->get_length();
-		g_data_size += DATA_HD_SZ;
+		data_size = scp_tmon_mbrain_ops->get_length();
+		data_size += DATA_HD_SZ;
+		pr_notice("[Mbraink][SCP] scp task data size=(%d)\n", data_size);
 
-		if (g_data_size && (g_data_size < (SCP_TASK_SZ * 20) + DATA_HD_SZ)) {
-			g_scp_raw = vmalloc(g_data_size);
+		if (data_size && (data_size < (SCP_TASK_SZ * 20) + DATA_HD_SZ)) {
+			g_scp_raw = vmalloc(data_size);
 			if (g_scp_raw) {
-				memset(g_scp_raw, 0, g_data_size);
-				if (scp_tmon_mbrain_ops->get_data(g_scp_raw, g_data_size) == 0) {
+				memset(g_scp_raw, 0, data_size);
+				if (scp_tmon_mbrain_ops->get_data(g_scp_raw, data_size) == 0) {
 					if (((scp_task_info->pos + scp_task_info->size)
-						<= g_data_size) && scp_task_info->size <= sizeof(
+						<= data_size) && scp_task_info->size <= sizeof(
 						scp_task_info->scp_task_data)) {
 						memcpy(scp_task_info->scp_task_data, g_scp_raw
 							+ scp_task_info->pos, scp_task_info->size);
 					} else
-						pr_info("[Mbraink][SPM] scp tmon get data fail\n");
+						pr_info("[Mbraink][SCP] scp tmon get data fail\n");
 				}
 				vfree(g_scp_raw);
 
 			} else {
-				pr_notice("[Mbraink][SPM] malloc fail\n");
+				pr_notice("[Mbraink][SCP] malloc fail\n");
 			}
 		}
 	}
+
 	return 0;
 }
-#else
-static int mbraink_v6993_power_get_scp_task_info(struct mbraink_power_scp_task_info *scp_task_info)
-{
-	pr_info("%s failed to get : need review\n", __func__);
-	return -1;
-}
-#endif
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 static int mbraink_v6993_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
