@@ -123,7 +123,8 @@ int mmdvfs_mt6993_dfs_vote_by_xpu(const u8 user_id, const u8 level)
 		targ = (readl(mmdvfs_rc[rc_id].rc_base + (pos / 8) * 0x4 + RC_MUX_SEL_ENABLE) >> ((pos % 8) * 0x4)) & 0xf;
 		curr = (readl(mmdvfs_rc[rc_id].rc_base + (pos / 8) * 0x4 + RC_MUX_SEL_CURR_ENABLE) >> ((pos % 8) * 0x4)) & 0xf;
 		end = sched_clock();
-	} while ((!(vote <= curr && (vote <= targ || !irq))) && (end - start <= limit));
+	} while ((!((targ && (vote <= curr) && (vote <= targ)) || (!targ && !curr && !vote))) &&
+		(end - start <= limit));
 
 	if (end - start > limit) {
 		MMDVFS_ERR("user_id:%d level:%d mux_sel_pre:%#010x mux_sel:%#010x",
