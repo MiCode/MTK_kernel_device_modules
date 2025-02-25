@@ -12,6 +12,8 @@
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
+#include <linux/of_platform.h>
+#include <linux/regmap.h>
 #include <linux/sched/clock.h>
 #include "ccci_config.h"
 #include "ccci_common_config.h"
@@ -1859,6 +1861,158 @@ int md_cd_vcore_config(unsigned int hold_req)
 	return 0;
 }
 
+#define PMRC_REG 0x190
+void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
+{
+	struct arm_smccc_res res = {0};
+	struct device_node *np_pmic_slave6;
+	struct platform_device *pmic_pdev_slave6 = NULL;
+	struct regmap *map_slave6;
+	unsigned int val = 0;
+	int ret = 0;
+	struct regulator *reg_vmodem;
+	struct regulator *reg_vdigrf;
+	struct regulator *reg_vsram_digrf;
+	struct regulator *reg_vrfio12;
+	struct regulator *reg_vrfio18;
+	struct regulator *reg_vs3_2;
+	struct regulator *reg_vs2_2;
+	struct regulator *reg_va10;
+	struct regulator *reg_vrf09;
+	struct regulator *reg_vrf12;
+	struct regulator *reg_vrf18;
+
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON]%s start\n", __func__);
+
+	np_pmic_slave6 = of_find_node_by_name(NULL, "mt6661-6");
+	if (!np_pmic_slave6 || !np_pmic_slave6->child) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:pmic node not found\n",
+			__func__);
+		return;
+	}
+
+	pmic_pdev_slave6 = of_find_device_by_node(np_pmic_slave6->child);
+	if (!pmic_pdev_slave6) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:pmic child device not found\n",
+			__func__);
+		return;
+	}
+
+	/* get regmap */
+	map_slave6 = dev_get_regmap(pmic_pdev_slave6->dev.parent, NULL);
+	if (!map_slave6) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:pmic get map_slave6 fail\n",
+			__func__);
+		return;
+	}
+
+	/* get regulator*/
+	reg_vmodem = devm_regulator_get_optional(&plat_dev->dev, "md-vmodem");
+	reg_vdigrf = devm_regulator_get_optional(&plat_dev->dev, "md-vdigrf");
+	reg_vsram_digrf = devm_regulator_get_optional(&plat_dev->dev, "vsram-digrf");
+	reg_vrfio12 = devm_regulator_get_optional(&plat_dev->dev, "vrfio12");
+	reg_vrfio18 = devm_regulator_get_optional(&plat_dev->dev, "vrfio18");
+	reg_vs3_2 = devm_regulator_get_optional(&plat_dev->dev, "vs3-2");
+	reg_vs2_2 = devm_regulator_get_optional(&plat_dev->dev, "vs2-2");
+	reg_va10 = devm_regulator_get_optional(&plat_dev->dev, "va10");
+	reg_vrf09 = devm_regulator_get_optional(&plat_dev->dev, "vrf09");
+	reg_vrf12 = devm_regulator_get_optional(&plat_dev->dev, "vrf12");
+	reg_vrf18 = devm_regulator_get_optional(&plat_dev->dev, "vrf18");
+
+	// regulator setting
+	ret = regulator_enable(reg_vmodem);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable vmodem: %d\n", __func__, ret);
+	ret = regulator_enable(reg_vdigrf);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable vdigrf: %d\n", __func__, ret);
+	ret = regulator_enable(reg_vs3_2);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable vs3_2: %d\n", __func__, ret);
+	ret = regulator_enable(reg_vs2_2);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable vs2_2: %d\n", __func__, ret);
+
+	/* tfa Step 1: VDIGRF, Vmodem, VS2_2, VS3_2 mapping */
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_SET_RF_PMIC_LP, 1, 0, 0, 0, 0, &res);
+	udelay(200);
+
+	// regulator setting
+	ret = regulator_enable(reg_vsram_digrf);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable reg_vsram_digrf: %d\n", __func__, ret);
+	ret = regulator_enable(reg_vrfio12);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable reg_vrfio12: %d\n", __func__, ret);
+	ret = regulator_enable(reg_va10);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable reg_va10: %d\n", __func__, ret);
+
+	/* tfa Step 2: Vsram_rf, VRFIO12 mapping */
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_SET_RF_PMIC_LP, 2, 0, 0, 0, 0, &res);
+	udelay(200);
+
+	// regulator setting
+	ret = regulator_enable(reg_vrfio18);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable reg_vrfio18: %d\n", __func__, ret);
+
+	/* tfa Step 3: VRFIO18 mapping */
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_SET_RF_PMIC_LP, 3, 0, 0, 0, 0, &res);
+	udelay(500);
+
+	/* Turn off PMRC4 PMIC */
+	ret = regmap_read(map_slave6, PMRC_REG, &val);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail read PMRC4: ret: %d\n",
+			__func__, ret);
+		return;
+	}
+
+	// Mask PMRC4 and write PMRC0~7
+	ret = regmap_write(map_slave6, PMRC_REG, val & 0xEF);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail mask write PMRC0~7: ret: %d\n",
+			__func__, ret);
+		return;
+	}
+
+	/* tfa step 4: VRF18, VRF12, VRF09 mapping */
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_SET_RF_PMIC_LP, 4, 0, 0, 0, 0, &res);
+
+	/* Turn on PMRC4 @ PMIC, Set PMRC4 and write PMRC0~7 */
+	ret = regmap_write(map_slave6, PMRC_REG, val | 0x10);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail Turn on PMRC4: ret: %d\n",
+			__func__, ret);
+		return;
+	}
+
+	// regulator setting
+	ret = regulator_enable(reg_vrf09);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable vrf09: %d\n", __func__, ret);
+	ret = regulator_enable(reg_vrf12);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable vrf12: %d\n", __func__, ret);
+	ret = regulator_enable(reg_vrf18);
+	if (ret)
+		CCCI_ERROR_LOG(0, TAG, "%s fail to enable vrf18: %d\n", __func__, ret);
+
+	/* tfa step 5: set PMRC4 mapping to LP mode*/
+	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
+			MD_SET_RF_PMIC_LP, 5, 0, 0, 0, 0, &res);
+
+	udelay(200);
+
+	CCCI_BOOTUP_LOG(0, TAG, "[POWER ON] %s done\n", __func__);
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s done\n", __func__);
+}
+
 static int md_cd_power_on(struct ccci_modem *md)
 {
 	int ret = 0;
@@ -1939,6 +2093,10 @@ static int md_cd_power_on(struct ccci_modem *md)
 	}
 	/* step 4: md DPSW set */
 	md_cd_dpsw_setting(md);
+
+	/* step 5: set md rf pmic lp */
+	if ((ap_plat_info == 6993) && !md_cd_plat_val_ptr.md_first_power_on)
+		md1_set_rf_pmic_lp(md->plat_dev);
 
 #if IS_ENABLED(CONFIG_MTK_PBM)
 	kicker_pbm_by_md(KR_MD1, true);
