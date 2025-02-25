@@ -6648,7 +6648,7 @@ static void fbt_jank_thread_boost(int boost, int pid)
 static void fbt_jank_thread_restore(int pid)
 {
 	int i;
-	int garbage;
+	int garbage = 0;
 	int is_dep = 0;
 	int min_cap_final = 0, max_cap_final = 100;
 	int min_cap_base = 0;
