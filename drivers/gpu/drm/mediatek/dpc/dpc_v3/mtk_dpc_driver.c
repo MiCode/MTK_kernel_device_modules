@@ -3106,8 +3106,6 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	funcs_v3.dpc_config = priv->config;
 
 	if (priv->mmsys_id == MMSYS_MT6993) {
-		funcs_v3.dpc_config = NULL;
-		funcs_v3.dpc_group_enable = NULL;
 		funcs_v3.dpc_mtcmos_auto = NULL;
 		funcs_v3.dpc_mtcmos_vote = NULL;
 		funcs_v3.dpc_dsi_pll_set = NULL;
