@@ -68,7 +68,6 @@ obj-$(CONFIG_MTK_PBM) += pbm/
 obj-$(CONFIG_MTK_CCU) += ccu/src/
 obj-$(CONFIG_MEDIATEK_CPU_DVFS) += cpufreq_v2/
 obj-$(CONFIG_MTK_UNIFIED_POWER) += upower/
-obj-$(CONFIG_MEDIATEK_CCI_DEBUG_LITE) += cci_lite/
 obj-$(CONFIG_MTK_PTPOD_GPU) += eemgpu/
 obj-$(CONFIG_MTK_PTPOD_LEGACY) += eem_v2/
 obj-$(CONFIG_MTK_MKP) += mkp/
