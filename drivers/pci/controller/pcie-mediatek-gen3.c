@@ -1367,6 +1367,10 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 		if (port->port_num == 0)
 			mtk_pcie_disable_data_trans(port->port_num);
 
+		int_enable = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
+		int_enable &= ~PCIE_AXI_POST_ERR_ENABLE;
+		writel_relaxed(int_enable, port->base + PCIE_INT_ENABLE_REG);
+
 		writel_relaxed(PCIE_AXI_POST_ERR_EVT, port->base + PCIE_INT_STATUS_REG);
 		dev_info(port->dev, "PCIe error %#lx detected\n", status);
 	}
