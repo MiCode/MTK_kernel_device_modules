@@ -1170,7 +1170,7 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 }
 
 __no_kcsan
-void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int flags)
+void vip_dequeue_task(struct rq *rq, struct task_struct *p)
 {
 	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
@@ -1365,10 +1365,6 @@ void register_vip_hooks(void)
 	ret = register_trace_android_rvh_replace_next_task_fair(vip_replace_next_task_fair, NULL);
 	if (ret)
 		pr_info("register replace_next_task_fair hooks failed, returned %d\n", ret);
-
-	ret = register_trace_android_rvh_after_dequeue_task(vip_dequeue_task, NULL);
-	if (ret)
-		pr_info("register after_dequeue_task hooks failed, returned %d\n", ret);
 }
 
 void vip_init(void)

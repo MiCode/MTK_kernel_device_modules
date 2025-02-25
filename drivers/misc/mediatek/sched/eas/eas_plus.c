@@ -813,6 +813,12 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	irq_log_store();
 }
 
+void mtk_hook_after_dequeue_task(void *data, struct rq *rq,
+				struct task_struct *p, int flags)
+{
+	vip_dequeue_task(rq, p);
+}
+
 #if IS_ENABLED(CONFIG_MTK_OPP_CAP_INFO) && IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)
 static inline
 unsigned long aligned_freq_to_legacy_freq(int cpu, unsigned long freq)
