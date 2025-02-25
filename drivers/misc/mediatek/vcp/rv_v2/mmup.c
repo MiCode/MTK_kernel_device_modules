@@ -137,6 +137,7 @@ static bool mmup_ipi_table_init(struct mtk_mbox_device *mmup_mboxdev, struct pla
 		recv_item_num = 4
 	};
 	u32 i = 0, ret = 0, mbox_id = 0, recv_opt = 0;
+	int size = 0;
 
 	of_property_read_u32(pdev->dev.of_node, "mbox-count", &mmup_mboxdev->count);
 	if (!mmup_mboxdev->count) {
@@ -144,17 +145,25 @@ static bool mmup_ipi_table_init(struct mtk_mbox_device *mmup_mboxdev, struct pla
 		return false;
 	}
 
-	mmup_mboxdev->send_count =
-		of_property_count_u32_elems(pdev->dev.of_node, "send-table") / send_item_num;
-	if (mmup_mboxdev->send_count <= 0) {
+	size = of_property_count_u32_elems(pdev->dev.of_node, "send-table");
+	if (size <= 0) {
 		pr_notice("[MMUP] mmup send table not found\n");
 		return false;
 	}
+	mmup_mboxdev->send_count = size / send_item_num;
+	if (sizeof(struct mtk_mbox_pin_send) > ULONG_MAX / mmup_mboxdev->send_count) {
+		pr_notice("[MMUP][ERROR] send_count:%u overflow.\n", mmup_mboxdev->send_count);
+		return false;
+	}
 
-	mmup_mboxdev->recv_count =
-		of_property_count_u32_elems(pdev->dev.of_node, "recv-table") / recv_item_num;
-	if (mmup_mboxdev->recv_count <= 0) {
+	size = of_property_count_u32_elems(pdev->dev.of_node, "recv-table");
+	if (size <= 0) {
 		pr_notice("[MMUP] mmup recv table not found\n");
+		return false;
+	}
+	mmup_mboxdev->recv_count = size / recv_item_num;
+	if (sizeof(struct mtk_mbox_pin_recv) > ULONG_MAX / mmup_mboxdev->recv_count) {
+		pr_notice("[MMUP][ERROR] recv_count:%u overflow.\n", mmup_mboxdev->recv_count);
 		return false;
 	}
 	/* alloc and init mmup_mbox_info */
