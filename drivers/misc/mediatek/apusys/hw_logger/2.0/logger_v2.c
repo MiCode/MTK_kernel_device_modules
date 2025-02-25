@@ -99,10 +99,10 @@ int logger_v2_get_buf_info(enum LOG_BUFF_TYPE buff_type,
 	return 0;
 }
 
-void logger_v2_get_r_w_ofs(unsigned int *r_ofs, unsigned int *w_ofs)
+unsigned int logger_v2_get_w_ofs(void)
 {
 	int reader_lock;
-	uint32_t r_ptr_reg = 0, w_ptr_reg = 0;
+	unsigned int w_ptr_reg = 0, w_ofs = 0;
 
 	/* reader_lock return value:
 	*   0: semaphore acquired successfully
@@ -112,33 +112,24 @@ void logger_v2_get_r_w_ofs(unsigned int *r_ofs, unsigned int *w_ofs)
 	reader_lock = logger_v2_counting_hw_sema_reader_trylock();
 
 	if (reader_lock == 0) {
-		r_ptr_reg = ioread32(APU_LOG_BUF_R_PTR);
 		w_ptr_reg = ioread32(APU_LOG_BUF_W_PTR);
 		logger_v2_counting_hw_sema_reader_unlock();
 	} else if (reader_lock != -EBUSY) {
 		HWLOGR_INFO("hw_sema_reader_trylock operation error: %d\n", reader_lock);
 	}
 
-	// HWLOGR_DBG("reader_lock: 0x%08x\n", reader_lock);
+	if (w_ptr_reg == 0)
+		w_ofs = ioread32(LOG_W_OFS_MBOX);
+	else
+		w_ofs = ((unsigned long long)w_ptr_reg << 4) - np_log_buf.iova;
 
-	if (r_ptr_reg == 0 || w_ptr_reg == 0) {
-		*r_ofs = ioread32(LOG_R_OFS_MBOX);
-		*w_ofs = ioread32(LOG_W_OFS_MBOX);
-		// HWLOGR_DBG("read from mbox w_ofs = 0x%x, r_ofs = 0x%x "
-		// 			"pwr_status = 0x%x\n", *w_ofs, *r_ofs, pwr_status);
-	} else {
-		/* hw log w/r_ptr is a 36bit addr but store in a 32bit feild */
-		*r_ofs = ((unsigned long long)r_ptr_reg << 4) - np_log_buf.iova;
-		*w_ofs = ((unsigned long long)w_ptr_reg << 4) - np_log_buf.iova;
-		// HWLOGR_DBG("read from reg w_ofs = 0x%x, r_ofs = 0x%x\n",
-		// 			*w_ofs, *r_ofs);
-	}
+	return w_ofs;
 }
 
 static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 {
 	int reader_lock;
-	unsigned int ctrl_flag = 0;
+	unsigned int ctrl_flag = 0, w_ptr_reg = 0, r_ptr_reg = 0;
 	unsigned long long handler_start_time;
 
 	handler_start_time = sched_clock();
@@ -148,7 +139,10 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 
 	if (reader_lock == 0) {
 		ctrl_flag = ioread32(APU_LOGTOP_CON_ADDR);
+		r_ptr_reg = ioread32(APU_LOG_BUF_R_PTR);
+		w_ptr_reg = ioread32(APU_LOG_BUF_W_PTR);
 		iowrite32(ctrl_flag, APU_LOGTOP_CON_ADDR);
+		iowrite32(w_ptr_reg, APU_LOG_BUF_R_PTR);
 		HWLOGR_DBG("w1c ctrl_flag = 0x%x\n", ctrl_flag);
 
 		logger_v2_counting_hw_sema_reader_unlock();
@@ -159,8 +153,8 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 		HWLOGR_INFO("hw_sema_reader_trylock operation error: %d\n", reader_lock);
 	}
 
-	HWLOGR_INFO("intr status = 0x%x handler_time = %lld ms\n",
-		ctrl_flag, (sched_clock() - handler_start_time) / 1000);
+	HWLOGR_INFO("intr status = 0x%x r_ptr = 0x%x w_ptr = 0x%x handler_time = %lld ms\n",
+		ctrl_flag, r_ptr_reg, w_ptr_reg, (sched_clock() - handler_start_time) / 1000);
 	return IRQ_HANDLED;
 }
 

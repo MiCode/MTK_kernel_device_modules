@@ -178,16 +178,15 @@ static int proc_log_level_sqopen(struct inode *inode, struct file *file)
 
 static int proc_debug_attr_seq_show(struct seq_file *s, void *v)
 {
-	unsigned int raw_r_ofs = 0, raw_w_ofs = 0, raw_buf_size = 0;
+	unsigned int raw_w_ofs = 0, raw_buf_size = 0;
 	unsigned long flags;
 	char *raw_buf_base;
 
 	logger_v2_get_buf_info(LOG_BUFF_NP, &raw_buf_base, &raw_buf_size);
-	logger_v2_get_r_w_ofs(&raw_r_ofs, &raw_w_ofs);
+	raw_w_ofs = logger_v2_get_w_ofs();
 
-	seq_printf(s, "raw_buf_base: 0x%p \n raw_buf_size: 0x%08x \n "
-				"raw_r_ofs: 0x%08x \n raw_w_ofs: 0x%08x \n",
-				raw_buf_base, raw_buf_size, raw_r_ofs, raw_w_ofs);
+	seq_printf(s, "raw_buf_base: 0x%p\nraw_buf_size: 0x%08x\nraw_w_ofs: 0x%08x\n",
+		raw_buf_base, raw_buf_size, raw_w_ofs);
 
 	spin_lock_irqsave(&prev_block_session_lock, flags);
 	seq_printf(s, "prev_block_session_r_ofs: 0x%08x \n "
@@ -401,13 +400,10 @@ static void *seq_next(struct seq_file *s, void *v, loff_t *pos)
 static unsigned int block_and_wait_log(
 	unsigned int timeout, struct seq_local_data *session)
 {
-	unsigned int raw_r_ofs = 0, raw_w_ofs = 0, cnt = 0;
+	unsigned int raw_w_ofs = 0, cnt = 0;
 
 	do {
-		logger_v2_get_r_w_ofs(&raw_r_ofs, &raw_w_ofs);
-
-		// HWLOGR_DBG("polling cnt: %u raw_r_ofs: 0x%08x raw_r_ofs: 0x%08x r_ofs: 0x%08x\n",
-		// 	cnt, raw_r_ofs, raw_r_ofs, session->r_ofs);
+		raw_w_ofs = logger_v2_get_w_ofs();
 
 		if (session->r_ofs != raw_w_ofs) {
 			if (raw_w_ofs > session->r_ofs)
@@ -418,7 +414,7 @@ static unsigned int block_and_wait_log(
 
 		/* sleep and check if ctrl-c input */
 		usleep_range(WAIT_LOG_INTERVAL_MIN, WAIT_LOG_INTERVAL_MAX);
-	} while(!signal_pending(current) && ++cnt < timeout);
+	} while(!signal_pending(current) && cnt++ < timeout);
 
 	return 0;
 }
@@ -426,7 +422,7 @@ static unsigned int block_and_wait_log(
 static void *seq_start(struct seq_file *s, loff_t *pos, bool block_mode)
 {
 	struct seq_local_data *session;
-	unsigned int raw_r_ofs = 0, raw_w_ofs = 0, raw_buf_size = 0;
+	unsigned int raw_w_ofs = 0, raw_buf_size = 0;
 	unsigned long flags;
 	char *raw_buf_base, *new_seq_buf;
 	enum e_seq_mode seq_mode;
@@ -478,7 +474,7 @@ static void *seq_start(struct seq_file *s, loff_t *pos, bool block_mode)
 
 	switch(seq_mode) {
 	case SEQ_MODE_NONBLOCK:
-		logger_v2_get_r_w_ofs(&raw_r_ofs, &raw_w_ofs);
+		raw_w_ofs = logger_v2_get_w_ofs();
 		session->r_ofs = raw_w_ofs;
 		session->padding_to_flush = raw_buf_size;
 		break;
@@ -488,7 +484,7 @@ static void *seq_start(struct seq_file *s, loff_t *pos, bool block_mode)
 			prev_mb_log_session.init = true;
 			spin_unlock_irqrestore(&prev_mb_log_session_lock, flags);
 			/* show whole raw buffer */
-			logger_v2_get_r_w_ofs(&raw_r_ofs, &raw_w_ofs);
+			raw_w_ofs = logger_v2_get_w_ofs();
 			session->r_ofs = raw_w_ofs;
 			session->padding_to_flush = raw_buf_size;
 		} else {
@@ -520,7 +516,7 @@ static void *seq_start(struct seq_file *s, loff_t *pos, bool block_mode)
 					" previous pos %lld\n", *pos, prev_block_session.pos);
 			spin_unlock_irqrestore(&prev_block_session_lock, flags);
 			/* show whole raw buffer */
-			logger_v2_get_r_w_ofs(&raw_r_ofs, &raw_w_ofs);
+			raw_w_ofs = logger_v2_get_w_ofs();
 			session->r_ofs = raw_w_ofs;
 			session->padding_to_flush = raw_buf_size;
 		}
@@ -576,10 +572,28 @@ static void seq_stop(struct seq_file *s, void *v)
 
 static unsigned int seq_poll(struct file *file, poll_table *wait)
 {
+	unsigned int ret = 0, raw_w_ofs = 0;
+	unsigned long flags;
 	HWLOGR_DBG("+");
+
+	if (!(file->f_mode & FMODE_READ))
+		return ret;
+
 	poll_wait(file, &apusys_mblog_wait_queue, wait);
+
+	raw_w_ofs = logger_v2_get_w_ofs();
+
+	spin_lock_irqsave(&prev_mb_log_session_lock, flags);
+	if (!prev_mb_log_session.init)
+		ret = POLLIN | POLLRDNORM;
+	else {
+		if (prev_mb_log_session.r_ofs != raw_w_ofs)
+			ret = POLLIN | POLLRDNORM;
+	}
+	spin_unlock_irqrestore(&prev_mb_log_session_lock, flags);
+
 	HWLOGR_DBG("-");
-	return POLLIN | POLLRDNORM;
+	return ret;
 }
 
 static const struct seq_operations log_buf_seq_block_ops = {

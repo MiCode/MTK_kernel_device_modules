@@ -14,7 +14,7 @@
 #define PROC_WRITE_BUFSIZE      (64)
 #define WAIT_LOG_INTERVAL_MIN   (1000)
 #define WAIT_LOG_INTERVAL_MAX   (1500)
-#define MB_LOG_WAIT_TIMEOUT     (5)
+#define MB_LOG_WAIT_TIMEOUT     (2)
 #define BLOCK_LOG_WAIT_TIMEOUT  (UINT_MAX)
 #define HWLOG_BINARY_HEADER     (0xA5)
 

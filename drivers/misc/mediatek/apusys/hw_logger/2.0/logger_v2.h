@@ -17,6 +17,6 @@ void logger_v2_buf_invalidate(enum LOG_BUFF_TYPE buff_type);
 void logger_v2_clear_buf(enum LOG_BUFF_TYPE buff_type);
 int logger_v2_get_buf_info(enum LOG_BUFF_TYPE buff_type,
 	char **buf_base, unsigned int *buf_size);
-void logger_v2_get_r_w_ofs(unsigned int *r_ofs, unsigned int *w_ofs);
+unsigned int logger_v2_get_w_ofs(void);
 
 #endif /* __LOGGER_V2_PALT_H__ */
