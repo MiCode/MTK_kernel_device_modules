@@ -958,7 +958,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 		out_width = in_width;
 	}
 
-	if (tdshp_data->set_partial_update != 1) {
+	if (tdshp_data->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 		in_val = (in_width << 16) | (cfg->h);
 		out_val = (out_width << 16) | (cfg->h);
 	} else {
@@ -994,7 +994,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET,
 				tdshp_data->tile_overhead.comp_overhead << 16 | 0, ~0);
 	} else {
-		if (tdshp_data->set_partial_update != 1)
+		if (tdshp_data->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_TDSHP_OUTPUT_OFFSET, 0x0, ~0);
 		else
@@ -1249,7 +1249,7 @@ static int disp_tdshp_set_partial_update(struct mtk_ddp_comp *comp,
 			__func__, mtk_dump_comp_str(comp), top_overhead_v,
 			bot_overhead_v, top_comp_overhead_v, bot_comp_overhead_v);
 
-	if (tdshp_data->set_partial_update == 1) {
+	if (tdshp_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_INPUT_SIZE,
 			tdshp_data->roi_height + top_overhead_v + bot_overhead_v, 0xffff);

@@ -927,7 +927,7 @@ static void mtk_mdp_rsz_config(struct mtk_ddp_comp *comp,
 	}
 	rsz_config->th[0].ori_in_len = rsz_config->frm_in_h;
 	rsz_config->th[0].ori_out_len = rsz_config->frm_out_h;
-	if (rsz->set_partial_update != 1) {
+	if (rsz->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 		rsz_config->frm_in_h = cfg->rsz_src_h;
 		rsz_config->frm_out_h = cfg->h;
 		rsz_config->th[0].par_update_y =  false;
@@ -1319,7 +1319,7 @@ static int mtk_mdp_rsz_set_partial_update(struct mtk_ddp_comp *comp,
 	//set rsz params
 	th[0].ori_in_len = full_in_height;
 	th[0].ori_out_len = full_out_height;
-	if (rsz->set_partial_update == 1) {
+	if (rsz->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		frm_in_h = full_in_height;
 		frm_out_h = rsz->roi_height;
 		th[0].par_update_y = true;

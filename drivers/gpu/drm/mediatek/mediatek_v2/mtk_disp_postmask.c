@@ -330,7 +330,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 		value |= REG_FLD_VAL((BYPASS_SHADOW), 1);
 	mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SHADOW_CTRL, handle);
 
-	if (postmask->set_partial_update != 1)
+	if (postmask->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		value = (width << 16) + cfg->h;
 	else {
 		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
@@ -349,7 +349,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 		DDPINFO("postmask_en[%d]\n", panel_ext->round_corner_en);
 
 	if (panel_ext && panel_ext->round_corner_en) {
-		if (postmask->set_partial_update != 1) {
+		if (postmask->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 			value = (REG_FLD_VAL((PAUSE_REGION_FLD_RDMA_PAUSE_START),
 				     panel_ext->corner_pattern_height) |
 			 REG_FLD_VAL(
@@ -434,7 +434,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 		} else if (comp->mtk_crtc->round_corner_gem &&
 			   panel_ext->corner_pattern_tp_size) {
 			gem = comp->mtk_crtc->round_corner_gem;
-			if (postmask->set_partial_update != 1) {
+			if (postmask->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 				addr = gem->dma_addr;
 				size = panel_ext->corner_pattern_tp_size;
 			} else {
@@ -444,7 +444,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 		}
 		DDPINFO("POSTMASK_DRAM_MODE\n");
 
-		if (postmask->set_partial_update == 1)
+		if (postmask->set_partial_update == MTK_PARTIAL_UPDATE_SISO)
 			force_relay = postmask->pu_force_relay;
 		if (addr == 0 || size == 0) {
 			DDPPR_ERR("invalid postmaks addr/size\n");
@@ -872,7 +872,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 
 	DDPDBG("%s, ori addr = 0x%pa, ori size = %d\n", __func__, &addr, size);
 
-	if (postmask->set_partial_update == 1) {
+	if (postmask->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_POSTMASK_SIZE,
 			postmask->roi_height + top_overhead_v + bot_overhead_v, 0x1fff);

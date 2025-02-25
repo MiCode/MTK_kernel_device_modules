@@ -2571,7 +2571,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	/* scaling path */
 	if (mtk_crtc && mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
-		if (dsi->set_partial_update != 1)
+		if (dsi->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 			height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base,
 								comp, false);
 		else
@@ -2579,7 +2579,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	} else {
 		if (!dsi->is_slave) {
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
-			if (dsi->set_partial_update != 1)
+			if (dsi->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 				height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
 			else
 				height = dsi->roi_height;
@@ -2818,7 +2818,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	/* scaling path */
 	if (mtk_crtc && mtk_crtc->scaling_ctx.scaling_en) {
 		width = mtk_crtc_get_width_by_comp(__func__, &mtk_crtc->base, comp, false);
-		if (dsi->set_partial_update != 1)
+		if (dsi->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 			height = mtk_crtc_get_height_by_comp(__func__, &mtk_crtc->base,
 								comp, false);
 		else
@@ -2826,7 +2826,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	} else {
 		if (!dsi->is_slave) {
 			width = mtk_dsi_get_virtual_width(dsi, dsi->encoder.crtc);
-			if (dsi->set_partial_update != 1)
+			if (dsi->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 				height = mtk_dsi_get_virtual_heigh(dsi, dsi->encoder.crtc);
 			else
 				height = dsi->roi_height;
@@ -14935,7 +14935,7 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DSI_PU_CON0, val, mask);
 	}
 
-	if (dsi->set_partial_update == 1) {
+	if (dsi->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_VACT_NL(dsi->driver_data),
 			dsi->roi_height, ~0);
@@ -14957,7 +14957,7 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, full_height);
 
 		// PU BISO mode
-		if (dsi->set_partial_update == 2 &&
+		if (dsi->set_partial_update == MTK_PARTIAL_UPDATE_BISO &&
 			dsi->driver_data->support_pu_con &&
 			panel_ext->params->lp_perline_en == 1) {
 			DDPDBG("%s, %s PU BISO mode, height:%d, enable:%d\n",
@@ -15007,8 +15007,8 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
-		if (dsi->set_partial_update == 1 ||
-			(dsi->set_partial_update == 2 &&
+		if (dsi->set_partial_update == MTK_PARTIAL_UPDATE_SISO ||
+			(dsi->set_partial_update == MTK_PARTIAL_UPDATE_BISO &&
 			dsi->driver_data->support_pu_con &&
 			panel_ext->params->lp_perline_en == 1))
 			panel_ext->funcs->lcm_update_roi_cmdq_v2(dsi,
@@ -15020,8 +15020,8 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			full_width, full_height, &cmd_opt);
 	} else if (panel_ext && panel_ext->funcs
 		&& panel_ext->funcs->lcm_update_roi_cmdq) {
-		if (dsi->set_partial_update == 1 ||
-			(dsi->set_partial_update == 2 &&
+		if (dsi->set_partial_update == MTK_PARTIAL_UPDATE_SISO ||
+			(dsi->set_partial_update == MTK_PARTIAL_UPDATE_BISO &&
 			dsi->driver_data->support_pu_con &&
 			panel_ext->params->lp_perline_en == 1))
 			panel_ext->funcs->lcm_update_roi_cmdq(dsi,

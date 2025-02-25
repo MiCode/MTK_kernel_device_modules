@@ -872,8 +872,8 @@ int mtkfb_set_partial_update(unsigned int y_offset, unsigned int height)
 {
 	int ret = 0;
 
-	if (partial_force_roi != 2)
-		mtkfb_set_force_partial_roi(1);
+	if (partial_force_roi != MTK_PARTIAL_UPDATE_BISO)
+		mtkfb_set_force_partial_roi(MTK_PARTIAL_UPDATE_SISO);
 	partial_y_offset = y_offset;
 	partial_height = height;
 

@@ -1126,7 +1126,7 @@ static int disp_ccorr_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
 			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
-	if (ccorr_data->set_partial_update == 1) {
+	if (ccorr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_REG_CCORR_SIZE,
 				ccorr_data->roi_height + top_overhead_v + bot_overhead_v, 0x1fff);
@@ -1225,7 +1225,7 @@ static void disp_ccorr_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_REG_CCORR_CFG,
 				primary_data->ccorr_8bit_switch << 10, 0x1 << 10);
-	if (ccorr_data->set_partial_update != 1)
+	if (ccorr_data->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_CCORR_SIZE,
 			(width << 16) | cfg->h, ~0);

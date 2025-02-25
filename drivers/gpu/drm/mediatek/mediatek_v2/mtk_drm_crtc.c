@@ -10497,7 +10497,7 @@ void update_layer_cap_for_bwm(struct drm_crtc *crtc,
 
 	plane_mask = old_crtc_state->plane_mask;
 
-	if (partial_enable == 1) {
+	if (partial_enable == MTK_PARTIAL_UPDATE_SISO) {
 		drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 			struct mtk_plane_state *plane_state =
 				to_mtk_plane_state(plane->state);
@@ -18448,7 +18448,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	dma_addr_t msync_slot_addr;
 	bool msync20_status_changed = 0;
 	struct mtk_ddp_comp *output_comp;
-	unsigned int partial_enable = 0;
+	unsigned int partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client;
 #endif
@@ -20836,56 +20836,56 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	/* disable partial update if rpo lye is exist */
 	if (state->lye_state.rpo_lye && partial_enable) {
 		DDPDBG("skip because rpo lye is exist\n");
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 #endif
 
 	/* disable partial update if mml_ir lye is exist */
 	if (state->lye_state.mml_ir_lye && partial_enable) {
 		DDPDBG("skip because mml_ir lye is exist\n");
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
 	/* disable partial update if dal lye is exist */
 	if (mtk_drm_dal_enable() && partial_enable) {
 		DDPDBG("skip because dal lye is exist\n");
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
 #ifdef IF_ZERO
 	/* disable partial update if res switch is enable*/
 	if (mtk_crtc->scaling_ctx.scaling_en) {
 		DDPDBG("skip because res switch is enable\n");
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 #endif
 
 	/* disable partial update if doze mode is enable*/
 	if (state->prop_val[CRTC_PROP_DOZE_ACTIVE] && partial_enable) {
 		DDPDBG("skip because doze mode is enable\n");
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
-	if (partial_enable == 1 &&
+	if (partial_enable == MTK_PARTIAL_UPDATE_SISO &&
 		((mtk_crtc->capturing == true) ||
 		(mtk_crtc->dbi_trigger== true))) {
 		DDPDBG("skip or switch to BISO because cwb is enable\n");
-		partial_enable = 2;
+		partial_enable = MTK_PARTIAL_UPDATE_BISO;
 	}
 
 	if (mtk_crtc->recovery_flg == true) {
 		DDPINFO("esd recovery need one full frame\n");
 		mtk_crtc->recovery_flg = false;
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
 	if (old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX] ==
 		state->prop_val[CRTC_PROP_PRES_FENCE_IDX]) {
 		DDPDBG("skip because pres fence idx is equal to old\n");
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
-	if (partial_enable != 0)
+	if (partial_enable != MTK_PARTIAL_UPDATE_BIBO)
 		mtk_crtc_partial_compute_ovl_roi(crtc, &partial_roi);
 	else
 		_assign_full_lcm_roi(crtc, &partial_roi, true);
@@ -20904,7 +20904,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	_assign_full_lcm_roi(crtc, &full_roi, true);
 
 	/* disable partial update if partial roi overlap with round corner */
-	if (partial_enable == 1 &&
+	if (partial_enable == MTK_PARTIAL_UPDATE_SISO &&
 		mtk_crtc->panel_ext->params->round_corner_en &&
 		!(mtk_crtc->panel_ext->params->corner_pattern_size_per_line) &&
 		((partial_roi.y < mtk_crtc->panel_ext->params->corner_pattern_height) ||
@@ -20912,10 +20912,10 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		mtk_crtc->panel_ext->params->corner_pattern_height_bot))) {
 		DDPDBG("skip because partial roi overlap with corner pattern\n");
 		_assign_full_lcm_roi(crtc, &partial_roi, true);
-		partial_enable = 0;
+		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
-	if (partial_enable == 1 &&
+	if (partial_enable == MTK_PARTIAL_UPDATE_SISO &&
 		!_is_equal_full_lcm(crtc, &partial_roi)) {
 		memset(&tile_overhead_v, 0, sizeof(tile_overhead_v));
 		/* calculate total overhead vertical */
@@ -20932,23 +20932,23 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	}
 
 	/*  adjust partial roi if total overhead_v exceed the bounds */
-	if (partial_enable == 1 &&
+	if (partial_enable == MTK_PARTIAL_UPDATE_SISO &&
 		partial_roi.y < mtk_crtc->tile_overhead_v.top_overhead_v) {
 		mtk_crtc->tile_overhead_v.top_overhead_v = 0;
 		mtk_crtc->tile_overhead_v.top_overhead_v_scaling = 0;
 		if (partial_roi.y != 0) {
 			_assign_full_lcm_roi(crtc, &partial_roi, true);
-			partial_enable = 0;
+			partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 		}
 	}
-	if (partial_enable == 1 &&
+	if (partial_enable == MTK_PARTIAL_UPDATE_SISO &&
 		partial_roi.y + partial_roi.height >=
 		full_roi.height - mtk_crtc->tile_overhead_v.bot_overhead_v) {
 		mtk_crtc->tile_overhead_v.bot_overhead_v = 0;
 		mtk_crtc->tile_overhead_v.bot_overhead_v_scaling = 0;
 		if (partial_roi.y + partial_roi.height != full_roi.height) {
 			_assign_full_lcm_roi(crtc, &partial_roi, true);
-			partial_enable = 0;
+			partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 		}
 	}
 
@@ -20963,7 +20963,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	state->ovl_partial_roi = partial_roi;
 
 	/* set ovl_partial_dirty if roi is full lcm or BISO mode */
-	if (_is_equal_full_lcm(crtc, &partial_roi) || partial_enable == 2)
+	if (_is_equal_full_lcm(crtc, &partial_roi) || partial_enable == MTK_PARTIAL_UPDATE_BISO)
 		state->ovl_partial_dirty = 0;
 	else
 		state->ovl_partial_dirty = 1;
@@ -21018,7 +21018,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_POSTMASK &&
 			!(mtk_crtc->panel_ext->params->corner_pattern_size_per_line))) {
 			if (comp->funcs && comp->funcs->bypass)
-				mtk_ddp_comp_bypass(comp, (partial_enable == 1) ? 1 : 0,
+				mtk_ddp_comp_bypass(comp,
+					(partial_enable == MTK_PARTIAL_UPDATE_SISO) ? 1 : 0,
 					PQ_FEATURE_KRN_PU, cmdq_handle);
 		}
 	}

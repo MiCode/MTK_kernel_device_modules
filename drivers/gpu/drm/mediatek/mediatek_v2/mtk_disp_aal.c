@@ -2758,7 +2758,7 @@ static int disp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
 			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
-	if (aal_data->set_partial_update == 1) {
+	if (aal_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_AAL_SIZE,
 				aal_data->roi_height + top_overhead_v + bot_overhead_v, 0x0FFF);
@@ -3217,7 +3217,7 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 		AALFLOW_LOG("size available: (w,h)=(%d,%d)+\n", width, height);
 	}
 
-	if (aal_data->set_partial_update != 1) {
+	if (aal_data->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 		val = (width << 16) | (height);
 		out_val = (out_width << 16) | height;
 	} else {

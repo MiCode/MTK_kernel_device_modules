@@ -800,7 +800,7 @@ static void disp_c3d_config(struct mtk_ddp_comp *comp,
 			width = cfg->w;
 	}
 
-	if (c3d_data->set_partial_update != 1)
+	if (c3d_data->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + C3D_SIZE, (width << 16) | cfg->h, ~0);
 	else {
@@ -1086,7 +1086,7 @@ static int disp_c3d_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
 			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
-	if (c3d_data->set_partial_update == 1) {
+	if (c3d_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + C3D_SIZE,
 				   c3d_data->roi_height + top_overhead_v + bot_overhead_v, 0xffff);

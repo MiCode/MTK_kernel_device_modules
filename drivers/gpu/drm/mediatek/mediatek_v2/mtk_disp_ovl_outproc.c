@@ -298,7 +298,7 @@ static void mtk_ovl_outproc_config(struct mtk_ddp_comp *comp,
 	} else
 		width = cfg->w;
 
-	if (outproc->set_partial_update != 1)
+	if (outproc->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		height = cfg->h;
 	else
 		height = outproc->roi_height;
@@ -718,7 +718,7 @@ static int mtk_ovl_outproc_set_partial_update(struct mtk_ddp_comp *comp,
 			__func__, mtk_dump_comp_str(comp),
 			top_overhead_v, bot_overhead_v, outproc->roi_height);
 
-	if (outproc->set_partial_update == 1) {
+	if (outproc->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
 				outproc->roi_height << 16, 0x1fff << 16);

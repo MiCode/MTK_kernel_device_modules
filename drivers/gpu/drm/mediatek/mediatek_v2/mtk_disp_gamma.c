@@ -720,7 +720,7 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			width = cfg->w;
 	}
 
-	if (gamma->set_partial_update != 1)
+	if (gamma->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SIZE,
 			(width << 16) | cfg->h, ~0);
@@ -990,7 +990,7 @@ static int disp_gamma_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
 			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
-	if (gamma->set_partial_update == 1) {
+	if (gamma->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_GAMMA_SIZE,
 				   gamma->roi_height + top_overhead_v + bot_overhead_v, 0xffff);

@@ -342,7 +342,7 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 		enable << 1 | ((primary_data->relay_state != 0) || !enable),
 		(0x1 << 1) | DITHER_RELAY_MODE);
 
-	if (dither_data->set_partial_update != 1)
+	if (dither_data->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
 			width << 16 | cfg->h, ~0);
@@ -676,7 +676,7 @@ static int disp_dither_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
 			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
-	if (dither_data->set_partial_update == 1) {
+	if (dither_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_DITHER_SIZE,
 			dither_data->roi_height + top_overhead_v + bot_overhead_v, 0x1fff);

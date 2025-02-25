@@ -212,7 +212,7 @@ static void disp_mdp_aal_config(struct mtk_ddp_comp *comp,
 		out_width = width;
 	}
 
-	if (data->set_partial_update != 1) {
+	if (data->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 		size = (width << 16) | cfg->h;
 		out_size = (out_width << 16) | cfg->h;
 	} else {
@@ -342,7 +342,7 @@ static void disp_mdp_aal_update_pu_region_setting(struct mtk_ddp_comp *comp,
 	blk_y_start_idx = roi_height_y_start / blk_height;
 	blk_y_end_idx = roi_height_y_end / blk_height;
 
-	if (dmdp_aal->set_partial_update == 1) {
+	if (dmdp_aal->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		// blk_num_y
 		blk_num_y_start = blk_y_start_idx;
 		blk_num_y_end = blk_y_end_idx;
@@ -391,7 +391,7 @@ static int disp_mdp_aal_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s overhead_v T:%d overhead_v B:%d\n",
 			__func__, mtk_dump_comp_str(comp), top_overhead_v, bot_overhead_v);
 
-	if (data->set_partial_update == 1) {
+	if (data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DMDP_AAL_SIZE,
 				data->roi_height + top_overhead_v + bot_overhead_v, 0x0FFFF);
 		cmdq_pkt_write(handle, comp->cmdq_base,

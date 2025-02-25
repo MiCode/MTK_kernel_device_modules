@@ -2217,6 +2217,12 @@ struct mtk_retrig {
 	unsigned int present_fence_idx;
 };
 
+enum MTK_PARTIAL_UPDATE_STATE {
+	MTK_PARTIAL_UPDATE_BIBO,
+	MTK_PARTIAL_UPDATE_SISO,
+	MTK_PARTIAL_UPDATE_BISO
+};
+
 #define DRM_IOCTL_MTK_RETRIG DRM_IOWR(DRM_COMMAND_BASE + DRM_MTK_RETRIG, struct mtk_retrig)
 
 #define MTK_DRM_ADVANCE

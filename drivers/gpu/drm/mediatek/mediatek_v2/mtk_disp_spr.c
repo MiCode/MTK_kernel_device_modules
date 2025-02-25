@@ -1400,7 +1400,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 	} else {
 		postalign_width = cfg->w;
 		width = cfg->w;
-		if (spr->set_partial_update != 1) {
+		if (spr->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 			height = cfg->h;
 			crop_voffset = 0;
 			out_height = cfg->h;
@@ -1522,7 +1522,7 @@ static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 			mtk_ddp_write_mask(postalign_comp, MT6989_POSTALIGN_LUT_EN,
 				MT6989_DISP_REG_POSTALIGN0_CFG, MT6989_POSTALIGN_LUT_EN, handle);
 
-			if (spr->set_partial_update != 1)
+			if (spr->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 				mtk_ddp_write_mask(postalign_comp, out_height << 0,
 					MT6989_DISP_REG_POSTALIGN0_SIZE,
 					REG_FLD_MASK(MT6989_VSIZE), handle);
@@ -1702,7 +1702,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	width = cfg->w; //display system only support v-dir partialupdate, spr align it
 	image_pos_x = cfg->x;
 	output_pos_x = cfg->x;
-	if (spr->set_partial_update != 1) {
+	if (spr->set_partial_update != MTK_PARTIAL_UPDATE_SISO) {
 		height = cfg->h;
 		out_height = cfg->h;
 		image_pos_y = cfg->y;
@@ -1742,7 +1742,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 	//output size config
 	mtk_ddp_write_relaxed(comp, 0,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_X + offset, handle);
-	if (spr->set_partial_update == 1)
+	if (spr->set_partial_update == MTK_PARTIAL_UPDATE_SISO)
 		mtk_ddp_write_relaxed(comp, top_comp_overhead_v, //position based on input
 			MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y + offset, handle);
 	else
@@ -1754,7 +1754,7 @@ static void mtk_spr_config_V3(struct mtk_ddp_comp *comp,
 		MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_HEIGHT + offset, handle);
 	//MTK SPR type config
 	if (spr_params->enable == 1 && spr_params->relay == 0 && comp->mtk_crtc->spr_is_on == 1) {
-		if (spr->set_partial_update == 1) {
+		if (spr->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 			switch(spr_params->spr_format_type) {
 			case MTK_PANEL_RGBG_BGRG_TYPE:
 			case MTK_PANEL_BGRG_RGBG_TYPE:
@@ -2157,7 +2157,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 
 	if (spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_MTK_SPR) {
 		offset = spr->data->mtk_spr_ip_addr_offset;
-		if (spr->set_partial_update == 1) {
+		if (spr->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 			//input size config
 			mtk_ddp_write_relaxed(comp, (partial_roi.y - top_overhead_v),
 				MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y + offset, handle);
@@ -2189,7 +2189,7 @@ static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 		return 0;
 	}
 
-	if (spr->set_partial_update == 1) {
+	if (spr->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
 			(spr->data->version == MTK_SPR_V3 && spr->spr_ip_type == DISP_NVT_SPR)) {
 			mtk_ddp_write_mask(comp, crop_height << 16,

@@ -341,7 +341,7 @@ static void _get_bg_roi(struct mtk_ddp_comp *comp, int *h, int *w)
 {
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 
-	if (bld->set_partial_update != 1)
+	if (bld->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		*h = bld->bg_h;
 	else
 		*h = bld->roi_height;
@@ -388,7 +388,7 @@ static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
 
 	width = cfg->w;
 
-	if (bld->set_partial_update != 1)
+	if (bld->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		height = cfg->h;
 	else
 		height = bld->roi_height;
@@ -1240,7 +1240,7 @@ static int mtk_ovl_blender_set_partial_update(struct mtk_ddp_comp *comp,
 			__func__, mtk_dump_comp_str(comp),
 			top_overhead_v, bot_overhead_v, bld->roi_height);
 
-	if (bld->set_partial_update == 1) {
+	if (bld->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + regs[OVL_BLD_ROI_SIZE],
 				bld->roi_height << 16, 0x1fff << 16);

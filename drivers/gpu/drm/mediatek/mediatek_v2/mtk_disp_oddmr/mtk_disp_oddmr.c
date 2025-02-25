@@ -1497,7 +1497,7 @@ static void mtk_oddmr_od_hsk_6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *pk
 		return;
 	merge_lines = oddmr_data->od_data.merge_lines;
 	hsk_0 = DIV_ROUND_UP(oddmr_data->cfg.comp_in_width * merge_lines, 2); //2p-align/2
-	if (oddmr_data->set_partial_update == 1) {//OD_PU
+	if (oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {//OD_PU
 		unsigned int top_overhead_v =
 						(!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
 						? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
@@ -1615,7 +1615,7 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 		mtk_oddmr_write(comp, 0, MT6991_DISP_ODDMR_OD_UMDA_CTRL_0, pkg);
 		mtk_oddmr_write(comp, line_offset, MT6991_DISP_ODDMR_OD_UMDA_CTRL_1, pkg);
 		mtk_oddmr_write(comp, hsize, MT6991_DISP_ODDMR_OD_UMDA_CTRL_2, pkg);
-		if (oddmr_data->set_partial_update == 1) {//OD_PU
+		if (oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {//OD_PU
 			unsigned int top_overhead_v =
 						(!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
 						? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
@@ -2808,7 +2808,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	}
 
 	/* dmr size config for partial update*/
-	if(oddmr_data->set_partial_update == 1) {
+	if(oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
 				? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
 		bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
@@ -3110,7 +3110,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 			mtk_oddmr_write(comp, addr >> 20, DISP_ODDMR_DMR_UDMA_CTR_5, handle);
 		}
 
-		if(oddmr_data->set_partial_update == 1) {
+		if(oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 			top_overhead_v = (!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
 					? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
 			bot_overhead_v = (!comp->mtk_crtc->tile_overhead_v.bot_overhead_v)
@@ -3456,7 +3456,7 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 			}
 		}
 
-		if (oddmr_data->set_partial_update == 1) {//OD_PU
+		if (oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {//OD_PU
 			unsigned int top_overhead_v =
 						(!comp->mtk_crtc->tile_overhead_v.top_overhead_v)
 						? 0 : oddmr_data->tile_overhead_v.top_overhead_v;
@@ -4210,7 +4210,7 @@ static void mtk_oddmr_od_set_dram(struct mtk_ddp_comp *comp, struct cmdq_pkt *pk
 	if (oddmr_data->data->od_version >= MTK_OD_V2) {
 		if (oddmr_data->od_data.channel != NULL) {
 			addr = oddmr_data->od_data.channel->dma_addr;
-			if (oddmr_data->set_partial_update == 1) {//OD_PU
+			if (oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {//OD_PU
 				if (oddmr_data->od_data.base_line_jump == 0)
 					mtk_oddmr_od_get_dram_size(comp, oddmr_data->cfg.width, oddmr_data->cfg.height,
 							od_param->od_basic_info.basic_param.scaling_mode,
@@ -11477,7 +11477,7 @@ static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
 	ODDMRAPI_LOG("roi_height %d, overhead_v T %d B %d, full_height %d\n",
 		oddmr_data->roi_height, top_overhead_v, bot_overhead_v, full_height);
 	/* oddmr reg config */
-	if (oddmr_data->set_partial_update == 1) {
+	if (oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		if (oddmr_data->data->od_version >= MTK_OD_V2) {
 			//OD UDMA hsize
 			mtk_oddmr_write(comp, (oddmr_data->roi_height + top_overhead_v +
@@ -11596,7 +11596,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 		bot_comp_overhead_v, scale_factor_v);
 
 	/* update y ini */
-	if (oddmr_data->set_partial_update == 1) {
+	if (oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		dbi_y_ini = partial_roi.y - top_overhead_v;
 		dmr_y_ini = partial_roi.y - top_overhead_v;
 	} else {
@@ -11631,7 +11631,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 			dmr_cfg_data->dmr_pu_info.is_compression_mode;
 	}
 	/* oddmr reg config */
-	if (oddmr_data->set_partial_update == 1) {
+	if (oddmr_data->set_partial_update == MTK_PARTIAL_UPDATE_SISO) {
 		if (priv->data->mmsys_id == MMSYS_MT6989) {
 			/* ODDMR on MT6989 not support V crop */
 			mtk_oddmr_write(comp, dbi_y_ini,
