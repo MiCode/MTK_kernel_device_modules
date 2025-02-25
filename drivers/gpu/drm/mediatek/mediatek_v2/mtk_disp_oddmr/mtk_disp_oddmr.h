@@ -503,7 +503,6 @@ enum mtk_dbi_version {
 
 enum mtk_dmr_version {
 	MTK_DMR_V1,
-	MTK_DMR_V2,
 };
 
 enum mtk_od_version {
@@ -668,7 +667,6 @@ struct mtk_disp_oddmr_primary {
 	enum ODDMR_STATE dbi_state;
 	struct mtk_oddmr_od_param od_param;
 	int od_basic_info_loaded;
-	struct mtk_drm_dmr_cfg_info dmr_cfg_info;
 	struct mtk_drm_dmr_cfg_info dmr_multi_bin[MAX_BIN_NUM];
 	struct mtk_drm_oddmr_binset_cfg_info dmr_binset_cfg_info;
 	struct mtk_drm_oddmr_reg_tuning oddmr_reg_tuning_info;
