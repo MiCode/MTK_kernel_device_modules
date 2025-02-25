@@ -141,10 +141,17 @@ alloca_fail:
 
 static int usb_sram_deinit_rsv(struct uo_provider *itself)
 {
+	struct uo_rsv_region *rsv_region = &itself->rsv_region;
+	int ret = 0;
+
+	ret = usb_sram_free_dyn(itself, rsv_region->physical);
+	if (ret)
+		goto error;
+
 	uo_deinit_rsv_pool(itself);
 	uo_rst_rsv_region(&itself->rsv_region);
-
-	return 0;
+error:
+	return ret;
 }
 
 /* return whole usb sram */
