@@ -121,7 +121,8 @@ enum chk_sys_id {
 	mm1 = 108,
 	mm1b = 109,
 	vdisp_ao = 110,
-	chk_sys_num = 111,
+	mminfra_bus_dbg = 111,
+	chk_sys_num = 112,
 };
 
 enum chk_pd_id {
