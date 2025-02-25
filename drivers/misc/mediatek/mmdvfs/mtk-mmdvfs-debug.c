@@ -49,7 +49,7 @@ static int mmdvfs_debug_set_force_step(const char *val, const struct kernel_para
 	return ops.force_step_fp(val, kp);
 }
 
-static struct kernel_param_ops mmdvfs_debug_set_force_step_ops = {
+static const struct kernel_param_ops mmdvfs_debug_set_force_step_ops = {
 	.set = mmdvfs_debug_set_force_step,
 };
 module_param_cb(force_step, &mmdvfs_debug_set_force_step_ops, NULL, 0644);
@@ -65,11 +65,27 @@ static int mmdvfs_debug_set_vote_step(const char *val, const struct kernel_param
 	return ops.vote_step_fp(val, kp);
 }
 
-static struct kernel_param_ops mmdvfs_debug_set_vote_step_ops = {
+static const struct kernel_param_ops mmdvfs_debug_set_vote_step_ops = {
 	.set = mmdvfs_debug_set_vote_step,
 };
 module_param_cb(vote_step, &mmdvfs_debug_set_vote_step_ops, NULL, 0644);
 MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
+
+static int mmdvfs_debug_ap_set_rate(const char *val, const struct kernel_param *kp)
+{
+	if (!ops.ap_set_rate_fp) {
+		pr_notice("[mmdvfs_dbg][dbg]%s:%d: without fp\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	return ops.ap_set_rate_fp(val, kp);
+}
+
+static const struct kernel_param_ops mmdvfs_debug_ap_set_rate_ops = {
+	.set = mmdvfs_debug_ap_set_rate,
+};
+module_param_cb(ap_set_rate, &mmdvfs_debug_ap_set_rate_ops, NULL, 0644);
+MODULE_PARM_DESC(ap_set_rate, "set rate from dummy ap user");
 
 MODULE_DESCRIPTION("MMDVFS Debug Driver");
 MODULE_AUTHOR("Anthony Huang<anthony.huang@mediatek.com>");
