@@ -344,6 +344,92 @@ struct mtk_drm_oddmr_binset_cfg_info {
 	struct mtk_drm_dmr_fps_dbv_node remap_params;
 };
 
+struct mtk_dbi_curve_2d {
+	uint32_t num;
+	union { int32_t *x; uint32_t *ux; float *fx; };
+	union { int32_t *y; uint32_t *uy; float *fy; };
+};
+
+struct mtk_dbi_count_hw_param{
+	// basic gain
+	struct mtk_dbi_curve_2d dbv_gain_curve[3];
+	struct mtk_dbi_curve_2d fps_gain_curve[3];
+	struct mtk_dbi_curve_2d temp_gain_curve[3];
+
+	// irdrop gain
+	uint32_t irdrop_enable;
+	uint32_t irdrop_total_weight[3];
+	struct mtk_dbi_curve_2d irdrop_total_gain_curve;
+	struct mtk_dbi_curve_2d irdrop_ratio_gain_curve[3];
+	struct mtk_dbi_curve_2d irdrop_dbv_gain_curve[3];
+
+	// gain norm (time norm)
+	uint32_t gain_norm[3];
+
+};
+
+
+struct mtk_dbi_count_helper {
+
+	// used with struct pc_dbi_mode_reg_list static_cfg
+	// change by hw counting / hw sampling
+	uint32_t static_hw_counting_mode_index;
+	uint32_t static_hw_sampling_mode_index;
+	uint32_t static_default_mode_index;
+
+	uint32_t hw_sampling_slice_mode;
+
+	// used with struct pc_dbi_mode_reg_list dfmt_cfg
+	// change by spr on/off
+	uint32_t dfmt_rgbg_mode_index;
+	uint32_t dfmt_bgrg_mode_index;
+	uint32_t dfmt_rgb_mode_index;
+
+	// used with struct pc_dbi_hw_count_config hw_count_cfg
+	uint32_t hw_count_temp_offset;
+
+	// data shape after downsampling by spr / counting block size
+	uint32_t in_height;
+	uint32_t in_width;
+	uint32_t in_channel;
+
+};
+
+#define DBI_COUNTING_PARAM_MAX_NUM 10
+
+struct mtk_dbi_reg_list {
+	uint32_t reg_num;
+	uint32_t *addr;
+	uint32_t *mask;
+	uint32_t *value;
+};
+
+struct mtk_dbi_mode_reg_list {
+	uint32_t reg_num;
+	uint32_t *addr;
+	uint32_t *mask;
+	uint32_t mode_num;
+	uint32_t *mode_value; // shape: [mode_num][reg_num]
+};
+
+
+struct mtk_dbi_hw_count_config {
+	uint32_t hw_count_param_num;
+	struct mtk_dbi_count_hw_param hw_count_param[DBI_COUNTING_PARAM_MAX_NUM];
+	//struct mtk_dbi_reg_list hw_count_reg_list;
+	struct mtk_dbi_mode_reg_list code_gain_packed;
+};
+
+#define DBI_COMP_CURVE_NUM 3
+
+enum DBIChannel{
+	DBI_CH_R = 0,
+	DBI_CH_G = 1,
+	DBI_CH_B = 2,
+	DBI_CHANNEL_NUM = 3
+};
+
+
 struct mtk_drm_dbi_cfg_info {
 	struct mtk_drm_dmr_basic_info basic_info;
 	struct mtk_drm_dmr_static_cfg static_cfg;
@@ -351,7 +437,23 @@ struct mtk_drm_dbi_cfg_info {
 	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
 	struct mtk_drm_oddmr_dbv_node dbv_node;
 	struct mtk_drm_oddmr_dbv_chg_cfg dbv_change_cfg;
+
+/*dbi count*/
+	struct mtk_dbi_count_helper count_helper;
+	struct mtk_dbi_hw_count_config count_cfg;
+	struct mtk_dbi_mode_reg_list count_static_cfg;
+	struct mtk_dbi_mode_reg_list count_dfmt_cfg;
 };
+
+struct mtk_dbi_count_buf_cfg{
+
+	uint32_t level;
+	uint32_t capacity_ms;      // ms
+	uint32_t _hw_threshold; // for debug
+	struct mtk_dbi_reg_list buf_reg_list;
+
+};
+
 
 struct bitstream_buffer {
 	uint8_t *_self;
@@ -637,6 +739,7 @@ struct mtk_disp_oddmr {
 	struct icc_path *qos_req_dmrr_hrt;
 	struct icc_path *qos_req_dmrr_stash_hrt;
 	struct icc_path *qos_req_dbir_hrt;
+	struct icc_path *qos_req_dbir_stash_hrt;
 	struct icc_path *qos_req_odr_hrt;
 	struct icc_path *qos_req_odw_hrt;
 	struct icc_path *qos_req_odr_stash_hrt;
