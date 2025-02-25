@@ -15,15 +15,50 @@
 #include <lpm.h>
 #include <lpm_module.h>
 #include <lpm_dbg_common_v2.h>
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+#include <lpm_sys_res.h>
+#endif
 
 static int lpm_dbg_probe(struct platform_device *pdev)
 {
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	device_enable_async_suspend(&(pdev->dev));
+#endif
 	return 0;
 }
 
 #define LPM_KERNEL_SUSPEND "lpm-kernel-suspend"
 
 int kernel_suspend_only;
+
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+static int lpm_dbg_suspend(struct device *dev)
+{
+	int ret = 0;
+	struct lpm_sys_res_ops *sys_res_ops;
+
+	sys_res_ops = get_lpm_sys_res_ops();
+	if (sys_res_ops && sys_res_ops->update)
+		ret = sys_res_ops->update();
+	if (ret)
+		pr_info("[name:spm&][SPM] SWPM data not update[%d]\n", ret);
+
+	return ret;
+}
+
+static int lpm_dbg_resume(struct device *dev)
+{
+	int ret = 0;
+	struct lpm_sys_res_ops *sys_res_ops;
+
+	sys_res_ops = get_lpm_sys_res_ops();
+
+	if (sys_res_ops && sys_res_ops->log)
+		sys_res_ops->log(SYS_RES_LAST_SUSPEND);
+
+	return ret;
+}
+#endif
 
 static int lpm_dbg_suspend_noirq(struct device *dev)
 {
@@ -40,6 +75,10 @@ static int lpm_dbg_suspend_noirq(struct device *dev)
 }
 
 static const struct dev_pm_ops lpm_dbg_pm_ops = {
+#if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
+	.suspend = lpm_dbg_suspend,
+	.resume = lpm_dbg_resume,
+#endif
 	.suspend_noirq = lpm_dbg_suspend_noirq,
 };
 
