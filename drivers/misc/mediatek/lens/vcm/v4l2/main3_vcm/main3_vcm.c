@@ -650,6 +650,10 @@ static long main3_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 		LOG_INF("vcm bits: %d, decimal data: %d\n",
 			g_vcmconfig.vcm_config.vcm_bits,
 			(1 << g_vcmconfig.vcm_config.vcm_bits));
+		if (g_vcmconfig.vcm_config.vcm_bits > 31) {
+			LOG_INF("vcm bits overflow (31 is max), reset to 10\n");
+			g_vcmconfig.vcm_config.vcm_bits = 10;
+		}
 		main3_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
 			  0, (1 << g_vcmconfig.vcm_config.vcm_bits)-1,
 			  MAIN3_VCM_FOCUS_STEPS, 0);

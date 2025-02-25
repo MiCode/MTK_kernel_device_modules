@@ -116,10 +116,12 @@ static inline int getAFInfo(__user struct stAF_MotorInfo *pstMotorInfo)
 
 	stMotorInfo.bIsMotorMoving = 1;
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened >= 1)
 		stMotorInfo.bIsMotorOpen = 1;
 	else
 		stMotorInfo.bIsMotorOpen = 0;
+	spin_unlock(g_pAF_SpinLock);
 
 	if (copy_to_user(pstMotorInfo, &stMotorInfo,
 			 sizeof(struct stAF_MotorInfo)))
@@ -252,13 +254,12 @@ int LC898229AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 
 	LOG_INF("Start\n");
 
+	spin_lock(g_pAF_SpinLock);
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");
-
-		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 0;
-		spin_unlock(g_pAF_SpinLock);
 	}
+	spin_unlock(g_pAF_SpinLock);
 
 	LOG_INF("End\n");
 
