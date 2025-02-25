@@ -3478,6 +3478,7 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		}
 
 		if ((priv->data->mmsys_id == MMSYS_MT6789 ||
+			priv->data->mmsys_id == MMSYS_MT6895 ||
 			priv->data->mmsys_id == MMSYS_MT6855) &&
 			mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER) &&
 			comp_state.comp_id != DDP_COMPONENT_OVL0_2L &&
@@ -5101,6 +5102,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
 		priv->data->mmsys_id == MMSYS_MT6885))
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
@@ -5229,6 +5231,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
 		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
 		priv->data->mmsys_id == MMSYS_MT6885)) {
 		scale_num = get_scale_cnt(&layering_info);
