@@ -1052,6 +1052,8 @@ enum {
 	CMD_UT_IPI_OUTBOX_FUZZ_WRITE,
 	CMD_S5_IDEL_DBG,
 	CMD_DEEP_IDEL_DBG,
+	CMD_PANIC,
+	CMD_S5_IDLE_PROFILE,
 	MAX_CMD_UT_ID,
 };
 
@@ -1064,6 +1066,12 @@ struct apu_ipi_ut_rpmsg_device {
 	struct rpmsg_endpoint *ept;
 	struct rpmsg_device *rpdev;
 	struct completion ack;
+};
+
+struct s5_idle_ts {
+	uint32_t last;
+	uint32_t max;
+	uint32_t avg;
 };
 
 static struct apu_ipi_ut_rpmsg_device apu_ipi_ut_rpm_dev;
@@ -1115,6 +1123,20 @@ static uint64_t apu_on_ts_cnt;
 static uint64_t apu_off_ts_cnt;
 
 static uint32_t boot_count;
+
+struct s5_idle_ts s5_idle_overall_ts;
+struct s5_idle_ts s5_idle_wfi_ts;
+struct s5_idle_ts s5_idle_enter_ts;
+struct s5_idle_ts s5_idle_leave_ts;
+struct s5_idle_ts s5_idle_sw_enter_ts;
+struct s5_idle_ts s5_idle_sw_leave_ts;
+struct s5_idle_ts s5_idle_rcx_on_ce_ts;
+struct s5_idle_ts s5_idle_rcx_off_ce_ts;
+
+uint32_t s5_idle_fucn_trigger_cnt;
+uint32_t s5_idle_dpidle_skip_cnt;
+uint32_t s5_idle_ipi_skip_cnt;
+uint32_t s5_idle_wakeup_cnt;
 
 static void apu_power_on_off_profile(u32 on, u32 off,
 	uint64_t time_diff_ns, uint64_t time_diff_ns2)
@@ -1333,6 +1355,35 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		dvfs_skip_ts_max = d->data[18];
 		smmu_hw_sem_ts_larger_1ms_cnt = d->data[19];
 		boot_count = d->data[20];
+	} else if (d->cmd_id == CMD_S5_IDLE_PROFILE) {
+		s5_idle_fucn_trigger_cnt = d->data[1] ;
+		s5_idle_dpidle_skip_cnt = d->data[2] ;
+		s5_idle_ipi_skip_cnt = d->data[3] ;
+		s5_idle_wakeup_cnt = d->data[4] ;
+		s5_idle_overall_ts.last = d->data[5] ;
+		s5_idle_overall_ts.avg = d->data[6] ;
+		s5_idle_overall_ts.max = d->data[7] ;
+		s5_idle_wfi_ts.last = d->data[8] ;
+		s5_idle_wfi_ts.avg = d->data[9] ;
+		s5_idle_wfi_ts.max = d->data[10];
+		s5_idle_enter_ts.last = d->data[11];
+		s5_idle_enter_ts.avg = d->data[12];
+		s5_idle_enter_ts.max = d->data[13];
+		s5_idle_leave_ts.last = d->data[14];
+		s5_idle_leave_ts.avg = d->data[15];
+		s5_idle_leave_ts.max = d->data[16];
+		s5_idle_sw_enter_ts.last = d->data[17];
+		s5_idle_sw_enter_ts.avg = d->data[18];
+		s5_idle_sw_enter_ts.max = d->data[19];
+		s5_idle_sw_leave_ts.last = d->data[20];
+		s5_idle_sw_leave_ts.avg = d->data[21];
+		s5_idle_sw_leave_ts.max = d->data[22];
+		s5_idle_rcx_on_ce_ts.last = d->data[23];
+		s5_idle_rcx_on_ce_ts.avg = d->data[24];
+		s5_idle_rcx_on_ce_ts.max = d->data[25];
+		s5_idle_rcx_off_ce_ts.last = d->data[26];
+		s5_idle_rcx_off_ce_ts.avg = d->data[27];
+		s5_idle_rcx_off_ce_ts.max = d->data[28];
 	}
 
 	if (polling_mode)
@@ -1447,6 +1498,35 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 		seq_printf(s, "apu_on_ts_cnt = %llu\n", apu_on_ts_cnt);
 		seq_printf(s, "apu_off_ts_cnt = %llu\n", apu_off_ts_cnt);
 
+	} else if (apu_ipi_ut_cmd == CMD_S5_IDLE_PROFILE) {
+		seq_printf(s, "s5_idle_fucn_trigger_cnt = %u\n", s5_idle_fucn_trigger_cnt);
+		seq_printf(s, "s5_idle_dpidle_skip_cnt = %u\n", s5_idle_dpidle_skip_cnt);
+		seq_printf(s, "s5_idle_ipi_skip_cnt = %u\n", s5_idle_ipi_skip_cnt);
+		seq_printf(s, "s5_idle_wakeup_cnt = %u\n", s5_idle_wakeup_cnt);
+		seq_printf(s, "s5_idle_overall_ts.last = %u us\n", s5_idle_overall_ts.last);
+		seq_printf(s, "s5_idle_overall_ts.avg = %u us\n", s5_idle_overall_ts.avg);
+		seq_printf(s, "s5_idle_overall_ts.max = %u us\n", s5_idle_overall_ts.max);
+		seq_printf(s, "s5_idle_wfi_ts.last = %u us\n", s5_idle_wfi_ts.last);
+		seq_printf(s, "s5_idle_wfi_ts.avg = %u us\n", s5_idle_wfi_ts.avg);
+		seq_printf(s, "s5_idle_wfi_ts.max = %u us\n", s5_idle_wfi_ts.max);
+		seq_printf(s, "s5_idle_enter_ts.last = %u us\n", s5_idle_enter_ts.last);
+		seq_printf(s, "s5_idle_enter_ts.avg = %u us\n", s5_idle_enter_ts.avg);
+		seq_printf(s, "s5_idle_enter_ts.max = %u us\n", s5_idle_enter_ts.max);
+		seq_printf(s, "s5_idle_leave_ts.last = %u us\n", s5_idle_leave_ts.last);
+		seq_printf(s, "s5_idle_leave_ts.avg = %u us\n", s5_idle_leave_ts.avg);
+		seq_printf(s, "s5_idle_leave_ts.max = %u us\n", s5_idle_leave_ts.max);
+		seq_printf(s, "s5_idle_sw_enter_ts.last = %u us\n", s5_idle_sw_enter_ts.last);
+		seq_printf(s, "s5_idle_sw_enter_ts.avg = %u us\n", s5_idle_sw_enter_ts.avg);
+		seq_printf(s, "s5_idle_sw_enter_ts.max = %u us\n", s5_idle_sw_enter_ts.max);
+		seq_printf(s, "s5_idle_sw_leave_ts.last = %u us\n", s5_idle_sw_leave_ts.last);
+		seq_printf(s, "s5_idle_sw_leave_ts.avg = %u us\n", s5_idle_sw_leave_ts.avg);
+		seq_printf(s, "s5_idle_sw_leave_ts.max = %u us\n", s5_idle_sw_leave_ts.max);
+		seq_printf(s, "s5_idle_rcx_on_ce_ts.last = %u us\n", s5_idle_rcx_on_ce_ts.last);
+		seq_printf(s, "s5_idle_rcx_on_ce_ts.avg = %u us\n", s5_idle_rcx_on_ce_ts.avg);
+		seq_printf(s, "s5_idle_rcx_on_ce_ts.max = %u us\n", s5_idle_rcx_on_ce_ts.max);
+		seq_printf(s, "s5_idle_rcx_off_ce_ts.last = %u us\n", s5_idle_rcx_off_ce_ts.last);
+		seq_printf(s, "s5_idle_rcx_off_ce_ts.avg = %u us\n", s5_idle_rcx_off_ce_ts.avg);
+		seq_printf(s, "s5_idle_rcx_off_ce_ts.max = %u us\n", s5_idle_rcx_off_ce_ts.max);
 	}
 
 	return 0;
@@ -1499,6 +1579,22 @@ static int apu_ipi_dbg_exec_cmd(int cmd, unsigned int *args)
 		ret = apu_ipi_ut_send(&d, false);
 		break;
 	case CMD_DEEP_IDEL_DBG:
+		apu_ipi_ut_val = args[0];
+		d.cmd_id = cmd;
+		d.data[0] = args[0];
+		d.data[1] = args[1];
+		d.data[2] = args[2];
+		ret = apu_ipi_ut_send(&d, false);
+		break;
+	case CMD_PANIC:
+		apu_ipi_ut_val = args[0];
+		d.cmd_id = cmd;
+		d.data[0] = args[0];
+		d.data[1] = args[1];
+		d.data[2] = args[2];
+		ret = apu_ipi_ut_send(&d, false);
+		break;
+	case CMD_S5_IDLE_PROFILE:
 		apu_ipi_ut_val = args[0];
 		d.cmd_id = cmd;
 		d.data[0] = args[0];
@@ -1571,6 +1667,10 @@ static ssize_t apu_ipi_dbg_write(struct file *flip, const char __user *buffer,
 		cmd = CMD_S5_IDEL_DBG;
 	} else if (strcmp(token, "deep_idle_dbg") == 0) {
 		cmd = CMD_DEEP_IDEL_DBG;
+	} else if (strcmp(token, "panic") == 0) {
+		cmd = CMD_PANIC;
+	} else if (strcmp(token, "s5_idle_profile") == 0) {
+		cmd = CMD_S5_IDLE_PROFILE;
 	} else {
 		ret = -EINVAL;
 		pr_info("%s: unknown ipi dbg cmd: %s\n", __func__, token);
