@@ -9238,6 +9238,38 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mdp_larb_1";
 
 			mtk,smmu-shared = <&mm_smmu_disp>;
+
+			bw-fuzzer = <1>;
+			larb-id = <0 1 34 35>;
+			port-id = <8 8 8 8>;
+			rd-addr-ofs = <0x80 0x100 0x80 0x100>;
+			wr-addr-ofs = <0x84 0x104 0x84 0x104>;
+			con0-ofs = <0x78 0x98 0x78 0x98>;
+			con1-ofs = <0x7c 0x9c 0x7c 0x9c>;
+			reset-ofs = <0x74 0x94 0x74 0x94>;
+			enable-ofs = <0x70 0x90 0x70 0x90>;
+			state-ofs = <0x88 0x108 0x88 0x108>;
+			wr-pat = <4 4 4 4>;
+			length = <255 255 255 255>;
+			burst = <7 7 7 7>;
+			dis-rd = <0 0 0 0>;
+			dis-wr = <0 0 0 0>;
+			latency = <1023 1023 1023 1023>;
+			loop = <1 1 1 1>;
+
+			bw-table-latency = <0 16 1023>;
+			bw-table-bw = <4100 1800 100>;
+
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L0_P8_OVL_FAKE_ENG0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L1_P8_OVL_FAKE_ENG1)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L34_P8_OVL_FAKE_ENG0)
+					&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L35_P8_OVL_FAKE_ENG1)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "fake_eng_0", "fake_eng_1", "fake_eng_2", "fake_eng_3";
 		};
 
 		sram@100000 {
