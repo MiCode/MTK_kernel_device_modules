@@ -87,7 +87,7 @@ int cpu_mapping_cluster[CORE_MAX];
 // ADPF
 #define ADPF_MAX_SESSION 64
 #define ADPF_MAX_CALLBACK 64
-static int adpf_enable = 1;
+static int enable_cpu_timing_hint = 1;
 static struct _SESSION *sessionList[ADPF_MAX_SESSION];
 static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
 static DEFINE_MUTEX(adpf_mutex);
@@ -390,7 +390,7 @@ out:
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
 }
 
-static ssize_t perfmgr_adpf_enable_proc_write(struct file *filp,
+static ssize_t perfmgr_enable_cpu_timing_hint_proc_write(struct file *filp,
 		const char *ubuf, size_t cnt, loff_t *data)
 {
 	char buf[64];
@@ -405,12 +405,12 @@ static ssize_t perfmgr_adpf_enable_proc_write(struct file *filp,
 	if (ret < 0)
 		return ret;
 
-	adpf_enable = value;
+	enable_cpu_timing_hint = value;
 
 	return cnt;
 }
 
-static ssize_t perfmgr_adpf_enable_proc_show(struct file *file,
+static ssize_t perfmgr_enable_cpu_timing_hint_proc_show(struct file *file,
 		char __user *ubuf, size_t count, loff_t *ppos)
 {
 	int n = 0;
@@ -418,7 +418,7 @@ static ssize_t perfmgr_adpf_enable_proc_show(struct file *file,
 
 	if (*ppos != 0)
 		goto out;
-	n = scnprintf(buffer, 64, "%d\n", adpf_enable);
+	n = scnprintf(buffer, 64, "%d\n", enable_cpu_timing_hint);
 out:
 	if (n < 0)
 		return -EINVAL;
@@ -427,13 +427,13 @@ out:
 }
 
 PROC_FOPS_RW(perfserv_freq);
-PROC_FOPS_RW(adpf_enable);
+PROC_FOPS_RW(enable_cpu_timing_hint);
 
 int adpf_register_callback(adpfCallback callback)
 {
 	int i = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -457,7 +457,7 @@ EXPORT_SYMBOL(adpf_register_callback);
 
 int adpf_unregister_callback(int idx)
 {
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -479,7 +479,7 @@ int adpf_notify_callback(unsigned int cmd, unsigned int sid)
 	int i = 0;
 	struct _SESSION session;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -515,7 +515,7 @@ int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 {
 	char log[256];
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -569,7 +569,7 @@ int adpf_update_work_duaration(unsigned int sid, long targetDurationNanos)
 	char log[256];
 	int tgid = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -604,7 +604,7 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 	char log[256];
 	long ts = 0, wd = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -657,7 +657,7 @@ int adpf_pause(unsigned int sid)
 	char log[256];
 	int tgid = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -689,7 +689,7 @@ int adpf_resume(unsigned int sid)
 	char log[256];
 	int tgid = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -721,7 +721,7 @@ int adpf_close(unsigned int sid)
 	char log[256];
 	int tgid = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -753,7 +753,7 @@ int adpf_sent_hint(unsigned int sid, int hint)
 	char log[256];
 	int tgid = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -793,7 +793,7 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 	char log[256];
 	int tgid = 0;
 
-	if (!adpf_enable)
+	if (!enable_cpu_timing_hint)
 		return 0;
 
 	mutex_lock(&adpf_mutex);
@@ -847,6 +847,16 @@ int dsu_sport_mode(unsigned int mode)
 	return 0;
 }
 
+int adpf_get_frame_info(struct fpsgo_render_info *render_info)
+{
+	render_info->cpu_capacity = 0;
+	render_info->ema_t_cpu = 0;
+	render_info->target_fps = 0;
+	render_info->raw_t_cpu = 0;
+	pr_debug("[%s] EX_UNSUPPORTED_OPERATION!",  __func__);
+	return 0;
+}
+
 static int __init powerhal_cpu_ctrl_init(void)
 {
 	int cpu_num = 0;
@@ -862,7 +872,7 @@ static int __init powerhal_cpu_ctrl_init(void)
 	};
 	const struct pentry entries[] = {
 		PROC_ENTRY(perfserv_freq),
-		PROC_ENTRY(adpf_enable),
+		PROC_ENTRY(enable_cpu_timing_hint),
 	};
 
 	lt_dir = proc_mkdir("powerhal_cpu_ctrl", parent);
@@ -968,6 +978,10 @@ static int __init powerhal_cpu_ctrl_init(void)
 	powerhal_adpf_close_fp = adpf_close;
 	powerhal_adpf_sent_hint_fp = adpf_sent_hint;
 	powerhal_adpf_set_threads_fp = adpf_set_threads;
+
+	powerhal_adpf_get_frame_info_fp = adpf_get_frame_info;
+
+
 
 	// DSU
 	powerhal_dsu_sport_mode_fp = dsu_sport_mode;
