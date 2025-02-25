@@ -137,9 +137,9 @@ static inline void jpeg_reg_write_mask(long addr, uint32_t mask, uint32_t val)
 	IMG_REG_WRITE(reg_tmp, addr);
 }
 
-static void jpeg_axdomain_set(int id)
+static void jpeg_axdomain_set(unsigned int id)
 {
-	int larb_idx = gJpegqDev.larb_idx_map[id];
+	unsigned int larb_idx = gJpegqDev.larb_idx_map[id];
 
 	if (!gJpegqDev.smiLarbBaseVA[larb_idx])
 		return;
@@ -512,7 +512,7 @@ static void jpeg_drv_end_qos_request(unsigned int id)
 	mtk_icc_set_bw(gJpegqDev.jpeg_path_huff_offset[id], 0, 0);
 }
 
-void jpeg_drv_hybrid_dec_power_on(int id)
+void jpeg_drv_hybrid_dec_power_on(unsigned int id)
 {
 	int ret;
 	unsigned int ven_res;
@@ -567,7 +567,7 @@ void jpeg_drv_hybrid_dec_power_on(int id)
 	JPEG_LOG(1, "[%d] JPEG Hybrid Decoder Power On", id);
 }
 
-void jpeg_drv_hybrid_dec_power_off(int id)
+void jpeg_drv_hybrid_dec_power_off(unsigned int id)
 {
 	int ret;
 
