@@ -3293,8 +3293,7 @@
 		gce_sec: gce_mbox_sec@10228000 {
 			compatible = "mediatek,mailbox-gce-sec";
 			reg = <0 0x10228000 0 0x4000>;
-			// FIX_ME
-			// mtee-supply = <&mtee>;
+			mtee-supply = <&mtee>;
 			#mbox-cells = <3>;
 			mboxes = <&gce 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			clocks = <&infracfg_ao_clk CLK_IFRAO_GCE>;
@@ -6051,7 +6050,7 @@
 			compatible = "mediatek,mdp";
 			reg = <0 0x1f000000 0 0x1000>;
 			thread-count = <24>;
-			mboxes = <&gce_sec 10 0 CMDQ_THR_PRIO_1>,
+			mboxes = <&gce 10 0 CMDQ_THR_PRIO_1>,
 				<&gce 16 0 CMDQ_THR_PRIO_1>,
 				<&gce 17 0 CMDQ_THR_PRIO_1>,
 				<&gce 18 0 CMDQ_THR_PRIO_1>,
