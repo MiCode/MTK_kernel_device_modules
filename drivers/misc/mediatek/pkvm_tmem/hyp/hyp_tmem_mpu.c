@@ -114,7 +114,8 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 		/*
 		 * EL1S2 unmap
 		 */
-		tmem_ops->host_stage2_mod_prot(addr >> ONE_PAGE_OFFSET, 0, size/ONE_PAGE_SIZE);
+		tmem_ops->host_stage2_mod_prot(addr >> ONE_PAGE_OFFSET, 0,
+					       size / ONE_PAGE_SIZE, false);
 
 		tmem_ops->puts("pkvm_tmem: platform_mpu_set\n");
 		rc = platform_mpu_set(zone_id, addr, size, tmem_ops);
@@ -133,7 +134,8 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 		/*
 		 * EL1S2 map
 		 */
-		tmem_ops->host_stage2_mod_prot(rec->addr >> ONE_PAGE_OFFSET, 7, rec->size/ONE_PAGE_SIZE);
+		tmem_ops->host_stage2_mod_prot(rec->addr >> ONE_PAGE_OFFSET, 7,
+					       rec->size / ONE_PAGE_SIZE, false);
 	}
 
 	if (is_enable) {

@@ -1910,6 +1910,8 @@ struct kvm_iommu_ops smmu_ops = {
 	.attach_dev			= mtk_smmu_attach_dev,
 	.detach_dev			= mtk_smmu_detach_dev,
 	.dabt_handler			= mtk_smmu_dabt_handler,
+	.suspend			= mtk_smmu_suspend,
+	.resume				= mtk_smmu_resume,
 	.iotlb_sync			= mtk_smmu_iotlb_sync,
 	.host_stage2_idmap		= mtk_smmu_host_stage2_idmap,
 };
