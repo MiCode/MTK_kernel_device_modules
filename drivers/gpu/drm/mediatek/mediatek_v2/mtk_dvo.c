@@ -1011,7 +1011,6 @@ unsigned long long mtk_dpdvo_get_frame_hrt_bw_base(
 	int vrefresh;
 	u32 bpp = 4;
 
-	DPTXFUNC();
 	/* for the case dpdvo not initialize yet, return 1 avoid treat as error */
 	if (!(mtk_crtc && mtk_crtc->base.state))
 		return 1;
@@ -1042,7 +1041,6 @@ static unsigned long long mtk_dpdvo_get_frame_hrt_bw_base_by_mode(
 	if (!(mtk_crtc && mtk_crtc->avail_modes))
 		return 1;
 
-	DPTXFUNC();
 	htotal = mtk_crtc->avail_modes->htotal ;
 	vtotal = mtk_crtc->avail_modes->vtotal;
 	vrefresh = drm_mode_vrefresh(mtk_crtc->avail_modes);
