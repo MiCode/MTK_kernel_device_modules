@@ -87,9 +87,9 @@ static void pmic_get_temp_convert_params(struct pmic_temp_info *data)
 		cali[i].slope1 = (100 * 1000 * 10);	/* 1000 is for 0.001 degree */
 
 		if (tz_data->o_slope_sign == 0)
-			cali[i].slope2 = -(factor + tz_data->o_slope);
+			cali[i].slope2 = -(factor + tz_data->o_slope * 10);
 		else
-			cali[i].slope2 = -(factor - tz_data->o_slope);
+			cali[i].slope2 = -(factor - tz_data->o_slope * 10);
 
 		vbe_t = (-1) * div_s64((((int64_t)(cali[i].o_vts) * tz_data->pullup_volt)), 4096) * 1000;
 
