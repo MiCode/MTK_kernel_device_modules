@@ -212,6 +212,9 @@ void dcs_init_dts_with_eb(void)
 
 		g_has_gov_support = ipi_data.u.set_para.arg[0];
 		g_gov_enable = ipi_data.u.set_para.arg[1];
+
+		if (g_gov_enable)
+			ged_eb_dvfs_task(EB_DCS_CORE_NUM, 0);
 	}
 }
 
@@ -611,6 +614,7 @@ void dcs_set_gov_enable(unsigned int enable, unsigned int src)
 		g_cur_core_num = g_max_core_num;
 		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
+		ged_eb_dvfs_task(EB_DCS_CORE_NUM, 0);
 
 		mutex_unlock(&g_DCS_lock);
 	}

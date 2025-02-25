@@ -967,8 +967,9 @@ typedef struct {
  GEN("Policy__Loading_based__GPU_Time2", GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET3, 1, "t_gpu_target") \
  GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS1, 4, "gov_support | gov_enable | max_core | current_core") \
  GEN("Policy__DCS", GPU_EB_LOG_DUMP_DCS2, 4, "rdy_current_core | target | fix_core | mode") \
- GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL, 1, "core_mask") \
- GEN("Policy__GOV_Detail", GPU_EB_LOG_DUMP_GOV_DETAIL1, 1, "rdy_core_mask") \
+GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL1, 1, "core_mask") \
+GEN("Policy__DCS__Detail", GPU_EB_LOG_DUMP_DCS_DETAIL2, 1, "rdy_core_mask") \
+GEN("Policy__GOV_Detail", GPU_EB_LOG_DUMP_GOV_DETAIL1, 1, "mcu_core_mask") \
  GEN("Policy__GOV_Detail", GPU_EB_LOG_DUMP_GOV_DETAIL2, 1, "gov_mask") \
 GEN("GPU_DVFS__ONE_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE1, 1, "dbg1_1") \
 GEN("GPU_DVFS__TWO_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE2, 2, "dbg2_1 | dbg2_2") \
@@ -980,8 +981,7 @@ GEN("EBRB_FREQ2", GPU_EB_LOG_DUMP_STACK_FREQ2, 2, "d_top | d_avg_stack") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE8, 2, "dbg8_1 | dbg8_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE9, 2, "dbg9_1 | dbg9_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE10, 2, "dbg10_1 | dbg10_2") \
-GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE11, 2, "dbg11_1 | dbg11_2")
+GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE10, 2, "dbg10_1 | dbg10_2")
 
 // sysram
 #define GPU_FDVFS_V2_COUNTER_LIST \

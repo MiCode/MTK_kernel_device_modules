@@ -452,7 +452,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				case GPU_EB_LOG_DUMP_LB_GPU_TIME:
 				case GPU_EB_LOG_DUMP_GPU_TIME_CHECK_TARGET1:
 				case GPU_EB_LOG_DUMP_DCS1:
-				case GPU_EB_LOG_DUMP_DCS_DETAIL:
+				case GPU_EB_LOG_DUMP_DCS_DETAIL1:
 				case GPU_EB_LOG_DUMP_GOV_DETAIL1:
 				case GPU_EB_LOG_DUMP_PRESERVE1:
 				case GPU_EB_LOG_DUMP_PRESERVE2:
@@ -498,6 +498,7 @@ static void ged_eb_sysram_debug_data_write(void)
 					}
 					break;
 				case GPU_EB_LOG_DUMP_GOV_DETAIL2:
+				case GPU_EB_LOG_DUMP_DCS_DETAIL2:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
 							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
 					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1) {
@@ -542,7 +543,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				trace_GPU_DVFS__EBRB_DCS_DATA(
 					dbg_data, dbg_data2, dbg_data3, dbg_data4, dbg_data5, dbg_data6, dbg_data7, dbg_data8);
 				break;
-			case GPU_EB_LOG_DUMP_DCS_DETAIL:
+			case GPU_EB_LOG_DUMP_DCS_DETAIL2:
 				trace_GPU_DVFS__EBRB_DCS_DETAIL(dbg_data, dbg_data2);
 				break;
 			case GPU_EB_LOG_DUMP_GOV_DETAIL2:
