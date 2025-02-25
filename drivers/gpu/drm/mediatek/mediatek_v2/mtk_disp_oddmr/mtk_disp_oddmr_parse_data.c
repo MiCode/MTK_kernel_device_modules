@@ -117,6 +117,8 @@ static uint32_t mtk_oddmr_parse_od_table_basic_info(struct mtk_oddmr_od_param *o
 		size = sizeof(struct mtk_oddmr_od_table_basic_info) - 4 * 2; // no remap_gian, table_offset
 		memcpy(&od_param->od_tables[table_idx]->table_basic_info, data, 4 * 8);
 		od_param->od_tables[table_idx]->table_basic_info.reserved = *(uint32_t *)(data +  4 * 8);
+		od_param->od_tables[table_idx]->table_basic_info.remap_gian = 255; //default 255
+		od_param->od_tables[table_idx]->table_basic_info.table_offset = 0; //default 0
 	}
 	return size;
 }
@@ -169,7 +171,9 @@ static uint32_t mtk_oddmr_parse_od_table_bl_gain(struct mtk_oddmr_od_param *od_p
 			for (int i = 0; i < counts; i++) {
 				od_param->od_tables[table_idx]->bl_table[i].item = *(uint32_t *)data;
 				data += 4;
+				od_param->od_tables[table_idx]->bl_table[i].value_r = *(uint32_t *)data;
 				od_param->od_tables[table_idx]->bl_table[i].value = *(uint32_t *)data;
+				od_param->od_tables[table_idx]->bl_table[i].value_b = *(uint32_t *)data;
 				data += 4;
 			}
 	}
@@ -196,7 +200,9 @@ static uint32_t mtk_oddmr_parse_od_table_fps_gain(struct mtk_oddmr_od_param *od_
 			for (int i = 0; i < counts; i++) {
 				od_param->od_tables[table_idx]->fps_table[i].item = *(uint32_t *)data;
 				data += 4;
+				od_param->od_tables[table_idx]->fps_table[i].value_r = *(uint32_t *)data;
 				od_param->od_tables[table_idx]->fps_table[i].value = *(uint32_t *)data;
+				od_param->od_tables[table_idx]->fps_table[i].value_b = *(uint32_t *)data;
 				data += 4;
 			}
 	}
@@ -273,6 +279,7 @@ static int _mtk_oddmr_load_param(struct mtk_oddmr_od_param *od_param, struct mtk
 							p, 4 * 13);  //skip bin_version
 					memcpy((uint8_t *)&od_param->od_basic_info.basic_param + 4 * 15,
 							p + 4 * 13, tmp_size - 4 * 13);  //skip nonlinear_node_cnt
+					od_param->od_basic_info.basic_param.nonlinear_node_cnt = 33; //default 33
 				} else if (tmp_size == sizeof(struct mtk_oddmr_od_basic_param)) {
 					DDPINFO("%s:%d, bin version: %d\n", __func__, __LINE__, *(uint32_t *)p);
 					memcpy(&od_param->od_basic_info.basic_param, p, tmp_size);
