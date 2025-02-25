@@ -1423,7 +1423,7 @@ static enum gpufreq_posdiv __gpufreq_get_posdiv_by_fgpu(unsigned int freq)
 /* API: scale Freq of GPU via CON1 Reg or FHCTL */
 static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new)
 {
-	//enum gpufreq_posdiv cur_posdiv = POSDIV_POWER_1;
+	enum gpufreq_posdiv cur_posdiv = POSDIV_POWER_1;
 	enum gpufreq_posdiv target_posdiv = POSDIV_POWER_1;
 	unsigned int pcw = 0;
 	unsigned int pll = 0;
@@ -1439,8 +1439,8 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 	 * MFGPLL_CON1[26:24]: MFGPLL_POSDIV
 	 * MFGPLL_CON1[21:0] : MFGPLL_SDM_PCW (DDS)
 	 */
-	freq_new = g_gpu.working_table[0].freq;  //TODO: Need to remove this hardcoded maxfreq
-	//cur_posdiv = __gpufreq_get_real_posdiv_gpu();
+	// freq_new = g_gpu.working_table[0].freq;  //TODO: Need to remove this hardcoded maxfreq
+	cur_posdiv = __gpufreq_get_real_posdiv_gpu();
 	target_posdiv = __gpufreq_get_posdiv_by_fgpu(freq_new);
 	/* compute PCW based on target Freq */
 	pcw = __gpufreq_calculate_pcw(freq_new, target_posdiv);
@@ -1461,16 +1461,17 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 #endif
 
 	if (parking) {
-#if (GPUFREQ_FHCTL_ENABLE && IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING))
 		/* freq scale up */
 		if (freq_new > freq_old) {
 			/* 1. change PCW by hopping */
-			ret = mtk_fh_set_rate(MFG_PLL_NAME, pcw, target_posdiv);
-			if (unlikely(!ret)) {
+			ret = clk_prepare_enable(g_clk->clk_fhctl);
+			if (unlikely(ret)) {
 				__gpufreq_abort("fail to hopping PCW: 0x%x (%d)", pcw, ret);
-				ret = GPUFREQ_EINVAL;
 				goto done;
 			}
+			ret = clk_set_rate(g_clk->clk_fhctl, freq_new*1000);
+			clk_disable_unprepare(g_clk->clk_fhctl);
+
 			/* 2. compute CON1 with target POSDIV */
 			pll = (readl(MFGPLL_CON1) & 0xF8FFFFFF) | (target_posdiv << POSDIV_SHIFT);
 			/* 3. change POSDIV by writing CON1 */
@@ -1485,46 +1486,24 @@ static int __gpufreq_freq_scale_gpu(unsigned int freq_old, unsigned int freq_new
 			/* 3. wait until PLL stable */
 			udelay(20);
 			/* 4. change PCW by hopping */
-			ret = mtk_fh_set_rate(MFG_PLL_NAME, pcw, target_posdiv);
-			if (unlikely(!ret)) {
-				__gpufreq_abort("fail to hopping PCW: 0x%x (%d)", pcw, ret);
-				ret = GPUFREQ_EINVAL;
+			ret = clk_prepare_enable(g_clk->clk_fhctl);
+			if (unlikely(ret)) {
+				__gpufreq_abort("fail to enable clk_fhctl: 0x%x (%d)", pcw, ret);
 				goto done;
 			}
+			ret = clk_set_rate(g_clk->clk_fhctl, freq_new*1000);
+			clk_disable_unprepare(g_clk->clk_fhctl);
 		}
-#else
-		/* 1. switch to parking clk source */
-		ret = __gpufreq_switch_clksrc(CLOCK_SUB);
-		if (unlikely(ret)) {
-			GPUFREQ_LOGE("fail to switch sub clock source (%d)", ret);
-			goto done;
-		}
-		/* 2. compute CON1 with PCW and POSDIV */
-		pll = (0x80000000) | (target_posdiv << POSDIV_SHIFT) | pcw;
-		/* 3. change PCW and POSDIV by writing CON1 */
-		writel(pll, MFGPLL_CON1);
-		/* 4. wait until PLL stable */
-		udelay(20);
-		/* 5. switch to main clk source */
-		ret = __gpufreq_switch_clksrc(CLOCK_MAIN);
-		if (unlikely(ret)) {
-			GPUFREQ_LOGE("fail to switch main clock source (%d)", ret);
-			goto done;
-		}
-#endif
 	} else {
 #if (GPUFREQ_FHCTL_ENABLE && IS_ENABLED(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING))
-		if (unlikely(!mtk_fh_set_rate)) {
-			__gpufreq_abort("null hopping fp");
-			ret = GPUFREQ_ENOENT;
+		ret = clk_prepare_enable(g_clk->clk_fhctl);
+		if (unlikely(ret)) {
+			__gpufreq_abort("fail to enable clk_fhctl (%d)", ret);
 			goto done;
 		}
 
-		ret = mtk_fh_set_rate(MFG_PLL_NAME, pcw, target_posdiv);
-		if (unlikely(!ret)) {
-			__gpufreq_abort("fail to hopping pcw: 0x%x (%d)", pcw, ret);
-			goto done;
-		}
+		ret = clk_set_rate(g_clk->clk_fhctl, freq_new*1000);
+		clk_disable_unprepare(g_clk->clk_fhctl);
 #endif
 	}
 
@@ -1600,8 +1579,8 @@ static int __gpufreq_volt_scale_gpu(
 	unsigned int t_settle_vsram = 0;
 	unsigned int t_settle = 0;
 	int ret = GPUFREQ_SUCCESS;
-	vgpu_new = g_gpu.working_table[0].volt; //TODO: Need to remove this hardcoded maxvolt
-	vsram_new = g_gpu.working_table[0].vsram;
+	// vgpu_new = g_gpu.working_table[0].volt; //TODO: Need to remove this hardcoded maxvolt
+	// vsram_new = g_gpu.working_table[0].vsram;
 
 	GPUFREQ_TRACE_START("vgpu_old=%d, vgpu_new=%d, vsram_old=%d, vsram_new=%d",
 		vgpu_old, vgpu_new, vsram_old, vsram_new);
@@ -3635,10 +3614,10 @@ static int __gpufreq_init_clk(struct platform_device *pdev)
 		goto done;
 	}
 
-	g_clk->subsys_bg3d = devm_clk_get(&pdev->dev, "subsys_bg3d");
-	if (IS_ERR(g_clk->subsys_bg3d)) {
-		ret = PTR_ERR(g_clk->subsys_bg3d);
-		__gpufreq_abort("fail to get subsys_bg3d (%ld)", ret);
+	g_clk->clk_fhctl = devm_clk_get(&pdev->dev, "clk_fhctl");
+	if (IS_ERR(g_clk->clk_fhctl)) {
+		ret = PTR_ERR(g_clk->clk_fhctl);
+		__gpufreq_abort("fail to get clk_fhctl (%ld)", ret);
 		goto done;
 	}
 
