@@ -53,8 +53,8 @@ LIST_HEAD(hmp_domains);
 #define type_number(type)		 (1U << type_offset(type))
 #define get_value_with_type(value, type)				\
 	(value & ((unsigned int)(0x0000000f) << (type_offset(type))))
-#define for_each_hmp_domain_L_first(hmpd) \
-		list_for_each_entry_reverse(hmpd, &hmp_domains, hmp_domains)
+#define for_each_hmp_domain_B_first(hmpd) \
+		list_for_each_entry(hmpd, &hmp_domains, hmp_domains)
 #define hmp_cpu_domain(cpu)     (per_cpu(hmp_cpu_domain, (cpu)))
 
 /*
@@ -516,19 +516,15 @@ cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost)
 int find_best_turbo_cpu(struct task_struct *p)
 {
 	struct hmp_domain *domain;
-	int i = 0, iter_cpu;
+	int iter_cpu;
 	unsigned long spare_cap, max_spare_cap = 0;
 	const struct cpumask *tsk_cpus_ptr = p->cpus_ptr;
 	int max_spare_cpu = -1;
 	int new_cpu = -1;
 
 	/* The order is B, BL, LL cluster */
-	for_each_hmp_domain_L_first(domain) {
-		/* check fastest domain for turbo task */
-		if (i != 0)
-			break;
+	for_each_hmp_domain_B_first(domain) {
 		for_each_cpu(iter_cpu, &domain->possible_cpus) {
-
 			if (!cpu_online(iter_cpu) ||
 			    !cpumask_test_cpu(iter_cpu, tsk_cpus_ptr) ||
 			    !cpu_active(iter_cpu))
@@ -550,7 +546,8 @@ int find_best_turbo_cpu(struct task_struct *p)
 				max_spare_cpu = iter_cpu;
 			}
 		}
-		i++;
+		/* check fastest domain for turbo task */
+		break;
 	}
 	if (max_spare_cpu > 0)
 		new_cpu = max_spare_cpu;
@@ -1275,11 +1272,15 @@ int hmp_compare(void *priv, const struct list_head *a,
 {
 	struct cluster_info ca;
 	struct cluster_info cb;
+	struct hmp_domain *hmpda = list_entry(a, struct hmp_domain, hmp_domains);
+	struct hmp_domain *hmpdb = list_entry(b, struct hmp_domain, hmp_domains);
 
-	fillin_cluster(&ca, list_entry(a, struct hmp_domain, hmp_domains));
-	fillin_cluster(&cb, list_entry(b, struct hmp_domain, hmp_domains));
+	fillin_cluster(&ca, hmpda);
+	fillin_cluster(&cb, hmpdb);
 
-	return (ca.cpu_perf > cb.cpu_perf) ? -1 : 1;
+	if (ca.cpu_perf != cb.cpu_perf)
+		return (ca.cpu_perf > cb.cpu_perf) ? -1 : 1;
+	return (cpumask_bits(&hmpda->possible_cpus)[0] > cpumask_bits(&hmpdb->possible_cpus)[0]) ? -1 : 1;
 }
 
 void init_hmp_domains(void)
@@ -1312,8 +1313,8 @@ void init_hmp_domains(void)
 	 * Sorting HMP domain by CPU capacity
 	 */
 	list_sort(NULL, &hmp_domains, &hmp_compare);
-	pr_info("Sort hmp_domains from little to big:\n");
-	for_each_hmp_domain_L_first(domain) {
+	pr_info("Sort hmp_domains from big to little:\n");
+	for_each_hmp_domain_B_first(domain) {
 		pr_info("    cpumask: 0x%02lx\n",
 				*cpumask_bits(&domain->possible_cpus));
 	}
