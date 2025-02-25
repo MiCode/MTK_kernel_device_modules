@@ -86,6 +86,7 @@ typedef enum {
 #define F_COREDUMP_RV55			BIT(18)
 #define F_DEBUG_MEM_SUPPORT		BIT(19)
 #define F_CHIP_VER_SUPPORT		BIT(20)
+#define F_AOV_UNSUPPORT			BIT(21)
 
 #define MAX_PWR_SUB_LATENCY (8)
 

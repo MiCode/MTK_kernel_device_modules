@@ -550,9 +550,11 @@ static int apu_probe(struct platform_device *pdev)
 		goto remove_apu_ce_excep;
 #endif
 
-	ret = aov_recovery_ipi_init(pdev, apu);
-	if (ret < 0)
-		goto remove_apu_aov_recovery;
+	if (!(apu->platdata->flags & F_AOV_UNSUPPORT)) {
+		ret = aov_recovery_ipi_init(pdev, apu);
+		if (ret < 0)
+			goto remove_apu_aov_recovery;
+	}
 
 	if (data->flags & F_PRELOAD_FIRMWARE)
 		rproc->state = RPROC_DETACHED;

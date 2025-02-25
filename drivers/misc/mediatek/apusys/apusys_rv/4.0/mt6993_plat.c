@@ -1414,7 +1414,7 @@ static int mt6993_rproc_exit(struct mtk_apu *apu)
 const struct mtk_apu_platdata mt6993_platdata = {
 	.flags		= F_AUTO_BOOT | F_FAST_ON_OFF | F_APU_IPI_UT_SUPPORT |
 					F_SMMU_SUPPORT | F_DEBUG_MEM_SUPPORT | F_PRELOAD_FIRMWARE |
-					F_APUSYS_RV_TAG_SUPPORT | F_EXCEPTION_KE |
+					F_APUSYS_RV_TAG_SUPPORT | F_EXCEPTION_KE | F_AOV_UNSUPPORT |
 					F_RV_BSP_RX_SUPPORT | F_COREDUMP_RV55 | F_SECURE_BOOT | F_SECURE_COREDUMP,
 	.ops		= {
 		.init	= mt6993_rproc_init,
