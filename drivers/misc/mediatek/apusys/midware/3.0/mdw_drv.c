@@ -91,7 +91,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		ret = mdw_dev->plat_funcs->sw_init(mdw_dev);
 		if (ret) {
 			mdw_drv_err("mdw sw init fail(%d)\n", ret);
-			goto put_mpriv;
+			goto free_session;
 		}
 		atomic_inc(&g_inited);
 	}
@@ -99,14 +99,15 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	mpriv->mem_allocator = apu_sysmem_create_allocator((uint64_t)mpriv);
 	if (mpriv->mem_allocator == NULL) {
 		mdw_drv_err("session(0x%llx) create mem allocator failed\n", (uint64_t)mpriv);
-		goto put_mpriv;
+		ret = -ENOMEM;
+		goto free_session;
 	}
 
 	ret = mdw_mem_pool_create(mpriv, &mpriv->cmd_buf_pool,
 		MDW_MEM_TYPE_MAIN, MDW_BUF_TYPE_CMD, MDW_MEM_POOL_CHUNK_SIZE,
 		MDW_DEFAULT_ALIGN, F_MDW_MEM_32BIT);
 	if (ret) {
-		mdw_drv_err("mdw create mem pool fail ret(%d)\n", ret);
+		mdw_exception("session(0x%llx) create mem pool failed(%d)\n", (uint64_t)mpriv, ret);
 		goto delete_allocator;
 	}
 
@@ -119,8 +120,8 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 delete_allocator:
 	if (apu_sysmem_delete_allocator(mpriv->mem_allocator))
 		mdw_drv_err("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
-put_mpriv:
-	mpriv->put_ref(mpriv);
+free_session:
+	kfree(mpriv);
 out:
 	return ret;
 }
