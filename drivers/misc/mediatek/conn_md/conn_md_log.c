@@ -12,12 +12,13 @@ int __conn_md_log_print(const char *str, ...)
 {
 	va_list args;
 	char temp_sring[DBG_LOG_STR_SIZE];
+	int len;
 
 	va_start(args, str);
-	vsnprintf(temp_sring, DBG_LOG_STR_SIZE, str, args);
+	len = vsnprintf(temp_sring, DBG_LOG_STR_SIZE, str, args);
 	va_end(args);
 
-	pr_info("%s", temp_sring);
+	pr_info("[%s] len=(%d)", temp_sring, len);
 
 	return 0;
 }
