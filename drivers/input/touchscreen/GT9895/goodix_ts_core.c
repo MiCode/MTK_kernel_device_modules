@@ -55,7 +55,6 @@ int64_t unixtimestamp = 24;
 
 /*touch ghost callback*/
 typedef void (*kfifo_data_ready_callback)(void);
-DEFINE_MUTEX(callback_lock);
 
 struct goodix_module goodix_modules;
 int core_module_prob_sate = CORE_MODULE_UNPROBED;
@@ -86,7 +85,7 @@ static int goodix_send_ic_config(struct goodix_ts_core *cd, int type);
 static struct kfifo ghost_touch_fifo;
 static int64_t last_touch_timestamps[GOODIX_MAX_TOUCH] = {0};
 static bool finger_down[GOODIX_MAX_TOUCH] = {0};
-DEFINE_MUTEX(ghost_touch_fifo_lock);
+DEFINE_MUTEX(ghost_touch_lock);
 #endif
 
 static int ghost_touch_fifo_init(void)
@@ -113,7 +112,9 @@ ssize_t get_ghost_buffer_size(void)
 {
 	size_t buffer_size;
 
+	mutex_lock(&ghost_touch_lock);
 	buffer_size = kfifo_len(&ghost_touch_fifo) * sizeof(struct ghost_touch_data);
+	mutex_unlock(&ghost_touch_lock);
 	return buffer_size;
 }
 EXPORT_SYMBOL(get_ghost_buffer_size);
@@ -124,23 +125,25 @@ ssize_t get_ghost_touch_data(struct ghost_touch_data *buffer, size_t buffer_size
 	size_t bytes_to_copy;
 	ssize_t ret;
 
-	mutex_lock(&ghost_touch_fifo_lock);
+	if (!buffer)
+		return -EINVAL;
+
+	mutex_lock(&ghost_touch_lock);
 	num_events = kfifo_len(&ghost_touch_fifo) / sizeof(struct ghost_touch_data);
 	bytes_to_copy = min(num_events * sizeof(struct ghost_touch_data), buffer_size);
 	// Retrieve all ghost touch event data from the FIFO
 	ret = kfifo_out(&ghost_touch_fifo, buffer, bytes_to_copy);
-	if (ret <= 0) {
+	mutex_unlock(&ghost_touch_lock);
+
+	if (ret < 0) {
 		ts_err("read touch ghost data fails!");
-		// If the read fails, return an error code
 		ret = -EIO;
+	} else if (ret == 0) {
+		ts_err("ghost touch fifo is empty!");
+		//Can return 0 to indicate no data or error cod
+		return 0;
 	}
-	for (int i = 0; i < ret ; i++) {
-		ts_info("Touch_id:%d,time:%lld,X:%d,Y:%d",buffer[i].touch_id,
-			buffer[i].timestamp,buffer[i].x,buffer[i].y);
-	}
-	mutex_unlock(&ghost_touch_fifo_lock);
-	ts_info("FIFO ghost data: num_events=%zu, buffer_size=%zu, bytes_to_copy=%zu, ret=%zd",
-		num_events, buffer_size, bytes_to_copy, ret);
+
 	return ret; //Return the number of bytes read
 }
 EXPORT_SYMBOL(get_ghost_touch_data);
@@ -149,7 +152,7 @@ EXPORT_SYMBOL(get_ghost_touch_data);
 
 void default_callback(void)
 {
-	ts_err("When there is no function callback, point to the default function.");
+	ts_debug("When there is no function callback, point to the default function.");
 }
 
 static kfifo_data_ready_callback registered_callback = default_callback;
@@ -158,46 +161,33 @@ int register_kfifo_callback(kfifo_data_ready_callback callback)
 {
 	int ret = 0;
 
-	mutex_lock(&callback_lock);
+	mutex_lock(&ghost_touch_lock);
 	if (registered_callback != default_callback)
 		ret = -EBUSY;
 	else
 		registered_callback = callback;
 
-	mutex_unlock(&callback_lock);
+	mutex_unlock(&ghost_touch_lock);
 	return ret;
 }
 EXPORT_SYMBOL(register_kfifo_callback);
 
 int unregister_kfifo_callback(kfifo_data_ready_callback callback)
 {
-	mutex_lock(&callback_lock);
+	mutex_lock(&ghost_touch_lock);
 	if (registered_callback == callback)
 		registered_callback = default_callback;
 
-	mutex_unlock(&callback_lock);
+	mutex_unlock(&ghost_touch_lock);
 	return 0;
 }
 EXPORT_SYMBOL(unregister_kfifo_callback);
-
-void trigger_kfifo_read(void)
-{
-	kfifo_data_ready_callback callback;
-
-	mutex_lock(&callback_lock);
-	callback = registered_callback;
-	mutex_unlock(&callback_lock);
-	if (callback)
-		callback();
-}
 
 static bool is_ghost_touch(int touch_id, int64_t timestamp)
 {
 	s64 time_diff;
 
 	time_diff = timestamp - last_touch_timestamps[touch_id];
-	ts_info("touch id: %d, current time:%lld, last time: %lld, diff: %lld",
-		touch_id,timestamp,last_touch_timestamps[touch_id],time_diff);
 	last_touch_timestamps[touch_id] = timestamp;
 
 	return time_diff > 0 && time_diff < GHOST_TOUCH_DEFAULT_THRESHOLD_NS;
@@ -205,6 +195,11 @@ static bool is_ghost_touch(int touch_id, int64_t timestamp)
 
 static void record_ghost_touch(int touch_id, int64_t timestamp, int64_t unixtimestamp, int x, int y)
 {
+	mutex_lock(&ghost_touch_lock);
+	if (registered_callback == default_callback) {
+		mutex_unlock(&ghost_touch_lock);
+		return;
+	}
 	struct ghost_touch_data data = {
 		.touch_id = touch_id,
 		.timestamp = timestamp,
@@ -214,15 +209,15 @@ static void record_ghost_touch(int touch_id, int64_t timestamp, int64_t unixtime
 	};
 
 	if (kfifo_is_full(&ghost_touch_fifo)) {
-		ts_err("FIFO is full, call api to report all data");
-		trigger_kfifo_read();
+		ts_debug("FIFO is full, call api to report all data");
+		if (registered_callback)
+			registered_callback();
 	} else {
-		ts_info("original ghost data id=%d, timestamp=%lld, x=%d, y=%d",
-			data.touch_id, data.timestamp, data.x, data.y);
 		// Add the ghost touch event data to the FIFO queue
 		if (!kfifo_in(&ghost_touch_fifo, &data, sizeof(struct ghost_touch_data)))
 			ts_err("failed to put data into the FIFO");
 	}
+	mutex_unlock(&ghost_touch_lock);
 }
 
 /**
@@ -1522,15 +1517,12 @@ void goodix_ts_report_finger(struct input_dev *dev,
 				touch_data->coords[i].x,
 				touch_data->coords[i].y,
 				touch_data->coords[i].w);
-			#ifdef GOODIX_TOUCH_GHOST
-			finger_down[i] = 0;
-			#endif
 			if ((x_last[i] == 0) && (y_last[i] == 0)) {
 				ts_info("touch down, i=%d, x=%d, y=%d, x_last=%d, y_last=%d",
 					i, touch_data->coords[i].x, touch_data->coords[i].y,
 					x_last[i], y_last[i]);
 				#ifdef GOODIX_TOUCH_GHOST
-				finger_down[i] = 1;
+				finger_down[i] = true;
 				#endif
 			}
 			x_last[i] = touch_data->coords[i].x;
@@ -1574,17 +1566,20 @@ void goodix_ts_report_finger(struct input_dev *dev,
 	}
 #endif
 
+	mutex_unlock(&dev->mutex);
+
 #ifdef GOODIX_TOUCH_GHOST
 	for (i = 0; i < GOODIX_MAX_TOUCH; i++) {
-		if(finger_down[i] &&
-			(is_ghost_touch(i, atomic64_read(&ts_core->timestamp)))) {
-			record_ghost_touch(i, atomic64_read(&ts_core->timestamp), unixtimestamp,
-					touch_data->coords[i].x, touch_data->coords[i].y);
+		if(finger_down[i]) {
+			finger_down[i] = false;
+			if (is_ghost_touch(i, atomic64_read(&ts_core->timestamp))) {
+				record_ghost_touch(i, atomic64_read(&ts_core->timestamp),
+						  unixtimestamp, touch_data->coords[i].x,
+						  touch_data->coords[i].y);
+			}
 		}
 	}
 #endif
-
-	mutex_unlock(&dev->mutex);
 }
 
 static int goodix_ts_request_handle(struct goodix_ts_core *cd,
