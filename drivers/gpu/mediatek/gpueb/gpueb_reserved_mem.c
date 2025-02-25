@@ -30,7 +30,7 @@
 phys_addr_t gpueb_mem_base_phys;
 phys_addr_t gpueb_mem_base_virt;
 phys_addr_t gpueb_mem_size;
-unsigned int gpueb_mem_num = 0;
+int gpueb_mem_num;
 
 struct gpueb_reserve_mblock *gpueb_reserve_mblock_ary;
 const char *gpueb_reserve_mblock_ary_name[20];
