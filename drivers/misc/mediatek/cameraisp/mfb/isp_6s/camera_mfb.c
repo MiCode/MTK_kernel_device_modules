@@ -4342,7 +4342,7 @@ EXIT:
 /******************************************************************************
  * Called when the device is being detached from the driver
  ******************************************************************************/
-static signed int MFB_remove(struct platform_device *pDev)
+void MFB_remove(struct platform_device *pDev)
 {
 	/*struct resource *pRes;*/
 	signed int IrqNum;
@@ -4401,7 +4401,6 @@ static signed int MFB_remove(struct platform_device *pDev)
 	device_destroy(pMFBClass, MFBDevNo);
 	class_destroy(pMFBClass);
 	pMFBClass = NULL;
-	return 0;
 }
 
 /******************************************************************************
