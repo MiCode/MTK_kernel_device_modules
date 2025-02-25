@@ -4094,7 +4094,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"aov_dc,venc,venc_ext,aov_apu,bif,",
 				"slb,slc,left";
 			node-66 = "SSPM_SWPM_CPU__DSU_PMU",
-				 "dsu_cycles";
+				 "dsu_cycles,l3d_cache,scu_pftch_cpu_hit,scu_pftch_cpu_miss,",
+				 "scu_snp_access,scu_snp_no_cpu_snp";
 			node-67 = "SSPM_SWPM_CPU__CORE_TEMP",
 				 "cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7,DSU";
 			node-68 = "SSPM_SWPM_SOC__SMAP",
@@ -4464,6 +4465,8 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-130 = "SSPM_SWPM_CHINFRA",
 				"non_snp_bw,snp_bw,non_snp_ratio,snp_ratio,",
 				"idle_ratio,suspend_ratio,frequency";
+			node-131 = "SSPM_SWPM_CPU__CORE_RET_CNT",
+				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
