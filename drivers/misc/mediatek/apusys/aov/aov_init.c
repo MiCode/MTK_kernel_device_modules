@@ -23,7 +23,7 @@
 
 #define MAX_DEBUG_CMD_SIZE (1024)
 
-#define APUSYS_AOV_KVERSION "v2.0.0.0-ko"
+#define APUSYS_AOV_KVERSION "v3.0.0.0-ko"
 
 #define STATE_TIMEOUT_MS (20)
 
