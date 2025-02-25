@@ -783,7 +783,8 @@ static void mtk_atomic_check_plane_sec_state(struct drm_device *dev,
 				     struct drm_atomic_state *new_state)
 {
 	int i;
-	int sec_on[MAX_CRTC] = {0};
+	bool sec_on[MAX_CRTC] = {0};
+	bool sec_on_out[MAX_CRTC] = {0};
 	struct drm_plane *plane;
 	struct drm_plane_state *new_plane_state;
 	struct drm_crtc *crtc;
@@ -804,21 +805,29 @@ static void mtk_atomic_check_plane_sec_state(struct drm_device *dev,
 
 	for_each_old_crtc_in_state(new_state, crtc, new_crtc_state, i) {
 		struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+		struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 		/* check output buffer is secure or not */
 		if (mtk_crtc_check_out_sec(crtc))
-			sec_on[drm_crtc_index(crtc)] = true;
+			sec_on_out[i] = true;
 
 		/* Leave secure sequence */
-		if (mtk_crtc->sec_on && !sec_on[i])
+		if (mtk_crtc->sec_on && !(sec_on[i] | sec_on_out[i]))
 			mtk_crtc_disable_secure_state(&mtk_crtc->base);
 
 		/* When the engine switch to secure, we don't let system
 		 * enter LP idle mode. Because it may make more secure risks
 		 * with tiny power benefit.
 		 */
-		if (!mtk_crtc->sec_on && sec_on[i])
+		if (!mtk_crtc->sec_on && (sec_on[i] | sec_on_out[i]))
 			mtk_drm_idlemgr_kick(__func__, crtc, false);
+
+		/* For AID support platform, no need to set crtc sec_on
+		 * if only output buffer in secure state
+		 */
+		if (!(priv->data->mmsys_id == MMSYS_MT6993 ||
+			priv->data->mmsys_id == MMSYS_MT6991))
+			sec_on[i] = sec_on[i] | sec_on_out[i];
 
 		mtk_crtc->sec_on = sec_on[i];
 	}
