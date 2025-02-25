@@ -145,3 +145,19 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/sound/soc/codecs:mt6369-accdet".format(kernel_version),
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "snd-soc-mt6681",
+    srcs = [
+            "mt6681.c",
+            "mt6681.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/mfd:mt6681-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/mfd:mt6685-audclk".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)

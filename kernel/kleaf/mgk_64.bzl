@@ -1228,6 +1228,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6681".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
     "//kernel_device_modules-{}/drivers/spi:spi-mt65xx".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mme:mme".format(kernel_version),
@@ -1674,7 +1675,7 @@ mgk_64_device_modules = [
     "sound/soc/codecs/richtek/snd-soc-rt5512.ko",
     #"sound/soc/codecs/snd-soc-mt6338.ko",
     #"sound/soc/codecs/snd-soc-mt6368.ko",
-    "sound/soc/codecs/snd-soc-mt6681.ko",
+    #"sound/soc/codecs/snd-soc-mt6681.ko",
     "sound/soc/codecs/tfa98xx/snd-soc-tfa98xx.ko",
     #"sound/soc/mediatek/audio_dsp/mtk-soc-offload-common.ko",
     #"sound/soc/mediatek/audio_dsp/snd-soc-audiodsp-common.ko",
@@ -2269,7 +2270,9 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_offload/usb_offload.ko")
         #mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6338.ko")
         #mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6368.ko")
-        mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6681.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version))
+        #mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6681.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6681".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/misc/mediatek/sensor/2.0/mtk_nanohub/nanohub.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko")
