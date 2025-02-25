@@ -23,6 +23,8 @@ enum FPSGO_CPU_LIMIT {
 	FPSGO_LIMIT_CPU = 2,
 };
 
+extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
+extern void unset_task_ls_prefer_cpus(int pid);
 extern int set_gear_indices(int pid, int gear_start, int num_gear, int reverse);
 extern int unset_gear_indices(int pid);
 extern void set_task_ls(int pid);
@@ -38,6 +40,7 @@ void fbt_set_per_task_cap(int pid, unsigned int min_blc,
 	unsigned int max_blc, unsigned int max_util);
 int get_fbt_cpu_mask(int prefer_type, int *get_mask);
 int fbt_set_affinity(pid_t pid, unsigned int prefer_type);
+int fbt_set_soft_affinity(int pid, int set, unsigned int prefer_type);
 int fbt_check_ls(int pid);
 struct cpumask fbt_generate_user_cpu_mask(int mask_int);
 int fbt_get_cluster_limit(int *cluster, int *freq, int *r_freq, int *cpu);

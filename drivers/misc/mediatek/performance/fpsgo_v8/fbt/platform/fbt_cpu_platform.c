@@ -233,6 +233,31 @@ EXIT:
 	return ls;
 }
 
+int fbt_set_soft_affinity(int pid, int set, unsigned int prefer_type)
+{
+	int ret = 0;
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
+	if (!mask_done) {
+		ret = -100;
+		goto out;
+	}
+
+	if (set)
+		set_task_ls_prefer_cpus(pid, mask_int[prefer_type]);
+	else
+		unset_task_ls_prefer_cpus(pid);
+
+out:
+	if (ret != 0) {
+		fpsgo_systrace_c_fbt(pid, 0, ret, "softaffinity fail");
+		fpsgo_systrace_c_fbt(pid, 0, 0, "softaffinity fail");
+		return ret;
+	}
+	fpsgo_systrace_c_fbt(pid, 0, prefer_type, "soft_affinity");
+#endif
+	return ret;
+}
+
 int fbt_set_affinity(pid_t pid, unsigned int prefer_type)
 {
 	int ret = 0;

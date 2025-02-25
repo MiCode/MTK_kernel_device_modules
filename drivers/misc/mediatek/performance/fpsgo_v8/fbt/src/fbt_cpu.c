@@ -105,7 +105,7 @@
 #define FPSGO_BAFFINITY_B_ADJ 2
 #define FPSGO_BAFFINITY_B_M 3
 #define FPSGO_BAFFINITY_L_R 4
-#define FPSGO_SOFTAFFINITY_NOT_USED 5
+#define FPSGO_BAFFINITY_NOT_USED 5
 #define FPSGO_BAFFINITY_USERDEFINE 6
 #define FPSGO_BAFFINITY_TOTAL 7
 
@@ -255,6 +255,7 @@ static int loading_time_diff;
 static int adjust_loading;
 static int check_buffer_quota;
 static int boost_affinity;
+static int set_soft_affinity;
 static int boost_VIP;
 static int bm_th;
 static int ml_th;
@@ -1164,24 +1165,32 @@ static void fbt_nice_task(int pid, int set_nice, int *prev_nice)
 }
 
 static int fbt_affinity_task(int affinity, int pid, int group, int reset_taskmask,
-	int spid_action, int *prev_affinity, int *prev_prefer, int *ori_ls,
+	int use_soft_affinity, int *prev_policy, int *prev_type, int *ori_ls,
 	int *user_mask, int mask_size)
 {
 	int policy;
 	int prefer = FPSGO_PREFER_NONE;
 	int ret = 0;
-	struct cpumask cpu_mask;
 
 	if (!pid)
 		return -EINVAL;
 
-	/* policy changes, reset*/
-	if (!reset_taskmask) {
-		if (affinity != *prev_affinity && *prev_prefer != FPSGO_PREFER_NONE)
-			fbt_set_affinity(pid, FPSGO_PREFER_NONE);
-	} else {
+	if (reset_taskmask) {
 		/* Reset task mask for each frame. */
 		fbt_set_affinity(pid, FPSGO_PREFER_NONE);
+		fbt_set_soft_affinity(pid, *ori_ls, FPSGO_PREFER_NONE);
+	} else if (use_soft_affinity != *prev_type) {
+		/* affinity_type change than reset */
+		if (*prev_type)
+			fbt_set_soft_affinity(pid, *ori_ls, FPSGO_PREFER_NONE);
+		else
+			fbt_set_affinity(pid, FPSGO_PREFER_NONE);
+	} else if (*prev_policy != 0 && affinity != *prev_policy) {
+		/* affinity mask change than reset */
+		if (use_soft_affinity)
+			fbt_set_soft_affinity(pid, *ori_ls, FPSGO_PREFER_NONE);
+		else
+			fbt_set_affinity(pid, FPSGO_PREFER_NONE);
 	}
 
 	policy = affinity;
@@ -1191,21 +1200,18 @@ static int fbt_affinity_task(int affinity, int pid, int group, int reset_taskmas
 			prefer = FPSGO_PREFER_BIG;
 		else
 			prefer = FPSGO_PREFER_L_M;
-		ret = fbt_set_affinity(pid, prefer);
 		break;
 	case FPSGO_BAFFINITY_B_ADJ:
 		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_NONE;
 		else
 			prefer = FPSGO_PREFER_L_M;
-		ret = fbt_set_affinity(pid, prefer);
 		break;
 	case FPSGO_BAFFINITY_B_M:
 		if (group == FPSGO_GROUP_HEAVY)
 			prefer = FPSGO_PREFER_B_M;
 		else
 			prefer = FPSGO_PREFER_M;
-		ret = fbt_set_affinity(pid, prefer);
 		break;
 	case FPSGO_BAFFINITY_L_R:
 		if (group == FPSGO_GROUP_HEAVY)
@@ -1214,24 +1220,37 @@ static int fbt_affinity_task(int affinity, int pid, int group, int reset_taskmas
 			prefer = FPSGO_PREFER_M;
 		else
 			prefer = FPSGO_PREFER_L_M;
-		ret = fbt_set_affinity(pid, prefer);
 		break;
-	case FPSGO_SOFTAFFINITY_NOT_USED:
+	case FPSGO_BAFFINITY_NOT_USED:
 		break;
 	case FPSGO_BAFFINITY_USERDEFINE:
-		if (!user_mask || group < 0 || group > mask_size)
+		if (!user_mask || group < 0 || group >= mask_size)
 			return -EINVAL;
-		cpu_mask = fbt_generate_user_cpu_mask(user_mask[group]);
 		prefer = FPSGO_PREFER_TOTAL;
-		ret = fpsgo_sched_setaffinity(pid, &cpu_mask);
 		break;
 	default:
-		break;
+		goto DONE;
 	}
 
-	*prev_affinity = policy;
-	*prev_prefer = prefer;
-	fpsgo_systrace_c_fbt_debug(pid, 0, prefer, "prefer_type");
+	if (use_soft_affinity) {
+		if (policy != FPSGO_BAFFINITY_USERDEFINE)
+			ret = fbt_set_soft_affinity(pid, 1, prefer);
+		else
+			set_task_ls_prefer_cpus(pid, user_mask[group]);
+	} else {
+		if (policy != FPSGO_BAFFINITY_USERDEFINE) {
+			ret = fbt_set_affinity(pid, prefer);
+		} else {
+			struct cpumask cpu_mask;
+
+			cpu_mask = fbt_generate_user_cpu_mask(user_mask[group]);
+			ret = fpsgo_sched_setaffinity(pid, &cpu_mask);
+		}
+	}
+DONE:
+	*prev_policy = policy;
+	*prev_type = use_soft_affinity;
+	fpsgo_systrace_c_fbt_debug(pid, 0, prefer, "prefer_affinity");
 	fpsgo_systrace_c_fbt_debug(pid, 0, policy, "task_policy");
 	return ret;
 }
@@ -1405,7 +1424,7 @@ static void fbt_tp_control(int pid, int group, int bm_th, int ml_th,
 		else if (group_prefer)
 			*group_prefer = FPSGO_PREFER_BIG;
 		tp_exceed = FPSGO_TP_BMPOINT_ACTIVATE;
-	} else if (ml_th && min_cap_base >= ml_th) {
+	} else if ((ml_th && min_cap_base >= ml_th) || (bm_th && min_cap_base >= bm_th)) {
 		if (group_affinity && (tp_policy & FPSGO_TP_CONTROL_ML)) {
 			if (group_affinity_mask && !get_fbt_cpu_mask(FPSGO_PREFER_B_M, group_affinity_mask))
 				*group_affinity = FPSGO_BAFFINITY_USERDEFINE;
@@ -1643,7 +1662,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 
 	fbt_nice_task(fl->pid, 0, &fl->ori_nice);
 	fbt_affinity_task(FPSGO_BAFFINITY_NONE, fl->pid, 0, fl->reset_taskmask,
-		fl->action, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
+		0, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
 	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action,
 		0, 0, &fl->is_vip, 0, 0, 0, 1);
 	fbt_set_l3_ct(0,fl->pid,0,0);
@@ -2334,6 +2353,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int separate_pct_other_final;
 	int separate_release_sec_final;
 	int boost_affinity_final;
+	int set_soft_affinity_final;
 	int boost_VIP_final;
 	int vip_multiuser_check;
 	int tp_policy_final;
@@ -2364,6 +2384,7 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	separate_release_sec_final = thr->attr.separate_release_sec_by_pid;
 	separate_pct_other_final = thr->attr.separate_pct_other_by_pid;
 	boost_affinity_final = thr->attr.boost_affinity_by_pid;
+	set_soft_affinity_final = thr->attr.set_soft_affinity_by_pid;
 	boost_VIP_final = thr->attr.boost_vip_by_pid;
 	set_l3_cache_ct_final = thr->attr.set_l3_cache_ct_by_pid;
 	set_ls_final = thr->attr.set_ls_by_pid;
@@ -2533,8 +2554,9 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			fbt_nice_task(fl->pid, 0, &fl->ori_nice);
 
 		fbt_set_l3_ct(set_l3_cache_ct_final,fl->pid,fl->action,fl->heavyidx);
-		fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx, fl->reset_taskmask, fl->action,
-			&fl->policy, &fl->prefer_type, &fl->ori_ls, group_affinity_mask, FPSGO_MAX_GROUP);
+		fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx, fl->reset_taskmask,
+			set_soft_affinity_final, &fl->policy, &fl->prefer_type, &fl->ori_ls,
+			group_affinity_mask, FPSGO_MAX_GROUP);
 		fbt_gear_hint_prefer_cpu(group_prefer_final, fl->pid, &fl->is_prefer, 0);
 		fbt_change_task_policy(boost_VIP_final, fl->pid, fl->heavyidx, fl->action,
 			fl->prio, fl->timeout, &fl->is_vip, vip_mask_final, vip_throttle_final, vip_multiuser_check, 0);
@@ -2621,6 +2643,7 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->vip_mask_by_pid = vip_mask;
 	render_attr->set_vvip_by_pid = set_vvip;
 	render_attr->vip_throttle_by_pid = vip_throttle;
+	render_attr->set_soft_affinity_by_pid = set_soft_affinity;
 
 	render_attr->qr_enable_by_pid = qr_enable;
 	render_attr->qr_t2wnt_x_by_pid = qr_t2wnt_x;
@@ -2820,6 +2843,8 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->set_vvip_by_pid = pid_attr.set_vvip_by_pid;
 	if (pid_attr.vip_throttle_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->vip_throttle_by_pid = pid_attr.vip_throttle_by_pid;
+	if (pid_attr.set_soft_affinity_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->set_soft_affinity_by_pid = pid_attr.set_soft_affinity_by_pid;
 	if(pid_attr.quota_v2_diff_clamp_min_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->quota_v2_diff_clamp_min_by_pid = pid_attr.quota_v2_diff_clamp_min_by_pid;
 	if(pid_attr.quota_v2_diff_clamp_max_by_pid != BY_PID_DEFAULT_VAL)
@@ -6659,6 +6684,7 @@ static void fbt_jank_thread_restore(int pid)
 	struct render_info *iter = NULL;
 	struct fpsgo_loading *fl = NULL;
 	int group_affinity_final;
+	int set_soft_affinity_final;
 	int group_affinity_mask[FPSGO_MAX_GROUP];
 	int tp_multiuser_check;
 	int vip_multiuser_check;
@@ -6672,6 +6698,7 @@ static void fbt_jank_thread_restore(int pid)
 		return;
 
 	group_affinity_final = iter->attr.boost_affinity_by_pid;
+	set_soft_affinity_final = iter->attr.set_soft_affinity_by_pid;
 	fbt_get_user_group_setting(iter, user_cpumask);
 	group_affinity_mask[FPSGO_GROUP_HEAVY] = user_cpumask[FPSGO_GROUP_HEAVY];
 	group_affinity_mask[FPSGO_GROUP_SECOND] = user_cpumask[FPSGO_GROUP_SECOND];
@@ -6736,7 +6763,7 @@ static void fbt_jank_thread_restore(int pid)
 		iter->attr.vip_throttle_by_pid, vip_multiuser_check, 0);
 	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_vip_by_pid, "restore_priority");
 
-	fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx, 0, fl->action,
+	fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx, 0, set_soft_affinity_final,
 		&garbage, &garbage, &garbage, group_affinity_mask, FPSGO_MAX_GROUP);
 	fpsgo_systrace_c_fbt(pid, 0, iter->attr.boost_affinity_by_pid, "restore_affinity");
 }
@@ -7307,6 +7334,11 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->vip_throttle_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->vip_throttle_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "set_soft_affinity")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->set_soft_affinity_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->set_soft_affinity_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "reset_taskmask")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->reset_taskmask = val;
@@ -8822,6 +8854,10 @@ FBT_SYSFS_READ(vip_throttle, fbt_mlock, vip_throttle);
 FBT_SYSFS_WRITE_VALUE(vip_throttle, fbt_mlock, vip_throttle, 0, 1500);
 static KOBJ_ATTR_RW(vip_throttle);
 
+FBT_SYSFS_READ(set_soft_affinity, fbt_mlock, set_soft_affinity);
+FBT_SYSFS_WRITE_VALUE(set_soft_affinity, fbt_mlock, set_soft_affinity, 0, 1);
+static KOBJ_ATTR_RW(set_soft_affinity);
+
 FBT_SYSFS_READ(limit_perf_b, fbt_mlock, limit_perf_b);
 FBT_SYSFS_WRITE_VALUE(limit_perf_b, fbt_mlock, limit_perf_b, 0, 100);
 static KOBJ_ATTR_RW(limit_perf_b);
@@ -9007,6 +9043,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_mask);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_vvip);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_throttle);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_soft_affinity);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_perf_b);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_perf_m);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_limit_cfreq2cap);
@@ -9205,6 +9242,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_mask);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_vvip);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_throttle);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_soft_affinity);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_perf_b);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_perf_m);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_limit_cfreq2cap);

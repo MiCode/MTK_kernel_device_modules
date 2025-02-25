@@ -1094,6 +1094,9 @@ int fpsgo_comp2xgf_do_recycle(void)
 	}
 
 	hlist_for_each_entry_safe(r_iter, r_t, &xgf_render_if_list, hlist) {
+		if (test_bit(USER_TYPE, &r_iter->master_type))
+			continue;
+
 		diff = now_ts - r_iter->cur_queue_end_ts;
 		if (diff >= NSEC_PER_SEC)
 			xgf_reset_render(r_iter);

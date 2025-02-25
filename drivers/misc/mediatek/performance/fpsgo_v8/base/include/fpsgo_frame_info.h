@@ -136,6 +136,7 @@ struct fpsgo_boost_attr {
 
 	/* boost affinity */
 	int boost_affinity_by_pid;
+	int set_soft_affinity_by_pid;
 	int cpumask_heavy_by_pid;
 	int cpumask_second_by_pid;
 	int cpumask_others_by_pid;

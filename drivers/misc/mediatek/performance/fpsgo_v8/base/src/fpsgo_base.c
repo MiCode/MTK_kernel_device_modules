@@ -639,6 +639,7 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->vip_mask_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->set_vvip_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->vip_throttle_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->set_soft_affinity_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->check_buffer_quota_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->expected_fps_margin_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->quota_v2_diff_clamp_min_by_pid = BY_PID_DEFAULT_VAL;
@@ -973,6 +974,7 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.vip_mask_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.set_vvip_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.vip_throttle_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.set_soft_affinity_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_quota_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_deq_bound_thrs_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.gcc_down_sec_pct_by_pid == BY_PID_DEFAULT_VAL &&
@@ -2285,7 +2287,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-		" boost_affinity, cpumask_heavy, cpumask_second, cpumask_others\n");
+		" boost_affinity, cpumask_heavy, cpumask_second, cpumask_others, set_soft_affinity\n");
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
@@ -2371,11 +2373,12 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
 			attr_item.boost_affinity_by_pid,
 			attr_item.cpumask_heavy_by_pid,
 			attr_item.cpumask_second_by_pid,
-			attr_item.cpumask_others_by_pid);
+			attr_item.cpumask_others_by_pid,
+			attr_item.set_soft_affinity_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,
@@ -2517,7 +2520,7 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-		" boost_affinity\n");
+		" boost_affinity, cpumask_heavy, cpumask_second, cpumask_others, set_soft_affinity\n");
 	pos += length;
 
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
@@ -2583,8 +2586,12 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d\n",
-			attr_item.boost_affinity_by_pid);
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.boost_affinity_by_pid,
+			attr_item.cpumask_heavy_by_pid,
+			attr_item.cpumask_second_by_pid,
+			attr_item.cpumask_others_by_pid,
+			attr_item.set_soft_affinity_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,
