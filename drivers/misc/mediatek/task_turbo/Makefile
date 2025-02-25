@@ -16,3 +16,4 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/task_turbo/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v3/fstb
 obj-$(CONFIG_MTK_TASK_TURBO) += task_turbo.o
+obj-$(CONFIG_MTK_VIP_ENGINE) += vip_engine.o

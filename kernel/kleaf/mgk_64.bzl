@@ -1635,6 +1635,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/sched/scheduler.ko",
     #"drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko",
     "drivers/misc/mediatek/task_turbo/task_turbo.ko",
+    "drivers/misc/mediatek/task_turbo/vip_engine.ko",
     #"drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko",
     #"drivers/misc/mediatek/vmm/mtk-vmm-notifier.ko",
     #"drivers/misc/mediatek/widevine_drm/widevine_driver.ko",

@@ -14,17 +14,11 @@
 	(&((struct mtk_task *)android_task_vendor_data(p))->turbo_data)
 #define get_inherit_task(parent)	\
 	((struct task_struct *)((u64)(parent)->android_vendor_data1))
-#define get_vip_t(p)	\
-	(&((struct mtk_static_vendor_task *)(p)->android_vendor_data1)->vip_task)
-#define TOUCH_DOWN 1
-#define TOUCH_SUSTAIN_MS 2000
-#define INVALID_TGID -1
-#define INVALID_VAL -1
-#define INVALID_LOADING -1
 #define MAX_RT_PRIO 100
 #define MAX_NORMAL_PRIO 140
 
 struct list_head;
+
 
 enum {
 	START_INHERIT = -1,
@@ -38,11 +32,6 @@ enum {
 	SUB_FEAT_BINDER		= 1U << 1,
 	SUB_FEAT_SCHED		= 1U << 2,
 	SUB_FEAT_FLAVOR_BIGCORE = 1U << 3,
-};
-
-enum {
-	PRINT_UCLAMP_LIST		= 1,
-	CLEAR_UCLAMP_LIST		= 2,
 };
 
 enum rwsem_waiter_type {
@@ -70,32 +59,7 @@ struct cluster_info {
 	int cpu;
 };
 
-struct cpu_time {
-	u64 time;
-};
-
-struct cpu_info {
-	int *cpu_loading;
-};
-
-struct uclamp_data_node {
-	pid_t pid;
-	struct list_head list;
-};
-
-struct sched_attr_work {
-	struct work_struct work;
-	struct task_struct *task;
-	struct sched_attr attr;
-};
-
 extern void (*task_turbo_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu);
-extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
-extern inline int get_vip_task_prio(struct task_struct *p);
-extern void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid, int binder_uclamp_max, int binder_uclamp_min);
-extern void (*task_turbo_do_unset_binder_uclamp_param)(pid_t pid);
-extern void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
-extern void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
 
 /*
  * Nice levels are multiplicative, with a gentle 10% change for every
@@ -140,15 +104,7 @@ const u32 sched_prio_to_wmult[40] = {
 };
 #else
 extern const int sched_prio_to_weight[40];
-
-/*
- * Inverse (2^32/x) values of the sched_prio_to_weight[] array, precalculated.
- *
- * In cases where the weight does not change often, we can use the
- * precalculated inverse to speed up arithmetics by turning divisions
- * into multiplications:
- */
 extern const u32 sched_prio_to_wmult[40];
 #endif
 
-#endif /* _PERF_TRACKER_H */
+#endif /* _TASK_TURBO_H_ */
