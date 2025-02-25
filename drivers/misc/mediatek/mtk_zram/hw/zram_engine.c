@@ -465,8 +465,38 @@ dump:
 	dump_fifo_idx(hwz, NULL, 0);
 	engine_gear_get_status(&hwz->gear_ctrl, NULL);
 
-	/* Trigger warning once */
-	WARN_ON_ONCE(1);
+	/*
+	 * Try to restore
+	 */
+
+	/* main compression fifo */
+	fifo = &hwz->fifo_1;
+	cmpl_idx = comp_fifo_1_HtS_complete_index(fifo);
+	if (cmpl_idx != fifo->complete_idx) {
+		fifo->write_idx = cmpl_idx;
+		fifo->complete_idx = cmpl_idx;
+		fifo->pp_prev_end = cmpl_idx;
+	}
+
+	/* second compression fifo */
+	fifo = &hwz->fifo_2;
+	cmpl_idx = comp_fifo_2_HtS_complete_index(fifo);
+	if (cmpl_idx != fifo->complete_idx) {
+		fifo->write_idx = cmpl_idx;
+		fifo->complete_idx = cmpl_idx;
+		fifo->pp_prev_end = cmpl_idx;
+	}
+
+	/* decompression fifos */
+	for (i = 0; i < MAX_DCOMP_NR; i++) {
+		fifo = &hwz->dcomp_fifo[i];
+		cmpl_idx = dcomp_fifo_HtS_complete_index(fifo);
+		if (cmpl_idx != fifo->complete_idx) {
+			fifo->write_idx = cmpl_idx;
+			fifo->complete_idx = cmpl_idx;
+			fifo->pp_prev_end = cmpl_idx;
+		}
+	}
 }
 
 /* Polling for cmd completion */
