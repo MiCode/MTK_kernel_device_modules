@@ -1902,19 +1902,19 @@
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
-		thd-volts-l = <
+		bat0-thd-volts-l = <
 			3150 3000 2900
 			3150 3000 2900
 			3150 3000 2900>;
-		thd-volts-h = <
+		bat0-thd-volts-h = <
 			3300 3150 3000
 			3300 3150 3000
 			3300 3150 3000>;
-		thd-volts-l-2s = <
+		bat1-thd-volts-l = <
 			3400 3100 2900
 			4400 3400 3100
 			4900 4800 4400>;
-		thd-volts-h-2s = <
+		bat1-thd-volts-h = <
 			3500 3400 3100
 			4500 4400 3400
 			5000 4900 4800>;
@@ -1922,6 +1922,9 @@
 		lvsys-thd-volt-h = <3100>;
 		temperature-max-stage = <2>;
 		temperature-stage-threshold = <11 0>;
+		throttle-level = <0 1 2 3>,
+				<0 1 2 3>,
+				<0 1 2 3>;
 		bootmode = <&chosen>;
 		gauge = <&mtk_gauge>;
 	};
