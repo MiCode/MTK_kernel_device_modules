@@ -172,9 +172,16 @@ DEFINE_STATIC_KEY_FALSE(engine_sync_mode);
  */
 DEFINE_STATIC_KEY_TRUE(engine_power_efficiency);
 
+/* RTFF check control */
+DEFINE_STATIC_KEY_FALSE(engine_rtff_check);
+
 /* Statistics for suspect hang */
 static atomic_t enc_suspect_hang_count = ATOMIC_INIT(0);
 static atomic_t dec_suspect_hang_count = ATOMIC_INIT(0);
+
+/* Statistics for rtff status */
+static atomic_t engine_rtff_pass_count = ATOMIC_INIT(0);
+static atomic_t engine_rtff_fail_count = ATOMIC_INIT(0);
 
 /*
  * Request to adjust gear level
@@ -670,6 +677,71 @@ static int fake_hw_func(void *data)
 #endif /* CONFIG_ZRAM_ENGINE_SW_SIMULATION */
 
 static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset);
+
+/* Check FIFO RTFF result and recover if necessary (only called during power on) */
+void engine_self_check_before_kick(struct engine_control_t *ctrl)
+{
+	struct zram_engine_t *hwz = container_of(ctrl, struct zram_engine_t, ctrl);
+	struct hwfifo *fifo;
+	int i;
+	uint32_t cmpl_idx;
+	bool rtff_fail = false;
+
+	if (!static_branch_unlikely(&engine_rtff_check))
+		return;
+
+	if (unlikely(!hwz))
+		return;
+
+	/*
+	 * Check fifo status
+	 */
+
+	/* main compression fifo */
+	fifo = &hwz->fifo_1;
+	cmpl_idx = comp_fifo_1_HtS_complete_index(fifo);
+	if (cmpl_idx != fifo->complete_idx) {
+		rtff_fail = true;
+		goto dump;
+	}
+
+	/* second compression fifo */
+	fifo = &hwz->fifo_2;
+	cmpl_idx = comp_fifo_2_HtS_complete_index(fifo);
+	if (cmpl_idx != fifo->complete_idx) {
+		rtff_fail = true;
+		goto dump;
+	}
+
+	/* decompression fifos */
+	for (i = 0; i < MAX_DCOMP_NR; i++) {
+		fifo = &hwz->dcomp_fifo[i];
+		cmpl_idx = dcomp_fifo_HtS_complete_index(fifo);
+		if (cmpl_idx != fifo->complete_idx) {
+			rtff_fail = true;
+			goto dump;
+		}
+	}
+
+dump:
+	/* RTFF is successful */
+	if (!rtff_fail) {
+		atomic_inc(&engine_rtff_pass_count);
+		return;
+	}
+
+	/*
+	 * Dump for RTFF fail
+	 */
+	atomic_inc(&engine_rtff_fail_count);
+
+	engine_get_reg_status(ctrl, NULL);
+	dump_fifo_idx(hwz, NULL, 0);
+	engine_gear_get_status(&hwz->gear_ctrl, NULL);
+
+	/* Trigger warning once */
+	WARN_ON_ONCE(1);
+}
 
 /* Polling for cmd completion */
 static inline void hwcomp_poll_cmd_complete(struct hwfifo *fifo)
@@ -2546,6 +2618,9 @@ static int mtk_hwzram_probe(struct platform_device *pdev)
 	/* Initialize mode_locked to unlock */
 	atomic_set(&hwz->mode_locked, HWCOMP_MODE_UNLOCK);
 
+	/* It's safe to enable rtff check */
+	static_branch_enable(&engine_rtff_check);
+
 	/* Add it to hwz_list */
 	mutex_lock(&hwz_mutex);
 	WARN_ON_ONCE(!list_empty(&hwz_list));	/* Suppose the list is empty here */
@@ -2598,6 +2673,9 @@ static void mtk_hwzram_remove(struct platform_device *pdev)
 	mutex_lock(&hwz_mutex);
 	list_del(&hwz->list);
 	mutex_unlock(&hwz_mutex);
+
+	/* It's time to disable rtff check */
+	static_branch_disable(&engine_rtff_check);
 
 	/* Clear resource for SW control */
 	zram_engine_sw_deinit(hwz);
@@ -3061,8 +3139,9 @@ static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset)
 				i, fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
 	}
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
-			"comp hang: %d, dcomp hang: %d\n",
-			atomic_read(&enc_suspect_hang_count), atomic_read(&dec_suspect_hang_count));
+			"comp hang: %d, dcomp hang: %d, rtff pass: %d, rtff fail: %d\n",
+			atomic_read(&enc_suspect_hang_count), atomic_read(&dec_suspect_hang_count),
+			atomic_read(&engine_rtff_pass_count), atomic_read(&engine_rtff_fail_count));
 
 	return copied;
 }

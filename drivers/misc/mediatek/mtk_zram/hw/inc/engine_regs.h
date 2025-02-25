@@ -333,8 +333,8 @@ void engine_dec_debug_sel(struct engine_control_t *ctrl, uint32_t reg_val);
 void engine_dec_debug_show(struct engine_control_t *ctrl);
 void engine_dec_debug_show_more(struct engine_control_t *ctrl);
 
-void engine_restore_enc_fifo_via_offset(struct engine_control_t *ctrl);
-void engine_restore_dec_fifo_via_offset(struct engine_control_t *ctrl);
+/* A function provided from zram_engine.c to check fifo rtff result */
+void engine_self_check_before_kick(struct engine_control_t *ctrl);
 
 #if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 void engine_dump_all_registers(struct engine_control_t *ctrl);

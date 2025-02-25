@@ -368,6 +368,9 @@ int engine_power_on(struct engine_control_t *ctrl)
 	/* Wait for SMMU prot off */
 	engine_wait_smmu_prot_off(ctrl);
 
+	/* Do self-check */
+	engine_self_check_before_kick(ctrl);
+
 #ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
 #endif
@@ -575,7 +578,10 @@ void engine_enc_init(struct engine_control_t *ctrl, bool dst_copy)
 
 next:
 	/* General config setting */
-	zram_writel(0xf00, ctrl->zram_enc_base + ZRAM_ENC_SW_LIMIT);
+	if (dst_copy)
+		zram_writel(0x1000, ctrl->zram_enc_base + ZRAM_ENC_SW_LIMIT);
+	else
+		zram_writel(0xf00, ctrl->zram_enc_base + ZRAM_ENC_SW_LIMIT);
 
 	reg_val = ENGINE_COMP_BATCH_INTR_CNT_BITS;
 	if (dst_copy) {
