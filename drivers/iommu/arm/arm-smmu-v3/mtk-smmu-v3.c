@@ -3195,7 +3195,7 @@ static const struct mtk_smmu_plat_data mt6993_data_soc = {
 static const struct mtk_smmu_plat_data mt6993_data_gpu = {
 	.smmu_plat		= SMMU_MT6993,
 	.smmu_type		= GPU_SMMU,
-	.flags			= SMMU_DELAY_HW_INIT | SMMU_EXTRA_DCM_EN | /* SMMU_HYP_EN | */
+	.flags			= SMMU_DELAY_HW_INIT | SMMU_EXTRA_DCM_EN | SMMU_HYP_EN |
 				  SMMU_DIS_CPU_TBU_PARTID,
 };
 
