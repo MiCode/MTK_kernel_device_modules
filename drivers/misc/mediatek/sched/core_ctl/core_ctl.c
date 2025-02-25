@@ -2121,12 +2121,12 @@ void core_ctl_tick(void *data, struct rq *rq)
 		need_update_ppm_eff = update_ppm_eff();
 	}
 
-	if (enable_policy) {
+	if (enable_policy)
 		core_ctl_main_algo();
 
-		for_each_cluster(cluster, index)
-			apply_demand(cluster);
-	}
+	for_each_cluster(cluster, index)
+		apply_demand(cluster);
+
 }
 
 inline void core_ctl_update_active_cpu(unsigned int cpu)
