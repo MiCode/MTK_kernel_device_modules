@@ -69,6 +69,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_vdisp_common.h"
 #include "mtk_disp_dbi_count.h"
+#include "mtk_disp_dbgtp.h"
 
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 #include <linux/interconnect.h>
@@ -9955,6 +9956,11 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	drm->mode_config.max_height = 8192;
 	drm->mode_config.funcs = &mtk_drm_mode_config_funcs;
 
+	/* debug top load default setting */
+	//if (!is_enable_hrt_debug())//TODO
+	//if (private->data->mmsys_id == MMSYS_MT6993)
+		//mtk_dbgtp_default_cfg_load(private);
+
 	ret = component_bind_all(drm->dev, drm);
 	if (ret)
 		goto err_config_cleanup;
@@ -12323,6 +12329,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_POSTALIGN},
 	{.compatible = "mediatek,mt6993-disp-relay",
 	 .data = (void *)MTK_DISP_RELAY},
+	{.compatible = "mediatek,mt6993-disp-dbgtp",
+	 .data = (void *)MTK_DISP_DBGTP},
 	{} };
 
 static struct disp_iommu_device disp_iommu;
@@ -12530,6 +12538,7 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	struct device_node *node;
 	struct component_match *match = NULL;
 	unsigned int dispsys_num = 0, ovlsys_num = 0, pq_path_sel = 1;
+	unsigned int mmlsys_num = 0;
 	int ret, len;
 	int i;
 	struct platform_device *side_pdev;
@@ -12539,6 +12548,7 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	struct device_node *disp_plat_dbg_node = pdev->dev.of_node;
 	const __be32 *ranges = NULL;
 	bool mml_found = false;
+	unsigned int tmp = 0;
 
 	disp_dbg_probe();
 	PanelMaster_probe();
@@ -12610,6 +12620,10 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	private->ovlsys_num = ovlsys_num;
 
 	ret = of_property_read_u32(dev->of_node,
+				"mmlsys-num", &mmlsys_num);
+	private->mmlsys_num = mmlsys_num;
+
+	ret = of_property_read_u32(dev->of_node,
 				"pq-path-sel", &pq_path_sel);
 	if (pq_path_sel >= 0)
 		private->pq_path_sel = pq_path_sel;
@@ -12635,6 +12649,35 @@ SKIP_SIDE_DISP:
 		return ret;
 
 SKIP_OVLSYS_CONFIG:
+
+	if (private->mmlsys_num == 0)
+		goto SKIP_MMLSYS_CONFIG;
+
+	if (!of_property_read_u32_index(dev->of_node, "mmlsys-regs", 0, &tmp)) {
+		DDPMSG("MMLSYS0 regs pa: %x\n", tmp);
+		private->mmlsys0_regs_pa = (resource_size_t)tmp;
+		private->mmlsys0_regs = ioremap(tmp, 0x1000);
+	}
+
+	if (private->mmlsys_num == 1)
+		goto SKIP_MMLSYS_CONFIG;
+
+	if (!of_property_read_u32_index(dev->of_node, "mmlsys-regs", 1, &tmp)) {
+		DDPMSG("MMLSYS1 regs pa: %x\n", tmp);
+		private->mmlsys1_regs_pa = (resource_size_t)tmp;
+		private->mmlsys1_regs = ioremap(tmp, 0x1000);
+	}
+
+	if (private->mmlsys_num == 2)
+		goto SKIP_MMLSYS_CONFIG;
+
+	if (!of_property_read_u32_index(dev->of_node, "mmlsys-regs", 2, &tmp)) {
+		DDPMSG("MMLSYS2 regs pa: %x\n", tmp);
+		private->mmlsys2_regs_pa = (resource_size_t)tmp;
+		private->mmlsys2_regs = ioremap(tmp, 0x1000);
+	}
+
+SKIP_MMLSYS_CONFIG:
 
 	if (private->data->bypass_infra_ddr_control &&
 		!private->data->use_infra_mem_res) {
@@ -12843,9 +12886,10 @@ SKIP_OVLSYS_CONFIG:
 		    comp_type == MTK_DISP_MERGE || comp_type == MTK_OVL_OUTPROC ||
 		    comp_type == MTK_DISP_RDMA || comp_type == MTK_DISP_MDP_RDMA
 		    || comp_type == MTK_DISP_WDMA || comp_type == MTK_DISP_RSZ
-		    || comp_type == MTK_DISP_MDP_RSZ || comp_type == MTK_DSI_LPC ||
-		    comp_type == MTK_DISP_POSTMASK || comp_type == MTK_DSI
-		    || comp_type == MTK_DISP_DSC || comp_type == MTK_DPI
+		    || comp_type == MTK_DISP_MDP_RSZ || comp_type == MTK_DSI_LPC
+		    || comp_type == MTK_DISP_DBGTP || comp_type == MTK_DISP_POSTMASK
+		    || comp_type == MTK_DSI || comp_type == MTK_DISP_DSC
+		    || comp_type == MTK_DPI
 #ifndef DRM_BYPASS_PQ
 		    || comp_type == MTK_DISP_TDSHP || comp_type == MTK_DISP_CHIST
 		    || comp_type == MTK_DISP_C3D || comp_type == MTK_DISP_COLOR ||
@@ -13083,6 +13127,10 @@ static int mtk_drm_sys_resume(struct device *dev)
 		return 0;
 	}
 
+	/* for display debug setting restore */
+	if (private->data->mmsys_id == MMSYS_MT6993)
+		mtk_dbgtp_update(private);
+
 	drm_atomic_helper_resume(drm, private->suspend_state);
 	drm_kms_helper_poll_enable(drm);
 
@@ -13219,6 +13267,7 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_merge_driver,
 	&mtk_disp_bwm_driver,
 	&mtk_disp_relay_driver,
+	&mtk_disp_dbgtp_driver
 };
 
 static int __init mtk_drm_init(void)

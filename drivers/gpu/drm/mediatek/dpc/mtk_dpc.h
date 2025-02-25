@@ -208,6 +208,9 @@ struct dpc_funcs {
 	void (*dpc_vidle_power_release_by_gce)(struct cmdq_pkt *pkt,
 					    const enum mtk_vidle_voter_user user);
 
+	/* dpc monitor */
+	void (*dpc_monitor_config)(struct cmdq_pkt *cmdq_handle, const u32 value);
+
 	/* dram dvfs
 	 * @bw_in_mb: [U32_MAX]: read stored bw, otherwise update stored bw
 	 * @force:    [TRUE]: trigger dvfs immediately

@@ -387,6 +387,7 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_MML_MML] = "mml_mml",
 	[MTK_MML_MUTEX] = "mml_mutex",
 	[MTK_MML_WROT] = "mml_wrot",
+	[MTK_DISP_DBGTP] = "dbgtp",
 	[MTK_OVL_0_DLO_ASYNC] = "ovl0-dlo-async",
 	[MTK_OVL_0_DLI_ASYNC] = "ovl0-dli-async",
 	[MTK_OVL_1_DLO_ASYNC] = "ovl1-dlo-async",
@@ -1413,6 +1414,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
 /*995*/	{DDP_COMPONENT_SYS_B_RSZ0, MTK_DISP_RSZ, 6, NULL, 0},
 	{DDP_COMPONENT_DSI_LPC, MTK_DSI_LPC, 0, NULL, 0},
+	{DDP_COMPONENT_DBGTP, MTK_DISP_DBGTP, -1, NULL, 0},
 };
 
 bool mtk_ddp_comp_is_output(struct mtk_ddp_comp *comp)

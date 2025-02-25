@@ -271,6 +271,7 @@ struct mtk_drm_private {
 	struct device *mutex_dev;
 	unsigned int dispsys_num;
 	unsigned int ovlsys_num;
+	unsigned int mmlsys_num;
 	unsigned int pq_path_sel;
 	void __iomem *config_regs;
 	resource_size_t config_regs_pa;
@@ -286,6 +287,12 @@ struct mtk_drm_private {
 	resource_size_t ovlsys1_regs_pa;
 	void __iomem *ovlsys2_regs;
 	resource_size_t ovlsys2_regs_pa;
+	void __iomem *mmlsys0_regs;
+	resource_size_t mmlsys0_regs_pa;
+	void __iomem *mmlsys1_regs;
+	resource_size_t mmlsys1_regs_pa;
+	void __iomem *mmlsys2_regs;
+	resource_size_t mmlsys2_regs_pa;
 	void __iomem *infra_regs;
 	resource_size_t infra_regs_pa;
 	const struct mtk_mmsys_reg_data *reg_data;
@@ -380,6 +387,9 @@ struct mtk_drm_private {
 
 	struct device_node *pwr_node;
 	struct clk *pwr_clks[CLK_MAX_NUM];
+
+	/* debug top status */
+	struct mtk_dbgtp mtk_dbgtp_sta;
 };
 
 struct mtk_drm_property {
@@ -587,6 +597,7 @@ extern struct platform_driver mtk_mmlsys_bypass_driver;
 extern struct platform_driver mtk_disp_postalign_driver;
 extern struct platform_driver mtk_disp_bwm_driver;
 extern struct platform_driver mtk_disp_relay_driver;
+extern struct platform_driver mtk_disp_dbgtp_driver;
 extern struct mtk_drm_disp_sec_cb disp_sec_cb;
 extern struct mtk_aod_scp_cb aod_scp_ipi;
 extern struct mtk_vdisp_funcs vdisp_func;

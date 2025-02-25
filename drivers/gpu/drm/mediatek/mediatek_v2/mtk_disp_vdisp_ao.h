@@ -27,5 +27,6 @@ struct mtk_vdisp_ao {
 void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm);
 void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm);
 void mtk_vdisp_ao_qos_config_MT6993(struct drm_device *drm);
+void mtk_vdisp_ao_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 
 #endif

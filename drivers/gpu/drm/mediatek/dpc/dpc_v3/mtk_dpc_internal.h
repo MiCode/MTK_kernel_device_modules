@@ -247,6 +247,9 @@
 #define DISP_DPC_INTSTA_MML_STATE                        0x71CUL
 #define DISP_DPC_INTSTA_MML_ERROR                        0x720UL
 
+/* DPC monitor */
+#define DISP_DPC_DDREN_MONITOR_CFG                       0x860UL
+
 #define DISP_DPC_DISPSYS_DRAM_TOTAL_HIGH_BW              0xAA0UL
 #define DISP_DPC_DISPSYS_EMI_TOTAL_HIGH_BW               0xAA4UL
 #define DISP_DPC_DISPSYS_DRAM_TOTAL_LOW_BW               0xAA8UL

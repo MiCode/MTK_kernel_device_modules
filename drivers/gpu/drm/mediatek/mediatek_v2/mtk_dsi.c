@@ -314,6 +314,15 @@
 #define DSI_STATE_DBG6(data)	(data->dsi_state_dbg6 ? data->dsi_state_dbg6 : 0x160)
 #define STATE_DBG6_FLD_REG_CMCTL_STATE REG_FLD_MSB_LSB(14, 0)
 
+/* DSI Debug monitor */
+#define DSI_DBG_MON_CON0	0x2B0
+#define DSI_DBG_MON_CON1	0x2B4
+#define DSI_DBG_MON_CON2	0x2B8
+
+/* Just for mt6993 FIFO mon WA */
+#define DSI_GCE_EVENT_CON0	0x210
+#define DSI_GCE_EVENT_CON1	0x214
+
 /*Msync 2.0*/
 #define DSI_STATE_DBG7(data)	(DSI_STATE_DBG6(data) + 0x4)
 #define FLD_VFP_PERIOD		REG_FLD_MSB_LSB(12, 12)
@@ -1928,6 +1937,153 @@ static int mtk_dsi_LTPO_VM_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp
 	DDPDBG("%s-\n", __func__);
 	return 0;
 
+}
+
+/* Just for mt6993 gce thread config */
+void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *handle)
+{
+	if (comp == NULL) {
+		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
+		return;
+	}
+
+	if (handle == NULL) {
+		writel(0x0913, dsi->regs + DSI_GCE_EVENT_CON0);
+		if (dsi->slave_dsi)
+			writel(0x0913, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
+		return;
+	}
+
+	/*ENG_EVENT_SEL0:dsi_internal_sof(0x13) ENG_EVENT_SEL1:vm_vact_start(0x09)*/
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_GCE_EVENT_CON0, 0x0913, ~0);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_GCE_EVENT_CON0,
+			0x0913, ~0);
+}
+
+static int  mtk_dsi_dbg_monitor_config0(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle, unsigned int config_value)
+{
+	u32 val = 0, mask = 0;
+
+	if (comp == NULL) {
+		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
+		return -1;
+	}
+
+	if (handle == NULL) {
+		writel(config_value, dsi->regs +  DSI_DBG_MON_CON0);
+		if (dsi->slave_dsi)
+			writel(config_value, dsi->slave_dsi->ddp_comp.regs +  DSI_DBG_MON_CON0);
+		return 0;
+	}
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_DBG_MON_CON0, config_value, ~0);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON0,
+			config_value, ~0);
+
+	DDPMSG("%s-\n", __func__);
+	return 0;
+}
+
+static int  mtk_dsi_dbg_monitor_config1(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle, unsigned int config_value)
+{
+	u32 val = 0, mask = 0;
+
+	if (comp == NULL) {
+		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
+		return -1;
+	}
+
+	if (handle == NULL) {
+		writel(config_value, dsi->regs +  DSI_DBG_MON_CON1);
+		if (dsi->slave_dsi)
+			writel(config_value, dsi->slave_dsi->ddp_comp.regs +  DSI_DBG_MON_CON1);
+		return 0;
+	}
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_DBG_MON_CON1, config_value, ~0);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON1,
+			config_value, ~0);
+
+	DDPMSG("%s-\n", __func__);
+	return 0;
+
+}
+
+static int  mtk_dsi_dbg_monitor_config2(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle, unsigned int config_value)
+{
+	u32 val = 0, mask = 0;
+
+	if (comp == NULL) {
+		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
+		return -1;
+	}
+
+	if (handle == NULL) {
+		writel(config_value, dsi->regs +  DSI_DBG_MON_CON2);
+		if (dsi->slave_dsi)
+			writel(config_value, dsi->slave_dsi->ddp_comp.regs +  DSI_DBG_MON_CON2);
+		return 0;
+	}
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_DBG_MON_CON2, config_value, ~0);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON2,
+			config_value, ~0);
+
+	DDPMSG("%s-\n", __func__);
+	return 0;
+}
+
+static int  mtk_dsi_dbg_monitor_disable_reset(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
+	void *handle, unsigned int config_value)
+{
+	u32 val = 0, mask = 0;
+
+	if (comp == NULL) {
+		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
+		return -1;
+	}
+
+	if (handle == NULL) {
+		writel(0x2, dsi->regs +  DSI_DBG_MON_CON0);
+		if (dsi->slave_dsi)
+			writel(0x2, dsi->slave_dsi->ddp_comp.regs +  DSI_DBG_MON_CON0);
+
+		writel(0x0, dsi->regs +  DSI_DBG_MON_CON0);
+		if (dsi->slave_dsi)
+			writel(0x0, dsi->slave_dsi->ddp_comp.regs +  DSI_DBG_MON_CON0);
+		return 0;
+	}
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_DBG_MON_CON0, 0x2, 0x2);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON0, 0x2, 0x2);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DSI_DBG_MON_CON0, 0x0, ~0);
+	if (dsi->slave_dsi)
+		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
+			dsi->slave_dsi->ddp_comp.regs_pa + DSI_DBG_MON_CON0, 0x0, ~0);
+
+	DDPMSG("%s-\n", __func__);
+	return 0;
 }
 
 static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
@@ -3957,6 +4113,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					underrun_happened |= FRAME_DONE_INT_FLAG;
 				}
 			}
+
+			/* SW tigger stop for prevent for others start again and overwrite dump */
+			if (priv->data->mmsys_id == MMSYS_MT6993)
+				mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
+
 			dump_cur_pos(mtk_crtc);
 			if (dsi->encoder.crtc)
 				mtk_drm_crtc_dump_vr_rg(dsi->encoder.crtc);
@@ -3968,8 +4129,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 #endif
 				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
 #if IS_ENABLED(CONFIG_ARM64)
-					DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%08x\n",
-						mtk_dump_comp_str(comp), (u32)arch_timer_read_counter());
+					DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS: 0x%llx, NTS:%llx\n",
+						mtk_dump_comp_str(comp), (u64)arch_timer_read_counter(),
+						(u64)sched_clock());
 #else
 					DDPAEE("[IRQ] %s:buffer underrun\n", mtk_dump_comp_str(comp));
 #endif
@@ -4014,6 +4176,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			mtk_disp_clr_debug_deteriorate();
 			if (comp->id == DDP_COMPONENT_DSI0)
 				DRM_MMP_MARK(dsi, underrun_cnt|(0<<16), 0);
+
+			/* When dump finished, release stop, let other could trigger start */
+			if (priv->data->mmsys_id == MMSYS_MT6993)
+				mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
 		}
 
 		//if (status & INP_UNFINISH_INT_EN)
@@ -5480,6 +5646,10 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	}
 
 	mtk_vidle_force_power_ctrl_by_cpu(true);
+
+	/* For fifo mon config need to config gce event */
+	if (priv->data->mmsys_id == MMSYS_MT6993)
+		mtk_dsi_gce_event_cfg(dsi, &dsi->ddp_comp, NULL);
 
 	if (dsi->output_en) {
 		if (mtk_dsi_doze_status_change(dsi)) {
@@ -14446,6 +14616,35 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		partial_roi = (struct mtk_rect *)params;
 		mtk_cal_dsi_valid_partial_roi(comp, partial_roi);
+	}
+		break;
+	case DSI_MON_CFG0:
+	{
+		unsigned int dsi_dbg_mon_cfg0 = 0;
+
+		dsi_dbg_mon_cfg0 = *((unsigned int *)params);
+		mtk_dsi_dbg_monitor_config0(dsi, comp, handle, dsi_dbg_mon_cfg0);
+	}
+		break;
+	case DSI_MON_CFG1:
+	{
+		unsigned int dsi_dbg_mon_cfg1 = 0;
+
+		dsi_dbg_mon_cfg1 = *((unsigned int *)params);
+		mtk_dsi_dbg_monitor_config1(dsi, comp, handle, dsi_dbg_mon_cfg1);
+	}
+		break;
+	case DSI_MON_CFG2:
+	{
+		unsigned int dsi_dbg_mon_cfg2 = 0;
+
+		dsi_dbg_mon_cfg2 = *((unsigned int *)params);
+		mtk_dsi_dbg_monitor_config2(dsi, comp, handle, dsi_dbg_mon_cfg2);
+	}
+		break;
+	case DSI_MON_DSI_RST:
+	{
+		mtk_dsi_dbg_monitor_disable_reset(dsi, comp, handle, 0);
 	}
 		break;
 	case DUMP_CONNECTOR_PROP:

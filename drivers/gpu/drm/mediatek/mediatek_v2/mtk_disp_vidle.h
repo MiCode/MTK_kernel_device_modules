@@ -73,6 +73,7 @@ void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user);
 void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user,
 				      struct cmdq_pkt *pkt, u16 gpr);
 void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt);
+void mtk_dpc_monitor_config(struct cmdq_pkt *pkt, const u32 value);
 int mtk_vidle_force_power_ctrl_by_cpu(bool power_on);
 int mtk_vidle_pq_power_get(const char *caller);
 void mtk_vidle_pq_power_put(const char *caller);

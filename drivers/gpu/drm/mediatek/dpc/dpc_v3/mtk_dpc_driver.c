@@ -1924,6 +1924,15 @@ static void dpc_vidle_power_release_by_gce_v3(struct cmdq_pkt *pkt, const enum m
 	cmdq_pkt_write(pkt, NULL, g_priv->voter_clr_pa, BIT(user), U32_MAX);
 }
 
+static void dpc_monitor_config(struct cmdq_pkt *cmdq_handle, const u32 value)
+{
+	DDPMSG("%s:%d value:%d\n", __func__, __LINE__, value);
+	if (cmdq_handle == NULL)
+		writel(value, dpc_base + DISP_DPC_DDREN_MONITOR_CFG);
+	else
+		cmdq_pkt_write(cmdq_handle, NULL, g_priv->dpc_pa + DISP_DPC_DDREN_MONITOR_CFG, value, ~0);
+}
+
 static bool dpc_is_power_on_v3(void)
 {
 	if (!g_priv->dispvcore_chk)
@@ -2326,6 +2335,7 @@ static struct dpc_funcs funcs_v3 = {
 	.dpc_vidle_power_release_by_gce = dpc_vidle_power_release_by_gce_v3,
 	.dpc_hrt_bw_set = dpc_hrt_bw_set_v3,
 	.dpc_srt_bw_set = dpc_srt_bw_set_v3,
+	.dpc_monitor_config = dpc_monitor_config,
 	.dpc_check_pll = dpc_check_pll,
 	.dpc_dvfs_set = dpc_dvfs_set_v3,
 	.dpc_dvfs_trigger = dpc_dvfs_trigger,

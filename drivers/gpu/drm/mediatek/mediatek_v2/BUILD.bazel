@@ -105,6 +105,7 @@ define_mgk_ddk_ko(
         "mtk_disp_relay.c",
         "mtk_dvo.c",
         "mtk_dsi_lpc.c",
+        "mtk_disp_dbgtp.c",
     ],
     includes = [
         ".",
@@ -201,6 +202,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mm_monitor:mtk-mm-monitor-controller".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),

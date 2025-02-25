@@ -32,6 +32,7 @@
 #include "mtk_disp_pmqos.h"
 #include "slbc_ops.h"
 #include "mtk_disp_pq_helper.h"
+#include "mtk_disp_dbgtp.h"
 
 #if IS_ENABLED(CONFIG_ARM64)
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
@@ -683,6 +684,8 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_MUTEX0_SOF,
 	EVENT_WDMA4_EOF,
 	EVENT_DPINTF0_VDE_START,
+	EVENT_CMD_TRIG_START,
+	EVENT_VDO_TRIG_START,
 	EVENT_TYPE_MAX,
 };
 

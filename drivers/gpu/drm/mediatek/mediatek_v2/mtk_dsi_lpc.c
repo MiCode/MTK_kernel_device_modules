@@ -35,8 +35,8 @@ module_param(lpc_te_irq_en, int, 0644);
 #define DSI_LPC_EN (0x0)
 #define DSI_LPC_EN_BIT_FLD REG_FLD_MSB_LSB(0, 0)
 #define DSI_LPC_EN_BIT BIT(0)
-#define DSI_LPC_DBG_MON_EN BIT(4)
-#define DSI_LPC_DBG_MON_RST BIT(5)
+#define DSI_LPC_DBG_MON_EN REG_FLD_MSB_LSB(4, 4)
+#define DSI_LPC_DBG_MON_RST REG_FLD_MSB_LSB(5, 5)
 
 #define DSI_LPC_PHY_CON (0x04)
 #define DSI_LPC_EVENT_TYPE (0x08)
@@ -167,6 +167,53 @@ struct mtk_dsi_lpc {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
 };
+
+struct mtk_ddp_comp *dsi_lpc_comp;
+
+void mtk_dsi_lpc_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
+{
+	unsigned int value = 0;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	unsigned int val = 0;
+	unsigned int mask = 0;
+
+
+	DDPMSG("%s:%d dsi lpc mon en:%d\n", __func__, __LINE__, priv->mtk_dbgtp_sta.dsi_lpc_mon_en);
+
+	if (priv->mtk_dbgtp_sta.dsi_lpc_mon_en) {
+		value = (REG_FLD_VAL((DSI_LPC_DBG_MON_EN),
+			priv->mtk_dbgtp_sta.dsi_lpc_mon_en));
+		mask = REG_FLD_MASK(DSI_LPC_DBG_MON_EN);
+
+		DDPMSG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
+		if (cmdq_handle == NULL) {
+			val = readl(dsi_lpc_comp->regs + DSI_LPC_EN);
+			writel((val & ~mask) | value, dsi_lpc_comp->regs + DSI_LPC_EN);
+		} else
+			cmdq_pkt_write(cmdq_handle, dsi_lpc_comp->cmdq_base,
+					dsi_lpc_comp->regs_pa + DSI_LPC_EN, value, mask);
+
+	} else {
+		value = (REG_FLD_VAL((DSI_LPC_DBG_MON_RST), 0x1));
+		mask = REG_FLD_MASK(DSI_LPC_DBG_MON_RST);
+
+		if (cmdq_handle == NULL) {
+			val = readl(dsi_lpc_comp->regs + DSI_LPC_EN);
+			writel((val & ~mask) | value, dsi_lpc_comp->regs + DSI_LPC_EN);
+		} else
+			cmdq_pkt_write(cmdq_handle, dsi_lpc_comp->cmdq_base,
+					dsi_lpc_comp->regs_pa + DSI_LPC_EN, value, mask);
+
+		value = (REG_FLD_VAL((DSI_LPC_DBG_MON_RST), 0x0));
+
+		if (cmdq_handle == NULL) {
+			val = readl(dsi_lpc_comp->regs + DSI_LPC_EN);
+			writel((val & ~mask) | value, dsi_lpc_comp->regs + DSI_LPC_EN);
+		} else
+			cmdq_pkt_write(cmdq_handle, dsi_lpc_comp->cmdq_base,
+					dsi_lpc_comp->regs_pa + DSI_LPC_EN, value, mask);
+	}
+}
 
 static inline struct mtk_dsi_lpc *comp_to_dsi_lpc(struct mtk_ddp_comp *comp)
 {
@@ -751,6 +798,7 @@ static int mtk_dsi_lpc_probe(struct platform_device *pdev)
 	}
 
 	mtk_ddp_comp_pm_enable(&dsi_lpc->ddp_comp);
+	dsi_lpc_comp = &dsi_lpc->ddp_comp;
 
 	ret = component_add(dev, &mtk_dsi_lpc_component_ops);
 	if (ret != 0) {

@@ -35,7 +35,12 @@
 	#define BYPASS_SHADOW			BIT(1)
 	#define READ_WRK_REG			BIT(2)
 
+#define DISP_REG_VDISP_AO_RG_ELA_FIFO_MONITOR 0xD10
+#define RG_FLD_ELA_FIFO_MON_EN		REG_FLD_MSB_LSB(0, 0)
+#define RG_FLD_ELA_FIFO_MON_SEL		REG_FLD_MSB_LSB(6, 4)
+
 static void __iomem *vdisp_ao_base;
+struct mtk_ddp_comp *vdisp_ao_comp;
 
 static struct mtk_vdisp_ao *g_priv;
 
@@ -121,6 +126,31 @@ void mtk_vdisp_ao_dump(struct mtk_ddp_comp *comp)
 
 	/* 16 lv qos */
 	mtk_serial_dump_reg(baddr, 0x700, 4);
+}
+
+void mtk_vdisp_ao_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
+{
+	unsigned int value = 0;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	unsigned int val = 0;
+	unsigned int mask = 0;
+
+	/* ela sel fifo mon and bwr */
+	value = priv->mtk_dbgtp_sta.fifo_mon_sel;
+	value = (REG_FLD_VAL((RG_FLD_ELA_FIFO_MON_EN),
+		priv->mtk_dbgtp_sta.fifo_mon_sel) |
+		REG_FLD_VAL((RG_FLD_ELA_FIFO_MON_SEL),
+		priv->mtk_dbgtp_sta.disp_bwr_sel));
+	mask = REG_FLD_MASK(RG_FLD_ELA_FIFO_MON_EN) |
+		REG_FLD_MASK(RG_FLD_ELA_FIFO_MON_SEL);
+
+	if (cmdq_handle == NULL) {
+		val = readl(vdisp_ao_comp->regs + DISP_REG_VDISP_AO_RG_ELA_FIFO_MONITOR);
+		writel((val & ~mask) | value, vdisp_ao_comp->regs +
+			DISP_REG_VDISP_AO_RG_ELA_FIFO_MONITOR);
+	} else
+		cmdq_pkt_write(cmdq_handle, vdisp_ao_comp->cmdq_base,
+			vdisp_ao_comp->regs_pa + DISP_REG_VDISP_AO_RG_ELA_FIFO_MONITOR, value, mask);
 }
 
 void mtk_vdisp_ao_analysis(struct mtk_ddp_comp *comp)
@@ -435,6 +465,7 @@ static int mtk_vdisp_ao_probe(struct platform_device *pdev)
 	writel(ao_data->ao_int_config, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);
 
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
+	vdisp_ao_comp = &priv->ddp_comp;
 
 	ret = component_add(dev, &mtk_vdisp_ao_component_ops);
 	if (ret != 0) {

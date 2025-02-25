@@ -166,6 +166,15 @@ void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct 
 	disp_dpc_driver.dpc_vidle_power_release_by_gce(pkt, user);
 }
 
+void mtk_dpc_monitor_config(struct cmdq_pkt *pkt, const u32 value)
+{
+	if (disp_dpc_driver.dpc_monitor_config == NULL)
+		return;
+
+	DDPMSG("%s:%d\n", __func__, __LINE__);
+	disp_dpc_driver.dpc_monitor_config(pkt, value);
+}
+
 int mtk_vidle_force_power_ctrl_by_cpu(bool power_on)
 {
 	int ret = 0;

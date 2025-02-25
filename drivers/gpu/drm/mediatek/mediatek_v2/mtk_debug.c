@@ -55,6 +55,9 @@
 #include <clk-fmeter.h>
 #include <linux/pm_domain.h>
 #include "mtk_mipi_tx.h"
+#include "mtk_disp_dbgtp.h"
+#include "mtk_disp_vdisp_ao.h"
+#include "mtk_disp_dsc.h"
 
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
@@ -5549,6 +5552,376 @@ test_done:
 		DDPMSG("hc3 3c_init ++\n");
 		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &init_code);
 		DDPMSG("hc3 3c_init --\n");
+	} else if (strncmp(opt, "dbgtp:", 6) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		bool dbgtp_en = false;
+		unsigned int i = 0;
+
+		if (strncmp(opt + 6, "on", 2) == 0)
+			dbgtp_en = true;
+		else if (strncmp(opt + 6, "off", 3) == 0)
+			dbgtp_en = false;
+
+		for (i = 0; i < DISPSYS_NUM; i++) {
+			if (priv->mtk_dbgtp_sta.dispsys[i].subsys_mon_en) {
+				priv->mtk_dbgtp_sta.dispsys[i].need_update = true;
+				DDPMSG("%s: dispsys%d need update\n", __func__, i);
+			}
+		}
+		for (i = 0; i < OVLSYS_NUM; i++) {
+			if (priv->mtk_dbgtp_sta.ovlsys[i].subsys_mon_en) {
+				priv->mtk_dbgtp_sta.ovlsys[i].need_update = true;
+				DDPMSG("%s: ovlsys%d need update\n", __func__, i);
+			}
+		}
+		for (i = 0; i < MMLSYS_NUM; i++) {
+			if (priv->mtk_dbgtp_sta.mmlsys[i].subsys_mon_en) {
+				priv->mtk_dbgtp_sta.mmlsys[i].need_update = true;
+				DDPMSG("%s: mmlsys%d need update\n", __func__, i);
+			}
+		}
+
+		priv->mtk_dbgtp_sta.dbgtp_en = dbgtp_en;
+		priv->mtk_dbgtp_sta.need_update = true;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_dump:", 11) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		bool dump_en = false;
+
+		if (strncmp(opt + 11, "start", 5) == 0)
+			dump_en = true;
+		else if (strncmp(opt + 11, "stop", 4) == 0)
+			dump_en = false;
+
+		priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = dump_en;
+		priv->mtk_dbgtp_sta.need_update = true;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_switch:", 12) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		unsigned int value = 0;
+
+		ret = sscanf(opt + 12, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.dbgtp_switch = value;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_prd_dump:", 15) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		bool dbgtp_prd_dump_en = false;
+
+		if (strncmp(opt + 15, "on", 2) == 0)
+			dbgtp_prd_dump_en = true;
+		else if (strncmp(opt + 15, "off", 3) == 0)
+			dbgtp_prd_dump_en = false;
+
+		priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = dbgtp_prd_dump_en;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_trig_prd:", 15) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		unsigned int value = 0;
+
+		ret = sscanf(opt + 15, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.dbgtp_trig_prd = value;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_dpc_cfg:", 14) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		unsigned int value = 0;
+
+		ret = sscanf(opt + 14, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = value;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_subsys_cfg:", 17) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		int sys_type = 0;
+		int sysid = 0;
+		bool subsys_mon_en = 0;
+		bool subsys_smi_trig_en = 0;
+		bool subsys_dsi_trig_en = 0;
+		bool subsys_inlinerotate_info_en = 0;
+		bool subsys_crossbar_info_en = 0;
+		bool subsys_mon_info_en = 0;
+		struct dbgtp_subsys *subsys = NULL;
+
+		ret = sscanf(opt + 17, "%d,%d,%d,%d,%d,%d,%d,%d\n",
+			&sys_type, &sysid, &subsys_mon_en, &subsys_smi_trig_en,
+			&subsys_dsi_trig_en, &subsys_inlinerotate_info_en,
+			&subsys_crossbar_info_en, &subsys_mon_info_en);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		/* type 0:dispsys, 1:ovlsys, 2:mmlsys */
+		if (sys_type == 0)
+			subsys = priv->mtk_dbgtp_sta.dispsys;
+		if (sys_type == 1)
+			subsys = priv->mtk_dbgtp_sta.ovlsys;
+		if (sys_type == 2)
+			subsys = priv->mtk_dbgtp_sta.mmlsys;
+
+		subsys[sysid].subsys_mon_en = subsys_mon_en;
+		subsys[sysid].subsys_smi_trig_en = subsys_smi_trig_en;
+		subsys[sysid].subsys_dsi_trig_en = subsys_dsi_trig_en;
+		subsys[sysid].subsys_inlinerotate_info_en = subsys_inlinerotate_info_en;
+		subsys[sysid].subsys_crossbar_info_en = subsys_crossbar_info_en;
+		subsys[sysid].subsys_mon_info_en = subsys_mon_info_en;
+
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_subsys_cb_cfg:", 20) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		int sys_type = 0;
+		int sysid = 0;
+		unsigned int crossbar_mon_cfg0 = 0;
+		unsigned int crossbar_mon_cfg1 = 0;
+		unsigned int crossbar_mon_cfg2 = 0;
+		unsigned int crossbar_mon_cfg3 = 0;
+		unsigned int crossbar_mon_cfg4 = 0;
+		struct dbgtp_subsys *subsys = NULL;
+
+		ret = sscanf(opt + 20, "%d,%d,0x%x,0x%x,0x%x,0x%x,0x%x\n",
+			&sys_type, &sysid, &crossbar_mon_cfg0,
+			&crossbar_mon_cfg1, &crossbar_mon_cfg2,
+			&crossbar_mon_cfg3, &crossbar_mon_cfg4);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		/* type 0:dispsys, 1:ovlsys, 2:mmlsys */
+		if (sys_type == 0)
+			subsys = priv->mtk_dbgtp_sta.dispsys;
+		if (sys_type == 1)
+			subsys = priv->mtk_dbgtp_sta.ovlsys;
+		if (sys_type == 2)
+			subsys = priv->mtk_dbgtp_sta.mmlsys;
+
+		subsys[sysid].crossbar_mon_cfg0 = crossbar_mon_cfg0;
+		subsys[sysid].crossbar_mon_cfg1 = crossbar_mon_cfg1;
+		subsys[sysid].crossbar_mon_cfg2 = crossbar_mon_cfg2;
+		subsys[sysid].crossbar_mon_cfg3 = crossbar_mon_cfg3;
+		subsys[sysid].crossbar_mon_cfg4 = crossbar_mon_cfg4;
+
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_subsys_smi_cfg:", 21) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		int sys_type = 0;
+		int sysid = 0;
+		int smi_id = 0;
+		bool smi_mon_en = 0;
+		bool rst_by_frame = 0;
+		unsigned int smi_mon_dump_sel = 0;
+		struct dbgtp_subsys *subsys = NULL;
+
+		ret = sscanf(opt + 21, "%d,%d,%d,%d,%d,%d\n",
+			&sys_type, &sysid, &smi_id,
+			&smi_mon_en, &rst_by_frame,
+			&smi_mon_dump_sel);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		/* type 0:dispsys, 1:ovlsys, 2:mmlsys */
+		if (sys_type == 0)
+			subsys = priv->mtk_dbgtp_sta.dispsys;
+		if (sys_type == 1)
+			subsys = priv->mtk_dbgtp_sta.ovlsys;
+		if (sys_type == 2)
+			subsys = priv->mtk_dbgtp_sta.mmlsys;
+
+		subsys[sysid].smi_mon[smi_id].smi_mon_en = smi_mon_en;
+		subsys[sysid].smi_mon[smi_id].rst_by_frame = rst_by_frame;
+		subsys[sysid].smi_mon[smi_id].smi_mon_dump_sel = smi_mon_dump_sel;
+
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_subsys_smi_port_cfg:", 26) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		int sys_type = 0;
+		int sysid = 0;
+		int smi_id = 0;
+		int port_id = 0;
+		unsigned int smi_mon_portid = 0;
+		unsigned int smi_mon_cg_ctl = 0;
+		struct dbgtp_subsys *subsys = NULL;
+
+		ret = sscanf(opt + 26, "%d,%d,%d,%d,%d,%d\n",
+			&sys_type, &sysid, &smi_id, &port_id,
+			&smi_mon_portid, &smi_mon_cg_ctl);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		/* type 0:dispsys, 1:ovlsys, 2:mmlsys */
+		if (sys_type == 0)
+			subsys = priv->mtk_dbgtp_sta.dispsys;
+		if (sys_type == 1)
+			subsys = priv->mtk_dbgtp_sta.ovlsys;
+		if (sys_type == 2)
+			subsys = priv->mtk_dbgtp_sta.mmlsys;
+
+		subsys[sysid].smi_mon[smi_id].smi_mon_portid[port_id] = smi_mon_portid;
+		subsys[sysid].smi_mon[smi_id].smi_mon_cg_ctl[port_id] = smi_mon_cg_ctl;
+
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_dsi_mon_cfg:", 18) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		int sysid = 0;
+		bool dsi_mon_en = 0;
+		bool dsi_mon_reset_byf = 0;
+		unsigned int dsi_mon_sel = 0;
+		unsigned int dsi_buf_sel = 0;
+		unsigned int dsi_tgt_pix = 0;
+
+		ret = sscanf(opt + 18, "%d,%d,%d,%d,%d,%d\n",
+			&sysid, &dsi_mon_en,
+			&dsi_mon_reset_byf, &dsi_mon_sel,
+			&dsi_buf_sel, &dsi_tgt_pix);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.dispsys[sysid].dsi_mon.dsi_mon_en = dsi_mon_en;
+		priv->mtk_dbgtp_sta.dispsys[sysid].dsi_mon.dsi_mon_reset_byf = dsi_mon_reset_byf;
+		priv->mtk_dbgtp_sta.dispsys[sysid].dsi_mon.dsi_mon_sel = dsi_mon_sel;
+		priv->mtk_dbgtp_sta.dispsys[sysid].dsi_mon.dsi_buf_sel = dsi_buf_sel;
+		priv->mtk_dbgtp_sta.dispsys[sysid].dsi_mon.dsi_tgt_pix = dsi_tgt_pix;
+
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_all_setting_dump", 22) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+
+		mtk_dbgtp_all_setting_dump(priv);
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_all_regs_dump", 19) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+
+		mtk_dbgtp_all_regs_dump(priv);
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_load_default_setting", 26) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+
+		mtk_dbgtp_default_cfg_load(priv);
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_default_config", 20) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+
+		mtk_dbgtp_config(mtk_crtc, NULL);
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_fifo_mon_cfg:", 19) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		unsigned int fifo_mon_id = 0;
+		bool fifo_mon_en = 0;
+
+		ret = sscanf(opt + 19, "%d,%d\n",
+			&fifo_mon_id, &fifo_mon_en);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.fifo_mon_en[fifo_mon_id] = fifo_mon_en;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_fifo_mon_thrd:", 20) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		unsigned int fifo_mon_id = 0;
+		unsigned int fifo_mon_trig_thrd = 0;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		ret = sscanf(opt + 20, "%d,%d\n",
+			&fifo_mon_id, &fifo_mon_trig_thrd);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[fifo_mon_id] = fifo_mon_trig_thrd;
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		if (mtk_crtc_with_trigger_loop(crtc)) {
+			mtk_crtc_stop_trig_loop(crtc);
+			mtk_crtc_start_trig_loop(crtc);
+		}
+		//mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, NULL);
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "disp_ela_sel:", 13) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		bool fifo_mon_sel = 0;
+		unsigned int bwr_sel = 0;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		ret = sscanf(opt + 13, "%d,%d\n",
+			&fifo_mon_sel, &bwr_sel);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.fifo_mon_sel = fifo_mon_sel;
+		priv->mtk_dbgtp_sta.disp_bwr_sel = bwr_sel;
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+
+		mtk_vdisp_ao_for_debug_config(mtk_crtc, NULL);
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "disp_db_trig", 12) == 0) {
+		DDPAEE_FATAL("Test hrt issue db contain atb trace or not\n");
+		DDPMSG("%d %s\n", __LINE__, opt);
 	}
 }
 

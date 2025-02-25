@@ -70,7 +70,7 @@
 #include "mtk_dsi_lpc.h"
 #include "mtk_dp.h"
 #include "mtk_disp_dbi_count.h"
-
+#include "mtk_disp_dbgtp.h"
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -12353,6 +12353,11 @@ skip_prete:
 
 		if (debug_trigger_loop & BIT(3))
 			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+		if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+			DDPMSG("FIFO mon: Wait gce event vact start\n");
+			GCE_DO(wfe, EVENT_CMD_TRIG_START);
+			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
+		}
 		GCE_DO(wfe, EVENT_CMD_EOF);
 
 		/* update frame done fence slot */
@@ -12438,6 +12443,11 @@ skip_prete:
 				/*for dynamic Msync on/off,set vfp period token*/
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
+				if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+					DDPMSG("FIFO mon: wait gce event vact start\n");
+					GCE_DO(wfe, EVENT_VDO_TRIG_START);
+					mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
+				}
 				GCE_DO(wfe, EVENT_CMD_EOF);
 			}
 
@@ -18038,6 +18048,13 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	mtk_drm_set_backlight(mtk_crtc);
 
 #ifndef DRM_CMDQ_DISABLE
+	/* Display Debug Top and FIFO mon config */
+	if (priv->data->mmsys_id == MMSYS_MT6993) {
+		if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_idx == 0))
+			mtk_dbgtp_fifo_mon_config(mtk_crtc, mtk_crtc_state->cmdq_handle);
+		mtk_dbgtp_config(mtk_crtc, mtk_crtc_state->cmdq_handle);
+	}
+
 	if (atomic_read(&priv->need_recover)) {
 		enum mtk_ddp_comp_id id = DDP_COMPONENT_ID_MAX;
 
@@ -21548,6 +21565,12 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		break;
 	case EVENT_DPINTF0_VDE_START:
 		len = snprintf(buf, buf_len, "disp_dp_intf0_vde_start");
+		break;
+	case EVENT_CMD_TRIG_START:
+		len = snprintf(buf, buf_len, "disp_cmd_mode_trig_start");
+		break;
+	case EVENT_VDO_TRIG_START:
+		len = snprintf(buf, buf_len, "disp_vdo_mode_trig_start");
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
