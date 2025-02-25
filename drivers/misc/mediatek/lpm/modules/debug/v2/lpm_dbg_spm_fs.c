@@ -233,9 +233,9 @@ static ssize_t spm_res_rq_read(char *ToUserBuf, size_t sz, void *priv)
 		rnum = (rnum > MT_SPM_RES_MAX) ? MT_SPM_RES_MAX : rnum;
 	}
 
-	mtk_dbg_spm_log("resource [bit][user_usage][blocking]:\n");
+	mtk_dbg_spm_log("  resource [bit][user_usage][blocking]:\n");
 	for (i = 0; i < rnum; i++) {
-		mtk_dbg_spm_log("%8s [%3d][0x%08x][%3s]\n",
+		mtk_dbg_spm_log("%10s [%3d][0x%08x][%3s]\n",
 			get_spm_resource_str(i), i,
 			(per_usage =
 			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_USAGE,
@@ -258,7 +258,7 @@ static ssize_t spm_res_rq_write(char *FromUserBuf, size_t sz, void *priv)
 	char cmd[128];
 	int parm;
 
-	if (sscanf(FromUserBuf, "%127s %x", cmd, &parm) == 2) {
+	if (sscanf(FromUserBuf, "%127s %d", cmd, &parm) == 2) {
 		if (!strcmp(cmd, "bypass"))
 			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_USER_VALID,
 					    MT_LPM_SMC_ACT_SET,

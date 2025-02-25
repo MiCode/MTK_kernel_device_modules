@@ -204,6 +204,9 @@ static char *spm_resource_str[MT_SPM_RES_MAX] = {
 	[MT_SPM_RES_VCORE] = "VCORE",
 	[MT_SPM_RES_EMI] = "EMI",
 	[MT_SPM_RES_PMIC] = "PMIC",
+	[MT_SPM_RES_CHIFR_DATA] = "CHIFR_DATA",
+	[MT_SPM_RES_CHIFR_TCU] = "CHIFR_TCU",
+	[MT_SPM_RES_SYSCO] = "SYSCO",
 };
 
 static char *spm_scenario_str[NUM_SPM_SCENE] = {
