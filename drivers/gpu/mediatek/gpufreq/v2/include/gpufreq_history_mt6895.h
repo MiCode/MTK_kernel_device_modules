@@ -3,8 +3,8 @@
  * Copyright (C) 2023 MediaTek Inc.
  */
 
-#ifndef __GPUFREQ_HISTORY_MT6991_H__
-#define __GPUFREQ_HISTORY_MT6991_H__
+#ifndef __GPUFREQ_HISTORY_MT6895_H__
+#define __GPUFREQ_HISTORY_MT6895_H__
 
 /**************************************************
  * Definition
@@ -61,4 +61,4 @@ unsigned int __gpufreq_get_delsel_bit(void);
  * Variable
  **************************************************/
 
-#endif /* __GPUFREQ_HISTORY_MT6989_H__ */
+#endif /* __GPUFREQ_HISTORY_MT6895_H__ */
