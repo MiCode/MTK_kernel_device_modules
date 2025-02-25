@@ -16814,7 +16814,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		apusys_aov: apusys-aov {
-			compatible = "mediatek,apusys_aov-v2";
+			compatible = "mediatek,apusys_aov-v3";
 			smmu-device = <&apusys_aov_smmu_device>;
 			ctrl-size = <0x200000>;
 		};
