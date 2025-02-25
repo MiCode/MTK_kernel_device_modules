@@ -69,6 +69,7 @@ static int gas_threshold_for_low_TLP;
 static int gas_threshold_for_high_TLP;
 static int global_sbe_dy_enhance;
 static int global_sbe_dy_enhance_max_pid;
+static int sbe_critical_basic_cap;
 static int sbe_ai_ctrl_enabled;
 
 /*For AI jank detection*/
@@ -116,6 +117,7 @@ module_param(ux_general_policy_dpt_setwl, int, 0644);
 module_param(gas_threshold_for_low_TLP, int, 0644);
 module_param(gas_threshold_for_high_TLP, int, 0644);
 module_param(smart_launch_off_on, int, 0644);
+module_param(sbe_critical_basic_cap, int, 0644);
 module_param(sbe_ai_ctrl_enabled, int, 0644);
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
@@ -432,13 +434,18 @@ out:
 
 void sbe_set_per_task_cap(struct sbe_render_info *thr)
 {
-	int set_blc_wt = 0;
+	int set_blc_wt;
 	int local_min_cap = 0;
 	int local_max_cap = 100;
 	int ai_boost = 0;
 
 	set_blc_wt = thr->ux_blc_cur + thr->sbe_enhance;
+	if (sbe_critical_basic_cap > 0) {
+		sbe_critical_basic_cap = clamp(sbe_critical_basic_cap, 0, 100);
+		set_blc_wt = sbe_critical_basic_cap + set_blc_wt;
+	}
 	set_blc_wt = clamp(set_blc_wt, 0, 100);
+
 
 	if (!sbe_ai_ctrl_enabled) {
 		local_min_cap = set_blc_wt;
@@ -1897,6 +1904,7 @@ int __init sbe_cpu_ctrl_init(void)
 	ux_general_policy_type = 0;
 	ux_general_policy_dpt_setwl = 0;
 	sbe_enhance_f = 50;
+	sbe_critical_basic_cap = 0;
 	sbe_dy_max_enhance = 70;
 	sbe_dy_enhance_margin = 15;
 	sbe_dy_frame_threshold = 3;
