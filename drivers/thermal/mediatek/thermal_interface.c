@@ -105,6 +105,7 @@ struct therm_intf_info {
 	struct mutex lock;
 	struct dentry *debug_dir;
 	struct ttj_info tj_info;
+	struct boot_info boot;
 };
 
 static struct therm_intf_info tm_data;
@@ -128,6 +129,11 @@ static struct pid_info pid_info_data;
 static u32 bat_type;
 
 static DEFINE_MUTEX(pid_info_lock);
+
+#define BOOT_THERMAL_DURATION msecs_to_jiffies(5000)
+static struct timer_list boot_thermal_timer;
+static struct workqueue_struct *boot_thermal_wq;
+struct work_struct boot_thermal_work;
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 static inline int genl_msg_prepare_usr_msg(u8 cmd, size_t size, pid_t pid, struct sk_buff **skbp)
@@ -2090,6 +2096,19 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
+static ssize_t boot_status_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len = snprintf(buf + len, PAGE_SIZE - len, "%d,%s,%d,%d,%d,%d,0x%x\n", tm_data.boot.throttle_at_boot,
+		tm_data.boot.sensor,    tm_data.boot.temp_at_boot,
+		tm_data.boot.trip_temp, tm_data.boot.release_temp,
+		tm_data.boot.thermal_core_num,tm_data.boot.core_status);
+
+	return len;
+}
+
 static ssize_t gpt_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -2187,6 +2206,7 @@ static struct kobj_attribute lvts_info1_attr = __ATTR_RO(lvts_info1);
 static struct kobj_attribute lvts_info2_attr = __ATTR_RO(lvts_info2);
 static struct kobj_attribute lvts_info3_attr = __ATTR_RO(lvts_info3);
 static struct kobj_attribute thermal_hint_attr = __ATTR_RW(thermal_hint);
+static struct kobj_attribute boot_status_attr = __ATTR_RO(boot_status);
 static struct kobj_attribute gpt_attr = __ATTR_RW(gpt);
 
 
@@ -2233,6 +2253,7 @@ static struct attribute *thermal_attrs[] = {
 	&lvts_info2_attr.attr,
 	&lvts_info3_attr.attr,
 	&thermal_hint_attr.attr,
+	&boot_status_attr.attr,
 	&gpt_attr.attr,
 	NULL
 };
@@ -2585,14 +2606,68 @@ static const struct of_device_id therm_intf_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, therm_intf_of_match);
 
+#define CPU_DOWN(i)	\
+	(get_cpu_device(i) == NULL ? false \
+	: remove_cpu(i))
+#define CPU_UP(i)	\
+	(get_cpu_device(i) == NULL ? false \
+	: add_cpu(i))
+#define cpu_is_offline(cpu)	unlikely(!cpu_online(cpu))
+
+static void __used boot_thermal_release(struct work_struct *work)
+{
+	struct thermal_zone_device *tz;
+	int i, ret, temp = -274000;
+
+	tz = thermal_zone_get_zone_by_name(tm_data.boot.sensor);
+	if(IS_ERR_OR_NULL(tz)) {
+		pr_info("%s: get %s temp error\n", __func__, tm_data.boot.sensor);
+		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+		return;
+	}
+
+	thermal_zone_get_temp(tz, &temp);
+	pr_info("[boot_thermal] %s=%d release=%d\n", tm_data.boot.sensor, temp, tm_data.boot.release_temp);
+
+	if (temp < tm_data.boot.release_temp) {
+		for (i = tm_data.boot.thermal_core_num; i < num_possible_cpus(); i++) {
+			if (!((tm_data.boot.core_status >> i) & 0x1) && cpu_is_offline(i)) {
+				ret = CPU_UP(i);
+				if (ret) {
+					pr_info("%s: fail to online CPU%d\n", __func__, i);
+					mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+					break;
+				}
+				pr_info("%s: online CPU%d success\n", __func__, i);
+			}
+			tm_data.boot.core_status |= 1 << i;
+		}
+		pr_info("[boot_thermal] core_status=0x%x\n", tm_data.boot.core_status);
+	} else {
+		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+		return;
+	}
+}
+
+static void boot_thermal_handler(struct timer_list *t)
+{
+	int ret = 0;
+
+	ret = queue_work(boot_thermal_wq, &boot_thermal_work);
+	if (!ret)
+		pr_notice("Error: %s (%d)\n", __func__, ret);
+}
+
+
+
 static int therm_intf_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	void __iomem *addr;
-	struct device_node *cpu_np, *gauge_np;
+	struct device_node *cpu_np, *gauge_np, *therm_np;
 	struct of_phandle_args args;
 	unsigned int cpu, max_perf_domain = 0;
-	int ret;
+	int ret, i;
 
 	if (!pdev->dev.of_node) {
 		dev_info(&pdev->dev, "Only DT based supported\n");
@@ -2667,6 +2742,7 @@ static int therm_intf_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+
 	gauge_np = of_find_node_by_name(NULL, "mtk-gauge");
 	if (!gauge_np)
 		dev_info(&pdev->dev, "Failed to get mtk-gauge\n");
@@ -2696,6 +2772,35 @@ static int therm_intf_probe(struct platform_device *pdev)
 	else
 		mtk_leds_register_notifier(&leds_init_notifier);
 #endif
+
+	therm_np = pdev->dev.of_node;
+	of_property_read_s32(therm_np, "throttle-at-boot", &tm_data.boot.throttle_at_boot);
+	of_property_read_string(therm_np, "boot-sensor", &(tm_data.boot.sensor));
+	of_property_read_s32(therm_np, "temp-at-boot", &tm_data.boot.temp_at_boot);
+	of_property_read_s32(therm_np, "boot-trip-temp", &tm_data.boot.trip_temp);
+	of_property_read_s32(therm_np, "boot-release-temp", &tm_data.boot.release_temp);
+	of_property_read_s32(therm_np, "boot-core-num", &tm_data.boot.thermal_core_num);
+
+	if (tm_data.boot.throttle_at_boot) {
+		boot_thermal_wq = create_singlethread_workqueue("boot_thermal");
+		INIT_WORK(&boot_thermal_work, boot_thermal_release);
+		timer_setup(&boot_thermal_timer, boot_thermal_handler, 0);
+		tm_data.boot.core_status = 0;
+		for (i = 0; i < num_possible_cpus(); i++) {
+			if (i < tm_data.boot.thermal_core_num)
+				tm_data.boot.core_status |= 1 << i;
+			else
+				break;
+		}
+
+		pr_info("[boot_thermal] throttle=%d, %s=%d, trip/release=%d/%d, core_num=%d, status=0x%x\n",
+			tm_data.boot.throttle_at_boot, tm_data.boot.sensor,
+			tm_data.boot.temp_at_boot, tm_data.boot.trip_temp,
+			tm_data.boot.release_temp, tm_data.boot.thermal_core_num,
+			tm_data.boot.core_status);
+
+		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+	}
 
 	return 0;
 }

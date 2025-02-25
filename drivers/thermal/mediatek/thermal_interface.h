@@ -181,6 +181,16 @@ struct frs_info {
 	int ptime;
 };
 
+struct boot_info {
+	const char *sensor;
+	int trip_temp;
+	int release_temp;
+	int thermal_core_num;
+	int temp_at_boot;
+	int throttle_at_boot;
+	int core_status;
+};
+
 #define MAX_MD_NAME_LENGTH  (20)
 
 struct md_thermal_sensor_t {
