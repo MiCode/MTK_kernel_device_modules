@@ -230,6 +230,12 @@
 
 #define MT6991_OVLSYS_SEC_OFFSET 0x10000
 
+/* DDR stash and HRT */
+#define MT6993_WDMA_DDREN_CTRL		0xf3c
+#define MT6993_DISP_WDMA_SIDEBAND_SEL	0xf88
+#define MT6993_WDMA_PREFETCH_TIME	0xf90
+#define MT6993_DISP_WDMA_STASH_CFG	0xf94
+
 #define PARSE_FROM_DTS 0xFFFFFFFF
 
 /* disp dma min stash ostdl = 4, hence
@@ -815,6 +821,26 @@ static void wdma_aid_config_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 	default:
 		break;
 	}
+}
+
+static void wdma_ddr_config_mt6993(struct mtk_ddp_comp *comp, struct golden_setting_context *gsc,
+	struct cmdq_pkt *handle)
+{
+	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
+	u32 line_cnt;
+
+	/* enable ddr hrt req */
+	cmdq_pkt_write(handle, NULL, comp->regs_pa + MT6993_WDMA_DDREN_CTRL, 0x2, U32_MAX);
+	/* enable stash */
+	cmdq_pkt_write(handle, NULL, comp->regs_pa + MT6993_DISP_WDMA_STASH_CFG, 0x3, U32_MAX);
+	/* enable ultra/preultra sideband for hrt */
+	cmdq_pkt_write(handle, NULL, comp->regs_pa + MT6993_DISP_WDMA_SIDEBAND_SEL, 0x11, U32_MAX);
+
+	line_cnt = (u32)wdma->data->stash_leading_time * gsc->vrefresh *
+		gsc->dst_height / 1000000 + 1;
+	cmdq_pkt_write(handle, NULL, comp->regs_pa + MT6993_WDMA_PREFETCH_TIME,
+		line_cnt, U32_MAX);
+	DDPINFO("%s prefetch time %u\n", __func__, line_cnt);
 }
 
 static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -1740,6 +1766,8 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 
 	gsc = cfg->p_golden_setting_context;
 	mtk_wdma_golden_setting(comp, gsc, handle);
+	if (wdma->data->ddr_config)
+		wdma->data->ddr_config(comp, gsc, handle);
 	mtk_ddp_write(comp, 0x1, DISP_REG_WDMA_VCSEL, handle);
 
 	cfg_info->addr = addr;
@@ -1860,6 +1888,8 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 golden_setting:
 	gsc = addon_config->addon_wdma_config.p_golden_setting_context;
 	mtk_wdma_golden_setting(comp, gsc, handle);
+	if (wdma->data->ddr_config)
+		wdma->data->ddr_config(comp, gsc, handle);
 
 	DDPMSG("[capture] config addr:0x%lx, roi:(%d,%d,%d,%d)\n",
 		(unsigned long)addr, clip_x, clip_y, clip_w, clip_h);
@@ -2964,6 +2994,7 @@ static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
 	.buf_con1_fld_fifo_pseudo_size = REG_FLD_MSB_LSB(11, 0),
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
 	.bus_priority_mask = 0xd4000000,
+	.stash_leading_time = 20,
 	.sodi_config = mt6989_mtk_sodi_config,
 	.aid_sel = &mtk_wdma_aid_sel_MT6993,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
@@ -2975,6 +3006,7 @@ static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
 	.aid_sel_manual = &wdma_aid_sel_manual_mt6993,
 	.sec_set = &wdma_sec_set_mt6993,
 	.sec_aid_config = &wdma_aid_config_mt6993,
+	.ddr_config = &wdma_ddr_config_mt6993,
 };
 
 static const struct mtk_disp_wdma_data mt6897_wdma_driver_data = {

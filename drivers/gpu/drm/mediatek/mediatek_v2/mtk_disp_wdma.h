@@ -18,6 +18,7 @@ struct mtk_disp_wdma_data {
 	unsigned int buf_con1_fld_fifo_pseudo_size;
 	unsigned int buf_con1_fld_fifo_pseudo_size_uv;
 	u32 bus_priority_mask;
+	u8 stash_leading_time;
 
 	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
@@ -33,6 +34,8 @@ struct mtk_disp_wdma_data {
 	void (*aid_sel_manual)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 	void (*sec_set)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec);
 	void (*sec_aid_config)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec);
+	void (*ddr_config)(struct mtk_ddp_comp *comp, struct golden_setting_context *gsc,
+		struct cmdq_pkt *handle);
 };
 
 #endif
