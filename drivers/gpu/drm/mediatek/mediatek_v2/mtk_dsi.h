@@ -200,9 +200,6 @@ struct mtk_dsi {
 	unsigned int set_partial_update;
 	unsigned int roi_y_offset;
 	unsigned int roi_height;
-	spinlock_t cmdq_pg_lock;
-	unsigned int last_cmdq_pg;
-	unsigned int cur_cmdq_pg;
 };
 
 enum dsi_porch_type;
