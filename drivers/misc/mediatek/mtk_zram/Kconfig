@@ -47,9 +47,3 @@ config HWCOMP_SUPPORT_NO_DST_COPY
 	  Original zram uses zsmalloc to store compressed data. The flow is to compress
 	  SRC page and then copy the compressed data to zsmalloc. Turn on this option will
 	  use slab memory to store compressed data directly without the SW copy.
-
-config ZRAM_ENGINE_SW_SIMULATION
-	bool "Do SW simulation"
-	default n
-	help
-	  Do SW simulation to verify the correctness of drivers.

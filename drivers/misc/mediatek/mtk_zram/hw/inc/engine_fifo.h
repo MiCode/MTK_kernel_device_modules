@@ -129,12 +129,6 @@ struct hwfifo {
 
 	/* - No use of fields for mask operations will save up to 5 more instructions per function call - */
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	uint16_t hw_write_idx;
-	uint16_t hw_complete_idx;
-	uint32_t prev_end;
-#endif
-
 } ____cacheline_internodealigned_in_smp;
 
 /* Just for fifo initialization */
@@ -229,76 +223,6 @@ static inline uint32_t lname##_fifo##num##_HtS_complete_index(struct hwfifo *fif
 {												\
 	uint32_t hw_complete_idx = readl(fifo->complete_idx_reg);				\
 												\
-	return (((hw_complete_idx & ENGINE_COMP_FIFO_TAG_BIT_MASK)				\
-			>> ENGINE_##uname##_FIFO##num##_TAG_CARRY_OFFSET)			\
-			| (hw_complete_idx & ENGINE_##uname##_FIFO##num##_ENTRY_MASK));		\
-}												\
-static inline uint32_t lname##_fifo##num##_StH_complete_index(struct hwfifo *fifo)		\
-{												\
-	return (fifo->complete_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)			\
-		& ENGINE_##uname##_FIFO##num##_INDEX_MASK;					\
-}
-
-/* Macros to create function defintions for fifos (for SW simulation only) */
-#define ENGINE_FIFO_OPS_SIMULATION(uname, lname, num)						\
-static inline uint32_t lname##_fifo##num##_write_entry(struct hwfifo *fifo)			\
-{ return fifo->write_idx & ENGINE_##uname##_FIFO##num##_ENTRY_MASK; }				\
-static inline uint32_t lname##_fifo##num##_complete_entry(struct hwfifo *fifo)			\
-{ return fifo->complete_idx & ENGINE_##uname##_FIFO##num##_ENTRY_MASK; }			\
-static bool lname##_fifo##num##_full(struct hwfifo *fifo)					\
-{												\
-	uint32_t write_idx = lname##_fifo##num##_write_entry(fifo);				\
-	uint32_t complete_idx = lname##_fifo##num##_complete_entry(fifo);			\
-												\
-	if (write_idx != complete_idx)								\
-		return false;									\
-												\
-	return fifo->write_idx != fifo->complete_idx;						\
-}												\
-static bool lname##_fifo##num##_empty(struct hwfifo *fifo)					\
-{ return fifo->write_idx == fifo->complete_idx; }						\
-static inline void update_##lname##_fifo##num##_write_index(struct hwfifo *fifo)		\
-{												\
-	uint32_t next_write_idx, next_hw_write_idx;						\
-												\
-	next_write_idx = (fifo->write_idx + 1)							\
-			 & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
-	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)		\
-			    & ENGINE_##uname##_FIFO##num##_INDEX_MASK;				\
-												\
-	wmb();											\
-												\
-	fifo->write_idx = next_write_idx;							\
-												\
-	fifo->hw_write_idx = next_hw_write_idx; /* CONFIG_ZRAM_ENGINE_SW_SIMULATION */		\
-}												\
-static inline void update_##lname##_fifo##num##_write_index_nokick(struct hwfifo *fifo)		\
-{												\
-	uint32_t next_write_idx, next_hw_write_idx;						\
-												\
-	next_write_idx = (fifo->write_idx + 1)							\
-			 & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
-	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)		\
-			    & ENGINE_##uname##_FIFO##num##_INDEX_MASK;				\
-												\
-	wmb();											\
-												\
-	fifo->write_idx = next_write_idx;							\
-												\
-	fifo->hw_write_idx = next_hw_write_idx; /* CONFIG_ZRAM_ENGINE_SW_SIMULATION */		\
-}												\
-static inline void update_##lname##_fifo##num##_complete_index(struct hwfifo *fifo)		\
-{												\
-	uint32_t next_complete_idx;								\
-												\
-	next_complete_idx = (fifo->complete_idx + 1)						\
-			    & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
-												\
-	smp_store_release(&fifo->complete_idx, next_complete_idx);				\
-}												\
-static inline uint32_t lname##_fifo##num##_HtS_complete_index(struct hwfifo *fifo)		\
-{												\
-	uint32_t hw_complete_idx = fifo->hw_complete_idx; /* CONFIG_ZRAM_ENGINE_SW_SIMULATION */\
 	return (((hw_complete_idx & ENGINE_COMP_FIFO_TAG_BIT_MASK)				\
 			>> ENGINE_##uname##_FIFO##num##_TAG_CARRY_OFFSET)			\
 			| (hw_complete_idx & ENGINE_##uname##_FIFO##num##_ENTRY_MASK));		\

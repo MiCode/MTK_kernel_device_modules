@@ -99,19 +99,6 @@ struct zram_engine_t {
 
 	/* List for available HW engine */
 	struct list_head list;
-
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	/* (SW-SIMULATION-ONLY) Flags set by HW, cleared by ISR */
-	bool wait_for_isr;
-
-	/* (SW-SIMULATION-ONLY) Thread for fake HW engine */
-	struct task_struct *fake_hw, *fake_hw_dcomp, *fake_isr;
-	wait_queue_head_t fake_hw_wait, fake_isr_wait;
-
-	/* (SW-SIMULATION-ONLY) hw write/complete index */
-	uint16_t hw_write_idx;
-	uint16_t hw_complete_idx;
-#endif
 };
 
 /* Available HW engines */
@@ -132,15 +119,9 @@ static DEFINE_MUTEX(hwz_mutex);
 /*
  * Definition of FIFO operations
  */
-#if !IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
 ENGINE_FIFO_OPS(COMP, comp, _1)
 ENGINE_FIFO_OPS(COMP, comp, _2)
 ENGINE_FIFO_OPS(DCOMP, dcomp, )
-#else
-ENGINE_FIFO_OPS_SIMULATION(COMP, comp, _1)
-ENGINE_FIFO_OPS_SIMULATION(COMP, comp, _2)
-ENGINE_FIFO_OPS_SIMULATION(DCOMP, dcomp, )
-#endif
 
 /*
  * ATTENTION -
@@ -421,261 +402,6 @@ static struct engine_irq_t zram_engine_irqs[] = {
 	{ .name = "zram_smmu_tbu_1_irq", .handler = smmu_irq_handler, .flags = IRQF_SHARED, },
 };
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-
-int (*simulate_decompress)(struct hwfifo *fifo, uint32_t entry);
-int (*simulate_compress)(struct hwfifo *fifo, uint32_t entry);
-
-static int fake_isr_func(void *data)
-{
-	struct zram_engine_t *hwz = data;
-	DEFINE_WAIT(wait);
-
-	while (!kthread_should_stop()) {
-
-		prepare_to_wait(&hwz->fake_isr_wait, &wait, TASK_IDLE);
-		if (!READ_ONCE(hwz->wait_for_isr))
-			schedule();
-
-		finish_wait(&hwz->fake_isr_wait, &wait);
-#ifdef ZRAM_ENGINE_DEBUG
-		pr_info("(HWZRAM)(ISR)\n");
-#endif
-		WRITE_ONCE(hwz->wait_for_isr, false);
-
-		if (engine_async_mode_disabled())
-			continue;
-
-		/* Wake up pp work */
-		wake_up(&hwz->comp_wait);
-
-		if (engine_coherence_disabled())
-			continue;
-
-		/* Wake up pp work */
-		wake_up(&hwz->dcomp_wait);
-	}
-
-	return 0;
-}
-
-static void fake_hw_processing_dcomp_fifo_requests(struct hwfifo *fifo)
-{
-	uint32_t start, end;
-
-	start = fifo->hw_complete_idx;
-	if (start != fifo->prev_end)
-		pr_info("(HWZRAM)(HW) %s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->prev_end);
-
-	/* Not empty */
-	while (fifo->hw_write_idx != fifo->hw_complete_idx) {
-		start = fifo->hw_complete_idx & ENGINE_DCOMP_FIFO_ENTRY_MASK;
-		end = fifo->hw_write_idx & ENGINE_DCOMP_FIFO_ENTRY_MASK;
-
-		smp_rmb();	/* essential for the correctness of reading test_fifo (can be removed ????) */
-
-		/* Simulate it with SW compress */
-		if (simulate_decompress(fifo, start))
-			pr_info("(HWZRAM)(HW) %s: decompress fail: (start, end) = (0x%x, 0x%x)\n",
-				__func__, start, end);
-#ifdef ZRAM_ENGINE_DEBUG
-		else
-			pr_info("(HWZRAM)(HW) %s: decompress success: (start, end) = (0x%x, 0x%x)\n",
-				__func__, start, end);
-#endif
-
-		smp_wmb(); /* replace wmb with smp_wmb() -- test.1 */
-		fifo->hw_complete_idx =
-			((fifo->hw_complete_idx + 1) + ENGINE_DCOMP_FIFO_PROPAGATION) & ENGINE_DCOMP_FIFO_INDEX_MASK;
-	}
-
-	fifo->prev_end = fifo->hw_complete_idx;
-}
-
-static int fake_hw_dcomp_func(void *data)
-{
-	struct zram_engine_t *hwz = data;
-	struct hwfifo *fifo;
-	int cpu;
-	bool pending = false;
-	DEFINE_WAIT(wait);
-
-	while (!kthread_should_stop()) {
-
-		prepare_to_wait(&hwz->fake_hw_wait, &wait, TASK_IDLE);
-
-		for (cpu = 0; cpu < MAX_DCOMP_NR; cpu++) {
-			fifo = &hwz->dcomp_fifo[cpu];
-			if (!dcomp_fifo_empty(fifo)) {
-				pending = true;
-				break;
-			}
-		}
-
-		/* No incoming requests - HW enters IDLE, trigger ISR to SW for IDLE notification before sleep */
-		if (!pending) {
-			WRITE_ONCE(hwz->wait_for_isr, true);
-			wake_up(&hwz->fake_isr_wait);
-			schedule();
-		}
-
-		finish_wait(&hwz->fake_hw_wait, &wait);
-
-		/* Handling incoming requests */
-		for (cpu = 0; cpu < MAX_DCOMP_NR; cpu++) {
-			fifo = &hwz->dcomp_fifo[cpu];
-			fake_hw_processing_dcomp_fifo_requests(fifo);
-		}
-
-		/* New incoming ISR request */
-		WRITE_ONCE(hwz->wait_for_isr, true);
-
-		/* Trigger ISR */
-		wake_up(&hwz->fake_isr_wait);
-
-		/* Reset status */
-		pending = false;
-	}
-
-	return 0;
-}
-
-static void fake_hw_processing_fifo_1_requests(struct hwfifo *fifo, struct zram_engine_t *hwz)
-{
-	uint32_t start, end;
-	static uint32_t prev_end;
-	int batch = 0;
-
-	start = fifo->hw_complete_idx;
-	if (start != prev_end)
-		pr_info("(HWZRAM)(HW) %s: unexpected start(0x%x), not (0x%x)", __func__, start, prev_end);
-
-	/* Not empty */
-	while (fifo->hw_write_idx != fifo->hw_complete_idx) {
-		start = fifo->hw_complete_idx & ENGINE_COMP_FIFO_1_ENTRY_MASK;
-		end = fifo->hw_write_idx & ENGINE_COMP_FIFO_1_ENTRY_MASK;
-
-		smp_rmb();	/* essential for the correctness of reading test_fifo (can be removed ????) */
-
-		/* Simulate it with SW compress */
-		if (simulate_compress(fifo, start))
-			pr_info("(HWZRAM)(HW) %s: compress fail: (start, end) = (0x%x, 0x%x)\n",
-				__func__, start, end);
-#ifdef ZRAM_ENGINE_DEBUG
-		else
-			pr_info("(HWZRAM)(HW) %s: compress success: (start, end) = (0x%x, 0x%x)\n",
-				__func__, start, end);
-#endif
-
-		smp_wmb(); /* replace wmb with smp_wmb() -- test.1 */
-		fifo->hw_complete_idx = ((fifo->hw_complete_idx + 1) + ENGINE_COMP_FIFO_1_PROPAGATION) & ENGINE_COMP_FIFO_1_INDEX_MASK;
-
-		/* Trigger ISR by batch */
-		if (++batch >= 32) {
-			wake_up(&hwz->fake_isr_wait);
-			batch = 0;
-		}
-	}
-
-	prev_end = fifo->hw_complete_idx;
-	fifo->prev_end = prev_end;
-}
-
-static void fake_hw_processing_fifo_2_requests(struct hwfifo *fifo, struct zram_engine_t *hwz)
-{
-	uint32_t start, end;
-	static uint32_t prev_end;
-	int batch = 0;
-
-	start = fifo->hw_complete_idx;
-	if (start != prev_end)
-		pr_info("(HWZRAM)(HW) %s: unexpected start(0x%x), not (0x%x)", __func__, start, prev_end);
-
-	/* Not empty */
-	while (fifo->hw_write_idx != fifo->hw_complete_idx) {
-		start = fifo->hw_complete_idx & ENGINE_COMP_FIFO_2_ENTRY_MASK;
-		end = fifo->hw_write_idx & ENGINE_COMP_FIFO_2_ENTRY_MASK;
-
-		smp_rmb();	/* essential for the correctness of reading test_fifo (can be removed ????) */
-
-		/* Simulate it with SW compress */
-		if (simulate_compress(fifo, start))
-			pr_info("(HWZRAM)(HW) %s: compress fail: (start, end) = (0x%x, 0x%x)\n",
-				__func__, start, end);
-#ifdef ZRAM_ENGINE_DEBUG
-		else
-			pr_info("(HWZRAM)(HW) %s: compress success: (start, end) = (0x%x, 0x%x)\n",
-				__func__, start, end);
-#endif
-
-		smp_wmb(); /* replace wmb with smp_wmb() -- test.1 */
-		fifo->hw_complete_idx =
-			((fifo->hw_complete_idx + 1) + ENGINE_COMP_FIFO_2_PROPAGATION) & ENGINE_COMP_FIFO_2_INDEX_MASK;
-
-		/* Trigger ISR by batch */
-		if (++batch >= 32) {
-			wake_up(&hwz->fake_isr_wait);
-			batch = 0;
-		}
-	}
-
-	prev_end = fifo->hw_complete_idx;
-	fifo->prev_end = prev_end;
-}
-
-static int fake_hw_func(void *data)
-{
-	struct zram_engine_t *hwz = data;
-	struct hwfifo *fifo;
-	bool pending = false;
-	DEFINE_WAIT(wait);
-
-	while (!kthread_should_stop()) {
-
-		do {
-			prepare_to_wait(&hwz->fake_hw_wait, &wait, TASK_IDLE);
-
-			fifo = &hwz->fifo_1;
-			if (!comp_fifo_1_empty(fifo))
-				pending = true;
-
-			fifo = &hwz->fifo_2;
-			if (!comp_fifo_2_empty(fifo))
-				pending = true;
-
-			/*
-			 * No incoming requests -
-			 * HW enters IDLE, trigger ISR to SW for IDLE notification before sleep
-			 */
-			if (!pending) {
-				WRITE_ONCE(hwz->wait_for_isr, true);
-				wake_up(&hwz->fake_isr_wait);
-				schedule();
-			}
-
-			finish_wait(&hwz->fake_hw_wait, &wait);
-
-		} while (!pending && !kthread_should_stop());
-
-		/* Handling incoming requests */
-		fake_hw_processing_fifo_1_requests(&hwz->fifo_1, hwz);
-		fake_hw_processing_fifo_2_requests(&hwz->fifo_2, hwz);
-
-		/* New incoming ISR request */
-		WRITE_ONCE(hwz->wait_for_isr, true);
-
-		/* Trigger ISR */
-		wake_up(&hwz->fake_isr_wait);
-
-		/* Reset status */
-		pending = false;
-	}
-
-	return 0;
-}
-
-#endif /* CONFIG_ZRAM_ENGINE_SW_SIMULATION */
-
 static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset);
 
 /* Check FIFO RTFF result and recover if necessary (only called during power on) */
@@ -746,14 +472,7 @@ dump:
 /* Polling for cmd completion */
 static inline void hwcomp_poll_cmd_complete(struct hwfifo *fifo)
 {
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	do {
-		cpu_relax();
-		smp_rmb();
-	} while (fifo->hw_write_idx != fifo->hw_complete_idx);
-#else
 	engine_poll_cmd_complete(fifo->write_idx_reg, fifo->complete_idx_reg);
-#endif
 }
 
 /*
@@ -1521,23 +1240,11 @@ next_dcmd:
 	valid = hwz->ops->fill_decompression_info(fifo, entry, src, slen, page, pp_info,
 						from_async, zspool_to_hwcomp_buffer);
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	{
-		/* pp_info should be copied for SW simulation */
-		memcpy(DCOMP_CMPL(fifo, entry), pp_info, sizeof(struct dcomp_pp_info));
-	}
-#endif
-
 	update_dcomp_fifo_write_index(fifo);
 
 	/* Try next cmd if necessary */
 	if (!valid)
 		goto next_dcmd;
-
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	/* (SW-SIMULATION-ONLY) */
-	wake_up(&hwz->fake_hw_wait);
-#endif
 
 	/* Polling for cmd completion */
 	hwcomp_poll_cmd_complete(fifo);
@@ -1678,11 +1385,6 @@ next_dcmd:
 	if (!valid)
 		goto next_dcmd;
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	/* (SW-SIMULATION-ONLY) */
-	wake_up(&hwz->fake_hw_wait);
-#endif
-
 	put_cpu();
 
 	/* Wake up dcomp_post_process */
@@ -1776,11 +1478,6 @@ next_cmd_fifo_1:
 		if (!valid)
 			goto next_cmd_fifo_1;
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-		/* (SW-SIMULATION-ONLY) */
-		wake_up(&hwz->fake_hw_wait);
-#endif
-
 		/* Using sync mode */
 		if (engine_async_mode_disabled()) {
 			hwcomp_poll_cmd_complete(fifo);
@@ -1854,11 +1551,6 @@ next_cmd_fifo_2:
 	/* Try next cmd if necessary */
 	if (!valid)
 		goto next_cmd_fifo_2;
-
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	/* (SW-SIMULATION-ONLY) */
-	wake_up(&hwz->fake_hw_wait);
-#endif
 
 	/* Using sync mode */
 	if (engine_async_mode_disabled()) {
@@ -2173,10 +1865,6 @@ static int zram_engine_setup_fifos(struct zram_engine_t *hwz, bool reset_idx)
 			ZRAM_ENC_CMD_MAIN_FIFO_WRITE_INDEX;
 		fifo->complete_idx_reg = hwz->ctrl.zram_enc_base +
 			ZRAM_ENC_CMD_MAIN_FIFO_COMPLETE_INDEX;
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-		fifo->hw_write_idx = 0;
-		fifo->hw_complete_idx = 0;
-#endif
 	}
 
 	/* Allocate dst buffers for every fifo cmds & set fifo ID */
@@ -2212,10 +1900,6 @@ static int zram_engine_setup_fifos(struct zram_engine_t *hwz, bool reset_idx)
 			ZRAM_ENC_CMD_SECOND_FIFO_WRITE_INDEX;
 		fifo->complete_idx_reg = hwz->ctrl.zram_enc_base +
 			ZRAM_ENC_CMD_SECOND_FIFO_COMPLETE_INDEX;
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-		fifo->hw_write_idx = 0;
-		fifo->hw_complete_idx = 0;
-#endif
 	}
 	spin_lock_init(&hwz->fifo_2_lock);
 
@@ -2256,10 +1940,6 @@ static int zram_engine_setup_fifos(struct zram_engine_t *hwz, bool reset_idx)
 				ZRAM_DEC_CMD_FIFO_0_WRITE_INDEX + offset;
 			fifo->complete_idx_reg = hwz->ctrl.zram_dec_base +
 				ZRAM_DEC_CMD_FIFO_0_COMPLETE_INDEX + offset;
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-			fifo->hw_write_idx = 0;
-			fifo->hw_complete_idx = 0;
-#endif
 		}
 
 #ifdef ZRAM_ENGINE_DEBUG
@@ -2323,11 +2003,6 @@ exit:
 static void zram_engine_sw_deinit(struct zram_engine_t *hwz)
 {
 	/* Stop all kernel threads */
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	kthread_stop(hwz->fake_isr);
-	kthread_stop(hwz->fake_hw_dcomp);
-	kthread_stop(hwz->fake_hw);
-#endif
 	kthread_stop(hwz->gla_work);
 	kthread_stop(hwz->dcomp_pp_work);
 	kthread_stop(hwz->comp_pp_work);
@@ -2365,14 +2040,6 @@ static int zram_engine_sw_init(struct zram_engine_t *hwz)
 	hwz->comp_pp_work = kthread_run(comp_post_process, hwz, "comp_pp_worker");
 	hwz->dcomp_pp_work = kthread_run(dcomp_post_process, hwz, "dcomp_pp_worker");
 	hwz->gla_work = kthread_run(gear_level_adjustment, hwz, "gla_worker");
-
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	init_waitqueue_head(&hwz->fake_hw_wait);
-	init_waitqueue_head(&hwz->fake_isr_wait);
-	hwz->fake_hw = kthread_run(fake_hw_func, hwz, "fake_hw_engine");
-	hwz->fake_hw_dcomp = kthread_run(fake_hw_dcomp_func, hwz, "fake_hw_dcomp_engine");
-	hwz->fake_isr = kthread_run(fake_isr_func, hwz, "fake_isr");
-#endif
 
 	pr_info("%s: done\n", __func__);
 	return 0;
@@ -2469,11 +2136,6 @@ static int hwcomp_use_no_dst_copy_mode(struct zram_engine_t *hwz)
 	smp_wmb();
 	hwz->ops = &engine_ndc_ops;
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	simulate_decompress = simulate_ndc_decompress;
-	simulate_compress = simulate_ndc_compress;
-#endif
-
 	/* Init fifo memory */
 	ret = zram_engine_setup_fifos(hwz, false);
 	if (ret) {
@@ -2519,11 +2181,6 @@ static int hwcomp_use_dst_copy_mode(struct zram_engine_t *hwz)
 	/* Ok, it's time to change mode */
 	smp_wmb();
 	hwz->ops = &engine_dc_ops;
-
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	simulate_decompress = simulate_dc_decompress;
-	simulate_compress = simulate_dc_compress;
-#endif
 
 	/* Init fifo memory */
 	ret = zram_engine_setup_fifos(hwz, false);
@@ -2581,11 +2238,6 @@ static int mtk_hwzram_probe(struct platform_device *pdev)
 	/* Reset comp_cnt & dcomp_cnt */
 	atomic_set(&hwz->comp_cnt, 0);
 	atomic_set(&hwz->dcomp_cnt, 0);
-
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-	simulate_decompress = simulate_dc_decompress;
-	simulate_compress = simulate_dc_compress;
-#endif
 
 	/* Setup platform resource for zram engine */
 	ret = zram_engine_platform_init(pdev, hwz);
@@ -2693,7 +2345,7 @@ static void mtk_hwzram_remove(struct platform_device *pdev)
 static int __maybe_unused mtk_hwzram_suspend(struct device *dev)
 {
 	struct zram_engine_t *hwz = dev_get_drvdata(dev);
-#if !defined(FPGA_EMULATION) && !IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
+#if !defined(FPGA_EMULATION)
 	int ret;
 #endif
 
@@ -2708,7 +2360,7 @@ static int __maybe_unused mtk_hwzram_suspend(struct device *dev)
 		return 0;
 	}
 
-#if !defined(FPGA_EMULATION) && !IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
+#if !defined(FPGA_EMULATION)
 	if (!engine_power_efficiency_enabled()) {
 		ret = engine_gear_power_off(&hwz->ctrl, &hwz->gear_ctrl);
 		if (ret) {
@@ -2726,7 +2378,7 @@ static int __maybe_unused mtk_hwzram_suspend(struct device *dev)
 static int __maybe_unused mtk_hwzram_resume(struct device *dev)
 {
 	struct zram_engine_t *hwz = dev_get_drvdata(dev);
-#if !defined(FPGA_EMULATION) && !IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
+#if !defined(FPGA_EMULATION)
 	int ret;
 #endif
 
@@ -2741,7 +2393,7 @@ static int __maybe_unused mtk_hwzram_resume(struct device *dev)
 		return 0;
 	}
 
-#if !defined(FPGA_EMULATION) && !IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
+#if !defined(FPGA_EMULATION)
 	if (!engine_power_efficiency_enabled()) {
 		ret = engine_gear_power_on(&hwz->ctrl, &hwz->gear_ctrl);
 		if (ret) {

@@ -157,11 +157,4 @@ static inline struct zram_table_entry *get_zram_table_entry(struct zram *zram, u
 #define ZRAM_TE(zram, index)		(get_zram_table_entry(zram, index))
 #define ZRAM_TE_NDC(zram, index)	((struct zram_table_entry_ndc *)(get_zram_table_entry(zram, index)))
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION) || defined(MORE_DEBUG)
-static inline size_t zram_get_obj_size_export(struct zram *zram, u32 index)
-{
-	return (ZRAM_TE(zram, index))->flags & (BIT(ZRAM_FLAG_SHIFT) - 1);
-}
-#endif
-
 #endif /* _HWCOMP_BRIDGE_H_ */

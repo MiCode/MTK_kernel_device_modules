@@ -10,18 +10,10 @@
 #include <inc/engine_regs.h>
 #include <inc/helpers.h>
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-/* Empty operations */
-#define zram_writel(val, reg) \
-	do { (void)(val); (void)(reg);} while (0)
-#define zram_readl(reg)	\
-	({ (void)(reg); uint32_t __v = ((1UL << 32) - 1); __v;})
-#else
 #define zram_writel(val, reg) \
 	writel(val, reg)
 #define zram_readl(reg)	\
 	readl(reg)
-#endif
 
 void engine_control_deinit(struct platform_device *pdev, struct engine_control_t *ctrl)
 {

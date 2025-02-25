@@ -50,14 +50,4 @@ extern compress_pp_fn hwcomp_compress_post_process_ndc;
 /* Post-process callback for decompression */
 extern decompress_pp_fn hwcomp_decompress_post_process;
 
-#if IS_ENABLED(CONFIG_ZRAM_ENGINE_SW_SIMULATION)
-#if IS_ENABLED(CONFIG_HWCOMP_SUPPORT_NO_DST_COPY)
-extern int simulate_ndc_decompress(struct hwfifo *fifo, uint32_t entry);
-extern int simulate_ndc_compress(struct hwfifo *fifo, uint32_t entry);
-#endif
-extern int simulate_dc_decompress(struct hwfifo *fifo, uint32_t entry);
-extern int simulate_dc_compress(struct hwfifo *fifo, uint32_t entry);
-#endif
-
-
 #endif /* _ENGINE_OPS_H_ */
