@@ -44,7 +44,3 @@ ccflags-y += -I$(SWPM_MODULES_FOLDER)/include/v6991/
 #obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_ISP_DBG_MODUDLE_NAME}.o
 #${BUILD_SWPM_ISP_DBG_MODUDLE_NAME}-objs += subsys/swpm_isp_v6991.o
 
-BUILD_SWPM_DISP_DBG_MODUDLE_NAME=mtk-swpm-disp-dbg-v6991
-obj-$(CONFIG_MTK_SWPM_MODULE) += ${BUILD_SWPM_DISP_DBG_MODUDLE_NAME}.o
-${BUILD_SWPM_DISP_DBG_MODUDLE_NAME}-objs += subsys/swpm_disp_v6991.o
-${BUILD_SWPM_DISP_DBG_MODUDLE_NAME}-objs += subsys/swpm_disp_v6991_dbg_init.o

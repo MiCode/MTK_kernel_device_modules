@@ -9,7 +9,6 @@
 
 #include "mtk_swpm_common_sysfs.h"
 #include "mtk_swpm_sysfs.h"
-#include "swpm_dbg_common_v1.h"
 #include "swpm_disp_v6991.h"
 
 static struct disp_swpm_data *disp_swpm_data_ptr;

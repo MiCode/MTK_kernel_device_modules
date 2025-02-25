@@ -14,10 +14,8 @@
 #include <linux/timer.h>
 #include <linux/types.h>
 
-#include <swpm_dbg_fs_common.h>
-#include <swpm_dbg_common_v1.h>
 #include <swpm_module.h>
-#include <swpm_disp_v6991.h>
+#include "swpm_disp_v6991.h"
 
 #undef swpm_dbg_log
 #define swpm_dbg_log(fmt, args...) \
