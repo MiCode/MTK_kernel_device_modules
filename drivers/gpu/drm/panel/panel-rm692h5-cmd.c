@@ -53,6 +53,7 @@ static struct mtk_panel_params ext_params[MODE_NUM];
 #ifdef CONFIG_MTK_RES_SWITCH_ON_AP
 static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
 #endif
+static enum MTE_SUPPORT_TYPE mte_support = MTE_NOT_SUPPORT;
 
 struct lcm {
 	struct device *dev;
@@ -268,17 +269,23 @@ static void lcm_panel_init(struct lcm *ctx)
 		push_table(ctx, init_setting_fhd_120hz_dv3, ARRAY_SIZE(init_setting_fhd_120hz_dv3), 0);
 
 	switch (mode_id) {
-	case FHD_60:
+	case FHD_60_360TE:
+	case VFHD_60_360TE:
 		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 		break;
-	case FHD_90:
+	case FHD_90_360TE:
+	case VFHD_90_360TE:
 		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 		break;
-	case FHD_120:
-		push_table(ctx, cmd_set_fps_120hz_mte, ARRAY_SIZE(cmd_set_fps_120hz_mte), 0);
+	case FHD_120_360TE:
+	case VFHD_120_360TE:
+		if (mte_support == MTE_SUPPORT)
+			push_table(ctx, cmd_set_fps_120hz_mte, ARRAY_SIZE(cmd_set_fps_120hz_mte), 0);
+		else
+			push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 		break;
 	default:
-		push_table(ctx, cmd_set_fps_120hz_mte, ARRAY_SIZE(cmd_set_fps_120hz_mte), 0);
+		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 		break;
 	}
 }
@@ -414,6 +421,7 @@ static const struct drm_display_mode display_mode[MODE_NUM] = {
 		.vsync_end = FHD_FRAME_HEIGHT + VFP + VSA,
 		.vtotal = FHD_FRAME_HEIGHT + VFP + VSA + VBP,
 	},
+#if MAINTAIN_MULTI_DISPLAY_MODE //only maintain MTE and fix360
 	//fhd_120hz
 	[FHD_120] = {
 		.clock = 437960,
@@ -450,7 +458,7 @@ static const struct drm_display_mode display_mode[MODE_NUM] = {
 		.vsync_end = FHD_FRAME_HEIGHT + VFP + VSA,
 		.vtotal = FHD_FRAME_HEIGHT + VFP + VSA + VBP,
 	},
-
+#endif
 #ifdef CONFIG_MTK_RES_SWITCH_ON_AP
 	//fhd_120hz_360hz
 	[VFHD_120_360TE] = {
@@ -500,6 +508,7 @@ static const struct drm_display_mode display_mode[MODE_NUM] = {
 		.vsync_end = VFHD_FRAME_HEIGHT + VFP + VSA,
 		.vtotal = VFHD_FRAME_HEIGHT + VFP + VSA + VBP,
 	},
+#if MAINTAIN_MULTI_DISPLAY_MODE //only maintain MTE and fix360
 	//vfhd_120hz
 	[VFHD_120] = {
 		.clock = 324135,
@@ -536,6 +545,7 @@ static const struct drm_display_mode display_mode[MODE_NUM] = {
 		.vsync_end = VFHD_FRAME_HEIGHT + VFP + VSA,
 		.vtotal = VFHD_FRAME_HEIGHT + VFP + VSA + VBP,
 	},
+#endif
 #endif
 };
 
@@ -611,8 +621,10 @@ static int mode_switch(struct drm_panel *panel,
 
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
 
-	if (drm_mode_vrefresh(m) == 120)
+	if (drm_mode_vrefresh(m) == 120 && mte_support == MTE_SUPPORT)
 		push_table(ctx, cmd_set_fps_120hz_mte, ARRAY_SIZE(cmd_set_fps_120hz_mte), 0);
+	else if (drm_mode_vrefresh(m) == 120)
+		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 	else if (drm_mode_vrefresh(m) == 90)
 		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
 	else if (drm_mode_vrefresh(m) == 60)
@@ -634,7 +646,8 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
 	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
 	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_120hz_mte)] = { 0 };
+	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
+	static struct mipi_dsi_msg fps_120hz_mte[ARRAY_SIZE(cmd_set_fps_120hz_mte)] = { 0 };
 
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
 
@@ -648,9 +661,13 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 			fps_90hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
 			fps_90hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
 		}
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
+			fps_120hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
+			fps_120hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
+		}
 		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_mte); i++) {
-			fps_120hz[i].tx_len= cmd_set_fps_120hz_mte[i].count;
-			fps_120hz[i].tx_buf = cmd_set_fps_120hz_mte[i].para_list;
+			fps_120hz_mte[i].tx_len= cmd_set_fps_120hz_mte[i].count;
+			fps_120hz_mte[i].tx_buf = cmd_set_fps_120hz_mte[i].para_list;
 		}
 	}
 	struct mtk_dsi_cmd_msg fps_60hz_cmd = {
@@ -675,12 +692,23 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.is_rd = 0, /* 0:write 1:read */
 		.is_package = 0,
 		.rd_to_slot = 0,
-		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_mte),
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_360te),
 		.transfer_mode = PACKET_LP_MODE,
 		.cmd_msg = fps_120hz,
 	};
 
-	if (drm_mode_vrefresh(m) == 120)
+	struct mtk_dsi_cmd_msg fps_120hz_mte_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_120hz_mte),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = fps_120hz_mte,
+	};
+
+	if (drm_mode_vrefresh(m) == 120 && mte_support == MTE_SUPPORT)
+		cb(dsi_drv, handle, cmd_opt, &fps_120hz_mte_cmd);
+	else if (drm_mode_vrefresh(m) == 120)
 		cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
 	else if (drm_mode_vrefresh(m) == 90)
 		cb(dsi_drv, handle, cmd_opt, &fps_90hz_cmd);
@@ -1225,6 +1253,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		},
 		.real_te_duration = 2778,
 	},
+#if MAINTAIN_MULTI_DISPLAY_MODE //only maintain MTE and fix360
 	//120hz
 	[FHD_120] = {
 		.pll_clk = MIPI_DATA_RATE_120HZ / 2,
@@ -1489,6 +1518,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		},
 		.real_te_duration = 16667,
 	},
+#endif
 };
 #ifdef CONFIG_MTK_RES_SWITCH_ON_AP
 static enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
@@ -1633,6 +1663,7 @@ int lcm_probe(struct mipi_dsi_device *dsi)
 	struct device_node *backlight;
 	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 	int ret;
+	int mte_value = 0;
 #ifdef CONFIG_MTK_RES_SWITCH_ON_AP
 	int value = 0;
 #endif
@@ -1678,6 +1709,15 @@ int lcm_probe(struct mipi_dsi_device *dsi)
 		lcm_err("res-switch read failure\n");
 	lcm_info("res_switch_type = %d\n", res_switch_type);
 #endif
+
+	if (dsi_node) {
+		ret = of_property_read_u32(dsi_node, "mte-support", &mte_value);
+		if (!ret)
+			mte_support = (enum MTE_SUPPORT_TYPE)mte_value;
+		else
+			lcm_err("mte_support read failure\n");
+	}
+	lcm_info("mte_support = %d\n", mte_support);
 
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
 	if (backlight) {
