@@ -325,13 +325,6 @@ void audio_boost_quirk_setting(int vid, int pid)
 	}
 }
 
-void audio_boost_default_setting(void)
-{
-	audio_small_core = 0;
-	audio_medium_core = 0;
-	audio_big_core = 0;
-}
-
 int audio_freq_hold(void)
 {
 	struct device_node *np = gdev->of_node;

@@ -38,7 +38,6 @@ int audio_core_release(void);
 int audio_freq_hold(void);
 int audio_freq_release(void);
 void audio_boost_quirk_setting(int vid, int pid);
-void audio_boost_default_setting(void);
 void usb_boost_vcore_control(bool hold);
 extern bool vcore_holding_by_others;
 

@@ -417,7 +417,6 @@ static void audio_boost_work(struct work_struct *work_struct)
 
 	audio_core_release();
 	audio_freq_release();
-	audio_boost_default_setting();
 	audio_boost_inst.request_func = __request_audio;
 	USB_BOOST_NOTICE("audio_boost, end of work\n");
 }
@@ -1024,7 +1023,6 @@ void usb_audio_boost(bool enable)
 
 	if (enable) {
 		/* hook workable interface */
-		audio_boost_default_setting();
 		audio_boost_inst.request_func = __request_audio;
 	}
 }
