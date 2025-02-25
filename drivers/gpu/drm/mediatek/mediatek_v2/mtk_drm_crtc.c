@@ -11146,10 +11146,10 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	if (cb_data->is_retrig) {
 		CRTC_MMP_MARK(id, retrig_cfg, 0, cb_data->pres_fence_idx);
 		drm_trace_tag_value_byid("retrig_cfg", cb_data->pres_fence_idx, id);
-		cmdq_pkt_wait_complete(cb_data->cmdq_handle);
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PKT_POOL))
+			cmdq_pkt_wait_complete(cb_data->cmdq_handle);
 		mtk_drm_del_cb_data(data, id);
-		cmdq_pkt_destroy(cb_data->cmdq_handle);
-		kfree(cb_data);
+		mtk_crtc_release_cmdq_pkt(cb_data->pkt_info);
 		return;
 	}
 	old_crtc_state = drm_atomic_get_old_crtc_state(atomic_state, crtc);

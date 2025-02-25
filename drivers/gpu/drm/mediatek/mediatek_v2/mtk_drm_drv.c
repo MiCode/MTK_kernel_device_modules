@@ -10982,30 +10982,27 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
-	// create cmdq_handle
+	// request cmdq_pkt and cb_data
 	if (mtk_crtc->sec_on) {
-		mtk_crtc_pkt_create(&cmdq_handle, crtc,
-			mtk_crtc->gce_obj.client[CLIENT_SEC_CFG]);
+		mtk_crtc->gce_obj.pkt_info =
+			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_SEC_CFG,
+				retrig->present_fence_idx);
 	} else {
-		mtk_crtc_pkt_create(&cmdq_handle, crtc,
-			mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		mtk_crtc->gce_obj.pkt_info =
+			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_CFG,
+				retrig->present_fence_idx);
 	}
-	if (!cmdq_handle) {
-		DDPPR_ERR("%s: cmdq_handle creation failed\n", __func__);
+
+	if (mtk_crtc->gce_obj.pkt_info == NULL) {
+		DDPPR_ERR("%s: pkt_info alloc failed\n", __func__);
 		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
 		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
 		goto retrig_end;
 	}
 
-	// create cb_data
-	cb_data = kmalloc(sizeof(struct mtk_cmdq_cb_data), GFP_KERNEL);
-	if (!cb_data) {
-		DDPPR_ERR("%s: cb_data alloc failed\n", __func__);
-		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
-		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-		cmdq_pkt_destroy(cmdq_handle);
-		goto retrig_end;
-	}
+	cmdq_handle = mtk_crtc->gce_obj.pkt_info->cmdq_handle;
+	cb_data = mtk_crtc->gce_obj.pkt_info->cb_data;
+
 	cb_data->is_retrig = true;
 	cb_data->state = crtc_state;
 	cb_data->crtc = crtc;
@@ -11037,8 +11034,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 			&sleep_t) < 0) {
 		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
 		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-		cmdq_pkt_destroy(cmdq_handle);
-		kfree(cb_data);
+		mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
 		goto retrig_end;
 	}
 
@@ -11057,8 +11053,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		if (!mtk_crtc->enabled) {
 			atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
 			mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-			cmdq_pkt_destroy(cmdq_handle);
-			kfree(cb_data);
+			mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
 			goto retrig_end;
 		}
 	}
@@ -11071,8 +11066,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		DDPPR_ERR("%s: mtk_crtc_retrig_flush failed!\n", __func__);
 		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
 		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-		cmdq_pkt_destroy(cmdq_handle);
-		kfree(cb_data);
+		mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
 	}
 	mtk_drm_trace_end("retrig_kick_flush %u", retrig->present_fence_idx);
 
