@@ -117,13 +117,13 @@ int mtk_drm_ioctl_chist_get_caps(struct drm_device *dev, void *data,
 	else
 		crtc = private->crtc[0];
 	if (!crtc) {
-		DDPPR_ERR("%s, crtc is null id:%d!\n", __func__, crtc_id);
+		PQ_ERR("%s, crtc is null id:%d!\n", __func__, crtc_id);
 		return -1;
 	}
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(to_mtk_crtc(crtc), MTK_DISP_CHIST, index);
 	if (comp == NULL) {
-		DDPPR_ERR("%s, null pointer! index:%d\n", __func__, index);
+		PQ_ERR("%s, null pointer! index:%d\n", __func__, index);
 		return -1;
 	}
 	chist_data = comp_to_chist(comp);
@@ -167,20 +167,20 @@ int mtk_drm_ioctl_chist_set_config(struct drm_device *dev, void *data,
 	else
 		crtc = private->crtc[0];
 	if (!crtc) {
-		DDPPR_ERR("%s, crtc is null id:%d!\n", __func__, crtc_id);
+		PQ_ERR("%s, crtc is null id:%d!\n", __func__, crtc_id);
 		return -1;
 	}
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(to_mtk_crtc(crtc), MTK_DISP_CHIST, index);
 	if (comp == NULL) {
-		DDPPR_ERR("%s, null pointer! index:%d\n", __func__, index);
+		PQ_ERR("%s, null pointer! index:%d\n", __func__, index);
 		return -1;
 	}
 
 	chist_data = comp_to_chist(comp);
 	if (config->config_channel_count == 0 ||
 			config->config_channel_count > DISP_CHIST_CHANNEL_COUNT) {
-		DDPPR_ERR("%s, invalid config channel count:%u\n",
+		PQ_ERR("%s, invalid config channel count:%u\n",
 				__func__, config->config_channel_count);
 		return -EINVAL;
 	}
@@ -258,13 +258,13 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev, struct drm_file 
 	else
 		crtc = private->crtc[0];
 	if (!crtc) {
-		DDPPR_ERR("%s, crtc is null id:%d!\n", __func__, crtc_id);
+		PQ_ERR("%s, crtc is null id:%d!\n", __func__, crtc_id);
 		return -1;
 	}
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(to_mtk_crtc(crtc), MTK_DISP_CHIST, index);
 	if (comp == NULL) {
-		DDPPR_ERR("%s, null pointer! index:%d\n", __func__, index);
+		PQ_ERR("%s, null pointer! index:%d\n", __func__, index);
 		return -1;
 	}
 
@@ -279,7 +279,7 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev, struct drm_file 
 	if (chist_data->primary_data->pre_frame_width > 0
 		&& (chist_data->primary_data->pre_frame_width
 		!= chist_data->primary_data->frame_width)) {
-		DDPPR_ERR("%s, need reconfig pre width:%d, current width:%d!\n", __func__,
+		PQ_ERR("%s, need reconfig pre width:%d, current width:%d!\n", __func__,
 				chist_data->primary_data->pre_frame_width,
 				chist_data->primary_data->frame_width);
 		return -EAGAIN;
@@ -380,7 +380,7 @@ int mtk_drm_ioctl_chist_get_hist(struct drm_device *dev, void *data,
 	int ret = 0;
 
 	if (hist == NULL) {
-		DDPPR_ERR("%s drm_mtk_hist_info is NULL\n", __func__);
+		PQ_ERR("%s drm_mtk_hist_info is NULL\n", __func__);
 		return -EFAULT;
 	}
 
@@ -388,7 +388,7 @@ int mtk_drm_ioctl_chist_get_hist(struct drm_device *dev, void *data,
 		hist->device_id, hist->get_channel_count);
 	if (hist->get_channel_count == 0 ||
 			hist->get_channel_count > DISP_CHIST_CHANNEL_COUNT) {
-		DDPPR_ERR("%s invalid get channel count is %u\n",
+		PQ_ERR("%s invalid get channel count is %u\n",
 				__func__, hist->get_channel_count);
 		return -EFAULT;
 	}
@@ -687,7 +687,7 @@ static int disp_chist_user_cmd(struct mtk_ddp_comp *comp,
 		break;
 
 	default:
-		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
+		PQ_ERR("%s: error cmd: %d\n", __func__, cmd);
 		return -EINVAL;
 	}
 	return ret;
@@ -830,19 +830,19 @@ static int disp_chist_cfg_set_config(struct mtk_ddp_comp *comp,
 	int ret = -1;
 
 	if (config == NULL || sizeof(struct drm_mtk_chist_config) != data_size) {
-		DDPPR_ERR("%s:%d, drm_mtk_chist_config is NULL\n", __func__, __LINE__);
+		PQ_ERR("%s:%d, drm_mtk_chist_config is NULL\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	if (config->config_channel_count == 0 ||
 			config->config_channel_count > DISP_CHIST_CHANNEL_COUNT) {
-		DDPPR_ERR("%s, invalid config channel count:%u\n",
+		PQ_ERR("%s, invalid config channel count:%u\n",
 				__func__, config->config_channel_count);
 		return -EINVAL;
 	}
 
 	if (!comp->mtk_crtc) {
-		DDPPR_ERR("%s:%d, invalid crtc\n", __func__, __LINE__);
+		PQ_ERR("%s:%d, invalid crtc\n", __func__, __LINE__);
 		return 0;
 	}
 
@@ -1033,7 +1033,7 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	}
 	pm_ret = mtk_vidle_pq_power_get(__func__);
 	if (pm_ret) {
-		DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+		PQ_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
 		mutex_unlock(&prim_data->clk_lock);
 		return;
 	}
@@ -1166,7 +1166,7 @@ static int disp_chist_read_kthread(void *data)
 			ret = wait_event_interruptible(chist_data->primary_data->event_wq,
 				atomic_read(&(chist_data->primary_data->irq_event)) == 1);
 			if (ret < 0)
-				DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+				PQ_ERR("wait %s fail, ret=%d\n", __func__, ret);
 			else
 				DDPDBG("%s: wait_event_interruptible -- ", __func__);
 		} else {
@@ -1261,7 +1261,7 @@ static irqreturn_t disp_chist_irq_handler(int irq, void *dev_id)
 
 	mtk_crtc = chist->ddp_comp.mtk_crtc;
 	if (!mtk_crtc) {
-		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		PQ_ERR("%s mtk_crtc is NULL\n", __func__);
 		ret = IRQ_NONE;
 		goto out;
 	}
@@ -1325,13 +1325,13 @@ static int disp_chist_probe(struct platform_device *pdev)
 	priv->primary_data = kzalloc(sizeof(*priv->primary_data), GFP_KERNEL);
 	if (priv->primary_data == NULL) {
 		ret = -ENOMEM;
-		DDPPR_ERR("Failed to alloc primary_data %d\n", ret);
+		PQ_ERR("Failed to alloc primary_data %d\n", ret);
 		goto error_dev_init;
 	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_CHIST);
 	if ((int)comp_id < 0) {
-		DDPPR_ERR("Failed to identify by alias: %d\n", comp_id);
+		PQ_ERR("Failed to identify by alias: %d\n", comp_id);
 		ret = comp_id;
 		goto error_primary;
 	}
@@ -1339,7 +1339,7 @@ static int disp_chist_probe(struct platform_device *pdev)
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_chist_funcs);
 	if (ret != 0) {
-		DDPPR_ERR("Failed to initialize component: %d\n", ret);
+		PQ_ERR("Failed to initialize component: %d\n", ret);
 		ret = -ENOMEM;
 		goto error_primary;
 	}

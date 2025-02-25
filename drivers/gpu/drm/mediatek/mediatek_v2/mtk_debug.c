@@ -120,8 +120,8 @@ bool g_vidle_apsrc_debug;
 EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_profile_log;
 bool g_qos_log;
-
 bool g_irq_log;
+
 unsigned int mipi_volt;
 unsigned int disp_met_en;
 unsigned int disp_met_condition;
@@ -130,6 +130,8 @@ unsigned int lfr_params;
 unsigned int disp_spr_bypass;
 unsigned int disp_cm_bypass;
 unsigned int g_mml_mode;
+unsigned int g_pq_test_flag;
+int g_get_pq_relay_idx = -1;
 bool g_y2r_en;
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 struct wr_online_dbg g_wr_reg;
@@ -5887,6 +5889,22 @@ test_done1:
 	} else if (strncmp(opt, "disp_db_trig", 12) == 0) {
 		DDPAEE_FATAL("Test hrt issue db contain atb trace or not\n");
 		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "clear_pq_test_flag", 18) == 0) {
+		g_pq_test_flag = 0;
+		DDPMSG("clear pq_test_flag\n");
+	} else if (strncmp(opt, "get_pq_test_flag", 16) == 0) {
+		DDPMSG("get_pq_test_flag:0x%x\n", g_pq_test_flag);
+	} else if (strncmp(opt, "get_pq_relay:", 13) == 0) {
+		int ret = -1;
+
+		ret = sscanf(opt, "get_pq_relay:%d\n", &g_get_pq_relay_idx);
+		if (ret <= 0) {
+			DDPPR_ERR("get_pq_relay fail, ret=%d\n", ret);
+			return;
+		}
+		if (g_get_pq_relay_idx >= 0)
+			ret = mtk_disp_get_pq_data(g_get_pq_relay_idx);
+		DDPMSG("get_pq_relay %d:%d\n", g_get_pq_relay_idx, ret);
 	}
 }
 
@@ -6533,6 +6551,131 @@ out:
 		return -EINVAL;
 
 	return simple_read_from_buffer(ubuf, count, ppos, buffer, n);
+}
+
+void disp_pq_set_test_flag(unsigned int flag)
+{
+#if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
+	DDPDBG("%s, flag:%d\n", __func__, flag);
+	if (flag < 32)
+		g_pq_test_flag |= BIT(flag);
+#endif
+}
+
+void disp_pq_test_read_relay_reg(struct mtk_drm_crtc *mtk_crtc, int relay_idx)
+{
+#if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
+	int ret = 0;
+	int status = 0;
+	unsigned int mask = BIT(0);
+	struct mtk_ddp_comp *comp = NULL;
+	void __iomem *va = 0;
+	int c3d_bin_num;
+
+	switch (relay_idx) {
+	case 0:
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x20;
+		break;
+	case 1:
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_CCORR, 0);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x20;
+		break;
+	case 2:
+		c3d_bin_num = mtk_crtc->pq_data->c3d_data_per_crtc.bin_num;
+		if ((c3d_bin_num & 0xFF) == 17 )
+			comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 0);
+		else if (((c3d_bin_num >> 16) & 0xFF) == 17)
+			comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 1);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x4;
+		break;
+	case 3:
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_GAMMA, 0);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x20;
+		break;
+	case 4:
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_COLOR, 0);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x400;
+		mask = BIT(7);
+		break;
+	case 5:
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_TDSHP, 0);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x110;
+		break;
+	case 6:
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_DITHER, 0);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x20;
+		break;
+	case 7:
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DMDP_AAL, 0);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x20;
+		break;
+	case 8:
+		c3d_bin_num = mtk_crtc->pq_data->c3d_data_per_crtc.bin_num;
+		if ((c3d_bin_num & 0xFF) == 9)
+			comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 0);
+		else if (((c3d_bin_num >> 16) & 0xFF) == 9)
+			comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 1);
+		if (!comp) {
+			PQ_ERR("%s, comp is null!\n", __func__);
+			return;
+		}
+		va = comp->regs + 0x4;
+		break;
+	default:
+		break;
+	}
+	if (va == 0)
+		return;
+
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		return;
+	}
+	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+	if ((readl(va) & mask) != 0)
+		status = 0;
+	else
+		status = 1;
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	DDPMSG("read_pq_relay %d:%d\n", relay_idx, status);
+#endif
 }
 
 static const struct proc_ops hrt_lp_proc_fops = {

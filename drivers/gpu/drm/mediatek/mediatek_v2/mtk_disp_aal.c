@@ -46,6 +46,7 @@
 #include "mtk_disp_gamma.h"
 #include "mtk_dmdp_aal.h"
 #include "mtk_drm_trace.h"
+#include "mtk_debug.h"
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
@@ -54,8 +55,6 @@
 
 #undef pr_fmt
 #define pr_fmt(fmt) "[disp_aal]" fmt
-#define AALERR(fmt, arg...) pr_notice("[ERR]%s:" fmt, __func__, ##arg)
-
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 static bool debug_flow_log;
@@ -399,14 +398,13 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 		return;
 
 	bypass = aal_data->primary_data->relay_state != 0 ? 1 : 0;
-	if (enable &&
-		(bypass != 1 || pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])) {
+	if (enable) {
 		/* Enable output frame end interrupt */
 		mtk_ddp_write_relaxed(comp, AAL_IRQ_OF_END, DISP_AAL_INTEN, handle);
 
 		atomic_set(&aal_data->primary_data->eof_irq_en, 1);
 		AALIRQ_LOG("interrupt enabled\n");
-	} else if (!enable) {
+	} else {
 		mtk_ddp_write_relaxed(comp, 0x0, DISP_AAL_INTEN, handle);
 		mtk_ddp_write_relaxed(comp, 0x0, DISP_AAL_INTSTA, handle);
 		atomic_set(&aal_data->primary_data->eof_irq_en, 0);
@@ -469,7 +467,7 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp == NULL) {
-		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		PQ_ERR("%s: failed to get output_comp!\n", __func__);
 		return;
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
@@ -531,13 +529,13 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 
 	led_conf = (struct led_conf_info *)v;
 	if (!led_conf) {
-		DDPPR_ERR("%s: led_conf is NULL!\n", __func__);
+		PQ_ERR("%s: led_conf is NULL!\n", __func__);
 		return -1;
 	}
 	crtc = disp_pq_get_crtc_from_connector(led_conf->connector_id, g_drm_dev);
 	if (crtc == NULL) {
 		led_conf->aal_enable = 0;
-		DDPPR_ERR("%s: connector_id(%d) failed to get crtc!\n", __func__,
+		PQ_ERR("%s: connector_id(%d) failed to get crtc!\n", __func__,
 				led_conf->connector_id);
 		return NOTIFY_DONE;
 	}
@@ -919,7 +917,7 @@ static void disp_aal_single_pipe_hist_update(struct mtk_ddp_comp *comp, unsigned
 	CRTC_MMP_EVENT_START(0, aal_dre20_rh, comp->id, 0);
 	/* Only process end of frame state */
 	if ((status & AAL_IRQ_OF_END) == 0x0) {
-		AALERR("break comp %u status 0x%x\n", comp->id, status);
+		PQ_ERR("%s, break comp %u status 0x%x\n", __func__, comp->id, status);
 		CRTC_MMP_EVENT_END(0, aal_dre20_rh, comp->id, 1);
 		return;
 	}
@@ -1258,7 +1256,7 @@ static void disp_aal_dre3_reset_to_linear(struct mtk_ddp_comp *comp, int check)
 			/* write each block dre curve */
 			if (!disp_aal_dre3_write_linear_curve(aal_data,
 				dre3_gain, blk_x, blk_y, dre_blk_x_num, check)) {
-				AALERR("write_linear_curve error\n");
+				PQ_ERR("%s, write_linear_curve error\n", __func__);
 				return;
 			}
 		}
@@ -1266,7 +1264,7 @@ static void disp_aal_dre3_reset_to_linear(struct mtk_ddp_comp *comp, int check)
 	/* write each block dre curve last point */
 	if (!disp_aal_dre3_write_linear_curve16(aal_data,
 		dre3_gain, dre_blk_x_num, dre_blk_y_num, check))
-		AALERR("write_linear_curve16 error\n");
+		PQ_ERR("%s, write_linear_curve16 error\n", __func__);
 }
 
 static void disp_aal_init_dre3_curve(struct mtk_ddp_comp *comp)
@@ -1306,7 +1304,7 @@ void disp_aal_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		hist_apb = 1;
 		hist_int = 0;
 	} else
-		AALERR("[SRAM] Error when get hist_apb in %s\n", caller);
+		PQ_ERR("%s, [SRAM] Error when get hist_apb in %s\n", __func__, caller);
 
 	if (aal_dre3_curve_sram) {
 		if (dre30_write) {
@@ -1317,7 +1315,7 @@ void disp_aal_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				curve_apb = 1;
 				curve_int = 0;
 			} else
-				AALERR("[SRAM] Error when get curve_apb in %s\n", caller);
+				PQ_ERR("%s, [SRAM] Error when get curve_apb in %s\n", __func__, caller);
 		} else {
 			if (atomic_read(curve_sram_apb) == 0) {
 				curve_apb = 1;
@@ -1326,7 +1324,7 @@ void disp_aal_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				curve_apb = 0;
 				curve_int = 1;
 			} else
-				AALERR("[SRAM] Error when get curve_apb in %s\n", caller);
+				PQ_ERR("%s, [SRAM] Error when get curve_apb in %s\n", __func__, caller);
 		}
 	}
 	SET_VAL_MASK(sram_cfg, sram_mask, 1, REG_FORCE_HIST_SRAM_EN);
@@ -1363,7 +1361,7 @@ void disp_aal_flip_curve_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		curve_apb = 1;
 		curve_int = 0;
 	} else
-		AALERR("[SRAM] Error when get curve_apb in %s\n", caller);
+		PQ_ERR("%s, [SRAM] Error when get curve_apb in %s\n", __func__, caller);
 	SET_VAL_MASK(sram_cfg, sram_mask, 1, REG_FORCE_CURVE_SRAM_EN);
 	SET_VAL_MASK(sram_cfg, sram_mask, curve_apb, REG_FORCE_CURVE_SRAM_APB);
 	SET_VAL_MASK(sram_cfg, sram_mask, curve_int, REG_FORCE_CURVE_SRAM_INT);
@@ -1406,7 +1404,7 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	}
 	pm_ret = mtk_vidle_pq_power_get(__func__);
 	if (pm_ret) {
-		DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+		PQ_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
 		mutex_unlock(&aal_data->primary_data->clk_lock);
 		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 5);
 		mtk_drm_trace_end();
@@ -1437,6 +1435,9 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	}
 	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 4);
 	mtk_drm_trace_end();
+
+	if (g_get_pq_relay_idx >= 0)
+		disp_pq_test_read_relay_reg(comp->mtk_crtc, g_get_pq_relay_idx);
 }
 
 static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)
@@ -1574,7 +1575,7 @@ static irqreturn_t disp_aal_irq_handler(int irq, void *dev_id)
 
 	mtk_crtc = aal->ddp_comp.mtk_crtc;
 	if (!mtk_crtc) {
-		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
+		PQ_ERR("%s mtk_crtc is NULL\n", __func__);
 		ret = IRQ_NONE;
 		goto out;
 	}
@@ -2035,6 +2036,7 @@ static int disp_aal_set_dre3_curve(struct mtk_ddp_comp *comp,
 	struct DISP_DRE30_PARAM dre30_gain;
 
 	AALFLOW_LOG("\n");
+	disp_pq_set_test_flag(TEST_FLAG_DRE);
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3) {
 		if (copy_from_user(&dre30_gain, (struct DISP_DRE30_PARAM *)param->dre30_gain,
 				    sizeof(struct DISP_DRE30_PARAM)) == 0) {
@@ -2278,7 +2280,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	struct DISP_DRE30_HIST dre30_hist;
 
 	if (hist == NULL) {
-		AALERR("%s DstHist is NULL\n", __func__);
+		PQ_ERR("%s, DstHist is NULL\n", __func__);
 		return -1;
 	}
 
@@ -2396,7 +2398,7 @@ int disp_aal_act_get_size(struct mtk_ddp_comp *comp, void *data)
 	disp_aal_wait_size(aal_data, 60);
 
 	if (comp == NULL || comp->mtk_crtc == NULL) {
-		AALERR("%s null pointer!\n", __func__);
+		PQ_ERR("%s, null pointer!\n", __func__);
 		return -1;
 	}
 
@@ -2478,7 +2480,7 @@ int disp_aal_act_get_base_voltage(struct mtk_ddp_comp *comp, void *data)
 
 	output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
 	if (!output_comp) {
-		DDPPR_ERR("%s:invalid output comp\n", __func__);
+		PQ_ERR("%s:invalid output comp\n", __func__);
 		return -EFAULT;
 	}
 
@@ -2489,7 +2491,7 @@ int disp_aal_act_get_base_voltage(struct mtk_ddp_comp *comp, void *data)
 		ret = mtk_ddp_comp_io_cmd(output_comp, NULL,
 			DSI_READ_ELVSS_BASE_VOLTAGE, &src_baseVoltage);
 		if (ret < 0)
-			DDPPR_ERR("%s:read elvss base voltage failed\n", __func__);
+			PQ_ERR("%s:read elvss base voltage failed\n", __func__);
 		else {
 			memcpy(dst_baseVoltage, &src_baseVoltage, sizeof(struct DISP_PANEL_BASE_VOLTAGE));
 			if (debug_dump_aal_hist)
@@ -2563,7 +2565,7 @@ int disp_gamma_set_silky_brightness_gain(struct mtk_drm_crtc *mtk_crtc,
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp == NULL) {
-		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		PQ_ERR("%s: failed to get output_comp!\n", __func__);
 		return -1;
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
@@ -2605,7 +2607,7 @@ static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 	}
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp == NULL) {
-		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		PQ_ERR("%s: failed to get output_comp!\n", __func__);
 		return -1;
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
@@ -2620,7 +2622,7 @@ static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 
 	ret = disp_aal_set_param(comp, handle, data);
 	if (ret < 0)
-		AALERR("SET_PARAM: fail\n");
+		PQ_ERR("%s, SET_PARAM: fail\n", __func__);
 
 	atomic_set(&aal_data->primary_data->allowPartial,
 				aal_data->primary_data->aal_param.allowPartial);
@@ -2789,7 +2791,7 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 	else if (cfg->source_bpc == 10)
 		SET_VAL_MASK(value, mask, 0, FLD_AAL_8BIT_SWITCH);
 	else
-		DDPPR_ERR("%s invalid bpc %u\n", __func__, cfg->source_bpc);
+		PQ_ERR("%s invalid bpc %u\n", __func__, cfg->source_bpc);
 
 	if (aal_data->primary_data->relay_state != 0) {
 		AALFLOW_LOG("g_aal_force_relay\n");
@@ -2968,7 +2970,7 @@ static int disp_aal_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	}
 		break;
 	default:
-		AALERR("error cmd: %d\n", cmd);
+		PQ_ERR("%s, error cmd: %d\n", __func__, cmd);
 		return -EINVAL;
 	}
 	return 0;
@@ -3108,7 +3110,7 @@ static void disp_aal_prepare(struct mtk_ddp_comp *comp)
 		if (aal_data->dre3_hw.clk) {
 			ret = clk_prepare(aal_data->dre3_hw.clk);
 			if (ret < 0)
-				DDPPR_ERR("failed to prepare dre3_hw.clk\n");
+				PQ_ERR("failed to prepare dre3_hw.clk\n");
 		}
 	}
 	AALFLOW_LOG("%s clk %d\n", mtk_dump_comp_str(comp), atomic_read(&aal_data->is_clock_on));
@@ -3411,13 +3413,13 @@ static int disp_aal_probe(struct platform_device *pdev)
 	priv->primary_data = kzalloc(sizeof(*priv->primary_data), GFP_KERNEL);
 	if (priv->primary_data == NULL) {
 		ret = -ENOMEM;
-		AALERR("Failed to alloc primary_data %d\n", ret);
+		PQ_ERR("%s, Failed to alloc primary_data %d\n", __func__, ret);
 		goto error_dev_init;
 	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_AAL);
 	if ((int)comp_id < 0) {
-		AALERR("Failed to identify by alias: %d\n", comp_id);
+		PQ_ERR("%s, Failed to identify by alias: %d\n", __func__, comp_id);
 		ret = comp_id;
 		goto error_primary;
 	}
@@ -3427,7 +3429,7 @@ static int disp_aal_probe(struct platform_device *pdev)
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		ret = irq;
-		AALERR("Failed to get irq %d\n", ret);
+		PQ_ERR("%s, Failed to get irq %d\n", __func__, ret);
 		goto error_primary;
 	}
 
@@ -3435,28 +3437,28 @@ static int disp_aal_probe(struct platform_device *pdev)
 							GFP_KERNEL);
 	if (priv->primary_data->aal_fo == NULL) {
 		ret = -ENOMEM;
-		AALERR("Failed to alloc aal_fo %d\n", ret);
+		PQ_ERR("%s, Failed to alloc aal_fo %d\n", __func__, ret);
 		goto error_primary;
 	}
 
 	if (of_property_read_u32(dev->of_node, "mtk-aal-support",
 		&priv->primary_data->aal_fo->mtk_aal_support)) {
-		AALERR("comp_id: %d, mtk_aal_support = %d\n",
-			comp_id, priv->primary_data->aal_fo->mtk_aal_support);
+		PQ_ERR("%s, comp_id: %d, mtk_aal_support = %d\n",
+			__func__, comp_id, priv->primary_data->aal_fo->mtk_aal_support);
 		priv->primary_data->aal_fo->mtk_aal_support = 0;
 	}
 
 	if (of_property_read_u32(dev->of_node, "mtk-cabc-no-support",
 		&priv->primary_data->aal_fo->mtk_cabc_no_support)) {
-		AALERR("comp_id: %d, mtk-cabc-no-support = %d\n",
-			comp_id, priv->primary_data->aal_fo->mtk_cabc_no_support);
+		PQ_ERR("%s, comp_id: %d, mtk-cabc-no-support = %d\n",
+			__func__, comp_id, priv->primary_data->aal_fo->mtk_cabc_no_support);
 		priv->primary_data->aal_fo->mtk_cabc_no_support = 0;
 	}
 
 	if (of_property_read_u32(dev->of_node, "mtk-dre30-support",
 		&priv->primary_data->aal_fo->mtk_dre30_support)) {
-		AALERR("comp_id: %d, mtk_dre30_support = %d\n",
-				comp_id, priv->primary_data->aal_fo->mtk_dre30_support);
+		PQ_ERR("%s, comp_id: %d, mtk_dre30_support = %d\n",
+			__func__, comp_id, priv->primary_data->aal_fo->mtk_dre30_support);
 		priv->primary_data->aal_fo->mtk_dre30_support = 0;
 	} else {
 		if (priv->primary_data->aal_fo->mtk_dre30_support) {
@@ -3475,7 +3477,7 @@ static int disp_aal_probe(struct platform_device *pdev)
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_aal_funcs);
 	if (ret) {
-		AALERR("Failed to initialize component: %d\n", ret);
+		PQ_ERR("%s, Failed to initialize component: %d\n", __func__, ret);
 		goto error_primary;
 	}
 
@@ -3897,7 +3899,7 @@ void disp_aal_debug(struct drm_crtc *crtc, const char *opt)
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return;
 	}
 	aal_data = comp_to_aal(comp);
@@ -4038,7 +4040,7 @@ unsigned int disp_aal_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_AAL, 0);
 	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return 1;
 	}
 	aal_data = comp_to_aal(comp);

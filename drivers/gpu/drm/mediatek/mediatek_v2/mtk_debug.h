@@ -188,4 +188,18 @@ enum GCE_COND_REVERSE_COND {
 int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 
+enum DISP_PQ_TEST_FLAG {
+	TEST_FLAG_DRE = 0, //0
+	TEST_FLAG_C3D,
+	TEST_FLAG_COLOR,
+	TEST_FLAG_DRECOLOR,
+	TEST_FLAG_GAMMALUT,
+	TEST_FLAG_GAMMAGAIN, //5
+};
+
+extern int g_get_pq_relay_idx;
+
+void disp_pq_set_test_flag(unsigned int flag);
+void disp_pq_test_read_relay_reg(struct mtk_drm_crtc *mtk_crtc, int relay_idx);
+
 #endif

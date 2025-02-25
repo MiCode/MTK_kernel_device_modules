@@ -274,7 +274,7 @@ static int disp_ccorr_set_coef(
 	if (primary_data->disp_ccorr_coef == NULL) {
 		ccorr = kmalloc(sizeof(struct DRM_DISP_CCORR_COEF_T), GFP_KERNEL);
 		if (ccorr == NULL) {
-			DDPPR_ERR("%s: no memory\n", __func__);
+			PQ_ERR("%s: no memory\n", __func__);
 			return -EFAULT;
 		}
 		primary_data->disp_ccorr_coef = ccorr;
@@ -336,7 +336,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	struct DRM_DISP_CCORR_COEF_T *ccorr;
 
 	if (handle == NULL) {
-		DDPPR_ERR("%s: cmdq can not be NULL\n", __func__);
+		PQ_ERR("%s: cmdq can not be NULL\n", __func__);
 		return -EFAULT;
 	}
 
@@ -349,7 +349,7 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	if (primary_data->disp_ccorr_coef == NULL) {
 		ccorr = kmalloc(sizeof(struct DRM_DISP_CCORR_COEF_T), GFP_KERNEL);
 		if (ccorr == NULL) {
-			DDPPR_ERR("%s: no memory\n", __func__);
+			PQ_ERR("%s: no memory\n", __func__);
 			return -EFAULT;
 		}
 		primary_data->disp_ccorr_coef = ccorr;
@@ -548,13 +548,13 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 
 	led_conf = (struct led_conf_info *)v;
 	if (!led_conf) {
-		DDPPR_ERR("%s: led_conf is NULL!\n", __func__);
+		PQ_ERR("%s: led_conf is NULL!\n", __func__);
 		return -1;
 	}
 	crtc = disp_pq_get_crtc_from_connector(led_conf->connector_id, g_drm_dev);
 	if (crtc == NULL) {
 		led_conf->aal_enable = 0;
-		DDPPR_ERR("%s: failed to get crtc!\n", __func__);
+		PQ_ERR("%s: failed to get crtc!\n", __func__);
 		return -1;
 	}
 	mtk_crtc = to_mtk_crtc(crtc);
@@ -568,7 +568,7 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_CCORR, 0);
 	if (!comp) {
 		led_conf->aal_enable = 0;
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return -1;
 	}
 
@@ -622,7 +622,7 @@ int disp_ccorr_eventctl(struct mtk_ddp_comp *comp, void *data)
 	}
 
 	if (enabled == NULL) {
-		DDPPR_ERR("%s, null pointer!\n", __func__);
+		PQ_ERR("%s, null pointer!\n", __func__);
 		return -1;
 	}
 	//mtk_crtc_user_cmd(crtc, comp, EVENTCTL, data);
@@ -678,7 +678,7 @@ int disp_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp == NULL) {
-		DDPPR_ERR("%s: failed to get output_comp!\n", __func__);
+		PQ_ERR("%s: failed to get output_comp!\n", __func__);
 		return -1;
 	}
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
@@ -700,7 +700,7 @@ int disp_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 
 	if (disp_ccorr_set_coef(ccorr_config,
 		comp, handle) < 0) {
-		DDPPR_ERR("DISP_IOCTL_SET_CCORR: failed\n");
+		PQ_ERR("DISP_IOCTL_SET_CCORR: failed\n");
 		return -EFAULT;
 	}
 
@@ -708,7 +708,7 @@ int disp_ccorr_cfg_set_ccorr(struct mtk_ddp_comp *comp,
 		struct mtk_ddp_comp *comp_ccorr1 = ccorr->companion;
 
 		if (disp_ccorr_set_coef(ccorr_config, comp_ccorr1, handle) < 0) {
-			DDPPR_ERR("DISP_IOCTL_SET_CCORR: failed\n");
+			PQ_ERR("DISP_IOCTL_SET_CCORR: failed\n");
 			return -EFAULT;
 		}
 	}
@@ -744,7 +744,7 @@ int disp_ccorr_act_get_irq(struct mtk_ddp_comp *comp, void *data)
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 	if (disp_ccorr_copy_backlight_to_user(comp, (struct mtk_pq_disp_info *) data) < 0) {
-		DDPPR_ERR("%s: failed", __func__);
+		PQ_ERR("%s: failed", __func__);
 		ret = -EFAULT;
 	}
 #endif
@@ -950,16 +950,16 @@ static void disp_ccorr_get_property_value(struct mtk_ddp_comp *comp, struct devi
 
 	ret = of_property_read_u32(node, "ccorr-bit", &primary_data->disp_ccorr_caps.ccorr_bit);
 	if (ret)
-		DDPPR_ERR("read ccorr_bit failed\n");
+		PQ_ERR("read ccorr_bit failed\n");
 
 	ret = of_property_read_u32(node, "ccorr-num-per-pipe",
 			&primary_data->disp_ccorr_caps.ccorr_number);
 	if (ret)
-		DDPPR_ERR("read ccorr_number failed\n");
+		PQ_ERR("read ccorr_number failed\n");
 
 	ret = of_property_read_u32(node, "ccorr-linear", &(ccorr_data->is_linear));
 	if (ret)
-		DDPPR_ERR("read ccorr-linear failed\n");
+		PQ_ERR("read ccorr-linear failed\n");
 	DDPINFO("%s(%s):ccorr_bit:%d,ccorr_number:%d, is_linear: %d\n",
 		__func__, mtk_dump_comp_str(comp), primary_data->disp_ccorr_caps.ccorr_bit,
 		primary_data->disp_ccorr_caps.ccorr_number, ccorr_data->is_linear);
@@ -977,7 +977,7 @@ static void disp_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
 	struct mtk_ddp_comp *companion;
 
 	if (comp == NULL) {
-		DDPPR_ERR("%s, null pointer!", __func__);
+		PQ_ERR("%s, null pointer!", __func__);
 		return;
 	}
 
@@ -1373,13 +1373,13 @@ static int disp_ccorr_probe(struct platform_device *pdev)
 	priv->primary_data = kzalloc(sizeof(*priv->primary_data), GFP_KERNEL);
 	if (priv->primary_data == NULL) {
 		ret = -ENOMEM;
-		DDPPR_ERR("Failed to alloc primary_data %d\n", ret);
+		PQ_ERR("Failed to alloc primary_data %d\n", ret);
 		goto error_dev_init;
 	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_CCORR);
 	if ((int)comp_id < 0) {
-		DDPPR_ERR("Failed to identify by alias: %d\n", comp_id);
+		PQ_ERR("Failed to identify by alias: %d\n", comp_id);
 		ret = (int)comp_id;
 		goto error_primary;
 	}
@@ -1391,7 +1391,7 @@ static int disp_ccorr_probe(struct platform_device *pdev)
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_ccorr_funcs);
 	if (ret != 0) {
-		DDPPR_ERR("Failed to initialize component: %d\n", ret);
+		PQ_ERR("Failed to initialize component: %d\n", ret);
 		goto error_primary;
 	}
 
@@ -1647,7 +1647,7 @@ unsigned int disp_ccorr_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_CCORR, 0);
 	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return 1;
 	}
 	ccorr_data = comp_to_ccorr(comp);

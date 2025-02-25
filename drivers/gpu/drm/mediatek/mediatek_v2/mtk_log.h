@@ -404,6 +404,13 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #endif /* CONFIG_MTK_AEE_FEATURE */
 
 extern bool g_dsi_cmd_v2_log;
+
+#define PQ_ERR(fmt, arg...)                                    \
+	do {                                                            \
+		mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, fmt, ##arg);           \
+		pr_info("[DISP][E][PQ]" pr_fmt(fmt), ##arg);                       \
+	} while (0)
+
 extern bool g_mobile_log;
 extern bool g_msync_debug;
 extern bool g_fence_log;
@@ -417,4 +424,5 @@ extern bool g_qos_log;
 extern bool g_y2r_en;
 extern unsigned long long g_pf_time;
 extern bool g_dump_prop_log;
+extern unsigned int g_pq_test_flag;
 #endif

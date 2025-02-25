@@ -27,6 +27,7 @@
 #include "mtk_disp_ccorr.h"
 #include "mtk_disp_pq_helper.h"
 #include "mtk_debug.h"
+#include "mtk_log.h"
 
 #define UNUSED(expr) (void)(expr)
 
@@ -250,7 +251,7 @@ unsigned long disp_color_get_reg_offset(const char *reg_name)
 	else if (!strcmp(reg_name, "disp_color_pos_main"))
 		reg_offset = DISP_COLOR_POS_MAIN;
 	else
-		DDPPR_ERR("%s: reg_name(%s) error\n", __func__, reg_name);
+		PQ_ERR("%s: reg_name(%s) error\n", __func__, reg_name);
 
 	pr_notice("%s: reg_name(%s), reg_offset: 0x%lx\n", __func__, reg_name, reg_offset);
 
@@ -263,7 +264,7 @@ bool disp_color_reg_get(struct mtk_ddp_comp *comp,
 	if (!strcmp(reg_name, "disp_color_two_d_w1_result"))
 		*value = readl(comp->regs + DISP_COLOR_TWO_D_W1_RESULT);
 	else
-		DDPPR_ERR("%s: reg_name(%s) error\n", __func__, reg_name);
+		PQ_ERR("%s: reg_name(%s) error\n", __func__, reg_name);
 
 	return true;
 }
@@ -937,6 +938,7 @@ int disp_color_cfg_set_color_reg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 
 	DDPINFO("%s,SET COLOR REG id(%d)\n", __func__, comp->id);
+	disp_pq_set_test_flag(TEST_FLAG_COLOR);
 
 	mutex_lock(&primary_data->data_lock);
 	if (data != NULL) {
@@ -982,7 +984,7 @@ int disp_color_act_mutex_control(struct mtk_ddp_comp *comp, void *data)
 		DDPINFO("ncs_tuning_mode = 0\n");
 		mtk_crtc_check_trigger(mtk_crtc, true, true);
 	} else {
-		DDPPR_ERR("DISP_IOCTL_MUTEX_CONTROL invalid control\n");
+		PQ_ERR("DISP_IOCTL_MUTEX_CONTROL invalid control\n");
 		return -EFAULT;
 	}
 
@@ -997,7 +999,7 @@ void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass, int caller,
 	struct mtk_ddp_comp *companion;
 
 	if (comp == NULL) {
-		DDPPR_ERR("%s, null pointer!", __func__);
+		PQ_ERR("%s, null pointer!", __func__);
 		return;
 	}
 
@@ -1213,10 +1215,11 @@ static int disp_color_cfg_drecolor_set_param(struct mtk_ddp_comp *comp,
 	struct DISP_AAL_DRECOLOR_PARAM *prev_param = &priv_data->primary_data->drecolor_param;
 
 	if (sizeof(struct DISP_AAL_DRECOLOR_PARAM) < data_size) {
-		DDPPR_ERR("%s param size error %lu, %u\n", __func__, sizeof(*param), data_size);
+		PQ_ERR("%s param size error %lu, %u\n", __func__, sizeof(*param), data_size);
 		return -EFAULT;
 	}
 	DDPINFO("%s sel %d,prev_sel %d\n", __func__, param->drecolor_sel, prev_param->drecolor_sel);
+	disp_pq_set_test_flag(TEST_FLAG_DRECOLOR);
 	mutex_lock(&primary_data->data_lock);
 	if (!param->drecolor_sel) {
 		DDPINFO("%s set skip\n", __func__);
@@ -1268,7 +1271,7 @@ static int disp_color_user_cmd(struct mtk_ddp_comp *comp,
 	}
 	break;
 	default:
-		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
+		PQ_ERR("%s: error cmd: %d\n", __func__, cmd);
 		return -EINVAL;
 	}
 	return 0;
@@ -1764,7 +1767,7 @@ unsigned int disp_color_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(
 			mtk_crtc, MTK_DISP_COLOR, 0);
 	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return 1;
 	}
 	struct mtk_disp_color *color_data = comp_to_color(comp);

@@ -6,6 +6,7 @@
 #include "mtk_disp_c3d.h"
 
 #include "mtk_disp_pq_helper.h"
+#include "mtk_debug.h"
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
@@ -99,7 +100,7 @@ static int disp_c3d_create_gce_pkt(struct mtk_ddp_comp *comp, struct cmdq_pkt **
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 
 	if (!mtk_crtc) {
-		DDPPR_ERR("%s:%d, invalid crtc\n",
+		PQ_ERR("%s:%d, invalid crtc\n",
 				__func__, __LINE__);
 		return -1;
 	}
@@ -148,14 +149,14 @@ static void disp_c3d_get_property(struct mtk_ddp_comp *comp, struct device_node 
 
 	ret = of_property_read_u32(node, "bin-num", &bin_num);
 	if (ret)
-		DDPPR_ERR("%s, read dts failed use driver data :%d\n", __func__,  bin_num);
+		PQ_ERR("%s, read dts failed use driver data :%d\n", __func__,  bin_num);
 
 	ret = of_property_read_u32(node, "lut-bit", &lut_bit);
 	if (ret)
 		DDPPR_ERR("%s, read dts failed, use default bit: %d\n", __func__, lut_bit);
 
 	if ((bin_num != 17) && (bin_num != 9))
-		DDPPR_ERR("%s, read dts bin_num wrong :%d\n", __func__, bin_num);
+		PQ_ERR("%s, read dts bin_num wrong :%d\n", __func__, bin_num);
 
 	c3d_data->bin_num = bin_num;
 	c3d_data->sram_start_addr = c3d_data->data->def_sram_start_addr;
@@ -470,7 +471,7 @@ static int disp_c3d_set_3dlut(struct mtk_ddp_comp *comp,
 	bool ret;
 
 	if (IS_ERR_OR_NULL(comp)) {
-		DDPPR_ERR("%s: comp is NULL\n", __func__);
+		PQ_ERR("%s: comp is NULL\n", __func__);
 		return -1;
 	}
 
@@ -480,12 +481,12 @@ static int disp_c3d_set_3dlut(struct mtk_ddp_comp *comp,
 	mtk_crtc = comp->mtk_crtc;
 
 	if (IS_ERR_OR_NULL(mtk_crtc)) {
-		DDPPR_ERR("%s: mtk_crtc is NULL\n", __func__);
+		PQ_ERR("%s: mtk_crtc is NULL\n", __func__);
 		return -1;
 	}
 
 	if ((c3d->bin_num != 9) && (c3d->bin_num != 17)) {
-		DDPPR_ERR("%s, c3d bin num: %d not support\n", __func__, c3d->bin_num);
+		PQ_ERR("%s, c3d bin num: %d not support\n", __func__, c3d->bin_num);
 		return -1;
 	}
 
@@ -514,7 +515,7 @@ static int disp_c3d_set_3dlut(struct mtk_ddp_comp *comp,
 			}
 		}
 	} else {
-		DDPPR_ERR("%s, c3d copyfrom use fail %d\n", __func__, c3d->bin_num);
+		PQ_ERR("%s, c3d copyfrom use fail %d\n", __func__, c3d->bin_num);
 		return -1;
 	}
 
@@ -543,7 +544,7 @@ static int disp_c3d_set_3dlut(struct mtk_ddp_comp *comp,
 	}
 	pm_ret = mtk_vidle_pq_power_get(__func__);
 	if (pm_ret) {
-		DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+		PQ_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
 		mutex_unlock(&primary_data->clk_lock);
 		return -1;
 	}
@@ -559,7 +560,7 @@ static int disp_c3d_set_3dlut(struct mtk_ddp_comp *comp,
 	disp_c3d_flush_3dlut_sram(comp, C3D_USERSPACE);
 	primary_data->set_lut_flag = false;
 	if (primary_data->skip_update_sram) {
-		DDPPR_ERR("%s, skip_update_sram %d return\n", __func__,
+		PQ_ERR("%s, skip_update_sram %d return\n", __func__,
 				primary_data->skip_update_sram);
 		if (!pm_ret)
 			mtk_vidle_pq_power_put(__func__);
@@ -648,7 +649,7 @@ static int disp_c3d_set_1dlut(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 
 	if (c3d_lut == NULL) {
 		ret = -EFAULT;
-		DDPPR_ERR("%s: c3d_lut is NULL\n", __func__);
+		PQ_ERR("%s: c3d_lut is NULL\n", __func__);
 		return ret;
 	}
 	c3d_lut1d = (unsigned int *) &(c3d_lut->lut1d[0]);
@@ -716,7 +717,7 @@ static int disp_c3d_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	C3DFLOW_LOG("cmd: %d\n", cmd);
 	switch (cmd) {
 	default:
-		DDPPR_ERR("error cmd: %d\n", cmd);
+		PQ_ERR("error cmd: %d\n", cmd);
 		return -EINVAL;
 	}
 	return 0;
@@ -970,6 +971,7 @@ int disp_c3d_cfg_set_lut(struct mtk_ddp_comp *comp,
 
 	primary_data->skip_update_sram = false;
 	C3DAPI_LOG("line: %d\n", __LINE__);
+	disp_pq_set_test_flag(TEST_FLAG_C3D);
 
 	if(c3d->bin_num != c3d_lut->bin_num) {
 		DDPINFO("%s: comp binsize %d and data binsize %d not matched\n",
@@ -1225,20 +1227,20 @@ static int disp_c3d_probe(struct platform_device *pdev)
 	priv->primary_data = kzalloc(sizeof(*priv->primary_data), GFP_KERNEL);
 	if (priv->primary_data == NULL) {
 		ret = -ENOMEM;
-		DDPPR_ERR("Failed to alloc primary_data %d\n", ret);
+		PQ_ERR("Failed to alloc primary_data %d\n", ret);
 		goto error_dev_init;
 	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_C3D);
 	if ((int)comp_id < 0) {
-		DDPPR_ERR("Failed to identify by alias: %d\n", comp_id);
+		PQ_ERR("Failed to identify by alias: %d\n", comp_id);
 		goto error_primary;
 	}
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_c3d_funcs);
 	if (ret != 0) {
-		DDPPR_ERR("Failed to initialize component: %d\n", ret);
+		PQ_ERR("Failed to initialize component: %d\n", ret);
 		goto error_primary;
 	}
 
@@ -1444,7 +1446,7 @@ unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num)
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 0);
 	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return 1;
 	}
 	c3d_data_0 = comp_to_c3d(comp);
@@ -1455,7 +1457,7 @@ unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num)
 	else if (((c3d_bin_num >> 16) & 0xFF) == num) {
 		comp1 = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_C3D, 1);
 		if (!comp1) {
-			DDPPR_ERR("%s, comp1 is null!\n", __func__);
+			PQ_ERR("%s, comp1 is null!\n", __func__);
 			return 1;
 		}
 		c3d_data_1 = comp_to_c3d(comp1);

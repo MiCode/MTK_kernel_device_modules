@@ -762,7 +762,7 @@ static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
 	if (primary_data->tdshp_regs == NULL) {
 		tdshp_regs = kmalloc(sizeof(struct TDSHP_CLARITY_REG), GFP_KERNEL);
 		if (tdshp_regs == NULL) {
-			DDPPR_ERR("%s: no memory\n", __func__);
+			PQ_ERR("%s: no memory\n", __func__);
 			return -EFAULT;
 		}
 
@@ -828,14 +828,14 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 		disp_tdshp_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
 
 	if (disp_tdshp_update_param(comp, handle, config) < 0) {
-		DDPPR_ERR("%s: failed\n", __func__);
+		PQ_ERR("%s: failed\n", __func__);
 		return -EFAULT;
 	}
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_tdshp1 = tdshp->companion;
 
 		if (disp_tdshp_update_param(comp_tdshp1, handle, config) < 0) {
-			DDPPR_ERR("%s: comp_tdshp1 failed\n", __func__);
+			PQ_ERR("%s: comp_tdshp1 failed\n", __func__);
 			return -EFAULT;
 		}
 	}
@@ -944,7 +944,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_CTRL, ((0x0 << 2) | 0x1), ~0);
 	else
-		DDPPR_ERR("%s: Invalid bpc: %u\n", __func__, cfg->bpc);
+		PQ_ERR("%s: Invalid bpc: %u\n", __func__, cfg->bpc);
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		in_width = tdshp_data->tile_overhead.in_width;
@@ -1098,7 +1098,7 @@ static int disp_tdshp_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 	DDPINFO("%s, cmd: %d\n", __func__, cmd);
 	switch (cmd) {
 	default:
-		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
+		PQ_ERR("%s: error cmd: %d\n", __func__, cmd);
 		return -EINVAL;
 	}
 	return 0;
@@ -1405,13 +1405,13 @@ static int disp_tdshp_probe(struct platform_device *pdev)
 	priv->primary_data = kzalloc(sizeof(*priv->primary_data), GFP_KERNEL);
 	if (priv->primary_data == NULL) {
 		ret = -ENOMEM;
-		DDPPR_ERR("Failed to alloc primary_data %d\n", ret);
+		PQ_ERR("Failed to alloc primary_data %d\n", ret);
 		goto error_dev_init;
 	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_TDSHP);
 	if ((int)comp_id < 0) {
-		DDPPR_ERR("Failed to identify by alias: %d\n", comp_id);
+		PQ_ERR("Failed to identify by alias: %d\n", comp_id);
 		goto error_primary;
 	}
 
@@ -1425,7 +1425,7 @@ static int disp_tdshp_probe(struct platform_device *pdev)
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_tdshp_funcs);
 	if (ret != 0) {
-		DDPPR_ERR("Failed to initialize component: %d\n", ret);
+		PQ_ERR("Failed to initialize component: %d\n", ret);
 		goto error_primary;
 	}
 
@@ -1555,7 +1555,7 @@ unsigned int disp_tdshp_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_TDSHP, 0);
 	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return 1;
 	}
 	tdshp_data = comp_to_tdshp(comp);

@@ -173,6 +173,15 @@ int disp_pq_proxy_virtual_sw_read(struct drm_crtc *crtc, void *data)
 	case SWREG_DISP_TDSHP_BASE_ADDRESS:
 		ret = pq_data->tuning_pa_table[TUNING_DISP_TDSHP].pa_base;
 		break;
+	case SWREG_C3D9_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_C3D9].pa_base;
+		break;
+	case SWREG_C3D17_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_C3D17].pa_base;
+		break;
+	case SWREG_DITHER_BASE_ADDRESS:
+		ret = pq_data->tuning_pa_table[TUNING_DISP_DITHER].pa_base;
+		break;
 	case SWREG_MML_HDR_BASE_ADDRESS:
 		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mml-tuning-mml_hdr0"))
 			ret = res.start;
@@ -189,7 +198,7 @@ int disp_pq_proxy_virtual_sw_read(struct drm_crtc *crtc, void *data)
 		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mml-tuning-mml_color0"))
 			ret = res.start;
 		break;
-	case SWREG_TDSHP_BASE_ADDRESS:
+	case SWREG_MDP_TDSHP_BASE_ADDRESS:
 		if (mtk_drm_get_resource_from_dts(&res, "mediatek,mdp-tuning-mdp_tdshp0"))
 			ret = res.start;
 		break;
@@ -261,6 +270,9 @@ static int disp_pq_get_table_index(struct drm_crtc *crtc, unsigned int pa)
 	unsigned int pa_base = pa & 0xFFFFF000;
 	int i;
 
+	if (!pa_base)
+		return -1;
+
 	for (i = 0; i < TUNING_REG_MAX; i++) {
 		if (pq_data->tuning_pa_table[i].pa_base == pa_base)
 			return i;
@@ -274,11 +286,11 @@ static bool disp_pq_tuning_pa_valid(struct drm_crtc *crtc, unsigned int pa)
 	struct resource res;
 
 	if (!pa) {
-		DDPPR_ERR("addr is NULL\n");
+		PQ_ERR("addr is NULL\n");
 		return false;
 	}
 	if ((pa & 0x3) != 0) {
-		DDPPR_ERR("addr is not 4-byte aligned!\n");
+		PQ_ERR("addr is not 4-byte aligned!\n");
 		return false;
 	}
 	if (disp_pq_get_table_index(crtc, pa) >= 0)
@@ -304,7 +316,7 @@ int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data)
 	pa = (unsigned int)rParams->reg;
 
 	if (!disp_pq_tuning_pa_valid(crtc, pa)) {
-		DDPPR_ERR("reg read, addr invalid, pa:0x%x\n", pa);
+		PQ_ERR("reg read, addr invalid, pa:0x%x\n", pa);
 		return -EFAULT;
 	}
 
@@ -357,13 +369,13 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 	struct cmdq_pkt *cmdq_handle = NULL;
 
 	if (!disp_pq_tuning_pa_valid(crtc, pa)) {
-		DDPPR_ERR("reg write, addr invalid, pa:0x%x\n", pa);
+		PQ_ERR("reg write, addr invalid, pa:0x%x\n", pa);
 		return -EFAULT;
 	}
 
 	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 	if (!cmdq_handle) {
-		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		PQ_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EFAULT;
 	}
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
@@ -404,7 +416,7 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
-		DDPPR_ERR("cb data creation failed\n");
+		PQ_ERR("cb data creation failed\n");
 		cmdq_pkt_destroy(cmdq_handle);
 		return -EFAULT;
 	}
@@ -423,7 +435,7 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 	if (cmdq_pkt_flush_threaded(cmdq_handle, frame_cmdq_cb, cb_data) < 0) {
-		DDPPR_ERR("failed to flush %s\n", __func__);
+		PQ_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);
 	}
 	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
@@ -527,7 +539,7 @@ int disp_pq_proxy_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *de
 		ret = mtk_drm_ioctl_get_pixel_type_by_fence(crtc, kdata);
 		break;
 	default:
-		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);
+		PQ_ERR("%s, unknown cmd:%d\n", __func__, cmd);
 	}
 	return ret;
 }
@@ -546,13 +558,13 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 	int ret = -1;
 
 	if (!params || (params->size && !params->data)) {
-		DDPPR_ERR("%s, null pointer!\n", __func__);
+		PQ_ERR("%s, null pointer!\n", __func__);
 		return -1;
 	}
 
 	crtc = drm_crtc_find(dev, file_priv, params->crtc_id);
 	if (!crtc) {
-		DDPPR_ERR("%s, invalid crtc id:%d!\n", __func__, params->crtc_id);
+		PQ_ERR("%s, invalid crtc id:%d!\n", __func__, params->crtc_id);
 		return -1;
 	}
 
@@ -561,7 +573,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 	if (atomic_read(&to_mtk_crtc(crtc)->pq_data->pipe_info_filled) != 1 &&
 			cmd != PQ_VIRTUAL_WAIT_CRTC_READY &&
 			cmd != PQ_VIRTUAL_GET_MASTER_INFO) {
-		DDPPR_ERR("%s, crtc %d not ready! cmd:%d\n",
+		PQ_ERR("%s, crtc %d not ready! cmd:%d\n",
 				__func__, params->crtc_id, cmd);
 		return -1;
 	}
@@ -573,7 +585,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 		kdata = kmalloc(params->size, GFP_KERNEL);
 
 	if (!kdata) {
-		DDPPR_ERR("%s:%d, kdata alloc failed pq_type:%d, cmd:%d\n", __func__,
+		PQ_ERR("%s:%d, kdata alloc failed pq_type:%d, cmd:%d\n", __func__,
 				__LINE__, pq_type, cmd);
 		return -1;
 	}
@@ -608,7 +620,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 				ret = mtk_ddp_comp_pq_ioctl_transact(comp, cmd, kdata,
 									params->size);
 				if (ret < 0)
-					DDPPR_ERR("%s:%d, ioctl transact failed, comp:%d,%d\n",
+					PQ_ERR("%s:%d, ioctl transact failed, comp:%d,%d\n",
 						__func__, __LINE__, comp->id, cmd);
 			}
 		}
@@ -656,17 +668,17 @@ int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 	int ret;
 
 	if (data == NULL) {
-		DDPPR_ERR("%s, null data!\n", __func__);
+		PQ_ERR("%s, null data!\n", __func__);
 		return -1;
 	}
 
 	crtc = drm_crtc_find(dev, file_priv, params->crtc_id);
 	if (!crtc) {
-		DDPPR_ERR("%s, invalid crtc id:%d!\n", __func__, params->crtc_id);
+		PQ_ERR("%s, invalid crtc id:%d!\n", __func__, params->crtc_id);
 		return -1;
 	}
 	if (atomic_read(&to_mtk_crtc(crtc)->pq_data->pipe_info_filled) != 1) {
-		DDPPR_ERR("%s, crtc %d not ready!\n", __func__, params->crtc_id);
+		PQ_ERR("%s, crtc %d not ready!\n", __func__, params->crtc_id);
 		return -1;
 	}
 
@@ -696,7 +708,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	mtk_drm_trace_begin("disp_pq_helper_frame_config");
 
 	if (!cmds_len || cmds_len > REQUEST_MAX_COUNT || params->data == NULL) {
-		DDPPR_ERR("%s:%d, invalid requests for pq config\n",
+		PQ_ERR("%s:%d, invalid requests for pq config\n",
 			__func__, __LINE__);
 		mtk_drm_trace_end();
 
@@ -714,7 +726,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	else {
 		pq_cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 		if (!pq_cmdq_handle) {
-			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+			PQ_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 			mtk_drm_trace_end();
 			return -1;
 		}
@@ -771,7 +783,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 					kdata = kmalloc(requests[k].size, GFP_KERNEL);
 
 				if (!kdata) {
-					DDPPR_ERR("%s:%d, kdata alloc failed comp:%d,%d\n",
+					PQ_ERR("%s:%d, kdata alloc failed comp:%d,%d\n",
 							__func__, __LINE__, comp->id, cmd);
 					continue;
 				}
@@ -781,7 +793,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 
 					if (mtk_ddp_comp_pq_frame_config(comp, pq_cmdq_handle,
 							cmd, kdata, requests[k].size) < 0)
-						DDPPR_ERR("%s:%d, config failed, comp:%d,%d\n",
+						PQ_ERR("%s:%d, config failed, comp:%d,%d\n",
 							__func__, __LINE__, comp->id, cmd);
 
 					mtk_drm_trace_end();
@@ -798,7 +810,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	if (!is_atomic_commit) {
 		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 		if (!cb_data) {
-			DDPPR_ERR("cb data creation failed\n");
+			PQ_ERR("cb data creation failed\n");
 			cmdq_pkt_destroy(pq_cmdq_handle);
 			if (need_wait_done) {
 				need_wait_done = false;
@@ -844,7 +856,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		if (user_lock)
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 		if (cmdq_pkt_flush_threaded(pq_cmdq_handle, frame_cmdq_cb, cb_data) < 0) {
-			DDPPR_ERR("failed to flush %s\n", __func__);
+			PQ_ERR("failed to flush %s\n", __func__);
 			if (need_wait_done) {
 				need_wait_done = false;
 				atomic_set(&pq_data->cfg_done, 1);
@@ -905,11 +917,22 @@ static void disp_pq_helper_fill_tuning_table(struct mtk_ddp_comp *comp,
 		table_index = TUNING_DISP_ODDMR_TOP;
 		break;
 	case MTK_DISP_DITHER:
+		table_index = TUNING_DISP_DITHER;
+		break;
 	case MTK_DISP_C3D:
+	{
+		struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
+
+		if (c3d_data->bin_num == 9)
+			table_index = TUNING_DISP_C3D9;
+		else
+			table_index = TUNING_DISP_C3D17;
+	}
+		break;
 	case MTK_DISP_CHIST:
 		break;
 	default:
-		DDPPR_ERR("%s, unknown comp_type:%d\n", __func__, comp_type);
+		PQ_ERR("%s, unknown comp_type:%d\n", __func__, comp_type);
 	}
 
 	if (table_index < TUNING_REG_MAX) {
@@ -939,7 +962,7 @@ int disp_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_orde
 					mtk_dump_comp_str(comp), _path_order, _is_right_pipe);
 	comp_type = mtk_ddp_comp_get_type(comp->id);
 	if (comp_type < 0) {
-		DDPPR_ERR("%s comp id %d is invalid\n", __func__, comp->id);
+		PQ_ERR("%s comp id %d is invalid\n", __func__, comp->id);
 		return comp_type;
 	}
 	if (comp->mtk_crtc->is_dual_pipe && companion) {
@@ -1002,7 +1025,7 @@ struct drm_crtc *disp_pq_get_crtc_from_connector(int connector_id, struct drm_de
 	unsigned int cur_connector_id = 0;
 
 	if (!drm_dev) {
-		DDPPR_ERR("%s: failed to get drm_dev!\n", __func__);
+		PQ_ERR("%s: failed to get drm_dev!\n", __func__);
 		return NULL;
 	}
 	drm_for_each_crtc(crtc, drm_dev) {
@@ -1102,7 +1125,7 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 
 	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 	if (!cmdq_handle) {
-		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		PQ_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EFAULT;
 	}
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
@@ -1129,7 +1152,7 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
-		DDPPR_ERR("cb data creation failed\n");
+		PQ_ERR("cb data creation failed\n");
 		cmdq_pkt_destroy(cmdq_handle);
 		return -1;
 	}
@@ -1149,7 +1172,7 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 	if (cmdq_pkt_flush_threaded(cmdq_handle, disp_pq_relay_cmdq_cb, cb_data) < 0) {
-		DDPPR_ERR("failed to flush %s\n", __func__);
+		PQ_ERR("failed to flush %s\n", __func__);
 		kfree(cb_data);
 	} else
 		mtk_crtc_check_trigger(mtk_crtc, true, false);

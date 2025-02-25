@@ -610,7 +610,7 @@ static int disp_dither_user_cmd(struct mtk_ddp_comp *comp,
 	}
 	break;
 	default:
-		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
+		PQ_ERR("%s: error cmd: %d\n", __func__, cmd);
 		return -EINVAL;
 	}
 	return 0;
@@ -621,19 +621,17 @@ int disp_dither_cfg_set_dither_param(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
 	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
-	int ret = 0;
-
 	struct DISP_DITHER_PARAM *ditherParam = (struct DISP_DITHER_PARAM *)data;
 	bool relay = ditherParam->relay;
 	uint32_t mode = ditherParam->mode;
-	struct mtk_disp_dither *dither = comp_to_dither(comp);
+	int ret = 0;
 
 	primary_data->dither_mode = (unsigned int)(ditherParam->mode);
 	DDPINFO("%s: relay: %d, mode: %d\n", __func__, relay, mode);
 
 	disp_dither_set_param(comp, handle, relay, mode);
 	if (comp->mtk_crtc->is_dual_pipe) {
-		struct mtk_ddp_comp *comp_dither1 = dither->companion;
+		struct mtk_ddp_comp *comp_dither1 = dither_data->companion;
 
 		disp_dither_set_param(comp_dither1, handle, relay, mode);
 	}
@@ -800,14 +798,14 @@ static void disp_dither_parse_dts(const struct device_node *np,
 
 	if (of_property_read_u32(np, "pure-clr-det",
 		&primary_data->pure_clr_param->pure_clr_det)) {
-		DDPPR_ERR("comp_id: %d, pure_clr_det = %d\n",
+		PQ_ERR("comp_id: %d, pure_clr_det = %d\n",
 			comp_id, primary_data->pure_clr_param->pure_clr_det);
 		primary_data->pure_clr_param->pure_clr_det = 0;
 	}
 
 	if (of_property_read_u32(np, "pure-clr-num",
 		&primary_data->pure_clr_param->pure_clr_num)) {
-		DDPPR_ERR("comp_id: %d, pure_clr_num = %d\n",
+		PQ_ERR("comp_id: %d, pure_clr_num = %d\n",
 			comp_id, primary_data->pure_clr_param->pure_clr_num);
 		primary_data->pure_clr_param->pure_clr_num = 0;
 	}
@@ -815,7 +813,7 @@ static void disp_dither_parse_dts(const struct device_node *np,
 	if (of_property_read_u32_array(np, "pure-clr-rgb",
 		&primary_data->pure_clr_param->pure_clr[0][0],
 		PURE_CLR_RGB * primary_data->pure_clr_param->pure_clr_num)) {
-		DDPPR_ERR("comp_id: %d, get pure_clr error\n", comp_id);
+		PQ_ERR("comp_id: %d, get pure_clr error\n", comp_id);
 		memset(&primary_data->pure_clr_param->pure_clr,
 			0, sizeof(primary_data->pure_clr_param->pure_clr));
 	}
@@ -838,7 +836,7 @@ static int disp_dither_probe(struct platform_device *pdev)
 	priv->primary_data = kzalloc(sizeof(*priv->primary_data), GFP_KERNEL);
 	if (priv->primary_data == NULL) {
 		ret = -ENOMEM;
-		DDPPR_ERR("Failed to alloc primary_data %d\n", ret);
+		PQ_ERR("Failed to alloc primary_data %d\n", ret);
 		goto error_dev_init;
 	}
 
@@ -848,14 +846,14 @@ static int disp_dither_probe(struct platform_device *pdev)
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DITHER);
 	if ((int)comp_id < 0) {
-		DDPPR_ERR("Failed to identify by alias: %d\n", comp_id);
+		PQ_ERR("Failed to identify by alias: %d\n", comp_id);
 		goto error_primary;
 	}
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_dither_funcs);
 	if (ret != 0) {
-		DDPPR_ERR("Failed to initialize component: %d\n", ret);
+		PQ_ERR("Failed to initialize component: %d\n", ret);
 		goto error_primary;
 	}
 
@@ -1092,7 +1090,7 @@ unsigned int disp_dither_bypass_info(struct mtk_drm_crtc *mtk_crtc)
 
 	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_DITHER, 0);
 	if (!comp) {
-		DDPPR_ERR("%s, comp is null!\n", __func__);
+		PQ_ERR("%s, comp is null!\n", __func__);
 		return 1;
 	}
 	dither_data = comp_to_dither(comp);
