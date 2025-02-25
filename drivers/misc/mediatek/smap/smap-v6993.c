@@ -141,6 +141,7 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 	dbg->zram_snapshot = smap_read(ZRAM_SMAP_SNAPSHOT);
 	dbg->apu_snapshot = smap_read(APU_SMAP_SNAPSHOT);
 
+	smap_write(SMAP_SNAPSHOT_CLR, 0x1);
 	smap_write(SMAP_SNAPSHOT_CLR, 0x0);
 
 	if (log_type == DUMP_HEADER) {
