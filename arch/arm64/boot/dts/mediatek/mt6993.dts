@@ -15004,8 +15004,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_acp_cam>;
 			clocks =
 			    <&cam_vcore_r1a_clk CAM_V_R1A_G_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_BLS_PART_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_BLS_FULL_CAM_VCORE>,
 			    <&cam_vcore_r1a_clk CAM_V_R1A_SV0_GALS_CAM_VCORE>,
 			    <&cam_vcore_r1a_clk CAM_V_R1A_SV1_GALS_CAM_VCORE>,
 			    <&cam_vcore_r1a_clk CAM_V_R1A_TX6_GALS_CAM_VCORE>,
@@ -15050,8 +15048,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS22_CON_1_CAM_VCORE>;
 			clock-names =
 			    "camsys_vcore_g_cam_vcore",
-			    "camsys_vcore_bls_part",
-			    "camsys_vcore_bls_full",
 			    "camsys_vcore_sv0_gals",
 			    "camsys_vcore_sv1_gals",
 			    "camsys_vcore_tx6_gals",
@@ -15119,7 +15115,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<GIC_SPI 619 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "dvc", "fmon", "qoftop";
 			clocks =
-			    <&cam_main_r1a_clk CAM_M_LARB27_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_SUBA_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_SUBB_CAM_MAIN>,
@@ -15127,18 +15122,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&cam_main_r1a_clk CAM_M_CAM_MRAW_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAMTG_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_SENINF_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_ADLRD_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_ADLWR_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_UISP_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_SDL_0C_0_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_SDL_1_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_LARB27_GALS_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM2SYS_GALS_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_IPS_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_ASG_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_QOF_CON_1_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_CAM_RTCQ_CON_1_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_CAM_SDLCQ_CON_1_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_WLA_CON_1_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_DVC_CON_1_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_CVFS_CON_1_CAM_MAIN>,
@@ -15146,7 +15133,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
 			    <&mmdvfs_mux MMDVFS_USER_CAM>;
 			clock-names =
-			    "camsys_main_larb27",
 			    "camsys_main_cam",
 			    "camsys_main_cam_suba",
 			    "camsys_main_cam_subb",
@@ -15154,18 +15140,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    "camsys_main_cam_mraw",
 			    "camsys_main_camtg",
 			    "camsys_main_seninf",
-			    "camsys_main_adlrd",
-			    "camsys_main_adlwr",
-			    "camsys_main_uisp",
-			    "camsys_main_sdl_0c_0",
-			    "camsys_main_sdl_1",
-			    "camsys_main_larb27_gals",
 			    "camsys_main_cam2sys_gals",
 			    "camsys_main_ips",
 			    "camsys_main_cam_asg",
 			    "camsys_main_cam_qof_con_1",
-			    "camsys_main_cam_rtcq_con_1",
-			    "camsys_main_cam_sdlcq_con_1",
 			    "camsys_main_cam_wla_con_1",
 			    "camsys_main_cam_dvc_con_1",
 			    "camsys_main_cam_cvfs_con_1",
