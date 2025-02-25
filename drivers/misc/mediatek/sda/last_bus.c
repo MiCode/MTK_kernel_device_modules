@@ -391,7 +391,7 @@ static int lastbus_set_by_num(unsigned int bus_num, unsigned int time_scale)
 	struct lastbus_monitor *m = NULL;
 	void __iomem *base;
 
-	if (bus_num > my_cfg_lastbus.num_used_monitors) {
+	if (bus_num >= my_cfg_lastbus.num_used_monitors) {
 		pr_info("LastBus input index (%d) is out of bound!\n", bus_num + 1);
 		return 1;
 	}
@@ -411,7 +411,7 @@ static int lastbus_get_by_num(unsigned int bus_num)
 	struct lastbus_monitor *m = NULL;
 	void __iomem *base;
 
-	if (bus_num > my_cfg_lastbus.num_used_monitors) {
+	if (bus_num >= my_cfg_lastbus.num_used_monitors) {
 		pr_info("LastBus input index (%d) is out of bound!\n", bus_num + 1);
 		return 1;
 	}
