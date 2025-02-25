@@ -10721,6 +10721,8 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, tmp_srt, 0,
 						    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 
+		//make sure above regs are set before trigger
+		wmb();
 		//trig bwm
 		mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_TRIG, NULL);
 		CRTC_MMP_MARK(0, bwm20, 0, comp->qos_bw);
