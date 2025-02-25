@@ -522,6 +522,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -705,6 +706,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -1226,6 +1228,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:mddp".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:sapu".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1523,7 +1526,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/apusys/apusys.ko",
     #"drivers/misc/mediatek/apusys/apu_aov.ko",
     #"drivers/misc/mediatek/apusys/power/apu_top.ko",
-    "drivers/misc/mediatek/apusys/sapu/sapu.ko",
+    #"drivers/misc/mediatek/apusys/sapu/sapu.ko",
     #"drivers/misc/mediatek/audio_ipi/audio_ipi.ko",
     #"drivers/misc/mediatek/cameraisp/dpe/camera_dpe_isp70.ko",
     #"drivers/misc/mediatek/clkbuf/clkbuf.ko",
