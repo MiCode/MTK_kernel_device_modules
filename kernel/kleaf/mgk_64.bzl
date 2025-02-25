@@ -515,6 +515,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -696,6 +697,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -1207,6 +1209,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:mddp".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1540,7 +1543,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/mbraink/modules/v6991/mtk_mbraink_v6991.ko",
     "drivers/misc/mediatek/mbraink/modules/v6899/mtk_mbraink_v6899.ko",
     "drivers/misc/mediatek/mbraink/modules/v6993/mtk_mbraink_v6993.ko",
-    "drivers/misc/mediatek/mddp/mddp.ko",
+    #"drivers/misc/mediatek/mddp/mddp.ko",
     "drivers/misc/mediatek/mdp/cmdq_helper_inf.ko",
     #"drivers/misc/mediatek/mdp/mdp_drv_dummy.ko",
     #"drivers/misc/mediatek/mminfra/mtk-mminfra-util.ko",
