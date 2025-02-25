@@ -2430,6 +2430,10 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 				mtk_dump_reg(comp);
 			}
 		}
+
+		if (vdisp_func.analysis)
+			vdisp_func.analysis();
+
 		break;
 	case MMSYS_MT6897:
 		DDPDUMP("== DUMP OVLSYS pipe-0 ANALYSIS:0x%pa ==\n",
