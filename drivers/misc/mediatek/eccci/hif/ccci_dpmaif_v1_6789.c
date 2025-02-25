@@ -234,7 +234,8 @@ static inline int dpmaif_set_skb_data_to_smem_drb(struct dpmaif_tx_queue *txq,
 						(DPMA_SKB_DATA_LEN * drb_qbuf_inf->wr);
 		phy_addr = g_dpmaif_ctrl_v1_mt6789->smem_drb_qbuf_phy[qno] +
 						(DPMA_SKB_DATA_LEN * drb_qbuf_inf->wr);
-		memcpy_toio(smem_data_addr, data_addr, data_len);
+		if (data_addr)
+			memcpy_toio(smem_data_addr, data_addr, data_len);
 
 		drb_qbuf_inf->wr = get_ringbuf_next_idx(drb_qbuf_inf->sz, drb_qbuf_inf->wr, 1);
 
@@ -254,7 +255,7 @@ static inline int dpmaif_set_skb_data_to_smem_drb(struct dpmaif_tx_queue *txq,
 		drb_skb->is_frag = is_frag;
 		drb_skb->is_last_one = (c_bit == 0 ? 1 : 0);
 		if (g_debug_flags & DEBUG_TX_SEND_SKB) {
-			struct debug_tx_send_skb_hdr hdr;
+			struct debug_tx_send_skb_hdr hdr = {0};
 
 			hdr.type      = TYPE_TX_SEND_SKB_ID;
 			hdr.qidx      = qno;
@@ -341,14 +342,11 @@ int dpmaif_tx_send_skb_to_smem(struct ccmni_tx_para_info *tx_info)
 	if (dpmaif_wait_resume_done() < 0)
 		return -EBUSY;
 
-	if (qno < 0) {
-		CCCI_ERROR_LOG(0, TAG, "[%s] error: qno(%d) < 0\n", __func__, qno);
-		return -CCCI_ERR_INVALID_QUEUE_INDEX;
-	}
 	if (qno >= DPMA_UL_QUEUE_NUM) {
 		qno = DPMA_UL_QUEUE_NUM - 1;
 		tx_info->hw_qno = qno;
 	}
+	txq = &g_dpmaif_ctrl->txq[qno];
 
 	if (g_dpmaif_ctrl->dpmaif_state != DPMAIF_STATE_PWRON)
 		return -CCCI_ERR_HIF_NOT_POWER_ON;
@@ -359,8 +357,6 @@ int dpmaif_tx_send_skb_to_smem(struct ccmni_tx_para_info *tx_info)
 				tx_info->hw_qno, g_smem_drb_qsize[qno]);
 		return HW_REG_CHK_FAIL;
 	}
-
-	txq = &g_dpmaif_ctrl->txq[qno];
 
 	atomic_set(&txq->txq_processing, 1);
 	smp_mb(); /* for cpu exec. */
@@ -556,7 +552,7 @@ int dpmaif_tx_sw_solution_init(void)
 
 void drv1_hw_reset_for_6789(void)
 {
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 	int count = 0, ret;
 
 	udelay(500);
