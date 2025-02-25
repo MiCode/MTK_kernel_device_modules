@@ -26,9 +26,9 @@ filegroup(
 )
 
 ddk_headers(
-	name = "thermal_headers",
-	hdrs = glob(["**/*.h"]),
-	includes = ["."],
+    name = "thermal_headers",
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
 )
 
 define_mgk_ddk_ko(
@@ -90,7 +90,7 @@ define_mgk_ddk_ko(
         "wifi_cooling.h",
     ],
     ko_deps = [
-		"//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:connadp".format(kernel_version)
+        "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:connadp".format(kernel_version)
     ],
 )
 
@@ -101,7 +101,7 @@ define_mgk_ddk_ko(
     ],
     hdrs = [
         "thermal_interface.h",
-		"vtskin_temp.h",
+        "vtskin_temp.h",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version)
@@ -121,7 +121,7 @@ define_mgk_ddk_ko(
     ],
     hdrs = [
         "soc_temp_lvts.h",
-		"thermal_interface.h",
+        "thermal_interface.h",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:gpueb_public_headers".format(kernel_version)
@@ -131,20 +131,49 @@ define_mgk_ddk_ko(
     ],
 )
 
-#define_mgk_ddk_ko(
-#    name = "thermal_trace",
-#    srcs = [
-#        "thermal_trace.c",
-#    ],
-#    hdrs = [
-#        "thermal_trace.h",
-#        "md_cooling.h",
-#        "thermal_trace_local.h",
-#    ],
-#    ko_deps = [
-#        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version)
-#    ],
-#)
+define_mgk_ddk_ko(
+    name = "thermal_trace",
+    srcs = [
+        "thermal_trace.c",
+        "thermal_trace.h",
+    ],
+    includes = ["."],
+    hdrs = [
+        "thermal_trace.h",
+        "md_cooling.h",
+        "thermal_trace_local.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version)
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "md_cooling_all",
+    srcs = [
+        "md_cooling.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_DEBUG_FS": {
+            True: [
+                "md_cooling_debugfs.c",
+            ],
+        },
+    },
+
+    includes = ["."],
+    hdrs = [
+        "md_cooling.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_trace".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version)
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)
 
 define_mgk_ddk_ko(
     name = "vtskin_temp",

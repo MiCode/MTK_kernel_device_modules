@@ -21,11 +21,11 @@ endif
 
 obj-$(CONFIG_MTK_SOC_THERMAL)	+= soc_temp.o
 #obj-$(CONFIG_MTK_SOC_THERMAL_LVTS)	+= soc_temp_lvts.o
-obj-$(CONFIG_MTK_MD_THERMAL)	+= md_cooling_all.o
-md_cooling_all-y 		+= md_cooling.o
-md_cooling_all-$(CONFIG_DEBUG_FS) += md_cooling_debugfs.o
+#obj-$(CONFIG_MTK_MD_THERMAL)	+= md_cooling_all.o
+#md_cooling_all-y 		+= md_cooling.o
+#md_cooling_all-$(CONFIG_DEBUG_FS) += md_cooling_debugfs.o
 
-obj-$(CONFIG_MTK_THERMAL_TRACE) += thermal_trace.o
+#obj-$(CONFIG_MTK_THERMAL_TRACE) += thermal_trace.o
 
 obj-$(CONFIG_MTK_THERMAL_IPI)	+= thermal_ipi.o
 
