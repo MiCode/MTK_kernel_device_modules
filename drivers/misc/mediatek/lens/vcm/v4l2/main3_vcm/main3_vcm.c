@@ -47,6 +47,7 @@ struct main3_vcm_device {
 	bool is_powered_off;
 	bool is_stop_flag;
 	wait_queue_head_t wait_queue_head;
+	u16 cur_pos;
 };
 
 static struct workqueue_struct *main3_vcm_init_wq;
@@ -305,6 +306,8 @@ static int main3_vcm_set_position(struct main3_vcm_device *main3_vcm, u16 val)
 		}
 	}
 
+	main3_vcm->cur_pos = val;
+
 	return ret;
 }
 
@@ -319,13 +322,15 @@ static int main3_vcm_release(struct main3_vcm_device *main3_vcm)
 
 	struct i2c_client *client = v4l2_get_subdevdata(&main3_vcm->sd);
 
+	LOG_INF("current position: %d\n", main3_vcm->cur_pos);
+
 	long_step = g_vcmconfig.vcm_config.move_long_steps_pct *
 			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
 	short_step = g_vcmconfig.vcm_config.move_short_steps_pct *
 			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
 
-	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - main3_vcm->focus->val;
-	val = main3_vcm->focus->val;
+	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - main3_vcm->cur_pos;
+	val = main3_vcm->cur_pos;
 
 	if (long_step == 0) {
 		LOG_INF("no need to process long step\n");
@@ -415,6 +420,8 @@ LAST_STEP_TO_ORIGIN:
 	}
 
 	register_setting(client, g_vcmconfig.vcm_config.wr_rls_table, 8);
+
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -672,10 +679,10 @@ static long main3_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 	case VCM_IOC_POWER_ON:
 	{
 		// customized area
-		LOG_INF("active mode, current pos:%d\n", main3_vcm->focus->val);
+		LOG_INF("active mode, current pos:%d\n", main3_vcm->cur_pos);
 
 		register_setting(client, g_vcmconfig.vcm_config.resume_table, 8);
-		ret = main3_vcm_set_position(main3_vcm, main3_vcm->focus->val);
+		ret = main3_vcm_set_position(main3_vcm, main3_vcm->cur_pos);
 		if (ret < 0) {
 			LOG_INF("%s I2C failure: %d\n",
 				__func__, ret);
@@ -766,8 +773,11 @@ static int main3_vcm_init_controls(struct main3_vcm_device *main3_vcm)
 	//main3_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
 	//		  0, MAIN3_VCM_MAX_FOCUS_POS, MAIN3_VCM_FOCUS_STEPS, 0);
 
-	if (hdl->error)
+	if (hdl->error) {
+		LOG_INF("Failed to initialize controls, error %d\n",
+			hdl->error);
 		return hdl->error;
+	}
 
 	main3_vcm->sd.ctrl_handler = hdl;
 
