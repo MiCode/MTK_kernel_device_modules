@@ -93,8 +93,6 @@ void init_drm_mmp_event(void)
 		mmprofile_register_event(g_DRM_MMP_Events.dsi_lpc, "DSI_LPC0");
 	g_DRM_MMP_Events.dsi_lpc0_ts =
 		mmprofile_register_event(g_DRM_MMP_Events.dsi_lpc, "DSI_LPC0_TS");
-	g_DRM_MMP_Events.dsi_lpc1 =
-		mmprofile_register_event(g_DRM_MMP_Events.dsi_lpc, "DSI_LPC1");
 	g_DRM_MMP_Events.aal =
 		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "AAL");
 	g_DRM_MMP_Events.aal0 =
