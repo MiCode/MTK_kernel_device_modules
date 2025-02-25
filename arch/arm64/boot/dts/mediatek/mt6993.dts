@@ -24133,6 +24133,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	md-vsram = <750000 750000>;
 	md-vdigrf-supply = <&mt6661_6_buck3>;
 	md-vdigrf = <700000 700000>;
+
+	/* for md rf pmic */
+	vsram-digrf-supply = <&mt6661_6_lnc0_8>;
+	vrfio12-supply = <&mt6661_6_ln60_5>;
+	vrfio18-supply = <&mt6661_6_lnc0_9>;
+	vs3-2-supply = <&mt6661_6_buck5>;
+	vs2-2-supply = <&mt6661_6_buck6>;
+	va10-supply = <&mt6661_6_ln60_7>;
+	vrf09-supply = <&mt6661_6_lnc0_s_11>;
+	vrf12-supply = <&mt6661_6_lnc0_s_12>;
+	vrf18-supply = <&mt6661_6_lnc0_10>;
 };
 
 &md_auxadc {
