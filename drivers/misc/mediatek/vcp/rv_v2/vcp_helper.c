@@ -882,9 +882,6 @@ extern unsigned int mt_get_fmeter_freq(unsigned int id, enum FMETER_TYPE type);
 #endif
 int vcp_enable_pm_clk(enum feature_id id)
 {
-	int ret = 0;
-	struct slp_ctrl_data ipi_data;
-
 	if (!vcp_support)
 		return -1;
 
@@ -908,25 +905,17 @@ int vcp_enable_pm_clk(enum feature_id id)
 		}
 	}
 	pwclkcnt++;
-	if (id != RTOS_FEATURE_ID) {
-		ipi_data.cmd = SLP_WAKE_LOCK;
-		ipi_data.feature = id;
-		ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
-					IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
-	}
 #ifdef VCP_CLK_FMETER
 	pr_notice("[VCP] %s id %d done %d clk %d\n", __func__, id,
 		pwclkcnt, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
 #endif
 	mutex_unlock(&vcp_pw_clk_mutex);
-	return ret;
+	return 0;
 }
 
 int vcp_disable_pm_clk(enum feature_id id)
 {
-	int ret = 0;
 	int i = 0;
-	struct slp_ctrl_data ipi_data;
 
 	if (!vcp_support)
 		return -1;
@@ -942,12 +931,6 @@ int vcp_disable_pm_clk(enum feature_id id)
 	pr_notice("[VCP] %s id %d entered %d ready %d %d\n", __func__, id,
 		pwclkcnt, is_vcp_ready_by_coreid(VCP_ID), is_vcp_ready_by_coreid(MMUP_ID));
 
-	if (id != RTOS_FEATURE_ID) {
-		ipi_data.cmd = SLP_WAKE_UNLOCK;
-		ipi_data.feature = id;
-		ret = mtk_ipi_send_compl(&vcp_ipidev, IPI_OUT_C_SLEEP_0,
-					IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
-	}
 	pwclkcnt--;
 
 	if (pwclkcnt <= 0) {
@@ -958,7 +941,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 	}
 	mutex_unlock(&vcp_pw_clk_mutex);
 
-	return ret;
+	return 0;
 }
 
 static int vcp_pm_suspend_event(struct notifier_block *notifier
