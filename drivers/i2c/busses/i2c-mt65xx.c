@@ -295,6 +295,7 @@ struct mtk_i2c_compatible {
 	unsigned char slave_addr_ver;
 	unsigned char fifo_size;
 	unsigned char need_add_hhs_div;
+	unsigned char trans_32bits_support;
 };
 
 struct mtk_i2c_ac_timing {
@@ -749,6 +750,24 @@ static const struct mtk_i2c_compatible mt6991_compat = {
 	.fifo_size = 16,
 };
 
+static const struct mtk_i2c_compatible mt6993_compat = {
+	.regs = mt_i2c_regs_v2,
+	.pmic_i2c = 0,
+	.dcm = 0,
+	.auto_restart = 1,
+	.aux_len_reg = 1,
+	.timing_adjust = 1,
+	.dma_sync = 0,
+	.ltiming_adjust = 1,
+	.dma_ver = 2,
+	.apdma_sync = 1,
+	.speed_ver = 1,
+	.max_dma_support = 36,
+	.slave_addr_ver = 1,
+	.fifo_size = 16,
+	.trans_32bits_support = 1,
+};
+
 static const struct of_device_id mtk_i2c_of_match[] = {
 	{ .compatible = "mediatek,mt2712-i2c", .data = &mt2712_compat },
 	{ .compatible = "mediatek,mt6577-i2c", .data = &mt6577_compat },
@@ -763,6 +782,7 @@ static const struct of_device_id mtk_i2c_of_match[] = {
 	{ .compatible = "mediatek,mt6897-i2c", .data = &mt6897_compat },
 	{ .compatible = "mediatek,mt6989-i2c", .data = &mt6989_compat },
 	{ .compatible = "mediatek,mt6991-i2c", .data = &mt6991_compat },
+	{ .compatible = "mediatek,mt6993-i2c", .data = &mt6993_compat },
 	{ .compatible = "mediatek,mt6768-i2c", .data = &mt6768_compat },
 	{ .compatible = "mediatek,mt6761-i2c", .data = &mt6761_compat },
 	{ .compatible = "mediatek,mt6781-i2c", .data = &mt6781_compat },
@@ -825,6 +845,17 @@ static void mtk_i2c_writew_ccu(struct mtk_i2c *i2c, u16 val,
 			   enum I2C_REGS_OFFSET reg)
 {
 	writew(val, i2c->base + i2c->ch_offset_ccu + i2c->dev_comp->regs[reg]);
+}
+
+static u32 mtk_i2c_readl(struct mtk_i2c *i2c, enum I2C_REGS_OFFSET reg)
+{
+	return readl(i2c->base + i2c->ch_offset_i2c + i2c->dev_comp->regs[reg]);
+}
+
+static void mtk_i2c_writel(struct mtk_i2c *i2c, u32 val,
+				enum I2C_REGS_OFFSET reg)
+{
+	writel(val, i2c->base + i2c->ch_offset_i2c + i2c->dev_comp->regs[reg]);
 }
 
 #ifdef CONFIG_FPGA_EARLY_PORTING
@@ -1626,11 +1657,16 @@ static void mtk_i2c_gpio_dump(struct mtk_i2c *i2c)
 static void mtk_i2c_dump_reg(struct mtk_i2c *i2c)
 {
 	u16 slave_addr_value = 0;
+	u32 transfer_len_value = 0;
 
 	if (i2c->dev_comp->slave_addr_ver == 1)
 		slave_addr_value = mtk_i2c_readw(i2c, OFFSET_SLAVE_ADDR1);
 	else
 		slave_addr_value = mtk_i2c_readw(i2c, OFFSET_SLAVE_ADDR);
+	if (i2c->dev_comp->trans_32bits_support)
+		transfer_len_value = mtk_i2c_readl(i2c, OFFSET_TRANSFER_LEN);
+	else
+		transfer_len_value = (u32) mtk_i2c_readw(i2c, OFFSET_TRANSFER_LEN);
 	dev_info(i2c->dev, "I2C (speed %d) register:\n"
 		"SLAVE_ADDR=0x%x,INTR_STAT=0x%x,CONTROL=0x%x,\n"
 		"TRANSFER_LEN=0x%x,TRANSAC_LEN=0x%x,START=0x%x,\n"
@@ -1642,7 +1678,7 @@ static void mtk_i2c_dump_reg(struct mtk_i2c *i2c)
 		(slave_addr_value),
 		(mtk_i2c_readw(i2c, OFFSET_INTR_STAT)),
 		(mtk_i2c_readw(i2c, OFFSET_CONTROL)),
-		(mtk_i2c_readw(i2c, OFFSET_TRANSFER_LEN)),
+		(transfer_len_value),
 		(mtk_i2c_readw(i2c, OFFSET_TRANSAC_LEN)),
 		(mtk_i2c_readw(i2c, OFFSET_START)),
 		(mtk_i2c_readw(i2c, OFFSET_FIFO_STAT)),
@@ -1659,9 +1695,14 @@ static void mtk_i2c_dump_reg(struct mtk_i2c *i2c)
 	if (i2c->dev_comp->ltiming_adjust)
 		dev_info(i2c->dev, "I2C register: LTIMING=0x%x\n",
 			mtk_i2c_readw(i2c, OFFSET_LTIMING));
-	if (i2c->dev_comp->aux_len_reg)
-		dev_info(i2c->dev, "I2C register: TRANSFER_LEN_AUX=0x%x\n",
-			mtk_i2c_readw(i2c, OFFSET_TRANSFER_LEN_AUX));
+	if (i2c->dev_comp->aux_len_reg) {
+		if (i2c->dev_comp->trans_32bits_support)
+			dev_info(i2c->dev, "I2C register: TRANSFER_LEN_AUX=0x%x\n",
+				mtk_i2c_readl(i2c, OFFSET_TRANSFER_LEN_AUX));
+		else
+			dev_info(i2c->dev, "I2C register: TRANSFER_LEN_AUX=0x%x\n",
+				mtk_i2c_readw(i2c, OFFSET_TRANSFER_LEN_AUX));
+	}
 
 	dev_info(i2c->dev, "DMA register:\n"
 		"INT_FLAG=0x%x,INT_EN=0x%x,EN=0x%x,\n"
@@ -2012,19 +2053,35 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 	/* Set transfer and transaction len */
 	if (i2c->op == I2C_MASTER_WRRD) {
 		if (i2c->dev_comp->aux_len_reg) {
-			mtk_i2c_writew(i2c, msgs->len, OFFSET_TRANSFER_LEN);
-			mtk_i2c_writew(i2c, (msgs + 1)->len,
-					    OFFSET_TRANSFER_LEN_AUX);
+			if (i2c->dev_comp->trans_32bits_support) {
+				mtk_i2c_writel(i2c, msgs->len, OFFSET_TRANSFER_LEN);
+				mtk_i2c_writel(i2c, (msgs + 1)->len,
+							OFFSET_TRANSFER_LEN_AUX);
+			} else {
+				mtk_i2c_writew(i2c, msgs->len, OFFSET_TRANSFER_LEN);
+				mtk_i2c_writew(i2c, (msgs + 1)->len,
+							OFFSET_TRANSFER_LEN_AUX);
+			}
 		} else {
-			mtk_i2c_writew(i2c, msgs->len | ((msgs + 1)->len) << 8,
-					    OFFSET_TRANSFER_LEN);
+			if (i2c->dev_comp->trans_32bits_support)
+				mtk_i2c_writel(i2c, msgs->len | ((msgs + 1)->len) << 8,
+							OFFSET_TRANSFER_LEN);
+			else
+				mtk_i2c_writew(i2c, msgs->len | ((msgs + 1)->len) << 8,
+							OFFSET_TRANSFER_LEN);
 		}
 		mtk_i2c_writew(i2c, I2C_WRRD_TRANAC_VALUE, OFFSET_TRANSAC_LEN);
 	} else if (i2c->op == I2C_MASTER_CONTINUOUS_WR) {
-		mtk_i2c_writew(i2c, msgs->len / num, OFFSET_TRANSFER_LEN);
+		if (i2c->dev_comp->trans_32bits_support)
+			mtk_i2c_writel(i2c, msgs->len / num, OFFSET_TRANSFER_LEN);
+		else
+			mtk_i2c_writew(i2c, msgs->len / num, OFFSET_TRANSFER_LEN);
 		mtk_i2c_writew(i2c, num, OFFSET_TRANSAC_LEN);
 	} else {
-		mtk_i2c_writew(i2c, msgs->len, OFFSET_TRANSFER_LEN);
+		if (i2c->dev_comp->trans_32bits_support)
+			mtk_i2c_writel(i2c, msgs->len, OFFSET_TRANSFER_LEN);
+		else
+			mtk_i2c_writew(i2c, msgs->len, OFFSET_TRANSFER_LEN);
 		mtk_i2c_writew(i2c, num, OFFSET_TRANSAC_LEN);
 	}
 
