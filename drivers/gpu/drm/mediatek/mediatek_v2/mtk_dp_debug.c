@@ -131,17 +131,6 @@ void mtk_dp_debug(const char *opt)
 			mtk_dp_hdcp_enable(true);
 		else if (strncmp(opt + 5, "disable", 7) == 0)
 			mtk_dp_hdcp_enable(false);
-	} else if (strncmp(opt, "adjust_phy:", 11) == 0) {
-		int ret = 0;
-		int index, c0, cp1;
-
-		ret = sscanf(opt, "adjust_phy:%d,%d,%d\n", &index, &c0, &cp1);
-		if (ret != 3) {
-			DPTXERR("ret = %d\n", ret);
-			return;
-		}
-
-		mtk_dp_set_adjust_phy(index, c0, cp1);
 	} else if (strncmp(opt, "setpowermode", 12) == 0) {
 		mtk_dp_SWInterruptSet(2);
 		mdelay(100);

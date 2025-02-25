@@ -269,14 +269,19 @@ void mtk_dp_dpconnector_setting(void)
 {
 	void *base;
 
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+
 	DPTXMSG("jayer dp connector setting\n");
 	base = ioremap(0x1002d400, 0x1000);
 
-	// set 0x1002d400 16 & 17 bit
+	// set 0x1002d400 16 & 17 bit (GPIO)
 	writel(readl(base) | (1 << 16) | (1 << 17), base);
 
-	// set 0x1002d800 19 bit
-	writel(readl(base + 0x400) | (1 << 19), base + 0x400);
+	// set 0x1002d800 19 bit (ip mux)
+	writel(readl(g_mtk_dp->ip_mux_regs) | (1 << 19), g_mtk_dp->ip_mux_regs);
 
 	iounmap(base);
 }
@@ -827,52 +832,52 @@ bool mdrv_DPTx_CheckSinkLock(struct mtk_dp *mtk_dp, u8 *pDPCD20x, u8 *pDPCD200C)
 		case DP_LANECOUNT_1:
 			if ((pDPCD200C[0] & 0x07) != 0x07) {
 				bLocked = false;
-				DPTXMSG("1L Lose LCOK\n");
+				DPTXERR("1L Lose LCOK\n");
 			}
 			break;
 		case DP_LANECOUNT_2:
 			if ((pDPCD200C[0] & 0x77) != 0x77) {
 				bLocked = false;
-				DPTXMSG("2L Lose LCOK\n");
+				DPTXERR("2L Lose LCOK\n");
 			}
 			break;
 		case DP_LANECOUNT_4:
 			if ((pDPCD200C[0] != 0x77) || (pDPCD200C[1] != 0x77)) {
 				bLocked = false;
-				DPTXMSG("4L Lose LCOK\n");
+				DPTXERR("4L Lose LCOK\n");
 			}
 			break;
 		}
 
 		if ((pDPCD200C[2] & BIT(0)) == 0) {
 			bLocked = false;
-			DPTXMSG("Interskew Lose LCOK\n");
+			DPTXERR("Interskew Lose LCOK\n");
 		}
 	} else {
 		switch (mtk_dp->training_info.ubLinkLaneCount) {
 		case DP_LANECOUNT_1:
 			if ((pDPCD20x[2] & 0x07) != 0x07) {
 				bLocked = false;
-				DPTXMSG("1L Lose LCOK\n");
+				DPTXERR("1L Lose LCOK\n");
 			}
 			break;
 		case DP_LANECOUNT_2:
 			if ((pDPCD20x[2] & 0x77) != 0x77) {
 				bLocked = false;
-				DPTXMSG("2L Lose LCOK\n");
+				DPTXERR("2L Lose LCOK\n");
 			}
 			break;
 		case DP_LANECOUNT_4:
 			if (((pDPCD20x[2] != 0x77) || (pDPCD20x[3] != 0x77))) {
 				bLocked = false;
-				DPTXMSG("4L Lose LCOK\n");
+				DPTXERR("4L Lose LCOK\n");
 			}
 			break;
 		}
 
 		if ((pDPCD20x[4] & BIT(0)) == 0) {
 			bLocked = false;
-			DPTXMSG("Interskew Lose LCOK\n");
+			DPTXERR("Interskew Lose LCOK\n");
 		}
 	}
 
@@ -2484,19 +2489,18 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 		mtk_dp->edid = mtk_dp_handle_edid(mtk_dp);
 		if (mtk_dp->edid) {
 			DPTXMSG("READ EDID done!\n");
-			if (mtk_dp_debug_get()) {
-				u8 *raw_edid = (u8 *)mtk_dp->edid;
 
-				DPTXMSG("Raw EDID:\n");
+			u8 *raw_edid = (u8 *)mtk_dp->edid;
+
+			DPTXMSG("Raw EDID:\n");
+			print_hex_dump(KERN_NOTICE,
+					"\t", DUMP_PREFIX_NONE, 16, 1,
+					raw_edid, EDID_LENGTH, false);
+			if ((raw_edid[0x7E] & 0x01) == 0x01) {
 				print_hex_dump(KERN_NOTICE,
-						"\t", DUMP_PREFIX_NONE, 16, 1,
-						raw_edid, EDID_LENGTH, false);
-				if ((raw_edid[0x7E] & 0x01) == 0x01) {
-					print_hex_dump(KERN_NOTICE,
-						"\t", DUMP_PREFIX_NONE, 16, 1,
-						(raw_edid + 128), EDID_LENGTH,
-						false);
-				}
+					"\t", DUMP_PREFIX_NONE, 16, 1,
+					(raw_edid + 128), EDID_LENGTH,
+					false);
 			}
 			mdelay(10);
 			ubTempBuffer[0x0] = mtk_dp->edid->checksum;
@@ -3671,23 +3675,6 @@ irqreturn_t mtk_dp_hpd_event(int hpd, void *dev)
 }
 #endif
 
-void mtk_dp_phy_param_init(struct mtk_dp *mtk_dp, uint32_t *buffer, int size)
-{
-	int i = 0;
-	uint8_t mask = 0x3F;
-
-	if (buffer == NULL || size != DPTX_PHY_REG_COUNT) {
-		DPTXERR("invalid param\n");
-		return;
-	}
-
-	for (i = 0; i < DPTX_PHY_LEVEL_COUNT; i++) {
-		mtk_dp->phy_params[i].C0 = (buffer[i/4] >> (8*(i%4))) & mask;
-		mtk_dp->phy_params[i].CP1
-			= (buffer[i/4 + 3] >> (8*(i%4))) & mask;
-	}
-}
-
 void mtk_dp_vsvoter_set(struct mtk_dp *mtk_dp)
 {
 	u32 reg, msk, val;
@@ -3800,11 +3787,6 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 			return -ENOMEM;
 		}
 	}
-	uint32_t phy_params_int[DPTX_PHY_REG_COUNT] = {
-		0x20181410, 0x20241e18, 0x00003028,
-		0x10080400, 0x000c0600, 0x00000008
-	};
-	uint32_t phy_params_dts[DPTX_PHY_REG_COUNT];
 
 	if (of_address_to_resource(dev->of_node, 0, &regs) != 0)
 		DPTXERR("Missing reg in %s node\n",
@@ -3814,19 +3796,20 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 		DPTXERR("Missing reg[1] in %s node\n",
 		dev->of_node->full_name);
 
+	if (of_address_to_resource(dev->of_node, 2, &regs) != 0)
+		DPTXERR("Missing reg[2] in %s node\n",
+		dev->of_node->full_name);
+
 	mtk_dp->regs = of_iomap(dev->of_node, 0);
 	mtk_dp->phyd_regs = of_iomap(dev->of_node, 1);
+	mtk_dp->ip_mux_regs = of_iomap(dev->of_node, 2);
 	pm_runtime_enable(dev);
 
-	ret = of_property_read_u32_array(dev->of_node, "dptx,phy_params",
-		phy_params_dts, ARRAY_SIZE(phy_params_dts));
-	if (ret) {
+	memset(mtk_dp->phy_params, 0, sizeof(mtk_dp->phy_params));
+	ret = of_property_read_u32_array(dev->of_node, "dptx,phy-params",
+		mtk_dp->phy_params, ARRAY_SIZE(mtk_dp->phy_params));
+	if (ret)
 		DPTXMSG("get phy_params fail, use default val, ret %d\n", ret);
-		mtk_dp_phy_param_init(mtk_dp,
-			phy_params_int, ARRAY_SIZE(phy_params_int));
-	} else
-		mtk_dp_phy_param_init(mtk_dp,
-			phy_params_dts, ARRAY_SIZE(phy_params_dts));
 
 	ret = mtk_dp_vsvoter_parse(mtk_dp, dev->of_node);
 	if (ret)
@@ -4268,21 +4251,6 @@ int mtk_dp_phy_getInfo(char *buffer, int size)
 	return len;
 }
 #endif
-void mtk_dp_set_adjust_phy(uint8_t index, uint8_t c0, uint8_t cp1)
-{
-	if (g_mtk_dp == NULL) {
-		DPTXERR("%s: dp not initial\n", __func__);
-		return;
-	}
-
-	if (index >= 10) {
-		DPTXERR("index(%d) must < 10!", index);
-		return;
-	}
-
-	g_mtk_dp->phy_params[index].C0 = c0;
-	g_mtk_dp->phy_params[index].CP1 = cp1;
-}
 
 void mtk_dp_hotplug_uevent(unsigned int event)
 {

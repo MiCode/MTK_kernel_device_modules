@@ -354,7 +354,7 @@ void mhal_DPTx_DataLanePNSwap(struct mtk_dp *mtk_dp, bool bENABLE);
 void mhal_DPTx_SetAuxSwap(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_Set_BS2BS_Cnt(struct mtk_dp *mtk_dp, bool bEnable, DWORD uiHTT);
 void mhal_DPTx_PhyTrainingConfig(struct mtk_dp *mtk_dp, u8 ubTargetLinkRate, u8 ubTargetLaneCount);
-
+void mhal_DPTx_swing_pre_emp_optimized(struct mtk_dp *mtk_dp);
 void mhal_DPTx_reset_all(struct mtk_dp *mtk_dp);
 void mhal_dump_reg(struct mtk_dp *mtk_dp);
 void mhal_DPTx_MacVideoPatternGenEn(struct mtk_dp *mtk_dp, bool enable);

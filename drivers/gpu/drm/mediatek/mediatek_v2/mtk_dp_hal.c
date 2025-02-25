@@ -2634,23 +2634,6 @@ void mhal_DPTx_reset_all(struct mtk_dp *mtk_dp)
 	msWrite4ByteMask(mtk_dp, 0x2020, 0x1, 0x1);
 }
 
-void mhal_DPTx_phy_param_init(struct mtk_dp *mtk_dp, UINT32 *buffer, UINT32 size)
-{
-	UINT32 i = 0;
-	UINT8  mask = 0x3F;
-
-	if (buffer == NULL || size != DPTX_PHY_REG_COUNT) {
-		DPTXERR("invalid param\n");
-		return;
-	}
-
-	for (i = 0; i < DPTX_PHY_LEVEL_COUNT; i++) {
-		mtk_dp->phy_params[i].C0 = (buffer[i / 4] >> (8 * (i % 4))) & mask;
-		mtk_dp->phy_params[i].CP1
-			= (buffer[i / 4 + 3] >> (8 * (i % 4))) & mask;
-	}
-}
-
 void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 {
 	//UINT32 value = 0;
@@ -2659,10 +2642,6 @@ void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 	UINT32 usb_info_bit19;
 	UINT32 usb_info_bit18;
 	void *base;
-
-	UINT32 phy_param[6] = {0x221C1814, 0x24241e18, 0x0000302A,	//c0
-			       0x0E080400, 0x000c0600, 0x00000006	//cp1
-			      };
 
 	//phy threshold refine
 	msPhyWrite4ByteMask(mtk_dp, 0x8, 0x00 , BIT(0)|BIT(1));
@@ -2673,16 +2652,15 @@ void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 	msPhyWrite4ByteMask(mtk_dp, 0x0700, 0x0, BIT(20));
 
 	//////////////////// Debug for usb C RG
-	base = ioremap(0x1002D600, 0x100);
-	usb_info=readl(base + 0x0);
+	usb_info = readl(mtk_dp->ip_mux_regs);
 	// Extract the 19th bit of the USB info
 	usb_info_bit19 = (usb_info >> 19) & 0x1; // Shift right by 19 bits and mask the LSB
 	usb_info_bit18 = (usb_info >> 18) & 0x1; // Shift right by 18 bits and mask the LSB
 	// Print the result
 	DPTXMSG("USB Info Bit 19(2 lane:0,4 lane:1): %d\n", usb_info_bit19);
 	DPTXMSG("USB Info Bit 18(normal:0,flipped:1): %d\n", usb_info_bit18);
-	//////////////////// inter-lane skew improvement
 
+	//////////////////// inter-lane skew improvement
 	DPTXMSG("DPTX MAX LANE COUNT: %d\n", MAX_LANECOUNT);
 	if (MAX_LANECOUNT == 4){
 		for (i = 1; i <= 4; i++)
@@ -2691,38 +2669,46 @@ void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 		msPhyWrite4ByteMask(mtk_dp, 0x0100, BIT(12) ,BIT(12)|BIT(13));
 		msPhyWrite4ByteMask(mtk_dp, 0x0200, BIT(12) ,BIT(12)|BIT(13));
 	}
-	// SW Patch 4.4
-	msPhyWrite4Byte(mtk_dp, 0x1138,0x110E0C0A);
-	msPhyWrite4Byte(mtk_dp, 0x1238,0x110E0C0A);
-	msPhyWrite4Byte(mtk_dp, 0x1338,0x110E0C0A);
-	msPhyWrite4Byte(mtk_dp, 0x1438,0x110E0C0A);
+	// phy para provide by SA
+	mhal_DPTx_swing_pre_emp_optimized(mtk_dp);
+}
 
-	msPhyWrite4Byte(mtk_dp, 0x113C,0x1212110E);
-	msPhyWrite4Byte(mtk_dp, 0x123C,0x1212110E);
-	msPhyWrite4Byte(mtk_dp, 0x133C,0x1212110E);
-	msPhyWrite4Byte(mtk_dp, 0x143C,0x1212110E);
+void mhal_DPTx_swing_pre_emp_optimized(struct mtk_dp *mtk_dp)
+{
+	if (mtk_dp->phy_params[0] != 0 || mtk_dp->phy_params[1] != 0 ||
+			mtk_dp->phy_params[2] != 0 || mtk_dp->phy_params[3] != 0 ||
+			mtk_dp->phy_params[4] != 0 || mtk_dp->phy_params[5] != 0) {
+		msPhyWrite4Byte(mtk_dp, 0x1138, mtk_dp->phy_params[0]);
+		msPhyWrite4Byte(mtk_dp, 0x1238, mtk_dp->phy_params[0]);
+		msPhyWrite4Byte(mtk_dp, 0x1338, mtk_dp->phy_params[0]);
+		msPhyWrite4Byte(mtk_dp, 0x1438, mtk_dp->phy_params[0]);
 
-	msPhyWrite4Byte(mtk_dp, 0x1140,0x00001815);
-	msPhyWrite4Byte(mtk_dp, 0x1240,0x00001815);
-	msPhyWrite4Byte(mtk_dp, 0x1340,0x00001815);
-	msPhyWrite4Byte(mtk_dp, 0x1440,0x00001815);
+		msPhyWrite4Byte(mtk_dp, 0x113C, mtk_dp->phy_params[1]);
+		msPhyWrite4Byte(mtk_dp, 0x123C, mtk_dp->phy_params[1]);
+		msPhyWrite4Byte(mtk_dp, 0x133C, mtk_dp->phy_params[1]);
+		msPhyWrite4Byte(mtk_dp, 0x143C, mtk_dp->phy_params[1]);
 
-	msPhyWrite4Byte(mtk_dp, 0x1144,0x07040200);
-	msPhyWrite4Byte(mtk_dp, 0x1244,0x07040200);
-	msPhyWrite4Byte(mtk_dp, 0x1344,0x07040200);
-	msPhyWrite4Byte(mtk_dp, 0x1444,0x07040200);
+		msPhyWrite4Byte(mtk_dp, 0x1140, mtk_dp->phy_params[2]);
+		msPhyWrite4Byte(mtk_dp, 0x1240, mtk_dp->phy_params[2]);
+		msPhyWrite4Byte(mtk_dp, 0x1340, mtk_dp->phy_params[2]);
+		msPhyWrite4Byte(mtk_dp, 0x1440, mtk_dp->phy_params[2]);
 
-	msPhyWrite4Byte(mtk_dp, 0x1148,0x00060300);
-	msPhyWrite4Byte(mtk_dp, 0x1248,0x00060300);
-	msPhyWrite4Byte(mtk_dp, 0x1348,0x00060300);
-	msPhyWrite4Byte(mtk_dp, 0x1448,0x00060300);
+		msPhyWrite4Byte(mtk_dp, 0x1144, mtk_dp->phy_params[3]);
+		msPhyWrite4Byte(mtk_dp, 0x1244, mtk_dp->phy_params[3]);
+		msPhyWrite4Byte(mtk_dp, 0x1344, mtk_dp->phy_params[3]);
+		msPhyWrite4Byte(mtk_dp, 0x1444, mtk_dp->phy_params[3]);
 
-	msPhyWrite4Byte(mtk_dp, 0x114C,0x00000003);
-	msPhyWrite4Byte(mtk_dp, 0x124C,0x00000003);
-	msPhyWrite4Byte(mtk_dp, 0x134C,0x00000003);
-	msPhyWrite4Byte(mtk_dp, 0x144C,0x00000003);
+		msPhyWrite4Byte(mtk_dp, 0x1148, mtk_dp->phy_params[4]);
+		msPhyWrite4Byte(mtk_dp, 0x1248, mtk_dp->phy_params[4]);
+		msPhyWrite4Byte(mtk_dp, 0x1348, mtk_dp->phy_params[4]);
+		msPhyWrite4Byte(mtk_dp, 0x1448, mtk_dp->phy_params[4]);
 
-	mhal_DPTx_phy_param_init(mtk_dp, phy_param, ARRAY_SIZE(phy_param));
+		msPhyWrite4Byte(mtk_dp, 0x114C, mtk_dp->phy_params[5]);
+		msPhyWrite4Byte(mtk_dp, 0x124C, mtk_dp->phy_params[5]);
+		msPhyWrite4Byte(mtk_dp, 0x134C, mtk_dp->phy_params[5]);
+		msPhyWrite4Byte(mtk_dp, 0x144C, mtk_dp->phy_params[5]);
+	} else
+		DPTXMSG("set phy_params, use default val");
 }
 
 void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
@@ -2742,50 +2728,8 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 		msWrite4Byte(mtk_dp, 0x103C, 0x00000000);
 		msWrite4Byte(mtk_dp, 0x2000, 0x00000003);
 
-
-		value = (mtk_dp->phy_params[0].C0 & mask)
-			| ((mtk_dp->phy_params[1].C0 & mask) << 8)
-			| ((mtk_dp->phy_params[2].C0 & mask) << 16)
-			| ((mtk_dp->phy_params[3].C0 & mask) << 24);
-		msWrite4Byte(mtk_dp, 0x1138, value);//0x20181410
-		msWrite4Byte(mtk_dp, 0x1238, value);
-		DPTXDBG("0x38:%#010x, 0x38:%#010x", value, msRead4Byte(mtk_dp, 0x1138));
-
-		value = (mtk_dp->phy_params[4].C0 & mask)
-			| ((mtk_dp->phy_params[5].C0 & mask) << 8)
-			| ((mtk_dp->phy_params[6].C0 & mask) << 16)
-			| ((mtk_dp->phy_params[7].C0 & mask) << 24);
-		msWrite4Byte(mtk_dp, 0x113C, value);//0x20241e18
-		msWrite4Byte(mtk_dp, 0x123C, value);
-		DPTXDBG("0x3C:%#010x, 0x3C:%#010x", value, msRead4Byte(mtk_dp, 0x113C));
-
-		value = (mtk_dp->phy_params[8].C0 & mask)
-			| ((mtk_dp->phy_params[9].C0 & mask) << 8);
-		msWrite4Byte(mtk_dp, 0x1140, value);//0x00003028
-		msWrite4Byte(mtk_dp, 0x1240, value);
-		DPTXDBG("0x40:%#010x, 0x40:%#010x", value, msRead4Byte(mtk_dp, 0x1140));
-
-		value = (mtk_dp->phy_params[0].CP1 & mask)
-			| ((mtk_dp->phy_params[1].CP1 & mask) << 8)
-			| ((mtk_dp->phy_params[2].CP1 & mask) << 16)
-			| ((mtk_dp->phy_params[3].CP1 & mask) << 24);
-		msWrite4Byte(mtk_dp, 0x1144, value);//0x10080400
-		msWrite4Byte(mtk_dp, 0x1244, value);
-		DPTXDBG("0x44:%#010x, 0x44:%#010x", value, msRead4Byte(mtk_dp, 0x1144));
-
-		value = (mtk_dp->phy_params[4].CP1 & mask)
-			| ((mtk_dp->phy_params[5].CP1 & mask) << 8)
-			| ((mtk_dp->phy_params[6].CP1 & mask) << 16)
-			| ((mtk_dp->phy_params[7].CP1 & mask) << 24);
-		msWrite4Byte(mtk_dp, 0x1148, value);//0x000c0600
-		msWrite4Byte(mtk_dp, 0x1248, value);
-		DPTXDBG("0x48:%#010x, 0x48:%#010x", value, msRead4Byte(mtk_dp, 0x1148));
-
-		value = (mtk_dp->phy_params[8].CP1 & mask)
-			| ((mtk_dp->phy_params[9].CP1 & mask) << 8);
-		msWrite4Byte(mtk_dp, 0x114C, value);//0x00000008
-		msWrite4Byte(mtk_dp, 0x124C, value);
-		DPTXDBG("0x4C:%#010x, 0x4C:%#010x", value, msRead4Byte(mtk_dp, 0x114C));
+		// phy para provide by SA
+		mhal_DPTx_swing_pre_emp_optimized(mtk_dp);
 
 		//PORTING FROM CTP
 		msWrite4ByteMask(mtk_dp, 0x003C, 0x004 << 24, BITMASK(28:24));

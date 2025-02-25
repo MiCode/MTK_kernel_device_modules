@@ -42,7 +42,7 @@
 #define AUX_WRITE_READ_WAIT_TIME        20 //us
 #define AUX_NO_REPLY_WAIT_TIME          3200
 #define DPTX_SUPPORT_DSC                0 // confirm DSC scenario before open this.
-#define DPTX_PHY_LEVEL_COUNT            10
+#define DPTX_PHY_LEVEL_COUNT            6
 #define DPTX_PHY_REG_COUNT              6
 
 #define DPTX_AutoTest_ENABLE		0x1
@@ -279,11 +279,6 @@ struct DPTX_INFO {
 
 };
 
-struct DPTX_PHY_PARAMETER {
-	unsigned char C0;
-	unsigned char CP1;
-};
-
 struct mtk_dp {
 	struct mtk_ddp_comp ddp_comp;
 	struct device *dev;
@@ -320,6 +315,7 @@ struct mtk_dp {
 
 	void __iomem *regs;
 	void __iomem *phyd_regs;
+	void __iomem *ip_mux_regs;
 	struct clk *dp_tx_clk;
 
 	u32 bUeventToHwc;
@@ -335,7 +331,7 @@ struct mtk_dp {
 	bool fake_comeplete_irq;
 	struct mtk_drm_private *priv;
 	//phy_params[10] = {L0P0,L0P1,L0P2,L0P3,L1P0,L1P1,L1P2,L2P0,L2P1,L3P0};
-	struct DPTX_PHY_PARAMETER phy_params[DPTX_PHY_LEVEL_COUNT];
+	u32 phy_params[DPTX_PHY_LEVEL_COUNT];
 
 	/* pmic vs voter */
 	struct regmap *vsv;
