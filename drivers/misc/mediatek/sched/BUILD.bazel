@@ -68,3 +68,75 @@ define_mgk_ddk_ko(
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "scheduler",
+	conditional_srcs = {
+		"CONFIG_MTK_CORE_PAUSE":{
+			True:["eas/core_pause.c"],
+		},
+		"CONFIG_MTK_SCHED_BIG_TASK_ROTATE":{
+			True:["eas/rotate.c"],
+		},
+
+		"CONFIG_MTK_SCHED_VIP_TASK":{
+			True:["eas/vip.c"],
+		},
+
+		"CONFIG_MTK_SCHED_FAST_LOAD_TRACKING":{
+			True:[
+				"eas/flt_init.c",
+				"eas/flt_api.c",
+				"eas/flt_utility_v2.c",
+				"eas/flt_utility_v3.c",
+				"eas/flt_utility_v4.c",
+				"eas/flt_cal_build_utility.c",
+			],
+		},
+
+		"CONFIG_MTK_SCHED_GROUP_AWARE":{
+			True:["eas/group.c"],
+		},
+	},
+
+    srcs = [
+		"eas/sched_main.c",
+		"eas/sched_sys_common.c",
+		"eas/eas_plus.c",
+		"eas/rt.c",
+		"eas/shortcut/compress.c",
+		"eas/shortcut/gather.c",
+		"eas/balance.c",
+		"eas/topology.c",
+		"eas/eas_adpf.c",
+		"util/tsk_util.c",
+		"common.c",
+		"fair.c",
+    ],
+    includes = [
+		".",
+    ],
+    hdrs = glob(["**/*.h","eas/*.h","eas/vip.c","eas/flt_cal.c","eas/grp_awr.c"]),
+	ko_deps = [
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:cpuqos_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/performance/powerhal_cpu_ctrl:powerhal_cpu_ctrl".format(kernel_version),
+		":cpufreq_sugov_ext",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/sugov",
+		"-I$(srctree)/kernel/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/cpufreq/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)
