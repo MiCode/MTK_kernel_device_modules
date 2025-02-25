@@ -4354,7 +4354,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"socsys_freq,socsys_bw,socsys_d0_ratio,socsys_d1_ratio,socsys_d2_ratio,",
 				"peri_freq,peri_m0_busy_ratio,peri_m1_busy_ratio,peri_d1_ratio,peri_d2_ratio";
 			node-116 = "SSPM_SWPM_VCP__POWER_STATE", "hfrp_active,hfrp_active_core0,hfrp_active_core1,",
-				"hfrp_core_off,hfrp_stall,hfrp_peri_off,",
+				"hfrp_sleep,hfrp_stall,hfrp_off,",
 				"hfrp_frequency";
 			node-117 = "SSPM_SWPM_MML__ENG_ACTIVE",
 				"MML_ACTIVE,MML_FREQ,MML_PQ,",
