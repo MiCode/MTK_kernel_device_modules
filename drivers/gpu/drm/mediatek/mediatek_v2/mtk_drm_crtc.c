@@ -20733,14 +20733,13 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	if (!(mtk_crtc->enabled))
 		DDPDBG("Sleep State set partial update enable --crtc not ebable\n");
 
-//#ifdef IF_ZERO
+#ifdef IF_ZERO
 	/* disable partial update if rpo lye is exist */
-	if (state->lye_state.rpo_lye && partial_enable &&
-		mtk_crtc->scaling_ctx.scaling_en) {
+	if (state->lye_state.rpo_lye && partial_enable) {
 		DDPDBG("skip because rpo lye is exist\n");
 		partial_enable = 0;
 	}
-//#endif
+#endif
 
 	/* disable partial update if mml_ir lye is exist */
 	if (state->lye_state.mml_ir_lye && partial_enable) {

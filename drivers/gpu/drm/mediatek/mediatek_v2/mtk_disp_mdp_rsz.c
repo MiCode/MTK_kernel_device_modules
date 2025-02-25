@@ -1122,9 +1122,6 @@ static void mtk_mdp_rsz_addon_config(struct mtk_ddp_comp *comp,
 		return;
 	}
 
-	comp->mtk_crtc->tile_overhead_v.in_height = in_h;
-	comp->mtk_crtc->tile_overhead_v.src_y = rsz_config->th[0].src_y;
-
 	//con3 = task->config->info.alpha ? 1 << 10 | rsz_config->fw_out.con3 : 0;
 	con3 = rsz->tile_overhead.rsz_out.con3;
 	cmdq_pkt_write(handle, comp->cmdq_base,
