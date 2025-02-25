@@ -5461,11 +5461,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&ap_pd_clk CLK_PD_ADSP_AO_ADSP_AO>;
 			clock-names = "clk_pd_adsp_top",
 				"clk_pd_adsp_ao";
-#if 0
+
 			interconnects = <&dvfsrc MT6873_MASTER_HRT_ADSP
 					 &dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 			interconnect-names = "icc-hrt-bw";
-#endif
+
 			system-l2sram = <1>;
 			core-num = <2>;    /* core number */
 			adsp-rsv-ipidma-a = <0x180000>;
@@ -12817,7 +12817,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		/* scene: $enable $bandwidth */
 		audio_dsp_hrt_bw: audio-dsp-hrt-bw {
-			compatible = "mediatek,mt6991-audio-dsp-hrt-bw";
+			compatible = "mediatek,mt6993-audio-dsp-hrt-bw";
 			adsp-qos-scene-phone-call = <0x1 500>;
 		};
 
