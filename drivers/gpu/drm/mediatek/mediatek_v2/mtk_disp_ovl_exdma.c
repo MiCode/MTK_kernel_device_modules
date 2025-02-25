@@ -52,6 +52,9 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 int debug_module_bw[MAX_LAYER_NR];
 module_param_array(debug_module_bw, int, NULL, 0644);
 
+int debug_channel_wo_compress;
+module_param(debug_channel_wo_compress, int, 0644);
+
 #define REG_FLD(width, shift)                                                  \
 	((unsigned int)((((width)&0xFF) << 16) | ((shift)&0xFF)))
 
@@ -4453,24 +4456,25 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (!data->bw_base)
 			bw_val = mtk_drm_primary_frame_bw(crtc);
 		bw_val = (bw_val * usage_ovl_fmt) >> 2;
-		ret = mtk_ovl_calc_layer_hrt_bw(mtk_crtc, phy_id, exdma, bw_val, usage_ovl_compr,
-				&body_bw, &hdr_bw, &stash_body_bw, &stash_hdr_bw);
-		if (ret < 0) {
-			DDPMSG("%s,%d failed to calc layer hrt bw, ret:%d\n", __func__, __LINE__, ret);
-			break;
-		}
 
-#ifdef IF_COMP_STATE_ISSUE_FIXED_FOR_BWM_CALC
-		data->bw = ret;
-#else
-		if (usage_ovl_compr)
-			bw_val = bw_val * 90 / 100;
-		data->bw = bw_val;
-#endif
-		DDPQOS("%s,%s-%d,larb:%d,layer:%u,type:%d,bw:%d(%u,%u,%u,%u),compr:%d,base:%u\n",
+		if (debug_channel_wo_compress) {
+			if (usage_ovl_compr)
+				bw_val = bw_val * 90 / 100;
+			data->bw = bw_val;
+		} else {
+			ret = mtk_ovl_calc_layer_hrt_bw(mtk_crtc, phy_id, exdma, bw_val, usage_ovl_compr,
+					&body_bw, &hdr_bw, &stash_body_bw, &stash_hdr_bw);
+			if (ret < 0) {
+				DDPMSG("%s,%d failed to calc layer hrt bw, ret:%d\n", __func__, __LINE__, ret);
+				break;
+			}
+			data->bw = ret;
+		}
+		DDPQOS("%s,%s-%d,larb:%d,layer:%u,type:%d,bw:%d(%u,%u,%u,%u),compr:%d,base:%u,dbg:%d\n",
 			__func__, mtk_dump_comp_str_id(comp->id), comp->id,
 			data->larb_id, phy_id, data->type, data->bw, body_bw,
-			hdr_bw, stash_body_bw, stash_hdr_bw, usage_ovl_compr, bw_val);
+			hdr_bw, stash_body_bw, stash_hdr_bw, usage_ovl_compr,
+			bw_val, debug_channel_wo_compress);
 		break;
 	}
 	case PMQOS_UPDATE_BW: {

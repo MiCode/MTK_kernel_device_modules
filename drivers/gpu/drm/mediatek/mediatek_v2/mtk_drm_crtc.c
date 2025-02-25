@@ -5351,6 +5351,73 @@ void _mtk_crtc_atmoic_addon_module_disconnect(
 			crtc, ddp_mode, lye_state, cmdq_handle);
 }
 
+void mtk_bwm20_dump_compress_ratio(const char *source)
+{
+	unsigned int i;
+
+	DDPDBG_BWM("BWMT === Item\t\tKey\t\tavg\t\tpeak\tvalid\tactive\tphyid\tdual_phyid\tdirty=== @%s\n",
+		source ? source : "unknown");
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		if (all_layer_compress_ratio_table[i].key_value)
+			DDPDBG_BWM("BWMT2.0 === %4d\t\t%llu\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u ===\n", i,
+				all_layer_compress_ratio_table[i].key_value,
+				all_layer_compress_ratio_table[i].average_ratio,
+				all_layer_compress_ratio_table[i].peak_ratio,
+				all_layer_compress_ratio_table[i].valid,
+				all_layer_compress_ratio_table[i].active,
+				all_layer_compress_ratio_table[i].phy_id,
+				all_layer_compress_ratio_table[i].dual_phy_id,
+				all_layer_compress_ratio_table[i].dirty);
+		if (unchanged_compress_ratio_table[i].key_value)
+			DDPDBG_BWM("BWMT1.0 ... %4d\t\t%llu\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u ...\n", i,
+				unchanged_compress_ratio_table[i].key_value,
+				unchanged_compress_ratio_table[i].average_ratio,
+				unchanged_compress_ratio_table[i].peak_ratio,
+				unchanged_compress_ratio_table[i].valid,
+				unchanged_compress_ratio_table[i].active,
+				unchanged_compress_ratio_table[i].phy_id,
+				unchanged_compress_ratio_table[i].dual_phy_id,
+				unchanged_compress_ratio_table[i].dirty);
+	}
+}
+
+static void mtk_crtc_update_ovl_bwm2_phy(struct drm_crtc *crtc,
+		struct mtk_ddp_comp *comp, struct mtk_plane_state *plane_state, bool dual)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+	unsigned int i = 0, phy_id = U32_MAX;
+
+	if (IS_ERR_OR_NULL(crtc) || IS_ERR_OR_NULL(comp))
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	priv = crtc->dev->dev_private;
+	if (IS_ERR_OR_NULL(priv) || !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
+		return;
+
+	if (!plane_state->prop_val[PLANE_PROP_COMPRESS])
+		return;
+
+	mtk_ddp_comp_io_cmd(comp, NULL, OVL_COMP_TO_PHY_ID, &phy_id);
+
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		if (plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] ==
+			all_layer_compress_ratio_table[i].key_value) {
+			if (dual)
+				all_layer_compress_ratio_table[i].dual_phy_id = phy_id;
+			else
+				all_layer_compress_ratio_table[i].phy_id = phy_id;
+			break;
+		}
+	}
+	if (debug_channel_bw_flow)
+		DDPMSG("%s, ovl:%s-%u,phy:%u,dual:%d,update key:%u,bwm2[%u],compress:%d\n",
+			__func__, mtk_dump_comp_str_id(comp->id), comp->id,
+			phy_id, dual, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
+			i, plane_state->prop_val[PLANE_PROP_COMPRESS]);
+}
+
 static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 {
 	struct drm_plane *plane = NULL;
@@ -5384,6 +5451,7 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 					plane_state->comp_state.ext_lye_id);
 
 		mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+		mtk_crtc_update_ovl_bwm2_phy(crtc, comp, plane_state, false);
 
 		if (mtk_crtc && mtk_crtc->path_data && mtk_crtc->path_data->is_exdma_dual_layer && priv) {
 			comp_idx = dual_pipe_comp_mapping(priv->data->mmsys_id, comp->id);
@@ -5391,9 +5459,13 @@ static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 			if (comp_idx < DDP_COMPONENT_ID_MAX) {
 				comp = priv->ddp_comp[comp_idx];
 				mtk_ddp_comp_io_cmd(comp, NULL, OVL_PHY_USAGE, plane_state);
+				mtk_crtc_update_ovl_bwm2_phy(crtc, comp, plane_state, true);
 			}
 		}
 	}
+
+	if (debug_channel_bw_flow)
+		mtk_bwm20_dump_compress_ratio("begin");
 
 	/* For Assert layer */
 	if (mtk_crtc && mtk_drm_dal_enable()) {
@@ -10490,34 +10562,6 @@ bool add_bwm_entry(struct sort_list *list, struct mtk_plane_state *plane_state,
 	return true;
 }
 
-void mtk_bwm20_dump_compress_ratio(const char *source)
-{
-	unsigned int i;
-
-	DDPDBG_BWM("BWMT === Item\t\tKey\t\tavg\t\tpeak\tvalid\tactive\tlayer\tdirty=== @%s\n",
-		source ? source : "unknown");
-	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-		if (all_layer_compress_ratio_table[i].key_value)
-			DDPDBG_BWM("BWMT2.0 === %4d\t\t%llu\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u ===\n", i,
-				all_layer_compress_ratio_table[i].key_value,
-				all_layer_compress_ratio_table[i].average_ratio,
-				all_layer_compress_ratio_table[i].peak_ratio,
-				all_layer_compress_ratio_table[i].valid,
-				all_layer_compress_ratio_table[i].active,
-				all_layer_compress_ratio_table[i].phy_id,
-				all_layer_compress_ratio_table[i].dirty);
-		if (unchanged_compress_ratio_table[i].key_value)
-			DDPDBG_BWM("BWMT1.0 ... %4d\t\t%llu\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u ...\n", i,
-				unchanged_compress_ratio_table[i].key_value,
-				unchanged_compress_ratio_table[i].average_ratio,
-				unchanged_compress_ratio_table[i].peak_ratio,
-				unchanged_compress_ratio_table[i].valid,
-				unchanged_compress_ratio_table[i].active,
-				unchanged_compress_ratio_table[i].phy_id,
-				unchanged_compress_ratio_table[i].dirty);
-	}
-}
-
 unsigned int mtk_bwm_get_layer_compress_ratio(struct mtk_drm_crtc *mtk_crtc, unsigned int phy_id, bool peak)
 {
 	unsigned int i, compr_ratio = 0, tmp_ratio = 0;
@@ -10531,9 +10575,9 @@ unsigned int mtk_bwm_get_layer_compress_ratio(struct mtk_drm_crtc *mtk_crtc, uns
 		return 1000;
 
 	/* if !compr still need to check ext layers compr status */
-
 	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-		if ((phy_id == all_layer_compress_ratio_table[i].phy_id) &&
+		if ((phy_id == all_layer_compress_ratio_table[i].phy_id ||
+			 phy_id == all_layer_compress_ratio_table[i].dual_phy_id) &&
 			all_layer_compress_ratio_table[i].valid) {
 			tmp_ratio = peak ?
 					all_layer_compress_ratio_table[i].peak_ratio :
@@ -10568,8 +10612,8 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	struct drm_plane *plane;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	unsigned int plane_mask = 0, i = 0, j = 0;
-	struct mtk_ddp_comp *comp, *ovl_comp;
-	unsigned int active_index = 0, phy_id = U32_MAX;
+	struct mtk_ddp_comp *comp;
+	unsigned int active_index = 0;
 	unsigned long tmp_srt = 0;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_cmdq_cb_data *bwm20_cb_data;
@@ -10610,20 +10654,12 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		if (j >= MAX_LAYER_RATIO_NUMBER)
 			break;
 
-		phy_id = U32_MAX;
-		ovl_comp = mtk_crtc_get_plane_comp(crtc, plane_state);
-		if (!IS_ERR_OR_NULL(ovl_comp))
-			mtk_ddp_comp_io_cmd(ovl_comp, NULL, OVL_COMP_TO_PHY_ID, &phy_id);
-
 		if (!is_compress || (mtk_fb_get_dma(fb) == 0) ||
 			plane_state->mml_mode == MML_MODE_DIRECT_LINK ||
 			plane_state->mml_mode == MML_MODE_RACING ||
 			((drm_rect_height(&plane->state->src) >> 16) < 8))
-			DDPDBG_BWM("%s: skip bwm2,key:%llu,comp:%s-%u,layer:%u,mode:%u,compr:%u\n",
+			DDPDBG_BWM("%s: skip bwm2,key:%llu,mode:%u,compr:%u\n",
 				__func__, (unsigned int)plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
-				IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
-						mtk_dump_comp_str_id(ovl_comp->id),
-				IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id,
 				plane_state->mml_mode, is_compress);
 		else if (plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) {
 			bool found = false;
@@ -10641,13 +10677,9 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 					all_layer_compress_ratio_table[j].peak_ratio =
 						unchanged_compress_ratio_table[i].peak_ratio > 0 ?
 						unchanged_compress_ratio_table[i].peak_ratio : 1000;
-					all_layer_compress_ratio_table[j].phy_id = phy_id;
 					all_layer_compress_ratio_table[j].dirty = 0;
-					DDPDBG_BWM("%s:bwm2[%u] w/ bwm1[%u],key:%llu,comp:%s-%u,layer:%u[%d,%d]\n",
+					DDPDBG_BWM("%s:bwm2[%u] w/ bwm1[%u],key:%llu,ratio[%d,%d]\n",
 						__func__, j, i, unchanged_compress_ratio_table[i].key_value,
-						IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
-								mtk_dump_comp_str_id(ovl_comp->id),
-						IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id,
 						all_layer_compress_ratio_table[j].average_ratio,
 						all_layer_compress_ratio_table[j].peak_ratio);
 					found = true;
@@ -10663,13 +10695,9 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 						plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
 					all_layer_compress_ratio_table[j].average_ratio = 1000;
 					all_layer_compress_ratio_table[j].peak_ratio = 1000;
-					all_layer_compress_ratio_table[j].phy_id = phy_id;
 					all_layer_compress_ratio_table[j].dirty = 0;
-					DDPDBG_BWM("%s:failed bwm2[%u] w/ bwm1,key:%llu,comp:%s-%u,layer:%u\n",
-						__func__, j, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
-						IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
-								mtk_dump_comp_str_id(ovl_comp->id),
-						IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id);
+					DDPDBG_BWM("%s:failed bwm2[%u] w/ bwm1,key:%llu\n",
+						__func__, j, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID]);
 				}
 			}
 		} else if (mtk_get_format_bpp(fb->format->format) && active_index < 8) {
@@ -10679,7 +10707,6 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
 			all_layer_compress_ratio_table[j].average_ratio = 0;
 			all_layer_compress_ratio_table[j].peak_ratio = 0;
-			all_layer_compress_ratio_table[j].phy_id = phy_id;
 			all_layer_compress_ratio_table[j].dirty = 0;
 
 			//set layer config to bwm
@@ -10689,11 +10716,8 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] << 4 | j,
 				(unsigned long)mtk_fb_get_dma(fb));
 			active_index ++;
-			DDPDBG_BWM("%s:bwm2[%u],key:%llu,comp:%s-%u,layer:%u,valid:%u,dirty:%u\n",
+			DDPDBG_BWM("%s:bwm2[%u],key:%llu,valid:%u,dirty:%u\n",
 				__func__, j, all_layer_compress_ratio_table[j].key_value,
-				IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
-						mtk_dump_comp_str_id(ovl_comp->id),
-				IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id,
 				all_layer_compress_ratio_table[j].valid,
 				all_layer_compress_ratio_table[j].dirty);
 		}
@@ -10726,7 +10750,6 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		//trig bwm
 		mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_TRIG, NULL);
 		CRTC_MMP_MARK(0, bwm20, 0, comp->qos_bw);
-		//mtk_bwm20_dump_compress_ratio("calc");
 	} else
 		no_bwm20_layer = true;
 
