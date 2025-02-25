@@ -1826,6 +1826,7 @@
 		is-percore-need-to-check = <1>;
 	};
 
+
 	flt: flt@539d850 {
 		compatible = "mediatek,flt";
 		reg = <0 0x539d850 0 0x6d0>;
@@ -2019,14 +2020,13 @@
 //SLV_ADDR_WL:0x7E860
 //SLV0_ADDR_WL :0x05320000+0x7E860=0x539e860
 //MT6991 wlc reg = <0 0x0c2bf090 0 0x10>, /*tcm sram base*/
-
 	wl_info: wl-info@539e860 {
 		compatible = "mediatek,wl-info";
-
-		reg = <0 0x0539e860 0 0x10>; /*tcm wlc sram base*/
-
-		reg-names = "wl_sram_base";
-
+		wl-support = <1>;
+		reg = <0 0x0539e860 0 0x10>, /*tcm sram base*/
+			<0 0x051c2000 0 0x13b8>; /*tcm wl-base sram*/
+		reg-names = "wl_sram_base",
+			"wl_tbl_base";
 	};
 
 	dpt_info: dpt-info@538f820 {
