@@ -509,6 +509,33 @@ int adpf_notify_callback(unsigned int cmd, unsigned int sid)
 	return 0;
 }
 
+/**
+ * This is a temporary workaround to mitigate the abuse of ADPF by systemui.
+ * It checks if the given pid belongs to the systemui process.
+ * If it does, the request will be ignored.
+ */
+bool check_pid_for_systemui(int pid)
+{
+	struct task_struct *tsk = NULL;
+	char tmp_thread_name[16];
+
+	rcu_read_lock();
+	tsk = find_task_by_vpid(pid);
+	if (tsk) {
+		get_task_struct(tsk);
+		strscpy(tmp_thread_name, tsk->comm, 16);
+		tmp_thread_name[15] = '\0';
+		put_task_struct(tsk);
+	} else
+		tmp_thread_name[0] = '\0';
+	rcu_read_unlock();
+
+	if (strstr(tmp_thread_name, "ndroid.systemui"))
+		return true;
+	else
+		return false;
+}
+
 int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 							unsigned int uid, int *threadIds,
 							int threadIds_size, long durationNanos)
@@ -537,6 +564,11 @@ int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 	sessionList[sid]->used = SESSION_USED;
 
 	mutex_unlock(&adpf_mutex);
+
+	if (check_pid_for_systemui(tgid)) {
+		pr_info("[%s] systemui detected, ignore the request", __func__);
+		return 0;
+	}
 
 	adpf_notify_callback(ADPF_CREATE_HINT_SESSION, sid);
 
