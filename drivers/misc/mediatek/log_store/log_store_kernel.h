@@ -175,6 +175,10 @@ struct mem_desc_ls {
 #define BOOT_PHASE_PRE_SUSPEND 0x08
 #define BOOT_PHASE_EXIT_RESUME 0X09
 
+const char *pmic_name[] ={
+	"mt6661-4",
+	"pmic"
+};
 
 #if IS_ENABLED(CONFIG_MTK_DRAM_LOG_STORE)
 bool get_pmic_interface(void);

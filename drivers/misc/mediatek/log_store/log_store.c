@@ -612,11 +612,16 @@ bool get_pmic_interface(void)
 	struct device_node *np;
 	struct platform_device *pmic_pdev = NULL;
 	unsigned int reg_val = 0;
+	int pmic_name_size = ARRAY_SIZE(pmic_name);
 
 	if (pmic_addr == 0)
 		return false;
 
-	np = of_find_node_by_name(NULL, "pmic");
+	for (int i = 0; i < pmic_name_size; i++) {
+		np = of_find_node_by_name(NULL, pmic_name[i]);
+		if (np)
+			break;
+	}
 	if (!np) {
 		pr_err("log_store: pmic node not found.\n");
 		return false;
@@ -1188,9 +1193,7 @@ static int __init log_store_early_init(void)
 {
 
 	log_store_sram_init();
-#ifdef MODULE
 	log_store_late_init();
-#endif
 
 	return 0;
 }
