@@ -5464,7 +5464,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			adsp-rsv-core-dump-a = <0x400>;
 			adsp-rsv-core-dump-b = <0x400>;
 			adsp-rsv-pcie = <0x0>;
-			adsp-rsv-l2sram = <0x80>;
 			adsp-rsv-xhci = <0x80000>;
 			adsp-rsv-audio = <0x5c0000>;
 		};
