@@ -604,7 +604,7 @@ static int emi_fake_eng_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id emi_fake_eng_of_ids[] = {
-	{.compatible = "mediatek,emi-fake-engine",},
+	{.compatible = "mediatek,emi-fake-engine-v2",},
 	{}
 };
 
@@ -612,7 +612,7 @@ static struct platform_driver emi_fake_eng_drv = {
 	.probe = emi_fake_eng_probe,
 	.remove = emi_fake_eng_remove,
 	.driver = {
-		.name = "emi_fake_eng_drv",
+		.name = "emi_fake_eng_drv_v2",
 		.owner = THIS_MODULE,
 		.of_match_table = emi_fake_eng_of_ids,
 	},

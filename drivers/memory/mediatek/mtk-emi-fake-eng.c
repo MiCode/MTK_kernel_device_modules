@@ -11,11 +11,14 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_fdt.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
+#include <linux/iommu.h>
 
 #define FAKE_ENG_EN				0x0
 #define FAKE_ENG_RST			0x4
@@ -42,6 +45,7 @@
 #define FAKE_ENG_START_ADDR_RD		0xbc
 #define FAKE_ENG_START_ADDR_RD_2ND	0xc0
 #define FAKE_ENG_ADDR_RD			0xc4
+#define FAKE_ENG_LARB_MODE	0xffc
 
 #define SIZE 256
 
@@ -84,6 +88,7 @@ struct fake_eng_set {
 	unsigned int freeze_en;
 	unsigned int emi_disp_en;
 	unsigned int chn_hash_en;
+	unsigned int aid;
 };
 
 struct emi_fake_eng {
@@ -92,6 +97,7 @@ struct emi_fake_eng {
 	unsigned int emi_fake_eng_cnt;
 	unsigned int bitmap;
 	struct fake_eng_set feng_arg;
+	unsigned int support_iommu;
 };
 
 struct reg_info {
@@ -135,6 +141,8 @@ static int fake_eng_init(unsigned int chn_id)
 {
 	unsigned long phy_addr;
 	u32 val;
+	struct device_node *node;
+	struct reserved_mem *rmem;
 
 	/* Basic setting for fake engine */
 	fakeng->feng_arg.chn_number = 0;
@@ -180,16 +188,42 @@ static int fake_eng_init(unsigned int chn_id)
 	if (!fakeng->k_addr[chn_id])
 		return -ENOMEM;
 
-	phy_addr = virt_to_phys(fakeng->k_addr[chn_id]);
-	fakeng->feng_arg.start_addr_wr = phy_addr;
-	fakeng->feng_arg.start_addr_rd = phy_addr;
-	fakeng->feng_arg.start_addr_wr_2nd = phy_addr;
-	fakeng->feng_arg.start_addr_rd_2nd = phy_addr;
+	if (fakeng->support_iommu) {
+		/* get reserved memory from reserved node */
+		node = of_find_compatible_node(NULL, NULL, "mediatek,apinfra_fake_eng_buf");
+		if (!node) {
+			pr_info("%s(), no node for reserved memory\n", __func__);
+			return -ENOMEM;
+		}
+		rmem = of_reserved_mem_lookup(node);
+		if (!rmem) {
+			pr_info("%s(), cannot lookup reserved memory\n", __func__);
+			return -ENOMEM;
+		}
+		pr_info("mediatek,emi_fake_eng_buf, start = 0x%llx\n, size = 0x%llx\n", rmem->base, rmem->size);
 
-	fakeng->feng_arg.start_addr_wr_extend = phy_addr >> 32;
-	fakeng->feng_arg.start_addr_rd_extend = phy_addr >> 32;
-	fakeng->feng_arg.start_addr_wr_2nd_extend = phy_addr >> 32;
-	fakeng->feng_arg.start_addr_rd_2nd_extend = phy_addr >> 32;
+		fakeng->feng_arg.start_addr_wr = rmem->base;//phy_addr;
+		fakeng->feng_arg.start_addr_rd = rmem->base;//phy_addr;
+		fakeng->feng_arg.start_addr_wr_2nd = rmem->base;//phy_addr;
+		fakeng->feng_arg.start_addr_rd_2nd = rmem->base;//phy_addr;
+		fakeng->feng_arg.start_addr_wr_extend = (rmem->base)>>32;//phy_addr >> 32;
+		fakeng->feng_arg.start_addr_rd_extend = (rmem->base)>>32;//phy_addr >> 32;
+		fakeng->feng_arg.start_addr_wr_2nd_extend = (rmem->base)>>32;//phy_addr >> 32;
+		fakeng->feng_arg.start_addr_rd_2nd_extend = (rmem->base)>>32;//phy_addr >> 32;
+		/* change larb mode */
+		writel(0x1, fakeng->fake_eng_base[chn_id] + FAKE_ENG_LARB_MODE);
+	} else {
+		phy_addr = virt_to_phys(fakeng->k_addr[chn_id]);
+		fakeng->feng_arg.start_addr_wr = phy_addr;
+		fakeng->feng_arg.start_addr_rd = phy_addr;
+		fakeng->feng_arg.start_addr_wr_2nd = phy_addr;
+		fakeng->feng_arg.start_addr_rd_2nd = phy_addr;
+
+		fakeng->feng_arg.start_addr_wr_extend = phy_addr >> 32;
+		fakeng->feng_arg.start_addr_rd_extend = phy_addr >> 32;
+		fakeng->feng_arg.start_addr_wr_2nd_extend = phy_addr >> 32;
+		fakeng->feng_arg.start_addr_rd_2nd_extend = phy_addr >> 32;
+	}
 
 	/* Disable fake engine*/
 	writel(0x0, fakeng->fake_eng_base[chn_id] + FAKE_ENG_EN);
@@ -215,11 +249,20 @@ static int fake_eng_init(unsigned int chn_id)
 			fakeng->fake_eng_base[chn_id] + FAKE_ENG_CON1);
 
 	/* FAKE_ENG_CON2 AXI protocal */
-	writel((fakeng->feng_arg.ar_slc << 19) |
+	if (fakeng->support_iommu) {
+		writel((fakeng->feng_arg.ar_slc << 19) |
+			(fakeng->feng_arg.aw_slc << 14) |
+			(fakeng->feng_arg.burst_size << 4) |
+			(fakeng->feng_arg.burst_len << 0) |
+			(fakeng->feng_arg.aid << 10),
+			fakeng->fake_eng_base[chn_id] + FAKE_ENG_CON2);
+	} else {
+		writel((fakeng->feng_arg.ar_slc << 19) |
 			(fakeng->feng_arg.aw_slc << 14) |
 			(fakeng->feng_arg.burst_size << 4) |
 			(fakeng->feng_arg.burst_len << 0),
 			fakeng->fake_eng_base[chn_id] + FAKE_ENG_CON2);
+	}
 
 	/* FAKE_ENG_CON3 Command control */
 	writel(fakeng->feng_arg.grp_aomunt,
@@ -482,10 +525,19 @@ static int emi_fake_eng_probe(struct platform_device *pdev)
 	struct device_node *setting;
 	struct emi_fake_eng *feng;
 	struct pre_setting *pset;
+	struct device *dev = &pdev->dev;
+	struct iommu_domain *domain;
+	struct device_node *node;
+	struct reserved_mem *rmem;
+	int prot = IOMMU_READ | IOMMU_WRITE;
+	unsigned long iova;
+	size_t size;
+	phys_addr_t phys;
 
 	int ret, i;
 	unsigned int pre_cnt = 0;
-	unsigned int value;
+	unsigned int value, support_iommu = 0;
+	struct of_phandle_args args;
 
 	dev_info(&pdev->dev, "driver probed\n");
 
@@ -511,6 +563,53 @@ static int emi_fake_eng_probe(struct platform_device *pdev)
 		feng->fake_eng_base[i] = of_iomap(emi_feng_node, i);
 		if (!feng->fake_eng_base[i])
 			return -ENOMEM;
+	}
+
+	/* get support_iommu property */
+	ret = of_property_read_u32(emi_feng_node,
+		"support-iommu", &support_iommu);
+	if (ret)
+		dev_info(&pdev->dev, "No support_iommu property\n");
+
+	feng->support_iommu = support_iommu;
+
+	if (feng->support_iommu) {
+		domain = iommu_get_domain_for_dev(dev);
+		if (!domain) {
+			dev_info(dev, "no IOMMU domain found for fake engine\n");
+			return -ENOENT;
+		}
+
+		/* Otherwise, get reserved memory from reserved node */
+		node = of_find_compatible_node(NULL, NULL, "mediatek,apinfra_fake_eng_buf");
+		if (!node) {
+			pr_info("%s(), no node for reserved memory\n", __func__);
+			return -ENOMEM;
+		}
+
+		rmem = of_reserved_mem_lookup(node);
+		if (!rmem) {
+			pr_info("%s(), cannot lookup reserved memory\n", __func__);
+			return -ENOMEM;
+		}
+		pr_info("mediatek,emi_fake_eng_buf, start = 0x%llx\n, size = 0x%llx\n", rmem->base, rmem->size);
+
+		iova = rmem->base;
+		phys = rmem->base;
+		size = rmem->size;
+
+		/* go to coherence path */
+		prot |= IOMMU_CACHE;
+		/* Create identical mapping for ZRAM with SMMU S1 */
+		ret = iommu_map(domain, iova, phys, size, prot, GFP_KERNEL);
+		if (ret) {
+			pr_info("%s - iommu_map err : %d\n", __func__, ret);
+			return ret;
+		}
+
+		if (!of_parse_phandle_with_args(emi_feng_node, "iommus", "#iommu-cells", 0, &args))
+			feng->feng_arg.aid = args.args[0];
+		pr_info("feng->feng_arg.aid = 0x%x\n", feng->feng_arg.aid);
 	}
 
 	feng->k_addr = devm_kmalloc_array(&pdev->dev,
