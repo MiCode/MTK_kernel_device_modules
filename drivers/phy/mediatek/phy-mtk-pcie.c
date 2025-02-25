@@ -41,6 +41,9 @@
 #define PEXTP_DIG_GLB_50		0x50
 #define RG_XTP_CKM_EN_L1S0		BIT(13)
 #define RG_XTP_CKM_EN_L1S1		BIT(14)
+#define PEXTP_DIG_GLB_54		0x54
+#define RG_XTP_CKBG_L1S2_STB_T_SEL	GENMASK(18, 9)
+#define CKBG_L1S2_STB_T_SEL_9		0x9
 #define PEXTP_DIG_PROBE_OUT		0xd0
 #define PEXTP_DIG_GLB_70		0x70
 #define RG_XTP_PIPE_UPDT		BIT(4)
@@ -100,6 +103,7 @@
 #define RG_XTP_LN_RX_AEQ_EGEQ_RATIO_GEN3	GENMASK(21, 16)
 #define RG_XTP_LN_RX_AEQ_EGEQ_RATIO_GEN4	GENMASK(29, 24)
 #define AEQ_EGEQ_RATIO_GEN3_TO_22		0x16
+#define AEQ_EGEQ_RATIO_GEN4_TO_20		0x14
 #define AEQ_EGEQ_RATIO_GEN4_TO_22		0x16
 
 #define PEXTP_DIG_LN_RX2_94		0x6094
@@ -148,6 +152,8 @@
 
 #define PEXTP_ANA_LN_TRX_34		0xA034
 #define RG_XTP_LN_RX_FE			BIT(15)
+#define RG_XTP_LN_RX_FE_RESERVE		GENMASK(7, 6)
+#define LN_RX_FE_RESERVE_0		0x0
 
 #define PEXTP_ANA_LN_TRX_38		0xA038
 #define RG_XTP_LN_RX_LVSH_CM_SEL	GENMASK(15, 12)
@@ -1255,6 +1261,26 @@ static int mtk_pcie_phy_init_6993(struct phy *phy)
 				     i * PEXTP_ANA_LANE_OFFSET,
 				     RG_XTP_LN_RX_SGDT_GEN4_HF,
 				     RX_SGDT_GEN4_HF_TO_2);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_GLB_54 +
+				     PEXTP_ANA_LANE_OFFSET * i,
+				     RG_XTP_CKBG_L1S2_STB_T_SEL,
+				     CKBG_L1S2_STB_T_SEL_9);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_34 +
+				     PEXTP_ANA_LANE_OFFSET * i,
+				     RG_XTP_LN_RX_FE_RESERVE,
+				     LN_RX_FE_RESERVE_0);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_ANA_LN_TRX_6C +
+				     PEXTP_ANA_LANE_OFFSET * i,
+				     RG_XTP_LN_RX_AEQ_CTLE_ERR_TYPE,
+				     AEQ_CTLE_ERR_TYPE_H15);
+
+		mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_RX2_04 +
+				     PEXTP_ANA_LANE_OFFSET * i,
+				     RG_XTP_LN_RX_AEQ_EGEQ_RATIO_GEN4,
+				     AEQ_EGEQ_RATIO_GEN4_TO_20);
 	}
 
 	ret = mtk_pcie_sphy3_calibrate(phy);
