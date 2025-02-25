@@ -422,6 +422,7 @@ static void apusys_sapu_remove(struct platform_device *pdev)
 
 	if (!sapu) {
 		pr_info("%s: sapu is NULL\n", __func__);
+		return;
 	}
 
 	mutex_destroy(&sapu->dmabuf_lock);
