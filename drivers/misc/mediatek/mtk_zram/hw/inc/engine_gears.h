@@ -27,7 +27,7 @@
 #define ENGINE_FREE_RUN_GEAR	(99)
 
 /* Min start gear level for compression & decompression */
-#define ENGINE_ENC_MIN_KICK_GEAR	(ENGINE_MIN_GEAR + 1)
+#define ENGINE_ENC_MIN_KICK_GEAR	(ENGINE_MIN_GEAR)
 #define ENGINE_DEC_MIN_KICK_GEAR	(ENGINE_MAX_GEAR - 2)
 
 struct engine_gear_control_t {

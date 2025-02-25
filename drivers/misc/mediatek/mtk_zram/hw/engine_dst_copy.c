@@ -528,7 +528,7 @@ error:
  * Prepare for the compression of one page
  */
 static bool fill_compression_info(struct hwfifo *fifo, uint32_t entry,
-		struct page *page, struct comp_pp_info *from)
+		struct page *page, struct comp_pp_info *from, bool ref_inc)
 {
 	struct compress_cmd *cmdp = COMP_CMD(fifo, entry);
 	struct comp_pp_info *pp_info = COMP_CMPL(fifo, entry);
@@ -544,7 +544,8 @@ static bool fill_compression_info(struct hwfifo *fifo, uint32_t entry,
 	memcpy(pp_info, from, sizeof(struct comp_pp_info));
 
 	/* Increase the reference count for compression */
-	refcount_inc_for_comp(from);
+	if (ref_inc)
+		refcount_inc_for_comp(from);
 
 #ifdef ZRAM_ENGINE_DEBUG
 	dump_comp_cmd(cmdp);

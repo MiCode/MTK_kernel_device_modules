@@ -487,6 +487,15 @@ static inline void update_cmd_before_compression(struct compress_cmd *cmd,
 	 */
 }
 
+/* Set cmd as idle and reset src_addr to 0 (used for reset case) */
+static inline void set_comp_cmd_as_idle(struct compress_cmd *cmd)
+{
+	cmd->status = COMP_CMD_IDLE;
+	cmd->src_addr = 0x0;
+	cmd->word_1_value = 0x0;
+	wmb();
+}
+
 /*
  * Decompression FIFO CMD Format -
  */

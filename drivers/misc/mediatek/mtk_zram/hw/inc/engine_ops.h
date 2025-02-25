@@ -16,7 +16,7 @@ struct engine_operations_struct {
 
 	/* Prepare CMD for the compression of one page */
 	bool (*fill_compression_info)(struct hwfifo *fifo, uint32_t entry,
-				struct page *page, struct comp_pp_info *from);
+				struct page *page, struct comp_pp_info *from, bool ref_inc);
 
 	/* Pairs for allocate & release compression fifo DST buffers*/
 	int (*fill_comp_fifo_dst_buffers)(struct hwfifo *fifo, int id);

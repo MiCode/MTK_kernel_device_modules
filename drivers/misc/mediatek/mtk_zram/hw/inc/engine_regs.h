@@ -223,6 +223,7 @@ static const struct smmuwp_reg zram_smmuwp_regs[] = {
 };
 
 // ---------------------- ZRAM_ENC Definitions ---------------------- //
+#define ZRAM_ENC_RESET						0x0018
 #define ZRAM_ENC_GMCIF_CON_READ_INSTN				0x001C
 #define ZRAM_ENC_GMCIF_CON_READ_DATA				0x0020
 #define ZRAM_ENC_GMCIF_CON_WRITE_INSTN				0x0024
@@ -261,6 +262,7 @@ static const struct smmuwp_reg zram_smmuwp_regs[] = {
 #define ZRAM_ENC_DBG_3						0x050C
 
 // ---------------------- ZRAM_DEC Definitions ---------------------- //
+#define ZRAM_DEC_RESET						0x0010
 #define	ZRAM_DEC_GMCIF_CON_READ_CMD				0x0018
 #define	ZRAM_DEC_GMCIF_CON_READ_DATA				0x001C
 #define	ZRAM_DEC_GMCIF_CON_WRITE_CMD				0x0020
@@ -525,4 +527,17 @@ static inline void engine_kick(void __iomem *write_idx_reg)
 
 	writel(ENGINE_START_MASK | reg_val, write_idx_reg);
 }
+
+/* Warm reset enc */
+static inline void engine_enc_reset(struct engine_control_t *ctrl)
+{
+	writel(0x1, ctrl->zram_enc_base + ZRAM_ENC_RESET);
+}
+
+/* Warm reset dec */
+static inline void engine_dec_reset(struct engine_control_t *ctrl)
+{
+	writel(0x1, ctrl->zram_dec_base + ZRAM_DEC_RESET);
+}
+
 #endif /* _ENGINE_REGS_H_ */

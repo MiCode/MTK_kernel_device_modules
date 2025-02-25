@@ -186,6 +186,8 @@ enum glaflags {
 	GLA_encnotready,	/* Gear set up is ready for compression */
 	GLA_encdone,		/* Gear down for compression */
 	GLA_decdone,		/* Gear down for decompression */
+	GLA_encrst,		/* Notify requesters we will reset compression. Don't bother us */
+	GLA_decrst,		/* Notify requesters we will reset decompression. Don't bother us */
 };
 
 #define SETGLAFLAG(uname, lname)					\
@@ -216,6 +218,8 @@ GLAFLAG(Decset, decset);
 GLAFLAG(Encdone, encdone);
 GLAFLAG(Decdone, decdone);
 GLAFLAG(EncNotready, encnotready);
+GLAFLAG(EncRst, encrst);
+GLAFLAG(DecRst, decrst);
 
 static unsigned long gla_flags;
 
@@ -1126,6 +1130,100 @@ static void comp_hang_handle(struct zram_engine_t *hwz)
 	spin_unlock(&hwz->fifo_2_lock);
 }
 
+/* Handler (with engine reset) when comp is not started successfully */
+static void comp_hang_handle_with_reset(struct zram_engine_t *hwz)
+{
+	struct hwfifo *fifo;
+	uint32_t monitor_widx;
+	uint32_t start, end, index, entry;
+	struct compress_cmd *cmdp;
+	struct comp_pp_info *pp_info;
+
+	/*
+	 * Set atomic flag to notify we are handling reset and take a nap.
+	 * In the meantime, kswapd may being adding new request or trying slowpath.
+	 * Concurent requests from trying slowpath can be avoided by the fifo_2_lock.
+	 * But for concurrent ones from kswapd adding new request to main fifo and to
+	 * avoid unnecessary overhead in kswapd, we can try a longer nap to monitor
+	 * the change of write index.
+	 */
+	SetGlaEncRst(&gla_flags);
+	fifo = &hwz->fifo_1;
+
+retry:
+	monitor_widx = fifo->write_idx;
+	usleep_idle_range(5000, 10000);
+
+	/*
+	 * Before doing reset, fifo_2_lock should be acquired to avoid
+	 * other concurrent compression requests.
+	 */
+	spin_lock(&hwz->fifo_2_lock);
+
+	if (fifo->write_idx != monitor_widx) {
+		pr_info("%s: main fifo busy...\n", __func__);
+		spin_unlock(&hwz->fifo_2_lock);
+		goto retry;
+	}
+
+	/* Do warm reset */
+	engine_enc_reset(&hwz->ctrl);
+	udelay(1);
+
+	/* Check the range for reset */
+
+	/* main fifo */
+	if (!comp_fifo_1_empty(fifo)) {
+
+		start = comp_fifo_1_HtS_complete_index(fifo);
+		end = fifo->write_idx;
+		fifo->write_idx = start;
+
+		/* Show information */
+		pr_info("%s: main fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
+
+		/* Send cmds again */
+		for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
+			entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
+			cmdp = COMP_CMD(fifo, entry);
+			pp_info = COMP_CMPL(fifo, entry);
+			pr_info("%s: index(%u)\n", __func__, pp_info->index);
+			set_comp_cmd_as_idle(cmdp);
+			hwz->ops->fill_compression_info(fifo, entry, pp_info->page, pp_info, false);
+			update_comp_fifo_1_write_index(fifo);
+		}
+	}
+
+	/* second fifo */
+	fifo = &hwz->fifo_2;
+	if (!comp_fifo_2_empty(fifo)) {
+
+		start = comp_fifo_2_HtS_complete_index(fifo);
+		end = fifo->write_idx;
+		fifo->write_idx = start;
+
+		/* Show information */
+		pr_info("%s: second fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
+
+		/* Send cmds again */
+		for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
+			entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
+			cmdp = COMP_CMD(fifo, entry);
+			pp_info = COMP_CMPL(fifo, entry);
+			pr_info("%s: index(%u)\n", __func__, pp_info->index);
+			set_comp_cmd_as_idle(cmdp);
+			hwz->ops->fill_compression_info(fifo, entry, pp_info->page, pp_info, false);
+			update_comp_fifo_2_write_index(fifo);
+		}
+	}
+
+	/* Unlock */
+	spin_unlock(&hwz->fifo_2_lock);
+
+	/* Reset is done */
+	ClearGlaEncRst(&gla_flags);
+}
+
 /* Handler when comp is not started successfully */
 #if 0
 static void dump_pending_comp_cmds(struct zram_engine_t *hwz)
@@ -1256,6 +1354,9 @@ repeat:
 
 			/* Increase the suspect hang count */
 			atomic_inc(&enc_suspect_hang_count);
+
+			/* Try to warm reset engine */
+			comp_hang_handle_with_reset(hwz);
 		}
 
 		/* Repeat until all compression cmds are processed */
@@ -1544,6 +1645,10 @@ int hwcomp_compress_page(void *hw, struct page *page, struct comp_pp_info *pp_in
 retry:
 #endif
 
+	/* Engine is doing reset, don't bother it */
+	if (GlaEncRst(&gla_flags))
+		return -EBUSY;
+
 	/* Lockless fifo for kswapd only */
 	if (current_is_kswapd()) {
 		fifo = &hwz->fifo_1;
@@ -1579,7 +1684,7 @@ next_cmd_fifo_1:
 
 		/* Query entry and fill request */
 		entry = comp_fifo_1_write_entry(fifo);
-		valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info);
+		valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info, true);
 		if (GlaEncNotready(&gla_flags)) {
 
 			/* Wake up gear level adjusting thread to set up default gear if necessary */
@@ -1658,7 +1763,7 @@ next_cmd_fifo_2:
 
 	/* Query entry and fill request */
 	entry = comp_fifo_2_write_entry(fifo);
-	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info);
+	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info, true);
 	if (GlaEncNotready(&gla_flags)) {
 
 		/* Wake up gear level adjusting thread to set up default gear if necessary */
