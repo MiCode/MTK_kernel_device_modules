@@ -26,8 +26,8 @@ static enum mtk_dpc_version mml_dpc_version;
 
 
 #define mml_sysid_to_dpc_subsys_v3(sysid)	\
-	(sysid == mml_sys_tile ? DPC_SUBSYS_MML0 : \
-	(sysid == mml_sys_frame ? DPC_SUBSYS_MML1 : DPC_SUBSYS_MML2))
+	(sysid == mml_sys_tile ? DPC3_SUBSYS_MML0 : \
+	(sysid == mml_sys_frame ? DPC3_SUBSYS_MML1 : DPC3_SUBSYS_MML2))
 #define mml_sysid_to_dpc_user_v3(sysid)	\
 	(sysid == mml_sys_tile ? DISP_VIDLE_USER_MML0 : \
 	(sysid == mml_sys_frame ? DISP_VIDLE_USER_MML1 : DISP_VIDLE_USER_MML2))
@@ -35,7 +35,7 @@ static enum mtk_dpc_version mml_dpc_version;
 	(sysid == mml_sys_tile ? DISP_VIDLE_USER_MML0_CMDQ : \
 	(sysid == mml_sys_frame ? DISP_VIDLE_USER_MML1_CMDQ : DISP_VIDLE_USER_MML2_CMDQ))
 #define mml_larb_idx_to_dpc_subsys(larb_idx)	\
-	(larb_idx == 0 ? DPC_SUBSYS_MML0 : (larb_idx == 1 ? DPC_SUBSYS_MML1 : DPC_SUBSYS_MML2))
+	(larb_idx == 0 ? DPC3_SUBSYS_MML0 : (larb_idx == 1 ? DPC3_SUBSYS_MML1 : DPC3_SUBSYS_MML2))
 /* larb_idx [larb2, larb3, larb56, larb57] */
 #define mml_larb_idx_to_dpc_srt_read_idx(larb_idx)	\
 	(larb_idx == 0 ? 4 : (larb_idx == 1 ? 12 : (larb_idx == 2 ? 0 : (larb_idx == 3 ? 8 : 0))))
@@ -56,10 +56,20 @@ void mml_dpc_group_enable(u32 sysid, bool en)
 		return;
 	}
 
-	if (mml_dpc_version == DPC_VER3)
-		mml_dpc_funcs.dpc_group_enable(mml_sysid_to_dpc_subsys_v3(sysid), en);
-	else
-		mml_dpc_funcs.dpc_group_enable(mml_sysid_to_dpc_subsys(sysid), en);
+	switch (mml_dpc_version) {
+	case DPC_VER1:
+	case DPC_VER2:
+		mml_dpc_funcs.dpc_group_enable(
+			mml_sysid_to_dpc_subsys(sysid), en);
+		break;
+	case DPC_VER3:
+		mml_dpc_funcs.dpc_group_enable(
+			mml_sysid_to_dpc_subsys_v3(sysid), en);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
+	}
 }
 
 void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode)
@@ -74,20 +84,37 @@ void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode)
 		return;
 	}
 
-	if (mml_dpc_version == DPC_VER3)
-		mml_dpc_funcs.dpc_mtcmos_auto(mml_sysid_to_dpc_subsys_v3(sysid), mtcmos_mode);
-	else
-		mml_dpc_funcs.dpc_mtcmos_auto(mml_sysid_to_dpc_subsys(sysid), mtcmos_mode);
+	switch (mml_dpc_version) {
+	case DPC_VER1:
+		mml_dpc_funcs.dpc_mtcmos_auto(
+			mml_sysid_to_dpc_subsys(sysid), mtcmos_mode);
+		break;
+	case DPC_VER3:
+		mml_dpc_funcs.dpc_mtcmos_auto(
+			mml_sysid_to_dpc_subsys_v3(sysid), mtcmos_mode);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
+	}
 }
 
 int mml_dpc_power_keep(u32 sysid)
 {
 	enum mtk_vidle_voter_user user;
 
-	if (mml_dpc_version == DPC_VER3)
-		user = mml_sysid_to_dpc_user_v3(sysid);
-	else
+	switch (mml_dpc_version) {
+	case DPC_VER1:
+	case DPC_VER2:
 		user = mml_sysid_to_dpc_user(sysid);
+		break;
+	case DPC_VER3:
+		user = mml_sysid_to_dpc_user_v3(sysid);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
+	}
 
 	if (mml_dpc_funcs.dpc_vidle_power_keep == NULL) {
 		mml_msg_dpc("%s dpc_power_keep not exist", __func__);
@@ -102,10 +129,18 @@ void mml_dpc_power_release(u32 sysid)
 {
 	enum mtk_vidle_voter_user user;
 
-	if (mml_dpc_version == DPC_VER3)
-		user = mml_sysid_to_dpc_user_v3(sysid);
-	else
+	switch (mml_dpc_version) {
+	case DPC_VER1:
+	case DPC_VER2:
 		user = mml_sysid_to_dpc_user(sysid);
+		break;
+	case DPC_VER3:
+		user = mml_sysid_to_dpc_user_v3(sysid);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
+	}
 
 	if (mml_dpc_funcs.dpc_vidle_power_release == NULL) {
 		mml_msg_dpc("%s dpc_power_release not exist", __func__);
@@ -120,10 +155,18 @@ int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq
 {
 	enum mtk_vidle_voter_user user;
 
-	if (mml_dpc_version == DPC_VER3)
-		user = mml_sysid_to_dpc_user_cmdq_v3(sysid);
-	else
+	switch (mml_dpc_version) {
+	case DPC_VER1:
+	case DPC_VER2:
 		user = mml_sysid_to_dpc_user_cmdq(sysid);
+		break;
+	case DPC_VER3:
+		user = mml_sysid_to_dpc_user_cmdq_v3(sysid);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
+	}
 
 	if (!mml_dpc_funcs.dpc_vidle_power_keep_by_gce) {
 		mml_msg_dpc("%s dpc_vidle_power_keep_by_gce not exist", __func__);
@@ -140,10 +183,18 @@ void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt)
 {
 	enum mtk_vidle_voter_user user;
 
-	if (mml_dpc_version == DPC_VER3)
-		user = mml_sysid_to_dpc_user_cmdq_v3(sysid);
-	else
+	switch (mml_dpc_version) {
+	case DPC_VER1:
+	case DPC_VER2:
 		user = mml_sysid_to_dpc_user_cmdq(sysid);
+		break;
+	case DPC_VER3:
+		user = mml_sysid_to_dpc_user_cmdq_v3(sysid);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
+	}
 
 	if (!mml_dpc_funcs.dpc_vidle_power_release_by_gce) {
 		mml_msg_dpc("%s dpc_vidle_power_release_by_gce not exist", __func__);
@@ -162,20 +213,24 @@ void mml_dpc_hrt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep)
 		return;
 	}
 
-	if (mml_dpc_version == DPC_VER1 || mml_dpc_version == DPC_VER2) {
+	switch (mml_dpc_version) {
+	case DPC_VER1:
 		/* larb_idx = sys_id */
 		if (larb_idx == mml_sys_frame || larb_idx == mml_sys_tile)
-			mml_dpc_funcs.dpc_hrt_bw_set(mml_sysid_to_dpc_subsys(larb_idx),
+			mml_dpc_funcs.dpc_hrt_bw_set(
+				mml_sysid_to_dpc_subsys(larb_idx),
 				bw_in_mb, force_keep);
-	} else {
-		mml_dpc_funcs.dpc_hrt_bw_set(mml_larb_idx_to_dpc_subsys(larb_idx),
-			bw_in_mb, force_keep);
-	}
-
-	if (mml_dpc_version == DPC_VER2) {
+		break;
+	case DPC_VER2:
+		/* larb_idx = sys_id */
+		if (larb_idx == mml_sys_frame || larb_idx == mml_sys_tile)
+			mml_dpc_funcs.dpc_hrt_bw_set(
+				mml_sysid_to_dpc_subsys(larb_idx),
+				bw_in_mb, force_keep);
 		/* report hrt read channel bw */
 		if (mml_dpc_funcs.dpc_channel_bw_set_by_idx == NULL) {
-			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist", __func__);
+			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist",
+				__func__);
 			return;
 		}
 		/* larb_idx = sys_id */
@@ -184,16 +239,25 @@ void mml_dpc_hrt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep)
 				mml_sysid_to_dpc_subsys(larb_idx),
 				mml_sysid_to_dpc_hrt_read_idx(larb_idx),
 				bw_in_mb);
-	} else if (mml_dpc_version == DPC_VER3) {
+		break;
+	case DPC_VER3:
+		mml_dpc_funcs.dpc_hrt_bw_set(
+			mml_larb_idx_to_dpc_subsys(larb_idx),
+			bw_in_mb, force_keep);
 		/* report hrt read channel bw */
 		if (mml_dpc_funcs.dpc_channel_bw_set_by_idx == NULL) {
-			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist", __func__);
+			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist",
+				__func__);
 			return;
 		}
 
 		mml_dpc_funcs.dpc_channel_bw_set_by_idx(
 			mml_larb_idx_to_dpc_subsys(larb_idx),
 			mml_larb_idx_to_dpc_hrt_read_idx(larb_idx), bw_in_mb);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
 	}
 }
 
@@ -203,19 +267,25 @@ void mml_dpc_srt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep)
 		mml_msg_dpc("%s dpc_srt_bw_set not exist", __func__);
 		return;
 	}
-	if (mml_dpc_version == DPC_VER1 || mml_dpc_version == DPC_VER2) {
+
+	switch (mml_dpc_version) {
+	case DPC_VER1:
 		/* larb_idx = sys_id */
 		if (larb_idx == mml_sys_frame || larb_idx == mml_sys_tile)
-			mml_dpc_funcs.dpc_srt_bw_set(mml_sysid_to_dpc_subsys(larb_idx),
-			bw_in_mb, force_keep);
-	} else {
-		mml_dpc_funcs.dpc_srt_bw_set(mml_larb_idx_to_dpc_subsys(larb_idx),
-			bw_in_mb, force_keep);
-	}
-	if (mml_dpc_version == DPC_VER2) {
+			mml_dpc_funcs.dpc_srt_bw_set(
+				mml_sysid_to_dpc_subsys(larb_idx),
+				bw_in_mb, force_keep);
+		break;
+	case DPC_VER2:
+		/* larb_idx = sys_id */
+		if (larb_idx == mml_sys_frame || larb_idx == mml_sys_tile)
+			mml_dpc_funcs.dpc_srt_bw_set(
+				mml_sysid_to_dpc_subsys(larb_idx),
+				bw_in_mb, force_keep);
 		/* report srt read channel bw */
 		if (mml_dpc_funcs.dpc_channel_bw_set_by_idx == NULL) {
-			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist", __func__);
+			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist",
+				__func__);
 			return;
 		}
 
@@ -225,16 +295,25 @@ void mml_dpc_srt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep)
 				mml_sysid_to_dpc_subsys(larb_idx),
 				mml_sysid_to_dpc_srt_read_idx(larb_idx),
 				bw_in_mb);
-	} else if (mml_dpc_version == DPC_VER3) {
+		break;
+	case DPC_VER3:
+		mml_dpc_funcs.dpc_srt_bw_set(
+			mml_larb_idx_to_dpc_subsys(larb_idx),
+			bw_in_mb, force_keep);
 		/* report srt read channel bw */
 		if (mml_dpc_funcs.dpc_channel_bw_set_by_idx == NULL) {
-			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist", __func__);
+			mml_msg_dpc("%s dpc_channel_bw_set_by_idx not exist",
+				__func__);
 			return;
 		}
 
 		mml_dpc_funcs.dpc_channel_bw_set_by_idx(
 			mml_larb_idx_to_dpc_subsys(larb_idx),
 			mml_larb_idx_to_dpc_srt_read_idx(larb_idx), bw_in_mb);
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
 	}
 }
 
@@ -260,7 +339,7 @@ void mml_dpc_dvfs_trigger(void)
 
 void mml_dpc_channel_bw_set_by_idx(u32 larb_idx, u32 bw, bool hrt)
 {
-	u8 idx;
+	u8 idx = 0;
 
 	if (mml_dpc_version == DPC_VER1)
 		return;
@@ -270,7 +349,8 @@ void mml_dpc_channel_bw_set_by_idx(u32 larb_idx, u32 bw, bool hrt)
 		return;
 	}
 
-	if (mml_dpc_version == DPC_VER2) {
+	switch (mml_dpc_version) {
+	case DPC_VER2:
 		/* larb_idx = sysid */
 		switch (larb_idx) {
 		case mml_sys_tile:
@@ -282,7 +362,8 @@ void mml_dpc_channel_bw_set_by_idx(u32 larb_idx, u32 bw, bool hrt)
 		default:
 			return;
 		}
-	} else {
+		break;
+	case DPC_VER3:
 		switch (larb_idx) {
 		case 0:
 			idx = hrt ? 7 : 5;
@@ -300,6 +381,10 @@ void mml_dpc_channel_bw_set_by_idx(u32 larb_idx, u32 bw, bool hrt)
 			idx = hrt ? 3 : 1;
 			break;
 		}
+		break;
+	default:
+		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
+		break;
 	}
 
 	mml_dpc_funcs.dpc_channel_bw_set_by_idx(DPC_SUBSYS_MML, idx, bw);
