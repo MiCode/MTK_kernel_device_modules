@@ -14,6 +14,12 @@ enum smi_mon_id {
 	SMI_BW_IMGSYS,
 };
 
+enum smi_mon_type {
+	SMI_MON_ALL,
+	SMI_MON_R,
+	SMI_MON_W,
+};
+
 enum smi_isp_id {
 	ISP_TRAW = BIT(0),
 	ISP_DIP = BIT(1),
@@ -78,7 +84,8 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 			u32 flag[MAX_MON_REQ], enum smi_mon_id mon_id);
 s32 smi_monitor_stop(struct device *dev, u32 common_id,
 			u32 *bw, enum smi_mon_id mon_id);
-
+s32 smi_larb_monitor_start(u32 larb_id, u32 port_id[MAX_MON_REQ], enum smi_mon_type rw_type);
+s32 smi_larb_monitor_stop(u32 larb_id, u32 *bw);
 int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb);
 int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb);
 #else
@@ -131,6 +138,16 @@ static inline s32 smi_monitor_start(struct device *dev, u32 common_id,
 
 static inline s32 smi_monitor_stop(struct device *dev, u32 common_id,
 				u32 *bw, enum smi_mon_id mon_id)
+{
+	return 0;
+}
+
+static inline s32 smi_larb_monitor_start(u32 larb_id, u32 port_id[MAX_MON_REQ], enum smi_mon_type rw_type)
+{
+	return 0;
+}
+
+static inline s32 smi_larb_monitor_stop(u32 larb_id, u32 *bw)
 {
 	return 0;
 }

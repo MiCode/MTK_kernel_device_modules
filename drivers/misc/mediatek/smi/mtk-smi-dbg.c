@@ -2475,6 +2475,82 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id
 }
 EXPORT_SYMBOL_GPL(smi_monitor_stop);
 
+s32 smi_larb_monitor_start(u32 larb_id, u32 port_id[MAX_MON_REQ], enum smi_mon_type rw_type)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	void __iomem		*base;
+	int i;
+	u32 val;
+
+	if (!smi) {
+		pr_notice("[smi]%s: smi is null\n", __func__);
+		return -EINVAL;
+	}
+
+	base = smi->larb[larb_id].va;
+
+	//CLR MONITOR
+	writel_relaxed(0x1, base + SMI_LARB_MON_CLR);
+
+	//parallel mode
+	val = readl(base + SMI_LARB_MON_CON);
+	val |= BIT(10);
+	writel_relaxed(val, base + SMI_LARB_MON_CON);
+
+	// monitor port select
+	val = readl(base + SMI_LARB_MON_PORT);
+	for (i = 0; i < MAX_MON_REQ; i++)
+		val |= (port_id[i] << ((i << 3)));
+	writel_relaxed(val, base + SMI_LARB_MON_PORT);
+
+	// r/w type
+	val = readl(base + SMI_LARB_MON_CON);
+	val &= 0xFFFFFFF3;
+	val |= (rw_type << 2);
+	writel_relaxed(val, base + SMI_LARB_MON_CON);
+
+	//start monitor
+	writel_relaxed(0x1, base + SMI_LARB_MON_EN);
+	dev_notice(smi->larb[larb_id].dev, "start monitor, %#x=%#x,%#x=%#x,%#x=%#x\n",
+			SMI_LARB_MON_EN, readl(base + SMI_LARB_MON_EN),
+			SMI_LARB_MON_CON, readl(base + SMI_LARB_MON_CON),
+			SMI_LARB_MON_PORT, readl(base + SMI_LARB_MON_PORT));
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(smi_larb_monitor_start);
+
+s32 smi_larb_monitor_stop(u32 larb_id, u32 *bw)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	void __iomem		*base;
+
+	if (!smi) {
+		pr_notice("[smi]%s: smi is null\n", __func__);
+		return -EINVAL;
+	}
+
+	base = smi->larb[larb_id].va;
+	//stop monitor
+	writel_relaxed(0x0, base + SMI_LARB_MON_EN);
+
+	bw[0] = readl(base + SMI_LARB_MON_ACT_CNT);
+	bw[1] = readl(base + SMI_LARB_MON_REQ_CNT);
+	bw[2] = readl(base + SMI_LARB_MON_BEAT_CNT);
+	bw[3] = readl(base + SMI_LARB_MON_BYTE_CNT);
+
+	// print result
+	dev_notice(smi->larb[larb_id].dev, "port0:%#x, port1:%#x, port2:%#x, port3:%#x\n",
+							bw[0], bw[1], bw[2], bw[3]);
+
+	//CLR MONITOR
+	writel_relaxed(0x1, base + SMI_LARB_MON_CLR);
+	writel_relaxed(0x0, base + SMI_LARB_MON_CLR);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(smi_larb_monitor_stop);
+
 static void smi_hang_detect_bw_monitor(bool is_start)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
