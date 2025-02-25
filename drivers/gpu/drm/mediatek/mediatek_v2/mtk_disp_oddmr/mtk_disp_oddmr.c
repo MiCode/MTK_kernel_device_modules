@@ -5964,9 +5964,52 @@ static void mtk_cal_oddmr_valid_partial_roi(struct mtk_ddp_comp *comp,
 	struct mtk_drm_dbi_cfg_info *dbi_cfg_data = &oddmr_data->primary_data->dbi_cfg_info;
 	unsigned int scale_factor_v = 4;
 	unsigned int dbi_y_diff = 0;
+	bool od_en, od_en_last;
+	unsigned int y1, y2, y2_last, y2_cur;
 
 	ODDMRLOW_LOG("%s line: %d before partial_y:%d partial_height:%d\n",
 		__func__, __LINE__, partial_roi->y, partial_roi->height);
+
+	if (oddmr_data->primary_data->od_support &&
+		oddmr_data->data->od_version >= MTK_OD_V2) {
+		od_en = oddmr_data->od_enable && !comp->mtk_crtc->sec_on;
+		od_en_last = oddmr_data->od_enable_last;
+		/* When OD on, 1st frame needs full frame */
+		if (!od_en_last && od_en) {
+			//record original roi y, height for next frame
+			oddmr_data->roi_y_last = partial_roi->y;
+			oddmr_data->roi_height_last = partial_roi->height;
+			//update current roi y, height
+			partial_roi->y = 0;
+			partial_roi->height = mtk_crtc_get_height_by_comp(__func__,
+				&comp->mtk_crtc->base, comp, true);
+			ODDMRLOW_LOG("%s line: %d, OD en_last %d en %d, change roi to full (%d, %d)\n",
+				__func__, __LINE__, od_en_last, od_en, partial_roi->y, partial_roi->height);
+			ODDMRLOW_LOG("%s line: %d end partial_y:%d partial_height:%d\n",
+				__func__, __LINE__, partial_roi->y, partial_roi->height);
+			return;
+		}
+		/* 2nd and following frames need union of previous and current origianl roi */
+		if (od_en_last && od_en) {
+			//y1 = min(cur y, last y)
+			y1 = (partial_roi->y < oddmr_data->roi_y_last) ?
+				partial_roi->y : oddmr_data->roi_y_last;
+			y2_last = oddmr_data->roi_y_last + oddmr_data->roi_height_last;
+			y2_cur = partial_roi->y + partial_roi->height;
+			//y2 = max(cur y+height, last y+height)
+			y2 = (y2_cur > y2_last) ? y2_cur : y2_last;
+			ODDMRLOW_LOG("%s line: %d, last original roi (%d, %d)\n",
+				__func__, __LINE__, oddmr_data->roi_y_last, oddmr_data->roi_height_last);
+			//record original roi y, height for next frame
+			oddmr_data->roi_y_last = partial_roi->y;
+			oddmr_data->roi_height_last = partial_roi->height;
+			//update current roi y, height
+			partial_roi->y = y1;
+			partial_roi->height = y2 - y1;
+			ODDMRLOW_LOG("%s line: %d, OD en_last %d en %d, change roi to union (%d, %d)\n",
+				__func__, __LINE__, od_en_last, od_en, partial_roi->y, partial_roi->height);
+		}
+	}
 
 	if (comp->mtk_crtc->panel_ext->params->is_support_dbi == true &&
 		oddmr_data->primary_data->dbi_state == ODDMR_INIT_DONE) {
@@ -11408,7 +11451,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	od_support = oddmr_data->primary_data->od_support;
 	dbi_support = oddmr_data->primary_data->dbi_support;
 
-	if (oddmr_data->data->od_version < MTK_OD_V2)
+	if (od_support && oddmr_data->data->od_version < MTK_OD_V2)
 		mtk_oddmr_bypass(comp, (enable == 1) ? 1 : 0, PQ_FEATURE_KRN_PU, handle);
 
 	/* oddmr crop offset set*/
@@ -11727,7 +11770,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 				MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
 		}
 	}
-	if (od_support == true && oddmr_data->od_enable) {
+	if (od_support && oddmr_data->data->od_version >= MTK_OD_V2 &&
+		oddmr_data->od_enable && !comp->mtk_crtc->sec_on) {
 		mtk_oddmr_od_set_partial_update(comp, handle, top_overhead_v,
 						bot_overhead_v, full_height);
 	}

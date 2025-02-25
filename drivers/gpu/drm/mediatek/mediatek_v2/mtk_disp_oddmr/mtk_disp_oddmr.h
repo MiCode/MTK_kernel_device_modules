@@ -655,6 +655,8 @@ struct mtk_disp_oddmr {
 	unsigned int set_partial_update;
 	unsigned int roi_height;
 	unsigned int roi_y;
+	unsigned int roi_height_last;
+	unsigned int roi_y_last;
 	struct mtk_disp_oddmr_parital_data_v dbi_pu_data;
 };
 
