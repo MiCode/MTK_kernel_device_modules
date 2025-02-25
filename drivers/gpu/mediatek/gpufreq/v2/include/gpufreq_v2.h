@@ -432,6 +432,7 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int ses_stack_mode;
 	unsigned int ses_scheduler_support;
 	unsigned int ses_scheduler_mode;
+	unsigned int preuvlo_support;
 	unsigned int preuvlo_mode;
 	unsigned int prbc_mode;
 	unsigned int freq_tracker_mode;
