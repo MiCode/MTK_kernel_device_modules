@@ -3285,6 +3285,12 @@ static int mtk_venc_encode_header(void *priv)
 	struct mtk_vcodec_mem *bs_buf;
 	struct venc_done_result enc_result;
 	bool already_put = false;
+	struct venc_inst *inst = (struct venc_inst *)(ctx->drv_handle);
+
+	if (inst != NULL) {
+		//reset the flag since encoding header is in sync mode
+		inst->put_bs_async = 0;
+	}
 
 	memset(&enc_result, 0, sizeof(enc_result));
 	dst_vb2_v4l2 = v4l2_m2m_dst_buf_remove(ctx->m2m_ctx);
