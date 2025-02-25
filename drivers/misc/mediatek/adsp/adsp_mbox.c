@@ -228,8 +228,7 @@ int adsp_mbox_send_irq(struct mtk_mbox_pin_send *pin_send, unsigned int wait)
 		result = MBOX_PIN_BUSY;
 		goto EXIT;
 	}
-
-	result = mtk_mbox_write(mbdev, pin_send->mbox, pin_send->offset, msg, pin_send->msg_size);
+	result = mtk_mbox_write(mbdev, pin_send->mbox, pin_send->offset, msg, pin_send->msg_size * MBOX_SLOT_SIZE);
 	if (result != MBOX_DONE)
 		goto EXIT;
 
