@@ -1655,6 +1655,8 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_DBI_COUNT_IDLE_TIMER_DELETE,
 	PQ_DBI_COUNT_LOAD_BUFFER,
 	PQ_DBI_COUNT_CLEAR_EVENT,
+	PQ_DBI_COUNT_LOAD_PARAM,
+	PQ_DBI_COUNT_LOAD_BUFFER_CFG,
 	/* Get cmd begin */
 	/* Notice:
 	 * Command for getting must be added after the PQ_GET_CMD_START.

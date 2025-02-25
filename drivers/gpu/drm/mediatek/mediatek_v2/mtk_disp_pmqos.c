@@ -857,6 +857,8 @@ void mtk_disp_update_channel_hrt_common(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp;
 	struct mtk_ssc_bw ssc_bw;
 	enum CHANNEL_TYPE type;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 
 	if (!mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[DDP_FIRST_PATH])
 		return;
@@ -864,6 +866,8 @@ void mtk_disp_update_channel_hrt_common(struct mtk_drm_crtc *mtk_crtc,
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (((mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) &&
 			(comp->id != DDP_COMPONENT_OVL_EXDMA0))||
+			(crtc_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE] &&
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT)||
 			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR ||
 			mtk_ddp_comp_get_type(comp->id) == MTK_DISP_MDP_RDMA) {
 			type = CHANNEL_HRT_READ;
@@ -899,7 +903,9 @@ void mtk_disp_update_channel_hrt_write_common(struct mtk_drm_crtc *mtk_crtc,
 		return;
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR) {
+		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR ||
+			(crtc_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE] &&
+				mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT)) {
 			type = CHANNEL_HRT_WRITE;
 			ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
 			subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;

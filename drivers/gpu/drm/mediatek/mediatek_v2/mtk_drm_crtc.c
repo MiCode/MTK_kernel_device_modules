@@ -2719,6 +2719,14 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 				old_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE];
 			state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE] =
 				old_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE];
+			state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_NUM] =
+				old_state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_NUM];
+			state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_SIZE] =
+				old_state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_SIZE];
+			state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_H] =
+				old_state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_H];
+			state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_V] =
+				old_state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_V];
 		}
 	}
 
@@ -3033,6 +3041,7 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
+	struct mtk_ddp_comp *dbi_comp;
 	struct mtk_bl_ext_config bl_ext_config;
 	static unsigned int bl_cnt;
 	bool is_frame_mode;
@@ -3041,6 +3050,7 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
+	int i,j;
 
 	CRTC_MMP_EVENT_START(index, backlight, (unsigned long)crtc,
 			level);
@@ -3102,7 +3112,12 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 
 	/* set backlight */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
-	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);
+	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, DISP_BL_CHG, &level);
+
+	for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT)
+			mtk_ddp_comp_io_cmd(dbi_comp, cmdq_handle, DISP_BL_CHG, &level);
+	}
 
 	if ((cfg_flag & (0x1<<SET_BACKLIGHT_LEVEL)) && !(cfg_flag & (0x1<<SET_ELVSS_PN))
 		&& !(cfg_flag & (0x1<<ENABLE_DYN_ELVSS))
@@ -3161,6 +3176,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
+	struct mtk_ddp_comp *dbi_comp;
 	struct mtk_cmdq_cb_data *cb_data;
 	struct mtk_bl_ext_config bl_ext_config;
 	static unsigned int bl_cnt;
@@ -3169,6 +3185,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	int ret = 0;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_panel_params *panel_ext = NULL;
+	int i,j;
 
 	if (!crtc || !crtc->dev) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -3292,7 +3309,12 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 
 	/* set backlight */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
-	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_BL_CHG, &level);
+	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, DISP_BL_CHG, &level);
+
+	for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT)
+			mtk_ddp_comp_io_cmd(dbi_comp, cmdq_handle, DISP_BL_CHG, &level);
+	}
 
 	if ((cfg_flag & (0x1<<SET_BACKLIGHT_LEVEL)) && !(cfg_flag & (0x1<<SET_ELVSS_PN))
 		&& !(cfg_flag & (0x1<<ENABLE_DYN_ELVSS))
@@ -7914,6 +7936,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	int en = 1;
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_ddp_comp *oddmr_comp;
+	struct mtk_ddp_comp *dbi_comp;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_modeswitch_param modeswitch_param;
 
@@ -8017,6 +8040,13 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	oddmr_timing.mode_chg_index = mode_chg_index;
 	oddmr_timing.vrefresh = fps_dst;
 	mtk_ddp_comp_io_cmd(oddmr_comp, cmdq_handle, ODDMR_TIMING_CHG, &oddmr_timing);
+
+	for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT)
+			mtk_ddp_comp_io_cmd(dbi_comp, cmdq_handle, ODDMR_TIMING_CHG, &oddmr_timing);
+	}
+
+
 
 	/* notify fps to comps */
 	modeswitch_param.fps = fps_dst;
@@ -17885,8 +17915,10 @@ static void mtk_crtc_msync2_send_cmds_bef_cfg(struct drm_crtc *crtc, unsigned in
 	dma_addr_t addr = 0;
 	struct mtk_oddmr_timing oddmr_timing = { 0 };
 	struct mtk_ddp_comp *oddmr_comp;
+	struct mtk_ddp_comp *dbi_comp;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct drm_display_mode *mode;
+	int i,j;
 
 
 	DDPINFO("[Msync2.0] Cmd mode send cmds before config\n");
@@ -18030,6 +18062,13 @@ rte_target:
 
 			mtk_ddp_comp_io_cmd(oddmr_comp, state->cmdq_handle,
 				ODDMR_TIMING_CHG, &oddmr_timing);
+
+			for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+				if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT)
+					mtk_ddp_comp_io_cmd(dbi_comp, state->cmdq_handle,
+						ODDMR_TIMING_CHG, &oddmr_timing);
+			}
+
 			mtk_ddp_comp_io_cmd(comp, state->cmdq_handle,
 				DSI_MSYNC_SWITCH_TE_LEVEL_GRP, &fps_level);
 			fps_level_old = fps_level;
@@ -18184,6 +18223,11 @@ mte_target:
 
 			mtk_ddp_comp_io_cmd(oddmr_comp, state->cmdq_handle,
 				ODDMR_TIMING_CHG, &oddmr_timing);
+			for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+				if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT)
+					mtk_ddp_comp_io_cmd(dbi_comp, state->cmdq_handle,
+						ODDMR_TIMING_CHG, &oddmr_timing);
+			}
 			mtk_ddp_comp_io_cmd(comp, state->cmdq_handle,
 					DSI_MSYNC_SWITCH_TE_LEVEL_GRP, &fps_level);
 			fps_level_old = fps_level;
@@ -20780,7 +20824,7 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = 0;
 	}
 
-	if (mtk_crtc->capturing == true) {
+	if ((mtk_crtc->capturing == true) || (mtk_crtc->dbi_trigger== true)) {
 		DDPDBG("skip or switch to BISO because cwb is enable\n");
 		partial_enable = 2;
 	}
@@ -23024,6 +23068,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->mml_ir_sram.data.type = TP_BUFFER;
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;
 	mtk_crtc->capturing = false;
+	mtk_crtc->dbi_trigger= false;
 	mtk_crtc->pq_data = kzalloc(sizeof(*mtk_crtc->pq_data), GFP_KERNEL);
 	if (mtk_crtc->pq_data == NULL) {
 		DDPPR_ERR("Failed to alloc pq_data\n");

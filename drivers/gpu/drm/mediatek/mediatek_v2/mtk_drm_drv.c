@@ -4115,9 +4115,9 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_PQ0_OUT_CB3, DDP_COMPONENT_DLO_ASYNC1,
 	DDP_COMPONENT_DLI_ASYNC21, DDP_COMPONENT_CHIST1,
 	/* PC_OUT_CB1 -> DLO_ASYNC17 -> DLI_ASYNC30 -> DBI_COUNT0 */
-	//DDP_COMPONENT_PC_OUT_CB1, DDP_COMPONENT_DLO_ASYNC17,
-	//DDP_COMPONENT_DLI_ASYNC30, DDP_COMPONENT_INSIDE_PC_CB1,
-	//DDP_COMPONENT_DBI_COUNT0,
+	DDP_COMPONENT_PC_OUT_CB1, DDP_COMPONENT_DLO_ASYNC17,
+	DDP_COMPONENT_DLI_ASYNC30, DDP_COMPONENT_INSIDE_PC_CB1,
+	DDP_COMPONENT_DBI_COUNT0,
 #endif
 };
 
@@ -12359,6 +12359,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_RELAY},
 	{.compatible = "mediatek,mt6993-disp-dbgtp",
 	 .data = (void *)MTK_DISP_DBGTP},
+	{.compatible = "mediatek,mt6993-disp-dbi-count",
+	 .data = (void *)MTK_DISP_DBI_COUNT},
 	{} };
 
 static struct disp_iommu_device disp_iommu;
@@ -12926,7 +12928,7 @@ SKIP_MMLSYS_CONFIG:
 		    comp_type == MTK_DISP_DITHER ||
 		    comp_type == MTK_DISP_CM || comp_type == MTK_DISP_SPR ||
 		    comp_type == MTK_DISP_POSTALIGN || comp_type == MTK_DMDP_AAL
-		    || comp_type == MTK_DISP_ODDMR
+		    || comp_type == MTK_DISP_ODDMR || comp_type == MTK_DISP_DBI_COUNT
 #endif
 		    || comp_type == MTK_DP_INTF || comp_type == MTK_DISP_DPTX
 		    || comp_type == MTK_DISP_Y2R || comp_type == MTK_DISP_INLINE_ROTATE
@@ -13295,7 +13297,8 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_merge_driver,
 	&mtk_disp_bwm_driver,
 	&mtk_disp_relay_driver,
-	&mtk_disp_dbgtp_driver
+	&mtk_disp_dbgtp_driver,
+	&mtk_disp_dbi_count_driver,
 };
 
 static int __init mtk_drm_init(void)

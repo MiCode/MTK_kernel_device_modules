@@ -315,6 +315,10 @@ int mtk_dump_reg(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_ODDMR1:
 		mtk_oddmr_dump(comp);
 		break;
+	case DDP_COMPONENT_DBI_COUNT0:
+	case DDP_COMPONENT_SYS_B_DBI_COUNT0:
+		mtk_dbi_count_dump(comp);
+		break;
 	case DDP_COMPONENT_BWM0:
 		mtk_bwm_dump(comp);
 		break;
@@ -491,6 +495,10 @@ int mtk_dump_analysis(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_ODDMR0:
 	case DDP_COMPONENT_ODDMR1:
 		mtk_oddmr_analysis(comp);
+		break;
+	case DDP_COMPONENT_DBI_COUNT0:
+	case DDP_COMPONENT_SYS_B_DBI_COUNT0:
+		mtk_dbi_count_analysis(comp);
 		break;
 	default:
 		return 0;
