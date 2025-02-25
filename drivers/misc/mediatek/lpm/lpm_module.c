@@ -5,11 +5,13 @@
 
 #include <asm/cpuidle.h>
 #include <asm/suspend.h>
+#include <linux/context_tracking.h>
 #include <linux/cpu_pm.h>
 #include <linux/cpuidle.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
+#include <linux/list.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/sched.h>
@@ -18,7 +20,7 @@
 #include <linux/syscalls.h>
 #include <linux/suspend.h>
 #include <linux/syscore_ops.h>
-#include <linux/context_tracking.h>
+#include <linux/types.h>
 
 #include <lpm.h>
 #include <lpm_internal.h>
@@ -55,6 +57,8 @@ struct lpm_module_reg {
 		struct lpm_model_info info;
 		struct lpm_state_enter_fp fp;
 	} data;
+	struct hlist_node node;
+	struct cpumask reg_mask;
 };
 
 struct mtk_lpm {
@@ -79,6 +83,7 @@ struct lpm_states_enter {
 };
 static DEFINE_PER_CPU(struct lpm_states_enter, lpm_cstate);
 
+int cpuhp_state;
 
 #define lpm_pm_notify(_id, _data)\
 		({raw_notifier_call_chain(&lpm_notifier,\
@@ -111,8 +116,6 @@ static int lpm_s2idle_state_enter(struct cpuidle_device *dev,
 	return ret;
 }
 
-static struct cpumask cpuidle_cpumask;
-
 static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
 {
 	struct lpm_state_enter_fp *fp = &p->data.fp;
@@ -125,12 +128,6 @@ static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
 	if (!drv || !fp) {
 		pr_info("[name:mtk_lpm][P] - cpuidle state register fail (%s:%d)\n",
 					__func__, __LINE__);
-		return -EINVAL;
-	}
-
-	if (cpumask_test_and_set_cpu(cpu, &cpuidle_cpumask)) {
-		pr_info("[name:mtk_lpm[P] - cpuidle state already registered (%d) (%s:%d)\n",
-					cpu, __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -244,31 +241,64 @@ static int lpm_module_register_blockcall(int cpu, void *p)
 	return ret;
 }
 
-static int lpm_module_register_callback(unsigned int cpu)
+static int lpm_module_register_percpu(unsigned int cpu, struct hlist_node *node)
 {
-	struct lpm_module_reg reg = {
-		.magic = LPM_MODULE_MAGIC,
-		.type = LPM_CPUIDLE_DRIVER,
-		.data.fp.s2idle = lpm_s2idle_state_enter
-	};
+	struct lpm_module_reg *reg = hlist_entry_safe(node, struct lpm_module_reg, node);
 
-	lpm_cpuidle_state_percpu_set(cpu, &reg);
+	if (!reg || (reg->magic != LPM_MODULE_MAGIC)) {
+		pr_info("[name:mtk_lpm][P] - registry(%d) fail (%s:%d)\n",
+			reg ? reg->type : -1, __func__, __LINE__);
+		return 0;
+	}
+
+	if (cpumask_test_and_set_cpu(cpu, &reg->reg_mask)) {
+		pr_info("[name:mtk_lpm[P] - the function already registered (%d:%d) (%s:%d)\n",
+					cpu,reg->type,  __func__, __LINE__);
+		return 0;
+	}
+
+	switch (reg->type) {
+	case LPM_MODLE:
+		if (reg->data.info.name)
+			lpm_model_percpu_set(cpu, reg);
+		break;
+	case LPM_CPUIDLE_DRIVER:
+		lpm_cpuidle_state_percpu_set(cpu, reg);
+		break;
+	default:
+		break;
+	}
 
 	return 0;
 }
 
+static struct lpm_module_reg lpm_mod_reg = {
+	.magic = LPM_MODULE_MAGIC,
+	.type = LPM_MODLE,
+};
+
 static int __lpm_model_register(const char *name, struct lpm_model *lpm)
 {
-	struct lpm_module_reg reg = {
-		.magic = LPM_MODULE_MAGIC,
-		.type = LPM_MODLE,
-		.data.info.name = name,
-		.data.info.mod = lpm,
-	};
+	int ret;
 
-	return lpm_do_work(LPM_REG_PER_CPU,
-			       lpm_module_register_blockcall,
-			       &reg);
+	if (cpuhp_state <= 0)
+		return -EINVAL;
+
+	lpm_mod_reg.data.info.name = name;
+	lpm_mod_reg.data.info.mod = lpm;
+	cpumask_clear(&lpm_mod_reg.reg_mask);
+
+	ret = cpuhp_state_add_instance(cpuhp_state, &lpm_mod_reg.node);
+
+	if (ret) {
+		pr_debug("Failed to add instance in %s:%d.\n", __func__, __LINE__);
+		return ret;
+	}
+
+	if (cpumask_full(&lpm_mod_reg.reg_mask))
+		cpuhp_state_remove_instance_nocalls(cpuhp_state, &lpm_mod_reg.node);
+
+	return ret;
 }
 
 int lpm_model_register(const char *name, struct lpm_model *lpm)
@@ -607,13 +637,17 @@ static struct notifier_block lpm_pm_notifier_func = {
 	.priority = 0,
 };
 
+static struct lpm_module_reg lpm_driver_reg = {
+	.magic = LPM_MODULE_MAGIC,
+	.type = LPM_CPUIDLE_DRIVER,
+	.data.fp.s2idle = lpm_s2idle_state_enter,
+};
 
 static int __init lpm_init(void)
 {
 	int ret = 0;
 	unsigned long flags;
 	struct device_node *lpm_node;
-	int cpuhp_state;
 
 	lpm_system.suspend.flag = LPM_REQ_NOSUSPEND;
 
@@ -666,25 +700,36 @@ static int __init lpm_init(void)
 
 	spin_unlock_irqrestore(&lpm_mod_locker, flags);
 
+	cpuhp_state = cpuhp_setup_state_multi(CPUHP_AP_ONLINE_DYN,
+			"mtk-cpu-lpminit",
+			lpm_module_register_percpu,
+			NULL);
+	if (cpuhp_state == -ENOSPC) {
+		pr_info("[name:mtk_lpm][P] - register cpuhp callback fail\n");
+		goto fail;
+	}
+
+	cpumask_clear(&lpm_driver_reg.reg_mask);
+
 	cpuidle_pause_and_lock();
 
-	cpuhp_state = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN,
-			"mtk-cpu-lpminit",
-			lpm_module_register_callback,
-			NULL);
+	ret = cpuhp_state_add_instance(cpuhp_state, &lpm_driver_reg.node);
 
 	cpuidle_resume_and_unlock();
 
-	if (cpuhp_state == -ENOSPC) {
-		pr_info("[name:mtk_lpm][P] - register cpuhp callback fail\n");
-		goto fail2;
+	if (ret) {
+		pr_debug("Failed to add instance.\n");
+		goto fail;
 	}
+
+	if (cpumask_full(&lpm_driver_reg.reg_mask))
+		cpuhp_state_remove_instance_nocalls(cpuhp_state, &lpm_driver_reg.node);
 
 	if (lpm_system.suspend.flag & LPM_REQ_NOSUSPEND) {
 		lpm_lock = wakeup_source_register(NULL, "lpm_lock");
 		if (!lpm_lock) {
 			pr_info("[name:mtk_lpm][P] - initialize lpm_lock wakeup source fail\n");
-			goto fail1;
+			goto fail;
 		}
 		__pm_stay_awake(lpm_lock);
 		pr_info("[name:mtk_lpm][P] - device not support kernel suspend\n");
@@ -698,21 +743,19 @@ static int __init lpm_init(void)
 	ret = register_pm_notifier(&lpm_pm_early_notifier_func);
 	if (ret) {
 		pr_debug("Failed to register PM early notifier.\n");
-		goto fail1;
+		goto fail;
 	}
 
 	ret = register_pm_notifier(&lpm_pm_notifier_func);
 	if (ret) {
 		pr_debug("Failed to register PM notifier.\n");
-		goto fail1;
+		goto fail;
 	}
 
 	lpm_platform_init();
 	return 0;
 
-fail1:
-	cpuhp_remove_state(cpuhp_state);
-fail2:
+fail:
 	return ret ? ret : -EPERM;
 }
 

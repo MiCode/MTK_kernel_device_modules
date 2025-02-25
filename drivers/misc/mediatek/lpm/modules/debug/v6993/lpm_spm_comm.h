@@ -53,6 +53,7 @@ struct lpm_spm_wake_status {
 	u32 req_sta_rsv8;         /* SRC_REQ_STA_RSV_8 */
 	u32 req_sta_rsv9;         /* SRC_REQ_STA_RSV_9 */
 	u32 req_sta_rsv10;        /* SRC_REQ_STA_RSV_10 */
+	u32 ack_sta_ulposc;       /* SPM_ULPOSC_ACK_STA */
 	u32 debug_flag;           /* PCM_WDT_LATCH_SPARE_0 */
 	u32 debug_flag1;          /* PCM_WDT_LATCH_SPARE_1 */
 	u32 debug_flag2;          /* Common scen fp */

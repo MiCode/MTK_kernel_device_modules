@@ -887,6 +887,8 @@ static int lpm_get_wakeup_status(void)
 	help->wakesrc->req_sta_rsv9 = plat_mmio_read(SPM_REQ_STA_RSV_9);
 	help->wakesrc->req_sta_rsv10 = plat_mmio_read(SPM_REQ_STA_RSV_10);
 
+	help->wakesrc->ack_sta_ulposc = plat_mmio_read(SPM_ULPOSC_ACK_STA);
+
 	/* get debug flag for PCM execution check */
 	help->wakesrc->debug_flag = plat_mmio_read(PCM_WDT_LATCH_SPARE_0);
 	help->wakesrc->debug_flag1 = plat_mmio_read(PCM_WDT_LATCH_SPARE_1);
@@ -1121,7 +1123,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 	log_size += scnprintf(log_buf + log_size,
 		LOG_BUF_OUT_SZ - log_size,
-		"req_sta =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x",
+		"req_sta = 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x",
 		wakesrc->req_sta0, wakesrc->req_sta1, wakesrc->req_sta2,
 		wakesrc->req_sta3, wakesrc->req_sta4, wakesrc->req_sta5,
 		wakesrc->req_sta6, wakesrc->req_sta7, wakesrc->req_sta8,
@@ -1135,7 +1137,7 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 	log_size += scnprintf(log_buf + log_size,
 		LOG_BUF_OUT_SZ - log_size,
-		"req_sta_rsv =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x, ",
+		"req_sta_rsv = 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x, ",
 		wakesrc->req_sta_rsv0, wakesrc->req_sta_rsv1, wakesrc->req_sta_rsv2,
 		wakesrc->req_sta_rsv3, wakesrc->req_sta_rsv4, wakesrc->req_sta_rsv5,
 		wakesrc->req_sta_rsv6, wakesrc->req_sta_rsv7, wakesrc->req_sta_rsv8,
@@ -1143,7 +1145,11 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 	log_size += scnprintf(log_buf + log_size,
 		LOG_BUF_OUT_SZ - log_size,
-		"debug_spare3 =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x, ",
+		"ack_sta_ulposc = 0x%x, ", wakesrc->ack_sta_ulposc);
+
+	log_size += scnprintf(log_buf + log_size,
+		LOG_BUF_OUT_SZ - log_size,
+		"debug_spare3 = 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x, ",
 		wakesrc->debug_spare3, wakesrc->debug_spare4, wakesrc->debug_spare5,
 		wakesrc->debug_spare6, wakesrc->debug_spare7, wakesrc->debug_spare8,
 		wakesrc->debug_spare9, wakesrc->debug_spare10, wakesrc->debug_spare11,
