@@ -16768,7 +16768,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			// dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
 			mtk,iommu-group = <&apu_iommu_group_3>;
 			iommus = <&apu_smmu 0xd>;
-			smmu-ssid-max = <255>;
+			smmu-ssid-max = <128>;
 		};
 
 		mvpu {
@@ -16790,7 +16790,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&apu_smmu 0xb>;
 			pasid-num-bits = <8>;
 			mtk,smmu-ssids {
-				mtk,smmu-ssid-range = <1 255>;
+				mtk,smmu-ssid-range = <1 128>;
 			};
 		};
 
@@ -16806,7 +16806,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-coherent;
 			pasid-num-bits = <8>;
 			mtk,smmu-ssids {
-				mtk,smmu-ssid-range = <1 255>;
+				mtk,smmu-ssid-range = <1 128>;
 			};
 		};
 		mtk_apu_mem_data: mtk-apu-mem-data {
@@ -16820,7 +16820,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&apu_smmu 0xa>;
 			pasid-num-bits = <8>;
 			mtk,smmu-ssids {
-				mtk,smmu-ssid-range = <1 255>;
+				mtk,smmu-ssid-range = <1 128>;
 			};
 		};
 
@@ -16836,7 +16836,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dma-coherent;
 			pasid-num-bits = <8>;
 			mtk,smmu-ssids {
-				mtk,smmu-ssid-range = <1 255>;
+				mtk,smmu-ssid-range = <1 128>;
 			};
 		};
 
