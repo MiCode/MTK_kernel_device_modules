@@ -50,7 +50,7 @@
 #define PIN_OUT_SIZE_SENSOR_NOTIFY       7
 #define PIN_IN_SIZE_SENSOR_NOTIFY        7
 #define PIN_OUT_SIZE_SCP_CONNSYS         3
-#define PIN_OUT_SIZE_SCP_HWVOTER_DEBUG   2
+#define PIN_OUT_SIZE_SCP_HWVOTER_DEBUG   8
 #define PIN_OUT_SIZE_DEBUG_CMD           2
 #define PIN_OUT_SIZE_AOV_SCP             4
 #define PIN_IN_SIZE_SCP_AOV              4

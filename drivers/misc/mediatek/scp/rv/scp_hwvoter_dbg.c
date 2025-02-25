@@ -95,29 +95,48 @@ static ssize_t scp_hw_voter_dbg_proc_write(
 		return count;
 	}
 
-	n = sscanf(desc, "%hhu %hhu %hhu %hu %hu",
-			&ipi_data.type,
+	n = sscanf(desc, "%hhu %25s %hu",
 			&ipi_data.op,
-			&ipi_data.clk_category,
-			&ipi_data.clk_id,
+			ipi_data.res_name,
 			&ipi_data.val);
-	if (n != 4 && n != 5) {
-		pr_notice("invalid cmd length %d\n", n);
+	if (n == 3 && ipi_data.op >= 6) {
+		ipi_data.cmd = HW_VOTER_DBG_CMD_TEST;
+
+		ret = mtk_ipi_send_compl(
+				&scp_ipidev,
+				IPI_OUT_SCP_HWVOTER_DEBUG,
+				IPI_SEND_WAIT,
+				&ipi_data,
+				PIN_OUT_SIZE_SCP_HWVOTER_DEBUG,
+				100);
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[%s]: SCP send IPI failed - %d\n",
+				__func__, ret);
+		pr_notice("[%s]: 1. SCP send IPI HWV DBG CMD\n",
+			__func__);
 		return count;
 	}
 
-	ipi_data.cmd = HW_VOTER_DBG_CMD_TEST;
+	n = sscanf(desc, "%hhu %25s",
+			&ipi_data.op,
+			ipi_data.res_name);
+	if (n == 2 && ipi_data.op < 6) {
+		ipi_data.cmd = HW_VOTER_DBG_CMD_TEST;
 
-	ret = mtk_ipi_send_compl(
-			&scp_ipidev,
-			IPI_OUT_SCP_HWVOTER_DEBUG,
-			IPI_SEND_WAIT,
-			&ipi_data,
-			PIN_OUT_SIZE_SCP_HWVOTER_DEBUG,
-			100);
-	if (ret != IPI_ACTION_DONE)
-		pr_notice("[%s]: SCP send IPI failed - %d\n",
-			__func__, ret);
+		ret = mtk_ipi_send_compl(
+				&scp_ipidev,
+				IPI_OUT_SCP_HWVOTER_DEBUG,
+				IPI_SEND_WAIT,
+				&ipi_data,
+				PIN_OUT_SIZE_SCP_HWVOTER_DEBUG,
+				100);
+		if (ret != IPI_ACTION_DONE)
+			pr_notice("[%s]: SCP send IPI failed - %d\n",
+				__func__, ret);
+		pr_notice("[%s]: 3. SCP send IPI HWV DBG CMD\n",
+			__func__);
+		return count;
+	}
 
 	return count;
 }
