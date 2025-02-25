@@ -22,15 +22,15 @@ ccflags-y += -DDEBUG -DTFA_NON_DSP_SOLUTION
 ccflags-y += -Werror
 ccflags-y += $(call cc-option,-Wno-date-time,)
 
-snd-soc-tfa98xx-objs += src/tfa98xx.o
-snd-soc-tfa98xx-objs += src/tfa_container.o
-snd-soc-tfa98xx-objs += src/tfa_dsp.o
-snd-soc-tfa98xx-objs += src/tfa_init.o
+#snd-soc-tfa98xx-objs += src/tfa98xx.o
+#snd-soc-tfa98xx-objs += src/tfa_container.o
+#snd-soc-tfa98xx-objs += src/tfa_dsp.o
+#snd-soc-tfa98xx-objs += src/tfa_init.o
 
 ifdef TFA_DEBUG
 ccflags-y += -DTFA_DEBUG -DDEBUG
-snd-soc-tfa98xx-objs += src/tfa_debug.o
+#snd-soc-tfa98xx-objs += src/tfa_debug.o
 endif
 
-obj-$(CONFIG_SND_SOC_TFA9874) += snd-soc-tfa98xx.o
+#obj-$(CONFIG_SND_SOC_TFA9874) += snd-soc-tfa98xx.o
 

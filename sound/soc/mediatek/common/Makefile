@@ -26,4 +26,4 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv
 #obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-afe-external.o
 
 # speaker dynamic detect
-obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-sp-spk-amp.o
+#obj-$(CONFIG_SND_SOC_MTK_SMART_PHONE) += mtk-sp-spk-amp.o

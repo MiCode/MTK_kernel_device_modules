@@ -18,7 +18,6 @@
 #include <mtk-dsp-common.h>
 #endif
 #include <linux/kobject.h>
-#include <base.h>
 #include "richtek_spm_cls.h"
 #include "mtk-sp-spk-amp.h"
 
