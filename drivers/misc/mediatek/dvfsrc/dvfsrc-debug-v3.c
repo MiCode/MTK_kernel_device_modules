@@ -44,6 +44,7 @@ enum dvfsrc_regs {
 	DVFSRC_95MD_SCEN_BW4_T,
 	DVFSRC_RSRV_4,
 	DVFSRC_RSRV_5,
+	DVFSRC_RSRV_6,
 	DVFSRC_MD_DDR_FLOOR_REQUEST,
 	DVFSRC_QOS_DDR_REQUEST,
 	DVFSRC_LEVEL_LABEL_L,
@@ -204,6 +205,7 @@ static const int mt6993_regs[] = {
 	[DVFSRC_95MD_SCEN_BW0_T] = 0x268,
 	[DVFSRC_RSRV_4] = 0x290,
 	[DVFSRC_RSRV_5] = 0x294,
+	[DVFSRC_RSRV_6] = 0x304,
 	[DVFSRC_MD_DDR_FLOOR_REQUEST] = 0x5E4,
 	[DVFSRC_QOS_DDR_REQUEST] = 0x5E8,
 	[DVFSRC_LEVEL_LABEL_L] = 0xFC,
@@ -684,6 +686,10 @@ static char *dvfsrc_dump_reg_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u32 size
 		dvfsrc_read(dvfsrc, DVFSRC_INT_EN, 0x0));
 
 	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"TIMEOUT",
+		dvfsrc_read(dvfsrc, DVFSRC_RSRV_6, 0x0));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
 		"ISP_HRT",
 		dvfsrc_read(dvfsrc, DVFSRC_ISP_HRT, 0x0));
 
@@ -743,6 +749,10 @@ static char *dvfsrc_dump_reg_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u32 size
 		"SCP_VCORE",
 		dvfsrc_get_scp_req(dvfsrc),
 		dvfsrc_read(dvfsrc, DVFSRC_VCORE_REQUEST, 0x0));
+
+	p += snprintf(p, buff_end - p, "%-12s: %d\n",
+		"MMDVFS",
+		dvfsrc_read(dvfsrc, DVFSRC_RSRV_6, 0x4));
 
 	p += snprintf(p, buff_end - p, "\n");
 
