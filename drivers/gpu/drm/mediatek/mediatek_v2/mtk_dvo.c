@@ -259,7 +259,7 @@ static const struct mtk_dp_dvo_resolution_cfg resolution_cfg[SINK_MAX] = {
 	[SINK_640_480] = {
 					.clksrc = TVDPLL_D8,
 					.dp_clk = 37125,
-					.tvppll_clk = 25200000*2
+					.tvppll_clk = 125000000
 				},
 	[SINK_800_600] = {
 					.clksrc = TVDPLL_D16,
@@ -871,8 +871,13 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 	mtk_ddp_write_relaxed(comp, (vsize << SRC_VSIZE) | hsize, DVO_SRC_SIZE, handle);
 	mtk_ddp_write_relaxed(comp, (vsize << PIC_VSIZE) | hsize, DVO_PIC_SIZE, handle);
 	mtk_ddp_write_relaxed(comp, hsize, DVO_OUT_HSIZE, handle);
-	mtk_ddp_write_relaxed(comp, (hpw << HSYNC) | hfp, DVO_TGEN_H0, handle);
-	mtk_ddp_write_relaxed(comp, ((hsize / 4) << HACT) | (hbp + hpw), DVO_TGEN_H1, handle);
+	if (dp_dvo->res == SINK_640_480) {
+		mtk_ddp_write_relaxed(comp, ((hpw + 296) << HSYNC) | hfp, DVO_TGEN_H0, handle);
+		mtk_ddp_write_relaxed(comp, ((hsize / 4) << HACT) | (hbp + hpw + 296), DVO_TGEN_H1, handle);
+	} else {
+		mtk_ddp_write_relaxed(comp, (hpw << HSYNC) | hfp, DVO_TGEN_H0, handle);
+		mtk_ddp_write_relaxed(comp, ((hsize / 4) << HACT) | (hbp + hpw), DVO_TGEN_H1, handle);
+	}
 	mtk_ddp_write_relaxed(comp, (vpw << VSYNC) | vfp, DVO_TGEN_V0, handle);
 	mtk_ddp_write_relaxed(comp, (vsize << VACT) | (vbp + vpw), DVO_TGEN_V1, handle);
 

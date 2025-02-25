@@ -821,6 +821,9 @@ void mdrv_DPTx_SetDPTXOut(struct mtk_dp *mtk_dp)
 	}
 
 	mdrv_DPTx_SetTU(mtk_dp);
+
+	if (mtk_dp->info.resolution == SINK_640_480)
+		mhal_DPTx_SafeModeSetting(mtk_dp);
 }
 
 bool mdrv_DPTx_CheckSinkLock(struct mtk_dp *mtk_dp, u8 *pDPCD20x, u8 *pDPCD200C)

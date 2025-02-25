@@ -2814,6 +2814,70 @@ void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE)
 	udelay(50);
 }
 
+void mhal_DPTx_SafeModeSetting(struct mtk_dp *mtk_dp)
+{
+	unsigned long long TU_value_fixed;
+	unsigned long long M_value;
+	unsigned int shift = 1;
+	unsigned int rgb_num = 24;
+	unsigned int fixed_point;
+	unsigned int SCALE = 1000000;
+
+	DPTXMSG("Link Rate = %u, Lane Count = %u, Depth = %u\n",
+	mtk_dp->training_info.ubLinkRate, mtk_dp->training_info.ubLinkLaneCount, mtk_dp->info.depth);
+	if (mtk_dp->info.depth == DP_COLOR_DEPTH_6BIT)
+		rgb_num = 18;
+	else if (mtk_dp->info.depth == DP_COLOR_DEPTH_8BIT)
+		rgb_num = 24;
+	else if (mtk_dp->info.depth == DP_COLOR_DEPTH_10BIT)
+		rgb_num = 30;
+
+	TU_value_fixed = 25200000ULL * 8 * rgb_num;
+	DPTXMSG("Initial TU_value_fixed (scaled) = %llu\n", TU_value_fixed);
+
+	msWrite4ByteMask(mtk_dp, 0x304C, 0x0, 0x3);
+	msWrite4ByteMask(mtk_dp, 0x303C, 0x8, 0x3F);
+	msWrite4ByteMask(mtk_dp, 0x3358, 0x3F, 0x7F);
+	msWrite4ByteMask(mtk_dp, 0x3358, 0x80, 0x80);
+	msWrite4ByteMask(mtk_dp, 0x335C, 0x0, 0xffffffff);
+
+	if (mtk_dp->training_info.ubLinkRate == DP_LINKRATE_RBR) {
+		TU_value_fixed = TU_value_fixed / 162;
+		M_value = (25200000ULL * 32768) / (162 * SCALE);
+	} else if (mtk_dp->training_info.ubLinkRate == DP_LINKRATE_HBR) {
+		TU_value_fixed = TU_value_fixed / 270;
+		M_value = (25200000ULL * 32768) / (270 * SCALE);
+	} else if (mtk_dp->training_info.ubLinkRate == DP_LINKRATE_HBR2) {
+		TU_value_fixed = TU_value_fixed / 540;
+		M_value = (25200000ULL * 32768) / (540 * SCALE);
+	} else if (mtk_dp->training_info.ubLinkRate == DP_LINKRATE_HBR3) {
+		TU_value_fixed = TU_value_fixed / 810;
+		M_value = (25200000ULL * 32768) / (810 * SCALE);
+	}
+
+	if (mtk_dp->training_info.ubLinkLaneCount == DP_LANECOUNT_1) {
+		shift = 32;
+	} else if (mtk_dp->training_info.ubLinkLaneCount == DP_LANECOUNT_2) {
+		TU_value_fixed = TU_value_fixed / 2;
+		shift = 64;
+	} else if (mtk_dp->training_info.ubLinkLaneCount == DP_LANECOUNT_4) {
+		TU_value_fixed = TU_value_fixed / 4;
+		shift = 128;
+	}
+
+	TU_value_fixed = TU_value_fixed * shift;
+	fixed_point = (unsigned int)(TU_value_fixed / SCALE);
+
+	DPTXMSG("Final TU_value = %u (register value after fixed point conversion)\n", fixed_point);
+	DPTXMSG("M_value = 0x%llx\n", M_value);
+
+	msWrite4ByteMask(mtk_dp, 0x3360, fixed_point, 0xffff);
+	msWrite4ByteMask(mtk_dp, 0x3004, 0x100, 0x100);
+	msWrite4ByteMask(mtk_dp, 0x3008, (unsigned int)M_value, 0xFFFF);
+	msWrite4ByteMask(mtk_dp, 0x300C, 0x0, 0xFF);
+	msWrite4ByteMask(mtk_dp, 0x3154, 0x7C0, 0xFFFF);
+}
+
 void mhal_DPTx_AuxSetting(struct mtk_dp *mtk_dp)
 {
 	if (mtk_dp->cfg_ver == 2) {
