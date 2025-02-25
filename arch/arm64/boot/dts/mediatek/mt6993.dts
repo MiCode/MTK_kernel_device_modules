@@ -5342,6 +5342,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			scl-gpio-id = <96>;
 			sda-gpio-id = <97>;
 			scp-wake-en = <1>;
+			scp-gipc-in-set-ap = <0x1df50040>;
+			gipc1-setclr-bit-0 = <0x10>;
 			vlpcfg-base = <0x1c001000>;
 			vlp-scp-sleep = <0x92c 0x1 0x4>;
 			vlp-scp-sleep-stat = <0x934 0xf0000>;   /* sleep-stat1 */
