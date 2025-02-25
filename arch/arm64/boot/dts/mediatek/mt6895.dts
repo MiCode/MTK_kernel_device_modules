@@ -5967,7 +5967,7 @@
 				<1>, /*MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING*/
 				<1>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
 				<0>, /*MTK_DRM_OPT_MET_LOG*/
-				<0>, /*MTK_DRM_OPT_USE_PQ*/
+				<1>, /*MTK_DRM_OPT_USE_PQ*/
 				<1>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
 				<1>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
 				<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
@@ -5978,7 +5978,7 @@
 				<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
 				<1>, /*MTK_DRM_OPT_OVL_EXT_LAYER*/
 				<1>, /*MTK_DRM_OPT_AOD*/
-				<0>, /*MTK_DRM_OPT_RPO*/
+				<1>, /*MTK_DRM_OPT_RPO*/
 				<0>, /*MTK_DRM_OPT_DUAL_PIPE*/
 				<0>, /*MTK_DRM_OPT_DC_BY_HRT*/
 				<1>, /*MTK_DRM_OPT_OVL_WCG*/
@@ -6166,6 +6166,11 @@
 			reg = <0 0x1400b000 0 0x1000>;
 			interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys0_config_clk CLK_MM0_DISP_CCORR1>;
+			ccorr-bit = <13>;
+			ccorr-num-per-pipe = <2>;
+			ccorr-linear-per-pipe = <0x10>;
+			ccorr-prim-force-linear = <0x0>;
+			ccorr-linear = <0>;
 			doze-bypass = <1>;
 		};
 
@@ -6494,6 +6499,11 @@
 			reg = <0 0x1440a000 0 0x1000>;
 			interrupts = <GIC_SPI 354 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys1_config_clk CLK_MM1_DISP_CCORR0>;
+			ccorr-bit = <13>;
+			ccorr-num-per-pipe = <2>;
+			ccorr-linear-per-pipe = <0x10>;
+			ccorr-prim-force-linear = <0x0>;
+			ccorr-linear = <1>;
 			doze-bypass = <1>;
 		};
 
@@ -6503,6 +6513,11 @@
 			reg = <0 0x1440b000 0 0x1000>;
 			interrupts = <GIC_SPI 355 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys1_config_clk CLK_MM1_DISP_CCORR1>;
+			ccorr-bit = <13>;
+			ccorr-num-per-pipe = <2>;
+			ccorr-linear-per-pipe = <0x10>;
+			ccorr-prim-force-linear = <0x0>;
+			ccorr-linear = <0>;
 			doze-bypass = <1>;
 		};
 
