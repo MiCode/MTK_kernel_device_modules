@@ -5254,7 +5254,8 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 				priv->data->mmsys_id == MMSYS_MT6781) {
 				if (addon_module[0]->type == ADDON_BETWEEN &&
 					(addon_module[0]->module == DISP_RSZ ||
-						addon_module[0]->module == DISP_RSZ_v2))
+						addon_module[0]->module == DISP_RSZ_v2 ||
+						addon_module[0]->module == DISP_RSZ_v5))
 					mtk_addon_disconnect_between(crtc, ddp_mode,
 							addon_module[0],
 							&addon_config, cmdq_handle);
@@ -5284,10 +5285,12 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 			addon_config.config_type.tgt_comp =
 				dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc),
 						       addon_config.config_type.tgt_comp);
-			if (priv->data->mmsys_id == MMSYS_MT6885) {
+			if ((priv->data->mmsys_id == MMSYS_MT6885) ||
+				(priv->data->mmsys_id == MMSYS_MT6895)) {
 				if (addon_module[1]->type == ADDON_BETWEEN &&
 					(addon_module[1]->module == DISP_RSZ ||
-						addon_module[1]->module == DISP_RSZ_v2))
+						addon_module[1]->module == DISP_RSZ_v3 ||
+						addon_module[1]->module == DISP_RSZ_v6))
 					mtk_addon_disconnect_between(crtc, ddp_mode,
 							addon_module[1],
 							&addon_config, cmdq_handle);
