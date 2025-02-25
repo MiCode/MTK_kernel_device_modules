@@ -202,6 +202,13 @@ int vmm_cvfs_dump(void)
 }
 EXPORT_SYMBOL_GPL(vmm_cvfs_dump);
 
+int mtk_vmm_ctrl_dbg_use(bool enable)
+{
+	ISP_LOGI("not support in this version. en: %u\n", enable);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_vmm_ctrl_dbg_use);
+
 int mtk_vmm_ctrl(struct cb_params *cb_para)
 {
 	int ret = 0;

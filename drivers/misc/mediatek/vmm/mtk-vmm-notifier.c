@@ -288,6 +288,13 @@ int vmm_isp_ctrl_notify(int openIsp)
 }
 EXPORT_SYMBOL_GPL(vmm_isp_ctrl_notify);
 
+int mtk_vmm_ctrl_dbg_use(bool enable)
+{
+	ISP_LOGI("not support in this version. en: %u\n", enable);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_vmm_ctrl_dbg_use);
+
 static int vmm_notifier_probe(struct platform_device *pdev)
 {
 	int ret;

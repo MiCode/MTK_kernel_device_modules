@@ -272,6 +272,19 @@ static int vmm_locked_buck_ctrl(bool enable)
 	return ret;
 }
 
+int mtk_vmm_ctrl_dbg_use(bool enable)
+{
+	int ret = 0;
+
+	mutex_lock(&ctrl_mutex);
+	ISP_LOGI("dbg_use en: %u\n", enable);
+	ret = vmm_locked_buck_ctrl(enable);
+	mutex_unlock(&ctrl_mutex);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_vmm_ctrl_dbg_use);
+
 int mtk_vmm_ctrl(struct cb_params *cb_para)
 {
 	int ret = 0;
