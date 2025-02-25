@@ -34,6 +34,8 @@ module_param(mml_mutex_dl_sof, int, 0644);
 
 #define mutex_dl_perf_en	(mml_mutex_dl_sof & BIT(1))
 #define mutex_dl_perf_log	(mml_mutex_dl_sof & BIT(2))
+#define mutex_dl_nodone		(mml_mutex_dl_sof & BIT(3))
+
 
 struct mutex_data {
 	/* Count of display mutex HWs */
@@ -45,6 +47,7 @@ struct mutex_data {
 	bool sofgrp_assign;
 	u8 gpr[MML_PIPE_CNT];
 
+	const struct mml_comp_config_ops *config_ops;
 	u32 (*get_mutex_sof)(struct mml_mutex_ctl *ctl);
 	irqreturn_t (*handler)(int irq, void *dev_id);
 };
@@ -193,14 +196,6 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_clear_event(pkt, mutex->event_prete);
 				cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
 			}
-
-			if (cfg->info.mutex_src > 0) {
-				struct mml_mutex_ctl ctrl = {
-					.eof_src = cfg->info.mutex_src,
-				};
-
-				mutex_src = mutex->data->get_mutex_sof(&ctrl);
-			}
 		}
 
 		if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
@@ -288,6 +283,95 @@ static s32 mutex_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 static const struct mml_comp_config_ops mutex_config_ops = {
 	.mutex = mutex_trigger,
+	.wait_sof = mutex_wait_sof,
+	.reframe = mutex_reconfig_frame,
+};
+
+static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	struct mml_mutex *mutex = comp_to_mutex(comp);
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	u32 mutex_src = 0;
+	bool sof_en = true;
+	s32 ret;
+
+	/* DL mode and dpc off case, mutex sof control by dsi src */
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (mml_mutex_dl_sof) {
+			/* mutex en in disp pkt */
+			sof_en = false;
+		} else if (comp == path->mutex) {
+			if (mutex->event_prete) {
+				/* wait pre-te in first mutex trigger */
+				cmdq_pkt_clear_event(pkt, mutex->event_prete);
+				cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
+			}
+
+			if (cfg->info.disp_done_event && !mutex_dl_nodone)
+				cmdq_pkt_wfe(pkt, cfg->info.disp_done_event);
+		}
+
+		if (cfg->info.mutex_src > 0) {
+			struct mml_mutex_ctl ctrl = {
+				.eof_src = cfg->info.mutex_src,
+			};
+
+			mutex_src = mutex->data->get_mutex_sof(&ctrl);
+		}
+
+		if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
+			cmdq_pkt_backup_stamp(pkt, &task->perf_prete);
+	}
+
+	/* DL mode config sof only, other modes enable to trigger directly */
+	ret = mutex_enable(mutex, pkt, path, mutex_src, cfg->info.mode, true, sof_en);
+
+	/* asume path->mmlsys2, which is mmlsys0 always put after mmlsys1,
+	 * do disp/mml event sync after both mutex called mutex_enable
+	 */
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK &&
+		(!path->mmlsys2 || comp->sysid == path->mmlsys2->sysid)) {
+		if (ccfg->pipe == 0) {
+			if (cfg->dual) {
+				cmdq_pkt_set_event(pkt, mutex->event_pipe0_mml);
+				cmdq_pkt_wfe(pkt, mutex->event_pipe1_mml);
+			}
+
+			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(cfg->mml));
+
+			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
+#ifndef MML_FPGA
+				mml_dpc_power_release_gce(comp->sysid, pkt);
+				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
+				mml_dpc_power_keep_gce(comp->sysid, pkt,
+					mutex->data->gpr[ccfg->pipe],
+					&task->dpc_reuse_mutex);
+
+#endif
+			} else {
+				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
+			}
+
+			/* Note insert disp ready stamp after disp ready event in last mutex,
+			 * but update and retrieve data in first mutex.
+			 */
+			if (mutex_dl_perf_en)
+				cmdq_pkt_backup_stamp(pkt, &task->perf_dispready);
+		} else {
+			cmdq_pkt_set_event(pkt, mutex->event_pipe1_mml);
+			cmdq_pkt_wfe(pkt, mutex->event_pipe0_mml);
+		}
+	}
+
+	return ret;
+}
+
+
+static const struct mml_comp_config_ops mutex_config_ops_mt6993_mmld = {
+	.mutex = mutex_trigger_mt6993d,
 	.wait_sof = mutex_wait_sof,
 	.reframe = mutex_reconfig_frame,
 };
@@ -792,7 +876,7 @@ static int probe(struct platform_device *pdev)
 		priv->modules[comp_id].select = true;
 	}
 
-	priv->comp.config_ops = &mutex_config_ops;
+	priv->comp.config_ops = priv->data->config_ops;
 	priv->comp.hw_ops = &mutex_hw_ops;
 	priv->comp.debug_ops = &mutex_debug_ops;
 
@@ -836,6 +920,7 @@ static const struct mutex_data mt6983_mutex_data = {
 	.sofgrp_assign = true,
 	.get_mutex_sof = get_mutex_sof,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.config_ops = &mutex_config_ops,
 };
 
 static const struct mutex_data mt6991_mutex_data = {
@@ -846,6 +931,7 @@ static const struct mutex_data mt6991_mutex_data = {
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.handler = mml_mutex_irq_handler_mt6991,
+	.config_ops = &mutex_config_ops,
 };
 
 static const struct mutex_data mt6991_mmlt_mutex_data = {
@@ -855,6 +941,7 @@ static const struct mutex_data mt6991_mmlt_mutex_data = {
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.config_ops = &mutex_config_ops,
 };
 
 static const struct mutex_data mt6993_mmlf_mutex_data = {
@@ -864,6 +951,18 @@ static const struct mutex_data mt6993_mmlf_mutex_data = {
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6993,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.config_ops = &mutex_config_ops,
+	.handler = mml_mutex_irq_handler_mt6993,
+};
+
+static const struct mutex_data mt6993_mmld_mutex_data = {
+	.mutex_cnt = 16,
+	.mod_offsets = {0x34, 0x38},
+	.sof_offset = 0x30,
+	.mod_cnt = 2,
+	.get_mutex_sof = get_mutex_sof_mt6993,
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.config_ops = &mutex_config_ops_mt6993_mmld,
 	.handler = mml_mutex_irq_handler_mt6993,
 };
 
@@ -926,7 +1025,7 @@ const struct of_device_id mml_mutex_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6993-mmld_mutex",
-		.data = &mt6993_mmlf_mutex_data,
+		.data = &mt6993_mmld_mutex_data,
 	},
 	{},
 };

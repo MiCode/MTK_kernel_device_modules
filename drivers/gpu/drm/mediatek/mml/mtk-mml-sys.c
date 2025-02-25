@@ -2539,8 +2539,6 @@ static s32 dl_wait_mt6993(struct mml_comp *comp, struct mml_task *task,
 
 	if (sys->event_eofs[comp->sub_idx])
 		cmdq_pkt_wfe(task->pkts[ccfg->pipe], sys->event_eofs[comp->sub_idx]);
-	else
-		cmdq_pkt_wfe(task->pkts[ccfg->pipe], task->config->info.disp_done_event);
 
 	return 0;
 }
