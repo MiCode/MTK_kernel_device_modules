@@ -98,6 +98,7 @@ static bool has_infra_hfrp;
 static bool is_mminfra_shutdown;
 static bool mm_no_cg_ctrl;
 static bool mm_no_scmi;
+static bool bypass_devapc_excep;
 static bool mmpc_src_ctrl;
 static bool mminfra_api_pwr_ctrl;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
@@ -1237,6 +1238,11 @@ static bool mminfra_devapc_excep_cb(int slave_type)
 	bool ret = false;
 	unsigned int vio_sta_22;
 
+	if (bypass_devapc_excep) {
+		pr_info("bypass mminfra devapc exception\n");
+		return ret;
+	}
+
 	if (mm_pwr_ver == mm_pwr_v3) {
 		vio_sta_22 = readl(dbg->mminfra_devapc_vio_sta + 0x458);
 		if ((vio_sta_22 & MMINFRA_DEVAPC_VIO_STA_BIT_19) == MMINFRA_DEVAPC_VIO_STA_BIT_19)
@@ -1341,6 +1347,7 @@ static int mminfra_debug_probe(struct platform_device *pdev)
 	of_property_read_u32(node, "mm-mtcmos-mask", &dbg->mm_mtcmos_mask);
 	of_property_read_u32(node, "mm-devapc-vio-sta-base", &dbg->mm_devapc_vio_sta_base);
 
+	bypass_devapc_excep = of_property_read_bool(node, "bypass-devapc-excep");
 	mm_no_scmi = of_property_read_bool(node, "mm-no-scmi");
 	mm_no_cg_ctrl = of_property_read_bool(node, "mm-no-cg-ctrl");
 	mminfra_api_pwr_ctrl = of_property_read_bool(node, "mminfra-api-pwr-ctrl");
