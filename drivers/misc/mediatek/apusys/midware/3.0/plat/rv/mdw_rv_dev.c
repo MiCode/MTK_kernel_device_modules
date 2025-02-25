@@ -409,7 +409,7 @@ static int mdw_rv_callback(struct rpmsg_device *rpdev, void *data,
 	ts1 = sched_clock();
 	mrdev->rv_cb_time = ts1 - ts2;
 	/* complete callback */
-	if (s_msg->complete)
+	if (s_msg && s_msg->complete)
 		s_msg->complete(s_msg);
 
 	return 0;

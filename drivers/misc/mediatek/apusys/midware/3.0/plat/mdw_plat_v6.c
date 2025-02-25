@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2021 MediaTek Inc.
  */
+#include <linux/sched/clock.h>
 
 #include "mdw.h"
 #include "mdw_plat.h"
@@ -722,6 +723,7 @@ out:
 static int mdw_plat_v6_late_postprocess_cmd(struct mdw_cmd *c)
 {
 	bool need_dtime_handle = false;
+	uint64_t ts1 = 0, ts2 = 0;
 
 	mdw_flw_debug("\n");
 	if (c->cmd_state == MDW_CMD_STATE_IDLE) {
@@ -731,11 +733,17 @@ static int mdw_plat_v6_late_postprocess_cmd(struct mdw_cmd *c)
 	/* postprocess appendix */
 	mdw_plat_v6_appendix_process(c, APU_APPENDIX_CB_POSTPROCESS_LATE);
 
+	ts1 = sched_clock();
 	mdw_pb_put(c->power_plcy);
+	ts2 = sched_clock();
+	c->pb_put_time = ts2 - ts1;
 	atomic_dec(&c->mpriv->mdev->cmd_running);
 
 	/* update cmd history */
+	ts1 = sched_clock();
 	need_dtime_handle = mdw_ch_cmd_exec_update(c);
+	ts2 = sched_clock();
+	c->load_aware_pwroff_time = ts2 - ts1;
 
 	/* handle dtime */
 	if (need_dtime_handle == true)

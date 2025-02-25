@@ -821,12 +821,18 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 {
 	struct dma_fence *f = &c->fence->base_fence;
 	struct mdw_fpriv *mpriv = c->mpriv;
+	uint64_t ts1 = 0, ts2 = 0;
 
+	ts1 = sched_clock();
 	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
 	mutex_lock(&c->mtx);
+	ts2 = sched_clock();
+	c->enter_complt_time = ts2 - ts1;
 
 	/* handle cmdbuf for user */
 	mdw_cmd_postprocess(c);
+	ts1 = sched_clock();
+	c->cmdbuf_out_time = ts1 - ts2;
 
 	mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d) sc_rets(0x%llx) complete, pid(%d/%d)(%d)\n",
 		(uint64_t)mpriv, c->comm, c->uid, c->kid, c->inference_id,
@@ -869,6 +875,8 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ret)
 		}
 	}
 	dma_fence_put(f);
+	ts2 = sched_clock();
+	c->handle_cmd_result_time = ts2 - ts1;
 	mdw_flw_debug("c(0x%llx) signal done\n", c->kid);
 
 	/* late post process */
