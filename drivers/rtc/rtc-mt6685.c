@@ -47,6 +47,7 @@ static int mtk_rtc_write_trigger(struct mt6685_rtc *rtc);
 
 static int counter;
 
+static int rtc_is_shutdown;
 static struct rtc_wkalrm p_alm;
 
 void power_on_mclk(struct mt6685_rtc *rtc)
@@ -293,6 +294,7 @@ static void mtk_rtc_enable_k_eosc(struct device *dev)
 
 static u32 bootmode = NORMAL_BOOT;
 static struct wakeup_source *mt6685_rtc_suspend_lock;
+static struct mutex rtc_shutdown_lock;
 static bool rtc_pm_notifier_registered;
 static bool kpoc_alarm;
 static unsigned long rtc_pm_status;
@@ -718,6 +720,21 @@ static int mtk_rtc_is_alarm_irq(struct mt6685_rtc *rtc)
 	return RTC_NONE;
 }
 
+static void mtk_rtc_update_pwron_kpoc_flag(struct mt6685_rtc *rtc)
+{
+	int ret;
+
+	ret = regmap_update_bits(rtc->regmap,rtc->addr_base + RTC_PDN1, 1 << 14, 1 << 14);
+	if (ret < 0)
+		goto exit;
+
+	mtk_rtc_write_trigger(rtc);
+	return;
+
+exit:
+	dev_notice(rtc->rtc_dev->dev.parent, "%s error\n", __func__);
+}
+
 static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 {
 	struct mt6685_rtc *rtc = data;
@@ -776,6 +793,11 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 			memset(&p_alm, 0, sizeof(struct rtc_wkalrm));
 			if (bootmode == KERNEL_POWER_OFF_CHARGING_BOOT ||
 				bootmode == LOW_POWER_OFF_CHARGING_BOOT) {
+				u32 __pdn1;
+
+				mtk_rtc_update_pwron_kpoc_flag(rtc);
+				regmap_read(rtc->regmap, rtc->addr_base + RTC_PDN1, &__pdn1);
+				dev_notice(rtc->rtc_dev->dev.parent, "kpoc pdn1 = 0x%x\n", __pdn1);
 				mtk_rtc_reboot(rtc);
 				mutex_unlock(&rtc->lock);
 				disable_irq_nosync(rtc->irq);
@@ -790,6 +812,28 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 			tm.tm_year -= RTC_MIN_YEAR_OFFSET;
 			tm.tm_mon += 1;
 			mtk_rtc_restore_alarm(rtc, &tm);
+		} else {
+			dev_notice(rtc->rtc_dev->dev.parent, "WARNING: poffalm may miss!\n");
+			dev_notice(rtc->rtc_dev->dev.parent, "now_time:%04d/%02d/%02d %02d:%02d:%02d\n",
+				nowtm.tm_year, nowtm.tm_mon, nowtm.tm_mday,nowtm.tm_hour, nowtm.tm_min, nowtm.tm_sec);
+			dev_notice(rtc->rtc_dev->dev.parent, "time(spare):%04d/%02d/%02d %02d:%02d:%02d\n",
+				tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour,tm.tm_min, tm.tm_sec);
+			if (bootmode == KERNEL_POWER_OFF_CHARGING_BOOT ||
+					bootmode == LOW_POWER_OFF_CHARGING_BOOT) {
+				u32 __pdn1;
+
+				pr_notice("[mt6685-rtc]%s now_time miss power on time\n", __func__);
+				if (now_time > time + 90)
+					dev_notice(rtc->rtc_dev->dev.parent, "%s now_time > time + 90", __func__);
+				mtk_rtc_update_pwron_kpoc_flag(rtc);
+				regmap_read(rtc->regmap, rtc->addr_base + RTC_PDN1, &__pdn1);
+				dev_notice(rtc->rtc_dev->dev.parent, "pdn1 = 0x%x\n", __pdn1);
+
+				mtk_rtc_reboot(rtc);
+				mutex_unlock(&rtc->lock);
+				disable_irq_nosync(rtc->irq);
+				goto out;
+			}
 		}
 	}
 #endif
@@ -1137,7 +1181,12 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 		  tm->tm_year + RTC_MIN_YEAR, tm->tm_mon, tm->tm_mday,
 		  tm->tm_hour, tm->tm_min, tm->tm_sec, alm->enabled);
 
+	mutex_lock(&rtc_shutdown_lock);
 	mutex_lock(&rtc->lock);
+	if (rtc_is_shutdown) {
+		dev_notice(rtc->rtc_dev->dev.parent, "WARNING, rtc already shutdown, can't set alm.\n");
+		goto exit;
+	}
 
 	switch (alm->enabled) {
 	case 3:
@@ -1233,6 +1282,7 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 		rtc_update_irq(rtc->rtc_dev, 1, RTC_IRQF | RTC_AF);
 exit:
 	mutex_unlock(&rtc->lock);
+	mutex_unlock(&rtc_shutdown_lock);
 	power_down_mclk(rtc);
 	return ret;
 }
@@ -1398,6 +1448,7 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 
 	mutex_init(&rtc->lock);
 	mutex_init(&rtc->clk_lock);
+	mutex_init(&rtc_shutdown_lock);
 
 	platform_set_drvdata(pdev, rtc);
 
@@ -1495,6 +1546,7 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 
 	power_on_mclk(rtc);
 	power_down_mclk(rtc);
+	rtc_is_shutdown = 0;
 	return 0;
 }
 
@@ -1511,6 +1563,9 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 	bool is_pwron_alarm = false;
 	u8 ext_rtc_con = 0;
 #endif
+
+	mutex_lock(&rtc_shutdown_lock);
+	rtc_is_shutdown = 1;
 
 	/* disable PWREN */
 	power_on_mclk(rtc);
@@ -1591,6 +1646,7 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 	} else
 		pr_notice("No power-off alarm is set\n");
 #endif
+	mutex_unlock(&rtc_shutdown_lock);
 
 	if (rtc->data->chip_version == MT6685_SERIES) {
 		/*Normal sequence power off when PON falling*/
