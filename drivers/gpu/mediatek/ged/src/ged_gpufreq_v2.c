@@ -434,8 +434,12 @@ unsigned int ged_get_freq_by_idx(int oppidx)
 	if (oppidx < 0)
 		return 0;
 
-	if (is_dcs_enable() && g_virtual_table)
+	if (is_dcs_enable() && g_virtual_table) {
+		if (oppidx > g_min_virtual_oppidx)
+			oppidx = g_min_virtual_oppidx;
+
 		return g_virtual_table[oppidx].freq;
+	}
 
 	if (g_working_table == NULL)
 		return gpufreq_get_freq_by_idx(TARGET_DEFAULT, oppidx);
@@ -533,10 +537,8 @@ unsigned int ged_get_cur_stack_freq(void)
 		else
 			oppidx = g_min_working_oppidx + i;
 
-		if (oppidx >= 0)
-			return ged_get_freq_by_idx(oppidx);
-		else
-			return cur_stack_freq;
+		return ged_get_freq_by_idx(oppidx);
+
 	}else
 		return cur_stack_freq;
 

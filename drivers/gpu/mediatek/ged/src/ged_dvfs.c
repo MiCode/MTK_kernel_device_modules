@@ -2048,7 +2048,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 		perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	} else if (g_async_pmodel_ver == 4) {
 		perf = (counters->mcu * async_coeff_4[4] +
-			counters->iter * async_coeff_4[5] +
+			counters->iter * async_coeff_4[5] +
 			counters->tiler * async_coeff_4[6]) * ratio / RATIO_SCAL +
 			(counters->mcu * async_coeff_4[7]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL +
 			(counters->mcu * async_coeff_4[0] +
@@ -2056,7 +2056,10 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 			(counters->mcu * async_coeff_4[2] +
 			counters->tiler * async_coeff_4[3]) / ratio / ratio * RATIO_SCAL * RATIO_SCAL;
 
-		perf = (perf / counters->gpuactive) + async_coeff_4[8];
+		if (counters->gpuactive > 0)
+			perf = (perf / counters->gpuactive) + async_coeff_4[8];
+		else
+			perf = async_coeff_4[8];
 		perf = div64_u64(perf * PERF_SCAL, COEFF_SCAL);
 	}
 
@@ -4183,7 +4186,7 @@ int ged_dvfs_query_loading(u64 *sum_loading, u64 *sum_delta_time)
 		tmp_loading1 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_LOADING1);
 		tmp_loading2 = mtk_gpueb_sysram_read_u64(SYSRAM_GPU_SUM_LOADING2);
 		tmp_time1 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_TIME1);
-		tmp_time2 = mtk_gpueb_sysram_read(SYSRAM_GPU_SUM_TIME2);
+		tmp_time2 = mtk_gpueb_sysram_read_u64(SYSRAM_GPU_SUM_TIME2);
 
 		*sum_loading = (u64)tmp_loading1 + ((u64)tmp_loading2 << 32);
 		*sum_delta_time = (u64)tmp_time1 + ((u64)tmp_time2 << 32);

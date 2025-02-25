@@ -1334,7 +1334,7 @@ struct GED_DVFS_OPP_STAT mtk_gpueb_mbrain_read(int opp)
 	active_low = mtk_gpueb_sysram_read(offset);
 	active_high = mtk_gpueb_sysram_read_u64(offset + 1);
 	idle_low = mtk_gpueb_sysram_read(offset + 2);
-	idle_high = mtk_gpueb_sysram_read(offset + 3);
+	idle_high = mtk_gpueb_sysram_read_u64(offset + 3);
 
 	out_data.ui64Active = active_low & 0xFFFFFFFF + (active_high << 32);
 	out_data.ui64Idle = idle_low & 0xFFFFFFFF + (idle_high << 32);
