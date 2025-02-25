@@ -572,10 +572,8 @@ void eyemon_scan_show(struct ufs_hba *hba, char *out, ssize_t *size,
 	else
 		t = 1;
 
-	if (max_v_step >= 63)
+	if (max_v_step >= 31)
 		v = 4;
-	else if (max_v_step >= 31)
-		v = 2;
 	else
 		v = 1;
 
