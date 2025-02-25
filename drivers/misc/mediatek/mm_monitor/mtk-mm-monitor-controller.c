@@ -1905,43 +1905,43 @@ static int mm_monitor_controller_probe(struct platform_device *pdev)
 int mmmc_pd_MT6993_SMI_PD_DISP_VCORE_cb(struct notifier_block *nb,
 	unsigned long is_on, void *v)
 {
-	mtk_init_monitor(power_domains[DISP_VCORE], false);
+	mtk_init_monitor(get_power_domains(DISP_VCORE), false);
 	return 0;
 }
 int mmmc_pd_MT6993_SMI_PD_ISP_VCORE_cb(struct notifier_block *nb,
 	unsigned long is_on, void *v)
 {
-	mtk_init_monitor(power_domains[ISP_VCORE], false);
+	mtk_init_monitor(get_power_domains(ISP_VCORE), false);
 	return 0;
 }
 int mmmc_pd_MT6993_SMI_PD_CAM_VCORE_cb(struct notifier_block *nb,
 	unsigned long is_on, void *v)
 {
-	mtk_init_monitor(power_domains[CAM_VCORE], false);
+	mtk_init_monitor(get_power_domains(CAM_VCORE), false);
 	return 0;
 }
 int mmmc_pd_MT6993_SMI_PD_CAM_RAWA_cb(struct notifier_block *nb,
 	unsigned long is_on, void *v)
 {
-	mtk_init_monitor(power_domains[CAM_RAWA], false);
+	mtk_init_monitor(get_power_domains(CAM_RAWA), false);
 	return 0;
 }
 int mmmc_pd_MT6993_SMI_PD_CAM_RAWB_cb(struct notifier_block *nb,
 	unsigned long is_on, void *v)
 {
-	mtk_init_monitor(power_domains[CAM_RAWB], false);
+	mtk_init_monitor(get_power_domains(CAM_RAWB), false);
 	return 0;
 }
 int mmmc_pd_MT6993_SMI_PD_CAM_RAWC_cb(struct notifier_block *nb,
 	unsigned long is_on, void *v)
 {
-	mtk_init_monitor(power_domains[CAM_RAWC], false);
+	mtk_init_monitor(get_power_domains(CAM_RAWC), false);
 	return 0;
 }
 int mmmc_pd_MT6993_SMI_PD_VEN_MDP_cb(struct notifier_block *nb,
 	unsigned long is_on, void *v)
 {
-	mtk_init_monitor(power_domains[VEN_MDP], false);
+	mtk_init_monitor(get_power_domains(VEN_MDP), false);
 	return 0;
 }
 

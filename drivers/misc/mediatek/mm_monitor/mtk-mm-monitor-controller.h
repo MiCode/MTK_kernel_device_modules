@@ -238,7 +238,7 @@ void emi_moniter_settings(void);
 u32 get_mmmc_subsys_max(void);
 u32 get_mminfra_pd(void);
 u16 get_freq_from_mux_id(enum MUX_ID id);
-extern u32 power_domains[];
+u32 get_power_domains(int index);
 
 u32 mtk_init_monitor(u32 power_domain_id, bool dump_and_force_init);
 

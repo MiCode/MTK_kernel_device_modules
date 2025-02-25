@@ -48,9 +48,11 @@ void emi_moniter_settings(void)
 	return;
 }
 EXPORT_SYMBOL(emi_moniter_settings);
-u32 power_domains[] = {
-};
-EXPORT_SYMBOL(power_domains);
+u32 get_power_domains(int index)
+{
+	return 0;
+}
+EXPORT_SYMBOL(get_power_domains);
 static int __init mm_monitor_platform_init(void)
 {
 	MM_MONITOR_DBG("enter");

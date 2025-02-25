@@ -234,7 +234,11 @@ u32 power_domains[] = {
 	MT6993_SMI_PD_CAM_RAWC,
 	MT6993_SMI_PD_VEN_MDP,
 };
-EXPORT_SYMBOL(power_domains);
+u32 get_power_domains(int index)
+{
+	return power_domains[index];
+}
+EXPORT_SYMBOL(get_power_domains);
 
 static int __init mm_monitor_platform_init(void)
 {
