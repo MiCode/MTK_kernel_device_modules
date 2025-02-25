@@ -14,56 +14,11 @@
 #define PKVM_MGMT_SYMBOL	"pkvm_mgmt_get_ver"
 #define APPLY_FFA_WA
 
-#ifdef APPLY_FFA_WA
-static struct kprobe tmp_kp;
-static spinlock_t pkvm_mgmt_spinlock;
-
-static void *lookup_function_address(const char *name)
-{
-	int ret;
-	void *addr = NULL;
-
-	memset(&tmp_kp, 0, sizeof(struct kprobe));
-	tmp_kp.symbol_name = name;
-
-	ret = register_kprobe(&tmp_kp);
-	if (ret < 0) {
-		pr_info("register_kprobe failed for %s, returned %d\n", name, ret);
-		return 0;
-	}
-
-	addr = tmp_kp.addr;
-
-	unregister_kprobe(&tmp_kp);
-
-	return addr;
-}
-
-static bool is_pkvm_mgmt_valid(void)
-{
-	static void *symbol_addr;
-	static int has_run;
-	unsigned long irq_flags;
-
-	spin_lock_irqsave(&pkvm_mgmt_spinlock, irq_flags);
-	if (has_run == 0) {
-		symbol_addr = lookup_function_address(PKVM_MGMT_SYMBOL);
-		has_run = 1;
-	}
-	spin_unlock_irqrestore(&pkvm_mgmt_spinlock, irq_flags);
-
-	if (symbol_addr)
-		return true;
-
-	return false;
-}
-#endif
-
 static void __arm_ffa_fn_smc(ffa_value_t args, ffa_value_t *res)
 {
 #ifdef APPLY_FFA_WA
 	/* FF-A workaround, routing FFA to vendor module */
-	if (is_protected_kvm_enabled() && is_pkvm_mgmt_valid())
+	if (is_protected_kvm_enabled())
 		args.a0 |= 0x8000UL;
 #endif
 	arm_smccc_1_2_smc(&args, res);
@@ -91,8 +46,6 @@ int __init ffa_transport_init(ffa_fn **invoke_ffa_fn)
 		*invoke_ffa_fn = __arm_ffa_fn_smc;
 	else
 		*invoke_ffa_fn = __arm_ffa_fn_hvc;
-
-	spin_lock_init(&pkvm_mgmt_spinlock);
 
 	return 0;
 }
