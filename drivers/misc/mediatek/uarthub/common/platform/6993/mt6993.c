@@ -2007,7 +2007,7 @@ int uarthub_inband_trigger_with_sta_char_mt6993(unsigned char sta_char)
 
 int uarthub_inband_is_support_mt6993(void)
 {
-	return 1;
+	return 0;
 }
 
 int uarthub_is_enable_fw_flow_ctrl_with_inband_mt6993(void)
