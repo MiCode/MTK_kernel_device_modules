@@ -10170,7 +10170,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"MTK_DRM_OPT_LTPO_VM",
 				"MTK_DRM_OPT_UNION_FENCE",
 				"MTK_DRM_OPT_DSI_LPC_EN",
-				"MTK_DRM_OPT_PROP_INHERITANCE";
+				"MTK_DRM_OPT_PROP_INHERITANCE",
+				"MTK_DRM_OPT_PKT_POOL";
 
 			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
@@ -10254,7 +10255,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_LTPO_VM*/
 				<1>, /*MTK_DRM_OPT_UNION_FENCE*/
 				<1>, /*MTK_DRM_OPT_DSI_LPC_EN*/
-				<1>; /*MTK_DRM_OPT_PROP_INHERITANCE*/
+				<1>, /*MTK_DRM_OPT_PROP_INHERITANCE*/
+				<0>; /*MTK_DRM_OPT_PKT_POOL*/
 		};
 
 		disp_ovl0_exdma0: disp-ovl0-exdma0@32930000 {
