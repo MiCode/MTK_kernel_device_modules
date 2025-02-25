@@ -28,15 +28,19 @@ static void mdw_drv_priv_delete(struct kref *ref)
 			container_of(ref, struct mdw_fpriv, ref);
 
 	mdw_drv_debug("mpriv(0x%llx) free\n", (uint64_t) mpriv);
+
+	mutex_lock(&mpriv->mtx);
+	mdw_mem_release_session(mpriv);
+	mpriv->mdev->plat_funcs->delete_session(mpriv);
+	mdw_dev_session_delete(mpriv);
+	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
 	if (mpriv->mem_allocator) {
-		mutex_lock(&mpriv->mtx);
 		if (apu_sysmem_delete_allocator(mpriv->mem_allocator))
 			mdw_exception("session(0x%llx) delete mem allcator failed\n",
 				 (uint64_t)mpriv);
-		mutex_unlock(&mpriv->mtx);
 	}
-	mpriv->mdev->plat_funcs->delete_session(mpriv);
-	mdw_dev_session_delete(mpriv);
+	mutex_unlock(&mpriv->mtx);
+
 	kfree(mpriv);
 }
 
@@ -107,7 +111,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		MDW_MEM_TYPE_MAIN, MDW_BUF_TYPE_CMD, MDW_MEM_POOL_CHUNK_SIZE,
 		MDW_DEFAULT_ALIGN, F_MDW_MEM_32BIT);
 	if (ret) {
-		mdw_exception("session(0x%llx) create mem pool failed(%d)\n", (uint64_t)mpriv, ret);
+		mdw_drv_err("session(0x%llx) create mem pool failed(%d)\n", (uint64_t)mpriv, ret);
 		goto delete_allocator;
 	}
 
@@ -133,8 +137,7 @@ static int mdw_drv_close(struct inode *inode, struct file *filp)
 	mpriv = filp->private_data;
 	mdw_flw_debug("mpriv(0x%llx)\n", (uint64_t)mpriv);
 	mutex_lock(&mpriv->mtx);
-	mdw_mem_release_session(mpriv);
-	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
+	mdw_cmd_release_session(mpriv);
 	mutex_unlock(&mpriv->mtx);
 	mpriv->put_ref(mpriv);
 

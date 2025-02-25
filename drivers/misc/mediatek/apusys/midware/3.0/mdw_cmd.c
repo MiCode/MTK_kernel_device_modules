@@ -1281,6 +1281,23 @@ out:
 	return ret;
 }
 
+void mdw_cmd_release_session(struct mdw_fpriv *mpriv)
+{
+	struct mdw_cmd *c = NULL;
+	void *entry = NULL;
+	int id = 0;
+
+	idr_for_each_entry(&mpriv->cmds, entry, id) {
+		c = idr_remove(&mpriv->cmds, id);
+		if (!c) {
+			mdw_drv_warn("invalidate cmd id(%d)\n", id);
+		} else {
+			mdw_cmd_debug("remove redundant c id(%d)\n", id);
+			mdw_cmd_delete(c);
+		}
+	}
+}
+
 static int mdw_cmd_ioctl_del(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 {
 	struct mdw_cmd_in *in = (struct mdw_cmd_in *)args;

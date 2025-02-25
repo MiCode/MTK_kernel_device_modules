@@ -34,4 +34,6 @@
 int mdw_cmd_invoke_map(struct mdw_cmd *c, struct mdw_mem_map *map);
 void mdw_cmd_unvoke_map(struct mdw_cmd *c);
 
+void mdw_cmd_release_session(struct mdw_fpriv *mpriv);
+
 #endif
