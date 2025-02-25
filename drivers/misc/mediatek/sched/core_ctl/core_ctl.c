@@ -2835,6 +2835,9 @@ unsigned long get_freq_thres(unsigned int cid)
 	if (cid >= MAX_CLUSTERS)
 		return 0;
 
+	if (!cluster->ppm_data.init)
+		return freq_thres[cid];
+
 	opp_nr = cluster->ppm_data.opp_nr;
 	max_capacity = cluster->ppm_data.ppm_tbl[0].capacity;
 	target_capacity = div_u64(cluster->up_thres*max_capacity, 100);
