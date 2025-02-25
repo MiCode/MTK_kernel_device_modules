@@ -1268,6 +1268,11 @@
 			reg = <0 0x10002000 0 0x1000>;
 		};
 
+		infracfg_ao@10001000 {
+			compatible = "mediatek,infracfg_ao";
+			reg = <0 0x10001000 0 0x1000>;
+		};
+
 		pericfg@10003000 {
 			compatible = "mediatek,pericfg";
 			reg = <0 0x10003000 0 0x1000>;
@@ -5576,6 +5581,7 @@
 					  <12 100 1>,	/* vow dual mic barge in */
 					  <13 200 0>;	/* ultrasound */
 
+			scp-protect = "disable";   /* enable scp protections */
 			debug-timeout-reset = "enable"; /* enable timeout debug*/
 			secure-dump = "enable";   /* enable dump via secure world*/
 			secure-dump-size = <0x300000>;
@@ -5615,7 +5621,9 @@
 		};
 
 		scp_dvfs {
-			compatible = "mediatek,scp_dvfs";
+			compatible = "mediatek,scp-dvfs";
+			scp-dvfs-disable = <1>;
+			scp-dvfs-flag = "disable";  /*turn on/off SCP DVFS */
 			clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 				<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
 
