@@ -1974,6 +1974,8 @@
 		gauge = <&mtk_gauge>;
 		gauge2 = <&mtk_gauge2>;
 		ufsnotify = <&ufshci>;
+		vcore-supply = <&mt6316_8_vbuck1>;
+		vsram-supply = <&mt6363_vbuck4>;
 	};
 
 	met {
