@@ -26,6 +26,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/connfem:connfem",
     "//vendor/mediatek/kernel_modules/connectivity/conninfra:conninfra",
     "//vendor/mediatek/kernel_modules/connectivity/fmradio:fmradio",
+    "//vendor/mediatek/kernel_modules/connectivity/fmradio:fmradio-connac2",
     "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v010:gps_drv_dl_v010",
     "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v030:gps_drv_dl_v030",
     "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v050:gps_drv_dl_v050",
