@@ -43,6 +43,10 @@
 #define MTK_WAIT_GHWV_IRQ_PREPARE_US  1
 #define MTK_WAIT_GHWV_IRQ_VOTE_CNT    1250
 #define MTK_WAIT_GHWV_IRQ_VOTE_US     2
+
+#define MTK_WAIT_GHWV_MTCMOS_DONE_CNT 10000
+#define MTK_WAIT_GHWV_MTCMOS_DONE_US 1
+
 // 10ms
 #define MTK_WAIT_GHWV_IRQ_DONE_CNT    10000
 #define MTK_WAIT_GHWV_IRQ_DONE_US     1
@@ -534,7 +538,6 @@ ERR:
 static int _v1_hwccf_irq_voter_nowait(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
 						uint32_t done_ofs, uint32_t done_ack_msk, uint32_t sta_ofs)
 {
-	unsigned long flags;
 	bool is_set = IS_SET_FROM_VOTER_ADDR(setclr_ofs);
 	uint32_t en_ofs = setclr_ofs + (is_set ? 0x8 : 0x4);
 	int ret = 0;
@@ -551,7 +554,6 @@ static int _v1_hwccf_irq_voter_nowait(struct regmap *regmap, uint32_t setclr_ofs
 	HWCCF_PROFILE_RESET(nowait);
 	HWCCF_PROFILE_START(nowait);
 
-	spin_lock_irqsave(&hwccf_irq_lock, flags);
 	// Check repeat vote
 	val = hwccf_read(regmap, en_ofs);
 	if (is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val)) {
@@ -584,7 +586,6 @@ static int _v1_hwccf_irq_voter_nowait(struct regmap *regmap, uint32_t setclr_ofs
 	}
 
 skip:
-	spin_unlock_irqrestore(&hwccf_irq_lock, flags);
 	// Profling End
 	HWCCF_PROFILE_END(nowait);
 	HWCCF_PROFILE_PRINT(nowait);
@@ -594,7 +595,6 @@ ERR:
 	HWCCF_ERR("%s: vote[%x]=%x{%x}, done[%x]=%x{%x}\n", __func__,
 		setclr_ofs, vote_val,     setclr_ofs ? hwccf_read(regmap, en_ofs) : 0,
 		done_ofs, done_ack_msk, done_ofs ? hwccf_read(regmap, done_ofs) : 0);
-	spin_unlock_irqrestore(&hwccf_irq_lock, flags);
 	HWCCF_PROFILE_END(nowait);
 	HWCCF_PROFILE_PRINT(nowait);
 	return ret;
@@ -715,17 +715,37 @@ ERR:
 
 
 static int _v1_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
-							uint32_t done_ofs, uint32_t done_ack_msk, uint32_t sta_ofs)
+		uint32_t done_ofs, uint32_t done_ack_msk, uint32_t sta_ofs, uint32_t all_en_ofs)
 {
 	bool is_set = IS_SET_FROM_VOTER_ADDR(setclr_ofs);
 	uint32_t en_ofs = setclr_ofs + (is_set ? 0x8 : 0x4);
 	int ret = 0;
 	uint32_t val;
+	int i;
 
 	// Profling start
 	HWCCF_PROFILE_DECLARE(wait_done);
 	HWCCF_PROFILE_RESET(wait_done);
 	HWCCF_PROFILE_START(wait_done);
+
+	// Polling all_en
+	if (is_set) {
+		for (i = 0; i <= MTK_WAIT_GHWV_MTCMOS_DONE_CNT; i++) {
+			val = hwccf_read(regmap, all_en_ofs);
+			udelay(MTK_WAIT_GHWV_MTCMOS_DONE_US);
+
+			if (IS_MASK_SET(val, done_ack_msk))
+				break;
+
+			if (i == MTK_WAIT_GHWV_MTCMOS_DONE_CNT) {
+				HWCCF_ERR("%s polling all_en timeout\n", is_set ? "set" : "clr");
+				goto ERR;
+			}
+		}
+	} else {
+		udelay(100);
+	}
+
 
 	// Polling sta
 	ret = regmap_read_poll_timeout_atomic(regmap, sta_ofs, val,
@@ -777,11 +797,13 @@ ERR:
 }
 
 static int _v1_hwccf_irq_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
-			uint32_t done_ofs, uint32_t sta_ofs)
+			uint32_t done_ofs, uint32_t sta_ofs, uint32_t all_en_ofs)
 {
 	int ret = 0;
+	unsigned long flags;
 	//CCF_XPU(HWV_XPU_0)
 
+	spin_lock_irqsave(&hwccf_irq_lock, flags);
 	// Voting hwccf irq voter without waiting hwccf done bit
 	ret = _v1_hwccf_irq_voter_nowait(regmap, setclr_ofs, vote_val, done_ofs, vote_val, sta_ofs);
 
@@ -789,14 +811,17 @@ static int _v1_hwccf_irq_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, 
 		goto ERR;
 
 	// Polling hwccf done bit
-	ret = _v1_hwccf_irq_voter_wait_done(regmap, setclr_ofs, vote_val, done_ofs, vote_val, sta_ofs);
+	ret = _v1_hwccf_irq_voter_wait_done(regmap, setclr_ofs, vote_val, done_ofs, vote_val, sta_ofs, all_en_ofs);
 
 	if (ret)
 		goto ERR;
 
+	spin_unlock_irqrestore(&hwccf_irq_lock, flags);
+
 	return ret;
 
 ERR:
+	spin_unlock_irqrestore(&hwccf_irq_lock, flags);
 	configASSERT(0);
 	return ret;
 }
@@ -860,6 +885,7 @@ int _v1_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resour
 	uint32_t setclr_ofs = 0x0;
 	uint32_t done_ofs = 0x0;
 	uint32_t sta_ofs = 0x0;
+	uint32_t all_en_ofs = 0x0;
 	struct regmap *map;
 
 	map = ((hwccf_type == AP_HWCCF) ? regmaps[AP_HWCCF]:regmaps[MM_HWCCF]);
@@ -868,20 +894,23 @@ int _v1_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resour
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? XPU_B0_SET : XPU_B0_CLR);
 		done_ofs = XPU_B0_DONE;
 		sta_ofs = XPU_B0_STA;
+		all_en_ofs = XPU_B0_ALL_EN;
 	} else if (resource_id == HW_CCF_BACKUP_GRP_1) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? XPU_B1_SET : XPU_B1_CLR);
 		done_ofs = XPU_B1_DONE;
 		sta_ofs = XPU_B1_STA;
+		all_en_ofs = XPU_B1_ALL_EN;
 	} else if (resource_id == HW_CCF_BACKUP_GRP_2) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? XPU_B2_SET : XPU_B2_CLR);
 		done_ofs = XPU_B2_DONE;
 		sta_ofs = XPU_B2_STA;
+		all_en_ofs = XPU_B2_ALL_EN;
 	} else {
 		ret = -HWV_WRONG_ID;
 		goto ERR;
 	}
 	// common hwccf voting function
-	ret = _v1_hwccf_irq_voter_ctrl(map, setclr_ofs, vote_val, done_ofs, sta_ofs);
+	ret = _v1_hwccf_irq_voter_ctrl(map, setclr_ofs, vote_val, done_ofs, sta_ofs, all_en_ofs);
 	if (ret)
 		goto ERR;
 	return ret;
