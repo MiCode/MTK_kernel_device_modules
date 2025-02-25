@@ -180,7 +180,7 @@ void dvfsrc_get_dvfs_info(struct mtk_dvfsrc_dvfs_info_header *dvfs_info_header)
 	if (dvfsrc_drv && dvfsrc_drv->dvd && dvfsrc_drv->dvd->config)
 		dvfsrc_drv->dvd->config->get_dvfs_info(dvfs_info_header);
 	else
-		dev_info(dvfsrc_drv->dev, "%s not support\n", __func__);
+		pr_info("%s not support\n", __func__);
 }
 EXPORT_SYMBOL(dvfsrc_get_dvfs_info);
 
