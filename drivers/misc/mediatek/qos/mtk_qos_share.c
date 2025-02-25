@@ -149,7 +149,6 @@ EXPORT_SYMBOL_GPL(qos_rec_get_hist_data_bw);
 
 unsigned int qos_rec_check_sram_ext(void)
 {
-	// info("Ryan: %s: %d, %d\n", __func__, qos_share_use_sram_ext, is_enable_qos_ltr_buffer);
 	if (qos_share_use_sram_ext || is_enable_qos_ltr_buffer)
 		return 0;
 	else
@@ -165,8 +164,6 @@ EXPORT_SYMBOL_GPL(qos_ltr_buffer_support);
 
 unsigned int qos_rec_get_hist_idx(void)
 {
-	if (is_enable_qos_ltr_buffer == 0xFFFF)
-		is_enable_qos_ltr_buffer = qos_sram_read(QOS_DEBUG_1);
 	if (qos_share_use_sram)
 		return qos_share_sram_read(QOS_SHARE_CURR_IDX);
 	else if (qos_share_ref)
@@ -186,6 +183,9 @@ int qos_share_init_sram(void __iomem *regs, unsigned int bound)
 	pr_info("qos share sram addr:0x%p len:%d\n",
 		qos_share_sram_base, qos_share_sram_bound);
 	qos_share_use_sram = 1;
+	if (qos_share_sram_bound > 0x200)
+		is_enable_qos_ltr_buffer = 1;
+
 	/* init zero except for version addr */
 	for (i = 0; i < bound; i += 4)
 		writel(0x0, qos_share_sram_base+i);
@@ -240,9 +240,13 @@ unsigned int qos_rec_get_hist_bw(unsigned int idx, unsigned int type)
 	if (!qos_share_ref)
 		return val;
 
-	if (idx >= HIST_NUM || type >= BW_TYPE)
-		return val;
-
+	if (is_enable_qos_ltr_buffer == 1) {
+		if (idx >= HIST_NUM || type >= BW_NUM)
+			return val;
+	} else {
+		if (idx >= HIST_NUM || type >= BW_TYPE)
+			return val;
+	}
 	if (qos_share_use_sram) {
 		if (is_enable_qos_ltr_buffer == 1)
 			val = qos_share_sram_read(QOS_SHARE_HIST_BW + (BW_TYPE * idx * SRC_TYPE + type)*4);
