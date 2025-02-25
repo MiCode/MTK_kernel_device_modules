@@ -2669,7 +2669,7 @@ static irqreturn_t mt6379_fl_pwr_rdy_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	mt6379_charger_check_pwr_rdy(cdata);
+	queue_delayed_work(system_freezable_wq, &cdata->pwr_rdy_dwork, 0);
 	return IRQ_HANDLED;
 }
 
@@ -2677,7 +2677,7 @@ static irqreturn_t mt6379_fl_detach_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
 
-	mt6379_charger_check_pwr_rdy(cdata);
+	queue_delayed_work(system_freezable_wq, &cdata->pwr_rdy_dwork, 0);
 	return IRQ_HANDLED;
 }
 
@@ -2716,48 +2716,37 @@ static irqreturn_t mt6379_fl_ieoc_handler(int irq, void *data)
 static irqreturn_t mt6379_fl_bus_chg_rdy_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	if (cdata->id != CHARGER_ID_MT6379)
 		return IRQ_HANDLED;
-	ret = mt6379_charger_set_non_switching_setting(cdata);
-	if (ret)
-		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
-	else
-		schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
+	queue_delayed_work(system_freezable_wq, &cdata->non_switch_dwork, 0);
+	schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_fl_wlin_chg_rdy_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	if (cdata->id != CHARGER_ID_MT6379)
 		return IRQ_HANDLED;
-	ret = mt6379_charger_set_non_switching_setting(cdata);
-	if (ret)
-		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
-	else
-		schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
+	queue_delayed_work(system_freezable_wq, &cdata->non_switch_dwork, 0);
+	schedule_delayed_work(&cdata->switching_work, msecs_to_jiffies(1 * 1000));
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_fl_vbus_ov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	charger_dev_notify(cdata->chgdev, CHARGER_DEV_NOTIFY_VBUS_OVP);
 
 	if (cdata->id != CHARGER_ID_MT6379)
 		return IRQ_HANDLED;
-	ret = mt6379_charger_set_non_switching_setting(cdata);
-	if (ret)
-		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	queue_delayed_work(system_freezable_wq, &cdata->non_switch_dwork, 0);
 	return IRQ_HANDLED;
 }
 
@@ -2772,14 +2761,11 @@ static irqreturn_t mt6379_fl_chg_batov_handler(int irq, void *data)
 static irqreturn_t mt6379_fl_chg_sysov_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	if (cdata->id != CHARGER_ID_MT6379)
 		return IRQ_HANDLED;
-	ret = mt6379_charger_set_non_switching_setting(cdata);
-	if (ret)
-		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	queue_delayed_work(system_freezable_wq, &cdata->non_switch_dwork, 0);
 	return IRQ_HANDLED;
 }
 
@@ -2996,42 +2982,33 @@ static irqreturn_t mt6379_usbid_evt_handler(int irq, void *data)
 static irqreturn_t mt6379_otp1_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	if (cdata->id != CHARGER_ID_MT6379)
 		return IRQ_HANDLED;
-	ret = mt6379_charger_set_non_switching_setting(cdata);
-	if (ret)
-		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	queue_delayed_work(system_freezable_wq, &cdata->non_switch_dwork, 0);
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_otp2_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	if (cdata->id != CHARGER_ID_MT6379)
 		return IRQ_HANDLED;
-	ret = mt6379_charger_set_non_switching_setting(cdata);
-	if (ret)
-		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	queue_delayed_work(system_freezable_wq, &cdata->non_switch_dwork, 0);
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t mt6379_otp0_handler(int irq, void *data)
 {
 	struct mt6379_charger_data *cdata = data;
-	int ret = 0;
 
 	mt_dbg(cdata->dev, "%s, irq = %d\n", __func__, irq);
 	if (cdata->id != CHARGER_ID_MT6379)
 		return IRQ_HANDLED;
-	ret = mt6379_charger_set_non_switching_setting(cdata);
-	if (ret)
-		dev_info(cdata->dev, "%s, set non switching ramp failed\n", __func__);
+	queue_delayed_work(system_freezable_wq, &cdata->non_switch_dwork, 0);
 	return IRQ_HANDLED;
 }
 
@@ -3294,6 +3271,20 @@ static void mt6379_charger_destroy_icc_check_work(void *d)
 	cancel_delayed_work(work);
 }
 
+static void mt6379_charger_destroy_pwr_rdy_work(void *d)
+{
+	struct delayed_work *work = d;
+
+	cancel_delayed_work(work);
+}
+
+static void mt6379_charger_destroy_non_switch_work(void *d)
+{
+	struct delayed_work *work = d;
+
+	cancel_delayed_work(work);
+}
+
 static int mt6379_charger_get_iio_adc(struct mt6379_charger_data *cdata)
 {
 	int ret = 0;
@@ -3473,6 +3464,25 @@ static void mt6xxx_charger_compatible_map(struct mt6379_charger_data *cdata)
 	}
 }
 
+static void mt6379_charger_pwr_rdy_dwork_func(struct work_struct *work)
+{
+	struct mt6379_charger_data *cdata = container_of(work, struct mt6379_charger_data,
+							 pwr_rdy_dwork.work);
+
+	mt6379_charger_check_pwr_rdy(cdata);
+}
+
+static void mt6379_charger_non_switch_dwork_func(struct work_struct *work)
+{
+	struct mt6379_charger_data *cdata = container_of(work, struct mt6379_charger_data,
+							 non_switch_dwork.work);
+	int ret = 0;
+
+	ret = mt6379_charger_set_non_switching_setting(cdata);
+	if (ret)
+		dev_info(cdata->dev, "%s set non switching setting failed\n", __func__);
+}
+
 static int mt6379_charger_probe(struct platform_device *pdev)
 {
 	struct mt6379_charger_data *cdata;
@@ -3560,6 +3570,22 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 				       &cdata->icc_check_work);
 	if (ret) {
 		dev_info(dev, "%s, Failed to add icc check action\n", __func__);
+		return ret;
+	}
+
+	INIT_DELAYED_WORK(&cdata->pwr_rdy_dwork, mt6379_charger_pwr_rdy_dwork_func);
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_pwr_rdy_work,
+				       &cdata->pwr_rdy_dwork);
+	if (ret) {
+		dev_info(dev, "%s, Failed to add pwr rdy action\n", __func__);
+		return ret;
+	}
+
+	INIT_DELAYED_WORK(&cdata->non_switch_dwork, mt6379_charger_non_switch_dwork_func);
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_non_switch_work,
+				       &cdata->non_switch_dwork);
+	if (ret) {
+		dev_info(dev, "%s, Failed to add non switch action\n", __func__);
 		return ret;
 	}
 

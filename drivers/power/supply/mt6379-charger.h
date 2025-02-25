@@ -393,6 +393,8 @@ struct mt6379_charger_data {
 	struct delayed_work switching_work;
 	struct delayed_work icc_cali_work;
 	struct delayed_work icc_check_work;
+	struct delayed_work pwr_rdy_dwork;
+	struct delayed_work non_switch_dwork;
 	struct power_supply *psy;
 	struct power_supply *bat;
 	struct power_supply_desc psy_desc;
