@@ -251,6 +251,8 @@ static void ovl_blender_printf_status(unsigned int status, struct mtk_ddp_comp *
 void mtk_ovl_blender_cur_pos_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr;
+	struct mtk_disp_ovl_blender *bld;
+	const u16 *regs;
 	unsigned int reg_val;
 
 	if (!comp || comp->blank_mode)
@@ -262,7 +264,9 @@ void mtk_ovl_blender_cur_pos_dump(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	reg_val = readl(OVL_BLD_DBG_STATUS0 + baddr);
+	bld = comp_to_ovl_blender(comp);
+	regs = bld->data->regs;
+	reg_val = readl(regs[OVL_BLD_DBG_STATUS0] + baddr);
 	DDPMSG("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
 		reg_val & 0x1fff, (reg_val >> 16) & 0x1fff);
 }
