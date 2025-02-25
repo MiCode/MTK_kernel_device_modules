@@ -495,7 +495,11 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 				unsigned long dpt_v2_coef2_util_local = 0, min, max, unused[2];
 				int IPC_scaling_factor = get_task_ipc_scaling_factor(p, topology_cluster_id(cpu));
 
-				mtk_cpu_util_cfs_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local);
+				if (cpu == 7)
+					IPC_scaling_factor = 1024;
+
+				mtk_cpu_util_cfs_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local,
+					&dpt_v2_coef2_util_local);
 				mtk_effective_cpu_util_dpt_v2(cpu, &dpt_v2_cpu_util_local, &dpt_v2_coef1_util_local, &dpt_v2_coef2_util_local, p, &min, &max);
 				cpu_util_cum = dpt_v2_util2cap_needed_local_hook(dpt_v2_cpu_util_local,
 					dpt_v2_coef1_util_local, dpt_v2_coef2_util_local, unused);

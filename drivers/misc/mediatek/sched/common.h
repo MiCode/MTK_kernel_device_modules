@@ -389,7 +389,8 @@ extern void (*get_cpu_perf_scaling_factor_hook)(int cpu, perf_scaling_factor_arr
 extern void (*get_cpu_power_scaling_factor_hook)(int cpu, int *task_power_scaling_factor);
 extern void (*check_cpu_perf_scaling_factor_hook)(int cpu, perf_scaling_factor_arr *task_perf_scaling_factor);
 extern void (*check_cpu_power_scaling_factor_hook)(int cpu, int *task_power_scaling_factor);
-extern unsigned long (*dpt_v2_opp2pwr_eff_hook)(int quant, int cpu, int opp, unsigned int cpu_util_local, unsigned int total_util_local, int IPC_scaling_factor, int value_debug[6]);
+extern unsigned long (*dpt_v2_opp2pwr_eff_hook)(int cpu, int opp, int quant, int wl_type, int *swpm_vars,
+	unsigned long cpu_util_local, unsigned long total_util_local, int IPC_scaling_factor);
 /* End of dpt v2 */
 
 /* DPTv2 SWPM sysctl helper functions*/

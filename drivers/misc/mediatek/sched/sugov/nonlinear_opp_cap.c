@@ -99,7 +99,8 @@ void (*get_coef1_min_max_ltime_hook)(int *min_ltime, int *max_ltime);
 EXPORT_SYMBOL(get_coef1_min_max_ltime_hook);
 void (*get_coef2_min_max_ltime_hook)(int *min_ltime, int *max_ltime);
 EXPORT_SYMBOL(get_coef2_min_max_ltime_hook);
-unsigned long (*dpt_v2_opp2pwr_eff_hook)(int quant, int cpu, int opp, unsigned int cpu_util_local, unsigned int total_util_local, int IPC_scaling_factor, int value_debug[6]);
+unsigned long (*dpt_v2_opp2pwr_eff_hook)(int cpu, int opp, int quant, int wl_type, int *swpm_vars,
+	unsigned long cpu_util_local, unsigned long total_util_local, int IPC_scaling_factor);
 EXPORT_SYMBOL(dpt_v2_opp2pwr_eff_hook);
 unsigned long (*dpt_v2_linear_local_cap2opp_hook)(int cpu, int quant, unsigned long util);
 EXPORT_SYMBOL(dpt_v2_linear_local_cap2opp_hook);

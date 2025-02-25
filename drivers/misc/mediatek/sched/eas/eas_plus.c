@@ -830,14 +830,28 @@ unsigned long calc_pwr_eff(int wl, int cpu, unsigned long cpu_util, int *val_s, 
 	int pd_pwr_eff;
 	int unused_debug[6];
 
-
 	if (dpt_v2_support) {
+		int swpm_vars[11];
+
+		swpm_vars[7] = sched_dpt_v2_swpm_mode_get();
+		swpm_vars[8] = 100 - 100 * dpt_v2_cap_params.cpu_util_local / dpt_v2_cap_params.total_util_local;
+
+		if (sched_dpt_v2_swpm_mode_get() == 2 && get_cpu_power_scaling_factor_hook) {
+			get_cpu_power_scaling_factor_hook(cpu, &per_cpu(__dpt_rq, cpu).util_cfs.power_scaling_factor);
+			swpm_vars[2] = per_cpu(__dpt_rq, cpu).util_cfs.power_scaling_factor;
+		}
+
 		dpt_v2_cap_params.cpu_util_local = dpt_v2_cap_params.cpu_util_local == 0 ? 1 : dpt_v2_cap_params.cpu_util_local;
 		opp = dpt_v2_linear_local_cap2opp_hook(cpu, false, util);
-		pd_pwr_eff = dpt_v2_opp2pwr_eff_hook(false, cpu, opp,
-			dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local, dpt_v2_cap_params.IPC_scaling_factor, unused_debug);
+		pd_pwr_eff = dpt_v2_opp2pwr_eff_hook(cpu, opp, false, 0, swpm_vars,
+			dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local,
+			dpt_v2_cap_params.IPC_scaling_factor);
 		cap = dpt_v2_opp2global_cap_hook(false, topology_cluster_id(cpu), opp,
-			dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local, dpt_v2_cap_params.IPC_scaling_factor);
+			dpt_v2_cap_params.cpu_util_local, dpt_v2_cap_params.total_util_local,
+			dpt_v2_cap_params.IPC_scaling_factor);
+
+		if (trace_sched_dptv2_swpm_enabled())
+			trace_sched_dptv2_swpm(cpu, 0, swpm_vars);
 	}
 	else {
 		util = get_cpu_util_with_margin(cpu, cpu_util);
