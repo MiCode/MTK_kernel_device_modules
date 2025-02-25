@@ -2155,6 +2155,21 @@ out:
 	bio_io_error(bio);
 }
 
+/* Used to detect same page */
+static inline bool zram_detect_samepage(struct page *page, unsigned long *element)
+{
+	void *mem;
+	bool samepage = false;
+
+	mem = kmap_local_page(page);
+	if (page_same_filled(mem, element))
+		samepage = true;
+
+	kunmap_local(mem);
+
+	return samepage;
+}
+
 #if IS_ENABLED(CONFIG_HWCOMP_SUPPORT_NO_DST_COPY)
 
 /**************************************
@@ -2433,10 +2448,23 @@ static int zram_hw_bvec_write_ndc(struct zram *zram, struct bio_vec *bvec,
 		.page = bvec->bv_page,
 		.bio = bio,
 	};
+	unsigned long element = 0;
 
 	if (is_partial_io(bvec)) {
 		pr_info("%s: Partial IO is not supported.\n", __func__);
 		return -EINVAL;
+	}
+
+	/* Same page detection */
+	if (zram_detect_samepage(bvec->bv_page, &element)) {
+		atomic64_inc(&zram->stats.same_pages);
+		zram_slot_lock(zram, index);
+		zram_free_page(zram, index);
+		zram_set_flag(zram, index, ZRAM_SAME);
+		zram_set_element(zram, index, element);
+		zram_slot_unlock(zram, index);
+		atomic64_inc(&zram->stats.pages_stored);
+		return 0;
 	}
 
 again:
@@ -2762,10 +2790,23 @@ static int zram_hw_bvec_write_dc(struct zram *zram, struct bio_vec *bvec,
 		.page = bvec->bv_page,
 		.bio = bio,
 	};
+	unsigned long element = 0;
 
 	if (is_partial_io(bvec)) {
 		pr_info("%s: Partial IO is not supported.\n", __func__);
 		return -EINVAL;
+	}
+
+	/* Same page detection */
+	if (zram_detect_samepage(bvec->bv_page, &element)) {
+		atomic64_inc(&zram->stats.same_pages);
+		zram_slot_lock(zram, index);
+		zram_free_page(zram, index);
+		zram_set_flag(zram, index, ZRAM_SAME);
+		zram_set_element(zram, index, element);
+		zram_slot_unlock(zram, index);
+		atomic64_inc(&zram->stats.pages_stored);
+		return 0;
 	}
 
 again:
