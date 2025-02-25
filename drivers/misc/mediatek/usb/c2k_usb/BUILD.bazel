@@ -1,0 +1,67 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "c2k_usb",
+    srcs = [
+        "viatel_rawbulk.h",
+        "f_rawbulk.c",
+        "rawbulk.c",
+        "rawbulk_transfer.c",
+    ],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version)],
+    copts = [
+        "-I$(srctree)/drivers/usb/gadget/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "c2k_usb_f_via_modem",
+    srcs = [
+        "viatel_rawbulk.h",
+        "f_via_modem.c",
+    ],
+    ko_deps = [":c2k_usb"],
+    copts = [
+        "-I$(srctree)/drivers/usb/gadget",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "c2k_usb_f_via_ets",
+    srcs = [
+        "viatel_rawbulk.h",
+        "f_via_ets.c",
+    ],
+    ko_deps = [":c2k_usb"],
+    copts = [
+        "-I$(srctree)/drivers/usb/gadget",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "c2k_usb_f_via_atc",
+    srcs = [
+        "viatel_rawbulk.h",
+        "f_via_atc.c",
+    ],
+    ko_deps = [":c2k_usb"],
+    copts = [
+        "-I$(srctree)/drivers/usb/gadget",
+    ],
+)
+
