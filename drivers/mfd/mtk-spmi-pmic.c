@@ -1001,6 +1001,7 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 			kfree(cells_to_add);
 			if (ret) {
 				dev_err(&sdev->dev, "Failed to add subdevices: %d\n", ret);
+				irq_domain_remove(core->irq_domain);
 				return ret;
 			}
 		} else {
@@ -1008,8 +1009,6 @@ static int mtk_spmi_pmic_probe(struct spmi_device *sdev)
 			return -ENODEV;
 		}
 
-		if (ret)
-			irq_domain_remove(core->irq_domain);
 	} else
 		ret = devm_of_platform_populate(&sdev->dev);
 	if (ret) {

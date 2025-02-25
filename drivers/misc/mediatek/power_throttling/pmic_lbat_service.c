@@ -487,7 +487,7 @@ static void lbat_list_add(struct lbat_thd_t *thd, struct list_head *lbat_list)
 		/* dump LBAT register input */
 		__regmap_read(regmap, &lbat_regs->volt_max, &lbat_thd_input);
 		pr_info("[%s] add thd %d, addr: 0x%x, write: %d, read back: %d\n",
-			 __func__, cur_hv_ptr->thd_volt, lbat_regs->volt_min.addr,
+			 __func__, cur_hv_ptr->thd_volt, lbat_regs->volt_max.addr,
 			 VOLT_TO_RAW(cur_hv_ptr->thd_volt), lbat_thd_input);
 	} else if (lbat_list == &lbat_lv_list) {
 		list_sort(NULL, &lbat_lv_list, lv_list_cmp);
@@ -684,6 +684,10 @@ struct lbat_user *lbat_user_register_ext(const char *name, unsigned int *thd_vol
 	INIT_LIST_HEAD(&user->thd_list);
 	for (i = 0; i < thd_volt_size; i++) {
 		thd = lbat_thd_init(thd_volt_arr[i], user);
+		if (thd == NULL) {
+			ret = -ENOMEM;
+			goto out;
+		}
 		list_add_tail(&thd->list, &user->thd_list);
 	}
 	user->callback = callback;
@@ -752,6 +756,10 @@ int lbat_user_modify_thd_ext(struct lbat_user *user, unsigned int *thd_volt_arr,
 	}
 	hv_thd = kcalloc(hv_thd_cnt, sizeof(struct lbat_thd_t *), GFP_KERNEL);
 	lv_thd = kcalloc(lv_thd_cnt, sizeof(struct lbat_thd_t *), GFP_KERNEL);
+	if (hv_thd == NULL || lv_thd == NULL) {
+		ret = -ENOMEM;
+		goto out_null;
+	}
 
 	i = 0;
 	list_for_each_entry_safe(thd, n, &lbat_hv_list, list) {
@@ -792,10 +800,10 @@ out:
 	/* If hv_thd/lv_thd is not equal to NULL, add to corresponding list */
 	for (i = 0; i < hv_thd_cnt; i++)
 		lbat_list_add(hv_thd[i], &lbat_hv_list);
-
 	for (i = 0; i < lv_thd_cnt; i++)
 		lbat_list_add(lv_thd[i], &lbat_lv_list);
-
+out_null:
+	/* If hv_thd or lv_thd is NULL, jump here */
 	kfree(hv_thd);
 	kfree(lv_thd);
 	if (ret) {

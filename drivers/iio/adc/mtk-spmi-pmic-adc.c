@@ -413,7 +413,7 @@ static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 			  int channel, int channel2, int *val)
 {
 	struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
-	unsigned int poll_en = 0;
+	unsigned int poll_en = 0, sleep_min, sleep_max;
 	int ret;
 	u16 buf = 0;
 	u8 wdata = 0;
@@ -465,8 +465,13 @@ static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 		return -EIO;
 
 	/* 4. Wait ADC conversion time */
-	usleep_range(auxadc_chan->avg_num * auxadc_chan->spl_time,
-		    (auxadc_chan->avg_num + 1) * auxadc_chan->spl_time);
+	sleep_min = auxadc_chan->avg_num * auxadc_chan->spl_time;
+	sleep_max = (auxadc_chan->avg_num + 1) * auxadc_chan->spl_time;
+	if (sleep_min > USHRT_MAX)
+		sleep_min = USHRT_MAX;
+	if (sleep_max > USHRT_MAX)
+		sleep_max = USHRT_MAX;
+	usleep_range(sleep_min, sleep_max);
 
 	buf = 0;
 	/* 5. Polling ADC ready */
@@ -504,7 +509,7 @@ static int get_auxadc_out_poll(struct pmic_adc_device *adc_dev,
 			       int channel, int channel2, int *val)
 {
 	struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
-	unsigned int poll_en = 0, old_pures, extsrc_sel_mask;
+	unsigned int poll_en = 0, old_pures, extsrc_sel_mask, sleep_min, sleep_max;
 	int ret;
 	u16 buf = 0;
 
@@ -542,9 +547,15 @@ static int get_auxadc_out_poll(struct pmic_adc_device *adc_dev,
          */
 	if (channel2 == old_pures)
 		usleep_range(3, 5);
-	else
-		usleep_range(auxadc_chan->avg_num * auxadc_chan->spl_time,
-			    (auxadc_chan->avg_num + 1) * auxadc_chan->spl_time);
+	else {
+		sleep_min = auxadc_chan->avg_num * auxadc_chan->spl_time;
+		sleep_max = (auxadc_chan->avg_num + 1) * auxadc_chan->spl_time;
+		if (sleep_min > USHRT_MAX)
+			sleep_min = USHRT_MAX;
+		if (sleep_max > USHRT_MAX)
+			sleep_max = USHRT_MAX;
+		usleep_range(sleep_min, sleep_max);
+	}
 
 	ret = regmap_bulk_read_poll_timeout(adc_dev->regmap,
 					    auxadc_chan->regs->value_reg,
