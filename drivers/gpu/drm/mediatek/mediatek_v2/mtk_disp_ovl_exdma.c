@@ -4460,7 +4460,13 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			break;
 		}
 
+#ifdef IF_COMP_STATE_ISSUE_FIXED_FOR_BWM_CALC
 		data->bw = ret;
+#else
+		if (usage_ovl_compr)
+			bw_val = bw_val * 90 / 100;
+		data->bw = bw_val;
+#endif
 		DDPQOS("%s,%s-%d,larb:%d,layer:%u,type:%d,bw:%d(%u,%u,%u,%u),compr:%d,base:%u\n",
 			__func__, mtk_dump_comp_str_id(comp->id), comp->id,
 			data->larb_id, phy_id, data->type, data->bw, body_bw,
