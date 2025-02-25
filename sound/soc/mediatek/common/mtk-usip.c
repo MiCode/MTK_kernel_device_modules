@@ -14,7 +14,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/notifier.h>
 
-#include <mtk_ccci_common.h>
+#include <mt-plat/mtk_ccci_common.h>
 #include "audio_messenger_ipi.h"
 #include "audio_task.h"
 #include "audio_speech_msg_id.h"
