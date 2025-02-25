@@ -533,7 +533,6 @@ void mtk_dbi_count_hrt_cal(uint32_t en, uint32_t slice_size, uint32_t slice_num,
 int mtk_dbi_count_wait_disable_finish(struct drm_crtc *crtc, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	int ret = 0;
 	unsigned int *event = data;
 
 	DBI_COUNT_INFO("+++\n");
