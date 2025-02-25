@@ -3930,10 +3930,10 @@ void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle)
 			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
 			writel_relaxed(val, priv->side_config_regs + DISPSYS1_WLA_CON);
 		}
-		if (priv->sys_b_config_regs) {
+		if (priv->sys_b_side_config_regs) {
 			val = 1;
 			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
-			writel_relaxed(val, priv->sys_b_config_regs + DISPSYS1_WLA_CON);
+			writel_relaxed(val, priv->sys_b_side_config_regs + DISPSYS1_WLA_CON);
 		}
 	} else {
 		if (priv->side_config_regs) {
@@ -3941,10 +3941,10 @@ void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle)
 			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
 			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa + DISPSYS1_WLA_CON, val, ~0);
 		}
-		if (priv->sys_b_config_regs) {
+		if (priv->sys_b_side_config_regs) {
 			val = 1;
 			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
-			cmdq_pkt_write(handle, NULL, priv->sys_b_config_regs_pa + DISPSYS1_WLA_CON, val, ~0);
+			cmdq_pkt_write(handle, NULL, priv->sys_b_side_config_regs_pa + DISPSYS1_WLA_CON, val, ~0);
 		}
 	}
 }
