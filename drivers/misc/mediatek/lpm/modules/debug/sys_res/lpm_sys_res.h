@@ -13,6 +13,23 @@
 
 #define SYS_RES_SYS_RESOURCE_NUM (8)
 
+enum _sys_main_res {
+	SYS_MAIN_RES_DDREN,
+	SYS_MAIN_RES_APSRC,
+	SYS_MAIN_RES_EMI,
+	SYS_MAIN_RES_MAINPLL,
+	SYS_MAIN_RES_INFRA,
+	SYS_MAIN_RES_26M,
+	SYS_MAIN_RES_PMIC,
+	SYS_MAIN_RES_VCORE,
+	SYS_MAIN_RES_RC_REQ,
+	SYS_MAIN_RES_PLL_EN,
+	SYS_MAIN_RES_PWR_OFF,
+	SYS_MAIN_RES_PWR_ACT,
+	SYS_MAIN_RES_SYS_STA,
+	SYS_MAIN_RES_NUM,
+};
+
 enum _sys_res_scene{
 	SYS_RES_SCENE_COMMON = 0,
 	SYS_RES_SCENE_SUSPEND,
@@ -30,6 +47,19 @@ enum _sys_res_get_scene{
 	SYS_RES_LAST,
 	SYS_RES_GET_SCENE_NUM,
 };
+
+enum _sys_res_op_id {
+	SYS_RES_OP_DURATION = 0,
+	SYS_RES_OP_SUSPEND_TIME,
+	SYS_RES_OP_SIG_TIME,
+	SYS_RES_OP_SIG_ID,
+	SYS_RES_OP_SIG_GROUP_ID,
+	SYS_RES_OP_SIG_OVERALL_RATIO,
+	SYS_RES_OP_SIG_SUSPEND_RATIO,
+	SYS_RES_OP_SIG_ADDR,
+};
+
+
 
 struct sys_res_record {
 	struct res_sig_stats *spm_res_sig_stats_ptr;
@@ -68,5 +98,7 @@ void lpm_sys_res_exit(void);
 int register_lpm_sys_res_ops(struct lpm_sys_res_ops *ops);
 void unregister_lpm_sys_res_ops(void);
 struct lpm_sys_res_ops *get_lpm_sys_res_ops(void);
+int lpm_sys_res_stat_init(void);
+void lpm_sys_res_stat_deinit(void);
 
 #endif
