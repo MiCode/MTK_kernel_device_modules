@@ -1982,7 +1982,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 				pdev->dev.of_node, "mediatek,autosuspend-delay",
 				0, &mdata->auto_suspend_delay);
 	if (ret < 0)
-		mdata->auto_suspend_delay = 250;
+		mdata->auto_suspend_delay = 10;
 	pm_runtime_set_autosuspend_delay(&pdev->dev, mdata->auto_suspend_delay);
 	dev_info(&pdev->dev, "SPI probe, set auto_suspend delay = %dmS!\n",
 				mdata->auto_suspend_delay);
