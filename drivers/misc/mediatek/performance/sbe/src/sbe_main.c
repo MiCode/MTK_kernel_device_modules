@@ -62,7 +62,7 @@ static void sbe_do_recycle(struct work_struct *work)
 	sbe_put_tree_lock(__func__);
 
 	mutex_lock(&sbe_recycle_lock);
-	if (non_empty == 0) {
+	if (non_empty) {
 		sbe_recycle_idle_cnt++;
 		if (sbe_recycle_idle_cnt >= MAX_SBE_RECYCLE_IDLE_CNT) {
 			sbe_recycle_active = 0;
