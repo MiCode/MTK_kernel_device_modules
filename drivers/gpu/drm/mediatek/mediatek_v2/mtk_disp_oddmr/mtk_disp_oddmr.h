@@ -144,7 +144,9 @@ struct mtk_oddmr_table_raw {
 
 struct mtk_oddmr_table_gain {
 	uint32_t item;
-	uint32_t value;
+	uint32_t value_r;
+	uint32_t value; // used as g from mt6993
+	uint32_t value_b;
 };
 
 /***************** od param ******************/
@@ -159,6 +161,8 @@ struct mtk_oddmr_od_table_basic_info {
 	uint32_t max_fps;
 	uint32_t min_dbv;
 	uint32_t max_dbv;
+	uint32_t remap_gian; // added from mt6993
+	uint32_t table_offset; // added from mt6993
 	uint32_t reserved;
 };
 struct mtk_oddmr_od_table {
@@ -172,6 +176,7 @@ struct mtk_oddmr_od_table {
 	struct mtk_oddmr_table_raw raw_table;
 };
 struct mtk_oddmr_od_basic_param {
+	uint32_t bin_version; // added from mt6993
 	struct mtk_oddmr_panelid panelid;
 	/* 0:AP 1:ddic */
 	uint32_t resolution_switch_mode;
@@ -184,6 +189,7 @@ struct mtk_oddmr_od_basic_param {
 	uint32_t dither_ctl;
 	/* bit(0) hscaling, bit(1) vscaling */
 	uint32_t scaling_mode;
+	uint32_t nonlinear_node_cnt; // added from mt6993
 	uint32_t od_hsk_2;
 	uint32_t od_hsk_3;
 	uint32_t od_hsk_4;

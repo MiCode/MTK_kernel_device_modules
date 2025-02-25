@@ -108,12 +108,16 @@ static uint32_t mtk_oddmr_parse_raw_table(uint32_t table_idx,
 static uint32_t mtk_oddmr_parse_od_table_basic_info(struct mtk_oddmr_od_param *od_param,
 	uint32_t table_idx, uint8_t *data)
 {
-	struct mtk_oddmr_od_table_basic_info *tmp;
 	uint32_t size;
 
-	size = sizeof(struct mtk_oddmr_od_table_basic_info);
-	tmp = &od_param->od_tables[table_idx]->table_basic_info;
-	memcpy(tmp, data, size);
+	if (od_param->od_basic_info.basic_param.bin_version >= 2) {
+		size = sizeof(struct mtk_oddmr_od_table_basic_info);
+		memcpy(&od_param->od_tables[table_idx]->table_basic_info, data, size);
+	} else {
+		size = sizeof(struct mtk_oddmr_od_table_basic_info) - 4 * 2; // no remap_gian, table_offset
+		memcpy(&od_param->od_tables[table_idx]->table_basic_info, data, 4 * 8);
+		od_param->od_tables[table_idx]->table_basic_info.reserved = *(uint32_t *)(data +  4 * 8);
+	}
 	return size;
 }
 
@@ -152,13 +156,23 @@ static uint32_t mtk_oddmr_parse_od_table_gain(struct mtk_oddmr_od_param *od_para
 static uint32_t mtk_oddmr_parse_od_table_bl_gain(struct mtk_oddmr_od_param *od_param,
 	uint32_t table_idx, uint8_t *data, uint32_t len)
 {
-	void *tmp;
+	uint32_t counts;
 
-	od_param->od_tables[table_idx]->bl_cnt = *(uint32_t *)data;
+	counts = *(uint32_t *)data;
+	od_param->od_tables[table_idx]->bl_cnt = counts;
+
 	data += 4;
-	tmp = od_param->od_tables[table_idx]->bl_table;
-	if (len > 4)
-		memcpy(tmp, data, len - 4);
+	if (len > 4) {
+		if (od_param->od_basic_info.basic_param.bin_version >= 2)
+			memcpy(&od_param->od_tables[table_idx]->bl_table, data, len - 4);
+		else
+			for (int i = 0; i < counts; i++) {
+				od_param->od_tables[table_idx]->bl_table[i].item = *(uint32_t *)data;
+				data += 4;
+				od_param->od_tables[table_idx]->bl_table[i].value = *(uint32_t *)data;
+				data += 4;
+			}
+	}
 	return len;
 }
 
@@ -169,13 +183,23 @@ static uint32_t mtk_oddmr_parse_od_table_bl_gain(struct mtk_oddmr_od_param *od_p
 static uint32_t mtk_oddmr_parse_od_table_fps_gain(struct mtk_oddmr_od_param *od_param,
 	uint32_t table_idx, uint8_t *data, uint32_t len)
 {
-	void *tmp;
+	uint32_t counts;
 
-	od_param->od_tables[table_idx]->fps_cnt = *(uint32_t *)data;
+	counts = *(uint32_t *)data;
+	od_param->od_tables[table_idx]->fps_cnt = counts;
+
 	data += 4;
-	tmp = od_param->od_tables[table_idx]->fps_table;
-	if (len > 4)
-		memcpy(tmp, data, len - 4);
+	if (len > 4) {
+		if (od_param->od_basic_info.basic_param.bin_version >= 2)
+			memcpy(&od_param->od_tables[table_idx]->fps_table, data, len - 4);
+		else
+			for (int i = 0; i < counts; i++) {
+				od_param->od_tables[table_idx]->fps_table[i].item = *(uint32_t *)data;
+				data += 4;
+				od_param->od_tables[table_idx]->fps_table[i].value = *(uint32_t *)data;
+				data += 4;
+			}
+	}
 	return len;
 }
 
@@ -184,7 +208,7 @@ static int _mtk_oddmr_load_param(struct mtk_oddmr_od_param *od_param, struct mtk
 	int ret = -EFAULT;
 	uint32_t table_idx = 0;
 	uint8_t *data, *p;
-	uint32_t counting_size, sub_head_id, data_type_id, tmp_head_id;
+	uint32_t counting_size, sub_head_id, data_type_id, tmp_head_id, target_size;
 
 	if (param == NULL || param->data == NULL) {
 		DDPINFO("%s:%d, param is NULL\n", __func__, __LINE__);
@@ -243,13 +267,21 @@ static int _mtk_oddmr_load_param(struct mtk_oddmr_od_param *od_param, struct mtk
 			if (sub_head_id == OD_BASIC_PARAM &&
 					data_type_id == ODDMR_OD_BASIC_INFO) {
 				/* p is now pointing to sub data_body */
-				if (tmp_size != sizeof(struct mtk_oddmr_od_basic_param)) {
+				if (tmp_size == sizeof(struct mtk_oddmr_od_basic_param) - 8) {
+					DDPINFO("%s:%d, bin version: mt6991 and before\n", __func__, __LINE__);
+					memcpy((uint8_t *)&od_param->od_basic_info.basic_param + 4,
+							p, 4 * 13);  //skip bin_version
+					memcpy((uint8_t *)&od_param->od_basic_info.basic_param + 4 * 15,
+							p + 4 * 13, tmp_size - 4 * 13);  //skip nonlinear_node_cnt
+				} else if (tmp_size == sizeof(struct mtk_oddmr_od_basic_param)) {
+					DDPINFO("%s:%d, bin version: %d\n", __func__, __LINE__, *(uint32_t *)p);
+					memcpy(&od_param->od_basic_info.basic_param, p, tmp_size);
+				} else {
 					DDPINFO("%s:%d, 0x%x size error\n",
 							__func__, __LINE__, sub_head_id);
 					ret = -EFAULT;
 					goto fail;
 				}
-				memcpy(&od_param->od_basic_info.basic_param, p, tmp_size);
 			} else if (sub_head_id == OD_BASIC_PQ &&
 					data_type_id == ODDMR_OD_BASIC_INFO) {
 				/* p is now pointing to sub data_body */
@@ -262,7 +294,11 @@ static int _mtk_oddmr_load_param(struct mtk_oddmr_od_param *od_param, struct mtk
 			} else if (sub_head_id == OD_TABLE_BASIC_INFO &&
 					data_type_id == ODDMR_OD_TABLE) {
 				/* p is now pointing to sub data_body */
-				if (tmp_size != sizeof(struct mtk_oddmr_od_table_basic_info)) {
+				if (od_param->od_basic_info.basic_param.bin_version >= 2)
+					target_size = sizeof(struct mtk_oddmr_od_table_basic_info);
+				else // no remap_gian, table_offset
+					target_size = sizeof(struct mtk_oddmr_od_table_basic_info) - 4 * 2;
+				if (tmp_size != target_size) {
 					DDPINFO("%s:%d, 0x%x size error\n",
 							__func__, __LINE__, sub_head_id);
 					ret = -EFAULT;
@@ -303,9 +339,13 @@ static int _mtk_oddmr_load_param(struct mtk_oddmr_od_param *od_param, struct mtk
 				/* p is now pointing to sub data_body */
 				uint32_t counts = *(uint32_t *)p;
 
+				if (od_param->od_basic_info.basic_param.bin_version >= 2)
+					target_size = counts * 4 * 4 + 4; // r,g,b separated
+				else
+					target_size = counts * 4 * 2 + 4;
 				if (tmp_size < 4
 					|| counts > OD_GAIN_MAX
-					|| (tmp_size != counts * 8 + 4)) {
+					|| (tmp_size != target_size)) {
 					DDPINFO("%s:%d, table%d 0x%x size error,size %d,count %d\n",
 							__func__, __LINE__,
 							table_idx, tmp_head_id, tmp_size, counts);
@@ -322,9 +362,13 @@ static int _mtk_oddmr_load_param(struct mtk_oddmr_od_param *od_param, struct mtk
 				/* p is now pointing to sub data_body */
 				uint32_t counts = *(uint32_t *)p;
 
+				if (od_param->od_basic_info.basic_param.bin_version >= 2)
+					target_size = counts * 4 * 4 + 4; // r,g,b separated
+				else
+					target_size = counts * 4 * 2 + 4;
 				if (tmp_size < 4 ||
 					counts > OD_GAIN_MAX
-					|| (tmp_size != counts * 8 + 4)) {
+					|| (tmp_size != target_size)) {
 					DDPINFO("%s:%d, table%d 0x%x size error,size %d,count %d\n",
 							__func__, __LINE__,
 							table_idx, tmp_head_id, tmp_size, counts);
