@@ -11,6 +11,7 @@ enum SBE_NOTIFIER_PUSH_TYPE {
 	SBE_NOTIFIER_RESCUE,
 	SBE_NOTIFIER_HWUI_FRAME_HINT,
 	SBE_NOTIFIER_WEBVIEW_POLICY,
+	SBE_NOTIFIER_SET_SBB,
 };
 
 enum SBE_ACTION_MASK {
@@ -63,5 +64,6 @@ extern int (*sbe_notify_hwui_frame_hint_fp)(int qudeq,
 extern void (*sbe_notify_rescue_fp)(int pid, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frameID);
 extern void (*sbe_consistency_policy_fp)(int start, int pid, int uclamp_min, int uclamp_max);
+extern int (*sbe_set_sbb_fp)(int pid, int set, int active_ratio);
 
 #endif

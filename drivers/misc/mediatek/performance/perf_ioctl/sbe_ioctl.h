@@ -54,6 +54,7 @@ struct _SMART_LAUNCH_PACKAGE {
 #define SBE_SET_HWUI_POLICY        _IOW('g', 2, struct _SBE_IOCTL_PACKAGE)
 #define SBE_SET_RESCUE             _IOW('g', 3, struct _SBE_IOCTL_PACKAGE)
 #define SBE_CONSISTENCY            _IOW('g', 4, struct _SBE_IOCTL_PACKAGE)
+#define SBE_SET_SBB                _IOW('g', 5, struct _SBE_IOCTL_PACKAGE)
 #define SMART_LAUNCH_ALGORITHM     _IOW('g', 1, struct _SMART_LAUNCH_PACKAGE)
 
 #endif

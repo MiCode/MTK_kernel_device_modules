@@ -39,6 +39,10 @@
 #define SBE_BUFFER_FILTER_DROP_THREASHOLD 2
 #define SBE_BUFFER_FILTER_THREASHOLD 2
 #define SBE_RESCUE_MORE_THREASHOLD 5
+#define SBE_RESUCE_MODE_END 0
+#define SBE_RESUCE_MODE_START 1
+#define SBE_RESUCE_MODE_TO_QUEUE_END 2
+#define SBE_RESUCE_MODE_UPDATE_RESCUE_STRENGTH 3
 
 enum SBE_TASK_POLICY {
 	SBE_TASK_NONE = 0,
@@ -145,6 +149,19 @@ int get_ux_general_policy(void)
 int sbe_get_perf(void)
 {
 	return global_ux_blc;
+}
+
+int sbe_set_sbb(int pid, int set, int active_ratio)
+{
+	if (set)
+		set_sbb(SBB_TASK, pid, true);
+	else
+		set_sbb(SBB_TASK, pid, false);
+
+	if (active_ratio > 0 && active_ratio <= 100)
+		set_sbb_active_ratio(active_ratio);
+
+	return 0;
 }
 
 void fbt_ux_set_perf(int cur_pid, int cur_blc)
@@ -1324,6 +1341,11 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 
 	mutex_lock(&sbe_rescue_lock);
 	if (start) {
+		if (start == SBE_RESUCE_MODE_UPDATE_RESCUE_STRENGTH) {
+			sbe_enhance_f = enhance;
+			goto leave;
+		}
+
 		//before rescue check buffer count
 		if (sbe_dy_rescue_enable && thr->buffer_count_filter > 0
 				&& thr->cur_buffer_count > SBE_BUFFER_FILTER_THREASHOLD

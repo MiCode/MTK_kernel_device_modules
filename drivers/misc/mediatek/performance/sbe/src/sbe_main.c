@@ -779,6 +779,9 @@ static void sbe_notifier_wq_cb(void)
 				vpPush->specific_name, vpPush->num);
 		sbe_check_restart_recycle_hrt();
 		break;
+	case SBE_NOTIFIER_SET_SBB:
+		sbe_set_sbb(vpPush->pid, vpPush->start, vpPush->mode);
+		break;
 	default:
 		break;
 	}
@@ -916,6 +919,29 @@ void sbe_consistency_policy(int enabled, int pid, int uclamp_min, int uclamp_max
 	}
 }
 
+int sbe_notify_set_sbb(int pid, int set, int active_ratio)
+{
+	struct SBE_NOTIFIER_PUSH_TAG *vpPush;
+
+	vpPush = kzalloc(sizeof(struct SBE_NOTIFIER_PUSH_TAG), GFP_KERNEL);
+	if (!vpPush)
+		return -ENOMEM;
+
+	if (!sbe_ktsk) {
+		kfree(vpPush);
+		return -ENOMEM;
+	}
+
+	vpPush->ePushType = SBE_NOTIFIER_SET_SBB;
+	vpPush->pid = pid;
+	vpPush->start = set;
+	vpPush->mode = active_ratio;
+
+	sbe_queue_work(vpPush);
+
+	return 0;
+}
+
 void sbe_receive_display_rate(unsigned int fps_limit)
 {
 	unsigned int vTmp = TARGET_UNLIMITED_FPS;
@@ -967,6 +993,7 @@ static int __init sbe_init(void)
 	sbe_notify_hwui_frame_hint_fp = sbe_notify_hwui_frame_hint;
 	sbe_notify_webview_policy_fp = sbe_notify_webview_policy;
 	sbe_consistency_policy_fp = sbe_consistency_policy;
+	sbe_set_sbb_fp = sbe_notify_set_sbb;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	drm_register_fps_chg_callback(sbe_receive_display_rate);
 #endif

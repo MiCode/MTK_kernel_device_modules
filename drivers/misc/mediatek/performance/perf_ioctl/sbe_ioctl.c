@@ -22,6 +22,8 @@ EXPORT_SYMBOL_GPL(sbe_consistency_policy_fp);
 int (*sbe_notify_smart_launch_algorithm_fp)(int feedback_time,
 		int target_time, int pre_opp, int capabilty_ration);
 EXPORT_SYMBOL_GPL(sbe_notify_smart_launch_algorithm_fp);
+int (*sbe_set_sbb_fp)(int pid, int set, int active_ratio);
+EXPORT_SYMBOL_GPL(sbe_set_sbb_fp);
 
 static struct proc_dir_entry *perfmgr_root;
 
@@ -113,6 +115,10 @@ static long device_ioctl(struct file *filp,
 			sbe_consistency_policy_fp(msgKM_SBE->start, msgKM_SBE->pid,
 				msgKM_SBE->uclamp_min, msgKM_SBE->uclamp_max);
 		}
+		break;
+	case SBE_SET_SBB:
+		if (sbe_set_sbb_fp)
+			sbe_set_sbb_fp(msgKM_SBE->pid, msgKM_SBE->start, msgKM_SBE->mode);
 		break;
 	default:
 		pr_debug(TAG "%s %d: unknown SBE cmd %x\n",
