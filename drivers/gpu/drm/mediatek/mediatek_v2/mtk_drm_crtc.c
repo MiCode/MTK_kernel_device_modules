@@ -3392,7 +3392,8 @@ static void mtk_drm_spr_switch_cb(struct cmdq_cb_data data)
 	kfree(cb_data);
 }
 
-int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en, unsigned int need_lock)
+int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
+	unsigned int need_lock, unsigned int need_repaint, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *mtk_state;
@@ -3406,12 +3407,18 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en, unsigned int need
 	if (need_lock)
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	drm_trace_tag_mark("start_switch_spr");
+	DDPINFO("start switch AP spr to:%d need_lock:%d need_repaint:%d %s %d\n",
+		en, need_lock, need_repaint, __func__, __LINE__);
 
 	if (!crtc->state) {
 		DDPMSG("%s, crtc->state is NULL\n", __func__);
 		ret = -EINVAL;
 		goto out;
 	}
+
+	/* if spr need switch, must notify dbi firstly */
+	if(params && params->is_support_dbi)
+		atomic_set(&mtk_crtc->get_data_type, DBI_GET_RAW_TYPE_FRAME_NUM);
 
 	mtk_state = to_mtk_crtc_state(crtc->state);
 	if (!crtc->state->active &&
@@ -3444,78 +3451,110 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en, unsigned int need
 		goto out;
 	}
 
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
-		hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(crtc));
-		hrt_idx++;
-		mtk_crtc->mml_prefer_dc = true;
-		if (need_lock)
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		mtk_disp_hrt_repaint_blocking(hrt_idx);	/* must not in lock */
-		if (need_lock)
-			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-	}
-	if(params && params->is_support_dbi)
-		atomic_set(&mtk_crtc->get_data_type, DBI_GET_RAW_TYPE_FRAME_NUM);
-
-	mtk_drm_idlemgr_kick(__func__, crtc, 0);
-
-	if (params && params->spr_params.enable == 1 &&
-		params->spr_params.relay == 0) {
-		cmdq_handle =
-				cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
-		if (!cmdq_handle) {
-			DDPMSG("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-			ret = -EINVAL;
-			goto out;
+	if (need_repaint) {
+		if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+			hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(crtc));
+			hrt_idx++;
+			mtk_crtc->mml_prefer_dc = true;
+			if (need_lock)
+				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			mtk_disp_hrt_repaint_blocking(hrt_idx);	/* must not in lock */
+			if (need_lock)
+				DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 		}
 
-		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
-		if (!cb_data) {
-			DDPMSG("ERROR: cb data creation failed\n");
-			ret = -EINVAL;
-			goto out;
-		}
+		mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
-		mtk_crtc->spr_is_on = en;
-		mtk_crtc->spr_switch_type = params->spr_params.spr_switch_type;
-		if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE1) {
-			if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
-				mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
-					DDP_SECOND_PATH, 0);
+		if (params && params->spr_params.enable == 1 &&
+			params->spr_params.relay == 0) {
+			cmdq_handle =
+					cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+			if (!cmdq_handle) {
+				DDPMSG("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+				ret = -EINVAL;
+				goto out;
+			}
+
+			cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+			if (!cb_data) {
+				DDPMSG("ERROR: cb data creation failed\n");
+				ret = -EINVAL;
+				goto out;
+			}
+
+			mtk_crtc->spr_is_on = en;
+			mtk_crtc->spr_switch_type = params->spr_params.spr_switch_type;
+			if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE1) {
+				if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+					mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+						DDP_SECOND_PATH, 0);
+				else
+					mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+						DDP_FIRST_PATH, 0);
+				mtk_crtc_spr_switch_cfg(mtk_crtc, cmdq_handle);
+			}
+
+			if (mtk_crtc->spr_is_on)
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 1, ~0);
 			else
-				mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
-					DDP_FIRST_PATH, 0);
-			mtk_crtc_spr_switch_cfg(mtk_crtc, cmdq_handle);
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 2, ~0);
+			CRTC_MMP_MARK(0, set_dirty, SWITCH_SPR, (unsigned long)cmdq_handle);
+			cmdq_pkt_set_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+
+			cb_data->crtc = crtc;
+			cb_data->cmdq_handle = cmdq_handle;
+			atomic_set(&mtk_crtc->spr_switching, 1);
+			atomic_set(&mtk_crtc->spr_switch_cb_done, 0);
+			if (cmdq_pkt_flush_threaded(cmdq_handle, mtk_drm_spr_switch_cb, cb_data) < 0) {
+				DDPMSG("ERROR: failed to flush write_back\n");
+				cmdq_pkt_destroy(cb_data->cmdq_handle);
+				kfree(cb_data);
+				ret = -EINVAL;
+				goto out;
+			}
 		}
 
-		if (mtk_crtc->spr_is_on)
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-				mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_PANEL_SPR_EN), 1, ~0);
-		else
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-				mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_PANEL_SPR_EN), 2, ~0);
-		CRTC_MMP_MARK(0, set_dirty, SWITCH_SPR, (unsigned long)cmdq_handle);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-
-		cb_data->crtc = crtc;
-		cb_data->cmdq_handle = cmdq_handle;
-		atomic_set(&mtk_crtc->spr_switching, 1);
-		atomic_set(&mtk_crtc->spr_switch_cb_done, 0);
-		if (cmdq_pkt_flush_threaded(cmdq_handle, mtk_drm_spr_switch_cb, cb_data) < 0) {
-			DDPMSG("ERROR: failed to flush write_back\n");
-			cmdq_pkt_destroy(cb_data->cmdq_handle);
-			kfree(cb_data);
+		if (mtk_crtc->mml_prefer_dc) {
+			mtk_crtc->mml_prefer_dc = false;
+			drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
+		}
+	} else {
+		if (!handle) {
+			DDPMSG("%s, input cmdq handle is NULL\n", __func__);
 			ret = -EINVAL;
 			goto out;
 		}
-	}
 
-	if (mtk_crtc->mml_prefer_dc) {
-		mtk_crtc->mml_prefer_dc = false;
-		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
+		if (params && params->spr_params.enable == 1 &&
+			params->spr_params.relay == 0) {
+			mtk_crtc->spr_is_on = en;
+			mtk_crtc->spr_switch_type = params->spr_params.spr_switch_type;
+			if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE1) {
+				if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+					mtk_crtc_wait_frame_done(mtk_crtc, handle,
+						DDP_SECOND_PATH, 0);
+				else
+					mtk_crtc_wait_frame_done(mtk_crtc, handle,
+						DDP_FIRST_PATH, 0);
+				mtk_crtc_spr_switch_cfg(mtk_crtc, handle);
+			}
+
+			if (mtk_crtc->spr_is_on)
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 1, ~0);
+			else
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_PANEL_SPR_EN), 2, ~0);
+
+			atomic_set(&mtk_crtc->spr_switching, 1);
+		}
 	}
 
 	if (need_lock)
@@ -3528,21 +3567,57 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en, unsigned int need
 		atomic_read(&mtk_crtc->spr_switching) == 0), msecs_to_jiffies(50))) {
 		if (need_lock)
 			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		atomic_set(&mtk_crtc->spr_switching, 0);
 		if (!readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_PANEL_SPR_EN))) {
-			atomic_set(&mtk_crtc->spr_switching, 0);
 			atomic_set(&mtk_crtc->spr_switch_cb_done, 0);
-			goto out;
+		} else {
+			DDPMSG("%s:%d switch failed\n", __func__, __LINE__);
+			ret = -EINVAL;
 		}
-		DDPMSG("%s:%d switch time\n", __func__, __LINE__);
-		ret = -EINVAL;
+		drm_trace_tag_end("switching_spr");
 		goto out;
 	}
+
+	drm_trace_tag_end("switching_spr");
+	return ret;
 
 out:
 	if (need_lock)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-	drm_trace_tag_end("switching_spr");
 	return ret;
+}
+
+static void mtk_atomic_doze_update_spr(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
+	int i, j;
+	unsigned int bypass = 0;
+
+	if (!aod_scp_flag || !aod_scp_ipi.send_ipi || !aod_scp_ipi.module_backup) {
+		DDPMSG("%s aod_scp invalid parameter\n", __func__);
+		return;
+	}
+
+	if (mtk_state->cmdq_handle == NULL)
+		DDPMSG("[MTK_SPR]:%s %d cmdq_handle is NULL\n", __func__, __LINE__);
+
+	// switch to DDIC SPR on doze active state for AOD-SCP
+	if ( crtc->state->active && mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+		if (mtk_crtc->spr_is_on == 1) {
+			mtk_crtc->aod_scp_spr_switch = 1;
+			mtk_drm_switch_spr(crtc, 0, 0, 0, mtk_state->cmdq_handle);
+		}
+	}
+
+	// restore SPR from doze active to resume
+	if (mtk_crtc->enabled && crtc->state->active &&
+		(!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])) {
+		if (mtk_crtc->aod_scp_spr_switch == 1) {
+			mtk_crtc->aod_scp_spr_switch = 0;
+			mtk_drm_switch_spr(crtc, 1, 0, 0, mtk_state->cmdq_handle);
+		}
+	}
 }
 
 int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
@@ -15670,18 +15745,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	}
 #endif
 
-	// restore SPR when quit AOD-SCP
-	if (aod_scp_flag && crtc && crtc->state && crtc->state->active && mtk_state &&
-		(!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE])) {
-		if (mtk_crtc->aod_scp_spr_switch == 1) {
-			mtk_crtc->aod_scp_spr_switch = 0;
-			mtk_drm_switch_spr(crtc, 1, 0);
-		}
-	}
-
 	/* for dbi idle count timer */
 	mtk_dbi_count_timer_enable(crtc);
-
 end:
 	CRTC_MMP_EVENT_END((int) crtc_id, enable,
 			mtk_crtc->enabled, 0);
@@ -18757,6 +18822,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 		if (mtk_crtc_state->doze_changed || mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
 			mtk_vidle_hint_update(VIDLE_HINT_DOZE);
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			mtk_atomic_doze_update_spr(crtc);
 
 		if (mtk_crtc_state->disp_mode_changed) {
 			mtk_vidle_hint_update(VIDLE_HINT_MODE_SWITCH);

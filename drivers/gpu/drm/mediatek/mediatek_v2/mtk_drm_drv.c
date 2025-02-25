@@ -981,15 +981,6 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 			prepare,
 			mtk_drm_is_idle(crtc));
 
-	// switch to DDIC SPR on doze active state for AOD-SCP
-	if (crtc->state->active && prepare &&
-		mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
-		if (mtk_crtc->spr_is_on == 1) {
-			mtk_crtc->aod_scp_spr_switch = 1;
-			mtk_drm_switch_spr(crtc, 0, 0);
-		}
-	}
-
 	if (!crtc->state->active && prepare) {
 		mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
 		if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
