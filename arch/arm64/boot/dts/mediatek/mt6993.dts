@@ -8748,6 +8748,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,common-id = <15>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN0>;
+			smi-user-id = <MTK_SMI_VENC0>;
 		};
 
 		smi_venc1_sram_sub_comm: smi-venc1-sram-sub-comm@38070000 {
@@ -8757,6 +8758,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,common-id = <17>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN0>;
+			smi-user-id = <MTK_SMI_VENC0>;
 		};
 
 		smi_venc2_sub_comm: smi-venc2-sub-comm@38840000 {
@@ -8767,6 +8769,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,common-id = <16>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN2>;
+			smi-user-id = <MTK_SMI_VENC1>;
 		};
 
 		smi_venc2_sram_sub_comm1: smi-venc2-sram-sub-comm1@38870000 {
@@ -8777,6 +8780,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,common-id = <18>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN2>;
+			smi-user-id = <MTK_SMI_VENC1>;
 		};
 
 		smi_larb7: smi-larb7@38010000 {
@@ -8787,6 +8791,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <7>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN0>;
+			smi-user-id = <MTK_SMI_VENC0>;
 		};
 
 		smi_larb8: smi-larb8@38810000 {
@@ -8797,6 +8802,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <8>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN2>;
+			smi-user-id = <MTK_SMI_VENC1>;
 		};
 
 		smi_larb24: smi-larb24@38c10000 {
@@ -8807,6 +8813,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <24>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN3>;
+			smi-user-id = <MTK_SMI_VENC1>;
 		};
 
 		smi_larb47: smi-larb47@38410000 {
@@ -8817,6 +8824,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <47>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN1>;
+			smi-user-id = <MTK_SMI_VENC0>;
 		};
 
 		smi_larb42: smi-larb42@39210000 {
@@ -8841,6 +8849,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb-id = <41>;
 			skip-rpm-cb;
 			mediatek,pd-id = <MT6993_SMI_PD_VEN0>;
+			smi-user-id = <MTK_SMI_VENC0>;
 		};
 
 		smi_larb4: smi-larb4@3602e000 {
