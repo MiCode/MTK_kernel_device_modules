@@ -4372,9 +4372,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-123 = "SSPM_SWPM_VENC__INFO",
 				"venc0_hevc_active,venc0_h264_active,venc0_off,",
 				"venc1_hevc_active,venc1_h264_active,venc1_off,",
-				"venc2_hevc_active,venc2_h264_active,venc2_off,",
-				"spec,resolution,fps,frequency,",
-				"vcore_voltage,venc_frequency";
+				"spec,resolution,fps,vcore_voltage,venc_frequency";
 			node-124 = "EMI_NTH_IN_ORDER_MODE_MON",
 				"IN_CH0_0,IN_CH0_1,IN_CH1_0,IN_CH1_1,",
 				"RX0_M0_0,RX0_M1_0,RX0_M2_0,RX0_M3_0,",
