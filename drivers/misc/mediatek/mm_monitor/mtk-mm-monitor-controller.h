@@ -237,6 +237,7 @@ void mminfra_fake_engine_bus_settings(void);
 void emi_moniter_settings(void);
 u32 get_mmmc_subsys_max(void);
 u32 get_mminfra_pd(void);
+u32 mmmc_get_state(void);
 u16 get_freq_from_mux_id(enum MUX_ID id);
 u32 get_power_domains(int index);
 

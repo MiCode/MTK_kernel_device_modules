@@ -12,6 +12,7 @@
 #include "mmqos-vcp.h"
 #include "mmqos-test.h"
 #include "vcp_status.h"
+#include "mtk-mm-monitor-controller.h"
 
 static phys_addr_t mmqos_memory_iova;
 static phys_addr_t mmqos_memory_pa;
@@ -47,7 +48,7 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 		func, idx, mmqos_memory_iova >> 32, (u32)mmqos_memory_iova};
 	int gen, ret = 0, retry = 0;
 	static u8 times;
-	u32 val;
+	u32 val, mmmc_state;
 	struct mtk_ipi_device *vcp_ipi_dev;
 
 	if (!mmqos_is_init_done())
@@ -57,6 +58,8 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	writel(vcp_mmqos_log, MEM_LOG_FLAG);
 	writel(vcp_smi_log, MEM_SMI_LOG_FLAG);
 	writel(mmqos_state, MEM_MMQOS_STATE);
+	mmmc_state = mmmc_get_state();
+	writel(mmmc_state, MEM_MMMC_STATE);
 	switch (func) {
 	case FUNC_MMQOS_INIT:
 		// trigger mmqos in vcp to create topology
@@ -66,8 +69,6 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 		break;
 	case FUNC_SYNC_STATE:
 		// change mmqos_state by adb command, should trigger sync state
-		break;
-	case FUNC_SYNC_MMMC_STATE:
 		break;
 	}
 	val = readl(MEM_IPI_SYNC_FUNC);
@@ -406,4 +407,31 @@ static const struct kernel_param_ops mmqos_stress_ops = {
 };
 module_param_cb(vcp_stress, &mmqos_stress_ops, NULL, 0644);
 MODULE_PARM_DESC(vcp_stress, "mmqos vcp stress");
+
+static int smi_ipi_test_case_set(const char *val, const struct kernel_param *kp)
+{
+	u32 test_id = 0;
+	u32 larb_id, is_on;
+	int ret;
+
+	ret = sscanf(val, "%d %d %d", &test_id, &larb_id, &is_on);
+	if (ret != 3) {
+		MMQOS_ERR("failed:%d test_id:%#x", ret, test_id);
+		return ret;
+	}
+	MMQOS_DBG("test_id:%d, larb_id:%d, is_on:%d", test_id, larb_id, is_on);
+
+	writel((test_id << 12) | (is_on << 8) | (larb_id), MEM_SMI_TEST);
+
+	mmqos_start_test_id(test_id);
+
+	return ret;
+}
+
+static const struct kernel_param_ops smi_ipi_test_ops = {
+	.set = smi_ipi_test_case_set,
+};
+module_param_cb(smi_ipi_test, &smi_ipi_test_ops, NULL, 0644);
+MODULE_PARM_DESC(smi_ipi_test, "smi ipi test ops");
+
 MODULE_LICENSE("GPL");

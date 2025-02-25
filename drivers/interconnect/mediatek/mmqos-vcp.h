@@ -49,7 +49,6 @@ enum ipi_func_id {
 	FUNC_MMQOS_INIT,
 	FUNC_TEST,
 	FUNC_SYNC_STATE,
-	FUNC_SYNC_MMMC_STATE,
 	FUNC_NUM
 };
 #endif /* MMQOS_VCP_H */

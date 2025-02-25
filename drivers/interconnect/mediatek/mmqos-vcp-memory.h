@@ -75,5 +75,10 @@ static inline void *mmqos_get_vcp_base(phys_addr_t *pa)
 #define MEM_SMI_VDEC_COMM0_OSTDL	(MEM_BASE + 0xd8)
 #define MEM_SMI_VDEC_COMM1_OSTDL	(MEM_BASE + 0xdc)
 
+/* smi driver */
+#define MEM_SMI_TEST			(MEM_BASE + 0xe0)
+
+#define MEM_MMMC_STATE	(MEM_BASE + 0x114)
+
 #endif
 

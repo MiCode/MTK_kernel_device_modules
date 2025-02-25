@@ -142,6 +142,12 @@ module_param(mmmc_smi_mon_comm1, int, 0644);
 u32 mmmc_state;
 static bool hrt_debug_enabled;
 
+u32 mmmc_get_state(void)
+{
+	return mmmc_state;
+}
+EXPORT_SYMBOL(mmmc_get_state);
+
 static int mmmc_set_state(const char *val, const struct kernel_param *kp)
 {
 	u32 state = 0;
