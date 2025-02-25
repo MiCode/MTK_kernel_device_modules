@@ -465,6 +465,7 @@ void ged_eb_dvfs_frame_done_dump(void)
 	struct cmd_info custom_boost_info ={0};
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
+	static unsigned int gpu_counter, pre_gpu_counter;
 
 	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_FB_MARGIN_PARAM);
 	tmp_multi_async = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM1].addr);
@@ -562,18 +563,37 @@ void ged_eb_dvfs_frame_done_dump(void)
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_USE].addr),
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_TARGET].addr));
 
-	trace_tracing_mark_write(5566, "async_perf_high",
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
-	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_GPU_ACTIVE), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_ITER), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_COMPUTE),
-		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_L2EXT), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_TILER), mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_MCU));
-	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Index(
-		tmp_multi_async.fourVar.var1, mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ADJUST_RATIO),	mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE), mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM2].addr), mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr)/ 1000, tmp_multi_async.fourVar.var3);
-	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Policy(tmp_multi_async.fourVar.var2, mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr), tmp_multi_async.fourVar.var3, tmp_multi_async.fourVar.var4, tmp_multi_async.fourVar.var1);
-
 	if (ged_npu_hint_enable)
 		trace_tracing_mark_write(5566, "gpu_npu_hint_ms", mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr));
 
+	if (!ged_dvfs_get_async_ratio_support())
+		return;
+
+	gpu_counter = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_GPU_ACTIVE);
+	if (gpu_counter != pre_gpu_counter) {
+		trace_tracing_mark_write(5566, "async_perf_high",
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
+		trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Counter(
+			gpu_counter, mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_ITER),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_COMPUTE),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_L2EXT),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_TILER),
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_MCU));
+		pre_gpu_counter = gpu_counter;
+	}
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Index(
+		tmp_multi_async.fourVar.var1,
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ADJUST_RATIO),
+		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM2].addr),
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_FREQ].addr) / 1000,
+		tmp_multi_async.fourVar.var3);
+	trace_GPU_DVFS__Policy__Frame_based__Async_ratio__Policy(
+		tmp_multi_async.fourVar.var2,
+		mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_TARGET_OPP].addr),
+		tmp_multi_async.fourVar.var3,
+		tmp_multi_async.fourVar.var4,
+		tmp_multi_async.fourVar.var1);
 #endif
 }
 
