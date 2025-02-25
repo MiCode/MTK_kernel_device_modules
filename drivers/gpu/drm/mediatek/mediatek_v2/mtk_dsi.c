@@ -10942,6 +10942,37 @@ static int mtk_check_cmd_msg(struct mtk_dsi *dsi, struct mtk_dsi_cmd_option *cmd
 	return ret;
 }
 
+static int dsi_cmd_flags_check(void *dsi, u32 flags)
+{
+	if ((flags & MTK_MIPI_DSI_GCE_BLOCKING_FLUSH) && (flags & MTK_MIPI_DSI_GCE_NON_BLOCKING_FLUSH)) {
+		DDPPR_ERR("%s, GCE FLUSH setting error , flag=0x%x\n", __func__, flags);
+		return -EINVAL;
+	}
+
+	if ((flags & MTK_MIPI_DSI_GCE_USE_CFG_THREAD) && (flags & MTK_MIPI_DSI_GCE_USE_DSI_THREAD)) {
+		DDPPR_ERR("%s, USE GCE THREAD setting error , flag=0x%x\n", __func__, flags);
+		return -EINVAL;
+	}
+
+	if (flags & MTK_MIPI_DSI_CMD_EXTERNAL) {
+		if (!(flags & MTK_MIPI_DSI_CRTC_ID)) {
+			DDPPR_ERR("%s, need to set CRTC_ID, flag=0x%x\n", __func__, flags);
+			return -EINVAL;
+		}
+		if ((!(flags & MTK_MIPI_DSI_GCE_BLOCKING_FLUSH)) && (!(flags & MTK_MIPI_DSI_GCE_NON_BLOCKING_FLUSH))) {
+			DDPPR_ERR("%s, need to set FLUSH, flag=0x%x\n", __func__, flags);
+			return -EINVAL;
+		}
+	}
+
+	if (!(flags & MTK_MIPI_DSI_CRTC_ID) && !dsi) {
+		DDPPR_ERR("%s, dsi is null, need to set crtc id , flags:0x%x\n", __func__, flags);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle, const struct mtk_dsi_cmd_msg *cmd_msg)
 {
 	int i, j;
@@ -11020,6 +11051,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			CRTC_MMP_MARK(index, ddic_cmd_v2_msg, 2, 1);
 			DDPDSI_CMD("%s wait RXDY done\n", __func__);
 			mtk_dsi_mask(mtk_dsi, DSI_INTSTA, LPRX_RD_RDY_INT_FLAG, 0);
+			rd_total_sz = mtk_dsi_read_data_by_cpu(index, mtk_dsi, cmd_msg->cmd_msg);
 			mtk_dsi_mask(mtk_dsi, DSI_RACK(mtk_dsi->driver_data), RACK, RACK);
 		} else {
 			mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
@@ -11178,8 +11210,6 @@ transfer_cmd:
 	ret = mtk_dsi_cmd_transfer(dsi, handle, cmd_msg);
 	if (flags & MTK_MIPI_DSI_CMD_BY_CPU) {
 		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 10, (unsigned long)cmd_msg);
-		if (cmd_msg->is_rd)
-			ret = mtk_dsi_read_data_by_cpu(index, dsi, cmd_msg->cmd_msg);
 		return ret;
 	}
 	if ((flags & MTK_MIPI_DSI_GCE_USE_DSI_CMD_EVENT) || (flags & MTK_MIPI_DSI_CMD_EXTERNAL)) {
@@ -11239,8 +11269,13 @@ int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt
 	}
 
 	flags = cmd_opt->flags;
+	ret = dsi_cmd_flags_check(dsi, flags);
+	if (ret)
+		return ret;
+
 	DDPDSI_CMD("%s ++, flags=0x%x\n", __func__, flags);
 	if (flags & MTK_MIPI_DSI_CMD_EXTERNAL) {
+		/* check can ensure flag setting MTK_MIPI_DSI_CRTC_ID */
 		drm_for_each_crtc(crtc, drm_dev) {
 			if (drm_crtc_index(crtc) == cmd_opt->crtc_id)
 				break;
@@ -11250,9 +11285,6 @@ int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt
 		mtk_dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
 		private = crtc->dev->dev_private;
 		DDPDSI_CMD("%s flag = CMD_EXTERNAL\n", __func__);
-	} else if (!(flags & MTK_MIPI_DSI_CRTC_ID) && !dsi) {
-		DDPPR_ERR("%s, input para invalid, flags:0x%x\n", __func__, flags);
-		return -EINVAL;
 	} else if (flags & MTK_MIPI_DSI_CRTC_ID) { //from external, by id serch crtc!
 		drm_for_each_crtc(crtc, drm_dev) {
 			if (drm_crtc_index(crtc) == cmd_opt->crtc_id)
@@ -11331,9 +11363,9 @@ int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt
 		DDPDSI_CMD("%s, crtc:%d, kick idle\n", __func__, drm_crtc_index(crtc));
 	}
 	ret = _mtk_mipi_dsi_cmd(mtk_crtc, mtk_dsi, handle, flags, cmd_msg);
-		if (ret < 0) {
-			DDPPR_ERR("%s fail, %d\n", __func__, __LINE__);
-			goto end;
+	if (ret < 0) {
+		DDPPR_ERR("%s fail, %d\n", __func__, __LINE__);
+		goto end;
 	}
 end:
 	if ((flags & MTK_MIPI_DSI_CMD_NEED_LOCK) || (flags & MTK_MIPI_DSI_CMD_EXTERNAL)) {
