@@ -728,7 +728,7 @@ static const struct mtk_mmc_compatible mt6993_compat = {
 	.new_rx_ver = MSDC_NEW_RX_V1,
 	.infra_check = {
 		.enable = true,
-		.work_mode = MSDC_SPM_SW_MODE,
+		.work_mode = MSDC_SPM_HW_MODE,
 		/* soc26m/inframtcmos/buspll/ddrsrc/emi/ddren */
 		.infra_ack_bit = (BIT(2) | BIT(3) | BIT(4) | BIT(5) | BIT(6) | BIT(7)),
 		.infra_ack_paddr = 0x1c00DA4C,
@@ -2323,7 +2323,7 @@ static irqreturn_t msdc_thread_irq(int irq, void *dev_id)
 		ret = kfifo_out(&host->err_info_bag_ring, &dump_bag, 1);
 		spin_unlock_irqrestore(&host->err_info_lock, flags);
 		if (ret != 1) {
-			dev_info(host->dev, "Err kfifo out is fail\n");
+			dev_info(host->dev, "Err kfifo out is fail, ret %u, len %d\n", ret, len);
 			break;
 		}
 		if (dump_bag.err_bitmap[BITS_TO_LONGS(ERR_BIT_SIZE)-1] &
