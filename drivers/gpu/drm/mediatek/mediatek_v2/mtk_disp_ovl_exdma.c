@@ -3906,6 +3906,89 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
+static int mtk_ovl_calc_layer_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int phy_id,
+		struct mtk_disp_ovl_exdma *exdma, unsigned int uncompr_bw, bool usage_ovl_compr,
+		unsigned int *body_bw, unsigned int *hdr_bw,
+		unsigned int *stash_body_bw, unsigned int *stash_hdr_bw)
+{
+	unsigned int compr_ratio = 0, unit = 100;
+	struct mtk_drm_private *priv = NULL;
+	unsigned int total = 0;
+	u32 stash_bw_min = 0;
+	u32 afbc_header_bw_min = 0;
+
+	if (exdma && exdma->data->stash_min_ostdl > 1)
+		stash_bw_min = (exdma->data->stash_min_ostdl - 1) * 16 + 1;
+	else
+		stash_bw_min = 49;
+
+	if (exdma && exdma->data->afbc_header_min_ostdl > 1)
+		afbc_header_bw_min = (exdma->data->afbc_header_min_ostdl - 1) * 32 + 1;
+	else
+		afbc_header_bw_min = 129;
+
+	if (IS_ERR_OR_NULL(mtk_crtc) || phy_id >= MAX_LAYER_NR)
+		return -EINVAL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	if (IS_ERR_OR_NULL(priv) || !mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_MMQOS_SUPPORT))
+		return -EINVAL;
+
+	if (usage_ovl_compr) {
+		if (!IS_ERR_OR_NULL(body_bw)) {
+			compr_ratio = mtk_bwm_get_layer_compress_ratio(mtk_crtc, phy_id, true);
+			if (compr_ratio > 0 && compr_ratio < 1000)
+				*body_bw = uncompr_bw * compr_ratio / 1000 + 1;
+			else
+				*body_bw = uncompr_bw;
+			total += *body_bw;
+		}
+		if (!IS_ERR_OR_NULL(hdr_bw)) {
+			*hdr_bw = (uncompr_bw > 32) ? (uncompr_bw / 32 + 1) : 1;
+			*hdr_bw = (*hdr_bw > afbc_header_bw_min) ? *hdr_bw : afbc_header_bw_min;
+			total += *hdr_bw;
+		}
+		if (!IS_ERR_OR_NULL(stash_body_bw)) {
+			*stash_body_bw = uncompr_bw * 2 / 256 + 1;
+			*stash_body_bw = *stash_body_bw > stash_bw_min ? *stash_body_bw : stash_bw_min;
+			total += *stash_body_bw;
+		}
+		if (!IS_ERR_OR_NULL(stash_hdr_bw)) {
+			*stash_hdr_bw = uncompr_bw * 2 / 32 / 256 + 1;
+			*stash_hdr_bw = *stash_hdr_bw > stash_bw_min ? *stash_hdr_bw : stash_bw_min;
+			total += *stash_hdr_bw;
+		}
+		/* avoid of compress ratio floating*/
+		if (compr_ratio > 0 && compr_ratio < 1000)
+			total = total % unit ? (total / unit + 1) * unit : total / unit * unit;
+		if (total > uncompr_bw)
+			total = uncompr_bw;
+	} else {
+		if (!IS_ERR_OR_NULL(body_bw)) {
+			*body_bw = uncompr_bw;
+			total += *body_bw;
+		}
+		if (!IS_ERR_OR_NULL(hdr_bw))
+			*hdr_bw = 0;
+		if (!IS_ERR_OR_NULL(stash_body_bw)) {
+			*stash_body_bw = uncompr_bw / 256 + 1;
+			*stash_body_bw = *stash_body_bw > stash_bw_min ? *stash_body_bw : stash_bw_min;
+			total += *stash_body_bw;
+		}
+		if (!IS_ERR_OR_NULL(stash_hdr_bw))
+			*stash_hdr_bw = 0;
+	}
+	DDPDBG("%s,phy_id:%u,compr:%d,ratio:%u,bw:%u(%u,%u,%u,%u),uncompr_bw:%u\n",
+		__func__, phy_id, usage_ovl_compr, compr_ratio, total,
+		IS_ERR_OR_NULL(body_bw) ? 999999 : *body_bw,
+		IS_ERR_OR_NULL(hdr_bw) ? 999999 : *hdr_bw,
+		IS_ERR_OR_NULL(stash_body_bw) ? 999999 : *stash_body_bw,
+		IS_ERR_OR_NULL(stash_hdr_bw) ? 999999 : *stash_hdr_bw,
+		uncompr_bw);
+	return total;
+}
+
 static void mtk_ovl_backup_info_cmp(struct mtk_ddp_comp *comp, bool *compare)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
@@ -4069,11 +4152,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
 		u32 hdr_stash_bw_val = 0;
-		u32 stash_bw_min = 0;
-		u32 afbc_header_bw_min = 0;
-
-		stash_bw_min = (exdma->data->stash_min_ostdl - 1) * 16 + 1;
-		afbc_header_bw_min = (exdma->data->afbc_header_min_ostdl - 1) * 16 * 2 + 1;
+		int ret = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4095,6 +4174,13 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (debug_module_bw[phy_id])
 			bw_val = debug_module_bw[phy_id];
 
+		ret = mtk_ovl_calc_layer_hrt_bw(mtk_crtc, phy_id, exdma, bw_val, usage_ovl_compr, NULL,
+				&hdr_bw_val, &stash_bw_val, &hdr_stash_bw_val);
+		if (ret < 0) {
+			DDPMSG("%s,%d failed to calc layer hrt bw, ret:%d\n", __func__, __LINE__, ret);
+			break;
+		}
+
 		if (bw_val != comp->last_hrt_bw) {
 			DDPDBG("%s bw_val %u -> %u\n",
 				mtk_dump_comp_str_id(comp->id), comp->last_hrt_bw, bw_val);
@@ -4104,12 +4190,6 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		if (!IS_ERR(comp->hdr_qos_req)) {
-			if (bw_val && usage_ovl_compr) {
-				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
-				hdr_bw_val =
-					(hdr_bw_val > afbc_header_bw_min) ? hdr_bw_val : afbc_header_bw_min;
-			}
-
 			if (hdr_bw_val != comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw_val %u -> %u\n",
 					mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw, hdr_bw_val);
@@ -4120,16 +4200,6 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		if (!IS_ERR(comp->stash_qos_req)) {
-			if (bw_val) {
-				if (usage_ovl_compr)
-					stash_bw_val = bw_val * 2 / 256;
-				else
-					stash_bw_val = bw_val / 256;
-
-				stash_bw_val =
-					stash_bw_val > stash_bw_min ? stash_bw_val : stash_bw_min; //set low bound
-			}
-
 			if (stash_bw_val != comp->last_stash_bw) {
 				DDPDBG("%s stash_bw_val %u -> %u\n",
 					mtk_dump_comp_str_id(comp->id), comp->last_stash_bw, stash_bw_val);
@@ -4140,16 +4210,6 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		if (!IS_ERR(comp->hdr_stash_qos_req)) {
-			if (bw_val) {
-				if (usage_ovl_compr) {
-					hdr_stash_bw_val = bw_val * 2 / 32 / 256;
-					hdr_stash_bw_val =
-						hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
-				}
-				else
-					hdr_stash_bw_val = 0;
-			}
-
 			if (hdr_stash_bw_val != comp->last_hdr_stash_bw) {
 				DDPDBG("%s hdr_stash_bw_val %u -> %u\n",
 					mtk_dump_comp_str_id(comp->id), comp->last_hdr_stash_bw, hdr_stash_bw_val);
@@ -4170,11 +4230,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
 		u32 hdr_stash_bw_val = 0;
-		u32 stash_bw_min = 0;
-		u32 afbc_header_bw_min = 0;
-
-		stash_bw_min = (exdma->data->stash_min_ostdl - 1) * 16 + 1;
-		afbc_header_bw_min = (exdma->data->afbc_header_min_ostdl - 1) * 16 * 2 + 1;
+		int ret = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4201,6 +4257,13 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (debug_module_bw[phy_id])
 			bw_val = debug_module_bw[phy_id];
 
+		ret = mtk_ovl_calc_layer_hrt_bw(mtk_crtc, phy_id, exdma, bw_val, usage_ovl_compr, NULL,
+				&hdr_bw_val, &stash_bw_val, &hdr_stash_bw_val);
+		if (ret < 0) {
+			DDPMSG("%s,%d failed to calc layer hrt bw, ret:%d\n", __func__, __LINE__, ret);
+			break;
+		}
+
 		if (bw_val > comp->last_hrt_bw) {
 			DDPDBG("%s bw_val fast up %u -> %u\n",
 				mtk_dump_comp_str_id(comp->id), comp->last_hrt_bw, bw_val);
@@ -4219,12 +4282,6 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		comp->last_hrt_bw = bw_val;
 
 		if (!IS_ERR(comp->hdr_qos_req)) {
-			if (bw_val && usage_ovl_compr) {
-				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
-				hdr_bw_val =
-					(hdr_bw_val > afbc_header_bw_min) ? hdr_bw_val : afbc_header_bw_min;
-			}
-
 			if (hdr_bw_val > comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw fast up %u -> %u\n",
 					mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw, hdr_bw_val);
@@ -4244,16 +4301,6 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		if (!IS_ERR(comp->stash_qos_req)) {
-			if (bw_val) {
-				if (usage_ovl_compr)
-					stash_bw_val = bw_val * 2 / 256;
-				else
-					stash_bw_val = bw_val / 256;
-
-				stash_bw_val =
-					stash_bw_val > stash_bw_min ? stash_bw_val : stash_bw_min; //set low bound
-			}
-
 			if (stash_bw_val > comp->last_stash_bw) {
 				DDPDBG("%s stash_bw_val fast up %u -> %u\n",
 					mtk_dump_comp_str_id(comp->id), comp->last_stash_bw, stash_bw_val);
@@ -4273,16 +4320,6 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		if (!IS_ERR(comp->hdr_stash_qos_req)) {
-			if (bw_val) {
-				if (usage_ovl_compr) {
-					hdr_stash_bw_val = bw_val * 2 / 32 / 256;
-					hdr_stash_bw_val =
-						hdr_stash_bw_val > stash_bw_min ? hdr_stash_bw_val : stash_bw_min;
-				}
-				else
-					hdr_stash_bw_val = 0;
-			}
-
 			if (hdr_stash_bw_val > comp->last_hdr_stash_bw) {
 				DDPDBG("%s hdr_stash_bw_val fast up %u -> %u\n",
 					mtk_dump_comp_str_id(comp->id), comp->last_hdr_stash_bw, hdr_stash_bw_val);
@@ -4307,7 +4344,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	case PMQOS_SET_HRT_BW_DELAY_POST: {
 		u32 bw_val = 0;
 		struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
-		unsigned int phy_id = 0, usage_ovl_fmt = 0, usage_ovl_compr = 0;
+		unsigned int phy_id = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		u32 hdr_bw_val = 0;
 		u32 stash_bw_val = 0;
@@ -4382,9 +4419,10 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_larb_port_bw *data = (struct mtk_larb_port_bw *)params;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		struct drm_crtc *crtc = &mtk_crtc->base;
-		unsigned int compr_ratio = 90;
 		unsigned int bw_val = data->bw_base;
+		unsigned int body_bw = 0, hdr_bw = 0, stash_body_bw = 0, stash_hdr_bw = 0;
 		unsigned int phy_id = 0, usage_ovl_fmt = 0, usage_ovl_compr = 0;
+		int ret = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4415,13 +4453,18 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		if (!data->bw_base)
 			bw_val = mtk_drm_primary_frame_bw(crtc);
 		bw_val = (bw_val * usage_ovl_fmt) >> 2;
+		ret = mtk_ovl_calc_layer_hrt_bw(mtk_crtc, phy_id, exdma, bw_val, usage_ovl_compr,
+				&body_bw, &hdr_bw, &stash_body_bw, &stash_hdr_bw);
+		if (ret < 0) {
+			DDPMSG("%s,%d failed to calc layer hrt bw, ret:%d\n", __func__, __LINE__, ret);
+			break;
+		}
 
-		if (usage_ovl_compr)
-			bw_val = bw_val * compr_ratio / 100;
-
-		data->bw = bw_val;
-		DDPQOS("%s, exdma comp:%d, larb:%d, type:%d, bw:%d\n",
-			__func__, comp->id, data->larb_id, data->type, data->bw);
+		data->bw = ret;
+		DDPQOS("%s,%s-%d,larb:%d,layer:%u,type:%d,bw:%d(%u,%u,%u,%u),compr:%d,base:%u\n",
+			__func__, mtk_dump_comp_str_id(comp->id), comp->id,
+			data->larb_id, phy_id, data->type, data->bw, body_bw,
+			hdr_bw, stash_body_bw, stash_hdr_bw, usage_ovl_compr, bw_val);
 		break;
 	}
 	case PMQOS_UPDATE_BW: {

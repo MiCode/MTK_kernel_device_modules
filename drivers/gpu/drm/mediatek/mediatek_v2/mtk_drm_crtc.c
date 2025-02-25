@@ -102,6 +102,9 @@ module_param(debug_pu_wait, int, 0644);
 int debug_drm_prop_force_reset;
 module_param(debug_drm_prop_force_reset, int, 0644);
 
+int debug_channel_bw_flow;
+module_param(debug_channel_bw_flow, int, 0644);
+
 static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "OVERLAP_LAYER_NUM", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "LAYERING_IDX", 0, ULONG_MAX, 0},
@@ -6889,10 +6892,122 @@ void mtk_disp_set_module_hrt(struct mtk_drm_crtc *mtk_crtc, unsigned int bw_base
 	}
 }
 
+static void mtk_update_channel_hrt_bw_by_type(struct drm_crtc *crtc, unsigned int bw_base,
+		struct cmdq_pkt *cmdq_handle, bool read, bool flush)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
+	unsigned int *last_channel_req = NULL;
+	unsigned int *last_channel_req_begin = NULL;
+	unsigned int i, slot_id;
+	int crtc_idx = drm_crtc_index(crtc);
+	bool opt_mmqos = mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT);
+
+	if (read && priv->data->update_channel_hrt) {
+		/*channel read supports BWM2.0 updating @atomic_flush*/
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
+			last_channel_req_begin = mtk_crtc->qos_ctx->last_channel_req_begin;
+		else if (flush)
+			return;
+		last_channel_req = mtk_crtc->qos_ctx->last_channel_req;
+		priv->data->update_channel_hrt(mtk_crtc, bw_base, channel_hrt);
+	} else if (!read && priv->data->update_channel_hrt_write && !flush) {
+		/*channel write skips BWM2.0 updating @atomic_flush*/
+		last_channel_req = mtk_crtc->qos_ctx->last_channel_write_req;
+		priv->data->update_channel_hrt_write(mtk_crtc, bw_base, channel_hrt);
+	}
+
+	if (IS_ERR_OR_NULL(last_channel_req))
+		return;
+
+	if (debug_channel_bw_flow)
+		DDPMSG("%s CRTC%u get channel %s_bw[%u][%u][%u][%u], f:%d,no_bwm20:%d\n",
+			__func__, crtc_idx, read ? "read" : "write",
+			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3],
+			flush, no_bwm20_layer);
+	else
+		DDPINFO("%s CRTC%u get channel %s_bw[%u][%u][%u][%u], f:%d,no_bwm20:%d\n",
+			__func__, crtc_idx, read ? "read" : "write",
+			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3],
+			flush, no_bwm20_layer);
+
+	for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
+		/*fast up at atomic begin, or flush up at atomic flush*/
+		if (channel_hrt[i] > last_channel_req[i]) {
+			if (!flush || (flush && last_channel_req_begin &&
+				channel_hrt[i] != last_channel_req_begin[i])) {
+				if (!flush && last_channel_req_begin)
+					last_channel_req_begin[i] = channel_hrt[i];
+				if (opt_mmqos) {
+					if (debug_channel_bw_flow)
+						DDPMSG("%s, crtc%u %s up ch:%u %s_bw:%u[%u/%u/%u],f:%d,no_bwm20:%d\n",
+							__func__, crtc_idx, flush ? "flush" : "fast", i,
+							read ? "read" : "write", channel_hrt[i],
+							last_channel_req[i], last_channel_req_begin ?
+								last_channel_req_begin[i] : channel_hrt[i],
+							flush ? channel_hrt[i] : 0, flush, no_bwm20_layer);
+					mtk_disp_set_channel_hrt_bw_by_type(read, mtk_crtc, channel_hrt[i], i);
+				}
+				slot_id = DISP_SLOT_CUR_CHAN_HRT_BY_TYPE(read, i);
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc, slot_id), NO_PENDING_HRT, ~0);
+			}
+		/*BW down at atomic begin, or flush rollback at atomic flush*/
+		} else if (channel_hrt[i] < last_channel_req[i]) {
+			slot_id = DISP_SLOT_CUR_CHAN_HRT_BY_TYPE(read, i);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, slot_id), channel_hrt[i], ~0);
+			if (opt_mmqos && flush && last_channel_req_begin &&
+				(last_channel_req_begin[i] > last_channel_req[i])) {
+				if (debug_channel_bw_flow)
+					DDPMSG("%s, crtc%u flush rollback ch:%u %s_bw:%u[%u/%u/%u],f:%d,no_bwm20:%d\n",
+						__func__, crtc_idx, i, read ? "read" : "write",
+						last_channel_req[i], last_channel_req[i],
+						last_channel_req_begin[i], channel_hrt[i],
+						flush, no_bwm20_layer);
+				mtk_disp_set_channel_hrt_bw_by_type(read, mtk_crtc, last_channel_req[i], i);
+			}
+		/*flush down at atomic flush*/
+		} else if (channel_hrt[i] == last_channel_req[i] && flush && last_channel_req_begin &&
+			(last_channel_req_begin[i] > channel_hrt[i])) {
+			if (opt_mmqos) {
+				if (debug_channel_bw_flow)
+					DDPMSG("%s, crtc%u flush down ch:%u %s_bw:%u[%u/%u/%u],f:%d,no_bwm20:%d\n",
+						__func__, crtc_idx, i, read ? "read" : "write",
+						channel_hrt[i], last_channel_req[i],
+						last_channel_req_begin[i], channel_hrt[i],
+						flush, no_bwm20_layer);
+				mtk_disp_set_channel_hrt_bw_by_type(read, mtk_crtc, channel_hrt[i], i);
+			}
+			slot_id = DISP_SLOT_CUR_CHAN_HRT_BY_TYPE(read, i);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(mtk_crtc, slot_id), NO_PENDING_HRT, ~0);
+		}
+
+		/*update last bw, clear begin bw*/
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
+			if (flush || no_bwm20_layer || !last_channel_req_begin) {
+				if (channel_hrt[i] != last_channel_req[i]) {
+					if (debug_channel_bw_flow)
+						DDPMSG("%s:crtc%u update ch:%u %s_last:%u->%u,f:%d,no_bwm20:%d\n",
+							__func__, crtc_idx, i, read ? "read" : "write",
+							last_channel_req[i], channel_hrt[i],
+							flush, no_bwm20_layer);
+					last_channel_req[i] = channel_hrt[i];
+				}
+				if (last_channel_req_begin)
+					last_channel_req_begin[i] = 0;
+			}
+		} else if (channel_hrt[i] != last_channel_req[i])
+			last_channel_req[i] = channel_hrt[i];
+	}
+}
+
 static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 				      unsigned int frame_weight,
 				      struct mtk_drm_lyeblob_ids *lyeblob_ids,
-				      struct cmdq_pkt *cmdq_handle)
+				      struct cmdq_pkt *cmdq_handle, bool flush)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
@@ -6995,7 +7110,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_LEVEL),
 			       bw, ~0);
-	} else if (bw == mtk_crtc->qos_ctx->last_hrt_req && frame_weight == 0 &&
+	} else if (bw == mtk_crtc->qos_ctx->last_hrt_req && flush &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
 		if (opt_mmqos)
 			mtk_disp_set_hrt_bw(mtk_crtc, bw);
@@ -7006,10 +7121,9 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
-		if (frame_weight == 0 || no_bwm20_layer) {
-			no_bwm20_layer = false;
+		if (flush || no_bwm20_layer)
 			mtk_crtc->qos_ctx->last_hrt_req = bw;
-		} else
+		else
 			mtk_crtc->cur_lyeblob = lyeblob_ids;
 	} else
 		mtk_crtc->qos_ctx->last_hrt_req = bw;
@@ -7030,59 +7144,12 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		}
 	}
 
-	if (priv->data->update_channel_hrt) {
-		if (bw_base == 0)
-			bw_base = mtk_drm_primary_frame_bw(crtc);
-		priv->data->update_channel_hrt(mtk_crtc, bw_base, channel_hrt);
-		DDPINFO("%s channel[%u][%u][%u][%u]\n", __func__,
-			channel_hrt[0], channel_hrt[1], channel_hrt[2], channel_hrt[3]);
+	mtk_update_channel_hrt_bw_by_type(crtc, bw_base, cmdq_handle, true, flush);
+	mtk_update_channel_hrt_bw_by_type(crtc, bw_base, cmdq_handle, false, flush);
 
-		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
-			if (channel_hrt[i] > mtk_crtc->qos_ctx->last_channel_req[i]) {
-				DDPINFO("mtk_disp_set_channel_hrt_bw[%u] = %u\n", i, channel_hrt[i]);
-				if (opt_mmqos)
-					mtk_disp_set_channel_hrt_bw(mtk_crtc, channel_hrt[i], i);
-				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT(i)),
-			       NO_PENDING_HRT, ~0);
-			} else if (channel_hrt[i] < mtk_crtc->qos_ctx->last_channel_req[i]) {
-				DDPINFO("cmdq_pkt_write channel_hrt_bw[%u] = %u\n", i, channel_hrt[i]);
-				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT(i)),
-			       channel_hrt[i], ~0);
-			}
-
-			mtk_crtc->qos_ctx->last_channel_req[i] = channel_hrt[i];
-		}
-	}
-
-	if (priv->data->update_channel_hrt_write) {
-		unsigned int channel_hrt_write[BW_CHANNEL_NR] = {0};
-
-		if (bw_base == 0)
-			bw_base = mtk_drm_primary_frame_bw(crtc);
-		priv->data->update_channel_hrt_write(mtk_crtc, bw_base, channel_hrt_write);
-		DDPINFO("%s channel write[%u][%u][%u][%u]\n", __func__,
-			channel_hrt_write[0], channel_hrt_write[1], channel_hrt_write[2], channel_hrt_write[3]);
-
-		for (i = 0 ; i < BW_CHANNEL_NR ; i++) {
-			if (channel_hrt_write[i] > mtk_crtc->qos_ctx->last_channel_write_req[i]) {
-				DDPINFO("mtk_disp_set_channel_hrt_write_bw[%u] = %u\n", i, channel_hrt_write[i]);
-				if (opt_mmqos)
-					mtk_disp_set_channel_hrt_write_bw(mtk_crtc, channel_hrt_write[i], i);
-				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT_WRITE(i)),
-			       NO_PENDING_HRT, ~0);
-			} else if (channel_hrt_write[i] < mtk_crtc->qos_ctx->last_channel_write_req[i]) {
-				DDPINFO("cmdq_pkt_write channel_hrt_write_bw[%u] = %u\n", i, channel_hrt_write[i]);
-				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
-			       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT_WRITE(i)),
-			       channel_hrt_write[i], ~0);
-			}
-
-			mtk_crtc->qos_ctx->last_channel_write_req[i] = channel_hrt_write[i];
-		}
-	}
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+		no_bwm20_layer)
+		no_bwm20_layer = false;
 
 	if (priv->data->respective_ostdl) {
 		if (bw_base == 0)
@@ -8499,7 +8566,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 				if (hrt_valid == true) {
 					mtk_crtc_update_hrt_state(
 						crtc, lyeblob_ids->frame_weight,
-						lyeblob_ids, cmdq_handle);
+						lyeblob_ids, cmdq_handle, false);
 					DRM_MMP_MARK(layering_blob, lyeblob_ids->lye_idx,
 						lyeblob_ids->frame_weight | 0xffff0000);
 				}
@@ -8564,7 +8631,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 			old_crtc_state, crtc_state,
 			cmdq_handle);
 		mtk_crtc_update_hrt_state(crtc, pan_disp_frame_weight, NULL,
-			cmdq_handle);
+			cmdq_handle, false);
 		if (priv->data->ovl_exdma_rule && lyeblob_ids->blank_lyr_valid == true) {
 			int i, j, keep_first_layer;
 			struct mtk_ddp_comp *comp;
@@ -9389,12 +9456,16 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 
 			if (cur_chan_hrt_bw != NO_PENDING_HRT &&
 				cur_chan_hrt_bw <= mtk_crtc->qos_ctx->last_channel_req[i]) {
-				DDPINFO("CRTC%u channel[%d]:%u, release HRT to last_channel_hrt_req:%u\n",
-					crtc_idx, i, cur_chan_hrt_bw, mtk_crtc->qos_ctx->last_channel_req[i]);
+				if (debug_channel_bw_flow)
+					DDPMSG("%s: CRTC%u slow down ch:%d read_bw:%u[%u/%u/%u]\n",
+						__func__, crtc_idx, i, cur_chan_hrt_bw,
+						mtk_crtc->qos_ctx->last_channel_req[i],
+						mtk_crtc->qos_ctx->last_channel_req_begin[i],
+						cur_chan_hrt_bw);
 				if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_MMQOS_SUPPORT))
 					mtk_disp_set_channel_hrt_bw(mtk_crtc,
-						mtk_crtc->qos_ctx->last_channel_req[i], i);
+							mtk_crtc->qos_ctx->last_channel_req[i], i);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_CHAN_HRT(i)) =
 					NO_PENDING_HRT;
 			}
@@ -9408,12 +9479,14 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 
 			if (cur_chan_hrt_bw != NO_PENDING_HRT &&
 				cur_chan_hrt_bw <= mtk_crtc->qos_ctx->last_channel_write_req[i]) {
-				DDPINFO("CRTC%u channel[%d]:%u, release write HRT to last_channel_write_hrt_req:%u\n",
-					crtc_idx, i, cur_chan_hrt_bw, mtk_crtc->qos_ctx->last_channel_write_req[i]);
+				if (debug_channel_bw_flow)
+					DDPMSG("%s: CRTC%u slow down ch:%d write_bw:%u,last:%u\n",
+						__func__, crtc_idx, i, cur_chan_hrt_bw,
+						mtk_crtc->qos_ctx->last_channel_write_req[i]);
 				if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_MMQOS_SUPPORT))
 					mtk_disp_set_channel_hrt_write_bw(mtk_crtc,
-						mtk_crtc->qos_ctx->last_channel_write_req[i], i);
+							mtk_crtc->qos_ctx->last_channel_write_req[i], i);
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 						DISP_SLOT_CUR_CHAN_HRT_WRITE(i)) = NO_PENDING_HRT;
 			}
@@ -9519,7 +9592,7 @@ static void mtk_drm_ovl_bw_monitor_ratio_prework(struct drm_crtc *crtc,
 			}
 		}
 
-		DDPDBG_BWM("BWM: frame idx:%d alloc_id:%llu plane_index:%u enable:%u\n",
+		DDPDBG_BWM("BWM: frame idx:%d key:%llu plane_index:%u enable:%u\n",
 				frame_idx, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
 				plane_index, plane_state->pending.enable);
 		DDPDBG("BWM: fn:%u index:%d is_gpu_cached:%d\n",
@@ -10060,6 +10133,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				*(display_compress_ratio_table[i].average_ratio);
 			normal_layer_compress_ratio_tb[index].peak_ratio =
 				*(display_compress_ratio_table[i].peak_ratio);
+			normal_layer_compress_ratio_tb[index].peak_ratio =
+				normal_layer_compress_ratio_tb[index].peak_ratio >
+				normal_layer_compress_ratio_tb[index].average_ratio ?
+				normal_layer_compress_ratio_tb[index].peak_ratio :
+				normal_layer_compress_ratio_tb[index].average_ratio;
 			normal_layer_compress_ratio_tb[index].valid =
 				display_compress_ratio_table[i].valid;
 			normal_layer_compress_ratio_tb[index].active =
@@ -10074,6 +10152,11 @@ static void mtk_drm_ovl_bw_monitor_ratio_save(struct mtk_drm_crtc *mtk_crtc,
 				*(display_compress_ratio_table[i].average_ratio);
 			unchanged_compress_ratio_table[i].peak_ratio =
 				*(display_compress_ratio_table[i].peak_ratio);
+			unchanged_compress_ratio_table[i].peak_ratio =
+				unchanged_compress_ratio_table[i].peak_ratio >
+				unchanged_compress_ratio_table[i].average_ratio ?
+				unchanged_compress_ratio_table[i].peak_ratio :
+				unchanged_compress_ratio_table[i].average_ratio;
 			unchanged_compress_ratio_table[i].valid =
 				display_compress_ratio_table[i].valid;
 			unchanged_compress_ratio_table[i].active =
@@ -10354,14 +10437,86 @@ bool add_bwm_entry(struct sort_list *list, struct mtk_plane_state *plane_state,
 	return true;
 }
 
+void mtk_bwm20_dump_compress_ratio(const char *source)
+{
+	unsigned int i;
+
+	DDPDBG_BWM("BWMT === Item\t\tKey\t\tavg\t\tpeak\tvalid\tactive\tlayer\tdirty=== @%s\n",
+		source ? source : "unknown");
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		if (all_layer_compress_ratio_table[i].key_value)
+			DDPDBG_BWM("BWMT2.0 === %4d\t\t%llu\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u ===\n", i,
+				all_layer_compress_ratio_table[i].key_value,
+				all_layer_compress_ratio_table[i].average_ratio,
+				all_layer_compress_ratio_table[i].peak_ratio,
+				all_layer_compress_ratio_table[i].valid,
+				all_layer_compress_ratio_table[i].active,
+				all_layer_compress_ratio_table[i].phy_id,
+				all_layer_compress_ratio_table[i].dirty);
+		if (unchanged_compress_ratio_table[i].key_value)
+			DDPDBG_BWM("BWMT1.0 ... %4d\t\t%llu\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u\t\t%u ...\n", i,
+				unchanged_compress_ratio_table[i].key_value,
+				unchanged_compress_ratio_table[i].average_ratio,
+				unchanged_compress_ratio_table[i].peak_ratio,
+				unchanged_compress_ratio_table[i].valid,
+				unchanged_compress_ratio_table[i].active,
+				unchanged_compress_ratio_table[i].phy_id,
+				unchanged_compress_ratio_table[i].dirty);
+	}
+}
+
+unsigned int mtk_bwm_get_layer_compress_ratio(struct mtk_drm_crtc *mtk_crtc, unsigned int phy_id, bool peak)
+{
+	unsigned int i, compr_ratio = 0, tmp_ratio = 0;
+	struct mtk_drm_private *priv = NULL;
+
+	if (IS_ERR_OR_NULL(mtk_crtc) || phy_id >= MAX_LAYER_NR)
+		return 0;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	if (IS_ERR_OR_NULL(priv) || !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
+		return 1000;
+
+	/* if !compr still need to check ext layers compr status */
+
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		if ((phy_id == all_layer_compress_ratio_table[i].phy_id) &&
+			all_layer_compress_ratio_table[i].valid) {
+			tmp_ratio = peak ?
+					all_layer_compress_ratio_table[i].peak_ratio :
+					all_layer_compress_ratio_table[i].average_ratio;
+			tmp_ratio = tmp_ratio > 0 ? tmp_ratio : 1000;
+			if (compr_ratio < tmp_ratio) {
+				if (debug_channel_bw_flow)
+					DDPMSG("%s,bwm2[%u] key:%u get layer:%u %s_ratio:%u->%u,compr:%d\n",
+						__func__, i, all_layer_compress_ratio_table[i].key_value,
+						phy_id, peak ? "peak" : "avg", compr_ratio,
+						tmp_ratio, mtk_crtc->usage_ovl_compr[phy_id]);
+				compr_ratio = tmp_ratio;
+				if (compr_ratio == 1000)
+					break;
+			}
+		}
+	}
+	if (!compr_ratio) {
+		compr_ratio = 1000;
+		if (debug_channel_bw_flow)
+			DDPMSG("%s, failed to get layer:%u %s_ratio:%u, compr:%d\n",
+				__func__, phy_id, peak ? "peak" : "avg",
+				compr_ratio, mtk_crtc->usage_ovl_compr[phy_id]);
+	}
+
+	return compr_ratio;
+}
+
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	struct drm_atomic_state *state)
 {
 	struct drm_plane *plane;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	unsigned int plane_mask = 0, i = 0, j = 0;
-	struct mtk_ddp_comp *comp;
-	unsigned int active_index = 0;
+	struct mtk_ddp_comp *comp, *ovl_comp;
+	unsigned int active_index = 0, phy_id = U32_MAX;
 	unsigned long tmp_srt = 0;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_cmdq_cb_data *bwm20_cb_data;
@@ -10380,6 +10535,14 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	comp->qos_bw = 0;
 	memset(&mtk_bwm_sort_list, 0, sizeof(struct sort_list));
 
+	/*clear bwm 2.0 table*/
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		if (all_layer_compress_ratio_table[i].dirty)
+			memset(&all_layer_compress_ratio_table[i], 0,
+				sizeof(struct layer_compress_ratio_item));
+	}
+
+	/*update bwm 2.0 table*/
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		struct mtk_plane_state *plane_state =
 			to_mtk_plane_state(plane->state);
@@ -10393,28 +10556,67 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		}
 		if (j >= MAX_LAYER_RATIO_NUMBER)
 			break;
+
+		phy_id = U32_MAX;
+		ovl_comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+		if (!IS_ERR_OR_NULL(ovl_comp))
+			mtk_ddp_comp_io_cmd(ovl_comp, NULL, OVL_COMP_TO_PHY_ID, &phy_id);
+
 		if (!is_compress || (mtk_fb_get_dma(fb) == 0) ||
 			plane_state->mml_mode == MML_MODE_DIRECT_LINK ||
 			plane_state->mml_mode == MML_MODE_RACING ||
 			((drm_rect_height(&plane->state->src) >> 16) < 8))
-			DDPDBG_BWM("not allow calc layer alloc_id:%d\n",
-				(unsigned int)plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID]);
+			DDPDBG_BWM("%s: skip bwm2,key:%llu,comp:%s-%u,layer:%u,mode:%u,compr:%u\n",
+				__func__, (unsigned int)plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
+				IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
+						mtk_dump_comp_str_id(ovl_comp->id),
+				IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id,
+				plane_state->mml_mode, is_compress);
 		else if (plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) {
-			for (; i < MAX_LAYER_RATIO_NUMBER; i++) {
+			bool found = false;
+
+			for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
 				if (plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] ==
 					unchanged_compress_ratio_table[i].key_value) {
-					DDPDBG_BWM("get unchanged ratio avg:%d peak:%d alloc_id:%llu\n",
-					unchanged_compress_ratio_table[i].average_ratio,
-					unchanged_compress_ratio_table[i].peak_ratio,
-					unchanged_compress_ratio_table[i].key_value);
+					all_layer_compress_ratio_table[j].active = 0;
 					all_layer_compress_ratio_table[j].valid = 1;
 					all_layer_compress_ratio_table[j].key_value =
 						unchanged_compress_ratio_table[i].key_value;
 					all_layer_compress_ratio_table[j].average_ratio =
-						unchanged_compress_ratio_table[i].average_ratio;
+						unchanged_compress_ratio_table[i].average_ratio > 0 ?
+						unchanged_compress_ratio_table[i].average_ratio : 1000;
 					all_layer_compress_ratio_table[j].peak_ratio =
-						unchanged_compress_ratio_table[i].peak_ratio;
+						unchanged_compress_ratio_table[i].peak_ratio > 0 ?
+						unchanged_compress_ratio_table[i].peak_ratio : 1000;
+					all_layer_compress_ratio_table[j].phy_id = phy_id;
+					all_layer_compress_ratio_table[j].dirty = 0;
+					DDPDBG_BWM("%s:bwm2[%u] w/ bwm1[%u],key:%llu,comp:%s-%u,layer:%u[%d,%d]\n",
+						__func__, j, i, unchanged_compress_ratio_table[i].key_value,
+						IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
+								mtk_dump_comp_str_id(ovl_comp->id),
+						IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id,
+						all_layer_compress_ratio_table[j].average_ratio,
+						all_layer_compress_ratio_table[j].peak_ratio);
+					found = true;
 					break;
+				}
+			}
+			if (!found) {
+				if (!(plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) ||
+					(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER)) {
+					all_layer_compress_ratio_table[j].active = 0;
+					all_layer_compress_ratio_table[j].valid = 1;
+					all_layer_compress_ratio_table[j].key_value =
+						plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
+					all_layer_compress_ratio_table[j].average_ratio = 1000;
+					all_layer_compress_ratio_table[j].peak_ratio = 1000;
+					all_layer_compress_ratio_table[j].phy_id = phy_id;
+					all_layer_compress_ratio_table[j].dirty = 0;
+					DDPDBG_BWM("%s:failed bwm2[%u] w/ bwm1,key:%llu,comp:%s-%u,layer:%u\n",
+						__func__, j, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
+						IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
+								mtk_dump_comp_str_id(ovl_comp->id),
+						IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id);
 				}
 			}
 		} else if (mtk_get_format_bpp(fb->format->format) && active_index < 8) {
@@ -10422,13 +10624,24 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 			all_layer_compress_ratio_table[j].valid = 1;
 			all_layer_compress_ratio_table[j].key_value =
 				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID];
+			all_layer_compress_ratio_table[j].average_ratio = 0;
+			all_layer_compress_ratio_table[j].peak_ratio = 0;
+			all_layer_compress_ratio_table[j].phy_id = phy_id;
+			all_layer_compress_ratio_table[j].dirty = 0;
 
 			//set layer config to bwm
 			mtk_ddp_comp_layer_config(comp, active_index, plane_state, NULL);
 
 			CRTC_MMP_MARK(0, bwm20,
-			plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] << 4 | j, 1);
+				plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] << 4 | j, 1);
 			active_index ++;
+			DDPDBG_BWM("%s:bwm2[%u],key:%llu,comp:%s-%u,layer:%u,valid:%u,dirty:%u\n",
+				__func__, j, all_layer_compress_ratio_table[j].key_value,
+				IS_ERR_OR_NULL(ovl_comp) ? "unknown" :
+						mtk_dump_comp_str_id(ovl_comp->id),
+				IS_ERR_OR_NULL(ovl_comp) ? 0xffffff : ovl_comp->id, phy_id,
+				all_layer_compress_ratio_table[j].valid,
+				all_layer_compress_ratio_table[j].dirty);
 		}
 		j++;
 	}
@@ -10457,11 +10670,13 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		//trig bwm
 		mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_TRIG, NULL);
 		CRTC_MMP_MARK(0, bwm20, 0, comp->qos_bw);
+		//mtk_bwm20_dump_compress_ratio("calc");
 	} else
 		no_bwm20_layer = true;
 
 	return;
 }
+
 void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle)
 {
@@ -10480,6 +10695,37 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 		DDPMSG("%s cannot get bwm comp\n", __func__);
 		return;
 	}
+
+	/*set dirty of bwm 2.0 table*/
+	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
+		struct mtk_plane_state *plane_state =
+			to_mtk_plane_state(plane->state);
+
+		if (plane_state->pending.enable == 0 ||
+			plane_state->mml_mode == MML_MODE_DIRECT_LINK ||
+			plane_state->mml_mode == MML_MODE_RACING ||
+			(plane_state->pending.height == 0) ||
+			(plane_state->pending.width == 0))
+			continue;
+
+		bpp = mtk_drm_format_plane_cpp(plane_state->pending.format, 0);
+		if (plane_state->pending.prop_val[PLANE_PROP_COMPRESS] && bpp) {
+			for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+				if ((plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID] ==
+					all_layer_compress_ratio_table[i].key_value) &&
+					all_layer_compress_ratio_table[i].valid) {
+					if ((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) &&
+						!(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER)) {
+						all_layer_compress_ratio_table[i].dirty = 0;
+						break;
+					}
+					all_layer_compress_ratio_table[i].dirty = 1;
+					break;
+				}
+			}
+		}
+	}
+
 	if (!comp->qos_bw)
 		return;
 
@@ -10490,16 +10736,7 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, 0, 0,
 					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 
-	DDPDBG_BWM("BWMT===== Item     Frame    Key     avg    peak     valid    active=====\n");
-	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-		DDPDBG_BWM("BWMT===== %4d     %u     %llu     %u    %u     %u    %u =====\n", i,
-			all_layer_compress_ratio_table[i].frame_idx,
-			all_layer_compress_ratio_table[i].key_value,
-			all_layer_compress_ratio_table[i].average_ratio,
-			all_layer_compress_ratio_table[i].peak_ratio,
-			all_layer_compress_ratio_table[i].valid,
-			all_layer_compress_ratio_table[i].active);
-	}
+	mtk_bwm20_dump_compress_ratio("flush");
 
 	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
 		struct mtk_plane_state *plane_state =
@@ -10535,11 +10772,6 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 						DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
 							__LINE__, index, emi_eff_tb[0], weight);
 					}
-					if ((plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) &&
-						!(plane_state->comp_state.layer_caps & MTK_HWC_UNCHANGED_LAYER))
-						break;
-					memset(&all_layer_compress_ratio_table[i], 0,
-						sizeof(struct layer_compress_ratio_item));
 					break;
 				}
 			}
@@ -10556,10 +10788,16 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	DDPDBG_BWM("BWMT all_layer overlap %d\n", bwm20_overlap);
 	CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 6);
 	if (mtk_crtc->cur_lyeblob) {
-		mtk_crtc_update_hrt_state(crtc, 0, mtk_crtc->cur_lyeblob, cmdq_handle);
+		mtk_crtc_update_hrt_state(crtc, 0, mtk_crtc->cur_lyeblob, cmdq_handle, true);
 		mtk_crtc->cur_lyeblob = NULL;
 	} else
 		DDPINFO("bwm can't get lye_blob for update hrt\n");
+
+	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+		if (all_layer_compress_ratio_table[i].dirty)
+			memset(&all_layer_compress_ratio_table[i], 0,
+				sizeof(struct layer_compress_ratio_item));
+	}
 
 	return;
 }

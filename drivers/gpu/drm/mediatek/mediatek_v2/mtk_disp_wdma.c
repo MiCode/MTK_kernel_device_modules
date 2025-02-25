@@ -2419,8 +2419,8 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 		data->bw = comp->hrt_bw;
 		if (data->bw > 0)
-			DDPDBG("%s, wdma comp:%d, larb:%d, bw:%d\n",
-				__func__, comp->id, data->larb_id, data->bw);
+			DDPQOS("%s, comp:%s-%d, larb:%d, bw:%d\n",
+				__func__, mtk_dump_comp_str_id(comp->id), comp->id, data->larb_id, data->bw);
 		break;
 	}
 	case PMQOS_SET_HRT_BW: {

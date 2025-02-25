@@ -194,6 +194,10 @@ enum EVENT_TRIGGER_PT {
 #define DISP_SLOT_DSI_RX_TRIG_STA	(DISP_SLOT_READ_DDIC_V2_BASE_END)
 #define DISP_SLOT_OVL_DSI_SEQ (DISP_SLOT_DSI_RX_TRIG_STA + 0x4)
 #define DISP_SLOT_OVL_WDMA_SEQ (DISP_SLOT_OVL_DSI_SEQ + 0x4)
+
+#define DISP_SLOT_CUR_CHAN_HRT_BY_TYPE(read, n)  \
+	(read ? DISP_SLOT_CUR_CHAN_HRT(n) : DISP_SLOT_CUR_CHAN_HRT_WRITE(n))
+
 /* For Dynamic OVL feature */
 #define DISP_OVL_ROI_SIZE 0x20
 #define DISP_OVL_DATAPATH_CON 0x24
@@ -1779,6 +1783,8 @@ enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int 
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle);
+unsigned int mtk_bwm_get_layer_compress_ratio(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int phy_id, bool peak);
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,

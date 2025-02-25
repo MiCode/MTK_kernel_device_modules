@@ -314,6 +314,11 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 					(avg_val * active_layer_avg_info[j]) >> 14;
 				all_layer_compress_ratio_table[i].peak_ratio =
 					(peak_val* active_layer_peak_info[j]) >> 14;
+				all_layer_compress_ratio_table[i].peak_ratio =
+						all_layer_compress_ratio_table[i].peak_ratio >
+						all_layer_compress_ratio_table[i].average_ratio ?
+						all_layer_compress_ratio_table[i].peak_ratio :
+						all_layer_compress_ratio_table[i].average_ratio;
 				if ((all_layer_compress_ratio_table[i].peak_ratio != 0) &&
 					(all_layer_compress_ratio_table[i].average_ratio == 0))
 					all_layer_compress_ratio_table[i].average_ratio = 10;

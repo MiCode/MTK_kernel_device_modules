@@ -485,6 +485,8 @@ struct layer_compress_ratio_item {
 	__u32 peak_ratio;
 	__u32 valid;
 	__u32 active;
+	__u32 phy_id;
+	__u32 dirty;
 };
 
 enum {

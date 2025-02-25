@@ -667,6 +667,15 @@ void mtk_disp_set_channel_hrt_write_bw(struct mtk_drm_crtc *mtk_crtc, unsigned i
 						__func__, crtc_idx, i, bw, total);
 }
 
+void mtk_disp_set_channel_hrt_bw_by_type(bool read,
+		struct mtk_drm_crtc *mtk_crtc, unsigned int bw, int i)
+{
+	if (read)
+		mtk_disp_set_channel_hrt_bw(mtk_crtc, bw, i);
+	else
+		mtk_disp_set_channel_hrt_write_bw(mtk_crtc, bw, i);
+}
+
 static unsigned int mtk_disp_cal_usage_bw(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int bw_base, int idx)
 {
