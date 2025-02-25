@@ -1028,7 +1028,7 @@ static ssize_t v_table_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	int pos = 0, i = 0, j = 0;
+	int pos = 0, i = 0;
 	bool ret = true;
 	struct fdvfs_ipi_data *ipi_data;
 	unsigned int s_num = 0, s_init = 0, rs_num = 0, t_init = 0, ver = 0;
@@ -1523,9 +1523,6 @@ static ssize_t dcs_major_min_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
-	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-	int i32Value;
-
 	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
 		int ret;
 		int major, option;
@@ -2895,8 +2892,6 @@ static ssize_t ged_version_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
 {
-	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
-	int i32Value;
 	unsigned int eb_policy_mode;
 	int pos = 0;
 	bool ret = true;

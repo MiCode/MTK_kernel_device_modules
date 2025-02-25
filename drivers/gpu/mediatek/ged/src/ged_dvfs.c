@@ -2726,21 +2726,6 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	return gpu_freq_tar;
 }
 
-static int _loading_avg(int ui32loading)
-{
-	static int data[4];
-	static int idx;
-	static int sum;
-	uint64_t temp = ++idx;
-
-	int cidx = do_div(temp, ARRAY_SIZE(data));
-
-	sum += ui32loading - data[cidx];
-	data[cidx] = ui32loading;
-
-	return sum / ARRAY_SIZE(data);
-}
-
 void start_mewtwo_timer(void)
 {
 	if (hrtimer_try_to_cancel(&gpu_mewtwo_timer)) {
