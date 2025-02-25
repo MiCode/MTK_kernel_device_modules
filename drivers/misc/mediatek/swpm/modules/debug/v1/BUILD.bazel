@@ -37,6 +37,8 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm-perf-arm-pmu".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:ged".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/hal:mtk_gpu_hal".format(kernel_version),
     ],
     includes = [
         ".",

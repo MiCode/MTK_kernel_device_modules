@@ -30,7 +30,7 @@
 /* TODO: TBD swpm_status */
 unsigned int swpm_status;
 EXPORT_SYMBOL(swpm_status);
-# define GPU_DBG_ENABLE 0
+# define GPU_DBG_ENABLE 1
 # if GPU_DBG_ENABLE
 unsigned int swpm_gpu_debug;
 EXPORT_SYMBOL(swpm_gpu_debug);
