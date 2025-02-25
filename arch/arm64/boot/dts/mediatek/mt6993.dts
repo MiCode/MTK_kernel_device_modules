@@ -13925,8 +13925,19 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dump-axid = <1>;
 		};
 
-		emi-fake-eng@11039000 {
+		apinfra-fake-eng@14139000 {
 			compatible = "mediatek,emi-fake-engine";
+			reg = <0 0x14139000 0 0x1000>,   /* FAKE_ENG_0 */
+				<0 0x1413a000 0 0x1000>, /* FAKE_ENG_1 */
+				<0 0x1413b000 0 0x1000>; /* FAKE_ENG_2 */
+			support-iommu = <1>;
+			/* iommus */
+			iommus = <&soc_smmu 73>;
+			dma-coherent;
+		};
+
+		emi-fake-eng@11039000 {
+			compatible = "mediatek,emi-fake-engine-v2";
 			reg = <0 0x11039000 0 0x1000>,   /* FAKE_ENG_0 */
 					<0 0x1103b000 0 0x1000>, /* FAKE_ENG_1 */
 					<0 0x1103a000 0 0x1000>, /* FAKE_ENG_2 */
