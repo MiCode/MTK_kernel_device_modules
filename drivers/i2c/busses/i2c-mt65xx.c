@@ -313,6 +313,8 @@ struct mtk_i2c_ac_timing {
 struct scp_wake_info {
 	void __iomem *vlpcfg_base_va;
 	void __iomem *scp_power_stat_va;
+	void __iomem *scp_gipc_in_set_ap_va;
+	unsigned int gipc1_setclr_bit_0;
 	unsigned int wakeup_mask;
 	unsigned int wakeup_pre_mask;
 	unsigned int not_in_sleep_mask;
@@ -333,6 +335,8 @@ struct scp_wake_info {
 static struct scp_wake_info scp_wake = {
 	.vlpcfg_base_va = NULL,
 	.scp_power_stat_va = NULL,
+	.scp_gipc_in_set_ap_va = NULL,
+	.gipc1_setclr_bit_0 = 0,
 	.is_initialized = false,
 	.use_power_stat = false,
 	.use_l2_slp_stat = false,
@@ -1832,6 +1836,10 @@ int scp_wake_release(struct i2c_adapter *adap)
 		dev_dbg(i2c->dev, "%s: scp release count, sleep_stat=0x%x, count=%d\n",
 			__func__, SCP_SLEEP_STAT, scp_wake.count);
 		if (!scp_wake.count) {
+			if (scp_wake.use_slp_stat1_stat2) {
+				writel((readl(scp_wake.scp_gipc_in_set_ap_va) | scp_wake.gipc1_setclr_bit_0),
+					scp_wake.scp_gipc_in_set_ap_va);
+			}
 			writel((readl(scp_wake.vlpcfg_base_va + scp_wake.sleep_reg)
 				& ~(scp_wake.wakeup_pre_mask)), scp_wake.vlpcfg_base_va + scp_wake.sleep_reg);
 			dev_dbg(i2c->dev, "%s: scp release success, sleep_stat=0x%x, count=%d\n",
@@ -2652,6 +2660,26 @@ static int mtk_i2c_parse_dt(struct device_node *np, struct mtk_i2c *i2c)
 				dev_info(i2c->dev, "read scp_wake slp_stat2_mask fail, ret = %d\n", ret);
 				return ret;
 			}
+
+			ret = of_property_read_u32(np, "scp-gipc-in-set-ap", &temp);
+			if (ret < 0) {
+				dev_info(i2c->dev, "get scp_gipc_in_set_ap address fail, ret = %d\n", ret);
+				return ret;
+			}
+
+			scp_wake.scp_gipc_in_set_ap_va = ioremap(temp, 0x10);
+			if (!scp_wake.scp_gipc_in_set_ap_va) {
+				dev_info(i2c->dev, "%s: scp_gipc_in_set_ap_va is 0x%x.\n",
+						__func__, temp);
+				return -ENOMEM;
+			}
+
+			ret = of_property_read_u32(np, "gipc1-setclr-bit-0", &scp_wake.gipc1_setclr_bit_0);
+			if (ret < 0) {
+				dev_info(i2c->dev, "get gipc1_setclr_bit_0 fail, ret = %d, value=0x%x.\n",
+						ret, scp_wake.gipc1_setclr_bit_0);
+				return ret;
+			}
 		}
 
 		if (scp_wake.use_power_stat) {
@@ -2906,6 +2934,11 @@ static void mtk_i2c_remove(struct platform_device *pdev)
 		if (scp_wake.scp_power_stat_va) {
 			iounmap(scp_wake.scp_power_stat_va);
 			scp_wake.scp_power_stat_va = NULL;
+		}
+
+		if (scp_wake.scp_gipc_in_set_ap_va) {
+			iounmap(scp_wake.scp_gipc_in_set_ap_va);
+			scp_wake.scp_gipc_in_set_ap_va = NULL;
 		}
 
 		scp_wake.is_initialized = false;
