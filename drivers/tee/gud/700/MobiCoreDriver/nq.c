@@ -556,8 +556,11 @@ int nq_session_notify(struct nq_session *session, u32 id, u32 payload)
 			ret = -EAGAIN;
 			mc_dev_err(ret, "failed to get requested tee cpus");
 		} else {
-			if (fc_nsiq(session->id, payload))
+			if (fc_nsiq(session->id, payload)) {
 				ret = -EPROTO;
+				mc_dev_err(ret, "unknown TEE response (0x%x) for nsiq",
+					   ret);
+			}
 			tee_restore_affinity(old_affinity);
 
 			/* The logic behind this strategy is to use as much as
@@ -1144,8 +1147,10 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 		 */
 		logging_run();
 
-		if (ret)
+		if (ret) {
+			mc_dev_err(ret, "Yield failed");
 			goto exit;
+		}
 
 		switch (resp.resp) {
 		case MC_SMC_S_YIELD:

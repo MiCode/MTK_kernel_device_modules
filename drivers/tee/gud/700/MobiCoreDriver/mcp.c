@@ -536,7 +536,14 @@ int mcp_open_session(struct mcp_session *session, struct mcp_open_info *info,
 
 	/* Reset unexpected notification */
 	mutex_lock(&local_mutex);
-	l_ctx.unexp_notif.session_id = SID_MCP;	/* Cannot be */
+	mutex_lock(&l_ctx.unexp_notif_mutex);
+	if (l_ctx.unexp_notif.session_id != SID_MCP) {
+		mc_dev_err(-EBADE,
+			   "unexp_notif.session_id %x != SID_MCP. A notification is lost",
+			   l_ctx.unexp_notif.session_id);
+			   l_ctx.unexp_notif.session_id = SID_MCP; /*Cannot be*/
+	}
+	mutex_unlock(&l_ctx.unexp_notif_mutex);
 	cmd.cmd_open.cmd_open_data.mclf_magic = MC_GP_CLIENT_AUTH_MAGIC;
 
 	/* Send MCP open command */
@@ -560,8 +567,9 @@ int mcp_open_session(struct mcp_session *session, struct mcp_open_info *info,
 			nq_session_state_update(&session->nq_session,
 						NQ_NOTIF_RECEIVED);
 			complete(&session->completion);
+			/* spurious notification is handled. clearing id */
+			l_ctx.unexp_notif.session_id = SID_MCP;
 		}
-
 		mutex_unlock(&l_ctx.unexp_notif_mutex);
 	}
 
@@ -688,10 +696,10 @@ int mcp_notify(struct mcp_session *session)
 				 ++session->notif_count);
 }
 
+/* This function need to be called wiht sessions_lock taken */
 static inline void session_notif_handler(struct mcp_session *session, u32 id,
 					 u32 payload)
 {
-	mutex_lock(&l_ctx.sessions_lock);
 	mc_dev_devel("MCP notif from session %x exit code %d state %d",
 		     id, payload, session ? session->state : -1);
 	if (session) {
@@ -709,11 +717,14 @@ static inline void session_notif_handler(struct mcp_session *session, u32 id,
 		/* Unblock waiter */
 		complete(&session->completion);
 	}
-	mutex_unlock(&l_ctx.sessions_lock);
 
 	/* Unknown session, probably being started */
 	if (!session) {
 		mutex_lock(&l_ctx.unexp_notif_mutex);
+		if (l_ctx.unexp_notif.session_id != SID_MCP) {
+			mc_dev_err(-EBADE, "overriding unexp_notif (%x -> %x)",
+				   l_ctx.unexp_notif.session_id, id);
+		}
 		l_ctx.unexp_notif.session_id = id;
 		l_ctx.unexp_notif.payload = payload;
 		mutex_unlock(&l_ctx.unexp_notif_mutex);
@@ -737,10 +748,10 @@ static void mcp_notif_handler(u32 id, u32 payload)
 				break;
 			}
 		}
-		mutex_unlock(&l_ctx.sessions_lock);
 
 		/* session is NULL if id not found */
 		session_notif_handler(session, id, payload);
+		mutex_unlock(&l_ctx.sessions_lock);
 	}
 }
 

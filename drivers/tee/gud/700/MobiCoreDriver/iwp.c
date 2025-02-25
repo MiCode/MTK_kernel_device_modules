@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -649,6 +649,8 @@ static const char *value_to_string(u32 value)
 		return "TARGET_DEAD";
 	case TEEC_ERROR_STORAGE_NO_SPACE:
 		return "STORAGE_NO_SPACE";
+	case TEEC_TT_ERROR_FAULT_MITIGATION:
+		return "FAULT_MITIGATION";
 	}
 	return NULL;
 }

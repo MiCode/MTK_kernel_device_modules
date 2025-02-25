@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -120,5 +120,10 @@
  * System is busy, try again
  **/
 #define TEEC_TT_ERROR_SYSTEM_BUSY	  ((uint32_t)0xFFFFF001)
+
+/**
+ * System has detected a fault injection error
+ **/
+#define TEEC_TT_ERROR_FAULT_MITIGATION    ((uint32_t)0xFFFFF002U)
 
 #endif /* TEE_CLIENT_ERROR_H */

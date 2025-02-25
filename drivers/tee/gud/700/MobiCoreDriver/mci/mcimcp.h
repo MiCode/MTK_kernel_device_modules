@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2024 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -275,25 +275,6 @@ struct rsp_unmap {
 	struct rsp_header rsp_header;	/** Response header */
 };
 
-/** @defgroup MCPLOADTOKEN
- * Load a token from the normal world and share it with the TEE
- * If something fails, the device attestation functionality will be disabled
- */
-
-/** Load Token */
-struct cmd_load_token {
-	struct cmd_header cmd_header;	/** Command header */
-	u32		wsm_data_type;	/** Type of MMU */
-	u64		adr_load_data;	/** Physical address of the MMU */
-	u64		ofs_load_data;	/** Offset to the data */
-	u64		len_load_data;	/** Length of the data */
-};
-
-/** Load Token Command Response */
-struct rsp_load_token {
-	struct rsp_header rsp_header;	/** Response header */
-};
-
 /** @defgroup MCPLOADKEYSO
  * Load a key SO from the normal world and share it with the TEE
  * If something fails, the device attestation functionality will be disabled
@@ -327,8 +308,6 @@ union mcp_message {
 	struct rsp_unmap	rsp_unmap;
 	struct cmd_get_version	cmd_get_version; /** Get MobiCore Version */
 	struct rsp_get_version	rsp_get_version;
-	struct cmd_load_token	cmd_load_token;	/** Load token */
-	struct rsp_load_token	rsp_load_token;
 	struct cmd_load_key_so	cmd_load_key_so;/** Load key SO */
 	struct rsp_load_key_so	rsp_load_key_so;
 };

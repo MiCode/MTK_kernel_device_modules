@@ -7,9 +7,10 @@
 #include "main.h"
 #include "ffa.h"
 #include "mmu.h"
+#include "fastcall.h"
 #include "mmu_internal.h"
-
 #include <linux/arm_ffa.h>
+#include <linux/interrupt.h>
 #include "public/trustonic_ffa_api.h"
 
 int ffa_module_probe(void)

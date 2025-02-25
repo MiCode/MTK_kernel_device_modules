@@ -802,8 +802,10 @@ static int __init mobicore_init(void)
 static void __exit mobicore_exit(void)
 {
 #ifdef MTK_ADAPTED
+#ifdef MC_FFA_FASTCALL
 	if (g_ctx.real_drv)
 		ffa_unregister_module();
+#endif
 #else
 #ifdef MC_FFA_FASTCALL
 	ffa_unregister_module();
