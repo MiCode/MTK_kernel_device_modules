@@ -1133,7 +1133,7 @@ struct s5_idle_ts s5_idle_sw_leave_ts;
 struct s5_idle_ts s5_idle_rcx_on_ce_ts;
 struct s5_idle_ts s5_idle_rcx_off_ce_ts;
 
-uint32_t s5_idle_fucn_trigger_cnt;
+uint32_t s5_idle_func_trigger_cnt;
 uint32_t s5_idle_dpidle_skip_cnt;
 uint32_t s5_idle_ipi_skip_cnt;
 uint32_t s5_idle_wakeup_cnt;
@@ -1356,7 +1356,7 @@ static int apu_ipi_ut_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 		smmu_hw_sem_ts_larger_1ms_cnt = d->data[19];
 		boot_count = d->data[20];
 	} else if (d->cmd_id == CMD_S5_IDLE_PROFILE) {
-		s5_idle_fucn_trigger_cnt = d->data[1] ;
+		s5_idle_func_trigger_cnt = d->data[1] ;
 		s5_idle_dpidle_skip_cnt = d->data[2] ;
 		s5_idle_ipi_skip_cnt = d->data[3] ;
 		s5_idle_wakeup_cnt = d->data[4] ;
@@ -1499,7 +1499,7 @@ static int apu_ipi_dbg_show(struct seq_file *s, void *unused)
 		seq_printf(s, "apu_off_ts_cnt = %llu\n", apu_off_ts_cnt);
 
 	} else if (apu_ipi_ut_cmd == CMD_S5_IDLE_PROFILE) {
-		seq_printf(s, "s5_idle_fucn_trigger_cnt = %u\n", s5_idle_fucn_trigger_cnt);
+		seq_printf(s, "s5_idle_func_trigger_cnt = %u\n", s5_idle_func_trigger_cnt);
 		seq_printf(s, "s5_idle_dpidle_skip_cnt = %u\n", s5_idle_dpidle_skip_cnt);
 		seq_printf(s, "s5_idle_ipi_skip_cnt = %u\n", s5_idle_ipi_skip_cnt);
 		seq_printf(s, "s5_idle_wakeup_cnt = %u\n", s5_idle_wakeup_cnt);

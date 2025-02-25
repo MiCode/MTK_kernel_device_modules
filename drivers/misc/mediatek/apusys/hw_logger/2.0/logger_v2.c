@@ -101,7 +101,8 @@ int logger_v2_get_buf_info(enum LOG_BUFF_TYPE buff_type,
 
 void logger_v2_get_r_w_ofs(unsigned int *r_ofs, unsigned int *w_ofs)
 {
-	uint32_t reader_lock, r_ptr_reg = 0, w_ptr_reg = 0;
+	int reader_lock;
+	uint32_t r_ptr_reg = 0, w_ptr_reg = 0;
 
 	/* reader_lock return value:
 	*   0: semaphore acquired successfully
@@ -114,8 +115,8 @@ void logger_v2_get_r_w_ofs(unsigned int *r_ofs, unsigned int *w_ofs)
 		r_ptr_reg = ioread32(APU_LOG_BUF_R_PTR);
 		w_ptr_reg = ioread32(APU_LOG_BUF_W_PTR);
 		logger_v2_counting_hw_sema_reader_unlock();
-	} else if (reader_lock == -EINVAL) {
-		HWLOGR_INFO("hw_sema_reader_trylock operation error\n");
+	} else if (reader_lock != -EBUSY) {
+		HWLOGR_INFO("hw_sema_reader_trylock operation error: %d\n", reader_lock);
 	}
 
 	// HWLOGR_DBG("reader_lock: 0x%08x\n", reader_lock);
@@ -136,26 +137,30 @@ void logger_v2_get_r_w_ofs(unsigned int *r_ofs, unsigned int *w_ofs)
 
 static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 {
-	bool lbc_full_flg, ovwrite_flg;
+	int reader_lock;
 	unsigned int ctrl_flag = 0;
-	unsigned long long irq_start_time;
+	unsigned long long handler_start_time;
 
-	irq_start_time = sched_clock();
+	handler_start_time = sched_clock();
 
-	// TODO: check apu power on and w1c reg
-	// if apu power on
-	ctrl_flag = ioread32(APU_LOGTOP_CON_ADDR);
-	iowrite32(ctrl_flag, APU_LOGTOP_CON_ADDR);
-	HWLOGR_DBG("w1c ctrl_flag = 0x%x\n", ctrl_flag);
+	// check apu power on and w1c reg
+	reader_lock = logger_v2_counting_hw_sema_reader_trylock();
 
-	lbc_full_flg = !!(ctrl_flag & APU_LOGTOP_CON_LBC_FULL_FLAG);
-	ovwrite_flg = !!(ctrl_flag & APU_LOGTOP_CON_OVWRITE_FLAG);
+	if (reader_lock == 0) {
+		ctrl_flag = ioread32(APU_LOGTOP_CON_ADDR);
+		iowrite32(ctrl_flag, APU_LOGTOP_CON_ADDR);
+		HWLOGR_DBG("w1c ctrl_flag = 0x%x\n", ctrl_flag);
 
-	if (!lbc_full_flg && !ovwrite_flg)
-		HWLOGR_INFO("intr status = 0x%x\n", ctrl_flag);
+		logger_v2_counting_hw_sema_reader_unlock();
+		logger_v2_notify_mblog(0);
+	} else if (reader_lock == -EBUSY)  {
+		HWLOGR_INFO("apu power off / s5 idle\n");
+	} else {
+		HWLOGR_INFO("hw_sema_reader_trylock operation error: %d\n", reader_lock);
+	}
 
-	logger_v2_notify_mblog(0);
-	HWLOGR_DBG("irq_time = %lld ms\n", (sched_clock() - irq_start_time) / 1000);
+	HWLOGR_INFO("intr status = 0x%x handler_time = %lld ms\n",
+		ctrl_flag, (sched_clock() - handler_start_time) / 1000);
 	return IRQ_HANDLED;
 }
 
@@ -264,7 +269,9 @@ static int logger_v2_irq_init(struct platform_device *pdev)
 	HWLOGR_INFO("log_irq_num = %d\n", log_irq_num);
 
 	ret = devm_request_threaded_irq(&pdev->dev, log_irq_num,
-		apu_logtop_irq_handler, NULL, IRQF_ONESHOT, pdev->name, NULL);
+		NULL, apu_logtop_irq_handler,
+		irq_get_trigger_type(log_irq_num) | IRQF_ONESHOT,
+		pdev->name, NULL);
 
 	if (ret) {
 		HWLOGR_ERR("failed to request IRQ (%d)\n", ret);
