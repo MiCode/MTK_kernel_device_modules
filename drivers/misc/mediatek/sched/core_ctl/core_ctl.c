@@ -153,8 +153,8 @@ static DEFINE_SPINLOCK(core_ctl_state_lock);
 static DEFINE_SPINLOCK(core_ctl_window_check_lock);
 static DEFINE_SPINLOCK(core_ctl_pause_lock);
 static bool initialized;
-static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 2, 0};
 ATOMIC_NOTIFIER_HEAD(core_ctl_notifier);
+static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 3, 1};
 static unsigned int busy_up_thres[MAX_CLUSTERS] = {60, 60, 60};
 static unsigned int busy_down_thres[MAX_CLUSTERS] = {30, 30, 30};
 static unsigned int nr_task_thres[MAX_CLUSTERS] = {4, 4, 4};
@@ -1329,7 +1329,6 @@ int core_ctl_set_cpu_rt_nr_task_thres(unsigned int cid, unsigned int rt_nr_task)
 	return 0;
 }
 EXPORT_SYMBOL(core_ctl_set_cpu_rt_nr_task_thres);
-
 
 /*
  *  core_ctl_set_cpu_active_loading - set threshold of cpu busy state
@@ -2890,6 +2889,31 @@ static long core_ioctl_impl(struct file *filp,
 		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
 			return -1;
 		core_ctl_set_cpu_busy_up_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_CPU_NONBUSY_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_busy_down_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_NR_TASK_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_nr_task_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_FREQ_MIN_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_freq_min_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_ACT_LOAD_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_active_loading_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_RT_NR_TASK_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_rt_nr_task_thres(msgKM.cid, msgKM.thres);
 	break;
 	default:
 		pr_info("%s: %s %d: unknown cmd %x\n",
