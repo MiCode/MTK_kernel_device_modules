@@ -2091,9 +2091,9 @@
 		 * index 0 for ap bus tracer
 		 * index 1 for infra bus tracer
 		 */
-		mediatek,num_tracer = <2>;
-		mediatek,enabled_tracer = <1 1>;
-		mediatek,at_id = <0x10 0x30>;
+		mediatek,num-tracer = <2>;
+		mediatek,enabled-tracer = <1 1>;
+		mediatek,at-id = <0x10 0x30>;
 
 		/* filters: disabled by default */
 		/*
@@ -2139,7 +2139,7 @@
 		drm:drm@1000d000 {
 			compatible = "mediatek,dbgtop-drm";
 			reg = <0 0x1000d000 0 0x1000>;
-			rgu_timeout = <0xea60>; // for ddr-reserved mode
+			rgu-timeout = <0xea60>; // for ddr-reserved mode
 			ver = <1>;
 		};
 
