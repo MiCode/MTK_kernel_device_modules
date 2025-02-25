@@ -69,7 +69,6 @@ static int addr_encode(uint64_t input_addr, enum AMMU_BUF_TYPE type, uint64_t *o
 	switch (type) {
 	case AMMU_DATA_BUF:
 		ret_addr = IOVA2EVA(input_addr, g_adv->plat.encode_offset);
-		pr_info("apummu DC buf:0x%llx\n", input_addr);
 		if (SLC_DC_EN)
 			ret_addr = SLC_DC_BUF_EVA;
 		break;
