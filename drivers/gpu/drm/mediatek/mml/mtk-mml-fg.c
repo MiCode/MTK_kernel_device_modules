@@ -41,6 +41,7 @@ enum mml_fg_reg_index {
 	FG_DEBUG_4,
 	FG_DEBUG_5,
 	FG_DEBUG_6,
+	FG_DEBUG_7,
 	FG_PPS_0,
 	FG_PPS_1,
 	FG_PPS_2,
@@ -78,6 +79,7 @@ enum mml_fg_reg_index {
 	FG_AR_COEFF_CR_4,
 	FG_AR_COEFF_CR_5,
 	FG_AR_COEFF_CR_6,
+	FG_SMI_CFG_0,
 	FG_REG_MAX_COUNT
 };
 
@@ -180,6 +182,7 @@ static const u16 fg_reg_table_mt6991[FG_REG_MAX_COUNT] = {
 	[FG_DEBUG_4] = 0x510,
 	[FG_DEBUG_5] = 0x514,
 	[FG_DEBUG_6] = 0x518,
+	[FG_DEBUG_7] = 0x51C,
 	[FG_PPS_0] = 0x408,
 	[FG_PPS_1] = 0x40C,
 	[FG_PPS_2] = 0x410,
@@ -188,6 +191,7 @@ static const u16 fg_reg_table_mt6991[FG_REG_MAX_COUNT] = {
 	[FG_CB_TBL_BASE] = 0x00c,
 	[FG_CR_TBL_BASE] = 0x010,
 	[FG_LUT_BASE] = 0x014,
+	[FG_SMI_CFG_0] = 0x050,
 	[FG_LUMA_TBL_BASE_MSB] = 0x05c,
 	[FG_CB_TBL_BASE_MSB] = 0x060,
 	[FG_CR_TBL_BASE_MSB] = 0x064,
@@ -225,6 +229,7 @@ struct fg_data {
 	u32 tile_width;
 	bool sram_pp; /* support SRAM ping-pong */
 	bool hw_ar; /* HW support auto regressive */
+	phys_addr_t ddrsrc_addr;
 };
 
 static const struct fg_data mt6893_fg_data = {
@@ -262,6 +267,15 @@ static const struct fg_data mt6991_mmlf_fg_data = {
 	.tile_width = 3872,
 	.sram_pp = true,
 	.hw_ar = true,
+};
+
+static const struct fg_data mt6993_mmlt_fg_data = {
+	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.reg_table = fg_reg_table_mt6991,
+	.tile_width = 640,
+	.sram_pp = true,
+	.hw_ar = true,
+	.ddrsrc_addr = 0x3EFF006C,
 };
 
 struct mml_comp_fg {
@@ -499,6 +513,9 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			break;
 		}
 	}
+
+	if (fg->data->ddrsrc_addr)
+		cmdq_pkt_write(pkt, NULL, fg->data->ddrsrc_addr, 0x0000000D, U32_MAX);
 
 	if (is_tuning && buf_ready) {
 		ret = mml_pq_get_comp_config_result(task, FG_WAIT_TIMEOUT_MS);
@@ -756,6 +773,9 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 			reuse, cache, &fg_frm->labels[FG_TRIGGER_LABEL_1]);
 	}
 
+	if (fg->data->ddrsrc_addr)
+		cmdq_pkt_write(pkt, NULL, fg->data->ddrsrc_addr, 0x0, U32_MAX);
+
 exit:
 	mml_pq_trace_ex_end();
 	return ret;
@@ -976,7 +996,7 @@ static void fg_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_fg *fg = comp_to_fg(comp);
 	void __iomem *base = comp->base;
-	u32 value[54];
+	u32 value[62];
 	u32 shadow_ctrl;
 
 	mml_err("fg component %u dump:", comp->id);
@@ -1043,6 +1063,17 @@ static void fg_debug_dump(struct mml_comp *comp)
 	value[51] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_4]);
 	value[52] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_5]);
 	value[53] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_6]);
+	value[54] = readl(base + fg->data->reg_table[FG_SHADOW_CTRL]);
+	value[55] = readl(base + fg->data->reg_table[FG_SMI_CFG_0]);
+	value[56] = readl(base + fg->data->reg_table[FG_DEBUG_7]);
+
+	base = (void *)ioremap(0x3EFF0000, 4096);
+	value[57] = readl(base + 0x060); // DISP_DPC_DISP_MASK_CFG
+	value[58] = readl(base + 0x064); // DISP_DPC_MML_MASK_CFG
+	value[59] = readl(base + 0x068); // DISP_DPC_DISP_DDRSRC_EMIREQ_CFG
+	value[60] = readl(base + 0x06C); // DISP_DPC_MML_DDRSRC_EMIREQ_CFG
+	value[61] = readl(base + 0x0B8); // DISP_DPC_DDREN_CFG
+	iounmap((void *)base);
 
 	mml_err("FG_TRIGGER %#010x FG_STATUS %#010x",
 		value[0], value[1]);
@@ -1071,7 +1102,7 @@ static void fg_debug_dump(struct mml_comp *comp)
 		value[9], value[10], value[11]);
 	mml_err("FG_DEBUG_3 %#010x FG_DEBUG_4 %#010x FG_DEBUG_5 %#010x",
 		value[12], value[13], value[14]);
-	mml_err("FG_DEBUG_6 %#010x ", value[15]);
+	mml_err("FG_DEBUG_6 %#010x FG_DEBUG_7 %#010x", value[15], value[56]);
 	mml_err("FG_CRC_TBL_0 %#010x FG_CRC_TBL_1 %#010x",
 		value[31], value[32]);
 	mml_err("FG_AR_COEFF_CFG %#010x FG_AR_COEFF_Y_0 %#010x",
@@ -1094,8 +1125,17 @@ static void fg_debug_dump(struct mml_comp *comp)
 		value[49], value[50]);
 	mml_err("FG_AR_COEFF_CR_4 %#010x FG_AR_COEFF_CR_5 %#010x",
 		value[51], value[52]);
-	mml_err("FG_AR_COEFF_CR_6 %#010x",
-		value[53]);
+	mml_err("FG_AR_COEFF_CR_6 %#010x FG_SHADOW_CTRL %#010x",
+		value[53], value[54]);
+	mml_err("FG_SMI_CFG0 %#010x",
+		value[55]);
+	mml_err("DISP_DPC_DISP_MASK_CFG %#010x DISP_DPC_MML_MASK_CFG %#010x",
+		value[57], value[58]);
+	mml_err("DISP_DPC_DISP_DDRSRC_EMIREQ_CFG %#010x DISP_DPC_MML_DDRSRC_EMIREQ_CFG %#010x",
+		value[59], value[60]);
+	mml_err("DISP_DPC_DDREN_CFG %#010x",
+		value[61]);
+
 }
 
 static const struct mml_comp_debug_ops fg_debug_ops = {
@@ -1207,7 +1247,7 @@ const struct of_device_id mml_fg_driver_dt_match[] = {
 	},
 	{
 		.compatible = "mediatek,mt6993-mml0_fg",
-		.data = &mt6991_mmlt_fg_data
+		.data = &mt6993_mmlt_fg_data
 	},
 	{},
 };
