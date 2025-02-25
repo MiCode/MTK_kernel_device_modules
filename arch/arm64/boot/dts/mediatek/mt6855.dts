@@ -5221,6 +5221,7 @@
 			iommus = <&disp_iommu M4U_LARB32_GCE_DM>;
 			dma-mask-bit = <34>;
 			skip-poll-sleep;
+			no-append-by-event;
 		};
 		gce_sec: gce_mbox_sec@1e980000 {
 			compatible = "mediatek,mailbox-gce-sec";
@@ -5263,6 +5264,7 @@
 			iommus = <&disp_iommu M4U_LARB32_GCE_MM>;
 			dma-mask-bit = <34>;
 			skip-poll-sleep;
+			no-append-by-event;
 		};
 		gce_m_sec: gce_mbox_m_sec@1e990000 {
 			compatible = "mediatek,mailbox-gce-sec";
