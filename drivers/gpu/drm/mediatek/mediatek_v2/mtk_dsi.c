@@ -10881,6 +10881,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 				0x0, 0x1); //DE comment: no need
 		}
 		mtk_dsi_poll_for_idle(mtk_dsi, handle);//hc9
+		mtk_dsi_power_keep_gce(mtk_dsi, handle, false);//hc9
 
 		return rd_total_sz;
 	}
@@ -10919,6 +10920,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 		cmdq_size = mtk_setup_dsi_cmdq(mtk_dsi, handle, total_cmdq_size, &msg);
 		if (cmdq_size < 0) {
 			DDPPR_ERR("%s, out of dsi cmdq size, i=%d, cmd_len\n", __func__, i, msg.tx_len);
+			mtk_dsi_power_keep_gce(mtk_dsi, handle, false);//hc9
 			return -ENOMEM;
 		}
 		if (!cmd_msg->is_package) {

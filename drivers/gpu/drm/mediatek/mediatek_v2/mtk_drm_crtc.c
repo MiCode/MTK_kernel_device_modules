@@ -18155,7 +18155,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	}
 
 	if (crtc_idx == 0)
-		DDP_MUTEX_LOCK(&mtk_crtc->blank_lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 
 	if (mtk_disp_get_dump_prop_enable()) {
 		int i = 0;
@@ -21433,7 +21433,7 @@ end:
 	trigger_without_cmdq(crtc);
 #endif
 	if (index == 0)
-		DDP_MUTEX_UNLOCK(&mtk_crtc->blank_lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 	CRTC_MMP_EVENT_END((int) index, atomic_flush, (unsigned long)crtc_state,
 			(unsigned long)old_crtc_state);
 	mtk_drm_trace_end("mtk_drm_crtc_atomic:%u-%llu-%llu-%d",
