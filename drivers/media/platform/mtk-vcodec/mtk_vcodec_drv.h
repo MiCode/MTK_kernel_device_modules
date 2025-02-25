@@ -937,7 +937,7 @@ struct mtk_vcodec_dev {
 	atomic_t smi_ctrl_get_ref_cnt[MAX(MTK_VDEC_HW_NUM,(int)MTK_VENC_HW_NUM)]; // for get_if_in_use
 	unsigned int dec_ao_pw_cnt;
 
-	unsigned long id_counter;
+	int id_counter;
 
 	struct workqueue_struct *check_alive_workqueue;
 	struct vdec_check_alive_work_struct check_alive_work;

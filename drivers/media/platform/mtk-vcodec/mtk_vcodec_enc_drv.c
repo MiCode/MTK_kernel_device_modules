@@ -113,8 +113,8 @@ static int fops_vcodec_open(struct file *file)
 	 */
 	ctx->enc_flush_buf = mtk_buf;
 	dev->id_counter++;
-	if (dev->id_counter == 0)
-		dev->id_counter++;
+	if (dev->id_counter <= 0)
+		dev->id_counter = 1;
 	ctx->id = dev->id_counter;
 	v4l2_fh_init(&ctx->fh, video_devdata(file));
 	file->private_data = &ctx->fh;

@@ -11,6 +11,7 @@
 #include <linux/delay.h>
 #include <linux/semaphore.h>
 #include <linux/module.h>
+#include <linux/limits.h>
 #include <mtk_heap.h>
 
 #include "mtk_heap.h"
@@ -1072,6 +1073,9 @@ static int vidioc_venc_g_ctrl(struct v4l2_ctrl *ctrl)
 	struct v4l2_venc_resolution_change *reschange;
 
 	switch (ctrl->id) {
+	case V4L2_CID_MTK_VIDEO_CONTEXT_ID:
+		ctrl->val = ctx->id;
+		break;
 	case V4L2_CID_MTK_VIDEO_ENC_ROI_RC_QP:
 		venc_if_get_param(ctx,
 			GET_PARAM_ROI_RC_QP,
@@ -4314,6 +4318,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.def = 0;
 	cfg.ops = ops;
 	cfg.dims[0] = (sizeof(struct v4l2_mtk_color_desc)/sizeof(u32));
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_CONTEXT_ID;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_VOLATILE;
+	cfg.name = "Video encode context ID";
+	cfg.min = 0;
+	cfg.max = S32_MAX;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));

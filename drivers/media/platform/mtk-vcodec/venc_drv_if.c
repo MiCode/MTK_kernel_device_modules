@@ -57,8 +57,8 @@ int venc_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
 		return -ENOMEM;
 	}
 	dev->id_counter++;
-	if (dev->id_counter == 0)
-		dev->id_counter++;
+	if (dev->id_counter <= 0)
+		dev->id_counter = 1;
 	ctx->id = dev->id_counter;
 	inst->ctx = ctx;
 	inst->vcu_inst.ctx = ctx;
