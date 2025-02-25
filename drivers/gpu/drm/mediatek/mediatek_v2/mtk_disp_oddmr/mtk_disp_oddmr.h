@@ -606,6 +606,7 @@ struct mtk_disp_oddmr {
 	int od_update_sram;
 	bool od_force_off;
 	bool od_force_off2;
+	bool od_force_off_last;
 	int dmr_enable_req;
 	int dmr_enable;
 	atomic_t reg_tuning_en;
@@ -674,4 +675,5 @@ void clear_oddmr_err_event(void);
 void mtk_oddmr_scp_status(bool enable);
 int mtk_oddmr_load_param(struct mtk_disp_oddmr *priv, struct mtk_drm_oddmr_param *param);
 
+int mtk_oddmr_get_od_enable(struct mtk_ddp_comp *comp);
 #endif

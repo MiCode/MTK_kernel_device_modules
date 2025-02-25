@@ -6674,6 +6674,7 @@ static void mtk_oddmr_od_content_timing(struct mtk_disp_oddmr *oddmr_data,
  * od_force_off = true if vrefresh and/or bl not supported (when od_fps_mode=0)
  * od_force_off also changed by mtk_oddmr_od_timing_chg_dual and mtk_oddmr_od_bl_chg
  * od_force_off2 = true if content fps and/or bl not supported (when od_fps_mode=1)
+ * old_vrefresh and old_bl_level will only record last supported fps and bl
  */
 static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_oddmr_timing *current_timing)
@@ -6737,10 +6738,18 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 					oddmr1_data->od_force_off = true;
 			}
 		}
-	} else if (od_fps_mode == 1) {
-		oddmr_data->od_force_off2 =false;
-		if (comp->mtk_crtc->is_dual_pipe)
-			oddmr1_data->od_force_off2 = false;
+	} else {
+		if (od_fps_mode == 1) {
+			oddmr_data->od_force_off2 =false;
+			if (comp->mtk_crtc->is_dual_pipe)
+				oddmr1_data->od_force_off2 = false;
+		}
+		if (oddmr_data->od_force_off_last && !oddmr_data->od_force_off && !oddmr_data->od_force_off2) {
+			mtk_oddmr_od_gain_lookup(comp, current_timing->vrefresh,
+					current_timing->bl_level, table_idx, &weight);
+			ODDMRAPI_LOG("OD weight restore to %u\n", weight);
+			mtk_oddmr_set_od_weight_dual(comp, weight, handle);
+		}
 	}
 }
 
@@ -6772,7 +6781,7 @@ static void mtk_oddmr_od_table_chg(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		bool force_config, struct cmdq_pkt *handle)
 {
-	bool sec_on, en;
+	bool sec_on, en, od_force_off;
 	uint32_t value = 0, mask = 0;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_ddp_comp *output_comp = NULL;
@@ -6783,13 +6792,17 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	if (oddmr_data->primary_data->od_state < ODDMR_INIT_DONE)
 		return;
 	sec_on = comp->mtk_crtc->sec_on;
-	en = enable && !sec_on && !oddmr_data->od_force_off && !oddmr_data->od_force_off2;
-	ODDMRLOW_LOG("enable %d, sec %d, force_off %d, force_off2 %d, force_config %d\n",
-		enable, sec_on, oddmr_data->od_force_off, oddmr_data->od_force_off2, force_config);
+	en = enable && !sec_on;
+	od_force_off = (oddmr_data->od_force_off || oddmr_data->od_force_off2);
+	ODDMRLOW_LOG("en %d: enable %d, sec_on %d; force_config %d\n",
+		en, enable, sec_on, force_config);
+	ODDMRLOW_LOG("force_off %d, force_off2 %d, force_off_last %d\n",
+		oddmr_data->od_force_off, oddmr_data->od_force_off2, oddmr_data->od_force_off_last);
 	mtk_oddmr_od_srt_cal(comp, en);
 	if (force_config || en != oddmr_data->od_enable_last) {
 		if (en) {
-			atomic_set(&oddmr_data->primary_data->od_weight_trigger, 1);
+			if (!od_force_off)
+				atomic_set(&oddmr_data->primary_data->od_weight_trigger, 1);
 			mtk_oddmr_set_od_weight(comp, 0, handle);
 			mtk_oddmr_od_init_end(comp, handle);
 			if (oddmr_data->data->od_version >= MTK_OD_V3) {
@@ -6857,8 +6870,31 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			}
 		}
 		oddmr_data->od_enable_last = en;
+		oddmr_data->od_force_off_last = od_force_off;
+	} else if (od_force_off != oddmr_data->od_force_off_last) {
+		if (od_force_off) {
+			ODDMRAPI_LOG("OD weight force 0\n");
+			mtk_oddmr_set_od_weight(comp, 0, handle);
+		}
+		oddmr_data->od_force_off_last = od_force_off;
 	}
 }
+
+int mtk_oddmr_get_od_enable(struct mtk_ddp_comp *comp)
+{
+	int en;
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+
+	if (oddmr_data->data->od_version < MTK_OD_V2)
+		return 0;
+	if (oddmr_data->primary_data->od_state < ODDMR_INIT_DONE)
+		return 0;
+	en = oddmr_data->od_enable && !comp->mtk_crtc->sec_on;
+	ODDMRLOW_LOG("en %d: od_enable %d, sec_on %d\n",
+		en, oddmr_data->od_enable, comp->mtk_crtc->sec_on);
+	return en;
+}
+
 
 static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
 		int caller, struct cmdq_pkt *handle)
