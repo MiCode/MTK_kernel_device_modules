@@ -23748,7 +23748,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	if (priv->data->ovl_exdma_rule)
 		mtk_drm_crtc_init_bind_comp(mtk_crtc);
 
-	if (mtk_dsi_lpc_en(mtk_crtc)) {
+	if (priv->data->support_lpc) {
 		mtk_crtc->lpc_kick_idle_task = kthread_create(
 				mtk_drm_lpc_kick_idle_thread, mtk_crtc, "lpc_kick_idle_task");
 			atomic_set(&mtk_crtc->lpc_hwvsync_on, 0);

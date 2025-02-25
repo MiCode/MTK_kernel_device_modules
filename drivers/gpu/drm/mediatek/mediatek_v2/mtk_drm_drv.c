@@ -7373,6 +7373,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.pf_ts_type = IRQ_CMDQ_CB,
 	.respective_ostdl = true,
 	.ovl_exdma_rule = true,
+	.support_lpc = true,
 	.first_dma_from_lk = true,
 	.real_srt_ostdl = true,
 	.skip_trans = true,

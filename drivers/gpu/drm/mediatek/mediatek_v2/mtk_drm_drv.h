@@ -130,6 +130,7 @@ struct mtk_mmsys_driver_data {
 	enum PF_TS_TYPE pf_ts_type;
 	bool respective_ostdl;
 	bool ovl_exdma_rule;
+	bool support_lpc;
 	bool first_dma_from_lk;
 	bool real_srt_ostdl;
 	bool skip_trans;
