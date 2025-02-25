@@ -6749,6 +6749,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			larb-idx = /bits/ 8 <MML_LARB2_IDX>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L2_P6_MDP_FG0)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "mml_dma";
+			mmqos-supply = <&mmqos>;
 		};
 
 		mml0_rsz2: mml0-rsz2@32180000 {
