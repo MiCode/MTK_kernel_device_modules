@@ -1058,30 +1058,6 @@ static int mbraink_v6991_power_get_spmi_glitch_info(
 	return ret;
 }
 
-static int mbraink_v6991_power_get_dvfsrc_info(
-	struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data)
-{
-	struct mtk_dvfsrc_dvfs_info_header dvfsrcInfoHeader;
-	int ret = 0;
-	int num = 0;
-
-	if (mbraink_dvfsrc_data == NULL) {
-		pr_info("mbraink_dvfsrc_data is null\n");
-		return -1;
-	}
-
-	memset(&dvfsrcInfoHeader, 0x00, sizeof(struct mtk_dvfsrc_dvfs_info_header));
-	dvfsrc_get_dvfs_info(&dvfsrcInfoHeader);
-	num = (MAX_DVFSRC_INFO_SZ > MAX_DVFSRC_NUM) ?
-		MAX_DVFSRC_NUM : MAX_DVFSRC_INFO_SZ;
-	memcpy(mbraink_dvfsrc_data->dvfsrc_info,
-		dvfsrcInfoHeader.dvfs_info_val, sizeof(unsigned int)*num);
-	mbraink_dvfsrc_data->dvfsrc_size = num;
-	mbraink_dvfsrc_data->version = dvfsrcInfoHeader.dvfs_info_version;
-
-	return ret;
-}
-
 static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getVotingInfo = mbraink_v6991_power_get_voting_info,
 	.getPowerInfo = NULL,
@@ -1102,7 +1078,7 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.getPowerThrottleHwInfo = mbraink_v6991_power_get_power_throttle_hw_info,
 	.getLpmStateInfo = mbraink_v6991_power_get_lpmstate_info,
 	.getSpmiGlitchInfo = mbraink_v6991_power_get_spmi_glitch_info,
-	.getDvfsrcInfo = mbraink_v6991_power_get_dvfsrc_info,
+	.getDvfsrcInfo = NULL,
 };
 
 int mbraink_v6991_power_init(void)
