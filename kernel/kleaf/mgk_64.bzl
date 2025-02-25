@@ -239,6 +239,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_sap_ipifuzz",
     "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_scp_ipifuzz",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/scp:ktf_scp_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/thermal:ktf_thermal",
 ]
 
 mgk_64_kleaf_userdebug_modules = [
@@ -328,6 +329,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_sap_ipifuzz",
     "//vendor/mediatek/tests/kernel/ktf_testcase/scp/ipifuzz_scp:ktf_scp_ipifuzz",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ipifuzz_autogen/scp:ktf_scp_ipifuzz_autogen",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/thermal:ktf_thermal",
 ]
 
 mgk_64_kleaf_user_modules = [
