@@ -4128,7 +4128,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if (aee_cooldown && !dsi_underrun_called) {
 				dsi_underrun_called = 1;
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
-				DDPINFO("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
+				DDPMSG("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
+				mtk_dump_mminfra_ck(priv);
 #endif
 				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
 #if IS_ENABLED(CONFIG_ARM64)
