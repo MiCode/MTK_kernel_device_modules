@@ -18101,6 +18101,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x05393120 0 0x37f>;
 			reg-names = "therm_sram",
 				"therm_cputcm";
+			boot-core-ctrl = <1>;
+			boot-sensor = "ap_ntc";
+			boot-trip-temp = <58000>;
+			boot-release-temp = <51000>;
+			boot-core-num = <4>;
 		};
 
 		mt6661_5_temp: mt6661-5-temp {
