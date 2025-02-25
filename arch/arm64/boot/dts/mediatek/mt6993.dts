@@ -4279,7 +4279,10 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-113 = "SSPM_SWPM_DISP__PWR_STA",
 				"off,act,disp_clk,dsi_off,dsi_lp_pll_on,dsi_act,dsi_lane_num,",
 				"dsi_phy_type,dsi_clk,DISP_AAL,DISP_CCORR,DISP_C3D,DISP_GAMMA,",
-				"DISP_COLOR,DISP_TDSHP,DISP_DITHER";
+				"DISP_COLOR,DISP_TDSHP,DISP_DITHER,DISP_CHIST,MTCMOS_OVL0_ratio,",
+				"MTCMOS_OVL1_ratio,MTCMOS_OVL2_ratio,MTCMOS_DISP0A_ratio,MTCMOS_DISP0B_ratio,",
+				"MTCMOS_DISP1A_ratio,MTCMOS_DISP1B_ratio,MTCMOS_DISP_PERI_ratio,D3_ratio_vlp,",
+				"DSC_NUM,ODDMR_NUM,OVL_NUM,RSZ_NUM";
 			node-114 = "SSPM_SWPM_CSI__CSI",
 				"vcore_V,csi_clk,fps,ulps_mode,c_d_phy,",
 				"phy_data_lane_num,bit_data_rate,frm_W,frm_H,",
