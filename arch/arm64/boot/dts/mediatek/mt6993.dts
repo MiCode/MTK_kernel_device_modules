@@ -6663,7 +6663,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mmlsys_config_clk MML_APB_DB_MML>,
 				<&mmlsys_config_clk MML_MDP_DLI_ASYNC0_MML>,
 				<&mmlsys_config_clk MML_MDP_DLO_ASYNC0_MML>,
-				<&mmdvfs_mux MMDVFS_USER_MDP>;
+				<&mmdvfs_mux MMDVFS_USER_MML>;
 			clock-names = "apb_bus", "apb_db", "dli0", "dlo0", "mmdvfs_clk";
 			mmlsys-clock-names = "apb_bus", "apb_db";
 			dli0-clock-names = "dli0";
