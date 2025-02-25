@@ -1883,6 +1883,7 @@
 			dual-buck = <1>;
 			gpueb-support = <1>;
 			gpufreq-bringup = <0>;
+			ghpm-supply = <&ghpm>;
 	};
 
 	gpupdma: gpupdma@48540000 {
