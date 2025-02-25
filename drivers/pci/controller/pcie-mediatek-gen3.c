@@ -41,6 +41,15 @@
 #include "pci.h"
 #include "clkbuf-api.h"
 
+/* vlpcfg register */
+#define PCIE_VLPCFG_BASE		0x1c001000
+#define PCIE_VLPCFG_SIZE		0x1000
+#define VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG	0x948
+#define PEXTP_MAC0_MTCMOS_CTRL_SPM_HWCCF	BIT(16)
+#define PEXTP_PHY0_MTCMOS_CTRL_SPM_HWCCF	BIT(17)
+#define PEXTP_PCIE_MTCMOS_CTRL_SPM_HWCCF \
+	(PEXTP_MAC0_MTCMOS_CTRL_SPM_HWCCF | PEXTP_PHY0_MTCMOS_CTRL_SPM_HWCCF)
+
 /* pextp register, CG,HW mode */
 #define PCIE_PEXTP_CG_0			0x14
 #define PEXTP_CLOCK_CON			0x20
@@ -54,7 +63,7 @@
 #define PCIE_SUSPEND_L2_CTRL		BIT(7)
 #define PEXTP_PWRCTL_0			0x40
 #define PCIE_HW_MTCMOS_EN		BIT(0)
-#define PEXTP_TIMER_SET			GENMASK(31, 8)
+#define PEXTP_TIMER_SET			GENMASK(15, 8)
 #define CK_DIS_TIMER_32K		0x400
 #define PEXTP_PWRCTL_1			0x44
 #define PEXTP_PWRCTL_3			0x4c
@@ -307,6 +316,12 @@
 
 struct mtk_pcie_port;
 
+
+enum mtk_pcie_mtcmos_ctrl_mode {
+	HWCCF_CTRL_MTCMOS_MODE = 0,
+	SPM_CTRL_MTCMOS_MODE,
+};
+
 /**
  * struct mtk_pcie_data - PCIe data for each SoC
  * @pre_init: Specific init data, called before linkup
@@ -323,6 +338,7 @@ struct mtk_pcie_data {
 	int (*resume_l12)(struct mtk_pcie_port *port);
 	void (*clkbuf_control)(struct mtk_pcie_port *port, bool enable);
 	int (*control_vote)(struct mtk_pcie_port *port, bool hw_mode_en, u8 who);
+	enum mtk_pcie_mtcmos_ctrl_mode mtcmos_ctrl_mode;
 };
 
 /**
@@ -1613,6 +1629,25 @@ static int match_any(struct device *dev, void *unused)
 	return 1;
 }
 
+static int __maybe_unused mtk_pcie_mtcmos_disable_hwccf_ctrl(bool enable)
+{
+	void __iomem *hwccif_ctrl_base;
+	u32 val = 0;
+
+	hwccif_ctrl_base = ioremap(PCIE_VLPCFG_BASE, PCIE_VLPCFG_SIZE);
+
+	val = readl(hwccif_ctrl_base + VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG);
+	if (enable)
+		val |= PEXTP_PCIE_MTCMOS_CTRL_SPM_HWCCF;
+	else
+		val &= ~PEXTP_PCIE_MTCMOS_CTRL_SPM_HWCCF;
+	writel(val, hwccif_ctrl_base + VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG);
+
+	iounmap(hwccif_ctrl_base);
+
+	return 0;
+}
+
 static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 {
 	struct device *dev = port->dev;
@@ -1660,6 +1695,9 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		goto err_phy_on;
 	}
 
+	if (port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
+		mtk_pcie_mtcmos_disable_hwccf_ctrl(true);
+
 	return 0;
 
 err_phy_on:
@@ -1687,6 +1725,9 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 
 		pm_runtime_disable(dev);
 	}
+
+	if (port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
+		mtk_pcie_mtcmos_disable_hwccf_ctrl(false);
 
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
@@ -3339,26 +3380,20 @@ static int mtk_pcie_switch_to_lpclk(struct mtk_pcie_port *port, bool enable)
 	if (err)
 		dev_info(port->dev, "Polling resource ack fail\n");
 
-	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
-	if (enable) {
-		if (port->chipid == CHIP_VER_A0)
-			/* PCIe lowpower clock source bit[3] use normal SRCMUX */
-			val |= P0_VLP_AO_LP_CLK_CK_SEL;
-		else if (port->chipid == CHIP_VER_B0)
+	if (port->chipid == CHIP_VER_B0) {
+		val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+		if (enable)
 			/* PCIe lowpower clock sel to 32K */
 			val |= P0_LOWPOWER_CK_SEL;
-	} else {
-		if (port->chipid == CHIP_VER_A0)
-			/* PCIe lowpower clock source bit[3] use normal GFMUX */
-			val &= ~P0_VLP_AO_LP_CLK_CK_SEL;
-		else if (port->chipid == CHIP_VER_B0)
+		else
 			/* PCIe lowpower clock sel to 26M */
 			val &= ~P0_LOWPOWER_CK_SEL;
+
+		writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
 	}
 
-	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
 	dev_info(port->dev, "%s mode Switch clock sel to %#x\n",
-		 enable ? "resume" : "suspend",
+		 enable ? "suspend" : "resume",
 		 readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON));
 
 	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
@@ -3415,11 +3450,12 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 	val |= RG_PEXTP_DDREN_ACK_SEL;
 	writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
 
-	if ((port->chipid == CHIP_VER_B0) && (port->port_num < 2)) {
-		val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
+	if (port->chipid == CHIP_VER_A0)
+		val &= ~P0_LOWPOWER_CK_SEL;
+	else if (port->chipid == CHIP_VER_B0)
 		val &= ~P0P1_LOWPOWER_CK_SEL;
-		writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
-	}
+	writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
 
 	if (port->port_num == 0) {
 		/* wifi request response data is all zero when completion timeout */
@@ -3428,6 +3464,11 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 		writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
 		/* Detect Completion timeout before wifi on */
 		port->aer_detect = true;
+
+		/* Adjust rtff time to the maximum value */
+		val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0);
+		val |= PEXTP_TIMER_SET;
+		writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_0);
 	}
 
 	return 0;
@@ -3482,6 +3523,7 @@ static const struct mtk_pcie_data mt6993_data = {
 	.resume_l12 = mtk_pcie_resume_l12_6993,
 	.control_vote = mtk_pcie_control_vote_v2,
 	.clkbuf_control = mtk_pcie_clkbuf_force_26m,
+	.mtcmos_ctrl_mode = SPM_CTRL_MTCMOS_MODE,
 };
 
 static const struct of_device_id mtk_pcie_of_match[] = {
