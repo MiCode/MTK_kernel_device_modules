@@ -2363,7 +2363,7 @@
 		compatible = "mediatek,wla";
 		reg = <0 0x11031000 0 0x1000>;
 		wla-enable = <1>;
-		ddren-force-on = <1>;
+		ddren-force-on = <0>;
 		init-setting-ver = "standby_power_ver_a";
 		group-hw-max = <0x8>;
 		group-ctrl = <&group_0 &group_1 &group_2 &group_3>;
@@ -2373,7 +2373,9 @@
 		dbg-lat-hw-max = <6>;
 		dbg-lat-ddr-sta-mux-hw-max = <3>;
 		mon-ch = <&ch_0 &ch_1 &ch_2>,
-				<&ch_3>;
+				<&ch_3 &ch_4 &ch_5>,
+				<&ch_6 &ch_7 &ch_8>,
+				<&ch_9>;
 		mon-ddr-sta-mux = <&mon_ddr_sta_mux_1 &mon_ddr_sta_mux_2>,
 						<&mon_ddr_sta_mux_3>;
 		mon-pt-sta-mux = <&mon_pt_sta_mux_1 &mon_pt_sta_mux_2>;
@@ -2511,7 +2513,36 @@
 				bit-sel = <16>;
 				trig-type = <3>;
 			};
-
+			ch_4: ch-4 {
+				sig-sel = <0>;
+				bit-sel = <30>;
+				trig-type = <2>;
+			};
+			ch_5: ch-5 {
+				sig-sel = <0>;
+				bit-sel = <31>;
+				trig-type = <2>;
+			};
+			ch_6: ch-6 {
+				sig-sel = <6>;
+				bit-sel = <31>;
+				trig-type = <0>;
+			};
+			ch_7: ch-7 {
+				sig-sel = <6>;
+				bit-sel = <29>;
+				trig-type = <0>;
+			};
+			ch_8: ch-8 {
+				sig-sel = <7>;
+				bit-sel = <29>;
+				trig-type = <0>;
+			};
+			ch_9: ch-9 {
+				sig-sel = <4>;
+				bit-sel = <12>;
+				trig-type = <0>;
+			};
 		};
 		mon-ddr-sta-mux-list {
 			mon_ddr_sta_mux_1: mon-ddr-sta-mux-1 {
@@ -2540,10 +2571,10 @@
 				sel = <0x1>;
 			};
 			lat_2: lat-2 {
-				sel = <0x4>;
+				sel = <0x2>;
 			};
 			lat_3: lat-3 {
-				sel = <0x5>;
+				sel = <0x3>;
 			};
 			lat_4: lat-4 {
 				sel = <0x6>;
@@ -2554,13 +2585,13 @@
 		};
 		dbg-lat-ddr-sta-mux-list {
 			lat_ddr_sta_mux_1: lat-ddr-sta-mux-1 {
-				mux = <0x0>;
+				mux = <0x8>;
 			};
 			lat_ddr_sta_mux_2: lat-ddr-sta-mux-2 {
-				mux = <0x1>;
+				mux = <0x9>;
 			};
 			lat_ddr_sta_mux_3: lat-ddr-sta-mux-3 {
-				mux = <0x6>;
+				mux = <0x0>;
 			};
 		};
 		vlc-mux-list {
