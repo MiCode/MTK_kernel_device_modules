@@ -3,11 +3,12 @@
  * Copyright (c) 2021 MediaTek Inc.
  * Author: Anthony Huang <anthony.huang@mediatek.com>
  */
+
+#include <linux/module.h>
 #if IS_ENABLED(CONFIG_MTK_MMINFRA)
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
-#include <linux/module.h>
 #include <linux/of_platform.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
