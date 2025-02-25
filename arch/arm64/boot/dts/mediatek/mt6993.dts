@@ -237,6 +237,7 @@
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
 			    transparent_hugepage=never \
+			    hyp_trace_printk hyp_event=__hyp_printk \
 			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_tmem,pkvm_smmu,pkvm_mkp";
 		mkp_panic = "on";
 	};
