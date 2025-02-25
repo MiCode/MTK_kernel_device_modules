@@ -2318,9 +2318,9 @@ static int scp_pm_event(struct notifier_block *notifier,
 			mt_scp_start_res_prof();
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
-		mt_scp_dump_sleep_count();
 		if (scpreg.low_pwr_dbg)
 			mt_scp_stop_res_prof();
+		mt_scp_dump_sleep_count();
 		return NOTIFY_DONE;
 	}
 	return NOTIFY_OK;
