@@ -133,7 +133,6 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps_perf_ioctl",
     "//vendor/mediatek/kernel_modules/mtkcam/scpsys/mtk-aov:mtk_aov",
     "//vendor/mediatek/kernel_modules/mtkcam/isp_pspm:isp_pspm",
-    "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
     "//vendor/mediatek/kernel_modules/sched_cus:eas_ext_cus",
     "//vendor/mediatek/kernel_modules/sched_cus:cpuqos_ext_cus",
     "//vendor/mediatek/kernel_modules/sched_cus:mtk_em_cus",
