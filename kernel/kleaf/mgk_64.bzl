@@ -1043,6 +1043,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-audio-dbg-v6991".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-disp-dbg-v6991".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-mml-dbg-v6991".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug:mtk-swpm-dbg-v6993".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug:mtk-swpm-dbg-v6991".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version),
@@ -2229,6 +2230,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mem-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:mtk_mbraink_bridge".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/perf:mtk_mbraink_perf".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/mtk_mbraink.ko")
@@ -2853,6 +2855,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mem-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/usb_sram/usb_sram.ko")
 
@@ -3097,6 +3100,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mem-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6989/mtk-swpm-mml-dbg-v6989.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/pmsr:pmsr".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/pmsr/v2:pmsr_v2".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/pmsr/v3:pmsr_v3".format(kernel_version))
@@ -3474,6 +3478,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-disp-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-isp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_pdma:mtk_gpu_pdma_mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_pdma:mtk_gpu_pdma_mt6993".format(kernel_version))
@@ -3731,6 +3736,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-audio-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-isp-dbg-v6993".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp4_c/imgsensor_isp4_c.ko")
@@ -4036,6 +4042,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-audio-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-isp-dbg-v6993".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/tinysys_scmi/tinysys-scmi.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr".format(kernel_version))
@@ -4266,6 +4273,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-audio-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-isp-dbg-v6993".format(kernel_version))
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
@@ -4420,6 +4428,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-audio-dbg-v6991.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/swpm/modules/debug/v6991/mtk-swpm-mml-dbg-v6991.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-disp-dbg-v6993".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-isp-dbg-v6993".format(kernel_version))
 
         mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
