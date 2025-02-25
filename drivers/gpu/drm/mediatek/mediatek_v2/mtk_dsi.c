@@ -4688,13 +4688,31 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		return;
 	}
 
+	if (!dsi->driver_data)
+		return;
+
 	/* Change LCM Doze mode */
-	if (doze_enabled && panel_funcs->doze_enable_start)
-		panel_funcs->doze_enable_start(dsi->panel, dsi,
-			mipi_dsi_dcs_write_gce2, NULL);
-	else if (!doze_enabled && panel_funcs->doze_disable)
-		panel_funcs->doze_disable(dsi->panel, dsi,
-			mipi_dsi_dcs_write_gce2, NULL);
+	if (dsi->driver_data->dsi_cmd_v2_en && (panel_funcs->doze_enable_start_v2
+			|| panel_funcs->doze_disable_v2)) {
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+		if (doze_enabled)
+			panel_funcs->doze_enable_start_v2(dsi->panel, dsi,
+					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+		else if (!doze_enabled)
+			panel_funcs->doze_disable_v2(dsi->panel, dsi,
+					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+	} else {
+		if (doze_enabled && panel_funcs->doze_enable_start)
+			panel_funcs->doze_enable_start(dsi->panel, dsi,
+				mipi_dsi_dcs_write_gce2, NULL);
+		else if (!doze_enabled && panel_funcs->doze_disable)
+			panel_funcs->doze_disable(dsi->panel, dsi,
+				mipi_dsi_dcs_write_gce2, NULL);
+	}
 
 	/* Display mode switch */
 	if (panel_funcs->doze_get_mode_flags) {
@@ -4754,15 +4772,39 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		}
 	}
 
-	if (doze_enabled && panel_funcs->doze_enable)
+	if (dsi->driver_data->dsi_cmd_v2_en && doze_enabled && panel_funcs->doze_enable_v2) {
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+		panel_funcs->doze_enable_v2(dsi->panel, dsi,
+					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+	} else if (doze_enabled && panel_funcs->doze_enable)
 		panel_funcs->doze_enable(dsi->panel, dsi,
 			mipi_dsi_dcs_write_gce2, NULL);
 
-	if (doze_enabled && panel_funcs->doze_area)
+	if (dsi->driver_data->dsi_cmd_v2_en && doze_enabled && panel_funcs->doze_area_v2) {
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+		panel_funcs->doze_area_v2(dsi->panel, dsi,
+			mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+	} else if (doze_enabled && panel_funcs->doze_area)
 		panel_funcs->doze_area(dsi->panel, dsi,
 			mipi_dsi_dcs_write_gce2, NULL);
 
-	if (panel_funcs->doze_post_disp_on)
+	if (dsi->driver_data->dsi_cmd_v2_en && panel_funcs->doze_post_disp_on_v2) {
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+		panel_funcs->doze_post_disp_on_v2(dsi->panel,
+			dsi, mtk_mipi_dsi_cmd, NULL,  &cmd_opt);
+	} else if (panel_funcs->doze_post_disp_on)
 		panel_funcs->doze_post_disp_on(dsi->panel,
 			dsi, mipi_dsi_dcs_write_gce2, NULL);
 
@@ -5729,21 +5771,59 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		}
 
 		if (new_doze_state && !dsi->doze_enabled) {
-			if (ext && ext->funcs &&
+			if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
+				ext && ext->funcs && ext->funcs->doze_enable_start_v2) {
+				struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+				cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+				ext->funcs->doze_enable_start_v2(dsi->panel, dsi,
+									mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+			} else if (ext && ext->funcs &&
 				ext->funcs->doze_enable_start)
 				ext->funcs->doze_enable_start(dsi->panel, dsi,
 					mipi_dsi_dcs_write_gce2, NULL);
-			if (ext && ext->funcs
+
+			if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
+				ext && ext->funcs && ext->funcs->doze_enable_v2) {
+				struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+				cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+				ext->funcs->doze_enable_v2(dsi->panel, dsi,
+					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+			} else if (ext && ext->funcs
 				&& ext->funcs->doze_enable)
 				ext->funcs->doze_enable(dsi->panel, dsi,
 					mipi_dsi_dcs_write_gce2, NULL);
-			if (ext && ext->funcs
+
+			if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
+				ext && ext->funcs && ext->funcs->doze_area_v2) {
+				struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+				cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+				ext->funcs->doze_area_v2(dsi->panel, dsi,
+					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+			} else if (ext && ext->funcs
 				&& ext->funcs->doze_area)
 				ext->funcs->doze_area(dsi->panel, dsi,
 					mipi_dsi_dcs_write_gce2, NULL);
 		}
 		if (!new_doze_state && dsi->doze_enabled) {
-			if (ext && ext->funcs
+			if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
+				ext && ext->funcs && ext->funcs->doze_disable_v2) {
+				struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+				cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+			ext->funcs->doze_disable_v2(dsi->panel, dsi,
+					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+			} else if (ext && ext->funcs
 				&& ext->funcs->doze_disable)
 				ext->funcs->doze_disable(dsi->panel, dsi,
 					mipi_dsi_dcs_write_gce2, NULL);
@@ -5816,7 +5896,16 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 			/* We use doze_get_mode_flags to determine if
 			 * there has CV switch in Doze mode.
 			 */
-			if (ext && ext->funcs
+			if (ext && ext->funcs && ext->funcs->doze_post_disp_on_v2
+				&& ext->funcs->doze_get_mode_flags) {
+				struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+				cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+				ext->funcs->doze_post_disp_on_v2(dsi->panel,
+					dsi, mtk_mipi_dsi_cmd, NULL,  &cmd_opt);
+			} else if (ext && ext->funcs
 				&& ext->funcs->doze_post_disp_on
 				&& ext->funcs->doze_get_mode_flags)
 				ext->funcs->doze_post_disp_on(dsi->panel,
@@ -13807,11 +13896,17 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	case DSI_SEND_DDIC_CMD_PACK:
 	{
-		struct mtk_dsi *dsi =
-			container_of(comp, struct mtk_dsi, ddp_comp);
+		struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
 		panel_ext = mtk_dsi_get_panel_ext(comp);
-		if (panel_ext && panel_ext->funcs &&
+		if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
+			panel_ext && panel_ext->funcs && panel_ext->funcs->send_ddic_cmd_pack_v2) {
+			struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+			panel_ext->funcs->send_ddic_cmd_pack_v2(dsi->panel, dsi,
+				mtk_mipi_dsi_cmd, handle, &cmd_opt);
+		} else if (panel_ext && panel_ext->funcs &&
 			panel_ext->funcs->send_ddic_cmd_pack)
 			panel_ext->funcs->send_ddic_cmd_pack(dsi->panel, dsi,
 				mtk_dsi_cmdq_pack_gce, handle);
@@ -13819,9 +13914,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	case DSI_SET_BL:
 	{
-		struct mtk_dsi *dsi =
-			container_of(comp, struct mtk_dsi, ddp_comp);
-
+		struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
 		panel_ext = mtk_dsi_get_panel_ext(comp);
 		if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en && dsi_cmd_v2_dbg[BACKLIGHT_DBG] &&
@@ -13865,10 +13958,16 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		struct mtk_dsi *dsi =
 			container_of(comp, struct mtk_dsi, ddp_comp);
-
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		panel_ext = mtk_dsi_get_panel_ext(comp);
-		if (panel_ext && panel_ext->funcs
+		if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
+			panel_ext && panel_ext->funcs && panel_ext->funcs->set_backlight_grp_cmdq_v2) {
+			struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+			panel_ext->funcs->set_backlight_grp_cmdq_v2(dsi,
+					mtk_mipi_dsi_cmd, handle, *(int *)params, &cmd_opt);
+		} else if (panel_ext && panel_ext->funcs
 			&& panel_ext->funcs->set_backlight_grp_cmdq)
 			panel_ext->funcs->set_backlight_grp_cmdq(dsi,
 					mipi_dsi_dcs_grp_write_gce,
@@ -13938,13 +14037,17 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case DSI_HBM_SET:
 	{
 		panel_ext = mtk_dsi_get_panel_ext(comp);
-		if (!(panel_ext && panel_ext->funcs &&
-		      panel_ext->funcs->hbm_set_cmdq))
-			break;
+		if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en&&
+			panel_ext && panel_ext->funcs && panel_ext->funcs->hbm_set_cmdq_v2) {
+			struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
-		panel_ext->funcs->hbm_set_cmdq(dsi->panel, dsi,
-					       mipi_dsi_dcs_write_gce, handle,
-					       *(bool *)params);
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+			panel_ext->funcs->hbm_set_cmdq_v2(dsi->panel, dsi, mtk_mipi_dsi_cmd,
+				handle, *(bool *)params, &cmd_opt);
+		} else if (panel_ext && panel_ext->funcs && panel_ext->funcs->hbm_set_cmdq) {
+			panel_ext->funcs->hbm_set_cmdq(dsi->panel, dsi,
+					       mipi_dsi_dcs_write_gce, handle, *(bool *)params);
+		}
 		break;
 	}
 	case DSI_HBM_GET_STATE:
