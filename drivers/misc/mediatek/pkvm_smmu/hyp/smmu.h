@@ -249,8 +249,8 @@ enum MPU_REQ_ORIGIN_ZONE_ID {
 #define DVM_EN_REQ		(1U)
 #define DVM_EN_ACK		(2U)
 #define SYSCO_STATUS_MASK	(3U)
-#define DVM_CONNECTED		(DVM_EN_REQ | DVM_EN_ACK)
-#define DVM_DISCONNECTED	(~DVM_CONNECTED)
+#define DVM_CONNECTED		((DVM_EN_REQ | DVM_EN_ACK) & SYSCO_STATUS_MASK)
+#define DVM_DISCONNECTED	((~DVM_CONNECTED) & SYSCO_STATUS_MASK)
 /*******************************************************************************
  * Other
  ******************************************************************************/
