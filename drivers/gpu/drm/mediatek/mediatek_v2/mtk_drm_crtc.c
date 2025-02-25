@@ -6841,13 +6841,13 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 
 				if (!comp->id || comp->id != comp_state->comp_id)
 					continue;
-
-				DDPINFO("%s layer off comp %s lye %d ext lye %d bind comp %s\n",
-					__func__,
-					mtk_dump_comp_str(comp),
-					comp_state->lye_id,
-					comp_state->ext_lye_id,
-					mtk_dump_comp_str(comp->bind_comp));
+				if (priv->data->ovl_exdma_rule)
+					DDPINFO("%s layer off comp %s lye %d ext lye %d bind comp %s\n",
+						__func__,
+						mtk_dump_comp_str(comp),
+						comp_state->lye_id,
+						comp_state->ext_lye_id,
+						mtk_dump_comp_str(comp->bind_comp));
 
 				mtk_ddp_comp_layer_off(
 					comp,

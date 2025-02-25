@@ -219,6 +219,7 @@ const struct mtk_disp_ddp_data mt6789_ddp_driver_data = {
 	.mutex_sof = mt6789_mutex_sof,
 	.mutex_mod_reg = MT6789_DISP_MUTEX0_MOD0,
 	.mutex_sof_reg = MT6789_DISP_MUTEX0_SOF,
+	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
 
 const struct mtk_mmsys_reg_data mt6789_mmsys_reg_data = {
