@@ -47,7 +47,7 @@ static void __set_bit_sel(unsigned int sel_n, uint32_t val, uint32_t mask)
 
 static uint32_t __get_sig_sel(unsigned int sel_n, uint32_t mask)
 {
-	uint32_t val;
+	uint32_t val = 0;
 
 	switch (sel_n) {
 	case 0:
@@ -59,6 +59,9 @@ static uint32_t __get_sig_sel(unsigned int sel_n, uint32_t mask)
 	case 2:
 		val = wla_read_raw(WLAPM_MON2, mask << 16) >> 16;
 		break;
+	default:
+		pr_info("[wla] %s: invalid sel_n\n", __func__);
+		break;
 	}
 
 	return val;
@@ -66,7 +69,7 @@ static uint32_t __get_sig_sel(unsigned int sel_n, uint32_t mask)
 
 static uint32_t __get_bit_sel(unsigned int sel_n, uint32_t mask)
 {
-	uint32_t val;
+	uint32_t val = 0;
 
 	switch (sel_n) {
 	case 0:
@@ -84,7 +87,11 @@ static uint32_t __get_bit_sel(unsigned int sel_n, uint32_t mask)
 	case 4:
 		val = wla_read_raw(WLAPM_MON5, mask << 16) >> 16;
 		break;
+	default:
+		pr_info("[wla] %s: invalid sel_n\n", __func__);
+		break;
 	}
+
 	return val;
 }
 
