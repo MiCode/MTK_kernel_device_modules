@@ -100,7 +100,7 @@ define_mgk_ddk_ko(
             ],
             "//conditions:default": [],
     }) + [
-        "MML_STASH_SUPPORT"
+        "MML_STASH_SUPPORT=1"
     ],
 
     copts = [
@@ -180,7 +180,7 @@ platforms = [
             ],
             "//conditions:default": [],
     }) + [
-        "MML_STASH_SUPPORT"
+        "MML_STASH_SUPPORT=1"
     ],
 
     copts = [
