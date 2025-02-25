@@ -182,11 +182,49 @@ static void mtk_vdisp_ao_unprepare(struct mtk_ddp_comp *comp)
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 
+static int __mtk_vdisp_ao_qos_config_MT6993(bool hrt_read, bool hrt_write);
+
+int mtk_vdisp_ao_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+			  enum mtk_ddp_io_cmd io_cmd, void *params)
+{
+	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev)) {
+		DDPINFO("%s %s %u has invalid CRTC or device\n",
+			__func__, mtk_dump_comp_str(comp), io_cmd);
+		return -INVALID;
+	}
+
+	switch (io_cmd) {
+	case VDISP_AO_CHG_16_QOS:
+	{
+		bool en = *((bool *)params);
+		int hrt_value;
+
+		if (!handle)
+			break;
+
+		hrt_value = __mtk_vdisp_ao_qos_config_MT6993(true, en);
+		DDPINFO("change subcom1 write to %s, value:0x%08x\n",
+			en? "hrt": "srt", hrt_value);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+	       comp->regs_pa + DISP_REG_VDISP_AO_MMQOS_SUBCOM1_MT6993,
+	       hrt_value, ~0);
+
+		break;
+	}
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static const struct mtk_ddp_comp_funcs mtk_vdisp_ao_funcs = {
 	//.start = mtk_vdisp_ao_start,
 	//.stop = mtk_vdisp_ao_stop,
 	.prepare = mtk_vdisp_ao_prepare,
 	.unprepare = mtk_vdisp_ao_unprepare,
+	.io_cmd = mtk_vdisp_ao_io_cmd,
 };
 
 static int mtk_vdisp_ao_bind(struct device *dev, struct device *master,

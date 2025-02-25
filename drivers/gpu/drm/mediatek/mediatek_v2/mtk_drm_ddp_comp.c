@@ -3882,6 +3882,13 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			}
 		}
 		return;
+	} else if (id == DDP_COMPONENT_ODDMR0) {
+		struct mtk_ddp_comp *comp;
+
+		comp = priv->ddp_comp[DDP_COMPONENT_VDISP_AO];
+		mtk_ddp_comp_io_cmd(comp, handle, VDISP_AO_CHG_16_QOS, &en);
+
+		return;
 	} else
 		return;
 
