@@ -2803,12 +2803,25 @@ static __le64 *mtk_smmu_get_ste_ptr(struct arm_smmu_device *smmu, u32 sid)
 	return steptr;
 }
 
+static void mtk_smmu_sec_reg_dump(struct arm_smmu_device *smmu)
+{
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+
+	if (!MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_SEC_EN))
+		return;
+
+	mtk_smmu_sec_dump_reg(data->plat_data->smmu_type);
+#endif
+}
+
 static const struct mtk_smmu_ops mtk_smmu_ops = {
 	.get_smmu_data		= mkt_get_smmu_data,
 	.get_cd_ptr		= mtk_smmu_get_cd_ptr,
 	.get_step_ptr		= mtk_smmu_get_ste_ptr,
 	.smmu_power_get		= mtk_smmu_power_get,
 	.smmu_power_put		= mtk_smmu_power_put,
+	.smmu_sec_reg_dump	= mtk_smmu_sec_reg_dump,
 };
 
 static int mtk_smmu_suspend_pm_event(struct notifier_block *notifier,

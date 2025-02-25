@@ -742,6 +742,7 @@ struct mtk_smmu_ops {
 	__le64* (*get_step_ptr)(struct arm_smmu_device *smmu, u32 sid);
 	int (*smmu_power_get)(struct arm_smmu_device *smmu);
 	int (*smmu_power_put)(struct arm_smmu_device *smmu);
+	void (*smmu_sec_reg_dump)(struct arm_smmu_device *smmu);
 };
 
 struct smmu_tbu_device {

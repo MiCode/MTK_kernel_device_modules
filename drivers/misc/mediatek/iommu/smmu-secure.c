@@ -247,18 +247,17 @@ static int mtk_smmu_trigger_irq(u32 smmu_type, u32 sec)
 	return SMC_SMMU_SUCCESS;
 }
 
-static int mtk_smmu_sec_dump_reg(u32 smmu_type)
+int mtk_smmu_sec_dump_reg(u32 smmu_type)
 {
 	int ret;
 
 	ret = mtk_smmu_atf_call_common(smmu_type, SMMU_SECURE_DUMP_REG);
-	if (ret) {
-		pr_info("%s, smc call fail:%d, type:%u\n", __func__, ret, smmu_type);
+	if (ret)
 		return SMC_SMMU_FAIL;
-	}
 
 	return SMC_SMMU_SUCCESS;
 }
+EXPORT_SYMBOL_GPL(mtk_smmu_sec_dump_reg);
 
 static int mtk_smmu_sec_dump_pgtable(u32 smmu_type, u32 fmt)
 {

@@ -65,9 +65,14 @@ static inline int mtk_smmu_dump_sid(uint32_t smmu_type, uint32_t sid)
 #endif /* CONFIG_MTK_IOMMU_MISC_SECURE */
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+int mtk_smmu_sec_dump_reg(u32 smmu_type);
 int mtk_smmu_sec_config_cqdma(bool enable);
 int mtk_smmu_sec_test(u32 smmu_type, u32 lvl);
 #else
+static inline int mtk_smmu_sec_dump_reg(u32 smmu_type)
+{
+	return 0;
+}
 static inline int mtk_smmu_sec_config_cqdma(bool enable)
 {
 	return 0;

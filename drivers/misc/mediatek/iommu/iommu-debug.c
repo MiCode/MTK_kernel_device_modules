@@ -1070,6 +1070,47 @@ void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 }
 EXPORT_SYMBOL_GPL(report_custom_smmu_fault);
 
+static void smmu_glbreg_dump(struct seq_file *s, struct arm_smmu_device *smmu)
+{
+	iommu_dump(s,
+		   "IDR0:0x%x IDR1:0x%x IDR3:0x%x IDR5:0x%x CR0:[0x%x 0x%x] CR1:0x%x CR2:0x%x GBPA:0x%x GERROR:[0x%x 0x%x]\n",
+		   readl_relaxed(smmu->base + ARM_SMMU_IDR0),
+		   readl_relaxed(smmu->base + ARM_SMMU_IDR1),
+		   readl_relaxed(smmu->base + ARM_SMMU_IDR3),
+		   readl_relaxed(smmu->base + ARM_SMMU_IDR5),
+		   readl_relaxed(smmu->base + ARM_SMMU_CR0),
+		   readl_relaxed(smmu->base + ARM_SMMU_CR0ACK),
+		   readl_relaxed(smmu->base + ARM_SMMU_CR1),
+		   readl_relaxed(smmu->base + ARM_SMMU_CR2),
+		   readl_relaxed(smmu->base + ARM_SMMU_GBPA),
+		   readl_relaxed(smmu->base + ARM_SMMU_GERROR),
+		   readl_relaxed(smmu->base + ARM_SMMU_GERRORN));
+
+	iommu_dump(s,
+		   "STRTAB:[0x%llx 0x%x] IRQ:[0x%x 0x%x] CMDQ:[0x%llx 0x%x 0x%x] EVTQ:[0x%llx 0x%x 0x%x]\n",
+		   readq_relaxed(smmu->base + ARM_SMMU_STRTAB_BASE),
+		   readl_relaxed(smmu->base + ARM_SMMU_STRTAB_BASE_CFG),
+		   readl_relaxed(smmu->base + ARM_SMMU_IRQ_CTRL),
+		   readl_relaxed(smmu->base + ARM_SMMU_IRQ_CTRLACK),
+		   readq_relaxed(smmu->base + ARM_SMMU_CMDQ_BASE),
+		   readl_relaxed(smmu->base + ARM_SMMU_CMDQ_PROD),
+		   readl_relaxed(smmu->base + ARM_SMMU_CMDQ_CONS),
+		   readq_relaxed(smmu->base + ARM_SMMU_EVTQ_BASE),
+		   readl_relaxed(smmu->page1 + ARM_SMMU_EVTQ_PROD),
+		   readl_relaxed(smmu->page1 + ARM_SMMU_EVTQ_CONS));
+}
+
+static void mtk_smmu_glbreg_dump(struct seq_file *s, u32 smmu_type)
+{
+	struct mtk_smmu_data *data;
+
+	if (smmu_ops && smmu_ops->get_smmu_data) {
+		data = smmu_ops->get_smmu_data(smmu_type);
+		if (data != NULL && data->hw_init_flag == 1)
+			smmu_glbreg_dump(s, &data->smmu);
+	}
+}
+
 static void smmuwp_reg_dump(struct seq_file *s,
 			    struct arm_smmu_device *smmu)
 {
@@ -1109,6 +1150,9 @@ static void smmuwp_reg_dump(struct seq_file *s,
 				   readl_relaxed(wp_base + smmuwp_regs[i].offset));
 		}
 	}
+
+	if (smmu_ops && smmu_ops->smmu_sec_reg_dump)
+		smmu_ops->smmu_sec_reg_dump(smmu);
 }
 
 static void smmuwp_ext_tbu_dump(struct seq_file *s,
@@ -1870,6 +1914,10 @@ static inline int mtk_smmu_power_put(u32 smmu_type)
 {
 	return -1;
 }
+
+static inline void mtk_smmu_glbreg_dump(struct seq_file *s, u32 smmu_type)
+{
+}
 #endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 */
 
 /* peri_iommu */
@@ -2152,6 +2200,7 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 			if (ret)
 				continue;
 
+			mtk_smmu_glbreg_dump(s, i);
 			mtk_smmu_wpreg_dump(s, i);
 			mtk_smmu_ela_dump(s, i);
 			mtk_smmu_power_put(i);
