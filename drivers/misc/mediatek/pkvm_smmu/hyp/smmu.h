@@ -248,7 +248,7 @@ enum MPU_REQ_ORIGIN_ZONE_ID {
 /* System coherence status */
 #define DVM_EN_REQ		(1U)
 #define DVM_EN_ACK		(2U)
-#define SYSCO_STATUS_MASK	MAKE_MASK(1, 0)
+#define SYSCO_STATUS_MASK	(3U)
 #define DVM_CONNECTED		(DVM_EN_REQ | DVM_EN_ACK)
 #define DVM_DISCONNECTED	(~DVM_CONNECTED)
 /*******************************************************************************
