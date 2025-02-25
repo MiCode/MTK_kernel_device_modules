@@ -277,12 +277,11 @@ void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 					  p->flags, USB_ID_VENDOR(chip->usb_id),
 					  USB_ID_PRODUCT(chip->usb_id));
 			chip->quirk_flags |= p->flags;
-			return;
+			break;
 		}
 	}
 
 	chip->quirk_flags |= uac_quirks;
-
 	xhci_mtk_usb_format_quirk(chip);
 }
 
