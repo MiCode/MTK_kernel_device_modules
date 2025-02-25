@@ -8077,6 +8077,11 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 &mt6369_vdigrf {
 	regulator-always-on;
 };
+
+&mt6369_vaud28 {
+	regulator-always-on;
+};
+
 #include "mediatek/mt6685.dtsi"
 &mt6685_rtc {
 	status = "okay";
