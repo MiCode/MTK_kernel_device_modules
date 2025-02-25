@@ -140,6 +140,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/sched_int:cci_dbg_int",
     "//vendor/mediatek/kernel_modules/sched_int:cci_dbg_cus_int",
     "//vendor/mediatek/kernel_modules/sched_int:cpuqos_ext_int",
+    "//vendor/mediatek/kernel_modules/sched_int:mtk_sched_test_int",
     "//vendor/mediatek/kernel_modules/mtkcam/img_frm_sync:mtk-img-frm-sync",
     "//vendor/mediatek/kernel_modules/task_turbo_cus:task_turbo_cus",
     "//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
