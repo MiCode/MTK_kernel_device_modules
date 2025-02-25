@@ -4,11 +4,13 @@
  */
 
 #include <linux/clk.h>
+#include <linux/of.h>
 #include "adsp_clk_v3.h"
 #include "adsp_core.h"
 
 enum adsp_clk {
 	CLK_PD_ADSP_TOP,
+	CLK_PD_ADSP_AO,
 	ADSP_CLK_NUM
 };
 
@@ -17,16 +19,50 @@ struct adsp_clock_attr {
 	struct clk *clock;
 };
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 static struct adsp_clock_attr adsp_clks[ADSP_CLK_NUM] = {
 	[CLK_PD_ADSP_TOP] = {"clk_pd_adsp_top", NULL},
+	[CLK_PD_ADSP_AO] = {"clk_pd_adsp_ao", NULL},
 };
+
+static struct tag_chipid *chip_id;
+
+static int adsp_get_chipid(void)
+{
+	struct device_node *node;
+
+	if (!chip_id) {
+		node = of_find_node_by_path("/chosen");
+		if (!node)
+			node = of_find_node_by_path("/chosen@0");
+		if (node) {
+			chip_id = (struct tag_chipid *) of_get_property(node, "atag,chipid", NULL);
+			if (!chip_id) {
+				pr_info("could not find atag,chipid in chosen\n");
+				return -ENODEV;
+			}
+		} else {
+			pr_info("chosen node not found in device tree\n");
+			return -ENODEV;
+		}
+	}
+
+	return chip_id->sw_ver;
+}
 
 int adsp_mt_enable_clock(void)
 {
 	int ret = 0;
 
 	ret = clk_prepare_enable(adsp_clks[CLK_PD_ADSP_TOP].clock);
-	if (IS_ERR(&ret)) {
+	if (ret) {
 		pr_err("%s(), clk_prepare_enable %s fail, ret %d\n",
 			__func__, adsp_clks[CLK_PD_ADSP_TOP].name, ret);
 		return -EINVAL;
@@ -63,6 +99,16 @@ int adsp_clk_probe(struct platform_device *pdev, struct adsp_clk_operations *ops
 	ops->enable = adsp_mt_enable_clock;
 	ops->disable = adsp_mt_disable_clock;
 	/* ops->select not supported, PLL mux in adsp */
+
+	/* A0 IC always on ADSP AO to prevent from PLL power leak */
+	if (adsp_get_chipid() == 0) {
+		ret = clk_prepare_enable(adsp_clks[CLK_PD_ADSP_AO].clock);
+		if (ret) {
+			pr_info("%s(), clk_prepare_enable %s fail, ret %d\n",
+				__func__, adsp_clks[CLK_PD_ADSP_AO].name, ret);
+			return -EINVAL;
+		}
+	}
 
 	return 0;
 }

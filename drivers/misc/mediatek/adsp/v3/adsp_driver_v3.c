@@ -108,6 +108,14 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	adspsys->cfg2 = devm_ioremap_resource(dev, res);
 	adspsys->cfg2_size = resource_size(res);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cfg3");
+	if (!res)
+		dev_err(dev, "no cfg3 resource found!");
+	else {
+		adspsys->cfg3 = devm_ioremap_resource(dev, res);
+		adspsys->cfg3_size = resource_size(res);
+	}
+
 	/* property read from dts*/
 	READ_U32_PROPERTY_DEFAULT(dev->of_node, "core-num",
 				  &adspsys->num_cores, 0);
