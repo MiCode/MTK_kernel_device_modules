@@ -3487,11 +3487,12 @@ static int vcp_device_probe(struct platform_device *pdev)
 		}
 
 	}
-
-	ret = vcp_dump_size_probe(pdev);
-	if (ret) {
-		vcpreg.secure_dump = 0;
-		pr_info("[VCP] Unable to get memory dump size.\n");
+	if(vcpreg.secure_dump) {
+		ret = vcp_dump_size_probe(pdev);
+		if (ret) {
+			vcpreg.secure_dump = 0;
+			pr_info("[VCP] Unable to get memory dump size.\n");
+		}
 	}
 
 	pr_info("[VCP] %s done\n", __func__);

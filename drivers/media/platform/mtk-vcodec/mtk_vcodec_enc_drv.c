@@ -584,6 +584,10 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		pr_info("after get port-def  port num [%d] %d\n", i, port_num[i]);
 	}
 
+	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,uniq-dom", &dev->unique_domain);
+	if (ret)
+		mtk_v4l2_debug(0, "[VENC] Cannot get uniq dom, skip");
+
 	/* get slb params */
 	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-cpu-used-perf", &slb_cpu_used_pref);
 	if (ret != 0)

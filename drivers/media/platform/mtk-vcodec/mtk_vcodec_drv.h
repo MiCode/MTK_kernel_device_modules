@@ -1063,6 +1063,7 @@ struct mtk_vcodec_dev {
 	unsigned int iommu_domain_swtich;
 	enum venc_lock enc_hw_locked[MTK_VENC_HW_NUM];
 	unsigned int svp_mtee;
+	unsigned int unique_domain;
 };
 
 static inline struct mtk_vcodec_ctx *fh_to_ctx(struct v4l2_fh *fh)

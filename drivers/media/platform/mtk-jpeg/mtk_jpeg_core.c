@@ -2197,12 +2197,14 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "clock_set %d", jpeg->clock_set);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);
-	jpeg->gcon_base = devm_ioremap(&pdev->dev, res->start,  resource_size(res));
-	if (IS_ERR(jpeg->gcon_base)) {
-		pr_info("get GCON base fail\n");
-		ret = PTR_ERR(jpeg->gcon_base);
-		return ret;
+	if (jpeg->support_34bits) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);
+		jpeg->gcon_base = devm_ioremap(&pdev->dev, res->start,  resource_size(res));
+		if (IS_ERR(jpeg->gcon_base)) {
+			pr_info("get GCON base fail\n");
+			ret = PTR_ERR(jpeg->gcon_base);
+			return ret;
+		}
 	}
 
 	if (jpeg->axdomain) {

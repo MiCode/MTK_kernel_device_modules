@@ -5049,8 +5049,11 @@ int mtk_vcodec_enc_queue_init(void *priv, struct vb2_queue *src_vq,
 	dst_vq->lock            = &ctx->q_mutex;
 	dst_vq->allow_zero_bytesused = 1;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	if (ctx->dev->support_acp && mtk_venc_acp_enable &&
-	    !ctx->enc_params.svp_mode && vcp_get_io_device_ex(VCP_IOMMU_ACP_VENC) != NULL) {
+	if (ctx->dev->unique_domain == 1) {
+		dst_vq->dev = ctx->dev->smmu_dev;
+		mtk_v4l2_debug(4, "unique_domain use plat_dev domain");
+	} else if (ctx->dev->support_acp && mtk_venc_acp_enable &&
+		!ctx->enc_params.svp_mode && vcp_get_io_device_ex(VCP_IOMMU_ACP_VENC) != NULL) {
 		dst_vq->dev     = vcp_get_io_device_ex(VCP_IOMMU_ACP_VENC);
 		mtk_v4l2_debug(4, "[%s] use VCP_IOMMU_ACP_VENC domain %p", name, dst_vq->dev);
 	} else if (ctx->dev->iommu_domain_swtich && (ctx->dev->enc_cnt & 1)) {
