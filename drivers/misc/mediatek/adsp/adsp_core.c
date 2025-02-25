@@ -685,6 +685,12 @@ static void adsp_suspend_ipi_handler(int id, void *data, unsigned int len)
 	complete(&pdata->done);
 }
 
+static void adsp_dpsw_ack_timeout_ipi_handler(int id, void *data, unsigned int len)
+{
+	pr_info("%s(), ADSP system wait dpsw ack timeout\n", __func__);
+	BUG_ON(1);
+}
+
 static int adsp_system_init(void)
 {
 	int ret = 0;
@@ -699,7 +705,10 @@ static int adsp_system_init(void)
 	adsp_ipi_registration(ADSP_IPI_DVFS_SUSPEND,
 			      adsp_suspend_ipi_handler,
 			      "adsp_suspend_ack");
-
+	/* ipi of dpsw ack timeout */
+	adsp_ipi_registration(ADSP_IPI_DPSW_ACK_TIMEOUT,
+			      adsp_dpsw_ack_timeout_ipi_handler,
+			      "adsp_dpsw_ack_timeout");
 	/* time sync with adsp */
 	adsp_timesync_init();
 

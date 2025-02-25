@@ -277,7 +277,8 @@ static int adsp_mbox_pin_cb(unsigned int id, void *prdata, void *buf,
 
 	if (id == ADSP_IPI_ADSP_A_READY ||
 	    id == ADSP_IPI_DVFS_SUSPEND ||
-	    id == ADSP_IPI_LOGGER_INIT)
+	    id == ADSP_IPI_LOGGER_INIT ||
+	    id == ADSP_IPI_DPSW_ACK_TIMEOUT)
 		adsp_ipi_descs[id].handler(id, buf, len);
 	else {
 		if (ipi_queue_recv_msg_hanlder != NULL) {
