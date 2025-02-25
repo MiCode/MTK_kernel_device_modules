@@ -135,6 +135,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/sched_cus:sched_cus",
     "//vendor/mediatek/kernel_modules/sched_cus:eas_ext_cus",
     "//vendor/mediatek/kernel_modules/sched_cus:cpuqos_ext_cus",
+    "//vendor/mediatek/kernel_modules/sched_cus:mtk_em_cus",
     "//vendor/mediatek/kernel_modules/sched_int:sched_int",
     "//vendor/mediatek/kernel_modules/sched_int:cpuqos_dbg_int",
     "//vendor/mediatek/kernel_modules/sched_int:eas_ext_int",
