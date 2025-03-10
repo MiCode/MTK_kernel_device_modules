@@ -42,6 +42,7 @@ static int CFG_DISPLAY_VREFRESH;
 #define AOD_BR_DSI0_OFFSET     0xF000
 #define AOD_BR_MIPITX0_OFFSET  0xE000
 #define AOD_BR_DSC0_OFFSET     0xD000
+#define AOD_BR_SPR0_OFFSET     0xC000
 
 enum CLOCL_DIGIT {
 	SECONDS = BIT(0),
@@ -99,6 +100,7 @@ static struct disp_module_backup_info module_list[] = {
 	{"dsi0", 0x0, 0x0, AOD_BR_DSI0_OFFSET},
 	{"dsc0", 0x0, 0x0, AOD_BR_DSC0_OFFSET},
 	{"mipitx0", 0x0, 0x0, AOD_BR_MIPITX0_OFFSET},
+	{"spr0", 0x0, 0x0, AOD_BR_SPR0_OFFSET},
 };
 
 #define AOD_STAT_SET(stat) (aod_state |= (stat))
@@ -179,6 +181,11 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 			return;
 		}
 
+		if(!strcmp("spr0", module_list[i].module_name)) {
+			mtk_drm_spr_backup(crtc, scp_get_reserve_mem_phys, scp_get_reserve_mem_virt,
+				module_list[i].offset, module_list[i].size);
+			continue;
+		}
 		module_base = (char *)va;
 
 		bkup_buf = scp_sh_mem + module_list[i].offset;

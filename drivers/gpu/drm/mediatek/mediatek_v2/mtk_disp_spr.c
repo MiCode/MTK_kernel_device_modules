@@ -19,7 +19,7 @@
 #include "mtk_drm_fb.h"
 #include "mtk_drm_drv.h"
 #include "mtk_disp_spr.h"
-
+#include "scp.h"
 
 #define DISP_REG_SPR_STA			0x0000
 
@@ -735,6 +735,13 @@ struct mtk_disp_spr {
 	enum SPR_IP_TYPE spr_ip_type;
 };
 
+typedef phys_addr_t (*scp_get_reserve_mem_phys_by_id)(enum scp_reserve_mem_id_t id);
+typedef phys_addr_t (*scp_get_reserve_mem_virt_by_id)(enum scp_reserve_mem_id_t id);
+typedef phys_addr_t (*scp_get_reserve_mem_size_by_id)(enum scp_reserve_mem_id_t id);
+scp_get_reserve_mem_phys_by_id scp_get_mem_phys;
+scp_get_reserve_mem_virt_by_id scp_get_mem_virt;
+scp_get_reserve_mem_size_by_id scp_get_mem_size;
+
 static inline struct mtk_disp_spr *comp_to_spr(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_spr, ddp_comp);
@@ -842,7 +849,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 		DDPMSG("spr_params is null %s %d\n", __func__, __LINE__);
 		return;
 	}
-	if (spr_params->enable == 1	&& spr_params->relay == 0) {
+	if (spr_params->enable == 1 && spr_params->relay == 0) {
 		if (comp->mtk_crtc->spr_is_on)
 			panel_spr_enable = 0xfefe;
 		else
@@ -2141,6 +2148,110 @@ static int mtk_spr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	return 0;
 }
 
+bool mtk_drm_spr_backup(struct drm_crtc *crtc, void *get_phys,
+	void *get_virt, unsigned int offset, unsigned int size)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *spr_comp = NULL;
+	struct mtk_ddp_comp *postalign_comp = NULL;
+	struct mtk_disp_spr *spr;
+	struct mtk_drm_spr_share_info *share_info;
+	unsigned int *reg_addr_backup;
+	unsigned int *reg_value_backup;
+	unsigned int i, j;
+	char *spr_scp_sh_mem;
+	void __iomem *spr_baddr = NULL;
+	unsigned int spr_format;
+
+	if (!crtc)
+		return false;
+	mtk_crtc = to_mtk_crtc(crtc);
+	spr_comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_SPR, 0);
+	if (!spr_comp)
+		return false;
+	postalign_comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_POSTALIGN, 0);
+	if (!postalign_comp)
+		return false;
+
+	//memory init
+	scp_get_mem_phys = get_phys;
+	scp_get_mem_virt = get_virt;
+	DDPMSG("%s: scp-aod:%d scp rsv mem:0x%llx(0x%llx)\n", __func__, SCP_AOD_MEM_ID,
+		scp_get_mem_virt(SCP_AOD_MEM_ID), scp_get_mem_phys(SCP_AOD_MEM_ID));
+	spr_scp_sh_mem = (char *)scp_get_mem_virt(SCP_AOD_MEM_ID) + offset;
+	memset((void *)spr_scp_sh_mem, 0, size);
+
+	DDPMSG("%s: scp dmr rsv mem:0x%llx offset:0x%llx size:0x%llx\n",
+		__func__, spr_scp_sh_mem, offset, size);
+	share_info = (struct mtk_drm_spr_share_info *)spr_scp_sh_mem;
+	share_info->backup_reg_pa = scp_get_mem_phys(SCP_AOD_MEM_ID) + offset +
+		sizeof(struct mtk_drm_spr_share_info);
+	spr_format = mtk_spr_get_format(mtk_crtc);
+	if (spr_format == MTK_PANEL_SPR_OFF_TYPE)
+		share_info->spr_hw_enable = 0;
+	else
+		share_info->spr_hw_enable = 1;
+	share_info->panel_width =
+		mtk_crtc_get_width_by_comp(__func__, &spr_comp->mtk_crtc->base, spr_comp, true);
+	share_info->panel_height =
+		mtk_crtc_get_height_by_comp(__func__, &spr_comp->mtk_crtc->base, spr_comp, true);
+	reg_addr_backup = (unsigned int *)(spr_scp_sh_mem + sizeof(struct mtk_drm_spr_share_info));
+	if (share_info->spr_hw_enable) {
+		spr = comp_to_spr(spr_comp);
+		if (spr->data && spr->data->version == MTK_SPR_V3) {
+			share_info->spr_ip_type = spr->spr_ip_type;
+			//AP SPR IP Config
+			i = 0;
+			if (spr->spr_ip_type == DISP_MTK_SPR) {
+				spr_baddr = spr_comp->regs + spr->data->mtk_spr_ip_addr_offset;
+				for (i = 0; i < DISP_V3_MTK_SPR_IP_PARAMS_NUM; i++)
+					*(reg_addr_backup + i) = 0x4 * i +
+						MT6991_DISP_MTK_SPR_REG_SPR_OUT_OF_BOUNDARY_REPEAT_EN;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_X;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_POS_Y;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_WIDTH;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_IMAGE_HEIGHT;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_PANEL_WIDTH;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_PANEL_HEIGHT;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_X;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_POS_Y;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_WIDTH;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_OUTPUT_CROP_HEIGHT;
+				*(reg_addr_backup+(i++)) = MT6991_DISP_MTK_SPR_REG_SPR_EN;
+				*(reg_addr_backup+(i++)) = DISP_MTK_SPR_SHADOW_CTRL;
+			} else {
+				for (i = 0; i < DISP_V2_SPR_IP_SHRINK_PARAMS_NUM; i++)
+					*(reg_addr_backup + i) = 0x4 * i + DISP_REG_V2_SPR_IP_CFG_0;
+				*(reg_addr_backup+(i++)) = DISP_REG_SPR_EN;
+				*(reg_addr_backup+(i++)) = DISP_REG_SPR_CFG;
+				*(reg_addr_backup+(i++)) = DISP_REG_V2_SPR_ROI_SIZE;
+				*(reg_addr_backup+(i++)) = MT6989_DISP_REG_SPR_CROP_SIZE;
+				*(reg_addr_backup+(i++)) = DISP_REG_SPR_CK_ON;
+				*(reg_addr_backup+(i++)) = DISP_REG_SPR_OPTION;
+			}
+			share_info->backup_spr_reg_size = i;
+			//postalign reg
+			*(reg_addr_backup+(i++)) = MT6989_DISP_REG_POSTALIGN0_EN;
+			*(reg_addr_backup+(i++)) = MT6989_DISP_REG_POSTALIGN0_SHADOW_CTRL;
+			*(reg_addr_backup+(i++)) = MT6989_DISP_REG_POSTALIGN0_CFG;
+			*(reg_addr_backup+(i++)) = MT6989_DISP_REG_POSTALIGN0_SIZE;
+			*(reg_addr_backup+(i++)) = MT6989_DISP_REG_POSTALIGN0_ARRANGE;
+			share_info->backup_value_pa = share_info->backup_reg_pa + i * sizeof(unsigned int);
+			share_info->backup_reg_size = i;
+			//copy spr & postalign reg value to scp
+			reg_value_backup = reg_addr_backup + i;
+			for(j = 0; j < share_info->backup_spr_reg_size; j++)
+				*(reg_value_backup + j) =
+					readl(spr_baddr + *(reg_addr_backup + j));
+			for(; j < i; j++)
+				*(reg_value_backup + j) =
+					readl(postalign_comp->regs + *(reg_addr_backup + j));
+		}
+	}
+
+	return true;
+}
+EXPORT_SYMBOL(mtk_drm_spr_backup);
 
 static int mtk_spr_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable)
