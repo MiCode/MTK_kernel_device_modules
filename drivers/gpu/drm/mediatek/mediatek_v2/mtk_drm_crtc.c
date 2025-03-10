@@ -22810,6 +22810,7 @@ static int mtk_drm_lpc_kick_idle_thread(void *data)
 		if (comp)
 			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_IRQ_EN, NULL);
 
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 		atomic_set(&mtk_crtc->lpc_hwvsync_on, 0);

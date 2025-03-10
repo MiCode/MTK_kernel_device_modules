@@ -157,6 +157,7 @@ module_param(lpc_disable, int, 0644);
 #define DSI_LPC_MIPI_ERROR_FLAG_SEL REG_FLD_MSB_LSB(3, 2)
 
 static bool dsi_lpc_en = true;
+static bool dsi_lpc_te_irq_en;
 ktime_t ts_offset;	// arch_timer_get_cntfrq: MT6993 = 1,000,000,000
 
 enum LPC_MMP_IDX {
@@ -441,14 +442,30 @@ void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc,
 		DRM_MMP_MARK(dsi_lpc0_ts, ts1, ts0);
 	drm_trace_tag_value("lpc_resync_timestamp", *resync_ts);
 }
+void mtk_dsi_lpc_te_irq_en(struct mtk_drm_crtc *mtk_crtc,
+	struct mtk_ddp_comp *comp)
+{
+	int index = mtk_dsi_lpc_unit(mtk_crtc);
+	unsigned int lpc_inten = 0;
+
+	if (index < 0)
+		return;
+
+	lpc_inten = readl(comp->regs + DSI_LPC_INTEN(index));
+	lpc_inten |= EVENT_TE_INT_EN;
+
+	writel(0, comp->regs + DSI_LPC_INTEN(index));
+	writel(lpc_inten, comp->regs + DSI_LPC_INTEN(index));
+
+	dsi_lpc_te_irq_en = true;
+}
 void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp)
 {
 	struct mtk_ddp_comp *output_comp = NULL;
-	struct mtk_drm_private *priv = NULL;
-	unsigned int lpc_te_con0_val = 0;
 	int index = 0;
-	u32 inten = 0;
+	unsigned int lpc_te_con0_val = 0;
+	unsigned int inten = 0;
 	struct drm_crtc *crtc = &mtk_crtc->base;
 
 	index = mtk_dsi_lpc_unit(mtk_crtc);
@@ -467,14 +484,11 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 		inten &= ~REPORTED_RESYNC_INT_EN;
 		lpc_te_con0_val &= ~DSI_LPC_HW_VSYNC_ON;
 	}
+
+	if (dsi_lpc_te_irq_en)
+		inten |= EVENT_TE_INT_EN;
+
 	writel(lpc_te_con0_val, comp->regs + DSI_LPC_TE_CON0(index));
-
-	priv = mtk_crtc->base.dev->dev_private;
-	if (priv) {
-		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
-			inten |= EVENT_TE_INT_EN;
-	}
-
 	writel(0, comp->regs + DSI_LPC_INTEN(index));
 	writel(inten, comp->regs + DSI_LPC_INTEN(index));
 
@@ -535,9 +549,8 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
 			comp->regs_pa+ DSI_LPC_CONFIG(index), reg_val, ~0);
 
-		if (atomic_read(&mtk_crtc->lpc_hwvsync_on))
-			cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
-				comp->regs_pa+ DSI_LPC_TE_CON0(index), lpc_te_con0_val | DSI_LPC_HW_VSYNC_ON, ~0);
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa+ DSI_LPC_TE_CON0(index), lpc_te_con0_val | DSI_LPC_HW_VSYNC_ON, ~0);
 	} else {
 		int reg_val = readl(comp->regs + DSI_LPC_CONFIG(index));
 
@@ -550,8 +563,7 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 		reg_val &= ~DSI_LPC_UNIT_REST;
 		writel(reg_val , comp->regs + DSI_LPC_CONFIG(index));
 
-		if (atomic_read(&mtk_crtc->lpc_hwvsync_on))
-			writel(lpc_te_con0_val | DSI_LPC_HW_VSYNC_ON, comp->regs + DSI_LPC_TE_CON0(index));
+		writel(lpc_te_con0_val | DSI_LPC_HW_VSYNC_ON, comp->regs + DSI_LPC_TE_CON0(index));
 	}
 
 	DDPINFO("%s,[%d]lpc_te_con0_val:0x%x,real_te_duration:%d\n", __func__,
@@ -601,7 +613,7 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	priv = mtk_crtc->base.dev->dev_private;
 	if (priv) {
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
-			mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp);
+			mtk_dsi_lpc_te_irq_en(mtk_crtc, comp);
 	}
 }
 static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -704,7 +716,6 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct drm_vblank_crtc *vblank = NULL;
-	struct mtk_drm_private *priv = NULL;
 	unsigned int status = 0;
 	unsigned int ret = 0;
 	int index = 0;
@@ -740,11 +751,8 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 		goto out;
 	}
 
-	priv = mtk_crtc->base.dev->dev_private;
-	if (priv) {
-		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
-			status &= ~EVENT_TE_INT;
-	}
+	if (!dsi_lpc_te_irq_en)
+		status &= ~EVENT_TE_INT;
 
 	if (index == 0)
 		DRM_MMP_MARK(dsi_lpc0, status, 0);
