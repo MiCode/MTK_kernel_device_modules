@@ -35,6 +35,11 @@
 			nvmem-cells = <&csi_efuse1>;
 			nvmem-cell-names = "rg_csi";
 
+			/* HP9 EINT */
+			interrupts-extended = <&pio 187 IRQ_TYPE_EDGE_FALLING>;
+			gpio-num = <187>;
+			eint-no = <3>; /* Max to 3, options:{1, 2, 3} */
+
 			port {
 				seninf_csi_port_1_in: endpoint {
 					remote-endpoint = <&sensor4_out>;
@@ -49,6 +54,11 @@
 			nvmem-cells = <&csi_efuse2>;
 			nvmem-cell-names = "rg_csi";
 
+			/* JN1 EINT */
+			interrupts-extended = <&pio 186 IRQ_TYPE_EDGE_FALLING>;
+			gpio-num = <186>;
+			eint-no = <2>; /* Max to 3, options:{1, 2, 3} */
+
 			port {
 				seninf_csi_port_2_in: endpoint {
 					remote-endpoint = <&sensor2_out>;
@@ -59,13 +69,13 @@
 			compatible = "mediatek,seninf";
 			csi-port = "3";
 
-			/* KOKU EINT */
-			interrupts-extended = <&pio 186 IRQ_TYPE_EDGE_FALLING>;
-			gpio-num = <185>;
-			eint-no = <1>; /* Max to 3, options:{1, 2, 3} */
-
 			nvmem-cells = <&csi_efuse3>;
 			nvmem-cell-names = "rg_csi";
+
+			/* KOKU EINT */
+			interrupts-extended = <&pio 185 IRQ_TYPE_EDGE_FALLING>;
+			gpio-num = <185>;
+			eint-no = <1>; /* Max to 3, options:{1, 2, 3} */
 
 			port {
 				seninf_csi_port_3_in: endpoint@1 {
