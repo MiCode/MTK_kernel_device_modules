@@ -57,6 +57,12 @@
 #include "vow.h"
 #include "vow_assert.h"
 
+#define VOW_PMIC_VERSION_CHK
+#ifdef VOW_PMIC_VERSION_CHK
+#include <linux/nvmem-consumer.h>
+static unsigned short pmic_6366_version = VOW_PMIC_6366_NONE;
+#endif
+
 /*****************************************************************************
  * Variable Definition
  ****************************************************************************/
@@ -1561,6 +1567,13 @@ static bool vow_service_Enable(void)
 	int ipi_ret;
 
 	VOWDRV_DEBUG("+%s()\n", __func__);
+#ifdef VOW_PMIC_VERSION_CHK
+	if (pmic_6366_version == VOW_PMIC_6366_E1)
+		ipi_ret = vow_ipi_send(IPIMSG_VOW_PMIC_EFUSE_VER,
+				       0,
+				       NULL,
+				       VOW_IPI_BYPASS_ACK);
+#endif
 	ipi_ret = vow_ipi_send(IPIMSG_VOW_ENABLE,
 			       0,
 			       NULL,
@@ -4025,6 +4038,48 @@ static struct platform_driver VowDrv_driver = {
 	},
 };
 
+#ifdef VOW_PMIC_VERSION_CHK
+static int vow_nvmem_device_probe(struct platform_device *pdev)
+{
+	struct nvmem_device *nvmem;
+	int ret;
+	int ver_reg, ver_mask;
+
+	nvmem = devm_nvmem_device_get(&pdev->dev, "vow_efuse_device");
+	if (PTR_ERR(nvmem) == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+
+	of_property_read_u32(pdev->dev.of_node, "ver_reg", &ver_reg);
+	of_property_read_u32(pdev->dev.of_node, "ver_mask", &ver_mask);
+	ret = nvmem_device_read(nvmem, ver_reg, 2, &pmic_6366_version);
+	pmic_6366_version = pmic_6366_version & ver_mask;
+	VOWDRV_DEBUG("%s(), pmic e2 %d, ret = %d\n", __func__, pmic_6366_version, ret);
+	return 0;
+}
+
+static void vow_nvmem_device_remove(struct platform_device *dev)
+{
+
+	//return 0;
+}
+
+static const struct of_device_id vow_pmic_efuse_of_ids[] = {
+	{ .compatible = "mediatek,vow-efuse", },
+	{}
+};
+
+static struct platform_driver vow_pmic_nvmem_driver = {
+	.probe = vow_nvmem_device_probe,
+	.remove = vow_nvmem_device_remove,
+	.driver = {
+		.name = "vow_pmic_nvmem",
+#if IS_ENABLED(CONFIG_OF)
+		.of_match_table = vow_pmic_efuse_of_ids,
+#endif
+	},
+};
+#endif // VOW_PMIC_VERSION_CHK
+
 static int __init VowDrv_mod_init(void)
 {
 	int ret = 0;
@@ -4111,6 +4166,12 @@ static int __init VowDrv_mod_init(void)
 
 	if (!vow_dump_suspend_lock)
 		pr_debug("vow dump wakeup source init failed.\n");
+
+#ifdef VOW_PMIC_VERSION_CHK
+	ret = platform_driver_register(&vow_pmic_nvmem_driver);
+	if (ret)
+		pr_debug("[SCP] vow_pmic_nvmem_driver fail %d\n", ret);
+#endif
 
 	VOWDRV_DEBUG("-%s(): Init Audio WakeLock\n", __func__);
 

@@ -208,6 +208,8 @@ enum vow_ipi_msgid_t {
 	IPIMSG_VOW_HAL_REBOOT = 29,
 	//IPIMSG_VOW_FLUSH = 30,
 	IPIMSG_VOW_SCP_BARGE_IN_RESUME = 31,
+	/* IPI id 32~35 reserved for SCP VOW merged task using */
+	IPIMSG_VOW_PMIC_EFUSE_VER = 36,
 	/*------ sound_soc-vow-kernel ------*/
 	IPIMSG_VOW_PCM_HWFREE = 100
 };
@@ -321,6 +323,12 @@ enum vow_payloaddump_setting_t {
 	PAYLOADDUMP_1ST_STAGE = 1,
 	PAYLOADDUMP_2ND_STAGE = 2,
 	PAYLOADDUMP_MAX_NUM
+};
+
+enum {
+	VOW_PMIC_6366_E1 = 0,
+	VOW_PMIC_6366_E2 = 1,
+	VOW_PMIC_6366_NONE
 };
 
 /*****************************************************************************
