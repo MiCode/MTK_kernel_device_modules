@@ -216,6 +216,8 @@
 #define PCIE_ERR_ADDR_L			0xe40
 #define PCIE_ERR_ADDR_H			0xe44
 #define PCIE_ERR_INFO			0xe48
+#define PCIE_DIS_LOWPWR_STS0		0xe60
+#define PCIE_DIS_LOWPWR_STS1		0xe64
 
 #define PCIE_LOW_POWER_CTRL		0x194
 #define PCIE_ICMD_PM_REG		0x198
@@ -2094,12 +2096,14 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x5c, 0x5d, 0x5e, 0x0));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, phy err=%#x, tag_id=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, DIS LP STS0:%#x, DIS LP STS1:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, phy err=%#x, tag_id=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
 		readl_relaxed(port->base + PCIE_ISTATUS_PM),
 		readl_relaxed(port->base + PCIE_LOW_POWER_CTRL),
+		readl_relaxed(port->base + PCIE_DIS_LOWPWR_STS0),
+		readl_relaxed(port->base + PCIE_DIS_LOWPWR_STS1),
 		readl_relaxed(port->base + PCIE_BASIC_STATUS),
 		readl_relaxed(port->base + PCIE_INT_STATUS_REG),
 		readl_relaxed(port->base + PCIE_MSI_SET_BASE_REG +
@@ -2893,6 +2897,8 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 			 readl_relaxed(port->base + PCIE_ISTATUS_PM));
 
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x8, 0x8, 0xc, 0xc));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x47, 0x48, 0x45));
 		/* Clear LTSSM record info after dump */
 		writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
 
@@ -2944,6 +2950,9 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 		dev_info(port->dev, "Resume PCIe LTSSM=%#x, PCIe L1SS_pm=%#x\n",
 			 readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 			 readl_relaxed(port->base + PCIE_ISTATUS_PM));
+
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x8, 0x8, 0xc, 0xc));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x47, 0x48, 0x45));
 
 		/* Clear LTSSM record info after dump */
 		writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
