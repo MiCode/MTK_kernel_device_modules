@@ -32,14 +32,13 @@ static bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 	return false;
 }
 
+/* Same with ufshcd_mcq_req_to_hwq */
 static struct ufs_hw_queue *ufs_mtk_mcq_req_to_hwq(struct ufs_hba *hba,
 					    struct request *req)
 {
-	u32 utag = blk_mq_unique_tag(req);
-	u32 hwq = blk_mq_unique_tag_to_hwq(utag);
+	struct blk_mq_hw_ctx *hctx = READ_ONCE(req->mq_hctx);
 
-	/* uhq[0] is used to serve device commands */
-	return &hba->uhq[hwq];
+	return hctx ? &hba->uhq[hctx->queue_num] : NULL;
 }
 
 void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
@@ -74,6 +73,8 @@ void ufs_mtk_btag_compl_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 
 	if (hba->mcq_enabled) {
 		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+		if (!hq)
+			return;
 		qid = hq->id;
 	}
 	mtk_btag_ufs_transfer_req_compl(host->btag, lrbp->task_tag, qid);
