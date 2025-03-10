@@ -11076,11 +11076,10 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	mtk_drm_trace_begin("retrig_kick_flush %u", retrig->present_fence_idx);
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 	CRTC_MMP_MARK(crtc_idx, retrig_flush, 0, retrig->present_fence_idx);
-	if (mtk_crtc_retrig_flush(cb_data, cmdq_handle) < 0) {
+	if (mtk_crtc_retrig_flush(mtk_crtc->gce_obj.pkt_info) < 0) {
 		DDPPR_ERR("%s: mtk_crtc_retrig_flush failed!\n", __func__);
 		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
 		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-		mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
 	}
 	mtk_drm_trace_end("retrig_kick_flush %u", retrig->present_fence_idx);
 

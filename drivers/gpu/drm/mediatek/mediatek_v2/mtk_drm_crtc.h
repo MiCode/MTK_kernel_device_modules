@@ -1556,7 +1556,7 @@ void mtk_crtc_connect_addon_module(struct drm_crtc *crtc, bool skip_cwb);
 void mtk_crtc_disconnect_addon_module(struct drm_crtc *crtc);
 int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb, void *cb_data,
 			struct cmdq_pkt *cmdq_handle);
-int mtk_crtc_retrig_flush(struct mtk_cmdq_cb_data *cb_data, struct cmdq_pkt *cmdq_handle);
+int mtk_crtc_retrig_flush(struct mtk_cmdq_pkt_info *pkt_info);
 /*Msync 2.0*/
 int mtk_drm_set_msync_cmd_level_table(unsigned int level_id, unsigned int level_fps,
 		unsigned int max_fps, unsigned int min_fps);

@@ -20488,27 +20488,22 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	return 0;
 }
 
-int mtk_crtc_retrig_flush(struct mtk_cmdq_cb_data *cb_data, struct cmdq_pkt *cmdq_handle)
+int mtk_crtc_retrig_flush(struct mtk_cmdq_pkt_info *pkt_info)
 {
-	if (!cb_data) {
-		DDPPR_ERR("%s: cb_data is null\n", __func__);
+	if (!pkt_info) {
+		DDPPR_ERR("%s: pkt_info is null\n", __func__);
 		return -EINVAL;
 	}
 
-	if (!cmdq_handle) {
-		DDPPR_ERR("%s: cmdq_handle is null\n", __func__);
-		return -EINVAL;
-	}
-
-	cb_data->store_cb_data = kzalloc(sizeof(struct cb_data_store), GFP_KERNEL);
-	if (!cb_data->store_cb_data) {
+	pkt_info->cb_data->store_cb_data = kzalloc(sizeof(struct cb_data_store), GFP_KERNEL);
+	if (!pkt_info->cb_data->store_cb_data) {
 		DDPPR_ERR("%s: store_cb_data alloc fail\n", __func__);
+		mtk_crtc_release_cmdq_pkt(pkt_info);
 		return -EINVAL;
 	}
 
-	if (cmdq_pkt_flush_async(cmdq_handle, ddp_cmdq_cb, cb_data) < 0) {
+	if (cmdq_pkt_flush_async(pkt_info->cmdq_handle, ddp_cmdq_cb, pkt_info->cb_data) < 0) {
 		DDPPR_ERR("%s: cmdq_pkt_flush_async failed!\n", __func__);
-		kfree(cb_data->store_cb_data);
 		return -EINVAL;
 	}
 	return 0;
