@@ -2875,7 +2875,7 @@ static int mtk_i2c_probe(struct platform_device *pdev)
 		return -EINVAL;
 #ifdef CONFIG_FPGA_EARLY_PORTING
 	if (i2c->ch_offset_i2c == i2c->i2c_offset_scp) {
-		dev_info(dev, "scp i2c probe end in fpga!\n");
+		dev_info(&pdev->dev, "scp i2c probe end in fpga!\n");
 		return 0;
 	}
 #endif
