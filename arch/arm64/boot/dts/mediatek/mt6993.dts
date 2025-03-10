@@ -10135,7 +10135,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_dp_intf0_vde_start",
 				"disp_mutex0_sof0",
 				"disp_cmd_mode_trig_start",
-				"disp_vdo_mode_trig_start";
+				"disp_vdo_mode_trig_start",
+				"disp_dbi_count_eof";
 
 			gce-events =
 				<&gce CMDQ_EVENT_DISP1_A_STREAM_DONE_ENG_EVENT_0>,
@@ -10192,7 +10193,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_EVENT_DISP1_B_DISP_DVO0_ENG_EVENT_0>,
 				<&gce CMDQ_EVENT_DISP1_A_STREAM_SOF_0>,
 				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_3>,
-				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_4>;
+				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_4>,
+				<&gce CMDQ_EVENT_DISP1_A_GCE_FRAME_DONE_6>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
@@ -11979,7 +11981,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mediatek,mt6993-disp-dbi-count";
 			reg = <0 0x3e780000 0 0x1000>;
 			clocks = <&dispsys1_config_clk MM1_DISP_DBI_COUNT0_DISP>;
-
+			interrupts = <GIC_SPI 452 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larb = <&smi_larb33 SMMU_L33_P3_DISP_DBI_COUNT0_W>,
 					<&smi_larb33 SMMU_L33_P7_DISP_DBI_COUNT0_W_STASH>,
 					<&smi_larb33 SMMU_L33_P4_DISP_DBI_COUNT0_R>,
