@@ -848,7 +848,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 			}
 			kfree(cb_data);
 			CRTC_MMP_MARK(index, pq_frame_config, (unsigned long)pq_cmdq_handle, 0xE0000003);
-		} else if (check_trigger && !mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RETRIGGER))
+		} else if (check_trigger && !mtk_drm_use_retrigger(priv))
 			mtk_crtc_check_trigger(mtk_crtc, check_trigger == CHECK_TRIGGER_DELAY
 						|| mtk_crtc->msync2.msync_frame_status, !user_lock);
 		DDPDBG("%s msync_frame_status:%d\n", __func__, mtk_crtc->msync2.msync_frame_status);

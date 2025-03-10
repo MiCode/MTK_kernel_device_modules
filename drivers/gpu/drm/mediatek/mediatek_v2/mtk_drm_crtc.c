@@ -14216,7 +14216,7 @@ static int _mtk_crtc_check_trigger(void *data)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 		atomic_set(&mtk_crtc->trig_event_act, 0);
 
-		if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_RETRIGGER))
+		if (mtk_drm_use_retrigger(private))
 			mtk_request_retrig(dev, crtc_idx);
 		else
 			__mtk_check_trigger(mtk_crtc);
@@ -14254,7 +14254,7 @@ static int _mtk_crtc_check_trigger_delay(void *data)
 
 		usleep_range(32000, 33000);
 		if (!atomic_read(&mtk_crtc->delayed_trig)) {
-			if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_RETRIGGER))
+			if (mtk_drm_use_retrigger(private))
 				mtk_request_retrig(dev, crtc_idx);
 			else
 				__mtk_check_trigger(mtk_crtc);

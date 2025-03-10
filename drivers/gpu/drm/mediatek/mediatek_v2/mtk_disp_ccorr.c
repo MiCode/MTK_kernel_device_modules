@@ -616,7 +616,7 @@ int disp_ccorr_eventctl(struct mtk_ddp_comp *comp, void *data)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
-	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RETRIGGER)) {
+	if (!mtk_drm_use_retrigger(priv)) {
 		if (enabled)
 			mtk_crtc_check_trigger(mtk_crtc, true, true);
 	}

@@ -8394,7 +8394,7 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_UNION_FENCE;
 
-	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_RETRIGGER))
+	if (mtk_drm_use_retrigger(private))
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_RETRIGGER;
 
@@ -10804,6 +10804,16 @@ int mtk_drm_ioctl_mml_ctrl(struct drm_device *dev, void *data, struct drm_file *
 	};
 
 	return ret;
+}
+
+bool mtk_drm_use_retrigger(struct mtk_drm_private *priv)
+{
+	if (priv == NULL)
+		return false;
+
+	// only enable retrig when primary display is cmd mode
+	return (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RETRIGGER) &&
+			mtk_crtc_is_frame_trigger_mode(priv->crtc[0]));
 }
 
 void mtk_request_retrig_enable(struct drm_device *dev,
