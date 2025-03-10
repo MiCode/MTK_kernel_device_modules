@@ -104,37 +104,41 @@ int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_force_step);
 
-int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
+static int mmdvfs_debug_vote_impl(const u8 idx, const s8 opp)
 {
-	int ret, last;
+	int last, ret;
 
-	if (idx >= step_count) {
-		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
-		return -EINVAL;
-	}
+	last = user[idx].vote_opp;
 
+	mtk_mmdvfs_enable_vcp(true, user[idx].id);
 
-	last = user[step_idx[idx]].vote_opp;
-
-	mtk_mmdvfs_enable_vcp(true, user[step_idx[idx]].id);
-
-	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
+	if ((user[idx].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
 		(last < 0 || last >= dpsw_thr))
 		mtk_vmm_ctrl_dbg_use(true);
 
-	ret = clk_set_rate(user[step_idx[idx]].clk, mmdvfs_user_get_freq_by_opp(user[step_idx[idx]].id, opp));
+	ret = clk_set_rate(user[idx].clk, mmdvfs_user_get_freq_by_opp(user[idx].id, opp));
 	if (!ret) {
-		user[step_idx[idx]].vote_opp = opp;
-		mmdvfs_record_cmd_user(step_idx[idx], MAX_LEVEL, opp);
+		user[idx].vote_opp = opp;
+		mmdvfs_record_cmd_user(idx, MAX_LEVEL, opp);
 	}
 
-	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
+	if ((user[idx].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
 		last >= 0 && last < dpsw_thr)
 		mtk_vmm_ctrl_dbg_use(false);
 
-	mtk_mmdvfs_enable_vcp(false, user[step_idx[idx]].id);
+	mtk_mmdvfs_enable_vcp(false, user[idx].id);
 
 	return ret;
+}
+
+int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
+{
+	if (idx >= step_count) {
+		MMDVFS_ERR("invalid idx:%hhu opp:%hhd", idx, opp);
+		return -EINVAL;
+	}
+
+	return mmdvfs_debug_vote_impl(step_idx[idx], opp);
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_vote_step);
 
@@ -166,7 +170,7 @@ static int mmdvfs_debug_v5_set_vote_step(const char *val, const struct kernel_pa
 
 static int mmdvfs_debug_v5_ap_set_rate(const char *val, const struct kernel_param *kp)
 {
-	int idx = 0, opp = 0, ret, last;
+	int idx = 0, opp = 0, ret;
 
 	ret = sscanf(val, "%d %d", &idx, &opp);
 	if (ret != 2 || idx >= user_count) {
@@ -174,27 +178,7 @@ static int mmdvfs_debug_v5_ap_set_rate(const char *val, const struct kernel_para
 		return -EINVAL;
 	}
 
-	last = user[idx].vote_opp;
-
-	mtk_mmdvfs_enable_vcp(true, user[idx].id);
-
-	if ((user[idx].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
-		(last < 0 || last >= dpsw_thr))
-		mtk_vmm_ctrl_dbg_use(true);
-
-	ret = clk_set_rate(user[idx].clk, mmdvfs_user_get_freq_by_opp(user[idx].id, opp));
-	if (!ret) {
-		user[idx].vote_opp = opp;
-		mmdvfs_record_cmd_user(idx, MAX_LEVEL, opp);
-	}
-
-	if ((user[idx].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
-		last >= 0 && last < dpsw_thr)
-		mtk_vmm_ctrl_dbg_use(false);
-
-	mtk_mmdvfs_enable_vcp(false, user[idx].id);
-
-	return ret;
+	return mmdvfs_debug_vote_impl(idx, opp);
 }
 
 static int mmdvfs_debug_freerun(const char *val, const struct kernel_param *kp)
@@ -400,9 +384,9 @@ static int mmdvfs_debug_pm_notifier(struct notifier_block *notifier, unsigned lo
 				MMDVFS_DBG("user i:%d id:%hhu name:%16s force:%hhd vote:%hhd not release at suspend",
 					i, user[i].id, user[i].name, user[i].force_opp, user[i].vote_opp);
 			if (unlikely(user[i].force_opp != OPP_NAG))
-				mmdvfs_debug_force_step(i, OPP_NAG);
+				mmdvfs_debug_force_step(user[i].rc, OPP_NAG);
 			if (unlikely(user[i].vote_opp != OPP_NAG))
-				mmdvfs_debug_vote_step(i, OPP_NAG);
+				mmdvfs_debug_vote_impl(i, OPP_NAG);
 		}
 		break;
 	case PM_POST_SUSPEND:
