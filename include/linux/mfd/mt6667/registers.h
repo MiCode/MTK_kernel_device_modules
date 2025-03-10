@@ -102,4 +102,8 @@
 	"GPIO_PULLSEL0_5"                                                 \
 }
 
+/* SPMI PMIC dump rg data */
+#define MT6667_RGS_NPKT_CCLP_ERR                                          (0x4cb)
+#define MT6667_RGS_NPKT_CCLP_CLR                                          (0x4ca)
+
 #endif /* __MFD_MT6667_REGISTERS_H__ */

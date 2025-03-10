@@ -28,6 +28,13 @@ extern void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_debug_rg_info(u32 *buf);
 
+/* spmi pmic dump data */
+enum dump_rg {
+	RGS_NPKT_CCLP_ERR,
+	MAX_DUMP_RG_NUM,
+};
+extern int mtk_spmi_pmic_dump_rg_data(u8 slvid, u32 *rdata, enum dump_rg rg_name);
+
 MODULE_AUTHOR("HS Chien <HS.Chien@mediatek.com>");
 MODULE_DESCRIPTION("Debug driver for MediaTek SPMI PMIC");
 MODULE_LICENSE("GPL");

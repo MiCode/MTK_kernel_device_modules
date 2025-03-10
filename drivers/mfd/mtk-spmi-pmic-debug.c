@@ -3,6 +3,7 @@
 // Copyright (c) 2024 MediaTek Inc.
 
 #include <linux/bitfield.h>
+#include <linux/irqflags.h>
 #include <linux/module.h>
 #include <linux/mfd/mt6661/registers.h>
 #include <linux/mfd/mt6667/registers.h>
@@ -10,6 +11,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/spinlock.h>
 #include <linux/spmi.h>
 #include <dt-bindings/spmi/spmi.h>
 #include "mtk-spmi-pmic-debug.h"
@@ -64,6 +66,13 @@ struct spmi_pmic_debug_rg_info {
 	unsigned int dbg_reg_shift[SPMI_PMIC_DEBUG_RG_NUM];
 };
 
+
+struct spmi_pmic_dump_rg_info {
+	raw_spinlock_t spin_lock;
+	unsigned int npkt_cclp_err;
+	unsigned int npkt_cclp_clr;
+};
+
 struct mtk_spmi_pmic_debug_data {
 	struct device *dev;
 	struct mutex lock;
@@ -85,6 +94,7 @@ struct mtk_spmi_pmic_debug_data {
 	struct pmic_pre_lvsys_info pre_lvsys_info;
 	struct pmic_curr_clamping_info curr_clamping_info;
 	struct spmi_pmic_debug_rg_info debug_rg_info;
+	struct spmi_pmic_dump_rg_info dump_rg_info;
 };
 
 static struct mtk_spmi_pmic_debug_data *mtk_spmi_pmic_debug[SPMI_MAX_SLAVE_ID];
@@ -578,6 +588,45 @@ void mtk_spmi_pmic_get_debug_rg_info(unsigned int *buf)
 }
 EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_debug_rg_info);
 
+int mtk_spmi_pmic_dump_rg_data(u8 slvid, u32 *rdata, enum dump_rg rg_name)
+{
+	struct regmap *regmap;
+	struct spmi_pmic_dump_rg_info info;
+	int ret = 0;
+	unsigned long flags = 0;
+	unsigned int val = 0;
+
+	if (!mtk_spmi_pmic_debug[slvid]) {
+		pr_info("%s: slvid %d not found\n", __func__, slvid);
+		return -1;
+	}
+
+	info = mtk_spmi_pmic_debug[slvid]->dump_rg_info;
+	regmap = mtk_spmi_pmic_debug[slvid]->regmap;
+	raw_spin_lock_irqsave(&info.spin_lock, flags);
+	switch (rg_name) {
+	case RGS_NPKT_CCLP_ERR:
+		if (info.npkt_cclp_err == 0) {
+			pr_info("%s: rg addr is not in dtsi\n", __func__);
+			break;
+		}
+		ret |= regmap_read(regmap, info.npkt_cclp_err, &val);
+		if (rdata != NULL)
+			*rdata = val;
+		ret |= regmap_write(regmap, info.npkt_cclp_clr, 1);
+		ret |= regmap_write(regmap, info.npkt_cclp_clr, 0);
+		break;
+	default:
+		pr_info("%s: rg_name is not defined\n", __func__);
+		ret |= -1;
+		break;
+	}
+	raw_spin_unlock_irqrestore(&info.spin_lock, flags);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_spmi_pmic_dump_rg_data);
+
 static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debug_data *data)
 {
 	struct device_node *node_parent, *node;
@@ -754,6 +803,53 @@ static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debu
 		}
 	}
 
+	err = of_property_read_u32(node, "spmi-pmic-debug-rg-enable",
+				   &(data->debug_rg_info.enable));
+	if (err)
+		dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-enable' property\n",
+			 __func__, data->usid);
+	if (data->debug_rg_info.enable) {
+		err = of_property_read_u32_array(node, "spmi-pmic-debug-rg-addr",
+						 dbg_buf, ARRAY_SIZE(dbg_buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-addr' property\n",
+				 __func__, data->usid);
+		else {
+			for (i = 0; i < SPMI_PMIC_DEBUG_RG_NUM; i++)
+				data->debug_rg_info.dbg_reg_addr[i] = dbg_buf[i];
+		}
+		err = of_property_read_u32_array(node, "spmi-pmic-debug-rg-mask",
+						 dbg_buf, ARRAY_SIZE(dbg_buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-mask' property\n",
+				 __func__, data->usid);
+		else {
+			for (i = 0; i < SPMI_PMIC_DEBUG_RG_NUM; i++)
+				data->debug_rg_info.dbg_reg_mask[i] = dbg_buf[i];
+		}
+		err = of_property_read_u32_array(node, "spmi-pmic-debug-rg-shift",
+						 dbg_buf, ARRAY_SIZE(dbg_buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-shift' property\n",
+				 __func__, data->usid);
+		else {
+			for (i = 0; i < SPMI_PMIC_DEBUG_RG_NUM; i++)
+				data->debug_rg_info.dbg_reg_shift[i] = dbg_buf[i];
+		}
+	}
+
+	/* SPMI PMIC dump rg data */
+	err = of_property_read_u32(node, "rgs-npkt-cclp-err", &(data->dump_rg_info.npkt_cclp_err));
+	if (err) {
+		dev_info(dev, "%s slvid 0x%x does not have 'rgs-npkt-cclp-err' property\n",
+			 __func__, data->usid);
+		data->dump_rg_info.npkt_cclp_err = 0;
+	}
+	err = of_property_read_u32(node, "rgs-npkt-cclp-clr", &(data->dump_rg_info.npkt_cclp_clr));
+	if (err)
+		dev_info(dev, "%s slvid 0x%x does not have 'rgs-npkt-cclp-clr' property\n",
+			 __func__, data->usid);
+
 	return data->usid;
 }
 
@@ -777,6 +873,7 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 	data->dev = &pdev->dev;
 	mutex_init(&data->lock);
 	mutex_init(&dump_mutex);
+	raw_spin_lock_init(&data->dump_rg_info.spin_lock);
 	data->regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!data->regmap)
 		return -ENODEV;

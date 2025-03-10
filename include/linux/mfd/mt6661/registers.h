@@ -701,4 +701,8 @@
 	"GPIO_PULLSEL0_2"                                                 \
 }
 
+/* SPMI PMIC dump rg data */
+#define MT6661_RGS_NPKT_CCLP_ERR                                          (0x4cb)
+#define MT6661_RGS_NPKT_CCLP_CLR                                          (0x4ca)
+
 #endif /* __MFD_MT6661_REGISTERS_H__ */
