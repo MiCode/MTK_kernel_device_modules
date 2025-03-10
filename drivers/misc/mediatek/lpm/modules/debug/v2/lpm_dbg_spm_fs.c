@@ -559,6 +559,9 @@ SKIP_REQ_DUMP:
 	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_COMMON);
 	for (i = 0; i < res_mapping_len; i++) {
 		tmp_id = map[i].id;
+		if(tmp_id == NON_RES_SIG_GROUP)
+			continue;
+
 		tmp_active_time = sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[tmp_id].time;
 		mtk_dbg_spm_log("common(active) %s: %u.%03u\n",
 				map[i].name, tmp_active_time / 1000, tmp_active_time % 1000);
@@ -567,6 +570,9 @@ SKIP_REQ_DUMP:
 	sys_res_record = sys_res_ops->get(SYS_RES_SCENE_SUSPEND);
 	for (i = 0; i < res_mapping_len; i++) {
 		tmp_id = map[i].id;
+		if(tmp_id == NON_RES_SIG_GROUP)
+			continue;
+
 		tmp_active_time = sys_res_record->spm_res_sig_stats_ptr->res_sig_tbl[tmp_id].time;
 		mtk_dbg_spm_log("Suspend(active) %s: %u.%03u\n",
 				map[i].name, tmp_active_time / 1000, tmp_active_time % 1000);

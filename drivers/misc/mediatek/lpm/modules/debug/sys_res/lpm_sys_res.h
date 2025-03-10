@@ -12,6 +12,7 @@
 #include <swpm_module_psp.h>
 
 #define SYS_RES_SYS_RESOURCE_NUM (8)
+#define NON_RES_SIG_GROUP (0xFFFFFFFF)
 
 enum _sys_main_res {
 	SYS_MAIN_RES_DDREN,
