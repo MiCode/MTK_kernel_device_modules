@@ -185,6 +185,7 @@ struct mtk_mmmc_power_domain {
 	struct mtk_cti *cti[CTI_NUM_DOMAIN_MAX];
 	u32 cti_total_cnt;
 	struct notifier_block smi_nb;
+	bool kernel_no_ctrl;
 };
 
 struct mtk_mminfra2_config {

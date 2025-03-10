@@ -980,12 +980,12 @@ u32 mtk_init_monitor_by_subsys_id(u32 subsys_id, bool dump_and_force_init)
 		MM_MONITOR_ERR("power_domain:%d empty data", subsys_id);
 		return -EINVAL;
 	}
-	MM_MONITOR_DBG("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d hrt_debug_enabled:%d",
+	MM_MONITOR_DBG("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d hrt_debug_enabled:%d kernel_no_ctrl:%d",
 		subsys_id, mmmc_power_domain->bwr_total_cnt,
 		mmmc_power_domain->ela_total_cnt, mmmc_power_domain->cti_total_cnt,
-		hrt_debug_enabled);
+		hrt_debug_enabled, mmmc_power_domain->kernel_no_ctrl);
 
-	if (!hrt_debug_enabled)
+	if (!hrt_debug_enabled || mmmc_power_domain->kernel_no_ctrl)
 		return 0;
 
 	if (dump_and_force_init || (mmmc_state & MONITOR_ENABLE)) {
@@ -1019,9 +1019,13 @@ u32 mtk_dump_monitor_by_subsys_id(u32 subsys_id)
 		return -EINVAL;
 	}
 
-	MM_MONITOR_DBG("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d",
+	MM_MONITOR_DBG("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d kernel_no_ctrl:%d",
 		subsys_id, mmmc_power_domain->bwr_total_cnt,
-		mmmc_power_domain->ela_total_cnt, mmmc_power_domain->cti_total_cnt);
+		mmmc_power_domain->ela_total_cnt, mmmc_power_domain->cti_total_cnt,
+		mmmc_power_domain->kernel_no_ctrl);
+
+	if (mmmc_power_domain->kernel_no_ctrl)
+		return 0;
 
 	dump_bwr(mmmc_power_domain);
 	dump_ela(mmmc_power_domain);
@@ -1052,18 +1056,28 @@ int mtk_mmmc_reinit(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
+	}
+
 	if (subsys_id == get_mmmc_subsys_max()) {
 		for (index = 0; index < get_mmmc_subsys_max(); index++) {
 			if (!g_mmmc_power_domain[index])
 				continue;
 			power_domain_id = g_mmmc_power_domain[index]->power_domain_id;
+			if (g_mmmc_power_domain[index]->kernel_no_ctrl) {
+				MM_MONITOR_DBG("power_domain_id:%d kernel_no_control:%d",
+					power_domain_id, g_mmmc_power_domain[index]->kernel_no_ctrl);
+					continue;
+			}
 			result = mtk_init_monitor(power_domain_id, true /* dump & force init */);
 		}
 	} else {
 		result = mtk_init_monitor_by_subsys_id(subsys_id, true);
 	}
 
-	return 0;
+	return result;
 }
 static const struct kernel_param_ops mmmc_reinit_ops = {
 	.set = mtk_mmmc_reinit,
@@ -1083,11 +1097,21 @@ int mtk_mmmc_dump(const char *val, const struct kernel_param *kp)
 		return result;
 	}
 
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
+	}
+
 	if (subsys_id == get_mmmc_subsys_max()) {
 		for (index = 0; index < get_mmmc_subsys_max(); index++) {
 			if (!g_mmmc_power_domain[index])
 				continue;
 			power_domain_id = g_mmmc_power_domain[index]->power_domain_id;
+			if (g_mmmc_power_domain[index]->kernel_no_ctrl) {
+				MM_MONITOR_DBG("power_domain_id:%d kernel_no_control:%d",
+					power_domain_id, g_mmmc_power_domain[index]->kernel_no_ctrl);
+					continue;
+			}
 			result = mtk_dump_monitor(power_domain_id);
 		}
 	} else {
@@ -1107,6 +1131,11 @@ int mtk_mmmc_set_rg(const char *val, const struct kernel_param *kp)
 	u32 result, hw, id, offset, value, mask;
 
 	result = sscanf(val, "%d %d %x %x %x", &hw, &id, &offset, &value, &mask);
+
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
+	}
 
 	MM_MONITOR_DBG("hw:%d id:%d offset:%#x value:%#x mask:%#x set result:%d",
 		hw, id, offset, value, mask, result);
@@ -1154,6 +1183,11 @@ int mtk_mmmc_fake_engine(const char *val, const struct kernel_param *kp)
 			id, wr_pat, length, burst, dis_rd, dis_wr, latency, loop, dma, start);
 
 		return result;
+	}
+
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
 	}
 
 	dev = g_mtk_mm_fake_engine->dev;
@@ -1296,6 +1330,11 @@ int mtk_mmmc_smi_mon(const char *val, const struct kernel_param *kp)
 	u32 result, comm, start;
 	u64 dump_mmmc;
 
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
+	}
+
 	result = sscanf(val, "%d %llu %d", &comm, &dump_mmmc, &start);
 	if (result != 3 || comm > 1) {
 		MM_MONITOR_ERR("smi monitor comm:%d dump_mmmc:%llu", comm, dump_mmmc);
@@ -1362,6 +1401,11 @@ int mtk_mmmc_emi_monitor(const char *val, const struct kernel_param *kp)
 	u32 result, start, filter;
 	void __iomem *base = g_mtk_mminfra2_config->emi_16qos_monitor_base;
 
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
+	}
+
 	result = sscanf(val, "%d %d", &start, &filter);
 
 	if (result != 2) {
@@ -1370,7 +1414,6 @@ int mtk_mmmc_emi_monitor(const char *val, const struct kernel_param *kp)
 	}
 
 	if (start) {
-
 		emi_moniter_settings();
 		/* filter */
 		if (filter == 0) // qos level
@@ -1499,6 +1542,14 @@ int mtk_mm_bwr_probe(struct platform_device *pdev, u32 power_domain_id)
 	struct resource *res;
 	u32 hwid, bwr_index = 0, subsys_id;
 	u32 commid = -1, larbid = -1;
+
+	if (of_property_read_u32(dev->of_node, "axi-common-id", &commid) == 0 ||
+		of_property_read_u32(dev->of_node, "axi-larb-id", &larbid) == 0) {
+		if (!g_mtk_axi_mon) {
+			MM_MONITOR_ERR("g_mtk_axi_mon is null");
+			return -EPROBE_DEFER;
+		}
+	}
 
 	mtk_bwr = devm_kzalloc(dev, sizeof(*mtk_bwr), GFP_KERNEL);
 	if (!mtk_bwr) {
@@ -1920,6 +1971,9 @@ static int mm_monitor_controller_probe(struct platform_device *pdev)
 		g_mmmc_power_domain[subsys_id] = mmmc_power_domain;
 		mmmc_power_domain->power_domain_id = power_domain_id;
 		g_mmmc_power_domain_cnt++;
+
+		if (of_property_read_bool(dev->of_node, "mmmc-kernel-no-ctrl"))
+			mmmc_power_domain->kernel_no_ctrl = true;
 	}
 
 	switch (plat_data->engine) {
