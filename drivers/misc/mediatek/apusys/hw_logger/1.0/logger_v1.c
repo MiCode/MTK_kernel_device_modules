@@ -721,8 +721,13 @@ static int apu_logtop_copy_buf(void)
 		lock_fail = false;
 	}
 
-	pwr_status = GET_MASK_BITS(APU_RPC_PWR_STATUS);
-	HWLOGR_DBG("APU_RPC_PWR_STATUS : 0x%x\n", pwr_status);
+	if (enable_interrupt) {
+		pwr_status = GET_MASK_BITS(APU_RPC_PWR_STATUS);
+		HWLOGR_DBG("APU_RPC_PWR_STATUS : 0x%x\n", pwr_status);
+	} else {
+		/* force power status with non interrupt mode */
+		pwr_status = 0x3;
+	}
 
 	ret = get_r_w_ptr(&r_ptr, &w_ptr);
 
