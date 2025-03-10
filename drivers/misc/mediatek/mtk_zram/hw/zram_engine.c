@@ -38,6 +38,10 @@
 /* TBU monitor */
 #include <mtk-iommu-util.h>
 
+/* Thermal notifier */
+#include "thermal_interface.h"
+#include <linux/notifier.h>
+
 /*
  * DST copy -
  * [0]: 2048, [1]: 1024, [2]: 512, [3]: 256, [4]: 128, [5]: 64
@@ -2280,6 +2284,53 @@ static void hwcomp_unlock_mode(struct zram_engine_t *hwz)
 	pr_info("%s: unlock mode (%d)\n", __func__, atomic_read(&hwz->mode_locked));
 }
 
+static int thermal_callback(struct notifier_block *nb, unsigned long event, void *data)
+{
+	struct zram_engine_t *hwz = ERR_PTR(-ENODEV);
+	int retval;
+
+	mutex_lock(&hwz_mutex);
+	if (!list_empty(&hwz_list))
+		hwz = list_first_entry(&hwz_list, struct zram_engine_t, list);
+
+	if (IS_ERR(hwz)) {
+		retval = -ENOENT;
+		pr_info("%s: failed to get hwz.\n", __func__);
+		goto exit;
+	}
+
+#ifndef FPGA_EMULATION
+	/* Enable clock for zram engine */
+	retval = engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+	if (retval) {
+		pr_info("%s: engine_gear_enable_clock fail: (%d)\n", __func__, retval);
+		goto exit;
+	}
+#endif
+
+	/* Thermal hint received */
+	if (event == 1)
+		engine_fix_gear_level(&hwz->gear_ctrl, 3 - ENGINE_GEAR_DTS_BASE);
+	else
+		engine_free_gear_level(&hwz->gear_ctrl);
+
+#ifndef FPGA_EMULATION
+	/*
+	 * Disable clock for zram engine -
+	 * Paired with the one in thermal_callback.
+	 */
+	engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+#endif
+exit:
+	mutex_unlock(&hwz_mutex);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block thermal_notifier = {
+	.notifier_call = thermal_callback,
+};
+
 static int mtk_hwzram_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2340,6 +2391,9 @@ static int mtk_hwzram_probe(struct platform_device *pdev)
 	list_add(&hwz->list, &hwz_list);
 	mutex_unlock(&hwz_mutex);
 
+	/* Register thermal hint notifier */
+	mtk_thermal_hint_notify_register("zram_cooling", &thermal_notifier);
+
 #ifndef FPGA_EMULATION
 	/*
 	 * Disable clock for zram engine -
@@ -2381,6 +2435,9 @@ static void mtk_hwzram_remove(struct platform_device *pdev)
 		return;
 	}
 #endif
+
+	/* Unregister thermal hint notifier */
+	mtk_thermal_hint_notify_unregister("zram_cooling", &thermal_notifier);
 
 	/* Remove it from hwz_list */
 	mutex_lock(&hwz_mutex);
