@@ -1545,7 +1545,7 @@ static ssize_t voltage_table_show(struct device *dev, struct device_attribute *a
 		dev_info(dev, "not support switch_pt\n");
 		return -EINVAL;
 	}
-	return sprintf(buf, "%d\n", voltage_table_data->selected_table);
+	return snprintf(buf, PAGE_SIZE, "%d\n", voltage_table_data->selected_table);
 }
 
 static ssize_t voltage_table_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
