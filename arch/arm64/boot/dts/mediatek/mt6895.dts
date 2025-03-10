@@ -3850,6 +3850,7 @@
 		mtk_ssc: mtk_ssc@1c01f000 {
 			compatible = "mediatek,ssc";
 			safe-vlogic-uv = <600000>;
+			ssc-enable = <1>;
 		};
 
 		cam_main_r1a_clk: syscon@1a000000 {
