@@ -823,6 +823,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37707-c2v-arp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-rm692h5-alpha-cmd-spr".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-rm692h5-alpha-cmd-spr-mipichg".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-rm692h5-alpha-cmd-spr-144hz".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-rm692h5-cmd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-tianma-nt36672e-vdo-120hz-vfp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-tianma-nt36672e-vdo-120hz-vfp-6382".format(kernel_version),
