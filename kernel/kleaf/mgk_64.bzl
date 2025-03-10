@@ -1096,10 +1096,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug:mtk-swpm-dbg-v6991".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-isp-dbg-v6993".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-perf-arm-pmu-legacy".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-legacy".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2/modules/debug/v1:mtk-swpm-dbg-common-v1-legacy".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2/modules/debug:mtk-swpm-dbg-v6789".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp".format(kernel_version),
@@ -2169,6 +2165,11 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+
+        mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-perf-arm-pmu-legacy".format(kernel_version))
+        mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-legacy".format(kernel_version))
+        mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2/modules/debug/v1:mtk-swpm-dbg-common-v1-legacy".format(kernel_version))
+        mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2/modules/debug:mtk-swpm-dbg-v6789".format(kernel_version))
 
     if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877:wlan_drv_gen4m_6877")
