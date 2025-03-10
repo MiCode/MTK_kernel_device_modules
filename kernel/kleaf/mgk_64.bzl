@@ -2202,6 +2202,9 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2/modules/debug/v1:mtk-swpm-dbg-common-v1-legacy".format(kernel_version))
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2/modules/debug:mtk-swpm-dbg-v6789".format(kernel_version))
 
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
+
     if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877:wlan_drv_gen4m_6877")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/slbc:ktf_slbc_it")
@@ -4683,6 +4686,9 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
 
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
+
     if "entry_level_legacy.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/modules/v6991:mtk_mbraink_v6991".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/modules/v6993:mtk_mbraink_v6993".format(kernel_version))
@@ -4718,5 +4724,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
 
 get_overlay_modules_list()
