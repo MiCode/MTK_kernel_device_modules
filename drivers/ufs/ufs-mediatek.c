@@ -1249,61 +1249,7 @@ out:
 	return 0;
 }
 
-static int _ufshcd_get_vreg(struct device *dev, struct ufs_vreg *vreg)
-{
-	int ret = 0;
-
-	if (!vreg)
-		goto out;
-
-	vreg->reg = devm_regulator_get(dev, vreg->name);
-	if (IS_ERR(vreg->reg)) {
-		ret = PTR_ERR(vreg->reg);
-		dev_info(dev, "%s: %s get failed, err=%d\n",
-				__func__, vreg->name, ret);
-	}
-out:
-	return ret;
-}
-
 #define MAX_VCC_NAME 30
-static int _ufshcd_populate_vreg(struct device *dev, const char *name,
-			  struct ufs_vreg **out_vreg)
-{
-	char prop_name[MAX_VCC_NAME];
-	struct ufs_vreg *vreg = NULL;
-	struct device_node *np = dev->of_node;
-
-	if (!np) {
-		dev_info(dev, "%s: non DT initialization\n", __func__);
-		goto out;
-	}
-
-	snprintf(prop_name, MAX_VCC_NAME, "%s-supply", name);
-	if (!of_parse_phandle(np, prop_name, 0)) {
-		dev_info(dev, "%s: Unable to find %s regulator, assuming enabled\n",
-				__func__, prop_name);
-		goto out;
-	}
-
-	vreg = devm_kzalloc(dev, sizeof(*vreg), GFP_KERNEL);
-	if (!vreg)
-		return -ENOMEM;
-
-	vreg->name = devm_kstrdup(dev, name, GFP_KERNEL);
-	if (!vreg->name)
-		return -ENOMEM;
-
-	snprintf(prop_name, MAX_VCC_NAME, "%s-max-microamp", name);
-	if (of_property_read_u32(np, prop_name, &vreg->max_uA)) {
-		dev_info(dev, "%s: unable to find %s\n", __func__, prop_name);
-		vreg->max_uA = 0;
-	}
-out:
-	*out_vreg = vreg;
-	return 0;
-}
-
 static int ufs_mtk_vreg_fix_vcc(struct ufs_hba *hba)
 {
 	struct ufs_vreg_info *info = &hba->vreg_info;
@@ -1330,11 +1276,11 @@ static int ufs_mtk_vreg_fix_vcc(struct ufs_hba *hba)
 		return 0;
 	}
 
-	err = _ufshcd_populate_vreg(dev, vcc_name, &info->vcc);
+	err = ufshcd_populate_vreg(dev, vcc_name, &info->vcc, false);
 	if (err)
 		return err;
 
-	err = _ufshcd_get_vreg(dev, info->vcc);
+	err = ufshcd_get_vreg(dev, info->vcc);
 	if (err)
 		return err;
 
