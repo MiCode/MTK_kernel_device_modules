@@ -4475,6 +4475,7 @@ static int _mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
  *       1: flip sram (another sram matches)
  *		 2: update sram table (both srams do not match)
  *       3: force flip sram (in content fps mode, avoid sram keep updating)
+ *       4: table still updating
  */
 static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 		struct mtk_oddmr_timing *cur_timing, int *table_idx, bool check_force_flip)
@@ -4521,7 +4522,7 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 		ODDMRFLOW_LOG("TABLE_UPDATING: use table%d\n", *table_idx);
 		if (oddmr_data->data->od_version >= MTK_OD_V2)
 			oddmr_data->od_update_sram = 1;
-		return 0;
+		return 4;
 	}
 
 	/* second best just flip sram */
