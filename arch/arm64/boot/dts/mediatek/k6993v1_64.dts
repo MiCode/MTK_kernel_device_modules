@@ -14,6 +14,20 @@
 	bootargs_ext = "arm64.nosme";
 };
 
+&ise_lpm {
+	ise-wakelock = <1>;
+	ise-lpm-freerun = <1>;
+	ise-lpm-deinit-bypass = <0>;
+};
+
+&ise_mbox {
+	mediatek,real-drv = <1>;
+};
+
+&ise_trusty {
+	mediatek,real-drv = <1>;
+};
+
 &pio {
 	mtkfb_pins_lcd_bias_enp1: lcd-bias-enp1-gpio {
 		pins-cmd-dat {
