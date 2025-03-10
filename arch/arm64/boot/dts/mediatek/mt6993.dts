@@ -19018,12 +19018,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			vbat-thd-enable = <1>;
 			lbat-max-tb-num = <3>;
 			bat0-thd-volts-tb0-l = <
-				3100 3000 2500
+				3200 3100 3000
 				3100 3000 2500
 				3100 3000 2500
 				3100 3000 2500>;
 			bat0-thd-volts-tb0-h = <
-				3200 3100 3000
+				3300 3200 3100
 				3200 3100 3000
 				3200 3100 3000
 				3200 3100 3000>;
