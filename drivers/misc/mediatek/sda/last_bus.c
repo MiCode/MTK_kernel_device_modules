@@ -29,6 +29,8 @@
 #include "sda.h"
 #include "dbg_error_flag.h"
 #include "last_bus.h"
+#include <linux/arm-smccc.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
 
 static struct cfg_lastbus my_cfg_lastbus;
 static char dump_buf[DUMP_BUFF_SIZE];
@@ -163,6 +165,7 @@ int lastbus_dump(int force_dump)
 	bool is_timeout = false, force_clean = false;
 	void __iomem *base;
 	uint32_t value = 0;
+	struct arm_smccc_res res;
 
 	do_div(local_time, 1000000);
 	buf_point = check_buf_size(50);
@@ -180,6 +183,15 @@ int lastbus_dump(int force_dump)
 		m = &my_cfg_lastbus.monitors[i];
 		if (my_cfg_lastbus.monitors[i].isr_dump == 0)
 			continue;
+
+		if (my_cfg_lastbus.monitors[i].chinfra_req) {
+			arm_smccc_smc(MTK_SIP_SDA_CONTROL, SDA_CHINFRA_MASTER, CHINFRA_SPM_REQ, 0,
+				0, 0, 0, 0, &res);
+			if (res.a0) {
+				pr_notice("%s: trigger CHINFRA_SPM_REQ failed.\n", __func__);
+				return IRQ_NONE;
+			}
+		}
 
 		base = ioremap(m->base, ((0x408 + m->num_ports * 4) / 0x100 + 1) * 0x100);
 		value = readl(base);
@@ -201,6 +213,15 @@ int lastbus_dump(int force_dump)
 				__func__, (readl(base) & LASTBUS_TIMEOUT), force_clean);
 		}
 		iounmap(base);
+
+		if (my_cfg_lastbus.monitors[i].chinfra_req) {
+			arm_smccc_smc(MTK_SIP_SDA_CONTROL, SDA_CHINFRA_MASTER, CHINFRA_SPM_FREE, 0,
+				0, 0, 0, 0, &res);
+			if (res.a0) {
+				pr_notice("%s: trigger CHINFRA_SPM_FREE failed.\n", __func__);
+				return IRQ_NONE;
+			}
+		}
 	}
 	if (!aee_dump && force_clean)
 		memset(dump_buf, '\0', sizeof(dump_buf));
@@ -346,6 +367,12 @@ static int last_bus_probe(struct platform_device *pdev)
 			&my_cfg_lastbus.monitors[num].isr_dump);
 		if (ret < 0)
 			my_cfg_lastbus.monitors[num].isr_dump = 1;
+
+		/* get monitor need chinfra-req, default is off */
+		ret = of_property_read_u32(child_part, "chinfra-req",
+			&my_cfg_lastbus.monitors[num].chinfra_req);
+		if (ret < 0)
+			my_cfg_lastbus.monitors[num].chinfra_req = 0;
 
 		num++;
 	}

@@ -59,6 +59,7 @@ struct lastbus_monitor {
 	unsigned int num_bus_status;
 	unsigned int offset_bus_status;
 	unsigned int isr_dump;
+	unsigned int chinfra_req;
 };
 
 struct cfg_lastbus {
