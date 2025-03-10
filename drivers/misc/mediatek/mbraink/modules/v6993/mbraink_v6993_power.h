@@ -10,6 +10,8 @@
 #include <linux/io.h>
 #include <mbraink_ioctl_struct_def.h>
 
+#include "ccci_mbrain.h"
+
 
 #define MAX_POWER_HD_SZ 8
 #define SPM_TOTAL_MAX_SIG_NUM (1000)
@@ -42,6 +44,9 @@ unsigned int *vcorefs_get_src_req(void);
 
 int mbraink_v6993_power_init(struct device *dev);
 int mbraink_v6993_power_deinit(void);
+
+int mbraink_v6993_power_ccci_event_cb(enum CCCI_MBRAIN_EVENT_TYPE event_type,
+	void *ccci_mbrain_data);
 
 
 #endif /*end of MBRAINK_V6993_POWER_H*/
