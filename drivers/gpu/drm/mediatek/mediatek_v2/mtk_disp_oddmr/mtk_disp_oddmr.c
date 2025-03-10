@@ -8115,7 +8115,7 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			}
 			CRTC_MMP_MARK(0, oddmr_ctl, 0, 12);
 		}
-		for (idx = 0; idx < cnts; idx++) {
+		for (idx = 2; idx < cnts; idx++) {
 			if (IS_TABLE_VALID(idx, od_param->valid_table)) {
 				CRTC_MMP_MARK(0, oddmr_ctl, 0, idx * 10);
 				mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp, oddmr_data, idx);
@@ -8178,7 +8178,7 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 				}
 				CRTC_MMP_MARK(0, oddmr_ctl, 1, 12);
 			}
-			for (idx = 0; idx < cnts; idx++) {
+			for (idx = 2; idx < cnts; idx++) {
 				if (IS_TABLE_VALID(idx, od_param->valid_table)) {
 					CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10);
 					mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp1, oddmr1_data, idx);
