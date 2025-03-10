@@ -29,7 +29,7 @@ static int CFG_DISPLAY_VREFRESH;
 /* Set 1 to trigger AOD SCP in doze active mode
  * Only for early develop or debug purpsoe
  */
-#define AO_MODE	(1)
+#define AO_MODE	(0)
 
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
 #define MTK_FB_ALIGNMENT 32
@@ -646,14 +646,15 @@ static int aod_scp_suspend_noirq(struct device *dev)
 		mtk_oddmr_scp_status(1);
 	}
 
-	//mtk_aod_scp_set_semaphore_noirq(0);
+	mtk_aod_scp_set_semaphore_noirq(0);
 	return 0;
 }
 
 static int aod_scp_resume_noirq(struct device *dev)
 {
-	//if (mtk_aod_scp_set_semaphore_noirq(1) == 0)
-	//	DDPAEE("[AOD]:failed to get semaphore\n");
+	mtk_aod_scp_ipi_send(1);
+	if (mtk_aod_scp_set_semaphore_noirq(1) == 0)
+		DDPAEE("[AOD]:failed to get semaphore\n");
 	mtk_oddmr_scp_status(0);
 	return 0;
 }
