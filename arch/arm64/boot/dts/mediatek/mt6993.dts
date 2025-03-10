@@ -1386,6 +1386,11 @@
 		mm-hw-ccf-regmap = <&mm_hwv>;
 	};
 
+	vlpcfg_bus: syscon@1c001000 {
+		compatible = "mediatek,mt6993-vlpcfg_bus", "syscon";
+		reg = <0 0x1c001000 0 0x1000>;
+	};
+
 	/* only for PM debug */
 	scpsys: syscon@1c00d000 {
 		compatible = "mediatek,mt6993-scpsys-hwv", "syscon";
@@ -5253,6 +5258,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
 			pextpcfg = <&pextp0cfg_ao_clk>;
+			vlpcfg = <&vlpcfg_bus>;
 			pmrc = <&srclken_rc>;
 
 			clocks = <&pextp0cfg_ao_clk PEXTP0_MAC0_TL_PEXTP>,
