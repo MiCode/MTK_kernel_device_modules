@@ -3490,8 +3490,9 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 		if (is_extended_layer(layer_info)) {
 			comp_state.ext_lye_id = LYE_EXT0 + ext_cnt;
 			ext_cnt++;
-			comp_state.blender_comp_id =
-				mtk_lye_get_blender_comp_id(disp_idx, i, drm_dev, blender_lye);
+			if (priv->data->ovl_exdma_rule)
+				comp_state.blender_comp_id =
+					mtk_lye_get_blender_comp_id(disp_idx, i, drm_dev, blender_lye);
 		} else {
 			if (comp_state.comp_id != prev_comp_id)
 				ext_cnt = 0;
