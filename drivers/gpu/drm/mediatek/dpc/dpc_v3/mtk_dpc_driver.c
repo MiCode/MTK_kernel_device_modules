@@ -99,7 +99,7 @@ static void __iomem *vdisp_dvfsrc_sw_req4;
 static void __iomem *clk_disp_sel;
 static void __iomem *debug_reg;
 
-static void __iomem *busy_mask[2];
+static void __iomem *busy_mask[4];
 
 static void __iomem *hwccf_xpu0_mtcmos_set;
 static void __iomem *hwccf_xpu0_mtcmos_clr;
@@ -894,8 +894,10 @@ static void dpc_enable_v3(const u8 en)
 		dpc_mmp(config, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
 
 		if (mask_busy_irq) {
-			writel(~0x100000, busy_mask[0]);
-			writel(~0x300, busy_mask[1]);
+			writel(~0x2000000, busy_mask[0]);
+			writel(~0x100000, busy_mask[1]);
+			writel(~0x2, busy_mask[2]);
+			writel(~0x300, busy_mask[3]);
 		}
 	} else {
 		/* [0] disp_vcore SW_CTRL */
@@ -2065,20 +2067,20 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	hwccf_global_sta = ioremap(0x31c1131c, 0x4);
 
 	// Mask unprocessed mutex
-	// base = ioremap(0x3E320328, 0x4); writel(~0x3000000, base);
-	busy_mask[0] = ioremap(0x3E32032C, 0x4);
-	// base = ioremap(0x3E520328, 0x4); writel(~0x0, base);
-	// base = ioremap(0x3E52032C, 0x4); writel(~0x0, base);
-	// base = ioremap(0x3E720328, 0x4); writel(~0x0, base);
-	busy_mask[1] = ioremap(0x3E72032C, 0x4);
-	// base = ioremap(0x3E920328, 0x4); writel(~0x0, base);
-	// base = ioremap(0x3E92032C, 0x4); writel(~0x0, base);
-	// base = ioremap(0x32920328, 0x4); writel(~0x0, base);
-	// base = ioremap(0x3292032C, 0x4); writel(~0x10000, base);
-	// base = ioremap(0x32C20328, 0x4); writel(~0x0, base);
-	// base = ioremap(0x32C2032C, 0x4); writel(~0x0, base);
-	// base = ioremap(0x3E020328, 0x4); writel(~0x0, base);
-	// base = ioremap(0x3E020334, 0x4); writel(~0x0, base);
+	busy_mask[0] = ioremap(0x3E320328, 0x4); //~0x2000000
+	busy_mask[1] = ioremap(0x3E32032C, 0x4); //~0x100000
+	//             ioremap(0x3E520328, 0x4);
+	//             ioremap(0x3E52032C, 0x4);
+	busy_mask[2] = ioremap(0x3E720328, 0x4); //~0x2
+	busy_mask[3] = ioremap(0x3E72032C, 0x4); //~0x300
+	//             ioremap(0x3E920328, 0x4);
+	//             ioremap(0x3E92032C, 0x4);
+	//             ioremap(0x32920328, 0x4);
+	//             ioremap(0x3292032C, 0x4); //~0x10000
+	//             ioremap(0x32C20328, 0x4);
+	//             ioremap(0x32C2032C, 0x4);
+	//             ioremap(0x3E020328, 0x4);
+	//             ioremap(0x3E020334, 0x4);
 
 	// Mask unprocessed irq
 	// base = ioremap(0x3EFF1034, 0x4); writel(0, base);
