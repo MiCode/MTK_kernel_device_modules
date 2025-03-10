@@ -729,9 +729,6 @@ static const struct mtk_mmc_compatible mt6993_compat = {
 	.infra_check = {
 		.enable = true,
 		.work_mode = MSDC_SPM_HW_MODE,
-		/* soc26m/inframtcmos/buspll/ddrsrc/emi/ddren */
-		.infra_ack_bit = (BIT(2) | BIT(3) | BIT(4) | BIT(5) | BIT(6) | BIT(7)),
-		.infra_ack_paddr = 0x1c00DA4C,
 	},
 };
 
