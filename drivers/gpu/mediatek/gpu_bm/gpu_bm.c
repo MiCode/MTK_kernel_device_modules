@@ -13,7 +13,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 
-#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 #include <mtk_qos_ipi.h>
 #endif /* CONFIG_MTK_QOS_FRAMEWORK */
 #include <mtk_gpu_utility.h>
@@ -171,7 +171,7 @@ static DECLARE_DELAYED_WORK(g_setupfw_work, setupfw_work_handler);
 
 static void setupfw_work_handler(struct work_struct *work)
 {
-#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 	struct qos_ipi_data qos_d;
 	int ret = -1;
 
@@ -213,7 +213,8 @@ static void setupfw_work_handler(struct work_struct *work)
 		ret);
 
 #else
-	pr_debug("%s: sspm_ipi is not support!\n", __func__);
+	if (ret == -1)
+		pr_debug("%s: sspm_ipi is not support!\n", __func__);
 #endif /* CONFIG_MTK_QOS_FRAMEWORK */
 }
 
