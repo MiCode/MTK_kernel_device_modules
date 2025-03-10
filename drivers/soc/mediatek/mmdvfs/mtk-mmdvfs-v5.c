@@ -425,6 +425,47 @@ static const struct kernel_param_ops mmdvfs_vcp_set_rate_ops = {
 module_param_cb(vcp_set_rate, &mmdvfs_vcp_set_rate_ops, NULL, 0644);
 MODULE_PARM_DESC(vcp_set_rate, "set rate from dummy vcp user by ipi");
 
+static int mmdvfs_force_clock(const char *val, const struct kernel_param *kp)
+{
+	int all = 0, idx = 0, lvl = 0, ret;
+
+	ret = sscanf(val, "%d %d %d", &all, &idx, &lvl);
+	if (ret != 3) {
+		MMDVFS_DBG("failed:%d all:%d idx:%d lvl:%d", ret, all, idx, lvl);
+		return -EINVAL;
+	}
+
+	mtk_mmdvfs_enable_vcp(true, mmdvfs_data->user_num);
+
+	if (!all) { // mux
+		if (idx >= mmdvfs_data->mux_num) {
+			MMDVFS_DBG("invalid idx:%d mux_num:%hhu all:%d", idx, mmdvfs_data->mux_num, all);
+			ret = -EINVAL;
+			goto force_clock_end;
+		}
+
+		ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_FORCE_CLOCK, idx, lvl, NULL, false);
+	} else { // rc
+		if (idx >= mmdvfs_data->rc_num) {
+			MMDVFS_DBG("invalid idx:%d rc_num:%hhu all:%d", idx, mmdvfs_data->rc_num, all);
+			ret = -EINVAL;
+			goto force_clock_end;
+		}
+
+		ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_FORCE_CLOCK_RC, idx, lvl, NULL, false);
+	}
+
+force_clock_end:
+	mtk_mmdvfs_enable_vcp(false, mmdvfs_data->user_num);
+	return ret;
+}
+
+static const struct kernel_param_ops mmdvfs_force_clock_ops = {
+	.set = mmdvfs_force_clock,
+};
+module_param_cb(force_clock, &mmdvfs_force_clock_ops, NULL, 0644);
+MODULE_PARM_DESC(force_clock, "force clock by ipi");
+
 static inline void mmdvfs_mmup_sram_init(void)
 {
 	static bool sram_init;
