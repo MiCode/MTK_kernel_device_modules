@@ -97,6 +97,14 @@
 	#define REG_DBI_COUNT_TOP_CLK_FORCE_EN REG_FLD_MSB_LSB(15, 15)
 #define DISP_DBI_COUNT_TOP_CTR_4 (0x0754)
 	#define REG_DBI_COUNT_SW_RST REG_FLD_MSB_LSB(0, 0)
+
+#define DISP_DBI_COUNT_IRQ_MASK (0x075C)
+#define DISP_DBI_COUNT_IRQ_RAW_STATUS (0x0760)
+#define DISP_DBI_COUNT_IRQ_STATUS (0x0764)
+#define DISP_DBI_COUNT_IRQ_CLR (0x0768)
+	#define DBI_COUNT_INT_DONE BIT(11)
+	#define DBI_COUNT_EOF BIT(6)
+
 #define DISP_DBI_COUNT_SMI_SB_FLG_DBIR (0x76c)
 	#define REG_DBIR_PREULTRA_RE_ULTRA_MASK REG_FLD_MSB_LSB(0, 0)
 	#define REG_DBIR_PREULTRA_RE_ULTRA_FRCE REG_FLD_MSB_LSB(1, 1)
@@ -242,6 +250,12 @@
 
 #define DISP_DBI_COUNT_UDMA_W_CTRL37 (0xE74)
 	#define REG_FRAME_CMD_MODE_W REG_FLD_MSB_LSB(15, 15)
+
+#define DISP_DBI_COUNT_UDMA_W_CTRL47 (0xF00)
+	#define REG_PRTCL_PROT_OFF_W REG_FLD_MSB_LSB(7, 7)
+#define DISP_DBI_COUNT_UDMA_R_CTRL47 (0xD00)
+	#define REG_PRTCL_PROT_OFF_R REG_FLD_MSB_LSB(7, 7)
+
 
 #define MAX(a,b) ((a>=b)?(a):(b))
 #define MIN(a,b) ((a>=b)?(b):(a))
@@ -471,6 +485,7 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 	struct mtk_ddp_comp *dbi_count = NULL;
 	struct mtk_disp_dbi_count *count_data;
 	int i,j;
+	int crtc_index = drm_crtc_index(&mtk_crtc->base);
 
 	if (!mtk_crtc->dbi_data.support)
 		return;
@@ -526,6 +541,8 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 				crtc_state->cmdq_handle, slice_num,
 					mtk_crtc->dbi_data.slice_idx, 5000, count_data->count_buffer.iova);
 			mtk_crtc->dbi_data.slice_idx++;
+			CRTC_MMP_MARK(crtc_index, dbi_trigger, (unsigned long)mtk_crtc->dbi_data.slice_idx,
+				(unsigned long)mtk_crtc->dbi_data.slice_num);
 			DBI_COUNT_INFO("%d %d\n", mtk_crtc->dbi_data.slice_idx, mtk_crtc->dbi_data.slice_num);
 		}
 	} else {
@@ -964,9 +981,11 @@ int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data)
 int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data)
 {
 	unsigned int *event = data;
+	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
 
 	DBI_COUNT_INFO("+++\n");
-	* event = 1;
+	*event = atomic_read(&dbi_count->buffer_full);
+	atomic_set(&dbi_count->buffer_full, 0);
 
 	return 0;
 }
@@ -1007,7 +1026,7 @@ int mtk_dbi_count_load_buffer(struct mtk_ddp_comp *comp,void *data)
 	return 0;
 }
 
-static void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	uint32_t value = 0, mask = 0;
 
@@ -1036,6 +1055,36 @@ static void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 				REG_DBI_FRAME_DROP_BLOCK_FUNC, handle);
 }
 
+void mtk_oddmr_dbi_udma_off(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle)
+{
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = 0;
+
+	GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+	/* get dbi status */
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.value = 1;
+	cmdq_pkt_read(handle, NULL,
+		comp->regs_pa + REG_DBI_COUNT_UDMA_W_EN, var1);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_AND, var1, &lop, &rop);
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.idx = var2;
+	rop.value = 1;
+	GCE_IF(lop, R_CMDQ_EQUAL, rop);
+	/* condition true: DBI enabled, enable dbi ddren */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + REG_DBI_COUNT_UDMA_W_EN, 0, ~0);
+	GCE_FI;
+}
+
+
 static void mtk_dbi_set_reg_by_mode(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle,struct mtk_dbi_mode_reg_list *mode_cfg, int mode)
 {
@@ -1056,10 +1105,10 @@ static void mtk_dbi_set_reg_by_mode(struct mtk_ddp_comp *comp,
 
 int mtk_dbi_curve_interpolate(struct mtk_dbi_curve_2d *curve, uint32_t x)
 {
-	int x_l;
-	int x_r;
-	int y_l;
-	int y_r;
+	uint32_t x_l;
+	uint32_t x_r;
+	uint32_t y_l;
+	uint32_t y_r;
 
 	if(curve->num <=0)
 		return 0;
@@ -1182,7 +1231,17 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 				dbi_count->buffer_cfg.buf_reg_list.mask[i], handle);
 	}
 
+	if(dbi_count->irq_num && dbi_count->data->irq_handler) {
+		value = 0;
+		value |= DBI_COUNT_INT_DONE;
+		mtk_dbi_count_write_mask(comp, value,
+			DISP_DBI_COUNT_IRQ_MASK, value, handle);
+	}
+
 	// single trigger
+	mtk_dbi_count_write(comp,1,
+		REG_DBI_FRAME_DROP_BLOCK_FUNC, handle);
+	value = 0; mask = 0;
 	SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER);
 	mtk_dbi_count_write_mask(comp, value, REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
 
@@ -1248,14 +1307,6 @@ static void mtk_dbi_count_common_init(struct mtk_ddp_comp *comp,
 	//SET_VAL_MASK(value, mask, 0, REG_DBI_COUNT_TOP_CLK_FORCE_EN);
 	//mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_TOP_CTR_3, mask, handle);
 
-	//value = 0;mask = 0;
-	//SET_VAL_MASK(value, mask, 1, REG_FRAME_CMD_MODE_R);
-	//mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_UDMA_R_CTRL37, mask, handle);
-
-	//value = 0;mask = 0;
-	//SET_VAL_MASK(value, mask, 1, REG_FRAME_CMD_MODE_W);
-	//mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_UDMA_W_CTRL37, mask, handle);
-
 	// ddren
 	value = 0;
 	mask = 0;
@@ -1277,6 +1328,24 @@ static void mtk_dbi_count_common_init(struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(value, mask, 1, COUNT_INP_EN);
 	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNT_OUTP_EN, mask, handle);
 
+	//stash
+	if (dbi_count->data->is_support_stash) {
+		stash_lead_time = dbi_count->data->stash_lead_time;
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
+			mtk_ddp_comp_io_cmd(output_comp, NULL,
+				DSI_GET_LINE_TIME_NS, &dsi_line_time);
+		dsi_line_time /= 1000;
+		if (dsi_line_time > 0)
+			stash_lead_cnt = (stash_lead_time + dsi_line_time - 1) / dsi_line_time;
+		reg_val = (1 << 8) | stash_lead_cnt;
+
+		mtk_dbi_count_write(comp, reg_val,
+			DISP_DBI_COUNT_UDMA_R_CTRL30, handle);
+		mtk_dbi_count_write(comp, reg_val,
+			DISP_DBI_COUNT_UDMA_W_CTR_1B, handle);
+	}
+
 	//side band
 	value = 0;
 	mask = 0;
@@ -1285,7 +1354,6 @@ static void mtk_dbi_count_common_init(struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(value, mask, 1, REG_CNTR_STASH_ULTRA_FRCE);
 	SET_VAL_MASK(value, mask, 1, REG_CNTW_STASH_ULTRA_FRCE);
 	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNT_EMI_SIDE_BAND, mask, handle);
-
 
 }
 
@@ -1329,6 +1397,13 @@ static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
 		// set count mode
 		mtk_dbi_set_reg_by_mode(comp, handle,
 			&dbi_count->count_cfg.count_cfg.code_gain_packed, dbi_count->current_count_mode);
+
+		if(dbi_count->irq_num && dbi_count->data->irq_handler) {
+			value = 0;
+			value |= DBI_COUNT_EOF;
+			mtk_dbi_count_write_mask(comp, value,
+				DISP_DBI_COUNT_IRQ_MASK, value, handle);
+		}
 	}
 	mtk_dbi_count_bypass(comp, handle);
 }
@@ -1381,6 +1456,16 @@ void mtk_dbi_count_dump(struct mtk_ddp_comp *comp)
 	}
 
 	for (i = 0x700; i < 0x830; i += 16) {
+		DDPDUMP("DBI_COUNT+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+		readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+		readl(mbaddr + i + 0xc));
+	}
+	for (i = 0xD00; i < 0xD10; i += 16) {
+		DDPDUMP("DBI_COUNT+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+		readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+		readl(mbaddr + i + 0xc));
+	}
+	for (i = 0xf00; i < 0xf10; i += 16) {
 		DDPDUMP("DBI_COUNT+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
 		readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
 		readl(mbaddr + i + 0xc));
@@ -1458,7 +1543,7 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		data->larb_id = -1;
 		data->bw = 0;
-		if (data->type != CHANNEL_HRT_RW && data->type != CHANNEL_HRT_WRITE)
+		if (data->type != CHANNEL_HRT_READ && data->type != CHANNEL_HRT_WRITE)
 			break;
 
 		if (comp->larb_num == 1)
@@ -1473,7 +1558,7 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (!bw_base)
 				bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
 			data->bw = bw_base * weight / 400;
-			DDPINFO("%s, oddmr comp:%d, larb:%d, type:%d, bw:%d, weight:%d\n",
+			DDPINFO("%s, dbi_count comp:%d, larb:%d, type:%d, bw:%d, weight:%d\n",
 				__func__, comp->id, data->larb_id, data->type, data->bw, weight);
 		}
 		break;
@@ -2261,6 +2346,7 @@ static int mtk_disp_dbi_count_probe(struct platform_device *pdev)
 	if (irq_num < 0 || !priv->data->irq_handler)
 		dev_err(&pdev->dev, "%s failed to request dbi_count irq resource\n", __func__);
 	else {
+		priv->irq_num = irq_num;
 		irq_set_status_flags(irq_num, IRQ_TYPE_LEVEL_HIGH);
 		ret = devm_request_irq(
 			&pdev->dev, irq_num, priv->data->irq_handler,
@@ -2280,6 +2366,8 @@ static int mtk_disp_dbi_count_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
+	atomic_set(&priv->buffer_full, 0);
+
 	DDPMSG("%s-\n", __func__);
 	return ret;
 }
@@ -2295,8 +2383,35 @@ static void mtk_disp_dbi_count_remove(struct platform_device *pdev)
 
 static irqreturn_t mtk_dbi_count_irq_handler(int irq, void *dev_id)
 {
-	struct mtk_disp_dbi_count *priv = dev_id;
+	struct mtk_disp_dbi_count *dbi_count = dev_id;
+	uint32_t status_raw, status = 0;
+	struct mtk_ddp_comp *comp;
 
+	if (IS_ERR_OR_NULL(dbi_count))
+		return IRQ_NONE;
+
+	comp = &dbi_count->ddp_comp;
+	if (mtk_drm_top_clk_isr_get(comp) == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	status_raw = mtk_dbi_count_read(comp, DISP_DBI_COUNT_IRQ_RAW_STATUS);
+	status = mtk_dbi_count_read(comp, DISP_DBI_COUNT_IRQ_STATUS);
+	mtk_dbi_count_write(comp, status, DISP_DBI_COUNT_IRQ_CLR, NULL);
+	mtk_dbi_count_write(comp, 0, DISP_DBI_COUNT_IRQ_CLR, NULL);
+	DDPIRQ("%s %s irq, val:0x%x,0x%x\n", __func__, mtk_dump_comp_str(comp),
+		status_raw, status);
+	if(status & DBI_COUNT_INT_DONE) {
+		atomic_set(&dbi_count->buffer_full, 1);
+		CRTC_MMP_MARK(0, dbi_merge, 0, 0);
+	}
+	if(status & DBI_COUNT_EOF){
+		mtk_dbi_count_write(comp, 0, REG_DBI_FRAME_DROP_BLOCK_FUNC, NULL);
+		CRTC_MMP_MARK(0, dbi_drop, 0, 0);
+	}
+
+	mtk_drm_top_clk_isr_put(comp);
 	return IRQ_HANDLED;
 }
 

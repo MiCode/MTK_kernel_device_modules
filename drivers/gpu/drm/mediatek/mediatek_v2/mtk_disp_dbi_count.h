@@ -57,6 +57,7 @@ struct mtk_disp_dbi_count {
 	uint32_t current_fps;
 	uint32_t current_temp;
 	uint32_t current_freq;
+	atomic_t buffer_full;
 	struct mtk_dbi_dma_buf count_buffer;
 	struct mtk_dbi_count_buf_cfg buffer_cfg;
 	struct mtk_drm_dbi_cfg_info count_cfg;
@@ -67,6 +68,7 @@ struct mtk_disp_dbi_count {
 	uint32_t qos_srt;
 	uint32_t last_qos_srt;
 	uint32_t last_hrt;
+	uint32_t irq_num;
 };
 
 int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data);
@@ -87,6 +89,10 @@ void mtk_dbi_count_hrt_cal(uint32_t en, uint32_t slice_size,
 	uint32_t slice_num, uint32_t block_h, uint32_t block_v, int *oddmr_hrt);
 int mtk_dbi_count_clear_event(struct mtk_ddp_comp *comp, void *data);
 int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data);
+
+void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
+void mtk_oddmr_dbi_udma_off(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle);
 
 
 #endif

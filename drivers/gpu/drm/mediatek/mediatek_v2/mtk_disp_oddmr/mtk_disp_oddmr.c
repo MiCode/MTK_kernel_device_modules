@@ -1805,7 +1805,7 @@ static int mtk_oddmr_dbi_bpp(struct mtk_ddp_comp *comp)
 	if(dbi_cfg_info){
 		layer_size = dbi_cfg_info->basic_info.panel_width
 			* dbi_cfg_info->basic_info.panel_height * 4;
-		ret = (400 * table_size)/layer_size;
+		ret = (400 * table_size + layer_size -1)/layer_size;
 		ODDMRFLOW_LOG("dbi hrt %d\n", ret);
 	}
 	return ret;
@@ -3068,8 +3068,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 		atomic_set(&oddmr_data->dbi_data.cur_dbv_node, dbi_dbv_node);
 		atomic_set(&oddmr_data->dbi_data.cur_fps_node, dbi_fps_node);
 
-		//if (dsi->output_en) {
-		if (false) {
+		if (dsi->output_en) {
 			idx = (unsigned int)atomic_read(&oddmr_data->dbi_data.cur_table_idx);
 			addr = oddmr_data->dbi_data.dbi_table[idx]->dma_addr;
 		} else {

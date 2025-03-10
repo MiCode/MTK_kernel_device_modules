@@ -202,6 +202,10 @@ struct CRTC_MMP_Events {
 	mmp_event enter_vidle;
 	mmp_event pause_vidle;
 	mmp_event set_dirty;
+	/*dbi count*/
+	mmp_event dbi_trigger;
+	mmp_event dbi_merge;
+	mmp_event dbi_drop;
 };
 
 struct PKT_MMP_Events {

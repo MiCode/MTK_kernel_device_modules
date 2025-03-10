@@ -103,6 +103,8 @@
 #define IRQ_TABLE_DISP1A_CHIST0_MT6993          (252)    //474 -> BIT17
 #define IRQ_TABLE_DISP0B_AAL0_MT6993            (229)    //477 -> BIT20
 #define IRQ_TABLE_DISP0A_AAL0_MT6993            (206)    //476 -> BIT19
+#define IRQ_TABLE_DISP1A_DBI_COUNT0_MT6993      (262)    //452 -> BIT10
+
 
 static struct mtk_vdisp_ao_irq_cfg mt6993_irq_cfg[36] = {
 /* IRQ_SYNC_ID	address offset	value*/
@@ -116,7 +118,7 @@ static struct mtk_vdisp_ao_irq_cfg mt6993_irq_cfg[36] = {
 /*449,BIT07*/	{0x20, 16, IRQ_TABLE_DISP_PERI_FIFO_MON0_MT6993,},
 /*450,BIT08*/	{0x24, 0, IRQ_TABLE_DISP_PERI_DISP_DPC0_MT6993,},
 /*451,BIT09*/	{0x24, 16, IRQ_TABLE_DISP_DISP1_DVO_MT6993,},
-/*452,BIT10*/	{0x28, 0, 0,},
+/*452,BIT10*/	{0x28, 0, IRQ_TABLE_DISP1A_DBI_COUNT0_MT6993,},
 /*453,BIT11*/	{0x28, 16, 0,},
 /*454,BIT12*/	{0x2C, 0, 0,},
 /*455,BIT13*/	{0x2C, 16, 0,},

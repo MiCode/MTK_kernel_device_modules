@@ -434,6 +434,12 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "pause_V_idle");
 		g_CRTC_MMP_Events[i].set_dirty = mmprofile_register_event(
 			crtc_mmp_root, "set_dirty");
+		g_CRTC_MMP_Events[i].dbi_trigger= mmprofile_register_event(
+			crtc_mmp_root, "dbi_trigger");
+		g_CRTC_MMP_Events[i].dbi_merge= mmprofile_register_event(
+			crtc_mmp_root, "dbi_merge");
+		g_CRTC_MMP_Events[i].dbi_drop= mmprofile_register_event(
+			crtc_mmp_root, "dbi_drop");
 	}
 }
 

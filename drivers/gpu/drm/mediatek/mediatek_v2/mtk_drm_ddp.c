@@ -31659,8 +31659,10 @@ void mtk_gce_event_config_MT6993(struct drm_device *drm)
 		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL4);
 	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL5_WDMA1_FRAME_DONE,
 		priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL5);
+	writel(MT6993_DISP1_GCE_FRAME_DONE_SEL6_DBI_COUNT0_FRAME_DONE,
+			priv->side_config_regs + MT6993_DISP1_GCE_FRAME_DONE_SEL6);
 
-	for (off = MT6993_DISP1_GCE_FRAME_DONE_SEL6;
+	for (off = MT6993_DISP1_GCE_FRAME_DONE_SEL7;
 			off <= MT6993_DISP1_GCE_FRAME_DONE_SEL15; off += 0x4)
 		writel(~0, priv->side_config_regs + off);
 

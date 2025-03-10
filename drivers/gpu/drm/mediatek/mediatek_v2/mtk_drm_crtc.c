@@ -12510,6 +12510,8 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	dma_addr_t slot_src_addr;
 	dma_addr_t slot_dts_addr;
 	struct mtk_ddp_comp *output_comp;
+	struct mtk_ddp_comp *dbi_comp;
+	int i, j;
 	bool panel_connected = mtk_drm_lcm_is_connect(mtk_crtc);
 
 	GCE_COND_DECLARE;
@@ -12607,6 +12609,10 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		}
 
 		GCE_DO(clear_event, EVENT_CMD_EOF);
+		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+			if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT)
+				GCE_DO(clear_event, EVENT_DBI_COUNT_EOF);
+		}
 
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_PRE_TRIGGER);
 
@@ -12763,6 +12769,12 @@ skip_prete:
 			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
 		}
 		GCE_DO(wfe, EVENT_CMD_EOF);
+		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+			if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT) {
+				GCE_DO(wfe, EVENT_DBI_COUNT_EOF);
+				mtk_oddmr_dbi_udma_off(dbi_comp, cmdq_handle);
+			}
+		}
 
 		/* update frame done fence slot */
 		dma_addr_t pf_addr = mtk_get_gce_backup_slot_pa(mtk_crtc,
@@ -22199,6 +22211,9 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		break;
 	case EVENT_VDO_TRIG_START:
 		len = snprintf(buf, buf_len, "disp_vdo_mode_trig_start");
+		break;
+	case EVENT_DBI_COUNT_EOF:
+		len = snprintf(buf, buf_len, "disp_dbi_count_eof");
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
