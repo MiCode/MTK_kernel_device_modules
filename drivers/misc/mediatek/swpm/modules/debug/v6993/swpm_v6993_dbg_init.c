@@ -620,11 +620,18 @@ static const struct mtk_swpm_sysfs_op swpm_psp_test_fops = {
 
 static ssize_t dram_bw_read(char *ToUser, size_t sz, void *priv)
 {
+	int ret;
 	char *p = ToUser;
 	unsigned long flags;
 
 	if (!ToUser)
 		return -EINVAL;
+
+	ret = sync_latest_data();
+	if (ret)
+		swpm_dbg_log("swpm sync latest data fail %d\n", ret);
+	else
+		swpm_dbg_log("sync success\n");
 
 	spin_lock_irqsave(&swpm_sub_data_spinlock, flags);
 	swpm_dbg_log("DRAM BW R/W=%d/%d\n",
