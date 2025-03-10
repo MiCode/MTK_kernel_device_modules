@@ -17,5 +17,3 @@ ccflags-y += \
     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fstb/ \
     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fbt/include/ \
     -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/
-
-obj-$(CONFIG_MTK_FRS) += frs.o

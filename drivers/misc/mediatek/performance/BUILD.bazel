@@ -98,6 +98,23 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "frs",
+    srcs = [
+        "frs/frs.c",
+        "frs/frs.h"
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:mtk_fpsgo_v8".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fstb",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fbt/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include"
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "uload_ind",
     srcs = [
         "uload_ind/uload_ind.c",

@@ -1332,6 +1332,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v1:mtk-ssc-dbg-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v2:mtk-ssc-dbg-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance:frs".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1679,7 +1680,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/perf_common/mtk_perf_common.ko",
     #"drivers/misc/mediatek/performance/fpsgo_v8/mtk_fpsgo_v8.ko",
     #"drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo_v3.ko",
-    "drivers/misc/mediatek/performance/frs/frs.ko",
+    #"drivers/misc/mediatek/performance/frs/frs.ko",
     #"drivers/misc/mediatek/performance/sbe/mtk_sbe.ko",
     "drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
     "drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
