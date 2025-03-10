@@ -701,6 +701,9 @@ static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
 	for (cpu = MAX_DCOMP_NR - 1; cpu >= 0; cpu--) {
 		fifo = &hwz->dcomp_fifo[cpu];
 
+		/* Add memory barrier to make sure we can get the correct range */
+		rmb();
+
 		start = fifo->complete_idx;
 		end = dcomp_fifo_HtS_complete_index(fifo);
 
@@ -874,6 +877,9 @@ static inline uint32_t comp_second_post_processing_cmds(struct zram_engine_t *hw
 	uint32_t start, end, index, entry;
 	uint32_t processed = 0;
 
+	/* Add memory barrier to make sure we can get the correct range */
+	rmb();
+
 	/* Acquire the range for post-processing */
 	start = fifo->complete_idx;
 	end = comp_fifo_2_HtS_complete_index(fifo);
@@ -910,6 +916,9 @@ static inline uint32_t comp_main_post_processing_cmds(struct zram_engine_t *hwz,
 {
 	uint32_t start, end, index, entry;
 	uint32_t processed = 0;
+
+	/* Add memory barrier to make sure we can get the correct range */
+	rmb();
 
 	/* Acquire the range for post-processing */
 	start = fifo->complete_idx;
