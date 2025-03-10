@@ -189,14 +189,20 @@ static ssize_t flow_ctrl_show(struct device *dev,
 {
 	struct usb_offload_policy *policy = &uodev->policy;
 	bool *bool_value;
-	int i, cnt = 0;
+	int size = PAGE_SIZE;
+	int i, cnt, total_cnt = 0;
 
 	for (i = 0; i < ARRAY_SIZE(flow_control); i++) {
 		bool_value = (void *)policy + flow_control[i].offset;
-		cnt += sprintf(buf + cnt, "%s=%d\n", flow_control[i].name, *bool_value);
+		cnt = snprintf(buf + total_cnt, size - total_cnt, "%s=%d\n",
+			flow_control[i].name, *bool_value);
+		if (cnt > 0 && cnt < size)
+			total_cnt += cnt;
+		else
+			break;
 	}
 
-	return cnt;
+	return total_cnt;
 }
 
 static DEVICE_ATTR_RW(flow_ctrl);
@@ -236,7 +242,7 @@ static ssize_t sram_source_show(struct device *dev,
 	main_string = usb_offload_sram_source_string(policy->main_sram);
 	secondary_string = usb_offload_sram_source_string(policy->secondary_sram);
 
-	return sprintf(buf, "main:%s secondary:%s\n", main_string, secondary_string);
+	return snprintf(buf, PAGE_SIZE, "main:%s secondary:%s\n", main_string, secondary_string);
 }
 
 static DEVICE_ATTR_RW(sram_source);
@@ -287,7 +293,7 @@ error:
 static ssize_t source_status_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", source_status_output);
+	return snprintf(buf, PAGE_SIZE, "%d\n", source_status_output);
 }
 
 static DEVICE_ATTR_RW(source_status);
