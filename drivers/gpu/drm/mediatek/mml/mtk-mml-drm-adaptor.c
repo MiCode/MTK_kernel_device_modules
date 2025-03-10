@@ -57,7 +57,7 @@ module_param(mml_max_layers, int, 0644);
  * bit[0]: enable or disable
  * bit[1]: set to block continuous retrigger
  */
-int mml_retrigger = 0x1;
+int mml_retrigger;
 module_param(mml_retrigger, int, 0644);
 
 struct mml_drm_ctx {
@@ -79,16 +79,16 @@ struct mml_drm_ctx {
 	void (*disp_dump_dl_cb)(void *disp_crtc);
 };
 
-static void mml_drm_task_connect_unlock(struct mml_task *task, const char *caller)
+static void mml_drm_task_connect_locked(struct mml_task *task, const char *caller)
 {
 	kref_get(&task->connection);
 	mml_msg("[drm][ReTrig]task connect job %u %p ref %d (%s)",
-		task->job.jobid, task, atomic_read(&task->connection.refcount.refs), caller);
+		task->job.jobid, task, kref_read(&task->connection), caller);
 }
 
-static int mml_drm_task_disconnect_unlock(struct mml_task *task, const char *caller)
+static int mml_drm_task_disconnect_locked(struct mml_task *task, const char *caller)
 {
-	int cnt = atomic_read(&task->connection.refcount.refs) - 1;
+	int cnt = kref_read(&task->connection) - 1;
 	u32 job = task->job.jobid;
 
 	kref_put(&task->connection, mml_core_queue_taskdone);
@@ -98,7 +98,7 @@ static int mml_drm_task_disconnect_unlock(struct mml_task *task, const char *cal
 	return cnt;
 }
 
-void task_queue_retrigger(struct mml_retrig_task *retg_task)
+static void task_queue_retrigger(struct mml_retrig_task *retg_task)
 {
 	kthread_queue_work(retg_task->task->ctx->kt_config[0], &retg_task->work_retrigger);
 }
@@ -730,7 +730,7 @@ done:
 	mml_trace_ex_end();
 }
 
-void mml_drm_shift_retrigger_unlock(struct mml_drm_ctx *dctx, struct mml_task *task,
+static void mml_drm_shift_retrigger_locked(struct mml_drm_ctx *dctx, struct mml_task *task,
 	const char *caller)
 {
 	struct mml_task *prev_task = dctx->retg_ref_task_prev;
@@ -739,7 +739,7 @@ void mml_drm_shift_retrigger_unlock(struct mml_drm_ctx *dctx, struct mml_task *t
 	if (prev_task) {
 		int cnt;
 
-		cnt = mml_drm_task_disconnect_unlock(prev_task, "shift");
+		cnt = mml_drm_task_disconnect_locked(prev_task, "shift");
 		if (cnt)
 			mml_log("[drm][ReTrig]task %u still run %p count %d",
 				prev_task->job.jobid, prev_task, cnt);
@@ -769,10 +769,10 @@ void mml_drm_purge(struct mml_drm_ctx *dctx)
 	if (!dctx->retg_ref_task && !dctx->retg_ref_task_prev)
 		goto done;
 
-	mml_drm_shift_retrigger_unlock(dctx, NULL, "purge");
+	mml_drm_shift_retrigger_locked(dctx, NULL, "purge");
 	if (dctx->retg_ref_task_prev) {
 		mml_log("[drm][ReTrig]purge on job %u", dctx->retg_ref_task_prev->job.jobid);
-		mml_drm_shift_retrigger_unlock(dctx, NULL, "purge prev");
+		mml_drm_shift_retrigger_locked(dctx, NULL, "purge prev");
 	}
 done:
 	mutex_unlock(&ctx->config_mutex);
@@ -979,7 +979,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	if ((mml_retrigger & BIT(0)) &&
 		(cfg->info.mode == MML_MODE_DIRECT_LINK ||
 		 cfg->info.mode == MML_MODE_MML_DECOUPLE)) {
-		mml_drm_shift_retrigger_unlock(dctx, task, "submit");
+		mml_drm_shift_retrigger_locked(dctx, task, "submit");
 	}
 
 	mutex_unlock(&ctx->config_mutex);
@@ -1149,7 +1149,7 @@ s32 mml_drm_retrigger(struct mml_drm_ctx *dctx)
 	mml_mmp(retrigger, MMPROFILE_FLAG_PULSE, task->job.jobid, retg_task->jobid);
 
 	/* submit to core */
-	mml_drm_task_connect_unlock(task, "retrigger");
+	mml_drm_task_connect_locked(task, "retrigger");
 	dctx->retrigger_cnt++;
 
 	mml_log("[drm][ReTrig]retrigger job %u task %p ref job %u task %p config %p cnt %u",
@@ -1224,7 +1224,7 @@ void mml_drm_addon_connect(struct mml_drm_ctx *dctx)
 	 */
 	job = task->job.jobid;
 	if (job != dctx->addon_jobid) {
-		mml_drm_task_connect_unlock(task, "addon");
+		mml_drm_task_connect_locked(task, "addon");
 		dctx->addon_jobid = job;
 	}
 
@@ -1249,7 +1249,7 @@ void mml_drm_addon_disconnect(struct mml_drm_ctx *dctx)
 			__func__, dctx->addon_jobid, task->job.jobid);
 
 	job = task->job.jobid;
-	cnt = mml_drm_task_disconnect_unlock(task, "addon");
+	cnt = mml_drm_task_disconnect_locked(task, "addon");
 	dctx->retg_ref_task_prev = NULL;
 	mml_msg("[drm][ReTrig]shift retrigger task prev job clear");
 
@@ -1345,7 +1345,7 @@ static void drm_task_dispen(struct mml_task *task, bool enable)
 	ctx->dispen_cb(enable, ctx->dispen_param);
 }
 
-void task_retrigger_done(struct mml_retrig_task *retg_task)
+static void task_retrigger_done(struct mml_retrig_task *retg_task)
 {
 	struct mml_task *task = retg_task->task;
 	struct mml_ctx *ctx = task->ctx;
@@ -1358,7 +1358,7 @@ void task_retrigger_done(struct mml_retrig_task *retg_task)
 	mutex_unlock(&ctx->config_mutex);
 }
 
-void task_retrigger_framedone(struct mml_retrig_task *retg_task)
+static void task_retrigger_framedone(struct mml_retrig_task *retg_task)
 {
 	struct mml_task *task = retg_task->task;
 	struct mml_ctx *ctx = task->ctx;
@@ -1378,10 +1378,10 @@ static void mml_drm_task_connect(struct mml_task *task)
 	struct mml_ctx *ctx = task->ctx;
 
 	mml_msg("[drm][ReTrig]%s job %u ref %d",
-		__func__, task->job.jobid, atomic_read(&task->connection.refcount.refs));
+		__func__, task->job.jobid, kref_read(&task->connection));
 
 	mutex_lock(&ctx->config_mutex);
-	mml_drm_task_connect_unlock(task, "taskop");
+	mml_drm_task_connect_locked(task, "taskop");
 	mutex_unlock(&ctx->config_mutex);
 }
 
@@ -1391,7 +1391,7 @@ static int mml_drm_task_disconnect(struct mml_task *task)
 	int cnt;
 
 	mutex_lock(&ctx->config_mutex);
-	cnt = mml_drm_task_disconnect_unlock(task, "taskop");
+	cnt = mml_drm_task_disconnect_locked(task, "taskop");
 	mutex_unlock(&ctx->config_mutex);
 
 	return cnt;
