@@ -4,6 +4,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/notifier.h>
 #include <linux/platform_device.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
@@ -97,6 +98,8 @@ static struct genl_family scrn_gnl_family = {
 static int eas_previous_temp[CPU_SENSOR_NUM] = {25000};
 static int pre_temp = 25000;
 
+static BLOCKING_NOTIFIER_HEAD(thermal_hint_notifier_list);
+
 struct therm_intf_info {
 	int sw_ready;
 	unsigned int cpu_cluster_num;
@@ -106,6 +109,7 @@ struct therm_intf_info {
 	struct dentry *debug_dir;
 	struct ttj_info tj_info;
 	struct boot_info boot;
+	unsigned int thermal_hint;
 };
 
 static struct therm_intf_info tm_data;
@@ -134,6 +138,26 @@ static DEFINE_MUTEX(pid_info_lock);
 static struct timer_list boot_thermal_timer;
 static struct workqueue_struct *boot_thermal_wq;
 struct work_struct boot_thermal_work;
+
+int mtk_thermal_hint_notify_register(const char *source, struct notifier_block *nb)
+{
+	if (!source)
+		return -EINVAL;
+
+	return blocking_notifier_chain_register(&thermal_hint_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_thermal_hint_notify_register);
+
+int mtk_thermal_hint_notify_unregister(const char *source, struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&thermal_hint_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_thermal_hint_notify_unregister);
+
+static void thermal_hint_callback(unsigned long val)
+{
+	blocking_notifier_call_chain(&thermal_hint_notifier_list, val, NULL);
+}
 
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 static inline int genl_msg_prepare_usr_msg(u8 cmd, size_t size, pid_t pid, struct sk_buff **skbp)
@@ -2060,17 +2084,14 @@ static ssize_t lvts_info3_show(struct kobject *kobj,
 		return len;
 }
 
-unsigned int thermal_hint_enable;
-
 static ssize_t thermal_hint_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
 	int len = 0;
 
-	if (cm_thermal_hint) {
-		len += snprintf(buf + len, PAGE_SIZE - len, "%u\n",
-			thermal_hint_enable);
-	}
+	len += snprintf(buf + len, PAGE_SIZE - len, "%u\n",
+		tm_data.thermal_hint);
+
 	return len;
 }
 
@@ -2078,14 +2099,16 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	char cmd[20];
-	static int enable;
+	unsigned int enable;
 
-	if (sscanf(buf, "%12s %u", cmd, &thermal_hint_enable)
-		== 2) {
+	if (sscanf(buf, "%12s %u", cmd, &enable) == 2) {
 		if (strncmp(cmd, "thermal_hint", 12) == 0) {
-			if ((cm_thermal_hint) && enable != thermal_hint_enable) {
-				cm_thermal_hint(thermal_hint_enable);
-				enable = thermal_hint_enable;
+			if (enable != tm_data.thermal_hint) {
+				if (cm_thermal_hint)
+					cm_thermal_hint(enable);
+
+				thermal_hint_callback(enable);
+				tm_data.thermal_hint = enable;
 			}
 			return count;
 		}

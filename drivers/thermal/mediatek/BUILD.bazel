@@ -88,9 +88,11 @@ define_mgk_ddk_ko(
     ],
     hdrs = [
         "wifi_cooling.h",
+        "thermal_interface.h",
     ],
     ko_deps = [
-        "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:connadp".format(kernel_version)
+        "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:connadp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version)
     ],
 )
 

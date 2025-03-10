@@ -15,7 +15,8 @@
 #include <linux/types.h>
 #include "wifi_cooling.h"
 #include "conn_power_throttling.h"
-
+#include "thermal_interface.h"
+#include <linux/notifier.h>
 
 static DEFINE_MUTEX(wifi_cdev_list_lock);
 static DEFINE_MUTEX(wifi_cdata_lock);
@@ -114,6 +115,15 @@ static const struct of_device_id wifi_cooling_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, wifi_cooling_of_match);
 
+int my_callback(struct notifier_block *nb, unsigned long event, void *data)
+{
+	return NOTIFY_OK;
+}
+
+static struct notifier_block my_notifier = {
+	.notifier_call = my_callback,
+};
+
 static int wifi_cooling_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -121,6 +131,7 @@ static int wifi_cooling_probe(struct platform_device *pdev)
 	struct wifi_cooling_device *wifi_cdev;
 	struct device_node *np = pdev->dev.of_node;
 	unsigned int len;
+	int ret;
 
 	wifi_cdev = devm_kzalloc(dev, sizeof(*wifi_cdev), GFP_KERNEL);
 	if (!wifi_cdev)
@@ -147,12 +158,19 @@ static int wifi_cooling_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, wifi_cdev);
 	dev_info(dev, "register %s done\n", wifi_cdev->name);
 
+	ret = mtk_thermal_hint_notify_register("wifi_cooling", &my_notifier);
+	if (ret < 0)
+		return -EINVAL;
+
 	return 0;
 }
 
 static void wifi_cooling_remove(struct platform_device *pdev)
 {
 	struct wifi_cooling_device *wifi_cdev;
+	int ret;
+
+	ret = mtk_thermal_hint_notify_unregister("wifi_cooling", &my_notifier);
 
 	wifi_cdev = (struct wifi_cooling_device *)platform_get_drvdata(pdev);
 	thermal_cooling_device_unregister(wifi_cdev->cdev);

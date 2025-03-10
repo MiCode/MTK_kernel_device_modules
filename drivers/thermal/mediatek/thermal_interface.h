@@ -256,6 +256,8 @@ extern int set_gpu_pre_throttle(int temp, int index);
 extern int get_gpu_pre_throttle_temp(int index);
 extern int set_gpu_pre_throttle_opp(int opp, int index);
 extern int get_gpu_pre_throttle_opp(int index);
+extern int mtk_thermal_hint_notify_register(const char *source, struct notifier_block *nb);
+extern int mtk_thermal_hint_notify_unregister(const char *source, struct notifier_block *nb);
 
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
