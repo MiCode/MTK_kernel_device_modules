@@ -1529,7 +1529,7 @@ static ssize_t dcs_major_min_store(struct kobject *kobj,
 		int ret;
 		int major, option;
 
-		ret = sscanf(buf, "%d %d", &major, &option);
+		ret = sscanf(buf, "%2d %2d", &major, &option);
 		if (ret == 2) {
 			if (major < 0 || option < 0)
 				return count;
@@ -2917,7 +2917,7 @@ static ssize_t ged_version_store(struct kobject *kobj,
 		eb_policy_mode = is_fdvfs_enable();
 		int config1 , config2, config3, config4 = 0;
 
-		if (sscanf(buf, "%d %d %d %d", &config1, &config2, &config3, &config4) <= 4) {
+		if (sscanf(buf, "%2d %10d %10d %10d", &config1, &config2, &config3, &config4) <= 4) {
 			if (eb_policy_dts_flag > 0 && eb_policy_mode & POLICY_MODE_V2) {
 				ipi_data->cmd = GPUFDVFS_IPI_SET_CONFIG;
 				ipi_data->u.set_para.arg[0] = GPUFDVFS_IPI_SET_DUMMY_SWITCH;
