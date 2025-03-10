@@ -619,6 +619,10 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 		crtc_idx = drm_crtc_index(crtc);
 
 		private = crtc->dev->dev_private;
+		if (atomic_read(&private->kernel_pm.status) != KERNEL_PM_RESUME) {
+			DDPPR_ERR("%s pm status is not resume\n", __func__);
+			return -EINVAL;
+		}
 		if (need_lock) {
 			DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
 			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
