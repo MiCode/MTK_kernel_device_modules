@@ -70,6 +70,8 @@ struct uarthub_gpio_trx_info {
 	struct uarthub_gpio_base_addr rx_mode;
 	struct uarthub_gpio_base_addr tx_dir;
 	struct uarthub_gpio_base_addr rx_dir;
+	struct uarthub_gpio_base_addr tx_dataout;
+	struct uarthub_gpio_base_addr rx_dataout;
 	struct uarthub_gpio_base_addr tx_ies;
 	struct uarthub_gpio_base_addr rx_ies;
 	struct uarthub_gpio_base_addr tx_pu;
@@ -87,6 +89,11 @@ struct uarthub_gpio_trx_info {
 	struct uarthub_gpio_base_addr tx_sec_en;
 	struct uarthub_gpio_base_addr rx_sec_en;
 	struct uarthub_gpio_base_addr rx_din;
+	struct uarthub_gpio_base_addr bt_rst_mode;
+	struct uarthub_gpio_base_addr bt_rst_dir;
+	struct uarthub_gpio_base_addr bt_rst_dataout;
+	struct uarthub_gpio_base_addr bt_rst_pu;
+	struct uarthub_gpio_base_addr bt_rst_pd;
 };
 
 typedef void (*UARTHUB_CORE_IRQ_CB) (unsigned int err_type);

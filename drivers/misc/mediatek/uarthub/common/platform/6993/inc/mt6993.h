@@ -6,7 +6,7 @@
 #ifndef MT6993_H
 #define MT6993_H
 
-#define MT6993_UARTHUB_DUMP_VERSION    "20230807"
+#define MT6993_UARTHUB_DUMP_VERSION    "20250217"
 
 #define UARTHUB_SUPPORT_FPGA           0
 #define UARTHUB_SUPPORT_DVT            0
@@ -24,6 +24,7 @@
 #include "platform_def_id.h"
 
 extern void __iomem *gpio_base_remap_addr_mt6993;
+extern void __iomem *iocfg_tm1_base_remap_addr_mt6993;
 extern void __iomem *pericfg_ao_remap_addr_mt6993;
 extern void __iomem *topckgen_base_remap_addr_mt6993;
 extern void __iomem *apdma_uart_tx_int_remap_addr_mt6993;
@@ -31,6 +32,7 @@ extern void __iomem *spm_remap_addr_mt6993;
 extern void __iomem *spm_remap_addr_0x9000_mt6993;
 extern void __iomem *apmixedsys_remap_addr_mt6993;
 extern void __iomem *sys_sram_remap_addr_mt6993;
+extern void __iomem *peri_par_remap_addr_mt6993;
 
 enum uarthub_uartip_id {
 	uartip_id_ap = 0,
@@ -152,5 +154,20 @@ int uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 	int *tx_monitor, int *rx_monitor,
 	int tx_monitor_pointer, int rx_monitor_pointer,
 	int check_data_mode_sel, const char *tag);
+int uarthub_record_packet_info_mode_sta_to_buffer_mt6993(
+	unsigned char *dmp_info_buf, int len,
+	int debug_monitor_sel,
+	int *tx_monitor, int *rx_monitor,
+	int tx_monitor_pointer, int rx_monitor_pointer, const char *tag);
+int uarthub_record_uart_fifo_sta_to_buffer_mt6993(
+	unsigned char *dmp_info_buf, int len, const char *tag,
+	uint32_t fifo_cur_t0, uint32_t fifo_cur_r0,
+	uint32_t fifo_cur_t2, uint32_t fifo_cur_r2,
+	uint32_t fifo_cur_tcmm, uint32_t fifo_cur_rcmm,
+	uint8_t *fifo_data_t0, uint8_t *fifo_data_r0,
+	uint8_t *fifo_data_t2, uint8_t *fifo_data_r2,
+	uint8_t *fifo_data_tcmm, uint8_t *fifo_data_rcmm);
+uint32_t uarthub_get_debug_fifo_data_mt6993(unsigned int dev_index, unsigned int offset, unsigned int is_rx);
+uint32_t uarthub_get_debug_fifo_cur_mt6993(unsigned int dev_index, unsigned int is_rx);
 
 #endif /* MT6993_H */

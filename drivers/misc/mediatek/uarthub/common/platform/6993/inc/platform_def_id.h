@@ -9,11 +9,60 @@
 /*GPIO*/
 #define GPIO_BASE_ADDR                            (0x1002D000)
 #define GPIO_HUB_MODE_TX                          (0x6C0)
-#define GPIO_HUB_MODE_TX_MASK                     (0x700)
+#define GPIO_HUB_MODE_TX_MASK                     (0xF << 8)
+#define GPIO_HUB_MODE_TX_SHIFT                    (8)
 #define GPIO_HUB_MODE_TX_VALUE                    (0x100)
 #define GPIO_HUB_MODE_RX                          (0x6C0)
-#define GPIO_HUB_MODE_RX_MASK                     (0x70000)
+#define GPIO_HUB_MODE_RX_MASK                     (0xF << 16)
+#define GPIO_HUB_MODE_RX_SHIFT                    (16)
 #define GPIO_HUB_MODE_RX_VALUE                    (0x10000)
+
+#define GPIO_HUB_MODE_TX_DIR                      (0x70)
+#define GPIO_HUB_MODE_TX_DIR_MASK                 (0x1 << 17)
+#define GPIO_HUB_MODE_TX_DIR_SHIFT                (17)
+#define GPIO_HUB_MODE_RX_DIR                      (0x70)
+#define GPIO_HUB_MODE_RX_DIR_MASK                 (0x1 << 18)
+#define GPIO_HUB_MODE_RX_DIR_SHIFT                (18)
+
+#define GPIO_HUB_MODE_TX_DATAOUT                  (0x170)
+#define GPIO_HUB_MODE_TX_DATAOUT_MASK             (0x1 << 17)
+#define GPIO_HUB_MODE_TX_DATAOUT_SHIFT            (17)
+#define GPIO_HUB_MODE_RX_DATAOUT                  (0x170)
+#define GPIO_HUB_MODE_RX_DATAOUT_MASK             (0x1 << 18)
+#define GPIO_HUB_MODE_RX_DATAOUT_SHIFT            (18)
+
+#define GPIO_BT_RST_PIN                           (0x6E0)
+#define GPIO_BT_RST_PIN_MASK                      (0xF << 8)
+#define GPIO_BT_RST_PIN_SHIFT                     (8)
+#define GPIO_BT_RST_PIN_DIR                       (0x70)
+#define GPIO_BT_RST_PIN_DIR_MASK                  (0x1 << 25)
+#define GPIO_BT_RST_PIN_DIR_SHIFT                 (25)
+#define GPIO_BT_RST_PIN_DATAOUT                   (0x170)
+#define GPIO_BT_RST_PIN_DATAOUT_MASK              (0x1 << 25)
+#define GPIO_BT_RST_PIN_DATAOUT_SHIFT             (25)
+
+/*IOCFG_TM1*/
+#define IOCFG_TM1_BASE_ADDR                       (0x13820000)
+#define GPIO_BT_RST_PIN_PU                        (0xC0)
+#define GPIO_BT_RST_PIN_PU_MASK                   (0x1 << 4)
+#define GPIO_BT_RST_PIN_PU_SHIFT                  (4)
+#define GPIO_BT_RST_PIN_PD                        (0xB0)
+#define GPIO_BT_RST_PIN_PD_MASK                   (0x1 << 4)
+#define GPIO_BT_RST_PIN_PD_SHIFT                  (4)
+
+#define GPIO_HUB_MODE_TX_PU                       (0xC0)
+#define GPIO_HUB_MODE_TX_PU_MASK                  (0x1 << 6)
+#define GPIO_HUB_MODE_TX_PU_SHIFT                 (6)
+#define GPIO_HUB_MODE_RX_PU                       (0xC0)
+#define GPIO_HUB_MODE_RX_PU_MASK                  (0x1 << 5)
+#define GPIO_HUB_MODE_RX_PU_SHIFT                 (5)
+
+#define GPIO_HUB_MODE_TX_PD                       (0xB0)
+#define GPIO_HUB_MODE_TX_PD_MASK                  (0x1 << 6)
+#define GPIO_HUB_MODE_TX_PD_SHIFT                 (6)
+#define GPIO_HUB_MODE_RX_PD                       (0xB0)
+#define GPIO_HUB_MODE_RX_PD_MASK                  (0x1 << 5)
+#define GPIO_HUB_MODE_RX_PD_SHIFT                 (5)
 
 /*PERI CFG*/
 #define PERICFG_AO_BASE_ADDR                      (0x16640000)
@@ -30,6 +79,14 @@
 #define PERI_UART_WAKEUP                          (0x50)
 #define PERI_UART_WAKEUP_UART_GPHUB_SEL_MASK      (0x10)
 #define PERI_UART_WAKEUP_UART_GPHUB_SEL_SHIFT     (4)
+
+/*PERI PAR BUS*/
+#define PERIPAR_AO_BASE_ADDR                      (0x16680000)
+#define PERIPAR_DEBUG_AO_CTRL_0                   (0x0)
+#define PERIPAR_AO_DEBUG_CKEN_SHIFT               (3)
+#define PERIPAR_AO_DEBUG_CKEN_MASK                (0x1 << PERIPAR_AO_DEBUG_CKEN_SHIFT)
+#define PERIPAR_SYS_TIMER_L                       (0x400)  // AO_RESULT0
+#define PERIPAR_SYS_TIMER_H                       (0x404)  // AO_RESULT1
 
 /* hwccf */
 #define APMIXEDSYS_BASE_ADDR                      (0x1c213100)
