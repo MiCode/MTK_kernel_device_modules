@@ -7,7 +7,6 @@
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
@@ -746,20 +745,23 @@ static int dw9781c_power_on(struct dw9781c_device *dw9781c)
 
 static int dw9781c_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	int ret;
+	struct dw9781c_device *dw9781c = sd_to_dw9781c_ois(sd);
 
-	ret = pm_runtime_get_sync(sd->dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(sd->dev);
-		return ret;
-	}
+	LOG_INF("+\n");
+	dw9781c_power_on(dw9781c);
+	LOG_INF("-\n");
 
 	return 0;
 }
 
 static int dw9781c_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	pm_runtime_put(sd->dev);
+	struct dw9781c_device *dw9781c = sd_to_dw9781c_ois(sd);
+
+	LOG_INF("+\n");
+	dw9781c_power_off(dw9781c);
+	LOG_INF("-\n");
+
 	return 0;
 }
 
@@ -1134,8 +1136,6 @@ static int dw9781c_probe(struct i2c_client *client)
 	if (ret < 0)
 		goto err_cleanup;
 
-	pm_runtime_enable(dev);
-
 	g_dw9781c = dw9781c;
 
 	LOG_INF("-\n");
@@ -1157,30 +1157,8 @@ static void dw9781c_remove(struct i2c_client *client)
 
 	hf_device_unregister_manager_destroy(&dw9781c->hf_dev);
 	dw9781c_subdev_cleanup(dw9781c);
-	pm_runtime_disable(&client->dev);
-	if (!pm_runtime_status_suspended(&client->dev))
-		dw9781c_power_off(dw9781c);
-	pm_runtime_set_suspended(&client->dev);
 
 	LOG_INF("-\n");
-}
-
-static int __maybe_unused dw9781c_ois_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct dw9781c_device *dw9781c = sd_to_dw9781c_ois(sd);
-
-	return dw9781c_power_off(dw9781c);
-}
-
-static int __maybe_unused dw9781c_ois_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct dw9781c_device *dw9781c = sd_to_dw9781c_ois(sd);
-
-	return dw9781c_power_on(dw9781c);
 }
 
 static const struct i2c_device_id dw9781c_id_table[] = {
@@ -1195,16 +1173,9 @@ static const struct of_device_id dw9781c_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, dw9781c_of_table);
 
-static const struct dev_pm_ops dw9781c_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-	SET_RUNTIME_PM_OPS(dw9781c_ois_suspend, dw9781c_ois_resume, NULL)
-};
-
 static struct i2c_driver dw9781c_i2c_driver = {
 	.driver = {
 		.name = DW9781C_NAME,
-		.pm = &dw9781c_pm_ops,
 		.of_match_table = dw9781c_of_table,
 	},
 	.probe  = dw9781c_probe,

@@ -6,7 +6,6 @@
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
@@ -40,6 +39,7 @@ struct VL53LX_Dev_t *Dev = &dev;
 // #define SEARCH_ALL_DEVICE
 static int32_t vl53l4_log_dbg_en;
 static int32_t vl53l4_start_measure;
+static int32_t vl53l4_init_retry;
 
 static int g_is_tof_support;
 
@@ -117,6 +117,7 @@ static int vl53l4_init(struct vl53l4_device *vl53l4)
 	uint8_t i2c_ret = 0;
 	int vl53status = 0;
 	uint8_t currentDist;
+	int retry = 1;
 #ifdef SEARCH_ALL_DEVICE
 	int i = 0;
 #endif
@@ -132,6 +133,11 @@ static int vl53l4_init(struct vl53l4_device *vl53l4)
 	}
 #endif
 
+	if (vl53l4_init_retry) {
+		retry = 10;
+		g_is_tof_support = 1;
+	}
+
 	if (g_is_tof_support < 0) {
 		LOG_INF("not support tof\n");
 		return -1;
@@ -139,8 +145,15 @@ static int vl53l4_init(struct vl53l4_device *vl53l4)
 
 	client->addr = VL53L4_I2C_SLAVE_ADDR >> 1;
 
-	VL53LX_RdByte(Dev, 0x010F, &i2c_ret);
-	LOG_INF("ST API: vl53l4 0x010F: 0x%x\n", i2c_ret);
+	while (retry-- > 0) {
+		VL53LX_RdByte(Dev, 0x010F, &i2c_ret);
+		if (i2c_ret > 0) {
+			LOG_INF("ST API: vl53l4 0x010F: 0x%x\n", i2c_ret);
+			break;
+		}
+		usleep_range(5000, 5100);
+		LOG_INF("failed to read 0x010F, need to retry\n");
+	}
 
 	if (!i2c_ret) {
 		g_is_tof_support = -1;
@@ -236,17 +249,10 @@ static int vl53l4_power_on(struct vl53l4_device *vl53l4)
 
 static int vl53l4_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	int ret;
+	struct vl53l4_device *vl53l4 = sd_to_vl53l4_ois(sd);
 
 	LOG_INF("+\n");
-
-	ret = pm_runtime_get_sync(sd->dev);
-	if (ret < 0) {
-		LOG_INF("pm_runtime_get_sync failed\n");
-		pm_runtime_put_noidle(sd->dev);
-		return ret;
-	}
-
+	vl53l4_power_on(vl53l4);
 	LOG_INF("-\n");
 
 	return 0;
@@ -254,15 +260,15 @@ static int vl53l4_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 static int vl53l4_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	LOG_INF("+\n");
+	struct vl53l4_device *vl53l4 = sd_to_vl53l4_ois(sd);
 
+	LOG_INF("+\n");
 	if (g_is_tof_support >= 0)
 		VL53LX_StopMeasurement(Dev);
 
-	if (pm_runtime_put(sd->dev) < 0)
-		LOG_INF("power down failed\n");
-
+	vl53l4_power_off(vl53l4);
 	LOG_INF("-\n");
+
 	return 0;
 }
 
@@ -525,15 +531,18 @@ static ssize_t vl53l4_debug_store(struct device *dev,
 
 	vl53l4_log_dbg_en = val & 0x1;
 	vl53l4_start_measure = (val >> 1) & 0x1;
+	vl53l4_init_retry = (val >> 2) & 0x1;
 
-	LOG_INF("log(%d), start_measure(%d), buf:%s\n",
-		vl53l4_log_dbg_en, vl53l4_start_measure, buf);
+	LOG_INF("log(%d), start_measure(%d), init_retry(%d), buf:%s",
+		vl53l4_log_dbg_en, vl53l4_start_measure, vl53l4_init_retry, buf);
 
 	if (vl53l4_start_measure) {
 		LOG_INF("enable TOF measure\n");
 
 		vl53l4_power_on(g_vl53l4);
 		LOG_INF("vl53l4_power_on-------\n");
+
+		usleep_range(VL53L4_CTRL_DELAY_US, VL53L4_CTRL_DELAY_US + 100);
 
 		/* VL53L4 Workqueue */
 		if (vl53l4_init_wq == NULL) {
@@ -549,10 +558,10 @@ static ssize_t vl53l4_debug_store(struct device *dev,
 			queue_work(vl53l4_init_wq, &vl53l4_init_work);
 		}
 	} else {
-		LOG_INF("disable TOF measure\n");
-
 		/* VL53L4 Workqueue */
 		if (vl53l4_init_wq) {
+			LOG_INF("disable TOF measure\n");
+
 			LOG_INF("flush work queue\n");
 
 			/* flush work queue */
@@ -561,10 +570,10 @@ static ssize_t vl53l4_debug_store(struct device *dev,
 			flush_workqueue(vl53l4_init_wq);
 			destroy_workqueue(vl53l4_init_wq);
 			vl53l4_init_wq = NULL;
-		}
 
-		vl53l4_power_off(g_vl53l4);
-		LOG_INF("vl53l4_power_off-------\n");
+			vl53l4_power_off(g_vl53l4);
+			LOG_INF("vl53l4_power_off-------\n");
+		}
 	}
 
 	return size;
@@ -685,8 +694,6 @@ static int vl53l4_probe(struct i2c_client *client)
 	if (ret < 0)
 		goto err_cleanup;
 
-	pm_runtime_enable(dev);
-
 	/* create class */
 	vl53l4_class = class_create(VL53L4_NAME);
 	if (IS_ERR(vl53l4_class)) {
@@ -740,10 +747,6 @@ static void vl53l4_remove(struct i2c_client *client)
 	LOG_INF("tof remove\n");
 
 	vl53l4_subdev_cleanup(vl53l4);
-	pm_runtime_disable(&client->dev);
-	if (!pm_runtime_status_suspended(&client->dev))
-		vl53l4_power_off(vl53l4);
-	pm_runtime_set_suspended(&client->dev);
 }
 
 static int __maybe_unused vl53l4_ois_suspend(struct device *dev)
@@ -776,16 +779,9 @@ static const struct of_device_id vl53l4_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, vl53l4_of_table);
 
-static const struct dev_pm_ops vl53l4_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-	SET_RUNTIME_PM_OPS(vl53l4_ois_suspend, vl53l4_ois_resume, NULL)
-};
-
 static struct i2c_driver vl53l4_i2c_driver = {
 	.driver = {
 		.name = VL53L4_NAME,
-		.pm = &vl53l4_pm_ops,
 		.of_match_table = vl53l4_of_table,
 	},
 	.probe  = vl53l4_probe,

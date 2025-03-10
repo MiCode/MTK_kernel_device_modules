@@ -6,7 +6,6 @@
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
@@ -146,24 +145,22 @@ fail:
 
 static int bu63169_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	int ret;
+	struct bu63169_device *bu63169 = sd_to_bu63169_ois(sd);
 
-	LOG_INF("%s\n", __func__);
-
-	ret = pm_runtime_get_sync(sd->dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(sd->dev);
-		return ret;
-	}
+	LOG_INF("+\n");
+	bu63169_power_on(bu63169);
+	LOG_INF("-\n");
 
 	return 0;
 }
 
 static int bu63169_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	LOG_INF("%s\n", __func__);
+	struct bu63169_device *bu63169 = sd_to_bu63169_ois(sd);
 
-	pm_runtime_put(sd->dev);
+	LOG_INF("+\n");
+	bu63169_power_off(bu63169);
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -316,8 +313,6 @@ static int bu63169_probe(struct i2c_client *client)
 	if (ret < 0)
 		goto err_cleanup;
 
-	pm_runtime_enable(dev);
-
 	return 0;
 
 err_cleanup:
@@ -333,29 +328,6 @@ static void bu63169_remove(struct i2c_client *client)
 	LOG_INF("%s\n", __func__);
 
 	bu63169_subdev_cleanup(bu63169);
-	pm_runtime_disable(&client->dev);
-	if (!pm_runtime_status_suspended(&client->dev))
-		bu63169_power_off(bu63169);
-	pm_runtime_set_suspended(&client->dev);
-
-}
-
-static int __maybe_unused bu63169_ois_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct bu63169_device *bu63169 = sd_to_bu63169_ois(sd);
-
-	return bu63169_power_off(bu63169);
-}
-
-static int __maybe_unused bu63169_ois_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct bu63169_device *bu63169 = sd_to_bu63169_ois(sd);
-
-	return bu63169_power_on(bu63169);
 }
 
 static const struct i2c_device_id bu63169_id_table[] = {
@@ -370,16 +342,9 @@ static const struct of_device_id bu63169_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, bu63169_of_table);
 
-static const struct dev_pm_ops bu63169_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-	SET_RUNTIME_PM_OPS(bu63169_ois_suspend, bu63169_ois_resume, NULL)
-};
-
 static struct i2c_driver bu63169_i2c_driver = {
 	.driver = {
 		.name = BU63169_NAME,
-		.pm = &bu63169_pm_ops,
 		.of_match_table = bu63169_of_table,
 	},
 	.probe  = bu63169_probe,

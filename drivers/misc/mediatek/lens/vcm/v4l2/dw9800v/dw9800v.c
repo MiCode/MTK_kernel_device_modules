@@ -6,7 +6,6 @@
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
@@ -317,20 +316,22 @@ static const struct v4l2_ctrl_ops dw9800v_vcm_ctrl_ops = {
 
 static int dw9800v_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	int ret;
+	struct dw9800v_device *dw9800v = sd_to_dw9800v_vcm(sd);
 
-	ret = pm_runtime_get_sync(sd->dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(sd->dev);
-		return ret;
-	}
+	LOG_INF("+\n");
+	dw9800v_power_on(dw9800v);
+	LOG_INF("-\n");
 
 	return 0;
 }
 
 static int dw9800v_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	pm_runtime_put(sd->dev);
+	struct dw9800v_device *dw9800v = sd_to_dw9800v_vcm(sd);
+
+	LOG_INF("+\n");
+	dw9800v_power_off(dw9800v);
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -442,8 +443,6 @@ static int dw9800v_probe(struct i2c_client *client)
 	if (ret < 0)
 		goto err_cleanup;
 
-	pm_runtime_enable(dev);
-
 	LOG_INF("-\n");
 
 	return 0;
@@ -461,30 +460,8 @@ static void dw9800v_remove(struct i2c_client *client)
 	LOG_INF("+\n");
 
 	dw9800v_subdev_cleanup(dw9800v);
-	pm_runtime_disable(&client->dev);
-	if (!pm_runtime_status_suspended(&client->dev))
-		dw9800v_power_off(dw9800v);
-	pm_runtime_set_suspended(&client->dev);
 
 	LOG_INF("-\n");
-}
-
-static int __maybe_unused dw9800v_vcm_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct dw9800v_device *dw9800v = sd_to_dw9800v_vcm(sd);
-
-	return dw9800v_power_off(dw9800v);
-}
-
-static int __maybe_unused dw9800v_vcm_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct dw9800v_device *dw9800v = sd_to_dw9800v_vcm(sd);
-
-	return dw9800v_power_on(dw9800v);
 }
 
 static const struct i2c_device_id dw9800v_id_table[] = {
@@ -499,16 +476,9 @@ static const struct of_device_id dw9800v_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, dw9800v_of_table);
 
-static const struct dev_pm_ops dw9800v_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-	SET_RUNTIME_PM_OPS(dw9800v_vcm_suspend, dw9800v_vcm_resume, NULL)
-};
-
 static struct i2c_driver dw9800v_i2c_driver = {
 	.driver = {
 		.name = DW9800V_NAME,
-		.pm = &dw9800v_pm_ops,
 		.of_match_table = dw9800v_of_table,
 	},
 	.probe  = dw9800v_probe,

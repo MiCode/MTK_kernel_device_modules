@@ -6,7 +6,6 @@
 #include <linux/module.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pinctrl/consumer.h>
-#include <linux/pm_runtime.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
@@ -157,24 +156,22 @@ fail:
 
 static int vl53l0_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	int ret;
+	struct vl53l0_device *vl53l0 = sd_to_vl53l0_ois(sd);
 
-	LOG_INF("%s\n", __func__);
-
-	ret = pm_runtime_get_sync(sd->dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(sd->dev);
-		return ret;
-	}
+	LOG_INF("+\n");
+	vl53l0_power_on(vl53l0);
+	LOG_INF("-\n");
 
 	return 0;
 }
 
 static int vl53l0_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	LOG_INF("%s\n", __func__);
+	struct vl53l0_device *vl53l0 = sd_to_vl53l0_ois(sd);
 
-	pm_runtime_put(sd->dev);
+	LOG_INF("+\n");
+	vl53l0_power_off(vl53l0);
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -339,8 +336,6 @@ static int vl53l0_probe(struct i2c_client *client)
 	if (ret < 0)
 		goto err_cleanup;
 
-	pm_runtime_enable(dev);
-
 	return 0;
 
 err_cleanup:
@@ -356,28 +351,6 @@ static void vl53l0_remove(struct i2c_client *client)
 	LOG_INF("%s\n", __func__);
 
 	vl53l0_subdev_cleanup(vl53l0);
-	pm_runtime_disable(&client->dev);
-	if (!pm_runtime_status_suspended(&client->dev))
-		vl53l0_power_off(vl53l0);
-	pm_runtime_set_suspended(&client->dev);
-}
-
-static int __maybe_unused vl53l0_ois_suspend(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct vl53l0_device *vl53l0 = sd_to_vl53l0_ois(sd);
-
-	return vl53l0_power_off(vl53l0);
-}
-
-static int __maybe_unused vl53l0_ois_resume(struct device *dev)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct vl53l0_device *vl53l0 = sd_to_vl53l0_ois(sd);
-
-	return vl53l0_power_on(vl53l0);
 }
 
 static const struct i2c_device_id vl53l0_id_table[] = {
@@ -392,16 +365,9 @@ static const struct of_device_id vl53l0_of_table[] = {
 };
 MODULE_DEVICE_TABLE(of, vl53l0_of_table);
 
-static const struct dev_pm_ops vl53l0_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(pm_runtime_force_suspend,
-				pm_runtime_force_resume)
-	SET_RUNTIME_PM_OPS(vl53l0_ois_suspend, vl53l0_ois_resume, NULL)
-};
-
 static struct i2c_driver vl53l0_i2c_driver = {
 	.driver = {
 		.name = VL53L0_NAME,
-		.pm = &vl53l0_pm_ops,
 		.of_match_table = vl53l0_of_table,
 	},
 	.probe  = vl53l0_probe,
