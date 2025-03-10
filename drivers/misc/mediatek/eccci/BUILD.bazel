@@ -87,6 +87,7 @@ define_mgk_ddk_ko(
 		"ccci_bm.c",
 		"ccci_core.c",
 		"ccci_modem.c",
+		"port/ccci_mbrain.c",
 		"port/ccci_swtp.c",
 		"port/port_cfg.c",
 		"port/port_char.c",
