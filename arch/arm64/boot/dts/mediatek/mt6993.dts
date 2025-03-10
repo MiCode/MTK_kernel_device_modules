@@ -9568,7 +9568,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_DISP>,
 				<&mm_pd_clk CLK_PD_DSI_PHY0_DISP>,
 				<&mm_pd_clk CLK_PD_DSI_PHY1_DISP>,
-				<&mm_pd_clk CLK_PD_DSI_PHY2_DISP>;
+				<&mm_pd_clk CLK_PD_DSI_PHY2_DISP>,
+				<&mmlsys_config_clk MML_SMI0_SMI>,
+				<&mml1_mmlsys_config_clk MML1_SMI0_SMI>,
+				<&mml2_mmlsys_config_clk MML2_SMI0_SMI>;
 			clock-names ="CLK_DISP_VCORE",
 				"CLK_DIS0_A",
 				"CLK_DIS0_B",
@@ -9581,7 +9584,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"CLK_VDISP_PERI",
 				"CLK_DSI_PHY0",
 				"CLK_DSI_PHY1",
-				"CLK_DSI_PHY2";
+				"CLK_DSI_PHY2",
+				"CLK_MML0",
+				"CLK_MML1",
+				"CLK_MML2";
 		};
 
 		dispsys_config: dispsys-config@3e300000 {
@@ -11552,7 +11558,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x31bd0078 0 0x4>,             // hfrp DISP_GENERAL_CTRL_SET
 				<0 0x31bd007c 0 0x4>,             // hfrp DISP_GENERAL_CTRL_CLR
 				<0 0x31a912b4 0 0x4>,             // hfrp_dvfsrc_disp_debug_sta_6
-				<0 0x31ac1e58 0 0x4>,             // hfrp sub pm DISP_VCORE bit29, or 0x31b50100 bit24
+				<0 0x31b50068 0 0x4>,             // hfrp sub pm DISP_VCORE bit29, or 0x31b50068 bit31
 				<0 0x3e800100 0 0x10>;            // VDISP_AO_CG_CON0
 			reg-names =
 				"DPC_BASE",
