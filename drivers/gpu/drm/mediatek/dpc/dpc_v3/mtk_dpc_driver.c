@@ -1468,7 +1468,6 @@ static void dpc_dsi_pll_set_v2(const u32 value)
 
 static void dpc_disp_group_enable(bool en)
 {
-	int ret = 0;
 	u32 value = 0;
 
 	if (g_priv == NULL) {
@@ -1477,7 +1476,7 @@ static void dpc_disp_group_enable(bool en)
 	}
 
 	/* DDR_SRC and EMI_REQ DT is follow DISP1 */
-	value = (en && has_cap(DPC_CAP_APSRC)) ? 0x00010001 : 0x000D000D;	// JAYER TODO
+	value = (en && has_cap(DPC_CAP_APSRC)) ? 0x01010101 : 0x0D0D0D0D;
 	writel(value, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 
 	/* channel bw DT is follow SRT*/
@@ -1492,31 +1491,16 @@ static void dpc_disp_group_enable(bool en)
 	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0 : 0x181818;
 	writel(value, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 
-	if (g_priv->mmsys_id == MMSYS_MT6991) {
-		/* check mminfra voter bit and polling power on */
-		if (!en) {
-			ret = readl_poll_timeout_atomic(g_priv->mminfra_voter,
-							value, value & BIT(6), 1, 100);
-			if (ret < 0)
-				DPCERR("vote mminfra voter timeout");
+	/* check mminfra voter bit and polling power on */
+	// TBD
 
-			ret = readl_poll_timeout_atomic(g_priv->mminfra_chk, value,
-							value & g_priv->mminfra_chk_mask, 10, 700);
-			if (ret < 0)
-				DPCERR("wait mminfra power timeout");
-		}
+	/* dsi pll auto */
+	value = (en && has_cap(DPC_CAP_DSI)) ? 0x11 : 0x1;
+	writel(value, dpc_base + DISP_DPC_MIPI_SODI5_EN);
 
-		/* dsi pll auto */
-		value = (en && has_cap(DPC_CAP_DSI)) ? 0x11 : 0x1;
-		writel(value, dpc_base + DISP_DPC_MIPI_SODI5_EN);
-
-		/* vcore off */
-		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x21 : 0x60;
-		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_EDP].cfg);
-		writel(value, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DPTX].cfg);
-		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180000 : 0x181e1e;
-		writel(value, dpc_base + DISP_DPC2_DISP_26M_PMIC_VCORE_OFF_CFG);
-	}
+	/* vcore off */
+	value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180000 : 0x181e1e;
+	writel(value, dpc_base + DISP_DPC2_DISP_26M_PMIC_VCORE_OFF_CFG);
 }
 
 static void dpc_mml_group_enable(bool en)
@@ -1529,7 +1513,7 @@ static void dpc_mml_group_enable(bool en)
 	}
 
 	/* DDR_SRC and EMI_REQ DT is follow MML1 */
-	value = (en && has_cap(DPC_CAP_APSRC)) ? 0x00010001 : 0x000D000D;
+	value = (en && has_cap(DPC_CAP_APSRC)) ? 0x01010101 : 0x0D0D0D0D;
 	writel(value, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
 
 	/* lower vdisp level */
@@ -1544,11 +1528,9 @@ static void dpc_mml_group_enable(bool en)
 	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0 : 0x181818;
 	writel(value, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
-	if (g_priv->mmsys_id == MMSYS_MT6991) {
-		/* vcore off */
-		value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180000 : 0x181e1e;
-		writel(value, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
-	}
+	/* vcore off */
+	value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180000 : 0x181e1e;
+	writel(value, dpc_base + DISP_DPC2_MML_26M_PMIC_VCORE_OFF_CFG);
 }
 
 void dpc_group_enable_v3(const u16 group, bool en)
@@ -2022,12 +2004,7 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	get_addr_byname("vcore_mode_set", &priv->vcore_mode_set_va, NULL);
 	get_addr_byname("vcore_mode_clr", &priv->vcore_mode_clr_va, NULL);
 	// get_addr_byname("vdisp_dvfsrc", &priv->vdisp_dvfsrc, NULL);	/* TODO: need porting devapc */
-	// get_addr_byname("disp_vcore_pwr_chk", &priv->dispvcore_chk, NULL); /* TODO: define in dts */
-	priv->dispvcore_chk = ioremap(0x31b50068, 0x4);
-	if (!IS_ERR_OR_NULL(priv->dispvcore_chk)) {
-		priv->dispvcore_chk = NULL;
-		DPCERR("failed to map disp_vcore_pwr_chk");
-	}
+	get_addr_byname("disp_vcore_pwr_chk", &priv->dispvcore_chk, NULL);
 	get_addr_byname("vdisp_ao_cg_con", &priv->vdisp_ao_cg_con, NULL);
 
 	/* use for gced, modify for access mmup inside mminfra */
@@ -3018,7 +2995,7 @@ static struct mtk_dpc mt6993_dpc_driver_data = {
 	.subsys_cnt = DPC3_SUBSYS_CNT,
 	.ch_bw_cfg = mt6993_ch_bw_cfg,
 	.vdisp_dvfsrc_idle_mask = 0xc00,
-	.dispvcore_chk_mask = BIT(29),
+	.dispvcore_chk_mask = BIT(30)|BIT(31),
 	.mminfra_chk_mask = BIT(0),
 	.set_mtcmos = mt6993_set_mtcmos,
 	.disp_irq_handler = mt6993_irq_handler,
