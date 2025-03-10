@@ -629,6 +629,7 @@ struct mml_frame_config {
 	bool nocmd:1;
 	bool err:1;
 	bool dpc:1;
+	bool dbgtp:1;
 	bool rrot_dual:1;
 	bool merge2p:1;
 	bool rsz_front:1;

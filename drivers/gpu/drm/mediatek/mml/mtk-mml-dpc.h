@@ -26,6 +26,7 @@ enum mml_dl_dpc_config {
  * mml_dpc_register - register dpc driver functions.
  *
  * @funcs:	DPC driver functions.
+ * @version:	DPC driver version.
  */
 void mml_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version);
 
@@ -43,4 +44,4 @@ void mml_dpc_channel_bw_set_by_idx(u32 larb_idx, u32 bw, bool hrt);
 void mml_dpc_channel_bw_set(u32 sysid, u32 bw);
 void mml_dpc_dump(void);
 
-#endif	/* __MTK_MML_H__ */
+#endif	/* __MTK_MML_DPC_H__ */

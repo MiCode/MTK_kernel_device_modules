@@ -27,6 +27,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_dsi_lpc.h"
 
+#include "mtk-mml-dbgtp.h"
 
 /* Display Debug Top Regs */
 //DISP_DEBUG_TOP Base address: (+0x3EE8_0000)
@@ -224,6 +225,19 @@
 #define DSI_MON_SEL_DBG                          REG_FLD_MSB_LSB(15, 0)
 #define DSI_MON_SEL_BUF                          REG_FLD_MSB_LSB(31, 16)
 #define DSI_MON_TGT_PIX                          REG_FLD_MSB_LSB(14, 0)
+
+struct mtk_disp_dbgtp_data {
+	bool is_support_34bits;
+	bool need_bypass_shadow;
+};
+
+struct mtk_disp_dbgtp {
+	struct mtk_ddp_comp ddp_comp;
+	struct drm_crtc *crtc;
+	unsigned int underflow_cnt;
+	unsigned int abnormal_cnt;
+	const struct mtk_disp_dbgtp_data *data;
+};
 
 
 struct mtk_ddp_comp *dbgtp_comp;
@@ -2229,6 +2243,11 @@ static const struct component_ops mtk_disp_dbgtp_component_ops = {
 	.unbind = mtk_disp_dbgtp_unbind,
 };
 
+static const struct dbgtp_funcs dbgtp_mml_funcs = {
+	.dbgtp_mmlsys_config = mtk_dbgtp_mmlsys_config,
+	.dbgtp_mmlsys_config_dump = mtk_dbgtp_dump_mmlsys_regs,
+};
+
 static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_disp_ovl *priv = dev_id;
@@ -2354,8 +2373,10 @@ static int mtk_disp_dbgtp_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 		return ret;
 	}
-	DDPMSG("%s-\n", __func__);
 
+	mml_dbgtp_register(&dbgtp_mml_funcs);
+
+	DDPMSG("%s-\n", __func__);
 	return ret;
 }
 
@@ -2366,11 +2387,6 @@ static void mtk_disp_dbgtp_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &mtk_disp_dbgtp_component_ops);
 	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 }
-
-//static struct dbgtp_funcs dbgtp_functions = {
-//	.dbgtp_mmlsys_config = mtk_dbgtp_mmlsys_config,
-//	.dbgtp_mmlsys_config_dump = mtk_dbgtp_dump_mmlsys_regs,
-//};
 
 static const struct mtk_disp_dbgtp_data mt6993_dbgtp_driver_data = {
 	.is_support_34bits = true,

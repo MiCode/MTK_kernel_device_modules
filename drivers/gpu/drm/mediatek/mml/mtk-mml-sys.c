@@ -14,13 +14,14 @@
 #include <cmdq-util.h>
 #include <mtk-mminfra-util.h>
 
-#include "mtk-mml-dpc.h"
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-drm-adaptor.h"
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-sys.h"
+#include "mtk-mml-dpc.h"
+#include "mtk-mml-dbgtp.h"
 
 #include "tile_driver.h"
 #include "mtk-mml-tile.h"
@@ -412,6 +413,9 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 			mml_dpc_power_keep_gce(comp->sysid, pkt, sys->data->gpr[ccfg->pipe],
 				&task->dpc_reuse_sys);
 	}
+
+	if (cfg->dbgtp)
+		mml_dbgtp_config(pkt, comp->sysid, comp->base_pa, comp->base);
 
 	if (mml_isdc(cfg->info.mode) && !mml_dev_get_couple_cnt(cfg->mml)) {
 		/* disable ultra in srt mode to avoid occupy bw */

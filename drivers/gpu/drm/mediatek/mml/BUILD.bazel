@@ -45,6 +45,7 @@ define_mgk_ddk_ko(
         "mtk-mml-chist.c",
         "mtk-mml-color.c",
         "mtk-mml-core.c",
+        "mtk-mml-dbgtp.c",
         "mtk-mml-dle-adaptor.c",
         "mtk-mml-dpc.c",
         "mtk-mml-driver.c",

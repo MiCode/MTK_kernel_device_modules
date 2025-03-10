@@ -75,18 +75,8 @@ struct mtk_dbgtp {
 	struct dbgtp_subsys mmlsys[MMLSYS_NUM];
 };
 
-struct mtk_disp_dbgtp_data {
-	bool is_support_34bits;
-	bool need_bypass_shadow;
-};
-
-struct mtk_disp_dbgtp {
-	struct mtk_ddp_comp ddp_comp;
-	struct drm_crtc *crtc;
-	unsigned int underflow_cnt;
-	unsigned int abnormal_cnt;
-	const struct mtk_disp_dbgtp_data *data;
-};
+struct mtk_drm_private;
+struct mtk_drm_crtc;
 
 void mtk_dbgtp_config_restore(struct mtk_drm_private *priv);
 void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);

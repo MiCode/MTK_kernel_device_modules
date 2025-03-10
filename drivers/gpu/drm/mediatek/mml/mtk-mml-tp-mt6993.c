@@ -1426,8 +1426,9 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	else
 		cfg->dpc = false;
 
-	tp_dump_path_short(path, cfg->shadow, cfg->dpc);
+	cfg->dbgtp = true;
 
+	tp_dump_path_short(path, cfg->shadow, cfg->dpc);
 	return 0;
 }
 
