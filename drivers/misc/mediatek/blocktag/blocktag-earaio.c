@@ -163,8 +163,8 @@ static void mtk_btag_earaio_boost_fill(int boost)
 
 	earaio_ctrl.earaio_boost_state = boost;
 
-	sprintf(&earaio_ctrl.msg_buf[earaio_ctrl.msg_buf_start_idx], "boost=%d",
-		boost);
+	snprintf(&earaio_ctrl.msg_buf[earaio_ctrl.msg_buf_start_idx],
+		 EARAIO_BOOST_ENTRY_LEN, "boost=%d", boost);
 	earaio_ctrl.msg_buf_used_entry++;
 
 	if (boost)
