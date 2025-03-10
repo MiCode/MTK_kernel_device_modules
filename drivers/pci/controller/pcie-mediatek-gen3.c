@@ -42,13 +42,15 @@
 #include "clkbuf-api.h"
 
 /* vlpcfg register */
-#define PCIE_VLPCFG_BASE		0x1c001000
-#define PCIE_VLPCFG_SIZE		0x1000
 #define VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG	0x948
-#define PEXTP_MAC0_MTCMOS_CTRL_SPM_HWCCF	BIT(16)
-#define PEXTP_PHY0_MTCMOS_CTRL_SPM_HWCCF	BIT(17)
-#define PEXTP_PCIE_MTCMOS_CTRL_SPM_HWCCF \
-	(PEXTP_MAC0_MTCMOS_CTRL_SPM_HWCCF | PEXTP_PHY0_MTCMOS_CTRL_SPM_HWCCF)
+#define PEXTP_MAC0_MTCMOS_CTRL_WAY		BIT(16)
+#define PEXTP_PHY0_MTCMOS_CTRL_WAY		BIT(17)
+#define PEXTP0_PCIE_MTCMOS_CTRL_WAY \
+	(PEXTP_MAC0_MTCMOS_CTRL_WAY | PEXTP_PHY0_MTCMOS_CTRL_WAY)
+#define PEXTP_MAC1_MTCMOS_CTRL_WAY		BIT(9)
+#define PEXTP_PHY1_MTCMOS_CTRL_WAY		BIT(10)
+#define PEXTP1_PCIE_MTCMOS_CTRL_WAY \
+	(PEXTP_MAC1_MTCMOS_CTRL_WAY | PEXTP_PHY1_MTCMOS_CTRL_WAY)
 
 /* pextp register, CG,HW mode */
 #define PCIE_PEXTP_CG_0			0x14
@@ -322,6 +324,14 @@ enum mtk_pcie_mtcmos_ctrl_mode {
 	SPM_CTRL_MTCMOS_MODE,
 };
 
+enum mtk_pcie_ipm_version {
+	IPM_VERSION_TRUNK_80 = 80,
+	IPM_VERSION_TRUNK_81 = 81,
+	IPM_VERSION_TRUNK_85 = 85,
+	IPM_VERSION_TRUNK_90 = 90,
+	IPM_VERSION_TRUNK_98 = 98,
+};
+
 /**
  * struct mtk_pcie_data - PCIe data for each SoC
  * @pre_init: Specific init data, called before linkup
@@ -339,6 +349,7 @@ struct mtk_pcie_data {
 	void (*clkbuf_control)(struct mtk_pcie_port *port, bool enable);
 	int (*control_vote)(struct mtk_pcie_port *port, bool hw_mode_en, u8 who);
 	enum mtk_pcie_mtcmos_ctrl_mode mtcmos_ctrl_mode;
+	enum mtk_pcie_ipm_version ipm_version;
 };
 
 /**
@@ -631,8 +642,8 @@ static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 	if (!port || !port->pextpcfg)
 		return;
 
-	/* Use port->vlpcfg to determine pextp version, because only V1 need use vlpcfg*/
-	if (port->vlpcfg) {
+	if (port->data->ipm_version > IPM_VERSION_TRUNK_80 &&
+	    port->data->ipm_version < IPM_VERSION_TRUNK_90) {
 		dev_info(port->dev, "V1:AP HW MODE:%#x, Modem HW MODE:%#x, PEXTP_PWRCTL_3:%#x, Clock gate:%#x, MSI select=%#x\n",
 			readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0),
 			readl_relaxed(port->pextpcfg + PEXTP_RSV_0),
@@ -1633,23 +1644,26 @@ static int match_any(struct device *dev, void *unused)
 	return 1;
 }
 
-static int __maybe_unused mtk_pcie_mtcmos_disable_hwccf_ctrl(bool enable)
+static void mtk_pcie_mtcmos_disable_hwccf_ctrl(struct mtk_pcie_port *port, bool enable)
 {
-	void __iomem *hwccif_ctrl_base;
 	u32 val = 0;
 
-	hwccif_ctrl_base = ioremap(PCIE_VLPCFG_BASE, PCIE_VLPCFG_SIZE);
+	val = readl_relaxed(port->vlpcfg + VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG);
+	if (port->port_num == 0) {
+		if (enable)
+			val |= PEXTP0_PCIE_MTCMOS_CTRL_WAY;
+		else
+			val &= ~PEXTP0_PCIE_MTCMOS_CTRL_WAY;
+	}
 
-	val = readl(hwccif_ctrl_base + VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG);
-	if (enable)
-		val |= PEXTP_PCIE_MTCMOS_CTRL_SPM_HWCCF;
-	else
-		val &= ~PEXTP_PCIE_MTCMOS_CTRL_SPM_HWCCF;
-	writel(val, hwccif_ctrl_base + VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG);
+	if (port->port_num == 1) {
+		if (enable)
+			val |= PEXTP1_PCIE_MTCMOS_CTRL_WAY;
+		else
+			val &= ~PEXTP1_PCIE_MTCMOS_CTRL_WAY;
+	}
 
-	iounmap(hwccif_ctrl_base);
-
-	return 0;
+	writel_relaxed(val, port->vlpcfg + VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG);
 }
 
 static int mtk_pcie_power_up(struct mtk_pcie_port *port)
@@ -1700,7 +1714,7 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 	}
 
 	if (port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
-		mtk_pcie_mtcmos_disable_hwccf_ctrl(true);
+		mtk_pcie_mtcmos_disable_hwccf_ctrl(port, true);
 
 	return 0;
 
@@ -1731,7 +1745,7 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 	}
 
 	if (port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
-		mtk_pcie_mtcmos_disable_hwccf_ctrl(false);
+		mtk_pcie_mtcmos_disable_hwccf_ctrl(port, false);
 
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
@@ -2115,7 +2129,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 static int mtk_pcie_sleep_protect_status(struct mtk_pcie_port *port)
 {
 	/* Determine sleep protect by check SPM regs(6985/6989) */
-	if (port->vlpcfg)
+	if (port->data->ipm_version > IPM_VERSION_TRUNK_80 &&
+	    port->data->ipm_version < IPM_VERSION_TRUNK_90)
 		return readl_relaxed(port->vlpcfg + PCIE_VLP_AXI_PROTECT_STA) &
 		       PCIE_SUM_SLP_READY(port->port_num);
 
@@ -3155,6 +3170,7 @@ static const struct mtk_pcie_data mt6985_data = {
 	.resume_l12 = mtk_pcie_resume_l12_6985,
 	.control_vote = mtk_pcie_control_vote_v1,
 	.clkbuf_control = mtk_pcie_clkbuf_force_bbck2,
+	.ipm_version = IPM_VERSION_TRUNK_81,
 };
 
 static int mtk_pcie_pre_init_6989(struct mtk_pcie_port *port)
@@ -3187,6 +3203,7 @@ static const struct mtk_pcie_data mt6989_data = {
 	.pre_init = mtk_pcie_pre_init_6989,
 	.control_vote = mtk_pcie_control_vote_v1,
 	.clkbuf_control = mtk_pcie_clkbuf_force_bbck2,
+	.ipm_version = IPM_VERSION_TRUNK_85,
 };
 
 static int mtk_pcie_suspend_l12_6991(struct mtk_pcie_port *port)
@@ -3359,6 +3376,7 @@ static const struct mtk_pcie_data mt6991_data = {
 	.resume_l12 = mtk_pcie_resume_l12_6991,
 	.control_vote = mtk_pcie_control_vote_v2,
 	.clkbuf_control = mtk_pcie_clkbuf_force_26m,
+	.ipm_version = IPM_VERSION_TRUNK_90,
 };
 
 /*
@@ -3528,6 +3546,7 @@ static const struct mtk_pcie_data mt6993_data = {
 	.control_vote = mtk_pcie_control_vote_v2,
 	.clkbuf_control = mtk_pcie_clkbuf_force_26m,
 	.mtcmos_ctrl_mode = SPM_CTRL_MTCMOS_MODE,
+	.ipm_version = IPM_VERSION_TRUNK_98,
 };
 
 static const struct of_device_id mtk_pcie_of_match[] = {
