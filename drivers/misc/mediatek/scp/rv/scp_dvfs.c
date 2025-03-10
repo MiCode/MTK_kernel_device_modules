@@ -1448,6 +1448,9 @@ bool sync_ulposc_cali_data_to_scp(void)
 	int i, ret;
 	bool cali_ok = true;
 
+	if (!g_dvfs_dev.sleep_init_done)
+		slp_ipi_init();
+
 	if (!g_dvfs_dev.ulposc_hw.do_ulposc_cali) {
 		pr_notice("[%s]: no ulposc2 cali data\n",
 			__func__);
@@ -1459,9 +1462,6 @@ bool sync_ulposc_cali_data_to_scp(void)
 		pr_notice("[%s]: ulposc2 calibration failed\n", __func__);
 		return false;
 	}
-
-	if (!g_dvfs_dev.sleep_init_done)
-		slp_ipi_init();
 
 	ipi_data[0] = SCP_SYNC_ULPOSC_CALI;
 	for (i = 0; i < g_dvfs_dev.ulposc_hw.cali_nums; i++) {
