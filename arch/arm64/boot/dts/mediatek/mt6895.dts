@@ -8927,7 +8927,7 @@
 		mdp: mdp@1f000000 {
 			compatible = "mediatek,mdp";
 			reg = <0 0x1f000000 0 0x1000>;
-			thread_count = <24>;
+			thread-count = <24>;
 			mboxes = <&gce 20 0 CMDQ_THR_PRIO_1>,
 				<&gce 21 0 CMDQ_THR_PRIO_1>;
 			mmsys-config = <&mdpsys_config>;
