@@ -9096,6 +9096,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mboxes = <&gce 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
 			gce-hwid = <0>;
+			mediatek,mminfra-supply = <&mminfra_util>;
+			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 		};
 
 		gce_2: gce@30300000 {
@@ -9145,6 +9147,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mboxes = <&gce_2 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
 			gce-hwid = <1>;
+			mediatek,mminfra-supply = <&mminfra_util>;
+			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 		};
 
 		gce_m: gce@30180000 {
@@ -9183,6 +9187,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mboxes = <&gce_m 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
 			gce-hwid = <2>;
+			mediatek,mminfra-supply = <&mminfra_util>;
+			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 		};
 
 		gce_m_2: gce@30380000 {
@@ -9221,6 +9227,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mboxes = <&gce_m_2 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
 			gce-hwid = <3>;
+			mediatek,mminfra-supply = <&mminfra_util>;
+			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 		};
 
 		cmdq_test: cmdq-test@0 {
