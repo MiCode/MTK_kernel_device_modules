@@ -1874,7 +1874,7 @@ static int mtk_dsi_set_LTPO_VM(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 
 	//set SEQ0, only use one seq now
 	SET_VAL_MASK(ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask, 1, LTPO_VDO_SQ0_CYC_NUM0);
-	SET_VAL_MASK(ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask, ltpo_vm_max_skip_num + 1, LTPO_VDO_SQ0_ALL_NUM0);
+	SET_VAL_MASK(ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask, (ltpo_vm_max_skip_num + 1), LTPO_VDO_SQ0_ALL_NUM0);
 	SET_VAL_MASK(ltpo_vdo_sq0_val, ltpo_vdo_sq0_mask, 1, LTPO_VDO_SQ0_ACT_NUM0);
 
 	//LTPO_VM_EN, LTPO_TE_EN, LTPO_VSYNC_EVENT_EN
@@ -1986,7 +1986,6 @@ void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 static int  mtk_dsi_dbg_monitor_config0(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	void *handle, unsigned int config_value)
 {
-	u32 val = 0, mask = 0;
 
 	if (comp == NULL) {
 		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
@@ -2014,7 +2013,6 @@ static int  mtk_dsi_dbg_monitor_config0(struct mtk_dsi *dsi, struct mtk_ddp_comp
 static int  mtk_dsi_dbg_monitor_config1(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	void *handle, unsigned int config_value)
 {
-	u32 val = 0, mask = 0;
 
 	if (comp == NULL) {
 		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
@@ -2043,7 +2041,6 @@ static int  mtk_dsi_dbg_monitor_config1(struct mtk_dsi *dsi, struct mtk_ddp_comp
 static int  mtk_dsi_dbg_monitor_config2(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	void *handle, unsigned int config_value)
 {
-	u32 val = 0, mask = 0;
 
 	if (comp == NULL) {
 		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
@@ -2071,7 +2068,6 @@ static int  mtk_dsi_dbg_monitor_config2(struct mtk_dsi *dsi, struct mtk_ddp_comp
 static int  mtk_dsi_dbg_monitor_disable_reset(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	void *handle, unsigned int config_value)
 {
-	u32 val = 0, mask = 0;
 
 	if (comp == NULL) {
 		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
@@ -2133,7 +2129,6 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 static int mtk_dsi_get_data_rate_by_panel_params(struct mtk_dsi *dsi, struct mtk_panel_params *panel_params)
 {
 	unsigned int data_rate = 0;
-	int ret = 0;
 
 	if (dsi->mipi_hopping_sta && panel_params->dyn.data_rate)
 		data_rate = panel_params->dyn.data_rate;
@@ -3073,7 +3068,6 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		u32 frame_time, rframe_time;
 		u32 ps_wc_bits = 0, fps, urgent_threshold;
 		int prefetch_time, urgent_time;
-		struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
 
 		fps = mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
 		fps = fps > 0 ? fps : drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
@@ -3978,7 +3972,6 @@ void mtk_dsi_cur_pos_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr;
 	unsigned int reg_val;
-	unsigned long offset;
 	struct mtk_dsi *dsi;
 
 	if(!comp)
@@ -6225,7 +6218,6 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	int index = drm_crtc_index(crtc);
 	int data = MTK_DISP_BLANK_POWERDOWN;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_BRING_UP) {
 		DDPMSG("%s force return for bringup\n", __func__);
@@ -6548,12 +6540,12 @@ mtk_dsi_connector_duplicate_state(struct drm_connector *connector)
 				"[DUMP_PROP]prev_conn%d_mtk_prop_val: ", index);
 			for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
 				written += scnprintf(dbg_msg + written, 1024 - written,
-					"[%d]%d ", i, state->prop_val[index][i]);
+					"[%d]%llu ", i, state->prop_val[index][i]);
 			}
 			DDP_DUMP_PROP("%s\n", dbg_msg);
 			kfree(dbg_msg);
 		} else {
-			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n",__func__);
 		}
 	}
 
@@ -10380,17 +10372,15 @@ static int mtk_dsi_read_data_by_gce(int crtc_id, struct mtk_dsi *dsi, struct mip
 	/* define must be >= dsi_cmdq_rd_max_sz_gce & align 4bytes */
 	#define GCE_RX_NUM 264
 	int i, j, m;
-	unsigned int reg_val;
 	struct mtk_drm_crtc *mtk_crtc = dsi->is_slave ?
 			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
-	unsigned char packet_type;
 	unsigned int recv_cnt = 0, recv_cnt1 = 0;
 	u8 read_data[GCE_RX_NUM];
 	void *src_addr;
 
 	#define _R_BY_GCE_FMT \
-		 "%s, i:%d,off=0x%x/0x%x=(0x%x,0x%x), RX[%d/%d/0x%x]=0x%x, " \
-		 "RX[%d/%d/0x%x]=0x%x, RX[%d/%d/0x%x]=0x%x, RX[%d/%d/0x%x]=0x%x, pg:0x%x\n"
+		 "%s, i:%d,off=0x%lx/0x%x=(0x%x,0x%x), RX[%d/%d/0x%lx]=0x%x, " \
+		 "RX[%d/%d/0x%lx]=0x%x, RX[%d/%d/0x%lx]=0x%x, RX[%d/%d/0x%lx]=0x%x, pg:0x%x\n"
 
 	recv_cnt1 = DISP_REG_GET_FIELD(RX_POINTER, dsi->regs + DSI_RX_TRIG_STA(dsi->driver_data));
 	recv_cnt = readl(mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_DSI_RX_TRIG_STA));
@@ -10426,7 +10416,7 @@ static int mtk_dsi_read_data_by_gce(int crtc_id, struct mtk_dsi *dsi, struct mip
 				((DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4) + j + 3)));
 
 		DDPDSI_CMD(_R_BY_GCE_FMT, __func__, i,
-			 (int)(DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4),
+			 (DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4),
 			 (dsi->driver_data->reg_cmdq0_ofs + (0x1FC - m)),
 			 readl(mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4)),
@@ -10440,7 +10430,7 @@ static int mtk_dsi_read_data_by_gce(int crtc_id, struct mtk_dsi *dsi, struct mip
 	recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
 	DDPDSI_CMD("%s, recv_cnt=%d (only payload)\n", __func__, recv_cnt);
 	if (recv_cnt != msg->rx_len) {
-		DDPPR_ERR("%s, read data len is error, %d, %d\n", __func__, recv_cnt, msg->rx_len);
+		DDPPR_ERR("%s, read data len is error, %d, %zu\n", __func__, recv_cnt, msg->rx_len);
 		return -EINVAL;
 	}
 	if (recv_cnt > 2)
@@ -10525,7 +10515,7 @@ static int mtk_dsi_read_data_by_cpu(int crtc_id, struct mtk_dsi *dsi, struct mip
 
 		recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
 		if (recv_cnt != msg->rx_len) {
-			DDPPR_ERR("%s, read data len is error, %d, %d\n", __func__, recv_cnt, msg->rx_len);
+			DDPPR_ERR("%s, read data len is error, %d, %zu\n", __func__, recv_cnt, msg->rx_len);
 			return -EINVAL;
 		}
 
@@ -10640,7 +10630,6 @@ static int copy_to_slot_common(struct mtk_dsi *dsi, struct cmdq_pkt *handle, u32
 static int copy_to_slot_esd_check(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	u32 read_len, u32 slot_idx)
 {
-	int i;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	struct mtk_drm_crtc *mtk_crtc = dsi->is_slave ?
 			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
@@ -10717,7 +10706,7 @@ static void mtk_dsi_send_cmd_trigger(struct mtk_dsi *dsi, struct cmdq_pkt *handl
 static int mtk_setup_dsi_cmdq(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			u32 total_sz, const struct mipi_dsi_msg *msg)
 {
-	int i;
+	int i = 0;
 	u32 config = 0, cmdq_size = 0, cmdq_mask, cmdq_off, cmdq_val, cmdq_page = 0;;
 	u32 base_addr, reg_val, reg_cmdq_ofs;
 	u32 start_off = total_sz * 4;
@@ -10733,7 +10722,7 @@ static int mtk_setup_dsi_cmdq(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 	#define _SETUP_CMD_SHORT	"%s short cmd, total_sz:%u, start_off:0x%x, cmdq_off:0x%x, " \
 		"cmdq_page:%d, base_addr:0x%x, cfg:0x%x, reg_val:0x%x\n"
 
-	DDPDSI_CMD("%s %d, total_sz:%u, start_off:0x%x, tx_len:%d\n", __func__, __LINE__,
+	DDPDSI_CMD("%s %d, total_sz:%u, start_off:0x%x, tx_len:%zu\n", __func__, __LINE__,
 		total_sz, start_off, msg->tx_len);
 
 	if (msg->tx_len == 0) {
@@ -10845,7 +10834,7 @@ static int mtk_check_wr_cmd_size(struct mtk_dsi *dsi, const struct mtk_dsi_cmd_m
 			cmdq_size = 1;
 
 		if (cmdq_size > (dsi->driver_data->dsi_cmdq_size * dsi->driver_data->dsi_cmdq_page)) {
-			DDPPR_ERR("%s, %d single cmd size is overflow, cmdq_size=%u, tx_len[%d]=%d, total=(%u*%u)\n",
+			DDPPR_ERR("%s, %d single cmd size is overflow, cmdq_size=%u, tx_len[%d]=%zu, total=(%u*%u)\n",
 				__func__, __LINE__, cmdq_size, i, cmd_msg->cmd_msg[i].tx_len,
 				dsi->driver_data->dsi_cmdq_size, dsi->driver_data->dsi_cmdq_page);
 			return -EFAULT;
@@ -10875,7 +10864,7 @@ static int mtk_check_rd_msg(struct mtk_dsi *dsi, struct mtk_dsi_cmd_option *cmd_
 	}
 	if ((!dsi->driver_data->support_rd_cmdq) &&
 		(cmd_msg->cmd_msg->rx_len > dsi->driver_data->dsi_rx_data_rd_max_sz)) {
-		DDPPR_ERR("%s, %d, rx_read_len is overflow:%d(%d)\n", __func__, __LINE__,
+		DDPPR_ERR("%s, %d, rx_read_len is overflow:%zu(%d)\n", __func__, __LINE__,
 			cmd_msg->cmd_msg->rx_len, dsi->driver_data->dsi_rx_data_rd_max_sz);
 		return -EINVAL;
 	}
@@ -10897,7 +10886,7 @@ static int mtk_check_rd_msg(struct mtk_dsi *dsi, struct mtk_dsi_cmd_option *cmd_
 			return -EINVAL;
 		}
 		if (cmd_msg->cmd_msg->rx_len > dsi->driver_data->dsi_cmdq_rd_max_sz_gce) {
-			DDPPR_ERR("%s, cmdq_read size is overflow by gce is overflow:%d(%d)\n", __func__,
+			DDPPR_ERR("%s, cmdq_read size is overflow by gce is overflow:%zu(%d)\n", __func__,
 				cmd_msg->cmd_msg->rx_len, dsi->driver_data->dsi_cmdq_rd_max_sz_gce);
 			return -EINVAL;
 		}
@@ -10920,7 +10909,7 @@ static int mtk_check_rd_msg(struct mtk_dsi *dsi, struct mtk_dsi_cmd_option *cmd_
 	/* CPU read check */
 	if (cmd_opt->flags & MTK_MIPI_DSI_CMD_BY_CPU) {
 		if (cmd_msg->cmd_msg->rx_len > dsi->driver_data->dsi_cmdq_rd_max_sz_cpu) {
-			DDPPR_ERR("%s, cmdq_read size is overflow by cpu, len=%d(%d)\n",
+			DDPPR_ERR("%s, cmdq_read size is overflow by cpu, len=%zu(%d)\n",
 				__func__, cmd_msg->cmd_msg->rx_len, dsi->driver_data->dsi_cmdq_rd_max_sz_cpu);
 			return -EINVAL;
 		}
@@ -10975,7 +10964,7 @@ static int dsi_cmd_flags_check(void *dsi, u32 flags)
 
 static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle, const struct mtk_dsi_cmd_msg *cmd_msg)
 {
-	int i, j;
+	int i;
 	int cmdq_size = 0, total_cmdq_size = 0, rd_total_sz = 0;
 	//u32 start_off = 0;
 	struct mipi_dsi_msg msg;
@@ -10986,7 +10975,6 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 	const char *tx_buf;
 	u8 rd_len[2] = { 0 };
 	char delay_ms;
-	int ret = 0;
 
 	CRTC_MMP_MARK(index, ddic_cmd_v2_msg, cmd_msg->is_rd, (unsigned long)cmd_msg);
 	DDPDSI_CMD("%s ++, cmd_num=%u, transfer_mode:%d, package=%d, rd=%d, slot=%d, scn=%d\n", __func__,
@@ -11031,7 +11019,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			total_cmdq_size += cmdq_size;
 			DDPDSI_CMD("%s, read cmd i=%d, cmdq_sz=%d(%d)\n", __func__, i, cmdq_size, total_cmdq_size);
 		}
-		DDPDSI_CMD("%s, read package trigger, total_cmdq_size=%d, rx_len=%d\n", __func__,
+		DDPDSI_CMD("%s, read package trigger, total_cmdq_size=%d, rx_len=%zu\n", __func__,
 			total_cmdq_size, cmd_msg->cmd_msg->rx_len);
 		CRTC_MMP_MARK(index, ddic_cmd_v2_msg, 1, cmd_msg->cmd_msg->rx_len);
 		mtk_dsi_send_cmd_trigger(mtk_dsi, handle, total_cmdq_size);
@@ -11074,7 +11062,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 		msg.tx_buf = cmd_msg->cmd_msg[i].tx_buf;
 		msg.tx_len = cmd_msg->cmd_msg[i].tx_len;
 
-		DDPDSI_CMD("%s in1, i=%d, tx_len=%d\n", __func__, i, msg.tx_len);
+		DDPDSI_CMD("%s in1, i=%d, tx_len=%zu\n", __func__, i, msg.tx_len);
 
 		switch (msg.tx_len) {
 		case 0:
@@ -11103,7 +11091,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 
 		cmdq_size = mtk_setup_dsi_cmdq(mtk_dsi, handle, total_cmdq_size, &msg);
 		if (cmdq_size < 0) {
-			DDPPR_ERR("%s, out of dsi cmdq size, i=%d, cmd_len\n", __func__, i, msg.tx_len);
+			DDPPR_ERR("%s, out of dsi cmdq size, i=%d, tx_len=%zu\n", __func__, i, msg.tx_len);
 			mtk_dsi_power_keep_gce(mtk_dsi, handle, false);
 			return -ENOMEM;
 		}
@@ -11124,7 +11112,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 				total_cmdq_size += cmdq_size;
 			}
 		}
-		DDPDSI_CMD("%s, in2, i=%d, tx_len=%d, cmdq_size=%d(%d)\n",__func__, i,
+		DDPDSI_CMD("%s, in2, i=%d, tx_len=%zu, cmdq_size=%d(%d)\n",__func__, i,
 			msg.tx_len, cmdq_size, total_cmdq_size);
 	}
 
@@ -11164,7 +11152,7 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 		DDPDSI_CMD("%s, create handle by CFG Thread(CMD_EXTERNAL)\n", __func__);
 	} else if (flags & MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY) {
 		if (!pkt) {
-			DDPPR_ERR("%s, %d, pkt is NULL, flags=0x%x\n", __func__, __LINE__);
+			DDPPR_ERR("%s, %d, pkt is NULL, flags=0x%x\n", __func__, __LINE__,flags);
 			return -EINVAL;
 		}
 		handle = (struct cmdq_pkt *)pkt;
@@ -11251,7 +11239,7 @@ int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt
 	int index = 0;
 
 	if (!cmd_opt || !cmd_opt->flags || !cmd_msg) {
-		DDPPR_ERR("%s, invalid parameters\n", __func__, flags);
+		DDPPR_ERR("%s, invalid parameters, flags=0x%x\n", __func__, flags);
 		return -EINVAL;
 	}
 	if (IS_ERR_OR_NULL(drm_dev)) {
@@ -11770,7 +11758,7 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_dsi *dsi, unsigned int ps_wc, int mode_idx)
 {
 	unsigned int line_time;
-	unsigned int data_rate;
+	unsigned int data_rate = 0;
 	unsigned int null_packet_len = 0;
 	int ret = 0;
 	u32 lpx = 0, hs_prpr = 0, hs_zero = 0, hs_trail = 0, da_hs_exit = 0;
@@ -14058,7 +14046,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		struct mtk_dsi *dsi =
 			container_of(comp, struct mtk_dsi, ddp_comp);
-		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		panel_ext = mtk_dsi_get_panel_ext(comp);
 		if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
@@ -14875,7 +14862,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			"[DUMP_PROP]curr_conn%d_mtk_prop_val: ", conn_index);
 		for (i = 0; i < CONNECTOR_PROP_MAX; i++) {
 			written += scnprintf(dbg_msg + written, 1024 - written,
-				"[%d]%d ", i, mtk_conn_state->prop_val[conn_index][i]);
+				"[%d]%llu ", i, mtk_conn_state->prop_val[conn_index][i]);
 		}
 		DDP_DUMP_PROP("%s\n", dbg_msg);
 	}
@@ -14999,7 +14986,7 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DSI_PU_XROI1, val, mask);
 
 			val = mask = 0;
-			SET_VAL_MASK(val, mask, dsi->roi_y_offset + 1, PU_Y_START);
+			SET_VAL_MASK(val, mask, (dsi->roi_y_offset + 1), PU_Y_START);
 			SET_VAL_MASK(val, mask, (dsi->roi_y_offset + dsi->roi_height), PU_Y_END);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_PU_YROI1, val, mask);

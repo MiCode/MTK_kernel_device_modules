@@ -2546,7 +2546,6 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 	struct mtk_drm_private *drm_priv;
 	ktime_t sof_time;
 	long long sof_ts;
-	unsigned long flags;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
@@ -2606,7 +2605,7 @@ void mtk_wakeup_frame_done_wq(void)
 {
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
-	struct mtk_drm_private *priv;
+	struct mtk_drm_private *priv = NULL;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
@@ -5271,7 +5270,6 @@ static void process_dbg_opt(const char *opt)
 		int ret;
 		unsigned int i, j;
 		unsigned int *spr_ip_params;
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		struct device_node *node = NULL;
 		int val = 0;
 
@@ -5440,12 +5438,12 @@ read_test_done:
 	} else if (strncmp(opt, "new_write_ddic:", 15) == 0) {
 		int flags = 0, tx_len = 0, mode = 0;
 		char tx_buf[5];
-		int i, ret;
+		int ret;
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 		struct mtk_dsi_cmd_msg test_cmd = { 0 };
 		struct mipi_dsi_msg msg = { 0 };
 
-		ret = sscanf(opt, "new_write_ddic:%x,%d,%d,%x,%x,%x,%x,%x\n", &flags, &mode, &tx_len,
+		ret = sscanf(opt, "new_write_ddic:%x,%d,%d,%s,%s,%s,%s,%s\n", &flags, &mode, &tx_len,
 				&tx_buf[0], &tx_buf[1], &tx_buf[2], &tx_buf[3], &tx_buf[4]);
 		if (ret <= 0) {
 			DDPPR_ERR("new_write_ddic fail, ret=%d\n", ret);
@@ -5480,7 +5478,7 @@ read_test_done:
 		struct mtk_dsi_cmd_msg test_cmd = { 0 };
 		struct mipi_dsi_msg *msg;
 
-		ret = sscanf(opt, "new_write_ddic_package:%x,%d,%d,%d,%d,%x\n",
+		ret = sscanf(opt, "new_write_ddic_package:%x,%d,%d,%d,%d,%s\n",
 			&flags, &package, &lp, &cmd_num, &tx_len, &addr);
 		if (ret <= 0) {
 			DDPPR_ERR("new_write_ddic_package fail, ret=%d\n", ret);
@@ -5556,10 +5554,10 @@ test_done:
 		struct mipi_dsi_msg rx_msg = { 0 };
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
-		bool need_lock = false;
+		int need_lock = false;
 		struct mtk_drm_private *private;
 
-		ret = sscanf(opt, "new_ddic_2c_test:%x,%d,%d,%d,%d,%x,%x,%d,%d,%d,%d,%d,%d\n",
+		ret = sscanf(opt, "new_ddic_2c_test:%x,%d,%d,%d,%d,%s,%x,%d,%d,%d,%d,%d\n",
 			&flags, &package, &lp, &cmd_num, &tx_len, &addr,
 			&r_flags, &rx_delay_ms, &log_en, &rx_len_block_gce, &rx_len_block_cpu,
 			&need_lock);
@@ -5818,7 +5816,7 @@ test_2c_done:
 		};
 
 		cmd_opt.flags = MTK_MIPI_DSI_CRTC_ID | MTK_MIPI_DSI_CMD_KICK_IDLE |
-			MTK_MIPI_DSI_CMD_NEED_LOCK | MTK_MIPI_DSI_CMD_BY_CPU;
+			MTK_MIPI_DSI_CMD_NEED_LOCK | MTK_MIPI_DSI_CMD_BY_CPU;
 		cmd_opt.crtc_id = 0;
 
 		DDPMSG("hc3 3c_init ++\n");
@@ -5939,12 +5937,12 @@ test_2c_done:
 		int ret = 0;
 		int sys_type = 0;
 		int sysid = 0;
-		bool subsys_mon_en = 0;
-		bool subsys_smi_trig_en = 0;
-		bool subsys_dsi_trig_en = 0;
-		bool subsys_inlinerotate_info_en = 0;
-		bool subsys_crossbar_info_en = 0;
-		bool subsys_mon_info_en = 0;
+		int subsys_mon_en = 0;
+		int subsys_smi_trig_en = 0;
+		int subsys_dsi_trig_en = 0;
+		int subsys_inlinerotate_info_en = 0;
+		int subsys_crossbar_info_en = 0;
+		int subsys_mon_info_en = 0;
 		struct dbgtp_subsys *subsys = NULL;
 
 		ret = sscanf(opt + 17, "%d,%d,%d,%d,%d,%d,%d,%d\n",
@@ -6014,8 +6012,8 @@ test_2c_done:
 		int sys_type = 0;
 		int sysid = 0;
 		int smi_id = 0;
-		bool smi_mon_en = 0;
-		bool rst_by_frame = 0;
+		int smi_mon_en = 0;
+		int rst_by_frame = 0;
 		unsigned int smi_mon_dump_sel = 0;
 		struct dbgtp_subsys *subsys = NULL;
 
@@ -6076,8 +6074,8 @@ test_2c_done:
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		int sysid = 0;
-		bool dsi_mon_en = 0;
-		bool dsi_mon_reset_byf = 0;
+		int dsi_mon_en = 0;
+		int dsi_mon_reset_byf = 0;
 		unsigned int dsi_mon_sel = 0;
 		unsigned int dsi_buf_sel = 0;
 		unsigned int dsi_tgt_pix = 0;
@@ -6114,7 +6112,6 @@ test_2c_done:
 		mtk_dbgtp_default_cfg_load(priv);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_default_config", 20) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
 
@@ -6134,7 +6131,7 @@ test_2c_done:
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int fifo_mon_id = 0;
-		bool fifo_mon_en = 0;
+		int fifo_mon_en = 0;
 
 		ret = sscanf(opt + 19, "%d,%d\n",
 			&fifo_mon_id, &fifo_mon_en);
@@ -6180,7 +6177,7 @@ test_2c_done:
 	} else if (strncmp(opt, "disp_ela_sel:", 13) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
-		bool fifo_mon_sel = 0;
+		int fifo_mon_sel = 0;
 		unsigned int bwr_sel = 0;
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
@@ -6886,7 +6883,6 @@ void disp_pq_set_test_flag(unsigned int flag)
 void disp_pq_test_read_relay_reg(struct mtk_drm_crtc *mtk_crtc, int relay_idx)
 {
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
-	int ret = 0;
 	int status = 0;
 	unsigned int mask = BIT(0);
 	struct mtk_ddp_comp *comp = NULL;
@@ -7220,7 +7216,7 @@ void mtk_ovl_set_aod_scp_hrt(void)
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_ddp_comp *ovl_comp;
 	u32 bw_base;
-	unsigned int i, j, k;
+	unsigned int i, j;
 
 	/* this debug cmd only for crtc0 */
 	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,

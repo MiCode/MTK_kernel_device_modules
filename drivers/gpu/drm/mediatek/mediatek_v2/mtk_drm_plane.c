@@ -264,12 +264,12 @@ mtk_plane_duplicate_state(struct drm_plane *plane)
 				"[DUMP_PROP]prev_plane%d_mtk_prop_val: ", plane_idx);
 			for (i = 0; i < PLANE_PROP_MAX; i++) {
 				written += scnprintf(dbg_msg + written, 1024 - written,
-					"[%d]%d ", i, state->prop_val[i]);
+					"[%d]%llu ", i, state->prop_val[i]);
 			}
 			DDP_DUMP_PROP("%s\n", dbg_msg);
 			kfree(dbg_msg);
 		} else {
-			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n",__func__);
 		}
 
 #define _DUMP_PREV_PROP \
@@ -530,12 +530,12 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 				"[DUMP_PROP]curr_plane%d_mtk_prop_val: ", plane_index);
 			for (i = 0; i < PLANE_PROP_MAX; i++) {
 				written += scnprintf(dbg_msg + written, 1024 - written,
-					"[%d]%d ", i, mtk_plane_state->prop_val[i]);
+					"[%d]%llu ", i, mtk_plane_state->prop_val[i]);
 			}
 			DDP_DUMP_PROP("%s\n", dbg_msg);
 			kfree(dbg_msg);
 		} else {
-			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n",__func__);
 		}
 
 #define _DUMP_CUR_PROP \

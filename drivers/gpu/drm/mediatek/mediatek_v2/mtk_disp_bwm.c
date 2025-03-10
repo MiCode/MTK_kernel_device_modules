@@ -120,7 +120,6 @@ void __iomem *mtk_bwm_mmsys_mapping_MT6991(struct mtk_ddp_comp *comp)
 
 void __iomem *mtk_vdisp_ao_mapping_MT6993(struct mtk_ddp_comp *comp)
 {
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *vdisp_ao_comp;
 
 	vdisp_ao_comp = mtk_ddp_comp_find_by_id(&comp->mtk_crtc->base, DDP_COMPONENT_VDISP_AO);
@@ -230,10 +229,8 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int fps;
 	u32 value = 0, mask = 0;
-	struct mtk_disp_bwm *bwm = comp_to_bwm(comp);
 	unsigned int bw_monitor_config, line_time, h;
 
 	DDPINFO("bwm_enable:%s\n", mtk_dump_comp_str(comp));
@@ -332,7 +329,7 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 								all_layer_compress_ratio_table[i].peak_ratio);
 						aee_trigger = false;
 						mtk_bwm_dump(comp);
-						DDPINFO("i %d j %d avl %d avg %d peak %d ar %d pr %d key %d\n",
+						DDPINFO("i %d j %d avl %d avg %d peak %d ar %d pr %d key %llu\n",
 							i, j, avail_layer, avg_val, peak_val,
 							all_layer_compress_ratio_table[i].average_ratio,
 							all_layer_compress_ratio_table[i].peak_ratio,
