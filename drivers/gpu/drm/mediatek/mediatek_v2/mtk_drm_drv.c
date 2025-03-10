@@ -9622,14 +9622,21 @@ void mtk_drm_mmlsys_submit_done_cb(void *cb_param)
 
 void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para)
 {
+	u32 i;
 	int ret = 0;
 
 	DDPINFO("%s+ 0x%lx 0x%lx, 0x%lx\n", __func__,
 		(unsigned long)cb_para,
 		(unsigned long)&(cb_para->mml_job_submit_wq),
 		(unsigned long)&(cb_para->mml_job_submit_done));
-	ret = wait_event_interruptible_timeout(cb_para->mml_job_submit_wq,
-		atomic_read(&cb_para->mml_job_submit_done), msecs_to_jiffies(500));
+
+	for (i = 0; i < 3; i++) {
+		ret = wait_event_interruptible_timeout(cb_para->mml_job_submit_wq,
+			atomic_read(&cb_para->mml_job_submit_done), msecs_to_jiffies(50));
+		if (ret)
+			break;
+		DDPINFO("%s wait %u timeout\n", __func__, i);
+	}
 
 	if (ret == 0) {
 		DDPMSG("%s timeout\n", __func__);
