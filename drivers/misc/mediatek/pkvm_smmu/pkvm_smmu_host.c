@@ -794,14 +794,14 @@ static int mtk_kvm_arm_smmu_v3_init(void)
 	return ret;
 }
 
-pkvm_handle_t mtk_kvm_arm_smmu_v3_id(struct device *dev)
+pkvm_handle_t mtk_kvm_arm_smmu_v3_id_by_of(struct device_node *np)
 {
 	return 0;
 }
 
 struct kvm_iommu_driver kvm_smmu_v3_ops = {
 	.init_driver = mtk_kvm_arm_smmu_v3_init,
-	.get_iommu_id = mtk_kvm_arm_smmu_v3_id,
+	.get_iommu_id_by_of  = mtk_kvm_arm_smmu_v3_id_by_of,
 };
 
 static int __init smmu_nvhe_init(void)
