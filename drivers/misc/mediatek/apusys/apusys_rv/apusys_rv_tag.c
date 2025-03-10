@@ -183,7 +183,7 @@ int apusys_rv_init_drv_tags(struct mtk_apu *apu)
 {
 	int ret;
 
-	apusys_rv_drv_tags = apu_tags_alloc("apusys_rv", sizeof(struct apusys_rv_tag),
+	apusys_rv_drv_tags = apu_tags_alloc("apusys_rv", NULL, sizeof(struct apusys_rv_tag),
 		APUSYS_RV_TAGS_CNT, apusys_rv_tag_seq, apusys_rv_tag_seq_info, NULL);
 
 	if (!apusys_rv_drv_tags)

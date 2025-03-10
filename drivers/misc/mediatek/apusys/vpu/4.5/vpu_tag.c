@@ -142,7 +142,7 @@ int vpu_init_drv_tags(void)
 {
 	int ret;
 
-	vpu_drv->tags = apu_tags_alloc("vpu", sizeof(struct vpu_tag),
+	vpu_drv->tags = apu_tags_alloc("vpu", NULL, sizeof(struct vpu_tag),
 		VPU_TAGS_CNT, vpu_tag_seq, vpu_tag_seq_info, vpu_drv);
 
 	if (!vpu_drv->tags)

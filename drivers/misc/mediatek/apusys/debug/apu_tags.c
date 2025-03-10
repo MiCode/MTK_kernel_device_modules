@@ -8,6 +8,7 @@
 #include <linux/uaccess.h>
 #include <linux/seq_file.h>
 #include <linux/sched/clock.h>
+#include <linux/poll.h>
 #include "apu_tags.h"
 
 #define APU_TAGS_PROC_FS_NAME "aputag"
@@ -17,9 +18,17 @@ static DEFINE_MUTEX(apu_tags_list_lock);
 static LIST_HEAD(apu_tags_list);
 
 static int apu_tags_alloc_procfs(struct apu_tags *at);
+static int apu_tags_alloc_block_procfs(struct apu_tags *at);
 static void apu_tags_free_procfs(struct apu_tags *at);
 static int apu_tags_init_procfs(void);
 static void apu_tags_exit_procfs(void);
+
+struct apu_tag_block_proc_info {
+	struct apu_tags *at;
+	int idx_start_ptr;
+	int idx_end_ptr;
+	bool need_flush;
+};
 
 struct apu_tag_info_t {
 	uint64_t time;
@@ -67,8 +76,8 @@ static void apu_tags_free_tags(struct apu_tags *at)
  * Returns allocated apu_tags, or NULL on fail.
  * It also creates procfs entry at /proc/aputag/"name"
  */
-struct apu_tags *apu_tags_alloc(const char *name, int size, int cnt,
-	apu_tags_seq_f seq_tag, apu_tags_seq_f seq_info, void *priv)
+struct apu_tags *apu_tags_alloc(const char *name, const char *block_name,
+	int size, int cnt, apu_tags_seq_f seq_tag, apu_tags_seq_f seq_info, void *priv)
 {
 	struct apu_tags *at;
 
@@ -111,6 +120,18 @@ struct apu_tags *apu_tags_alloc(const char *name, int size, int cnt,
 		return NULL;
 	}
 
+	/* block proc dentires */
+	init_waitqueue_head(&at->block_wq);
+	if (!block_name)
+		goto out;
+	/* create block proc entry */
+	strscpy(at->block_name, block_name, sizeof(at->block_name));
+	if (apu_tags_alloc_block_procfs(at)) {
+		apu_tags_free(at);
+		return NULL;
+	}
+
+out:
 	return at;
 }
 
@@ -187,7 +208,12 @@ void apu_tag_add(struct apu_tags *at, void *tag)
 		if (at->idx >= at->cnt)
 			at->idx = 0;
 	}
+
+	at->block_new_data = true;
 	spin_unlock_irqrestore(&at->lock, flags);
+
+	/* wake block wq */
+	wake_up_all(&at->block_wq);
 }
 
 /**
@@ -343,6 +369,141 @@ static const struct proc_ops apu_tags_info_fops = {
 	.proc_release = single_release,
 };
 
+/**
+ * Blocking output implementation
+ *
+ * apu_tags_info_block_fops:
+ * @s: target seq_file
+ *
+ * Note: The content of /proc/aputag/"name", you
+ * may call this function to show tags at other debug nodes
+ */
+static void *apu_tags_start_block(struct seq_file *s, loff_t *pos)
+{
+	struct apu_tag_block_proc_info *at_bpi = NULL;
+	struct apu_tags *at = s->private;
+
+	at_bpi = kvzalloc(sizeof(*at_bpi), GFP_KERNEL);
+	if (!at_bpi)
+		return NULL;
+
+	at_bpi->at = at;
+	(*pos)++;
+
+	return at_bpi;
+}
+
+static void *apu_tags_next_block(struct seq_file *s, void *v, loff_t *pos)
+{
+	struct apu_tag_block_proc_info *at_bpi = (struct apu_tag_block_proc_info *)v;
+	struct apu_tags *at = at_bpi->at;
+	int ret = 0;
+	unsigned long flags;
+
+	(*pos)++;
+
+	/* flush seq buffer to print */
+	if (at_bpi->need_flush)
+		return NULL;
+
+	/* block if no data to print */
+	ret = wait_event_interruptible(at->block_wq, at->block_new_data);
+	if (ret == -ERESTARTSYS)
+		return NULL;
+
+	spin_lock_irqsave(&at->lock, flags);
+
+	/* assign start and end */
+	if (at->block_idx_ptr < 0 || at->block_idx_ptr >= at->cnt) {
+		at_bpi->idx_start_ptr = at->idx;
+		at_bpi->idx_end_ptr = (at_bpi->idx_start_ptr > 0) ? at_bpi->idx_start_ptr - 1 : at->cnt - 1;
+	} else {
+		at_bpi->idx_start_ptr = (at->block_idx_ptr > at->cnt) ? 0 : at->block_idx_ptr;
+		at_bpi->idx_end_ptr = at->idx;
+	}
+
+	spin_unlock_irqrestore(&at->lock, flags);
+
+	return at_bpi;
+}
+
+static void apu_tags_stop_block(struct seq_file *s, void *v)
+{
+	struct apu_tag_block_proc_info *at_bpi = (struct apu_tag_block_proc_info *)v;
+
+	kvfree(at_bpi);
+}
+
+static int apu_tags_show_block(struct seq_file *s, void *v)
+{
+	struct apu_tag_block_proc_info *at_bpi = (struct apu_tag_block_proc_info *)v;
+	struct apu_tags *at = at_bpi->at;
+	uint32_t i = 0;
+	int ret = 0;
+	unsigned long flags;
+
+	if (at_bpi->idx_start_ptr == at_bpi->idx_end_ptr)
+		return 0;
+
+	/* print tags */
+	spin_lock_irqsave(&at->lock, flags);
+	for (i = at_bpi->idx_start_ptr;; ) {
+		struct apu_tag_info_t *ti;
+
+		if (i == at_bpi->idx_end_ptr)
+			break;
+
+		ti = apu_tag_at(at, i);
+		if (!ti)
+			break;
+		if (!ti->time)
+			goto next;
+
+		at_bpi->need_flush = true;
+		apu_tags_seq_prefix(s, ti->time, ti->pid);
+		ret = at->seq_tag(s, apu_tag_data(ti), at->priv);
+		if (ret) {
+			seq_puts(s, "\n");
+			break;
+		}
+
+next:
+		i = (i >= at->cnt - 1) ? 0 : i + 1;
+	}
+	/* assign block data */
+	at->block_idx_ptr = i;
+	at->block_new_data = false;
+	spin_unlock_irqrestore(&at->lock, flags);
+
+	return 0;
+}
+
+static const struct seq_operations apu_tags_seq_fops = {
+	.start = apu_tags_start_block,
+	.next  = apu_tags_next_block,
+	.stop  = apu_tags_stop_block,
+	.show  = apu_tags_show_block
+};
+
+static int apu_tags_info_block_open(struct inode *inode, struct file *file)
+{
+	int ret = 0;
+
+	ret = seq_open(file, &apu_tags_seq_fops);
+	if (!ret)
+		((struct seq_file *)file->private_data)->private = pde_data(inode);
+
+	return ret;
+}
+
+static const struct proc_ops apu_tags_info_block_fops = {
+	.proc_open		= apu_tags_info_block_open,
+	.proc_read		= seq_read,
+	.proc_lseek		= seq_lseek,
+	.proc_release	= seq_release
+};
+
+
 static int apu_tags_init_procfs(void)
 {
 	if (proot)
@@ -365,6 +526,20 @@ static void apu_tags_exit_procfs(void)
 }
 
 #define APU_TAG_PROC_MDOE		0640
+static int apu_tags_alloc_block_procfs(struct apu_tags *at)
+{
+	int ret = 0;
+
+	pr_info("%s/%d: create node(%s)\n", __func__, __LINE__, at->block_name);
+	at->block_proc = proc_create_data(at->block_name, APU_TAG_PROC_MDOE,
+		proot, &apu_tags_info_block_fops, at);
+	if (!at->block_proc) {
+		pr_info("%s: unable to create %s\n", __func__, at->block_name);
+		ret = -ENOMEM;
+	}
+
+	return ret;
+}
 
 static int apu_tags_alloc_procfs(struct apu_tags *at)
 {
@@ -382,6 +557,7 @@ static int apu_tags_alloc_procfs(struct apu_tags *at)
 		pr_info("%s: unable to create %s\n", __func__, at->name);
 		ret = -ENOMEM;
 	}
+
 out:
 	mutex_unlock(&apu_tags_list_lock);
 	return ret;
@@ -395,8 +571,13 @@ static void apu_tags_free_procfs(struct apu_tags *at)
 		remove_proc_subtree(at->name, proot);
 		at->proc = NULL;
 	}
+
+	if (at->block_proc && proot) {
+		remove_proc_subtree(at->block_name, proot);
+		at->block_proc = NULL;
+	}
+
 	if (list_empty(&apu_tags_list))
 		apu_tags_exit_procfs();
 	mutex_unlock(&apu_tags_list_lock);
 }
-

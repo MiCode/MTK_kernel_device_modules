@@ -114,7 +114,7 @@ int hds_1_0_tag_init(void)
 {
 	int ret;
 
-	hds_1_0_tags = apu_tags_alloc("hds", sizeof(struct hds_1_0_tag),
+	hds_1_0_tags = apu_tags_alloc("hds", "hds_block", sizeof(struct hds_1_0_tag),
 		HDS_1_0_TAGS_NUM, hds_1_0_tag_seq, hds_1_0_tag_seq_info, NULL);
 
 	if (!hds_1_0_tags)

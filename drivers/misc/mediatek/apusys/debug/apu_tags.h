@@ -14,6 +14,8 @@
 
 typedef int (*apu_tags_seq_f)(struct seq_file *s, void *tag, void *priv);
 
+struct apu_tags;
+
 struct apu_tags {
 	spinlock_t lock;
 	char name[APU_TAG_NAME_SZ];
@@ -28,11 +30,18 @@ struct apu_tags {
 	unsigned long used_mem; /* size of allocated memory */
 	struct list_head list;  /* link to apu tags list*/
 	struct proc_dir_entry *proc;  /* allocated procfs entry */
+
+	/* for blocking seq output */
+	char block_name[APU_TAG_NAME_SZ];
+	struct proc_dir_entry *block_proc;
+	int block_idx_ptr;
+	bool block_new_data;
+	wait_queue_head_t block_wq;
 };
 
 #if IS_ENABLED(CONFIG_MTK_APUSYS_DEBUG)
-struct apu_tags *apu_tags_alloc(const char *name, int size, int cnt,
-	apu_tags_seq_f seq_tag, apu_tags_seq_f seq_info, void *priv);
+struct apu_tags *apu_tags_alloc(const char *name, const char *block_name, int size,
+	int cnt, apu_tags_seq_f seq_tag, apu_tags_seq_f seq_info, void *priv);
 void apu_tag_add(struct apu_tags *at, void *tag);
 void apu_tags_free(struct apu_tags *at);
 void apu_tags_seq_time(struct seq_file *s, uint64_t time);
@@ -40,8 +49,8 @@ int apu_tags_seq(struct apu_tags *at, struct seq_file *s);
 
 #else
 static inline
-struct apu_tags *apu_tags_alloc(const char *name, int size, int cnt,
-	apu_tags_seq_f seq_tag, apu_tags_seq_f seq_info, void *priv)
+struct apu_tags *apu_tags_alloc(const char *name, const char *block_name, int size,
+	int cnt, apu_tags_seq_f seq_tag, apu_tags_seq_f seq_info, void *priv)
 {
 	return NULL;
 }

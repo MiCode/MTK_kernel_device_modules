@@ -130,7 +130,7 @@ int mnoc_init_drv_tags(void)
 {
 	int ret;
 
-	mnoc_drv_tags = apu_tags_alloc("mnoc", sizeof(struct mnoc_tag),
+	mnoc_drv_tags = apu_tags_alloc("mnoc", NULL, sizeof(struct mnoc_tag),
 		MNOC_TAGS_CNT, mnoc_tag_seq, mnoc_tag_seq_info, NULL);
 
 	if (!mnoc_drv_tags)

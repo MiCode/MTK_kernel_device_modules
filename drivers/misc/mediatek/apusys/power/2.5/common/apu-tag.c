@@ -133,7 +133,7 @@ int apupwr_init_tags(struct apusys_core_info *info)
 {
 	int ret;
 
-	apu_drv_tag = apu_tags_alloc("apupwr", sizeof(struct apupwr_tag),
+	apu_drv_tag = apu_tags_alloc("apupwr", NULL, sizeof(struct apupwr_tag),
 		APUPWR_TAGS_CNT, apupwr_tag_seq, apupwr_tag_seq_info, NULL);
 
 	if (!apu_drv_tag)
