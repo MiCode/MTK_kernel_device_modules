@@ -247,7 +247,11 @@ struct cmdq_pkt {
 	bool			timeout_dump_hw_trace;
 	bool		support_spr3_timer;
 	bool		support_poll_sleep_bit32;
+	bool		loop_cb_times_by_cookie;
+	bool		skip_add_cookie;
 	u32				debug_id;
+	u32			cookie;
+	u32			cookie_diff;
 };
 
 struct cmdq_thread {
@@ -278,6 +282,7 @@ struct cmdq_thread {
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	bool			is_virtio;
 #endif
+	bool thread_timeout;
 };
 
 extern int mtk_cmdq_log;
@@ -384,6 +389,7 @@ void cmdq_mbox_mtcmos_by_fast_chan(struct mbox_chan *chan, bool on);
 void cmdq_print_trace(char *fmt, ...);
 struct cmdq_thread *cmdq_get_thread(u8 thread_idx, u8 hwid);
 char *cmdq_dump_pkt_usage(u32 hwid, char *buf_start, char *buf_end);
+void cmdq_thread_reset_timer(void *chan);
 void cmdq_mbox_mtcmos_by_fast(void *cmdq_mbox, bool on);
 void cmdq_mbox_dump_fast_mtcmos(void *cmdq_mbox);
 void cmdq_mbox_dump_gce_req(struct mbox_chan *chan);

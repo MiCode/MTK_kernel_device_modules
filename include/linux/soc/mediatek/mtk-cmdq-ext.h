@@ -414,7 +414,11 @@ void cmdq_mbox_pool_clear(struct cmdq_client *cl);
 
 void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out);
 
+void *cmdq_mbox_muti_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out, const u8 cnt);
+
 void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa);
+
+void cmdq_mbox_muti_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa, const u8 cnt);
 
 void cmdq_set_outpin_event(struct cmdq_client *cl, bool ena);
 
@@ -577,6 +581,9 @@ s32 cmdq_pkt_write(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 
 s32 cmdq_pkt_write_dummy(struct cmdq_pkt *pkt, dma_addr_t addr);
 
+s32 cmdq_pkt_mem_move_mask(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
+	dma_addr_t src_addr, dma_addr_t dst_addr, u16 swap_reg_idx, u32 mask);
+
 s32 cmdq_pkt_mem_move(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 	dma_addr_t src_addr, dma_addr_t dst_addr, u16 swap_reg_idx);
 
@@ -654,10 +661,13 @@ u32 *cmdq_pkt_get_perf_ret(struct cmdq_pkt *pkt);
  * Return: 0 for success; else the error code is returned
  */
 int cmdq_pkt_wfe(struct cmdq_pkt *pkt, u16 event);
+int cmdq_pkt_wfe_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse);
 
 int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event);
+int cmdq_pkt_wait_no_clear_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse);
 
 int cmdq_pkt_acquire_event(struct cmdq_pkt *pkt, u16 event);
+int cmdq_pkt_acquire_event_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse);
 
 /**
  * cmdq_pkt_clear_event() - append clear event command to the CMDQ packet
@@ -667,8 +677,10 @@ int cmdq_pkt_acquire_event(struct cmdq_pkt *pkt, u16 event);
  * Return: 0 for success; else the error code is returned
  */
 s32 cmdq_pkt_clear_event(struct cmdq_pkt *pkt, u16 event);
+s32 cmdq_pkt_clear_event_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse);
 
 s32 cmdq_pkt_set_event(struct cmdq_pkt *pkt, u16 event);
+s32 cmdq_pkt_set_event_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse);
 
 s32 cmdq_pkt_handshake_event(struct cmdq_pkt *pkt, u16 event);
 

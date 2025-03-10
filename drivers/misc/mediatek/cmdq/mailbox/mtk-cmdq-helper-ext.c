@@ -892,16 +892,16 @@ static void cmdq_mbox_pool_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 	cmdq_mbox_pool_free_impl(priv->buf_pool, va, pa, &priv->buf_cnt);
 }
 
-static void *cmdq_mbox_buf_alloc_dev(struct device *dev, dma_addr_t *pa_out)
+static void *cmdq_mbox_muti_buf_alloc_dev(struct device *dev, dma_addr_t *pa_out, const u8 cnt)
 {
 	void *va = NULL;
 	dma_addr_t pa = 0;
 
 	if (dev)
-		va = dma_alloc_coherent(dev, CMDQ_BUF_ALLOC_SIZE, &pa, GFP_KERNEL);
+		va = dma_alloc_coherent(dev, CMDQ_BUF_ALLOC_SIZE * cnt, &pa, GFP_KERNEL);
 
 	if (!va) {
-		cmdq_err("alloc dma buffer fail dev:0x%p", dev);
+		cmdq_err("alloc dma buffer fail dev:0x%p cnt:%d", dev, cnt);
 		dump_stack();
 		return NULL;
 	}
@@ -910,12 +910,18 @@ static void *cmdq_mbox_buf_alloc_dev(struct device *dev, dma_addr_t *pa_out)
 	return va;
 }
 
-void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
+static void *cmdq_mbox_buf_alloc_dev(struct device *dev, dma_addr_t *pa_out)
+{
+	return cmdq_mbox_muti_buf_alloc_dev(dev, pa_out, 1);
+}
+
+void *cmdq_mbox_muti_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out, const u8 cnt)
 {
 	void *va;
 	dma_addr_t pa = 0;
 	struct device *mbox_dev;
 	unsigned long long gce_mminfra;
+	u8 i;
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	struct cmdq_thread *thread;
 	s32 hwid;
@@ -930,14 +936,16 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 	mbox_dev = cl->chan->mbox->dev;
 	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 
-	va = cmdq_mbox_buf_alloc_dev(cl->share_dev, &pa);
+	va = cmdq_mbox_muti_buf_alloc_dev(cl->share_dev, &pa, cnt);
 	if (!va) {
 		cmdq_err("alloc dma buffer fail dev:0x%p", mbox_dev);
 		return NULL;
 	}
 
-	cmdq_set_buffer_size(cl, true);
-	cmdq_set_thrd_pkt_buf(cl, CMDQ_THRD_PKT_ARR_MAX - 1, true);
+	for (i = 0; i < cnt; i++) {
+		cmdq_set_buffer_size(cl, true);
+		cmdq_set_thrd_pkt_buf(cl, CMDQ_THRD_PKT_ARR_MAX - 1, true);
+	}
 	*pa_out = pa + gce_mminfra;
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	if(!cmdq_util_is_secure_client(cl)) {
@@ -951,16 +959,28 @@ void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
 #endif
 	return va;
 }
+EXPORT_SYMBOL(cmdq_mbox_muti_buf_alloc);
+
+void *cmdq_mbox_buf_alloc(struct cmdq_client *cl, dma_addr_t *pa_out)
+{
+	return cmdq_mbox_muti_buf_alloc(cl, pa_out, 1);
+}
 EXPORT_SYMBOL(cmdq_mbox_buf_alloc);
+
+static void cmdq_mbox_muti_buf_free_dev(struct device *dev, void *va, dma_addr_t pa, const u8 cnt)
+{
+	dma_free_coherent(dev, CMDQ_BUF_ALLOC_SIZE * cnt, va, pa);
+}
 
 static void cmdq_mbox_buf_free_dev(struct device *dev, void *va, dma_addr_t pa)
 {
-	dma_free_coherent(dev, CMDQ_BUF_ALLOC_SIZE, va, pa);
+	cmdq_mbox_muti_buf_free_dev(dev, va, pa, 1);
 }
 
-void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
+void cmdq_mbox_muti_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa, const u8 cnt)
 {
 	unsigned long long gce_mminfra;
+	u8	i;
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	struct cmdq_thread *thread;
 	s32 hwid;
@@ -973,9 +993,12 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 	}
 
 	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
-	cmdq_mbox_buf_free_dev(cl->share_dev, va, pa - gce_mminfra);
-	cmdq_set_buffer_size(cl, false);
-	cmdq_set_thrd_pkt_buf(cl, CMDQ_THRD_PKT_ARR_MAX - 1, false);
+	cmdq_mbox_muti_buf_free_dev(cl->share_dev, va, pa - gce_mminfra, cnt);
+
+	for (i = 0; i < cnt; i++) {
+		cmdq_set_buffer_size(cl, false);
+		cmdq_set_thrd_pkt_buf(cl, CMDQ_THRD_PKT_ARR_MAX - 1, false);
+	}
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	if(!cmdq_util_is_secure_client(cl)) {
 		thread = (struct cmdq_thread *)cl->chan->con_priv;
@@ -987,6 +1010,12 @@ void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
 		cmdq_util_user_buf_track(cl, pa, false);
 	}
 #endif
+}
+EXPORT_SYMBOL(cmdq_mbox_muti_buf_free);
+
+void cmdq_mbox_buf_free(struct cmdq_client *cl, void *va, dma_addr_t pa)
+{
+	cmdq_mbox_muti_buf_free(cl, va, pa, 1);
 }
 EXPORT_SYMBOL(cmdq_mbox_buf_free);
 
@@ -2019,6 +2048,15 @@ void cmdq_pkt_reuse_value(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
 }
 EXPORT_SYMBOL(cmdq_pkt_reuse_value);
 
+void cmdq_pkt_reuse_event_value(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
+{
+	uint64_t mask = GENMASK_ULL(55, 32);
+
+	*reuse->va &= ~mask;
+	*reuse->va |= ((uint64_t)reuse->val << 32) & mask;
+}
+EXPORT_SYMBOL(cmdq_pkt_reuse_event_value);
+
 void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
 	const u32 count)
 {
@@ -2029,11 +2067,13 @@ void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
 		case 0:
 			/* for case client update itself, skip it */
 			break;
+		case CMDQ_CODE_WFE:
+			cmdq_pkt_reuse_event_value(pkt, &reuse[i]);
+			break;
 		case CMDQ_CODE_READ:
 		case CMDQ_CODE_MOVE:
 		case CMDQ_CODE_WRITE:
 		case CMDQ_CODE_POLL:
-		case CMDQ_CODE_WFE:
 		case CMDQ_CODE_SET_TOKEN:
 		case CMDQ_CODE_WAIT_NO_CLEAR:
 		case CMDQ_CODE_CLEAR_TOKEN:
@@ -2340,8 +2380,8 @@ s32 cmdq_pkt_write(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 }
 EXPORT_SYMBOL(cmdq_pkt_write);
 
-s32 cmdq_pkt_mem_move(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
-	dma_addr_t src_addr, dma_addr_t dst_addr, u16 swap_reg_idx)
+s32 cmdq_pkt_mem_move_mask(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
+	dma_addr_t src_addr, dma_addr_t dst_addr, u16 swap_reg_idx, u32 mask)
 {
 	s32 err;
 
@@ -2350,7 +2390,15 @@ s32 cmdq_pkt_mem_move(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
 		return err;
 
 	return cmdq_pkt_write_indriect(pkt, clt_base, dst_addr,
-		swap_reg_idx, ~0);
+		swap_reg_idx, mask);
+}
+EXPORT_SYMBOL(cmdq_pkt_mem_move_mask);
+
+s32 cmdq_pkt_mem_move(struct cmdq_pkt *pkt, struct cmdq_base *clt_base,
+	dma_addr_t src_addr, dma_addr_t dst_addr, u16 swap_reg_idx)
+{
+	return cmdq_pkt_mem_move_mask(pkt, clt_base, src_addr,
+		dst_addr, swap_reg_idx, ~0);
 }
 EXPORT_SYMBOL(cmdq_pkt_mem_move);
 
@@ -2956,6 +3004,40 @@ static bool cmdq_pkt_hw_trace_event(struct cmdq_pkt *pkt, const u16 event)
 	return cmdq_util_helper->hw_trace_thread(client->chan);
 }
 
+int cmdq_pkt_wfe_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse)
+{
+	u32 arg_b;
+	int ret;
+
+	if (event >= CMDQ_EVENT_MAX)
+		return -EINVAL;
+
+	if ((event >= CMDQ_TOKEN_PAUSE_TASK_0)
+		&& (event <= CMDQ_TOKEN_PAUSE_TASK_32))
+		cmdq_err("use invalid event:%d", event);
+
+	/*
+	 * WFE arg_b
+	 * bit 0-11: wait value
+	 * bit 15: 1 - wait, 0 - no wait
+	 * bit 16-27: update value
+	 * bit 31: 1 - update, 0 - no update
+	 */
+	arg_b = CMDQ_WFE_UPDATE | CMDQ_WFE_WAIT | CMDQ_WFE_WAIT_VALUE;
+	ret = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(arg_b),
+		CMDQ_GET_ARG_B(arg_b), event,
+		0, 0, 0, 0, CMDQ_CODE_WFE);
+
+	reuse->op = CMDQ_CODE_WFE;
+	reuse->va = cmdq_pkt_get_curr_buf_va(pkt) - CMDQ_INST_SIZE;
+	reuse->offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	if (cmdq_pkt_hw_trace_event(pkt, event))
+		cmdq_pkt_hw_trace(pkt, event);
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_pkt_wfe_reuse);
+
 int cmdq_pkt_wfe(struct cmdq_pkt *pkt, u16 event)
 {
 	u32 arg_b;
@@ -2985,6 +3067,40 @@ int cmdq_pkt_wfe(struct cmdq_pkt *pkt, u16 event)
 	return ret;
 }
 EXPORT_SYMBOL(cmdq_pkt_wfe);
+
+int cmdq_pkt_wait_no_clear_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse)
+{
+	u32 arg_b;
+	int ret;
+
+	if (event >= CMDQ_EVENT_MAX)
+		return -EINVAL;
+
+	/*
+	 * WFE arg_b
+	 * bit 0-11: wait value
+	 * bit 15: 1 - wait, 0 - no wait
+	 * bit 16-27: update value
+	 * bit 31: 1 - update, 0 - no update
+	 */
+	arg_b = CMDQ_WFE_WAIT | CMDQ_WFE_WAIT_VALUE;
+	ret = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(arg_b),
+		CMDQ_GET_ARG_B(arg_b), event,
+		0, 0, 0, 0, CMDQ_CODE_WFE);
+
+	reuse->op = CMDQ_CODE_WFE;
+	reuse->va = cmdq_pkt_get_curr_buf_va(pkt) - CMDQ_INST_SIZE;
+	reuse->offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	if (cmdq_pkt_hw_trace_event(pkt, event))
+		cmdq_pkt_hw_trace(pkt, event);
+
+	if (event == CMDQ_TOKEN_PAUSE_TASK_32)
+		pkt->pause_offset = pkt->cmd_buf_size;
+
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_pkt_wait_no_clear_reuse);
 
 int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event)
 {
@@ -3017,6 +3133,34 @@ int cmdq_pkt_wait_no_clear(struct cmdq_pkt *pkt, u16 event)
 }
 EXPORT_SYMBOL(cmdq_pkt_wait_no_clear);
 
+int cmdq_pkt_acquire_event_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse)
+{
+	u32 arg_b;
+	int ret;
+
+	if (event >= CMDQ_EVENT_MAX)
+		return -EINVAL;
+
+	/*
+	 * WFE arg_b
+	 * bit 0-11: wait value
+	 * bit 15: 1 - wait, 0 - no wait
+	 * bit 16-27: update value
+	 * bit 31: 1 - update, 0 - no update
+	 */
+	arg_b = CMDQ_WFE_UPDATE | CMDQ_WFE_UPDATE_VALUE | CMDQ_WFE_WAIT;
+	ret = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(arg_b),
+		CMDQ_GET_ARG_B(arg_b), event,
+		0, 0, 0, 0, CMDQ_CODE_WFE);
+
+	reuse->op = CMDQ_CODE_WFE;
+	reuse->va = cmdq_pkt_get_curr_buf_va(pkt) - CMDQ_INST_SIZE;
+	reuse->offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_pkt_acquire_event_reuse);
+
 int cmdq_pkt_acquire_event(struct cmdq_pkt *pkt, u16 event)
 {
 	u32 arg_b;
@@ -3038,6 +3182,29 @@ int cmdq_pkt_acquire_event(struct cmdq_pkt *pkt, u16 event)
 }
 EXPORT_SYMBOL(cmdq_pkt_acquire_event);
 
+s32 cmdq_pkt_clear_event_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse)
+{
+	int ret;
+
+	if (event >= CMDQ_EVENT_MAX)
+		return -EINVAL;
+
+	if ((event >= CMDQ_TOKEN_PAUSE_TASK_0)
+		&& (event <= CMDQ_TOKEN_PAUSE_TASK_32))
+		cmdq_err("use invalid event:%d", event);
+
+	ret = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(CMDQ_WFE_UPDATE),
+		CMDQ_GET_ARG_B(CMDQ_WFE_UPDATE), event,
+		0, 0, 0, 0, CMDQ_CODE_WFE);
+
+	reuse->op = CMDQ_CODE_WFE;
+	reuse->va = cmdq_pkt_get_curr_buf_va(pkt) - CMDQ_INST_SIZE;
+	reuse->offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_pkt_clear_event_reuse);
+
 s32 cmdq_pkt_clear_event(struct cmdq_pkt *pkt, u16 event)
 {
 	if (event >= CMDQ_EVENT_MAX)
@@ -3052,6 +3219,27 @@ s32 cmdq_pkt_clear_event(struct cmdq_pkt *pkt, u16 event)
 		0, 0, 0, 0, CMDQ_CODE_WFE);
 }
 EXPORT_SYMBOL(cmdq_pkt_clear_event);
+
+s32 cmdq_pkt_set_event_reuse(struct cmdq_pkt *pkt, u16 event, struct cmdq_reuse *reuse)
+{
+	u32 arg_b;
+	int ret;
+
+	if (event >= CMDQ_EVENT_MAX)
+		return -EINVAL;
+
+	arg_b = CMDQ_WFE_UPDATE | CMDQ_WFE_UPDATE_VALUE;
+	ret = cmdq_pkt_append_command(pkt, CMDQ_GET_ARG_C(arg_b),
+		CMDQ_GET_ARG_B(arg_b), event,
+		0, 0, 0, 0, CMDQ_CODE_WFE);
+
+	reuse->op = CMDQ_CODE_WFE;
+	reuse->va = cmdq_pkt_get_curr_buf_va(pkt) - CMDQ_INST_SIZE;
+	reuse->offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
+
+	return ret;
+}
+EXPORT_SYMBOL(cmdq_pkt_set_event_reuse);
 
 s32 cmdq_pkt_set_event(struct cmdq_pkt *pkt, u16 event)
 {
@@ -3118,7 +3306,10 @@ s32 cmdq_pkt_finalize(struct cmdq_pkt *pkt)
 			return err;
 	}
 	/* insert EOC and generate IRQ for each command iteration */
-	err = cmdq_pkt_eoc(pkt, true);
+	if (pkt->skip_add_cookie)
+		err = cmdq_pkt_eoc(pkt, false);
+	else
+		err = cmdq_pkt_eoc(pkt, true);
 	if (err < 0)
 		return err;
 

@@ -1779,6 +1779,8 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 	task = list_first_entry_or_null(&thread->task_busy_list,
 		struct cmdq_task, list_entry);
 	if (task && task->pkt->loop) {
+		u32 i;
+
 		cmdq_trace_begin("%s hwid:%d thrd:%d pkt:%p loop",
 			__func__, cmdq->hwid, thread->idx , task->pkt);
 		cmdq_log("task loop %p", &task->pkt);
@@ -1786,8 +1788,19 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 			cmdq_err("irq flag:%#x hwid:%hu idx:%u pkt:%p loop",
 				irq_flag, cmdq->hwid, thread->idx, task->pkt);
 
-		cmdq_task_callback(task->pkt, err);
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+		task->pkt->cookie_diff = thread->cookie > task->pkt->cookie ?
+			thread->cookie - task->pkt->cookie :
+			~task->pkt->cookie + 1 + thread->cookie;
+		task->pkt->cookie = thread->cookie;
 
+		if (!thread->thread_timeout) {
+			if (task->pkt->loop_cb_times_by_cookie) {
+				for (i = 0; i < task->pkt->cookie_diff; i++)
+					cmdq_task_callback(task->pkt, err);
+			} else
+				cmdq_task_callback(task->pkt, err);
+		}
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 		task->pkt->rec_irq = sched_clock();
 #endif
@@ -2244,6 +2257,17 @@ static bool cmdq_thread_skip_timeout_by_cookie(struct cmdq_thread *thread)
 	return false;
 }
 
+void cmdq_thread_reset_timer(void *chan)
+{
+	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
+
+	mod_timer(&thread->timeout, jiffies +
+		msecs_to_jiffies(thread->timeout_ms));
+	cmdq_msg("%s mod_timer timeout:%u thread:%u ",
+		__func__, thread->timeout_ms, thread->idx);
+}
+EXPORT_SYMBOL(cmdq_thread_reset_timer);
+
 static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 {
 	struct cmdq_thread *thread = container_of(work_item,
@@ -2285,6 +2309,7 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 	 * It may have pending IRQ before GCE thread is suspended,
 	 * so check this condition again.
 	 */
+	thread->thread_timeout = true;
 	cmdq_thread_irq_handler(cmdq, thread, &removes);
 
 	if (list_empty(&thread->task_busy_list)) {
@@ -2345,6 +2370,7 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 
 		spin_lock_irqsave(&thread->chan->lock, flags);
 		thread->dirty = false;
+		thread->thread_timeout = false;
 
 		task = list_first_entry_or_null(&thread->task_busy_list,
 			struct cmdq_task, list_entry);
