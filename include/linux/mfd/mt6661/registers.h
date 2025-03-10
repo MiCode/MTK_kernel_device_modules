@@ -78,6 +78,20 @@
 #define MT6661_AUXADC_AVG_CON3                                          (0x11a8)
 #define MT6661_AUXADC_AVG_CON4                                          (0x11a9)
 
+/* PMRC */
+#define MT6661_PMRC_EN0_7_0_ADDR                                        (0x190)
+#define MT6661_PMRC_EN0_7_0_MASK                                        (0xff)
+#define MT6661_PMRC_EN0_7_0_SHIFT                                       (0)
+#define MT6661_PMRC_EN0_15_8_ADDR                                       (0x191)
+#define MT6661_PMRC_EN0_15_8_MASK                                       (0xff)
+#define MT6661_PMRC_EN0_15_8_SHIFT                                      (0)
+#define MT6661_PMRC_EN0_23_16_ADDR                                      (0x192)
+#define MT6661_PMRC_EN0_23_16_MASK                                      (0xff)
+#define MT6661_PMRC_EN0_23_16_SHIFT                                     (0)
+#define MT6661_PMRC_EN0_31_24_ADDR                                      (0x193)
+#define MT6661_PMRC_EN0_31_24_MASK                                      (0xff)
+#define MT6661_PMRC_EN0_31_24_SHIFT                                     (0)
+
 /* voter */
 #define MT6661_BUCK5_VOTER0_CON0                                        (0x1787)
 #define MT6661_BUCK5_VOTER0_CON0_SET                                    (0x1788)
