@@ -799,7 +799,7 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 		g_shared_status->ips_info.autok_trim0,
 		g_shared_status->ips_info.autok_trim1,
 		g_shared_status->ips_info.autok_trim2);
-	seq_printf(m, "%-8s StressTest: %s, TestMode: %s\n",
+	seq_printf(m, "%-8s StressTest: %s, TestMode: %s, Result: 0x%08X\n",
 		"[Misc]",
 		g_shared_status->stress_test == STRESS_RANDOM ? "Random" :
 		g_shared_status->stress_test == STRESS_TRAVERSE ? "Traverse" :
@@ -810,7 +810,8 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 		g_shared_status->stress_test == STRESS_RANDOM_DUAL ? "Random_Dual" :
 		g_shared_status->stress_test == STRESS_SLT2 ? "SLT2" : "Disable",
 		g_shared_status->test_mode == TEST_PRIVILEGE ? "Privilege" :
-		g_shared_status->test_mode == TEST_ADVANCED ? "Advanced" : "Normal");
+		g_shared_status->test_mode == TEST_ADVANCED ? "Advanced" : "Normal",
+		g_shared_status->checker_result);
 
 	seq_puts(m, "\n[##*] [TOP Vaging] [##*] [TOP Vavs] [##*] [STK Vaging] [##*] [STK Vavs]\n");
 	for (i = 0; i < adj_num; i++) {
@@ -1017,6 +1018,14 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = PTP3_SAFE_MARGIN;
 		} else if (sysfs_streq(input_target, "profile")) {
 			target = CONFIG_GPU_PROFILING;
+			if (sysfs_streq(input_val, "enable"))
+				val = FEAT_ENABLE;
+			else if (sysfs_streq(input_val, "disable"))
+				val = FEAT_DISABLE;
+			else if (sysfs_streq(input_val, "update"))
+				val = DATA_UPDATE;
+		} else if (sysfs_streq(input_target, "gpu_slt")) {
+			target = CONFIG_GPU_SLT;
 			if (sysfs_streq(input_val, "enable"))
 				val = FEAT_ENABLE;
 			else if (sysfs_streq(input_val, "disable"))

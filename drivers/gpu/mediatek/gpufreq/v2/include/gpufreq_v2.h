@@ -168,6 +168,7 @@ enum gpufreq_config_target {
 	CONFIG_SRAM_ENHANCEMENT      = 31,
 	CONFIG_ASYNC_DFD_INIT        = 32,
 	CONFIG_AXI_MON               = 33,
+	CONFIG_GPU_SLT               = 34,
 	CONFIG_AP_IMPL_BOUNDARY      = 100, /* implement on AP */
 	CONFIG_WB_TEST_ONCE          = 101,
 	CONFIG_WB_MFG1_SLAVE_STRESS  = 102,
@@ -593,6 +594,7 @@ struct gpufreq_shared_status {
 	unsigned int temper_comp_mode;
 	unsigned int ht_temper_comp_mode;
 	unsigned int power_tracker_mode;
+	unsigned int checker_result;
 	unsigned long long profile_time[PROF_TYPE_NUM][PROF_IDX_NUM];
 	struct gpufreq_reg_info reg_stack_sel;
 	struct gpufreq_reg_info reg_top_delsel;
