@@ -534,10 +534,10 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 		if(cfg->rsz_front)
 			cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG],
-				(1 << 31), 0x80000000);
+				(1 << 25), 0x2000000);
 		else
 			cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG],
-				(0 << 31), 0x80000000);
+				(0 << 25), 0x2000000);
 		return 0;
 	}
 
@@ -545,7 +545,7 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	/* TDSHP_CFG keep default setting */
 	cmdq_pkt_write(pkt, NULL, base_pa + tdshp->data->reg_table[TDSHP_CFG],
-		(1 << 31), 0x80000000);
+		(1 << 25), 0x2000000);
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, TDSHP_WAIT_TIMEOUT_MS);
@@ -564,8 +564,17 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
 					0x5C1B0, U32_MAX);
-			} else
+			} else {
 				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
+				if(cfg->rsz_front)
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + tdshp->data->reg_table[TDSHP_CFG],
+						(1 << 25), 0x2000000);
+				else
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + tdshp->data->reg_table[TDSHP_CFG],
+						(0 << 25), 0x2000000);
+			}
 			mml_pq_err("%s:get ds param timeout: %d in %dms", __func__,
 				ret, TDSHP_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
@@ -587,8 +596,17 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
 					0x5C1B0, U32_MAX);
-			} else
+			} else {
 				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
+				if(cfg->rsz_front)
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + tdshp->data->reg_table[TDSHP_CFG],
+						(1 << 25), 0x2000000);
+				else
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + tdshp->data->reg_table[TDSHP_CFG],
+						(0 << 25), 0x2000000);
+			}
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;

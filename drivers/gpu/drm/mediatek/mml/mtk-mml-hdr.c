@@ -75,6 +75,7 @@ enum mml_hdr_reg_index {
 	HDR_DEBUG,
 	HDR_DUMMY0,
 	HDR_DUMMY1,
+	HDR_DUMMY2,
 	HDR_EOTF_CTRL,
 	HDR_SHADOW_CTRL,
 	HDR_LUT_CTRL_0,
@@ -126,6 +127,7 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_DEBUG] = 0x1e8,
 	[HDR_DUMMY0] = 0x1d4,
 	[HDR_DUMMY1] = 0x1d8,
+	[HDR_DUMMY2] = 0x1dc,
 	[HDR_EOTF_CTRL] = REG_NOT_SUPPORT,
 	[HDR_SHADOW_CTRL] = REG_NOT_SUPPORT,
 	[HDR_LUT_CTRL_0] = REG_NOT_SUPPORT,
@@ -174,6 +176,7 @@ static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
 	[HDR_DEBUG] = 0x1e8,
 	[HDR_DUMMY0] = 0x1d4,
 	[HDR_DUMMY1] = 0x1d8,
+	[HDR_DUMMY2] = 0x1dc,
 	[HDR_EOTF_CTRL] = 0x0ec,
 	[HDR_SHADOW_CTRL] = 0x0f4,
 	[HDR_LUT_CTRL_0] = 0x18c,
@@ -202,7 +205,6 @@ struct hdr_data {
 	bool enable_dummy;	/* WA: enable dummy to ignore fg out_mask */
 	bool two_curve;     /* Jayer HW Change two curve array OOTF OETF*/
 	u32 histogram_bin;
-	bool default2p;
 };
 
 static const struct hdr_data mt6983_hdr_data = {
@@ -266,7 +268,6 @@ static const struct hdr_data mt6993_mmlt_hdr_data = {
 	.rb_mode = RB_EOF_MODE,
 	.two_curve = true,
 	.histogram_bin = 128,
-	.default2p = true,
 };
 
 static const struct hdr_data mt6993_mmlf_hdr_data = {
@@ -277,7 +278,6 @@ static const struct hdr_data mt6993_mmlf_hdr_data = {
 	.rb_mode = RB_EOF_MODE,
 	.two_curve = true,
 	.histogram_bin = 128,
-	.default2p = true,
 };
 
 struct mml_comp_hdr {
@@ -456,7 +456,16 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 
-	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_RELAY], relay, U32_MAX);
+	if (hdr->data->two_curve) {
+		if (relay) {
+			cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP], 1 << 1, 0x2);
+			cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
+		} else {
+			cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP], 0 << 1, 0x2);
+			cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
+		}
+	} else
+		cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_RELAY], relay, U32_MAX);
 }
 
 static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
@@ -698,29 +707,10 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_hdr) {
 		/* relay mode */
 		hdr_relay(comp, pkt, base_pa, 0x1);
-		if (hdr->data->default2p) {
-			if (cfg->rsz_front) {
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_TOP], 1 << 1, 0x2);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
-			} else {
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_TOP], 0 << 1, 0x2);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_RELAY], 1, 0x1);
-			}
-		}
 		return 0;
 	}
 
 	hdr_relay(comp, pkt, base_pa, 0x0);
-
-	if (hdr->data->default2p) {
-		/* HDR_TOP keep default setting */
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_TOP], 0 << 1, 0x2);
-	}
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, HDR_WAIT_TIMEOUT_MS);
@@ -1742,7 +1732,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	void __iomem *base = comp->base;
-	u32 value[21];
+	u32 value[22];
 	u32 hdr_top, shadow_ctrl;
 
 	mml_err("hdr component %u dump:", comp->id);
@@ -1779,6 +1769,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	value[18] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY1]);
 	value[19] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_ADDR]);
 	value[20] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_2]);
+	value[21] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY2]);
 
 	mml_err("HDR_TOP %#010x HDR_RELAY %#010x HDR_INTSTA %#010x HDR_ENGSTA %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -1791,8 +1782,8 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	mml_err("HDR_TILE_POS %#010x", value[12]);
 	mml_err("HDR_CURSOR_BUF0 %#010x HDR_CURSOR_BUF1 %#010x HDR_CURSOR_BUF2 %#010x",
 		value[13], value[14], value[15]);
-	mml_err("HDR_DEBUG %#010x HDR_DUMMY0 %#010x HDR_DUMMY1 %#010x",
-		value[16], value[17], value[18]);
+	mml_err("HDR_DEBUG %#010x HDR_DUMMY0 %#010x HDR_DUMMY1 %#010x HDR_DUMMY2 %#010x",
+		value[16], value[17], value[18], value[21]);
 	mml_err("HDR_HIST_ADDR %#010x HDR_HIST_CTRL_2 %#010x", value[19], value[20]);
 }
 
