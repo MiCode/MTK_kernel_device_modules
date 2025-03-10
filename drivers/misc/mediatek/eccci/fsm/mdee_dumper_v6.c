@@ -532,7 +532,8 @@ static char *ee_type_str_v6_50s[] = {
 	/*[ASSERT_FAIL_NATIVE - 0x50] = */"ASSERT",
 	/*[ASSERT_CUSTOM_ADDR - 0x50] = */"Fatal error(ASSERT_CUSTOM_ADDR)",
 	/*[ASSERT_CUSTOM_MODID - 0x50] = */"Fatal error(ASSERT_CUSTOM_MODID)",
-	/*[ASSERT_CUSTOM_MOFID - 0x50] = */"Fatal error(ASSERT_CUSTOM_MOFID)"
+	/*[ASSERT_CUSTOM_MOFID - 0x50] = */"Fatal error(ASSERT_CUSTOM_MOFID)",
+	/*[ASSERT_CUSTOM_ERRORID - 0x50] = */"Fatal error(ASSERT_CUSTOM_ERRORID)"
 };
 
 static char *ee_type_str_v6_60s[] = {
