@@ -1228,8 +1228,10 @@ sugov_update_shared(struct update_util_data *hook, u64 time, unsigned int flags)
 			sugov_deferred_update(sg_policy);
 	}
 unlock:
+	irq_log_store();
 	/* Critical Task aware thermal throttling, notify thermal */
 	mtk_set_cpu_min_opp_shared(sg_cpu);
+	irq_log_store();
 
 	raw_spin_unlock(&sg_policy->update_lock);
 }
