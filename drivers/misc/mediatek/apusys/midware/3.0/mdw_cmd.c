@@ -730,7 +730,7 @@ out:
 	return ret;
 }
 
-static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
+static int mdw_cmd_run(struct mdw_cmd *c)
 {
 	struct mdw_fpriv *mpriv = c->mpriv;
 	struct mdw_device *mdev = mpriv->mdev;
@@ -741,42 +741,25 @@ static int mdw_cmd_run(struct mdw_cmd *c, int wait_fd)
 
 	f = &c->fence->base_fence;
 
-	/* wait input fence */
-	c->wait_fence = sync_file_get_fence(wait_fd);
-	if (!c->wait_fence) {
-		mdw_flw_debug("no fence to wait, trigger directly\n");
-		mdw_cmd_preprocess(c);
-		ret = mdev->plat_funcs->run_cmd(c);
-		if (ret < 0) {
-			mdw_drv_err("run cmd fail, ret(%d)\n", ret);
-			c->cmd_state = MDW_CMD_STATE_ERROR;
-			mdw_cmd_postprocess(c, 0);
+	mdw_cmd_preprocess(c);
+	ret = mdev->plat_funcs->run_cmd(c);
+	if (ret < 0) {
+		mdw_drv_err("run cmd fail, ret(%d)\n", ret);
+		c->cmd_state = MDW_CMD_STATE_ERROR;
+		mdw_cmd_postprocess(c, 0);
 
-			/* setup fence return value */
-			dma_fence_set_error(f, ret);
+		/* setup fence return value */
+		dma_fence_set_error(f, ret);
 
-			/* inform user space */
-			if (dma_fence_signal(f)) {
-				mdw_drv_warn("signal fence fail\n");
-				if (f->ops->get_timeline_name && f->ops->get_driver_name) {
-					mdw_drv_warn(" fence name(%s-%s)\n",
-					f->ops->get_driver_name(f), f->ops->get_timeline_name(f));
-				}
+		/* inform user space */
+		if (dma_fence_signal(f)) {
+			mdw_drv_warn("signal fence fail\n");
+			if (f->ops->get_timeline_name && f->ops->get_driver_name) {
+				mdw_drv_warn(" fence name(%s-%s)\n",
+				f->ops->get_driver_name(f), f->ops->get_timeline_name(f));
 			}
-			/* put refcnt from fence init */
-			dma_fence_put(f);
-			mdw_cmd_late_postprocess(c);
 		}
-	} else {
-		mdw_flw_debug("wait fence, fd(%d)\n", wait_fd);
-		if (c->wait_fence->ops->get_timeline_name && c->wait_fence->ops->get_driver_name) {
-			mdw_flw_debug("wait fence, fence name(%s-%s)\n",
-				c->wait_fence->ops->get_driver_name(f),
-				c->wait_fence->ops->get_timeline_name(f));
-		}
-
-		/* wait fence from wq */
-		schedule_work(&c->t_wk);
+		mdw_cmd_late_postprocess(c);
 	}
 
 	return ret;
@@ -858,28 +841,23 @@ static void mdw_cmd_trigger_func(struct work_struct *wk)
 {
 	struct mdw_cmd *c =
 		container_of(wk, struct mdw_cmd, t_wk);
-	struct mdw_fpriv *mpriv = c->mpriv;
-	struct mdw_device *mdev = mpriv->mdev;
 	int ret = 0;
 
 	if (c->wait_fence) {
 		dma_fence_wait(c->wait_fence, false);
 		dma_fence_put(c->wait_fence);
-		mdw_flw_debug("s(0x%llx) c(0x%llx) wait fence done, start run\n",
-			(uint64_t)c->mpriv, c->kid);
+		mdw_flw_debug("s(0x%llx) c(0x%llx) inf_id(0x%llx) wait fence done, start run\n",
+			(uint64_t)c->mpriv, c->kid, c->inference_id);
 	} else {
 		mdw_flw_debug("no fence to wait, trigger directly\n");
 	}
 
-
 	mutex_lock(&c->mtx);
-	mdw_cmd_preprocess(c);
-	ret = mdev->plat_funcs->run_cmd(c);
+	ret = mdw_cmd_run(c);
 	if (ret < 0) {
 		mdw_drv_err("run cmd fail\n");
-		c->cmd_state = MDW_CMD_STATE_ERROR;
-		mdw_cmd_postprocess(c, 0);
-		mdw_cmd_late_postprocess(c);
+		mdw_fence_delete(c);
+		c->put_ref(c);
 	}
 	mutex_unlock(&c->mtx);
 }
@@ -1119,6 +1097,7 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 	struct mdw_cmd_in *in = (struct mdw_cmd_in *)args;
 	struct mdw_cmd *c = NULL, *prev_c = NULL;
 	struct sync_file *sync_file = NULL;
+	struct dma_fence *f = NULL;
 	int ret = 0, fd = 0, wait_fd = 0, run_ret = 0;
 
 	mdw_trace_begin("apumdw:user_run");
@@ -1182,12 +1161,12 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 
 		/* assign dma_fence */
 		mdw_drv_debug("fence(%pK/%pK)\n", c->fence, &c->fence->base_fence);
+		f = &c->fence->base_fence;
 
 		/* create sync file*/
 		sync_file = sync_file_create(&c->fence->base_fence);
 		if (!sync_file) {
 			mdw_drv_err("create sync file fail\n");
-			dma_fence_put(&c->fence->base_fence);
 			ret = -ENOMEM;
 			goto delete_fence;
 		}
@@ -1197,7 +1176,26 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 
 		mdw_cmd_trace(c, MDW_CMD_ENQUE);
 
-		run_ret = mdw_cmd_run(c, wait_fd);
+		/* check wait fence from other module */
+		mdw_flw_debug("s(0x%llx) inf_id(0x%llx) wait fence(%d)...\n",
+				(uint64_t)c->mpriv, c->inference_id, wait_fd);
+
+		c->wait_fence = sync_file_get_fence(wait_fd);
+		if (!c->wait_fence) {
+			mdw_flw_debug("s(0x%llx) inf_id(0x%llx) no wait fence, trigger directly\n",
+				(uint64_t)c->mpriv, c->inference_id);
+			run_ret = mdw_cmd_run(c);
+		} else {
+			mdw_flw_debug("wait fence, fd(%d)\n", wait_fd);
+			if (c->wait_fence->ops->get_timeline_name && c->wait_fence->ops->get_driver_name) {
+				mdw_flw_debug("wait fence, fence name(%s-%s)\n",
+					c->wait_fence->ops->get_driver_name(f),
+					c->wait_fence->ops->get_timeline_name(f));
+		}
+		/* wait fence from wq */
+		schedule_work(&c->t_wk);
+	}
+
 		if (run_ret < 0) {
 			mdw_drv_err("run cmd fail, ret(%d)\n", run_ret);
 			ret = run_ret;

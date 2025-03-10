@@ -28,7 +28,7 @@ static ssize_t reserv_time_remain_show(struct device *dev,
 
 	/* get dma normal task num */
 	num = mdev->plat_funcs->get_info(mdev, MDW_INFO_RESERV_TIME_REMAIN);
-	ret = sprintf(buf, "%u\n", num);
+	ret = snprintf(buf, sizeof(buf), "%u\n", num);
 	if (ret < 0)
 		mdw_drv_warn("show reserv_time_remain fail(%d)\n", ret);
 
@@ -52,7 +52,7 @@ static ssize_t dsp_task_num_show(struct device *dev,
 
 	/* get dma normal task num */
 	num = mdev->plat_funcs->get_info(mdev, MDW_INFO_NORMAL_TASK_DSP);
-	ret = sprintf(buf, "%u\n", num);
+	ret = snprintf(buf, sizeof(buf), "%u\n", num);
 	if (ret < 0)
 		mdw_drv_warn("show dsp task num fail(%d)\n", ret);
 
@@ -76,7 +76,7 @@ static ssize_t dla_task_num_show(struct device *dev,
 
 	/* get dla normal task num */
 	num = mdev->plat_funcs->get_info(mdev, MDW_INFO_NORMAL_TASK_DLA);
-	ret = sprintf(buf, "%u\n", num);
+	ret = snprintf(buf, sizeof(buf), "%u\n", num);
 	if (ret < 0)
 		mdw_drv_warn("show dla task num fail(%d)\n", ret);
 
@@ -100,7 +100,7 @@ static ssize_t dma_task_num_show(struct device *dev,
 
 	/* get dma normal task num */
 	num = mdev->plat_funcs->get_info(mdev, MDW_INFO_NORMAL_TASK_DMA);
-	ret = sprintf(buf, "%u\n", num);
+	ret = snprintf(buf, sizeof(buf), "%u\n", num);
 	if (ret < 0)
 		mdw_drv_warn("show dma task num fail(%d)\n", ret);
 
@@ -185,7 +185,7 @@ static ssize_t ulog_show(struct device *dev,
 	}
 
 	log_lv = mdev->plat_funcs->get_info(mdev, MDW_INFO_ULOG);
-	ret = sprintf(buf, "%u\n", log_lv);
+	ret = snprintf(buf, sizeof(buf), "%u\n", log_lv);
 	if (ret < 0)
 		mdw_drv_warn("show ulog fail(%d)\n", log_lv);
 
@@ -228,7 +228,8 @@ static ssize_t klog_show(struct device *dev,
 	}
 
 	log_lv = mdev->plat_funcs->get_info(mdev, MDW_INFO_KLOG);
-	ret = sprintf(buf, "%u\n", log_lv);
+	ret = snprintf(buf, sizeof(buf), "%u\n", log_lv);
+
 	if (ret < 0)
 		mdw_drv_warn("show klog fail(%d)\n", log_lv);
 
@@ -264,7 +265,7 @@ static ssize_t tlog_show(struct device *dev,
 	uint32_t log_lv = 0;
 
 	log_lv = cfg_apusys_trace;
-	ret = sprintf(buf, "%u\n", log_lv);
+	ret = snprintf(buf, sizeof(buf), "%u\n", log_lv);
 	if (ret < 0)
 		mdw_drv_warn("show tlog fail(%d)\n", log_lv);
 
