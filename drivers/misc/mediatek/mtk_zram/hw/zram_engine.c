@@ -250,7 +250,21 @@ static void zram_engine_tbu_debug_dump(struct smmu_tbu_device *tbu, struct seq_f
 
 	/* TBU debug dump */
 	dev_info(tbu->dev, "%s:\n", __func__);
+
+	/*
+	 * SMMU driver may not call pm get/put for tbu reg dump.
+	 * PM get/put will be called only when accessing tbu registers directly by SMMU driver.
+	 * Add clk/mtcmos on/off for the situations without pm get/put.
+	 */
+	if (zram_engine_tbu_pm_get(tbu)) {
+		dev_info(tbu->dev, "%s: failed to enable clk/mtcmos\n", __func__);
+		return;
+	}
+
 	engine_get_smmu_reg_dump(&hwz->ctrl, s);
+
+	if (zram_engine_tbu_pm_put(tbu))
+		dev_info(tbu->dev, "%s: failed to disable clk/mtcmos\n", __func__);
 }
 
 static struct smmu_tbu_impl zram_engine_tbu_impl = {
