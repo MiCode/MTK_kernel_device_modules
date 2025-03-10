@@ -566,7 +566,6 @@ extern int regmap_read(struct regmap *map,
 
 extern void mt_irq_dump_status(unsigned int irq);
 
-extern void ccmni_set_tcp_is_need_gro(u32 tcp_is_need_gro);
 extern void ccmni_set_cur_speed(u64 cur_dl_speed);
 extern inline void dpmaif_stop_dev_queue(struct dpmaif_tx_queue *txq,
 	unsigned int ccmni_idx, unsigned int que_idx, unsigned int stop_threshold);
