@@ -14,11 +14,8 @@
 	(&((struct mtk_task *)android_task_vendor_data(p))->turbo_data)
 #define get_inherit_task(parent)	\
 	((struct task_struct *)((u64)(parent)->android_vendor_data1))
-#define MAX_RT_PRIO 100
-#define MAX_NORMAL_PRIO 140
 
 struct list_head;
-
 
 enum {
 	START_INHERIT = -1,

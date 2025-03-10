@@ -17,6 +17,8 @@
 #define INVALID_TGID -1
 #define INVALID_VAL -1
 #define INVALID_LOADING -1
+#define MAX_RT_PRIO 100
+#define MAX_NORMAL_PRIO 140
 
 struct list_head;
 

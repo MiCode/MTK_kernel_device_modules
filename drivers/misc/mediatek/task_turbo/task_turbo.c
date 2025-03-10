@@ -1407,62 +1407,6 @@ static void sys_set_turbo_task(struct task_struct *p)
 	add_turbo_list(p);
 }
 
-int set_task_priority(struct task_struct *task, int prio)
-{
-
-	struct sched_param param;
-	int policy;
-
-	if (prio < 0 || prio >= MAX_NORMAL_PRIO)
-		return -EINVAL;
-
-	if (!task)
-		return -ESRCH;
-
-	if (prio < MAX_RT_PRIO) {
-		policy = SCHED_FIFO;
-		param.sched_priority = prio;
-		if (sched_setscheduler_nocheck(task, policy, &param) != 0)
-			return -EINVAL;
-	} else {
-		policy = SCHED_NORMAL;
-		param.sched_priority = 0;
-		if (sched_setscheduler_nocheck(task, policy, &param) != 0)
-			return -EINVAL;
-
-		set_user_nice(task, prio - 120);
-	}
-	return 0;
-}
-EXPORT_SYMBOL(set_task_priority);
-/* end of task rt prio interface */
-
-static char set_tdp_param[64] = "";
-static int set_tdp(const char *buf, const struct kernel_param *kp)
-{
-	pid_t pid;
-	int prio;
-	struct task_struct *task;
-
-	if (sscanf(buf, "%d %d", &pid, &prio) != 2)
-		return -EINVAL;
-
-	task = find_task_by_vpid(pid);
-	if (!task)
-		return -ESRCH;
-
-	return set_task_priority(task, prio);
-}
-
-static const struct kernel_param_ops set_tdp_ops = {
-	.set = set_tdp,
-	.get = param_get_int,
-};
-
-module_param_cb(set_tdp, &set_tdp_ops, &set_tdp_param, 0664);
-MODULE_PARM_DESC(set_tdp, "set task priority for debug");
-
-
 static int __init init_task_turbo(void)
 {
 	int ret, ret_erri_line;
