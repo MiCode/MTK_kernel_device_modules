@@ -1326,6 +1326,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:mtk-ssc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v1:mtk-ssc-dbg-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v2:mtk-ssc-dbg-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1687,7 +1688,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/sched/scheduler.ko",
     #"drivers/misc/mediatek/sensor/2.0/sensorhub/sensorhub.ko",
     #"drivers/misc/mediatek/task_turbo/task_turbo.ko",
-    "drivers/misc/mediatek/task_turbo/vip_engine.ko",
+    #"drivers/misc/mediatek/task_turbo/vip_engine.ko",
     #"drivers/misc/mediatek/vdec_fmt/vdec-fmt.ko",
     #"drivers/misc/mediatek/vmm/mtk-vmm-notifier.ko",
     #"drivers/misc/mediatek/widevine_drm/widevine_driver.ko",

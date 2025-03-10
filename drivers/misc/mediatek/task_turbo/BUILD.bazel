@@ -41,3 +41,24 @@ define_mgk_ddk_ko(
     ],
     out = "task_turbo.ko",
 )
+
+define_mgk_ddk_ko(
+    name = "vip_engine",
+    srcs = [
+        "vip_engine.c",
+        "vip_engine.h",
+        "trace_vip_engine.h",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:task_turbo".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:mtk_fpsgo_v8".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/sbe:mtk_sbe".format(kernel_version),
+    ],
+    out = "vip_engine.ko",
+)
+
