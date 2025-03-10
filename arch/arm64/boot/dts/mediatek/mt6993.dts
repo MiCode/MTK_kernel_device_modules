@@ -17093,13 +17093,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupt-lbc-sz = <0x60000>;
 		};
 
-		// PMIC TODO:
-		/*
 		pmic_oc_debug: pmic-oc-debug {
 			compatible = "mediatek,mt6993-oc-debug";
-			status = "disabled";
 		};
-
+		// PMIC TODO:
+		/*
 		pmic_ecid: pmic-ecid {
 			compatible = "mediatek,mt6661-4-efuse",
 			status = "disabled";
