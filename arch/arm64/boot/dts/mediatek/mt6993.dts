@@ -23134,20 +23134,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 };
 
-// PMIC TODO:
-/*
 &mt6661_4 {
 	pmic-lvsys-notify {
 		compatible = "mediatek,mt6661-lvsys-notify";
-		thd-volts-l = <2900>;
-		thd-volts-h = <3100>;
+		lvsys-thd-volt-l-size = <2>;
+		lvsys-thd-volt-h-size = <2>;
+		thd-volts-l = <3400 3100>;
+		thd-volts-h = <3500 3200>;
 		lv-deb-sel = <0>;
-		hv-deb-sel = <2>;
+		hv-deb-sel = <3>;
 		vio18-switch-reg = <0x53 0x58>;
-		status = "disabled";
 	};
 };
-*/
 #include "mediatek/mt6993-clkitg.dtsi"
 #include "mediatek/mt6993-coresight.dtsi"
 #include "mediatek/mt6993-disable-unused.dtsi"
