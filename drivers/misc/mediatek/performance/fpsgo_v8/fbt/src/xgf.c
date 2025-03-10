@@ -2167,6 +2167,8 @@ static void __nocfi xgf_tracing_register(void)
 
 	xgf_nr_cpus = xgf_num_possible_cpus();
 
+	FPSGO_LOGE("[xgf]xgf_nr_cpus:%d\n", xgf_nr_cpus);
+
 	/* xgf_irq_handler_entry_tracer */
 	ret = xgf_tracepoint_probe_register(xgf_tracepoints[0].tp,
 						xgf_tracepoints[0].func,  NULL);
@@ -2176,6 +2178,7 @@ static void __nocfi xgf_tracing_register(void)
 		goto fail_reg_irq_handler_entry;
 	}
 	xgf_tracepoints[0].registered = true;
+	FPSGO_LOGE("[xgf] xgf_irq_handler_entry_tracer has been registered.\n");
 
 	/* xgf_irq_handler_exit_tracer */
 	ret = xgf_tracepoint_probe_register(xgf_tracepoints[1].tp,
@@ -2186,6 +2189,7 @@ static void __nocfi xgf_tracing_register(void)
 		goto fail_reg_irq_handler_exit;
 	}
 	xgf_tracepoints[1].registered = true;
+	FPSGO_LOGE("[xgf] xgf_irq_handler_exit_tracer has been registered.\n");
 
 	/* xgf_sched_switch_tracer */
 	ret = xgf_tracepoint_probe_register(xgf_tracepoints[2].tp,
@@ -2196,6 +2200,7 @@ static void __nocfi xgf_tracing_register(void)
 		goto fail_reg_sched_switch;
 	}
 	xgf_tracepoints[2].registered = true;
+	FPSGO_LOGE("[xgf] xgf_sched_switch_tracer has been registered.\n");
 
 	/* xgf_sched_waking_tracer */
 	ret = xgf_tracepoint_probe_register(xgf_tracepoints[3].tp,
@@ -2206,6 +2211,7 @@ static void __nocfi xgf_tracing_register(void)
 		goto fail_reg_sched_waking;
 	}
 	xgf_tracepoints[3].registered = true;
+	FPSGO_LOGE("[xgf] xgf_sched_waking_tracer has been registered.\n");
 
 	/* xgf_hrtimer_expire_entry_tracer */
 	ret = xgf_tracepoint_probe_register(xgf_tracepoints[4].tp,
@@ -2216,6 +2222,7 @@ static void __nocfi xgf_tracing_register(void)
 		goto fail_reg_hrtimer_expire_entry;
 	}
 	xgf_tracepoints[4].registered = true;
+	FPSGO_LOGE("[xgf] xgf_hrtimer_expire_entry_tracer has been registered.\n");
 
 	/* xgf_hrtimer_expire_exit_tracer */
 	ret = xgf_tracepoint_probe_register(xgf_tracepoints[5].tp,
@@ -2226,6 +2233,7 @@ static void __nocfi xgf_tracing_register(void)
 		goto fail_reg_hrtimer_expire_exit;
 	}
 	xgf_tracepoints[5].registered = true;
+	FPSGO_LOGE("[xgf] xgf_hrtimer_expire_exit_tracer has been registered.\n");
 
 	atomic_set(&xgf_event_buffer_idx, 0);
 	atomic_set(&fstb_event_buffer_idx, 0);
