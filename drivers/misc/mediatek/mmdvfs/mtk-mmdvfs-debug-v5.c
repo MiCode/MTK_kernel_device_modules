@@ -293,6 +293,11 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 		}
 	}
 
+	if (user)
+		for (i = 0; i < user_count; i++)
+			mmdvfs_seq_print(file, "user:%d id:%hhu name:%8s rc:%hhu force:%hhd vote:%hhd",
+				i, user[i].id, user[i].name, user[i].rc, user[i].force_opp, user[i].vote_opp);
+
 	mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
 	mmdvfs_mmup_cb_mutex_lock();
 	ret = mmdvfs_mmup_cb_ready_get();
@@ -304,6 +309,21 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 	}
 
 	mmdvfs_seq_print(file, "mmup_sram:%#lx", (unsigned long)(void *)SRAM_BASE);
+
+	// mmpc, cpc, dpc
+	for (i = 0; i < SRAM_XPC_CNT; i++) {
+		k = readl(SRAM_XPC_IDX(i)) % SRAM_REC_CNT;
+		for (j = k; j < SRAM_REC_CNT; j++) {
+			val = readl(SRAM_XPC_VAL(i, j));
+			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) xpc:%u lvl:%u", readl(SRAM_XPC_SEC(i, j)),
+				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
+		}
+		for (j = 0; j < k; j++) {
+			val = readl(SRAM_XPC_VAL(i, j));
+			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) xpc:%u lvl:%u", readl(SRAM_XPC_SEC(i, j)),
+				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
+		}
+	}
 
 	// vcore dvs, vmm dvs, vdisp dvs, vmm dfs, vdisp dfs
 	for (i = 0; i < SRAM_IRQ_CNT; i++) {

@@ -68,6 +68,7 @@ enum {
 	DUMP_PWR,
 	DUMP_CLK,
 	DUMP_CEIL,
+	DUMP_XPC,
 	DUMP_NUM
 };
 
@@ -93,12 +94,14 @@ enum {
 #define SRAM_PWR_CNT		(3) // vcore, vmm, vdisp
 #define SRAM_CLK_CNT		(5) // vcore, vmm, vdisp, cam, hop
 #define SRAM_CEIL_CNT		(3) // vcore, vmm, vdisp
+#define SRAM_XPC_CNT		(3) // mmpc, cpc, dpc
 
 #define SRAM_IRQ_IDX(x)		(SRAM_BASE + 4 * (0 + x))
 #define SRAM_PWR_IDX(x)		(SRAM_BASE + 4 * (5 + x))
 #define SRAM_CLK_IDX(x)		(SRAM_BASE + 4 * (8 + x))
 #define SRAM_CEIL_IDX(x)	(SRAM_BASE + 4 * (13 + x))
-// 16
+#define SRAM_XPC_IDX(x)		(SRAM_BASE + 4 * (16 + x))
+// 19
 
 #define SRAM_IRQ_SEC(x, y)	(SRAM_BASE + 4 * (20 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
 #define SRAM_IRQ_VAL(x, y)	(SRAM_BASE + 4 * (20 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
@@ -111,7 +114,10 @@ enum {
 
 #define SRAM_CEIL_SEC(x, y)	(SRAM_BASE + 4 * (230 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
 #define SRAM_CEIL_VAL(x, y)	(SRAM_BASE + 4 * (230 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
-// 280
+
+#define SRAM_XPC_SEC(x, y)	(SRAM_BASE + 4 * (280 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 0))
+#define SRAM_XPC_VAL(x, y)	(SRAM_BASE + 4 * (280 + SRAM_OBJ_CNT * (SRAM_REC_CNT * x + y) + 1))
+// 330
 
 #endif
 
