@@ -292,22 +292,26 @@ void mbraink_v6993_get_wifi_pcie_data(int current_idx,
 		else if (ret == WIFI2MBR_SUCCESS) {
 			cnt = pcie_buffer->count;
 
-			if (cnt < MAX_WIFI_TXTIMEOUT_SZ) {
+			if (cnt < MAX_WIFI_PCIE_SZ) {
 				pcie_buffer->pcie_data[cnt].timestamp =
 								pcie_info.timestamp;
 				pcie_buffer->pcie_data[cnt].update_time =
-								pcie_info.update_time;
+					convert_to_utc_usec(pcie_info.update_time_utc_sec,
+						pcie_info.update_time_utc_usec);
 				pcie_buffer->pcie_data[cnt].req_recovery_count =
 								pcie_info.req_recovery_count;
 				pcie_buffer->pcie_data[cnt].l0_time =
-								pcie_info.l0_time;
+					convert_to_utc_usec(pcie_info.l0_time_s,
+						pcie_info.l0_time_us);
 				pcie_buffer->pcie_data[cnt].l1_time =
-								pcie_info.l1_time;
+					convert_to_utc_usec(pcie_info.l1_time_s,
+						pcie_info.l1_time_us);
 				pcie_buffer->pcie_data[cnt].l1p2_time =
-								pcie_info.l1p2_time;
+					convert_to_utc_usec(pcie_info.l1ss_time_s,
+						pcie_info.l1ss_time_us);
 				pcie_buffer->count++;
 
-				if (cnt == MAX_WIFI_TXTIMEOUT_SZ - 1) {
+				if (cnt == MAX_WIFI_PCIE_SZ - 1) {
 					pcie_buffer->idx = current_idx + pcie_buffer->count;
 					break;
 				}

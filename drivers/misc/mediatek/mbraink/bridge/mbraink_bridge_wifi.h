@@ -133,11 +133,15 @@ struct wifi2mbr_TxTimeoutInfo {
 struct wifi2mbr_PcieInfo {
 	struct wifi2mbr_hdr hdr;
 	u64 timestamp;
-	unsigned int update_time;
+	unsigned int update_time_utc_sec;
+	unsigned int update_time_utc_usec;
 	unsigned int req_recovery_count;
-	unsigned int l0_time;
-	unsigned int l1_time;
-	unsigned int l1p2_time;
+	unsigned int l0_time_s;
+	unsigned int l0_time_us;
+	unsigned int l1_time_s;
+	unsigned int l1_time_us;
+	unsigned int l1ss_time_s;
+	unsigned int l1ss_time_us;
 };
 
 /* struct for WIFI2MBR_TAG_txpwr_info */
@@ -283,4 +287,21 @@ void wifi2mbrain_notify(enum wifi2mbr_tag tag,
 			void *data,
 			unsigned short len,
 			unsigned short count);
+
+/**
+ * convert_to_utc_usec - Convert seconds and microseconds to UTC microseconds
+ * @sec: seconds since Unix epoch
+ * @usec: microseconds part
+ *
+ * This function converts the given seconds and microseconds to a UTC
+ * timestamp in microseconds, preserving microsecond precision.
+ *
+ * Note: This function uses u64 to avoid overflow and preserve precision.
+ *
+ * Return: UTC timestamp in microseconds as u64
+ */
+static inline u64 convert_to_utc_usec(unsigned int sec, unsigned int usec)
+{
+	return (u64)sec * 1000000 + (u64)usec;
+}
 #endif /*MBRAINK_BRIDGE_WIFI_H*/

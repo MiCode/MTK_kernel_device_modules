@@ -626,11 +626,11 @@ struct mbraink_dvfsrc_struct_data {
 
 struct mbraink_wifi2mbr_pcie_struct {
 	u64 timestamp;
-	unsigned int update_time;
+	u64 update_time;
 	unsigned int req_recovery_count;
-	unsigned int l0_time;
-	unsigned int l1_time;
-	unsigned int l1p2_time;
+	u64 l0_time;
+	u64 l1_time;
+	u64 l1p2_time;
 };
 
 struct mbraink_wifi2mbr_pcie_data {
