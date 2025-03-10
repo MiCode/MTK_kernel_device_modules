@@ -16265,8 +16265,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			cm-mgr,vp-down = <100 100 100 100 100 100 100>;
 			cm-mgr,vp-up = <100 100 100 100 100 100 100>;
 
-			use-cpu-to-dram-map = "enable";
-			use-cpu-to-dram-map-new = "enable";
+			use-cpu-to-dram-map = "disable";
+			use-cpu-to-dram-map-new = "disable";
 			cm-mgr-cpu-opp-to-dram = <3 3 9 9 9 9 9 9
 						9 9 9 9 9 9 9 9
 						9 9 9 9 9 9 9 9
