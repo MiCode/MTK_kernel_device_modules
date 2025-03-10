@@ -525,6 +525,17 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 
 	ret = 0;
 
+	if (test_bit(SBE_RUNNING_CHECK, &mask)) {
+		if (start) {
+			local_specific_tid_num = sbe_split_task_name(tgid,
+				specific_name, num, local_specific_tid_arr, __func__);
+			sbe_update_spid_loading(local_specific_tid_arr,
+				local_specific_tid_num, tgid);
+		} else
+			sbe_delete_spid_loading(tgid);
+		goto out;
+	}
+
 	sbe_get_render_tid_by_render_name(tgid, thread_name,
 		final_pid_arr, final_bufID_arr, &final_pid_arr_idx, max_rpid_num);
 
@@ -697,15 +708,7 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 			__func__, i+1, final_pid_arr[i], final_bufID_arr[i]);
 	}
 
-	if (test_bit(SBE_RUNNING_CHECK, &mask)) {
-		if (start) {
-			local_specific_tid_num = sbe_split_task_name(tgid,
-				specific_name, num, local_specific_tid_arr, __func__);
-			sbe_update_spid_loading(local_specific_tid_arr,
-				local_specific_tid_num, tgid);
-		} else
-			sbe_delete_spid_loading(tgid);
-	} else if (final_pid_arr_idx > 0) {
+	if (final_pid_arr_idx > 0) {
 		local_specific_tid_num = sbe_split_task_name(tgid,
 				specific_name, num, local_specific_tid_arr, __func__);
 		for (i = 0; i < local_specific_tid_num; i++) {
