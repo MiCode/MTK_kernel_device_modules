@@ -16123,7 +16123,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<SMMU_L25_P8_PDA_0_RDMA3>,
 				<SMMU_L25_P9_PDA_0_RDMA4>,
 				<SMMU_L25_P11_PDA_0_WDMA>;
-#if 0
 			mediatek,cam-bwr = <&cam_bwr>;
 			mmqos-supply = <&mmqos>;
 			interconnects =
@@ -16146,7 +16145,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"l25_pdai_a3",
 				"l25_pdai_a4",
 				"l25_pdao_a";
-#endif
 		};
 
 		pda: pda@3a670000 {
