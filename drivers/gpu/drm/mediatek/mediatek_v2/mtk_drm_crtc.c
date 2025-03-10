@@ -3609,12 +3609,12 @@ static void mtk_atomic_doze_update_spr(struct drm_crtc *crtc)
 	unsigned int bypass = 0;
 
 	if (!aod_scp_flag || !aod_scp_ipi.send_ipi || !aod_scp_ipi.module_backup) {
-		DDPMSG("%s aod_scp invalid parameter\n", __func__);
+		DDPINFO("%s aod_scp invalid parameter\n", __func__);
 		return;
 	}
 
 	if (mtk_state->cmdq_handle == NULL)
-		DDPMSG("[MTK_SPR]:%s %d cmdq_handle is NULL\n", __func__, __LINE__);
+		DDPINFO("[MTK_SPR]:%s %d cmdq_handle is NULL\n", __func__, __LINE__);
 
 	// switch to DDIC SPR on doze active state for AOD-SCP
 	if ( crtc->state->active && mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
