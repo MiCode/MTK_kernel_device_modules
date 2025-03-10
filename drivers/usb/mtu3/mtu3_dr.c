@@ -691,7 +691,7 @@ static ssize_t max_speed_host_show(struct device *dev,
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
 	struct mtu3 *mtu = ssusb->u3d;
 
-	return sprintf(buf, "%s\n", usb_speed_string(mtu->max_speed_host));
+	return snprintf(buf, PAGE_SIZE, "%s\n", usb_speed_string(mtu->max_speed_host));
 }
 static DEVICE_ATTR_RW(max_speed_host);
 
@@ -785,7 +785,7 @@ static ssize_t host_dev_show(struct device *dev,
 {
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", ssusb->host_dev ? 1 : 0);
+	return snprintf(buf, PAGE_SIZE, "%d\n", ssusb->host_dev ? 1 : 0);
 }
 static DEVICE_ATTR_RW(host_dev);
 
