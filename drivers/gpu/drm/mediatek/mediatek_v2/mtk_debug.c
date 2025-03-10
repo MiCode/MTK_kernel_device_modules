@@ -5554,18 +5554,24 @@ test_done:
 		struct mtk_dsi_cmd_msg rx_test_cmd = { 0 };
 		struct mipi_dsi_msg *msg;
 		struct mipi_dsi_msg rx_msg = { 0 };
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		bool need_lock = false;
+		struct mtk_drm_private *private;
 
-		ret = sscanf(opt, "new_ddic_2c_test:%x,%d,%d,%d,%d,%x,%x,%d,%d,%d,%d\n",
+		ret = sscanf(opt, "new_ddic_2c_test:%x,%d,%d,%d,%d,%x,%x,%d,%d,%d,%d,%d,%d\n",
 			&flags, &package, &lp, &cmd_num, &tx_len, &addr,
-			&r_flags, &rx_delay_ms, &log_en, &rx_len_block_gce, &rx_len_block_cpu);
+			&r_flags, &rx_delay_ms, &log_en, &rx_len_block_gce, &rx_len_block_cpu,
+			&need_lock);
 		if (ret <= 0) {
 			DDPPR_ERR("new_ddic_2c_test fail, ret=%d\n", ret);
 			return;
 		}
 		DDPMSG("new_ddic_2c_test w, f=0x%x,lp=%d,p=%d,num=%d,len=%d,addr=0x%x\n",
 			flags, lp, package, cmd_num, tx_len, addr);
-		DDPMSG("new_ddic_2c_test r, f=0x%x, delay=%d, log_en=%d, gce=%d, cpu=%d\n",
-			r_flags, rx_delay_ms, log_en, rx_len_block_gce, rx_len_block_cpu);
+		DDPMSG("new_ddic_2c_test r, f=0x%x, delay=%d, log_en=%d, gce=%d, cpu=%d, lock=%d\n",
+			r_flags, rx_delay_ms, log_en, rx_len_block_gce, rx_len_block_cpu,
+			need_lock);
 
 		tx_buf = vmalloc(cmd_num * sizeof(char *));
 		if (!tx_buf) {
@@ -5611,6 +5617,30 @@ test_done:
 		cmd_opt.flags = flags;
 		cmd_opt.crtc_id = 0;
 
+		if (!need_lock)
+			goto external_test;
+
+		if (IS_ERR_OR_NULL(drm_dev)) {
+			DDPPR_ERR("%s, invalid drm dev\n", __func__);
+			return;
+		}
+
+		/* This cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		private = crtc->dev->dev_private;
+		mtk_crtc = to_mtk_crtc(crtc);
+
+		DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDPMSG("new_ddic_2c_test write hold lock\n");
+
+external_test:
 		DDPMSG("new_ddic_2c_test write ++\n");
 		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
 		if (ret < 0) {
@@ -5698,6 +5728,11 @@ test_done:
 			memcpy(rx_buf + (r_block_num * block_size), rx_msg.rx_buf, rd_size);
 		}
 
+		if (need_lock) {
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
+			DDPMSG("new_ddic_2c_test write release lock\n");
+		}
 		if (log_en) {
 			for (i = 0; i < rx_len; i++)
 				DDPMSG("new_ddic_2c_test read dump, addr=0x%x, rx_data[%d] = 0x%x\n",
