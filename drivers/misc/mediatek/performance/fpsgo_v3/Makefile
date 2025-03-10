@@ -42,26 +42,26 @@ subdir-ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/ \
 
 #fpsgo_main
-MTK_FPSGO_MAIN += fpsgo_main.o
+#MTK_FPSGO_MAIN += fpsgo_main.o
 
 #base
-include $(FPSGO_TOP)/base/build.mk
-MTK_FPSGO_BASE = $(mtk_fpsgo_base_objs:%.o=base/%.o)
+#include $(FPSGO_TOP)/base/build.mk
+#MTK_FPSGO_BASE = $(mtk_fpsgo_base_objs:%.o=base/%.o)
 
 #composer
-include $(FPSGO_TOP)/composer/build.mk
-MTK_FPSGO_COMPOSER = $(mtk_fpsgo_composer_objs:%.o=composer/%.o)
+#include $(FPSGO_TOP)/composer/build.mk
+#MTK_FPSGO_COMPOSER = $(mtk_fpsgo_composer_objs:%.o=composer/%.o)
 
 #fbt
-include $(FPSGO_TOP)/fbt/build.mk
-MTK_FPSGO_FBT = $(mtk_fpsgo_fbt_objs:%.o=fbt/%.o)
+#include $(FPSGO_TOP)/fbt/build.mk
+#MTK_FPSGO_FBT = $(mtk_fpsgo_fbt_objs:%.o=fbt/%.o)
 
 #fstb
-include $(FPSGO_TOP)/fstb/build.mk
-MTK_FPSGO_FSTB = $(mtk_fpsgo_fstb_objs:%.o=fstb/%.o)
+#include $(FPSGO_TOP)/fstb/build.mk
+#MTK_FPSGO_FSTB = $(mtk_fpsgo_fstb_objs:%.o=fstb/%.o)
 
-MTK_FPSGO_SRC = $(MTK_FPSGO_MAIN) $(MTK_FPSGO_BASE) $(MTK_FPSGO_COMPOSER) $(MTK_FPSGO_FBT) $(MTK_FPSGO_FSTB)
+#MTK_FPSGO_SRC = $(MTK_FPSGO_MAIN) $(MTK_FPSGO_BASE) $(MTK_FPSGO_COMPOSER) $(MTK_FPSGO_FBT) $(MTK_FPSGO_FSTB)
 
-obj-$(CONFIG_MTK_FPSGO_V3) += mtk_fpsgo_v3.o
-mtk_fpsgo_v3-objs += $(MTK_FPSGO_SRC)
+#obj-$(CONFIG_MTK_FPSGO_V3) += mtk_fpsgo_v3.o
+#mtk_fpsgo_v3-objs += $(MTK_FPSGO_SRC)
 

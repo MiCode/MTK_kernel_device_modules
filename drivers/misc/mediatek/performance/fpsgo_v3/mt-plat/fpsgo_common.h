@@ -10,7 +10,6 @@
 #include <linux/ktime.h>
 #include <linux/fs.h>
 
-#if defined(CONFIG_MTK_FPSGO_V3)
 enum FPSGO_TRACE_TYPE {
 	FPSGO_DEBUG_MANDATORY = 0,
 	FPSGO_DEBUG_FBT,
@@ -47,24 +46,4 @@ int fpsgo_is_enable(void);
 
 int fbt_cpu_get_bhr(void);
 
-#else
-static inline void fpsgo_systrace_c_fbt(pid_t id,
-	unsigned long long bufID, int val, const char *s, ...) { }
-static inline void fpsgo_systrace_c_fbt_debug(pid_t id,
-	unsigned long long bufID, int val, const char *s, ...) { }
-static inline void fpsgo_systrace_c_fstb_man(pid_t id,
-	unsigned long long bufID, int val, const char *s, ...) { }
-static inline void fpsgo_systrace_c_fstb(pid_t id,
-	unsigned long long bufID, int val, const char *s, ...) { }
-static inline void fpsgo_systrace_c_xgf(pid_t id,
-	unsigned long long bufID, int val, const char *s, ...) { }
-static inline void __cpu_ctrl_systrace(pid_t id,
-	unsigned long long bufID, int val, const char *s, ...) { }
-static inline void __cpu_ctrl_systrace_debug(pid_t id,
-	unsigned long long bufID, int val, const char *s, ...) { }
-
-static inline void fpsgo_switch_enable(int enable) { }
-static inline int fpsgo_is_enable(void) { return 0; }
-
-#endif
 #endif

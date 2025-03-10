@@ -12,7 +12,6 @@
 extern int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 		struct fpsgo_loading *arr, unsigned long long bufID);
 
-#if defined(CONFIG_MTK_FPSGO) || defined(CONFIG_MTK_FPSGO_V3)
 void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit);
 
 void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap);
@@ -156,59 +155,5 @@ void fpsgo_set_rl_l2q_enable(int enable);
 void fpsgo_set_expected_l2q_us(int vsync_multiple, unsigned long long user_expected_l2q_us);
 int fpsgo_get_rl_l2q_enable(void);
 void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts);
-
-#else
-static inline void fpsgo_ctrl2fbt_dfrc_fps(int fps_limit) { }
-static inline void fpsgo_ctrl2fbt_cpufreq_cb_cap(int cid, int cap) { }
-static inline void fbt_cpufreq_cb_cap(int cid, int cap, unsigned long long *freq_lastest_ts,
-	unsigned long long *freq_prev_cb_ts, unsigned int *freq_lastest_obv,
-	unsigned int **freq_lastest_obv_cl, unsigned int **freq_lastest_is_cl_iso,
-	unsigned int *freq_lastest_idx, unsigned long long *freq_last_cb_ts,
-	unsigned int *freq_clus_obv, unsigned int *freq_clus_iso, unsigned int *freq_last_obv,
-	unsigned long long fake_time_ns) { }
-static inline void fpsgo_ctrl2fbt_vsync(unsigned long long ts) { }
-static inline void fpsgo_ctrl2fbt_vsync_period(unsigned long long period_ts) { }
-int fpsgo_ctrl2fbt_switch_uclamp(int enable) { return 0; }
-static inline void fpsgo_comp2fbt_frame_start(struct render_info *thr,
-	unsigned long long ts) { }
-static inline void fpsgo_comp2fbt_deq_end(struct render_info *thr,
-		unsigned long long ts) { }
-
-static inline int fbt_cpu_init(void) { return 0; }
-static inline void fbt_cpu_exit(void) { }
-
-static inline int fpsgo_ctrl2fbt_switch_fbt(int enable) { return 0; }
-
-static inline void fpsgo_base2fbt_node_init(struct render_info *obj) { }
-static inline void fpsgo_base2fbt_item_del(struct fbt_thread_blc *pblc,
-		struct fpsgo_loading *pdep,
-		struct render_info *thr) { }
-static inline int fpsgo_base2fbt_get_max_blc_pid(int *pid,
-		unsigned long long *buffer_id) { return 0; }
-static inline void fpsgo_base2fbt_check_max_blc(void) { }
-static inline int fpsgo_base2fbt_get_cluster_num(void) { return 0; }
-static inline void fpsgo_base2fbt_no_one_render(void) { }
-static inline int fbt_switch_ceiling(int en) { return 0; }
-static inline void fpsgo_base2fbt_set_min_cap(struct render_info *thr,
-				int min_cap) { }
-static inline void fpsgo_base2fbt_clear_llf_policy(struct render_info *thr) { }
-static inline int fpsgo_base2fbt_is_finished(struct render_info *thr) { return 0; }
-static inline void fpsgo_base2fbt_stop_boost(struct render_info *thr) { }
-static inline void eara2fbt_set_2nd_t2wnt(int pid, unsigned long long buffer_id,
-			unsigned long long t_duration) { }
-static inline void fbt_set_render_boost_attr(struct render_info *thr) { }
-static inline void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts) { }
-static inline int fpsgo_ctrl2fbt_buffer_quota(unsigned long long ts, int pid, int quota,
-			unsigned long long identifier) { return 0; }
-static inline void notify_rl_ko_is_ready(void) { }
-static inline void fpsgo_set_rl_l2q_enable(int enable) { }
-static inline void fpsgo_set_expected_l2q_us(int vsync_multiple,
-	unsigned long long user_expected_l2q_us) { }
-static inline int fpsgo_get_rl_l2q_enable(void) { return 0; }
-static inline void fbt_update_freq_qos_min(int policy_id, unsigned int freq) { }
-static inline void notify_powerRL_ko_is_ready(void) { }
-static inline int fbt_get_powerRL_ko_is_ready(void)  { return 0; }
-static inline void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts) { }
-#endif
 
 #endif

@@ -84,7 +84,6 @@ int fpsgo_ktf2fstb_add_delete_render_info(int mode, int pid, unsigned long long 
 	int target_fps, int queue_fps);
 int switch_thread_max_fps(int pid, int set_max);
 
-#if IS_ENABLED(CONFIG_MTK_FPSGO) || IS_ENABLED(CONFIG_MTK_FPSGO_V3)
 int is_fstb_active(long long time_diff);
 int fpsgo_ctrl2fstb_switch_fstb(int value);
 int fpsgo_fbt2fstb_update_cpu_frame_info(
@@ -111,28 +110,6 @@ void eara2fstb_get_tfps(int max_cnt, int *is_camera, int *pid, unsigned long lon
 void eara2fstb_tfps_mdiff(int pid, unsigned long long buf_id, int diff,
 				int tfps);
 
-#else
-static inline int fpsgo_ctrl2fstb_switch_fstb(int en) { return 0; }
-static inline int fpsgo_fbt2fstb_update_cpu_frame_info(
-	int pid, unsigned long long bufID,
-	int tgid, int frame_type, unsigned long long Q2Q_time,
-	long long Runnging_time, int Target_time, unsigned int Curr_cap,
-	unsigned int Max_cap, unsigned long long enqueue_length,
-	unsigned long long dequeue_length) { return 0; }
-static inline void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
-		int *target_fps, int *target_fps_ori, int *target_cpu_time, int *fps_margin,
-		int *quantile_cpu_time, int *quantile_gpu_time,
-		int *target_fpks, int *cooler_on) { }
-long long fpsgo_base2fstb_get_gpu_time(int pid, unsigned long long bufID) { }
-
-/* EARA */
-static inline void eara2fstb_get_tfps(int max_cnt, int *pid,
-		unsigned long long *buf_id, int *tfps, int *hwui,
-		char name[][16], int *proc_id) { }
-static inline void eara2fstb_tfps_mdiff(int pid, unsigned long long buf_id,
-		int diff, int tfps) { }
-
-#endif
 
 #endif
 
