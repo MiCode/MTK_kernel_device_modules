@@ -89,7 +89,7 @@ TMEM_PRIV int paddr_cmp(void *priv, const struct list_head *a,
 TMEM_PRIV void pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
 		u32 tmp_count, int lock)
 {
-#if 0
+#if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
 	static uint32_t hvc_id_map;
 	static uint32_t hvc_id_unmap;
 	struct arm_smccc_res res;
