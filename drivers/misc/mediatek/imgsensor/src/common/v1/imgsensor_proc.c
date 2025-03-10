@@ -74,6 +74,63 @@ static ssize_t proc_SensorType_write(
 	return count;
 };
 
+static int get_str_two_hex(const char *str, unsigned int *hex1, unsigned int *hex2)
+{
+	const char *p = str;
+	const char *num_start = p;
+	char num_str[11]; // max of hex
+	unsigned int num;
+	int ret = 0;
+	size_t num_length = 0;
+	unsigned int *hex[2];
+	int i;
+
+	hex[0] = hex1;
+	hex[1] = hex2;
+
+	for (i = 0; i < 2; i++) {
+		// find '0x' or '0X'
+		while (!(*p && *(p + 1) && (*p == '0') && ((*(p + 1)) == 'x' || (*(p + 1)) == 'X')))
+			p++;
+
+		if (!*p) {
+			pr_info("[%s] No number found in the string\n", __func__);
+			return -EINVAL;
+		}
+
+		num_start = p;
+
+		// find hex string end
+		while (*p && (*p) != ' ')
+			p++;
+
+		num_length = p - num_start;
+		if (num_length >= sizeof(num_str)) {
+			pr_info("[%s] Number part is too long (str: %s) (num_len: %zu)\n",
+				__func__, str, num_length);
+			return -EINVAL;
+		}
+
+		strscpy(num_str, num_start, num_length + 1);
+		num_str[num_length] = '\0';
+
+		// pr_info("[%s] num_str = %s\n", __func__, num_str);
+
+		ret = kstrtouint(num_str, 16, &num);
+		if (ret == 0) {
+			if (hex[i])
+				*hex[i] = num;
+			// pr_info("[%s] str: %s, Parsed number: 0x%x, next substr: %s\n",
+			// __func__, str, num, p);
+		} else {
+			pr_info("[%s] Failed to parse number. ret = %d\n", __func__, ret);
+			return -EINVAL;
+		}
+	}
+
+	return 2;
+}
+
 /************************************************************************
  * CAMERA_HW_Reg_Debug()
  * Used for sensor register read/write by proc file
@@ -99,9 +156,11 @@ static ssize_t CAMERA_HW_Reg_Debug(
 	if (psensor == NULL || copy_from_user(regBuf, buffer, u4CopyBufSize))
 		return -EFAULT;
 
-	if (sscanf(
+	/* ensure null terminated */
+	regBuf[63] = '\0';
+
+	if (get_str_two_hex(
 	    regBuf,
-	    "%x %x",
 	    &sensorReg.RegAddr,
 	    &sensorReg.RegData) == 2) {
 
@@ -182,9 +241,11 @@ static ssize_t CAMERA_HW_Reg_Debug2(
 	if (psensor == NULL || copy_from_user(regBuf, buffer, u4CopyBufSize))
 		return -EFAULT;
 
-	if (sscanf(
+	/* ensure null terminated */
+	regBuf[63] = '\0';
+
+	if (get_str_two_hex(
 	    regBuf,
-	    "%x %x",
 	    &sensorReg.RegAddr,
 	    &sensorReg.RegData) == 2) {
 		imgsensor_sensor_feature_control(
@@ -262,9 +323,8 @@ static ssize_t CAMERA_HW_Reg_Debug3(
 	if (psensor == NULL || copy_from_user(regBuf, buffer, u4CopyBufSize))
 		return -EFAULT;
 
-	if (sscanf(
+	if (get_str_two_hex(
 	    regBuf,
-	    "%x %x",
 	    &sensorReg.RegAddr,
 	    &sensorReg.RegData) == 2) {
 
@@ -345,9 +405,11 @@ static ssize_t CAMERA_HW_Reg_Debug4(
 	if (psensor == NULL || copy_from_user(regBuf, buffer, u4CopyBufSize))
 		return -EFAULT;
 
-	if (sscanf(
+	/* ensure null terminated */
+	regBuf[63] = '\0';
+
+	if (get_str_two_hex(
 	    regBuf,
-	    "%x %x",
 	    &sensorReg.RegAddr,
 	    &sensorReg.RegData) == 2) {
 
