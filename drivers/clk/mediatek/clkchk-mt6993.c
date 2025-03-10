@@ -39,7 +39,16 @@
 #define CG_CHK_PWRON_ENABLE		0
 
 #define HWV_IRQ_STATUS			0x50
+#define HWV_STATUS			0x10000
+#define HWV_BUCK_EN			0x11200
+#define HWV_INT_BUCK_TRIGGER		0x00200000
 #define HWV_INT_TIMEOUT_TRIGGER		0x07FD07FD
+enum {
+	HWV_TFA_XPU_NUM = 1,
+	HWV_VCP_XPU_NUM = 2,
+	HWV_SCP_XPU_NUM = 3,
+	HWV_SSPM_XPU_NUM = 4
+};
 
 #define EVT_LEN				40
 #define CLK_ID_SHIFT			8
@@ -4252,6 +4261,17 @@ static struct regname rn[] = {
 	REGNAME(mm_hwv, 0x1433C, HW_CCF_HW_3_IRQ_ENABLE),
 	REGNAME(mm_hwv, 0x14340, HW_CCF_HW_4_IRQ_ENABLE),
 	REGNAME(mm_hwv, 0x14344, HW_CCF_HW_5_IRQ_ENABLE),
+	/* MM_HWCCF BUCK VOTER */
+	REGNAME(mm_hwv, 0x11200, BUCK_ENABLE_OFS),
+	REGNAME(mm_hwv, 0x11204, BUCK_STA_OFS),
+	REGNAME(mm_hwv, 0x11208, BUCK_SET_STA_OFS),
+	REGNAME(mm_hwv, 0x1120C, BUCK_CLR_STA_OFS),
+	REGNAME(mm_hwv, 0x11210, BUCK_DONE_OFS),
+	REGNAME(mm_hwv, 0x20750, BUCK_APMCU_EN_OFS),
+	REGNAME(mm_hwv, 0x30750, BUCK_TFA_EN_OFS),
+	REGNAME(mm_hwv, 0x40750, BUCK_VCP_EN_OFS),
+	REGNAME(mm_hwv, 0x50750, BUCK_SCP_EN_OFS),
+	REGNAME(mm_hwv, 0x60750, BUCK_SSPM_EN_OFS),
 	{},
 };
 
@@ -5122,9 +5142,31 @@ static void check_hwv_irq_sta(void)
 
 static void check_mm_hwv_irq_sta(void)
 {
-	u32 irq_sta;
+	u32 irq_sta, sta, buck_en;
+	const char *xpu_name = NULL;
 
 	irq_sta = get_mt6993_reg_value(mm_hwv, HWV_IRQ_STATUS);
+	sta = get_mt6993_reg_value(mm_hwv, HWV_STATUS);
+
+	if ((sta & HWV_INT_BUCK_TRIGGER) != 0) {
+		buck_en = get_mt6993_reg_value(mm_hwv, HWV_BUCK_EN);
+
+		if (buck_en & (0x1U << HWV_TFA_XPU_NUM))
+			xpu_name = "TFA";
+		else if (buck_en & (0x1U << HWV_VCP_XPU_NUM))
+			xpu_name = "VCP";
+		else if (buck_en & (0x1U << HWV_SCP_XPU_NUM))
+			xpu_name = "SCP";
+		else if (buck_en & (0x1U << HWV_SSPM_XPU_NUM))
+			xpu_name = "SSPM";
+
+		if (xpu_name)
+			pr_chk("%s %s trigger buck irq, buck_en = 0x%x\n", __func__, xpu_name, buck_en);
+		else
+			pr_chk("%s Invalid trigger buck irq, buck_en = 0x%x\n", __func__, buck_en);
+
+		dump_bus_reg(NULL, 0);
+	}
 
 	if ((irq_sta & HWV_INT_TIMEOUT_TRIGGER) != 0)
 		dump_bus_reg(NULL, 0);
