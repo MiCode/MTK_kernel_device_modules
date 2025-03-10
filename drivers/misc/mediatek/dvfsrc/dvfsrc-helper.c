@@ -601,8 +601,7 @@ static void dvfsrc_force_opp(struct mtk_dvfsrc *dvfsrc, u32 opp)
 
 		if (dvfsrc->dvd->mmdvfs_notify && (dvfsrc->force_opp_idx != 0xFF)) {
 			if (opp == 0xFF) {
-				mtk_mmdvfs_debug_force_vcore_notify(
-					dvfsrc->opp_desc->opps[max_opp].vcore_opp);
+				mtk_mmdvfs_debug_force_vcore_notify(0xFF);
 			} else if (dvfsrc->opp_desc->opps[max_opp - opp].vcore_opp
 					> dvfsrc->opp_desc->opps[max_opp - dvfsrc->force_opp_idx].vcore_opp)
 				mtk_mmdvfs_debug_force_vcore_notify(

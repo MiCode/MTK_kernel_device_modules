@@ -186,14 +186,13 @@ int mmdvfs_force_vcore_notify(const u32 val)
 	int ret = 0;
 	s8 opp;
 
-	if (!vcore_level_count || val >= vcore_level_count)
+	if (!vcore_level_count || (val >= vcore_level_count && val != 0xFF))
 		return 0;
 
 	//TODO: refactor from calling force_step to calling vcore ceil flow
 	//release force_step at max vcore level
 	//0:MMDVFS_PWR_VCORE
-	opp = (vcore_level[val] < (mmdvfs_data->rc[0].level_num - 1)) ?
-		OPP2LEVEL(0, vcore_level[0]) : OPP_NAG;
+	opp = (val == 0xFF) ? OPP_NAG : OPP2LEVEL(0, vcore_level[0]);
 	vcore_force_val = opp;
 
 	if (!mmdvfs_mmup_cb_ready)
@@ -201,8 +200,7 @@ int mmdvfs_force_vcore_notify(const u32 val)
 
 	ret = mmdvfs_force_step(0, opp);
 	if (ret)
-		MMDVFS_DBG("ret:%d force_vcore_level:%u final_vcore_opp:%hhd",
-			ret, val, opp);
+		MMDVFS_DBG("ret:%d force_vcore_level:%u final_vcore_opp:%hhd", ret, val, opp);
 	else
 		vcore_force_opp = opp;
 

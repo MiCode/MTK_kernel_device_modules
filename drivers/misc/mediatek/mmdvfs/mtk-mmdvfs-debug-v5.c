@@ -73,8 +73,7 @@ static u8 step_count, *step_idx;
 int mmdvfs_debug_v5_force_vcore(const u32 val)
 {
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
-	//return mmdvfs_force_vcore_notify(val);
-	return 0;
+	return mmdvfs_force_vcore_notify(val);
 #else
 	return 0;
 #endif
