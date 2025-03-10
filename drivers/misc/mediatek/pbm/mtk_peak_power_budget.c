@@ -174,6 +174,10 @@ static void spbm_scmi_init(void)
 	unsigned int ret;
 
 	_tinfo = get_scmi_tinysys_info();
+	if (!_tinfo) {
+		pr_info("spbm get scmi info fail\n");
+		return;
+	}
 
 	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-spbm",
 			&scmi_spbm_id);
@@ -419,6 +423,53 @@ static ssize_t spbm_debug_state_store(struct kobject *kobj,
 	pr_info("[spbm]%s invalid input\n", __func__);
 
 	return -EINVAL;
+}
+
+static ssize_t spbm_send_pwr_to_xpu_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+
+	len = snprintf(buf, PAGE_SIZE, "send_pwr_to_xpu: %d\n",
+		spbm_scmi_state.send_pwr_to_xpu);
+
+	if (len < 0) {
+		pr_info("[spbm]%s Error writing to buffer\n", __func__);
+		return len; // Return error code
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[spbm]%s Buffer size is too small, truncated output\n", __func__);
+		len = PAGE_SIZE - 1; // Ensure len does not exceed PAGE_SIZE
+	}
+
+	return len;
+}
+
+static ssize_t spbm_send_pwr_to_xpu_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+
+	if (strncmp(buf, "send_pwr_to_xpu", 15) == 0) {
+		spbm_scmi_state.send_pwr_to_xpu = 1; // Enable the function
+		pr_info("send_pwr_to_xpu %d\n", spbm_scmi_state.send_pwr_to_xpu);
+
+		// Send command to the subsystem to set the state
+		spbm_scmi_to_sspm_command(SPBM_SCMI_ENABLE_SEND_PWR,
+		spbm_scmi_state.send_pwr_to_xpu, 0, 0, SPBM_SCMI_SET);
+	} else if (strncmp(buf, "stop_send_pwr_to_xpu", 20) == 0) {
+		spbm_scmi_state.send_pwr_to_xpu = 0; // Disable the function
+		pr_info("send_pwr_to_xpu %d\n", spbm_scmi_state.send_pwr_to_xpu);
+
+		// Send command to the subsystem to set the state
+		spbm_scmi_to_sspm_command(SPBM_SCMI_ENABLE_SEND_PWR,
+		spbm_scmi_state.send_pwr_to_xpu, 0, 0, SPBM_SCMI_SET);
+	} else {// If the input does not match expected commands, return an error
+		pr_info("[spbm]%s invalid input\n", __func__);
+		return -EINVAL; // Invalid input
+	}
+
+
+	return count;
 }
 
 
@@ -806,6 +857,7 @@ static struct kobj_attribute spbm_xpu_power_limit_attr = __ATTR_RO(spbm_xpu_powe
 static struct kobj_attribute spbm_xpu_request_power_attr = __ATTR_RO(spbm_xpu_request_power);
 
 static struct kobj_attribute spbm_spbm_enable_attr = __ATTR_RW(spbm_spbm_enable);
+static struct kobj_attribute spbm_send_pwr_to_xpu_attr = __ATTR_RW(spbm_send_pwr_to_xpu);
 static struct kobj_attribute spbm_debug_state_attr = __ATTR_RW(spbm_debug_state);
 static struct kobj_attribute spbm_fake_cpu_pwr_attr = __ATTR_RW(spbm_fake_cpu_pwr);
 static struct kobj_attribute spbm_fake_gpu_pwr_attr = __ATTR_RW(spbm_fake_gpu_pwr);
@@ -822,6 +874,7 @@ static struct attribute *spbm_attrs[] = {
 	&spbm_xpu_power_limit_attr.attr,
 	&spbm_xpu_request_power_attr.attr,
 	&spbm_spbm_enable_attr.attr,
+	&spbm_send_pwr_to_xpu_attr.attr,
 	&spbm_debug_state_attr.attr,
 	&spbm_fake_cpu_pwr_attr.attr,
 	&spbm_fake_gpu_pwr_attr.attr,

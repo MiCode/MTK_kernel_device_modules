@@ -190,6 +190,7 @@ struct spbm_scmi_state_t {
 	unsigned int sf_lcpu;
 	unsigned int sf_gpu;
 	unsigned int sf_npu;
+	unsigned int send_pwr_to_xpu;
 };
 
 enum {
@@ -207,6 +208,7 @@ enum {
 	SPBM_SCMI_SCALING_FACTOR_CPU,
 	SPBM_SCMI_SCALING_FACTOR_GPU,
 	SPBM_SCMI_SCALING_FACTOR_NPU,
+	SPBM_SCMI_ENABLE_SEND_PWR,
 	NR_SPBM_SCMI,
 };
 #endif
