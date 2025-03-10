@@ -634,7 +634,12 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.pitch = fb->pitches[0];
 		mtk_plane_state->pending.format = fb->format->format;
 		mtk_plane_state->pending.modifier = fb->modifier;
-		mtk_plane_state->pending.addr = mtk_fb_get_dma(fb);
+		if (mtk_plane_state->prop_val[PLANE_PROP_MODE] == MTK_PLANE_REPLACE_LAYER)
+			mtk_plane_state->pending.addr = mtk_crtc->lk_dma_addr;
+		else if (mtk_plane_state->prop_val[PLANE_PROP_MODE] == MTK_PLANE_REPLACE_LAYER_2)
+			mtk_plane_state->pending.addr = mtk_crtc->lk_dma_addr + 0x100000;
+		else
+			mtk_plane_state->pending.addr = mtk_fb_get_dma(fb);
 		mtk_plane_state->pending.size = mtk_fb_get_size(fb);
 		mtk_plane_state->pending.src_x = (plane->state->src.x1 >> 16);
 		mtk_plane_state->pending.src_y = (plane->state->src.y1 >> 16);

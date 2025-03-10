@@ -8401,6 +8401,12 @@ static void mtk_crtc_frame_buffer_release(struct drm_crtc *crtc,
 		if (already_free == true || IS_ERR_OR_NULL(crtc))
 			return;
 
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
+			DDPMSG("keep LK buffer to gen layer test\n");
+			already_free = true;
+			return;
+		}
+
 		if (index == 0 && hrt_valid == true && mtk_crtc->is_plane0_updated == true) {
 			/*free fb buf after the 1st valid input buffer is unused*/
 			DDPMSG("%s, free frame buffer\n", __func__);
@@ -8805,7 +8811,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 			}
 			if (!lyeblob_ids->ref_cnt) {
 				mtk_crtc_frame_buffer_release(crtc, index,
-					lyeblob_ids->hrt_valid);
+						lyeblob_ids->hrt_valid);
 				DDPINFO("free lyeblob:(%d,%d)\n",
 					lyeblob_ids->lye_idx,
 					prop_lye_idx);

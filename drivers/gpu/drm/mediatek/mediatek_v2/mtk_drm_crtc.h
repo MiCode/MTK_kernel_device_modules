@@ -1398,6 +1398,8 @@ struct mtk_drm_crtc {
 
 	struct dbi_count_data dbi_data;
 	bool dbi_trigger;
+
+	dma_addr_t lk_dma_addr;
 };
 
 enum BL_GAMMA_GAIN {
