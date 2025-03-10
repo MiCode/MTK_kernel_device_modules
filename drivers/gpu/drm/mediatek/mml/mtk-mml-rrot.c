@@ -1478,12 +1478,10 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* rrot sideband setting */
-	cmdq_pkt_write(pkt, NULL, base_pa + RROT_RESV_DUMMY_0, 0xc, U32_MAX);
-
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		ext_preultra_en = 1;
-		ext_ultra_en = 1;
-	}
+	if (mml_isdc(cfg->info.mode))
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_RESV_DUMMY_0, 0xc, U32_MAX);
+	else
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_RESV_DUMMY_0, 0, U32_MAX);
 
 	/* Enable 10-bit output */
 	output_10bit = 1;
