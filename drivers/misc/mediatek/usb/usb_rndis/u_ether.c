@@ -969,6 +969,11 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 					INFO(dev, "%s - tx dropped\n", __func__);
 					return NET_XMIT_DROP;
 				}
+				if (frag_data_addr == NULL) {
+					dev_kfree_skb_any(skb);
+					INFO(dev, "%s - frag_data_addr is NULL\n", __func__);
+					return NET_XMIT_DROP;
+				}
 				memcpy(req->buf + req->length, frag_data_addr, frag_data_len);
 				frag_data_addr += frag_data_len;
 				req->length += frag_data_len;
