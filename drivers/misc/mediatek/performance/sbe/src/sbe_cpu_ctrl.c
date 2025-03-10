@@ -1922,7 +1922,7 @@ int __init sbe_cpu_ctrl_init(void)
 {
 	sbe_rescue_enable = 1;
 	init_smart_launch_engine();
-	ux_general_policy = 1;
+	ux_general_policy = 0;
 	ux_general_policy_type = 0;
 	ux_general_policy_dpt_setwl = 0;
 	sbe_enhance_f = 50;
