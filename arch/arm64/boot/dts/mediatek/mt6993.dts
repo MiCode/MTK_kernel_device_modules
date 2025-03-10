@@ -10310,6 +10310,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE",
 				"MTK_DRM_OPT_OVLSYS_CASCADE",
 				"MTK_DRM_OPT_LTPO_VM",
+				"MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE",
 				"MTK_DRM_OPT_UNION_FENCE",
 				"MTK_DRM_OPT_RETRIGGER",
 				"MTK_DRM_OPT_DSI_LPC_EN",
@@ -10398,6 +10399,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
 				<0>, /*"MTK_DRM_OPT_OVLSYS_CASCADE"*/
 				<0>, /*MTK_DRM_OPT_LTPO_VM*/
+				<1>, /*MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE*/
 				<1>, /*MTK_DRM_OPT_UNION_FENCE*/
 				<1>, /*"MTK_DRM_OPT_RETRIGGER"*/
 				<1>, /*MTK_DRM_OPT_DSI_LPC_EN*/
