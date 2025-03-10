@@ -10,6 +10,7 @@
 #include <linux/input.h>
 #include <linux/sched/signal.h>
 #include <uapi/linux/sched/types.h>
+#include <linux/platform_device.h>
 
 #include <kernel/sched/sched.h>
 #include <drivers/android/binder_internal.h>
@@ -49,7 +50,7 @@ static DEFINE_MUTEX(enforced_qualified_lock);
 static void init_turbo_attr(struct task_struct *p);
 static int avg_cpu_loading;
 static int cpu_loading_thres = 95;
-static int tt_vip_enable = 1;
+static int tt_vip_enable;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 static int binder_vip_inheritance_enable = 1;
 static int binder_nonvip_inheritance_enable;
@@ -1444,9 +1445,46 @@ static const struct kernel_param_ops set_tdp_ops = {
 module_param_cb(set_tdp, &set_tdp_ops, &set_tdp_param, 0664);
 MODULE_PARM_DESC(set_tdp, "set task priority for debug");
 
+static int platform_vip_engine_probe(struct platform_device *pdev)
+{
+	int ret = 0, retval = 0;
+
+	pr_info("%s called, read vip-enable\n", __func__);
+	ret = of_property_read_u32(pdev->dev.of_node,
+				"vip-enable", &retval);
+	if (!ret)
+		tt_vip_enable = retval;
+	else
+		pr_info("%s unable to get vip-enable\n", __func__);
+	return 0;
+}
+
+static const struct of_device_id platform_vip_engine_of_match[] = {
+	{ .compatible = "mediatek,vip-engine", },
+	{},
+};
+
+static const struct platform_device_id platform_vip_engine_id_table[] = {
+	{"vip-engine", 0},
+	{ },
+};
+
+static struct platform_driver mtk_platform_vip_engine_driver = {
+	.probe = platform_vip_engine_probe,
+	.driver = {
+		.name = "vip-engine",
+		.owner = THIS_MODULE,
+		.of_match_table = platform_vip_engine_of_match,
+	},
+	.id_table = platform_vip_engine_id_table,
+};
+
 static int __init init_vip_engine(void)
 {
 	int ret, ret_erri_line;
+
+	pr_info("%s called, register platform driver\n", __func__);
+	platform_driver_register(&mtk_platform_vip_engine_driver);
 
 	ret = register_trace_android_rvh_prepare_prio_fork(
 			probe_android_rvh_prepare_prio_fork, NULL);
