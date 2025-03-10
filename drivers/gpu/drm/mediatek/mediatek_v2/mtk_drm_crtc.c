@@ -10695,6 +10695,25 @@ unsigned int mtk_bwm_get_layer_compress_ratio(struct mtk_drm_crtc *mtk_crtc, uns
 	return compr_ratio;
 }
 
+int mtk_bwm_get_weight(unsigned int peak)
+{
+	int weight = 0, index = 0;
+
+	weight *= peak;
+	do_div(weight, 1000);
+	index = (peak * 256) / (1000 * 16);
+	if (index) {
+		weight = div_u64(weight*10000, emi_eff_tb[index-1]);
+		DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
+			__LINE__, index, emi_eff_tb[index-1], weight);
+	} else {
+		weight = div_u64(weight*10000, emi_eff_tb[0]);
+		DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
+			__LINE__, index, emi_eff_tb[0], weight);
+	}
+	return weight;
+}
+
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	struct drm_atomic_state *state)
 {
@@ -10926,27 +10945,22 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 					all_layer_compress_ratio_table[i].valid) {
 					unsigned int peak = all_layer_compress_ratio_table[i].peak_ratio;
 					unsigned int avg = all_layer_compress_ratio_table[i].average_ratio;
-					int index;
 
-					weight *= peak;
-					do_div(weight, 1000);
-					index = (peak * 256) / (1000 * 16);
-					if (index) {
-						weight = div_u64(weight*10000, emi_eff_tb[index-1]);
-						DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
-							__LINE__, index, emi_eff_tb[index-1], weight);
-					} else {
-						weight = div_u64(weight*10000, emi_eff_tb[0]);
-						DDPDBG_BWM("%d BWM:index:%u eff:%u weight:%u\n",
-							__LINE__, index, emi_eff_tb[0], weight);
-					}
+					if (peak < 1000)
+						weight = mtk_bwm_get_weight(peak);
+					else
+						weight = div_u64((weight * 10000), default_emi_eff);
 					break;
 				}
 			}
+			overlap = weight * bpp;
+			CRTC_MMP_MARK(0, bwm20, overlap, 5);
+			add_bwm_entry(&mtk_bwm_sort_list, plane_state, overlap);
+		} else {
+			overlap = div_u64((weight * bpp * 10000), default_emi_eff);
+			CRTC_MMP_MARK(0, bwm20, overlap, 5);
+			add_bwm_entry(&mtk_bwm_sort_list, plane_state, overlap);
 		}
-		overlap = div_u64((weight * bpp * 10000), default_emi_eff);
-		CRTC_MMP_MARK(0, bwm20, overlap, 5);
-		add_bwm_entry(&mtk_bwm_sort_list, plane_state, overlap);
 	}
 	for (i = 0; i < mtk_bwm_sort_list.size; i++) {
 		overlap_sum += mtk_bwm_sort_list.entry[i].overlap_w;

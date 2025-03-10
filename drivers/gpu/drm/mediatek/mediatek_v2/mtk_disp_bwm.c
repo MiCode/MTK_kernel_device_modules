@@ -354,6 +354,8 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 	writel(0x1, comp->regs + DISP_REG_BWM_RST);
 	writel(0x0, comp->regs + DISP_REG_BWM_RST);
 	writel(0x0, comp->regs + DISP_REG_BWM_INTSTA);
+	//add memory barrior to avoid bwm work after atomic commit
+	wmb();
 }
 
 static int mtk_bwm_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
