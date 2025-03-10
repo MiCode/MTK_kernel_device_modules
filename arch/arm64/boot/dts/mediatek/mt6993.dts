@@ -1704,10 +1704,18 @@
 		bringup-stage = <0>;
 		disp-pd-id = <0>;
 		operating-points-v2 = <&opp_table_disp>;
+		clocks =
+			<&mmdvfs_mux MMDVFS_USER_DISP>;
+		clock-names =
+			"mmdvfs_clk";
+		mmdvfs-clock-names = "mmdvfs_clk";
+		#clock-cells = <1>;
 		reg =
-			<0 0x3ee00400 0 0x4>;             /* VDISP_AO_DUMMY0 */
+			<0 0x3ee00400 0 0x4>,             /* VDISP_AO_DUMMY0 */
+			<0 0x3eb00000 0 0x114>;           /* AGING_BASE */
 		reg-names =
-			"vdisp_ao_dummy";
+			"vdisp_ao_dummy",
+			"aging_base";
 		mediatek,vcp-supply = <&vcp>;
 	};
 
