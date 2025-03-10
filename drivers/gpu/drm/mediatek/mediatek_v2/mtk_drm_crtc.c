@@ -19171,6 +19171,7 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 					mtk_ddp_comp_layer_off(comp_r, plane->index,
 							0, cmdq_handle);
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
+					mtk_crtc->reset_path = true;
 				} else {
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
