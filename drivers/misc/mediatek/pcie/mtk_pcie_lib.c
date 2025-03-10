@@ -395,13 +395,62 @@ static int mtk_pcie_lane_margin_time(struct mtk_pcie_info *pcie_smt, struct pci_
 	return ret = mtk_pcie_margin_step(pcie_smt, dev, lane, rcv_num, lm_pos, lm_max_step, MTK_TIME_MARGIN_RIGHT);
 }
 
+static int mtk_pcie_lane_margin_eye_diagram(struct mtk_pcie_info *pcie_smt, struct pci_dev *dut, u32 rcv_num, u32 pos)
+{
+	u32 lane = 0, lm_pos = 0, width = 0;
+	u16 reg = 0;
+	int ret = 0;
+
+	lm_pos = pci_find_ext_capability(dut, PCI_EXT_CAP_ID_LM);
+	if (!lm_pos) {
+		pr_info("LM capability not found on device\n");
+		return -ENODEV;
+	}
+
+	pci_read_config_word(dut, pos + PCI_EXP_LNKSTA, &reg);
+	width = (reg & PCI_EXP_LNKSTA_NLW) >> 4;
+
+	for (lane = 0; lane < width; lane++) {
+		ret = mtk_pcie_lane_margin_voltage(pcie_smt, dut, lane, rcv_num, lm_pos);
+		if (ret < 0) {
+			pr_info("[%s:%d], Voltage margin fail\n", __func__, __LINE__);
+			ret = -1;
+			goto err_eye;
+		}
+
+		ret = mtk_pcie_lane_margin_time(pcie_smt, dut, lane, rcv_num, lm_pos);
+		if (ret < 0) {
+			pr_info("[%s:%d], Time margin fail\n", __func__, __LINE__);
+			ret = -1;
+			goto err_eye;
+		}
+
+		if (pcie_smt->eye[MTK_TIME_MARGIN_LEFT] < 3 ||
+		    pcie_smt->eye[MTK_TIME_MARGIN_RIGHT] < 3 ||
+		    pcie_smt->eye[MTK_VOLTAGE_MARGIN_UP] < 10 ||
+		    pcie_smt->eye[MTK_VOLTAGE_MARGIN_DOWN] < 10) {
+			pr_info("Port lane margin doesn't meet pass criteria.\n");
+			ret = -1;
+			goto err_eye;
+		}
+	}
+
+	pr_info("[%s:%d], Test PCIe lane margin pass!\n", __func__, __LINE__);
+
+err_eye:
+	pr_info("[%s:%d], Lane margin eye diagram:\nleft:%d\nright:%d\nup:%d\ndown:%d\n", __func__, __LINE__,
+		pcie_smt->eye[0], pcie_smt->eye[1], pcie_smt->eye[2], pcie_smt->eye[3]);
+
+	return ret;
+}
+
 static int mtk_pcie_lane_margin(struct mtk_pcie_info *pcie_smt, struct pci_dev *dev, int mode)
 {
 	struct pci_dev *parent, *dut;
 	struct mtk_aspm_state aspm;
-	int pos = 0, ppos = 0;
-	int ret = 0, width = 0, lane = 0, rcv_num = 0;
-	int lm_pos = 0;
+	u32 pos = 0, ppos = 0, rcv_num = 0;
+	char mode_str[10] = "DOWN";
+	int ret = 0;
 	u16 reg = 0;
 
 	parent = dev->bus->self;
@@ -439,39 +488,35 @@ static int mtk_pcie_lane_margin(struct mtk_pcie_info *pcie_smt, struct pci_dev *
 	pci_read_config_word(parent, ppos + PCI_EXP_LNKCTL2, &reg);
 	pci_write_config_word(parent, ppos + PCI_EXP_LNKCTL2, reg & (~PCI_EXP_LNKCTL2_HASD));
 
-	if (mode == MTK_PCIE_DN) {
-		dut = parent;
-		rcv_num = PCIE_LM_DN_RCV_NUM;
-	} else {
+	/* Default run lane margin down mode */
+	dut = parent;
+	rcv_num = PCIE_LM_DN_RCV_NUM;
+	if (mode == MTK_PCIE_UP) {
 		dut = dev;
 		rcv_num = PCIE_LM_UP_RCV_NUM;
-	}
-	pr_info("******* Test downstream port(%s) LM start *********\n", mode ? "EP" : "RC");
-
-	lm_pos = pci_find_ext_capability(dut, PCI_EXT_CAP_ID_LM);
-	if (!lm_pos) {
-		pr_info("LM capability not found on device\n");
-		return -ENODEV;
+		strscpy(mode_str, "UP");
 	}
 
-	pci_read_config_word(dev, pos + PCI_EXP_LNKSTA, &reg);
-	width = (reg & PCI_EXP_LNKSTA_NLW) >> 4;
+	pr_info("******* Test Lane Margin (%s) start *********\n", mode_str);
+	ret = mtk_pcie_lane_margin_eye_diagram(pcie_smt, dut, rcv_num, pos);
+	if (ret) {
+		pr_info("[%s:%d], Lane Margin %s fail.\n", __func__, __LINE__, mode_str);
+		return ret;
+	}
 
-	for (lane = 0; lane < width; lane++) {
-		ret = mtk_pcie_lane_margin_voltage(pcie_smt, dut, lane, rcv_num, lm_pos);
-		if (ret < 0) {
-			pr_info("[%s:%d], Voltage margin fail\n", __func__, __LINE__);
-			return ret;
-		}
+	if (mode == MTK_PCIE_BOTH) {
+		dut = dev;
+		rcv_num = PCIE_LM_UP_RCV_NUM;
+		strscpy(mode_str, "BOTH");
 
-		ret = mtk_pcie_lane_margin_time(pcie_smt, dut, lane, rcv_num, lm_pos);
-		if (ret < 0) {
-			pr_info("[%s:%d], Time margin fail\n", __func__, __LINE__);
+		ret = mtk_pcie_lane_margin_eye_diagram(pcie_smt, dut, rcv_num, pos);
+		if (ret) {
+			pr_info("[%s:%d], Lane Margin both fail.\n", __func__, __LINE__);
 			return ret;
 		}
 	}
 
-	pr_info("******* Test downstream port(%s) LM end *********\n", mode ? "EP" : "RC");
+	pr_info("******* Test Lane Margin (%s) end *********\n", mode_str);
 
 	return 0;
 }
@@ -516,14 +561,6 @@ int mtk_pcie_lane_margin_entry(struct mtk_pcie_info *pcie_smt, int port, int mod
 	ret = mtk_pcie_lane_margin(pcie_smt, dev, mode);
 	if (ret)
 		pr_info("[%s:%d], Lane Margin fail.\n", __func__, __LINE__);
-
-	if (pcie_smt->eye[MTK_TIME_MARGIN_LEFT] < 3 ||
-	    pcie_smt->eye[MTK_TIME_MARGIN_RIGHT] < 3 ||
-	    pcie_smt->eye[MTK_VOLTAGE_MARGIN_UP] < 10 ||
-	    pcie_smt->eye[MTK_VOLTAGE_MARGIN_DOWN] < 10) {
-		pr_info("Port%d lane margin doesn't meet pass criteria.\n", port);
-		ret = -1;
-	}
 
 error:
 	pci_dev_put(dev);

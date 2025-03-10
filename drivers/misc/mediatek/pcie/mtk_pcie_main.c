@@ -876,15 +876,9 @@ static int mtk_pcie_multi_lanes_dump(struct mtk_pcie_info *pcie_smt, u32 port, u
 		__func__, __LINE__, used_length, pcie_smt->max_lane[port]);
 
 	ret_val = snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length,
-		 "\nLane%d:cdr_en:%#x\nafe_en:%#x\ncdr_lck2ref:%#x\ncdr_track:%#x\n"
-		 "aeq_en:%#x\ndrv_en:%#x\nser_en:%#x\ndata_en:%#x\ncal_ckon:%#x\n"
-		 "sgdt_out:%#x\ncdr_dig_sta:%#x\ncdr_kband_state:%#x\ncal_kband_done:%#x\n"
-		 "cal_done:%#x\ncal_ok:%#x\ncompos:%#x\nlvshos:%#x\nctle1ios:%#x\n"
-		 "ctle1vos:%#x\nvgaq1ios:%#x\nvga1vos:%#x\nvga2ios:%#x\nvga2vos:%#x\n"
-		 "aeq_saos:%#x\ncal_state:%#x\negeq_ph:%#x\ndone:%#x\nstate:%#x\n"
-		 "att:%#x\nctle:%#x\nvga:%#x\ndfetp7:%#x\ndfetp6:%#x\ndfetp5:%#x\n"
-		 "dfetp4:%#x\ndfetp3:%#x\ndfetp2:%#x\ndfetp1:%#x\nlctxcm1:%#x\n"
-		 "lctxc0:%#x\nlctxcpl:%#x\nrmtxcm1:%#x\nrmtxc0:%#x\nrmtxcp1:%#x\nend",
+		 "\nLane%d:\nP9:%#x P10:%#x P11:%#x P12:%#x P13:%#x P14:%#x P15:%#x P16:%#x P17:%#x P18:%#x P19:%#x P20:%#x P21:%#x P22:%#x P23:%#x\n"
+		 "S0:%#x S1:%#x S2:%#x S3:%#x S4:%#x S5:%#x S6:%#x S7:%#x S8:%#x S9:%#x S10:%#x S11:%#x S12:%#x\n"
+		 "C0:%#x C1:%#x C2:%#x C3:%#x C4:%#x C5:%#x C6:%#x C7:%#x C8:%#x C9:%#x C10:%#x C11:%#x C12:%#x C13:%#x C14:%#x C15:%#x end\n",
 		 pln[0], pln[1], pln[2], pln[3], pln[4], pln[5], pln[6],
 		 pln[7], pln[8], pln[9], pln[10], pln[11], pln[12], pln[13],
 		 pln[14], pln[15], pln[16], pln[17], pln[18], pln[19], pln[20],
@@ -897,8 +891,6 @@ static int mtk_pcie_multi_lanes_dump(struct mtk_pcie_info *pcie_smt, u32 port, u
 
 	return ret_val;
 }
-
-
 
 /* For lane margin PHY dump */
 static int mtk_pcie_lanemargin_phy_dump(struct mtk_pcie_info *pcie_smt, u32 port)
@@ -949,9 +941,7 @@ static int mtk_pcie_lanemargin_phy_dump(struct mtk_pcie_info *pcie_smt, u32 port
 	used_length = strlen(pcie_smt->response);
 	pr_info("[%s, %d] used_length=%d\n", __func__, __LINE__, used_length);
 	ret_val = snprintf(pcie_smt->response + used_length, MAX_BUF_SZ - used_length,
-		 "\ndummy:%#x\nbias_en:%#x\nckdet_en:%#x\ntpll0_en:%#x\n"
-		 "tpll1_en:%#x\nckdet_out:%#x\ntpll0_dig_mon:%#x\n"
-		 "tpll0_kband_cplt:%#x\ntpll1_kband_cplt:%#x\ntpll1_dig_mon:%#x\n",
+		 "\ndummy:%#x P0:%#x P1:%#x P2:%#x P3:%#x P4:%#x P5:%#x P6:%#x P7:%#x P8:%#x\n",
 		 glb[0], glb[1], glb[2], glb[3], glb[4],
 		 glb[5], glb[6], glb[7], glb[8], glb[9]);
 	if (ret_val < 0) {
@@ -967,7 +957,6 @@ static int mtk_pcie_lanemargin_phy_dump(struct mtk_pcie_info *pcie_smt, u32 port
 
 	used_length = strlen(pcie_smt->response);
 	pr_info("PCIe%d PHY dump:length=%d, info:%s\n", port, used_length, pcie_smt->response);
-
 	pr_info("pcie lane margin phy dump end\n");
 
 	return 0;
