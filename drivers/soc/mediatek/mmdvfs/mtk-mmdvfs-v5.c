@@ -75,6 +75,9 @@ static DEFINE_MUTEX(mmdvfs_mmup_ipi_mutex);
 static int vcp_power;
 static DEFINE_MUTEX(mmdvfs_vcp_pwr_mutex);
 
+static s8 vcore_force_val = OPP_NAG;
+static s8 vcore_force_opp = OPP_NAG;
+
 int mmdvfs_get_version(void)
 {
 	return MMDVFS_VER_V5;
@@ -190,11 +193,18 @@ int mmdvfs_force_vcore_notify(const u32 val)
 	//release force_step at max vcore level
 	//0:MMDVFS_PWR_VCORE
 	opp = (vcore_level[val] < (mmdvfs_data->rc[0].level_num - 1)) ?
-		OPP2LEVEL(0, vcore_level[0]) : -1;
+		OPP2LEVEL(0, vcore_level[0]) : OPP_NAG;
+	vcore_force_val = opp;
+
+	if (!mmdvfs_mmup_cb_ready)
+		return 0;
+
 	ret = mmdvfs_force_step(0, opp);
 	if (ret)
 		MMDVFS_DBG("ret:%d force_vcore_level:%u final_vcore_opp:%hhd",
 			ret, val, opp);
+	else
+		vcore_force_opp = opp;
 
 	return ret;
 }
@@ -446,6 +456,10 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		mutex_lock(&mmdvfs_mmup_cb_mutex);
 		mmdvfs_mmup_cb_ready = true;
 		mutex_unlock(&mmdvfs_mmup_cb_mutex);
+		if (vcore_force_val != OPP_NAG) {
+			mmdvfs_force_step(0, vcore_force_val);
+			vcore_force_opp = vcore_force_val;
+		}
 		break;
 	case VCP_EVENT_RESUME:
 		MMDVFS_DBG("VCP_EVENT_RESUME in");
@@ -464,6 +478,8 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		mutex_lock(&mmdvfs_mmup_cb_mutex);
 		mmdvfs_mmup_cb_ready = false;
 		mutex_unlock(&mmdvfs_mmup_cb_mutex);
+		if (vcore_force_opp != OPP_NAG)
+			mmdvfs_force_step(0, OPP_NAG);
 		break;
 	}
 	return NOTIFY_DONE;
