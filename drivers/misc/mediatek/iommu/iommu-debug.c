@@ -1070,6 +1070,30 @@ void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 }
 EXPORT_SYMBOL_GPL(report_custom_smmu_fault);
 
+static void smmu_data_dump(struct seq_file *s, struct mtk_smmu_data *data)
+{
+	iommu_dump(s, "GLB data dump for smmu_%d:\n", data->plat_data->smmu_type);
+	iommu_dump(s, "partid_max:%u, pmg_max:%u, tcu_prefetch:%u, tcu_qos:%u, slc_gid:%u\n",
+		   data->partid_max, data->pmg_max, data->tcu_prefetch,
+		   data->tcu_qos, data->slc_gid);
+	iommu_dump(s, "stash_mode:%d, axslc:%d, ssid_enabled:%d, ela_support:%d, gran4k_only:%d\n",
+		   data->stash_mode, data->axslc, data->ssid_enabled, data->ela_support,
+		   data->gran4k_only);
+	iommu_dump(s, "irq_disable:%d, dvm_support:%d, power_awake:%d\n",
+		   data->irq_disable, data->dvm_support, data->power_awake);
+}
+
+static void mtk_smmu_data_dump(struct seq_file *s, u32 smmu_type)
+{
+	struct mtk_smmu_data *data;
+
+	if (smmu_ops && smmu_ops->get_smmu_data) {
+		data = smmu_ops->get_smmu_data(smmu_type);
+		if (data != NULL && data->hw_init_flag == 1)
+			smmu_data_dump(s, data);
+	}
+}
+
 static void smmu_glbreg_dump(struct seq_file *s, struct arm_smmu_device *smmu)
 {
 	iommu_dump(s,
@@ -1915,6 +1939,10 @@ static inline int mtk_smmu_power_put(u32 smmu_type)
 	return -1;
 }
 
+static inline void mtk_smmu_data_dump(struct seq_file *s, u32 smmu_type)
+{
+}
+
 static inline void mtk_smmu_glbreg_dump(struct seq_file *s, u32 smmu_type)
 {
 }
@@ -2191,6 +2219,8 @@ static int mtk_iommu_dump_fops_proc_show(struct seq_file *s, void *unused)
 
 		/* dump all smmu if exist */
 		for (i = 0; i < SMMU_TYPE_NUM; i++) {
+			mtk_smmu_data_dump(s, i);
+
 			/* skip GPU SMMU */
 			if (i == GPU_SMMU)
 				continue;
