@@ -891,10 +891,10 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = true;
 	priv->mtk_dbgtp_sta.dbgtp_trig_prd = 260;
 	priv->mtk_dbgtp_sta.dbgtp_timeout_en = 0x1;
-	priv->mtk_dbgtp_sta.dsi_lpc_mon_en = true;
+	priv->mtk_dbgtp_sta.dsi_lpc_mon_en = false;
 
 	/* dpc default setting */
-	priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = 0x10FFE;
+	priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = 0x00FFE;
 
 	/* fifo mon default setting */
 	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 0;
@@ -902,7 +902,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 
 	/* dispsys default setting */
 	/* dispsys0A */
-	priv->mtk_dbgtp_sta.dispsys[0].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.dispsys[0].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.dispsys[0].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.dispsys[0].subsys_dsi_trig_en = false;
 	priv->mtk_dbgtp_sta.dispsys[0].subsys_crossbar_info_en = false;
@@ -921,11 +921,11 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[0].crossbar_mon_cfg3 = 0x00010000;//PC_IN
 	/* dispsys1A */
 	priv->mtk_dbgtp_sta.dispsys[1].subsys_mon_en = true;
-	priv->mtk_dbgtp_sta.dispsys[1].subsys_smi_trig_en = true;
+	priv->mtk_dbgtp_sta.dispsys[1].subsys_smi_trig_en = false;
 	priv->mtk_dbgtp_sta.dispsys[1].subsys_dsi_trig_en = true;
-	priv->mtk_dbgtp_sta.dispsys[1].subsys_crossbar_info_en = true;
-	priv->mtk_dbgtp_sta.dispsys[1].subsys_mon_info_en = true;
-	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_en = true;
+	priv->mtk_dbgtp_sta.dispsys[1].subsys_crossbar_info_en = false;
+	priv->mtk_dbgtp_sta.dispsys[1].subsys_mon_info_en = false;
+	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_en = false;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].slice_time = 0x514;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_dump_sel = 0x1;
@@ -935,7 +935,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_portid[3] = 6;
 	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_mon_sel = 0x0200;
-	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_buf_sel = 0x0116;
+	priv->mtk_dbgtp_sta.dispsys[1].dsi_mon.dsi_buf_sel = 0x0316;
 	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg0 = 0x00090000;//SPLITTER_OUT
 	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg1 = 0x00000000;//SPLITTER_IN
 	priv->mtk_dbgtp_sta.dispsys[1].crossbar_mon_cfg2 = 0x00000000;//MERGE_OUT
@@ -984,13 +984,13 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	/* ovlsys0 */
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_mon_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_smi_trig_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[0].subsys_crossbar_info_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[0].subsys_crossbar_info_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_inlinerotate_info_en = false;
-	priv->mtk_dbgtp_sta.ovlsys[0].subsys_mon_info_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[0].subsys_mon_info_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].smi_mon_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].smi_mon_en = true;
-	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].smi_mon_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].smi_mon_en = false;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].smi_mon_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].rst_by_frame = true;
