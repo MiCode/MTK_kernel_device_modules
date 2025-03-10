@@ -5,17 +5,13 @@
 #include <mtk_cpuidle_sysfs.h>
 #include <lpm_dbg_fs_common.h>
 
-#if IS_ENABLED(CONFIG_MTK_LPM_MT6983)
-#include <lpm_dbg_cpc_v5.h>
-#else
 #include <lpm_dbg_cpc_v3.h>
-#endif
 
 #include <lpm_dbg_syssram_v1.h>
 
 #include "mtk_cpupm_dbg.h"
-#include "mtk_cpuidle_status.h"
-#include "mtk_cpuidle_cpc.h"
+#include <mtk_cpuidle_status.h>
+#include <cpc_v3/mtk_cpuidle_cpc.h>
 
 static ssize_t cpuidle_info_read(char *ToUserBuf, size_t sz, void *priv)
 {

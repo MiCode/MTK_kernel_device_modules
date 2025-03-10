@@ -59,10 +59,4 @@ enum {
 #define MCUPM_TASK_RUN                  4
 #define MCUPM_TASK_PAUSE                5
 
-#if IS_ENABLED(CONFIG_MTK_LPM_MT6833)
-bool mtk_mcupm_is_ready(void);
-void mtk_wait_mbox_init_done(void);
-void mtk_notify_subsys_ap_ready(void);
-#endif
-
 #endif

@@ -1,8 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
-load("@mgk_info//:kernel_version.bzl",
-     "kernel_version",
-     )
+load("@mgk_info//:kernel_version.bzl","kernel_version")
 
 package(
     default_visibility = [
@@ -26,42 +24,32 @@ filegroup(
 
 ddk_headers(
     name = "ddk_public_headers",
-    hdrs = [
-        "v1/lpm_dbg_fs_common.h",
-        "v1/lpm_dbg_trace_event.h",
-        "v1/lpm_dbg_logger.h",
-    ],
     includes = [
         "v1",
     ],
+    hdrs = glob([
+        "v1/*.h",
+    ]),
 )
 
 define_mgk_ddk_ko(
-    name = "mtk-lpm-dbg-common-v1",
-
+    name = "mtk-lpm-dbg-common-v1-legacy",
     srcs = glob([
-        "v1/*.h",
+        "cpc_v3/*.c",
+        "cpc_v3/*.h",
         "v1/*.c",
-        "v1/cpc/*.h",
-        "v1/cpc/*.c",
+        "v1/*.h",
+        "v1/gs/*.c",
     ]),
-
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:ddk_public_headers".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:ddk_public_headers".format(kernel_version),
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:mtk-lpm-legacy".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v1_debug".format(kernel_version),
     ],
-
     includes = [
         ".",
         "v1",
-        "v1/cpc",
-    ],
-
-    copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/",
+        "cpc_v3"
     ],
 )

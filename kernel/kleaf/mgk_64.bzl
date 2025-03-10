@@ -559,6 +559,8 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/debug:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:ddk_srcs".format(kernel_version),
@@ -718,6 +720,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ise_trusty:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/governors:ddk_kconfigs".format(kernel_version),
@@ -2047,10 +2050,10 @@ def get_overlay_modules_list():
         mgk_64_common_user_modules.append("drivers/pps/clients/pps-gpio.ko")
 
     if "entry_level.config" in DEFCONFIG_OVERLAYS:
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/mtk-lpm-legacy.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/platform/v1/mtk-lpm-plat-v1-legacy.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/k6789/mtk-lpm-dbg-mt6789-legacy.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/v1/mtk-lpm-dbg-common-v1-legacy.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:mtk-lpm-legacy".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/debug:mtk-lpm-dbg-common-v1-legacy".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/platform/v1:mtk-lpm-plat-v1-legacy".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/debug/k6789:mtk-lpm-dbg-mt6789-legacy".format(kernel_version))
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:arm_smmu_v3".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-pmu".format(kernel_version))
@@ -4546,6 +4549,10 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/video/backlight/sgm37604a.ko")
 
     if "entry_level_5g.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:mtk-lpm-legacy".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/debug:mtk-lpm-dbg-common-v1-legacy".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/platform/v1:mtk-lpm-plat-v1-legacy".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/debug/k6855:mtk-lpm-dbg-mt6855-legacy".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:arm_smmu_v3".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-pmu".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-mpam-mon".format(kernel_version))
@@ -4623,10 +4630,10 @@ def get_overlay_modules_list():
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_iommu:mtk_gpu_iommu_mt6993".format(kernel_version))
 
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/mtk-lpm-legacy.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/platform/v1/mtk-lpm-plat-v1-legacy.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/k6855/mtk-lpm-dbg-mt6855-legacy.ko")
-        mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/v1/mtk-lpm-dbg-common-v1-legacy.ko")
+        #mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/mtk-lpm-legacy.ko")
+        #mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/platform/v1/mtk-lpm-plat-v1-legacy.ko")
+        #mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/k6855/mtk-lpm-dbg-mt6855-legacy.ko")
+        #mgk_64_device_modules.append("drivers/misc/mediatek/lpm_legacy/modules/debug/v1/mtk-lpm-dbg-common-v1-legacy.ko")
 
         mgk_64_common_eng_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")
         mgk_64_common_userdebug_modules.remove("drivers/firmware/arm_ffa/ffa-core.ko")

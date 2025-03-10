@@ -11,8 +11,8 @@
 #include <linux/cpuidle.h>
 #include <linux/pm_qos.h>
 
-#include "mtk_cpuidle_status.h"
-#include "mtk_cpuidle_cpc.h"
+#include <mtk_cpuidle_status.h>
+#include <cpc_v3/mtk_cpuidle_cpc.h>
 
 static void __iomem *cpupm_mcusys_base_addr;
 static void __iomem *cpupm_syssram_base_addr;

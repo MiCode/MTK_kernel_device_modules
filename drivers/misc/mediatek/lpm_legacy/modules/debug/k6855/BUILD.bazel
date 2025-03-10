@@ -8,7 +8,7 @@ package(
 )
 
 define_mgk_ddk_ko(
-    name = "mtk-lpm-dbg-mt6789-legacy",
+    name = "mtk-lpm-dbg-mt6855-legacy",
     srcs = glob([
         "inc/*.h",
         "*.h",

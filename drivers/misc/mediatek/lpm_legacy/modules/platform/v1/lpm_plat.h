@@ -8,7 +8,7 @@
 
 #include <linux/delay.h>
 #include <lpm_type.h>
-#include <lpm_plat_comm.h>
+#include "lpm_plat_comm.h"
 
 int lpm_do_mcusys_prepare_pdn(unsigned int status,
 					   unsigned int *resource_req);
