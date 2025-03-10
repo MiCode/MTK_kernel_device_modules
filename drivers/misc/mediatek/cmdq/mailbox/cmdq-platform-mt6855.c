@@ -159,6 +159,10 @@ void cmdq_test_set_ostd(void)
 	/* 2. set MMINFRA_SMI_U_MDP_SUB_COMM0 outstanding to 1 : 0x1e809000 = 0x01014000 */
 	pa_base = 0x1e809000;
 	va_base = ioremap(pa_base + 0x104, 0x1000);
+	if (!va_base) {
+		cmdq_err("va_base is NULL");
+		return;
+	}
 	preval = readl(va_base);
 	writel(val, va_base);
 	newval = readl(va_base);

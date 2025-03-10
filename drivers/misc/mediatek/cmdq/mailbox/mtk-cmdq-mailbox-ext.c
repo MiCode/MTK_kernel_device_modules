@@ -2654,6 +2654,9 @@ void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 			dbg3_offset = GCE_DBG3_NORMAL;
 		} else {
 			cmdq_err("dbg_type error:%d", dbg_type);
+			if (lock)
+				spin_unlock_irqrestore(&cmdq->lock, flags);
+			return;
 		}
 		/* debug select */
 		for (i = 0; i < 6; i++) {

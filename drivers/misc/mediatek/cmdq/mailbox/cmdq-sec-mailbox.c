@@ -1891,8 +1891,13 @@ static void cmdq_sec_reserved_mem_lookup(struct cmdq_sec_shared_mem *shared_mem)
 		pa = mem->base + mem->size - PAGE_SIZE - CMDQ_RECORD_SIZE - CMDQ_STATUS_SIZE;
 	else
 		pa = mem->base + mem->size - PAGE_SIZE;
-	if (!va)
+	if (!va) {
 		va = ioremap(pa, PAGE_SIZE);
+		if (!va) {
+			cmdq_err("ioremap reserve memory va failed");
+			return;
+		}
+	}
 	shared_mem->va = va;
 	if (!cpr_not_support_cookie) {
 		shared_mem->pa = pa;
