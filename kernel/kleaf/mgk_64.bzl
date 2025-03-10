@@ -1560,6 +1560,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:mt6991-mt6681".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6993:snd-soc-mt6993-afe".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6993:mt6993-mt6681".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6789:snd-soc-mt6789-afe".format(kernel_version): "mt6789",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6789:mt6789-mt6366".format(kernel_version): "mt6789",
 }
 
 mgk_64_kleaf_eng_device_modules = [
@@ -1939,8 +1941,6 @@ mgk_64_platform_device_modules = {
     #"sound/soc/mediatek/mt6991/snd-soc-mt6991-afe.ko": "mt6991",
     #"sound/soc/mediatek/mt6993/mt6993-mt6681.ko": "mt6993",
     #"sound/soc/mediatek/mt6993/snd-soc-mt6993-afe.ko": "mt6993",
-    "sound/soc/mediatek/mt6789/mt6789-mt6366.ko": "mt6789",
-    "sound/soc/mediatek/mt6789/snd-soc-mt6789-afe.ko": "mt6789",
     "sound/soc/mediatek/mt6895/mt6895-mt6368.ko": "mt6895",
     "sound/soc/mediatek/mt6895/snd-soc-mt6895-afe.ko": "mt6895",
 
