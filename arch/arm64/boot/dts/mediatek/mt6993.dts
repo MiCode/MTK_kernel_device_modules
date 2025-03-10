@@ -16906,6 +16906,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mt6993,apu_top_3";
 			reg = <0 0x19020000 0 0x1000>;
 			reg-names = "apu_rcx";
+			apu-cdev-enable;
+			apu-sw-throttle-enable;
 		};
 
 		apu_top_cti: apu-top-cti {
