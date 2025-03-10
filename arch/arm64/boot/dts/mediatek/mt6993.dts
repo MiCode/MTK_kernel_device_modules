@@ -5441,6 +5441,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1a000000 0 0x5000>, /* CFG */
 				<0 0x1a00a000 0 0x8000>, /* CFG 2*/
 				<0 0x1a014000 0 0x2000>, /* CFG 3*/
+				<0 0x00000000 0 0x0>, /* IFRBUS_AO HRT CFG */
 				<0 0x1a350000 0 0x100>, /* MBOX0 base */
 				<0 0x1a350100 0 0x4>, /* MBOX0 set */
 				<0 0x1a35010c 0 0x4>, /* MBOX0 clr */
@@ -5453,7 +5454,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1a380000 0 0x100>, /* MBOX3 base */
 				<0 0x1a380100 0 0x4>, /* MBOX3 set */
 				<0 0x1a38010c 0 0x4>; /* MBOX3 clr */
-			reg-names = "cfg", "cfg2", "cfg3",
+			reg-names = "cfg", "cfg2", "cfg3", "cfg_hrt",
 				"mbox0_base", "mbox0_set", "mbox0_clr",
 				"mbox1_base", "mbox1_set", "mbox1_clr",
 				"mbox2_base", "mbox2_set", "mbox2_clr",
