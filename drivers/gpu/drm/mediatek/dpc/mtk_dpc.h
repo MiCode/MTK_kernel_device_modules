@@ -14,6 +14,7 @@
 
 /* NOTE: user 0 to 7 is reserved for genpd notifier enum disp_pd_id { ... } */
 enum mtk_vidle_voter_user {
+	DISP_VIDLE_USER_DISP_VCORE = 0,
 	DISP_VIDLE_USER_MML2 = 12,
 	DISP_VIDLE_USER_MML2_CMDQ = 13,
 	DISP_VIDLE_USER_FOR_FRAME = 14,
@@ -250,6 +251,7 @@ struct dpc_funcs {
 	void (*dpc_dvfs_both_set)(const u32 subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
 	int (*dpc_mminfra_on_off)(bool en);
+	void (*dpc_mtcmos_on_off)(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user);
 };
 
 #endif

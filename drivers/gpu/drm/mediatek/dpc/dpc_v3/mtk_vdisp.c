@@ -344,65 +344,6 @@ static void mtk_vdisp_vlp_disp_vote(u32 user, bool set)
 	} while (1);
 }
 
-static void vdisp_hwccf_vote(bool on)
-{
-	int ret = 0;
-	u32 value = 0;
-
-	if (IS_ERR_OR_NULL(hwccf_global_sta))
-		return;
-
-	if (on) {
-		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
-		if (ret < 0)
-			goto err1;
-
-		writel(0x40000, hwccf_xpu0_mtcmos_set);			/* vote xpu0 mtcmos voter */
-
-		ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, value & 0x40000, 1, 2000);
-		if (ret < 0)
-			goto err2;
-		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
-		if (ret < 0)
-			goto err3;
-		ret = readl_poll_timeout_atomic(hwccf_global_en, value, value & 0x40000, 1, 2000);
-		if (ret < 0)
-			goto err4;
-	} else {
-
-		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
-		if (ret < 0)
-			goto err1;
-
-		writel(0x40000, hwccf_xpu0_mtcmos_clr);			/* vote xpu0 mtcmos voter */
-
-		ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, !(value & 0x40000), 1, 2000);
-		if (ret < 0)
-			goto err2;
-		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x40000), 1, 2000);
-		if (ret < 0)
-			goto err3;
-	}
-
-	return;
-
-err1:
-	VDISPERR("pwr(%u) polling status(%#x) idle timeout 1, ret(%d)", on, value, ret);
-	goto err_dump;
-err2:
-	VDISPERR("pwr(%u) polling local_enable(%#x) timeout, ret(%d)", on, value, ret);
-	goto err_dump;
-err3:
-	VDISPERR("pwr(%u) polling status(%#x) idle timeout 2, ret(%d)", on, value, ret);
-	goto err_dump;
-err4:
-	VDISPERR("pwr(%u) polling global_enable(%#x) timeout, ret(%d)", on, value, ret);
-	goto err_dump;
-err_dump:
-	clkchk_external_dump();
-	BUG_ON(1);
-}
-
 static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 {
 	const struct mtk_vdisp_data *data = priv->data;
@@ -511,7 +452,8 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 			__pm_stay_awake(g_vdisp_wake_lock);
 #endif
 			/* power on disp vcore by mtcmos voter */
-			vdisp_hwccf_vote(true);
+			if (disp_dpc_driver.dpc_mtcmos_on_off)
+				disp_dpc_driver.dpc_mtcmos_on_off(true, NULL, DISP_VIDLE_USER_DISP_VCORE);
 
 			vdisp_hwccf_ctrl(g_priv, true);
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
@@ -560,10 +502,12 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
 			/* POST OFF */
 
-			/* power off disp vcore by mtcmos voter */
-			vdisp_hwccf_vote(false);
-
 			vdisp_hwccf_ctrl(g_priv, false);
+
+			/* power off disp vcore by mtcmos voter */
+			if (disp_dpc_driver.dpc_mtcmos_on_off)
+				disp_dpc_driver.dpc_mtcmos_on_off(false, NULL, DISP_VIDLE_USER_DISP_VCORE);
+
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			__pm_relax(g_vdisp_wake_lock);
 #endif

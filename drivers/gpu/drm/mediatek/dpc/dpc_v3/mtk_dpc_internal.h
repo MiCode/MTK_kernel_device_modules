@@ -482,7 +482,7 @@ static bool dpc_is_power_on_v2(void);
 static bool mminfra_is_power_on_v2(void);
 static u8 bw_to_level_v3(const u32 total_bw);
 static void dpc_analysis_v2(void);
-static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt);
+static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user);
 static void process_dbg_opt(const char *opt);
 
 struct mtk_dpc {
@@ -517,6 +517,7 @@ struct mtk_dpc {
 	u32 dsi_ck_keep_mask;
 	u32 mminfra_pwr_idx;
 	u32 mminfra_pwr_type;
+	u16 event_hwccf_vote;
 
 	void __iomem *vdisp_dvfsrc;
 	u32 vdisp_dvfsrc_idle_mask;
