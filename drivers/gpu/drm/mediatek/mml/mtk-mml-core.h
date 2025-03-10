@@ -422,6 +422,8 @@ struct mml_topology_path {
 	 */
 	bool sys_en[mml_max_sys];
 
+	bool sof_irq:1;
+
 	/* short desc of this path */
 	char desc[128];
 };

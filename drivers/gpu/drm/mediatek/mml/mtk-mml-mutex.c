@@ -115,7 +115,7 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 	if (mutex_id < 0)
 		return -EINVAL;
 
-	if (mml_irq && mutex->irq && mode == MML_MODE_DIRECT_LINK)
+	if (mml_irq && mutex->irq && path->sof_irq)
 		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN, 1 << path->mux_group, U32_MAX);
 
 	/* Do config mutex mod only in dc mode.
@@ -771,7 +771,7 @@ static irqreturn_t mml_mutex_irq_handler_mt6993(int irq, void *dev_id)
 	if (!irq_status)
 		return IRQ_HANDLED;
 
-	if (irq_status & BIT(1)) {
+	if (irq_status & 0xf) {
 		if (mutex->idx == 1) {
 			mml_mmp(rrot1, MMPROFILE_FLAG_START, comp->id, 0);
 			mml_mmp(rrot0, MMPROFILE_FLAG_START, comp->id, 0);

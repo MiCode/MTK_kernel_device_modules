@@ -885,6 +885,10 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 			continue;
 		}
 
+		/* enable irq in mutex sof to rrot framedone */
+		if (path->nodes[i].id == MML1_RROT0)
+			path->sof_irq = true;
+
 		path->nodes[i].tile_eng_idx = tile_idx;
 		path->tile_engines[tile_idx++] = i;
 	}

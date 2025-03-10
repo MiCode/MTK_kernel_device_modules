@@ -974,6 +974,9 @@ static void tp_parse_path(struct mml_dev *mml, struct mml_topology_path *path,
 				path->nodes[i].id, out_eng_idx);
 		path->out_engine_ids[out_eng_idx] = path->nodes[i].id;
 	}
+
+	/* enable irq in mutex sof to rrot framedone */
+	path->sof_irq = path_with_rrot0;
 }
 
 static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,

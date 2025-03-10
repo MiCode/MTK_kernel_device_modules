@@ -2770,7 +2770,7 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 	rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
 
 	if (!irq_status)
-		return IRQ_NONE;
+		return IRQ_HANDLED;
 
 	writel(0, base + RROT_INTERRUPT_STATUS);
 

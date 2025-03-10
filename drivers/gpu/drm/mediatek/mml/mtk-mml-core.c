@@ -737,10 +737,11 @@ static void dump_task(struct mml_task *task)
 	mml_mmp(dumpinfo, MMPROFILE_FLAG_START, task->job.jobid, 0);
 
 	if (path->desc[0])
-		mml_log("[topology]path:%u engines:%s%s%s",
+		mml_log("[topology]path:%u engines:%s%s%s%s",
 			path->path_id, path->desc,
 			cfg->shadow ? " shadow" : "",
-			cfg->dpc ? " dpc" : "");
+			cfg->dpc ? " dpc" : "",
+			path->sof_irq ? " irq" : "");
 
 	get_frame_str(frame, sizeof(frame), &cfg->info.src);
 	mml_log("    in:%s plane:%hhu alpha:%s%s%s%s%s%s job:%u mode:%hhu %s%s acttime %u",
