@@ -2716,12 +2716,12 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 
 	ODDMRAPI_LOG("+\n");
 	if (!oddmr_data->primary_data->dmr_support) {
-		DDPPR_ERR("%s: dmr is not support\n", __func__);
+		ODDMRFLOW_LOG("%s: dmr is not support\n", __func__);
 		return;
 	}
 
 	if (oddmr_data->primary_data->dmr_state != ODDMR_INIT_DONE) {
-		DDPPR_ERR("%s; dmr bin file loading not finished\n", __func__);
+		ODDMRFLOW_LOG("%s; dmr bin file loading not finished\n", __func__);
 		return;
 	}
 
