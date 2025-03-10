@@ -2564,12 +2564,10 @@ static void mtk_iommu_count_iova_size(struct device *dev,
 	}
 
 	/* Add to iova_count_info if exist */
-	spin_lock(&count_list.lock);
 	list_for_each_entry_safe(plist, n, &count_list.head, list_node) {
 		if (plist->dev == dev) {
 			plist->count++;
 			plist->size += (unsigned long) (size / 1024);
-			spin_unlock(&count_list.lock);
 			return;
 		}
 	}
@@ -2577,7 +2575,6 @@ static void mtk_iommu_count_iova_size(struct device *dev,
 	/* Create new iova_count_info if no exist */
 	new_info = kzalloc(sizeof(*new_info), GFP_ATOMIC);
 	if (!new_info) {
-		spin_unlock(&count_list.lock);
 		pr_notice("%s, alloc iova_count_info fail! dev:%s\n",
 			  __func__, dev_name(dev));
 		return;
@@ -2589,7 +2586,6 @@ static void mtk_iommu_count_iova_size(struct device *dev,
 	new_info->size = (unsigned long) (size / 1024);
 	new_info->count = 1;
 	list_add_tail(&new_info->list_node, &count_list.head);
-	spin_unlock(&count_list.lock);
 }
 
 static void mtk_iommu_iova_alloc_dump_top_by_dev(struct seq_file *s,
@@ -2635,6 +2631,7 @@ static void mtk_iommu_iova_alloc_dump_top_by_dev(struct seq_file *s,
 	}
 
 	/* count iova size by device */
+	spin_lock(&count_list.lock);
 	spin_lock_irqsave(&iova_list.lock, flags);
 	list_for_each_entry_safe(plist, n, &iova_list.head, list_node) {
 		size = (unsigned long) (plist->size / 1024);
@@ -2651,7 +2648,6 @@ static void mtk_iommu_iova_alloc_dump_top_by_dev(struct seq_file *s,
 	}
 	spin_unlock_irqrestore(&iova_list.lock, flags);
 
-	spin_lock(&count_list.lock);
 	/* sort count iova size by device */
 	list_sort(NULL, &count_list.head, iova_size_cmp);
 
