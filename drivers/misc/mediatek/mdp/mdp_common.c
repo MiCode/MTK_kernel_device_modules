@@ -42,7 +42,7 @@
 #include <soc/mediatek/smi.h>
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
-#include <cmdq-sec.h>
+#include "cmdq-sec.h"
 #include "mtk_heap.h"
 #endif
 
@@ -1644,10 +1644,17 @@ void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
 				__func__, PTR_ERR(buf), secMetadatas[i].baseHandle);
 			return;
 		}
+#if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
 		if (mtee)
 			sec_id = dmabuf_to_sec_id(buf, &sec_handle);
 		else
 			sec_id = dmabuf_to_tmem_type(buf, &sec_handle);
+		if (sec_id < 0) {
+			CMDQ_ERR("%s: fail to get sec_id:%d\n", __func__, sec_id);
+			dma_buf_put(buf);
+			return;
+		}
+#endif
 		secMetadatas[i].sec_id = sec_id;
 		secMetadatas[i].baseHandle = (uint64_t)sec_handle;
 		CMDQ_MSG("%s,port:%d,baseHandle:%#llx,sec_id:%d,sec_handle:%#x",
