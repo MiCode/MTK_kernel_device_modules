@@ -9067,6 +9067,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			cmdq-dbg-type = <0x4>;
 			poll-sleep-bit32;
 			gce-wla-vote;
+			ddr-urgent;
 			cmdq-print-debug = <1>;
 			mediatek,mminfra-supply = <&mminfra_util>;
 			mminfra-all-on-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
