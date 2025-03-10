@@ -4501,7 +4501,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"core0_or_core1_act_ois_act_0,",
 				"core0_core1_wfi_ois_act_0,",
 				"all_wfi_0,",
-				"all_cpu_mtcoms_off_0,",
+				"all_cpu_mtcmos_off_0,",
 				"smp_mtcmos_off_0,",
 				"ois_mtcmos_off_0,",
 				"sleep_0,",
