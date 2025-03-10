@@ -13202,9 +13202,10 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 						priv->ddp_comp[plane_state->comp_state.blender_comp_id + 1];
 				}
 
-				DDPINFO("%s, comp id %s, blender id %s\n", __func__,
-					mtk_dump_comp_str_id(comp->id),
-					mtk_dump_comp_str_id(comp->bind_comp->id));
+				if (priv->data->ovl_exdma_rule)
+					DDPINFO("%s, comp id %s, blender id %s\n", __func__,
+						mtk_dump_comp_str_id(comp->id),
+						mtk_dump_comp_str_id(comp->bind_comp->id));
 			}
 		} else {
 			/* TODO: all plane should contain proper mtk_plane_state
