@@ -472,7 +472,7 @@ static void vow_ipi_rx_handle_data_msg(void *msg_data)
 void vow_ipi_rx_internal(unsigned int msg_id,
 			 void *msg_data)
 {
-#ifdef DEBUG_IPI_RX
+#if DEBUG_IPI_RX
 	unsigned long long   ipi_rx_begin_cycle;
 	unsigned long long   ipi_rx_end_cycle;
 	unsigned int   ipi_rx_diff_time;
@@ -569,7 +569,7 @@ void vow_ipi_rx_internal(unsigned int msg_id,
 		break;
 	}
 
-#ifdef DEBUG_IPI_RX
+#if DEBUG_IPI_RX
 	ipi_rx_end_cycle = get_cycles();
 	ipi_rx_diff_time =
 				(unsigned int)CYCLE_TO_NS *
