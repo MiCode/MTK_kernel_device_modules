@@ -349,7 +349,7 @@ static int __init ssc_init(void)
 			safe_vlogic_uV = 0xFFFFFFFF;
 
 		ret = of_property_read_u32(ssc_node,
-				"ssc_enable",
+				"ssc-enable",
 				&ssc_enable);
 		if (ret)
 			ssc_enable = 0;
