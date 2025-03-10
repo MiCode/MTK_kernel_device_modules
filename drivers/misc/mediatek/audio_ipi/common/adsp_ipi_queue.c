@@ -457,7 +457,7 @@ void ipi_queue_init(void)
 	dump_workqueue = create_workqueue("audio_ipi_dump_workqueue");
 	if (!dump_workqueue) {
 		pr_info("%s, create audio_ipi_dump_workqueue fail!", __func__);
-		return;
+		WARN_ON(1);
 	}
 
 	for (dsp_id = 0; dsp_id < NUM_OPENDSP_TYPE; dsp_id++) {
