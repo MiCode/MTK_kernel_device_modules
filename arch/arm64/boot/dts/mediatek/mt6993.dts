@@ -13138,6 +13138,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			etdm-out-sync = <0 0 0 0 0 0 0>; /* 0: disable; 1: enable */
 			etdm-in-sync = <1 0 0 0 1 1 1>; /* 0: disable; 1: enable */
 			etdm-ip-mode = <0 0 0 0 0 0 0>; /* 0: One IP multi-channel 1: Multi-IP 2-channel */
+			etdm-in-mclk = <0 0 0 0 0 0 0>; /* 0: disable; 1: enable */
+			etdm-out-mclk = <0 0 0 0 0 0 0>; /* 0: disable; 1: enable */
+			etdm-vlp = <0 0 0 0 1 0 0>; /* 0: vcore 1: vlp */
 		};
 
 		clkbuf_ctrl: clkbuf-ctrl {
