@@ -1250,10 +1250,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-sp-spk-amp".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
-    "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:snd-soc-mt6991-afe".format(kernel_version),
-    "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:mt6991-mt6681".format(kernel_version),
-    "//kernel_device_modules-{}/sound/soc/mediatek/mt6993:snd-soc-mt6993-afe".format(kernel_version),
-    "//kernel_device_modules-{}/sound/soc/mediatek/mt6993:mt6993-mt6681".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mm-fake-engine".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-debug".format(kernel_version),
@@ -1545,8 +1541,13 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6993".format(kernel_version): "mt6993",
+
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:snd-soc-mt6855-afe".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:mt6855-mt6369".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:snd-soc-mt6991-afe".format(kernel_version): "mt6991",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:mt6991-mt6681".format(kernel_version): "mt6991",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6993:snd-soc-mt6993-afe".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6993:mt6993-mt6681".format(kernel_version): "mt6993",
 }
 
 mgk_64_kleaf_eng_device_modules = [
@@ -2411,8 +2412,8 @@ def get_overlay_modules_list():
         #mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6985/snd-soc-mt6985-afe.ko")
         #mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6989/mt6989-mt6681.ko")
         #mgk_64_platform_device_modules.pop("sound/soc/mediatek/mt6989/snd-soc-mt6989-afe.ko")
-        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/sound/soc/mediatek/mt6991:mt6991-mt6681".format(kernel_version),)
-        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/sound/soc/mediatek/mt6991:snd-soc-mt6991-afe.ko".format(kernel_version),)
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/sound/soc/mediatek/mt6991:mt6991-mt6681".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/sound/soc/mediatek/mt6991:snd-soc-mt6991-afe".format(kernel_version))
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/dip/isp_6s/camera_dip_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/cameraisp/mfb/camera_mfb_isp6s.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/thermal/thermal_monitor.ko")
