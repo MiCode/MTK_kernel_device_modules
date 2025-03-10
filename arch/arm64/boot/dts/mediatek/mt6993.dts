@@ -12393,7 +12393,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ssid-enable = <1>;
 			mtk,tcu-qos = <5>;
 			mtk,stash-mode = <3>;
-			mtk,power-awake;
+			//mtk,power-awake;
 			mtk,slc-gid = <7>;
 
 			iommu-groups {
