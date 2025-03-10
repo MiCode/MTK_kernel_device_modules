@@ -548,10 +548,7 @@ static const char *mt6993_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 		"slave_type", slave_type,
 		"shift_sta_bit", shift_sta_bit);
 
-	if (vio_addr <= SRAM_END_ADDR) {
-		pr_info(PFX "vio_addr is from on-chip SRAMROM\n");
-		return infra_mi_tracer0_trans(bus_id);
-	} else if (slave_type == SLAVE_TYPE_VLP) {
+	if (slave_type == SLAVE_TYPE_VLP) {
 		/* mi1 */
 		if ((vio_addr >= VLP_INFRA_START && vio_addr <= VLP_INFRA_END) ||
 			(vio_addr >= VLP_INFRA_1_START)) {
@@ -780,6 +777,9 @@ static const char *mt6993_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return "UNKNOWN_USER_FROM_GPU";
 		} else
 			return infra_mi_trans(vio_addr, bus_id);
+	} else if (vio_addr <= SRAM_END_ADDR) {
+		pr_info(PFX "vio_addr is from on-chip SRAMROM\n");
+		return infra_mi_tracer0_trans(bus_id);
 	} else
 		return infra_mi_trans(vio_addr, bus_id);
 }
