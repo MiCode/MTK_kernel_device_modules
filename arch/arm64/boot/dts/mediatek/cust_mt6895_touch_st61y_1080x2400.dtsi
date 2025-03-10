@@ -33,13 +33,14 @@
 		fts,irq-flags = <0x2008>;/* 1:rising, 2:falling;*/
 		fts,x-max = <14400>;/*Super resolution*/
 		fts,y-max = <32000>;/*Super resolution*/
-		fts,screen_x = <1440>;
-		fts,screen_y = <3200>;
+		fts,screen-x = <1440>;
+		fts,screen-y = <3200>;
 		//fts,fod-lx = <4180>;
 		//fts,fod-ly = <16810>;
 		fts,support-super-resolution = <1>;
 		spi-max-frequency = <12000000>;
 		fts,default-fw-name = "st_fts_L11a.ftb";
+		fts,old-fw-name = "st_fts_L11.ftb";
 		fts,thp-fw-name = "st_fts_L11a_thp.ftb";
 	/*	fts,touch-up-threshold-min = <40>;	*/
 	/*	fts,touch-up-threshold-max = <120>;	*/
@@ -93,10 +94,11 @@
 		fts,touch-expert-array = <2 15 1 120 3 15
 					  4 15 1 120 2 15
 					  6 15 1 120 5 15>;
-		fts,cfg_0 {
+		fts,cfg {
 			fts,tp-vendor = <0x38>;
 			fts,tp-color = <0x32>;
 			fts,fw-name = "st_fts_L11a.ftb";
+			fts,old-fw-name = "st_fts_L11.ftb";
 			fts,limit-name = "stm_fts_production_limits.csv";
 		};
 	};
@@ -109,34 +111,34 @@
 };
 
 &pio {
-	ts_reset_active: ts_reset_active {
-		pins_cmd_dat {
+	ts_reset_active: ts-reset-active {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
 			output-high;
 		};
 	};
-	ts_int_active: ts_int_active {
-		pins_cmd_dat {
+	ts_int_active: ts-int-active {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
 			input-enable;
 		};
 	};
-	ts_int_suspend: ts_int_suspend {
-		pins_cmd_dat {
+	ts_int_suspend: ts-int-suspend {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
 			slew-rate = <1>;
 			bias-pull-down;
 		};
 	};
-	ts_reset_suspend: ts_reset_suspend {
-		pins_cmd_dat {
+	ts_reset_suspend: ts-reset-suspend {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO3__FUNC_GPIO3>;
 			slew-rate = <1>;
 			bias-pull-down;
 		};
 	};
-	ts_spi_mode: ts_spimode {
-		pins_cmd_dat {
+	ts_spi_mode: ts-spimode {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO109__FUNC_SPI2_A_MI>,
 				<PINMUX_GPIO110__FUNC_SPI2_A_CSB>,
 				<PINMUX_GPIO111__FUNC_SPI2_A_MO>,
@@ -144,14 +146,14 @@
 			drive-strength = <2>;
 		};
 	};
-	ts_dvdd_enable: ts_dvddenable {
-		pins_cmd_dat {
+	ts_dvdd_enable: ts-dvddenable {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO118__FUNC_GPIO118>;
 			output-high;
 		};
 	};
-	ts_dvdd_disable: ts_dvdddisable {
-		pins_cmd_dat {
+	ts_dvdd_disable: ts-dvdddisable {
+		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO118__FUNC_GPIO118>;
 			output-low;
 		};
@@ -159,10 +161,10 @@
 };
 
 &odm {
-	xiaomi_touch: xiaomi_touch {
-		compatible = "xxx-touch";
+	tc8_touch: tc8-touch {
+		compatible = "tc8sp-touch";
 		status = "ok";
-		touch,name = "xxx-touch";
+		touch,name = "tc8sp-touch";
 	};
 };
 /* TOUCH end */
