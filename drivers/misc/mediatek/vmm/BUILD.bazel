@@ -1,8 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl", "kernel_version",)
-load("@mgk_info//:dict.bzl",
-     "DEFCONFIG_OVERLAYS",
-)
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
 
 package(
     default_visibility = [
@@ -64,7 +62,7 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/mtk-vmm-notifier.h",
     ]),
     srcs = [
-        "mtk-vmm-notifier-{}.c".format(p),
+        ("mtk-vmm-notifier-{}.c".format(p) if glob(["mtk-vmm-notifier-{}.c".format(p)]) else []),
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
