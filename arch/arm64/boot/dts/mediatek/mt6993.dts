@@ -6725,9 +6725,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mmlsys_config_clk MML_APB_DB_MML>,
 				<&mmlsys_config_clk MML_MDP_DLI_ASYNC0_MML>,
 				<&mmlsys_config_clk MML_MDP_DLO_ASYNC0_MML>,
+				<&mmlsys_config_clk MML_DISP_DBG_MML>,
 				<&mmdvfs_mux MMDVFS_USER_MML>;
-			clock-names = "apb_bus", "apb_db", "dli0", "dlo0", "mmdvfs_clk";
-			mmlsys-clock-names = "apb_bus", "apb_db";
+			clock-names = "apb_bus", "apb_db", "dli0", "dlo0", "disp_dbg", "mmdvfs_clk";
+			mmlsys-clock-names = "apb_bus", "apb_db", "disp_dbg";
 			dli0-clock-names = "dli0";
 			dlo0-clock-names = "dlo0";
 
@@ -6968,9 +6969,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mml1_mmlsys_config_clk MML1_APB_DB_MML>,
 				<&mml1_mmlsys_config_clk MML1_MDP_DLI_ASYNC0_MML>,
 				<&mml1_mmlsys_config_clk MML1_MDP_DLO_ASYNC0_MML>,
+				<&mml1_mmlsys_config_clk MML1_DISP_DBG_MML>,
 				<&mmdvfs_mux MMDVFS_USER_MML>;
-			clock-names = "apb_bus", "apb_db", "dli0", "dlo0", "mmdvfs_clk";
-			mmlsys-clock-names = "apb_bus", "apb_db";
+			clock-names = "apb_bus", "apb_db", "dli0", "dlo0", "disp_dbg", "mmdvfs_clk";
+			mmlsys-clock-names = "apb_bus", "apb_db", "disp_dbg";
 			dli0-clock-names = "dli0";
 			dlo0-clock-names = "dlo0";
 
@@ -7415,13 +7417,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mml2_mmlsys_config_clk MML2_MDP_DLO_ASYNC3_MML>,
 				<&mml2_mmlsys_config_clk MML2_MDP_DLO_ASYNC4_MML>,
 				<&mml2_mmlsys_config_clk MML2_MDP_DLO_ASYNC5_MML>,
+				<&mml2_mmlsys_config_clk MML2_DISP_DBG_MML>,
 				<&mmdvfs_mux MMDVFS_USER_MML>;
-
 			clock-names = "apb_bus", "apb_db",
 				"dli0", "dli1", "dli2", "dli3", "dli4",
 				"dlo0", "dlo1", "dlo2", "dlo3", "dlo4", "dlo5",
-				"mmdvfs_clk";
-			mmlsys-clock-names = "apb_bus", "apb_db";
+				"disp_dbg", "mmdvfs_clk";
+			mmlsys-clock-names = "apb_bus", "apb_db", "disp_dbg";
 			dli0-clock-names = "dli0";
 			dli1-clock-names = "dli1";
 			dli2-clock-names = "dli2";
