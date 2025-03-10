@@ -180,13 +180,13 @@ static ssize_t cpuidle_lcpu_ret_debounce_read(char *ToUserBuf, size_t sz, void *
 static ssize_t cpuidle_lcpu_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	int cpu;
-	unsigned long enabled = 0;
+	unsigned int enabled = 0;
 	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
 				MT_RET_LCPU, 0);
 	if (!FromUserBuf || !mask)
 		return -EINVAL;
 
-	if (!kstrtouint(FromUserBuf, 10, (unsigned int *)&enabled)) {
+	if (!kstrtouint(FromUserBuf, 10, &enabled)) {
 		for_each_online_cpu(cpu) {
 			if (mask & (1U << cpu))
 				work_on_cpu(cpu, cpuidle_lcpu_ret_debounce_set_smc, &enabled);
@@ -253,13 +253,13 @@ static ssize_t cpuidle_mcpu_ret_debounce_read(char *ToUserBuf, size_t sz, void *
 static ssize_t cpuidle_mcpu_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	int cpu;
-	unsigned long enabled = 0;
+	unsigned int enabled = 0;
 	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
 				MT_RET_MCPU, 0);
 	if (!FromUserBuf || !mask)
 		return -EINVAL;
 
-	if (!kstrtouint(FromUserBuf, 10, (unsigned int *)&enabled)) {
+	if (!kstrtouint(FromUserBuf, 10, &enabled)) {
 		for_each_online_cpu(cpu) {
 			if (mask & (1U << cpu))
 				work_on_cpu(cpu, cpuidle_mcpu_ret_debounce_set_smc, &enabled);
@@ -326,13 +326,13 @@ static ssize_t cpuidle_bcpu_ret_debounce_read(char *ToUserBuf, size_t sz, void *
 static ssize_t cpuidle_bcpu_ret_debounce_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	int cpu;
-	unsigned long enabled = 0;
+	unsigned int enabled = 0;
 	unsigned long mask = lpm_smc_cpu_pm_lp(CPU_PM_CPU_RET_CTRL, MT_LPM_SMC_ACT_COMPAT,
 				MT_RET_BCPU, 0);
 	if (!FromUserBuf || !mask)
 		return -EINVAL;
 
-	if (!kstrtouint(FromUserBuf, 10, (unsigned int *)&enabled)) {
+	if (!kstrtouint(FromUserBuf, 10, &enabled)) {
 		for_each_online_cpu(cpu) {
 			if (mask & (1U << cpu))
 				work_on_cpu(cpu, cpuidle_bcpu_ret_debounce_set_smc, &enabled);
