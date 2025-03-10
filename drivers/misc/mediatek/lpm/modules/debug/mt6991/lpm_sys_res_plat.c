@@ -475,9 +475,8 @@ int lpm_sys_res_plat_init(void)
 
 	res_mapping_len = sizeof(sys_res_mapping) / sizeof(struct sys_res_mapping);
 	for(i=0; i<res_mapping_len; i++) {
-		/* ToDo: need swpm module to finish ddk */
 		pr_info("[name:spm&][SPM] get_res_group_id not supported yet\n");
-		//ret = get_res_group_id(i, 0, 0, &sys_res_mapping[i].id, NULL, NULL);
+		ret = get_res_group_id(i, 0, 0, &sys_res_mapping[i].id, NULL, NULL);
 		if (ret) {
 			pr_info("[name:spm&][SPM] sys_res_mapping init fail\n");
 			return ret;

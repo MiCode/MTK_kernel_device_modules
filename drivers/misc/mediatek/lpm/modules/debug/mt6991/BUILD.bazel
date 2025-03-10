@@ -24,6 +24,7 @@ define_mgk_ddk_ko(
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:mtk-lpm-dbg-common-v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
     ],
 
     includes = [
