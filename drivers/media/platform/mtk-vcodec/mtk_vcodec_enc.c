@@ -351,17 +351,25 @@ int isVencAfbcRgbFormat(enum venc_yuv_fmt format)
 void venc_dump_data_section(char *pbuf, unsigned int dump_size)
 {
 	char debug_fb[256] = {0};
-	char *pdebug_fb = debug_fb;
 	unsigned int i;
+	int offset = 0, ret;
 
 	for (i = 0; i < dump_size; i++) {
-		pdebug_fb += sprintf(pdebug_fb, "%02x ", pbuf[i]);
-		if ((((i + 1) % 16) == 0) || (i == (dump_size - 1))) {
+		ret = snprintf(debug_fb + offset, sizeof(debug_fb) - offset, "%02x ", pbuf[i]);
+		if (ret < 0 || ret >= (int)sizeof(debug_fb) - offset) {
+			mtk_v4l2_err("snprintf index %d (len %zu), pbuf index %u, ret %d",
+				offset, sizeof(debug_fb), i, ret);
+			break;
+		}
+		offset += ret;
+		if (((i + 1) % 16) == 0) {
 			mtk_v4l2_debug(0, "%s", debug_fb);
 			memset(debug_fb, 0, sizeof(debug_fb));
-			pdebug_fb = debug_fb;
+			offset = 0;
 		}
 	}
+	if (offset != 0)
+		mtk_v4l2_debug(0, "%s", debug_fb);
 }
 
 void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)

@@ -1197,7 +1197,7 @@ static int mtk_vdec_uP_translation_fault_callback(
 		} else {
 			dec_ctx_id[hw_id] = 0;
 			dec_fourcc[hw_id] = 0;
-			SPRINTF(dec_codec_name[hw_id], "NULL");
+			SNPRINTF(dec_codec_name[hw_id], sizeof(dec_codec_name[hw_id]), "NULL");
 		}
 		dec_codec_name[hw_id][4] = '\0';
 	}

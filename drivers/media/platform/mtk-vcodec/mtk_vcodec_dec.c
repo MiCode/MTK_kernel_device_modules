@@ -3719,7 +3719,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		src_mem->dmabuf, ctx->timestamp);
 
 	if (src_mem->va != NULL) {
-		SPRINTF(debug_bs, "%02x %02x %02x %02x %02x %02x %02x %02x %02x",
+		SNPRINTF(debug_bs, sizeof(debug_bs), "%02x %02x %02x %02x %02x %02x %02x %02x %02x",
 		  ((char *)src_mem->va)[0], ((char *)src_mem->va)[1], ((char *)src_mem->va)[2],
 		  ((char *)src_mem->va)[3], ((char *)src_mem->va)[4], ((char *)src_mem->va)[5],
 		  ((char *)src_mem->va)[6], ((char *)src_mem->va)[7], ((char *)src_mem->va)[8]);
