@@ -4598,7 +4598,7 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 	lane_num = readl(dsi->regs + DSI_TXRX_CTRL(dsi->driver_data));
 	lane_num = REG_FLD_VAL_GET(REG_FLD_MSB_LSB(5, 2), lane_num);
 	if (lane_num)
-		DDPPR_ERR("%s, lane num is error! 0x%x\n", __func__, lane_num);
+		DDPAEE_FATAL("%s, lane num is error! 0x%x\n", __func__, lane_num);
 
 	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
 	mtk_mipi_tx_oe_config(dsi->phy, 0);
@@ -8190,10 +8190,10 @@ static u32 mtk_dsi_recv_cnt(u8 type, u8 *read_data)
 	case MIPI_DSI_RX_DCS_LONG_READ_RESPONSE:
 		return read_data[1] + read_data[2] * 256;
 	case MIPI_DSI_RX_ACKNOWLEDGE_AND_ERROR_REPORT:
-		DDPINFO("type is 0x02, try again\n");
+		DDPPR_ERR("type is 0x02, try again\n");
 		break;
 	default:
-		DDPINFO("type(0x%x) cannot be non-recognite\n", type);
+		DDPPR_ERR("type(0x%x) cannot be non-recognite\n", type);
 		break;
 	}
 
