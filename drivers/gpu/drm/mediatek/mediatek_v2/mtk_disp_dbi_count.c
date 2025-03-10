@@ -294,12 +294,6 @@ static void mtk_dbi_count_srt_cal(struct mtk_ddp_comp *comp, int en, int slice_n
 				DDPMSG("[DBI_COUNT]%s:" fmt, __func__, ##arg); \
 		} while (0)
 
-struct dbi_count_block_info {
-	uint32_t block_h;
-	uint32_t block_v;
-	uint32_t channel;
-};
-
 static inline unsigned int mtk_dbi_count_read(struct mtk_ddp_comp *comp,
 	unsigned int offset)
 {

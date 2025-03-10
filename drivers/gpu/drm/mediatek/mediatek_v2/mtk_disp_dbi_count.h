@@ -71,6 +71,12 @@ struct mtk_disp_dbi_count {
 	uint32_t irq_num;
 };
 
+struct dbi_count_block_info {
+	uint32_t block_h;
+	uint32_t block_v;
+	uint32_t channel;
+};
+
 int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data);
 int mtk_drm_crtc_get_count_fence_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
@@ -94,8 +100,8 @@ void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 void mtk_oddmr_dbi_udma_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle);
 
+struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint32_t block_v);
 void mtk_dbi_idle_count_insert_wb_fence(struct mtk_drm_crtc *mtk_crtc, unsigned int fence);
 void mtk_dbi_idle_count_update_wb_fence(struct mtk_drm_crtc *mtk_crtc);
-
 
 #endif

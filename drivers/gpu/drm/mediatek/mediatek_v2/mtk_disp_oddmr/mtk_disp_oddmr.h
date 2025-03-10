@@ -484,6 +484,7 @@ struct mtk_drm_dbi_share_info {
 	unsigned int curr_fps;
 	unsigned int curr_bl;
 	unsigned int curr_temp;
+	unsigned int spr_format;
 	struct mtk_drm_dbi_rg_backup backup;
 	struct mtk_drm_dbi_counting_info counting_info;
 	unsigned int lifecycle_addr_pa;
@@ -783,4 +784,6 @@ int mtk_oddmr_load_param(struct mtk_disp_oddmr *priv, struct mtk_drm_oddmr_param
 int mtk_oddmr_get_od_enable(struct mtk_ddp_comp *comp);
 int mtk_oddmr_get_dmr_enable(struct mtk_ddp_comp *comp);
 int mtk_oddmr_get_dbi_enable(struct mtk_ddp_comp *comp);
+unsigned int mtk_oddmr_get_dbi_hw_enable(struct mtk_drm_crtc *mtk_crtc);
+unsigned int mtk_oddmr_get_dbi_init_done(struct mtk_drm_crtc *mtk_crtc);
 #endif

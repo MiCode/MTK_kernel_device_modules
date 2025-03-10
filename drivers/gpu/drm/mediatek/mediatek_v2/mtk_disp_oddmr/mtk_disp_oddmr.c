@@ -30,6 +30,7 @@
 #include "../mtk_drm_mmp.h"
 #include "../mtk_drm_gem.h"
 #include "../mtk_drm_fb.h"
+#include "../mtk_disp_dbi_count.h"
 #include "mtk_disp_oddmr.h"
 #include "mtk_disp_oddmr_tuning.h"
 
@@ -10229,6 +10230,27 @@ fail:
 	return 0;
 }
 
+unsigned int mtk_oddmr_get_dbi_hw_enable(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_ODDMR, 0);
+	struct mtk_disp_oddmr *oddmr_data;
+
+	if (!comp)
+		return 0;
+	oddmr_data = comp_to_oddmr(comp);
+	return oddmr_data->dbi_enable;
+}
+
+unsigned int mtk_oddmr_get_dbi_init_done(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_ODDMR, 0);
+	struct mtk_disp_oddmr *oddmr_data;
+
+	if (!comp)
+		return 0;
+	oddmr_data = comp_to_oddmr(comp);
+	return oddmr_data->primary_data->dbi_state >= ODDMR_INIT_DONE;
+}
 
 #define share_lifecycle_offset (0x10000)
 bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
@@ -10251,6 +10273,8 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_disp_oddmr *oddmr_data;
+	struct dbi_count_block_info block;
+	unsigned int size;
 
 	if (!crtc)
 		return false;
@@ -10285,6 +10309,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	share_mem->curr_fps = curr_fps;
 	share_mem->curr_bl = curr_bl;
 	share_mem->curr_temp = curr_temp;
+	share_mem->spr_format = mtk_spr_get_format(mtk_crtc);
 
 	DDPMSG("dbi-scp %d/%d\n", share_mem->dbi_init_done, share_mem->dbi_hw_enable);
 
@@ -10301,13 +10326,21 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 		share_mem->lifecycle_addr_pa= share_lifecycle_offset + get_mem_phys(SCP_DBI_MEM_ID);
 		share_mem->lifecycle_addr_va= share_lifecycle_offset + get_mem_virt(SCP_DBI_MEM_ID);
 
-		oddmr_data->dbi_data.scp_lifecycle_size
-			= width*height*4*3/scale_factor_h/scale_factor_v;
+		if(oddmr_data->data->dbi_version == MTK_DBI_V3) {
+			block = mtk_dbi_count_get_block_info(scale_factor_h, scale_factor_v);
+			size = width * height * block.channel* sizeof(unsigned int) / block.block_h / block.block_v;
+			oddmr_data->dbi_data.scp_lifecycle_size = size;
+			share_mem->pic_addr_pa[0] = share_mem->lifecycle_addr_pa + (size + 4095)/4096*4096;
+			share_mem->pic_addr_va[0] = share_mem->lifecycle_addr_va + (size + 4095)/4096*4096;
+		} else {
+			oddmr_data->dbi_data.scp_lifecycle_size
+				= width*height*4*3/scale_factor_h/scale_factor_v;
 
-		share_mem->pic_addr_pa[0] = share_mem->lifecycle_addr_pa +
-			(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
-		share_mem->pic_addr_va[0] = share_mem->lifecycle_addr_va +
-			(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
+			share_mem->pic_addr_pa[0] = share_mem->lifecycle_addr_pa +
+				(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
+			share_mem->pic_addr_va[0] = share_mem->lifecycle_addr_va +
+				(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
+		}
 
 		share_mem->pic_addr_pa[1] = share_mem->pic_addr_pa[0] + (width*height*3 + 4095)/4096*4096;
 		share_mem->pic_addr_va[1] = share_mem->pic_addr_va[0] + (width*height*3 + 4095)/4096*4096;
@@ -10342,6 +10375,20 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_CTR_1;
 		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_CTR_2;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_TOP_CTR_3;
+
+		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_SHADOW_CTRL;
+		*(tmp_addr+(i++)) = DISP_ODDMR_DMR_SHADOW_CTRL;
+		*(tmp_addr+(i++)) = DISP_ODDMR_MURA_SHADOW_CTRL;
+		*(tmp_addr+(i++)) = DISP_ODDMR_DBI_SHADOW_CTRL;
+		*(tmp_addr+(i++)) = DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH;
+		*(tmp_addr+(i++)) = DISP_ODDMR_REG_DMR_FRAME_WIDTH;
+		*(tmp_addr+(i++)) = MT6993_DISP_ODDMR_DDREN_CTRL_DBI;
+		*(tmp_addr+(i++)) = DISP_ODDMR_TOP_DBI_BYPASS;
+		// *(tmp_addr+(i++)) = MT6993_DISP_ODDMR_REG_DMR_Y_INI;
+		// *(tmp_addr+(i++)) = MT6991_DISP_ODDMR_UDMA_DBI_CTRL70;
+		// *(tmp_addr+(i++)) = MT6991_DISP_ODDMR_UDMA_DBI_CTRL88;
+		// *(tmp_addr+(i++)) = MT6991_DISP_ODDMR_UDMA_DBI_CTRL30;
+
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_OUTP_EN;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_FRAME_WIDTH;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_FRAME_HEIGHT;
@@ -10378,7 +10425,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 		}
 
 		//partiful update
-		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_ODDMR_FRAME_WIDTH;
+
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_FRAME_WIDTH;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DBI_SCL_HSIZE;
@@ -10394,13 +10441,23 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_EN;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DMR_UDMA_EN;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_TOP_DMR_BYPASS;
-		*(tmp_addr+(i++)) = 0x084;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_UDMA_DBI_CTRL30;
 
-		//remap
-		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_SPR_SHADOW_CTRL;
-		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_REMAP_GAIN;
+		//oddmr spr
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_COMP_EN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_MASK_0;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_MASK_1;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_MASK_2;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_MASK_3;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_MASK_4;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_MASK_5;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_MASK_2X2;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_PANEL_WIDTH;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_X_INIT;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_REMAP_EN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_SPR_REMAP_GAIN;
+		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_SPR_SHADOW_CTRL;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_0;
 		*(tmp_addr+(i++)) = MT6991_DISP_ODDMR_REG_DBI_UDMA_BASE_ADDR_1;
